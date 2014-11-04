@@ -1,0 +1,5 @@
+*.swp
+doc/
+source/bin/
+source/example/obj/
+source/obj/
