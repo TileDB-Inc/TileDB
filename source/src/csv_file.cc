@@ -126,14 +126,14 @@ void CSVLine::operator<<(uint64_t value) {
 template<>
 void CSVLine::operator<<(float value) {
   char s[50]; // maximum 50 digits
-  sprintf(s, "%f", value); 
+  sprintf(s, "%g", value); 
   values_.push_back(s);
 }
 
 template<>
 void CSVLine::operator<<(double value) {
   char s[50]; // maximum 50 digits
-  sprintf(s, "%lf", value); 
+  sprintf(s, "%lg", value); 
   values_.push_back(s);
 }
 

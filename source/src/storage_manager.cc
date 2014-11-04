@@ -137,6 +137,10 @@ void StorageManager::open_array(const std::string& array_name, ArrayMode mode) {
 void StorageManager::append_tile(const Tile* tile, 
                                  const std::string& array_name,
                                  const std::string& attribute_name) {
+  // Do nothing if tile is empty
+  if(tile->cell_num() == 0)
+    return;
+
   // Perform checks
   check_array_on_append_tile(array_name);
   check_tile_id_on_append_tile(array_name, attribute_name, tile->tile_id());
@@ -160,9 +164,13 @@ void StorageManager::append_tile(const Tile* tile,
 
 void StorageManager::append_tile(const Tile* tile, 
                                  const std::string& array_name) {
+  // Do nothing if tile is empty
+  if(tile->cell_num() == 0)
+    return;
 
   // Preform checks
   check_dim_num_on_append_tile(array_name, tile->mbr());
+
   
   // Update the indices relevant only to coordinate tiles
   update_MBR_index_on_append_tile(array_name, tile->mbr());

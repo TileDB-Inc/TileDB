@@ -392,7 +392,7 @@ CoordinateTile<T>::CoordinateTile(uint64_t tile_id, unsigned int dim_num) {
   tile_id_ = tile_id;
   
   if(dim_num == 0)
-    throw TileException("The number of dimensions must be positive.", tile_id_);
+    throw TileException("The number of dimensions must not be zero.", tile_id_);
   
   dim_num_ = dim_num;
   cell_num_ = 0;

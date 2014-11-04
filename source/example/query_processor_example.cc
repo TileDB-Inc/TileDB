@@ -84,8 +84,9 @@ int main() {
                  *array_schema_B, Loader::COLUMN_MAJOR);
 
     // Export an array to a CSV file
-    query_processor.export_to_CSV(*array_schema_B, 
-                                  "~/stavrospapadopoulos/TileDB/Data/B_exported.csv");
+    query_processor.export_to_CSV(
+        *array_schema_B, 
+        "~/stavrospapadopoulos/TileDB/Data/B_exported.csv");
  
     // Process a subarray query
     std::vector<double> range;

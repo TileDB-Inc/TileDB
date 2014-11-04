@@ -59,7 +59,6 @@ Loader::Loader(const std::string& workspace,
 void Loader::load(const std::string& filename, 
                   const ArraySchema& array_schema,
                   Loader::Order order) const {
-
   try {
     storage_manager_.open_array(array_schema.array_name(),  
                                StorageManager::CREATE);
@@ -99,17 +98,17 @@ void Loader::load(const std::string& filename,
     storage_manager_.close_array(array_schema.array_name());
 
   } catch(CSVFileException& cfe) {
-    // TODO: delete the array
+    // TODO: exception safety
     throw LoaderException("CSVFileException caught by Loader: " + cfe.what());
   } catch(TileException& te) {
-    // TODO: delete the array
+    // TODO: exception safety
     throw LoaderException("TileException caught by Loader: " + te.what());
   } catch(StorageManagerException& sme) {
-    // TODO: delete the array
+    // TODO: exception safety
     throw LoaderException("StorageManagerException caught by Loader: " + 
                           sme.what());
   } catch(LoaderException& le) {
-    // TODO: delete the array
+    // TODO: exception safety
     std::cout << le.what() << "\n";
   }
 }

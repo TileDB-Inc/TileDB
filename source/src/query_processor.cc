@@ -30,7 +30,7 @@
  *
  * This file implements the QueryProcessor class.
  */
-
+  
 #include "query_processor.h"
 #include <stdio.h>
 #include <typeinfo>

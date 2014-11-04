@@ -2,10 +2,10 @@
 #include <iostream>
 
 int main() {
-  // CSVLine USAGE
+  // ------- CSVLine USAGE -------
   CSVLine line_1, line_2, line_3, line_4;
  
-  // We can assign a string (or const char*) to a CSVLine object 
+  // We can assign a CSV string (or const char*) to a CSVLine object 
   line_1 = "10,5.1,stavros";
   // We can treat a CSVLine object as an output stream
   // Several data types are supported
@@ -22,15 +22,15 @@ int main() {
   std::cout << line_2.str() << "\n";
   std::cout << line_3.str() << "\n";
 
-  // CSVFile USAGE
-  CSVFile* file = new CSVFile("test.csv", CSVFile::APPEND, 25);
+  // ------- CSVFile USAGE -------
+  CSVFile* file = new CSVFile("test.csv", CSVFile::WRITE, 25);
   // We treate the CSVFile object as an output stream
   *file << line_1;
   *file << line_2;
   *file << line_3;
   // Always delete the CSVFile object when done, because there
   // may still be some data in the buffer that are not flushed
-  // yet in the file (deleting the object forces the flusjing)
+  // yet in the file (deleting the object forces the flushing)
   delete file;
 
   // Let's print the file

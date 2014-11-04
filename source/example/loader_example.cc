@@ -36,19 +36,20 @@ int main() {
                                  dim_domains, dim_names, dim_type);
 
     // Create storage manager
-    StorageManager sm("~/MIT/TileDB/Data");
+    // It takes as input a path to its workspace
+    StorageManager sm("~/stavrospapadopoulos/TileDB/Data");
 
     // Create loader
-    Loader ld("~/MIT/TileDB/Data", sm);
+    // It takes as input a path to its workspace
+    Loader ld("~/stavrospapadopoulos/TileDB/Data", sm);
 
     // Load
-    ld.load("~/MIT/TileDB/Data/Loader/test.csv", array_schema_reg, Loader::HILBERT);
-    // ld.load("~/MIT/TileDB/Data/Loader/test.csv", array_schema_reg, Loader::ROW_MAJOR);
-    // ld.load("~/MIT/TileDB/Data/Loader/test.csv", array_schema_reg, Loader::COLUMN_MAJOR);
-    // ld.load("~/MIT/TileDB/Data/Loader/test.csv", array_schema_ireg, Loader::HILBERT);
-    // ld.load("~/MIT/TileDB/Data/Loader/test.csv", array_schema_ireg, Loader::ROW_MAJOR);
-    // ld.load("~/MIT/TileDB/Data/Loader/test.csv", array_schema_ireg, Loader::COLUMN_MAJOR);
-    
+    // The last argument is the cell order for regular tiles, or the tile order
+    // for irregular tiles. It could be HILBERT, ROW_MAJOR, or COLUMN_MAJOR
+    ld.load("~/stavrospapadopoulos/TileDB/Data/test.csv", 
+            array_schema_reg, Loader::HILBERT);
+    ld.load("~/stavrospapadopoulos/TileDB/Data/test.csv", 
+            array_schema_ireg, Loader::ROW_MAJOR);
   } catch(StorageManagerException& sme) {
     std::cout << sme.what() << "\n";
   } catch(LoaderException& le) {
