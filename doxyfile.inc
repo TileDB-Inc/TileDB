@@ -1,2 +1,2 @@
-INPUT = doc/mainpage.dox header/array_schema.h header/csv_file.h header/hilbert_curve.h header/loader.h header/query_processor.h header/storage_manager.h header/tile.h
+INPUT = doc/mainpage.dox core/include/array_schema.h core/include/csv_file.h core/include/hilbert_curve.h core/include/loader.h core/include/query_processor.h core/include/storage_manager.h core/include/tile.h
 FILE_PATTERNS = *.h

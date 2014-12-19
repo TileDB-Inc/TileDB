@@ -1,104 +1,162 @@
+##########
+# Macros #
+##########
+
+# --- Compiler --- #
 CXX = g++
-SRC_DIR = source/src
-OBJ_DIR = source/obj
-TEST_DIR = source/test
-TEST_OBJ_DIR = source/test/obj
-EXAMPLE_DIR = source/example
-EXAMPLE_OBJ_DIR = source/example/obj
-BIN_DIR = source/bin
-HEAD_DIR = header
-INCLUDE_PATHS = -I$(HEAD_DIR)
-SRCS := $(wildcard $(SRC_DIR)/*.cc)
-HEADS := $(wildcard $(HEAD_DIR)/*.h)
-OBJS := $(patsubst $(SRC_DIR)/%.cc, $(OBJ_DIR)/%.o, $(SRCS))
-EXAMPLE_OBJS := $(patsubst $(EXAMPLE_DIR)/%.cc, $(EXAMPLE_OBJ_DIR)/%.o, $(wildcard $(EXAMPLE_DIR)/*.cc))
-TEST_OBJS := $(patsubst $(TEST_DIR)/%.cc, $(TEST_OBJ_DIR)/%.o, $(wildcard $(TEST_DIR)/*.cc))
 
-.PHONY: clean all compile-all doc
+# --- Directories --- #
+CORE_INCLUDE_DIR = core/include
+CORE_SRC_DIR = core/src
+CORE_OBJ_DIR = core/obj
+CORE_BIN_DIR = core/bin
+EXAMPLE_SRC_DIR = example/src
+EXAMPLE_OBJ_DIR = example/obj
+EXAMPLE_BIN_DIR = example/bin
+GTEST_DIR = gtest
+GTEST_INCLUDE_DIR = gtest/include
+GTEST_SRC_DIR = gtest/src
+GTEST_OBJ_DIR = gtest/obj
+GTEST_BIN_DIR = gtest/bin
+TEST_SRC_DIR = test/src
+TEST_OBJ_DIR = test/obj
+TEST_BIN_DIR = test/bin
+DOC_DIR = doc
 
-all: compile-all examples
+# --- Paths --- #
+CORE_INCLUDE_PATHS = -I$(CORE_INCLUDE_DIR)
 
-tests: tile_test storage_manager_test csv_file_test array_schema_test loader_test query_processor_test
+# --- Files --- #
+CORE_INCLUDE := $(wildcard $(CORE_INCLUDE_DIR)/*.h)
+CORE_SRC := $(wildcard $(CORE_SRC_DIR)/*.cc)
+CORE_OBJ := $(patsubst $(CORE_SRC_DIR)/%.cc, $(CORE_OBJ_DIR)/%.o, $(CORE_SRC))
+EXAMPLE_SRC := $(wildcard $(EXAMPLE_SRC_DIR)/*.cc)
+EXAMPLE_OBJ := $(patsubst $(EXAMPLE_SRC_DIR)/%.cc, $(EXAMPLE_OBJ_DIR)/%.o, $(EXAMPLE_SRC))
+EXAMPLE_BIN := $(patsubst $(EXAMPLE_SRC_DIR)/%.cc, $(EXAMPLE_BIN_DIR)/%, $(EXAMPLE_SRC))
+GTEST_INCLUDE := $(wildcard $(GTEST_INCLUDE_DIR)/*.h)
+GTEST_OBJ := $(patsubst $(GTEST_SRC_DIR)/%.cc, $(GTEST_OBJ_DIR)/%.o, $(GTEST_SRC))
+TEST_SRC := $(wildcard $(TEST_SRC_DIR)/*.cc)
+TEST_OBJ := $(patsubst $(TEST_SRC_DIR)/%.cc, $(TEST_OBJ_DIR)/%.o, $(TEST_SRC))
 
-examples: tile_example storage_manager_example csv_file_example array_schema_example loader_example query_processor_example
+###################
+# General Targets #
+###################
 
-compile-all: $(OBJS)
+.PHONY: core example gtest test doc doc_doxygen clean_core clean_example clean_gtest clean_test clean
 
-# compile each main src file
-# $< gets name of first matching dependency, $@ gets target name
-$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cc $(HEADS)
-	$(CXX) $(INCLUDE_PATHS) -c $< -o $@
+all: core example gtest test doc
 
-clean:
-	rm -f $(OBJ_DIR)/* $(BIN_DIR)/* $(TEST_OBJ_DIR)/* $(EXAMPLE_OBJ_DIR)/*
+core: $(CORE_OBJ)
 
+example: $(EXAMPLE_BIN)
 
-####################
-# Example Programs #
-####################
+gtest: $(GTEST_OBJ_DIR)/gtest-all.o
 
-# Compile each test and example src
-# $< gets name of first matching dependency, $@ gets target name
-$(TEST_OBJ_DIR)/%.o: $(TEST_DIR)/%.cc
-	test -d $(TEST_OBJ_DIR) || mkdir -p $(TEST_OBJ_DIR)
-	$(CXX) $(INCLUDE_PATHS) -c $< -o $@
+test: $(TEST_OBJ)
 
-$(EXAMPLE_OBJ_DIR)/%.o: $(EXAMPLE_DIR)/%.cc
-	test -d $(EXAMPLE_OBJ_DIR) || mkdir -p $(EXAMPLE_OBJ_DIR)
-	$(CXX) $(INCLUDE_PATHS) -c $< -o $@
+doc: doxyfile.inc
 
-# don't delete intermediate object files
-.SECONDARY: $(EXAMPLE_OBJS)
-.SECONDARY: $(TEST_OBJS)
+clean: clean_core clean_example clean_gtest clean_test
 
-# Link each test and example binary
-$(BIN_DIR)/%: $(TEST_OBJ_DIR)/%.o $(OBJS)
+###############
+# Core TileDB #
+###############
+
+# --- Compilation and dependency genration --- #
+
+-include $(CORE_OBJ:.o=.d)
+
+$(CORE_OBJ_DIR)/%.o: $(CORE_SRC_DIR)/%.cc
+	@test -d $(CORE_OBJ_DIR) || mkdir -p $(CORE_OBJ_DIR)
+	$(CXX) $(CORE_INCLUDE_PATHS) -c $< -o $@
+	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
+	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
+	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
+	@rm -f $(@:.o=.d.tmp)
+
+clean_core:
+	rm -f $(CORE_OBJ_DIR)/* $(CORE_BIN_DIR)/* 
+
+############
+# Examples #
+############
+
+# --- Compilation and dependency genration --- #
+
+-include $(EXAMPLE_OBJ:.o=.d)
+
+$(EXAMPLE_OBJ_DIR)/%.o: $(EXAMPLE_SRC_DIR)/%.cc
+	@test -d $(EXAMPLE_OBJ_DIR) || mkdir -p $(EXAMPLE_OBJ_DIR)
+	$(CXX) $(CORE_INCLUDE_PATHS) -c $< -o $@
+	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
+	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
+	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
+	@rm -f $(@:.o=.d.tmp)
+
+clean_example:
+	rm -f $(EXAMPLE_OBJ_DIR)/* $(EXAMPLE_BIN_DIR)/* 
+
+# --- Linking --- #
+
+$(EXAMPLE_BIN_DIR)/example_array_schema: $(EXAMPLE_OBJ_DIR)/example_array_schema.o \
+ $(CORE_OBJ_DIR)/array_schema.o $(CORE_OBJ_DIR)/hilbert_curve.o
+	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
 	$(CXX) $(INCLUDE_PATHS) -o $@ $^
 
-$(BIN_DIR)/%: $(EXAMPLE_OBJ_DIR)/%.o $(OBJS)
+$(EXAMPLE_BIN_DIR)/example_csv_file: $(EXAMPLE_OBJ_DIR)/example_csv_file.o \
+ $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/tile.o
+	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
 	$(CXX) $(INCLUDE_PATHS) -o $@ $^
 
-# Tile test and example
-tile_test: $(BIN_DIR)/tile_test
-tile_example: $(BIN_DIR)/tile_example
+$(EXAMPLE_BIN_DIR)/example_loader: $(EXAMPLE_OBJ_DIR)/example_loader.o \
+ $(CORE_OBJ_DIR)/loader.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
+ $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/storage_manager.o $(CORE_OBJ_DIR)/hilbert_curve.o
+	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
+	$(CXX) $(INCLUDE_PATHS) -o $@ $^
 
-# Storage manager and example
-storage_manager_test: $(BIN_DIR)/storage_manager_test
-storage_manager_example: $(BIN_DIR)/storage_manager_example
+$(EXAMPLE_BIN_DIR)/example_query_processor: $(EXAMPLE_OBJ_DIR)/example_query_processor.o \
+ $(CORE_OBJ_DIR)/query_processor.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
+ $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/storage_manager.o $(CORE_OBJ_DIR)/hilbert_curve.o
+	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
+	$(CXX) $(INCLUDE_PATHS) -o $@ $^
 
-# CSV file test and example
-csv_file_test: $(BIN_DIR)/csv_file_test
-csv_file_example: $(BIN_DIR)/csv_file_example
+$(EXAMPLE_BIN_DIR)/example_storage_manager: $(EXAMPLE_OBJ_DIR)/example_storage_manager.o \
+ $(CORE_OBJ_DIR)/storage_manager.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
+ $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/hilbert_curve.o
+	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
+	$(CXX) $(INCLUDE_PATHS) -o $@ $^
 
-# Array schema test and example
-array_schema_test: $(BIN_DIR)/array_schema_test
-array_schema_example: $(BIN_DIR)/array_schema_example
+$(EXAMPLE_BIN_DIR)/example_tile: $(EXAMPLE_OBJ_DIR)/example_tile.o \
+ $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/csv_file.o
+	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
+	$(CXX) $(INCLUDE_PATHS) -o $@ $^
 
-# Loader test and example
-loader_test: $(BIN_DIR)/loader_test
-loader_example: $(BIN_DIR)/loader_example
 
-# Query processor test and example
-query_processor_test: $(BIN_DIR)/query_processor_test
-query_processor_example: $(BIN_DIR)/query_processor_example
+###############
+# Google test #
+###############
+
+$(GTEST_OBJ_DIR)/gtest-all.o: gtest/src/gtest-all.cc $(wildcard gtest/include/gtest/*.h)
+	@test -d $(GTEST_OBJ_DIR) || mkdir -p $(GTEST_OBJ_DIR)
+	$(CXX) -isystem $(GTEST_INCLUDE_DIR) -I$(GTEST_DIR) -pthread -c $< -o $@
+
+clean_gtest:
+	rm -f $(GTEST_OBJ_DIR)/* $(GTEST_BIN_DIR)/* 
+
+#########
+# Tests #
+#########
+
+# Coming up soon...
 
 #########################
 # Documentation doxygen #
 #########################
-# Dynamically generates input source in case things change
-# tracks everything in HEAD_DIR right now
-doxyfile.inc: Makefile
-	echo INPUT         =  doc/mainpage.dox $(HEADS) > doxyfile.inc
-	echo FILE_PATTERNS =  *.h >> doxyfile.inc
 
-# Generates html and latex documentation in doc/
-doc: doxyfile.inc $(HEADS)
+doxyfile.inc: $(CORE_INCLUDE)
+	@echo INPUT         =  $(DOC_DIR)/mainpage.dox $(CORE_INCLUDE) > doxyfile.inc
+	@echo FILE_PATTERNS =  *.h >> doxyfile.inc
 	doxygen Doxyfile.mk
-
-
-
-
-
 
 # LIB_PATHS = /usr/local/lib/libspatialindex.so
 # LIBS = -lpqxx -lpthread
