@@ -285,6 +285,10 @@ class StorageManager {
   void append_tile(const Tile* tile, 
                    const ArrayDescriptor* array_descriptor,
                    unsigned int attribute_id); 
+  /**  Returns a tile of an array with the specified attribute and tile id. */
+  const Tile* get_tile(
+      const ArrayDescriptor* array_descriptor,
+      unsigned int attribute_id, uint64_t tile_id);  
   /** 
    * Creates an empty tile for a specific array and attribute, with reserved 
    * capacity equal to cell_num (note though that there are no constraints on
@@ -294,10 +298,6 @@ class StorageManager {
    */
   Tile* new_tile(const ArraySchema& array_schema, unsigned int attribute_id, 
                  uint64_t tile_id, uint64_t cell_num) const; 
-  /**  Returns a tile of an array with the specified attribute and tile id. */
-  const Tile* get_tile(
-      const ArrayDescriptor* array_descriptor,
-      unsigned int attribute_id, uint64_t tile_id);  
 
   // TILE ITERATORS
   /** This class implements a constant tile iterator. */

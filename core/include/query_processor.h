@@ -101,12 +101,6 @@ class QueryProcessor {
    */
   CSVLine cell_to_csv_line(const Tile::const_iterator* cell_its,
                            unsigned int attribute_num) const;
-  /** 
-   * Creates an array of Tile objects with the input tile id based on the input 
-   * array schema. 
-   */
-  void new_tiles(const ArraySchema& array_schema,
-                 uint64_t tile_id, Tile** tiles) const;
   /** Creates the workspace folder. */
   void create_workspace() const;
   /** 
@@ -129,7 +123,12 @@ class QueryProcessor {
   void initialize_tile_its(const StorageManager::ArrayDescriptor* ad,
                            StorageManager::const_iterator* tile_its,
                            StorageManager::const_iterator& tile_it_end) const;
-
+  /** 
+   * Creates an array of Tile objects with the input tile id based on the input 
+   * array schema. 
+   */
+  void new_tiles(const ArraySchema& array_schema,
+                 uint64_t tile_id, Tile** tiles) const;
   /** Returns true if the input path is an existing directory. */
   bool path_exists(const std::string& path) const;
   /** Simply sets the workspace. */

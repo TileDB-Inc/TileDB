@@ -195,6 +195,19 @@ void StorageManager::append_tile(const Tile* tile,
   }
 } 
 
+const Tile* StorageManager::get_tile( 
+    const ArrayDescriptor* array_descriptor,
+    unsigned int attribute_id, uint64_t tile_id) {
+  assert(check_on_get_tile(*array_descriptor, attribute_id, tile_id));
+
+  // For easy reference
+  ArrayInfo& array_info = *(array_descriptor->array_info_);
+
+  uint64_t rank = tile_rank(array_info, tile_id); 
+
+  return get_tile_by_rank(array_info, attribute_id, rank);
+}
+
 Tile* StorageManager::new_tile(const ArraySchema& array_schema, 
     unsigned int attribute_id, uint64_t tile_id, 
     uint64_t cell_num) const {
@@ -233,18 +246,6 @@ Tile* StorageManager::new_tile(const ArraySchema& array_schema,
   return tile; 
 }
 
-const Tile* StorageManager::get_tile( 
-    const ArrayDescriptor* array_descriptor,
-    unsigned int attribute_id, uint64_t tile_id) {
-  assert(check_on_get_tile(*array_descriptor, attribute_id, tile_id));
-
-  // For easy reference
-  ArrayInfo& array_info = *(array_descriptor->array_info_);
-
-  uint64_t rank = tile_rank(array_info, tile_id); 
-
-  return get_tile_by_rank(array_info, attribute_id, rank);
-}
 
 /******************************************************
 ******************** TILE ITERATORS *******************

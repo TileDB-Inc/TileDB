@@ -85,12 +85,6 @@ class Loader {
                     CSVLine* csv_line, Tile** tiles) const;
   /** Checks upon invoking the load command. */
   bool check_on_load(const std::string& filename) const;
-  /** 
-   * Creates an array of new tile pointers with the input tile id, 
-   * and based on the input array info. 
-   */
-  void new_tiles(const ArraySchema& array_schema, 
-                 uint64_t tile_id, Tile** tiles) const;
   /** Creates the workspace folder. */
   void create_workspace() const;
   /**
@@ -108,6 +102,12 @@ class Loader {
   void make_tiles_regular(const std::string& filename,
                           const StorageManager::ArrayDescriptor* ad,
                           const ArraySchema& array_schema) const;
+  /** 
+   * Creates an array of new tile pointers with the input tile id, 
+   * and based on the input array info. 
+   */
+  void new_tiles(const ArraySchema& array_schema, 
+                 uint64_t tile_id, Tile** tiles) const;
   /** Returns true if the input path is an existing directory. */
   bool path_exists(const std::string& path) const;
   /** Simply sets the workspace. */

@@ -140,17 +140,6 @@ CSVLine QueryProcessor::cell_to_csv_line(const Tile::const_iterator* cell_its,
   return csv_line;
 }
 
-inline
-void QueryProcessor::new_tiles(const ArraySchema& array_schema, 
-                               uint64_t tile_id, Tile** tiles) const {
-  // For easy reference
-  unsigned int attribute_num = array_schema.attribute_num();
-  uint64_t capacity = array_schema.capacity();
-
-  for(unsigned int i=0; i<=attribute_num; i++)
-    tiles[i] = storage_manager_.new_tile(array_schema, i, tile_id, capacity);
-}
-
 void QueryProcessor::create_workspace() const {
   struct stat st;
   stat(workspace_.c_str(), &st);
@@ -215,6 +204,17 @@ void QueryProcessor::initialize_tile_its(
   // Every attribute has the same # of tiles.
   // Thus it suffices to keep track of the end of the first tile iterator.
   tile_it_end = storage_manager_.end(ad, 0);
+}
+
+inline
+void QueryProcessor::new_tiles(const ArraySchema& array_schema, 
+                               uint64_t tile_id, Tile** tiles) const {
+  // For easy reference
+  unsigned int attribute_num = array_schema.attribute_num();
+  uint64_t capacity = array_schema.capacity();
+
+  for(unsigned int i=0; i<=attribute_num; i++)
+    tiles[i] = storage_manager_.new_tile(array_schema, i, tile_id, capacity);
 }
 
 inline

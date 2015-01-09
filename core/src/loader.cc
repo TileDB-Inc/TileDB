@@ -140,17 +140,6 @@ bool Loader::check_on_load(const std::string& filename) const {
   return true;
 }
 
-inline
-void Loader::new_tiles(const ArraySchema& array_schema, 
-                       uint64_t tile_id, Tile** tiles) const {
-  // For easy reference
-  unsigned int attribute_num = array_schema.attribute_num();
-  uint64_t capacity = array_schema.capacity();
-
-  for(unsigned int i=0; i<=attribute_num; i++)
-    tiles[i] = storage_manager_.new_tile(array_schema, i, tile_id, capacity);
-}
-
 void Loader::create_workspace() const {
   struct stat st;
   stat(workspace_.c_str(), &st);
@@ -291,6 +280,18 @@ void Loader::make_tiles_regular(const std::string& filename,
 
   delete [] tiles; 
 }
+
+inline
+void Loader::new_tiles(const ArraySchema& array_schema, 
+                       uint64_t tile_id, Tile** tiles) const {
+  // For easy reference
+  unsigned int attribute_num = array_schema.attribute_num();
+  uint64_t capacity = array_schema.capacity();
+
+  for(unsigned int i=0; i<=attribute_num; i++)
+    tiles[i] = storage_manager_.new_tile(array_schema, i, tile_id, capacity);
+}
+
 
 bool Loader::path_exists(const std::string& path) const {
   struct stat st;
