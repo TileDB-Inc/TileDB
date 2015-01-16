@@ -199,6 +199,15 @@ void Tile::const_iterator::operator=(const const_iterator& rhs) {
   tile_ = rhs.tile_;
 }
 
+Tile::const_iterator Tile::const_iterator::operator+(int64_t step) {
+  pos_ += step;
+  return *this;
+}
+
+void Tile::const_iterator::operator+=(int64_t step) {
+  pos_ += step;
+}
+
 Tile::const_iterator Tile::const_iterator::operator++() {
   ++pos_;
   return *this;
@@ -211,11 +220,75 @@ Tile::const_iterator Tile::const_iterator::operator++(int junk) {
 }
 
 bool Tile::const_iterator::operator==(const const_iterator& rhs) const {
-  return (pos_ == rhs.pos_ && tile_ == rhs.tile_);
+  // --- If both operands correspond to the same tile
+  if(tile_ == rhs.tile_)
+    return pos_ == rhs.pos_;
+
+  // --- The operands correspond to different tiles - check their cell values
+  // Currently works only with tiles of the same type. If the tiles are
+  // coordinate tiles, they must have the same number of dimensions
+  assert(tile_->tile_type() == rhs.tile_->tile_type());
+  assert(*(tile_->cell_type()) == *(rhs.tile_->cell_type()));
+  assert(tile_->tile_type() == ATTRIBUTE || 
+         tile_->dim_num() == rhs.tile_->dim_num());
+
+  // For easy reference
+  const std::type_info* cell_type = tile_->cell_type();
+  TileType tile_type = tile_->tile_type();
+
+  // Attribute tiles
+  if(tile_type == ATTRIBUTE) {
+    if(*cell_type == typeid(char))
+      return static_cast<const AttributeTile<char>*>(tile_)->cell(pos_) ==
+             static_cast<const AttributeTile<char>*>(rhs.tile_)->cell(rhs.pos_);
+    else if(*cell_type == typeid(int))
+      return static_cast<const AttributeTile<int>*>(tile_)->cell(pos_) ==
+             static_cast<const AttributeTile<int>*>(rhs.tile_)->cell(rhs.pos_);
+    else if(*cell_type == typeid(int64_t))
+      return static_cast<const AttributeTile<int64_t>*>(tile_)->cell(pos_) ==
+             static_cast<const AttributeTile<int64_t>*>
+                 (rhs.tile_)->cell(rhs.pos_);
+    else if(*cell_type == typeid(float))
+      return static_cast<const AttributeTile<float>*>(tile_)->cell(pos_) ==
+             static_cast<const AttributeTile<float>*>
+                 (rhs.tile_)->cell(rhs.pos_);
+    else if(*cell_type == typeid(double))
+      return static_cast<const AttributeTile<double>*>(tile_)->cell(pos_) ==
+             static_cast<const AttributeTile<double>*>
+                 (rhs.tile_)->cell(rhs.pos_);
+  // Coordinate tiles
+  } else { // (tile_type == COORDINATE)
+    if(*cell_type == typeid(int)) {
+      const std::vector<int>& coord_lhs = 
+          static_cast<const CoordinateTile<int>*>(tile_)->cell(pos_);
+      const std::vector<int>& coord_rhs = 
+          static_cast<const CoordinateTile<int>*>(rhs.tile_)->cell(rhs.pos_);
+      return std::equal(coord_lhs.begin(), coord_lhs.end(), coord_rhs.begin());
+    } else if(*cell_type == typeid(int64_t)) {
+      const std::vector<int64_t>& coord_lhs = 
+          static_cast<const CoordinateTile<int64_t>*>(tile_)->cell(pos_);
+      const std::vector<int64_t>& coord_rhs = 
+          static_cast<const CoordinateTile<int64_t>*> 
+              (rhs.tile_)->cell(rhs.pos_);
+      return std::equal(coord_lhs.begin(), coord_lhs.end(), coord_rhs.begin());
+    } else if(*cell_type == typeid(float)) {
+      const std::vector<float>& coord_lhs = 
+          static_cast<const CoordinateTile<float>*>(tile_)->cell(pos_);
+      const std::vector<float>& coord_rhs = 
+          static_cast<const CoordinateTile<float>*>(rhs.tile_)->cell(rhs.pos_);
+      return std::equal(coord_lhs.begin(), coord_lhs.end(), coord_rhs.begin());
+    } else if(*cell_type == typeid(double)) {
+      const std::vector<double>& coord_lhs = 
+          static_cast<const CoordinateTile<double>*>(tile_)->cell(pos_);
+      const std::vector<double>& coord_rhs = 
+          static_cast<const CoordinateTile<double>*>(rhs.tile_)->cell(rhs.pos_);
+      return std::equal(coord_lhs.begin(), coord_lhs.end(), coord_rhs.begin());
+    }
+  }
 }
 
 bool Tile::const_iterator::operator!=(const const_iterator& rhs) const {
-  return (pos_ != rhs.pos_ || tile_ != rhs.tile_);
+  return !(*this == rhs);
 }
 
 void Tile::const_iterator::operator>>(CSVLine& csv_line) const {

@@ -99,7 +99,8 @@ clean_example:
 # --- Linking --- #
 
 $(EXAMPLE_BIN_DIR)/example_array_schema: $(EXAMPLE_OBJ_DIR)/example_array_schema.o \
- $(CORE_OBJ_DIR)/array_schema.o $(CORE_OBJ_DIR)/hilbert_curve.o
+ $(CORE_OBJ_DIR)/array_schema.o $(CORE_OBJ_DIR)/hilbert_curve.o \
+ $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/csv_file.o
 	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
 	$(CXX) $(INCLUDE_PATHS) -o $@ $^
 
@@ -116,7 +117,8 @@ $(EXAMPLE_BIN_DIR)/example_loader: $(EXAMPLE_OBJ_DIR)/example_loader.o \
 
 $(EXAMPLE_BIN_DIR)/example_query_processor: $(EXAMPLE_OBJ_DIR)/example_query_processor.o \
  $(CORE_OBJ_DIR)/query_processor.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
- $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/storage_manager.o $(CORE_OBJ_DIR)/hilbert_curve.o
+ $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/loader.o $(CORE_OBJ_DIR)/storage_manager.o   \
+ $(CORE_OBJ_DIR)/hilbert_curve.o
 	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
 	$(CXX) $(INCLUDE_PATHS) -o $@ $^
 

@@ -80,14 +80,18 @@ int main() {
   // --------------- //
   // Create a storage manager. The input is the path where its workspace
   // will be created. Note: the path must exist.
-  StorageManager storage_manager("~/stavrospapadopoulos/TileDB/data");
+  StorageManager sm(
+      "~/stavrospapadopoulos/TileDB/data/example_storage_manager");
   // Create an array schema
   ArraySchema array_schema = create_array_schema();
 
-  StorageManager::ArrayDescriptor* ad;
+  // Delete the array if it exists
+  sm.delete_array(array_schema.array_name());
+
   // Open a array in CREATE mode
   // Pass the array schema as argument to open an array in READ mode
-  ad = storage_manager.open_array(array_schema);
+  StorageManager::ArrayDescriptor* ad;
+  ad = sm.open_array(array_schema);
 
   // Create some tiles
   std::vector<Tile*> tiles;
@@ -114,10 +118,10 @@ int main() {
 
   // Store tiles
   for(int i=0; i<tiles.size(); i++)
-    storage_manager.append_tile(tiles[i], ad, i);
+    sm.append_tile(tiles[i], ad, i);
 
   // ALWAYS close the array after it is created.
-  storage_manager.close_array(ad);
+  sm.close_array(ad);
 
   // -------------- //
   // Reading arrays //
@@ -126,16 +130,16 @@ int main() {
   unsigned int attribute_num = array_schema.attribute_num();
   // Open an array in READ mode
   // Pass only the array name as argument to open an array in READ mode
-  ad = storage_manager.open_array(array_schema.array_name());
+  ad = sm.open_array(array_schema.array_name());
   // Create a tile iterator for each attribute 
   // (do not forget the extra coordinate attribute)
   StorageManager::const_iterator* tile_its = 
       new StorageManager::const_iterator[attribute_num+1];
   for(unsigned int i=0; i<=attribute_num; i++) 
-    tile_its[i] = storage_manager.begin(ad, i);
+    tile_its[i] = sm.begin(ad, i);
   // We use a single end iterator, since all attributes have the same number
   // of tiles
-  StorageManager::const_iterator tile_it_end = storage_manager.end(ad, 0);
+  StorageManager::const_iterator tile_it_end = sm.end(ad, 0);
   while(tile_its[0] != tile_it_end) {
     for(unsigned int i=0; i<=attribute_num; i++) { 
       // Print the tile

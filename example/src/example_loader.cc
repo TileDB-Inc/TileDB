@@ -73,11 +73,11 @@ ArraySchema create_array_schema(bool regular) {
 
   // Return schema with regular tiles
   if(regular)
-    return ArraySchema("REG", attribute_names, dim_names, dim_domains, 
+    return ArraySchema("REG_A", attribute_names, dim_names, dim_domains, 
                        types, order, tile_extents, capacity);
   // Return schema with irregular tiles
   else 
-    return ArraySchema("IREG", attribute_names, dim_names, dim_domains, 
+    return ArraySchema("IREG_A", attribute_names, dim_names, dim_domains, 
                        types, order, capacity);
 }
 
@@ -92,15 +92,19 @@ int main() {
 
     // Create storage manager
     // The input is the path to its workspace (the path must exist).
-    StorageManager sm("~/stavrospapadopoulos/TileDB/data");
+    StorageManager sm("~/stavrospapadopoulos/TileDB/data/example_loader");
 
     // Create loader
     // The first input is the path to its workspace (the path must exist).
-    Loader ld("~/stavrospapadopoulos/TileDB/data", sm);
+    Loader ld("~/stavrospapadopoulos/TileDB/data/example_loader", sm);
+
+    // Delete the arrays if they already exist
+    sm.delete_array(array_schema_REG.array_name());
+    sm.delete_array(array_schema_IREG.array_name());
 
     // Load a CSV file
-    ld.load("~/stavrospapadopoulos/TileDB/data/test.csv", array_schema_REG);
-    ld.load("~/stavrospapadopoulos/TileDB/data/test.csv", array_schema_IREG);
+    ld.load("~/stavrospapadopoulos/TileDB/data/test_A.csv", array_schema_REG);
+    ld.load("~/stavrospapadopoulos/TileDB/data/test_A.csv", array_schema_IREG);
   } catch(LoaderException& le) {
     std::cout << le.what() << "\n";
   }

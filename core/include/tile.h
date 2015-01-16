@@ -190,22 +190,35 @@ class Tile {
      * in the tile. 
      */
     const_iterator(const Tile* tile, uint64_t pos);
-     
+    
+    // ACCESSORS
+    /** Returns the current position of the cell iterator. */
+    uint64_t pos() const { return pos_; }
+    /** Returns the tile the cell iterator belongs to. */
+    const Tile* tile() const { return tile_; }
+
     // OPERATORS
     /** Assignment operator. */
     void operator=(const const_iterator& rhs);
+    /** Addition operator. */
+    const_iterator operator+(int64_t step);
+    /** Addition-assignment operator. */
+    void operator+=(int64_t step);
     /** Pre-increment operator. */
     const_iterator operator++();
     /** Post-increment operator. */
     const_iterator operator++(int junk);
-    /** 
-     * Returns true if the iterator is equal to that in the
-     * right hand side (rhs) of the operator. 
+    /**
+     * We distinguish two cases: (i) If the both operands belong to the same
+     * tile, it returns true if their pos_ values are the same. (ii) Otherwise,
+     * it returns true if their pointed cell values are equal.
      */
     bool operator==(const const_iterator& rhs) const;
-    /** 
-     * Returns true if the iterator is not equal to that in the
-     * right hand side (rhs) of the operator. 
+    /**
+     * We distinguish two cases: (i) If the both operands belong to the same
+     * tile, it returns true if their pos_ values are not the same. 
+     * (ii) Otherwise, it returns true if their pointed cell values are not 
+     * equal.
      */
     bool operator!=(const const_iterator& rhs) const;
     /** 

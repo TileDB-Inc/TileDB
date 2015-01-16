@@ -41,8 +41,6 @@
 
 /** Special value indicating an invalid tile id. */
 #define LD_INVALID_TILE_ID std::numeric_limits<uint64_t>::max()
-/** The buffer size used by Linux sort. */
-#define LD_SORT_BUFFER_SIZE 2 // 2GB
 
 /**
  * The Loader is the module that creates the array layout from raw data 

@@ -38,6 +38,7 @@
 #include <math.h>
 #include <algorithm>
 #include <iostream>
+#include <set>
 
 /******************************************************
 ************ CONSTRUCTORS & DESTRUCTORS ***************
@@ -477,6 +478,50 @@ ArraySchema ArraySchema::clone(const std::string& array_name) const {
   return array_schema;
 }
 
+ArraySchema ArraySchema::create_join_result_schema(
+    const ArraySchema& array_schema_A, 
+    const ArraySchema& array_schema_B,
+    const std::string& result_array_name) {
+  // Attribute names
+  std::vector<std::string> join_attribute_names;
+  join_attribute_names.insert(join_attribute_names.end(),
+                              array_schema_A.attribute_names_.begin(),
+                              --array_schema_A.attribute_names_.end());
+  std::set<std::string> attribute_names_A_set(
+                            array_schema_A.attribute_names_.begin(),
+                            --array_schema_A.attribute_names_.end());
+  join_attribute_names.insert(join_attribute_names.end(),
+                              array_schema_B.attribute_names_.begin(),
+                              --array_schema_B.attribute_names_.end());
+  for(unsigned int i=array_schema_A.attribute_num_; 
+      i<join_attribute_names.size(); i++) {
+    if(attribute_names_A_set.find(join_attribute_names[i]) != 
+       attribute_names_A_set.end())
+      join_attribute_names[i] += "_2";
+  }
+
+  // Types
+  std::vector<const std::type_info*> join_types;
+  join_types.insert(join_types.end(),
+                    array_schema_A.types_.begin(),
+                    --array_schema_A.types_.end());
+  join_types.insert(join_types.end(),
+                    array_schema_B.types_.begin(),
+                    array_schema_B.types_.end());
+
+  if(array_schema_A.has_irregular_tiles())
+    return ArraySchema(result_array_name, join_attribute_names, 
+                       array_schema_A.dim_names_, 
+                       array_schema_A.dim_domains_, join_types,
+                       array_schema_A.order_, array_schema_A.capacity_);
+  else
+    return ArraySchema(result_array_name, join_attribute_names, 
+                       array_schema_A.dim_names_,
+                       array_schema_A.dim_domains_, join_types,
+                       array_schema_A.order_, array_schema_A.tile_extents_,
+                       array_schema_A.capacity_);
+} 
+
 bool ArraySchema::has_irregular_tiles() const {
   return (tile_extents_.size() == 0);
 }
@@ -485,31 +530,120 @@ bool ArraySchema::has_regular_tiles() const {
   return (tile_extents_.size() != 0);
 }
 
-bool ArraySchema::is_aligned_with(const ArraySchema& array_schema) const {
-  // Check regularity of tiles
-  if(has_irregular_tiles() || array_schema.has_irregular_tiles())
-    return false;
- 
-  // Check dimensions
-  if(dim_num_ != array_schema.dim_num_)
-    return false;
- 
-  // Check the type of coordinates
-  if(*type(attribute_num_) != *(array_schema.type(array_schema.attribute_num_)))
-    return false;
+std::pair<bool,std::string> ArraySchema::join_compatible(
+    const ArraySchema& array_schema_A,
+    const ArraySchema& array_schema_B) {
+  // Tile type 
+  if(array_schema_A.has_regular_tiles() != array_schema_B.has_regular_tiles())
+    return std::pair<bool,std::string>(false,"Tile type mismatch.");
 
-  // Check array domains
-  for(unsigned int i=0; i<dim_num_; i++)
-    if(dim_domains_[i].first != array_schema.dim_domains_[i].first || 
-       dim_domains_[i].second != array_schema.dim_domains_[i].second)
+  // Number of dimensions
+  if(array_schema_A.dim_num_ != array_schema_B.dim_num_)
+    return std::pair<bool,std::string>(false,"Dimension number mismatch.");
+
+  // Type of dimensions
+  if(*(array_schema_A.types_[array_schema_A.attribute_num_]) != 
+     *(array_schema_B.types_[array_schema_B.attribute_num_]))
+    return std::pair<bool,std::string>(false,"Dimension type mismatch.");
+
+  // Domains
+  for(unsigned int i=0; i<array_schema_A.dim_num_; i++)
+    if(array_schema_A.dim_domains_[i].first != 
+       array_schema_B.dim_domains_[i].first || 
+       array_schema_A.dim_domains_[i].second != 
+       array_schema_B.dim_domains_[i].second)
+      return std::pair<bool,std::string>(false,"Domain mismatch.");
+
+  // Order
+  if(array_schema_A.order_ != array_schema_B.order_)
+    return std::pair<bool,std::string>(false,"Order mismatch.");
+
+  // Tile extents
+  for(unsigned int i=0; i<array_schema_A.tile_extents_.size(); i++)
+    if(array_schema_A.tile_extents_[i] != array_schema_B.tile_extents_[i])
+      return std::pair<bool,std::string>(false,"Tile extent mismatch.");
+
+  return std::pair<bool,std::string>(true,"");
+}
+
+template<class T>
+bool ArraySchema::precedes(const std::vector<T>& coord_A,
+                           const std::vector<T>& coord_B) const {
+  assert(coord_A.size() == coord_B.size());
+  assert(coord_A.size() == dim_num_);
+
+  // ROW_MAJOR order
+  if(has_regular_tiles() || order_ == ROW_MAJOR) {
+    for(unsigned int i=0; i<dim_num_; ++i) {
+      if(coord_A[i] < coord_B[i])
+        return true;
+      else if(coord_A[i] > coord_B[i])
+        return false;
+      // else coordinate is equal - check the next dimension
+    }
+    return false; // Coordinates are equal
+  // COLUMN_MAJOR order
+  } else if(order_ == COLUMN_MAJOR) {
+    for(int i=dim_num_-1; i>=0; i--) {
+      if(coord_A[i] < coord_B[i])
+        return true;
+      else if(coord_A[i] > coord_B[i])
+        return false;
+      // else coordinate is equal - check the next dimension
+    }
+    return false; // Coordinates are equal
+  // HILBERT order
+  } else if(order_ == HILBERT) {
+    uint64_t cell_id_A = cell_id_hilbert(coord_A);
+    uint64_t cell_id_B = cell_id_hilbert(coord_B);
+    if(cell_id_A < cell_id_B) {
+      return true;
+    } else if (cell_id_A > cell_id_B) {
       return false;
+    } else { // (cell_id_A == cell_id_B): check ROW_MAJOR order
+      for(unsigned int i=0; i<dim_num_; ++i) {
+        if(coord_A[i] < coord_B[i])
+          return true;
+        else if(coord_A[i] > coord_B[i])
+          return false;
+        // else coordinate is equal - check the next dimension
+      }
+      return false; // Coordinates are equal
+    }
+  } else { // it should never reach this point
+    assert(0);
+  }
+}
 
-  // Check tile extents
-  for(unsigned int i=0; i<dim_num_; i++)
-    if(tile_extents_[i] != array_schema.tile_extents_[i])
-      return false;
+bool ArraySchema::precedes(const Tile::const_iterator& cell_it_A,
+                           const Tile::const_iterator& cell_it_B) const {
+  // For easy reference
+  const Tile* tile_A = cell_it_A.tile();
+  const Tile* tile_B = cell_it_B.tile();
 
-  return true;
+  // Works only for coordinates
+  assert(tile_A->tile_type() == Tile::COORDINATE);
+  assert(tile_B->tile_type() == Tile::COORDINATE);
+  assert(tile_A->dim_num() == dim_num_);
+  assert(tile_B->dim_num() == dim_num_);
+
+  if(*(types_[attribute_num_]) == typeid(int)) {
+    const std::vector<int>& coord_A = *cell_it_A;
+    const std::vector<int>& coord_B = *cell_it_B;
+    return precedes(coord_A, coord_B);
+  } else if(*(types_[attribute_num_]) == typeid(int64_t)) {
+    const std::vector<int64_t>& coord_A = *cell_it_A;
+    const std::vector<int64_t>& coord_B = *cell_it_B;
+    return precedes(coord_A, coord_B);
+  } else if(*(types_[attribute_num_]) == typeid(float)) {
+    const std::vector<float>& coord_A = *cell_it_A;
+    const std::vector<float>& coord_B = *cell_it_B;
+    return precedes(coord_A, coord_B);
+  } else if(*(types_[attribute_num_]) == typeid(double)) {
+    const std::vector<double>& coord_A = *cell_it_A;
+    const std::vector<double>& coord_B = *cell_it_B;
+    return precedes(coord_A, coord_B);
+  }
 }
 
 void ArraySchema::print() const {
@@ -552,6 +686,86 @@ void ArraySchema::print() const {
       std::cout << "\tfloat\n";
     else if(*types_[i] == typeid(double))
       std::cout << "\tdouble\n";
+}
+
+template<class T>
+bool ArraySchema::succeeds(const std::vector<T>& coord_A,
+                           const std::vector<T>& coord_B) const {
+  assert(coord_A.size() == coord_B.size());
+  assert(coord_A.size() == dim_num_);
+
+  // ROW_MAJOR order
+  if(has_regular_tiles() || order_ == ROW_MAJOR) {
+    for(unsigned int i=0; i<dim_num_; ++i) {
+      if(coord_A[i] > coord_B[i])
+        return true;
+      else if(coord_A[i] < coord_B[i])
+        return false;
+      // else coordinate is equal - check the next dimension
+    }
+    return false; // Coordinates are equal
+  // COLUMN_MAJOR order
+  } else if(order_ == COLUMN_MAJOR) {
+    for(int i=dim_num_-1; i>=0; i--) {
+      if(coord_A[i] > coord_B[i])
+        return true;
+      else if(coord_A[i] < coord_B[i])
+        return false;
+      // else coordinate is equal - check the next dimension
+    }
+    return false; // Coordinates are equal
+  // HILBERT order
+  } else if(order_ == HILBERT) {
+    uint64_t cell_id_A = cell_id_hilbert(coord_A);
+    uint64_t cell_id_B = cell_id_hilbert(coord_B);
+    if(cell_id_A > cell_id_B) {
+      return true;
+    } else if (cell_id_A < cell_id_B) {
+      return false;
+    } else { // (cell_id_A == cell_id_B): check ROW_MAJOR order
+      for(unsigned int i=0; i<dim_num_; ++i) {
+        if(coord_A[i] > coord_B[i])
+          return true;
+        else if(coord_A[i] < coord_B[i])
+          return false;
+        // else coordinate is equal - check the next dimension
+      }
+      return false; // Coordinates are equal
+    }
+  } else { // it should never reach this point
+    assert(0);
+  }
+}
+
+bool ArraySchema::succeeds(const Tile::const_iterator& cell_it_A,
+                           const Tile::const_iterator& cell_it_B) const {
+  // For easy reference
+  const Tile* tile_A = cell_it_A.tile();
+  const Tile* tile_B = cell_it_B.tile();
+
+  // Works only for coordinates
+  assert(tile_A->tile_type() == Tile::COORDINATE);
+  assert(tile_B->tile_type() == Tile::COORDINATE);
+  assert(tile_A->dim_num() == dim_num_);
+  assert(tile_B->dim_num() == dim_num_);
+
+  if(*(types_[attribute_num_]) == typeid(int)) {
+    const std::vector<int>& coord_A = *cell_it_A;
+    const std::vector<int>& coord_B = *cell_it_B;
+    return succeeds(coord_A, coord_B);
+  } else if(*(types_[attribute_num_]) == typeid(int64_t)) {
+    const std::vector<int64_t>& coord_A = *cell_it_A;
+    const std::vector<int64_t>& coord_B = *cell_it_B;
+    return succeeds(coord_A, coord_B);
+  } else if(*(types_[attribute_num_]) == typeid(float)) {
+    const std::vector<float>& coord_A = *cell_it_A;
+    const std::vector<float>& coord_B = *cell_it_B;
+    return succeeds(coord_A, coord_B);
+  } else if(*(types_[attribute_num_]) == typeid(double)) {
+    const std::vector<double>& coord_A = *cell_it_A;
+    const std::vector<double>& coord_B = *cell_it_B;
+    return succeeds(coord_A, coord_B);
+  }
 }
 
 template<typename T>
@@ -679,6 +893,30 @@ void ArraySchema::compute_tile_id_offsets() {
 }
 
 // Explicit template instantiations
+template bool ArraySchema::precedes<int>(
+    const std::vector<int>& coord_A,
+    const std::vector<int>& coord_B) const;
+template bool ArraySchema::precedes<int64_t>(
+    const std::vector<int64_t>& coord_A,
+    const std::vector<int64_t>& coord_B) const;
+template bool ArraySchema::precedes<float>(
+    const std::vector<float>& coord_A,
+    const std::vector<float>& coord_B) const;
+template bool ArraySchema::precedes<double>(
+    const std::vector<double>& coord_A,
+    const std::vector<double>& coord_B) const;
+template bool ArraySchema::succeeds<int>(
+    const std::vector<int>& coord_A,
+    const std::vector<int>& coord_B) const;
+template bool ArraySchema::succeeds<int64_t>(
+    const std::vector<int64_t>& coord_A,
+    const std::vector<int64_t>& coord_B) const;
+template bool ArraySchema::succeeds<float>(
+    const std::vector<float>& coord_A,
+    const std::vector<float>& coord_B) const;
+template bool ArraySchema::succeeds<double>(
+    const std::vector<double>& coord_A,
+    const std::vector<double>& coord_B) const;
 template uint64_t ArraySchema::cell_id_hilbert<int>(
     const std::vector<int>& coordinates) const;
 template uint64_t ArraySchema::cell_id_hilbert<int64_t>(

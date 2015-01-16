@@ -115,7 +115,7 @@ class StorageManager {
   /** Mnemonic: [attribute_id] --> payload_size */
   typedef std::vector<uint64_t> PayloadSizes;
   /** Mnemonic: (rank_low, rank_high) */
-  typedef std::pair<int64_t, int64_t> RankRange;
+  typedef std::pair<uint64_t, uint64_t> RankRange;
   /** Mnemonic: [attribute_id] --> (rank_low, rank_high) */
   typedef std::vector<RankRange> RankRanges;
   /** Mnemonic: <tile_id#1, tile_id#2, ...> */
@@ -313,6 +313,8 @@ class StorageManager {
         uint64_t rank); 
     /** Assignment operator. */
     void operator=(const const_iterator& rhs);
+    /** Addition-assignment operator. */
+    void operator+=(int64_t step);
     /** Pre-increment operator. */
     const_iterator operator++();
     /** Post-increment operator. */
@@ -329,6 +331,24 @@ class StorageManager {
     bool operator!=(const const_iterator& rhs) const;
     /** Returns the tile pointed by the iterator. */
     const Tile& operator*() const; 
+    /** 
+     * We distinguish two cases: (i) If the operands correspond to the same 
+     * array, then it is true if the rank of the left-hand side is smaller 
+     * than that of the right-hand side. (ii) Otherwise, it is true if the 
+     * tile of the first operand precedes that of the right one along the 
+     * (common) global cell order. A tile precedes another in the global
+     * order if its upper bounding coordinate precedes that of the
+     * other tile along the global order.  
+     */
+    bool operator<(const const_iterator& it_R) const; 
+    /** Returns the array schema associated with this tile. */
+    const ArraySchema& array_schema() const;
+    /** Returns the bounding coordinates of the tile. */
+    BoundingCoordinatesPair bounding_coordinates() const;
+    /** Returns the MBR of the tile. */
+    MBR mbr() const;
+    /** Returns the rank. */
+    uint64_t rank() const { return rank_; };
 
    private:
     /** The array descriptor corresponding to this iterator. */

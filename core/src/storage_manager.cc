@@ -165,12 +165,14 @@ StorageManager::ArrayDescriptor* StorageManager::open_array(
 void StorageManager::append_tile(const Tile* tile, 
                                  const ArrayDescriptor* array_descriptor,
                                  unsigned int attribute_id) {
+  // If tile is empty, delete it and exit
+  if(tile->cell_num() == 0) {
+    delete tile;
+    return;
+  }
+
   assert(check_on_append_tile(*array_descriptor, attribute_id, tile));
 
-  // Do nothing if tile is empty
-  if(tile->cell_num() == 0)
-    return;
-  
   // For easy reference
   ArrayInfo& array_info = *(array_descriptor->array_info_);
 
@@ -186,7 +188,6 @@ void StorageManager::append_tile(const Tile* tile,
     array_info.mbrs_.push_back(tile->mbr());
     array_info.bounding_coordinates_.push_back(tile->bounding_coordinates());
   }
-
 
   // Flush tiles to disk if the sum of payloads exceeds the segment size
   if(array_info.payload_sizes_[attribute_id] >= segment_size_) { 
@@ -272,6 +273,10 @@ void StorageManager::const_iterator::operator=(
   rank_ = rhs.rank_;
 }
 
+void StorageManager::const_iterator::operator+=(int64_t step) {
+  rank_ += step;
+}
+
 StorageManager::const_iterator StorageManager::const_iterator::operator++() {
   ++rank_;
   return *this;
@@ -307,6 +312,42 @@ const Tile& StorageManager::const_iterator::operator*() const {
   ArrayInfo& array_info = *(array_descriptor_->array_info_);
 
   return *storage_manager_->get_tile_by_rank(array_info, attribute_id_, rank_);
+}
+
+bool StorageManager::const_iterator::operator<(const const_iterator& it_R) const {
+  // For easy reference
+  const ArraySchema& array_schema_L = array_schema();
+  const ArraySchema& array_schema_R = it_R.array_schema(); 
+  BoundingCoordinatesPair bounding_coordinates_L = bounding_coordinates(); 
+  BoundingCoordinatesPair bounding_coordinates_R = it_R.bounding_coordinates();
+
+  // If both tiles belong to the same array
+  if(array_schema_L.array_name() == array_schema_R.array_name())
+    return rank() < it_R.rank();
+  
+  assert(ArraySchema::join_compatible(array_schema_L, array_schema_R).first);
+
+  // The tiles belong to different arrays - check precedence along the 
+  // global cell order using the upper bounding coordinates
+  if(array_schema_L.precedes(bounding_coordinates_L.second,
+                             bounding_coordinates_R.second))
+    return true;
+  else
+    return false;
+}
+
+
+const ArraySchema& StorageManager::const_iterator::array_schema() const {
+  return array_descriptor_->array_schema();
+}
+
+StorageManager::BoundingCoordinatesPair StorageManager::const_iterator::
+    bounding_coordinates() const {
+  return array_descriptor_->array_info()->bounding_coordinates_[rank_];
+}
+
+StorageManager::MBR StorageManager::const_iterator::mbr() const {
+  return array_descriptor_->array_info()->mbrs_[rank_];
 }
 
 StorageManager::const_iterator StorageManager::begin(
@@ -907,14 +948,17 @@ const Tile* StorageManager::get_tile_by_rank(ArrayInfo& array_info,
                                              unsigned int attribute_id,
                                              uint64_t rank) const {
   // For easy reference
-  uint64_t rank_low = array_info.rank_ranges_[attribute_id].first;
-  uint64_t rank_high = array_info.rank_ranges_[attribute_id].second;
+  const uint64_t& rank_low = array_info.rank_ranges_[attribute_id].first;
+  const uint64_t& rank_high = array_info.rank_ranges_[attribute_id].second;
 
   // Fetch from the disk if the tile is not in main memory
   if(array_info.tiles_[attribute_id].size() == 0 ||
      (rank < rank_low || rank > rank_high)) 
     // The following updates rank_low and rank_high
     load_tiles_from_disk(array_info, attribute_id, rank);
+
+  assert(rank >= rank_low && rank <= rank_high);
+  assert(rank - rank_low <= array_info.tiles_[attribute_id].size());
 
   return array_info.tiles_[attribute_id][rank-rank_low];
 }

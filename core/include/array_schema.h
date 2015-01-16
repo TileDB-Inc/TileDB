@@ -43,6 +43,7 @@
 #include <string>
 #include <inttypes.h>
 #include <typeinfo>
+#include <tile.h>
 
 /**
  * Objects of this class store information about the schema of an array, and
@@ -72,7 +73,7 @@ class ArraySchema {
   /** 
    * The tile order in regular tiles, or the cell order in irregular tiles. 
    * Note that the cell order in regular tiles (i.e., within the tiles) is
-   * by deafult fixed to HILBERT.
+   * by default fixed to ROW_MAJOR.
    */
   enum Order {COLUMN_MAJOR, HILBERT, ROW_MAJOR};
 
@@ -138,7 +139,7 @@ class ArraySchema {
    * It serializes the object into a buffer of bytes. It returns a pointer
    * to the buffer it creates, along with the size of the buffer.
    */
-  std::pair<char*, uint64_t> serialize() const; 
+  std::pair<char*, uint64_t> serialize() const;
   /** Returns the type of the i-th attribute. */
   const std::type_info* type(unsigned int i) const;
   
@@ -156,6 +157,25 @@ class ArraySchema {
   /** Returns an identical schema assigning the input to the array name. */
   ArraySchema clone(const std::string& array_name) const;
   /** 
+   * Returns the schema of the result when joining the arrays with the
+   * input schemas. The result array name is given in the third argument. 
+   * Let the joining arrays be A,B and the result be C.
+   * 
+   * 1. C has the same number of dimensions as A,B and the union of their
+   * attributes.
+   *
+   * 2. C gets the dimension names of A.
+   *
+   * 3. If A and B have an attribute with the same name, say 'attr', B's
+   * attribute in C will be renamed to 'attr_2'.
+   *
+   * 4. C gets the cell capacity of A. 
+   */
+  static ArraySchema create_join_result_schema(
+      const ArraySchema& array_schema_A, 
+      const ArraySchema& array_schema_B,
+      const std::string& result_array_name);
+  /** 
    * Returns true if the array has irregular tiles (i.e., 
    * ArraySchema::tile_extents_ is empty), and false otherwise. 
    */
@@ -167,14 +187,52 @@ class ArraySchema {
    */
   bool has_regular_tiles() const;
   /** 
-   * Returns true if the array is aligned with the input array, and false
-   * otherwise. Two arrays are aligned if (i) they both have regular tiles
-   * (ii) they both have the same coordinate type, (iii) they have the same 
-   * domains, and (iv) they have the same tile extents.
+   * Returns true if the input array schemas correspond to arrays that can be 
+   * joined. Otherwise, it returns false along with an error message. 
+   *
+   * 1. If one array is regular and the other irregular, they cannot be joined.
+   *
+   * 2. If the arrays have irregular tiles, then they are join-compatible if 
+   * they have (i) the same number of dimensions, (ii) the same dimension type,
+   * (iii) the same domains, and (iv) the same order.
+   *
+   * 3. If the arrays have regular tiles, then they are join compatible if they 
+   * have (i) the same number of dimensions, (ii) the same dimension type, 
+   * (iii) the same domains, (iv) the same order, and, 
+   * (v) the same tile extents.
    */
-  bool is_aligned_with(const ArraySchema& array_schema) const;
+  static std::pair<bool,std::string> join_compatible(
+      const ArraySchema& array_schema_A,
+      const ArraySchema& array_schema_B);
+  /** 
+   * Returns true if the first cell precedes the second along the cell 
+   * order of the schema. 
+   */
+  template<class T>
+  bool precedes(const std::vector<T>& coord_A, 
+                const std::vector<T>& coord_B) const;
+  /** 
+   * Returns true if the first cell precedes the second along the cell 
+   * order of the schema. 
+   */
+  bool precedes(const Tile::const_iterator& cell_it_A, 
+                const Tile::const_iterator& cell_it_B) const;
   /** Prints the array schema info. */
   void print() const;
+  /** 
+   * Returns true if the first cell succeeds the second along the cell 
+   * order of the schema. 
+   */
+  template<class T>
+  bool succeeds(const std::vector<T>& coord_A, 
+                const std::vector<T>& coord_B) const;
+  /** 
+   * Returns true if the first cell succeeds the second along the cell 
+   * order of the schema. 
+   */
+  bool succeeds(const Tile::const_iterator& cell_it_A, 
+                const Tile::const_iterator& cell_it_B) const;
+
   /** Returns a tile id following a column major order. */
   template<typename T>
   uint64_t tile_id_column_major(const std::vector<T>& coordinates) const;
