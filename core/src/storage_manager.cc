@@ -350,6 +350,10 @@ StorageManager::MBR StorageManager::const_iterator::mbr() const {
   return array_descriptor_->array_info()->mbrs_[rank_];
 }
 
+uint64_t StorageManager::const_iterator::tile_id() const {
+  return array_descriptor_->array_info()->tile_ids_[rank_];
+}
+
 StorageManager::const_iterator StorageManager::begin(
     const ArrayDescriptor* array_descriptor,
     unsigned int attribute_id) {

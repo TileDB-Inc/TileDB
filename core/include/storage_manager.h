@@ -349,6 +349,8 @@ class StorageManager {
     MBR mbr() const;
     /** Returns the rank. */
     uint64_t rank() const { return rank_; };
+    /** Returns the id of the tile. */
+    uint64_t tile_id() const;
 
    private:
     /** The array descriptor corresponding to this iterator. */

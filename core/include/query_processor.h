@@ -174,11 +174,22 @@ class QueryProcessor {
    * the result in the tiles of C. 
    */
   void join_tiles_irregular(
-    unsigned int attribute_num_A, Tile::const_iterator* cell_its_A,
-    Tile::const_iterator& cell_it_end_A, 
-    unsigned int attribute_num_B, Tile::const_iterator* cell_its_B,
-    Tile::const_iterator& cell_it_end_B,
-    const StorageManager::ArrayDescriptor* ad_C, Tile** tiles_C) const;
+      unsigned int attribute_num_A, Tile::const_iterator* cell_its_A,
+      Tile::const_iterator& cell_it_end_A, 
+      unsigned int attribute_num_B, Tile::const_iterator* cell_its_B,
+      Tile::const_iterator& cell_it_end_B,
+      const StorageManager::ArrayDescriptor* ad_C, Tile** tiles_C) const;
+  /** 
+   * Joins two regular tiles (from A and B respectively) and stores 
+   * the result in the tiles of C. 
+   */
+  void join_tiles_regular(
+      unsigned int attribute_num_A, Tile::const_iterator* cell_its_A,
+      Tile::const_iterator& cell_it_end_A, 
+      unsigned int attribute_num_B, Tile::const_iterator* cell_its_B,
+      Tile::const_iterator& cell_it_end_B,
+      const StorageManager::ArrayDescriptor* ad_C, Tile** tiles_C) const;
+
   /** Returns true if the input tiles may produce join results. */
   bool may_join(const StorageManager::const_iterator& it_A, 
                 const StorageManager::const_iterator& it_B) const; 
