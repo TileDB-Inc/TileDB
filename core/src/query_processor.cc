@@ -235,11 +235,27 @@ void QueryProcessor::initialize_cell_its(
 
 inline
 void QueryProcessor::initialize_cell_its(
+    const Tile** tiles, unsigned int attribute_num,
+    Tile::const_iterator* cell_its) const {
+  for(unsigned int i=0; i<attribute_num; i++)
+    cell_its[i] = tiles[i]->begin();
+}
+
+inline
+void QueryProcessor::initialize_cell_its(
     const StorageManager::const_iterator* tile_its, unsigned int attribute_num,
     Tile::const_iterator* cell_its, Tile::const_iterator& cell_it_end) const {
   for(unsigned int i=0; i<=attribute_num; i++)
     cell_its[i] = (*tile_its[i]).begin();
   cell_it_end = (*tile_its[attribute_num]).end();
+}
+
+inline
+void QueryProcessor::initialize_cell_its(
+    const StorageManager::const_iterator* tile_its, unsigned int attribute_num,
+    Tile::const_iterator* cell_its) const {
+  for(unsigned int i=0; i<attribute_num; i++)
+    cell_its[i] = (*tile_its[i]).begin();
 }
 
 inline
@@ -297,6 +313,11 @@ void QueryProcessor::join_irregular(const StorageManager::ArrayDescriptor* ad_A,
   // when a tile joins.
   int64_t skipped_tiles_A = 0;
   int64_t skipped_tiles_B = 0;
+  
+  // Note that attribute cell iterators are initialized and advanced only
+  // after the first join result is discovered. 
+  bool attribute_cell_its_initialized_A = false;
+  bool attribute_cell_its_initialized_B = false;
 
   // Initialize tiles with id 0 for C (result array)
   new_tiles(array_schema_C, 0, tiles_C); 
@@ -310,20 +331,26 @@ void QueryProcessor::join_irregular(const StorageManager::ArrayDescriptor* ad_A,
       if(skipped_tiles_A) {
         advance_tile_its(attribute_num_A, tile_its_A, skipped_tiles_A);
         skipped_tiles_A = 0;
-        initialize_cell_its(tile_its_A, attribute_num_A, 
-                            cell_its_A, cell_it_end_A);
+        cell_its_A[attribute_num_A] = (*tile_its_A[attribute_num_A]).begin();
+        cell_it_end_A = (*tile_its_A[attribute_num_A]).end();
+        attribute_cell_its_initialized_A = false;
       }
       // Update iterators in B
       if(skipped_tiles_B) {
         advance_tile_its(attribute_num_B, tile_its_B, skipped_tiles_B);
         skipped_tiles_B = 0;
-        initialize_cell_its(tile_its_B, attribute_num_B, 
-                            cell_its_B, cell_it_end_B);
+        cell_its_B[attribute_num_B] = (*tile_its_B[attribute_num_B]).begin();
+        cell_it_end_B = (*tile_its_B[attribute_num_B]).end();
+        attribute_cell_its_initialized_B = false;
       }
       // Join the tiles
-      join_tiles_irregular(attribute_num_A, cell_its_A, cell_it_end_A, 
-                           attribute_num_B, cell_its_B, cell_it_end_B,
-                           ad_C, tiles_C);
+      join_tiles_irregular(attribute_num_A, tile_its_A, 
+                           cell_its_A, cell_it_end_A, 
+                           attribute_num_B, tile_its_B, 
+                           cell_its_B, cell_it_end_B,
+                           ad_C, tiles_C,
+                           attribute_cell_its_initialized_A, 
+                           attribute_cell_its_initialized_B);
     }
 
     // Check which tile precedes the other in the global order
@@ -400,6 +427,11 @@ void QueryProcessor::join_regular(const StorageManager::ArrayDescriptor* ad_A,
   int64_t skipped_tiles_A = 0;
   int64_t skipped_tiles_B = 0;
 
+  // Note that attribute cell iterators are initialized and advanced only
+  // after the first join result is discovered. 
+  bool attribute_cell_its_initialized_A = false;
+  bool attribute_cell_its_initialized_B = false;
+
   // Join algorithm
   while(tile_its_A[attribute_num_A] != tile_it_end_A &&
         tile_its_B[attribute_num_B] != tile_it_end_B) {
@@ -412,23 +444,27 @@ void QueryProcessor::join_regular(const StorageManager::ArrayDescriptor* ad_A,
       if(skipped_tiles_A) {
         advance_tile_its(attribute_num_A, tile_its_A, skipped_tiles_A);
         skipped_tiles_A = 0;
-        initialize_cell_its(tile_its_A, attribute_num_A, 
-                            cell_its_A, cell_it_end_A);
+        cell_its_A[attribute_num_A] = (*tile_its_A[attribute_num_A]).begin();
+        cell_it_end_A = (*tile_its_A[attribute_num_A]).end();
+        attribute_cell_its_initialized_A = false;
       }
       // Update iterators in B
       if(skipped_tiles_B) {
         advance_tile_its(attribute_num_B, tile_its_B, skipped_tiles_B);
         skipped_tiles_B = 0;
-        initialize_cell_its(tile_its_B, attribute_num_B, 
-                            cell_its_B, cell_it_end_B);
+        cell_its_B[attribute_num_B] = (*tile_its_B[attribute_num_B]).begin();
+        cell_it_end_B = (*tile_its_B[attribute_num_B]).end();
+        attribute_cell_its_initialized_B = false;
       }
 
       // Initialize tiles for C (result array)
       new_tiles(array_schema_C, tile_id_A, tiles_C);
       // Join the tiles
-      join_tiles_regular(attribute_num_A, cell_its_A, cell_it_end_A, 
-                         attribute_num_B, cell_its_B, cell_it_end_B,
-                         ad_C, tiles_C);
+      join_tiles_regular(attribute_num_A, tile_its_A, cell_its_A, cell_it_end_A,
+                         attribute_num_B, tile_its_B, cell_its_B, cell_it_end_B,
+                         ad_C, tiles_C,
+                         attribute_cell_its_initialized_A, 
+                         attribute_cell_its_initialized_B);
       // Send the created tiles to storage manager
       store_tiles(ad_C, tiles_C);
     }
@@ -463,11 +499,17 @@ void QueryProcessor::join_regular(const StorageManager::ArrayDescriptor* ad_A,
 }
 
 void QueryProcessor::join_tiles_irregular(
-    unsigned int attribute_num_A, Tile::const_iterator* cell_its_A,
+    unsigned int attribute_num_A, 
+    const StorageManager::const_iterator* tile_its_A, 
+    Tile::const_iterator* cell_its_A,
     Tile::const_iterator& cell_it_end_A, 
-    unsigned int attribute_num_B, Tile::const_iterator* cell_its_B,
+    unsigned int attribute_num_B, 
+    const StorageManager::const_iterator* tile_its_B, 
+    Tile::const_iterator* cell_its_B,
     Tile::const_iterator& cell_it_end_B,
-    const StorageManager::ArrayDescriptor* ad_C, Tile** tiles_C) const {
+    const StorageManager::ArrayDescriptor* ad_C, Tile** tiles_C,
+    bool& attribute_cell_its_initialized_A,
+    bool& attribute_cell_its_initialized_B) const {
   // For easy reference
   const ArraySchema& array_schema_C = ad_C->array_schema();
   uint64_t capacity = array_schema_C.capacity();
@@ -487,10 +529,22 @@ void QueryProcessor::join_tiles_irregular(
     // tiles, returns true if the cell values pointed by the iterators
     // are equal.
     if(cell_its_A[attribute_num_A] == cell_its_B[attribute_num_B]) {      
-      advance_cell_its(attribute_num_A, cell_its_A, skipped_cells_A);
-      advance_cell_its(attribute_num_B, cell_its_B, skipped_cells_B);
-      skipped_cells_A = 0;
-      skipped_cells_B = 0;
+      if(!attribute_cell_its_initialized_A) {
+        initialize_cell_its(tile_its_A, attribute_num_A, cell_its_A);
+        attribute_cell_its_initialized_A = true;
+      } 
+      if(!attribute_cell_its_initialized_B) {
+        initialize_cell_its(tile_its_B, attribute_num_B, cell_its_B);
+        attribute_cell_its_initialized_B = true;
+      }
+      if(skipped_cells_A) {
+        advance_cell_its(attribute_num_A, cell_its_A, skipped_cells_A);
+        skipped_cells_A = 0;
+      }
+      if(skipped_cells_B) {
+        advance_cell_its(attribute_num_B, cell_its_B, skipped_cells_B);
+        skipped_cells_B = 0;
+      }
       if(tiles_C[attribute_num_C]->cell_num() == capacity) {
         uint64_t new_tile_id = tiles_C[attribute_num_C]->tile_id() + 1;
         store_tiles(ad_C, tiles_C);
@@ -515,11 +569,17 @@ void QueryProcessor::join_tiles_irregular(
 }
 
 void QueryProcessor::join_tiles_regular(
-    unsigned int attribute_num_A, Tile::const_iterator* cell_its_A,
+    unsigned int attribute_num_A, 
+    const StorageManager::const_iterator* tile_its_A, 
+    Tile::const_iterator* cell_its_A,
     Tile::const_iterator& cell_it_end_A, 
-    unsigned int attribute_num_B, Tile::const_iterator* cell_its_B,
+    unsigned int attribute_num_B, 
+    const StorageManager::const_iterator* tile_its_B, 
+    Tile::const_iterator* cell_its_B,
     Tile::const_iterator& cell_it_end_B,
-    const StorageManager::ArrayDescriptor* ad_C, Tile** tiles_C) const {
+    const StorageManager::ArrayDescriptor* ad_C, Tile** tiles_C,
+    bool& attribute_cell_its_initialized_A,
+    bool& attribute_cell_its_initialized_B) const {
   // For easy reference
   const ArraySchema& array_schema_C = ad_C->array_schema();
   unsigned int attribute_num_C = array_schema_C.attribute_num();
@@ -537,11 +597,23 @@ void QueryProcessor::join_tiles_regular(
     // Note that operator '==', when the operands correspond to different
     // tiles, returns true if the cell values pointed by the iterators
     // are equal.
-    if(cell_its_A[attribute_num_A] == cell_its_B[attribute_num_B]) {      
-      advance_cell_its(attribute_num_A, cell_its_A, skipped_cells_A);
-      advance_cell_its(attribute_num_B, cell_its_B, skipped_cells_B);
-      skipped_cells_A = 0;
-      skipped_cells_B = 0;
+    if(cell_its_A[attribute_num_A] == cell_its_B[attribute_num_B]) {
+      if(!attribute_cell_its_initialized_A) {
+        initialize_cell_its(tile_its_A, attribute_num_A, cell_its_A);
+        attribute_cell_its_initialized_A = true;
+      } 
+      if(!attribute_cell_its_initialized_B) {
+        initialize_cell_its(tile_its_B, attribute_num_B, cell_its_B);
+        attribute_cell_its_initialized_B = true;
+      }
+      if(skipped_cells_A) { 
+        advance_cell_its(attribute_num_A, cell_its_A, skipped_cells_A);
+        skipped_cells_A = 0;
+      }
+      if(skipped_cells_B) { 
+        advance_cell_its(attribute_num_B, cell_its_B, skipped_cells_B);
+        skipped_cells_B = 0;
+      }
       append_cell(cell_its_A, cell_its_B, tiles_C, 
                   attribute_num_A, attribute_num_B);
       advance_cell_its(attribute_num_A, cell_its_A);
@@ -688,15 +760,15 @@ void QueryProcessor::subarray_irregular(
   // a tile partially overlapping the range. It is used to advance only the
   // coordinates iterator when a cell is not in range, and then efficiently
   // advance the attribute iterators only when a cell falls in the range.
-  int64_t skipped;
+  int64_t skipped_cells;
 
   // Iterate over all tiles
   for(; tile_id_it != tile_id_it_end; ++tile_id_it) {
     get_tiles(ad, tile_id_it->first, tiles);
-    initialize_cell_its(tiles, attribute_num, cell_its, cell_it_end); 
-    skipped = 0;
+    skipped_cells = 0;
 
     if(tile_id_it->second) { // Full overlap
+      initialize_cell_its(tiles, attribute_num, cell_its, cell_it_end); 
       while(cell_its[attribute_num] != cell_it_end) {
         if(result_tiles[attribute_num]->cell_num() == capacity) {
           store_tiles(result_ad, result_tiles);
@@ -706,18 +778,27 @@ void QueryProcessor::subarray_irregular(
         advance_cell_its(attribute_num, cell_its);
       }
     } else { // Partial overlap
+      cell_its[attribute_num] = tiles[attribute_num]->begin();
+      cell_it_end = tiles[attribute_num]->end();
+      bool attribute_cell_its_initialized = false;
       while(cell_its[attribute_num] != cell_it_end) {
         if(cell_its[attribute_num].cell_inside_range(range)) {
           if(result_tiles[attribute_num]->cell_num() == capacity) {
             store_tiles(result_ad, result_tiles);
             new_tiles(result_array_schema, ++tile_id, result_tiles); 
           }
-          advance_cell_its(attribute_num, cell_its, skipped);
-          skipped = 0;
+          if(!attribute_cell_its_initialized) { 
+            initialize_cell_its(tiles, attribute_num, cell_its);
+            attribute_cell_its_initialized = true;
+          }
+          if(skipped_cells) {
+            advance_cell_its(attribute_num, cell_its, skipped_cells);
+            skipped_cells = 0;
+          }
           append_cell(cell_its, result_tiles, attribute_num);
           advance_cell_its(attribute_num, cell_its);
         } else { // Advance only the coordinates cell iterator
-          skipped++;
+          skipped_cells++;
           ++cell_its[attribute_num];
         }
       }
@@ -767,35 +848,43 @@ void QueryProcessor::subarray_regular(
   std::vector<std::pair<uint64_t, bool> >::const_iterator tile_id_it_end =
       overlapping_tile_ids.end();
 
-
   // Auxiliary variable storing the number of skipped cells when investigating
   // a tile partially overlapping the range. It is used to advance only the
   // coordinates iterator when a cell is not in range, and then efficiently
   // advance the attribute iterators only when a cell falls in the range.
-  int64_t skipped;
+  int64_t skipped_cells;
 
   // Iterate over all overlapping tiles
   for(; tile_id_it != tile_id_it_end; ++tile_id_it) {
     // Create result tiles and load input array tiles 
     new_tiles(result_array_schema, tile_id_it->first, result_tiles); 
     get_tiles(ad, tile_id_it->first, tiles); 
-    initialize_cell_its(tiles, attribute_num, cell_its, cell_it_end); 
-    skipped = 0;
+    skipped_cells = 0;
  
     if(tile_id_it->second) { // Full overlap
+      initialize_cell_its(tiles, attribute_num, cell_its, cell_it_end); 
       while(cell_its[attribute_num] != cell_it_end) {
         append_cell(cell_its, result_tiles, attribute_num);
         advance_cell_its(attribute_num, cell_its);
       }
     } else { // Partial overlap
+      cell_its[attribute_num] = tiles[attribute_num]->begin();
+      cell_it_end = tiles[attribute_num]->end();
+      bool attribute_cell_its_initialized = false;
       while(cell_its[attribute_num] != cell_it_end) {
         if(cell_its[attribute_num].cell_inside_range(range)) {
-          advance_cell_its(attribute_num, cell_its, skipped);
-          skipped = 0;
+          if(!attribute_cell_its_initialized) { 
+            initialize_cell_its(tiles, attribute_num, cell_its);
+            attribute_cell_its_initialized = true;
+          }
+          if(skipped_cells) {
+            advance_cell_its(attribute_num, cell_its, skipped_cells);
+            skipped_cells = 0;
+          }
           append_cell(cell_its, result_tiles, attribute_num);
           advance_cell_its(attribute_num, cell_its);
         } else { // Advance only the coordinates cell iterator
-          ++skipped;
+          ++skipped_cells;
           ++cell_its[attribute_num];
         }
       }
