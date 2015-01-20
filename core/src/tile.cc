@@ -200,8 +200,9 @@ void Tile::const_iterator::operator=(const const_iterator& rhs) {
 }
 
 Tile::const_iterator Tile::const_iterator::operator+(int64_t step) {
-  pos_ += step;
-  return *this;
+  const_iterator it = *this;
+  it.pos_ += step;
+  return it;
 }
 
 void Tile::const_iterator::operator+=(int64_t step) {
