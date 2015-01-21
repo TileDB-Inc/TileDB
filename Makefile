@@ -133,6 +133,11 @@ $(EXAMPLE_BIN_DIR)/example_tile: $(EXAMPLE_OBJ_DIR)/example_tile.o \
 	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
 	$(CXX) $(INCLUDE_PATHS) -o $@ $^
 
+$(EXAMPLE_BIN_DIR)/example_expression_tree: $(EXAMPLE_OBJ_DIR)/example_expression_tree.o \
+ $(CORE_OBJ_DIR)/expression_tree.o
+	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
+	$(CXX) $(INCLUDE_PATHS) -o $@ $^
+
 
 ###############
 # Google test #

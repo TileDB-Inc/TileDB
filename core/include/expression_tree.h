@@ -30,10 +30,11 @@
  *
  * This file defines classes ExpressionNode and ExpressionTree.
  */
-
+ 
 #include <inttypes.h>
 #include <string>
 #include <set>
+#include <map>
 
 /** 
  * This class implements a node of an expression tree. A node may contain a
@@ -41,23 +42,83 @@
  * supported.
  */
 class ExpressionNode {
-  // TYPE DEFINITIONS
-
  public:
+  // TYPE DEFINITIONS
+  /** 
+   * Supported operators:
+   *
+   * 1. ADD: Addition operator '+'.
+   * 
+   * 2. SUB: Substraction operator '-'.
+   * 
+   * 3. MUL: Multiplication operator '*'.
+   * 
+   * 4. DIV: (Double) Division operator '/'.
+   * 
+   * 5. MOD: Modulo operator '%'.
+   * 
+   * 6. GT: Greater than operator '>'.
+   * 
+   * 7. ST: Smaller than operator '<'.
+   * 
+   * 8. EQ: Equality operator '=='.
+   * 
+   * 9. GTEQ: Greater than or equal operator '>='.
+   * 
+   * 10. STEQ: Smaller than or equal operator '<='.
+   * 
+   * 11. NO_OP: Special value indicating that this node is not an operator.
+   */
+  enum Operator {ADD, SUB, MUL, DIV, MOD, GT, ST, EQ, GTEQ, STEQ, NO_OP}; 
+
   // CONSTRUCTORS AND DESTRUCTORS
   /** Simple constructor. */
   ExpressionNode();
-  // TODO: overload constructor to capture all cases.
+  /** Initialization of constant value. */
+  ExpressionNode(double const_value, 
+                 ExpressionNode* left = NULL, 
+                 ExpressionNode* right = NULL);
+  /** Initialization of operator. */
+  ExpressionNode(Operator op, 
+                 ExpressionNode* left = NULL, 
+                 ExpressionNode* right = NULL);
+  /** Initialization of variable. */
+  ExpressionNode(const std::string& var, 
+                 ExpressionNode* left = NULL, 
+                 ExpressionNode* right = NULL);
   /** Destructor that deletes the entire subtree under this node. */
   ~ExpressionNode();
 
+  // TREE METHODS
+  /** 
+   * It evaluates the expression represented by its subtree, substituting the
+   * variables with their respective values provided in the input. 
+   */
+  double evaluate(const std::map<std::string, double>& var_values) const;
+  /** 
+   * Returns the set of variables included in the subtree root at
+   * this node.
+   */
+  std::set<std::string> gather_vars() const;
+  /** 
+   * Assigns the input node as the left child of the node. Note that
+   * the left child must be NULL in order for the insertion to take
+   * place. */
+  void insert_left(ExpressionNode* node);
+  /** 
+   * Assigns the input node as the right child of the node. Note that
+   * the right child must be NULL in order for the insertion to take
+   * place. */
+  void insert_right(ExpressionNode* node);
+
  private:
   // PROTECTED ATTRIBUTES
-  double v_double_;
+  /** Constant value. */
+  double const_value_;
   /** The variable name. */
   std::string var_;
   /** The operator. */
-  std::string op_;
+  Operator op_;
   /** The left child of this node in the expression tree. */
   ExpressionNode* left_;
   /** The right child of this node in the expression tree. */
@@ -66,14 +127,32 @@ class ExpressionNode {
 
 /** 
  * An expression tree, used to represent and evaluate mathematical 
- * expressions. 
+ * expressions. It consists of ExpressionNode objects, which form
+ * a binary tree. 
  */
 class ExpressionTree {
  public:
+  // CONSTRUCTORS AND DESTRUCTORS
+  /** Empty constructor. */
+  ExpressionTree() {}
+  /** 
+   * Simple constructor that takes as input a tree root, and computes
+   * the set of variables the tree involves. 
+   */
+  ExpressionTree(ExpressionNode* root);
+  /** Destructor that deletes all the tree nodes. */
+  ~ExpressionTree();
+
+  // TREE METHODS
+  /** 
+   * It evaluates the expression represented in the tree, substituting the 
+   * variables with their respective values provided in the input. 
+   */
+  double evaluate(const std::map<std::string, double>& var_values) const;
 
  private:
   /** The tree root. */
-  ExpressionNode* root;
+  ExpressionNode* root_;
   /** The names of the variables included in the tree. */
-  std::set<std::string> vars;
+  std::set<std::string> vars_;
 };
