@@ -38,6 +38,7 @@
 #include "array_schema.h"
 #include "csv_file.h"
 #include "storage_manager.h"
+#include "expression_tree.h"
 
 /** 
  * This class implements the query processor module, which is responsible
@@ -74,6 +75,15 @@ class QueryProcessor {
   void export_to_CSV(const StorageManager::ArrayDescriptor* array_descriptor,
                      const std::string& filename) const;
   /** 
+   * A filter query creates a new array from the input array descriptor, 
+   * containing only the cells whose attribute values satisfy the input 
+   * expression (given in the form of an expression tree). 
+   * The new array will have the input result name.
+   */
+  void filter(const StorageManager::ArrayDescriptor* array_descriptor,
+              const ExpressionTree* expression,
+              const std::string& result_array_name) const;
+  /** 
    * Joins the two input arrays (say, A and B). The result contains a cell only
    * if both the corresponding cells in A and B are non-empty. The input arrays
    * must be join-compatible (see ArraySchema::join_compatible). Moreover,
@@ -102,10 +112,23 @@ class QueryProcessor {
   // PRIVATE METHODS
   /** Advances all the cell iterators by 1. */
   void advance_cell_its(unsigned int attribute_num,
-                        Tile::const_iterator* cell_its) const; 
+                        Tile::const_iterator* cell_its) const;
+ /** 
+   * Advances by one only the cell iterators of the attributes whose id is in 
+   * attribute_ids. 
+   */
+  void advance_cell_its(Tile::const_iterator* cell_its,
+                        const std::vector<unsigned int>& attribute_ids) const;
   /** Advances only the attribute cell iterators by step. */
   void advance_cell_its(unsigned int attribute_num,
                         Tile::const_iterator* cell_its,
+                        int64_t step) const; 
+  /** 
+   * Advances by step only the cell iterators of the attributes whose id is in 
+   * attribute_ids. 
+   */
+  void advance_cell_its(Tile::const_iterator* cell_its,
+                        const std::vector<unsigned int>& attribute_ids,
                         int64_t step) const; 
   /** Advances all the tile iterators by 1. */
   void advance_tile_its(unsigned int attribute_num,
@@ -113,6 +136,19 @@ class QueryProcessor {
   /** Advances only the attribute tile iterators by step. */
   void advance_tile_its(unsigned int attribute_num,
                         StorageManager::const_iterator* tile_its,
+                        int64_t step) const; 
+  /** 
+   * Advances by one only the attribute tile iterators whose ids are in the 
+   * last argument. 
+   */
+  void advance_tile_its(StorageManager::const_iterator* tile_its,
+                        const std::vector<unsigned int>& attribute_ids) const;
+  /** 
+   * Advances by step only the attribute tile iterators whose ids are in the
+   * last argument. 
+   */
+  void advance_tile_its(StorageManager::const_iterator* tile_its,
+                        const std::vector<unsigned int>& attribute_ids,
                         int64_t step) const; 
   /** 
    * Appends a logical cell of an array (comprised of attribute values and 
@@ -131,7 +167,14 @@ class QueryProcessor {
                    Tile** tiles_C,
                    unsigned int attribute_num_A,
                    unsigned int attribute_num_B) const;
-
+  /** 
+   * Returns true if the result of the expression is true on the values of the
+   * attributes whose id is in the attribute_ids.
+   */
+  bool cell_satisfies_expression(const ArraySchema& array_schema,
+                                 const Tile::const_iterator* cell_its,
+                                 const std::vector<unsigned int>& attribute_ids,
+                                 const ExpressionTree* expression) const;
   /** 
    * Converts a logical cell of an array into a CSV line. The cell is 
    * comprised of all coordinates and attribute values, which are contained 
@@ -141,6 +184,18 @@ class QueryProcessor {
                            unsigned int attribute_num) const;
   /** Creates the workspace folder. */
   void create_workspace() const;
+  /** 
+   * Implementation of QueryProcessor::filter for the case of irregular tiles.
+   */
+  void filter_irregular(const StorageManager::ArrayDescriptor* array_descriptor,
+                        const ExpressionTree* expression,
+                        const std::string& result_array_name) const;
+  /** 
+   * Implementation of QueryProcessor::filter for the case of regular tiles. 
+   */
+  void filter_regular(const StorageManager::ArrayDescriptor* array_descriptor,
+                      const ExpressionTree* expression,
+                      const std::string& result_array_name) const;
   /** 
    * Gets from the storage manager all the (attribute and coordinate) tiles
    * of the input array having the input id. 
@@ -161,6 +216,12 @@ class QueryProcessor {
                            unsigned int attribute_num,
                            Tile::const_iterator* cell_its, 
                            Tile::const_iterator& cell_it_end) const; 
+  /** Initializes cell iterators. */
+  void initialize_cell_its(
+      const StorageManager::const_iterator* tile_its,
+      Tile::const_iterator* cell_its, 
+      Tile::const_iterator& cell_it_end,
+      const std::vector<unsigned int>& attribute_ids) const;
   /** Initializes only the attribute cell iterators. */
   void initialize_cell_its(const StorageManager::const_iterator* tile_its,
                            unsigned int attribute_num,
@@ -169,6 +230,14 @@ class QueryProcessor {
   void initialize_tile_its(const StorageManager::ArrayDescriptor* ad,
                            StorageManager::const_iterator* tile_its,
                            StorageManager::const_iterator& tile_it_end) const;
+  /** 
+   * Initializes tile iterators. The last argument determines which attribute
+   * the end tile iterator will correspond to.
+   */
+  void initialize_tile_its(const StorageManager::ArrayDescriptor* ad,
+                           StorageManager::const_iterator* tile_its,
+                           StorageManager::const_iterator& tile_it_end,
+                           unsigned int end_attribute_id) const;
   /** Implements QueryProcessor::join for arrays with irregular tiles. */
   void join_irregular(const StorageManager::ArrayDescriptor* ad_A,
                       const StorageManager::ArrayDescriptor* ad_B,
@@ -206,9 +275,7 @@ class QueryProcessor {
       const StorageManager::const_iterator* tile_its_B,
       Tile::const_iterator* cell_its_B,
       Tile::const_iterator& cell_it_end_B,
-      const StorageManager::ArrayDescriptor* ad_C, Tile** tiles_C,
-      bool& attribute_cell_its_initialized_A,
-      bool& attribute_cell_its_initialized_B) const;
+      const StorageManager::ArrayDescriptor* ad_C, Tile** tiles_C) const;
 
   /** Returns true if the input tiles may produce join results. */
   bool may_join(const StorageManager::const_iterator& it_A, 

@@ -67,9 +67,14 @@ class ExpressionNode {
    * 
    * 10. STEQ: Smaller than or equal operator '<='.
    * 
-   * 11. NO_OP: Special value indicating that this node is not an operator.
+   * 11. AND: Logical AND operator '&&'.
+   * 
+   * 12. OR: Logical OR operator '||'.
+   * 
+   * 13. NO_OP: Special value indicating that this node is not an operator.
    */
-  enum Operator {ADD, SUB, MUL, DIV, MOD, GT, ST, EQ, GTEQ, STEQ, NO_OP}; 
+  enum Operator {ADD, SUB, MUL, DIV, MOD, GT, ST, EQ, GTEQ, STEQ, 
+                 AND, OR, NO_OP}; 
 
   // CONSTRUCTORS AND DESTRUCTORS
   /** Simple constructor. */
@@ -142,6 +147,9 @@ class ExpressionTree {
   ExpressionTree(ExpressionNode* root);
   /** Destructor that deletes all the tree nodes. */
   ~ExpressionTree();
+ 
+  // ACCESSORS
+  const std::set<std::string>& vars() const { return vars_; }
 
   // TREE METHODS
   /** 

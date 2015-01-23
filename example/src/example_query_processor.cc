@@ -165,6 +165,22 @@ int main() {
   // Join //
   // ---- //
   qp.join(ad_IREG_A, ad_IREG_B, "R_IREG_C");
+  qp.join(ad_REG_A, ad_REG_B, "R_REG_C");
+
+  // ------ //
+  // Filter //
+  // ------ //
+  // Create an expression tree that represents the filter condition
+  // (this will typically be created by the parser of the user's command).
+  // Expression: attr_1 >= 100
+  ExpressionNode* n_attr_1 = new ExpressionNode("attr_1");
+  ExpressionNode* n_100 = new ExpressionNode(100);
+  ExpressionNode* n_gteq = 
+      new ExpressionNode(ExpressionNode::GTEQ, n_attr_1, n_100);
+  ExpressionTree* expression = new ExpressionTree(n_gteq);
+  // Perform the filter
+  qp.filter(ad_IREG_A, expression, "filter_R_IREG_A");  
+  qp.filter(ad_REG_A, expression, "filter_R_REG_A");  
 
   // Close arrays
   sm.close_array(ad_REG_A);
@@ -173,6 +189,9 @@ int main() {
   sm.close_array(ad_IREG_B);
   sm.close_array(ad_R_REG_A);
   sm.close_array(ad_R_IREG_A);
+
+  // Clean up
+  delete expression;
 
   return 0;
 }

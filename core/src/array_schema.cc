@@ -123,6 +123,17 @@ ArraySchema::ArraySchema(
 ********************** ACCESSORS **********************
 ******************************************************/
 
+unsigned int ArraySchema::attribute_id(
+    const std::string& attribute_name) const {
+
+  for(unsigned int i=0; i<attribute_num_; i++) {
+    if(attribute_names_[i] == attribute_name)
+      return i;
+  }
+  
+  assert(0); // Attribute name not found
+}
+
 const std::string& ArraySchema::attribute_name(unsigned int i) const {
   assert(i <= attribute_num_);
 

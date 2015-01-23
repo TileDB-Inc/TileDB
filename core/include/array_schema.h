@@ -116,6 +116,8 @@ class ArraySchema {
   /** Returns the array name. */
   const std::string& array_name() const { return array_name_; }
   /** Returns the name of the i-th attribute. */
+  unsigned int attribute_id(const std::string& attribute_name) const;
+  /** Returns the name of the i-th attribute. */
   const std::string& attribute_name(unsigned int i) const;
   /** 
    * Returns the number of attributes (excluding the extra coordinate 
