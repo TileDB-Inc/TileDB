@@ -182,6 +182,17 @@ int main() {
   qp.filter(ad_IREG_A, expression, "filter_R_IREG_A");  
   qp.filter(ad_REG_A, expression, "filter_R_REG_A");  
 
+  // ---------------------- //
+  // Nearest neighbors (NN) //
+  // ---------------------- //
+  // Prepare query: q is a point, and k is the number of nearest neighbors
+  std::vector<double> q;
+  q.push_back(15); q.push_back(16);
+  uint64_t k = 3;
+  // Perform the NN search
+  qp.nearest_neighbors(ad_IREG_A, q, k, "NN_R_IREG_A");  
+  qp.nearest_neighbors(ad_REG_A, q, k, "NN_R_REG_A");  
+
   // Close arrays
   sm.close_array(ad_REG_A);
   sm.close_array(ad_IREG_A);

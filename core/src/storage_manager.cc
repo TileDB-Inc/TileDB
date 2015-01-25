@@ -209,6 +209,18 @@ const Tile* StorageManager::get_tile(
   return get_tile_by_rank(array_info, attribute_id, rank);
 }
 
+const Tile* StorageManager::get_tile_by_rank( 
+    const ArrayDescriptor* array_descriptor,
+    unsigned int attribute_id, uint64_t rank) {
+  assert(check_on_get_tile(*array_descriptor, attribute_id, 
+                           array_descriptor->array_info_->tile_ids_[rank]));
+
+  // For easy reference
+  ArrayInfo& array_info = *(array_descriptor->array_info_);
+
+  return get_tile_by_rank(array_info, attribute_id, rank);
+}
+
 Tile* StorageManager::new_tile(const ArraySchema& array_schema, 
     unsigned int attribute_id, uint64_t tile_id, 
     uint64_t cell_num) const {

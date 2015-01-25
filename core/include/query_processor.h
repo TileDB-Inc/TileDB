@@ -39,6 +39,7 @@
 #include "csv_file.h"
 #include "storage_manager.h"
 #include "expression_tree.h"
+#include <queue>
 
 /** 
  * This class implements the query processor module, which is responsible
@@ -50,12 +51,20 @@ class QueryProcessor {
   /** The bounding coordinates of a tile (see Tile::bounding_coordinates). */
   typedef std::pair<std::vector<double>, std::vector<double> > 
       BoundingCoordinatesPair;
+  /** Mnemonic: (dist, rank). */
+  typedef std::pair<double, uint64_t> DistRank;
   /** 
    * A hyper-rectangle in the logical space, including all the coordinates
    * of a tile. It is a list of low/high values across each dimension, i.e.,
    * (dim#1_low, dim#1_high, dim#2_low, dim#2_high, ...).
    */
-  typedef std::vector<double> MBR; 
+  typedef std::vector<double> MBR;
+  /** Mnemonic: (pos, coord). */ 
+  typedef std::pair<uint64_t, std::vector<double> > PosCoord;
+  /** Mnemonic: (rank, (pos, coord)). */ 
+  typedef std::pair<uint64_t, PosCoord> RankPosCoord;
+  /** Mnemonic: (dist,(rank, (pos, coord))). */ 
+  typedef std::pair<double, RankPosCoord> DistRankPosCoord;
 
   // CONSTRUCTORS AND DESTRUCTORS
   /** 
@@ -93,6 +102,15 @@ class QueryProcessor {
   void join(const StorageManager::ArrayDescriptor* ad_A,
             const StorageManager::ArrayDescriptor* ad_B,
             const std::string& result_array_name) const;
+  /** 
+   * Returns the k nearest neighbors from query point q. The results (along with
+   * all their attribute values) are stored in a new array. The distance metric
+   * used to calculate proximity is the Euclidean distance.
+   */
+  void nearest_neighbors(const StorageManager::ArrayDescriptor* ad,
+                         const std::vector<double>& q,
+                         uint64_t k,
+                         const std::string& result_array_name) const;
   /** 
    * A subarray query creates a new array from the input array descriptor, 
    * containing only the cells whose coordinates fall into the input range. 
@@ -182,6 +200,35 @@ class QueryProcessor {
    */
   CSVLine cell_to_csv_line(const Tile::const_iterator* cell_its,
                            unsigned int attribute_num) const;
+  /** 
+   * Returns a vector of pairs (dist, rank), sorted on dist, where rank is the
+   * rank of a tile (indicating if it was appended first, second, etc., in the 
+   * array, and dist is the (Euclidean) distance of its MBR from q. The rank
+   * is useful for retrieving later each tile from the storage manager.
+   */
+  std::vector<DistRank> compute_sorted_dist_ranks(
+      const StorageManager::ArrayDescriptor* ad,
+      const std::vector<double>& q) const;
+  /** 
+   * Returns a priority queue with k tuples of the form (rank, (pos, coord)).
+   * Each tuple corresponds to the coordinates of one of the k nearest
+   * cells in a nearest neighbor query (see QueryProcessor::nearest_neighbors).
+   * coord: the coordinates of the cell.
+   * rank: the rank of the tile this cell belongs to.
+   * pos: the position of the cell in the tile.
+   *
+   * q is the query point for the nearest neighbor search.
+   *
+   * k is the number of nearest neighbors to be found.
+   * 
+   * sorted_dist_ranks contains pairs of the form (dist, rank), where rank
+   * is a tile rank and dist is its distance to the query q.
+   */
+  std::priority_queue<RankPosCoord> compute_sorted_kNN_coords(
+      const StorageManager::ArrayDescriptor* ad,
+      const std::vector<double>& q,
+      uint64_t k,
+      const std::vector<DistRank>& sorted_dist_ranks) const;
   /** Creates the workspace folder. */
   void create_workspace() const;
   /** 
@@ -221,6 +268,11 @@ class QueryProcessor {
       const StorageManager::const_iterator* tile_its,
       Tile::const_iterator* cell_its, 
       Tile::const_iterator& cell_it_end,
+      const std::vector<unsigned int>& attribute_ids) const;
+  /** Initializes cell iterators. */
+  void initialize_cell_its(
+      const StorageManager::const_iterator* tile_its,
+      Tile::const_iterator* cell_its, 
       const std::vector<unsigned int>& attribute_ids) const;
   /** Initializes only the attribute cell iterators. */
   void initialize_cell_its(const StorageManager::const_iterator* tile_its,
@@ -281,6 +333,24 @@ class QueryProcessor {
   bool may_join(const StorageManager::const_iterator& it_A, 
                 const StorageManager::const_iterator& it_B) const; 
   /** 
+   * Implementation of QueryProcessor::nearest_neighbors for the case of 
+   * irregular tiles.
+   */
+  void nearest_neighbors_irregular(
+      const StorageManager::ArrayDescriptor* ad,
+      const std::vector<double>& q,
+      uint64_t k,
+      const std::string& result_array_name) const;
+  /** 
+   * Implementation of QueryProcessor::nearest_neighbors for the case of 
+   * regular tiles.
+   */
+  void nearest_neighbors_regular(
+      const StorageManager::ArrayDescriptor* ad,
+      const std::vector<double>& q,
+      uint64_t k,
+      const std::string& result_array_name) const;
+  /** 
    * Creates an array of Tile objects with the input tile id based on the input 
    * array schema. 
    */
@@ -297,6 +367,12 @@ class QueryProcessor {
                const ArraySchema& array_schema) const;
   /** Returns true if the input path is an existing directory. */
   bool path_exists(const std::string& path) const;
+  /** Returns the Euclidean distance between a point q and an MBR. */
+  double point_to_mbr_distance(const std::vector<double>& q,
+                          const std::vector<double>& mbr) const;
+  /** Returns the Euclidean distance between points q and p. */
+  double point_to_point_distance(const std::vector<double>& q,
+                                 const std::vector<double>& p) const;
   /** Simply sets the workspace. */
   void set_workspace(const std::string& path);
   /** Sends the input tiles to the storage manager. */

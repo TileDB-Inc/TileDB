@@ -267,6 +267,17 @@ class StorageManager {
   void delete_array(const std::string& array_name);
   /** Returns true if the array is empty. */
   bool is_empty(const ArrayDescriptor* array_descriptor) const;
+  /** 
+   * Returns the begin iterator to the StorageManager::MBRList that 
+   * contains the MBRs of the intput array. 
+   */ 
+  MBRs::const_iterator MBR_begin(
+      const ArrayDescriptor* const array_descriptor) const; 
+  /** 
+   * Returns the end iterator to the StorageManager::MBRList that 
+   * contains the MBRs of the intput array. 
+   */ 
+  MBRs::const_iterator MBR_end(const ArrayDescriptor* array_descriptor) const; 
   /** Opens an array in READ mode.*/
   ArrayDescriptor* open_array(const std::string& array_name);
   /** Opens an array in CREATE mode. */
@@ -287,6 +298,10 @@ class StorageManager {
                    unsigned int attribute_id); 
   /**  Returns a tile of an array with the specified attribute and tile id. */
   const Tile* get_tile(
+      const ArrayDescriptor* array_descriptor,
+      unsigned int attribute_id, uint64_t tile_id);  
+  /**  Returns a tile of an array with the specified attribute and tile rank. */
+  const Tile* get_tile_by_rank(
       const ArrayDescriptor* array_descriptor,
       unsigned int attribute_id, uint64_t tile_id);  
   /** 
@@ -368,18 +383,7 @@ class StorageManager {
   /** End tile iterator. */
   const_iterator end(const ArrayDescriptor* array_descriptor,
                      unsigned int attribute_id);
-  /** 
-   * Returns the begin iterator to the StorageManager::MBRList that 
-   * contains the MBRs of the intput array. 
-   */ 
-  MBRs::const_iterator MBR_begin(
-      const ArrayDescriptor* const array_descriptor) const; 
-  /** 
-   * Returns the end iterator to the StorageManager::MBRList that 
-   * contains the MBRs of the intput array. 
-   */ 
-  MBRs::const_iterator MBR_end(const ArrayDescriptor* array_descriptor) const; 
-
+  
   // MISC
   /** 
    * Returns the ids of the tiles whose MBR overlaps with the input range.

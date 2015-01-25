@@ -73,9 +73,10 @@ class ArraySchema {
   /** 
    * The tile order in regular tiles, or the cell order in irregular tiles. 
    * Note that the cell order in regular tiles (i.e., within the tiles) is
-   * by default fixed to ROW_MAJOR.
+   * by default fixed to ROW_MAJOR. If the cells of the array do not follow
+   * a particular order, then the order is set to NONE.
    */
-  enum Order {COLUMN_MAJOR, HILBERT, ROW_MAJOR};
+  enum Order {COLUMN_MAJOR, HILBERT, ROW_MAJOR, NONE};
 
   // CONSTRUCTORS
   /** Empty constructor. */
@@ -158,6 +159,8 @@ class ArraySchema {
   uint64_t cell_id_hilbert(const std::vector<T>& coordinates) const;
   /** Returns an identical schema assigning the input to the array name. */
   ArraySchema clone(const std::string& array_name) const;
+  /** Returns an identical schema with the input array name and order. */
+  ArraySchema clone(const std::string& array_name, Order order) const;
   /** 
    * Returns the schema of the result when joining the arrays with the
    * input schemas. The result array name is given in the third argument. 

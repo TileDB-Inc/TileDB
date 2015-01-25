@@ -489,6 +489,28 @@ ArraySchema ArraySchema::clone(const std::string& array_name) const {
   return array_schema;
 }
 
+ArraySchema ArraySchema::clone(
+    const std::string& array_name, Order order) const {
+  ArraySchema array_schema;
+
+  array_schema.array_name_ = array_name; // Input name
+  array_schema.attribute_names_ = attribute_names_;
+  array_schema.dim_names_ = dim_names_;
+  array_schema.dim_domains_ = dim_domains_;
+  array_schema.types_ = types_;
+  array_schema.order_ = order;  // Input order
+  array_schema.capacity_ = capacity_;
+  array_schema.tile_extents_ = tile_extents_; 
+  array_schema.dim_num_ = dim_num_;
+  array_schema.attribute_num_ = attribute_num_;
+  array_schema.hilbert_cell_bits_ = hilbert_cell_bits_;
+  array_schema.hilbert_tile_bits_ = hilbert_tile_bits_;
+  array_schema.tile_id_offsets_column_major_ = tile_id_offsets_column_major_;
+  array_schema.tile_id_offsets_row_major_ = tile_id_offsets_row_major_;
+
+  return array_schema;
+}
+
 ArraySchema ArraySchema::create_join_result_schema(
     const ArraySchema& array_schema_A, 
     const ArraySchema& array_schema_B,
@@ -664,8 +686,10 @@ void ArraySchema::print() const {
     std::cout << "COLUMN MAJOR\n";
   else if(order_ == HILBERT)
     std::cout << "HILBERT\n";
-  if(order_ == ROW_MAJOR)
+  else if(order_ == ROW_MAJOR)
     std::cout << "ROW_MAJOR\n";
+  else if(order_ == NONE)
+    std::cout << "NONE\n";
   std::cout << "Capacity: " << capacity_ << "\n";
   std::cout << "Attribute num: " << attribute_num_ << "\n";
   std::cout << "Attribute names:\n";

@@ -39,6 +39,9 @@
 #include <sys/stat.h>
 #include <assert.h>
 #include <algorithm>
+#include <parallel/algorithm>
+#include <functional>
+#include <math.h>
 
 /******************************************************
 ********************* CONSTRUCTORS ********************
@@ -125,6 +128,17 @@ void QueryProcessor::join(const StorageManager::ArrayDescriptor* ad_A,
   else 
     join_irregular(ad_A, ad_B, array_schema_C);
 } 
+
+void QueryProcessor::nearest_neighbors(
+    const StorageManager::ArrayDescriptor* ad,
+    const std::vector<double>& q,
+    uint64_t k,
+    const std::string& result_array_name) const { 
+  if(ad->array_schema().has_regular_tiles())
+    nearest_neighbors_regular(ad, q, k, result_array_name);
+  else 
+    nearest_neighbors_irregular(ad, q, k, result_array_name);
+}
 
 void QueryProcessor::subarray(const StorageManager::ArrayDescriptor* ad,
                               const Tile::Range& range,
@@ -255,6 +269,87 @@ CSVLine QueryProcessor::cell_to_csv_line(const Tile::const_iterator* cell_its,
   return csv_line;
 }
 
+std::vector<QueryProcessor::DistRank> QueryProcessor::compute_sorted_dist_ranks(
+    const StorageManager::ArrayDescriptor* ad,
+    const std::vector<double>& q) const {
+  // Initializations
+  // We store pairs of the form (dist, rank)
+  std::vector<DistRank> dist_ranks;
+  double dist;
+  uint64_t rank;
+
+  // Retrieve MBR iterators from storage manager
+  StorageManager::MBRs::const_iterator mbr_it = 
+      storage_manager_.MBR_begin(ad);
+  StorageManager::MBRs::const_iterator mbr_it_end = 
+      storage_manager_.MBR_end(ad);
+
+  for(rank=0; mbr_it != mbr_it_end; ++mbr_it, ++rank) {
+    dist = point_to_mbr_distance(q, *mbr_it);
+    dist_ranks.push_back(DistRank(dist, rank));
+  }
+ 
+  // Sort ranks on distance and return them
+  __gnu_parallel::sort(dist_ranks.begin(), dist_ranks.end());
+  return dist_ranks;
+}
+
+std::priority_queue<QueryProcessor::RankPosCoord> 
+QueryProcessor::compute_sorted_kNN_coords(
+    const StorageManager::ArrayDescriptor* ad,
+    const std::vector<double>& q,
+    uint64_t k,
+    const std::vector<DistRank>& sorted_dist_ranks) const {
+  std::priority_queue<DistRankPosCoord> kNN_coords;
+  // For easy reference
+  unsigned int attribute_num = ad->array_schema().attribute_num();
+
+  const Tile* tile;
+  Tile::const_iterator cell_it, cell_it_end;
+
+  // Find the k nearest neighbor coordinates
+  uint64_t rank;
+  double dist;
+  std::vector<double> coord;
+  uint64_t tile_num = sorted_dist_ranks.size();
+  // Iterate over the (coordinate) tiles, sorted on their distance to q
+  for(uint64_t i=0; i<tile_num; ++i) {
+    // Stopping condition
+    if(kNN_coords.size() == k && 
+       sorted_dist_ranks[i].first > kNN_coords.top().first)
+      break;
+
+    // Get new coordinate tile and initalize cell iterators
+    rank = sorted_dist_ranks[i].second;
+    tile = storage_manager_.get_tile_by_rank(ad, attribute_num, rank); 
+    cell_it = tile->begin();
+    cell_it_end = tile->end();
+
+    // Scan all (coordinate) cells
+    for(uint64_t pos=0; cell_it != cell_it_end; ++cell_it, ++pos) {
+      // Find new kNNs
+      coord = *cell_it;
+      if(kNN_coords.size() < k || 
+         (dist = point_to_point_distance(q, coord)) < kNN_coords.top().first) {
+        kNN_coords.push(DistRankPosCoord(dist, 
+                                         RankPosCoord(rank, 
+                                                      PosCoord(pos, coord))));
+        if(kNN_coords.size() > k)
+          kNN_coords.pop();
+      }
+    }
+  }
+
+  // Make a new priority queue (rank, (pos, coord)), sorted on rank, pos
+  std::priority_queue<RankPosCoord> resorted_kNN_coords;
+  while(kNN_coords.size() > 0) {
+    resorted_kNN_coords.push(kNN_coords.top().second);
+    kNN_coords.pop();
+  }
+
+  return resorted_kNN_coords;
+}
+
 void QueryProcessor::create_workspace() const {
   struct stat st;
   stat(workspace_.c_str(), &st);
@@ -356,8 +451,7 @@ void QueryProcessor::filter_irregular(
           skipped_tiles = 0;
         }
         if(!non_expr_cell_its_initialized)
-          initialize_cell_its(tile_its, cell_its, cell_it_end, 
-                              non_expr_attribute_ids);
+          initialize_cell_its(tile_its, cell_its, non_expr_attribute_ids);
         if(skipped_cells) {
           advance_cell_its(cell_its, non_expr_attribute_ids, skipped_cells);
           skipped_cells = 0;
@@ -479,8 +573,7 @@ void QueryProcessor::filter_regular(
           skipped_tiles = 0;
         }
         if(!non_expr_cell_its_initialized)
-          initialize_cell_its(tile_its, cell_its, cell_it_end, 
-                              non_expr_attribute_ids);
+          initialize_cell_its(tile_its, cell_its, non_expr_attribute_ids);
         if(skipped_cells) {
           advance_cell_its(cell_its, non_expr_attribute_ids, skipped_cells);
           skipped_cells = 0;
@@ -528,6 +621,39 @@ bool QueryProcessor::path_exists(const std::string& path) const {
   return S_ISDIR(st.st_mode);
 }
 
+double QueryProcessor::point_to_mbr_distance(
+    const std::vector<double>& q, const std::vector<double>& mbr) const {
+  // Check dimensionality
+  assert(mbr.size() == 2*q.size());
+
+  unsigned int dim_num = q.size();
+  double width, centroid, dq;
+  double dist = 0;
+  for(unsigned int i=0; i<dim_num; ++i) {
+    width = mbr[2*i+1] - mbr[2*i];
+    centroid = mbr[2*i] + width/2;
+    dq = std::max(abs(q[i]-centroid) - width/2, 0.0);
+    dist += dq * dq; 
+  }
+
+  return sqrt(dist);
+}
+
+double QueryProcessor::point_to_point_distance(
+    const std::vector<double>& q, const std::vector<double>& p) const {
+  // Check dimensionality
+  assert(q.size() == p.size());
+
+  unsigned int dim_num = q.size();
+  double dist = 0, diff;
+  for(unsigned int i=0; i<dim_num; ++i) {
+    diff = q[i] - p[i];
+    dist += diff * diff; 
+  }
+
+  return sqrt(dist);
+}
+
 inline
 void QueryProcessor::initialize_cell_its(
     const Tile** tiles, unsigned int attribute_num,
@@ -562,6 +688,15 @@ void QueryProcessor::initialize_cell_its(
   for(unsigned int i=0; i<=attribute_ids.size(); i++)
     cell_its[attribute_ids[i]] = (*tile_its[attribute_ids[i]]).begin();
   cell_it_end = (*tile_its[attribute_ids[0]]).end();
+}
+
+inline
+void QueryProcessor::initialize_cell_its(
+    const StorageManager::const_iterator* tile_its, 
+    Tile::const_iterator* cell_its, 
+    const std::vector<unsigned int>& attribute_ids) const {
+  for(unsigned int i=0; i<=attribute_ids.size(); i++)
+    cell_its[attribute_ids[i]] = (*tile_its[attribute_ids[i]]).begin();
 }
 
 inline
@@ -1002,6 +1137,174 @@ bool QueryProcessor::may_join(
 
   return true;
 }
+
+// NOTE: It is assumed that k is small enough for O(k) coordinates to fit
+// in main memory. 
+void QueryProcessor::nearest_neighbors_irregular(
+    const StorageManager::ArrayDescriptor* ad,
+    const std::vector<double>& q,
+    uint64_t k,
+    const std::string& result_array_name) const {
+  // For easy reference
+  const ArraySchema& array_schema = ad->array_schema();
+  unsigned int attribute_num = array_schema.attribute_num();
+  uint64_t capacity = array_schema.capacity();
+
+  // Create tiles 
+  const Tile** tiles = new const Tile*[attribute_num];
+  Tile** result_tiles = new Tile*[attribute_num+1];
+
+  // Create cell iterators
+  Tile::const_iterator* cell_its = 
+      new Tile::const_iterator[attribute_num];
+  Tile::const_iterator cell_it_end;
+
+  // Prepare result array
+  ArraySchema result_array_schema = array_schema.clone(result_array_name);
+  const StorageManager::ArrayDescriptor* result_ad = 
+      storage_manager_.open_array(result_array_schema);
+
+  // Get pairs (dist, rank), sorted on dist
+  // rank is a tile rank and dist is its distance to q
+  std::vector<DistRank> sorted_dist_ranks = compute_sorted_dist_ranks(ad, q);
+
+  // Compute sorted kNN coordinates of the form (rank, (pos, coord))
+  // coord is the cell coordinates, rank is the rank of the tile the
+  // cell belongs to, and pos is the position of the cell in the tile
+  std::priority_queue<RankPosCoord> sorted_kNN_coords = 
+      compute_sorted_kNN_coords(ad, q, k, sorted_dist_ranks); 
+    
+  // Prepare new result tiles
+  uint64_t tile_id = 0; 
+  new_tiles(result_array_schema, tile_id, result_tiles); 
+
+  // Retrieve and store the actual k nearest neighbors
+  int64_t current_rank = -1;
+  uint64_t pos, rank;
+  while(sorted_kNN_coords.size() > 0) {
+    // For easy reference
+    rank = sorted_kNN_coords.top().first; 
+    pos = sorted_kNN_coords.top().second.first; 
+    const std::vector<double>& coord = sorted_kNN_coords.top().second.second;
+
+    // Retrieve tiles
+    if(rank != current_rank) {
+      current_rank = rank;
+      for(unsigned int i=0; i<attribute_num; i++) 
+        tiles[i] = storage_manager_.get_tile_by_rank(ad, i, rank);
+    }
+   
+    // Store result tile if full
+    if(result_tiles[attribute_num]->cell_num() == capacity) {
+      store_tiles(result_ad, result_tiles);
+      new_tiles(result_array_schema, ++tile_id, result_tiles); 
+    } 
+ 
+    // Append cell
+    *result_tiles[attribute_num] << coord;
+    for(unsigned int i=0; i<attribute_num; i++) {
+      cell_its[i] = tiles[i]->begin() + pos;
+      *result_tiles[i] << cell_its[i];
+    }
+   
+    // Pop the top of the priority queue 
+    sorted_kNN_coords.pop();
+  }
+  
+  // Send the lastly created tiles to storage manager
+  store_tiles(result_ad, result_tiles);
+
+  // Close result array
+  storage_manager_.close_array(result_ad);
+
+  // Clean up 
+  delete [] tiles;
+  delete [] result_tiles;
+  delete [] cell_its;
+} 
+
+// NOTE: It is assumed that k is small enough for O(k) coordinates to fit
+// in main memory. 
+void QueryProcessor::nearest_neighbors_regular(
+    const StorageManager::ArrayDescriptor* ad,
+    const std::vector<double>& q,
+    uint64_t k,
+    const std::string& result_array_name) const {
+  // For easy reference
+  const ArraySchema& array_schema = ad->array_schema();
+  unsigned int attribute_num = array_schema.attribute_num();
+
+  // Create tiles 
+  const Tile** tiles = new const Tile*[attribute_num];
+  Tile** result_tiles = new Tile*[attribute_num+1];
+
+  // Create cell iterators
+  Tile::const_iterator* cell_its = 
+      new Tile::const_iterator[attribute_num];
+  Tile::const_iterator cell_it_end;
+
+  // Prepare result array
+  ArraySchema result_array_schema = array_schema.clone(result_array_name);
+  const StorageManager::ArrayDescriptor* result_ad = 
+      storage_manager_.open_array(result_array_schema);
+
+  // Get pairs (dist, rank), sorted on dist
+  // rank is a tile rank and dist is its distance to q
+  std::vector<DistRank> sorted_dist_ranks = compute_sorted_dist_ranks(ad, q);
+
+  // Compute sorted kNN coordinates of the form (rank, (pos, coord))
+  // coord is the cell coordinates, rank is the rank of the tile the
+  // cell belongs to, and pos is the position of the cell in the tile
+  std::priority_queue<RankPosCoord> sorted_kNN_coords = 
+      compute_sorted_kNN_coords(ad, q, k, sorted_dist_ranks); 
+    
+  // Retrieve and store the actual k nearest neighbors
+  int64_t current_rank = -1;
+  uint64_t pos, rank, tile_id;
+  while(sorted_kNN_coords.size() > 0) {
+    // For easy reference
+    rank = sorted_kNN_coords.top().first; 
+    pos = sorted_kNN_coords.top().second.first; 
+    const std::vector<double>& coord = sorted_kNN_coords.top().second.second;
+
+    // Retrieve tiles and create new result tiles
+    if(rank != current_rank) {
+      // Store previous result tiles
+      if(current_rank != -1)
+        store_tiles(result_ad, result_tiles);
+
+      current_rank = rank;
+      
+      // Retrieve tiles
+      for(unsigned int i=0; i<attribute_num; i++) 
+        tiles[i] = storage_manager_.get_tile_by_rank(ad, i, rank);
+  
+      // Prepare new result tiles
+      new_tiles(result_array_schema, tiles[0]->tile_id(), result_tiles); 
+    }
+   
+    // Append cell
+    *result_tiles[attribute_num] << coord;
+    for(unsigned int i=0; i<attribute_num; i++) {
+      cell_its[i] = tiles[i]->begin() + pos;
+      *result_tiles[i] << cell_its[i];
+    }
+   
+    // Pop the top of the priority queue 
+    sorted_kNN_coords.pop();
+  }
+    
+  // Send the lastly created tiles to storage manager
+  store_tiles(result_ad, result_tiles);
+  
+  // Close result array
+  storage_manager_.close_array(result_ad);
+
+  // Clean up 
+  delete [] tiles;
+  delete [] result_tiles;
+  delete [] cell_its;
+} 
 
 inline
 void QueryProcessor::new_tiles(const ArraySchema& array_schema, 

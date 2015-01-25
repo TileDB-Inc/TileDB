@@ -186,7 +186,7 @@ void ExpressionNode::insert_right(ExpressionNode* node) {
 
 ExpressionTree::ExpressionTree(ExpressionNode* root) {
   root_ = root;
-  root_->gather_vars();
+  vars_ = root_->gather_vars();
 }
 
 ExpressionTree::~ExpressionTree() {
