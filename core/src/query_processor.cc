@@ -164,7 +164,7 @@ inline
 void QueryProcessor::advance_cell_its(
     Tile::const_iterator* cell_its,
     const std::vector<unsigned int>& attribute_ids) const {
-  for(unsigned int i=0; i<=attribute_ids.size(); i++) 
+  for(unsigned int i=0; i<attribute_ids.size(); i++) 
     ++cell_its[attribute_ids[i]];
 }
 
@@ -181,7 +181,7 @@ void QueryProcessor::advance_cell_its(
     Tile::const_iterator* cell_its,
     const std::vector<unsigned int>& attribute_ids,
     int64_t step) const {
-  for(unsigned int i=0; i<=attribute_ids.size(); i++) 
+  for(unsigned int i=0; i<attribute_ids.size(); i++) 
     cell_its[attribute_ids[i]] += step;
 }
 
@@ -206,7 +206,7 @@ inline
 void QueryProcessor::advance_tile_its(
     StorageManager::const_iterator* tile_its,
     const std::vector<unsigned int>& attribute_ids) const {
-  for(unsigned int i=0; i<=attribute_ids.size(); i++) 
+  for(unsigned int i=0; i<attribute_ids.size(); i++) 
     ++tile_its[attribute_ids[i]];
 }
 
@@ -215,7 +215,7 @@ void QueryProcessor::advance_tile_its(
     StorageManager::const_iterator* tile_its, 
     const std::vector<unsigned int>& attribute_ids,
     int64_t step) const {
-  for(unsigned int i=0; i<=attribute_ids.size(); i++) 
+  for(unsigned int i=0; i<attribute_ids.size(); i++) 
     tile_its[attribute_ids[i]] += step;
 }
 
@@ -448,12 +448,17 @@ void QueryProcessor::filter_irregular(
                                    expr_attribute_ids, expression)) {
         if(skipped_tiles) {
           advance_tile_its(tile_its, non_expr_attribute_ids, skipped_tiles);
+          tile_its[attribute_num] += skipped_tiles;
           skipped_tiles = 0;
         }
-        if(!non_expr_cell_its_initialized)
+        if(!non_expr_cell_its_initialized) {
           initialize_cell_its(tile_its, cell_its, non_expr_attribute_ids);
+          cell_its[attribute_num] = (*tile_its[attribute_num]).begin();
+          non_expr_cell_its_initialized = true;
+        }
         if(skipped_cells) {
           advance_cell_its(cell_its, non_expr_attribute_ids, skipped_cells);
+          cell_its[attribute_num] += skipped_cells;
           skipped_cells = 0;
         }
         if(result_tiles[attribute_num]->cell_num() == capacity) {
@@ -570,12 +575,17 @@ void QueryProcessor::filter_regular(
                                    expr_attribute_ids, expression)) {
         if(skipped_tiles) {
           advance_tile_its(tile_its, non_expr_attribute_ids, skipped_tiles);
+          tile_its[attribute_num] += skipped_tiles;
           skipped_tiles = 0;
         }
-        if(!non_expr_cell_its_initialized)
+        if(!non_expr_cell_its_initialized) {
           initialize_cell_its(tile_its, cell_its, non_expr_attribute_ids);
+          cell_its[attribute_num] = (*tile_its[attribute_num]).begin();
+          non_expr_cell_its_initialized = false;
+        }
         if(skipped_cells) {
           advance_cell_its(cell_its, non_expr_attribute_ids, skipped_cells);
+          cell_its[attribute_num] += skipped_cells;
           skipped_cells = 0;
         }
         append_cell(cell_its, result_tiles, attribute_num);
@@ -685,7 +695,7 @@ void QueryProcessor::initialize_cell_its(
     const StorageManager::const_iterator* tile_its, 
     Tile::const_iterator* cell_its, Tile::const_iterator& cell_it_end,
     const std::vector<unsigned int>& attribute_ids) const {
-  for(unsigned int i=0; i<=attribute_ids.size(); i++)
+  for(unsigned int i=0; i<attribute_ids.size(); i++)
     cell_its[attribute_ids[i]] = (*tile_its[attribute_ids[i]]).begin();
   cell_it_end = (*tile_its[attribute_ids[0]]).end();
 }
@@ -695,7 +705,7 @@ void QueryProcessor::initialize_cell_its(
     const StorageManager::const_iterator* tile_its, 
     Tile::const_iterator* cell_its, 
     const std::vector<unsigned int>& attribute_ids) const {
-  for(unsigned int i=0; i<=attribute_ids.size(); i++)
+  for(unsigned int i=0; i<attribute_ids.size(); i++)
     cell_its[attribute_ids[i]] = (*tile_its[attribute_ids[i]]).begin();
 }
 

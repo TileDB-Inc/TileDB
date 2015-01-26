@@ -1,8 +1,8 @@
 *.swp
 doc/
-core/bin/
-core/obj/
-example/obj/
-example/bin/
-gtest/obj/
+core/bin/*
+core/obj/*
+example/obj/*
+example/bin/*
+gtest/obj/*
 data/example*
