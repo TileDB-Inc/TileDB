@@ -136,6 +136,9 @@ double ExpressionNode::evaluate(const std::map<std::string,
     else if(op_ == OR)
       return left_result || right_result;
   }
+
+  // The program will never reach here
+  return 0;
 }
 
 std::set<std::string> ExpressionNode::gather_vars() const {
