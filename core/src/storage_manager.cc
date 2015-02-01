@@ -74,6 +74,11 @@ StorageManager::~StorageManager() {
 ******************* ARRAY FUNCTIONS *******************
 ******************************************************/
 
+bool StorageManager::array_exists(const std::string& array_name) const {
+  std::string array_directory = workspace_ + "/" + array_name;
+  return path_exists(array_directory);   
+}
+
 void StorageManager::close_array(const ArrayDescriptor* array_descriptor) {
   assert(check_on_close_array(*array_descriptor)); 
  

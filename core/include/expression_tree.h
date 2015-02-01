@@ -149,6 +149,7 @@ class ExpressionTree {
   ~ExpressionTree();
  
   // ACCESSORS
+  /** Returns the variables involved in the expression. */
   const std::set<std::string>& vars() const { return vars_; }
 
   // TREE METHODS

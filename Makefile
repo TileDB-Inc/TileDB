@@ -138,6 +138,14 @@ $(EXAMPLE_BIN_DIR)/example_expression_tree: $(EXAMPLE_OBJ_DIR)/example_expressio
 	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
 	$(CXX) $(INCLUDE_PATHS) -o $@ $^
 
+$(EXAMPLE_BIN_DIR)/example_executor: $(EXAMPLE_OBJ_DIR)/example_executor.o \
+ $(CORE_OBJ_DIR)/query_processor.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
+ $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/loader.o $(CORE_OBJ_DIR)/storage_manager.o   \
+ $(CORE_OBJ_DIR)/hilbert_curve.o $(CORE_OBJ_DIR)/expression_tree.o $(CORE_OBJ_DIR)/executor.o \
+ $(CORE_OBJ_DIR)/consolidator.o
+	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
+	$(CXX) -fopenmp $(INCLUDE_PATHS) -o $@ $^
+
 
 ###############
 # Google test #

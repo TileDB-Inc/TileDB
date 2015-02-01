@@ -581,7 +581,7 @@ void QueryProcessor::filter_regular(
         if(!non_expr_cell_its_initialized) {
           initialize_cell_its(tile_its, cell_its, non_expr_attribute_ids);
           cell_its[attribute_num] = (*tile_its[attribute_num]).begin();
-          non_expr_cell_its_initialized = false;
+          non_expr_cell_its_initialized = true;
         }
         if(skipped_cells) {
           advance_cell_its(cell_its, non_expr_attribute_ids, skipped_cells);

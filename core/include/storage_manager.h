@@ -257,6 +257,8 @@ class StorageManager {
   void set_segment_size(uint64_t segment_size) { segment_size_ = segment_size; }
    
   // ARRAY FUNCTIONS
+  /** Returns true if the array exists. */
+  bool array_exists(const std::string& array_name) const;
   /** 
    * Closes an array. 
    * Note: A rule must be satisfied before closing the array. 

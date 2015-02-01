@@ -660,6 +660,16 @@ bool ArraySchema::precedes(const Tile::const_iterator& cell_it_A,
   assert(tile_A->dim_num() == dim_num_);
   assert(tile_B->dim_num() == dim_num_);
 
+  // For regular tiles only
+  if(has_regular_tiles()) {
+    if(tile_A->tile_id() < tile_B->tile_id())
+      return true;
+     else if(tile_A->tile_id() > tile_B->tile_id())
+       return false;
+     // else, the tiles have the same id and the function must proceed below
+     // and check the actual coordinates
+  }
+
   if(*(types_[attribute_num_]) == typeid(int)) {
     const std::vector<int>& coord_A = *cell_it_A;
     const std::vector<int>& coord_B = *cell_it_B;
