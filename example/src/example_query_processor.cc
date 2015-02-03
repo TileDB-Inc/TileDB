@@ -1,7 +1,39 @@
+/**
+ * @file   example_query_processor.cc
+ * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ *
+ * Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file demonstrates the usage of QueryProcessor objects.
+ */
+
 #include "loader.h"
 #include "query_processor.h"
 #include <iostream>
-
 
 // Returns an array schema
 ArraySchema create_array_schema_A(bool regular) {
@@ -106,11 +138,6 @@ int main() {
   ArraySchema array_schema_IREG_B = 
       create_array_schema_B(false);   // Irregular tiles
 
-  // Prepare a range ([16,19], [20,21])
-  Tile::Range range;
-  range.push_back(16); range.push_back(19);
-  range.push_back(20); range.push_back(21);
-
   // Create storage manager
   // The input is the path to its workspace (the path must exist).
   StorageManager sm(
@@ -128,6 +155,7 @@ int main() {
   sm.delete_array(array_schema_IREG_B.array_name());
   
   // Load arrays 
+  std::cout << "Loads...\n"; 
   Loader ld("~/stavrospapadopoulos/TileDB/data/example_query_processor", sm);
   ld.load("~/stavrospapadopoulos/TileDB/data/test_A.csv", array_schema_REG_A);
   ld.load("~/stavrospapadopoulos/TileDB/data/test_A.csv", array_schema_IREG_A);
@@ -147,12 +175,18 @@ int main() {
   // ------------- //
   // Export to CSV //
   // ------------- //
+  std::cout << "Export to CSV...\n"; 
   qp.export_to_CSV(ad_REG_A, "REG_A_test.csv");
   qp.export_to_CSV(ad_IREG_A, "IREG_A_test.csv");
 
   // -------- //
   // Subarray //
   // -------- //
+  std::cout << "Subarray...\n"; 
+  // Prepare a range ([16,19], [20,21])
+  Tile::Range range;
+  range.push_back(16); range.push_back(19);
+  range.push_back(20); range.push_back(21);
   qp.subarray(ad_REG_A, range, "R_REG_A"); 
   qp.subarray(ad_IREG_A, range, "R_IREG_A"); 
   // Export the results to CSV
@@ -164,16 +198,18 @@ int main() {
   // ---- //
   // Join //
   // ---- //
+  std::cout << "Join...\n";
   qp.join(ad_IREG_A, ad_IREG_B, "R_IREG_C");
   qp.join(ad_REG_A, ad_REG_B, "R_REG_C");
 
   // ------ //
   // Filter //
   // ------ //
+  std::cout << "Filter...\n";
   // Create an expression tree that represents the filter condition
   // (this will typically be created by the parser of the user's command).
-  // Expression: attr_1 >= 100
-  ExpressionNode* n_attr_1 = new ExpressionNode("attr_1");
+  // Expression: attr1 >= 100
+  ExpressionNode* n_attr_1 = new ExpressionNode("attr1");
   ExpressionNode* n_100 = new ExpressionNode(100);
   ExpressionNode* n_gteq = 
       new ExpressionNode(ExpressionNode::GTEQ, n_attr_1, n_100);
@@ -181,10 +217,13 @@ int main() {
   // Perform the filter
   qp.filter(ad_IREG_A, expression, "filter_R_IREG_A");  
   qp.filter(ad_REG_A, expression, "filter_R_REG_A");  
+  // Clean up
+  delete expression;
 
   // ---------------------- //
   // Nearest neighbors (NN) //
   // ---------------------- //
+  std::cout << "Nearest neighbors...\n";
   // Prepare query: q is a point, and k is the number of nearest neighbors
   std::vector<double> q;
   q.push_back(15); q.push_back(16);
@@ -200,9 +239,6 @@ int main() {
   sm.close_array(ad_IREG_B);
   sm.close_array(ad_R_REG_A);
   sm.close_array(ad_R_IREG_A);
-
-  // Clean up
-  delete expression;
 
   return 0;
 }

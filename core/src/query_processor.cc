@@ -294,7 +294,7 @@ std::vector<QueryProcessor::DistRank> QueryProcessor::compute_sorted_dist_ranks(
   return dist_ranks;
 }
 
-std::priority_queue<QueryProcessor::RankPosCoord> 
+std::vector<QueryProcessor::RankPosCoord> 
 QueryProcessor::compute_sorted_kNN_coords(
     const StorageManager::ArrayDescriptor* ad,
     const std::vector<double>& q,
@@ -340,12 +340,14 @@ QueryProcessor::compute_sorted_kNN_coords(
     }
   }
 
-  // Make a new priority queue (rank, (pos, coord)), sorted on rank, pos
-  std::priority_queue<RankPosCoord> resorted_kNN_coords;
+  // Make a new vector of (rank, (pos, coord)), sorted on rank, pos
+  std::vector<RankPosCoord> resorted_kNN_coords;
+  resorted_kNN_coords.reserve(k);
   while(kNN_coords.size() > 0) {
-    resorted_kNN_coords.push(kNN_coords.top().second);
+    resorted_kNN_coords.push_back(kNN_coords.top().second);
     kNN_coords.pop();
   }
+  __gnu_parallel::sort(resorted_kNN_coords.begin(), resorted_kNN_coords.end());
 
   return resorted_kNN_coords;
 }
@@ -1181,7 +1183,7 @@ void QueryProcessor::nearest_neighbors_irregular(
   // Compute sorted kNN coordinates of the form (rank, (pos, coord))
   // coord is the cell coordinates, rank is the rank of the tile the
   // cell belongs to, and pos is the position of the cell in the tile
-  std::priority_queue<RankPosCoord> sorted_kNN_coords = 
+  std::vector<RankPosCoord> sorted_kNN_coords = 
       compute_sorted_kNN_coords(ad, q, k, sorted_dist_ranks); 
     
   // Prepare new result tiles
@@ -1191,11 +1193,11 @@ void QueryProcessor::nearest_neighbors_irregular(
   // Retrieve and store the actual k nearest neighbors
   int64_t current_rank = -1;
   uint64_t pos, rank;
-  while(sorted_kNN_coords.size() > 0) {
+  for(uint64_t i=0; i<sorted_kNN_coords.size(); ++i) {
     // For easy reference
-    rank = sorted_kNN_coords.top().first; 
-    pos = sorted_kNN_coords.top().second.first; 
-    const std::vector<double>& coord = sorted_kNN_coords.top().second.second;
+    rank = sorted_kNN_coords[i].first; 
+    pos = sorted_kNN_coords[i].second.first; 
+    const std::vector<double>& coord = sorted_kNN_coords[i].second.second;
 
     // Retrieve tiles
     if(rank != current_rank) {
@@ -1216,9 +1218,6 @@ void QueryProcessor::nearest_neighbors_irregular(
       cell_its[i] = tiles[i]->begin() + pos;
       *result_tiles[i] << cell_its[i];
     }
-   
-    // Pop the top of the priority queue 
-    sorted_kNN_coords.pop();
   }
   
   // Send the lastly created tiles to storage manager
@@ -1265,17 +1264,17 @@ void QueryProcessor::nearest_neighbors_regular(
   // Compute sorted kNN coordinates of the form (rank, (pos, coord))
   // coord is the cell coordinates, rank is the rank of the tile the
   // cell belongs to, and pos is the position of the cell in the tile
-  std::priority_queue<RankPosCoord> sorted_kNN_coords = 
+  std::vector<RankPosCoord> sorted_kNN_coords = 
       compute_sorted_kNN_coords(ad, q, k, sorted_dist_ranks); 
     
   // Retrieve and store the actual k nearest neighbors
   int64_t current_rank = -1;
   uint64_t pos, rank, tile_id;
-  while(sorted_kNN_coords.size() > 0) {
+  for(uint64_t i=0; i<sorted_kNN_coords.size(); ++i) {
     // For easy reference
-    rank = sorted_kNN_coords.top().first; 
-    pos = sorted_kNN_coords.top().second.first; 
-    const std::vector<double>& coord = sorted_kNN_coords.top().second.second;
+    rank = sorted_kNN_coords[i].first; 
+    pos = sorted_kNN_coords[i].second.first; 
+    const std::vector<double>& coord = sorted_kNN_coords[i].second.second;
 
     // Retrieve tiles and create new result tiles
     if(rank != current_rank) {
@@ -1299,9 +1298,6 @@ void QueryProcessor::nearest_neighbors_regular(
       cell_its[i] = tiles[i]->begin() + pos;
       *result_tiles[i] << cell_its[i];
     }
-   
-    // Pop the top of the priority queue 
-    sorted_kNN_coords.pop();
   }
     
   // Send the lastly created tiles to storage manager

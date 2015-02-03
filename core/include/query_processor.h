@@ -210,11 +210,14 @@ class QueryProcessor {
       const StorageManager::ArrayDescriptor* ad,
       const std::vector<double>& q) const;
   /** 
-   * Returns a priority queue with k tuples of the form (rank, (pos, coord)).
+   * Returns a vector with k tuples of the form (rank, (pos, coord)).
    * Each tuple corresponds to the coordinates of one of the k nearest
    * cells in a nearest neighbor query (see QueryProcessor::nearest_neighbors).
+   *
    * coord: the coordinates of the cell.
+   *
    * rank: the rank of the tile this cell belongs to.
+   *
    * pos: the position of the cell in the tile.
    *
    * q is the query point for the nearest neighbor search.
@@ -224,7 +227,7 @@ class QueryProcessor {
    * sorted_dist_ranks contains pairs of the form (dist, rank), where rank
    * is a tile rank and dist is its distance to the query q.
    */
-  std::priority_queue<RankPosCoord> compute_sorted_kNN_coords(
+  std::vector<RankPosCoord> compute_sorted_kNN_coords(
       const StorageManager::ArrayDescriptor* ad,
       const std::vector<double>& q,
       uint64_t k,

@@ -138,135 +138,155 @@ int main() {
       create_array_schema_B(true);    // Regular tiles
   ArraySchema array_schema_IREG_B = 
       create_array_schema_B(false);   // Irregular tiles
-
-/*
-  // Prepare a range ([16,19], [20,21])
-  Tile::Range range;
-  range.push_back(16); range.push_back(19);
-  range.push_back(20); range.push_back(21);
-*/
-
+ 
   // Create an executor
   // The input is the path to its workspace (the path must exist).
   Executor executor(  
       "~/stavrospapadopoulos/TileDB/data/example_executor");
 
   try {
-//    executor.load("~/stavrospapadopoulos/TileDB/data/test_A_0.csv", 
-//                 array_schema_REG_A);
-//    executor.update("~/stavrospapadopoulos/TileDB/data/test_A_1.csv", 
-//                 array_schema_REG_A);
-//    executor.update("~/stavrospapadopoulos/TileDB/data/test_A_2.csv", 
-//                 array_schema_REG_A);
-//    executor.update("~/stavrospapadopoulos/TileDB/data/test_A.csv", 
-//                 array_schema_REG_A);
-//    executor.update("~/stavrospapadopoulos/TileDB/data/test_A.csv", 
-//                 array_schema_REG_A);
-//    executor.update("~/stavrospapadopoulos/TileDB/data/test_A.csv", 
-//                 array_schema_REG_A);
-//    executor.update("~/stavrospapadopoulos/TileDB/data/test_A.csv", 
-//                 array_schema_REG_A);
-//    executor.update("~/stavrospapadopoulos/TileDB/data/test_A.csv", 
-//                 array_schema_REG_A);
-//    executor.update("~/stavrospapadopoulos/TileDB/data/test_A.csv", 
-//                 array_schema_REG_A);
-     executor.load("~/stavrospapadopoulos/TileDB/data/test_A_0.csv", 
-                   array_schema_IREG_A);
-     executor.update("~/stavrospapadopoulos/TileDB/data/test_A_1.csv", 
-                   array_schema_IREG_A);
-     executor.update("~/stavrospapadopoulos/TileDB/data/test_A_2.csv", 
-                   array_schema_IREG_A);
-//    executor.load("~/stavrospapadopoulos/TileDB/data/test_B.csv", 
-//                  array_schema_REG_B);
-//    executor.load("~/stavrospapadopoulos/TileDB/data/test_B.csv", 
-//                  array_schema_IREG_B);
+    //------ //
+    // Loads //
+    // ----- //
+    std::cout << "Loads...\n";
+    executor.load("~/stavrospapadopoulos/TileDB/data/test_A_0.csv", 
+                  array_schema_REG_A);
+    executor.load("~/stavrospapadopoulos/TileDB/data/test_A_0.csv", 
+                  array_schema_IREG_A);
+    executor.load("~/stavrospapadopoulos/TileDB/data/test_B.csv", 
+                  array_schema_REG_B);
+    executor.load("~/stavrospapadopoulos/TileDB/data/test_B.csv", 
+                  array_schema_IREG_B);
+    //-------- //
+    // Updates //
+    // ------- //
+    std::cout << "Updates...\n";
+    executor.update("~/stavrospapadopoulos/TileDB/data/test_A_1.csv", 
+                    array_schema_REG_A);
+    executor.update("~/stavrospapadopoulos/TileDB/data/test_A_2.csv", 
+                    array_schema_REG_A);
+    executor.update("~/stavrospapadopoulos/TileDB/data/test_A_1.csv", 
+                    array_schema_IREG_A);
+    executor.update("~/stavrospapadopoulos/TileDB/data/test_A_2.csv", 
+                    array_schema_IREG_A);
 
-//  executor.export_to_CSV("consolidated_REG_A.csv", array_schema_REG_A);
-  executor.export_to_CSV("consolidated_IREG_A.csv", array_schema_IREG_A);
+    // ------------- //
+    // Export to CSV //
+    // ------------- //
+    std::cout << "Export to CSV...\n";
+    executor.export_to_CSV("consolidated_REG_A.csv", array_schema_REG_A);
+    executor.export_to_CSV("consolidated_IREG_A.csv", array_schema_IREG_A);
+
+    // ------ //
+    // Filter //
+    // ------ //
+    std::cout << "Filter...\n";
+    // Create an expression tree that represents the filter condition
+    // (this will typically be created by the parser of the user's command).
+    // Expression: attr1 >= 5
+    ExpressionNode* n_attr_1 = new ExpressionNode("attr1");
+    ExpressionNode* n_100 = new ExpressionNode(5);
+    ExpressionNode* n_gteq = 
+        new ExpressionNode(ExpressionNode::GTEQ, n_attr_1, n_100);
+    ExpressionTree* expression = new ExpressionTree(n_gteq);
+    // Perform the filter
+    executor.filter(array_schema_REG_A, expression, "filter_REG_A");  
+    executor.filter(array_schema_IREG_A, expression, "filter_IREG_A");  
+    // Export result
+    std::cout << "Export filter result...\n";
+    ArraySchema filter_array_schema_REG_A = 
+        array_schema_REG_A.clone("filter_REG_A");
+    ArraySchema filter_array_schema_IREG_A = 
+        array_schema_REG_A.clone("filter_IREG_A");
+    executor.export_to_CSV("filter_REG_A.csv", filter_array_schema_REG_A);
+    executor.export_to_CSV("filter_IREG_A.csv", filter_array_schema_IREG_A);
+    // Clean up
+    delete expression;
+
+    // ----------------- //
+    // Nearest neighbors //
+    // ----------------- //
+    std::cout << "Nearest neighbors...\n";
+    // Prepare query point q and number of results k
+    std::vector<double> q;
+    q.push_back(35); q.push_back(32);
+    uint64_t k = 5;
+    // Perform the nearest neighbor search
+    executor.nearest_neighbors(array_schema_REG_A, q, k, "nn_REG_A");  
+    executor.nearest_neighbors(array_schema_IREG_A, q, k, "nn_IREG_A");  
+    // Export result
+    std::cout << "Export nearest neighbors result...\n";
+    ArraySchema nn_array_schema_REG_A = 
+        array_schema_REG_A.clone("nn_REG_A");
+    ArraySchema nn_array_schema_IREG_A = 
+        array_schema_REG_A.clone("nn_IREG_A");
+    executor.export_to_CSV("nn_REG_A.csv", nn_array_schema_REG_A);
+    executor.export_to_CSV("nn_IREG_A.csv", nn_array_schema_IREG_A);
+
+    // -------- //
+    // Subarray //
+    // -------- //
+    std::cout << "Subarray...\n";
+    // Prepare a range ([16,19], [20,21])
+    Tile::Range range;
+    range.push_back(16); range.push_back(19);
+    range.push_back(20); range.push_back(21);
+    // Perform the subarray
+    executor.subarray(array_schema_REG_A, range, "subarray_REG_A");  
+    executor.subarray(array_schema_IREG_A, range, "subarray_IREG_A");  
+    // Export result
+    std::cout << "Export subarray result...\n";
+    ArraySchema subarray_array_schema_REG_A = 
+        array_schema_REG_A.clone("subarray_REG_A");
+    ArraySchema subarray_array_schema_IREG_A = 
+        array_schema_REG_A.clone("subarray_IREG_A");
+    executor.export_to_CSV("subarray_REG_A.csv", subarray_array_schema_REG_A);
+    executor.export_to_CSV("subarray_IREG_A.csv", subarray_array_schema_IREG_A);
+    
+    // ---- //
+    // Join //
+    // ---- //
+    std::cout << "Join...\n";
+    executor.join(array_schema_IREG_A, array_schema_IREG_B, "join_IREG_C");
+    executor.join(array_schema_REG_A, array_schema_REG_B, "join_REG_C");
+    // Export result
+    std::cout << "Export join result...\n";
+    ArraySchema join_array_schema_IREG_C = 
+        ArraySchema::create_join_result_schema(
+            array_schema_IREG_A, array_schema_IREG_B, "join_IREG_C");
+    ArraySchema join_array_schema_REG_C = 
+        ArraySchema::create_join_result_schema(
+            array_schema_REG_A, array_schema_REG_B, "join_REG_C");
+    executor.export_to_CSV("join_IREG_C.csv", join_array_schema_IREG_C);
+    executor.export_to_CSV("join_REG_C.csv", join_array_schema_REG_C);
+
+    // ------------ //
+    // Delete array //
+    // ------------ //
+    std::cout << "Delete array...\n";
+    // Create two array fragments for the same array
+    ArraySchema del_array_schema_REG_A = 
+        array_schema_REG_A.clone("del_REG_A");
+    ArraySchema del_array_schema_IREG_A = 
+        array_schema_REG_A.clone("del_IREG_A");
+    executor.load("~/stavrospapadopoulos/TileDB/data/test_A_0.csv", 
+                  del_array_schema_REG_A);
+    executor.load("~/stavrospapadopoulos/TileDB/data/test_A_0.csv", 
+                  del_array_schema_IREG_A);
+    executor.update("~/stavrospapadopoulos/TileDB/data/test_A_1.csv", 
+                    del_array_schema_REG_A);
+    executor.update("~/stavrospapadopoulos/TileDB/data/test_A_1.csv", 
+                    del_array_schema_IREG_A);
+    // Delete array
+    executor.delete_array(del_array_schema_REG_A);
+    executor.delete_array(del_array_schema_IREG_A);
+
+    std::cout << "Done!\n";
 
   } catch(ExecutorException& ee) {
     std::cout << ee.what() << "\n";
     exit(-1);
   }
-
-  /*
-
-  // Delete arrays if they already exist
-  sm.delete_array(array_schema_REG_A.array_name());
-  sm.delete_array(array_schema_IREG_A.array_name());
-  sm.delete_array(array_schema_REG_B.array_name());
-  sm.delete_array(array_schema_IREG_B.array_name());
-  
-  // Open arrays in READ mode
-  const StorageManager::ArrayDescriptor* ad_REG_A = 
-      sm.open_array(array_schema_REG_A.array_name());
-  const StorageManager::ArrayDescriptor* ad_IREG_A = 
-      sm.open_array(array_schema_IREG_A.array_name());
-  const StorageManager::ArrayDescriptor* ad_REG_B = 
-      sm.open_array(array_schema_REG_B.array_name());
-  const StorageManager::ArrayDescriptor* ad_IREG_B = 
-      sm.open_array(array_schema_IREG_B.array_name());
-
-  // ------------- //
-  // Export to CSV //
-  // ------------- //
-  qp.export_to_CSV(ad_REG_A, "REG_A_test.csv");
-  qp.export_to_CSV(ad_IREG_A, "IREG_A_test.csv");
-
-  // -------- //
-  // Subarray //
-  // -------- //
-  qp.subarray(ad_REG_A, range, "R_REG_A"); 
-  qp.subarray(ad_IREG_A, range, "R_IREG_A"); 
-  // Export the results to CSV
-  const StorageManager::ArrayDescriptor* ad_R_REG_A = sm.open_array("R_REG_A");
-  const StorageManager::ArrayDescriptor* ad_R_IREG_A = sm.open_array("R_IREG_A");
-  qp.export_to_CSV(ad_R_REG_A, "R_REG_A_test.csv");
-  qp.export_to_CSV(ad_R_IREG_A, "R_IREG_A_test.csv");
-  
-  // ---- //
-  // Join //
-  // ---- //
-  qp.join(ad_IREG_A, ad_IREG_B, "R_IREG_C");
-  qp.join(ad_REG_A, ad_REG_B, "R_REG_C");
-
-  // ------ //
-  // Filter //
-  // ------ //
-  // Create an expression tree that represents the filter condition
-  // (this will typically be created by the parser of the user's command).
-  // Expression: attr_1 >= 100
-  ExpressionNode* n_attr_1 = new ExpressionNode("attr_1");
-  ExpressionNode* n_100 = new ExpressionNode(100);
-  ExpressionNode* n_gteq = 
-      new ExpressionNode(ExpressionNode::GTEQ, n_attr_1, n_100);
-  ExpressionTree* expression = new ExpressionTree(n_gteq);
-  // Perform the filter
-  qp.filter(ad_IREG_A, expression, "filter_R_IREG_A");  
-  qp.filter(ad_REG_A, expression, "filter_R_REG_A");  
-
-  // ---------------------- //
-  // Nearest neighbors (NN) //
-  // ---------------------- //
-  // Prepare query: q is a point, and k is the number of nearest neighbors
-  std::vector<double> q;
-  q.push_back(15); q.push_back(16);
-  uint64_t k = 3;
-  // Perform the NN search
-  qp.nearest_neighbors(ad_IREG_A, q, k, "NN_R_IREG_A");  
-  qp.nearest_neighbors(ad_REG_A, q, k, "NN_R_REG_A");  
-
-  // Close arrays
-  sm.close_array(ad_REG_A);
-  sm.close_array(ad_IREG_A);
-  sm.close_array(ad_REG_B);
-  sm.close_array(ad_IREG_B);
-  sm.close_array(ad_R_REG_A);
-  sm.close_array(ad_R_IREG_A);
-
-  // Clean up
-  delete expression;
-*/
 
   return 0;
 }
