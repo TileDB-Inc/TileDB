@@ -326,7 +326,7 @@ void Consolidator::consolidate_irregular(
   // Get the index of the fragment from which we will get the next cell 
   // and append it to the consolidation result.
   int next_fragment_index = 
-      get_next_fragment_index(tile_its, tile_it_end, 
+      get_next_fragment_index(tile_its, tile_it_end, consolidation_step_, 
                               cell_its, cell_it_end, array_schema);
 
   uint64_t tile_id = 0;
@@ -356,6 +356,7 @@ void Consolidator::consolidate_irregular(
                           next_tile_its, next_tile_it_end);
 
     next_fragment_index = get_next_fragment_index(tile_its, tile_it_end, 
+                                                  consolidation_step_, 
                                                   cell_its, cell_it_end, 
                                                   array_schema);
   } 
@@ -384,7 +385,6 @@ void Consolidator::consolidate_irregular(
   delete [] cell_it_end;
   delete [] ad;
   delete [] result_tiles;
-
 }
 
 void Consolidator::consolidate_regular(
@@ -435,7 +435,7 @@ void Consolidator::consolidate_regular(
   // Get the index of the fragment from which we will get the next cell 
   // and append it to the consolidation result.
   int next_fragment_index = 
-      get_next_fragment_index(tile_its, tile_it_end, 
+      get_next_fragment_index(tile_its, tile_it_end, consolidation_step_, 
                               cell_its, cell_it_end, array_schema);
 
   uint64_t tile_id;
@@ -472,6 +472,7 @@ void Consolidator::consolidate_regular(
                           next_tile_its, next_tile_it_end);
 
     next_fragment_index = get_next_fragment_index(tile_its, tile_it_end, 
+                                                  consolidation_step_,
                                                   cell_its, cell_it_end, 
                                                   array_schema);
   } 
@@ -547,12 +548,12 @@ void Consolidator::flush_fragment_tree(
 int Consolidator::get_next_fragment_index(
       StorageManager::const_iterator** tile_its,
       StorageManager::const_iterator* tile_it_end,
+      unsigned int fragment_num,
       Tile::const_iterator** cell_its,
       Tile::const_iterator* cell_it_end,
       const ArraySchema& array_schema) const {
   // For easy reference
   unsigned int attribute_num = array_schema.attribute_num();
-  unsigned int fragment_num = consolidation_step_;
 
   // Holds the (potentially multiple) indexes of the candidate fragments
   // from which we will get the next cell for consolidation. Note though 

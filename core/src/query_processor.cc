@@ -58,9 +58,8 @@ void QueryProcessor::export_to_CSV(const StorageManager::ArrayDescriptor* ad,
                                    const std::string& filename) const { 
   // For easy reference
   const ArraySchema& array_schema = ad->array_schema();
-  const std::string& array_name = array_schema.array_name();
-  const unsigned int attribute_num = array_schema.attribute_num();
-  const unsigned int dim_num = array_schema.dim_num();
+  unsigned int attribute_num = array_schema.attribute_num();
+  unsigned int dim_num = array_schema.dim_num();
   
   // Prepare CSV file
   CSVFile csv_file(filename, CSVFile::WRITE);
@@ -92,6 +91,81 @@ void QueryProcessor::export_to_CSV(const StorageManager::ArrayDescriptor* ad,
   // Clean up 
   delete [] tile_its;
   delete [] cell_its;
+}
+
+void QueryProcessor::export_to_CSV(
+    std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const std::string& filename) const {
+  assert(ad.size() > 0); 
+
+  // For easy reference
+  const ArraySchema& array_schema = ad[0]->array_schema();
+  unsigned int attribute_num = array_schema.attribute_num();
+  unsigned int dim_num = array_schema.dim_num();
+  unsigned int fragment_num = ad.size(); 
+ 
+  // Prepare CSV file
+  CSVFile csv_file(filename, CSVFile::WRITE);
+
+  // Create and initialize tile iterators
+  StorageManager::const_iterator** tile_its = 
+      new StorageManager::const_iterator*[fragment_num];
+  StorageManager::const_iterator* tile_it_end = 
+      new StorageManager::const_iterator[fragment_num]; 
+  for(unsigned int i=0; i<fragment_num; ++i) {
+    tile_its[i] = new StorageManager::const_iterator[attribute_num+1];
+    initialize_tile_its(ad[i], tile_its[i], tile_it_end[i]);
+  }
+
+  // Create cell iterators
+  Tile::const_iterator** cell_its = 
+      new Tile::const_iterator*[fragment_num];
+  Tile::const_iterator* cell_it_end = 
+      new Tile::const_iterator[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i) { 
+    cell_its[i] = new Tile::const_iterator[attribute_num+1];
+    initialize_cell_its(tile_its[i], attribute_num, 
+                        cell_its[i], cell_it_end[i]);
+  }
+
+  // Get the index of the fragment from which we will get the next cell 
+  // and append it to the consolidation result.
+  int next_fragment_index = 
+      get_next_fragment_index(tile_its, tile_it_end, fragment_num, 
+                              cell_its, cell_it_end, array_schema);
+
+  // Iterate over all cells, until there are no more cells
+  while(next_fragment_index != -1) {
+    // For easy reference
+    Tile::const_iterator* next_cell_its = cell_its[next_fragment_index];
+    Tile::const_iterator& next_cell_it_end = cell_it_end[next_fragment_index];
+    StorageManager::const_iterator* next_tile_its = 
+        tile_its[next_fragment_index];
+    StorageManager::const_iterator& next_tile_it_end = 
+        tile_it_end[next_fragment_index];
+
+    // Write cell to CSV file
+    csv_file << cell_to_csv_line(next_cell_its, attribute_num);
+
+    // Advance cell (and potentially tile) iterators
+    advance_cell_tile_its(attribute_num, next_cell_its, next_cell_it_end,
+                          next_tile_its, next_tile_it_end);
+
+    next_fragment_index = get_next_fragment_index(tile_its, tile_it_end, 
+                                                  fragment_num, 
+                                                  cell_its, cell_it_end, 
+                                                  array_schema);
+  } 
+
+  // Clean up
+  for(unsigned int i=0; i<ad.size(); ++i) 
+    delete [] tile_its[i];
+  delete [] tile_its;
+  delete [] tile_it_end;
+  for(unsigned int i=0; i<ad.size(); ++i) 
+    delete [] cell_its[i];
+  delete [] cell_its;
+  delete [] cell_it_end;
 }
 
 void QueryProcessor::filter(const StorageManager::ArrayDescriptor* ad,
@@ -183,6 +257,21 @@ void QueryProcessor::advance_cell_its(
     int64_t step) const {
   for(unsigned int i=0; i<attribute_ids.size(); i++) 
     cell_its[attribute_ids[i]] += step;
+}
+
+inline
+void QueryProcessor::advance_cell_tile_its(
+    unsigned int attribute_num,
+    Tile::const_iterator* cell_its,
+    Tile::const_iterator& cell_it_end,
+    StorageManager::const_iterator* tile_its,
+    StorageManager::const_iterator& tile_it_end) const {
+  advance_cell_its(attribute_num, cell_its);
+  if(cell_its[attribute_num] == cell_it_end) {
+    advance_tile_its(attribute_num, tile_its);
+    if(tile_its[attribute_num] != tile_it_end)
+      initialize_cell_its(tile_its, attribute_num, cell_its, cell_it_end);
+  }
 }
 
 inline
@@ -615,6 +704,66 @@ void QueryProcessor::filter_regular(
   delete [] cell_its;
 }
 
+int QueryProcessor::get_next_fragment_index(
+      StorageManager::const_iterator** tile_its,
+      StorageManager::const_iterator* tile_it_end,
+      unsigned int fragment_num,
+      Tile::const_iterator** cell_its,
+      Tile::const_iterator* cell_it_end,
+      const ArraySchema& array_schema) const {
+  // For easy reference
+  unsigned int attribute_num = array_schema.attribute_num();
+
+  // Holds the (potentially multiple) indexes of the candidate fragments
+  // from which we will get the next cell for consolidation. Note though 
+  // that only the largest (last) index will be returned, which corresponds
+  // to the latest update.
+  std::vector<int> next_fragment_index;
+  next_fragment_index.reserve(fragment_num);
+  // Loop for as long as there is a NULL cell (i.e., a deletion)
+  bool null;
+  do {
+    next_fragment_index.clear();
+
+    for(unsigned int i=0; i<fragment_num; ++i) {
+      if(cell_its[i][attribute_num] != cell_it_end[i]) {
+        if(next_fragment_index.size() == 0 || cell_its[i][attribute_num] == 
+           cell_its[next_fragment_index[0]][attribute_num]) {
+          next_fragment_index.push_back(i);
+        } else if(array_schema.precedes(
+                      cell_its[i][attribute_num], 
+                      cell_its[next_fragment_index[0]][attribute_num])) {
+          next_fragment_index.clear();
+          next_fragment_index.push_back(i);
+        } 
+      }
+    }
+
+    if(next_fragment_index.size() == 0)
+      break;
+
+    int num_of_iterators_to_advance = next_fragment_index.size()-1; 
+    null = is_null(cell_its[next_fragment_index.back()], attribute_num);
+    if(null)
+      ++num_of_iterators_to_advance;
+
+    // Advance cell (and potentially tile) iterators.
+    // If the cell is deleted, all iterators are advanced, otherwise all except
+    // for the last one.
+    for(int i=0; i<num_of_iterators_to_advance; ++i)
+      advance_cell_tile_its(attribute_num, 
+                            cell_its[next_fragment_index[i]],
+                            cell_it_end[next_fragment_index[i]],
+                            tile_its[next_fragment_index[i]],
+                            tile_it_end[next_fragment_index[i]]);
+  } while(null);
+
+  if(next_fragment_index.size() == 0)
+    return -1;
+  else
+    return next_fragment_index.back();
+}
+
 inline
 void QueryProcessor::get_tiles(
     const StorageManager::ArrayDescriptor* ad, 
@@ -625,6 +774,20 @@ void QueryProcessor::get_tiles(
   // Get attribute tiles
   for(unsigned int i=0; i<=attribute_num; i++) 
    tiles[i] = storage_manager_.get_tile(ad, i, tile_id);
+}
+
+bool QueryProcessor::is_null(const Tile::const_iterator* cell_its,
+                           unsigned int attribute_num) const {
+  bool null = true;
+
+  for(unsigned int i=0; i<attribute_num; ++i) {
+    if(!cell_its[i].is_null()) {
+      null = false;
+      break;
+    }
+  }
+
+  return null;
 }
 
 bool QueryProcessor::path_exists(const std::string& path) const {

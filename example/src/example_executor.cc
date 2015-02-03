@@ -163,12 +163,12 @@ int main() {
     std::cout << "Updates...\n";
     executor.update("~/stavrospapadopoulos/TileDB/data/test_A_1.csv", 
                     array_schema_REG_A);
-    executor.update("~/stavrospapadopoulos/TileDB/data/test_A_2.csv", 
-                    array_schema_REG_A);
+//    executor.update("~/stavrospapadopoulos/TileDB/data/test_A_2.csv", 
+//                    array_schema_REG_A);
     executor.update("~/stavrospapadopoulos/TileDB/data/test_A_1.csv", 
                     array_schema_IREG_A);
-    executor.update("~/stavrospapadopoulos/TileDB/data/test_A_2.csv", 
-                    array_schema_IREG_A);
+//    executor.update("~/stavrospapadopoulos/TileDB/data/test_A_2.csv", 
+//                    array_schema_IREG_A);
 
     // ------------- //
     // Export to CSV //

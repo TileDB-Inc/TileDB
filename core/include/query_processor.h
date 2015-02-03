@@ -69,7 +69,7 @@ class QueryProcessor {
   // CONSTRUCTORS AND DESTRUCTORS
   /** 
    * Simple constructor. The workspace is where the query processor will create 
-   * its data. The storage manager is the module the query processor interefaces 
+   * its data. The storage manager is the module the query processor interefaces
    * with.
    */
   QueryProcessor(const std::string& workspace, StorageManager& storage_manager);
@@ -81,15 +81,25 @@ class QueryProcessor {
    * coordinates are written first, and then the attribute values,
    * following the order as defined in the schema of the array.
    */
-  void export_to_CSV(const StorageManager::ArrayDescriptor* array_descriptor,
+  void export_to_CSV(const StorageManager::ArrayDescriptor* ad,
                      const std::string& filename) const;
+  /** 
+   * Exports an array to a CSV file. Each line in the CSV file represents
+   * a logical cell comprised of coordinates and attribute values. The 
+   * coordinates are written first, and then the attribute values,
+   * following the order as defined in the schema of the array. This function
+   * operates on multiple array fragments.
+   */
+  void export_to_CSV(std::vector<const StorageManager::ArrayDescriptor*>& ad,
+                     const std::string& filename) const;
+
   /** 
    * A filter query creates a new array from the input array descriptor, 
    * containing only the cells whose attribute values satisfy the input 
    * expression (given in the form of an expression tree). 
    * The new array will have the input result name.
    */
-  void filter(const StorageManager::ArrayDescriptor* array_descriptor,
+  void filter(const StorageManager::ArrayDescriptor* ad,
               const ExpressionTree* expression,
               const std::string& result_array_name) const;
   /** 
@@ -148,6 +158,17 @@ class QueryProcessor {
   void advance_cell_its(Tile::const_iterator* cell_its,
                         const std::vector<unsigned int>& attribute_ids,
                         int64_t step) const; 
+  /** 
+   * Advances all the cell iterators by 1. If the cell iterators are equal to
+   * the end iterator, the tile iterators are advanced. If the tile iterators
+   * are not equal to the end tile iterator, then new cell iterators are
+   * initialized.
+   */
+  void advance_cell_tile_its(unsigned int attribute_num,
+                             Tile::const_iterator* cell_its, 
+                             Tile::const_iterator& cell_it_end,
+                             StorageManager::const_iterator* tile_its,
+                             StorageManager::const_iterator& tile_it_end) const;
   /** Advances all the tile iterators by 1. */
   void advance_tile_its(unsigned int attribute_num,
                         StorageManager::const_iterator* tile_its) const; 
@@ -247,6 +268,17 @@ class QueryProcessor {
                       const ExpressionTree* expression,
                       const std::string& result_array_name) const;
   /** 
+   * Returns the index of the fragment from which we will get the next
+   * cell.
+   */
+  int get_next_fragment_index(StorageManager::const_iterator** tile_its,
+                              StorageManager::const_iterator* tile_it_end,
+                              unsigned int fragment_num,
+                              Tile::const_iterator** cell_its,
+                              Tile::const_iterator* cell_it_end,
+                              const ArraySchema& array_schema) const;
+
+  /** 
    * Gets from the storage manager all the (attribute and coordinate) tiles
    * of the input array having the input id. 
    */
@@ -293,6 +325,12 @@ class QueryProcessor {
                            StorageManager::const_iterator* tile_its,
                            StorageManager::const_iterator& tile_it_end,
                            unsigned int end_attribute_id) const;
+  /**
+   * Returns true if the cell represents a deletion, i.e., when all its
+   * attribute values are NULL.
+   */
+  bool is_null(const Tile::const_iterator* cell_its,
+               unsigned int attribute_num) const;
   /** Implements QueryProcessor::join for arrays with irregular tiles. */
   void join_irregular(const StorageManager::ArrayDescriptor* ad_A,
                       const StorageManager::ArrayDescriptor* ad_B,

@@ -105,10 +105,14 @@ void Executor::export_to_CSV(const std::string& filename,
                                                 + fragment_suffixes[0]);
     query_processor_->export_to_CSV(ad, filename);
     storage_manager_->close_array(ad);
-  } else { // Mulutple fragments TODO
-    throw ExecutorException("[Executor] Cannot export array: "
-                            "query over multiple array fragments currently not "
-                            "supported.");
+  } else { // Mulutple fragments
+    std::vector<const StorageManager::ArrayDescriptor*> ad;
+    for(unsigned int i=0; i<fragment_suffixes.size(); ++i) 
+      ad.push_back(storage_manager_->open_array(array_name + std::string("_") +
+                                                fragment_suffixes[i]));
+    query_processor_->export_to_CSV(ad, filename);
+    for(unsigned int i=0; i<fragment_suffixes.size(); ++i) 
+      storage_manager_->close_array(ad[i]);
   }
 }
 

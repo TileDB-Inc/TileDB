@@ -293,10 +293,11 @@ class Consolidator {
                            const FragmentTree& fragment_tree) const;
   /** 
    * Returns the index of the fragment from which we will get the next
-   * cell and append it to the consolidation result.
+   * cell.
    */
   int get_next_fragment_index(StorageManager::const_iterator** tile_its,
                               StorageManager::const_iterator* tile_it_end,
+                              unsigned int fragment_num,
                               Tile::const_iterator** cell_its,
                               Tile::const_iterator* cell_it_end,
                               const ArraySchema& array_schema) const;
