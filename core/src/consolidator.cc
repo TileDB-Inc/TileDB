@@ -149,6 +149,11 @@ void Consolidator::close_array(const ArrayDescriptor* ad) {
   delete ad;
 }
 
+void Consolidator::delete_array(const std::string& array_name) const {
+  std::string filename = workspace_ + "/" + array_name + CN_SUFFIX;
+  remove(filename.c_str());
+}
+
 std::vector<std::string> Consolidator::get_all_fragment_suffixes(
     const ArrayDescriptor* ad) const {
   // For easy reference
@@ -172,6 +177,18 @@ std::vector<std::string> Consolidator::get_all_fragment_suffixes(
   }
 
   return fragment_suffixes;
+}
+
+std::string Consolidator::get_next_fragment_name(
+    const ArrayDescriptor* ad) const {
+  // For easy reference
+  std::string array_name = ad->array_info_->array_schema_.array_name();
+
+  uint64_t n = get_next_fragment_seq(ad);
+  std::stringstream fragment_schema_name;
+  fragment_schema_name << array_name << "_" << n << "_" << n;
+
+  return  fragment_schema_name.str();
 }
 
 uint64_t Consolidator::get_next_fragment_seq(
@@ -244,6 +261,20 @@ void Consolidator::append_cell(const Tile::const_iterator* cell_its,
                                unsigned int attribute_num) const {
   for(unsigned int i=0; i<=attribute_num; i++) 
     *tiles[i] << cell_its[i]; 
+}
+
+bool Consolidator::is_null(const Tile::const_iterator* cell_its,
+                           unsigned int attribute_num) const {
+  bool null = true;
+
+  for(unsigned int i=0; i<attribute_num; ++i) {
+    if(!cell_its[i].is_null()) {
+      null = false;
+      break;
+    }
+  }
+
+  return null;
 }
 
 void Consolidator::consolidate_irregular(
@@ -529,32 +560,43 @@ int Consolidator::get_next_fragment_index(
   // to the latest update.
   std::vector<int> next_fragment_index;
   next_fragment_index.reserve(fragment_num);
+  // Loop for as long as there is a NULL cell (i.e., a deletion)
+  bool null;
+  do {
+    next_fragment_index.clear();
 
-  for(unsigned int i=0; i<fragment_num; ++i) {
-    if(cell_its[i][attribute_num] != cell_it_end[i]) {
-      if(next_fragment_index.size() == 0 || cell_its[i][attribute_num] == 
-         cell_its[next_fragment_index[0]][attribute_num]) {
-        next_fragment_index.push_back(i);
-      } else if(array_schema.precedes(
-                    cell_its[i][attribute_num], 
-                    cell_its[next_fragment_index[0]][attribute_num])) {
-        next_fragment_index.clear();
-        next_fragment_index.push_back(i);
-      } 
+    for(unsigned int i=0; i<fragment_num; ++i) {
+      if(cell_its[i][attribute_num] != cell_it_end[i]) {
+        if(next_fragment_index.size() == 0 || cell_its[i][attribute_num] == 
+           cell_its[next_fragment_index[0]][attribute_num]) {
+          next_fragment_index.push_back(i);
+        } else if(array_schema.precedes(
+                      cell_its[i][attribute_num], 
+                      cell_its[next_fragment_index[0]][attribute_num])) {
+          next_fragment_index.clear();
+          next_fragment_index.push_back(i);
+        } 
+      }
     }
-  }
 
-  // TODO: Note: Take into account the NULL values in the cells, i.e., deletions
-  // TODO: If the last one is NULL, advance all of them and restart/loop
+    if(next_fragment_index.size() == 0)
+      break;
 
-  // Advance cell (and potentially tile) iterators, except for the last one
-  int next_fragment_index_size = next_fragment_index.size();
-  for(int i=0; i<next_fragment_index_size-1; ++i)
-    advance_cell_tile_its(attribute_num, 
-                          cell_its[next_fragment_index[i]],
-                          cell_it_end[next_fragment_index[i]],
-                          tile_its[next_fragment_index[i]],
-                          tile_it_end[next_fragment_index[i]]);
+    int num_of_iterators_to_advance = next_fragment_index.size()-1; 
+    null = is_null(cell_its[next_fragment_index.back()], attribute_num);
+    if(null)
+      ++num_of_iterators_to_advance;
+
+    // Advance cell (and potentially tile) iterators.
+    // If the cell is deleted, all iterators are advanced, otherwise all except
+    // for the last one.
+    for(int i=0; i<num_of_iterators_to_advance; ++i)
+      advance_cell_tile_its(attribute_num, 
+                            cell_its[next_fragment_index[i]],
+                            cell_it_end[next_fragment_index[i]],
+                            tile_its[next_fragment_index[i]],
+                            tile_it_end[next_fragment_index[i]]);
+  } while(null);
 
   if(next_fragment_index.size() == 0)
     return -1;

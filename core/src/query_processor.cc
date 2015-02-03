@@ -329,8 +329,8 @@ QueryProcessor::compute_sorted_kNN_coords(
     for(uint64_t pos=0; cell_it != cell_it_end; ++cell_it, ++pos) {
       // Find new kNNs
       coord = *cell_it;
-      if(kNN_coords.size() < k || 
-         (dist = point_to_point_distance(q, coord)) < kNN_coords.top().first) {
+      dist = point_to_point_distance(q, coord);
+      if(kNN_coords.size() < k || dist < kNN_coords.top().first) {
         kNN_coords.push(DistRankPosCoord(dist, 
                                          RankPosCoord(rank, 
                                                       PosCoord(pos, coord))));
@@ -646,7 +646,7 @@ double QueryProcessor::point_to_mbr_distance(
     dist += dq * dq; 
   }
 
-  return sqrt(dist);
+  return dist;
 }
 
 double QueryProcessor::point_to_point_distance(
@@ -661,7 +661,7 @@ double QueryProcessor::point_to_point_distance(
     dist += diff * diff; 
   }
 
-  return sqrt(dist);
+  return dist;
 }
 
 inline

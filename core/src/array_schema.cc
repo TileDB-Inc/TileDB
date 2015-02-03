@@ -130,7 +130,7 @@ unsigned int ArraySchema::attribute_id(
     if(attribute_names_[i] == attribute_name)
       return i;
   }
-  
+
   assert(0); // Attribute name not found
 }
 

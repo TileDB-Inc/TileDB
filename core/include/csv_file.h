@@ -40,15 +40,30 @@
 #include <vector>
 #include <inttypes.h>
 #include <tile.h>
+#include <limits>
 
 /** The maximum digits of a number appended to a CSV line. */
 #define CSV_MAX_DIGITS 50
 /** 
  * The segment size determines the amount of data that can be exchanged
- * between the CSV file (in hard disk) and the main memory in one I/O operation. 
+ * between the CSV file (in hard disk) and the main memory in one I/O operation.
  * Unless otherwise defined, this default size is used. 
  */
 #define CSV_SEGMENT_SIZE 10000000
+/** Missing char. */
+#define CSV_NULL_CHAR '$'
+/** Missing int. */
+#define CSV_NULL_INT std::numeric_limits<int>::max()
+/** Missing int64_t. */
+#define CSV_NULL_INT64_T std::numeric_limits<int64_t>::max()
+/** Missing uint64_t. */
+#define CSV_NULL_UINT64_T std::numeric_limits<uint64_t>::max()
+/** Missing float. */
+#define CSV_NULL_FLOAT std::numeric_limits<float>::max()
+/** Missing double. */
+#define CSV_NULL_DOUBLE std::numeric_limits<double>::max()
+/** The symbol indicating a missing (NULL) value. */
+#define CSV_NULL_VALUE "$"
 
 class Tile;
 
@@ -56,7 +71,7 @@ class Tile;
  * This class implements a CSV line, which is comprised of text segments
  * (values) separated by a comma character (','). A CSV line is the atomic
  * unit of storage in a CSVFile object. Note that a line that starts with
- * '#' is a comment line. 
+ * '#' is a comment line. A CSV_NULL_VALUE indicates a mising (NULL) value. 
  */
 class CSVLine {
  public:
@@ -86,6 +101,11 @@ class CSVLine {
    * and resets CSVLine::pos_). 
    */
   void clear();
+
+  // MISC
+  /** Returns true if the input represents a NULL value. */
+  template<class T>
+  static bool is_null(T v);
 
   // OPERATORS
   /** Appends a string value to the CSV line, which is properly tokenized. */

@@ -122,6 +122,16 @@ $(EXAMPLE_BIN_DIR)/example_query_processor: $(EXAMPLE_OBJ_DIR)/example_query_pro
 	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
 	$(CXX) -fopenmp $(INCLUDE_PATHS) -o $@ $^
 
+$(EXAMPLE_BIN_DIR)/example_consolidator: $(EXAMPLE_OBJ_DIR)/example_consolidator.o \
+ $(CORE_OBJ_DIR)/query_processor.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
+ $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/loader.o $(CORE_OBJ_DIR)/storage_manager.o   \
+ $(CORE_OBJ_DIR)/hilbert_curve.o $(CORE_OBJ_DIR)/expression_tree.o \
+ $(CORE_OBJ_DIR)/consolidator.o
+
+	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
+	$(CXX) -fopenmp $(INCLUDE_PATHS) -o $@ $^
+
+
 $(EXAMPLE_BIN_DIR)/example_storage_manager: $(EXAMPLE_OBJ_DIR)/example_storage_manager.o \
  $(CORE_OBJ_DIR)/storage_manager.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
  $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/hilbert_curve.o

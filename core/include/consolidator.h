@@ -96,8 +96,8 @@
  * may appear in multiple fragments. In that case, the cell of the latest
  * (i.e., most recent) fragment will be appended to the consolidated 
  * fragment. Moreover, a deletion is represented by a cell that has valid
- * coordinate values, but all its attribute values have a special NULL
- * value.
+ * coordinate values, but all its attribute values have special NULL
+ * values.
  *
  * A final remark concerns the names of the fragments. There is a sequence
  * of increasing fragment numbers (starting from 0), which indicates when an
@@ -215,9 +215,13 @@ class Consolidator {
   bool array_exists(const std::string& array_name) const;
   /** It deletes the book-keeping consolidation info of an array from memory. */
   void close_array(const ArrayDescriptor* ad);
+  /** Deletes the fragment book-keeping info of an array. */
+  void delete_array(const std::string& array_name) const;
   /** Returns the suffixes corresponding to all existing array fragments. */
   std::vector<std::string> get_all_fragment_suffixes(
       const ArrayDescriptor* ad) const;
+  /** Returns the next fragment name (which appends the proper suffix). */
+  std::string get_next_fragment_name(const ArrayDescriptor* ad) const;
   /** Returns the next fragment sequence number. */
   uint64_t get_next_fragment_seq(const ArrayDescriptor* ad) const;
   /** It loads the book-keeping consolidation info for an array into memory. */
@@ -262,6 +266,12 @@ class Consolidator {
   void append_cell(const Tile::const_iterator* cell_its,
                    Tile** tiles,
                    unsigned int attribute_num) const;
+  /**
+   * Returns true if the cell represents a deletion, i.e., when all its
+   * attribute values are NULL.
+   */
+  bool is_null(const Tile::const_iterator* cell_its,
+               unsigned int attribute_num) const;
   /** 
    * Consolidates the input fragments (described by a vector of suffixes) for
    * the case of irregular tiles. 

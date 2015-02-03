@@ -55,6 +55,8 @@ class Executor {
   ~Executor();
 
   // QUERIES
+  /** Deletes an array. */
+  void delete_array(const ArraySchema& array_schema) const;
   /** 
    * Exports an array to a CSV file. Each line in the CSV file represents
    * a logical cell comprised of coordinates and attribute values. The 
@@ -63,11 +65,49 @@ class Executor {
    */
   void export_to_CSV(const std::string& filename, 
                      const ArraySchema& array_schema) const;
+  /** 
+   * A filter query creates a new array from the input array, 
+   * containing only the cells whose attribute values satisfy the input 
+   * expression (given in the form of an expression tree). 
+   * The new array will have the input result name.
+   */
+  void filter(const ArraySchema& array_schema,
+              const ExpressionTree* expression,
+              const std::string& result_array_name) const;
+  /** 
+   * Joins the two input arrays (say, A and B). The result contains a cell only
+   * if both the corresponding cells in A and B are non-empty. The input arrays
+   * must be join-compatible (see ArraySchema::join_compatible). Moreover,
+   * see ArraySchema::create_join_result_schema to see the schema of the
+   * output array.
+   */
+  void join(const ArraySchema& array_schema_A,
+            const ArraySchema& array_schema_B,
+            const std::string& result_array_name) const;
   /** Loads a CSV file into an array with the input schema. */
   void load(const std::string& filename, const ArraySchema& array_schema) const;
+  /** 
+   * Returns the k nearest neighbors from query point q. The results (along with
+   * all their attribute values) are stored in a new array. The distance metric
+   * used to calculate proximity is the Euclidean distance.
+   */
+  void nearest_neighbors(const ArraySchema& array_schema,
+                         const std::vector<double>& q,
+                         uint64_t k,
+                         const std::string& result_array_name) const;
+  /** 
+   * A subarray query creates a new array from the input array, 
+   * containing only the cells whose coordinates fall into the input range. 
+   * The new array will have the input result name.
+   */
+  void subarray(const ArraySchema& array_schema,
+                const Tile::Range& range,
+                const std::string& result_array_name) const;
   /** Updates an array with the data in the input CSV file. */
   void update(const std::string& filename, const 
               ArraySchema& array_schema) const;
+
+
 
  private:
   // PRIVATE ATTRIBUTES
@@ -85,10 +125,15 @@ class Executor {
   // PRIVATE METHODS
   /** Creates the workspace folder. */
   void create_workspace() const;
+  /** Returns the fragments suffixes of an array. */
+  std::vector<std::string> get_fragment_suffixes(
+      const ArraySchema& array_schema) const;
   /** Returns true if the input path is an existing directory. */
   bool path_exists(const std::string& path) const;
   /** Simply sets the workspace. */
   void set_workspace(const std::string& path);
+  /** Updates the fragment information (adding one fragment) of an array. */
+  void update_fragment_info(const ArraySchema& array_schema) const;
 };
 
 /** This exception is thrown by Executor. */

@@ -40,6 +40,20 @@
 #include <vector>
 #include <typeinfo>
 #include <csv_file.h>
+#include <limits>
+
+/** Missing char. */
+#define TL_NULL_CHAR '$'
+/** Missing int. */
+#define TL_NULL_INT std::numeric_limits<int>::max()
+/** Missing int64_t. */
+#define TL_NULL_INT64_T std::numeric_limits<int64_t>::max()
+/** Missing uint64_t. */
+#define TL_NULL_UINT64_T std::numeric_limits<uint64_t>::max()
+/** Missing float. */
+#define TL_NULL_FLOAT std::numeric_limits<float>::max()
+/** Missing double. */
+#define TL_NULL_DOUBLE std::numeric_limits<double>::max()
 
 class CSVLine;
 
@@ -197,6 +211,10 @@ class Tile {
     /** Returns the tile the cell iterator belongs to. */
     const Tile* tile() const { return tile_; }
 
+    // MISC
+    /** Returns true if the iterator points to a NULL value. */
+    bool is_null() const;
+
     // OPERATORS
     /** Assignment operator. */
     void operator=(const const_iterator& rhs);
@@ -290,7 +308,6 @@ class Tile {
   /** Appends an attribute value retrieved from a cell iterator. */
   template<class T>
   void append_attribute_value_from_cell_it(const Tile::const_iterator& cell_it);
-
   /** 
    * Template-based dispatch of Tile::operator<< to virtual function dispatch.
    * This allows Tile::operator<< to essentially call
@@ -435,6 +452,9 @@ class Tile {
    * Inapplicable to AttributeTile objects.
    */
   virtual std::vector<double> cell_v_double(uint64_t pos_) const =0;
+  /** Sets the input value to null. */
+  template<class T>
+  static void nullify(T& value);
 };
 
 /**

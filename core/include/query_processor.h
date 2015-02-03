@@ -367,10 +367,10 @@ class QueryProcessor {
                const ArraySchema& array_schema) const;
   /** Returns true if the input path is an existing directory. */
   bool path_exists(const std::string& path) const;
-  /** Returns the Euclidean distance between a point q and an MBR. */
+  /** Returns the squared Euclidean distance between a point q and an MBR. */
   double point_to_mbr_distance(const std::vector<double>& q,
                           const std::vector<double>& mbr) const;
-  /** Returns the Euclidean distance between points q and p. */
+  /** Returns the squared Euclidean distance between points q and p. */
   double point_to_point_distance(const std::vector<double>& q,
                                  const std::vector<double>& p) const;
   /** Simply sets the workspace. */

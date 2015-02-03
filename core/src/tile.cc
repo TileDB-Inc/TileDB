@@ -194,6 +194,28 @@ Tile::const_iterator::const_iterator(const Tile* tile, uint64_t pos)
     : tile_(tile), pos_(pos) {
 }
 
+bool Tile::const_iterator::is_null() const {
+  // Applies only to attribute values
+  assert(tile_->tile_type() == ATTRIBUTE);
+
+  if(*tile_->cell_type() == typeid(char)) { 
+    char v = *(*this);
+    return (v  == TL_NULL_CHAR);
+  } else if(*tile_->cell_type() == typeid(int)) {
+    int v = *(*this);
+    return (v  == TL_NULL_INT);
+  } else if(*tile_->cell_type() == typeid(int64_t)) {
+    int64_t v = *(*this);
+    return (v  == TL_NULL_INT64_T);
+  } else if(*tile_->cell_type() == typeid(float)) {
+    float v = *(*this);
+    return (v  == TL_NULL_FLOAT);
+  } else if(*tile_->cell_type() == typeid(double)) {
+    double v = *(*this);
+    return (v  == TL_NULL_DOUBLE);
+  }
+}
+
 void Tile::const_iterator::operator=(const const_iterator& rhs) {
   pos_ = rhs.pos_;
   tile_ = rhs.tile_;
@@ -320,6 +342,9 @@ bool Tile::append_attribute_value_from_csv_line(CSVLine& csv_line) {
   if(!(csv_line >> v)) 
     return false;
 
+  if(CSVLine::is_null(v))
+    Tile::nullify(v);
+
   append_cell(v);
 
   return true;
@@ -361,6 +386,31 @@ void Tile::append_coordinates_from_cell_it(
 
   std::vector<T> coordinates = *cell_it; 
   *this << coordinates;
+}
+
+template<>
+void Tile::nullify(char& v) {
+  v = TL_NULL_CHAR;
+}
+
+template<>
+void Tile::nullify(int& v) {
+  v = TL_NULL_INT;
+}
+
+template<>
+void Tile::nullify(int64_t& v) {
+  v = TL_NULL_INT64_T;
+}
+
+template<>
+void Tile::nullify(float& v) {
+  v = TL_NULL_FLOAT;
+}
+
+template<>
+void Tile::nullify(double& v) {
+  v = TL_NULL_DOUBLE;
 }
 
 /* ------------- AttributeTile functions ----------- */
