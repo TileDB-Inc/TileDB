@@ -53,6 +53,8 @@ class QueryProcessor {
       BoundingCoordinatesPair;
   /** Mnemonic: (dist, rank). */
   typedef std::pair<double, uint64_t> DistRank;
+  /** A vector of attribute ids. */
+  typedef std::vector<unsigned int> AttributeIds;
   /** 
    * A hyper-rectangle in the logical space, including all the coordinates
    * of a tile. It is a list of low/high values across each dimension, i.e.,
@@ -90,9 +92,9 @@ class QueryProcessor {
    * following the order as defined in the schema of the array. This function
    * operates on multiple array fragments.
    */
-  void export_to_CSV(std::vector<const StorageManager::ArrayDescriptor*>& ad,
-                     const std::string& filename) const;
-
+  void export_to_CSV(
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const std::string& filename) const;
   /** 
    * A filter query creates a new array from the input array descriptor, 
    * containing only the cells whose attribute values satisfy the input 
@@ -100,8 +102,19 @@ class QueryProcessor {
    * The new array will have the input result name.
    */
   void filter(const StorageManager::ArrayDescriptor* ad,
-              const ExpressionTree* expression,
-              const std::string& result_array_name) const;
+      const ExpressionTree* expression,
+      const std::string& result_array_name) const;
+  /** 
+   * A filter query creates a new array from the input array descriptor, 
+   * containing only the cells whose attribute values satisfy the input 
+   * expression (given in the form of an expression tree). 
+   * The new array will have the input result name. This function
+   * operates on multiple array fragments.
+   */
+  void filter(
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const ExpressionTree* expression,
+      const std::string& result_array_name) const;
   /** 
    * Joins the two input arrays (say, A and B). The result contains a cell only
    * if both the corresponding cells in A and B are non-empty. The input arrays
@@ -169,6 +182,33 @@ class QueryProcessor {
                              Tile::const_iterator& cell_it_end,
                              StorageManager::const_iterator* tile_its,
                              StorageManager::const_iterator& tile_it_end) const;
+  /** 
+   * Advances the cell iterators by 1, focusing only on those described by
+   * attribute_ids, plus the extra coordinates attribute. If the cell iterators
+   * are equal to the end iterator, the corresponding tile iterators are
+   * advanced. If the tile iterators are not equal to the end tile iterator,
+   * then new cell iterators are initialized. The last three arguments are
+   * updated based on what happens to the iterators:
+   *
+   * If tile iterators are advanced, skipped_tiles is incremented, skipped_cells
+   * is set to 0, and non_cell_iterators_initialized is set to false. This is
+   * because we changed tile in a subset of attributes. The above three 
+   * changes are essential so that we keep track how to advance the cell and
+   * tile iterators of the skipped attributes when the time comes to synchronize
+   * them with the tile and cell iterators advanced in this function.
+   *
+   * If the tile iterators are not advanced, we simply increment skipped_cells.
+   */
+  void advance_cell_tile_its(
+      unsigned int attribute_num,
+      Tile::const_iterator* cell_its, 
+      Tile::const_iterator& cell_it_end,
+      StorageManager::const_iterator* tile_its,
+      StorageManager::const_iterator& tile_it_end,
+      const std::vector<unsigned int>& attribute_ids, 
+      int64_t& skipped_tiles,
+      uint64_t& skipped_cells,
+      bool& non_cell_its_initialized) const;
   /** Advances all the tile iterators by 1. */
   void advance_tile_its(unsigned int attribute_num,
                         StorageManager::const_iterator* tile_its) const; 
@@ -263,13 +303,30 @@ class QueryProcessor {
                         const std::string& result_array_name) const;
   /** 
    * Implementation of QueryProcessor::filter for the case of regular tiles. 
+   * This function operators on multiple array fragments.
+   */
+  void filter_regular(
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const ExpressionTree* expression,
+      const std::string& result_array_name) const;
+  /** 
+   * Implementation of QueryProcessor::filter for the case of irregular tiles.
+   * This function operators on multiple array fragments.
+   */
+  void filter_irregular(
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const ExpressionTree* expression,
+      const std::string& result_array_name) const;
+  /** 
+   * Implementation of QueryProcessor::filter for the case of regular tiles. 
    */
   void filter_regular(const StorageManager::ArrayDescriptor* array_descriptor,
                       const ExpressionTree* expression,
                       const std::string& result_array_name) const;
+
   /** 
    * Returns the index of the fragment from which we will get the next
-   * cell.
+   * cell, based on the global order.
    */
   int get_next_fragment_index(StorageManager::const_iterator** tile_its,
                               StorageManager::const_iterator* tile_it_end,
@@ -277,7 +334,29 @@ class QueryProcessor {
                               Tile::const_iterator** cell_its,
                               Tile::const_iterator* cell_it_end,
                               const ArraySchema& array_schema) const;
-
+  /** 
+   * Returns the index of the fragment from which we will get the next cell, 
+   * based on the global order. During retrieving the next cell, if it needs to
+   * advance cell and tile iterators, it only focuses on those described in
+   * attribute_ids, plus the extra coordinates attribute. 
+   *
+   * Since this function may advance cell tile iterators, we may need to update
+   * some information (namely, skipped_tiles, skipped_cells, and
+   * non_cell_its_initialized), so that we know how to advance the cell and 
+   * tile iterators not being advanced by this function later in another 
+   * function (so that the cells across all attributes are synchronized).
+   */
+  int get_next_fragment_index(
+      StorageManager::const_iterator** tile_its,
+      StorageManager::const_iterator* tile_it_end,
+      unsigned int fragment_num,
+      Tile::const_iterator** cell_its,
+      Tile::const_iterator* cell_it_end,
+      const std::vector<unsigned int>& attribute_ids,
+      int64_t* skipped_tiles,
+      uint64_t* skipped_cells,
+      bool* non_cell_its_initialized,
+      const ArraySchema& array_schema) const;
   /** 
    * Gets from the storage manager all the (attribute and coordinate) tiles
    * of the input array having the input id. 
@@ -298,13 +377,13 @@ class QueryProcessor {
                            unsigned int attribute_num,
                            Tile::const_iterator* cell_its, 
                            Tile::const_iterator& cell_it_end) const; 
-  /** Initializes cell iterators. */
+  /** Initializes the cell iterators described in attribute_ids. */
   void initialize_cell_its(
       const StorageManager::const_iterator* tile_its,
       Tile::const_iterator* cell_its, 
       Tile::const_iterator& cell_it_end,
       const std::vector<unsigned int>& attribute_ids) const;
-  /** Initializes cell iterators. */
+  /** Initializes the cell iterators described in attribute_ids. */
   void initialize_cell_its(
       const StorageManager::const_iterator* tile_its,
       Tile::const_iterator* cell_its, 

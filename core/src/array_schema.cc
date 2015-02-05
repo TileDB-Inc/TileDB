@@ -794,6 +794,16 @@ bool ArraySchema::succeeds(const Tile::const_iterator& cell_it_A,
   assert(tile_A->dim_num() == dim_num_);
   assert(tile_B->dim_num() == dim_num_);
 
+  // For regular tiles only
+  if(has_regular_tiles()) {
+    if(tile_A->tile_id() < tile_B->tile_id())
+      return false;
+     else if(tile_A->tile_id() > tile_B->tile_id())
+       return true;
+     // else, the tiles have the same id and the function must proceed below
+     // and check the actual coordinates
+  }
+
   if(*(types_[attribute_num_]) == typeid(int)) {
     const std::vector<int>& coord_A = *cell_it_A;
     const std::vector<int>& coord_B = *cell_it_B;
@@ -935,6 +945,36 @@ void ArraySchema::compute_tile_id_offsets() {
   // For column major only 
   std::reverse(tile_id_offsets_column_major_.begin(), 
                tile_id_offsets_column_major_.end());
+}
+
+std::pair<ArraySchema::AttributeIds, ArraySchema::AttributeIds>
+ArraySchema::get_attribute_ids(
+    const std::set<std::string>& attribute_names) const {
+  // Get the ids of the attribute names corresponding to the input names
+  std::vector<unsigned int> attribute_ids;
+  std::set<std::string>::const_iterator attr_it = 
+      attribute_names.begin();
+  std::set<std::string>::const_iterator attr_it_end = 
+      attribute_names.end();
+  for(; attr_it != attr_it_end; ++attr_it) 
+    attribute_ids.push_back(attribute_id(*attr_it));
+  std::sort(attribute_ids.begin(), attribute_ids.end());
+  unsigned int input_attribute_num = attribute_ids.size();
+
+  // Find the ids of the attributes NOT corresponding to the input names
+  std::vector<unsigned int> non_attribute_ids;
+  for(unsigned int j=0; j<attribute_ids[0]; j++)
+    non_attribute_ids.push_back(j);
+  for(unsigned int i=1; i<input_attribute_num; ++i) {
+    for(unsigned int j=attribute_ids[i-1]+1; j<attribute_ids[i]; ++j)
+      non_attribute_ids.push_back(j);
+  }
+  for(unsigned int j=attribute_ids[input_attribute_num-1] + 1; 
+      j<=attribute_num_; ++j)
+    non_attribute_ids.push_back(j);
+
+  return std::pair<AttributeIds, AttributeIds>(attribute_ids, 
+                                               non_attribute_ids);
 }
 
 // Explicit template instantiations

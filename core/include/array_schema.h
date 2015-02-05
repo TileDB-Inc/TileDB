@@ -40,6 +40,7 @@
 #define AS_COORDINATE_TILE_NAME "__coords"
 
 #include <vector>
+#include <set>
 #include <string>
 #include <inttypes.h>
 #include <typeinfo>
@@ -77,6 +78,8 @@ class ArraySchema {
    * a particular order, then the order is set to NONE.
    */
   enum Order {COLUMN_MAJOR, HILBERT, ROW_MAJOR, NONE};
+  /** A vector of attribute ids. */
+  typedef std::vector<unsigned int> AttributeIds;
 
   // CONSTRUCTORS
   /** Empty constructor. */
@@ -180,6 +183,13 @@ class ArraySchema {
       const ArraySchema& array_schema_A, 
       const ArraySchema& array_schema_B,
       const std::string& result_array_name);
+  /** 
+   * Returns a pair of vectors of attribute ids. The first contains the 
+   * attribute ids corresponding to the input names. The second includes the 
+   * attribute ids that do NOT correspond to the input names.
+   */
+  std::pair<AttributeIds, AttributeIds> get_attribute_ids(
+      const std::set<std::string>& expr_attribute_names) const;
   /** 
    * Returns true if the array has irregular tiles (i.e., 
    * ArraySchema::tile_extents_ is empty), and false otherwise. 

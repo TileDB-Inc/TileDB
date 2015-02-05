@@ -94,7 +94,7 @@ void QueryProcessor::export_to_CSV(const StorageManager::ArrayDescriptor* ad,
 }
 
 void QueryProcessor::export_to_CSV(
-    std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
     const std::string& filename) const {
   assert(ad.size() > 0); 
 
@@ -176,6 +176,18 @@ void QueryProcessor::filter(const StorageManager::ArrayDescriptor* ad,
   else 
     filter_irregular(ad, expression, result_array_name);
 } 
+
+void QueryProcessor::filter(
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const ExpressionTree* expression,
+    const std::string& result_array_name) const {
+  assert(ad.size() > 0);
+
+  if(ad[0]->array_schema().has_regular_tiles())
+    filter_regular(ad, expression, result_array_name);
+  else 
+    filter_irregular(ad, expression, result_array_name);
+}
 
 void QueryProcessor::join(const StorageManager::ArrayDescriptor* ad_A, 
                           const StorageManager::ArrayDescriptor* ad_B,
@@ -272,6 +284,42 @@ void QueryProcessor::advance_cell_tile_its(
     if(tile_its[attribute_num] != tile_it_end)
       initialize_cell_its(tile_its, attribute_num, cell_its, cell_it_end);
   }
+}
+
+inline
+void QueryProcessor::advance_cell_tile_its(
+    unsigned int attribute_num,
+    Tile::const_iterator* cell_its,
+    Tile::const_iterator& cell_it_end,
+    StorageManager::const_iterator* tile_its,
+    StorageManager::const_iterator& tile_it_end,
+    const std::vector<unsigned int>& attribute_ids,
+    int64_t& skipped_tiles,
+    uint64_t& skipped_cells,
+    bool& non_cell_its_initialized) const {
+  bool advanced_tile_its = false;
+
+  advance_cell_its(cell_its, attribute_ids);
+  ++cell_its[attribute_num];
+  if(cell_its[attribute_num] == cell_it_end) {
+     advance_tile_its(tile_its, attribute_ids);
+     ++tile_its[attribute_num];
+     advanced_tile_its = true;
+     if(tile_its[attribute_num] != tile_it_end) {
+       initialize_cell_its(tile_its, cell_its, attribute_ids);
+       cell_its[attribute_num] = (*tile_its[attribute_num]).begin();
+       cell_it_end = (*tile_its[attribute_num]).end();
+     }
+  }
+
+  // If we advanced the tile iterators
+  if(advanced_tile_its) {
+    non_cell_its_initialized = false;
+    ++skipped_tiles; 
+    skipped_cells = 0;
+   } else { // Otherwise, we advanced only the cell iterators
+     ++skipped_cells;
+   }
 }
 
 inline
@@ -482,46 +530,21 @@ void QueryProcessor::filter_irregular(
   // Get the attribute names participating as variables in the expression
   const std::set<std::string>& expr_attribute_names = expression->vars();
 
-  // Get the ids of the attribute names involved in the expression
-  std::vector<unsigned int> expr_attribute_ids;
-  std::set<std::string>::const_iterator expr_attr_it = 
-      expr_attribute_names.begin();
-  std::set<std::string>::const_iterator expr_attr_it_end = 
-      expr_attribute_names.end();
-  for(; expr_attr_it != expr_attr_it_end; ++expr_attr_it) 
-    expr_attribute_ids.push_back(array_schema.attribute_id(*expr_attr_it));
-  std::sort(expr_attribute_ids.begin(), expr_attribute_ids.end());
-  unsigned int expr_attribute_num = expr_attribute_ids.size();
-
-  // Find the ids of the attributes NOT involved in the expression
-  std::vector<unsigned int> non_expr_attribute_ids;
-  for(unsigned int j=0; j<expr_attribute_ids[0]; j++)
-    non_expr_attribute_ids.push_back(j);
-  for(unsigned int i=1; i<expr_attribute_num; ++i) {
-    for(unsigned int j=expr_attribute_ids[i-1]+1; j<expr_attribute_ids[i]; ++j)
-      non_expr_attribute_ids.push_back(j);
-  }
-  for(unsigned int j=expr_attribute_ids[expr_attribute_num-1] + 1; 
-      j<attribute_num; ++j)
-    non_expr_attribute_ids.push_back(j);
+  // Get the ids of the attribute names involved in the expression, and their
+  // compliment.
+  std::pair<ArraySchema::AttributeIds, ArraySchema::AttributeIds>
+    ret = array_schema.get_attribute_ids(expr_attribute_names);
+  const ArraySchema::AttributeIds& expr_attribute_ids = ret.first;
+  const ArraySchema::AttributeIds& non_expr_attribute_ids = ret.second;
 
   // Initialize tile iterators
   unsigned int end_attribute_id = expr_attribute_ids[0];
   initialize_tile_its(ad, tile_its, tile_it_end, end_attribute_id);
   
-  // Auxiliary variable storing the number of skipped tiles when filtering.
-  // It is used to advance only the iterators of the attributes involved
-  // in the expression when a tile is finished/skipped, and then efficiently 
-  // advance the iterators of the rest of the attributes only when a cell 
-  // satisfies the expression.
+  // Auxiliary variables for proper retrieval of qualifying tiles and cells.
   int64_t skipped_tiles = 0;
-    
-  // Auxiliary variable storing the number of skipped cells when filtering.
-  // It is used to advance only the iterators involved in the expression when 
-  // a cell is skipped, and then efficiently advance the iterators for the 
-  // rest of the attributes when a cell satisfies the expression.
   uint64_t skipped_cells;
-
+    
   // Create result tiles
   uint64_t tile_id = 0;
   new_tiles(result_array_schema, tile_id, result_tiles); 
@@ -539,17 +562,14 @@ void QueryProcessor::filter_irregular(
                                    expr_attribute_ids, expression)) {
         if(skipped_tiles) {
           advance_tile_its(tile_its, non_expr_attribute_ids, skipped_tiles);
-          tile_its[attribute_num] += skipped_tiles;
           skipped_tiles = 0;
         }
         if(!non_expr_cell_its_initialized) {
           initialize_cell_its(tile_its, cell_its, non_expr_attribute_ids);
-          cell_its[attribute_num] = (*tile_its[attribute_num]).begin();
           non_expr_cell_its_initialized = true;
         }
         if(skipped_cells) {
           advance_cell_its(cell_its, non_expr_attribute_ids, skipped_cells);
-          cell_its[attribute_num] += skipped_cells;
           skipped_cells = 0;
         }
         if(result_tiles[attribute_num]->cell_num() == capacity) {
@@ -581,6 +601,164 @@ void QueryProcessor::filter_irregular(
   delete [] cell_its;
 }
 
+void QueryProcessor::filter_irregular(
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const ExpressionTree* expression,
+    const std::string& result_array_name) const {
+  // For easy reference
+  const ArraySchema& array_schema = ad[0]->array_schema();
+  const unsigned int attribute_num = array_schema.attribute_num();
+  uint64_t capacity = array_schema.capacity();
+  unsigned int fragment_num = ad.size(); 
+  
+  // Prepare result array
+  ArraySchema result_array_schema = array_schema.clone(result_array_name);
+  const StorageManager::ArrayDescriptor* result_ad = 
+      storage_manager_.open_array(result_array_schema);
+
+  // Create result tiles 
+  Tile** result_tiles = new Tile*[attribute_num+1];
+  uint64_t tile_id = 0;
+  new_tiles(result_array_schema, tile_id, result_tiles); 
+
+  // Get the attribute names participating as variables in the expression
+  const std::set<std::string>& expr_attribute_names = expression->vars();
+
+  // Get the ids of the attribute names involved in the expression, and
+  // their compliment
+  std::pair<ArraySchema::AttributeIds, ArraySchema::AttributeIds>
+    ret = array_schema.get_attribute_ids(expr_attribute_names);
+  const ArraySchema::AttributeIds& expr_attribute_ids = ret.first;
+  ArraySchema::AttributeIds& non_expr_attribute_ids = ret.second;
+
+  // Remove the coordinates id (attribute_num) from non_expr_attribute_ids.
+  // Tiles and cells associated with the coordinates will be advanced along with
+  // tiles and cells corresponding to the expr_attribute_ids. 
+  non_expr_attribute_ids.pop_back();
+
+  // Create and initialize tile iterators
+  StorageManager::const_iterator** tile_its = 
+      new StorageManager::const_iterator*[fragment_num];
+  StorageManager::const_iterator* tile_it_end = 
+      new StorageManager::const_iterator[fragment_num]; 
+  for(unsigned int i=0; i<fragment_num; ++i) {
+    tile_its[i] = new StorageManager::const_iterator[attribute_num+1];
+    initialize_tile_its(ad[i], tile_its[i], tile_it_end[i]);
+  }
+
+  // Create cell iterators
+  Tile::const_iterator** cell_its = 
+      new Tile::const_iterator*[fragment_num];
+  Tile::const_iterator* cell_it_end = 
+      new Tile::const_iterator[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i) { 
+    cell_its[i] = new Tile::const_iterator[attribute_num+1];
+    initialize_cell_its(tile_its[i], cell_its[i], expr_attribute_ids);
+    cell_its[i][attribute_num] = (*tile_its[i][attribute_num]).begin();
+    cell_it_end[i] = (*tile_its[i][attribute_num]).end();
+  }
+
+  // Auxiliary variable
+  bool* non_expr_cell_its_initialized = new bool[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i)
+    non_expr_cell_its_initialized[i] = false;
+
+  // Auxiliary variables for proper retrieval of qualifying tiles and cells.
+  int64_t* skipped_tiles = new int64_t[fragment_num];
+  uint64_t* skipped_cells = new uint64_t[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i) {
+    skipped_tiles[i] = 0;
+    skipped_cells[i] = 0;
+  }
+
+  // Get the index of the fragment from which we will get the next cell
+  // to check against the filter condition. 
+  int next_fragment_index =
+      get_next_fragment_index(tile_its, tile_it_end, fragment_num, 
+                              cell_its, cell_it_end, 
+                              expr_attribute_ids,
+                              skipped_tiles, skipped_cells,
+                              non_expr_cell_its_initialized,
+                              array_schema);
+
+  // Iterate over all cells, until there are no more cells
+  while(next_fragment_index != -1) {
+    // For easy reference
+    Tile::const_iterator* next_cell_its = cell_its[next_fragment_index];
+    Tile::const_iterator& next_cell_it_end = cell_it_end[next_fragment_index];
+    StorageManager::const_iterator* next_tile_its = 
+        tile_its[next_fragment_index];
+    StorageManager::const_iterator& next_tile_it_end = 
+        tile_it_end[next_fragment_index];
+
+    if(cell_satisfies_expression(array_schema, next_cell_its, 
+                                 expr_attribute_ids, expression)) {
+      if(skipped_tiles[next_fragment_index]) {
+        advance_tile_its(next_tile_its, non_expr_attribute_ids, 
+                         skipped_tiles[next_fragment_index]);
+        skipped_tiles[next_fragment_index] = 0;
+      }
+      if(!non_expr_cell_its_initialized[next_fragment_index]) {
+        initialize_cell_its(next_tile_its, next_cell_its, 
+                            non_expr_attribute_ids);
+        non_expr_cell_its_initialized[next_fragment_index] = true;
+      }
+      if(skipped_cells[next_fragment_index]) {
+        advance_cell_its(next_cell_its, non_expr_attribute_ids, 
+                         skipped_cells[next_fragment_index]);
+        skipped_cells[next_fragment_index] = 0;
+      }
+      if(result_tiles[attribute_num]->cell_num() == capacity) {
+        store_tiles(result_ad, result_tiles);
+        new_tiles(result_array_schema, ++tile_id, result_tiles); 
+      }
+      append_cell(next_cell_its, result_tiles, attribute_num);
+      advance_cell_tile_its(attribute_num, next_cell_its, next_cell_it_end,
+                            next_tile_its, next_tile_it_end);
+    } else {
+      advance_cell_tile_its(
+          attribute_num, 
+          next_cell_its, next_cell_it_end,
+          next_tile_its, next_tile_it_end,
+          expr_attribute_ids,
+          skipped_tiles[next_fragment_index],
+          skipped_cells[next_fragment_index],
+          non_expr_cell_its_initialized[next_fragment_index]);           
+    }
+
+    next_fragment_index =
+        get_next_fragment_index(tile_its, tile_it_end,
+                                fragment_num, 
+                                cell_its, cell_it_end, 
+                                expr_attribute_ids,
+                                skipped_tiles,
+                                skipped_cells,
+                                non_expr_cell_its_initialized,
+                                array_schema);
+  }
+
+  // Send the lastly created tiles to storage manager
+  store_tiles(result_ad, result_tiles);
+
+  // Close result array 
+  storage_manager_.close_array(result_ad);
+
+  // Clean up
+  delete [] result_tiles;
+  for(unsigned int i=0; i<fragment_num; ++i) 
+    delete [] tile_its[i];
+  delete [] tile_its;
+  delete [] tile_it_end;
+  for(unsigned int i=0; i<fragment_num; ++i) 
+    delete [] cell_its[i];
+  delete [] cell_its;
+  delete [] cell_it_end;
+  delete [] skipped_cells;
+  delete [] skipped_tiles;
+  delete [] non_expr_cell_its_initialized;
+}
+
+
 void QueryProcessor::filter_regular(
     const StorageManager::ArrayDescriptor* ad,
     const ExpressionTree* expression,
@@ -597,7 +775,7 @@ void QueryProcessor::filter_regular(
   // Create tiles 
   Tile** result_tiles = new Tile*[attribute_num+1];
 
-  // Create and initialize tile iterators
+  // Create tile iterators
   StorageManager::const_iterator *tile_its = 
       new StorageManager::const_iterator[attribute_num+1];
   StorageManager::const_iterator tile_it_end;
@@ -610,44 +788,19 @@ void QueryProcessor::filter_regular(
   // Get the attribute names participating as variables in the expression
   const std::set<std::string>& expr_attribute_names = expression->vars();
 
-  // Get the ids of the attribute names involved in the expression
-  std::vector<unsigned int> expr_attribute_ids;
-  std::set<std::string>::const_iterator expr_attr_it = 
-      expr_attribute_names.begin();
-  std::set<std::string>::const_iterator expr_attr_it_end = 
-      expr_attribute_names.end();
-  for(; expr_attr_it != expr_attr_it_end; ++expr_attr_it) 
-    expr_attribute_ids.push_back(array_schema.attribute_id(*expr_attr_it));
-  std::sort(expr_attribute_ids.begin(), expr_attribute_ids.end());
-  unsigned int expr_attribute_num = expr_attribute_ids.size();
-
-  // Find the ids of the attributes NOT involved in the expression
-  std::vector<unsigned int> non_expr_attribute_ids;
-  for(unsigned int j=0; j<expr_attribute_ids[0]; j++)
-    non_expr_attribute_ids.push_back(j);
-  for(unsigned int i=1; i<expr_attribute_num; ++i) {
-    for(unsigned int j=expr_attribute_ids[i-1]+1; j<expr_attribute_ids[i]; ++j)
-      non_expr_attribute_ids.push_back(j);
-  }
-  for(unsigned int j=expr_attribute_ids[expr_attribute_num-1] + 1; 
-      j<attribute_num; ++j)
-    non_expr_attribute_ids.push_back(j);
+  // Get the ids of the attribute names involved in the expression, and their
+  // compliment
+  std::pair<ArraySchema::AttributeIds, ArraySchema::AttributeIds>
+    ret = array_schema.get_attribute_ids(expr_attribute_names);
+  const ArraySchema::AttributeIds& expr_attribute_ids = ret.first;
+  const ArraySchema::AttributeIds& non_expr_attribute_ids = ret.second;
 
   // Initialize tile iterators
   unsigned int end_attribute_id = expr_attribute_ids[0];
   initialize_tile_its(ad, tile_its, tile_it_end, end_attribute_id);
   
-  // Auxiliary variable storing the number of skipped tiles when filtering.
-  // It is used to advance only the iterators of the attributes involved
-  // in the expression when a tile is finished/skipped, and then efficiently 
-  // advance the iterators of the rest of the attributes only when a cell 
-  // satisfies the expression.
+  // Auxiliary variables for proper retrieval of qualifying tiles and cells.
   int64_t skipped_tiles = 0;
-    
-  // Auxiliary variable storing the number of skipped cells when filtering.
-  // It is used to advance only the iterators involved in the expression when 
-  // a cell is skipped, and then efficiently advance the iterators for the 
-  // rest of the attributes when a cell satisfies the expression.
   uint64_t skipped_cells;
 
   // Iterate over all tiles
@@ -666,17 +819,14 @@ void QueryProcessor::filter_regular(
                                    expr_attribute_ids, expression)) {
         if(skipped_tiles) {
           advance_tile_its(tile_its, non_expr_attribute_ids, skipped_tiles);
-          tile_its[attribute_num] += skipped_tiles;
           skipped_tiles = 0;
         }
         if(!non_expr_cell_its_initialized) {
           initialize_cell_its(tile_its, cell_its, non_expr_attribute_ids);
-          cell_its[attribute_num] = (*tile_its[attribute_num]).begin();
           non_expr_cell_its_initialized = true;
         }
         if(skipped_cells) {
           advance_cell_its(cell_its, non_expr_attribute_ids, skipped_cells);
-          cell_its[attribute_num] += skipped_cells;
           skipped_cells = 0;
         }
         append_cell(cell_its, result_tiles, attribute_num);
@@ -704,12 +854,243 @@ void QueryProcessor::filter_regular(
   delete [] cell_its;
 }
 
+void QueryProcessor::filter_regular(
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const ExpressionTree* expression,
+    const std::string& result_array_name) const {
+  // For easy reference
+  const ArraySchema& array_schema = ad[0]->array_schema();
+  const unsigned int attribute_num = array_schema.attribute_num();
+  unsigned int fragment_num = ad.size(); 
+  
+  // Prepare result array
+  ArraySchema result_array_schema = array_schema.clone(result_array_name);
+  const StorageManager::ArrayDescriptor* result_ad = 
+      storage_manager_.open_array(result_array_schema);
+
+  // Create result tiles 
+  Tile** result_tiles = new Tile*[attribute_num+1];
+
+  // Get the attribute names participating as variables in the expression
+  const std::set<std::string>& expr_attribute_names = expression->vars();
+
+  // Get the ids of the attribute names involved in the expression, and
+  // their compliment
+  std::pair<ArraySchema::AttributeIds, ArraySchema::AttributeIds>
+    ret = array_schema.get_attribute_ids(expr_attribute_names);
+  const ArraySchema::AttributeIds& expr_attribute_ids = ret.first;
+  ArraySchema::AttributeIds& non_expr_attribute_ids = ret.second;
+
+  // Remove the coordinates id (attribute_num) from non_expr_attribute_ids.
+  // Tiles and cells associated with the coordinates will be advanced along with
+  // tiles and cells corresponding to the expr_attribute_ids. 
+  non_expr_attribute_ids.pop_back();
+
+  // Create and initialize tile iterators
+  StorageManager::const_iterator** tile_its = 
+      new StorageManager::const_iterator*[fragment_num];
+  StorageManager::const_iterator* tile_it_end = 
+      new StorageManager::const_iterator[fragment_num]; 
+  for(unsigned int i=0; i<fragment_num; ++i) {
+    tile_its[i] = new StorageManager::const_iterator[attribute_num+1];
+    initialize_tile_its(ad[i], tile_its[i], tile_it_end[i]);
+  }
+
+  // Create cell iterators
+  Tile::const_iterator** cell_its = 
+      new Tile::const_iterator*[fragment_num];
+  Tile::const_iterator* cell_it_end = 
+      new Tile::const_iterator[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i) { 
+    cell_its[i] = new Tile::const_iterator[attribute_num+1];
+    initialize_cell_its(tile_its[i], cell_its[i], expr_attribute_ids);
+    cell_its[i][attribute_num] = (*tile_its[i][attribute_num]).begin();
+    cell_it_end[i] = (*tile_its[i][attribute_num]).end();
+  }
+
+  // Auxiliary variable
+  bool* non_expr_cell_its_initialized = new bool[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i)
+    non_expr_cell_its_initialized[i] = false;
+
+  // Auxiliary variables for proper retrieval of qualifying tiles and cells.
+  int64_t* skipped_tiles = new int64_t[fragment_num];
+  uint64_t* skipped_cells = new uint64_t[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i) {
+    skipped_tiles[i] = 0;
+    skipped_cells[i] = 0;
+  }
+
+  // Get the index of the fragment from which we will get the next cell
+  // to check against the filter condition. 
+  int next_fragment_index =
+      get_next_fragment_index(tile_its, tile_it_end, fragment_num, 
+                              cell_its, cell_it_end, 
+                              expr_attribute_ids,
+                              skipped_tiles, skipped_cells,
+                              non_expr_cell_its_initialized,
+                              array_schema);
+
+  uint64_t tile_id;
+  bool first_cell = true;
+
+  // Iterate over all cells, until there are no more cells
+  while(next_fragment_index != -1) {
+    // For easy reference
+    Tile::const_iterator* next_cell_its = cell_its[next_fragment_index];
+    Tile::const_iterator& next_cell_it_end = cell_it_end[next_fragment_index];
+    StorageManager::const_iterator* next_tile_its = 
+        tile_its[next_fragment_index];
+    StorageManager::const_iterator& next_tile_it_end = 
+        tile_it_end[next_fragment_index];
+
+    if(cell_satisfies_expression(array_schema, next_cell_its, 
+                                 expr_attribute_ids, expression)) {
+
+      if(first_cell) { // To initialize tile_id and result_tiles
+        tile_id = next_cell_its[attribute_num].tile()->tile_id();
+        first_cell = false;
+        new_tiles(result_array_schema, tile_id, result_tiles);
+      }
+      if(skipped_tiles[next_fragment_index]) {
+        advance_tile_its(next_tile_its, non_expr_attribute_ids, 
+                         skipped_tiles[next_fragment_index]);
+        skipped_tiles[next_fragment_index] = 0;
+      }
+      if(!non_expr_cell_its_initialized[next_fragment_index]) {
+        initialize_cell_its(next_tile_its, next_cell_its, 
+                            non_expr_attribute_ids);
+        non_expr_cell_its_initialized[next_fragment_index] = true;
+      }
+      if(skipped_cells[next_fragment_index]) {
+        advance_cell_its(next_cell_its, non_expr_attribute_ids, 
+                         skipped_cells[next_fragment_index]);
+        skipped_cells[next_fragment_index] = 0;
+      }
+      if(next_cell_its[0].tile()->tile_id() != tile_id) {
+        // Change tile
+        tile_id = next_cell_its[0].tile()->tile_id();
+        store_tiles(result_ad, result_tiles);
+        new_tiles(result_array_schema, tile_id, result_tiles);
+      } 
+      append_cell(next_cell_its, result_tiles, attribute_num);
+      advance_cell_tile_its(attribute_num, next_cell_its, next_cell_it_end,
+                            next_tile_its, next_tile_it_end);
+    } else {
+      advance_cell_tile_its(
+          attribute_num, 
+          next_cell_its, next_cell_it_end,
+          next_tile_its, next_tile_it_end,
+          expr_attribute_ids,
+          skipped_tiles[next_fragment_index],
+          skipped_cells[next_fragment_index],
+          non_expr_cell_its_initialized[next_fragment_index]);           
+    }
+
+    next_fragment_index =
+        get_next_fragment_index(tile_its, tile_it_end,
+                                fragment_num, 
+                                cell_its, cell_it_end, 
+                                expr_attribute_ids,
+                                skipped_tiles,
+                                skipped_cells,
+                                non_expr_cell_its_initialized,
+                                array_schema);
+  }
+
+  // Send the lastly created tiles to storage manager
+  store_tiles(result_ad, result_tiles);
+
+  // Close result array 
+  storage_manager_.close_array(result_ad);
+
+  // Clean up
+  delete [] result_tiles;
+  for(unsigned int i=0; i<fragment_num; ++i) 
+    delete [] tile_its[i];
+  delete [] tile_its;
+  delete [] tile_it_end;
+  for(unsigned int i=0; i<fragment_num; ++i) 
+    delete [] cell_its[i];
+  delete [] cell_its;
+  delete [] cell_it_end;
+  delete [] skipped_cells;
+  delete [] skipped_tiles;
+  delete [] non_expr_cell_its_initialized;
+}
+
 int QueryProcessor::get_next_fragment_index(
       StorageManager::const_iterator** tile_its,
       StorageManager::const_iterator* tile_it_end,
       unsigned int fragment_num,
       Tile::const_iterator** cell_its,
       Tile::const_iterator* cell_it_end,
+      const ArraySchema& array_schema) const {
+  // For easy reference
+  unsigned int attribute_num = array_schema.attribute_num();
+
+  // Holds the (potentially multiple) indexes of the candidate fragments
+  // from which we will get the next cell for consolidation. Note though 
+  // that only the largest (last) index will be returned, which corresponds
+  // to the latest update.
+  std::vector<int> next_fragment_index;
+  next_fragment_index.reserve(fragment_num);
+
+  // Loop for as long as there is a NULL cell (i.e., a deletion)
+  bool null;
+  do {
+    next_fragment_index.clear();
+
+    for(unsigned int i=0; i<fragment_num; ++i) {
+      if(cell_its[i][attribute_num] != cell_it_end[i]) {
+        if(next_fragment_index.size() == 0 || cell_its[i][attribute_num] == 
+           cell_its[next_fragment_index[0]][attribute_num]) {
+          next_fragment_index.push_back(i);
+        } else if(array_schema.precedes(
+                      cell_its[i][attribute_num], 
+                      cell_its[next_fragment_index[0]][attribute_num])) {
+          next_fragment_index.clear();
+          next_fragment_index.push_back(i);
+        } 
+      }
+    }
+
+    if(next_fragment_index.size() == 0)
+      break;
+
+    int num_of_iterators_to_advance = next_fragment_index.size()-1; 
+    null = is_null(cell_its[next_fragment_index.back()], attribute_num);
+    if(null)
+      ++num_of_iterators_to_advance;
+
+    // Advance cell (and potentially tile) iterators.
+    // If the cell is deleted, all iterators are advanced, otherwise all except
+    // for the last one.
+    for(int i=0; i<num_of_iterators_to_advance; ++i)
+      advance_cell_tile_its(attribute_num, 
+                            cell_its[next_fragment_index[i]],
+                            cell_it_end[next_fragment_index[i]],
+                            tile_its[next_fragment_index[i]],
+                            tile_it_end[next_fragment_index[i]]);
+                            
+  } while(null);
+
+  if(next_fragment_index.size() == 0)
+    return -1;
+  else
+    return next_fragment_index.back();
+}
+
+int QueryProcessor::get_next_fragment_index(
+      StorageManager::const_iterator** tile_its,
+      StorageManager::const_iterator* tile_it_end,
+      unsigned int fragment_num,
+      Tile::const_iterator** cell_its,
+      Tile::const_iterator* cell_it_end,
+      const std::vector<unsigned int>& attribute_ids,
+      int64_t* skipped_tiles,
+      uint64_t* skipped_cells,
+      bool* non_cell_its_initialized,
       const ArraySchema& array_schema) const {
   // For easy reference
   unsigned int attribute_num = array_schema.attribute_num();
@@ -755,7 +1136,11 @@ int QueryProcessor::get_next_fragment_index(
                             cell_its[next_fragment_index[i]],
                             cell_it_end[next_fragment_index[i]],
                             tile_its[next_fragment_index[i]],
-                            tile_it_end[next_fragment_index[i]]);
+                            tile_it_end[next_fragment_index[i]],
+                            attribute_ids,
+                            skipped_tiles[next_fragment_index[i]],
+                            skipped_cells[next_fragment_index[i]],
+                            non_cell_its_initialized[next_fragment_index[i]]);
   } while(null);
 
   if(next_fragment_index.size() == 0)
@@ -763,6 +1148,7 @@ int QueryProcessor::get_next_fragment_index(
   else
     return next_fragment_index.back();
 }
+
 
 inline
 void QueryProcessor::get_tiles(
