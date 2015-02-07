@@ -217,8 +217,7 @@ const Tile* StorageManager::get_tile(
 const Tile* StorageManager::get_tile_by_rank( 
     const ArrayDescriptor* array_descriptor,
     unsigned int attribute_id, uint64_t rank) {
-  assert(check_on_get_tile(*array_descriptor, attribute_id, 
-                           array_descriptor->array_info_->tile_ids_[rank]));
+  assert(check_on_get_tile_by_rank(*array_descriptor, attribute_id, rank));
 
   // For easy reference
   ArrayInfo& array_info = *(array_descriptor->array_info_);
@@ -264,6 +263,11 @@ Tile* StorageManager::new_tile(const ArraySchema& array_schema,
   return tile; 
 }
 
+uint64_t StorageManager::get_tile_id( 
+    const StorageManager::ArrayDescriptor* ad, uint64_t rank) const {
+  assert(rank >= 0 && rank < ad->array_info_->tile_ids_.size());
+  return ad->array_info_->tile_ids_[rank];
+}
 
 /******************************************************
 ******************** TILE ITERATORS *******************
@@ -503,6 +507,70 @@ void StorageManager::get_overlapping_tile_ids(
   delete [] full;
 }
 
+void StorageManager::get_overlapping_tile_ranks(
+    const ArrayDescriptor* array_descriptor, const Tile::Range& range,
+    std::vector<std::pair<uint64_t, bool> >* overlapping_tile_ranks) const {
+  // Check array descriptor
+  assert(check_array_descriptor(*array_descriptor)); 
+
+  // The array must be open in READ mode
+  assert(array_descriptor->array_info_->array_mode_ == READ);
+ 
+  // For easy reference
+  const ArrayInfo& array_info = *( array_descriptor->array_info_);
+  const ArraySchema& array_schema = array_info.array_schema_;
+  const unsigned int dim_num = array_schema.dim_num();
+  const uint64_t tile_num = array_info.tile_ids_.size();
+
+  assert(array_info.mbrs_.size() == tile_num);
+  assert(range.size() == 2 * dim_num);
+
+  // Overlap type per dimension
+  bool* partial = new bool[dim_num];
+  bool* full = new bool[dim_num];
+
+  bool overlap; // True if an MBR overlaps (partially or fully) the range
+  std::pair<uint64_t, bool> overlapping_tile_rank; // (tile_rank, full)
+  
+  for(uint64_t i=0; i<tile_num; i++) {
+    const MBR& mbr = array_info.mbrs_[i];
+    overlap = true;
+    overlapping_tile_rank.second = true;
+
+    // Determine overlap per dimension
+    for(unsigned int j=0; j<dim_num; j++) {
+      partial[j] = false;
+      full[j] = false;
+      if(mbr[2*j] >= range[2*j] && mbr[2*j+1] <= range[2*j+1])
+        full[j] = true;
+      else if(range[2*j] >= mbr[2*j] && range[2*j] <= mbr[2*j+1] || 
+              range[2*j+1] >= mbr[2*j] && range[2*j+1] <= mbr[2*j+1])
+        partial[j] = true;
+    }
+
+    // Determine MBR overlap
+    for(unsigned int j=0; j<dim_num; j++) {
+      if(!partial[j] && !full[j]) {
+        overlap = false;
+        break;
+      }
+  
+      if(partial[j])
+        overlapping_tile_rank.second = false;
+    }
+
+    // Insert overlapping tile rank into the result list
+    if(overlap) {
+      overlapping_tile_rank.first = i;
+      overlapping_tile_ranks->push_back(overlapping_tile_rank);
+    }
+  }
+
+  delete [] partial;
+  delete [] full;
+}
+
+
 /******************************************************
 ***************** PRIVATE FUNCTIONS *******************
 ******************************************************/
@@ -636,6 +704,31 @@ bool StorageManager::check_on_get_tile(
 
   // Check if tile id exists
   if(tile_rank(array_info, tile_id) == SM_INVALID_RANK)
+    return false;
+
+  return true;
+}
+
+bool StorageManager::check_on_get_tile_by_rank(
+    const ArrayDescriptor& array_descriptor,
+    unsigned int attribute_id, uint64_t tile_rank) const {
+  // Check descriptor
+  if(!check_array_descriptor(array_descriptor))
+    return false;
+
+  // For easy reference
+  const ArrayInfo& array_info = *(array_descriptor.array_info_);
+
+  // Check if the array is opened in READ mode
+  if(array_info.array_mode_ != READ)
+    return false;
+
+  // Check attribute id
+  if(attribute_id > array_info.array_schema_.attribute_num())
+    return false;
+
+  // Check if tile id exists
+  if(tile_rank >= array_info.tile_ids_.size())
     return false;
 
   return true;

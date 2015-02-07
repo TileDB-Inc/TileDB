@@ -235,6 +235,18 @@ void QueryProcessor::subarray(const StorageManager::ArrayDescriptor* ad,
     subarray_irregular(ad, range, result_array_name);
 }
 
+void QueryProcessor::subarray(
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const Tile::Range& range,
+    const std::string& result_array_name) const { 
+  assert(ad.size() > 0);
+
+  if(ad[0]->array_schema().has_regular_tiles())
+    subarray_regular(ad, range, result_array_name);
+  else 
+    subarray_irregular(ad, range, result_array_name);
+}
+
 /******************************************************
 ******************* PRIVATE METHODS *******************
 ******************************************************/
@@ -320,6 +332,30 @@ void QueryProcessor::advance_cell_tile_its(
    } else { // Otherwise, we advanced only the cell iterators
      ++skipped_cells;
    }
+}
+
+inline
+void QueryProcessor::advance_cell_tile_its(
+    const StorageManager::ArrayDescriptor* ad,
+    unsigned int attribute_num,
+    Tile::const_iterator* cell_its,
+    Tile::const_iterator& cell_it_end,
+    RankOverlapVector::const_iterator& tile_rank_it,
+    RankOverlapVector::const_iterator& tile_rank_it_end,
+    unsigned int fragment_num,
+    const Tile** tiles,
+    uint64_t& skipped_cells) const {
+  ++cell_its[attribute_num];
+  if(cell_its[attribute_num] == cell_it_end) {
+    ++tile_rank_it;
+    skipped_cells = 0;
+    if(tile_rank_it != tile_rank_it_end) {
+      get_tiles_by_rank(ad, tile_rank_it->first, tiles);
+      initialize_cell_its(tiles, attribute_num, cell_its, cell_it_end);
+     }
+  } else {
+    ++skipped_cells;
+  }
 }
 
 inline
@@ -1055,12 +1091,12 @@ int QueryProcessor::get_next_fragment_index(
       }
     }
 
-    if(next_fragment_index.size() == 0)
+    if(next_fragment_index.size() <= 1)
       break;
 
     int num_of_iterators_to_advance = next_fragment_index.size()-1; 
     null = is_null(cell_its[next_fragment_index.back()], attribute_num);
-    if(null)
+    if(null) 
       ++num_of_iterators_to_advance;
 
     // Advance cell (and potentially tile) iterators.
@@ -1120,10 +1156,33 @@ int QueryProcessor::get_next_fragment_index(
       }
     }
 
-    if(next_fragment_index.size() == 0)
+    if(next_fragment_index.size() <= 1)
       break;
 
+    int latest_fragment_index = next_fragment_index.back();
     int num_of_iterators_to_advance = next_fragment_index.size()-1; 
+
+    // Check if the cell corresponds to a deletion.
+    // We assume that a deletion only occurs to a non-empty cell
+    // If there are more than one cells with the same coordinates,
+    // synchronize the cell iterators of the attributes
+    if(skipped_tiles[latest_fragment_index]) {
+      advance_tile_its(tile_its[latest_fragment_index], 
+                       attribute_ids,
+                       skipped_tiles[latest_fragment_index]);
+      skipped_tiles[latest_fragment_index] = 0;
+    }
+    if(!non_cell_its_initialized[latest_fragment_index]) {
+      initialize_cell_its(tile_its[latest_fragment_index], 
+                          cell_its[latest_fragment_index], 
+                          attribute_ids);
+      non_cell_its_initialized[latest_fragment_index] = true;
+    }
+    if(skipped_cells[latest_fragment_index]) {
+      advance_cell_its(cell_its[latest_fragment_index], 
+                       attribute_ids, skipped_cells[latest_fragment_index]);
+      skipped_cells[latest_fragment_index] = 0;
+    }
     null = is_null(cell_its[next_fragment_index.back()], attribute_num);
     if(null)
       ++num_of_iterators_to_advance;
@@ -1131,7 +1190,7 @@ int QueryProcessor::get_next_fragment_index(
     // Advance cell (and potentially tile) iterators.
     // If the cell is deleted, all iterators are advanced, otherwise all except
     // for the last one.
-    for(int i=0; i<num_of_iterators_to_advance; ++i)
+    for(int i=0; i<num_of_iterators_to_advance; ++i) 
       advance_cell_tile_its(attribute_num, 
                             cell_its[next_fragment_index[i]],
                             cell_it_end[next_fragment_index[i]],
@@ -1149,6 +1208,83 @@ int QueryProcessor::get_next_fragment_index(
     return next_fragment_index.back();
 }
 
+int QueryProcessor::get_next_fragment_index(
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      RankOverlapVector::const_iterator* tile_rank_it,
+      RankOverlapVector::const_iterator* tile_rank_it_end,
+      const Tile*** tiles,
+      unsigned int fragment_num,
+      Tile::const_iterator** cell_its,
+      Tile::const_iterator* cell_it_end,
+      uint64_t* skipped_cells,
+      const ArraySchema& array_schema) const {
+  // For easy reference
+  unsigned int attribute_num = array_schema.attribute_num();
+
+  // Holds the (potentially multiple) indexes of the candidate fragments
+  // from which we will get the next cell for consolidation. Note though 
+  // that only the largest (last) index will be returned, which corresponds
+  // to the latest update.
+  std::vector<int> next_fragment_index;
+  next_fragment_index.reserve(fragment_num);
+
+  // Loop for as long as there is a NULL cell (i.e., a deletion)
+  bool null;
+  do {
+    next_fragment_index.clear();
+
+    for(unsigned int i=0; i<fragment_num; ++i) {
+      if(cell_its[i][attribute_num] != cell_it_end[i]) {
+        if(next_fragment_index.size() == 0 || cell_its[i][attribute_num] == 
+           cell_its[next_fragment_index[0]][attribute_num]) {
+          next_fragment_index.push_back(i);
+        } else if(array_schema.precedes(
+                      cell_its[i][attribute_num], 
+                      cell_its[next_fragment_index[0]][attribute_num])) {
+          next_fragment_index.clear();
+          next_fragment_index.push_back(i);
+        } 
+      }
+    }
+
+    if(next_fragment_index.size() <= 1)
+      break;
+
+    int latest_fragment_index = next_fragment_index.back();
+    int num_of_iterators_to_advance = next_fragment_index.size()-1; 
+
+    // Check if the cell corresponds to a deletion.
+    // We assume that a deletion only occurs to a non-empty cell
+    // If there are more than one cells with the same coordinates,
+    // synchronize the cell iterators of the attributes
+    if(skipped_cells[latest_fragment_index]) {
+      advance_cell_its(attribute_num, cell_its[latest_fragment_index], 
+                       skipped_cells[latest_fragment_index]);
+      skipped_cells[latest_fragment_index] = 0;
+    }
+    null = is_null(cell_its[latest_fragment_index], attribute_num);
+    if(null) 
+      ++num_of_iterators_to_advance;
+
+    // Advance cell (and potentially tile) iterators.
+    // If the cell is deleted, all iterators are advanced, otherwise all except
+    // for the last one.
+    for(int i=0; i<num_of_iterators_to_advance; ++i) {
+      advance_cell_tile_its(ad[next_fragment_index[i]], attribute_num,
+                            cell_its[next_fragment_index[i]],
+                            cell_it_end[next_fragment_index[i]],
+                            tile_rank_it[next_fragment_index[i]], 
+                            tile_rank_it_end[next_fragment_index[i]], 
+                            fragment_num, tiles[i],
+                            skipped_cells[next_fragment_index[i]]);
+    }
+  } while(null);
+
+  if(next_fragment_index.size() == 0)
+    return -1;
+  else
+    return next_fragment_index.back();
+}
 
 inline
 void QueryProcessor::get_tiles(
@@ -1160,6 +1296,18 @@ void QueryProcessor::get_tiles(
   // Get attribute tiles
   for(unsigned int i=0; i<=attribute_num; i++) 
    tiles[i] = storage_manager_.get_tile(ad, i, tile_id);
+}
+
+inline
+void QueryProcessor::get_tiles_by_rank(
+    const StorageManager::ArrayDescriptor* ad, 
+    uint64_t tile_rank, const Tile** tiles) const {
+  // For easy reference
+  unsigned int attribute_num = ad->array_schema().attribute_num();
+
+  // Get attribute tiles
+  for(unsigned int i=0; i<=attribute_num; i++) 
+   tiles[i] = storage_manager_.get_tile_by_rank(ad, i, tile_rank);
 }
 
 bool QueryProcessor::is_null(const Tile::const_iterator* cell_its,
@@ -1295,7 +1443,7 @@ void QueryProcessor::initialize_tile_its(
   tile_it_end = storage_manager_.end(ad, end_attribute_id);
 }
 
-void QueryProcessor::join_irregular(const StorageManager::ArrayDescriptor* ad_A, 
+void QueryProcessor::join_irregular(const StorageManager::ArrayDescriptor* ad_A,
                                     const StorageManager::ArrayDescriptor* ad_B,
                                     const ArraySchema& array_schema_C) const {
   // For easy reference
@@ -1948,15 +2096,16 @@ void QueryProcessor::subarray_irregular(
   const StorageManager::ArrayDescriptor* result_ad = 
       storage_manager_.open_array(result_array_schema);
   
-  // Get the tile ids that overlap with the range
-  std::vector<std::pair<uint64_t, bool> > overlapping_tile_ids;
-  storage_manager_.get_overlapping_tile_ids(ad, range, &overlapping_tile_ids);
+  // Get the tile ranks that overlap with the range
+  RankOverlapVector overlapping_tile_ranks;
+  storage_manager_.get_overlapping_tile_ranks(ad, range, 
+                                              &overlapping_tile_ranks);
 
   // Initialize tile iterators
-  std::vector<std::pair<uint64_t, bool> >::const_iterator tile_id_it = 
-      overlapping_tile_ids.begin();
-  std::vector<std::pair<uint64_t, bool> >::const_iterator tile_id_it_end =
-      overlapping_tile_ids.end();
+  RankOverlapVector::const_iterator tile_rank_it = 
+      overlapping_tile_ranks.begin();
+  RankOverlapVector::const_iterator tile_rank_it_end =
+      overlapping_tile_ranks.end();
       
   // Create result tiles and load input array tiles 
   uint64_t tile_id = 0;
@@ -1969,11 +2118,11 @@ void QueryProcessor::subarray_irregular(
   int64_t skipped_cells;
 
   // Iterate over all tiles
-  for(; tile_id_it != tile_id_it_end; ++tile_id_it) {
-    get_tiles(ad, tile_id_it->first, tiles);
+  for(; tile_rank_it != tile_rank_it_end; ++tile_rank_it) {
+    get_tiles_by_rank(ad, tile_rank_it->first, tiles);
     skipped_cells = 0;
 
-    if(tile_id_it->second) { // Full overlap
+    if(tile_rank_it->second) { // Full overlap
       initialize_cell_its(tiles, attribute_num, cell_its, cell_it_end); 
       while(cell_its[attribute_num] != cell_it_end) {
         if(result_tiles[attribute_num]->cell_num() == capacity) {
@@ -2023,6 +2172,129 @@ void QueryProcessor::subarray_irregular(
   delete [] cell_its;
 }
 
+void QueryProcessor::subarray_irregular(
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const Tile::Range& range, const std::string& result_array_name) const { 
+  // For easy reference
+  const ArraySchema& array_schema = ad[0]->array_schema();
+  const unsigned int attribute_num = array_schema.attribute_num();
+  uint64_t capacity = array_schema.capacity();
+  unsigned int fragment_num = ad.size(); 
+  
+  // Prepare result array
+  ArraySchema result_array_schema = array_schema.clone(result_array_name);
+  const StorageManager::ArrayDescriptor* result_ad = 
+      storage_manager_.open_array(result_array_schema);
+
+  // Create input tiles
+  const Tile*** tiles = new const Tile**[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i)
+    tiles[i] = new const Tile*[attribute_num+1];
+
+  // Create result tiles 
+  Tile** result_tiles = new Tile*[attribute_num+1];
+  uint64_t tile_id = 0;
+  new_tiles(result_array_schema, tile_id, result_tiles); 
+
+  // Get the tile ranks that overlap with the range
+  RankOverlapVector* overlapping_tile_ranks = 
+      new RankOverlapVector[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i) 
+    storage_manager_.get_overlapping_tile_ranks(ad[i], range, 
+                                                &overlapping_tile_ranks[i]);
+
+  // Initialize tile iterators
+  RankOverlapVector::const_iterator* tile_rank_it = 
+    new RankOverlapVector::const_iterator[fragment_num];
+  RankOverlapVector::const_iterator* tile_rank_it_end =
+    new RankOverlapVector::const_iterator[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i) { 
+      tile_rank_it[i] = overlapping_tile_ranks[i].begin();
+      tile_rank_it_end[i] = overlapping_tile_ranks[i].end();
+  }
+
+  // Get first tiles and initialize cell_iterators for coordinates
+  Tile::const_iterator** cell_its = 
+      new Tile::const_iterator*[fragment_num];
+  Tile::const_iterator* cell_it_end = 
+      new Tile::const_iterator[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i) { 
+    get_tiles_by_rank(ad[i], tile_rank_it[i]->first, tiles[i]);
+    cell_its[i] = new Tile::const_iterator[attribute_num+1];
+    initialize_cell_its(tiles[i], attribute_num, cell_its[i], cell_it_end[i]);
+  }
+
+  // Auxiliary variables for proper retrieval of qualifying cells.
+  uint64_t* skipped_cells = new uint64_t[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i) 
+    skipped_cells[i] = 0;
+
+  // Get the index of the fragment from which we will get the next cell
+  int next_fragment_index =
+      get_next_fragment_index(ad, tile_rank_it, tile_rank_it_end, 
+                              tiles, fragment_num, 
+                              cell_its, cell_it_end, skipped_cells,
+                              array_schema);
+
+  // Iterate over all cells, until there are no more cells
+  while(next_fragment_index != -1) {
+    // For easy reference
+    Tile::const_iterator* next_cell_its = cell_its[next_fragment_index];
+    Tile::const_iterator& next_cell_it_end = cell_it_end[next_fragment_index];
+    RankOverlapVector::const_iterator& next_tile_rank_it = 
+        tile_rank_it[next_fragment_index];
+    RankOverlapVector::const_iterator& next_tile_rank_it_end = 
+        tile_rank_it_end[next_fragment_index];
+ 
+    if(next_tile_rank_it->second ||
+       next_cell_its[attribute_num].cell_inside_range(range)) {
+      if(skipped_cells[next_fragment_index]) {
+        advance_cell_its(attribute_num, next_cell_its,
+                         skipped_cells[next_fragment_index]);
+        skipped_cells[next_fragment_index] = 0;
+      }
+      if(result_tiles[attribute_num]->cell_num() == capacity) {
+        store_tiles(result_ad, result_tiles);
+        new_tiles(result_array_schema, ++tile_id, result_tiles); 
+      }
+      append_cell(next_cell_its, result_tiles, attribute_num);
+    }
+
+    advance_cell_tile_its(
+        ad[next_fragment_index], attribute_num, 
+        next_cell_its, next_cell_it_end,
+        next_tile_rank_it, next_tile_rank_it_end,
+        fragment_num, tiles[next_fragment_index],
+        skipped_cells[next_fragment_index]);
+
+    next_fragment_index =
+        get_next_fragment_index(ad, tile_rank_it, tile_rank_it_end,
+                                tiles, fragment_num,
+                                cell_its, cell_it_end, 
+                                skipped_cells, array_schema);
+  }
+
+  // Send the lastly created tiles to storage manager
+  store_tiles(result_ad, result_tiles);
+
+  // Close result array 
+  storage_manager_.close_array(result_ad);
+
+  // Clean up
+  delete [] result_tiles;
+  for(unsigned int i=0; i<fragment_num; ++i) {
+    delete [] cell_its[i];
+    delete [] tiles[i];
+  }
+  delete [] tiles;
+  delete [] cell_its;
+  delete [] cell_it_end;
+  delete [] skipped_cells;
+  delete [] overlapping_tile_ranks;
+  delete [] tile_rank_it;
+  delete [] tile_rank_it_end;
+}
+
 void QueryProcessor::subarray_regular(
     const StorageManager::ArrayDescriptor* ad,
     const Tile::Range& range, const std::string& result_array_name) const { 
@@ -2044,15 +2316,16 @@ void QueryProcessor::subarray_regular(
   const StorageManager::ArrayDescriptor* result_ad = 
       storage_manager_.open_array(result_array_schema);
     
-  // Get the tile ids that overlap with the range
-  std::vector<std::pair<uint64_t, bool> > overlapping_tile_ids;
-  storage_manager_.get_overlapping_tile_ids(ad, range, &overlapping_tile_ids);
+  // Get the tile ranks that overlap with the range
+  RankOverlapVector overlapping_tile_ranks;
+  storage_manager_.get_overlapping_tile_ranks(ad, range, 
+                                              &overlapping_tile_ranks);
 
   // Initialize tile iterators
-  std::vector<std::pair<uint64_t, bool> >::const_iterator tile_id_it = 
-      overlapping_tile_ids.begin();
-  std::vector<std::pair<uint64_t, bool> >::const_iterator tile_id_it_end =
-      overlapping_tile_ids.end();
+  RankOverlapVector::const_iterator tile_rank_it = 
+      overlapping_tile_ranks.begin();
+  RankOverlapVector::const_iterator tile_rank_it_end =
+      overlapping_tile_ranks.end();
 
   // Auxiliary variable storing the number of skipped cells when investigating
   // a tile partially overlapping the range. It is used to advance only the
@@ -2061,13 +2334,15 @@ void QueryProcessor::subarray_regular(
   int64_t skipped_cells;
 
   // Iterate over all overlapping tiles
-  for(; tile_id_it != tile_id_it_end; ++tile_id_it) {
+  for(; tile_rank_it != tile_rank_it_end; ++tile_rank_it) {
     // Create result tiles and load input array tiles 
-    new_tiles(result_array_schema, tile_id_it->first, result_tiles); 
-    get_tiles(ad, tile_id_it->first, tiles); 
+    new_tiles(result_array_schema, 
+              storage_manager_.get_tile_id(ad, tile_rank_it->first), 
+              result_tiles); 
+    get_tiles_by_rank(ad, tile_rank_it->first, tiles); 
     skipped_cells = 0;
  
-    if(tile_id_it->second) { // Full overlap
+    if(tile_rank_it->second) { // Full overlap
       initialize_cell_its(tiles, attribute_num, cell_its, cell_it_end); 
       while(cell_its[attribute_num] != cell_it_end) {
         append_cell(cell_its, result_tiles, attribute_num);
@@ -2109,3 +2384,133 @@ void QueryProcessor::subarray_regular(
   delete [] cell_its;
 }
 
+void QueryProcessor::subarray_regular(
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const Tile::Range& range, const std::string& result_array_name) const { 
+  // For easy reference
+  const ArraySchema& array_schema = ad[0]->array_schema();
+  const unsigned int attribute_num = array_schema.attribute_num();
+  unsigned int fragment_num = ad.size(); 
+  
+  // Prepare result array
+  ArraySchema result_array_schema = array_schema.clone(result_array_name);
+  const StorageManager::ArrayDescriptor* result_ad = 
+      storage_manager_.open_array(result_array_schema);
+
+  // Create input tiles
+  const Tile*** tiles = new const Tile**[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i)
+    tiles[i] = new const Tile*[attribute_num+1];
+
+  // Create result tiles 
+  Tile** result_tiles = new Tile*[attribute_num+1];
+
+  // Get the tile ranks that overlap with the range
+  RankOverlapVector* overlapping_tile_ranks = 
+      new RankOverlapVector[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i) 
+    storage_manager_.get_overlapping_tile_ranks(ad[i], range, 
+                                                &overlapping_tile_ranks[i]);
+
+  // Initialize tile iterators
+  RankOverlapVector::const_iterator* tile_rank_it = 
+    new RankOverlapVector::const_iterator[fragment_num];
+  RankOverlapVector::const_iterator* tile_rank_it_end =
+    new RankOverlapVector::const_iterator[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i) { 
+      tile_rank_it[i] = overlapping_tile_ranks[i].begin();
+      tile_rank_it_end[i] = overlapping_tile_ranks[i].end();
+  }
+
+  // Get first tiles and initialize cell_iterators for coordinates
+  Tile::const_iterator** cell_its = 
+      new Tile::const_iterator*[fragment_num];
+  Tile::const_iterator* cell_it_end = 
+      new Tile::const_iterator[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i) { 
+    get_tiles_by_rank(ad[i], tile_rank_it[i]->first, tiles[i]);
+    cell_its[i] = new Tile::const_iterator[attribute_num+1];
+    initialize_cell_its(tiles[i], attribute_num, cell_its[i], cell_it_end[i]);
+  }
+
+  // Auxiliary variables for proper retrieval of qualifying cells.
+  uint64_t* skipped_cells = new uint64_t[fragment_num];
+  for(unsigned int i=0; i<fragment_num; ++i) 
+    skipped_cells[i] = 0;
+
+  // Get the index of the fragment from which we will get the next cell
+  int next_fragment_index =
+      get_next_fragment_index(ad, tile_rank_it, tile_rank_it_end, 
+                              tiles, fragment_num, 
+                              cell_its, cell_it_end, skipped_cells,
+                              array_schema);
+
+  uint64_t tile_id;
+  bool first_cell = true;
+
+  // Iterate over all cells, until there are no more cells
+  while(next_fragment_index != -1) {
+    // For easy reference
+    Tile::const_iterator* next_cell_its = cell_its[next_fragment_index];
+    Tile::const_iterator& next_cell_it_end = cell_it_end[next_fragment_index];
+    RankOverlapVector::const_iterator& next_tile_rank_it = 
+        tile_rank_it[next_fragment_index];
+    RankOverlapVector::const_iterator& next_tile_rank_it_end = 
+        tile_rank_it_end[next_fragment_index];
+  
+    // If the cell satisfies the subarray query
+    if(next_tile_rank_it->second ||
+       next_cell_its[attribute_num].cell_inside_range(range)) {
+      if(skipped_cells[next_fragment_index]) {
+        advance_cell_its(attribute_num, next_cell_its,
+                         skipped_cells[next_fragment_index]);
+        skipped_cells[next_fragment_index] = 0;
+      }
+      if(first_cell) { // To initialize tile_id and result_tiles
+        tile_id = next_cell_its[attribute_num].tile()->tile_id();
+        first_cell = false;
+        new_tiles(result_array_schema, tile_id, result_tiles);
+      }
+      if(next_cell_its[0].tile()->tile_id() != tile_id) {
+        // Change tile
+        tile_id = next_cell_its[0].tile()->tile_id();
+        store_tiles(result_ad, result_tiles);
+        new_tiles(result_array_schema, tile_id, result_tiles);
+      } 
+      append_cell(next_cell_its, result_tiles, attribute_num);
+    }
+
+    advance_cell_tile_its(
+        ad[next_fragment_index], attribute_num, 
+        next_cell_its, next_cell_it_end,
+        next_tile_rank_it, next_tile_rank_it_end,
+        fragment_num, tiles[next_fragment_index],
+        skipped_cells[next_fragment_index]);
+
+    next_fragment_index =
+        get_next_fragment_index(ad, tile_rank_it, tile_rank_it_end,
+                                tiles, fragment_num,
+                                cell_its, cell_it_end, 
+                                skipped_cells, array_schema);
+  }
+
+  // Send the lastly created tiles to storage manager
+  store_tiles(result_ad, result_tiles);
+
+  // Close result array 
+  storage_manager_.close_array(result_ad);
+
+  // Clean up
+  delete [] result_tiles;
+  for(unsigned int i=0; i<fragment_num; ++i) {
+    delete [] cell_its[i];
+    delete [] tiles[i];
+  }
+  delete [] tiles;
+  delete [] cell_its;
+  delete [] cell_it_end;
+  delete [] skipped_cells;
+  delete [] overlapping_tile_ranks;
+  delete [] tile_rank_it;
+  delete [] tile_rank_it_end;
+}

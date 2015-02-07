@@ -105,7 +105,7 @@ void Executor::export_to_CSV(const std::string& filename,
                                                 + fragment_suffixes[0]);
     query_processor_->export_to_CSV(ad, filename);
     storage_manager_->close_array(ad);
-  } else { // Mulutple fragments
+  } else { // Multiple fragments
     std::vector<const StorageManager::ArrayDescriptor*> ad;
     for(unsigned int i=0; i<fragment_suffixes.size(); ++i) 
       ad.push_back(storage_manager_->open_array(array_name + std::string("_") +
@@ -138,7 +138,7 @@ void Executor::filter(const ArraySchema& array_schema,
                                                 + fragment_suffixes[0]);
     query_processor_->filter(ad, expression, result_array_name + "_0_0");
     storage_manager_->close_array(ad);
-  } else { // Mulutple fragments
+  } else { // Multiple fragments
     std::vector<const StorageManager::ArrayDescriptor*> ad;
     for(unsigned int i=0; i<fragment_suffixes.size(); ++i) 
       ad.push_back(storage_manager_->open_array(array_name + std::string("_") +
@@ -193,7 +193,7 @@ void Executor::join(const ArraySchema& array_schema_A,
     }
     storage_manager_->close_array(ad_A);
     storage_manager_->close_array(ad_B);
-  } else { // Mulutple fragments TODO
+  } else { // Multiple fragments TODO
     throw ExecutorException("[Executor] Cannot join arrays: "
                             "query over multiple array fragments currently not "
                             "supported.");
@@ -249,7 +249,7 @@ void Executor::nearest_neighbors(const ArraySchema& array_schema,
                                                 + fragment_suffixes[0]);
     query_processor_->nearest_neighbors(ad, q, k, result_array_name + "_0_0");
     storage_manager_->close_array(ad);
-  } else { // Mulutple fragments TODO
+  } else { // Multiple fragments TODO
     throw ExecutorException("[Executor] Cannot perform nearest neighbor search:"
                             " query over multiple array fragments currently not"
                             " supported.");
@@ -283,10 +283,14 @@ void Executor::subarray(const ArraySchema& array_schema,
                                                 + fragment_suffixes[0]);
     query_processor_->subarray(ad, range, result_array_name + "_0_0");
     storage_manager_->close_array(ad);
-  } else { // Mulutple fragments TODO
-    throw ExecutorException("[Executor] Cannot perform subarray: "
-                            "query over multiple array fragments currently not "
-                            "supported.");
+  } else { // Multiple fragments 
+    std::vector<const StorageManager::ArrayDescriptor*> ad;
+    for(unsigned int i=0; i<fragment_suffixes.size(); ++i) 
+      ad.push_back(storage_manager_->open_array(array_name + std::string("_") +
+                                                fragment_suffixes[i]));
+    query_processor_->subarray(ad, range, result_array_name + "_0_0");
+    for(unsigned int i=0; i<fragment_suffixes.size(); ++i) 
+      storage_manager_->close_array(ad[i]);
   }
 
   // Update the fragment information of result array at the consolidator

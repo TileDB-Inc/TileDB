@@ -203,6 +203,26 @@ int main() {
     // Clean up
     delete expression;
 
+    // -------- //
+    // Subarray //
+    // -------- //
+    std::cout << "Subarray...\n";
+    // Prepare a range ([16,19], [20,21])
+    Tile::Range range;
+    range.push_back(16); range.push_back(19);
+    range.push_back(20); range.push_back(21);
+    // Perform the subarray
+    executor.subarray(array_schema_REG_A, range, "subarray_REG_A");  
+    executor.subarray(array_schema_IREG_A, range, "subarray_IREG_A");  
+    // Export result
+    std::cout << "Export subarray result...\n";
+    ArraySchema subarray_array_schema_REG_A = 
+        array_schema_REG_A.clone("subarray_REG_A");
+    ArraySchema subarray_array_schema_IREG_A = 
+        array_schema_REG_A.clone("subarray_IREG_A");
+    executor.export_to_CSV("subarray_REG_A.csv", subarray_array_schema_REG_A);
+    executor.export_to_CSV("subarray_IREG_A.csv", subarray_array_schema_IREG_A);
+
 /*
     // ----------------- //
     // Nearest neighbors //
@@ -224,28 +244,6 @@ int main() {
     executor.export_to_CSV("nn_REG_A.csv", nn_array_schema_REG_A);
     executor.export_to_CSV("nn_IREG_A.csv", nn_array_schema_IREG_A);
 */
-
-/*
-    // -------- //
-    // Subarray //
-    // -------- //
-    std::cout << "Subarray...\n";
-    // Prepare a range ([16,19], [20,21])
-    Tile::Range range;
-    range.push_back(16); range.push_back(19);
-    range.push_back(20); range.push_back(21);
-    // Perform the subarray
-    executor.subarray(array_schema_REG_A, range, "subarray_REG_A");  
-    executor.subarray(array_schema_IREG_A, range, "subarray_IREG_A");  
-    // Export result
-    std::cout << "Export subarray result...\n";
-    ArraySchema subarray_array_schema_REG_A = 
-        array_schema_REG_A.clone("subarray_REG_A");
-    ArraySchema subarray_array_schema_IREG_A = 
-        array_schema_REG_A.clone("subarray_IREG_A");
-    executor.export_to_CSV("subarray_REG_A.csv", subarray_array_schema_REG_A);
-    executor.export_to_CSV("subarray_IREG_A.csv", subarray_array_schema_IREG_A);
-*/  
   
 /*
     // ---- //
@@ -266,7 +264,6 @@ int main() {
     executor.export_to_CSV("join_REG_C.csv", join_array_schema_REG_C);
 */
 
-/*
     // ------------ //
     // Delete array //
     // ------------ //
@@ -287,7 +284,6 @@ int main() {
     // Delete array
     executor.delete_array(del_array_schema_REG_A);
     executor.delete_array(del_array_schema_IREG_A);
-*/
 
     std::cout << "Done!\n";
 

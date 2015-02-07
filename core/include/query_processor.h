@@ -55,6 +55,11 @@ class QueryProcessor {
   typedef std::pair<double, uint64_t> DistRank;
   /** A vector of attribute ids. */
   typedef std::vector<unsigned int> AttributeIds;
+  /**
+   * Vector of pairs (tile_rank, full_overlap), used in
+   * QueryProcessor::subarray.
+   */
+  typedef std::vector<std::pair<uint64_t, bool> > RankOverlapVector;
   /** 
    * A hyper-rectangle in the logical space, including all the coordinates
    * of a tile. It is a list of low/high values across each dimension, i.e.,
@@ -142,6 +147,15 @@ class QueryProcessor {
   void subarray(const StorageManager::ArrayDescriptor* array_descriptor,
                 const Tile::Range& range,
                 const std::string& result_array_name) const;
+  /** 
+   * A subarray query creates a new array from the input array descriptor, 
+   * containing only the cells whose coordinates fall into the input range. 
+   * The new array will have the input result name. This function
+   * operates on multiple array fragments.
+   */
+  void subarray(const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+                const Tile::Range& range,
+                const std::string& result_array_name) const;
 
  private:
   // PRIVATE ATTRIBUTES
@@ -209,6 +223,28 @@ class QueryProcessor {
       int64_t& skipped_tiles,
       uint64_t& skipped_cells,
       bool& non_cell_its_initialized) const;
+  /** 
+   * Advances the coordinate cell iterators by 1. If these cell iterators
+   * are equal to the end iterator, the corresponding tile iterators are
+   * advanced (retrieving the new tiles from the storage manager). If the tile
+   * iterators are not equal to the end tile iterator, then new cell iterators
+   * are initialized. The skipped_cells argument is updated based on what
+   * happens to the iterators:
+   *
+   * If tile iterators are advanced, skipped_cells is set to 0. If the tile
+   * iterators are not advanced, we simply increment skipped_cells.
+   */
+  void advance_cell_tile_its(
+      const StorageManager::ArrayDescriptor* ad,
+      unsigned int attribute_num,
+      Tile::const_iterator* cell_its, 
+      Tile::const_iterator& cell_it_end,
+      RankOverlapVector::const_iterator& tile_rank_it,
+      RankOverlapVector::const_iterator& tile_rank_it_end,
+      unsigned int fragment_num,
+      const Tile** tiles,
+      uint64_t& skipped_cells) const;
+
   /** Advances all the tile iterators by 1. */
   void advance_tile_its(unsigned int attribute_num,
                         StorageManager::const_iterator* tile_its) const; 
@@ -340,7 +376,7 @@ class QueryProcessor {
    * advance cell and tile iterators, it only focuses on those described in
    * attribute_ids, plus the extra coordinates attribute. 
    *
-   * Since this function may advance cell tile iterators, we may need to update
+   * Since this function may advance cell/tile iterators, we may need to update
    * some information (namely, skipped_tiles, skipped_cells, and
    * non_cell_its_initialized), so that we know how to advance the cell and 
    * tile iterators not being advanced by this function later in another 
@@ -358,11 +394,40 @@ class QueryProcessor {
       bool* non_cell_its_initialized,
       const ArraySchema& array_schema) const;
   /** 
+   * Returns the index of the fragment from which we will get the next cell in
+   * QueryProcessor::subarray for multiple array fragments, based on the global
+   * order. During retrieving the next cell, it may advance some coordinate cell
+   * iterators. 
+   *
+   * Since this function may advance cell iterators, we may need to update
+   * some information (namely, skipped_cells), so that we know how to advance
+   * the attribute cell iterators not being advanced by this function later in
+   * another function (so that the cells across all attributes are eventually
+   * synchronized).
+   */
+  int get_next_fragment_index(
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      RankOverlapVector::const_iterator* tile_rank_it,
+      RankOverlapVector::const_iterator* tile_rank_it_end,
+      const Tile*** tiles,
+      unsigned int fragment_num,
+      Tile::const_iterator** cell_its,
+      Tile::const_iterator* cell_it_end,
+      uint64_t* skipped_cells,
+      const ArraySchema& array_schema) const;
+  /** 
    * Gets from the storage manager all the (attribute and coordinate) tiles
    * of the input array having the input id. 
    */
-  void get_tiles(const StorageManager::ArrayDescriptor* array_descriptor,
+  void get_tiles(const StorageManager::ArrayDescriptor* ad,
                  uint64_t tile_id, const Tile** tiles) const;
+  /** 
+   * Gets from the storage manager all the (attribute and coordinate) tiles
+   * of the input array having the input rank. 
+   */
+  void get_tiles_by_rank(const StorageManager::ArrayDescriptor* ad,
+                 uint64_t tile_rank, const Tile** tiles) const;
+
   /** Initializes cell iterators. */
   void initialize_cell_its(const Tile** tiles,
                            unsigned int attribute_num,
@@ -502,9 +567,23 @@ class QueryProcessor {
   void subarray_irregular(
       const StorageManager::ArrayDescriptor* array_descriptor,
       const Tile::Range& range, const std::string& result_array_name) const;
+  /** 
+   * Implements QueryProcessor::subarray for arrays with irregular tiles. This
+   * function operates on multiple array fragments.
+   */
+  void subarray_irregular(
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const Tile::Range& range, const std::string& result_array_name) const;
   /** Implements QueryProcessor::subarray for arrays with regular tiles. */
   void subarray_regular(
       const StorageManager::ArrayDescriptor* array_descriptor,
+      const Tile::Range& range, const std::string& result_array_name) const;
+  /** 
+   * Implements QueryProcessor::subarray for arrays with regular tiles. This
+   * function operates on multiple array fragments.
+   */
+  void subarray_regular(
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
       const Tile::Range& range, const std::string& result_array_name) const;
 };
 

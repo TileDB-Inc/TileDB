@@ -315,6 +315,13 @@ class StorageManager {
    */
   Tile* new_tile(const ArraySchema& array_schema, unsigned int attribute_id, 
                  uint64_t tile_id, uint64_t cell_num) const; 
+  /** 
+   * Returns the id of the tile with the input rank for the input array. Note
+   * that the id of a logical tile across all attributes is the same at the
+   * same rank (physical tiles correspondig to the same logical tile are 
+   * appended to the array in the same order).
+   */
+  uint64_t get_tile_id(const ArrayDescriptor* ad, uint64_t rank) const;
 
   // TILE ITERATORS
   /** This class implements a constant tile iterator. */
@@ -395,6 +402,14 @@ class StorageManager {
   void get_overlapping_tile_ids(
       const ArrayDescriptor* array_descriptor, const Tile::Range& range, 
       std::vector<std::pair<uint64_t, bool> >* overlapping_tile_ids) const;
+  /** 
+   * Returns the ranks of the tiles whose MBR overlaps with the input range.
+   * The bool variable in overlapping_tile_ranks indicates whether the overlap
+   * is full (i.e., if the tile MBR is completely in the range) or not.
+   */
+  void get_overlapping_tile_ranks(
+      const ArrayDescriptor* array_descriptor, const Tile::Range& range, 
+      std::vector<std::pair<uint64_t, bool> >* overlapping_tile_ranks) const;
 
  private: 
   // PRIVATE ATTRIBUTES
@@ -430,6 +445,10 @@ class StorageManager {
   bool check_on_get_tile(const ArrayDescriptor& array_descriptor,
                          unsigned int attribute_id,
                          uint64_t tile_id) const;
+  /** Checks upon getting a tile by rank. */
+  bool check_on_get_tile_by_rank(const ArrayDescriptor& array_descriptor,
+                                 unsigned int attribute_id,
+                                 uint64_t rank) const;
   /** Checks upon opening an array. */
   bool check_on_open_array(const std::string& array_name, 
                            ArrayMode array_mode) const;
