@@ -215,6 +215,36 @@ void QueryProcessor::join(const StorageManager::ArrayDescriptor* ad_A,
     join_irregular(ad_A, ad_B, array_schema_C);
 } 
 
+void QueryProcessor::join(
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad_A, 
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad_B, 
+    const std::string& result_array_name) const {
+  assert(ad_A.size() > 0);
+  assert(ad_B.size() > 0);
+
+  // For easy reference
+  const ArraySchema& array_schema_A = ad_A[0]->array_info()->array_schema_;
+  const ArraySchema& array_schema_B = ad_B[0]->array_info()->array_schema_;
+
+  std::pair<bool,std::string> can_join = 
+      ArraySchema::join_compatible(array_schema_A, array_schema_B);
+
+  if(!can_join.first)
+    throw QueryProcessorException(std::string("[QueryProcessor] Input arrays "
+                                  " are not join-compatible.") + 
+                                  can_join.second);
+
+  ArraySchema array_schema_C = ArraySchema::create_join_result_schema(
+                                   array_schema_A, 
+                                   array_schema_B, 
+                                   result_array_name);
+  
+  if(array_schema_A.has_regular_tiles())
+    join_regular(ad_A, ad_B, array_schema_C);
+  else 
+    join_irregular(ad_A, ad_B, array_schema_C);
+}
+
 void QueryProcessor::nearest_neighbors(
     const StorageManager::ArrayDescriptor* ad,
     const std::vector<double>& q,
@@ -359,6 +389,26 @@ void QueryProcessor::advance_cell_tile_its(
 }
 
 inline
+void QueryProcessor::advance_cell_tile_its(
+    Tile::const_iterator& cell_it,
+    const Tile::const_iterator& cell_it_end,
+    StorageManager::const_iterator& tile_it,
+    uint64_t& skipped_tiles,
+    uint64_t& skipped_cells,
+    bool& attribute_cell_its_initialized,
+    bool& coordinate_cell_its_initialized) const {
+  ++cell_it;
+  ++skipped_cells;
+  if(cell_it == cell_it_end) {
+    ++tile_it;
+    coordinate_cell_its_initialized = false;
+    attribute_cell_its_initialized = false;
+    ++skipped_tiles;
+    skipped_cells = 0;
+  }
+}
+
+inline
 void QueryProcessor::advance_tile_its(
     unsigned int attribute_num, 
     StorageManager::const_iterator* tile_its) const {
@@ -440,6 +490,35 @@ CSVLine QueryProcessor::cell_to_csv_line(const Tile::const_iterator* cell_its,
     cell_its[i] >> csv_line;
 
   return csv_line;
+}
+
+bool QueryProcessor::coincides(
+    const StorageManager::const_iterator& tile_it_A,
+    const Tile::const_iterator& cell_it_A,
+    bool coordinate_cell_its_initialized_A,
+    const StorageManager::const_iterator& tile_it_B,
+    const Tile::const_iterator& cell_it_B,
+    bool coordinate_cell_its_initialized_B,
+    const ArraySchema& array_schema) const {
+  if(coordinate_cell_its_initialized_A && coordinate_cell_its_initialized_B) {
+    return cell_it_A == cell_it_B;
+  } else if(!coordinate_cell_its_initialized_A && 
+            !coordinate_cell_its_initialized_B) {
+    return std::equal(tile_it_A.bounding_coordinates().first.begin(),
+                      tile_it_A.bounding_coordinates().first.end(), 
+                      tile_it_B.bounding_coordinates().first.begin());
+  } else if(coordinate_cell_its_initialized_A && 
+            !coordinate_cell_its_initialized_B) {
+    const std::vector<double> coord_A = *cell_it_A;
+    return std::equal(coord_A.begin(), coord_A.end(),
+                      tile_it_B.bounding_coordinates().first.begin());
+  } else if(!coordinate_cell_its_initialized_A && 
+            coordinate_cell_its_initialized_B) {
+    const std::vector<double> coord_B = *cell_it_B;
+    return std::equal(tile_it_A.bounding_coordinates().first.begin(),
+                      tile_it_A.bounding_coordinates().first.end(), 
+                      coord_B.begin());
+  }
 }
 
 std::vector<QueryProcessor::DistRank> QueryProcessor::compute_sorted_dist_ranks(
@@ -1055,6 +1134,455 @@ void QueryProcessor::filter_regular(
   delete [] non_expr_cell_its_initialized;
 }
 
+void QueryProcessor::get_next_join_fragment_indexes_irregular(
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
+    StorageManager::const_iterator** tile_its_A,
+    StorageManager::const_iterator* tile_it_end_A,
+    Tile::const_iterator** cell_its_A,
+    Tile::const_iterator* cell_it_end_A,
+    uint64_t* skipped_tiles_A, uint64_t* skipped_cells_A,
+    bool* attribute_cell_its_initialized_A,
+    bool* coordinate_cell_its_initialized_A,
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+    StorageManager::const_iterator** tile_its_B,
+    StorageManager::const_iterator* tile_it_end_B,
+    Tile::const_iterator** cell_its_B,
+    Tile::const_iterator* cell_it_end_B,
+    uint64_t* skipped_tiles_B, uint64_t* skipped_cells_B,
+    bool* attribute_cell_its_initialized_B, 
+    bool* coordinate_cell_its_initialized_B,
+    bool& fragment_indexes_initialized,
+    int& next_fragment_index_A, int& next_fragment_index_B) const {
+  // For easy reference 
+  unsigned int fragment_num_A = ad_A.size();
+  unsigned int fragment_num_B = ad_B.size();
+  const ArraySchema& array_schema_A = ad_A[0]->array_schema();
+  const ArraySchema& array_schema_B = ad_A[0]->array_schema();
+  unsigned int attribute_num_A = ad_A[0]->array_schema().attribute_num();
+  unsigned int attribute_num_B = ad_B[0]->array_schema().attribute_num();
+
+  // Initialization
+  if(!fragment_indexes_initialized) { 
+    next_fragment_index_A = get_next_fragment_index(
+        ad_A, tile_its_A, tile_it_end_A,
+        cell_its_A, cell_it_end_A,
+        skipped_tiles_A, skipped_cells_A,
+        attribute_cell_its_initialized_A,
+        coordinate_cell_its_initialized_A);
+    if(next_fragment_index_A == -1)
+      return;
+    next_fragment_index_B = get_next_fragment_index(
+        ad_B, tile_its_B, tile_it_end_B,
+        cell_its_B, cell_it_end_B,
+        skipped_tiles_B, skipped_cells_B,
+        attribute_cell_its_initialized_B,
+        coordinate_cell_its_initialized_B);
+    if(next_fragment_index_B == -1)
+      return;
+    fragment_indexes_initialized = true;
+  } else { // There was a join result before
+    // Advance iterators in A and find new fragment index 
+    advance_cell_tile_its(
+        cell_its_A[next_fragment_index_A][attribute_num_A],
+        cell_it_end_A[next_fragment_index_A],
+        tile_its_A[next_fragment_index_A][attribute_num_A],
+        skipped_tiles_A[next_fragment_index_A],
+        skipped_cells_A[next_fragment_index_A],
+        attribute_cell_its_initialized_A[next_fragment_index_A],
+        coordinate_cell_its_initialized_A[next_fragment_index_A]);
+    next_fragment_index_A = get_next_fragment_index(
+        ad_A, tile_its_A, tile_it_end_A,
+        cell_its_A, cell_it_end_A,
+        skipped_tiles_A, skipped_cells_A,
+        attribute_cell_its_initialized_A,
+        coordinate_cell_its_initialized_A);
+    if(next_fragment_index_A == -1)
+      return;
+    // Advance iterators in B and find new fragment index 
+    advance_cell_tile_its(
+        cell_its_B[next_fragment_index_B][attribute_num_B],
+        cell_it_end_B[next_fragment_index_B],
+        tile_its_B[next_fragment_index_B][attribute_num_B],
+        skipped_tiles_B[next_fragment_index_B],
+        skipped_cells_B[next_fragment_index_B],
+        attribute_cell_its_initialized_B[next_fragment_index_B],
+        coordinate_cell_its_initialized_B[next_fragment_index_B]);
+    next_fragment_index_B = get_next_fragment_index(
+        ad_B, tile_its_B, tile_it_end_B,
+        cell_its_B, cell_it_end_B,
+        skipped_tiles_B, skipped_cells_B,
+        attribute_cell_its_initialized_B,
+        coordinate_cell_its_initialized_B);
+    if(next_fragment_index_B == -1)
+      return;
+  }
+
+  // Iterate until a joining result is found, or the cells in one
+  // of the arrays are exhausted.
+  while(true) {     
+    // Compare tile to tile, or cell to tile.
+    // This may advance/skip entire tiles.
+    if(!coordinate_cell_its_initialized_A[next_fragment_index_A] || 
+       !coordinate_cell_its_initialized_B[next_fragment_index_B]) {
+      // Initializations for easy reference
+      std::vector<double> coord_A_lower, coord_A_upper;
+      std::vector<double> coord_B_lower, coord_B_upper;
+      if(coordinate_cell_its_initialized_A[next_fragment_index_A]) {
+        coord_A_lower = *cell_its_A[next_fragment_index_A][attribute_num_A];
+        coord_A_upper = *cell_its_A[next_fragment_index_A][attribute_num_A];
+      } else {
+        coord_A_lower =  
+            tile_its_A[next_fragment_index_A][0].bounding_coordinates().first;
+        coord_A_upper =  
+            tile_its_A[next_fragment_index_A][0].bounding_coordinates().second;
+      }
+      if(coordinate_cell_its_initialized_B[next_fragment_index_B]) {
+        coord_B_lower = *cell_its_B[next_fragment_index_B][attribute_num_B];
+        coord_B_upper = *cell_its_B[next_fragment_index_B][attribute_num_B];
+      } else {
+        coord_B_lower =  
+            tile_its_B[next_fragment_index_B][0].bounding_coordinates().first;
+        coord_B_upper =  
+            tile_its_B[next_fragment_index_B][0].bounding_coordinates().second;
+      }
+      if(array_schema_A.succeeds(coord_A_lower, coord_B_upper)) {
+        // Advance iterators in B
+        if(coordinate_cell_its_initialized_B[next_fragment_index_B]) {
+          advance_cell_tile_its(
+              cell_its_B[next_fragment_index_B][attribute_num_B],
+              cell_it_end_B[next_fragment_index_B],
+              tile_its_B[next_fragment_index_B][attribute_num_B],
+              skipped_tiles_B[next_fragment_index_B],
+              skipped_cells_B[next_fragment_index_B],
+              attribute_cell_its_initialized_B[next_fragment_index_B],
+              coordinate_cell_its_initialized_B[next_fragment_index_B]);
+        } else {
+          ++tile_its_B[next_fragment_index_B][attribute_num_B];
+          attribute_cell_its_initialized_B[next_fragment_index_B] = false;
+          coordinate_cell_its_initialized_B[next_fragment_index_B] = false;
+          ++skipped_tiles_B[next_fragment_index_B];
+          skipped_cells_B[next_fragment_index_B] = 0;
+        }
+        next_fragment_index_B = get_next_fragment_index(
+            ad_B, tile_its_B, tile_it_end_B,
+            cell_its_B, cell_it_end_B,
+            skipped_tiles_B, skipped_cells_B,
+            attribute_cell_its_initialized_B,
+            coordinate_cell_its_initialized_B);
+        if(next_fragment_index_B == -1)
+          return;
+      } else if(array_schema_A.succeeds(coord_B_lower, coord_A_upper)) {
+        // Advance iterators in A
+        if(coordinate_cell_its_initialized_A[next_fragment_index_A]) {
+          advance_cell_tile_its(
+              cell_its_A[next_fragment_index_A][attribute_num_A],
+              cell_it_end_A[next_fragment_index_A],
+              tile_its_A[next_fragment_index_A][attribute_num_A],
+              skipped_tiles_A[next_fragment_index_A],
+              skipped_cells_A[next_fragment_index_A],
+              attribute_cell_its_initialized_A[next_fragment_index_A],
+              coordinate_cell_its_initialized_A[next_fragment_index_A]);
+        } else {
+          ++tile_its_A[next_fragment_index_A][attribute_num_A];
+          attribute_cell_its_initialized_A[next_fragment_index_A] = false;
+          coordinate_cell_its_initialized_A[next_fragment_index_A] = false;
+          ++skipped_tiles_A[next_fragment_index_A];
+          skipped_cells_A[next_fragment_index_A] = 0;
+        }
+        next_fragment_index_A = get_next_fragment_index(
+            ad_A, tile_its_A, tile_it_end_A,
+            cell_its_A, cell_it_end_A,
+            skipped_tiles_A, skipped_cells_A,
+            attribute_cell_its_initialized_A,
+            coordinate_cell_its_initialized_A);
+        if(next_fragment_index_A == -1)
+          return;
+      } else { // Tiles may join, initialize coordinate cell iterators
+        if(!coordinate_cell_its_initialized_A[next_fragment_index_A]) {
+          cell_its_A[next_fragment_index_A][attribute_num_A] = 
+              (*tile_its_A[next_fragment_index_A][attribute_num_A]).begin();
+          cell_it_end_A[next_fragment_index_A] = 
+              (*tile_its_A[next_fragment_index_A][attribute_num_A]).end();
+          coordinate_cell_its_initialized_A[next_fragment_index_A] = true;
+        }
+        if(!coordinate_cell_its_initialized_B[next_fragment_index_B]) {
+          cell_its_B[next_fragment_index_B][attribute_num_B] = 
+              (*tile_its_B[next_fragment_index_B][attribute_num_B]).begin();
+          cell_it_end_B[next_fragment_index_B] = 
+              (*tile_its_B[next_fragment_index_B][attribute_num_B]).end();
+          coordinate_cell_its_initialized_B[next_fragment_index_B] = true;
+        } 
+      }
+    }
+
+    // Compare cell to cell.
+    // This may advance individual cells.
+    if(coordinate_cell_its_initialized_A[next_fragment_index_A] && 
+       coordinate_cell_its_initialized_B[next_fragment_index_B]) {
+      // Join result found
+      if(cell_its_A[next_fragment_index_A][attribute_num_A] == 
+         cell_its_B[next_fragment_index_B][attribute_num_B]) {
+        return;
+      } else if(array_schema_A.precedes(
+                    cell_its_A[next_fragment_index_A][attribute_num_A],
+                    cell_its_B[next_fragment_index_B][attribute_num_B])) {
+        // Advance iterators in A 
+        advance_cell_tile_its(
+            cell_its_A[next_fragment_index_A][attribute_num_A],
+            cell_it_end_A[next_fragment_index_A],
+            tile_its_A[next_fragment_index_A][attribute_num_A],
+            skipped_tiles_A[next_fragment_index_A],
+            skipped_cells_A[next_fragment_index_A],
+            attribute_cell_its_initialized_A[next_fragment_index_A],
+            coordinate_cell_its_initialized_A[next_fragment_index_A]);
+        next_fragment_index_A = get_next_fragment_index(
+            ad_A, tile_its_A, tile_it_end_A,
+            cell_its_A, cell_it_end_A,
+            skipped_tiles_A, skipped_cells_A,
+            attribute_cell_its_initialized_A,
+            coordinate_cell_its_initialized_A);
+        if(next_fragment_index_A == -1)
+          return;
+      } else {
+        // Advance iterators in B 
+        advance_cell_tile_its(
+            cell_its_B[next_fragment_index_B][attribute_num_B],
+            cell_it_end_B[next_fragment_index_B],
+            tile_its_B[next_fragment_index_B][attribute_num_B],
+            skipped_tiles_B[next_fragment_index_B],
+            skipped_cells_B[next_fragment_index_B],
+            attribute_cell_its_initialized_B[next_fragment_index_B],
+            coordinate_cell_its_initialized_B[next_fragment_index_B]);
+        next_fragment_index_B = get_next_fragment_index(
+            ad_B, tile_its_B, tile_it_end_B,
+            cell_its_B, cell_it_end_B,
+            skipped_tiles_B, skipped_cells_B,
+            attribute_cell_its_initialized_B,
+            coordinate_cell_its_initialized_B);
+        if(next_fragment_index_B == -1)
+          return;
+      }
+    }
+  }
+}
+
+void QueryProcessor::get_next_join_fragment_indexes_regular(
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
+    StorageManager::const_iterator** tile_its_A,
+    StorageManager::const_iterator* tile_it_end_A,
+    Tile::const_iterator** cell_its_A,
+    Tile::const_iterator* cell_it_end_A,
+    uint64_t* skipped_tiles_A, uint64_t* skipped_cells_A,
+    bool* attribute_cell_its_initialized_A,
+    bool* coordinate_cell_its_initialized_A,
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+    StorageManager::const_iterator** tile_its_B,
+    StorageManager::const_iterator* tile_it_end_B,
+    Tile::const_iterator** cell_its_B,
+    Tile::const_iterator* cell_it_end_B,
+    uint64_t* skipped_tiles_B, uint64_t* skipped_cells_B,
+    bool* attribute_cell_its_initialized_B, 
+    bool* coordinate_cell_its_initialized_B,
+    bool& fragment_indexes_initialized,
+    int& next_fragment_index_A, int& next_fragment_index_B) const {
+  // For easy reference 
+  unsigned int fragment_num_A = ad_A.size();
+  unsigned int fragment_num_B = ad_B.size();
+  const ArraySchema& array_schema_A = ad_A[0]->array_schema();
+  const ArraySchema& array_schema_B = ad_A[0]->array_schema();
+  unsigned int attribute_num_A = ad_A[0]->array_schema().attribute_num();
+  unsigned int attribute_num_B = ad_B[0]->array_schema().attribute_num();
+
+  // Initialization
+  if(!fragment_indexes_initialized) { 
+    next_fragment_index_A = get_next_fragment_index(
+        ad_A, tile_its_A, tile_it_end_A,
+        cell_its_A, cell_it_end_A,
+        skipped_tiles_A, skipped_cells_A,
+        attribute_cell_its_initialized_A,
+        coordinate_cell_its_initialized_A);
+    if(next_fragment_index_A == -1)
+      return;
+    next_fragment_index_B = get_next_fragment_index(
+        ad_B, tile_its_B, tile_it_end_B,
+        cell_its_B, cell_it_end_B,
+        skipped_tiles_B, skipped_cells_B,
+        attribute_cell_its_initialized_B,
+        coordinate_cell_its_initialized_B);
+    if(next_fragment_index_B == -1)
+      return;
+    fragment_indexes_initialized = true;
+  } else { // There was a join result before
+    // Advance iterators in A and find new fragment index 
+    advance_cell_tile_its(
+        cell_its_A[next_fragment_index_A][attribute_num_A],
+        cell_it_end_A[next_fragment_index_A],
+        tile_its_A[next_fragment_index_A][attribute_num_A],
+        skipped_tiles_A[next_fragment_index_A],
+        skipped_cells_A[next_fragment_index_A],
+        attribute_cell_its_initialized_A[next_fragment_index_A],
+        coordinate_cell_its_initialized_A[next_fragment_index_A]);
+    next_fragment_index_A = get_next_fragment_index(
+        ad_A, tile_its_A, tile_it_end_A,
+        cell_its_A, cell_it_end_A,
+        skipped_tiles_A, skipped_cells_A,
+        attribute_cell_its_initialized_A,
+        coordinate_cell_its_initialized_A);
+    if(next_fragment_index_A == -1)
+      return;
+    // Advance iterators in B and find new fragment index 
+    advance_cell_tile_its(
+        cell_its_B[next_fragment_index_B][attribute_num_B],
+        cell_it_end_B[next_fragment_index_B],
+        tile_its_B[next_fragment_index_B][attribute_num_B],
+        skipped_tiles_B[next_fragment_index_B],
+        skipped_cells_B[next_fragment_index_B],
+        attribute_cell_its_initialized_B[next_fragment_index_B],
+        coordinate_cell_its_initialized_B[next_fragment_index_B]);
+    next_fragment_index_B = get_next_fragment_index(
+        ad_B, tile_its_B, tile_it_end_B,
+        cell_its_B, cell_it_end_B,
+        skipped_tiles_B, skipped_cells_B,
+        attribute_cell_its_initialized_B,
+        coordinate_cell_its_initialized_B);
+    if(next_fragment_index_B == -1)
+      return;
+  }
+
+  // Iterate until a joining result is found, or the cells in one
+  // of the arrays are exhausted.
+  while(true) {     
+    // Compare tile to tile, or cell to tile.
+    // This may advance/skip entire tiles.
+    if(!coordinate_cell_its_initialized_A[next_fragment_index_A] || 
+       !coordinate_cell_its_initialized_B[next_fragment_index_B]) {
+      // Initializations for easy reference
+      uint64_t tile_id_A = 
+          tile_its_A[next_fragment_index_A][attribute_num_A].tile_id();
+      uint64_t tile_id_B = 
+          tile_its_B[next_fragment_index_B][attribute_num_B].tile_id();
+      if(tile_id_A > tile_id_B) {
+        // Advance iterators in B
+        if(coordinate_cell_its_initialized_B[next_fragment_index_B]) {
+          advance_cell_tile_its(
+              cell_its_B[next_fragment_index_B][attribute_num_B],
+              cell_it_end_B[next_fragment_index_B],
+              tile_its_B[next_fragment_index_B][attribute_num_B],
+              skipped_tiles_B[next_fragment_index_B],
+              skipped_cells_B[next_fragment_index_B],
+              attribute_cell_its_initialized_B[next_fragment_index_B],
+              coordinate_cell_its_initialized_B[next_fragment_index_B]);
+        } else {
+          ++tile_its_B[next_fragment_index_B][attribute_num_B];
+          attribute_cell_its_initialized_B[next_fragment_index_B] = false;
+          coordinate_cell_its_initialized_B[next_fragment_index_B] = false;
+          ++skipped_tiles_B[next_fragment_index_B];
+          skipped_cells_B[next_fragment_index_B] = 0;
+        }
+        next_fragment_index_B = get_next_fragment_index(
+            ad_B, tile_its_B, tile_it_end_B,
+            cell_its_B, cell_it_end_B,
+            skipped_tiles_B, skipped_cells_B,
+            attribute_cell_its_initialized_B,
+            coordinate_cell_its_initialized_B);
+        if(next_fragment_index_B == -1)
+          return;
+      } else if(tile_id_A < tile_id_B) {
+        // Advance iterators in A
+        if(coordinate_cell_its_initialized_A[next_fragment_index_A]) {
+          advance_cell_tile_its(
+              cell_its_A[next_fragment_index_A][attribute_num_A],
+              cell_it_end_A[next_fragment_index_A],
+              tile_its_A[next_fragment_index_A][attribute_num_A],
+              skipped_tiles_A[next_fragment_index_A],
+              skipped_cells_A[next_fragment_index_A],
+              attribute_cell_its_initialized_A[next_fragment_index_A],
+              coordinate_cell_its_initialized_A[next_fragment_index_A]);
+        } else {
+          ++tile_its_A[next_fragment_index_A][attribute_num_A];
+          attribute_cell_its_initialized_A[next_fragment_index_A] = false;
+          coordinate_cell_its_initialized_A[next_fragment_index_A] = false;
+          ++skipped_tiles_A[next_fragment_index_A];
+          skipped_cells_A[next_fragment_index_A] = 0;
+        }
+        next_fragment_index_A = get_next_fragment_index(
+            ad_A, tile_its_A, tile_it_end_A,
+            cell_its_A, cell_it_end_A,
+            skipped_tiles_A, skipped_cells_A,
+            attribute_cell_its_initialized_A,
+            coordinate_cell_its_initialized_A);
+        if(next_fragment_index_A == -1)
+          return;
+      } else {  // tile_id_A == tile_id_B
+        // Tiles may join, initialize coordinate cell iterators
+        if(!coordinate_cell_its_initialized_A[next_fragment_index_A]) {
+          cell_its_A[next_fragment_index_A][attribute_num_A] = 
+              (*tile_its_A[next_fragment_index_A][attribute_num_A]).begin();
+          cell_it_end_A[next_fragment_index_A] = 
+              (*tile_its_A[next_fragment_index_A][attribute_num_A]).end();
+          coordinate_cell_its_initialized_A[next_fragment_index_A] = true;
+        }
+        if(!coordinate_cell_its_initialized_B[next_fragment_index_B]) {
+          cell_its_B[next_fragment_index_B][attribute_num_B] = 
+              (*tile_its_B[next_fragment_index_B][attribute_num_B]).begin();
+          cell_it_end_B[next_fragment_index_B] = 
+              (*tile_its_B[next_fragment_index_B][attribute_num_B]).end();
+          coordinate_cell_its_initialized_B[next_fragment_index_B] = true;
+        } 
+      }
+    }
+
+    // Compare cell to cell.
+    // This may advance individual cells.
+    if(coordinate_cell_its_initialized_A[next_fragment_index_A] && 
+       coordinate_cell_its_initialized_B[next_fragment_index_B]) {
+      // Join result found
+      if(cell_its_A[next_fragment_index_A][attribute_num_A] == 
+         cell_its_B[next_fragment_index_B][attribute_num_B]) {
+        return;
+      } else if(array_schema_A.precedes(
+                    cell_its_A[next_fragment_index_A][attribute_num_A],
+                    cell_its_B[next_fragment_index_B][attribute_num_B])) {
+        // Advance iterators in A 
+        advance_cell_tile_its(
+            cell_its_A[next_fragment_index_A][attribute_num_A],
+            cell_it_end_A[next_fragment_index_A],
+            tile_its_A[next_fragment_index_A][attribute_num_A],
+            skipped_tiles_A[next_fragment_index_A],
+            skipped_cells_A[next_fragment_index_A],
+            attribute_cell_its_initialized_A[next_fragment_index_A],
+            coordinate_cell_its_initialized_A[next_fragment_index_A]);
+        next_fragment_index_A = get_next_fragment_index(
+            ad_A, tile_its_A, tile_it_end_A,
+            cell_its_A, cell_it_end_A,
+            skipped_tiles_A, skipped_cells_A,
+            attribute_cell_its_initialized_A,
+            coordinate_cell_its_initialized_A);
+        if(next_fragment_index_A == -1)
+          return;
+      } else {
+        // Advance iterators in B 
+        advance_cell_tile_its(
+            cell_its_B[next_fragment_index_B][attribute_num_B],
+            cell_it_end_B[next_fragment_index_B],
+            tile_its_B[next_fragment_index_B][attribute_num_B],
+            skipped_tiles_B[next_fragment_index_B],
+            skipped_cells_B[next_fragment_index_B],
+            attribute_cell_its_initialized_B[next_fragment_index_B],
+            coordinate_cell_its_initialized_B[next_fragment_index_B]);
+        next_fragment_index_B = get_next_fragment_index(
+            ad_B, tile_its_B, tile_it_end_B,
+            cell_its_B, cell_it_end_B,
+            skipped_tiles_B, skipped_cells_B,
+            attribute_cell_its_initialized_B,
+            coordinate_cell_its_initialized_B);
+        if(next_fragment_index_B == -1)
+          return;
+      }
+    }
+  }
+}
+
 int QueryProcessor::get_next_fragment_index(
       StorageManager::const_iterator** tile_its,
       StorageManager::const_iterator* tile_it_end,
@@ -1286,6 +1814,120 @@ int QueryProcessor::get_next_fragment_index(
     return next_fragment_index.back();
 }
 
+int QueryProcessor::get_next_fragment_index(
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    StorageManager::const_iterator** tile_its,
+    StorageManager::const_iterator* tile_it_end,
+    Tile::const_iterator** cell_its,
+    Tile::const_iterator* cell_it_end,
+    uint64_t* skipped_tiles, uint64_t* skipped_cells,
+    bool* attribute_cell_its_initialized,
+    bool* coordinate_cell_its_initialized) const {
+  // For easy reference
+  const ArraySchema& array_schema = ad[0]->array_schema();
+  unsigned int attribute_num = array_schema.attribute_num();
+  unsigned int fragment_num = ad.size();
+
+  // Holds the (potentially multiple) indexes of the candidate fragments
+  // from which we will get the next cell for consolidation. Note though 
+  // that only the largest (last) index will be returned, which corresponds
+  // to the latest update.
+  std::vector<int> next_fragment_index;
+  next_fragment_index.reserve(fragment_num);
+
+  // The loop will be broken when the next fragment is found
+  while(true) {
+    next_fragment_index.clear();
+
+    for(unsigned int i=0; i<fragment_num; ++i) {
+      if(tile_its[i][attribute_num] != tile_it_end[i]) {
+        if(next_fragment_index.size() == 0 || 
+           coincides( 
+               tile_its[i][attribute_num],
+               cell_its[i][attribute_num],
+               coordinate_cell_its_initialized[i],
+               tile_its[next_fragment_index[0]][attribute_num],
+               cell_its[next_fragment_index[0]][attribute_num],
+               coordinate_cell_its_initialized[next_fragment_index[0]],
+               array_schema)) {
+          next_fragment_index.push_back(i);
+        } else if(precedes(
+                      tile_its[i][attribute_num],
+                      cell_its[i][attribute_num],
+                      coordinate_cell_its_initialized[i],
+                      tile_its[next_fragment_index[0]][attribute_num],
+                      cell_its[next_fragment_index[0]][attribute_num],
+                      coordinate_cell_its_initialized[next_fragment_index[0]],
+                      array_schema)) {
+          next_fragment_index.clear();
+          next_fragment_index.push_back(i);
+        } 
+      }
+    }
+
+    if(next_fragment_index.size() == 0)
+      return -1;
+    else if(next_fragment_index.size() == 1)
+      return next_fragment_index.back();
+
+    // Initialize coordinates if not already initialized
+    for(int i=0; i<next_fragment_index.size(); ++i) {
+      if(!coordinate_cell_its_initialized[next_fragment_index[i]]) {
+          cell_its[next_fragment_index[i]][attribute_num] = 
+              (*tile_its[next_fragment_index[i]][attribute_num]).begin();
+          cell_it_end[next_fragment_index[i]] = 
+              (*tile_its[next_fragment_index[i]][attribute_num]).end();
+          coordinate_cell_its_initialized[next_fragment_index[i]] = true;
+      }
+    }
+
+    // Handle deletions or overwrites
+    int latest_fragment_index = next_fragment_index.back();
+    int num_of_iterators_to_advance = next_fragment_index.size()-1; 
+
+    // Check if the cell corresponds to a deletion.
+    // We assume that a deletion only occurs to a non-empty cell
+    // If there are more than one cells with the same coordinates,
+    // synchronize the cell iterators of the attributes
+    if(skipped_tiles[latest_fragment_index]) {
+      advance_tile_its(attribute_num, tile_its[latest_fragment_index], 
+                       skipped_tiles[latest_fragment_index]);
+      skipped_tiles[latest_fragment_index] = 0;
+    }
+    if(skipped_cells[latest_fragment_index]) {
+      if(!attribute_cell_its_initialized[latest_fragment_index]) {
+        initialize_cell_its(tile_its[latest_fragment_index],
+                            attribute_num,
+                            cell_its[latest_fragment_index]);
+        attribute_cell_its_initialized[latest_fragment_index] = true;
+      }
+      advance_cell_its(attribute_num, cell_its[latest_fragment_index], 
+                       skipped_cells[latest_fragment_index]);
+      skipped_cells[latest_fragment_index] = 0;
+    }
+    bool null = is_null(cell_its[latest_fragment_index], attribute_num);
+    if(null) 
+      ++num_of_iterators_to_advance;
+
+    // Advance cell (and potentially tile) iterators.
+    // If the cell is deleted, all iterators are advanced, otherwise all except
+    // for the last one.
+    for(int i=0; i<num_of_iterators_to_advance; ++i) {
+      advance_cell_tile_its(
+          cell_its[next_fragment_index[i]][attribute_num],
+          cell_it_end[next_fragment_index[i]],
+          tile_its[next_fragment_index[i]][attribute_num], 
+          skipped_tiles[next_fragment_index[i]],
+          skipped_cells[next_fragment_index[i]],
+          coordinate_cell_its_initialized[next_fragment_index[i]], 
+          attribute_cell_its_initialized[next_fragment_index[i]]); 
+    }
+
+    if(!null)
+      return next_fragment_index.back();
+  }
+}
+
 inline
 void QueryProcessor::get_tiles(
     const StorageManager::ArrayDescriptor* ad, 
@@ -1322,45 +1964,6 @@ bool QueryProcessor::is_null(const Tile::const_iterator* cell_its,
   }
 
   return null;
-}
-
-bool QueryProcessor::path_exists(const std::string& path) const {
-  struct stat st;
-  stat(path.c_str(), &st);
-  return S_ISDIR(st.st_mode);
-}
-
-double QueryProcessor::point_to_mbr_distance(
-    const std::vector<double>& q, const std::vector<double>& mbr) const {
-  // Check dimensionality
-  assert(mbr.size() == 2*q.size());
-
-  unsigned int dim_num = q.size();
-  double width, centroid, dq;
-  double dist = 0;
-  for(unsigned int i=0; i<dim_num; ++i) {
-    width = mbr[2*i+1] - mbr[2*i];
-    centroid = mbr[2*i] + width/2;
-    dq = std::max(abs(q[i]-centroid) - width/2, 0.0);
-    dist += dq * dq; 
-  }
-
-  return dist;
-}
-
-double QueryProcessor::point_to_point_distance(
-    const std::vector<double>& q, const std::vector<double>& p) const {
-  // Check dimensionality
-  assert(q.size() == p.size());
-
-  unsigned int dim_num = q.size();
-  double dist = 0, diff;
-  for(unsigned int i=0; i<dim_num; ++i) {
-    diff = q[i] - p[i];
-    dist += diff * diff; 
-  }
-
-  return dist;
 }
 
 inline
@@ -1569,6 +2172,230 @@ void QueryProcessor::join_irregular(const StorageManager::ArrayDescriptor* ad_A,
   delete [] cell_its_B;
 }
 
+void QueryProcessor::join_irregular(
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+    const ArraySchema& array_schema_C) const {
+  // For easy reference
+  const ArraySchema& array_schema_A = ad_A[0]->array_schema();
+  const ArraySchema& array_schema_B = ad_B[0]->array_schema();
+  unsigned int attribute_num_A = array_schema_A.attribute_num();
+  unsigned int attribute_num_B = array_schema_B.attribute_num();
+  unsigned int attribute_num_C = array_schema_C.attribute_num();
+  unsigned int fragment_num_A = ad_A.size();
+  unsigned int fragment_num_B = ad_B.size();
+  uint64_t capacity = array_schema_C.capacity();
+
+  // Prepare result array
+  const StorageManager::ArrayDescriptor* ad_C = 
+      storage_manager_.open_array(array_schema_C);
+
+  // Create result tiles 
+  Tile** tiles_C = new Tile*[attribute_num_C+1];
+
+  // Create and initialize tile iterators
+  StorageManager::const_iterator** tile_its_A = 
+      new StorageManager::const_iterator*[fragment_num_A];
+  StorageManager::const_iterator* tile_it_end_A =
+      new StorageManager::const_iterator[fragment_num_A];
+  for(unsigned int i=0; i<fragment_num_A; ++i) {
+    tile_its_A[i] = new StorageManager::const_iterator[attribute_num_A+1];
+    initialize_tile_its(ad_A[i], tile_its_A[i], tile_it_end_A[i]);
+  }
+  StorageManager::const_iterator** tile_its_B = 
+      new StorageManager::const_iterator*[fragment_num_B];
+  StorageManager::const_iterator* tile_it_end_B =
+      new StorageManager::const_iterator[fragment_num_B];
+  for(unsigned int i=0; i<fragment_num_B; ++i) {
+    tile_its_B[i] = new StorageManager::const_iterator[attribute_num_B+1];
+    initialize_tile_its(ad_B[i], tile_its_B[i], tile_it_end_B[i]);
+  }
+  
+  // Create cell iterators
+  Tile::const_iterator** cell_its_A = 
+      new Tile::const_iterator*[fragment_num_A];
+  Tile::const_iterator* cell_it_end_A = 
+      new Tile::const_iterator[fragment_num_A];
+  for(unsigned int i=0; i<fragment_num_A; ++i)
+    cell_its_A[i] = new Tile::const_iterator[attribute_num_A+1];
+  Tile::const_iterator** cell_its_B = 
+      new Tile::const_iterator*[fragment_num_B];
+  Tile::const_iterator* cell_it_end_B = 
+      new Tile::const_iterator[fragment_num_B];
+  for(unsigned int i=0; i<fragment_num_B; ++i)
+    cell_its_B[i] = new Tile::const_iterator[attribute_num_B+1];
+
+  // Auxiliary variables for synchronizing tiles and cells.
+  uint64_t* skipped_tiles_A = new uint64_t[fragment_num_A];
+  uint64_t* skipped_cells_A = new uint64_t[fragment_num_A];
+  for(unsigned int i=0; i<fragment_num_A; ++i) {
+    skipped_tiles_A[i] = 0;
+    skipped_cells_A[i] = 0;
+  }
+  uint64_t* skipped_tiles_B = new uint64_t[fragment_num_B];
+  uint64_t* skipped_cells_B = new uint64_t[fragment_num_B];
+  for(unsigned int i=0; i<fragment_num_B; ++i) {
+    skipped_tiles_B[i] = 0;
+    skipped_cells_B[i] = 0;
+  }
+  
+  // Note that attribute cell iterators may be initialized and advanced only
+  // after a join result is discovered.
+  bool* attribute_cell_its_initialized_A = new bool[fragment_num_A];
+  bool* coordinate_cell_its_initialized_A = new bool[fragment_num_A];
+  for(unsigned int i=0; i<fragment_num_A; ++i) {
+    attribute_cell_its_initialized_A[i] = false;
+    coordinate_cell_its_initialized_A[i] = false;
+  }
+  bool* attribute_cell_its_initialized_B = new bool[fragment_num_B];
+  bool* coordinate_cell_its_initialized_B = new bool[fragment_num_B];
+  for(unsigned int i=0; i<fragment_num_B; ++i) {
+    attribute_cell_its_initialized_B[i] = false;
+    coordinate_cell_its_initialized_B[i] = false;
+  }
+
+  // Initialize tiles with id 0 for C (result array)
+  new_tiles(array_schema_C, 0, tiles_C); 
+
+  // Get the indexes of the fragments in A and B respectively, whose current
+  // coordinate cell iterators point to cells that join (and produce a result).
+  int next_fragment_index_A;
+  int next_fragment_index_B;
+  bool fragment_indexes_initialized = false;
+  get_next_join_fragment_indexes_irregular(
+      ad_A, tile_its_A, tile_it_end_A, cell_its_A, cell_it_end_A, 
+      skipped_tiles_A, skipped_cells_A,
+      attribute_cell_its_initialized_A, coordinate_cell_its_initialized_A,
+      ad_B, tile_its_B, tile_it_end_B, cell_its_B, cell_it_end_B, 
+      skipped_tiles_B, skipped_cells_B,
+      attribute_cell_its_initialized_B, coordinate_cell_its_initialized_B,
+      fragment_indexes_initialized,
+      next_fragment_index_A, next_fragment_index_B);
+
+  // Iterate over all cells, until there are no more cells in some array
+  while(next_fragment_index_A != -1 && next_fragment_index_B != -1) {
+    // For easy reference
+    Tile::const_iterator* next_cell_its_A = 
+        cell_its_A[next_fragment_index_A];
+    Tile::const_iterator& next_cell_it_end_A = 
+        cell_it_end_A[next_fragment_index_A];
+    StorageManager::const_iterator* next_tile_its_A = 
+        tile_its_A[next_fragment_index_A];
+    StorageManager::const_iterator& next_tile_it_end_A = 
+        tile_it_end_A[next_fragment_index_A];
+    uint64_t& next_skipped_cells_A = 
+        skipped_cells_A[next_fragment_index_A];
+    uint64_t& next_skipped_tiles_A = 
+        skipped_tiles_A[next_fragment_index_A];
+    bool& next_attribute_cell_its_initialized_A = 
+        attribute_cell_its_initialized_A[next_fragment_index_A];
+    bool& next_coordinate_cell_its_initialized_A = 
+        coordinate_cell_its_initialized_A[next_fragment_index_A];
+    Tile::const_iterator* next_cell_its_B = 
+        cell_its_B[next_fragment_index_B];
+    Tile::const_iterator& next_cell_it_end_B = 
+        cell_it_end_B[next_fragment_index_B];
+    StorageManager::const_iterator* next_tile_its_B = 
+        tile_its_B[next_fragment_index_B];
+    StorageManager::const_iterator& next_tile_it_end_B = 
+        tile_it_end_B[next_fragment_index_B];
+    uint64_t& next_skipped_cells_B =
+        skipped_cells_B[next_fragment_index_B];
+    uint64_t& next_skipped_tiles_B = 
+        skipped_tiles_B[next_fragment_index_B];
+    bool& next_attribute_cell_its_initialized_B = 
+        attribute_cell_its_initialized_B[next_fragment_index_B];
+    bool& next_coordinate_cell_its_initialized_B = 
+        coordinate_cell_its_initialized_B[next_fragment_index_B];
+
+    // Update iterators in A
+    if(next_skipped_tiles_A) {
+      advance_tile_its(attribute_num_A, next_tile_its_A, next_skipped_tiles_A);
+      next_skipped_tiles_A = 0;  
+    }
+    if(!next_attribute_cell_its_initialized_A) {
+      initialize_cell_its(next_tile_its_A, attribute_num_A, next_cell_its_A);
+      next_attribute_cell_its_initialized_A = true;
+    }
+    if(next_skipped_cells_A) {
+      advance_cell_its(attribute_num_A, next_cell_its_A, next_skipped_cells_A);
+      next_skipped_cells_A = 0;
+    }
+
+    // Update iterators in B
+    if(next_skipped_tiles_B) {
+      advance_tile_its(attribute_num_B, next_tile_its_B, next_skipped_tiles_B);
+      next_skipped_tiles_B = 0;  
+    }
+    if(!next_attribute_cell_its_initialized_B) {
+      initialize_cell_its(next_tile_its_B, attribute_num_B, next_cell_its_B);
+      next_attribute_cell_its_initialized_B = true;
+    }
+    if(next_skipped_cells_B) {
+      advance_cell_its(attribute_num_B, next_cell_its_B, next_skipped_cells_B);
+      next_skipped_cells_B = 0;
+    }
+
+    // Append result cell
+    if(tiles_C[attribute_num_C]->cell_num() == capacity) {
+      uint64_t new_tile_id = tiles_C[attribute_num_C]->tile_id() + 1;
+      store_tiles(ad_C, tiles_C);
+      new_tiles(array_schema_C, new_tile_id, tiles_C); 
+    }
+    append_cell(next_cell_its_A, next_cell_its_B, tiles_C, 
+                attribute_num_A, attribute_num_B);
+
+    // Get the indexes of the fragments in A and B respectively, whose current
+    // coordinate cell iterators point to cells that join (and produce a result)
+    get_next_join_fragment_indexes_irregular(
+        ad_A, tile_its_A, tile_it_end_A, cell_its_A, cell_it_end_A, 
+        skipped_tiles_A, skipped_cells_A,
+        attribute_cell_its_initialized_A, coordinate_cell_its_initialized_A,
+        ad_B, tile_its_B, tile_it_end_B, cell_its_B, cell_it_end_B, 
+        skipped_tiles_B, skipped_cells_B,
+        attribute_cell_its_initialized_B, coordinate_cell_its_initialized_B,
+        fragment_indexes_initialized,
+        next_fragment_index_A, next_fragment_index_B);
+  }
+
+  // Send the lastly created tiles to storage manager
+  store_tiles(ad_C, tiles_C);
+
+  // Close result array
+  storage_manager_.close_array(ad_C);
+  
+  // Clean up
+  for(unsigned int i=0; i<fragment_num_A; ++i) {
+    delete [] tile_its_A[i];
+    delete [] cell_its_A[i];
+  }
+  delete [] tile_its_A;
+  delete [] tile_it_end_A;
+  delete [] cell_its_A;
+  delete [] cell_it_end_A;
+
+  for(unsigned int i=0; i<fragment_num_B; ++i) {
+    delete [] tile_its_B[i];
+    delete [] cell_its_B[i];
+  }
+  delete [] tile_its_B;
+  delete [] tile_it_end_B;
+  delete [] cell_its_B;
+  delete [] cell_it_end_B;
+
+  delete [] tiles_C;
+
+  delete [] skipped_tiles_A;
+  delete [] skipped_tiles_B;
+  delete [] skipped_cells_A;
+  delete [] skipped_cells_B;
+
+  delete [] attribute_cell_its_initialized_A;
+  delete [] coordinate_cell_its_initialized_A;
+  delete [] attribute_cell_its_initialized_B;
+  delete [] coordinate_cell_its_initialized_B;
+}
+
 void QueryProcessor::join_regular(const StorageManager::ArrayDescriptor* ad_A, 
                                   const StorageManager::ArrayDescriptor* ad_B,
                                   const ArraySchema& array_schema_C) const {
@@ -1677,6 +2504,238 @@ void QueryProcessor::join_regular(const StorageManager::ArrayDescriptor* ad_A,
   delete [] cell_its_B;
 }
 
+
+void QueryProcessor::join_regular(
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
+    const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+    const ArraySchema& array_schema_C) const {
+  // For easy reference
+  const ArraySchema& array_schema_A = ad_A[0]->array_schema();
+  const ArraySchema& array_schema_B = ad_B[0]->array_schema();
+  unsigned int attribute_num_A = array_schema_A.attribute_num();
+  unsigned int attribute_num_B = array_schema_B.attribute_num();
+  unsigned int attribute_num_C = array_schema_C.attribute_num();
+  unsigned int fragment_num_A = ad_A.size();
+  unsigned int fragment_num_B = ad_B.size();
+  uint64_t capacity = array_schema_C.capacity();
+
+  // Prepare result array
+  const StorageManager::ArrayDescriptor* ad_C = 
+      storage_manager_.open_array(array_schema_C);
+
+  // Create result tiles 
+  Tile** tiles_C = new Tile*[attribute_num_C+1];
+
+  // Create and initialize tile iterators
+  StorageManager::const_iterator** tile_its_A = 
+      new StorageManager::const_iterator*[fragment_num_A];
+  StorageManager::const_iterator* tile_it_end_A =
+      new StorageManager::const_iterator[fragment_num_A];
+  for(unsigned int i=0; i<fragment_num_A; ++i) {
+    tile_its_A[i] = new StorageManager::const_iterator[attribute_num_A+1];
+    initialize_tile_its(ad_A[i], tile_its_A[i], tile_it_end_A[i]);
+  }
+  StorageManager::const_iterator** tile_its_B = 
+      new StorageManager::const_iterator*[fragment_num_B];
+  StorageManager::const_iterator* tile_it_end_B =
+      new StorageManager::const_iterator[fragment_num_B];
+  for(unsigned int i=0; i<fragment_num_B; ++i) {
+    tile_its_B[i] = new StorageManager::const_iterator[attribute_num_B+1];
+    initialize_tile_its(ad_B[i], tile_its_B[i], tile_it_end_B[i]);
+  }
+  
+  // Create cell iterators
+  Tile::const_iterator** cell_its_A = 
+      new Tile::const_iterator*[fragment_num_A];
+  Tile::const_iterator* cell_it_end_A = 
+      new Tile::const_iterator[fragment_num_A];
+  for(unsigned int i=0; i<fragment_num_A; ++i)
+    cell_its_A[i] = new Tile::const_iterator[attribute_num_A+1];
+  Tile::const_iterator** cell_its_B = 
+      new Tile::const_iterator*[fragment_num_B];
+  Tile::const_iterator* cell_it_end_B = 
+      new Tile::const_iterator[fragment_num_B];
+  for(unsigned int i=0; i<fragment_num_B; ++i)
+    cell_its_B[i] = new Tile::const_iterator[attribute_num_B+1];
+
+  // Auxiliary variables for synchronizing tiles and cells.
+  uint64_t* skipped_tiles_A = new uint64_t[fragment_num_A];
+  uint64_t* skipped_cells_A = new uint64_t[fragment_num_A];
+  for(unsigned int i=0; i<fragment_num_A; ++i) {
+    skipped_tiles_A[i] = 0;
+    skipped_cells_A[i] = 0;
+  }
+  uint64_t* skipped_tiles_B = new uint64_t[fragment_num_B];
+  uint64_t* skipped_cells_B = new uint64_t[fragment_num_B];
+  for(unsigned int i=0; i<fragment_num_B; ++i) {
+    skipped_tiles_B[i] = 0;
+    skipped_cells_B[i] = 0;
+  }
+  
+  // Note that attribute cell iterators may be initialized and advanced only
+  // after a join result is discovered.
+  bool* attribute_cell_its_initialized_A = new bool[fragment_num_A];
+  bool* coordinate_cell_its_initialized_A = new bool[fragment_num_A];
+  for(unsigned int i=0; i<fragment_num_A; ++i) {
+    attribute_cell_its_initialized_A[i] = false;
+    coordinate_cell_its_initialized_A[i] = false;
+  }
+  bool* attribute_cell_its_initialized_B = new bool[fragment_num_B];
+  bool* coordinate_cell_its_initialized_B = new bool[fragment_num_B];
+  for(unsigned int i=0; i<fragment_num_B; ++i) {
+    attribute_cell_its_initialized_B[i] = false;
+    coordinate_cell_its_initialized_B[i] = false;
+  }
+
+  // Get the indexes of the fragments in A and B respectively, whose current
+  // coordinate cell iterators point to cells that join (and produce a result).
+  int next_fragment_index_A;
+  int next_fragment_index_B;
+  bool fragment_indexes_initialized = false;
+  get_next_join_fragment_indexes_regular(
+      ad_A, tile_its_A, tile_it_end_A, cell_its_A, cell_it_end_A, 
+      skipped_tiles_A, skipped_cells_A,
+      attribute_cell_its_initialized_A, coordinate_cell_its_initialized_A,
+      ad_B, tile_its_B, tile_it_end_B, cell_its_B, cell_it_end_B, 
+      skipped_tiles_B, skipped_cells_B,
+      attribute_cell_its_initialized_B, coordinate_cell_its_initialized_B,
+      fragment_indexes_initialized,
+      next_fragment_index_A, next_fragment_index_B);
+
+  uint64_t tile_id;
+  bool first_cell = true;
+
+  // Iterate over all cells, until there are no more cells in some array
+  while(next_fragment_index_A != -1 && next_fragment_index_B != -1) {
+    // For easy reference
+    Tile::const_iterator* next_cell_its_A = 
+        cell_its_A[next_fragment_index_A];
+    Tile::const_iterator& next_cell_it_end_A = 
+        cell_it_end_A[next_fragment_index_A];
+    StorageManager::const_iterator* next_tile_its_A = 
+        tile_its_A[next_fragment_index_A];
+    StorageManager::const_iterator& next_tile_it_end_A = 
+        tile_it_end_A[next_fragment_index_A];
+    uint64_t& next_skipped_cells_A = 
+        skipped_cells_A[next_fragment_index_A];
+    uint64_t& next_skipped_tiles_A = 
+        skipped_tiles_A[next_fragment_index_A];
+    bool& next_attribute_cell_its_initialized_A = 
+        attribute_cell_its_initialized_A[next_fragment_index_A];
+    bool& next_coordinate_cell_its_initialized_A = 
+        coordinate_cell_its_initialized_A[next_fragment_index_A];
+    Tile::const_iterator* next_cell_its_B = 
+        cell_its_B[next_fragment_index_B];
+    Tile::const_iterator& next_cell_it_end_B = 
+        cell_it_end_B[next_fragment_index_B];
+    StorageManager::const_iterator* next_tile_its_B = 
+        tile_its_B[next_fragment_index_B];
+    StorageManager::const_iterator& next_tile_it_end_B = 
+        tile_it_end_B[next_fragment_index_B];
+    uint64_t& next_skipped_cells_B =
+        skipped_cells_B[next_fragment_index_B];
+    uint64_t& next_skipped_tiles_B = 
+        skipped_tiles_B[next_fragment_index_B];
+    bool& next_attribute_cell_its_initialized_B = 
+        attribute_cell_its_initialized_B[next_fragment_index_B];
+    bool& next_coordinate_cell_its_initialized_B = 
+        coordinate_cell_its_initialized_B[next_fragment_index_B];
+
+    // Update iterators in A
+    if(next_skipped_tiles_A) {
+      advance_tile_its(attribute_num_A, next_tile_its_A, next_skipped_tiles_A);
+      next_skipped_tiles_A = 0;  
+    }
+    if(!next_attribute_cell_its_initialized_A) {
+      initialize_cell_its(next_tile_its_A, attribute_num_A, next_cell_its_A);
+      next_attribute_cell_its_initialized_A = true;
+    }
+    if(next_skipped_cells_A) {
+      advance_cell_its(attribute_num_A, next_cell_its_A, next_skipped_cells_A);
+      next_skipped_cells_A = 0;
+    }
+
+    // Update iterators in B
+    if(next_skipped_tiles_B) {
+      advance_tile_its(attribute_num_B, next_tile_its_B, next_skipped_tiles_B);
+      next_skipped_tiles_B = 0;  
+    }
+    if(!next_attribute_cell_its_initialized_B) {
+      initialize_cell_its(next_tile_its_B, attribute_num_B, next_cell_its_B);
+      next_attribute_cell_its_initialized_B = true;
+    }
+    if(next_skipped_cells_B) {
+      advance_cell_its(attribute_num_B, next_cell_its_B, next_skipped_cells_B);
+      next_skipped_cells_B = 0;
+    }
+
+    // Append result cell
+    if(first_cell) { // To initialize tile_id and result_tiles
+      tile_id = next_cell_its_A[0].tile()->tile_id();
+      first_cell = false;
+      new_tiles(array_schema_C, tile_id, tiles_C);
+    }
+    if(next_cell_its_A[0].tile()->tile_id() != tile_id) {
+      // Change tile
+      tile_id = next_cell_its_A[0].tile()->tile_id();
+      store_tiles(ad_C, tiles_C);
+      new_tiles(array_schema_C, tile_id, tiles_C);
+    } 
+    append_cell(next_cell_its_A, next_cell_its_B, tiles_C, 
+                attribute_num_A, attribute_num_B);
+
+    // Get the indexes of the fragments in A and B respectively, whose current
+    // coordinate cell iterators point to cells that join (and produce a result)
+    get_next_join_fragment_indexes_regular(
+        ad_A, tile_its_A, tile_it_end_A, cell_its_A, cell_it_end_A, 
+        skipped_tiles_A, skipped_cells_A,
+        attribute_cell_its_initialized_A, coordinate_cell_its_initialized_A,
+        ad_B, tile_its_B, tile_it_end_B, cell_its_B, cell_it_end_B, 
+        skipped_tiles_B, skipped_cells_B,
+        attribute_cell_its_initialized_B, coordinate_cell_its_initialized_B,
+        fragment_indexes_initialized,
+        next_fragment_index_A, next_fragment_index_B);
+  }
+
+  // Send the lastly created tiles to storage manager
+  store_tiles(ad_C, tiles_C);
+
+  // Close result array
+  storage_manager_.close_array(ad_C);
+  
+  // Clean up
+  for(unsigned int i=0; i<fragment_num_A; ++i) {
+    delete [] tile_its_A[i];
+    delete [] cell_its_A[i];
+  }
+  delete [] tile_its_A;
+  delete [] tile_it_end_A;
+  delete [] cell_its_A;
+  delete [] cell_it_end_A;
+
+  for(unsigned int i=0; i<fragment_num_B; ++i) {
+    delete [] tile_its_B[i];
+    delete [] cell_its_B[i];
+  }
+  delete [] tile_its_B;
+  delete [] tile_it_end_B;
+  delete [] cell_its_B;
+  delete [] cell_it_end_B;
+
+  delete [] tiles_C;
+
+  delete [] skipped_tiles_A;
+  delete [] skipped_tiles_B;
+  delete [] skipped_cells_A;
+  delete [] skipped_cells_B;
+
+  delete [] attribute_cell_its_initialized_A;
+  delete [] coordinate_cell_its_initialized_A;
+  delete [] attribute_cell_its_initialized_B;
+  delete [] coordinate_cell_its_initialized_B;
+
+}
+
 void QueryProcessor::join_tiles_irregular(
     unsigned int attribute_num_A, 
     const StorageManager::const_iterator* tile_its_A, 
@@ -1696,7 +2755,7 @@ void QueryProcessor::join_tiles_irregular(
 
   // Auxiliary variables storing the number of skipped cells when joining.
   // It is used to advance only the coordinates iterator when a cell is
-  // finished/skipped, and then efficiently advance the attribute iterators only 
+  // finished/skipped, and then efficiently advance the attribute iterators only
   // when a cell joins.
   int64_t skipped_cells_A;
   int64_t skipped_cells_B;
@@ -2045,6 +3104,82 @@ bool QueryProcessor::overlap(
     return false;
   else
     return true;
+}
+
+bool QueryProcessor::path_exists(const std::string& path) const {
+  struct stat st;
+  stat(path.c_str(), &st);
+  return S_ISDIR(st.st_mode);
+}
+
+double QueryProcessor::point_to_mbr_distance(
+    const std::vector<double>& q, const std::vector<double>& mbr) const {
+  // Check dimensionality
+  assert(mbr.size() == 2*q.size());
+
+  unsigned int dim_num = q.size();
+  double width, centroid, dq;
+  double dist = 0;
+  for(unsigned int i=0; i<dim_num; ++i) {
+    width = mbr[2*i+1] - mbr[2*i];
+    centroid = mbr[2*i] + width/2;
+    dq = std::max(abs(q[i]-centroid) - width/2, 0.0);
+    dist += dq * dq; 
+  }
+
+  return dist;
+}
+
+double QueryProcessor::point_to_point_distance(
+    const std::vector<double>& q, const std::vector<double>& p) const {
+  // Check dimensionality
+  assert(q.size() == p.size());
+
+  unsigned int dim_num = q.size();
+  double dist = 0, diff;
+  for(unsigned int i=0; i<dim_num; ++i) {
+    diff = q[i] - p[i];
+    dist += diff * diff; 
+  }
+
+  return dist;
+}
+
+bool QueryProcessor::precedes(
+    const StorageManager::const_iterator& tile_it_A,
+    const Tile::const_iterator& cell_it_A,
+    bool coordinate_cell_its_initialized_A,
+    const StorageManager::const_iterator& tile_it_B,
+    const Tile::const_iterator& cell_it_B,
+    bool coordinate_cell_its_initialized_B,
+    const ArraySchema& array_schema) const {
+  // Only for regular tiles
+  if(array_schema.has_regular_tiles()) {
+    if(tile_it_A.tile_id() < tile_it_B.tile_id())
+      return true;
+    else if(tile_it_A.tile_id() > tile_it_B.tile_id())
+      return false;
+    // else
+    // tile ids are equal - we must check the coordinates
+  }
+
+  if(coordinate_cell_its_initialized_A && coordinate_cell_its_initialized_B) {
+    return array_schema.precedes(cell_it_A, cell_it_B);
+  } else if(!coordinate_cell_its_initialized_A && 
+            !coordinate_cell_its_initialized_B) {
+    return array_schema.precedes(tile_it_A.bounding_coordinates().first, 
+                                 tile_it_B.bounding_coordinates().first);
+  } else if(coordinate_cell_its_initialized_A && 
+            !coordinate_cell_its_initialized_B) {
+    const std::vector<double> coord_A = *cell_it_A;
+    return array_schema.precedes(coord_A, 
+                                 tile_it_B.bounding_coordinates().first);
+  } else if(!coordinate_cell_its_initialized_A && 
+            coordinate_cell_its_initialized_B) {
+    const std::vector<double> coord_B = *cell_it_B;
+    return array_schema.precedes(tile_it_A.bounding_coordinates().first,
+                                 coord_B); 
+  }
 }
 
 inline

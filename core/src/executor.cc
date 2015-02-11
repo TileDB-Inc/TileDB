@@ -193,10 +193,22 @@ void Executor::join(const ArraySchema& array_schema_A,
     }
     storage_manager_->close_array(ad_A);
     storage_manager_->close_array(ad_B);
-  } else { // Multiple fragments TODO
-    throw ExecutorException("[Executor] Cannot join arrays: "
-                            "query over multiple array fragments currently not "
-                            "supported.");
+  } else { // Multiple fragments
+    std::vector<const StorageManager::ArrayDescriptor*> ad_A;
+    std::vector<const StorageManager::ArrayDescriptor*> ad_B;
+    for(unsigned int i=0; i<fragment_suffixes_A.size(); ++i)
+      ad_A.push_back(storage_manager_->open_array(
+           array_name_A + std::string("_") + fragment_suffixes_A[i]));
+    for(unsigned int i=0; i<fragment_suffixes_B.size(); ++i)
+      ad_B.push_back(storage_manager_->open_array(
+           array_name_B + std::string("_") + fragment_suffixes_B[i]));
+
+    query_processor_->join(ad_A, ad_B, result_array_name + "_0_0");
+
+    for(unsigned int i=0; i<fragment_suffixes_A.size(); ++i)  
+      storage_manager_->close_array(ad_A[i]);
+    for(unsigned int i=0; i<fragment_suffixes_B.size(); ++i)  
+      storage_manager_->close_array(ad_B[i]);
   }
 
   // Update the fragment information of result array at the consolidator

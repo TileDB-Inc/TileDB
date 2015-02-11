@@ -44,7 +44,7 @@
 #include <string>
 #include <inttypes.h>
 #include <typeinfo>
-#include <tile.h>
+#include "tile.h"
 
 /**
  * Objects of this class store information about the schema of an array, and

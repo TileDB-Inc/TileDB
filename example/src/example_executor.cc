@@ -153,10 +153,10 @@ int main() {
                   array_schema_REG_A);
     executor.load("~/stavrospapadopoulos/TileDB/data/test_A_0.csv", 
                   array_schema_IREG_A);
-//    executor.load("~/stavrospapadopoulos/TileDB/data/test_B.csv", 
-//                  array_schema_REG_B);
-//    executor.load("~/stavrospapadopoulos/TileDB/data/test_B.csv", 
-//                  array_schema_IREG_B);
+    executor.load("~/stavrospapadopoulos/TileDB/data/test_B.csv", 
+                  array_schema_REG_B);
+    executor.load("~/stavrospapadopoulos/TileDB/data/test_B.csv", 
+                  array_schema_IREG_B);
     //-------- //
     // Updates //
     // ------- //
@@ -176,6 +176,8 @@ int main() {
     std::cout << "Export to CSV...\n";
     executor.export_to_CSV("consolidated_REG_A.csv", array_schema_REG_A);
     executor.export_to_CSV("consolidated_IREG_A.csv", array_schema_IREG_A);
+
+/*
 
     // ------ //
     // Filter //
@@ -222,6 +224,24 @@ int main() {
         array_schema_REG_A.clone("subarray_IREG_A");
     executor.export_to_CSV("subarray_REG_A.csv", subarray_array_schema_REG_A);
     executor.export_to_CSV("subarray_IREG_A.csv", subarray_array_schema_IREG_A);
+*/
+
+    // ---- //
+    // Join //
+    // ---- //
+    std::cout << "Join...\n";
+    executor.join(array_schema_IREG_A, array_schema_IREG_B, "join_IREG_C");
+    executor.join(array_schema_REG_A, array_schema_REG_B, "join_REG_C");
+    // Export result
+    std::cout << "Export join result...\n";
+    ArraySchema join_array_schema_IREG_C = 
+        ArraySchema::create_join_result_schema(
+            array_schema_IREG_A, array_schema_IREG_B, "join_IREG_C");
+    ArraySchema join_array_schema_REG_C = 
+        ArraySchema::create_join_result_schema(
+            array_schema_REG_A, array_schema_REG_B, "join_REG_C");
+    executor.export_to_CSV("join_IREG_C.csv", join_array_schema_IREG_C);
+    executor.export_to_CSV("join_REG_C.csv", join_array_schema_REG_C);
 
 /*
     // ----------------- //
@@ -245,25 +265,6 @@ int main() {
     executor.export_to_CSV("nn_IREG_A.csv", nn_array_schema_IREG_A);
 */
   
-/*
-    // ---- //
-    // Join //
-    // ---- //
-    std::cout << "Join...\n";
-    executor.join(array_schema_IREG_A, array_schema_IREG_B, "join_IREG_C");
-    executor.join(array_schema_REG_A, array_schema_REG_B, "join_REG_C");
-    // Export result
-    std::cout << "Export join result...\n";
-    ArraySchema join_array_schema_IREG_C = 
-        ArraySchema::create_join_result_schema(
-            array_schema_IREG_A, array_schema_IREG_B, "join_IREG_C");
-    ArraySchema join_array_schema_REG_C = 
-        ArraySchema::create_join_result_schema(
-            array_schema_REG_A, array_schema_REG_B, "join_REG_C");
-    executor.export_to_CSV("join_IREG_C.csv", join_array_schema_IREG_C);
-    executor.export_to_CSV("join_REG_C.csv", join_array_schema_REG_C);
-*/
-
     // ------------ //
     // Delete array //
     // ------------ //

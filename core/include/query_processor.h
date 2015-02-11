@@ -131,6 +131,16 @@ class QueryProcessor {
             const StorageManager::ArrayDescriptor* ad_B,
             const std::string& result_array_name) const;
   /** 
+   * Joins the two input arrays (say, A and B). The result contains a cell only
+   * if both the corresponding cells in A and B are non-empty. The input arrays
+   * must be join-compatible (see ArraySchema::join_compatible). Moreover,
+   * see ArraySchema::create_join_result_schema to see the schema of the
+   * output array. This function operates on multiple array fragments.
+   */
+  void join(const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
+            const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+            const std::string& result_array_name) const;
+  /** 
    * Returns the k nearest neighbors from query point q. The results (along with
    * all their attribute values) are stored in a new array. The distance metric
    * used to calculate proximity is the Euclidean distance.
@@ -244,7 +254,18 @@ class QueryProcessor {
       unsigned int fragment_num,
       const Tile** tiles,
       uint64_t& skipped_cells) const;
-
+  /** 
+   * Advances coordinate cell iterators and potentially coordinate tile
+   * iterators. This function is used in joins for multiple fragments.
+   */
+  void advance_cell_tile_its(
+      Tile::const_iterator& cell_it, 
+      const Tile::const_iterator& cell_it_end, 
+      StorageManager::const_iterator& tile_it,
+      uint64_t& skipped_tiles,
+      uint64_t& skipped_cells,
+      bool& attribute_cell_its_initialized,
+      bool& coordinate_cell_its_initialized) const;
   /** Advances all the tile iterators by 1. */
   void advance_tile_its(unsigned int attribute_num,
                         StorageManager::const_iterator* tile_its) const; 
@@ -297,6 +318,22 @@ class QueryProcessor {
    */
   CSVLine cell_to_csv_line(const Tile::const_iterator* cell_its,
                            unsigned int attribute_num) const;
+  /** 
+   * Returns true if the input (cell or tile) iterators point to the same
+   * coordinates along the global order. Note that for the current tiles,
+   * the corresponding coordinate cell iterators may not be initialized.
+   * In this case, the check is performed on their first bounding
+   * coordinates.
+   */
+  bool coincides(
+    const StorageManager::const_iterator& tile_it_A,
+    const Tile::const_iterator& cell_it_A,
+    bool coordinate_cell_its_initialized_A,
+    const StorageManager::const_iterator& tile_it_B,
+    const Tile::const_iterator& cell_it_B,
+    bool coordinate_cell_its_initialized_B,
+    const ArraySchema& array_schema) const;
+
   /** 
    * Returns a vector of pairs (dist, rank), sorted on dist, where rank is the
    * rank of a tile (indicating if it was appended first, second, etc., in the 
@@ -359,6 +396,64 @@ class QueryProcessor {
   void filter_regular(const StorageManager::ArrayDescriptor* array_descriptor,
                       const ExpressionTree* expression,
                       const std::string& result_array_name) const;
+  /**
+   * This function focuses on the case of irregular tiles.
+   * Returns the indexes of the fragments (from A and B, respectively) that
+   * produce a join result (these are the last two arguments passed by
+   * reference). During its process, it properly updates the
+   * coordinate tile and cell iterators, as well as some auxiliary
+   * variables (e.g., skipped_tiles_A) to allow later for synchronization
+   * of the attribute tile and cell iterators. In other words, it keeps
+   * some state to achieve efficiency. 
+   */
+  void get_next_join_fragment_indexes_irregular(
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
+      StorageManager::const_iterator** tile_its_A,
+      StorageManager::const_iterator* tile_it_end_A,
+      Tile::const_iterator** cell_its_A,
+      Tile::const_iterator* cell_it_end_A,
+      uint64_t* skipped_tiles_A, uint64_t* skipped_cells_A,
+      bool* attribute_cell_its_initialized_A,
+      bool* coordinate_cell_its_initialized_A,
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+      StorageManager::const_iterator** tile_its_B,
+      StorageManager::const_iterator* tile_it_end_B,
+      Tile::const_iterator** cell_its_B,
+      Tile::const_iterator* cell_it_end_B,
+      uint64_t* skipped_tiles_B, uint64_t* skipped_cells_B,
+      bool* attribute_cell_its_initialized_B, 
+      bool* coordinate_cell_its_initialized_B,
+      bool& fragment_indexes_initialized,
+      int& next_fragment_index_A, int& next_fragment_index_B) const;
+  /**
+   * This function focuses on the case of regular tiles.
+   * Returns the indexes of the fragments (from A and B, respectively) that
+   * produce a join result (these are the last two arguments passed by
+   * reference). During its process, it properly updates the
+   * coordinate tile and cell iterators, as well as some auxiliary
+   * variables (e.g., skipped_tiles_A) to allow later for synchronization
+   * of the attribute tile and cell iterators. In other words, it keeps
+   * some state to achieve efficiency. 
+   */
+  void get_next_join_fragment_indexes_regular(
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
+      StorageManager::const_iterator** tile_its_A,
+      StorageManager::const_iterator* tile_it_end_A,
+      Tile::const_iterator** cell_its_A,
+      Tile::const_iterator* cell_it_end_A,
+      uint64_t* skipped_tiles_A, uint64_t* skipped_cells_A,
+      bool* attribute_cell_its_initialized_A,
+      bool* coordinate_cell_its_initialized_A,
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+      StorageManager::const_iterator** tile_its_B,
+      StorageManager::const_iterator* tile_it_end_B,
+      Tile::const_iterator** cell_its_B,
+      Tile::const_iterator* cell_it_end_B,
+      uint64_t* skipped_tiles_B, uint64_t* skipped_cells_B,
+      bool* attribute_cell_its_initialized_B, 
+      bool* coordinate_cell_its_initialized_B,
+      bool& fragment_indexes_initialized,
+      int& next_fragment_index_A, int& next_fragment_index_B) const;
 
   /** 
    * Returns the index of the fragment from which we will get the next
@@ -415,6 +510,21 @@ class QueryProcessor {
       Tile::const_iterator* cell_it_end,
       uint64_t* skipped_cells,
       const ArraySchema& array_schema) const;
+  /** 
+   * Returns the index of the fragment from which we will get the next cell in
+   * QueryProcessor::join for multiple array fragments, based on the global
+   * order. During retrieving the next cell, it may advance some coordinate cell
+   * iterators. 
+   */
+  int get_next_fragment_index(
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      StorageManager::const_iterator** tile_its,
+      StorageManager::const_iterator* tile_it_end,
+      Tile::const_iterator** cell_its,
+      Tile::const_iterator* cell_it_end,
+      uint64_t* skipped_tiles, uint64_t* skipped_cells,
+      bool* attribute_cell_its_initialized,
+      bool* coordinate_cell_its_initialized) const;
   /** 
    * Gets from the storage manager all the (attribute and coordinate) tiles
    * of the input array having the input id. 
@@ -479,10 +589,26 @@ class QueryProcessor {
   void join_irregular(const StorageManager::ArrayDescriptor* ad_A,
                       const StorageManager::ArrayDescriptor* ad_B,
                       const ArraySchema& array_schema_C) const;
+  /** 
+   * Implements QueryProcessor::join for arrays with irregular tiles. This
+   * function operates on multiple fragments.
+   */
+  void join_irregular(
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+      const ArraySchema& array_schema_C) const;
   /** Implements QueryProcessor::join for arrays with regular tiles. */
   void join_regular(const StorageManager::ArrayDescriptor* ad_A,
                     const StorageManager::ArrayDescriptor* ad_B,
                     const ArraySchema& array_schema_C) const;
+  /** 
+   * Implements QueryProcessor::join for arrays with regular tiles. This
+   * function operates on multiple fragments.
+   */
+  void join_regular(
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
+      const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+      const ArraySchema& array_schema_C) const;
   /** 
    * Joins two irregular tiles (from A and B respectively) and stores 
    * the result in the tiles of C. 
@@ -558,6 +684,21 @@ class QueryProcessor {
   /** Returns the squared Euclidean distance between points q and p. */
   double point_to_point_distance(const std::vector<double>& q,
                                  const std::vector<double>& p) const;
+  /** 
+   * Returns true if the first input (cell or tile) iterators precede
+   * the second along the global order. Note that for the current tiles,
+   * the corresponding coordinate cell iterators may not be initialized.
+   * In this case, the check is performed on their first bounding
+   * coordinates.
+   */
+  bool precedes(
+    const StorageManager::const_iterator& tile_it_A,
+    const Tile::const_iterator& cell_it_A,
+    bool coordinate_cell_its_initialized_A,
+    const StorageManager::const_iterator& tile_it_B,
+    const Tile::const_iterator& cell_it_B,
+    bool coordinate_cell_its_initialized_B,
+    const ArraySchema& array_schema) const;
   /** Simply sets the workspace. */
   void set_workspace(const std::string& path);
   /** Sends the input tiles to the storage manager. */
