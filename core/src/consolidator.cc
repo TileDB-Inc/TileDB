@@ -327,7 +327,8 @@ void Consolidator::consolidate_irregular(
   // and append it to the consolidation result.
   int next_fragment_index = 
       get_next_fragment_index(tile_its, tile_it_end, consolidation_step_, 
-                              cell_its, cell_it_end, array_schema);
+                              cell_its, cell_it_end, array_schema,
+                              result_fragment_suffix);
 
   uint64_t tile_id = 0;
   new_tiles(result_fragment_schema, tile_id, result_tiles);
@@ -358,7 +359,8 @@ void Consolidator::consolidate_irregular(
     next_fragment_index = get_next_fragment_index(tile_its, tile_it_end, 
                                                   consolidation_step_, 
                                                   cell_its, cell_it_end, 
-                                                  array_schema);
+                                                  array_schema,
+                                                  result_fragment_suffix);
   } 
 
   // Store lastly created tiles
@@ -436,7 +438,8 @@ void Consolidator::consolidate_regular(
   // and append it to the consolidation result.
   int next_fragment_index = 
       get_next_fragment_index(tile_its, tile_it_end, consolidation_step_, 
-                              cell_its, cell_it_end, array_schema);
+                              cell_its, cell_it_end, array_schema,
+                              result_fragment_suffix);
 
   uint64_t tile_id;
   bool first_cell = true;
@@ -474,7 +477,8 @@ void Consolidator::consolidate_regular(
     next_fragment_index = get_next_fragment_index(tile_its, tile_it_end, 
                                                   consolidation_step_,
                                                   cell_its, cell_it_end, 
-                                                  array_schema);
+                                                  array_schema,
+                                                  result_fragment_suffix);
   } 
 
   // Store lastly created tiles
@@ -551,7 +555,8 @@ int Consolidator::get_next_fragment_index(
       unsigned int fragment_num,
       Tile::const_iterator** cell_its,
       Tile::const_iterator* cell_it_end,
-      const ArraySchema& array_schema) const {
+      const ArraySchema& array_schema,
+      const std::string& result_fragment_suffix) const {
   // For easy reference
   unsigned int attribute_num = array_schema.attribute_num();
 
@@ -561,8 +566,19 @@ int Consolidator::get_next_fragment_index(
   // to the latest update.
   std::vector<int> next_fragment_index;
   next_fragment_index.reserve(fragment_num);
-  // Loop for as long as there is a NULL cell (i.e., a deletion)
-  bool null;
+  // Loop will be broken upon the following conditions:
+  // (1) No more cells
+  // (2) Only one cell with the same coordinates
+  // (3) More than one cells with the same coordinates, and
+  //     if the last one is a deletion, but the resulting fragments in this
+  //     array are not 1 (i.e., the resulting fragment suffix does not start
+  //     with '0'. In this case, a deletion persists after consolidation.
+  //     This is to prevent discarding a deletion tha may delete cells
+  //     in fragments not taking part in this round's consolidation. Only
+  //     when the consolidation produces a single fragment (whose suffix
+  //     starts with '0') is it safe to apply the deletions.
+  bool null; 
+  bool suffix_starts_with_0 = (result_fragment_suffix[0] == '0');
   do {
     next_fragment_index.clear();
 
@@ -581,11 +597,13 @@ int Consolidator::get_next_fragment_index(
     }
 
     if(next_fragment_index.size() == 0)
-      break;
+      return -1;
+    else if(next_fragment_index.size() == 1)
+      return next_fragment_index.back();
 
     int num_of_iterators_to_advance = next_fragment_index.size()-1; 
     null = is_null(cell_its[next_fragment_index.back()], attribute_num);
-    if(null)
+    if(null && suffix_starts_with_0)
       ++num_of_iterators_to_advance;
 
     // Advance cell (and potentially tile) iterators.
@@ -597,12 +615,11 @@ int Consolidator::get_next_fragment_index(
                             cell_it_end[next_fragment_index[i]],
                             tile_its[next_fragment_index[i]],
                             tile_it_end[next_fragment_index[i]]);
-  } while(null);
 
-  if(next_fragment_index.size() == 0)
-    return -1;
-  else
-    return next_fragment_index.back();
+    if(!null || !suffix_starts_with_0)
+      return next_fragment_index.back();
+
+  } while(1);
 }
 
 inline

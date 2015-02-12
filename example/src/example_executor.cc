@@ -177,8 +177,6 @@ int main() {
     executor.export_to_CSV("consolidated_REG_A.csv", array_schema_REG_A);
     executor.export_to_CSV("consolidated_IREG_A.csv", array_schema_IREG_A);
 
-/*
-
     // ------ //
     // Filter //
     // ------ //
@@ -224,7 +222,6 @@ int main() {
         array_schema_REG_A.clone("subarray_IREG_A");
     executor.export_to_CSV("subarray_REG_A.csv", subarray_array_schema_REG_A);
     executor.export_to_CSV("subarray_IREG_A.csv", subarray_array_schema_IREG_A);
-*/
 
     // ---- //
     // Join //

@@ -744,12 +744,12 @@ bool StorageManager::check_on_open_array(const std::string& array_name,
 
   std::string dir_name = workspace_ + "/" + array_name;
   struct stat st;
-  stat(dir_name.c_str(), &st);
+  bool is_dir = (stat(dir_name.c_str(), &st) == 0 && S_ISDIR(st.st_mode));
   // If the array is opened in CREATE mode, the array directory must not exist
-  if(array_mode == CREATE && S_ISDIR(st.st_mode))
+  if(array_mode == CREATE && is_dir)
     return false;
   // If the array is opened in READ mode, the array directory must exist
-  if(array_mode == READ && !S_ISDIR(st.st_mode))
+  if(array_mode == READ && !is_dir)
     return false;
 
   return true;
@@ -765,10 +765,11 @@ void StorageManager::create_array_directory(
 
 void StorageManager::create_workspace() {
   struct stat st;
-  stat(workspace_.c_str(), &st);
+  bool workspace_exists = 
+      stat(workspace_.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 
   // If the workspace does not exist, create it
-  if(!S_ISDIR(st.st_mode)) { 
+  if(!workspace_exists) { 
     int dir_flag = mkdir(workspace_.c_str(), S_IRWXU);
     assert(dir_flag == 0);
   }
@@ -1423,8 +1424,7 @@ void StorageManager::load_tiles_from_buffer(ArrayInfo& array_info,
 
 bool StorageManager::path_exists(const std::string& path) const {
   struct stat st;
-  stat(path.c_str(), &st);
-  return S_ISDIR(st.st_mode);
+  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
 inline

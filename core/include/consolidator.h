@@ -300,7 +300,8 @@ class Consolidator {
                               unsigned int fragment_num,
                               Tile::const_iterator** cell_its,
                               Tile::const_iterator* cell_it_end,
-                              const ArraySchema& array_schema) const;
+                              const ArraySchema& array_schema,
+                              const std::string& result_fragment_suffix) const;
   /** Initializes cell iterators. */
   void initialize_cell_its(const StorageManager::const_iterator* tile_its,
                            unsigned int attribute_num,
