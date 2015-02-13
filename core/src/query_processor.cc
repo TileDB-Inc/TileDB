@@ -1619,11 +1619,11 @@ int QueryProcessor::get_next_fragment_index(
       }
     }
 
-    if(next_fragment_index.size() <= 1)
-      break;
+    if(next_fragment_index.size() == 0)
+      return -1;
 
     int num_of_iterators_to_advance = next_fragment_index.size()-1; 
-    null = is_null(cell_its[next_fragment_index.back()], attribute_num);
+    null = is_null(cell_its[next_fragment_index.back()][0]);
     if(null) 
       ++num_of_iterators_to_advance;
 
@@ -1636,13 +1636,11 @@ int QueryProcessor::get_next_fragment_index(
                             cell_it_end[next_fragment_index[i]],
                             tile_its[next_fragment_index[i]],
                             tile_it_end[next_fragment_index[i]]);
-                            
-  } while(null);
 
-  if(next_fragment_index.size() == 0)
-    return -1;
-  else
-    return next_fragment_index.back();
+    if(!null)
+      return next_fragment_index.back();
+
+  } while(true);
 }
 
 int QueryProcessor::get_next_fragment_index(
@@ -1684,34 +1682,11 @@ int QueryProcessor::get_next_fragment_index(
       }
     }
 
-    if(next_fragment_index.size() <= 1)
-      break;
+    if(next_fragment_index.size() == 0)
+      return -1;
 
-    int latest_fragment_index = next_fragment_index.back();
     int num_of_iterators_to_advance = next_fragment_index.size()-1; 
-
-    // Check if the cell corresponds to a deletion.
-    // We assume that a deletion only occurs to a non-empty cell
-    // If there are more than one cells with the same coordinates,
-    // synchronize the cell iterators of the attributes
-    if(skipped_tiles[latest_fragment_index]) {
-      advance_tile_its(tile_its[latest_fragment_index], 
-                       attribute_ids,
-                       skipped_tiles[latest_fragment_index]);
-      skipped_tiles[latest_fragment_index] = 0;
-    }
-    if(!non_cell_its_initialized[latest_fragment_index]) {
-      initialize_cell_its(tile_its[latest_fragment_index], 
-                          cell_its[latest_fragment_index], 
-                          attribute_ids);
-      non_cell_its_initialized[latest_fragment_index] = true;
-    }
-    if(skipped_cells[latest_fragment_index]) {
-      advance_cell_its(cell_its[latest_fragment_index], 
-                       attribute_ids, skipped_cells[latest_fragment_index]);
-      skipped_cells[latest_fragment_index] = 0;
-    }
-    null = is_null(cell_its[next_fragment_index.back()], attribute_num);
+    null = is_null(cell_its[next_fragment_index.back()][attribute_ids[0]]);
     if(null)
       ++num_of_iterators_to_advance;
 
@@ -1728,12 +1703,11 @@ int QueryProcessor::get_next_fragment_index(
                             skipped_tiles[next_fragment_index[i]],
                             skipped_cells[next_fragment_index[i]],
                             non_cell_its_initialized[next_fragment_index[i]]);
-  } while(null);
 
-  if(next_fragment_index.size() == 0)
-    return -1;
-  else
-    return next_fragment_index.back();
+    if(!null)
+      return next_fragment_index.back();
+
+  } while(true);
 }
 
 int QueryProcessor::get_next_fragment_index(
@@ -1775,22 +1749,20 @@ int QueryProcessor::get_next_fragment_index(
       }
     }
 
-    if(next_fragment_index.size() <= 1)
-      break;
+    if(next_fragment_index.size() == 0)
+      return -1;
 
     int latest_fragment_index = next_fragment_index.back();
     int num_of_iterators_to_advance = next_fragment_index.size()-1; 
 
-    // Check if the cell corresponds to a deletion.
-    // We assume that a deletion only occurs to a non-empty cell
-    // If there are more than one cells with the same coordinates,
-    // synchronize the cell iterators of the attributes
+    // Synchronize cell iterators
     if(skipped_cells[latest_fragment_index]) {
       advance_cell_its(attribute_num, cell_its[latest_fragment_index], 
                        skipped_cells[latest_fragment_index]);
       skipped_cells[latest_fragment_index] = 0;
     }
-    null = is_null(cell_its[latest_fragment_index], attribute_num);
+
+    null = is_null(cell_its[latest_fragment_index][0]);
     if(null) 
       ++num_of_iterators_to_advance;
 
@@ -1806,12 +1778,12 @@ int QueryProcessor::get_next_fragment_index(
                             fragment_num, tiles[i],
                             skipped_cells[next_fragment_index[i]]);
     }
-  } while(null);
 
-  if(next_fragment_index.size() == 0)
-    return -1;
-  else
-    return next_fragment_index.back();
+    if(!null)
+      return next_fragment_index.back();
+
+  } while(true);
+
 }
 
 int QueryProcessor::get_next_fragment_index(
@@ -1867,8 +1839,6 @@ int QueryProcessor::get_next_fragment_index(
 
     if(next_fragment_index.size() == 0)
       return -1;
-    else if(next_fragment_index.size() == 1)
-      return next_fragment_index.back();
 
     // Initialize coordinates if not already initialized
     for(int i=0; i<next_fragment_index.size(); ++i) {
@@ -1885,27 +1855,13 @@ int QueryProcessor::get_next_fragment_index(
     int latest_fragment_index = next_fragment_index.back();
     int num_of_iterators_to_advance = next_fragment_index.size()-1; 
 
-    // Check if the cell corresponds to a deletion.
-    // We assume that a deletion only occurs to a non-empty cell
-    // If there are more than one cells with the same coordinates,
-    // synchronize the cell iterators of the attributes
-    if(skipped_tiles[latest_fragment_index]) {
-      advance_tile_its(attribute_num, tile_its[latest_fragment_index], 
-                       skipped_tiles[latest_fragment_index]);
-      skipped_tiles[latest_fragment_index] = 0;
-    }
-    if(skipped_cells[latest_fragment_index]) {
-      if(!attribute_cell_its_initialized[latest_fragment_index]) {
-        initialize_cell_its(tile_its[latest_fragment_index],
-                            attribute_num,
-                            cell_its[latest_fragment_index]);
-        attribute_cell_its_initialized[latest_fragment_index] = true;
-      }
-      advance_cell_its(attribute_num, cell_its[latest_fragment_index], 
-                       skipped_cells[latest_fragment_index]);
-      skipped_cells[latest_fragment_index] = 0;
-    }
-    bool null = is_null(cell_its[latest_fragment_index], attribute_num);
+    // Retrieve a single attribute tile to check for null (i.e., deletion)
+    Tile::const_iterator cell_it = 
+        ((*(tile_its[latest_fragment_index][0] + 
+        skipped_tiles[latest_fragment_index])).begin() +
+        skipped_cells[latest_fragment_index]);
+
+    bool null = is_null(cell_it);
     if(null) 
       ++num_of_iterators_to_advance;
 
@@ -1952,18 +1908,8 @@ void QueryProcessor::get_tiles_by_rank(
    tiles[i] = storage_manager_.get_tile_by_rank(ad, i, tile_rank);
 }
 
-bool QueryProcessor::is_null(const Tile::const_iterator* cell_its,
-                           unsigned int attribute_num) const {
-  bool null = true;
-
-  for(unsigned int i=0; i<attribute_num; ++i) {
-    if(!cell_its[i].is_null()) {
-      null = false;
-      break;
-    }
-  }
-
-  return null;
+bool QueryProcessor::is_null(const Tile::const_iterator& cell_it) const {
+  return cell_it.is_null();
 }
 
 inline

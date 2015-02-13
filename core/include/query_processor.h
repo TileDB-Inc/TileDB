@@ -583,8 +583,7 @@ class QueryProcessor {
    * Returns true if the cell represents a deletion, i.e., when all its
    * attribute values are NULL.
    */
-  bool is_null(const Tile::const_iterator* cell_its,
-               unsigned int attribute_num) const;
+  bool is_null(const Tile::const_iterator& cell_it) const;
   /** Implements QueryProcessor::join for arrays with irregular tiles. */
   void join_irregular(const StorageManager::ArrayDescriptor* ad_A,
                       const StorageManager::ArrayDescriptor* ad_B,

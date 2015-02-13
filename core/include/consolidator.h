@@ -193,7 +193,7 @@ class Consolidator {
      * Override the delete[] operator so that only a Consolidator object can
      * delete dynamically created ArrayDescriptor objects.
      */
-    void operator delete[](void* ptr) { ::operator delete(ptr); }
+    void operator delete[](void* ptr) { ::operator delete[](ptr); }
 
   };
 
@@ -270,8 +270,7 @@ class Consolidator {
    * Returns true if the cell represents a deletion, i.e., when all its
    * attribute values are NULL.
    */
-  bool is_null(const Tile::const_iterator* cell_its,
-               unsigned int attribute_num) const;
+  bool is_null(const Tile::const_iterator& cell_it) const;
   /** 
    * Consolidates the input fragments (described by a vector of suffixes) for
    * the case of irregular tiles. 

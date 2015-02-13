@@ -263,18 +263,8 @@ void Consolidator::append_cell(const Tile::const_iterator* cell_its,
     *tiles[i] << cell_its[i]; 
 }
 
-bool Consolidator::is_null(const Tile::const_iterator* cell_its,
-                           unsigned int attribute_num) const {
-  bool null = true;
-
-  for(unsigned int i=0; i<attribute_num; ++i) {
-    if(!cell_its[i].is_null()) {
-      null = false;
-      break;
-    }
-  }
-
-  return null;
+bool Consolidator::is_null(const Tile::const_iterator& cell_it) const {
+  return cell_it.is_null();
 }
 
 void Consolidator::consolidate_irregular(
@@ -598,11 +588,9 @@ int Consolidator::get_next_fragment_index(
 
     if(next_fragment_index.size() == 0)
       return -1;
-    else if(next_fragment_index.size() == 1)
-      return next_fragment_index.back();
 
     int num_of_iterators_to_advance = next_fragment_index.size()-1; 
-    null = is_null(cell_its[next_fragment_index.back()], attribute_num);
+    null = is_null(cell_its[next_fragment_index.back()][0]);
     if(null && suffix_starts_with_0)
       ++num_of_iterators_to_advance;
 

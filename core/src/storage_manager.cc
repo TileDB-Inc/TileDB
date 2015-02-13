@@ -294,6 +294,13 @@ void StorageManager::const_iterator::operator=(
   rank_ = rhs.rank_;
 }
 
+StorageManager::const_iterator StorageManager::const_iterator::operator+(
+int64_t step) {
+  const_iterator it = *this;
+  it.rank_ += step;
+  return it;
+}
+
 void StorageManager::const_iterator::operator+=(int64_t step) {
   rank_ += step;
 }

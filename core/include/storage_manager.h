@@ -235,7 +235,7 @@ class StorageManager {
      * Override the delete[] operator so that only a StorageManager object can
      * delete dynamically created ArrayDescriptor objects.
      */
-    void operator delete[](void* ptr) { ::operator delete(ptr); }
+    void operator delete[](void* ptr) { ::operator delete[](ptr); }
   };
  
   // CONSTRUCTORS & DESTRUCTORS
@@ -337,6 +337,8 @@ class StorageManager {
         uint64_t rank); 
     /** Assignment operator. */
     void operator=(const const_iterator& rhs);
+    /** Addition operator. */
+    const_iterator operator+(int64_t step);
     /** Addition-assignment operator. */
     void operator+=(int64_t step);
     /** Pre-increment operator. */

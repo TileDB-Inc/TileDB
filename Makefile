@@ -46,7 +46,7 @@ TEST_OBJ := $(patsubst $(TEST_SRC_DIR)/%.cc, $(TEST_OBJ_DIR)/%.o, $(TEST_SRC))
 
 all: core example gtest test doc
 
-core: $(CORE_OBJ)
+core: $(CORE_OBJ) $(CORE_BIN_DIR)/tiledb
 
 example: $(EXAMPLE_BIN)
 
@@ -155,6 +155,16 @@ $(EXAMPLE_BIN_DIR)/example_executor: $(EXAMPLE_OBJ_DIR)/example_executor.o \
  $(CORE_OBJ_DIR)/consolidator.o
 	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
 	$(CXX) -fopenmp $(INCLUDE_PATHS) -o $@ $^
+
+$(CORE_BIN_DIR)/tiledb: $(CORE_OBJ_DIR)/tiledb.o \
+ $(CORE_OBJ_DIR)/command_line.o
+	@test -d $(CORE_BIN_DIR) || mkdir -p $(CORE_BIN_DIR)
+	$(CXX) -fopenmp $(INCLUDE_PATHS) -o $@ $^
+
+# $(CORE_OBJ_DIR)/query_processor.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
+# $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/loader.o $(CORE_OBJ_DIR)/storage_manager.o   \
+# $(CORE_OBJ_DIR)/hilbert_curve.o $(CORE_OBJ_DIR)/expression_tree.o $(CORE_OBJ_DIR)/executor.o \
+# $(CORE_OBJ_DIR)/consolidator.o
 
 
 ###############
