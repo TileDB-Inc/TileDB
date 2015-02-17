@@ -34,17 +34,17 @@
 #ifndef ARRAY_SCHEMA_H
 #define ARRAY_SCHEMA_H
 
-/** Default value for ArraySchema::capacity_. */
-#define AS_CAPACITY 10000
-/** Name for the extra attribute representing the array coordinates. */
-#define AS_COORDINATE_TILE_NAME "__coords"
-
 #include <vector>
 #include <set>
 #include <string>
 #include <inttypes.h>
 #include <typeinfo>
 #include "tile.h"
+
+/** Default value for ArraySchema::capacity_. */
+#define AS_CAPACITY 10000
+/** Name for the extra attribute representing the array coordinates. */
+#define AS_COORDINATE_TILE_NAME "__coords"
 
 /**
  * Objects of this class store information about the schema of an array, and

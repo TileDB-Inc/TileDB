@@ -10,9 +10,9 @@ CORE_INCLUDE_DIR = core/include
 CORE_SRC_DIR = core/src
 CORE_OBJ_DIR = core/obj
 CORE_BIN_DIR = core/bin
-EXAMPLE_SRC_DIR = example/src
-EXAMPLE_OBJ_DIR = example/obj
-EXAMPLE_BIN_DIR = example/bin
+TILEDB_SRC_DIR = tiledb/src
+TILEDB_OBJ_DIR = tiledb/obj
+TILEDB_BIN_DIR = tiledb/bin
 GTEST_DIR = gtest
 GTEST_INCLUDE_DIR = gtest/include
 GTEST_SRC_DIR = gtest/src
@@ -30,9 +30,8 @@ CORE_INCLUDE_PATHS = -I$(CORE_INCLUDE_DIR)
 CORE_INCLUDE := $(wildcard $(CORE_INCLUDE_DIR)/*.h)
 CORE_SRC := $(wildcard $(CORE_SRC_DIR)/*.cc)
 CORE_OBJ := $(patsubst $(CORE_SRC_DIR)/%.cc, $(CORE_OBJ_DIR)/%.o, $(CORE_SRC))
-EXAMPLE_SRC := $(wildcard $(EXAMPLE_SRC_DIR)/*.cc)
-EXAMPLE_OBJ := $(patsubst $(EXAMPLE_SRC_DIR)/%.cc, $(EXAMPLE_OBJ_DIR)/%.o, $(EXAMPLE_SRC))
-EXAMPLE_BIN := $(patsubst $(EXAMPLE_SRC_DIR)/%.cc, $(EXAMPLE_BIN_DIR)/%, $(EXAMPLE_SRC))
+TILEDB_SRC := $(wildcard $(TILEDB_SRC_DIR)/*.cc)
+TILEDB_BIN := $(patsubst $(TILEDB_SRC_DIR)/%.cc, $(TILEDB_BIN_DIR)/%, $(TILEDB_SRC))
 GTEST_INCLUDE := $(wildcard $(GTEST_INCLUDE_DIR)/*.h)
 GTEST_OBJ := $(patsubst $(GTEST_SRC_DIR)/%.cc, $(GTEST_OBJ_DIR)/%.o, $(GTEST_SRC))
 TEST_SRC := $(wildcard $(TEST_SRC_DIR)/*.cc)
@@ -42,13 +41,13 @@ TEST_OBJ := $(patsubst $(TEST_SRC_DIR)/%.cc, $(TEST_OBJ_DIR)/%.o, $(TEST_SRC))
 # General Targets #
 ###################
 
-.PHONY: core example gtest test doc doc_doxygen clean_core clean_example clean_gtest clean_test clean
+.PHONY: core example gtest test doc doc_doxygen clean_core clean_gtest clean_test clean_tiledb clean
 
-all: core example gtest test doc
+all: core gtest test tiledb doc
 
-core: $(CORE_OBJ) $(CORE_BIN_DIR)/tiledb
+core: $(CORE_OBJ) 
 
-example: $(EXAMPLE_BIN)
+tiledb: $(TILEDB_BIN)
 
 gtest: $(GTEST_OBJ_DIR)/gtest-all.o
 
@@ -56,11 +55,11 @@ test: $(TEST_OBJ)
 
 doc: doxyfile.inc
 
-clean: clean_core clean_example clean_gtest clean_test
+clean: clean_core clean_gtest clean_test clean_tiledb
 
-###############
-# Core TileDB #
-###############
+########
+# Core #
+########
 
 # --- Compilation and dependency genration --- #
 
@@ -77,95 +76,31 @@ $(CORE_OBJ_DIR)/%.o: $(CORE_SRC_DIR)/%.cc
 clean_core:
 	rm -f $(CORE_OBJ_DIR)/* $(CORE_BIN_DIR)/* 
 
-############
-# Examples #
-############
+##########
+# TileDB #
+##########
 
 # --- Compilation and dependency genration --- #
 
--include $(EXAMPLE_OBJ:.o=.d)
+-include $(TILEDB_OBJ:.o=.d)
 
-$(EXAMPLE_OBJ_DIR)/%.o: $(EXAMPLE_SRC_DIR)/%.cc
-	@test -d $(EXAMPLE_OBJ_DIR) || mkdir -p $(EXAMPLE_OBJ_DIR)
+$(TILEDB_OBJ_DIR)/%.o: $(TILEDB_SRC_DIR)/%.cc
+	@test -d $(TILEDB_OBJ_DIR) || mkdir -p $(TILEDB_OBJ_DIR)
 	$(CXX) $(CORE_INCLUDE_PATHS) -c $< -o $@
 	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
 	@rm -f $(@:.o=.d.tmp)
 
-clean_example:
-	rm -f $(EXAMPLE_OBJ_DIR)/* $(EXAMPLE_BIN_DIR)/* 
+clean_tiledb:
+	rm -f $(TILEDB_OBJ_DIR)/* $(TILEDB_BIN_DIR)/* 
 
 # --- Linking --- #
 
-$(EXAMPLE_BIN_DIR)/example_array_schema: $(EXAMPLE_OBJ_DIR)/example_array_schema.o \
- $(CORE_OBJ_DIR)/array_schema.o $(CORE_OBJ_DIR)/hilbert_curve.o \
- $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/csv_file.o
-	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
-	$(CXX) $(INCLUDE_PATHS) -o $@ $^
-
-$(EXAMPLE_BIN_DIR)/example_csv_file: $(EXAMPLE_OBJ_DIR)/example_csv_file.o \
- $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/tile.o
-	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
-	$(CXX) $(INCLUDE_PATHS) -o $@ $^
-
-$(EXAMPLE_BIN_DIR)/example_loader: $(EXAMPLE_OBJ_DIR)/example_loader.o \
- $(CORE_OBJ_DIR)/loader.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
- $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/storage_manager.o $(CORE_OBJ_DIR)/hilbert_curve.o
-	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
-	$(CXX) $(INCLUDE_PATHS) -o $@ $^
-
-$(EXAMPLE_BIN_DIR)/example_query_processor: $(EXAMPLE_OBJ_DIR)/example_query_processor.o \
- $(CORE_OBJ_DIR)/query_processor.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
- $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/loader.o $(CORE_OBJ_DIR)/storage_manager.o   \
- $(CORE_OBJ_DIR)/hilbert_curve.o $(CORE_OBJ_DIR)/expression_tree.o
-	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
+$(TILEDB_BIN_DIR)/tiledb: $(TILEDB_OBJ_DIR)/tiledb.o \
+ $(CORE_OBJ_DIR)/*.o
+	@mkdir -p $(TILEDB_BIN_DIR)
 	$(CXX) -fopenmp $(INCLUDE_PATHS) -o $@ $^
-
-$(EXAMPLE_BIN_DIR)/example_consolidator: $(EXAMPLE_OBJ_DIR)/example_consolidator.o \
- $(CORE_OBJ_DIR)/query_processor.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
- $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/loader.o $(CORE_OBJ_DIR)/storage_manager.o   \
- $(CORE_OBJ_DIR)/hilbert_curve.o $(CORE_OBJ_DIR)/expression_tree.o \
- $(CORE_OBJ_DIR)/consolidator.o
-
-	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
-	$(CXX) -fopenmp $(INCLUDE_PATHS) -o $@ $^
-
-
-$(EXAMPLE_BIN_DIR)/example_storage_manager: $(EXAMPLE_OBJ_DIR)/example_storage_manager.o \
- $(CORE_OBJ_DIR)/storage_manager.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
- $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/hilbert_curve.o
-	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
-	$(CXX) $(INCLUDE_PATHS) -o $@ $^
-
-$(EXAMPLE_BIN_DIR)/example_tile: $(EXAMPLE_OBJ_DIR)/example_tile.o \
- $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/csv_file.o
-	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
-	$(CXX) $(INCLUDE_PATHS) -o $@ $^
-
-$(EXAMPLE_BIN_DIR)/example_expression_tree: $(EXAMPLE_OBJ_DIR)/example_expression_tree.o \
- $(CORE_OBJ_DIR)/expression_tree.o
-	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
-	$(CXX) $(INCLUDE_PATHS) -o $@ $^
-
-$(EXAMPLE_BIN_DIR)/example_executor: $(EXAMPLE_OBJ_DIR)/example_executor.o \
- $(CORE_OBJ_DIR)/query_processor.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
- $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/loader.o $(CORE_OBJ_DIR)/storage_manager.o   \
- $(CORE_OBJ_DIR)/hilbert_curve.o $(CORE_OBJ_DIR)/expression_tree.o $(CORE_OBJ_DIR)/executor.o \
- $(CORE_OBJ_DIR)/consolidator.o
-	@test -d $(EXAMPLE_BIN_DIR) || mkdir -p $(EXAMPLE_BIN_DIR)
-	$(CXX) -fopenmp $(INCLUDE_PATHS) -o $@ $^
-
-$(CORE_BIN_DIR)/tiledb: $(CORE_OBJ_DIR)/tiledb.o \
- $(CORE_OBJ_DIR)/command_line.o
-	@test -d $(CORE_BIN_DIR) || mkdir -p $(CORE_BIN_DIR)
-	$(CXX) -fopenmp $(INCLUDE_PATHS) -o $@ $^
-
-# $(CORE_OBJ_DIR)/query_processor.o $(CORE_OBJ_DIR)/tile.o $(CORE_OBJ_DIR)/array_schema.o \
-# $(CORE_OBJ_DIR)/csv_file.o $(CORE_OBJ_DIR)/loader.o $(CORE_OBJ_DIR)/storage_manager.o   \
-# $(CORE_OBJ_DIR)/hilbert_curve.o $(CORE_OBJ_DIR)/expression_tree.o $(CORE_OBJ_DIR)/executor.o \
-# $(CORE_OBJ_DIR)/consolidator.o
-
 
 ###############
 # Google test #

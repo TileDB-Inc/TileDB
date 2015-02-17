@@ -54,10 +54,10 @@ QueryProcessor::QueryProcessor(const std::string& workspace,
   create_workspace(); 
 }
 
-void QueryProcessor::export_to_CSV(const StorageManager::ArrayDescriptor* ad,
+void QueryProcessor::export_to_CSV(const StorageManager::FragmentDescriptor* fd,
                                    const std::string& filename) const { 
   // For easy reference
-  const ArraySchema& array_schema = ad->array_schema();
+  const ArraySchema& array_schema = fd->array_schema();
   unsigned int attribute_num = array_schema.attribute_num();
   unsigned int dim_num = array_schema.dim_num();
   
@@ -68,7 +68,7 @@ void QueryProcessor::export_to_CSV(const StorageManager::ArrayDescriptor* ad,
   StorageManager::const_iterator *tile_its = 
       new StorageManager::const_iterator[attribute_num+1];
   StorageManager::const_iterator tile_it_end;
-  initialize_tile_its(ad, tile_its, tile_it_end);
+  initialize_tile_its(fd, tile_its, tile_it_end);
 
   // Create cell iterators
   Tile::const_iterator* cell_its = 
@@ -94,15 +94,15 @@ void QueryProcessor::export_to_CSV(const StorageManager::ArrayDescriptor* ad,
 }
 
 void QueryProcessor::export_to_CSV(
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     const std::string& filename) const {
-  assert(ad.size() > 0); 
+  assert(fd.size() > 0); 
 
   // For easy reference
-  const ArraySchema& array_schema = ad[0]->array_schema();
+  const ArraySchema& array_schema = fd[0]->array_schema();
   unsigned int attribute_num = array_schema.attribute_num();
   unsigned int dim_num = array_schema.dim_num();
-  unsigned int fragment_num = ad.size(); 
+  unsigned int fragment_num = fd.size(); 
  
   // Prepare CSV file
   CSVFile csv_file(filename, CSVFile::WRITE);
@@ -114,7 +114,7 @@ void QueryProcessor::export_to_CSV(
       new StorageManager::const_iterator[fragment_num]; 
   for(unsigned int i=0; i<fragment_num; ++i) {
     tile_its[i] = new StorageManager::const_iterator[attribute_num+1];
-    initialize_tile_its(ad[i], tile_its[i], tile_it_end[i]);
+    initialize_tile_its(fd[i], tile_its[i], tile_it_end[i]);
   }
 
   // Create cell iterators
@@ -158,43 +158,43 @@ void QueryProcessor::export_to_CSV(
   } 
 
   // Clean up
-  for(unsigned int i=0; i<ad.size(); ++i) 
+  for(unsigned int i=0; i<fd.size(); ++i) 
     delete [] tile_its[i];
   delete [] tile_its;
   delete [] tile_it_end;
-  for(unsigned int i=0; i<ad.size(); ++i) 
+  for(unsigned int i=0; i<fd.size(); ++i) 
     delete [] cell_its[i];
   delete [] cell_its;
   delete [] cell_it_end;
 }
 
-void QueryProcessor::filter(const StorageManager::ArrayDescriptor* ad,
+void QueryProcessor::filter(const StorageManager::FragmentDescriptor* fd,
                             const ExpressionTree* expression,
                             const std::string& result_array_name) const {
-  if(ad->array_schema().has_regular_tiles())
-    filter_regular(ad, expression, result_array_name);
+  if(fd->array_schema().has_regular_tiles())
+    filter_regular(fd, expression, result_array_name);
   else 
-    filter_irregular(ad, expression, result_array_name);
+    filter_irregular(fd, expression, result_array_name);
 } 
 
 void QueryProcessor::filter(
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     const ExpressionTree* expression,
     const std::string& result_array_name) const {
-  assert(ad.size() > 0);
+  assert(fd.size() > 0);
 
-  if(ad[0]->array_schema().has_regular_tiles())
-    filter_regular(ad, expression, result_array_name);
+  if(fd[0]->array_schema().has_regular_tiles())
+    filter_regular(fd, expression, result_array_name);
   else 
-    filter_irregular(ad, expression, result_array_name);
+    filter_irregular(fd, expression, result_array_name);
 }
 
-void QueryProcessor::join(const StorageManager::ArrayDescriptor* ad_A, 
-                          const StorageManager::ArrayDescriptor* ad_B,
+void QueryProcessor::join(const StorageManager::FragmentDescriptor* fd_A, 
+                          const StorageManager::FragmentDescriptor* fd_B,
                           const std::string& result_array_name) const {
   // For easy reference
-  const ArraySchema& array_schema_A = ad_A->array_info()->array_schema_;
-  const ArraySchema& array_schema_B = ad_B->array_info()->array_schema_;
+  const ArraySchema& array_schema_A = fd_A->fragment_info()->array_schema_;
+  const ArraySchema& array_schema_B = fd_B->fragment_info()->array_schema_;
 
   std::pair<bool,std::string> can_join = 
       ArraySchema::join_compatible(array_schema_A, array_schema_B);
@@ -210,21 +210,21 @@ void QueryProcessor::join(const StorageManager::ArrayDescriptor* ad_A,
                                    result_array_name);
   
   if(array_schema_A.has_regular_tiles())
-    join_regular(ad_A, ad_B, array_schema_C);
+    join_regular(fd_A, fd_B, array_schema_C);
   else 
-    join_irregular(ad_A, ad_B, array_schema_C);
+    join_irregular(fd_A, fd_B, array_schema_C);
 } 
 
 void QueryProcessor::join(
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad_A, 
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad_B, 
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd_A, 
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd_B, 
     const std::string& result_array_name) const {
-  assert(ad_A.size() > 0);
-  assert(ad_B.size() > 0);
+  assert(fd_A.size() > 0);
+  assert(fd_B.size() > 0);
 
   // For easy reference
-  const ArraySchema& array_schema_A = ad_A[0]->array_info()->array_schema_;
-  const ArraySchema& array_schema_B = ad_B[0]->array_info()->array_schema_;
+  const ArraySchema& array_schema_A = fd_A[0]->fragment_info()->array_schema_;
+  const ArraySchema& array_schema_B = fd_B[0]->fragment_info()->array_schema_;
 
   std::pair<bool,std::string> can_join = 
       ArraySchema::join_compatible(array_schema_A, array_schema_B);
@@ -240,41 +240,41 @@ void QueryProcessor::join(
                                    result_array_name);
   
   if(array_schema_A.has_regular_tiles())
-    join_regular(ad_A, ad_B, array_schema_C);
+    join_regular(fd_A, fd_B, array_schema_C);
   else 
-    join_irregular(ad_A, ad_B, array_schema_C);
+    join_irregular(fd_A, fd_B, array_schema_C);
 }
 
 void QueryProcessor::nearest_neighbors(
-    const StorageManager::ArrayDescriptor* ad,
+    const StorageManager::FragmentDescriptor* fd,
     const std::vector<double>& q,
     uint64_t k,
     const std::string& result_array_name) const { 
-  if(ad->array_schema().has_regular_tiles())
-    nearest_neighbors_regular(ad, q, k, result_array_name);
+  if(fd->array_schema().has_regular_tiles())
+    nearest_neighbors_regular(fd, q, k, result_array_name);
   else 
-    nearest_neighbors_irregular(ad, q, k, result_array_name);
+    nearest_neighbors_irregular(fd, q, k, result_array_name);
 }
 
-void QueryProcessor::subarray(const StorageManager::ArrayDescriptor* ad,
+void QueryProcessor::subarray(const StorageManager::FragmentDescriptor* fd,
                               const Tile::Range& range,
                               const std::string& result_array_name) const { 
-  if(ad->array_schema().has_regular_tiles())
-    subarray_regular(ad, range, result_array_name);
+  if(fd->array_schema().has_regular_tiles())
+    subarray_regular(fd, range, result_array_name);
   else 
-    subarray_irregular(ad, range, result_array_name);
+    subarray_irregular(fd, range, result_array_name);
 }
 
 void QueryProcessor::subarray(
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     const Tile::Range& range,
     const std::string& result_array_name) const { 
-  assert(ad.size() > 0);
+  assert(fd.size() > 0);
 
-  if(ad[0]->array_schema().has_regular_tiles())
-    subarray_regular(ad, range, result_array_name);
+  if(fd[0]->array_schema().has_regular_tiles())
+    subarray_regular(fd, range, result_array_name);
   else 
-    subarray_irregular(ad, range, result_array_name);
+    subarray_irregular(fd, range, result_array_name);
 }
 
 /******************************************************
@@ -366,7 +366,7 @@ void QueryProcessor::advance_cell_tile_its(
 
 inline
 void QueryProcessor::advance_cell_tile_its(
-    const StorageManager::ArrayDescriptor* ad,
+    const StorageManager::FragmentDescriptor* fd,
     unsigned int attribute_num,
     Tile::const_iterator* cell_its,
     Tile::const_iterator& cell_it_end,
@@ -380,7 +380,7 @@ void QueryProcessor::advance_cell_tile_its(
     ++tile_rank_it;
     skipped_cells = 0;
     if(tile_rank_it != tile_rank_it_end) {
-      get_tiles_by_rank(ad, tile_rank_it->first, tiles);
+      get_tiles_by_rank(fd, tile_rank_it->first, tiles);
       initialize_cell_its(tiles, attribute_num, cell_its, cell_it_end);
      }
   } else {
@@ -521,8 +521,9 @@ bool QueryProcessor::coincides(
   }
 }
 
-std::vector<QueryProcessor::DistRank> QueryProcessor::compute_sorted_dist_ranks(
-    const StorageManager::ArrayDescriptor* ad,
+std::vector<QueryProcessor::DistRank> 
+QueryProcessor::compute_sorted_dist_ranks(
+    const StorageManager::FragmentDescriptor* fd,
     const std::vector<double>& q) const {
   // Initializations
   // We store pairs of the form (dist, rank)
@@ -532,9 +533,9 @@ std::vector<QueryProcessor::DistRank> QueryProcessor::compute_sorted_dist_ranks(
 
   // Retrieve MBR iterators from storage manager
   StorageManager::MBRs::const_iterator mbr_it = 
-      storage_manager_.MBR_begin(ad);
+      storage_manager_.MBR_begin(fd);
   StorageManager::MBRs::const_iterator mbr_it_end = 
-      storage_manager_.MBR_end(ad);
+      storage_manager_.MBR_end(fd);
 
   for(rank=0; mbr_it != mbr_it_end; ++mbr_it, ++rank) {
     dist = point_to_mbr_distance(q, *mbr_it);
@@ -548,13 +549,13 @@ std::vector<QueryProcessor::DistRank> QueryProcessor::compute_sorted_dist_ranks(
 
 std::vector<QueryProcessor::RankPosCoord> 
 QueryProcessor::compute_sorted_kNN_coords(
-    const StorageManager::ArrayDescriptor* ad,
+    const StorageManager::FragmentDescriptor* fd,
     const std::vector<double>& q,
     uint64_t k,
     const std::vector<DistRank>& sorted_dist_ranks) const {
   std::priority_queue<DistRankPosCoord> kNN_coords;
   // For easy reference
-  unsigned int attribute_num = ad->array_schema().attribute_num();
+  unsigned int attribute_num = fd->array_schema().attribute_num();
 
   const Tile* tile;
   Tile::const_iterator cell_it, cell_it_end;
@@ -573,7 +574,7 @@ QueryProcessor::compute_sorted_kNN_coords(
 
     // Get new coordinate tile and initalize cell iterators
     rank = sorted_dist_ranks[i].second;
-    tile = storage_manager_.get_tile_by_rank(ad, attribute_num, rank); 
+    tile = storage_manager_.get_tile_by_rank(fd, attribute_num, rank); 
     cell_it = tile->begin();
     cell_it_end = tile->end();
 
@@ -616,18 +617,18 @@ void QueryProcessor::create_workspace() const {
 }
 
 void QueryProcessor::filter_irregular(
-    const StorageManager::ArrayDescriptor* ad,
+    const StorageManager::FragmentDescriptor* fd,
     const ExpressionTree* expression,
     const std::string& result_array_name) const {
   // For easy reference
-  const ArraySchema& array_schema = ad->array_schema();
+  const ArraySchema& array_schema = fd->array_schema();
   const unsigned int attribute_num = array_schema.attribute_num();
   uint64_t capacity = array_schema.capacity();
   
   // Prepare result array
   ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::ArrayDescriptor* result_ad = 
-      storage_manager_.open_array(result_array_schema);
+  const StorageManager::FragmentDescriptor* result_fd = 
+      storage_manager_.open_fragment(result_array_schema);
 
   // Create tiles 
   Tile** result_tiles = new Tile*[attribute_num+1];
@@ -654,7 +655,7 @@ void QueryProcessor::filter_irregular(
 
   // Initialize tile iterators
   unsigned int end_attribute_id = expr_attribute_ids[0];
-  initialize_tile_its(ad, tile_its, tile_it_end, end_attribute_id);
+  initialize_tile_its(fd, tile_its, tile_it_end, end_attribute_id);
   
   // Auxiliary variables for proper retrieval of qualifying tiles and cells.
   int64_t skipped_tiles = 0;
@@ -688,7 +689,7 @@ void QueryProcessor::filter_irregular(
           skipped_cells = 0;
         }
         if(result_tiles[attribute_num]->cell_num() == capacity) {
-          store_tiles(result_ad, result_tiles);
+          store_tiles(result_fd, result_tiles);
           new_tiles(result_array_schema, ++tile_id, result_tiles); 
         }
         append_cell(cell_its, result_tiles, attribute_num);
@@ -705,10 +706,10 @@ void QueryProcessor::filter_irregular(
   }
  
   // Send the lastly created tiles to storage manager
-  store_tiles(result_ad, result_tiles);
+  store_tiles(result_fd, result_tiles);
 
   // Close result array 
-  storage_manager_.close_array(result_ad);
+  storage_manager_.close_fragment(result_fd);
 
   // Clean up
   delete [] result_tiles;
@@ -717,19 +718,19 @@ void QueryProcessor::filter_irregular(
 }
 
 void QueryProcessor::filter_irregular(
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     const ExpressionTree* expression,
     const std::string& result_array_name) const {
   // For easy reference
-  const ArraySchema& array_schema = ad[0]->array_schema();
+  const ArraySchema& array_schema = fd[0]->array_schema();
   const unsigned int attribute_num = array_schema.attribute_num();
   uint64_t capacity = array_schema.capacity();
-  unsigned int fragment_num = ad.size(); 
+  unsigned int fragment_num = fd.size(); 
   
   // Prepare result array
   ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::ArrayDescriptor* result_ad = 
-      storage_manager_.open_array(result_array_schema);
+  const StorageManager::FragmentDescriptor* result_fd = 
+      storage_manager_.open_fragment(result_array_schema);
 
   // Create result tiles 
   Tile** result_tiles = new Tile*[attribute_num+1];
@@ -758,7 +759,7 @@ void QueryProcessor::filter_irregular(
       new StorageManager::const_iterator[fragment_num]; 
   for(unsigned int i=0; i<fragment_num; ++i) {
     tile_its[i] = new StorageManager::const_iterator[attribute_num+1];
-    initialize_tile_its(ad[i], tile_its[i], tile_it_end[i]);
+    initialize_tile_its(fd[i], tile_its[i], tile_it_end[i]);
   }
 
   // Create cell iterators
@@ -824,7 +825,7 @@ void QueryProcessor::filter_irregular(
         skipped_cells[next_fragment_index] = 0;
       }
       if(result_tiles[attribute_num]->cell_num() == capacity) {
-        store_tiles(result_ad, result_tiles);
+        store_tiles(result_fd, result_tiles);
         new_tiles(result_array_schema, ++tile_id, result_tiles); 
       }
       append_cell(next_cell_its, result_tiles, attribute_num);
@@ -853,10 +854,10 @@ void QueryProcessor::filter_irregular(
   }
 
   // Send the lastly created tiles to storage manager
-  store_tiles(result_ad, result_tiles);
+  store_tiles(result_fd, result_tiles);
 
   // Close result array 
-  storage_manager_.close_array(result_ad);
+  storage_manager_.close_fragment(result_fd);
 
   // Clean up
   delete [] result_tiles;
@@ -875,17 +876,17 @@ void QueryProcessor::filter_irregular(
 
 
 void QueryProcessor::filter_regular(
-    const StorageManager::ArrayDescriptor* ad,
+    const StorageManager::FragmentDescriptor* fd,
     const ExpressionTree* expression,
     const std::string& result_array_name) const {
   // For easy reference
-  const ArraySchema& array_schema = ad->array_schema();
+  const ArraySchema& array_schema = fd->array_schema();
   const unsigned int attribute_num = array_schema.attribute_num();
   
   // Prepare result array
   ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::ArrayDescriptor* result_ad = 
-      storage_manager_.open_array(result_array_schema);
+  const StorageManager::FragmentDescriptor* result_fd = 
+      storage_manager_.open_fragment(result_array_schema);
 
   // Create tiles 
   Tile** result_tiles = new Tile*[attribute_num+1];
@@ -912,7 +913,7 @@ void QueryProcessor::filter_regular(
 
   // Initialize tile iterators
   unsigned int end_attribute_id = expr_attribute_ids[0];
-  initialize_tile_its(ad, tile_its, tile_it_end, end_attribute_id);
+  initialize_tile_its(fd, tile_its, tile_it_end, end_attribute_id);
   
   // Auxiliary variables for proper retrieval of qualifying tiles and cells.
   int64_t skipped_tiles = 0;
@@ -953,7 +954,7 @@ void QueryProcessor::filter_regular(
     }
     
     // Send the lastly created tiles to storage manager
-    store_tiles(result_ad, result_tiles);
+    store_tiles(result_fd, result_tiles);
     
     // Advance tile iterators 
     advance_tile_its(tile_its, expr_attribute_ids);
@@ -961,7 +962,7 @@ void QueryProcessor::filter_regular(
   }
  
   // Close result array 
-  storage_manager_.close_array(result_ad);
+  storage_manager_.close_fragment(result_fd);
 
   // Clean up
   delete [] result_tiles;
@@ -970,18 +971,18 @@ void QueryProcessor::filter_regular(
 }
 
 void QueryProcessor::filter_regular(
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     const ExpressionTree* expression,
     const std::string& result_array_name) const {
   // For easy reference
-  const ArraySchema& array_schema = ad[0]->array_schema();
+  const ArraySchema& array_schema = fd[0]->array_schema();
   const unsigned int attribute_num = array_schema.attribute_num();
-  unsigned int fragment_num = ad.size(); 
+  unsigned int fragment_num = fd.size(); 
   
   // Prepare result array
   ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::ArrayDescriptor* result_ad = 
-      storage_manager_.open_array(result_array_schema);
+  const StorageManager::FragmentDescriptor* result_fd = 
+      storage_manager_.open_fragment(result_array_schema);
 
   // Create result tiles 
   Tile** result_tiles = new Tile*[attribute_num+1];
@@ -1008,7 +1009,7 @@ void QueryProcessor::filter_regular(
       new StorageManager::const_iterator[fragment_num]; 
   for(unsigned int i=0; i<fragment_num; ++i) {
     tile_its[i] = new StorageManager::const_iterator[attribute_num+1];
-    initialize_tile_its(ad[i], tile_its[i], tile_it_end[i]);
+    initialize_tile_its(fd[i], tile_its[i], tile_it_end[i]);
   }
 
   // Create cell iterators
@@ -1085,7 +1086,7 @@ void QueryProcessor::filter_regular(
       if(next_cell_its[0].tile()->tile_id() != tile_id) {
         // Change tile
         tile_id = next_cell_its[0].tile()->tile_id();
-        store_tiles(result_ad, result_tiles);
+        store_tiles(result_fd, result_tiles);
         new_tiles(result_array_schema, tile_id, result_tiles);
       } 
       append_cell(next_cell_its, result_tiles, attribute_num);
@@ -1114,10 +1115,10 @@ void QueryProcessor::filter_regular(
   }
 
   // Send the lastly created tiles to storage manager
-  store_tiles(result_ad, result_tiles);
+  store_tiles(result_fd, result_tiles);
 
   // Close result array 
-  storage_manager_.close_array(result_ad);
+  storage_manager_.close_fragment(result_fd);
 
   // Clean up
   delete [] result_tiles;
@@ -1135,7 +1136,7 @@ void QueryProcessor::filter_regular(
 }
 
 void QueryProcessor::get_next_join_fragment_indexes_irregular(
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd_A,
     StorageManager::const_iterator** tile_its_A,
     StorageManager::const_iterator* tile_it_end_A,
     Tile::const_iterator** cell_its_A,
@@ -1143,7 +1144,7 @@ void QueryProcessor::get_next_join_fragment_indexes_irregular(
     uint64_t* skipped_tiles_A, uint64_t* skipped_cells_A,
     bool* attribute_cell_its_initialized_A,
     bool* coordinate_cell_its_initialized_A,
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd_B,
     StorageManager::const_iterator** tile_its_B,
     StorageManager::const_iterator* tile_it_end_B,
     Tile::const_iterator** cell_its_B,
@@ -1154,17 +1155,17 @@ void QueryProcessor::get_next_join_fragment_indexes_irregular(
     bool& fragment_indexes_initialized,
     int& next_fragment_index_A, int& next_fragment_index_B) const {
   // For easy reference 
-  unsigned int fragment_num_A = ad_A.size();
-  unsigned int fragment_num_B = ad_B.size();
-  const ArraySchema& array_schema_A = ad_A[0]->array_schema();
-  const ArraySchema& array_schema_B = ad_A[0]->array_schema();
-  unsigned int attribute_num_A = ad_A[0]->array_schema().attribute_num();
-  unsigned int attribute_num_B = ad_B[0]->array_schema().attribute_num();
+  unsigned int fragment_num_A = fd_A.size();
+  unsigned int fragment_num_B = fd_B.size();
+  const ArraySchema& array_schema_A = fd_A[0]->array_schema();
+  const ArraySchema& array_schema_B = fd_A[0]->array_schema();
+  unsigned int attribute_num_A = fd_A[0]->array_schema().attribute_num();
+  unsigned int attribute_num_B = fd_B[0]->array_schema().attribute_num();
 
   // Initialization
   if(!fragment_indexes_initialized) { 
     next_fragment_index_A = get_next_fragment_index(
-        ad_A, tile_its_A, tile_it_end_A,
+        fd_A, tile_its_A, tile_it_end_A,
         cell_its_A, cell_it_end_A,
         skipped_tiles_A, skipped_cells_A,
         attribute_cell_its_initialized_A,
@@ -1172,7 +1173,7 @@ void QueryProcessor::get_next_join_fragment_indexes_irregular(
     if(next_fragment_index_A == -1)
       return;
     next_fragment_index_B = get_next_fragment_index(
-        ad_B, tile_its_B, tile_it_end_B,
+        fd_B, tile_its_B, tile_it_end_B,
         cell_its_B, cell_it_end_B,
         skipped_tiles_B, skipped_cells_B,
         attribute_cell_its_initialized_B,
@@ -1191,7 +1192,7 @@ void QueryProcessor::get_next_join_fragment_indexes_irregular(
         attribute_cell_its_initialized_A[next_fragment_index_A],
         coordinate_cell_its_initialized_A[next_fragment_index_A]);
     next_fragment_index_A = get_next_fragment_index(
-        ad_A, tile_its_A, tile_it_end_A,
+        fd_A, tile_its_A, tile_it_end_A,
         cell_its_A, cell_it_end_A,
         skipped_tiles_A, skipped_cells_A,
         attribute_cell_its_initialized_A,
@@ -1208,7 +1209,7 @@ void QueryProcessor::get_next_join_fragment_indexes_irregular(
         attribute_cell_its_initialized_B[next_fragment_index_B],
         coordinate_cell_its_initialized_B[next_fragment_index_B]);
     next_fragment_index_B = get_next_fragment_index(
-        ad_B, tile_its_B, tile_it_end_B,
+        fd_B, tile_its_B, tile_it_end_B,
         cell_its_B, cell_it_end_B,
         skipped_tiles_B, skipped_cells_B,
         attribute_cell_its_initialized_B,
@@ -1264,7 +1265,7 @@ void QueryProcessor::get_next_join_fragment_indexes_irregular(
           skipped_cells_B[next_fragment_index_B] = 0;
         }
         next_fragment_index_B = get_next_fragment_index(
-            ad_B, tile_its_B, tile_it_end_B,
+            fd_B, tile_its_B, tile_it_end_B,
             cell_its_B, cell_it_end_B,
             skipped_tiles_B, skipped_cells_B,
             attribute_cell_its_initialized_B,
@@ -1290,7 +1291,7 @@ void QueryProcessor::get_next_join_fragment_indexes_irregular(
           skipped_cells_A[next_fragment_index_A] = 0;
         }
         next_fragment_index_A = get_next_fragment_index(
-            ad_A, tile_its_A, tile_it_end_A,
+            fd_A, tile_its_A, tile_it_end_A,
             cell_its_A, cell_it_end_A,
             skipped_tiles_A, skipped_cells_A,
             attribute_cell_its_initialized_A,
@@ -1336,7 +1337,7 @@ void QueryProcessor::get_next_join_fragment_indexes_irregular(
             attribute_cell_its_initialized_A[next_fragment_index_A],
             coordinate_cell_its_initialized_A[next_fragment_index_A]);
         next_fragment_index_A = get_next_fragment_index(
-            ad_A, tile_its_A, tile_it_end_A,
+            fd_A, tile_its_A, tile_it_end_A,
             cell_its_A, cell_it_end_A,
             skipped_tiles_A, skipped_cells_A,
             attribute_cell_its_initialized_A,
@@ -1354,7 +1355,7 @@ void QueryProcessor::get_next_join_fragment_indexes_irregular(
             attribute_cell_its_initialized_B[next_fragment_index_B],
             coordinate_cell_its_initialized_B[next_fragment_index_B]);
         next_fragment_index_B = get_next_fragment_index(
-            ad_B, tile_its_B, tile_it_end_B,
+            fd_B, tile_its_B, tile_it_end_B,
             cell_its_B, cell_it_end_B,
             skipped_tiles_B, skipped_cells_B,
             attribute_cell_its_initialized_B,
@@ -1367,7 +1368,7 @@ void QueryProcessor::get_next_join_fragment_indexes_irregular(
 }
 
 void QueryProcessor::get_next_join_fragment_indexes_regular(
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd_A,
     StorageManager::const_iterator** tile_its_A,
     StorageManager::const_iterator* tile_it_end_A,
     Tile::const_iterator** cell_its_A,
@@ -1375,7 +1376,7 @@ void QueryProcessor::get_next_join_fragment_indexes_regular(
     uint64_t* skipped_tiles_A, uint64_t* skipped_cells_A,
     bool* attribute_cell_its_initialized_A,
     bool* coordinate_cell_its_initialized_A,
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd_B,
     StorageManager::const_iterator** tile_its_B,
     StorageManager::const_iterator* tile_it_end_B,
     Tile::const_iterator** cell_its_B,
@@ -1386,17 +1387,17 @@ void QueryProcessor::get_next_join_fragment_indexes_regular(
     bool& fragment_indexes_initialized,
     int& next_fragment_index_A, int& next_fragment_index_B) const {
   // For easy reference 
-  unsigned int fragment_num_A = ad_A.size();
-  unsigned int fragment_num_B = ad_B.size();
-  const ArraySchema& array_schema_A = ad_A[0]->array_schema();
-  const ArraySchema& array_schema_B = ad_A[0]->array_schema();
-  unsigned int attribute_num_A = ad_A[0]->array_schema().attribute_num();
-  unsigned int attribute_num_B = ad_B[0]->array_schema().attribute_num();
+  unsigned int fragment_num_A = fd_A.size();
+  unsigned int fragment_num_B = fd_B.size();
+  const ArraySchema& array_schema_A = fd_A[0]->array_schema();
+  const ArraySchema& array_schema_B = fd_A[0]->array_schema();
+  unsigned int attribute_num_A = fd_A[0]->array_schema().attribute_num();
+  unsigned int attribute_num_B = fd_B[0]->array_schema().attribute_num();
 
   // Initialization
   if(!fragment_indexes_initialized) { 
     next_fragment_index_A = get_next_fragment_index(
-        ad_A, tile_its_A, tile_it_end_A,
+        fd_A, tile_its_A, tile_it_end_A,
         cell_its_A, cell_it_end_A,
         skipped_tiles_A, skipped_cells_A,
         attribute_cell_its_initialized_A,
@@ -1404,7 +1405,7 @@ void QueryProcessor::get_next_join_fragment_indexes_regular(
     if(next_fragment_index_A == -1)
       return;
     next_fragment_index_B = get_next_fragment_index(
-        ad_B, tile_its_B, tile_it_end_B,
+        fd_B, tile_its_B, tile_it_end_B,
         cell_its_B, cell_it_end_B,
         skipped_tiles_B, skipped_cells_B,
         attribute_cell_its_initialized_B,
@@ -1423,7 +1424,7 @@ void QueryProcessor::get_next_join_fragment_indexes_regular(
         attribute_cell_its_initialized_A[next_fragment_index_A],
         coordinate_cell_its_initialized_A[next_fragment_index_A]);
     next_fragment_index_A = get_next_fragment_index(
-        ad_A, tile_its_A, tile_it_end_A,
+        fd_A, tile_its_A, tile_it_end_A,
         cell_its_A, cell_it_end_A,
         skipped_tiles_A, skipped_cells_A,
         attribute_cell_its_initialized_A,
@@ -1440,7 +1441,7 @@ void QueryProcessor::get_next_join_fragment_indexes_regular(
         attribute_cell_its_initialized_B[next_fragment_index_B],
         coordinate_cell_its_initialized_B[next_fragment_index_B]);
     next_fragment_index_B = get_next_fragment_index(
-        ad_B, tile_its_B, tile_it_end_B,
+        fd_B, tile_its_B, tile_it_end_B,
         cell_its_B, cell_it_end_B,
         skipped_tiles_B, skipped_cells_B,
         attribute_cell_its_initialized_B,
@@ -1480,7 +1481,7 @@ void QueryProcessor::get_next_join_fragment_indexes_regular(
           skipped_cells_B[next_fragment_index_B] = 0;
         }
         next_fragment_index_B = get_next_fragment_index(
-            ad_B, tile_its_B, tile_it_end_B,
+            fd_B, tile_its_B, tile_it_end_B,
             cell_its_B, cell_it_end_B,
             skipped_tiles_B, skipped_cells_B,
             attribute_cell_its_initialized_B,
@@ -1506,7 +1507,7 @@ void QueryProcessor::get_next_join_fragment_indexes_regular(
           skipped_cells_A[next_fragment_index_A] = 0;
         }
         next_fragment_index_A = get_next_fragment_index(
-            ad_A, tile_its_A, tile_it_end_A,
+            fd_A, tile_its_A, tile_it_end_A,
             cell_its_A, cell_it_end_A,
             skipped_tiles_A, skipped_cells_A,
             attribute_cell_its_initialized_A,
@@ -1553,7 +1554,7 @@ void QueryProcessor::get_next_join_fragment_indexes_regular(
             attribute_cell_its_initialized_A[next_fragment_index_A],
             coordinate_cell_its_initialized_A[next_fragment_index_A]);
         next_fragment_index_A = get_next_fragment_index(
-            ad_A, tile_its_A, tile_it_end_A,
+            fd_A, tile_its_A, tile_it_end_A,
             cell_its_A, cell_it_end_A,
             skipped_tiles_A, skipped_cells_A,
             attribute_cell_its_initialized_A,
@@ -1571,7 +1572,7 @@ void QueryProcessor::get_next_join_fragment_indexes_regular(
             attribute_cell_its_initialized_B[next_fragment_index_B],
             coordinate_cell_its_initialized_B[next_fragment_index_B]);
         next_fragment_index_B = get_next_fragment_index(
-            ad_B, tile_its_B, tile_it_end_B,
+            fd_B, tile_its_B, tile_it_end_B,
             cell_its_B, cell_it_end_B,
             skipped_tiles_B, skipped_cells_B,
             attribute_cell_its_initialized_B,
@@ -1711,7 +1712,7 @@ int QueryProcessor::get_next_fragment_index(
 }
 
 int QueryProcessor::get_next_fragment_index(
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
       RankOverlapVector::const_iterator* tile_rank_it,
       RankOverlapVector::const_iterator* tile_rank_it_end,
       const Tile*** tiles,
@@ -1770,7 +1771,7 @@ int QueryProcessor::get_next_fragment_index(
     // If the cell is deleted, all iterators are advanced, otherwise all except
     // for the last one.
     for(int i=0; i<num_of_iterators_to_advance; ++i) {
-      advance_cell_tile_its(ad[next_fragment_index[i]], attribute_num,
+      advance_cell_tile_its(fd[next_fragment_index[i]], attribute_num,
                             cell_its[next_fragment_index[i]],
                             cell_it_end[next_fragment_index[i]],
                             tile_rank_it[next_fragment_index[i]], 
@@ -1787,7 +1788,7 @@ int QueryProcessor::get_next_fragment_index(
 }
 
 int QueryProcessor::get_next_fragment_index(
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     StorageManager::const_iterator** tile_its,
     StorageManager::const_iterator* tile_it_end,
     Tile::const_iterator** cell_its,
@@ -1796,9 +1797,9 @@ int QueryProcessor::get_next_fragment_index(
     bool* attribute_cell_its_initialized,
     bool* coordinate_cell_its_initialized) const {
   // For easy reference
-  const ArraySchema& array_schema = ad[0]->array_schema();
+  const ArraySchema& array_schema = fd[0]->array_schema();
   unsigned int attribute_num = array_schema.attribute_num();
-  unsigned int fragment_num = ad.size();
+  unsigned int fragment_num = fd.size();
 
   // Holds the (potentially multiple) indexes of the candidate fragments
   // from which we will get the next cell for consolidation. Note though 
@@ -1886,26 +1887,26 @@ int QueryProcessor::get_next_fragment_index(
 
 inline
 void QueryProcessor::get_tiles(
-    const StorageManager::ArrayDescriptor* ad, 
+    const StorageManager::FragmentDescriptor* fd, 
     uint64_t tile_id, const Tile** tiles) const {
   // For easy reference
-  unsigned int attribute_num = ad->array_schema().attribute_num();
+  unsigned int attribute_num = fd->array_schema().attribute_num();
 
   // Get attribute tiles
   for(unsigned int i=0; i<=attribute_num; i++) 
-   tiles[i] = storage_manager_.get_tile(ad, i, tile_id);
+   tiles[i] = storage_manager_.get_tile(fd, i, tile_id);
 }
 
 inline
 void QueryProcessor::get_tiles_by_rank(
-    const StorageManager::ArrayDescriptor* ad, 
+    const StorageManager::FragmentDescriptor* fd, 
     uint64_t tile_rank, const Tile** tiles) const {
   // For easy reference
-  unsigned int attribute_num = ad->array_schema().attribute_num();
+  unsigned int attribute_num = fd->array_schema().attribute_num();
 
   // Get attribute tiles
   for(unsigned int i=0; i<=attribute_num; i++) 
-   tiles[i] = storage_manager_.get_tile_by_rank(ad, i, tile_rank);
+   tiles[i] = storage_manager_.get_tile_by_rank(fd, i, tile_rank);
 }
 
 bool QueryProcessor::is_null(const Tile::const_iterator& cell_it) const {
@@ -1967,44 +1968,45 @@ void QueryProcessor::initialize_cell_its(
 
 inline
 void QueryProcessor::initialize_tile_its(
-    const StorageManager::ArrayDescriptor* ad,
+    const StorageManager::FragmentDescriptor* fd,
     StorageManager::const_iterator* tile_its, 
     StorageManager::const_iterator& tile_it_end) const {
   // For easy reference
-  unsigned int attribute_num = ad->array_schema().attribute_num();
+  unsigned int attribute_num = fd->array_schema().attribute_num();
 
   for(unsigned int i=0; i<=attribute_num; i++)
-    tile_its[i] = storage_manager_.begin(ad, i);
-  tile_it_end = storage_manager_.end(ad, attribute_num);
+    tile_its[i] = storage_manager_.begin(fd, i);
+  tile_it_end = storage_manager_.end(fd, attribute_num);
 }
 
 inline
 void QueryProcessor::initialize_tile_its(
-    const StorageManager::ArrayDescriptor* ad,
+    const StorageManager::FragmentDescriptor* fd,
     StorageManager::const_iterator* tile_its, 
     StorageManager::const_iterator& tile_it_end,
     unsigned int end_attribute_id) const {
   // For easy reference
-  unsigned int attribute_num = ad->array_schema().attribute_num();
+  unsigned int attribute_num = fd->array_schema().attribute_num();
 
   for(unsigned int i=0; i<=attribute_num; i++)
-    tile_its[i] = storage_manager_.begin(ad, i);
-  tile_it_end = storage_manager_.end(ad, end_attribute_id);
+    tile_its[i] = storage_manager_.begin(fd, i);
+  tile_it_end = storage_manager_.end(fd, end_attribute_id);
 }
 
-void QueryProcessor::join_irregular(const StorageManager::ArrayDescriptor* ad_A,
-                                    const StorageManager::ArrayDescriptor* ad_B,
-                                    const ArraySchema& array_schema_C) const {
+void QueryProcessor::join_irregular(
+    const StorageManager::FragmentDescriptor* fd_A,
+    const StorageManager::FragmentDescriptor* fd_B,
+    const ArraySchema& array_schema_C) const {
   // For easy reference
-  const ArraySchema& array_schema_A = ad_A->array_schema();
-  const ArraySchema& array_schema_B = ad_B->array_schema();
+  const ArraySchema& array_schema_A = fd_A->array_schema();
+  const ArraySchema& array_schema_B = fd_B->array_schema();
   unsigned int attribute_num_A = array_schema_A.attribute_num();
   unsigned int attribute_num_B = array_schema_B.attribute_num();
   unsigned int attribute_num_C = array_schema_C.attribute_num();
 
   // Prepare result array
-  const StorageManager::ArrayDescriptor* ad_C = 
-      storage_manager_.open_array(array_schema_C);
+  const StorageManager::FragmentDescriptor* fd_C = 
+      storage_manager_.open_fragment(array_schema_C);
 
   // Create tiles 
   const Tile** tiles_A = new const Tile*[attribute_num_A+1];
@@ -2018,8 +2020,8 @@ void QueryProcessor::join_irregular(const StorageManager::ArrayDescriptor* ad_A,
       new StorageManager::const_iterator[attribute_num_B+1];
   StorageManager::const_iterator tile_it_end_A;
   StorageManager::const_iterator tile_it_end_B;
-  initialize_tile_its(ad_A, tile_its_A, tile_it_end_A);
-  initialize_tile_its(ad_B, tile_its_B, tile_it_end_B);
+  initialize_tile_its(fd_A, tile_its_A, tile_it_end_A);
+  initialize_tile_its(fd_B, tile_its_B, tile_it_end_B);
   
   // Create cell iterators
   Tile::const_iterator* cell_its_A = 
@@ -2030,7 +2032,7 @@ void QueryProcessor::join_irregular(const StorageManager::ArrayDescriptor* ad_A,
 
   // Auxiliary variables storing the number of skipped tiles when joining.
   // It is used to advance only the coordinates iterator when a tile is
-  // finished/skipped, and then efficiently advance the attribute iterators only 
+  // finished/skipped, and then efficiently advance the attribute iterators only
   // when a tile joins.
   int64_t skipped_tiles_A = 0;
   int64_t skipped_tiles_B = 0;
@@ -2083,7 +2085,7 @@ void QueryProcessor::join_irregular(const StorageManager::ArrayDescriptor* ad_A,
                            cell_its_A, cell_it_end_A, 
                            attribute_num_B, tile_its_B, 
                            cell_its_B, cell_it_end_B,
-                           ad_C, tiles_C,
+                           fd_C, tiles_C,
                            attribute_cell_its_initialized_A, 
                            attribute_cell_its_initialized_B);
     }
@@ -2103,10 +2105,10 @@ void QueryProcessor::join_irregular(const StorageManager::ArrayDescriptor* ad_A,
   }
   
   // Send the lastly created tiles to storage manager
-  store_tiles(ad_C, tiles_C);
+  store_tiles(fd_C, tiles_C);
 
   // Close result array
-  storage_manager_.close_array(ad_C);
+  storage_manager_.close_fragment(fd_C);
 
   // Clean up
   delete [] tiles_A;
@@ -2119,22 +2121,22 @@ void QueryProcessor::join_irregular(const StorageManager::ArrayDescriptor* ad_A,
 }
 
 void QueryProcessor::join_irregular(
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd_A,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd_B,
     const ArraySchema& array_schema_C) const {
   // For easy reference
-  const ArraySchema& array_schema_A = ad_A[0]->array_schema();
-  const ArraySchema& array_schema_B = ad_B[0]->array_schema();
+  const ArraySchema& array_schema_A = fd_A[0]->array_schema();
+  const ArraySchema& array_schema_B = fd_B[0]->array_schema();
   unsigned int attribute_num_A = array_schema_A.attribute_num();
   unsigned int attribute_num_B = array_schema_B.attribute_num();
   unsigned int attribute_num_C = array_schema_C.attribute_num();
-  unsigned int fragment_num_A = ad_A.size();
-  unsigned int fragment_num_B = ad_B.size();
+  unsigned int fragment_num_A = fd_A.size();
+  unsigned int fragment_num_B = fd_B.size();
   uint64_t capacity = array_schema_C.capacity();
 
   // Prepare result array
-  const StorageManager::ArrayDescriptor* ad_C = 
-      storage_manager_.open_array(array_schema_C);
+  const StorageManager::FragmentDescriptor* fd_C = 
+      storage_manager_.open_fragment(array_schema_C);
 
   // Create result tiles 
   Tile** tiles_C = new Tile*[attribute_num_C+1];
@@ -2146,7 +2148,7 @@ void QueryProcessor::join_irregular(
       new StorageManager::const_iterator[fragment_num_A];
   for(unsigned int i=0; i<fragment_num_A; ++i) {
     tile_its_A[i] = new StorageManager::const_iterator[attribute_num_A+1];
-    initialize_tile_its(ad_A[i], tile_its_A[i], tile_it_end_A[i]);
+    initialize_tile_its(fd_A[i], tile_its_A[i], tile_it_end_A[i]);
   }
   StorageManager::const_iterator** tile_its_B = 
       new StorageManager::const_iterator*[fragment_num_B];
@@ -2154,7 +2156,7 @@ void QueryProcessor::join_irregular(
       new StorageManager::const_iterator[fragment_num_B];
   for(unsigned int i=0; i<fragment_num_B; ++i) {
     tile_its_B[i] = new StorageManager::const_iterator[attribute_num_B+1];
-    initialize_tile_its(ad_B[i], tile_its_B[i], tile_it_end_B[i]);
+    initialize_tile_its(fd_B[i], tile_its_B[i], tile_it_end_B[i]);
   }
   
   // Create cell iterators
@@ -2209,10 +2211,10 @@ void QueryProcessor::join_irregular(
   int next_fragment_index_B;
   bool fragment_indexes_initialized = false;
   get_next_join_fragment_indexes_irregular(
-      ad_A, tile_its_A, tile_it_end_A, cell_its_A, cell_it_end_A, 
+      fd_A, tile_its_A, tile_it_end_A, cell_its_A, cell_it_end_A, 
       skipped_tiles_A, skipped_cells_A,
       attribute_cell_its_initialized_A, coordinate_cell_its_initialized_A,
-      ad_B, tile_its_B, tile_it_end_B, cell_its_B, cell_it_end_B, 
+      fd_B, tile_its_B, tile_it_end_B, cell_its_B, cell_it_end_B, 
       skipped_tiles_B, skipped_cells_B,
       attribute_cell_its_initialized_B, coordinate_cell_its_initialized_B,
       fragment_indexes_initialized,
@@ -2285,7 +2287,7 @@ void QueryProcessor::join_irregular(
     // Append result cell
     if(tiles_C[attribute_num_C]->cell_num() == capacity) {
       uint64_t new_tile_id = tiles_C[attribute_num_C]->tile_id() + 1;
-      store_tiles(ad_C, tiles_C);
+      store_tiles(fd_C, tiles_C);
       new_tiles(array_schema_C, new_tile_id, tiles_C); 
     }
     append_cell(next_cell_its_A, next_cell_its_B, tiles_C, 
@@ -2294,10 +2296,10 @@ void QueryProcessor::join_irregular(
     // Get the indexes of the fragments in A and B respectively, whose current
     // coordinate cell iterators point to cells that join (and produce a result)
     get_next_join_fragment_indexes_irregular(
-        ad_A, tile_its_A, tile_it_end_A, cell_its_A, cell_it_end_A, 
+        fd_A, tile_its_A, tile_it_end_A, cell_its_A, cell_it_end_A, 
         skipped_tiles_A, skipped_cells_A,
         attribute_cell_its_initialized_A, coordinate_cell_its_initialized_A,
-        ad_B, tile_its_B, tile_it_end_B, cell_its_B, cell_it_end_B, 
+        fd_B, tile_its_B, tile_it_end_B, cell_its_B, cell_it_end_B, 
         skipped_tiles_B, skipped_cells_B,
         attribute_cell_its_initialized_B, coordinate_cell_its_initialized_B,
         fragment_indexes_initialized,
@@ -2305,10 +2307,10 @@ void QueryProcessor::join_irregular(
   }
 
   // Send the lastly created tiles to storage manager
-  store_tiles(ad_C, tiles_C);
+  store_tiles(fd_C, tiles_C);
 
   // Close result array
-  storage_manager_.close_array(ad_C);
+  storage_manager_.close_fragment(fd_C);
   
   // Clean up
   for(unsigned int i=0; i<fragment_num_A; ++i) {
@@ -2342,20 +2344,21 @@ void QueryProcessor::join_irregular(
   delete [] coordinate_cell_its_initialized_B;
 }
 
-void QueryProcessor::join_regular(const StorageManager::ArrayDescriptor* ad_A, 
-                                  const StorageManager::ArrayDescriptor* ad_B,
-                                  const ArraySchema& array_schema_C) const {
+void QueryProcessor::join_regular(
+    const StorageManager::FragmentDescriptor* fd_A, 
+    const StorageManager::FragmentDescriptor* fd_B,
+    const ArraySchema& array_schema_C) const {
   // For easy reference
-  const ArraySchema& array_schema_A = ad_A->array_schema();
-  const ArraySchema& array_schema_B = ad_B->array_schema();
+  const ArraySchema& array_schema_A = fd_A->array_schema();
+  const ArraySchema& array_schema_B = fd_B->array_schema();
   unsigned int attribute_num_A = array_schema_A.attribute_num();
   unsigned int attribute_num_B = array_schema_B.attribute_num();
   unsigned int attribute_num_C = array_schema_C.attribute_num();
   uint64_t tile_id_A, tile_id_B;
 
   // Prepare result array
-  const StorageManager::ArrayDescriptor* ad_C = 
-      storage_manager_.open_array(array_schema_C);
+  const StorageManager::FragmentDescriptor* fd_C = 
+      storage_manager_.open_fragment(array_schema_C);
 
   // Create tiles 
   const Tile** tiles_A = new const Tile*[attribute_num_A+1];
@@ -2369,8 +2372,8 @@ void QueryProcessor::join_regular(const StorageManager::ArrayDescriptor* ad_A,
       new StorageManager::const_iterator[attribute_num_B+1];
   StorageManager::const_iterator tile_it_end_A;
   StorageManager::const_iterator tile_it_end_B;
-  initialize_tile_its(ad_A, tile_its_A, tile_it_end_A);
-  initialize_tile_its(ad_B, tile_its_B, tile_it_end_B);
+  initialize_tile_its(fd_A, tile_its_A, tile_it_end_A);
+  initialize_tile_its(fd_B, tile_its_B, tile_it_end_B);
   
   // Create cell iterators
   Tile::const_iterator* cell_its_A = 
@@ -2417,10 +2420,10 @@ void QueryProcessor::join_regular(const StorageManager::ArrayDescriptor* ad_A,
       // Join the tiles
       join_tiles_regular(attribute_num_A, tile_its_A, cell_its_A, cell_it_end_A,
                          attribute_num_B, tile_its_B, cell_its_B, cell_it_end_B,
-                         ad_C, tiles_C);
+                         fd_C, tiles_C);
 
       // Send the created tiles to storage manager
-      store_tiles(ad_C, tiles_C);
+      store_tiles(fd_C, tiles_C);
 
       // Advance both tile iterators
       ++tile_its_A[attribute_num_A];
@@ -2438,7 +2441,7 @@ void QueryProcessor::join_regular(const StorageManager::ArrayDescriptor* ad_A,
     }
   } 
   // Close result array
-  storage_manager_.close_array(ad_C);
+  storage_manager_.close_fragment(fd_C);
 
   // Clean up
   delete [] tiles_A;
@@ -2452,22 +2455,22 @@ void QueryProcessor::join_regular(const StorageManager::ArrayDescriptor* ad_A,
 
 
 void QueryProcessor::join_regular(
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd_A,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd_B,
     const ArraySchema& array_schema_C) const {
   // For easy reference
-  const ArraySchema& array_schema_A = ad_A[0]->array_schema();
-  const ArraySchema& array_schema_B = ad_B[0]->array_schema();
+  const ArraySchema& array_schema_A = fd_A[0]->array_schema();
+  const ArraySchema& array_schema_B = fd_B[0]->array_schema();
   unsigned int attribute_num_A = array_schema_A.attribute_num();
   unsigned int attribute_num_B = array_schema_B.attribute_num();
   unsigned int attribute_num_C = array_schema_C.attribute_num();
-  unsigned int fragment_num_A = ad_A.size();
-  unsigned int fragment_num_B = ad_B.size();
+  unsigned int fragment_num_A = fd_A.size();
+  unsigned int fragment_num_B = fd_B.size();
   uint64_t capacity = array_schema_C.capacity();
 
   // Prepare result array
-  const StorageManager::ArrayDescriptor* ad_C = 
-      storage_manager_.open_array(array_schema_C);
+  const StorageManager::FragmentDescriptor* fd_C = 
+      storage_manager_.open_fragment(array_schema_C);
 
   // Create result tiles 
   Tile** tiles_C = new Tile*[attribute_num_C+1];
@@ -2479,7 +2482,7 @@ void QueryProcessor::join_regular(
       new StorageManager::const_iterator[fragment_num_A];
   for(unsigned int i=0; i<fragment_num_A; ++i) {
     tile_its_A[i] = new StorageManager::const_iterator[attribute_num_A+1];
-    initialize_tile_its(ad_A[i], tile_its_A[i], tile_it_end_A[i]);
+    initialize_tile_its(fd_A[i], tile_its_A[i], tile_it_end_A[i]);
   }
   StorageManager::const_iterator** tile_its_B = 
       new StorageManager::const_iterator*[fragment_num_B];
@@ -2487,7 +2490,7 @@ void QueryProcessor::join_regular(
       new StorageManager::const_iterator[fragment_num_B];
   for(unsigned int i=0; i<fragment_num_B; ++i) {
     tile_its_B[i] = new StorageManager::const_iterator[attribute_num_B+1];
-    initialize_tile_its(ad_B[i], tile_its_B[i], tile_it_end_B[i]);
+    initialize_tile_its(fd_B[i], tile_its_B[i], tile_it_end_B[i]);
   }
   
   // Create cell iterators
@@ -2539,10 +2542,10 @@ void QueryProcessor::join_regular(
   int next_fragment_index_B;
   bool fragment_indexes_initialized = false;
   get_next_join_fragment_indexes_regular(
-      ad_A, tile_its_A, tile_it_end_A, cell_its_A, cell_it_end_A, 
+      fd_A, tile_its_A, tile_it_end_A, cell_its_A, cell_it_end_A, 
       skipped_tiles_A, skipped_cells_A,
       attribute_cell_its_initialized_A, coordinate_cell_its_initialized_A,
-      ad_B, tile_its_B, tile_it_end_B, cell_its_B, cell_it_end_B, 
+      fd_B, tile_its_B, tile_it_end_B, cell_its_B, cell_it_end_B, 
       skipped_tiles_B, skipped_cells_B,
       attribute_cell_its_initialized_B, coordinate_cell_its_initialized_B,
       fragment_indexes_initialized,
@@ -2624,7 +2627,7 @@ void QueryProcessor::join_regular(
     if(next_cell_its_A[0].tile()->tile_id() != tile_id) {
       // Change tile
       tile_id = next_cell_its_A[0].tile()->tile_id();
-      store_tiles(ad_C, tiles_C);
+      store_tiles(fd_C, tiles_C);
       new_tiles(array_schema_C, tile_id, tiles_C);
     } 
     append_cell(next_cell_its_A, next_cell_its_B, tiles_C, 
@@ -2633,10 +2636,10 @@ void QueryProcessor::join_regular(
     // Get the indexes of the fragments in A and B respectively, whose current
     // coordinate cell iterators point to cells that join (and produce a result)
     get_next_join_fragment_indexes_regular(
-        ad_A, tile_its_A, tile_it_end_A, cell_its_A, cell_it_end_A, 
+        fd_A, tile_its_A, tile_it_end_A, cell_its_A, cell_it_end_A, 
         skipped_tiles_A, skipped_cells_A,
         attribute_cell_its_initialized_A, coordinate_cell_its_initialized_A,
-        ad_B, tile_its_B, tile_it_end_B, cell_its_B, cell_it_end_B, 
+        fd_B, tile_its_B, tile_it_end_B, cell_its_B, cell_it_end_B, 
         skipped_tiles_B, skipped_cells_B,
         attribute_cell_its_initialized_B, coordinate_cell_its_initialized_B,
         fragment_indexes_initialized,
@@ -2644,10 +2647,10 @@ void QueryProcessor::join_regular(
   }
 
   // Send the lastly created tiles to storage manager
-  store_tiles(ad_C, tiles_C);
+  store_tiles(fd_C, tiles_C);
 
   // Close result array
-  storage_manager_.close_array(ad_C);
+  storage_manager_.close_fragment(fd_C);
   
   // Clean up
   for(unsigned int i=0; i<fragment_num_A; ++i) {
@@ -2691,11 +2694,11 @@ void QueryProcessor::join_tiles_irregular(
     const StorageManager::const_iterator* tile_its_B, 
     Tile::const_iterator* cell_its_B,
     Tile::const_iterator& cell_it_end_B,
-    const StorageManager::ArrayDescriptor* ad_C, Tile** tiles_C,
+    const StorageManager::FragmentDescriptor* fd_C, Tile** tiles_C,
     bool& attribute_cell_its_initialized_A,
     bool& attribute_cell_its_initialized_B) const {
   // For easy reference
-  const ArraySchema& array_schema_C = ad_C->array_schema();
+  const ArraySchema& array_schema_C = fd_C->array_schema();
   uint64_t capacity = array_schema_C.capacity();
   unsigned int attribute_num_C = array_schema_C.attribute_num();
 
@@ -2741,7 +2744,7 @@ void QueryProcessor::join_tiles_irregular(
       }
       if(tiles_C[attribute_num_C]->cell_num() == capacity) {
         uint64_t new_tile_id = tiles_C[attribute_num_C]->tile_id() + 1;
-        store_tiles(ad_C, tiles_C);
+        store_tiles(fd_C, tiles_C);
         new_tiles(array_schema_C, new_tile_id, tiles_C); 
       }
       append_cell(cell_its_A, cell_its_B, tiles_C, 
@@ -2771,14 +2774,14 @@ void QueryProcessor::join_tiles_regular(
     const StorageManager::const_iterator* tile_its_B, 
     Tile::const_iterator* cell_its_B,
     Tile::const_iterator& cell_it_end_B,
-    const StorageManager::ArrayDescriptor* ad_C, Tile** tiles_C) const {
+    const StorageManager::FragmentDescriptor* fd_C, Tile** tiles_C) const {
   // For easy reference
-  const ArraySchema& array_schema_C = ad_C->array_schema();
+  const ArraySchema& array_schema_C = fd_C->array_schema();
   unsigned int attribute_num_C = array_schema_C.attribute_num();
 
   // Auxiliary variables storing the number of skipped cells when joining.
   // It is used to advance only the coordinates iterator when a cell is
-  // finished/skipped, and then efficiently advance the attribute iterators only 
+  // finished/skipped, and then efficiently advance the attribute iterators only
   // when a cell joins.
   int64_t skipped_cells_A = 0;
   int64_t skipped_cells_B = 0;
@@ -2855,12 +2858,12 @@ bool QueryProcessor::may_join(
 // NOTE: It is assumed that k is small enough for O(k) coordinates to fit
 // in main memory. 
 void QueryProcessor::nearest_neighbors_irregular(
-    const StorageManager::ArrayDescriptor* ad,
+    const StorageManager::FragmentDescriptor* fd,
     const std::vector<double>& q,
     uint64_t k,
     const std::string& result_array_name) const {
   // For easy reference
-  const ArraySchema& array_schema = ad->array_schema();
+  const ArraySchema& array_schema = fd->array_schema();
   unsigned int attribute_num = array_schema.attribute_num();
   uint64_t capacity = array_schema.capacity();
 
@@ -2875,18 +2878,18 @@ void QueryProcessor::nearest_neighbors_irregular(
 
   // Prepare result array
   ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::ArrayDescriptor* result_ad = 
-      storage_manager_.open_array(result_array_schema);
+  const StorageManager::FragmentDescriptor* result_fd = 
+      storage_manager_.open_fragment(result_array_schema);
 
   // Get pairs (dist, rank), sorted on dist
   // rank is a tile rank and dist is its distance to q
-  std::vector<DistRank> sorted_dist_ranks = compute_sorted_dist_ranks(ad, q);
+  std::vector<DistRank> sorted_dist_ranks = compute_sorted_dist_ranks(fd, q);
 
   // Compute sorted kNN coordinates of the form (rank, (pos, coord))
   // coord is the cell coordinates, rank is the rank of the tile the
   // cell belongs to, and pos is the position of the cell in the tile
   std::vector<RankPosCoord> sorted_kNN_coords = 
-      compute_sorted_kNN_coords(ad, q, k, sorted_dist_ranks); 
+      compute_sorted_kNN_coords(fd, q, k, sorted_dist_ranks); 
     
   // Prepare new result tiles
   uint64_t tile_id = 0; 
@@ -2905,12 +2908,12 @@ void QueryProcessor::nearest_neighbors_irregular(
     if(rank != current_rank) {
       current_rank = rank;
       for(unsigned int i=0; i<attribute_num; i++) 
-        tiles[i] = storage_manager_.get_tile_by_rank(ad, i, rank);
+        tiles[i] = storage_manager_.get_tile_by_rank(fd, i, rank);
     }
    
     // Store result tile if full
     if(result_tiles[attribute_num]->cell_num() == capacity) {
-      store_tiles(result_ad, result_tiles);
+      store_tiles(result_fd, result_tiles);
       new_tiles(result_array_schema, ++tile_id, result_tiles); 
     } 
  
@@ -2923,10 +2926,10 @@ void QueryProcessor::nearest_neighbors_irregular(
   }
   
   // Send the lastly created tiles to storage manager
-  store_tiles(result_ad, result_tiles);
+  store_tiles(result_fd, result_tiles);
 
   // Close result array
-  storage_manager_.close_array(result_ad);
+  storage_manager_.close_fragment(result_fd);
 
   // Clean up 
   delete [] tiles;
@@ -2937,12 +2940,12 @@ void QueryProcessor::nearest_neighbors_irregular(
 // NOTE: It is assumed that k is small enough for O(k) coordinates to fit
 // in main memory. 
 void QueryProcessor::nearest_neighbors_regular(
-    const StorageManager::ArrayDescriptor* ad,
+    const StorageManager::FragmentDescriptor* fd,
     const std::vector<double>& q,
     uint64_t k,
     const std::string& result_array_name) const {
   // For easy reference
-  const ArraySchema& array_schema = ad->array_schema();
+  const ArraySchema& array_schema = fd->array_schema();
   unsigned int attribute_num = array_schema.attribute_num();
 
   // Create tiles 
@@ -2956,18 +2959,18 @@ void QueryProcessor::nearest_neighbors_regular(
 
   // Prepare result array
   ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::ArrayDescriptor* result_ad = 
-      storage_manager_.open_array(result_array_schema);
+  const StorageManager::FragmentDescriptor* result_fd = 
+      storage_manager_.open_fragment(result_array_schema);
 
   // Get pairs (dist, rank), sorted on dist
   // rank is a tile rank and dist is its distance to q
-  std::vector<DistRank> sorted_dist_ranks = compute_sorted_dist_ranks(ad, q);
+  std::vector<DistRank> sorted_dist_ranks = compute_sorted_dist_ranks(fd, q);
 
   // Compute sorted kNN coordinates of the form (rank, (pos, coord))
   // coord is the cell coordinates, rank is the rank of the tile the
   // cell belongs to, and pos is the position of the cell in the tile
   std::vector<RankPosCoord> sorted_kNN_coords = 
-      compute_sorted_kNN_coords(ad, q, k, sorted_dist_ranks); 
+      compute_sorted_kNN_coords(fd, q, k, sorted_dist_ranks); 
     
   // Retrieve and store the actual k nearest neighbors
   int64_t current_rank = -1;
@@ -2982,13 +2985,13 @@ void QueryProcessor::nearest_neighbors_regular(
     if(rank != current_rank) {
       // Store previous result tiles
       if(current_rank != -1)
-        store_tiles(result_ad, result_tiles);
+        store_tiles(result_fd, result_tiles);
 
       current_rank = rank;
       
       // Retrieve tiles
       for(unsigned int i=0; i<attribute_num; i++) 
-        tiles[i] = storage_manager_.get_tile_by_rank(ad, i, rank);
+        tiles[i] = storage_manager_.get_tile_by_rank(fd, i, rank);
   
       // Prepare new result tiles
       new_tiles(result_array_schema, tiles[0]->tile_id(), result_tiles); 
@@ -3003,10 +3006,10 @@ void QueryProcessor::nearest_neighbors_regular(
   }
     
   // Send the lastly created tiles to storage manager
-  store_tiles(result_ad, result_tiles);
+  store_tiles(result_fd, result_tiles);
   
   // Close result array
-  storage_manager_.close_array(result_ad);
+  storage_manager_.close_fragment(result_fd);
 
   // Clean up 
   delete [] tiles;
@@ -3054,8 +3057,7 @@ bool QueryProcessor::overlap(
 
 bool QueryProcessor::path_exists(const std::string& path) const {
   struct stat st;
-  stat(path.c_str(), &st);
-  return S_ISDIR(st.st_mode);
+  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
 double QueryProcessor::point_to_mbr_distance(
@@ -3145,21 +3147,21 @@ void QueryProcessor::set_workspace(const std::string& path) {
 }
 
 inline
-void QueryProcessor::store_tiles(const StorageManager::ArrayDescriptor* ad,
+void QueryProcessor::store_tiles(const StorageManager::FragmentDescriptor* fd,
                                  Tile** tiles) const {
   // For easy reference
-  unsigned int attribute_num = ad->array_schema().attribute_num();
+  unsigned int attribute_num = fd->array_schema().attribute_num();
 
   // Append attribute tiles
   for(unsigned int i=0; i<=attribute_num; i++)
-    storage_manager_.append_tile(tiles[i], ad, i);
+    storage_manager_.append_tile(tiles[i], fd, i);
 } 
 
 void QueryProcessor::subarray_irregular(
-    const StorageManager::ArrayDescriptor* ad,
+    const StorageManager::FragmentDescriptor* fd,
     const Tile::Range& range, const std::string& result_array_name) const { 
   // For easy reference
-  const ArraySchema& array_schema = ad->array_schema();
+  const ArraySchema& array_schema = fd->array_schema();
   unsigned int attribute_num = array_schema.attribute_num();
   uint64_t capacity = array_schema.capacity();
 
@@ -3174,12 +3176,12 @@ void QueryProcessor::subarray_irregular(
 
   // Prepare result array
   ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::ArrayDescriptor* result_ad = 
-      storage_manager_.open_array(result_array_schema);
+  const StorageManager::FragmentDescriptor* result_fd = 
+      storage_manager_.open_fragment(result_array_schema);
   
   // Get the tile ranks that overlap with the range
   RankOverlapVector overlapping_tile_ranks;
-  storage_manager_.get_overlapping_tile_ranks(ad, range, 
+  storage_manager_.get_overlapping_tile_ranks(fd, range, 
                                               &overlapping_tile_ranks);
 
   // Initialize tile iterators
@@ -3200,14 +3202,14 @@ void QueryProcessor::subarray_irregular(
 
   // Iterate over all tiles
   for(; tile_rank_it != tile_rank_it_end; ++tile_rank_it) {
-    get_tiles_by_rank(ad, tile_rank_it->first, tiles);
+    get_tiles_by_rank(fd, tile_rank_it->first, tiles);
     skipped_cells = 0;
 
     if(tile_rank_it->second) { // Full overlap
       initialize_cell_its(tiles, attribute_num, cell_its, cell_it_end); 
       while(cell_its[attribute_num] != cell_it_end) {
         if(result_tiles[attribute_num]->cell_num() == capacity) {
-          store_tiles(result_ad, result_tiles);
+          store_tiles(result_fd, result_tiles);
           new_tiles(result_array_schema, ++tile_id, result_tiles); 
         }
         append_cell(cell_its, result_tiles, attribute_num);
@@ -3220,7 +3222,7 @@ void QueryProcessor::subarray_irregular(
       while(cell_its[attribute_num] != cell_it_end) {
         if(cell_its[attribute_num].cell_inside_range(range)) {
           if(result_tiles[attribute_num]->cell_num() == capacity) {
-            store_tiles(result_ad, result_tiles);
+            store_tiles(result_fd, result_tiles);
             new_tiles(result_array_schema, ++tile_id, result_tiles); 
           }
           if(!attribute_cell_its_initialized) { 
@@ -3242,10 +3244,10 @@ void QueryProcessor::subarray_irregular(
   } 
 
   // Send the lastly created tiles to storage manager
-  store_tiles(result_ad, result_tiles);
+  store_tiles(result_fd, result_tiles);
   
   // Close result array
-  storage_manager_.close_array(result_ad);
+  storage_manager_.close_fragment(result_fd);
 
   // Clean up 
   delete [] tiles;
@@ -3254,18 +3256,18 @@ void QueryProcessor::subarray_irregular(
 }
 
 void QueryProcessor::subarray_irregular(
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     const Tile::Range& range, const std::string& result_array_name) const { 
   // For easy reference
-  const ArraySchema& array_schema = ad[0]->array_schema();
+  const ArraySchema& array_schema = fd[0]->array_schema();
   const unsigned int attribute_num = array_schema.attribute_num();
   uint64_t capacity = array_schema.capacity();
-  unsigned int fragment_num = ad.size(); 
+  unsigned int fragment_num = fd.size(); 
   
   // Prepare result array
   ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::ArrayDescriptor* result_ad = 
-      storage_manager_.open_array(result_array_schema);
+  const StorageManager::FragmentDescriptor* result_fd = 
+      storage_manager_.open_fragment(result_array_schema);
 
   // Create input tiles
   const Tile*** tiles = new const Tile**[fragment_num];
@@ -3281,7 +3283,7 @@ void QueryProcessor::subarray_irregular(
   RankOverlapVector* overlapping_tile_ranks = 
       new RankOverlapVector[fragment_num];
   for(unsigned int i=0; i<fragment_num; ++i) 
-    storage_manager_.get_overlapping_tile_ranks(ad[i], range, 
+    storage_manager_.get_overlapping_tile_ranks(fd[i], range, 
                                                 &overlapping_tile_ranks[i]);
 
   // Initialize tile iterators
@@ -3300,7 +3302,7 @@ void QueryProcessor::subarray_irregular(
   Tile::const_iterator* cell_it_end = 
       new Tile::const_iterator[fragment_num];
   for(unsigned int i=0; i<fragment_num; ++i) { 
-    get_tiles_by_rank(ad[i], tile_rank_it[i]->first, tiles[i]);
+    get_tiles_by_rank(fd[i], tile_rank_it[i]->first, tiles[i]);
     cell_its[i] = new Tile::const_iterator[attribute_num+1];
     initialize_cell_its(tiles[i], attribute_num, cell_its[i], cell_it_end[i]);
   }
@@ -3312,7 +3314,7 @@ void QueryProcessor::subarray_irregular(
 
   // Get the index of the fragment from which we will get the next cell
   int next_fragment_index =
-      get_next_fragment_index(ad, tile_rank_it, tile_rank_it_end, 
+      get_next_fragment_index(fd, tile_rank_it, tile_rank_it_end, 
                               tiles, fragment_num, 
                               cell_its, cell_it_end, skipped_cells,
                               array_schema);
@@ -3335,31 +3337,31 @@ void QueryProcessor::subarray_irregular(
         skipped_cells[next_fragment_index] = 0;
       }
       if(result_tiles[attribute_num]->cell_num() == capacity) {
-        store_tiles(result_ad, result_tiles);
+        store_tiles(result_fd, result_tiles);
         new_tiles(result_array_schema, ++tile_id, result_tiles); 
       }
       append_cell(next_cell_its, result_tiles, attribute_num);
     }
 
     advance_cell_tile_its(
-        ad[next_fragment_index], attribute_num, 
+        fd[next_fragment_index], attribute_num, 
         next_cell_its, next_cell_it_end,
         next_tile_rank_it, next_tile_rank_it_end,
         fragment_num, tiles[next_fragment_index],
         skipped_cells[next_fragment_index]);
 
     next_fragment_index =
-        get_next_fragment_index(ad, tile_rank_it, tile_rank_it_end,
+        get_next_fragment_index(fd, tile_rank_it, tile_rank_it_end,
                                 tiles, fragment_num,
                                 cell_its, cell_it_end, 
                                 skipped_cells, array_schema);
   }
 
   // Send the lastly created tiles to storage manager
-  store_tiles(result_ad, result_tiles);
+  store_tiles(result_fd, result_tiles);
 
   // Close result array 
-  storage_manager_.close_array(result_ad);
+  storage_manager_.close_fragment(result_fd);
 
   // Clean up
   delete [] result_tiles;
@@ -3377,10 +3379,10 @@ void QueryProcessor::subarray_irregular(
 }
 
 void QueryProcessor::subarray_regular(
-    const StorageManager::ArrayDescriptor* ad,
+    const StorageManager::FragmentDescriptor* fd,
     const Tile::Range& range, const std::string& result_array_name) const { 
   // For easy reference
-  const ArraySchema& array_schema = ad->array_schema();
+  const ArraySchema& array_schema = fd->array_schema();
   unsigned int attribute_num = array_schema.attribute_num();
 
   // Create tiles 
@@ -3394,12 +3396,12 @@ void QueryProcessor::subarray_regular(
 
   // Prepare result array
   ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::ArrayDescriptor* result_ad = 
-      storage_manager_.open_array(result_array_schema);
+  const StorageManager::FragmentDescriptor* result_fd = 
+      storage_manager_.open_fragment(result_array_schema);
     
   // Get the tile ranks that overlap with the range
   RankOverlapVector overlapping_tile_ranks;
-  storage_manager_.get_overlapping_tile_ranks(ad, range, 
+  storage_manager_.get_overlapping_tile_ranks(fd, range, 
                                               &overlapping_tile_ranks);
 
   // Initialize tile iterators
@@ -3418,9 +3420,9 @@ void QueryProcessor::subarray_regular(
   for(; tile_rank_it != tile_rank_it_end; ++tile_rank_it) {
     // Create result tiles and load input array tiles 
     new_tiles(result_array_schema, 
-              storage_manager_.get_tile_id(ad, tile_rank_it->first), 
+              storage_manager_.get_tile_id(fd, tile_rank_it->first), 
               result_tiles); 
-    get_tiles_by_rank(ad, tile_rank_it->first, tiles); 
+    get_tiles_by_rank(fd, tile_rank_it->first, tiles); 
     skipped_cells = 0;
  
     if(tile_rank_it->second) { // Full overlap
@@ -3453,11 +3455,11 @@ void QueryProcessor::subarray_regular(
     }
       
     // Send new tiles to storage manager
-    store_tiles(result_ad, result_tiles);
+    store_tiles(result_fd, result_tiles);
   } 
   
   // Close result array
-  storage_manager_.close_array(result_ad);
+  storage_manager_.close_fragment(result_fd);
 
   // Clean up 
   delete [] tiles;
@@ -3466,17 +3468,17 @@ void QueryProcessor::subarray_regular(
 }
 
 void QueryProcessor::subarray_regular(
-    const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     const Tile::Range& range, const std::string& result_array_name) const { 
   // For easy reference
-  const ArraySchema& array_schema = ad[0]->array_schema();
+  const ArraySchema& array_schema = fd[0]->array_schema();
   const unsigned int attribute_num = array_schema.attribute_num();
-  unsigned int fragment_num = ad.size(); 
+  unsigned int fragment_num = fd.size(); 
   
   // Prepare result array
   ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::ArrayDescriptor* result_ad = 
-      storage_manager_.open_array(result_array_schema);
+  const StorageManager::FragmentDescriptor* result_fd = 
+      storage_manager_.open_fragment(result_array_schema);
 
   // Create input tiles
   const Tile*** tiles = new const Tile**[fragment_num];
@@ -3490,7 +3492,7 @@ void QueryProcessor::subarray_regular(
   RankOverlapVector* overlapping_tile_ranks = 
       new RankOverlapVector[fragment_num];
   for(unsigned int i=0; i<fragment_num; ++i) 
-    storage_manager_.get_overlapping_tile_ranks(ad[i], range, 
+    storage_manager_.get_overlapping_tile_ranks(fd[i], range, 
                                                 &overlapping_tile_ranks[i]);
 
   // Initialize tile iterators
@@ -3509,7 +3511,7 @@ void QueryProcessor::subarray_regular(
   Tile::const_iterator* cell_it_end = 
       new Tile::const_iterator[fragment_num];
   for(unsigned int i=0; i<fragment_num; ++i) { 
-    get_tiles_by_rank(ad[i], tile_rank_it[i]->first, tiles[i]);
+    get_tiles_by_rank(fd[i], tile_rank_it[i]->first, tiles[i]);
     cell_its[i] = new Tile::const_iterator[attribute_num+1];
     initialize_cell_its(tiles[i], attribute_num, cell_its[i], cell_it_end[i]);
   }
@@ -3521,7 +3523,7 @@ void QueryProcessor::subarray_regular(
 
   // Get the index of the fragment from which we will get the next cell
   int next_fragment_index =
-      get_next_fragment_index(ad, tile_rank_it, tile_rank_it_end, 
+      get_next_fragment_index(fd, tile_rank_it, tile_rank_it_end, 
                               tiles, fragment_num, 
                               cell_its, cell_it_end, skipped_cells,
                               array_schema);
@@ -3555,31 +3557,31 @@ void QueryProcessor::subarray_regular(
       if(next_cell_its[0].tile()->tile_id() != tile_id) {
         // Change tile
         tile_id = next_cell_its[0].tile()->tile_id();
-        store_tiles(result_ad, result_tiles);
+        store_tiles(result_fd, result_tiles);
         new_tiles(result_array_schema, tile_id, result_tiles);
       } 
       append_cell(next_cell_its, result_tiles, attribute_num);
     }
 
     advance_cell_tile_its(
-        ad[next_fragment_index], attribute_num, 
+        fd[next_fragment_index], attribute_num, 
         next_cell_its, next_cell_it_end,
         next_tile_rank_it, next_tile_rank_it_end,
         fragment_num, tiles[next_fragment_index],
         skipped_cells[next_fragment_index]);
 
     next_fragment_index =
-        get_next_fragment_index(ad, tile_rank_it, tile_rank_it_end,
+        get_next_fragment_index(fd, tile_rank_it, tile_rank_it_end,
                                 tiles, fragment_num,
                                 cell_its, cell_it_end, 
                                 skipped_cells, array_schema);
   }
 
   // Send the lastly created tiles to storage manager
-  store_tiles(result_ad, result_tiles);
+  store_tiles(result_fd, result_tiles);
 
   // Close result array 
-  storage_manager_.close_array(result_ad);
+  storage_manager_.close_fragment(result_fd);
 
   // Clean up
   delete [] result_tiles;

@@ -50,11 +50,13 @@ class Executor {
  public:
   // CONSTRUCTORS & DESTRUCTORS
   /** Simple constructor. */ 
-  Executor(const std::string& workspace);
+  Executor(std::string workspace);
   /** The destructor deletes all the created modules. */
   ~Executor();
 
   // QUERIES
+  /** Defines an array (stores its array schema at the storage manager. */
+  void define_array(const ArraySchema& array_schema) const;
   /** Deletes an array. */
   void delete_array(const ArraySchema& array_schema) const;
   /** 
@@ -65,6 +67,8 @@ class Executor {
    */
   void export_to_CSV(const std::string& filename, 
                      const ArraySchema& array_schema) const;
+  /** Returns true if the input file exists. */
+  bool file_exists(const std::string& filename) const;
   /** 
    * A filter query creates a new array from the input array, 
    * containing only the cells whose attribute values satisfy the input 
@@ -84,8 +88,10 @@ class Executor {
   void join(const ArraySchema& array_schema_A,
             const ArraySchema& array_schema_B,
             const std::string& result_array_name) const;
-  /** Loads a CSV file into an array with the input schema. */
+  /** Loads a CSV file into an array with the input schema. */ //TODO: remove
   void load(const std::string& filename, const ArraySchema& array_schema) const;
+  /** Loads a CSV file into an array. */
+  void load(const std::string& filename, const std::string& array_name) const;
   /** 
    * Returns the k nearest neighbors from query point q. The results (along with
    * all their attribute values) are stored in a new array. The distance metric
@@ -103,9 +109,12 @@ class Executor {
   void subarray(const ArraySchema& array_schema,
                 const Tile::Range& range,
                 const std::string& result_array_name) const;
+  /** Updates an array with the data in the input CSV file. */ // TODO remove
+  void update(const std::string& filename, 
+              const ArraySchema& array_schema) const;
   /** Updates an array with the data in the input CSV file. */
-  void update(const std::string& filename, const 
-              ArraySchema& array_schema) const;
+  void update(const std::string& filename, 
+              const std::string& array_name) const;
 
 
 
@@ -133,7 +142,7 @@ class Executor {
   /** Simply sets the workspace. */
   void set_workspace(const std::string& path);
   /** Updates the fragment information (adding one fragment) of an array. */
-  void update_fragment_info(const ArraySchema& array_schema) const;
+  void update_fragment_info(const std::string& array_name) const;
 };
 
 /** This exception is thrown by Executor. */

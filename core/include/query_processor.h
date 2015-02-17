@@ -88,7 +88,7 @@ class QueryProcessor {
    * coordinates are written first, and then the attribute values,
    * following the order as defined in the schema of the array.
    */
-  void export_to_CSV(const StorageManager::ArrayDescriptor* ad,
+  void export_to_CSV(const StorageManager::FragmentDescriptor* fd,
                      const std::string& filename) const;
   /** 
    * Exports an array to a CSV file. Each line in the CSV file represents
@@ -98,7 +98,7 @@ class QueryProcessor {
    * operates on multiple array fragments.
    */
   void export_to_CSV(
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
       const std::string& filename) const;
   /** 
    * A filter query creates a new array from the input array descriptor, 
@@ -106,7 +106,7 @@ class QueryProcessor {
    * expression (given in the form of an expression tree). 
    * The new array will have the input result name.
    */
-  void filter(const StorageManager::ArrayDescriptor* ad,
+  void filter(const StorageManager::FragmentDescriptor* fd,
       const ExpressionTree* expression,
       const std::string& result_array_name) const;
   /** 
@@ -117,7 +117,7 @@ class QueryProcessor {
    * operates on multiple array fragments.
    */
   void filter(
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
       const ExpressionTree* expression,
       const std::string& result_array_name) const;
   /** 
@@ -127,8 +127,8 @@ class QueryProcessor {
    * see ArraySchema::create_join_result_schema to see the schema of the
    * output array.
    */
-  void join(const StorageManager::ArrayDescriptor* ad_A,
-            const StorageManager::ArrayDescriptor* ad_B,
+  void join(const StorageManager::FragmentDescriptor* fd_A,
+            const StorageManager::FragmentDescriptor* fd_B,
             const std::string& result_array_name) const;
   /** 
    * Joins the two input arrays (say, A and B). The result contains a cell only
@@ -137,15 +137,15 @@ class QueryProcessor {
    * see ArraySchema::create_join_result_schema to see the schema of the
    * output array. This function operates on multiple array fragments.
    */
-  void join(const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
-            const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+  void join(const std::vector<const StorageManager::FragmentDescriptor*>& fd_A,
+            const std::vector<const StorageManager::FragmentDescriptor*>& fd_B,
             const std::string& result_array_name) const;
   /** 
    * Returns the k nearest neighbors from query point q. The results (along with
    * all their attribute values) are stored in a new array. The distance metric
    * used to calculate proximity is the Euclidean distance.
    */
-  void nearest_neighbors(const StorageManager::ArrayDescriptor* ad,
+  void nearest_neighbors(const StorageManager::FragmentDescriptor* fd,
                          const std::vector<double>& q,
                          uint64_t k,
                          const std::string& result_array_name) const;
@@ -154,7 +154,7 @@ class QueryProcessor {
    * containing only the cells whose coordinates fall into the input range. 
    * The new array will have the input result name.
    */
-  void subarray(const StorageManager::ArrayDescriptor* array_descriptor,
+  void subarray(const StorageManager::FragmentDescriptor* fd,
                 const Tile::Range& range,
                 const std::string& result_array_name) const;
   /** 
@@ -163,9 +163,10 @@ class QueryProcessor {
    * The new array will have the input result name. This function
    * operates on multiple array fragments.
    */
-  void subarray(const std::vector<const StorageManager::ArrayDescriptor*>& ad,
-                const Tile::Range& range,
-                const std::string& result_array_name) const;
+  void subarray(
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
+      const Tile::Range& range,
+      const std::string& result_array_name) const;
 
  private:
   // PRIVATE ATTRIBUTES
@@ -245,7 +246,7 @@ class QueryProcessor {
    * iterators are not advanced, we simply increment skipped_cells.
    */
   void advance_cell_tile_its(
-      const StorageManager::ArrayDescriptor* ad,
+      const StorageManager::FragmentDescriptor* fd,
       unsigned int attribute_num,
       Tile::const_iterator* cell_its, 
       Tile::const_iterator& cell_it_end,
@@ -341,7 +342,7 @@ class QueryProcessor {
    * is useful for retrieving later each tile from the storage manager.
    */
   std::vector<DistRank> compute_sorted_dist_ranks(
-      const StorageManager::ArrayDescriptor* ad,
+      const StorageManager::FragmentDescriptor* fd,
       const std::vector<double>& q) const;
   /** 
    * Returns a vector with k tuples of the form (rank, (pos, coord)).
@@ -362,7 +363,7 @@ class QueryProcessor {
    * is a tile rank and dist is its distance to the query q.
    */
   std::vector<RankPosCoord> compute_sorted_kNN_coords(
-      const StorageManager::ArrayDescriptor* ad,
+      const StorageManager::FragmentDescriptor* fd,
       const std::vector<double>& q,
       uint64_t k,
       const std::vector<DistRank>& sorted_dist_ranks) const;
@@ -371,7 +372,7 @@ class QueryProcessor {
   /** 
    * Implementation of QueryProcessor::filter for the case of irregular tiles.
    */
-  void filter_irregular(const StorageManager::ArrayDescriptor* array_descriptor,
+  void filter_irregular(const StorageManager::FragmentDescriptor* fd,
                         const ExpressionTree* expression,
                         const std::string& result_array_name) const;
   /** 
@@ -379,7 +380,7 @@ class QueryProcessor {
    * This function operators on multiple array fragments.
    */
   void filter_regular(
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
       const ExpressionTree* expression,
       const std::string& result_array_name) const;
   /** 
@@ -387,13 +388,13 @@ class QueryProcessor {
    * This function operators on multiple array fragments.
    */
   void filter_irregular(
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
       const ExpressionTree* expression,
       const std::string& result_array_name) const;
   /** 
    * Implementation of QueryProcessor::filter for the case of regular tiles. 
    */
-  void filter_regular(const StorageManager::ArrayDescriptor* array_descriptor,
+  void filter_regular(const StorageManager::FragmentDescriptor* fd,
                       const ExpressionTree* expression,
                       const std::string& result_array_name) const;
   /**
@@ -407,7 +408,7 @@ class QueryProcessor {
    * some state to achieve efficiency. 
    */
   void get_next_join_fragment_indexes_irregular(
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd_A,
       StorageManager::const_iterator** tile_its_A,
       StorageManager::const_iterator* tile_it_end_A,
       Tile::const_iterator** cell_its_A,
@@ -415,7 +416,7 @@ class QueryProcessor {
       uint64_t* skipped_tiles_A, uint64_t* skipped_cells_A,
       bool* attribute_cell_its_initialized_A,
       bool* coordinate_cell_its_initialized_A,
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd_B,
       StorageManager::const_iterator** tile_its_B,
       StorageManager::const_iterator* tile_it_end_B,
       Tile::const_iterator** cell_its_B,
@@ -436,7 +437,7 @@ class QueryProcessor {
    * some state to achieve efficiency. 
    */
   void get_next_join_fragment_indexes_regular(
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd_A,
       StorageManager::const_iterator** tile_its_A,
       StorageManager::const_iterator* tile_it_end_A,
       Tile::const_iterator** cell_its_A,
@@ -444,7 +445,7 @@ class QueryProcessor {
       uint64_t* skipped_tiles_A, uint64_t* skipped_cells_A,
       bool* attribute_cell_its_initialized_A,
       bool* coordinate_cell_its_initialized_A,
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd_B,
       StorageManager::const_iterator** tile_its_B,
       StorageManager::const_iterator* tile_it_end_B,
       Tile::const_iterator** cell_its_B,
@@ -501,7 +502,7 @@ class QueryProcessor {
    * synchronized).
    */
   int get_next_fragment_index(
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
       RankOverlapVector::const_iterator* tile_rank_it,
       RankOverlapVector::const_iterator* tile_rank_it_end,
       const Tile*** tiles,
@@ -517,7 +518,7 @@ class QueryProcessor {
    * iterators. 
    */
   int get_next_fragment_index(
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
       StorageManager::const_iterator** tile_its,
       StorageManager::const_iterator* tile_it_end,
       Tile::const_iterator** cell_its,
@@ -529,13 +530,13 @@ class QueryProcessor {
    * Gets from the storage manager all the (attribute and coordinate) tiles
    * of the input array having the input id. 
    */
-  void get_tiles(const StorageManager::ArrayDescriptor* ad,
+  void get_tiles(const StorageManager::FragmentDescriptor* fd,
                  uint64_t tile_id, const Tile** tiles) const;
   /** 
    * Gets from the storage manager all the (attribute and coordinate) tiles
    * of the input array having the input rank. 
    */
-  void get_tiles_by_rank(const StorageManager::ArrayDescriptor* ad,
+  void get_tiles_by_rank(const StorageManager::FragmentDescriptor* fd,
                  uint64_t tile_rank, const Tile** tiles) const;
 
   /** Initializes cell iterators. */
@@ -568,14 +569,14 @@ class QueryProcessor {
                            unsigned int attribute_num,
                            Tile::const_iterator* cell_its) const; 
   /** Initializes tile iterators. */
-  void initialize_tile_its(const StorageManager::ArrayDescriptor* ad,
+  void initialize_tile_its(const StorageManager::FragmentDescriptor* fd,
                            StorageManager::const_iterator* tile_its,
                            StorageManager::const_iterator& tile_it_end) const;
   /** 
    * Initializes tile iterators. The last argument determines which attribute
    * the end tile iterator will correspond to.
    */
-  void initialize_tile_its(const StorageManager::ArrayDescriptor* ad,
+  void initialize_tile_its(const StorageManager::FragmentDescriptor* fd,
                            StorageManager::const_iterator* tile_its,
                            StorageManager::const_iterator& tile_it_end,
                            unsigned int end_attribute_id) const;
@@ -585,28 +586,28 @@ class QueryProcessor {
    */
   bool is_null(const Tile::const_iterator& cell_it) const;
   /** Implements QueryProcessor::join for arrays with irregular tiles. */
-  void join_irregular(const StorageManager::ArrayDescriptor* ad_A,
-                      const StorageManager::ArrayDescriptor* ad_B,
+  void join_irregular(const StorageManager::FragmentDescriptor* fd_A,
+                      const StorageManager::FragmentDescriptor* fd_B,
                       const ArraySchema& array_schema_C) const;
   /** 
    * Implements QueryProcessor::join for arrays with irregular tiles. This
    * function operates on multiple fragments.
    */
   void join_irregular(
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd_A,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd_B,
       const ArraySchema& array_schema_C) const;
   /** Implements QueryProcessor::join for arrays with regular tiles. */
-  void join_regular(const StorageManager::ArrayDescriptor* ad_A,
-                    const StorageManager::ArrayDescriptor* ad_B,
+  void join_regular(const StorageManager::FragmentDescriptor* fd_A,
+                    const StorageManager::FragmentDescriptor* fd_B,
                     const ArraySchema& array_schema_C) const;
   /** 
    * Implements QueryProcessor::join for arrays with regular tiles. This
    * function operates on multiple fragments.
    */
   void join_regular(
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad_A,
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad_B,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd_A,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd_B,
       const ArraySchema& array_schema_C) const;
   /** 
    * Joins two irregular tiles (from A and B respectively) and stores 
@@ -621,7 +622,7 @@ class QueryProcessor {
       const StorageManager::const_iterator* tile_its_B,
       Tile::const_iterator* cell_its_B,
       Tile::const_iterator& cell_it_end_B,
-      const StorageManager::ArrayDescriptor* ad_C, Tile** tiles_C,
+      const StorageManager::FragmentDescriptor* fd_C, Tile** tiles_C,
       bool& attribute_cell_its_initialized_A,
       bool& attribute_cell_its_initialized_B) const;
   /** 
@@ -637,7 +638,7 @@ class QueryProcessor {
       const StorageManager::const_iterator* tile_its_B,
       Tile::const_iterator* cell_its_B,
       Tile::const_iterator& cell_it_end_B,
-      const StorageManager::ArrayDescriptor* ad_C, Tile** tiles_C) const;
+      const StorageManager::FragmentDescriptor* fd_C, Tile** tiles_C) const;
 
   /** Returns true if the input tiles may produce join results. */
   bool may_join(const StorageManager::const_iterator& it_A, 
@@ -647,7 +648,7 @@ class QueryProcessor {
    * irregular tiles.
    */
   void nearest_neighbors_irregular(
-      const StorageManager::ArrayDescriptor* ad,
+      const StorageManager::FragmentDescriptor* fd,
       const std::vector<double>& q,
       uint64_t k,
       const std::string& result_array_name) const;
@@ -656,7 +657,7 @@ class QueryProcessor {
    * regular tiles.
    */
   void nearest_neighbors_regular(
-      const StorageManager::ArrayDescriptor* ad,
+      const StorageManager::FragmentDescriptor* fd,
       const std::vector<double>& q,
       uint64_t k,
       const std::string& result_array_name) const;
@@ -701,29 +702,29 @@ class QueryProcessor {
   /** Simply sets the workspace. */
   void set_workspace(const std::string& path);
   /** Sends the input tiles to the storage manager. */
-  void store_tiles(const StorageManager::ArrayDescriptor* ad, 
+  void store_tiles(const StorageManager::FragmentDescriptor* fd, 
                    Tile** tiles) const;
   /** Implements QueryProcessor::subarray for arrays with irregular tiles. */
   void subarray_irregular(
-      const StorageManager::ArrayDescriptor* array_descriptor,
+      const StorageManager::FragmentDescriptor* fd,
       const Tile::Range& range, const std::string& result_array_name) const;
   /** 
    * Implements QueryProcessor::subarray for arrays with irregular tiles. This
    * function operates on multiple array fragments.
    */
   void subarray_irregular(
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
       const Tile::Range& range, const std::string& result_array_name) const;
   /** Implements QueryProcessor::subarray for arrays with regular tiles. */
   void subarray_regular(
-      const StorageManager::ArrayDescriptor* array_descriptor,
+      const StorageManager::FragmentDescriptor* fd,
       const Tile::Range& range, const std::string& result_array_name) const;
   /** 
    * Implements QueryProcessor::subarray for arrays with regular tiles. This
    * function operates on multiple array fragments.
    */
   void subarray_regular(
-      const std::vector<const StorageManager::ArrayDescriptor*>& ad,
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
       const Tile::Range& range, const std::string& result_array_name) const;
 };
 

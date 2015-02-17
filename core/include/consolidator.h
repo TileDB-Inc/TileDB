@@ -40,11 +40,6 @@
 
 /** A default value for the consolidation step. */
 #define CN_DEFAULT_CONSOLIDATION_STEP 3
-/** 
- * Suffix of the file that stores book-keeping information about the array 
- * fragments. 
- */
-#define CN_SUFFIX ".frg"
 
 /**
  * The consolidator is responsible for merging 'array fragments'. The rationale
@@ -55,22 +50,21 @@
  * a new array fragment. We will hereadter distinguish between terms 'array' 
  * and 'fragment'; an array has a unique name (using which the user may invoke
  * update and query operations), but at any given instance it may be comprised
- * of multiple array fragments. Each array fragment is named after the array it
- * belongs to, appending a suffix that indicates which update batches it
- * encompasses (more on this below). The consolidator is enforced with 
+ * of multiple array fragments. Each array fragment is named after the batches
+ * it encompasses (more on this below). The consolidator is enforced with 
  * occassionally merging a set of array fragments into a single one, based on a
  * parameter called 'consolidation step'. The consolidation takes place in a
  * hierarchical manner, conceptually visualized as a tree, called 'fragment
  * tree'. The Consolidator encodes the tree in a concise manner (more on this
  * below).
  *
- * The consolidation works as follows. Let c denote the consolidation step. 
- * Imagine a complete c-ary tree structure, where each node is initially colored
+ * The consolidation works as follows. Let C denote the consolidation step. 
+ * Imagine a complete C-ary tree structure, where each node is initially colored
  * white and represents nothing. When a new fragment is created, the left-most 
  * leaf node (at level 0) is colored grey and represents this new fragment. 
- * After c fragment insertions the c left-most leaves become grey. The 
- * consolidator then merges the c fragments into a single one, colors as grey
- * parent of the corresponding leaves (at level 1), and colors black the leaves.
+ * After C fragment insertions the C left-most leaves become grey. The 
+ * consolidator then merges the C fragments into a single one, colors as grey
+ * the parent at level 1 of the respective leaves, and colors black the leaves.
  * The grey node at level 1 represents the newly created fragment. Its (now
  * black) children are completely disregarded from now on. When a new fragment
  * arrives, the first leaf (at level 0) on the right of the grey node at level 1
@@ -78,19 +72,20 @@
  * there are c leaves with the same parent, and then the consolidator merges
  * these leaves, colors them black (i.e., disregards them) and colors their
  * parents grey. Assume that that the process continues until there are
- * c-1 grey nodes at level 1, and c-1 grey nodes at level 0. Also assume
- * that a new fragment is inserted. The consolidator merges the c leaf fragments
- * creating the c-th grey node at level 1. At this point the consolidator must
- * continue recursively and merge the c level-1 fragments, creating a grey node
- * at level 2 and coloring the c nodes at level 1 as black. The process
- * continues in the same fashion. This algorithm, for c>1, leads to an
- * amortized logarithmic update cost.
+ * C-1 grey nodes at level 1, and C-1 grey nodes at level 0. Also assume
+ * that a new fragment is inserted. The consolidator merges the C leaf fragments
+ * creating the C-th grey node at level 1. At this point the consolidator must
+ * continue recursively and merge the C level-1 fragments, creating a grey node
+ * at level 2 and coloring the C nodes at level 1 as black. The process
+ * continues in the same fashion. This algorithm, for C>1, leads to an
+ * amortized logarithmic update cost. For C=1, the algorithm always
+ * consolidates the newly incoming batch with the (single) current fragment.
  *
  * The Consolidator encodes the merge tree in a very simple manner, storing
  * essentially only the grey nodes. Specifically, it stores a vector of pairs
  * (level, number of grey nodes at this level). The pairs in the vector are in
  * non-increasing order of first element (i.e., level). Moreover, there
- * may be up to c-1 nodes per level. 
+ * may be up to C-1 nodes per level. 
  *
  * Note that, upon consolidating fragments, a cell on the same coordinates
  * may appear in multiple fragments. In that case, the cell of the latest
@@ -100,20 +95,20 @@
  * values.
  *
  * A final remark concerns the names of the fragments. There is a sequence
- * of increasing fragment numbers (starting from 0), which indicates when an
- * udpate took place. Every new fragment, say for array "A", gets its name
- * by appending a suffix that indicates the range of updates
- * encompassed by the merged fragments. For instance, the very first fragment
- * of "A" is called "A_0_0", after merging the first 5 fragments, the resulting
- * fragment gets name "A_0_4", while merging fragments "A_0_4" and "A_5_9", the
- * resulting fragment is named "A_0_9".
+ * of increasing update numbers (starting from 0), which indicates when an
+ * udpate took place. Every fragment gets its name after the range of updates
+ * it encompasses. For instance, the very first fragment is called "0_0", 
+ * indicating that it encompasses only the first update. After merging the first
+ * 3 fragments (e.g., in case C=3), the resulting fragment gets name "0_2",
+ * indicating that it covers updates 0, 1 and 2. Merging fragments "0_2", "3_5"
+ * and "6_8", the resulting fragment is named "0_8".
  */
 class Consolidator {
  public:
   // TYPE DEFINITIONS
   class ArrayInfo;
 
-  /** Mnemonic: (vector of fragment suffixes, result fragment suffix) */
+  /** Mnemonic: (vector of fragment names, result fragment name) */
   typedef std::pair<std::vector<std::string>, std::string> ConsolidationInfo;
   /** Mnemonic: (level, number of nodes) */
   typedef std::pair<unsigned int, unsigned int> FragmentTreeLevel;
@@ -124,8 +119,8 @@ class Consolidator {
 
   /** This struct groups consolidation book-keeping info about an array. */  
   struct ArrayInfo {
-    /** The array schema (see class ArraySchema). */
-    ArraySchema array_schema_; 
+    /** The array name. */
+    std::string array_name_; 
     /** The fragment tree of the array. */
     FragmentTree fragment_tree_;  
     /** 
@@ -135,10 +130,10 @@ class Consolidator {
      */
     uint64_t id_;
     /**
-     * Each array fragment has a sequence number. This variable holds the next 
-     * sequence number to be assigned to the next incoming array fragment.
+     * Each update has a sequence number. This variable holds the next 
+     * sequence number to be assigned to the next created fragment.
      */
-    uint64_t next_fragment_seq_;
+    uint64_t next_update_seq_;
   };
 
   /** 
@@ -167,9 +162,6 @@ class Consolidator {
     // ACCESSORS
     /** Returns the array info. */
     const ArrayInfo* array_info() const { return array_info_; } 
-    /** Returns the array schema. */
-    const ArraySchema& array_schema() const 
-        { return array_info_->array_schema_; } 
  
    private:
     // PRIVATE ATTRIBUTES
@@ -211,21 +203,17 @@ class Consolidator {
    * consolidation if necessary.
    */
   void add_fragment(const ArrayDescriptor* ad) const;
-  /** Returns true if there is a book-keeping file about the input array. */
-  bool array_exists(const std::string& array_name) const;
   /** It deletes the book-keeping consolidation info of an array from memory. */
   void close_array(const ArrayDescriptor* ad);
-  /** Deletes the fragment book-keeping info of an array. */
-  void delete_array(const std::string& array_name) const;
-  /** Returns the suffixes corresponding to all existing array fragments. */
-  std::vector<std::string> get_all_fragment_suffixes(
+  /** Returns the name corresponding to all existing array fragments. */
+  std::vector<std::string> get_all_fragment_names(
       const ArrayDescriptor* ad) const;
-  /** Returns the next fragment name (which appends the proper suffix). */
+  /** Returns the next fragment name. */
   std::string get_next_fragment_name(const ArrayDescriptor* ad) const;
-  /** Returns the next fragment sequence number. */
-  uint64_t get_next_fragment_seq(const ArrayDescriptor* ad) const;
+  /** Returns the next update sequence number. */
+  uint64_t get_next_update_seq(const ArrayDescriptor* ad) const;
   /** It loads the book-keeping consolidation info for an array into memory. */
-  const ArrayDescriptor* open_array(const ArraySchema& array_schema);
+  const ArrayDescriptor* open_array(const std::string& array_name);
 
  private:
   // PRIVATE ATTRIBUTES
@@ -271,19 +259,16 @@ class Consolidator {
    * attribute values are NULL.
    */
   bool is_null(const Tile::const_iterator& cell_it) const;
-  /** 
-   * Consolidates the input fragments (described by a vector of suffixes) for
-   * the case of irregular tiles. 
-   */
-  void consolidate_irregular(const std::vector<std::string>& fragment_suffixes,
-                             const std::string& result_fragment_suffix,
+  /**  Consolidates the input fragments fir the case of irregular tiles. */
+  void consolidate_irregular(const std::vector<std::string>& fragment_names,
+                             const std::string& result_fragment_name,
                              const ArraySchema& array_schema) const;
   /** 
    * Consolidates the input fragments (described by a vector of suffixes) for
    * the case of regular tiles. 
-   */
-  void consolidate_regular(const std::vector<std::string>& fragment_suffixes,
-                           const std::string& result_fragment_suffix,
+   */  
+  void consolidate_regular(const std::vector<std::string>& fragment_names,
+                           const std::string& result_fragment_name,
                            const ArraySchema& array_schema) const;
   /** Creates the workspace folder. */
   void create_workspace() const;
@@ -307,7 +292,7 @@ class Consolidator {
                            Tile::const_iterator* cell_its, 
                            Tile::const_iterator& cell_it_end) const; 
   /** Initializes tile iterators. */
-  void initialize_tile_its(const StorageManager::ArrayDescriptor* ad,
+  void initialize_tile_its(const StorageManager::FragmentDescriptor* fd,
                            StorageManager::const_iterator* tile_its,
                            StorageManager::const_iterator& tile_it_end) const;
   /** 
@@ -327,7 +312,7 @@ class Consolidator {
   /** Simply sets the workspace. */
   void set_workspace(const std::string& path);
   /** Sends the input tiles to the storage manager. */
-  void store_tiles(const StorageManager::ArrayDescriptor* ad, 
+  void store_tiles(const StorageManager::FragmentDescriptor* fd, 
                    Tile** tiles) const;
 };
 

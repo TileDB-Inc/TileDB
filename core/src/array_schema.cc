@@ -88,6 +88,7 @@ ArraySchema::ArraySchema(
     uint64_t capacity) {
   assert(attribute_names.size() > 0);
   assert(dim_names.size() > 0);
+  assert(tile_extents.size() > 0);
   assert(attribute_names.size()+1 == types.size());
   assert(dim_names.size() == dim_domains.size());
   assert(dim_names.size() == tile_extents.size());

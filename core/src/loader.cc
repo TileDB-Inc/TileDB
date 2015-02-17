@@ -54,11 +54,12 @@ Loader::Loader(const std::string& workspace, StorageManager& storage_manager)
 ******************* LOADING FUNCTIONS *****************
 ******************************************************/
 
+// TODO: remove
 void Loader::load(const std::string& filename, 
                   const ArraySchema& array_schema) const {
   // Open array in CREATE mode
-  StorageManager::ArrayDescriptor* ad = 
-      storage_manager_.open_array(array_schema);
+  StorageManager::FragmentDescriptor* fd = 
+      storage_manager_.open_fragment(array_schema);
 
   // Prepare filenames
   std::string to_be_sorted_filename = filename;
@@ -96,9 +97,9 @@ void Loader::load(const std::string& filename,
   // Make tiles
   try {
     if(regular)
-      make_tiles_regular(sorted_filename, ad, array_schema);
+      make_tiles_regular(sorted_filename, fd);
     else
-      make_tiles_irregular(sorted_filename, ad, array_schema);
+      make_tiles_irregular(sorted_filename, fd);
   } catch(LoaderException& le) {
     remove(sorted_filename.c_str());
     storage_manager_.delete_array(array_schema.array_name());
@@ -108,7 +109,67 @@ void Loader::load(const std::string& filename,
 
   // Clean up and close array 
   remove(sorted_filename.c_str());
-  storage_manager_.close_array(ad);
+  storage_manager_.close_fragment(fd);
+}
+
+void Loader::load(const std::string& filename, 
+                  const std::string& array_name, 
+                  const std::string& fragment_name) const {
+  // Open array in CREATE mode
+  StorageManager::FragmentDescriptor* fd = 
+      storage_manager_.open_fragment(array_name, fragment_name, 
+                                     StorageManager::CREATE);
+
+  // Prepare filenames
+  std::string to_be_sorted_filename = filename;
+  if(to_be_sorted_filename[0] == '~') 
+    to_be_sorted_filename = std::string(getenv("HOME")) +
+        to_be_sorted_filename.substr(1, workspace_.size()-1);
+  assert(check_on_load(to_be_sorted_filename));
+  std::string sorted_filename = workspace_ + "/sorted_" +
+                                array_name + "_" + fragment_name + ".csv";
+  std::string injected_filename("");
+  
+  // For easy reference
+  const ArraySchema& array_schema = fd->array_schema(); // TODO change array schema
+  bool regular = array_schema.has_regular_tiles();
+  ArraySchema::Order order = array_schema.order();
+  
+  // Inject ids if needed
+  if(regular || order == ArraySchema::HILBERT) {
+    injected_filename = workspace_ + "/injected_" +
+                        array_name + "_" + fragment_name + ".csv";
+    try {
+      inject_ids_to_csv_file(filename, injected_filename, array_schema); 
+    } catch(LoaderException& le) {
+      remove(injected_filename.c_str());
+      storage_manager_.delete_fragment(array_name, fragment_name);
+      throw LoaderException("Cannot load CSV file '" + filename + 
+                            "'.\n " + le.what());
+    }
+    to_be_sorted_filename = injected_filename;
+  }
+
+  // Sort CSV
+  sort_csv_file(to_be_sorted_filename, sorted_filename, array_schema);
+  remove(injected_filename.c_str());
+
+  // Make tiles
+  try {
+    if(regular)
+      make_tiles_regular(sorted_filename, fd); // TODO
+    else
+      make_tiles_irregular(sorted_filename, fd); // TODO
+  } catch(LoaderException& le) {
+    remove(sorted_filename.c_str());
+    storage_manager_.delete_fragment(array_name, fragment_name); 
+    throw LoaderException("Cannot load CSV file '" + filename + 
+                          "'. " + le.what());
+  } 
+
+  // Clean up and close array 
+  remove(sorted_filename.c_str());
+  storage_manager_.close_fragment(fd); 
 }
 
 /******************************************************
@@ -123,13 +184,11 @@ void Loader::append_cell(const ArraySchema& array_schema,
 
   // Append coordinates first
   if(!(*csv_line >> *tiles[attribute_num]))
-    throw LoaderException("[Append cell] Cannot read coordinates "
-                          "from CSV file.");
+    throw LoaderException("Cannot read coordinates from CSV file.");
   // Append attribute values
   for(unsigned int i=0; i<attribute_num; i++)
     if(!(*csv_line >> *tiles[i]))
-      throw LoaderException("[Append cell] Cannot read attribute "
-                            "value from CSV file.");
+      throw LoaderException("Cannot read attribute value from CSV file.");
 }
 
 bool Loader::check_on_load(const std::string& filename) const {
@@ -175,8 +234,7 @@ void Loader::inject_ids_to_csv_file(const std::string& filename,
     // Retrieve coordinates from the input line
     for(unsigned int i=0; i<dim_num; i++) {
       if(!(line_in >> coordinate))
-        throw LoaderException("[Inject ids] Cannot read coordinate "
-                              "value from CSV file."); 
+        throw LoaderException("Cannot read coordinate value from CSV file."); 
       coordinates[i] = coordinate;
     }
     // Put the id at the beginning of the output line
@@ -198,10 +256,11 @@ void Loader::inject_ids_to_csv_file(const std::string& filename,
   }
 }
 
-void Loader::make_tiles_irregular(const std::string& filename,
-                                  const StorageManager::ArrayDescriptor* ad, 
-                                  const ArraySchema& array_schema) const {
+void Loader::make_tiles_irregular(
+    const std::string& filename,
+    const StorageManager::FragmentDescriptor* fd) const {
   // For easy reference
+  const ArraySchema& array_schema = fd->array_schema(); // TODO change array_schema
   ArraySchema::Order order = array_schema.order();
   uint64_t capacity = array_schema.capacity();
  
@@ -217,7 +276,7 @@ void Loader::make_tiles_irregular(const std::string& filename,
 
   while(csv_file >> csv_line) {
     if(cell_num == capacity) {
-      store_tiles(ad, tiles);
+      store_tiles(fd, tiles);
       new_tiles(array_schema, ++tile_id, tiles);
       cell_num = 0;
     }
@@ -225,7 +284,7 @@ void Loader::make_tiles_irregular(const std::string& filename,
     if(order == ArraySchema::HILBERT)
       if(!(csv_line >> cell_id)) {
         delete [] tiles;
-        throw LoaderException("[Make tiles] Cannot read cell id."); 
+        throw LoaderException("Cannot read cell id."); 
       } 
    
     try {
@@ -233,36 +292,39 @@ void Loader::make_tiles_irregular(const std::string& filename,
       append_cell(array_schema, &csv_line, tiles);     
     } catch(LoaderException& le) {
       delete [] tiles;
-      throw LoaderException("[Make tiles] " + le.what()); 
+      throw LoaderException(le.what()); 
     }
     cell_num++;
   }
 
   // Store the lastly created tiles
-  store_tiles(ad, tiles);
+  store_tiles(fd, tiles);
 
   delete [] tiles; 
 }
 
-// Note: The array must be open in CREATE mode
-void Loader::make_tiles_regular(const std::string& filename, 
-                                const StorageManager::ArrayDescriptor* ad, 
-                                const ArraySchema& array_schema) const {
+void Loader::make_tiles_regular(
+    const std::string& filename, 
+    const StorageManager::FragmentDescriptor* fd) const {
+  // For easy reference
+  const ArraySchema& array_schema = fd->array_schema();
+
+  // Initialization
   CSVFile csv_file(filename, CSVFile::READ);
   CSVLine csv_line;
   Tile** tiles = new Tile*[array_schema.attribute_num() + 1]; 
   uint64_t previous_tile_id = LD_INVALID_TILE_ID, tile_id;
   
-  // Proecess the following lines 
+  // Process the following lines 
   while(csv_file >> csv_line) {
     if(!(csv_line >> tile_id)) {
       delete [] tiles;
-      throw LoaderException("[Make tiles] Cannot read tile id."); 
+      throw LoaderException("Cannot read tile id."); 
     }
     if(tile_id != previous_tile_id) {
       // Send the tiles to the storage manager and initialize new ones
       if(previous_tile_id != LD_INVALID_TILE_ID) 
-        store_tiles(ad, tiles);
+        store_tiles(fd, tiles);
       new_tiles(array_schema, tile_id, tiles);
       previous_tile_id = tile_id;
     }
@@ -272,13 +334,13 @@ void Loader::make_tiles_regular(const std::string& filename,
       append_cell(array_schema, &csv_line, tiles);
     } catch(LoaderException& le) {
       delete [] tiles;
-      throw LoaderException("[Make tiles] " + le.what()) ; 
+      throw LoaderException(le.what()) ; 
     }
   }
 
   // Store the lastly created tiles
   if(previous_tile_id != LD_INVALID_TILE_ID)
-    store_tiles(ad, tiles);
+    store_tiles(fd, tiles);
 
   delete [] tiles; 
 }
@@ -362,14 +424,14 @@ void Loader::sort_csv_file(const std::string& to_be_sorted_filename,
 }
 
 inline
-void Loader::store_tiles(const StorageManager::ArrayDescriptor* ad,
+void Loader::store_tiles(const StorageManager::FragmentDescriptor* fd,
                          Tile** tiles) const {
   // For easy reference
-  const ArraySchema& array_schema = ad->array_schema(); 
+  const ArraySchema& array_schema = fd->array_schema(); 
   unsigned int attribute_num = array_schema.attribute_num();
 
   // Append attribute tiles
   for(unsigned int i=0; i<=attribute_num; i++)
-    storage_manager_.append_tile(tiles[i], ad, i);
+    storage_manager_.append_tile(tiles[i], fd, i);
 }
 

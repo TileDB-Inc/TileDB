@@ -59,12 +59,12 @@ class Loader {
   ~Loader() {}
 
   // LOADING FUNCTIONS
-  /**
-   * Loads a CSV file into an array.
-   * \param filename The name of the input CSV file.
-   * \param array_schema The schema of the array the CSV file is loaded into.
-   */
-  void load(const std::string& filename, const ArraySchema& array_schema) const; 
+  /** Loads a CSV file into an array. */ // TODO: remove
+  void load(const std::string& filename, const ArraySchema& array_schema) const;
+  /** Creates a fragment from a CSV file. */
+  void load(const std::string& filename, 
+            const std::string& array_name, 
+            const std::string& fragment_name) const;
 
  private:
   // PRIVATE ATTRIBUTES
@@ -94,15 +94,13 @@ class Loader {
                               const ArraySchema& array_schema) const;
   /** Creates the (irregular) tiles and sends them to the storage manager. */
   void make_tiles_irregular(const std::string& filename,
-                            const StorageManager::ArrayDescriptor* ad,
-                            const ArraySchema& array_schema) const;
+                            const StorageManager::FragmentDescriptor* fd) const;
   /** Creates the (regular) tiles and sends them to the storage manager. */
   void make_tiles_regular(const std::string& filename,
-                          const StorageManager::ArrayDescriptor* ad,
-                          const ArraySchema& array_schema) const;
+                          const StorageManager::FragmentDescriptor* fd) const;
   /** 
    * Creates an array of new tile pointers with the input tile id, 
-   * and based on the input array info. 
+   * and based on the input array schema. 
    */
   void new_tiles(const ArraySchema& array_schema, 
                  uint64_t tile_id, Tile** tiles) const;
@@ -115,7 +113,7 @@ class Loader {
                      const std::string& sorted_filename,
                      const ArraySchema& array_schema) const;
   /** Sends the tiles to the storage manager. */
-  void store_tiles(const StorageManager::ArrayDescriptor* ad,
+  void store_tiles(const StorageManager::FragmentDescriptor* fd,
                    Tile** tiles) const;
 };
 
