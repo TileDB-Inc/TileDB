@@ -39,6 +39,11 @@
 
 /** 
  * Indicates which arguments are used from the command line for query
+ * 'clear_array'. 
+ */
+#define PS_CLEAR_ARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP)
+/** 
+ * Indicates which arguments are used from the command line for query
  * 'define_array'. 
  */
 #define PS_DEFINE_ARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
@@ -48,10 +53,33 @@
                                 CL_TILE_EXTENT_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
+ * 'delete_array'. 
+ */
+#define PS_DELETE_ARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP)
+/** 
+ * Indicates which arguments are used from the command line for query
+ * 'export_to_CSV'. 
+ */
+#define PS_EXPORT_TO_CSV_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
+                                 CL_FILENAME_BITMAP)
+/** 
+ * Indicates which arguments are used from the command line for query
+ * 'join'. 
+ */
+#define PS_JOIN_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
+                        CL_RESULT_BITMAP)
+/** 
+ * Indicates which arguments are used from the command line for query
  * 'load'. 
  */
 #define PS_LOAD_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
                         CL_FILENAME_BITMAP)
+/** 
+ * Indicates which arguments are used from the command line for query
+ * 'subarray'. 
+ */
+#define PS_SUBARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
+                            CL_RANGE_BITMAP | CL_RESULT_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'update'. 
@@ -67,17 +95,27 @@ class Parser {
   Parser() {}
 
   // PARSING METHODS
+  /** Parse command line for query 'clear_array'. */
+  void parse_clear_array(const CommandLine& cl) const;
   /** Parse command line for query 'define_array' and return the schema. */
   ArraySchema parse_define_array(const CommandLine& cl) const;
+  /** Parse command line for query 'delete_array'. */
+  void parse_delete_array(const CommandLine& cl) const;
+  /** Parse command line for query 'export_to_csv'. */
+  void parse_export_to_csv(const CommandLine& cl) const;
+  /** Parse command line for query 'join'. */
+  void parse_join(const CommandLine& cl) const;
   /** Parse command line for query 'load'. */
   void parse_load(const CommandLine& cl) const;
+  /** Parse command line for query 'subarray'. */
+  std::vector<double> parse_subarray(const CommandLine& cl) const;
   /** Parse command line for query 'update'. */
   void parse_update(const CommandLine& cl) const;
 
  private:
   // PRIVATE METHODS
-  /** Checks the array name in command line for soundness and returns it. */
-  std::string check_array_name(const CommandLine& cl) const;
+  /** Checks the array names in command line for soundness. */
+  void check_array_names(const CommandLine& cl) const;
   /** 
    * Checks the attribute names in command line for soundness and returns
    * them. 
@@ -109,6 +147,11 @@ class Parser {
       const CommandLine& cl,
       const std::vector<std::string>& dim_names,
       const std::vector<std::pair<double,double> >& dim_domains) const;
+  /** 
+   * Checks the range in command line for soundness and returns
+   * it. 
+   */
+  std::vector<double> check_range(const CommandLine& cl) const;
   /** 
    * Checks the types in command line for soundness and returns
    * them. 

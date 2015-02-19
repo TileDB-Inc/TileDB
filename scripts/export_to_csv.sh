@@ -1,13 +1,13 @@
 #!/bin/bash
 
-echo 'Executing load for IREG...'
+echo 'Executing export_to_csv for IREG...'
 ~/stavrospapadopoulos/TileDB/tiledb/bin/tiledb \
- -q load \
+ -q export_to_csv \
  -w ~/stavrospapadopoulos/TileDB/data/example/ \
- -A IREG -f ~/stavrospapadopoulos/TileDB/data/test_A_0.csv
+ -A IREG -f IREG.csv 
 
-echo 'Executing load for REG...'
+echo 'Executing export_to_csv for REG...'
 ~/stavrospapadopoulos/TileDB/tiledb/bin/tiledb \
- -q load \
+ -q export_to_csv \
  -w ~/stavrospapadopoulos/TileDB/data/example/ \
- -A REG -f ~/stavrospapadopoulos/TileDB/data/test_A_0.csv
+ -A REG -f REG.csv 

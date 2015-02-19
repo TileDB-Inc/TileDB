@@ -65,6 +65,13 @@ Executor::~Executor() {
 ************************ QUERIES **********************
 ******************************************************/
 
+void Executor::clear_array(const std::string& array_name) const {
+  if(!storage_manager_->array_defined(array_name))
+    throw ExecutorException("Array is not defined.");
+
+  storage_manager_->clear_array(array_name);
+}
+
 void Executor::define_array(const ArraySchema& array_schema) const {
   if(storage_manager_->array_defined(array_schema.array_name()))
     throw ExecutorException("Array is already defined.");
@@ -72,66 +79,53 @@ void Executor::define_array(const ArraySchema& array_schema) const {
   storage_manager_->define_array(array_schema);
 }
 
+void Executor::delete_array(const std::string& array_name) const {
+  if(!storage_manager_->array_defined(array_name))
+    throw ExecutorException("Array is not defined.");
 
-// TODO REMOVE
-/*
-void Executor::delete_array(const ArraySchema& array_schema) const {
-  // For easy reference
-  const std::string& array_name = array_schema.array_name();
-  
-  // Check if array exists
-  if(!consolidator_->array_exists(array_name))
-    throw ExecutorException("[Executor] Cannot delete array: "
-                            "array does not exist.");
-
-  // Get fragment suffixes
-  std::vector<std::string> fragment_suffixes = 
-      get_fragment_suffixes(array_schema);
-
-  // Delete fragments at the storage manager
-  for(unsigned int i=0; i<fragment_suffixes.size(); ++i)
-    storage_manager_->delete_array(array_name + "_" + fragment_suffixes[i]);
- 
-  // Delete fragment book-keeping info at the consolidator
-  consolidator_->delete_array(array_name); 
+  storage_manager_->delete_array(array_name);
 }
-*/
 
-//TODO remove
-/*
-void Executor::export_to_CSV(const std::string& filename, 
-                             const ArraySchema& array_schema) const {
-  // For easy reference
-  const std::string& array_name = array_schema.array_name();
- 
-  // Check if array exists
-  if(!consolidator_->array_exists(array_name))
-    throw ExecutorException("[Executor] Cannot export array: "
-                            "array does not exist.");
+void Executor::export_to_csv(const std::string& array_name,
+                             const std::string& filename) const {
+  // Check if the array is defined
+  if(!storage_manager_->array_defined(array_name))
+    throw ExecutorException("Array is not defined.");
 
-  // Get fragment suffixes
-  std::vector<std::string> fragment_suffixes = 
-      get_fragment_suffixes(array_schema);
+  // Get fragment names
+  std::vector<std::string> fragment_names = 
+      get_all_fragment_names(array_name);
+
+  // Check if the array is empty
+  if(fragment_names.size() == 0)
+    throw ExecutorException("Input array is empty.");
+
+  // Open array
+  const StorageManager::ArrayDescriptor* ad =
+      storage_manager_->open_array(array_name, 
+                                   fragment_names,
+                                   StorageManager::READ);
 
   // Dispatch query to query processor
-  if(fragment_suffixes.size() == 1)  {  // Single fragment
-    const StorageManager::FragmentDescriptor* fd = 
-        storage_manager_->open_fragment(array_name + std::string("_")  
-                                        + fragment_suffixes[0]);
-    query_processor_->export_to_CSV(fd, filename);
-    storage_manager_->close_fragment(fd);
-  } else { // Multiple fragments
-    std::vector<const StorageManager::FragmentDescriptor*> fd;
-    for(unsigned int i=0; i<fragment_suffixes.size(); ++i) 
-      fd.push_back(storage_manager_->open_fragment(
-                       array_name + std::string("_") +
-                       fragment_suffixes[i]));
-    query_processor_->export_to_CSV(fd, filename);
-    for(unsigned int i=0; i<fragment_suffixes.size(); ++i) 
-      storage_manager_->close_fragment(fd[i]);
-  }
+  // Single fragment
+  try {
+    if(fragment_names.size() == 1)  {  
+      const StorageManager::FragmentDescriptor* fd = ad->fd()[0];
+      query_processor_->export_to_csv(fd, filename);
+    } 
+  else { // Multiple fragments
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd = 
+          ad->fd();
+      query_processor_->export_to_csv(fd, filename);
+    }
+  } catch(QueryProcessorException& qe) {
+    storage_manager_->close_array(ad);
+    throw ExecutorException(qe.what());
+  } 
+
+  // Clean up
+  storage_manager_->close_array(ad);
 }
-*/
 
 bool Executor::file_exists(const std::string& filename) const {
   int fd = open(filename.c_str(), O_RDONLY);
@@ -157,7 +151,7 @@ void Executor::filter(const ArraySchema& array_schema,
     throw ExecutorException("[Executor] Cannot filter array: "
                             "array does not exist.");
 
-  // Get fragment suffixes
+  // Get fragment names
   std::vector<std::string> fragment_suffixes = 
       get_fragment_suffixes(array_schema);
 
@@ -186,95 +180,95 @@ void Executor::filter(const ArraySchema& array_schema,
 }
 */
 
-// TODO remove
-/*
-void Executor::join(const ArraySchema& array_schema_A,
-                    const ArraySchema& array_schema_B,
+void Executor::join(const std::string& array_name_A,
+                    const std::string& array_name_B,
                     const std::string& result_array_name) const {
+  // Check if the input arrays are defined
+  if(!storage_manager_->array_defined(array_name_A))
+    throw ExecutorException("Input array #1 is not defined.");
+  if(!storage_manager_->array_defined(array_name_B))
+    throw ExecutorException("Input array #2 is not defined.");
+
+  // Check if the output array is defined
+  if(storage_manager_->array_defined(result_array_name))
+    throw ExecutorException("Result array is already defined.");
+
+
+  // Get fragment names
+  std::vector<std::string> fragment_names_A = 
+      get_all_fragment_names(array_name_A);
+  std::vector<std::string> fragment_names_B = 
+      get_all_fragment_names(array_name_B);
+
+  // Check if the arrays are empty
+  if(fragment_names_A.size() == 0)
+    throw ExecutorException("Input array #1 is empty.");
+  if(fragment_names_B.size() == 0)
+    throw ExecutorException("Input array #2 is empty.");
+
+  // Open arrays
+  const StorageManager::ArrayDescriptor* ad_A =
+      storage_manager_->open_array(array_name_A, 
+                                   fragment_names_A,
+                                   StorageManager::READ);
+  const StorageManager::ArrayDescriptor* ad_B =
+      storage_manager_->open_array(array_name_B, 
+                                   fragment_names_B,
+                                   StorageManager::READ);
+
   // For easy reference
-  const std::string& array_name_A = array_schema_A.array_name();
-  const std::string& array_name_B = array_schema_B.array_name();
+  const ArraySchema& array_schema_A = *(ad_A->array_schema()); 
+  const ArraySchema& array_schema_B = *(ad_B->array_schema()); 
 
-  // Check if arrays exist
-  if(!consolidator_->array_exists(array_name_A))
-    throw ExecutorException("[Executor] Cannot join arrays: "
-                            "input array #1 does not exist.");
-  if(!consolidator_->array_exists(array_name_B))
-    throw ExecutorException("[Executor] Cannot join arrays: "
-                            "input array #2 does not exist.");
+  // Check join-compatibility
+  std::pair<bool, std::string> join_comp =
+      ArraySchema::join_compatible(array_schema_A, array_schema_B);
+  if(!join_comp.first)
+    throw ExecutorException(
+        std::string("The input arrays are not join-compatible") + ". " +
+        join_comp.second);
 
-  // Get fragment suffixes
-  std::vector<std::string> fragment_suffixes_A = 
-      get_fragment_suffixes(array_schema_A);
-  std::vector<std::string> fragment_suffixes_B = 
-      get_fragment_suffixes(array_schema_B);
+  // Define the result array
+  ArraySchema result_array_schema = 
+      ArraySchema::create_join_result_schema(array_schema_A, 
+                                             array_schema_B, 
+                                             result_array_name);
+  storage_manager_->define_array(result_array_schema);
 
+  // Create the result array
+  const StorageManager::FragmentDescriptor* result_fd = 
+      storage_manager_->open_fragment(&result_array_schema,  "0_0", 
+                                      StorageManager::CREATE);
   // Dispatch query to query processor
-  if(fragment_suffixes_A.size() == 1 && fragment_suffixes_B.size() == 1)  {  
-    // Single fragment
-    const StorageManager::FragmentDescriptor* fd_A = 
-        storage_manager_->open_fragment(array_name_A + std::string("_")  
-                                        + fragment_suffixes_A[0]);
-    const StorageManager::FragmentDescriptor* fd_B = 
-        storage_manager_->open_fragment(array_name_B + std::string("_")  
-                                                + fragment_suffixes_B[0]);
-    try {
-      query_processor_->join(fd_A, fd_B, result_array_name + "_0_0");
-    } catch(QueryProcessorException& qe) {
-      storage_manager_->close_fragment(fd_A);
-      storage_manager_->close_fragment(fd_B);
-      throw ExecutorException(qe.what());
+  try {
+    if(fragment_names_A.size() == 1 && fragment_names_B.size() == 1)  { 
+        // Single fragment
+        const StorageManager::FragmentDescriptor* fd_A = ad_A->fd()[0]; 
+        const StorageManager::FragmentDescriptor* fd_B = ad_B->fd()[0]; 
+        query_processor_->join(fd_A, fd_B, result_fd);
     }
-    storage_manager_->close_fragment(fd_A);
-    storage_manager_->close_fragment(fd_B);
-  } else { // Multiple fragments
-    std::vector<const StorageManager::FragmentDescriptor*> fd_A;
-    std::vector<const StorageManager::FragmentDescriptor*> fd_B;
-    for(unsigned int i=0; i<fragment_suffixes_A.size(); ++i)
-      fd_A.push_back(storage_manager_->open_fragment(
-           array_name_A + std::string("_") + fragment_suffixes_A[i]));
-    for(unsigned int i=0; i<fragment_suffixes_B.size(); ++i)
-      fd_B.push_back(storage_manager_->open_fragment(
-           array_name_B + std::string("_") + fragment_suffixes_B[i]));
-
-    query_processor_->join(fd_A, fd_B, result_array_name + "_0_0");
-
-    for(unsigned int i=0; i<fragment_suffixes_A.size(); ++i)  
-      storage_manager_->close_fragment(fd_A[i]);
-    for(unsigned int i=0; i<fragment_suffixes_B.size(); ++i)  
-      storage_manager_->close_fragment(fd_B[i]);
+    else { // Multiple fragments 
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd_A = 
+          ad_A->fd();
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd_B = 
+          ad_B->fd();
+      query_processor_->join(fd_A, fd_B, result_fd);
+    }
+  } catch(QueryProcessorException& qe) {
+    storage_manager_->delete_fragment(result_array_name, "0_0");
+    storage_manager_->close_array(ad_A);
+    storage_manager_->close_array(ad_B);
+    throw ExecutorException(qe.what());
   }
 
+  // Clean up
+  storage_manager_->close_array(ad_A);
+  storage_manager_->close_array(ad_B);
+  storage_manager_->close_fragment(result_fd);
+
   // Update the fragment information of result array at the consolidator
-  ArraySchema result_array_schema = ArraySchema::create_join_result_schema(
-                                   array_schema_A, 
-                                   array_schema_B, 
-                                   result_array_name);
-  update_fragment_info(result_array_schema);
+  update_fragment_info(result_array_name);
 }
-*/
-
-// TODO: remove
-/*
-void Executor::load(const std::string& filename,  
-                    const ArraySchema& array_schema) const {
-  // For easy reference
-  const std::string& array_name = array_schema.array_name(); 
-
-  // Check if array exists
-  if(consolidator_->array_exists(array_name))
-    throw ExecutorException("[Executor] Cannot load array: "
-                            "array already exists.");
-
-  // Create from the CSV file the 0-th (i.e., first) array fragment
-  // (see class Consolidator for details about the array fragments)
-  ArraySchema fragment_schema = array_schema.clone(array_name + "_0_0");
-  loader_->load(filename, fragment_schema);
-
-  // Update the fragment information of the array at the consolidator
-  update_fragment_info(array_schema);
-}
-*/
 
 void Executor::load(const std::string& filename, 
                     const std::string& array_name) const {
@@ -316,7 +310,7 @@ void Executor::nearest_neighbors(const ArraySchema& array_schema,
     throw ExecutorException("[Executor] Cannot perform nearest neighbor search:"
                             " array does not exist.");
 
-  // Get fragment suffixes
+  // Get fragment names
   std::vector<std::string> fragment_suffixes = 
       get_fragment_suffixes(array_schema);
 
@@ -340,74 +334,72 @@ void Executor::nearest_neighbors(const ArraySchema& array_schema,
 }
 */
 
-// TODO remove
-/*
-void Executor::subarray(const ArraySchema& array_schema,
+void Executor::subarray(const std::string& array_name,
                         const Tile::Range& range,
                         const std::string& result_array_name) const {
+  // Check if the input array is defined
+  if(!storage_manager_->array_defined(array_name))
+    throw ExecutorException("Input array is not defined.");
+
+  // Check if the output array is defined
+  if(storage_manager_->array_defined(result_array_name))
+    throw ExecutorException("Result array is already defined.");
+
+  // Get fragment names
+  std::vector<std::string> fragment_names = 
+      get_all_fragment_names(array_name);
+
+  // Check if the array is empty
+  if(fragment_names.size() == 0)
+    throw ExecutorException("Input array is empty.");
+
+  // Open array
+  const StorageManager::ArrayDescriptor* ad =
+      storage_manager_->open_array(array_name, 
+                                   fragment_names,
+                                   StorageManager::READ);
   // For easy reference
-  const std::string& array_name = array_schema.array_name();
+  const ArraySchema& array_schema = *(ad->array_schema()); 
 
-  // Check if array exists
-  if(!consolidator_->array_exists(array_name))
-    throw ExecutorException("[Executor] Cannot perform subarray: "
-                            "array does not exist.");
-
-  // Get fragment suffixes
-  std::vector<std::string> fragment_suffixes = 
-      get_fragment_suffixes(array_schema);
-
-  // Dispatch query to query processor
-  if(fragment_suffixes.size() == 1)  {  // Single fragment
-    const StorageManager::FragmentDescriptor* fd = 
-        storage_manager_->open_fragment(array_name + std::string("_")  
-                                                + fragment_suffixes[0]);
-    query_processor_->subarray(fd, range, result_array_name + "_0_0");
-    storage_manager_->close_fragment(fd);
-  } else { // Multiple fragments 
-    std::vector<const StorageManager::FragmentDescriptor*> fd;
-    for(unsigned int i=0; i<fragment_suffixes.size(); ++i) 
-      fd.push_back(storage_manager_->open_fragment(
-                       array_name + std::string("_") +
-                       fragment_suffixes[i]));
-    query_processor_->subarray(fd, range, result_array_name + "_0_0");
-    for(unsigned int i=0; i<fragment_suffixes.size(); ++i) 
-      storage_manager_->close_fragment(fd[i]);
+  // Check soundness of range
+  if(range.size() != 2*array_schema.dim_num()) {
+    storage_manager_->close_array(ad);
+    throw ExecutorException("Range does not match array dimensionality.");
   }
 
+  // Define the result array
+  ArraySchema result_array_schema = array_schema.clone(result_array_name);
+  storage_manager_->define_array(result_array_schema);
+
+  // Create the result array
+  const StorageManager::FragmentDescriptor* result_fd = 
+      storage_manager_->open_fragment(&result_array_schema,  "0_0", 
+                                      StorageManager::CREATE);
+
+  // Dispatch query to query processor
+  try {
+    if(fragment_names.size() == 1)  {  // Single fragment
+        const StorageManager::FragmentDescriptor* fd = ad->fd()[0]; 
+        query_processor_->subarray(fd, range, result_fd);
+    }
+    else { // Multiple fragments 
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd = 
+          ad->fd();
+      query_processor_->subarray(fd, range, result_fd);
+    }
+  } catch(QueryProcessorException& qe) {
+    storage_manager_->delete_fragment(result_array_name, "0_0");
+    storage_manager_->close_array(ad);
+    throw ExecutorException(qe.what());
+  }
+
+  // Clean up
+  storage_manager_->close_fragment(result_fd);
+  storage_manager_->close_array(ad);
+
   // Update the fragment information of result array at the consolidator
-  ArraySchema result_array_schema = 
-      array_schema.clone(result_array_name);
-  update_fragment_info(result_array_schema);
+  update_fragment_info(result_array_name);
 }
-*/
-
-//TODO remove
-/*
-void Executor::update(const std::string& filename, 
-                      const ArraySchema& array_schema) const {
-  // For easy reference
-  const std::string& array_name = array_schema.array_name(); 
-
-  // Check with the consolidator if the array exists (the consolidator keeps
-  // book-keeping info about each existing array).
-  if(!consolidator_->array_exists(array_name))
-    throw ExecutorException("[Executor] Cannot update array: "
-                            "array does not exist.");
-
-  // Create from the CSV file the n-th array fragment
-  // (see class Consolidator for details about the array fragments)
-  const Consolidator::ArrayDescriptor* ad = 
-      consolidator_->open_array(array_schema);
-   std::string fragment_name = consolidator_->get_next_fragment_name(ad);
-  ArraySchema fragment_schema = array_schema.clone(fragment_name);
-  loader_->load(filename, fragment_schema);
-
-  // Update the fragment information of the array at the consolidator
-  consolidator_->add_fragment(ad);  
-  consolidator_->close_array(ad);
-}
-*/
 
 void Executor::update(const std::string& filename, 
                       const std::string& array_name) const {
@@ -426,17 +418,18 @@ void Executor::update(const std::string& filename,
 
   // Get fragment name
   const Consolidator::ArrayDescriptor* ad = 
-      consolidator_->open_array(array_name);
+      consolidator_->open_array(array_name, Consolidator::WRITE);
   std::string fragment_name = consolidator_->get_next_fragment_name(ad);
 
-  // Load the n-th fragment
+  // Load the new segment
   try {
     loader_->load(filename, array_name, fragment_name);
   } catch(LoaderException& le) {
     throw ExecutorException(le.what());
   }
 
-  // Update the fragment information of the array at the consolidator
+  // Update the fragment information of the array at the consolidator.
+  // This may trigger consolidation.
   consolidator_->add_fragment(ad);  
   consolidator_->close_array(ad);
 }
@@ -456,21 +449,16 @@ void Executor::create_workspace() const {
   }
 }
 
-// TODO remove
-
-/*
-std::vector<std::string> Executor::get_fragment_suffixes(
-    const ArraySchema& array_schema) const {
+std::vector<std::string> Executor::get_all_fragment_names(
+    const std::string& array_name) const {
   const Consolidator::ArrayDescriptor* ad = 
-      consolidator_->open_array(array_schema);
-  std::vector<std::string> fragment_suffixes = 
+      consolidator_->open_array(array_name, Consolidator::READ);
+  std::vector<std::string> fragment_names = 
       consolidator_->get_all_fragment_names(ad);  
-  assert(fragment_suffixes.size() > 0);
   consolidator_->close_array(ad);
 
-  return fragment_suffixes;
+  return fragment_names;
 }
-*/
 
 bool Executor::path_exists(const std::string& path) const {
   struct stat st;
@@ -496,7 +484,7 @@ void Executor::set_workspace(const std::string& path) {
 
 void Executor::update_fragment_info(const std::string& array_name) const {
   const Consolidator::ArrayDescriptor* ad = 
-      consolidator_->open_array(array_name);
+      consolidator_->open_array(array_name, Consolidator::WRITE);
   consolidator_->add_fragment(ad);  
   consolidator_->close_array(ad);
 }

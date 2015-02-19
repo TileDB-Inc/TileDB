@@ -1,13 +1,13 @@
 #!/bin/bash
 
-echo 'Executing load for IREG...'
+echo 'Executing clear_array for IREG...'
 ~/stavrospapadopoulos/TileDB/tiledb/bin/tiledb \
- -q load \
+ -q clear_array \
  -w ~/stavrospapadopoulos/TileDB/data/example/ \
- -A IREG -f ~/stavrospapadopoulos/TileDB/data/test_A_0.csv
+ -A IREG
 
-echo 'Executing load for REG...'
+echo 'Executing clear_array for REG...'
 ~/stavrospapadopoulos/TileDB/tiledb/bin/tiledb \
- -q load \
+ -q clear_array \
  -w ~/stavrospapadopoulos/TileDB/data/example/ \
- -A REG -f ~/stavrospapadopoulos/TileDB/data/test_A_0.csv
+ -A REG

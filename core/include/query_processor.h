@@ -88,7 +88,7 @@ class QueryProcessor {
    * coordinates are written first, and then the attribute values,
    * following the order as defined in the schema of the array.
    */
-  void export_to_CSV(const StorageManager::FragmentDescriptor* fd,
+  void export_to_csv(const StorageManager::FragmentDescriptor* fd,
                      const std::string& filename) const;
   /** 
    * Exports an array to a CSV file. Each line in the CSV file represents
@@ -97,7 +97,7 @@ class QueryProcessor {
    * following the order as defined in the schema of the array. This function
    * operates on multiple array fragments.
    */
-  void export_to_CSV(
+  void export_to_csv(
       const std::vector<const StorageManager::FragmentDescriptor*>& fd,
       const std::string& filename) const;
   /** 
@@ -129,7 +129,7 @@ class QueryProcessor {
    */
   void join(const StorageManager::FragmentDescriptor* fd_A,
             const StorageManager::FragmentDescriptor* fd_B,
-            const std::string& result_array_name) const;
+            const StorageManager::FragmentDescriptor* result_fd) const;
   /** 
    * Joins the two input arrays (say, A and B). The result contains a cell only
    * if both the corresponding cells in A and B are non-empty. The input arrays
@@ -139,7 +139,7 @@ class QueryProcessor {
    */
   void join(const std::vector<const StorageManager::FragmentDescriptor*>& fd_A,
             const std::vector<const StorageManager::FragmentDescriptor*>& fd_B,
-            const std::string& result_array_name) const;
+            const StorageManager::FragmentDescriptor* result_fd) const;
   /** 
    * Returns the k nearest neighbors from query point q. The results (along with
    * all their attribute values) are stored in a new array. The distance metric
@@ -156,7 +156,7 @@ class QueryProcessor {
    */
   void subarray(const StorageManager::FragmentDescriptor* fd,
                 const Tile::Range& range,
-                const std::string& result_array_name) const;
+                const StorageManager::FragmentDescriptor* result_fd) const;
   /** 
    * A subarray query creates a new array from the input array descriptor, 
    * containing only the cells whose coordinates fall into the input range. 
@@ -166,7 +166,7 @@ class QueryProcessor {
   void subarray(
       const std::vector<const StorageManager::FragmentDescriptor*>& fd,
       const Tile::Range& range,
-      const std::string& result_array_name) const;
+      const StorageManager::FragmentDescriptor* result_fd) const;
 
  private:
   // PRIVATE ATTRIBUTES
@@ -586,9 +586,10 @@ class QueryProcessor {
    */
   bool is_null(const Tile::const_iterator& cell_it) const;
   /** Implements QueryProcessor::join for arrays with irregular tiles. */
-  void join_irregular(const StorageManager::FragmentDescriptor* fd_A,
-                      const StorageManager::FragmentDescriptor* fd_B,
-                      const ArraySchema& array_schema_C) const;
+  void join_irregular(
+      const StorageManager::FragmentDescriptor* fd_A,
+      const StorageManager::FragmentDescriptor* fd_B,
+      const StorageManager::FragmentDescriptor* fd_C) const;
   /** 
    * Implements QueryProcessor::join for arrays with irregular tiles. This
    * function operates on multiple fragments.
@@ -596,11 +597,12 @@ class QueryProcessor {
   void join_irregular(
       const std::vector<const StorageManager::FragmentDescriptor*>& fd_A,
       const std::vector<const StorageManager::FragmentDescriptor*>& fd_B,
-      const ArraySchema& array_schema_C) const;
+      const StorageManager::FragmentDescriptor* fd_C) const;
   /** Implements QueryProcessor::join for arrays with regular tiles. */
-  void join_regular(const StorageManager::FragmentDescriptor* fd_A,
-                    const StorageManager::FragmentDescriptor* fd_B,
-                    const ArraySchema& array_schema_C) const;
+  void join_regular(
+      const StorageManager::FragmentDescriptor* fd_A,
+      const StorageManager::FragmentDescriptor* fd_B,
+      const StorageManager::FragmentDescriptor* fd_C) const;
   /** 
    * Implements QueryProcessor::join for arrays with regular tiles. This
    * function operates on multiple fragments.
@@ -608,7 +610,7 @@ class QueryProcessor {
   void join_regular(
       const std::vector<const StorageManager::FragmentDescriptor*>& fd_A,
       const std::vector<const StorageManager::FragmentDescriptor*>& fd_B,
-      const ArraySchema& array_schema_C) const;
+      const StorageManager::FragmentDescriptor* fd_C) const;
   /** 
    * Joins two irregular tiles (from A and B respectively) and stores 
    * the result in the tiles of C. 
@@ -707,25 +709,29 @@ class QueryProcessor {
   /** Implements QueryProcessor::subarray for arrays with irregular tiles. */
   void subarray_irregular(
       const StorageManager::FragmentDescriptor* fd,
-      const Tile::Range& range, const std::string& result_array_name) const;
+      const Tile::Range& range, 
+      const StorageManager::FragmentDescriptor* result_fd) const;
   /** 
    * Implements QueryProcessor::subarray for arrays with irregular tiles. This
    * function operates on multiple array fragments.
    */
   void subarray_irregular(
       const std::vector<const StorageManager::FragmentDescriptor*>& fd,
-      const Tile::Range& range, const std::string& result_array_name) const;
+      const Tile::Range& range, 
+      const StorageManager::FragmentDescriptor* result_fd) const;
   /** Implements QueryProcessor::subarray for arrays with regular tiles. */
   void subarray_regular(
       const StorageManager::FragmentDescriptor* fd,
-      const Tile::Range& range, const std::string& result_array_name) const;
+      const Tile::Range& range, 
+      const StorageManager::FragmentDescriptor* result_fd) const;
   /** 
    * Implements QueryProcessor::subarray for arrays with regular tiles. This
    * function operates on multiple array fragments.
    */
   void subarray_regular(
       const std::vector<const StorageManager::FragmentDescriptor*>& fd,
-      const Tile::Range& range, const std::string& result_array_name) const;
+      const Tile::Range& range, 
+      const StorageManager::FragmentDescriptor* result_fd) const;
 };
 
 /** This exception is thrown by QueryProcessor. */

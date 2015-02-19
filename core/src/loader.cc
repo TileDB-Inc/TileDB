@@ -54,70 +54,17 @@ Loader::Loader(const std::string& workspace, StorageManager& storage_manager)
 ******************* LOADING FUNCTIONS *****************
 ******************************************************/
 
-// TODO: remove
-void Loader::load(const std::string& filename, 
-                  const ArraySchema& array_schema) const {
-  // Open array in CREATE mode
-  StorageManager::FragmentDescriptor* fd = 
-      storage_manager_.open_fragment(array_schema);
-
-  // Prepare filenames
-  std::string to_be_sorted_filename = filename;
-  if(to_be_sorted_filename[0] == '~') 
-    to_be_sorted_filename = std::string(getenv("HOME")) +
-        to_be_sorted_filename.substr(1, workspace_.size()-1);
-  assert(check_on_load(to_be_sorted_filename));
-  std::string sorted_filename = workspace_ + "/sorted_" +
-                                array_schema.array_name() + ".csv";
-  std::string injected_filename("");
-  
-  // For easy reference
-  bool regular = array_schema.has_regular_tiles();
-  ArraySchema::Order order = array_schema.order();
-  
-  // Inject ids if needed
-  if(regular || order == ArraySchema::HILBERT) {
-    injected_filename = workspace_ + "/injected_" +
-                        array_schema.array_name() + ".csv";
-    try {
-      inject_ids_to_csv_file(filename, injected_filename, array_schema); 
-    } catch(LoaderException& le) {
-      remove(injected_filename.c_str());
-      storage_manager_.delete_array(array_schema.array_name());
-      throw LoaderException("[Loader] Cannot load CSV file '" + filename + 
-                            "'.\n " + le.what());
-    }
-    to_be_sorted_filename = injected_filename;
-  }
-
-  // Sort CSV
-  sort_csv_file(to_be_sorted_filename, sorted_filename, array_schema);
-  remove(injected_filename.c_str());
-
-  // Make tiles
-  try {
-    if(regular)
-      make_tiles_regular(sorted_filename, fd);
-    else
-      make_tiles_irregular(sorted_filename, fd);
-  } catch(LoaderException& le) {
-    remove(sorted_filename.c_str());
-    storage_manager_.delete_array(array_schema.array_name());
-    throw LoaderException("[Loader] Cannot load CSV file '" + filename + 
-                          "'.\n " + le.what());
-  } 
-
-  // Clean up and close array 
-  remove(sorted_filename.c_str());
-  storage_manager_.close_fragment(fd);
-}
-
 void Loader::load(const std::string& filename, 
                   const std::string& array_name, 
                   const std::string& fragment_name) const {
+  // Load array schema
+  const ArraySchema* array_schema =
+      storage_manager_.load_array_schema(array_name);
+
   // Open array in CREATE mode
   StorageManager::FragmentDescriptor* fd = 
-      storage_manager_.open_fragment(array_name, fragment_name, 
+      storage_manager_.open_fragment(array_schema, 
+                                     fragment_name, 
                                      StorageManager::CREATE);
 
   // Prepare filenames
@@ -131,16 +78,15 @@ void Loader::load(const std::string& filename,
   std::string injected_filename("");
   
   // For easy reference
-  const ArraySchema& array_schema = fd->array_schema(); // TODO change array schema
-  bool regular = array_schema.has_regular_tiles();
-  ArraySchema::Order order = array_schema.order();
+  bool regular = array_schema->has_regular_tiles();
+  ArraySchema::Order order = array_schema->order();
   
   // Inject ids if needed
   if(regular || order == ArraySchema::HILBERT) {
     injected_filename = workspace_ + "/injected_" +
                         array_name + "_" + fragment_name + ".csv";
     try {
-      inject_ids_to_csv_file(filename, injected_filename, array_schema); 
+      inject_ids_to_csv_file(filename, injected_filename, *array_schema); 
     } catch(LoaderException& le) {
       remove(injected_filename.c_str());
       storage_manager_.delete_fragment(array_name, fragment_name);
@@ -151,15 +97,15 @@ void Loader::load(const std::string& filename,
   }
 
   // Sort CSV
-  sort_csv_file(to_be_sorted_filename, sorted_filename, array_schema);
+  sort_csv_file(to_be_sorted_filename, sorted_filename, *array_schema);
   remove(injected_filename.c_str());
 
   // Make tiles
   try {
     if(regular)
-      make_tiles_regular(sorted_filename, fd); // TODO
+      make_tiles_regular(sorted_filename, fd);
     else
-      make_tiles_irregular(sorted_filename, fd); // TODO
+      make_tiles_irregular(sorted_filename, fd);
   } catch(LoaderException& le) {
     remove(sorted_filename.c_str());
     storage_manager_.delete_fragment(array_name, fragment_name); 
@@ -170,6 +116,7 @@ void Loader::load(const std::string& filename,
   // Clean up and close array 
   remove(sorted_filename.c_str());
   storage_manager_.close_fragment(fd); 
+  delete array_schema;
 }
 
 /******************************************************
@@ -260,7 +207,7 @@ void Loader::make_tiles_irregular(
     const std::string& filename,
     const StorageManager::FragmentDescriptor* fd) const {
   // For easy reference
-  const ArraySchema& array_schema = fd->array_schema(); // TODO change array_schema
+  const ArraySchema& array_schema = *fd->array_schema();
   ArraySchema::Order order = array_schema.order();
   uint64_t capacity = array_schema.capacity();
  
@@ -307,7 +254,7 @@ void Loader::make_tiles_regular(
     const std::string& filename, 
     const StorageManager::FragmentDescriptor* fd) const {
   // For easy reference
-  const ArraySchema& array_schema = fd->array_schema();
+  const ArraySchema& array_schema = *fd->array_schema();
 
   // Initialization
   CSVFile csv_file(filename, CSVFile::READ);
@@ -427,8 +374,7 @@ inline
 void Loader::store_tiles(const StorageManager::FragmentDescriptor* fd,
                          Tile** tiles) const {
   // For easy reference
-  const ArraySchema& array_schema = fd->array_schema(); 
-  unsigned int attribute_num = array_schema.attribute_num();
+  unsigned int attribute_num = fd->array_schema()->attribute_num();
 
   // Append attribute tiles
   for(unsigned int i=0; i<=attribute_num; i++)

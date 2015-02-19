@@ -55,18 +55,20 @@ class Executor {
   ~Executor();
 
   // QUERIES
+  /** Deletes all the fragments of the array. */
+  void clear_array(const std::string& array_name) const;
   /** Defines an array (stores its array schema at the storage manager. */
   void define_array(const ArraySchema& array_schema) const;
   /** Deletes an array. */
-  void delete_array(const ArraySchema& array_schema) const;
+  void delete_array(const std::string& array_name) const;
   /** 
    * Exports an array to a CSV file. Each line in the CSV file represents
    * a logical cell comprised of coordinates and attribute values. The 
    * coordinates are written first, and then the attribute values,
    * following the order as defined in the schema of the array.
    */
-  void export_to_CSV(const std::string& filename, 
-                     const ArraySchema& array_schema) const;
+  void export_to_csv(const std::string& array_name,
+                     const std::string& filename) const;
   /** Returns true if the input file exists. */
   bool file_exists(const std::string& filename) const;
   /** 
@@ -85,11 +87,9 @@ class Executor {
    * see ArraySchema::create_join_result_schema to see the schema of the
    * output array.
    */
-  void join(const ArraySchema& array_schema_A,
-            const ArraySchema& array_schema_B,
+  void join(const std::string& array_name_A,
+            const std::string& array_name_B,
             const std::string& result_array_name) const;
-  /** Loads a CSV file into an array with the input schema. */ //TODO: remove
-  void load(const std::string& filename, const ArraySchema& array_schema) const;
   /** Loads a CSV file into an array. */
   void load(const std::string& filename, const std::string& array_name) const;
   /** 
@@ -106,17 +106,12 @@ class Executor {
    * containing only the cells whose coordinates fall into the input range. 
    * The new array will have the input result name.
    */
-  void subarray(const ArraySchema& array_schema,
+  void subarray(const std::string& array_name,
                 const Tile::Range& range,
                 const std::string& result_array_name) const;
-  /** Updates an array with the data in the input CSV file. */ // TODO remove
-  void update(const std::string& filename, 
-              const ArraySchema& array_schema) const;
   /** Updates an array with the data in the input CSV file. */
   void update(const std::string& filename, 
               const std::string& array_name) const;
-
-
 
  private:
   // PRIVATE ATTRIBUTES
@@ -134,9 +129,9 @@ class Executor {
   // PRIVATE METHODS
   /** Creates the workspace folder. */
   void create_workspace() const;
-  /** Returns the fragments suffixes of an array. */
-  std::vector<std::string> get_fragment_suffixes(
-      const ArraySchema& array_schema) const;
+  /** Returns the names of all fragments in the array. */
+  std::vector<std::string> get_all_fragment_names(
+      const std::string& array_name) const;
   /** Returns true if the input path is an existing directory. */
   bool path_exists(const std::string& path) const;
   /** Simply sets the workspace. */

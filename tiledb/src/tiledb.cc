@@ -39,24 +39,12 @@
 #include "executor.h"
 
 void print_options() {
-  std::cout << "\t" << "-q or --query\n";
-  std::cout << "\t\t" << "The query to be sent to te engine. Examples:\n";
-  std::cout << "\t\t" << "define_array, load, subarray, filter, etc. More\n";
-  std::cout << "\t\t" << "information on the syntax of each query below.\n";
-  std::cout << "\n";
-
-  std::cout << "\t" << "-w or --workspace\n";
-  std::cout << "\t\t" << "The folder in which the array data are created.\n";
-  std::cout << "\n";
-
   std::cout << "\t" << "-A or --array-name\n";
   std::cout << "\t\t" << "An array name.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-o or --order\n";
-  std::cout << "\t\t" << "The cell (tile) order in the case of irregular\n";
-  std::cout << "\t\t" << "(resp. regular) tiles. The following orders are\n";
-  std::cout << "\t\t" << "supported: hilbert, row-major, column-major.\n";
+  std::cout << "\t" << "-a or --attribute-name\n";
+  std::cout << "\t\t" << "An attribute name.\n";
   std::cout << "\n";
 
   std::cout << "\t" << "-c or --capacity\n";
@@ -67,13 +55,39 @@ void print_options() {
   std::cout << "\t\t" << "in the number of maximum cells.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-a or --attribute-name\n";
-  std::cout << "\t\t" << "An attribute name.\n";
+  std::cout << "\t" << "-D or --dim-domain-bound\n";
+  std::cout << "\t\t" << "A lower or upper bound for a dimension domain.\n";
+  std::cout << "\t\t" << "See define_array for more details.\n";
   std::cout << "\n";
 
   std::cout << "\t" << "-d or --dim-name\n";
   std::cout << "\t\t" << "A dimension name. \n";
   std::cout << "\n";
+
+  std::cout << "\t" << "-e or --tile-extent\n";
+  std::cout << "\t\t" << "A tile extent across some dimension.\n";
+  std::cout << "\t\t" << "See define_array for more details.\n";
+  std::cout << "\n";
+
+  std::cout << "\t" << "-f or --filename\n";
+  std::cout << "\t\t" << "A file name.\n";
+  std::cout << "\n";
+
+  std::cout << "\t" << "-o or --order\n";
+  std::cout << "\t\t" << "The cell (tile) order in the case of irregular\n";
+  std::cout << "\t\t" << "(resp. regular) tiles. The following orders are\n";
+  std::cout << "\t\t" << "supported: hilbert, row-major, column-major.\n";
+  std::cout << "\n";
+
+  std::cout << "\t" << "-q or --query\n";
+  std::cout << "\t\t" << "The query to be sent to te engine. Examples:\n";
+  std::cout << "\t\t" << "define_array, load, subarray, filter, etc. More\n";
+  std::cout << "\t\t" << "information on the syntax of each query below.\n";
+  std::cout << "\n";
+
+  std::cout << "\t" << "-r or --range-bound\n";
+  std::cout << "\t\t" << "A lower or upper bound for a range across some\n";
+  std::cout << "\t\t" << "dimmension. See subarray for more details.\n";
 
   std::cout << "\t" << "-t or --type\n";
   std::cout << "\t\t" << "A data type. Supported attribute types:\n";
@@ -82,19 +96,21 @@ void print_options() {
   std::cout << "\t\t" << "int, int64_t, float, double.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-D or --dim-domain\n";
-  std::cout << "\t\t" << "A lower or upper bound for a dimension domain.\n";
-  std::cout << "\t\t" << "See define_array for more details.\n";
+  std::cout << "\t" << "-w or --workspace\n";
+  std::cout << "\t\t" << "The folder in which the array data are created.\n";
   std::cout << "\n";
+}
 
-  std::cout << "\t" << "-e or --tile-extent\n";
-  std::cout << "\t\t" << "A tile extent across some dimension.\n";
-  std::cout << "\t\t" << "See define_array for more details.\n";
-  std::cout << "\n";
-
-  std::cout << "\t" << "-r or --range\n";
-  std::cout << "\t\t" << "A lower or upper bound for a range across some\n";
-  std::cout << "\t\t" << "dimmension. See subarray for more details.\n";
+void print_clear_array() {
+  std::cout << "\t" << "clear_array\n";
+  std::cout << "\t\t" << "Deletes all the fragments of an array. The array\n";
+  std::cout << "\t\t" << "remains defined after this command. Syntax:\n\n";
+  std::cout << "\t\t" << "tiledb -q clear_array \n";
+  std::cout << "\t\t" << "       { -A array_name, -w workspace            }\n";
+  std::cout << "\t\t" << "\n";
+  std::cout << "\t\t" << "The workspace is the folder where the array data\n";
+  std::cout << "\t\t" << "are stored. A single existing workspace, and array\n";
+  std::cout << "\t\t" << "name must be given.\n";
 }
 
 void print_define_array() {
@@ -143,6 +159,61 @@ void print_define_array() {
   std::cout << "\t\t" << "must not exceed its corresponding domain range.\n";
 }
 
+void print_delete_array() {
+  std::cout << "\t" << "delete_array\n";
+  std::cout << "\t\t" << "Deletes completely the array (fragments and\n";
+  std::cout << "\t\t" << "schema). Contrary to clear_array, the array\n";
+  std::cout << "\t\t" << "does not remain defined after the command is\n";
+  std::cout << "\t\t" << "executed. Syntax:\n\n";
+  std::cout << "\t\t" << "tiledb -q delete_array \n";
+  std::cout << "\t\t" << "       { -A array_name, -w workspace            }\n";
+  std::cout << "\t\t" << "\n";
+  std::cout << "\t\t" << "The workspace is the folder where the array data\n";
+  std::cout << "\t\t" << "are stored. A single existing workspace, and array\n";
+  std::cout << "\t\t" << "name must be given.\n";
+}
+
+void print_export_to_csv() {
+  std::cout << "\t" << "export_to_csv\n";
+  std::cout << "\t\t" << "Exports an array to a CSV file. Syntax:\n\n";
+  std::cout << "\t\t" << "tiledb -q export_to_csv \n";
+  std::cout << "\t\t" << "       { -A array_name, -w workspace            }\n";
+  std::cout << "\t\t" << "\n";
+  std::cout << "\t\t" << "The workspace is the folder where the array data\n";
+  std::cout << "\t\t" << "are stored. A single existing workspace, and array\n";
+  std::cout << "\t\t" << "name must be given.\n";
+}
+
+void print_join() {
+  std::cout << "\t" << "join\n";
+  std::cout << "\t\t" << "Merges two arrays into a single one, which\n";
+  std::cout << "\t\t" << "contains the union of their attribute values.\n";
+  std::cout << "\t\t" << "Specifically, the input arrays must be join-\n";
+  std::cout << "\t\t" << "compatible: (i) They must have the same tiling\n";
+  std::cout << "\t\t" << "(regular/irregular) and the same tile/cell order.\n";
+  std::cout << "\t\t" << "(ii) If the they have regular tiles, they must\n";
+  std::cout << "\t\t" << "have the same tile extents across every dimension.\n";
+  std::cout << "\t\t" << "(iii) They must have the same number, type and\n";
+  std::cout << "\t\t" << "domain of dimensions.\n";
+  std::cout << "\t\t" << "\n";
+  std::cout << "\t\t" << "The resulting array has: (i) The same dimensions \n";
+  std::cout << "\t\t" << "as the inputs, whose names are taken from the\n";
+  std::cout << "\t\t" << "first input array. (ii) The union of the\n";
+  std::cout << "\t\t" << "attributes of the input arrays, with the \n";
+  std::cout << "\t\t" << "attributes of the first input array preceding\n";
+  std::cout << "\t\t" << "those of the second. (iii) A cell if and only if\n";
+  std::cout << "\t\t" << "there is a non-empty cell on the same coordinates\n";
+  std::cout << "\t\t" << "in both the input arrays. Syntax:\n\n";
+  std::cout << "\t\t" << "tiledb -q clear_array \n";
+  std::cout << "\t\t" << "       { -A array_name_1, -A array_name_2        }\n";
+  std::cout << "\t\t" << "       { -R result_name, -w workspace            }\n";
+  std::cout << "\t\t" << "\n";
+  std::cout << "\t\t" << "The workspace is the folder where the array data\n";
+  std::cout << "\t\t" << "are stored. A single existing workspace must be\n";
+  std::cout << "\t\t" << "given, and exactly two array names. The arrays \n";
+  std::cout << "\t\t" << "must be already defined.\n";
+}
+
 void print_load() {
   std::cout << "\t" << "load\n";
   std::cout << "\t\t" << "Loads a CSV file into an array. The CSV file must\n";
@@ -157,10 +228,27 @@ void print_load() {
   std::cout << "\t\t" << "       { -A array_name, -w workspace,           }\n";
   std::cout << "\t\t" << "       { -f filename                            }\n";
   std::cout << "\t\t" << "\n";
-  std::cout << "\t\t" << "The workspace is the folder where the data of the\n";
-  std::cout << "\t\t" << "array stored. A single existing workspace, array\n";
+  std::cout << "\t\t" << "The workspace is the folder where the array data\n";
+  std::cout << "\t\t" << "are stored. A single existing workspace, array\n";
   std::cout << "\t\t" << "name and file name must be given. You may include \n";
   std::cout << "\t\t" << "the file name into single quotes (').\n";
+}
+
+void print_subarray() {
+  std::cout << "\t" << "subarray\n";
+  std::cout << "\t\t" << "Returns an array that has the same schema as the\n";
+  std::cout << "\t\t" << "input array, and contains only the cells that lie\n";
+  std::cout << "\t\t" << "within the input range. Syntax:\n\n";
+  std::cout << "\t\t" << "tiledb -q subarray \n";
+  std::cout << "\t\t" << "       { -A array_name, -w workspace            }\n";
+  std::cout << "\t\t" << "       { -r range_bound                         }\n";
+  std::cout << "\t\t" << "       { -R result_name                         }\n";
+  std::cout << "\t\t" << "\n";
+  std::cout << "\t\t" << "The workspace is the folder where the array data\n";
+  std::cout << "\t\t" << "are stored. A single existing workspace, and array\n";
+  std::cout << "\t\t" << "name must be given. There must be a lower and an\n";
+  std::cout << "\t\t" << "upper range bound across every dimension (given\n";
+  std::cout << "\t\t" << "in the same order as the dimensions were defined).\n";
 }
 
 void print_update() {
@@ -185,8 +273,8 @@ void print_update() {
   std::cout << "\t\t" << "       { -A array_name, -w workspace,           }\n";
   std::cout << "\t\t" << "       { -f filename                            }\n";
   std::cout << "\t\t" << "\n";
-  std::cout << "\t\t" << "The workspace is the folder where the data of the\n";
-  std::cout << "\t\t" << "array stored. A single existing workspace, array\n";
+  std::cout << "\t\t" << "The workspace is the folder where the array data\n";
+  std::cout << "\t\t" << "are stored. A single existing workspace, array\n";
   std::cout << "\t\t" << "name and file name must be given. You may include \n";
   std::cout << "\t\t" << "the file name into single quotes (').\n";
 }
@@ -219,9 +307,19 @@ void print_user_manual() {
   std::cout << "\t\t" << "braces can be included in any order. Options\n";
   std::cout << "\t\t" << "outside brackets and braces must be given in\n";
   std::cout << "\t\t" << "the order they appear.\n\n";
+  print_clear_array();
+  std::cout << "\t\t" << "\n";
   print_define_array();
   std::cout << "\t\t" << "\n";
+  print_delete_array();
+  std::cout << "\t\t" << "\n";
+  print_export_to_csv();
+  std::cout << "\t\t" << "\n";
+  print_join();
+  std::cout << "\t\t" << "\n";
   print_load();
+  std::cout << "\t\t" << "\n";
+  print_subarray();
   std::cout << "\t\t" << "\n";
   print_update();
   std::cout << "\t\t" << "\n";
@@ -236,10 +334,20 @@ void process_help(const CommandLine& cl, int argc, char** argv) {
     if(argc == 2) {
       print_user_manual();
     } else if(argc == 3) {
-      if(!strcmp(argv[2],"define_array")) { 
+      if(!strcmp(argv[2],"clear_array")) { 
+        print_clear_array();
+      } else if(!strcmp(argv[2],"define_array")) { 
         print_define_array();
+      } else if(!strcmp(argv[2],"delete_array")) { 
+        print_delete_array();
+      } else if(!strcmp(argv[2],"export_to_csv")) { 
+        print_export_to_csv();
+      } else if(!strcmp(argv[2],"join")) { 
+        print_join();
       } else if(!strcmp(argv[2],"load")) { 
         print_load();
+      } else if(!strcmp(argv[2],"subarray")) { 
+        print_subarray();
       } else if(!strcmp(argv[2],"update")) { 
         print_update();
       } else {
@@ -264,6 +372,16 @@ void process_queries(const CommandLine& cl) {
     std::cerr << "[TileDB::fatal_error] Query not provided." 
               << " Type 'tiledb help' to see the TileDB User Manual.\n";
     exit(-1);
+  } else if(!strcmp(cl.query_, "clear_array")) {
+    // CLEAR_ARRAY
+    parser.parse_clear_array(cl);
+    try {
+      Executor executor(cl.workspace_);
+      executor.clear_array(cl.array_names_[0]);
+    } catch(ExecutorException& ee) {
+      std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
+      exit(-1);
+    }
   } else if(!strcmp(cl.query_, "define_array")) {
     // DEFINE_ARRAY
     ArraySchema array_schema = parser.parse_define_array(cl);
@@ -274,12 +392,52 @@ void process_queries(const CommandLine& cl) {
       std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
       exit(-1);
     }
+  } else if(!strcmp(cl.query_, "delete_array")) {
+    // DELETE_ARRAY
+    parser.parse_delete_array(cl);
+    try {
+      Executor executor(cl.workspace_);
+      executor.delete_array(cl.array_names_[0]);
+    } catch(ExecutorException& ee) {
+      std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
+      exit(-1);
+    }
+  } else if(!strcmp(cl.query_, "export_to_csv")) {
+    // EXPORT_TO_CSV
+    parser.parse_export_to_csv(cl);
+    try {
+      Executor executor(cl.workspace_);
+      executor.export_to_csv(cl.array_names_[0], cl.filename_);
+    } catch(ExecutorException& ee) {
+      std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
+      exit(-1);
+    }
+  } else if(!strcmp(cl.query_, "join")) {
+    // JOIN
+    parser.parse_join(cl);
+    try {
+      Executor executor(cl.workspace_);
+      executor.join(cl.array_names_[0], cl.array_names_[1], cl.result_name_);
+    } catch(ExecutorException& ee) {
+      std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
+      exit(-1);
+    }
   } else if(!strcmp(cl.query_, "load")) {
     // LOAD
     parser.parse_load(cl);
     try {
       Executor executor(cl.workspace_);
-      executor.load(cl.filename_, cl.array_name_);
+      executor.load(cl.filename_, cl.array_names_[0]);
+    } catch(ExecutorException& ee) {
+      std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
+      exit(-1);
+    }
+  } else if(!strcmp(cl.query_, "subarray")) {
+    // SUBARRAY
+    std::vector<double> range = parser.parse_subarray(cl);
+    try {
+      Executor executor(cl.workspace_);
+      executor.subarray(cl.array_names_[0], range, cl.result_name_);
     } catch(ExecutorException& ee) {
       std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
       exit(-1);
@@ -289,7 +447,7 @@ void process_queries(const CommandLine& cl) {
     parser.parse_update(cl);
     try {
       Executor executor(cl.workspace_);
-      executor.update(cl.filename_, cl.array_name_);
+      executor.update(cl.filename_, cl.array_names_[0]);
     } catch(ExecutorException& ee) {
       std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
       exit(-1);

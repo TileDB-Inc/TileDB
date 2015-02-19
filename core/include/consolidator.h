@@ -107,6 +107,11 @@ class Consolidator {
  public:
   // TYPE DEFINITIONS
   class ArrayInfo;
+  /** 
+   * An array can be opened in READ or WRITE mode. In WRITE mode, the fragment
+   * book-keeping info may be updated, whereas in READ mode it cannot.
+   */
+  enum Mode {READ, WRITE}; 
 
   /** Mnemonic: (vector of fragment names, result fragment name) */
   typedef std::pair<std::vector<std::string>, std::string> ConsolidationInfo;
@@ -119,6 +124,8 @@ class Consolidator {
 
   /** This struct groups consolidation book-keeping info about an array. */  
   struct ArrayInfo {
+    /** The array mode. */
+    Mode array_mode_;
     /** The array name. */
     std::string array_name_; 
     /** The fragment tree of the array. */
@@ -213,8 +220,9 @@ class Consolidator {
   /** Returns the next update sequence number. */
   uint64_t get_next_update_seq(const ArrayDescriptor* ad) const;
   /** It loads the book-keeping consolidation info for an array into memory. */
-  const ArrayDescriptor* open_array(const std::string& array_name);
-
+  const ArrayDescriptor* open_array(const std::string& array_name,
+                                    Mode mode);
+         
  private:
   // PRIVATE ATTRIBUTES
   /** Used in ArrayInfo and ArrayDescriptor for debugging purposes. */
@@ -254,22 +262,18 @@ class Consolidator {
   void append_cell(const Tile::const_iterator* cell_its,
                    Tile** tiles,
                    unsigned int attribute_num) const;
-  /**
-   * Returns true if the cell represents a deletion, i.e., when all its
-   * attribute values are NULL.
-   */
-  bool is_null(const Tile::const_iterator& cell_it) const;
-  /**  Consolidates the input fragments fir the case of irregular tiles. */
-  void consolidate_irregular(const std::vector<std::string>& fragment_names,
-                             const std::string& result_fragment_name,
-                             const ArraySchema& array_schema) const;
-  /** 
-   * Consolidates the input fragments (described by a vector of suffixes) for
-   * the case of regular tiles. 
-   */  
-  void consolidate_regular(const std::vector<std::string>& fragment_names,
-                           const std::string& result_fragment_name,
-                           const ArraySchema& array_schema) const;
+  /** Consolidates the input fragments. */
+  void consolidate(const std::string& array_name,
+                   const std::vector<std::string>& fragment_names,
+                   const std::string& result_fragment_name) const;
+  /**  Consolidates the input fragments for the case of irregular tiles. */
+  void consolidate_irregular(
+      const StorageManager::ArrayDescriptor* ad,
+      const std::string& result_fragment_name) const;
+  /**  Consolidates the input fragments for the case of regular tiles. */
+  void consolidate_regular(
+      const StorageManager::ArrayDescriptor* ad,
+      const std::string& result_fragment_name) const;
   /** Creates the workspace folder. */
   void create_workspace() const;
   /** Flushes the fragment tree of an array to the disk. */
@@ -295,6 +299,11 @@ class Consolidator {
   void initialize_tile_its(const StorageManager::FragmentDescriptor* fd,
                            StorageManager::const_iterator* tile_its,
                            StorageManager::const_iterator& tile_it_end) const;
+  /**
+   * Returns true if the cell represents a deletion, i.e., when all its
+   * attribute values are NULL.
+   */
+  bool is_null(const Tile::const_iterator& cell_it) const;
   /** 
    * Loads the fragment tree of an array from the disk, and returns the next
    * sequnce number to be assigned to a new fragment. 
@@ -312,7 +321,7 @@ class Consolidator {
   /** Simply sets the workspace. */
   void set_workspace(const std::string& path);
   /** Sends the input tiles to the storage manager. */
-  void store_tiles(const StorageManager::FragmentDescriptor* fd, 
+  void store_tiles(const StorageManager::FragmentDescriptor* fd,
                    Tile** tiles) const;
 };
 

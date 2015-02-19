@@ -42,6 +42,32 @@
 ******************* PARSING METHODS *******************
 ******************************************************/
 
+void Parser::parse_clear_array(const CommandLine& cl) const {
+  // Check if correct arguments have been ginen
+  if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Workspace not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_ARRAY_NAME_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Array name not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  // Check for redundant arguments
+  if(cl.array_names_.size() > 1) {
+    std::cerr << "[TileDB::fatal_error] More than one array names provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ | PS_CLEAR_ARRAY_BITMAP) != PS_CLEAR_ARRAY_BITMAP) {
+    std::cerr << "[TileDB::fatal_error] Redundant arguments provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+}
+
 ArraySchema Parser::parse_define_array(const CommandLine& cl) const {
   // Check if correct arguments have been ginen
   if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
@@ -81,6 +107,11 @@ ArraySchema Parser::parse_define_array(const CommandLine& cl) const {
   }
 
   // Check for redundant arguments
+  if(cl.array_names_.size() > 1) {
+    std::cerr << "[TileDB::fatal_error] More than one array names provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
   if((cl.arg_bitmap_ | PS_DEFINE_ARRAY_BITMAP) != PS_DEFINE_ARRAY_BITMAP) {
     std::cerr << "[TileDB::fatal_error] Redundant arguments provided."
               << " Type 'tiledb help' to see the TileDB User Manual.\n";
@@ -88,6 +119,11 @@ ArraySchema Parser::parse_define_array(const CommandLine& cl) const {
   }
 
   // Check if capacity was given for the case of regular tiles
+  if(cl.array_names_.size() > 1) {
+    std::cerr << "[TileDB::fatal_error] More than one array names provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
   if(cl.capacity_ != NULL && cl.tile_extents_.size() != 0) {
     std::cerr << "[TileDB::fatal_error] Capacity applies only to irregular"
               << " tiles (tile extents should not be defined)."
@@ -96,7 +132,7 @@ ArraySchema Parser::parse_define_array(const CommandLine& cl) const {
   }
 
   // Prepare arguments for ArraySchema object creation and check soundness
-  std::string array_name = check_array_name(cl); 
+  check_array_names(cl); 
   std::vector<std::string> attribute_names = check_attribute_names(cl);
   std::vector<std::string> dim_names = check_dim_names(cl, attribute_names);
   std::vector<std::pair<double, double> > dim_domains = 
@@ -110,18 +146,107 @@ ArraySchema Parser::parse_define_array(const CommandLine& cl) const {
   // Return array schema
   if(capacity != 0) {
     if(tile_extents.size() == 0)
-      return ArraySchema(array_name, attribute_names, dim_names, dim_domains,
-                         types, order, capacity);
+      return ArraySchema(cl.array_names_[0], attribute_names, dim_names, 
+                         dim_domains, types, order, capacity);
     else
-      return ArraySchema(array_name, attribute_names, dim_names, dim_domains,
-                         types, order, tile_extents, capacity);
+      return ArraySchema(cl.array_names_[0], attribute_names, dim_names, 
+                         dim_domains, types, order, tile_extents, capacity);
   } else {
     if(tile_extents.size() == 0)
-      return ArraySchema(array_name, attribute_names, dim_names, dim_domains,
-                         types, order);
+      return ArraySchema(cl.array_names_[0], attribute_names, dim_names, 
+                         dim_domains, types, order);
     else
-      return ArraySchema(array_name, attribute_names, dim_names, dim_domains,
-                         types, order, tile_extents);
+      return ArraySchema(cl.array_names_[0], attribute_names, dim_names, 
+                         dim_domains, types, order, tile_extents);
+  }
+}
+
+void Parser::parse_delete_array(const CommandLine& cl) const {
+  // Check if correct arguments have been ginen
+  if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Workspace not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_ARRAY_NAME_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Array name not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  // Check for redundant arguments
+  if(cl.array_names_.size() > 1) {
+    std::cerr << "[TileDB::fatal_error] More than one array names provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ | PS_DELETE_ARRAY_BITMAP) != PS_DELETE_ARRAY_BITMAP) {
+    std::cerr << "[TileDB::fatal_error] Redundant arguments provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+}
+
+void Parser::parse_export_to_csv(const CommandLine& cl) const {
+  // Check if correct arguments have been given
+  if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Workspace not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_ARRAY_NAME_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Array name not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_FILENAME_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] File name not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  // Check for redundant arguments
+  if(cl.array_names_.size() > 1) {
+    std::cerr << "[TileDB::fatal_error] More than one array names provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ | PS_EXPORT_TO_CSV_BITMAP) != PS_EXPORT_TO_CSV_BITMAP) {
+    std::cerr << "[TileDB::fatal_error] Redundant arguments provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+}
+
+void Parser::parse_join(const CommandLine& cl) const {
+  // Check if correct arguments have been ginen
+  if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Workspace not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_ARRAY_NAME_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Array name not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_RESULT_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Result name not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  // Check for redundant arguments
+  if(cl.array_names_.size() != 2) {
+    std::cerr << "[TileDB::fatal_error] Exactly two input array names"
+                 " must be given."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ | PS_JOIN_BITMAP) != PS_JOIN_BITMAP) {
+    std::cerr << "[TileDB::fatal_error] Redundant arguments provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
   }
 }
 
@@ -144,11 +269,57 @@ void Parser::parse_load(const CommandLine& cl) const {
   }
 
   // Check for redundant arguments
+  if(cl.array_names_.size() > 1) {
+    std::cerr << "[TileDB::fatal_error] More than one array names provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
   if((cl.arg_bitmap_ | PS_LOAD_BITMAP) != PS_LOAD_BITMAP) {
     std::cerr << "[TileDB::fatal_error] Redundant arguments provided."
               << " Type 'tiledb help' to see the TileDB User Manual.\n";
     exit(-1);
   }
+}
+
+std::vector<double> Parser::parse_subarray(const CommandLine& cl) const {
+  // Check if correct arguments have been ginen
+  if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Workspace not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_ARRAY_NAME_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Array name not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_RANGE_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Range not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_RESULT_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Result name not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  // Check for redundant arguments
+  if(cl.array_names_.size() > 1) {
+    std::cerr << "[TileDB::fatal_error] More than one array names provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ | PS_SUBARRAY_BITMAP) != PS_SUBARRAY_BITMAP) {
+    std::cerr << "[TileDB::fatal_error] Redundant arguments provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  // Prepare range
+  std::vector<double> range = check_range(cl); 
+
+  return range;  
 }
 
 void Parser::parse_update(const CommandLine& cl) const {
@@ -170,6 +341,11 @@ void Parser::parse_update(const CommandLine& cl) const {
   }
 
   // Check for redundant arguments
+  if(cl.array_names_.size() > 1) {
+    std::cerr << "[TileDB::fatal_error] More than one array names provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
   if((cl.arg_bitmap_ | PS_UPDATE_BITMAP) != PS_UPDATE_BITMAP) {
     std::cerr << "[TileDB::fatal_error] Redundant arguments provided."
               << " Type 'tiledb help' to see the TileDB User Manual.\n";
@@ -181,15 +357,15 @@ void Parser::parse_update(const CommandLine& cl) const {
 ******************* PRIVATE METHODS *******************
 ******************************************************/
 
-std::string Parser::check_array_name(const CommandLine& cl) const {
-  if(!is_valid_name(cl.array_name_)) {
-    std::cerr << "[TileDB::fatal_error] The array name can contain only"
-              << " alphanumerics or '_'."
-              << " Type 'tiledb help' to see the TileDB User Manual.\n";
-    exit(-1);
+void Parser::check_array_names(const CommandLine& cl) const {
+  for(int i=0; i<cl.array_names_.size(); ++i) {
+    if(!is_valid_name(cl.array_names_[i])) {
+      std::cerr << "[TileDB::fatal_error] The array name can contain only"
+                << " alphanumerics or '_'."
+                << " Type 'tiledb help' to see the TileDB User Manual.\n";
+      exit(-1);
+    }
   }
-
-  return std::string(cl.array_name_);
 }
 
 std::vector<std::string> Parser::check_attribute_names(
@@ -335,6 +511,45 @@ ArraySchema::Order Parser::check_order(const CommandLine& cl) const {
               << " Type 'tiledb help' to see the TileDB User Manual.\n";
     exit(-1);
   }
+}
+
+std::vector<double> Parser::check_range(const CommandLine& cl) const {
+  std::vector<double> range;
+
+  // Check the number of domain bounds
+  if(cl.range_.size() % 2 != 0) { 
+    std::cerr << "[TileDB::fatal_error] The number of range bounds must"
+              << " be even."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  // Check if the range bounds are real numbers, and if the lower is bound
+  // is smaller than or equal to the upper.
+  int dim_num = cl.range_.size()/2;
+  for(int i=0; i<dim_num; ++i) {
+    if(!is_positive_real(cl.range_[2*i]) || 
+       !is_positive_real(cl.range_[2*i+1])) {
+      std::cerr << "[TileDB::fatal_error] The domain bounds must be real" 
+                << " numbers."
+                << " Type 'tiledb help' to see the TileDB User Manual.\n";
+      exit(-1);
+    } else {
+      double lower, upper; 
+      sscanf(cl.range_[2*i], "%lf", &lower);
+      sscanf(cl.range_[2*i+1], "%lf", &upper);
+      if(lower > upper) {
+        std::cerr << "[TileDB::fatal_error] A lower domain bound cannot be"
+                  << " larger than its corresponding upper."
+                  << " Type 'tiledb help' to see the TileDB User Manual.\n";
+        exit(-1);
+      }
+      range.push_back(lower);
+      range.push_back(upper);
+    }
+  }
+
+  return range;
 }
 
 std::vector<double> Parser::check_tile_extents(

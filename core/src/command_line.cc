@@ -36,11 +36,11 @@
 
 CommandLine::CommandLine() {
   arg_bitmap_ = 0;
-  array_name_ = NULL;
   capacity_ = NULL;
   filename_ = NULL;
   order_ = NULL;
   query_ = NULL;
+  result_name_ = NULL;
   workspace_ = NULL;
 }
 
@@ -50,19 +50,20 @@ void CommandLine::parse(int argc, char** argv) {
     {"array-name",1,0,'A'},
     {"attribute-name",1,0,'a'},
     {"capacity",1,0,'c'},
-    {"dim-domain",1,0,'D'},
+    {"dim-domain-bound",1,0,'D'},
     {"dim-name",1,0,'d'},
     {"tile-extent",1,0,'e'},
     {"filename",1,0,'f'},
     {"query",1,0,'q'},
     {"order",1,0,'o'},
-    {"range",1,0,'r'},
+    {"range-bound",1,0,'r'},
+    {"result-name",1,0,'R'},
     {"type",1,0,'t'},
     {"workspace",1,0,'w'},
     {0,0,0,0},
   };
 
-  const char* short_options = "A:a:c:D:d:e:f:q:o:r:t:w:";
+  const char* short_options = "A:a:c:D:d:e:f:q:o:r:R:t:w:";
 
   int c;
   option_num_ = 0;
@@ -70,14 +71,8 @@ void CommandLine::parse(int argc, char** argv) {
     ++option_num_;
     switch(c) {
       case 'A':
-        if(array_name_ != NULL) {
-          std::cerr << "[TileDB::fatal_error] More than one array names"
-                    << " provided."
-                    << " Type 'tiledb help' to see the TileDB User Manual.\n";
-          exit(-1);
-        }
         arg_bitmap_ |= CL_ARRAY_NAME_BITMAP;
-        array_name_ = optarg;
+        array_names_.push_back(optarg);
         break;
       case 'a':
         arg_bitmap_ |= CL_ATTRIBUTE_NAME_BITMAP;
@@ -135,6 +130,16 @@ void CommandLine::parse(int argc, char** argv) {
       case 'r':
         arg_bitmap_ |= CL_RANGE_BITMAP;
         range_.push_back(optarg);
+        break;
+      case 'R':
+        if(result_name_ != NULL) {
+          std::cerr << "[TileDB::fatal_error] More than one result names"
+                    << " provided."
+                    << " Type 'tiledb help' to see the TileDB User Manual.\n";
+          exit(-1);
+        }
+        arg_bitmap_ |= CL_RESULT_BITMAP;
+        result_name_ = optarg;
         break;
       case 't':
         arg_bitmap_ |= CL_TYPE_BITMAP;

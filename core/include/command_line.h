@@ -56,12 +56,14 @@
 #define CL_ORDER_BITMAP 0x40
 /** Indicates range bound was given as an argument. */
 #define CL_RANGE_BITMAP 0x80
+/** Indicates result name was given as an argument. */
+#define CL_RESULT_BITMAP 0x100
 /** Indicates tile extent was given as an argument. */
-#define CL_TILE_EXTENT_BITMAP 0x100
+#define CL_TILE_EXTENT_BITMAP 0x200
 /** Indicates type was given as an argument. */
-#define CL_TYPE_BITMAP 0x200
+#define CL_TYPE_BITMAP 0x400
 /** Indicates worspace was given as an argument. */
-#define CL_WORKSPACE_BITMAP 0x400
+#define CL_WORKSPACE_BITMAP 0x800
 
 /** This class stores the command line options given by the user. */
 class CommandLine {
@@ -76,7 +78,7 @@ class CommandLine {
   /** 
    * This bitmap is used to check which arguments are provided. 
    * From right to left, each bit corresponds to:
-   * CommandLine::array_name__,
+   * CommandLine::array_names_,
    * CommandLine::attribute_names_,
    * CommandLine::capacity_.
    * CommandLine::dim_domains_,
@@ -84,13 +86,14 @@ class CommandLine {
    * CommandLine::filename_.
    * CommandLine::order_,
    * CommandLine::range_.
+   * CommandLine::result_name_.
    * CommandLine::tile_extents_,
    * CommandLine::types_,
    * CommandLine::workspace_,
    */
   uint64_t arg_bitmap_;
-  /** The array info. */
-  char* array_name_;
+  /** Array names. */
+  std::vector<char*> array_names_;
   /** Attribute names. */
   std::vector<char*> attribute_names_;
   /** Capacity. */
@@ -107,6 +110,8 @@ class CommandLine {
   char* order_;
   /** The query. */
   char* query_;
+  /** The result name. */
+  char* result_name_;
   /** A multidimensional range */
   std::vector<char*> range_;
   /** Tile extents. */

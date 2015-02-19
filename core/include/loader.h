@@ -59,8 +59,6 @@ class Loader {
   ~Loader() {}
 
   // LOADING FUNCTIONS
-  /** Loads a CSV file into an array. */ // TODO: remove
-  void load(const std::string& filename, const ArraySchema& array_schema) const;
   /** Creates a fragment from a CSV file. */
   void load(const std::string& filename, 
             const std::string& array_name, 

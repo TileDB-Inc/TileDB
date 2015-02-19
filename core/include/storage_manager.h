@@ -86,14 +86,11 @@ class StorageManager {
  public:
   // TYPE DEFINITIONS
   struct FragmentInfo;
-
   /** 
-   * A fragment is opened either to be created (CREATE mode) or to be read 
-   * (READ mode), but not both. After a fragment is created, no more tiles
-   * can be inserted to it, and no modifications of existing tiles are allowed
-   * (array updates are handled by the consolidation module).
+   * An array or fragment is opened either to be created (CREATE mode) or to be
+   * read (READ mode), but not both. 
    */
-  enum FragmentMode {READ, CREATE};
+  enum Mode {READ, CREATE};
 
   /** Mnemonic: (first_bound_coord, last_bound_coord) */
   typedef std::pair<std::vector<double>, std::vector<double> > 
@@ -112,7 +109,7 @@ class StorageManager {
   typedef std::vector<uint64_t> OffsetList;
   /** Mnemonic: [attribute_id] --> <offset#1, offset#2, ...> */
   typedef std::vector<OffsetList> Offsets;
-  /** Mnemonic: [array_name] --> FragmentInfo */
+  /** Mnemonic: [array_name + "_" + fragment_name] --> FragmentInfo */
   typedef std::map<std::string, FragmentInfo> OpenFragments;
   /** Mnemonic: [attribute_id] --> payload_size */
   typedef std::vector<uint64_t> PayloadSizes;
@@ -133,16 +130,14 @@ class StorageManager {
    */  
   struct FragmentInfo {
     /** The array schema (see class ArraySchema). */
-    ArraySchema array_schema_; // TODO remove 
-    /** The fragment name. */
-    std::string array_name_; 
+    const ArraySchema* array_schema_;
     /** 
      * Stores the bounding coordinates of every (coordinate) tile, i.e., the 
      * first and last cell of the tile (see Tile::bounding_coordinates).
      */
     BoundingCoordinates bounding_coordinates_;   
-    /** The fragment mode (see StorageManager::FragmentMode). */
-    FragmentMode fragment_mode_;
+    /** The fragment mode (see StorageManager::Mode). */
+    Mode fragment_mode_;
     /** The fragment name. */
     std::string fragment_name_; 
     /** 
@@ -205,7 +200,7 @@ class StorageManager {
     explicit FragmentDescriptor(FragmentInfo* fragment_info) { 
       fragment_info_ = fragment_info;
       fragment_info_id_ = fragment_info->id_;
-      array_name_ = fragment_info->array_schema_.array_name();
+      array_name_ = fragment_info->array_schema_->array_name();
       fragment_name_ = fragment_info->fragment_name_;
     }
     /** Empty destructor. */
@@ -215,8 +210,8 @@ class StorageManager {
     /** Returns the array name. */
     const std::string& array_name() const 
         { return array_name_; } 
-    /** Returns the array schema. */
-    const ArraySchema& array_schema() const 
+    /** Returns the array schema. */ 
+    const ArraySchema* array_schema() const 
         { return fragment_info_->array_schema_; } 
     /** Returns the array info. */
     const FragmentInfo* fragment_info() const { return fragment_info_; } 
@@ -239,6 +234,57 @@ class StorageManager {
     uint64_t fragment_info_id_;
     /** The fragment name. */
     std::string fragment_name_;
+    
+    // PRIVATE METHODS
+    /** 
+     * Override the delete operator so that only a StorageManager object can
+     * delete dynamically created FragmentDescriptor objects.
+     */
+    void operator delete(void* ptr) { ::operator delete(ptr); }
+    /** 
+     * Override the delete[] operator so that only a StorageManager object can
+     * delete dynamically created FragmentDescriptor objects.
+     */
+    void operator delete[](void* ptr) { ::operator delete[](ptr); }
+  };
+  /** 
+   * This object holds a vector of FragmentDescriptor objectsa and the array
+   * schema. It essentially includes all the information necessary to process
+   * an array.
+   */
+  class ArrayDescriptor {
+    // StorageManager objects can manipulate the private members of this class.
+    friend class StorageManager;
+
+   public:
+    // CONSTRUCTORS & DESTRUCTORS
+    /** Simple constructor. */
+    ArrayDescriptor(const ArraySchema* array_schema, 
+                    const std::vector<const FragmentDescriptor*>& fd) { 
+      fd_ = fd;
+      array_schema_ = array_schema;
+    }
+    /** Empty destructor. */
+    ~ArrayDescriptor() 
+        { delete array_schema_; }
+
+    // ACCESSORS
+    /** Returns the array name. */
+    const std::string& array_name() const 
+        { return array_schema_->array_name(); } 
+    /** Returns the array schema. */
+    const ArraySchema* array_schema() const 
+        { return array_schema_; } 
+    /** For easy access of the fragment descriptors. */
+    const std::vector<const FragmentDescriptor*>& fd() const 
+        { return fd_; }
+ 
+   private:
+    // PRIVATE ATTRIBUTES
+    /** The array schema. */
+    const ArraySchema* array_schema_;
+    /** The fragment descriptors. */
+    std::vector<const FragmentDescriptor*> fd_;
     
     // PRIVATE METHODS
     /** 
@@ -276,9 +322,13 @@ class StorageManager {
   bool array_defined(const std::string& array_name) const;
   /** Returns true if the array has been loaded. */
   bool array_loaded(const std::string& array_name) const;
+  /** Deletes all the fragments of an array. */
+  void clear_array(const std::string& array_name);
+  /** Closes an array. */
+  void close_array(const ArrayDescriptor* ad);
   /** 
-   * Closes an array. 
-   * Note: A rule must be satisfied before closing the array. 
+   * Closes a fragment. In case the fragment was opened in FRAGMENT_CREATE mode,
+   * a rule must be satisfied before closing the fragment: 
    * Across all attributes, the lastly appended tile must have the same id.
    */
   void close_fragment(const FragmentDescriptor* fd);
@@ -300,15 +350,12 @@ class StorageManager {
 
   /** Returns true if the fragment is empty. */
   bool fragment_empty(const FragmentDescriptor* fd) const;
-  /** Returns true if the fragment exists. */ //TODO remove
-  bool fragment_exists(const std::string& array_name) const;
   /** Returns true if the fragment exists. */
   bool fragment_exists(
       const std::string& array_name,
       const std::string& fragment_name) const;
   /** Loads the schema of an array into the second input from the disk. */
-  void load_array_schema(const std::string& array_name, 
-                         ArraySchema& array_schema) const;
+  const ArraySchema* load_array_schema(const std::string& array_name) const;
   /** 
    * Loads the contents of the file that stores the book-keeping info for 
    * the fragments of na array into the input buffer, and updates the input
@@ -327,14 +374,14 @@ class StorageManager {
    * contains the MBRs of the intput array. 
    */ 
   MBRs::const_iterator MBR_end(const FragmentDescriptor* fd) const; 
+  /** Opens an array in the input mode, opening only the input fragments. */
+  ArrayDescriptor* open_array(const std::string& array_name,
+                              const std::vector<std::string>& fragment_names,   
+                              Mode mode);
   /** Opens a fragment array in the input mode.*/
-  FragmentDescriptor* open_fragment(const std::string& array_name, 
+  FragmentDescriptor* open_fragment(const ArraySchema* array_schema, 
                                     const std::string& fragment_name,
-                                    FragmentMode mode);
-  /** Opens an array in READ mode.*/  // TODO: remove 
-  FragmentDescriptor* open_fragment(const std::string& array_name);
-  /** Opens an array in CREATE mode. */ // TODO: remove
-  FragmentDescriptor* open_fragment(const ArraySchema& array_schema);
+                                    Mode mode);
 
   // TILE FUNCTIONS
   /**
@@ -347,16 +394,18 @@ class StorageManager {
    * before appending a new tile with a different tile id for A.
    */
   void append_tile(const Tile* tile, 
-                   const FragmentDescriptor* array_descriptor,
+                   const FragmentDescriptor* fd,
                    unsigned int attribute_id); 
   /**  Returns a tile of an array with the specified attribute and tile id. */
   const Tile* get_tile(
-      const FragmentDescriptor* array_descriptor,
-      unsigned int attribute_id, uint64_t tile_id);  
+      const FragmentDescriptor* fd,
+      unsigned int attribute_id, 
+      uint64_t tile_id);  
   /**  Returns a tile of an array with the specified attribute and tile rank. */
   const Tile* get_tile_by_rank(
       const FragmentDescriptor* array_descriptor,
-      unsigned int attribute_id, uint64_t tile_id);  
+      unsigned int attribute_id, 
+      uint64_t tile_id);  
   /** 
    * Creates an empty tile for a specific array and attribute, with reserved 
    * capacity equal to cell_num (note though that there are no constraints on
@@ -453,7 +502,8 @@ class StorageManager {
    * is full (i.e., if the tile MBR is completely in the range) or not.
    */
   void get_overlapping_tile_ids(
-      const FragmentDescriptor* fd, const Tile::Range& range, 
+      const FragmentDescriptor* fd, 
+      const Tile::Range& range, 
       std::vector<std::pair<uint64_t, bool> >* overlapping_tile_ids) const;
   /** 
    * Returns the ranks of the tiles whose MBR overlaps with the input range.
@@ -461,17 +511,15 @@ class StorageManager {
    * is full (i.e., if the tile MBR is completely in the range) or not.
    */
   void get_overlapping_tile_ranks(
-      const FragmentDescriptor* fd, const Tile::Range& range, 
+      const FragmentDescriptor* fd, 
+      const Tile::Range& range, 
       std::vector<std::pair<uint64_t, bool> >* overlapping_tile_ranks) const;
 
  private: 
   // PRIVATE ATTRIBUTES
   /** Used in FragmentInfo and FragmentDescriptor for debugging purposes. */
   static uint64_t fragment_info_id_;
-  /** 
-   * Stores info (e.g., book-keeping structures) about all currently open
-   * arrays.
-   */
+  /** Stores info about all currently open fragments. */
   OpenFragments open_fragments_;
    /** 
    * Determines the minimum amount of data that can be exchanged between the 
@@ -501,13 +549,10 @@ class StorageManager {
   bool check_on_get_tile_by_rank(const FragmentDescriptor& fd,
                                  unsigned int attribute_id,
                                  uint64_t rank) const;
-  /** Checks upon opening an array. */ // TODO
-  bool check_on_open_fragment(const std::string& array_name, 
-                           FragmentMode fragment_mode) const;
   /** Checks upon opening an array. */
   bool check_on_open_fragment(const std::string& array_name, 
                               const std::string& fragment_name,
-                              FragmentMode fragment_mode) const;
+                              Mode fragment_mode) const;
   /** Creates the array folder in the workspace. */
   void create_array_directory(const std::string& array_name) const;
   /** Creates the fragment folder in the workspace. */
@@ -515,8 +560,6 @@ class StorageManager {
                                  const std::string& fragment_name) const;
   /** Creates the workspace folder. */
   void create_workspace();
-  /** Deletes the directory of the array, along with all its files. */
-  void delete_directory(const std::string& array_name) const;
   /** Deletes the directory of the fragment, along with all its files. */
   void delete_fragment_directory(
       const std::string& array_name, const std::string& fragment_name) const;
@@ -527,10 +570,9 @@ class StorageManager {
                     unsigned int attribute_id) const;
   /** Writes the fragment info on the disk. */
   void flush_fragment_info(FragmentInfo& fragment_info) const;
-  /** Writes the array schema on the disk. */ //TODO: remove
-  void flush_array_schema(const FragmentInfo& fragment_info) const;
   /** Writes the bounding coordinates of each tile on the disk. */
-  void flush_bounding_coordinates(const FragmentInfo& fragment_info) const;
+  void flush_bounding_coordinates(
+      const FragmentInfo& fragment_info) const;
   /** Writes the MBR of each tile on the disk. */
   void flush_MBRs(const FragmentInfo& fragment_info) const;
   /** Writes the tile offsets on the disk. */
@@ -543,8 +585,9 @@ class StorageManager {
    * Writes the main-memory tiles of a specific attribute of the fragment
    * on the disk. 
    */
-  void flush_tiles(FragmentInfo& fragment_info, 
-                   unsigned int attribute_id) const;
+  void flush_tiles(
+      FragmentInfo& fragment_info, 
+      unsigned int attribute_id) const;
   /**
    * Gets a tile of an attribute of an array using the tile rank. 
    * The rank of a tile is a sequence number indicating
@@ -553,31 +596,24 @@ class StorageManager {
    * 0 means that it was appended first, 1 second, etc.).
    */
   const Tile* get_tile_by_rank(FragmentInfo& fragment_info, 
-                               unsigned int attribute_id, uint64_t rank) const;
-  /** Initializes the array info using the input mode and schema. */ // TODO remove
-  void init_fragment_info(FragmentInfo& fragment_info, 
-                       const FragmentMode fragment_mode,
-                       const ArraySchema& array_schema) const;
+                               unsigned int attribute_id, 
+                               uint64_t rank) const;
   /** 
    * Initializes the array info using the input mode, schema, 
    * and fragment name. 
    */
-  void init_fragment_info(FragmentInfo& fragment_info, 
-                       const FragmentMode fragment_mode,
-                       const ArraySchema& array_schema,
-                       const std::string& fragment_name) const;
-
+  void init_fragment_info(const std::string& fragment_name, 
+                          const ArraySchema* array_schema,
+                          Mode fragment_mode,
+                          FragmentInfo& fragment_info) const; 
   /** Loads the array info into main memory from the disk. */
   void load_fragment_info(const std::string& array_name);
   /** Loads the bounding coordinates into main memory from the disk. */
-  void load_bounding_coordinates(FragmentInfo& fragment_info, 
-                                 const ArraySchema& array_schema) const;
+  void load_bounding_coordinates(FragmentInfo& fragment_info) const;
   /** Loads the MBRs into main memory from the disk. */
-  void load_MBRs(FragmentInfo& fragment_info,
-                 const ArraySchema& array_schema) const;
+  void load_MBRs(FragmentInfo& fragment_info) const;
   /** Loads the offsets into main memory from the disk. */
-  void load_offsets(FragmentInfo& fragment_info,
-                    const ArraySchema& array_schema) const;
+  void load_offsets(FragmentInfo& fragment_info) const;
   /** 
    * Fetches tiles from the disk into main memory. Specifically, it loads their
    * payloads into a buffer. The aggregate payload size of the tiles is equal
@@ -594,17 +630,18 @@ class StorageManager {
    * loaded in the buffer.
    */
   std::pair<uint64_t, uint64_t> load_payloads_into_buffer(
-      const FragmentInfo& fragment_info, unsigned int attribute_id,
+      const FragmentInfo& fragment_info, 
+      unsigned int attribute_id,
       uint64_t start_rank, char*& buffer) const;
   /** Loads the tile ids into main memory from the disk. */
-  void load_tile_ids(FragmentInfo& fragment_info,
-                     const ArraySchema& array_schema) const;
+  void load_tile_ids(FragmentInfo& fragment_info) const;
   /** 
    * Creates tiles_in_buffer tiles for an attribute of an array from the 
    * payloads stored in buffer.
    */
   void load_tiles_from_buffer(
-      FragmentInfo& fragment_info, unsigned int attribute_id,
+      FragmentInfo& fragment_info, 
+      unsigned int attribute_id,
       uint64_t start_rank, char* buffer, uint64_t buffer_size,
       uint64_t tiles_in_buffer) const;
   /** 
@@ -615,8 +652,10 @@ class StorageManager {
    * the function loads the minimum number of tiles whose aggregate
    * payload exceeds StorageManager::segment_size_).
    */
-  void load_tiles_from_disk(FragmentInfo& fragment_info, 
-      unsigned int attribute_id, uint64_t start_rank) const;
+  void load_tiles_from_disk(
+      FragmentInfo& fragment_info, 
+      unsigned int attribute_id, 
+      uint64_t start_rank) const;
   /** Returns true if the input path is an existing directory. */
   bool path_exists(const std::string& path) const;
   /** 
