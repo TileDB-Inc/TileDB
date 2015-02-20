@@ -146,6 +146,9 @@ class ArraySchema {
    * to the buffer it creates, along with the size of the buffer.
    */
   std::pair<char*, uint64_t> serialize() const;
+  /** Returns the tile extents. */
+  const std::vector<double>& tile_extents() const 
+      { return tile_extents_; } 
   /** Returns the type of the i-th attribute. */
   const std::type_info* type(unsigned int i) const;
   

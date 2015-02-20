@@ -212,6 +212,11 @@ class Consolidator {
   void add_fragment(const ArrayDescriptor* ad) const;
   /** It deletes the book-keeping consolidation info of an array from memory. */
   void close_array(const ArrayDescriptor* ad);
+  /** 
+   * Eager consolidation when the consolidation step is equal to 1. It
+   * consolidates every new fragment with the current (single) one.
+   */
+  void eagerly_consolidate(const ArrayDescriptor* ad) const;
   /** Returns the name corresponding to all existing array fragments. */
   std::vector<std::string> get_all_fragment_names(
       const ArrayDescriptor* ad) const;
@@ -219,6 +224,8 @@ class Consolidator {
   std::string get_next_fragment_name(const ArrayDescriptor* ad) const;
   /** Returns the next update sequence number. */
   uint64_t get_next_update_seq(const ArrayDescriptor* ad) const;
+  /** Lazy consolidation, when the consolidation step is greater than 1. */
+  void lazily_consolidate(const ArrayDescriptor* ad) const;
   /** It loads the book-keeping consolidation info for an array into memory. */
   const ArrayDescriptor* open_array(const std::string& array_name,
                                     Mode mode);

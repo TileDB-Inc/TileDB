@@ -50,11 +50,13 @@ void CommandLine::parse(int argc, char** argv) {
     {"array-name",1,0,'A'},
     {"attribute-name",1,0,'a'},
     {"capacity",1,0,'c'},
+    {"coordinate",1,0,'C'},
     {"dim-domain-bound",1,0,'D'},
     {"dim-name",1,0,'d'},
     {"tile-extent",1,0,'e'},
     {"filename",1,0,'f'},
     {"query",1,0,'q'},
+    {"number",1,0,'N'},
     {"order",1,0,'o'},
     {"range-bound",1,0,'r'},
     {"result-name",1,0,'R'},
@@ -63,7 +65,7 @@ void CommandLine::parse(int argc, char** argv) {
     {0,0,0,0},
   };
 
-  const char* short_options = "A:a:c:D:d:e:f:q:o:r:R:t:w:";
+  const char* short_options = "A:a:c:C:D:d:e:f:q:N:o:r:R:t:w:";
 
   int c;
   option_num_ = 0;
@@ -77,6 +79,10 @@ void CommandLine::parse(int argc, char** argv) {
       case 'a':
         arg_bitmap_ |= CL_ATTRIBUTE_NAME_BITMAP;
         attribute_names_.push_back(optarg);
+        break;
+      case 'C':
+        arg_bitmap_ |= CL_COORDINATE_BITMAP;
+        coords_.push_back(optarg);
         break;
       case 'c':
         if(capacity_ != NULL) {
@@ -109,6 +115,10 @@ void CommandLine::parse(int argc, char** argv) {
         }
         arg_bitmap_ |= CL_FILENAME_BITMAP;
         filename_ = optarg;
+        break;
+      case 'N':
+        arg_bitmap_ |= CL_NUMBER_BITMAP;
+        numbers_.push_back(optarg);
         break;
       case 'o':
         if(order_ != NULL) {

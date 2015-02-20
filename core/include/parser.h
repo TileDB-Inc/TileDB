@@ -36,6 +36,7 @@
 
 #include "command_line.h"
 #include "array_schema.h"
+#include <inttypes.h>
 
 /** 
  * Indicates which arguments are used from the command line for query
@@ -76,6 +77,20 @@
                         CL_FILENAME_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
+ * 'nearest_neighbors'. 
+ */
+#define PS_NN_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
+                      CL_COORDINATE_BITMAP | CL_NUMBER_BITMAP  |\
+                      CL_RESULT_BITMAP)
+/** 
+ * Indicates which arguments are used from the command line for query
+ * 'retile'. 
+ */
+#define PS_RETILE_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
+                          CL_ORDER_BITMAP | CL_CAPACITY_BITMAP  |\
+                          CL_TILE_EXTENT_BITMAP)
+/** 
+ * Indicates which arguments are used from the command line for query
  * 'subarray'. 
  */
 #define PS_SUBARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
@@ -107,6 +122,15 @@ class Parser {
   void parse_join(const CommandLine& cl) const;
   /** Parse command line for query 'load'. */
   void parse_load(const CommandLine& cl) const;
+  /** Parse command line for query 'nearest_neighbors'. */
+  std::pair<std::vector<double>, uint64_t> parse_nearest_neighbors(
+      const CommandLine& cl) const;
+  /** Parse command line for query 'retile'. */
+  void parse_retile(
+      const CommandLine& cl,
+      uint64_t& capacity,
+      ArraySchema::Order& order,
+      std::vector<double>& tile_extents) const;
   /** Parse command line for query 'subarray'. */
   std::vector<double> parse_subarray(const CommandLine& cl) const;
   /** Parse command line for query 'update'. */
@@ -124,6 +148,11 @@ class Parser {
   /** Checks the capacity in command line for soundness and returns it. */ 
   uint64_t check_capacity(const CommandLine& cl) const;
   /** 
+   * Checks the coordinates in command line for soundness and returns
+   * them. 
+   */
+  std::vector<double> check_coordinates(const CommandLine& cl) const;
+  /** 
    * Checks the dimension domains in command line for soundness and returns
    * them. 
    */
@@ -137,8 +166,18 @@ class Parser {
   std::vector<std::string> check_dim_names(
       const CommandLine& cl,
       const std::vector<std::string>& attribute_names) const;
+  /** 
+   * Checks the numbers in command line for soundness and returns
+   * them. 
+   */
+  std::vector<uint64_t> check_numbers(const CommandLine& cl) const;
   /** Checks the order in command line for soundness and returns it. */
   ArraySchema::Order check_order(const CommandLine& cl) const;
+  /** 
+   * Checks the tile extents in command line for soundness and returns
+   * them. 
+   */
+  std::vector<double> check_tile_extents(const CommandLine& cl) const;
   /** 
    * Checks the tile extents in command line for soundness and returns
    * them. 

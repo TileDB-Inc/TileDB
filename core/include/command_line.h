@@ -46,24 +46,28 @@
 #define CL_ATTRIBUTE_NAME_BITMAP 0x2
 /** Indicates capacity was given as an argument. */
 #define CL_CAPACITY_BITMAP 0x4
+/** Indicates coordinate was given as an argument. */
+#define CL_COORDINATE_BITMAP 0x8
 /** Indicates dimension domain was given as an argument. */
-#define CL_DIM_DOMAIN_BITMAP 0x8
+#define CL_DIM_DOMAIN_BITMAP 0x10
 /** Indicates dimension name was given as an argument. */
-#define CL_DIM_NAME_BITMAP 0x10
+#define CL_DIM_NAME_BITMAP 0x20
 /** Indicates range bound was given as an argument. */
-#define CL_FILENAME_BITMAP 0x20
+#define CL_FILENAME_BITMAP 0x40
+/** Indicates number was given as an argument. */
+#define CL_NUMBER_BITMAP 0x80
 /** Indicates order was given as an argument. */
-#define CL_ORDER_BITMAP 0x40
+#define CL_ORDER_BITMAP 0x100
 /** Indicates range bound was given as an argument. */
-#define CL_RANGE_BITMAP 0x80
+#define CL_RANGE_BITMAP 0x200
 /** Indicates result name was given as an argument. */
-#define CL_RESULT_BITMAP 0x100
+#define CL_RESULT_BITMAP 0x400
 /** Indicates tile extent was given as an argument. */
-#define CL_TILE_EXTENT_BITMAP 0x200
+#define CL_TILE_EXTENT_BITMAP 0x800
 /** Indicates type was given as an argument. */
-#define CL_TYPE_BITMAP 0x400
+#define CL_TYPE_BITMAP 0x1000
 /** Indicates worspace was given as an argument. */
-#define CL_WORKSPACE_BITMAP 0x800
+#define CL_WORKSPACE_BITMAP 0x2000
 
 /** This class stores the command line options given by the user. */
 class CommandLine {
@@ -81,9 +85,11 @@ class CommandLine {
    * CommandLine::array_names_,
    * CommandLine::attribute_names_,
    * CommandLine::capacity_.
+   * CommandLine::coordinate_.
    * CommandLine::dim_domains_,
    * CommandLine::dim_names_,
    * CommandLine::filename_.
+   * CommandLine::number_.
    * CommandLine::order_,
    * CommandLine::range_.
    * CommandLine::result_name_.
@@ -98,12 +104,16 @@ class CommandLine {
   std::vector<char*> attribute_names_;
   /** Capacity. */
   char* capacity_;
+  /** Coordinates. */
+  std::vector<char*> coords_;
   /** Dimension names. */
   std::vector<char*> dim_names_;
   /** Dimension domains. */
   std::vector<char*> dim_domains_;
   /** File name. */
   char* filename_;
+  /** Numbers. */
+  std::vector<char*> numbers_;
   /** Number of (option,value) pairs in the command line. */
   int option_num_;
   /** Cell/Tile order */
@@ -122,6 +132,7 @@ class CommandLine {
   char* workspace_;
 
   // TODO segment_size
+  // TODO consolidation step
   // TODO other configuration parameters?
   // TODO perhaps get parameters from config file?
 };

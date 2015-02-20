@@ -215,19 +215,47 @@ void QueryProcessor::join(
     join_irregular(fd_A, fd_B, result_fd);
 }
 
-/*
 void QueryProcessor::nearest_neighbors(
     const StorageManager::FragmentDescriptor* fd,
     const std::vector<double>& q,
     uint64_t k,
-    const std::string& result_array_name) const { 
-  if(fd->array_schema().has_regular_tiles())
-    nearest_neighbors_regular(fd, q, k, result_array_name);
+    const StorageManager::FragmentDescriptor* result_fd) const { 
+  if(fd->array_schema()->has_regular_tiles())
+    nearest_neighbors_regular(fd, q, k, result_fd);
   else 
-    nearest_neighbors_irregular(fd, q, k, result_array_name);
+    nearest_neighbors_irregular(fd, q, k, result_fd);
 }
-*/
 
+void QueryProcessor::retile(
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd,
+    uint64_t capacity, 
+    ArraySchema::Order order,
+    const std::vector<double>& tile_extents) const {
+  // For easy reference
+  const ArraySchema& array_schema = *(fd[0]->array_schema());
+
+  // CASE #1: Input array has regular tiles
+  // TODO: CASE #1.1: Tile extents same, order same, capacity different
+  //              --> change schema
+  // TODO: CASE #1.2: Tile extents same, order different
+  //              --> retile (efficiently) + change schema
+  // TODO: CASE #1.3: Tile extents different
+  //              --> retile (via export/reload) + change schema
+  // TODO: CASE #1.4: No tile extents; retile to irregular
+  //              --> retile (via export/reload) + change schema
+  if(array_schema.has_regular_tiles()) 
+      throw QueryProcessorException("Retiling of arrays with regular tiles currently"
+                                    " not supported.");
+
+  // CASE #2: Input has irregular tiles
+  // TODO: CASE #2.1: Tile extents provided 
+  //              --> retile (via export/reload) + change schema
+  // TODO: CASE #2.2: Tile extents not provided, order different
+  //              --> retile (via export/reload) + change schema
+  // TODO: CASE #2.3: Tile extents not provided, order same, capacity different
+  //              --> retile (efficiently)
+}
+  
 void QueryProcessor::subarray(
     const StorageManager::FragmentDescriptor* fd,
     const Tile::Range& range,
@@ -477,24 +505,22 @@ bool QueryProcessor::coincides(
     return cell_it_A == cell_it_B;
   } else if(!coordinate_cell_its_initialized_A && 
             !coordinate_cell_its_initialized_B) {
-    return std::equal(tile_it_A.bounding_coordinates().first.begin(),
-                      tile_it_A.bounding_coordinates().first.end(), 
-                      tile_it_B.bounding_coordinates().first.begin());
+    const std::vector<double>& coord_A = tile_it_A.bounding_coordinates().first;
+    const std::vector<double>& coord_B = tile_it_B.bounding_coordinates().first;
+    return std::equal(coord_A.begin(), coord_A.end(), coord_B.begin());
   } else if(coordinate_cell_its_initialized_A && 
             !coordinate_cell_its_initialized_B) {
     const std::vector<double> coord_A = *cell_it_A;
-    return std::equal(coord_A.begin(), coord_A.end(),
-                      tile_it_B.bounding_coordinates().first.begin());
+    const std::vector<double>& coord_B = tile_it_B.bounding_coordinates().first;
+    return std::equal(coord_A.begin(), coord_A.end(), coord_B.begin());
   } else if(!coordinate_cell_its_initialized_A && 
             coordinate_cell_its_initialized_B) {
+    const std::vector<double>& coord_A = tile_it_A.bounding_coordinates().first;
     const std::vector<double> coord_B = *cell_it_B;
-    return std::equal(tile_it_A.bounding_coordinates().first.begin(),
-                      tile_it_A.bounding_coordinates().first.end(), 
-                      coord_B.begin());
+    return std::equal(coord_A.begin(), coord_A.end(), coord_B.begin());
   }
 }
 
-/*
 std::vector<QueryProcessor::DistRank> 
 QueryProcessor::compute_sorted_dist_ranks(
     const StorageManager::FragmentDescriptor* fd,
@@ -529,7 +555,7 @@ QueryProcessor::compute_sorted_kNN_coords(
     const std::vector<DistRank>& sorted_dist_ranks) const {
   std::priority_queue<DistRankPosCoord> kNN_coords;
   // For easy reference
-  unsigned int attribute_num = fd->array_schema().attribute_num();
+  unsigned int attribute_num = fd->array_schema()->attribute_num();
 
   const Tile* tile;
   Tile::const_iterator cell_it, cell_it_end;
@@ -578,8 +604,6 @@ QueryProcessor::compute_sorted_kNN_coords(
 
   return resorted_kNN_coords;
 }
-*/
-
 
 void QueryProcessor::create_workspace() const {
   struct stat st;
@@ -1819,6 +1843,20 @@ int QueryProcessor::get_next_fragment_index(
     if(next_fragment_index.size() == 0)
       return -1;
 
+    int latest_fragment_index = next_fragment_index.back();
+
+    // Retrieve a single attribute tile to check for null (i.e., deletion)
+    uint64_t tile_offset = 
+        tile_its[latest_fragment_index][attribute_num].rank() -
+        tile_its[latest_fragment_index][0].rank();
+    uint64_t cell_offset =
+        (!coordinate_cell_its_initialized[latest_fragment_index]) ? 
+            0 : cell_its[latest_fragment_index][attribute_num].pos();
+    Tile::const_iterator cell_it = 
+        (*(tile_its[latest_fragment_index][0] + tile_offset)).begin() +
+        cell_offset;
+    bool null = is_null(cell_it);
+
     // Initialize coordinates if not already initialized
     for(int i=0; i<next_fragment_index.size(); ++i) {
       if(!coordinate_cell_its_initialized[next_fragment_index[i]]) {
@@ -1831,16 +1869,8 @@ int QueryProcessor::get_next_fragment_index(
     }
 
     // Handle deletions or overwrites
-    int latest_fragment_index = next_fragment_index.back();
     int num_of_iterators_to_advance = next_fragment_index.size()-1; 
 
-    // Retrieve a single attribute tile to check for null (i.e., deletion)
-    Tile::const_iterator cell_it = 
-        ((*(tile_its[latest_fragment_index][0] + 
-        skipped_tiles[latest_fragment_index])).begin() +
-        skipped_cells[latest_fragment_index]);
-
-    bool null = is_null(cell_it);
     if(null) 
       ++num_of_iterators_to_advance;
 
@@ -1854,8 +1884,8 @@ int QueryProcessor::get_next_fragment_index(
           tile_its[next_fragment_index[i]][attribute_num], 
           skipped_tiles[next_fragment_index[i]],
           skipped_cells[next_fragment_index[i]],
-          coordinate_cell_its_initialized[next_fragment_index[i]], 
-          attribute_cell_its_initialized[next_fragment_index[i]]); 
+          attribute_cell_its_initialized[next_fragment_index[i]], 
+          coordinate_cell_its_initialized[next_fragment_index[i]]); 
     }
 
     if(!null)
@@ -2812,16 +2842,15 @@ bool QueryProcessor::may_join(
   return true;
 }
 
-/*
 // NOTE: It is assumed that k is small enough for O(k) coordinates to fit
 // in main memory. 
 void QueryProcessor::nearest_neighbors_irregular(
     const StorageManager::FragmentDescriptor* fd,
     const std::vector<double>& q,
     uint64_t k,
-    const std::string& result_array_name) const {
+    const StorageManager::FragmentDescriptor* result_fd) const {
   // For easy reference
-  const ArraySchema& array_schema = fd->array_schema();
+  const ArraySchema& array_schema = *(fd->array_schema());
   unsigned int attribute_num = array_schema.attribute_num();
   uint64_t capacity = array_schema.capacity();
 
@@ -2833,11 +2862,6 @@ void QueryProcessor::nearest_neighbors_irregular(
   Tile::const_iterator* cell_its = 
       new Tile::const_iterator[attribute_num];
   Tile::const_iterator cell_it_end;
-
-  // Prepare result array
-  ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::FragmentDescriptor* result_fd = 
-      storage_manager_.open_fragment(result_array_schema);
 
   // Get pairs (dist, rank), sorted on dist
   // rank is a tile rank and dist is its distance to q
@@ -2851,7 +2875,7 @@ void QueryProcessor::nearest_neighbors_irregular(
     
   // Prepare new result tiles
   uint64_t tile_id = 0; 
-  new_tiles(result_array_schema, tile_id, result_tiles); 
+  new_tiles(array_schema, tile_id, result_tiles); 
 
   // Retrieve and store the actual k nearest neighbors
   int64_t current_rank = -1;
@@ -2872,7 +2896,7 @@ void QueryProcessor::nearest_neighbors_irregular(
     // Store result tile if full
     if(result_tiles[attribute_num]->cell_num() == capacity) {
       store_tiles(result_fd, result_tiles);
-      new_tiles(result_array_schema, ++tile_id, result_tiles); 
+      new_tiles(array_schema, ++tile_id, result_tiles); 
     } 
  
     // Append cell
@@ -2886,9 +2910,6 @@ void QueryProcessor::nearest_neighbors_irregular(
   // Send the lastly created tiles to storage manager
   store_tiles(result_fd, result_tiles);
 
-  // Close result array
-  storage_manager_.close_fragment(result_fd);
-
   // Clean up 
   delete [] tiles;
   delete [] result_tiles;
@@ -2901,9 +2922,9 @@ void QueryProcessor::nearest_neighbors_regular(
     const StorageManager::FragmentDescriptor* fd,
     const std::vector<double>& q,
     uint64_t k,
-    const std::string& result_array_name) const {
+    const StorageManager::FragmentDescriptor* result_fd) const {
   // For easy reference
-  const ArraySchema& array_schema = fd->array_schema();
+  const ArraySchema& array_schema = *(fd->array_schema());
   unsigned int attribute_num = array_schema.attribute_num();
 
   // Create tiles 
@@ -2914,11 +2935,6 @@ void QueryProcessor::nearest_neighbors_regular(
   Tile::const_iterator* cell_its = 
       new Tile::const_iterator[attribute_num];
   Tile::const_iterator cell_it_end;
-
-  // Prepare result array
-  ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::FragmentDescriptor* result_fd = 
-      storage_manager_.open_fragment(result_array_schema);
 
   // Get pairs (dist, rank), sorted on dist
   // rank is a tile rank and dist is its distance to q
@@ -2952,7 +2968,7 @@ void QueryProcessor::nearest_neighbors_regular(
         tiles[i] = storage_manager_.get_tile_by_rank(fd, i, rank);
   
       // Prepare new result tiles
-      new_tiles(result_array_schema, tiles[0]->tile_id(), result_tiles); 
+      new_tiles(array_schema, tiles[0]->tile_id(), result_tiles); 
     }
    
     // Append cell
@@ -2966,16 +2982,11 @@ void QueryProcessor::nearest_neighbors_regular(
   // Send the lastly created tiles to storage manager
   store_tiles(result_fd, result_tiles);
   
-  // Close result array
-  storage_manager_.close_fragment(result_fd);
-
   // Clean up 
   delete [] tiles;
   delete [] result_tiles;
   delete [] cell_its;
 } 
-*/
-
 
 inline
 void QueryProcessor::new_tiles(const ArraySchema& array_schema, 
@@ -3021,7 +3032,6 @@ bool QueryProcessor::path_exists(const std::string& path) const {
 }
 
 
-/*
 double QueryProcessor::point_to_mbr_distance(
     const std::vector<double>& q, const std::vector<double>& mbr) const {
   // Check dimensionality
@@ -3054,7 +3064,6 @@ double QueryProcessor::point_to_point_distance(
 
   return dist;
 }
-*/
 
 bool QueryProcessor::precedes(
     const StorageManager::const_iterator& tile_it_A,

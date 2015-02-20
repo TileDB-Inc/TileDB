@@ -55,6 +55,10 @@ void print_options() {
   std::cout << "\t\t" << "in the number of maximum cells.\n";
   std::cout << "\n";
 
+  std::cout << "\t" << "-C or --coordinate\n";
+  std::cout << "\t\t" << "A coordinate across some dimension.\n";
+  std::cout << "\n";
+
   std::cout << "\t" << "-D or --dim-domain-bound\n";
   std::cout << "\t\t" << "A lower or upper bound for a dimension domain.\n";
   std::cout << "\t\t" << "See define_array for more details.\n";
@@ -73,6 +77,10 @@ void print_options() {
   std::cout << "\t\t" << "A file name.\n";
   std::cout << "\n";
 
+  std::cout << "\t" << "-N or --number\n";
+  std::cout << "\t\t" << "An integral number.\n";
+  std::cout << "\n";
+
   std::cout << "\t" << "-o or --order\n";
   std::cout << "\t\t" << "The cell (tile) order in the case of irregular\n";
   std::cout << "\t\t" << "(resp. regular) tiles. The following orders are\n";
@@ -88,6 +96,7 @@ void print_options() {
   std::cout << "\t" << "-r or --range-bound\n";
   std::cout << "\t\t" << "A lower or upper bound for a range across some\n";
   std::cout << "\t\t" << "dimmension. See subarray for more details.\n";
+  std::cout << "\n";
 
   std::cout << "\t" << "-t or --type\n";
   std::cout << "\t\t" << "A data type. Supported attribute types:\n";
@@ -234,9 +243,58 @@ void print_load() {
   std::cout << "\t\t" << "the file name into single quotes (').\n";
 }
 
+void print_nearest_neighbors() {
+  std::cout << "\t" << "nearest_neighbors\n";
+  std::cout << "\t\t" << "Creates a new array with the same schema as the\n";
+  std::cout << "\t\t" << "input, containing only the N nearest (non-empty)\n";
+  std::cout << "\t\t" << "cells of the input array to the reference cell\n";
+  std::cout << "\t\t" << "given in the input. Syntax:\n\n";
+  std::cout << "\t\t" << "tiledb -q nearest_neighbors \n";
+  std::cout << "\t\t" << "       { -A array_name, -w workspace            }\n";
+  std::cout << "\t\t" << "       { -C coordinate, -N number               }\n";
+  std::cout << "\t\t" << "       { -R result_name,                        }\n";
+  std::cout << "\t\t" << "\n";
+  std::cout << "\t\t" << "The workspace is the folder where the array data\n";
+  std::cout << "\t\t" << "are stored. A single existing workspace, and array\n";
+  std::cout << "\t\t" << "name must be given. A positive (non-zero) number N\n";
+  std::cout << "\t\t" << "specifies the number of the nearest neighbors. The\n";
+  std::cout << "\t\t" << "cell for which the nearest neighbors are computed\n";
+  std::cout << "\t\t" << "is specified by a set of coordinates, whose number\n";
+  std::cout << "\t\t" << "must be equal to the number of array dimensions.\n";
+}
+
+void print_retile() {
+  std::cout << "\t" << "retile\n";
+  std::cout << "\t\t" << "Retiles the input array. This involves switching\n";
+  std::cout << "\t\t" << "from regular to irregular tiles (and vice versa),\n";
+  std::cout << "\t\t" << "changing the tile extents, the capacity, and the\n";
+  std::cout << "\t\t" << "tile/cell order. Syntax:\n\n";
+  std::cout << "\t\t" << "tiledb -q retile \n";
+  std::cout << "\t\t" << "       { -A array_name, -w workspace            }\n";
+  std::cout << "\t\t" << "       [ -o order, -c capacity                  ]\n";
+  std::cout << "\t\t" << "       [ -e tile_extent                         ]\n";
+  std::cout << "\t\t" << "\n";
+  std::cout << "\t\t" << "The workspace is the folder where the array data\n";
+  std::cout << "\t\t" << "are stored. A single existing workspace, and array\n";
+  std::cout << "\t\t" << "name must be given. If tile extents are provided\n";
+  std::cout << "\t\t" << "(i) in the case of regular tiles, if the extents\n";
+  std::cout << "\t\t" << "differ from those in the array schema, retiling\n";
+  std::cout << "\t\t" << "occurs, (ii) in the case of irregular tiles, the\n";
+  std::cout << "\t\t" << "array is retiled so that it has regular tiles.\n";
+  std::cout << "\t\t" << "If tile extents are not provided for the case of\n"; 
+  std::cout << "\t\t" << "regular tiles, the array is retiled to one with\n";
+  std::cout << "\t\t" << "irregular tiles. If order is provided (different\n";
+  std::cout << "\t\t" << "from the existing order) retiling occurs.\n";
+  std::cout << "\t\t" << "If a capacity is provided, (i) in the case of\n";
+  std::cout << "\t\t" << "regular tiles it has no effect (only the schema\n";
+  std::cout << "\t\t" << "changes), (ii) in the case of irregular tiles,\n";
+  std::cout << "\t\t" << "only the book-keeping structures and array schema\n";
+  std::cout << "\t\t" << "are altered to accommodate the change.\n";
+}
+
 void print_subarray() {
   std::cout << "\t" << "subarray\n";
-  std::cout << "\t\t" << "Returns an array that has the same schema as the\n";
+  std::cout << "\t\t" << "Creates an array that has the same schema as the\n";
   std::cout << "\t\t" << "input array, and contains only the cells that lie\n";
   std::cout << "\t\t" << "within the input range. Syntax:\n\n";
   std::cout << "\t\t" << "tiledb -q subarray \n";
@@ -319,6 +377,10 @@ void print_user_manual() {
   std::cout << "\t\t" << "\n";
   print_load();
   std::cout << "\t\t" << "\n";
+  print_nearest_neighbors();
+  std::cout << "\t\t" << "\n";
+  print_retile();
+  std::cout << "\t\t" << "\n";
   print_subarray();
   std::cout << "\t\t" << "\n";
   print_update();
@@ -346,6 +408,10 @@ void process_help(const CommandLine& cl, int argc, char** argv) {
         print_join();
       } else if(!strcmp(argv[2],"load")) { 
         print_load();
+      } else if(!strcmp(argv[2],"nearest_neighbors")) { 
+        print_nearest_neighbors();
+      } else if(!strcmp(argv[2],"retile")) { 
+        print_retile();
       } else if(!strcmp(argv[2],"subarray")) { 
         print_subarray();
       } else if(!strcmp(argv[2],"update")) { 
@@ -428,6 +494,32 @@ void process_queries(const CommandLine& cl) {
     try {
       Executor executor(cl.workspace_);
       executor.load(cl.filename_, cl.array_names_[0]);
+    } catch(ExecutorException& ee) {
+      std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
+      exit(-1);
+    }
+  } else if(!strcmp(cl.query_, "nearest_neighbors")) {
+    // NEAREST_NEIGHBORS
+    // Get pair (reference cell, number of nearest neighbors)
+    std::pair<std::vector<double>,uint64_t> NN = 
+        parser.parse_nearest_neighbors(cl);
+    try {
+      Executor executor(cl.workspace_);
+      executor.nearest_neighbors(cl.array_names_[0], NN.first, NN.second, 
+                                 cl.result_name_);
+    } catch(ExecutorException& ee) {
+      std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
+      exit(-1);
+    }
+  } else if(!strcmp(cl.query_, "retile")) {
+    // RETILE
+    uint64_t capacity;
+    ArraySchema::Order order;
+    std::vector<double> tile_extents; 
+    parser.parse_retile(cl, capacity, order, tile_extents);
+    try {
+      Executor executor(cl.workspace_);
+      executor.retile(cl.array_names_[0], capacity, order, tile_extents);
     } catch(ExecutorException& ee) {
       std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
       exit(-1);

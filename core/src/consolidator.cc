@@ -54,7 +54,6 @@ Consolidator::Consolidator(const std::string& workspace,
                            unsigned int consolidation_step) 
     : consolidation_step_(consolidation_step), 
       storage_manager_(storage_manager) {
-  assert(consolidation_step_ > 1); // TODO remove
   set_workspace(workspace);
   create_workspace(); 
 }
@@ -64,6 +63,112 @@ Consolidator::Consolidator(const std::string& workspace,
 ******************************************************/
 
 void Consolidator::add_fragment(const ArrayDescriptor* ad) const {
+  // Eager consolidation
+  if(consolidation_step_ == 1)
+    eagerly_consolidate(ad);
+  else 
+    lazily_consolidate(ad);
+
+  ++ad->array_info_->next_update_seq_;
+}
+
+void Consolidator::close_array(const ArrayDescriptor* ad) {
+  // For easy reference
+  const std::string& array_name = ad->array_info_->array_name_;
+
+  // Check if array is open, and descriptor is valid
+  assert(open_arrays_.find(array_name) != open_arrays_.end());
+  assert(open_arrays_[array_name].id_ == ad->array_info_id_);
+
+  if(ad->array_info_->array_mode_ == WRITE)
+    flush_fragment_tree(array_name, ad->array_info_->fragment_tree_); 
+  open_arrays_.erase(array_name); 
+
+  delete ad;
+}
+
+void Consolidator::eagerly_consolidate(const ArrayDescriptor* ad) const {
+  // For easy reference
+  const std::string& array_name = ad->array_info_->array_name_;
+  uint64_t cur_update_seq = ad->array_info_->next_update_seq_;
+  FragmentTree& fragment_tree = ad->array_info_->fragment_tree_;
+  int level_num = fragment_tree.size();
+  std::stringstream ss;
+
+  // Add fragment to tree
+  // In the case of eager consolidation, after the first fragment is added,
+  // the levels of the tree are always equal to 1. The fragment tree is
+  // merely used to calculate the next update sequence number.
+  if(level_num == 0) { // First fragment
+    fragment_tree.push_back(FragmentTreeLevel(0,1));
+    ++level_num;
+    return; // No need to consolidate first fragment
+  } else {
+    ++(fragment_tree[level_num-1].second);
+  }
+
+  // Get existing fragment name
+  std::vector<std::string> fragment_names;
+  ss << "0_" << (cur_update_seq -1);
+  fragment_names.push_back(ss.str());
+  ss.str(std::string());
+  // Get incoming fragment name
+  ss << cur_update_seq << "_" << cur_update_seq;
+  fragment_names.push_back(ss.str());
+  ss.str(std::string());
+  // Get result fragment name
+  ss << "0_" << cur_update_seq;
+  std::string result_fragment_name = ss.str();
+
+  // Consolidate
+  consolidate(array_name, fragment_names, result_fragment_name);
+}
+
+std::vector<std::string> Consolidator::get_all_fragment_names(
+    const ArrayDescriptor* ad) const {
+  // For easy reference
+  FragmentTree& fragment_tree = ad->array_info_->fragment_tree_;
+  unsigned int level;
+  uint64_t start_seq = 0, end_seq, subtree_size;
+  std::stringstream ss;
+  std::vector<std::string> fragment_names;
+
+  // Eager consolidation
+  if(consolidation_step_ == 1) {
+    ss << "0_" << ad->array_info_->next_update_seq_-1;
+    fragment_names.push_back(ss.str());
+  } else { // Lazy consolidation
+    for(unsigned int i=0; i<fragment_tree.size(); ++i) {
+      level = fragment_tree[i].first;
+      for(unsigned int j=0; j < fragment_tree[i].second; ++j) {
+        subtree_size = pow(double(consolidation_step_), level); 
+        end_seq = start_seq + subtree_size - 1;
+        ss.str(std::string());
+        ss << start_seq << "_" << end_seq;
+        fragment_names.push_back(ss.str());
+        start_seq += subtree_size;
+      } 
+    }
+  }
+
+  return fragment_names;
+}
+
+std::string Consolidator::get_next_fragment_name(
+    const ArrayDescriptor* ad) const {
+  uint64_t n = get_next_update_seq(ad);
+  std::stringstream fragment_name;
+  fragment_name << n << "_" << n;
+
+  return  fragment_name.str();
+}
+
+uint64_t Consolidator::get_next_update_seq(
+    const ArrayDescriptor* ad) const {
+  return ad->array_info_->next_update_seq_;
+}
+
+void Consolidator::lazily_consolidate(const ArrayDescriptor* ad) const {
   // For easy reference
   const std::string& array_name = ad->array_info_->array_name_;
   FragmentTree& fragment_tree = ad->array_info_->fragment_tree_;
@@ -113,61 +218,6 @@ void Consolidator::add_fragment(const ArrayDescriptor* ad) const {
       ++level_num;
     }
   } 
-
-  ++ad->array_info_->next_update_seq_;
-}
-
-void Consolidator::close_array(const ArrayDescriptor* ad) {
-  // For easy reference
-  const std::string& array_name = ad->array_info_->array_name_;
-
-  // Check if array is open, and descriptor is valid
-  assert(open_arrays_.find(array_name) != open_arrays_.end());
-  assert(open_arrays_[array_name].id_ == ad->array_info_id_);
-
-  if(ad->array_info_->array_mode_ == WRITE)
-    flush_fragment_tree(array_name, ad->array_info_->fragment_tree_); 
-  open_arrays_.erase(array_name); 
-
-  delete ad;
-}
-
-std::vector<std::string> Consolidator::get_all_fragment_names(
-    const ArrayDescriptor* ad) const {
-  // For easy reference
-  FragmentTree& fragment_tree = ad->array_info_->fragment_tree_;
-  unsigned int level;
-  uint64_t start_seq = 0, end_seq, subtree_size;
-  std::stringstream ss;
-  std::vector<std::string> fragment_names;
-
-  for(unsigned int i=0; i<fragment_tree.size(); ++i) {
-    level = fragment_tree[i].first;
-    for(unsigned int j=0; j < fragment_tree[i].second; ++j) {
-      subtree_size = pow(double(consolidation_step_), level); 
-      end_seq = start_seq + subtree_size - 1;
-      ss.str(std::string());
-      ss << start_seq << "_" << end_seq;
-      fragment_names.push_back(ss.str());
-      start_seq += subtree_size;
-    } 
-  }
-
-  return fragment_names;
-}
-
-std::string Consolidator::get_next_fragment_name(
-    const ArrayDescriptor* ad) const {
-  uint64_t n = get_next_update_seq(ad);
-  std::stringstream fragment_name;
-  fragment_name << n << "_" << n;
-
-  return  fragment_name.str();
-}
-
-uint64_t Consolidator::get_next_update_seq(
-    const ArrayDescriptor* ad) const {
-  return ad->array_info_->next_update_seq_;
 }
 
 const Consolidator::ArrayDescriptor* Consolidator::open_array(
@@ -239,6 +289,7 @@ void Consolidator::consolidate(
     const std::string& array_name,
     const std::vector<std::string>& fragment_names,
     const std::string& result_fragment_name) const {
+
   // Input fragments
   const StorageManager::ArrayDescriptor* ad =
       storage_manager_.open_array(array_name, 
@@ -263,7 +314,7 @@ void Consolidator::consolidate_irregular(
   const ArraySchema* array_schema = ad->array_schema();
   const std::string& array_name = array_schema->array_name();
   unsigned int attribute_num = array_schema->attribute_num();
-  unsigned int fragment_num = consolidation_step_;
+  unsigned int fragment_num = ad->fd().size();
   uint64_t capacity = array_schema->capacity();
   const std::vector<const StorageManager::FragmentDescriptor*>& fd = ad->fd();
 
@@ -300,7 +351,7 @@ void Consolidator::consolidate_irregular(
   // Get the index of the fragment from which we will get the next cell 
   // and append it to the consolidation result.
   int next_fragment_index = 
-      get_next_fragment_index(tile_its, tile_it_end, consolidation_step_, 
+      get_next_fragment_index(tile_its, tile_it_end, fragment_num, 
                               cell_its, cell_it_end, *array_schema,
                               result_fragment_name);
 
@@ -331,7 +382,7 @@ void Consolidator::consolidate_irregular(
                           next_tile_its, next_tile_it_end);
 
     next_fragment_index = get_next_fragment_index(tile_its, tile_it_end, 
-                                                  consolidation_step_, 
+                                                  fragment_num, 
                                                   cell_its, cell_it_end, 
                                                   *array_schema,
                                                   result_fragment_name);
@@ -362,7 +413,7 @@ void Consolidator::consolidate_regular(
   const ArraySchema* array_schema = ad->array_schema();
   const std::string& array_name = array_schema->array_name();
   unsigned int attribute_num = array_schema->attribute_num();
-  unsigned int fragment_num = consolidation_step_;
+  unsigned int fragment_num = ad->fd().size();
   const std::vector<const StorageManager::FragmentDescriptor*>& fd = ad->fd();
 
   // Open the new result fragment
@@ -398,7 +449,7 @@ void Consolidator::consolidate_regular(
   // Get the index of the fragment from which we will get the next cell 
   // and append it to the consolidation result.
   int next_fragment_index = 
-      get_next_fragment_index(tile_its, tile_it_end, consolidation_step_, 
+      get_next_fragment_index(tile_its, tile_it_end, fragment_num, 
                               cell_its, cell_it_end, *array_schema,
                               result_fragment_name);
 
@@ -436,7 +487,7 @@ void Consolidator::consolidate_regular(
                           next_tile_its, next_tile_it_end);
 
     next_fragment_index = get_next_fragment_index(tile_its, tile_it_end, 
-                                                  consolidation_step_,
+                                                  fragment_num,
                                                   cell_its, cell_it_end, 
                                                   *array_schema,
                                                   result_fragment_name);

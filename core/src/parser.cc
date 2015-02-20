@@ -37,6 +37,7 @@
 #include <string.h>
 #include <iostream>
 #include <algorithm>
+#include <bitset>
 
 /******************************************************
 ******************* PARSING METHODS *******************
@@ -114,19 +115,6 @@ ArraySchema Parser::parse_define_array(const CommandLine& cl) const {
   }
   if((cl.arg_bitmap_ | PS_DEFINE_ARRAY_BITMAP) != PS_DEFINE_ARRAY_BITMAP) {
     std::cerr << "[TileDB::fatal_error] Redundant arguments provided."
-              << " Type 'tiledb help' to see the TileDB User Manual.\n";
-    exit(-1);
-  }
-
-  // Check if capacity was given for the case of regular tiles
-  if(cl.array_names_.size() > 1) {
-    std::cerr << "[TileDB::fatal_error] More than one array names provided."
-              << " Type 'tiledb help' to see the TileDB User Manual.\n";
-    exit(-1);
-  }
-  if(cl.capacity_ != NULL && cl.tile_extents_.size() != 0) {
-    std::cerr << "[TileDB::fatal_error] Capacity applies only to irregular"
-              << " tiles (tile extents should not be defined)."
               << " Type 'tiledb help' to see the TileDB User Manual.\n";
     exit(-1);
   }
@@ -281,6 +269,112 @@ void Parser::parse_load(const CommandLine& cl) const {
   }
 }
 
+std::pair<std::vector<double>,uint64_t> Parser::parse_nearest_neighbors(
+    const CommandLine& cl) const {
+  // Check if correct arguments have been ginen
+  if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Workspace not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_ARRAY_NAME_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Array name not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_NUMBER_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Number of nearest neighbors"
+                 " not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_RESULT_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Result name not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_COORDINATE_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Reference cell not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  // Check for redundant arguments
+  if(cl.array_names_.size() > 1) {
+    std::cerr << "[TileDB::fatal_error] More than one array names provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if(cl.numbers_.size() > 1) {
+    std::cerr << "[TileDB::fatal_error] More than one numbers of nearest"
+                 " neighbors provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  if((cl.arg_bitmap_ | PS_NN_BITMAP) != PS_NN_BITMAP) {
+    std::cerr << "[TileDB::fatal_error] Redundant arguments provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  // Prepare output
+  std::vector<double> coords = check_coordinates(cl);
+  std::vector<uint64_t> N = check_numbers(cl); 
+
+  // N[0] cannot be zero
+  if(N[0] == 0) {
+    std::cerr << "[TileDB::fatal_error] The number of nearest neighbors"
+                 " cannot be zero."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  return std::pair<std::vector<double>,int>(coords, N[0]);  
+}
+
+void Parser::parse_retile(
+    const CommandLine& cl,
+    uint64_t& capacity,
+    ArraySchema::Order& order,
+    std::vector<double>& tile_extents) const {
+  // Check if correct arguments have been ginen
+  if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Workspace not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_ARRAY_NAME_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Array name not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  // Check for redundant arguments
+  if(cl.array_names_.size() > 1) {
+    std::cerr << "[TileDB::fatal_error] More than one array names provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ | PS_RETILE_BITMAP) != PS_RETILE_BITMAP) {
+    std::cerr << "[TileDB::fatal_error] Redundant arguments provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  // Check if at least one of {capacity, order, tile extents} was given
+  if(cl.arg_bitmap_ == (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP)) {
+    std::cerr << "[TileDB::fatal_error] At least one of capacity, order, or"
+                 " tile extents must be given."    
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  capacity = check_capacity(cl);
+  order = check_order(cl);
+  tile_extents = check_tile_extents(cl); 
+}
+
 std::vector<double> Parser::parse_subarray(const CommandLine& cl) const {
   // Check if correct arguments have been ginen
   if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
@@ -413,6 +507,26 @@ uint64_t Parser::check_capacity(const CommandLine& cl) const {
   return capacity;
 }
 
+std::vector<double> Parser::check_coordinates(const CommandLine& cl) const {
+  std::vector<double> coords;
+
+  // Check if the coordinates are real numbers.
+  for(int i=0; i<cl.coords_.size(); ++i) {
+    if(!is_positive_real(cl.coords_[i])) { 
+      std::cerr << "[TileDB::fatal_error] The coordinates must be positive" 
+                << " real numbers."
+                << " Type 'tiledb help' to see the TileDB User Manual.\n";
+      exit(-1);
+    } else {
+      double coord; 
+      sscanf(cl.coords_[i], "%lf", &coord);
+      coords.push_back(coord);
+    }
+  }
+
+  return coords;
+}
+
 std::vector<std::pair<double, double> > Parser::check_dim_domains(
    const CommandLine& cl,
    const std::vector<std::string>& dim_names) const {
@@ -499,8 +613,31 @@ std::vector<std::string> Parser::check_dim_names(
   return dim_names;
 }
 
+std::vector<uint64_t> Parser::check_numbers(const CommandLine& cl) const {
+  std::vector<uint64_t> numbers;
+
+  // Check if the coordinates are real numbers.
+  for(int i=0; i<cl.numbers_.size(); ++i) {
+    if(!is_positive_integer(cl.numbers_[i])) { 
+      std::cerr << "[TileDB::fatal_error] The 'number' argument must be"
+                   " a positive integer."
+                << " Type 'tiledb help' to see the TileDB User Manual.\n";
+      exit(-1);
+    } else {
+      uint64_t N; 
+      sscanf(cl.numbers_[i], "%llu", &N);
+      numbers.push_back(N);
+    }
+  }
+
+  return numbers;
+}
+
 ArraySchema::Order Parser::check_order(const CommandLine& cl) const {
-  if(!strcmp(cl.order_, "row-major")) {
+
+  if(cl.order_ == NULL) {
+    return ArraySchema::NONE;
+  } else if(!strcmp(cl.order_, "row-major")) {
     return ArraySchema::ROW_MAJOR;
   } else if(!strcmp(cl.order_, "column-major")) {
     return ArraySchema::COLUMN_MAJOR;
@@ -550,6 +687,28 @@ std::vector<double> Parser::check_range(const CommandLine& cl) const {
   }
 
   return range;
+}
+
+std::vector<double> Parser::check_tile_extents(const CommandLine& cl) const {
+  std::vector<double> tile_extents;
+ 
+  if(cl.tile_extents_.size() == 0)
+    return tile_extents;
+   
+  // Check if the tile extents are real numbers
+  for(int i=0; i<cl.tile_extents_.size(); ++i) {
+    if(!is_positive_real(cl.tile_extents_[i])) {
+      std::cerr << "[TileDB::fatal_error] The tile extents must be real"
+                << " numbers."
+                << " Type 'tiledb help' to see the TileDB User Manual.\n";
+      exit(-1);
+    }
+    double tile_extent;
+    sscanf(cl.tile_extents_[i], "%lf", &tile_extent); 
+    tile_extents.push_back(tile_extent);
+  }
+
+  return tile_extents;
 }
 
 std::vector<double> Parser::check_tile_extents(

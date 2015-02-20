@@ -97,10 +97,26 @@ class Executor {
    * all their attribute values) are stored in a new array. The distance metric
    * used to calculate proximity is the Euclidean distance.
    */
-  void nearest_neighbors(const ArraySchema& array_schema,
+  void nearest_neighbors(const std::string& array_name,
                          const std::vector<double>& q,
                          uint64_t k,
                          const std::string& result_array_name) const;
+  /** 
+   * Retiles an array based on the inputs. If tile extents are provided
+   * (i) in the case of regular tiles, if the extents differ from those in the
+   * array schema, retiling occurs, (ii) in the case of irregular tiles, the
+   * array is retiled so that it has regular tiles. If tile extents are not
+   * provided for the case of regular tiles, the array is retiled to one with
+   * irregular tiles. If order is provided (different from the existing order)
+   * retiling occurs. If a capacity is provided, (i) in the case of regular
+   * tiles it has no effect (only the schema changes), (ii) in the case of
+   * irregular tiles, only the book-keeping structures and array schema
+   * are altered to accommodate the change.
+   */
+  void retile(const std::string& array_name,
+              uint64_t capacity,
+              ArraySchema::Order order,
+              const std::vector<double>& tile_extents) const;
   /** 
    * A subarray query creates a new array from the input array, 
    * containing only the cells whose coordinates fall into the input range. 
