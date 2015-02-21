@@ -211,6 +211,11 @@ void StorageManager::flush_fragments_bkp(
   // Open file
   std::string filename = workspace_ + "/" + array_name + "/" +
                          SM_FRAGMENTS_FILENAME + SM_BOOK_KEEPING_FILE_SUFFIX;
+
+  // Delete file if it exists
+  remove(filename.c_str());
+
+  // Open file
   int fd = open(filename.c_str(), 
                 O_WRONLY | O_CREAT | O_TRUNC | O_SYNC, S_IRWXU);
   assert(fd != -1);
@@ -1148,11 +1153,16 @@ void StorageManager::flush_bounding_coordinates(
   const std::string& fragment_name = fragment_info.fragment_name_;
   uint64_t tile_num = fragment_info.tile_ids_.size();
 
-  // Open file
+  // Prepare filename
   std::string filename = workspace_ + "/" + array_name + "/" + 
                          fragment_name + "/" +
                          SM_BOUNDING_COORDINATES_FILENAME + 
                          SM_BOOK_KEEPING_FILE_SUFFIX;
+
+  // Delete file if it exists
+  remove(filename.c_str());
+
+  // Open file
   int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   assert(fd != -1);
 
@@ -1199,11 +1209,16 @@ void StorageManager::flush_MBRs(
   const std::string& fragment_name = fragment_info.fragment_name_;
   uint64_t tile_num = fragment_info.tile_ids_.size();
 
-  // Open file
+  // prepare file name
   std::string filename = workspace_ + "/" + array_name + "/" + 
                          fragment_name + "/" +
                          SM_MBRS_FILENAME + 
                          SM_BOOK_KEEPING_FILE_SUFFIX;
+
+  // Delete file if it exists
+  remove(filename.c_str());
+
+  // Open file
   int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   assert(fd != -1);
 
@@ -1245,11 +1260,16 @@ void StorageManager::flush_offsets(
   const std::string& fragment_name = fragment_info.fragment_name_;
   uint64_t tile_num = fragment_info.tile_ids_.size();
 
-  // Open file
+  // Prepare file name
   std::string filename = workspace_ + "/" + array_name + "/" + 
                          fragment_name + "/" +
                          SM_OFFSETS_FILENAME + 
                          SM_BOOK_KEEPING_FILE_SUFFIX;
+
+  // Delete file if it exists
+  remove(filename.c_str());
+
+  // Open file
   int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   assert(fd != -1);
 
@@ -1286,11 +1306,16 @@ void StorageManager::flush_tile_ids(
   const std::string& fragment_name = fragment_info.fragment_name_;
   uint64_t tile_num = fragment_info.tile_ids_.size();
 
-  // Open file
+  // Prepare file name
   std::string filename = workspace_ + "/" + array_name + "/" +
                          fragment_name + "/" +
                          SM_TILE_IDS_FILENAME + 
                          SM_BOOK_KEEPING_FILE_SUFFIX;
+
+  // Delete file if it exists
+  remove(filename.c_str());
+
+  // Open file
   int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   assert(fd != -1);
  
