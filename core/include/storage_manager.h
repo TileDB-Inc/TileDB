@@ -364,6 +364,8 @@ class StorageManager {
    */
   void load_fragments_bkp(const std::string& array_name, 
                           char*& buffer, uint64_t& buffer_size) const;
+  /** Stores a new schema for an array on the disk. */
+  void modify_array_schema(const ArraySchema& array_schema) const;
   /** 
    * Modifies the fragment book-keeping structures for the case of irregular 
    * tiles, when the capacity changes as part of the 'retile' query. 
@@ -437,7 +439,7 @@ class StorageManager {
     const_iterator();
     /** Iterator constuctor. */
     const_iterator(
-        StorageManager* storage_manager,
+        const StorageManager* storage_manager,
         const FragmentDescriptor* fd, 
         unsigned int attribute_id,
         uint64_t rank); 
@@ -492,14 +494,14 @@ class StorageManager {
     /** The rank of the current tile in the book-keeping structures. */
     uint64_t rank_;
     /** The storage manager object that created the iterator. */ 
-    StorageManager* storage_manager_;
+    const StorageManager* storage_manager_;
   };
   /** Begin tile iterator. */
   const_iterator begin(const FragmentDescriptor* fd, 
-                       unsigned int attribute_id);
+                       unsigned int attribute_id) const;
   /** End tile iterator. */
   const_iterator end(const FragmentDescriptor* fd,
-                     unsigned int attribute_id);
+                     unsigned int attribute_id) const;
   
   // MISC
   /** 
@@ -682,6 +684,8 @@ class StorageManager {
    * SM_INVALID_RANK. 
    */
   uint64_t tile_rank(const FragmentInfo& fragment_info, uint64_t tile_id) const;
+  /** Expands the input MBR to include the input coordinates. */
+  void expand_mbr(const std::vector<double>& coords, MBR& mbr) const;
 }; 
 
 #endif

@@ -512,6 +512,13 @@ ArraySchema ArraySchema::clone(
   return array_schema;
 }
 
+ArraySchema ArraySchema::clone(uint64_t capacity) const {
+  ArraySchema array_schema = *this;
+  array_schema.capacity_ = capacity;
+
+  return array_schema;
+}
+
 ArraySchema ArraySchema::create_join_result_schema(
     const ArraySchema& array_schema_A, 
     const ArraySchema& array_schema_B,

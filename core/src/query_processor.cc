@@ -254,7 +254,7 @@ void QueryProcessor::retile_irregular(
                                   " supported.");
   // CASE #2: Tile extents not provided, order different
   //          --> retile (via export/reload)               TODO
-  else if(order != fd[0]->array_schema()->order())
+  else if(order != ArraySchema::NONE && order != fd[0]->array_schema()->order())
     throw QueryProcessorException("Retiling of arrays with irregular tiles"
                                   " into irregular tiles with different"
                                   " cell order currently not supported.");
@@ -267,10 +267,15 @@ void QueryProcessor::retile_irregular(
 void QueryProcessor::retile_irregular_capacity(
     const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     uint64_t capacity) const {
-  for(unsigned int i=0; i<fd.size(); ++i)
+  // Moduify book-keeping structures of fragments
+  for(unsigned int i=0; i<fd.size(); ++i) 
     storage_manager_.modify_fragment_bkp(fd[i], capacity);
+
+  // Modify schema
+  ArraySchema new_array_schema = fd[0]->array_schema()->clone(capacity);
+  storage_manager_.modify_array_schema(new_array_schema);
 }
-  
+
 void QueryProcessor::retile_regular(
     const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     uint64_t capacity, 

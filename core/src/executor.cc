@@ -444,8 +444,6 @@ void Executor::retile(const std::string& array_name,
     throw ExecutorException(qe.what());
   }  
   
-  // TODO: change schema here ???
-
   // Clean up
   storage_manager_->close_array(ad);
 }

@@ -898,12 +898,12 @@ std::vector<double> CoordinateTile<T>::cell_v_double(
 template<class T> 
 void CoordinateTile<T>::update_mbr(const std::vector<T>& coordinates) {
   if(cell_num_ == 0) {
-    for(unsigned int i=0; i<dim_num_; i++) {
+    for(unsigned int i=0; i<dim_num_; ++i) {
       mbr_[2*i] = coordinates[i]; 
       mbr_[2*i+1] = coordinates[i]; 
     }
   } else {
-    for(unsigned int i=0; i<dim_num_; i++) {
+    for(unsigned int i=0; i<dim_num_; ++i) {
       // Update lower bound on dimension i
       if(mbr_[2*i] > coordinates[i])
         mbr_[2*i] = coordinates[i];

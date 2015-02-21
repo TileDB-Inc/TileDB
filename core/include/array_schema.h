@@ -167,6 +167,8 @@ class ArraySchema {
   ArraySchema clone(const std::string& array_name) const;
   /** Returns an identical schema with the input array name and order. */
   ArraySchema clone(const std::string& array_name, Order order) const;
+  /** Returns an identical schema assigning the input to the capacity. */
+  ArraySchema clone(uint64_t capacity) const;
   /** 
    * Returns the schema of the result when joining the arrays with the
    * input schemas. The result array name is given in the third argument. 
