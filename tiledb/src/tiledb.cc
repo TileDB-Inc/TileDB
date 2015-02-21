@@ -68,6 +68,11 @@ void print_options() {
   std::cout << "\t\t" << "A dimension name. \n";
   std::cout << "\n";
 
+  std::cout << "\t" << "-E, --expression\n";
+  std::cout << "\t\t" << "A mathematical expression.\n";
+  std::cout << "\t\t" << "See filter for more details.\n";
+  std::cout << "\n";
+
   std::cout << "\t" << "-e, --tile-extent\n";
   std::cout << "\t\t" << "A tile extent across some dimension.\n";
   std::cout << "\t\t" << "See define_array for more details.\n";
@@ -191,6 +196,24 @@ void print_export_to_csv() {
   std::cout << "\t\t" << "The workspace is the folder where the array data\n";
   std::cout << "\t\t" << "are stored. A single existing workspace, and array\n";
   std::cout << "\t\t" << "name must be given.\n";
+}
+
+void print_filter() {
+  std::cout << "\t" << "filter\n";
+  std::cout << "\t\t" << "Creates an array that has the same schema as the\n";
+  std::cout << "\t\t" << "input array, and contains only the cells that\n";
+  std::cout << "\t\t" << "make the input expression evaluate to true.\n";
+  std::cout << "\t\t" << "Syntax:\n\n";
+  std::cout << "\t\t" << "tiledb -q filter \n";
+  std::cout << "\t\t" << "       { -A array_name, -w workspace            }\n";
+  std::cout << "\t\t" << "       { -E filter_expression                   }\n";
+  std::cout << "\t\t" << "       { -R result_name                         }\n";
+  std::cout << "\t\t" << "\n";
+  std::cout << "\t\t" << "The workspace is the folder where the array data\n";
+  std::cout << "\t\t" << "are stored. A single expression, existing\n";
+  std::cout << "\t\t" << "workspace and array name must be given. The filter\n";
+  std::cout << "\t\t" << "expression is a boolean expression defined over a\n";
+  std::cout << "\t\t" << "subset of the attributes.\n";
 }
 
 void print_join() {
@@ -373,6 +396,8 @@ void print_user_manual() {
   std::cout << "\t\t" << "\n";
   print_export_to_csv();
   std::cout << "\t\t" << "\n";
+  print_filter();
+  std::cout << "\t\t" << "\n";
   print_join();
   std::cout << "\t\t" << "\n";
   print_load();
@@ -404,6 +429,8 @@ void process_help(const CommandLine& cl, int argc, char** argv) {
         print_delete_array();
       } else if(!strcmp(argv[2],"export_to_csv")) { 
         print_export_to_csv();
+      } else if(!strcmp(argv[2],"filter")) { 
+        print_filter();
       } else if(!strcmp(argv[2],"join")) { 
         print_join();
       } else if(!strcmp(argv[2],"load")) { 
@@ -474,6 +501,16 @@ void process_queries(const CommandLine& cl) {
     try {
       Executor executor(cl.workspace_);
       executor.export_to_csv(cl.array_names_[0], cl.filename_);
+    } catch(ExecutorException& ee) {
+      std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
+      exit(-1);
+    }
+  } else if(!strcmp(cl.query_, "filter")) {
+    // FILTER
+    parser.parse_filter(cl);
+    try {
+      Executor executor(cl.workspace_);
+      executor.filter(cl.array_names_[0], cl.expression_, cl.result_name_);
     } catch(ExecutorException& ee) {
       std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
       exit(-1);

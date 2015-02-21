@@ -74,11 +74,10 @@ class Executor {
   /** 
    * A filter query creates a new array from the input array, 
    * containing only the cells whose attribute values satisfy the input 
-   * expression (given in the form of an expression tree). 
-   * The new array will have the input result name.
+   * expression. The new array will have the input result name.
    */
-  void filter(const ArraySchema& array_schema,
-              const ExpressionTree* expression,
+  void filter(const std::string& array_name,
+              const std::string& expression,
               const std::string& result_array_name) const;
   /** 
    * Joins the two input arrays (say, A and B). The result contains a cell only

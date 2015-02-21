@@ -106,9 +106,10 @@ class QueryProcessor {
    * expression (given in the form of an expression tree). 
    * The new array will have the input result name.
    */
-  void filter(const StorageManager::FragmentDescriptor* fd,
+  void filter(
+      const StorageManager::FragmentDescriptor* fd,
       const ExpressionTree* expression,
-      const std::string& result_array_name) const;
+      const StorageManager::FragmentDescriptor* result_fd) const;
   /** 
    * A filter query creates a new array from the input array descriptor, 
    * containing only the cells whose attribute values satisfy the input 
@@ -119,7 +120,7 @@ class QueryProcessor {
   void filter(
       const std::vector<const StorageManager::FragmentDescriptor*>& fd,
       const ExpressionTree* expression,
-      const std::string& result_array_name) const;
+      const StorageManager::FragmentDescriptor* result_fd) const;
   /** 
    * Joins the two input arrays (say, A and B). The result contains a cell only
    * if both the corresponding cells in A and B are non-empty. The input arrays
@@ -404,33 +405,34 @@ class QueryProcessor {
   /** Creates the workspace folder. */
   void create_workspace() const;
   /** 
-   * Implementation of QueryProcessor::filter for the case of irregular tiles.
-   */
-  void filter_irregular(const StorageManager::FragmentDescriptor* fd,
-                        const ExpressionTree* expression,
-                        const std::string& result_array_name) const;
-  /** 
    * Implementation of QueryProcessor::filter for the case of regular tiles. 
-   * This function operators on multiple array fragments.
-   */
-  void filter_regular(
-      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
-      const ExpressionTree* expression,
-      const std::string& result_array_name) const;
-  /** 
-   * Implementation of QueryProcessor::filter for the case of irregular tiles.
    * This function operators on multiple array fragments.
    */
   void filter_irregular(
       const std::vector<const StorageManager::FragmentDescriptor*>& fd,
       const ExpressionTree* expression,
-      const std::string& result_array_name) const;
+      const StorageManager::FragmentDescriptor* result_fd) const;
+  /** 
+   * Implementation of QueryProcessor::filter for the case of irregular tiles.
+   */
+  void filter_irregular(
+      const StorageManager::FragmentDescriptor* fd,
+      const ExpressionTree* expression,
+      const StorageManager::FragmentDescriptor* result_fd) const;
+  /** 
+   * Implementation of QueryProcessor::filter for the case of irregular tiles.
+   * This function operators on multiple array fragments.
+   */
+  void filter_regular(
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
+      const ExpressionTree* expression,
+      const StorageManager::FragmentDescriptor* result_fd) const;
   /** 
    * Implementation of QueryProcessor::filter for the case of regular tiles. 
    */
   void filter_regular(const StorageManager::FragmentDescriptor* fd,
                       const ExpressionTree* expression,
-                      const std::string& result_array_name) const;
+      const StorageManager::FragmentDescriptor* result_fd) const;
   /**
    * This function focuses on the case of irregular tiles.
    * Returns the indexes of the fragments (from A and B, respectively) that

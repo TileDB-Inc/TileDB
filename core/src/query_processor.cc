@@ -168,29 +168,27 @@ void QueryProcessor::export_to_csv(
   delete [] cell_it_end;
 }
 
-/*
-void QueryProcessor::filter(const StorageManager::FragmentDescriptor* fd,
-                            const ExpressionTree* expression,
-                            const std::string& result_array_name) const {
-  if(fd->array_schema().has_regular_tiles())
-    filter_regular(fd, expression, result_array_name);
+void QueryProcessor::filter(
+    const StorageManager::FragmentDescriptor* fd,
+    const ExpressionTree* expression,
+    const StorageManager::FragmentDescriptor* result_fd) const {
+  if(fd->array_schema()->has_regular_tiles())
+    filter_regular(fd, expression, result_fd);
   else 
-    filter_irregular(fd, expression, result_array_name);
+    filter_irregular(fd, expression, result_fd);
 } 
 
 void QueryProcessor::filter(
     const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     const ExpressionTree* expression,
-    const std::string& result_array_name) const {
+    const StorageManager::FragmentDescriptor* result_fd) const {
   assert(fd.size() > 0);
 
-  if(fd[0]->array_schema().has_regular_tiles())
-    filter_regular(fd, expression, result_array_name);
+  if(fd[0]->array_schema()->has_regular_tiles())
+    filter_regular(fd, expression, result_fd);
   else 
-    filter_irregular(fd, expression, result_array_name);
+    filter_irregular(fd, expression, result_fd);
 }
-*/
-
 
 void QueryProcessor::join(
     const StorageManager::FragmentDescriptor* fd_A, 
@@ -654,21 +652,16 @@ void QueryProcessor::create_workspace() const {
   }
 }
 
-/*
 void QueryProcessor::filter_irregular(
     const StorageManager::FragmentDescriptor* fd,
     const ExpressionTree* expression,
-    const std::string& result_array_name) const {
+    const StorageManager::FragmentDescriptor* result_fd) const {
   // For easy reference
-  const ArraySchema& array_schema = fd->array_schema();
+  const ArraySchema& array_schema = *(fd->array_schema());
+
   const unsigned int attribute_num = array_schema.attribute_num();
   uint64_t capacity = array_schema.capacity();
   
-  // Prepare result array
-  ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::FragmentDescriptor* result_fd = 
-      storage_manager_.open_fragment(result_array_schema);
-
   // Create tiles 
   Tile** result_tiles = new Tile*[attribute_num+1];
 
@@ -702,7 +695,7 @@ void QueryProcessor::filter_irregular(
     
   // Create result tiles
   uint64_t tile_id = 0;
-  new_tiles(result_array_schema, tile_id, result_tiles); 
+  new_tiles(array_schema, tile_id, result_tiles); 
 
   // Iterate over all tiles
   while(tile_its[end_attribute_id] != tile_it_end) {
@@ -729,7 +722,7 @@ void QueryProcessor::filter_irregular(
         }
         if(result_tiles[attribute_num]->cell_num() == capacity) {
           store_tiles(result_fd, result_tiles);
-          new_tiles(result_array_schema, ++tile_id, result_tiles); 
+          new_tiles(array_schema, ++tile_id, result_tiles); 
         }
         append_cell(cell_its, result_tiles, attribute_num);
         advance_cell_its(attribute_num, cell_its);
@@ -747,9 +740,6 @@ void QueryProcessor::filter_irregular(
   // Send the lastly created tiles to storage manager
   store_tiles(result_fd, result_tiles);
 
-  // Close result array 
-  storage_manager_.close_fragment(result_fd);
-
   // Clean up
   delete [] result_tiles;
   delete [] tile_its;
@@ -759,22 +749,17 @@ void QueryProcessor::filter_irregular(
 void QueryProcessor::filter_irregular(
     const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     const ExpressionTree* expression,
-    const std::string& result_array_name) const {
+    const StorageManager::FragmentDescriptor* result_fd) const {
   // For easy reference
-  const ArraySchema& array_schema = fd[0]->array_schema();
+  const ArraySchema& array_schema = *(fd[0]->array_schema());
   const unsigned int attribute_num = array_schema.attribute_num();
   uint64_t capacity = array_schema.capacity();
   unsigned int fragment_num = fd.size(); 
   
-  // Prepare result array
-  ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::FragmentDescriptor* result_fd = 
-      storage_manager_.open_fragment(result_array_schema);
-
   // Create result tiles 
   Tile** result_tiles = new Tile*[attribute_num+1];
   uint64_t tile_id = 0;
-  new_tiles(result_array_schema, tile_id, result_tiles); 
+  new_tiles(array_schema, tile_id, result_tiles); 
 
   // Get the attribute names participating as variables in the expression
   const std::set<std::string>& expr_attribute_names = expression->vars();
@@ -865,7 +850,7 @@ void QueryProcessor::filter_irregular(
       }
       if(result_tiles[attribute_num]->cell_num() == capacity) {
         store_tiles(result_fd, result_tiles);
-        new_tiles(result_array_schema, ++tile_id, result_tiles); 
+        new_tiles(array_schema, ++tile_id, result_tiles); 
       }
       append_cell(next_cell_its, result_tiles, attribute_num);
       advance_cell_tile_its(attribute_num, next_cell_its, next_cell_it_end,
@@ -895,9 +880,6 @@ void QueryProcessor::filter_irregular(
   // Send the lastly created tiles to storage manager
   store_tiles(result_fd, result_tiles);
 
-  // Close result array 
-  storage_manager_.close_fragment(result_fd);
-
   // Clean up
   delete [] result_tiles;
   for(unsigned int i=0; i<fragment_num; ++i) 
@@ -913,20 +895,14 @@ void QueryProcessor::filter_irregular(
   delete [] non_expr_cell_its_initialized;
 }
 
-
 void QueryProcessor::filter_regular(
     const StorageManager::FragmentDescriptor* fd,
     const ExpressionTree* expression,
-    const std::string& result_array_name) const {
+    const StorageManager::FragmentDescriptor* result_fd) const {
   // For easy reference
-  const ArraySchema& array_schema = fd->array_schema();
+  const ArraySchema& array_schema = *(fd->array_schema());
   const unsigned int attribute_num = array_schema.attribute_num();
   
-  // Prepare result array
-  ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::FragmentDescriptor* result_fd = 
-      storage_manager_.open_fragment(result_array_schema);
-
   // Create tiles 
   Tile** result_tiles = new Tile*[attribute_num+1];
 
@@ -961,7 +937,7 @@ void QueryProcessor::filter_regular(
   // Iterate over all tiles
   while(tile_its[end_attribute_id] != tile_it_end) {
     // Create new result tiles
-    new_tiles(result_array_schema, tile_its[end_attribute_id].tile_id(), 
+    new_tiles(array_schema, tile_its[end_attribute_id].tile_id(), 
               result_tiles);
     // Initialize cell its for the attributes involved in the expression
     initialize_cell_its(tile_its, cell_its, cell_it_end, expr_attribute_ids);
@@ -1000,9 +976,6 @@ void QueryProcessor::filter_regular(
     ++skipped_tiles;
   }
  
-  // Close result array 
-  storage_manager_.close_fragment(result_fd);
-
   // Clean up
   delete [] result_tiles;
   delete [] tile_its;
@@ -1012,17 +985,12 @@ void QueryProcessor::filter_regular(
 void QueryProcessor::filter_regular(
     const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     const ExpressionTree* expression,
-    const std::string& result_array_name) const {
+    const StorageManager::FragmentDescriptor* result_fd) const {
   // For easy reference
-  const ArraySchema& array_schema = fd[0]->array_schema();
+  const ArraySchema& array_schema = *(fd[0]->array_schema());
   const unsigned int attribute_num = array_schema.attribute_num();
   unsigned int fragment_num = fd.size(); 
   
-  // Prepare result array
-  ArraySchema result_array_schema = array_schema.clone(result_array_name);
-  const StorageManager::FragmentDescriptor* result_fd = 
-      storage_manager_.open_fragment(result_array_schema);
-
   // Create result tiles 
   Tile** result_tiles = new Tile*[attribute_num+1];
 
@@ -1105,7 +1073,7 @@ void QueryProcessor::filter_regular(
       if(first_cell) { // To initialize tile_id and result_tiles
         tile_id = next_cell_its[attribute_num].tile()->tile_id();
         first_cell = false;
-        new_tiles(result_array_schema, tile_id, result_tiles);
+        new_tiles(array_schema, tile_id, result_tiles);
       }
       if(skipped_tiles[next_fragment_index]) {
         advance_tile_its(next_tile_its, non_expr_attribute_ids, 
@@ -1126,7 +1094,7 @@ void QueryProcessor::filter_regular(
         // Change tile
         tile_id = next_cell_its[0].tile()->tile_id();
         store_tiles(result_fd, result_tiles);
-        new_tiles(result_array_schema, tile_id, result_tiles);
+        new_tiles(array_schema, tile_id, result_tiles);
       } 
       append_cell(next_cell_its, result_tiles, attribute_num);
       advance_cell_tile_its(attribute_num, next_cell_its, next_cell_it_end,
@@ -1156,9 +1124,6 @@ void QueryProcessor::filter_regular(
   // Send the lastly created tiles to storage manager
   store_tiles(result_fd, result_tiles);
 
-  // Close result array 
-  storage_manager_.close_fragment(result_fd);
-
   // Clean up
   delete [] result_tiles;
   for(unsigned int i=0; i<fragment_num; ++i) 
@@ -1173,7 +1138,6 @@ void QueryProcessor::filter_regular(
   delete [] skipped_tiles;
   delete [] non_expr_cell_its_initialized;
 }
-*/
 
 void QueryProcessor::get_next_join_fragment_indexes_irregular(
     const std::vector<const StorageManager::FragmentDescriptor*>& fd_A,
@@ -2029,7 +1993,6 @@ void QueryProcessor::initialize_tile_its(
   tile_it_end = storage_manager_.end(fd, attribute_num);
 }
 
-/*
 inline
 void QueryProcessor::initialize_tile_its(
     const StorageManager::FragmentDescriptor* fd,
@@ -2037,13 +2000,12 @@ void QueryProcessor::initialize_tile_its(
     StorageManager::const_iterator& tile_it_end,
     unsigned int end_attribute_id) const {
   // For easy reference
-  unsigned int attribute_num = fd->array_schema().attribute_num();
+  unsigned int attribute_num = fd->array_schema()->attribute_num();
 
   for(unsigned int i=0; i<=attribute_num; i++)
     tile_its[i] = storage_manager_.begin(fd, i);
   tile_it_end = storage_manager_.end(fd, end_attribute_id);
 }
-*/
 
 
 void QueryProcessor::join_irregular(

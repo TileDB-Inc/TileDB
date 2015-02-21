@@ -65,6 +65,12 @@
                                  CL_FILENAME_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
+ * 'filter'. 
+ */
+#define PS_FILTER_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
+                          CL_EXPRESSION_BITMAP | CL_RESULT_BITMAP)
+/** 
+ * Indicates which arguments are used from the command line for query
  * 'join'. 
  */
 #define PS_JOIN_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
@@ -118,6 +124,8 @@ class Parser {
   void parse_delete_array(const CommandLine& cl) const;
   /** Parse command line for query 'export_to_csv'. */
   void parse_export_to_csv(const CommandLine& cl) const;
+  /** Parse command line for query 'filter'. */
+  void parse_filter(const CommandLine& cl) const;
   /** Parse command line for query 'join'. */
   void parse_join(const CommandLine& cl) const;
   /** Parse command line for query 'load'. */

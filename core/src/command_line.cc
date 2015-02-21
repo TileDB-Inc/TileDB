@@ -37,6 +37,7 @@
 CommandLine::CommandLine() {
   arg_bitmap_ = 0;
   capacity_ = NULL;
+  expression_ = NULL;
   filename_ = NULL;
   order_ = NULL;
   query_ = NULL;
@@ -53,6 +54,7 @@ void CommandLine::parse(int argc, char** argv) {
     {"coordinate",1,0,'C'},
     {"dim-domain-bound",1,0,'D'},
     {"dim-name",1,0,'d'},
+    {"expression",1,0,'E'},
     {"tile-extent",1,0,'e'},
     {"filename",1,0,'f'},
     {"query",1,0,'q'},
@@ -65,7 +67,7 @@ void CommandLine::parse(int argc, char** argv) {
     {0,0,0,0},
   };
 
-  const char* short_options = "A:a:c:C:D:d:e:f:q:N:o:r:R:t:w:";
+  const char* short_options = "A:a:c:C:D:d:E:e:f:q:N:o:r:R:t:w:";
 
   int c;
   option_num_ = 0;
@@ -101,6 +103,16 @@ void CommandLine::parse(int argc, char** argv) {
       case 'd':
         arg_bitmap_ |= CL_DIM_NAME_BITMAP;
         dim_names_.push_back(optarg);
+        break;
+      case 'E':
+        if(expression_ != NULL) {
+          std::cerr << "[TileDB::fatal_error] More than one expressions"
+                    << " provided."
+                    << " Type 'tiledb help' to see the TileDB User Manual.\n";
+          exit(-1);
+        }
+        arg_bitmap_ |= CL_EXPRESSION_BITMAP;
+        expression_ = optarg;
         break;
       case 'e':
         arg_bitmap_ |= CL_TILE_EXTENT_BITMAP;
@@ -166,8 +178,8 @@ void CommandLine::parse(int argc, char** argv) {
         workspace_ = optarg;
         break;
       default:
-        std::cerr << "[TileDB::fatal_error] Type 'tiledb help' to see the"
-                  << " TileDB User Manual.\n";
+        std::cerr << "[TileDB::fatal_error] Unknown option."
+                  << " Type 'tiledb help' to see the TileDB User Manual.\n";
         exit(-1);
         break;
     }

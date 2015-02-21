@@ -206,6 +206,42 @@ void Parser::parse_export_to_csv(const CommandLine& cl) const {
   }
 }
 
+void Parser::parse_filter(const CommandLine& cl) const {
+  // Check if correct arguments have been ginen
+  if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Workspace not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_ARRAY_NAME_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Array name not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_EXPRESSION_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Filter expression not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_RESULT_BITMAP) == 0) {
+    std::cerr << "[TileDB::fatal_error] Result name not provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  // Check for redundant arguments
+  if(cl.array_names_.size() > 1) {
+    std::cerr << "[TileDB::fatal_error] More than one array names provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ | PS_FILTER_BITMAP) != PS_FILTER_BITMAP) {
+    std::cerr << "[TileDB::fatal_error] Redundant arguments provided."
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+}
+
 void Parser::parse_join(const CommandLine& cl) const {
   // Check if correct arguments have been ginen
   if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
