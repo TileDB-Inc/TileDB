@@ -262,6 +262,12 @@ void StorageManager::load_fragments_bkp(const std::string& array_name,
   close(fd);
 }
 
+void StorageManager::modify_fragment_bkp(
+    const FragmentDescriptor* fd,
+    uint64_t capacity) const {
+  // TODO
+}
+
 StorageManager::ArrayDescriptor* StorageManager::open_array(
     const std::string& array_name,
     const std::vector<std::string>& fragment_names,

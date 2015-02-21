@@ -167,6 +167,22 @@ class QueryProcessor {
       uint64_t capacity,
       ArraySchema::Order order,
       const std::vector<double>& tile_extents) const;
+  /** Retile for the case of irregular tiles. */
+  void retile_irregular(
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
+      uint64_t capacity,
+      ArraySchema::Order order,
+      const std::vector<double>& tile_extents) const;
+  /** Retile for the case of irregular tiles, where the capacity changes. */
+  void retile_irregular_capacity(
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
+      uint64_t capacity) const;
+  /** Retile for the case of regular tiles. */
+  void retile_regular(
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd,
+      uint64_t capacity,
+      ArraySchema::Order order,
+      const std::vector<double>& tile_extents) const;
   /** 
    * A subarray query creates a new array from the input array descriptor, 
    * containing only the cells whose coordinates fall into the input range. 

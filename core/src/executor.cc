@@ -411,7 +411,7 @@ void Executor::retile(const std::string& array_name,
 
   // Check if there is nothing to do
   bool capacity_changed = (capacity != 0 && 
-                          capacity != array_schema.capacity());
+                           capacity != array_schema.capacity());
   bool order_changed = (order != ArraySchema::NONE &&
                         order != array_schema.order()); 
   bool tile_extents_changed = false;
@@ -420,7 +420,7 @@ void Executor::retile(const std::string& array_name,
   if(array_schema.has_irregular_tiles()) {
     if(tile_extents.size() != 0)
       tile_extents_changed = true;
-  } else {
+  } else { // Regular tiles
     if(tile_extents.size() == 0 || 
        !std::equal(array_schema_tile_extents.begin(),
                    array_schema_tile_extents.end(),
@@ -431,8 +431,8 @@ void Executor::retile(const std::string& array_name,
   if(!capacity_changed && !order_changed && !tile_extents_changed)  {
       storage_manager_->close_array(ad);
       throw ExecutorException("Nothing to do; retiling arguments are"
-                                    " the same as in the schema of the input"
-                                    " array.");
+                              " the same as in the schema of the input"
+                              " array.");
   }
 
   try {

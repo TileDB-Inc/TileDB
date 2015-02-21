@@ -39,11 +39,11 @@
 #include "executor.h"
 
 void print_options() {
-  std::cout << "\t" << "-A or --array-name\n";
+  std::cout << "\t" << "-A, --array-name\n";
   std::cout << "\t\t" << "An array name.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-a or --attribute-name\n";
+  std::cout << "\t" << "-a, --attribute-name\n";
   std::cout << "\t\t" << "An attribute name.\n";
   std::cout << "\n";
 
@@ -55,57 +55,57 @@ void print_options() {
   std::cout << "\t\t" << "in the number of maximum cells.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-C or --coordinate\n";
+  std::cout << "\t" << "-C, --coordinate\n";
   std::cout << "\t\t" << "A coordinate across some dimension.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-D or --dim-domain-bound\n";
+  std::cout << "\t" << "-D, --dim-domain-bound\n";
   std::cout << "\t\t" << "A lower or upper bound for a dimension domain.\n";
   std::cout << "\t\t" << "See define_array for more details.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-d or --dim-name\n";
+  std::cout << "\t" << "-d, --dim-name\n";
   std::cout << "\t\t" << "A dimension name. \n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-e or --tile-extent\n";
+  std::cout << "\t" << "-e, --tile-extent\n";
   std::cout << "\t\t" << "A tile extent across some dimension.\n";
   std::cout << "\t\t" << "See define_array for more details.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-f or --filename\n";
+  std::cout << "\t" << "-f, --filename\n";
   std::cout << "\t\t" << "A file name.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-N or --number\n";
+  std::cout << "\t" << "-N, --number\n";
   std::cout << "\t\t" << "An integral number.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-o or --order\n";
+  std::cout << "\t" << "-o, --order\n";
   std::cout << "\t\t" << "The cell (tile) order in the case of irregular\n";
   std::cout << "\t\t" << "(resp. regular) tiles. The following orders are\n";
   std::cout << "\t\t" << "supported: hilbert, row-major, column-major.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-q or --query\n";
+  std::cout << "\t" << "-q, --query\n";
   std::cout << "\t\t" << "The query to be sent to te engine. Examples:\n";
   std::cout << "\t\t" << "define_array, load, subarray, filter, etc. More\n";
   std::cout << "\t\t" << "information on the syntax of each query below.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-r or --range-bound\n";
+  std::cout << "\t" << "-r, --range-bound\n";
   std::cout << "\t\t" << "A lower or upper bound for a range across some\n";
   std::cout << "\t\t" << "dimmension. See subarray for more details.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-t or --type\n";
+  std::cout << "\t" << "-t, --type\n";
   std::cout << "\t\t" << "A data type. Supported attribute types:\n";
   std::cout << "\t\t" << "char, int, int64_t, float, double.\n";
   std::cout << "\t\t" << "Supported dimension types: \n";
   std::cout << "\t\t" << "int, int64_t, float, double.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-w or --workspace\n";
+  std::cout << "\t" << "-w, --workspace\n";
   std::cout << "\t\t" << "The folder in which the array data are created.\n";
   std::cout << "\n";
 }

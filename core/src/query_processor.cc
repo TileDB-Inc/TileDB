@@ -234,28 +234,61 @@ void QueryProcessor::retile(
   // For easy reference
   const ArraySchema& array_schema = *(fd[0]->array_schema());
 
-  // CASE #1: Input array has regular tiles
-  // TODO: CASE #1.1: Tile extents same, order same, capacity different
-  //              --> change schema
-  // TODO: CASE #1.2: Tile extents same, order different
-  //              --> retile (efficiently) + change schema
-  // TODO: CASE #1.3: Tile extents different
-  //              --> retile (via export/reload) + change schema
-  // TODO: CASE #1.4: No tile extents; retile to irregular
-  //              --> retile (via export/reload) + change schema
-  if(array_schema.has_regular_tiles()) 
-      throw QueryProcessorException("Retiling of arrays with regular tiles currently"
-                                    " not supported.");
+  if(array_schema.has_irregular_tiles()) 
+    retile_irregular(fd, capacity, order, tile_extents);
+  else
+    retile_regular(fd, capacity, order, tile_extents);
+}
 
-  // CASE #2: Input has irregular tiles
-  // TODO: CASE #2.1: Tile extents provided 
-  //              --> retile (via export/reload) + change schema
-  // TODO: CASE #2.2: Tile extents not provided, order different
-  //              --> retile (via export/reload) + change schema
-  // TODO: CASE #2.3: Tile extents not provided, order same, capacity different
-  //              --> retile (efficiently)
+
+void QueryProcessor::retile_irregular(
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd,
+    uint64_t capacity, 
+    ArraySchema::Order order,
+    const std::vector<double>& tile_extents) const {
+  // CASE #1: Tile extents provided 
+  //          --> retile into regular tile                 TODO
+  if(tile_extents.size() > 0)
+    throw QueryProcessorException("Retiling of arrays with irregular tiles"
+                                  " into regular tiles currently not"
+                                  " supported.");
+  // CASE #2: Tile extents not provided, order different
+  //          --> retile (via export/reload)               TODO
+  else if(order != fd[0]->array_schema()->order())
+    throw QueryProcessorException("Retiling of arrays with irregular tiles"
+                                  " into irregular tiles with different"
+                                  " cell order currently not supported.");
+  // CASE #3: Tile extents not provided, order same, capacity different
+  //          --> retile (efficiently) 
+  else 
+    retile_irregular_capacity(fd, capacity);
+}
+
+void QueryProcessor::retile_irregular_capacity(
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd,
+    uint64_t capacity) const {
+  for(unsigned int i=0; i<fd.size(); ++i)
+    storage_manager_.modify_fragment_bkp(fd[i], capacity);
 }
   
+void QueryProcessor::retile_regular(
+    const std::vector<const StorageManager::FragmentDescriptor*>& fd,
+    uint64_t capacity, 
+    ArraySchema::Order order,
+    const std::vector<double>& tile_extents) const {
+  throw QueryProcessorException("Retiling of arrays with regular tiles"
+                                " currently not supported.");
+
+  // CASE #1: Tile extents same, order same, capacity different
+  //          --> do nothing                               TODO
+  // CASE #2: Tile extents same, order different
+  //          --> retile (efficiently)                     TODO 
+  // CASE #3: Tile extents different
+  //          --> retile (via export/reload)               TODO
+  // CASE #4: No tile extents; retile to irregular
+  //          --> retile (via export/reload)               TODO
+}
+
 void QueryProcessor::subarray(
     const StorageManager::FragmentDescriptor* fd,
     const Tile::Range& range,
@@ -1235,18 +1268,22 @@ void QueryProcessor::get_next_join_fragment_indexes_irregular(
         coord_A_upper = *cell_its_A[next_fragment_index_A][attribute_num_A];
       } else {
         coord_A_lower =  
-            tile_its_A[next_fragment_index_A][0].bounding_coordinates().first;
+            tile_its_A[next_fragment_index_A][attribute_num_A].
+                       bounding_coordinates().first;
         coord_A_upper =  
-            tile_its_A[next_fragment_index_A][0].bounding_coordinates().second;
+            tile_its_A[next_fragment_index_A][attribute_num_A].
+                       bounding_coordinates().second;
       }
       if(coordinate_cell_its_initialized_B[next_fragment_index_B]) {
         coord_B_lower = *cell_its_B[next_fragment_index_B][attribute_num_B];
         coord_B_upper = *cell_its_B[next_fragment_index_B][attribute_num_B];
       } else {
         coord_B_lower =  
-            tile_its_B[next_fragment_index_B][0].bounding_coordinates().first;
+            tile_its_B[next_fragment_index_B][attribute_num_B].
+                       bounding_coordinates().first;
         coord_B_upper =  
-            tile_its_B[next_fragment_index_B][0].bounding_coordinates().second;
+            tile_its_B[next_fragment_index_B][attribute_num_B].
+                       bounding_coordinates().second;
       }
       if(array_schema_A.succeeds(coord_A_lower, coord_B_upper)) {
         // Advance iterators in B

@@ -365,6 +365,12 @@ class StorageManager {
   void load_fragments_bkp(const std::string& array_name, 
                           char*& buffer, uint64_t& buffer_size) const;
   /** 
+   * Modifies the fragment book-keeping structures for the case of irregular 
+   * tiles, when the capacity changes as part of the 'retile' query. 
+   */
+  void modify_fragment_bkp(const FragmentDescriptor* fd, 
+                           uint64_t capacity) const;
+  /** 
    * Returns the begin iterator to the StorageManager::MBRList that 
    * contains the MBRs of the intput array. 
    */ 
