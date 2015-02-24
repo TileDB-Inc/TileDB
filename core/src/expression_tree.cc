@@ -130,7 +130,7 @@ double ExpressionNode::evaluate(const std::map<std::string,
     else if(op_ == GTEQ)
       return left_result >= right_result;
     else if(op_ == STEQ)
-      return left_result >= right_result;
+      return left_result <= right_result;
     else if(op_ == AND)
       return left_result && right_result;
     else if(op_ == OR)
