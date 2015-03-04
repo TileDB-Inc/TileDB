@@ -124,6 +124,17 @@ class Executor {
   void subarray(const std::string& array_name,
                 const Tile::Range& range,
                 const std::string& result_array_name) const;
+  /** 
+   * Retrieves the cells contained in the input range. Assigns their
+   * coordinates to the c_iovec, and their values on the input attribute
+   * to v_iovec.
+   */
+  void subarray(const std::string& array_name,
+                const Tile::Range& range,
+                unsigned int attribute_id,
+                struct iovec& c_iovec, 
+                struct iovec& v_iovec) const;
+
   /** Updates an array with the data in the input CSV file. */
   void update(const std::string& filename, 
               const std::string& array_name) const;

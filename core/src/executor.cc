@@ -537,6 +537,67 @@ void Executor::subarray(const std::string& array_name,
   update_fragment_info(result_array_name);
 }
 
+void Executor::subarray(const std::string& array_name,
+                        const Tile::Range& range,
+                        unsigned int attribute_id,
+                        struct iovec& c_iovec,
+                        struct iovec& v_iovec) const {
+  // Check if the input array is defined
+  if(!storage_manager_->array_defined(array_name))
+    throw ExecutorException("Input array is not defined.");
+
+  // Get fragment names
+  std::vector<std::string> fragment_names = 
+      get_all_fragment_names(array_name);
+
+  // Check if the array is empty
+  if(fragment_names.size() == 0)
+    throw ExecutorException("Input array is empty.");
+
+  // Open array
+  const StorageManager::ArrayDescriptor* ad =
+      storage_manager_->open_array(array_name, 
+                                   fragment_names,
+                                   StorageManager::READ);
+  // For easy reference
+  const ArraySchema& array_schema = *(ad->array_schema()); 
+
+  // Check soundness of range
+  if(range.size() != 2*array_schema.dim_num()) {
+    storage_manager_->close_array(ad);
+    throw ExecutorException("Range does not match input array dimensionality.");
+  }
+
+  // Check attribute id
+  if(attribute_id >= array_schema.attribute_num()) {
+    storage_manager_->close_array(ad);
+    throw ExecutorException("Invalid attribute id.");
+  }
+
+  // Dispatch query to query processor
+  try {
+    if(fragment_names.size() == 1)  {  // Single fragment
+      const StorageManager::FragmentDescriptor* fd = ad->fd()[0]; 
+      query_processor_->subarray(fd, range, attribute_id, c_iovec, v_iovec);
+    } else { // Multiple fragments 
+      storage_manager_->close_array(ad);
+      throw ExecutorException("Operation currently not supported on multiple "
+                              "fragments");
+    /*
+      const std::vector<const StorageManager::FragmentDescriptor*>& fd = 
+          ad->fd();
+      query_processor_->subarray(fd, range, result_fd);
+     */
+    }
+  } catch(QueryProcessorException& qe) {
+    storage_manager_->close_array(ad);
+    throw ExecutorException(qe.what());
+  }
+
+  // Clean up
+  storage_manager_->close_array(ad);
+}
+
 void Executor::update(const std::string& filename, 
                       const std::string& array_name) const {
   // Check if array is defined

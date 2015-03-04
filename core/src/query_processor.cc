@@ -37,6 +37,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <sys/stat.h>
+#include <sys/uio.h>
 #include <assert.h>
 #include <algorithm>
 #include <parallel/algorithm>
@@ -300,6 +301,19 @@ void QueryProcessor::subarray(
     subarray_regular(fd, range, result_fd);
   else 
     subarray_irregular(fd, range, result_fd);
+}
+
+void QueryProcessor::subarray(
+    const StorageManager::FragmentDescriptor* fd,
+    const Tile::Range& range,
+    unsigned int attribute_id,
+    struct iovec& c_iovec,
+    struct iovec& v_iovec) const { 
+  if(fd->array_schema()->has_regular_tiles())
+    throw QueryProcessorException("Operation currently not supported for "
+                                  "regular tiles.");
+
+  subarray_irregular(fd, range, attribute_id, c_iovec, v_iovec);
 }
 
 void QueryProcessor::subarray(
@@ -3222,6 +3236,87 @@ void QueryProcessor::subarray_irregular(
   delete [] tiles;
   delete [] result_tiles;
   delete [] cell_its;
+}
+
+void QueryProcessor::subarray_irregular(
+    const StorageManager::FragmentDescriptor* fd,
+    const Tile::Range& range, 
+    unsigned int attribute_id,
+    struct iovec& c_iovec,
+    struct iovec& v_iovec) const { 
+  // For easy reference
+  const ArraySchema& array_schema = *(fd->array_schema());
+  unsigned int attribute_num = array_schema.attribute_num();
+  uint64_t capacity = array_schema.capacity();
+
+  // Create tiles
+  const Tile* tiles[2];
+  Tile* result_tiles[2];
+  result_tiles[0] = // tile for the attribute value 
+      storage_manager_.new_tile(array_schema, attribute_id, 0, capacity);
+  result_tiles[1] = // tile for the coordinates
+      storage_manager_.new_tile(array_schema, attribute_num, 0, capacity);
+
+  // Create cell iterators
+  Tile::const_iterator cell_its[2]; 
+  Tile::const_iterator cell_it_end;
+
+  // Get the tile ranks that overlap with the range
+  RankOverlapVector overlapping_tile_ranks;
+  storage_manager_.get_overlapping_tile_ranks(fd, range, 
+                                              &overlapping_tile_ranks);
+
+  // Initialize tile iterators
+  RankOverlapVector::const_iterator tile_rank_it = 
+      overlapping_tile_ranks.begin();
+  RankOverlapVector::const_iterator tile_rank_it_end =
+      overlapping_tile_ranks.end();
+
+  // Iterate over all tiles
+  for(; tile_rank_it != tile_rank_it_end; ++tile_rank_it) {
+    // Initialize tiles
+    tiles[0] = storage_manager_.get_tile_by_rank(fd, attribute_id, 
+                                                 tile_rank_it->first);
+    tiles[1] = storage_manager_.get_tile_by_rank(fd, attribute_num,
+                                                 tile_rank_it->first);
+
+    // Initialize cell iterators
+    cell_its[0] = tiles[0]->begin();
+    cell_its[1] = tiles[1]->begin();
+    cell_it_end = tiles[1]->end();
+
+    while(cell_its[1] != cell_it_end) {
+      if(cell_its[1].cell_inside_range(range)) {
+        // Append cell
+        *result_tiles[0] << cell_its[0];
+        *result_tiles[1] << cell_its[1];
+      }
+
+      // Advance cell iterators          
+      ++cell_its[0];
+      ++cell_its[1];
+    }
+  }
+
+  // Create buffers
+  size_t v_buf_size = result_tiles[0]->tile_size();
+  size_t c_buf_size = result_tiles[1]->tile_size();
+  char* v_buf = new char[v_buf_size];
+  char* c_buf = new char[c_buf_size];
+ 
+  // Copy payloads
+  result_tiles[0]->copy_payload(v_buf); 
+  result_tiles[1]->copy_payload(c_buf); 
+  
+  // Set iovecs
+  v_iovec.iov_base = v_buf;
+  v_iovec.iov_len = v_buf_size;
+  c_iovec.iov_base = c_buf;
+  c_iovec.iov_len = c_buf_size;
+
+  // Clean up
+  delete result_tiles[0];
+  delete result_tiles[1];
 }
 
 void QueryProcessor::subarray_irregular(

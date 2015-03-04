@@ -193,6 +193,16 @@ class QueryProcessor {
                 const Tile::Range& range,
                 const StorageManager::FragmentDescriptor* result_fd) const;
   /** 
+   * Retrieves the cells contained in the input range. Assigns their
+   * coordinates to c_iovec, and their values on the input attribute
+   * to v_iovec.
+   */
+  void subarray(const StorageManager::FragmentDescriptor* fd,
+                const Tile::Range& range,
+                unsigned int attribute_id,
+                struct iovec& c_iovec,
+                struct iovec& v_iovec) const;
+  /** 
    * A subarray query creates a new array from the input array descriptor, 
    * containing only the cells whose coordinates fall into the input range. 
    * The new array will have the input result name. This function
@@ -747,6 +757,13 @@ class QueryProcessor {
       const StorageManager::FragmentDescriptor* fd,
       const Tile::Range& range, 
       const StorageManager::FragmentDescriptor* result_fd) const;
+  /** Implements QueryProcessor::subarray for arrays with irregular tiles. */
+  void subarray_irregular(
+      const StorageManager::FragmentDescriptor* fd,
+      const Tile::Range& range, 
+      unsigned int attribute_id,
+      struct iovec& c_iovec,
+      struct iovec& v_iovec) const;
   /** 
    * Implements QueryProcessor::subarray for arrays with irregular tiles. This
    * function operates on multiple array fragments.
