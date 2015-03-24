@@ -6,7 +6,7 @@
 CXX = g++
 
 # --- Directories --- #
-CORE_INCLUDE_DIR = core/include
+CORE_HEADS_DIR = core/heads
 CORE_SRC_DIR = core/src
 CORE_OBJ_DIR = core/obj
 CORE_BIN_DIR = core/bin
@@ -24,10 +24,10 @@ TEST_BIN_DIR = test/bin
 DOC_DIR = doc
 
 # --- Paths --- #
-CORE_INCLUDE_PATHS = -I$(CORE_INCLUDE_DIR)
+CORE_HEADS_PATHS = -I$(CORE_HEADS_DIR)
 
 # --- Files --- #
-CORE_INCLUDE := $(wildcard $(CORE_INCLUDE_DIR)/*.h)
+CORE_HEADS := $(wildcard $(CORE_HEADS_DIR)/*.h)
 CORE_SRC := $(wildcard $(CORE_SRC_DIR)/*.cc)
 CORE_OBJ := $(patsubst $(CORE_SRC_DIR)/%.cc, $(CORE_OBJ_DIR)/%.o, $(CORE_SRC))
 TILEDB_SRC := $(wildcard $(TILEDB_SRC_DIR)/*.cc)
@@ -68,8 +68,8 @@ clean: clean_core clean_gtest clean_test clean_tiledb
 
 $(CORE_OBJ_DIR)/%.o: $(CORE_SRC_DIR)/%.cc
 	@test -d $(CORE_OBJ_DIR) || mkdir -p $(CORE_OBJ_DIR)
-	$(CXX) $(CORE_INCLUDE_PATHS) -c $< -o $@
-	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
+	$(CXX) $(CORE_HEADS_PATHS) -c $< -o $@
+	@$(CXX) -MM $(CORE_HEADS_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
 	@rm -f $(@:.o=.d.tmp)
@@ -87,8 +87,8 @@ clean_core:
 
 $(TILEDB_OBJ_DIR)/%.o: $(TILEDB_SRC_DIR)/%.cc
 	@test -d $(TILEDB_OBJ_DIR) || mkdir -p $(TILEDB_OBJ_DIR)
-	$(CXX) $(CORE_INCLUDE_PATHS) -c $< -o $@
-	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
+	$(CXX) $(CORE_HEADS_PATHS) -c $< -o $@
+	@$(CXX) -MM $(CORE_HEADS_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
 	@rm -f $(@:.o=.d.tmp)
@@ -124,8 +124,8 @@ clean_gtest:
 # Documentation doxygen #
 #########################
 
-doxyfile.inc: $(CORE_INCLUDE)
-	@echo INPUT         =  $(DOC_DIR)/mainpage.dox $(CORE_INCLUDE) > doxyfile.inc
+doxyfile.inc: $(CORE_HEADS)
+	@echo INPUT         =  $(DOC_DIR)/mainpage.dox $(CORE_HEADS) > doxyfile.inc
 	@echo FILE_PATTERNS =  *.h >> doxyfile.inc
 	doxygen Doxyfile.mk
 

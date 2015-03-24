@@ -71,6 +71,31 @@ std::string CSVLine::str() const {
 ******************************************************/
 
 template<>
+bool CSVLine::is_del(char v) {
+  return v == CSV_DEL_CHAR;
+}
+
+template<>
+bool CSVLine::is_del(int v) {
+  return v == CSV_DEL_INT;
+}
+
+template<>
+bool CSVLine::is_del(int64_t v) {
+  return v == CSV_DEL_INT64_T;
+}
+
+template<>
+bool CSVLine::is_del(float v) {
+  return v == CSV_DEL_FLOAT;
+}
+
+template<>
+bool CSVLine::is_del(double v) {
+  return v == CSV_DEL_DOUBLE;
+}
+
+template<>
 bool CSVLine::is_null(char v) {
   return v == CSV_NULL_CHAR;
 }
@@ -142,23 +167,9 @@ void CSVLine::operator<<(int value) {
 }
 
 template<>
-void CSVLine::operator<<(unsigned int value) {
-  char s[CSV_MAX_DIGITS];
-  sprintf(s, "%u", value); 
-  values_.push_back(s);
-}
-
-template<>
 void CSVLine::operator<<(int64_t value) {
   char s[CSV_MAX_DIGITS];
   sprintf(s, "%lld", value); 
-  values_.push_back(s);
-}
-
-template<>
-void CSVLine::operator<<(uint64_t value) {
-  char s[CSV_MAX_DIGITS];
-  sprintf(s, "%llu", value); 
   values_.push_back(s);
 }
 
@@ -195,28 +206,10 @@ void CSVLine::operator<<(const std::vector<int>& values) {
 }
 
 template<>
-void CSVLine::operator<<(const std::vector<unsigned int>& values) {
-  char s[CSV_MAX_DIGITS];
-  for(unsigned int i=0; i<values.size(); i++) {
-    sprintf(s, "%u", values[i]); 
-    values_.push_back(s);
-  }
-}
-
-template<>
 void CSVLine::operator<<(const std::vector<int64_t>& values) {
   char s[CSV_MAX_DIGITS];
   for(unsigned int i=0; i<values.size(); i++) {
     sprintf(s, "%lld", values[i]); 
-    values_.push_back(s);
-  }
-}
-
-template<>
-void CSVLine::operator<<(const std::vector<uint64_t>& values) {
-  char s[CSV_MAX_DIGITS];
-  for(unsigned int i=0; i<values.size(); i++) {
-    sprintf(s, "%llu", values[i]); 
     values_.push_back(s);
   }
 }
@@ -237,10 +230,6 @@ void CSVLine::operator<<(const std::vector<double>& values) {
     sprintf(s, "%lg", values[i]); 
     values_.push_back(s);
   }
-}
-
-bool CSVLine::operator>>(Tile& tile) {
-  return tile << *this;
 }
 
 template<>
@@ -286,20 +275,6 @@ bool CSVLine::operator>>(int64_t& value) {
       value = CSV_NULL_INT64_T;
     else 
       sscanf(values_[pos_].c_str(), "%lld", &value);
-    ++pos_;
-    return true;
-  }
-}
-
-template<>
-bool CSVLine::operator>>(uint64_t& value) {
-  if(pos_ == values_.size()) {
-    return false;
-  } else { 
-    if(values_[pos_] == CSV_NULL_VALUE) // Value missing
-      value = CSV_NULL_UINT64_T;
-    else 
-      sscanf(values_[pos_].c_str(), "%llu", &value);
     ++pos_;
     return true;
   }
@@ -560,21 +535,15 @@ bool CSVFile::read_segment() {
 // Explicit template instantiations
 template void CSVLine::operator= <char> (char value);
 template void CSVLine::operator= <int> (int value);
-template void CSVLine::operator= <unsigned int> (unsigned int value);
 template void CSVLine::operator= <int64_t> (int64_t value);
-template void CSVLine::operator= <uint64_t> (uint64_t value);
 template void CSVLine::operator= <float> (float value);
 template void CSVLine::operator= <double> (double value);
 template void CSVLine::operator= <char> 
     (const std::vector<char>& values);
 template void CSVLine::operator= <int> 
     (const std::vector<int>& values);
-template void CSVLine::operator= <unsigned int> 
-    (const std::vector<unsigned int>& values);
 template void CSVLine::operator= <int64_t> 
     (const std::vector<int64_t>& values);
-template void CSVLine::operator= <uint64_t> 
-    (const std::vector<uint64_t>& values);
 template void CSVLine::operator= <float> 
     (const std::vector<float>& values);
 template void CSVLine::operator= <double> 

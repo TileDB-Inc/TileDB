@@ -39,7 +39,6 @@
 #include <string>
 #include <vector>
 #include <inttypes.h>
-#include <tile.h>
 #include <limits>
 
 /** The maximum digits of a number appended to a CSV line. */
@@ -49,9 +48,19 @@
  * between the CSV file (in hard disk) and the main memory in one I/O operation.
  * Unless otherwise defined, this default size is used. 
  */
-#define CSV_SEGMENT_SIZE 10000000
+#define CSV_SEGMENT_SIZE 10000000 // 10 MB
+/** Deleted char. */
+#define CSV_DEL_CHAR 127
+/** Deleted int. */
+#define CSV_DEL_INT std::numeric_limits<int>::min()
+/** Deleted int64_t. */
+#define CSV_DEL_INT64_T std::numeric_limits<int64_t>::min()
+/** Deleted float. */
+#define CSV_DEL_FLOAT std::numeric_limits<float>::min()
+/** Deleted double. */
+#define CSV_DEL_DOUBLE std::numeric_limits<double>::min()
 /** Missing char. */
-#define CSV_NULL_CHAR '$'
+#define CSV_NULL_CHAR '\0'
 /** Missing int. */
 #define CSV_NULL_INT std::numeric_limits<int>::max()
 /** Missing int64_t. */
@@ -62,16 +71,17 @@
 #define CSV_NULL_FLOAT std::numeric_limits<float>::max()
 /** Missing double. */
 #define CSV_NULL_DOUBLE std::numeric_limits<double>::max()
+/** The symbol indicating a deleted value. */
+#define CSV_DEL_VALUE "$"
 /** The symbol indicating a missing (NULL) value. */
-#define CSV_NULL_VALUE "$"
-
-class Tile;
+#define CSV_NULL_VALUE "*"
 
 /** 
  * This class implements a CSV line, which is comprised of text segments
  * (values) separated by a comma character (','). A CSV line is the atomic
  * unit of storage in a CSVFile object. Note that a line that starts with
- * '#' is a comment line. A CSV_NULL_VALUE indicates a mising (NULL) value. 
+ * '#' is a comment line. A CSV_NULL_VALUE indicates a mising (NULL) value,
+ * whereas a CSV_DEL_VALUE indicates a deletion. 
  */
 class CSVLine {
  public:
@@ -103,6 +113,9 @@ class CSVLine {
   void clear();
 
   // MISC
+  /** Returns true if the input represents a deleted value. */
+  template<class T>
+  static bool is_del(T v);
   /** Returns true if the input represents a NULL value. */
   template<class T>
   static bool is_null(T v);
@@ -125,17 +138,11 @@ class CSVLine {
   template<class T> 
   void operator<<(const std::vector<T>& values);
   /** 
-   * Retrieves the next value from the CSV line. The line is treated as an input 
+   * Retrieves the next value from the CSV line. The line is treated as an input
    * stream. 
    */
   template<class T> 
   bool operator>>(T& value);
-  /** 
-   * Retrieves the next attribute values or coordinates from the CSV line and 
-   * appends them to the input tile. The decision of the number and type
-   * of values retrieved from the CSV line depends on the type of the tile.
-   */
-  bool operator>>(Tile& tile);
   /** 
    * Clears CSVLine::values_, tokenizes the input string, and inserts the new
    * values into CSVLine::values_. 

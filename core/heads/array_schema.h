@@ -39,10 +39,11 @@
 #include <string>
 #include <inttypes.h>
 #include <typeinfo>
-#include "tile.h"
 
 /** Default value for ArraySchema::capacity_. */
 #define AS_CAPACITY 10000
+/** Default value for ArraySchema::consolidation_step_. */
+#define AS_CONSOLIDATION_STEP 1
 /** Name for the extra attribute representing the array coordinates. */
 #define AS_COORDINATE_TILE_NAME "__coords"
 
@@ -69,24 +70,23 @@
 class ArraySchema {
  public:
   // TYPE DEFINITIONS
-  /** The supported data types for the attributes and dimensions. */
-  enum CellType {CHAR, INT, INT64_T, FLOAT, DOUBLE};
-  /** 
-   * The tile order in regular tiles, or the cell order in irregular tiles. 
-   * Note that the cell order in regular tiles (i.e., within the tiles) is
-   * by default fixed to ROW_MAJOR. If the cells of the array do not follow
-   * a particular order, then the order is set to NONE.
-   */
-  enum Order {COLUMN_MAJOR, HILBERT, ROW_MAJOR, NONE};
   /** A vector of attribute ids. */
-  typedef std::vector<unsigned int> AttributeIds;
+  typedef std::vector<int> AttributeIds;
+  /** The cell data types (CHAR is currently not supported for coordinates). */ 
+  enum CellType {CHAR, INT, INT64_T, FLOAT, DOUBLE};
+  /** The cell order. */
+  enum CellOrder {CO_COLUMN_MAJOR, CO_HILBERT, CO_ROW_MAJOR, CO_NONE};
+  /** The compression type. */
+  enum CompressionType {RLE, ZIP, LZ, NONE};
+  /** The tile order (applicable only to regular tiles). */
+  enum TileOrder {TO_COLUMN_MAJOR, TO_HILBERT, TO_ROW_MAJOR, TO_NONE};
 
   // CONSTRUCTORS
   /** Empty constructor. */
   ArraySchema() {}
   /** 
    * Simple constructor, used to create a schema with irregular tiles. 
-   * If there are m attributes, argument types must have size m+1,
+   * If there are m attributes, types must have size m+1,
    * and include the type of (all) the dimensions in types[m].
    * Recall that the dimensions are collectively regarded as an
    * extra attribute.
@@ -96,11 +96,12 @@ class ArraySchema {
               const std::vector<std::string>& dim_names,
               const std::vector<std::pair<double, double> >& dim_domains,
               const std::vector<const std::type_info*>& types,
-              Order order,
-              uint64_t capacity = AS_CAPACITY);
+              CellOrder cell_order,
+              int consolidation_step = AS_CONSOLIDATION_STEP,
+              int64_t capacity = AS_CAPACITY);
   /**
    * Simple constructor, used to create a schema with regular tiles.
-   * If there are m attributes, argument types must have size m+1,
+   * If there are m attributes, argument cell types must have size m+1,
    * and include the type of (all) the dimensions in types[m].
    * Recall that the dimensions are collectively regarded as an
    * extra attribute.
@@ -110,9 +111,11 @@ class ArraySchema {
               const std::vector<std::string>& dim_names,
               const std::vector<std::pair< double, double> >& dim_domains,
               const std::vector<const std::type_info*>& types,
-              Order order,
+              TileOrder tile_order,
               const std::vector<double>& tile_extents,
-              uint64_t capacity = AS_CAPACITY);
+              int consolidation_step = AS_CONSOLIDATION_STEP,
+              int64_t capacity = AS_CAPACITY,
+              CellOrder cell_order = CO_ROW_MAJOR);
   /** Empty destructor. */
   ~ArraySchema() {}
 
@@ -120,41 +123,41 @@ class ArraySchema {
   /** Returns the array name. */
   const std::string& array_name() const { return array_name_; }
   /** Returns the name of the i-th attribute. */
-  unsigned int attribute_id(const std::string& attribute_name) const;
+  int attribute_id(const std::string& attribute_name) const;
   /** Returns the name of the i-th attribute. */
-  const std::string& attribute_name(unsigned int i) const;
+  const std::string& attribute_name(int i) const;
   /** 
    * Returns the number of attributes (excluding the extra coordinate 
    * attribute. 
    */
-  unsigned int attribute_num() const { return attribute_num_; }
+  int attribute_num() const { return attribute_num_; }
   /** Returns the tile capacity. */
-  uint64_t capacity() const { return capacity_; }
+  int64_t capacity() const { return capacity_; }
+  /** Returns the tile order.  */
+  CellOrder cell_order() const { return cell_order_; }
   /** Returns the cell size of the i-th attribute. */
-  uint64_t cell_size(unsigned int i) const;
+  int64_t cell_size(int i) const;
   /** Returns the number of dimensions. */
-  unsigned int dim_num() const { return dim_num_; }
+  int dim_num() const { return dim_num_; }
   /** Returns the domains. */
   const std::vector<std::pair< double, double> >& dim_domains() const 
       { return dim_domains_; } 
-  /** Returns the (tile/cell) order.  */
-  Order order() const { return order_; }
-  /** Returns the maximum cell size across all attributes. */
-  uint64_t max_cell_size() const;
   /** 
    * It serializes the object into a buffer of bytes. It returns a pointer
    * to the buffer it creates, along with the size of the buffer.
    */
-  std::pair<char*, uint64_t> serialize() const;
+  std::pair<const char*, size_t> serialize() const;
   /** Returns the tile extents. */
   const std::vector<double>& tile_extents() const 
       { return tile_extents_; } 
+  /** Returns the tile order.  */
+  TileOrder tile_order() const { return tile_order_; }
   /** Returns the type of the i-th attribute. */
-  const std::type_info* type(unsigned int i) const;
+  const std::type_info* type(int i) const;
   
   // MUTATORS
   /** It assigns values to the members of the object from the input buffer. */
-  void deserialize(const char* buffer, uint64_t buffer_size);
+  void deserialize(const char* buffer, size_t buffer_size);
 	
   // MISC
   /** 
@@ -162,13 +165,13 @@ class ArraySchema {
    * space-filling curve.
    */
   template<typename T>
-  uint64_t cell_id_hilbert(const std::vector<T>& coordinates) const;
+  int64_t cell_id_hilbert(const T* coordinates) const;
   /** Returns an identical schema assigning the input to the array name. */
   ArraySchema clone(const std::string& array_name) const;
-  /** Returns an identical schema with the input array name and order. */
-  ArraySchema clone(const std::string& array_name, Order order) const;
+  /** Returns an identical schema with the input array name and cell order. */
+  ArraySchema clone(const std::string& array_name, CellOrder cell_order) const;
   /** Returns an identical schema assigning the input to the capacity. */
-  ArraySchema clone(uint64_t capacity) const;
+  ArraySchema clone(int64_t capacity) const;
   /** 
    * Returns the schema of the result when joining the arrays with the
    * input schemas. The result array name is given in the third argument. 
@@ -200,7 +203,6 @@ class ArraySchema {
    * ArraySchema::tile_extents_ is empty), and false otherwise. 
    */
   bool has_irregular_tiles() const;
-
   /** 
    * Returns true if the array has regular tiles (i.e., if 
    * ArraySchema::tile_extents_ is not empty), and false otherwise. 
@@ -214,11 +216,11 @@ class ArraySchema {
    *
    * 2. If the arrays have irregular tiles, then they are join-compatible if 
    * they have (i) the same number of dimensions, (ii) the same dimension type,
-   * (iii) the same domains, and (iv) the same order.
+   * (iii) the same domains, and (iv) the same cell order.
    *
    * 3. If the arrays have regular tiles, then they are join compatible if they 
    * have (i) the same number of dimensions, (ii) the same dimension type, 
-   * (iii) the same domains, (iv) the same order, and, 
+   * (iii) the same domains, (iv) the same tile and cell order, and, 
    * (v) the same tile extents.
    */
   static std::pair<bool,std::string> join_compatible(
@@ -228,43 +230,38 @@ class ArraySchema {
    * Returns true if the first cell precedes the second along the cell 
    * order of the schema. 
    */
-  template<class T>
-  bool precedes(const std::vector<T>& coord_A, 
-                const std::vector<T>& coord_B) const;
+  bool precedes(const void* coords_A, const void* coords_B) const;
   /** 
    * Returns true if the first cell precedes the second along the cell 
    * order of the schema. 
    */
-  bool precedes(const Tile::const_iterator& cell_it_A, 
-                const Tile::const_iterator& cell_it_B) const;
+  template<class T>
+  bool precedes(const T* coords_A, const T* coords_B) const;
   /** Prints the array schema info. */
   void print() const;
   /** 
    * Returns true if the first cell succeeds the second along the cell 
    * order of the schema. 
    */
-  template<class T>
-  bool succeeds(const std::vector<T>& coord_A, 
-                const std::vector<T>& coord_B) const;
+  bool succeeds(const void* coords_A, const void* coords_B) const;
   /** 
    * Returns true if the first cell succeeds the second along the cell 
    * order of the schema. 
    */
-  bool succeeds(const Tile::const_iterator& cell_it_A, 
-                const Tile::const_iterator& cell_it_B) const;
-
+  template<class T>
+  bool succeeds(const T* coords_A, const T* coords_B) const;
   /** Returns a tile id following a column major order. */
   template<typename T>
-  uint64_t tile_id_column_major(const std::vector<T>& coordinates) const;
+  int64_t tile_id_column_major(const T* coords) const;
    /** 
    * Returns the tile id of the input coordinates, along the Hilbert 
    * space-filling curve.
    */
   template<typename T>
-  uint64_t tile_id_hilbert(const std::vector<T>& coordinates) const;
+  int64_t tile_id_hilbert(const T* coords) const;
   /** Returns a tile id following a row major order. */
   template<typename T>
-  uint64_t tile_id_row_major(const std::vector<T>& coordinates) const;
+  int64_t tile_id_row_major(const T* coords) const;
 
  private:
   // PRIVATE ATTRIBUTES
@@ -273,21 +270,32 @@ class ArraySchema {
   /** The list with the attribute names.*/
   std::vector<std::string> attribute_names_;
   /** The number of attributes (excluding the extra coordinate attribute).*/
-  unsigned int attribute_num_;
+  int attribute_num_;
   /** 
-   * The expected number of cells in a tile. This does not impose any constraint 
+   * The expected number of cells in a tile. This does not impose any constraint
    * on the actual number of cells per tile. It only reserves space in memory
    * for this number of cells for each tile. It is useful mainly in 
    * arrays with irregular tiles, where the capacity of each tile is fixed to 
    * ArraySchema::capacity_.
    */
-  uint64_t capacity_;
+  int64_t capacity_;
+  /** 
+   * Indicates the compression type of each attribute (where the coordinates
+   * are treated as an extra (m+1)-th attribute).
+   */
+  std::vector<CompressionType> compression_; 
+  /** 
+   * The consolidation step indicates the number of batch updates that will
+   * materialize into separate array fragments, before a consolidation of
+   * fragments takes place (more details are included in class Consolidator). 
+   */
+  int consolidation_step_;
   /** The list with the dimension domains.*/
   std::vector< std::pair< double, double > > dim_domains_;
   /** The list with the dimension names.*/
   std::vector<std::string> dim_names_;
   /** The number of dimensions.*/
-  unsigned int dim_num_;
+  int dim_num_;
   /** 
    * Number of bits used for the calculation of cell ids with the 
    * Hilbert curve, via ArraySchema::cell_id_hilbert. 
@@ -298,32 +306,32 @@ class ArraySchema {
    * Hilbert curve, via ArraySchema::tile_id_hilbert. 
    */
   int hilbert_tile_bits_;
-  /** 
-   * The tile order for regular tiles, or the cell order for irregular tiles.
-   */
-  Order order_;
+  /** The cell order. */
+  CellOrder cell_order_;
   /** 
    * Offsets needed for calculating tile ids with 
    * ArraySchema::tile_id_column_major.
    */
-  std::vector<uint64_t> tile_id_offsets_column_major_;
+  std::vector<int64_t> tile_id_offsets_column_major_;
   /** 
    * Offsets needed for calculating tile ids with 
    * ArraySchema::tile_id_row_major.
    */
-  std::vector<uint64_t> tile_id_offsets_row_major_;
+  std::vector<int64_t> tile_id_offsets_row_major_;
   /** 
    * The list with the tile extents. A tile extent is the size of the tile
    * along some dimension.
    */
   std::vector<double> tile_extents_;
+  /** The tile order for regular tiles. */
+  TileOrder tile_order_;
   /** The list with the attribute types. */
   std::vector<const std::type_info*> types_;
 
   // PRIVATE METHODS
   /** Performs appropriate checks upon a tile id request. */
   template<typename T>
-  bool check_on_tile_id_request(const std::vector<T>& coordinates) const;
+  bool check_on_tile_id_request(const T* coordinates) const;
   /** 
    * Initializes the ArraySchema::hilbert_cell_bits_ value, which is 
    * necessary for calulcating cell ids with the Hilbert curve via 
