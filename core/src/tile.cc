@@ -366,7 +366,8 @@ void Tile::clear_payload() {
   payload_capacity_ = 0;
 }
 
-template<class T> 
+template<class T>
+inline 
 void Tile::expand_mbr(const T* coords) {
   assert(*cell_type_ == typeid(T));
   assert(tile_type_ == COORDINATE);
@@ -489,7 +490,6 @@ template void Tile::operator<< <float>
     (const float* value);
 template void Tile::operator<< <double>
     (const double* value);
-
 template void Tile::operator<< <char>
     (const char& value);
 template void Tile::operator<< <int>
@@ -500,7 +500,6 @@ template void Tile::operator<< <float>
     (const float& value);
 template void Tile::operator<< <double>
     (const double& value);
-
 template bool Tile::cell_inside_range<int>
     (int64_t pos, const int* range) const;
 template bool Tile::cell_inside_range<int64_t>

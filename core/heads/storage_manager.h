@@ -64,10 +64,10 @@
 #define SM_TILE_IDS_FILENAME "tile_ids"
 /** Suffix of all tile data files. */
 #define SM_TILE_DATA_FILE_SUFFIX ".tdt"
-/** Special value returned by StorageManager::tile_rank.  */
-#define SM_INVALID_RANK std::numeric_limits<uint64_t>::max()
+/** Special value returned by StorageManager::tile_pos.  */
+#define SM_INVALID_POS -1
 /** Special value used in FragmentInfo::lastly_appended_tile_ids_.  */
-#define SM_INVALID_TILE_ID std::numeric_limits<uint64_t>::max()
+#define SM_INVALID_TILE_ID -1
 
 /** 
  * A storage manager object is responsible for storing/fetching tiles
@@ -93,32 +93,33 @@ class StorageManager {
   enum Mode {READ, CREATE};
 
   /** Mnemonic: (first_bound_coord, last_bound_coord) */
-  typedef std::pair<std::vector<double>, std::vector<double> > 
-      BoundingCoordinatesPair;
+  typedef std::pair<const void*, const void*> BoundingCoordinatesPair;
   /** Mnemonic: <bound_coord_pair#1, bound_coord_pair#2, ...> */
   typedef std::vector<BoundingCoordinatesPair> BoundingCoordinates;
   /** 
    * A hyper-rectangle in the logical space, including all the coordinates
-   * of a tile. It is a list of low/high values across each dimension, i.e.,
-   * (dim#1_low, dim#1_high, dim#2_low, dim#2_high, ...).
+   * of a tile. It is a list of lower/upper values across each dimension, i.e.,
+   * (dim#1_lower, dim#1_upper, dim#2_lower, dim#2_upper, ...).
    */
-  typedef std::vector<double> MBR; 
+  typedef const void* MBR; 
   /** Mnemonic: <MBR#1, MBR#2, ...> */
   typedef std::vector<MBR> MBRs;
   /** Mnemonic: <offset#1, offset#2, ...> */
-  typedef std::vector<uint64_t> OffsetList;
+  typedef std::vector<int64_t> OffsetList;
   /** Mnemonic: [attribute_id] --> <offset#1, offset#2, ...> */
   typedef std::vector<OffsetList> Offsets;
   /** Mnemonic: [array_name + "_" + fragment_name] --> FragmentInfo */
   typedef std::map<std::string, FragmentInfo> OpenFragments;
   /** Mnemonic: [attribute_id] --> payload_size */
-  typedef std::vector<uint64_t> PayloadSizes;
-  /** Mnemonic: (rank_low, rank_high) */
-  typedef std::pair<uint64_t, uint64_t> RankRange;
-  /** Mnemonic: [attribute_id] --> (rank_low, rank_high) */
-  typedef std::vector<RankRange> RankRanges;
+  typedef std::vector<int64_t> PayloadSizes;
+  /** Mnemonic: (pos_lower, pos_upper) */
+  typedef std::pair<uint64_t, uint64_t> PosRange;
+  /** Mnemonic: [attribute_id] --> (pos_lower, pos_upper) */
+  typedef std::vector<PosRange> PosRanges;
+  /** Mnemonic: [attribute_id] --> segment */
+  typedef std::vector<void*> Segments;
   /** Mnemonic: <tile_id#1, tile_id#2, ...> */
-  typedef std::vector<uint64_t> TileIds;
+  typedef std::vector<int64_t> TileIds;
   /** Mnemonic: <tile#1, tile#2, ...> */
   typedef std::vector<const Tile*> TileList;
   /** Mnemonic: [attribute_id] --> <tile#1, tile#2, ...> */
@@ -145,13 +146,13 @@ class StorageManager {
      * StorageManager::FragmentDescriptor objects 
      * (see StorageManager::FragmentDescriptor::fragment_info_id_).
      */
-    uint64_t id_;
+    int64_t id_;
     /** 
      * It keeps the id of the lastly appended tile for each attribute. It is
      * used for debugging purposes to ensure the fragment "correctness" in 
      * StorageManager::check_on_append_tile.
      */
-    std::vector<uint64_t> lastly_appended_tile_ids_;
+    std::vector<int64_t> lastly_appended_tile_ids_;
     /** Stores the MBR of every (coordinate) tile. */
     MBRs mbrs_; 
     /** 
@@ -165,13 +166,15 @@ class StorageManager {
      */
     PayloadSizes payload_sizes_;
     /** 
-     * Stores the range of the ranks of the tiles currently in main memory,
-     * for each attribute. The rank of a tile is a sequence number indicating
-     * the order in which it was appended to the fragment with respect to the
-     * the other tiles appended to the fragment for the same attribute (e.g.,
-     * 0 means that it was appended first, 1 second, etc.).
+     * Stores the range of the position of the tiles currently in main memory,
+     * for each attribute. The position of a tile is a sequence number 
+     * indicating the order in which it was appended to the fragment with 
+     * respect to the the other tiles appended to the fragment for the same
+     * attribute (e.g., 0 means that it was appended first, 1 second, etc.).
      */
-    RankRanges rank_ranges_;
+    PosRanges pos_ranges_;
+    /** Stores one segment per attribute. */
+    Segments segments_;
     /** Stores all the tile ids of the fragment. */
     TileIds tile_ids_;
     /** Stores the tiles of every attribute currently in main memory. */
@@ -231,7 +234,7 @@ class StorageManager {
      * (i.e., if it has been deleted by the storage manager from 
      * StorageManager::open_fragments_ when closing the fragment).
      */
-    uint64_t fragment_info_id_;
+    int64_t fragment_info_id_;
     /** The fragment name. */
     std::string fragment_name_;
     
@@ -248,7 +251,7 @@ class StorageManager {
     void operator delete[](void* ptr) { ::operator delete[](ptr); }
   };
   /** 
-   * This object holds a vector of FragmentDescriptor objectsa and the array
+   * This object holds a vector of FragmentDescriptor objects and the array
    * schema. It essentially includes all the information necessary to process
    * an array.
    */
@@ -309,13 +312,13 @@ class StorageManager {
    * exchanged in an I/O operation between the disk and the main memory. 
    */
   StorageManager(const std::string& path, 
-                 uint64_t segment_size = SM_SEGMENT_SIZE);
+                 size_t segment_size = SM_SEGMENT_SIZE);
   /** When a storage manager object is deleted, it closes all open arrays. */
   ~StorageManager();
  
   // MUTATORS
   /** Changes the default segment size. */
-  void set_segment_size(uint64_t segment_size) { segment_size_ = segment_size; }
+  void set_segment_size(size_t segment_size) { segment_size_ = segment_size; }
    
   // ARRAY FUNCTIONS
   /** Returns true if the array has been defined. */
@@ -333,7 +336,7 @@ class StorageManager {
    */
   void close_fragment(const FragmentDescriptor* fd);
   /** Defines an array (stores its array schema). */
-  void define_array(const ArraySchema& array_schema) const;
+  void define_array(const ArraySchema* array_schema) const;
   /** It deletes an array (regardless of whether it is open or not). */
   void delete_array(const std::string& array_name);
   /** It deletes a fragment (regardless of whether it is open or not). */
@@ -346,7 +349,7 @@ class StorageManager {
    * deleted by the caller.
    */
   void flush_fragments_bkp(const std::string& array_name, 
-                           const char* buffer, uint64_t buffer_size) const;
+                           const char* buffer, size_t buffer_size) const;
 
   /** Returns true if the fragment is empty. */
   bool fragment_empty(const FragmentDescriptor* fd) const;
@@ -363,15 +366,15 @@ class StorageManager {
    * deleted by the caller.
    */
   void load_fragments_bkp(const std::string& array_name, 
-                          char*& buffer, uint64_t& buffer_size) const;
+                          char*& buffer, size_t& buffer_size) const;
   /** Stores a new schema for an array on the disk. */
-  void modify_array_schema(const ArraySchema& array_schema) const;
+  void modify_array_schema(const ArraySchema* array_schema) const;
   /** 
    * Modifies the fragment book-keeping structures for the case of irregular 
    * tiles, when the capacity changes as part of the 'retile' query. 
    */
   void modify_fragment_bkp(const FragmentDescriptor* fd, 
-                           uint64_t capacity) const;
+                           int64_t capacity) const;
   /** 
    * Returns the begin iterator to the StorageManager::MBRList that 
    * contains the MBRs of the intput array. 
@@ -401,107 +404,94 @@ class StorageManager {
    * a tile with the same id must be appended across all attributes
    * before appending a new tile with a different tile id for A.
    */
-  void append_tile(const Tile* tile, 
-                   const FragmentDescriptor* fd,
-                   unsigned int attribute_id); 
+  void append_tile(
+      const Tile* tile, const FragmentDescriptor* fd, int attribute_id); 
   /**  Returns a tile of an array with the specified attribute and tile id. */
   const Tile* get_tile(
-      const FragmentDescriptor* fd,
-      unsigned int attribute_id, 
-      uint64_t tile_id);  
-  /**  Returns a tile of an array with the specified attribute and tile rank. */
-  const Tile* get_tile_by_rank(
-      const FragmentDescriptor* array_descriptor,
-      unsigned int attribute_id, 
-      uint64_t tile_id);  
+      const FragmentDescriptor* fd, int attribute_id, int64_t tile_id);  
+  /**  
+   * Returns a tile of an array with the specified attribute and tile position. 
+   */
+  const Tile* get_tile_by_pos(
+      const FragmentDescriptor* fd, int attribute_id, int64_t pos);  
   /** 
    * Creates an empty tile for a specific array and attribute, with reserved 
-   * capacity equal to cell_num (note though that there are no constraints on
+   * capacity equal to capacity (note though that there are no constraints on
    * the number of cells the tile will actually accommodate - this is only
    * some initial reservation of memory to avoid mutliple memory expansions
    * as new cells are appended to the tile). 
    */
-  Tile* new_tile(const ArraySchema& array_schema, unsigned int attribute_id, 
-                 uint64_t tile_id, uint64_t cell_num) const; 
+  Tile* new_tile(const ArraySchema* array_schema, int attribute_id, 
+                 int64_t tile_id, int64_t capacity) const; 
   /** 
-   * Returns the id of the tile with the input rank for the input array. Note
-   * that the id of a logical tile across all attributes is the same at the
-   * same rank (physical tiles correspondig to the same logical tile are 
+   * Returns the id of the tile with the input position for the input array. 
+   * Note that the id of a logical tile across all attributes is the same at the
+   * same position (physical tiles correspondig to the same logical tile are 
    * appended to the array in the same order).
    */
-  uint64_t get_tile_id(const FragmentDescriptor* ad, uint64_t rank) const;
+  uint64_t get_tile_id(const FragmentDescriptor* ad, int64_t pos) const;
 
   // TILE ITERATORS
   /** This class implements a constant tile iterator. */
-  class const_iterator {
+  class const_tile_iterator {
    public:
     /** Iterator constuctor. */
-    const_iterator();
+    const_tile_iterator();
     /** Iterator constuctor. */
-    const_iterator(
+    const_tile_iterator(
         const StorageManager* storage_manager,
         const FragmentDescriptor* fd, 
-        unsigned int attribute_id,
-        uint64_t rank); 
+        int attribute_id,
+        int64_t pos); 
     /** Assignment operator. */
-    void operator=(const const_iterator& rhs);
+    void operator=(const const_tile_iterator& rhs);
     /** Addition operator. */
-    const_iterator operator+(int64_t step);
+    const_tile_iterator operator+(int64_t step);
     /** Addition-assignment operator. */
     void operator+=(int64_t step);
     /** Pre-increment operator. */
-    const_iterator operator++();
+    const_tile_iterator operator++();
     /** Post-increment operator. */
-    const_iterator operator++(int junk);
+    const_tile_iterator operator++(int junk);
     /** 
      * Returns true if the iterator is equal to that in the
      * right hand side (rhs) of the operator. 
      */
-    bool operator==(const const_iterator& rhs) const;
+    bool operator==(const const_tile_iterator& rhs) const;
     /** 
      * Returns true if the iterator is equal to that in the
      * right hand side (rhs) of the operator. 
      */
-    bool operator!=(const const_iterator& rhs) const;
+    bool operator!=(const const_tile_iterator& rhs) const;
     /** Returns the tile pointed by the iterator. */
-    const Tile& operator*() const; 
-    /** 
-     * We distinguish two cases: (i) If the operands correspond to the same 
-     * array, then it is true if the rank of the left-hand side is smaller 
-     * than that of the right-hand side. (ii) Otherwise, it is true if the 
-     * tile of the first operand precedes that of the right one along the 
-     * (common) global cell order. A tile precedes another in the global
-     * order if its upper bounding coordinate precedes that of the
-     * other tile along the global order.  
-     */
-    bool operator<(const const_iterator& it_R) const; 
+    const Tile* operator*() const; 
     /** Returns the array schema associated with this tile. */
-    const ArraySchema& array_schema() const;
+    const ArraySchema* array_schema() const;
     /** Returns the bounding coordinates of the tile. */
     BoundingCoordinatesPair bounding_coordinates() const;
     /** Returns the MBR of the tile. */
     MBR mbr() const;
-    /** Returns the rank. */
-    uint64_t rank() const { return rank_; };
+    /** Returns the position. */
+    int64_t pos() const { return pos_; };
     /** Returns the id of the tile. */
-    uint64_t tile_id() const;
+    int64_t tile_id() const;
 
    private:
     /** The array descriptor corresponding to this iterator. */
     const FragmentDescriptor* fd_;
     /** The attribute id corresponding to this iterator. */
-    unsigned int attribute_id_;
-    /** The rank of the current tile in the book-keeping structures. */
-    uint64_t rank_;
+    int attribute_id_;
+    /** The position of the current tile in the book-keeping structures. */
+    int64_t pos_;
     /** The storage manager object that created the iterator. */ 
     const StorageManager* storage_manager_;
   };
   /** Begin tile iterator. */
-  const_iterator begin(const FragmentDescriptor* fd, 
-                       unsigned int attribute_id) const;
+  const_tile_iterator begin(const FragmentDescriptor* fd, 
+                            int attribute_id) const;
   /** End tile iterator. */
-  const_iterator end(const FragmentDescriptor* fd,
-                     unsigned int attribute_id) const;
+  const_tile_iterator end(const FragmentDescriptor* fd,
+                     int attribute_id) const;
   
   // MISC
   /** 
@@ -511,29 +501,29 @@ class StorageManager {
    */
   void get_overlapping_tile_ids(
       const FragmentDescriptor* fd, 
-      const Tile::Range& range, 
-      std::vector<std::pair<uint64_t, bool> >* overlapping_tile_ids) const;
+      const void* range, 
+      std::vector<std::pair<int64_t, bool> >* overlapping_tile_ids) const;
   /** 
-   * Returns the ranks of the tiles whose MBR overlaps with the input range.
-   * The bool variable in overlapping_tile_ranks indicates whether the overlap
+   * Returns the positions of the tiles whose MBR overlaps with the input range.
+   * The bool variable in overlapping_tile_pos indicates whether the overlap
    * is full (i.e., if the tile MBR is completely in the range) or not.
    */
-  void get_overlapping_tile_ranks(
+  void get_overlapping_tile_pos(
       const FragmentDescriptor* fd, 
-      const Tile::Range& range, 
-      std::vector<std::pair<uint64_t, bool> >* overlapping_tile_ranks) const;
+      const void* range, 
+      std::vector<std::pair<int64_t, bool> >* overlapping_tile_pos) const;
 
  private: 
   // PRIVATE ATTRIBUTES
   /** Used in FragmentInfo and FragmentDescriptor for debugging purposes. */
-  static uint64_t fragment_info_id_;
+  static int64_t fragment_info_id_;
   /** Stores info about all currently open fragments. */
   OpenFragments open_fragments_;
    /** 
    * Determines the minimum amount of data that can be exchanged between the 
    * hard disk and the main memory in a single I/O operation. 
    */
-  uint64_t segment_size_;
+  size_t segment_size_;
   /** 
    * Is a folder in the disk where the storage manager creates 
    * all the array data (i.e., tile and index files). 
@@ -542,21 +532,21 @@ class StorageManager {
   
   // PRIVATE METHODS
   /** Checks on the fragment descriptor. */
-  bool check_fragment_descriptor(const FragmentDescriptor& fd) const;
+  bool check_fragment_descriptor(const FragmentDescriptor* fd) const;
   /** Checks upon appending a tile. */
-  bool check_on_append_tile(const FragmentDescriptor& fd,
-                            unsigned int attribute_id,
+  bool check_on_append_tile(const FragmentDescriptor* fd,
+                            int attribute_id,
                             const Tile* tile) const;
   /** Checks upon closing a fragment. */
-  bool check_on_close_fragment(const FragmentDescriptor& fd) const;
+  bool check_on_close_fragment(const FragmentDescriptor* fd) const;
   /** Checks upon getting a tile. */
-  bool check_on_get_tile(const FragmentDescriptor& fd,
-                         unsigned int attribute_id,
-                         uint64_t tile_id) const;
-  /** Checks upon getting a tile by rank. */
-  bool check_on_get_tile_by_rank(const FragmentDescriptor& fd,
-                                 unsigned int attribute_id,
-                                 uint64_t rank) const;
+  bool check_on_get_tile(const FragmentDescriptor* fd,
+                         int attribute_id,
+                         int64_t tile_id) const;
+  /** Checks upon getting a tile by position. */
+  bool check_on_get_tile_by_pos(const FragmentDescriptor* fd,
+                                int attribute_id,
+                                int64_t pos) const;
   /** Checks upon opening an array. */
   bool check_on_open_fragment(const std::string& array_name, 
                               const std::string& fragment_name,
@@ -574,13 +564,11 @@ class StorageManager {
   /** Deletes all the main-memory tiles of the fragment. */
   void delete_tiles(FragmentInfo& fragment_info) const;
   /** Deletes the main-memory tiles of a specific attribute of the fragment. */
-  void delete_tiles(FragmentInfo& fragment_info, 
-                    unsigned int attribute_id) const;
+  void delete_tiles(FragmentInfo& fragment_info, int attribute_id) const;
   /** Writes the fragment info on the disk. */
   void flush_fragment_info(FragmentInfo& fragment_info) const;
   /** Writes the bounding coordinates of each tile on the disk. */
-  void flush_bounding_coordinates(
-      const FragmentInfo& fragment_info) const;
+  void flush_bounding_coordinates(const FragmentInfo& fragment_info) const;
   /** Writes the MBR of each tile on the disk. */
   void flush_MBRs(const FragmentInfo& fragment_info) const;
   /** Writes the tile offsets on the disk. */
@@ -593,19 +581,17 @@ class StorageManager {
    * Writes the main-memory tiles of a specific attribute of the fragment
    * on the disk. 
    */
-  void flush_tiles(
-      FragmentInfo& fragment_info, 
-      unsigned int attribute_id) const;
+  void flush_tiles(FragmentInfo& fragment_info, int attribute_id) const;
   /**
-   * Gets a tile of an attribute of an array using the tile rank. 
-   * The rank of a tile is a sequence number indicating
+   * Gets a tile of an attribute of an array using the tile position. 
+   * The position of a tile is a sequence number indicating
    * the order in which it was appended to the array with respect to the
    * the other tiles appended to the array for the same attribute (e.g.,
    * 0 means that it was appended first, 1 second, etc.).
    */
-  const Tile* get_tile_by_rank(FragmentInfo& fragment_info, 
-                               unsigned int attribute_id, 
-                               uint64_t rank) const;
+  const Tile* get_tile_by_pos(FragmentInfo& fragment_info, 
+                              int attribute_id, 
+                              int64_t pos) const;
   /** 
    * Initializes the array info using the input mode, schema, 
    * and fragment name. 
@@ -628,19 +614,18 @@ class StorageManager {
    * to the smallest number that exceeds StorageManager::segment_size_.
    * NOTE: Care must be taken after the call of this function to delete
    * the created buffer.
-   * \param fragment_info The array info.
+   * \param fragment_info The fragment info.
    * \param attribute_id The attribute id.
-   * \param start_rank The position in the index of the id of the tile 
+   * \param start_pos The position in the index of the id of the tile 
    * the loading will start from.
    * \param buffer The buffer that will store the payloads of the loaded tiles.
    * \return A pair (buffer_size, tiles_in_buffer), where buffer_size is the
    * size of the created buffer, and tiles_in_buffer is the number of tiles 
    * loaded in the buffer.
    */
-  std::pair<uint64_t, uint64_t> load_payloads_into_buffer(
-      const FragmentInfo& fragment_info, 
-      unsigned int attribute_id,
-      uint64_t start_rank, char*& buffer) const;
+  std::pair<size_t, int64_t> load_payloads_into_buffer(
+      const FragmentInfo& fragment_info, int attribute_id,
+      int64_t start_pos, char*& buffer) const;
   /** Loads the tile ids into main memory from the disk. */
   void load_tile_ids(FragmentInfo& fragment_info) const;
   /** 
@@ -649,21 +634,19 @@ class StorageManager {
    */
   void load_tiles_from_buffer(
       FragmentInfo& fragment_info, 
-      unsigned int attribute_id,
-      uint64_t start_rank, char* buffer, uint64_t buffer_size,
-      uint64_t tiles_in_buffer) const;
+      int attribute_id,
+      int64_t start_pos, char* buffer, size_t buffer_size,
+      int64_t tiles_in_buffer) const;
   /** 
    * Loads tiles from the disk for a specific attribute of an array.
-   * The loading starts from start_rank (recall that the tiles
+   * The loading starts from start_pos (recall that the tiles
    * are stored on disk in increasing id order). The number of tiles
    * to be loaded is determined by StorageManager::segment_size_ (namely,
    * the function loads the minimum number of tiles whose aggregate
    * payload exceeds StorageManager::segment_size_).
    */
   void load_tiles_from_disk(
-      FragmentInfo& fragment_info, 
-      unsigned int attribute_id, 
-      uint64_t start_rank) const;
+      FragmentInfo& fragment_info, int attribute_id, int64_t start_pos) const;
   /** Returns true if the input path is an existing directory. */
   bool path_exists(const std::string& path) const;
   /** 
@@ -673,19 +656,16 @@ class StorageManager {
    * will eventually be written to.
    */
   void prepare_segment(
-      FragmentInfo& fragment_info, unsigned int attribute_id, 
-      uint64_t file_offset, uint64_t segment_size, 
-      char *segment) const;
+      FragmentInfo& fragment_info, int attribute_id, 
+      int64_t file_offset, size_t segment_size, void *segment) const;
   /** Simply sets the workspace. */
   void set_workspace(const std::string& path);
   /** 
    * Returns the position of tile_id in StorageManager::FragmentInfo::tile_ids_.
    * If tile_id does not exist in the book-keeping structure, it returns
-   * SM_INVALID_RANK. 
+   * SM_INVALID_POS. 
    */
-  uint64_t tile_rank(const FragmentInfo& fragment_info, uint64_t tile_id) const;
-  /** Expands the input MBR to include the input coordinates. */
-  void expand_mbr(const std::vector<double>& coords, MBR& mbr) const;
+  int64_t tile_pos(const FragmentInfo& fragment_info, int64_t tile_id) const;
 }; 
 
 #endif
