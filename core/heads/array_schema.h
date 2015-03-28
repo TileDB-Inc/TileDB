@@ -136,7 +136,9 @@ class ArraySchema {
   /** Returns the tile order.  */
   CellOrder cell_order() const { return cell_order_; }
   /** Returns the cell size of the i-th attribute. */
-  int64_t cell_size(int i) const;
+  size_t cell_size(int i) const;
+  /** Returns the consolidation step. */
+  int consolidation_step() const { return consolidation_step_; }
   /** Returns the number of dimensions. */
   int dim_num() const { return dim_num_; }
   /** Returns the domains. */

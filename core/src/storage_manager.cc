@@ -306,6 +306,7 @@ void StorageManager::modify_fragment_bkp(
   const std::string& fragment_name = fd->fragment_info_->fragment_name_;
   int attribute_num = array_schema->attribute_num();
   int64_t old_capacity = array_schema->capacity();
+  size_t coords_cell_size = array_schema->cell_size(attribute_num);
 
   // New book-keeping structures
   FragmentInfo fragment_info;
@@ -353,10 +354,12 @@ void StorageManager::modify_fragment_bkp(
           }
           mbr = NULL;
         }
-        bounding_coordinates.first = *cell_it; 
+        bounding_coordinates.first = malloc(coords_cell_size);
+        bounding_coordinates.second = malloc(coords_cell_size);
+        memcpy(bounding_coordinates.first, coords, coords_cell_size);
       }
       expand_mbr(array_schema, coords, mbr);
-      bounding_coordinates.second = coords;
+      memcpy(bounding_coordinates.second, coords, coords_cell_size);
       ++cell_num;
     }
   }
@@ -397,6 +400,21 @@ StorageManager::ArrayDescriptor* StorageManager::open_array(
   return new ArrayDescriptor(array_schema, fd); 
 }
 
+StorageManager::ArrayDescriptor* StorageManager::open_array(
+    const ArraySchema* array_schema,
+    const std::vector<std::string>& fragment_names,
+    Mode mode) {
+
+  std::vector<const FragmentDescriptor*> fd;
+  fd.reserve(fragment_names.size());
+
+  // Open fragments
+  for(int i=0; i<fragment_names.size(); ++i)
+    fd.push_back(open_fragment(array_schema, fragment_names[i], mode));
+
+  return new ArrayDescriptor(array_schema, fd); 
+}
+
 StorageManager::FragmentDescriptor* StorageManager::open_fragment(
     const ArraySchema* array_schema, 
     const std::string& fragment_name,
@@ -415,7 +433,7 @@ StorageManager::FragmentDescriptor* StorageManager::open_fragment(
   // Create array directory
   if(mode == CREATE)
     create_fragment_directory(array_name, fragment_name);
- 
+
   // Initialize array info
   init_fragment_info(fragment_name, array_schema, mode, fragment_info);
 
@@ -449,6 +467,7 @@ void StorageManager::append_tile(const Tile* tile,
 
   // For easy reference
   FragmentInfo& fragment_info = *(fd->fragment_info_);
+  size_t cell_size = tile->cell_size();
 
   // Update indices
   // For both attribute and coordinate tiles
@@ -459,8 +478,20 @@ void StorageManager::append_tile(const Tile* tile,
   fragment_info.payload_sizes_[attribute_id] += tile->tile_size();
   // Only for coordinate tiles
   if(tile->tile_type() == Tile::COORDINATE) {
-    fragment_info.mbrs_.push_back(tile->mbr());
-    fragment_info.bounding_coordinates_.push_back(tile->bounding_coordinates());
+    // Append MBR
+    void* mbr = malloc(2*cell_size);
+    memcpy(mbr, tile->mbr(), 2*cell_size);
+    fragment_info.mbrs_.push_back(mbr);
+
+    // Append bounding coordinates
+    std::pair<const void*, const void*> tile_b_coords = 
+        tile->bounding_coordinates();
+    std::pair<void*, void*> b_coords;
+    b_coords.first = malloc(cell_size);
+    memcpy(b_coords.first, tile_b_coords.first, cell_size);
+    b_coords.second = malloc(cell_size);
+    memcpy(b_coords.second, tile_b_coords.second, cell_size);
+    fragment_info.bounding_coordinates_.push_back(b_coords);
   }
 
   // Flush tiles to disk if the sum of payloads exceeds the segment size
@@ -504,7 +535,7 @@ Tile* StorageManager::new_tile(
   return new Tile(tile_id, dim_num, cell_type, capacity);
 }
 
-uint64_t StorageManager::get_tile_id( 
+int64_t StorageManager::get_tile_id( 
     const FragmentDescriptor* fd, int64_t pos) const {
   assert(pos >= 0 && pos < fd->fragment_info_->tile_ids_.size());
   return fd->fragment_info_->tile_ids_[pos];
@@ -552,81 +583,59 @@ StorageManager::const_tile_iterator::operator++() {
   return *this;
 }
 
-StorageManager::const_iterator StorageManager::const_iterator::operator++(
+StorageManager::const_tile_iterator 
+StorageManager::const_tile_iterator::operator++(
     int junk) {
-  const_iterator it = *this;
-  ++rank_;
+  const_tile_iterator it = *this;
+  ++pos_;
   return it;
 }
 
-bool StorageManager::const_iterator::operator==(
-    const StorageManager::const_iterator& rhs) const {
-  return (rank_ == rhs.rank_ && attribute_id_ == rhs.attribute_id_ &&
+bool StorageManager::const_tile_iterator::operator==(
+    const StorageManager::const_tile_iterator& rhs) const {
+  return (pos_ == rhs.pos_ && attribute_id_ == rhs.attribute_id_ &&
           fd_ == rhs.fd_ && storage_manager_ == rhs.storage_manager_); 
 }
 
-bool StorageManager::const_iterator::operator!=(
-    const StorageManager::const_iterator& rhs) const {
-  return (!(rank_ == rhs.rank_ && attribute_id_ == rhs.attribute_id_ &&
+bool StorageManager::const_tile_iterator::operator!=(
+    const StorageManager::const_tile_iterator& rhs) const {
+  return (!(pos_ == rhs.pos_ && attribute_id_ == rhs.attribute_id_ &&
           fd_ == rhs.fd_ && storage_manager_ == rhs.storage_manager_)); 
 }
 
-const Tile& StorageManager::const_iterator::operator*() const {
-  assert(rank_ < fd_->fragment_info_->tile_ids_.size());
+const Tile* StorageManager::const_tile_iterator::operator*() const {
+  assert(pos_ < fd_->fragment_info_->tile_ids_.size());
   assert(storage_manager_->check_on_get_tile( 
-             *fd_, attribute_id_, fd_->fragment_info_->tile_ids_[rank_]));
+             fd_, attribute_id_, fd_->fragment_info_->tile_ids_[pos_]));
   // For easy reference
   FragmentInfo& fragment_info = *(fd_->fragment_info_);
 
-  return *storage_manager_->get_tile_by_rank(fragment_info,
-                                             attribute_id_, rank_);
+  return storage_manager_->get_tile_by_pos(fragment_info,
+                                           attribute_id_, pos_);
 }
 
-bool StorageManager::const_iterator::operator<(
-    const const_iterator& it_R) const {
-  // For easy reference
-  const ArraySchema& array_schema_L = array_schema();
-  const ArraySchema& array_schema_R = it_R.array_schema(); 
-  BoundingCoordinatesPair bounding_coordinates_L = bounding_coordinates(); 
-  BoundingCoordinatesPair bounding_coordinates_R = it_R.bounding_coordinates();
-
-  // If both tiles belong to the same array
-  if(array_schema_L.array_name() == array_schema_R.array_name())
-    return rank() < it_R.rank();
-  
-  assert(ArraySchema::join_compatible(array_schema_L, array_schema_R).first);
-
-  // The tiles belong to different arrays - check precedence along the 
-  // global cell order using the upper bounding coordinates
-  if(array_schema_L.precedes(bounding_coordinates_L.second,
-                             bounding_coordinates_R.second))
-    return true;
-  else
-    return false;
+const ArraySchema* StorageManager::const_tile_iterator::array_schema() const {
+  return fd_->fragment_info_->array_schema_;
 }
 
-const ArraySchema& StorageManager::const_iterator::array_schema() const {
-  return *fd_->fragment_info_->array_schema_;
+StorageManager::BoundingCoordinatesPair 
+StorageManager::const_tile_iterator::bounding_coordinates() const {
+  return fd_->fragment_info()->bounding_coordinates_[pos_];
 }
 
-StorageManager::BoundingCoordinatesPair StorageManager::const_iterator::
-    bounding_coordinates() const {
-  return fd_->fragment_info()->bounding_coordinates_[rank_];
+StorageManager::MBR StorageManager::const_tile_iterator::mbr() const {
+  return fd_->fragment_info()->mbrs_[pos_];
 }
 
-StorageManager::MBR StorageManager::const_iterator::mbr() const {
-  return fd_->fragment_info()->mbrs_[rank_];
+int64_t StorageManager::const_tile_iterator::tile_id() const {
+  return fd_->fragment_info()->tile_ids_[pos_];
 }
 
-uint64_t StorageManager::const_iterator::tile_id() const {
-  return fd_->fragment_info()->tile_ids_[rank_];
-}
-
-StorageManager::const_iterator StorageManager::begin(
+StorageManager::const_tile_iterator StorageManager::begin(
     const FragmentDescriptor* fd,
-    unsigned int attribute_id) const {
+    int attribute_id) const {
   // Check array descriptor
-  assert(check_fragment_descriptor(*fd)); 
+  assert(check_fragment_descriptor(fd)); 
 
   // For easy reference
   const FragmentInfo& fragment_info = *(fd->fragment_info_);
@@ -637,18 +646,18 @@ StorageManager::const_iterator StorageManager::begin(
   // Check attribute id
   assert(attribute_id <= fd->fragment_info_->array_schema_->attribute_num());
 
-  return const_iterator(this, fd, attribute_id, 0);
+  return const_tile_iterator(this, fd, attribute_id, 0);
 }
 
-StorageManager::const_iterator StorageManager::end(
+StorageManager::const_tile_iterator StorageManager::end(
     const FragmentDescriptor* fd, 
-    unsigned int attribute_id) const {
+    int attribute_id) const {
   // Check array descriptor
-  assert(check_fragment_descriptor(*fd));
+  assert(check_fragment_descriptor(fd));
  
   // For easy reference
   const FragmentInfo& fragment_info = *(fd->fragment_info_);
-  uint64_t tile_num = fragment_info.tile_ids_.size();
+  int64_t tile_num = fragment_info.tile_ids_.size();
 
   // The fragment should be open in READ mode
   assert(fragment_info.fragment_mode_ == READ);
@@ -656,13 +665,13 @@ StorageManager::const_iterator StorageManager::end(
   // Check attribute id
   assert(attribute_id <= fd->fragment_info_->array_schema_->attribute_num());
 
-  return const_iterator(this, fd, attribute_id, tile_num);
+  return const_tile_iterator(this, fd, attribute_id, tile_num);
 }
 
 StorageManager::MBRs::const_iterator StorageManager::MBR_begin(
     const FragmentDescriptor* fd) const {
   // Check array descriptor
-  assert(check_fragment_descriptor(*fd)); 
+  assert(check_fragment_descriptor(fd)); 
 
   // For easy reference
   const FragmentInfo& fragment_info = *(fd->fragment_info_);
@@ -674,9 +683,9 @@ StorageManager::MBRs::const_iterator StorageManager::MBR_begin(
 }
 
 StorageManager::MBRs::const_iterator StorageManager::MBR_end(
-    const FragmentDescriptor*fd) const {
+    const FragmentDescriptor* fd) const {
   // Check fragment descriptor
-  assert(check_fragment_descriptor(*fd)); 
+  assert(check_fragment_descriptor(fd)); 
   
   // For easy reference
   const FragmentInfo& fragment_info = *(fd->fragment_info_);
@@ -693,36 +702,59 @@ StorageManager::MBRs::const_iterator StorageManager::MBR_end(
 
 void StorageManager::get_overlapping_tile_ids(
     const FragmentDescriptor* fd, 
-    const Tile::Range& range,
-    std::vector<std::pair<uint64_t, bool> >* overlapping_tile_ids) const {
+    const void* range,
+    std::vector<std::pair<int64_t, bool> >* overlapping_tile_ids) const {
+  // For easy reference
+  const ArraySchema* array_schema = fd->array_schema();
+  int attribute_num = array_schema->attribute_num(); 
+  const std::type_info* type = array_schema->type(attribute_num);
+
+  if(*type == typeid(int))
+    get_overlapping_tile_ids(fd, static_cast<const int*>(range), 
+                        overlapping_tile_ids);
+  else if(*type == typeid(int64_t))
+    get_overlapping_tile_ids(fd, static_cast<const int64_t*>(range), 
+                        overlapping_tile_ids);
+  else if(*type == typeid(float))
+    get_overlapping_tile_ids(fd, static_cast<const float*>(range), 
+                        overlapping_tile_ids);
+  else if(*type == typeid(double))
+    get_overlapping_tile_ids(fd, static_cast<const double*>(range), 
+                        overlapping_tile_ids);
+}
+
+template<class T>
+void StorageManager::get_overlapping_tile_ids(
+    const FragmentDescriptor* fd, 
+    const T* range,
+    std::vector<std::pair<int64_t, bool> >* overlapping_tile_ids) const {
   // Check array descriptor
-  assert(check_fragment_descriptor(*fd)); 
+  assert(check_fragment_descriptor(fd)); 
 
   // The fragment must be open in READ mode
   assert(fd->fragment_info_->fragment_mode_ == READ);
  
   // For easy reference
   const FragmentInfo& fragment_info = *(fd->fragment_info_);
-  const unsigned int dim_num = fd->array_schema()->dim_num();
-  const uint64_t tile_num = fragment_info.tile_ids_.size();
+  int dim_num = fd->array_schema()->dim_num();
+  int64_t tile_num = fragment_info.tile_ids_.size();
 
   assert(fragment_info.mbrs_.size() == tile_num);
-  assert(range.size() == 2 * dim_num);
 
   // Overlap type per dimension
   bool* partial = new bool[dim_num];
   bool* full = new bool[dim_num];
 
   bool overlap; // True if an MBR overlaps (partially or fully) the range
-  std::pair<uint64_t, bool> overlapping_tile_id; // (tile_id, full)
+  std::pair<int64_t, bool> overlapping_tile_id; // (tile_id, full)
   
-  for(uint64_t i=0; i<tile_num; i++) {
-    const MBR& mbr = fragment_info.mbrs_[i];
+  for(int64_t i=0; i<tile_num; ++i) {
+    const T* mbr = static_cast<const T*>(fragment_info.mbrs_[i]);
     overlap = true;
     overlapping_tile_id.second = true;
 
     // Determine overlap per dimension
-    for(unsigned int j=0; j<dim_num; j++) {
+    for(int j=0; j<dim_num; ++j) {
       partial[j] = false;
       full[j] = false;
       if(mbr[2*j] >= range[2*j] && mbr[2*j+1] <= range[2*j+1])
@@ -754,38 +786,61 @@ void StorageManager::get_overlapping_tile_ids(
   delete [] full;
 }
 
-void StorageManager::get_overlapping_tile_ranks(
+void StorageManager::get_overlapping_tile_pos(
     const FragmentDescriptor* fd, 
-    const Tile::Range& range,
-    std::vector<std::pair<uint64_t, bool> >* overlapping_tile_ranks) const {
+    const void* range,
+    std::vector<std::pair<int64_t, bool> >* overlapping_tile_pos) const {
+  // For easy reference
+  const ArraySchema* array_schema = fd->array_schema();
+  int attribute_num = array_schema->attribute_num(); 
+  const std::type_info* type = array_schema->type(attribute_num);
+
+  if(*type == typeid(int))
+    get_overlapping_tile_pos(fd, static_cast<const int*>(range), 
+                        overlapping_tile_pos);
+  else if(*type == typeid(int64_t))
+    get_overlapping_tile_pos(fd, static_cast<const int64_t*>(range), 
+                        overlapping_tile_pos);
+  else if(*type == typeid(float))
+    get_overlapping_tile_pos(fd, static_cast<const float*>(range), 
+                        overlapping_tile_pos);
+  else if(*type == typeid(double))
+    get_overlapping_tile_pos(fd, static_cast<const double*>(range), 
+                        overlapping_tile_pos);
+}
+
+template<class T>
+void StorageManager::get_overlapping_tile_pos(
+    const FragmentDescriptor* fd, 
+    const T* range,
+    std::vector<std::pair<int64_t, bool> >* overlapping_tile_pos) const {
   // Check array descriptor
-  assert(check_fragment_descriptor(*fd)); 
+  assert(check_fragment_descriptor(fd)); 
 
   // The fragment must be open in READ mode
   assert(fd->fragment_info_->fragment_mode_ == READ);
  
   // For easy reference
   const FragmentInfo& fragment_info = *(fd->fragment_info_);
-  const unsigned int dim_num = fd->array_schema()->dim_num();
-  const uint64_t tile_num = fragment_info.tile_ids_.size();
+  int dim_num = fd->array_schema()->dim_num();
+  int64_t tile_num = fragment_info.tile_ids_.size();
 
   assert(fragment_info.mbrs_.size() == tile_num);
-  assert(range.size() == 2 * dim_num);
 
   // Overlap type per dimension
   bool* partial = new bool[dim_num];
   bool* full = new bool[dim_num];
 
   bool overlap; // True if an MBR overlaps (partially or fully) the range
-  std::pair<uint64_t, bool> overlapping_tile_rank; // (tile_rank, full)
+  std::pair<int64_t, bool> overlapping_tile_pos_pair; // (tile_rank, full)
   
-  for(uint64_t i=0; i<tile_num; i++) {
-    const MBR& mbr = fragment_info.mbrs_[i];
+  for(int64_t i=0; i<tile_num; ++i) {
+    const T* mbr = static_cast<const T*>(fragment_info.mbrs_[i]);
     overlap = true;
-    overlapping_tile_rank.second = true;
+    overlapping_tile_pos_pair.second = true;
 
     // Determine overlap per dimension
-    for(unsigned int j=0; j<dim_num; j++) {
+    for(int j=0; j<dim_num; ++j) {
       partial[j] = false;
       full[j] = false;
       if(mbr[2*j] >= range[2*j] && mbr[2*j+1] <= range[2*j+1])
@@ -796,20 +851,20 @@ void StorageManager::get_overlapping_tile_ranks(
     }
 
     // Determine MBR overlap
-    for(unsigned int j=0; j<dim_num; j++) {
+    for(int j=0; j<dim_num; ++j) {
       if(!partial[j] && !full[j]) {
         overlap = false;
         break;
       }
   
       if(partial[j])
-        overlapping_tile_rank.second = false;
+        overlapping_tile_pos_pair.second = false;
     }
 
     // Insert overlapping tile rank into the result list
     if(overlap) {
-      overlapping_tile_rank.first = i;
-      overlapping_tile_ranks->push_back(overlapping_tile_rank);
+      overlapping_tile_pos_pair.first = i;
+      overlapping_tile_pos->push_back(overlapping_tile_pos_pair);
     }
   }
 
@@ -822,33 +877,51 @@ void StorageManager::get_overlapping_tile_ranks(
 ******************************************************/
 
 bool StorageManager::check_fragment_descriptor(
-    const FragmentDescriptor& fd) const {
+    const FragmentDescriptor* fd) const {
   // Check if the fragment is open
   OpenFragments::const_iterator fragment_it = 
-      open_fragments_.find(fd.array_name_ + "_" + fd.fragment_name_);
+      open_fragments_.find(fd->array_name_ + "_" + fd->fragment_name_);
   if(fragment_it == open_fragments_.end())
     return false;
 
   // Check if the descriptor is obsolete
-  if(fd.fragment_info_id_ != fragment_it->second.id_)
+  if(fd->fragment_info_id_ != fragment_it->second.id_)
     return false;
 
   return true;
 }
 
+template<class T>
+bool StorageManager::check_mbr_on_append_tile(
+    const FragmentDescriptor* fd, const Tile* tile) const {
+  // For easy reference
+  const ArraySchema& array_schema = *(fd->fragment_info_->array_schema_);
+  int dim_num = array_schema.dim_num();
+  const T* mbr = static_cast<const T*>(tile->mbr());
+  const std::vector<std::pair<double, double> >& dim_domains = 
+      array_schema.dim_domains();
+
+  for(int i=0; i<dim_num; ++i) {
+    if(mbr[2*i] < dim_domains[i].first || mbr[2*i] > dim_domains[i].second ||
+       mbr[2*i+1] < dim_domains[i].first || 
+       mbr[2*i+1] > dim_domains[i].second)
+      return false;
+  }
+
+  return true;
+}
+
 bool StorageManager::check_on_append_tile(
-    const FragmentDescriptor& fd,
-    unsigned int attribute_id, 
-    const Tile* tile) const {
+    const FragmentDescriptor* fd, int attribute_id, const Tile* tile) const {
   // Check descriptor
   if(!check_fragment_descriptor(fd))
     return false;
 
   // For easy reference
-  const ArraySchema& array_schema = *(fd.fragment_info_->array_schema_);
-  FragmentInfo& fragment_info = *(fd.fragment_info_);
-  unsigned int attribute_num = array_schema.attribute_num();
-  unsigned int dim_num = array_schema.dim_num();
+  const ArraySchema& array_schema = *(fd->fragment_info_->array_schema_);
+  FragmentInfo& fragment_info = *(fd->fragment_info_);
+  int attribute_num = array_schema.attribute_num();
+  int dim_num = array_schema.dim_num();
 
   // Check if the fragment is open in CREATE mode
   if(fragment_info.fragment_mode_ != CREATE)
@@ -885,9 +958,9 @@ bool StorageManager::check_on_append_tile(
     // The lastly inserted id of every other attribute must be either equal
     // to the currently inserted one, or equal to the last id of the attribute
     // of the currently inserted one.
-    uint64_t last_tile_id = 
+    int64_t last_tile_id = 
         fragment_info.lastly_appended_tile_ids_[attribute_id]; 
-    for(unsigned int i=0; i<=attribute_num; i++)
+    for(int i=0; i<=attribute_num; ++i)
       if(i != attribute_id && 
          fragment_info.lastly_appended_tile_ids_[i] != last_tile_id &&
          fragment_info.lastly_appended_tile_ids_[i] != tile->tile_id())
@@ -896,38 +969,44 @@ bool StorageManager::check_on_append_tile(
   }
 
   // Check MBR to verify that the coordinates are inside the domain
-  // Only for coordinate tiles
+  bool mbr_check = true;
   if(tile->tile_type() == Tile::COORDINATE) {
-    const MBR& mbr = tile->mbr();
-    const std::vector<std::pair<double, double> >& dim_domains = 
-        array_schema.dim_domains();
-    for(unsigned int i=0; i<dim_num; i++)
-      if(mbr[2*i] < dim_domains[i].first || mbr[2*i] > dim_domains[i].second ||
-         mbr[2*i+1] < dim_domains[i].first || mbr[2*i+1] > dim_domains[i].second)
-        return false;
+    const std::type_info* type = array_schema.type(attribute_num);  
+    if(*type == typeid(int))
+      mbr_check = check_mbr_on_append_tile<int>(fd, tile);
+    else if(*type == typeid(int64_t))
+      mbr_check = check_mbr_on_append_tile<int64_t>(fd, tile);
+    else if(*type == typeid(float))
+      mbr_check = check_mbr_on_append_tile<float>(fd, tile);
+    else if(*type == typeid(double))
+      mbr_check = check_mbr_on_append_tile<double>(fd, tile); 
   }
 
-  fragment_info.lastly_appended_tile_ids_[attribute_id] = tile->tile_id();
-  
-  return true;
+
+  if(!mbr_check) {
+    return false;
+  } else {
+    fragment_info.lastly_appended_tile_ids_[attribute_id] = tile->tile_id();
+    return true;
+  }
 }
 
 bool StorageManager::check_on_close_fragment(
-    const FragmentDescriptor& fd) const {
+    const FragmentDescriptor* fd) const {
   // Check descriptor
   if(!check_fragment_descriptor(fd))
     return false;
 
   // For easy reference
-  const ArraySchema& array_schema = *(fd.fragment_info_->array_schema_);
-  const FragmentInfo& fragment_info = *(fd.fragment_info_);
-  unsigned int attribute_num = array_schema.attribute_num();
+  const ArraySchema& array_schema = *(fd->fragment_info_->array_schema_);
+  const FragmentInfo& fragment_info = *(fd->fragment_info_);
+  int attribute_num = array_schema.attribute_num();
 
   // The fragment must either be empty, or all the lastly inserted tile ids must
   // be the same
-  if(!fragment_empty(&fd)) {
-    uint64_t last_tile_id = fragment_info.lastly_appended_tile_ids_[0];
-    for(unsigned int i=1; i<=attribute_num; i++)
+  if(!fragment_empty(fd)) {
+    int64_t last_tile_id = fragment_info.lastly_appended_tile_ids_[0];
+    for(int i=1; i<=attribute_num; ++i)
       if(fragment_info.lastly_appended_tile_ids_[i] != last_tile_id)
         return false;
   }
@@ -936,15 +1015,13 @@ bool StorageManager::check_on_close_fragment(
 }
 
 bool StorageManager::check_on_get_tile(
-    const FragmentDescriptor& fd,
-    unsigned int attribute_id, 
-    uint64_t tile_id) const {
+    const FragmentDescriptor* fd, int attribute_id, int64_t tile_id) const {
   // Check descriptor
   if(!check_fragment_descriptor(fd))
     return false;
 
   // For easy reference
-  const FragmentInfo& fragment_info = *(fd.fragment_info_);
+  const FragmentInfo& fragment_info = *(fd->fragment_info_);
 
   // Check if the fragment is opened in READ mode
   if(fragment_info.fragment_mode_ != READ)
@@ -955,22 +1032,20 @@ bool StorageManager::check_on_get_tile(
     return false;
 
   // Check if tile id exists
-  if(tile_rank(fragment_info, tile_id) == SM_INVALID_RANK)
+  if(tile_pos(fragment_info, tile_id) == SM_INVALID_POS)
     return false;
 
   return true;
 }
 
-bool StorageManager::check_on_get_tile_by_rank(
-    const FragmentDescriptor& fd,
-    unsigned int attribute_id, 
-    uint64_t tile_rank) const {
+bool StorageManager::check_on_get_tile_by_pos(
+    const FragmentDescriptor* fd, int attribute_id, int64_t pos) const {
   // Check descriptor
   if(!check_fragment_descriptor(fd))
     return false;
 
   // For easy reference
-  const FragmentInfo& fragment_info = *(fd.fragment_info_);
+  const FragmentInfo& fragment_info = *(fd->fragment_info_);
 
   // Check if the fragment is opened in READ mode
   if(fragment_info.fragment_mode_ != READ)
@@ -981,7 +1056,7 @@ bool StorageManager::check_on_get_tile_by_rank(
     return false;
 
   // Check if tile id exists
-  if(tile_rank >= fragment_info.tile_ids_.size())
+  if(pos < 0 || pos >= fragment_info.tile_ids_.size())
     return false;
 
   return true;
@@ -1044,10 +1119,19 @@ void StorageManager::delete_fragment(
     const std::string& fragment_name) {
   OpenFragments::iterator fragment_it = 
       open_fragments_.find(array_name + "_" + fragment_name);
+  FragmentInfo& fragment_info = fragment_it->second;
 
   // If the array is open
   if(fragment_it != open_fragments_.end()) {
-    delete_tiles(fragment_it->second);
+    delete_tiles(fragment_info);
+
+    int64_t tile_num = fragment_info.mbrs_.size();
+    for(int i=0; i<tile_num; ++i) {
+      free(fragment_info.bounding_coordinates_[i].first);
+      free(fragment_info.bounding_coordinates_[i].second);
+      free(fragment_info.mbrs_[i]);
+    }
+
     open_fragments_.erase(fragment_it); 
   }
 
@@ -1082,12 +1166,12 @@ void StorageManager::delete_fragment_directory(
 }
 
 void StorageManager::delete_tiles(FragmentInfo& fragment_info) const {
-  for(unsigned int i=0; i<fragment_info.tiles_.size(); i++)
+  for(int i=0; i<fragment_info.tiles_.size(); ++i)
     delete_tiles(fragment_info, i);
 }
 
-void StorageManager::delete_tiles(FragmentInfo& fragment_info,
-                                  unsigned int attribute_id) const {
+void StorageManager::delete_tiles(
+    FragmentInfo& fragment_info, int attribute_id) const {
   // Delete the tiles
   TileList::const_iterator tile_it = 
       fragment_info.tiles_[attribute_id].begin(); 
@@ -1096,9 +1180,13 @@ void StorageManager::delete_tiles(FragmentInfo& fragment_info,
   for(; tile_it != tile_it_end; tile_it++)
     delete *tile_it;
 
+  // Delete segment
+  delete [] static_cast<char*>(fragment_info.segments_[attribute_id]);
+
   // Update the indices
   fragment_info.tiles_[attribute_id].clear(); 
   fragment_info.payload_sizes_[attribute_id] = 0; 
+  fragment_info.segments_[attribute_id] = NULL;
 }
 
 void StorageManager::flush_fragment_info(
@@ -1115,18 +1203,21 @@ void StorageManager::flush_fragment_info(
 }
 
 // FILE FORMAT:
-// tile#1_lower_dim#1(double) tile#1_lower_dim#2(double) ... 
-// tile#1_upper_dim#1(double) tile#1_upper_dim#2(double) ... 
-// tile#2_lower_dim#1(double) tile#2_lower_dim#2(double) ... 
-// tile#2_upper_dim#1(double) tile#2_upper_dim#2(double) ...
+// tile#1_lower_dim#1(T) tile#1_lower_dim#2(T) ... 
+// tile#1_upper_dim#1(T) tile#1_upper_dim#2(T) ... 
+// tile#2_lower_dim#1(T) tile#2_lower_dim#2(T) ... 
+// tile#2_upper_dim#1(T) tile#2_upper_dim#2(T) ...
 // ... 
+// NOTE: T is the type of the dimensions of this array
 void StorageManager::flush_bounding_coordinates(
     const FragmentInfo& fragment_info) const {
   // For easy reference
   const ArraySchema& array_schema = *(fragment_info.array_schema_);
+  int attribute_num = array_schema.attribute_num();
   const std::string& array_name = array_schema.array_name();
   const std::string& fragment_name = fragment_info.fragment_name_;
-  uint64_t tile_num = fragment_info.tile_ids_.size();
+  int64_t tile_num = fragment_info.tile_ids_.size();
+  size_t cell_size = array_schema.cell_size(attribute_num);
 
   // Prepare filename
   std::string filename = workspace_ + "/" + array_name + "/" + 
@@ -1143,23 +1234,20 @@ void StorageManager::flush_bounding_coordinates(
 
   if(tile_num != 0) { // If the array is not empty
     // Prepare the buffer
-    unsigned int dim_num = array_schema.dim_num();
-    uint64_t buffer_size = 2 * tile_num * dim_num * sizeof(double);
+    size_t buffer_size = 2 * tile_num * cell_size;
     char* buffer = new char[buffer_size];
  
     // Populate buffer
-    uint64_t offset = 0;
-    for(uint64_t i=0; i<tile_num; i++) {
+    size_t offset = 0;
+    for(int64_t i=0; i<tile_num; ++i) {
       // Lower bounding coordinates
       memcpy(buffer+offset, 
-             &fragment_info.bounding_coordinates_[i].first[0], 
-             dim_num * sizeof(double));
-      offset += dim_num * sizeof(double);
+             fragment_info.bounding_coordinates_[i].first, cell_size);
+      offset += cell_size;
       // Upper bounding coordinates
       memcpy(buffer+offset, 
-             &fragment_info.bounding_coordinates_[i].second[0], 
-             dim_num * sizeof(double));
-      offset += dim_num * sizeof(double);
+             fragment_info.bounding_coordinates_[i].second, cell_size);
+      offset += cell_size;
     }
 
     // Write buffer and clean up
@@ -1171,18 +1259,21 @@ void StorageManager::flush_bounding_coordinates(
 }
 
 // FILE FORMAT:
-// MBR#1_dim#1_low(double) MBR#1_dim#1_high(double) ...
-// MBR#1_dim#2_low(double) MBR#1_dim#2_high(double) ...
+// MBR#1_dim#1_low(T) MBR#1_dim#1_high(T) ...
+// MBR#1_dim#2_low(T) MBR#1_dim#2_high(T) ...
 // ...
-// MBR#2_dim#1_low(double) MBR#2_dim#1_high(double) ...
+// MBR#2_dim#1_low(T) MBR#2_dim#1_high(T) ...
 // ...
+// NOTE: T is the type of the dimensions of this array
 void StorageManager::flush_MBRs(
     const FragmentInfo& fragment_info) const {
   // For easy reference
   const ArraySchema& array_schema = *(fragment_info.array_schema_);
+  int attribute_num = array_schema.attribute_num();
   const std::string& array_name = array_schema.array_name();
   const std::string& fragment_name = fragment_info.fragment_name_;
-  uint64_t tile_num = fragment_info.tile_ids_.size();
+  int64_t tile_num = fragment_info.tile_ids_.size();
+  size_t cell_size = array_schema.cell_size(attribute_num);
 
   // prepare file name
   std::string filename = workspace_ + "/" + array_name + "/" + 
@@ -1199,16 +1290,14 @@ void StorageManager::flush_MBRs(
 
   if(tile_num != 0) { // If the array is not empty
     // Prepare the buffer
-    unsigned int dim_num = array_schema.dim_num();
-    uint64_t buffer_size = tile_num * 2 * dim_num * sizeof(double);
+    size_t buffer_size = tile_num * 2 * cell_size;
     char* buffer = new char[buffer_size];
  
     // Populate buffer
-    uint64_t offset = 0;
-    for(uint64_t i=0; i<tile_num; i++) {
-      memcpy(buffer+offset, &fragment_info.mbrs_[i][0], 
-             2 * dim_num * sizeof(double));
-      offset += 2 * dim_num * sizeof(double);
+    size_t offset = 0;
+    for(int64_t i=0; i<tile_num; ++i) {
+      memcpy(buffer+offset, fragment_info.mbrs_[i], 2 * cell_size);
+      offset += 2 * cell_size;
     }
 
     // Write buffer and clean up
@@ -1220,11 +1309,11 @@ void StorageManager::flush_MBRs(
 }
 
 // FILE FORMAT:
-// tile#1_of_attribute#1_offset(uint64_t)
-// tile#2_of_attribute#1_offset(uint64_t)
+// tile#1_of_attribute#1_offset(int64_t)
+// tile#2_of_attribute#1_offset(int64_t)
 // ...
-// tile#1_of_attribute#2_offset(uint64_t)
-// tile#2_of_attribute#2_offset(uint64_t)
+// tile#1_of_attribute#2_offset(int64_t)
+// tile#2_of_attribute#2_offset(int64_t)
 // ...
 // NOTE: Do not forget the extra coordinate attribute
 void StorageManager::flush_offsets(
@@ -1233,7 +1322,7 @@ void StorageManager::flush_offsets(
   const ArraySchema& array_schema = *(fragment_info.array_schema_);
   const std::string& array_name = array_schema.array_name();
   const std::string& fragment_name = fragment_info.fragment_name_;
-  uint64_t tile_num = fragment_info.tile_ids_.size();
+  int64_t tile_num = fragment_info.tile_ids_.size();
 
   // Prepare file name
   std::string filename = workspace_ + "/" + array_name + "/" + 
@@ -1250,16 +1339,16 @@ void StorageManager::flush_offsets(
 
   if(tile_num != 0) { // If the array is not empty
     // Prepare the buffer
-    unsigned int attribute_num = array_schema.attribute_num();
-    uint64_t buffer_size = (attribute_num+1) * tile_num * sizeof(uint64_t);
+    int attribute_num = array_schema.attribute_num();
+    size_t buffer_size = (attribute_num+1) * tile_num * sizeof(int64_t);
     char* buffer = new char[buffer_size];
  
     // Populate buffer
-    uint64_t offset = 0;
-    for(unsigned int i=0; i<=attribute_num; i++) {
+    int64_t offset = 0;
+    for(int i=0; i<=attribute_num; ++i) {
       memcpy(buffer+offset, 
-             &fragment_info.offsets_[i][0], tile_num * sizeof(uint64_t));
-      offset += tile_num * sizeof(uint64_t);
+             &fragment_info.offsets_[i][0], tile_num * sizeof(int64_t));
+      offset += tile_num * sizeof(int64_t);
     }
 
     // Write buffer and clean up
@@ -1271,15 +1360,15 @@ void StorageManager::flush_offsets(
 }
 
 // FILE FORMAT:
-// tile_num(uint64_t)
-//   tile_id#1(uint64_t) tile_id#2(uint64_t)  ...
+// tile_num(int64_t)
+//   tile_id#1(int64_t) tile_id#2(int64_t)  ...
 void StorageManager::flush_tile_ids(
     const FragmentInfo& fragment_info) const {
   // For easy reference
   const ArraySchema& array_schema = *(fragment_info.array_schema_);
   const std::string& array_name = array_schema.array_name();
   const std::string& fragment_name = fragment_info.fragment_name_;
-  uint64_t tile_num = fragment_info.tile_ids_.size();
+  int64_t tile_num = fragment_info.tile_ids_.size();
 
   // Prepare file name
   std::string filename = workspace_ + "/" + array_name + "/" +
@@ -1296,13 +1385,13 @@ void StorageManager::flush_tile_ids(
  
   if(tile_num != 0) { // If the array is not empty
     // Prepare the buffer
-    uint64_t buffer_size = (tile_num+1) * sizeof(uint64_t);
+    size_t buffer_size = (tile_num+1) * sizeof(int64_t);
     char* buffer = new char[buffer_size];
  
     // Populate buffer
-    memcpy(buffer, &tile_num, sizeof(uint64_t));
-    memcpy(buffer+sizeof(uint64_t), 
-           &fragment_info.tile_ids_[0], tile_num * sizeof(uint64_t));
+    memcpy(buffer, &tile_num, sizeof(int64_t));
+    memcpy(buffer+sizeof(int64_t), 
+           &fragment_info.tile_ids_[0], tile_num * sizeof(int64_t));
 
     // Write buffer and clean up
     write(fd, buffer, buffer_size);  
@@ -1312,18 +1401,16 @@ void StorageManager::flush_tile_ids(
   close(fd);
 }
 
-void StorageManager::flush_tiles(
-    FragmentInfo& fragment_info) const {
-  for(unsigned int i=0; i<=fragment_info.array_schema_->attribute_num(); i++)
+void StorageManager::flush_tiles(FragmentInfo& fragment_info) const {
+  for(int i=0; i<=fragment_info.array_schema_->attribute_num(); ++i)
     flush_tiles(fragment_info, i);
 }
 
 void StorageManager::flush_tiles(
-    FragmentInfo& fragment_info,
-    unsigned int attribute_id) const {
+    FragmentInfo& fragment_info, int attribute_id) const {
   // For easy reference
   const ArraySchema& array_schema = *(fragment_info.array_schema_);
-  uint64_t segment_size = fragment_info.payload_sizes_[attribute_id];
+  size_t segment_size = fragment_info.payload_sizes_[attribute_id];
 
   if(segment_size > 0) {
     // Open file
@@ -1339,7 +1426,7 @@ void StorageManager::flush_tiles(
     // Retrieve the current file offset (equal to the file size)
     struct stat st;
     fstat(fd, &st);
-    uint64_t file_offset = st.st_size;
+    int64_t file_offset = st.st_size;
 
     // Prepare a segment and append it to the file
     char *segment = new char[segment_size];
@@ -1353,34 +1440,32 @@ void StorageManager::flush_tiles(
   }
 }
 
-const Tile* StorageManager::get_tile_by_rank(
-    FragmentInfo& fragment_info, 
-    unsigned int attribute_id,
-    uint64_t rank) const {
+const Tile* StorageManager::get_tile_by_pos(
+    FragmentInfo& fragment_info, int attribute_id, int64_t pos) const {
   // For easy reference
-  const uint64_t& rank_low = fragment_info.rank_ranges_[attribute_id].first;
-  const uint64_t& rank_high = fragment_info.rank_ranges_[attribute_id].second;
+  const int64_t& pos_lower = fragment_info.pos_ranges_[attribute_id].first;
+  const int64_t& pos_upper = fragment_info.pos_ranges_[attribute_id].second;
 
   // Fetch from the disk if the tile is not in main memory
   if(fragment_info.tiles_[attribute_id].size() == 0 ||
-     (rank < rank_low || rank > rank_high)) 
-    // The following updates rank_low and rank_high
-    load_tiles_from_disk(fragment_info, attribute_id, rank);
+     (pos < pos_lower || pos > pos_upper)) 
+    // The following updates pos_lower and pos_upper
+    load_tiles_from_disk(fragment_info, attribute_id, pos);
 
-  assert(rank >= rank_low && rank <= rank_high);
-  assert(rank - rank_low <= fragment_info.tiles_[attribute_id].size());
+  assert(pos >= pos_lower && pos <= pos_upper);
+  assert(pos - pos_lower <= fragment_info.tiles_[attribute_id].size());
 
-  return fragment_info.tiles_[attribute_id][rank-rank_low];
+fragment_info.tiles_[attribute_id][pos-pos_lower]->print();
+
+  return fragment_info.tiles_[attribute_id][pos-pos_lower];
 }
 
 inline
 void StorageManager::init_fragment_info(
-    const std::string& fragment_name,
-    const ArraySchema* array_schema, 
-    Mode mode, 
-    FragmentInfo& fragment_info) const { 
+    const std::string& fragment_name, const ArraySchema* array_schema, 
+    Mode mode, FragmentInfo& fragment_info) const { 
   // For easy reference
-  const unsigned int attribute_num = array_schema->attribute_num();
+  int attribute_num = array_schema->attribute_num();
 
   fragment_info.fragment_mode_ = mode;
   fragment_info.array_schema_ = array_schema;
@@ -1389,10 +1474,14 @@ void StorageManager::init_fragment_info(
   fragment_info.offsets_.resize(attribute_num+1);
   fragment_info.payload_sizes_.resize(attribute_num+1);
   fragment_info.tiles_.resize(attribute_num+1);
-  fragment_info.rank_ranges_.resize(attribute_num+1);
+  fragment_info.pos_ranges_.resize(attribute_num+1);
+  fragment_info.segments_.resize(attribute_num+1);
   fragment_info.lastly_appended_tile_ids_.resize(attribute_num+1);
-  for(unsigned int i=0; i<=attribute_num; i++)
+
+  for(int i=0; i<=attribute_num; ++i) {
+    fragment_info.segments_[i] = NULL;
     fragment_info.lastly_appended_tile_ids_[i] = SM_INVALID_TILE_ID;
+  }
 }
 
 const ArraySchema *StorageManager::load_array_schema(
@@ -1410,7 +1499,7 @@ const ArraySchema *StorageManager::load_array_schema(
   // Initialize buffer
   struct stat st;
   fstat(fd, &st);
-  uint64_t buffer_size = st.st_size;
+  size_t buffer_size = st.st_size;
   char* buffer = new char[buffer_size];
  
   // Load array schema
@@ -1425,20 +1514,22 @@ const ArraySchema *StorageManager::load_array_schema(
 }
 
 // FILE FORMAT:
-// tile#1_lower_dim#1(double) tile#1_lower_dim#2(double) ... 
-// tile#1_upper_dim#1(double) tile#1_upper_dim#2(double) ... 
-// tile#2_lower_dim#1(double) tile#2_lower_dim#2(double) ... 
-// tile#2_upper_dim#1(double) tile#2_upper_dim#2(double) ...
+// tile#1_lower_dim#1(T) tile#1_lower_dim#2(T) ... 
+// tile#1_upper_dim#1(T) tile#1_upper_dim#2(T) ... 
+// tile#2_lower_dim#1(T) tile#2_lower_dim#2(T) ... 
+// tile#2_upper_dim#1(T) tile#2_upper_dim#2(T) ...
 // ... 
+// NOTE: T is the type of the dimensions of this array
 void StorageManager::load_bounding_coordinates(
     FragmentInfo& fragment_info) const {
   // For easy reference
   const ArraySchema& array_schema = *fragment_info.array_schema_;
+  int attribute_num = array_schema.attribute_num();
   const std::string& array_name = array_schema.array_name();
   const std::string& fragment_name = fragment_info.fragment_name_;
-  uint64_t tile_num = fragment_info.tile_ids_.size();
+  int64_t tile_num = fragment_info.tile_ids_.size();
   assert(tile_num != 0);
-  unsigned int dim_num = array_schema.dim_num();
+  size_t cell_size = array_schema.cell_size(attribute_num);
  
   // Open file
   std::string filename = workspace_ + "/" + array_name + "/" +
@@ -1451,23 +1542,24 @@ void StorageManager::load_bounding_coordinates(
   // Initializations
   struct stat st;
   fstat(fd, &st);
-  uint64_t buffer_size = st.st_size;
-  assert(buffer_size == tile_num*2*dim_num*sizeof(double));
+  size_t buffer_size = st.st_size;
+  assert(buffer_size == tile_num * 2 * cell_size);
   char* buffer = new char[buffer_size];
   read(fd, buffer, buffer_size);
-  uint64_t offset = 0;
+  int64_t offset = 0;
   fragment_info.bounding_coordinates_.resize(tile_num);
+  void* coord;
 
   // Load bounding coordinates
-  for(uint64_t i=0; i<tile_num; i++) {
-    fragment_info.bounding_coordinates_[i].first.resize(dim_num);
-    memcpy(&fragment_info.bounding_coordinates_[i].first[0], 
-           buffer + offset, dim_num * sizeof(double));
-    offset += dim_num * sizeof(double);
-    fragment_info.bounding_coordinates_[i].second.resize(dim_num);
-    memcpy(&fragment_info.bounding_coordinates_[i].second[0], 
-           buffer + offset, dim_num * sizeof(double));
-    offset += dim_num * sizeof(double);
+  for(int64_t i=0; i<tile_num; ++i) {
+    coord = malloc(cell_size);
+    memcpy(coord, buffer + offset, cell_size);
+    fragment_info.bounding_coordinates_[i].first = coord; 
+    offset += cell_size;
+    coord = malloc(cell_size);
+    memcpy(coord, buffer + offset, cell_size);
+    fragment_info.bounding_coordinates_[i].second = coord; 
+    offset += cell_size;
   }
 
   // Clean up
@@ -1476,18 +1568,20 @@ void StorageManager::load_bounding_coordinates(
 }
 
 // FILE FORMAT:
-// MBR#1_dim#1_low(double) MBR#1_dim#1_high(double) ...
-// MBR#1_dim#2_low(double) MBR#1_dim#2_high(double) ...
+// MBR#1_dim#1_low(T) MBR#1_dim#1_high(T) ...
+// MBR#1_dim#2_low(T) MBR#1_dim#2_high(T) ...
 // ...
-// MBR#2_dim#1_low(double) MBR#2_dim#1_high(double) ...
+// MBR#2_dim#1_low(T) MBR#2_dim#1_high(T) ...
 // ...
+// NOTE: T is the type of the dimensions of this array
 void StorageManager::load_MBRs(FragmentInfo& fragment_info) const {
   // For easy reference
   const ArraySchema& array_schema = *fragment_info.array_schema_;
+  int attribute_num = array_schema.attribute_num();
   const std::string& array_name = array_schema.array_name();
   const std::string& fragment_name = fragment_info.fragment_name_;
-  uint64_t tile_num = fragment_info.tile_ids_.size();
-  unsigned int dim_num = array_schema.dim_num();
+  size_t cell_size = array_schema.cell_size(attribute_num);
+  int64_t tile_num = fragment_info.tile_ids_.size();
   assert(tile_num != 0);
  
   // Open file
@@ -1501,19 +1595,20 @@ void StorageManager::load_MBRs(FragmentInfo& fragment_info) const {
   // Initializations
   struct stat st;
   fstat(fd, &st);
-  uint64_t buffer_size = st.st_size;
-  assert(buffer_size == tile_num*2*dim_num*sizeof(double));
+  size_t buffer_size = st.st_size;
+  assert(buffer_size == tile_num * 2 * cell_size);
   char* buffer = new char[buffer_size];
   read(fd, buffer, buffer_size);
-  uint64_t offset = 0;
+  size_t offset = 0;
   fragment_info.mbrs_.resize(tile_num);
+  void* mbr;
 
   // Load MBRs
-  for(uint64_t i=0; i<tile_num; i++) {
-    fragment_info.mbrs_[i].resize(2*dim_num);
-    memcpy(&fragment_info.mbrs_[i][0], buffer + offset, 
-           2*dim_num*sizeof(double));
-    offset += 2 * dim_num * sizeof(double);
+  for(int64_t i=0; i<tile_num; ++i) {
+    mbr = malloc(2 * cell_size);
+    memcpy(mbr, buffer + offset, 2 * cell_size);
+    fragment_info.mbrs_[i] = mbr;
+    offset += 2 * cell_size;
   }
 
   // Clean up
@@ -1522,11 +1617,11 @@ void StorageManager::load_MBRs(FragmentInfo& fragment_info) const {
 }
 
 // FILE FORMAT:
-// tile#1_of_attribute#1_offset(uint64_t)
-// tile#2_of_attribute#1_offset(uint64_t)
+// tile#1_of_attribute#1_offset(int64_t)
+// tile#2_of_attribute#1_offset(int64_t)
 // ...
-// tile#1_of_attribute#2_offset(uint64_t)
-// tile#2_of_attribute#2_offset(uint64_t)
+// tile#1_of_attribute#2_offset(int64_t)
+// tile#2_of_attribute#2_offset(int64_t)
 // ...
 // NOTE: Do not forget the extra coordinate attribute
 void StorageManager::load_offsets(FragmentInfo& fragment_info) const {
@@ -1534,8 +1629,8 @@ void StorageManager::load_offsets(FragmentInfo& fragment_info) const {
   const ArraySchema& array_schema = *fragment_info.array_schema_;
   const std::string& array_name = array_schema.array_name();
   const std::string& fragment_name = fragment_info.fragment_name_;
-  unsigned int attribute_num = array_schema.attribute_num();
-  uint64_t tile_num = fragment_info.tile_ids_.size();
+  int attribute_num = array_schema.attribute_num();
+  int64_t tile_num = fragment_info.tile_ids_.size();
   assert(tile_num != 0);
  
   // Open file
@@ -1549,18 +1644,18 @@ void StorageManager::load_offsets(FragmentInfo& fragment_info) const {
   // Initializations
   struct stat st;
   fstat(fd, &st);
-  uint64_t buffer_size = st.st_size;
-  assert(buffer_size == (attribute_num+1)*tile_num*sizeof(uint64_t));
+  size_t buffer_size = st.st_size;
+  assert(buffer_size == (attribute_num+1)*tile_num*sizeof(int64_t));
   char* buffer = new char[buffer_size];
   read(fd, buffer, buffer_size);
-  uint64_t offset = 0;
+  int64_t offset = 0;
 
   // Load offsets
-  for(unsigned int i=0; i<=attribute_num; i++) {
+  for(int i=0; i<=attribute_num; ++i) {
     fragment_info.offsets_[i].resize(tile_num);
     memcpy(&fragment_info.offsets_[i][0], buffer + offset, 
-           tile_num*sizeof(uint64_t));
-    offset += tile_num * sizeof(uint64_t);
+           tile_num*sizeof(int64_t));
+    offset += tile_num * sizeof(int64_t);
   }
 
   // Clean up
@@ -1569,10 +1664,9 @@ void StorageManager::load_offsets(FragmentInfo& fragment_info) const {
 }
 
 inline
-std::pair<uint64_t, uint64_t> StorageManager::load_payloads_into_buffer(
+std::pair<size_t, int64_t> StorageManager::load_payloads_into_buffer(
     const FragmentInfo& fragment_info, 
-    unsigned int attribute_id, 
-    uint64_t start_rank, char*& buffer) const {
+    int attribute_id, int64_t start_pos, char*& buffer) const {
   // For easy reference
   const ArraySchema& array_schema = *(fragment_info.array_schema_);
   const std::string& array_name = array_schema.array_name();
@@ -1580,7 +1674,7 @@ std::pair<uint64_t, uint64_t> StorageManager::load_payloads_into_buffer(
   const std::string& attribute_name = 
       array_schema.attribute_name(attribute_id);
   const OffsetList& offsets = fragment_info.offsets_[attribute_id];
-  const uint64_t tile_num = offsets.size();
+  int64_t tile_num = offsets.size();
   assert(tile_num == fragment_info.tile_ids_.size());
 
   // Open file
@@ -1594,35 +1688,35 @@ std::pair<uint64_t, uint64_t> StorageManager::load_payloads_into_buffer(
   // Initilizations
   struct stat st;
   fstat(fd, &st);
-  uint64_t buffer_size = 0;
-  uint64_t tiles_in_buffer = 0;
-  int64_t rank = start_rank;
+  size_t buffer_size = 0;
+  int64_t tiles_in_buffer = 0;
+  int64_t pos = start_pos;
 
   // Calculate buffer size (smallest size larger than or equal to segment_size_)
-  while(rank < tile_num && buffer_size < segment_size_) {
-    if(rank == tile_num-1)
-      buffer_size += st.st_size - offsets[rank];
+  while(pos < tile_num && buffer_size < segment_size_) {
+    if(pos == tile_num-1)
+      buffer_size += st.st_size - offsets[pos];
     else
-      buffer_size += offsets[rank+1] - offsets[rank];
-    rank++;
+      buffer_size += offsets[pos+1] - offsets[pos];
+    pos++;
     tiles_in_buffer++;
   }
 
   assert(buffer_size != 0);
-  assert(offsets[start_rank] + buffer_size <= st.st_size);
+  assert(offsets[start_pos] + buffer_size <= st.st_size);
 
   // Read payloads into buffer
   buffer = new char[buffer_size];
-  lseek(fd, offsets[start_rank], SEEK_SET);
+  lseek(fd, offsets[start_pos], SEEK_SET);
   read(fd, buffer, buffer_size); 
   close(fd);
 
-  return std::pair<uint64_t, uint64_t>(buffer_size, tiles_in_buffer);
+  return std::pair<size_t, int64_t>(buffer_size, tiles_in_buffer);
 }
 
 // FILE FORMAT:
-// tile_num(uint64_t)
-//   tile_id#1(uint64_t) tile_id#2(uint64_t)  ...
+// tile_num(int64_t)
+//   tile_id#1(int64_t) tile_id#2(int64_t)  ...
 void StorageManager::load_tile_ids(FragmentInfo& fragment_info) const {
   // For easy reference
   const ArraySchema& array_schema = *fragment_info.array_schema_;
@@ -1640,22 +1734,22 @@ void StorageManager::load_tile_ids(FragmentInfo& fragment_info) const {
   // Initializations
   struct stat st;
   fstat(fd, &st);
-  uint64_t buffer_size = st.st_size;
+  size_t buffer_size = st.st_size;
 
   if(buffer_size == 0) // Empty array
     return;
 
-  assert(buffer_size > sizeof(uint64_t));
+  assert(buffer_size > sizeof(int64_t));
   char* buffer = new char[buffer_size];
   read(fd, buffer, buffer_size);
-  uint64_t tile_num;
-  memcpy(&tile_num, buffer, sizeof(uint64_t));
-  assert(buffer_size == (tile_num+1)*sizeof(uint64_t));
+  int64_t tile_num;
+  memcpy(&tile_num, buffer, sizeof(int64_t));
+  assert(buffer_size == (tile_num+1)*sizeof(int64_t));
   fragment_info.tile_ids_.resize(tile_num);
 
   // Load tile_ids
   memcpy(&fragment_info.tile_ids_[0], 
-         buffer+sizeof(uint64_t), tile_num*sizeof(uint64_t));
+         buffer+sizeof(int64_t), tile_num*sizeof(int64_t));
 
   // Clean up
   delete [] buffer;
@@ -1663,18 +1757,16 @@ void StorageManager::load_tile_ids(FragmentInfo& fragment_info) const {
 }
 
 void StorageManager::load_tiles_from_disk(
-    FragmentInfo& fragment_info, 
-    unsigned int attribute_id,
-    uint64_t start_rank) const { 
+    FragmentInfo& fragment_info, int attribute_id, int64_t start_pos) const { 
   char* buffer;
 
   // Load the tile payloads from the disk into a buffer
-  std::pair<uint64_t, uint64_t> ret = load_payloads_into_buffer(
-      fragment_info, attribute_id, start_rank, buffer); 
+  std::pair<size_t, int64_t> ret = load_payloads_into_buffer(
+      fragment_info, attribute_id, start_pos, buffer); 
 
   // For easy reference
-  uint64_t buffer_size = ret.first;
-  uint64_t tiles_in_buffer = ret.second;
+  size_t buffer_size = ret.first;
+  int64_t tiles_in_buffer = ret.second;
 
   // Delete previous tiles from main memory
   delete_tiles(fragment_info, attribute_id);
@@ -1682,24 +1774,24 @@ void StorageManager::load_tiles_from_disk(
   // Create the tiles from the payloads in the buffer and load them
   // into the tile book-keeping structure
   load_tiles_from_buffer(fragment_info, 
-                         attribute_id, start_rank, 
+                         attribute_id, start_pos, 
                          buffer, buffer_size, tiles_in_buffer);         
  
   // Update rank range in main memory
-  fragment_info.rank_ranges_[attribute_id].first = start_rank;
-  fragment_info.rank_ranges_[attribute_id].second = 
-      start_rank + tiles_in_buffer - 1;
+  fragment_info.pos_ranges_[attribute_id].first = start_pos;
+  fragment_info.pos_ranges_[attribute_id].second = 
+      start_pos + tiles_in_buffer - 1;
 
-  // Clean up
-  delete [] buffer;
+  // Store retrieved segment
+  fragment_info.segments_[attribute_id] = buffer;
 }
 
 void StorageManager::load_tiles_from_buffer(
     FragmentInfo& fragment_info, 
-    unsigned int attribute_id, uint64_t start_rank, char* buffer, 
-    uint64_t buffer_size, uint64_t tiles_in_buffer) const {
+    int attribute_id, int64_t start_pos, char* buffer, 
+    size_t buffer_size, int64_t tiles_in_buffer) const {
   // For easy reference
-  const ArraySchema& array_schema = *(fragment_info.array_schema_);
+  const ArraySchema* array_schema = fragment_info.array_schema_;
   const OffsetList& offsets = fragment_info.offsets_[attribute_id];
   const TileIds& tile_ids = fragment_info.tile_ids_;
   const MBRs& mbrs = fragment_info.mbrs_;
@@ -1707,40 +1799,35 @@ void StorageManager::load_tiles_from_buffer(
       fragment_info.bounding_coordinates_;
   assert(offsets.size() == tile_ids.size());
   TileList& tiles = fragment_info.tiles_[attribute_id];
-  const unsigned int attribute_num = array_schema.attribute_num();
+  int attribute_num = array_schema->attribute_num();
 
   // Initializations
-  uint64_t buffer_offset = 0;
-  uint64_t tile_id, tile_size;
-  uint64_t rank = start_rank;
+  size_t buffer_offset = 0, payload_size;
+  int64_t tile_id;
+  int64_t pos = start_pos;
   tiles.resize(tiles_in_buffer);
-  char* payload;
+  void* payload;
   
   // Load tiles
-  for(uint64_t i=0; i<tiles_in_buffer; i++, rank++) {
-    assert(rank < tile_ids.size());
-    tile_id = tile_ids[rank];
+  for(int64_t i=0; i<tiles_in_buffer; ++i, ++pos) {
+    assert(pos < tile_ids.size());
+    tile_id = tile_ids[pos];
 
-    if(rank == offsets.size()-1)
-      tile_size = buffer_size - buffer_offset;
+    if(pos == offsets.size()-1)
+      payload_size = buffer_size - buffer_offset;
     else
-      tile_size = offsets[rank+1] - offsets[rank];
+      payload_size = offsets[pos+1] - offsets[pos];
 
-    assert(buffer_offset + tile_size <= buffer_size);
-    payload = new char[tile_size];
-    memcpy(payload, buffer + buffer_offset, tile_size);
+    payload = buffer + buffer_offset;
     
-    uint64_t cell_num = tile_size / array_schema.cell_size(attribute_id);
+    int64_t cell_num = payload_size / array_schema->cell_size(attribute_id);
     Tile* tile = new_tile(array_schema, attribute_id, tile_id, cell_num);
-    tile->set_payload(payload, tile_size);
+    tile->set_payload(payload, payload_size);
     if(tile->tile_type() == Tile::COORDINATE) 
-      tile->set_mbr(mbrs[rank]);
+      tile->set_mbr(mbrs[pos]);
     
     tiles[i] = tile;
-    buffer_offset += tile_size;
-
-    // Clean up
-    delete [] payload;
+    buffer_offset += payload_size;
   }
 }
 
@@ -1751,11 +1838,10 @@ bool StorageManager::path_exists(const std::string& path) const {
 
 inline
 void StorageManager::prepare_segment( 
-    FragmentInfo& fragment_info, unsigned int attribute_id,
-    uint64_t file_offset, uint64_t segment_size, 
-    char* segment) const {
-  uint64_t segment_offset = 0;
-  uint64_t tile_size;
+    FragmentInfo& fragment_info, int attribute_id,
+    int64_t file_offset, size_t segment_size, char* segment) const {
+  size_t segment_offset = 0;
+  size_t tile_size;
   TileList::const_iterator tile_it = 
       fragment_info.tiles_[attribute_id].begin();
   TileList::const_iterator tile_it_end = 
@@ -1787,23 +1873,23 @@ void StorageManager::set_workspace(const std::string& path) {
   workspace_ += "/StorageManager";
 }
 
-uint64_t StorageManager::tile_rank(const FragmentInfo& fragment_info, 
-                                   uint64_t tile_id) const {
+int64_t StorageManager::tile_pos(const FragmentInfo& fragment_info, 
+                                  int64_t tile_id) const {
   // Check of the array has not tiles
-  if(fragment_info.tile_ids_.size() == 0)
-    return SM_INVALID_RANK;
+  if(fragment_info.tile_ids_.size() == 0 || tile_id  < 0)
+    return SM_INVALID_POS;
 
   // Perform binary search
-  uint64_t min = 0;
-  uint64_t max = fragment_info.tile_ids_.size()-1;
-  uint64_t mid;
+  int64_t min = 0;
+  int64_t max = fragment_info.tile_ids_.size()-1;
+  int64_t mid;
   while(min <= max) {
     mid = min + ((max - min) / 2);
     if(fragment_info.tile_ids_[mid] == tile_id)  // Tile found!
       return mid;
     else if(fragment_info.tile_ids_[mid] > tile_id) {
       if(mid == 0)
-        return SM_INVALID_RANK;
+        return SM_INVALID_POS;
       max = mid - 1;
     }
     else // (fragment_info.tile_ids_[mid] < tile_id)
@@ -1811,6 +1897,6 @@ uint64_t StorageManager::tile_rank(const FragmentInfo& fragment_info,
   }
 
   // Tile id not found
-  return SM_INVALID_RANK;
+  return SM_INVALID_POS;
 }
 

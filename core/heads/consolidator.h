@@ -38,9 +38,6 @@
 #include <string>
 #include <map>
 
-/** A default value for the consolidation step. */
-#define CN_DEFAULT_CONSOLIDATION_STEP 3
-
 /**
  * The consolidator is responsible for merging 'array fragments'. The rationale
  * behind the array fragments is the following. When data are loaded into the
@@ -53,7 +50,8 @@
  * of multiple array fragments. Each array fragment is named after the batches
  * it encompasses (more on this below). The consolidator is enforced with 
  * occassionally merging a set of array fragments into a single one, based on a
- * parameter called 'consolidation step'. The consolidation takes place in a
+ * parameter called 'consolidation step'. The latter is stored in the array
+ * schema, i.e., it is specific to the array. The consolidation takes place in a
  * hierarchical manner, conceptually visualized as a tree, called 'fragment
  * tree'. The Consolidator encodes the tree in a concise manner (more on this
  * below).
@@ -116,7 +114,7 @@ class Consolidator {
   /** Mnemonic: (vector of fragment names, result fragment name) */
   typedef std::pair<std::vector<std::string>, std::string> ConsolidationInfo;
   /** Mnemonic: (level, number of nodes) */
-  typedef std::pair<unsigned int, unsigned int> FragmentTreeLevel;
+  typedef std::pair<int, int> FragmentTreeLevel;
   /** Menmonic <(level, number of nodes), ...> */
   typedef std::vector<FragmentTreeLevel> FragmentTree;
   /** Menmonic [array_name] --> array_info */
@@ -126,8 +124,8 @@ class Consolidator {
   struct ArrayInfo {
     /** The array mode. */
     Mode array_mode_;
-    /** The array name. */
-    std::string array_name_; 
+    /** The array schema. */
+    const ArraySchema* array_schema_; 
     /** The fragment tree of the array. */
     FragmentTree fragment_tree_;  
     /** 
@@ -135,12 +133,12 @@ class Consolidator {
      * Consolidator::ArrayDescriptor objects (see 
      * Consolidator::ArrayDescriptor::array_info_id_).
      */
-    uint64_t id_;
+    int64_t id_;
     /**
      * Each update has a sequence number. This variable holds the next 
      * sequence number to be assigned to the next created fragment.
      */
-    uint64_t next_update_seq_;
+    int64_t next_update_seq_;
   };
 
   /** 
@@ -180,7 +178,7 @@ class Consolidator {
      * (i.e., if it has been deleted by the consolidator from 
      * Consolidator::open_arrays_ when closing the array).
      */
-    uint64_t array_info_id_;
+    int64_t array_info_id_;
 
     // PRIVATE METHODS
     /** 
@@ -201,8 +199,7 @@ class Consolidator {
   Consolidator();
   /** Simple constructor. */ 
   Consolidator(const std::string& workspace, 
-               StorageManager& storage_manager,
-               unsigned int consolidation_step = CN_DEFAULT_CONSOLIDATION_STEP);
+               StorageManager* storage_manager);
 
   // ARRAY FUNCTIONS 
   /** 
@@ -223,54 +220,51 @@ class Consolidator {
   /** Returns the next fragment name. */
   std::string get_next_fragment_name(const ArrayDescriptor* ad) const;
   /** Returns the next update sequence number. */
-  uint64_t get_next_update_seq(const ArrayDescriptor* ad) const;
+  int64_t get_next_update_seq(const ArrayDescriptor* ad) const;
   /** Lazy consolidation, when the consolidation step is greater than 1. */
   void lazily_consolidate(const ArrayDescriptor* ad) const;
   /** It loads the book-keeping consolidation info for an array into memory. */
-  const ArrayDescriptor* open_array(const std::string& array_name,
-                                    Mode mode);
+  const ArrayDescriptor* open_array(const ArraySchema* array_schema, Mode mode);
          
  private:
   // PRIVATE ATTRIBUTES
   /** Used in ArrayInfo and ArrayDescriptor for debugging purposes. */
-  static uint64_t array_info_id_;
-  /** This determines when consolidation must take place. */
-  unsigned int consolidation_step_;
+  static int64_t array_info_id_;
   /** Keeps track the arrays whose book-keeping info is in memory. */
   OpenArrays open_arrays_;
   /** The StorageManager object the Consolidator will be interfacing with. */
-  StorageManager& storage_manager_;
+  StorageManager* storage_manager_;
   /** A folder in the disk where the Consolidator creates all its data. */
   std::string workspace_;
   
   // PRIVATE METHODS
   /** Advances all the cell iterators by 1. */
-  void advance_cell_its(unsigned int attribute_num,
-                        Tile::const_iterator* cell_its) const;
+  void advance_cell_its(int attribute_num, 
+                        Tile::const_cell_iterator* cell_its) const;
   /** 
    * Advances all the cell iterators by 1. If the cell iterators are equal to
    * the end iterator, the tile iterators are advanced. If the tile iterators
    * are not equal to the end tile iterator, then new cell iterators are
    * initialized.
    */
-  void advance_cell_tile_its(unsigned int attribute_num,
-                             Tile::const_iterator* cell_its, 
-                             Tile::const_iterator& cell_it_end,
-                             StorageManager::const_iterator* tile_its,
-                             StorageManager::const_iterator& tile_it_end) const;
+  void advance_cell_tile_its(
+      int attribute_num,
+      Tile::const_cell_iterator* cell_its, 
+      Tile::const_cell_iterator& cell_it_end,
+      StorageManager::const_tile_iterator* tile_its,
+      StorageManager::const_tile_iterator& tile_it_end) const;
   /** Advances all the tile iterators by 1. */
-  void advance_tile_its(unsigned int attribute_num,
-                        StorageManager::const_iterator* tile_its) const; 
+  void advance_tile_its(int attribute_num,
+                        StorageManager::const_tile_iterator* tile_its) const; 
   /** 
    * Appends a logical cell of an array (comprised of attribute values and 
    * coordinates held in the input cell iterators) into
    * another array (in the corresponding tiles held in input variable 'tiles').
    */
-  void append_cell(const Tile::const_iterator* cell_its,
-                   Tile** tiles,
-                   unsigned int attribute_num) const;
+  void append_cell(const Tile::const_cell_iterator* cell_its,
+                   Tile** tiles, int attribute_num) const;
   /** Consolidates the input fragments. */
-  void consolidate(const std::string& array_name,
+  void consolidate(const ArraySchema* array_schema,
                    const std::vector<std::string>& fragment_names,
                    const std::string& result_fragment_name) const;
   /**  Consolidates the input fragments for the case of irregular tiles. */
@@ -290,39 +284,37 @@ class Consolidator {
    * Returns the index of the fragment from which we will get the next
    * cell.
    */
-  int get_next_fragment_index(StorageManager::const_iterator** tile_its,
-                              StorageManager::const_iterator* tile_it_end,
-                              unsigned int fragment_num,
-                              Tile::const_iterator** cell_its,
-                              Tile::const_iterator* cell_it_end,
-                              const ArraySchema& array_schema,
+  int get_next_fragment_index(StorageManager::const_tile_iterator** tile_its,
+                              StorageManager::const_tile_iterator* tile_it_end,
+                              int fragment_num,
+                              Tile::const_cell_iterator** cell_its,
+                              Tile::const_cell_iterator* cell_it_end,
+                              const ArraySchema* array_schema,
                               const std::string& result_fragment_suffix) const;
   /** Initializes cell iterators. */
-  void initialize_cell_its(const StorageManager::const_iterator* tile_its,
-                           unsigned int attribute_num,
-                           Tile::const_iterator* cell_its, 
-                           Tile::const_iterator& cell_it_end) const; 
+  void initialize_cell_its(const StorageManager::const_tile_iterator* tile_its,
+                           int attribute_num,
+                           Tile::const_cell_iterator* cell_its, 
+                           Tile::const_cell_iterator& cell_it_end) const; 
   /** Initializes tile iterators. */
-  void initialize_tile_its(const StorageManager::FragmentDescriptor* fd,
-                           StorageManager::const_iterator* tile_its,
-                           StorageManager::const_iterator& tile_it_end) const;
-  /**
-   * Returns true if the cell represents a deletion, i.e., when all its
-   * attribute values are NULL.
-   */
-  bool is_null(const Tile::const_iterator& cell_it) const;
+  void initialize_tile_its(
+      const StorageManager::FragmentDescriptor* fd,
+      StorageManager::const_tile_iterator* tile_its,
+      StorageManager::const_tile_iterator& tile_it_end) const;
+  /** Returns true if the cell represents a deletion. */
+  bool is_del(const Tile::const_cell_iterator& cell_it) const;
   /** 
    * Loads the fragment tree of an array from the disk, and returns the next
    * sequnce number to be assigned to a new fragment. 
    */
-  uint64_t load_fragment_tree(const std::string& array_name,
-                              FragmentTree& fragment_tree) const;
+  int64_t load_fragment_tree(const ArraySchema* array_schema,
+                             FragmentTree& fragment_tree) const;
   /** 
    * Creates an array of Tile objects with the input tile id based on the input 
    * array schema. 
    */
-  void new_tiles(const ArraySchema& array_schema,
-                 uint64_t tile_id, Tile** tiles) const;
+  void new_tiles(const ArraySchema* array_schema,
+                 int64_t tile_id, Tile** tiles) const;
   /** Returns true if the input path is an existing directory. */
   bool path_exists(const std::string& path) const;
   /** Simply sets the workspace. */

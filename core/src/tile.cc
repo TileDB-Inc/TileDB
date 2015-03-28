@@ -35,6 +35,7 @@
 #include <assert.h>
 #include <iostream>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /******************************************************
@@ -53,7 +54,6 @@ Tile::Tile(int64_t tile_id, int dim_num, const std::type_info* cell_type,
     tile_type_ = COORDINATE;
 
   mbr_ = NULL;
-  mbr_alloc_ = false;
   cell_num_ = 0;
   tile_size_ = 0;
 
@@ -76,7 +76,7 @@ Tile::Tile(int64_t tile_id, int dim_num, const std::type_info* cell_type,
     payload_ = NULL;
     payload_alloc_ = false;
   } else { 
-    payload_ = new char[payload_capacity_*cell_size_];
+    payload_ = malloc(payload_capacity_*cell_size_);
     payload_alloc_ = true;
   }
 }
@@ -120,11 +120,13 @@ void Tile::clear() {
   clear_payload();
 }
 
-void Tile::set_mbr(void* mbr) {
+void Tile::set_mbr(const void* mbr) {
   assert(tile_type_ == COORDINATE);
 
   clear_mbr();
-  mbr_ = mbr;
+
+  mbr_ = malloc(2*cell_size_); 
+  memcpy(mbr_, mbr, 2*cell_size_);
 }
 
 void Tile::set_payload(void* payload, size_t payload_size) {
@@ -140,8 +142,34 @@ void Tile::set_payload(void* payload, size_t payload_size) {
 ********************** OPERATORS **********************
 ******************************************************/
 
+void Tile::operator<<(void* value) {
+  if(*cell_type_ == typeid(char))
+    *this << static_cast<char*>(value);
+  else if(*cell_type_ == typeid(int))
+    *this << static_cast<int*>(value);
+  else if(*cell_type_ == typeid(int64_t))
+    *this << static_cast<int64_t*>(value);
+  else if(*cell_type_ == typeid(float))
+    *this << static_cast<float*>(value);
+  else if(*cell_type_ == typeid(double))
+    *this << static_cast<double*>(value);
+}
+
+void Tile::operator<<(const void* value) {
+  if(*cell_type_ == typeid(char))
+    *this << static_cast<const char*>(value);
+  else if(*cell_type_ == typeid(int))
+    *this << static_cast<const int*>(value);
+  else if(*cell_type_ == typeid(int64_t))
+    *this << static_cast<const int64_t*>(value);
+  else if(*cell_type_ == typeid(float))
+    *this << static_cast<const float*>(value);
+  else if(*cell_type_ == typeid(double))
+    *this << static_cast<const double*>(value);
+}
+
 template<class T>
-void Tile::operator<< (const T* value) {
+void Tile::operator<<(T* value) {
   assert(*cell_type_ == typeid(T));
 
   if(cell_num_ == payload_capacity_)
@@ -157,6 +185,22 @@ void Tile::operator<< (const T* value) {
   tile_size_ += cell_size_;
 }
 
+template<class T>
+void Tile::operator<<(const T* value) {
+  assert(*cell_type_ == typeid(T));
+
+  if(cell_num_ == payload_capacity_)
+    expand_payload();
+
+  char* payload_pos = static_cast<char*>(payload_) + tile_size_;
+  memcpy(payload_pos, value, cell_size_);
+
+  if(tile_type_ == COORDINATE)
+    expand_mbr(value);
+
+  ++cell_num_;
+  tile_size_ += cell_size_;
+}
 
 template<class T>
 void Tile::operator<< (const T& value) {
@@ -229,7 +273,6 @@ void Tile::print() const {
 
   std::cout << "Payload capacity: " << payload_capacity_ << "\n";
   std::cout << "Payload allocated: " << ((payload_alloc_) ? "true" : "no") << "\n";
-  std::cout << "MBR allocated: " << ((mbr_alloc_) ? "true" : "no") << "\n";
 
   std::cout << "========== End of Tile info ========== \n\n";
 }
@@ -348,16 +391,15 @@ bool Tile::const_cell_iterator::cell_inside_range(
 ******************************************************/
 
 void Tile::clear_mbr() {
-  if(mbr_ != NULL && mbr_alloc_) 
-    delete [] static_cast<char*>(mbr_);
+  if(mbr_ != NULL) 
+    free(mbr_);
 
   mbr_ = NULL;
-  mbr_alloc_ = false;
 }
 
 void Tile::clear_payload() {
   if(payload_ != NULL && payload_alloc_) 
-    delete [] static_cast<char*>(payload_);
+    free(payload_);
 
   payload_ = NULL;
   payload_alloc_ = false;
@@ -372,10 +414,8 @@ void Tile::expand_mbr(const T* coords) {
   assert(*cell_type_ == typeid(T));
   assert(tile_type_ == COORDINATE);
 
-  if(mbr_ == NULL) {
-    mbr_ = new char[2*cell_size_];
-    mbr_alloc_ = true;
-  }
+  if(mbr_ == NULL) 
+    mbr_ = malloc(2*cell_size_);
 
   T* mbr = static_cast<T*>(mbr_);
 
@@ -401,15 +441,15 @@ void Tile::expand_payload() {
   assert(payload_alloc_);
 
   if(payload_capacity_ == 0) { // Empty payload
-    payload_ = new char[TL_PAYLOAD_CAPACITY];
+    payload_ = malloc(TL_PAYLOAD_CAPACITY);
     payload_capacity_ = TL_PAYLOAD_CAPACITY;
     payload_alloc_ = true;
   } else {
     size_t payload_size = payload_capacity_*cell_size_;
-    char* new_payload = new char[2*payload_size];
+    void* new_payload = malloc(2*payload_size);
     memcpy(new_payload, payload_, payload_size);
 
-    delete [] static_cast<char*>(payload_);
+    free(payload_);
     payload_ = new_payload;
     payload_capacity_ *= 2;
   }
@@ -426,7 +466,7 @@ void Tile::print_bounding_coordinates() const {
   std::cout << "Bounding coordinates: \n";
 
   T* lower = static_cast<T*>(payload_);
-  T* upper = lower + (cell_num_-1);
+  T* upper = lower + dim_num_*(cell_num_-1);
 
   if(cell_num_ != 0) {
     std::cout << "\t";
@@ -480,6 +520,16 @@ void Tile::print_payload() const {
 }
 
 // Explicit template instantiations
+template void Tile::operator<< <char>
+    (char* value);
+template void Tile::operator<< <int>
+    (int* value);
+template void Tile::operator<< <int64_t>
+    (int64_t* value);
+template void Tile::operator<< <float>
+    (float* value);
+template void Tile::operator<< <double>
+    (double* value);
 template void Tile::operator<< <char>
     (const char* value);
 template void Tile::operator<< <int>

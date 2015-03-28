@@ -43,17 +43,15 @@
 #include <sstream>
 #include <math.h>
 
-uint64_t Consolidator::array_info_id_ = 0;
+int64_t Consolidator::array_info_id_ = 0;
 
 /******************************************************
 ********************* CONSTRUCTORS ********************
 ******************************************************/
 
 Consolidator::Consolidator(const std::string& workspace, 
-                           StorageManager& storage_manager,
-                           unsigned int consolidation_step) 
-    : consolidation_step_(consolidation_step), 
-      storage_manager_(storage_manager) {
+                           StorageManager* storage_manager) 
+    : storage_manager_(storage_manager) {
   set_workspace(workspace);
   create_workspace(); 
 }
@@ -63,8 +61,11 @@ Consolidator::Consolidator(const std::string& workspace,
 ******************************************************/
 
 void Consolidator::add_fragment(const ArrayDescriptor* ad) const {
+  // For easy reference
+  int consolidation_step = ad->array_info_->array_schema_->consolidation_step();
+
   // Eager consolidation
-  if(consolidation_step_ == 1)
+  if(consolidation_step == 1)
     eagerly_consolidate(ad);
   else 
     lazily_consolidate(ad);
@@ -74,7 +75,7 @@ void Consolidator::add_fragment(const ArrayDescriptor* ad) const {
 
 void Consolidator::close_array(const ArrayDescriptor* ad) {
   // For easy reference
-  const std::string& array_name = ad->array_info_->array_name_;
+  const std::string& array_name = ad->array_info_->array_schema_->array_name();
 
   // Check if array is open, and descriptor is valid
   assert(open_arrays_.find(array_name) != open_arrays_.end());
@@ -89,8 +90,9 @@ void Consolidator::close_array(const ArrayDescriptor* ad) {
 
 void Consolidator::eagerly_consolidate(const ArrayDescriptor* ad) const {
   // For easy reference
-  const std::string& array_name = ad->array_info_->array_name_;
-  uint64_t cur_update_seq = ad->array_info_->next_update_seq_;
+  const ArraySchema* array_schema = ad->array_info_->array_schema_;
+  const std::string& array_name = array_schema->array_name();
+  int64_t cur_update_seq = ad->array_info_->next_update_seq_;
   FragmentTree& fragment_tree = ad->array_info_->fragment_tree_;
   int level_num = fragment_tree.size();
   std::stringstream ss;
@@ -121,27 +123,28 @@ void Consolidator::eagerly_consolidate(const ArrayDescriptor* ad) const {
   std::string result_fragment_name = ss.str();
 
   // Consolidate
-  consolidate(array_name, fragment_names, result_fragment_name);
+  consolidate(array_schema, fragment_names, result_fragment_name);
 }
 
 std::vector<std::string> Consolidator::get_all_fragment_names(
     const ArrayDescriptor* ad) const {
   // For easy reference
   FragmentTree& fragment_tree = ad->array_info_->fragment_tree_;
-  unsigned int level;
-  uint64_t start_seq = 0, end_seq, subtree_size;
+  int level;
+  int64_t start_seq = 0, end_seq, subtree_size;
   std::stringstream ss;
   std::vector<std::string> fragment_names;
+  int consolidation_step = ad->array_info_->array_schema_->consolidation_step();
 
   // Eager consolidation
-  if(consolidation_step_ == 1) {
+  if(consolidation_step == 1) {
     ss << "0_" << ad->array_info_->next_update_seq_-1;
     fragment_names.push_back(ss.str());
   } else { // Lazy consolidation
-    for(unsigned int i=0; i<fragment_tree.size(); ++i) {
+    for(int i=0; i<fragment_tree.size(); ++i) {
       level = fragment_tree[i].first;
-      for(unsigned int j=0; j < fragment_tree[i].second; ++j) {
-        subtree_size = pow(double(consolidation_step_), level); 
+      for(int j=0; j < fragment_tree[i].second; ++j) {
+        subtree_size = pow(double(consolidation_step), level); 
         end_seq = start_seq + subtree_size - 1;
         ss.str(std::string());
         ss << start_seq << "_" << end_seq;
@@ -163,16 +166,18 @@ std::string Consolidator::get_next_fragment_name(
   return  fragment_name.str();
 }
 
-uint64_t Consolidator::get_next_update_seq(
+int64_t Consolidator::get_next_update_seq(
     const ArrayDescriptor* ad) const {
   return ad->array_info_->next_update_seq_;
 }
 
 void Consolidator::lazily_consolidate(const ArrayDescriptor* ad) const {
   // For easy reference
-  const std::string& array_name = ad->array_info_->array_name_;
+  const ArraySchema* array_schema = ad->array_info_->array_schema_;
+  const std::string& array_name = array_schema->array_name();
   FragmentTree& fragment_tree = ad->array_info_->fragment_tree_;
   int level_num = fragment_tree.size();
+  int consolidation_step = array_schema->consolidation_step();
 
   // Add fragment to tree
   if(level_num == 0 || fragment_tree[level_num-1].first > 0) {
@@ -181,32 +186,32 @@ void Consolidator::lazily_consolidate(const ArrayDescriptor* ad) const {
   } else {
     ++(fragment_tree[level_num-1].second);
   }
-  uint64_t cur_update_seq = ad->array_info_->next_update_seq_;
+  int64_t cur_update_seq = ad->array_info_->next_update_seq_;
 
   // Consolidate (recursively) if necessary
-  while(fragment_tree[level_num-1].second == consolidation_step_) {
+  while(fragment_tree[level_num-1].second == consolidation_step) {
     int level = fragment_tree[level_num-1].first;
-    uint64_t subtree_size = pow(double(consolidation_step_), level);
+    int64_t subtree_size = pow(double(consolidation_step), level);
     std::stringstream ss;
 
     // Get names of fragments under consolidation
     std::vector<std::string> fragment_names;
-    for(unsigned int i=0; i<consolidation_step_; ++i) {
-      uint64_t start_seq = (cur_update_seq - (consolidation_step_ - i) * 
+    for(int i=0; i<consolidation_step; ++i) {
+      int64_t start_seq = (cur_update_seq - (consolidation_step - i) * 
                             subtree_size + 1);
-      uint64_t end_seq = start_seq + subtree_size - 1; 
+      int64_t end_seq = start_seq + subtree_size - 1; 
       ss << start_seq << "_" << end_seq;
       fragment_names.push_back(ss.str());
       ss.str(std::string());
     }
 
     // Get result fragment name
-    ss << cur_update_seq - consolidation_step_ * subtree_size + 1
+    ss << cur_update_seq - consolidation_step * subtree_size + 1
        << "_" << cur_update_seq;
     std::string result_fragment_name = ss.str();
 
     // Consolidate
-    consolidate(array_name, fragment_names, result_fragment_name);
+    consolidate(array_schema, fragment_names, result_fragment_name);
 
     // Update fragment tree
     fragment_tree.pop_back();
@@ -221,7 +226,10 @@ void Consolidator::lazily_consolidate(const ArrayDescriptor* ad) const {
 }
 
 const Consolidator::ArrayDescriptor* Consolidator::open_array(
-    const std::string& array_name, Mode mode) {
+    const ArraySchema* array_schema, Mode mode) {
+  // For easy reference
+  const std::string& array_name = array_schema->array_name();
+
   // Check if array is already open
   assert(open_arrays_.find(array_name) == open_arrays_.end());
 
@@ -234,9 +242,9 @@ const Consolidator::ArrayDescriptor* Consolidator::open_array(
 
   // Populate array_info
   array_info.array_mode_ = mode;
-  array_info.array_name_ = array_name;
+  array_info.array_schema_ = array_schema;
   array_info.next_update_seq_ = 
-      load_fragment_tree(array_name, array_info.fragment_tree_);
+      load_fragment_tree(array_schema, array_info.fragment_tree_);
   array_info.id_ = array_info_id_++;
   
   // Return array descriptor
@@ -248,19 +256,19 @@ const Consolidator::ArrayDescriptor* Consolidator::open_array(
 ******************************************************/
 
 inline
-void Consolidator::advance_cell_its(unsigned int attribute_num,
-                                      Tile::const_iterator* cell_its) const {
-  for(unsigned int i=0; i<=attribute_num; i++) 
+void Consolidator::advance_cell_its(int attribute_num,
+                                    Tile::const_cell_iterator* cell_its) const {
+  for(int i=0; i<=attribute_num; i++) 
       ++cell_its[i];
 }
 
 inline
 void Consolidator::advance_cell_tile_its(
-    unsigned int attribute_num,
-    Tile::const_iterator* cell_its,
-    Tile::const_iterator& cell_it_end,
-    StorageManager::const_iterator* tile_its,
-    StorageManager::const_iterator& tile_it_end) const {
+    int attribute_num,
+    Tile::const_cell_iterator* cell_its,
+    Tile::const_cell_iterator& cell_it_end,
+    StorageManager::const_tile_iterator* tile_its,
+    StorageManager::const_tile_iterator& tile_it_end) const {
   advance_cell_its(attribute_num, cell_its);
   if(cell_its[attribute_num] == cell_it_end) {
     advance_tile_its(attribute_num, tile_its);
@@ -271,30 +279,30 @@ void Consolidator::advance_cell_tile_its(
 
 inline
 void Consolidator::advance_tile_its(
-    unsigned int attribute_num, 
-    StorageManager::const_iterator* tile_its) const {
-  for(unsigned int i=0; i<=attribute_num; i++) 
+    int attribute_num, 
+    StorageManager::const_tile_iterator* tile_its) const {
+  for(int i=0; i<=attribute_num; ++i) 
     ++tile_its[i];
 }
 
 inline
-void Consolidator::append_cell(const Tile::const_iterator* cell_its,
+void Consolidator::append_cell(const Tile::const_cell_iterator* cell_its,
                                Tile** tiles,
-                               unsigned int attribute_num) const {
-  for(unsigned int i=0; i<=attribute_num; i++) 
-    *tiles[i] << cell_its[i]; 
+                               int attribute_num) const {
+  for(int i=0; i<=attribute_num; ++i) 
+    *tiles[i] << *cell_its[i]; 
 }
 
 void Consolidator::consolidate(
-    const std::string& array_name,
+    const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
     const std::string& result_fragment_name) const {
 
   // Input fragments
   const StorageManager::ArrayDescriptor* ad =
-      storage_manager_.open_array(array_name, 
-                                  fragment_names,
-                                  StorageManager::READ);
+      storage_manager_->open_array(array_schema, 
+                                   fragment_names,
+                                   StorageManager::READ);
 
   if(ad->array_schema()->has_irregular_tiles())
     consolidate_irregular(ad, result_fragment_name);
@@ -302,9 +310,10 @@ void Consolidator::consolidate(
     consolidate_regular(ad, result_fragment_name);
 
   // Close array and delete input fragments
-  storage_manager_.close_array(ad);
-  for(unsigned int i=0; i<fragment_names.size(); ++i) 
-    storage_manager_.delete_fragment(array_name, fragment_names[i]);
+  storage_manager_->close_array(ad);
+  for(int i=0; i<fragment_names.size(); ++i) 
+    storage_manager_->delete_fragment(array_schema->array_name(), 
+                                      fragment_names[i]);
 }
 
 void Consolidator::consolidate_irregular(
@@ -313,34 +322,34 @@ void Consolidator::consolidate_irregular(
   // For easy reference
   const ArraySchema* array_schema = ad->array_schema();
   const std::string& array_name = array_schema->array_name();
-  unsigned int attribute_num = array_schema->attribute_num();
-  unsigned int fragment_num = ad->fd().size();
-  uint64_t capacity = array_schema->capacity();
+  int attribute_num = array_schema->attribute_num();
+  int fragment_num = ad->fd().size();
+  int64_t capacity = array_schema->capacity();
   const std::vector<const StorageManager::FragmentDescriptor*>& fd = ad->fd();
 
   // Open the new result fragment
   const StorageManager::FragmentDescriptor* result_fd = 
-      storage_manager_.open_fragment(array_schema, 
-                                     result_fragment_name, 
-                                     StorageManager::CREATE);
+      storage_manager_->open_fragment(array_schema, 
+                                      result_fragment_name, 
+                                      StorageManager::CREATE);
 
   // Create and initialize tile iterators
-  StorageManager::const_iterator** tile_its = 
-      new StorageManager::const_iterator*[fragment_num];
-  StorageManager::const_iterator* tile_it_end = 
-      new StorageManager::const_iterator[fragment_num]; 
-  for(unsigned int i=0; i<fragment_num; ++i) {
-    tile_its[i] = new StorageManager::const_iterator[attribute_num+1];
+  StorageManager::const_tile_iterator** tile_its = 
+      new StorageManager::const_tile_iterator*[fragment_num];
+  StorageManager::const_tile_iterator* tile_it_end = 
+      new StorageManager::const_tile_iterator[fragment_num]; 
+  for(int i=0; i<fragment_num; ++i) {
+    tile_its[i] = new StorageManager::const_tile_iterator[attribute_num+1];
     initialize_tile_its(fd[i], tile_its[i], tile_it_end[i]);
   }
 
   // Create cell iterators
-  Tile::const_iterator** cell_its = 
-      new Tile::const_iterator*[fragment_num];
-  Tile::const_iterator* cell_it_end = 
-      new Tile::const_iterator[fragment_num];
-  for(unsigned int i=0; i<fragment_num; ++i) { 
-    cell_its[i] = new Tile::const_iterator[attribute_num+1];
+  Tile::const_cell_iterator** cell_its = 
+      new Tile::const_cell_iterator*[fragment_num];
+  Tile::const_cell_iterator* cell_it_end = 
+      new Tile::const_cell_iterator[fragment_num];
+  for(int i=0; i<fragment_num; ++i) { 
+    cell_its[i] = new Tile::const_cell_iterator[attribute_num+1];
     initialize_cell_its(tile_its[i], attribute_num, 
                         cell_its[i], cell_it_end[i]);
   }
@@ -352,26 +361,28 @@ void Consolidator::consolidate_irregular(
   // and append it to the consolidation result.
   int next_fragment_index = 
       get_next_fragment_index(tile_its, tile_it_end, fragment_num, 
-                              cell_its, cell_it_end, *array_schema,
+                              cell_its, cell_it_end, array_schema,
                               result_fragment_name);
 
-  uint64_t tile_id = 0;
-  new_tiles(*array_schema, tile_id, result_tiles);
+  int64_t tile_id = 0;
+  new_tiles(array_schema, tile_id, result_tiles);
 
   // Iterate over all cells, until there are no more cells
   while(next_fragment_index != -1) {
     // For easy reference
-    Tile::const_iterator* next_cell_its = cell_its[next_fragment_index];
-    Tile::const_iterator& next_cell_it_end = cell_it_end[next_fragment_index];
-    StorageManager::const_iterator* next_tile_its = 
+    StorageManager::const_tile_iterator* next_tile_its = 
         tile_its[next_fragment_index];
-    StorageManager::const_iterator& next_tile_it_end = 
+    StorageManager::const_tile_iterator& next_tile_it_end = 
         tile_it_end[next_fragment_index];
+    Tile::const_cell_iterator* next_cell_its = 
+        cell_its[next_fragment_index];
+    Tile::const_cell_iterator& next_cell_it_end = 
+        cell_it_end[next_fragment_index];
 
     if(result_tiles[attribute_num]->cell_num() == capacity) {
       // Store tiles and create new ones
       store_tiles(result_fd, result_tiles);
-      new_tiles(*array_schema, ++tile_id, result_tiles);
+      new_tiles(array_schema, ++tile_id, result_tiles);
     } 
 
     // Append cell
@@ -384,7 +395,7 @@ void Consolidator::consolidate_irregular(
     next_fragment_index = get_next_fragment_index(tile_its, tile_it_end, 
                                                   fragment_num, 
                                                   cell_its, cell_it_end, 
-                                                  *array_schema,
+                                                  array_schema,
                                                   result_fragment_name);
   } 
 
@@ -392,14 +403,14 @@ void Consolidator::consolidate_irregular(
   store_tiles(result_fd, result_tiles);
 
   // Close the result fragment
-  storage_manager_.close_fragment(result_fd);
+  storage_manager_->close_fragment(result_fd);
 
   // Clean up
-  for(unsigned int i=0; i<fragment_num; ++i) 
+  for(int i=0; i<fragment_num; ++i) 
     delete [] tile_its[i];
   delete [] tile_its;
   delete [] tile_it_end;
-  for(unsigned int i=0; i<fragment_num; ++i) 
+  for(int i=0; i<fragment_num; ++i) 
     delete [] cell_its[i];
   delete [] cell_its;
   delete [] cell_it_end;
@@ -412,33 +423,33 @@ void Consolidator::consolidate_regular(
   // For easy reference
   const ArraySchema* array_schema = ad->array_schema();
   const std::string& array_name = array_schema->array_name();
-  unsigned int attribute_num = array_schema->attribute_num();
-  unsigned int fragment_num = ad->fd().size();
+  int attribute_num = array_schema->attribute_num();
+  int fragment_num = ad->fd().size();
   const std::vector<const StorageManager::FragmentDescriptor*>& fd = ad->fd();
 
   // Open the new result fragment
   const StorageManager::FragmentDescriptor* result_fd = 
-      storage_manager_.open_fragment(array_schema, 
-                                     result_fragment_name, 
-                                     StorageManager::CREATE);
+      storage_manager_->open_fragment(array_schema, 
+                                      result_fragment_name, 
+                                      StorageManager::CREATE);
 
   // Create and initialize tile iterators
-  StorageManager::const_iterator** tile_its = 
-      new StorageManager::const_iterator*[fragment_num];
-  StorageManager::const_iterator* tile_it_end = 
-      new StorageManager::const_iterator[fragment_num]; 
-  for(unsigned int i=0; i<fragment_num; ++i) {
-    tile_its[i] = new StorageManager::const_iterator[attribute_num+1];
+  StorageManager::const_tile_iterator** tile_its = 
+      new StorageManager::const_tile_iterator*[fragment_num];
+  StorageManager::const_tile_iterator* tile_it_end = 
+      new StorageManager::const_tile_iterator[fragment_num]; 
+  for(int i=0; i<fragment_num; ++i) {
+    tile_its[i] = new StorageManager::const_tile_iterator[attribute_num+1];
     initialize_tile_its(fd[i], tile_its[i], tile_it_end[i]);
   }
 
   // Create cell iterators
-  Tile::const_iterator** cell_its = 
-      new Tile::const_iterator*[fragment_num];
-  Tile::const_iterator* cell_it_end = 
-      new Tile::const_iterator[fragment_num];
-  for(unsigned int i=0; i<fragment_num; ++i) { 
-    cell_its[i] = new Tile::const_iterator[attribute_num+1];
+  Tile::const_cell_iterator** cell_its = 
+      new Tile::const_cell_iterator*[fragment_num];
+  Tile::const_cell_iterator* cell_it_end = 
+      new Tile::const_cell_iterator[fragment_num];
+  for(int i=0; i<fragment_num; ++i) { 
+    cell_its[i] = new Tile::const_cell_iterator[attribute_num+1];
     initialize_cell_its(tile_its[i], attribute_num, 
                         cell_its[i], cell_it_end[i]);
   }
@@ -450,33 +461,35 @@ void Consolidator::consolidate_regular(
   // and append it to the consolidation result.
   int next_fragment_index = 
       get_next_fragment_index(tile_its, tile_it_end, fragment_num, 
-                              cell_its, cell_it_end, *array_schema,
+                              cell_its, cell_it_end, array_schema,
                               result_fragment_name);
 
-  uint64_t tile_id;
+  int64_t tile_id;
   bool first_cell = true;
 
   // Iterate over all cells, until there are no more cells
   while(next_fragment_index != -1) {
     // For easy reference
-    Tile::const_iterator* next_cell_its = cell_its[next_fragment_index];
-    Tile::const_iterator& next_cell_it_end = cell_it_end[next_fragment_index];
-    StorageManager::const_iterator* next_tile_its = 
+    StorageManager::const_tile_iterator* next_tile_its = 
         tile_its[next_fragment_index];
-    StorageManager::const_iterator& next_tile_it_end = 
+    StorageManager::const_tile_iterator& next_tile_it_end = 
         tile_it_end[next_fragment_index];
+    Tile::const_cell_iterator* next_cell_its = 
+        cell_its[next_fragment_index];
+    Tile::const_cell_iterator& next_cell_it_end = 
+        cell_it_end[next_fragment_index];
 
     if(first_cell) { // To initialize tile_id and result_tiles
       tile_id = next_cell_its[0].tile()->tile_id();
       first_cell = false;
-      new_tiles(*array_schema, tile_id, result_tiles);
+      new_tiles(array_schema, tile_id, result_tiles);
     }
 
     if(next_cell_its[0].tile()->tile_id() != tile_id) {
       // Change tile
       tile_id = next_cell_its[0].tile()->tile_id();
       store_tiles(result_fd, result_tiles);
-      new_tiles(*array_schema, tile_id, result_tiles);
+      new_tiles(array_schema, tile_id, result_tiles);
     } 
 
     // Append cell
@@ -489,7 +502,7 @@ void Consolidator::consolidate_regular(
     next_fragment_index = get_next_fragment_index(tile_its, tile_it_end, 
                                                   fragment_num,
                                                   cell_its, cell_it_end, 
-                                                  *array_schema,
+                                                  array_schema,
                                                   result_fragment_name);
   } 
 
@@ -497,14 +510,14 @@ void Consolidator::consolidate_regular(
   store_tiles(result_fd, result_tiles);
 
   // Close fragments
-  storage_manager_.close_fragment(result_fd);
+  storage_manager_->close_fragment(result_fd);
 
   // Clean up
-  for(unsigned int i=0; i<fragment_num; ++i) 
+  for(int i=0; i<fragment_num; ++i) 
     delete [] tile_its[i];
   delete [] tile_its;
   delete [] tile_it_end;
-  for(unsigned int i=0; i<fragment_num; ++i) 
+  for(int i=0; i<fragment_num; ++i) 
     delete [] cell_its[i];
   delete [] cell_its;
   delete [] cell_it_end;
@@ -533,7 +546,7 @@ void Consolidator::flush_fragment_tree(
     return;
 
   // Initialize buffer
-  uint64_t buffer_size = level_num * 2 * sizeof(int);
+  size_t buffer_size = level_num * 2 * sizeof(int);
   char* buffer = new char[buffer_size];
 
   // Populate buffer
@@ -543,21 +556,21 @@ void Consolidator::flush_fragment_tree(
   }
 
   // Store the buffer to the disk
-  storage_manager_.flush_fragments_bkp(array_name, buffer, buffer_size);
+  storage_manager_->flush_fragments_bkp(array_name, buffer, buffer_size);
 
   delete [] buffer;
 }
 
 int Consolidator::get_next_fragment_index(
-      StorageManager::const_iterator** tile_its,
-      StorageManager::const_iterator* tile_it_end,
-      unsigned int fragment_num,
-      Tile::const_iterator** cell_its,
-      Tile::const_iterator* cell_it_end,
-      const ArraySchema& array_schema,
+      StorageManager::const_tile_iterator** tile_its,
+      StorageManager::const_tile_iterator* tile_it_end,
+      int fragment_num,
+      Tile::const_cell_iterator** cell_its,
+      Tile::const_cell_iterator* cell_it_end,
+      const ArraySchema* array_schema,
       const std::string& result_fragment_name) const {
   // For easy reference
-  unsigned int attribute_num = array_schema.attribute_num();
+  int attribute_num = array_schema->attribute_num();
 
   // Holds the (potentially multiple) indexes of the candidate fragments
   // from which we will get the next cell for consolidation. Note though 
@@ -576,19 +589,19 @@ int Consolidator::get_next_fragment_index(
   //     in fragments not taking part in this round's consolidation. Only
   //     when the consolidation produces a single fragment (whose name
   //     starts with '0') is it safe to apply the deletions.
-  bool null; 
+  bool del; 
   bool name_starts_with_0 = (result_fragment_name[0] == '0');
   do {
     next_fragment_index.clear();
 
-    for(unsigned int i=0; i<fragment_num; ++i) {
+    for(int i=0; i<fragment_num; ++i) {
       if(cell_its[i][attribute_num] != cell_it_end[i]) {
         if(next_fragment_index.size() == 0 || cell_its[i][attribute_num] == 
            cell_its[next_fragment_index[0]][attribute_num]) {
           next_fragment_index.push_back(i);
-        } else if(array_schema.precedes(
-                      cell_its[i][attribute_num], 
-                      cell_its[next_fragment_index[0]][attribute_num])) {
+        } else if(array_schema->precedes(
+                      *cell_its[i][attribute_num], 
+                      *cell_its[next_fragment_index[0]][attribute_num])) {
           next_fragment_index.clear();
           next_fragment_index.push_back(i);
         } 
@@ -599,8 +612,8 @@ int Consolidator::get_next_fragment_index(
       return -1;
 
     int num_of_iterators_to_advance = next_fragment_index.size()-1; 
-    null = is_null(cell_its[next_fragment_index.back()][0]);
-    if(null && name_starts_with_0)
+    del = is_del(cell_its[next_fragment_index.back()][0]);
+    if(del && name_starts_with_0)
       ++num_of_iterators_to_advance;
 
     // Advance cell (and potentially tile) iterators.
@@ -613,7 +626,7 @@ int Consolidator::get_next_fragment_index(
                             tile_its[next_fragment_index[i]],
                             tile_it_end[next_fragment_index[i]]);
 
-    if(!null || !name_starts_with_0)
+    if(!del || !name_starts_with_0)
       return next_fragment_index.back();
 
   } while(1);
@@ -621,39 +634,43 @@ int Consolidator::get_next_fragment_index(
 
 inline
 void Consolidator::initialize_cell_its(
-    const StorageManager::const_iterator* tile_its, 
-    unsigned int attribute_num,
-    Tile::const_iterator* cell_its, 
-    Tile::const_iterator& cell_it_end) const {
+    const StorageManager::const_tile_iterator* tile_its, 
+    int attribute_num,
+    Tile::const_cell_iterator* cell_its, 
+    Tile::const_cell_iterator& cell_it_end) const {
 
-  for(unsigned int i=0; i<=attribute_num; ++i) 
-    cell_its[i] = (*tile_its[i]).begin();
-  cell_it_end = (*tile_its[attribute_num]).end();
+  for(int i=0; i<=attribute_num; ++i) 
+    cell_its[i] = (*tile_its[i])->begin();
+  cell_it_end = (*tile_its[attribute_num])->end();
 }
 
 inline
 void Consolidator::initialize_tile_its(
     const StorageManager::FragmentDescriptor* fd,
-    StorageManager::const_iterator* tile_its, 
-    StorageManager::const_iterator& tile_it_end) const {
+    StorageManager::const_tile_iterator* tile_its, 
+    StorageManager::const_tile_iterator& tile_it_end) const {
   // For easy reference
-  unsigned int attribute_num = fd->array_schema()->attribute_num();
+  int attribute_num = fd->array_schema()->attribute_num();
 
-  for(unsigned int i=0; i<=attribute_num; i++)
-    tile_its[i] = storage_manager_.begin(fd, i);
-  tile_it_end = storage_manager_.end(fd, attribute_num);
+  for(int i=0; i<=attribute_num; i++)
+    tile_its[i] = storage_manager_->begin(fd, i);
+  tile_it_end = storage_manager_->end(fd, attribute_num);
 }
 
-bool Consolidator::is_null(const Tile::const_iterator& cell_it) const {
-  return cell_it.is_null();
+bool Consolidator::is_del(const Tile::const_cell_iterator& cell_it) const {
+  return cell_it.is_del();
 }
 
-uint64_t Consolidator::load_fragment_tree(const std::string& array_name,
-                                          FragmentTree& fragment_tree) const {
+int64_t Consolidator::load_fragment_tree(const ArraySchema* array_schema,
+                                         FragmentTree& fragment_tree) const {
+  // For easy reference
+  const std::string& array_name = array_schema->array_name();
+  int consolidation_step = array_schema->consolidation_step();
+
   // Load the fragment book-keeping info from the disk into a buffer
   char* buffer;
-  uint64_t buffer_size;
-  storage_manager_.load_fragments_bkp(array_name, buffer, buffer_size);
+  size_t buffer_size;
+  storage_manager_->load_fragments_bkp(array_name, buffer, buffer_size);
 
   // Empty fragment tree. The update sequence number is 0.
   if(buffer == NULL)
@@ -663,15 +680,15 @@ uint64_t Consolidator::load_fragment_tree(const std::string& array_name,
   assert(buffer_size % 2 == 0);
  
   // Create the tree from the buffer and calculate next fragment sequence number
-  uint64_t next_update_seq = 0;
+  int64_t next_update_seq = 0;
   int level_num = buffer_size / (2 * sizeof(int));
-  unsigned int level, node_num;
+  int level, node_num;
   for(int i=0; i<level_num; ++i) {
     memcpy(&level, buffer+2*i*sizeof(int), sizeof(int));
     memcpy(&node_num, buffer+(2*i+1)*sizeof(int), sizeof(int));
     fragment_tree.push_back(FragmentTreeLevel(level, node_num));
     next_update_seq += 
-        pow(double(consolidation_step_), double(level)) * node_num;
+        pow(double(consolidation_step), double(level)) * node_num;
   }
 
   // Clean up
@@ -681,15 +698,15 @@ uint64_t Consolidator::load_fragment_tree(const std::string& array_name,
 }
 
 inline
-void Consolidator::new_tiles(const ArraySchema& array_schema, 
-                             uint64_t tile_id, 
+void Consolidator::new_tiles(const ArraySchema* array_schema, 
+                             int64_t tile_id, 
                              Tile** tiles) const {
   // For easy reference
-  unsigned int attribute_num = array_schema.attribute_num();
-  uint64_t capacity = array_schema.capacity();
+  int attribute_num = array_schema->attribute_num();
+  int64_t capacity = array_schema->capacity();
 
-  for(unsigned int i=0; i<=attribute_num; i++)
-    tiles[i] = storage_manager_.new_tile(array_schema, i, tile_id, capacity);
+  for(int i=0; i<=attribute_num; ++i)
+    tiles[i] = storage_manager_->new_tile(array_schema, i, tile_id, capacity);
 }
 
 bool Consolidator::path_exists(const std::string& path) const {
@@ -717,9 +734,9 @@ inline
 void Consolidator::store_tiles(const StorageManager::FragmentDescriptor* fd,
                                Tile** tiles) const {
   // For easy reference
-  unsigned int attribute_num = fd->array_schema()->attribute_num();
+  int attribute_num = fd->array_schema()->attribute_num();
 
   // Append attribute tiles
-  for(unsigned int i=0; i<=attribute_num; i++)
-    storage_manager_.append_tile(tiles[i], fd, i);
+  for(int i=0; i<=attribute_num; ++i)
+    storage_manager_->append_tile(tiles[i], fd, i);
 }

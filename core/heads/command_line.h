@@ -46,30 +46,34 @@
 #define CL_ATTRIBUTE_NAME_BITMAP 0x2
 /** Indicates capacity was given as an argument. */
 #define CL_CAPACITY_BITMAP 0x4
+/** Indicates cell order was given as an argument. */
+#define CL_CELL_ORDER_BITMAP 0x8
+/** Indicates consolidation step was given as an argument. */
+#define CL_CONSOLIDATION_STEP_BITMAP 0x10
 /** Indicates coordinate was given as an argument. */
-#define CL_COORDINATE_BITMAP 0x8
+#define CL_COORDINATE_BITMAP 0x20
 /** Indicates dimension domain was given as an argument. */
-#define CL_DIM_DOMAIN_BITMAP 0x10
+#define CL_DIM_DOMAIN_BITMAP 0x40
 /** Indicates dimension name was given as an argument. */
-#define CL_DIM_NAME_BITMAP 0x20
+#define CL_DIM_NAME_BITMAP 0x80
 /** Indicates expression was given as an argument. */
-#define CL_EXPRESSION_BITMAP 0x40
+#define CL_EXPRESSION_BITMAP 0x100
 /** Indicates range bound was given as an argument. */
-#define CL_FILENAME_BITMAP 0x80
+#define CL_FILENAME_BITMAP 0x200
 /** Indicates number was given as an argument. */
-#define CL_NUMBER_BITMAP 0x100
-/** Indicates order was given as an argument. */
-#define CL_ORDER_BITMAP 0x200
+#define CL_NUMBER_BITMAP 0x400
 /** Indicates range bound was given as an argument. */
-#define CL_RANGE_BITMAP 0x400
+#define CL_RANGE_BITMAP 0x800
 /** Indicates result name was given as an argument. */
-#define CL_RESULT_BITMAP 0x800
+#define CL_RESULT_BITMAP 0x1000
 /** Indicates tile extent was given as an argument. */
-#define CL_TILE_EXTENT_BITMAP 0x1000
+#define CL_TILE_EXTENT_BITMAP 0x2000
+/** Indicates tile order was given as an argument. */
+#define CL_TILE_ORDER_BITMAP 0x4000
 /** Indicates type was given as an argument. */
-#define CL_TYPE_BITMAP 0x2000
+#define CL_TYPE_BITMAP 0x8000
 /** Indicates worspace was given as an argument. */
-#define CL_WORKSPACE_BITMAP 0x4000
+#define CL_WORKSPACE_BITMAP 0x10000
 
 /** This class stores the command line options given by the user. */
 class CommandLine {
@@ -86,17 +90,19 @@ class CommandLine {
    * From right to left, each bit corresponds to:
    * CommandLine::array_names_,
    * CommandLine::attribute_names_,
-   * CommandLine::capacity_.
-   * CommandLine::coordinate_.
+   * CommandLine::capacity_,
+   * CommandLine::cell_order_,
+   * CommandLine::consolidation_step_,
+   * CommandLine::coordinate_,
    * CommandLine::dim_domains_,
    * CommandLine::dim_names_,
    * CommandLine::expression_,
    * CommandLine::filename_.
    * CommandLine::number_.
-   * CommandLine::order_,
    * CommandLine::range_.
    * CommandLine::result_name_.
    * CommandLine::tile_extents_,
+   * CommandLine::tile_order_,
    * CommandLine::types_,
    * CommandLine::workspace_,
    */
@@ -107,6 +113,10 @@ class CommandLine {
   std::vector<char*> attribute_names_;
   /** Capacity. */
   char* capacity_;
+  /** Cell order */
+  char* cell_order_;
+  /** Consolidation step */
+  char* consolidation_step_;
   /** Coordinates. */
   std::vector<char*> coords_;
   /** Dimension names. */
@@ -121,8 +131,6 @@ class CommandLine {
   std::vector<char*> numbers_;
   /** Number of (option,value) pairs in the command line. */
   int option_num_;
-  /** Cell/Tile order */
-  char* order_;
   /** The query. */
   char* query_;
   /** The result name. */
@@ -131,13 +139,14 @@ class CommandLine {
   std::vector<char*> range_;
   /** Tile extents. */
   std::vector<char*> tile_extents_;
+  /** Tile order */
+  char* tile_order_;
   /** Types.  */
   std::vector<char*> types_;
   /** The workspace where the query will be executed. */
   char* workspace_;
 
   // TODO segment_size
-  // TODO consolidation step
   // TODO other configuration parameters?
   // TODO perhaps get parameters from config file?
 };

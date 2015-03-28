@@ -50,8 +50,9 @@
 #define PS_DEFINE_ARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
                                 CL_ATTRIBUTE_NAME_BITMAP | CL_DIM_NAME_BITMAP |\
                                 CL_DIM_DOMAIN_BITMAP | CL_TYPE_BITMAP |\
-                                CL_ORDER_BITMAP | CL_CAPACITY_BITMAP |\
-                                CL_TILE_EXTENT_BITMAP)
+                                CL_CELL_ORDER_BITMAP | CL_CAPACITY_BITMAP |\
+                                CL_TILE_EXTENT_BITMAP | CL_TILE_ORDER_BITMAP |\
+                                CL_CONSOLIDATION_STEP_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'delete_array'. 
@@ -93,7 +94,7 @@
  * 'retile'. 
  */
 #define PS_RETILE_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
-                          CL_ORDER_BITMAP | CL_CAPACITY_BITMAP  |\
+                          CL_CELL_ORDER_BITMAP | CL_CAPACITY_BITMAP  |\
                           CL_TILE_EXTENT_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
@@ -131,13 +132,13 @@ class Parser {
   /** Parse command line for query 'load'. */
   void parse_load(const CommandLine& cl) const;
   /** Parse command line for query 'nearest_neighbors'. */
-  std::pair<std::vector<double>, uint64_t> parse_nearest_neighbors(
+  std::pair<std::vector<double>, int64_t> parse_nearest_neighbors(
       const CommandLine& cl) const;
   /** Parse command line for query 'retile'. */
   void parse_retile(
       const CommandLine& cl,
-      uint64_t& capacity,
-      ArraySchema::Order& order,
+      int64_t& capacity,
+      ArraySchema::CellOrder& cell_order,
       std::vector<double>& tile_extents) const;
   /** Parse command line for query 'subarray'. */
   std::vector<double> parse_subarray(const CommandLine& cl) const;
@@ -154,7 +155,12 @@ class Parser {
    */
   std::vector<std::string> check_attribute_names(const CommandLine& cl) const;
   /** Checks the capacity in command line for soundness and returns it. */ 
-  uint64_t check_capacity(const CommandLine& cl) const;
+  int64_t check_capacity(const CommandLine& cl) const;
+  /** 
+   * Checks the consolidation step in command line for soundness and returns
+   * it. 
+   */ 
+  int check_consolidation_step(const CommandLine& cl) const;
   /** 
    * Checks the coordinates in command line for soundness and returns
    * them. 
@@ -178,9 +184,11 @@ class Parser {
    * Checks the numbers in command line for soundness and returns
    * them. 
    */
-  std::vector<uint64_t> check_numbers(const CommandLine& cl) const;
-  /** Checks the order in command line for soundness and returns it. */
-  ArraySchema::Order check_order(const CommandLine& cl) const;
+  std::vector<int64_t> check_numbers(const CommandLine& cl) const;
+  /** Checks the cell order in command line for soundness and returns it. */
+  ArraySchema::CellOrder check_cell_order(const CommandLine& cl) const;
+  /** Checks the tile order in command line for soundness and returns it. */
+  ArraySchema::TileOrder check_tile_order(const CommandLine& cl) const;
   /** 
    * Checks the tile extents in command line for soundness and returns
    * them. 

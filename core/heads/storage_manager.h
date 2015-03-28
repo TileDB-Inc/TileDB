@@ -93,7 +93,7 @@ class StorageManager {
   enum Mode {READ, CREATE};
 
   /** Mnemonic: (first_bound_coord, last_bound_coord) */
-  typedef std::pair<const void*, const void*> BoundingCoordinatesPair;
+  typedef std::pair<void*, void*> BoundingCoordinatesPair;
   /** Mnemonic: <bound_coord_pair#1, bound_coord_pair#2, ...> */
   typedef std::vector<BoundingCoordinatesPair> BoundingCoordinates;
   /** 
@@ -101,7 +101,7 @@ class StorageManager {
    * of a tile. It is a list of lower/upper values across each dimension, i.e.,
    * (dim#1_lower, dim#1_upper, dim#2_lower, dim#2_upper, ...).
    */
-  typedef const void* MBR; 
+  typedef void* MBR; 
   /** Mnemonic: <MBR#1, MBR#2, ...> */
   typedef std::vector<MBR> MBRs;
   /** Mnemonic: <offset#1, offset#2, ...> */
@@ -111,9 +111,9 @@ class StorageManager {
   /** Mnemonic: [array_name + "_" + fragment_name] --> FragmentInfo */
   typedef std::map<std::string, FragmentInfo> OpenFragments;
   /** Mnemonic: [attribute_id] --> payload_size */
-  typedef std::vector<int64_t> PayloadSizes;
+  typedef std::vector<size_t> PayloadSizes;
   /** Mnemonic: (pos_lower, pos_upper) */
-  typedef std::pair<uint64_t, uint64_t> PosRange;
+  typedef std::pair<int64_t, int64_t> PosRange;
   /** Mnemonic: [attribute_id] --> (pos_lower, pos_upper) */
   typedef std::vector<PosRange> PosRanges;
   /** Mnemonic: [attribute_id] --> segment */
@@ -389,6 +389,10 @@ class StorageManager {
   ArrayDescriptor* open_array(const std::string& array_name,
                               const std::vector<std::string>& fragment_names,   
                               Mode mode);
+  /** Opens an array in the input mode, opening only the input fragments. */
+  ArrayDescriptor* open_array(const ArraySchema* array_schema,
+                              const std::vector<std::string>& fragment_names,   
+                              Mode mode);
   /** Opens a fragment array in the input mode.*/
   FragmentDescriptor* open_fragment(const ArraySchema* array_schema, 
                                     const std::string& fragment_name,
@@ -429,7 +433,7 @@ class StorageManager {
    * same position (physical tiles correspondig to the same logical tile are 
    * appended to the array in the same order).
    */
-  uint64_t get_tile_id(const FragmentDescriptor* ad, int64_t pos) const;
+  int64_t get_tile_id(const FragmentDescriptor* ad, int64_t pos) const;
 
   // TILE ITERATORS
   /** This class implements a constant tile iterator. */
@@ -504,6 +508,16 @@ class StorageManager {
       const void* range, 
       std::vector<std::pair<int64_t, bool> >* overlapping_tile_ids) const;
   /** 
+   * Returns the ids of the tiles whose MBR overlaps with the input range.
+   * The bool variable in overlapping_tile_ids indicates whether the overlap
+   * is full (i.e., if the tile MBR is completely in the range) or not.
+   */
+  template<class T>
+  void get_overlapping_tile_ids(
+      const FragmentDescriptor* fd, 
+      const T* range, 
+      std::vector<std::pair<int64_t, bool> >* overlapping_tile_ids) const;
+  /** 
    * Returns the positions of the tiles whose MBR overlaps with the input range.
    * The bool variable in overlapping_tile_pos indicates whether the overlap
    * is full (i.e., if the tile MBR is completely in the range) or not.
@@ -511,6 +525,16 @@ class StorageManager {
   void get_overlapping_tile_pos(
       const FragmentDescriptor* fd, 
       const void* range, 
+      std::vector<std::pair<int64_t, bool> >* overlapping_tile_pos) const;
+  /** 
+   * Returns the positions of the tiles whose MBR overlaps with the input range.
+   * The bool variable in overlapping_tile_pos indicates whether the overlap
+   * is full (i.e., if the tile MBR is completely in the range) or not.
+   */
+  template<class T>
+  void get_overlapping_tile_pos(
+      const FragmentDescriptor* fd, 
+      const T* range, 
       std::vector<std::pair<int64_t, bool> >* overlapping_tile_pos) const;
 
  private: 
@@ -533,6 +557,10 @@ class StorageManager {
   // PRIVATE METHODS
   /** Checks on the fragment descriptor. */
   bool check_fragment_descriptor(const FragmentDescriptor* fd) const;
+  /** Checks the tile MBR upon appending a tile. */
+  template<class T>
+  bool check_mbr_on_append_tile(const FragmentDescriptor* fd,
+                                const Tile* tile) const;
   /** Checks upon appending a tile. */
   bool check_on_append_tile(const FragmentDescriptor* fd,
                             int attribute_id,
@@ -657,7 +685,7 @@ class StorageManager {
    */
   void prepare_segment(
       FragmentInfo& fragment_info, int attribute_id, 
-      int64_t file_offset, size_t segment_size, void *segment) const;
+      int64_t file_offset, size_t segment_size, char* segment) const;
   /** Simply sets the workspace. */
   void set_workspace(const std::string& path);
   /** 

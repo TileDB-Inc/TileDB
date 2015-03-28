@@ -58,7 +58,7 @@ class Executor {
   /** Deletes all the fragments of the array. */
   void clear_array(const std::string& array_name) const;
   /** Defines an array (stores its array schema at the storage manager. */
-  void define_array(const ArraySchema& array_schema) const;
+  void define_array(const ArraySchema* array_schema) const;
   /** Deletes an array. */
   void delete_array(const std::string& array_name) const;
   /** 
@@ -98,7 +98,7 @@ class Executor {
    */
   void nearest_neighbors(const std::string& array_name,
                          const std::vector<double>& q,
-                         uint64_t k,
+                         int64_t k,
                          const std::string& result_array_name) const;
   /** 
    * Retiles an array based on the inputs. If tile extents are provided
@@ -113,8 +113,8 @@ class Executor {
    * are altered to accommodate the change.
    */
   void retile(const std::string& array_name,
-              uint64_t capacity,
-              ArraySchema::Order order,
+              int64_t capacity,
+              ArraySchema::CellOrder cell_order,
               const std::vector<double>& tile_extents) const;
   /** 
    * A subarray query creates a new array from the input array, 
@@ -122,19 +122,8 @@ class Executor {
    * The new array will have the input result name.
    */
   void subarray(const std::string& array_name,
-                const Tile::Range& range,
+                const double* range,                             // TODO: template on range?
                 const std::string& result_array_name) const;
-  /** 
-   * Retrieves the cells contained in the input range. Assigns their
-   * coordinates to the c_iovec, and their values on the input attribute
-   * to v_iovec.
-   */
-  void subarray(const std::string& array_name,
-                const Tile::Range& range,
-                unsigned int attribute_id,
-                struct iovec& c_iovec, 
-                struct iovec& v_iovec) const;
-
   /** Updates an array with the data in the input CSV file. */
   void update(const std::string& filename, 
               const std::string& array_name) const;
@@ -157,13 +146,13 @@ class Executor {
   void create_workspace() const;
   /** Returns the names of all fragments in the array. */
   std::vector<std::string> get_all_fragment_names(
-      const std::string& array_name) const;
+      const ArraySchema* array_schema) const;
   /** Returns true if the input path is an existing directory. */
   bool path_exists(const std::string& path) const;
   /** Simply sets the workspace. */
   void set_workspace(const std::string& path);
   /** Updates the fragment information (adding one fragment) of an array. */
-  void update_fragment_info(const std::string& array_name) const;
+  void update_fragment_info(const ArraySchema* array_schema) const;
 };
 
 /** This exception is thrown by Executor. */

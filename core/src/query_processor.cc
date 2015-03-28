@@ -49,7 +49,7 @@
 ******************************************************/
 
 QueryProcessor::QueryProcessor(const std::string& workspace, 
-                               StorageManager& storage_manager) 
+                               StorageManager* storage_manager) 
     : storage_manager_(storage_manager) {
   set_workspace(workspace);
   create_workspace(); 
@@ -59,22 +59,22 @@ void QueryProcessor::export_to_csv(const StorageManager::FragmentDescriptor* fd,
                                    const std::string& filename) const { 
   // For easy reference
   const ArraySchema& array_schema = *(fd->array_schema());
-  unsigned int attribute_num = array_schema.attribute_num();
-  unsigned int dim_num = array_schema.dim_num();
+  int attribute_num = array_schema.attribute_num();
+  int dim_num = array_schema.dim_num();
   
   // Prepare CSV file
   CSVFile csv_file(filename, CSVFile::WRITE);
 
   // Create and initialize tile iterators
-  StorageManager::const_iterator *tile_its = 
-      new StorageManager::const_iterator[attribute_num+1];
-  StorageManager::const_iterator tile_it_end;
+  StorageManager::const_tile_iterator* tile_its = 
+      new StorageManager::const_tile_iterator[attribute_num+1];
+  StorageManager::const_tile_iterator tile_it_end;
   initialize_tile_its(fd, tile_its, tile_it_end);
 
   // Create cell iterators
-  Tile::const_iterator* cell_its = 
-      new Tile::const_iterator[attribute_num+1];
-  Tile::const_iterator cell_it_end;
+  Tile::const_cell_iterator* cell_its = 
+      new Tile::const_cell_iterator[attribute_num+1];
+  Tile::const_cell_iterator cell_it_end;
 
   // Iterate over all tiles
   while(tile_its[attribute_num] != tile_it_end) {
@@ -94,6 +94,7 @@ void QueryProcessor::export_to_csv(const StorageManager::FragmentDescriptor* fd,
   delete [] cell_its;
 }
 
+/*
 void QueryProcessor::export_to_csv(
     const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     const std::string& filename) const {
@@ -328,16 +329,21 @@ void QueryProcessor::subarray(
     subarray_irregular(fd, range, result_fd);
 }
 
+*/
+
 /******************************************************
 ******************* PRIVATE METHODS *******************
 ******************************************************/
 
+
 inline
-void QueryProcessor::advance_cell_its(unsigned int attribute_num,
-                                      Tile::const_iterator* cell_its) const {
-  for(unsigned int i=0; i<=attribute_num; i++) 
+void QueryProcessor::advance_cell_its(
+    int attribute_num, Tile::const_cell_iterator* cell_its) const {
+  for(int i=0; i<=attribute_num; ++i) 
       ++cell_its[i];
 }
+
+/*
 
 inline
 void QueryProcessor::advance_cell_its(
@@ -459,13 +465,17 @@ void QueryProcessor::advance_cell_tile_its(
   }
 }
 
+*/
+
 inline
 void QueryProcessor::advance_tile_its(
-    unsigned int attribute_num, 
-    StorageManager::const_iterator* tile_its) const {
-  for(unsigned int i=0; i<=attribute_num; i++) 
+    int attribute_num, 
+    StorageManager::const_tile_iterator* tile_its) const {
+  for(int i=0; i<=attribute_num; ++i) 
     ++tile_its[i];
 }
+
+/*
 
 inline
 void QueryProcessor::advance_tile_its(
@@ -528,20 +538,50 @@ bool QueryProcessor::cell_satisfies_expression(
   // Evaluate the expression
   return expression->evaluate(var_values);
 }
+*/
 
 inline
-CSVLine QueryProcessor::cell_to_csv_line(const Tile::const_iterator* cell_its,
-                                         unsigned int attribute_num) const {
+CSVLine QueryProcessor::cell_to_csv_line(
+    const Tile::const_cell_iterator* cell_its, int attribute_num) const {
   CSVLine csv_line;
+  int dim_num = cell_its[attribute_num].dim_num();
 
   // Append coordinates first
-  cell_its[attribute_num] >> csv_line;
+  const void* coords = *cell_its[attribute_num];
+  if(*(cell_its[attribute_num].cell_type()) == typeid(int)) { 
+    for(int i=0; i<dim_num; ++i)
+      csv_line << static_cast<const int*>(coords)[i];
+  } else if(*(cell_its[attribute_num].cell_type()) == typeid(int64_t)) { 
+    for(int i=0; i<dim_num; ++i)
+      csv_line << static_cast<const int64_t*>(coords)[i];
+  } else if(*(cell_its[attribute_num].cell_type()) == typeid(float)) { 
+    for(int i=0; i<dim_num; ++i)
+      csv_line << static_cast<const float*>(coords)[i];
+  } else if(*(cell_its[attribute_num].cell_type()) == typeid(double)) { 
+    for(int i=0; i<dim_num; ++i)
+      csv_line << static_cast<const double*>(coords)[i];
+  }
+
   // Append attribute values next
-  for(unsigned int i=0; i<attribute_num; i++)
-    cell_its[i] >> csv_line;
+  for(int i=0; i<attribute_num; ++i) {
+    const void* v = *cell_its[i];
+    if(*(cell_its[i].cell_type()) == typeid(char)) { 
+      csv_line << *(static_cast<const char*>(v));
+    } else if(*(cell_its[i].cell_type()) == typeid(int)) { 
+      csv_line << *(static_cast<const int*>(v));
+    } else if(*(cell_its[i].cell_type()) == typeid(int64_t)) { 
+      csv_line << *(static_cast<const int64_t*>(v));
+    } else if(*(cell_its[i].cell_type()) == typeid(float)) { 
+      csv_line << *(static_cast<const float*>(v));
+    } else if(*(cell_its[i].cell_type()) == typeid(double)) { 
+      csv_line << *(static_cast<const double*>(v));
+    }
+  }
 
   return csv_line;
 }
+
+/*
 
 bool QueryProcessor::coincides(
     const StorageManager::const_iterator& tile_it_A,
@@ -654,6 +694,7 @@ QueryProcessor::compute_sorted_kNN_coords(
 
   return resorted_kNN_coords;
 }
+*/
 
 void QueryProcessor::create_workspace() const {
   struct stat st;
@@ -666,6 +707,7 @@ void QueryProcessor::create_workspace() const {
   }
 }
 
+/*
 void QueryProcessor::filter_irregular(
     const StorageManager::FragmentDescriptor* fd,
     const ExpressionTree* expression,
@@ -1943,30 +1985,34 @@ bool QueryProcessor::is_null(const Tile::const_iterator& cell_it) const {
 
 inline
 void QueryProcessor::initialize_cell_its(
-    const Tile** tiles, unsigned int attribute_num,
+    const Tile** tiles, int attribute_num,
     Tile::const_iterator* cell_its, Tile::const_iterator& cell_it_end) const {
-  for(unsigned int i=0; i<=attribute_num; i++)
+  for(int i=0; i<=attribute_num; ++i)
     cell_its[i] = tiles[i]->begin();
   cell_it_end = tiles[attribute_num]->end();
 }
 
+
 inline
 void QueryProcessor::initialize_cell_its(
-    const Tile** tiles, unsigned int attribute_num,
-    Tile::const_iterator* cell_its) const {
-  for(unsigned int i=0; i<attribute_num; i++)
+    const Tile** tiles, int attribute_num,
+    Tile::const_cell_iterator* cell_its) const {
+  for(int i=0; i<attribute_num; ++i)
     cell_its[i] = tiles[i]->begin();
 }
+*/
 
 inline
 void QueryProcessor::initialize_cell_its(
-    const StorageManager::const_iterator* tile_its, unsigned int attribute_num,
-    Tile::const_iterator* cell_its, Tile::const_iterator& cell_it_end) const {
-  for(unsigned int i=0; i<=attribute_num; i++)
-    cell_its[i] = (*tile_its[i]).begin();
-  cell_it_end = (*tile_its[attribute_num]).end();
+    const StorageManager::const_tile_iterator* tile_its, int attribute_num,
+    Tile::const_cell_iterator* cell_its, 
+    Tile::const_cell_iterator& cell_it_end) const {
+  for(int i=0; i<=attribute_num; ++i)
+    cell_its[i] = (*tile_its[i])->begin();
+  cell_it_end = (*tile_its[attribute_num])->end();
 }
 
+/*
 inline
 void QueryProcessor::initialize_cell_its(
     const StorageManager::const_iterator* tile_its, 
@@ -1993,20 +2039,22 @@ void QueryProcessor::initialize_cell_its(
   for(unsigned int i=0; i<attribute_num; i++)
     cell_its[i] = (*tile_its[i]).begin();
 }
+*/
 
 inline
 void QueryProcessor::initialize_tile_its(
     const StorageManager::FragmentDescriptor* fd,
-    StorageManager::const_iterator* tile_its, 
-    StorageManager::const_iterator& tile_it_end) const {
+    StorageManager::const_tile_iterator* tile_its, 
+    StorageManager::const_tile_iterator& tile_it_end) const {
   // For easy reference
-  unsigned int attribute_num = fd->array_schema()->attribute_num();
+  int attribute_num = fd->array_schema()->attribute_num();
 
-  for(unsigned int i=0; i<=attribute_num; i++)
-    tile_its[i] = storage_manager_.begin(fd, i);
-  tile_it_end = storage_manager_.end(fd, attribute_num);
+  for(int i=0; i<=attribute_num; ++i)
+    tile_its[i] = storage_manager_->begin(fd, i);
+  tile_it_end = storage_manager_->end(fd, attribute_num);
 }
 
+/*
 inline
 void QueryProcessor::initialize_tile_its(
     const StorageManager::FragmentDescriptor* fd,
@@ -3043,6 +3091,7 @@ bool QueryProcessor::overlap(
   else
     return true;
 }
+*/
 
 bool QueryProcessor::path_exists(const std::string& path) const {
   struct stat st;
@@ -3050,6 +3099,7 @@ bool QueryProcessor::path_exists(const std::string& path) const {
 }
 
 
+/*
 double QueryProcessor::point_to_mbr_distance(
     const std::vector<double>& q, const std::vector<double>& mbr) const {
   // Check dimensionality
@@ -3120,6 +3170,8 @@ bool QueryProcessor::precedes(
   }
 }
 
+*/
+
 inline
 void QueryProcessor::set_workspace(const std::string& path) {
   workspace_ = path;
@@ -3135,6 +3187,8 @@ void QueryProcessor::set_workspace(const std::string& path) {
  
   workspace_ += "/QueryProcessor";
 }
+
+/*
 
 inline
 void QueryProcessor::store_tiles(const StorageManager::FragmentDescriptor* fd,
@@ -3641,3 +3695,4 @@ void QueryProcessor::subarray_regular(
   delete [] tile_rank_it_end;
 }
 
+*/

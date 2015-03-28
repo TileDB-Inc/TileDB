@@ -40,7 +40,7 @@
 #include "storage_manager.h"
 
 /** Special value indicating an invalid tile id. */
-#define LD_INVALID_TILE_ID std::numeric_limits<uint64_t>::max()
+#define LD_INVALID_TILE_ID std::numeric_limits<int64_t>::max()
 
 /**
  * The Loader is the module that creates the array layout from raw data 
@@ -54,7 +54,7 @@ class Loader {
    * Simple constructor. The workspace is where the loader will create its
    * data. The storage manager is the module the loader interefaces with.
    */
-  Loader(const std::string& workspace, StorageManager& storage_manager);
+  Loader(const std::string& workspace, StorageManager* storage_manager);
   /** Empty destructor. */
   ~Loader() {}
 
@@ -63,22 +63,48 @@ class Loader {
   void load(const std::string& filename, 
             const std::string& array_name, 
             const std::string& fragment_name) const;
+  /** Creates a fragment from a CSV file. */
+  void load(const std::string& filename, 
+            const ArraySchema* array_schema, 
+            const std::string& fragment_name) const;
 
  private:
   // PRIVATE ATTRIBUTES
   /** The StorageManager object the loader interfaces with. */
-  StorageManager& storage_manager_;
+  StorageManager* storage_manager_;
   /** A folder in the disk where the loader creates all its data. */
   std::string workspace_;
  
   // PRIVATE METHODS
+  /** 
+   * Retrieves an attribute value from the CSV line and appends it to the
+   * input tile.
+   */
+  template<class T>
+  bool append_attribute(CSVLine* csv_line, Tile* tile) const;
+  /** 
+   * Retrieves an attribute value from the CSV line and appends it to the
+   * input tile.
+   */
+  bool append_attribute(CSVLine* csv_line, Tile* tile) const;
   /** 
    * Treats the CSV line as a logical cell encompassing coordinates and
    * attribute values, and appends the coordinates to a coordinate tile
    * and the attribute values to the respective attribute tiles. 
    */
   void append_cell(const ArraySchema& array_schema, 
-                    CSVLine* csv_line, Tile** tiles) const;
+                   CSVLine* csv_line, Tile** tiles) const;
+  /** 
+   * Retrieves a set of coordinates from the CSV line and appends them to the
+   * input tile.
+   */
+  template<class T>
+  bool append_coordinates(CSVLine* csv_line, Tile* tile) const;
+  /** 
+   * Retrieves a set of coordinates from the CSV line and appends them to the
+   * input tile.
+   */
+  bool append_coordinates(CSVLine* csv_line, Tile* tile) const;
   /** Checks upon invoking the load command. */
   bool check_on_load(const std::string& filename) const;
   /** Creates the workspace folder. */
@@ -87,6 +113,14 @@ class Loader {
    * Injects tile/cell ids to the CSV file prior to loading (applies only to
    * regular tiles with any order, and irregular tiles with Hilbert order). 
    */
+  void inject_ids_to_csv_file(const std::string& filename, 
+                              const std::string& injected_filename,
+                              const ArraySchema& array_schema) const;
+  /**
+   * Injects tile/cell ids to the CSV file prior to loading (applies only to
+   * regular tiles with any order, and irregular tiles with Hilbert order). 
+   */
+  template<class T>
   void inject_ids_to_csv_file(const std::string& filename, 
                               const std::string& injected_filename,
                               const ArraySchema& array_schema) const;
@@ -101,7 +135,7 @@ class Loader {
    * and based on the input array schema. 
    */
   void new_tiles(const ArraySchema& array_schema, 
-                 uint64_t tile_id, Tile** tiles) const;
+                 int64_t tile_id, Tile** tiles) const;
   /** Returns true if the input path is an existing directory. */
   bool path_exists(const std::string& path) const;
   /** Simply sets the workspace. */

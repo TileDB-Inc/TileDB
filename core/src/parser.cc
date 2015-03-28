@@ -81,11 +81,6 @@ ArraySchema Parser::parse_define_array(const CommandLine& cl) const {
               << " Type 'tiledb help' to see the TileDB User Manual.\n";
     exit(-1);
   }
-  if((cl.arg_bitmap_ & CL_ORDER_BITMAP) == 0) {
-    std::cerr << "[TileDB::fatal_error] Order not provided."
-              << " Type 'tiledb help' to see the TileDB User Manual.\n";
-    exit(-1);
-  }
   if((cl.arg_bitmap_ & CL_ATTRIBUTE_NAME_BITMAP) == 0) {
     std::cerr << "[TileDB::fatal_error] Attribute names not provided."
               << " Type 'tiledb help' to see the TileDB User Manual.\n";
@@ -126,26 +121,33 @@ ArraySchema Parser::parse_define_array(const CommandLine& cl) const {
   std::vector<std::pair<double, double> > dim_domains = 
       check_dim_domains(cl, dim_names);
   std::vector<const std::type_info*> types = check_types(cl, attribute_names);
-  ArraySchema::Order order = check_order(cl);
-  uint64_t capacity = check_capacity(cl);
+  ArraySchema::CellOrder cell_order = check_cell_order(cl);
+  ArraySchema::TileOrder tile_order = check_tile_order(cl);
+  int64_t capacity = check_capacity(cl);
+  int consolidation_step = check_consolidation_step(cl);
   std::vector<double> tile_extents = 
       check_tile_extents(cl, dim_names, dim_domains); 
-  
+ 
+  // Assign default values
+  if(consolidation_step == 0) 
+    consolidation_step = AS_CONSOLIDATION_STEP;
+  if(capacity == 0) 
+    capacity = AS_CAPACITY;
+  if(cell_order == ArraySchema::CO_NONE)
+    cell_order = ArraySchema::CO_ROW_MAJOR;
+  if(tile_order == ArraySchema::TO_NONE)
+    tile_order = ArraySchema::TO_ROW_MAJOR;
+ 
   // Return array schema
-  if(capacity != 0) {
-    if(tile_extents.size() == 0)
-      return ArraySchema(cl.array_names_[0], attribute_names, dim_names, 
-                         dim_domains, types, order, capacity);
-    else
-      return ArraySchema(cl.array_names_[0], attribute_names, dim_names, 
-                         dim_domains, types, order, tile_extents, capacity);
-  } else {
-    if(tile_extents.size() == 0)
-      return ArraySchema(cl.array_names_[0], attribute_names, dim_names, 
-                         dim_domains, types, order);
-    else
-      return ArraySchema(cl.array_names_[0], attribute_names, dim_names, 
-                         dim_domains, types, order, tile_extents);
+  if(tile_extents.size() == 0) { // Iregular tiles
+    return ArraySchema(
+        cl.array_names_[0], attribute_names, dim_names, 
+        dim_domains, types, cell_order, consolidation_step, capacity);
+  } else { // Regular tiles 
+    return ArraySchema(
+        cl.array_names_[0], attribute_names, dim_names, 
+        dim_domains, types, tile_order, tile_extents, 
+        consolidation_step, capacity, cell_order);
   }
 }
 
@@ -305,7 +307,7 @@ void Parser::parse_load(const CommandLine& cl) const {
   }
 }
 
-std::pair<std::vector<double>,uint64_t> Parser::parse_nearest_neighbors(
+std::pair<std::vector<double>,int64_t> Parser::parse_nearest_neighbors(
     const CommandLine& cl) const {
   // Check if correct arguments have been ginen
   if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
@@ -356,7 +358,7 @@ std::pair<std::vector<double>,uint64_t> Parser::parse_nearest_neighbors(
 
   // Prepare output
   std::vector<double> coords = check_coordinates(cl);
-  std::vector<uint64_t> N = check_numbers(cl); 
+  std::vector<int64_t> N = check_numbers(cl); 
 
   // N[0] cannot be zero
   if(N[0] == 0) {
@@ -371,8 +373,8 @@ std::pair<std::vector<double>,uint64_t> Parser::parse_nearest_neighbors(
 
 void Parser::parse_retile(
     const CommandLine& cl,
-    uint64_t& capacity,
-    ArraySchema::Order& order,
+    int64_t& capacity,
+    ArraySchema::CellOrder& cell_order,
     std::vector<double>& tile_extents) const {
   // Check if correct arguments have been ginen
   if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
@@ -400,14 +402,14 @@ void Parser::parse_retile(
 
   // Check if at least one of {capacity, order, tile extents} was given
   if(cl.arg_bitmap_ == (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP)) {
-    std::cerr << "[TileDB::fatal_error] At least one of capacity, order, or"
-                 " tile extents must be given."    
+    std::cerr << "[TileDB::fatal_error] At least one of capacity, cell order,"
+                 " or tile extents must be given."    
               << " Type 'tiledb help' to see the TileDB User Manual.\n";
     exit(-1);
   }
 
   capacity = check_capacity(cl);
-  order = check_order(cl);
+  cell_order = check_cell_order(cl);
   tile_extents = check_tile_extents(cl); 
 }
 
@@ -526,7 +528,7 @@ std::vector<std::string> Parser::check_attribute_names(
   return attribute_names;
 }
 
-uint64_t Parser::check_capacity(const CommandLine& cl) const {
+int64_t Parser::check_capacity(const CommandLine& cl) const {
   if(cl.capacity_ == NULL)
     return 0;
 
@@ -537,10 +539,27 @@ uint64_t Parser::check_capacity(const CommandLine& cl) const {
     exit(-1);
   }
 
-  uint64_t capacity;
-  sscanf(cl.capacity_, "%llu", &capacity); 
+  int64_t capacity;
+  sscanf(cl.capacity_, "%lld", &capacity); 
 
   return capacity;
+}
+
+int Parser::check_consolidation_step(const CommandLine& cl) const {
+  if(cl.consolidation_step_ == NULL)
+    return 0;
+
+  if(!is_positive_integer(cl.consolidation_step_)) {
+    std::cerr << "[TileDB::fatal_error] The consolidation step provided is"
+              << " cont an integer."  
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+
+  int consolidation_step;
+  sscanf(cl.consolidation_step_, "%d", &consolidation_step); 
+
+  return consolidation_step;
 }
 
 std::vector<double> Parser::check_coordinates(const CommandLine& cl) const {
@@ -649,8 +668,8 @@ std::vector<std::string> Parser::check_dim_names(
   return dim_names;
 }
 
-std::vector<uint64_t> Parser::check_numbers(const CommandLine& cl) const {
-  std::vector<uint64_t> numbers;
+std::vector<int64_t> Parser::check_numbers(const CommandLine& cl) const {
+  std::vector<int64_t> numbers;
 
   // Check if the coordinates are real numbers.
   for(int i=0; i<cl.numbers_.size(); ++i) {
@@ -660,7 +679,7 @@ std::vector<uint64_t> Parser::check_numbers(const CommandLine& cl) const {
                 << " Type 'tiledb help' to see the TileDB User Manual.\n";
       exit(-1);
     } else {
-      uint64_t N; 
+      int64_t N; 
       sscanf(cl.numbers_[i], "%llu", &N);
       numbers.push_back(N);
     }
@@ -669,16 +688,31 @@ std::vector<uint64_t> Parser::check_numbers(const CommandLine& cl) const {
   return numbers;
 }
 
-ArraySchema::Order Parser::check_order(const CommandLine& cl) const {
+ArraySchema::CellOrder Parser::check_cell_order(const CommandLine& cl) const {
+  if(cl.cell_order_ == NULL) {
+    return ArraySchema::CO_NONE;
+  } else if(!strcmp(cl.cell_order_, "row-major")) {
+    return ArraySchema::CO_ROW_MAJOR;
+  } else if(!strcmp(cl.cell_order_, "column-major")) {
+    return ArraySchema::CO_COLUMN_MAJOR;
+  } else if(!strcmp(cl.cell_order_, "hilbert")) {
+    return ArraySchema::CO_HILBERT;
+  } else {
+    std::cerr << "[TileDB::fatal_error] Unknown order."  
+              << " Type 'tiledb help' to see the TileDB User Manual.\n";
+    exit(-1);
+  }
+}
 
-  if(cl.order_ == NULL) {
-    return ArraySchema::NONE;
-  } else if(!strcmp(cl.order_, "row-major")) {
-    return ArraySchema::ROW_MAJOR;
-  } else if(!strcmp(cl.order_, "column-major")) {
-    return ArraySchema::COLUMN_MAJOR;
-  } else if(!strcmp(cl.order_, "hilbert")) {
-    return ArraySchema::HILBERT;
+ArraySchema::TileOrder Parser::check_tile_order(const CommandLine& cl) const {
+  if(cl.tile_order_ == NULL) {
+    return ArraySchema::TO_NONE;
+  } else if(!strcmp(cl.tile_order_, "row-major")) {
+    return ArraySchema::TO_ROW_MAJOR;
+  } else if(!strcmp(cl.tile_order_, "column-major")) {
+    return ArraySchema::TO_COLUMN_MAJOR;
+  } else if(!strcmp(cl.tile_order_, "hilbert")) {
+    return ArraySchema::TO_HILBERT;
   } else {
     std::cerr << "[TileDB::fatal_error] Unknown order."  
               << " Type 'tiledb help' to see the TileDB User Manual.\n";

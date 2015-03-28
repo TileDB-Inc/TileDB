@@ -150,11 +150,24 @@ class Tile {
    */
   void clear();
   /** MBR setter. Applicable only to coordinate tiles. */
-  void set_mbr(void* mbr);
+  void set_mbr(const void* mbr);
   /** Payload setter. */
   void set_payload(void* payload, size_t payload_size); 
 
   // OPERATORS
+  /** Appends a cell value to (the end of) a tile. */
+  void operator<<(void* value); 
+  /** Appends a cell value to (the end of) a tile. */
+  void operator<<(const void* value); 
+  /** 
+   * Appends a cell value to (the end of) a tile.
+   * 
+   * Make sure that type T is the same as the cell type. Otherwise, in debug
+   * mode an assert is triggered, whereas in release mode the behavior is
+   * unpredictable.
+   */
+  template<class T>
+  void operator<<(T* value); 
   /** 
    * Appends a cell value to (the end of) a tile.
    * 
@@ -204,6 +217,10 @@ class Tile {
     const_cell_iterator(const Tile* tile, int64_t pos);
     
     // ACCESSORS
+    /** Returns the cell type of the tile. */
+    const std::type_info* cell_type() const { return tile_->cell_type(); }
+    /** Returns the number of dimensions of the tile. */
+    int dim_num() const { return tile_->dim_num(); }
     /** Returns the current payload position of the cell iterator. */
     int64_t pos() const { return pos_; }
     /** Returns the tile the cell iterator belongs to. */
@@ -288,12 +305,6 @@ class Tile {
    * only for coordinate tiles (otherwise, it is set to NULL).
    */
   void* mbr_;
-  /** 
-   * It is true if the memory for storing the MBR was allocated by the
-   * Tile object. In other words, it is true if the MBR was created
-   * by the Tile object, and false if is set via Tile::set_mbr. 
-   */
-  bool mbr_alloc_;
   /** 
    * The payload stores the cell (attribute/coordinate) values. 
    * The coordinates are serialized, i.e., the payload first stores

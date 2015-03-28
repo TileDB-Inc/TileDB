@@ -159,10 +159,10 @@ const std::string& ArraySchema::attribute_name(int i) const {
   return attribute_names_[i];
 }
 
-int64_t ArraySchema::cell_size(int i) const {
+size_t ArraySchema::cell_size(int i) const {
   assert(i>= 0 && i <= attribute_num_);
 
-  int64_t size;
+  size_t size;
 
   if(*types_[i] == typeid(char))
     size = sizeof(char);
