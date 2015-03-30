@@ -47,11 +47,11 @@ void print_options() {
   std::cout << "\t\t" << "An attribute name.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-c or --capacity\n";
+  std::cout << "\t" << "-c, --capacity\n";
   std::cout << "\t\t" << "The maximum number of cells in a tile in the case\n";
   std::cout << "\t\t" << "of irregular tiles. In the case of regular tiles,\n";
   std::cout << "\t\t" << "the capacity is used to reserve some initial space\n";
-  std::cout << "\t\t" << "for eacht tile; however, there are no constraints\n";
+  std::cout << "\t\t" << "for each tile; however, there are no constraints\n";
   std::cout << "\t\t" << "in the number of maximum cells.\n";
   std::cout << "\n";
 
@@ -86,14 +86,18 @@ void print_options() {
   std::cout << "\t\t" << "An integral number.\n";
   std::cout << "\n";
 
-  std::cout << "\t" << "-o, --order\n";
-  std::cout << "\t\t" << "The cell (tile) order in the case of irregular\n";
-  std::cout << "\t\t" << "(resp. regular) tiles. The following orders are\n";
+  std::cout << "\t" << "-o, --cell_order\n";
+  std::cout << "\t\t" << "The cell order. The following orders are\n";
+  std::cout << "\t\t" << "supported: hilbert, row-major, column-major.\n";
+  std::cout << "\n";
+
+  std::cout << "\t" << "-O, --tile_order\n";
+  std::cout << "\t\t" << "The tile order. The following orders are\n";
   std::cout << "\t\t" << "supported: hilbert, row-major, column-major.\n";
   std::cout << "\n";
 
   std::cout << "\t" << "-q, --query\n";
-  std::cout << "\t\t" << "The query to be sent to te engine. Examples:\n";
+  std::cout << "\t\t" << "The query to be sent to the engine. Examples:\n";
   std::cout << "\t\t" << "define_array, load, subarray, filter, etc. More\n";
   std::cout << "\t\t" << "information on the syntax of each query below.\n";
   std::cout << "\n";
@@ -101,6 +105,11 @@ void print_options() {
   std::cout << "\t" << "-r, --range-bound\n";
   std::cout << "\t\t" << "A lower or upper bound for a range across some\n";
   std::cout << "\t\t" << "dimmension. See subarray for more details.\n";
+  std::cout << "\n";
+
+  std::cout << "\t" << "-s, --consolidation-step\n";
+  std::cout << "\t\t" << "The consolidation step of an array.\n";
+  std::cout << "\t\t" << "See define_array for more details.\n";
   std::cout << "\n";
 
   std::cout << "\t" << "-t, --type\n";
@@ -132,12 +141,14 @@ void print_define_array() {
   std::cout << "\t\t" << "Defines the schema of an array. Every array must\n";
   std::cout << "\t\t" << "be defined before being used. Syntax:\n\n";
   std::cout << "\t\t" << "tiledb -q define_array \n";
-  std::cout << "\t\t" << "       { -A array_name, -w workspace, -o order, }\n";
+  std::cout << "\t\t" << "       { -A array_name, -w workspace,           }\n";
   std::cout << "\t\t" << "       { -a attribute_name, -d dim_name,        }\n";
   std::cout << "\t\t" << "       { -t type, -D dim_domain,                }\n";
   std::cout << "\t\t" << "       [ -a attribute_name, -d dim_name,        ]\n";
   std::cout << "\t\t" << "       [ -t type, -D dim_domain,                ]\n";
   std::cout << "\t\t" << "       [ -e tile_extent, -c capacity            ]\n";
+  std::cout << "\t\t" << "       [ -s consolidation step                  ]\n";
+  std::cout << "\t\t" << "       [ -o cell_order, -O tile_order,          ]\n";
   std::cout << "\t\t" << "\n";
   std::cout << "\t\t" << "The workspace is a folder where the data of the\n";
   std::cout << "\t\t" << "array will be stored. A single existing workspace\n";
@@ -160,17 +171,21 @@ void print_define_array() {
   std::cout << "\t\t" << "\n";
   std::cout << "\t\t" << "An array may have regular or irregular tiles. If\n";
   std::cout << "\t\t" << "no tile extents are provided, then the array has\n";
-  std::cout << "\t\t" << "irregular tiles. In this case, the order indicates\n";
-  std::cout << "\t\t" << "the global cell order. The permissible orders are:\n";
+  std::cout << "\t\t" << "irregular tiles. The cell and tile orders specify\n";
+  std::cout << "\t\t" << "how the cells and tiles will be organized on the\n";
+  std::cout << "\t\t" << "disk. The permissible orders are:\n";
   std::cout << "\t\t" << "hilbert, row-major, column-major. If tile extents\n";
   std::cout << "\t\t" << "are provided, then the array has regular tiles.\n";
   std::cout << "\t\t" << "The number of tile extets should be equal to\n";
-  std::cout << "\t\t" << "the number of dimensions. In this case, the order\n";
-  std::cout << "\t\t" << "indicates the global tile order (the cells in\n";
-  std::cout << "\t\t" << "each tile have a default order, typically\n";
-  std::cout << "\t\t" << "row-major). The permissible orders here are also: \n";
-  std::cout << "\t\t" << "hilbert, row-major, column-major. Each tile extent\n";
+  std::cout << "\t\t" << "the number of dimensions. Each tile extent\n";
   std::cout << "\t\t" << "must not exceed its corresponding domain range.\n";
+  std::cout << "\t\t" << "\n";
+  std::cout << "\t\t" << "The consolidation step is used in updates. Every\n";
+  std::cout << "\t\t" << "time a batch update occurs, the cells therein are\n";
+  std::cout << "\t\t" << "loaded in a new array fragment. The consolidation\n";
+  std::cout << "\t\t" << "step specifies the number of array fragments that\n";
+  std::cout << "\t\t" << "will be created before they are merged into a\n";
+  std::cout << "\t\t" << "single fragment.\n";
 }
 
 void print_delete_array() {
@@ -236,7 +251,7 @@ void print_join() {
   std::cout << "\t\t" << "those of the second. (iii) A cell if and only if\n";
   std::cout << "\t\t" << "there is a non-empty cell on the same coordinates\n";
   std::cout << "\t\t" << "in both the input arrays. Syntax:\n\n";
-  std::cout << "\t\t" << "tiledb -q clear_array \n";
+  std::cout << "\t\t" << "tiledb -q join \n";
   std::cout << "\t\t" << "       { -A array_name_1, -A array_name_2        }\n";
   std::cout << "\t\t" << "       { -R result_name, -w workspace            }\n";
   std::cout << "\t\t" << "\n";
@@ -255,7 +270,8 @@ void print_load() {
   std::cout << "\t\t" << "attribute values. The order of the coordinates and\n";
   std::cout << "\t\t" << "attribute values must follow the order of the\n";
   std::cout << "\t\t" << "dimensions and attributes, respectively, in the\n";
-  std::cout << "\t\t" << "array schema. Syntax:\n\n";
+  std::cout << "\t\t" << "array schema. A NULL value is represented by\n";
+  std::cout << "\t\t" << "character '*'. Syntax:\n\n";
   std::cout << "\t\t" << "tiledb -q load \n";
   std::cout << "\t\t" << "       { -A array_name, -w workspace,           }\n";
   std::cout << "\t\t" << "       { -f filename                            }\n";
@@ -347,7 +363,7 @@ void print_update() {
   std::cout << "\t\t" << "insertion. If a cell already exists in the array,\n";
   std::cout << "\t\t" << "then this cell represents an overwrite. Finally,\n";
   std::cout << "\t\t" << "a deletion is represented with a cell whose\n";
-  std::cout << "\t\t" << "attribute values have a special DELETION value,\n";
+  std::cout << "\t\t" << "attribute values have a special DEL value,\n";
   std::cout << "\t\t" << "specified with character '$' in the CSV file.\n";
   std::cout << "\t\t" << "Syntax:\n\n";
   std::cout << "\t\t" << "tiledb -q update \n";
@@ -480,7 +496,7 @@ void process_queries(const CommandLine& cl) {
     ArraySchema array_schema = parser.parse_define_array(cl);
     try {
       Executor executor(cl.workspace_);
-      executor.define_array(array_schema);
+      executor.define_array(&array_schema);
     } catch(ExecutorException& ee) {
       std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
       exit(-1);
@@ -538,7 +554,7 @@ void process_queries(const CommandLine& cl) {
   } else if(!strcmp(cl.query_, "nearest_neighbors")) {
     // NEAREST_NEIGHBORS
     // Get pair (reference cell, number of nearest neighbors)
-    std::pair<std::vector<double>,uint64_t> NN = 
+    std::pair<std::vector<double>,int64_t> NN = 
         parser.parse_nearest_neighbors(cl);
     try {
       Executor executor(cl.workspace_);
@@ -550,13 +566,13 @@ void process_queries(const CommandLine& cl) {
     }
   } else if(!strcmp(cl.query_, "retile")) {
     // RETILE
-    uint64_t capacity;
-    ArraySchema::Order order;
+    int64_t capacity;
+    ArraySchema::CellOrder cell_order;
     std::vector<double> tile_extents; 
-    parser.parse_retile(cl, capacity, order, tile_extents);
+    parser.parse_retile(cl, capacity, cell_order, tile_extents);
     try {
       Executor executor(cl.workspace_);
-      executor.retile(cl.array_names_[0], capacity, order, tile_extents);
+      executor.retile(cl.array_names_[0], capacity, cell_order, tile_extents);
     } catch(ExecutorException& ee) {
       std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
       exit(-1);
@@ -566,7 +582,7 @@ void process_queries(const CommandLine& cl) {
     std::vector<double> range = parser.parse_subarray(cl);
     try {
       Executor executor(cl.workspace_);
-      executor.subarray(cl.array_names_[0], range, cl.result_name_);
+      executor.subarray(cl.array_names_[0], &range[0], cl.result_name_);
     } catch(ExecutorException& ee) {
       std::cerr << "[TileDB::fatal_error] " << ee.what() << "\n";
       exit(-1);

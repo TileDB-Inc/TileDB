@@ -91,6 +91,8 @@ class Executor {
             const std::string& result_array_name) const;
   /** Loads a CSV file into an array. */
   void load(const std::string& filename, const std::string& array_name) const;
+  /** Returns an array schema. */
+  const ArraySchema* load_array_schema(const std::string& array_name) const;
   /** 
    * Returns the k nearest neighbors from query point q. The results (along with
    * all their attribute values) are stored in a new array. The distance metric

@@ -336,6 +336,11 @@ void Executor::load(const std::string& filename,
   update_fragment_info(array_schema);
 }
 
+const ArraySchema* Executor::load_array_schema(
+    const std::string& array_name) const {
+  return storage_manager_->load_array_schema(array_name);
+}
+
 void Executor::nearest_neighbors(const std::string& array_name,
                                  const std::vector<double>& q,
                                  int64_t k,
