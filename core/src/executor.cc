@@ -73,6 +73,16 @@ void Executor::clear_array(const std::string& array_name) const {
   storage_manager_->clear_array(array_name);
 }
 
+void Executor::close_array(
+    const StorageManager::ArrayDescriptor* ad) const {
+  storage_manager_->close_array(ad);
+}
+
+void Executor::close_fragment(
+    const StorageManager::FragmentDescriptor* fd) const {
+  storage_manager_->close_fragment(fd);
+}
+
 void Executor::define_array(const ArraySchema* array_schema) const {
   if(storage_manager_->array_defined(array_schema->array_name()))
     throw ExecutorException("Array is already defined.");
@@ -414,6 +424,39 @@ void Executor::nearest_neighbors(const std::string& array_name,
   // Clean up
   storage_manager_->close_fragment(result_fd);
   storage_manager_->close_array(ad);
+}
+
+const StorageManager::ArrayDescriptor* Executor::open_array(
+    const ArraySchema* array_schema) const {
+  // Check if the input array is defined
+  if(!storage_manager_->array_defined(array_schema->array_name()))
+    throw ExecutorException("Input array is not defined.");
+
+  // Get fragment names
+  std::vector<std::string> fragment_names = 
+      get_all_fragment_names(array_schema);
+
+  // Check if the array is empty
+  if(fragment_names.size() == 0)
+    throw ExecutorException("Input array is empty.");
+
+  // Open array
+  return storage_manager_->open_array(array_schema, fragment_names, 
+                                      StorageManager::READ);
+}
+
+
+const StorageManager::FragmentDescriptor* Executor::open_fragment(
+    const ArraySchema* array_schema) const {
+  // Get fragment name from the consolidator
+  const Consolidator::ArrayDescriptor* ad = 
+      consolidator_->open_array(array_schema, Consolidator::WRITE);
+  std::string fragment_name = consolidator_->get_next_fragment_name(ad);
+  consolidator_->close_array(ad);
+
+  // Open fragment and return descriptor
+  return storage_manager_->open_fragment(array_schema, fragment_name, 
+                                         StorageManager::CREATE);
 }
 
 void Executor::retile(const std::string& array_name,

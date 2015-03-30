@@ -264,6 +264,13 @@ class ArraySchema {
   /** Returns a tile id following a row major order. */
   template<typename T>
   int64_t tile_id_row_major(const T* coords) const;
+  /**  
+   * Creates a new array schema which is identical as the caller object,
+   * but has a different name (given in the input), and a transposed 2D domain
+   * (i.e., the rows become columns, and vice versa). This is applicable only 
+   * to matrices (i.e., 2D arrays).
+   */
+  const ArraySchema* transpose(const std::string& new_array_name) const;
 
  private:
   // PRIVATE ATTRIBUTES

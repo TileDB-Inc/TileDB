@@ -51,8 +51,15 @@ DistributedExecutor::~DistributedExecutor() {
 ********************** QUERIES ************************
 ******************************************************/
 
-void DistributedExecutor::define_matrix(
-    const std::string& matrix_name, int64_t row_num, int64_t col_num) const {
+void DistributedExecutor::close_array(const ArrayDescriptor* ad) const {
+  if(ad->ad_ != NULL)
+   executor_->close_array(ad->ad_);
+  if(ad->fd_ != NULL) 
+   executor_->close_fragment(ad->fd_);
+}
+
+void DistributedExecutor::define_array(
+    const std::string& array_name, int64_t row_num, int64_t col_num) const {
   // Create the array schema
   std::vector<std::string> attribute_names;
   attribute_names.push_back("values");
@@ -66,7 +73,7 @@ void DistributedExecutor::define_matrix(
   types.push_back(&typeid(double)); // Type for values
   types.push_back(&typeid(int64_t)); // Type for row/col indexes/coordinates
   
-  ArraySchema array_schema(matrix_name,
+  ArraySchema array_schema(array_name,
                            attribute_names,
                            dim_names,
                            dim_domains,
@@ -85,21 +92,47 @@ void DistributedExecutor::load(const std::string& filename,
 }
 
 void DistributedExecutor::transpose(
-    const std::string& matrix_name, 
-    const std::string& result_matrix_name) const {
-  // Load array_schema for matrix_name
-  const ArraySchema* array_schema = executor_->load_array_schema(matrix_name);
+    const std::string& array_name, 
+    const std::string& result_array_name) const {
+  // Load array schema
+  const ArraySchema* array_schema = executor_->load_array_schema(array_name);
 
   // Create a result array schema (that of the transpose)
-  // TODO: stavros 
+  const ArraySchema* result_array_schema = 
+      array_schema->transpose(result_array_name);
 
-  // Open the input and output arrays
-  // TODO: stavros 
- 
-  // TODO stavros to implement the skeleton and some basic read and write APIs  
+  // Open the input and result arrays
+  const ArrayDescriptor* ad = 
+      open_array(array_schema, DistributedExecutor::READ);
+  const ArrayDescriptor* result_ad = 
+      open_array(result_array_schema, DistributedExecutor::WRITE);
 
-  // TODO jeff to implement the transpose using stavros's APIs
+  // TODO jeff to implement the transpose using the following stavros's APIs:
+  // read(const ArrayDescriptor* ad, void* range, 
+  //      void* coords, size_t coords_size, 
+  //      void* values, size_t values_size); 
+  // write(const ArrayDescriptor* ad,
+  //      void* coords, size_t coords_size, 
+  //      void* values, size_t values_size); 
+  // write_sorted(const ArrayDescriptor* ad,
+  //               void* coords, size_t coords_size, 
+  //               void* values, size_t values_size); 
 
   // Close the input and output arrays
-  // TODO: stavros 
+  close_array(ad);
+  close_array(result_ad);
 }
+
+const DistributedExecutor::ArrayDescriptor* DistributedExecutor::open_array(
+    const ArraySchema* array_schema, Mode mode) const {
+  if(mode == READ) {
+     const StorageManager::ArrayDescriptor* ad = 
+         executor_->open_array(array_schema);
+     return new ArrayDescriptor(array_schema, ad);
+  } else if(mode == WRITE) {
+     const StorageManager::FragmentDescriptor* fd = 
+         executor_->open_fragment(array_schema);
+     return new ArrayDescriptor(array_schema, fd);
+  }
+}
+

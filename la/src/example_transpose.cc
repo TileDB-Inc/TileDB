@@ -33,7 +33,6 @@
  */
 
 #include "distributed_executor.h"
-#include "distributed_matrix.h"
 #include <sstream>
 
 int main() {
@@ -47,9 +46,9 @@ int main() {
   std::stringstream ss_workspace;
   ss_workspace << "./" << mpi_module.world_rank() << "/example_transpose/";
   std::string workspace =  ss_workspace.str();
-  // The input and output matrix names
-  std::string input_matrix_name = "A";
-  std::string output_matrix_name = "A_t";
+  // The input and output array names
+  std::string input_array_name = "A";
+  std::string output_array_name = "A_t";
   // The input matrix is MxN, the output matrix will be NxM
   int64_t M = 1000;
   int64_t N = 1000; 
@@ -60,7 +59,7 @@ int main() {
   // the second (rank 1) will get rows 200-399, and so on. We will
   // assume that the raw data are already partitioned in this manner
   // to the machines, i.e., no data shuffling is required for the initial
-  // load of the input matrix. 
+  // load of the input array. 
   std::stringstream ss_input_filename;
   ss_input_filename << "A_" << mpi_module.world_rank() << ".csv";
   std::string input_filename = ss_input_filename.str();
@@ -71,14 +70,14 @@ int main() {
   // NOTE: This directory must exist (i.e., you must created beforehand)
   DistributedExecutor dist_executor(workspace, &mpi_module); 
 
-  // Define and load a distributed matrix
+  // Define and load a distributed array
   // We assume that every machine 
-  dist_executor.define_matrix(input_matrix_name, N, M);
-  dist_executor.load(input_filename, input_matrix_name);
+  dist_executor.define_array(input_array_name, N, M);
+  dist_executor.load(input_filename, input_array_name);
 
-  // Compute the transpose of the input matrix (A), and store it into a new
-  // matrix named output_matrix_name (A_t)
-  dist_executor.transpose(input_matrix_name, output_matrix_name);
+  // Compute the transpose of the input array (A), and store it into a new
+  // output array (A_t)
+  dist_executor.transpose(input_array_name, output_array_name);
 
   /****** MPI finalization ******/
   // TODO Jeff to implement this 

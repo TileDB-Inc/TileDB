@@ -104,6 +104,10 @@ void StorageManager::clear_array(const std::string& array_name) {
 
   struct dirent *next_file;
   DIR* dir = opendir(dirname.c_str());
+  std::string fragments_filename = std::string(SM_FRAGMENTS_FILENAME) + 
+                                   SM_BOOK_KEEPING_FILE_SUFFIX;
+  std::string array_schema_filename = std::string(SM_ARRAY_SCHEMA_FILENAME) + 
+                                      SM_BOOK_KEEPING_FILE_SUFFIX;
   
   // If the directory does not exist, exit
   if(dir == NULL)
@@ -112,9 +116,9 @@ void StorageManager::clear_array(const std::string& array_name) {
   while(next_file = readdir(dir)) {
     if(strcmp(next_file->d_name, ".") == 0 ||
        strcmp(next_file->d_name, "..") == 0 ||
-       strcmp(next_file->d_name, "array_schema.bkp") == 0)
+       strcmp(next_file->d_name, array_schema_filename.c_str()) == 0)
       continue;
-    if(strcmp(next_file->d_name, "fragments.bkp") == 0)  {
+    if(strcmp(next_file->d_name, fragments_filename.c_str()) == 0)  {
       filename = dirname + next_file->d_name;
       remove(filename.c_str());
     }
@@ -382,7 +386,7 @@ void StorageManager::modify_fragment_bkp(
   flush_tile_ids(fragment_info);
 }
 
-StorageManager::ArrayDescriptor* StorageManager::open_array(
+const StorageManager::ArrayDescriptor* StorageManager::open_array(
     const std::string& array_name,
     const std::vector<std::string>& fragment_names,
     Mode mode) {
@@ -400,7 +404,7 @@ StorageManager::ArrayDescriptor* StorageManager::open_array(
   return new ArrayDescriptor(array_schema, fd); 
 }
 
-StorageManager::ArrayDescriptor* StorageManager::open_array(
+const StorageManager::ArrayDescriptor* StorageManager::open_array(
     const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
     Mode mode) {
@@ -415,7 +419,7 @@ StorageManager::ArrayDescriptor* StorageManager::open_array(
   return new ArrayDescriptor(array_schema, fd); 
 }
 
-StorageManager::FragmentDescriptor* StorageManager::open_fragment(
+const StorageManager::FragmentDescriptor* StorageManager::open_fragment(
     const ArraySchema* array_schema, 
     const std::string& fragment_name,
     Mode mode) {

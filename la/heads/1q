@@ -1,5 +1,5 @@
 /**
- * @file   distributed_matrix.cc
+ * @file   distributed_array.h
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
@@ -28,9 +28,14 @@
  * 
  * @section DESCRIPTION
  *
- * This file implements class DistributedMatrix.
+ * This file defines class DistributedArray.
  */
 
-#include "distributed_matrix.h"
+#ifndef DISTRIBUTED_ARRAY_H
+#define DISTRIBUTED_ARRAY_H
 
-// TODO: Jeff to implement this.
+class DistributedArray {
+
+};
+
+#endif

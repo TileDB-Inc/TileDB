@@ -885,6 +885,24 @@ int64_t ArraySchema::tile_id_row_major(const T* coords) const {
   return tile_ID;
 }
 
+const ArraySchema* ArraySchema::transpose(
+    const std::string& new_array_name) const {
+  assert(dim_num_ == 2);
+
+  // Copy array schema and give new name
+  ArraySchema* new_array_schema = new ArraySchema();
+  *new_array_schema = *this;
+  new_array_schema->array_name_ = new_array_name;
+  
+  // Transpose the dim domains
+  std::vector<std::pair<double, double> > new_dim_domains;
+  new_dim_domains.push_back(dim_domains_[1]);
+  new_dim_domains.push_back(dim_domains_[0]);
+  new_array_schema->dim_domains_ = new_dim_domains;
+
+  return new_array_schema;
+}
+
 /******************************************************
 ******************* PRIVATE METHODS *******************
 ******************************************************/

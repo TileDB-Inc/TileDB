@@ -57,6 +57,10 @@ class Executor {
   // QUERIES
   /** Deletes all the fragments of the array. */
   void clear_array(const std::string& array_name) const;
+  /** Closes an array. */
+  void close_array(const StorageManager::ArrayDescriptor* ad) const;
+  /** Closes a fragment. */
+  void close_fragment(const StorageManager::FragmentDescriptor* fd) const;
   /** Defines an array (stores its array schema at the storage manager. */
   void define_array(const ArraySchema* array_schema) const;
   /** Deletes an array. */
@@ -102,6 +106,15 @@ class Executor {
                          const std::vector<double>& q,
                          int64_t k,
                          const std::string& result_array_name) const;
+  /** Opens an array in READ mode and returns the corresponding descriptor. */
+  const StorageManager::ArrayDescriptor* open_array(
+      const ArraySchema* array_schema) const;
+  /** 
+   * Opens an array fragment in WRITE mode and returns the corresponding 
+   * descriptor. 
+   */
+  const StorageManager::FragmentDescriptor* open_fragment(
+      const ArraySchema* array_schema) const;
   /** 
    * Retiles an array based on the inputs. If tile extents are provided
    * (i) in the case of regular tiles, if the extents differ from those in the

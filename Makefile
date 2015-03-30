@@ -22,16 +22,16 @@ GTEST_BIN_DIR = gtest/bin
 TEST_SRC_DIR = test/src
 TEST_OBJ_DIR = test/obj
 TEST_BIN_DIR = test/bin
-DIST_HEADS_DIR = distributed/heads
-DIST_SRC_DIR = distributed/src
-DIST_OBJ_DIR = distributed/obj
-DIST_BIN_DIR = distributed/bin
+LA_HEADS_DIR = la/heads
+LA_SRC_DIR = la/src
+LA_OBJ_DIR = la/obj
+LA_BIN_DIR = la/bin
 DOC_DIR = doc
 
 # --- Paths --- #
 CORE_HEADS_PATHS = -I$(CORE_HEADS_DIR)
 TILEDB_HEADS_PATHS = -I$(TILEDB_HEADS_DIR)
-DIST_HEADS_PATHS = -I$(DIST_HEADS_DIR)
+LA_HEADS_PATHS = -I$(LA_HEADS_DIR)
 
 # --- Files --- #
 CORE_HEADS := $(wildcard $(CORE_HEADS_DIR)/*.h)
@@ -44,18 +44,18 @@ GTEST_INCLUDE := $(wildcard $(GTEST_INCLUDE_DIR)/*.h)
 GTEST_OBJ := $(patsubst $(GTEST_SRC_DIR)/%.cc, $(GTEST_OBJ_DIR)/%.o, $(GTEST_SRC))
 TEST_SRC := $(wildcard $(TEST_SRC_DIR)/*.cc)
 TEST_OBJ := $(patsubst $(TEST_SRC_DIR)/%.cc, $(TEST_OBJ_DIR)/%.o, $(TEST_SRC))
-DIST_SRC := $(wildcard $(DIST_SRC_DIR)/*.cc)
-DIST_OBJ := $(patsubst $(DIST_SRC_DIR)/%.cc, $(DIST_OBJ_DIR)/%.o, $(DIST_SRC))
-DIST_BIN := $(patsubst $(DIST_SRC_DIR)/%.cc, $(DIST_BIN_DIR)/%, $(DIST_SRC))
+LA_SRC := $(wildcard $(LA_SRC_DIR)/*.cc)
+LA_OBJ := $(patsubst $(LA_SRC_DIR)/%.cc, $(LA_OBJ_DIR)/%.o, $(LA_SRC))
+LA_BIN := $(patsubst $(LA_SRC_DIR)/%.cc, $(LA_BIN_DIR)/%, $(LA_SRC))
 
 ###################
 # General Targets #
 ###################
 
-.PHONY: core example gtest test doc doc_doxygen clean_core clean_gtest clean_test clean_tiledb clean_distributed clean
+.PHONY: core example gtest test doc doc_doxygen clean_core clean_gtest \
+ clean_test clean_tiledb clean_la clean
 
-all: core
-#all: core gtest test tiledb distributed doc
+all: core gtest test tiledb la doc
 
 core: $(CORE_OBJ) 
 
@@ -65,11 +65,11 @@ gtest: $(GTEST_OBJ_DIR)/gtest-all.o
 
 test: $(TEST_OBJ)
 
-distributed: core $(DIST_OBJ)
+la: core $(LA_OBJ) $(LA_BIN_DIR)/example_transpose
 
 doc: doxyfile.inc
 
-clean: clean_core clean_gtest clean_test clean_tiledb clean_distributed
+clean: clean_core clean_gtest clean_test clean_tiledb clean_la
 
 ########
 # Core #
@@ -115,24 +115,30 @@ $(TILEDB_BIN_DIR)/tiledb: $(TILEDB_OBJ) $(CORE_OBJ)
 	@mkdir -p $(TILEDB_BIN_DIR)
 	$(CXX) -fopenmp -o $@ $^
  
-###############
-# Distributed #
-###############
+######
+# LA #
+######
 
 # --- Compilation and dependency genration --- #
 
--include $(DIST_OBJ:.o=.d)
+-include $(LA_OBJ:.o=.d)
 
-$(DIST_OBJ_DIR)/%.o: $(DIST_SRC_DIR)/%.cc
-	@test -d $(DIST_OBJ_DIR) || mkdir -p $(DIST_OBJ_DIR)
-	$(CXX) $(DIST_HEADS_PATHS)  $(CORE_HEADS_PATHS) -c $< -o $@
-	@$(CXX) -MM $(CORE_HEADS_PATHS) $(DIST_HEADS_PATHS) $< > $(@:.o=.d)
+$(LA_OBJ_DIR)/%.o: $(LA_SRC_DIR)/%.cc
+	@test -d $(LA_OBJ_DIR) || mkdir -p $(LA_OBJ_DIR)
+	$(CXX) $(LA_HEADS_PATHS)  $(CORE_HEADS_PATHS) -c $< -o $@
+	@$(CXX) -MM $(CORE_HEADS_PATHS) $(LA_HEADS_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
 	@rm -f $(@:.o=.d.tmp)
 
-clean_distributed:
-	rm -f $(DIST_OBJ_DIR)/* $(DIST_BIN_DIR)/* 
+clean_la:
+	rm -f $(LA_OBJ_DIR)/* $(LA_BIN_DIR)/* 
+
+# --- Linking --- #
+
+$(LA_BIN_DIR)/example_transpose: $(LA_OBJ) $(CORE_OBJ)
+	@mkdir -p $(LA_BIN_DIR)
+	$(CXX) -fopenmp -o $@ $^
 
 ###############
 # Google test #
@@ -156,7 +162,7 @@ clean_gtest:
 #########################
 
 doxyfile.inc: $(CORE_HEADS)
-	@echo INPUT         =  $(DOC_DIR)/mainpage.dox $(DIST_HEADS) $(CORE_HEADS) > doxyfile.inc
+	@echo INPUT = $(DOC_DIR)/mainpage.dox $(CORE_HEADS) > doxyfile.inc
 	@echo FILE_PATTERNS =  *.h >> doxyfile.inc
 	doxygen Doxyfile.mk
 

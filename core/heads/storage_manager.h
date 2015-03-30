@@ -268,8 +268,10 @@ class StorageManager {
       array_schema_ = array_schema;
     }
     /** Empty destructor. */
-    ~ArrayDescriptor() 
-        { delete array_schema_; }
+    ~ArrayDescriptor() { 
+      if(array_schema_ != NULL) 
+        delete array_schema_; 
+    }
 
     // ACCESSORS
     /** Returns the array name. */
@@ -292,12 +294,12 @@ class StorageManager {
     // PRIVATE METHODS
     /** 
      * Override the delete operator so that only a StorageManager object can
-     * delete dynamically created FragmentDescriptor objects.
+     * delete dynamically created ArrayDescriptor objects.
      */
     void operator delete(void* ptr) { ::operator delete(ptr); }
     /** 
      * Override the delete[] operator so that only a StorageManager object can
-     * delete dynamically created FragmentDescriptor objects.
+     * delete dynamically created ArrayDescriptor objects.
      */
     void operator delete[](void* ptr) { ::operator delete[](ptr); }
   };
@@ -386,17 +388,17 @@ class StorageManager {
    */ 
   MBRs::const_iterator MBR_end(const FragmentDescriptor* fd) const; 
   /** Opens an array in the input mode, opening only the input fragments. */
-  ArrayDescriptor* open_array(const std::string& array_name,
-                              const std::vector<std::string>& fragment_names,   
-                              Mode mode);
+  const ArrayDescriptor* open_array(
+      const std::string& array_name,
+      const std::vector<std::string>& fragment_names, Mode mode);
   /** Opens an array in the input mode, opening only the input fragments. */
-  ArrayDescriptor* open_array(const ArraySchema* array_schema,
-                              const std::vector<std::string>& fragment_names,   
-                              Mode mode);
+  const ArrayDescriptor* open_array(
+      const ArraySchema* array_schema,
+      const std::vector<std::string>& fragment_names, Mode mode);
   /** Opens a fragment array in the input mode.*/
-  FragmentDescriptor* open_fragment(const ArraySchema* array_schema, 
-                                    const std::string& fragment_name,
-                                    Mode mode);
+  const FragmentDescriptor* open_fragment(
+      const ArraySchema* array_schema, 
+      const std::string& fragment_name, Mode mode);
 
   // TILE FUNCTIONS
   /**

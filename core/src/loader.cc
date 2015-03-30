@@ -72,7 +72,7 @@ void Loader::load(const std::string& filename,
   const std::string& array_name = array_schema->array_name();
 
   // Open array in CREATE mode
-  StorageManager::FragmentDescriptor* fd = 
+  const StorageManager::FragmentDescriptor* fd = 
       storage_manager_->open_fragment(array_schema, 
                                       fragment_name, 
                                       StorageManager::CREATE);
