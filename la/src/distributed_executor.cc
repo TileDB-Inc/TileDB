@@ -34,6 +34,61 @@
 #include "distributed_executor.h"
 
 /******************************************************
+****************** ARRAY DESCRIPTOR *******************
+******************************************************/
+
+DistributedExecutor::ArrayDescriptor::ArrayDescriptor(
+    const ArraySchema* array_schema,
+    const StorageManager::ArrayDescriptor* ad, 
+    int wold_size, int world_rank) {
+  array_schema_ = array_schema;
+  ad_ = ad;
+  fd_ = NULL;
+
+  // Compute the local domains
+  // NOTE: This will change in the future - it will become much more flexible
+  compute_local_dim_domains(array_schema, wold_size, world_rank); 
+}
+
+DistributedExecutor::ArrayDescriptor::ArrayDescriptor(
+    const ArraySchema* array_schema,
+    const StorageManager::FragmentDescriptor* fd, 
+    int wold_size, int world_rank) {
+  array_schema_ = array_schema;
+  ad_ = NULL;
+  fd_ = fd;
+
+  // Compute the local domains
+  // NOTE: This will change in the future - it will become much more flexible
+  compute_local_dim_domains(array_schema, wold_size, world_rank); 
+}
+
+void DistributedExecutor::ArrayDescriptor::
+compute_local_dim_domains(const ArraySchema* array_schema, 
+                          int world_size, int world_rank) {
+  // Number of rows of the entire array
+  int64_t row_num = array_schema->dim_domains()[0].second + 1;
+
+  // Number of rows for the local partition
+  int64_t local_row_num = row_num / world_size;
+  // Handle the case row_num % world_size != 0 
+  // The highest rank will get slightly more rows
+  if(world_rank == world_size - 1) 
+    local_row_num = row_num - (world_size-1)*local_row_num;
+
+  // Index of the first and last row in the local parition
+  int64_t local_first_row = (row_num / world_size) * world_rank; 
+  int64_t local_last_row = local_first_row + local_row_num - 1; 
+
+  // Set the local dimension domains: 
+  // -- a fraction of rows, namely [local_first_row, local_last_row]
+  // -- all the columns
+  local_dim_domains_.push_back(
+      std::pair<double, double>(local_first_row, local_last_row));
+  local_dim_domains_.push_back(array_schema->dim_domains()[1]);
+}
+
+/******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS **************
 ******************************************************/
 
@@ -56,6 +111,8 @@ void DistributedExecutor::close_array(const ArrayDescriptor* ad) const {
    executor_->close_array(ad->ad_);
   if(ad->fd_ != NULL) 
    executor_->close_fragment(ad->fd_);
+
+  delete ad;
 }
 
 void DistributedExecutor::define_array(
@@ -91,6 +148,26 @@ void DistributedExecutor::load(const std::string& filename,
   executor_->load(filename, array_name);
 }
 
+const std::vector<std::pair<double, double> >& 
+DistributedExecutor::local_dim_domains(const ArrayDescriptor* ad) const {
+  return ad->local_dim_domains_;
+}
+
+const DistributedExecutor::ArrayDescriptor* DistributedExecutor::open_array(
+    const ArraySchema* array_schema, Mode mode) const {
+  if(mode == READ) {
+     const StorageManager::ArrayDescriptor* ad = 
+         executor_->open_array(array_schema);
+     return new ArrayDescriptor(array_schema, ad, mpi_module_->world_size(), 
+                                mpi_module_->world_rank());
+  } else if(mode == WRITE) {
+     const StorageManager::FragmentDescriptor* fd = 
+         executor_->open_fragment(array_schema);
+     return new ArrayDescriptor(array_schema, fd, mpi_module_->world_size(), 
+                                mpi_module_->world_rank());
+  }
+}
+
 void DistributedExecutor::transpose(
     const std::string& array_name, 
     const std::string& result_array_name) const {
@@ -101,38 +178,30 @@ void DistributedExecutor::transpose(
   const ArraySchema* result_array_schema = 
       array_schema->transpose(result_array_name);
 
+  // Define the result array
+  executor_->define_array(result_array_schema);
+
   // Open the input and result arrays
   const ArrayDescriptor* ad = 
-      open_array(array_schema, DistributedExecutor::READ);
+      open_array(array_schema, READ);
   const ArrayDescriptor* result_ad = 
-      open_array(result_array_schema, DistributedExecutor::WRITE);
+      open_array(result_array_schema, WRITE);
 
   // TODO jeff to implement the transpose using the following stavros's APIs:
-  // read(const ArrayDescriptor* ad, void* range, 
-  //      void* coords, size_t coords_size, 
-  //      void* values, size_t values_size); 
-  // write(const ArrayDescriptor* ad,
-  //      void* coords, size_t coords_size, 
-  //      void* values, size_t values_size); 
-  // write_sorted(const ArrayDescriptor* ad,
-  //               void* coords, size_t coords_size, 
-  //               void* values, size_t values_size); 
+  // 1. read(const ArrayDescriptor* ad, void* range, 
+  //         void*& coords, size_t& coords_size, 
+  //         void*& values, size_t& values_size); 
+  // 2. write(const ArrayDescriptor* ad,
+  //          const void* coords, size_t coords_size, 
+  //          const void* values, size_t values_size); 
+  // 3. write_sorted(const ArrayDescriptor* ad,
+  //                 void* coords, size_t coords_size, 
+  //                 void* values, size_t values_size); 
+  // 4. see DistirbutedExecutor::local_dim_domains
 
   // Close the input and output arrays
   close_array(ad);
   close_array(result_ad);
 }
 
-const DistributedExecutor::ArrayDescriptor* DistributedExecutor::open_array(
-    const ArraySchema* array_schema, Mode mode) const {
-  if(mode == READ) {
-     const StorageManager::ArrayDescriptor* ad = 
-         executor_->open_array(array_schema);
-     return new ArrayDescriptor(array_schema, ad);
-  } else if(mode == WRITE) {
-     const StorageManager::FragmentDescriptor* fd = 
-         executor_->open_fragment(array_schema);
-     return new ArrayDescriptor(array_schema, fd);
-  }
-}
 

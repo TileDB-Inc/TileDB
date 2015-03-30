@@ -63,22 +63,16 @@ class DistributedExecutor {
      * receives an array descriptor from the storage manager.    
      */
     ArrayDescriptor(const ArraySchema* array_schema,
-                    const StorageManager::ArrayDescriptor* ad) {
-      array_schema_ = array_schema;
-      ad_ = ad;
-      fd_ = NULL;
-    }
+                    const StorageManager::ArrayDescriptor* ad,
+                    int world_size, int world_rank);
     /** 
      * Constructor. If the array is opened in WRITE mode, then the constructor
      * receives a fragment descriptor from the storage manager. This is because
      * arrays are created and updated on a fragment-by-fragment basis.
      */
     ArrayDescriptor(const ArraySchema* array_schema,
-                    const StorageManager::FragmentDescriptor* fd) { 
-      array_schema_ = array_schema;
-      fd_ = fd;
-      ad_ = NULL;
-    }
+                    const StorageManager::FragmentDescriptor* fd, 
+                    int world_size, int world_rank);
     /** Empty destructor. */
     ~ArrayDescriptor() {}
 
@@ -90,6 +84,11 @@ class DistributedExecutor {
     const ArraySchema* array_schema_;
     /** A local fragment descriptor from the storage manager. */
     const StorageManager::FragmentDescriptor* fd_;
+    /** 
+     * The local dimension domains of the array. Format: 
+     * <(first_row, last_row), (first_col, last_col)>
+     */
+    std::vector<std::pair<double, double> > local_dim_domains_;
     /** 
      * True if the tiles/cells of the array follow the order specified in
      * the array schema.
@@ -107,6 +106,12 @@ class DistributedExecutor {
      * delete dynamically created FragmentDescriptor objects.
      */
     void operator delete[](void* ptr) { ::operator delete[](ptr); }
+    /** 
+     * Computes the local dimension domains, by partitioning evenly the array
+     * rows.
+     */
+    void compute_local_dim_domains(const ArraySchema* array_schema,
+                                   int world_size, int world_rank);
   };
 
   // QUERIES
@@ -121,6 +126,9 @@ class DistributedExecutor {
   /** Loads a CSV file into a distributed array. */
   void load(const std::string& filename, 
             const std::string& array_name) const;
+  /** Returns the local dimension domains. */
+  const std::vector<std::pair<double, double> >& local_dim_domains(
+      const ArrayDescriptor* ad) const; 
   /** Opens an array in the input mode. */
   const ArrayDescriptor* open_array(const ArraySchema* array_schema, 
                                     Mode mode) const;
