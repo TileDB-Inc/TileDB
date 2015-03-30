@@ -33,4 +33,8 @@
 
 #include "mpi_module.h"
 
-// TODO: Jeff to implement this.
+  /** MPI environment constructor. */
+  MPIModule::MPIModule();
+
+  /** MPI environment destructor. */
+  MPIModule::~MPIModule();

@@ -39,17 +39,22 @@ class MPIModule {
 // TODO: Jeff to implement this and check everything I have done here.
 
  public:
-  /** Returns the MPI world rank of the machine. */
-  int world_rank() { return world_rank_; }
-  /** Returns the MPI world size. */
-  int world_size() { return world_size_; }
+  /** MPI environment constructor. */
+  MPIModule();
+  /** MPI environment destructor. */
+  ~MPIModule();
+  /** Returns the MPI rank of the machine. */
+  int rank() { return rank_; }
+  /** Returns the MPI size. */
+  int size() { return size_; }
 
  private:
   // PRIVATE ATTRIBUTES
+  MPI_Comm comm_
   /** The MPI world rank of the machine. */ 
-  int world_rank_;
+  int rank_;
   /** The MPI world size. */ 
-  int world_size_;
+  int size_;
 };
 
 #endif
