@@ -44,7 +44,7 @@ int main() {
   /****** System parameters ******/
   // The folder where all the TileDB data are stored at each machine
   std::stringstream ss_workspace;
-  ss_workspace << "./" << mpi_module.world_rank() << "/example_transpose/";
+  ss_workspace << "./" << mpi_module.rank() << "/example_transpose/";
   std::string workspace =  ss_workspace.str();
   // The input and output array names
   std::string input_array_name = "A";
@@ -61,7 +61,7 @@ int main() {
   // to the machines, i.e., no data shuffling is required for the initial
   // load of the input array. 
   std::stringstream ss_input_filename;
-  ss_input_filename << "A_" << mpi_module.world_rank() << ".csv";
+  ss_input_filename << "A_" << mpi_module.rank() << ".csv";
   std::string input_filename = ss_input_filename.str();
 
   // Initialize a distributed TileDB executor

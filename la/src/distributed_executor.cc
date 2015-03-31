@@ -158,13 +158,13 @@ const DistributedExecutor::ArrayDescriptor* DistributedExecutor::open_array(
   if(mode == READ) {
      const StorageManager::ArrayDescriptor* ad = 
          executor_->open_array(array_schema);
-     return new ArrayDescriptor(array_schema, ad, mpi_module_->world_size(), 
-                                mpi_module_->world_rank());
+     return new ArrayDescriptor(array_schema, ad, mpi_module_->size(), 
+                                mpi_module_->rank());
   } else if(mode == WRITE) {
      const StorageManager::FragmentDescriptor* fd = 
          executor_->open_fragment(array_schema);
-     return new ArrayDescriptor(array_schema, fd, mpi_module_->world_size(), 
-                                mpi_module_->world_rank());
+     return new ArrayDescriptor(array_schema, fd, mpi_module_->size(), 
+                                mpi_module_->rank());
   }
 }
 

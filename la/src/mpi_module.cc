@@ -34,7 +34,7 @@
 #include "mpi_module.h"
 
 /* Determine if MPI initialized */
-static inline int MPIModule::Init_thread(int * argc, char*** argv, int requested) {
+static inline int Init_thread(int * argc, char*** argv, int requested) {
   int provided;
   int rc = MPI_Init_thread(argc, argv, requested, &provided);
   if (rc!=MPI_SUCCESS)
@@ -43,7 +43,7 @@ static inline int MPIModule::Init_thread(int * argc, char*** argv, int requested
 }
 
 /* Determine if MPI initialized */
-static inline bool MPIModule::Is_init() {
+static inline bool Is_init() {
   int is_mpi_init;
   int rc = MPI_Initialized(&is_mpi_init);
   if (rc!=MPI_SUCCESS)
@@ -52,16 +52,16 @@ static inline bool MPIModule::Is_init() {
 }
 
 /* Determine thread support and if mutex is required */
-static inline int MPIModule::Query_thread() {
+static inline int Query_thread() {
   int mpi_thread_level;
   int rc = MPI_Query_thread(&mpi_thread_level);
   if (rc!=MPI_SUCCESS)
     throw "MPI_Query_thread";
-  return mpi_thread_level
+  return mpi_thread_level;
 }
 
 /* Query for intercommunicator */
-static inline bool MPIModule::Is_intercomm(MPI_Comm comm) {
+static inline bool Is_intercomm(MPI_Comm comm) {
   int is_intercomm;
   int rc = MPI_Comm_test_inter(comm, &is_intercomm);
   if (rc!=MPI_SUCCESS)
@@ -70,12 +70,14 @@ static inline bool MPIModule::Is_intercomm(MPI_Comm comm) {
 }
 
 /** MPI environment constructor. */
-MPIModule::Initialize(int * argc, char *** argv, MPI_Comm comm) {
+void MPIModule::Initialize(int * argc, char *** argv, MPI_Comm comm) {
 
-  if (MPIModule::Init_thread(argc, argv, MPI_THREAD_MULTIPLE) < MPI_THREAD_MULTIPLE)
+  int rc;
+
+  if (Init_thread(argc, argv, MPI_THREAD_MULTIPLE) < MPI_THREAD_MULTIPLE)
     throw "Full MPI thread support required";
 
-  if !(MPIModule::Is_intercomm(comm))
+  if (!Is_intercomm(comm))
     throw  "Intercommunicators not supported";
 
   /* Duplicate the users communicator to avoid any cross-talk. */
@@ -83,18 +85,18 @@ MPIModule::Initialize(int * argc, char *** argv, MPI_Comm comm) {
   if (rc!=MPI_SUCCESS)
     throw "MPI_Comm_dup";
 
-  rc = MPI_Win_create_dynamic(MPI_INFO_NULL, this->comm_, &(this->rvma_win) );
+  rc = MPI_Win_create_dynamic(MPI_INFO_NULL, this->comm_, &(this->win_) );
   if (rc!=MPI_SUCCESS)
     throw "MPI_Win_create_dynamic";
 
   /* Enter "PGAS mode" */
-  rc = MPI_Win_lock_all(MPI_MODE_NOCHECK, this->rvma_win);
+  rc = MPI_Win_lock_all(MPI_MODE_NOCHECK, this->win_);
   if (rc!=MPI_SUCCESS)
     throw "MPI_Win_lock_all";
 }
 
 /** MPI environment destructor. */
-MPIModule::Finalize() {
+void MPIModule::Finalize() {
   int rc;
 
   /* Exit "PGAS mode" */

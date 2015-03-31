@@ -59,7 +59,7 @@ class MPIModule {
   MPIModule(int * argc, char *** argv, MPI_Comm comm) { MPIModule::Initialize(argc, argv, comm); }
   
   /** MPI environment destructor. */
-  ~MPIModule() { MPIModule::Finalize(): }
+  ~MPIModule() { MPIModule::Finalize(); }
 
   /** Returns the MPI rank of the machine. */
   int rank() { int rank; MPI_Comm_rank(this->comm_, &rank); return rank; }
