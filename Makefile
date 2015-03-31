@@ -3,7 +3,7 @@
 ##########
 
 # --- Compiler --- #
-CXX = g++
+CXX := g++
 
 # --- Directories --- #
 CORE_INCLUDE_DIR = core/include
