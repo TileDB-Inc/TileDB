@@ -40,7 +40,7 @@
 #include <sys/uio.h>
 #include <assert.h>
 #include <algorithm>
-#include <parallel/algorithm>
+//#include <parallel/algorithm>
 #include <functional>
 #include <math.h>
 
