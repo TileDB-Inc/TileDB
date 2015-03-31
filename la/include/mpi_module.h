@@ -68,8 +68,8 @@ class MPIModule {
 
  private:
   // PRIVATE METHODS
-  Initialize(int * argc, char *** argv, MPI_Comm comm);
-  Finalize();
+  void Initialize(int * argc, char *** argv, MPI_Comm comm);
+  void Finalize();
 
   // PRIVATE ATTRIBUTES
   /** The MPI communicator associated with this MPI env */
