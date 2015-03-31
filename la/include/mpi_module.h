@@ -35,21 +35,47 @@
 #ifndef MPI_MODULE_H
 #define MPI_MODULE_H
 
+/* We do not use the MPI C++ bindings because:
+ * (1) they cause linker problems. 
+ * (2) they are not part of MPI-3. */
+#define MPICH_SKIP_MPICXX
+#define OMPI_SKIP_MPICXX
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include <mpi.h>
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
 class MPIModule {
 // TODO: Jeff to implement this and check everything I have done here.
 
  public:
-  /** Returns the MPI world rank of the machine. */
-  int world_rank() { return world_rank_; }
-  /** Returns the MPI world size. */
-  int world_size() { return world_size_; }
+  /** MPI environment constructor. */
+  MPIModule() { MPIModule::Initialize(NULL, NULL, MPI_COMM_WORLD); }
+  MPIModule(MPI_Comm comm) { MPIModule::Initialize(NULL, NULL, comm); }
+  MPIModule(int * argc, char *** argv) { MPIModule::Initialize(argc, argv, MPI_COMM_WORLD); }
+  MPIModule(int * argc, char *** argv, MPI_Comm comm) { MPIModule::Initialize(argc, argv, comm); }
+  
+  /** MPI environment destructor. */
+  ~MPIModule() { MPIModule::Finalize(): }
+
+  /** Returns the MPI rank of the machine. */
+  int rank() { int rank; MPI_Comm_rank(this->comm_, &rank); return rank; }
+  /** Returns the MPI size. */
+  int size() { int size; MPI_Comm_size(this->comm_, &size); return size; }
 
  private:
+  // PRIVATE METHODS
+  Initialize(int * argc, char *** argv, MPI_Comm comm);
+  Finalize();
+
   // PRIVATE ATTRIBUTES
-  /** The MPI world rank of the machine. */ 
-  int world_rank_;
-  /** The MPI world size. */ 
-  int world_size_;
+  /** The MPI communicator associated with this MPI env */
+  MPI_Comm comm_;
+  /** The MPI dynamic window that will be used for moving data RVMA-style. */
+  MPI_Win win_;
 };
 
 #endif
