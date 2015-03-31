@@ -35,6 +35,8 @@
 #ifndef MPI_MODULE_H
 #define MPI_MODULE_H
 
+#include <cstddef>
+
 /* We do not use the MPI C++ bindings because:
  * (1) they cause linker problems. 
  * (2) they are not part of MPI-3. */
