@@ -32,6 +32,8 @@
  */
 
 #include "utils.h"
+#include <stdlib.h>
+#include <string.h>
 
 void expand_mbr(const ArraySchema* array_schema,
                 const void* coords, void* mbr) {
@@ -74,6 +76,13 @@ void expand_mbr(const T* coords, T* mbr, int dim_num) {
         mbr[2*i+1] = coords[i];   
     }	
   }
+}
+
+void expand_buffer(void*& buffer, size_t size) {
+  void* temp = malloc(2*size);
+  memcpy(temp, buffer, size);
+  free(buffer);
+  buffer = temp;
 }
 
 // Explicit template instantiations

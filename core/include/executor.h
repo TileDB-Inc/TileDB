@@ -116,6 +116,16 @@ class Executor {
   const StorageManager::FragmentDescriptor* open_fragment(
       const ArraySchema* array_schema) const;
   /** 
+   * Copies the coordinates of the non-empty cells of the input array
+   * falling inside the input range into the coords buffer, and their
+   * corresponding values on the input attribute into buffer values,
+   * setting properly the buffer sizes in bytes. 
+   */
+  void read(const StorageManager::ArrayDescriptor* ad, 
+            int attribute_id, const void* range,
+            void*& coords, size_t& coords_size, 
+            void*& values, size_t& values_size) const; 
+  /** 
    * Retiles an array based on the inputs. If tile extents are provided
    * (i) in the case of regular tiles, if the extents differ from those in the
    * array schema, retiling occurs, (ii) in the case of irregular tiles, the
@@ -138,7 +148,7 @@ class Executor {
    */
   void subarray(const std::string& array_name,
                 const double* range,                             // TODO: template on range?
-                const std::string& result_array_name) const;
+                const std::string& result_array_name) const; 
   /** Updates an array with the data in the input CSV file. */
   void update(const std::string& filename, 
               const std::string& array_name) const;

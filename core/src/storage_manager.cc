@@ -801,16 +801,16 @@ void StorageManager::get_overlapping_tile_pos(
 
   if(*type == typeid(int))
     get_overlapping_tile_pos(fd, static_cast<const int*>(range), 
-                        overlapping_tile_pos);
+                             overlapping_tile_pos);
   else if(*type == typeid(int64_t))
     get_overlapping_tile_pos(fd, static_cast<const int64_t*>(range), 
-                        overlapping_tile_pos);
+                             overlapping_tile_pos);
   else if(*type == typeid(float))
     get_overlapping_tile_pos(fd, static_cast<const float*>(range), 
-                        overlapping_tile_pos);
+                             overlapping_tile_pos);
   else if(*type == typeid(double))
     get_overlapping_tile_pos(fd, static_cast<const double*>(range), 
-                        overlapping_tile_pos);
+                             overlapping_tile_pos);
 }
 
 template<class T>

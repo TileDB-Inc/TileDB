@@ -27,11 +27,18 @@ LA_SRC_DIR = la/src
 LA_OBJ_DIR = la/obj
 LA_BIN_DIR = la/bin
 DOC_DIR = doc
+MPI_INCLUDE_DIR = /home/spapadop/mpi-3.1-install/include
+MPI_LIB_DIR = /home/spapadop/mpi-3.1-install/lib
 
 # --- Paths --- #
 CORE_INCLUDE_PATHS = -I$(CORE_INCLUDE_DIR)
 TILEDB_INCLUDE_PATHS = -I$(TILEDB_INCLUDE_DIR)
 LA_INCLUDE_PATHS = -I$(LA_INCLUDE_DIR)
+MPI_INCLUDE_PATHS = -I$(MPI_INCLUDE_DIR)
+MPI_LIB_PATHS = -L$(MPI_LIB_DIR)
+
+# --- Libs --- #
+MPI_LIB = -libmpi
 
 # --- Files --- #
 CORE_INCLUDE := $(wildcard $(CORE_INCLUDE_DIR)/*.h)
@@ -52,8 +59,7 @@ LA_BIN := $(patsubst $(LA_SRC_DIR)/%.cc, $(LA_BIN_DIR)/%, $(LA_SRC))
 # General Targets #
 ###################
 
-.PHONY: core example gtest test doc doc_doxygen clean_core clean_gtest \
- clean_test clean_tiledb clean_la clean
+.PHONY: core example gtest test doc doc_doxygen clean_core clean_gtest clean_test clean_tiledb clean_la clean
 
 all: core gtest test tiledb la doc
 
@@ -77,7 +83,7 @@ clean: clean_core clean_gtest clean_test clean_tiledb clean_la
 
 # --- Compilation and dependency genration --- #
 
--include $(CORE_OBJ:.o=.d)
+-include $(CORE_OBJ:%.o=%.d)
 
 $(CORE_OBJ_DIR)/%.o: $(CORE_SRC_DIR)/%.cc
 	@test -d $(CORE_OBJ_DIR) || mkdir -p $(CORE_OBJ_DIR)
@@ -125,7 +131,7 @@ $(TILEDB_BIN_DIR)/tiledb: $(TILEDB_OBJ) $(CORE_OBJ)
 
 $(LA_OBJ_DIR)/%.o: $(LA_SRC_DIR)/%.cc
 	@test -d $(LA_OBJ_DIR) || mkdir -p $(LA_OBJ_DIR)
-	$(CXX) $(LA_INCLUDE_PATHS)  $(CORE_INCLUDE_PATHS) -c $< -o $@
+	$(CXX) $(LA_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) $(MPI_INCLUDE_PATHS) -c $< -o $@
 	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $(LA_INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)

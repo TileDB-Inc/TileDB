@@ -133,11 +133,34 @@ class DistributedExecutor {
   const ArrayDescriptor* open_array(const ArraySchema* array_schema, 
                                     Mode mode) const;
   /** 
+   * Takes as input an array descriptor and a 2D range, and returns
+   * the coordinates of the non-empty cells falling in the range (in
+   * buffer coords) and their corresponding values (in buffer values).
+   */
+  void read(const ArrayDescriptor* ad, const void* range, 
+            void*& coords, size_t& coords_size,
+            void*& values, size_t& values_size) const;
+  /** 
    * Transposes the input array and writes the result into a newly created 
    * array 
    */
   void transpose(const std::string& array_name, 
                  const std::string& result_array_name) const;
+  /** 
+   * Writes the input coordinates and values to the array, respecting
+   * the global cell order of the array. 
+   */
+  void write_sorted(const ArrayDescriptor* ad, 
+                    const void* coords, size_t coords_size,
+                    const void* values, size_t values_size) const;
+  /** 
+   * Writes the input coordinates and values to the array, without respecting
+   * the global cell order of the array.    
+   */
+  void write(const ArrayDescriptor* ad, 
+             const void* coords, size_t coords_size,
+             const void* values, size_t values_size) const;
+
 
  private:
   // PRIVATE ATTRIBUTES

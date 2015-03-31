@@ -459,6 +459,29 @@ const StorageManager::FragmentDescriptor* Executor::open_fragment(
                                          StorageManager::CREATE);
 }
 
+void Executor::read(const StorageManager::ArrayDescriptor* ad,
+                    int attribute_id, const void* range,
+                    void*& coords, size_t& coords_size,
+                    void*& values, size_t& values_size) const {
+  // Check if the array is empty
+  if(ad->is_empty())
+    throw ExecutorException("Input array is empty.");
+
+  // Dispatch query to query processor
+  try {
+    if(ad->fd().size() == 1)  {  // Single fragment
+      const StorageManager::FragmentDescriptor* fd = ad->fd()[0];
+      query_processor_->read(fd, attribute_id, range, 
+                             coords, coords_size, values, values_size);
+    } else { // Multiple fragments TODO 
+      throw ExecutorException("Operation currently not supported on "
+                              "multiple fragments.");
+    }
+  } catch(QueryProcessorException& qe) {
+    throw ExecutorException(qe.what());
+  }
+} 
+
 void Executor::retile(const std::string& array_name,
                       int64_t capacity,
                       ArraySchema::CellOrder cell_order,

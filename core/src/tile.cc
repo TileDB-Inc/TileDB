@@ -32,6 +32,7 @@
  */
 
 #include "tile.h"
+#include "utils.h"
 #include <assert.h>
 #include <iostream>
 #include <stdio.h>
@@ -445,12 +446,7 @@ void Tile::expand_payload() {
     payload_capacity_ = TL_PAYLOAD_CAPACITY;
     payload_alloc_ = true;
   } else {
-    size_t payload_size = payload_capacity_*cell_size_;
-    void* new_payload = malloc(2*payload_size);
-    memcpy(new_payload, payload_, payload_size);
-
-    free(payload_);
-    payload_ = new_payload;
+    expand_buffer(payload_, payload_capacity_*cell_size_);
     payload_capacity_ *= 2;
   }
 }

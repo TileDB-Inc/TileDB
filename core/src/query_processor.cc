@@ -32,6 +32,7 @@
  */
   
 #include "query_processor.h"
+#include "utils.h"
 #include <stdio.h>
 #include <typeinfo>
 #include <stdlib.h>
@@ -43,6 +44,7 @@
 //#include <parallel/algorithm>
 #include <functional>
 #include <math.h>
+#include <string.h>
 
 /******************************************************
 ********************* CONSTRUCTORS ********************
@@ -225,7 +227,146 @@ void QueryProcessor::nearest_neighbors(
   else 
     nearest_neighbors_irregular(fd, q, k, result_fd);
 }
+*/
 
+template<class T>
+void QueryProcessor::read_irregular(
+    const StorageManager::FragmentDescriptor* fd,
+    int attribute_id, const T* range,
+    void*& coords, size_t& coords_size,
+    void*& values, size_t& values_size) const {
+    // For easy reference
+  const ArraySchema* array_schema = fd->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  int64_t capacity = array_schema->capacity();
+  size_t coords_cell_size = array_schema->cell_size(attribute_num);
+  size_t values_cell_size = array_schema->cell_size(attribute_id);
+ 
+  // Check on attribute id
+  assert(attribute_id >=0 && attribute_id < attribute_num);
+
+  // Create tiles
+  const Tile* tiles[2];
+
+  // Create cell iterators
+  Tile::const_cell_iterator cell_its[2]; 
+  Tile::const_cell_iterator cell_it_end;
+
+  // Get the tile ranks that overlap with the range
+  TilePosOverlapVector overlapping_tile_pos;
+  storage_manager_->get_overlapping_tile_pos(fd, range, 
+                                             &overlapping_tile_pos);
+
+  // Initialize tile iterators
+  TilePosOverlapVector::const_iterator tile_pos_it = 
+      overlapping_tile_pos.begin();
+  TilePosOverlapVector::const_iterator tile_pos_it_end =
+      overlapping_tile_pos.end();
+ 
+  // Initialize result buffers
+  int64_t buffer_capacity = capacity; // Initial buffer capacity
+  values = malloc(buffer_capacity*values_cell_size);
+  coords = malloc(buffer_capacity*coords_cell_size);
+
+  // Number of result cells
+  int64_t result_num = 0;
+
+  // Iterate over all tiles
+  for(; tile_pos_it != tile_pos_it_end; ++tile_pos_it) {
+    tiles[0] = storage_manager_->get_tile_by_pos(fd, attribute_id,
+                                                 tile_pos_it->first);
+    tiles[1] = storage_manager_->get_tile_by_pos(fd, attribute_num,
+                                                 tile_pos_it->first);
+
+    // Initialize cell iterators
+    cell_its[0] = tiles[0]->begin();
+    cell_its[1] = tiles[1]->begin();
+    cell_it_end = tiles[1]->end();
+
+    if(tile_pos_it->second) { // Full overlap - all cells are results
+      while(cell_its[1] != cell_it_end) {
+        // Check if buffer expansion is needed
+        if(result_num == buffer_capacity) {
+          expand_buffer(values, buffer_capacity*values_cell_size);
+          expand_buffer(coords, buffer_capacity*coords_cell_size);
+          buffer_capacity *= 2;
+        }
+
+        // Append cell values to result buffers
+        void* values_offset = static_cast<char*>(values) + 
+                              result_num*values_cell_size;
+        void* coords_offset = static_cast<char*>(coords) + 
+                              result_num*coords_cell_size;
+        memcpy(values_offset, *cell_its[0], values_cell_size);
+        memcpy(coords_offset, *cell_its[1], coords_cell_size);
+        ++result_num;
+
+        // Advance cell iterators
+        ++cell_its[0];
+        ++cell_its[1];
+      }
+    } else { // Partial overlap - check each cell separately against the range
+      while(cell_its[1] != cell_it_end) {
+        if(cell_its[1].cell_inside_range(range)) { 
+          // Check if buffer expansion is needed
+          if(result_num == buffer_capacity) {
+            expand_buffer(values, buffer_capacity*values_cell_size);
+            expand_buffer(coords, buffer_capacity*coords_cell_size);
+            buffer_capacity *= 2;
+          }
+
+          // Append cell values to result buffers
+          void* values_offset = static_cast<char*>(values) + 
+                                result_num*values_cell_size;
+          void* coords_offset = static_cast<char*>(coords) + 
+                                result_num*coords_cell_size;
+          memcpy(values_offset, *cell_its[0], values_cell_size);
+          memcpy(coords_offset, *cell_its[1], coords_cell_size);
+          ++result_num;
+        }
+
+        // Advance cell iterators
+        ++cell_its[0];
+        ++cell_its[1];
+      }
+    }
+  } 
+
+  // Calculate the sizes of the result buffers
+  values_size = result_num * values_cell_size; 
+  coords_size = result_num * coords_cell_size; 
+}
+
+void QueryProcessor::read(
+    const StorageManager::FragmentDescriptor* fd,
+    int attribute_id, const void* range,
+    void*& coords, size_t& coords_size,
+    void*& values, size_t& values_size) const {
+  // For easy reference
+  const ArraySchema* array_schema = fd->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  const std::type_info* type = array_schema->type(attribute_num);
+
+  if(array_schema->has_irregular_tiles()) { // Irregular tiles
+    if(*type == typeid(int)) 
+      read_irregular(fd, attribute_id, static_cast<const int*>(range), 
+                     coords, coords_size, values, values_size);
+    else if(*type == typeid(int64_t)) 
+      read_irregular(fd, attribute_id, static_cast<const int64_t*>(range), 
+                     coords, coords_size, values, values_size);
+    else if(*type == typeid(float)) 
+      read_irregular(fd, attribute_id, static_cast<const float*>(range), 
+                     coords, coords_size, values, values_size);
+    else if(*type == typeid(double)) 
+      read_irregular(fd, attribute_id, static_cast<const double*>(range), 
+                      coords, coords_size, values, values_size);
+  } else { // Regular tiles TODO
+    throw QueryProcessorException(
+        "Operations currently not supported for arrays with regular tiles."); 
+  }
+} 
+
+/*
 void QueryProcessor::retile(
     const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     uint64_t capacity, 

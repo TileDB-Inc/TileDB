@@ -163,6 +163,27 @@ class QueryProcessor {
       const StorageManager::FragmentDescriptor* result_fd) const;
 */
   /** 
+   * Copies the coordinates of the non-empty cells of the input array
+   * falling inside the input range into the coords buffer, and their
+   * corresponding values on the input attribute into buffer values,
+   * setting properly the buffer sizes in bytes. 
+   */
+  void read(const StorageManager::FragmentDescriptor* fd,
+            int attribute_id, const void* range,
+            void*& coords, size_t& coords_size,
+            void*& values, size_t& values_size) const;
+  /** 
+   * Copies the coordinates of the non-empty cells of the input array
+   * falling inside the input range into the coords buffer, and their
+   * corresponding values on the input attribute into buffer values,
+   * setting properly the buffer sizes in bytes. 
+   */
+  template<class T>
+  void read_irregular(const StorageManager::FragmentDescriptor* fd,
+                      int attribute_id, const T* range,
+                      void*& coords, size_t& coords_size,
+                      void*& values, size_t& values_size) const;
+  /** 
    * Retiles an array based on the inputs. If tile extents are provided
    * (i) in the case of regular tiles, if the extents differ from those in the
    * array schema, retiling occurs, (ii) in the case of irregular tiles, the

@@ -283,6 +283,7 @@ class StorageManager {
     /** For easy access of the fragment descriptors. */
     const std::vector<const FragmentDescriptor*>& fd() const 
         { return fd_; }
+    bool is_empty() const { return !fd_.size(); }
  
    private:
     // PRIVATE ATTRIBUTES

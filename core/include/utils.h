@@ -40,7 +40,11 @@
 void expand_mbr(const ArraySchema* array_schema, 
                 const void* coords, void* mbr);
 
+/** Expands the input MBR with the input coordinates. */
 template<class T>
 void expand_mbr(const T* coords, T* mbr, int dim_num);
+
+/** Doubles the size of the buffer. The original size is given as input. */
+void expand_buffer(void*& buffer, size_t size);
 
 #endif

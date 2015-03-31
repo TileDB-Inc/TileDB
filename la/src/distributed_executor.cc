@@ -32,6 +32,7 @@
  */
 
 #include "distributed_executor.h"
+#include <assert.h>
 
 /******************************************************
 ****************** ARRAY DESCRIPTOR *******************
@@ -44,6 +45,7 @@ DistributedExecutor::ArrayDescriptor::ArrayDescriptor(
   array_schema_ = array_schema;
   ad_ = ad;
   fd_ = NULL;
+  sorted_ = true;
 
   // Compute the local domains
   // NOTE: This will change in the future - it will become much more flexible
@@ -57,6 +59,7 @@ DistributedExecutor::ArrayDescriptor::ArrayDescriptor(
   array_schema_ = array_schema;
   ad_ = NULL;
   fd_ = fd;
+  sorted_ = true;
 
   // Compute the local domains
   // NOTE: This will change in the future - it will become much more flexible
@@ -168,6 +171,20 @@ const DistributedExecutor::ArrayDescriptor* DistributedExecutor::open_array(
   }
 }
 
+void DistributedExecutor::read(
+    const ArrayDescriptor* ad, const void* range,
+    void*& coords, size_t& coords_size,
+    void*& values, size_t& values_size) const {
+  assert(ad->ad_ != NULL);
+
+  // The values will be retrieved from the first attribute of the array,
+  // since no other attribute is specified.
+  int attribute_id = 0;
+
+  executor_->read(ad->ad_, attribute_id, range, 
+                  coords, coords_size, values, values_size);
+}
+
 void DistributedExecutor::transpose(
     const std::string& array_name, 
     const std::string& result_array_name) const {
@@ -187,21 +204,29 @@ void DistributedExecutor::transpose(
   const ArrayDescriptor* result_ad = 
       open_array(result_array_schema, WRITE);
 
-  // TODO jeff to implement the transpose using the following stavros's APIs:
-  // 1. read(const ArrayDescriptor* ad, void* range, 
-  //         void*& coords, size_t& coords_size, 
-  //         void*& values, size_t& values_size); 
-  // 2. write(const ArrayDescriptor* ad,
-  //          const void* coords, size_t coords_size, 
-  //          const void* values, size_t values_size); 
-  // 3. write_sorted(const ArrayDescriptor* ad,
-  //                 void* coords, size_t coords_size, 
-  //                 void* values, size_t values_size); 
-  // 4. see DistirbutedExecutor::local_dim_domains
+  // TODO jeff to implement the transpose using the following stavros's APIs of
+  // DistributedExecutor:
+  // 1. read  
+  // 2. write  
+  // 3. write_sorted 
+  // 4. local_dim_domains
 
   // Close the input and output arrays
   close_array(ad);
   close_array(result_ad);
 }
 
+void DistributedExecutor::write(
+    const ArrayDescriptor* ad, 
+    const void* coords, size_t coords_size,
+    const void* values, size_t values_size) const {
+  // TODO: Stavros
 
+}
+
+void DistributedExecutor::write_sorted(
+    const ArrayDescriptor* ad, 
+    const void* coords, size_t coords_size,
+    const void* values, size_t values_size) const {
+  // TODO: Stavros
+}
