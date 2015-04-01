@@ -129,6 +129,130 @@ void Loader::load(const std::string& filename,
   delete array_schema;
 }
 
+void Loader::write(
+    StorageManager::FragmentDescriptor* fd,
+    const void* coords, size_t coords_size,
+    const void* attrs, size_t attrs_size) const {
+  // For easy reference
+  const ArraySchema* array_schema = fd->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  int dim_num = array_schema->dim_num();
+  size_t coords_cell_size = array_schema->cell_size(attribute_num);
+  size_t attrs_cell_size = 0;
+  for(int i=0; i<attribute_num; ++i)
+    attrs_cell_size += array_schema->cell_size(i);
+
+  // Number of cells to be written
+  int64_t cell_num = coords_size / coords_cell_size;
+
+  // Checks on cell num
+  assert(coords_size % coords_cell_size == 0);
+  assert(attrs_size % attrs_cell_size == 0);
+  assert(cell_num == attrs_size / attrs_cell_size);
+
+  // Prepare the storage manager about the pending batch of writes.
+  storage_manager_->prepare_to_write(fd, coords_size + attrs_size);
+
+  // Write each logical cell to the array
+  // For the sake of performance, we distinguish all the possible
+  // cobinations of regular/irregular tiles, tile/cell orders, and 
+  // coordinate types. This way we perform these checks once for
+  // the entire input batch of writes, rather than on a cell by
+  // cell basis.
+  if(array_schema->has_irregular_tiles()) { // Irregular tiles
+    if(array_schema->cell_order() == ArraySchema::CO_ROW_MAJOR ||
+       array_schema->cell_order() == ArraySchema::CO_COLUMN_MAJOR) {
+      StorageManager::CoordsAttrs cell;
+      cell.dim_num_ = dim_num;
+      for(int64_t i=0; i<cell_num; ++i) {
+        cell.coords_ = static_cast<const char*>(coords) + i*coords_cell_size; 
+        cell.attrs_ = static_cast<const char*>(attrs) + i*attrs_cell_size; 
+        storage_manager_->write_cell(fd, cell); 
+      }
+    } else { // array_schema->cell_order() == ArraySchema::CO_HILBERT
+      StorageManager::IdCoordsAttrs cell;
+      cell.dim_num_ = dim_num;
+      for(int64_t i=0; i<cell_num; ++i) {
+        cell.coords_ = static_cast<const char*>(coords) + i*coords_cell_size; 
+        cell.attrs_ = static_cast<const char*>(attrs) + i*attrs_cell_size; 
+        cell.id_ = array_schema->cell_id_hilbert(cell.coords_);
+        storage_manager_->write_cell(fd, cell); 
+      }
+    }
+  } else { // Regular tiles
+    if(array_schema->tile_order() == ArraySchema::TO_ROW_MAJOR) { 
+      if(array_schema->cell_order() == ArraySchema::CO_ROW_MAJOR ||
+         array_schema->cell_order() == ArraySchema::CO_COLUMN_MAJOR) {
+        StorageManager::IdCoordsAttrs cell;
+        cell.dim_num_ = dim_num;
+        for(int64_t i=0; i<cell_num; ++i) {
+          cell.coords_ = static_cast<const char*>(coords) + i*coords_cell_size; 
+          cell.attrs_ = static_cast<const char*>(attrs) + i*attrs_cell_size; 
+          cell.id_ = array_schema->tile_id_row_major(cell.coords_);
+          storage_manager_->write_cell(fd, cell); 
+        }
+      } else { // array_schema->cell_order() == ArraySchema::CO_HILBERT) {
+        StorageManager::IdIdCoordsAttrs cell;
+        cell.dim_num_ = dim_num;
+        for(int64_t i=0; i<cell_num; ++i) {
+          cell.coords_ = static_cast<const char*>(coords) + i*coords_cell_size; 
+          cell.attrs_ = static_cast<const char*>(attrs) + i*attrs_cell_size; 
+          cell.id_1_ = array_schema->tile_id_row_major(cell.coords_);
+          cell.id_2_ = array_schema->cell_id_hilbert(cell.coords_);
+          storage_manager_->write_cell(fd, cell); 
+        }
+      }
+    } else if(array_schema->tile_order() == ArraySchema::TO_COLUMN_MAJOR) { 
+      if(array_schema->cell_order() == ArraySchema::CO_ROW_MAJOR ||
+         array_schema->cell_order() == ArraySchema::CO_COLUMN_MAJOR) {
+        StorageManager::IdCoordsAttrs cell;
+        cell.dim_num_ = dim_num;
+        for(int64_t i=0; i<cell_num; ++i) {
+          cell.coords_ = static_cast<const char*>(coords) + i*coords_cell_size; 
+          cell.attrs_ = static_cast<const char*>(attrs) + i*attrs_cell_size; 
+          cell.id_ = array_schema->tile_id_column_major(cell.coords_);
+          storage_manager_->write_cell(fd, cell); 
+        }
+      } else { // array_schema->cell_order() == ArraySchema::CO_HILBERT) {
+        StorageManager::IdIdCoordsAttrs cell;
+        cell.dim_num_ = dim_num;
+        for(int64_t i=0; i<cell_num; ++i) {
+          cell.coords_ = static_cast<const char*>(coords) + i*coords_cell_size; 
+          cell.attrs_ = static_cast<const char*>(attrs) + i*attrs_cell_size; 
+          cell.id_1_ = array_schema->tile_id_column_major(cell.coords_);
+          cell.id_2_ = array_schema->cell_id_hilbert(cell.coords_);
+          storage_manager_->write_cell(fd, cell); 
+        }
+      }
+    } else if(array_schema->tile_order() == ArraySchema::TO_HILBERT) { 
+      if(array_schema->cell_order() == ArraySchema::CO_ROW_MAJOR ||
+         array_schema->cell_order() == ArraySchema::CO_COLUMN_MAJOR) {
+        StorageManager::IdCoordsAttrs cell;
+        cell.dim_num_ = dim_num;
+        for(int64_t i=0; i<cell_num; ++i) {
+          cell.coords_ = static_cast<const char*>(coords) + i*coords_cell_size; 
+          cell.attrs_ = static_cast<const char*>(attrs) + i*attrs_cell_size; 
+          cell.id_ = array_schema->tile_id_hilbert(cell.coords_);
+          storage_manager_->write_cell(fd, cell); 
+        }
+      } else { // array_schema->cell_order() == ArraySchema::CO_HILBERT) {
+        StorageManager::IdIdCoordsAttrs cell;
+        cell.dim_num_ = dim_num;
+        for(int64_t i=0; i<cell_num; ++i) {
+          cell.coords_ = static_cast<const char*>(coords) + i*coords_cell_size; 
+          cell.attrs_ = static_cast<const char*>(attrs) + i*attrs_cell_size; 
+          cell.id_1_ = array_schema->tile_id_hilbert(cell.coords_);
+          cell.id_2_ = array_schema->cell_id_hilbert(cell.coords_);
+          storage_manager_->write_cell(fd, cell); 
+        }
+      }
+    } 
+  }
+
+  fd->add_buffer_to_be_freed(coords);
+  fd->add_buffer_to_be_freed(attrs);
+}
+
 /******************************************************
 ******************* PRIVATE METHODS *******************
 ******************************************************/
@@ -493,12 +617,3 @@ void Loader::store_tiles(const StorageManager::FragmentDescriptor* fd,
     storage_manager_->append_tile(tiles[i], fd, i);
 }
 
-// Explicit template instantiations
-template bool Loader::append_coordinates<int>(
-    CSVLine* csv_line, Tile* tile) const;
-template bool Loader::append_coordinates<int64_t>(
-    CSVLine* csv_line, Tile* tile) const;
-template bool Loader::append_coordinates<float>(
-    CSVLine* csv_line, Tile* tile) const;
-template bool Loader::append_coordinates<double>(
-    CSVLine* csv_line, Tile* tile) const;

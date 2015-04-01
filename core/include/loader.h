@@ -67,6 +67,16 @@ class Loader {
   void load(const std::string& filename, 
             const ArraySchema* array_schema, 
             const std::string& fragment_name) const;
+  /**  
+   * Writes the input coordinates and attributes into an array. The input values 
+   * do not respect the global cell order. Therefore, this function will
+   * perform the proper sorting.
+   * NOTE: After the execution of this function, the input buffers should not
+   * be used (they will eventually be freed by fragment descriptor fd).
+   */
+  void write(StorageManager::FragmentDescriptor* fd,
+             const void* coords, size_t coords_size,
+             const void* attrs, size_t attrs_size) const; 
 
  private:
   // PRIVATE ATTRIBUTES

@@ -71,7 +71,7 @@ class DistributedExecutor {
      * arrays are created and updated on a fragment-by-fragment basis.
      */
     ArrayDescriptor(const ArraySchema* array_schema,
-                    const StorageManager::FragmentDescriptor* fd, 
+                    StorageManager::FragmentDescriptor* fd, 
                     int world_size, int world_rank);
     /** Empty destructor. */
     ~ArrayDescriptor() {}
@@ -83,17 +83,12 @@ class DistributedExecutor {
     /** The array schema. */
     const ArraySchema* array_schema_;
     /** A local fragment descriptor from the storage manager. */
-    const StorageManager::FragmentDescriptor* fd_;
+    StorageManager::FragmentDescriptor* fd_;
     /** 
      * The local dimension domains of the array. Format: 
      * <(first_row, last_row), (first_col, last_col)>
      */
     std::vector<std::pair<double, double> > local_dim_domains_;
-    /** 
-     * True if the tiles/cells of the array follow the order specified in
-     * the array schema.
-     */
-    bool sorted_; 
     
     // PRIVATE METHODS
     /** 
@@ -149,18 +144,19 @@ class DistributedExecutor {
   /** 
    * Writes the input coordinates and values to the array, respecting
    * the global cell order of the array. 
+   * NOTE: The input buffers will be freed by the function. 
    */
   void write_sorted(const ArrayDescriptor* ad, 
                     const void* coords, size_t coords_size,
                     const void* values, size_t values_size) const;
   /** 
    * Writes the input coordinates and values to the array, without respecting
-   * the global cell order of the array.    
+   * the global cell order of the array. 
+   * NOTE: The input buffers will be freed by the function. 
    */
   void write(const ArrayDescriptor* ad, 
              const void* coords, size_t coords_size,
              const void* values, size_t values_size) const;
-
 
  private:
   // PRIVATE ATTRIBUTES

@@ -495,6 +495,17 @@ void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
 ************************ MISC *************************
 ******************************************************/
 
+int64_t ArraySchema::cell_id_hilbert(const void* coords) const {
+  if(*(types_[attribute_num_]) == typeid(int))
+    return cell_id_hilbert(static_cast<const int*>(coords));  
+  else if(*(types_[attribute_num_]) == typeid(int64_t))
+    return cell_id_hilbert(static_cast<const int64_t*>(coords));  
+  else if(*(types_[attribute_num_]) == typeid(float))
+    return cell_id_hilbert(static_cast<const float*>(coords));  
+  else if(*(types_[attribute_num_]) == typeid(double))
+    return cell_id_hilbert(static_cast<const double*>(coords));  
+}
+
 template<typename T>
 int64_t ArraySchema::cell_id_hilbert(const T* coordinates) const {
   assert(*types_[attribute_num_] == typeid(T));
@@ -839,6 +850,17 @@ bool ArraySchema::succeeds(const T* coords_A,
   }
 }
 
+int64_t ArraySchema::tile_id_column_major(const void* coords) const {
+  if(*(types_[attribute_num_]) == typeid(int))
+    return tile_id_column_major(static_cast<const int*>(coords));  
+  else if(*(types_[attribute_num_]) == typeid(int64_t))
+    return tile_id_column_major(static_cast<const int64_t*>(coords));  
+  else if(*(types_[attribute_num_]) == typeid(float))
+    return tile_id_column_major(static_cast<const float*>(coords));  
+  else if(*(types_[attribute_num_]) == typeid(double))
+    return tile_id_column_major(static_cast<const double*>(coords));  
+}
+
 template<typename T>
 int64_t ArraySchema::tile_id_column_major(const T* coords) const {
   assert(check_on_tile_id_request(coords));
@@ -851,6 +873,17 @@ int64_t ArraySchema::tile_id_column_major(const T* coords) const {
   }	
 
   return tile_ID;
+}
+
+int64_t ArraySchema::tile_id_hilbert(const void* coords) const {
+  if(*(types_[attribute_num_]) == typeid(int))
+    return tile_id_hilbert(static_cast<const int*>(coords));  
+  else if(*(types_[attribute_num_]) == typeid(int64_t))
+    return tile_id_hilbert(static_cast<const int64_t*>(coords));  
+  else if(*(types_[attribute_num_]) == typeid(float))
+    return tile_id_hilbert(static_cast<const float*>(coords));  
+  else if(*(types_[attribute_num_]) == typeid(double))
+    return tile_id_hilbert(static_cast<const double*>(coords));  
 }
 
 template<typename T>
@@ -869,6 +902,17 @@ int64_t ArraySchema::tile_id_hilbert(const T* coords) const {
   delete [] int_coords;
 
   return tile_ID;
+}
+
+int64_t ArraySchema::tile_id_row_major(const void* coords) const {
+  if(*(types_[attribute_num_]) == typeid(int))
+    return tile_id_row_major(static_cast<const int*>(coords));  
+  else if(*(types_[attribute_num_]) == typeid(int64_t))
+    return tile_id_row_major(static_cast<const int64_t*>(coords));  
+  else if(*(types_[attribute_num_]) == typeid(float))
+    return tile_id_row_major(static_cast<const float*>(coords));  
+  else if(*(types_[attribute_num_]) == typeid(double))
+    return tile_id_row_major(static_cast<const double*>(coords));  
 }
 
 template<typename T>

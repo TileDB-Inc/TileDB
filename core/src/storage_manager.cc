@@ -419,7 +419,7 @@ const StorageManager::ArrayDescriptor* StorageManager::open_array(
   return new ArrayDescriptor(array_schema, fd); 
 }
 
-const StorageManager::FragmentDescriptor* StorageManager::open_fragment(
+StorageManager::FragmentDescriptor* StorageManager::open_fragment(
     const ArraySchema* array_schema, 
     const std::string& fragment_name,
     Mode mode) {
@@ -452,6 +452,26 @@ const StorageManager::FragmentDescriptor* StorageManager::open_fragment(
   }
 
   return new FragmentDescriptor(&fragment_info); 
+}
+
+void StorageManager::prepare_to_write(
+    FragmentDescriptor* fd, size_t size) const {
+  // TODO
+}
+
+void StorageManager::write_cell(
+    FragmentDescriptor* fd, const CoordsAttrs& cell) const {
+  fd->ws_cells_0_.push_back(cell);
+}
+
+void StorageManager::write_cell(
+    FragmentDescriptor* fd, const IdCoordsAttrs& cell) const {
+  fd->ws_cells_1_.push_back(cell);
+}
+
+void StorageManager::write_cell(
+    FragmentDescriptor* fd, const IdIdCoordsAttrs& cell) const {
+  fd->ws_cells_2_.push_back(cell);
 }
 
 /******************************************************
@@ -874,6 +894,13 @@ void StorageManager::get_overlapping_tile_pos(
 
   delete [] partial;
   delete [] full;
+}
+
+void StorageManager::write_cell(
+    FragmentDescriptor* fd, const void* coords, const void* attributes) const {
+  // For easy reference
+  const ArraySchema* array_schema = fd->array_schema();
+
 }
 
 /******************************************************

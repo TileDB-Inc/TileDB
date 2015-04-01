@@ -125,6 +125,42 @@ class StorageManager {
   /** Mnemonic: [attribute_id] --> <tile#1, tile#2, ...> */
   typedef std::vector<TileList> Tiles;
 
+  /**  Encapsulating coordinates and attributes. */
+  struct CoordsAttrs {
+    /** Buffer of attributtes. */ 
+    const void* attrs_; 
+    /** Buffer of coordinates. */ 
+    const void* coords_;
+    /** Number of dimensions (i.e., number of coordinates). */
+    int dim_num_;
+  };
+
+  /**  Encapsulating coordinates, attributes and an id. */
+  struct IdCoordsAttrs {
+    /** Buffer of attributtes. */ 
+    const void* attrs_; 
+    /** Buffer of coordinates. */ 
+    const void* coords_;
+    /** Number of dimensions (i.e., number of coordinates). */
+    int dim_num_;
+    /** An id. */
+    int64_t id_;
+  };
+
+  /**  Encapsulating coordinates, attributes and two ids. */
+  struct IdIdCoordsAttrs {
+    /** Buffer of attributtes. */ 
+    const void* attrs_; 
+    /** Buffer of coordinates. */ 
+    const void* coords_;
+    /** Number of dimensions (i.e., number of coordinates). */
+    int dim_num_;
+    /** An id. */
+    int64_t id_1_;
+    /** An id. */
+    int64_t id_2_;
+  };
+
   /** 
    * This struct groups info about an array fragment (e.g., schema, book-keeping
    * structures, etc.).
@@ -192,6 +228,11 @@ class StorageManager {
    * along with FragmentDescriptor::fragment_info_id_ that is used for debugging
    * purposes to check if the stored FragmentInfo object is obsolete (i.e., if 
    * it has been deleted by the storage manager when closing the fragment).
+   *
+   * A FragmentDescriptor object also maintains some 'write state' when
+   * appending unordered logical cells to a fragment. This is necessary
+   * to accommodate successive writes, and facilitate an incremental
+   * sorting processes of the cells.
    */
   class FragmentDescriptor {
     // StorageManager objects can manipulate the private members of this class.
@@ -221,6 +262,11 @@ class StorageManager {
     /** Returns the fragment name. */
     const std::string& fragment_name() const 
         { return fragment_name_; } 
+
+    // MUTATORS
+    /** Adds a buffer that must be freed later (after it is consumed). */
+    void add_buffer_to_be_freed(const void* buffer) 
+        { buffers_to_be_freed_.push_back(buffer); }
  
    private:
     // PRIVATE ATTRIBUTES
@@ -237,7 +283,30 @@ class StorageManager {
     int64_t fragment_info_id_;
     /** The fragment name. */
     std::string fragment_name_;
-    
+    /** 
+     * Part of the write state, which stores the pointers to the buffers to be
+     * freed. 
+     */
+    std::vector<const void*> buffers_to_be_freed_;
+    /** 
+     * Part of the write state, which stores logical cells.
+     * '0' stands for 'no id', i.e., the sorting will only be based on the 
+     * coordinates. 
+     */
+    std::vector<CoordsAttrs> ws_cells_0_;
+    /** 
+     * Part of the write state, which stores logical cells.
+     * '1' stands for '1 id', i.e., the sorting will be based on the id first, 
+     * and then on the coordinates.
+     */
+    std::vector<IdCoordsAttrs> ws_cells_1_;
+    /** 
+     * Part of the write state, which stores logical cells.
+     * '2' stands for '2 ids', i.e., the sorting will be based first on id_1,
+     * then on id_2 and then on the coordinates.
+     */
+    std::vector<IdIdCoordsAttrs> ws_cells_2_;
+
     // PRIVATE METHODS
     /** 
      * Override the delete operator so that only a StorageManager object can
@@ -397,9 +466,33 @@ class StorageManager {
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names, Mode mode);
   /** Opens a fragment array in the input mode.*/
-  const FragmentDescriptor* open_fragment(
+  FragmentDescriptor* open_fragment(
       const ArraySchema* array_schema, 
       const std::string& fragment_name, Mode mode);
+  /** 
+   * Prepares to write data of the input size into a fragment. This may 
+   * trigger the sorting of the data buffered into the input fragment
+   * (using external sorting), in order to appropriately free space in 
+   * main memory. 
+   * NOTE: This function is necessary prior to starting any sequence
+   * of writes into a fragment.
+   */
+  void prepare_to_write(FragmentDescriptor* fd, size_t size) const;
+  /** 
+   * Writes a logical cell (comprised of coordinates and attributes) into
+   * a fragment. 
+   */
+  void write_cell(FragmentDescriptor* fd, const CoordsAttrs& cell) const;
+  /** 
+   * Writes a logical cell (comprised of coordinates, attributes and a 
+   * cell or tile id) into a fragment. 
+   */
+  void write_cell(FragmentDescriptor* fd, const IdCoordsAttrs& cell) const;
+  /** 
+   * Writes a logical cell (comprised of coordinates, attributes, a tile
+   * id and a cell id) into a fragment. 
+   */
+  void write_cell(FragmentDescriptor* fd, const IdIdCoordsAttrs& cell) const;
 
   // TILE FUNCTIONS
   /**
@@ -539,6 +632,15 @@ class StorageManager {
       const FragmentDescriptor* fd, 
       const T* range, 
       std::vector<std::pair<int64_t, bool> >* overlapping_tile_pos) const;
+
+  /** 
+   * Writes a logical cell (consisiting of the coordinates and the rest of
+   * the attributes) into a fragment. This function does not respect the
+   * array global cell order, so it must properly take care of sorting
+   * the cells as they come in.
+   */
+  void write_cell(FragmentDescriptor* fd, 
+                  const void* coords, const void* attributes) const;
 
  private: 
   // PRIVATE ATTRIBUTES

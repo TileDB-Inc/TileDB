@@ -113,7 +113,7 @@ class Executor {
    * Opens an array fragment in WRITE mode and returns the corresponding 
    * descriptor. 
    */
-  const StorageManager::FragmentDescriptor* open_fragment(
+  StorageManager::FragmentDescriptor* open_fragment(
       const ArraySchema* array_schema) const;
   /** 
    * Copies the coordinates of the non-empty cells of the input array
@@ -152,6 +152,14 @@ class Executor {
   /** Updates an array with the data in the input CSV file. */
   void update(const std::string& filename, 
               const std::string& array_name) const;
+  /**  
+   * Writes the input coordinates and values into an array. The input values 
+   * do not respect the global cell order.
+   * NOTE: The input buffers will be freed by the function.
+   */
+  void write(StorageManager::FragmentDescriptor* fd,
+             const void* coords, size_t coords_size, 
+             const void* values, size_t values_size) const; 
 
  private:
   // PRIVATE ATTRIBUTES

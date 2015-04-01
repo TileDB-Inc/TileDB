@@ -45,7 +45,6 @@ DistributedExecutor::ArrayDescriptor::ArrayDescriptor(
   array_schema_ = array_schema;
   ad_ = ad;
   fd_ = NULL;
-  sorted_ = true;
 
   // Compute the local domains
   // NOTE: This will change in the future - it will become much more flexible
@@ -54,12 +53,11 @@ DistributedExecutor::ArrayDescriptor::ArrayDescriptor(
 
 DistributedExecutor::ArrayDescriptor::ArrayDescriptor(
     const ArraySchema* array_schema,
-    const StorageManager::FragmentDescriptor* fd, 
+    StorageManager::FragmentDescriptor* fd, 
     int wold_size, int world_rank) {
   array_schema_ = array_schema;
   ad_ = NULL;
   fd_ = fd;
-  sorted_ = true;
 
   // Compute the local domains
   // NOTE: This will change in the future - it will become much more flexible
@@ -164,7 +162,7 @@ const DistributedExecutor::ArrayDescriptor* DistributedExecutor::open_array(
      return new ArrayDescriptor(array_schema, ad, mpi_module_->size(), 
                                 mpi_module_->rank());
   } else if(mode == WRITE) {
-     const StorageManager::FragmentDescriptor* fd = 
+     StorageManager::FragmentDescriptor* fd = 
          executor_->open_fragment(array_schema);
      return new ArrayDescriptor(array_schema, fd, mpi_module_->size(), 
                                 mpi_module_->rank());
@@ -220,8 +218,9 @@ void DistributedExecutor::write(
     const ArrayDescriptor* ad, 
     const void* coords, size_t coords_size,
     const void* values, size_t values_size) const {
-  // TODO: Stavros
+  assert(ad->fd_ != NULL);
 
+  executor_->write(ad->fd_, coords, coords_size, values, values_size);
 }
 
 void DistributedExecutor::write_sorted(
@@ -229,4 +228,5 @@ void DistributedExecutor::write_sorted(
     const void* coords, size_t coords_size,
     const void* values, size_t values_size) const {
   // TODO: Stavros
+
 }

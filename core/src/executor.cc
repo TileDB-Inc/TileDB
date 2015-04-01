@@ -445,8 +445,7 @@ const StorageManager::ArrayDescriptor* Executor::open_array(
                                       StorageManager::READ);
 }
 
-
-const StorageManager::FragmentDescriptor* Executor::open_fragment(
+StorageManager::FragmentDescriptor* Executor::open_fragment(
     const ArraySchema* array_schema) const {
   // Get fragment name from the consolidator
   const Consolidator::ArrayDescriptor* ad = 
@@ -668,6 +667,13 @@ void Executor::update(const std::string& filename,
   // This may trigger consolidation.
   consolidator_->add_fragment(ad);  
   consolidator_->close_array(ad);
+}
+
+void Executor::write(
+    StorageManager::FragmentDescriptor* fd,
+    const void* coords, size_t coords_size,
+    const void* values, size_t values_size) const {
+  loader_->write(fd, coords, coords_size, values, values_size);
 }
 
 /******************************************************

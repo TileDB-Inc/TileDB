@@ -470,7 +470,39 @@ void QueryProcessor::subarray(
     subarray_irregular(fd, range, result_fd);
 }
 
-*/ 
+*/
+
+void QueryProcessor::write(
+    StorageManager::FragmentDescriptor* fd,
+    const void* coords, size_t coords_size,
+    const void* values, size_t values_size) const {
+  // This function works for a single attribute
+  assert(fd->array_schema()->attribute_num() == 1);
+
+  // For easy reference
+  const ArraySchema* array_schema = fd->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  size_t coords_cell_size = array_schema->cell_size(attribute_num);
+  size_t values_cell_size = array_schema->cell_size(0);
+
+  // Number of cells to be written
+  int64_t cell_num = coords_size / coords_cell_size;
+
+  // Checks on cell num
+  assert(coords_size % coords_cell_size == 0);
+  assert(values_size % values_cell_size == 0);
+  assert(cell_num == values_size / values_cell_size);
+
+  // Write each logical cell to the array
+
+
+
+
+  for(int64_t i=0; i<cell_num; ++i)
+    storage_manager_->write_cell(fd, 
+        static_cast<const char*>(coords)+i*coords_cell_size, 
+        static_cast<const char*>(values)+i*values_cell_size);
+} 
 
 /******************************************************
 ******************* PRIVATE METHODS *******************
@@ -3836,5 +3868,3 @@ void QueryProcessor::subarray_regular(
 }
 
 */
-
-

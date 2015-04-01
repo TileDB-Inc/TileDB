@@ -166,8 +166,13 @@ class ArraySchema {
    * Returns the cell id of the input coordinates, along the Hilbert 
    * space-filling curve.
    */
+  int64_t cell_id_hilbert(const void* coords) const;
+  /** 
+   * Returns the cell id of the input coordinates, along the Hilbert 
+   * space-filling curve.
+   */
   template<typename T>
-  int64_t cell_id_hilbert(const T* coordinates) const;
+  int64_t cell_id_hilbert(const T* coords) const;
   /** Returns an identical schema assigning the input to the array name. */
   ArraySchema clone(const std::string& array_name) const;
   /** Returns an identical schema with the input array name and cell order. */
@@ -253,14 +258,23 @@ class ArraySchema {
   template<class T>
   bool succeeds(const T* coords_A, const T* coords_B) const;
   /** Returns a tile id following a column major order. */
+  int64_t tile_id_column_major(const void* coords) const;
+  /** Returns a tile id following a column major order. */
   template<typename T>
   int64_t tile_id_column_major(const T* coords) const;
    /** 
    * Returns the tile id of the input coordinates, along the Hilbert 
    * space-filling curve.
    */
+  int64_t tile_id_hilbert(const void* coords) const;
+   /** 
+   * Returns the tile id of the input coordinates, along the Hilbert 
+   * space-filling curve.
+   */
   template<typename T>
   int64_t tile_id_hilbert(const T* coords) const;
+  /** Returns a tile id following a row major order. */
+  int64_t tile_id_row_major(const void* coords) const;
   /** Returns a tile id following a row major order. */
   template<typename T>
   int64_t tile_id_row_major(const T* coords) const;
