@@ -135,8 +135,13 @@ class ArraySchema {
   int64_t capacity() const { return capacity_; }
   /** Returns the tile order.  */
   CellOrder cell_order() const { return cell_order_; }
+  /** 
+   * Returns the size of an entire logical cell (coordinates and
+   * and attributes).
+   */
+  size_t cell_size() const { return cell_size_; }
   /** Returns the cell size of the i-th attribute. */
-  size_t cell_size(int i) const;
+  size_t cell_size(int i) const { return cell_sizes_[i]; }
   /** Returns the consolidation step. */
   int consolidation_step() const { return consolidation_step_; }
   /** Returns the number of dimensions. */
@@ -174,11 +179,11 @@ class ArraySchema {
   template<typename T>
   int64_t cell_id_hilbert(const T* coords) const;
   /** Returns an identical schema assigning the input to the array name. */
-  ArraySchema clone(const std::string& array_name) const;
+  ArraySchema* clone(const std::string& array_name) const;
   /** Returns an identical schema with the input array name and cell order. */
-  ArraySchema clone(const std::string& array_name, CellOrder cell_order) const;
+  ArraySchema* clone(const std::string& array_name, CellOrder cell_order) const;
   /** Returns an identical schema assigning the input to the capacity. */
-  ArraySchema clone(int64_t capacity) const;
+  ArraySchema* clone(int64_t capacity) const;
   /** 
    * Returns the schema of the result when joining the arrays with the
    * input schemas. The result array name is given in the third argument. 
@@ -302,6 +307,12 @@ class ArraySchema {
    * ArraySchema::capacity_.
    */
   int64_t capacity_;
+  /** The cell order. */
+  CellOrder cell_order_;
+  /** The size of an entire logical cell (i.e., coordinates plus attributes). */
+  size_t cell_size_;
+  /** Stores the size of every attribute (plus coordinates in the end). */
+  std::vector<size_t> cell_sizes_;
   /** 
    * Indicates the compression type of each attribute (where the coordinates
    * are treated as an extra (m+1)-th attribute).
@@ -329,8 +340,6 @@ class ArraySchema {
    * Hilbert curve, via ArraySchema::tile_id_hilbert. 
    */
   int hilbert_tile_bits_;
-  /** The cell order. */
-  CellOrder cell_order_;
   /** 
    * Offsets needed for calculating tile ids with 
    * ArraySchema::tile_id_column_major.
@@ -355,6 +364,8 @@ class ArraySchema {
   /** Performs appropriate checks upon a tile id request. */
   template<typename T>
   bool check_on_tile_id_request(const T* coordinates) const;
+  /** Returns the size of an attribute (or coordinates). */
+  size_t compute_cell_size(int attribute_id) const;
   /** 
    * Initializes the ArraySchema::hilbert_cell_bits_ value, which is 
    * necessary for calulcating cell ids with the Hilbert curve via 

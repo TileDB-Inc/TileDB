@@ -32,6 +32,7 @@
  */
   
 #include "executor.h"
+#include "utils.h"
 #include <assert.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -46,7 +47,7 @@
 
 Executor::Executor(std::string workspace) { 
   set_workspace(workspace);
-  create_workspace(); 
+  create_directory(workspace_); 
 
   storage_manager_ = new StorageManager(workspace);
   loader_ = new Loader(workspace, storage_manager_);
@@ -79,7 +80,7 @@ void Executor::close_array(
 }
 
 void Executor::close_fragment(
-    const StorageManager::FragmentDescriptor* fd) const {
+    StorageManager::FragmentDescriptor* fd) const {
   storage_manager_->close_fragment(fd);
 }
 
@@ -190,7 +191,7 @@ void Executor::filter(const std::string& array_name,
   storage_manager_->define_array(&result_array_schema);
 
   // Create the result array
-  const StorageManager::FragmentDescriptor* result_fd = 
+  StorageManager::FragmentDescriptor* result_fd = 
       storage_manager_->open_fragment(&result_array_schema,  "0_0", 
                                       StorageManager::CREATE);
 
@@ -202,7 +203,7 @@ void Executor::filter(const std::string& array_name,
       query_processor_->filter(fd, hardcoded_expression, result_fd);
 */
     } else { // Multiple fragments 
-      const std::vector<const StorageManager::FragmentDescriptor*>& fd = 
+      const std::vector<StorageManager::FragmentDescriptor*>& fd = 
           ad->fd();
 /* TODO
       query_processor_->filter(fd, hardcoded_expression, result_fd);
@@ -280,7 +281,7 @@ void Executor::join(const std::string& array_name_A,
   storage_manager_->define_array(&result_array_schema);
 
   // Create the result array
-  const StorageManager::FragmentDescriptor* result_fd = 
+  StorageManager::FragmentDescriptor* result_fd = 
       storage_manager_->open_fragment(&result_array_schema,  "0_0", 
                                       StorageManager::CREATE);
   // Dispatch query to query processor
@@ -293,9 +294,9 @@ void Executor::join(const std::string& array_name_A,
       query_processor_->join(fd_A, fd_B, result_fd);
 */
     } else { // Multiple fragments 
-      const std::vector<const StorageManager::FragmentDescriptor*>& fd_A = 
+      const std::vector<StorageManager::FragmentDescriptor*>& fd_A = 
           ad_A->fd();
-      const std::vector<const StorageManager::FragmentDescriptor*>& fd_B = 
+      const std::vector<StorageManager::FragmentDescriptor*>& fd_B = 
           ad_B->fd();
 /* TODO
       query_processor_->join(fd_A, fd_B, result_fd);
@@ -392,7 +393,7 @@ void Executor::nearest_neighbors(const std::string& array_name,
   storage_manager_->define_array(&result_array_schema);
 
   // Create the result array
-  const StorageManager::FragmentDescriptor* result_fd = 
+  StorageManager::FragmentDescriptor* result_fd = 
       storage_manager_->open_fragment(&result_array_schema,  "0_0", 
                                       StorageManager::CREATE);
 
@@ -461,7 +462,7 @@ StorageManager::FragmentDescriptor* Executor::open_fragment(
 void Executor::read(const StorageManager::ArrayDescriptor* ad,
                     int attribute_id, const void* range,
                     void*& coords, size_t& coords_size,
-                    void*& values, size_t& values_size) const {
+                    void*& attrs, size_t& attrs_size) const {
   // Check if the array is empty
   if(ad->is_empty())
     throw ExecutorException("Input array is empty.");
@@ -471,7 +472,7 @@ void Executor::read(const StorageManager::ArrayDescriptor* ad,
     if(ad->fd().size() == 1)  {  // Single fragment
       const StorageManager::FragmentDescriptor* fd = ad->fd()[0];
       query_processor_->read(fd, attribute_id, range, 
-                             coords, coords_size, values, values_size);
+                             coords, coords_size, attrs, attrs_size);
     } else { // Multiple fragments TODO 
       throw ExecutorException("Operation currently not supported on "
                               "multiple fragments.");
@@ -550,7 +551,7 @@ void Executor::retile(const std::string& array_name,
   }
 
   try {
-    const std::vector<const StorageManager::FragmentDescriptor*>& fd = 
+    const std::vector<StorageManager::FragmentDescriptor*>& fd = 
         ad->fd();
 /* TODO
     query_processor_->retile(fd, capacity, cell_order, tile_extents);
@@ -601,7 +602,7 @@ void Executor::subarray(const std::string& array_name,
   storage_manager_->define_array(&result_array_schema);
 
   // Create the result array
-  const StorageManager::FragmentDescriptor* result_fd = 
+  StorageManager::FragmentDescriptor* result_fd = 
       storage_manager_->open_fragment(&result_array_schema,  "0_0", 
                                       StorageManager::CREATE);
 
@@ -613,7 +614,7 @@ void Executor::subarray(const std::string& array_name,
       query_processor_->subarray(fd, range, result_fd);
 */
     } else { // Multiple fragments 
-      const std::vector<const StorageManager::FragmentDescriptor*>& fd = 
+      const std::vector<StorageManager::FragmentDescriptor*>& fd = 
           ad->fd();
 /*
       query_processor_->subarray(fd, range, result_fd);
@@ -671,25 +672,14 @@ void Executor::update(const std::string& filename,
 
 void Executor::write(
     StorageManager::FragmentDescriptor* fd,
-    const void* coords, size_t coords_size,
-    const void* values, size_t values_size) const {
-  loader_->write(fd, coords, coords_size, values, values_size);
+    void* coords, size_t coords_size,
+    void* attrs, size_t attrs_size) const {
+  storage_manager_->write_cells(fd, coords, coords_size, attrs, attrs_size);
 }
 
 /******************************************************
 ****************** PRIVATE METHODS ********************
 ******************************************************/
-
-void Executor::create_workspace() const {
-  struct stat st;
-  stat(workspace_.c_str(), &st);
-
-  // If the workspace does not exist, create it
-  if(!S_ISDIR(st.st_mode)) { 
-    int dir_flag = mkdir(workspace_.c_str(), S_IRWXU);
-    assert(dir_flag == 0);
-  }
-}
 
 std::vector<std::string> Executor::get_all_fragment_names(
     const ArraySchema* array_schema) const {

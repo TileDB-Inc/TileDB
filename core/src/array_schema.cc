@@ -78,6 +78,14 @@ ArraySchema::ArraySchema(
   // Name for the extra coordinate attribute
   attribute_names_.push_back(AS_COORDINATE_TILE_NAME);
 
+  // Set cell sizes
+  cell_size_ = 0;
+  for(int i=0; i<= attribute_num_; ++i) {
+    cell_sizes_.push_back(compute_cell_size(i));
+    cell_size_ += cell_sizes_.back(); 
+  }
+
+  // Set compression
   for(int i=0; i<= attribute_num_; ++i)
     compression_.push_back(NONE);
 
@@ -128,6 +136,14 @@ ArraySchema::ArraySchema(
   // Name for the extra coordinate attribute
   attribute_names_.push_back(AS_COORDINATE_TILE_NAME); 
 
+  // Set cell sizes
+  cell_size_ = 0;
+  for(int i=0; i<= attribute_num_; ++i) {
+    cell_sizes_.push_back(compute_cell_size(i));
+    cell_size_ += cell_sizes_.back(); 
+  }
+
+  // Set compression
   for(int i=0; i<= attribute_num_; ++i)
     compression_.push_back(NONE);
 
@@ -159,7 +175,7 @@ const std::string& ArraySchema::attribute_name(int i) const {
   return attribute_names_[i];
 }
 
-size_t ArraySchema::cell_size(int i) const {
+size_t ArraySchema::compute_cell_size(int i) const {
   assert(i>= 0 && i <= attribute_num_);
 
   size_t size;
@@ -484,6 +500,13 @@ void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
   // Extra coordinate attribute
   attribute_names_.push_back(AS_COORDINATE_TILE_NAME);
 
+  // Set cell sizes
+  cell_size_ = 0;
+  for(int i=0; i<= attribute_num_; ++i) {
+    cell_sizes_.push_back(compute_cell_size(i));
+    cell_size_ += cell_sizes_.back(); 
+  }
+
   compute_hilbert_cell_bits();
   if(tile_extents_.size() != 0) { // Only for regular tiles
     compute_hilbert_tile_bits();
@@ -529,25 +552,28 @@ int64_t ArraySchema::cell_id_hilbert(const T* coordinates) const {
   return cell_ID;
 }
 
-ArraySchema ArraySchema::clone(const std::string& array_name) const {
-  ArraySchema array_schema = *this;
-  array_schema.array_name_ = array_name; // Input array name
+ArraySchema* ArraySchema::clone(const std::string& array_name) const {
+  ArraySchema* array_schema = new ArraySchema();
+  *array_schema = *this;
+  array_schema->array_name_ = array_name; // Input array name
  
   return array_schema;
 }
 
-ArraySchema ArraySchema::clone(
+ArraySchema* ArraySchema::clone(
     const std::string& array_name, CellOrder cell_order) const {
-  ArraySchema array_schema = *this;
-  array_schema.array_name_ = array_name; // Input array name
-  array_schema.cell_order_ = cell_order;  // Input cell order
+  ArraySchema* array_schema = new ArraySchema();
+  *array_schema = *this;
+  array_schema->array_name_ = array_name; // Input array name
+  array_schema->cell_order_ = cell_order;  // Input cell order
 
   return array_schema;
 }
 
-ArraySchema ArraySchema::clone(int64_t capacity) const {
-  ArraySchema array_schema = *this;
-  array_schema.capacity_ = capacity; // Input capacity
+ArraySchema* ArraySchema::clone(int64_t capacity) const {
+  ArraySchema* array_schema = new ArraySchema();
+  *array_schema = *this;
+  array_schema->capacity_ = capacity; // Input capacity
 
   return array_schema;
 }

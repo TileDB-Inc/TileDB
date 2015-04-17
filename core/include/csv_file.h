@@ -171,7 +171,7 @@ class CSVLine {
    * The current position (index) in CSVLine::values_ for reading, when 
    * using CSVLine::operator>>.
    */
-  unsigned int pos_;
+  int pos_;
   /** 
    * Internally, the line is modeled as a vector of values (the ','
    * characters are not explicitly stored). 
@@ -196,27 +196,19 @@ class CSVLine {
  */
 class CSVFile {
  public:
-  /** 
-    * A CSV file can be opened in READ mode (for reading lines)
-    * or WRITE/APPEND mode (for appending lines to the end of the file).
-    * In both WRITE/APPEND modes, for as long as the object is alive,
-    * new lines are always appended at the end. The difference in WRITE
-    * is that, upon initialization, if the file existed it will be deleted.
-    */ 
-  enum Mode {READ, WRITE, APPEND};
-
-  // CONSTRUCTORS
-  /** 
-   * Simple constructor.
-   * \param filename The name of the CSV file.
-   * \param mode The mode of the CSV file (see CSVFile::Mode).
-   * \param segment_size The segment size determines the amount of data 
-   * exchanged in an I/O operation between the disk and the main memory.
-   */
-  CSVFile(const std::string& filename, Mode mode, 
-          uint64_t segment_size = CSV_SEGMENT_SIZE);
+  // CONSTRUCTORS & DESTRUCTORS
+  /** Constructor. */
+  CSVFile();
+  /** Destructor. */
   ~CSVFile();
-  
+ 
+  // METHODS
+  /** Closes the CSV file. */
+  void close();
+  /** Opens the CSV file in the input mode (see CSVFile::mode_). */
+  bool open(const std::string& filename, const char* mode, 
+            size_t segment_size = CSV_SEGMENT_SIZE);
+ 
   // OPERATORS
   /** 
    * Appends a CSV line to the end of the CSV file. The CSV file is treated
@@ -241,25 +233,34 @@ class CSVFile {
   /** 
     * The position AFTER the last useful byte in buffer.
     */
-  uint64_t buffer_end_;
+  size_t buffer_end_;
   /** 
     * A pointer to the current position (for reading or writing) in the buffer.
     */
-  uint64_t buffer_offset_;
+  size_t buffer_offset_;
   /** 
     * A pointer to the current position in the file where the NEXT read will 
     * take place (used only by CSVFile::operator>> in READ mode).
     */
-  uint64_t file_offset_;
-    /** The name of the CSV file (full path) */
+  int64_t file_offset_;
+    /** The name of the CSV file. */
   std::string filename_;
-  /** The mode of the CSV file (see CSVFile::Mode). */
-  Mode mode_;	
+  /** 
+   * The mode of the CSV file. There are three modes available:
+   *
+   * "r": Read mode
+   *
+   * "w": Write mode
+   *
+   * "a": Append mode
+   *
+   */
+  char mode_[2];
   /** 
     * Determines the amount of data exchanged in an I/O operation between the 
     * disk and the main memory.
     */	
-  uint64_t segment_size_;
+  size_t segment_size_;
 
   // PRIVATE METHODS
   /** Writes the content of the buffer to the end of the file on the disk. */
@@ -270,7 +271,6 @@ class CSVFile {
    * from the file, and false otherwise.
    */
   bool read_segment();
-  
 };
 
 #endif

@@ -86,8 +86,19 @@ class QueryProcessor {
    * coordinates are written first, and then the attribute values,
    * following the order as defined in the schema of the array.
    */
-  void export_to_csv(const StorageManager::FragmentDescriptor* fd,
+  void export_to_csv(const std::string& array_name,
                      const std::string& filename) const;
+  /** 
+   * Exports an array to a CSV file. Each line in the CSV file represents
+   * a logical cell comprised of coordinates and attribute values. The 
+   * coordinates are written first, and then the attribute values,
+   * following the order as defined in the schema of the array.
+   * The function is templated on the coordinates type. 
+   * It takes as input an array descriptor instead of its name.
+   */
+  template<class T>
+  void export_to_csv(int ad, const std::string& filename) const;
+
   /** 
    * Exports an array to a CSV file. Each line in the CSV file represents
    * a logical cell comprised of coordinates and attribute values. The 
@@ -168,21 +179,25 @@ class QueryProcessor {
    * corresponding values on the input attribute into buffer values,
    * setting properly the buffer sizes in bytes. 
    */
+/* TODO
   void read(const StorageManager::FragmentDescriptor* fd,
             int attribute_id, const void* range,
             void*& coords, size_t& coords_size,
             void*& values, size_t& values_size) const;
+*/
   /** 
    * Copies the coordinates of the non-empty cells of the input array
    * falling inside the input range into the coords buffer, and their
    * corresponding values on the input attribute into buffer values,
    * setting properly the buffer sizes in bytes. 
    */
+/* TODO
   template<class T>
   void read_irregular(const StorageManager::FragmentDescriptor* fd,
                       int attribute_id, const T* range,
                       void*& coords, size_t& coords_size,
                       void*& values, size_t& values_size) const;
+*/
   /** 
    * Retiles an array based on the inputs. If tile extents are provided
    * (i) in the case of regular tiles, if the extents differ from those in the
@@ -258,6 +273,23 @@ class QueryProcessor {
       const Tile::Range& range,
       const StorageManager::FragmentDescriptor* result_fd) const;
 */
+  /** 
+   * A subarray query creates a new array from the input array, 
+   * containing only the cells whose coordinates fall into the input range. 
+   * The new array will have the input result name. 
+   */
+  void subarray(const std::string& array_name, 
+                const void* range,
+                const std::string& result_array_name) const;
+  /** 
+   * A subarray query creates a new array from the input array, 
+   * containing only the cells whose coordinates fall into the input range. 
+   * The new array will have the input result name. 
+   * The function is templated on the coordinates type. 
+   * It takes as input array descriptors instead of names.
+   */
+  template<class T>
+  void subarray(int ad, const T* range, int result_ad) const;
 
  private:
   // PRIVATE ATTRIBUTES
@@ -268,8 +300,10 @@ class QueryProcessor {
 
   // PRIVATE METHODS
   /** Advances all the cell iterators by 1. */
+/* TODO
   void advance_cell_its(int attribute_num,
                         Tile::const_cell_iterator* cell_its) const;
+*/
  /** 
    * Advances by one only the cell iterators of the attributes whose id is in 
    * attribute_ids. 
@@ -373,8 +407,10 @@ class QueryProcessor {
       bool& coordinate_cell_its_initialized) const;
 */
   /** Advances all the tile iterators by 1. */
+/* TODO
   void advance_tile_its(int attribute_num,
                         StorageManager::const_tile_iterator* tile_its) const; 
+*/
   /** Advances only the attribute tile iterators by step. */
 /* TODO
   void advance_tile_its(unsigned int attribute_num,
@@ -434,8 +470,7 @@ class QueryProcessor {
    * comprised of all coordinates and attribute values, which are contained 
    * in the input array of cell iterators.
    */
-  CSVLine cell_to_csv_line(const Tile::const_cell_iterator* cell_its,
-                           int attribute_num) const;
+  CSVLine cell_to_csv_line(const void* cell, const ArraySchema* array_schema) const;
   /** 
    * Returns true if the input (cell or tile) iterators point to the same
    * coordinates along the global order. Note that for the current tiles,
@@ -489,8 +524,6 @@ class QueryProcessor {
       uint64_t k,
       const std::vector<DistRank>& sorted_dist_ranks) const;
 */
-  /** Creates the workspace folder. */
-  void create_workspace() const;
   /** 
    * Implementation of QueryProcessor::filter for the case of regular tiles. 
    * This function operators on multiple array fragments.
@@ -699,10 +732,12 @@ class QueryProcessor {
                            Tile::const_cell_iterator* cell_its) const; 
 */
   /** Initializes cell iterators. */
+/* TODO
   void initialize_cell_its(const StorageManager::const_tile_iterator* tile_its,
                            int attribute_num,
                            Tile::const_cell_iterator* cell_its, 
                            Tile::const_cell_iterator& cell_it_end) const; 
+*/
   /** Initializes the cell iterators described in attribute_ids. */
 /* TODO
   void initialize_cell_its(
@@ -725,10 +760,12 @@ class QueryProcessor {
                            Tile::const_iterator* cell_its) const; 
 */
   /** Initializes tile iterators. */
+/* TODO
   void initialize_tile_its(
       const StorageManager::FragmentDescriptor* fd,
       StorageManager::const_tile_iterator* tile_its,
       StorageManager::const_tile_iterator& tile_it_end) const;
+*/
   /** 
    * Initializes tile iterators. The last argument determines which attribute
    * the end tile iterator will correspond to.
@@ -862,8 +899,6 @@ class QueryProcessor {
                const BoundingCoordinatesPair& bounding_coordinates_B,
                const ArraySchema& array_schema) const;
 */
-  /** Returns true if the input path is an existing directory. */
-  bool path_exists(const std::string& path) const;
   /** Returns the squared Euclidean distance between a point q and an MBR. */
 /* TODO
   double point_to_mbr_distance(const std::vector<double>& q,

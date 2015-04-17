@@ -32,6 +32,7 @@
  */
 
 #include "csv_file.h"
+#include "utils.h"
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -61,7 +62,7 @@ std::string CSVLine::str() const {
     return "";
 
   std::string ret = values_[0];
-  for(unsigned int i=1; i<values_.size(); i++)
+  for(int i=1; i<values_.size(); i++)
     ret += "," + values_[i];
   return ret;
 }
@@ -190,7 +191,7 @@ void CSVLine::operator<<(double value) {
 template<>
 void CSVLine::operator<<(const std::vector<char>& values) {
   char s[2];
-  for(unsigned int i=0; i<values.size(); i++) {
+  for(int i=0; i<values.size(); i++) {
     sprintf(s, "%c", values[i]); 
     values_.push_back(s);
   }
@@ -199,7 +200,7 @@ void CSVLine::operator<<(const std::vector<char>& values) {
 template<>
 void CSVLine::operator<<(const std::vector<int>& values) {
   char s[CSV_MAX_DIGITS];
-  for(unsigned int i=0; i<values.size(); i++) {
+  for(int i=0; i<values.size(); i++) {
     sprintf(s, "%d", values[i]); 
     values_.push_back(s);
   }
@@ -208,7 +209,7 @@ void CSVLine::operator<<(const std::vector<int>& values) {
 template<>
 void CSVLine::operator<<(const std::vector<int64_t>& values) {
   char s[CSV_MAX_DIGITS];
-  for(unsigned int i=0; i<values.size(); i++) {
+  for(int i=0; i<values.size(); i++) {
     sprintf(s, "%lld", values[i]); 
     values_.push_back(s);
   }
@@ -217,7 +218,7 @@ void CSVLine::operator<<(const std::vector<int64_t>& values) {
 template<>
 void CSVLine::operator<<(const std::vector<float>& values) {
   char s[CSV_MAX_DIGITS];
-  for(unsigned int i=0; i<values.size(); i++) {
+  for(int i=0; i<values.size(); i++) {
     sprintf(s, "%g", values[i]); 
     values_.push_back(s);
   }
@@ -226,7 +227,7 @@ void CSVLine::operator<<(const std::vector<float>& values) {
 template<>
 void CSVLine::operator<<(const std::vector<double>& values) {
   char s[CSV_MAX_DIGITS];
-  for(unsigned int i=0; i<values.size(); i++) {
+  for(int i=0; i<values.size(); i++) {
     sprintf(s, "%lg", values[i]); 
     values_.push_back(s);
   }
@@ -367,25 +368,10 @@ void CSVLine::tokenize(std::string line) {
 /* ----------------- CSVFile functions ------------- */
 
 /******************************************************
-********************* CONSTRUCTORS ********************
+************* CONSTRUCTORS & DESTRUCTORS **************
 ******************************************************/
 
-CSVFile::CSVFile(const std::string& filename, Mode mode, 
-                 uint64_t segment_size) 
-    : filename_(filename), mode_(mode), segment_size_(segment_size) {
-  // Replace '~' with the absolute path
-  if(filename_[0] == '~') 
-    filename_ = std::string(getenv("HOME")) +
-                 filename_.substr(1, filename_.size()-1);
-
-  // If the mode is WRITE, delete the previous file in order to overwrite it.
-  // After initialization and for as long as the CSVFile object is alive,
-  // it will be in APPEND mode.
-  if(mode_ == WRITE) {
-    remove(filename_.c_str());
-    mode_ = APPEND;
-  }
-
+CSVFile::CSVFile() { 
   buffer_ = NULL;
   buffer_end_ = 0;
   buffer_offset_ = 0;
@@ -393,13 +379,50 @@ CSVFile::CSVFile(const std::string& filename, Mode mode,
 }
 
 CSVFile::~CSVFile() {
+  close();
+}
+
+/******************************************************
+********************** OPERATORS **********************
+******************************************************/
+
+void CSVFile::close() {
   if(buffer_ != NULL) {
     // If there are data in the buffer pending to be written in the file,
     // flush the buffer.
-    if(mode_ == APPEND && buffer_offset_ != 0)
+    if(((strcmp(mode_, "a") == 0) || (strcmp(mode_, "w") == 0)) && 
+       buffer_offset_ != 0)
       flush_buffer();
     delete buffer_;
+    buffer_ = NULL;
   }
+}
+
+bool CSVFile::open(const std::string& filename, 
+                   const char* mode,
+                   size_t segment_size) {
+  filename_ = absolute_path(filename);
+
+  if(strcmp(mode_, "r") == 0 && !file_exists(filename_))
+    return false;
+
+  segment_size_ = segment_size;
+  strcpy(mode_, mode);
+  
+  // If mode is "w", delete the previous file in order to overwrite it.
+  // After initialization and for as long as the CSVFile object is alive,
+  // it will be in "a" mode.
+  if(strcmp(mode_, "w") == 0) {
+    remove(filename_.c_str());
+    strcpy(mode_, "a");
+  }
+
+  buffer_ = NULL;
+  buffer_end_ = 0;
+  buffer_offset_ = 0;
+  file_offset_ = 0;
+
+  return true;
 }
 
 /******************************************************
@@ -407,7 +430,7 @@ CSVFile::~CSVFile() {
 ******************************************************/
 
 void CSVFile::operator<<(const CSVLine& csv_line) {
-  assert(mode_ != READ);
+  assert(strcmp(mode_, "w") == 0 || strcmp(mode_, "a") == 0);
 
   const std::string& line = csv_line.str(); 
   assert(line.size() <= segment_size_);
@@ -435,7 +458,7 @@ void CSVFile::operator<<(const CSVLine& csv_line) {
 }
 
 bool CSVFile::operator>>(CSVLine& csv_line) {
-  assert(mode_ == READ);
+  assert(strcmp(mode_, "r") == 0);
 
   // NOTE: buffer_end_ always points to a '\0' character.
 
@@ -470,7 +493,7 @@ bool CSVFile::operator>>(CSVLine& csv_line) {
 
   // Return line
   csv_line = line;
- 
+
   return true;
 }
 
@@ -480,27 +503,28 @@ bool CSVFile::operator>>(CSVLine& csv_line) {
 
 void CSVFile::flush_buffer() {
   // Open file
-  int fd = open(filename_.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
-                S_IRWXU);
+  int fd = ::open(filename_.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
+                  S_IRWXU);
   assert(fd != -1);
 
   write(fd, buffer_, buffer_offset_);
-  close(fd);	
+  ::close(fd);	
 }
 
 bool CSVFile::read_segment() {
-  int fd = open(filename_.c_str(), O_RDONLY);
+  int fd = ::open(filename_.c_str(), O_RDONLY);
+
   assert(fd != -1);
   struct stat st;
   fstat(fd, &st);
 
   // Handle end of the file
   if(file_offset_ >= st.st_size) {
-    close(fd);
+    ::close(fd);
     return false;
   }
 
-  uint64_t bytes_to_be_read = (st.st_size-file_offset_ >= segment_size_) 
+  size_t bytes_to_be_read = (st.st_size-file_offset_ >= segment_size_) 
                               ? segment_size_ : st.st_size-file_offset_;
 
   // Initialize the buffer
@@ -528,7 +552,7 @@ bool CSVFile::read_segment() {
   file_offset_ += buffer_end_;
   buffer_[buffer_end_] = '\0';
 
-  close(fd);
+  ::close(fd);
   return true;
 }
 

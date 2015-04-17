@@ -275,8 +275,6 @@ class Consolidator {
   void consolidate_regular(
       const StorageManager::ArrayDescriptor* ad,
       const std::string& result_fragment_name) const;
-  /** Creates the workspace folder. */
-  void create_workspace() const;
   /** Flushes the fragment tree of an array to the disk. */
   void flush_fragment_tree(const std::string& array_name,
                            const FragmentTree& fragment_tree) const;

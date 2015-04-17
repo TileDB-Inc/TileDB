@@ -54,48 +54,112 @@ QueryProcessor::QueryProcessor(const std::string& workspace,
                                StorageManager* storage_manager) 
     : storage_manager_(storage_manager) {
   set_workspace(workspace);
-  create_workspace(); 
+  create_directory(workspace_); 
 }
 
-void QueryProcessor::export_to_csv(const StorageManager::FragmentDescriptor* fd,
-                                   const std::string& filename) const { 
+
+void QueryProcessor::export_to_csv(
+    const std::string& array_name, const std::string& filename) const { 
+  // Open array in read mode
+  int ad = storage_manager_->open_array(array_name, "r");
+  if(ad == -1)
+    throw QueryProcessorException(std::string("Cannot open array ") +
+                                  array_name + "."); 
+
   // For easy reference
-  const ArraySchema& array_schema = *(fd->array_schema());
-  int attribute_num = array_schema.attribute_num();
-  int dim_num = array_schema.dim_num();
-  
-  // Prepare CSV file
-  CSVFile csv_file(filename, CSVFile::WRITE);
-
-  // Create and initialize tile iterators
-  StorageManager::const_tile_iterator* tile_its = 
-      new StorageManager::const_tile_iterator[attribute_num+1];
-  StorageManager::const_tile_iterator tile_it_end;
-  initialize_tile_its(fd, tile_its, tile_it_end);
-
-  // Create cell iterators
-  Tile::const_cell_iterator* cell_its = 
-      new Tile::const_cell_iterator[attribute_num+1];
-  Tile::const_cell_iterator cell_it_end;
-
-  // Iterate over all tiles
-  while(tile_its[attribute_num] != tile_it_end) {
-    // Iterate over all cells of each tile
-    initialize_cell_its(tile_its, attribute_num, cell_its, cell_it_end);
-
-    while(cell_its[attribute_num] != cell_it_end) { 
-      csv_file << cell_to_csv_line(cell_its, attribute_num);
-      advance_cell_its(attribute_num, cell_its);
-    }
+  const ArraySchema* array_schema = storage_manager_->get_array_schema(ad); 
+  int attribute_num = array_schema->attribute_num();
+  const std::type_info& coords_type = *(array_schema->type(attribute_num));
  
-    advance_tile_its(attribute_num, tile_its);
-  }
+  // Invoke the proper templated function
+  if(coords_type == typeid(int)) 
+    export_to_csv<int>(ad, filename); 
+  else if(coords_type == typeid(int64_t)) 
+    export_to_csv<int64_t>(ad, filename); 
+  else if(coords_type == typeid(float)) 
+    export_to_csv<float>(ad, filename); 
+  else if(coords_type == typeid(double)) 
+    export_to_csv<double>(ad, filename); 
 
-  // Clean up 
-  delete [] tile_its;
-  delete [] cell_its;
+  // Clean up
+  storage_manager_->close_array(ad); 
 }
 
+template<class T>
+void QueryProcessor::export_to_csv(
+    int ad, const std::string& filename) const { 
+  // For easy reference
+  const ArraySchema* array_schema = storage_manager_->get_array_schema(ad); 
+
+  // Prepare CSV file
+  CSVFile csv_file;
+  csv_file.open(filename, "w");
+
+  // Prepare cell iterators
+  StorageManager::Array::const_cell_iterator<T> cell_it = 
+      storage_manager_->begin<T>(ad);
+
+  // Write cells into the CSV file
+  for(; !cell_it.end(); ++cell_it) 
+    csv_file << cell_to_csv_line(*cell_it, array_schema); 
+  
+  // Clean up 
+  csv_file.close();
+}
+
+void QueryProcessor::subarray(
+    const std::string& array_name, 
+    const void* range,
+    const std::string& result_array_name) const { 
+  // Open array in read mode
+  int ad = storage_manager_->open_array(array_name, "r");
+  if(ad == -1)
+    throw QueryProcessorException(std::string("Cannot open array ") +
+                                  array_name + "."); 
+
+  // For easy reference
+  const ArraySchema* array_schema = storage_manager_->get_array_schema(ad); 
+  int attribute_num = array_schema->attribute_num();
+  const std::type_info& coords_type = *(array_schema->type(attribute_num));
+
+  // Create result array schema
+  ArraySchema* result_array_schema = array_schema->clone(result_array_name); 
+
+  // Define result array
+  storage_manager_->define_array(result_array_schema);
+
+  // Open result array in write mode
+  int result_ad = storage_manager_->open_array(result_array_name, "w");
+  if(result_ad == -1)
+    throw QueryProcessorException(std::string("Cannot open array ") +
+                                  result_array_name + "."); 
+
+  // Invoke the proper templated function
+  if(coords_type == typeid(int)) 
+    subarray<int>(ad, static_cast<const int*>(range), result_ad); 
+  else if(coords_type == typeid(int64_t)) 
+    subarray<int64_t>(ad, static_cast<const int64_t*>(range), result_ad); 
+  else if(coords_type == typeid(float)) 
+    subarray<float>(ad, static_cast<const float*>(range), result_ad); 
+  else if(coords_type == typeid(double)) 
+    subarray<double>(ad, static_cast<const double*>(range), result_ad); 
+
+  // Clean up
+  delete result_array_schema;
+  storage_manager_->close_array(ad); 
+  storage_manager_->close_array(result_ad); 
+}
+
+template<class T>
+void QueryProcessor::subarray(int ad, const T* range, int result_ad) const { 
+  // Prepare cell iterators
+  StorageManager::Array::const_cell_iterator<T> cell_it = 
+      storage_manager_->begin<T>(ad, range);
+
+  // Write cells into the CSV file
+  for(; !cell_it.end(); ++cell_it) 
+    storage_manager_->write_cell_sorted<T>(result_ad, *cell_it);
+}
 /*
 void QueryProcessor::export_to_csv(
     const std::vector<const StorageManager::FragmentDescriptor*>& fd,
@@ -227,7 +291,6 @@ void QueryProcessor::nearest_neighbors(
   else 
     nearest_neighbors_irregular(fd, q, k, result_fd);
 }
-*/
 
 template<class T>
 void QueryProcessor::read_irregular(
@@ -366,7 +429,6 @@ void QueryProcessor::read(
   }
 } 
 
-/*
 void QueryProcessor::retile(
     const std::vector<const StorageManager::FragmentDescriptor*>& fd,
     uint64_t capacity, 
@@ -476,6 +538,8 @@ void QueryProcessor::subarray(
 ******************* PRIVATE METHODS *******************
 ******************************************************/
 
+/*
+
 inline
 void QueryProcessor::advance_cell_its(
     int attribute_num, Tile::const_cell_iterator* cell_its) const {
@@ -483,7 +547,6 @@ void QueryProcessor::advance_cell_its(
       ++cell_its[i];
 }
 
-/*
 
 inline
 void QueryProcessor::advance_cell_its(
@@ -605,8 +668,6 @@ void QueryProcessor::advance_cell_tile_its(
   }
 }
 
-*/
-
 inline
 void QueryProcessor::advance_tile_its(
     int attribute_num, 
@@ -614,8 +675,6 @@ void QueryProcessor::advance_tile_its(
   for(int i=0; i<=attribute_num; ++i) 
     ++tile_its[i];
 }
-
-/*
 
 inline
 void QueryProcessor::advance_tile_its(
@@ -682,47 +741,55 @@ bool QueryProcessor::cell_satisfies_expression(
 
 inline
 CSVLine QueryProcessor::cell_to_csv_line(
-    const Tile::const_cell_iterator* cell_its, int attribute_num) const {
+    const void* cell, const ArraySchema* array_schema) const {
+  // For easy reference
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+
+  // Prepare a CSV line
   CSVLine csv_line;
-  int dim_num = cell_its[attribute_num].dim_num();
 
   // Append coordinates first
-  const void* coords = *cell_its[attribute_num];
-  if(*(cell_its[attribute_num].cell_type()) == typeid(int)) { 
+  const void* coords = cell;
+  const std::type_info& coords_type = *(array_schema->type(attribute_num));
+  if(coords_type == typeid(int)) { 
     for(int i=0; i<dim_num; ++i)
       csv_line << static_cast<const int*>(coords)[i];
-  } else if(*(cell_its[attribute_num].cell_type()) == typeid(int64_t)) { 
+  } else if(coords_type == typeid(int64_t)) { 
     for(int i=0; i<dim_num; ++i)
       csv_line << static_cast<const int64_t*>(coords)[i];
-  } else if(*(cell_its[attribute_num].cell_type()) == typeid(float)) { 
+  } else if(coords_type == typeid(float)) { 
     for(int i=0; i<dim_num; ++i)
       csv_line << static_cast<const float*>(coords)[i];
-  } else if(*(cell_its[attribute_num].cell_type()) == typeid(double)) { 
+  } else if(coords_type == typeid(double)) { 
     for(int i=0; i<dim_num; ++i)
       csv_line << static_cast<const double*>(coords)[i];
   }
 
+  size_t offset = array_schema->cell_size(attribute_num);
+
   // Append attribute values next
   for(int i=0; i<attribute_num; ++i) {
-    const void* v = *cell_its[i];
-    if(*(cell_its[i].cell_type()) == typeid(char)) { 
+    const void* v = static_cast<const char*>(cell) + offset;
+    const std::type_info& attr_type = *(array_schema->type(i));
+    if(attr_type == typeid(char)) { 
       csv_line << *(static_cast<const char*>(v));
-    } else if(*(cell_its[i].cell_type()) == typeid(int)) { 
+    } else if(attr_type == typeid(int)) { 
       csv_line << *(static_cast<const int*>(v));
-    } else if(*(cell_its[i].cell_type()) == typeid(int64_t)) { 
+    } else if(attr_type == typeid(int64_t)) { 
       csv_line << *(static_cast<const int64_t*>(v));
-    } else if(*(cell_its[i].cell_type()) == typeid(float)) { 
+    } else if(attr_type == typeid(float)) { 
       csv_line << *(static_cast<const float*>(v));
-    } else if(*(cell_its[i].cell_type()) == typeid(double)) { 
+    } else if(attr_type == typeid(double)) { 
       csv_line << *(static_cast<const double*>(v));
     }
+    offset += array_schema->cell_size(i);
   }
 
   return csv_line;
 }
 
 /*
-
 bool QueryProcessor::coincides(
     const StorageManager::const_iterator& tile_it_A,
     const Tile::const_iterator& cell_it_A,
@@ -834,20 +901,7 @@ QueryProcessor::compute_sorted_kNN_coords(
 
   return resorted_kNN_coords;
 }
-*/
 
-void QueryProcessor::create_workspace() const {
-  struct stat st;
-  stat(workspace_.c_str(), &st);
-
-  // If the workspace does not exist, create it
-  if(!S_ISDIR(st.st_mode)) { 
-    int dir_flag = mkdir(workspace_.c_str(), S_IRWXU);
-    assert(dir_flag == 0);
-  }
-}
-
-/*
 void QueryProcessor::filter_irregular(
     const StorageManager::FragmentDescriptor* fd,
     const ExpressionTree* expression,
@@ -2140,7 +2194,6 @@ void QueryProcessor::initialize_cell_its(
   for(int i=0; i<attribute_num; ++i)
     cell_its[i] = tiles[i]->begin();
 }
-*/
 
 inline
 void QueryProcessor::initialize_cell_its(
@@ -2152,7 +2205,6 @@ void QueryProcessor::initialize_cell_its(
   cell_it_end = (*tile_its[attribute_num])->end();
 }
 
-/*
 inline
 void QueryProcessor::initialize_cell_its(
     const StorageManager::const_iterator* tile_its, 
@@ -2179,7 +2231,6 @@ void QueryProcessor::initialize_cell_its(
   for(unsigned int i=0; i<attribute_num; i++)
     cell_its[i] = (*tile_its[i]).begin();
 }
-*/
 
 inline
 void QueryProcessor::initialize_tile_its(
@@ -2194,7 +2245,6 @@ void QueryProcessor::initialize_tile_its(
   tile_it_end = storage_manager_->end(fd, attribute_num);
 }
 
-/*
 inline
 void QueryProcessor::initialize_tile_its(
     const StorageManager::FragmentDescriptor* fd,
@@ -3231,15 +3281,7 @@ bool QueryProcessor::overlap(
   else
     return true;
 }
-*/
 
-bool QueryProcessor::path_exists(const std::string& path) const {
-  struct stat st;
-  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
-}
-
-
-/*
 double QueryProcessor::point_to_mbr_distance(
     const std::vector<double>& q, const std::vector<double>& mbr) const {
   // Check dimensionality
@@ -3325,7 +3367,7 @@ void QueryProcessor::set_workspace(const std::string& path) {
   // Check if the input path is an existing directory 
   assert(path_exists(workspace_));
  
-  workspace_ += "/QueryProcessor";
+  workspace_ += "/QueryProcessor/";
 }
 
 /*

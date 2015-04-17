@@ -172,6 +172,7 @@ void Tile::operator<<(const void* value) {
 template<class T>
 void Tile::operator<<(T* value) {
   assert(*cell_type_ == typeid(T));
+  assert(payload_capacity_ > 0);
 
   if(cell_num_ == payload_capacity_)
     expand_payload();
@@ -189,6 +190,7 @@ void Tile::operator<<(T* value) {
 template<class T>
 void Tile::operator<<(const T* value) {
   assert(*cell_type_ == typeid(T));
+  assert(payload_capacity_ > 0);
 
   if(cell_num_ == payload_capacity_)
     expand_payload();
@@ -204,7 +206,7 @@ void Tile::operator<<(const T* value) {
 }
 
 template<class T>
-void Tile::operator<< (const T& value) {
+void Tile::operator<<(const T& value) {
   *this << &value;
 }
 
@@ -283,11 +285,18 @@ void Tile::print() const {
 ******************************************************/
 
 Tile::const_cell_iterator::const_cell_iterator() 
-    : tile_(NULL), pos_(0) {
+    : tile_(NULL), pos_(-1), cell_(NULL), end_(true) {
 }
 
 Tile::const_cell_iterator::const_cell_iterator(const Tile* tile, int64_t pos)
     : tile_(tile), pos_(pos) {
+  if(pos_ >= 0 && pos_ < tile_->cell_num()) {
+    cell_ = tile_->cell(pos_);
+    end_ = false;
+  } else {
+    cell_ = NULL;
+    end_ = true;
+  }
 }
 
 bool Tile::const_cell_iterator::is_del() const {
@@ -336,27 +345,57 @@ bool Tile::const_cell_iterator::is_null() const {
 
 void Tile::const_cell_iterator::operator=(const const_cell_iterator& rhs) {
   pos_ = rhs.pos_;
+  cell_ = rhs.cell_;
+  end_ = rhs.end_;
   tile_ = rhs.tile_;
 }
 
 Tile::const_cell_iterator Tile::const_cell_iterator::operator+(int64_t step) {
   const_cell_iterator it = *this;
   it.pos_ += step;
+  if(it.pos_ >= 0 && it.pos_ < tile_->cell_num()) {
+    it.cell_ = tile_->cell(pos_);
+    it.end_ = false;
+  } else {
+    it.cell_ = NULL;
+    it.end_ = true;
+  }
   return it;
 }
 
 void Tile::const_cell_iterator::operator+=(int64_t step) {
   pos_ += step;
+  if(pos_ >= 0 && pos_ < tile_->cell_num()) {
+    cell_ = tile_->cell(pos_);
+    end_ = false;
+  } else {  
+    cell_ = NULL;
+    end_ = true;
+  }
 }
 
 Tile::const_cell_iterator Tile::const_cell_iterator::operator++() {
   ++pos_;
+  if(pos_ >= 0 && pos_ < tile_->cell_num()) {
+    cell_ = tile_->cell(pos_);
+    end_ = false;
+  } else { // end of the iterator 
+    cell_ = NULL;
+    end_ = true;
+  }
   return *this;
 }
 
 Tile::const_cell_iterator Tile::const_cell_iterator::operator++(int junk) {
   const_cell_iterator it = *this;
   pos_++;
+  if(pos_ >= 0 && pos_ < tile_->cell_num()) {
+    cell_ = tile_->cell(pos_);
+    end_ = false;
+  } else {
+    cell_ = NULL;
+    end_ = true;
+  }
   return it;
 }
 
@@ -371,15 +410,15 @@ bool Tile::const_cell_iterator::operator!=(
 }
 
 const void* Tile::const_cell_iterator::operator*() const {
-  return tile_->cell(pos_);
+  return cell_;
 }
 
 Tile::const_cell_iterator Tile::begin() const {
   return const_cell_iterator(this, 0);
 }
 
-Tile::const_cell_iterator Tile::end() const {
-  return const_cell_iterator(this, cell_num_);
+Tile::const_cell_iterator Tile::end() {
+  return const_cell_iterator();
 }
 
 template<class T>
@@ -440,15 +479,10 @@ void Tile::expand_mbr(const T* coords) {
 
 void Tile::expand_payload() {
   assert(payload_alloc_);
+  assert(payload_capacity_ > 0);
 
-  if(payload_capacity_ == 0) { // Empty payload
-    payload_ = malloc(TL_PAYLOAD_CAPACITY);
-    payload_capacity_ = TL_PAYLOAD_CAPACITY;
-    payload_alloc_ = true;
-  } else {
-    expand_buffer(payload_, payload_capacity_*cell_size_);
-    payload_capacity_ *= 2;
-  }
+  expand_buffer(payload_, payload_capacity_*cell_size_);
+  payload_capacity_ *= 2;
 }
 
 template<class T>

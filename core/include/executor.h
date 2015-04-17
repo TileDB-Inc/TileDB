@@ -60,7 +60,7 @@ class Executor {
   /** Closes an array. */
   void close_array(const StorageManager::ArrayDescriptor* ad) const;
   /** Closes a fragment. */
-  void close_fragment(const StorageManager::FragmentDescriptor* fd) const;
+  void close_fragment(StorageManager::FragmentDescriptor* fd) const;
   /** Defines an array (stores its array schema at the storage manager. */
   void define_array(const ArraySchema* array_schema) const;
   /** Deletes an array. */
@@ -118,13 +118,13 @@ class Executor {
   /** 
    * Copies the coordinates of the non-empty cells of the input array
    * falling inside the input range into the coords buffer, and their
-   * corresponding values on the input attribute into buffer values,
+   * corresponding attribute values on the input attribute into buffer values,
    * setting properly the buffer sizes in bytes. 
    */
   void read(const StorageManager::ArrayDescriptor* ad, 
             int attribute_id, const void* range,
             void*& coords, size_t& coords_size, 
-            void*& values, size_t& values_size) const; 
+            void*& attrs, size_t& attrs_size) const; 
   /** 
    * Retiles an array based on the inputs. If tile extents are provided
    * (i) in the case of regular tiles, if the extents differ from those in the
@@ -153,13 +153,13 @@ class Executor {
   void update(const std::string& filename, 
               const std::string& array_name) const;
   /**  
-   * Writes the input coordinates and values into an array. The input values 
-   * do not respect the global cell order.
+   * Writes the input coordinates and attributess into an array. The input 
+   * cells do not respect the global cell order.
    * NOTE: The input buffers will be freed by the function.
    */
   void write(StorageManager::FragmentDescriptor* fd,
-             const void* coords, size_t coords_size, 
-             const void* values, size_t values_size) const; 
+             void* coords, size_t coords_size, 
+             void* attrs, size_t attrs_size) const; 
 
  private:
   // PRIVATE ATTRIBUTES
@@ -175,8 +175,6 @@ class Executor {
   std::string workspace_;
   
   // PRIVATE METHODS
-  /** Creates the workspace folder. */
-  void create_workspace() const;
   /** Returns the names of all fragments in the array. */
   std::vector<std::string> get_all_fragment_names(
       const ArraySchema* array_schema) const;

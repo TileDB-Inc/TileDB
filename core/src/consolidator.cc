@@ -32,6 +32,7 @@
  */
   
 #include "consolidator.h"
+#include "utils.h"
 #include <assert.h>
 #include <sys/stat.h>
 #include <stdlib.h>
@@ -53,7 +54,7 @@ Consolidator::Consolidator(const std::string& workspace,
                            StorageManager* storage_manager) 
     : storage_manager_(storage_manager) {
   set_workspace(workspace);
-  create_workspace(); 
+  create_directory(workspace_); 
 }
 
 /******************************************************
@@ -325,10 +326,10 @@ void Consolidator::consolidate_irregular(
   int attribute_num = array_schema->attribute_num();
   int fragment_num = ad->fd().size();
   int64_t capacity = array_schema->capacity();
-  const std::vector<const StorageManager::FragmentDescriptor*>& fd = ad->fd();
+  const std::vector<StorageManager::FragmentDescriptor*>& fd = ad->fd();
 
   // Open the new result fragment
-  const StorageManager::FragmentDescriptor* result_fd = 
+  StorageManager::FragmentDescriptor* result_fd = 
       storage_manager_->open_fragment(array_schema, 
                                       result_fragment_name, 
                                       StorageManager::CREATE);
@@ -425,10 +426,10 @@ void Consolidator::consolidate_regular(
   const std::string& array_name = array_schema->array_name();
   int attribute_num = array_schema->attribute_num();
   int fragment_num = ad->fd().size();
-  const std::vector<const StorageManager::FragmentDescriptor*>& fd = ad->fd();
+  const std::vector<StorageManager::FragmentDescriptor*>& fd = ad->fd();
 
   // Open the new result fragment
-  const StorageManager::FragmentDescriptor* result_fd = 
+  StorageManager::FragmentDescriptor* result_fd = 
       storage_manager_->open_fragment(array_schema, 
                                       result_fragment_name, 
                                       StorageManager::CREATE);
@@ -522,17 +523,6 @@ void Consolidator::consolidate_regular(
   delete [] cell_its;
   delete [] cell_it_end;
   delete [] result_tiles;
-}
-
-void Consolidator::create_workspace() const {
-  struct stat st;
-  stat(workspace_.c_str(), &st);
-
-  // If the workspace does not exist, create it
-  if(!S_ISDIR(st.st_mode)) { 
-    int dir_flag = mkdir(workspace_.c_str(), S_IRWXU);
-    assert(dir_flag == 0);
-  }
 }
 
 void Consolidator::flush_fragment_tree(

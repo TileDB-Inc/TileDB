@@ -187,7 +187,6 @@ class Tile {
   template<class T>
   void operator<<(const T& value); 
 
-
   // MISC
   /** 
    * Returns true if the pos-th coordinates fall inside the input range. 
@@ -221,6 +220,8 @@ class Tile {
     const std::type_info* cell_type() const { return tile_->cell_type(); }
     /** Returns the number of dimensions of the tile. */
     int dim_num() const { return tile_->dim_num(); }
+    /** Returns true if the end of the iterator is reached. */
+    bool end() const { return end_; }
     /** Returns the current payload position of the cell iterator. */
     int64_t pos() const { return pos_; }
     /** Returns the tile the cell iterator belongs to. */
@@ -270,6 +271,10 @@ class Tile {
     bool cell_inside_range(const T* range) const;
 
    private:
+    /** The current cell. */
+    const void* cell_;
+    /** True if the end of the iterator is reached. */
+    bool end_;
     /** 
      * The position of the cell in the tile payload the iterator
      * currently is pointing to. 
@@ -280,11 +285,7 @@ class Tile {
   };
   /** Returns a cell iterator pointing to the first cell of the tile. */
   const_cell_iterator begin() const;
-  /**
-   * Returns a cell iterator pointing to one position after the last 
-   * cell of the tile. 
-   */
-  const_cell_iterator end() const;
+  static const_cell_iterator end();
  
  private:
   // PRIVATE ATTRIBUTES

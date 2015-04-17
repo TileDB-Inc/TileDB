@@ -28,7 +28,8 @@
  * 
  * @section DESCRIPTION
  *
- * This file defines class StorageManager.
+ * This file defines classes StorageManager. It also defines 
+ * StorageManagerException, which is thrown by StorageManager.
  */  
 
 #ifndef STORAGE_MANAGER_H
@@ -36,6 +37,7 @@
 
 #include "tile.h"
 #include "array_schema.h"
+#include <unistd.h>
 #include <vector>
 #include <string>
 #include <map>
@@ -44,58 +46,54 @@
 
 /** Name of the file storing the array schema. */
 #define SM_ARRAY_SCHEMA_FILENAME "array_schema"
-/** Name of the file storing the fragment book-keeping info. */
-#define SM_FRAGMENTS_FILENAME "fragments"
-/** Name of the file storing the bounding coordinates of each tile. */
-#define SM_BOUNDING_COORDINATES_FILENAME "bounding_coordinates"
 /** Suffix of all book-keeping files. */
 #define SM_BOOK_KEEPING_FILE_SUFFIX ".bkp"
+/** Name of the file storing the bounding coordinates of each tile. */
+#define SM_BOUNDING_COORDINATES_FILENAME "bounding_coordinates"
+/** Name of the file storing the fragment book-keeping info. */
+#define SM_FRAGMENT_TREE_FILENAME "fragment_tree"
+/** Indicates an invalid tile position. */
+#define SM_INVALID_TILE_POS -1
+/** Indicates an invalid tile id. */
+#define SM_INVALID_TILE_ID -1
+/** Maximum number of arrays that can be simultaneously open. */
+#define SM_MAX_OPEN_ARRAYS 100
 /** Name of the file storing the MBR of each tile. */
 #define SM_MBRS_FILENAME "mbrs"
 /** Name of the file storing the offset of each tile in its data file. */
 #define SM_OFFSETS_FILENAME "offsets"
 /** 
- * The segment size determines the minimum amount of data that can be exchanged
- * between the hard disk and the main memory in a single I/O operation. 
- * Unless otherwise defined, this default size is used. 
+ * Determines the mount of data that can be exchanged between the hard disk and
+ * the main memory in a single I/O operation. 
  */
 #define SM_SEGMENT_SIZE 10000000
+/** Name for temp (usually used in directory paths). */
+#define SM_TEMP "temp"
 /** Name of the file storing the id of each tile. */
 #define SM_TILE_IDS_FILENAME "tile_ids"
 /** Suffix of all tile data files. */
 #define SM_TILE_DATA_FILE_SUFFIX ".tdt"
-/** Special value returned by StorageManager::tile_pos.  */
-#define SM_INVALID_POS -1
-/** Special value used in FragmentInfo::lastly_appended_tile_ids_.  */
-#define SM_INVALID_TILE_ID -1
+/** Max memory size (in bytes) used when creating a new array fragment. */
+#define SM_WRITE_STATE_MAX_SIZE 1*1073741824 // 1GB
 
 /** 
- * A storage manager object is responsible for storing/fetching tiles
- * to/from the disk, and managing the tiles in main memory. It
- * maintains all the book-keeping structures and data files for the 
- * created arrays. 
- *
- * If there are m attributes in an array, a logical tile in the 
- * multi-dimensional space corresponds to m+1 physical tiles on the disk;
- * one for each of the m attributes, and one for the coordinates which
- * is regarded as an extra (m+1)-th attribute.
- * The storage manager stores the physical tiles of each attribute into
- * a separate file on the disk.
+ * A storage manager object is responsible for storing/fetching tiles to/from 
+ * the disk. It maintains book-keeping structures in main memory to efficiently
+ * locate the tile data on disk. 
  */
 class StorageManager {
  public:
   // TYPE DEFINITIONS
-  struct FragmentInfo;
-  /** 
-   * An array or fragment is opened either to be created (CREATE mode) or to be
-   * read (READ mode), but not both. 
-   */
-  enum Mode {READ, CREATE};
+  class Fragment;
 
   /** Mnemonic: (first_bound_coord, last_bound_coord) */
   typedef std::pair<void*, void*> BoundingCoordinatesPair;
   /** Mnemonic: <bound_coord_pair#1, bound_coord_pair#2, ...> */
   typedef std::vector<BoundingCoordinatesPair> BoundingCoordinates;
+  /** Mnemonic: (level, number of nodes) */
+  typedef std::pair<int, int> FragmentTreeLevel;
+  /** Menmonic <(level, number of nodes), ...> */
+  typedef std::vector<FragmentTreeLevel> FragmentTree;
   /** 
    * A hyper-rectangle in the logical space, including all the coordinates
    * of a tile. It is a list of lower/upper values across each dimension, i.e.,
@@ -108,10 +106,10 @@ class StorageManager {
   typedef std::vector<int64_t> OffsetList;
   /** Mnemonic: [attribute_id] --> <offset#1, offset#2, ...> */
   typedef std::vector<OffsetList> Offsets;
-  /** Mnemonic: [array_name + "_" + fragment_name] --> FragmentInfo */
-  typedef std::map<std::string, FragmentInfo> OpenFragments;
-  /** Mnemonic: [attribute_id] --> payload_size */
-  typedef std::vector<size_t> PayloadSizes;
+  /** Mnemonic: [array_name + "_" + array_name] --> array_descriptor */
+  typedef std::map<std::string, int> OpenArrays;
+  /** Mnemonic: [attribute_id] --> segment_utilziation */
+  typedef std::vector<size_t> SegmentUtilization;
   /** Mnemonic: (pos_lower, pos_upper) */
   typedef std::pair<int64_t, int64_t> PosRange;
   /** Mnemonic: [attribute_id] --> (pos_lower, pos_upper) */
@@ -125,70 +123,89 @@ class StorageManager {
   /** Mnemonic: [attribute_id] --> <tile#1, tile#2, ...> */
   typedef std::vector<TileList> Tiles;
 
-  /**  Encapsulating coordinates and attributes. */
-  struct CoordsAttrs {
-    /** Buffer of attributtes. */ 
-    const void* attrs_; 
-    /** Buffer of coordinates. */ 
-    const void* coords_;
-    /** Number of dimensions (i.e., number of coordinates). */
-    int dim_num_;
+  /**  A logical cell. */
+  struct Cell {
+    /** The cell buffer. */ 
+    void* cell_; 
   };
 
-  /**  Encapsulating coordinates, attributes and an id. */
-  struct IdCoordsAttrs {
-    /** Buffer of attributtes. */ 
-    const void* attrs_; 
-    /** Buffer of coordinates. */ 
-    const void* coords_;
-    /** Number of dimensions (i.e., number of coordinates). */
-    int dim_num_;
+  /** A logical cell with a tile or cell id. */
+  struct CellWithId {
+    /** The cell buffer. */ 
+    void* cell_; 
     /** An id. */
     int64_t id_;
   };
 
-  /**  Encapsulating coordinates, attributes and two ids. */
-  struct IdIdCoordsAttrs {
-    /** Buffer of attributtes. */ 
-    const void* attrs_; 
-    /** Buffer of coordinates. */ 
-    const void* coords_;
-    /** Number of dimensions (i.e., number of coordinates). */
-    int dim_num_;
-    /** An id. */
-    int64_t id_1_;
-    /** An id. */
-    int64_t id_2_;
+  /** A logical cell with a tile and a cell id. */
+  struct CellWith2Ids {
+    /** The cell buffer. */ 
+    void* cell_; 
+    /** A tile id. */
+    int64_t tile_id_;
+    /** A cell id. */
+    int64_t cell_id_;
   };
 
   /** 
-   * This struct groups info about an array fragment (e.g., schema, book-keeping
-   * structures, etc.).
-   */  
-  struct FragmentInfo {
-    /** The array schema (see class ArraySchema). */
-    const ArraySchema* array_schema_;
+   * Fragment cells are sorted using a traditional external sortin algorithm.
+   * This algorithm produces 'sorted runs', i.e., sorted sequences of cells,
+   * during its 'sort' phase. Subsequently, during a 'merge' phase, 
+   * multiple runs are merged into a single one (potentially recursively).
+    A SortedRun object stores information about a sorted run.
+   */
+  class SortedRun {
+    /** StorageManager objects can manipulate private members of this class. */
+    friend StorageManager; 
+
+   public:
+    // CONSTRUCTORS AND DESTRUCTORS
     /** 
+     * Takes as input the name of the file of the run, as well as the size of
+     * each cell that it stores.
+     */
+    SortedRun(const std::string& filename, 
+              size_t cell_size, size_t segment_size);
+    /** Closes the run file and deletes the main memory segment. */
+    ~SortedRun();
+
+    // ACCESSORS
+    /** Returns the next cell in the main memory segment with the given size. */
+    void* current_cell() const;
+
+    // MUTATORS
+    /** 
+     * Advances the offset in the segment by cell_size to point to the next, 
+     * logical cell, and potentially fetches a new segment from the file.
+     */
+    void advance_cell();
+    /** Loads the next segment from the file. */
+    void load_next_segment();
+
+   private:
+    /** The cell size. */
+    size_t cell_size_;
+    /** File descriptor of the run. */
+    std::string filename_;
+    /** Current offset in the file. */
+    size_t offset_in_file_;
+    /** Current offset in the main memory segment. */
+    size_t offset_in_segment_;
+    /** Stores cells currently in main memory. */
+    char* segment_;
+    /** The size of the segment. */
+    size_t segment_size_;
+    /** The segment utilization. */
+    ssize_t segment_utilization_;
+  };
+
+  /** Stores the book-keeping structures of a fragment. */
+  struct BookKeeping {
+     /** 
      * Stores the bounding coordinates of every (coordinate) tile, i.e., the 
      * first and last cell of the tile (see Tile::bounding_coordinates).
      */
     BoundingCoordinates bounding_coordinates_;   
-    /** The fragment mode (see StorageManager::Mode). */
-    Mode fragment_mode_;
-    /** The fragment name. */
-    std::string fragment_name_; 
-    /** 
-     * Unique FragmentInfo object id, for debugging purposes when using 
-     * StorageManager::FragmentDescriptor objects 
-     * (see StorageManager::FragmentDescriptor::fragment_info_id_).
-     */
-    int64_t id_;
-    /** 
-     * It keeps the id of the lastly appended tile for each attribute. It is
-     * used for debugging purposes to ensure the fragment "correctness" in 
-     * StorageManager::check_on_append_tile.
-     */
-    std::vector<int64_t> lastly_appended_tile_ids_;
     /** Stores the MBR of every (coordinate) tile. */
     MBRs mbrs_; 
     /** 
@@ -196,151 +213,386 @@ class StorageManager {
      * attribute in the respective data file. 
      */
     Offsets offsets_;
-    /** 
-     * Stores the aggregate payload size of the tiles currently stored in main 
-     * memory for each attribute. 
-     */
-    PayloadSizes payload_sizes_;
+    /** Stores all the tile ids of the fragment. */
+    TileIds tile_ids_;
+  };
+
+  /** Stores the state necessary when reading tiles from a fragment. */
+  struct ReadState {
     /** 
      * Stores the range of the position of the tiles currently in main memory,
      * for each attribute. The position of a tile is a sequence number 
      * indicating the order in which it was appended to the fragment with 
      * respect to the the other tiles appended to the fragment for the same
      * attribute (e.g., 0 means that it was appended first, 1 second, etc.).
+     * The position helps in efficiently browsing tile info in the
+     * book-keeping structures.
      */
     PosRanges pos_ranges_;
     /** Stores one segment per attribute. */
     Segments segments_;
-    /** Stores all the tile ids of the fragment. */
-    TileIds tile_ids_;
     /** Stores the tiles of every attribute currently in main memory. */
     Tiles tiles_;
   };
 
-  /** 
-   * This class is a wrapper for a FragmentInfo object. It is 
-   * returned by StorageManager::open_fragment, and used to append/get tiles
-   * to/from a fragment. Its purpose is to eliminate the cost of finding the
-   * fragment info in the book-keeping structures (and specifically in 
-   * StorageManager::open_fragments_) every time an operation must be
-   * executed for this fragment (e.g., StorageManager::get_tile). It contains
-   * a pointer to an FragmentInfo object in StorageManager::open_fragments_,
-   * along with FragmentDescriptor::fragment_info_id_ that is used for debugging
-   * purposes to check if the stored FragmentInfo object is obsolete (i.e., if 
-   * it has been deleted by the storage manager when closing the fragment).
-   *
-   * A FragmentDescriptor object also maintains some 'write state' when
-   * appending unordered logical cells to a fragment. This is necessary
-   * to accommodate successive writes, and facilitate an incremental
-   * sorting processes of the cells.
-   */
-  class FragmentDescriptor {
+  /** Stores the state necessary when writing cells to a fragment. */
+  struct WriteState {
+    /** The bounding coordinates of the currently populated tile. */
+    BoundingCoordinatesPair bounding_coordinates_;
+    /** Stores logical cells. */
+    std::vector<Cell> cells_;
+    /** Stores logical cells. */
+    std::vector<CellWithId> cells_with_id_;
+    /** Stores logical cells. */
+    std::vector<CellWith2Ids> cells_with_2_ids_;
+    /** The number of cell in the tile currently being populated. */
+    int64_t cell_num_;
+    /** 
+     * Keeping track of the offsets of the attribute files (plus coordinates),
+     * when writing cells in a sorted manner to create the tiles.
+     */
+    std::vector<int64_t> file_offsets_;
+    /** The MBR of the currently populated tile. */
+    void* mbr_;
+    /** Stores the cells to be sorted in the current run. */
+    void* run_buffer_;
+    /** Stores the run buffer size. */
+    size_t run_buffer_size_;
+    /** Stores the offset in the run buffer for the next write. */
+    size_t run_offset_;
+    /** Total memory consumption of the current run. */
+    size_t run_size_;
+    /** Counts the number of sorted runs. */
+    int runs_num_;
+    /** Stores one segment per attribute. */
+    Segments segments_;
+    /** Stores the segment utilization. */
+    SegmentUtilization segment_utilization_;
+    /** The id of the tile being currently populated. */
+    int64_t tile_id_;
+  };
+
+  /** Contains information about a fragment. */
+  class Fragment {
     // StorageManager objects can manipulate the private members of this class.
     friend class StorageManager;
 
    public:
     // CONSTRUCTORS & DESTRUCTORS
-    /** Simple constructor. */
-    explicit FragmentDescriptor(FragmentInfo* fragment_info) { 
-      fragment_info_ = fragment_info;
-      fragment_info_id_ = fragment_info->id_;
-      array_name_ = fragment_info->array_schema_->array_name();
-      fragment_name_ = fragment_info->fragment_name_;
-    }
-    /** Empty destructor. */
-    ~FragmentDescriptor() {}
+    /** Constructor. */
+    Fragment(const std::string& workspace, size_t segment_size,
+             size_t write_state_max_size,
+             const ArraySchema* array_schema, const std::string& fragment_name);
+    /** Destructor. */
+    ~Fragment();
 
     // ACCESSORS
-    /** Returns the array name. */
-    const std::string& array_name() const 
-        { return array_name_; } 
     /** Returns the array schema. */ 
     const ArraySchema* array_schema() const 
-        { return fragment_info_->array_schema_; } 
-    /** Returns the array info. */
-    const FragmentInfo* fragment_info() const { return fragment_info_; } 
+        { return array_schema_; } 
     /** Returns the fragment name. */
     const std::string& fragment_name() const 
         { return fragment_name_; } 
 
-    // MUTATORS
-    /** Adds a buffer that must be freed later (after it is consumed). */
-    void add_buffer_to_be_freed(const void* buffer) 
-        { buffers_to_be_freed_.push_back(buffer); }
- 
+    // CELL FUNCTIONS
+    /** Writes a cell into the fragment. */
+    void write_cell(const StorageManager::Cell& cell);
+    /** Writes a cell into the fragment. */
+    void write_cell(const StorageManager::CellWithId& cell);
+    /** Writes a cell into the fragment. */
+    void write_cell(const StorageManager::CellWith2Ids& cell); 
+    /** 
+     * Writes a cell into the fragment, respecting the global cell order. 
+     * The input cell carries no ids.
+     */
+    template<class T>
+    void write_cell_sorted(const void* cell); 
+    /** 
+     * Writes a cell into the fragment, respecting the global cell order. 
+     * The input cell carries a single (tile) id.
+     */
+    template<class T>
+    void write_cell_sorted_with_id(const void* cell); 
+    /** 
+     * Writes a cell into the fragment, respecting the global cell order. 
+     * The input cell carries a tile and a cell id.
+     */
+    template<class T>
+    void write_cell_sorted_with_2_ids(const void* cell); 
+
+    // TILE FUNCTIONS
+    /** Returns a tile for a given attribute and tile position. */
+    const Tile* get_tile_by_pos(int attribute_id, int64_t pos);  
+
+    // TILE ITERATORS
+    /** This class implements a constant tile iterator. */
+    class const_tile_iterator {
+     public:
+      // CONSTRUCTORS & DESTRUCTORS
+      /** Iterator constuctor. */
+      const_tile_iterator();
+      /** Iterator constuctor. */
+      const_tile_iterator(Fragment* fragment, int attribute_id, int64_t pos); 
+
+      // OPERATORS
+      /** Assignment operator. */
+      void operator=(const const_tile_iterator& rhs);
+      /** Addition operator. */
+      const_tile_iterator operator+(int64_t step);
+      /** Addition-assignment operator. */
+      void operator+=(int64_t step);
+      /** Pre-increment operator. */
+      const_tile_iterator operator++();
+      /** Post-increment operator. */
+      const_tile_iterator operator++(int junk);
+      /** 
+       * Returns true if the iterator is equal to that in the
+       * right hand side (rhs) of the operator. 
+       */
+      bool operator==(const const_tile_iterator& rhs) const;
+      /** 
+       * Returns true if the iterator is equal to that in the
+       * right hand side (rhs) of the operator. 
+       */
+      bool operator!=(const const_tile_iterator& rhs) const;
+      /** Returns the tile pointed by the iterator. */
+      const Tile* operator*() const; 
+
+       // ACCESSORS
+      /** Returns the array schema associated with this tile. */
+      const ArraySchema* array_schema() const;
+      /** Returns the bounding coordinates of the tile. */
+      BoundingCoordinatesPair bounding_coordinates() const;
+      /** True if the iterators has reached its end. */
+      bool end() const { return end_; }
+      /** Returns the MBR of the tile. */
+      const MBR mbr() const;
+      /** Returns the position. */
+      int64_t pos() const { return pos_; };
+      /** Returns the id of the tile. */
+      int64_t tile_id() const;
+
+     private:
+      // PRIVATE ATTRIBUTES
+      /** The attribute id corresponding to this iterator. */
+      int attribute_id_;
+      /** True if the iterators has reached its end. */
+      bool end_;
+      /** The array fragment corresponding to this iterator. */
+      Fragment* fragment_;
+      /** The position of the current tile in the book-keeping structures. */
+      int64_t pos_;
+
+      // PRIVATE METHODS
+      /** Finds the position of the next tile. */
+      void advance_tile();
+      /** Finds the position of the next tile inside the stored range. */
+      void advance_tile_in_range();
+      /** Finds the position of the next tile inside the stored range. */
+      template<class T>
+      void advance_tile_in_range();
+    };
+
    private:
     // PRIVATE ATTRIBUTES
-    /** The array name. */
-    std::string array_name_;
-    /** The fragment info. */
-    FragmentInfo* fragment_info_;
-    /** 
-     * The id of the FragmentDescriptor::fragment_info_ object. This is used for
-     * debugging purposes to check if the stored FragmentInfo object is obsolete
-     * (i.e., if it has been deleted by the storage manager from 
-     * StorageManager::open_fragments_ when closing the fragment).
-     */
-    int64_t fragment_info_id_;
+    /** The array schema (see ArraySchema). */
+    const ArraySchema* array_schema_;
+    /** The book-keeping structures. */
+    BookKeeping book_keeping_;
     /** The fragment name. */
     std::string fragment_name_;
-    /** 
-     * Part of the write state, which stores the pointers to the buffers to be
-     * freed. 
-     */
-    std::vector<const void*> buffers_to_be_freed_;
-    /** 
-     * Part of the write state, which stores logical cells.
-     * '0' stands for 'no id', i.e., the sorting will only be based on the 
-     * coordinates. 
-     */
-    std::vector<CoordsAttrs> ws_cells_0_;
-    /** 
-     * Part of the write state, which stores logical cells.
-     * '1' stands for '1 id', i.e., the sorting will be based on the id first, 
-     * and then on the coordinates.
-     */
-    std::vector<IdCoordsAttrs> ws_cells_1_;
-    /** 
-     * Part of the write state, which stores logical cells.
-     * '2' stands for '2 ids', i.e., the sorting will be based first on id_1,
-     * then on id_2 and then on the coordinates.
-     */
-    std::vector<IdIdCoordsAttrs> ws_cells_2_;
+    /** The read state. */ 
+    ReadState* read_state_;
+    /** The segment size */
+     size_t segment_size_;
+    /** The workspace where the array data are created. */
+    std::string workspace_; 
+    /** The write state. */ 
+    WriteState* write_state_;
+    /** Max memory size of the write state when creating an array fragment. */
+    size_t write_state_max_size_;
 
     // PRIVATE METHODS
     /** 
      * Override the delete operator so that only a StorageManager object can
-     * delete dynamically created FragmentDescriptor objects.
+     * delete dynamically created Fragment objects.
      */
     void operator delete(void* ptr) { ::operator delete(ptr); }
     /** 
      * Override the delete[] operator so that only a StorageManager object can
-     * delete dynamically created FragmentDescriptor objects.
+     * delete dynamically created Fragment objects.
      */
     void operator delete[](void* ptr) { ::operator delete[](ptr); }
+
+    // READ STATE FUNCTIONS
+    /** Deletes the tiles of an attribute from main memory. */
+    void delete_tiles(int attribute_id);
+    /** Initializes the read state. */
+    void init_read_state();
+    /** Flushes the read state. */
+    void flush_read_state();
+    /** 
+     * Loads tiles of a given attribute from disk, starting from the tile at 
+     * position pos. 
+     */
+    void load_tiles_from_disk(int attribute_id, int64_t pos);
+    /** 
+     * Loads the tiles of an attribute from the corresponding segment and 
+     * stores them into the read state. 
+     */
+    void load_tiles_from_segment(
+        int attribute_id, int64_t pos, 
+        size_t segment_utilization, int64_t tiles_in_segment);
+    /** 
+     * Loads the payloads of the tiles of a given attribute from disk and into
+     * the corresponding segment in the read state, starting from the tile at
+     * position pos. Returns the segment utilization after the load, and the
+     * number of tiles loaded.
+     */
+    std::pair<size_t, int64_t> load_payloads_into_segment(
+        int attribute_id, int64_t pos);
+
+    // WRITE STATE FUNCTIONS
+    /** 
+     * Appends a (coordinate or attribute) cell to its corresponding segment. 
+     */
+    void append_cell_to_segment(const void* cell, int attribute_id);
+    /** Sorts and writes the last run on the disk. */
+    void finalize_last_run();
+    /** Flushes a segment to its corresponding file. */
+    void flush_segment(int attribute_id);
+    /** Flushes all segments to their corresponding files. */
+    void flush_segments();
+    /** Writes a sorted run on the disk. */
+    void flush_sorted_run();
+    /** Writes a sorted run on the disk. */
+    void flush_sorted_run_with_id();
+    /** Writes a sorted run on the disk. */
+    void flush_sorted_run_with_2_ids();
+    /** 
+     * Writes the info about the lastly populated tile to the book keeping
+     * structures. 
+     */
+    void flush_tile_info_to_book_keeping();
+    /** Flushes the write state. */
+    void flush_write_state();
+    /** 
+     * Gets the next cell from the input runs that precedes in the global
+     * cell order indicated by the input array schema.
+     */
+    template<class T>
+    void* get_next_cell(SortedRun** runs, int runs_num) const;
+    /** 
+     * Gets the next cell from the input runs that precedes in the global
+     * cell order indicated by the input array schema.
+     */
+    template<class T>
+    void* get_next_cell_with_id(SortedRun** runs, int runs_num) const;
+    /** 
+     * Gets the next cell from the input runs that precedes in the global
+     * cell order indicated by the input array schema.
+     */
+    template<class T>
+    void* get_next_cell_with_2_ids(SortedRun** runs, int runs_num) const;
+    /** Initializes the write state. */
+    void init_write_state();
+    /** Makes tiles from existing sorted runs. */
+    void make_tiles();
+    /** Makes tiles from existing sorted runs. */
+    template<class T>
+    void make_tiles();
+    /** Makes tiles from existing sorted runs. */
+    template<class T>
+    void make_tiles_with_id();
+    /** Makes tiles from existing sorted runs. */
+    template<class T>
+    void make_tiles_with_2_ids();
+    /** Merges existing sorted runs. */
+    void merge_sorted_runs();
+    /** Merges existing sorted runs. */
+    template<class T>
+    void merge_sorted_runs();
+    /**
+     * Each run is named after an integer identifier. This function 
+     * merges runs [first_run, last_run] into a new run called new_run in the 
+     * next merge operation.
+     */
+    template<class T>
+    void merge_sorted_runs(int first_run, int last_run, int new_run);
+    /** Merges existing sorted runs. */
+    template<class T>
+    void merge_sorted_runs_with_id();
+    /**
+     * Each run is named after an integer identifier. This function 
+     * merges runs [first_run, last_run] into a new run called new_run in the 
+     * next merge operation.
+     */
+    template<class T>
+    void merge_sorted_runs_with_id(int first_run, int last_run, int new_run);
+    /** Merges existing sorted runs. */
+    template<class T>
+    void merge_sorted_runs_with_2_ids();
+    /**
+     * Each run is named after an integer identifier. This function 
+     * merges runs [first_run, last_run] into a new run called new_run in the 
+     * next merge operation.
+     */
+    template<class T>
+    void merge_sorted_runs_with_2_ids(int first_run, int last_run, int new_run);
+    /** Sorts a run in main memory. */
+    void sort_run();
+    /** Sorts a run in main memory. */
+    void sort_run_with_id();
+    /** Sorts a run in main memory. */
+    void sort_run_with_2_ids();
+    /**
+     * Updates the info of the currently populated tile with the input
+     * coordinates and tile id. 
+     */
+    template<class T>
+    void update_tile_info(const T* coords, int64_t tile_id);
+
+    // BOOK-KEEPING FUNCTIONS
+    /** Flushes the book-keeping structures. */
+    void flush_book_keeping();
+    /** Flushes the bounding coordinates. */
+    void flush_bounding_coordinates();
+    /** Flushes the tile MBRs. */
+    void flush_mbrs();
+    /** Flushes the tile offsets. */
+    void flush_offsets();
+    /** Flushes the tile ids. */
+    void flush_tile_ids();
+    /** Initializes the book-keeping structures. */
+    void init_book_keeping();
+    /** Loads the book-keeping structures. */
+    void load_book_keeping();
+    /** Loads the bounding coordinates. */
+    void load_bounding_coordinates();
+    /** Loads the tile MBRs. */
+    void load_mbrs();
+    /** Loads the tile offsets. */
+    void load_offsets();
+    /** Loads the tile ids. */
+    void load_tile_ids();
   };
+
   /** 
-   * This object holds a vector of FragmentDescriptor objects and the array
-   * schema. It essentially includes all the information necessary to process
-   * an array.
+   * This object holds a vector of Fragment objects and the array schema. It 
+   * essentially includes all the information necessary to process an array.
    */
-  class ArrayDescriptor {
+  class Array {
     // StorageManager objects can manipulate the private members of this class.
     friend class StorageManager;
 
    public:
     // CONSTRUCTORS & DESTRUCTORS
-    /** Simple constructor. */
-    ArrayDescriptor(const ArraySchema* array_schema, 
-                    const std::vector<const FragmentDescriptor*>& fd) { 
-      fd_ = fd;
-      array_schema_ = array_schema;
-    }
-    /** Empty destructor. */
-    ~ArrayDescriptor() { 
-      if(array_schema_ != NULL) 
-        delete array_schema_; 
-    }
+    /** Constructor. */
+    Array(const std::string& workspace_, size_t segment_size, 
+          size_t write_state_max_size,
+          const ArraySchema* array_schema, const char* mode); 
+    /** Destructor. */
+    ~Array(); 
 
     // ACCESSORS
     /** Returns the array name. */
@@ -349,27 +601,176 @@ class StorageManager {
     /** Returns the array schema. */
     const ArraySchema* array_schema() const 
         { return array_schema_; } 
-    /** For easy access of the fragment descriptors. */
-    const std::vector<const FragmentDescriptor*>& fd() const 
-        { return fd_; }
-    bool is_empty() const { return !fd_.size(); }
+    /** Checks if the array is empty. */
+    bool empty() const { return !fragments_.size(); }
+
+    // CELL FUNCTIONS
+    /** Writes a cell into the array. */
+    void write_cell(const Cell& cell);
+    /** Writes a cell into the array. */
+    void write_cell(const CellWithId& cell);
+    /** Writes a cell into the array. */
+    void write_cell(const CellWith2Ids& cell);
+    /** Writes a cell into the array, respecting the global cell order. */
+    template<class T>
+    void write_cell_sorted(const void* cell);
+
+    // CELL ITERATORS
+    /** 
+     * A constant cell iterator that iterators over the cells of all the 
+     * fragments of the array in the global cell order as specified by the
+     * array schema.
+     */
+    template<class T>
+    class const_cell_iterator {
+     public:
+      // CONSTRUCTORS & DESTRUCTORS
+      /** Constructor. */
+      const_cell_iterator();
+      /** Constructor. */
+      const_cell_iterator(Array* array);       
+      /** 
+       * Constructor. Takes as input also a multi-dimensional range. The
+       * iterator will iterate only on the cells of the array whose coordinates
+       * fall into the input range.
+       */
+      const_cell_iterator(Array* array, const T* range); 
+      /** Destructor. */
+      ~const_cell_iterator();
+
+      // ACCESSORS
+      /** Returns true if the iterator has reached the end of the cells. */
+      bool end() const;
+
+      // OPERATORS
+      /** Increment. */
+      void operator++();
+      /** Dereference. */
+      const void* operator*();
+
+     private:
+      // PRIVATE ATTRIBUTES
+      /** The array the cell iterator was created for. */
+      Array* array_;
+      /** Number of attributes. */
+      int attribute_num_;
+      /** 
+       * The current cell. Contains pointers to physical cells of all attibutes.
+       */
+      void* cell_;
+      /** Stores one cell iterator per fragment per attribute. */
+      Tile::const_cell_iterator** cell_its_;
+      /** Number of dimensions. */
+      int dim_num_;
+      /** True if the iterator has reached the end of all cells. */
+      bool end_;
+      /** Number of fragments. */
+      int fragment_num_;
+      /** 
+       * Stores a value per fragment. It is used when iterating cells that fall
+       * inside the stored range. It indicates whether the current logical tile
+       * under investigation is completely contained in the range or not. 
+       */
+      bool* full_overlap_;
+      /*
+       * A multi-dimensional range. If not NULL, the iterator will iterate only
+       * on the cells of the array whose coordinates fall into the input range.
+       */
+      T* range_;
+      /** Stores one tile iterator per fragment per attribute. */
+      Fragment::const_tile_iterator** tile_its_;
+
+      // PRIVATE METHODS
+      /** 
+       * Advances the cell iterators of all attributes of the fragment with the
+       * input id. 
+       */
+      void advance_cell(int fragment_id);
+      /** 
+       * Advances the cell iterators of all attributes of the fragment with the
+       * input id, until. 
+       */
+      void advance_cell_in_range(int fragment_id);
+      /** 
+       * Finds the next cell from the input fragment along the global cell
+       * order, which falls inside the range stored upon initialization of the
+       * iterator (see StorageManager::Array::const_cell_iterator::range_). 
+       */
+      void find_next_cell_in_range(int fragment_id);
+      /** 
+       * Extracts the next cell from all the fragments along the global cell
+       * order. It returns the id of the fragment the cell was extracted from.
+       * If the end of the cells is reached, it returns -1.
+       */
+      int get_next_cell();
+      /** Initializes tile and cell iterators. */
+      void init_iterators();
+      /** 
+       * Initializes tile and cell iterators that will irerate over tiles and
+       * cells that overlap with the stored range. 
+       */
+      void init_iterators_in_range();
+    };
+
+    // TILE ITERATORS
+    /** Begin tile iterator. */
+    Fragment::const_tile_iterator begin(
+        Fragment* fragment, int attribute_id) const;
  
    private:
     // PRIVATE ATTRIBUTES
     /** The array schema. */
     const ArraySchema* array_schema_;
-    /** The fragment descriptors. */
-    std::vector<const FragmentDescriptor*> fd_;
-    
+    /** The array fragments. */
+    std::vector<Fragment*> fragments_;
+    /** The fragment tree of the array (book-keeping about all fragments). */
+    FragmentTree fragment_tree_;  
+    /** 
+     * The array mode. The following modes are supported:
+     *
+     * "r": Read mode
+     *
+     * "w": Write mode (if the array exists, it is deleted)
+     *
+     * "a": Append mode
+     */
+     char mode_[2];
+     /** The next fragment sequence. */
+     int64_t next_fragment_seq_;
+     /** The segment size. */
+     size_t segment_size_;
+     /** The workspace where the array data are created. */
+     std::string workspace_; 
+     /** Max memory size of the write state when creating an array fragment. */
+     size_t write_state_max_size_;
+
     // PRIVATE METHODS
+    /** Closes all the array fragments. */
+    void close_fragments();
+    /** 
+     * Flushes the fragment tree, i.e., the book-keeping structure about the
+     * array fragments, to the disk.
+     */
+    void flush_fragment_tree();
+    /** Returns all the existing fragment names. */
+    std::vector<std::string> get_fragment_names() const;
+    /** 
+     * Loads the fragment tree, i.e., the book-keeping structure about the
+     * array fragments.
+     */
+    void load_fragment_tree();
+    /** Initializes a new fragment. */
+    void new_fragment();
+    /** Opens all the existing array fragments. */
+    void open_fragments();
     /** 
      * Override the delete operator so that only a StorageManager object can
-     * delete dynamically created ArrayDescriptor objects.
+     * delete dynamically created Array objects.
      */
     void operator delete(void* ptr) { ::operator delete(ptr); }
     /** 
      * Override the delete[] operator so that only a StorageManager object can
-     * delete dynamically created ArrayDescriptor objects.
+     * delete dynamically created Array objects.
      */
     void operator delete[](void* ptr) { ::operator delete[](ptr); }
   };
@@ -378,7 +779,7 @@ class StorageManager {
   /**
    * Upon its creation, a storage manager object needs a workspace path. The 
    * latter is a folder in the disk where the storage manager creates all the 
-   * array data (i.e., tile and index files). Note that the input path must 
+   * tile and book-keeping data. Note that the input path must 
    * exist. If the workspace folder exists, the function does nothing, 
    * otherwise it creates it. The segment size determines the amount of data 
    * exchanged in an I/O operation between the disk and the main memory. 
@@ -395,203 +796,78 @@ class StorageManager {
   // ARRAY FUNCTIONS
   /** Returns true if the array has been defined. */
   bool array_defined(const std::string& array_name) const;
-  /** Returns true if the array has been loaded. */
-  bool array_loaded(const std::string& array_name) const;
+  /** Returns true if the array is empty. */
+  bool array_empty(const std::string& array_name) const;
+  /** Returns the schema of an array. The input is an array descriptor */
+  const ArraySchema* get_array_schema(int ad) const;
   /** Deletes all the fragments of an array. */
   void clear_array(const std::string& array_name);
   /** Closes an array. */
-  void close_array(const ArrayDescriptor* ad);
-  /** 
-   * Closes a fragment. In case the fragment was opened in FRAGMENT_CREATE mode,
-   * a rule must be satisfied before closing the fragment: 
-   * Across all attributes, the lastly appended tile must have the same id.
-   */
-  void close_fragment(const FragmentDescriptor* fd);
+  void close_array(int ad);
   /** Defines an array (stores its array schema). */
   void define_array(const ArraySchema* array_schema) const;
   /** It deletes an array (regardless of whether it is open or not). */
   void delete_array(const std::string& array_name);
-  /** It deletes a fragment (regardless of whether it is open or not). */
-  void delete_fragment(const std::string& array_name,
-                       const std::string& fragment_name);
-  /** 
-   * Loads the contents of the file that stores the book-keeping info for 
-   * the fragments of na array into the input buffer, and updates the input
-   * buffer_size with the size of this file. Note that the buffer must be later
-   * deleted by the caller.
-   */
-  void flush_fragments_bkp(const std::string& array_name, 
-                           const char* buffer, size_t buffer_size) const;
-
-  /** Returns true if the fragment is empty. */
-  bool fragment_empty(const FragmentDescriptor* fd) const;
-  /** Returns true if the fragment exists. */
-  bool fragment_exists(
-      const std::string& array_name,
-      const std::string& fragment_name) const;
-  /** Loads the schema of an array into the second input from the disk. */
-  const ArraySchema* load_array_schema(const std::string& array_name) const;
-  /** 
-   * Loads the contents of the file that stores the book-keeping info for 
-   * the fragments of na array into the input buffer, and updates the input
-   * buffer_size with the size of this file. Note that the buffer must be later
-   * deleted by the caller.
-   */
-  void load_fragments_bkp(const std::string& array_name, 
-                          char*& buffer, size_t& buffer_size) const;
   /** Stores a new schema for an array on the disk. */
   void modify_array_schema(const ArraySchema* array_schema) const;
   /** 
-   * Modifies the fragment book-keeping structures for the case of irregular 
-   * tiles, when the capacity changes as part of the 'retile' query. 
+   * Opens an array in the input mode. It returns an 'array descriptor',
+   * which is used in subsequent array operations. Currently, the following
+   * modes are supported:
+   *
+   * "r": Read mode
+   *
+   * "w": Write mode (if the array exists, it is deleted)
+   *
+   * "a": Append mode
    */
-  void modify_fragment_bkp(const FragmentDescriptor* fd, 
-                           int64_t capacity) const;
+  int open_array(const std::string& array_name, const char* mode);
+
+  // CELL FUNCTIONS
   /** 
-   * Returns the begin iterator to the StorageManager::MBRList that 
-   * contains the MBRs of the intput array. 
-   */ 
-  MBRs::const_iterator MBR_begin(const FragmentDescriptor* fd) const; 
-  /** 
-   * Returns the end iterator to the StorageManager::MBRList that 
-   * contains the MBRs of the intput array. 
-   */ 
-  MBRs::const_iterator MBR_end(const FragmentDescriptor* fd) const; 
-  /** Opens an array in the input mode, opening only the input fragments. */
-  const ArrayDescriptor* open_array(
-      const std::string& array_name,
-      const std::vector<std::string>& fragment_names, Mode mode);
-  /** Opens an array in the input mode, opening only the input fragments. */
-  const ArrayDescriptor* open_array(
-      const ArraySchema* array_schema,
-      const std::vector<std::string>& fragment_names, Mode mode);
-  /** Opens a fragment array in the input mode.*/
-  FragmentDescriptor* open_fragment(
-      const ArraySchema* array_schema, 
-      const std::string& fragment_name, Mode mode);
-  /** 
-   * Prepares to write data of the input size into a fragment. This may 
-   * trigger the sorting of the data buffered into the input fragment
-   * (using external sorting), in order to appropriately free space in 
-   * main memory. 
-   * NOTE: This function is necessary prior to starting any sequence
-   * of writes into a fragment.
+   * Takes as input an array descriptor and returns an array begin constant 
+   * cell iterator.
    */
-  void prepare_to_write(FragmentDescriptor* fd, size_t size) const;
+  template<class T>
+  Array::const_cell_iterator<T> begin(int ad) const;
   /** 
-   * Writes a logical cell (comprised of coordinates and attributes) into
-   * a fragment. 
+   * Takes as input an array descriptor and a range and returns an array begin 
+   * constant cell iterator. The iterator iterates only over the cells whose
+   * coordinates lie within the input range, following the global cell order.
    */
-  void write_cell(FragmentDescriptor* fd, const CoordsAttrs& cell) const;
-  /** 
-   * Writes a logical cell (comprised of coordinates, attributes and a 
-   * cell or tile id) into a fragment. 
+  template<class T>
+  Array::const_cell_iterator<T> begin(int ad, const T* range) const;
+  /**  
+   * Writes a cell to an array. It takes as input an array descriptor, and
+   * a cell pointer. The cell has the following format: The coordinates
+   * appear first, and then the attribute values in the same order
+   * as the attributes are defined in the array schema.
    */
-  void write_cell(FragmentDescriptor* fd, const IdCoordsAttrs& cell) const;
-  /** 
-   * Writes a logical cell (comprised of coordinates, attributes, a tile
-   * id and a cell id) into a fragment. 
+  void write_cell(int ad, const void* cell) const; 
+  /**  
+   * Writes a cell to an array. It takes as input an array descriptor, and
+   * a cell pointer. The cell has the following format: The coordinates
+   * appear first, and then the attribute values in the same order
+   * as the attributes are defined in the array schema. This function
+   * is used only when it is guaranteed that the cells are written
+   * respecting the global cell order as specified in the array schema.
    */
-  void write_cell(FragmentDescriptor* fd, const IdIdCoordsAttrs& cell) const;
+  template<class T>
+  void write_cell_sorted(int ad, const void* cell) const; 
 
   // TILE FUNCTIONS
-  /**
-   * Inserts a tile into the fragment. Note that tiles are always 
-   * appended in the end of the corresponding attribute file.
-   * Note: Two rules must be followed: (i) For each attribute,
-   * tiles must be appended in a strictly ascending order of tile ids.
-   * (ii) If a tile with a certain id is appended for an attribute A,
-   * a tile with the same id must be appended across all attributes
-   * before appending a new tile with a different tile id for A.
-   */
-  void append_tile(
-      const Tile* tile, const FragmentDescriptor* fd, int attribute_id); 
-  /**  Returns a tile of an array with the specified attribute and tile id. */
-  const Tile* get_tile(
-      const FragmentDescriptor* fd, int attribute_id, int64_t tile_id);  
-  /**  
-   * Returns a tile of an array with the specified attribute and tile position. 
-   */
-  const Tile* get_tile_by_pos(
-      const FragmentDescriptor* fd, int attribute_id, int64_t pos);  
-  /** 
-   * Creates an empty tile for a specific array and attribute, with reserved 
-   * capacity equal to capacity (note though that there are no constraints on
-   * the number of cells the tile will actually accommodate - this is only
-   * some initial reservation of memory to avoid mutliple memory expansions
-   * as new cells are appended to the tile). 
-   */
-  Tile* new_tile(const ArraySchema* array_schema, int attribute_id, 
-                 int64_t tile_id, int64_t capacity) const; 
+  /**  Returns a tile of a fragment with the specified attribute and tile id. */
+  const Tile* get_tile(Fragment* fragment, int attribute_id, int64_t tile_id); 
+  /** Returns a tile of a fragment for a given attribute and tile position. */
+  const Tile* get_tile_by_pos(Fragment* fragment, 
+                              int attribute_id, int64_t pos);  
   /** 
    * Returns the id of the tile with the input position for the input array. 
    * Note that the id of a logical tile across all attributes is the same at the
-   * same position (physical tiles correspondig to the same logical tile are 
+   * same position (physical tiles corresponding to the same logical tile are 
    * appended to the array in the same order).
    */
-  int64_t get_tile_id(const FragmentDescriptor* ad, int64_t pos) const;
-
-  // TILE ITERATORS
-  /** This class implements a constant tile iterator. */
-  class const_tile_iterator {
-   public:
-    /** Iterator constuctor. */
-    const_tile_iterator();
-    /** Iterator constuctor. */
-    const_tile_iterator(
-        const StorageManager* storage_manager,
-        const FragmentDescriptor* fd, 
-        int attribute_id,
-        int64_t pos); 
-    /** Assignment operator. */
-    void operator=(const const_tile_iterator& rhs);
-    /** Addition operator. */
-    const_tile_iterator operator+(int64_t step);
-    /** Addition-assignment operator. */
-    void operator+=(int64_t step);
-    /** Pre-increment operator. */
-    const_tile_iterator operator++();
-    /** Post-increment operator. */
-    const_tile_iterator operator++(int junk);
-    /** 
-     * Returns true if the iterator is equal to that in the
-     * right hand side (rhs) of the operator. 
-     */
-    bool operator==(const const_tile_iterator& rhs) const;
-    /** 
-     * Returns true if the iterator is equal to that in the
-     * right hand side (rhs) of the operator. 
-     */
-    bool operator!=(const const_tile_iterator& rhs) const;
-    /** Returns the tile pointed by the iterator. */
-    const Tile* operator*() const; 
-    /** Returns the array schema associated with this tile. */
-    const ArraySchema* array_schema() const;
-    /** Returns the bounding coordinates of the tile. */
-    BoundingCoordinatesPair bounding_coordinates() const;
-    /** Returns the MBR of the tile. */
-    MBR mbr() const;
-    /** Returns the position. */
-    int64_t pos() const { return pos_; };
-    /** Returns the id of the tile. */
-    int64_t tile_id() const;
-
-   private:
-    /** The array descriptor corresponding to this iterator. */
-    const FragmentDescriptor* fd_;
-    /** The attribute id corresponding to this iterator. */
-    int attribute_id_;
-    /** The position of the current tile in the book-keeping structures. */
-    int64_t pos_;
-    /** The storage manager object that created the iterator. */ 
-    const StorageManager* storage_manager_;
-  };
-  /** Begin tile iterator. */
-  const_tile_iterator begin(const FragmentDescriptor* fd, 
-                            int attribute_id) const;
-  /** End tile iterator. */
-  const_tile_iterator end(const FragmentDescriptor* fd,
-                     int attribute_id) const;
+  int64_t get_tile_id(Fragment* fragment, int64_t pos) const;
   
   // MISC
   /** 
@@ -600,8 +876,7 @@ class StorageManager {
    * is full (i.e., if the tile MBR is completely in the range) or not.
    */
   void get_overlapping_tile_ids(
-      const FragmentDescriptor* fd, 
-      const void* range, 
+      const Fragment* fragment, const void* range, 
       std::vector<std::pair<int64_t, bool> >* overlapping_tile_ids) const;
   /** 
    * Returns the ids of the tiles whose MBR overlaps with the input range.
@@ -610,8 +885,7 @@ class StorageManager {
    */
   template<class T>
   void get_overlapping_tile_ids(
-      const FragmentDescriptor* fd, 
-      const T* range, 
+      const Fragment* fragment, const T* range, 
       std::vector<std::pair<int64_t, bool> >* overlapping_tile_ids) const;
   /** 
    * Returns the positions of the tiles whose MBR overlaps with the input range.
@@ -619,8 +893,7 @@ class StorageManager {
    * is full (i.e., if the tile MBR is completely in the range) or not.
    */
   void get_overlapping_tile_pos(
-      const FragmentDescriptor* fd, 
-      const void* range, 
+      const Fragment* fragment, const void* range, 
       std::vector<std::pair<int64_t, bool> >* overlapping_tile_pos) const;
   /** 
    * Returns the positions of the tiles whose MBR overlaps with the input range.
@@ -629,27 +902,17 @@ class StorageManager {
    */
   template<class T>
   void get_overlapping_tile_pos(
-      const FragmentDescriptor* fd, 
-      const T* range, 
+      const Fragment* fragment, const T* range, 
       std::vector<std::pair<int64_t, bool> >* overlapping_tile_pos) const;
-
-  /** 
-   * Writes a logical cell (consisiting of the coordinates and the rest of
-   * the attributes) into a fragment. This function does not respect the
-   * array global cell order, so it must properly take care of sorting
-   * the cells as they come in.
-   */
-  void write_cell(FragmentDescriptor* fd, 
-                  const void* coords, const void* attributes) const;
 
  private: 
   // PRIVATE ATTRIBUTES
-  /** Used in FragmentInfo and FragmentDescriptor for debugging purposes. */
-  static int64_t fragment_info_id_;
-  /** Stores info about all currently open fragments. */
-  OpenFragments open_fragments_;
+  /** Keeps track of the descriptors of the currently open arrays. */
+  OpenArrays open_arrays_;
+  /** Stores all the open arrays. */
+  Array** arrays_; 
    /** 
-   * Determines the minimum amount of data that can be exchanged between the 
+   * Determines the amount of data that can be exchanged between the 
    * hard disk and the main memory in a single I/O operation. 
    */
   size_t segment_size_;
@@ -658,147 +921,40 @@ class StorageManager {
    * all the array data (i.e., tile and index files). 
    */
   std::string workspace_;
+  /** Max memory size of the write state when creating an array fragment. */
+  size_t write_state_max_size_;
   
   // PRIVATE METHODS
-  /** Checks on the fragment descriptor. */
-  bool check_fragment_descriptor(const FragmentDescriptor* fd) const;
-  /** Checks the tile MBR upon appending a tile. */
-  template<class T>
-  bool check_mbr_on_append_tile(const FragmentDescriptor* fd,
-                                const Tile* tile) const;
-  /** Checks upon appending a tile. */
-  bool check_on_append_tile(const FragmentDescriptor* fd,
-                            int attribute_id,
-                            const Tile* tile) const;
-  /** Checks upon closing a fragment. */
-  bool check_on_close_fragment(const FragmentDescriptor* fd) const;
-  /** Checks upon getting a tile. */
-  bool check_on_get_tile(const FragmentDescriptor* fd,
-                         int attribute_id,
-                         int64_t tile_id) const;
-  /** Checks upon getting a tile by position. */
-  bool check_on_get_tile_by_pos(const FragmentDescriptor* fd,
-                                int attribute_id,
-                                int64_t pos) const;
-  /** Checks upon opening an array. */
-  bool check_on_open_fragment(const std::string& array_name, 
-                              const std::string& fragment_name,
-                              Mode fragment_mode) const;
-  /** Creates the array folder in the workspace. */
-  void create_array_directory(const std::string& array_name) const;
-  /** Creates the fragment folder in the workspace. */
-  void create_fragment_directory(const std::string& array_name,
-                                 const std::string& fragment_name) const;
-  /** Creates the workspace folder. */
-  void create_workspace();
-  /** Deletes the directory of the fragment, along with all its files. */
-  void delete_fragment_directory(
-      const std::string& array_name, const std::string& fragment_name) const;
-  /** Deletes all the main-memory tiles of the fragment. */
-  void delete_tiles(FragmentInfo& fragment_info) const;
-  /** Deletes the main-memory tiles of a specific attribute of the fragment. */
-  void delete_tiles(FragmentInfo& fragment_info, int attribute_id) const;
-  /** Writes the fragment info on the disk. */
-  void flush_fragment_info(FragmentInfo& fragment_info) const;
-  /** Writes the bounding coordinates of each tile on the disk. */
-  void flush_bounding_coordinates(const FragmentInfo& fragment_info) const;
-  /** Writes the MBR of each tile on the disk. */
-  void flush_MBRs(const FragmentInfo& fragment_info) const;
-  /** Writes the tile offsets on the disk. */
-  void flush_offsets(const FragmentInfo& fragment_info) const;
-  /** Writes the tile ids on the disk. */
-  void flush_tile_ids(const FragmentInfo& fragment_info) const;
-  /** Writes the main-memory tiles of the fragment on the disk. */
-  void flush_tiles(FragmentInfo& fragment_info) const;
-  /** 
-   * Writes the main-memory tiles of a specific attribute of the fragment
-   * on the disk. 
-   */
-  void flush_tiles(FragmentInfo& fragment_info, int attribute_id) const;
-  /**
-   * Gets a tile of an attribute of an array using the tile position. 
-   * The position of a tile is a sequence number indicating
-   * the order in which it was appended to the array with respect to the
-   * the other tiles appended to the array for the same attribute (e.g.,
-   * 0 means that it was appended first, 1 second, etc.).
-   */
-  const Tile* get_tile_by_pos(FragmentInfo& fragment_info, 
-                              int attribute_id, 
-                              int64_t pos) const;
-  /** 
-   * Initializes the array info using the input mode, schema, 
-   * and fragment name. 
-   */
-  void init_fragment_info(const std::string& fragment_name, 
-                          const ArraySchema* array_schema,
-                          Mode fragment_mode,
-                          FragmentInfo& fragment_info) const; 
-  /** Loads the array info into main memory from the disk. */
-  void load_fragment_info(const std::string& array_name);
-  /** Loads the bounding coordinates into main memory from the disk. */
-  void load_bounding_coordinates(FragmentInfo& fragment_info) const;
-  /** Loads the MBRs into main memory from the disk. */
-  void load_MBRs(FragmentInfo& fragment_info) const;
-  /** Loads the offsets into main memory from the disk. */
-  void load_offsets(FragmentInfo& fragment_info) const;
-  /** 
-   * Fetches tiles from the disk into main memory. Specifically, it loads their
-   * payloads into a buffer. The aggregate payload size of the tiles is equal
-   * to the smallest number that exceeds StorageManager::segment_size_.
-   * NOTE: Care must be taken after the call of this function to delete
-   * the created buffer.
-   * \param fragment_info The fragment info.
-   * \param attribute_id The attribute id.
-   * \param start_pos The position in the index of the id of the tile 
-   * the loading will start from.
-   * \param buffer The buffer that will store the payloads of the loaded tiles.
-   * \return A pair (buffer_size, tiles_in_buffer), where buffer_size is the
-   * size of the created buffer, and tiles_in_buffer is the number of tiles 
-   * loaded in the buffer.
-   */
-  std::pair<size_t, int64_t> load_payloads_into_buffer(
-      const FragmentInfo& fragment_info, int attribute_id,
-      int64_t start_pos, char*& buffer) const;
-  /** Loads the tile ids into main memory from the disk. */
-  void load_tile_ids(FragmentInfo& fragment_info) const;
-  /** 
-   * Creates tiles_in_buffer tiles for an attribute of an array from the 
-   * payloads stored in buffer.
-   */
-  void load_tiles_from_buffer(
-      FragmentInfo& fragment_info, 
-      int attribute_id,
-      int64_t start_pos, char* buffer, size_t buffer_size,
-      int64_t tiles_in_buffer) const;
-  /** 
-   * Loads tiles from the disk for a specific attribute of an array.
-   * The loading starts from start_pos (recall that the tiles
-   * are stored on disk in increasing id order). The number of tiles
-   * to be loaded is determined by StorageManager::segment_size_ (namely,
-   * the function loads the minimum number of tiles whose aggregate
-   * payload exceeds StorageManager::segment_size_).
-   */
-  void load_tiles_from_disk(
-      FragmentInfo& fragment_info, int attribute_id, int64_t start_pos) const;
-  /** Returns true if the input path is an existing directory. */
-  bool path_exists(const std::string& path) const;
-  /** 
-   * Copies the payloads of the tiles of the input fragment and attribute
-   * currently in main memory into the segment buffer.
-   * The file_offset is the offset in the file where the segment buffer
-   * will eventually be written to.
-   */
-  void prepare_segment(
-      FragmentInfo& fragment_info, int attribute_id, 
-      int64_t file_offset, size_t segment_size, char* segment) const;
+  /** Checks when opening an array. */
+  void check_on_open_array(const std::string& array_name, 
+                           const char* mode) const;
+  /** Returns the array schema. */
+  const ArraySchema* get_array_schema(const std::string& array_name) const; 
+  /** Checks the validity of the array mode. */
+  bool invalid_array_mode(const char* mode) const;
   /** Simply sets the workspace. */
   void set_workspace(const std::string& path);
-  /** 
-   * Returns the position of tile_id in StorageManager::FragmentInfo::tile_ids_.
-   * If tile_id does not exist in the book-keeping structure, it returns
-   * SM_INVALID_POS. 
-   */
-  int64_t tile_pos(const FragmentInfo& fragment_info, int64_t tile_id) const;
+  /** Stores an array object and returns an array descriptor. */
+  int store_array(Array* array);
 }; 
+
+/** This exception is thrown by StorageManager. */
+class StorageManagerException {
+ public:
+  // CONSTRUCTORS & DESTRUCTORS
+  /** Takes as input the exception message. */
+  StorageManagerException(const std::string& msg) 
+      : msg_(msg) {}
+  /** Empty destructor. */
+  ~StorageManagerException() {}
+
+  // ACCESSORS
+  /** Returns the exception message. */
+  const std::string& what() const { return msg_; }
+
+ private:
+  /** The exception message. */
+  std::string msg_;
+};
 
 #endif

@@ -39,14 +39,7 @@
 #include "csv_file.h"
 #include "storage_manager.h"
 
-/** Special value indicating an invalid tile id. */
-#define LD_INVALID_TILE_ID std::numeric_limits<int64_t>::max()
-
-/**
- * The Loader is the module that creates the array layout from raw data 
- * presented in a CSV format. It can load data into arrays with both 
- * regular and irregular tiles, supporting various cell and tile orders.
- */
+/** The Loader creates an array from raw data. */
 class Loader {
  public:
   // CONSTRUCTORS AND DESTRUCTORS
@@ -59,24 +52,9 @@ class Loader {
   ~Loader() {}
 
   // LOADING FUNCTIONS
-  /** Creates a fragment from a CSV file. */
-  void load(const std::string& filename, 
-            const std::string& array_name, 
-            const std::string& fragment_name) const;
-  /** Creates a fragment from a CSV file. */
-  void load(const std::string& filename, 
-            const ArraySchema* array_schema, 
-            const std::string& fragment_name) const;
-  /**  
-   * Writes the input coordinates and attributes into an array. The input values 
-   * do not respect the global cell order. Therefore, this function will
-   * perform the proper sorting.
-   * NOTE: After the execution of this function, the input buffers should not
-   * be used (they will eventually be freed by fragment descriptor fd).
-   */
-  void write(StorageManager::FragmentDescriptor* fd,
-             const void* coords, size_t coords_size,
-             const void* attrs, size_t attrs_size) const; 
+  /** Loads a CSV file into an array. */
+  void load_csv(const std::string& filename, 
+                const std::string& array_name) const;
 
  private:
   // PRIVATE ATTRIBUTES
@@ -87,76 +65,28 @@ class Loader {
  
   // PRIVATE METHODS
   /** 
-   * Retrieves an attribute value from the CSV line and appends it to the
-   * input tile.
+   * Retrieves an attribute value from the CSV line and puts it into the
+   * input cell.
    */
   template<class T>
-  bool append_attribute(CSVLine* csv_line, Tile* tile) const;
+  bool get_attribute(CSVLine& csv_line, void* cell) const;
   /** 
-   * Retrieves an attribute value from the CSV line and appends it to the
-   * input tile.
-   */
-  bool append_attribute(CSVLine* csv_line, Tile* tile) const;
-  /** 
-   * Treats the CSV line as a logical cell encompassing coordinates and
-   * attribute values, and appends the coordinates to a coordinate tile
-   * and the attribute values to the respective attribute tiles. 
-   */
-  void append_cell(const ArraySchema& array_schema, 
-                   CSVLine* csv_line, Tile** tiles) const;
-  /** 
-   * Retrieves a set of coordinates from the CSV line and appends them to the
-   * input tile.
+   * Retrieves a set of coordinates from the CSV line and puts them into the
+   * input cell.
    */
   template<class T>
-  bool append_coordinates(CSVLine* csv_line, Tile* tile) const;
+  bool get_coordinates(CSVLine& csv_line, void* cell, int dim_num) const;
   /** 
-   * Retrieves a set of coordinates from the CSV line and appends them to the
-   * input tile.
+   * Treats the input CSV line as a logical cell, retrieves from it
+   * the coordinates and attribute values, and places them into
+   * the input cell in binary form (first the coordinates, then the
+   * attribute values in the order of their appearence in the input
+   * array schema). 
    */
-  bool append_coordinates(CSVLine* csv_line, Tile* tile) const;
-  /** Checks upon invoking the load command. */
-  bool check_on_load(const std::string& filename) const;
-  /** Creates the workspace folder. */
-  void create_workspace() const;
-  /**
-   * Injects tile/cell ids to the CSV file prior to loading (applies only to
-   * regular tiles with any order, and irregular tiles with Hilbert order). 
-   */
-  void inject_ids_to_csv_file(const std::string& filename, 
-                              const std::string& injected_filename,
-                              const ArraySchema& array_schema) const;
-  /**
-   * Injects tile/cell ids to the CSV file prior to loading (applies only to
-   * regular tiles with any order, and irregular tiles with Hilbert order). 
-   */
-  template<class T>
-  void inject_ids_to_csv_file(const std::string& filename, 
-                              const std::string& injected_filename,
-                              const ArraySchema& array_schema) const;
-  /** Creates the (irregular) tiles and sends them to the storage manager. */
-  void make_tiles_irregular(const std::string& filename,
-                            const StorageManager::FragmentDescriptor* fd) const;
-  /** Creates the (regular) tiles and sends them to the storage manager. */
-  void make_tiles_regular(const std::string& filename,
-                          const StorageManager::FragmentDescriptor* fd) const;
-  /** 
-   * Creates an array of new tile pointers with the input tile id, 
-   * and based on the input array schema. 
-   */
-  void new_tiles(const ArraySchema& array_schema, 
-                 int64_t tile_id, Tile** tiles) const;
-  /** Returns true if the input path is an existing directory. */
-  bool path_exists(const std::string& path) const;
+  bool csv_line_to_cell(const ArraySchema* array_schema, 
+                        CSVLine& csv_line, void* cell) const;
   /** Simply sets the workspace. */
   void set_workspace(const std::string& path);
-  /**  Sorts the csv file depending on the type of tiles and order. */
-  void sort_csv_file(const std::string& to_be_sorted_filename,
-                     const std::string& sorted_filename,
-                     const ArraySchema& array_schema) const;
-  /** Sends the tiles to the storage manager. */
-  void store_tiles(const StorageManager::FragmentDescriptor* fd,
-                   Tile** tiles) const;
 };
 
 /** This exception is thrown by Loader. */
