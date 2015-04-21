@@ -82,6 +82,13 @@ void delete_directory(const std::string& dirname)  {
   rmdir(dirname.c_str());
 }
 
+void expand_buffer(void*& buffer, size_t size) {
+  void* temp = malloc(2*size);
+  memcpy(temp, buffer, size);
+  free(buffer);
+  buffer = temp;
+}
+
 void expand_mbr(const ArraySchema* array_schema,
                 const void* coords, void* mbr) {
   // For easy reference
@@ -123,13 +130,6 @@ void expand_mbr(const T* coords, T* mbr, int dim_num) {
         mbr[2*i+1] = coords[i];   
     }	
   }
-}
-
-void expand_buffer(void*& buffer, size_t size) {
-  void* temp = malloc(2*size);
-  memcpy(temp, buffer, size);
-  free(buffer);
-  buffer = temp;
 }
 
 bool file_exists(const std::string& filename) {

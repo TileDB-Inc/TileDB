@@ -37,6 +37,7 @@
 
 #include "tile.h"
 #include "array_schema.h"
+#include "mpi_handler.h"
 #include <unistd.h>
 #include <vector>
 #include <string>
@@ -783,9 +784,13 @@ class StorageManager {
    * exist. If the workspace folder exists, the function does nothing, 
    * otherwise it creates it. The segment size determines the amount of data 
    * exchanged in an I/O operation between the disk and the main memory. 
+   * The MPI handler takes care of the MPI communication in the distributed
+   * setting where there are multiple TileDB processes runnign simultaneously.
    */
   StorageManager(const std::string& path, 
-                 size_t segment_size = SM_SEGMENT_SIZE);
+                 size_t segment_size = SM_SEGMENT_SIZE,
+                 const MPIHandler* mpi_handler = NULL);
+
   /** When a storage manager object is deleted, it closes all open arrays. */
   ~StorageManager();
  
@@ -837,6 +842,38 @@ class StorageManager {
    */
   template<class T>
   Array::const_cell_iterator<T> begin(int ad, const T* range) const;
+  /**
+   * Takes as input an array descriptor and a multi-dimensional range, and 
+   * returns the cells whose coordinates fall inside the range, as well as
+   * their number (last two arguments).
+   */
+  void read_cells(int ad, const void* range, 
+                  void*& cells, int64_t& cell_num) const;
+  /**
+   * Takes as input an array descriptor and a multi-dimensional range, and 
+   * returns the cells whose coordinates fall inside the range, as well as
+   * their number (last two arguments).
+   */
+  template<class T>
+  void read_cells(int ad, const T* range, 
+                  void*& cells, int64_t& cell_num) const;
+  /**
+   * Takes as input an array descriptor, a multi-dimensional range and 
+   * the rank of the process that will receive the data. It returns form
+   * all the processes the cells whose coordinates fall inside the input range,
+   * as well as their number (last two arguments).
+   */
+  void read_cells(int ad, const void* range, int rcv_rank, 
+                  void*& cells, int64_t& cell_num) const;
+  /**
+   * Takes as input an array descriptor, a multi-dimensional range and 
+   * the rank of the process that will receive the data. It returns form
+   * all the processes the cells whose coordinates fall inside the input range,
+   * as well as their number (last two arguments).
+   */
+  template<class T>
+  void read_cells(int ad, const T* range, int rcv_rank, 
+                  void*& cells, int64_t& cell_num) const;
   /**  
    * Writes a cell to an array. It takes as input an array descriptor, and
    * a cell pointer. The cell has the following format: The coordinates
@@ -844,6 +881,14 @@ class StorageManager {
    * as the attributes are defined in the array schema.
    */
   void write_cell(int ad, const void* cell) const; 
+  /**  
+   * Writes a set of cells to an array. It takes as input an array descriptor,
+   * and a pointer to cells, which are serialized one after the other. Each cell
+   * has the following format: The coordinates appear first, and then the
+   * attribute values in the same order as the attributes are defined in the
+   * array schema.
+   */
+  void write_cells(int ad, const void* cells, int64_t cell_num) const; 
   /**  
    * Writes a cell to an array. It takes as input an array descriptor, and
    * a cell pointer. The cell has the following format: The coordinates
@@ -854,56 +899,27 @@ class StorageManager {
    */
   template<class T>
   void write_cell_sorted(int ad, const void* cell) const; 
-
-  // TILE FUNCTIONS
-  /**  Returns a tile of a fragment with the specified attribute and tile id. */
-  const Tile* get_tile(Fragment* fragment, int attribute_id, int64_t tile_id); 
-  /** Returns a tile of a fragment for a given attribute and tile position. */
-  const Tile* get_tile_by_pos(Fragment* fragment, 
-                              int attribute_id, int64_t pos);  
-  /** 
-   * Returns the id of the tile with the input position for the input array. 
-   * Note that the id of a logical tile across all attributes is the same at the
-   * same position (physical tiles corresponding to the same logical tile are 
-   * appended to the array in the same order).
+  /**  
+   * Writes a set of cells to an array. It takes as input an array descriptor,
+   * and a pointer to cells, which are serialized one after the other. Each cell
+   * has the following format: The coordinates appear first, and then the
+   * attribute values in the same order as the attributes are defined in the
+   * array schema. This function is used only when it is guaranteed that the
+   * cells are written respecting the global cell order as specified in the
+   * array schema.
    */
-  int64_t get_tile_id(Fragment* fragment, int64_t pos) const;
-  
-  // MISC
-  /** 
-   * Returns the ids of the tiles whose MBR overlaps with the input range.
-   * The bool variable in overlapping_tile_ids indicates whether the overlap
-   * is full (i.e., if the tile MBR is completely in the range) or not.
-   */
-  void get_overlapping_tile_ids(
-      const Fragment* fragment, const void* range, 
-      std::vector<std::pair<int64_t, bool> >* overlapping_tile_ids) const;
-  /** 
-   * Returns the ids of the tiles whose MBR overlaps with the input range.
-   * The bool variable in overlapping_tile_ids indicates whether the overlap
-   * is full (i.e., if the tile MBR is completely in the range) or not.
+  void write_cells_sorted(int ad, const void* cells, int64_t cell_num) const; 
+  /**  
+   * Writes a set of cells to an array. It takes as input an array descriptor,
+   * and a pointer to cells, which are serialized one after the other. Each cell
+   * has the following format: The coordinates appear first, and then the
+   * attribute values in the same order as the attributes are defined in the
+   * array schema. This function is used only when it is guaranteed that the
+   * cells are written respecting the global cell order as specified in the
+   * array schema.
    */
   template<class T>
-  void get_overlapping_tile_ids(
-      const Fragment* fragment, const T* range, 
-      std::vector<std::pair<int64_t, bool> >* overlapping_tile_ids) const;
-  /** 
-   * Returns the positions of the tiles whose MBR overlaps with the input range.
-   * The bool variable in overlapping_tile_pos indicates whether the overlap
-   * is full (i.e., if the tile MBR is completely in the range) or not.
-   */
-  void get_overlapping_tile_pos(
-      const Fragment* fragment, const void* range, 
-      std::vector<std::pair<int64_t, bool> >* overlapping_tile_pos) const;
-  /** 
-   * Returns the positions of the tiles whose MBR overlaps with the input range.
-   * The bool variable in overlapping_tile_pos indicates whether the overlap
-   * is full (i.e., if the tile MBR is completely in the range) or not.
-   */
-  template<class T>
-  void get_overlapping_tile_pos(
-      const Fragment* fragment, const T* range, 
-      std::vector<std::pair<int64_t, bool> >* overlapping_tile_pos) const;
+  void write_cells_sorted(int ad, const void* cells, int64_t cell_num) const; 
 
  private: 
   // PRIVATE ATTRIBUTES
@@ -911,7 +927,9 @@ class StorageManager {
   OpenArrays open_arrays_;
   /** Stores all the open arrays. */
   Array** arrays_; 
-   /** 
+  /** The MPI communication handler. */
+  const MPIHandler* mpi_handler_; 
+  /** 
    * Determines the amount of data that can be exchanged between the 
    * hard disk and the main memory in a single I/O operation. 
    */

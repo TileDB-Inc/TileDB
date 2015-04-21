@@ -152,7 +152,7 @@ void QueryProcessor::subarray(
 
 template<class T>
 void QueryProcessor::subarray(int ad, const T* range, int result_ad) const { 
-  // Prepare cell iterators
+  // Prepare cell iterator
   StorageManager::Array::const_cell_iterator<T> cell_it = 
       storage_manager_->begin<T>(ad, range);
 
@@ -160,82 +160,8 @@ void QueryProcessor::subarray(int ad, const T* range, int result_ad) const {
   for(; !cell_it.end(); ++cell_it) 
     storage_manager_->write_cell_sorted<T>(result_ad, *cell_it);
 }
+
 /*
-void QueryProcessor::export_to_csv(
-    const std::vector<const StorageManager::FragmentDescriptor*>& fd,
-    const std::string& filename) const {
-  assert(fd.size() > 0); 
-
-  // For easy reference
-  const ArraySchema& array_schema = *(fd[0]->array_schema());
-  unsigned int attribute_num = array_schema.attribute_num();
-  unsigned int dim_num = array_schema.dim_num();
-  unsigned int fragment_num = fd.size(); 
- 
-  // Prepare CSV file
-  CSVFile csv_file(filename, CSVFile::WRITE);
-
-  // Create and initialize tile iterators
-  StorageManager::const_iterator** tile_its = 
-      new StorageManager::const_iterator*[fragment_num];
-  StorageManager::const_iterator* tile_it_end = 
-      new StorageManager::const_iterator[fragment_num]; 
-  for(unsigned int i=0; i<fragment_num; ++i) {
-    tile_its[i] = new StorageManager::const_iterator[attribute_num+1];
-    initialize_tile_its(fd[i], tile_its[i], tile_it_end[i]);
-  }
-
-  // Create cell iterators
-  Tile::const_iterator** cell_its = 
-      new Tile::const_iterator*[fragment_num];
-  Tile::const_iterator* cell_it_end = 
-      new Tile::const_iterator[fragment_num];
-  for(unsigned int i=0; i<fragment_num; ++i) { 
-    cell_its[i] = new Tile::const_iterator[attribute_num+1];
-    initialize_cell_its(tile_its[i], attribute_num, 
-                        cell_its[i], cell_it_end[i]);
-  }
-
-  // Get the index of the fragment from which we will get the next cell 
-  // and append it to the consolidation result.
-  int next_fragment_index = 
-      get_next_fragment_index(tile_its, tile_it_end, fragment_num, 
-                              cell_its, cell_it_end, array_schema);
-
-  // Iterate over all cells, until there are no more cells
-  while(next_fragment_index != -1) {
-    // For easy reference
-    Tile::const_iterator* next_cell_its = cell_its[next_fragment_index];
-    Tile::const_iterator& next_cell_it_end = cell_it_end[next_fragment_index];
-    StorageManager::const_iterator* next_tile_its = 
-        tile_its[next_fragment_index];
-    StorageManager::const_iterator& next_tile_it_end = 
-        tile_it_end[next_fragment_index];
-
-    // Write cell to CSV file
-    csv_file << cell_to_csv_line(next_cell_its, attribute_num);
-
-    // Advance cell (and potentially tile) iterators
-    advance_cell_tile_its(attribute_num, next_cell_its, next_cell_it_end,
-                          next_tile_its, next_tile_it_end);
-
-    next_fragment_index = get_next_fragment_index(tile_its, tile_it_end, 
-                                                  fragment_num, 
-                                                  cell_its, cell_it_end, 
-                                                  array_schema);
-  } 
-
-  // Clean up
-  for(unsigned int i=0; i<fd.size(); ++i) 
-    delete [] tile_its[i];
-  delete [] tile_its;
-  delete [] tile_it_end;
-  for(unsigned int i=0; i<fd.size(); ++i) 
-    delete [] cell_its[i];
-  delete [] cell_its;
-  delete [] cell_it_end;
-}
-
 void QueryProcessor::filter(
     const StorageManager::FragmentDescriptor* fd,
     const ExpressionTree* expression,
