@@ -44,10 +44,10 @@ class Loader {
  public:
   // CONSTRUCTORS AND DESTRUCTORS
   /** 
-   * Simple constructor. The workspace is where the loader will create its
-   * data. The storage manager is the module the loader interefaces with.
+   * Simple constructor. The storage manager is the module the loader 
+   * interefaces with.
    */
-  Loader(const std::string& workspace, StorageManager* storage_manager);
+  Loader(StorageManager* storage_manager);
   /** Empty destructor. */
   ~Loader() {}
 
@@ -60,8 +60,6 @@ class Loader {
   // PRIVATE ATTRIBUTES
   /** The StorageManager object the loader interfaces with. */
   StorageManager* storage_manager_;
-  /** A folder in the disk where the loader creates all its data. */
-  std::string workspace_;
  
   // PRIVATE METHODS
   /** 
@@ -85,8 +83,6 @@ class Loader {
    */
   bool csv_line_to_cell(const ArraySchema* array_schema, 
                         CSVLine& csv_line, void* cell) const;
-  /** Simply sets the workspace. */
-  void set_workspace(const std::string& path);
 };
 
 /** This exception is thrown by Loader. */

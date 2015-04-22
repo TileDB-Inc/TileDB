@@ -32,6 +32,7 @@
  */
 
 #include "mpi_handler.h"
+#include <stdlib.h>
 
 MPIHandler::MPIHandler(int* argc, char*** argv) {
   init(argc, argv);
@@ -39,15 +40,6 @@ MPIHandler::MPIHandler(int* argc, char*** argv) {
 
 MPIHandler::~MPIHandler() {
   finalize();
-}
-
-void MPIHandler::bcast(void* data, int size, int root) const {
-  int rc = MPI_Bcast(data, size, MPI_CHAR, root, MPI_COMM_WORLD); 
-
-  if(rc != MPI_SUCCESS) {
-    throw MPIHandlerException("Error broadcasting with MPI.");
-    MPI_Abort(MPI_COMM_WORLD, rc);
-  }
 }
 
 void MPIHandler::finalize() {
@@ -60,15 +52,52 @@ void MPIHandler::finalize() {
 }
 
 void MPIHandler::gather(void* send_data, int send_size, 
-                        void* rcv_data, int rcv_size, 
+                        void*& rcv_data, int& rcv_size,
                         int root) const {
-  int rc = MPI_Gather(send_data, send_size, MPI_CHAR, 
-                      rcv_data, rcv_size, MPI_CHAR,
+  // Receive size of data to be received from each process
+  int* rcv_sizes = NULL;
+  int* displs = NULL;
+
+  if(rank_ == root) {
+    rcv_sizes = new int[proc_num_]; 
+  }
+ 
+  int rc = MPI_Gather(&send_size, 1, MPI_INT, 
+                      rcv_sizes, 1, MPI_INT,
                       root, MPI_COMM_WORLD); 
 
   if(rc != MPI_SUCCESS) {
-    throw MPIHandlerException("Error gathering with MPI.");
+    throw MPIHandlerException("Error gathering send sizes with MPI.");
     MPI_Abort(MPI_COMM_WORLD, rc);
+  }
+
+  // Allocate receive data buffer and compute displacements 
+  if(rank_ == root) {
+    displs = new int[proc_num_];
+    rcv_size = 0;
+
+    for(int i=0; i<proc_num_; ++i) {
+      displs[i] = rcv_size;
+      rcv_size += rcv_sizes[i];
+    } 
+
+    rcv_data = malloc(rcv_size);
+  }
+    
+  // Receive the data from each process
+  rc = MPI_Gatherv(send_data, send_size, MPI_CHAR, 
+                   rcv_data, rcv_sizes, displs, MPI_CHAR,
+                   root, MPI_COMM_WORLD); 
+
+  if(rc != MPI_SUCCESS) {
+    throw MPIHandlerException("Error gathering data with MPI.");
+    MPI_Abort(MPI_COMM_WORLD, rc);
+  }
+
+  // Clean up
+  if(rank_ == root) {
+    delete [] rcv_sizes;
+    delete [] displs;
   }
 }
 

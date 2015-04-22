@@ -2480,8 +2480,9 @@ void StorageManager::SortedRun::load_next_segment() {
 ****************** STORAGE MANAGER ********************
 ******************************************************/
 
-StorageManager::StorageManager(const std::string& path, size_t segment_size,
-                               const MPIHandler* mpi_handler) 
+StorageManager::StorageManager(const std::string& path, 
+                               const MPIHandler* mpi_handler,
+                               size_t segment_size)
     : segment_size_(segment_size), mpi_handler_(mpi_handler) {
   set_workspace(path);
   create_directory(workspace_);
@@ -2844,25 +2845,26 @@ void StorageManager::read_cells(int ad, const void* range,
 }
 
 
-void StorageManager::read_cells(int ad, const void* range, int rcv_rank,
-                                void*& cells, int64_t& cell_num) const {
+void StorageManager::read_cells(int ad, const void* range,
+                                void*& cells, int64_t& cell_num,
+                                int rcv_rank) const {
   // For easy reference
   int attribute_num = arrays_[ad]->array_schema_->attribute_num();
   const std::type_info& coords_type = 
       *(arrays_[ad]->array_schema_->type(attribute_num));
 
   if(coords_type == typeid(int))
-    read_cells<int>(ad, static_cast<const int*>(range), rcv_rank, 
-                    cells, cell_num);
+    read_cells<int>(ad, static_cast<const int*>(range), 
+                    cells, cell_num, rcv_rank);
   else if(coords_type == typeid(int64_t))
-    read_cells<int64_t>(ad, static_cast<const int64_t*>(range), rcv_rank,
-                        cells, cell_num);
+    read_cells<int64_t>(ad, static_cast<const int64_t*>(range),
+                        cells, cell_num, rcv_rank);
   else if(coords_type == typeid(float))
-    read_cells<float>(ad, static_cast<const float*>(range), rcv_rank, 
-                      cells, cell_num);
+    read_cells<float>(ad, static_cast<const float*>(range),
+                      cells, cell_num, rcv_rank);
   else if(coords_type == typeid(double))
-    read_cells<double>(ad, static_cast<const double*>(range), rcv_rank, 
-                       cells, cell_num);
+    read_cells<double>(ad, static_cast<const double*>(range),
+                       cells, cell_num, rcv_rank);
 }
 
 template<class T>
@@ -2895,9 +2897,29 @@ void StorageManager::read_cells(int ad, const T* range,
 }
 
 template<class T>
-void StorageManager::read_cells(int ad, const T* range, int rcv_rank, 
-                                void*& cells, int64_t& cell_num) const {
-// TODO
+void StorageManager::read_cells(int ad, const T* range,
+                                void*& cells, int64_t& cell_num,
+                                int rcv_rank) const {
+  assert(mpi_handler_ != NULL);
+
+  // For easy reference
+  size_t cell_size = arrays_[ad]->array_schema_->cell_size();
+
+  // Read local cells in the range
+  void* local_cells;
+  int64_t local_cell_num;
+  int all_cells_size;
+  read_cells(ad, range, local_cells, local_cell_num);
+
+  // Collect all cells from all processes
+  void* all_cells;
+  mpi_handler_->gather(local_cells, local_cell_num * cell_size,
+                       all_cells, all_cells_size, rcv_rank); 
+
+  if(rcv_rank == mpi_handler_->rank()) {
+    cells = all_cells;
+    cell_num = all_cells_size / cell_size; 
+  }
 }
 
 void StorageManager::write_cell(int ad, const void* input_cell) const {
@@ -3053,8 +3075,6 @@ StorageManager::MBRs::const_iterator StorageManager::MBR_end(
   return fragment_info.mbrs_.end(); 
 }
 
-
-
 */
 
 /******************************************************
@@ -3123,7 +3143,15 @@ inline
 void StorageManager::set_workspace(const std::string& path) {
   workspace_ = absolute_path(path);
   assert(path_exists(workspace_));
-  workspace_ += "/StorageManager/";
+
+  if(mpi_handler_ == NULL) {
+    workspace_ += "/StorageManager/";
+  } else {
+    std::stringstream ss;
+    ss << workspace_<< "/StorageManager_"  
+       << mpi_handler_->rank() << "/"; 
+    workspace_ = ss.str();
+  }
 }
 
 int StorageManager::store_array(Array* array) {

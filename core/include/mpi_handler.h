@@ -48,6 +48,12 @@ class MPIHandler {
   MPIHandler(int* argc, char*** argv);
   /** Destructor. */
   ~MPIHandler();
+
+  // ACCESSORS
+  /** Returns the process rank. */
+  int rank() const { return rank_; }
+  /** Returns the number of processes in the MPI wolrd. */
+  int proc_num() const { return proc_num_; }
  
   // INITIALIZATION & FINALIZATION
   /** Finalize MPI. */
@@ -57,16 +63,11 @@ class MPIHandler {
 
   // COMMUNICATION
   /** 
-   * Broadcasts data from the root process to the rest of the MPI processes. 
-   * The data size is in bytes.
-   */
-  void bcast(void* data, int size, int root) const;
-  /** 
    * The root process gathers data from all processes (including the root),
    * which send data.
    */
   void gather(void* send_data, int send_size, 
-              void* rcv_data, int rcv_size, 
+              void*& rcv_data, int& rcv_size,
               int root) const;
 
  private:

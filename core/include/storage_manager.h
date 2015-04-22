@@ -788,9 +788,8 @@ class StorageManager {
    * setting where there are multiple TileDB processes runnign simultaneously.
    */
   StorageManager(const std::string& path, 
-                 size_t segment_size = SM_SEGMENT_SIZE,
-                 const MPIHandler* mpi_handler = NULL);
-
+                 const MPIHandler* mpi_handler = NULL,
+                 size_t segment_size = SM_SEGMENT_SIZE);
   /** When a storage manager object is deleted, it closes all open arrays. */
   ~StorageManager();
  
@@ -863,8 +862,9 @@ class StorageManager {
    * all the processes the cells whose coordinates fall inside the input range,
    * as well as their number (last two arguments).
    */
-  void read_cells(int ad, const void* range, int rcv_rank, 
-                  void*& cells, int64_t& cell_num) const;
+  void read_cells(int ad, const void* range, 
+                  void*& cells, int64_t& cell_num,
+                  int rcv_rank) const;
   /**
    * Takes as input an array descriptor, a multi-dimensional range and 
    * the rank of the process that will receive the data. It returns form
@@ -872,8 +872,9 @@ class StorageManager {
    * as well as their number (last two arguments).
    */
   template<class T>
-  void read_cells(int ad, const T* range, int rcv_rank, 
-                  void*& cells, int64_t& cell_num) const;
+  void read_cells(int ad, const T* range,
+                  void*& cells, int64_t& cell_num,
+                  int rcv_rank) const;
   /**  
    * Writes a cell to an array. It takes as input an array descriptor, and
    * a cell pointer. The cell has the following format: The coordinates

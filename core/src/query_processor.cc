@@ -50,13 +50,9 @@
 ********************* CONSTRUCTORS ********************
 ******************************************************/
 
-QueryProcessor::QueryProcessor(const std::string& workspace, 
-                               StorageManager* storage_manager) 
+QueryProcessor::QueryProcessor(StorageManager* storage_manager) 
     : storage_manager_(storage_manager) {
-  set_workspace(workspace);
-  create_directory(workspace_); 
 }
-
 
 void QueryProcessor::export_to_csv(
     const std::string& array_name, const std::string& filename) const { 
@@ -3277,26 +3273,6 @@ bool QueryProcessor::precedes(
                                  coord_B); 
   }
 }
-
-*/
-
-inline
-void QueryProcessor::set_workspace(const std::string& path) {
-  workspace_ = path;
-  
-  // Replace '~' with the absolute path
-  if(workspace_[0] == '~') {
-    workspace_ = std::string(getenv("HOME")) +
-                 workspace_.substr(1, workspace_.size()-1);
-  }
-
-  // Check if the input path is an existing directory 
-  assert(path_exists(workspace_));
- 
-  workspace_ += "/QueryProcessor/";
-}
-
-/*
 
 inline
 void QueryProcessor::store_tiles(const StorageManager::FragmentDescriptor* fd,

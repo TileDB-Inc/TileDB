@@ -46,38 +46,12 @@
  */
 class QueryProcessor {
  public:
-  // TYPE DEFINITIONS
-  /** The bounding coordinates of a tile (see Tile::bounding_coordinates). */
-  typedef std::pair<const void*, const void*> BoundingCoordinatesPair;
-  /** Mnemonic: (dist, tile_pos). */
-  typedef std::pair<double, int64_t> DistTilePos;
-  /** A vector of attribute ids. */
-  typedef std::vector<int> AttributeIds;
-  /**
-   * Vector of pairs (tile_pos, full_overlap), used in
-   * QueryProcessor::subarray.
-   */
-  typedef std::vector<std::pair<int64_t, bool> > TilePosOverlapVector;
-  /** 
-   * A hyper-rectangle in the logical space, including all the coordinates
-   * of a tile. It is a list of low/high values across each dimension, i.e.,
-   * (dim#1_lower, dim#1_upper, dim#2_lower, dim#2_upper, ...).
-   */
-  typedef std::vector<const void*> MBR;
-  /** Mnemonic: (cell_pos, coord). */ 
-  typedef std::pair<int64_t, const void*> CellPosCoord;
-  /** Mnemonic: (tile_pos, (cell_pos, coord)). */ 
-  typedef std::pair<int64_t, CellPosCoord> TilePosCellPosCoord;
-  /** Mnemonic: (dist, (tile_pos, (cell_pos, coord))). */ 
-  typedef std::pair<double, TilePosCellPosCoord> DistTilePosCellPosCoord;
-
   // CONSTRUCTORS AND DESTRUCTORS
   /** 
-   * Simple constructor. The workspace is where the query processor will create 
-   * its data. The storage manager is the module the query processor interefaces
-   * with.
+   * Simple constructor. The storage manager is the module the query processor
+   * interefaces with.
    */
-  QueryProcessor(const std::string& workspace, StorageManager* storage_manager);
+  QueryProcessor(StorageManager* storage_manager);
 
   // QUERY FUNCTIONS
   /** 
@@ -295,8 +269,6 @@ class QueryProcessor {
   // PRIVATE ATTRIBUTES
   /** The StorageManager object the QueryProcessor will be interfacing with. */
   StorageManager* storage_manager_;
-  /** A folder in the disk where the query processor creates all its data. */
-  std::string workspace_;
 
   // PRIVATE METHODS
   /** Advances all the cell iterators by 1. */
@@ -926,8 +898,6 @@ class QueryProcessor {
     bool coordinate_cell_its_initialized_B,
     const ArraySchema& array_schema) const;
 */
-  /** Simply sets the workspace. */
-  void set_workspace(const std::string& path);
   /** Sends the input tiles to the storage manager. */
 /* TODO
   void store_tiles(const StorageManager::FragmentDescriptor* fd, 

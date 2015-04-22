@@ -47,10 +47,8 @@
 ********************* CONSTRUCTORS ********************
 ******************************************************/
 
-Loader::Loader(const std::string& workspace, StorageManager* storage_manager) 
+Loader::Loader(StorageManager* storage_manager) 
     : storage_manager_(storage_manager) {
-  set_workspace(workspace);
-  create_directory(workspace_); 
 }
 
 /******************************************************
@@ -198,11 +196,3 @@ bool Loader::csv_line_to_cell(const ArraySchema* array_schema,
 
   return success;
 }
-
-inline
-void Loader::set_workspace(const std::string& path) {
-  workspace_ = absolute_path(path);
-  assert(path_exists(workspace_));
-  workspace_ += "/Loader/";
-}
-

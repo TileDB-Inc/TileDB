@@ -34,7 +34,7 @@ MPI_LIB_DIR = /home/spapadop/mpi-3.1-install/lib
 CORE_INCLUDE_PATHS = -I$(CORE_INCLUDE_DIR)
 TILEDB_INCLUDE_PATHS = -I$(TILEDB_INCLUDE_DIR)
 LA_INCLUDE_PATHS = -I$(LA_INCLUDE_DIR)
-MPI_INCLUDE_PATHS = -I$(MPI_INCLUDE_DIR)
+MPI_INCLUDE_PATHS := -I$(MPI_INCLUDE_DIR)
 MPI_LIB_PATHS = -L$(MPI_LIB_DIR)
 
 # --- Libs --- #
@@ -76,6 +76,14 @@ la: core $(LA_OBJ) $(LA_BIN_DIR)/example_transpose
 doc: doxyfile.inc
 
 clean: clean_core clean_gtest clean_test clean_tiledb clean_la
+
+# TODO:  I will reconcile this soon
+transpose: $(CORE_SRC) $(LA_SRC_DIR)/example_transpose.cc
+	mpicxx -Icore/include $(MPI_INCLUDE_PATHS) -o \
+ transpose la/src/example_transpose.cc core/src/tile.cc \
+ core/src/array_schema.cc  core/src/csv_file.cc core/src/loader.cc \
+ core/src/storage_manager.cc core/src/hilbert_curve.cc core/src/utils.cc \
+ core/src/query_processor.cc core/src/mpi_handler.cc
 
 ########
 # Core #
