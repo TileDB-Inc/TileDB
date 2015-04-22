@@ -39,6 +39,7 @@
 #include <sstream>
 #include <iostream>
 #include <string.h>
+#include <stdlib.h>
 
 // Creates the tranpose matrix A_t of A
 void transpose(StorageManager* storage_manager, MPIHandler* mpi_handler, 
@@ -102,6 +103,7 @@ void transpose(StorageManager* storage_manager, MPIHandler* mpi_handler,
   storage_manager->write_cells(ad_A_t, cells, cell_num);
 
   // Clean up
+  free(cells);
   storage_manager->close_array(ad_A); 
   storage_manager->close_array(ad_A_t); 
 }
