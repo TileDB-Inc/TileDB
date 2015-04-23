@@ -157,7 +157,7 @@ class StorageManager {
    */
   class SortedRun {
     /** StorageManager objects can manipulate private members of this class. */
-    friend StorageManager; 
+    friend class StorageManager; 
 
    public:
     // CONSTRUCTORS AND DESTRUCTORS
@@ -367,7 +367,7 @@ class StorageManager {
       /** True if the iterators has reached its end. */
       bool end() const { return end_; }
       /** Returns the MBR of the tile. */
-      const MBR mbr() const;
+      MBR mbr() const;
       /** Returns the position. */
       int64_t pos() const { return pos_; };
       /** Returns the id of the tile. */

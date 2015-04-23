@@ -1868,7 +1868,7 @@ StorageManager::Fragment::const_tile_iterator::bounding_coordinates() const {
   return fragment_->book_keeping_.bounding_coordinates_[pos_];
 }
 
-const StorageManager::MBR 
+StorageManager::MBR 
 StorageManager::Fragment::const_tile_iterator::mbr() const {
   return fragment_->book_keeping_.mbrs_[pos_];
 }
@@ -3233,3 +3233,16 @@ template void StorageManager::write_cell_sorted<float>(
     int ad, const void* range) const;
 template void StorageManager::write_cell_sorted<double>(
     int ad, const void* range) const;
+
+template void StorageManager::read_cells<int>(
+    int ad, const int* range, void*& cells,
+    int64_t& cell_num, int rcv_rank) const;
+template void StorageManager::read_cells<int64_t>(
+    int ad, const int64_t* range, void*& cells,
+    int64_t& cell_num, int rcv_rank) const;
+template void StorageManager::read_cells<float>(
+    int ad, const float* range, void*& cells,
+    int64_t& cell_num, int rcv_rank) const;
+template void StorageManager::read_cells<double>(
+    int ad, const double* range, void*& cells,
+    int64_t& cell_num, int rcv_rank) const;
