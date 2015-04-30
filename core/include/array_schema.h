@@ -142,6 +142,8 @@ class ArraySchema {
   size_t cell_size() const { return cell_size_; }
   /** Returns the cell size of the i-th attribute. */
   size_t cell_size(int i) const { return cell_sizes_[i]; }
+  /** Returns the type of the coordinates. */
+  const std::type_info* coords_type() const { return type(attribute_num_); }
   /** Returns the consolidation step. */
   int consolidation_step() const { return consolidation_step_; }
   /** Returns the number of dimensions. */

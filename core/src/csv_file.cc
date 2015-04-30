@@ -68,60 +68,6 @@ std::string CSVLine::str() const {
 }
 
 /******************************************************
-************************** MISC ***********************
-******************************************************/
-
-template<>
-bool CSVLine::is_del(char v) {
-  return v == CSV_DEL_CHAR;
-}
-
-template<>
-bool CSVLine::is_del(int v) {
-  return v == CSV_DEL_INT;
-}
-
-template<>
-bool CSVLine::is_del(int64_t v) {
-  return v == CSV_DEL_INT64_T;
-}
-
-template<>
-bool CSVLine::is_del(float v) {
-  return v == CSV_DEL_FLOAT;
-}
-
-template<>
-bool CSVLine::is_del(double v) {
-  return v == CSV_DEL_DOUBLE;
-}
-
-template<>
-bool CSVLine::is_null(char v) {
-  return v == CSV_NULL_CHAR;
-}
-
-template<>
-bool CSVLine::is_null(int v) {
-  return v == CSV_NULL_INT;
-}
-
-template<>
-bool CSVLine::is_null(int64_t v) {
-  return v == CSV_NULL_INT64_T;
-}
-
-template<>
-bool CSVLine::is_null(float v) {
-  return v == CSV_NULL_FLOAT;
-}
-
-template<>
-bool CSVLine::is_null(double v) {
-  return v == CSV_NULL_DOUBLE;
-}
-
-/******************************************************
 *********************** MUTATORS **********************
 ******************************************************/
 
@@ -248,7 +194,13 @@ bool CSVLine::operator>>(char& value) {
   if(pos_ == values_.size()) {
     return false;
   } else { 
-    sscanf(values_[pos_++].c_str(), "%c", &value);
+    if(values_[pos_] == CSV_NULL_VALUE) // Value missing
+      value = NULL_CHAR;
+    else if(values_[pos_] == CSV_DEL_VALUE) // Value deleted
+      value = DEL_CHAR;
+    else 
+      sscanf(values_[pos_].c_str(), "%c", &value);
+    ++pos_;
     return true;
   }
 }
@@ -259,7 +211,9 @@ bool CSVLine::operator>>(int& value) {
     return false;
   } else {
     if(values_[pos_] == CSV_NULL_VALUE) // Value missing
-      value = CSV_NULL_INT;
+      value = NULL_INT;
+    else if(values_[pos_] == CSV_DEL_VALUE) // Value deleted
+      value = DEL_INT;
     else 
       sscanf(values_[pos_].c_str(), "%d", &value);
     ++pos_;
@@ -273,7 +227,9 @@ bool CSVLine::operator>>(int64_t& value) {
     return false;
   } else { 
     if(values_[pos_] == CSV_NULL_VALUE) // Value missing
-      value = CSV_NULL_INT64_T;
+      value = NULL_INT64_T;
+    else if(values_[pos_] == CSV_DEL_VALUE) // Value deleted
+      value = DEL_INT64_T;
     else 
       sscanf(values_[pos_].c_str(), "%lld", &value);
     ++pos_;
@@ -287,7 +243,9 @@ bool CSVLine::operator>>(float& value) {
     return false;
   } else { 
     if(values_[pos_] == CSV_NULL_VALUE) // Value missing
-      value = CSV_NULL_FLOAT;
+      value = NULL_FLOAT;
+    else if(values_[pos_] == CSV_DEL_VALUE) // Value deleted
+      value = DEL_FLOAT;
     else 
       sscanf(values_[pos_].c_str(), "%f", &value);
     ++pos_;
@@ -301,7 +259,9 @@ bool CSVLine::operator>>(double& value) {
     return false;
   } else { 
     if(values_[pos_] == CSV_NULL_VALUE) // Value missing
-      value = CSV_NULL_DOUBLE;
+      value = NULL_DOUBLE;
+    else if(values_[pos_] == CSV_DEL_VALUE) // Value deleted
+      value = DEL_DOUBLE;
     else 
       sscanf(values_[pos_].c_str(), "%lf", &value);
     ++pos_;

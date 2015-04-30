@@ -55,6 +55,16 @@ class Loader {
   /** Loads a CSV file into an array. */
   void load_csv(const std::string& filename, 
                 const std::string& array_name) const;
+  /** 
+   * Updates an existing array with a new CSV file. 
+   * This is similar to Loader::load_csv, with the differnce being
+   * that Loader::load_csv opens the array in write mode (i.e., it
+   * destroys the previous contents of the array), whereas 
+   * Loader::update_csv incorporates the updates of the input CSV
+   * file into a potentially existing array.
+   */
+  void update_csv(const std::string& filename, 
+                  const std::string& array_name) const;
 
  private:
   // PRIVATE ATTRIBUTES
@@ -83,6 +93,8 @@ class Loader {
    */
   bool csv_line_to_cell(const ArraySchema* array_schema, 
                         CSVLine& csv_line, void* cell) const;
+  /** Loads a CSV file into a new fragment for the input array descriptor. */
+  void load_csv(const std::string& filename, int ad) const;
 };
 
 /** This exception is thrown by Loader. */

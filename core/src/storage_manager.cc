@@ -32,6 +32,7 @@
  */
 
 #include "storage_manager.h"
+#include "special_values.h"
 #include "utils.h"
 #include <algorithm>
 #include <dirent.h>
@@ -76,14 +77,10 @@ StorageManager::Fragment::Fragment(
 }
 
 StorageManager::Fragment::~Fragment() {
-  // Clean-up states
-  if(read_state_ != NULL) 
-    flush_read_state();
-
-  if(write_state_ != NULL) {
-    flush_write_state();
-    flush_book_keeping();
-  }
+  clear_read_state();
+  flush_write_state();
+  commit_book_keeping();
+  clear_book_keeping();
 }
 
 void StorageManager::Fragment::append_cell_to_segment(
@@ -102,29 +99,108 @@ void StorageManager::Fragment::append_cell_to_segment(
   write_state_->segment_utilization_[attribute_id] += cell_size;
 }
 
-void StorageManager::Fragment::delete_tiles(int attribute_id) {
-  for(int i=0; i<read_state_->tiles_[attribute_id].size(); ++i)
-    delete read_state_->tiles_[attribute_id][i];
+void StorageManager::Fragment::clear_read_state() {
+  // Do nothing if the read state is NULL
+  if(read_state_ == NULL)
+    return;
+
+  // Clean-up tiles
+  for(int i=0; i<read_state_->tiles_.size(); ++i)
+    delete_tiles(i);
+  read_state_->tiles_.clear();
+
+  // Clean-up segments
+  for(int i=0; i<read_state_->segments_.size(); ++i)
+    free(read_state_->segments_[i]);
+  read_state_->segments_.clear();
+
+  // Clean-up pos_ranges_
+  read_state_->pos_ranges_.clear();
+
+  delete read_state_;
+  read_state_ = NULL;
 }
 
-void StorageManager::Fragment::finalize_last_run() {
-  if(write_state_->cells_.size() > 0) {
-    sort_run();
-    flush_sorted_run();
-  } else if(write_state_->cells_with_id_.size() > 0) {
-    sort_run_with_id();
-    flush_sorted_run_with_id();
-  } else if(write_state_->cells_with_2_ids_.size() > 0) {
-    sort_run_with_2_ids();
-    flush_sorted_run_with_2_ids();
+void StorageManager::Fragment::clear_write_state() {
+  // Do nothing if the write state is NULL
+  if(write_state_ == NULL)
+    return;
+
+  // For easy reference
+  int attribute_num = array_schema_->attribute_num();
+  int64_t cells_num = write_state_->cells_.size();
+  int64_t cells_with_id_num = write_state_->cells_with_id_.size();
+  int64_t cells_with_2_ids_num = write_state_->cells_with_2_ids_.size();
+
+  if(cells_num > 0) {
+    for(int64_t i=0; i<cells_num; ++i)
+      free(write_state_->cells_[i].cell_);
   }
+  if(cells_with_id_num > 0) {
+    for(int64_t i=0; i<cells_with_id_num; ++i)
+      free(write_state_->cells_with_id_[i].cell_);
+  }
+  if(cells_with_2_ids_num > 0) {
+    for(int64_t i=0; i<cells_with_2_ids_num; ++i)
+      free(write_state_->cells_with_2_ids_[i].cell_);
+  }
+
+  // Clear segments
+  for(int i=0; i<=attribute_num; ++i) 
+    free(write_state_->segments_[i]); 
+
+  // Clear MBR and bounding coordinates
+  if(write_state_->mbr_ != NULL) 
+    free(write_state_->mbr_);
+  if(write_state_->bounding_coordinates_.first != NULL) 
+    free(write_state_->bounding_coordinates_.first);
+  if(write_state_->bounding_coordinates_.second != NULL) 
+    free(write_state_->bounding_coordinates_.second);
+
+  delete write_state_;
+  write_state_ = NULL;
 }
 
-void StorageManager::Fragment::flush_book_keeping() {
-  flush_bounding_coordinates();
-  flush_mbrs();
-  flush_offsets();
-  flush_tile_ids();
+void StorageManager::Fragment::clear_book_keeping() {
+  // For easy reference
+  int64_t tile_num = book_keeping_.tile_ids_.size();
+ 
+  for(int64_t i=0; i<tile_num; ++i) {
+    if(book_keeping_.bounding_coordinates_[i].first != NULL) {
+      free(book_keeping_.bounding_coordinates_[i].first);
+      book_keeping_.bounding_coordinates_[i].first = NULL;
+    }
+
+    if(book_keeping_.bounding_coordinates_[i].second != NULL) {
+      free(book_keeping_.bounding_coordinates_[i].second);
+      book_keeping_.bounding_coordinates_[i].second = NULL;
+    }
+
+    if(book_keeping_.mbrs_[i] != NULL) {
+      free(book_keeping_.mbrs_[i]);
+      book_keeping_.mbrs_[i] = NULL;
+    }
+  }
+
+  book_keeping_.bounding_coordinates_.clear();
+  book_keeping_.mbrs_.clear();
+  book_keeping_.offsets_.clear(); 
+  book_keeping_.tile_ids_.clear(); 
+}
+
+void StorageManager::Fragment::commit_book_keeping() {
+  // Do nothing if the book keeping files exist
+  std::string filename = workspace_ + "/" + array_schema_->array_name() + "/" + 
+                         fragment_name_ + "/" +
+                         SM_BOUNDING_COORDINATES_FILENAME + 
+                         SM_BOOK_KEEPING_FILE_SUFFIX;
+  if(path_exists(filename))
+    return;
+
+  commit_bounding_coordinates();
+  commit_mbrs();
+  commit_offsets();
+  commit_tile_ids();
 }
 
 // FILE FORMAT:
@@ -134,7 +210,7 @@ void StorageManager::Fragment::flush_book_keeping() {
 // tile#2_upper_dim#1(T) tile#2_upper_dim#2(T) ...
 // ... 
 // NOTE: T is the type of the dimensions of this array
-void StorageManager::Fragment::flush_bounding_coordinates() {
+void StorageManager::Fragment::commit_bounding_coordinates() {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   int64_t tile_num = book_keeping_.tile_ids_.size();
@@ -145,9 +221,6 @@ void StorageManager::Fragment::flush_bounding_coordinates() {
                          fragment_name_ + "/" +
                          SM_BOUNDING_COORDINATES_FILENAME + 
                          SM_BOOK_KEEPING_FILE_SUFFIX;
-
-  // Delete file if it exists
-  remove(filename.c_str());
 
   // Open file
   int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
@@ -164,12 +237,10 @@ void StorageManager::Fragment::flush_bounding_coordinates() {
       // Lower bounding coordinates
       memcpy(buffer+offset, 
              book_keeping_.bounding_coordinates_[i].first, cell_size);
-      free(book_keeping_.bounding_coordinates_[i].first);
       offset += cell_size;
       // Upper bounding coordinates
       memcpy(buffer+offset, 
              book_keeping_.bounding_coordinates_[i].second, cell_size);
-      free(book_keeping_.bounding_coordinates_[i].second);
       offset += cell_size;
     }
 
@@ -179,7 +250,6 @@ void StorageManager::Fragment::flush_bounding_coordinates() {
   }  
 
   close(fd);
-  book_keeping_.bounding_coordinates_.clear();
 }
 
 // FILE FORMAT:
@@ -189,7 +259,7 @@ void StorageManager::Fragment::flush_bounding_coordinates() {
 // MBR#2_dim#1_low(T) MBR#2_dim#1_high(T) ...
 // ...
 // NOTE: T is the type of the dimensions of this array
-void StorageManager::Fragment::flush_mbrs() {
+void StorageManager::Fragment::commit_mbrs() {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   int64_t tile_num = book_keeping_.tile_ids_.size();
@@ -199,9 +269,6 @@ void StorageManager::Fragment::flush_mbrs() {
   std::string filename = workspace_ + "/" + array_schema_->array_name() + "/" + 
                          fragment_name_ + "/" +
                          SM_MBRS_FILENAME + SM_BOOK_KEEPING_FILE_SUFFIX;
-
-  // Delete file if it exists
-  remove(filename.c_str());
 
   // Open file
   int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
@@ -216,7 +283,6 @@ void StorageManager::Fragment::flush_mbrs() {
     size_t offset = 0;
     for(int64_t i=0; i<tile_num; ++i) {
       memcpy(buffer+offset, book_keeping_.mbrs_[i], 2 * cell_size);
-      free(book_keeping_.mbrs_[i]);
       offset += 2 * cell_size;
     }
 
@@ -226,7 +292,6 @@ void StorageManager::Fragment::flush_mbrs() {
   }
 
   close(fd);
-  book_keeping_.mbrs_.clear();
 }
 
 // FILE FORMAT:
@@ -237,7 +302,7 @@ void StorageManager::Fragment::flush_mbrs() {
 // tile#2_of_attribute#2_offset(int64_t)
 // ...
 // NOTE: Do not forget the extra coordinate attribute
-void StorageManager::Fragment::flush_offsets() {
+void StorageManager::Fragment::commit_offsets() {
   // For easy reference
   int64_t tile_num = book_keeping_.tile_ids_.size();
 
@@ -245,9 +310,6 @@ void StorageManager::Fragment::flush_offsets() {
   std::string filename = workspace_ + "/" + array_schema_->array_name() + "/" + 
                          fragment_name_ + "/" +
                          SM_OFFSETS_FILENAME + SM_BOOK_KEEPING_FILE_SUFFIX;
-
-  // Delete file if it exists
-  remove(filename.c_str());
 
   // Open file
   int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
@@ -273,27 +335,59 @@ void StorageManager::Fragment::flush_offsets() {
   }
   
   close(fd);
-  book_keeping_.offsets_.clear();
 }
 
-void StorageManager::Fragment::flush_read_state() {
-  // Clean-up tiles
-  for(int i=0; i<read_state_->tiles_.size(); ++i)
-    delete_tiles(i);
-  read_state_->tiles_.clear();
+// FILE FORMAT:
+// tile_num(int64_t)
+//   tile_id#1(int64_t) tile_id#2(int64_t)  ...
+void StorageManager::Fragment::commit_tile_ids() {
+  // For easy reference
+  int64_t tile_num = book_keeping_.tile_ids_.size();
 
-  // Clean-up segments
-  for(int i=0; i<read_state_->segments_.size(); ++i)
-    free(read_state_->segments_[i]);
-  read_state_->segments_.clear();
+  // Prepare file name
+  std::string filename = workspace_ + "/" + array_schema_->array_name() + "/" +
+                         fragment_name_ + "/" +
+                         SM_TILE_IDS_FILENAME + SM_BOOK_KEEPING_FILE_SUFFIX;
 
-  // Clean-up pos_ranges_
-  read_state_->pos_ranges_.clear();
+  // Open file
+  int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+  assert(fd != -1);
+ 
+  if(tile_num != 0) { // If the array is not empty
+    // Prepare the buffer
+    size_t buffer_size = (tile_num+1) * sizeof(int64_t);
+    char* buffer = new char[buffer_size];
+ 
+    // Populate buffer
+    memcpy(buffer, &tile_num, sizeof(int64_t));
+    memcpy(buffer+sizeof(int64_t), 
+           &book_keeping_.tile_ids_[0], tile_num * sizeof(int64_t));
 
-  delete read_state_;
-  read_state_ = NULL;
+    // Write buffer and clean up
+    write(fd, buffer, buffer_size);  
+    delete [] buffer;
+  }
+
+  close(fd);
 }
 
+void StorageManager::Fragment::delete_tiles(int attribute_id) {
+  for(int i=0; i<read_state_->tiles_[attribute_id].size(); ++i)
+    delete read_state_->tiles_[attribute_id][i];
+}
+
+void StorageManager::Fragment::finalize_last_run() {
+  if(write_state_->cells_.size() > 0) {
+    sort_run();
+    flush_sorted_run();
+  } else if(write_state_->cells_with_id_.size() > 0) {
+    sort_run_with_id();
+    flush_sorted_run_with_id();
+  } else if(write_state_->cells_with_2_ids_.size() > 0) {
+    sort_run_with_2_ids();
+    flush_sorted_run_with_2_ids();
+  }
+}
 
 void StorageManager::Fragment::flush_segment(int attribute_id) {
   // Exit if the segment has no useful data
@@ -337,6 +431,7 @@ void StorageManager::Fragment::flush_segments() {
   for(int i=0; i<=attribute_num; ++i) {
     flush_segment(i);
     free(write_state_->segments_[i]); 
+    write_state_->segments_[i] = NULL;
   }
 }
 
@@ -500,45 +595,6 @@ void StorageManager::Fragment::flush_sorted_run_with_2_ids() {
   ++write_state_->runs_num_;
 }
 
-
-// FILE FORMAT:
-// tile_num(int64_t)
-//   tile_id#1(int64_t) tile_id#2(int64_t)  ...
-void StorageManager::Fragment::flush_tile_ids() {
-  // For easy reference
-  int64_t tile_num = book_keeping_.tile_ids_.size();
-
-  // Prepare file name
-  std::string filename = workspace_ + "/" + array_schema_->array_name() + "/" +
-                         fragment_name_ + "/" +
-                         SM_TILE_IDS_FILENAME + SM_BOOK_KEEPING_FILE_SUFFIX;
-
-  // Delete file if it exists
-  remove(filename.c_str());
-
-  // Open file
-  int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  assert(fd != -1);
- 
-  if(tile_num != 0) { // If the array is not empty
-    // Prepare the buffer
-    size_t buffer_size = (tile_num+1) * sizeof(int64_t);
-    char* buffer = new char[buffer_size];
- 
-    // Populate buffer
-    memcpy(buffer, &tile_num, sizeof(int64_t));
-    memcpy(buffer+sizeof(int64_t), 
-           &book_keeping_.tile_ids_[0], tile_num * sizeof(int64_t));
-
-    // Write buffer and clean up
-    write(fd, buffer, buffer_size);  
-    delete [] buffer;
-  }
-
-  close(fd);
-  book_keeping_.tile_ids_.clear();
-}
-
 void StorageManager::Fragment::flush_tile_info_to_book_keeping() {
   // Exit if there are no cells in the current tile
   if(write_state_->cell_num_ == 0)
@@ -558,22 +614,23 @@ void StorageManager::Fragment::flush_tile_info_to_book_keeping() {
   book_keeping_.tile_ids_.push_back(write_state_->tile_id_);
   write_state_->cell_num_ = 0;
 
-  // Allocate new memory space for MBR and bounding coordinates
-  write_state_->mbr_ = malloc(2*coords_size);
-  write_state_->bounding_coordinates_.first = malloc(coords_size);
-  write_state_->bounding_coordinates_.second = malloc(coords_size);
+  // Nullify MBR and bounding coordinates
+  write_state_->mbr_ = NULL;
+  write_state_->bounding_coordinates_.first = NULL;
+  write_state_->bounding_coordinates_.second = NULL;
 }
 
 void StorageManager::Fragment::flush_write_state() {
-  // For easy reference
-  int attribute_num = array_schema_->attribute_num();
+  // Do nothing if the write state is NULL
+  if(write_state_ == NULL)
+    return;
 
   // Make tiles, after finalizing the last run and merging the runs
   finalize_last_run();
   merge_sorted_runs();
   make_tiles();
   flush_segments();
-
+ 
   delete write_state_;
   write_state_ = NULL;
 }
@@ -741,6 +798,8 @@ void StorageManager::Fragment::init_book_keeping() {
 }
 
 void StorageManager::Fragment::init_read_state() {
+  assert(read_state_ == NULL);
+
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
 
@@ -766,17 +825,13 @@ void StorageManager::Fragment::init_write_state() {
 
   write_state_->tile_id_ = SM_INVALID_TILE_ID;
   write_state_->cell_num_ = 0;
-  write_state_->run_buffer_ = NULL;
-  write_state_->run_buffer_size_ = 0;
   write_state_->run_offset_ = 0;
   write_state_->run_size_ = 0;
   write_state_->runs_num_ = 0;
 
-  write_state_->mbr_ = malloc(2*array_schema_->cell_size(attribute_num));
-  write_state_->bounding_coordinates_.first = 
-      malloc(array_schema_->cell_size(attribute_num));
-  write_state_->bounding_coordinates_.second = 
-      malloc(array_schema_->cell_size(attribute_num));
+  write_state_->mbr_ = NULL;
+  write_state_->bounding_coordinates_.first = NULL; 
+  write_state_->bounding_coordinates_.second = NULL;
 
   write_state_->segments_.resize(attribute_num+1);
   write_state_->segment_utilization_.resize(attribute_num+1);
@@ -942,8 +997,7 @@ std::pair<size_t, int64_t> StorageManager::Fragment::load_payloads_into_segment(
   const std::string& attribute_name = 
       array_schema_->attribute_name(attribute_id);
   const OffsetList& offsets = book_keeping_.offsets_[attribute_id];
-  int64_t tile_num = offsets.size();
-  assert(tile_num == book_keeping_.tile_ids_.size());
+  int64_t tile_num = book_keeping_.tile_ids_.size();
 
   // Open file
   std::string filename = workspace_ + "/" + array_name + "/" +
@@ -1056,7 +1110,6 @@ void StorageManager::Fragment::load_tiles_from_segment(
   char* segment = static_cast<char*>(read_state_->segments_[attribute_id]);
   const std::type_info* cell_type = array_schema_->type(attribute_id);
   size_t cell_size = array_schema_->cell_size(attribute_id);
-  assert(offsets.size() == tile_ids.size());
 
   // Initializations
   size_t segment_offset = 0, payload_size;
@@ -1639,6 +1692,14 @@ void StorageManager::Fragment::update_tile_info(
 
   // Update MBR and (potentially) the first bounding coordinate
   if(write_state_->cell_num_ == 0) {
+    // Allocate space for MBR and bounding coordinates
+    write_state_->mbr_ = malloc(2*array_schema_->cell_size(attribute_num));
+    write_state_->bounding_coordinates_.first = 
+        malloc(array_schema_->cell_size(attribute_num));
+    write_state_->bounding_coordinates_.second = 
+        malloc(array_schema_->cell_size(attribute_num));
+
+    // Init MBR first bounding coordinate
     init_mbr(coords, static_cast<T*>(write_state_->mbr_), dim_num);
     memcpy(write_state_->bounding_coordinates_.first, coords, coords_size);
   } else {
@@ -1695,7 +1756,6 @@ void StorageManager::Fragment::write_cell(
   write_state_->run_size_ += size_cost;
 }
 
-// Note: This function applies only to irregular tiles
 template<class T>
 void StorageManager::Fragment::write_cell_sorted(const void* cell) {
   // For easy reference
@@ -1894,12 +1954,25 @@ StorageManager::Array::Array(
 }
 
 StorageManager::Array::~Array() {
-  if(strcmp(mode_, "w") == 0 || strcmp(mode_, "a"))
+  if((strcmp(mode_, SM_WRITE_MODE) == 0 || 
+      strcmp(mode_, SM_APPEND_MODE) == 0) && 
+     fragment_tree_.size() > 0) {
+
+    if((strcmp(mode_, SM_APPEND_MODE) == 0) && must_consolidate()) {
+      // Commit last fragment and prepare it for reading
+      fragments_.back()->flush_write_state();
+      fragments_.back()->commit_book_keeping();
+      fragments_.back()->init_read_state();
+      consolidate();
+    }
+
     flush_fragment_tree();
+  }
 
   close_fragments();
 
-  delete array_schema_;
+  if(array_schema_ != NULL)
+    delete array_schema_;
 }
 
 void StorageManager::Array::close_fragments() {
@@ -1907,6 +1980,157 @@ void StorageManager::Array::close_fragments() {
     delete fragments_[i];
 
   fragments_.clear();
+}
+
+void StorageManager::Array::consolidate() {
+  // For easy reference
+  int level_num = fragment_tree_.size();
+  int consolidation_step = array_schema_->consolidation_step();
+
+  if(consolidation_step == 1) {
+    consolidate_eagerly();
+  } else {
+    while(fragment_tree_[level_num-1].second == consolidation_step) {
+      consolidate_lazily();
+      level_num = fragment_tree_.size();
+    }
+  }
+}
+
+void StorageManager::Array::consolidate_eagerly() {
+  // For easy reference
+  const std::type_info& type = *(array_schema_->coords_type());
+
+  if(type == typeid(int))
+    consolidate_eagerly<int>();
+  else if(type == typeid(int64_t))
+    consolidate_eagerly<int64_t>();
+  else if(type == typeid(float))
+    consolidate_eagerly<float>();
+  else if(type == typeid(double))
+    consolidate_eagerly<double>();
+}
+
+template<class T>
+void StorageManager::Array::consolidate_eagerly() {
+  // Prepare cell iterator
+  const_cell_iterator<T> cell_it = 
+    const_cell_iterator<T>(this);
+
+  // Create a new fragment for the cells of the consolidated fragments
+  std::stringstream new_fragment_name; 
+  new_fragment_name << "0_" << next_fragment_seq_ - 1;
+  Fragment* new_fragment = new Fragment(workspace_, segment_size_,
+                                        write_state_max_size_,
+                                        array_schema_, new_fragment_name.str());
+
+  // Write cells into the new fragment
+  for(; !cell_it.end(); ++cell_it) 
+    new_fragment->write_cell_sorted<T>(*cell_it);
+
+  // Delete consolidated fragments (i.e., all fragments in the array)
+  delete_fragments();
+
+  // Append new fragment 
+  new_fragment->flush_write_state();
+  new_fragment->commit_book_keeping();
+  new_fragment->init_read_state();
+  fragments_.push_back(new_fragment);
+
+  // Update fragment tree
+  fragment_tree_.clear();
+  fragment_tree_.push_back(FragmentTreeLevel(next_fragment_seq_ - 1, 1));
+}
+
+void StorageManager::Array::consolidate_lazily() {
+  // For easy reference
+  const std::type_info& type = *(array_schema_->coords_type());
+
+  if(type == typeid(int))
+    consolidate_lazily<int>();
+  else if(type == typeid(int64_t))
+    consolidate_lazily<int64_t>();
+  else if(type == typeid(float))
+    consolidate_lazily<float>();
+  else if(type == typeid(double))
+    consolidate_lazily<double>();
+}
+
+template<class T>
+void StorageManager::Array::consolidate_lazily() {
+  // For easy reference
+  int consolidation_step = array_schema_->consolidation_step(); 
+  int fragment_num = fragments_.size();
+  int level_num = fragment_tree_.size();
+  int level = fragment_tree_[level_num-1].first;
+  int64_t subtree_size = pow(double(consolidation_step), level);
+
+  // Prepare cell iterator
+  bool return_del = (fragment_num != consolidation_step);
+  std::vector<int> fragment_ids;
+  for(int i=fragment_num-consolidation_step; i<fragment_num; ++i)
+    fragment_ids.push_back(i); 
+  const_cell_iterator<T> cell_it =
+      const_cell_iterator<T>(this, fragment_ids, 
+                             std::vector<int>(), return_del);
+
+  // Create a new fragment for the cells of the consolidated fragments
+  std::stringstream new_fragment_name; 
+  new_fragment_name << next_fragment_seq_ - consolidation_step * subtree_size 
+                    << "_" << next_fragment_seq_ - 1;
+  Fragment* new_fragment = new Fragment(workspace_, segment_size_,
+                                        write_state_max_size_,
+                                        array_schema_, new_fragment_name.str());
+
+  // Write cells into the new fragment
+  for(; !cell_it.end(); ++cell_it) 
+    new_fragment->write_cell_sorted<T>(*cell_it);
+
+  // Delete consolidated fragments (i.e., all fragments in the array)
+  delete_fragments(fragment_ids);
+
+  // Append new fragment 
+  new_fragment->flush_write_state();
+  new_fragment->commit_book_keeping();
+  new_fragment->init_read_state();
+  fragments_.push_back(new_fragment);
+
+  // Update fragment tree
+  int max_level = fragment_tree_[0].first; 
+  fragment_tree_.pop_back();
+  if(fragment_tree_.size() == 0) {
+    fragment_tree_.push_back(FragmentTreeLevel(max_level + 1, 1));
+  } else {
+    ++fragment_tree_.back().second;
+  }
+}
+
+void StorageManager::Array::delete_fragment(int i) {
+  std::vector<Fragment*>::iterator it = fragments_.begin() + i;
+
+  (*it)->clear_read_state();
+  (*it)->clear_write_state();
+  (*it)->clear_book_keeping();
+
+  std::string dirname = workspace_ + "/" + array_schema_->array_name() + "/" +
+                        (*it)->fragment_name_;
+
+  delete (*it);
+  fragments_.erase(it);
+  delete_directory(dirname);
+}
+
+void StorageManager::Array::delete_fragments() {
+  while(fragments_.size() > 0)
+    delete_fragment(fragments_.size()-1);
+}
+
+// NOTE: the input fragment ids must be sorted in ascending order
+void StorageManager::Array::delete_fragments(
+    const std::vector<int>& fragment_ids) {
+  for(int i=0; i<fragment_ids.size(); ++i) {
+    delete_fragment(fragment_ids[i] - i);
+  }
 }
 
 void StorageManager::Array::flush_fragment_tree() {
@@ -1948,6 +2172,26 @@ void StorageManager::Array::flush_fragment_tree() {
   close(fd);
   delete [] buffer;
   fragment_tree_.clear();
+}
+
+void StorageManager::Array::forced_close() {
+  // If in write or append mode, delete the last fragment
+  if(strcmp(mode_, SM_WRITE_MODE) == 0 || 
+     strcmp(mode_, SM_APPEND_MODE) == 0) { 
+    delete_fragment(fragments_.size()-1);
+  }
+
+  // Close the rest of the fragments
+  close_fragments(); 
+
+  // Clear the fragment tree, as it became inconsistent
+  fragment_tree_.clear();
+
+  // Delete array schema
+  if(array_schema_ != NULL) {
+    delete array_schema_;
+    array_schema_ = NULL;
+  }
 }
 
 std::vector<std::string> StorageManager::Array::get_fragment_names() const {
@@ -2019,16 +2263,35 @@ void StorageManager::Array::load_fragment_tree() {
   // Create the tree from the buffer and calculate next fragment sequence number
   int level_num = buffer_size / (2 * sizeof(int));
   int level, node_num;
-  for(int i=0; i<level_num; ++i) {
-    memcpy(&level, buffer+2*i*sizeof(int), sizeof(int));
-    memcpy(&node_num, buffer+(2*i+1)*sizeof(int), sizeof(int));
+  // Consolidation step == 1
+  if(array_schema_->consolidation_step() == 1) {
+    memcpy(&level, buffer, sizeof(int));
+    memcpy(&node_num, buffer+sizeof(int), sizeof(int));
     fragment_tree_.push_back(FragmentTreeLevel(level, node_num));
-    next_fragment_seq_ += pow(double(consolidation_step), level) * node_num;
+    next_fragment_seq_ = level + 1 ;
+  } else {
+    for(int i=0; i<level_num; ++i) {
+      memcpy(&level, buffer+2*i*sizeof(int), sizeof(int));
+      memcpy(&node_num, buffer+(2*i+1)*sizeof(int), sizeof(int));
+      fragment_tree_.push_back(FragmentTreeLevel(level, node_num));
+      next_fragment_seq_ += pow(double(consolidation_step), level) * node_num;
+    }
   }
 
   // Clean up
   close(fd);
   delete [] buffer;
+}
+
+bool StorageManager::Array::must_consolidate() {
+  assert(fragment_tree_.size() != 0);
+
+  // For easy reference
+  int level_num = fragment_tree_.size();
+  int consolidation_step = array_schema_->consolidation_step();
+
+  return (consolidation_step == 1 ||
+          fragment_tree_[level_num-1].second == consolidation_step);
 }
 
 void StorageManager::Array::new_fragment() {
@@ -2056,29 +2319,33 @@ void StorageManager::Array::open_fragments() {
   std::vector<std::string> fragment_names = get_fragment_names();
 
   // Create a new Fragment object
-  for(int i=0; i<fragment_names.size(); ++i) 
+  for(int i=0; i<fragment_names.size(); ++i) { 
     fragments_.push_back(new Fragment(workspace_, segment_size_, 
                                       write_state_max_size_,
                                       array_schema_, fragment_names[i]));
+  }
 }
 
 void StorageManager::Array::write_cell(
     const StorageManager::Cell& cell) {
-  assert(strcmp(mode_, "w") == 0 || strcmp(mode_, "a") == 0);
+  assert(strcmp(mode_, SM_WRITE_MODE) == 0 || 
+         strcmp(mode_, SM_APPEND_MODE) == 0);
 
   fragments_.back()->write_cell(cell);
 }
 
 void StorageManager::Array::write_cell(
     const StorageManager::CellWithId& cell) {
-  assert(strcmp(mode_, "w") == 0 || strcmp(mode_, "a") == 0);
+  assert(strcmp(mode_, SM_WRITE_MODE) == 0 || 
+         strcmp(mode_, SM_APPEND_MODE) == 0);
 
   fragments_.back()->write_cell(cell);
 }
 
 void StorageManager::Array::write_cell(
     const StorageManager::CellWith2Ids& cell) {
-  assert(strcmp(mode_, "w") == 0 || strcmp(mode_, "a") == 0);
+  assert(strcmp(mode_, SM_WRITE_MODE) == 0 || 
+         strcmp(mode_, SM_APPEND_MODE) == 0);
 
   fragments_.back()->write_cell(cell);
 }
@@ -2113,31 +2380,45 @@ StorageManager::Array::const_cell_iterator<T>::const_cell_iterator() {
   range_ = NULL;
   tile_its_ = NULL;
   full_overlap_ = NULL;
+  is_del_ = false;
 }
 
 template<class T>
 StorageManager::Array::const_cell_iterator<T>::const_cell_iterator(
-    Array* array) : array_(array) {
+    Array* array, 
+    std::vector<int> fragment_ids,
+    std::vector<int> attribute_ids,
+    bool return_del) : array_(array), return_del_(return_del) {
   // Initialize private attributes
-  attribute_num_ = array_->array_schema_->attribute_num();
   dim_num_ = array_->array_schema_->dim_num();
-  fragment_num_ = array_->fragments_.size();
   end_ = false;
   cell_ = malloc(array_->array_schema_->cell_size());
   range_ = NULL;
   full_overlap_ = NULL;
 
-  // Create tile and cell iterators
-  tile_its_ = new Fragment::const_tile_iterator*[fragment_num_];
-  cell_its_ = new Tile::const_cell_iterator*[fragment_num_];
+  // Prepare the ids of the fragments the iterator will iterate on
+  if(fragment_ids.size() == 0) {
+    fragment_num_ = array_->fragments_.size();
+    for(int i=0; i<fragment_num_; ++i)
+      fragment_ids.push_back(i);
+  } else {
+    fragment_num_ = fragment_ids.size();
+  }
 
-  for(int i=0; i<fragment_num_; ++i) {
-    tile_its_[i] = new Fragment::const_tile_iterator[attribute_num_+1];
-   cell_its_[i] = new Tile::const_cell_iterator[attribute_num_+1];
+  // Prepare the ids of the attributes the iterator will iterate on
+  if(attribute_ids.size() == 0) {
+    attribute_num_ = array_->array_schema_->attribute_num();
+    for(int i=0; i<=attribute_num_; ++i)
+      attribute_ids.push_back(i);
+  } else {
+    // The attribute id of the coordinates is always the last one to
+    // appear in attribute_ids. For consistency, the number of 
+    // attributes does not include the coordinates extra attribute.
+    attribute_num_ = attribute_ids.size() - 1;
   }
 
   // Get first cell
-  init_iterators();
+  init_iterators(fragment_ids, attribute_ids);
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell(fragment_id); 
@@ -2145,7 +2426,9 @@ StorageManager::Array::const_cell_iterator<T>::const_cell_iterator(
 
 template<class T>
 StorageManager::Array::const_cell_iterator<T>::const_cell_iterator(
-    Array* array, const T* range) : array_(array) {
+    Array* array, 
+    const T* range,
+    bool return_del) : array_(array), return_del_(return_del) {
   // Initialize private attributes
   attribute_num_ = array_->array_schema_->attribute_num();
   dim_num_ = array_->array_schema_->dim_num();
@@ -2154,16 +2437,7 @@ StorageManager::Array::const_cell_iterator<T>::const_cell_iterator(
   cell_ = malloc(array_->array_schema_->cell_size());
   range_ = new T[2*dim_num_];
   full_overlap_ = new bool[fragment_num_];
-  memcpy(range_, range, 2*dim_num_*sizeof(T));
-
-  // Create tile and cell iterators
-  tile_its_ = new Fragment::const_tile_iterator*[fragment_num_];
-  cell_its_ = new Tile::const_cell_iterator*[fragment_num_];
-
-  for(int i=0; i<fragment_num_; ++i) {
-    tile_its_[i] = new Fragment::const_tile_iterator[attribute_num_+1];
-    cell_its_[i] = new Tile::const_cell_iterator[attribute_num_+1];
-  }
+  memcpy(range_, range, 2*dim_num_*sizeof(T)); 
 
   // Get first cell
   init_iterators_in_range();
@@ -2237,7 +2511,6 @@ bool StorageManager::Array::const_cell_iterator<T>::end() const {
 template<class T>
 void StorageManager::Array::const_cell_iterator<T>::find_next_cell_in_range(
     int fragment_id) {
-
   // The loop will be broken when a cell in range is found, or
   // all cells are exhausted
   while(1) { 
@@ -2253,10 +2526,7 @@ void StorageManager::Array::const_cell_iterator<T>::find_next_cell_in_range(
           break; // cell found
         ++cell_its_[fragment_id][attribute_num_];
       }
-
     }
-
-
 
     // If the end of the tile is reached (cell not found yet)
     if(cell_its_[fragment_id][attribute_num_].end()) {
@@ -2307,8 +2577,12 @@ void StorageManager::Array::const_cell_iterator<T>::find_next_cell_in_range(
 
 template<class T>
 int StorageManager::Array::const_cell_iterator<T>::get_next_cell() {
+  // For easy reference
+  int attribute_num = array_->array_schema_->attribute_num();
+  size_t coords_size = array_->array_schema_->cell_size(attribute_num);
+
   // Get the first non-NULL coordinates
-  const void *next_coords, *coords;
+  const void *coords, *next_coords;
   int fragment_id;
   int f = 0;
   do {
@@ -2321,19 +2595,24 @@ int StorageManager::Array::const_cell_iterator<T>::get_next_cell() {
   // Get the next coordinates in the global cell order
   for(int i=f; i<fragment_num_; ++i) {
     coords = *cell_its_[i][attribute_num_]; 
-    if(coords != NULL && 
-       array_->array_schema_->precedes(static_cast<const T*>(coords), 
-                                       static_cast<const T*>(next_coords))) { 
-      next_coords = coords;
-      fragment_id = i;
+    if(coords != NULL) {
+      if(array_->array_schema_->precedes(static_cast<const T*>(coords), 
+                                         static_cast<const T*>(next_coords))) {
+        next_coords = coords;
+        fragment_id = i;
+      } else if(memcmp(coords, next_coords, coords_size) == 0) {
+        if(range_ != NULL)
+          advance_cell_in_range(fragment_id);
+        else
+          advance_cell(fragment_id); 
+        fragment_id = i;
+      }
     }
   }
 
   if(next_coords != NULL) { // There are cells
     char* cell = static_cast<char*>(cell_);
-    int attribute_num = array_->array_schema_->attribute_num();
     size_t attr_size;
-    size_t coords_size = array_->array_schema_->cell_size(attribute_num);
     // Copy coordinates to cell
     memcpy(cell, *(cell_its_[fragment_id][attribute_num]), coords_size);
     // Copy attributes to cell
@@ -2343,19 +2622,39 @@ int StorageManager::Array::const_cell_iterator<T>::get_next_cell() {
       memcpy(cell + offset, *(cell_its_[fragment_id][j]), attr_size);
       offset += attr_size;
     }
+    // Check if the retrieved cell represents a deletion.
+    if(is_del(*(cell_its_[fragment_id][0]), 0)) 
+      is_del_ = true;
+    else
+      is_del_ = false;   
+
     return fragment_id;
   } else { // No more cells
     cell_ = NULL;
     end_ = true;
+    is_del_ = false;
     return -1;
   }
 }
 
 template<class T>
-void StorageManager::Array::const_cell_iterator<T>::init_iterators() {
+void StorageManager::Array::const_cell_iterator<T>::init_iterators(
+    const std::vector<int>& fragment_ids,
+    const std::vector<int>& attribute_ids) {
+  // Create tile and cell iterators
+  tile_its_ = new Fragment::const_tile_iterator*[fragment_num_];
+  cell_its_ = new Tile::const_cell_iterator*[fragment_num_];
+
+  for(int i=0; i<fragment_num_; ++i) {
+   tile_its_[i] = new Fragment::const_tile_iterator[attribute_num_+1];
+   cell_its_[i] = new Tile::const_cell_iterator[attribute_num_+1];
+  }
+
+  // Initialize iterators
   for(int i=0; i<fragment_num_; ++i) {
     for(int j=0; j<=attribute_num_; ++j) {
-      tile_its_[i][j] = array_->begin(array_->fragments_[i], j);
+      tile_its_[i][j] = array_->begin(array_->fragments_[fragment_ids[i]], 
+                                      attribute_ids[j]);
       cell_its_[i][j] = (*tile_its_[i][j])->begin();
     }
   }
@@ -2363,6 +2662,15 @@ void StorageManager::Array::const_cell_iterator<T>::init_iterators() {
 
 template<class T>
 void StorageManager::Array::const_cell_iterator<T>::init_iterators_in_range() {
+// Create tile and cell iterators
+  tile_its_ = new Fragment::const_tile_iterator*[fragment_num_];
+  cell_its_ = new Tile::const_cell_iterator*[fragment_num_];
+
+  for(int i=0; i<fragment_num_; ++i) {
+    tile_its_[i] = new Fragment::const_tile_iterator[attribute_num_+1];
+    cell_its_[i] = new Tile::const_cell_iterator[attribute_num_+1];
+  }
+
   // Initialize tile and cell iterators 
   for(int i=0; i<fragment_num_; ++i) { 
     // Initialize coordinate tile iterator
@@ -2400,6 +2708,24 @@ void StorageManager::Array::const_cell_iterator<T>::init_iterators_in_range() {
 }
 
 template<class T>
+bool StorageManager::Array::const_cell_iterator<T>::is_del(
+    const void* value, int attribute_id) const {
+  // For easy reference
+  const std::type_info& type = *(array_->array_schema()->type(attribute_id));
+
+  if(type == typeid(char))
+    return *(static_cast<const char*>(value)) == DEL_CHAR;
+  else if(type == typeid(int))
+    return *(static_cast<const int*>(value)) == DEL_INT;
+  else if(type == typeid(int64_t))
+    return *(static_cast<const int64_t*>(value)) == DEL_INT64_T;
+  else if(type == typeid(float))
+    return *(static_cast<const float*>(value)) == DEL_FLOAT;
+  else if(type == typeid(double))
+    return *(static_cast<const double*>(value)) == DEL_DOUBLE;
+}
+
+template<class T>
 void StorageManager::Array::const_cell_iterator<T>::operator++() {
   int fragment_id = get_next_cell();
 
@@ -2414,6 +2740,9 @@ void StorageManager::Array::const_cell_iterator<T>::operator++() {
 
 template<class T>
 const void* StorageManager::Array::const_cell_iterator<T>::operator*() {
+  while(is_del_ && !return_del_ && cell_ != NULL)
+    ++(*this);
+
   return cell_;
 }
 
@@ -2543,7 +2872,7 @@ StorageManager::Array::const_cell_iterator<T> StorageManager::begin(
     int ad) const {
   assert(ad >= 0 && ad < SM_MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
-  assert(strcmp(arrays_[ad]->mode_, "r") == 0);
+  assert(strcmp(arrays_[ad]->mode_, SM_READ_MODE) == 0);
   assert(!arrays_[ad]->empty());
 
   return Array::const_cell_iterator<T>(arrays_[ad]);
@@ -2554,7 +2883,7 @@ StorageManager::Array::const_cell_iterator<T> StorageManager::begin(
     int ad, const T* range) const {
   assert(ad >= 0 && ad < SM_MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
-  assert(strcmp(arrays_[ad]->mode_, "r") == 0);
+  assert(strcmp(arrays_[ad]->mode_, SM_READ_MODE) == 0);
   assert(!arrays_[ad]->empty());
 
   return Array::const_cell_iterator<T>(arrays_[ad], range);
@@ -2564,7 +2893,7 @@ void StorageManager::clear_array(const std::string& array_name) {
   // Close the array if it is open 
   OpenArrays::iterator it = open_arrays_.find(array_name);
   if(it != open_arrays_.end())
-    close_array(it->second);
+    forced_close_array(it->second);
 
   // Delete the entire array directory
   std::string dirname = workspace_ + "/" + array_name + "/";
@@ -2639,7 +2968,7 @@ void StorageManager::delete_array(const std::string& array_name) {
   // Close the array if it is open 
   OpenArrays::iterator it = open_arrays_.find(array_name);
   if(it != open_arrays_.end())
-    close_array(it->second);
+    forced_close_array(it->second);
 
   // Delete the entire array directory
   std::string dirname = workspace_ + "/" + array_name + "/";
@@ -2674,6 +3003,16 @@ void StorageManager::delete_array(const std::string& array_name) {
   rmdir(dirname.c_str());
 }
 
+void StorageManager::forced_close_array(int ad) {
+  if(arrays_[ad] == NULL)
+    return;
+
+  arrays_[ad]->forced_close();
+
+  open_arrays_.erase(arrays_[ad]->array_schema_->array_name());
+  delete arrays_[ad];
+  arrays_[ad] = NULL;
+}
 
 /*
 
@@ -2796,7 +3135,7 @@ int StorageManager::open_array(
   check_on_open_array(array_name, mode);
 
   // If in write mode, delete the array if it exists
-  if(strcmp(mode, "w") == 0) 
+  if(strcmp(mode, SM_WRITE_MODE) == 0) 
     clear_array(array_name); 
 
   // Initialize an Array object
@@ -2805,7 +3144,8 @@ int StorageManager::open_array(
                            get_array_schema(array_name), mode);
 
   // If the array is in write or append mode, initialize a new fragment
-  if(strcmp(mode, "w") == 0 || strcmp(mode, "a") == 0)
+  if(strcmp(mode, SM_WRITE_MODE) == 0 || 
+     strcmp(mode, SM_APPEND_MODE) == 0)
     array->new_fragment();
 
   // Stores the Array object and returns an array descriptor
@@ -3133,7 +3473,9 @@ const ArraySchema* StorageManager::get_array_schema(
 }
 
 bool StorageManager::invalid_array_mode(const char* mode) const {
-  if(strcmp(mode, "r") && strcmp(mode, "w") && strcmp(mode, "a"))
+  if(strcmp(mode, SM_READ_MODE) && 
+     strcmp(mode, SM_WRITE_MODE) && 
+     strcmp(mode, SM_APPEND_MODE))
     return true;
   else 
     return false;

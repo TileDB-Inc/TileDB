@@ -151,8 +151,6 @@ void init_mbr(const ArraySchema* array_schema,
   int dim_num = array_schema->dim_num();
   const std::type_info* type = array_schema->type(attribute_num);
 
-  mbr = malloc(2*array_schema->cell_size(attribute_num));
-
   if(*type == typeid(int)) 
     init_mbr(static_cast<const int*>(coords), 
              static_cast<int*>(mbr), dim_num);

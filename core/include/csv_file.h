@@ -36,6 +36,7 @@
 #ifndef CSV_FILE_H
 #define CSV_FILE_H
 
+#include "special_values.h"
 #include <string>
 #include <vector>
 #include <inttypes.h>
@@ -49,28 +50,6 @@
  * Unless otherwise defined, this default size is used. 
  */
 #define CSV_SEGMENT_SIZE 10000000 // 10 MB
-/** Deleted char. */
-#define CSV_DEL_CHAR 127
-/** Deleted int. */
-#define CSV_DEL_INT std::numeric_limits<int>::min()
-/** Deleted int64_t. */
-#define CSV_DEL_INT64_T std::numeric_limits<int64_t>::min()
-/** Deleted float. */
-#define CSV_DEL_FLOAT std::numeric_limits<float>::min()
-/** Deleted double. */
-#define CSV_DEL_DOUBLE std::numeric_limits<double>::min()
-/** Missing char. */
-#define CSV_NULL_CHAR '\0'
-/** Missing int. */
-#define CSV_NULL_INT std::numeric_limits<int>::max()
-/** Missing int64_t. */
-#define CSV_NULL_INT64_T std::numeric_limits<int64_t>::max()
-/** Missing uint64_t. */
-#define CSV_NULL_UINT64_T std::numeric_limits<uint64_t>::max()
-/** Missing float. */
-#define CSV_NULL_FLOAT std::numeric_limits<float>::max()
-/** Missing double. */
-#define CSV_NULL_DOUBLE std::numeric_limits<double>::max()
 /** The symbol indicating a deleted value. */
 #define CSV_DEL_VALUE "$"
 /** The symbol indicating a missing (NULL) value. */
@@ -111,14 +90,6 @@ class CSVLine {
    * and resets CSVLine::pos_). 
    */
   void clear();
-
-  // MISC
-  /** Returns true if the input represents a deleted value. */
-  template<class T>
-  static bool is_del(T v);
-  /** Returns true if the input represents a NULL value. */
-  template<class T>
-  static bool is_null(T v);
 
   // OPERATORS
   /** Appends a string value to the CSV line, which is properly tokenized. */

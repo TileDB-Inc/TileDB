@@ -63,53 +63,18 @@ void Loader::load_csv(const std::string& filename,
     throw LoaderException(std::string("Cannot open array ") +
                           array_name + "."); 
 
-  // Open the csv file 
-  CSVLine csv_line;
-  CSVFile csv_file;
-  if(!csv_file.open(filename, "r")) {
-    // Clean up
-    storage_manager_->close_array(ad);
-    // TODO: Delete last fragment (force_close_array) 
- 
-    // Throw exception
-    throw LoaderException(std::string("Cannot open file ") +
-                          filename + "."); 
-  }
+  load_csv(filename, ad); 
+}
 
-  // For easy reference
-  const ArraySchema* array_schema = storage_manager_->get_array_schema(ad);
-  size_t cell_size = array_schema->cell_size();
-  int64_t line = 0;
+void Loader::update_csv(const std::string& filename, 
+                        const std::string& array_name) const {
+  // Open array in append mode
+  int ad = storage_manager_->open_array(array_name, "a");
+  if(ad == -1)
+    throw LoaderException(std::string("Cannot open array ") +
+                          array_name + "."); 
 
-  // Prepare a cell buffer
-  void* cell = malloc(cell_size);
-
-  while(csv_file >> csv_line) {
-    ++line;
-
-    // Get a logical cell
-    if(!csv_line_to_cell(array_schema, csv_line, cell)) { 
-      // Clean up
-      storage_manager_->close_array(ad); 
-      // TODO: Delete last fragment  (force_close_array)
-      csv_file.close();
-      free(cell);
-
-      // Throw exception
-      std::stringstream ss;
-      ss << "Cannot load cell from line " << line 
-         << " of file " << filename << ".";
-      throw LoaderException(ss.str());
-    }
-
-    // Write the cell in the array
-    storage_manager_->write_cell(ad, cell);
-  }
-
-  // Clean up 
-  storage_manager_->close_array(ad); 
-  csv_file.close();
-  free(cell);
+  load_csv(filename, ad); 
 }
 
 /******************************************************
@@ -195,4 +160,51 @@ bool Loader::csv_line_to_cell(const ArraySchema* array_schema,
   }
 
   return success;
+}
+
+void Loader::load_csv(const std::string& filename, int ad) const {
+  // Open the csv file 
+  CSVLine csv_line;
+  CSVFile csv_file;
+  if(!csv_file.open(filename, "r")) {
+    // Clean up
+    storage_manager_->forced_close_array(ad);
+    // Throw exception
+    throw LoaderException(std::string("Cannot open file ") +
+                          filename + "."); 
+  }
+
+  // For easy reference
+  const ArraySchema* array_schema = storage_manager_->get_array_schema(ad);
+  size_t cell_size = array_schema->cell_size();
+  int64_t line = 0;
+
+  // Prepare a cell buffer
+  void* cell = malloc(cell_size);
+
+  while(csv_file >> csv_line) {
+    ++line;
+
+    // Get a logical cell
+    if(!csv_line_to_cell(array_schema, csv_line, cell)) { 
+      // Clean up
+      storage_manager_->forced_close_array(ad); 
+      csv_file.close();
+      free(cell);
+
+      // Throw exception
+      std::stringstream ss;
+      ss << "Cannot load cell from line " << line 
+         << " of file " << filename << ".";
+      throw LoaderException(ss.str());
+    }
+
+    // Write the cell in the array
+    storage_manager_->write_cell(ad, cell);
+  }
+
+  // Clean up 
+  storage_manager_->close_array(ad); 
+  csv_file.close();
+  free(cell);
 }

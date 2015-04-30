@@ -45,6 +45,8 @@
 #include <limits>
 #include <set>
 
+/** Append mode. */
+#define SM_APPEND_MODE "a"
 /** Name of the file storing the array schema. */
 #define SM_ARRAY_SCHEMA_FILENAME "array_schema"
 /** Suffix of all book-keeping files. */
@@ -63,6 +65,8 @@
 #define SM_MBRS_FILENAME "mbrs"
 /** Name of the file storing the offset of each tile in its data file. */
 #define SM_OFFSETS_FILENAME "offsets"
+/** Read mode. */
+#define SM_READ_MODE "r"
 /** 
  * Determines the mount of data that can be exchanged between the hard disk and
  * the main memory in a single I/O operation. 
@@ -76,6 +80,8 @@
 #define SM_TILE_DATA_FILE_SUFFIX ".tdt"
 /** Max memory size (in bytes) used when creating a new array fragment. */
 #define SM_WRITE_STATE_MAX_SIZE 1*1073741824 // 1GB
+/** Write mode. */
+#define SM_WRITE_MODE "w"
 
 /** 
  * A storage manager object is responsible for storing/fetching tiles to/from 
@@ -255,10 +261,6 @@ class StorageManager {
     std::vector<int64_t> file_offsets_;
     /** The MBR of the currently populated tile. */
     void* mbr_;
-    /** Stores the cells to be sorted in the current run. */
-    void* run_buffer_;
-    /** Stores the run buffer size. */
-    size_t run_buffer_size_;
     /** Stores the offset in the run buffer for the next write. */
     size_t run_offset_;
     /** Total memory consumption of the current run. */
@@ -426,12 +428,12 @@ class StorageManager {
     void operator delete[](void* ptr) { ::operator delete[](ptr); }
 
     // READ STATE FUNCTIONS
+    /** Clears the read state. */
+    void clear_read_state();
     /** Deletes the tiles of an attribute from main memory. */
     void delete_tiles(int attribute_id);
     /** Initializes the read state. */
     void init_read_state();
-    /** Flushes the read state. */
-    void flush_read_state();
     /** 
      * Loads tiles of a given attribute from disk, starting from the tile at 
      * position pos. 
@@ -458,6 +460,8 @@ class StorageManager {
      * Appends a (coordinate or attribute) cell to its corresponding segment. 
      */
     void append_cell_to_segment(const void* cell, int attribute_id);
+    /** Clears the write state. */
+    void clear_write_state();
     /** Sorts and writes the last run on the disk. */
     void finalize_last_run();
     /** Flushes a segment to its corresponding file. */
@@ -475,7 +479,7 @@ class StorageManager {
      * structures. 
      */
     void flush_tile_info_to_book_keeping();
-    /** Flushes the write state. */
+    /** Flushes the write state onto the disk. */
     void flush_write_state();
     /** 
      * Gets the next cell from the input runs that precedes in the global
@@ -554,16 +558,33 @@ class StorageManager {
     void update_tile_info(const T* coords, int64_t tile_id);
 
     // BOOK-KEEPING FUNCTIONS
-    /** Flushes the book-keeping structures. */
-    void flush_book_keeping();
-    /** Flushes the bounding coordinates. */
-    void flush_bounding_coordinates();
-    /** Flushes the tile MBRs. */
-    void flush_mbrs();
-    /** Flushes the tile offsets. */
-    void flush_offsets();
-    /** Flushes the tile ids. */
-    void flush_tile_ids();
+    /** Clears the book keeping structures from main memory. */
+    void clear_book_keeping();
+    /** 
+     * Writes the book keeping structures on the disk, but does not clear
+     * them from main memory. 
+     */
+    void commit_book_keeping();
+    /** 
+     * Writes the bounding coordinates on the disk, but does not clear
+     * them from main memory. 
+     */
+    void commit_bounding_coordinates();
+    /** 
+     * Writes the MBRs on the disk, but does not clear
+     * them from main memory. 
+     */
+    void commit_mbrs();
+    /** 
+     * Writes the offsets on the disk, but does not clear
+     * them from main memory. 
+     */
+    void commit_offsets();
+    /** 
+     * Writes the tile ids on the disk, but does not clear
+     * them from main memory. 
+     */
+    void commit_tile_ids();
     /** Initializes the book-keeping structures. */
     void init_book_keeping();
     /** Loads the book-keeping structures. */
@@ -628,14 +649,27 @@ class StorageManager {
       // CONSTRUCTORS & DESTRUCTORS
       /** Constructor. */
       const_cell_iterator();
-      /** Constructor. */
-      const_cell_iterator(Array* array);       
+      /** 
+       * Constructor. The second and third arguments determine the fragments 
+       * and attributes the iterator will focus on. If the fragment_ids (resp.
+       * attribute_ids) is empty, then the iterator will iterate over all the
+       * fragments (resp. attributes). The last argument indicates whether
+       * a cell representing a deletion must be returned or suppressed.
+       */
+      const_cell_iterator(
+          Array* array, 
+          std::vector<int> fragment_ids = std::vector<int>(),
+          std::vector<int> attribute_ids = std::vector<int>(),
+          bool return_del = false); 
       /** 
        * Constructor. Takes as input also a multi-dimensional range. The
        * iterator will iterate only on the cells of the array whose coordinates
-       * fall into the input range.
+       * fall into the input range. The last argument indicates whether
+       * a cell representing a deletion must be returned or suppressed.
        */
-      const_cell_iterator(Array* array, const T* range); 
+      const_cell_iterator(Array* array, 
+                          const T* range, 
+                          bool return_del = false); 
       /** Destructor. */
       ~const_cell_iterator();
 
@@ -673,11 +707,21 @@ class StorageManager {
        * under investigation is completely contained in the range or not. 
        */
       bool* full_overlap_;
+      /** 
+       * True if the cell currently pointed to by the iterator represents a 
+       * deletion.
+       */
+      bool is_del_;
       /*
        * A multi-dimensional range. If not NULL, the iterator will iterate only
        * on the cells of the array whose coordinates fall into the input range.
        */
       T* range_;
+      /** 
+       * If true, a cell representing a deletion must be returned, otherwise it
+       * is suppressed. 
+       */
+      bool return_del_;
       /** Stores one tile iterator per fragment per attribute. */
       Fragment::const_tile_iterator** tile_its_;
 
@@ -704,13 +748,22 @@ class StorageManager {
        * If the end of the cells is reached, it returns -1.
        */
       int get_next_cell();
-      /** Initializes tile and cell iterators. */
-      void init_iterators();
+      /** 
+       * Initializes tile and cell iterators for the input fragments and
+       * attributes. 
+       */
+      void init_iterators(const std::vector<int>& fragment_ids,
+                          const std::vector<int>& attribute_ids);
       /** 
        * Initializes tile and cell iterators that will irerate over tiles and
        * cells that overlap with the stored range. 
        */
       void init_iterators_in_range();
+      /** 
+       * Returns true if the input value on the input attribute represents a
+       * deletion. 
+       */ 
+      bool is_del(const void* value, int attribute_id) const;
     };
 
     // TILE ITERATORS
@@ -749,10 +802,51 @@ class StorageManager {
     /** Closes all the array fragments. */
     void close_fragments();
     /** 
+     * Consolidates fragments based on the consolidation step defined in the
+     * array schema. 
+     */
+    void consolidate();
+    /** 
+     * Consolidates the array fragments using the eager algorithm. Specifically,
+     * it always consolidates the (two) existing fragments.
+     */
+    void consolidate_eagerly();
+    /** 
+     * Consolidates the array fragments using the eager algorithm. Specifically,
+     * it always consolidates the (two) existing fragments.
+     */
+    template<class T>
+    void consolidate_eagerly();
+    /** 
+     * Consolidates the array fragments using the lazy algorithm. Specifically,
+     * it always consolidates the latest c fragments, where c is the
+     * consolidation step.
+     */
+    void consolidate_lazily();
+    /** 
+     * Consolidates the array fragments using the lazy algorithm. Specifically,
+     * it always consolidates the latest c fragments, where c is the
+     * consolidation step.
+     */
+    template<class T>
+    void consolidate_lazily();
+    /** Deletes the i-th fragment from the array. */
+    void delete_fragment(int i);
+    /** Deletes all fragments in the array. */
+    void delete_fragments();
+    /** Deletes the fragments whose ids are included in the input. */
+    void delete_fragments(const std::vector<int>& fragment_ids);
+    /** 
      * Flushes the fragment tree, i.e., the book-keeping structure about the
      * array fragments, to the disk.
      */
     void flush_fragment_tree();
+    /** 
+     * Forces the array to close, during abnormal execution. If the array was
+     * opened in write or append mode, the last fragment is deleted (since
+     * its creation procedure was interrupted). 
+     */
+    void forced_close();
     /** Returns all the existing fragment names. */
     std::vector<std::string> get_fragment_names() const;
     /** 
@@ -760,6 +854,8 @@ class StorageManager {
      * array fragments.
      */
     void load_fragment_tree();
+    /** Returns true if consolidation must take place. */
+    bool must_consolidate();
     /** Initializes a new fragment. */
     void new_fragment();
     /** Opens all the existing array fragments. */
@@ -812,6 +908,12 @@ class StorageManager {
   void define_array(const ArraySchema* array_schema) const;
   /** It deletes an array (regardless of whether it is open or not). */
   void delete_array(const std::string& array_name);
+  /** 
+   * Forces an array to close. This is done during abnormal execution. 
+   * If the array was opened in write or append mode, the last fragment
+   * must be deleted (since it was not properly loaded).
+   */
+  void forced_close_array(int ad);
   /** Stores a new schema for an array on the disk. */
   void modify_array_schema(const ArraySchema* array_schema) const;
   /** 
