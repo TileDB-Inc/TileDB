@@ -32,6 +32,7 @@
  */
 
 #include "utils.h"
+#include <ctype.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,6 +49,13 @@ std::string absolute_path(const std::string& path) {
   else
     return path;
 } 
+
+template<class T>
+void convert(const double* a, T* b, int size) {
+  for(int i=0; i<size; ++i) {
+    b[i] = T(a[i]);
+  }
+}
 
 void create_directory(const std::string& dirname) {
   struct stat st;
@@ -182,9 +190,45 @@ bool inside_range(const T* point, const T* range, int dim_num) {
   return true;
 }
 
-bool path_exists(const std::string& path) {
-  struct stat st;
-  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+bool is_integer(const char* s) {
+  int i=0;
+  if(s[0] == '+' || s[0] == '-')
+    i = 1; // Skip the first character if it is the sign
+
+  for(; s[i] != '\0'; ++i) {
+    if(!isdigit(s[i]))
+      return false;
+  }
+
+  return true;
+}
+
+bool is_real(const char* s) {
+  bool decimal_point_seen = false;
+  int i=0;
+  if(s[0] == '+' || s[0] == '-')
+    i = 1; // Skip the first character if it is the sign
+
+  for(; s[i] != '\0'; ++i) {
+    if(s[i] == '.') {
+      if(!decimal_point_seen) 
+        decimal_point_seen = true;
+      else
+        return false;
+    } else if(!isdigit(s[i]))
+      return false;
+  }
+
+  return true;
+}
+
+bool is_valid_name(const char* s) {
+  for(int i=0; s[i] != '\0'; ++i) {
+    if(!isalnum(s[i]) && s[i] != '_')
+      return false;
+  }
+
+  return true;
 }
 
 template<class T>
@@ -224,7 +268,18 @@ std::pair<bool, bool> overlap(const T* r1, const T* r2, int dim_num) {
   return std::pair<bool, bool>(overlap, full_overlap);
 }
 
+bool path_exists(const std::string& path) {
+  struct stat st;
+  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+
 // Explicit template instantiations
+template void convert<int>(const double* a, int* b, int size);
+template void convert<int64_t>(const double* a, int64_t* b, int size);
+template void convert<float>(const double* a, float* b, int size);
+template void convert<double>(const double* a, double* b, int size);
+
 template void expand_mbr<int>(
     const int* coords, int* mbr, int dim_num);
 template void expand_mbr<int64_t>(

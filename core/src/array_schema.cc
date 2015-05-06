@@ -743,15 +743,17 @@ bool ArraySchema::precedes(const T* coords_A,
 
 void ArraySchema::print() const {
   std::cout << "Array name: " << array_name_ << "\n";
-  std::cout << "Tile order: ";
-  if(tile_order_ == TO_COLUMN_MAJOR)
-    std::cout << "COLUMN MAJOR\n";
-  else if(tile_order_ == TO_HILBERT)
-    std::cout << "HILBERT\n";
-  else if(tile_order_ == TO_ROW_MAJOR)
-    std::cout << "ROW_MAJOR\n";
-  else if(tile_order_ == TO_NONE)
-    std::cout << "NONE\n";
+  if(has_regular_tiles()) {
+    std::cout << "Tile order: ";
+    if(tile_order_ == TO_COLUMN_MAJOR)
+      std::cout << "COLUMN MAJOR\n";
+    else if(tile_order_ == TO_HILBERT)
+      std::cout << "HILBERT\n";
+    else if(tile_order_ == TO_ROW_MAJOR)
+      std::cout << "ROW_MAJOR\n";
+    else if(tile_order_ == TO_NONE)
+      std::cout << "NONE\n";
+  }
   std::cout << "Cell order: ";
   if(cell_order_ == CO_COLUMN_MAJOR)
     std::cout << "COLUMN MAJOR\n";
@@ -785,28 +787,44 @@ void ArraySchema::print() const {
   }
 
   std::cout << "Cell types:\n";
-  for(int i=0; i<=attribute_num_; ++i)
+  for(int i=0; i<attribute_num_; ++i)
     if(*types_[i] == typeid(char))
-      std::cout << "\tchar\n";
+      std::cout << "\t" << attribute_names_[i] << ": char\n";
     else if(*types_[i] == typeid(int))
-      std::cout << "\tint\n";
+      std::cout << "\t" << attribute_names_[i] << ": int\n";
     else if(*types_[i] == typeid(int64_t))
-      std::cout << "\tint64_t\n";
+      std::cout << "\t" << attribute_names_[i] << ": int64_t\n";
     else if(*types_[i] == typeid(float))
-      std::cout << "\tfloat\n";
+      std::cout << "\t" << attribute_names_[i] << ": float\n";
     else if(*types_[i] == typeid(double))
-      std::cout << "\tdouble\n";
+      std::cout << "\t" << attribute_names_[i] << ": double\n";
+  if(*types_[attribute_num_] == typeid(int))
+    std::cout << "\tCoordinates: int\n";
+  else if(*types_[attribute_num_] == typeid(int64_t))
+    std::cout << "\tCoordinates: int64_t\n";
+  else if(*types_[attribute_num_] == typeid(float))
+    std::cout << "\tCoordinates: float\n";
+  else if(*types_[attribute_num_] == typeid(double))
+    std::cout << "\tCoordinates: double\n";
 
   std::cout << "Compression types:\n";
-  for(int i=0; i<=attribute_num_; ++i)
+  for(int i=0; i<attribute_num_; ++i)
     if(compression_[i] == RLE)
-      std::cout << "RLE\n";
+      std::cout << "\t" << attribute_names_[i] << ": RLE\n";
     else if(compression_[i] == ZIP)
-      std::cout << "ZIP\n";
+      std::cout << "\t" << attribute_names_[i] << ": ZIP\n";
     else if(compression_[i] == LZ)
-      std::cout << "LZ\n";
+      std::cout << "\t" << attribute_names_[i] << ": LZ\n";
     else if(compression_[i] == NONE)
-      std::cout << "NONE\n";
+      std::cout << "\t" << attribute_names_[i] << ": NONE\n";
+  if(compression_[attribute_num_] == RLE)
+    std::cout << "\tCoordinates: RLE\n";
+  else if(compression_[attribute_num_] == ZIP)
+    std::cout << "\tCoordinates: ZIP\n";
+  else if(compression_[attribute_num_] == LZ)
+    std::cout << "\tCoordinates: LZ\n";
+  else if(compression_[attribute_num_] == NONE)
+    std::cout << "\tCoordinates: NONE\n";
 }
 
 bool ArraySchema::succeeds(const void* coords_A,

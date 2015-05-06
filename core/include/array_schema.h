@@ -42,10 +42,14 @@
 
 /** Default value for ArraySchema::capacity_. */
 #define AS_CAPACITY 10000
+/** Default value for ArraySchema::cell_order_. */
+#define AS_CELL_ORDER ArraySchema::CO_ROW_MAJOR
 /** Default value for ArraySchema::consolidation_step_. */
 #define AS_CONSOLIDATION_STEP 1
 /** Name for the extra attribute representing the array coordinates. */
 #define AS_COORDINATE_TILE_NAME "__coords"
+/** Default value for ArraySchema::tile_order_. */
+#define AS_TILE_ORDER ArraySchema::TO_ROW_MAJOR
 
 /**
  * Objects of this class store information about the schema of an array, and
@@ -96,7 +100,7 @@ class ArraySchema {
               const std::vector<std::string>& dim_names,
               const std::vector<std::pair<double, double> >& dim_domains,
               const std::vector<const std::type_info*>& types,
-              CellOrder cell_order,
+              CellOrder cell_order = AS_CELL_ORDER,
               int consolidation_step = AS_CONSOLIDATION_STEP,
               int64_t capacity = AS_CAPACITY);
   /**
@@ -115,7 +119,7 @@ class ArraySchema {
               const std::vector<double>& tile_extents,
               int consolidation_step = AS_CONSOLIDATION_STEP,
               int64_t capacity = AS_CAPACITY,
-              CellOrder cell_order = CO_ROW_MAJOR);
+              CellOrder cell_order = AS_CELL_ORDER);
   /** Empty destructor. */
   ~ArraySchema() {}
 

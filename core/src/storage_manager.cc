@@ -68,8 +68,7 @@ StorageManager::Fragment::Fragment(
   if(path_exists(fragment_dir)) {
     load_book_keeping();
     init_read_state();
-  }
-  else { // Create the folder (write mode) 
+  } else { // Create the folder (write mode) 
     create_directory(fragment_dir);
     init_write_state();
     init_book_keeping();
@@ -573,7 +572,7 @@ void StorageManager::Fragment::flush_sorted_run_with_2_ids() {
            sizeof(int64_t));
     buffer_offset += sizeof(int64_t);
     memcpy(buffer + buffer_offset,  
-           &write_state_->cells_with_2_ids_[i].cell_, 
+           write_state_->cells_with_2_ids_[i].cell_, 
            cell_size);
     buffer_offset += cell_size;
   }
@@ -738,7 +737,7 @@ void* StorageManager::Fragment::get_next_cell_with_2_ids(
   void* next_cell_coords = next_cell_cell_id + 1; 
   int64_t* cell_tile_id;
   int64_t* cell_cell_id;
-  void* cell_coords;
+  void* cell_coords; 
 
   // Get the next cell in the global cell order
   for(int i=r; i<runs_num; ++i) {
@@ -2596,17 +2595,17 @@ int StorageManager::Array::const_cell_iterator<T>::get_next_cell() {
   for(int i=f; i<fragment_num_; ++i) {
     coords = *cell_its_[i][attribute_num_]; 
     if(coords != NULL) {
-      if(array_->array_schema_->precedes(static_cast<const T*>(coords), 
-                                         static_cast<const T*>(next_coords))) {
-        next_coords = coords;
-        fragment_id = i;
-      } else if(memcmp(coords, next_coords, coords_size) == 0) {
+      if(memcmp(coords, next_coords, coords_size) == 0) {
         if(range_ != NULL)
           advance_cell_in_range(fragment_id);
         else
           advance_cell(fragment_id); 
         fragment_id = i;
-      }
+      } else if(precedes(cell_its_[i][attribute_num],
+                         cell_its_[fragment_id][attribute_num])) {
+        next_coords = coords;
+        fragment_id = i;
+      }     
     }
   }
 
@@ -2744,6 +2743,36 @@ const void* StorageManager::Array::const_cell_iterator<T>::operator*() {
     ++(*this);
 
   return cell_;
+}
+
+template<class T>
+bool StorageManager::Array::const_cell_iterator<T>::precedes(
+    const Tile::const_cell_iterator& it_A,
+    const Tile::const_cell_iterator& it_B) const {
+  const void* coords_A = *it_A;
+  const void* coords_B = *it_B;
+  int64_t tile_id_A = it_A.tile_id();
+  int64_t tile_id_B = it_B.tile_id();
+  bool regular = array_->array_schema_->has_regular_tiles();
+
+  // Case #1 for true: regular + it_A has smaller tile id
+  if(regular && tile_id_A < tile_id_B)
+    return true;
+
+  bool coords_A_precede = 
+      array_->array_schema_->precedes(static_cast<const T*>(coords_A), 
+                                      static_cast<const T*>(coords_B));
+
+  // Case #2 for true: regular + equal tile ids + coords of it_A precede
+  if(regular && tile_id_A == tile_id_B && coords_A_precede)
+    return true;
+
+  // Case #3 for true: iregular + coords of it_A precede
+  if(!regular && coords_A_precede)
+    return true;
+
+  // False in all other cases
+  return false;
 }
 
 /******************************************************
@@ -2936,9 +2965,13 @@ void StorageManager::close_array(int ad) {
   arrays_[ad] = NULL;
 }
 
-void StorageManager::define_array(const ArraySchema* array_schema) const {
+void StorageManager::define_array(const ArraySchema* array_schema) {
   // For easy reference
   const std::string& array_name = array_schema->array_name();
+
+  // Delete array if it exists
+  if(array_defined(array_name)) 
+    delete_array(array_name); 
 
   // Create array directory
   std::string dir_name = workspace_ + "/" + array_name + "/"; 

@@ -40,8 +40,13 @@
 /** Replaces '~' in the input path with the corresponding absolute path. */
 std::string absolute_path(const std::string& path);
 
+/** Converts the values of a into the data type of b and stores them in b. */
+template<class T>
+void convert(const double* a, T* b, int size);
+
 /** Creates a directory. */
 void create_directory(const std::string& dirname);
+
 /** 
  * Deletes a directory (along with its files). 
  * Note: It does not work recursively for nested directories.
@@ -73,6 +78,22 @@ void init_mbr(const T* coords, T* mbr, int dim_num);
 /** True if the point lies inside the range. */
 template<class T>
 bool inside_range(const T* point, const T* range, int dim_num);
+
+
+/** Returns true if the input string is an integer number. */
+bool is_integer(const char* s);
+
+/** 
+ * Returns true if the input string is a positive real number.
+ * NOTE: scientific notation is currently not supported. 
+ */
+bool is_real(const char* s);
+
+/** 
+ * True if the input is a valid name, i.e., it contains only alphanumerics
+ * and potentially '_'.
+ */
+bool is_valid_name(const char* s);
 
 /** 
  * Checks the overlap between two ranges of dimensionality dim_num. 

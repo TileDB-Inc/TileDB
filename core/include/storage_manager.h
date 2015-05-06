@@ -712,7 +712,7 @@ class StorageManager {
        * deletion.
        */
       bool is_del_;
-      /*
+      /**
        * A multi-dimensional range. If not NULL, the iterator will iterate only
        * on the cells of the array whose coordinates fall into the input range.
        */
@@ -764,6 +764,12 @@ class StorageManager {
        * deletion. 
        */ 
       bool is_del(const void* value, int attribute_id) const;
+      /** 
+       * True if the cell pointed by the first iterator precedes that of the
+       * second on the global cell order.
+       */
+      bool precedes(const Tile::const_cell_iterator& it_A, 
+                    const Tile::const_cell_iterator& it_B) const;
     };
 
     // TILE ITERATORS
@@ -898,14 +904,16 @@ class StorageManager {
   bool array_defined(const std::string& array_name) const;
   /** Returns true if the array is empty. */
   bool array_empty(const std::string& array_name) const;
-  /** Returns the schema of an array. The input is an array descriptor */
+  /** Returns the schema of an array. The input is an array descriptor. */
   const ArraySchema* get_array_schema(int ad) const;
-  /** Deletes all the fragments of an array. */
+  /** Returns the schema of an array. */
+  const ArraySchema* get_array_schema(const std::string& array_name) const;
+  /** Deletes all the fragments of an array. The array remains defined. */
   void clear_array(const std::string& array_name);
   /** Closes an array. */
   void close_array(int ad);
   /** Defines an array (stores its array schema). */
-  void define_array(const ArraySchema* array_schema) const;
+  void define_array(const ArraySchema* array_schema);
   /** It deletes an array (regardless of whether it is open or not). */
   void delete_array(const std::string& array_name);
   /** 
@@ -1049,8 +1057,6 @@ class StorageManager {
   /** Checks when opening an array. */
   void check_on_open_array(const std::string& array_name, 
                            const char* mode) const;
-  /** Returns the array schema. */
-  const ArraySchema* get_array_schema(const std::string& array_name) const; 
   /** Checks the validity of the array mode. */
   bool invalid_array_mode(const char* mode) const;
   /** Simply sets the workspace. */

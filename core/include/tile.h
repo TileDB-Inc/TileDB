@@ -226,6 +226,8 @@ class Tile {
     int64_t pos() const { return pos_; }
     /** Returns the tile the cell iterator belongs to. */
     const Tile* tile() const { return tile_; }
+    /** Returns the tile the cell iterator belongs to. */
+    int64_t tile_id() const { return tile_->tile_id(); }
 
     // MISC
     /** True if the iterator points to a cell representing a deletion. */
@@ -285,6 +287,7 @@ class Tile {
   };
   /** Returns a cell iterator pointing to the first cell of the tile. */
   const_cell_iterator begin() const;
+  /** Returns a cell iterator signifying the end of the tile. */
   static const_cell_iterator end();
  
  private:

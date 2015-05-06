@@ -2,19 +2,28 @@
 
 # Array schema for IREG
 echo 'Executing define_array for IREG...'
-~/stavrospapadopoulos/TileDB/tiledb/bin/tiledb \
- -q define_array \
- -w ~/stavrospapadopoulos/TileDB/data/example/ \
- -A IREG -o hilbert -a attr1 -a attr2 -d i -d j \
+../tiledb_cmd/bin/tiledb_cmd -q define_array \
+ -w ~/stavrospapadopoulos/TileDB/example/ \
+ -A IREG \
+ -a a1 -a a2 \
+ -d i -d j \
  -D 0 -D 100 -D 0 -D 100 \
- -t float -t int -t int64_t -c 6
+ -t float -t int -t int64_t \
+ -o hilbert \
+ -c 6 \
+ -s 1 
 
 # Array schema for REG
 echo 'Executing define_array for REG...'
-~/stavrospapadopoulos/TileDB/tiledb/bin/tiledb \
- -q define_array \
- -w ~/stavrospapadopoulos/TileDB/data/example/ \
- -A REG -o hilbert -a attr1 -a attr2 -d i -d j \
+../tiledb_cmd/bin/tiledb_cmd -q define_array \
+ -w ~/stavrospapadopoulos/TileDB/example/ \
+ -A REG \
+ -a a1 -a a2 \
+ -d i -d j \
  -D 0 -D 100 -D 0 -D 100 \
+ -e 5 -e 5 \
  -t float -t int -t int64_t \
- -e 5 -e 5
+ -o hilbert \
+ -O row-major \
+ -c 6 \
+ -s 1

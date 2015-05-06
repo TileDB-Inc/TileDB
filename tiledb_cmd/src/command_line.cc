@@ -92,9 +92,8 @@ void CommandLine::parse(int argc, char** argv) {
         break;
       case 'c':
         if(capacity_ != NULL) {
-          std::cerr << "[TileDB::fatal_error] More than one capacities"
-                    << " provided."
-                    << " Type 'tiledb help' to see the TileDB User Manual.\n";
+          std::cerr << "[TileDB::CommandLine::fatal_error] More than one"
+                    << " capacities provided.\n";
           exit(-1);
         }
         arg_bitmap_ |= CL_CAPACITY_BITMAP;
@@ -110,9 +109,8 @@ void CommandLine::parse(int argc, char** argv) {
         break;
       case 'E':
         if(expression_ != NULL) {
-          std::cerr << "[TileDB::fatal_error] More than one expressions"
-                    << " provided."
-                    << " Type 'tiledb help' to see the TileDB User Manual.\n";
+          std::cerr << "[TileDB::CommandLine::fatal_error] More than one"
+                    << " expressions provided.\n";
           exit(-1);
         }
         arg_bitmap_ |= CL_EXPRESSION_BITMAP;
@@ -124,9 +122,8 @@ void CommandLine::parse(int argc, char** argv) {
         break;
       case 'f':
         if(filename_ != NULL) {
-          std::cerr << "[TileDB::fatal_error] More than one filenames"
-                    << " provided."
-                    << " Type 'tiledb help' to see the TileDB User Manual.\n";
+          std::cerr << "[TileDB::CommandLine::fatal_error] More than one"
+                    << " filenames provided.\n";
           exit(-1);
         }
         arg_bitmap_ |= CL_FILENAME_BITMAP;
@@ -138,9 +135,8 @@ void CommandLine::parse(int argc, char** argv) {
         break;
       case 'o':
         if(cell_order_ != NULL) {
-          std::cerr << "[TileDB::fatal_error] More than one cell orders"
-                    << " provided. Type 'tiledb help' to see the TileDB User"
-                    << " Manual.\n";
+          std::cerr << "[TileDB::CommandLine::fatal_error] More than one cell"
+                    << " orders provided.\n";
           exit(-1);
         }
         arg_bitmap_ |= CL_CELL_ORDER_BITMAP;
@@ -148,9 +144,8 @@ void CommandLine::parse(int argc, char** argv) {
         break;
       case 'O':
         if(tile_order_ != NULL) {
-          std::cerr << "[TileDB::fatal_error] More than one tile orders"
-                    << " provided. Type 'tiledb help' to see the TileDB User"
-                    << " Manual.\n";
+          std::cerr << "[TileDB::CommandLine::fatal_error] More than one tiles"
+                    << " orders provided.\n";
           exit(-1);
         }
         arg_bitmap_ |= CL_TILE_ORDER_BITMAP;
@@ -158,8 +153,8 @@ void CommandLine::parse(int argc, char** argv) {
         break;
       case 'q':
         if(query_ != NULL) {
-          std::cerr << "[TileDB::fatal_error] More than one queries provided."
-                    << " Type 'tiledb help' to see the TileDB User Manual.\n";
+          std::cerr << "[TileDB::CommandLine::fatal_error] More than one"
+                    << " queries provided.\n";
           exit(-1);
         }
         query_ = optarg;
@@ -170,9 +165,8 @@ void CommandLine::parse(int argc, char** argv) {
         break;
       case 'R':
         if(result_name_ != NULL) {
-          std::cerr << "[TileDB::fatal_error] More than one result names"
-                    << " provided."
-                    << " Type 'tiledb help' to see the TileDB User Manual.\n";
+          std::cerr << "[TileDB::CommandLine::fatal_error] More than one result"
+                    << " names provided.\n";
           exit(-1);
         }
         arg_bitmap_ |= CL_RESULT_BITMAP;
@@ -180,9 +174,8 @@ void CommandLine::parse(int argc, char** argv) {
         break;
       case 's':
         if(consolidation_step_ != NULL) {
-          std::cerr << "[TileDB::fatal_error] More than one consolidation"
-                    << " steps provided. Type 'tiledb help' to see the TileDB"
-                    << " User Manual.\n";
+          std::cerr << "[TileDB::CommandLine::fatal_error] More than one"
+                    << " consolidation steps provided.\n";
           exit(-1);
         }
         arg_bitmap_ |= CL_CONSOLIDATION_STEP_BITMAP;
@@ -194,17 +187,16 @@ void CommandLine::parse(int argc, char** argv) {
         break;
       case 'w':
         if(workspace_ != NULL) {
-          std::cerr << "[TileDB::fatal_error] More than one workspaces" 
-                    << " provided."
-                    << " Type 'tiledb help' to see the TileDB User Manual.\n";
+          std::cerr << "[TileDB::CommandLine::fatal_error] More than one" 
+                    << " workspaces provided.\n";
           exit(-1);
         }
         arg_bitmap_ |= CL_WORKSPACE_BITMAP;
         workspace_ = optarg;
         break;
       default:
-        std::cerr << "[TileDB::fatal_error] Unknown option."
-                  << " Type 'tiledb help' to see the TileDB User Manual.\n";
+        std::cerr << "[TileDB::CommandLine::fatal_error] Unbale to parse command"
+                  << " line.\n";
         exit(-1);
         break;
     }
