@@ -1,9 +1,11 @@
 #!/bin/bash
 
+. ./configure.sh
+
 # Array schema for IREG
 echo 'Executing define_array for IREG...'
 ../tiledb_cmd/bin/tiledb_cmd -q define_array \
- -w ~/stavrospapadopoulos/TileDB/example/ \
+ -w $TILEDB_WORKSPACE/ \
  -A IREG \
  -a a1 -a a2 \
  -d i -d j \
@@ -16,7 +18,7 @@ echo 'Executing define_array for IREG...'
 # Array schema for REG
 echo 'Executing define_array for REG...'
 ../tiledb_cmd/bin/tiledb_cmd -q define_array \
- -w ~/stavrospapadopoulos/TileDB/example/ \
+ -w $TILEDB_WORKSPACE/ \
  -A REG \
  -a a1 -a a2 \
  -d i -d j \
