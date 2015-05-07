@@ -97,7 +97,7 @@ void QueryProcessor::export_to_csv(
 
   // Write cells into the CSV file
   for(; !cell_it.end(); ++cell_it) 
-    csv_file << cell_to_csv_line(*cell_it, array_schema); 
+    csv_file << cell_to_csv_line<T>(*cell_it, array_schema); 
   
   // Clean up 
   csv_file.close();
@@ -171,6 +171,7 @@ void QueryProcessor::subarray(int ad, const T* range, int result_ad) const {
     storage_manager_->write_cell_sorted<T>(result_ad, *cell_it);
 }
 
+template<class T>
 inline
 CSVLine QueryProcessor::cell_to_csv_line(
     const void* cell, const ArraySchema* array_schema) const {
@@ -184,19 +185,8 @@ CSVLine QueryProcessor::cell_to_csv_line(
   // Append coordinates first
   const void* coords = cell;
   const std::type_info& coords_type = *(array_schema->type(attribute_num));
-  if(coords_type == typeid(int)) { 
-    for(int i=0; i<dim_num; ++i)
-      csv_line << static_cast<const int*>(coords)[i];
-  } else if(coords_type == typeid(int64_t)) { 
-    for(int i=0; i<dim_num; ++i)
-      csv_line << static_cast<const int64_t*>(coords)[i];
-  } else if(coords_type == typeid(float)) { 
-    for(int i=0; i<dim_num; ++i)
-      csv_line << static_cast<const float*>(coords)[i];
-  } else if(coords_type == typeid(double)) { 
-    for(int i=0; i<dim_num; ++i)
-      csv_line << static_cast<const double*>(coords)[i];
-  }
+  for(int i=0; i<dim_num; ++i)
+    csv_line << static_cast<const T*>(coords)[i];
 
   size_t offset = array_schema->cell_size(attribute_num);
 

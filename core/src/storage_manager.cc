@@ -1211,11 +1211,10 @@ void StorageManager::Fragment::make_tiles() {
     write_cell_sorted<T>(cell);
 
   // Clean up
-  for(int i=0; i<runs_num; ++i) {
-    remove(runs[i]->filename_.c_str());
+  for(int i=0; i<runs_num; ++i) 
     delete runs[i];
-  }
   delete [] runs;
+  delete_directory(dirname);
   free(cell);
 }
 
@@ -1249,11 +1248,10 @@ void StorageManager::Fragment::make_tiles_with_id() {
   }
 
   // Clean up
-  for(int i=0; i<runs_num; ++i) {
-    remove(runs[i]->filename_.c_str());
+  for(int i=0; i<runs_num; ++i) 
     delete runs[i];
-  }
   delete [] runs;
+  delete_directory(dirname);
   free(cell);
 }
 
@@ -1281,11 +1279,10 @@ void StorageManager::Fragment::make_tiles_with_2_ids() {
     write_cell_sorted_with_2_ids<T>(cell);
 
   // Clean up
-  for(int i=0; i<runs_num; ++i) {
-    remove(runs[i]->filename_.c_str());
+  for(int i=0; i<runs_num; ++i) 
     delete runs[i];
-  }
   delete [] runs;
+  delete_directory(dirname);
   free(cell);
 }
 
@@ -3295,6 +3292,7 @@ void StorageManager::read_cells(int ad, const T* range,
   }
 }
 
+template<class T>
 void StorageManager::write_cell(int ad, const void* input_cell) const {
   assert(ad >= 0 && ad < SM_MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
@@ -3318,7 +3316,8 @@ void StorageManager::write_cell(int ad, const void* input_cell) const {
     } else { // array_schema->cell_order() == ArraySchema::CO_HILBERT
       CellWithId new_cell;
       new_cell.cell_ = cell;
-      new_cell.id_ = array_schema->cell_id_hilbert(cell);
+      new_cell.id_ = 
+          array_schema->cell_id_hilbert<T>(static_cast<const T*>(cell));
       arrays_[ad]->write_cell(new_cell); 
     }
   } else { // Regular tiles
@@ -3333,7 +3332,8 @@ void StorageManager::write_cell(int ad, const void* input_cell) const {
         CellWith2Ids new_cell;
         new_cell.cell_ = cell;
         new_cell.tile_id_ = array_schema->tile_id_row_major(cell);
-        new_cell.cell_id_ = array_schema->cell_id_hilbert(cell);
+        new_cell.cell_id_ = 
+          array_schema->cell_id_hilbert<T>(static_cast<const T*>(cell));
         arrays_[ad]->write_cell(new_cell); 
       }
     } else if(array_schema->tile_order() == ArraySchema::TO_COLUMN_MAJOR) { 
@@ -3347,7 +3347,8 @@ void StorageManager::write_cell(int ad, const void* input_cell) const {
         CellWith2Ids new_cell;
         new_cell.cell_ = cell;
         new_cell.tile_id_ = array_schema->tile_id_column_major(cell);
-        new_cell.cell_id_ = array_schema->cell_id_hilbert(cell);
+        new_cell.cell_id_ = 
+          array_schema->cell_id_hilbert<T>(static_cast<const T*>(cell));
         arrays_[ad]->write_cell(new_cell); 
       }
     } else if(array_schema->tile_order() == ArraySchema::TO_HILBERT) { 
@@ -3361,7 +3362,8 @@ void StorageManager::write_cell(int ad, const void* input_cell) const {
         CellWith2Ids new_cell;
         new_cell.cell_ = cell;
         new_cell.tile_id_ = array_schema->tile_id_hilbert(cell);
-        new_cell.cell_id_ = array_schema->cell_id_hilbert(cell);
+        new_cell.cell_id_ = 
+          array_schema->cell_id_hilbert<T>(static_cast<const T*>(cell));
         arrays_[ad]->write_cell(new_cell); 
       }
     } 
@@ -3371,11 +3373,29 @@ void StorageManager::write_cell(int ad, const void* input_cell) const {
 void StorageManager::write_cells(
     int ad, const void* cells, int64_t cell_num) const {
   // For easy reference
+  int attribute_num = arrays_[ad]->array_schema_->attribute_num();
+  const std::type_info& coords_type = 
+      *(arrays_[ad]->array_schema_->type(attribute_num));
+
+  if(coords_type == typeid(int))
+    write_cells<int>(ad, cells, cell_num);
+  else if(coords_type == typeid(int64_t))
+    write_cells<int64_t>(ad, cells, cell_num);
+  else if(coords_type == typeid(float))
+    write_cells<float>(ad, cells, cell_num);
+  else if(coords_type == typeid(double))
+    write_cells<double>(ad, cells, cell_num);
+}
+
+template<class T>
+void StorageManager::write_cells(
+    int ad, const void* cells, int64_t cell_num) const {
+  // For easy reference
   size_t cell_size = arrays_[ad]->array_schema_->cell_size();
   size_t offset = 0;
 
   for(int64_t i=0; i<cell_num; ++i) {
-    write_cell(ad, static_cast<const char*>(cells) + offset);
+    write_cell<T>(ad, static_cast<const char*>(cells) + offset);
     offset += cell_size;
   }
 }

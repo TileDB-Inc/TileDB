@@ -92,7 +92,9 @@ class QueryProcessor {
    * comprised of all coordinates and attribute values, which are contained 
    * in the input array of cell iterators.
    */
-  CSVLine cell_to_csv_line(const void* cell, const ArraySchema* array_schema) const;
+  template<class T>
+  CSVLine cell_to_csv_line(
+      const void* cell, const ArraySchema* array_schema) const;
   /** 
    * A subarray query creates a new array from the input array, 
    * containing only the cells whose coordinates fall into the input range. 

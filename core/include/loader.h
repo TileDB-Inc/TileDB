@@ -95,6 +95,9 @@ class Loader {
                         CSVLine& csv_line, void* cell) const;
   /** Loads a CSV file into a new fragment for the input array descriptor. */
   void load_csv(const std::string& filename, int ad) const;
+  /** Loads a CSV file into a new fragment for the input array descriptor. */
+  template<class T>
+  void load_csv(const std::string& filename, int ad) const;
 };
 
 /** This exception is thrown by Loader. */

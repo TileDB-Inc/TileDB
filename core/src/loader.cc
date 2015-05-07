@@ -162,6 +162,24 @@ bool Loader::csv_line_to_cell(const ArraySchema* array_schema,
   return success;
 }
 
+
+void Loader::load_csv(const std::string& filename, int ad) const {
+  // For easy reference
+  const ArraySchema* array_schema = storage_manager_->get_array_schema(ad);
+  int attribute_num = array_schema->attribute_num();
+  const std::type_info& coords_type = *(array_schema->type(attribute_num));
+
+  if(coords_type == typeid(int))
+    load_csv<int>(filename, ad);
+  else if(coords_type == typeid(int64_t))
+    load_csv<int64_t>(filename, ad);
+  else if(coords_type == typeid(float))
+    load_csv<float>(filename, ad);
+  else if(coords_type == typeid(double))
+    load_csv<double>(filename, ad);
+}
+
+template<class T>
 void Loader::load_csv(const std::string& filename, int ad) const {
   // Open the csv file 
   CSVLine csv_line;
@@ -200,7 +218,7 @@ void Loader::load_csv(const std::string& filename, int ad) const {
     }
 
     // Write the cell in the array
-    storage_manager_->write_cell(ad, cell);
+    storage_manager_->write_cell<T>(ad, cell);
   }
 
   // Clean up 
