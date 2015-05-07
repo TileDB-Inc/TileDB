@@ -45,8 +45,8 @@ LA_BIN_DIR = la/bin
 DOC_DIR = doc
 
 # Directories for the MPI files
-MPI_INCLUDE_DIR := /home/spapadop/mpi-3.1-install/include
-MPI_LIB_DIR := /home/spapadop/mpi-3.1-install/lib
+MPI_INCLUDE_DIR := /opt/intel/impi/5.0.1.035/intel64/include
+MPI_LIB_DIR := /opt/intel/impi/5.0.1.035/intel64/lib
 
 # Directories for the OpenMP files
 OPENMP_INCLUDE_DIR :=
