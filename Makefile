@@ -5,10 +5,10 @@
 # --- Compilers --- #
 
 # C++ compiler
-# CXX := g++
+# CXX = g++
 
 # MPI compiler for C++
-CXX := mpicxx
+CXX = mpicxx
 
 # --- Directories --- #
 # Directories for the core code of TileDB
@@ -45,25 +45,25 @@ LA_BIN_DIR = la/bin
 DOC_DIR = doc
 
 # Directories for the MPI files
-MPI_INCLUDE_DIR := /home/spapadop/mpi-3.1-install/include
-MPI_LIB_DIR := /home/spapadop/mpi-3.1-install/lib
+MPI_INCLUDE_DIR = /home/spapadop/mpi-3.1-install/include
+MPI_LIB_DIR = /home/spapadop/mpi-3.1-install/lib
 
 # Directories for the OpenMP files
-OPENMP_INCLUDE_DIR :=
-OPENMP_LIB_DIR :=
+OPENMP_INCLUDE_DIR =
+OPENMP_LIB_DIR =
 
 # --- Paths --- #
 CORE_INCLUDE_PATHS = -I$(CORE_INCLUDE_DIR)
 TILEDB_CMD_INCLUDE_PATHS = -I$(TILEDB_CMD_INCLUDE_DIR)
 LA_INCLUDE_PATHS = -I$(LA_INCLUDE_DIR)
-MPI_INCLUDE_PATHS := -I$(MPI_INCLUDE_DIR)
-MPI_LIB_PATHS := -L$(MPI_LIB_DIR)
-OPENMP_INCLUDE_PATHS := -L$(OPENMP_INCLUDE_DIR)
-OPENMP_LIB_PATHS := -L$(OPENMP_LIB_DIR)
+MPI_INCLUDE_PATHS = -I$(MPI_INCLUDE_DIR)
+MPI_LIB_PATHS = -L$(MPI_LIB_DIR)
+OPENMP_INCLUDE_PATHS = -L$(OPENMP_INCLUDE_DIR)
+OPENMP_LIB_PATHS = -L$(OPENMP_LIB_DIR)
 
 # --- Libs --- #
 MPI_LIB = -lmpicxx
-OPENMP_LIB := -fopenmp
+OPENMP_LIB = -fopenmp
 
 # --- Files --- #
 
@@ -192,7 +192,7 @@ $(LA_OBJ_DIR)/%.o: $(LA_SRC_DIR)/%.cc
 
 $(LA_BIN_DIR)/example_transpose: $(LA_OBJ) $(CORE_OBJ)
 	@mkdir -p $(LA_BIN_DIR)
-	@echo "Creating la"
+	@echo "Creating example_transpose"
 	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
                -o $@ $^
 
@@ -248,5 +248,5 @@ doxyfile.inc: $(CORE_INCLUDE) $(TILEDB_CMD_INCLUDE) $(LA_INCLUDE)
 
 clean_doc:
 	@echo "Cleaning documentation"
-	@rm doxyfile.inc* 
+	@rm doxyfile.inc
 
