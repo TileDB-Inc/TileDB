@@ -59,10 +59,10 @@ void convert(const double* a, T* b, int size) {
 
 void create_directory(const std::string& dirname) {
   struct stat st;
-  bool dir_exists = stat(dirname.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+  bool path_exists = file_exists(dirname) || dir_exists(dirname);
 
-  // If the directory does not exist, create it
-  if(!dir_exists) { 
+  // If the directory path does not exist, create it
+  if(!path_exists) { 
     int dir_flag = mkdir(dirname.c_str(), S_IRWXU);
     assert(dir_flag == 0);
   }
@@ -88,6 +88,13 @@ void delete_directory(const std::string& dirname)  {
   
   closedir(dir);
   rmdir(dirname.c_str());
+}
+
+bool dir_exists(const std::string& dirname) {
+  std::string path = absolute_path(dirname);
+
+  struct stat st;
+  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
 void expand_buffer(void*& buffer, size_t size) {
@@ -141,15 +148,10 @@ void expand_mbr(const T* coords, T* mbr, int dim_num) {
 }
 
 bool file_exists(const std::string& filename) {
-  std::string abs_filename = absolute_path(filename);
+  std::string path = absolute_path(filename);
 
-  int fd = open(abs_filename.c_str(), O_RDONLY);
-  if(fd == -1)
-    return false; 
-   
-  close(fd);
-
-  return true;
+  struct stat st;
+  return (stat(path.c_str(), &st) == 0)  && !S_ISDIR(st.st_mode);
 }
 
 void init_mbr(const ArraySchema* array_schema,
@@ -267,12 +269,6 @@ std::pair<bool, bool> overlap(const T* r1, const T* r2, int dim_num) {
 
   return std::pair<bool, bool>(overlap, full_overlap);
 }
-
-bool path_exists(const std::string& path) {
-  struct stat st;
-  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
-}
-
 
 // Explicit template instantiations
 template void convert<int>(const double* a, int* b, int size);

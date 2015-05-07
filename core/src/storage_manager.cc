@@ -65,7 +65,7 @@ StorageManager::Fragment::Fragment(
   std::string fragment_dir = workspace_ + 
                              array_schema->array_name() + "/" + 
                              fragment_name;
-  if(path_exists(fragment_dir)) {
+  if(dir_exists(fragment_dir)) {
     load_book_keeping();
     init_read_state();
   } else { // Create the folder (write mode) 
@@ -193,7 +193,7 @@ void StorageManager::Fragment::commit_book_keeping() {
                          fragment_name_ + "/" +
                          SM_BOUNDING_COORDINATES_FILENAME + 
                          SM_BOOK_KEEPING_FILE_SUFFIX;
-  if(path_exists(filename))
+  if(file_exists(filename))
     return;
 
   commit_bounding_coordinates();
@@ -3537,7 +3537,7 @@ bool StorageManager::invalid_array_mode(const char* mode) const {
 inline
 void StorageManager::set_workspace(const std::string& path) {
   workspace_ = absolute_path(path);
-  assert(path_exists(workspace_));
+  assert(dir_exists(workspace_));
 
   if(mpi_handler_ == NULL) {
     workspace_ += "/StorageManager/";

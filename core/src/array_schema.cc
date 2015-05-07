@@ -538,11 +538,18 @@ int64_t ArraySchema::cell_id_hilbert(const T* coordinates) const {
            coordinates[i] <= dim_domains_[i].second);
 #endif 
 
+  bool regular = (tile_extents_.size() != 0);
+
   HilbertCurve *hc = new HilbertCurve();
   int *coord = new int[dim_num_];
-  
-  for(int i = 0; i < dim_num_; ++i) 
-    coord[i] = static_cast<int>(coordinates[i]);
+ 
+  if(regular) {
+    for(int i = 0; i < dim_num_; ++i) 
+      coord[i] = int(coordinates[i]) % int(tile_extents_[i]);
+  } else { 
+    for(int i = 0; i < dim_num_; ++i) 
+      coord[i] = int(coordinates[i]);
+  }
 
   int64_t cell_ID = hc->AxestoLine(coord, hilbert_cell_bits_, dim_num_);	
 
@@ -1011,8 +1018,13 @@ bool ArraySchema::check_on_tile_id_request(const T* coords) const {
 void ArraySchema::compute_hilbert_cell_bits() {
   double max_domain_range = 0;
   double domain_range;
-  for(int i = 0; i < dim_num_; ++i) {       
-    domain_range = dim_domains_[i].second - dim_domains_[i].first + 1;
+  bool regular = (tile_extents_.size() != 0);
+
+  for(int i = 0; i < dim_num_; ++i) { 
+    if(regular) // Regular tiles: ids are calculated within a tile
+      domain_range = tile_extents_[i];
+    else        // Irregular tiles: ids are calculated in the entire domain
+      domain_range = dim_domains_[i].second - dim_domains_[i].first + 1;
     if(max_domain_range < domain_range)
       max_domain_range = domain_range;
   }
@@ -1025,6 +1037,7 @@ void ArraySchema::compute_hilbert_tile_bits() {
 
   double max_domain_range = 0;
   double domain_range;
+
   for(int i = 0; i < dim_num_; ++i) {       
     domain_range = (dim_domains_[i].second - dim_domains_[i].first + 1) /
                     tile_extents_[i];  

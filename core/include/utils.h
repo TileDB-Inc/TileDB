@@ -53,6 +53,9 @@ void create_directory(const std::string& dirname);
  */
 void delete_directory(const std::string& dirname);
 
+/** Returns true if the input directory exists. */ 
+bool dir_exists(const std::string& dirname);
+
 /** Expands the input MBR with the input coordinates. */
 void expand_mbr(const ArraySchema* array_schema, 
                 const void* coords, void* mbr);
