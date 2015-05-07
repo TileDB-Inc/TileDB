@@ -993,12 +993,29 @@ class StorageManager {
    */
   void write_cell(int ad, const void* cell) const; 
   /**  
+   * Writes a cell to an array. It takes as input an array descriptor, and
+   * a cell pointer. The cell has the following format: The coordinates
+   * appear first, and then the attribute values in the same order
+   * as the attributes are defined in the array schema.
+   */
+  template<class T>
+  void write_cell(int ad, const void* cell) const; 
+  /**  
    * Writes a set of cells to an array. It takes as input an array descriptor,
    * and a pointer to cells, which are serialized one after the other. Each cell
    * has the following format: The coordinates appear first, and then the
    * attribute values in the same order as the attributes are defined in the
    * array schema.
    */
+  void write_cells(int ad, const void* cells, int64_t cell_num) const; 
+  /**  
+   * Writes a set of cells to an array. It takes as input an array descriptor,
+   * and a pointer to cells, which are serialized one after the other. Each cell
+   * has the following format: The coordinates appear first, and then the
+   * attribute values in the same order as the attributes are defined in the
+   * array schema.
+   */
+  template<class T>
   void write_cells(int ad, const void* cells, int64_t cell_num) const; 
   /**  
    * Writes a cell to an array. It takes as input an array descriptor, and
