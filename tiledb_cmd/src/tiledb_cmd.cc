@@ -87,31 +87,33 @@ void print_define_array() {
             << "\t\tThe folder where the TileDB data will be stored. \n"
             << "\t\tThe provided folder must exist.\n\n"
             << "\t-a or --attribute-name: \n"
-            << "\t\tAn attribute name. Multiple attribute names can\n"
-            << "\t\tbe provided, by repeating the option along with a\n"
-            << "\t\tnew attribute value.\n\n"
+            << "\t\tThe list of attribute names. \n\n"
             << "\t-d or --dim-name: \n"
-            << "\t\tA dimension name. Multiple dimension names can\n"
-            << "\t\tbe provided, by repeating the option along with a\n"
-            << "\t\tnew dimension value.\n\n"
+            << "\t\tThe list of dimension names.\n\n"
             << "\t-D or --dim-domain-bound: \n"
-            << "\t\tA dimension domain bound. If there are d dimensions,\n"
-            << "\t\t2*d domain bounds must be given. Every two bounds in\n"
-            << "\t\tthe provided order correspond to each dimension (also\n"
-            << "\t\tin the provided order). The first is the lower bound,\n"
-            << "\t\tand the second is the upper bound. Any real value is\n"
-            << "\t\taccepted as a domain bound.\n\n"
+            << "\t\tThe list of dimension domain bounds. If there are d\n"
+            << "\t\tdimensions, 2*d domain bounds must be given. Every two\n"
+            << "\t\tbounds in the provided order correspond to each dimension\n"
+            << "\t\t(also in the provided order). The first is the lower\n"
+            << "\t\tbound, and the second is the upper bound. Any real value\n"
+            << "\t\tis accepted as a domain bound.\n\n"
             << "\t-t or --type: \n"
-            << "\t\tThe type of an attribute or the coordinates. If a\n"
-            << "\t\tattributes are provided, a+1 types must be given (by\n"
-            << "\t\trepeating the option with a new value each time). The\n"
-            << "\t\tfirst a types correpsond to the attributes (in the\n"
+            << "\t\tThe list of types for the attributes and the coordinates.\n"
+            << "\t\tIf a attributes are provided, a+1 types must be given\n"
+            << "\t\tThe first a types correpsond to the attributes (in the\n"
             << "\t\tprovided order), whereas the last type corresponds\n"
             << "\t\tto the coordinates (i.e., to all the dimensions\n"
             << "\t\tcollectively).The supported types for an attribute\n"
             << "\t\tare: char, int, int64_t, float and double. The\n"
             << "\t\tsupported types for the coordinates are: int, int64_t,\n"
-            << "\t\tfloat and double.\n\n"
+            << "\t\tfloat and double. Optionally, one may specify the number\n"
+            << "\t\tof values to be stored per attribute. This is done by\n"
+            << "\t\tappending ':' followed by the number of values after the\n"
+            << "\t\teach type. If no such value is provided, the default 1 is\n"
+            << "\t\tused. If one needs a variable number of values per\n"
+            << "\t\tattribute, \":var\" must be appended. Note that dimension\n"
+            << "\t\ttype cannot have multiple values (i.e., there should be\n"
+            << "\t\ta single set of coordinates that identifies each cell).\n\n"
             << "\t-e or --tile-extent: \n"
             << "\t\tThis applies only to regular tiles (for irregular\n"
             << "\t\ttiles it must be omitted). It determines the extent\n"
@@ -148,11 +150,10 @@ void print_define_array() {
             << "\t tiledb_cmd -q define_array \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array \\\n"
-            << "\t            -a attr1 -attr2 \\\n"
-            << "\t            -d dim1 -d dim2 \\\n"
-            << "\t            -D 0 -D 100 -D 0 -D 100 \\\n"
-            << "\t            -d dim1 -d dim2 \\\n"
-            << "\t            -t int -t double -t int64_t \\\n"
+            << "\t            -a 'attr1,attr2' \\\n"
+            << "\t            -d 'dim1,dim2' \\\n"
+            << "\t            -D '0,100,0,100' \\\n"
+            << "\t            -t 'int:var,double:2,int64_t' \\\n"
             << "\t            -o hilbert \\\n"
             << "\t            -c 10000 \\\n"
             << "\t            -s 5 \n\n"
@@ -160,12 +161,11 @@ void print_define_array() {
             << "\t tiledb_cmd -q define_array \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array \\\n"
-            << "\t            -a attr1 -attr2 \\\n"
-            << "\t            -d dim1 -d dim2 \\\n"
-            << "\t            -D 0 -D 100 -D 0 -D 100 \\\n"
-            << "\t            -d dim1 -d dim2 \\\n"
-            << "\t            -t int -t double -t int64_t \\\n"
-            << "\t            -e 10 -e 20  \\\n"
+            << "\t            -a 'attr1,attr2' \\\n"
+            << "\t            -d 'dim1,dim2' \\\n"
+            << "\t            -D '0,100,0,100' \\\n"
+            << "\t            -t 'int:var,double:2,int64_t' \\\n"
+            << "\t            -e '10,20' \\\n"
             << "\t            -o row-major \\\n"
             << "\t            -O column-major \\\n"
             << "\t            -c 10000 \\\n"
@@ -265,7 +265,7 @@ void print_subarray() {
             << "\t-w or --workspace: \n"
             << "\t\tThe folder where the TileDB data are stored. \n\n"
             << "\t-r or --range-bound:\n"
-            << "\t\tA bound of the input range. If there are d dimensions, 2d\n"
+            << "\t\tThe list of range bounds. If there are d dimensions, 2d\n"
             << "\t\trange bounds must be provided. Every pair of bounds\n"
             << "\t\tcorrespond to the lower and upper bound of the range\n"
             << "\t\tacross a dimension (in the order in which the dimensions\n"
@@ -277,7 +277,7 @@ void print_subarray() {
             << "\t tiledb_cmd -q subarray \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A input_array \\\n"
-            << "\t            -r 15 -r 20 -r 10 -r 3 \\\n"
+            << "\t            -r '15,20,10,3' \\\n"
             << "\t            -R output_array \n"
             << "\n";
 }
@@ -438,24 +438,19 @@ void run_show_array_schema(const CommandLine& cl) {
 
 void run_subarray(const CommandLine& cl) {
   CmdParser parser;
-  const double* range = parser.parse_subarray(cl);
+  std::vector<double> range = parser.parse_subarray(cl);
 
   try {
     StorageManager storage_manager(cl.workspace_);
     QueryProcessor query_processor(&storage_manager);
     query_processor.subarray(cl.array_names_[0], range, cl.result_name_);
   } catch(StorageManagerException &se) {
-    delete [] range;
     std::cerr << "[TileDB::StorageManager::fatal_error] " << se.what() << "\n";
     exit(-1);
   } catch(QueryProcessorException &qe) {
-    delete [] range;
     std::cerr << "[TileDB::QueryProcessor::fatal_error] " << qe.what() << "\n";
     exit(-1);
   }
-
-  // Clean up
-  delete [] range;
 }
 
 void run_update_csv(const CommandLine& cl) {

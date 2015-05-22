@@ -43,11 +43,11 @@
 ************* CONSTRUCTORS & DESTRUCTORS **************
 ******************************************************/
 
-Tile::Tile(int64_t tile_id, int dim_num, const std::type_info* cell_type,
-           int64_t payload_capacity) 
+Tile::Tile(int64_t tile_id, int dim_num, 
+           const std::type_info* cell_type, int val_num) 
     : tile_id_(tile_id), dim_num_(dim_num), cell_type_(cell_type), 
-      payload_capacity_(payload_capacity) {
-  assert(dim_num >= 0 && payload_capacity >= 0);
+      val_num_(val_num) {
+  assert(dim_num >= 0);
 
   if(dim_num == 0) 
     tile_type_ = ATTRIBUTE;
@@ -57,28 +57,30 @@ Tile::Tile(int64_t tile_id, int dim_num, const std::type_info* cell_type,
   mbr_ = NULL;
   cell_num_ = 0;
   tile_size_ = 0;
+  payload_ = NULL;
 
+  // Set type size
   if(*cell_type == typeid(char)) {
     assert(tile_type_ == ATTRIBUTE); // Char not supported for coordinate cells 
-    cell_size_ = sizeof(char);
+    type_size_ = sizeof(char);
   } else if(*cell_type == typeid(int)) {
-    cell_size_ = sizeof(int) * ((tile_type_ == ATTRIBUTE) ? 1 : dim_num_);
+    type_size_ = sizeof(int);
   } else if(*cell_type == typeid(int64_t)) {
-    cell_size_ = sizeof(int64_t) * ((tile_type_ == ATTRIBUTE) ? 1 : dim_num_);
+    type_size_ = sizeof(int64_t);
   } else if(*cell_type == typeid(float)) {
-    cell_size_ = sizeof(float) * ((tile_type_ == ATTRIBUTE) ? 1 : dim_num_);
+    type_size_ = sizeof(float);
   } else if(*cell_type == typeid(double)) {
-    cell_size_ = sizeof(double) * ((tile_type_ == ATTRIBUTE) ? 1 : dim_num_);
+    type_size_ = sizeof(double);
   } else {
     assert(0); // No other cell type is supported
   }
 
-  if(payload_capacity_ == 0) {
-    payload_ = NULL;
-    payload_alloc_ = false;
-  } else { 
-    payload_ = malloc(payload_capacity_*cell_size_);
-    payload_alloc_ = true;
+  if(val_num != VAR_SIZE) {
+    cell_size_ = val_num_ * type_size_;
+    if(tile_type_ == COORDINATE)
+      cell_size_ *= dim_num_;
+  } else {
+    cell_size_ = VAR_SIZE;
   }
 }
 
@@ -103,9 +105,17 @@ std::pair<const void*, const void*> Tile::bounding_coordinates() const {
 }
 
 const void* Tile::cell(int64_t pos) const {
-  assert(pos >= 0 && pos < cell_num_);
+  // Fixed-sized cells
+  if(val_num_ != VAR_SIZE) 
+    return  static_cast<char*>(payload_) + pos*cell_size_; 
+  else 
+    return static_cast<char*>(payload_) + offsets_[pos];
+}
 
-  return static_cast<char*>(payload_) + pos*cell_size_; 
+size_t Tile::cell_size() const {
+  assert(val_num_ != VAR_SIZE);
+
+  return cell_size_;
 }
 
 void Tile::copy_payload(void* buffer) const {
@@ -126,88 +136,36 @@ void Tile::set_mbr(const void* mbr) {
 
   clear_mbr();
 
-  mbr_ = malloc(2*cell_size_); 
-  memcpy(mbr_, mbr, 2*cell_size_);
+  size_t mbr_size = 2*cell_size_;
+
+  mbr_ = malloc(mbr_size); 
+  memcpy(mbr_, mbr, mbr_size);
 }
 
 void Tile::set_payload(void* payload, size_t payload_size) {
-  assert(payload_size % cell_size_ == 0);
-
   clear_payload();
   payload_ = payload;
-  cell_num_ = payload_size / cell_size_;
   tile_size_ = payload_size;
-}
 
-/******************************************************
-********************** OPERATORS **********************
-******************************************************/
+  // Fixed-sized cells
+  if(val_num_ != VAR_SIZE) {
+    assert(payload_size % cell_size_ == 0);
+    cell_num_ = payload_size / cell_size_;
+  } else { // Variable-sized cells 
+    size_t offset = 0;
+    int val_num;
+    char* c_payload = static_cast<char*>(payload);
 
-void Tile::operator<<(void* value) {
-  if(*cell_type_ == typeid(char))
-    *this << static_cast<char*>(value);
-  else if(*cell_type_ == typeid(int))
-    *this << static_cast<int*>(value);
-  else if(*cell_type_ == typeid(int64_t))
-    *this << static_cast<int64_t*>(value);
-  else if(*cell_type_ == typeid(float))
-    *this << static_cast<float*>(value);
-  else if(*cell_type_ == typeid(double))
-    *this << static_cast<double*>(value);
-}
+    while(offset < payload_size) {
+      offsets_.push_back(offset); 
+      assert(offset + sizeof(int) < payload_size);
+      memcpy(&val_num, c_payload + offset, sizeof(int)); 
+      offset += sizeof(int) + val_num * type_size_;
+    }
+    assert(offset == payload_size);
 
-void Tile::operator<<(const void* value) {
-  if(*cell_type_ == typeid(char))
-    *this << static_cast<const char*>(value);
-  else if(*cell_type_ == typeid(int))
-    *this << static_cast<const int*>(value);
-  else if(*cell_type_ == typeid(int64_t))
-    *this << static_cast<const int64_t*>(value);
-  else if(*cell_type_ == typeid(float))
-    *this << static_cast<const float*>(value);
-  else if(*cell_type_ == typeid(double))
-    *this << static_cast<const double*>(value);
-}
-
-template<class T>
-void Tile::operator<<(T* value) {
-  assert(*cell_type_ == typeid(T));
-  assert(payload_capacity_ > 0);
-
-  if(cell_num_ == payload_capacity_)
-    expand_payload();
-
-  char* payload_pos = static_cast<char*>(payload_) + tile_size_;
-  memcpy(payload_pos, value, cell_size_);
-
-  if(tile_type_ == COORDINATE)
-    expand_mbr(value);
-
-  ++cell_num_;
-  tile_size_ += cell_size_;
-}
-
-template<class T>
-void Tile::operator<<(const T* value) {
-  assert(*cell_type_ == typeid(T));
-  assert(payload_capacity_ > 0);
-
-  if(cell_num_ == payload_capacity_)
-    expand_payload();
-
-  char* payload_pos = static_cast<char*>(payload_) + tile_size_;
-  memcpy(payload_pos, value, cell_size_);
-
-  if(tile_type_ == COORDINATE)
-    expand_mbr(value);
-
-  ++cell_num_;
-  tile_size_ += cell_size_;
-}
-
-template<class T>
-void Tile::operator<<(const T& value) {
-  *this << &value;
+    cell_num_ = offsets_.size();
+  }
 }
 
 /******************************************************
@@ -233,23 +191,49 @@ void Tile::print() const {
   std::cout << "Tile id: " << tile_id_ << "\n";
   std:: cout << "Dim num: " << dim_num_ << "\n";
   std::cout << "Cell type: ";
-  if(*cell_type_ == typeid(char))
-    std::cout << "char\n";
-  else if(*cell_type_ == typeid(int))
-    std::cout << "int\n";
-  else if(*cell_type_ == typeid(int64_t))
-    std::cout << "int64_t\n";
-  else if(*cell_type_ == typeid(float))
-    std::cout << "float\n";
-  else if(*cell_type_ == typeid(double))
-    std::cout << "double\n";
+  if(*cell_type_ == typeid(char)) {
+    std::cout << "char[";
+    if(val_num_ == VAR_SIZE)
+      std::cout << "var]\n";
+    else 
+      std::cout << val_num_ << "]\n";
+  } else if(*cell_type_ == typeid(int)) {
+    std::cout << "int[";
+    if(val_num_ == VAR_SIZE)
+      std::cout << "var]\n";
+    else 
+      std::cout << val_num_ << "]\n";
+  } else if(*cell_type_ == typeid(int64_t)) {
+    std::cout << "int64_t[";
+    if(val_num_ == VAR_SIZE)
+      std::cout << "var]\n";
+    else 
+      std::cout << val_num_ << "]\n";
+  } else if(*cell_type_ == typeid(float)) {
+    std::cout << "float[";
+    if(val_num_ == VAR_SIZE)
+      std::cout << "var]\n";
+    else 
+      std::cout << val_num_ << "]\n";
+  } else if(*cell_type_ == typeid(double)) {
+    std::cout << "double[";
+    if(val_num_ == VAR_SIZE)
+      std::cout << "var]\n";
+    else 
+      std::cout << val_num_ << "]\n";
+  }
 
   std::cout << "Tile type: "
             << (tile_type_ == ATTRIBUTE ? "ATTRIBUTE" : "COORDINATE") << "\n";
 
-  std::cout << "Cell size: " << cell_size_ << "\n";
+  std::cout << "Cell size: ";
+  if(val_num_ == VAR_SIZE)
+    std::cout << "var\n";
+  else 
+    std::cout << cell_size_ << "\n";
   std::cout << "Cell num: " << cell_num_ << "\n";
   std::cout << "Tile size: " << tile_size_ << "\n";
+  std::cout << "Cell type size: " << type_size_ << "\n";
 
   if(*cell_type_ == typeid(char)) {
     assert(tile_type_ == ATTRIBUTE);
@@ -274,9 +258,6 @@ void Tile::print() const {
     print_bounding_coordinates<double>();
   }
 
-  std::cout << "Payload capacity: " << payload_capacity_ << "\n";
-  std::cout << "Payload allocated: " << ((payload_alloc_) ? "true" : "no") << "\n";
-
   std::cout << "========== End of Tile info ========== \n\n";
 }
 
@@ -299,25 +280,42 @@ Tile::const_cell_iterator::const_cell_iterator(const Tile* tile, int64_t pos)
   }
 }
 
+size_t Tile::const_cell_iterator::cell_size() const {
+  // Fixed-sized cells
+  if(!tile_->var_size()) {
+    return tile_->cell_size_;
+  } else { // Variable-sized cells
+    int val_num;
+    memcpy(&val_num, cell_, sizeof(int));
+    return val_num * tile_->type_size(); 
+  }
+}
+
 bool Tile::const_cell_iterator::is_del() const {
   // Applies only to attribute values
   assert(tile_->tile_type() == ATTRIBUTE);
 
+  const void* cell;
+  if(!tile_->var_size())
+    cell = **this;
+  else
+    cell = static_cast<const char*>(**this) + sizeof(int);
+
   if(*tile_->cell_type() == typeid(char)) { 
-    const char* v = static_cast<const char*>(**this);
-    return (*v  == TL_DEL_CHAR);
+    const char* v = static_cast<const char*>(cell);
+    return (*v  == DEL_CHAR);
   } else if(*tile_->cell_type() == typeid(int)) {
-    const int* v = static_cast<const int*>(**this);
-    return (*v  == TL_DEL_INT);
+    const int* v = static_cast<const int*>(cell);
+    return (*v  == DEL_INT);
   } else if(*tile_->cell_type() == typeid(int64_t)) {
-    const int64_t* v = static_cast<const int64_t*>(**this);
-    return (*v  == TL_DEL_INT64_T);
+    const int64_t* v = static_cast<const int64_t*>(cell);
+    return (*v  == DEL_INT64_T);
   } else if(*tile_->cell_type() == typeid(float)) {
-    const float* v = static_cast<const float*>(**this);
-    return (*v  == TL_DEL_FLOAT);
+    const float* v = static_cast<const float*>(cell);
+    return (*v  == DEL_FLOAT);
   } else if(*tile_->cell_type() == typeid(double)) {
-    const double* v = static_cast<const double*>(**this);
-    return (*v  == TL_DEL_DOUBLE);
+    const double* v = static_cast<const double*>(cell);
+    return (*v  == DEL_DOUBLE);
   }
 }
 
@@ -325,21 +323,27 @@ bool Tile::const_cell_iterator::is_null() const {
   // Applies only to attribute values
   assert(tile_->tile_type() == ATTRIBUTE);
 
+  const void* cell;
+  if(!tile_->var_size())
+    cell = **this;
+  else
+    cell = static_cast<const char*>(**this) + sizeof(int);
+
   if(*tile_->cell_type() == typeid(char)) { 
-    const char* v = static_cast<const char*>(**this);
-    return (*v  == TL_NULL_CHAR);
+    const char* v = static_cast<const char*>(cell);
+    return (*v  == NULL_CHAR);
   } else if(*tile_->cell_type() == typeid(int)) {
-    const int* v = static_cast<const int*>(**this);
-    return (*v  == TL_NULL_INT);
+    const int* v = static_cast<const int*>(cell);
+    return (*v  == NULL_INT);
   } else if(*tile_->cell_type() == typeid(int64_t)) {
-    const int64_t* v = static_cast<const int64_t*>(**this);
-    return (*v  == TL_NULL_INT64_T);
+    const int64_t* v = static_cast<const int64_t*>(cell);
+    return (*v  == NULL_INT64_T);
   } else if(*tile_->cell_type() == typeid(float)) {
-    const float* v = static_cast<const float*>(**this);
-    return (*v  == TL_NULL_FLOAT);
+    const float* v = static_cast<const float*>(cell);
+    return (*v  == NULL_FLOAT);
   } else if(*tile_->cell_type() == typeid(double)) {
-    const double* v = static_cast<const double*>(**this);
-    return (*v  == TL_NULL_DOUBLE);
+    const double* v = static_cast<const double*>(cell);
+    return (*v  == NULL_DOUBLE);
   }
 }
 
@@ -426,6 +430,7 @@ bool Tile::const_cell_iterator::cell_inside_range(
     const T* range) const {
   return tile_->cell_inside_range(pos_, range); 
 }
+
 /******************************************************
 ******************** PRIVATE METHODS ******************
 ******************************************************/
@@ -438,14 +443,10 @@ void Tile::clear_mbr() {
 }
 
 void Tile::clear_payload() {
-  if(payload_ != NULL && payload_alloc_) 
-    free(payload_);
-
   payload_ = NULL;
-  payload_alloc_ = false;
   cell_num_ = 0;
   tile_size_ = 0;
-  payload_capacity_ = 0;
+  offsets_.clear();
 }
 
 template<class T>
@@ -475,14 +476,6 @@ void Tile::expand_mbr(const T* coords) {
         mbr[2*i+1] = coords[i];   
     }	
   }
-}
-
-void Tile::expand_payload() {
-  assert(payload_alloc_);
-  assert(payload_capacity_ > 0);
-
-  expand_buffer(payload_, payload_capacity_*cell_size_);
-  payload_capacity_ *= 2;
 }
 
 template<class T>
@@ -530,16 +523,57 @@ void Tile::print_mbr() const {
 
 template<class T>
 void Tile::print_payload() const {
-  assert(*cell_type_ == typeid(T));
-
-  T* payload = static_cast<T*>(payload_);
+  assert(cell_type_ == &typeid(T));
 
   std::cout << "Payload contents:\n";
 
+  // Attribute tiles
   if(tile_type_ == ATTRIBUTE) {
-    for(int64_t i=0; i < cell_num_; ++i)
-      std::cout << "\t" << payload[i] << "\n";
-  } else { // tile_type_ == COORDINATE
+    // Fixed-sized cells
+    if(val_num_ != VAR_SIZE) {
+      T* payload = static_cast<T*>(payload_);
+      for(int64_t i=0; i < cell_num_; ++i) {
+        std::cout << "\t";
+        for(int j=0; j<val_num_; ++j) {
+          T v = payload[i*val_num_ + j];
+         if(is_null(v))
+            std::cout << NULL_VALUE << "\t";
+          else if(is_del(v))
+            std::cout << DEL_VALUE << "\t";
+          else
+            std::cout << v << "\t";
+        }
+        std::cout << "\n";
+      }
+    } else { // Variable-sized cells
+      char* payload = static_cast<char*>(payload_);
+      size_t offset = 0;
+      int val_num; 
+
+      while(offset < tile_size_) {
+        memcpy(&val_num, payload + offset, sizeof(int));
+        offset += sizeof(int);
+        std::cout << "\t";
+
+        for(int j=0; j<val_num; ++j) {
+          void* payload_tmp = payload + offset;
+          T v = *(static_cast<T*>(payload_tmp));
+          if(is_null(v))
+            std::cout << NULL_VALUE << "\t";
+          else if(is_del(v))
+            std::cout << DEL_VALUE << "\t";
+          else
+            std::cout << v << "\t";
+          offset += type_size_;
+        }
+
+        std::cout << "\n";
+      }
+
+      assert(offset == tile_size_);
+    }
+  } else { // Coordinate tiles
+    T* payload = static_cast<T*>(payload_);
     for(int64_t i=0; i < cell_num_; ++i) {
       std::cout << "\t";
       for(int j=0; j<dim_num_; ++j)
@@ -550,36 +584,6 @@ void Tile::print_payload() const {
 }
 
 // Explicit template instantiations
-template void Tile::operator<< <char>
-    (char* value);
-template void Tile::operator<< <int>
-    (int* value);
-template void Tile::operator<< <int64_t>
-    (int64_t* value);
-template void Tile::operator<< <float>
-    (float* value);
-template void Tile::operator<< <double>
-    (double* value);
-template void Tile::operator<< <char>
-    (const char* value);
-template void Tile::operator<< <int>
-    (const int* value);
-template void Tile::operator<< <int64_t>
-    (const int64_t* value);
-template void Tile::operator<< <float>
-    (const float* value);
-template void Tile::operator<< <double>
-    (const double* value);
-template void Tile::operator<< <char>
-    (const char& value);
-template void Tile::operator<< <int>
-    (const int& value);
-template void Tile::operator<< <int64_t>
-    (const int64_t& value);
-template void Tile::operator<< <float>
-    (const float& value);
-template void Tile::operator<< <double>
-    (const double& value);
 template bool Tile::cell_inside_range<int>
     (int64_t pos, const int* range) const;
 template bool Tile::cell_inside_range<int64_t>
@@ -588,6 +592,7 @@ template bool Tile::cell_inside_range<float>
     (int64_t pos, const float* range) const;
 template bool Tile::cell_inside_range<double>
     (int64_t pos, const double* range) const;
+
 template bool Tile::const_cell_iterator::cell_inside_range<int>
     (const int* range) const;
 template bool Tile::const_cell_iterator::cell_inside_range<int64_t>
@@ -596,18 +601,22 @@ template bool Tile::const_cell_iterator::cell_inside_range<float>
     (const float* range) const;
 template bool Tile::const_cell_iterator::cell_inside_range<double>
     (const double* range) const;
+
 template void Tile::expand_mbr<int>(const int* coords);
 template void Tile::expand_mbr<int64_t>(const int64_t* coords);
 template void Tile::expand_mbr<float>(const float* coords);
 template void Tile::expand_mbr<double>(const double* coords);
+
 template void Tile::print_bounding_coordinates<int>() const;
 template void Tile::print_bounding_coordinates<int64_t>() const;
 template void Tile::print_bounding_coordinates<float>() const;
 template void Tile::print_bounding_coordinates<double>() const;
+
 template void Tile::print_mbr<int>() const;
 template void Tile::print_mbr<int64_t>() const;
 template void Tile::print_mbr<float>() const;
 template void Tile::print_mbr<double>() const;
+
 template void Tile::print_payload<int>() const;
 template void Tile::print_payload<int64_t>() const;
 template void Tile::print_payload<float>() const;

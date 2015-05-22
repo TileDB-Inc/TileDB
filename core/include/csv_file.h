@@ -50,10 +50,6 @@
  * Unless otherwise defined, this default size is used. 
  */
 #define CSV_SEGMENT_SIZE 10000000 // 10 MB
-/** The symbol indicating a deleted value. */
-#define CSV_DEL_VALUE "$"
-/** The symbol indicating a missing (NULL) value. */
-#define CSV_NULL_VALUE "*"
 
 /** 
  * This class implements a CSV line, which is comprised of text segments
@@ -83,6 +79,8 @@ class CSVLine {
     * comma (',') character.
     */
   std::string str() const;
+  /** Returns the list of values of the CSV line. */
+  const std::vector<std::string>& values() const { return values_; }
 
   // MUTATORS
   /** 
@@ -90,8 +88,16 @@ class CSVLine {
    * and resets CSVLine::pos_). 
    */
   void clear();
+  /** Resets CSVLine::pos_ to zero. */
+  void reset() { pos_ = 0; }
 
   // OPERATORS
+  /** Simply returns the currently pointed value as a string. */
+  const std::string& operator*() { return values_[pos_]; }
+  /** Simply increments CSVLine::pos. */
+  void operator++() { ++pos_; }
+  /** Simply increments CSVLine::pos by step. */
+  void operator+=(int step) { pos_ += step; }
   /** Appends a string value to the CSV line, which is properly tokenized. */
   void operator<<(const std::string& value);
   /** Appends the input CSV line to the CSV line object. */

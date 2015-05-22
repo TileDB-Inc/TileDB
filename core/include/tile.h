@@ -34,32 +34,13 @@
 #ifndef TILE_H
 #define TILE_H
 
+#include "special_values.h"
 #include <inttypes.h>
 #include <limits>
 #include <string>
 #include <typeinfo>
 #include <vector>
 
-/** Deleted char. */
-#define TL_DEL_CHAR 127
-/** Deleted int. */
-#define TL_DEL_INT std::numeric_limits<int>::min()
-/** Deleted int64_t. */
-#define TL_DEL_INT64_T std::numeric_limits<int64_t>::min()
-/** Deleted float. */
-#define TL_DEL_FLOAT std::numeric_limits<float>::min()
-/** Deleted double. */
-#define TL_DEL_DOUBLE std::numeric_limits<double>::min()
-/** Missing char. */
-#define TL_NULL_CHAR 0
-/** Missing int. */
-#define TL_NULL_INT std::numeric_limits<int>::max()
-/** Missing int64_t. */
-#define TL_NULL_INT64_T std::numeric_limits<int64_t>::max()
-/** Missing float. */
-#define TL_NULL_FLOAT std::numeric_limits<float>::max()
-/** Missing double. */
-#define TL_NULL_DOUBLE std::numeric_limits<double>::max()
 /** Default payload capacity. */
 #define TL_PAYLOAD_CAPACITY 100
 
@@ -86,27 +67,12 @@ class Tile {
   // CONSTRUCTORS AND DESTRUCTORS
   /**
    * Constructor. If dim_num is 0, then this is an attribute tile; otherwise,
-   * it is a coordinate tile. The payload_capacity argument practically 
-   * determines the amount of memory to be reserved for the payload of the
-   * tile. It is expressed as the number of cells (of type cell_type) that
-   * can be stored in the payload. Note though that this does not limit
-   * the number of cells that can be stored in the tile; if more than
-   * payload_capacity cells are appended to the tile, the payload
-   * will be properly expanded. This is merely an optimization to prevent
-   * numerous (potentially unnecessary) payload expansions as multiple
-   * cells are appended to it.
+   * it is a coordinate tile. The val_num indicates how many values are 
+   * stored per cell. It is equal to VAR_SIZE if the cell size is variable. 
    */
-  Tile(int64_t tile_id, int dim_num, const std::type_info* cell_type, 
-       int64_t payload_capacity = TL_PAYLOAD_CAPACITY); 
-  /** 
-   * Destructor. We distinguish two cases: (i) the tile was created by
-   * appending cells one by one, or (ii) the tile was created by
-   * assigning to it an existing payload. In the former case, the tile 
-   * dynamically allocates mempory for storing the payload (and
-   * other information). In the latter case, the memory where the payload
-   * resides does not belong to the tile. Therefore, the destructor frees
-   * only the dynamically allocated memory in the first case.
-   */
+  Tile(int64_t tile_id, int dim_num, 
+       const std::type_info* cell_type, int val_num); 
+  /** Destructor. */
   ~Tile(); 
 
   // ACCESSORS
@@ -117,12 +83,12 @@ class Tile {
    * when the cells in the tile are sorted in a certain order. 
    */
   std::pair<const void*, const void*> bounding_coordinates() const;
-  /** Returns a pointer to the pos-th cell in the payload. */
+  /** Returns the pointer to the pos-th cell. */
   const void* cell(int64_t pos) const;
+  /** Returns the cell size. Applicable only to fixed-sized cells. */
+  size_t cell_size() const;
   /** Returns the number of cells in the tile. */
   int64_t cell_num() const { return cell_num_; }
-  /** Returns the cell size (in bytes). */
-  size_t cell_size() const { return cell_size_; } 
   /** Returns the cell type. */
   const std::type_info* cell_type() const { return cell_type_; } 
   /** Copies the tile payload into buffer. */
@@ -137,55 +103,18 @@ class Tile {
   size_t tile_size() const { return tile_size_; } 
   /** Returns the tile type. */
   TileType tile_type() const { return tile_type_; } 
+  /** Returns the cell type size. */
+  size_t type_size() const { return type_size_; } 
+  /** True if the cells are variable-sized. */
+  bool var_size() const { return val_num_ == VAR_SIZE; }
  
   // MUTATORS
-  /** 
-   * Clears the tile. We distinguish two cases: (i) the tile was created by
-   * appending cells one by one, or (ii) the tile was created by
-   * assigning to it an existing payload. In the former case, the tile 
-   * dynamically allocates mempory for storing the payload (and
-   * other information). In the latter case, the memory where the payload
-   * resides does not belong to the tile. Therefore, the destructor frees
-   * only the dynamically allocated memory in the first case.
-   */
+  /** Clears the tile. */
   void clear();
   /** MBR setter. Applicable only to coordinate tiles. */
   void set_mbr(const void* mbr);
   /** Payload setter. */
   void set_payload(void* payload, size_t payload_size); 
-
-  // OPERATORS
-  /** Appends a cell value to (the end of) a tile. */
-  void operator<<(void* value); 
-  /** Appends a cell value to (the end of) a tile. */
-  void operator<<(const void* value); 
-  /** 
-   * Appends a cell value to (the end of) a tile.
-   * 
-   * Make sure that type T is the same as the cell type. Otherwise, in debug
-   * mode an assert is triggered, whereas in release mode the behavior is
-   * unpredictable.
-   */
-  template<class T>
-  void operator<<(T* value); 
-  /** 
-   * Appends a cell value to (the end of) a tile.
-   * 
-   * Make sure that type T is the same as the cell type. Otherwise, in debug
-   * mode an assert is triggered, whereas in release mode the behavior is
-   * unpredictable.
-   */
-  template<class T>
-  void operator<<(const T* value); 
-  /** 
-   * Appends a cell value to (the end of) a tile.
-   * 
-   * Make sure that type T is the same as the cell type. Otherwise, in debug
-   * mode an assert is triggered, whereas in release mode the behavior is
-   * unpredictable.
-   */
-  template<class T>
-  void operator<<(const T& value); 
 
   // MISC
   /** 
@@ -216,6 +145,8 @@ class Tile {
     const_cell_iterator(const Tile* tile, int64_t pos);
     
     // ACCESSORS
+    /** Returns the (potentially variable) size of the current cell. */
+    size_t cell_size() const;
     /** Returns the cell type of the tile. */
     const std::type_info* cell_type() const { return tile_->cell_type(); }
     /** Returns the number of dimensions of the tile. */
@@ -294,7 +225,7 @@ class Tile {
   // PRIVATE ATTRIBUTES
   /** The number of cells in the tile. */
   int64_t cell_num_;
-  /** The cell size (in bytes). */
+  /** The cell size. For variable-sized cells, it is equal to VAR_SIZE. */
   size_t cell_size_;
   /** The cell type. */
   const std::type_info* cell_type_;
@@ -315,49 +246,33 @@ class Tile {
    * the coordinates for dimension 1, then for dimensions 2, etc.
    */
   void* payload_;
-  /** 
-   * It is true if the memory for storing the payload was allocated by the
-   * Tile object. In other words, it is true if the payload was created
-   * by the Tile object, and false if it is set via Tile::set_payload.
-   */ 
-  bool payload_alloc_;
-  /**  
-   * The currently allocated payload capacity. 
-   * 
-   * NOTE #1: This is different from the tile capacity (i.e., Tile::cell_num_). 
-   * The payload capacity indicates how many cells fit in the currently
-   * allocated memory for the payload. When a newly appended cell causes
-   * the payload to overflow, the memory allocated for the payload doubles
-   * (via Tile::expand_payload). The payload capacity helps keeping track when
-   * the payload expansion should occur.
-   *
-   * NOTE #2: If the allocated payload capacity is equal to 0, then no 
-   * memory has been dynamically allocated by the object. In this case,
-   * if Tile::payload_ is not NULL, it means that it has been set to
-   * point to a memory location not owned by the Tile object 
-   * (via Tile::set_payload). 
-   */
-  int64_t payload_capacity_;
   /** The tile id. */
   int64_t tile_id_;
   /** The tile size (in bytes). */
   size_t tile_size_;
   /** The tile type. */
   TileType tile_type_;
+  /** The size of the cell type. */
+  size_t type_size_;
+  /** 
+   * Number of cell values. It is equal to VAR_SIZE, if the cell has a
+   * variable number of values.
+   */
+  int val_num_;
 
   // PRIVATE METHODS
-  /** Deletes the MBR (if it has been created by the Tile object). */
+  /** Deletes the MBR. */
   void clear_mbr();
-  /** Deletes the payload (if it has been created by the Tile object). */
+  /** Deletes the payload. */
   void clear_payload();
   /** Expands the tile MBR bounds. Applicable only to coordinate tiles. */
   template<class T>
   void expand_mbr(const T* coords);  
   /** 
-   * Expands the payload (doubling its capacity) if a newly appended cell does
-   * not fit in the currently allocated one. 
+   * This is populated only in the case of variable-sized cells. It is a list
+   * of offsets where each cell begins in the payload.
    */
-  void expand_payload();
+  std::vector<size_t> offsets_;
   /** Prints the bounding coordinates on the standard output. */
   template<class T>
   void print_bounding_coordinates() const;

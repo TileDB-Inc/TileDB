@@ -105,7 +105,7 @@ void QueryProcessor::export_to_csv(
 
 void QueryProcessor::subarray(
     const std::string& array_name, 
-    const double* range,
+    const std::vector<double>& range,
     const std::string& result_array_name) const { 
   // Open array in read mode
   int ad = storage_manager_->open_array(array_name, "r");
@@ -118,6 +118,11 @@ void QueryProcessor::subarray(
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
   const std::type_info& coords_type = *(array_schema->type(attribute_num));
+
+  // Check range size
+  if(range.size() != 2*dim_num)
+    throw QueryProcessorException("Range dimensionality does not agree with"
+                                  " number of dimensions in the array schema");
 
   // Create result array schema
   ArraySchema* result_array_schema = array_schema->clone(result_array_name); 
@@ -134,22 +139,22 @@ void QueryProcessor::subarray(
   // Invoke the proper templated function
   if(coords_type == typeid(int)) { 
     int* new_range = new int[2*dim_num]; 
-    convert(range, new_range, 2*dim_num);
+    convert(&range[0], new_range, 2*dim_num);
     subarray(ad, new_range, result_ad); 
     delete [] new_range;
   } else if(coords_type == typeid(int64_t)) { 
     int64_t* new_range = new int64_t[2*dim_num]; 
-    convert(range, new_range, 2*dim_num);
+    convert(&range[0], new_range, 2*dim_num);
     subarray(ad, new_range, result_ad); 
     delete [] new_range;
  } else if(coords_type == typeid(float)) { 
     float* new_range = new float[2*dim_num]; 
-    convert(range, new_range, 2*dim_num);
+    convert(&range[0], new_range, 2*dim_num);
     subarray(ad, new_range, result_ad); 
     delete [] new_range;
   } else if(coords_type == typeid(double)) { 
     double* new_range = new double[2*dim_num]; 
-    convert(range, new_range, 2*dim_num);
+    convert(&range[0], new_range, 2*dim_num);
     subarray(ad, new_range, result_ad); 
     delete [] new_range;
   }
@@ -168,7 +173,7 @@ void QueryProcessor::subarray(int ad, const T* range, int result_ad) const {
 
   // Write cells into the CSV file
   for(; !cell_it.end(); ++cell_it) 
-    storage_manager_->write_cell_sorted<T>(result_ad, *cell_it);
+    storage_manager_->write_cell_sorted<T>(result_ad, *cell_it); 
 }
 
 template<class T>
@@ -178,6 +183,9 @@ CSVLine QueryProcessor::cell_to_csv_line(
   // For easy reference
   int dim_num = array_schema->dim_num();
   int attribute_num = array_schema->attribute_num();
+  bool var_size = (array_schema->cell_size() == VAR_SIZE);
+  size_t offset;
+  int val_num;
 
   // Prepare a CSV line
   CSVLine csv_line;
@@ -188,54 +196,82 @@ CSVLine QueryProcessor::cell_to_csv_line(
   for(int i=0; i<dim_num; ++i)
     csv_line << static_cast<const T*>(coords)[i];
 
-  size_t offset = array_schema->cell_size(attribute_num);
+  offset = array_schema->cell_size(attribute_num);
+  if(var_size)
+    offset += sizeof(size_t);
 
   // Append attribute values next
   for(int i=0; i<attribute_num; ++i) {
-    const void* v = static_cast<const char*>(cell) + offset;
+    if(var_size) {
+      memcpy(&val_num, static_cast<const char*>(cell) + offset, sizeof(int));
+      offset += sizeof(int);
+    } else {
+      val_num = array_schema->val_num(i);
+    }
+  
     const std::type_info& attr_type = *(array_schema->type(i));
     if(attr_type == typeid(char)) {
-      const char c = *(static_cast<const char*>(v));
-      if(c == NULL_CHAR)
-        csv_line << CSV_NULL_VALUE;
-      else if(c == DEL_CHAR)
-        csv_line << CSV_DEL_VALUE;
+      std::string v;
+      v.resize(val_num);
+      memcpy(&v[0], static_cast<const char*>(cell) + offset, val_num);
+
+      if(v[0] == NULL_CHAR)
+        csv_line << NULL_VALUE;
+      else if(v[0] == DEL_CHAR)
+        csv_line << DEL_VALUE;
       else 
-        csv_line << c;
+        csv_line << v;
+
+      offset += val_num * sizeof(char);
     } else if(attr_type == typeid(int)) { 
-      const int c = *(static_cast<const int*>(v));
-      if(c == NULL_INT)
-        csv_line << CSV_NULL_VALUE;
-      else if(c == DEL_INT)
-        csv_line << CSV_DEL_VALUE;
-      else 
-        csv_line << c;
+      const void* cell_tmp = static_cast<const char*>(cell) + offset;
+      const int* v = static_cast<const int*>(cell_tmp);
+      for(int j=0; j<val_num; ++j) {
+        if(v[j] == NULL_INT)
+          csv_line << NULL_VALUE;
+        else if(v[j] == DEL_INT)
+          csv_line << DEL_VALUE;
+        else 
+          csv_line << v[j];
+        offset += sizeof(int);
+      }
     } else if(attr_type == typeid(int64_t)) { 
-      const int64_t c = *(static_cast<const int64_t*>(v));
-      if(c == NULL_INT64_T)
-        csv_line << CSV_NULL_VALUE;
-      else if(c == DEL_INT64_T)
-        csv_line << CSV_DEL_VALUE;
-      else 
-        csv_line << c;
+      const void* cell_tmp = static_cast<const char*>(cell) + offset;
+      const int64_t* v = static_cast<const int64_t*>(cell_tmp);
+      for(int j=0; j<val_num; ++j) {
+        if(v[j] == NULL_INT64_T)
+          csv_line << NULL_VALUE;
+        else if(v[j] == DEL_INT64_T)
+          csv_line << DEL_VALUE;
+        else 
+          csv_line << v[j];
+        offset += sizeof(int64_t);
+      }    
     } else if(attr_type == typeid(float)) { 
-      const float c = *(static_cast<const float*>(v));
-      if(c == NULL_FLOAT)
-        csv_line << CSV_NULL_VALUE;
-      else if(c == DEL_FLOAT)
-        csv_line << CSV_DEL_VALUE;
-      else 
-        csv_line << c;
+      const void* cell_tmp = static_cast<const char*>(cell) + offset;
+      const float* v = static_cast<const float*>(cell_tmp);
+      for(int j=0; j<val_num; ++j) {
+        if(v[j] == NULL_FLOAT)
+          csv_line << NULL_VALUE;
+        else if(v[j] == DEL_FLOAT)
+          csv_line << DEL_VALUE;
+        else 
+          csv_line << v[j];
+        offset += sizeof(float);
+      }
     } else if(attr_type == typeid(double)) { 
-      const double c = *(static_cast<const double*>(v));
-      if(c == NULL_DOUBLE)
-        csv_line << CSV_NULL_VALUE;
-      else if(c == DEL_DOUBLE)
-        csv_line << CSV_DEL_VALUE;
-      else 
-        csv_line << c;
+      const void* cell_tmp = static_cast<const char*>(cell) + offset;
+      const double* v = static_cast<const double*>(cell_tmp);
+      for(int j=0; j<val_num; ++j) {
+        if(v[j] == NULL_DOUBLE)
+          csv_line << NULL_VALUE;
+        else if(v[j] == DEL_DOUBLE)
+          csv_line << DEL_VALUE;
+        else 
+          csv_line << v[j];
+        offset += sizeof(double);
+      }
     }
-    offset += array_schema->cell_size(i);
   }
 
   return csv_line;

@@ -34,6 +34,7 @@
 #ifndef ARRAY_SCHEMA_H
 #define ARRAY_SCHEMA_H
 
+#include "special_values.h"
 #include <vector>
 #include <set>
 #include <string>
@@ -100,6 +101,7 @@ class ArraySchema {
               const std::vector<std::string>& dim_names,
               const std::vector<std::pair<double, double> >& dim_domains,
               const std::vector<const std::type_info*>& types,
+              const std::vector<int>& val_num, 
               CellOrder cell_order = AS_CELL_ORDER,
               int consolidation_step = AS_CONSOLIDATION_STEP,
               int64_t capacity = AS_CAPACITY);
@@ -115,6 +117,7 @@ class ArraySchema {
               const std::vector<std::string>& dim_names,
               const std::vector<std::pair< double, double> >& dim_domains,
               const std::vector<const std::type_info*>& types,
+              const std::vector<int>& val_num, 
               TileOrder tile_order,
               const std::vector<double>& tile_extents,
               int consolidation_step = AS_CONSOLIDATION_STEP,
@@ -167,6 +170,10 @@ class ArraySchema {
   TileOrder tile_order() const { return tile_order_; }
   /** Returns the type of the i-th attribute. */
   const std::type_info* type(int i) const;
+  /** Returns the size of the i-th attribute type. */
+  size_t type_size(int i) const;
+  /** Returns the number of values per attribute cell. */
+  int val_num(int attribute_id) const;
   
   // MUTATORS
   /** It assigns values to the members of the object from the input buffer. */
@@ -365,6 +372,15 @@ class ArraySchema {
   TileOrder tile_order_;
   /** The list with the attribute types. */
   std::vector<const std::type_info*> types_;
+  /** Stores the size of every attribute type (plus coordinates in the end). */
+  std::vector<size_t> type_sizes_;
+  /** 
+   * The list of number of attribute values per cell. Specifically, each
+   * attribute may store more than one values of the specified type.
+   * Moreover, the cells may store a variable number of values per 
+   * attribute. This is indicated by special value VAR_SIZE. 
+   */
+  std::vector<int> val_num_;
 
   // PRIVATE METHODS
   /** Performs appropriate checks upon a tile id request. */
@@ -391,6 +407,8 @@ class ArraySchema {
    * respectively.
    */
   void compute_tile_id_offsets();
+  /** Returns the size of an attribute (or coordinates) type. */
+  size_t compute_type_size(int attribute_id) const;
 };
 
 #endif

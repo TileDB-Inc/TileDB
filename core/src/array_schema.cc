@@ -50,6 +50,7 @@ ArraySchema::ArraySchema(
     const std::vector<std::string>& dim_names,
     const std::vector<std::pair<double, double> >& dim_domains,
     const std::vector<const std::type_info*>& types,
+    const std::vector<int>& val_num,
     CellOrder cell_order,
     int consolidation_step,
     int64_t capacity) {
@@ -59,6 +60,7 @@ ArraySchema::ArraySchema(
   assert(dim_names.size() == dim_domains.size());
   assert(capacity > 0);
   assert(consolidation_step > 0);
+  assert(val_num.size() == attribute_names.size());
 #ifndef NDEBUG
   for(int i=0; i<dim_domains.size(); ++i) 
     assert(dim_domains[i].first <= dim_domains[i].second);
@@ -69,6 +71,7 @@ ArraySchema::ArraySchema(
   dim_names_ = dim_names;
   dim_domains_ = dim_domains;
   types_ = types;
+  val_num_ = val_num;
   cell_order_ = cell_order;
   tile_order_ = TO_NONE;
   consolidation_step_ = consolidation_step;
@@ -80,10 +83,19 @@ ArraySchema::ArraySchema(
 
   // Set cell sizes
   cell_size_ = 0;
+  cell_sizes_.resize(attribute_num_+1);
   for(int i=0; i<= attribute_num_; ++i) {
-    cell_sizes_.push_back(compute_cell_size(i));
-    cell_size_ += cell_sizes_.back(); 
+    cell_sizes_[i] = compute_cell_size(i);
+    if(cell_sizes_[i] == VAR_SIZE)
+      cell_size_ = VAR_SIZE;
+    if(cell_size_ != VAR_SIZE)
+      cell_size_ += cell_sizes_[i]; 
   }
+
+  // Set type sizes
+  type_sizes_.resize(attribute_num_ + 1);
+  for(int i=0; i<=attribute_num_; ++i)
+    type_sizes_[i] = compute_type_size(i);
 
   // Set compression
   for(int i=0; i<= attribute_num_; ++i)
@@ -98,6 +110,7 @@ ArraySchema::ArraySchema(
     const std::vector<std::string>& dim_names,
     const std::vector<std::pair<double, double> >& dim_domains,
     const std::vector<const std::type_info*>& types,
+    const std::vector<int>& val_num,
     TileOrder tile_order,
     const std::vector<double>& tile_extents,
     int consolidation_step,
@@ -111,6 +124,7 @@ ArraySchema::ArraySchema(
   assert(dim_names.size() == tile_extents.size());
   assert(capacity > 0);
   assert(consolidation_step > 0);
+  assert(val_num.size() == attribute_names.size());
 #ifndef NDEBUG
   for(int i=0; i<dim_domains.size(); ++i) 
     assert(dim_domains[i].first <= dim_domains[i].second);
@@ -126,6 +140,7 @@ ArraySchema::ArraySchema(
   dim_names_ = dim_names;
   dim_domains_ = dim_domains;
   types_ = types;
+  val_num_ = val_num;
   tile_order_ = tile_order;
   cell_order_ = cell_order;
   consolidation_step_ = consolidation_step;
@@ -138,10 +153,19 @@ ArraySchema::ArraySchema(
 
   // Set cell sizes
   cell_size_ = 0;
+  cell_sizes_.resize(attribute_num_+1);
   for(int i=0; i<= attribute_num_; ++i) {
-    cell_sizes_.push_back(compute_cell_size(i));
-    cell_size_ += cell_sizes_.back(); 
+    cell_sizes_[i] = compute_cell_size(i);
+    if(cell_sizes_[i] == VAR_SIZE)
+      cell_size_ = VAR_SIZE;
+    if(cell_size_ != VAR_SIZE)
+      cell_size_ += cell_sizes_[i]; 
   }
+
+  // Set type sizes
+  type_sizes_.resize(attribute_num_ + 1);
+  for(int i=0; i<=attribute_num_; ++i)
+    type_sizes_[i] = compute_type_size(i);
 
   // Set compression
   for(int i=0; i<= attribute_num_; ++i)
@@ -175,29 +199,6 @@ const std::string& ArraySchema::attribute_name(int i) const {
   return attribute_names_[i];
 }
 
-size_t ArraySchema::compute_cell_size(int i) const {
-  assert(i>= 0 && i <= attribute_num_);
-
-  size_t size;
-
-  if(*types_[i] == typeid(char))
-    size = sizeof(char);
-  else if(*types_[i] == typeid(int))
-    size = sizeof(int);
-  else if(*types_[i] == typeid(int64_t))
-    size = sizeof(int64_t);
-  else if(*types_[i] == typeid(float))
-    size = sizeof(float);
-  else if(*types_[i] == typeid(double))
-    size = sizeof(double);
-
-  // Attribute cell
-  if(i < attribute_num_)
-    return size; 
-  else // (i == attribute_num_), i.e., coordinate cell
-    return dim_num_ * size;
-}
-
 // FORMAT:
 // array_name_size(int) array_name(string)
 // tile_order(char)
@@ -218,6 +219,7 @@ size_t ArraySchema::compute_cell_size(int i) const {
 // tile_extents_num(int) 
 //     tile_extent#1(double) tile_extent#2(double) ... 
 // type#1(char) type#2(char) ... 
+// val_num#1(int) val_num#2(int) ... 
 // compression#1(char) compression#2(char) ...
 std::pair<const char*, size_t> ArraySchema::serialize() const {
   size_t buffer_size = 0;
@@ -246,6 +248,8 @@ std::pair<const char*, size_t> ArraySchema::serialize() const {
   buffer_size += sizeof(int) + tile_extents_.size() * sizeof(double);
   // Size for types_
   buffer_size += (attribute_num_+1) * sizeof(char);
+  // Size for val_num_
+  buffer_size += attribute_num_ * sizeof(int);
   // Size for compression_
   buffer_size += (attribute_num_+1) * sizeof(char);
 
@@ -280,34 +284,34 @@ std::pair<const char*, size_t> ArraySchema::serialize() const {
   offset += sizeof(int);
   // Copy attribute_names_
   assert(offset < buffer_size);
-  memcpy(buffer + offset, &attribute_num_, sizeof(unsigned int));
+  memcpy(buffer + offset, &attribute_num_, sizeof(int));
   offset += sizeof(unsigned int);
-  unsigned int attribute_name_size;
-  for(unsigned int i=0; i<attribute_num_; i++) {
+  int attribute_name_size;
+  for(int i=0; i<attribute_num_; i++) {
     attribute_name_size = attribute_names_[i].size();
     assert(offset < buffer_size);
-    memcpy(buffer + offset, &attribute_name_size, sizeof(unsigned int)); 
-    offset += sizeof(unsigned int);
+    memcpy(buffer + offset, &attribute_name_size, sizeof(int)); 
+    offset += sizeof(int);
     assert(offset < buffer_size);
     memcpy(buffer + offset, attribute_names_[i].c_str(), attribute_name_size); 
     offset += attribute_name_size;
   }
   // Copy dim_names_
   assert(offset < buffer_size);
-  memcpy(buffer + offset, &dim_num_, sizeof(unsigned int));
-  offset += sizeof(unsigned int);
-  unsigned int dim_name_size;
-  for(unsigned int i=0; i<dim_num_; i++) {
+  memcpy(buffer + offset, &dim_num_, sizeof(int));
+  offset += sizeof(int);
+  int dim_name_size;
+  for(int i=0; i<dim_num_; i++) {
     dim_name_size = dim_names_[i].size();
     assert(offset < buffer_size);
-    memcpy(buffer + offset, &dim_name_size, sizeof(unsigned int)); 
-    offset += sizeof(unsigned int);
+    memcpy(buffer + offset, &dim_name_size, sizeof(int)); 
+    offset += sizeof(int);
     assert(offset < buffer_size);
     memcpy(buffer + offset, dim_names_[i].c_str(), dim_name_size); 
     offset += dim_name_size;
   }
   // Copy dim_domains_
-  for(unsigned int i=0; i<dim_num_; i++) {
+  for(int i=0; i<dim_num_; i++) {
     assert(offset < buffer_size);
     memcpy(buffer + offset, &dim_domains_[i].first, sizeof(double));
     offset += sizeof(double);
@@ -316,18 +320,18 @@ std::pair<const char*, size_t> ArraySchema::serialize() const {
     offset += sizeof(double);
   } 
   // Copy tile_extents_
-  unsigned int tile_extents_num = tile_extents_.size();
+  int tile_extents_num = tile_extents_.size();
   assert(offset < buffer_size);
-  memcpy(buffer + offset, &tile_extents_num, sizeof(unsigned int));
-  offset += sizeof(unsigned int);
-  for(unsigned int i=0; i<tile_extents_num; i++) {
+  memcpy(buffer + offset, &tile_extents_num, sizeof(int));
+  offset += sizeof(int);
+  for(int i=0; i<tile_extents_num; i++) {
     assert(offset < buffer_size);
     memcpy(buffer + offset, &tile_extents_[i], sizeof(double));
     offset += sizeof(double);
   }
   // Copy types_
-  unsigned char type; 
-  for(unsigned int i=0; i<=attribute_num_; i++) {
+  char type; 
+  for(int i=0; i<=attribute_num_; i++) {
     if(*types_[i] == typeid(char))
       type = CHAR;
     else if(*types_[i] == typeid(int))
@@ -339,8 +343,13 @@ std::pair<const char*, size_t> ArraySchema::serialize() const {
     else if(*types_[i] == typeid(double))
       type = DOUBLE;
     assert(offset < buffer_size);
-    memcpy(buffer + offset, &type, sizeof(unsigned char));
-    offset += sizeof(unsigned char);
+    memcpy(buffer + offset, &type, sizeof(char));
+    offset += sizeof(char);
+  }
+  // Copy val_num_
+  for(int i=0; i<attribute_num_; i++) {
+    memcpy(buffer + offset, &val_num_[i], sizeof(int));
+    offset += sizeof(int);
   }
   // Copy compression_
   char compression; 
@@ -359,6 +368,18 @@ const std::type_info* ArraySchema::type(int i) const {
   assert(i>=0 && i<=attribute_num_);
 
   return types_[i];
+}
+
+size_t ArraySchema::type_size(int i) const {
+  assert(i>=0 && i<=attribute_num_);
+
+  return type_sizes_[i];
+}
+
+int ArraySchema::val_num(int attribute_id) const {
+  assert(attribute_id >=0 && attribute_id < attribute_num_);
+
+  return val_num_[attribute_id];
 }
 
 /******************************************************
@@ -385,6 +406,7 @@ const std::type_info* ArraySchema::type(int i) const {
 // tile_extents_num(int) 
 //     tile_extent#1(double) tile_extent#2(double) ... 
 // type#1(char) type#2(char) ... 
+// val_num#1(int) val_num#2(int) ... 
 // compression#1(char) compression#2(char) ...
 void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
   size_t offset = 0;
@@ -472,20 +494,34 @@ void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
   // Load types_
   char type;
   types_.resize(attribute_num_+1); 
+  type_sizes_.resize(attribute_num_+1);
   for(int i=0; i<=attribute_num_; ++i) {
     assert(offset < buffer_size);
-    memcpy(&type, buffer + offset, sizeof(unsigned char));
+    memcpy(&type, buffer + offset, sizeof(char));
     offset += sizeof(char);
-    if(type == CHAR)
+    if(type == CHAR) {
       types_[i] = &typeid(char);
-    else if(type == INT)
+      type_sizes_[i] = sizeof(char);
+    } else if(type == INT) {
       types_[i] = &typeid(int);
-    else if(type == INT64_T)
+      type_sizes_[i] = sizeof(int);
+    } else if(type == INT64_T) {
       types_[i] = &typeid(int64_t);
-    else if(type == FLOAT)
+      type_sizes_[i] = sizeof(int64_t);
+    } else if(type == FLOAT) {
       types_[i] = &typeid(float);
-    else if(type == DOUBLE)
+      type_sizes_[i] = sizeof(float);
+    } else if(type == DOUBLE) {
       types_[i] = &typeid(double);
+      type_sizes_[i] = sizeof(double);
+    }
+  }
+  // Load val_num_
+  val_num_.resize(attribute_num_); 
+  for(int i=0; i<attribute_num_; ++i) {
+    assert(offset < buffer_size);
+    memcpy(&val_num_[i], buffer + offset, sizeof(int));
+    offset += sizeof(int);
   }
   // Load compression_
   char compression;
@@ -502,9 +538,13 @@ void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
 
   // Set cell sizes
   cell_size_ = 0;
+  cell_sizes_.resize(attribute_num_+1);
   for(int i=0; i<= attribute_num_; ++i) {
-    cell_sizes_.push_back(compute_cell_size(i));
-    cell_size_ += cell_sizes_.back(); 
+    cell_sizes_[i] = compute_cell_size(i);
+    if(cell_sizes_[i] == VAR_SIZE)
+      cell_size_ = VAR_SIZE;
+    if(cell_size_ != VAR_SIZE)
+      cell_size_ += cell_sizes_[i]; 
   }
 
   compute_hilbert_cell_bits();
@@ -563,7 +603,7 @@ ArraySchema* ArraySchema::clone(const std::string& array_name) const {
   ArraySchema* array_schema = new ArraySchema();
   *array_schema = *this;
   array_schema->array_name_ = array_name; // Input array name
- 
+
   return array_schema;
 }
 
@@ -616,17 +656,29 @@ ArraySchema ArraySchema::create_join_result_schema(
                     array_schema_B.types_.begin(),
                     array_schema_B.types_.end());
 
+  // Number of values per attribute
+  std::vector<int> join_val_num;
+  join_val_num.insert(join_val_num.end(),
+                      array_schema_A.val_num_.begin(),
+                      array_schema_A.val_num_.end());
+  join_val_num.insert(join_val_num.end(),
+                      array_schema_B.val_num_.begin(),
+                      array_schema_B.val_num_.end());
+
+  // Irregular tiles
   if(array_schema_A.has_irregular_tiles())
     return ArraySchema(result_array_name, join_attribute_names, 
                        array_schema_A.dim_names_, 
-                       array_schema_A.dim_domains_, join_types,
+                       array_schema_A.dim_domains_, 
+                       join_types, join_val_num,
                        array_schema_A.cell_order_, 
                        array_schema_A.consolidation_step_, 
                        array_schema_A.capacity_);
-  else
+  else // Regular tiles
     return ArraySchema(result_array_name, join_attribute_names, 
                        array_schema_A.dim_names_,
-                       array_schema_A.dim_domains_, join_types,
+                       array_schema_A.dim_domains_, 
+                       join_types, join_val_num,
                        array_schema_A.tile_order_,
                        array_schema_A.tile_extents_,
                        array_schema_A.consolidation_step_, 
@@ -794,17 +846,23 @@ void ArraySchema::print() const {
   }
 
   std::cout << "Cell types:\n";
-  for(int i=0; i<attribute_num_; ++i)
-    if(*types_[i] == typeid(char))
-      std::cout << "\t" << attribute_names_[i] << ": char\n";
-    else if(*types_[i] == typeid(int))
-      std::cout << "\t" << attribute_names_[i] << ": int\n";
-    else if(*types_[i] == typeid(int64_t))
-      std::cout << "\t" << attribute_names_[i] << ": int64_t\n";
-    else if(*types_[i] == typeid(float))
-      std::cout << "\t" << attribute_names_[i] << ": float\n";
-    else if(*types_[i] == typeid(double))
-      std::cout << "\t" << attribute_names_[i] << ": double\n";
+  for(int i=0; i<attribute_num_; ++i) {
+    if(*types_[i] == typeid(char)) {
+      std::cout << "\t" << attribute_names_[i] << ": char[";
+    } else if(*types_[i] == typeid(int)) {
+      std::cout << "\t" << attribute_names_[i] << ": int[";
+    } else if(*types_[i] == typeid(int64_t)) {
+      std::cout << "\t" << attribute_names_[i] << ": int64_t[";
+    } else if(*types_[i] == typeid(float)) {
+      std::cout << "\t" << attribute_names_[i] << ": float[";
+    } else if(*types_[i] == typeid(double)) {
+      std::cout << "\t" << attribute_names_[i] << ": double[";
+    }
+    if(val_num_[i] == VAR_SIZE)
+      std::cout << "var]\n";
+    else
+      std::cout << val_num_[i] << "]\n";
+  }
   if(*types_[attribute_num_] == typeid(int))
     std::cout << "\tCoordinates: int\n";
   else if(*types_[attribute_num_] == typeid(int64_t))
@@ -813,6 +871,17 @@ void ArraySchema::print() const {
     std::cout << "\tCoordinates: float\n";
   else if(*types_[attribute_num_] == typeid(double))
     std::cout << "\tCoordinates: double\n";
+
+  std::cout << "Cell sizes:\n";
+  for(int i=0; i<=attribute_num_; ++i) {
+    std::cout << "\t" << ((i==attribute_num_) ? "Coordinates: "  
+                                              : attribute_names_[i]) 
+                      << ": ";
+    if(cell_sizes_[i] == VAR_SIZE)
+      std::cout << "var\n"; 
+    else
+      std::cout << cell_sizes_[i] << "\n"; 
+  }
 
   std::cout << "Compression types:\n";
   for(int i=0; i<attribute_num_; ++i)
@@ -1015,6 +1084,42 @@ bool ArraySchema::check_on_tile_id_request(const T* coords) const {
   return true;
 }
 
+size_t ArraySchema::compute_cell_size(int i) const {
+  assert(i>= 0 && i <= attribute_num_);
+
+  // Variable-sized cell
+  if(i<attribute_num_ && val_num_[i] == VAR_SIZE)
+    return VAR_SIZE;
+
+  // Fixed-sized cell
+  size_t size;
+  
+  // Attributes
+  if(i < attribute_num_) {
+    if(types_[i] == &typeid(char))
+      size = val_num_[i] * sizeof(char);
+    else if(types_[i] == &typeid(int))
+      size = val_num_[i] * sizeof(int);
+    else if(types_[i] == &typeid(int64_t))
+      size = val_num_[i] * sizeof(int64_t);
+    else if(types_[i] == &typeid(float))
+      size = val_num_[i] * sizeof(float);
+    else if(types_[i] == &typeid(double))
+      size = val_num_[i] * sizeof(double);
+  } else { // Coordinates
+    if(types_[i] == &typeid(int))
+      size = dim_num_ * sizeof(int);
+    else if(types_[i] == &typeid(int64_t))
+      size = dim_num_ * sizeof(int64_t);
+    else if(types_[i] == &typeid(float))
+      size = dim_num_ * sizeof(float);
+    else if(types_[i] == &typeid(double))
+      size = dim_num_ * sizeof(double);
+  }
+
+  return size; 
+}
+
 void ArraySchema::compute_hilbert_cell_bits() {
   double max_domain_range = 0;
   double domain_range;
@@ -1077,6 +1182,21 @@ void ArraySchema::compute_tile_id_offsets() {
   // For column major only 
   std::reverse(tile_id_offsets_column_major_.begin(), 
                tile_id_offsets_column_major_.end());
+}
+
+size_t ArraySchema::compute_type_size(int i) const {
+  assert(i>= 0 && i <= attribute_num_);
+
+  if(types_[i] == &typeid(char))
+    return sizeof(char);
+  else if(types_[i] == &typeid(int))
+    return sizeof(int);
+  else if(types_[i] == &typeid(int64_t))
+    return sizeof(int64_t);
+  else if(types_[i] == &typeid(float))
+    return sizeof(float);
+  else if(types_[i] == &typeid(double))
+    return sizeof(double);
 }
 
 std::pair<ArraySchema::AttributeIds, ArraySchema::AttributeIds>

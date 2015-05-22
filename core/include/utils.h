@@ -82,9 +82,16 @@ void init_mbr(const T* coords, T* mbr, int dim_num);
 template<class T>
 bool inside_range(const T* point, const T* range, int dim_num);
 
+/** True if the input is a del value (i.e., represents deletion). */
+template<class T>
+bool is_del(T v);
 
 /** Returns true if the input string is an integer number. */
 bool is_integer(const char* s);
+
+/** True if the input is a null value. */
+template<class T>
+bool is_null(T v);
 
 /** 
  * Returns true if the input string is a positive real number.

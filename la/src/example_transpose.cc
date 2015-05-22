@@ -133,11 +133,16 @@ const ArraySchema* get_array_schema() {
   types.push_back(&typeid(double)); 
   types.push_back(&typeid(int64_t)); 
 
+  // Number of values per cell per attribute
+  std::vector<int> val_num;
+  for(int i=0; i<attribute_names.size(); ++i)
+    val_num.push_back(1);
+
   // Cell order (column-major order)
   ArraySchema::CellOrder cell_order = ArraySchema::CO_COLUMN_MAJOR;
 
   return new ArraySchema(array_name, attribute_names, dim_names, dim_domains,
-                         types, cell_order); 
+                         types, val_num, cell_order); 
 } 
 
 int main(int argc, char** argv) {

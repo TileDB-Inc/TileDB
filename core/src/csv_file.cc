@@ -194,9 +194,9 @@ bool CSVLine::operator>>(char& value) {
   if(pos_ == values_.size()) {
     return false;
   } else { 
-    if(values_[pos_] == CSV_NULL_VALUE) // Value missing
+    if(values_[pos_] == NULL_VALUE) // Value missing
       value = NULL_CHAR;
-    else if(values_[pos_] == CSV_DEL_VALUE) // Value deleted
+    else if(values_[pos_] == DEL_VALUE) // Value deleted
       value = DEL_CHAR;
     else 
       sscanf(values_[pos_].c_str(), "%c", &value);
@@ -210,9 +210,9 @@ bool CSVLine::operator>>(int& value) {
   if(pos_ == values_.size()) {
     return false;
   } else {
-    if(values_[pos_] == CSV_NULL_VALUE) // Value missing
+    if(values_[pos_] == NULL_VALUE) // Value missing
       value = NULL_INT;
-    else if(values_[pos_] == CSV_DEL_VALUE) // Value deleted
+    else if(values_[pos_] == DEL_VALUE) // Value deleted
       value = DEL_INT;
     else 
       sscanf(values_[pos_].c_str(), "%d", &value);
@@ -226,9 +226,9 @@ bool CSVLine::operator>>(int64_t& value) {
   if(pos_ == values_.size()) {
     return false;
   } else { 
-    if(values_[pos_] == CSV_NULL_VALUE) // Value missing
+    if(values_[pos_] == NULL_VALUE) // Value missing
       value = NULL_INT64_T;
-    else if(values_[pos_] == CSV_DEL_VALUE) // Value deleted
+    else if(values_[pos_] == DEL_VALUE) // Value deleted
       value = DEL_INT64_T;
     else 
       sscanf(values_[pos_].c_str(), "%lld", &value);
@@ -242,9 +242,9 @@ bool CSVLine::operator>>(float& value) {
   if(pos_ == values_.size()) {
     return false;
   } else { 
-    if(values_[pos_] == CSV_NULL_VALUE) // Value missing
+    if(values_[pos_] == NULL_VALUE) // Value missing
       value = NULL_FLOAT;
-    else if(values_[pos_] == CSV_DEL_VALUE) // Value deleted
+    else if(values_[pos_] == DEL_VALUE) // Value deleted
       value = DEL_FLOAT;
     else 
       sscanf(values_[pos_].c_str(), "%f", &value);
@@ -258,9 +258,9 @@ bool CSVLine::operator>>(double& value) {
   if(pos_ == values_.size()) {
     return false;
   } else { 
-    if(values_[pos_] == CSV_NULL_VALUE) // Value missing
+    if(values_[pos_] == NULL_VALUE) // Value missing
       value = NULL_DOUBLE;
-    else if(values_[pos_] == CSV_DEL_VALUE) // Value deleted
+    else if(values_[pos_] == DEL_VALUE) // Value deleted
       value = DEL_DOUBLE;
     else 
       sscanf(values_[pos_].c_str(), "%lf", &value);

@@ -37,7 +37,7 @@
 #include <limits>
 
 /** Deleted char. */
-#define DEL_CHAR 127
+#define DEL_CHAR '$'
 /** Deleted int. */
 #define DEL_INT std::numeric_limits<int>::min()
 /** Deleted int64_t. */
@@ -46,8 +46,12 @@
 #define DEL_FLOAT std::numeric_limits<float>::min()
 /** Deleted double. */
 #define DEL_DOUBLE std::numeric_limits<double>::min()
+//** Indicates a deleted value. */
+#define DEL_VALUE "$"
+/** Indicates a missing (NULL) value. */
+#define NULL_VALUE "*"
 /** Missing char. */
-#define NULL_CHAR '\0'
+#define NULL_CHAR '*'
 /** Missing int. */
 #define NULL_INT std::numeric_limits<int>::max()
 /** Missing int64_t. */
@@ -56,5 +60,7 @@
 #define NULL_FLOAT std::numeric_limits<float>::max()
 /** Missing double. */
 #define NULL_DOUBLE std::numeric_limits<double>::max()
+/** Special value that indicates a variable-sized object. */
+#define VAR_SIZE -1
 
 #endif

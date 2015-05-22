@@ -40,38 +40,38 @@
 #include <getopt.h>
 #include <inttypes.h>
 
-/** Indicates array name was given as an argument. */
-#define CL_ARRAY_NAME_BITMAP 0x1
-/** Indicates attribute name was given as an argument. */
-#define CL_ATTRIBUTE_NAME_BITMAP 0x2
+/** Indicates array names were given as arguments. */
+#define CL_ARRAY_NAMES_BITMAP 0x1
+/** Indicates attribute names were given as arguments. */
+#define CL_ATTRIBUTE_NAMES_BITMAP 0x2
 /** Indicates capacity was given as an argument. */
 #define CL_CAPACITY_BITMAP 0x4
 /** Indicates cell order was given as an argument. */
 #define CL_CELL_ORDER_BITMAP 0x8
 /** Indicates consolidation step was given as an argument. */
 #define CL_CONSOLIDATION_STEP_BITMAP 0x10
-/** Indicates coordinate was given as an argument. */
-#define CL_COORDINATE_BITMAP 0x20
-/** Indicates dimension domain was given as an argument. */
-#define CL_DIM_DOMAIN_BITMAP 0x40
-/** Indicates dimension name was given as an argument. */
-#define CL_DIM_NAME_BITMAP 0x80
+/** Indicates coordinates were given as arguments. */
+#define CL_COORDINATES_BITMAP 0x20
+/** Indicates dimension domains were given as arguments. */
+#define CL_DIM_DOMAINS_BITMAP 0x40
+/** Indicates dimension names were given as arguments. */
+#define CL_DIM_NAMES_BITMAP 0x80
 /** Indicates expression was given as an argument. */
 #define CL_EXPRESSION_BITMAP 0x100
 /** Indicates range bound was given as an argument. */
 #define CL_FILENAME_BITMAP 0x200
-/** Indicates number was given as an argument. */
-#define CL_NUMBER_BITMAP 0x400
-/** Indicates range bound was given as an argument. */
+/** Indicates numbers were given as arguments. */
+#define CL_NUMBERS_BITMAP 0x400
+/** Indicates a range was given as an argument. */
 #define CL_RANGE_BITMAP 0x800
-/** Indicates result name was given as an argument. */
+/** Indicates a result name was given as an argument. */
 #define CL_RESULT_BITMAP 0x1000
-/** Indicates tile extent was given as an argument. */
-#define CL_TILE_EXTENT_BITMAP 0x2000
+/** Indicates tile extents were given as arguments. */
+#define CL_TILE_EXTENTS_BITMAP 0x2000
 /** Indicates tile order was given as an argument. */
 #define CL_TILE_ORDER_BITMAP 0x4000
-/** Indicates type was given as an argument. */
-#define CL_TYPE_BITMAP 0x8000
+/** Indicates types were given as arguments. */
+#define CL_TYPES_BITMAP 0x8000
 /** Indicates worspace was given as an argument. */
 #define CL_WORKSPACE_BITMAP 0x10000
 
@@ -98,7 +98,7 @@ class CommandLine {
    * CommandLine::dim_names_,
    * CommandLine::expression_,
    * CommandLine::filename_.
-   * CommandLine::number_.
+   * CommandLine::numbers_.
    * CommandLine::range_.
    * CommandLine::result_name_.
    * CommandLine::tile_extents_,
@@ -143,10 +143,13 @@ class CommandLine {
   char* tile_order_;
   /** Types.  */
   std::vector<char*> types_;
+  /** Number of values per cell per attribute. */
+  std::vector<char*> val_num_;
   /** The workspace where the query will be executed. */
   char* workspace_;
 
   // TODO segment_size
+  // TODO write_state_size
   // TODO other configuration parameters?
   // TODO perhaps get parameters from config file?
 };

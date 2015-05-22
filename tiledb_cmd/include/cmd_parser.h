@@ -42,77 +42,78 @@
  * Indicates which arguments are used from the command line for query
  * 'clear_array'. 
  */
-#define PS_CLEAR_ARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP)
+#define PS_CLEAR_ARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'define_array'. 
  */
-#define PS_DEFINE_ARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
-                                CL_ATTRIBUTE_NAME_BITMAP | CL_DIM_NAME_BITMAP |\
-                                CL_DIM_DOMAIN_BITMAP | CL_TYPE_BITMAP |\
+#define PS_DEFINE_ARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
+                                CL_ATTRIBUTE_NAMES_BITMAP |\
+                                CL_DIM_NAMES_BITMAP |\
+                                CL_DIM_DOMAINS_BITMAP | CL_TYPES_BITMAP |\
                                 CL_CELL_ORDER_BITMAP | CL_CAPACITY_BITMAP |\
-                                CL_TILE_EXTENT_BITMAP | CL_TILE_ORDER_BITMAP |\
+                                CL_TILE_EXTENTS_BITMAP | CL_TILE_ORDER_BITMAP |\
                                 CL_CONSOLIDATION_STEP_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'delete_array'. 
  */
-#define PS_DELETE_ARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP)
+#define PS_DELETE_ARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'export_to_CSV'. 
  */
-#define PS_EXPORT_TO_CSV_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
+#define PS_EXPORT_TO_CSV_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
                                  CL_FILENAME_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'filter'. 
  */
-#define PS_FILTER_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
+#define PS_FILTER_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
                           CL_EXPRESSION_BITMAP | CL_RESULT_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'join'. 
  */
-#define PS_JOIN_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
+#define PS_JOIN_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
                         CL_RESULT_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'load_csv'. 
  */
-#define PS_LOAD_CSV_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
+#define PS_LOAD_CSV_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
                             CL_FILENAME_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'show_array_schema'. 
  */
 #define PS_SHOW_ARRAY_SCHEMA_BITMAP (CL_WORKSPACE_BITMAP |\
-                                     CL_ARRAY_NAME_BITMAP)
+                                     CL_ARRAY_NAMES_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'nearest_neighbors'. 
  */
-#define PS_NN_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
-                      CL_COORDINATE_BITMAP | CL_NUMBER_BITMAP  |\
+#define PS_NN_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
+                      CL_COORDINATES_BITMAP | CL_NUMBERS_BITMAP  |\
                       CL_RESULT_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'retile'. 
  */
-#define PS_RETILE_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
+#define PS_RETILE_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
                           CL_CELL_ORDER_BITMAP | CL_CAPACITY_BITMAP  |\
-                          CL_TILE_EXTENT_BITMAP)
+                          CL_TILE_EXTENTS_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'subarray'. 
  */
-#define PS_SUBARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
+#define PS_SUBARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
                             CL_RANGE_BITMAP | CL_RESULT_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'update_csv'. 
  */
-#define PS_UPDATE_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAME_BITMAP |\
+#define PS_UPDATE_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
                           CL_FILENAME_BITMAP)
 
 /** Objects of this class properly parse command lines. */
@@ -136,14 +137,14 @@ class CmdParser {
   /** Parse command line for query 'show_array_schema'. */
   void parse_show_array_schema(const CommandLine& cl) const;
   /** Parse command line for query 'subarray'. */
-  const double* parse_subarray(const CommandLine& cl) const;
+  std::vector<double> parse_subarray(const CommandLine& cl) const;
   /** Parse command line for query 'update_csv'. */
   void parse_update_csv(const CommandLine& cl) const;
 
  private:
   // PRIVATE METHODS
-  /** Checks the array names in command line for soundness. */
-  void check_array_names(const CommandLine& cl) const;
+  /** Checks the array names in command line for soundness and returns them. */
+  std::vector<std::string> check_array_names(const CommandLine& cl) const;
   /** 
    * Checks the attribute names in command line for soundness and returns
    * them. 
@@ -164,7 +165,7 @@ class CmdParser {
    * them. 
    */ 
   std::vector<std::pair<double, double> > check_dim_domains(
-      const CommandLine& cl) const;
+      const CommandLine& cl, int dim_num) const;
   /** 
    * Checks the dimension names in command line for soundness and returns
    * them. 
@@ -179,17 +180,20 @@ class CmdParser {
   /** Checks the tile extents in command line for soundness. */
   std::vector<double> check_tile_extents(
       const CommandLine& cl,
+      int dim_num,
       const std::vector<std::pair<double, double> >& dim_domains) const;
   /** 
    * Checks the range in command line for soundness and returns it as 
    * an array of double numbers.
    */
-  const double* check_range(const CommandLine& cl) const;
+  std::vector<double> check_range(const CommandLine& cl) const;
   /** 
    * Checks the types in command line for soundness and returns
    * them. 
    */
-  std::vector<const std::type_info*> check_types(const CommandLine& cl) const;
+  std::pair<std::vector<const std::type_info*>,
+            std::vector<int> > 
+      check_types(const CommandLine& cl, int attribute_num) const;
 };
 
 #endif

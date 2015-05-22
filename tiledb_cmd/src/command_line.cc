@@ -50,23 +50,23 @@ CommandLine::CommandLine() {
 void CommandLine::parse(int argc, char** argv) {
   static struct option long_options[] = 
   {
-    {"array-name",1,0,'A'},
-    {"attribute-name",1,0,'a'},
+    {"array-names",1,0,'A'},
+    {"attribute-names",1,0,'a'},
     {"capacity",1,0,'c'},
-    {"coordinate",1,0,'C'},
-    {"dim-domain-bound",1,0,'D'},
-    {"dim-name",1,0,'d'},
+    {"coordinates",1,0,'C'},
+    {"dim-domains",1,0,'D'},
+    {"dim-names",1,0,'d'},
     {"expression",1,0,'E'},
-    {"tile-extent",1,0,'e'},
+    {"tile-extents",1,0,'e'},
     {"filename",1,0,'f'},
     {"query",1,0,'q'},
-    {"number",1,0,'N'},
+    {"numbers",1,0,'N'},
     {"cell-order",1,0,'o'},
     {"tile-order",1,0,'O'},
-    {"range-bound",1,0,'r'},
+    {"range",1,0,'r'},
     {"result-name",1,0,'R'},
     {"consolidation-step",1,0,'s'},
-    {"type",1,0,'t'},
+    {"types",1,0,'t'},
     {"workspace",1,0,'w'},
     {0,0,0,0},
   };
@@ -79,15 +79,15 @@ void CommandLine::parse(int argc, char** argv) {
     ++option_num_;
     switch(c) {
       case 'A':
-        arg_bitmap_ |= CL_ARRAY_NAME_BITMAP;
+        arg_bitmap_ |= CL_ARRAY_NAMES_BITMAP;
         array_names_.push_back(optarg);
         break;
       case 'a':
-        arg_bitmap_ |= CL_ATTRIBUTE_NAME_BITMAP;
+        arg_bitmap_ |= CL_ATTRIBUTE_NAMES_BITMAP;
         attribute_names_.push_back(optarg);
         break;
       case 'C':
-        arg_bitmap_ |= CL_COORDINATE_BITMAP;
+        arg_bitmap_ |= CL_COORDINATES_BITMAP;
         coords_.push_back(optarg);
         break;
       case 'c':
@@ -100,11 +100,11 @@ void CommandLine::parse(int argc, char** argv) {
         capacity_ = optarg;
         break;
       case 'D':
-        arg_bitmap_ |= CL_DIM_DOMAIN_BITMAP;
+        arg_bitmap_ |= CL_DIM_DOMAINS_BITMAP;
         dim_domains_.push_back(optarg);
         break;
       case 'd':
-        arg_bitmap_ |= CL_DIM_NAME_BITMAP;
+        arg_bitmap_ |= CL_DIM_NAMES_BITMAP;
         dim_names_.push_back(optarg);
         break;
       case 'E':
@@ -117,7 +117,7 @@ void CommandLine::parse(int argc, char** argv) {
         expression_ = optarg;
         break;
       case 'e':
-        arg_bitmap_ |= CL_TILE_EXTENT_BITMAP;
+        arg_bitmap_ |= CL_TILE_EXTENTS_BITMAP;
         tile_extents_.push_back(optarg);
         break;
       case 'f':
@@ -130,7 +130,7 @@ void CommandLine::parse(int argc, char** argv) {
         filename_ = optarg;
         break;
       case 'N':
-        arg_bitmap_ |= CL_NUMBER_BITMAP;
+        arg_bitmap_ |= CL_NUMBERS_BITMAP;
         numbers_.push_back(optarg);
         break;
       case 'o':
@@ -182,7 +182,7 @@ void CommandLine::parse(int argc, char** argv) {
         consolidation_step_ = optarg;
         break;
       case 't':
-        arg_bitmap_ |= CL_TYPE_BITMAP;
+        arg_bitmap_ |= CL_TYPES_BITMAP;
         types_.push_back(optarg);
         break;
       case 'w':

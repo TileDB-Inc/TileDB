@@ -168,30 +168,36 @@ class StorageManager {
    public:
     // CONSTRUCTORS AND DESTRUCTORS
     /** 
-     * Takes as input the name of the file of the run, as well as the size of
-     * each cell that it stores.
+     * Takes as input the name of the file of the run, as well as a boolean 
+     * variable indicating whether each stored cell is of variable size or not.
      */
     SortedRun(const std::string& filename, 
-              size_t cell_size, size_t segment_size);
+              bool var_size, size_t segment_size);
     /** Closes the run file and deletes the main memory segment. */
     ~SortedRun();
 
     // ACCESSORS
-    /** Returns the next cell in the main memory segment with the given size. */
-    void* current_cell() const;
+    /** True if the run stores variable-sized cells. */
+    bool var_size() { return var_size_; }
 
     // MUTATORS
     /** 
      * Advances the offset in the segment by cell_size to point to the next, 
-     * logical cell, and potentially fetches a new segment from the file.
+     * logical cell.  The input cell_size indicates the size of the lastly
+     * investigated cell, so that the object knows how many bytes to "jump" in
+     * the segment. Note that cell_size also encompasses the size of the
+     * potential id(s) the cell may carry.
      */
-    void advance_cell();
+    void advance_cell(size_t cell_size);
+    /** 
+     * Returns the next cell in the main memory segment with the given size. 
+     * Potentially fetches a new segment from the disk.
+     */
+    void* current_cell();
     /** Loads the next segment from the file. */
     void load_next_segment();
 
    private:
-    /** The cell size. */
-    size_t cell_size_;
     /** File descriptor of the run. */
     std::string filename_;
     /** Current offset in the file. */
@@ -204,6 +210,8 @@ class StorageManager {
     size_t segment_size_;
     /** The segment utilization. */
     ssize_t segment_utilization_;
+    /** True if the cell size is variable. */
+    bool var_size_;
   };
 
   /** Stores the book-keeping structures of a fragment. */
@@ -299,11 +307,11 @@ class StorageManager {
 
     // CELL FUNCTIONS
     /** Writes a cell into the fragment. */
-    void write_cell(const StorageManager::Cell& cell);
+    void write_cell(const StorageManager::Cell& cell, size_t cell_size);
     /** Writes a cell into the fragment. */
-    void write_cell(const StorageManager::CellWithId& cell);
+    void write_cell(const StorageManager::CellWithId& cell, size_t cell_size);
     /** Writes a cell into the fragment. */
-    void write_cell(const StorageManager::CellWith2Ids& cell); 
+    void write_cell(const StorageManager::CellWith2Ids& cell, size_t cell_size);
     /** 
      * Writes a cell into the fragment, respecting the global cell order. 
      * The input cell carries no ids.
@@ -457,9 +465,15 @@ class StorageManager {
 
     // WRITE STATE FUNCTIONS
     /** 
-     * Appends a (coordinate or attribute) cell to its corresponding segment. 
+     * Appends an attribute value to the corresponding segment, and returns (by
+     * reference) the (potentially variable) attribute value size. 
      */
-    void append_cell_to_segment(const void* cell, int attribute_id);
+    void append_attribute_to_segment(const char* attr, int attribute_id,
+                                     size_t& attr_size);
+    /** 
+     * Appends the coordinate to the corresponding segment. 
+     */
+    void append_coordinates_to_segment(const char* coords);
     /** Clears the write state. */
     void clear_write_state();
     /** Sorts and writes the last run on the disk. */
@@ -483,22 +497,27 @@ class StorageManager {
     void flush_write_state();
     /** 
      * Gets the next cell from the input runs that precedes in the global
-     * cell order indicated by the input array schema.
+     * cell order indicated by the input array schema. If the cell is
+     * variable-sized, the function will return into cell_size
+     * (passed by reference) the cell size.
      */
     template<class T>
-    void* get_next_cell(SortedRun** runs, int runs_num) const;
+    void* get_next_cell(
+        SortedRun** runs, int runs_num, size_t& cell_size) const;
     /** 
      * Gets the next cell from the input runs that precedes in the global
      * cell order indicated by the input array schema.
      */
     template<class T>
-    void* get_next_cell_with_id(SortedRun** runs, int runs_num) const;
+    void* get_next_cell_with_id(SortedRun** runs, int runs_num, 
+                                size_t& cell_size) const;
     /** 
      * Gets the next cell from the input runs that precedes in the global
      * cell order indicated by the input array schema.
      */
     template<class T>
-    void* get_next_cell_with_2_ids(SortedRun** runs, int runs_num) const;
+    void* get_next_cell_with_2_ids(SortedRun** runs, int runs_num, 
+                                   size_t& cell_size) const;
     /** Initializes the write state. */
     void init_write_state();
     /** Makes tiles from existing sorted runs. */
@@ -552,10 +571,11 @@ class StorageManager {
     void sort_run_with_2_ids();
     /**
      * Updates the info of the currently populated tile with the input
-     * coordinates and tile id. 
+     * coordinates,  tile id, and sizes of all attribute values in the cell. 
      */
     template<class T>
-    void update_tile_info(const T* coords, int64_t tile_id);
+    void update_tile_info(const T* coords, int64_t tile_id, 
+                          const std::vector<size_t>& attr_sizes);
 
     // BOOK-KEEPING FUNCTIONS
     /** Clears the book keeping structures from main memory. */
@@ -628,11 +648,11 @@ class StorageManager {
 
     // CELL FUNCTIONS
     /** Writes a cell into the array. */
-    void write_cell(const Cell& cell);
+    void write_cell(const Cell& cell, size_t cell_size);
     /** Writes a cell into the array. */
-    void write_cell(const CellWithId& cell);
+    void write_cell(const CellWithId& cell, size_t cell_size);
     /** Writes a cell into the array. */
-    void write_cell(const CellWith2Ids& cell);
+    void write_cell(const CellWith2Ids& cell, size_t cell_size);
     /** Writes a cell into the array, respecting the global cell order. */
     template<class T>
     void write_cell_sorted(const void* cell);
@@ -674,6 +694,13 @@ class StorageManager {
       ~const_cell_iterator();
 
       // ACCESSORS
+      /** Returns the size of the current cell. */
+      size_t cell_size() const;
+      /** 
+       * Returns the size of the current cell pointed by the iterators of the
+       * fragment with id equal to fragment_id. 
+       */
+      size_t compute_cell_size(int fragment_id) const;
       /** Returns true if the iterator has reached the end of the cells. */
       bool end() const;
 
@@ -759,11 +786,6 @@ class StorageManager {
        * cells that overlap with the stored range. 
        */
       void init_iterators_in_range();
-      /** 
-       * Returns true if the input value on the input attribute represents a
-       * deletion. 
-       */ 
-      bool is_del(const void* value, int attribute_id) const;
       /** 
        * True if the cell pointed by the first iterator precedes that of the
        * second on the global cell order.
@@ -991,15 +1013,8 @@ class StorageManager {
    * appear first, and then the attribute values in the same order
    * as the attributes are defined in the array schema.
    */
-  void write_cell(int ad, const void* cell) const; 
-  /**  
-   * Writes a cell to an array. It takes as input an array descriptor, and
-   * a cell pointer. The cell has the following format: The coordinates
-   * appear first, and then the attribute values in the same order
-   * as the attributes are defined in the array schema.
-   */
   template<class T>
-  void write_cell(int ad, const void* cell) const; 
+  void write_cell(int ad, const void* cell, size_t cell_size) const; 
   /**  
    * Writes a set of cells to an array. It takes as input an array descriptor,
    * and a pointer to cells, which are serialized one after the other. Each cell

@@ -248,5 +248,5 @@ doxyfile.inc: $(CORE_INCLUDE) $(TILEDB_CMD_INCLUDE) $(LA_INCLUDE)
 
 clean_doc:
 	@echo "Cleaning documentation"
-	@rm doxyfile.inc
+	@rm -f doxyfile.inc
 

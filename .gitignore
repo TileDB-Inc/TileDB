@@ -12,7 +12,6 @@ la/include/*.tmp
 la/src/*.tmp
 gtest/obj/*
 data/*
-scripts/configure.sh
 example*
 Doxyfile.log
 doxyfile.inc

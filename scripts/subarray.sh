@@ -7,14 +7,14 @@ echo 'Executing subarray for IREG...'
  -w $TILEDB_WORKSPACE/ \
  -A IREG \
  -R sub_IREG \
- -r 10 -r 20 -r 21 -r 22 
+ -r '10,20,21,22' 
 
 echo 'Executing subarray for REG...'
 ../tiledb_cmd/bin/tiledb_cmd -q subarray \
  -w $TILEDB_WORKSPACE/ \
  -A REG \
  -R sub_REG \
- -r 10 -r 20 -r 21 -r 22 
+ -r '10,20,21,22' 
 
 echo 'Exporting subarray result sub_IREG...'
 ../tiledb_cmd/bin/tiledb_cmd -q export_to_csv \

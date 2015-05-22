@@ -78,7 +78,7 @@ class QueryProcessor {
    * The new array will have the input result name. 
    */
   void subarray(const std::string& array_name, 
-                const double* range,
+                const std::vector<double>& range,
                 const std::string& result_array_name) const;
 
  private:

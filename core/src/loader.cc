@@ -33,6 +33,7 @@
 
 #include "loader.h"
 #include "utils.h"
+#include "special_values.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -63,7 +64,11 @@ void Loader::load_csv(const std::string& filename,
     throw LoaderException(std::string("Cannot open array ") +
                           array_name + "."); 
 
+  // Load CSV file
   load_csv(filename, ad); 
+
+  // Clean up
+  storage_manager_->close_array(ad); 
 }
 
 void Loader::update_csv(const std::string& filename, 
@@ -74,7 +79,11 @@ void Loader::update_csv(const std::string& filename,
     throw LoaderException(std::string("Cannot open array ") +
                           array_name + "."); 
 
+  // Load CSV file
   load_csv(filename, ad); 
+
+  // Clean up
+  storage_manager_->close_array(ad); 
 }
 
 /******************************************************
@@ -82,19 +91,48 @@ void Loader::update_csv(const std::string& filename,
 ******************************************************/
 
 template<class T>
-bool Loader::get_attribute(CSVLine& csv_line, void* cell) const {
-
+bool Loader::append_attribute(
+    CSVLine& csv_line, int val_num, void* cell, size_t& offset) const {
   T v;
-  if(!(csv_line >> v))
-    return false;
+  char* c_cell = static_cast<char*>(cell);
 
-  memcpy(cell, &v, sizeof(T));
+  if(val_num != VAR_SIZE) { // Fixed-sized attribute 
+    for(int i=0; i<val_num; ++i) {
+      if(!(csv_line >> v))
+        return false;
+      memcpy(c_cell + offset, &v, sizeof(T));
+      offset += sizeof(T);
+    }
+  } else {                  // Variable-sized attribute 
+    if(typeid(T) == typeid(char)) {
+      std::string s;
+      if(!(csv_line >> s))
+        return false;
+      int s_size = s.size();
+      memcpy(c_cell + offset, &s_size, sizeof(int));
+      offset += sizeof(int);
+      memcpy(c_cell + offset, s.c_str(), s.size());
+      offset += s.size(); 
+    } else {
+      int num;
+      if(!(csv_line >> num))
+        return false;
+      memcpy(c_cell + offset, &num, sizeof(int));
+      offset += sizeof(int);
+      for(int i=0; i<num; ++i) {
+        if(!(csv_line >> v))
+          return false;
+        memcpy(c_cell + offset, &v, sizeof(T));
+        offset += sizeof(T);
+      }
+    }
+  }
  
   return true; 
 }
 
 template<class T>
-bool Loader::get_coordinates(CSVLine& csv_line, 
+bool Loader::append_coordinates(CSVLine& csv_line, 
                                 void* cell, int dim_num) const {
   T* coords = new T[dim_num];
 
@@ -112,9 +150,56 @@ bool Loader::get_coordinates(CSVLine& csv_line,
   return true;
 }
 
+// --- Cell format ---
+// coordinates, cell_size, 
+//	attribute#1_value#1, ...            (fixed-sized attribute)
+// 	val_num, attribute#2_value#1,...,   (variable-sized attribute)
+ssize_t Loader::calculate_cell_size(
+    CSVLine& csv_line, const ArraySchema* array_schema) const {
+  int attribute_num = array_schema->attribute_num();
+  // Initialize cell size - it will be updated below
+  ssize_t cell_size = array_schema->cell_size(attribute_num) + sizeof(size_t);
+ 
+  for(int i=0; i<attribute_num; ++i) {
+    if(array_schema->cell_size(i) != VAR_SIZE) { // Fixed-sized attribute
+      cell_size += array_schema->cell_size(i);
+      csv_line += array_schema->val_num(i);
+    } else {                                     // Variable-sized attribute
+      if(array_schema->type(i) == &typeid(char)) {
+        cell_size += sizeof(int) + (*csv_line).size()*sizeof(char);
+        ++csv_line;
+      } else {
+        int num;
+        if(!(csv_line >> num))
+          return -1; // Error
+
+        if(array_schema->type(i) == &typeid(int)) 
+          cell_size += sizeof(int) + num*sizeof(int);
+        else if(array_schema->type(i) == &typeid(float)) 
+          cell_size += sizeof(int) + num*sizeof(float);
+        else if(array_schema->type(i) == &typeid(double)) 
+          cell_size += sizeof(int) + num*sizeof(double);
+
+        csv_line += num;
+      }
+    }
+  }
+
+  // Reset the position of the CSV line to the beginning
+  csv_line.reset();
+
+  return cell_size;
+}
+
+// --- Cell format ---
+// coordinates, cell_size, 
+//	attribute#1_value#1, ...            (fixed-sized attribute)
+// 	val_num, attribute#2_value#1,...,   (variable-sized attribute)
+template<class T>
 inline
-bool Loader::csv_line_to_cell(const ArraySchema* array_schema, 
-                      CSVLine& csv_line, void* cell) const {
+bool Loader::csv_line_to_cell(
+    const ArraySchema* array_schema, CSVLine& csv_line, void* cell, 
+    ssize_t& cell_size) const {
   // For easy reference
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
@@ -123,45 +208,45 @@ bool Loader::csv_line_to_cell(const ArraySchema* array_schema,
   size_t offset = 0;
 
   // Append coordinates
-  if(*(array_schema->type(attribute_num)) == typeid(int))
-    success = get_coordinates<int>(csv_line, cell, dim_num); 
-  else if(*(array_schema->type(attribute_num)) == typeid(int64_t))
-    success = get_coordinates<int64_t>(csv_line, cell, dim_num); 
-  else if(*(array_schema->type(attribute_num)) == typeid(float))
-    success = get_coordinates<float>(csv_line, cell, dim_num); 
-  else if(*(array_schema->type(attribute_num)) == typeid(double))
-    success = get_coordinates<double>(csv_line, cell, dim_num); 
+  success = append_coordinates<T>(csv_line, cell, dim_num); 
+  offset += array_schema->cell_size(attribute_num);
 
-  // Append attribute values
   if(success) {
-    offset += array_schema->cell_size(attribute_num);
+    // Append cell size 
+    if(array_schema->cell_size() == VAR_SIZE) {
+      memcpy(static_cast<char*>(cell) + offset, &cell_size, sizeof(size_t));
+      offset += sizeof(size_t);
+    }
 
+    // Append attribute values
     for(int i=0; i<attribute_num; ++i) {
       if(*(array_schema->type(i)) == typeid(char))
-        success = get_attribute<char>(csv_line, 
-                                      static_cast<char*>(cell) + offset);
+        success = append_attribute<char>(
+                      csv_line, array_schema->val_num(i), 
+                      cell, offset);
       else if(*(array_schema->type(i)) == typeid(int))
-        success = get_attribute<int>(csv_line,
-                                     static_cast<char*>(cell) + offset);
+        success = append_attribute<int>(
+                      csv_line, array_schema->val_num(i), 
+                      cell, offset);
       else if(*(array_schema->type(i)) == typeid(int64_t))
-        success = get_attribute<int64_t>(csv_line, 
-                                         static_cast<char*>(cell) + offset);
+        success = append_attribute<int64_t>( 
+                      csv_line, array_schema->val_num(i), 
+                      cell, offset);
       else if(*(array_schema->type(i)) == typeid(float))
-        success = get_attribute<float>(csv_line, 
-                                       static_cast<char*>(cell) + offset);
+        success = append_attribute<float>( 
+                      csv_line, array_schema->val_num(i), 
+                      cell, offset);
       else if(*(array_schema->type(i)) == typeid(double))
-        success = get_attribute<double>(csv_line, 
-                                        static_cast<char*>(cell) + offset);
+        success = append_attribute<double>( 
+                      csv_line, array_schema->val_num(i), 
+                      cell, offset);
       if(!success)
         break;
-  
-      offset += array_schema->cell_size(i);
     }
   }
 
   return success;
 }
-
 
 void Loader::load_csv(const std::string& filename, int ad) const {
   // For easy reference
@@ -194,17 +279,30 @@ void Loader::load_csv(const std::string& filename, int ad) const {
 
   // For easy reference
   const ArraySchema* array_schema = storage_manager_->get_array_schema(ad);
-  size_t cell_size = array_schema->cell_size();
   int64_t line = 0;
+  ssize_t cell_size = array_schema->cell_size();
+  bool var_size = (cell_size == VAR_SIZE);
 
   // Prepare a cell buffer
-  void* cell = malloc(cell_size);
+  void* cell = NULL;
+  if(!var_size)
+    cell = malloc(cell_size);
 
   while(csv_file >> csv_line) {
     ++line;
 
+    // In case of variable-sized attribute cells, calculate cell size first
+    if(var_size) {
+      if(cell != NULL)
+        free(cell);
+      cell_size = calculate_cell_size(csv_line, array_schema);
+      if(cell_size != -1)
+        cell = malloc(cell_size);
+    }
+
     // Get a logical cell
-    if(!csv_line_to_cell(array_schema, csv_line, cell)) { 
+    if(cell_size == -1 || 
+       !csv_line_to_cell<T>(array_schema, csv_line, cell, cell_size)) { 
       // Clean up
       storage_manager_->forced_close_array(ad); 
       csv_file.close();
@@ -218,11 +316,10 @@ void Loader::load_csv(const std::string& filename, int ad) const {
     }
 
     // Write the cell in the array
-    storage_manager_->write_cell<T>(ad, cell);
+    storage_manager_->write_cell<T>(ad, cell, cell_size);
   }
 
   // Clean up 
-  storage_manager_->close_array(ad); 
   csv_file.close();
   free(cell);
 }

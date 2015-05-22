@@ -192,6 +192,31 @@ bool inside_range(const T* point, const T* range, int dim_num) {
   return true;
 }
 
+template<>
+bool is_del(char v) {
+  return v == DEL_CHAR;
+}
+
+template<>
+bool is_del(int v) {
+  return v == DEL_INT;
+}
+
+template<>
+bool is_del(int64_t v) {
+  return v == DEL_INT64_T;
+}
+
+template<>
+bool is_del(float v) {
+  return v == DEL_FLOAT;
+}
+
+template<>
+bool is_del(double v) {
+  return v == DEL_DOUBLE;
+}
+
 bool is_integer(const char* s) {
   int i=0;
   if(s[0] == '+' || s[0] == '-')
@@ -203,6 +228,31 @@ bool is_integer(const char* s) {
   }
 
   return true;
+}
+
+template<>
+bool is_null(char v) {
+  return v == NULL_CHAR;
+}
+
+template<>
+bool is_null(int v) {
+  return v == NULL_INT;
+}
+
+template<>
+bool is_null(int64_t v) {
+  return v == NULL_INT64_T;
+}
+
+template<>
+bool is_null(float v) {
+  return v == NULL_FLOAT;
+}
+
+template<>
+bool is_null(double v) {
+  return v == NULL_DOUBLE;
 }
 
 bool is_real(const char* s) {
