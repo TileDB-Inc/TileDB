@@ -2070,6 +2070,7 @@ StorageManager::Array::Array(
     : array_schema_(array_schema), workspace_(workspace),
       segment_size_(segment_size),
       write_state_max_size_(write_state_max_size) {
+
   strcpy(mode_, mode);
   load_fragment_tree();
   open_fragments();
@@ -2514,6 +2515,7 @@ StorageManager::Array::const_cell_iterator<T>::const_cell_iterator(
     std::vector<int> fragment_ids,
     std::vector<int> attribute_ids,
     bool return_del) : array_(array), return_del_(return_del) {
+
   // Initialize private attributes
   dim_num_ = array_->array_schema_->dim_num();
   end_ = false;
@@ -2606,6 +2608,7 @@ StorageManager::Array::const_cell_iterator<T>::~const_cell_iterator() {
 template<class T>
 void StorageManager::Array::const_cell_iterator<T>::advance_cell(
     int fragment_id) {
+
   // Advance cell iterators
   for(int j=0; j<=attribute_num_; ++j)
     ++cell_its_[fragment_id][j];
@@ -2779,13 +2782,15 @@ int StorageManager::Array::const_cell_iterator<T>::get_next_cell() {
     // --- Prepare cell ---
     // Find cell size and create a new cell for variable-sized cells
     size_t cell_size;
-    if(var_size && cell_ != NULL) {
-      free(cell_);
+    if(var_size) {
+      if(cell_ != NULL)
+        free(cell_);
       cell_size = compute_cell_size(fragment_id);
       cell_ = malloc(cell_size);
     } 
     char* cell = static_cast<char*>(cell_);
     size_t offset;
+
     // Copy coordinates to cell
     memcpy(cell, *(cell_its_[fragment_id][attribute_num]), coords_size);
     offset = coords_size;
@@ -3185,9 +3190,10 @@ void StorageManager::forced_close_array(int ad) {
   if(arrays_[ad] == NULL)
     return;
 
-  arrays_[ad]->forced_close();
+  const std::string& array_name = arrays_[ad]->array_schema_->array_name();
 
-  open_arrays_.erase(arrays_[ad]->array_schema_->array_name());
+  arrays_[ad]->forced_close();
+  open_arrays_.erase(array_name);
   delete arrays_[ad];
   arrays_[ad] = NULL;
 }

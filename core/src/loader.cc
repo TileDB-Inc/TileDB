@@ -156,9 +156,14 @@ bool Loader::append_coordinates(CSVLine& csv_line,
 // 	val_num, attribute#2_value#1,...,   (variable-sized attribute)
 ssize_t Loader::calculate_cell_size(
     CSVLine& csv_line, const ArraySchema* array_schema) const {
+  // For easy reference
   int attribute_num = array_schema->attribute_num();
+  int dim_num = array_schema->dim_num();
+
   // Initialize cell size - it will be updated below
   ssize_t cell_size = array_schema->cell_size(attribute_num) + sizeof(size_t);
+  // Skip the coordinates in the CSV line
+  csv_line += dim_num; 
  
   for(int i=0; i<attribute_num; ++i) {
     if(array_schema->cell_size(i) != VAR_SIZE) { // Fixed-sized attribute
@@ -285,6 +290,7 @@ void Loader::load_csv(const std::string& filename, int ad) const {
 
   // Prepare a cell buffer
   void* cell = NULL;
+
   if(!var_size)
     cell = malloc(cell_size);
 
@@ -293,9 +299,12 @@ void Loader::load_csv(const std::string& filename, int ad) const {
 
     // In case of variable-sized attribute cells, calculate cell size first
     if(var_size) {
-      if(cell != NULL)
+      if(cell != NULL) {
         free(cell);
+        cell = NULL;
+      }
       cell_size = calculate_cell_size(csv_line, array_schema);
+
       if(cell_size != -1)
         cell = malloc(cell_size);
     }
@@ -306,7 +315,8 @@ void Loader::load_csv(const std::string& filename, int ad) const {
       // Clean up
       storage_manager_->forced_close_array(ad); 
       csv_file.close();
-      free(cell);
+      if(cell != NULL) 
+        free(cell);
 
       // Throw exception
       std::stringstream ss;

@@ -98,7 +98,7 @@ void QueryProcessor::export_to_csv(
   // Write cells into the CSV file
   for(; !cell_it.end(); ++cell_it) 
     csv_file << cell_to_csv_line<T>(*cell_it, array_schema); 
-  
+
   // Clean up 
   csv_file.close();
 }
@@ -202,14 +202,17 @@ CSVLine QueryProcessor::cell_to_csv_line(
 
   // Append attribute values next
   for(int i=0; i<attribute_num; ++i) {
-    if(var_size) {
+    const std::type_info& attr_type = *(array_schema->type(i));
+
+    if(array_schema->val_num(i) == VAR_SIZE) {
       memcpy(&val_num, static_cast<const char*>(cell) + offset, sizeof(int));
       offset += sizeof(int);
+      if(attr_type != typeid(char)) 
+        csv_line << val_num;
     } else {
       val_num = array_schema->val_num(i);
     }
-  
-    const std::type_info& attr_type = *(array_schema->type(i));
+
     if(attr_type == typeid(char)) {
       std::string v;
       v.resize(val_num);

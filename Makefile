@@ -140,7 +140,7 @@ clean_core:
 	@rm -f $(CORE_OBJ_DIR)/* $(CORE_BIN_DIR)/* 
 
 ##############
-# TileDB_CMD #
+# TileDB_cmd #
 ##############
 
 # --- Compilation and dependency genration --- #

@@ -287,7 +287,7 @@ size_t Tile::const_cell_iterator::cell_size() const {
   } else { // Variable-sized cells
     int val_num;
     memcpy(&val_num, cell_, sizeof(int));
-    return val_num * tile_->type_size(); 
+    return sizeof(int) + val_num * tile_->type_size(); 
   }
 }
 
