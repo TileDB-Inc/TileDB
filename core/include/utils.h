@@ -53,9 +53,6 @@ void create_directory(const std::string& dirname);
  */
 void delete_directory(const std::string& dirname);
 
-/** Returns true if the input directory exists. */ 
-bool dir_exists(const std::string& dirname);
-
 /** Expands the input MBR with the input coordinates. */
 void expand_mbr(const ArraySchema* array_schema, 
                 const void* coords, void* mbr);
@@ -67,8 +64,8 @@ void expand_mbr(const T* coords, T* mbr, int dim_num);
 /** Doubles the size of the buffer. The original size is given as input. */
 void expand_buffer(void*& buffer, size_t size);
 
-/** Returns true if the input file exists. */ 
-bool file_exists(const std::string& filename);
+/** Returns a list with the names of all files in the input directory. */
+std::vector<std::string> get_filenames(const std::string& dirname);
 
 /** Initializes the input MBR with the input coordinates. */
 void init_mbr(const ArraySchema* array_schema, 
@@ -85,6 +82,12 @@ bool inside_range(const T* point, const T* range, int dim_num);
 /** True if the input is a del value (i.e., represents deletion). */
 template<class T>
 bool is_del(T v);
+
+/** Returns true if the input is an existing directory. */ 
+bool is_dir(const std::string& dirname);
+
+/** Returns true if the input is an existing file. */ 
+bool is_file(const std::string& filename);
 
 /** Returns true if the input string is an integer number. */
 bool is_integer(const char* s);

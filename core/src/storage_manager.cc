@@ -61,15 +61,21 @@ StorageManager::Fragment::Fragment(
   read_state_ = NULL;
   write_state_ = NULL;
 
-  // If the fragment folder exists (read mode), load the book-keeping structures
-  std::string fragment_dir = workspace_ + 
-                             array_schema->array_name() + "/" + 
-                             fragment_name;
-  if(dir_exists(fragment_dir)) {
+  temp_dirname_ = workspace_ + "/" + SM_TEMP + "/" + 
+                  array_schema->array_name() + "_" + fragment_name + "/";
+  std::string fragment_dirname = workspace_ + 
+                                 array_schema->array_name() + "/" + 
+                                 fragment_name;
+
+  if(is_dir(fragment_dirname)) {
     load_book_keeping();
     init_read_state();
-  } else { // Create the folder (write mode) 
-    create_directory(fragment_dir);
+  } else { 
+    // Create directories 
+    create_directory(fragment_dirname);
+    create_directory(temp_dirname_);
+
+    // Initialize write state and book-keeping structures
     init_write_state();
     init_book_keeping();
   }
@@ -80,6 +86,7 @@ StorageManager::Fragment::~Fragment() {
   flush_write_state();
   commit_book_keeping();
   clear_book_keeping();
+  delete_directory(temp_dirname_);
 }
 
 void StorageManager::Fragment::append_attribute_to_segment(
@@ -219,7 +226,7 @@ void StorageManager::Fragment::commit_book_keeping() {
                          fragment_name_ + "/" +
                          SM_BOUNDING_COORDINATES_FILENAME + 
                          SM_BOOK_KEEPING_FILE_SUFFIX;
-  if(file_exists(filename))
+  if(is_file(filename))
     return;
 
   commit_bounding_coordinates();
@@ -469,11 +476,7 @@ void StorageManager::Fragment::flush_sorted_run() {
 
   // Prepare file
   std::stringstream filename;
-  std::string dirname = workspace_ + "/" + SM_TEMP + "/" + 
-                        array_schema_->array_name() + "_" +
-                        fragment_name_ + "/";
-  create_directory(dirname);
-  filename << dirname << write_state_->runs_num_;
+  filename << temp_dirname_ << write_state_->runs_num_;
   remove(filename.str().c_str());
   int file = open(filename.str().c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   assert(file != -1);
@@ -529,11 +532,7 @@ void StorageManager::Fragment::flush_sorted_run_with_id() {
 
   // Prepare file
   std::stringstream filename;
-  std::string dirname = workspace_ + "/" + SM_TEMP + "/" + 
-                        array_schema_->array_name() + "_" +
-                        fragment_name_ + "/";
-  create_directory(dirname);
-  filename << dirname << write_state_->runs_num_;
+  filename << temp_dirname_ << write_state_->runs_num_;
   remove(filename.str().c_str());
   int file = open(filename.str().c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   assert(file != -1);
@@ -593,11 +592,7 @@ void StorageManager::Fragment::flush_sorted_run_with_2_ids() {
 
   // Prepare file
   std::stringstream filename;
-  std::string dirname = workspace_ + "/" + SM_TEMP + "/" + 
-                        array_schema_->array_name() + "_" +
-                        fragment_name_ + "/";
-  create_directory(dirname);
-  filename << dirname << write_state_->runs_num_;
+  filename << temp_dirname_ << write_state_->runs_num_;
   remove(filename.str().c_str());
   int file = open(filename.str().c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   assert(file != -1);
@@ -686,15 +681,16 @@ void StorageManager::Fragment::flush_write_state() {
 
   // Make tiles, after finalizing the last run and merging the runs
   finalize_last_run();
-  merge_sorted_runs();
-  make_tiles();
+
+  // Merge runs
+  merge_sorted_runs(temp_dirname_);
+  make_tiles(temp_dirname_);
   flush_segments();
  
   delete write_state_;
   write_state_ = NULL;
 }
 
-// NOTE: The format of a cell is <coords, attributes>
 template<class T>
 void* StorageManager::Fragment::get_next_cell(
     SortedRun** runs, int runs_num, size_t& cell_size) const {
@@ -737,7 +733,6 @@ void* StorageManager::Fragment::get_next_cell(
   return next_cell;
 }
 
-// NOTE: The format of a cell is <id, coords, attributes>
 template<class T>
 void* StorageManager::Fragment::get_next_cell_with_id(
     SortedRun** runs, int runs_num, size_t& cell_size) const {
@@ -795,7 +790,6 @@ void* StorageManager::Fragment::get_next_cell_with_id(
 }
 
 
-// NOTE: The format of a cell is <tile_id, cell_id, coords, attributes>
 template<class T>
 void* StorageManager::Fragment::get_next_cell_with_2_ids(
     SortedRun** runs, int runs_num, size_t& cell_size) const {
@@ -1123,6 +1117,18 @@ std::pair<size_t, int64_t> StorageManager::Fragment::load_payloads_into_segment(
   return std::pair<size_t, int64_t>(segment_utilization, tiles_in_segment);
 }
 
+void StorageManager::Fragment::load_sorted_bin(const std::string& dirname) {
+  // Merge sorted files
+  bool merged = merge_sorted_runs(dirname);
+  
+  // Make tiles
+  if(merged)
+    make_tiles(temp_dirname_);
+  else 
+    make_tiles(dirname);
+}
+
+
 // FILE FORMAT:
 // tile_num(int64_t)
 //   tile_id#1(int64_t) tile_id#2(int64_t)  ...
@@ -1228,11 +1234,7 @@ void StorageManager::Fragment::load_tiles_from_segment(
   }
 }
 
-void StorageManager::Fragment::make_tiles() {
-  // Exit if there are no runs
-  if(write_state_->runs_num_ == 0)
-    return;
-
+void StorageManager::Fragment::make_tiles(const std::string& dirname) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   const std::type_info* coords_type = array_schema_->type(attribute_num);
@@ -1244,55 +1246,56 @@ void StorageManager::Fragment::make_tiles() {
                         cell_order == ArraySchema::CO_COLUMN_MAJOR)) {
     // Cell
     if(*coords_type == typeid(int)) 
-      make_tiles<int>(); 
+      make_tiles<int>(dirname); 
     else if(*coords_type == typeid(int64_t)) 
-      make_tiles<int64_t>(); 
+      make_tiles<int64_t>(dirname); 
     else if(*coords_type == typeid(float)) 
-      make_tiles<float>(); 
+      make_tiles<float>(dirname); 
     else if(*coords_type == typeid(double)) 
-      make_tiles<double>(); 
+      make_tiles<double>(dirname); 
   } else if((regular_tiles && (cell_order == ArraySchema::CO_ROW_MAJOR ||
                                cell_order == ArraySchema::CO_COLUMN_MAJOR)) ||
             (!regular_tiles && cell_order == ArraySchema::CO_HILBERT)) {
     // CellWithId
     if(*coords_type == typeid(int)) 
-      make_tiles_with_id<int>(); 
+      make_tiles_with_id<int>(dirname); 
     else if(*coords_type == typeid(int64_t)) 
-      make_tiles_with_id<int64_t>(); 
+      make_tiles_with_id<int64_t>(dirname); 
     else if(*coords_type == typeid(float)) 
-      make_tiles_with_id<float>(); 
+      make_tiles_with_id<float>(dirname); 
     else if(*coords_type == typeid(double)) 
-      make_tiles_with_id<double>(); 
+      make_tiles_with_id<double>(dirname); 
   } else if(regular_tiles && cell_order == ArraySchema::CO_HILBERT) {
     // CellWith2Ids
     if(*coords_type == typeid(int)) 
-      make_tiles_with_2_ids<int>(); 
+      make_tiles_with_2_ids<int>(dirname); 
     else if(*coords_type == typeid(int64_t)) 
-      make_tiles_with_2_ids<int64_t>(); 
+      make_tiles_with_2_ids<int64_t>(dirname); 
     else if(*coords_type == typeid(float)) 
-      make_tiles_with_2_ids<float>(); 
+      make_tiles_with_2_ids<float>(dirname); 
     else if(*coords_type == typeid(double)) 
-      make_tiles_with_2_ids<double>(); 
+      make_tiles_with_2_ids<double>(dirname); 
   }
 }
 
 // NOTE: This function applies only to irregular tiles
 template<class T>
-void StorageManager::Fragment::make_tiles() {
+void StorageManager::Fragment::make_tiles(
+    const std::string& dirname) {
   // For easy reference
   size_t cell_size = array_schema_->cell_size();
-  std::string dirname = workspace_ + "/" + SM_TEMP + "/" + 
-                        array_schema_->array_name() + "_" + 
-                        fragment_name_ + "/";
-  int runs_num = write_state_->runs_num_;
+  std::vector<std::string> filenames = get_filenames(dirname);
+  int runs_num = filenames.size();
+
+  if(runs_num == 0)
+    return;
 
   // Information about the runs to be merged 
   SortedRun** runs = new SortedRun*[runs_num];
   for(int i=0; i<runs_num; ++i) {
-    std::stringstream filename;
-    filename << dirname << i;
-    runs[i] = new SortedRun(filename.str(), 
-                            cell_size == VAR_SIZE, segment_size_);
+    runs[i] = new SortedRun(dirname + filenames[i], 
+                            cell_size == VAR_SIZE, 
+                            segment_size_);
   }
 
   // Loop over the cells
@@ -1304,27 +1307,27 @@ void StorageManager::Fragment::make_tiles() {
   for(int i=0; i<runs_num; ++i) 
     delete runs[i];
   delete [] runs;
-  delete_directory(dirname);
 }
 
 // This function applies either to regular tiles with row- or column-major
 // order, or irregular tiles with Hilbert order
 template<class T>
-void StorageManager::Fragment::make_tiles_with_id() {
+void StorageManager::Fragment::make_tiles_with_id(
+    const std::string& dirname) {
   // For easy reference
   size_t cell_size = array_schema_->cell_size();
-  std::string dirname = workspace_ + "/" + SM_TEMP + "/" + 
-                        array_schema_->array_name() + "_" + 
-                        fragment_name_ + "/";
-  int runs_num = write_state_->runs_num_;
+  std::vector<std::string> filenames = get_filenames(dirname);
+  int runs_num = filenames.size();
+
+  if(runs_num == 0)
+    return;
 
   // Information about the runs to be merged 
   SortedRun** runs = new SortedRun*[runs_num];
   for(int i=0; i<runs_num; ++i) {
-    std::stringstream filename;
-    filename << dirname << i;
-    runs[i] = new SortedRun(filename.str(), 
-                            cell_size == VAR_SIZE, segment_size_);
+    runs[i] = new SortedRun(dirname + filenames[i], 
+                            cell_size == VAR_SIZE, 
+                            segment_size_);
   }
 
   // Loop over the cells
@@ -1341,26 +1344,26 @@ void StorageManager::Fragment::make_tiles_with_id() {
   for(int i=0; i<runs_num; ++i) 
     delete runs[i];
   delete [] runs;
-  delete_directory(dirname);
 }
 
 // NOTE: This function applies only to regular tiles
 template<class T>
-void StorageManager::Fragment::make_tiles_with_2_ids() {
+void StorageManager::Fragment::make_tiles_with_2_ids(
+    const std::string& dirname) {
   // For easy reference
   size_t cell_size = array_schema_->cell_size();
-  std::string dirname = workspace_ + "/" + SM_TEMP + "/" + 
-                        array_schema_->array_name() + "_" + 
-                        fragment_name_ + "/";
-  int runs_num = write_state_->runs_num_;
+  std::vector<std::string> filenames = get_filenames(dirname);
+  int runs_num = filenames.size();
+
+  if(runs_num == 0)
+    return;
 
   // Information about the runs to be merged 
   SortedRun** runs = new SortedRun*[runs_num];
   for(int i=0; i<runs_num; ++i) {
-    std::stringstream filename;
-    filename << dirname << i;
-    runs[i] = new SortedRun(filename.str(), 
-                            cell_size == VAR_SIZE, segment_size_);
+    runs[i] = new SortedRun(dirname + filenames[i], 
+                            cell_size == VAR_SIZE, 
+                            segment_size_);
   }
 
   // Loop over the cells
@@ -1372,14 +1375,9 @@ void StorageManager::Fragment::make_tiles_with_2_ids() {
   for(int i=0; i<runs_num; ++i) 
     delete runs[i];
   delete [] runs;
-  delete_directory(dirname);
 }
 
-void StorageManager::Fragment::merge_sorted_runs() {
-  // Exit if there are no runs
-  if(write_state_->runs_num_ == 0)
-    return;
-
+bool StorageManager::Fragment::merge_sorted_runs(const std::string& dirname) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   const std::type_info* coords_type = array_schema_->type(attribute_num);
@@ -1391,74 +1389,85 @@ void StorageManager::Fragment::merge_sorted_runs() {
                         cell_order == ArraySchema::CO_COLUMN_MAJOR)) {
     // Cell
     if(*coords_type == typeid(int)) 
-      merge_sorted_runs<int>(); 
+      return merge_sorted_runs<int>(dirname); 
     else if(*coords_type == typeid(int64_t)) 
-      merge_sorted_runs<int64_t>(); 
+      return merge_sorted_runs<int64_t>(dirname); 
     else if(*coords_type == typeid(float)) 
-      merge_sorted_runs<float>(); 
+      return merge_sorted_runs<float>(dirname); 
     else if(*coords_type == typeid(double)) 
-      merge_sorted_runs<double>(); 
+      return merge_sorted_runs<double>(dirname); 
   } else if((regular_tiles && (cell_order == ArraySchema::CO_ROW_MAJOR ||
                                cell_order == ArraySchema::CO_COLUMN_MAJOR)) ||
             (!regular_tiles && cell_order == ArraySchema::CO_HILBERT)) {
     // CellWithId
     if(*coords_type == typeid(int)) 
-      merge_sorted_runs_with_id<int>(); 
+      return merge_sorted_runs_with_id<int>(dirname); 
     else if(*coords_type == typeid(int64_t)) 
-      merge_sorted_runs_with_id<int64_t>(); 
+      return merge_sorted_runs_with_id<int64_t>(dirname); 
     else if(*coords_type == typeid(float)) 
-      merge_sorted_runs_with_id<float>(); 
+      return merge_sorted_runs_with_id<float>(dirname); 
     else if(*coords_type == typeid(double)) 
-      merge_sorted_runs_with_id<double>(); 
+      return merge_sorted_runs_with_id<double>(dirname); 
   } else if(regular_tiles && cell_order == ArraySchema::CO_HILBERT) {
     // CellWith2Ids
     if(*coords_type == typeid(int)) 
-      merge_sorted_runs_with_2_ids<int>(); 
+      return merge_sorted_runs_with_2_ids<int>(dirname); 
     else if(*coords_type == typeid(int64_t)) 
-      merge_sorted_runs_with_2_ids<int64_t>(); 
+      return merge_sorted_runs_with_2_ids<int64_t>(dirname); 
     else if(*coords_type == typeid(float)) 
-      merge_sorted_runs_with_2_ids<float>(); 
+      return merge_sorted_runs_with_2_ids<float>(dirname); 
     else if(*coords_type == typeid(double)) 
-      merge_sorted_runs_with_2_ids<double>(); 
+      return merge_sorted_runs_with_2_ids<double>(dirname); 
   }
 }
 
 template<class T>
-void StorageManager::Fragment::merge_sorted_runs() {
+bool StorageManager::Fragment::merge_sorted_runs(
+  const std::string& dirname) {
   int runs_per_merge = double(write_state_max_size_)/segment_size_-1;
-  int merges;
+  int merges, first_run, last_run;
+  std::vector<std::string> filenames = get_filenames(dirname);
+  int initial_runs_num = filenames.size();
+  int new_run = initial_runs_num;
 
-  while(write_state_->runs_num_ > runs_per_merge) {
-    merges = ceil(double(write_state_->runs_num_) / runs_per_merge);
+  // No merge
+  if(initial_runs_num <= runs_per_merge)
+    return false;
 
-    for(int i=0; i<merges; ++i) 
-      merge_sorted_runs<T>(
-          i*runs_per_merge, 
-          std::min((i+1)*runs_per_merge-1, write_state_->runs_num_-1), 
-          i);
+  // Merge hierarchically
+  bool first_merge = true;
+  while(filenames.size() > runs_per_merge) {
+    merges = ceil(double(filenames.size()) / runs_per_merge);
 
-    write_state_->runs_num_ = merges; 
+    for(int i=0; i<merges; ++i) {
+      first_run = i*runs_per_merge;
+      last_run = std::min((i+1)*runs_per_merge-1, int(filenames.size()-1));
+      merge_sorted_runs<T>((first_merge) ? dirname : temp_dirname_, 
+                           filenames, first_run, last_run, new_run);
+      ++new_run;
+    }
+
+    filenames = get_filenames(temp_dirname_);
+    first_merge = false;
   }
+
+  return true;
 }
 
 template<class T>
 void StorageManager::Fragment::merge_sorted_runs(
+    const std::string& dirname, const std::vector<std::string>& filenames,
     int first_run, int last_run, int new_run) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   size_t cell_size = array_schema_->cell_size();
   struct stat st;
-  std::string dirname = workspace_ + "/" + SM_TEMP + "/" + 
-                        array_schema_->array_name() + "_" + 
-                        fragment_name_ + "/";
 
   // Information about the runs to be merged 
   int runs_num = last_run-first_run+1;
   SortedRun** runs = new SortedRun*[runs_num];
   for(int i=0; i<runs_num; ++i) {
-    std::stringstream filename;
-    filename << dirname << (first_run+i);
-    runs[i] = new SortedRun(filename.str(), 
+    runs[i] = new SortedRun(dirname + filenames[first_run + i], 
                             cell_size == VAR_SIZE, 
                             segment_size_);
   }
@@ -1468,7 +1477,7 @@ void StorageManager::Fragment::merge_sorted_runs(
   char* segment = new char[segment_size_];
   size_t offset = 0;
   std::stringstream new_filename;
-  new_filename << dirname << new_run;
+  new_filename << temp_dirname_ << new_run;
   int new_run_fd = open(new_filename.str().c_str(), 
                         O_WRONLY | O_CREAT | O_TRUNC | O_SYNC, S_IRWXU);
   assert(new_run_fd != -1);
@@ -1491,8 +1500,9 @@ void StorageManager::Fragment::merge_sorted_runs(
     write(new_run_fd, segment, offset);
 
   // Delete the files of the merged runs
-  for(int i=0; i<runs_num; ++i) 
-    remove(runs[i]->filename_.c_str());
+  if(dirname == temp_dirname_)
+    for(int i=0; i<runs_num; ++i) 
+      remove(runs[i]->filename_.c_str());
 
   // Clean up
   delete [] segment;
@@ -1503,15 +1513,46 @@ void StorageManager::Fragment::merge_sorted_runs(
 }
 
 template<class T>
+bool StorageManager::Fragment::merge_sorted_runs_with_id(
+  const std::string& dirname) {
+  int runs_per_merge = double(write_state_max_size_)/segment_size_-1;
+  int merges, first_run, last_run;
+  std::vector<std::string> filenames = get_filenames(dirname);
+  int initial_runs_num = filenames.size();
+  int new_run = initial_runs_num;
+
+  // No merge
+  if(initial_runs_num <= runs_per_merge)
+    return false;
+
+  // Merge hierarchically
+  bool first_merge = true;
+  while(filenames.size() > runs_per_merge) {
+    merges = ceil(double(filenames.size()) / runs_per_merge);
+
+    for(int i=0; i<merges; ++i) {
+      first_run = i*runs_per_merge;
+      last_run = std::min((i+1)*runs_per_merge-1, int(filenames.size()-1));
+      merge_sorted_runs_with_id<T>((first_merge) ? dirname : temp_dirname_, 
+                                   filenames, first_run, last_run, new_run);
+      ++new_run;
+    }
+
+    filenames = get_filenames(temp_dirname_);
+    first_merge = false;
+  }
+
+  return true;
+}
+
+template<class T>
 void StorageManager::Fragment::merge_sorted_runs_with_id(
+    const std::string& dirname, const std::vector<std::string>& filenames,
     int first_run, int last_run, int new_run) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   size_t cell_size = array_schema_->cell_size();
   struct stat st;
-  std::string dirname = workspace_ + "/" + SM_TEMP + "/" + 
-                        array_schema_->array_name() + "_" + 
-                        fragment_name_ + "/";
 
   // Information about the runs to be merged 
   int runs_num = last_run-first_run+1;
@@ -1519,7 +1560,7 @@ void StorageManager::Fragment::merge_sorted_runs_with_id(
   for(int i=0; i<runs_num; ++i) {
     std::stringstream filename;
     filename << dirname << (first_run+i);
-    runs[i] = new SortedRun(filename.str(), 
+    runs[i] = new SortedRun(dirname + filenames[first_run + i], 
                             cell_size == VAR_SIZE, 
                             segment_size_);
   }
@@ -1529,7 +1570,7 @@ void StorageManager::Fragment::merge_sorted_runs_with_id(
   char* segment = new char[segment_size_];
   size_t offset = 0;
   std::stringstream new_filename;
-  new_filename << dirname << new_run;
+  new_filename << temp_dirname_ << new_run;
   int new_run_fd = open(new_filename.str().c_str(), 
                         O_WRONLY | O_CREAT | O_TRUNC | O_SYNC, S_IRWXU);
   assert(new_run_fd != -1);
@@ -1552,8 +1593,9 @@ void StorageManager::Fragment::merge_sorted_runs_with_id(
     write(new_run_fd, segment, offset);
 
   // Delete the files of the merged runs
-  for(int i=0; i<runs_num; ++i) 
-    remove(runs[i]->filename_.c_str());
+  if(dirname == temp_dirname_)
+    for(int i=0; i<runs_num; ++i) 
+      remove(runs[i]->filename_.c_str());
 
   // Clean up
   delete [] segment;
@@ -1563,17 +1605,47 @@ void StorageManager::Fragment::merge_sorted_runs_with_id(
   close(new_run_fd);
 }
 
+template<class T>
+bool StorageManager::Fragment::merge_sorted_runs_with_2_ids(
+  const std::string& dirname) {
+  int runs_per_merge = double(write_state_max_size_)/segment_size_-1;
+  int merges, first_run, last_run;
+  std::vector<std::string> filenames = get_filenames(dirname);
+  int initial_runs_num = filenames.size();
+  int new_run = initial_runs_num;
+
+  // No merge
+  if(initial_runs_num <= runs_per_merge)
+    return false;
+
+  // Merge hierarchically
+  bool first_merge = true;
+  while(filenames.size() > runs_per_merge) {
+    merges = ceil(double(filenames.size()) / runs_per_merge);
+
+    for(int i=0; i<merges; ++i) {
+      first_run = i*runs_per_merge;
+      last_run = std::min((i+1)*runs_per_merge-1, int(filenames.size()-1));
+      merge_sorted_runs_with_2_ids<T>((first_merge) ? dirname : temp_dirname_, 
+                                      filenames, first_run, last_run, new_run);
+      ++new_run;
+    }
+
+    filenames = get_filenames(temp_dirname_);
+    first_merge = false;
+  }
+
+  return true;
+}
 
 template<class T>
 void StorageManager::Fragment::merge_sorted_runs_with_2_ids(
+    const std::string& dirname, const std::vector<std::string>& filenames,
     int first_run, int last_run, int new_run) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   size_t cell_size = array_schema_->cell_size();
   struct stat st;
-  std::string dirname = workspace_ + "/" + SM_TEMP + "/" + 
-                        array_schema_->array_name() + "_" + 
-                        fragment_name_ + "/";
 
   // Information about the runs to be merged 
   int runs_num = last_run-first_run+1;
@@ -1581,7 +1653,7 @@ void StorageManager::Fragment::merge_sorted_runs_with_2_ids(
   for(int i=0; i<runs_num; ++i) {
     std::stringstream filename;
     filename << dirname << (first_run+i);
-    runs[i] = new SortedRun(filename.str(), 
+    runs[i] = new SortedRun(dirname + filenames[first_run + i], 
                             cell_size == VAR_SIZE, 
                             segment_size_);
   }
@@ -1591,7 +1663,7 @@ void StorageManager::Fragment::merge_sorted_runs_with_2_ids(
   char* segment = new char[segment_size_];
   size_t offset = 0;
   std::stringstream new_filename;
-  new_filename << dirname << new_run;
+  new_filename << temp_dirname_ << new_run;
   int new_run_fd = open(new_filename.str().c_str(), 
                         O_WRONLY | O_CREAT | O_TRUNC | O_SYNC, S_IRWXU);
   assert(new_run_fd != -1);
@@ -1615,8 +1687,9 @@ void StorageManager::Fragment::merge_sorted_runs_with_2_ids(
     write(new_run_fd, segment, offset);
 
   // Delete the files of the merged runs
-  for(int i=0; i<runs_num; ++i) 
-    remove(runs[i]->filename_.c_str());
+  if(dirname == temp_dirname_)
+    for(int i=0; i<runs_num; ++i) 
+      remove(runs[i]->filename_.c_str());
 
   // Clean up
   delete [] segment;
@@ -1624,42 +1697,6 @@ void StorageManager::Fragment::merge_sorted_runs_with_2_ids(
     delete runs[i];
   delete [] runs;
   close(new_run_fd);
-}
-
-template<class T>
-void StorageManager::Fragment::merge_sorted_runs_with_id() {
-  int runs_per_merge = double(write_state_max_size_)/segment_size_-1;
-  int merges;
-
-  while(write_state_->runs_num_ > runs_per_merge) {
-    merges = ceil(double(write_state_->runs_num_) / runs_per_merge);
-
-    for(int i=0; i<merges; ++i) 
-      merge_sorted_runs_with_id<T>(
-          i*runs_per_merge, 
-          std::min((i+1)*runs_per_merge-1, write_state_->runs_num_-1), 
-          i);
-
-    write_state_->runs_num_ = merges; 
-  }
-}
-
-template<class T>
-void StorageManager::Fragment::merge_sorted_runs_with_2_ids() {
-  int runs_per_merge = double(write_state_max_size_)/segment_size_-1;
-  int merges;
-
-  while(write_state_->runs_num_ > runs_per_merge) {
-    merges = ceil(double(write_state_->runs_num_) / runs_per_merge);
-
-    for(int i=0; i<merges; ++i) 
-      merge_sorted_runs_with_2_ids<T>(
-          i*runs_per_merge, 
-          std::min((i+1)*runs_per_merge-1, write_state_->runs_num_-1), 
-          i);
-
-    write_state_->runs_num_ = merges; 
-  }
 }
 
 void StorageManager::Fragment::sort_run() {
@@ -3198,6 +3235,22 @@ void StorageManager::forced_close_array(int ad) {
   arrays_[ad] = NULL;
 }
 
+void StorageManager::load_sorted_bin(
+    const std::string& dirname, const std::string& array_name) {
+  assert(is_dir(dirname));
+
+  // Open array
+  int ad = open_array(array_name, SM_WRITE_MODE);
+  if(ad == -1)
+    throw StorageManagerException(std::string("Cannot open array ") +
+                                  array_name + "."); 
+
+  arrays_[ad]->fragments_.back()->load_sorted_bin(dirname);
+ 
+  // Close array
+  close_array(ad); 
+}
+
 /*
 
 void StorageManager::modify_array_schema(
@@ -3414,6 +3467,9 @@ void StorageManager::read_cells(int ad, const T* range,
       expand_buffer(cells, buffer_size);
       buffer_size *= 2;
     } 
+
+// TODO: Fix cell size for variable-lengthed cells
+
     memcpy(static_cast<char*>(cells) + offset, *cell_it, cell_size);
     offset += cell_size;
     ++cell_num;
@@ -3692,7 +3748,7 @@ bool StorageManager::invalid_array_mode(const char* mode) const {
 inline
 void StorageManager::set_workspace(const std::string& path) {
   workspace_ = absolute_path(path);
-  assert(dir_exists(workspace_));
+  assert(is_dir(workspace_));
 
   if(mpi_handler_ == NULL) {
     workspace_ += "/StorageManager/";

@@ -363,7 +363,7 @@ bool CSVFile::open(const std::string& filename,
                    size_t segment_size) {
   filename_ = absolute_path(filename);
 
-  if(strcmp(mode_, "r") == 0 && !file_exists(filename_))
+  if(strcmp(mode_, "r") == 0 && !is_file(filename_))
     return false;
 
   segment_size_ = segment_size;

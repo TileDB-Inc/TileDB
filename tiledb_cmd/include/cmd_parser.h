@@ -85,6 +85,12 @@
                             CL_FILENAME_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
+ * 'load_csv'. 
+ */
+#define PS_LOAD_SORTED_BIN_BITMAP (CL_WORKSPACE_BITMAP |\
+                                   CL_ARRAY_NAMES_BITMAP | CL_FILENAME_BITMAP)
+/** 
+ * Indicates which arguments are used from the command line for query
  * 'show_array_schema'. 
  */
 #define PS_SHOW_ARRAY_SCHEMA_BITMAP (CL_WORKSPACE_BITMAP |\
@@ -134,6 +140,8 @@ class CmdParser {
   void parse_export_to_csv(const CommandLine& cl) const;
   /** Parse command line for query 'load_csv'. */
   void parse_load_csv(const CommandLine& cl) const;
+  /** Parse command line for query 'load_sorted_bin'. */
+  void parse_load_sorted_bin(const CommandLine& cl) const;
   /** Parse command line for query 'show_array_schema'. */
   void parse_show_array_schema(const CommandLine& cl) const;
   /** Parse command line for query 'subarray'. */

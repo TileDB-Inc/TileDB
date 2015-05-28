@@ -28,7 +28,7 @@
  * 
  * @section DESCRIPTION
  *
- * This file defines classes StorageManager. It also defines 
+ * This file defines class StorageManager. It also defines 
  * StorageManagerException, which is thrown by StorageManager.
  */  
 
@@ -416,6 +416,8 @@ class StorageManager {
     ReadState* read_state_;
     /** The segment size */
      size_t segment_size_;
+    /** Temporary directory. */
+    std::string temp_dirname_;
     /** The workspace where the array data are created. */
     std::string workspace_; 
     /** The write state. */ 
@@ -442,6 +444,14 @@ class StorageManager {
     void delete_tiles(int attribute_id);
     /** Initializes the read state. */
     void init_read_state();
+    /** 
+     * Loads data into the fragment, which are stored in files inside the input
+     * directory. Each file stores the cells in binary form, sorted based
+     * on the global cell order specified in the array schema. Each cell
+     * must have the same binary format as that used when creating sorted
+     * runs triggered by StorageManager::write_cell.
+     */
+    void load_sorted_bin(const std::string& dirname);
     /** 
      * Loads tiles of a given attribute from disk, starting from the tile at 
      * position pos. 
@@ -520,49 +530,67 @@ class StorageManager {
                                    size_t& cell_size) const;
     /** Initializes the write state. */
     void init_write_state();
-    /** Makes tiles from existing sorted runs. */
-    void make_tiles();
-    /** Makes tiles from existing sorted runs. */
+    /** Makes tiles from existing sorted runs, stored in dirname. */
+    void make_tiles(const std::string& dirname);
+    /** Makes tiles from existing sorted runs, stored in dirname. */
     template<class T>
-    void make_tiles();
-    /** Makes tiles from existing sorted runs. */
+    void make_tiles(const std::string& dirname);
+    /** Makes tiles from existing sorted runs, stored in dirname. */
     template<class T>
-    void make_tiles_with_id();
-    /** Makes tiles from existing sorted runs. */
+    void make_tiles_with_id(const std::string& dirname);
+    /** Makes tiles from existing sorted runs, stored in dirname. */
     template<class T>
-    void make_tiles_with_2_ids();
-    /** Merges existing sorted runs. */
-    void merge_sorted_runs();
-    /** Merges existing sorted runs. */
+    void make_tiles_with_2_ids(const std::string& dirname);
+    /** 
+     * Merges existing sorted runs. The dirname is the directory where the
+     * initial sorted runs are stored.
+     */
+    bool merge_sorted_runs(const std::string& dirname);
+    /** 
+     * Merges existing sorted runs. The dirname is the directory where the
+     * initial sorted runs are stored.
+     */
     template<class T>
-    void merge_sorted_runs();
+    bool merge_sorted_runs(const std::string& dirname);
     /**
      * Each run is named after an integer identifier. This function 
      * merges runs [first_run, last_run] into a new run called new_run in the 
      * next merge operation.
      */
     template<class T>
-    void merge_sorted_runs(int first_run, int last_run, int new_run);
-    /** Merges existing sorted runs. */
+    void merge_sorted_runs(
+        const std::string& dirname, const std::vector<std::string>& filenames, 
+        int first_run, int last_run, int new_run);
+    /** 
+     * Merges existing sorted runs. The dirname is the directory where the
+     * initial sorted runs are stored.
+     */
     template<class T>
-    void merge_sorted_runs_with_id();
+    bool merge_sorted_runs_with_id(const std::string& dirname); 
     /**
      * Each run is named after an integer identifier. This function 
      * merges runs [first_run, last_run] into a new run called new_run in the 
      * next merge operation.
      */
     template<class T>
-    void merge_sorted_runs_with_id(int first_run, int last_run, int new_run);
-    /** Merges existing sorted runs. */
+    void merge_sorted_runs_with_id(
+        const std::string& dirname, const std::vector<std::string>& filenames, 
+        int first_run, int last_run, int new_run);
+    /** 
+     * Merges existing sorted runs. The dirname is the directory where the
+     * initial sorted runs are stored.
+     */
     template<class T>
-    void merge_sorted_runs_with_2_ids();
+    bool merge_sorted_runs_with_2_ids(const std::string& dirname); 
     /**
      * Each run is named after an integer identifier. This function 
      * merges runs [first_run, last_run] into a new run called new_run in the 
      * next merge operation.
      */
     template<class T>
-    void merge_sorted_runs_with_2_ids(int first_run, int last_run, int new_run);
+    void merge_sorted_runs_with_2_ids(
+        const std::string& dirname, const std::vector<std::string>& filenames, 
+        int first_run, int last_run, int new_run);
     /** Sorts a run in main memory. */
     void sort_run();
     /** Sorts a run in main memory. */
@@ -944,6 +972,15 @@ class StorageManager {
    * must be deleted (since it was not properly loaded).
    */
   void forced_close_array(int ad);
+  /** 
+   * Loads data into an array, which are stored in files inside the input
+   * directory. Each file stores the cells in binary form, sorted based
+   * on the global cell order specified in the array schema. Each cell
+   * must have the same binary format as that used when creating sorted
+   * runs triggered by StorageManager::write_cell.
+   */
+  void load_sorted_bin(const std::string& dirname, 
+                       const std::string& array_name);
   /** Stores a new schema for an array on the disk. */
   void modify_array_schema(const ArraySchema* array_schema) const;
   /** 

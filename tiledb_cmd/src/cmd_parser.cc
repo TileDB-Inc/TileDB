@@ -261,6 +261,46 @@ void CmdParser::parse_load_csv(const CommandLine& cl) const {
   }
 }
 
+void CmdParser::parse_load_sorted_bin(const CommandLine& cl) const {
+  // Check if correct arguments have been ginen
+  if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
+    std::cerr << "[TileDB::CmdParser::fatal_error] Workspace not provided.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_ARRAY_NAMES_BITMAP) == 0) {
+    std::cerr << "[TileDB::CmdParser::fatal_error] Array name not provided.\n";
+    exit(-1);
+  }
+  if((cl.arg_bitmap_ & CL_FILENAME_BITMAP) == 0) {
+    std::cerr << "[TileDB::CmdParser::fatal_error] Directory name not"
+              << " provided.\n";
+    exit(-1);
+  }
+
+  // Check array names (no more than one)
+  std::vector<std::string> array_names = check_array_names(cl);
+  if(array_names.size() > 1) {
+    std::cerr << "[TileDB::CmdParser::fatal_error] More than one array"
+              << " names provided.\n";
+    exit(-1);
+  }
+
+  // Check for redundant arguments
+  if((cl.arg_bitmap_ | PS_LOAD_SORTED_BIN_BITMAP) != 
+     PS_LOAD_SORTED_BIN_BITMAP) {
+    std::cerr << "[TileDB::CmdParser::fatal_error] Redundant options"
+              << " provided.\n";
+    exit(-1);
+  }
+
+  // Check soundness of directory
+  std::string dirname = absolute_path(cl.filename_);
+  if(!is_dir(dirname)) {
+    std::cerr << "[TileDB::CmdParser::fatal_error] Directory does not exist.\n";
+    exit(-1);
+  }
+}
+
 void CmdParser::parse_show_array_schema(const CommandLine& cl) const {
   // Check if correct arguments have been ginen
   if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {

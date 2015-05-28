@@ -59,7 +59,7 @@ void convert(const double* a, T* b, int size) {
 
 void create_directory(const std::string& dirname) {
   struct stat st;
-  bool path_exists = file_exists(dirname) || dir_exists(dirname);
+  bool path_exists = is_file(dirname) || is_dir(dirname);
 
   // If the directory path does not exist, create it
   if(!path_exists) { 
@@ -88,13 +88,6 @@ void delete_directory(const std::string& dirname)  {
   
   closedir(dir);
   rmdir(dirname.c_str());
-}
-
-bool dir_exists(const std::string& dirname) {
-  std::string path = absolute_path(dirname);
-
-  struct stat st;
-  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
 void expand_buffer(void*& buffer, size_t size) {
@@ -147,11 +140,30 @@ void expand_mbr(const T* coords, T* mbr, int dim_num) {
   }
 }
 
-bool file_exists(const std::string& filename) {
-  std::string path = absolute_path(filename);
+std::vector<std::string> get_filenames(const std::string& dirname) {
+  std::vector<std::string> filenames; 
+  std::string filename;
 
+  struct dirent *next_file;
+  DIR* dir = opendir(dirname.c_str());
   struct stat st;
-  return (stat(path.c_str(), &st) == 0)  && !S_ISDIR(st.st_mode);
+  
+  // If the directory does not exist, exit
+  if(dir == NULL)
+    return filenames;
+
+  while(next_file = readdir(dir)) {
+    if(strcmp(next_file->d_name, ".") == 0 ||
+       strcmp(next_file->d_name, "..") == 0)
+      continue;
+    filename = dirname + "/" + next_file->d_name;
+    if(is_file(filename))
+      filenames.push_back(next_file->d_name);
+  } 
+  
+  closedir(dir);
+
+  return filenames;
 }
 
 void init_mbr(const ArraySchema* array_schema,
@@ -215,6 +227,20 @@ bool is_del(float v) {
 template<>
 bool is_del(double v) {
   return v == DEL_DOUBLE;
+}
+
+bool is_dir(const std::string& dirname) {
+  std::string path = absolute_path(dirname);
+
+  struct stat st;
+  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+bool is_file(const std::string& filename) {
+  std::string path = absolute_path(filename);
+
+  struct stat st;
+  return (stat(path.c_str(), &st) == 0)  && !S_ISDIR(st.st_mode);
 }
 
 bool is_integer(const char* s) {
