@@ -170,6 +170,21 @@ void MPIHandler::init(MPI_Comm user_comm, int* argc, char*** argv) {
   }
 
   {
+    /* Query for intercommunicator (unlikely) */
+    int is_intercomm;
+    int rc = MPI_Comm_test_inter(user_comm, &is_intercomm);
+    if (rc!=MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Comm_test_inter failed");
+      MPI_Abort(user_comm, 1);
+    }
+    if (is_intercomm) {
+      throw MPIHandlerException("Intercommunicators not okay");
+      MPI_Abort(user_comm, 1);
+    }
+  }
+
+  /* Duplicate the users communicator to avoid any cross-talk. */
+  {
     int rc = MPI_Comm_dup(user_comm, &comm_);
     if(rc != MPI_SUCCESS) {
       throw MPIHandlerException("MPI_Comm_dup failed");
@@ -181,7 +196,7 @@ void MPIHandler::init(MPI_Comm user_comm, int* argc, char*** argv) {
     int rc = MPI_Comm_size(comm_, &comm_size_);
     if(rc != MPI_SUCCESS) {
       throw MPIHandlerException("MPI_Comm_size failed");
-      MPI_Abort(user_comm, rc);
+      MPI_Abort(comm_, rc);
     }
   }
 
@@ -189,7 +204,47 @@ void MPIHandler::init(MPI_Comm user_comm, int* argc, char*** argv) {
     int rc = MPI_Comm_rank(comm_, &comm_rank_);
     if(rc != MPI_SUCCESS) {
       throw MPIHandlerException("MPI_Comm_rank failed");
-      MPI_Abort(user_comm, rc);
+      MPI_Abort(comm_, rc);
+    }
+  }
+
+  {
+    /* Create the global window to be used for all comms */
+    MPI_Info win_info = MPI_INFO_NULL;
+    int rc = MPI_Info_create(&win_info);
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Info_create failed");
+      MPI_Abort(comm_, rc);
+    }
+
+    /* Do not order atomic put */
+    rc = MPI_Info_set(win_info,"accumulate_ordering","");
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Info_set failed");
+      MPI_Abort(comm_, rc);
+    }
+    /* Assume only REPLACE and NO_OP i.e. atomic put */
+    rc = MPI_Info_set(win_info,"accumulate_ops","same_op_no_op");
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Info_set failed");
+      MPI_Abort(comm_, rc);
+    }
+    rc = MPI_Win_create_dynamic(win_info, comm_, &win_ );
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Win_create_dynamic failed");
+      MPI_Abort(comm_, rc);
+    }
+    rc = MPI_Info_free(&win_info);
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Info_free failed");
+      MPI_Abort(comm_, rc);
+    }
+
+    /* Enter "PGAS mode" */
+    rc = MPI_Win_lock_all(MPI_MODE_NOCHECK, win_);
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Win_lock_all failed");
+      MPI_Abort(comm_, rc);
     }
   }
 

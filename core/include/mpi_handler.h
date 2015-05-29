@@ -83,6 +83,8 @@ class MPIHandler {
   int comm_size_;
   /** Rank of this process. */
   int comm_rank_;
+  /** TileDB RMA window */
+  MPI_Win win_;
 };
 
 /** This exception is thrown by MPIHandler. */
