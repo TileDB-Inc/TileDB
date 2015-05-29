@@ -35,7 +35,19 @@
 #include <stdlib.h>
 
 MPIHandler::MPIHandler(int* argc, char*** argv) {
-  init(argc, argv);
+  init(MPI_COMM_WORLD, argc, argv);
+}
+
+MPIHandler::MPIHandler(void) {
+  init(MPI_COMM_WORLD, NULL, NULL);
+}
+
+MPIHandler::MPIHandler(int* argc, char*** argv, MPI_Comm comm) {
+  init(comm, argc, argv);
+}
+
+MPIHandler::MPIHandler(MPI_Comm comm) {
+  init(comm, NULL, NULL);
 }
 
 MPIHandler::~MPIHandler() {
@@ -43,11 +55,21 @@ MPIHandler::~MPIHandler() {
 }
 
 void MPIHandler::finalize() {
-  int rc = MPI_Finalize();
 
-  if(rc != MPI_SUCCESS) {
-    throw MPIHandlerException("Error finalizing MPI.");
-    MPI_Abort(MPI_COMM_WORLD, rc);
+  {
+    int rc = MPI_Comm_free(&comm_);
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Comm_free failed");
+      MPI_Abort(comm_, rc);
+    }
+  }
+
+  if (own_mpi_) {
+    int rc = MPI_Finalize();
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Finalize failed");
+      MPI_Abort(comm_, rc);
+    }
   }
 }
 
@@ -58,8 +80,8 @@ void MPIHandler::gather(void* send_data, int send_size,
   int* rcv_sizes = NULL;
   int* displs = NULL;
 
-  if(rank_ == root) {
-    rcv_sizes = new int[proc_num_]; 
+  if(comm_rank_ == root) {
+    rcv_sizes = new int[comm_size_]; 
   }
  
   int rc = MPI_Gather(&send_size, 1, MPI_INT, 
@@ -72,11 +94,11 @@ void MPIHandler::gather(void* send_data, int send_size,
   }
 
   // Allocate receive data buffer and compute displacements 
-  if(rank_ == root) {
-    displs = new int[proc_num_];
+  if(comm_rank_ == root) {
+    displs = new int[comm_size_];
     rcv_size = 0;
 
-    for(int i=0; i<proc_num_; ++i) {
+    for(int i=0; i<comm_size_; ++i) {
       displs[i] = rcv_size;
       rcv_size += rcv_sizes[i];
     } 
@@ -95,22 +117,83 @@ void MPIHandler::gather(void* send_data, int send_size,
   }
 
   // Clean up
-  if(rank_ == root) {
+  if(comm_rank_ == root) {
     delete [] rcv_sizes;
     delete [] displs;
   }
 }
 
-void MPIHandler::init(int* argc, char*** argv) {
-  int rc = MPI_Init(argc, argv);
+void MPIHandler::init(MPI_Comm user_comm, int* argc, char*** argv) {
 
-  if(rc != MPI_SUCCESS) {
-    throw MPIHandlerException("Error initializing MPI.");
-    MPI_Abort(MPI_COMM_WORLD, rc);
+  int is_init;  
+  {
+    int rc = MPI_Initialized(&is_init);
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Initialized failed");
+      MPI_Abort(user_comm, rc);
+    }
   }
 
-  MPI_Comm_size(MPI_COMM_WORLD, &proc_num_);
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank_);
+  int thread_requested = MPI_THREAD_MULTIPLE;
+  int thread_provided;
+  if (is_init) {
+    int rc = MPI_Query_thread(&thread_provided);
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Init_thread failed");
+      MPI_Abort(user_comm, rc);
+    }
+    if(thread_provided<thread_requested) {
+      throw MPIHandlerException("MPI: insufficient thread level");
+      MPI_Abort(user_comm, thread_provided);
+    }
+    own_mpi_ = 0;
+  } else {
+    int rc = MPI_Init_thread(argc, argv, thread_requested, 
+                             &thread_provided);
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Init_thread failed");
+      MPI_Abort(user_comm, rc);
+    }
+    if(thread_provided<thread_requested) {
+      throw MPIHandlerException("MPI: insufficient thread level");
+      MPI_Abort(user_comm, thread_provided);
+    }
+    own_mpi_ = 1;
+  }
+
+  /* User cannot provide valid comm if MPI is not
+   * initialized.  Ignore silly case of MPI_COMM_SELF. */
+  if (!is_init && user_comm!=MPI_COMM_WORLD)
+  {
+    throw MPIHandlerException("Initialize MPI first!");
+    MPI_Abort(user_comm, 1);
+  }
+
+  {
+    int rc = MPI_Comm_dup(user_comm, &comm_);
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Comm_dup failed");
+      MPI_Abort(user_comm, rc);
+    }
+  }
+
+  {
+    int rc = MPI_Comm_size(comm_, &comm_size_);
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Comm_size failed");
+      MPI_Abort(user_comm, rc);
+    }
+  }
+
+  {
+    int rc = MPI_Comm_rank(comm_, &comm_rank_);
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Comm_rank failed");
+      MPI_Abort(user_comm, rc);
+    }
+  }
+
+  return;
 }
 
 

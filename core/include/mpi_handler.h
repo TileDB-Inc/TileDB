@@ -46,20 +46,24 @@ class MPIHandler {
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
   MPIHandler(int* argc, char*** argv);
+  MPIHandler(void);
+  MPIHandler(int* argc, char*** argv, MPI_Comm comm);
+  MPIHandler(MPI_Comm comm);
+
   /** Destructor. */
   ~MPIHandler();
 
   // ACCESSORS
   /** Returns the process rank. */
-  int rank() const { return rank_; }
-  /** Returns the number of processes in the MPI wolrd. */
-  int proc_num() const { return proc_num_; }
+  int rank() const { return comm_rank_; }
+  /** Returns the number of processes. */
+  int proc_num() const { return comm_size_; }
  
   // INITIALIZATION & FINALIZATION
   /** Finalize MPI. */
   void finalize();
   /** Initialize MPI. */
-  void init(int* argc, char*** argv);
+  void init(MPI_Comm comm, int* argc, char*** argv);
 
   // COMMUNICATION
   /** 
@@ -71,10 +75,14 @@ class MPIHandler {
               int root) const;
 
  private:
+  /** TileDB is responsible for init/final of MPI */
+  int own_mpi_;
+  /** TileDB communicator */
+  MPI_Comm comm_;
   /** Number of processes. */
-  int proc_num_;
+  int comm_size_;
   /** Rank of this process. */
-  int rank_;
+  int comm_rank_;
 };
 
 /** This exception is thrown by MPIHandler. */
