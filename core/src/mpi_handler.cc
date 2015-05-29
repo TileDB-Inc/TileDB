@@ -32,7 +32,7 @@
  */
 
 #include "mpi_handler.h"
-#include <stdlib.h>
+#include <cstdlib>
 
 MPIHandler::MPIHandler(int* argc, char*** argv) {
   init(MPI_COMM_WORLD, argc, argv);
