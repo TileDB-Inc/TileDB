@@ -122,6 +122,62 @@ void Tile::copy_payload(void* buffer) const {
   memcpy(buffer, payload_, tile_size_);
 }
 
+bool Tile::is_del(int64_t pos) const {
+  // Applies only to attribute values
+  assert(tile_type_ == ATTRIBUTE);
+
+  const void* cell;
+  if(val_num_ != VAR_SIZE)
+    cell = this->cell(pos);
+  else
+    cell = static_cast<const char*>(this->cell(pos)) + sizeof(int);
+
+  if(cell_type_ == &typeid(char)) { 
+    const char* v = static_cast<const char*>(cell);
+    return (*v  == DEL_CHAR);
+  } else if(cell_type_ == &typeid(int)) {
+    const int* v = static_cast<const int*>(cell);
+    return (*v  == DEL_INT);
+  } else if(cell_type_ == &typeid(int64_t)) {
+    const int64_t* v = static_cast<const int64_t*>(cell);
+    return (*v  == DEL_INT64_T);
+  } else if(cell_type_ == &typeid(float)) {
+    const float* v = static_cast<const float*>(cell);
+    return (*v  == DEL_FLOAT);
+  } else if(cell_type_ == &typeid(double)) {
+    const double* v = static_cast<const double*>(cell);
+    return (*v  == DEL_DOUBLE);
+  }
+}
+
+bool Tile::is_null(int64_t pos) const {
+  // Applies only to attribute values
+  assert(tile_type_ == ATTRIBUTE);
+
+  const void* cell;
+  if(val_num_ != VAR_SIZE)
+    cell = this->cell(pos);
+  else
+    cell = static_cast<const char*>(this->cell(pos)) + sizeof(int);
+
+  if(cell_type_ == &typeid(char)) { 
+    const char* v = static_cast<const char*>(cell);
+    return (*v  == NULL_CHAR);
+  } else if(cell_type_ == &typeid(int)) {
+    const int* v = static_cast<const int*>(cell);
+    return (*v  == NULL_INT);
+  } else if(cell_type_ == &typeid(int64_t)) {
+    const int64_t* v = static_cast<const int64_t*>(cell);
+    return (*v  == NULL_INT64_T);
+  } else if(cell_type_ == &typeid(float)) {
+    const float* v = static_cast<const float*>(cell);
+    return (*v  == NULL_FLOAT);
+  } else if(cell_type_ == &typeid(double)) {
+    const double* v = static_cast<const double*>(cell);
+    return (*v  == NULL_DOUBLE);
+  }
+}
+
 /******************************************************
 ********************** MUTATORS ***********************
 ******************************************************/
@@ -292,59 +348,11 @@ size_t Tile::const_cell_iterator::cell_size() const {
 }
 
 bool Tile::const_cell_iterator::is_del() const {
-  // Applies only to attribute values
-  assert(tile_->tile_type() == ATTRIBUTE);
-
-  const void* cell;
-  if(!tile_->var_size())
-    cell = **this;
-  else
-    cell = static_cast<const char*>(**this) + sizeof(int);
-
-  if(*tile_->cell_type() == typeid(char)) { 
-    const char* v = static_cast<const char*>(cell);
-    return (*v  == DEL_CHAR);
-  } else if(*tile_->cell_type() == typeid(int)) {
-    const int* v = static_cast<const int*>(cell);
-    return (*v  == DEL_INT);
-  } else if(*tile_->cell_type() == typeid(int64_t)) {
-    const int64_t* v = static_cast<const int64_t*>(cell);
-    return (*v  == DEL_INT64_T);
-  } else if(*tile_->cell_type() == typeid(float)) {
-    const float* v = static_cast<const float*>(cell);
-    return (*v  == DEL_FLOAT);
-  } else if(*tile_->cell_type() == typeid(double)) {
-    const double* v = static_cast<const double*>(cell);
-    return (*v  == DEL_DOUBLE);
-  }
+  return tile_->is_del(pos_);
 }
 
 bool Tile::const_cell_iterator::is_null() const {
-  // Applies only to attribute values
-  assert(tile_->tile_type() == ATTRIBUTE);
-
-  const void* cell;
-  if(!tile_->var_size())
-    cell = **this;
-  else
-    cell = static_cast<const char*>(**this) + sizeof(int);
-
-  if(*tile_->cell_type() == typeid(char)) { 
-    const char* v = static_cast<const char*>(cell);
-    return (*v  == NULL_CHAR);
-  } else if(*tile_->cell_type() == typeid(int)) {
-    const int* v = static_cast<const int*>(cell);
-    return (*v  == NULL_INT);
-  } else if(*tile_->cell_type() == typeid(int64_t)) {
-    const int64_t* v = static_cast<const int64_t*>(cell);
-    return (*v  == NULL_INT64_T);
-  } else if(*tile_->cell_type() == typeid(float)) {
-    const float* v = static_cast<const float*>(cell);
-    return (*v  == NULL_FLOAT);
-  } else if(*tile_->cell_type() == typeid(double)) {
-    const double* v = static_cast<const double*>(cell);
-    return (*v  == NULL_DOUBLE);
-  }
+  return tile_->is_null(pos_);
 }
 
 void Tile::const_cell_iterator::operator=(const const_cell_iterator& rhs) {
@@ -392,7 +400,7 @@ Tile::const_cell_iterator Tile::const_cell_iterator::operator++() {
 
 Tile::const_cell_iterator Tile::const_cell_iterator::operator++(int junk) {
   const_cell_iterator it = *this;
-  pos_++;
+  ++pos_;
   if(pos_ >= 0 && pos_ < tile_->cell_num()) {
     cell_ = tile_->cell(pos_);
     end_ = false;
@@ -417,6 +425,12 @@ const void* Tile::const_cell_iterator::operator*() const {
   return cell_;
 }
 
+template<class T>
+bool Tile::const_cell_iterator::cell_inside_range(
+    const T* range) const {
+  return tile_->cell_inside_range(pos_, range); 
+}
+
 Tile::const_cell_iterator Tile::begin() const {
   return const_cell_iterator(this, 0);
 }
@@ -425,10 +439,131 @@ Tile::const_cell_iterator Tile::end() {
   return const_cell_iterator();
 }
 
+/******************************************************
+**************** REVERSE CELL ITERATOR ****************
+******************************************************/
+
+Tile::const_reverse_cell_iterator::const_reverse_cell_iterator() 
+    : tile_(NULL), pos_(-1), cell_(NULL), end_(true) {
+}
+
+Tile::const_reverse_cell_iterator::const_reverse_cell_iterator(
+    const Tile* tile, int64_t pos)
+    : tile_(tile), pos_(pos) {
+  if(pos_ >= 0 && pos_ < tile_->cell_num()) {
+    cell_ = tile_->cell(pos_);
+    end_ = false;
+  } else {
+    cell_ = NULL;
+    end_ = true;
+  }
+}
+
+size_t Tile::const_reverse_cell_iterator::cell_size() const {
+  // Fixed-sized cells
+  if(!tile_->var_size()) {
+    return tile_->cell_size_;
+  } else { // Variable-sized cells
+    int val_num;
+    memcpy(&val_num, cell_, sizeof(int));
+    return sizeof(int) + val_num * tile_->type_size(); 
+  }
+}
+
+bool Tile::const_reverse_cell_iterator::is_del() const {
+  return tile_->is_del(pos_);
+}
+
+bool Tile::const_reverse_cell_iterator::is_null() const {
+  return tile_->is_null(pos_);
+}
+
+void Tile::const_reverse_cell_iterator::operator=(
+    const const_reverse_cell_iterator& rhs) {
+  pos_ = rhs.pos_;
+  cell_ = rhs.cell_;
+  end_ = rhs.end_;
+  tile_ = rhs.tile_;
+}
+
+Tile::const_reverse_cell_iterator Tile::const_reverse_cell_iterator::operator+(
+    int64_t step) {
+  const_reverse_cell_iterator it = *this;
+  it.pos_ -= step;
+  if(it.pos_ >= 0 && it.pos_ < tile_->cell_num()) {
+    it.cell_ = tile_->cell(pos_);
+    it.end_ = false;
+  } else {
+    it.cell_ = NULL;
+    it.end_ = true;
+  }
+  return it;
+}
+
+void Tile::const_reverse_cell_iterator::operator+=(int64_t step) {
+  pos_ -= step;
+  if(pos_ >= 0 && pos_ < tile_->cell_num()) {
+    cell_ = tile_->cell(pos_);
+    end_ = false;
+  } else {  
+    cell_ = NULL;
+    end_ = true;
+  }
+}
+
+Tile::const_reverse_cell_iterator 
+Tile::const_reverse_cell_iterator::operator++() {
+  --pos_;
+  if(pos_ >= 0 && pos_ < tile_->cell_num()) {
+    cell_ = tile_->cell(pos_);
+    end_ = false;
+  } else { // end of the iterator 
+    cell_ = NULL;
+    end_ = true;
+  }
+  return *this;
+}
+
+Tile::const_reverse_cell_iterator 
+Tile::const_reverse_cell_iterator::operator++(int junk) {
+  const_reverse_cell_iterator it = *this;
+  --pos_;
+  if(pos_ >= 0 && pos_ < tile_->cell_num()) {
+    cell_ = tile_->cell(pos_);
+    end_ = false;
+  } else {
+    cell_ = NULL;
+    end_ = true;
+  }
+  return it;
+}
+
+bool Tile::const_reverse_cell_iterator::operator==(
+    const const_reverse_cell_iterator& rhs) const {
+  return (tile_ == rhs.tile_ && pos_ == rhs.pos_);
+}
+
+bool Tile::const_reverse_cell_iterator::operator!=(
+  const const_reverse_cell_iterator& rhs) const {
+  return (tile_ != rhs.tile_ || pos_ != rhs.pos_);
+}
+
+const void* Tile::const_reverse_cell_iterator::operator*() const {
+  return cell_;
+}
+
 template<class T>
-bool Tile::const_cell_iterator::cell_inside_range(
+bool Tile::const_reverse_cell_iterator::cell_inside_range(
     const T* range) const {
   return tile_->cell_inside_range(pos_, range); 
+}
+
+Tile::const_reverse_cell_iterator Tile::rbegin() const {
+  return const_reverse_cell_iterator(this, cell_num()-1);
+}
+
+Tile::const_reverse_cell_iterator Tile::rend() {
+  return const_reverse_cell_iterator();
 }
 
 /******************************************************

@@ -64,6 +64,9 @@ void expand_mbr(const T* coords, T* mbr, int dim_num);
 /** Doubles the size of the buffer. The original size is given as input. */
 void expand_buffer(void*& buffer, size_t size);
 
+/** Returns the size of the input file. */
+size_t file_size(const std::string& filename);
+
 /** Returns a list with the names of all files in the input directory. */
 std::vector<std::string> get_filenames(const std::string& dirname);
 

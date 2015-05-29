@@ -334,8 +334,23 @@ class StorageManager {
     // TILE FUNCTIONS
     /** Returns a tile for a given attribute and tile position. */
     const Tile* get_tile_by_pos(int attribute_id, int64_t pos);  
+    /** 
+     * Returns a tile for a given attribute and tile position, when traversing
+     * tiles in reverse order. This is important so that the segments are
+     * retrieved from the disk such that the tile that triggeres the 
+     * segment retrieval appears in the end of the segment, rather than
+     * in the beginning. 
+     */
+    const Tile* rget_tile_by_pos(int attribute_id, int64_t pos);  
+    /** Returns the number of tiles in the fragment. */ 
+    int64_t tile_num() const;
+    /** 
+     * Returns the size of the tile for the input attribute at the input 
+     * position. 
+     */
+    size_t tile_size(int attribute_id, int64_t pos) const;
 
-    // TILE ITERATORS
+    // TILE ITERATOR
     /** This class implements a constant tile iterator. */
     class const_tile_iterator {
      public:
@@ -393,16 +408,72 @@ class StorageManager {
       Fragment* fragment_;
       /** The position of the current tile in the book-keeping structures. */
       int64_t pos_;
-
-      // PRIVATE METHODS
-      /** Finds the position of the next tile. */
-      void advance_tile();
-      /** Finds the position of the next tile inside the stored range. */
-      void advance_tile_in_range();
-      /** Finds the position of the next tile inside the stored range. */
-      template<class T>
-      void advance_tile_in_range();
     };
+    /** Begin tile iterator. */
+    const_tile_iterator begin(int attribute_id);
+
+    // REVERSE TILE ITERATOR
+    /** This class implements a constant reverse tile iterator. */
+    class const_reverse_tile_iterator {
+     public:
+      // CONSTRUCTORS & DESTRUCTORS
+      /** Iterator constuctor. */
+      const_reverse_tile_iterator();
+      /** Iterator constuctor. */
+      const_reverse_tile_iterator(Fragment* fragment, 
+                                  int attribute_id, int64_t pos); 
+
+      // OPERATORS
+      /** Assignment operator. */
+      void operator=(const const_reverse_tile_iterator& rhs);
+      /** Addition operator. */
+      const_reverse_tile_iterator operator+(int64_t step);
+      /** Addition-assignment operator. */
+      void operator+=(int64_t step);
+      /** Pre-increment operator. */
+      const_reverse_tile_iterator operator++();
+      /** Post-increment operator. */
+      const_reverse_tile_iterator operator++(int junk);
+      /** 
+       * Returns true if the iterator is equal to that in the
+       * right hand side (rhs) of the operator. 
+       */
+      bool operator==(const const_reverse_tile_iterator& rhs) const;
+      /** 
+       * Returns true if the iterator is equal to that in the
+       * right hand side (rhs) of the operator. 
+       */
+      bool operator!=(const const_reverse_tile_iterator& rhs) const;
+      /** Returns the tile pointed by the iterator. */
+      const Tile* operator*() const; 
+
+       // ACCESSORS
+      /** Returns the array schema associated with this tile. */
+      const ArraySchema* array_schema() const;
+      /** Returns the bounding coordinates of the tile. */
+      BoundingCoordinatesPair bounding_coordinates() const;
+      /** True if the iterators has reached its end. */
+      bool end() const { return end_; }
+      /** Returns the MBR of the tile. */
+      MBR mbr() const;
+      /** Returns the position. */
+      int64_t pos() const { return pos_; };
+      /** Returns the id of the tile. */
+      int64_t tile_id() const;
+
+     private:
+      // PRIVATE ATTRIBUTES
+      /** The attribute id corresponding to this iterator. */
+      int attribute_id_;
+      /** True if the iterators has reached its end. */
+      bool end_;
+      /** The array fragment corresponding to this iterator. */
+      Fragment* fragment_;
+      /** The position of the current tile in the book-keeping structures. */
+      int64_t pos_;
+    };
+    /** Begin reverse tile iterator. */
+    const_reverse_tile_iterator rbegin(int attribute_id);
 
    private:
     // PRIVATE ATTRIBUTES
@@ -685,9 +756,9 @@ class StorageManager {
     template<class T>
     void write_cell_sorted(const void* cell);
 
-    // CELL ITERATORS
+    // CELL ITERATOR
     /** 
-     * A constant cell iterator that iterators over the cells of all the 
+     * A constant cell iterator that iterates over the cells of all the 
      * fragments of the array in the global cell order as specified by the
      * array schema.
      */
@@ -728,7 +799,7 @@ class StorageManager {
        * Returns the size of the current cell pointed by the iterators of the
        * fragment with id equal to fragment_id. 
        */
-      size_t compute_cell_size(int fragment_id) const;
+      size_t cell_size(int fragment_id) const;
       /** Returns true if the iterator has reached the end of the cells. */
       bool end() const;
 
@@ -788,7 +859,7 @@ class StorageManager {
       void advance_cell(int fragment_id);
       /** 
        * Advances the cell iterators of all attributes of the fragment with the
-       * input id, until. 
+       * input id, until the next cell in range is found. 
        */
       void advance_cell_in_range(int fragment_id);
       /** 
@@ -822,10 +893,142 @@ class StorageManager {
                     const Tile::const_cell_iterator& it_B) const;
     };
 
-    // TILE ITERATORS
-    /** Begin tile iterator. */
-    Fragment::const_tile_iterator begin(
-        Fragment* fragment, int attribute_id) const;
+    // REVERSE CELL ITERATOR
+    /** 
+     * A constant reverse cell iterator that iterates over the cells of all the 
+     * fragments of the array in the global cell order as specified by the
+     * array schema.
+     */
+    template<class T>
+    class const_reverse_cell_iterator {
+     public:
+      // CONSTRUCTORS & DESTRUCTORS
+      /** Constructor. */
+      const_reverse_cell_iterator();
+      /** 
+       * Constructor. The second and third arguments determine the fragments 
+       * and attributes the iterator will focus on. If the fragment_ids (resp.
+       * attribute_ids) is empty, then the iterator will iterate over all the
+       * fragments (resp. attributes). The last argument indicates whether
+       * a cell representing a deletion must be returned or suppressed.
+       */
+      const_reverse_cell_iterator(
+          Array* array, 
+          std::vector<int> fragment_ids = std::vector<int>(),
+          std::vector<int> attribute_ids = std::vector<int>(),
+          bool return_del = false); 
+      /** 
+       * Constructor. Takes as input also a multi-dimensional range. The
+       * iterator will iterate only on the cells of the array whose coordinates
+       * fall into the input range. The last argument indicates whether
+       * a cell representing a deletion must be returned or suppressed.
+       */
+      const_reverse_cell_iterator(Array* array, 
+                          const T* range, 
+                          bool return_del = false); 
+      /** Destructor. */
+      ~const_reverse_cell_iterator();
+
+      // ACCESSORS
+      /** Returns the size of the current cell. */
+      size_t cell_size() const;
+      /** 
+       * Returns the size of the current cell pointed by the iterators of the
+       * fragment with id equal to fragment_id. 
+       */
+      size_t cell_size(int fragment_id) const;
+      /** Returns true if the iterator has reached the end of the cells. */
+      bool end() const;
+
+      // OPERATORS
+      /** Increment. */
+      void operator++();
+      /** Dereference. */
+      const void* operator*();
+
+     private:
+      // PRIVATE ATTRIBUTES
+      /** The array the cell iterator was created for. */
+      Array* array_;
+      /** Number of attributes. */
+      int attribute_num_;
+      /** 
+       * The current cell. Contains pointers to physical cells of all attibutes.
+       */
+      void* cell_;
+      /** Stores one cell iterator per fragment per attribute. */
+      Tile::const_reverse_cell_iterator** cell_its_;
+      /** Number of dimensions. */
+      int dim_num_;
+      /** True if the iterator has reached the end of all cells. */
+      bool end_;
+      /** Number of fragments. */
+      int fragment_num_;
+      /** 
+       * Stores a value per fragment. It is used when iterating cells that fall
+       * inside the stored range. It indicates whether the current logical tile
+       * under investigation is completely contained in the range or not. 
+       */
+      bool* full_overlap_;
+      /** 
+       * True if the cell currently pointed to by the iterator represents a 
+       * deletion.
+       */
+      bool is_del_;
+      /**
+       * A multi-dimensional range. If not NULL, the iterator will iterate only
+       * on the cells of the array whose coordinates fall into the input range.
+       */
+      T* range_;
+      /** 
+       * If true, a cell representing a deletion must be returned, otherwise it
+       * is suppressed. 
+       */
+      bool return_del_;
+      /** Stores one tile iterator per fragment per attribute. */
+      Fragment::const_reverse_tile_iterator** tile_its_;
+
+      // PRIVATE METHODS
+      /** 
+       * Advances the cell iterators of all attributes of the fragment with the
+       * input id. 
+       */
+      void advance_cell(int fragment_id);
+      /** 
+       * Advances the cell iterators of all attributes of the fragment with the
+       * input id, until the next cell in range is found. 
+       */
+      void advance_cell_in_range(int fragment_id);
+      /** 
+       * Finds the next cell from the input fragment along the global cell
+       * order, which falls inside the range stored upon initialization of the
+       * iterator (see StorageManager::Array::const_cell_iterator::range_). 
+       */
+      void find_next_cell_in_range(int fragment_id);
+      /** 
+       * Extracts the next cell from all the fragments along the global cell
+       * order. It returns the id of the fragment the cell was extracted from.
+       * If the end of the cells is reached, it returns -1.
+       */
+      int get_next_cell();
+      /** 
+       * Initializes tile and cell iterators for the input fragments and
+       * attributes. 
+       */
+      void init_iterators(const std::vector<int>& fragment_ids,
+                          const std::vector<int>& attribute_ids);
+      /** 
+       * Initializes tile and cell iterators that will irerate over tiles and
+       * cells that overlap with the stored range. 
+       */
+      void init_iterators_in_range();
+      /** 
+       * True if the cell pointed by the first iterator precedes that of the
+       * second on the global reverse cell order.
+       */
+      bool precedes(const Tile::const_reverse_cell_iterator& it_A, 
+                    const Tile::const_reverse_cell_iterator& it_B) const;
+    };
  
    private:
     // PRIVATE ATTRIBUTES
@@ -1010,6 +1213,20 @@ class StorageManager {
    */
   template<class T>
   Array::const_cell_iterator<T> begin(int ad, const T* range) const;
+  /** 
+   * Takes as input an array descriptor and returns an array begin constant 
+   * reverse cell iterator.
+   */
+  template<class T>
+  Array::const_reverse_cell_iterator<T> rbegin(int ad) const;
+  /** 
+   * Takes as input an array descriptor and a range and returns an array begin 
+   * constant reverse cell iterator. The iterator iterates only over the cells
+   * whose coordinates lie within the input range, following the global cell
+   * order.
+   */
+  template<class T>
+  Array::const_reverse_cell_iterator<T> rbegin(int ad, const T* range) const;
   /**
    * Takes as input an array descriptor and a multi-dimensional range, and 
    * returns the cells whose coordinates fall inside the range, as well as

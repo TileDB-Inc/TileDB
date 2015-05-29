@@ -140,6 +140,22 @@ void expand_mbr(const T* coords, T* mbr, int dim_num) {
   }
 }
 
+size_t file_size(const std::string& filename) {
+  // Open file
+  int fd = open(filename.c_str(), O_RDONLY);
+  assert(fd != -1);
+
+  // Get size
+  struct stat st;
+  fstat(fd, &st);
+  size_t size = st.st_size;
+
+  // Close file
+  close(fd);
+
+  return size;
+}
+
 std::vector<std::string> get_filenames(const std::string& dirname) {
   std::vector<std::string> filenames; 
   std::string filename;

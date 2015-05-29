@@ -11,7 +11,7 @@ echo 'Executing define_array for IREG...'
  -d 'i,j' \
  -D '0,100,0,100' \
  -t 'float,char,int64_t' \
- -o hilbert \
+ -o column-major \
  -c 6 \
  -s 1 
 
