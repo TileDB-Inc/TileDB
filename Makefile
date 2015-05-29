@@ -44,13 +44,13 @@ LA_BIN_DIR = la/bin
 # Directory for documentation
 DOC_DIR = doc
 
-# Directories for the MPI files
-MPI_INCLUDE_DIR := /opt/intel/impi/5.0.1.035/intel64/include
-MPI_LIB_DIR := /opt/intel/impi/5.0.1.035/intel64/lib
+# Directories for the MPI files - not necessary if mpicxx used.
+MPI_INCLUDE_DIR := .
+MPI_LIB_DIR := .
 
 # Directories for the OpenMP files
-OPENMP_INCLUDE_DIR =
-OPENMP_LIB_DIR =
+OPENMP_INCLUDE_DIR = .
+OPENMP_LIB_DIR = .
 
 # --- Paths --- #
 CORE_INCLUDE_PATHS = -I$(CORE_INCLUDE_DIR)
