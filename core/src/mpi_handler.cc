@@ -57,6 +57,23 @@ MPIHandler::~MPIHandler() {
 void MPIHandler::finalize() {
 
   {
+    /* Exit "PGAS mode" */
+    int rc = MPI_Win_unlock_all(win_);
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Win_unlock_all failed");
+      MPI_Abort(comm_, rc);
+    }
+  }
+
+  {
+    int rc = MPI_Win_free(&win_ );
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Win_free failed");
+      MPI_Abort(comm_, rc);
+    }
+  }
+
+  {
     int rc = MPI_Comm_free(&comm_);
     if(rc != MPI_SUCCESS) {
       throw MPIHandlerException("MPI_Comm_free failed");
