@@ -25,10 +25,10 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * This file defines class MPIHandler. It also defines 
+ * This file defines class MPIHandler. It also defines
  * MPIHandlerException, which is thrown by MPIHandler.
  */
 
@@ -38,8 +38,8 @@
 #include <string>
 #include <mpi.h>
 
-/** This modules is responsible for the MPI communication across multiple 
- *  processes. 
+/** This modules is responsible for the MPI communication across multiple
+ *  processes.
  */
 class MPIHandler {
  public:
@@ -58,7 +58,7 @@ class MPIHandler {
   int rank() const { return comm_rank_; }
   /** Returns the number of processes. */
   int proc_num() const { return comm_size_; }
- 
+
   // INITIALIZATION & FINALIZATION
   /** Finalize MPI. */
   void finalize();
@@ -66,11 +66,11 @@ class MPIHandler {
   void init(MPI_Comm comm, int* argc, char*** argv);
 
   // COMMUNICATION
-  /** 
+  /**
    * The root process gathers data from all processes (including the root),
    * which send data.
    */
-  void gather(void* send_data, int send_size, 
+  void gather(void* send_data, int send_size,
               void*& rcv_data, int& rcv_size,
               int root) const;
 
@@ -92,7 +92,7 @@ class MPIHandlerException {
  public:
   // CONSTRUCTORS & DESTRUCTORS
   /** Takes as input the exception message. */
-  MPIHandlerException(const std::string& msg) 
+  MPIHandlerException(const std::string& msg)
       : msg_(msg) {}
   /** Empty destructor. */
   ~MPIHandlerException() {}
