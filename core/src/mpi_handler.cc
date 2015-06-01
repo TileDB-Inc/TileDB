@@ -50,12 +50,13 @@ MPIHandler::MPIHandler(MPI_Comm comm) {
   init(comm, NULL, NULL);
 }
 
-MPIHandler::~MPIHandler() {
+MPIHandler::~MPIHandler(void) {
   finalize();
 }
 
-void MPIHandler::finalize() {
+void MPIHandler::finalize(void) {
 
+  Stop();
   {
     /* Exit "PGAS mode" */
     int rc = MPI_Win_unlock_all(win_);
@@ -264,6 +265,8 @@ void MPIHandler::init(MPI_Comm user_comm, int* argc, char*** argv) {
       MPI_Abort(comm_, rc);
     }
   }
+
+  Start();
 
   return;
 }
