@@ -8,7 +8,7 @@
 # CXX = g++
 
 # MPI compiler for C++
-CXX = mpicxx
+CXX = mpicxx -std=c++11
 
 # --- Directories --- #
 # Directories for the core code of TileDB

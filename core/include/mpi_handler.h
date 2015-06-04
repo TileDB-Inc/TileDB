@@ -25,10 +25,10 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * This file defines class MPIHandler. It also defines 
+ * This file defines class MPIHandler. It also defines
  * MPIHandlerException, which is thrown by MPIHandler.
  */
 
@@ -38,8 +38,33 @@
 #include <string>
 #include <mpi.h>
 
-/** This modules is responsible for the MPI communication across multiple 
- *  processes. 
+#include <cstdlib>
+
+#include <iostream>
+
+#include <atomic>
+#include <chrono>
+#include <functional>
+#include <thread>
+
+/* THIS IS NOT THE RIGHT WAY TO DO THIS IN C++11,
+ * but since C++11 threads are designed to write
+ * cute blog posts about but not actually do serious
+ * work, we will do it the C way (i.e. globals). */
+
+std::atomic<bool> comm_thread_active_;
+
+/* This must be static for thread constructor to work.
+ * Because it is static, it cannot access members. */
+void Poll(void) {
+  while (comm_thread_active_) {
+    /* poll stuff here */
+    std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+  }
+}
+
+/** This modules is responsible for the MPI communication across multiple
+ *  processes.
  */
 class MPIHandler {
  public:
@@ -58,7 +83,7 @@ class MPIHandler {
   int rank() const { return comm_rank_; }
   /** Returns the number of processes. */
   int proc_num() const { return comm_size_; }
- 
+
   // INITIALIZATION & FINALIZATION
   /** Finalize MPI. */
   void finalize();
@@ -66,13 +91,23 @@ class MPIHandler {
   void init(MPI_Comm comm, int* argc, char*** argv);
 
   // COMMUNICATION
-  /** 
+  /**
    * The root process gathers data from all processes (including the root),
    * which send data.
    */
-  void gather(void* send_data, int send_size, 
+  void gather(void* send_data, int send_size,
               void*& rcv_data, int& rcv_size,
               int root) const;
+
+  void Start(void) {
+    comm_thread_active_ = true;
+    comm_thread_ = std::thread(Poll);
+  }
+
+  void Stop(void) {
+    comm_thread_active_ = false;
+    comm_thread_.join();
+  }
 
  private:
   /** TileDB is responsible for init/final of MPI */
@@ -85,6 +120,8 @@ class MPIHandler {
   int comm_rank_;
   /** TileDB RMA window */
   MPI_Win win_;
+
+  std::thread comm_thread_;
 };
 
 /** This exception is thrown by MPIHandler. */
@@ -92,7 +129,7 @@ class MPIHandlerException {
  public:
   // CONSTRUCTORS & DESTRUCTORS
   /** Takes as input the exception message. */
-  MPIHandlerException(const std::string& msg) 
+  MPIHandlerException(const std::string& msg)
       : msg_(msg) {}
   /** Empty destructor. */
   ~MPIHandlerException() {}

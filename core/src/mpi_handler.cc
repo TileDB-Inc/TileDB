@@ -50,12 +50,13 @@ MPIHandler::MPIHandler(MPI_Comm comm) {
   init(comm, NULL, NULL);
 }
 
-MPIHandler::~MPIHandler() {
+MPIHandler::~MPIHandler(void) {
   finalize();
 }
 
-void MPIHandler::finalize() {
+void MPIHandler::finalize(void) {
 
+  Stop();
   {
     /* Exit "PGAS mode" */
     int rc = MPI_Win_unlock_all(win_);
@@ -90,7 +91,7 @@ void MPIHandler::finalize() {
   }
 }
 
-void MPIHandler::gather(void* send_data, int send_size, 
+void MPIHandler::gather(void* send_data, int send_size,
                         void*& rcv_data, int& rcv_size,
                         int root) const {
   // Receive size of data to be received from each process
@@ -98,19 +99,19 @@ void MPIHandler::gather(void* send_data, int send_size,
   int* displs = NULL;
 
   if(comm_rank_ == root) {
-    rcv_sizes = new int[comm_size_]; 
+    rcv_sizes = new int[comm_size_];
   }
- 
-  int rc = MPI_Gather(&send_size, 1, MPI_INT, 
+
+  int rc = MPI_Gather(&send_size, 1, MPI_INT,
                       rcv_sizes, 1, MPI_INT,
-                      root, MPI_COMM_WORLD); 
+                      root, MPI_COMM_WORLD);
 
   if(rc != MPI_SUCCESS) {
     throw MPIHandlerException("Error gathering send sizes with MPI.");
     MPI_Abort(MPI_COMM_WORLD, rc);
   }
 
-  // Allocate receive data buffer and compute displacements 
+  // Allocate receive data buffer and compute displacements
   if(comm_rank_ == root) {
     displs = new int[comm_size_];
     rcv_size = 0;
@@ -118,15 +119,15 @@ void MPIHandler::gather(void* send_data, int send_size,
     for(int i=0; i<comm_size_; ++i) {
       displs[i] = rcv_size;
       rcv_size += rcv_sizes[i];
-    } 
+    }
 
     rcv_data = malloc(rcv_size);
   }
-    
+
   // Receive the data from each process
-  rc = MPI_Gatherv(send_data, send_size, MPI_CHAR, 
+  rc = MPI_Gatherv(send_data, send_size, MPI_CHAR,
                    rcv_data, rcv_sizes, displs, MPI_CHAR,
-                   root, MPI_COMM_WORLD); 
+                   root, MPI_COMM_WORLD);
 
   if(rc != MPI_SUCCESS) {
     throw MPIHandlerException("Error gathering data with MPI.");
@@ -142,7 +143,7 @@ void MPIHandler::gather(void* send_data, int send_size,
 
 void MPIHandler::init(MPI_Comm user_comm, int* argc, char*** argv) {
 
-  int is_init;  
+  int is_init;
   {
     int rc = MPI_Initialized(&is_init);
     if(rc != MPI_SUCCESS) {
@@ -165,7 +166,7 @@ void MPIHandler::init(MPI_Comm user_comm, int* argc, char*** argv) {
     }
     own_mpi_ = 0;
   } else {
-    int rc = MPI_Init_thread(argc, argv, thread_requested, 
+    int rc = MPI_Init_thread(argc, argv, thread_requested,
                              &thread_provided);
     if(rc != MPI_SUCCESS) {
       throw MPIHandlerException("MPI_Init_thread failed");
@@ -264,6 +265,8 @@ void MPIHandler::init(MPI_Comm user_comm, int* argc, char*** argv) {
       MPI_Abort(comm_, rc);
     }
   }
+
+  Start();
 
   return;
 }
