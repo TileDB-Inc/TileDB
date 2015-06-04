@@ -34,6 +34,15 @@
 #include "mpi_handler.h"
 #include <cstdlib>
 
+std::atomic<bool> comm_thread_active_;
+
+void Poll(void) {
+  while (comm_thread_active_) {
+    /* poll stuff here */
+    std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+  }
+}
+
 MPIHandler::MPIHandler(int* argc, char*** argv) {
   init(MPI_COMM_WORLD, argc, argv);
 }

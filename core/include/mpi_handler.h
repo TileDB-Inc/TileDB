@@ -52,16 +52,11 @@
  * cute blog posts about but not actually do serious
  * work, we will do it the C way (i.e. globals). */
 
-std::atomic<bool> comm_thread_active_;
+extern std::atomic<bool> comm_thread_active_;
 
 /* This must be static for thread constructor to work.
  * Because it is static, it cannot access members. */
-void Poll(void) {
-  while (comm_thread_active_) {
-    /* poll stuff here */
-    std::this_thread::sleep_for(std::chrono::nanoseconds(100));
-  }
-}
+static void Poll(void);
 
 /** This modules is responsible for the MPI communication across multiple
  *  processes.
