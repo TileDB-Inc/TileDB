@@ -397,6 +397,8 @@ class StorageManager {
       int64_t pos() const { return pos_; };
       /** Returns the id of the tile. */
       int64_t tile_id() const;
+      /** Number of tiles in the fragment. */
+      int64_t tile_num() const { return fragment_->tile_num(); }
 
      private:
       // PRIVATE ATTRIBUTES
@@ -460,6 +462,8 @@ class StorageManager {
       int64_t pos() const { return pos_; };
       /** Returns the id of the tile. */
       int64_t tile_id() const;
+      /** Number of tiles in the fragment. */
+      int64_t tile_num() const { return fragment_->tile_num(); }
 
      private:
       // PRIVATE ATTRIBUTES
@@ -756,6 +760,10 @@ class StorageManager {
     template<class T>
     void write_cell_sorted(const void* cell);
 
+    // MISC
+    /** Returns true if the input fragment ids are valid. */
+    bool valid_fragment_ids(const std::vector<int>& fragment_ids) const;
+
     // CELL ITERATOR
     /** 
      * A constant cell iterator that iterates over the cells of all the 
@@ -768,31 +776,43 @@ class StorageManager {
       // CONSTRUCTORS & DESTRUCTORS
       /** Constructor. */
       const_cell_iterator();
+      /** Constructor. */
+      const_cell_iterator(Array* array); 
       /** 
-       * Constructor. The second and third arguments determine the fragments 
-       * and attributes the iterator will focus on. If the fragment_ids (resp.
-       * attribute_ids) is empty, then the iterator will iterate over all the
-       * fragments (resp. attributes). The last argument indicates whether
+       * Constructor. The second argument specifies the fragments the iterator
+       * will focus on. If the list is empty, then the iterator iterates over
+       * all fragments. The last argument indicates whether
        * a cell representing a deletion must be returned or suppressed.
        */
       const_cell_iterator(
           Array* array, 
-          std::vector<int> fragment_ids = std::vector<int>(),
-          std::vector<int> attribute_ids = std::vector<int>(),
-          bool return_del = false); 
+          const std::vector<int>& fragment_ids,
+          bool return_del); 
       /** 
-       * Constructor. Takes as input also a multi-dimensional range. The
-       * iterator will iterate only on the cells of the array whose coordinates
-       * fall into the input range. The last argument indicates whether
-       * a cell representing a deletion must be returned or suppressed.
+       * Constructor. The second argument determines the attribute
+       * the iterator will focus on.
        */
-      const_cell_iterator(Array* array, 
-                          const T* range, 
-                          bool return_del = false); 
+      const_cell_iterator(Array* array, const std::vector<int>& attribute_ids); 
+      /** 
+       * Constructor. Takes as input also a multi-dimensional 
+       * range. The iterator will iterate only on the cells of the array whose
+       * coordinates fall into the input range. 
+       */
+      const_cell_iterator(Array* array, const T* range);
+      /** 
+       * Constructor. Takes as input also a multi-dimensional 
+       * range. The iterator will iterate only on the cells of the array whose
+       * coordinates fall into the input range. The third argument determines 
+       * the attributes the iterator will focus on. 
+       */
+      const_cell_iterator(
+          Array* array, const T* range, const std::vector<int>& attribute_ids);
       /** Destructor. */
       ~const_cell_iterator();
 
       // ACCESSORS
+      /** Return the ids of the attributes the iterator iterates on. */
+      const std::vector<int>& attribute_ids() const { return attribute_ids_; }
       /** Returns the size of the current cell. */
       size_t cell_size() const;
       /** 
@@ -813,6 +833,8 @@ class StorageManager {
       // PRIVATE ATTRIBUTES
       /** The array the cell iterator was created for. */
       Array* array_;
+      /** The ids of the attributes the iterator iterates over. */
+      std::vector<int> attribute_ids_;
       /** Number of attributes. */
       int attribute_num_;
       /** 
@@ -821,11 +843,15 @@ class StorageManager {
       void* cell_;
       /** Stores one cell iterator per fragment per attribute. */
       Tile::const_cell_iterator** cell_its_;
+      /** The size of the current cell. */
+      size_t cell_size_;
       /** Number of dimensions. */
       int dim_num_;
       /** True if the iterator has reached the end of all cells. */
       bool end_;
-      /** Number of fragments. */
+      /** The ids of the fragments the iterator iterates over. */
+      std::vector<int> fragment_ids_;
+      /** The number of fragments. */
       int fragment_num_;
       /** 
        * Stores a value per fragment. It is used when iterating cells that fall
@@ -850,6 +876,8 @@ class StorageManager {
       bool return_del_;
       /** Stores one tile iterator per fragment per attribute. */
       Fragment::const_tile_iterator** tile_its_;
+      /** True if the iterator iterates over variable-sized cells. */
+      bool var_size_;
 
       // PRIVATE METHODS
       /** 
@@ -878,8 +906,7 @@ class StorageManager {
        * Initializes tile and cell iterators for the input fragments and
        * attributes. 
        */
-      void init_iterators(const std::vector<int>& fragment_ids,
-                          const std::vector<int>& attribute_ids);
+      void init_iterators();
       /** 
        * Initializes tile and cell iterators that will irerate over tiles and
        * cells that overlap with the stored range. 
@@ -905,31 +932,44 @@ class StorageManager {
       // CONSTRUCTORS & DESTRUCTORS
       /** Constructor. */
       const_reverse_cell_iterator();
+      /** Constructor. */
+      const_reverse_cell_iterator(Array* array); 
       /** 
-       * Constructor. The second and third arguments determine the fragments 
-       * and attributes the iterator will focus on. If the fragment_ids (resp.
-       * attribute_ids) is empty, then the iterator will iterate over all the
-       * fragments (resp. attributes). The last argument indicates whether
+       * Constructor. The second argument specifies the fragments the iterator
+       * will focus on. If the list is empty, then the iterator iterates over
+       * all fragments. The last argument indicates whether
        * a cell representing a deletion must be returned or suppressed.
        */
       const_reverse_cell_iterator(
           Array* array, 
-          std::vector<int> fragment_ids = std::vector<int>(),
-          std::vector<int> attribute_ids = std::vector<int>(),
-          bool return_del = false); 
+          const std::vector<int>& fragment_ids,
+          bool return_del); 
       /** 
-       * Constructor. Takes as input also a multi-dimensional range. The
-       * iterator will iterate only on the cells of the array whose coordinates
-       * fall into the input range. The last argument indicates whether
-       * a cell representing a deletion must be returned or suppressed.
+       * Constructor. The second argument determines the attribute
+       * the iterator will focus on.
        */
       const_reverse_cell_iterator(Array* array, 
-                          const T* range, 
-                          bool return_del = false); 
+                                  const std::vector<int>& attribute_ids); 
+      /** 
+       * Constructor. Takes as input also a multi-dimensional 
+       * range. The iterator will iterate only on the cells of the array whose
+       * coordinates fall into the input range. 
+       */
+      const_reverse_cell_iterator(Array* array, const T* range);
+      /** 
+       * Constructor. Takes as input also a multi-dimensional 
+       * range. The iterator will iterate only on the cells of the array whose
+       * coordinates fall into the input range. The third argument determines 
+       * the attributes the iterator will focus on. 
+       */
+      const_reverse_cell_iterator(
+          Array* array, const T* range, const std::vector<int>& attribute_ids);
       /** Destructor. */
       ~const_reverse_cell_iterator();
 
       // ACCESSORS
+      /** Return the ids of the attributes the iterator iterates on. */
+      const std::vector<int>& attribute_ids() const { return attribute_ids_; }
       /** Returns the size of the current cell. */
       size_t cell_size() const;
       /** 
@@ -950,6 +990,8 @@ class StorageManager {
       // PRIVATE ATTRIBUTES
       /** The array the cell iterator was created for. */
       Array* array_;
+      /** The ids of the attributes the iterator iterates over. */
+      std::vector<int> attribute_ids_;
       /** Number of attributes. */
       int attribute_num_;
       /** 
@@ -958,11 +1000,15 @@ class StorageManager {
       void* cell_;
       /** Stores one cell iterator per fragment per attribute. */
       Tile::const_reverse_cell_iterator** cell_its_;
+      /** The size of the current cell. */
+      size_t cell_size_;
       /** Number of dimensions. */
       int dim_num_;
       /** True if the iterator has reached the end of all cells. */
       bool end_;
-      /** Number of fragments. */
+      /** The ids of the fragments the iterator iterates over. */
+      std::vector<int> fragment_ids_;
+      /** The number of fragments. */
       int fragment_num_;
       /** 
        * Stores a value per fragment. It is used when iterating cells that fall
@@ -987,6 +1033,8 @@ class StorageManager {
       bool return_del_;
       /** Stores one tile iterator per fragment per attribute. */
       Fragment::const_reverse_tile_iterator** tile_its_;
+      /** True if the iterator iterates over variable-sized cells. */
+      bool var_size_;
 
       // PRIVATE METHODS
       /** 
@@ -1015,8 +1063,7 @@ class StorageManager {
        * Initializes tile and cell iterators for the input fragments and
        * attributes. 
        */
-      void init_iterators(const std::vector<int>& fragment_ids,
-                          const std::vector<int>& attribute_ids);
+      void init_iterators();
       /** 
        * Initializes tile and cell iterators that will irerate over tiles and
        * cells that overlap with the stored range. 
@@ -1024,7 +1071,7 @@ class StorageManager {
       void init_iterators_in_range();
       /** 
        * True if the cell pointed by the first iterator precedes that of the
-       * second on the global reverse cell order.
+       * second on the global cell order.
        */
       bool precedes(const Tile::const_reverse_cell_iterator& it_A, 
                     const Tile::const_reverse_cell_iterator& it_B) const;
@@ -1200,33 +1247,62 @@ class StorageManager {
   int open_array(const std::string& array_name, const char* mode);
 
   // CELL FUNCTIONS
-  /** 
-   * Takes as input an array descriptor and returns an array begin constant 
-   * cell iterator.
-   */
+  /** Takes as input an array descriptor and returns a cell iterator. */
   template<class T>
   Array::const_cell_iterator<T> begin(int ad) const;
   /** 
-   * Takes as input an array descriptor and a range and returns an array begin 
-   * constant cell iterator. The iterator iterates only over the cells whose
-   * coordinates lie within the input range, following the global cell order.
+   * Takes as input an array descriptor and a list of attribute ids. It returns
+   * a cell iterator that iterates over the specified attributes.
    */
   template<class T>
-  Array::const_cell_iterator<T> begin(int ad, const T* range) const;
+  Array::const_cell_iterator<T> begin(
+      int ad, const std::vector<int>& attribute_ids) const;
   /** 
-   * Takes as input an array descriptor and returns an array begin constant 
-   * reverse cell iterator.
+   * Takes as input an array descriptor and a range. It returns a cell iterator
+   * that iterates only over the cells whose coordinates lie within the input 
+   * range (following the global cell order).    
    */
+  template<class T>
+  Array::const_cell_iterator<T> begin(
+      int ad, const T* range) const;
+  /** 
+   * Takes as input an array descriptor, a range, and a list of attribute
+   * ids. It returns a cell iterator that iterates only over the cells
+   * whose coordinates lie within the input range (following the global cell
+   * order), and only on the specified attributes.
+   */
+  template<class T>
+  Array::const_cell_iterator<T> begin(
+      int ad, const T* range,
+      const std::vector<int>& attribute_ids) const;
+  /** Takes as input an array descriptor and returns a cell iterator. */
   template<class T>
   Array::const_reverse_cell_iterator<T> rbegin(int ad) const;
   /** 
-   * Takes as input an array descriptor and a range and returns an array begin 
-   * constant reverse cell iterator. The iterator iterates only over the cells
-   * whose coordinates lie within the input range, following the global cell
-   * order.
+   * Takes as input an array descriptor and a list of attribute ids. It returns
+   * a cell iterator that iterates over the specified attributes.
    */
   template<class T>
-  Array::const_reverse_cell_iterator<T> rbegin(int ad, const T* range) const;
+  Array::const_reverse_cell_iterator<T> rbegin(
+      int ad, const std::vector<int>& attribute_ids) const;
+  /** 
+   * Takes as input an array descriptor and a range. It returns a cell iterator
+   * that iterates only over the cells whose coordinates lie within the input 
+   * range (following the global cell order).    
+   */
+  template<class T>
+  Array::const_reverse_cell_iterator<T> rbegin(
+      int ad, const T* range) const;
+  /** 
+   * Takes as input an array descriptor, a range, and a list of attribute
+   * ids. It returns a cell iterator that iterates only over the cells
+   * whose coordinates lie within the input range (following the global cell
+   * order), and only on the specified attributes.
+   */
+  template<class T>
+  Array::const_reverse_cell_iterator<T> rbegin(
+      int ad, const T* range,
+      const std::vector<int>& attribute_ids) const;
   /**
    * Takes as input an array descriptor and a multi-dimensional range, and 
    * returns the cells whose coordinates fall inside the range, as well as

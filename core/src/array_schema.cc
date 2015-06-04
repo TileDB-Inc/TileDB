@@ -33,6 +33,7 @@
 
 #include "array_schema.h"
 #include "hilbert_curve.h"
+#include "utils.h"
 #include <assert.h>
 #include <string.h>
 #include <math.h>
@@ -180,16 +181,13 @@ ArraySchema::ArraySchema(
 ********************** ACCESSORS **********************
 ******************************************************/
 
-int ArraySchema::attribute_id(
-    const std::string& attribute_name) const {
-
+int ArraySchema::attribute_id(const std::string& attribute_name) const {
   for(int i=0; i<attribute_num_; ++i) {
     if(attribute_names_[i] == attribute_name)
       return i;
   }
 
-  assert(0); // Attribute name not found
-
+  // Attribute not found
   return -1;
 }
 
@@ -197,6 +195,33 @@ const std::string& ArraySchema::attribute_name(int i) const {
   assert(i>= 0 && i <= attribute_num_);
 
   return attribute_names_[i];
+}
+
+size_t ArraySchema::cell_size(const std::vector<int>& attribute_ids) const {
+  assert(valid_attribute_ids(attribute_ids));
+  assert(no_duplicates(attribute_ids));
+
+  if(attribute_ids.size() == attribute_num_ + 1)
+    return cell_size_;
+
+  size_t cell_size = 0;
+  for(int i=0; i<attribute_ids.size(); ++i) {
+    if(this->cell_size(attribute_ids[i]) == VAR_SIZE)
+      return VAR_SIZE;
+    cell_size += this->cell_size(attribute_ids[i]);
+  }
+
+  return cell_size;
+}
+
+int ArraySchema::dim_id(const std::string& dim_name) const {
+  for(int i=0; i<dim_num_; ++i) {
+    if(dim_names_[i] == dim_name)
+      return i;
+  }
+
+  // Dimension not found
+  return -1;
 }
 
 // FORMAT:
@@ -362,6 +387,37 @@ std::pair<const char*, size_t> ArraySchema::serialize() const {
   assert(offset == buffer_size);
 
   return std::pair<char*, size_t>(buffer, buffer_size);
+}
+
+int ArraySchema::smallest_attribute() const {
+  int smallest_attribute = 0;
+  size_t smallest_cell_size = this->cell_size(0);
+  size_t smallest_type_size = this->type_size(0);
+  size_t cell_size, type_size;
+
+  // Check for smallest cell size
+  for(int i=1; i<attribute_num_; ++i) {
+    cell_size = this->cell_size(i);
+    if(cell_size != VAR_SIZE && 
+       (smallest_cell_size == VAR_SIZE || cell_size < smallest_cell_size)) {
+      smallest_cell_size = cell_size;
+      smallest_attribute = i; 
+    }
+  }
+
+  // If all cell sizes are varible, choose the smallest type
+  if(smallest_cell_size == VAR_SIZE) {  
+    assert(smallest_attribute == 0);
+    for(int i=1; i<attribute_num_; ++i) {
+      type_size = this->type_size(i);
+      if(type_size < smallest_type_size) {
+        smallest_type_size = type_size;
+        smallest_attribute = i; 
+      }
+    }
+  }
+
+  return smallest_attribute;
 }
 
 const std::type_info* ArraySchema::type(int i) const {
@@ -604,6 +660,59 @@ ArraySchema* ArraySchema::clone(const std::string& array_name) const {
   *array_schema = *this;
   array_schema->array_name_ = array_name; // Input array name
 
+  return array_schema;
+}
+
+ArraySchema* ArraySchema::clone(const std::string& array_name,
+                                const std::vector<int>& attribute_ids) const {
+  assert(valid_attribute_ids(attribute_ids));
+
+  ArraySchema* array_schema = new ArraySchema();
+  *array_schema = *this;
+
+  // Change array name
+  array_schema->array_name_ = array_name; // Input array name
+
+  // Change attribute names
+  array_schema->attribute_names_.clear();
+  for(int i=0; i<attribute_ids.size(); ++i) 
+    array_schema->attribute_names_.push_back(attribute_name(attribute_ids[i]));
+  // Name for the extra coordinate attribute
+  array_schema->attribute_names_.push_back(AS_COORDINATE_TILE_NAME);
+ 
+  // Change attribute_num_
+  array_schema->attribute_num_ = attribute_ids.size();
+
+  // Change cell sizes
+  array_schema->cell_sizes_.clear();
+  for(int i=0; i<attribute_ids.size(); ++i) 
+    array_schema->cell_sizes_.push_back(cell_sizes_[attribute_ids[i]]);
+  array_schema->cell_sizes_.push_back(cell_sizes_.back());
+ 
+  // Change types
+  array_schema->types_.clear();
+  for(int i=0; i<attribute_ids.size(); ++i) 
+    array_schema->types_.push_back(types_[attribute_ids[i]]);
+  array_schema->types_.push_back(types_.back());
+
+  // Change type sizes
+  array_schema->type_sizes_.clear();
+  for(int i=0; i<attribute_ids.size(); ++i) 
+    array_schema->type_sizes_.push_back(type_sizes_[attribute_ids[i]]);
+  array_schema->type_sizes_.push_back(type_sizes_.back());
+
+  // Change val num
+  array_schema->val_num_.clear();
+  for(int i=0; i<attribute_ids.size(); ++i) 
+    array_schema->val_num_.push_back(val_num_[attribute_ids[i]]);
+  array_schema->val_num_.push_back(val_num_.back());
+
+  // Change compression
+  array_schema->compression_.clear();
+  for(int i=0; i<attribute_ids.size(); ++i) 
+    array_schema->compression_.push_back(compression_[attribute_ids[i]]);
+  array_schema->compression_.push_back(compression_.back());
+ 
   return array_schema;
 }
 
@@ -1227,6 +1336,16 @@ ArraySchema::get_attribute_ids(
 
   return std::pair<AttributeIds, AttributeIds>(attribute_ids, 
                                                non_attribute_ids);
+}
+
+bool ArraySchema::valid_attribute_ids(
+    const std::vector<int>& attribute_ids) const {
+  for(int i=0; i<attribute_ids.size(); ++i) {
+    if(attribute_ids[i] < 0 || attribute_ids[i] > attribute_num_) 
+      return false;
+  }
+
+  return true;
 }
 
 // Explicit template instantiations

@@ -65,7 +65,7 @@ void print_clear_array() {
   std::cout << "Deletes all the data from an array. However, the array\n"
             << "remains defined after this command.\n\n"
             << "Options:\n"
-            << "\t-A or --array-name: \n"
+            << "\t-A or --array-namess: \n"
             << "\t\tThe name of the array to be cleared. \n\n"
             << "\t-w or --workspace: \n"
             << "\t\tThe folder where the TileDB data are stored. \n\n"
@@ -81,7 +81,7 @@ void print_define_array() {
             << "Defines the schema of an array. Every array must be\n"
             << "defined before being used.\n\n"
             << "Options:\n"
-            << "\t-A or --array-name: \n"
+            << "\t-A or --array-names: \n"
             << "\t\tThe name of the array to be defined. \n\n"
             << "\t-w or --workspace: \n"
             << "\t\tThe folder where the TileDB data will be stored. \n"
@@ -178,7 +178,7 @@ void print_delete_array() {
   std::cout << "Deletes all the data from an array. Contrary to clear_array,\n"
             << "the array does not remain defined after this command.\n\n"
             << "Options:\n"
-            << "\t-A or --array-name: \n"
+            << "\t-A or --array-names: \n"
             << "\t\tThe name of the array to be deleted. \n\n"
             << "\t-w or --workspace: \n"
             << "\t\tThe folder where the TileDB data are stored. \n\n"
@@ -200,18 +200,57 @@ void print_export_to_csv() {
             << "respectively, in the array schema. Character '*' represents\n"
             << "a NULL value.\n\n"
             << "Options:\n"
-            << "\t-A or --array-name: \n"
+            << "\t-A or --array-names: \n"
             << "\t\tThe name of the array the CSV data are loaded into. \n\n"
+            << "\t-a or --attribute-names: \n"
+            << "\t\tThe attributes whose values will be exported. This option\n"
+            << "\t\tis optional. If omitted, all attribute values are\n"
+            << "\t\texported. If \"__hide\" is specified, then no attribute\n"
+            << "\t\tvalues are exported. Multiplicities are allowed, and any\n"
+            << "\t\tattribute order is acceptable. The attribute values are\n"
+            << "\t\texported in the specified order.\n\n"
+            << "\t-d or --dim-names: \n"
+            << "\t\tThe dimension coordinates whose values will be exported.\n"
+            << "\t\tThis option is optional. If omitted, all coordinate\n"
+            << "\t\tvalues are exported. If \"__hide\" is specified, then no\n"
+            << "\t\tcoordinate values are exported. Multiplicities are\n"
+            << "\t\tallowed, and any coordinate order is acceptable.\n"
+            << "\t\tThe coordinates are exported in the specified order.\n\n"
+            << "\t-m or --mode: \n"
+            << "\t\tSpecifies whether the cells will be exported in the order\n"
+            << "\t\tthey are stored in the input array ('normal'), or in the\n"
+            << "\t\treverse order ('reverse'). If the option is omitted, the\n"
+            << "\t\tdefault 'normal' is assumed.\n\n"
             << "\t-w or --workspace: \n"
             << "\t\tThe folder where the TileDB data are stored. \n\n"
             << "\t-f or --filename:\n"
             << "\t\tThe name of the CSV file (full path).\n\n"
-            << "Example:\n"
+            << "Example #1:\n"
             << "\t tiledb_cmd -q export_to_csv \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array \\\n"
+            << "\t            -f my_array.csv\n\n"
+            << "Example #2:\n"
+            << "\t tiledb_cmd -q export_to_csv \\\n"
+            << "\t            -w ~/TileDB/ \\\n"
+            << "\t            -A my_array \\\n"
+            << "\t            -a attr1,attr2,attr1 \\\n"
+            << "\t            -d dim1 \\\n"
             << "\t            -f my_array.csv\n"
-            << "\n";
+            << "\n"
+            << "Example #3:\n"
+            << "\t tiledb_cmd -q export_to_csv \\\n"
+            << "\t            -w ~/TileDB/ \\\n"
+            << "\t            -A my_array \\\n"
+            << "\t            -d __hide \\\n"
+            << "\t            -f my_array.csv\n"
+            << "\n"
+            << "Example #4:\n"
+            << "\t tiledb_cmd -q export_to_csv \\\n"
+            << "\t            -w ~/TileDB/ \\\n"
+            << "\t            -A my_array \\\n"
+            << "\t            -m reverse \\\n"
+            << "\t            -f my_array.csv\n\n";
 }
 
 void print_load_csv() {
@@ -226,7 +265,7 @@ void print_load_csv() {
             << "array schema. A NULL value is represented by\n"
             << "character '*'.\n\n"
             << "Options:\n"
-            << "\t-A or --array-name: \n"
+            << "\t-A or --array-names: \n"
             << "\t\tThe name of the array the CSV data are loaded into. \n\n"
             << "\t-w or --workspace: \n"
             << "\t\tThe folder where the TileDB data are stored. \n\n"
@@ -251,7 +290,7 @@ void print_load_sorted_bin() {
             << "directory containing the binary files is given as input. Note\n"
             << "that all the files in the input directory will be merged.\n\n"
             << "Options:\n"
-            << "\t-A or --array-name: \n"
+            << "\t-A or --array-names: \n"
             << "\t\tThe name of the array the CSV data are loaded into. \n\n"
             << "\t-w or --workspace: \n"
             << "\t\tThe folder where the TileDB data are stored. \n\n"
@@ -269,7 +308,7 @@ void print_show_array_schema() {
   std::cout << "\n-- show_array_schema --\n\n"
             << "Prints the array schema of the input array.\n\n"
             << "Options:\n"
-            << "\t-A or --array-name: \n"
+            << "\t-A or --array-names: \n"
             << "\t\tThe name of the array whose schema will be printed. \n\n"
             << "\t-w or --workspace: \n"
             << "\t\tThe folder where the TileDB data are stored. \n\n"
@@ -285,8 +324,20 @@ void print_subarray() {
             << "Creates a new array with the same schema as the input array,\n"
             << "containing only the cells that lie within the input range.\n\n"
             << "Options:\n"
-            << "\t-A or --array-name: \n"
+            << "\t-A or --array-names: \n"
             << "\t\tThe name of the input array. \n\n"
+            << "\t-a or --attribute-names: \n"
+            << "\t\tThe attribute names from the input array that will be\n"
+            << "\t\twritten to the output. The attributes are written in the\n"
+            << "\t\torder they are given. This is an optional option. If it\n"
+            << "\t\tis omitted, then all the attributes of the input array\n"
+            << "\t\twill be written to the output array.\n\n"
+            << "\t-m or --mode: \n"
+            << "\t\tSpecifies whether the cells will be written to the output\n"
+            << "\t\tarray in the order they are stored in the input array\n"
+            << "\t\t('normal'), or in the reverse order ('reverse'). If the\n"
+            << "\t\tthe option is omitted, the default 'normal' is\n"
+            << "\t\tassumed.\n\n"
             << "\t-w or --workspace: \n"
             << "\t\tThe folder where the TileDB data are stored. \n\n"
             << "\t-r or --range-bound:\n"
@@ -298,13 +349,26 @@ void print_subarray() {
             << "\t\tarray.\n\n"
             << "\t-R or --result-name: \n"
             << "\t\tThe name of the array that will store the results.\n\n"
-            << "Example:\n"
+            << "Example #1:\n"
             << "\t tiledb_cmd -q subarray \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A input_array \\\n"
-            << "\t            -r '15,20,10,3' \\\n"
-            << "\t            -R output_array \n"
-            << "\n";
+            << "\t            -r '15,20,10,13' \\\n"
+            << "\t            -R output_array \n\n"
+            << "Example #2:\n"
+            << "\t tiledb_cmd -q subarray \\\n"
+            << "\t            -w ~/TileDB/ \\\n"
+            << "\t            -A input_array \\\n"
+            << "\t            -a attr1 \\\n"
+            << "\t            -r '15,20,10,13' \\\n"
+            << "\t            -R output_array \n\n"
+            << "Example #3:\n"
+            << "\t tiledb_cmd -q subarray \\\n"
+            << "\t            -w ~/TileDB/ \\\n"
+            << "\t            -A input_array \\\n"
+            << "\t            -m reverse \\\n"
+            << "\t            -r '15,20,10,13' \\\n"
+            << "\t            -R output_array \n\n";
 }
 
 void print_update_csv() {
@@ -321,7 +385,7 @@ void print_update_csv() {
             << "the coordinates of the deleted cell, and filling all\n"
             << "its attribute values with character '$'.\n\n"
             << "Options:\n"
-            << "\t-A or --array-name: \n"
+            << "\t-A or --array-names: \n"
             << "\t\tThe name of the array the CSV data are loaded into. \n\n"
             << "\t-w or --workspace: \n"
             << "\t\tThe folder where the TileDB data are stored. \n\n"
@@ -414,12 +478,16 @@ void run_delete_array(const CommandLine& cl) {
 
 void run_export_to_csv(const CommandLine& cl) {
   CmdParser parser;
-  parser.parse_export_to_csv(cl);
+  std::vector<std::string> dim_names;
+  std::vector<std::string> attribute_names;
+  bool reverse;
+  parser.parse_export_to_csv(cl, dim_names, attribute_names, reverse);
 
   try {
     StorageManager storage_manager(cl.workspace_);
     QueryProcessor query_processor(&storage_manager);
-    query_processor.export_to_csv(cl.array_names_[0], cl.filename_);
+    query_processor.export_to_csv(cl.array_names_[0], cl.filename_,
+                                  dim_names, attribute_names, reverse);
   } catch(StorageManagerException &se) {
     std::cerr << "[TileDB::StorageManager::fatal_error] " << se.what() << "\n";
     exit(-1);
@@ -478,12 +546,16 @@ void run_show_array_schema(const CommandLine& cl) {
 
 void run_subarray(const CommandLine& cl) {
   CmdParser parser;
-  std::vector<double> range = parser.parse_subarray(cl);
+  std::vector<std::string> attribute_names;
+  bool reverse;
+  std::vector<double> range = 
+      parser.parse_subarray(cl, attribute_names, reverse);
 
   try {
     StorageManager storage_manager(cl.workspace_);
     QueryProcessor query_processor(&storage_manager);
-    query_processor.subarray(cl.array_names_[0], range, cl.result_name_);
+    query_processor.subarray(cl.array_names_[0], range, cl.result_name_,
+                             attribute_names, reverse);
   } catch(StorageManagerException &se) {
     std::cerr << "[TileDB::StorageManager::fatal_error] " << se.what() << "\n";
     exit(-1);

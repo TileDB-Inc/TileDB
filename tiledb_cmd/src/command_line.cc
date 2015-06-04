@@ -41,6 +41,7 @@ CommandLine::CommandLine() {
   consolidation_step_ = NULL;
   expression_ = NULL;
   filename_ = NULL;
+  mode_ = NULL;
   query_ = NULL;
   result_name_ = NULL;
   tile_order_ = NULL;
@@ -59,10 +60,11 @@ void CommandLine::parse(int argc, char** argv) {
     {"expression",1,0,'E'},
     {"tile-extents",1,0,'e'},
     {"filename",1,0,'f'},
-    {"query",1,0,'q'},
+    {"mode",1,0,'m'},
     {"numbers",1,0,'N'},
     {"cell-order",1,0,'o'},
     {"tile-order",1,0,'O'},
+    {"query",1,0,'q'},
     {"range",1,0,'r'},
     {"result-name",1,0,'R'},
     {"consolidation-step",1,0,'s'},
@@ -71,7 +73,7 @@ void CommandLine::parse(int argc, char** argv) {
     {0,0,0,0},
   };
 
-  const char* short_options = "A:a:c:C:D:d:E:e:f:q:N:o:O:r:R:s:t:w:";
+  const char* short_options = "A:a:c:C:D:d:E:e:f:m:N:o:O:q:r:R:s:t:w:";
 
   int c;
   option_num_ = 0;
@@ -128,6 +130,15 @@ void CommandLine::parse(int argc, char** argv) {
         }
         arg_bitmap_ |= CL_FILENAME_BITMAP;
         filename_ = optarg;
+        break;
+      case 'm':
+        if(mode_ != NULL) {
+          std::cerr << "[TileDB::CommandLine::fatal_error] More than one"
+                    << " modes provided.\n";
+          exit(-1);
+        }
+        arg_bitmap_ |= CL_MODE_BITMAP;
+        mode_ = optarg;
         break;
       case 'N':
         arg_bitmap_ |= CL_NUMBERS_BITMAP;

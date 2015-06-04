@@ -149,6 +149,8 @@ class Tile {
     const_cell_iterator(const Tile* tile, int64_t pos);
     
     // ACCESSORS
+    /** Returns the number of cells in the tile. */
+    int64_t cell_num() const { return tile_->cell_num(); }
     /** Returns the (potentially variable) size of the current cell. */
     size_t cell_size() const;
     /** Returns the cell type of the tile. */
@@ -239,6 +241,8 @@ class Tile {
     const_reverse_cell_iterator(const Tile* tile, int64_t pos);
     
     // ACCESSORS
+    /** Returns the number of cells in the tile. */
+    int64_t cell_num() const { return tile_->cell_num(); }
     /** Returns the (potentially variable) size of the current cell. */
     size_t cell_size() const;
     /** Returns the cell type of the tile. */

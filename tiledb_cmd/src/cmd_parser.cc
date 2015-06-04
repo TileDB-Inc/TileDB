@@ -197,7 +197,11 @@ void CmdParser::parse_delete_array(const CommandLine& cl) const {
   }
 }
 
-void CmdParser::parse_export_to_csv(const CommandLine& cl) const {
+void CmdParser::parse_export_to_csv(
+    const CommandLine& cl,
+    std::vector<std::string>& dim_names,
+    std::vector<std::string>& attribute_names,
+    bool& reverse) const {
   // Check if correct arguments have been given
   if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
     std::cerr << "[TileDB::CmdParser::fatal_error] Workspace not provided.\n";
@@ -227,6 +231,13 @@ void CmdParser::parse_export_to_csv(const CommandLine& cl) const {
               << " names provided.\n";
     exit(-1);
   }
+
+  // Get dimension and attribute names
+  dim_names = get_dim_names(cl);
+  attribute_names = get_attribute_names(cl);
+
+  // Check reverse mode
+  reverse = check_reverse(cl);
 }
 
 void CmdParser::parse_load_csv(const CommandLine& cl) const {
@@ -329,7 +340,10 @@ void CmdParser::parse_show_array_schema(const CommandLine& cl) const {
   }
 }
 
-std::vector<double> CmdParser::parse_subarray(const CommandLine& cl) const {
+std::vector<double> CmdParser::parse_subarray(
+    const CommandLine& cl,
+    std::vector<std::string>& attribute_names,
+    bool& reverse) const {
   // Check if correct arguments have been ginen
   if((cl.arg_bitmap_ & CL_WORKSPACE_BITMAP) == 0) {
     std::cerr << "[TileDB::CmdParser::fatal_error] Workspace not provided.\n";
@@ -363,10 +377,19 @@ std::vector<double> CmdParser::parse_subarray(const CommandLine& cl) const {
     exit(-1);
   }
 
-  // Prepare range
-  std::vector<double> range = check_range(cl); 
+  // Get attribute names
+  attribute_names = get_attribute_names(cl);
+  if(!no_duplicates(attribute_names)) {
+    std::cerr << "[TileDB::CmdParser::fatal_error] Duplicate attribute names"
+              << " provided.\n";
+    exit(-1);
+  }
 
-  return range;  
+  // Check reverse mode
+  reverse = check_reverse(cl);
+
+  // Return range
+  return check_range(cl); 
 }
 
 void CmdParser::parse_update_csv(const CommandLine& cl) const {
@@ -425,8 +448,7 @@ std::vector<std::string> CmdParser::check_array_names(
   }
 
   // Check for duplicate array names
-  std::set<std::string> set_array_names(array_names.begin(), array_names.end());
-  if(set_array_names.size() < array_names.size()) {
+  if(!no_duplicates(array_names)) {
     std::cerr << "[TileDB::CmdParser::fatal_error] Duplicate array names"
               << " array names provided.\n";
     exit(-1);
@@ -456,9 +478,7 @@ std::vector<std::string> CmdParser::check_attribute_names(
   }
 
   // Check for duplicate attribute names
-  std::set<std::string> set_attribute_names(attribute_names.begin(), 
-                                            attribute_names.end());
-  if(set_attribute_names.size() < attribute_names.size()) {
+  if(!no_duplicates(attribute_names)) {
     std::cerr << "[TileDB::CmdParser::fatal_error] Duplicate attribute names"
               << " provided.\n";
     exit(-1);
@@ -580,7 +600,7 @@ std::vector<std::string> CmdParser::check_dim_names(
   // Check for duplicate dimension names
   std::set<std::string> set_dim_names(dim_names.begin(), 
                                       dim_names.end());
-  if(set_dim_names.size() < dim_names.size()) {
+  if(set_dim_names.size() != dim_names.size()) {
     std::cerr << "[TileDB::CmdParser::fatal_error] Duplicate dimension names"
               << " are not allowed.\n";
     exit(-1);
@@ -685,6 +705,19 @@ std::vector<double> CmdParser::check_range(const CommandLine& cl) const {
   }
 
   return range;
+}
+
+bool CmdParser::check_reverse(const CommandLine& cl) const {
+  // By default, the mode is "normal"
+  if(cl.mode_ == NULL || !strcmp(cl.mode_, "normal")) { 
+    return false;
+  } else if(!strcmp(cl.mode_, "reverse")) {
+    return true;
+  } else { // Error
+    std::cerr << "[TileDB::CmdParser::fatal_error] Unknown mode '"
+              << cl.mode_  << "'.\n";
+    exit(-1);
+  }
 }
 
 std::vector<double> CmdParser::check_tile_extents(
@@ -817,7 +850,40 @@ std::pair<std::vector<const std::type_info*>,
     exit(-1);
   }
 
- 
   return std::pair<std::vector<const std::type_info*>,
                     std::vector<int> >(types, val_num);
+}
+
+std::vector<std::string> CmdParser::get_attribute_names(
+    const CommandLine& cl) const {
+  std::vector<std::string> attribute_names;
+
+  // Create a CSV line with the attribute names
+  CSVLine csv_line;
+  for(int i=0; i<cl.attribute_names_.size(); ++i) 
+    csv_line << cl.attribute_names_[i];
+
+  // Get the attribute names from the CSV line
+  std::string attribute_name;
+  while(csv_line >> attribute_name) 
+    attribute_names.push_back(attribute_name);
+
+  return attribute_names;
+}
+
+std::vector<std::string> CmdParser::get_dim_names(
+    const CommandLine& cl) const {
+  std::vector<std::string> dim_names;
+
+  // Create a CSV line with the dimension names
+  CSVLine csv_line;
+  for(int i=0; i<cl.dim_names_.size(); ++i) 
+    csv_line << cl.dim_names_[i];
+
+  // Get the dimension names from the CSV line
+  std::string dim_name;
+  while(csv_line >> dim_name) 
+    dim_names.push_back(dim_name);
+
+  return dim_names;
 }

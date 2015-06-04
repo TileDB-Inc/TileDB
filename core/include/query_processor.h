@@ -59,27 +59,34 @@ class QueryProcessor {
    * a logical cell comprised of coordinates and attribute values. The 
    * coordinates are written first, and then the attribute values,
    * following the order as defined in the schema of the array.
+   * The input dimension and attribute names allow for selective exporting
+   * of coordinates and attribute values respectively. The last argument
+   * allows for optionally exporting the cells in reverse order (if it
+   * is true).
    */
-  void export_to_csv(const std::string& array_name,
-                     const std::string& filename) const;
-  /** 
-   * Exports an array to a CSV file. Each line in the CSV file represents
-   * a logical cell comprised of coordinates and attribute values. The 
-   * coordinates are written first, and then the attribute values,
-   * following the order as defined in the schema of the array.
-   * The function is templated on the coordinates type. 
-   * It takes as input an array descriptor instead of its name.
-   */
-  template<class T>
-  void export_to_csv(int ad, const std::string& filename) const;
+  void export_to_csv(
+      const std::string& array_name,
+      const std::string& filename,
+      const std::vector<std::string>& dim_names = 
+          std::vector<std::string>(),
+      const std::vector<std::string>& attribute_names = 
+          std::vector<std::string>(),
+      bool reverse = false) const;
   /** 
    * A subarray query creates a new array from the input array, 
    * containing only the cells whose coordinates fall into the input range. 
-   * The new array will have the input result name. 
+   * The new array will have the input result name. The fourth argument
+   * specifies which attributes from the input array will be written
+   * to the output array. If this list is empty, then all attributes
+   * of the input array are written to the output array. The last argument
+   * allows for optionally writing the cells to the output in reverse order (if
+   * it is true).
    */
   void subarray(const std::string& array_name, 
                 const std::vector<double>& range,
-                const std::string& result_array_name) const;
+                const std::string& result_array_name,
+                const std::vector<std::string>& attribute_names,
+                bool reverse = false) const;
 
  private:
   // PRIVATE ATTRIBUTES
@@ -88,22 +95,64 @@ class QueryProcessor {
 
   // PRIVATE METHODS
   /** 
-   * Converts a logical cell of an array into a CSV line. The cell is 
-   * comprised of all coordinates and attribute values, which are contained 
-   * in the input array of cell iterators.
+   * Exports an array to a CSV file. Each line in the CSV file represents
+   * a logical cell comprised of coordinates and attribute values. The 
+   * coordinates are written first, and then the attribute values,
+   * following the order as defined in the schema of the array.
+   * The function is templated on the coordinates type. It takes as input an
+   * array descriptor instead of its name. The input dimension and attribute ids
+   * allow for selective exporting of coordinates and attribute values
+   * respectively. Note that the attribute ids must NOT contain the id of the
+   * coordinates.
    */
   template<class T>
-  CSVLine cell_to_csv_line(
-      const void* cell, const ArraySchema* array_schema) const;
+  void export_to_csv(
+      int ad, const std::string& filename,
+      const std::vector<int>& dim_ids,
+      const std::vector<int>& attribute_ids) const;
+  /** 
+   * Same as QueryProcessor::export_to_csv, but the cells are exporting to the
+   * CSV file in reverse order.
+   */
+  template<class T>
+  void export_to_csv_reverse(
+      int ad, const std::string& filename,
+      const std::vector<int>& dim_ids,
+      const std::vector<int>& attribute_ids) const;
+
+  /** 
+   * Parses the attribute names and returns the corresponding attribute ids,
+   * which will be used to initialize a cell iterator.
+   */
+  std::vector<int> parse_attribute_names(
+      const std::vector<std::string>& attribute_names,
+      const ArraySchema* array_schema) const;
+  /** Parses the dimension names and returns the corresponding dimension ids. */
+  std::vector<int> parse_dim_names(
+      const std::vector<std::string>& dim_names,
+      const ArraySchema* array_schema) const;
   /** 
    * A subarray query creates a new array from the input array, 
    * containing only the cells whose coordinates fall into the input range. 
-   * The new array will have the input result name. 
-   * The function is templated on the coordinates type. 
-   * It takes as input array descriptors instead of names.
+   * The new array will have the input result name. The function is templated on
+   * the coordinates type. It takes as input array descriptors instead of names.
+   * The input attribute ids allow for selective writing of attribute values to
+   * the output array, respectively. Note that the attribute ids must NOT
+   * contain the id of the coordinates. Also the attribute ids can be in an
+   * arbitrary order (not necessarily the one specified in the input array).
    */
   template<class T>
-  void subarray(int ad, const T* range, int result_ad) const;
+  void subarray(
+      int ad, const T* range, int result_ad,
+      const std::vector<int>& attribute_ids) const;
+  /** 
+   * Same as QueryProcessor::subarra, but the cells are written to the
+   * output array in reverse order.
+   */
+  template<class T>
+  void subarray_reverse(
+      int ad, const T* range, int result_ad,
+      const std::vector<int>& attribute_ids) const;
 };
 
 /** This exception is thrown by QueryProcessor. */

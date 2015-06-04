@@ -111,6 +111,10 @@ bool is_real(const char* s);
  */
 bool is_valid_name(const char* s);
 
+/** Returns true if there are no duplicates in the input vector. */
+template<class T>
+bool no_duplicates(const std::vector<T>& v);
+
 /** 
  * Checks the overlap between two ranges of dimensionality dim_num. 
  * Returns a pair where the first boolean indicates whether there is
@@ -122,6 +126,13 @@ std::pair<bool, bool> overlap(const T* r1, const T* r2, int dim_num);
 
 /** Returns true if the input path is an existing directory. */ 
 bool path_exists(const std::string& path);
+
+/** 
+ * Returns a new vector that is deduplicated version of the input. The 
+ * deduplication starts from the end of the input (i.e., in reverse).
+ */
+template<class T>
+std::vector<T> rdedup(const std::vector<T>& v); 
 
 /** Wrapper of comparison function for sorting cells. */
 template<typename T>
@@ -268,5 +279,11 @@ struct SmallerWith2Ids {
   /** Number of dimension. */
   int dim_num_;
 };
+
+/** 
+ * Returns a new vector that is the sorted, deduplicated version of the input.
+ */
+template<class T>
+std::vector<T> sort_dedup(const std::vector<T>& v); 
 
 #endif

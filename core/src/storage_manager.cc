@@ -226,7 +226,8 @@ void StorageManager::Fragment::commit_book_keeping() {
                          fragment_name_ + "/" +
                          SM_BOUNDING_COORDINATES_FILENAME + 
                          SM_BOOK_KEEPING_FILE_SUFFIX;
-  if(is_file(filename))
+
+  if(is_file(filename)) 
     return;
 
   commit_bounding_coordinates();
@@ -2423,8 +2424,7 @@ void StorageManager::Array::consolidate_lazily() {
   for(int i=fragment_num-consolidation_step; i<fragment_num; ++i)
     fragment_ids.push_back(i); 
   const_cell_iterator<T> cell_it =
-      const_cell_iterator<T>(this, fragment_ids, 
-                             std::vector<int>(), return_del);
+      const_cell_iterator<T>(this, fragment_ids, return_del);
 
   // Create a new fragment for the cells of the consolidated fragments
   std::stringstream new_fragment_name; 
@@ -2710,6 +2710,17 @@ void StorageManager::Array::write_cell_sorted(const void* cell) {
   fragments_.back()->write_cell_sorted<T>(cell);
 }
 
+
+bool StorageManager::Array::valid_fragment_ids(
+    const std::vector<int>& fragment_ids) const {
+  for(int i=0; i<fragment_ids.size(); ++i) {
+    if(fragment_ids[i] < 0 || fragment_ids[i] >= fragments_.size())
+      return false;
+  }
+
+  return true;
+}
+
 /*----------------- CELL ITERATOR ------------------*/
 
 template<class T>
@@ -2722,51 +2733,40 @@ StorageManager::Array::const_cell_iterator<T>::const_cell_iterator() {
   tile_its_ = NULL;
   full_overlap_ = NULL;
   is_del_ = false;
+  var_size_ = false;
+  cell_size_ = 0;
 }
 
 template<class T>
 StorageManager::Array::const_cell_iterator<T>::const_cell_iterator(
-    Array* array, 
-    std::vector<int> fragment_ids,
-    std::vector<int> attribute_ids,
-    bool return_del) : array_(array), return_del_(return_del) {
-  // For easy reference
-  int attribute_num = array_->array_schema_->attribute_num();
-
+    Array* array) : array_(array) {
   // Initialize private attributes
+  attribute_num_ = array_->array_schema_->attribute_num();
   dim_num_ = array_->array_schema_->dim_num();
+  fragment_num_ = array_->fragments_.size();
   end_ = false;
-  if(array_->array_schema_->cell_size() != VAR_SIZE)
-    cell_ = malloc(array_->array_schema_->cell_size());
-  else 
-    cell_ = NULL;
   range_ = NULL;
   full_overlap_ = NULL;
+  return_del_ = false;
 
   // Prepare the ids of the fragments the iterator will iterate on
-  if(fragment_ids.size() == 0) {
-    fragment_num_ = array_->fragments_.size();
-    for(int i=0; i<fragment_num_; ++i)
-      fragment_ids.push_back(i);
-  } else {
-    fragment_num_ = fragment_ids.size();
-  }
+  for(int i=0; i<array_->fragments_.size(); ++i)
+    fragment_ids_.push_back(i);
 
   // Prepare the ids of the attributes the iterator will iterate on
-  if(attribute_ids.size() == 0) {
-    attribute_num_ = attribute_num;
-    for(int i=0; i<=attribute_num_; ++i)
-      attribute_ids.push_back(i);
-  } else {
-    // The attribute id of the coordinates is always the last one to
-    // appear in attribute_ids. For consistency, the number of 
-    // attributes does not include the coordinates extra attribute.
-    assert(attribute_ids.back() == attribute_num);
-    attribute_num_ = attribute_ids.size() - 1;
-  }
+  for(int i=0; i<=attribute_num_; ++i)
+    attribute_ids_.push_back(i);
+
+  // Allocate space for the cell
+  cell_size_ = array_->array_schema_->cell_size(attribute_ids_);
+  var_size_ = (cell_size_ == VAR_SIZE);
+  if(!var_size_)
+    cell_ = malloc(cell_size_);
+  else 
+    cell_ = NULL;
 
   // Get first cell
-  init_iterators(fragment_ids, attribute_ids);
+  init_iterators();
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell(fragment_id); 
@@ -2775,25 +2775,173 @@ StorageManager::Array::const_cell_iterator<T>::const_cell_iterator(
 template<class T>
 StorageManager::Array::const_cell_iterator<T>::const_cell_iterator(
     Array* array, 
-    const T* range,
+    const std::vector<int>& fragment_ids,
     bool return_del) : array_(array), return_del_(return_del) {
+  // Checks
+  assert(fragment_ids.size() != 0);
+
   // Initialize private attributes
   attribute_num_ = array_->array_schema_->attribute_num();
   dim_num_ = array_->array_schema_->dim_num();
   fragment_num_ = array_->fragments_.size();
   end_ = false;
-  if(array_->array_schema_->cell_size() != VAR_SIZE)
-    cell_ = malloc(array_->array_schema_->cell_size());
+  range_ = NULL;
+  full_overlap_ = NULL;
+
+  // Prepare the ids of the fragments the iterator will iterate on
+  for(int i=0; i<array_->fragments_.size(); ++i)
+    fragment_ids_.push_back(i);
+
+  // Prepare the ids of the attributes the iterator will iterate on
+  for(int i=0; i<=attribute_num_; ++i)
+    attribute_ids_.push_back(i);
+
+  // Allocate space for the cell
+  cell_size_ = array_->array_schema_->cell_size(attribute_ids_);
+  var_size_ = (cell_size_ == VAR_SIZE);
+  if(!var_size_)
+    cell_ = malloc(cell_size_);
   else 
     cell_ = NULL;
+
+  // Get first cell
+  init_iterators();
+  int fragment_id = get_next_cell(); 
+  if(fragment_id != -1)
+    advance_cell(fragment_id); 
+}
+
+template<class T>
+StorageManager::Array::const_cell_iterator<T>::const_cell_iterator(
+    Array* array, 
+    const std::vector<int>& attribute_ids) : array_(array) {
+  // Check fragment and attribute ids
+  assert(array_->array_schema_->valid_attribute_ids(attribute_ids));
+
+  // Initialize private attributes
+  attribute_num_ = array_->array_schema_->attribute_num();
+  dim_num_ = array_->array_schema_->dim_num();
+  fragment_num_ = array_->fragments_.size();
+  end_ = false;
+  range_ = NULL;
+  full_overlap_ = NULL;
+  return_del_ = false;
+
+  // Prepare the ids of the fragments the iterator will iterate on
+  for(int i=0; i<array_->fragments_.size(); ++i)
+    fragment_ids_.push_back(i);
+
+  // Prepare the ids of the attributes the iterator will iterate on
+  // The coordinates must always be part of the attributes to be
+  // iterated on (to allow visitng cell of multiple fragments in order)
+  attribute_ids_ = attribute_ids;
+  // In case the attribute_ids is empty, include a dummy attribute to
+  // gracefully handle deletions.
+  if(attribute_ids_.size() == 0) 
+    attribute_ids_.push_back(array_->array_schema_->smallest_attribute());
+  attribute_ids_.push_back(attribute_num_);
+  attribute_ids_ = rdedup(attribute_ids_);
+
+  // Allocate space for the cell
+  cell_size_ = array_->array_schema_->cell_size(attribute_ids_);
+  var_size_ = (cell_size_ == VAR_SIZE);
+  if(!var_size_)
+    cell_ = malloc(cell_size_);
+  else 
+    cell_ = NULL;
+
+  // Get first cell
+  init_iterators();
+  int fragment_id = get_next_cell(); 
+  if(fragment_id != -1)
+    advance_cell(fragment_id); 
+}
+
+template<class T>
+StorageManager::Array::const_cell_iterator<T>::const_cell_iterator(
+    Array* array, const T* range) : array_(array) {
+  // Initialize private attributes
+  attribute_num_ = array_->array_schema_->attribute_num();
+  dim_num_ = array_->array_schema_->dim_num();
+  fragment_num_ = array_->fragments_.size();
+  end_ = false;
+  return_del_ = false;
   range_ = new T[2*dim_num_];
-  full_overlap_ = new bool[fragment_num_];
+  full_overlap_ = new bool[array_->fragments_.size()];
   memcpy(range_, range, 2*dim_num_*sizeof(T)); 
+
+  // Prepare the ids of the fragments the iterator will iterate on
+  // By default it is all the fragments, but this may change in the future
+  for(int i=0; i<array_->fragments_.size(); ++i)
+    fragment_ids_.push_back(i);
+
+  // Prepare the ids of the attributes the iterator will iterate on
+  for(int i=0; i<=attribute_num_; ++i)
+    attribute_ids_.push_back(i);
+
+  // Allocate space for the cell
+  cell_size_ = array_->array_schema_->cell_size(attribute_ids_);
+  var_size_ = (cell_size_ == VAR_SIZE);
+  if(!var_size_)
+    cell_ = malloc(cell_size_);
+  else 
+    cell_ = NULL;
 
   // Get first cell
   init_iterators_in_range();
-  for(int i=0; i<fragment_num_; ++i)
-    find_next_cell_in_range(i);
+  for(int i=0; i<fragment_ids_.size(); ++i)
+    find_next_cell_in_range(fragment_ids_[i]);
+  int fragment_id = get_next_cell(); 
+  if(fragment_id != -1)
+    advance_cell_in_range(fragment_id); 
+}
+
+template<class T>
+StorageManager::Array::const_cell_iterator<T>::const_cell_iterator(
+    Array* array, 
+    const T* range,
+    const std::vector<int>& attribute_ids) : array_(array) {
+  // Check fragment and attribute ids
+  assert(array_->array_schema_->valid_attribute_ids(attribute_ids));
+
+  // Initialize private attributes
+  attribute_num_ = array_->array_schema_->attribute_num();
+  dim_num_ = array_->array_schema_->dim_num();
+  fragment_num_ = array_->fragments_.size();
+  end_ = false;
+  return_del_ = false;
+  range_ = new T[2*dim_num_];
+  full_overlap_ = new bool[array_->fragments_.size()];
+  memcpy(range_, range, 2*dim_num_*sizeof(T)); 
+
+  // Prepare the ids of the fragments the iterator will iterate on
+  // By default it is all the fragments, but this may change in the future
+  for(int i=0; i<array_->fragments_.size(); ++i)
+    fragment_ids_.push_back(i);
+
+  // Prepare the ids of the attributes the iterator will iterate on
+  // The coordinates must always be part of the attributes to be
+  // iterated on (to allow visitng cell of multiple fragments in order)
+  attribute_ids_ = attribute_ids;
+  // In case the attribute_ids is empty, include a dummy attribute to
+  // gracefully handle deletions.
+  if(attribute_ids_.size() == 0) 
+    attribute_ids_.push_back(array_->array_schema_->smallest_attribute());
+  attribute_ids_.push_back(attribute_num_);
+  attribute_ids_ = rdedup(attribute_ids_);
+
+  // Allocate space for the cell
+  cell_size_ = array_->array_schema_->cell_size(attribute_ids_);
+  var_size_ = (cell_size_ == VAR_SIZE);
+  if(!var_size_)
+    cell_ = malloc(cell_size_);
+  else 
+    cell_ = NULL;
+
+  // Get first cell
+  init_iterators_in_range();
+  for(int i=0; i<fragment_ids_.size(); ++i)
+    find_next_cell_in_range(fragment_ids_[i]);
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell_in_range(fragment_id); 
@@ -2811,8 +2959,9 @@ StorageManager::Array::const_cell_iterator<T>::~const_cell_iterator() {
   }
 
   if(tile_its_ != NULL) {
-    for(int i=0; i<fragment_num_; ++i)
+    for(int i=0; i<fragment_num_; ++i) {
       delete [] tile_its_[i];
+    }
     delete [] tile_its_; 
   }
 
@@ -2826,21 +2975,21 @@ StorageManager::Array::const_cell_iterator<T>::~const_cell_iterator() {
 template<class T>
 void StorageManager::Array::const_cell_iterator<T>::advance_cell(
     int fragment_id) {
-
   // Advance cell iterators
-  for(int j=0; j<=attribute_num_; ++j)
-    ++cell_its_[fragment_id][j];
+  for(int j=0; j<attribute_ids_.size(); ++j)
+    ++cell_its_[fragment_id][attribute_ids_[j]];
 
   // Potentially advance also tile iterators
   if(cell_its_[fragment_id][attribute_num_].end()) {
     // Advance tile iterators
-    for(int j=0; j<=attribute_num_; ++j) 
-      ++tile_its_[fragment_id][j];
+    for(int j=0; j<attribute_ids_.size(); ++j) 
+      ++tile_its_[fragment_id][attribute_ids_[j]];
 
     // Initialize cell iterators
     if(!tile_its_[fragment_id][attribute_num_].end()) {
-      for(int j=0; j<=attribute_num_; ++j) 
-        cell_its_[fragment_id][j] = (*tile_its_[fragment_id][j])->begin();
+      for(int j=0; j<attribute_ids_.size(); ++j) 
+        cell_its_[fragment_id][attribute_ids_[j]] = 
+            (*tile_its_[fragment_id][attribute_ids_[j]])->begin();
     }
   }
 }
@@ -2849,8 +2998,8 @@ template<class T>
 void StorageManager::Array::const_cell_iterator<T>::advance_cell_in_range(
     int fragment_id) {
   // Advance cell iterators
-  for(int j=0; j<=attribute_num_; ++j)
-    ++cell_its_[fragment_id][j];
+  for(int j=0; j<attribute_ids_.size(); ++j)
+    ++cell_its_[fragment_id][attribute_ids_[j]];
 
   find_next_cell_in_range(fragment_id);
 }
@@ -2859,32 +3008,29 @@ template<class T>
 size_t StorageManager::Array::const_cell_iterator<T>::cell_size() const {
   assert(!end_);
 
-  if(array_->array_schema_->cell_size() != VAR_SIZE) { // Fixed-sized cell
-    return array_->array_schema_->cell_size();
-  } else {                                             // Variable-sized cell
-     int attribute_num = array_->array_schema_->attribute_num();
-     size_t coords_size = array_->array_schema_->cell_size(attribute_num);
-     size_t cell_size;
+  if(!var_size_) {
+    return cell_size_;
+  } else {
+    size_t cell_size;
+    size_t coords_size = array_->array_schema_->cell_size(attribute_num_);
      memcpy(&cell_size, static_cast<char*>(cell_) + coords_size, 
             sizeof(size_t));
-     return cell_size;
+    return cell_size;
   }
 }
 
 template<class T>
 size_t StorageManager::Array::const_cell_iterator<T>::cell_size(
     int fragment_id) const {
-  size_t cell_size;
 
-  if(array_->array_schema_->cell_size() != VAR_SIZE) {
-    cell_size = array_->array_schema_->cell_size();
+  if(!var_size_) {
+    return cell_size_;
   } else {
-    cell_size = sizeof(size_t); 
-    for(int i=0; i<=attribute_num_; ++i)
-      cell_size += cell_its_[fragment_id][i].cell_size();
+    size_t cell_size = sizeof(size_t); 
+    for(int i=0; i<attribute_ids_.size(); ++i)
+      cell_size += cell_its_[fragment_id][attribute_ids_[i]].cell_size();
+    return cell_size; 
   }
-
-  return cell_size; 
 }
 
 template<class T>
@@ -2942,19 +3088,19 @@ void StorageManager::Array::const_cell_iterator<T>::find_next_cell_in_range(
     }
   }
 
-  // Syncronize attribute cell and tile iterators
-  for(int j=0; j<attribute_num_; ++j) {
-    tile_its_[fragment_id][j] = 
-        array_->fragments_[fragment_id]->begin(j);
-    tile_its_[fragment_id][j] +=  
+  // Synchronize attribute cell and tile iterators
+  for(int j=0; j<attribute_ids_.size()-1; ++j) {
+    tile_its_[fragment_id][attribute_ids_[j]] = 
+        array_->fragments_[fragment_id]->begin(attribute_ids_[j]);
+    tile_its_[fragment_id][attribute_ids_[j]] +=  
         tile_its_[fragment_id][attribute_num_].pos();
-    if(!tile_its_[fragment_id][j].end()) {
-      cell_its_[fragment_id][j] = 
-          (*tile_its_[fragment_id][j])->begin();
-      cell_its_[fragment_id][j] +=  
+    if(!tile_its_[fragment_id][attribute_ids_[j]].end()) {
+      cell_its_[fragment_id][attribute_ids_[j]] = 
+          (*tile_its_[fragment_id][attribute_ids_[j]])->begin();
+      cell_its_[fragment_id][attribute_ids_[j]] +=  
           cell_its_[fragment_id][attribute_num_].pos();
     } else {
-      cell_its_[fragment_id][j] = Tile::end(); 
+      cell_its_[fragment_id][attribute_ids_[j]] = Tile::end(); 
     }
   }    
 }
@@ -2962,35 +3108,33 @@ void StorageManager::Array::const_cell_iterator<T>::find_next_cell_in_range(
 template<class T>
 int StorageManager::Array::const_cell_iterator<T>::get_next_cell() {
   // For easy reference
-  int attribute_num = array_->array_schema_->attribute_num();
-  size_t coords_size = array_->array_schema_->cell_size(attribute_num);
-  bool var_size = (array_->array_schema_->cell_size() == VAR_SIZE);
+  size_t coords_size = array_->array_schema_->cell_size(attribute_num_);
 
   // Get the first non-NULL coordinates
   const void *coords, *next_coords;
   int fragment_id;
   int f = 0;
   do {
-    next_coords = *cell_its_[f][attribute_num_]; 
+    next_coords = *cell_its_[fragment_ids_[f]][attribute_num_]; 
     ++f;
-  } while((next_coords == NULL) && (f < fragment_num_)); 
+  } while((next_coords == NULL) && (f < fragment_ids_.size())); 
 
-  fragment_id = f-1;
+  fragment_id = fragment_ids_[f-1];
 
   // Get the next coordinates in the global cell order
-  for(int i=f; i<fragment_num_; ++i) {
-    coords = *cell_its_[i][attribute_num_]; 
+  for(int i=f; i<fragment_ids_.size(); ++i) {
+    coords = *cell_its_[fragment_ids_[i]][attribute_num_]; 
     if(coords != NULL) {
       if(memcmp(coords, next_coords, coords_size) == 0) {
         if(range_ != NULL)
           advance_cell_in_range(fragment_id);
         else
           advance_cell(fragment_id); 
-        fragment_id = i;
-      } else if(precedes(cell_its_[i][attribute_num],
-                         cell_its_[fragment_id][attribute_num])) {
+        fragment_id = fragment_ids_[i];
+      } else if(precedes(cell_its_[fragment_ids_[i]][attribute_num_],
+                         cell_its_[fragment_id][attribute_num_])) {
         next_coords = coords;
-        fragment_id = i;
+        fragment_id = fragment_ids_[i];
       }     
     }
   }
@@ -2998,38 +3142,36 @@ int StorageManager::Array::const_cell_iterator<T>::get_next_cell() {
   if(next_coords != NULL) { // There are cells
     // --- Prepare cell ---
     // Find cell size and create a new cell for variable-sized cells
-    size_t cell_size;
-    if(var_size) {
+    if(var_size_) {
       if(cell_ != NULL)
         free(cell_);
-      cell_size = this->cell_size(fragment_id);
-      cell_ = malloc(cell_size);
+      cell_size_ = this->cell_size(fragment_id);
+      cell_ = malloc(cell_size_);
     } 
     char* cell = static_cast<char*>(cell_);
     size_t offset;
 
     // Copy coordinates to cell
-    memcpy(cell, *(cell_its_[fragment_id][attribute_num]), coords_size);
+    memcpy(cell, *(cell_its_[fragment_id][attribute_num_]), coords_size);
     offset = coords_size;
     // Copy cell size for variable-sized cells
-    if(var_size) {
-      memcpy(cell + offset, &cell_size, sizeof(size_t));
+    if(var_size_) {
+      memcpy(cell + offset, &cell_size_, sizeof(size_t));
       offset += sizeof(size_t);
     }
 
     // Copy attributes to cell
     size_t attr_size;
-    for(int j=0; j<attribute_num_; ++j) { 
-      if(array_->array_schema_->cell_size(j) != VAR_SIZE)
-        attr_size = array_->array_schema_->cell_size(j);
-      else
-        attr_size = cell_its_[fragment_id][j].cell_size();
-      memcpy(cell + offset, *(cell_its_[fragment_id][j]), attr_size);
+    for(int j=0; j<attribute_ids_.size()-1; ++j) { 
+      attr_size = cell_its_[fragment_id][attribute_ids_[j]].cell_size();
+      memcpy(cell + offset, *(cell_its_[fragment_id][attribute_ids_[j]]), 
+             attr_size);
       offset += attr_size;
     }
 
     // Check if the retrieved cell represents a deletion
-    is_del_ = cell_its_[fragment_id][0].is_del();
+    assert(attribute_ids_[0] != attribute_num_);
+    is_del_ = cell_its_[fragment_id][attribute_ids_[0]].is_del();
 
     return fragment_id;
   } else { // No more cells
@@ -3041,9 +3183,7 @@ int StorageManager::Array::const_cell_iterator<T>::get_next_cell() {
 }
 
 template<class T>
-void StorageManager::Array::const_cell_iterator<T>::init_iterators(
-    const std::vector<int>& fragment_ids,
-    const std::vector<int>& attribute_ids) {
+void StorageManager::Array::const_cell_iterator<T>::init_iterators() {
   // Create tile and cell iterators
   tile_its_ = new Fragment::const_tile_iterator*[fragment_num_];
   cell_its_ = new Tile::const_cell_iterator*[fragment_num_];
@@ -3054,11 +3194,12 @@ void StorageManager::Array::const_cell_iterator<T>::init_iterators(
   }
 
   // Initialize iterators
-  for(int i=0; i<fragment_num_; ++i) {
-    for(int j=0; j<=attribute_num_; ++j) {
-      tile_its_[i][j] = 
-          array_->fragments_[fragment_ids[i]]->begin(attribute_ids[j]);
-      cell_its_[i][j] = (*tile_its_[i][j])->begin();
+  for(int i=0; i<fragment_ids_.size(); ++i) {
+    for(int j=0; j<attribute_ids_.size(); ++j) {
+      tile_its_[fragment_ids_[i]][attribute_ids_[j]] = 
+          array_->fragments_[fragment_ids_[i]]->begin(attribute_ids_[j]);
+      cell_its_[fragment_ids_[i]][attribute_ids_[j]] = 
+          (*tile_its_[fragment_ids_[i]][attribute_ids_[j]])->begin();
     }
   }
 }
@@ -3075,37 +3216,41 @@ void StorageManager::Array::const_cell_iterator<T>::init_iterators_in_range() {
   }
 
   // Initialize tile and cell iterators 
-  for(int i=0; i<fragment_num_; ++i) { 
+  for(int i=0; i<fragment_ids_.size(); ++i) { 
     // Initialize coordinate tile iterator
-    tile_its_[i][attribute_num_] =  
-        array_->fragments_[i]->begin(attribute_num_);
+    tile_its_[fragment_ids_[i]][attribute_num_] =  
+        array_->fragments_[fragment_ids_[i]]->begin(attribute_num_);
 
     // Find the first coordinate tile that overlaps with the range
     const T* mbr;
     std::pair<bool, bool> tile_overlap;
-    while(!tile_its_[i][attribute_num_].end()) {
-      mbr = static_cast<const T*>(tile_its_[i][attribute_num_].mbr());
+    while(!tile_its_[fragment_ids_[i]][attribute_num_].end()) {
+      mbr = static_cast<const T*>
+                (tile_its_[fragment_ids_[i]][attribute_num_].mbr());
       tile_overlap = overlap(mbr, range_, dim_num_); 
 
       if(tile_overlap.first) { 
-        full_overlap_[i] = tile_overlap.second;
+        full_overlap_[fragment_ids_[i]] = tile_overlap.second;
         break;
       }
-      ++tile_its_[i][attribute_num_];
+      ++tile_its_[fragment_ids_[i]][attribute_num_];
     } 
 
     // Syncronize attribute tile iterators
-    for(int j=0; j<attribute_num_; ++j) {
-      tile_its_[i][j] = array_->fragments_[i]->begin(j);
-      tile_its_[i][j] += tile_its_[i][attribute_num_].pos();
+    for(int j=0; j<attribute_ids_.size()-1; ++j) {
+      tile_its_[fragment_ids_[i]][attribute_ids_[j]] = 
+          array_->fragments_[fragment_ids_[i]]->begin(attribute_ids_[j]);
+      tile_its_[fragment_ids_[i]][attribute_ids_[j]] += 
+          tile_its_[fragment_ids_[i]][attribute_num_].pos();
     }    
 
     // Initialize cell iterators
-    for(int j=0; j<=attribute_num_; ++j) {
-      if(!tile_its_[i][j].end())
-        cell_its_[i][j] = (*tile_its_[i][j])->begin();
+    for(int j=0; j<attribute_ids_.size(); ++j) {
+      if(!tile_its_[fragment_ids_[i]][attribute_ids_[j]].end())
+        cell_its_[fragment_ids_[i]][attribute_ids_[j]] = 
+            (*tile_its_[fragment_ids_[i]][attribute_ids_[j]])->begin();
       else
-        cell_its_[i][j] = Tile::end();
+        cell_its_[fragment_ids_[i]][attribute_ids_[j]] = Tile::end();
     }
   }
 }
@@ -3165,7 +3310,7 @@ bool StorageManager::Array::const_cell_iterator<T>::precedes(
 
 template<class T>
 StorageManager::Array::const_reverse_cell_iterator<T>::
-   const_reverse_cell_iterator() {
+    const_reverse_cell_iterator() {
   array_ = NULL;
   cell_ = NULL;
   cell_its_ = NULL;
@@ -3174,52 +3319,41 @@ StorageManager::Array::const_reverse_cell_iterator<T>::
   tile_its_ = NULL;
   full_overlap_ = NULL;
   is_del_ = false;
+  var_size_ = false;
+  cell_size_ = 0;
 }
 
 template<class T>
 StorageManager::Array::const_reverse_cell_iterator<T>::
     const_reverse_cell_iterator(
-    Array* array, 
-    std::vector<int> fragment_ids,
-    std::vector<int> attribute_ids,
-    bool return_del) : array_(array), return_del_(return_del) {
-  // For easy reference
-  int attribute_num = array_->array_schema_->attribute_num();
-
+    Array* array) : array_(array) {
   // Initialize private attributes
+  attribute_num_ = array_->array_schema_->attribute_num();
   dim_num_ = array_->array_schema_->dim_num();
+  fragment_num_ = array_->fragments_.size();
   end_ = false;
-  if(array_->array_schema_->cell_size() != VAR_SIZE)
-    cell_ = malloc(array_->array_schema_->cell_size());
-  else 
-    cell_ = NULL;
   range_ = NULL;
   full_overlap_ = NULL;
+  return_del_ = false;
 
   // Prepare the ids of the fragments the iterator will iterate on
-  if(fragment_ids.size() == 0) {
-    fragment_num_ = array_->fragments_.size();
-    for(int i=0; i<fragment_num_; ++i)
-      fragment_ids.push_back(i);
-  } else {
-    fragment_num_ = fragment_ids.size();
-  }
+  for(int i=0; i<array_->fragments_.size(); ++i)
+    fragment_ids_.push_back(i);
 
   // Prepare the ids of the attributes the iterator will iterate on
-  if(attribute_ids.size() == 0) {
-    attribute_num_ = attribute_num;
-    for(int i=0; i<=attribute_num_; ++i)
-      attribute_ids.push_back(i);
-  } else {
-    // The attribute id of the coordinates is always the last one to
-    // appear in attribute_ids. For consistency, the number of 
-    // attributes does not include the coordinates extra attribute.
-    assert(attribute_ids.back() == attribute_num);
-    attribute_num_ = attribute_ids.size() - 1;
-  }
+  for(int i=0; i<=attribute_num_; ++i)
+    attribute_ids_.push_back(i);
+
+  // Allocate space for the cell
+  cell_size_ = array_->array_schema_->cell_size(attribute_ids_);
+  var_size_ = (cell_size_ == VAR_SIZE);
+  if(!var_size_)
+    cell_ = malloc(cell_size_);
+  else 
+    cell_ = NULL;
 
   // Get first cell
-  init_iterators(fragment_ids, attribute_ids);
+  init_iterators();
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell(fragment_id); 
@@ -3229,25 +3363,176 @@ template<class T>
 StorageManager::Array::const_reverse_cell_iterator<T>::
     const_reverse_cell_iterator(
     Array* array, 
-    const T* range,
+    const std::vector<int>& fragment_ids,
     bool return_del) : array_(array), return_del_(return_del) {
+  // Checks
+  assert(fragment_ids.size() != 0);
+
   // Initialize private attributes
   attribute_num_ = array_->array_schema_->attribute_num();
   dim_num_ = array_->array_schema_->dim_num();
   fragment_num_ = array_->fragments_.size();
   end_ = false;
-  if(array_->array_schema_->cell_size() != VAR_SIZE)
-    cell_ = malloc(array_->array_schema_->cell_size());
+  range_ = NULL;
+  full_overlap_ = NULL;
+
+  // Prepare the ids of the fragments the iterator will iterate on
+  for(int i=0; i<array_->fragments_.size(); ++i)
+    fragment_ids_.push_back(i);
+
+  // Prepare the ids of the attributes the iterator will iterate on
+  for(int i=0; i<=attribute_num_; ++i)
+    attribute_ids_.push_back(i);
+
+  // Allocate space for the cell
+  cell_size_ = array_->array_schema_->cell_size(attribute_ids_);
+  var_size_ = (cell_size_ == VAR_SIZE);
+  if(!var_size_)
+    cell_ = malloc(cell_size_);
   else 
     cell_ = NULL;
+
+  // Get first cell
+  init_iterators();
+  int fragment_id = get_next_cell(); 
+  if(fragment_id != -1)
+    advance_cell(fragment_id); 
+}
+
+template<class T>
+StorageManager::Array::const_reverse_cell_iterator<T>::
+    const_reverse_cell_iterator(
+    Array* array, 
+    const std::vector<int>& attribute_ids) : array_(array) {
+  // Check fragment and attribute ids
+  assert(array_->array_schema_->valid_attribute_ids(attribute_ids));
+
+  // Initialize private attributes
+  attribute_num_ = array_->array_schema_->attribute_num();
+  dim_num_ = array_->array_schema_->dim_num();
+  fragment_num_ = array_->fragments_.size();
+  end_ = false;
+  range_ = NULL;
+  full_overlap_ = NULL;
+  return_del_ = false;
+
+  // Prepare the ids of the fragments the iterator will iterate on
+  for(int i=0; i<array_->fragments_.size(); ++i)
+    fragment_ids_.push_back(i);
+
+  // Prepare the ids of the attributes the iterator will iterate on
+  // The coordinates must always be part of the attributes to be
+  // iterated on (to allow visitng cell of multiple fragments in order)
+  attribute_ids_ = attribute_ids;
+  // In case the attribute_ids is empty, include a dummy attribute to
+  // gracefully handle deletions.
+  if(attribute_ids_.size() == 0) 
+    attribute_ids_.push_back(array_->array_schema_->smallest_attribute());
+  attribute_ids_.push_back(attribute_num_);
+  attribute_ids_ = rdedup(attribute_ids_);
+
+  // Allocate space for the cell
+  cell_size_ = array_->array_schema_->cell_size(attribute_ids_);
+  var_size_ = (cell_size_ == VAR_SIZE);
+  if(!var_size_)
+    cell_ = malloc(cell_size_);
+  else 
+    cell_ = NULL;
+
+  // Get first cell
+  init_iterators();
+  int fragment_id = get_next_cell(); 
+  if(fragment_id != -1)
+    advance_cell(fragment_id); 
+}
+
+template<class T>
+StorageManager::Array::const_reverse_cell_iterator<T>::
+    const_reverse_cell_iterator(
+    Array* array, const T* range) : array_(array) {
+  // Initialize private attributes
+  attribute_num_ = array_->array_schema_->attribute_num();
+  dim_num_ = array_->array_schema_->dim_num();
+  fragment_num_ = array_->fragments_.size();
+  end_ = false;
+  return_del_ = false;
   range_ = new T[2*dim_num_];
-  full_overlap_ = new bool[fragment_num_];
+  full_overlap_ = new bool[array_->fragments_.size()];
   memcpy(range_, range, 2*dim_num_*sizeof(T)); 
+
+  // Prepare the ids of the fragments the iterator will iterate on
+  // By default it is all the fragments, but this may change in the future
+  for(int i=0; i<array_->fragments_.size(); ++i)
+    fragment_ids_.push_back(i);
+
+  // Prepare the ids of the attributes the iterator will iterate on
+  for(int i=0; i<=attribute_num_; ++i)
+    attribute_ids_.push_back(i);
+
+  // Allocate space for the cell
+  cell_size_ = array_->array_schema_->cell_size(attribute_ids_);
+  var_size_ = (cell_size_ == VAR_SIZE);
+  if(!var_size_)
+    cell_ = malloc(cell_size_);
+  else 
+    cell_ = NULL;
 
   // Get first cell
   init_iterators_in_range();
-  for(int i=0; i<fragment_num_; ++i)
-    find_next_cell_in_range(i);
+  for(int i=0; i<fragment_ids_.size(); ++i)
+    find_next_cell_in_range(fragment_ids_[i]);
+  int fragment_id = get_next_cell(); 
+  if(fragment_id != -1)
+    advance_cell_in_range(fragment_id); 
+}
+
+template<class T>
+StorageManager::Array::const_reverse_cell_iterator<T>::
+    const_reverse_cell_iterator(
+    Array* array, 
+    const T* range,
+    const std::vector<int>& attribute_ids) : array_(array) {
+  // Check fragment and attribute ids
+  assert(array_->array_schema_->valid_attribute_ids(attribute_ids));
+
+  // Initialize private attributes
+  attribute_num_ = array_->array_schema_->attribute_num();
+  dim_num_ = array_->array_schema_->dim_num();
+  fragment_num_ = array_->fragments_.size();
+  end_ = false;
+  return_del_ = false;
+  range_ = new T[2*dim_num_];
+  full_overlap_ = new bool[array_->fragments_.size()];
+  memcpy(range_, range, 2*dim_num_*sizeof(T)); 
+
+  // Prepare the ids of the fragments the iterator will iterate on
+  // By default it is all the fragments, but this may change in the future
+  for(int i=0; i<array_->fragments_.size(); ++i)
+    fragment_ids_.push_back(i);
+
+  // Prepare the ids of the attributes the iterator will iterate on
+  // The coordinates must always be part of the attributes to be
+  // iterated on (to allow visitng cell of multiple fragments in order)
+  attribute_ids_ = attribute_ids;
+  // In case the attribute_ids is empty, include a dummy attribute to
+  // gracefully handle deletions.
+  if(attribute_ids_.size() == 0) 
+    attribute_ids_.push_back(array_->array_schema_->smallest_attribute());
+  attribute_ids_.push_back(attribute_num_);
+  attribute_ids_ = rdedup(attribute_ids_);
+
+  // Allocate space for the cell
+  cell_size_ = array_->array_schema_->cell_size(attribute_ids_);
+  var_size_ = (cell_size_ == VAR_SIZE);
+  if(!var_size_)
+    cell_ = malloc(cell_size_);
+  else 
+    cell_ = NULL;
+
+  // Get first cell
+  init_iterators_in_range();
+  for(int i=0; i<fragment_ids_.size(); ++i)
+    find_next_cell_in_range(fragment_ids_[i]);
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell_in_range(fragment_id); 
@@ -3266,8 +3551,9 @@ StorageManager::Array::const_reverse_cell_iterator<T>::
   }
 
   if(tile_its_ != NULL) {
-    for(int i=0; i<fragment_num_; ++i)
+    for(int i=0; i<fragment_num_; ++i) {
       delete [] tile_its_[i];
+    }
     delete [] tile_its_; 
   }
 
@@ -3279,23 +3565,24 @@ StorageManager::Array::const_reverse_cell_iterator<T>::
 }
 
 template<class T>
-void StorageManager::Array::const_reverse_cell_iterator<T>::advance_cell(
+void StorageManager::Array::const_reverse_cell_iterator<T>::
+    advance_cell(
     int fragment_id) {
-
   // Advance cell iterators
-  for(int j=0; j<=attribute_num_; ++j)
-    ++cell_its_[fragment_id][j];
+  for(int j=0; j<attribute_ids_.size(); ++j)
+    ++cell_its_[fragment_id][attribute_ids_[j]];
 
   // Potentially advance also tile iterators
   if(cell_its_[fragment_id][attribute_num_].end()) {
     // Advance tile iterators
-    for(int j=0; j<=attribute_num_; ++j) 
-      ++tile_its_[fragment_id][j];
+    for(int j=0; j<attribute_ids_.size(); ++j) 
+      ++tile_its_[fragment_id][attribute_ids_[j]];
 
     // Initialize cell iterators
     if(!tile_its_[fragment_id][attribute_num_].end()) {
-      for(int j=0; j<=attribute_num_; ++j) 
-        cell_its_[fragment_id][j] = (*tile_its_[fragment_id][j])->rbegin();
+      for(int j=0; j<attribute_ids_.size(); ++j) 
+        cell_its_[fragment_id][attribute_ids_[j]] = 
+            (*tile_its_[fragment_id][attribute_ids_[j]])->rbegin();
     }
   }
 }
@@ -3305,8 +3592,8 @@ void StorageManager::Array::const_reverse_cell_iterator<T>::
     advance_cell_in_range(
     int fragment_id) {
   // Advance cell iterators
-  for(int j=0; j<=attribute_num_; ++j)
-    ++cell_its_[fragment_id][j];
+  for(int j=0; j<attribute_ids_.size(); ++j)
+    ++cell_its_[fragment_id][attribute_ids_[j]];
 
   find_next_cell_in_range(fragment_id);
 }
@@ -3316,33 +3603,29 @@ size_t StorageManager::Array::const_reverse_cell_iterator<T>::
     cell_size() const {
   assert(!end_);
 
-  if(array_->array_schema_->cell_size() != VAR_SIZE) { // Fixed-sized cell
-    return array_->array_schema_->cell_size();
-  } else {                                             // Variable-sized cell
-     int attribute_num = array_->array_schema_->attribute_num();
-     size_t coords_size = array_->array_schema_->cell_size(attribute_num);
-     size_t cell_size;
+  if(!var_size_) {
+    return cell_size_;
+  } else {
+    size_t cell_size;
+    size_t coords_size = array_->array_schema_->cell_size(attribute_num_);
      memcpy(&cell_size, static_cast<char*>(cell_) + coords_size, 
             sizeof(size_t));
-     return cell_size;
+    return cell_size;
   }
 }
-
 
 template<class T>
 size_t StorageManager::Array::const_reverse_cell_iterator<T>::cell_size(
     int fragment_id) const {
-  size_t cell_size;
 
-  if(array_->array_schema_->cell_size() != VAR_SIZE) {
-    cell_size = array_->array_schema_->cell_size();
+  if(!var_size_) {
+    return cell_size_;
   } else {
-    cell_size = sizeof(size_t); 
-    for(int i=0; i<=attribute_num_; ++i)
-      cell_size += cell_its_[fragment_id][i].cell_size();
+    size_t cell_size = sizeof(size_t); 
+    for(int i=0; i<attribute_ids_.size(); ++i)
+      cell_size += cell_its_[fragment_id][attribute_ids_[i]].cell_size();
+    return cell_size; 
   }
-
-  return cell_size; 
 }
 
 template<class T>
@@ -3354,6 +3637,9 @@ template<class T>
 void StorageManager::Array::const_reverse_cell_iterator<T>::
     find_next_cell_in_range(
     int fragment_id) {
+
+  const T* point;
+
   // The loop will be broken when a cell in range is found, or
   // all cells are exhausted
   while(1) { 
@@ -3361,7 +3647,6 @@ void StorageManager::Array::const_reverse_cell_iterator<T>::
     if(!cell_its_[fragment_id][attribute_num_].end() &&
        !full_overlap_[fragment_id]) {
       const void* coords;
-      const T* point;
       while(!cell_its_[fragment_id][attribute_num_].end()) {
         coords = *cell_its_[fragment_id][attribute_num_];
         point = static_cast<const T*>(coords);
@@ -3401,19 +3686,21 @@ void StorageManager::Array::const_reverse_cell_iterator<T>::
     }
   }
 
-  // Syncronize attribute cell and tile iterators
-  for(int j=0; j<attribute_num_; ++j) {
-    tile_its_[fragment_id][j] = 
-        array_->fragments_[fragment_id]->rbegin(j);
-    tile_its_[fragment_id][j] +=  
-        tile_its_[fragment_id][attribute_num_].pos();
-    if(!tile_its_[fragment_id][j].end()) {
-      cell_its_[fragment_id][j] = 
-          (*tile_its_[fragment_id][j])->rbegin();
-      cell_its_[fragment_id][j] +=  
-          cell_its_[fragment_id][attribute_num_].pos();
+  // Synchronize attribute cell and tile iterators
+  for(int j=0; j<attribute_ids_.size()-1; ++j) {
+    tile_its_[fragment_id][attribute_ids_[j]] = 
+        array_->fragments_[fragment_id]->rbegin(attribute_ids_[j]);
+    tile_its_[fragment_id][attribute_ids_[j]] +=  
+        tile_its_[fragment_id][attribute_num_].tile_num() -
+        tile_its_[fragment_id][attribute_num_].pos() - 1;
+    if(!tile_its_[fragment_id][attribute_ids_[j]].end()) {
+      cell_its_[fragment_id][attribute_ids_[j]] = 
+          (*tile_its_[fragment_id][attribute_ids_[j]])->rbegin();
+      cell_its_[fragment_id][attribute_ids_[j]] +=  
+          cell_its_[fragment_id][attribute_num_].cell_num() -
+          cell_its_[fragment_id][attribute_num_].pos() - 1;
     } else {
-      cell_its_[fragment_id][j] = Tile::rend(); 
+      cell_its_[fragment_id][attribute_ids_[j]] = Tile::rend(); 
     }
   }    
 }
@@ -3421,35 +3708,33 @@ void StorageManager::Array::const_reverse_cell_iterator<T>::
 template<class T>
 int StorageManager::Array::const_reverse_cell_iterator<T>::get_next_cell() {
   // For easy reference
-  int attribute_num = array_->array_schema_->attribute_num();
-  size_t coords_size = array_->array_schema_->cell_size(attribute_num);
-  bool var_size = (array_->array_schema_->cell_size() == VAR_SIZE);
+  size_t coords_size = array_->array_schema_->cell_size(attribute_num_);
 
   // Get the first non-NULL coordinates
   const void *coords, *next_coords;
   int fragment_id;
   int f = 0;
   do {
-    next_coords = *cell_its_[f][attribute_num_]; 
+    next_coords = *cell_its_[fragment_ids_[f]][attribute_num_]; 
     ++f;
-  } while((next_coords == NULL) && (f < fragment_num_)); 
+  } while((next_coords == NULL) && (f < fragment_ids_.size())); 
 
-  fragment_id = f-1;
+  fragment_id = fragment_ids_[f-1];
 
   // Get the next coordinates in the global cell order
-  for(int i=f; i<fragment_num_; ++i) {
-    coords = *cell_its_[i][attribute_num_]; 
+  for(int i=f; i<fragment_ids_.size(); ++i) {
+    coords = *cell_its_[fragment_ids_[i]][attribute_num_]; 
     if(coords != NULL) {
       if(memcmp(coords, next_coords, coords_size) == 0) {
         if(range_ != NULL)
           advance_cell_in_range(fragment_id);
         else
           advance_cell(fragment_id); 
-        fragment_id = i;
-      } else if(precedes(cell_its_[i][attribute_num],
-                         cell_its_[fragment_id][attribute_num])) {
+        fragment_id = fragment_ids_[i];
+      } else if(precedes(cell_its_[fragment_ids_[i]][attribute_num_],
+                         cell_its_[fragment_id][attribute_num_])) {
         next_coords = coords;
-        fragment_id = i;
+        fragment_id = fragment_ids_[i];
       }     
     }
   }
@@ -3457,38 +3742,36 @@ int StorageManager::Array::const_reverse_cell_iterator<T>::get_next_cell() {
   if(next_coords != NULL) { // There are cells
     // --- Prepare cell ---
     // Find cell size and create a new cell for variable-sized cells
-    size_t cell_size;
-    if(var_size) {
+    if(var_size_) {
       if(cell_ != NULL)
         free(cell_);
-      cell_size = this->cell_size(fragment_id);
-      cell_ = malloc(cell_size);
+      cell_size_ = this->cell_size(fragment_id);
+      cell_ = malloc(cell_size_);
     } 
     char* cell = static_cast<char*>(cell_);
     size_t offset;
 
     // Copy coordinates to cell
-    memcpy(cell, *(cell_its_[fragment_id][attribute_num]), coords_size);
+    memcpy(cell, *(cell_its_[fragment_id][attribute_num_]), coords_size);
     offset = coords_size;
     // Copy cell size for variable-sized cells
-    if(var_size) {
-      memcpy(cell + offset, &cell_size, sizeof(size_t));
+    if(var_size_) {
+      memcpy(cell + offset, &cell_size_, sizeof(size_t));
       offset += sizeof(size_t);
     }
 
     // Copy attributes to cell
     size_t attr_size;
-    for(int j=0; j<attribute_num_; ++j) { 
-      if(array_->array_schema_->cell_size(j) != VAR_SIZE)
-        attr_size = array_->array_schema_->cell_size(j);
-      else
-        attr_size = cell_its_[fragment_id][j].cell_size();
-      memcpy(cell + offset, *(cell_its_[fragment_id][j]), attr_size);
+    for(int j=0; j<attribute_ids_.size()-1; ++j) { 
+      attr_size = cell_its_[fragment_id][attribute_ids_[j]].cell_size();
+      memcpy(cell + offset, *(cell_its_[fragment_id][attribute_ids_[j]]), 
+             attr_size);
       offset += attr_size;
     }
 
     // Check if the retrieved cell represents a deletion
-    is_del_ = cell_its_[fragment_id][0].is_del();
+    assert(attribute_ids_[0] != attribute_num_);
+    is_del_ = cell_its_[fragment_id][attribute_ids_[0]].is_del();
 
     return fragment_id;
   } else { // No more cells
@@ -3500,9 +3783,7 @@ int StorageManager::Array::const_reverse_cell_iterator<T>::get_next_cell() {
 }
 
 template<class T>
-void StorageManager::Array::const_reverse_cell_iterator<T>::init_iterators(
-    const std::vector<int>& fragment_ids,
-    const std::vector<int>& attribute_ids) {
+void StorageManager::Array::const_reverse_cell_iterator<T>::init_iterators() {
   // Create tile and cell iterators
   tile_its_ = new Fragment::const_reverse_tile_iterator*[fragment_num_];
   cell_its_ = new Tile::const_reverse_cell_iterator*[fragment_num_];
@@ -3513,11 +3794,12 @@ void StorageManager::Array::const_reverse_cell_iterator<T>::init_iterators(
   }
 
   // Initialize iterators
-  for(int i=0; i<fragment_num_; ++i) {
-    for(int j=0; j<=attribute_num_; ++j) {
-      tile_its_[i][j] = 
-          array_->fragments_[fragment_ids[i]]->rbegin(attribute_ids[j]);
-      cell_its_[i][j] = (*tile_its_[i][j])->rbegin();
+  for(int i=0; i<fragment_ids_.size(); ++i) {
+    for(int j=0; j<attribute_ids_.size(); ++j) {
+      tile_its_[fragment_ids_[i]][attribute_ids_[j]] = 
+          array_->fragments_[fragment_ids_[i]]->rbegin(attribute_ids_[j]);
+      cell_its_[fragment_ids_[i]][attribute_ids_[j]] = 
+          (*tile_its_[fragment_ids_[i]][attribute_ids_[j]])->rbegin();
     }
   }
 }
@@ -3535,37 +3817,42 @@ void StorageManager::Array::const_reverse_cell_iterator<T>::
   }
 
   // Initialize tile and cell iterators 
-  for(int i=0; i<fragment_num_; ++i) { 
+  for(int i=0; i<fragment_ids_.size(); ++i) { 
     // Initialize coordinate tile iterator
-    tile_its_[i][attribute_num_] =  
-        array_->fragments_[i]->rbegin(attribute_num_);
+    tile_its_[fragment_ids_[i]][attribute_num_] =  
+        array_->fragments_[fragment_ids_[i]]->rbegin(attribute_num_);
 
     // Find the first coordinate tile that overlaps with the range
     const T* mbr;
     std::pair<bool, bool> tile_overlap;
-    while(!tile_its_[i][attribute_num_].end()) {
-      mbr = static_cast<const T*>(tile_its_[i][attribute_num_].mbr());
+    while(!tile_its_[fragment_ids_[i]][attribute_num_].end()) {
+      mbr = static_cast<const T*>
+                (tile_its_[fragment_ids_[i]][attribute_num_].mbr());
       tile_overlap = overlap(mbr, range_, dim_num_); 
 
       if(tile_overlap.first) { 
-        full_overlap_[i] = tile_overlap.second;
+        full_overlap_[fragment_ids_[i]] = tile_overlap.second;
         break;
       }
-      ++tile_its_[i][attribute_num_];
+      ++tile_its_[fragment_ids_[i]][attribute_num_];
     } 
 
     // Syncronize attribute tile iterators
-    for(int j=0; j<attribute_num_; ++j) {
-      tile_its_[i][j] = array_->fragments_[i]->rbegin(j);
-      tile_its_[i][j] += tile_its_[i][attribute_num_].pos();
+    for(int j=0; j<attribute_ids_.size()-1; ++j) {
+      tile_its_[fragment_ids_[i]][attribute_ids_[j]] = 
+          array_->fragments_[fragment_ids_[i]]->rbegin(attribute_ids_[j]);
+      tile_its_[fragment_ids_[i]][attribute_ids_[j]] += 
+          tile_its_[fragment_ids_[i]][attribute_num_].tile_num() -
+          tile_its_[fragment_ids_[i]][attribute_num_].pos() - 1;
     }    
 
     // Initialize cell iterators
-    for(int j=0; j<=attribute_num_; ++j) {
-      if(!tile_its_[i][j].end())
-        cell_its_[i][j] = (*tile_its_[i][j])->rbegin();
+    for(int j=0; j<attribute_ids_.size(); ++j) {
+      if(!tile_its_[fragment_ids_[i]][attribute_ids_[j]].end())
+        cell_its_[fragment_ids_[i]][attribute_ids_[j]] = 
+            (*tile_its_[fragment_ids_[i]][attribute_ids_[j]])->rbegin();
       else
-        cell_its_[i][j] = Tile::rend();
+        cell_its_[fragment_ids_[i]][attribute_ids_[j]] = Tile::rend();
     }
   }
 }
@@ -3591,8 +3878,6 @@ const void* StorageManager::Array::const_reverse_cell_iterator<T>::operator*() {
   return cell_;
 }
 
-// Note: A reverse cell iterator precedes another, if its coordinates
-// SUCCEED those of the second iterator.
 template<class T>
 bool StorageManager::Array::const_reverse_cell_iterator<T>::precedes(
     const Tile::const_reverse_cell_iterator& it_A,
@@ -3603,20 +3888,22 @@ bool StorageManager::Array::const_reverse_cell_iterator<T>::precedes(
   int64_t tile_id_B = it_B.tile_id();
   bool regular = array_->array_schema_->has_regular_tiles();
 
-  // Case #1 for true: regular + it_A has larger tile id
+  // NOTE: We are iterating in reverse order
+
+  // Case #1 for true: regular + it_A has smaller tile id
   if(regular && tile_id_A > tile_id_B)
     return true;
 
-  bool coords_A_succeed = 
+  bool coords_A_precede = 
       array_->array_schema_->succeeds(static_cast<const T*>(coords_A), 
                                       static_cast<const T*>(coords_B));
 
   // Case #2 for true: regular + equal tile ids + coords of it_A precede
-  if(regular && tile_id_A == tile_id_B && coords_A_succeed)
+  if(regular && tile_id_A == tile_id_B && coords_A_precede)
     return true;
 
   // Case #3 for true: iregular + coords of it_A precede
-  if(!regular && coords_A_succeed)
+  if(!regular && coords_A_precede)
     return true;
 
   // False in all other cases
@@ -3738,6 +4025,17 @@ StorageManager::Array::const_cell_iterator<T> StorageManager::begin(
 
 template<class T>
 StorageManager::Array::const_cell_iterator<T> StorageManager::begin(
+    int ad, const std::vector<int>& attribute_ids) const {
+  assert(ad >= 0 && ad < SM_MAX_OPEN_ARRAYS);
+  assert(arrays_[ad] != NULL);
+  assert(strcmp(arrays_[ad]->mode_, SM_READ_MODE) == 0);
+  assert(!arrays_[ad]->empty());
+
+  return Array::const_cell_iterator<T>(arrays_[ad], attribute_ids);
+}
+
+template<class T>
+StorageManager::Array::const_cell_iterator<T> StorageManager::begin(
     int ad, const T* range) const {
   assert(ad >= 0 && ad < SM_MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
@@ -3745,6 +4043,17 @@ StorageManager::Array::const_cell_iterator<T> StorageManager::begin(
   assert(!arrays_[ad]->empty());
 
   return Array::const_cell_iterator<T>(arrays_[ad], range);
+}
+
+template<class T>
+StorageManager::Array::const_cell_iterator<T> StorageManager::begin(
+    int ad, const T* range, const std::vector<int>& attribute_ids) const {
+  assert(ad >= 0 && ad < SM_MAX_OPEN_ARRAYS);
+  assert(arrays_[ad] != NULL);
+  assert(strcmp(arrays_[ad]->mode_, SM_READ_MODE) == 0);
+  assert(!arrays_[ad]->empty());
+
+  return Array::const_cell_iterator<T>(arrays_[ad], range, attribute_ids);
 }
 
 template<class T>
@@ -3760,6 +4069,17 @@ StorageManager::Array::const_reverse_cell_iterator<T> StorageManager::rbegin(
 
 template<class T>
 StorageManager::Array::const_reverse_cell_iterator<T> StorageManager::rbegin(
+    int ad, const std::vector<int>& attribute_ids) const {
+  assert(ad >= 0 && ad < SM_MAX_OPEN_ARRAYS);
+  assert(arrays_[ad] != NULL);
+  assert(strcmp(arrays_[ad]->mode_, SM_READ_MODE) == 0);
+  assert(!arrays_[ad]->empty());
+
+  return Array::const_reverse_cell_iterator<T>(arrays_[ad], attribute_ids);
+}
+
+template<class T>
+StorageManager::Array::const_reverse_cell_iterator<T> StorageManager::rbegin(
     int ad, const T* range) const {
   assert(ad >= 0 && ad < SM_MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
@@ -3767,6 +4087,18 @@ StorageManager::Array::const_reverse_cell_iterator<T> StorageManager::rbegin(
   assert(!arrays_[ad]->empty());
 
   return Array::const_reverse_cell_iterator<T>(arrays_[ad], range);
+}
+
+template<class T>
+StorageManager::Array::const_reverse_cell_iterator<T> StorageManager::rbegin(
+    int ad, const T* range, const std::vector<int>& attribute_ids) const {
+  assert(ad >= 0 && ad < SM_MAX_OPEN_ARRAYS);
+  assert(arrays_[ad] != NULL);
+  assert(strcmp(arrays_[ad]->mode_, SM_READ_MODE) == 0);
+  assert(!arrays_[ad]->empty());
+
+  return Array::const_reverse_cell_iterator<T>(arrays_[ad], range, 
+                                               attribute_ids);
 }
 
 void StorageManager::clear_array(const std::string& array_name) {
@@ -4155,6 +4487,8 @@ void StorageManager::read_cells(int ad, const T* range,
   int all_cells_size;
   read_cells(ad, range, local_cells, local_cell_num);
 
+// TODO: Fix cell size for variable-lengthed cells
+
   // Collect all cells from all processes
   void* all_cells;
   mpi_handler_->gather(local_cells, local_cell_num * cell_size,
@@ -4491,14 +4825,18 @@ StorageManager::begin<float>(int ad) const;
 template StorageManager::Array::const_cell_iterator<double>
 StorageManager::begin<double>(int ad) const;
 
-template StorageManager::Array::const_reverse_cell_iterator<int>
-StorageManager::rbegin<int>(int ad) const;
-template StorageManager::Array::const_reverse_cell_iterator<int64_t>
-StorageManager::rbegin<int64_t>(int ad) const;
-template StorageManager::Array::const_reverse_cell_iterator<float>
-StorageManager::rbegin<float>(int ad) const;
-template StorageManager::Array::const_reverse_cell_iterator<double>
-StorageManager::rbegin<double>(int ad) const;
+template StorageManager::Array::const_cell_iterator<int>
+StorageManager::begin<int>(int ad, 
+                           const std::vector<int>& attribute_ids) const;
+template StorageManager::Array::const_cell_iterator<int64_t>
+StorageManager::begin<int64_t>(int ad, 
+                               const std::vector<int>& attribute_ids) const;
+template StorageManager::Array::const_cell_iterator<float>
+StorageManager::begin<float>(int ad,
+                             const std::vector<int>& attribute_ids) const;
+template StorageManager::Array::const_cell_iterator<double>
+StorageManager::begin<double>(int ad,
+                              const std::vector<int>& attribute_ids) const;
 
 template StorageManager::Array::const_cell_iterator<int>
 StorageManager::begin<int>(int ad, const int* range) const;
@@ -4509,6 +4847,41 @@ StorageManager::begin<float>(int ad, const float* range) const;
 template StorageManager::Array::const_cell_iterator<double>
 StorageManager::begin<double>(int ad, const double* range) const;
 
+template StorageManager::Array::const_cell_iterator<int>
+StorageManager::begin<int>(int ad, const int* range,
+                           const std::vector<int>& attribute_ids) const;
+template StorageManager::Array::const_cell_iterator<int64_t>
+StorageManager::begin<int64_t>(int ad, const int64_t* range,
+                               const std::vector<int>& attribute_ids) const;
+template StorageManager::Array::const_cell_iterator<float>
+StorageManager::begin<float>(int ad, const float* range,
+                             const std::vector<int>& attribute_ids) const;
+template StorageManager::Array::const_cell_iterator<double>
+StorageManager::begin<double>(int ad, const double* range,
+                              const std::vector<int>& attribute_ids) const;
+
+template StorageManager::Array::const_reverse_cell_iterator<int>
+StorageManager::rbegin<int>(int ad) const;
+template StorageManager::Array::const_reverse_cell_iterator<int64_t>
+StorageManager::rbegin<int64_t>(int ad) const;
+template StorageManager::Array::const_reverse_cell_iterator<float>
+StorageManager::rbegin<float>(int ad) const;
+template StorageManager::Array::const_reverse_cell_iterator<double>
+StorageManager::rbegin<double>(int ad) const;
+
+template StorageManager::Array::const_reverse_cell_iterator<int>
+StorageManager::rbegin<int>(int ad, 
+                           const std::vector<int>& attribute_ids) const;
+template StorageManager::Array::const_reverse_cell_iterator<int64_t>
+StorageManager::rbegin<int64_t>(int ad, 
+                               const std::vector<int>& attribute_ids) const;
+template StorageManager::Array::const_reverse_cell_iterator<float>
+StorageManager::rbegin<float>(int ad,
+                             const std::vector<int>& attribute_ids) const;
+template StorageManager::Array::const_reverse_cell_iterator<double>
+StorageManager::rbegin<double>(int ad,
+                               const std::vector<int>& attribute_ids) const;
+
 template StorageManager::Array::const_reverse_cell_iterator<int>
 StorageManager::rbegin<int>(int ad, const int* range) const;
 template StorageManager::Array::const_reverse_cell_iterator<int64_t>
@@ -4517,6 +4890,19 @@ template StorageManager::Array::const_reverse_cell_iterator<float>
 StorageManager::rbegin<float>(int ad, const float* range) const;
 template StorageManager::Array::const_reverse_cell_iterator<double>
 StorageManager::rbegin<double>(int ad, const double* range) const;
+
+template StorageManager::Array::const_reverse_cell_iterator<int>
+StorageManager::rbegin<int>(int ad, const int* range,
+                           const std::vector<int>& attribute_ids) const;
+template StorageManager::Array::const_reverse_cell_iterator<int64_t>
+StorageManager::rbegin<int64_t>(int ad, const int64_t* range,
+                               const std::vector<int>& attribute_ids) const;
+template StorageManager::Array::const_reverse_cell_iterator<float>
+StorageManager::rbegin<float>(int ad, const float* range,
+                             const std::vector<int>& attribute_ids) const;
+template StorageManager::Array::const_reverse_cell_iterator<double>
+StorageManager::rbegin<double>(int ad, const double* range,
+                              const std::vector<int>& attribute_ids) const;
 
 template void StorageManager::write_cell_sorted<int>(
     int ad, const void* range) const;

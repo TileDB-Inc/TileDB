@@ -64,6 +64,8 @@
  * 'export_to_CSV'. 
  */
 #define PS_EXPORT_TO_CSV_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
+                                 CL_ATTRIBUTE_NAMES_BITMAP |\
+                                 CL_DIM_NAMES_BITMAP | CL_MODE_BITMAP |\
                                  CL_FILENAME_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
@@ -91,12 +93,6 @@
                                    CL_ARRAY_NAMES_BITMAP | CL_FILENAME_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
- * 'show_array_schema'. 
- */
-#define PS_SHOW_ARRAY_SCHEMA_BITMAP (CL_WORKSPACE_BITMAP |\
-                                     CL_ARRAY_NAMES_BITMAP)
-/** 
- * Indicates which arguments are used from the command line for query
  * 'nearest_neighbors'. 
  */
 #define PS_NN_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
@@ -111,10 +107,19 @@
                           CL_TILE_EXTENTS_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
+ * 'show_array_schema'. 
+ */
+#define PS_SHOW_ARRAY_SCHEMA_BITMAP (CL_WORKSPACE_BITMAP |\
+                                     CL_ARRAY_NAMES_BITMAP)
+
+/** 
+ * Indicates which arguments are used from the command line for query
  * 'subarray'. 
  */
 #define PS_SUBARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
-                            CL_RANGE_BITMAP | CL_RESULT_BITMAP)
+                            CL_ATTRIBUTE_NAMES_BITMAP |\
+                            CL_RANGE_BITMAP | CL_RESULT_BITMAP |\
+                            CL_MODE_BITMAP)
 /** 
  * Indicates which arguments are used from the command line for query
  * 'update_csv'. 
@@ -136,16 +141,28 @@ class CmdParser {
   const ArraySchema* parse_define_array(const CommandLine& cl) const;
   /** Parse command line for query 'delete_array'. */
   void parse_delete_array(const CommandLine& cl) const;
-  /** Parse command line for query 'export_to_csv'. */
-  void parse_export_to_csv(const CommandLine& cl) const;
+  /** 
+   * Parse command line for query 'export_to_csv'. Returns (by reference
+   * the ids of the dimensions and attributes the export will focus on.
+   */
+  void parse_export_to_csv(const CommandLine& cl,
+                           std::vector<std::string>& dim_names,
+                           std::vector<std::string>& attribute_names,
+                           bool& reverse) const;
   /** Parse command line for query 'load_csv'. */
   void parse_load_csv(const CommandLine& cl) const;
   /** Parse command line for query 'load_sorted_bin'. */
   void parse_load_sorted_bin(const CommandLine& cl) const;
   /** Parse command line for query 'show_array_schema'. */
   void parse_show_array_schema(const CommandLine& cl) const;
-  /** Parse command line for query 'subarray'. */
-  std::vector<double> parse_subarray(const CommandLine& cl) const;
+  /** 
+   * Parse command line for query 'subarray'. Returns a multi-dimensional 
+   * range, and (by reference) a list of attribute names.
+   */
+  std::vector<double> parse_subarray(
+      const CommandLine& cl,
+      std::vector<std::string>& attribute_names,
+      bool& reverse) const;
   /** Parse command line for query 'update_csv'. */
   void parse_update_csv(const CommandLine& cl) const;
 
@@ -195,6 +212,8 @@ class CmdParser {
    * an array of double numbers.
    */
   std::vector<double> check_range(const CommandLine& cl) const;
+  /** Returns true if the mode is "reverse" and false if it is "normal". */
+  bool check_reverse(const CommandLine& cl) const;
   /** 
    * Checks the types in command line for soundness and returns
    * them. 
@@ -202,6 +221,10 @@ class CmdParser {
   std::pair<std::vector<const std::type_info*>,
             std::vector<int> > 
       check_types(const CommandLine& cl, int attribute_num) const;
+  /** Returns the attribute names from the command line. */
+  std::vector<std::string> get_attribute_names(const CommandLine& cl) const;
+  /** Returns the dimension names from the command line. */
+  std::vector<std::string> get_dim_names(const CommandLine& cl) const;
 };
 
 #endif

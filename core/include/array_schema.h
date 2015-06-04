@@ -129,7 +129,7 @@ class ArraySchema {
   // ACCESSORS
   /** Returns the array name. */
   const std::string& array_name() const { return array_name_; }
-  /** Returns the name of the i-th attribute. */
+  /** Returns the id of the i-th attribute (-1 if the name is not found). */
   int attribute_id(const std::string& attribute_name) const;
   /** Returns the name of the i-th attribute. */
   const std::string& attribute_name(int i) const;
@@ -149,10 +149,14 @@ class ArraySchema {
   size_t cell_size() const { return cell_size_; }
   /** Returns the cell size of the i-th attribute. */
   size_t cell_size(int i) const { return cell_sizes_[i]; }
+  /** Returns the sum of the cell sizes of the input attributes. */
+  size_t cell_size(const std::vector<int>& attribute_ids) const;
   /** Returns the type of the coordinates. */
   const std::type_info* coords_type() const { return type(attribute_num_); }
   /** Returns the consolidation step. */
   int consolidation_step() const { return consolidation_step_; }
+  /** Returns the id of the i-th dimension (-1 if the name is not found). */
+  int dim_id(const std::string& dim_name) const;
   /** Returns the number of dimensions. */
   int dim_num() const { return dim_num_; }
   /** Returns the domains. */
@@ -163,6 +167,12 @@ class ArraySchema {
    * to the buffer it creates, along with the size of the buffer.
    */
   std::pair<const char*, size_t> serialize() const;
+  /**
+   * Returns the id of the attribute with the smallest size of values. If
+   * all attributes are variable-sized, it returns the id of the attribute
+   * with the smallest type. 
+   */
+  int smallest_attribute() const;
   /** Returns the tile extents. */
   const std::vector<double>& tile_extents() const 
       { return tile_extents_; } 
@@ -193,6 +203,12 @@ class ArraySchema {
   int64_t cell_id_hilbert(const T* coords) const;
   /** Returns an identical schema assigning the input to the array name. */
   ArraySchema* clone(const std::string& array_name) const;
+  /** 
+   * Returns an identical schema assigning the input to the array name, and
+   * including only the attributes with the input ids. 
+   */
+  ArraySchema* clone(const std::string& array_name, 
+                     const std::vector<int>& attribute_ids) const;
   /** Returns an identical schema with the input array name and cell order. */
   ArraySchema* clone(const std::string& array_name, CellOrder cell_order) const;
   /** Returns an identical schema assigning the input to the capacity. */
@@ -303,6 +319,8 @@ class ArraySchema {
    * to matrices (i.e., 2D arrays).
    */
   const ArraySchema* transpose(const std::string& new_array_name) const;
+  /** Returns true if the input attribute ids are valid. */
+  bool valid_attribute_ids(const std::vector<int>& attribute_ids) const;
 
  private:
   // PRIVATE ATTRIBUTES

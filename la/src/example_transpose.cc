@@ -158,7 +158,7 @@ int main(int argc, char** argv) {
   Loader* loader = new Loader(storage_manager);
 
   // Create a query processor module
-  QueryProcessor* query_processor = new QueryProcessor(storage_manager);
+  QueryProcessor* query_processor = new QueryProcessor(storage_manager); 
 
   // Define a matrix A with some ad hoc schema
   const ArraySchema* array_schema_A = get_array_schema();

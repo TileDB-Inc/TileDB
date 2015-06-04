@@ -326,6 +326,13 @@ bool is_valid_name(const char* s) {
 }
 
 template<class T>
+bool no_duplicates(const std::vector<T>& v) {
+  std::set<T> s(v.begin(), v.end());
+
+  return s.size() == v.size(); 
+}
+
+template<class T>
 std::pair<bool, bool> overlap(const T* r1, const T* r2, int dim_num) {
   // Overlap type per dimension
   bool* partial = new bool[dim_num];
@@ -362,6 +369,38 @@ std::pair<bool, bool> overlap(const T* r1, const T* r2, int dim_num) {
   return std::pair<bool, bool>(overlap, full_overlap);
 }
 
+template<class T>
+std::vector<T> rdedup(const std::vector<T>& v) {
+  std::vector<T> deduped_v;
+  int v_size = v.size();
+  std::set<T> s;
+  bool* dup = new bool[v_size];
+
+  for(int i=v_size-1; i>=0; --i) {
+    dup[i] = false;
+    if(s.find(v[i]) == s.end()) 
+      s.insert(v[i]);
+    else
+      dup[i] = true;
+  }
+
+  for(int i=0; i<v_size; ++i) 
+    if(!dup[i])
+      deduped_v.push_back(v[i]);
+
+  delete [] dup; 
+
+  return deduped_v; 
+}
+
+template<class T>
+std::vector<T> sort_dedup(const std::vector<T>& v) {
+  std::set<T> s(v.begin(), v.end());
+  std::vector<T> deduped_v(s.begin(), s.end());
+
+  return deduped_v; 
+}
+
 // Explicit template instantiations
 template void convert<int>(const double* a, int* b, int size);
 template void convert<int64_t>(const double* a, int64_t* b, int size);
@@ -386,6 +425,13 @@ template void init_mbr<float>(
 template void init_mbr<double>(
     const double* coords, double* mbr, int dim_num);
 
+template bool no_duplicates<char>(const std::vector<char>& v);
+template bool no_duplicates<int>(const std::vector<int>& v);
+template bool no_duplicates<int64_t>(const std::vector<int64_t>& v);
+template bool no_duplicates<float>(const std::vector<float>& v);
+template bool no_duplicates<double>(const std::vector<double>& v);
+template bool no_duplicates<std::string>(const std::vector<std::string>& v);
+
 template std::pair<bool, bool> overlap<int>(
     const int* r1, const int* r2, int dim_num);
 template std::pair<bool, bool> overlap<int64_t>(
@@ -403,3 +449,16 @@ template bool inside_range<float>(
     const float* point, const float* range, int dim_num);
 template bool inside_range<double>(
     const double* point, const double* range, int dim_num);
+
+template std::vector<char> rdedup(const std::vector<char>& v);
+template std::vector<int> rdedup(const std::vector<int>& v);
+template std::vector<int64_t> rdedup(const std::vector<int64_t>& v);
+template std::vector<float> rdedup(const std::vector<float>& v);
+template std::vector<double> rdedup(const std::vector<double>& v);
+
+template std::vector<char> sort_dedup(const std::vector<char>& v);
+template std::vector<int> sort_dedup(const std::vector<int>& v);
+template std::vector<int64_t> sort_dedup(const std::vector<int64_t>& v);
+template std::vector<float> sort_dedup(const std::vector<float>& v);
+template std::vector<double> sort_dedup(const std::vector<double>& v);
+

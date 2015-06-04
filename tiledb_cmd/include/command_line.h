@@ -58,22 +58,24 @@
 #define CL_DIM_NAMES_BITMAP 0x80
 /** Indicates expression was given as an argument. */
 #define CL_EXPRESSION_BITMAP 0x100
-/** Indicates range bound was given as an argument. */
+/** Indicates range bounds were given as an argument. */
 #define CL_FILENAME_BITMAP 0x200
+/** Indicates mode was given as an argument. */
+#define CL_MODE_BITMAP 0x400
 /** Indicates numbers were given as arguments. */
-#define CL_NUMBERS_BITMAP 0x400
+#define CL_NUMBERS_BITMAP 0x800
 /** Indicates a range was given as an argument. */
-#define CL_RANGE_BITMAP 0x800
+#define CL_RANGE_BITMAP 0x1000
 /** Indicates a result name was given as an argument. */
-#define CL_RESULT_BITMAP 0x1000
+#define CL_RESULT_BITMAP 0x2000
 /** Indicates tile extents were given as arguments. */
-#define CL_TILE_EXTENTS_BITMAP 0x2000
+#define CL_TILE_EXTENTS_BITMAP 0x4000
 /** Indicates tile order was given as an argument. */
-#define CL_TILE_ORDER_BITMAP 0x4000
+#define CL_TILE_ORDER_BITMAP 0x8000
 /** Indicates types were given as arguments. */
-#define CL_TYPES_BITMAP 0x8000
+#define CL_TYPES_BITMAP 0x10000
 /** Indicates worspace was given as an argument. */
-#define CL_WORKSPACE_BITMAP 0x10000
+#define CL_WORKSPACE_BITMAP 0x20000
 
 /** This class stores the command line options given by the user. */
 class CommandLine {
@@ -98,6 +100,7 @@ class CommandLine {
    * CommandLine::dim_names_,
    * CommandLine::expression_,
    * CommandLine::filename_.
+   * CommandLine::mode_.
    * CommandLine::numbers_.
    * CommandLine::range_.
    * CommandLine::result_name_.
@@ -127,6 +130,8 @@ class CommandLine {
   char* expression_;
   /** File name. */
   char* filename_;
+  /** Mode. */
+  char* mode_;
   /** Numbers. */
   std::vector<char*> numbers_;
   /** Number of (option,value) pairs in the command line. */
