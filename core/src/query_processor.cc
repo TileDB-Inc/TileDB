@@ -61,7 +61,7 @@ void QueryProcessor::export_to_csv(
     const std::vector<std::string>& attribute_names,
     bool reverse) const {
   // Open array in read mode
-  int ad = storage_manager_->open_array(array_name, SM_READ_MODE);
+  int ad = storage_manager_->open_array(array_name, "r");
   if(ad == -1)
     throw QueryProcessorException(std::string("Cannot open array ") +
                                   array_name + "."); 
@@ -110,7 +110,7 @@ void QueryProcessor::subarray(
     const std::vector<std::string>& attribute_names, 
     bool reverse) const {
   // Open array in read mode
-  int ad = storage_manager_->open_array(array_name, SM_READ_MODE);
+  int ad = storage_manager_->open_array(array_name, "r");
   if(ad == -1)
     throw QueryProcessorException(std::string("Cannot open array ") +
                                   array_name + "."); 
@@ -144,8 +144,7 @@ void QueryProcessor::subarray(
   storage_manager_->define_array(result_array_schema);
 
   // Open result array in write mode
-  int result_ad = storage_manager_->open_array(result_array_name, 
-                                               SM_WRITE_MODE);
+  int result_ad = storage_manager_->open_array(result_array_name, "w"); 
   if(result_ad == -1)
     throw QueryProcessorException(std::string("Cannot open array ") +
                                   result_array_name + "."); 
@@ -209,7 +208,7 @@ void QueryProcessor::export_to_csv(
   csv_file.open(filename, "w");
 
   // Prepare cell iterators
-  StorageManager::Array::const_cell_iterator<T> cell_it = 
+  ArrayConstCellIterator<T> cell_it = 
       storage_manager_->begin<T>(ad, attribute_ids);
 
   // Prepare a cell
@@ -239,7 +238,7 @@ void QueryProcessor::export_to_csv_reverse(
   csv_file.open(filename, "w");
 
   // Prepare cell iterators
-  StorageManager::Array::const_reverse_cell_iterator<T> cell_it = 
+  ArrayConstReverseCellIterator<T> cell_it = 
       storage_manager_->rbegin<T>(ad, attribute_ids);
 
   // Prepare a cell
@@ -317,7 +316,7 @@ void QueryProcessor::subarray(
     int ad, const T* range, int result_ad,
     const std::vector<int>& attribute_ids) const { 
   // Prepare cell iterator
-  StorageManager::Array::const_cell_iterator<T> cell_it = 
+  ArrayConstCellIterator<T> cell_it = 
       storage_manager_->begin<T>(ad, range, attribute_ids);
 
   // Write cells into the CSV file
@@ -330,7 +329,7 @@ void QueryProcessor::subarray_reverse(
     int ad, const T* range, int result_ad,
     const std::vector<int>& attribute_ids) const { 
   // Prepare cell iterator
-  StorageManager::Array::const_reverse_cell_iterator<T> cell_it = 
+  ArrayConstReverseCellIterator<T> cell_it = 
       storage_manager_->rbegin<T>(ad, range, attribute_ids);
 
   // Write cells into the CSV file

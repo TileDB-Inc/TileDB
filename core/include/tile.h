@@ -35,6 +35,8 @@
 #define TILE_H
 
 #include "special_values.h"
+#include "tile_const_cell_iterator.h"
+#include "tile_const_reverse_cell_iterator.h"
 #include <inttypes.h>
 #include <limits>
 #include <string>
@@ -43,6 +45,9 @@
 
 /** Default payload capacity. */
 #define TL_PAYLOAD_CAPACITY 100
+
+class TileConstCellIterator;
+class TileConstReverseCellIterator;
 
 /** 
  * The tile is the central notion of TileDB. A tile can be a coordinate tile
@@ -63,6 +68,14 @@ class Tile {
   // TYPE DEFINITIONS
   /** A tile can be either an attribute or a coordinate tile. */
   enum TileType {ATTRIBUTE, COORDINATE};
+  /** Mnemonic: (first_bound_coord, last_bound_coord) */
+  typedef std::pair<void*, void*> BoundingCoordinatesPair;
+  /** 
+   * A hyper-rectangle in the logical space, including all the coordinates
+   * of a tile. It is a list of lower/upper values across each dimension, i.e.,
+   * (dim#1_lower, dim#1_upper, dim#2_lower, dim#2_upper, ...).
+   */
+  typedef void* MBR; 
 
   // CONSTRUCTORS AND DESTRUCTORS
   /**
@@ -82,35 +95,35 @@ class Tile {
    * coordinate tiles. The bounding coordinates are typically useful
    * when the cells in the tile are sorted in a certain order. 
    */
-  std::pair<const void*, const void*> bounding_coordinates() const;
+  BoundingCoordinatesPair bounding_coordinates() const;
   /** Returns the pointer to the pos-th cell. */
   const void* cell(int64_t pos) const;
   /** Returns the cell size. Applicable only to fixed-sized cells. */
   size_t cell_size() const;
   /** Returns the number of cells in the tile. */
-  int64_t cell_num() const { return cell_num_; }
+  int64_t cell_num() const;
   /** Returns the cell type. */
-  const std::type_info* cell_type() const { return cell_type_; } 
+  const std::type_info* cell_type() const;
   /** Copies the tile payload into buffer. */
   void copy_payload(void* buffer) const;
   /** Returns the number of dimensions. It returns 0 for attribute tiles. */
-  int dim_num() const { return dim_num_; }
+  int dim_num() const;
   /** Returns true if the cell at position pos represents a deletion. */
   bool is_del(int64_t pos) const;
   /** Returns true if the cell at position pos is NULL. */
   bool is_null(int64_t pos) const;
   /** Returns the MBR (see Tile::mbr_). */
-  const void* mbr() const { return mbr_; }
+  const MBR mbr() const;
   /** Returns the tile id. */
-  int64_t tile_id() const { return tile_id_; }
+  int64_t tile_id() const;
   /** Returns the tile size (in bytes). */
-  size_t tile_size() const { return tile_size_; } 
+  size_t tile_size() const;
   /** Returns the tile type. */
-  TileType tile_type() const { return tile_type_; } 
+  TileType tile_type() const;
   /** Returns the cell type size. */
-  size_t type_size() const { return type_size_; } 
+  size_t type_size() const; 
   /** True if the cells are variable-sized. */
-  bool var_size() const { return val_num_ == VAR_SIZE; }
+  bool var_size() const;
  
   // MUTATORS
   /** Clears the tile. */
@@ -135,189 +148,17 @@ class Tile {
   /** Prints the details of the tile on the standard output. */
   void print() const;
 
-  // CELL ITERATOR
-  /** This class implements a constant cell iterator. */
-  class const_cell_iterator {
-   public:
-    // CONSTRUCTORS & DESTRUCTORS
-    /** Empty iterator constuctor. */
-    const_cell_iterator();
-    /** 
-     * Constuctor that takes as input the tile for which the 
-     * iterator is created, and a cell position in the tile payload. 
-     */
-    const_cell_iterator(const Tile* tile, int64_t pos);
-    
-    // ACCESSORS
-    /** Returns the number of cells in the tile. */
-    int64_t cell_num() const { return tile_->cell_num(); }
-    /** Returns the (potentially variable) size of the current cell. */
-    size_t cell_size() const;
-    /** Returns the cell type of the tile. */
-    const std::type_info* cell_type() const { return tile_->cell_type(); }
-    /** Returns the number of dimensions of the tile. */
-    int dim_num() const { return tile_->dim_num(); }
-    /** Returns true if the end of the iterator is reached. */
-    bool end() const { return end_; }
-    /** Returns the current payload position of the cell iterator. */
-    int64_t pos() const { return pos_; }
-    /** Returns the tile the cell iterator belongs to. */
-    const Tile* tile() const { return tile_; }
-    /** Returns the tile the cell iterator belongs to. */
-    int64_t tile_id() const { return tile_->tile_id(); }
 
-    // MISC
-    /** True if the iterator points to a cell representing a deletion. */
-    bool is_del() const;
-    /** True if the iterator points to a NULL cell. */
-    bool is_null() const;
-
-    // OPERATORS
-    /** Assignment operator. */
-    void operator=(const const_cell_iterator& rhs);
-    /** Addition operator. */
-    const_cell_iterator operator+(int64_t step);
-    /** Addition-assignment operator. */
-    void operator+=(int64_t step);
-    /** Pre-increment operator. */
-    const_cell_iterator operator++();
-    /** Post-increment operator. */
-    const_cell_iterator operator++(int junk);
-    /**
-     * Returns true if the operands belong to the same tile and they point to
-     * the same cell. 
-     */
-    bool operator==(const const_cell_iterator& rhs) const;
-    /**
-     * Returns true if either the operands belong to different tiles, or the
-     * they point to different cells. 
-     */
-    bool operator!=(const const_cell_iterator& rhs) const;
-    /** Returns the pointer in the tile payload of the cell it points to. */ 
-    const void* operator*() const;
-
-    // MISC
-    /** 
-     * Returns true if the coordinates pointed by the iterator fall 
-     * inside the input range. It applies only to coordinate tiles.
-     * The range is in the form (dim#1_lower, dim#1_upper, ...).
-     * 
-     * Make sure that type T is the same as the cell type. Otherwise, in debug
-     * mode an assert is triggered, whereas in release mode the behavior is
-     * unpredictable.
-     */
-    template<class T>
-    bool cell_inside_range(const T* range) const;
-
-   private:
-    /** The current cell. */
-    const void* cell_;
-    /** True if the end of the iterator is reached. */
-    bool end_;
-    /** 
-     * The position of the cell in the tile payload the iterator
-     * currently is pointing to. 
-     */
-    int64_t pos_;  
-    /** The tile object the iterator is created for. */
-    const Tile* tile_;
-  };
   /** Returns a cell iterator pointing to the first cell of the tile. */
-  const_cell_iterator begin() const;
+  TileConstCellIterator begin() const;
   /** Returns a cell iterator signifying the end of the tile. */
-  static const_cell_iterator end();
+  static TileConstCellIterator end();
 
-  // REVERSE CELL ITERATOR
-  /** This class implements a constant reverse cell iterator. */
-  class const_reverse_cell_iterator {
-   public:
-    // CONSTRUCTORS & DESTRUCTORS
-    /** Empty iterator constuctor. */
-    const_reverse_cell_iterator();
-    /** 
-     * Constuctor that takes as input the tile for which the 
-     * iterator is created, and a cell position in the tile payload. 
-     */
-    const_reverse_cell_iterator(const Tile* tile, int64_t pos);
-    
-    // ACCESSORS
-    /** Returns the number of cells in the tile. */
-    int64_t cell_num() const { return tile_->cell_num(); }
-    /** Returns the (potentially variable) size of the current cell. */
-    size_t cell_size() const;
-    /** Returns the cell type of the tile. */
-    const std::type_info* cell_type() const { return tile_->cell_type(); }
-    /** Returns the number of dimensions of the tile. */
-    int dim_num() const { return tile_->dim_num(); }
-    /** Returns true if the end of the iterator is reached. */
-    bool end() const { return end_; }
-    /** Returns the current payload position of the cell iterator. */
-    int64_t pos() const { return pos_; }
-    /** Returns the tile the cell iterator belongs to. */
-    const Tile* tile() const { return tile_; }
-    /** Returns the tile the cell iterator belongs to. */
-    int64_t tile_id() const { return tile_->tile_id(); }
 
-    // MISC
-    /** True if the iterator points to a cell representing a deletion. */
-    bool is_del() const;
-    /** True if the iterator points to a NULL cell. */
-    bool is_null() const;
-
-    // OPERATORS
-    /** Assignment operator. */
-    void operator=(const const_reverse_cell_iterator& rhs);
-    /** Addition operator. */
-    const_reverse_cell_iterator operator+(int64_t step);
-    /** Addition-assignment operator. */
-    void operator+=(int64_t step);
-    /** Pre-increment operator. */
-    const_reverse_cell_iterator operator++();
-    /** Post-increment operator. */
-    const_reverse_cell_iterator operator++(int junk);
-    /**
-     * Returns true if the operands belong to the same tile and they point to
-     * the same cell. 
-     */
-    bool operator==(const const_reverse_cell_iterator& rhs) const;
-    /**
-     * Returns true if either the operands belong to different tiles, or the
-     * they point to different cells. 
-     */
-    bool operator!=(const const_reverse_cell_iterator& rhs) const;
-    /** Returns the pointer in the tile payload of the cell it points to. */ 
-    const void* operator*() const;
-
-    // MISC
-    /** 
-     * Returns true if the coordinates pointed by the iterator fall 
-     * inside the input range. It applies only to coordinate tiles.
-     * The range is in the form (dim#1_lower, dim#1_upper, ...).
-     * 
-     * Make sure that type T is the same as the cell type. Otherwise, in debug
-     * mode an assert is triggered, whereas in release mode the behavior is
-     * unpredictable.
-     */
-    template<class T>
-    bool cell_inside_range(const T* range) const;
-
-   private:
-    /** The current cell. */
-    const void* cell_;
-    /** True if the end of the iterator is reached. */
-    bool end_;
-    /** 
-     * The position of the cell in the tile payload the iterator
-     * currently is pointing to. 
-     */
-    int64_t pos_;  
-    /** The tile object the iterator is created for. */
-    const Tile* tile_;
-  };
   /** Returns a cell iterator pointing to the first cell of the tile. */
-  const_reverse_cell_iterator rbegin() const;
+  TileConstReverseCellIterator rbegin() const;
   /** Returns a cell iterator signifying the end of the tile. */
-  static const_reverse_cell_iterator rend();
+  static TileConstReverseCellIterator rend();
 
  private:
   // PRIVATE ATTRIBUTES

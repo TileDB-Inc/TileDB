@@ -5,10 +5,10 @@
 # --- Compilers --- #
 
 # C++ compiler
-# CXX = g++
+# CXX = g++ 
 
 # MPI compiler for C++
-CXX = mpicxx -std=c++11
+CXX = mpicxx -std=c++11 -fmax-errors=5
 
 # --- Directories --- #
 # Directories for the core code of TileDB

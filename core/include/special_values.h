@@ -36,6 +36,12 @@
 
 #include <limits>
 
+/** Name of the file storing the array schema. */
+#define ARRAY_SCHEMA_FILENAME "array_schema"
+/** Suffix of all book-keeping files. */
+#define BOOK_KEEPING_FILE_SUFFIX ".bkp"
+/** Name of the file storing the bounding coordinates of each tile. */
+#define BOUNDING_COORDINATES_FILENAME "bounding_coordinates"
 /** Deleted char. */
 #define DEL_CHAR '$'
 /** Deleted int. */
@@ -48,6 +54,16 @@
 #define DEL_DOUBLE std::numeric_limits<double>::min()
 //** Indicates a deleted value. */
 #define DEL_VALUE "$"
+/** Name of the file storing the fragment book-keeping info. */
+#define FRAGMENT_TREE_FILENAME "fragment_tree"
+/** Indicates an invalid tile position. */
+#define INVALID_TILE_POS -1
+/** Indicates an invalid tile id. */
+#define INVALID_TILE_ID -1
+/** Maximum number of arrays that can be simultaneously open. */
+#define MAX_OPEN_ARRAYS 100
+/** Name of the file storing the MBR of each tile. */
+#define MBRS_FILENAME "mbrs"
 /** Indicates a missing (NULL) value. */
 #define NULL_VALUE "*"
 /** Missing char. */
@@ -60,7 +76,22 @@
 #define NULL_FLOAT std::numeric_limits<float>::max()
 /** Missing double. */
 #define NULL_DOUBLE std::numeric_limits<double>::max()
+/** Name of the file storing the offset of each tile in its data file. */
+#define OFFSETS_FILENAME "offsets"
+/** 
+ * Determines the mount of data that can be exchanged between the hard disk and
+ * the main memory in a single I/O operation. 
+ */
+#define SEGMENT_SIZE 10000000
+/** Name for temp (usually used in directory paths). */
+#define TEMP "temp"
+/** Name of the file storing the id of each tile. */
+#define TILE_IDS_FILENAME "tile_ids"
+/** Suffix of all tile data files. */
+#define TILE_DATA_FILE_SUFFIX ".tdt"
 /** Special value that indicates a variable-sized object. */
 #define VAR_SIZE -1
+/** Max memory size (in bytes) used when creating a new array fragment. */
+#define WRITE_STATE_MAX_SIZE 1*1073741824 // 1GB
 
 #endif
