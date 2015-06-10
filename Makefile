@@ -13,7 +13,9 @@ CXX = mpicxx -std=c++11 -fmax-errors=5
 # --- Directories --- #
 # Directories for the core code of TileDB
 CORE_INCLUDE_DIR = core/include
+CORE_INCLUDE_SUBDIRS = $(wildcard core/include/*)
 CORE_SRC_DIR = core/src
+CORE_SRC_SUBDIRS = $(wildcard core/src/*)
 CORE_OBJ_DIR = core/obj
 CORE_BIN_DIR = core/bin
 
@@ -53,7 +55,7 @@ OPENMP_INCLUDE_DIR = .
 OPENMP_LIB_DIR = .
 
 # --- Paths --- #
-CORE_INCLUDE_PATHS = -I$(CORE_INCLUDE_DIR)
+CORE_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
 TILEDB_CMD_INCLUDE_PATHS = -I$(TILEDB_CMD_INCLUDE_DIR)
 LA_INCLUDE_PATHS = -I$(LA_INCLUDE_DIR)
 MPI_INCLUDE_PATHS = -I$(MPI_INCLUDE_DIR)
@@ -68,8 +70,8 @@ OPENMP_LIB = -fopenmp
 # --- Files --- #
 
 # Files of the TileDB core
-CORE_INCLUDE := $(wildcard $(CORE_INCLUDE_DIR)/*.h)
-CORE_SRC := $(wildcard $(CORE_SRC_DIR)/*.cc)
+CORE_INCLUDE := $(foreach D,$(CORE_INCLUDE_SUBDIRS),$D/*.h) 
+CORE_SRC := $(wildcard $(foreach D,$(CORE_SRC_SUBDIRS),$D/*.cc))
 CORE_OBJ := $(patsubst $(CORE_SRC_DIR)/%.cc, $(CORE_OBJ_DIR)/%.o, $(CORE_SRC))
 
 # Files of the TileDB command-line-based frontend
@@ -124,7 +126,7 @@ clean: clean_core clean_tiledb_cmd clean_la clean_gtest clean_test clean_doc
 -include $(CORE_OBJ:%.o=%.d)
 
 $(CORE_OBJ_DIR)/%.o: $(CORE_SRC_DIR)/%.cc
-	@mkdir -p $(CORE_OBJ_DIR)
+	@mkdir -p $(dir $@) 
 	@echo "Compiling $<"
 	@$(CXX) $(CORE_INCLUDE_PATHS) $(OPENMP_INCLUDE_PATHS) \
                 $(MPI_INCLUDE_PATHS) -c $< -o $@
