@@ -90,8 +90,8 @@ class MPIHandler {
    * The root process gathers data from all processes (including the root),
    * which send data.
    */
-  void gather(void* send_data, int send_size,
-              void*& rcv_data, int& rcv_size,
+  void gather(void* send_data, size_t send_size,
+              void*& rcv_data, size_t& rcv_size,
               int root) const;
 
   void Start(void) {

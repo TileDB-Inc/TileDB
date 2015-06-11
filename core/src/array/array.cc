@@ -158,8 +158,8 @@ void Array::new_fragment() {
 }
 
 template<class T>
-void Array::write_cell(const void* cell, size_t cell_size) const {
-  fragments_.back()->write_cell<T>(cell, cell_size); 
+void Array::write_cell(const void* cell) const {
+  fragments_.back()->write_cell<T>(cell); 
 }
 
 template<class T>
@@ -482,14 +482,10 @@ void Array::open_fragments() {
 }
 
 // Explicit template instantiations
-template void Array::write_cell<int>(
-    const void* cell, size_t cell_size) const;
-template void Array::write_cell<int64_t>(
-    const void* cell, size_t cell_size) const;
-template void Array::write_cell<float>(
-    const void* cell, size_t cell_size) const;
-template void Array::write_cell<double>(
-    const void* cell, size_t cell_size) const;
+template void Array::write_cell<int>(const void* cell) const;
+template void Array::write_cell<int64_t>(const void* cell) const;
+template void Array::write_cell<float>(const void* cell) const;
+template void Array::write_cell<double>(const void* cell) const;
 
 template void Array::write_cell_sorted<int>(const void* cell);
 template void Array::write_cell_sorted<int64_t>(const void* cell);

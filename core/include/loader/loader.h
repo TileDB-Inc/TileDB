@@ -106,7 +106,7 @@ class Loader {
   template<class T>
   bool csv_line_to_cell(const ArraySchema* array_schema, 
                         CSVLine& csv_line, void* cell, 
-                        ssize_t& cell_size) const;
+                        ssize_t cell_size) const;
   /** Loads a CSV file into a new fragment for the input array descriptor. */
   void load_csv(const std::string& filename, int ad) const;
   /** Loads a CSV file into a new fragment for the input array descriptor. */

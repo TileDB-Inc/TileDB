@@ -107,8 +107,7 @@ ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
   full_overlap_ = NULL;
 
   // Prepare the ids of the fragments the iterator will iterate on
-  for(int i=0; i<fragment_num_; ++i)
-    fragment_ids_.push_back(i);
+  fragment_ids_ = fragment_ids;
 
   // Prepare the ids of the attributes the iterator will iterate on
   for(int i=0; i<=attribute_num_; ++i)

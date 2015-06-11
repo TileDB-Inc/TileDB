@@ -139,7 +139,7 @@ $(CORE_OBJ_DIR)/%.o: $(CORE_SRC_DIR)/%.cc
 
 clean_core: 
 	@echo 'Cleaning core'
-	@rm -f $(CORE_OBJ_DIR)/* $(CORE_BIN_DIR)/* 
+	@rm -rf $(CORE_OBJ_DIR)/* $(CORE_BIN_DIR)/* 
 
 ##############
 # TileDB_cmd #

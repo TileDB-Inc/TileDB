@@ -50,6 +50,12 @@ class Cell {
  public:
   // CONSTRUCTORS AND DESTRUCTORS
   /** 
+   * Constructor. It takes as input the schema of the array the cell belongs to.
+   */
+  Cell(const void* cell,
+       const ArraySchema* array_schema,
+       bool random_access = false);
+  /** 
    * Constructor. It takes as input the schema of the array the cell belongs to,
    * and a list of ids of the attributes it contains (with the coordinates
    * always being the last of them). Note that the list of ids must be ordered
@@ -66,7 +72,7 @@ class Cell {
        const std::vector<int>& attribute_ids,
        bool random_access = false);
   /** Empty destructor. */
-  ~Cell() {}
+  ~Cell();
 
   // ACCESSORS
   /** The array schema. */
@@ -79,6 +85,8 @@ class Cell {
   CellConstAttrIterator begin() const;
   /** Returns the cell payload. */
   const void* cell() const;
+  /** Returns the cell size. */
+  size_t cell_size() const;
   /** 
    * Returns a CSV line with the values of the coordinates and attributes,
    * whose ids are specified in the input vectors. The template is on the
@@ -126,6 +134,8 @@ class Cell {
   std::map<int, size_t> attribute_offsets_;
   /** The payload of the cell. */
   const void* cell_;
+  /** The cell size (could be VAR_SIZE). */
+  size_t cell_size_;
   /** True to allow efficient accessing of cell attributes in random order. */
   bool random_access_;
   /** Stores the number of values for an attribute. */

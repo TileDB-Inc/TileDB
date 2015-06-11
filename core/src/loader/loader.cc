@@ -207,7 +207,7 @@ template<class T>
 inline
 bool Loader::csv_line_to_cell(
     const ArraySchema* array_schema, CSVLine& csv_line, void* cell, 
-    ssize_t& cell_size) const {
+    ssize_t cell_size) const {
   // For easy reference
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
@@ -329,7 +329,7 @@ void Loader::load_csv(const std::string& filename, int ad) const {
     }
 
     // Write the cell in the array
-    storage_manager_->write_cell<T>(ad, cell, cell_size);
+    storage_manager_->write_cell<T>(ad, cell);
   }
 
   // Clean up 

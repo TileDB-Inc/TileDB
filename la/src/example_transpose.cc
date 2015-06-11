@@ -32,10 +32,11 @@
  * distributed matrix A using TileDB.
  */
 
-#include "storage_manager.h"
+#include "cell_iterator.h"
 #include "loader.h"
-#include "query_processor.h"
 #include "mpi_handler.h"
+#include "query_processor.h"
+#include "storage_manager.h"
 #include <sstream>
 #include <iostream>
 #include <string.h>
@@ -74,33 +75,31 @@ void transpose(StorageManager* storage_manager, MPIHandler* mpi_handler,
  
   // Gather rows
   void* cells;
-  int64_t cell_num; 
+  size_t cells_size; 
   for(int i=0; i<mpi_handler->proc_num(); ++i) {
     // Calculate set of rows that must be received from each process
     range[0] = i * rows_per_proc;         // rows low
     range[1] = (i+1) * rows_per_proc - 1; // rows high 
     // Retrieve rows
-    storage_manager->read_cells(ad_A, range, cells, cell_num, i);
+    storage_manager->read_cells(ad_A, range, array_schema_A->attribute_ids(),
+                                cells, cells_size, i);
   } 
 
   // Transpose retrieved cells.
-  size_t offset = 0;
+  CellIterator cell_it(cells, cells_size, array_schema_A);
+
   int64_t temp;
-  for(int64_t i=0; i<cell_num; ++i) {
-    memcpy(&temp, 
-           static_cast<char*>(cells) + offset, 
+  for(; !cell_it.end(); ++cell_it) {
+    memcpy(&temp, *cell_it, sizeof(int64_t));
+    memcpy(*cell_it, static_cast<char*>(*cell_it) + sizeof(int64_t), 
            sizeof(int64_t));
-    memcpy(static_cast<char*>(cells) + offset,
-           static_cast<char*>(cells) + offset + sizeof(int64_t), 
+    memcpy(static_cast<char*>(*cell_it) + sizeof(int64_t), &temp, 
            sizeof(int64_t));
-    memcpy(static_cast<char*>(cells) + offset + sizeof(int64_t),
-           &temp, 
-           sizeof(int64_t));
-    offset += cell_size;
   }
 
   // Write tranposed cells to result array A_t
-  storage_manager->write_cells(ad_A_t, cells, cell_num);
+  storage_manager->write_cells(ad_A_t, cells, cells_size);
+
 
   // Clean up
   free(cells);

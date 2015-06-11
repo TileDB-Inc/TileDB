@@ -119,7 +119,7 @@ class Fragment {
    * as the attributes are defined in the array schema.
    */
   template<class T>
-  void write_cell(const void* cell, size_t cell_size) const; 
+  void write_cell(const void* cell) const; 
   /** 
    * Writes a cell into the fragment, respecting the global cell order. 
    * The input cell carries no ids.

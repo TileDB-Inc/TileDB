@@ -201,6 +201,15 @@ int ArraySchema::attribute_id(const std::string& attribute_name) const {
   return -1;
 }
 
+std::vector<int> ArraySchema::attribute_ids() const {
+  std::vector<int> attribute_ids;
+
+  for(int i=0; i<=attribute_num_; ++i)
+    attribute_ids.push_back(i);
+
+  return attribute_ids;
+}
+
 const std::string& ArraySchema::attribute_name(int i) const {
   assert(i>= 0 && i <= attribute_num_);
 
@@ -236,12 +245,16 @@ size_t ArraySchema::cell_size(const std::vector<int>& attribute_ids) const {
 
   size_t cell_size = 0;
   for(int i=0; i<attribute_ids.size(); ++i) {
-    if(this->cell_size(attribute_ids[i]) == VAR_SIZE)
+    if(cell_sizes_[attribute_ids[i]] == VAR_SIZE)
       return VAR_SIZE;
-    cell_size += this->cell_size(attribute_ids[i]);
+    cell_size += cell_sizes_[attribute_ids[i]];
   }
 
   return cell_size;
+}
+
+size_t ArraySchema::coords_size() const {
+  return cell_sizes_[attribute_num_];
 }
 
 const std::type_info* ArraySchema::coords_type() const {

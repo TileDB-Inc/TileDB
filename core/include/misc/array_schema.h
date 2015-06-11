@@ -131,6 +131,8 @@ class ArraySchema {
   const std::string& array_name() const;
   /** Returns the id of the i-th attribute (-1 if the name is not found). */
   int attribute_id(const std::string& attribute_name) const;
+  /** Returns the ids of all attributes (plus coordinates in the end). */
+  std::vector<int> attribute_ids() const;
   /** Returns the name of the i-th attribute. */
   const std::string& attribute_name(int i) const;
   /** 
@@ -151,6 +153,8 @@ class ArraySchema {
   size_t cell_size(int i) const;
   /** Returns the sum of the cell sizes of the input attributes. */
   size_t cell_size(const std::vector<int>& attribute_ids) const;
+  /** Returns the coordinates size. */
+  size_t coords_size() const;
   /** Returns the type of the coordinates. */
   const std::type_info* coords_type() const;
   /** Returns the consolidation step. */

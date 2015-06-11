@@ -31,6 +31,7 @@
  * This file implements the StorageManager class.
  */
 
+#include "const_cell_iterator.h"
 #include "storage_manager.h"
 #include "special_values.h"
 #include <algorithm>
@@ -416,7 +417,8 @@ ArrayConstReverseCellIterator<T> StorageManager::rbegin(
 }
 
 void StorageManager::read_cells(int ad, const void* range, 
-                                void*& cells, int64_t& cell_num) const {
+                                const std::vector<int>& attribute_ids,
+                                void*& cells, size_t& cells_size) const {
   // For easy reference
   int attribute_num = arrays_[ad]->array_schema()->attribute_num();
   const std::type_info& coords_type = 
@@ -424,20 +426,21 @@ void StorageManager::read_cells(int ad, const void* range,
 
   if(coords_type == typeid(int))
     read_cells<int>(ad, static_cast<const int*>(range), 
-                    cells, cell_num);
+                    attribute_ids, cells, cells_size);
   else if(coords_type == typeid(int64_t))
     read_cells<int64_t>(ad, static_cast<const int64_t*>(range), 
-                        cells, cell_num);
+                        attribute_ids, cells, cells_size);
   else if(coords_type == typeid(float))
     read_cells<float>(ad, static_cast<const float*>(range), 
-                      cells, cell_num);
+                      attribute_ids, cells, cells_size);
   else if(coords_type == typeid(double))
     read_cells<double>(ad, static_cast<const double*>(range), 
-                       cells, cell_num);
+                       attribute_ids, cells, cells_size);
 }
 
 void StorageManager::read_cells(int ad, const void* range,
-                                void*& cells, int64_t& cell_num,
+                                const std::vector<int>& attribute_ids,
+                                void*& cells, size_t& cells_size,
                                 int rcv_rank) const {
   // For easy reference
   int attribute_num = arrays_[ad]->array_schema()->attribute_num();
@@ -446,85 +449,77 @@ void StorageManager::read_cells(int ad, const void* range,
 
   if(coords_type == typeid(int))
     read_cells<int>(ad, static_cast<const int*>(range), 
-                    cells, cell_num, rcv_rank);
+                    attribute_ids, cells, cells_size, rcv_rank);
   else if(coords_type == typeid(int64_t))
     read_cells<int64_t>(ad, static_cast<const int64_t*>(range),
-                        cells, cell_num, rcv_rank);
+                        attribute_ids, cells, cells_size, rcv_rank);
   else if(coords_type == typeid(float))
     read_cells<float>(ad, static_cast<const float*>(range),
-                      cells, cell_num, rcv_rank);
+                      attribute_ids, cells, cells_size, rcv_rank);
   else if(coords_type == typeid(double))
     read_cells<double>(ad, static_cast<const double*>(range),
-                       cells, cell_num, rcv_rank);
+                       attribute_ids, cells, cells_size, rcv_rank);
 }
 
 template<class T>
 void StorageManager::read_cells(int ad, const T* range, 
-                                void*& cells, int64_t& cell_num) const {
-  // For easy reference
-  const ArraySchema* array_schema = arrays_[ad]->array_schema();
-  size_t cell_size = array_schema->cell_size();
-
-  // Initialize the cells buffer and cell num
-  size_t buffer_size = (segment_size_ / cell_size) * cell_size;
+                                const std::vector<int>& attribute_ids,
+                                void*& cells, size_t& cells_size) const {
+  // Initialization
+  size_t cell_size;          // Single cell
+  cells_size = 0;            // All cells collectively
+  size_t buffer_size = segment_size_;
   cells = malloc(buffer_size);
-  cell_num = 0;
-  size_t offset = 0;
- 
+
   // Prepare cell iterator
-  ArrayConstCellIterator<T> cell_it = begin<T>(ad, range);
+  ArrayConstCellIterator<T> cell_it = begin<T>(ad, range, attribute_ids);
 
   // Write cells into the CSV file
   for(; !cell_it.end(); ++cell_it) { 
     // Expand buffer
-    if(offset == buffer_size) {
+    if(cells_size == buffer_size) {
       expand_buffer(cells, buffer_size);
       buffer_size *= 2;
     } 
 
-// TODO: Fix cell size for variable-lengthed cells
-
-    memcpy(static_cast<char*>(cells) + offset, *cell_it, cell_size);
-    offset += cell_size;
-    ++cell_num;
+    // Retrieve cell size
+    cell_size = cell_it.cell_size();
+    memcpy(static_cast<char*>(cells) + cells_size, *cell_it, cell_size);
+    cells_size += cell_size;
   }
 }
 
 template<class T>
 void StorageManager::read_cells(int ad, const T* range,
-                                void*& cells, int64_t& cell_num,
+                                const std::vector<int>& attribute_ids,
+                                void*& cells, size_t& cells_size,
                                 int rcv_rank) const {
   assert(mpi_handler_ != NULL);
 
-  // For easy reference
-  size_t cell_size = arrays_[ad]->array_schema()->cell_size();
-
   // Read local cells in the range
   void* local_cells;
-  int64_t local_cell_num;
-  int all_cells_size;
-  read_cells(ad, range, local_cells, local_cell_num);
-
-// TODO: Fix cell size for variable-lengthed cells
+  size_t local_cells_size;
+  read_cells(ad, range, attribute_ids, local_cells, local_cells_size);
 
   // Collect all cells from all processes
   void* all_cells;
-  mpi_handler_->gather(local_cells, local_cell_num * cell_size,
-                       all_cells, all_cells_size, rcv_rank); 
+  size_t all_cells_size;
+  mpi_handler_->gather(local_cells, local_cells_size,
+                       all_cells, all_cells_size, 
+                       rcv_rank); 
 
   if(rcv_rank == mpi_handler_->rank()) {
     cells = all_cells;
-    cell_num = all_cells_size / cell_size; 
+    cells_size = all_cells_size; 
   }
 }
 
 template<class T>
-void StorageManager::write_cell(
-    int ad, const void* cell, size_t cell_size) const {
+void StorageManager::write_cell(int ad, const void* cell) const {
   assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
 
-  arrays_[ad]->write_cell<T>(cell, cell_size);
+  arrays_[ad]->write_cell<T>(cell);
 }
 
 template<class T>
@@ -533,64 +528,55 @@ void StorageManager::write_cell_sorted(int ad, const void* cell) const {
 }
 
 void StorageManager::write_cells(
-    int ad, const void* cells, int64_t cell_num) const {
+    int ad, const void* cells, size_t cells_size) const {
   // For easy reference
   int attribute_num = arrays_[ad]->array_schema()->attribute_num();
   const std::type_info& coords_type = 
       *(arrays_[ad]->array_schema()->type(attribute_num));
 
   if(coords_type == typeid(int))
-    write_cells<int>(ad, cells, cell_num);
+    write_cells<int>(ad, cells, cells_size);
   else if(coords_type == typeid(int64_t))
-    write_cells<int64_t>(ad, cells, cell_num);
+    write_cells<int64_t>(ad, cells, cells_size);
   else if(coords_type == typeid(float))
-    write_cells<float>(ad, cells, cell_num);
+    write_cells<float>(ad, cells, cells_size);
   else if(coords_type == typeid(double))
-    write_cells<double>(ad, cells, cell_num);
+    write_cells<double>(ad, cells, cells_size);
 }
 
 template<class T>
 void StorageManager::write_cells(
-    int ad, const void* cells, int64_t cell_num) const {
-  // For easy reference
-  size_t cell_size = arrays_[ad]->array_schema()->cell_size();
-  size_t offset = 0;
+    int ad, const void* cells, size_t cells_size) const {
+  ConstCellIterator cell_it(cells, cells_size, arrays_[ad]->array_schema());
 
-  for(int64_t i=0; i<cell_num; ++i) {
-// TODO: Fix
-    write_cell<T>(ad, static_cast<const char*>(cells) + offset, cell_size);
-    offset += cell_size;
-  }
+  for(; !cell_it.end(); ++cell_it) 
+    write_cell<T>(ad, *cell_it);
 }
 
 void StorageManager::write_cells_sorted(
-    int ad, const void* cells, int64_t cell_num) const {
+    int ad, const void* cells, size_t cells_size) const {
   // For easy reference
   int attribute_num = arrays_[ad]->array_schema()->attribute_num();
   const std::type_info& coords_type = 
       *(arrays_[ad]->array_schema()->type(attribute_num));
 
   if(coords_type == typeid(int))
-    write_cells_sorted<int>(ad, cells, cell_num);
+    write_cells_sorted<int>(ad, cells, cells_size);
   else if(coords_type == typeid(int64_t))
-    write_cells_sorted<int64_t>(ad, cells, cell_num);
+    write_cells_sorted<int64_t>(ad, cells, cells_size);
   else if(coords_type == typeid(float))
-    write_cells_sorted<float>(ad, cells, cell_num);
+    write_cells_sorted<float>(ad, cells, cells_size);
   else if(coords_type == typeid(double))
-    write_cells_sorted<double>(ad, cells, cell_num);
+    write_cells_sorted<double>(ad, cells, cells_size);
 }
 
 template<class T>
 void StorageManager::write_cells_sorted(
-    int ad, const void* cells, int64_t cell_num) const {
-  // For easy reference
-  size_t cell_size = arrays_[ad]->array_schema()->cell_size();
-  size_t offset = 0;
+    int ad, const void* cells, size_t cells_size) const {
+  ConstCellIterator cell_it(cells, cells_size, arrays_[ad]->array_schema());
 
-  for(int64_t i=0; i<cell_num; ++i) {
-    arrays_[ad]->write_cell_sorted<T>(static_cast<const char*>(cells) + offset);
-    offset += cell_size;
-  }
+  for(; !cell_it.end(); ++cell_it) 
+    write_cell_sorted<T>(ad, *cell_it);
 }
 
 /******************************************************
@@ -740,24 +726,33 @@ template ArrayConstReverseCellIterator<double>
 StorageManager::rbegin<double>(
     int ad, const double* range, const std::vector<int>& attribute_ids) const;
 
+template void StorageManager::write_cell<int>(
+    int ad, const void* cell) const;
+template void StorageManager::write_cell<int64_t>(
+    int ad, const void* cell) const;
+template void StorageManager::write_cell<float>(
+    int ad, const void* cell) const;
+template void StorageManager::write_cell<double>(
+    int ad, const void* cell) const;
+
 template void StorageManager::write_cell_sorted<int>(
-    int ad, const void* range) const;
+    int ad, const void* cell) const;
 template void StorageManager::write_cell_sorted<int64_t>(
-    int ad, const void* range) const;
+    int ad, const void* cell) const;
 template void StorageManager::write_cell_sorted<float>(
-    int ad, const void* range) const;
+    int ad, const void* cell) const;
 template void StorageManager::write_cell_sorted<double>(
-    int ad, const void* range) const;
+    int ad, const void* cell) const;
 
 template void StorageManager::read_cells<int>(
-    int ad, const int* range, void*& cells,
-    int64_t& cell_num, int rcv_rank) const;
+    int ad, const int* range, const std::vector<int>& attribute_ids, 
+    void*& cells, size_t& cells_size, int rcv_rank) const;
 template void StorageManager::read_cells<int64_t>(
-    int ad, const int64_t* range, void*& cells,
-    int64_t& cell_num, int rcv_rank) const;
+    int ad, const int64_t* range, const std::vector<int>& attribute_ids,
+    void*& cells, size_t& cells_size, int rcv_rank) const;
 template void StorageManager::read_cells<float>(
-    int ad, const float* range, void*& cells,
-    int64_t& cell_num, int rcv_rank) const;
+    int ad, const float* range, const std::vector<int>& attribute_ids,
+    void*& cells, size_t& cells_size, int rcv_rank) const;
 template void StorageManager::read_cells<double>(
-    int ad, const double* range, void*& cells,
-    int64_t& cell_num, int rcv_rank) const;
+    int ad, const double* range, const std::vector<int>& attribute_ids,
+    void*& cells, size_t& cells_size, int rcv_rank) const;

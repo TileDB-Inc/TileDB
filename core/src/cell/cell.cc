@@ -42,6 +42,17 @@
 ******************************************************/
 
 Cell::Cell(
+    const void* cell, const ArraySchema* array_schema, bool random_access) 
+    : array_schema_(array_schema), cell_(cell), random_access_(random_access) {
+  // Set attribute_ids_
+  attribute_ids_= array_schema_->attribute_ids();
+
+  // Set cell_size_ and var_size_
+  cell_size_ = array_schema_->cell_size();
+  var_size_ = (cell_size_ == VAR_SIZE);
+}
+
+Cell::Cell(
     const ArraySchema* array_schema,
     const std::vector<int>& attribute_ids,
     bool random_access) 
@@ -57,8 +68,12 @@ Cell::Cell(
   // Set attribute_ids_
   attribute_ids_= attribute_ids;
 
-  // Set var_size_
-  var_size_ = (array_schema->cell_size(attribute_ids) == VAR_SIZE);
+  // Set cell_size_ and var_size_
+  cell_size_ = array_schema_->cell_size(attribute_ids_);
+  var_size_ = (cell_size_ == VAR_SIZE);
+}
+
+Cell::~Cell() {
 }
 
 /******************************************************
@@ -83,6 +98,20 @@ CellConstAttrIterator Cell::begin() const {
 
 const void* Cell::cell() const {
   return cell_;
+}
+
+size_t Cell::cell_size() const {
+  assert(cell_ != NULL);
+
+  if(!var_size_) {
+    return cell_size_;
+  } else {
+    size_t cell_size;
+    memcpy(&cell_size, 
+           static_cast<const char*>(cell_) + array_schema_->coords_size(), 
+           sizeof(size_t));
+    return cell_size; 
+  }
 }
 
 template<class T>

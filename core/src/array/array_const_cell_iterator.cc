@@ -107,8 +107,7 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   full_overlap_ = NULL;
 
   // Prepare the ids of the fragments the iterator will iterate on
-  for(int i=0; i<fragment_num_; ++i)
-    fragment_ids_.push_back(i);
+  fragment_ids_ = fragment_ids;
 
   // Prepare the ids of the attributes the iterator will iterate on
   for(int i=0; i<=attribute_num_; ++i)
@@ -152,7 +151,7 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
 
   // Prepare the ids of the attributes the iterator will iterate on
   // The coordinates must always be part of the attributes to be
-  // iterated on (to allow visitng cell of multiple fragments in order)
+  // iterated on (to allow visitng cells of multiple fragments in order)
   attribute_ids_ = attribute_ids;
   // In case the attribute_ids is empty, include a dummy attribute to
   // gracefully handle deletions.

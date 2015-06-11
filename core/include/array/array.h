@@ -101,7 +101,7 @@ class Array {
    * as the attributes are defined in the array schema.
    */
   template<class T>
-  void write_cell(const void* cell, size_t cell_size) const; 
+  void write_cell(const void* cell) const; 
   /** Writes a cell into the array, respecting the global cell order. */ 
   template<class T>
   void write_cell_sorted(const void* cell);

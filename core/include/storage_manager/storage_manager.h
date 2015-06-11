@@ -183,36 +183,40 @@ class StorageManager {
   /**
    * Takes as input an array descriptor and a multi-dimensional range, and 
    * returns the cells whose coordinates fall inside the range, as well as
-   * their number (last two arguments).
+   * their collective size in bytes (last two arguments).
    */
   void read_cells(int ad, const void* range, 
-                  void*& cells, int64_t& cell_num) const;
+                  const std::vector<int>& attribute_ids,
+                  void*& cells, size_t& cells_size) const;
   /**
    * Takes as input an array descriptor and a multi-dimensional range, and 
    * returns the cells whose coordinates fall inside the range, as well as
-   * their number (last two arguments).
+   * their collective size in bytes (last two arguments).
    */
   template<class T>
   void read_cells(int ad, const T* range, 
-                  void*& cells, int64_t& cell_num) const;
+                  const std::vector<int>& attribute_ids,
+                  void*& cells, size_t& cells_size) const;
   /**
    * Takes as input an array descriptor, a multi-dimensional range and 
    * the rank of the process that will receive the data. It returns form
    * all the processes the cells whose coordinates fall inside the input range,
-   * as well as their number (last two arguments).
+   * as well as their collective size in bytes (last two arguments).
    */
   void read_cells(int ad, const void* range, 
-                  void*& cells, int64_t& cell_num,
+                  const std::vector<int>& attribute_ids,
+                  void*& cells, size_t& cells_size,
                   int rcv_rank) const;
   /**
    * Takes as input an array descriptor, a multi-dimensional range and 
    * the rank of the process that will receive the data. It returns form
    * all the processes the cells whose coordinates fall inside the input range,
-   * as well as their number (last two arguments).
+   * as well as their collective size in bytes (last two arguments).
    */
   template<class T>
   void read_cells(int ad, const T* range,
-                  void*& cells, int64_t& cell_num,
+                  const std::vector<int>& attribute_ids,
+                  void*& cells, size_t& cell_num,
                   int rcv_rank) const;
   /**  
    * Writes a cell to an array. It takes as input an array descriptor, and
@@ -221,24 +225,7 @@ class StorageManager {
    * as the attributes are defined in the array schema.
    */
   template<class T>
-  void write_cell(int ad, const void* cell, size_t cell_size) const; 
-  /**  
-   * Writes a set of cells to an array. It takes as input an array descriptor,
-   * and a pointer to cells, which are serialized one after the other. Each cell
-   * has the following format: The coordinates appear first, and then the
-   * attribute values in the same order as the attributes are defined in the
-   * array schema.
-   */
-  void write_cells(int ad, const void* cells, int64_t cell_num) const; 
-  /**  
-   * Writes a set of cells to an array. It takes as input an array descriptor,
-   * and a pointer to cells, which are serialized one after the other. Each cell
-   * has the following format: The coordinates appear first, and then the
-   * attribute values in the same order as the attributes are defined in the
-   * array schema.
-   */
-  template<class T>
-  void write_cells(int ad, const void* cells, int64_t cell_num) const; 
+  void write_cell(int ad, const void* cell) const; 
   /**  
    * Writes a cell to an array. It takes as input an array descriptor, and
    * a cell pointer. The cell has the following format: The coordinates
@@ -254,11 +241,29 @@ class StorageManager {
    * and a pointer to cells, which are serialized one after the other. Each cell
    * has the following format: The coordinates appear first, and then the
    * attribute values in the same order as the attributes are defined in the
+   * array schema.
+   */
+  void write_cells(int ad, const void* cells, size_t cells_size) const; 
+  /**  
+   * Writes a set of cells to an array. It takes as input an array descriptor,
+   * and a pointer to cells, which are serialized one after the other. Each cell
+   * has the following format: The coordinates appear first, and then the
+   * attribute values in the same order as the attributes are defined in the
+   * array schema.
+   */
+  template<class T>
+  void write_cells(int ad, const void* cells, size_t cells_size) const; 
+
+  /**  
+   * Writes a set of cells to an array. It takes as input an array descriptor,
+   * and a pointer to cells, which are serialized one after the other. Each cell
+   * has the following format: The coordinates appear first, and then the
+   * attribute values in the same order as the attributes are defined in the
    * array schema. This function is used only when it is guaranteed that the
    * cells are written respecting the global cell order as specified in the
    * array schema.
    */
-  void write_cells_sorted(int ad, const void* cells, int64_t cell_num) const; 
+  void write_cells_sorted(int ad, const void* cells, size_t cells_size) const; 
   /**  
    * Writes a set of cells to an array. It takes as input an array descriptor,
    * and a pointer to cells, which are serialized one after the other. Each cell
@@ -269,7 +274,7 @@ class StorageManager {
    * array schema.
    */
   template<class T>
-  void write_cells_sorted(int ad, const void* cells, int64_t cell_num) const; 
+  void write_cells_sorted(int ad, const void* cells, size_t cells_size) const; 
 
  private: 
   // PRIVATE ATTRIBUTES

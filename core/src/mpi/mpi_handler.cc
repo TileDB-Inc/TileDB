@@ -100,8 +100,8 @@ void MPIHandler::finalize(void) {
   }
 }
 
-void MPIHandler::gather(void* send_data, int send_size,
-                        void*& rcv_data, int& rcv_size,
+void MPIHandler::gather(void* send_data, size_t send_size,
+                        void*& rcv_data, size_t& rcv_size,
                         int root) const {
   // Receive size of data to be received from each process
   int* rcv_sizes = NULL;

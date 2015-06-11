@@ -90,7 +90,7 @@
 /** Suffix of all tile data files. */
 #define TILE_DATA_FILE_SUFFIX ".tdt"
 /** Special value that indicates a variable-sized object. */
-#define VAR_SIZE -1
+#define VAR_SIZE std::numeric_limits<int>::max()
 /** Max memory size (in bytes) used when creating a new array fragment. */
 #define WRITE_STATE_MAX_SIZE 1*1073741824 // 1GB
 

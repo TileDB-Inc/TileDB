@@ -31,6 +31,7 @@
  * This file implements the WriteState class.
  */
 
+#include "cell.h"
 #include "write_state.h"
 #include "utils.h"
 #include <algorithm>
@@ -152,9 +153,12 @@ void WriteState::load_sorted_bin(const std::string& dirname) {
 }
 
 template<class T>
-void WriteState::write_cell(const void* input_cell, size_t cell_size) {
+void WriteState::write_cell(const void* input_cell) {
   // For easy reference
   int dim_num = array_schema_->dim_num();
+
+  // Find cell size
+  size_t cell_size = ::Cell(input_cell, array_schema_).cell_size();
 
   // Copy the input cell
   void* cell = malloc(cell_size);
@@ -1429,12 +1433,8 @@ void WriteState::update_tile_info(
 }
 
 // Explicit template instantiations
-template void WriteState::write_cell<int>(
-    const void* cell, size_t cell_size);
-template void WriteState::write_cell<int64_t>(
-    const void* cell, size_t cell_size);
-template void WriteState::write_cell<float>(
-    const void* cell, size_t cell_size);
-template void WriteState::write_cell<double>(
-    const void* cell, size_t cell_size);
+template void WriteState::write_cell<int>(const void* cell);
+template void WriteState::write_cell<int64_t>(const void* cell);
+template void WriteState::write_cell<float>(const void* cell);
+template void WriteState::write_cell<double>(const void* cell);
 

@@ -203,8 +203,8 @@ void Fragment::load_sorted_bin(const std::string& dirname) {
 }
 
 template<class T>
-void Fragment::write_cell(const void* cell, size_t cell_size) const {
-  write_state_->write_cell<T>(cell, cell_size);
+void Fragment::write_cell(const void* cell) const {
+  write_state_->write_cell<T>(cell);
 }
 
 template<class T>
@@ -223,14 +223,10 @@ void Fragment::write_cell_sorted_with_2_ids(const void* cell) {
 }
 
 // Explicit template instantiations
-template void Fragment::write_cell<int>(
-    const void* cell, size_t cell_size) const;
-template void Fragment::write_cell<int64_t>(
-    const void* cell, size_t cell_size) const;
-template void Fragment::write_cell<float>(
-    const void* cell, size_t cell_size) const;
-template void Fragment::write_cell<double>(
-    const void* cell, size_t cell_size) const;
+template void Fragment::write_cell<int>(const void* cell) const;
+template void Fragment::write_cell<int64_t>(const void* cell) const;
+template void Fragment::write_cell<float>(const void* cell) const;
+template void Fragment::write_cell<double>(const void* cell) const;
 
 template void Fragment::write_cell_sorted<int>(const void* cell);
 template void Fragment::write_cell_sorted<int64_t>(const void* cell);
