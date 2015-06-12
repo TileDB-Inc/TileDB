@@ -19,3 +19,11 @@ To run example scripts, do the following:
     $ more REG.csv
     $ more IREG.csv
 
+TroubleShooting
+===============
+
+* C++11 compile error: If the C++11 option is not recognized, try the following:
+  * Upgrade GCC. The version must be 4.3 or higher
+  * Use -std=c++0x instead
+  * If OS is CentOS or RedHat, use the CXX = mpiicpc instead of mpicxx
+  * Download latest Intel C/C++ compiler
