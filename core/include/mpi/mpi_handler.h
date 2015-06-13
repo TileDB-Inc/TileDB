@@ -42,21 +42,16 @@
 
 #include <iostream>
 
+/* C++11 threads are a pain beyond imagination. */
+#if USE_CXX11_THREADS
+#error Not implemented yet.
 #include <atomic>
 #include <chrono>
 #include <functional>
 #include <thread>
-
-/* THIS IS NOT THE RIGHT WAY TO DO THIS IN C++11,
- * but since C++11 threads are designed to write
- * cute blog posts about but not actually do serious
- * work, we will do it the C way (i.e. globals). */
-
-extern std::atomic<bool> comm_thread_active_;
-
-/* This must be static for thread constructor to work.
- * Because it is static, it cannot access members. */
-static void Poll(void);
+#else
+#include <pthread.h>
+#endif
 
 /** This modules is responsible for the MPI communication across multiple
  *  processes.
@@ -65,19 +60,35 @@ class MPIHandler {
  public:
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
-  MPIHandler(int* argc, char*** argv);
-  MPIHandler(void);
-  MPIHandler(int* argc, char*** argv, MPI_Comm comm);
-  MPIHandler(MPI_Comm comm);
+  MPIHandler(void) {
+    init(MPI_COMM_WORLD, NULL, NULL);
+  }
+
+  MPIHandler(MPI_Comm comm) {
+    init(comm, NULL, NULL);
+  }
+
+  MPIHandler(int* argc, char*** argv) {
+    init(MPI_COMM_WORLD, argc, argv);
+  }
+
+  MPIHandler(int* argc, char*** argv, MPI_Comm comm) {
+    init(comm, argc, argv);
+  }
 
   /** Destructor. */
-  ~MPIHandler();
+  ~MPIHandler(void) {
+    finalize();
+  }
+
 
   // ACCESSORS
   /** Returns the process rank. */
   int rank() const { return comm_rank_; }
   /** Returns the number of processes. */
   int proc_num() const { return comm_size_; }
+  /** Returns the communicator. */
+  MPI_Comm comm() const { return comm_; }
 
   // INITIALIZATION & FINALIZATION
   /** Finalize MPI. */
@@ -94,17 +105,18 @@ class MPIHandler {
               void*& rcv_data, size_t& rcv_size,
               int root) const;
 
-  void Start(void) {
-    comm_thread_active_ = true;
-    comm_thread_ = std::thread(Poll);
-  }
-
-  void Stop(void) {
-    comm_thread_active_ = false;
-    comm_thread_.join();
-  }
+  void Flush(int remote_proc) const;
+  void Get_raw(void* output, void * remote_input, int size, int remote_proc) const;
+  void Put_raw(void* input, void * remote_output, int size, int remote_proc) const;
+  void Get_raw_many(int count, void* output[], void * remote_input[], int size[], int remote_proc[]) const;
+  void Put_raw_many(int count, void* input[], void * remote_output[], int size[], int remote_proc[]) const;
 
  private:
+  /** Initializes comm thread and polling. */
+  void Start(void);
+  /** Tells the comm thread to exit. */
+  void Stop(void);
+
   /** TileDB is responsible for init/final of MPI */
   int own_mpi_;
   /** TileDB communicator */
@@ -116,7 +128,11 @@ class MPIHandler {
   /** TileDB RMA window */
   MPI_Win win_;
 
+#if USE_CXX11_THREADS
   std::thread comm_thread_;
+#else
+  pthread_t comm_thread_;
+#endif
 };
 
 /** This exception is thrown by MPIHandler. */

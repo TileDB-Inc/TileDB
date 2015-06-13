@@ -34,69 +34,112 @@
 #include "mpi_handler.h"
 #include <cstdlib>
 
-std::atomic<bool> comm_thread_active_;
+typedef enum
+{
+    MSG_INFO_TAG,
+    MSG_FLUSH_TAG,
+    MSG_GET_TAG,
+    MSG_PUT_TAG
+}
+msg_tag_e;
 
-void Poll(void) {
-  while (comm_thread_active_) {
+typedef enum
+{
+    MSG_GET,
+    MSG_PUT,
+    MSG_FLUSH,
+    MSG_CHT_EXIT
+}
+msg_type_e;
+
+typedef struct
+{
+    msg_type_e   type;
+    void *       address;
+    int          count;
+    MPI_Datatype dt;
+}
+msg_info_t;
+
+void * Poll(void * ptr) {
+
+  MPI_Comm comm = *(MPI_Comm*)ptr;
+
+  int rank;
+  MPI_Comm_rank(comm, &rank);
+
+  while (1) {
+
+    msg_info_t info;
+    MPI_Status status;
+    MPI_Recv(&info, sizeof(info), MPI_BYTE,
+             MPI_ANY_SOURCE, MSG_INFO_TAG, comm,
+             &status);
+    int source = status.MPI_SOURCE;
+
     /* poll stuff here */
-    std::this_thread::sleep_for(std::chrono::nanoseconds(100));
+    switch (info.type)
+    {
+        case MSG_FLUSH:
+            MPI_Send(NULL, 0, MPI_BYTE, source, MSG_FLUSH_TAG, comm);
+            break;
+
+        case MSG_GET:
+            MPI_Send(info.address, info.count, info.dt, source, MSG_GET_TAG, comm);
+            break;
+
+        case MSG_PUT:
+            MPI_Status rstatus;
+            MPI_Recv(info.address, info.count, info.dt, source, MSG_PUT_TAG, comm, &rstatus);
+            int rcount;
+            MPI_Get_count(&rstatus, MPI_BYTE, &rcount);
+            if (info.count != rcount) {
+              throw MPIHandlerException("CHT PUT message underflow");
+              MPI_Abort(comm, info.count-rcount);
+            }
+            break;
+
+        case MSG_CHT_EXIT:
+            if (rank!=source) {
+              throw MPIHandlerException("CHT received EXIT signal from a rank besides self");
+              MPI_Abort(comm, source);
+            }
+            pthread_exit(NULL);
+            break;
+
+        default:
+            throw MPIHandlerException("CHT received invalid MSG TAG");
+            MPI_Abort(comm, info.type);
+            break;
+    }
+  }
+  return NULL;
+}
+
+void MPIHandler::Start(void) {
+  int rc = pthread_create(&comm_thread_, NULL, &Poll, &comm_);
+  if(rc != 0) {
+    throw MPIHandlerException("pthread_create failed");
+    MPI_Abort(comm_, rc);
   }
 }
 
-MPIHandler::MPIHandler(int* argc, char*** argv) {
-  init(MPI_COMM_WORLD, argc, argv);
-}
+/** Tells the comm thread to exit. */
+void MPIHandler::Stop(void) {
+  int rank;
+  MPI_Comm_rank(comm_, &rank);
 
-MPIHandler::MPIHandler(void) {
-  init(MPI_COMM_WORLD, NULL, NULL);
-}
+  msg_info_t info;
+  info.type = MSG_CHT_EXIT;
 
-MPIHandler::MPIHandler(int* argc, char*** argv, MPI_Comm comm) {
-  init(comm, argc, argv);
-}
-
-MPIHandler::MPIHandler(MPI_Comm comm) {
-  init(comm, NULL, NULL);
-}
-
-MPIHandler::~MPIHandler(void) {
-  finalize();
-}
-
-void MPIHandler::finalize(void) {
-
-  Stop();
-  {
-    /* Exit "PGAS mode" */
-    int rc = MPI_Win_unlock_all(win_);
-    if(rc != MPI_SUCCESS) {
-      throw MPIHandlerException("MPI_Win_unlock_all failed");
-      MPI_Abort(comm_, rc);
-    }
-  }
-
-  {
-    int rc = MPI_Win_free(&win_ );
-    if(rc != MPI_SUCCESS) {
-      throw MPIHandlerException("MPI_Win_free failed");
-      MPI_Abort(comm_, rc);
-    }
-  }
-
-  {
-    int rc = MPI_Comm_free(&comm_);
-    if(rc != MPI_SUCCESS) {
-      throw MPIHandlerException("MPI_Comm_free failed");
-      MPI_Abort(comm_, rc);
-    }
-  }
-
-  if (own_mpi_) {
-    int rc = MPI_Finalize();
-    if(rc != MPI_SUCCESS) {
-      throw MPIHandlerException("MPI_Finalize failed");
-      MPI_Abort(comm_, rc);
-    }
+  /* Synchronous send will wait until the receive is matched,
+   * so we know that the thread has received the exit command. */
+  MPI_Ssend(&info, sizeof(msg_info_t), MPI_BYTE, rank, MSG_INFO_TAG, comm_);
+  void * rv; /* unused; thread returns NULL */
+  int rc = pthread_join(comm_thread_, &rv);
+  if (rc!=0) {
+    throw MPIHandlerException("pthread_join failed");
+    MPI_Abort(comm_, rc);
   }
 }
 
@@ -148,6 +191,62 @@ void MPIHandler::gather(void* send_data, size_t send_size,
     delete [] rcv_sizes;
     delete [] displs;
   }
+}
+
+void MPIHandler::Flush(int remote_proc) const
+{
+    /* Verify that C99 struct initialization is fully compliant with ISO C++... */
+    msg_info_t info = { .type    = MSG_FLUSH,
+                        .address = NULL,
+                        .count   = 0,
+                        .dt      = MPI_BYTE };
+    MPI_Send(&info, sizeof(msg_info_t), MPI_BYTE, remote_proc, MSG_INFO_TAG, comm_);
+    MPI_Recv(NULL, info.count, info.dt, remote_proc, MSG_FLUSH_TAG, comm_, MPI_STATUS_IGNORE);
+}
+
+void MPIHandler::Get_raw(void* output, void * remote_input, int size, int remote_proc) const
+{
+    /* Verify that C99 struct initialization is fully compliant with ISO C++... */
+    msg_info_t info = { .type    = MSG_GET,
+                        .address = remote_input,
+                        .count   = size,
+                        .dt      = MPI_BYTE };
+    MPI_Send(&info, sizeof(msg_info_t), MPI_BYTE, remote_proc, MSG_INFO_TAG, comm_);
+
+    MPI_Status status;
+    MPI_Recv(output, info.count, info.dt, remote_proc, MSG_GET_TAG, comm_, &status);
+
+    int rcount;
+    MPI_Get_count(&status, MPI_BYTE, &rcount);
+    if (info.count != rcount) {
+      throw MPIHandlerException("Get_raw message underflow");
+      MPI_Abort(comm_, info.count-rcount);
+    }
+}
+
+void MPIHandler::Get_raw_many(int count, void* output[], void * remote_input[], int size[], int remote_proc[]) const
+{
+    for (int i=0; i<count; i++) {
+        MPIHandler::Get_raw(output[i], remote_input[i], size[i], remote_proc[i]);
+    }
+}
+
+void MPIHandler::Put_raw(void* input, void * remote_output, int size, int remote_proc) const
+{
+    /* Verify that C99 struct initialization is fully compliant with ISO C++... */
+    msg_info_t info = { .type    = MSG_PUT,
+                        .address = remote_output,
+                        .count   = size,
+                        .dt      = MPI_BYTE };
+    MPI_Send(&info, sizeof(msg_info_t), MPI_BYTE, remote_proc, MSG_INFO_TAG, comm_);
+    MPI_Send(input, info.count, info.dt, remote_proc, MSG_PUT_TAG, comm_);
+}
+
+void MPIHandler::Put_raw_many(int count, void* input[], void * remote_output[], int size[], int remote_proc[]) const
+{
+    for (int i=0; i<count; i++) {
+        MPIHandler::Put_raw(input[i], remote_output[i], size[i], remote_proc[i]);
+    }
 }
 
 void MPIHandler::init(MPI_Comm user_comm, int* argc, char*** argv) {
@@ -280,4 +379,41 @@ void MPIHandler::init(MPI_Comm user_comm, int* argc, char*** argv) {
   return;
 }
 
+void MPIHandler::finalize(void) {
+
+  Stop();
+
+  {
+    /* Exit "PGAS mode" */
+    int rc = MPI_Win_unlock_all(win_);
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Win_unlock_all failed");
+      MPI_Abort(comm_, rc);
+    }
+  }
+
+  {
+    int rc = MPI_Win_free(&win_ );
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Win_free failed");
+      MPI_Abort(comm_, rc);
+    }
+  }
+
+  {
+    int rc = MPI_Comm_free(&comm_);
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Comm_free failed");
+      MPI_Abort(comm_, rc);
+    }
+  }
+
+  if (own_mpi_) {
+    int rc = MPI_Finalize();
+    if(rc != MPI_SUCCESS) {
+      throw MPIHandlerException("MPI_Finalize failed");
+      MPI_Abort(comm_, rc);
+    }
+  }
+}
 
