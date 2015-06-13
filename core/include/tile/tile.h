@@ -117,7 +117,7 @@ class Tile {
   /** Returns true if the cell at position pos is NULL. */
   bool is_null(int64_t pos) const;
   /** Returns the MBR (see Tile::mbr_). */
-  const MBR mbr() const;
+  MBR mbr() const;
   /** Returns the tile id. */
   int64_t tile_id() const;
   /** Returns the tile size (in bytes). */
