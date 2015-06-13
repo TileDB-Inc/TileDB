@@ -99,7 +99,7 @@ TileConstCellIterator Tile::begin() const {
 Tile::BoundingCoordinatesPair Tile::bounding_coordinates() const {
   // Attribute tile or empty tile
   if(tile_type_ == ATTRIBUTE || cell_num_ == 0)
-    return BoundingCoordinatesPair(NULL, NULL);
+    return BoundingCoordinatesPair((void *)NULL, (void *)NULL);
 
   // Coordinate tile
   char* lower = static_cast<char*>(payload_);
@@ -198,7 +198,7 @@ bool Tile::is_null(int64_t pos) const {
   }
 }
 
-const Tile::MBR Tile::mbr() const {
+Tile::MBR Tile::mbr() const {
   return mbr_;
 }
 
