@@ -85,11 +85,6 @@ GTEST_INCLUDE := $(wildcard $(GTEST_INCLUDE_DIR)/*.h)
 GTEST_OBJ := $(patsubst $(GTEST_SRC_DIR)/%.cc, $(GTEST_OBJ_DIR)/%.o,\
                         $(GTEST_SRC))
 
-# Files of the Google Mock
-GMOCK_INCLUDE := $(wildcard $(GMOCK_INCLUDE_DIR)/*.h)
-GMOCK_OBJ := $(patsubst $(GMOCK_SRC_DIR)/%.cc, $(GMOCK_OBJ_DIR)/%.o,\
-                        $(GMOCK_SRC))
-
 # Files of the TileDB tests
 TEST_SRC := $(wildcard $(TEST_SRC_DIR)/*.cc)
 TEST_OBJ := $(patsubst $(TEST_SRC_DIR)/%.cc, $(TEST_OBJ_DIR)/%.o, $(TEST_SRC))
