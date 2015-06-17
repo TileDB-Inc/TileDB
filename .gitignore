@@ -15,3 +15,4 @@ data/*
 example*
 Doxyfile.log
 doxyfile.inc
+doxygen_sqlite3.db
