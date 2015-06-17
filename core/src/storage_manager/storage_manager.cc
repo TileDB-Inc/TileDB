@@ -299,6 +299,10 @@ int StorageManager::get_array_schema(
   return 0;
 }
 
+void StorageManager::get_version() const {
+  std::cout << "TileDB StorageManager Version 0.1\n";
+}
+
 int StorageManager::load_sorted_bin(
     const std::string& dirname, const std::string& array_name,
     std::string& err_msg) {
