@@ -43,21 +43,21 @@
 #include <stdlib.h>
 
 // Creates the tranpose matrix A_t of A
-void transpose(StorageManager* storage_manager, MPIHandler* mpi_handler, 
-               const std::string& A, const std::string& A_t,
-               const ArraySchema* array_schema_A) {
+int transpose(StorageManager* storage_manager, MPIHandler* mpi_handler, 
+              const std::string& A, const std::string& A_t,
+              const ArraySchema* array_schema_A, std::string& err_msg) {
   // For easy reference
   size_t cell_size = array_schema_A->cell_size();
 
   // Open array A in read mode
-  int ad_A = storage_manager->open_array(A, "r");
+  int ad_A = storage_manager->open_array(A, "r", err_msg);
   if(ad_A == -1)
-    throw (std::string("Cannot open array ") + A + ".").c_str(); 
+    return -1;
 
   // Open array A_t in write mode
-  int ad_A_t = storage_manager->open_array(A_t, "w");
+  int ad_A_t = storage_manager->open_array(A_t, "w", err_msg);
   if(ad_A_t == -1)
-    throw (std::string("Cannot open array ") + A_t + ".").c_str(); 
+    return -1;
 
   // The number of rows that must be gathered by each process.
   // These rows will be the columns of the tranpose result.
@@ -100,11 +100,12 @@ void transpose(StorageManager* storage_manager, MPIHandler* mpi_handler,
   // Write tranposed cells to result array A_t
   storage_manager->write_cells(ad_A_t, cells, cells_size);
 
-
   // Clean up
   free(cells);
   storage_manager->close_array(ad_A); 
   storage_manager->close_array(ad_A_t); 
+
+  return 0;
 }
 
 // Returns an (ad hoc) schema for a matrix
@@ -145,6 +146,10 @@ const ArraySchema* get_array_schema() {
 } 
 
 int main(int argc, char** argv) {
+  // For error handling
+  int err;
+  std::string err_msg;
+
   // Create an MPI handler, which initializes the MPI wolrd
   MPIHandler* mpi_handler = new MPIHandler(&argc, &argv);
 
@@ -161,60 +166,77 @@ int main(int argc, char** argv) {
 
   // Define a matrix A with some ad hoc schema
   const ArraySchema* array_schema_A = get_array_schema();
-  storage_manager->define_array(array_schema_A);
+  err = storage_manager->define_array(array_schema_A, err_msg);
+  if(err == -1) {
+    std::cout << "[TileDB::fatal_error] " << err_msg << "\n";
+    exit(-1);
+  }
 
   // Define the transpose of A, A_t
   const ArraySchema* array_schema_A_t = array_schema_A->transpose("A_t");
-  storage_manager->define_array(array_schema_A_t);
+  err = storage_manager->define_array(array_schema_A_t, err_msg);
+  if(err == -1) {
+    std::cout << "[TileDB::StorageManager::fatal_error] " << err_msg << "\n";
+    exit(-1);
+  }
 
   // Load a CSV file into A
-  try {
-    std::cout << "Proc " << mpi_handler->rank() 
-              << ": Loading CSV file to array A...\n";
-    std::stringstream csv_filename;
-    csv_filename << "~/stavrospapadopoulos/TileDB/data/A_" 
-                 << mpi_handler->rank() << ".csv";
-    loader->load_csv(csv_filename.str(), "A");
-  } catch(LoaderException& le) {
+  std::cout << "Proc " << mpi_handler->rank() 
+            << ": Loading CSV file to array A...\n";
+  std::stringstream csv_filename;
+  csv_filename << "~/stavrospapadopoulos/TileDB/data/A_" 
+               << mpi_handler->rank() << ".csv";
+  err = loader->load_csv(csv_filename.str(), "A", err_msg);
+  if(err == -1) {
     std::cout << "[Proc_" << mpi_handler->rank() 
-              << "::TileDB::Loader::fatal_error]: " << le.what() << "\n";
+              << "::TileDB::Loader::fatal_error] " << err_msg << "\n";
+    exit(-1);
   }
 
   // Export A (for debugging) 
-  try {
-    std::cout << "Proc " << mpi_handler->rank() 
-              << ": Exporting array A...\n";
-    std::stringstream csv_filename;
-    csv_filename << "export_A_" << mpi_handler->rank() << ".csv";
-    query_processor->export_to_csv("A", csv_filename.str());
-  } catch(QueryProcessorException& qpe) {
+  std::cout << "Proc " << mpi_handler->rank() 
+            << ": Exporting array A...\n";
+  csv_filename.str("");
+  csv_filename.clear();
+  csv_filename << "export_A_" << mpi_handler->rank() << ".csv";
+  err = query_processor->export_to_csv(
+      "A", csv_filename.str(), 
+      std::vector<std::string>(), std::vector<std::string>(),
+      false, err_msg);
+  if(err == -1) {
     std::cout << "[Proc_" << mpi_handler->rank() 
-              << "::TileDB::QueryProcessor::fatal_error]: " 
-              << qpe.what() << "\n";
+              << "::TileDB::QueryProcessor::fatal_error] " 
+              << err_msg << "\n";
+    exit(-1);
   }
 
   // Compute transpose 
-  try {
-    std::cout << "Proc " << mpi_handler->rank() 
-              << ": Computing the tranpose A_t of array A...\n";
-    transpose(storage_manager, mpi_handler, "A", "A_t", array_schema_A);
-  } catch(const char* msg)  {
+  std::cout << "Proc " << mpi_handler->rank() 
+            << ": Computing the tranpose A_t of array A...\n";
+  err = transpose(storage_manager, mpi_handler, "A", "A_t", 
+                  array_schema_A, err_msg);
+  if(err == -1) {
     std::cout << "[Proc_" << mpi_handler->rank() 
-              << "::TileDB::transpose::fatal_error]: " 
-              << msg << "\n";
+              << "::TileDB::transpose::fatal_error] " 
+              << err_msg << "\n";
+    exit(-1);
   }
 
   // Export A_t (for debugging) 
-   try {
-    std::cout << "Proc " << mpi_handler->rank() 
-              << ": Exporting array A_t...\n";
-    std::stringstream csv_filename;
-    csv_filename << "export_A_t_" << mpi_handler->rank() << ".csv";
-    query_processor->export_to_csv("A_t", csv_filename.str());
-  } catch(QueryProcessorException& qpe) {
+  std::cout << "Proc " << mpi_handler->rank() 
+            << ": Exporting array A_t...\n";
+  csv_filename.str("");
+  csv_filename.clear();
+  csv_filename << "export_A_t_" << mpi_handler->rank() << ".csv";
+  err = query_processor->export_to_csv(
+      "A_t", csv_filename.str(), 
+      std::vector<std::string>(), std::vector<std::string>(),
+      false, err_msg);
+  if(err == -1) {
     std::cout << "[Proc_" << mpi_handler->rank() 
-              << "::TileDB::QueryProcessor::fatal_error]: " 
-              << qpe.what() << "\n";
+              << "::TileDB::QueryProcessor::fatal_error] " 
+              << err_msg << "\n";
+    exit(-1);
   }
 
   // Clean up

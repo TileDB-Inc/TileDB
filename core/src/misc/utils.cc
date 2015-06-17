@@ -90,6 +90,13 @@ void delete_directory(const std::string& dirname)  {
   rmdir(dirname.c_str());
 }
 
+template<class T>
+bool duplicates(const std::vector<T>& v) {
+  std::set<T> s(v.begin(), v.end());
+
+  return s.size() != v.size(); 
+}
+
 void expand_buffer(void*& buffer, size_t size) {
   void* temp = malloc(2*size);
   memcpy(temp, buffer, size);
@@ -272,6 +279,23 @@ bool is_integer(const char* s) {
   return true;
 }
 
+bool is_non_negative_integer(const char* s) {
+  int i=0;
+
+  if(s[0] == '-')
+    return false;
+
+  if(s[0] == '+')
+    i = 1; // Skip the first character if it is the sign
+
+  for(; s[i] != '\0'; ++i) {
+    if(!isdigit(s[i]))
+      return false;
+  }
+
+  return true;
+}
+
 template<>
 bool is_null(char v) {
   return v == NULL_CHAR;
@@ -406,6 +430,13 @@ template void convert<int>(const double* a, int* b, int size);
 template void convert<int64_t>(const double* a, int64_t* b, int size);
 template void convert<float>(const double* a, float* b, int size);
 template void convert<double>(const double* a, double* b, int size);
+
+template bool duplicates<char>(const std::vector<char>& v);
+template bool duplicates<int>(const std::vector<int>& v);
+template bool duplicates<int64_t>(const std::vector<int64_t>& v);
+template bool duplicates<float>(const std::vector<float>& v);
+template bool duplicates<double>(const std::vector<double>& v);
+template bool duplicates<std::string>(const std::vector<std::string>& v);
 
 template void expand_mbr<int>(
     const int* coords, int* mbr, int dim_num);

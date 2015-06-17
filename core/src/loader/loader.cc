@@ -32,8 +32,8 @@
  */
 
 #include "loader.h"
-#include "utils.h"
 #include "special_values.h"
+#include "utils.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -45,7 +45,7 @@
 #include <sstream>
 
 /******************************************************
-********************* CONSTRUCTORS ********************
+************* CONSTRUCTORS & DESTRUCTORS***************
 ******************************************************/
 
 Loader::Loader(StorageManager* storage_manager) 
@@ -59,34 +59,38 @@ Loader::~Loader() {
 ******************* LOADING FUNCTIONS *****************
 ******************************************************/
 
-void Loader::load_csv(const std::string& filename, 
-                      const std::string& array_name) const {
+int Loader::load_csv(
+    const std::string& filename, const std::string& array_name,
+    std::string& err_msg) const {
   // Open array in write mode
-  int ad = storage_manager_->open_array(array_name, "w");
-  if(ad == -1)
-    throw LoaderException(std::string("Cannot open array ") +
-                          array_name + "."); 
+  int ad = storage_manager_->open_array(array_name, "w", err_msg);
+  if(ad == -1) 
+    return -1;
 
   // Load CSV file
-  load_csv(filename, ad); 
+  int err = load_csv(filename, ad, err_msg); 
 
   // Clean up
   storage_manager_->close_array(ad); 
+
+  return err;
 }
 
-void Loader::update_csv(const std::string& filename, 
-                        const std::string& array_name) const {
+int Loader::update_csv(
+    const std::string& filename, const std::string& array_name,
+    std::string& err_msg) const {
   // Open array in append mode
-  int ad = storage_manager_->open_array(array_name, "a");
-  if(ad == -1)
-    throw LoaderException(std::string("Cannot open array ") +
-                          array_name + "."); 
+  int ad = storage_manager_->open_array(array_name, "a", err_msg);
+  if(ad == -1) 
+    return -1;
 
   // Load CSV file
-  load_csv(filename, ad); 
+  int err = load_csv(filename, ad, err_msg); 
 
   // Clean up
   storage_manager_->close_array(ad); 
+
+  return err;
 }
 
 /******************************************************
@@ -256,37 +260,45 @@ bool Loader::csv_line_to_cell(
   return success;
 }
 
-void Loader::load_csv(const std::string& filename, int ad) const {
+int Loader::load_csv(
+    const std::string& filename, int ad, std::string& err_msg) const {
   // For easy reference
-  const ArraySchema* array_schema = storage_manager_->get_array_schema(ad);
+  const ArraySchema* array_schema;
+  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  if(err == -1)
+    return -1;
   int attribute_num = array_schema->attribute_num();
   const std::type_info& coords_type = *(array_schema->type(attribute_num));
 
   if(coords_type == typeid(int))
-    load_csv<int>(filename, ad);
+    return load_csv<int>(filename, ad, err_msg);
   else if(coords_type == typeid(int64_t))
-    load_csv<int64_t>(filename, ad);
+    return load_csv<int64_t>(filename, ad, err_msg);
   else if(coords_type == typeid(float))
-    load_csv<float>(filename, ad);
+    return load_csv<float>(filename, ad, err_msg);
   else if(coords_type == typeid(double))
-    load_csv<double>(filename, ad);
+    return load_csv<double>(filename, ad, err_msg);
 }
 
 template<class T>
-void Loader::load_csv(const std::string& filename, int ad) const {
+int Loader::load_csv(
+    const std::string& filename, int ad, std::string& err_msg) const {
   // Open the csv file 
   CSVLine csv_line;
   CSVFile csv_file;
   if(!csv_file.open(filename, "r")) {
     // Clean up
     storage_manager_->forced_close_array(ad);
-    // Throw exception
-    throw LoaderException(std::string("Cannot open file ") +
-                          filename + "."); 
+    // Error message
+    err_msg = std::string("Cannot open file '") + filename + "'."; 
+    return -1;
   }
 
   // For easy reference
-  const ArraySchema* array_schema = storage_manager_->get_array_schema(ad);
+  const ArraySchema* array_schema;
+  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  if(err == -1)
+    return -1;
   int64_t line = 0;
   ssize_t cell_size = array_schema->cell_size();
   bool var_size = (cell_size == VAR_SIZE);
@@ -320,12 +332,12 @@ void Loader::load_csv(const std::string& filename, int ad) const {
       csv_file.close();
       if(cell != NULL) 
         free(cell);
-
-      // Throw exception
+      // Error message
       std::stringstream ss;
       ss << "Cannot load cell from line " << line 
-         << " of file " << filename << ".";
-      throw LoaderException(ss.str());
+         << " of file '" << filename << "'.";
+      err_msg = ss.str();
+      return -1;
     }
 
     // Write the cell in the array
@@ -335,4 +347,6 @@ void Loader::load_csv(const std::string& filename, int ad) const {
   // Clean up 
   csv_file.close();
   free(cell);
+
+  return 0;
 }

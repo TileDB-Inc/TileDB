@@ -1,5 +1,5 @@
 /**
- * @file   tile.h
+ * @file   utils.h
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
@@ -53,6 +53,10 @@ void create_directory(const std::string& dirname);
  */
 void delete_directory(const std::string& dirname);
 
+/** Returns true if there are duplicates in the input vector. */
+template<class T>
+bool duplicates(const std::vector<T>& v);
+
 /** Expands the input MBR with the input coordinates. */
 void expand_mbr(const ArraySchema* array_schema, 
                 const void* coords, void* mbr);
@@ -94,6 +98,9 @@ bool is_file(const std::string& filename);
 
 /** Returns true if the input string is an integer number. */
 bool is_integer(const char* s);
+
+/** Returns true if the input string is a non-negative integer number. */
+bool is_non_negative_integer(const char* s);
 
 /** True if the input is a null value. */
 template<class T>

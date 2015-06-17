@@ -101,7 +101,14 @@ bool StorageManager::array_defined(const std::string& array_name) const {
   }
 }
 
-void StorageManager::clear_array(const std::string& array_name) {
+int StorageManager::clear_array(
+    const std::string& array_name, std::string& err_msg) {
+  // Check if the array is defined
+  if(!array_defined(array_name)) {
+    err_msg = std::string("Array '") + array_name + "' is not defined.";
+    return -1;
+  }
+
   // Close the array if it is open 
   OpenArrays::iterator it = open_arrays_.find(array_name);
   if(it != open_arrays_.end())
@@ -120,7 +127,7 @@ void StorageManager::clear_array(const std::string& array_name) {
   
   // If the directory does not exist, exit
   if(dir == NULL)
-    return;
+    return 0;
 
   while(next_file = readdir(dir)) {
     if(strcmp(next_file->d_name, ".") == 0 ||
@@ -137,6 +144,9 @@ void StorageManager::clear_array(const std::string& array_name) {
   } 
   
   closedir(dir);
+
+  err_msg = "";
+  return 0;
 }
 
 void StorageManager::close_array(int ad) {
@@ -148,13 +158,14 @@ void StorageManager::close_array(int ad) {
   arrays_[ad] = NULL;
 }
 
-void StorageManager::define_array(const ArraySchema* array_schema) {
+int StorageManager::define_array(
+    const ArraySchema* array_schema, std::string& err_msg) {
   // For easy reference
   const std::string& array_name = array_schema->array_name();
 
   // Delete array if it exists
   if(array_defined(array_name)) 
-    delete_array(array_name); 
+    delete_array(array_name, err_msg); 
 
   // Create array directory
   std::string dir_name = workspace_ + "/" + array_name + "/"; 
@@ -166,7 +177,10 @@ void StorageManager::define_array(const ArraySchema* array_schema) {
                          BOOK_KEEPING_FILE_SUFFIX;
   remove(filename.c_str());
   int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  assert(fd != -1);
+  if(fd == -1) {
+    err_msg = "Cannot create the array schema file.";
+    return -1;
+  }
 
   // Serialize array schema
   std::pair<const char*, size_t> ret = array_schema->serialize();
@@ -178,9 +192,18 @@ void StorageManager::define_array(const ArraySchema* array_schema) {
 
   delete [] buffer;
   close(fd);
+
+  return 0;
 }
 
-void StorageManager::delete_array(const std::string& array_name) {
+int StorageManager::delete_array(
+    const std::string& array_name, std::string& err_msg) {
+  // Check if the array is defined
+  if(!array_defined(array_name)) {
+    err_msg = std::string("Array '") + array_name + "' is not defined.";
+    return -1;
+  }
+
   // Close the array if it is open 
   OpenArrays::iterator it = open_arrays_.find(array_name);
   if(it != open_arrays_.end())
@@ -199,7 +222,7 @@ void StorageManager::delete_array(const std::string& array_name) {
   
   // If the directory does not exist, exit
   if(dir == NULL)
-    return;
+    return 0;
 
   while(next_file = readdir(dir)) {
     if(strcmp(next_file->d_name, ".") == 0 ||
@@ -231,23 +254,33 @@ void StorageManager::forced_close_array(int ad) {
   arrays_[ad] = NULL;
 }
 
-const ArraySchema* StorageManager::get_array_schema(int ad) const {
-  assert(arrays_[ad] != NULL);
+int StorageManager::get_array_schema(
+    int ad, const ArraySchema*& array_schema, std::string& err_msg) const {
+  if(arrays_[ad] == NULL) {
+    err_msg = "Array is not open.";
+    return -1;
+  }
 
-  return arrays_[ad]->array_schema();
+  array_schema = arrays_[ad]->array_schema();
+  return 0;
 }
 
-const ArraySchema* StorageManager::get_array_schema(
-    const std::string& array_name) const {
+int StorageManager::get_array_schema(
+    const std::string& array_name, ArraySchema*& array_schema,
+    std::string& err_msg) const {
   // The schema to be returned
-  ArraySchema* array_schema = new ArraySchema();
+  array_schema = new ArraySchema();
 
   // Open file
   std::string filename = workspace_ + "/" + array_name + "/" + 
                          ARRAY_SCHEMA_FILENAME + 
                          BOOK_KEEPING_FILE_SUFFIX;
   int fd = open(filename.c_str(), O_RDONLY);
-  assert(fd != -1);
+  if(fd == -1) {
+    err_msg = std::string("Cannot access array schema file for array '") +
+              array_name + "'.";
+    return -1;
+  }
 
   // Initialize buffer
   struct stat st;
@@ -263,29 +296,33 @@ const ArraySchema* StorageManager::get_array_schema(
   close(fd);
   delete [] buffer;
 
-  return array_schema;
+  return 0;
 }
 
-void StorageManager::load_sorted_bin(
-    const std::string& dirname, const std::string& array_name) {
+int StorageManager::load_sorted_bin(
+    const std::string& dirname, const std::string& array_name,
+    std::string& err_msg) {
   assert(is_dir(dirname));
 
   // Open array
-  int ad = open_array(array_name, "w");
-  if(ad == -1)
-    throw StorageManagerException(std::string("Cannot open array ") +
-                                  array_name + "."); 
+  int ad = open_array(array_name, "w", err_msg);
+  if(ad == -1) 
+    return -1;
 
   arrays_[ad]->load_sorted_bin(dirname);
  
   // Close array
   close_array(ad); 
+
+  return 0;
 }
 
 int StorageManager::open_array(
-    const std::string& array_name, const char* mode) {
+    const std::string& array_name, const char* mode, std::string& err_msg) {
   // Proper checks
-  check_on_open_array(array_name, mode);
+  int err = check_on_open_array(array_name, mode, err_msg);
+  if(err == -1)
+    return -1;
 
   // Get array mode
   Array::Mode array_mode;
@@ -298,12 +335,14 @@ int StorageManager::open_array(
 
   // If in write mode, delete the array if it exists
   if(array_mode == Array::WRITE) 
-    clear_array(array_name); 
+    clear_array(array_name, err_msg); 
 
   // Initialize an Array object
+  ArraySchema* array_schema;
+  get_array_schema(array_name, array_schema, err_msg);
   Array* array = new Array(workspace_, segment_size_,
                            write_state_max_size_,
-                           get_array_schema(array_name), array_mode);
+                           array_schema, array_mode);
 
   // If the array is in write or append mode, initialize a new fragment
   if(array_mode == Array::WRITE || array_mode == Array::APPEND)
@@ -315,6 +354,8 @@ int StorageManager::open_array(
   // Maximum open arrays reached
   if(ad == -1) {
     delete array; 
+    err_msg = std::string("Cannot open array' ") + array_name +
+              "'. Maximum open arrays reached.";
     return -1;
   }
 
@@ -583,20 +624,28 @@ void StorageManager::write_cells_sorted(
 ***************** PRIVATE FUNCTIONS *******************
 ******************************************************/
 
-void StorageManager::check_on_open_array(
-    const std::string& array_name, const char* mode) const {
+int StorageManager::check_on_open_array(
+    const std::string& array_name, const char* mode,
+    std::string& err_msg) const {
   // Check if the array is defined
-  if(!array_defined(array_name))
-    throw StorageManagerException(std::string("Array ") + array_name + 
-                                  " not defined.");
+  if(!array_defined(array_name)) {
+    err_msg = std::string("Array '") + array_name + "' is not defined.";
+    return -1;
+  }
+
   // Check mode
-  if(invalid_array_mode(mode))
-    throw StorageManagerException(std::string("Invalid mode ") + mode + "."); 
+  if(invalid_array_mode(mode)) {
+    err_msg = std::string("Invalid mode '") + mode + "'."; 
+    return -1;
+  }
 
   // Check if array is already open
-  if(open_arrays_.find(array_name) != open_arrays_.end())
-    throw StorageManagerException(std::string("Array ") + array_name + 
-                                              " already open."); 
+  if(open_arrays_.find(array_name) != open_arrays_.end()) {
+    err_msg = std::string("Array '") + array_name + "' already open."; 
+    return -1;
+  }
+
+  return 0;
 }
 
 bool StorageManager::invalid_array_mode(const char* mode) const {

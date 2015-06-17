@@ -63,6 +63,8 @@ class CSVFile {
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
   CSVFile();
+  /** Constructor. */
+  CSVFile(const std::string& filename, const char* mode);
   /** Destructor. */
   ~CSVFile();
  

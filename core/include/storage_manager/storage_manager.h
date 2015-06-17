@@ -28,8 +28,7 @@
  * 
  * @section DESCRIPTION
  *
- * This file defines class StorageManager. It also defines 
- * StorageManagerException, which is thrown by StorageManager.
+ * This file defines class StorageManager. 
  */  
 
 #ifndef STORAGE_MANAGER_H
@@ -84,13 +83,13 @@ class StorageManager {
   /** Returns true if the array has been defined. */
   bool array_defined(const std::string& array_name) const;
   /** Deletes all the fragments of an array. The array remains defined. */
-  void clear_array(const std::string& array_name);
+  int clear_array(const std::string& array_name, std::string& err_msg);
   /** Closes an array. */
   void close_array(int ad);
   /** Defines an array (stores its array schema). */
-  void define_array(const ArraySchema* array_schema);
+  int define_array(const ArraySchema* array_schema, std::string& err_msg);
   /** It deletes an array (regardless of whether it is open or not). */
-  void delete_array(const std::string& array_name);
+  int delete_array(const std::string& array_name, std::string& err_msg);
   /** 
    * Forces an array to close. This is done during abnormal execution. 
    * If the array was opened in write or append mode, the last fragment
@@ -98,9 +97,12 @@ class StorageManager {
    */
   void forced_close_array(int ad);
   /** Returns the schema of an array. The input is an array descriptor. */
-  const ArraySchema* get_array_schema(int ad) const;
+  int get_array_schema(
+      int ad, const ArraySchema*& array_schema, std::string& err_msg) const;
   /** Returns the schema of an array. */
-  const ArraySchema* get_array_schema(const std::string& array_name) const;
+  int get_array_schema(
+      const std::string& array_name, ArraySchema*& array_schema,
+      std::string& err_msg) const;
   /** 
    * Loads data into an array, which are stored in files inside the input
    * directory. Each file stores the cells in binary form, sorted based
@@ -108,8 +110,9 @@ class StorageManager {
    * must have the same binary format as that used when creating sorted
    * runs triggered by StorageManager::write_cell.
    */
-  void load_sorted_bin(const std::string& dirname, 
-                       const std::string& array_name);
+  int load_sorted_bin(
+      const std::string& dirname, const std::string& array_name,
+      std::string& err_msg);
   /** 
    * Opens an array in the input mode. It returns an 'array descriptor',
    * which is used in subsequent array operations. Currently, the following
@@ -121,7 +124,8 @@ class StorageManager {
    *
    * "a": Append mode
    */
-  int open_array(const std::string& array_name, const char* mode);
+  int open_array(
+      const std::string& array_name, const char* mode, std::string& err_msg);
 
   // CELL FUNCTIONS
   /** Takes as input an array descriptor and returns a cell iterator. */
@@ -299,8 +303,9 @@ class StorageManager {
   
   // PRIVATE METHODS
   /** Checks when opening an array. */
-  void check_on_open_array(const std::string& array_name, 
-                           const char* mode) const;
+  int check_on_open_array(
+      const std::string& array_name, const char* mode,
+      std::string& err_msg) const;
   /** Checks the validity of the array mode. */
   bool invalid_array_mode(const char* mode) const;
   /** Simply sets the workspace. */
@@ -308,24 +313,5 @@ class StorageManager {
   /** Stores an array object and returns an array descriptor. */
   int store_array(Array* array);
 }; 
-
-/** This exception is thrown by StorageManager. */
-class StorageManagerException {
- public:
-  // CONSTRUCTORS & DESTRUCTORS
-  /** Takes as input the exception message. */
-  StorageManagerException(const std::string& msg) 
-      : msg_(msg) {}
-  /** Empty destructor. */
-  ~StorageManagerException() {}
-
-  // ACCESSORS
-  /** Returns the exception message. */
-  const std::string& what() const { return msg_; }
-
- private:
-  /** The exception message. */
-  std::string msg_;
-};
 
 #endif

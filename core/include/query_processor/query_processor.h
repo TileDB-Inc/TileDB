@@ -28,8 +28,7 @@
  * 
  * @section DESCRIPTION
  *
- * This file defines class QueryProcessor. It also defines 
- * QueryProcessorException, which is thrown by QueryProcessor.
+ * This file defines class QueryProcessor. 
  */
 
 #ifndef QUERY_PROCESSOR_H
@@ -60,18 +59,16 @@ class QueryProcessor {
    * coordinates are written first, and then the attribute values,
    * following the order as defined in the schema of the array.
    * The input dimension and attribute names allow for selective exporting
-   * of coordinates and attribute values respectively. The last argument
+   * of coordinates and attribute values respectively. Argument reverse
    * allows for optionally exporting the cells in reverse order (if it
    * is true).
    */
-  void export_to_csv(
+  int export_to_csv(
       const std::string& array_name,
       const std::string& filename,
-      const std::vector<std::string>& dim_names = 
-          std::vector<std::string>(),
-      const std::vector<std::string>& attribute_names = 
-          std::vector<std::string>(),
-      bool reverse = false) const;
+      const std::vector<std::string>& dim_names, 
+      const std::vector<std::string>& attribute_names,
+      bool reverse, std::string& err_msg) const;
   /** 
    * A subarray query creates a new array from the input array, 
    * containing only the cells whose coordinates fall into the input range. 
@@ -82,11 +79,12 @@ class QueryProcessor {
    * allows for optionally writing the cells to the output in reverse order (if
    * it is true).
    */
-  void subarray(const std::string& array_name, 
-                const std::vector<double>& range,
-                const std::string& result_array_name,
-                const std::vector<std::string>& attribute_names,
-                bool reverse = false) const;
+  int subarray(
+      const std::string& array_name, 
+      const std::vector<double>& range,
+      const std::string& result_array_name,
+      const std::vector<std::string>& attribute_names,
+      bool reverse, std::string& err_msg) const;
 
  private:
   // PRIVATE ATTRIBUTES
@@ -107,7 +105,8 @@ class QueryProcessor {
    */
   template<class T>
   void export_to_csv(
-      int ad, const std::string& filename,
+      int ad, const ArraySchema* array_schema,
+      const std::string& filename,
       const std::vector<int>& dim_ids,
       const std::vector<int>& attribute_ids) const;
   /** 
@@ -116,7 +115,8 @@ class QueryProcessor {
    */
   template<class T>
   void export_to_csv_reverse(
-      int ad, const std::string& filename,
+      int ad, const ArraySchema* array_schema,
+      const std::string& filename,
       const std::vector<int>& dim_ids,
       const std::vector<int>& attribute_ids) const;
 
@@ -124,13 +124,15 @@ class QueryProcessor {
    * Parses the attribute names and returns the corresponding attribute ids,
    * which will be used to initialize a cell iterator.
    */
-  std::vector<int> parse_attribute_names(
+  int parse_attribute_names(
       const std::vector<std::string>& attribute_names,
-      const ArraySchema* array_schema) const;
+      const ArraySchema* array_schema,
+      std::vector<int>& attribute_ids, std::string& err_msg) const;
   /** Parses the dimension names and returns the corresponding dimension ids. */
-  std::vector<int> parse_dim_names(
+  int parse_dim_names(
       const std::vector<std::string>& dim_names,
-      const ArraySchema* array_schema) const;
+      const ArraySchema* array_schema,
+      std::vector<int>& dim_ids, std::string& err_msg) const;
   /** 
    * A subarray query creates a new array from the input array, 
    * containing only the cells whose coordinates fall into the input range. 
@@ -153,25 +155,6 @@ class QueryProcessor {
   void subarray_reverse(
       int ad, const T* range, int result_ad,
       const std::vector<int>& attribute_ids) const;
-};
-
-/** This exception is thrown by QueryProcessor. */
-class QueryProcessorException {
- public:
-  // CONSTRUCTORS & DESTRUCTORS
-  /** Takes as input the exception message. */
-  QueryProcessorException(const std::string& msg) 
-      : msg_(msg) {}
-  /** Empty destructor. */
-  ~QueryProcessorException() {}
-
-  // ACCESSORS
-  /** Returns the exception message. */
-  const std::string& what() const { return msg_; }
-
- private:
-  /** The exception message. */
-  std::string msg_;
 };
 
 #endif

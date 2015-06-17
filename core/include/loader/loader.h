@@ -28,8 +28,7 @@
  * 
  * @section DESCRIPTION
  *
- * This file defines class Loader. It also defines LoaderException, which is 
- * thrown by Loader.
+ * This file defines class Loader.
  */
 
 #ifndef LOADER_H
@@ -53,8 +52,9 @@ class Loader {
 
   // LOADING FUNCTIONS
   /** Loads a CSV file into an array. */
-  void load_csv(const std::string& filename, 
-                const std::string& array_name) const;
+  int load_csv(
+      const std::string& filename, const std::string& array_name, 
+      std::string& err_msg) const;
   /** 
    * Updates an existing array with a new CSV file. 
    * This is similar to Loader::load_csv, with the differnce being
@@ -63,8 +63,9 @@ class Loader {
    * Loader::update_csv incorporates the updates of the input CSV
    * file into a potentially existing array.
    */
-  void update_csv(const std::string& filename, 
-                  const std::string& array_name) const;
+  int update_csv(
+      const std::string& filename, const std::string& array_name, 
+      std::string& err_msg) const;
 
  private:
   // PRIVATE ATTRIBUTES
@@ -108,29 +109,10 @@ class Loader {
                         CSVLine& csv_line, void* cell, 
                         ssize_t cell_size) const;
   /** Loads a CSV file into a new fragment for the input array descriptor. */
-  void load_csv(const std::string& filename, int ad) const;
+  int load_csv(const std::string& filename, int ad, std::string& err_msg) const;
   /** Loads a CSV file into a new fragment for the input array descriptor. */
   template<class T>
-  void load_csv(const std::string& filename, int ad) const;
-};
-
-/** This exception is thrown by Loader. */
-class LoaderException {
- public:
-  // CONSTRUCTORS & DESTRUCTORS
-  /** Takes as input the exception message. */
-  LoaderException(const std::string& msg) 
-      : msg_(msg) {}
-  /** Empty destructor. */
-  ~LoaderException() {}
-
-  // ACCESSORS
-  /** Returns the exception message. */
-  const std::string& what() const { return msg_; }
-
- private:
-  /** The exception message. */
-  std::string msg_;
+  int load_csv(const std::string& filename, int ad, std::string& err_msg) const;
 };
 
 #endif

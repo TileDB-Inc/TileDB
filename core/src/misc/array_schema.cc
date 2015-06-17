@@ -56,8 +56,8 @@ ArraySchema::ArraySchema(
     const std::vector<const std::type_info*>& types,
     const std::vector<int>& val_num,
     CellOrder cell_order,
-    int consolidation_step,
-    int64_t capacity) {
+    int64_t capacity,
+    int consolidation_step) {
   assert(attribute_names.size() > 0);
   assert(dim_names.size() > 0);
   assert(attribute_names.size()+1 == types.size());
@@ -115,18 +115,16 @@ ArraySchema::ArraySchema(
     const std::vector<std::pair<double, double> >& dim_domains,
     const std::vector<const std::type_info*>& types,
     const std::vector<int>& val_num,
-    TileOrder tile_order,
     const std::vector<double>& tile_extents,
-    int consolidation_step,
-    int64_t capacity, 
-    CellOrder cell_order) {
+    CellOrder cell_order,
+    TileOrder tile_order,
+    int consolidation_step) {
   assert(attribute_names.size() > 0);
   assert(dim_names.size() > 0);
   assert(tile_extents.size() > 0);
   assert(attribute_names.size()+1 == types.size());
   assert(dim_names.size() == dim_domains.size());
   assert(dim_names.size() == tile_extents.size());
-  assert(capacity > 0);
   assert(consolidation_step > 0);
   assert(val_num.size() == attribute_names.size());
 #ifndef NDEBUG
@@ -148,7 +146,6 @@ ArraySchema::ArraySchema(
   tile_order_ = tile_order;
   cell_order_ = cell_order;
   consolidation_step_ = consolidation_step;
-  capacity_ = capacity;
   tile_extents_ = tile_extents; 
   dim_num_ = dim_names_.size();
   attribute_num_ = attribute_names_.size();
@@ -221,6 +218,8 @@ int ArraySchema::attribute_num() const {
 }
 
 int64_t ArraySchema::capacity() const {
+  assert(tile_extents_.size() == 0);
+
   return capacity_;
 }
 
@@ -265,7 +264,7 @@ int ArraySchema::consolidation_step() const {
   return consolidation_step_;
 }
 
-const std::vector<std::pair<double,double> >& ArraySchema::dim_domains() const {
+const ArraySchema::DimDomains& ArraySchema::dim_domains() const {
   return dim_domains_;
 }
 
@@ -848,18 +847,17 @@ ArraySchema ArraySchema::create_join_result_schema(
                        array_schema_A.dim_domains_, 
                        join_types, join_val_num,
                        array_schema_A.cell_order_, 
-                       array_schema_A.consolidation_step_, 
-                       array_schema_A.capacity_);
+                       array_schema_A.capacity_,
+                       array_schema_A.consolidation_step_);
   else // Regular tiles
     return ArraySchema(result_array_name, join_attribute_names, 
                        array_schema_A.dim_names_,
                        array_schema_A.dim_domains_, 
                        join_types, join_val_num,
-                       array_schema_A.tile_order_,
                        array_schema_A.tile_extents_,
-                       array_schema_A.consolidation_step_, 
-                       array_schema_A.capacity_,
-                       array_schema_A.cell_order_);
+                       array_schema_A.cell_order_,
+                       array_schema_A.tile_order_,
+                       array_schema_A.consolidation_step_);
 } 
 
 bool ArraySchema::has_irregular_tiles() const {

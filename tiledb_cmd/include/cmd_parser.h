@@ -34,197 +34,131 @@
 #ifndef CMD_PARSER_H
 #define CMD_PARSER_H
 
-#include "command_line.h"
 #include "array_schema.h"
 #include <inttypes.h>
 
 /** 
- * Indicates which arguments are used from the command line for query
- * 'clear_array'. 
+ * Objects of this class properly parse TileDB queries given from a command
+ * line. 
  */
-#define PS_CLEAR_ARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP)
-/** 
- * Indicates which arguments are used from the command line for query
- * 'define_array'. 
- */
-#define PS_DEFINE_ARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
-                                CL_ATTRIBUTE_NAMES_BITMAP |\
-                                CL_DIM_NAMES_BITMAP |\
-                                CL_DIM_DOMAINS_BITMAP | CL_TYPES_BITMAP |\
-                                CL_CELL_ORDER_BITMAP | CL_CAPACITY_BITMAP |\
-                                CL_TILE_EXTENTS_BITMAP | CL_TILE_ORDER_BITMAP |\
-                                CL_CONSOLIDATION_STEP_BITMAP)
-/** 
- * Indicates which arguments are used from the command line for query
- * 'delete_array'. 
- */
-#define PS_DELETE_ARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP)
-/** 
- * Indicates which arguments are used from the command line for query
- * 'export_to_CSV'. 
- */
-#define PS_EXPORT_TO_CSV_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
-                                 CL_ATTRIBUTE_NAMES_BITMAP |\
-                                 CL_DIM_NAMES_BITMAP | CL_MODE_BITMAP |\
-                                 CL_FILENAME_BITMAP)
-/** 
- * Indicates which arguments are used from the command line for query
- * 'filter'. 
- */
-#define PS_FILTER_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
-                          CL_EXPRESSION_BITMAP | CL_RESULT_BITMAP)
-/** 
- * Indicates which arguments are used from the command line for query
- * 'join'. 
- */
-#define PS_JOIN_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
-                        CL_RESULT_BITMAP)
-/** 
- * Indicates which arguments are used from the command line for query
- * 'load_csv'. 
- */
-#define PS_LOAD_CSV_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
-                            CL_FILENAME_BITMAP)
-/** 
- * Indicates which arguments are used from the command line for query
- * 'load_csv'. 
- */
-#define PS_LOAD_SORTED_BIN_BITMAP (CL_WORKSPACE_BITMAP |\
-                                   CL_ARRAY_NAMES_BITMAP | CL_FILENAME_BITMAP)
-/** 
- * Indicates which arguments are used from the command line for query
- * 'nearest_neighbors'. 
- */
-#define PS_NN_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
-                      CL_COORDINATES_BITMAP | CL_NUMBERS_BITMAP  |\
-                      CL_RESULT_BITMAP)
-/** 
- * Indicates which arguments are used from the command line for query
- * 'retile'. 
- */
-#define PS_RETILE_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
-                          CL_CELL_ORDER_BITMAP | CL_CAPACITY_BITMAP  |\
-                          CL_TILE_EXTENTS_BITMAP)
-/** 
- * Indicates which arguments are used from the command line for query
- * 'show_array_schema'. 
- */
-#define PS_SHOW_ARRAY_SCHEMA_BITMAP (CL_WORKSPACE_BITMAP |\
-                                     CL_ARRAY_NAMES_BITMAP)
-
-/** 
- * Indicates which arguments are used from the command line for query
- * 'subarray'. 
- */
-#define PS_SUBARRAY_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
-                            CL_ATTRIBUTE_NAMES_BITMAP |\
-                            CL_RANGE_BITMAP | CL_RESULT_BITMAP |\
-                            CL_MODE_BITMAP)
-/** 
- * Indicates which arguments are used from the command line for query
- * 'update_csv'. 
- */
-#define PS_UPDATE_BITMAP (CL_WORKSPACE_BITMAP | CL_ARRAY_NAMES_BITMAP |\
-                          CL_FILENAME_BITMAP)
-
-/** Objects of this class properly parse command lines. */
 class CmdParser {
  public:
-  // CONSTRUCTORS
-  /** Empty constructor. */
-  CmdParser() {}
+  // CONSTRUCTORS & DESTRUCTORS
+  /** Constructor. */
+  CmdParser();
+  /** Destructor. */
+  ~CmdParser();
 
   // PARSING METHODS
   /** Parse command line for query 'clear_array'. */
-  void parse_clear_array(const CommandLine& cl) const;
+  int parse_clear_array(
+      int argc, char** argv, std::string& array_name, 
+      std::string& workspace, std::string& err_msg) const;
   /** Parse command line for query 'define_array' and return the schema. */
-  const ArraySchema* parse_define_array(const CommandLine& cl) const;
+  int parse_define_array(
+      int argc, char** argv, const ArraySchema*& array_schema,
+      std::string& workspace, std::string& err_msg) const;
   /** Parse command line for query 'delete_array'. */
-  void parse_delete_array(const CommandLine& cl) const;
-  /** 
-   * Parse command line for query 'export_to_csv'. Returns (by reference
-   * the ids of the dimensions and attributes the export will focus on.
-   */
-  void parse_export_to_csv(const CommandLine& cl,
-                           std::vector<std::string>& dim_names,
-                           std::vector<std::string>& attribute_names,
-                           bool& reverse) const;
-  /** Parse command line for query 'load_csv'. */
-  void parse_load_csv(const CommandLine& cl) const;
-  /** Parse command line for query 'load_sorted_bin'. */
-  void parse_load_sorted_bin(const CommandLine& cl) const;
-  /** Parse command line for query 'show_array_schema'. */
-  void parse_show_array_schema(const CommandLine& cl) const;
-  /** 
-   * Parse command line for query 'subarray'. Returns a multi-dimensional 
-   * range, and (by reference) a list of attribute names.
-   */
-  std::vector<double> parse_subarray(
-      const CommandLine& cl,
+  int parse_delete_array( 
+      int argc, char** argv, std::string& array_name, 
+      std::string& workspace, std::string& err_msg) const;
+  /** Parse command line for query 'export_to_csv'. */
+  int parse_export_to_csv(
+      int argc, char** argv, std::string& array_name, std::string& workspace, 
+      std::string& filename, std::vector<std::string>& dim_names,
       std::vector<std::string>& attribute_names,
-      bool& reverse) const;
+      bool& reverse, std::string& err_msg) const;
+  /** Parse command line for query 'generate_synthetic_data'. */
+  int parse_generate_synthetic_data(
+      int argc, char** argv, std::string& array_name, std::string& workspace, 
+      std::string& filename, std::string& file_type, unsigned& seed,
+      std::string& distribution, int64_t& cell_num, size_t& file_size,
+      std::string& err_msg) const;
+  /** Parse command line for query 'load_csv'. */
+  int parse_load_csv(
+      int argc, char** argv, std::string& array_name, std::string& workspace, 
+      std::string& filename, std::string& err_msg) const;
+  /** Parse command line for query 'load_sorted_bin'. */
+  int parse_load_sorted_bin(
+      int argc, char** argv, std::string& array_name, std::string& workspace, 
+      std::string& dirname, std::string& err_msg) const;
+  /** Parse command line for query 'show_array_schema'. */
+  int parse_show_array_schema(
+      int argc, char** argv, std::string& array_name, std::string& workspace, 
+      std::string& err_msg) const;
+  /** Parse command line for query 'subarray'. */
+  int parse_subarray(
+      int argc, char** argv, std::string& array_name, std::string& workspace, 
+      std::string& result_name, std::vector<double>& range,
+      std::vector<std::string>& attribute_names,
+      bool& reverse, std::string& err_msg) const;
   /** Parse command line for query 'update_csv'. */
-  void parse_update_csv(const CommandLine& cl) const;
+  int parse_update_csv(
+      int argc, char** argv, std::string& array_name, std::string& workspace, 
+      std::string& filename, std::string& err_msg) const;
 
  private:
   // PRIVATE METHODS
-  /** Checks the array names in command line for soundness and returns them. */
-  std::vector<std::string> check_array_names(const CommandLine& cl) const;
-  /** 
-   * Checks the attribute names in command line for soundness and returns
-   * them. 
-   */
-  std::vector<std::string> check_attribute_names(const CommandLine& cl) const;
-  /** 
-   * Checks the capacity in command line for soundness and returns it. 
-   * If no capacity is given in the command line, it returns -1.
-   */ 
-  int64_t check_capacity(const CommandLine& cl) const;
-  /** 
-   * Checks the consolidation step in command line for soundness and returns
-   * it. 
-   */ 
-  int check_consolidation_step(const CommandLine& cl) const;
-  /** 
-   * Checks the dimension domains in command line for soundness and returns
-   * them. 
-   */ 
-  std::vector<std::pair<double, double> > check_dim_domains(
-      const CommandLine& cl, int dim_num) const;
-  /** 
-   * Checks the dimension names in command line for soundness and returns
-   * them. 
-   */ 
-  std::vector<std::string> check_dim_names(
-      const CommandLine& cl, 
-      const std::vector<std::string>& attribute_names) const;
-  /** Checks the cell order in command line for soundness and returns it. */
-  ArraySchema::CellOrder check_cell_order(const CommandLine& cl) const;
-  /** Checks the tile order in command line for soundness and returns it. */
-  ArraySchema::TileOrder check_tile_order(const CommandLine& cl) const;
-  /** Checks the tile extents in command line for soundness. */
-  std::vector<double> check_tile_extents(
-      const CommandLine& cl,
-      int dim_num,
-      const std::vector<std::pair<double, double> >& dim_domains) const;
-  /** 
-   * Checks the range in command line for soundness and returns it as 
-   * an array of double numbers.
-   */
-  std::vector<double> check_range(const CommandLine& cl) const;
-  /** Returns true if the mode is "reverse" and false if it is "normal". */
-  bool check_reverse(const CommandLine& cl) const;
-  /** 
-   * Checks the types in command line for soundness and returns
-   * them. 
-   */
-  std::pair<std::vector<const std::type_info*>,
-            std::vector<int> > 
-      check_types(const CommandLine& cl, int attribute_num) const;
-  /** Returns the attribute names from the command line. */
-  std::vector<std::string> get_attribute_names(const CommandLine& cl) const;
-  /** Returns the dimension names from the command line. */
-  std::vector<std::string> get_dim_names(const CommandLine& cl) const;
+  /** Retrieves the attribute names. */
+  int get_attribute_names(
+      const std::string& str_attribute_names, 
+      std::vector<std::string>& attribute_names, std::string& err_msg) const;
+  /** Gets the capacity. */ 
+  int get_capacity(
+      const std::string& str_capacity, 
+      int64_t& capacity, std::string& err_msg) const;
+  /** Gets the cell order. */
+  int get_cell_order(
+      const std::string& str_cell_order, ArraySchema::CellOrder& cell_order,
+      std::string& err_msg) const;
+  /** Gets the number of cells. */
+  int get_cell_num(
+      const std::string& str_cell_num, int64_t& cell_num,
+      std::string& err_msg) const;
+  /** Gets the consolidation step. */ 
+  int get_consolidation_step(
+      const std::string& str_consolidation_step,
+      int& consolidation_step, std::string& err_msg) const;
+  /** Gets the dimension domains. */ 
+  int get_dim_domains(
+      const std::string& str_dim_domains, int dim_num,
+      std::vector<std::pair<double, double> >& dim_domains,
+      std::string& err_msg) const;
+  /** Gets the dimension names. */ 
+  int get_dim_names(
+      const std::string& str_dim_names,
+      const std::vector<std::string>& attribute_names,
+      std::vector<std::string>& dim_names,
+      std::string& err_msg) const;
+  /** Gets the file size. */
+  int get_file_size(
+      const std::string& str_file_size, size_t& file_size,
+      std::string& err_msg) const;
+  /** Gets the range. */
+  int get_range(
+      const std::string& str_range, std::vector<double>& range,
+      std::string& err_msg) const;
+  /** Gets the mode (reverse or not). */
+  int get_reverse(
+      const std::string& mode, bool& reverse, std::string& err_msg) const;
+  /** Gets the seed. */
+  int get_seed(
+      const std::string& str_seed, unsigned& seed,
+      std::string& err_msg) const;
+  /** Gets the tile extents. */
+  int get_tile_extents(
+      const std::string& str_tile_extents, int dim_num,
+      const std::vector<std::pair<double, double> >& dim_domains,
+      std::vector<double>& tile_extents, std::string& err_msg) const;
+  /** Gets the tile order. */
+  int get_tile_order(
+      const std::string& str_tile_order, ArraySchema::TileOrder& tile_order,
+      std::string& err_msg) const;
+  /** Gets the types and number of values per attribute. */
+  int get_types(
+      const std::string& str_types, int attribute_num,
+      std::vector<const std::type_info*>& types, 
+      std::vector<int>& val_num, std::string& err_msg) const;
 };
 
 #endif

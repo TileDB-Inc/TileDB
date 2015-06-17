@@ -58,86 +58,115 @@ QueryProcessor::QueryProcessor(StorageManager* storage_manager)
 ****************** QUERY FUNCTIONS ********************
 ******************************************************/
 
-void QueryProcessor::export_to_csv(
+int QueryProcessor::export_to_csv(
     const std::string& array_name, 
     const std::string& filename, 
     const std::vector<std::string>& dim_names,
     const std::vector<std::string>& attribute_names,
-    bool reverse) const {
+    bool reverse, std::string& err_msg) const {
   // Open array in read mode
-  int ad = storage_manager_->open_array(array_name, "r");
-  if(ad == -1)
-    throw QueryProcessorException(std::string("Cannot open array ") +
-                                  array_name + "."); 
+  int ad = storage_manager_->open_array(array_name, "r", err_msg);
+  if(ad == -1) 
+    return -1;
 
   // For easy reference
-  const ArraySchema* array_schema = storage_manager_->get_array_schema(ad); 
+  int err;
+  const ArraySchema* array_schema;
+  err = storage_manager_->get_array_schema(ad, array_schema, err_msg); 
+  if(err == -1)
+    return -1;
   int attribute_num = array_schema->attribute_num();
   const std::type_info& coords_type = *(array_schema->type(attribute_num));
 
   // Get dimension and attribute ids
-  std::vector<int> dim_ids = parse_dim_names(dim_names, array_schema);
-  std::vector<int> attribute_ids = parse_attribute_names(attribute_names, 
-                                                         array_schema);
+  std::vector<int> dim_ids;
+  err = parse_dim_names(dim_names, array_schema, dim_ids, err_msg);
+  if(err == -1)
+    return -1;
+  std::vector<int> attribute_ids;
+  err = parse_attribute_names(attribute_names, array_schema, 
+                              attribute_ids, err_msg);
+  if(err == -1)
+    return -1;
 
   // Invoke the proper templated function
   if(coords_type == typeid(int)) { 
     if(!reverse)
-      export_to_csv<int>(ad, filename, dim_ids, attribute_ids); 
+      export_to_csv<int>(ad, array_schema, filename, 
+                         dim_ids, attribute_ids); 
     else
-      export_to_csv_reverse<int>(ad, filename, dim_ids, attribute_ids); 
+      export_to_csv_reverse<int>(ad, array_schema, filename, 
+                                 dim_ids, attribute_ids);
   } else if(coords_type == typeid(int64_t)) {
+
     if(!reverse)
-      export_to_csv<int64_t>(ad, filename, dim_ids, attribute_ids); 
+      export_to_csv<int64_t>(ad, array_schema, filename, 
+                             dim_ids, attribute_ids);
     else
-      export_to_csv_reverse<int64_t>(ad, filename, dim_ids, attribute_ids); 
+      export_to_csv_reverse<int64_t>(ad, array_schema, filename, 
+                                     dim_ids, attribute_ids); 
   } else if(coords_type == typeid(float)) {
     if(!reverse)
-      export_to_csv<float>(ad, filename, dim_ids, attribute_ids); 
+      export_to_csv<float>(ad, array_schema, filename, 
+                           dim_ids, attribute_ids); 
     else
-      export_to_csv_reverse<float>(ad, filename, dim_ids, attribute_ids); 
+      export_to_csv_reverse<float>(ad, array_schema, filename, 
+                                   dim_ids, attribute_ids); 
   } else if(coords_type == typeid(double)) {
     if(!reverse)
-      export_to_csv<double>(ad, filename, dim_ids, attribute_ids); 
+      export_to_csv<double>(ad, array_schema, filename, 
+                            dim_ids, attribute_ids); 
     else
-      export_to_csv_reverse<double>(ad, filename, dim_ids, attribute_ids); 
+      export_to_csv_reverse<double>(ad, array_schema, filename, 
+                                    dim_ids, attribute_ids); 
   }
 
   // Clean up
   storage_manager_->close_array(ad); 
+
+  return 0;
 }
 
-void QueryProcessor::subarray(
+int QueryProcessor::subarray(
     const std::string& array_name, 
     const std::vector<double>& range,
     const std::string& result_array_name,
     const std::vector<std::string>& attribute_names, 
-    bool reverse) const {
+    bool reverse, std::string& err_msg) const {
   // Open array in read mode
-  int ad = storage_manager_->open_array(array_name, "r");
+  int ad = storage_manager_->open_array(array_name, "r", err_msg);
   if(ad == -1)
-    throw QueryProcessorException(std::string("Cannot open array ") +
-                                  array_name + "."); 
+    return -1;
 
   // For easy reference
-  const ArraySchema* array_schema = storage_manager_->get_array_schema(ad); 
+  const ArraySchema* array_schema;
+  int err;
+  err = storage_manager_->get_array_schema(ad, array_schema, err_msg); 
+  if(err == -1)
+    return -1;
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
   const std::type_info& coords_type = *(array_schema->type(attribute_num));
 
   // Check range size
-  if(range.size() != 2*dim_num)
-    throw QueryProcessorException("Range dimensionality does not agree with"
-                                  " number of dimensions in the array schema");
+  if(range.size() != 2*dim_num) {
+    err_msg = "Range dimensionality does not agree with"
+              " number of dimensions in the array schema";
+    return -1;
+  }
 
   // The attributes of the input array cannot be hidden in the result
-  if(attribute_names.size() == 1 && attribute_names[0] == "__hide") 
-    throw QueryProcessorException("Attribute names cannot be"
-                                  " hidden in a subarray query.");
+  if(attribute_names.size() == 1 && attribute_names[0] == "__hide") { 
+    err_msg = "Attribute names cannot be hidden in a subarray query.";
+    return -1;
+  }
 
   // Get attribute ids
-  std::vector<int> attribute_ids = 
-      parse_attribute_names(attribute_names, array_schema);
+  std::vector<int> attribute_ids; 
+  err = parse_attribute_names(attribute_names, array_schema, 
+                              attribute_ids, err_msg);
+  if(err == -1)
+    return -1;
   assert(no_duplicates(attribute_ids));
 
   // Create result array schema
@@ -145,13 +174,14 @@ void QueryProcessor::subarray(
                                                          attribute_ids); 
 
   // Define result array
-  storage_manager_->define_array(result_array_schema);
+  err = storage_manager_->define_array(result_array_schema, err_msg);
+  if(err == -1)
+    return -1;
 
   // Open result array in write mode
-  int result_ad = storage_manager_->open_array(result_array_name, "w"); 
+  int result_ad = storage_manager_->open_array(result_array_name, "w", err_msg); 
   if(result_ad == -1)
-    throw QueryProcessorException(std::string("Cannot open array ") +
-                                  result_array_name + "."); 
+    return -1;
 
   // Invoke the proper templated function
   if(coords_type == typeid(int)) { 
@@ -192,6 +222,8 @@ void QueryProcessor::subarray(
   storage_manager_->close_array(ad); 
   storage_manager_->close_array(result_ad); 
   delete result_array_schema;
+
+  return 0;
 }
 
 /******************************************************
@@ -200,16 +232,13 @@ void QueryProcessor::subarray(
 
 template<class T>
 void QueryProcessor::export_to_csv(
-    int ad, 
+    int ad,
+    const ArraySchema* array_schema,
     const std::string& filename,
     const std::vector<int>& dim_ids,
     const std::vector<int>& attribute_ids) const {
-  // For easy reference
-  const ArraySchema* array_schema = storage_manager_->get_array_schema(ad); 
-
   // Prepare CSV file
-  CSVFile csv_file;
-  csv_file.open(filename, "w");
+  CSVFile csv_file(filename, "w");
 
   // Prepare cell iterators
   ArrayConstCellIterator<T> cell_it = 
@@ -230,13 +259,10 @@ void QueryProcessor::export_to_csv(
 
 template<class T>
 void QueryProcessor::export_to_csv_reverse(
-    int ad, 
+    int ad, const ArraySchema* array_schema, 
     const std::string& filename,
     const std::vector<int>& dim_ids,
     const std::vector<int>& attribute_ids) const {
-  // For easy reference
-  const ArraySchema* array_schema = storage_manager_->get_array_schema(ad); 
-
   // Prepare CSV file
   CSVFile csv_file;
   csv_file.open(filename, "w");
@@ -258,10 +284,12 @@ void QueryProcessor::export_to_csv_reverse(
   csv_file.close();
 }
 
-std::vector<int> QueryProcessor::parse_attribute_names(
+int QueryProcessor::parse_attribute_names(
    const std::vector<std::string>& attribute_names,
-   const ArraySchema* array_schema) const {
-  std::vector<int> attribute_ids;
+   const ArraySchema* array_schema,
+   std::vector<int>& attribute_ids, std::string& err_msg) const {
+  // Initialization
+  attribute_ids.clear();
 
   // If "hide attributes" is selected, the return list should be empty
   if(attribute_names.size() == 0 || attribute_names[0] != "__hide") {
@@ -277,27 +305,32 @@ std::vector<int> QueryProcessor::parse_attribute_names(
       attribute_ids.resize(attribute_names.size());
       for(int i=0; i<attribute_names.size(); ++i) {
         attribute_ids[i] = array_schema->attribute_id(attribute_names[i]);
-        if(attribute_ids[i] == -1)
-          throw QueryProcessorException(std::string("Invalid attribute name ") +
-                                        attribute_names[i] + "."); 
+        if(attribute_ids[i] == -1) {
+          err_msg = std::string("Invalid attribute name ") + 
+                    attribute_names[i] + ".";
+          return -1;
+        }
       }
     }
   }
 
-  return attribute_ids;
+  return 0;
 }
 
-std::vector<int> QueryProcessor::parse_dim_names(
+int QueryProcessor::parse_dim_names(
    const std::vector<std::string>& dim_names,
-   const ArraySchema* array_schema) const {
+   const ArraySchema* array_schema, 
+   std::vector<int>& dim_ids, std::string& err_msg) const {
+  // Initialization
+  dim_ids.clear();
+
   // Special case for "hide dimensions"
   if(dim_names.size() == 1 && dim_names[0] == "__hide")
-    return std::vector<int>();
+    return 0;
 
   // For easy reference
   int dim_num = array_schema->dim_num();
 
-  std::vector<int> dim_ids;
   if(dim_names.size() == 0) {
     dim_ids.resize(dim_num);
     for(int i=0; i<dim_num; ++i)
@@ -306,13 +339,15 @@ std::vector<int> QueryProcessor::parse_dim_names(
     dim_ids.resize(dim_names.size());
     for(int i=0; i<dim_names.size(); ++i) {
       dim_ids[i] = array_schema->dim_id(dim_names[i]);
-      if(dim_ids[i] == -1)
-        throw QueryProcessorException(std::string("Invalid dimension name ") +
-                                      dim_names[i] + "."); 
+      if(dim_ids[i] == -1) {
+        err_msg = std::string("Invalid dimension name ") +
+                  dim_names[i] + ".";
+        return -1;
+      }
     }
   }
 
-  return dim_ids;
+  return 0;
 } 
 
 template<class T>

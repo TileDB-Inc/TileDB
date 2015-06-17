@@ -49,7 +49,6 @@ CellConstAttrIterator::CellConstAttrIterator(
     offset_ += sizeof(size_t);
 }
 
-
 CellConstAttrIterator::~CellConstAttrIterator() {
 }
 

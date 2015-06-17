@@ -1,5 +1,5 @@
 /**
- * @file   tiledb.cc
+ * @file   tiledb_cmd.cc
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
@@ -31,33 +31,38 @@
  * Implements a command line-based frontend to TileDB.
  */
 
-#include <string.h>
-#include <iostream>
-#include "storage_manager.h"
-#include "query_processor.h"
-#include "loader.h"
-#include "command_line.h"
 #include "array_schema.h"
 #include "cmd_parser.h"
+#include "data_generator.h"
+#include "loader.h"
+#include "query_processor.h"
+#include "storage_manager.h"
+#include <iostream>
+#include <string.h>
 
-void print_summary() {
-  std::cout << "\n\n"
-            << "#####   TileDB: A Sparse Array Data Management System #####\n"
-            << "\n\n"
-            << "-- Usage --\n\n"
-            << "Type:\n"
-            << "\ttiledb_cmd -q <query> [options]\n\n"
-            << "The following queries are currently supported:\n"
-            << "\t - clear_array\n"
-            << "\t - define_array\n"
-            << "\t - delete_array\n"
-            << "\t - export_to_csv\n"
-            << "\t - load_csv\n"
-            << "\t - show_array_schema\n"
-            << "\t - subarray\n\n"
-            << "\t - update_csv\n\n"
-            << "For more information on the usage of each query, type:\n"
-            << "\ttiledb_cmd help <query>\n\n";
+void error_cmd_parser(const std::string& err_msg) {
+  std::cerr << "[TileDB::CmdParser::fatal_error] " << err_msg << "\n";
+  exit(-1);
+}
+
+void error_data_generator(const std::string& err_msg) {
+  std::cerr << "[TileDB::DataGenerator::fatal_error] " << err_msg << "\n";
+  exit(-1);
+}
+
+void error_loader(const std::string& err_msg) {
+  std::cerr << "[TileDB::Loader::fatal_error] " << err_msg << "\n";
+  exit(-1);
+}
+
+void error_query_processor(const std::string& err_msg) {
+  std::cerr << "[TileDB::QueryProcessor::fatal_error] " << err_msg << "\n";
+  exit(-1);
+}
+
+void error_storage_manager(const std::string& err_msg) {
+  std::cerr << "[TileDB::StorageManager::fatal_error] " << err_msg << "\n";
+  exit(-1);
 }
 
 void print_clear_array() {
@@ -65,12 +70,12 @@ void print_clear_array() {
   std::cout << "Deletes all the data from an array. However, the array\n"
             << "remains defined after this command.\n\n"
             << "Options:\n"
-            << "\t-A or --array-namess: \n"
+            << "\t-A or --array-name: \n"
             << "\t\tThe name of the array to be cleared. \n\n"
             << "\t-w or --workspace: \n"
-            << "\t\tThe folder where the TileDB data are stored. \n\n"
+            << "\t\tThe worskpace where the array data are stored. \n\n"
             << "Example:\n"
-            << "\t tiledb_cmd -q clear_array \\\n"
+            << "\t tiledb_cmd clear_array \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array\n"
             << "\n";
@@ -81,42 +86,42 @@ void print_define_array() {
             << "Defines the schema of an array. Every array must be\n"
             << "defined before being used.\n\n"
             << "Options:\n"
-            << "\t-A or --array-names: \n"
+            << "\t-A or --array-name: \n"
             << "\t\tThe name of the array to be defined. \n\n"
             << "\t-w or --workspace: \n"
-            << "\t\tThe folder where the TileDB data will be stored. \n"
-            << "\t\tThe provided folder must exist.\n\n"
-            << "\t-a or --attribute-name: \n"
+            << "\t\tThe worskpace where the array data will be stored.\n\n"
+            << "\t-a or --attribute-names: \n"
             << "\t\tThe list of attribute names. \n\n"
-            << "\t-d or --dim-name: \n"
+            << "\t-d or --dim-names: \n"
             << "\t\tThe list of dimension names.\n\n"
-            << "\t-D or --dim-domain-bound: \n"
+            << "\t-D or --dim-domains: \n"
             << "\t\tThe list of dimension domain bounds. If there are d\n"
             << "\t\tdimensions, 2*d domain bounds must be given. Every two\n"
             << "\t\tbounds in the provided order correspond to each dimension\n"
             << "\t\t(also in the provided order). The first is the lower\n"
             << "\t\tbound, and the second is the upper bound. Any real value\n"
             << "\t\tis accepted as a domain bound.\n\n"
-            << "\t-t or --type: \n"
+            << "\t-t or --types: \n"
             << "\t\tThe list of types for the attributes and the coordinates.\n"
-            << "\t\tIf a attributes are provided, a+1 types must be given\n"
+            << "\t\tIf a attributes are provided, a+1 types must be given.\n"
             << "\t\tThe first a types correpsond to the attributes (in the\n"
             << "\t\tprovided order), whereas the last type corresponds\n"
             << "\t\tto the coordinates (i.e., to all the dimensions\n"
-            << "\t\tcollectively).The supported types for an attribute\n"
+            << "\t\tcollectively). The supported types for an attribute\n"
             << "\t\tare: char, int, int64_t, float and double. The\n"
             << "\t\tsupported types for the coordinates are: int, int64_t,\n"
             << "\t\tfloat and double. Optionally, one may specify the number\n"
             << "\t\tof values to be stored per attribute. This is done by\n"
-            << "\t\tappending ':' followed by the number of values after the\n"
+            << "\t\tappending ':' followed by the number of values after\n"
             << "\t\teach type. If no such value is provided, the default 1 is\n"
             << "\t\tused. If one needs a variable number of values per\n"
-            << "\t\tattribute, \":var\" must be appended. Note that dimension\n"
-            << "\t\ttype cannot have multiple values (i.e., there should be\n"
-            << "\t\ta single set of coordinates that identifies each cell).\n\n"
-            << "\t-e or --tile-extent: \n"
+            << "\t\tattribute, \":var\" must be appended. Note that the\n"
+            << "\t\tdimension type cannot have multiple values (i.e., there\n"
+            << "\t\tshould be a single set of coordinates that identifies\n"
+            << "\t\teach cell).\n\n"
+            << "\t-e or --tile-extents: \n"
             << "\t\tThis applies only to regular tiles (for irregular\n"
-            << "\t\ttiles it must be omitted). It determines the extent\n"
+            << "\t\ttiles, it must be omitted). It determines the extent\n"
             << "\t\tof each tile along one dimension. If there are d\n"
             << "\t\tdimensions, there must be d tile extents, one for\n"
             << "\t\teach dimension in the provided order. Any real value\n"
@@ -131,23 +136,20 @@ void print_define_array() {
             << "\t\tHilbert. If no tile order is given, row-major will be the\n"
             << "\t\tdefault order.\n\n"
             << "\t-c or --capacity:\n"
-            << "\t\tWe distinguish two cases: (i) for irregular tiles, it is\n"
-            << "\t\tthe (fixed) number of non-empty cells in each tile, and\n"
-            << "\t\t(ii) for regular tiles, it simply helps in determinining\n"
-            << "\t\thow much memory to be reserved (as an optimization), when\n"
-            << "\t\ta new tile is created. If the capacity is not given, a\n"
-            << "\t\tdefault value is used.\n\n"
+            << "\t\tThis is applicable only to irregular tiles. It specifies\n"
+            << "\t\tthe (fixed) number of non-empty cells in each tile.\n"
+            << "\t\tIf the capacity is not given, a default value is used.\n\n"
             << "\t-s or --consolidation-step:\n"
             << "\t\tEvery time a new updates occurs, a new array fragment is\n"
-            << "\t\tcreated (thought of as a snapshot of the array containing\n"
+            << "\t\tcreated, thought of as a snapshot of the array containing\n"
             << "\t\tonly the updates. The consolidation step determines after\n"
             << "\t\thow many updates a merging of fragments must occur. A\n"
             << "\t\tlarge consolidation step leads to very fast updates, but\n"
             << "\t\ta potentially slower query time, and vice versa. If the\n"
-            << "\t\tconsolidation step is not given, a default value (1) is\n"
+            << "\t\tconsolidation step is not given, the default value 1 is\n"
             << "\t\tused.\n\n"
             << "Example #1 (irregular tiles):\n"
-            << "\t tiledb_cmd -q define_array \\\n"
+            << "\t tiledb_cmd define_array \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array \\\n"
             << "\t            -a 'attr1,attr2' \\\n"
@@ -158,17 +160,16 @@ void print_define_array() {
             << "\t            -c 10000 \\\n"
             << "\t            -s 5 \n\n"
             << "Example #2 (regular tiles):\n"
-            << "\t tiledb_cmd -q define_array \\\n"
+            << "\t tiledb_cmd define_array \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array \\\n"
             << "\t            -a 'attr1,attr2' \\\n"
             << "\t            -d 'dim1,dim2' \\\n"
             << "\t            -D '0,100,0,100' \\\n"
-            << "\t            -t 'int:var,double:2,int64_t' \\\n"
+            << "\t            -t 'int:var,double,int64_t' \\\n"
             << "\t            -e '10,20' \\\n"
             << "\t            -o row-major \\\n"
             << "\t            -O column-major \\\n"
-            << "\t            -c 10000 \\\n"
             << "\t            -s 5 \n"
             << "\n";
 }
@@ -178,12 +179,12 @@ void print_delete_array() {
   std::cout << "Deletes all the data from an array. Contrary to clear_array,\n"
             << "the array does not remain defined after this command.\n\n"
             << "Options:\n"
-            << "\t-A or --array-names: \n"
+            << "\t-A or --array-name: \n"
             << "\t\tThe name of the array to be deleted. \n\n"
             << "\t-w or --workspace: \n"
-            << "\t\tThe folder where the TileDB data are stored. \n\n"
+            << "\t\tThe workspace where the data are stored. \n\n"
             << "Example:\n"
-            << "\t tiledb_cmd -q delete_array \\\n"
+            << "\t tiledb_cmd delete_array \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array\n"
             << "\n";
@@ -198,10 +199,12 @@ void print_export_to_csv() {
             << "values. The order of the coordinates and attribute values\n"
             << "follow the order of the dimensions and attributes,\n"
             << "respectively, in the array schema. Character '*' represents\n"
-            << "a NULL value.\n\n"
+            << "a NULL value. If an attribute has variable size (except\n"
+            << "for character strings), the number of values precedes the\n"
+            << "list of values for that attribute.\n\n"
             << "Options:\n"
-            << "\t-A or --array-names: \n"
-            << "\t\tThe name of the array the CSV data are loaded into. \n\n"
+            << "\t-A or --array-name: \n"
+            << "\t\tThe name of the array the CSV data are created from. \n\n"
             << "\t-a or --attribute-names: \n"
             << "\t\tThe attributes whose values will be exported. This option\n"
             << "\t\tis optional. If omitted, all attribute values are\n"
@@ -222,16 +225,16 @@ void print_export_to_csv() {
             << "\t\treverse order ('reverse'). If the option is omitted, the\n"
             << "\t\tdefault 'normal' is assumed.\n\n"
             << "\t-w or --workspace: \n"
-            << "\t\tThe folder where the TileDB data are stored. \n\n"
+            << "\t\tThe workspace where the array data are stored. \n\n"
             << "\t-f or --filename:\n"
-            << "\t\tThe name of the CSV file (full path).\n\n"
+            << "\t\tThe name of the CSV file.\n\n"
             << "Example #1:\n"
-            << "\t tiledb_cmd -q export_to_csv \\\n"
+            << "\t tiledb_cmd export_to_csv \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array \\\n"
             << "\t            -f my_array.csv\n\n"
             << "Example #2:\n"
-            << "\t tiledb_cmd -q export_to_csv \\\n"
+            << "\t tiledb_cmd export_to_csv \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array \\\n"
             << "\t            -a attr1,attr2,attr1 \\\n"
@@ -239,18 +242,73 @@ void print_export_to_csv() {
             << "\t            -f my_array.csv\n"
             << "\n"
             << "Example #3:\n"
-            << "\t tiledb_cmd -q export_to_csv \\\n"
+            << "\t tiledb_cmd export_to_csv \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array \\\n"
             << "\t            -d __hide \\\n"
             << "\t            -f my_array.csv\n"
             << "\n"
             << "Example #4:\n"
-            << "\t tiledb_cmd -q export_to_csv \\\n"
+            << "\t tiledb_cmd export_to_csv \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array \\\n"
             << "\t            -m reverse \\\n"
             << "\t            -f my_array.csv\n\n";
+}
+
+void print_generate_synthetic_data() {
+  std::cout << "\n-- generate_syntetic_data --\n\n"
+            << "Generates a file with synthetic data for a defined array. The\n"
+            << "user may specify the distribution of the coordinates within\n"
+            << "the array domain, whereas the attribute values are always\n"
+            << "drawn uniformly at random from their corresponding type\n"
+            << "domain (except for characters which are uniformly drawn from\n"
+            << "the decimal ASCII interval [45,126]). The user may specify\n"
+            << "the type of the output file, which can be a CSV (csv), a\n"
+            << "sorted CSV (sorted_csv) along the array cell order, a binary\n"
+            << "binary (bin), or a sorted binary (sorted_bin). Finally, the\n"
+            << "user may specify either the number of cells to be generated,\n"
+            << " or the size (in GBs) of the file to be generated.\n\n"
+            << "Options:\n"
+            << "\t-A or --array-name: \n"
+            << "\t\tThe name of the array for which the synthetic data are\n"
+            << "\t\tgenerated.\n\n"
+            << "\t-d or --distribution:\n"
+            << "\t\tThe distribution of the coordinates to be generated\n"
+            << "\t\t(optional, the default is 'uniform'). \n\n"
+            << "\t-f or --filename:\n"
+            << "\t\tThe name of the file to be generated. \n\n"
+            << "\t-n or --cell-number\n"
+            << "\t\tThe number of cells to be generated.\n\n"
+            << "\t-s or --seed:\n"
+            << "\t\tA seed for the random generator (optional, the default\n"
+            << "\t\tis derived from the current time). \n\n"
+            << "\t-S or --file-size:\n"
+            << "\t\tThe size of the file to be generated. \n\n"
+            << "\t-t or --file-type:\n"
+            << "\t\tThe type of the file to be generated ('csv',\n"
+            << "\t\t'sorted_csv', 'bin', 'sorted_bin'). This is optional, the\n"
+            << "\t\tdefault is 'csv'.\n\n"
+            << "\t-w or --workspace: \n"
+            << "\t\tThe workspace where the input array is defined. \n\n"
+            << "Example #1:\n"
+            << "\t tiledb_cmd generate_synthetic_data \\\n"
+            << "\t            -A my_array \\\n"
+            << "\t            -w ~/TileDB/ \\\n"
+            << "\t            -d uniform \\\n"
+            << "\t            -n 10000 \\\n"
+            << "\t            -t csv \\\n"
+            << "\t            -f my_array.csv \n"
+            << "\n"
+            << "Example #2:\n"
+            << "\t tiledb_cmd generate_synthetic_data \\\n"
+            << "\t            -A my_array \\\n"
+            << "\t            -w ~/TileDB/ \\\n"
+            << "\t            -S 0.5 \\\n"
+            << "\t            -s 0 \\\n"
+            << "\t            -t bin \\\n"
+            << "\t            -f my_array.bin \n"
+            << "\n";
 }
 
 void print_load_csv() {
@@ -268,11 +326,11 @@ void print_load_csv() {
             << "\t-A or --array-names: \n"
             << "\t\tThe name of the array the CSV data are loaded into. \n\n"
             << "\t-w or --workspace: \n"
-            << "\t\tThe folder where the TileDB data are stored. \n\n"
+            << "\t\tThe workspace where the array data will be stored. \n\n"
             << "\t-f or --filename:\n"
             << "\t\tThe path to the CSV file.\n\n"
             << "Example:\n"
-            << "\t tiledb_cmd -q load_csv \\\n"
+            << "\t tiledb_cmd load_csv \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array \\\n"
             << "\t            -f my_array.csv \n"
@@ -290,17 +348,17 @@ void print_load_sorted_bin() {
             << "directory containing the binary files is given as input. Note\n"
             << "that all the files in the input directory will be merged.\n\n"
             << "Options:\n"
-            << "\t-A or --array-names: \n"
+            << "\t-A or --array-name: \n"
             << "\t\tThe name of the array the CSV data are loaded into. \n\n"
             << "\t-w or --workspace: \n"
-            << "\t\tThe folder where the TileDB data are stored. \n\n"
-            << "\t-f or --filename:\n"
+            << "\t\tThe workspace where the array data will be stored. \n\n"
+            << "\t-d or --directory:\n"
             << "\t\tThe directory that contains the sorted binaries.\n\n"
             << "Example:\n"
-            << "\t tiledb_cmd -q load_sorted_bin \\\n"
+            << "\t tiledb_cmd load_sorted_bin \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array \\\n"
-            << "\t            -f my_dir/ \n"
+            << "\t            -d my_dir/ \n"
             << "\n";
 }
 
@@ -308,12 +366,12 @@ void print_show_array_schema() {
   std::cout << "\n-- show_array_schema --\n\n"
             << "Prints the array schema of the input array.\n\n"
             << "Options:\n"
-            << "\t-A or --array-names: \n"
+            << "\t-A or --array-name: \n"
             << "\t\tThe name of the array whose schema will be printed. \n\n"
             << "\t-w or --workspace: \n"
-            << "\t\tThe folder where the TileDB data are stored. \n\n"
+            << "\t\tThe workspace where the array data are stored. \n\n"
             << "Example:\n"
-            << "\t tiledb_cmd -q show_array_schema \\\n"
+            << "\t tiledb_cmd show_array_schema \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array \n"
             << "\n";
@@ -324,7 +382,7 @@ void print_subarray() {
             << "Creates a new array with the same schema as the input array,\n"
             << "containing only the cells that lie within the input range.\n\n"
             << "Options:\n"
-            << "\t-A or --array-names: \n"
+            << "\t-A or --array-name: \n"
             << "\t\tThe name of the input array. \n\n"
             << "\t-a or --attribute-names: \n"
             << "\t\tThe attribute names from the input array that will be\n"
@@ -339,8 +397,8 @@ void print_subarray() {
             << "\t\tthe option is omitted, the default 'normal' is\n"
             << "\t\tassumed.\n\n"
             << "\t-w or --workspace: \n"
-            << "\t\tThe folder where the TileDB data are stored. \n\n"
-            << "\t-r or --range-bound:\n"
+            << "\t\tThe workspace where the array data are stored. \n\n"
+            << "\t-r or --range:\n"
             << "\t\tThe list of range bounds. If there are d dimensions, 2d\n"
             << "\t\trange bounds must be provided. Every pair of bounds\n"
             << "\t\tcorrespond to the lower and upper bound of the range\n"
@@ -350,25 +408,47 @@ void print_subarray() {
             << "\t-R or --result-name: \n"
             << "\t\tThe name of the array that will store the results.\n\n"
             << "Example #1:\n"
-            << "\t tiledb_cmd -q subarray \\\n"
+            << "\t tiledb_cmd subarray \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A input_array \\\n"
             << "\t            -r '15,20,10,13' \\\n"
             << "\t            -R output_array \n\n"
             << "Example #2:\n"
-            << "\t tiledb_cmd -q subarray \\\n"
+            << "\t tiledb_cmd subarray \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A input_array \\\n"
             << "\t            -a attr1 \\\n"
             << "\t            -r '15,20,10,13' \\\n"
             << "\t            -R output_array \n\n"
             << "Example #3:\n"
-            << "\t tiledb_cmd -q subarray \\\n"
+            << "\t tiledb_cmd subarray \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A input_array \\\n"
             << "\t            -m reverse \\\n"
             << "\t            -r '15,20,10,13' \\\n"
             << "\t            -R output_array \n\n";
+}
+
+void print_summary() {
+  std::cout << "\n\n"
+            << "#####   TileDB: A Sparse Array Data Management System #####\n"
+            << "\n\n"
+            << "-- Usage --\n\n"
+            << "Type:\n"
+            << "\ttiledb_cmd <query> [options]\n\n"
+            << "The following queries are currently supported:\n"
+            << "\t - clear_array\n"
+            << "\t - define_array\n"
+            << "\t - delete_array\n"
+            << "\t - export_to_csv\n"
+            << "\t - generate_synthetic_data\n"
+            << "\t - load_csv\n"
+            << "\t - load_sorted_bin\n"
+            << "\t - show_array_schema\n"
+            << "\t - subarray\n"
+            << "\t - update_csv\n\n"
+            << "For more information on the usage of each query, type:\n"
+            << "\ttiledb_cmd help <query>\n\n";
 }
 
 void print_update_csv() {
@@ -385,14 +465,14 @@ void print_update_csv() {
             << "the coordinates of the deleted cell, and filling all\n"
             << "its attribute values with character '$'.\n\n"
             << "Options:\n"
-            << "\t-A or --array-names: \n"
+            << "\t-A or --array-name: \n"
             << "\t\tThe name of the array the CSV data are loaded into. \n\n"
             << "\t-w or --workspace: \n"
-            << "\t\tThe folder where the TileDB data are stored. \n\n"
+            << "\t\tThe workspace where the array data are stored. \n\n"
             << "\t-f or --filename:\n"
             << "\t\tThe path to the CSV file.\n\n"
             << "Example:\n"
-            << "\t tiledb_cmd -q update_csv \\\n"
+            << "\t tiledb_cmd update_csv \\\n"
             << "\t            -w ~/TileDB/ \\\n"
             << "\t            -A my_array \\\n"
             << "\t            -f my_array.csv \n"
@@ -407,6 +487,8 @@ void print_help(int argc, char** argv) {
       print_define_array();
     } else if(!strcmp(argv[2],"export_to_csv")) { 
       print_export_to_csv();
+    } else if(!strcmp(argv[2],"generate_synthetic_data")) { 
+      print_generate_synthetic_data();
     } else if(!strcmp(argv[2],"load_csv")) { 
       print_load_csv();
     } else if(!strcmp(argv[2],"load_sorted_bin")) { 
@@ -433,180 +515,329 @@ void print_help(int argc, char** argv) {
   }
 }
 
-void run_clear_array(const CommandLine& cl) {
-  CmdParser parser;
-  parser.parse_clear_array(cl);
+void run_clear_array(int argc, char** argv) {
+  // Query arguments
+  std::string array_name;
+  std::string workspace;
 
-  try {
-    StorageManager storage_manager(cl.workspace_);
-    storage_manager.clear_array(cl.array_names_[0]);
-  } catch(StorageManagerException &se) {
-    std::cerr << "[TileDB::StorageManager::fatal_error] " << se.what() << "\n";
-    exit(-1);
-  }
+  // Error handling
+  std::string err_msg;
+  int err;
+
+  // Parse command line
+  CmdParser cmd_parser;
+  err = cmd_parser.parse_clear_array(argc, argv, array_name, 
+                                     workspace, err_msg);
+  if(err == -1)
+    error_cmd_parser(err_msg);
+
+  // Execute query
+  StorageManager storage_manager(workspace);
+  err = storage_manager.clear_array(array_name, err_msg);
+  if(err == -1)
+    error_storage_manager(err_msg);
 }
 
-void run_define_array(const CommandLine& cl) {
-  CmdParser parser;
-  const ArraySchema* array_schema = parser.parse_define_array(cl);
+void run_define_array(int argc, char** argv) {
+  // Query arguments
+  std::string workspace;
+  const ArraySchema* array_schema;
 
-  try {
-    StorageManager storage_manager(cl.workspace_);
-    storage_manager.define_array(array_schema);
-  } catch(StorageManagerException &se) {
-    std::cerr << "[TileDB::StorageManager::fatal_error] " << se.what() << "\n";
+  // Error handling
+  std::string err_msg;
+  int err;
+
+  // Parse command line
+  CmdParser cmd_parser;
+  err = cmd_parser.parse_define_array(argc, argv, array_schema, 
+                                      workspace, err_msg);
+  if(err == -1)
+    error_cmd_parser(err_msg);
+
+  // Execute query
+  StorageManager storage_manager(workspace);
+  err = storage_manager.define_array(array_schema, err_msg);
+  if(err == -1) {
     delete array_schema;
-    exit(-1);
+    error_storage_manager(err_msg);
   }
-
-  // Clean up
   delete array_schema;
 }
 
-void run_delete_array(const CommandLine& cl) {
-  CmdParser parser;
-  parser.parse_delete_array(cl);
+void run_delete_array(int argc, char** argv) {
+  // Query arguments
+  std::string array_name;
+  std::string workspace;
 
-  try {
-    StorageManager storage_manager(cl.workspace_);
-    storage_manager.delete_array(cl.array_names_[0]);
-  } catch(StorageManagerException &se) {
-    std::cerr << "[TileDB::StorageManager::fatal_error] " << se.what() << "\n";
-    exit(-1);
-  }
+  // Error handling
+  std::string err_msg;
+  int err;
+
+  // Parse command line
+  CmdParser parser;
+  err = parser.parse_delete_array(argc, argv, array_name, 
+                                  workspace, err_msg);
+  if(err == -1)
+    error_cmd_parser(err_msg);
+  
+  // Execute query
+  StorageManager storage_manager(workspace);
+  err = storage_manager.delete_array(array_name, err_msg);
+  if(err == -1)
+    error_storage_manager(err_msg);
 }
 
-void run_export_to_csv(const CommandLine& cl) {
-  CmdParser parser;
+void run_export_to_csv(int argc, char** argv) {
+  // Query arguments
+  std::string array_name;
+  std::string workspace;
+  std::string filename;
   std::vector<std::string> dim_names;
   std::vector<std::string> attribute_names;
   bool reverse;
-  parser.parse_export_to_csv(cl, dim_names, attribute_names, reverse);
 
-  try {
-    StorageManager storage_manager(cl.workspace_);
-    QueryProcessor query_processor(&storage_manager);
-    query_processor.export_to_csv(cl.array_names_[0], cl.filename_,
-                                  dim_names, attribute_names, reverse);
-  } catch(StorageManagerException &se) {
-    std::cerr << "[TileDB::StorageManager::fatal_error] " << se.what() << "\n";
-    exit(-1);
-  } catch(QueryProcessorException &qe) {
-    std::cerr << "[TileDB::QueryProcessor::fatal_error] " << qe.what() << "\n";
-    exit(-1);
-  }
+  // Error handling
+  std::string err_msg;
+  int err;
+
+  // Parse command line
+  CmdParser parser;
+  err = parser.parse_export_to_csv(argc, argv, array_name, workspace, 
+                                   filename, dim_names, attribute_names, 
+                                   reverse, err_msg);
+  if(err == -1)
+    error_cmd_parser(err_msg);
+
+  // Execute query
+  StorageManager storage_manager(workspace);
+  QueryProcessor query_processor(&storage_manager);
+  err = query_processor.export_to_csv(array_name, filename, dim_names, 
+                                      attribute_names, reverse, err_msg);
+  if(err == -1)
+    error_query_processor(err_msg);
 }
 
-void run_load_csv(const CommandLine& cl) {
-  CmdParser parser;
-  parser.parse_load_csv(cl);
+void run_generate_synthetic_data(int argc, char** argv) {
+  // Query arguments
+  std::string array_name;
+  std::string workspace;
+  std::string distribution;
+  std::string filename;
+  std::string file_type;
+  unsigned seed;
+  int64_t cell_num;
+  size_t file_size; 
 
-  try {
-    StorageManager storage_manager(cl.workspace_);
-    Loader loader(&storage_manager);
-    loader.load_csv(cl.filename_, cl.array_names_[0]);
-  } catch(StorageManagerException &se) {
-    std::cerr << "[TileDB::StorageManager::fatal_error] " << se.what() << "\n";
-    exit(-1);
-  } catch(LoaderException &le) {
-    std::cerr << "[TileDB::Loader::fatal_error] " << le.what() << "\n";
-    exit(-1);
+  // Error handling
+  std::string err_msg;
+  int err;
+
+  // Parse command line
+  CmdParser parser;
+  err = parser.parse_generate_synthetic_data(argc, argv, array_name, workspace,
+                                             filename, file_type, seed,
+                                             distribution, cell_num, 
+                                             file_size, err_msg);
+  if(err == -1)
+    error_cmd_parser(err_msg);
+  
+  // Execute query
+  StorageManager storage_manager(workspace);
+  ArraySchema* array_schema;
+  err = storage_manager.get_array_schema(array_name, array_schema, err_msg);
+  if(err == -1)
+    error_storage_manager(err_msg);
+  DataGenerator data_generator(array_schema);
+
+  if(distribution == "uniform") {
+    if(file_type == "csv") {
+      if(cell_num != -1)
+        err = data_generator.generate_uniform_csv(seed, filename, 
+                                                  cell_num, err_msg);
+      else
+        err = data_generator.generate_uniform_csv(seed, filename, 
+                                                  file_size, err_msg);
+    } else if(file_type == "bin") {
+      if(cell_num != -1)
+        err = data_generator.generate_uniform_bin(seed, filename, 
+                                                  cell_num, err_msg);
+      else
+        err = data_generator.generate_uniform_bin(seed, filename, 
+                                                  file_size, err_msg);
+    } else if(file_type == "sorted_csv") {
+      if(cell_num != -1)
+        err = data_generator.generate_sorted_uniform_csv(seed, filename, 
+                                                         cell_num, err_msg);
+      else
+        err = data_generator.generate_sorted_uniform_csv(seed, filename, 
+                                                         file_size, err_msg);
+    } else if(file_type == "sorted_bin") {
+      if(cell_num != -1)
+        err = data_generator.generate_sorted_uniform_bin(seed, filename, 
+                                                         cell_num, err_msg);
+      else
+        err = data_generator.generate_sorted_uniform_bin(seed, filename, 
+                                                         file_size, err_msg);
+    }
   }
+
+  if(err == -1)
+    error_data_generator(err_msg);
 }
 
-void run_load_sorted_bin(const CommandLine& cl) {
-  CmdParser parser;
-  parser.parse_load_sorted_bin(cl);
+void run_load_csv(int argc, char** argv) {
+  // Query arguments
+  std::string array_name;
+  std::string workspace;
+  std::string filename;
 
-  try {
-    StorageManager storage_manager(cl.workspace_);
-    storage_manager.load_sorted_bin(cl.filename_, cl.array_names_[0]);
-  } catch(StorageManagerException &se) {
-    std::cerr << "[TileDB::StorageManager::fatal_error] " << se.what() << "\n";
-    exit(-1);
-  }
+  // Error handling
+  std::string err_msg;
+  int err;
+
+  // Parse command line
+  CmdParser parser;
+  err = parser.parse_load_csv(argc, argv, array_name, workspace, 
+                              filename, err_msg);
+  if(err == -1)
+    error_cmd_parser(err_msg);
+
+  // Execute query
+  StorageManager storage_manager(workspace);
+  Loader loader(&storage_manager);
+  err = loader.load_csv(filename, array_name, err_msg);
+  if(err == -1)
+    error_loader(err_msg);
 }
 
-void run_show_array_schema(const CommandLine& cl) {
-  CmdParser parser;
-  parser.parse_show_array_schema(cl);
-  const ArraySchema* array_schema;
+void run_load_sorted_bin(int argc, char** argv) {
+  // Query arguments
+  std::string array_name;
+  std::string workspace;
+  std::string dirname;
 
-  try {
-    StorageManager storage_manager(cl.workspace_);
-    array_schema = storage_manager.get_array_schema(cl.array_names_[0]);
-    array_schema->print();
-    delete array_schema; 
-  } catch(StorageManagerException &se) {
-    delete array_schema;
-    std::cerr << "[TileDB::StorageManager::fatal_error] " << se.what() << "\n";
-    exit(-1);
-  }
+  // Error handling
+  std::string err_msg;
+  int err;
+
+  // Parse command line
+  CmdParser parser;
+  err = parser.parse_load_sorted_bin(argc, argv, array_name, 
+                                     workspace, dirname, err_msg);
+  if(err == -1)
+    error_cmd_parser(err_msg);
+
+  // Execute query
+  StorageManager storage_manager(workspace);
+  err = storage_manager.load_sorted_bin(dirname, array_name, err_msg);
+  if(err == -1)
+    error_storage_manager(err_msg);
 }
 
-void run_subarray(const CommandLine& cl) {
+void run_show_array_schema(int argc, char** argv) {
+  // Query arguments
+  std::string array_name;
+  std::string workspace;
+
+  // Error handling
+  std::string err_msg;
+  int err;
+
+  // Parse command line
   CmdParser parser;
+  err = parser.parse_show_array_schema(argc, argv, array_name, 
+                                       workspace, err_msg);
+  if(err == -1)
+    error_cmd_parser(err_msg);
+
+  // Execute query
+  ArraySchema* array_schema;
+  StorageManager storage_manager(workspace);
+  err = storage_manager.get_array_schema(array_name, array_schema, err_msg);
+  if(err == -1)
+    error_storage_manager(err_msg);
+  array_schema->print();
+  delete array_schema; 
+}
+
+void run_subarray(int argc, char** argv) {
+  // Query arguments
+  std::string array_name;
+  std::string workspace;
+  std::string result_name;
   std::vector<std::string> attribute_names;
   bool reverse;
-  std::vector<double> range = 
-      parser.parse_subarray(cl, attribute_names, reverse);
+  std::vector<double> range;
 
-  try {
-    StorageManager storage_manager(cl.workspace_);
-    QueryProcessor query_processor(&storage_manager);
-    query_processor.subarray(cl.array_names_[0], range, cl.result_name_,
-                             attribute_names, reverse);
-  } catch(StorageManagerException &se) {
-    std::cerr << "[TileDB::StorageManager::fatal_error] " << se.what() << "\n";
-    exit(-1);
-  } catch(QueryProcessorException &qe) {
-    std::cerr << "[TileDB::QueryProcessor::fatal_error] " << qe.what() << "\n";
-    exit(-1);
-  }
-}
+  // Error handling
+  std::string err_msg;
+  int err;
 
-void run_update_csv(const CommandLine& cl) {
+  // Parse command line
   CmdParser parser;
-  parser.parse_update_csv(cl);
+  err = parser.parse_subarray(argc, argv, array_name, workspace, result_name,
+                              range, attribute_names, reverse, err_msg);
+  if(err == -1)
+    error_cmd_parser(err_msg);
 
-  try {
-    StorageManager storage_manager(cl.workspace_);
-    Loader loader(&storage_manager);
-    loader.update_csv(cl.filename_, cl.array_names_[0]);
-  } catch(StorageManagerException &se) {
-    std::cerr << "[TileDB::StorageManager::fatal_error] " << se.what() << "\n";
-    exit(-1);
-  } catch(LoaderException &le) {
-    std::cerr << "[TileDB::Loader::fatal_error] " << le.what() << "\n";
-    exit(-1);
-  }
+  // Execute query
+  StorageManager storage_manager(workspace);
+  QueryProcessor query_processor(&storage_manager);
+  err = query_processor.subarray(array_name, range, result_name,
+                                 attribute_names, reverse, err_msg);
+  if(err == -1)
+    error_query_processor(err_msg);
 }
 
-void run_query(const CommandLine& cl) {
-  if(cl.query_ == NULL) {
-    std::cerr << "[TileDB::fatal_error] Query not provided.\n"; 
-    exit(-1);
-  } else if(!strcmp(cl.query_, "clear_array")) {
-    run_clear_array(cl);
-  } else if(!strcmp(cl.query_, "define_array")) {
-    run_define_array(cl);
-  } else if(!strcmp(cl.query_, "delete_array")) {
-    run_delete_array(cl);
-  } else if(!strcmp(cl.query_, "export_to_csv")) {
-    run_export_to_csv(cl);
-  } else if(!strcmp(cl.query_, "load_csv")) {
-    run_load_csv(cl);
-  } else if(!strcmp(cl.query_, "load_sorted_bin")) {
-    run_load_sorted_bin(cl);
-  } else if(!strcmp(cl.query_, "show_array_schema")) {
-    run_show_array_schema(cl);
-  } else if(!strcmp(cl.query_, "subarray")) {
-    run_subarray(cl);
-  } else if(!strcmp(cl.query_, "update_csv")) {
-    run_update_csv(cl);
+void run_update_csv(int argc, char** argv) {
+  // Query arguments
+  std::string array_name;
+  std::string workspace;
+  std::string filename;
+
+  // Error handling
+  std::string err_msg;
+  int err;
+
+  // Parse command line
+  CmdParser parser;
+  err = parser.parse_update_csv(argc, argv, array_name, workspace, 
+                                filename, err_msg);
+  if(err == -1)
+    error_cmd_parser(err_msg);
+
+  // Execute query
+  StorageManager storage_manager(workspace);
+  Loader loader(&storage_manager);
+  err = loader.update_csv(filename, array_name, err_msg);
+  if(err == -1)
+    error_loader(err_msg);
+}
+
+void run_query(int argc, char** argv) {
+  if(!strcmp(argv[1], "clear_array")) {
+    run_clear_array(argc, argv);
+  } else if(!strcmp(argv[1], "define_array")) {
+    run_define_array(argc, argv);
+  } else if(!strcmp(argv[1], "delete_array")) {
+    run_delete_array(argc, argv);
+  } else if(!strcmp(argv[1], "export_to_csv")) {
+    run_export_to_csv(argc, argv);
+  } else if(!strcmp(argv[1], "generate_synthetic_data")) {
+    run_generate_synthetic_data(argc, argv);
+  } else if(!strcmp(argv[1], "load_csv")) {
+    run_load_csv(argc, argv);
+  } else if(!strcmp(argv[1], "load_sorted_bin")) {
+    run_load_sorted_bin(argc, argv);
+  } else if(!strcmp(argv[1], "show_array_schema")) {
+    run_show_array_schema(argc, argv);
+  } else if(!strcmp(argv[1], "subarray")) {
+    run_subarray(argc, argv);
+  } else if(!strcmp(argv[1], "update_csv")) {
+    run_update_csv(argc, argv);
   } else {
     std::cerr << "[TileDB::fatal_error] Unknown query '" 
-              << cl.query_ << "'.\n";
+              << argv[2] << "'.\n";
     exit(-1);
   }
 
@@ -614,29 +845,12 @@ void run_query(const CommandLine& cl) {
 }
 
 int main(int argc, char** argv) {
-  // No input arguments
-  if(argc == 1) { 
+  if(argc == 1) 
     print_summary();
-    return 0;
-  }
-
-  if(!strcmp(argv[1], "help")) { 
+  else if(!strcmp(argv[1], "help")) 
     print_help(argc, argv);
-  } else { 
-    // Parse command line
-    CommandLine cl;
-    cl.parse(argc, argv);
-   
-    // Check for redundant arguments
-    if(argc != 2*cl.option_num_ + 1) {
-      std::cerr << "[TileDB::fatal_error] Arguments do not match the option"
-                << " labels.\n";
-      exit(-1);
-    }
-
-    // Run the query
-    run_query(cl);
-  }
+  else 
+    run_query(argc, argv);
 
   return 0;
 }

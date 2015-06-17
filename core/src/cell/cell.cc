@@ -216,13 +216,22 @@ TypeConverter Cell::operator[](int attribute_id) const {
 template<class T>
 void Cell::append_attribute(int attribute_id, CSVLine& csv_line) const {
   int val_num = this->val_num(attribute_id);
+  bool var_size = this->var_size(attribute_id);
 
   // Number of values for the case of variable-sized attribute
-  if(typeid(T) != typeid(char) && var_size(attribute_id)) 
+  if(typeid(T) != typeid(char) && var_size) 
     csv_line << val_num;
 
   // Append attribute values
-  const T* v = (*this)[attribute_id];
+  const T* v;
+  if(!var_size) {
+    v = (*this)[attribute_id];
+  } else { // Skip the val_num
+    const void* temp = 
+        static_cast<const char*>((*this)[attribute_id]) + sizeof(int);
+    v = static_cast<const T*>(temp);
+  }
+
   for(int i=0; i<val_num; ++i) {
     if(is_null(v[i]))
       csv_line << NULL_VALUE;
@@ -238,14 +247,15 @@ void Cell::append_string(int attribute_id, CSVLine& csv_line) const {
   std::string v;
   v.resize(val_num);
 
-  const char* s = (*this)[attribute_id];
+  const char* s = static_cast<const char*>((*this)[attribute_id]) + sizeof(int);
+
   v.assign(s, val_num);
 
   if(is_null(v[0]))
-      csv_line << NULL_VALUE;
+    csv_line << NULL_VALUE;
   else if(is_del(v[0]))
     csv_line << DEL_VALUE;
-    else 
+  else 
     csv_line << v;
 }
 
@@ -265,7 +275,6 @@ void Cell::init_val_num() {
 
   if(var_size_) {
     size_t offset = sizeof(size_t) + array_schema_->cell_size(attribute_num); 
-    val_num_[attribute_num] = array_schema_->val_num(attribute_num);
     
     // For all attributes (excluding coordinates)
     int val_num;

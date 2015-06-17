@@ -77,6 +77,8 @@ class ArraySchema {
   // TYPE DEFINITIONS
   /** A vector of attribute ids. */
   typedef std::vector<int> AttributeIds;
+  /** Dimension domains. */
+  typedef std::vector<std::pair<double, double> > DimDomains;
   /** The cell data types (CHAR is currently not supported for coordinates). */ 
   enum CellType {CHAR, INT, INT64_T, FLOAT, DOUBLE};
   /** The cell order. */
@@ -103,8 +105,8 @@ class ArraySchema {
               const std::vector<const std::type_info*>& types,
               const std::vector<int>& val_num, 
               CellOrder cell_order = AS_CELL_ORDER,
-              int consolidation_step = AS_CONSOLIDATION_STEP,
-              int64_t capacity = AS_CAPACITY);
+              int64_t capacity = AS_CAPACITY,
+              int consolidation_step = AS_CONSOLIDATION_STEP);
   /**
    * Simple constructor, used to create a schema with regular tiles.
    * If there are m attributes, argument cell types must have size m+1,
@@ -118,11 +120,10 @@ class ArraySchema {
               const std::vector<std::pair< double, double> >& dim_domains,
               const std::vector<const std::type_info*>& types,
               const std::vector<int>& val_num, 
-              TileOrder tile_order,
               const std::vector<double>& tile_extents,
-              int consolidation_step = AS_CONSOLIDATION_STEP,
-              int64_t capacity = AS_CAPACITY,
-              CellOrder cell_order = AS_CELL_ORDER);
+              CellOrder cell_order = AS_CELL_ORDER,
+              TileOrder tile_order = AS_TILE_ORDER,
+              int consolidation_step = AS_CONSOLIDATION_STEP);
   /** Empty destructor. */
   ~ArraySchema();
 

@@ -52,6 +52,15 @@ CSVFile::CSVFile() {
   file_offset_ = 0;
 }
 
+CSVFile::CSVFile(const std::string& filename, const char* mode) { 
+  buffer_ = NULL;
+  buffer_end_ = 0;
+  buffer_offset_ = 0;
+  file_offset_ = 0;
+
+  open(filename, mode);
+}
+
 CSVFile::~CSVFile() {
   close();
 }
