@@ -64,7 +64,7 @@ OPENMP_INCLUDE_PATHS = -L$(OPENMP_INCLUDE_DIR)
 OPENMP_LIB_PATHS = -L$(OPENMP_LIB_DIR)
 
 # --- Libs --- #
-MPI_LIB = -lmpicxx
+MPI_LIB = -lmpi
 OPENMP_LIB = -fopenmp
 
 # --- Files --- #
