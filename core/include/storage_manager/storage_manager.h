@@ -104,7 +104,7 @@ class StorageManager {
       const std::string& array_name, ArraySchema*& array_schema,
       std::string& err_msg) const;
   /** Prints the version of the storage manager to the standard output. */
-  void get_version() const;
+  static void get_version();
   /** 
    * Loads data into an array, which are stored in files inside the input
    * directory. Each file stores the cells in binary form, sorted based

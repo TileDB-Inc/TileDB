@@ -299,7 +299,7 @@ int StorageManager::get_array_schema(
   return 0;
 }
 
-void StorageManager::get_version() const {
+void StorageManager::get_version() {
   std::cout << "TileDB StorageManager Version 0.1\n";
 }
 
