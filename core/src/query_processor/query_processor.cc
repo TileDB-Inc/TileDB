@@ -179,7 +179,7 @@ int QueryProcessor::subarray(
     return -1;
 
   // Open result array in write mode
-  int result_ad = storage_manager_->open_array(result_array_name, "w", err_msg); 
+  int result_ad = storage_manager_->open_array(result_array_name, "w", err_msg);
   if(result_ad == -1)
     return -1;
 

@@ -233,12 +233,22 @@ void WriteState::write_cell_sorted(const void* cell) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   size_t coords_size = array_schema_->cell_size(attribute_num);
+  bool regular = array_schema_->has_regular_tiles();
   const char* c_cell = static_cast<const char*>(cell);
+  int64_t tile_id; 
   size_t cell_offset, attr_size;
+  int64_t capacity; // only for irregular tiles
   std::vector<size_t> attr_sizes;
 
+  // Initialization
+  if(regular)  
+    tile_id = array_schema_->tile_id(static_cast<const T*>(cell));
+  else 
+    capacity = array_schema_->capacity();
+
   // Flush tile info to book-keeping if a new tile must be created
-  if(cell_num_ == array_schema_->capacity())
+  if((regular && tile_id != tile_id_) || 
+     (!regular && (cell_num_ == capacity)))
     flush_tile_info_to_book_keeping();
 
   // Append coordinates to segment  
@@ -256,7 +266,7 @@ void WriteState::write_cell_sorted(const void* cell) {
   attr_sizes.push_back(coords_size);
     
   // Update the info of the currently populated tile
-  int64_t tile_id = (cell_num_) ? tile_id_ : tile_id_ + 1;
+  if(!regular)
   update_tile_info<T>(static_cast<const T*>(cell), tile_id, attr_sizes);
 }
 
@@ -290,8 +300,7 @@ void WriteState::write_cell_sorted_with_id(const void* cell) {
     attr_sizes.push_back(attr_size);
   }
   attr_sizes.push_back(coords_size);
-
-    
+  
   // Update the info of the currently populated tile
   update_tile_info<T>(static_cast<const T*>(coords), id, attr_sizes);
 }

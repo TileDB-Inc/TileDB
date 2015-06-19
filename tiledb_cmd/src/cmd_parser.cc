@@ -548,7 +548,7 @@ int CmdParser::parse_export_to_csv(
   attribute_names = csv_line.values();
   // Get dimension names
   csv_line = str_dim_names;
-  attribute_names = csv_line.values();
+  dim_names = csv_line.values();
   // Get mode
   err = get_reverse(mode, reverse, err_msg);
   if(err == -1) 
@@ -567,9 +567,10 @@ int CmdParser::parse_generate_synthetic_data(
   array_name = "";
   workspace = "";
   filename = "";
-  file_type = "";
   err_msg = "";
   distribution = "";
+  file_type = "";
+  std::string str_file_types("");
   std::string str_cell_num("");
   std::string str_seed("");
   std::string str_file_size("");
@@ -682,19 +683,19 @@ int CmdParser::parse_generate_synthetic_data(
   }
 
   // Default file type
-  if(file_type == "")
+  if(file_type == "") 
     file_type = "csv";
-  // Default distribution
-  if(distribution == "")
-    distribution = "uniform";
-
   // Check file type
   if(file_type != "csv" && file_type != "sorted_csv" &&
      file_type != "bin" && file_type != "sorted_bin") {
     err_msg = std::string("Unknown file type '") + file_type + "'.";
     return -1;
   }
-  // Check distribution
+
+  // Default distribution
+  if(distribution == "") 
+    distribution = "uniform";
+    // Check distribution
   if(distribution != "uniform") {
     err_msg = std::string("Unknown distribution '") + distribution + "'.";
     return -1;

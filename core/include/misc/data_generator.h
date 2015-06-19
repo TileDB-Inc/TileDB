@@ -127,9 +127,18 @@ class DataGenerator {
   /** Generates and appends uniformly drawn attribute values to the CSV line. */
   void generate_uniform_attributes(
       std::default_random_engine& generator, CSVLine& csv_line) const;
+  /** 
+   * Generates and stores uniformly drawn attribute values to buffer. 
+   * Returns the total size in bytes written to buffer.
+   */
+  size_t generate_uniform_attributes(
+      std::default_random_engine& generator, char* buffer) const;
   /** Generates and appends uniformly drawn coordinates to the CSV line. */
   void generate_uniform_coordinates(
       std::default_random_engine& generator, CSVLine& csv_line) const;
+  /** Generates and stores uniformly drawn coordinates to buffer. */
+  void generate_uniform_coordinates(
+      std::default_random_engine& generator, char* buffer) const;
 };
 
 #endif

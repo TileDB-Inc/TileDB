@@ -1144,6 +1144,19 @@ bool ArraySchema::succeeds(const T* coords_A,
   }
 }
 
+template<class T>
+int64_t ArraySchema::tile_id(const T* coords) const {
+  // Applicable only to regular tiles
+  assert(tile_extents_.size() != 0);
+
+  if(tile_order_ == ArraySchema::TO_ROW_MAJOR)
+    return tile_id_row_major<T>(coords);
+  else if(tile_order_ == ArraySchema::TO_COLUMN_MAJOR)
+    return tile_id_column_major<T>(coords);
+  else if(tile_order_ == ArraySchema::TO_HILBERT)
+    return tile_id_hilbert<T>(coords);
+}
+
 int64_t ArraySchema::tile_id_column_major(const void* coords) const {
   if(*(types_[attribute_num_]) == typeid(int))
     return tile_id_column_major(static_cast<const int*>(coords));  
@@ -1422,6 +1435,7 @@ template bool ArraySchema::precedes<float>(
     const float* coords_A, const float* coords_B) const;
 template bool ArraySchema::precedes<double>(
     const double* coords_A, const double* coords_B) const;
+
 template bool ArraySchema::succeeds<int>(
     const int* coords_A, const int* coords_B) const;
 template bool ArraySchema::succeeds<int64_t>(
@@ -1430,6 +1444,7 @@ template bool ArraySchema::succeeds<float>(
     const float* coords_A, const float* coords_B) const;
 template bool ArraySchema::succeeds<double>(
     const double* coords_A, const double* coords_B) const;
+
 template int64_t ArraySchema::cell_id_hilbert<int>(
     const int* coords) const;
 template int64_t ArraySchema::cell_id_hilbert<int64_t>(
@@ -1438,6 +1453,16 @@ template int64_t ArraySchema::cell_id_hilbert<float>(
     const float* coords) const;
 template int64_t ArraySchema::cell_id_hilbert<double>(
     const double* coords) const;
+
+template int64_t ArraySchema::tile_id<int>(
+    const int* coords) const;
+template int64_t ArraySchema::tile_id<int64_t>(
+    const int64_t* coords) const;
+template int64_t ArraySchema::tile_id<float>(
+    const float* coords) const;
+template int64_t ArraySchema::tile_id<double>(
+    const double* coords) const;
+
 template int64_t ArraySchema::tile_id_row_major<int>(
     const int* coords) const;
 template int64_t ArraySchema::tile_id_row_major<int64_t>(
@@ -1446,6 +1471,7 @@ template int64_t ArraySchema::tile_id_row_major<float>(
     const float* coords) const;
 template int64_t ArraySchema::tile_id_row_major<double>(
     const double* coords) const;
+
 template int64_t ArraySchema::tile_id_column_major<int>(
     const int* coords) const;
 template int64_t ArraySchema::tile_id_column_major<int64_t>(
@@ -1454,6 +1480,7 @@ template int64_t ArraySchema::tile_id_column_major<float>(
     const float* coords) const;
 template int64_t ArraySchema::tile_id_column_major<double>(
     const double* coords) const;
+
 template int64_t ArraySchema::tile_id_hilbert<int>(
     const int* coordinates) const;
 template int64_t ArraySchema::tile_id_hilbert<int64_t>(

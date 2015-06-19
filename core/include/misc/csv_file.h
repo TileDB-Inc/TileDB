@@ -114,11 +114,11 @@ class CSVFile {
   /** 
    * The mode of the CSV file. There are three modes available:
    *
-   * "r": Read mode
+   * "r": READ mode
    *
-   * "w": Write mode
+   * "w": WRITE mode
    *
-   * "a": Append mode
+   * "a": APPEND mode
    *
    */
   char mode_[2];

@@ -71,9 +71,9 @@ class CmdParser {
   /** Parse command line for query 'generate_synthetic_data'. */
   int parse_generate_synthetic_data(
       int argc, char** argv, std::string& array_name, std::string& workspace, 
-      std::string& filename, std::string& file_type, unsigned& seed,
-      std::string& distribution, int64_t& cell_num, size_t& file_size,
-      std::string& err_msg) const;
+      std::string& filename, std::string& file_type, 
+      unsigned& seed, std::string& distribution, int64_t& cell_num, 
+      size_t& file_size, std::string& err_msg) const;
   /** Parse command line for query 'load_csv'. */
   int parse_load_csv(
       int argc, char** argv, std::string& array_name, std::string& workspace, 

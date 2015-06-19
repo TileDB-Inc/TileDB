@@ -294,10 +294,13 @@ class ArraySchema {
    */
   template<class T>
   bool succeeds(const T* coords_A, const T* coords_B) const;
+  /** Returns the tile id, based on the stored tile order. */
+  template<class T>
+  int64_t tile_id(const T* coords) const;
   /** Returns a tile id following a column major order. */
   int64_t tile_id_column_major(const void* coords) const;
   /** Returns a tile id following a column major order. */
-  template<typename T>
+  template<class T>
   int64_t tile_id_column_major(const T* coords) const;
    /** 
    * Returns the tile id of the input coordinates, along the Hilbert 
@@ -308,12 +311,12 @@ class ArraySchema {
    * Returns the tile id of the input coordinates, along the Hilbert 
    * space-filling curve.
    */
-  template<typename T>
+  template<class T>
   int64_t tile_id_hilbert(const T* coords) const;
   /** Returns a tile id following a row major order. */
   int64_t tile_id_row_major(const void* coords) const;
   /** Returns a tile id following a row major order. */
-  template<typename T>
+  template<class T>
   int64_t tile_id_row_major(const T* coords) const;
   /**  
    * Creates a new array schema which is identical as the caller object,

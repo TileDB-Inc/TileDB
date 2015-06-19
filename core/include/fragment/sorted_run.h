@@ -44,9 +44,6 @@
   A SortedRun object stores information about a sorted run.
  */
 class SortedRun {
-  // Fragment objects can manipulate private members of this class.
-  friend class Fragment; 
-
  public:
   // CONSTRUCTORS & DESTRUCTORS
   /** 
