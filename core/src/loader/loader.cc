@@ -31,6 +31,9 @@
  * This file implements the Loader class.
  */
 
+#include "bin_file.h"
+#include "cell.h"
+#include "csv_file.h"
 #include "loader.h"
 #include "special_values.h"
 #include "utils.h"
@@ -59,6 +62,24 @@ Loader::~Loader() {
 ******************* LOADING FUNCTIONS *****************
 ******************************************************/
 
+int Loader::load_bin(
+    const std::string& filename, const std::string& array_name) const {
+  std::string err_msg;
+
+  // Open array in write mode
+  int ad = storage_manager_->open_array(array_name, "w", err_msg);
+  if(ad == -1) 
+    return -1;
+
+  // Load binary file
+  int err = load_bin(filename, ad); 
+
+  // Clean up
+  storage_manager_->close_array(ad); 
+
+  return err;
+}
+
 int Loader::load_csv(
     const std::string& filename, const std::string& array_name,
     std::string& err_msg) const {
@@ -69,6 +90,25 @@ int Loader::load_csv(
 
   // Load CSV file
   int err = load_csv(filename, ad, err_msg); 
+
+  // Clean up
+  storage_manager_->close_array(ad); 
+
+  return err;
+}
+
+int Loader::load_sorted_bin(
+    const std::string& filename, const std::string& array_name) const {
+
+  std::string err_msg;
+
+  // Open array in write mode
+  int ad = storage_manager_->open_array(array_name, "w", err_msg);
+  if(ad == -1) 
+    return -1;
+
+  // Load CSV file
+  int err = load_sorted_bin(filename, ad); 
 
   // Clean up
   storage_manager_->close_array(ad); 
@@ -260,6 +300,58 @@ bool Loader::csv_line_to_cell(
   return success;
 }
 
+int Loader::load_bin(const std::string& filename, int ad) const {
+  std::string err_msg;
+
+  // For easy reference
+  const ArraySchema* array_schema;
+  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  if(err == -1)
+    return -1;
+  int attribute_num = array_schema->attribute_num();
+  const std::type_info& coords_type = *(array_schema->type(attribute_num));
+
+  if(coords_type == typeid(int))
+    return load_bin<int>(filename, ad);
+  else if(coords_type == typeid(int64_t))
+    return load_bin<int64_t>(filename, ad);
+  else if(coords_type == typeid(float))
+    return load_bin<float>(filename, ad);
+  else if(coords_type == typeid(double))
+    return load_bin<double>(filename, ad);
+}
+
+template<class T>
+int Loader::load_bin(const std::string& filename, int ad) const {
+  std::string err_msg;
+
+  // For easy reference
+  const ArraySchema* array_schema;
+  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  if(err == -1)
+    return -1;
+  ssize_t cell_size = array_schema->cell_size();
+  bool var_size = (cell_size == VAR_SIZE);
+
+  // Open the BIN file 
+  BINFile bin_file(array_schema);
+  if(bin_file.open(filename, "r") == -1) {
+    storage_manager_->forced_close_array(ad);
+    return -1;
+  }
+
+  // Prepare a cell
+  Cell cell(array_schema);
+
+  while(bin_file >> cell) 
+    storage_manager_->write_cell<T>(ad, cell.cell());
+
+  // Clean up 
+  bin_file.close();
+
+  return 0;
+}
+
 int Loader::load_csv(
     const std::string& filename, int ad, std::string& err_msg) const {
   // For easy reference
@@ -347,6 +439,58 @@ int Loader::load_csv(
   // Clean up 
   csv_file.close();
   free(cell);
+
+  return 0;
+}
+
+int Loader::load_sorted_bin(const std::string& filename, int ad) const {
+  std::string err_msg;
+
+  // For easy reference
+  const ArraySchema* array_schema;
+  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  if(err == -1)
+    return -1;
+  int attribute_num = array_schema->attribute_num();
+  const std::type_info& coords_type = *(array_schema->type(attribute_num));
+
+  if(coords_type == typeid(int))
+    return load_sorted_bin<int>(filename, ad);
+  else if(coords_type == typeid(int64_t))
+    return load_sorted_bin<int64_t>(filename, ad);
+  else if(coords_type == typeid(float))
+    return load_sorted_bin<float>(filename, ad);
+  else if(coords_type == typeid(double))
+    return load_sorted_bin<double>(filename, ad);
+}
+
+template<class T>
+int Loader::load_sorted_bin(const std::string& filename, int ad) const {
+  std::string err_msg;
+
+  // For easy reference
+  const ArraySchema* array_schema;
+  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  if(err == -1)
+    return -1;
+  ssize_t cell_size = array_schema->cell_size();
+  bool var_size = (cell_size == VAR_SIZE);
+
+  // Open the BIN file 
+  BINFile bin_file(array_schema);
+  if(bin_file.open(filename, "r") == -1) {
+    storage_manager_->forced_close_array(ad);
+    return -1;
+  }
+
+  // Prepare a cell
+  Cell cell(array_schema);
+
+  while(bin_file >> cell) 
+    storage_manager_->write_cell_sorted<T>(ad, cell.cell());
+
+  // Clean up 
+  bin_file.close();
 
   return 0;
 }

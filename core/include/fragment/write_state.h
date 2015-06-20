@@ -77,8 +77,8 @@ class WriteState {
   /** Flushes the write state onto the disk. */
   void flush();
   /** 
-   * Loads data into the fragment, which are stored in files inside the input
-   * directory. Each file stores the cells in binary form, sorted based
+   * Loads data into a fragment, which are stored in binary file in the input
+   * directory. Each file stores the cells in binary form, sorted
    * on the global cell order specified in the array schema. 
    */
   void load_sorted_bin(const std::string& dirname);

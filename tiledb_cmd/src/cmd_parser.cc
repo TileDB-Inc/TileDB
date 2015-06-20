@@ -723,6 +723,90 @@ int CmdParser::parse_generate_synthetic_data(
   return 0;
 }
 
+int CmdParser::parse_load_bin(
+    int argc, char** argv, std::string& array_name,
+    std::string& workspace, std::string& filename,
+    std::string& err_msg) const {
+  // Initialization
+  array_name = "";
+  workspace = "";
+  filename = "";
+  err_msg = "";
+
+  // --- Parse command line --- //
+  // Define long options
+  static struct option long_options[] = 
+  {
+    {"array-name",1,0,'A'},
+    {"filename",1,0,'f'},
+    {"workspace",1,0,'w'},
+    {0,0,0,0},
+  };
+  // Define short options
+  const char* short_options = "A:f:w:";
+  // Get options
+  int c;
+  int option_num = 0;
+  while((c=getopt_long(argc, argv, short_options, long_options, NULL)) >= 0) {
+    ++option_num;
+    switch(c) {
+      case 'A':
+        if(array_name != "") {
+          err_msg = "More than one array names provided.";
+          return -1;
+        }
+        array_name = optarg;
+        break;
+      case 'f':
+        if(filename != "") {
+          err_msg = "More than one file names provided.";
+          return -1;
+        }
+        filename = optarg;
+        break;
+      case 'w':
+        if(workspace != "") {
+          err_msg = "More than one workspaces provided.";
+          return -1;
+        }
+        workspace = optarg;
+        break;
+      default:
+        err_msg = "Invalid option.";
+        return -1;
+    }
+  }
+
+  // --- Check correctness --- //
+  // Check number of arguments
+  if((argc-2) != 2*option_num) {
+    err_msg = "Arguments-options mismatch."; 
+    return -1;
+  }
+  // Check if correct arguments have been ginen
+  if(array_name == "") {
+    err_msg = "Array name not provided.";
+    return -1;
+  }
+  if(workspace == "") {
+    err_msg = "Workspace not provided.";
+    return -1;
+  }
+  if(filename == "") {
+    err_msg = "File name not provided.";
+    return -1;
+  }
+
+  // Check if file exists
+  if(!is_file(filename)) {
+    err_msg = std::string("File '") + filename + "' does not exist.";
+    return -1;
+  }
+
+  return 0;
+}
+
+
 int CmdParser::parse_load_csv(
     int argc, char** argv, std::string& array_name,
     std::string& workspace, std::string& filename,
@@ -808,12 +892,12 @@ int CmdParser::parse_load_csv(
 
 int CmdParser::parse_load_sorted_bin(
     int argc, char** argv, std::string& array_name,
-    std::string& workspace, std::string& dirname,
+    std::string& workspace, std::string& path,
     std::string& err_msg) const {
   // Initialization
   array_name = "";
   workspace = "";
-  dirname = "";
+  path = "";
   err_msg = "";
 
   // --- Parse command line --- //
@@ -821,12 +905,12 @@ int CmdParser::parse_load_sorted_bin(
   static struct option long_options[] = 
   {
     {"array-name",1,0,'A'},
-    {"directory",1,0,'d'},
+    {"path",1,0,'p'},
     {"workspace",1,0,'w'},
     {0,0,0,0},
   };
   // Define short options
-  const char* short_options = "A:d:w:";
+  const char* short_options = "A:p:w:";
   // Get options
   int c;
   int option_num = 0;
@@ -840,12 +924,12 @@ int CmdParser::parse_load_sorted_bin(
         }
         array_name = optarg;
         break;
-      case 'd':
-        if(dirname != "") {
-          err_msg = "More than one directories provided.";
+      case 'p':
+        if(path != "") {
+          err_msg = "More than one paths provided.";
           return -1;
         }
-        dirname = optarg;
+        path = optarg;
         break;
       case 'w':
         if(workspace != "") {
@@ -875,14 +959,14 @@ int CmdParser::parse_load_sorted_bin(
     err_msg = "Workspace not provided.";
     return -1;
   }
-  if(dirname == "") {
-    err_msg = "Directory not provided.";
+  if(path == "") {
+    err_msg = "Path not provided.";
     return -1;
   }
 
-  // Check if directory exists
-  if(!is_dir(dirname)) {
-    err_msg = std::string("Directory '") + dirname + "' does not exist.";
+  // Check if path exists
+  if(!is_dir(path) && !is_file(path)) {
+    err_msg = std::string("Path '") + path + "' does not exist.";
     return -1;
   }
 

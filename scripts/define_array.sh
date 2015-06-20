@@ -10,7 +10,7 @@ echo 'Executing define_array for IREG...'
  -a 'a1,a2' \
  -d 'i,j' \
  -D '0,100,0,100' \
- -t 'float:var,char:var,int64_t' \
+ -t 'float:var,char:3,int64_t' \
  -o column-major \
  -c 6 \
  -s 1 
@@ -24,7 +24,7 @@ echo 'Executing define_array for REG...'
  -d 'i,j' \
  -D '0,100,0,100' \
  -e '5,5' \
- -t 'float:var,char:var,int64_t' \
+ -t 'float:var,char:3,int64_t' \
  -o hilbert \
  -O row-major \
  -s 1

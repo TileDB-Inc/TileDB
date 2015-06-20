@@ -33,6 +33,8 @@
 #ifndef BIN_FILE_H
 #define BIN_FILE_H
 
+#include "array_schema.h"
+#include "cell.h"
 #include <string>
 
 /** 
@@ -51,6 +53,8 @@ class BINFile {
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
   BINFile();
+  /** Constructor. */
+  BINFile(const ArraySchema* array_schema);
   /** Constructor. */
   BINFile(const std::string& filename, const char* mode);
   /** Destructor. */
@@ -75,8 +79,14 @@ class BINFile {
    */
   ssize_t write(const void* source, size_t data);
 
+  // OPERATORS
+  /** Retrieves the next cell from the file.  */
+  bool operator>>(Cell& cell);
+
  private:
   // PRIVATE ATTRIBUTES
+  /** The array schema. */
+  const ArraySchema* array_schema_;
   /** 
    * The buffer will temporarily store the data, before they are written to
    * the file on the disk (in WRITE/APPEND mode) or when segments are read
@@ -91,6 +101,17 @@ class BINFile {
     * A pointer to the current position (for reading or writing) in the buffer.
     */
   size_t buffer_offset_;
+  /** Part of the read state: stores the current cell to be read/written. */
+  void* cell_;
+  /** Part of the read state: stores the cell size. */
+  ssize_t cell_size_;
+  /** 
+   * Part of the read state: stores the current coordinates to be 
+   * read/written. 
+   */
+  void* coords_;
+  /** The coordinates size. */
+  size_t coords_size_;
   /** 
     * A pointer to the current position in the file where the NEXT read will 
     * take place (used only by BINFile::read in READ mode).
@@ -114,6 +135,8 @@ class BINFile {
     * disk and the main memory.
     */	
   size_t segment_size_;
+  /** True if the cells are variable-sized. */
+  bool var_size_;
 
   // PRIVATE METHODS
   /** 
@@ -121,6 +144,8 @@ class BINFile {
    * Returns the number of bytes flushed into the file.
    */
   ssize_t flush_buffer();
+  /** Initialization. */
+  void init();
   /** 
    * Reads a segment of binary data with size BINFile::segment_size_. 
    * Returns the number of bytes read into the segment.

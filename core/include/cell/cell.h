@@ -49,6 +49,8 @@ class CellConstAttrIterator;
 class Cell {
  public:
   // CONSTRUCTORS AND DESTRUCTORS
+  /** Constructor. */
+  Cell(const ArraySchema* array_schema, bool random_access = false);
   /** 
    * Constructor. It takes as input the schema of the array the cell belongs to.
    */
@@ -86,7 +88,7 @@ class Cell {
   /** Returns the cell payload. */
   const void* cell() const;
   /** Returns the cell size. */
-  size_t cell_size() const;
+  ssize_t cell_size() const;
   /** 
    * Returns a CSV line with the values of the coordinates and attributes,
    * whose ids are specified in the input vectors. The template is on the
@@ -135,7 +137,7 @@ class Cell {
   /** The payload of the cell. */
   const void* cell_;
   /** The cell size (could be VAR_SIZE). */
-  size_t cell_size_;
+  ssize_t cell_size_;
   /** True to allow efficient accessing of cell attributes in random order. */
   bool random_access_;
   /** Stores the number of values for an attribute. */

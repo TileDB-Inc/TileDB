@@ -35,7 +35,7 @@
 #define LOADER_H
 
 #include "array_schema.h"
-#include "csv_file.h"
+#include "csv_line.h"
 #include "storage_manager.h"
 
 /** The Loader creates an array from raw data. */
@@ -51,10 +51,16 @@ class Loader {
   ~Loader();
 
   // LOADING FUNCTIONS
+  /** Loads a binary file into an array. */
+  int load_bin(
+      const std::string& filename, const std::string& array_name) const;
   /** Loads a CSV file into an array. */
   int load_csv(
       const std::string& filename, const std::string& array_name, 
       std::string& err_msg) const;
+  /** Loads a sorted BIN file into an array. */
+  int load_sorted_bin(
+      const std::string& filename, const std::string& array_name) const;
   /** 
    * Updates an existing array with a new CSV file. 
    * This is similar to Loader::load_csv, with the differnce being
@@ -109,10 +115,24 @@ class Loader {
                         CSVLine& csv_line, void* cell, 
                         ssize_t cell_size) const;
   /** Loads a CSV file into a new fragment for the input array descriptor. */
+  int load_bin(const std::string& filename, int ad) const;
+  /** Loads a CSV file into a new fragment for the input array descriptor. */
+  template<class T>
+  int load_bin(const std::string& filename, int ad) const;
+  /** Loads a CSV file into a new fragment for the input array descriptor. */
   int load_csv(const std::string& filename, int ad, std::string& err_msg) const;
   /** Loads a CSV file into a new fragment for the input array descriptor. */
   template<class T>
   int load_csv(const std::string& filename, int ad, std::string& err_msg) const;
+  /** 
+   * Loads a sorted BIN file into a new fragment for the input array descriptor.
+   */
+  int load_sorted_bin(const std::string& filename, int ad) const;
+  /** 
+   * Loads a sorted BIN file into a new fragment for the input array descriptor.
+   */
+  template<class T>
+  int load_sorted_bin(const std::string& filename, int ad) const;
 };
 
 #endif

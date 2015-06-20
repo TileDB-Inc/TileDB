@@ -34,6 +34,7 @@
 #include "bin_file.h"
 #include "csv_file.h"
 #include "data_generator.h"
+#include "progress_bar.h"
 #include "utils.h"
 #include <assert.h>
 #include <iostream>
@@ -97,6 +98,9 @@ int DataGenerator::generate_uniform_bin(
   size_t coords_size = array_schema_->coords_size();
   int err;
 
+  // Intialize a progress bar
+  ProgressBar bar(cell_num);
+
   // Initialization of output BIN file
   BINFile bin_file(filename, "w");
 
@@ -108,6 +112,7 @@ int DataGenerator::generate_uniform_bin(
   size_t offset; 
 
   for(int64_t i=0; i<cell_num; ++i) {
+    bar.load(1);
     generate_uniform_coordinates(generator, buffer);
     offset = coords_size + ((var_size) ? sizeof(size_t) : 0);
     offset += generate_uniform_attributes(generator, buffer+offset);
@@ -141,10 +146,14 @@ int DataGenerator::generate_uniform_csv(
   CSVFile csv_file(filename, "w");
   CSVLine csv_line;
 
+  // Intialize a progress bar
+  ProgressBar bar(cell_num);
+
   // Initialization of generators
   std::default_random_engine generator(seed);
 
   for(int64_t i=0; i<cell_num; ++i) {
+    bar.load(1);
     generate_uniform_coordinates(generator, csv_line);
     generate_uniform_attributes(generator, csv_line);
     csv_file << csv_line;

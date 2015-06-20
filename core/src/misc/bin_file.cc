@@ -46,23 +46,33 @@
 ******************************************************/
 
 BINFile::BINFile() { 
-  buffer_ = NULL;
-  buffer_end_ = 0;
-  buffer_offset_ = 0;
-  file_offset_ = 0;
+  init();
+}
+
+BINFile::BINFile(const ArraySchema* array_schema) { 
+  init();
+  array_schema_ = array_schema;
+  cell_size_ = array_schema_->cell_size();
+  var_size_ = (cell_size_ == VAR_SIZE);
+  if(var_size_) {
+    coords_size_ = array_schema_->coords_size();
+    coords_ = malloc(coords_size_);
+  }
 }
 
 BINFile::BINFile(const std::string& filename, const char* mode) { 
-  buffer_ = NULL;
-  buffer_end_ = 0;
-  buffer_offset_ = 0;
-  file_offset_ = 0;
-
+  init();
   open(filename, mode);
 }
 
 BINFile::~BINFile() {
   close();
+
+  if(cell_ != NULL) 
+    free(cell_);
+
+  if(coords_ != NULL) 
+    free(coords_);
 }
 
 /******************************************************
@@ -96,7 +106,7 @@ int BINFile::open(const std::string& filename,
 
   segment_size_ = segment_size;
   strcpy(mode_, mode);
-  
+
   // If mode is "w", delete the previous file in order to overwrite it.
   // After initialization and for as long as the BINFile object is alive,
   // it will be in "a" mode.
@@ -151,7 +161,9 @@ ssize_t BINFile::read(void* destination, size_t size) {
   // (Potentially) read from file
   if(bytes_to_be_read_from_file > 0) {
      ssize_t bytes_read = read_segment();  
-     if(bytes_read == -1)
+     if(bytes_read == 0)
+       return 0;
+     else if(bytes_read == -1)
        return -1;
      memcpy(static_cast<char*>(destination) + destination_offset,
             buffer_ + buffer_offset_, bytes_to_be_read_from_file);
@@ -185,6 +197,62 @@ ssize_t BINFile::write(const void* source, size_t size) {
 }
 
 /******************************************************
+********************** OPERATORS **********************
+******************************************************/
+
+bool BINFile::operator>>(Cell& cell) {
+  assert(strcmp(mode_, "r") == 0);
+  assert(array_schema_ != NULL);
+
+  ssize_t bytes_read;
+
+  // If this is the first read
+  if(buffer_ == NULL) { 
+     ssize_t bytes_read = read_segment();  
+     assert(bytes_read != -1);
+  }
+ 
+  if(!var_size_) { // Fixed-sized cells
+    if(cell_ == NULL)
+      cell_ = malloc(cell_size_);
+    bytes_read = read(cell_, cell_size_);
+    if(bytes_read == 0)
+      return false;
+    assert(bytes_read != -1);
+  } else {        // Variable-sized cells
+    // Read coordinates
+    bytes_read = read(coords_, coords_size_);
+    assert(bytes_read != -1);
+    if(bytes_read == 0)
+      return false;
+
+    // Read cell size
+    bytes_read = read(&cell_size_, sizeof(size_t));
+    assert(bytes_read > 0);
+
+    // Prepare a cell
+    if(cell_ != NULL)
+      free(cell_);
+    cell_ = malloc(cell_size_);
+
+    // Copy coordinates and cell size to cell
+    memcpy(cell_, coords_, coords_size_);
+    size_t cell_offset = coords_size_;
+    memcpy(static_cast<char*>(cell_) + cell_offset, 
+           &cell_size_, sizeof(size_t));
+    cell_offset += sizeof(size_t);
+
+    // Read rest of attribute values into the appropriate offset in cell
+    bytes_read = read(static_cast<char*>(cell_) + cell_offset, 
+                      cell_size_ - coords_size_ - sizeof(size_t));
+  }
+
+  cell.set_cell(cell_);
+ 
+  return (bytes_read > 0);
+}
+
+/******************************************************
 ******************** PRIVATE METHODS ******************
 ******************************************************/
 
@@ -198,6 +266,16 @@ ssize_t BINFile::flush_buffer() {
   ::close(fd);	
 
   return bytes_flushed;
+}
+
+void BINFile::init() {
+  array_schema_ = NULL;
+  cell_ = NULL;
+  coords_ = NULL;
+  buffer_ = NULL;
+  buffer_end_ = 0;
+  buffer_offset_ = 0;
+  file_offset_ = 0;
 }
 
 ssize_t BINFile::read_segment() {

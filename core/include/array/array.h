@@ -85,11 +85,9 @@ class Array {
    */
   void forced_close();
   /** 
-   * Loads cells into a fragment, which are stored in files inside the input
-   * directory. Each file stores the cells in binary form, sorted based
-   * on the global cell order specified in the array schema. Each cell
-   * must have the same binary format as that used when creating sorted
-   * runs triggered by StorageManager::write_cell.
+   * Loads data into an array, which are stored in binary files in the input 
+   * directory. Each file stores the cells in binary form, sorted
+   * on the global cell order specified in the array schema. 
    */
   void load_sorted_bin(const std::string& dirname);
   /** Initializes a new fragment. */

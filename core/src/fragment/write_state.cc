@@ -142,6 +142,8 @@ void WriteState::flush() {
 }
 
 void WriteState::load_sorted_bin(const std::string& dirname) {
+  assert(is_dir(dirname));
+
   // Merge sorted files
   bool merged = merge_sorted_runs(dirname);
   

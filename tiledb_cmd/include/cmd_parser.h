@@ -74,6 +74,10 @@ class CmdParser {
       std::string& filename, std::string& file_type, 
       unsigned& seed, std::string& distribution, int64_t& cell_num, 
       size_t& file_size, std::string& err_msg) const;
+  /** Parse command line for query 'load_bin'. */
+  int parse_load_bin(
+      int argc, char** argv, std::string& array_name, std::string& workspace, 
+      std::string& filename, std::string& err_msg) const;
   /** Parse command line for query 'load_csv'. */
   int parse_load_csv(
       int argc, char** argv, std::string& array_name, std::string& workspace, 
@@ -81,7 +85,7 @@ class CmdParser {
   /** Parse command line for query 'load_sorted_bin'. */
   int parse_load_sorted_bin(
       int argc, char** argv, std::string& array_name, std::string& workspace, 
-      std::string& dirname, std::string& err_msg) const;
+      std::string& path, std::string& err_msg) const;
   /** Parse command line for query 'show_array_schema'. */
   int parse_show_array_schema(
       int argc, char** argv, std::string& array_name, std::string& workspace, 

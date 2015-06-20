@@ -41,6 +41,16 @@
 ************* CONSTRUCTORS & DESTRUCTORS **************
 ******************************************************/
 
+Cell::Cell(const ArraySchema* array_schema, bool random_access) 
+    : array_schema_(array_schema), random_access_(random_access) {
+  // Set attribute_ids_
+  attribute_ids_= array_schema_->attribute_ids();
+
+  // Set cell_size_ and var_size_
+  cell_size_ = array_schema_->cell_size();
+  var_size_ = (cell_size_ == VAR_SIZE);
+}
+
 Cell::Cell(
     const void* cell, const ArraySchema* array_schema, bool random_access) 
     : array_schema_(array_schema), cell_(cell), random_access_(random_access) {
@@ -100,7 +110,7 @@ const void* Cell::cell() const {
   return cell_;
 }
 
-size_t Cell::cell_size() const {
+ssize_t Cell::cell_size() const {
   assert(cell_ != NULL);
 
   if(!var_size_) {
