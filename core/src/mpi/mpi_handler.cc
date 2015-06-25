@@ -38,15 +38,15 @@ typedef enum
 {
     MSG_INFO_TAG,
     MSG_FLUSH_TAG,
-    MSG_GET_TAG,
-    MSG_PUT_TAG
+    MSG_GET_RAW_TAG,
+    MSG_PUT_RAW_TAG
 }
 msg_tag_e;
 
 typedef enum
 {
-    MSG_GET,
-    MSG_PUT,
+    MSG_GET_RAW,
+    MSG_PUT_RAW,
     MSG_FLUSH,
     MSG_CHT_EXIT
 }
@@ -84,13 +84,13 @@ void * Poll(void * ptr) {
             MPI_Send(NULL, 0, MPI_BYTE, source, MSG_FLUSH_TAG, comm);
             break;
 
-        case MSG_GET:
-            MPI_Send(info.address, info.count, info.dt, source, MSG_GET_TAG, comm);
+        case MSG_GET_RAW:
+            MPI_Send(info.address, info.count, info.dt, source, MSG_GET_RAW_TAG, comm);
             break;
 
-        case MSG_PUT:
+        case MSG_PUT_RAW:
             MPI_Status rstatus;
-            MPI_Recv(info.address, info.count, info.dt, source, MSG_PUT_TAG, comm, &rstatus);
+            MPI_Recv(info.address, info.count, info.dt, source, MSG_PUT_RAW_TAG, comm, &rstatus);
             int rcount;
             MPI_Get_count(&rstatus, MPI_BYTE, &rcount);
             if (info.count != rcount) {
@@ -207,14 +207,14 @@ void MPIHandler::Flush(int remote_proc) const
 void MPIHandler::Get_raw(void* output, void * remote_input, int size, int remote_proc) const
 {
     /* Verify that C99 struct initialization is fully compliant with ISO C++... */
-    msg_info_t info = { .type    = MSG_GET,
+    msg_info_t info = { .type    = MSG_GET_RAW,
                         .address = remote_input,
                         .count   = size,
                         .dt      = MPI_BYTE };
     MPI_Send(&info, sizeof(msg_info_t), MPI_BYTE, remote_proc, MSG_INFO_TAG, comm_);
 
     MPI_Status status;
-    MPI_Recv(output, info.count, info.dt, remote_proc, MSG_GET_TAG, comm_, &status);
+    MPI_Recv(output, info.count, info.dt, remote_proc, MSG_GET_RAW_TAG, comm_, &status);
 
     int rcount;
     MPI_Get_count(&status, MPI_BYTE, &rcount);
@@ -234,12 +234,12 @@ void MPIHandler::Get_raw_many(int count, void* output[], void * remote_input[], 
 void MPIHandler::Put_raw(void* input, void * remote_output, int size, int remote_proc) const
 {
     /* Verify that C99 struct initialization is fully compliant with ISO C++... */
-    msg_info_t info = { .type    = MSG_PUT,
+    msg_info_t info = { .type    = MSG_PUT_RAW,
                         .address = remote_output,
                         .count   = size,
                         .dt      = MPI_BYTE };
     MPI_Send(&info, sizeof(msg_info_t), MPI_BYTE, remote_proc, MSG_INFO_TAG, comm_);
-    MPI_Send(input, info.count, info.dt, remote_proc, MSG_PUT_TAG, comm_);
+    MPI_Send(input, info.count, info.dt, remote_proc, MSG_PUT_RAW_TAG, comm_);
 }
 
 void MPIHandler::Put_raw_many(int count, void* input[], void * remote_output[], int size[], int remote_proc[]) const
