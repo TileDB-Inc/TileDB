@@ -38,21 +38,23 @@ typedef enum
 {
     MSG_INFO_TAG,
     MSG_FLUSH_TAG,
+    //MSG_GET_INDEX_TAG,
+    //MSG_PUT_INDEX_TAG,
     MSG_GET_RAW_TAG,
-    MSG_GET_INDEX_TAG,
     MSG_PUT_RAW_TAG,
-    MSG_PUT_INDEX_TAG
+    MSG_LAST_TAG
 }
 msg_tag_e;
 
 typedef enum
 {
     MSG_FLUSH,
+    //MSG_GET_INDEX,
+    //MSG_PUT_INDEX,
     MSG_GET_RAW,
     MSG_PUT_RAW,
-    MSG_GET_INDEX,
-    MSG_PUT_INDEX,
-    MSG_CHT_EXIT
+    MSG_CHT_EXIT,
+    MSG_LAST
 }
 msg_type_e;
 
@@ -103,8 +105,18 @@ void * Poll(void * ptr) {
             }
             break;
 
+#if 0 /* This does not appear to be the right way to do this. */
         case MSG_GET_INDEX:
             /* lookup data */
+
+            // Read local cells in the range
+            int ad;
+            void* range; /* This is a template argument... */
+            std::vector<int> attribute_ids;
+            void* local_cells;
+            size_t local_cells_size;
+            storage_manager->read_cells(ad, range, attribute_ids, local_cells, local_cells_size);
+
             MPI_Send(info.address, info.count, info.dt, source, MSG_GET_RAW_TAG, comm);
             break;
 
@@ -119,6 +131,7 @@ void * Poll(void * ptr) {
               MPI_Abort(comm, info.count-rcount);
             }
             break;
+#endif
 
         case MSG_CHT_EXIT:
             if (rank!=source) {
@@ -270,6 +283,7 @@ void MPIHandler::Put_raw_many(int count, void* input[], void * remote_output[], 
     }
 }
 
+#if 0
 void MPIHandler::Put_index(void* input, void * remote_output, int size, int remote_proc) const
 {
     /* TODO pack metadata for lookup... */
@@ -300,6 +314,7 @@ void MPIHandler::Get_index(void* output, void * remote_input, int size, int remo
       MPI_Abort(comm_, info.count-rcount);
     }
 }
+#endif
 
 void MPIHandler::init(MPI_Comm user_comm, int* argc, char*** argv) {
 
