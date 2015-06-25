@@ -39,15 +39,19 @@ typedef enum
     MSG_INFO_TAG,
     MSG_FLUSH_TAG,
     MSG_GET_RAW_TAG,
-    MSG_PUT_RAW_TAG
+    MSG_GET_INDEX_TAG,
+    MSG_PUT_RAW_TAG,
+    MSG_PUT_INDEX_TAG
 }
 msg_tag_e;
 
 typedef enum
 {
+    MSG_FLUSH,
     MSG_GET_RAW,
     MSG_PUT_RAW,
-    MSG_FLUSH,
+    MSG_GET_INDEX,
+    MSG_PUT_INDEX,
     MSG_CHT_EXIT
 }
 msg_type_e;
@@ -89,6 +93,23 @@ void * Poll(void * ptr) {
             break;
 
         case MSG_PUT_RAW:
+            MPI_Status rstatus;
+            MPI_Recv(info.address, info.count, info.dt, source, MSG_PUT_RAW_TAG, comm, &rstatus);
+            int rcount;
+            MPI_Get_count(&rstatus, MPI_BYTE, &rcount);
+            if (info.count != rcount) {
+              throw MPIHandlerException("CHT PUT message underflow");
+              MPI_Abort(comm, info.count-rcount);
+            }
+            break;
+
+        case MSG_GET_INDEX:
+            /* lookup data */
+            MPI_Send(info.address, info.count, info.dt, source, MSG_GET_RAW_TAG, comm);
+            break;
+
+        case MSG_PUT_INDEX:
+            /* lookup data */
             MPI_Status rstatus;
             MPI_Recv(info.address, info.count, info.dt, source, MSG_PUT_RAW_TAG, comm, &rstatus);
             int rcount;
@@ -246,6 +267,37 @@ void MPIHandler::Put_raw_many(int count, void* input[], void * remote_output[], 
 {
     for (int i=0; i<count; i++) {
         MPIHandler::Put_raw(input[i], remote_output[i], size[i], remote_proc[i]);
+    }
+}
+
+void MPIHandler::Put_index(void* input, void * remote_output, int size, int remote_proc) const
+{
+    /* TODO pack metadata for lookup... */
+    msg_info_t info = { .type    = MSG_PUT_INDEX,
+                        .address = remote_output,
+                        .count   = size,
+                        .dt      = MPI_BYTE };
+    MPI_Send(&info, sizeof(msg_info_t), MPI_BYTE, remote_proc, MSG_INFO_TAG, comm_);
+    MPI_Send(input, info.count, info.dt, remote_proc, MSG_PUT_INDEX_TAG, comm_);
+}
+
+void MPIHandler::Get_index(void* output, void * remote_input, int size, int remote_proc) const
+{
+    /* TODO pack metadata for lookup... */
+    msg_info_t info = { .type    = MSG_GET_INDEX,
+                        .address = remote_input,
+                        .count   = size,
+                        .dt      = MPI_BYTE };
+    MPI_Send(&info, sizeof(msg_info_t), MPI_BYTE, remote_proc, MSG_INFO_TAG, comm_);
+
+    MPI_Status status;
+    MPI_Recv(output, info.count, info.dt, remote_proc, MSG_GET_INDEX_TAG, comm_, &status);
+
+    int rcount;
+    MPI_Get_count(&status, MPI_BYTE, &rcount);
+    if (info.count != rcount) {
+      throw MPIHandlerException("Get_index message underflow");
+      MPI_Abort(comm_, info.count-rcount);
     }
 }
 
