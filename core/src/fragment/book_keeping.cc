@@ -206,8 +206,7 @@ void BookKeeping::commit_bounding_coordinates() {
     }
 
     // Write buffer and clean up
-    ssize_t nb = write(fd, buffer, buffer_size);
-    // TODO: write error checking 
+    write(fd, buffer, buffer_size);
     delete [] buffer;
   }  
 
@@ -249,8 +248,7 @@ void BookKeeping::commit_mbrs() {
     }
 
     // Write buffer and clean up
-    ssize_t nb = write(fd, buffer, buffer_size);
-    // TODO: write error checking 
+    write(fd, buffer, buffer_size);
     delete [] buffer;
   }
 
@@ -292,8 +290,7 @@ void BookKeeping::commit_offsets() {
     }
 
     // Write buffer and clean up
-    ssize_t nb = write(fd, buffer, buffer_size);
-    // TODO: write error checking
+    write(fd, buffer, buffer_size);
     delete [] buffer;
   }
   
@@ -326,8 +323,7 @@ void BookKeeping::commit_tile_ids() {
     memcpy(buffer+sizeof(int64_t), &tile_ids_[0], tile_num * sizeof(int64_t));
 
     // Write buffer and clean up
-    ssize_t nb = write(fd, buffer, buffer_size);
-    // TODO: write error checking
+    write(fd, buffer, buffer_size);  
     delete [] buffer;
   }
 
@@ -362,8 +358,7 @@ void BookKeeping::load_bounding_coordinates() {
   size_t buffer_size = st.st_size;
   assert(buffer_size == tile_num * 2 * cell_size);
   char* buffer = new char[buffer_size];
-  ssize_t nb = read(fd, buffer, buffer_size);
-  // TODO: read error checking
+  read(fd, buffer, buffer_size);
   int64_t offset = 0;
   bounding_coordinates_.resize(tile_num);
   void* coord;
@@ -412,8 +407,7 @@ void BookKeeping::load_mbrs() {
   size_t buffer_size = st.st_size;
   assert(buffer_size == tile_num * 2 * cell_size);
   char* buffer = new char[buffer_size];
-  ssize_t nb = read(fd, buffer, buffer_size);
-  // TODO: read error checking
+  read(fd, buffer, buffer_size);
   size_t offset = 0;
   mbrs_.resize(tile_num);
   void* mbr;
@@ -458,8 +452,7 @@ void BookKeeping::load_offsets() {
   size_t buffer_size = st.st_size;
   assert(buffer_size == (attribute_num+1)*tile_num*sizeof(int64_t));
   char* buffer = new char[buffer_size];
-  ssize_t nb = read(fd, buffer, buffer_size);
-  // TODO: read error checking
+  read(fd, buffer, buffer_size);
   int64_t offset = 0;
 
   // Load offsets
@@ -496,8 +489,7 @@ void BookKeeping::load_tile_ids() {
 
   assert(buffer_size > sizeof(int64_t));
   char* buffer = new char[buffer_size];
-  ssize_t nb = read(fd, buffer, buffer_size);
-  // TODO: read error checking
+  read(fd, buffer, buffer_size);
   int64_t tile_num;
   memcpy(&tile_num, buffer, sizeof(int64_t));
   assert(buffer_size == (tile_num+1)*sizeof(int64_t));

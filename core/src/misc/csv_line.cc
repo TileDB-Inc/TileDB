@@ -134,7 +134,7 @@ void CSVLine::operator<<(int value) {
 template<>
 void CSVLine::operator<<(int64_t value) {
   char s[CSV_MAX_DIGITS];
-  sprintf(s, "%ld", value); 
+  sprintf(s, "%lld", value); 
   values_.push_back(s);
 }
 
@@ -174,7 +174,7 @@ template<>
 void CSVLine::operator<<(const std::vector<int64_t>& values) {
   char s[CSV_MAX_DIGITS];
   for(int i=0; i<values.size(); i++) {
-    sprintf(s, "%ld", values[i]); 
+    sprintf(s, "%lld", values[i]); 
     values_.push_back(s);
   }
 }
@@ -249,7 +249,7 @@ bool CSVLine::operator>>(int64_t& value) {
     else if(values_[pos_] == DEL_VALUE) // Value deleted
       value = DEL_INT64_T;
     else 
-      sscanf(values_[pos_].c_str(), "%ld", &value);
+      sscanf(values_[pos_].c_str(), "%lld", &value);
     ++pos_;
     return true;
   }
