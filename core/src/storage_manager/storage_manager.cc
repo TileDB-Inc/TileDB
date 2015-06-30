@@ -188,8 +188,8 @@ int StorageManager::define_array(
   size_t buffer_size = ret.second; 
 
   // Store the array schema
-  ssize_t nb = write(fd, buffer, buffer_size); 
-  // TODO: write error checking
+  write(fd, buffer, buffer_size); 
+
   delete [] buffer;
   close(fd);
 
@@ -289,8 +289,7 @@ int StorageManager::get_array_schema(
   char* buffer = new char[buffer_size];
  
   // Load array schema
-  ssize_t nb = read(fd, buffer, buffer_size);
-  // TODO: read error checking
+  read(fd, buffer, buffer_size);
   array_schema->deserialize(buffer, buffer_size);
 
   // Clean up

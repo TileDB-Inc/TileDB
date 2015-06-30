@@ -418,9 +418,8 @@ void WriteState::flush_segment(int attribute_id) {
   int64_t offset = st.st_size;
 
   // Append the segment to the file
-  ssize_t nb = write(fd, segments_[attribute_id], segment_utilization_[attribute_id]);
-  // TODO: write error checking 
-  
+  write(fd, segments_[attribute_id], segment_utilization_[attribute_id]);
+ 
   // Update the write state 
   segment_utilization_[attribute_id] = 0;
 
@@ -462,7 +461,6 @@ void WriteState::flush_sorted_run() {
   size_t offset = 0; 
   int64_t cell_num = cells_.size();
   char* cell;
-  ssize_t nb;
 
   for(int64_t i=0; i<cell_num; ++i) {
     // For easy reference
@@ -474,8 +472,7 @@ void WriteState::flush_sorted_run() {
 
     // Flush the segment to the file
     if(offset + cell_size > segment_size_) { 
-      nb = write(file, segment, offset);
-      // TODO: write error checking
+      write(file, segment, offset);
       offset = 0;
     }
 
@@ -485,8 +482,7 @@ void WriteState::flush_sorted_run() {
   }
 
   if(offset != 0) {
-    nb = write(file, segment, offset);
-    // TODO: write error checking 
+    write(file, segment, offset);
     offset = 0;
   }
 
@@ -521,7 +517,6 @@ void WriteState::flush_sorted_run_with_id() {
   size_t buffer_offset = 0; 
   int64_t cell_num = cells_with_id_.size();
   char* cell;
-  ssize_t nb;
 
   for(int64_t i=0; i<cell_num; ++i) {
     // For easy reference
@@ -533,8 +528,7 @@ void WriteState::flush_sorted_run_with_id() {
 
     // Flush the segment to the file
     if(buffer_offset + sizeof(int64_t) + cell_size > segment_size_) { 
-      nb = write(file, buffer, buffer_offset);
-      // TODO: write error checking
+      write(file, buffer, buffer_offset);
       buffer_offset = 0;
     }
 
@@ -548,7 +542,7 @@ void WriteState::flush_sorted_run_with_id() {
   }
 
   if(buffer_offset != 0) {
-    nb = write(file, buffer, buffer_offset);
+    write(file, buffer, buffer_offset);
     buffer_offset = 0;
   }
 
@@ -583,7 +577,6 @@ void WriteState::flush_sorted_run_with_2_ids() {
   size_t buffer_offset = 0; 
   int64_t cell_num = cells_with_2_ids_.size();
   char* cell;
-  ssize_t nb;
 
   for(int64_t i=0; i<cell_num; ++i) {
     // For easy reference
@@ -595,8 +588,7 @@ void WriteState::flush_sorted_run_with_2_ids() {
 
     // Flush the segment to the file
     if(buffer_offset + 2*sizeof(int64_t) + cell_size > segment_size_) { 
-      nb = write(file, buffer, buffer_offset);
-      // TODO: write error checking
+      write(file, buffer, buffer_offset);
       buffer_offset = 0;
     }
 
@@ -614,8 +606,7 @@ void WriteState::flush_sorted_run_with_2_ids() {
   }
 
   if(buffer_offset != 0) {
-    nb = write(file, buffer, buffer_offset);
-    // TODO: write error checking
+    write(file, buffer, buffer_offset);
     buffer_offset = 0;
   }
 
@@ -1052,23 +1043,20 @@ void WriteState::merge_sorted_runs(
   }
 
   // Information about the output merged run
+  void* cell;
+  char* segment = new char[segment_size_];
+  size_t offset = 0;
   std::stringstream new_filename;
   new_filename << temp_dirname_ << new_run;
   int new_run_fd = open(new_filename.str().c_str(), 
                         O_WRONLY | O_CREAT | O_TRUNC | O_SYNC, S_IRWXU);
   assert(new_run_fd != -1);
-  
-  char* segment = new char[segment_size_];
-  size_t offset = 0;
-  void* cell;
-  ssize_t nb;
  
   // Loop over the cells
   while((cell = get_next_cell<T>(runs, runs_num, cell_size)) != NULL) {
     // If the output segment is full, flush it into the output file
     if(offset + cell_size > segment_size_) {
-      nb = write(new_run_fd, segment, offset);
-      // TODO: write error checking
+      write(new_run_fd, segment, offset);
       offset = 0;
     }
 
@@ -1078,10 +1066,8 @@ void WriteState::merge_sorted_runs(
   }
 
   // Flush the remaining data of the output segment into the output file
-  if(offset > 0) {
-    nb = write(new_run_fd, segment, offset);
-    // TODO: write error checking
-  }
+  if(offset > 0) 
+    write(new_run_fd, segment, offset);
 
   // Delete the files of the merged runs
   if(dirname == *temp_dirname_)
@@ -1149,23 +1135,20 @@ void WriteState::merge_sorted_runs_with_id(
   }
 
   // Information about the output merged run
+  void* cell;
+  char* segment = new char[segment_size_];
+  size_t offset = 0;
   std::stringstream new_filename;
   new_filename << *temp_dirname_ << new_run;
   int new_run_fd = open(new_filename.str().c_str(), 
                         O_WRONLY | O_CREAT | O_TRUNC | O_SYNC, S_IRWXU);
   assert(new_run_fd != -1);
-
-  char* segment = new char[segment_size_];
-  size_t offset = 0;
-  void* cell;
-  ssize_t nb;
-
+ 
   // Loop over the cells
   while((cell = get_next_cell_with_id<T>(runs, runs_num, cell_size)) != NULL) {
     // If the output segment is full, flush it into the output file
     if(offset + cell_size + sizeof(int64_t) > segment_size_) {
-      nb = write(new_run_fd, segment, offset);
-      // TODO: write error checking
+      write(new_run_fd, segment, offset);
       offset = 0;
     }
 
@@ -1175,10 +1158,8 @@ void WriteState::merge_sorted_runs_with_id(
   }
 
   // Flush the remaining data of the output segment into the output file
-  if(offset > 0) {
-    nb = write(new_run_fd, segment, offset);
-    // TODO: write error checking
-  }
+  if(offset > 0) 
+    write(new_run_fd, segment, offset);
 
   // Delete the files of the merged runs
   if(dirname == *temp_dirname_)
@@ -1247,24 +1228,21 @@ void WriteState::merge_sorted_runs_with_2_ids(
   }
 
   // Information about the output merged run
-    std::stringstream new_filename;
+  void* cell;
+  char* segment = new char[segment_size_];
+  size_t offset = 0;
+  std::stringstream new_filename;
   new_filename << *temp_dirname_ << new_run;
   int new_run_fd = open(new_filename.str().c_str(), 
                         O_WRONLY | O_CREAT | O_TRUNC | O_SYNC, S_IRWXU);
   assert(new_run_fd != -1);
-  
-  char* segment = new char[segment_size_];
-  size_t offset = 0;
-  void* cell;
-  ssize_t nb;
 
   // Loop over the cells
   while((cell = get_next_cell_with_2_ids<T>(runs, runs_num, cell_size)) != 
         NULL) {
     // If the output segment is full, flush it into the output file
     if(offset + cell_size + 2*sizeof(int64_t) > segment_size_) {
-      nb = write(new_run_fd, segment, offset);
-      // TODO: write error checking
+      write(new_run_fd, segment, offset);
       offset = 0;
     }
 
@@ -1274,10 +1252,8 @@ void WriteState::merge_sorted_runs_with_2_ids(
   }
 
   // Flush the remaining data of the output segment into the output file
-  if(offset > 0) {
-    nb = write(new_run_fd, segment, offset);
-    // TODO: write error checking
-  }
+  if(offset > 0) 
+    write(new_run_fd, segment, offset);
 
   // Delete the files of the merged runs
   if(dirname == *temp_dirname_)
