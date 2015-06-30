@@ -27,3 +27,4 @@ TroubleShooting
   * Use -std=c++0x instead
   * If OS is CentOS or RedHat, use the CXX = mpiicpc instead of mpicxx
   * Download latest Intel C/C++ compiler
+* MPI-3 support is required, so make sure that the default MPI implements v3 of the standard.
