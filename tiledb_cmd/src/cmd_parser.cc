@@ -1298,7 +1298,7 @@ int CmdParser::get_capacity(
     return -1;
   }
 
-  sscanf(str_capacity.c_str(), "%lld", &capacity); 
+  sscanf(str_capacity.c_str(), "%ld", &capacity); 
 
   // Capacity cannot be zero
   if(capacity == 0) {
@@ -1347,7 +1347,7 @@ int CmdParser::get_cell_num(
     return -1;
   }
 
-  sscanf(str_cell_num.c_str(), "%lld", &cell_num); 
+  sscanf(str_cell_num.c_str(), "%ld", &cell_num); 
 
   // Number of cells must be positive
   if(cell_num == 0) {
