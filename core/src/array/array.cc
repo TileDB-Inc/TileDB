@@ -361,7 +361,8 @@ void Array::flush_fragment_tree() {
   assert(fd != -1);
 
   // Flush the buffer into the file
-  write(fd, buffer, buffer_size);
+  ssize_t nb = write(fd, buffer, buffer_size);
+  // TODO: write error checking
 
   // Clean up
   close(fd);
@@ -433,7 +434,8 @@ void Array::load_fragment_tree() {
   buffer = new char[buffer_size];
  
   // Load contents of the file into the buffer
-  read(fd, buffer, buffer_size);
+  ssize_t nb = read(fd, buffer, buffer_size);
+  // TODO: read error checking
  
   // Create the tree from the buffer and calculate next fragment sequence number
   int level_num = buffer_size / (2 * sizeof(int));

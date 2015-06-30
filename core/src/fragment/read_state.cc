@@ -175,7 +175,8 @@ std::pair<size_t, int64_t> ReadState::load_payloads_into_segment(
 
   // Read payloads into buffer
   lseek(fd, book_keeping_->offset(attribute_id, start_pos), SEEK_SET);
-  read(fd, segments_[attribute_id], segment_utilization); 
+  ssize_t nb = read(fd, segments_[attribute_id], segment_utilization);
+  // TODO: read error checking
   close(fd);
 
   return std::pair<size_t, int64_t>(segment_utilization, tiles_in_segment);
