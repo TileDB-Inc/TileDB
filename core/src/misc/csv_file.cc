@@ -189,8 +189,8 @@ void CSVFile::flush_buffer() {
   int fd = ::open(filename_.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
                   S_IRWXU);
   assert(fd != -1);
-
-  write(fd, buffer_, buffer_offset_);
+  ssize_t nb = write(fd, buffer_, buffer_offset_);
+  // TODO: write error checking
   ::close(fd);	
 }
 
@@ -217,7 +217,8 @@ bool CSVFile::read_segment() {
 
   // Read the new lines
   lseek(fd, file_offset_, SEEK_SET);
-  read(fd, buffer_, bytes_to_be_read);
+  ssize_t nb = read(fd, buffer_, bytes_to_be_read);
+  // TODO: read error checking
 
   buffer_offset_ = 0;
   buffer_end_ = bytes_to_be_read;
