@@ -1,0 +1,27 @@
+var searchData=
+[
+  ['data_5fgenerator_2eh',['data_generator.h',['../data__generator_8h.html',1,'']]],
+  ['datagenerator',['DataGenerator',['../classDataGenerator.html',1,'DataGenerator'],['../classDataGenerator.html#a3a85eb5bf95cf3a6ba07333d0da37207',1,'DataGenerator::DataGenerator()']]],
+  ['define_5farray',['define_array',['../classStorageManager.html#af35a50120983ab4778b76190134e137a',1,'StorageManager']]],
+  ['del_5fchar',['DEL_CHAR',['../special__values_8h.html#a1045c2673a525ce3b146f2785f5cc1c1',1,'special_values.h']]],
+  ['del_5fdouble',['DEL_DOUBLE',['../special__values_8h.html#abfc9281526293ab0cbf42d4a3a79ee16',1,'special_values.h']]],
+  ['del_5ffloat',['DEL_FLOAT',['../special__values_8h.html#a11017d67ae7376e593710e3a32c45f66',1,'special_values.h']]],
+  ['del_5fint',['DEL_INT',['../special__values_8h.html#a2356d234cb4089bc57f977dd8f693f91',1,'special_values.h']]],
+  ['del_5fint64_5ft',['DEL_INT64_T',['../special__values_8h.html#a475d14a8ac415ca0fde32fe4aabe4c05',1,'special_values.h']]],
+  ['del_5fsize_5ft',['DEL_SIZE_T',['../special__values_8h.html#a562ec7b5a60688ba4d2c3f02a8df0e2e',1,'special_values.h']]],
+  ['del_5fvalue',['DEL_VALUE',['../special__values_8h.html#a65a9fd4c6125b57a0d9cbac194f1f5a2',1,'special_values.h']]],
+  ['delete_5farray',['delete_array',['../classStorageManager.html#ae9a295f0da9291039eb988fe98acb399',1,'StorageManager']]],
+  ['delete_5fdirectory',['delete_directory',['../utils_8h.html#a2cb619d044404798acad5b4810812c27',1,'utils.h']]],
+  ['delete_5ffragment',['delete_fragment',['../classArray.html#ac8525ebc76136214f92edafc777c12b1',1,'Array']]],
+  ['delete_5ffragments',['delete_fragments',['../classArray.html#a6ee6603c3a220d0a420443043afe9348',1,'Array::delete_fragments()'],['../classArray.html#ad7104c8e939f77fbe2e603f4bdfc174f',1,'Array::delete_fragments(const std::vector&lt; int &gt; &amp;fragment_ids)']]],
+  ['delete_5ftiles',['delete_tiles',['../classReadState.html#a923346fc533bd2917ce20b6488603e39',1,'ReadState']]],
+  ['deserialize',['deserialize',['../classArraySchema.html#a54180b37c37e2262f6131788667cf0b0',1,'ArraySchema::deserialize(const char *buffer, size_t buffer_size)'],['../classArraySchema.html#af2044e56ddd717cb0d11984ed1eb50a3',1,'ArraySchema::deserialize(const std::string &amp;array_schema_str)']]],
+  ['dim_5fdomains',['dim_domains',['../classArraySchema.html#a7b134e05120440e3d4598884a85d92bc',1,'ArraySchema']]],
+  ['dim_5fdomains_5f',['dim_domains_',['../classArraySchema.html#ad345538fc45d45b1cbc47f8601679115',1,'ArraySchema']]],
+  ['dim_5fid',['dim_id',['../classArraySchema.html#aabb42471b0b8bbd3d15e2445f5a032bf',1,'ArraySchema']]],
+  ['dim_5fnames_5f',['dim_names_',['../classArraySchema.html#a2727572d5457356c8ca2c0d3690fe19a',1,'ArraySchema']]],
+  ['dim_5fnum',['dim_num',['../classArraySchema.html#a91ec1db538a6e5a6112e6db5ea166f78',1,'ArraySchema::dim_num()'],['../classTile.html#abd8d5aa6b388460a0658a24f16615a8c',1,'Tile::dim_num()'],['../classTileConstCellIterator.html#a78e2eea52b6b3e30226cd38f6a564d3e',1,'TileConstCellIterator::dim_num()'],['../classTileConstReverseCellIterator.html#a2340388e050f559fae9e2665067ed834',1,'TileConstReverseCellIterator::dim_num()']]],
+  ['dim_5fnum_5f',['dim_num_',['../classArrayConstCellIterator.html#ac7704577ee8c7a4dd35185576929d69a',1,'ArrayConstCellIterator::dim_num_()'],['../classArrayConstReverseCellIterator.html#aacda7582007c4940b40027f254fa2ada',1,'ArrayConstReverseCellIterator::dim_num_()'],['../structWriteState_1_1SmallerCol.html#a9547a136dffb88ec403bd9467065d13e',1,'WriteState::SmallerCol::dim_num_()'],['../structWriteState_1_1SmallerColWithId.html#a607c277cc7996a739d6b0a09e7cc883c',1,'WriteState::SmallerColWithId::dim_num_()'],['../structWriteState_1_1SmallerRow.html#abf13c9a4bddfec91cb28e4ed5e299ba9',1,'WriteState::SmallerRow::dim_num_()'],['../structWriteState_1_1SmallerRowWithId.html#a9e9a8cf8799ae4272c3d9c699ac9a10d',1,'WriteState::SmallerRowWithId::dim_num_()'],['../structWriteState_1_1SmallerWith2Ids.html#aa3b69aafe98f420cbf57abf88fce2a78',1,'WriteState::SmallerWith2Ids::dim_num_()'],['../classArraySchema.html#a3759dcfaf3620ccc7de8920a6f512a84',1,'ArraySchema::dim_num_()'],['../classTile.html#af1cc5abe87729af6774e2f15aac6f109',1,'Tile::dim_num_()']]],
+  ['dimdomains',['DimDomains',['../classArraySchema.html#aa0dcbbfd193648a9500d54e104115de8',1,'ArraySchema']]],
+  ['duplicates',['duplicates',['../utils_8h.html#acf4d436f69740cb5162e7f41d060869f',1,'utils.h']]]
+];

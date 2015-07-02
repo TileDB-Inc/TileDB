@@ -1,0 +1,216 @@
+\hypertarget{classBINFile}{}\section{B\+I\+N\+File Class Reference}
+\label{classBINFile}\index{B\+I\+N\+File@{B\+I\+N\+File}}
+
+
+{\ttfamily \#include $<$bin\+\_\+file.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classBINFile_a05a9debbcd9940f7a40fcd0224b39368}{B\+I\+N\+File} ()
+\item 
+\hyperlink{classBINFile_a69adec565de283f8fd940853ce62a892}{B\+I\+N\+File} (const \hyperlink{classArraySchema}{Array\+Schema} $\ast$array\+\_\+schema)
+\item 
+\hyperlink{classBINFile_a32801630b528cbf6690e8cd84290773a}{B\+I\+N\+File} (const std\+::string \&filename, const char $\ast$mode)
+\item 
+\hyperlink{classBINFile_a226bf7456de4243515747c93af4bf4d0}{$\sim$\+B\+I\+N\+File} ()
+\item 
+int \hyperlink{classBINFile_a28ba175b559e4111e19a41e84db12fd8}{close} ()
+\item 
+int \hyperlink{classBINFile_a60a5384b15aa37bfec6a90769e0d6d0e}{open} (const std\+::string \&filename, const char $\ast$mode, size\+\_\+t segment\+\_\+size=\hyperlink{bin__file_8h_a71c4f1e0f1c967d50e8379182af08ef6}{B\+I\+N\+\_\+\+S\+E\+G\+M\+E\+N\+T\+\_\+\+S\+I\+Z\+E})
+\item 
+ssize\+\_\+t \hyperlink{classBINFile_a538f9f21efe941296fef850a704f57a2}{read} (void $\ast$destination, size\+\_\+t size)
+\item 
+ssize\+\_\+t \hyperlink{classBINFile_a20b68d2df1585e45accf7f3a408ce893}{write} (const void $\ast$source, size\+\_\+t data)
+\item 
+bool \hyperlink{classBINFile_abf7962c22bc33ca0ed05f0aa983a8a9a}{operator$>$$>$} (\hyperlink{classCell}{Cell} \&cell)
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+ssize\+\_\+t \hyperlink{classBINFile_aec87de7200dcfff1ef5ceb9270a9695d}{flush\+\_\+buffer} ()
+\item 
+void \hyperlink{classBINFile_a3164b6df49cae6c1cd8c3717d769587c}{init} ()
+\item 
+ssize\+\_\+t \hyperlink{classBINFile_abe10e65058419b0af7854ef5427ff21d}{read\+\_\+segment} ()
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+const \hyperlink{classArraySchema}{Array\+Schema} $\ast$ \hyperlink{classBINFile_a028698fec2c4c95fec3162c8aa140afa}{array\+\_\+schema\+\_\+}
+\item 
+char $\ast$ \hyperlink{classBINFile_ac04f57a328c37aeba330851643d86455}{buffer\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classBINFile_a6638b7bd9a54172d694d9c955ad3aed7}{buffer\+\_\+end\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classBINFile_a93a5979fd3c9ccf0e58866e49e516890}{buffer\+\_\+offset\+\_\+}
+\item 
+void $\ast$ \hyperlink{classBINFile_a38d5e4398274c4f8493cbd74b03967d5}{cell\+\_\+}
+\item 
+ssize\+\_\+t \hyperlink{classBINFile_aa6035d4e2e3877f57c1b15924e22c9d0}{cell\+\_\+size\+\_\+}
+\item 
+void $\ast$ \hyperlink{classBINFile_a8af11765bb8744748a812e78b15e22ac}{coords\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classBINFile_ab109a798204ffecf9c85d7d9e8e5c469}{coords\+\_\+size\+\_\+}
+\item 
+int64\+\_\+t \hyperlink{classBINFile_af357b1564acccf461dfdb846249a35e9}{file\+\_\+offset\+\_\+}
+\item 
+std\+::string \hyperlink{classBINFile_abcaf9d032fcac353059a72244120e9fa}{filename\+\_\+}
+\item 
+char \hyperlink{classBINFile_a7f7e6a137b016f6cd533515076982faa}{mode\+\_\+} \mbox{[}2\mbox{]}
+\item 
+size\+\_\+t \hyperlink{classBINFile_a55f579b9027292fa6f56cb7f0e90f922}{segment\+\_\+size\+\_\+}
+\item 
+bool \hyperlink{classBINFile_af6d2bb5c8844e38d6631905fd662e8d8}{var\+\_\+size\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This class implements a simple B\+I\+N file with basic operations such as getting reading and writing of binary data. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classBINFile_a05a9debbcd9940f7a40fcd0224b39368}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!B\+I\+N\+File@{B\+I\+N\+File}}
+\index{B\+I\+N\+File@{B\+I\+N\+File}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{B\+I\+N\+File}]{\setlength{\rightskip}{0pt plus 5cm}B\+I\+N\+File\+::\+B\+I\+N\+File (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classBINFile_a05a9debbcd9940f7a40fcd0224b39368}
+Constructor. \hypertarget{classBINFile_a69adec565de283f8fd940853ce62a892}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!B\+I\+N\+File@{B\+I\+N\+File}}
+\index{B\+I\+N\+File@{B\+I\+N\+File}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{B\+I\+N\+File}]{\setlength{\rightskip}{0pt plus 5cm}B\+I\+N\+File\+::\+B\+I\+N\+File (
+\begin{DoxyParamCaption}
+\item[{const {\bf Array\+Schema} $\ast$}]{array\+\_\+schema}
+\end{DoxyParamCaption}
+)}\label{classBINFile_a69adec565de283f8fd940853ce62a892}
+Constructor. \hypertarget{classBINFile_a32801630b528cbf6690e8cd84290773a}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!B\+I\+N\+File@{B\+I\+N\+File}}
+\index{B\+I\+N\+File@{B\+I\+N\+File}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{B\+I\+N\+File}]{\setlength{\rightskip}{0pt plus 5cm}B\+I\+N\+File\+::\+B\+I\+N\+File (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{filename, }
+\item[{const char $\ast$}]{mode}
+\end{DoxyParamCaption}
+)}\label{classBINFile_a32801630b528cbf6690e8cd84290773a}
+Constructor. \hypertarget{classBINFile_a226bf7456de4243515747c93af4bf4d0}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!````~B\+I\+N\+File@{$\sim$\+B\+I\+N\+File}}
+\index{````~B\+I\+N\+File@{$\sim$\+B\+I\+N\+File}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{$\sim$\+B\+I\+N\+File}]{\setlength{\rightskip}{0pt plus 5cm}B\+I\+N\+File\+::$\sim$\+B\+I\+N\+File (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classBINFile_a226bf7456de4243515747c93af4bf4d0}
+Destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classBINFile_a28ba175b559e4111e19a41e84db12fd8}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!close@{close}}
+\index{close@{close}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{close}]{\setlength{\rightskip}{0pt plus 5cm}int B\+I\+N\+File\+::close (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classBINFile_a28ba175b559e4111e19a41e84db12fd8}
+Closes the B\+I\+N file. Returns 0 on success and -\/1 on failure. \hypertarget{classBINFile_aec87de7200dcfff1ef5ceb9270a9695d}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!flush\+\_\+buffer@{flush\+\_\+buffer}}
+\index{flush\+\_\+buffer@{flush\+\_\+buffer}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{flush\+\_\+buffer}]{\setlength{\rightskip}{0pt plus 5cm}ssize\+\_\+t B\+I\+N\+File\+::flush\+\_\+buffer (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_aec87de7200dcfff1ef5ceb9270a9695d}
+Writes the content of the buffer to the end of the file on the disk. Returns the number of bytes flushed into the file. \hypertarget{classBINFile_a3164b6df49cae6c1cd8c3717d769587c}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!init@{init}}
+\index{init@{init}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{init}]{\setlength{\rightskip}{0pt plus 5cm}void B\+I\+N\+File\+::init (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_a3164b6df49cae6c1cd8c3717d769587c}
+Initialization. \hypertarget{classBINFile_a60a5384b15aa37bfec6a90769e0d6d0e}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!open@{open}}
+\index{open@{open}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{open}]{\setlength{\rightskip}{0pt plus 5cm}int B\+I\+N\+File\+::open (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{filename, }
+\item[{const char $\ast$}]{mode, }
+\item[{size\+\_\+t}]{segment\+\_\+size = {\ttfamily {\bf B\+I\+N\+\_\+\+S\+E\+G\+M\+E\+N\+T\+\_\+\+S\+I\+Z\+E}}}
+\end{DoxyParamCaption}
+)}\label{classBINFile_a60a5384b15aa37bfec6a90769e0d6d0e}
+Opens the B\+I\+N file in the input mode (see \hyperlink{classBINFile_a7f7e6a137b016f6cd533515076982faa}{B\+I\+N\+File\+::mode\+\_\+}). \hypertarget{classBINFile_abf7962c22bc33ca0ed05f0aa983a8a9a}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!operator$>$$>$@{operator$>$$>$}}
+\index{operator$>$$>$@{operator$>$$>$}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{operator$>$$>$}]{\setlength{\rightskip}{0pt plus 5cm}bool B\+I\+N\+File\+::operator$>$$>$ (
+\begin{DoxyParamCaption}
+\item[{{\bf Cell} \&}]{cell}
+\end{DoxyParamCaption}
+)}\label{classBINFile_abf7962c22bc33ca0ed05f0aa983a8a9a}
+Retrieves the next cell from the file. \hypertarget{classBINFile_a538f9f21efe941296fef850a704f57a2}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!read@{read}}
+\index{read@{read}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{read}]{\setlength{\rightskip}{0pt plus 5cm}ssize\+\_\+t B\+I\+N\+File\+::read (
+\begin{DoxyParamCaption}
+\item[{void $\ast$}]{destination, }
+\item[{size\+\_\+t}]{size}
+\end{DoxyParamCaption}
+)}\label{classBINFile_a538f9f21efe941296fef850a704f57a2}
+Reads binary data from the file and into destination, whose amount is specified by the input size. Returns the number of bytes read. \hypertarget{classBINFile_abe10e65058419b0af7854ef5427ff21d}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!read\+\_\+segment@{read\+\_\+segment}}
+\index{read\+\_\+segment@{read\+\_\+segment}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{read\+\_\+segment}]{\setlength{\rightskip}{0pt plus 5cm}ssize\+\_\+t B\+I\+N\+File\+::read\+\_\+segment (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_abe10e65058419b0af7854ef5427ff21d}
+Reads a segment of binary data with size \hyperlink{classBINFile_a55f579b9027292fa6f56cb7f0e90f922}{B\+I\+N\+File\+::segment\+\_\+size\+\_\+}. Returns the number of bytes read into the segment. \hypertarget{classBINFile_a20b68d2df1585e45accf7f3a408ce893}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!write@{write}}
+\index{write@{write}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{write}]{\setlength{\rightskip}{0pt plus 5cm}ssize\+\_\+t B\+I\+N\+File\+::write (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{source, }
+\item[{size\+\_\+t}]{data}
+\end{DoxyParamCaption}
+)}\label{classBINFile_a20b68d2df1585e45accf7f3a408ce893}
+Writes data from the source into the file, whose amount is specified by the input size. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classBINFile_a028698fec2c4c95fec3162c8aa140afa}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}}
+\index{array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{array\+\_\+schema\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Array\+Schema}$\ast$ B\+I\+N\+File\+::array\+\_\+schema\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_a028698fec2c4c95fec3162c8aa140afa}
+The array schema. \hypertarget{classBINFile_ac04f57a328c37aeba330851643d86455}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!buffer\+\_\+@{buffer\+\_\+}}
+\index{buffer\+\_\+@{buffer\+\_\+}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{buffer\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ B\+I\+N\+File\+::buffer\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_ac04f57a328c37aeba330851643d86455}
+The buffer will temporarily store the data, before they are written to the file on the disk (in W\+R\+I\+T\+E/\+A\+P\+P\+E\+N\+D mode) or when segments are read from the disk (in R\+E\+A\+D mode). \hypertarget{classBINFile_a6638b7bd9a54172d694d9c955ad3aed7}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!buffer\+\_\+end\+\_\+@{buffer\+\_\+end\+\_\+}}
+\index{buffer\+\_\+end\+\_\+@{buffer\+\_\+end\+\_\+}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{buffer\+\_\+end\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t B\+I\+N\+File\+::buffer\+\_\+end\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_a6638b7bd9a54172d694d9c955ad3aed7}
+The position A\+F\+T\+E\+R the last useful byte in buffer. \hypertarget{classBINFile_a93a5979fd3c9ccf0e58866e49e516890}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!buffer\+\_\+offset\+\_\+@{buffer\+\_\+offset\+\_\+}}
+\index{buffer\+\_\+offset\+\_\+@{buffer\+\_\+offset\+\_\+}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{buffer\+\_\+offset\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t B\+I\+N\+File\+::buffer\+\_\+offset\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_a93a5979fd3c9ccf0e58866e49e516890}
+A pointer to the current position (for reading or writing) in the buffer. \hypertarget{classBINFile_a38d5e4398274c4f8493cbd74b03967d5}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!cell\+\_\+@{cell\+\_\+}}
+\index{cell\+\_\+@{cell\+\_\+}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{cell\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ B\+I\+N\+File\+::cell\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_a38d5e4398274c4f8493cbd74b03967d5}
+Part of the read state\+: stores the current cell to be read/written. \hypertarget{classBINFile_aa6035d4e2e3877f57c1b15924e22c9d0}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!cell\+\_\+size\+\_\+@{cell\+\_\+size\+\_\+}}
+\index{cell\+\_\+size\+\_\+@{cell\+\_\+size\+\_\+}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{cell\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}ssize\+\_\+t B\+I\+N\+File\+::cell\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_aa6035d4e2e3877f57c1b15924e22c9d0}
+Part of the read state\+: stores the cell size. \hypertarget{classBINFile_a8af11765bb8744748a812e78b15e22ac}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!coords\+\_\+@{coords\+\_\+}}
+\index{coords\+\_\+@{coords\+\_\+}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{coords\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ B\+I\+N\+File\+::coords\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_a8af11765bb8744748a812e78b15e22ac}
+Part of the read state\+: stores the current coordinates to be read/written. \hypertarget{classBINFile_ab109a798204ffecf9c85d7d9e8e5c469}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!coords\+\_\+size\+\_\+@{coords\+\_\+size\+\_\+}}
+\index{coords\+\_\+size\+\_\+@{coords\+\_\+size\+\_\+}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{coords\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t B\+I\+N\+File\+::coords\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_ab109a798204ffecf9c85d7d9e8e5c469}
+The coordinates size. \hypertarget{classBINFile_af357b1564acccf461dfdb846249a35e9}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!file\+\_\+offset\+\_\+@{file\+\_\+offset\+\_\+}}
+\index{file\+\_\+offset\+\_\+@{file\+\_\+offset\+\_\+}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{file\+\_\+offset\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t B\+I\+N\+File\+::file\+\_\+offset\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_af357b1564acccf461dfdb846249a35e9}
+A pointer to the current position in the file where the N\+E\+X\+T read will take place (used only by \hyperlink{classBINFile_a538f9f21efe941296fef850a704f57a2}{B\+I\+N\+File\+::read} in R\+E\+A\+D mode). \hypertarget{classBINFile_abcaf9d032fcac353059a72244120e9fa}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!filename\+\_\+@{filename\+\_\+}}
+\index{filename\+\_\+@{filename\+\_\+}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{filename\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string B\+I\+N\+File\+::filename\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_abcaf9d032fcac353059a72244120e9fa}
+The name of the B\+I\+N file. \hypertarget{classBINFile_a7f7e6a137b016f6cd533515076982faa}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!mode\+\_\+@{mode\+\_\+}}
+\index{mode\+\_\+@{mode\+\_\+}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{mode\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char B\+I\+N\+File\+::mode\+\_\+\mbox{[}2\mbox{]}\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_a7f7e6a137b016f6cd533515076982faa}
+The mode of the B\+I\+N file. There are three modes available\+:
+
+\char`\"{}r\char`\"{}\+: R\+E\+A\+D mode
+
+\char`\"{}w\char`\"{}\+: W\+R\+I\+T\+E mode
+
+\char`\"{}a\char`\"{}\+: A\+P\+P\+E\+N\+D mode \hypertarget{classBINFile_a55f579b9027292fa6f56cb7f0e90f922}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}}
+\index{segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{segment\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t B\+I\+N\+File\+::segment\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_a55f579b9027292fa6f56cb7f0e90f922}
+Determines the amount of data exchanged in an I/\+O operation between the disk and the main memory. \hypertarget{classBINFile_af6d2bb5c8844e38d6631905fd662e8d8}{}\index{B\+I\+N\+File@{B\+I\+N\+File}!var\+\_\+size\+\_\+@{var\+\_\+size\+\_\+}}
+\index{var\+\_\+size\+\_\+@{var\+\_\+size\+\_\+}!B\+I\+N\+File@{B\+I\+N\+File}}
+\subsubsection[{var\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}bool B\+I\+N\+File\+::var\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBINFile_af6d2bb5c8844e38d6631905fd662e8d8}
+True if the cells are variable-\/sized. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/misc/\hyperlink{bin__file_8h}{bin\+\_\+file.\+h}\end{DoxyCompactItemize}

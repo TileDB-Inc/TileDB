@@ -1,0 +1,350 @@
+\hypertarget{classStorageManager_1_1Array}{}\section{Storage\+Manager\+:\+:Array Class Reference}
+\label{classStorageManager_1_1Array}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+
+
+{\ttfamily \#include $<$storage\+\_\+manager.\+h$>$}
+
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classStorageManager_1_1Array_1_1const__cell__iterator}{const\+\_\+cell\+\_\+iterator}
+\item 
+class \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator}{const\+\_\+reverse\+\_\+cell\+\_\+iterator}
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classStorageManager_1_1Array_a34ccd40b341e34971888aad67cc26703}{Array} (const std\+::string \&\hyperlink{classStorageManager_1_1Array_ad83e2d64d928cb81ccd29c87a91d5c90}{workspace\+\_\+}, size\+\_\+t segment\+\_\+size, size\+\_\+t write\+\_\+state\+\_\+max\+\_\+size, const \hyperlink{classArraySchema}{Array\+Schema} $\ast$\hyperlink{classStorageManager_1_1Array_aa1850c5ddb91144695bd06e943987306}{array\+\_\+schema}, const char $\ast$mode)
+\item 
+\hyperlink{classStorageManager_1_1Array_af98b6bb426d8c6da3f8b2d4564a92061}{$\sim$\+Array} ()
+\item 
+const std\+::string \& \hyperlink{classStorageManager_1_1Array_a927402ef379bb5819fbab66661f57b56}{array\+\_\+name} () const 
+\item 
+const \hyperlink{classArraySchema}{Array\+Schema} $\ast$ \hyperlink{classStorageManager_1_1Array_aa1850c5ddb91144695bd06e943987306}{array\+\_\+schema} () const 
+\item 
+bool \hyperlink{classStorageManager_1_1Array_a5b4ddd07168ccbf6bffbedbe2a485974}{empty} () const 
+\item 
+void \hyperlink{classStorageManager_1_1Array_a8fe21da630a2e2d7ed91f99107107ed9}{write\+\_\+cell} (const \hyperlink{structStorageManager_1_1Cell}{Cell} \&cell, size\+\_\+t cell\+\_\+size)
+\item 
+void \hyperlink{classStorageManager_1_1Array_a958b182622c7db818d809d2ece793237}{write\+\_\+cell} (const \hyperlink{structStorageManager_1_1CellWithId}{Cell\+With\+Id} \&cell, size\+\_\+t cell\+\_\+size)
+\item 
+void \hyperlink{classStorageManager_1_1Array_a791cadced3979e081726ad286281269c}{write\+\_\+cell} (const \hyperlink{structStorageManager_1_1CellWith2Ids}{Cell\+With2\+Ids} \&cell, size\+\_\+t cell\+\_\+size)
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classStorageManager_1_1Array_a26aff080590c2dfc886c1788c74f75a9}{write\+\_\+cell\+\_\+sorted} (const void $\ast$cell)
+\item 
+bool \hyperlink{classStorageManager_1_1Array_a88ca789c0dc5c7dd193504320c957e27}{valid\+\_\+fragment\+\_\+ids} (const std\+::vector$<$ int $>$ \&fragment\+\_\+ids) const 
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classStorageManager_1_1Array_abeb13f5dcb0c733ef7c8d24f10ddfcbf}{close\+\_\+fragments} ()
+\item 
+void \hyperlink{classStorageManager_1_1Array_a722754b4d8708d7cce91fbdcb17c47df}{consolidate} ()
+\item 
+void \hyperlink{classStorageManager_1_1Array_a789d77382048b62ea0d56444ade6a940}{consolidate\+\_\+eagerly} ()
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classStorageManager_1_1Array_aacdf2eb295365f931ded4623aba8df16}{consolidate\+\_\+eagerly} ()
+\item 
+void \hyperlink{classStorageManager_1_1Array_a3b3f9d1e41940524b3a80aa3c4a9534e}{consolidate\+\_\+lazily} ()
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classStorageManager_1_1Array_a43c862d4e29d17f1936f555b5b5c9330}{consolidate\+\_\+lazily} ()
+\item 
+void \hyperlink{classStorageManager_1_1Array_a7f52fcac7db597e490da8ba4e7d18f02}{delete\+\_\+fragment} (int i)
+\item 
+void \hyperlink{classStorageManager_1_1Array_a87712c167349821559e685451c91027e}{delete\+\_\+fragments} ()
+\item 
+void \hyperlink{classStorageManager_1_1Array_a70d2a0dd467c286e5775f3349ae71a1f}{delete\+\_\+fragments} (const std\+::vector$<$ int $>$ \&fragment\+\_\+ids)
+\item 
+void \hyperlink{classStorageManager_1_1Array_a609acd429c23e208754eddddb685d6b3}{flush\+\_\+fragment\+\_\+tree} ()
+\item 
+void \hyperlink{classStorageManager_1_1Array_a167bc96eb8de2bdf7ce959326a94e79b}{forced\+\_\+close} ()
+\item 
+std\+::vector$<$ std\+::string $>$ \hyperlink{classStorageManager_1_1Array_a0b5e12e016eb224390e8e12d60851cdc}{get\+\_\+fragment\+\_\+names} () const 
+\item 
+void \hyperlink{classStorageManager_1_1Array_ab9c50db90b6f8e52c8c5cb719b7ea06e}{load\+\_\+fragment\+\_\+tree} ()
+\item 
+bool \hyperlink{classStorageManager_1_1Array_a04da148726d39fd950966075e28bc4fe}{must\+\_\+consolidate} ()
+\item 
+void \hyperlink{classStorageManager_1_1Array_a5cf4f6ad6b053bfe7d14269fef98a7fa}{new\+\_\+fragment} ()
+\item 
+void \hyperlink{classStorageManager_1_1Array_a73ada9603f1d3fb6ed6b1743c7d099c0}{open\+\_\+fragments} ()
+\item 
+void \hyperlink{classStorageManager_1_1Array_a16f5faa746ff3d2d109646d4fbbfdf5d}{operator delete} (void $\ast$ptr)
+\item 
+void \hyperlink{classStorageManager_1_1Array_ac371e07b0420ef1e030d17fe62fae57b}{operator delete\mbox{[}$\,$\mbox{]}} (void $\ast$ptr)
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+const \hyperlink{classArraySchema}{Array\+Schema} $\ast$ \hyperlink{classStorageManager_1_1Array_a8be1e363617e535395c92993646a1ad1}{array\+\_\+schema\+\_\+}
+\item 
+std\+::vector$<$ \hyperlink{classStorageManager_1_1Fragment}{Fragment} $\ast$ $>$ \hyperlink{classStorageManager_1_1Array_ab5e894d3193e5e2fd08c0d183fc4ad9f}{fragments\+\_\+}
+\item 
+\hyperlink{classStorageManager_ae54ce8d35b2528bd55505b40ae62a222}{Fragment\+Tree} \hyperlink{classStorageManager_1_1Array_a6b69e56370842f04f1c077e142f4f0b5}{fragment\+\_\+tree\+\_\+}
+\item 
+char \hyperlink{classStorageManager_1_1Array_a57ab3dcdbc1bc536390fc64a35dccf00}{mode\+\_\+} \mbox{[}2\mbox{]}
+\item 
+int64\+\_\+t \hyperlink{classStorageManager_1_1Array_a4f3b670bdd10b8e72bc560d1357622ab}{next\+\_\+fragment\+\_\+seq\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classStorageManager_1_1Array_a5af267d88338c68aee3fc7586b063bf0}{segment\+\_\+size\+\_\+}
+\item 
+std\+::string \hyperlink{classStorageManager_1_1Array_ad83e2d64d928cb81ccd29c87a91d5c90}{workspace\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classStorageManager_1_1Array_a84d19e5428f5c04b63d294acd5fa71d6}{write\+\_\+state\+\_\+max\+\_\+size\+\_\+}
+\end{DoxyCompactItemize}
+\subsection*{Friends}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classStorageManager_1_1Array_aab928c97ba2ed82b71fb011b1c4fef74}{}class {\bfseries Storage\+Manager}\label{classStorageManager_1_1Array_aab928c97ba2ed82b71fb011b1c4fef74}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This object holds a vector of \hyperlink{classStorageManager_1_1Fragment}{Fragment} objects and the array schema. It essentially includes all the information necessary to process an array. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classStorageManager_1_1Array_a34ccd40b341e34971888aad67cc26703}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!Array@{Array}}
+\index{Array@{Array}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{Array}]{\setlength{\rightskip}{0pt plus 5cm}Storage\+Manager\+::\+Array\+::\+Array (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{workspace\+\_\+, }
+\item[{size\+\_\+t}]{segment\+\_\+size, }
+\item[{size\+\_\+t}]{write\+\_\+state\+\_\+max\+\_\+size, }
+\item[{const {\bf Array\+Schema} $\ast$}]{array\+\_\+schema, }
+\item[{const char $\ast$}]{mode}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_a34ccd40b341e34971888aad67cc26703}
+Constructor. \hypertarget{classStorageManager_1_1Array_af98b6bb426d8c6da3f8b2d4564a92061}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!````~Array@{$\sim$\+Array}}
+\index{````~Array@{$\sim$\+Array}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{$\sim$\+Array}]{\setlength{\rightskip}{0pt plus 5cm}Storage\+Manager\+::\+Array\+::$\sim$\+Array (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_af98b6bb426d8c6da3f8b2d4564a92061}
+Destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classStorageManager_1_1Array_a927402ef379bb5819fbab66661f57b56}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!array\+\_\+name@{array\+\_\+name}}
+\index{array\+\_\+name@{array\+\_\+name}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{array\+\_\+name}]{\setlength{\rightskip}{0pt plus 5cm}const std\+::string\& Storage\+Manager\+::\+Array\+::array\+\_\+name (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classStorageManager_1_1Array_a927402ef379bb5819fbab66661f57b56}
+Returns the array name. \hypertarget{classStorageManager_1_1Array_aa1850c5ddb91144695bd06e943987306}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!array\+\_\+schema@{array\+\_\+schema}}
+\index{array\+\_\+schema@{array\+\_\+schema}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{array\+\_\+schema}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Array\+Schema}$\ast$ Storage\+Manager\+::\+Array\+::array\+\_\+schema (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classStorageManager_1_1Array_aa1850c5ddb91144695bd06e943987306}
+Returns the array schema. \hypertarget{classStorageManager_1_1Array_abeb13f5dcb0c733ef7c8d24f10ddfcbf}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!close\+\_\+fragments@{close\+\_\+fragments}}
+\index{close\+\_\+fragments@{close\+\_\+fragments}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{close\+\_\+fragments}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::close\+\_\+fragments (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_abeb13f5dcb0c733ef7c8d24f10ddfcbf}
+Closes all the array fragments. \hypertarget{classStorageManager_1_1Array_a722754b4d8708d7cce91fbdcb17c47df}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!consolidate@{consolidate}}
+\index{consolidate@{consolidate}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{consolidate}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::consolidate (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a722754b4d8708d7cce91fbdcb17c47df}
+Consolidates fragments based on the consolidation step defined in the array schema. \hypertarget{classStorageManager_1_1Array_a789d77382048b62ea0d56444ade6a940}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!consolidate\+\_\+eagerly@{consolidate\+\_\+eagerly}}
+\index{consolidate\+\_\+eagerly@{consolidate\+\_\+eagerly}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{consolidate\+\_\+eagerly}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::consolidate\+\_\+eagerly (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a789d77382048b62ea0d56444ade6a940}
+Consolidates the array fragments using the eager algorithm. Specifically, it always consolidates the (two) existing fragments. \hypertarget{classStorageManager_1_1Array_aacdf2eb295365f931ded4623aba8df16}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!consolidate\+\_\+eagerly@{consolidate\+\_\+eagerly}}
+\index{consolidate\+\_\+eagerly@{consolidate\+\_\+eagerly}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{consolidate\+\_\+eagerly}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void Storage\+Manager\+::\+Array\+::consolidate\+\_\+eagerly (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_aacdf2eb295365f931ded4623aba8df16}
+Consolidates the array fragments using the eager algorithm. Specifically, it always consolidates the (two) existing fragments. \hypertarget{classStorageManager_1_1Array_a3b3f9d1e41940524b3a80aa3c4a9534e}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!consolidate\+\_\+lazily@{consolidate\+\_\+lazily}}
+\index{consolidate\+\_\+lazily@{consolidate\+\_\+lazily}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{consolidate\+\_\+lazily}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::consolidate\+\_\+lazily (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a3b3f9d1e41940524b3a80aa3c4a9534e}
+Consolidates the array fragments using the lazy algorithm. Specifically, it always consolidates the latest c fragments, where c is the consolidation step. \hypertarget{classStorageManager_1_1Array_a43c862d4e29d17f1936f555b5b5c9330}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!consolidate\+\_\+lazily@{consolidate\+\_\+lazily}}
+\index{consolidate\+\_\+lazily@{consolidate\+\_\+lazily}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{consolidate\+\_\+lazily}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void Storage\+Manager\+::\+Array\+::consolidate\+\_\+lazily (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a43c862d4e29d17f1936f555b5b5c9330}
+Consolidates the array fragments using the lazy algorithm. Specifically, it always consolidates the latest c fragments, where c is the consolidation step. \hypertarget{classStorageManager_1_1Array_a7f52fcac7db597e490da8ba4e7d18f02}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!delete\+\_\+fragment@{delete\+\_\+fragment}}
+\index{delete\+\_\+fragment@{delete\+\_\+fragment}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{delete\+\_\+fragment}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::delete\+\_\+fragment (
+\begin{DoxyParamCaption}
+\item[{int}]{i}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a7f52fcac7db597e490da8ba4e7d18f02}
+Deletes the i-\/th fragment from the array. \hypertarget{classStorageManager_1_1Array_a87712c167349821559e685451c91027e}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!delete\+\_\+fragments@{delete\+\_\+fragments}}
+\index{delete\+\_\+fragments@{delete\+\_\+fragments}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{delete\+\_\+fragments}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::delete\+\_\+fragments (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a87712c167349821559e685451c91027e}
+Deletes all fragments in the array. \hypertarget{classStorageManager_1_1Array_a70d2a0dd467c286e5775f3349ae71a1f}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!delete\+\_\+fragments@{delete\+\_\+fragments}}
+\index{delete\+\_\+fragments@{delete\+\_\+fragments}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{delete\+\_\+fragments}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::delete\+\_\+fragments (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ int $>$ \&}]{fragment\+\_\+ids}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a70d2a0dd467c286e5775f3349ae71a1f}
+Deletes the fragments whose ids are included in the input. \hypertarget{classStorageManager_1_1Array_a5b4ddd07168ccbf6bffbedbe2a485974}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!empty@{empty}}
+\index{empty@{empty}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{empty}]{\setlength{\rightskip}{0pt plus 5cm}bool Storage\+Manager\+::\+Array\+::empty (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classStorageManager_1_1Array_a5b4ddd07168ccbf6bffbedbe2a485974}
+Checks if the array is empty. \hypertarget{classStorageManager_1_1Array_a609acd429c23e208754eddddb685d6b3}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!flush\+\_\+fragment\+\_\+tree@{flush\+\_\+fragment\+\_\+tree}}
+\index{flush\+\_\+fragment\+\_\+tree@{flush\+\_\+fragment\+\_\+tree}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{flush\+\_\+fragment\+\_\+tree}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::flush\+\_\+fragment\+\_\+tree (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a609acd429c23e208754eddddb685d6b3}
+Flushes the fragment tree, i.\+e., the book-\/keeping structure about the array fragments, to the disk. \hypertarget{classStorageManager_1_1Array_a167bc96eb8de2bdf7ce959326a94e79b}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!forced\+\_\+close@{forced\+\_\+close}}
+\index{forced\+\_\+close@{forced\+\_\+close}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{forced\+\_\+close}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::forced\+\_\+close (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a167bc96eb8de2bdf7ce959326a94e79b}
+Forces the array to close, during abnormal execution. If the array was opened in write or append mode, the last fragment is deleted (since its creation procedure was interrupted). \hypertarget{classStorageManager_1_1Array_a0b5e12e016eb224390e8e12d60851cdc}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!get\+\_\+fragment\+\_\+names@{get\+\_\+fragment\+\_\+names}}
+\index{get\+\_\+fragment\+\_\+names@{get\+\_\+fragment\+\_\+names}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{get\+\_\+fragment\+\_\+names}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$std\+::string$>$ Storage\+Manager\+::\+Array\+::get\+\_\+fragment\+\_\+names (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a0b5e12e016eb224390e8e12d60851cdc}
+Returns all the existing fragment names. \hypertarget{classStorageManager_1_1Array_ab9c50db90b6f8e52c8c5cb719b7ea06e}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!load\+\_\+fragment\+\_\+tree@{load\+\_\+fragment\+\_\+tree}}
+\index{load\+\_\+fragment\+\_\+tree@{load\+\_\+fragment\+\_\+tree}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{load\+\_\+fragment\+\_\+tree}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::load\+\_\+fragment\+\_\+tree (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_ab9c50db90b6f8e52c8c5cb719b7ea06e}
+Loads the fragment tree, i.\+e., the book-\/keeping structure about the array fragments. \hypertarget{classStorageManager_1_1Array_a04da148726d39fd950966075e28bc4fe}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!must\+\_\+consolidate@{must\+\_\+consolidate}}
+\index{must\+\_\+consolidate@{must\+\_\+consolidate}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{must\+\_\+consolidate}]{\setlength{\rightskip}{0pt plus 5cm}bool Storage\+Manager\+::\+Array\+::must\+\_\+consolidate (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a04da148726d39fd950966075e28bc4fe}
+Returns true if consolidation must take place. \hypertarget{classStorageManager_1_1Array_a5cf4f6ad6b053bfe7d14269fef98a7fa}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!new\+\_\+fragment@{new\+\_\+fragment}}
+\index{new\+\_\+fragment@{new\+\_\+fragment}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{new\+\_\+fragment}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::new\+\_\+fragment (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a5cf4f6ad6b053bfe7d14269fef98a7fa}
+Initializes a new fragment. \hypertarget{classStorageManager_1_1Array_a73ada9603f1d3fb6ed6b1743c7d099c0}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!open\+\_\+fragments@{open\+\_\+fragments}}
+\index{open\+\_\+fragments@{open\+\_\+fragments}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{open\+\_\+fragments}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::open\+\_\+fragments (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a73ada9603f1d3fb6ed6b1743c7d099c0}
+Opens all the existing array fragments. \hypertarget{classStorageManager_1_1Array_a16f5faa746ff3d2d109646d4fbbfdf5d}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!operator delete@{operator delete}}
+\index{operator delete@{operator delete}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{operator delete}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::operator delete (
+\begin{DoxyParamCaption}
+\item[{void $\ast$}]{ptr}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classStorageManager_1_1Array_a16f5faa746ff3d2d109646d4fbbfdf5d}
+Override the delete operator so that only a \hyperlink{classStorageManager}{Storage\+Manager} object can delete dynamically created \hyperlink{classStorageManager_1_1Array}{Array} objects. \hypertarget{classStorageManager_1_1Array_ac371e07b0420ef1e030d17fe62fae57b}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!operator delete\mbox{[}$\,$\mbox{]}@{operator delete[]}}
+\index{operator delete\mbox{[}$\,$\mbox{]}@{operator delete[]}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{operator delete[]}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::operator delete\mbox{[}$\,$\mbox{]} (
+\begin{DoxyParamCaption}
+\item[{void $\ast$}]{ptr}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classStorageManager_1_1Array_ac371e07b0420ef1e030d17fe62fae57b}
+Override the delete\mbox{[}\mbox{]} operator so that only a \hyperlink{classStorageManager}{Storage\+Manager} object can delete dynamically created \hyperlink{classStorageManager_1_1Array}{Array} objects. \hypertarget{classStorageManager_1_1Array_a88ca789c0dc5c7dd193504320c957e27}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!valid\+\_\+fragment\+\_\+ids@{valid\+\_\+fragment\+\_\+ids}}
+\index{valid\+\_\+fragment\+\_\+ids@{valid\+\_\+fragment\+\_\+ids}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{valid\+\_\+fragment\+\_\+ids}]{\setlength{\rightskip}{0pt plus 5cm}bool Storage\+Manager\+::\+Array\+::valid\+\_\+fragment\+\_\+ids (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ int $>$ \&}]{fragment\+\_\+ids}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_1_1Array_a88ca789c0dc5c7dd193504320c957e27}
+Returns true if the input fragment ids are valid. \hypertarget{classStorageManager_1_1Array_a8fe21da630a2e2d7ed91f99107107ed9}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!write\+\_\+cell@{write\+\_\+cell}}
+\index{write\+\_\+cell@{write\+\_\+cell}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{write\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::write\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const {\bf Cell} \&}]{cell, }
+\item[{size\+\_\+t}]{cell\+\_\+size}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_a8fe21da630a2e2d7ed91f99107107ed9}
+Writes a cell into the array. \hypertarget{classStorageManager_1_1Array_a958b182622c7db818d809d2ece793237}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!write\+\_\+cell@{write\+\_\+cell}}
+\index{write\+\_\+cell@{write\+\_\+cell}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{write\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::write\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const {\bf Cell\+With\+Id} \&}]{cell, }
+\item[{size\+\_\+t}]{cell\+\_\+size}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_a958b182622c7db818d809d2ece793237}
+Writes a cell into the array. \hypertarget{classStorageManager_1_1Array_a791cadced3979e081726ad286281269c}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!write\+\_\+cell@{write\+\_\+cell}}
+\index{write\+\_\+cell@{write\+\_\+cell}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{write\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Array\+::write\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const {\bf Cell\+With2\+Ids} \&}]{cell, }
+\item[{size\+\_\+t}]{cell\+\_\+size}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_a791cadced3979e081726ad286281269c}
+Writes a cell into the array. \hypertarget{classStorageManager_1_1Array_a26aff080590c2dfc886c1788c74f75a9}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!write\+\_\+cell\+\_\+sorted@{write\+\_\+cell\+\_\+sorted}}
+\index{write\+\_\+cell\+\_\+sorted@{write\+\_\+cell\+\_\+sorted}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{write\+\_\+cell\+\_\+sorted}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void Storage\+Manager\+::\+Array\+::write\+\_\+cell\+\_\+sorted (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{cell}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_a26aff080590c2dfc886c1788c74f75a9}
+Writes a cell into the array, respecting the global cell order. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classStorageManager_1_1Array_a8be1e363617e535395c92993646a1ad1}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}}
+\index{array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{array\+\_\+schema\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Array\+Schema}$\ast$ Storage\+Manager\+::\+Array\+::array\+\_\+schema\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a8be1e363617e535395c92993646a1ad1}
+The array schema. \hypertarget{classStorageManager_1_1Array_a6b69e56370842f04f1c077e142f4f0b5}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!fragment\+\_\+tree\+\_\+@{fragment\+\_\+tree\+\_\+}}
+\index{fragment\+\_\+tree\+\_\+@{fragment\+\_\+tree\+\_\+}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{fragment\+\_\+tree\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Fragment\+Tree} Storage\+Manager\+::\+Array\+::fragment\+\_\+tree\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a6b69e56370842f04f1c077e142f4f0b5}
+The fragment tree of the array (book-\/keeping about all fragments). \hypertarget{classStorageManager_1_1Array_ab5e894d3193e5e2fd08c0d183fc4ad9f}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!fragments\+\_\+@{fragments\+\_\+}}
+\index{fragments\+\_\+@{fragments\+\_\+}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{fragments\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf Fragment}$\ast$$>$ Storage\+Manager\+::\+Array\+::fragments\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_ab5e894d3193e5e2fd08c0d183fc4ad9f}
+The array fragments. \hypertarget{classStorageManager_1_1Array_a57ab3dcdbc1bc536390fc64a35dccf00}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!mode\+\_\+@{mode\+\_\+}}
+\index{mode\+\_\+@{mode\+\_\+}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{mode\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char Storage\+Manager\+::\+Array\+::mode\+\_\+\mbox{[}2\mbox{]}\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a57ab3dcdbc1bc536390fc64a35dccf00}
+The array mode. The following modes are supported\+:
+
+\char`\"{}r\char`\"{}\+: Read mode
+
+\char`\"{}w\char`\"{}\+: Write mode (if the array exists, it is deleted)
+
+\char`\"{}a\char`\"{}\+: Append mode \hypertarget{classStorageManager_1_1Array_a4f3b670bdd10b8e72bc560d1357622ab}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!next\+\_\+fragment\+\_\+seq\+\_\+@{next\+\_\+fragment\+\_\+seq\+\_\+}}
+\index{next\+\_\+fragment\+\_\+seq\+\_\+@{next\+\_\+fragment\+\_\+seq\+\_\+}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{next\+\_\+fragment\+\_\+seq\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Storage\+Manager\+::\+Array\+::next\+\_\+fragment\+\_\+seq\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a4f3b670bdd10b8e72bc560d1357622ab}
+The next fragment sequence. \hypertarget{classStorageManager_1_1Array_a5af267d88338c68aee3fc7586b063bf0}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}}
+\index{segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{segment\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Storage\+Manager\+::\+Array\+::segment\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a5af267d88338c68aee3fc7586b063bf0}
+The segment size. \hypertarget{classStorageManager_1_1Array_ad83e2d64d928cb81ccd29c87a91d5c90}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!workspace\+\_\+@{workspace\+\_\+}}
+\index{workspace\+\_\+@{workspace\+\_\+}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{workspace\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string Storage\+Manager\+::\+Array\+::workspace\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_ad83e2d64d928cb81ccd29c87a91d5c90}
+The workspace where the array data are created. \hypertarget{classStorageManager_1_1Array_a84d19e5428f5c04b63d294acd5fa71d6}{}\index{Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}!write\+\_\+state\+\_\+max\+\_\+size\+\_\+@{write\+\_\+state\+\_\+max\+\_\+size\+\_\+}}
+\index{write\+\_\+state\+\_\+max\+\_\+size\+\_\+@{write\+\_\+state\+\_\+max\+\_\+size\+\_\+}!Storage\+Manager\+::\+Array@{Storage\+Manager\+::\+Array}}
+\subsubsection[{write\+\_\+state\+\_\+max\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Storage\+Manager\+::\+Array\+::write\+\_\+state\+\_\+max\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_a84d19e5428f5c04b63d294acd5fa71d6}
+Max memory size of the write state when creating an array fragment. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/\hyperlink{storage__manager_8h}{storage\+\_\+manager.\+h}\end{DoxyCompactItemize}

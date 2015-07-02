@@ -1,0 +1,116 @@
+\hypertarget{classStorageManager_1_1Run}{}\section{Storage\+Manager\+:\+:Run Class Reference}
+\label{classStorageManager_1_1Run}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+
+
+{\ttfamily \#include $<$storage\+\_\+manager.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classStorageManager_1_1Run_aa37cb3006513e5945691cc71b06351b6}{Run} (const std\+::string \&filename, size\+\_\+t cell\+\_\+size, size\+\_\+t segment\+\_\+size)
+\item 
+\hyperlink{classStorageManager_1_1Run_a4ca5180d63817ff640dffa29d6033be8}{$\sim$\+Run} ()
+\item 
+void $\ast$ \hyperlink{classStorageManager_1_1Run_a8b1070dc7961f02a014458d665952950}{next\+\_\+cell} () const 
+\item 
+void \hyperlink{classStorageManager_1_1Run_adc5b043a00a5c530cc25bcc080fccfa5}{advance\+\_\+cell} ()
+\item 
+void \hyperlink{classStorageManager_1_1Run_a321f10db67e1a17e452113d62939bdb6}{load\+\_\+next\+\_\+segment} ()
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+friend \hyperlink{classStorageManager_1_1Run_a3512c9f27a76e8f052fa0d98d8f9ff95}{Storage\+Manager}
+\item 
+size\+\_\+t \hyperlink{classStorageManager_1_1Run_a085f35ce859c791f5beda7f64b22f053}{cell\+\_\+size\+\_\+}
+\item 
+int \hyperlink{classStorageManager_1_1Run_ae40b20b29380fd5bebb8904c81a32279}{fd\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classStorageManager_1_1Run_adbc098acabc17a7958eb7a4067bdadcf}{file\+\_\+size\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classStorageManager_1_1Run_a6283a34a922c61fdbb863a61b1c9005b}{offset\+\_\+in\+\_\+file\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classStorageManager_1_1Run_ac53033fb4e873a77608550a8787c06a8}{offset\+\_\+in\+\_\+segment\+\_\+}
+\item 
+char $\ast$ \hyperlink{classStorageManager_1_1Run_a3968c31effbd9d638615c7e04579faf3}{segment\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classStorageManager_1_1Run_adfedc4915b956cfdb35e3a2db5e263ed}{segment\+\_\+size\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+In our external sorting algorithm, a run is a sorted sequence of cells, created during the 'sort' phase. Subsequently, multiple runs are merged into a single one during the 'merge' phase, potentially recursively. A \hyperlink{classStorageManager_1_1Run}{Run} object stores information about a sorted run. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classStorageManager_1_1Run_aa37cb3006513e5945691cc71b06351b6}{}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}!Run@{Run}}
+\index{Run@{Run}!Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+\subsubsection[{Run}]{\setlength{\rightskip}{0pt plus 5cm}Storage\+Manager\+::\+Run\+::\+Run (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{filename, }
+\item[{size\+\_\+t}]{cell\+\_\+size, }
+\item[{size\+\_\+t}]{segment\+\_\+size}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Run_aa37cb3006513e5945691cc71b06351b6}
+Takes as input the name of the file of the run, as well as the size of each cell that it stores. \hypertarget{classStorageManager_1_1Run_a4ca5180d63817ff640dffa29d6033be8}{}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}!````~Run@{$\sim$\+Run}}
+\index{````~Run@{$\sim$\+Run}!Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+\subsubsection[{$\sim$\+Run}]{\setlength{\rightskip}{0pt plus 5cm}Storage\+Manager\+::\+Run\+::$\sim$\+Run (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Run_a4ca5180d63817ff640dffa29d6033be8}
+Closes the run file and deletes the main memory segment. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classStorageManager_1_1Run_adc5b043a00a5c530cc25bcc080fccfa5}{}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}!advance\+\_\+cell@{advance\+\_\+cell}}
+\index{advance\+\_\+cell@{advance\+\_\+cell}!Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+\subsubsection[{advance\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Run\+::advance\+\_\+cell (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Run_adc5b043a00a5c530cc25bcc080fccfa5}
+Advances the offset in the segment to point to the next logical cell, and potentially fetches a new segment from the file. \hypertarget{classStorageManager_1_1Run_a321f10db67e1a17e452113d62939bdb6}{}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}!load\+\_\+next\+\_\+segment@{load\+\_\+next\+\_\+segment}}
+\index{load\+\_\+next\+\_\+segment@{load\+\_\+next\+\_\+segment}!Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+\subsubsection[{load\+\_\+next\+\_\+segment}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Run\+::load\+\_\+next\+\_\+segment (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Run_a321f10db67e1a17e452113d62939bdb6}
+Loads the next segment from the file. \hypertarget{classStorageManager_1_1Run_a8b1070dc7961f02a014458d665952950}{}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}!next\+\_\+cell@{next\+\_\+cell}}
+\index{next\+\_\+cell@{next\+\_\+cell}!Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+\subsubsection[{next\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ Storage\+Manager\+::\+Run\+::next\+\_\+cell (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_1_1Run_a8b1070dc7961f02a014458d665952950}
+Returns the next cell in the main memory segment. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classStorageManager_1_1Run_a085f35ce859c791f5beda7f64b22f053}{}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}!cell\+\_\+size\+\_\+@{cell\+\_\+size\+\_\+}}
+\index{cell\+\_\+size\+\_\+@{cell\+\_\+size\+\_\+}!Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+\subsubsection[{cell\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Storage\+Manager\+::\+Run\+::cell\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Run_a085f35ce859c791f5beda7f64b22f053}
+The cell size. \hypertarget{classStorageManager_1_1Run_ae40b20b29380fd5bebb8904c81a32279}{}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}!fd\+\_\+@{fd\+\_\+}}
+\index{fd\+\_\+@{fd\+\_\+}!Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+\subsubsection[{fd\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::\+Run\+::fd\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Run_ae40b20b29380fd5bebb8904c81a32279}
+File descriptor of the run. \hypertarget{classStorageManager_1_1Run_adbc098acabc17a7958eb7a4067bdadcf}{}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}!file\+\_\+size\+\_\+@{file\+\_\+size\+\_\+}}
+\index{file\+\_\+size\+\_\+@{file\+\_\+size\+\_\+}!Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+\subsubsection[{file\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Storage\+Manager\+::\+Run\+::file\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Run_adbc098acabc17a7958eb7a4067bdadcf}
+The file size. \hypertarget{classStorageManager_1_1Run_a6283a34a922c61fdbb863a61b1c9005b}{}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}!offset\+\_\+in\+\_\+file\+\_\+@{offset\+\_\+in\+\_\+file\+\_\+}}
+\index{offset\+\_\+in\+\_\+file\+\_\+@{offset\+\_\+in\+\_\+file\+\_\+}!Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+\subsubsection[{offset\+\_\+in\+\_\+file\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Storage\+Manager\+::\+Run\+::offset\+\_\+in\+\_\+file\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Run_a6283a34a922c61fdbb863a61b1c9005b}
+Current offset in the file. \hypertarget{classStorageManager_1_1Run_ac53033fb4e873a77608550a8787c06a8}{}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}!offset\+\_\+in\+\_\+segment\+\_\+@{offset\+\_\+in\+\_\+segment\+\_\+}}
+\index{offset\+\_\+in\+\_\+segment\+\_\+@{offset\+\_\+in\+\_\+segment\+\_\+}!Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+\subsubsection[{offset\+\_\+in\+\_\+segment\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Storage\+Manager\+::\+Run\+::offset\+\_\+in\+\_\+segment\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Run_ac53033fb4e873a77608550a8787c06a8}
+Current offset in the main memory segment. \hypertarget{classStorageManager_1_1Run_a3968c31effbd9d638615c7e04579faf3}{}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}!segment\+\_\+@{segment\+\_\+}}
+\index{segment\+\_\+@{segment\+\_\+}!Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+\subsubsection[{segment\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ Storage\+Manager\+::\+Run\+::segment\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Run_a3968c31effbd9d638615c7e04579faf3}
+Stores cells currently in main memory. \hypertarget{classStorageManager_1_1Run_adfedc4915b956cfdb35e3a2db5e263ed}{}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}!segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}}
+\index{segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}!Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+\subsubsection[{segment\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Storage\+Manager\+::\+Run\+::segment\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Run_adfedc4915b956cfdb35e3a2db5e263ed}
+The size of the segment. \hypertarget{classStorageManager_1_1Run_a3512c9f27a76e8f052fa0d98d8f9ff95}{}\index{Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}!Storage\+Manager@{Storage\+Manager}}
+\index{Storage\+Manager@{Storage\+Manager}!Storage\+Manager\+::\+Run@{Storage\+Manager\+::\+Run}}
+\subsubsection[{Storage\+Manager}]{\setlength{\rightskip}{0pt plus 5cm}friend Storage\+Manager\+::\+Run\+::\+Storage\+Manager\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Run_a3512c9f27a76e8f052fa0d98d8f9ff95}
+\hyperlink{classStorageManager}{Storage\+Manager} objects can manipulate private members of this class. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/\hyperlink{storage__manager_8h}{storage\+\_\+manager.\+h}\end{DoxyCompactItemize}

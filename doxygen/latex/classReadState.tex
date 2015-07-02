@@ -1,0 +1,186 @@
+\hypertarget{classReadState}{}\section{Read\+State Class Reference}
+\label{classReadState}\index{Read\+State@{Read\+State}}
+
+
+{\ttfamily \#include $<$read\+\_\+state.\+h$>$}
+
+\subsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+typedef std\+::pair$<$ int64\+\_\+t, int64\+\_\+t $>$ \hyperlink{classReadState_a63b506f0fede5c4a26c6bf4d744ce0bc}{Pos\+Range}
+\item 
+typedef std\+::vector$<$ \hyperlink{classReadState_a63b506f0fede5c4a26c6bf4d744ce0bc}{Pos\+Range} $>$ \hyperlink{classReadState_a83c1f880e2c8bf77f3aa57262bb31043}{Pos\+Ranges}
+\item 
+typedef std\+::vector$<$ void $\ast$ $>$ \hyperlink{classReadState_a0c5d7b8fb9e545e2f1801f9acdedd45e}{Segments}
+\item 
+typedef std\+::vector$<$ const \hyperlink{classTile}{Tile} $\ast$ $>$ \hyperlink{classReadState_aa1737c390080a8ba377a4ed43f19a569}{Tile\+List}
+\item 
+typedef std\+::vector$<$ \hyperlink{classReadState_aa1737c390080a8ba377a4ed43f19a569}{Tile\+List} $>$ \hyperlink{classReadState_a622db54fa71351c2c36d4a1dcd872225}{Tiles}
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classReadState_a147f37121a3d883d845ac709b103b3ab}{Read\+State} (const \hyperlink{classArraySchema}{Array\+Schema} $\ast$array\+\_\+schema, const \hyperlink{classBookKeeping}{Book\+Keeping} $\ast$book\+\_\+keeping, const std\+::string $\ast$fragment\+\_\+name, const std\+::string $\ast$workspace, size\+\_\+t segment\+\_\+size)
+\item 
+\hyperlink{classReadState_add7795984eb06c07c7c0c93e3542c470}{$\sim$\+Read\+State} ()
+\item 
+const \hyperlink{classTile}{Tile} $\ast$ \hyperlink{classReadState_a28225496c488f2410a668e0b5aeba95c}{get\+\_\+tile\+\_\+by\+\_\+pos} (int attribute\+\_\+id, int64\+\_\+t pos)
+\item 
+const \hyperlink{classTile}{Tile} $\ast$ \hyperlink{classReadState_a7ef29c1850c265d9eaf277900e81b6b3}{rget\+\_\+tile\+\_\+by\+\_\+pos} (int attribute\+\_\+id, int64\+\_\+t pos)
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classReadState_a923346fc533bd2917ce20b6488603e39}{delete\+\_\+tiles} (int attribute\+\_\+id)
+\item 
+std\+::pair$<$ size\+\_\+t, int64\+\_\+t $>$ \hyperlink{classReadState_a50b9f02f9ee47bc3d811350b2a8fdaa9}{load\+\_\+payloads\+\_\+into\+\_\+segment} (int attribute\+\_\+id, int64\+\_\+t pos)
+\item 
+void \hyperlink{classReadState_ab3282649fc2325ecfc92dfac954b0262}{load\+\_\+tiles\+\_\+from\+\_\+disk} (int attribute\+\_\+id, int64\+\_\+t pos)
+\item 
+void \hyperlink{classReadState_addf5d47d7afb67c0f6607aebabb0ef3e}{load\+\_\+tiles\+\_\+from\+\_\+segment} (int attribute\+\_\+id, int64\+\_\+t pos, size\+\_\+t segment\+\_\+utilization, int64\+\_\+t tiles\+\_\+in\+\_\+segment)
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+const \hyperlink{classArraySchema}{Array\+Schema} $\ast$ \hyperlink{classReadState_a82f571fce01a7869f065ac7cad996c56}{array\+\_\+schema\+\_\+}
+\item 
+\hyperlink{classReadState_a83c1f880e2c8bf77f3aa57262bb31043}{Pos\+Ranges} \hyperlink{classReadState_aedc33e4b6a486f30e0a0c4d40175d3dd}{pos\+\_\+ranges\+\_\+}
+\item 
+const \hyperlink{classBookKeeping}{Book\+Keeping} $\ast$ \hyperlink{classReadState_a5c8c6992cbec935ae0105bdd32d393d8}{book\+\_\+keeping\+\_\+}
+\item 
+const std\+::string $\ast$ \hyperlink{classReadState_aeacb54ee4e3a49b76f5099d429b6a052}{fragment\+\_\+name\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classReadState_ace4b01c72d47f9cf2eaa10e2e4628696}{segment\+\_\+size\+\_\+}
+\item 
+\hyperlink{classReadState_a0c5d7b8fb9e545e2f1801f9acdedd45e}{Segments} \hyperlink{classReadState_a6037655555de80978e7139ad835182e9}{segments\+\_\+}
+\item 
+\hyperlink{classReadState_a622db54fa71351c2c36d4a1dcd872225}{Tiles} \hyperlink{classReadState_a5b4ee76ddc26b1b5d7fd36f0695bc31f}{tiles\+\_\+}
+\item 
+const std\+::string $\ast$ \hyperlink{classReadState_a575195a908596181416a7ea0c5b45eeb}{workspace\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Stores the state necessary when reading tiles from a fragment. 
+
+\subsection{Member Typedef Documentation}
+\hypertarget{classReadState_a63b506f0fede5c4a26c6bf4d744ce0bc}{}\index{Read\+State@{Read\+State}!Pos\+Range@{Pos\+Range}}
+\index{Pos\+Range@{Pos\+Range}!Read\+State@{Read\+State}}
+\subsubsection[{Pos\+Range}]{\setlength{\rightskip}{0pt plus 5cm}typedef std\+::pair$<$int64\+\_\+t, int64\+\_\+t$>$ {\bf Read\+State\+::\+Pos\+Range}}\label{classReadState_a63b506f0fede5c4a26c6bf4d744ce0bc}
+Mnemonic\+: (pos\+\_\+lower, pos\+\_\+upper) \hypertarget{classReadState_a83c1f880e2c8bf77f3aa57262bb31043}{}\index{Read\+State@{Read\+State}!Pos\+Ranges@{Pos\+Ranges}}
+\index{Pos\+Ranges@{Pos\+Ranges}!Read\+State@{Read\+State}}
+\subsubsection[{Pos\+Ranges}]{\setlength{\rightskip}{0pt plus 5cm}typedef std\+::vector$<${\bf Pos\+Range}$>$ {\bf Read\+State\+::\+Pos\+Ranges}}\label{classReadState_a83c1f880e2c8bf77f3aa57262bb31043}
+Mnemonic\+: \mbox{[}attribute\+\_\+id\mbox{]} --$>$ (pos\+\_\+lower, pos\+\_\+upper) \hypertarget{classReadState_a0c5d7b8fb9e545e2f1801f9acdedd45e}{}\index{Read\+State@{Read\+State}!Segments@{Segments}}
+\index{Segments@{Segments}!Read\+State@{Read\+State}}
+\subsubsection[{Segments}]{\setlength{\rightskip}{0pt plus 5cm}typedef std\+::vector$<$void$\ast$$>$ {\bf Read\+State\+::\+Segments}}\label{classReadState_a0c5d7b8fb9e545e2f1801f9acdedd45e}
+Mnemonic\+: \mbox{[}attribute\+\_\+id\mbox{]} --$>$ segment \hypertarget{classReadState_aa1737c390080a8ba377a4ed43f19a569}{}\index{Read\+State@{Read\+State}!Tile\+List@{Tile\+List}}
+\index{Tile\+List@{Tile\+List}!Read\+State@{Read\+State}}
+\subsubsection[{Tile\+List}]{\setlength{\rightskip}{0pt plus 5cm}typedef std\+::vector$<$const {\bf Tile}$\ast$$>$ {\bf Read\+State\+::\+Tile\+List}}\label{classReadState_aa1737c390080a8ba377a4ed43f19a569}
+Mnemonic\+: $<$tile\#1, tile\#2, ...$>$ \hypertarget{classReadState_a622db54fa71351c2c36d4a1dcd872225}{}\index{Read\+State@{Read\+State}!Tiles@{Tiles}}
+\index{Tiles@{Tiles}!Read\+State@{Read\+State}}
+\subsubsection[{Tiles}]{\setlength{\rightskip}{0pt plus 5cm}typedef std\+::vector$<${\bf Tile\+List}$>$ {\bf Read\+State\+::\+Tiles}}\label{classReadState_a622db54fa71351c2c36d4a1dcd872225}
+Mnemonic\+: \mbox{[}attribute\+\_\+id\mbox{]} --$>$ $<$tile\#1, tile\#2, ...$>$ 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classReadState_a147f37121a3d883d845ac709b103b3ab}{}\index{Read\+State@{Read\+State}!Read\+State@{Read\+State}}
+\index{Read\+State@{Read\+State}!Read\+State@{Read\+State}}
+\subsubsection[{Read\+State}]{\setlength{\rightskip}{0pt plus 5cm}Read\+State\+::\+Read\+State (
+\begin{DoxyParamCaption}
+\item[{const {\bf Array\+Schema} $\ast$}]{array\+\_\+schema, }
+\item[{const {\bf Book\+Keeping} $\ast$}]{book\+\_\+keeping, }
+\item[{const std\+::string $\ast$}]{fragment\+\_\+name, }
+\item[{const std\+::string $\ast$}]{workspace, }
+\item[{size\+\_\+t}]{segment\+\_\+size}
+\end{DoxyParamCaption}
+)}\label{classReadState_a147f37121a3d883d845ac709b103b3ab}
+Constructor. \hypertarget{classReadState_add7795984eb06c07c7c0c93e3542c470}{}\index{Read\+State@{Read\+State}!````~Read\+State@{$\sim$\+Read\+State}}
+\index{````~Read\+State@{$\sim$\+Read\+State}!Read\+State@{Read\+State}}
+\subsubsection[{$\sim$\+Read\+State}]{\setlength{\rightskip}{0pt plus 5cm}Read\+State\+::$\sim$\+Read\+State (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classReadState_add7795984eb06c07c7c0c93e3542c470}
+Destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classReadState_a923346fc533bd2917ce20b6488603e39}{}\index{Read\+State@{Read\+State}!delete\+\_\+tiles@{delete\+\_\+tiles}}
+\index{delete\+\_\+tiles@{delete\+\_\+tiles}!Read\+State@{Read\+State}}
+\subsubsection[{delete\+\_\+tiles}]{\setlength{\rightskip}{0pt plus 5cm}void Read\+State\+::delete\+\_\+tiles (
+\begin{DoxyParamCaption}
+\item[{int}]{attribute\+\_\+id}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classReadState_a923346fc533bd2917ce20b6488603e39}
+Deletes the tiles of an attribute from main memory. \hypertarget{classReadState_a28225496c488f2410a668e0b5aeba95c}{}\index{Read\+State@{Read\+State}!get\+\_\+tile\+\_\+by\+\_\+pos@{get\+\_\+tile\+\_\+by\+\_\+pos}}
+\index{get\+\_\+tile\+\_\+by\+\_\+pos@{get\+\_\+tile\+\_\+by\+\_\+pos}!Read\+State@{Read\+State}}
+\subsubsection[{get\+\_\+tile\+\_\+by\+\_\+pos}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Tile}$\ast$ Read\+State\+::get\+\_\+tile\+\_\+by\+\_\+pos (
+\begin{DoxyParamCaption}
+\item[{int}]{attribute\+\_\+id, }
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+)}\label{classReadState_a28225496c488f2410a668e0b5aeba95c}
+Returns a tile for a given attribute and tile position. \hypertarget{classReadState_a50b9f02f9ee47bc3d811350b2a8fdaa9}{}\index{Read\+State@{Read\+State}!load\+\_\+payloads\+\_\+into\+\_\+segment@{load\+\_\+payloads\+\_\+into\+\_\+segment}}
+\index{load\+\_\+payloads\+\_\+into\+\_\+segment@{load\+\_\+payloads\+\_\+into\+\_\+segment}!Read\+State@{Read\+State}}
+\subsubsection[{load\+\_\+payloads\+\_\+into\+\_\+segment}]{\setlength{\rightskip}{0pt plus 5cm}std\+::pair$<$size\+\_\+t, int64\+\_\+t$>$ Read\+State\+::load\+\_\+payloads\+\_\+into\+\_\+segment (
+\begin{DoxyParamCaption}
+\item[{int}]{attribute\+\_\+id, }
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classReadState_a50b9f02f9ee47bc3d811350b2a8fdaa9}
+Loads the payloads of the tiles of a given attribute from disk and into the corresponding segment in the read state, starting from the tile at position pos. Returns the segment utilization after the load, and the number of tiles loaded. \hypertarget{classReadState_ab3282649fc2325ecfc92dfac954b0262}{}\index{Read\+State@{Read\+State}!load\+\_\+tiles\+\_\+from\+\_\+disk@{load\+\_\+tiles\+\_\+from\+\_\+disk}}
+\index{load\+\_\+tiles\+\_\+from\+\_\+disk@{load\+\_\+tiles\+\_\+from\+\_\+disk}!Read\+State@{Read\+State}}
+\subsubsection[{load\+\_\+tiles\+\_\+from\+\_\+disk}]{\setlength{\rightskip}{0pt plus 5cm}void Read\+State\+::load\+\_\+tiles\+\_\+from\+\_\+disk (
+\begin{DoxyParamCaption}
+\item[{int}]{attribute\+\_\+id, }
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classReadState_ab3282649fc2325ecfc92dfac954b0262}
+Loads tiles of a given attribute from disk, starting from the tile at position pos. \hypertarget{classReadState_addf5d47d7afb67c0f6607aebabb0ef3e}{}\index{Read\+State@{Read\+State}!load\+\_\+tiles\+\_\+from\+\_\+segment@{load\+\_\+tiles\+\_\+from\+\_\+segment}}
+\index{load\+\_\+tiles\+\_\+from\+\_\+segment@{load\+\_\+tiles\+\_\+from\+\_\+segment}!Read\+State@{Read\+State}}
+\subsubsection[{load\+\_\+tiles\+\_\+from\+\_\+segment}]{\setlength{\rightskip}{0pt plus 5cm}void Read\+State\+::load\+\_\+tiles\+\_\+from\+\_\+segment (
+\begin{DoxyParamCaption}
+\item[{int}]{attribute\+\_\+id, }
+\item[{int64\+\_\+t}]{pos, }
+\item[{size\+\_\+t}]{segment\+\_\+utilization, }
+\item[{int64\+\_\+t}]{tiles\+\_\+in\+\_\+segment}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classReadState_addf5d47d7afb67c0f6607aebabb0ef3e}
+Loads the tiles of an attribute from the corresponding segment and stores them into the read state. \hypertarget{classReadState_a7ef29c1850c265d9eaf277900e81b6b3}{}\index{Read\+State@{Read\+State}!rget\+\_\+tile\+\_\+by\+\_\+pos@{rget\+\_\+tile\+\_\+by\+\_\+pos}}
+\index{rget\+\_\+tile\+\_\+by\+\_\+pos@{rget\+\_\+tile\+\_\+by\+\_\+pos}!Read\+State@{Read\+State}}
+\subsubsection[{rget\+\_\+tile\+\_\+by\+\_\+pos}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Tile}$\ast$ Read\+State\+::rget\+\_\+tile\+\_\+by\+\_\+pos (
+\begin{DoxyParamCaption}
+\item[{int}]{attribute\+\_\+id, }
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+)}\label{classReadState_a7ef29c1850c265d9eaf277900e81b6b3}
+Returns a tile for a given attribute and tile position, when traversing tiles in reverse order. This is important so that the segments are retrieved from the disk such that the tile that triggeres the segment retrieval appears in the end of the segment, rather than in the beginning. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classReadState_a82f571fce01a7869f065ac7cad996c56}{}\index{Read\+State@{Read\+State}!array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}}
+\index{array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}!Read\+State@{Read\+State}}
+\subsubsection[{array\+\_\+schema\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Array\+Schema}$\ast$ Read\+State\+::array\+\_\+schema\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classReadState_a82f571fce01a7869f065ac7cad996c56}
+The array schema. \hypertarget{classReadState_a5c8c6992cbec935ae0105bdd32d393d8}{}\index{Read\+State@{Read\+State}!book\+\_\+keeping\+\_\+@{book\+\_\+keeping\+\_\+}}
+\index{book\+\_\+keeping\+\_\+@{book\+\_\+keeping\+\_\+}!Read\+State@{Read\+State}}
+\subsubsection[{book\+\_\+keeping\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Book\+Keeping}$\ast$ Read\+State\+::book\+\_\+keeping\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classReadState_a5c8c6992cbec935ae0105bdd32d393d8}
+The array book-\/keeping structures. \hypertarget{classReadState_aeacb54ee4e3a49b76f5099d429b6a052}{}\index{Read\+State@{Read\+State}!fragment\+\_\+name\+\_\+@{fragment\+\_\+name\+\_\+}}
+\index{fragment\+\_\+name\+\_\+@{fragment\+\_\+name\+\_\+}!Read\+State@{Read\+State}}
+\subsubsection[{fragment\+\_\+name\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const std\+::string$\ast$ Read\+State\+::fragment\+\_\+name\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classReadState_aeacb54ee4e3a49b76f5099d429b6a052}
+The fragment name. \hypertarget{classReadState_aedc33e4b6a486f30e0a0c4d40175d3dd}{}\index{Read\+State@{Read\+State}!pos\+\_\+ranges\+\_\+@{pos\+\_\+ranges\+\_\+}}
+\index{pos\+\_\+ranges\+\_\+@{pos\+\_\+ranges\+\_\+}!Read\+State@{Read\+State}}
+\subsubsection[{pos\+\_\+ranges\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Pos\+Ranges} Read\+State\+::pos\+\_\+ranges\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classReadState_aedc33e4b6a486f30e0a0c4d40175d3dd}
+Stores the range of the position of the tiles currently in main memory, for each attribute. The position of a tile is a sequence number indicating the order in which it was appended to the fragment with respect to the the other tiles appended to the fragment for the same attribute (e.\+g., 0 means that it was appended first, 1 second, etc.). The position helps in efficiently browsing tile info in the book-\/keeping structures. \hypertarget{classReadState_ace4b01c72d47f9cf2eaa10e2e4628696}{}\index{Read\+State@{Read\+State}!segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}}
+\index{segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}!Read\+State@{Read\+State}}
+\subsubsection[{segment\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Read\+State\+::segment\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classReadState_ace4b01c72d47f9cf2eaa10e2e4628696}
+The segment size \hypertarget{classReadState_a6037655555de80978e7139ad835182e9}{}\index{Read\+State@{Read\+State}!segments\+\_\+@{segments\+\_\+}}
+\index{segments\+\_\+@{segments\+\_\+}!Read\+State@{Read\+State}}
+\subsubsection[{segments\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Segments} Read\+State\+::segments\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classReadState_a6037655555de80978e7139ad835182e9}
+Stores one segment per attribute. \hypertarget{classReadState_a5b4ee76ddc26b1b5d7fd36f0695bc31f}{}\index{Read\+State@{Read\+State}!tiles\+\_\+@{tiles\+\_\+}}
+\index{tiles\+\_\+@{tiles\+\_\+}!Read\+State@{Read\+State}}
+\subsubsection[{tiles\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Tiles} Read\+State\+::tiles\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classReadState_a5b4ee76ddc26b1b5d7fd36f0695bc31f}
+Stores the tiles of every attribute currently in main memory. \hypertarget{classReadState_a575195a908596181416a7ea0c5b45eeb}{}\index{Read\+State@{Read\+State}!workspace\+\_\+@{workspace\+\_\+}}
+\index{workspace\+\_\+@{workspace\+\_\+}!Read\+State@{Read\+State}}
+\subsubsection[{workspace\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const std\+::string$\ast$ Read\+State\+::workspace\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classReadState_a575195a908596181416a7ea0c5b45eeb}
+The workspace. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/fragment/\hyperlink{read__state_8h}{read\+\_\+state.\+h}\end{DoxyCompactItemize}

@@ -1,0 +1,273 @@
+\hypertarget{classFragment}{}\section{Fragment Class Reference}
+\label{classFragment}\index{Fragment@{Fragment}}
+
+
+{\ttfamily \#include $<$fragment.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classFragment_aafae2c66e15168f08667e535d89005d9}{Fragment} (const std\+::string \&workspace, size\+\_\+t segment\+\_\+size, size\+\_\+t write\+\_\+state\+\_\+max\+\_\+size, const \hyperlink{classArraySchema}{Array\+Schema} $\ast$\hyperlink{classFragment_a72c53f5a7f20526e0f098d6085aed360}{array\+\_\+schema}, const std\+::string \&\hyperlink{classFragment_afc7a7122531b6311bf23db1f7cbe50a6}{fragment\+\_\+name})
+\item 
+\hyperlink{classFragment_afafef6f55cd0df3527e50d6ce01a182a}{$\sim$\+Fragment} ()
+\item 
+const \hyperlink{classArraySchema}{Array\+Schema} $\ast$ \hyperlink{classFragment_a72c53f5a7f20526e0f098d6085aed360}{array\+\_\+schema} () const 
+\item 
+\hyperlink{classFragmentConstTileIterator}{Fragment\+Const\+Tile\+Iterator} \hyperlink{classFragment_a0a0b8df7b80bbeac465d3ac41a7851f6}{begin} (int attribute\+\_\+id) const 
+\item 
+\hyperlink{classTile_a7103069b7ba05d1032733e3a026b8632}{Tile\+::\+Bounding\+Coordinates\+Pair} \hyperlink{classFragment_ac21bea21689b09ade1c6c0c89740dbe9}{bounding\+\_\+coordinates} (int64\+\_\+t pos) const 
+\item 
+const std\+::string \& \hyperlink{classFragment_afc7a7122531b6311bf23db1f7cbe50a6}{fragment\+\_\+name} () const 
+\item 
+const \hyperlink{classTile}{Tile} $\ast$ \hyperlink{classFragment_abccf1fe726b7f232b7e9590f8524e8d8}{get\+\_\+tile\+\_\+by\+\_\+pos} (int attribute\+\_\+id, int64\+\_\+t pos) const 
+\item 
+\hyperlink{classTile_a0b0f911c937d339ce110c18a2d015a4d}{Tile\+::\+M\+B\+R} \hyperlink{classFragment_a5de3cb81d82b4b577f0fa57d06003188}{mbr} (int64\+\_\+t pos) const 
+\item 
+\hyperlink{classFragmentConstReverseTileIterator}{Fragment\+Const\+Reverse\+Tile\+Iterator} \hyperlink{classFragment_a4665dfa29c15ce8584b39d99409fa579}{rbegin} (int attribute\+\_\+id) const 
+\item 
+const \hyperlink{classTile}{Tile} $\ast$ \hyperlink{classFragment_a7fbc6fb249aed1016111e9c92c95ac51}{rget\+\_\+tile\+\_\+by\+\_\+pos} (int attribute\+\_\+id, int64\+\_\+t pos) const 
+\item 
+int64\+\_\+t \hyperlink{classFragment_a57731aa914ccb0f784333da54712b17d}{tile\+\_\+id} (int64\+\_\+t pos) const 
+\item 
+int64\+\_\+t \hyperlink{classFragment_ac1deb7dc6b163313c65be1877a40b42c}{tile\+\_\+num} () const 
+\item 
+void \hyperlink{classFragment_ad25f9c90649e287ff41e645ceb6ec954}{clear\+\_\+book\+\_\+keeping} ()
+\item 
+void \hyperlink{classFragment_acbbcd1833f770a7ac41264dfc8ed7bd7}{clear\+\_\+write\+\_\+state} ()
+\item 
+void \hyperlink{classFragment_aa0cf4af1c1155d811b4f3687c5154bfd}{commit\+\_\+book\+\_\+keeping} ()
+\item 
+void \hyperlink{classFragment_a654ad9990b763a9db422346e8673956c}{flush\+\_\+write\+\_\+state} ()
+\item 
+void \hyperlink{classFragment_adbbc63ebc9f09d859756c2e23ab87327}{init\+\_\+read\+\_\+state} ()
+\item 
+void \hyperlink{classFragment_a13b2d8f60ae979a9febb22bba9c81a7f}{load\+\_\+sorted\+\_\+bin} (const std\+::string \&dirname)
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classFragment_a8a3f38a8e4f868571f2bd4ab0b6c33b9}{write\+\_\+cell} (const void $\ast$cell) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classFragment_af0adee431f981147850b48dbb3245d5a}{write\+\_\+cell\+\_\+sorted} (const void $\ast$cell)
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classFragment_a7272eae9c27e54d8860bc33e293b2898}{write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+id} (const void $\ast$cell)
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classFragment_aca2661153d474f2c121556684074b325}{write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+2\+\_\+ids} (const void $\ast$cell)
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+const \hyperlink{classArraySchema}{Array\+Schema} $\ast$ \hyperlink{classFragment_a73e5302d11292ae775b0e8b444c6d8ce}{array\+\_\+schema\+\_\+}
+\item 
+\hyperlink{classBookKeeping}{Book\+Keeping} $\ast$ \hyperlink{classFragment_ac6faae74468b65b3f51f9efa0ee49fb4}{book\+\_\+keeping\+\_\+}
+\item 
+std\+::string \hyperlink{classFragment_a87cb215f66f4239fc9e78f2b5d6e6c15}{fragment\+\_\+name\+\_\+}
+\item 
+\hyperlink{classReadState}{Read\+State} $\ast$ \hyperlink{classFragment_a526d3e88d0210c9afbc183b2f62429b0}{read\+\_\+state\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classFragment_a18f4d5d8f97e867d8b6e54a3c922752e}{segment\+\_\+size\+\_\+}
+\item 
+std\+::string \hyperlink{classFragment_adc5e894a8229dc1089d455706f188653}{temp\+\_\+dirname\+\_\+}
+\item 
+std\+::string \hyperlink{classFragment_a8c66b30f81356a716125ddfa6caecb2a}{workspace\+\_\+}
+\item 
+\hyperlink{classWriteState}{Write\+State} $\ast$ \hyperlink{classFragment_a2dafed41f6f3d9f361ca735d9a38e7e6}{write\+\_\+state\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Contains information about a fragment. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classFragment_aafae2c66e15168f08667e535d89005d9}{}\index{Fragment@{Fragment}!Fragment@{Fragment}}
+\index{Fragment@{Fragment}!Fragment@{Fragment}}
+\subsubsection[{Fragment}]{\setlength{\rightskip}{0pt plus 5cm}Fragment\+::\+Fragment (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{workspace, }
+\item[{size\+\_\+t}]{segment\+\_\+size, }
+\item[{size\+\_\+t}]{write\+\_\+state\+\_\+max\+\_\+size, }
+\item[{const {\bf Array\+Schema} $\ast$}]{array\+\_\+schema, }
+\item[{const std\+::string \&}]{fragment\+\_\+name}
+\end{DoxyParamCaption}
+)}\label{classFragment_aafae2c66e15168f08667e535d89005d9}
+Constructor. \hypertarget{classFragment_afafef6f55cd0df3527e50d6ce01a182a}{}\index{Fragment@{Fragment}!````~Fragment@{$\sim$\+Fragment}}
+\index{````~Fragment@{$\sim$\+Fragment}!Fragment@{Fragment}}
+\subsubsection[{$\sim$\+Fragment}]{\setlength{\rightskip}{0pt plus 5cm}Fragment\+::$\sim$\+Fragment (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classFragment_afafef6f55cd0df3527e50d6ce01a182a}
+Destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classFragment_a72c53f5a7f20526e0f098d6085aed360}{}\index{Fragment@{Fragment}!array\+\_\+schema@{array\+\_\+schema}}
+\index{array\+\_\+schema@{array\+\_\+schema}!Fragment@{Fragment}}
+\subsubsection[{array\+\_\+schema}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Array\+Schema}$\ast$ Fragment\+::array\+\_\+schema (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classFragment_a72c53f5a7f20526e0f098d6085aed360}
+Returns the array schema. \hypertarget{classFragment_a0a0b8df7b80bbeac465d3ac41a7851f6}{}\index{Fragment@{Fragment}!begin@{begin}}
+\index{begin@{begin}!Fragment@{Fragment}}
+\subsubsection[{begin}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Fragment\+Const\+Tile\+Iterator} Fragment\+::begin (
+\begin{DoxyParamCaption}
+\item[{int}]{attribute\+\_\+id}
+\end{DoxyParamCaption}
+) const}\label{classFragment_a0a0b8df7b80bbeac465d3ac41a7851f6}
+Begin tile iterator. \hypertarget{classFragment_ac21bea21689b09ade1c6c0c89740dbe9}{}\index{Fragment@{Fragment}!bounding\+\_\+coordinates@{bounding\+\_\+coordinates}}
+\index{bounding\+\_\+coordinates@{bounding\+\_\+coordinates}!Fragment@{Fragment}}
+\subsubsection[{bounding\+\_\+coordinates}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Tile\+::\+Bounding\+Coordinates\+Pair} Fragment\+::bounding\+\_\+coordinates (
+\begin{DoxyParamCaption}
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+) const}\label{classFragment_ac21bea21689b09ade1c6c0c89740dbe9}
+Returns the bounding coordinates of the tile at the input position. \hypertarget{classFragment_ad25f9c90649e287ff41e645ceb6ec954}{}\index{Fragment@{Fragment}!clear\+\_\+book\+\_\+keeping@{clear\+\_\+book\+\_\+keeping}}
+\index{clear\+\_\+book\+\_\+keeping@{clear\+\_\+book\+\_\+keeping}!Fragment@{Fragment}}
+\subsubsection[{clear\+\_\+book\+\_\+keeping}]{\setlength{\rightskip}{0pt plus 5cm}void Fragment\+::clear\+\_\+book\+\_\+keeping (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classFragment_ad25f9c90649e287ff41e645ceb6ec954}
+Clears the book keeping structures from main memory. \hypertarget{classFragment_acbbcd1833f770a7ac41264dfc8ed7bd7}{}\index{Fragment@{Fragment}!clear\+\_\+write\+\_\+state@{clear\+\_\+write\+\_\+state}}
+\index{clear\+\_\+write\+\_\+state@{clear\+\_\+write\+\_\+state}!Fragment@{Fragment}}
+\subsubsection[{clear\+\_\+write\+\_\+state}]{\setlength{\rightskip}{0pt plus 5cm}void Fragment\+::clear\+\_\+write\+\_\+state (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classFragment_acbbcd1833f770a7ac41264dfc8ed7bd7}
+Clears the write state. \hypertarget{classFragment_aa0cf4af1c1155d811b4f3687c5154bfd}{}\index{Fragment@{Fragment}!commit\+\_\+book\+\_\+keeping@{commit\+\_\+book\+\_\+keeping}}
+\index{commit\+\_\+book\+\_\+keeping@{commit\+\_\+book\+\_\+keeping}!Fragment@{Fragment}}
+\subsubsection[{commit\+\_\+book\+\_\+keeping}]{\setlength{\rightskip}{0pt plus 5cm}void Fragment\+::commit\+\_\+book\+\_\+keeping (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classFragment_aa0cf4af1c1155d811b4f3687c5154bfd}
+Writes the book keeping structures on the disk, but does not clear them from main memory. \hypertarget{classFragment_a654ad9990b763a9db422346e8673956c}{}\index{Fragment@{Fragment}!flush\+\_\+write\+\_\+state@{flush\+\_\+write\+\_\+state}}
+\index{flush\+\_\+write\+\_\+state@{flush\+\_\+write\+\_\+state}!Fragment@{Fragment}}
+\subsubsection[{flush\+\_\+write\+\_\+state}]{\setlength{\rightskip}{0pt plus 5cm}void Fragment\+::flush\+\_\+write\+\_\+state (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classFragment_a654ad9990b763a9db422346e8673956c}
+Flushes the write state onto the disk. \hypertarget{classFragment_afc7a7122531b6311bf23db1f7cbe50a6}{}\index{Fragment@{Fragment}!fragment\+\_\+name@{fragment\+\_\+name}}
+\index{fragment\+\_\+name@{fragment\+\_\+name}!Fragment@{Fragment}}
+\subsubsection[{fragment\+\_\+name}]{\setlength{\rightskip}{0pt plus 5cm}const std\+::string\& Fragment\+::fragment\+\_\+name (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classFragment_afc7a7122531b6311bf23db1f7cbe50a6}
+Returns the fragment name. \hypertarget{classFragment_abccf1fe726b7f232b7e9590f8524e8d8}{}\index{Fragment@{Fragment}!get\+\_\+tile\+\_\+by\+\_\+pos@{get\+\_\+tile\+\_\+by\+\_\+pos}}
+\index{get\+\_\+tile\+\_\+by\+\_\+pos@{get\+\_\+tile\+\_\+by\+\_\+pos}!Fragment@{Fragment}}
+\subsubsection[{get\+\_\+tile\+\_\+by\+\_\+pos}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Tile}$\ast$ Fragment\+::get\+\_\+tile\+\_\+by\+\_\+pos (
+\begin{DoxyParamCaption}
+\item[{int}]{attribute\+\_\+id, }
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+) const}\label{classFragment_abccf1fe726b7f232b7e9590f8524e8d8}
+Returns a tile for a given attribute and tile position. \hypertarget{classFragment_adbbc63ebc9f09d859756c2e23ab87327}{}\index{Fragment@{Fragment}!init\+\_\+read\+\_\+state@{init\+\_\+read\+\_\+state}}
+\index{init\+\_\+read\+\_\+state@{init\+\_\+read\+\_\+state}!Fragment@{Fragment}}
+\subsubsection[{init\+\_\+read\+\_\+state}]{\setlength{\rightskip}{0pt plus 5cm}void Fragment\+::init\+\_\+read\+\_\+state (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classFragment_adbbc63ebc9f09d859756c2e23ab87327}
+Initializes the read state of the fragment (i.\+e., prepares it for reading). \hypertarget{classFragment_a13b2d8f60ae979a9febb22bba9c81a7f}{}\index{Fragment@{Fragment}!load\+\_\+sorted\+\_\+bin@{load\+\_\+sorted\+\_\+bin}}
+\index{load\+\_\+sorted\+\_\+bin@{load\+\_\+sorted\+\_\+bin}!Fragment@{Fragment}}
+\subsubsection[{load\+\_\+sorted\+\_\+bin}]{\setlength{\rightskip}{0pt plus 5cm}void Fragment\+::load\+\_\+sorted\+\_\+bin (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{dirname}
+\end{DoxyParamCaption}
+)}\label{classFragment_a13b2d8f60ae979a9febb22bba9c81a7f}
+Loads data into the fragment, which are stored in binary files in the the input directory. Each file stores the cells in binary form, sorted on the global cell order specified in the array schema. \hypertarget{classFragment_a5de3cb81d82b4b577f0fa57d06003188}{}\index{Fragment@{Fragment}!mbr@{mbr}}
+\index{mbr@{mbr}!Fragment@{Fragment}}
+\subsubsection[{mbr}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Tile\+::\+M\+B\+R} Fragment\+::mbr (
+\begin{DoxyParamCaption}
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+) const}\label{classFragment_a5de3cb81d82b4b577f0fa57d06003188}
+Returns the M\+B\+R of the tile at the input position. \hypertarget{classFragment_a4665dfa29c15ce8584b39d99409fa579}{}\index{Fragment@{Fragment}!rbegin@{rbegin}}
+\index{rbegin@{rbegin}!Fragment@{Fragment}}
+\subsubsection[{rbegin}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Fragment\+Const\+Reverse\+Tile\+Iterator} Fragment\+::rbegin (
+\begin{DoxyParamCaption}
+\item[{int}]{attribute\+\_\+id}
+\end{DoxyParamCaption}
+) const}\label{classFragment_a4665dfa29c15ce8584b39d99409fa579}
+Begin reverse tile iterator. \hypertarget{classFragment_a7fbc6fb249aed1016111e9c92c95ac51}{}\index{Fragment@{Fragment}!rget\+\_\+tile\+\_\+by\+\_\+pos@{rget\+\_\+tile\+\_\+by\+\_\+pos}}
+\index{rget\+\_\+tile\+\_\+by\+\_\+pos@{rget\+\_\+tile\+\_\+by\+\_\+pos}!Fragment@{Fragment}}
+\subsubsection[{rget\+\_\+tile\+\_\+by\+\_\+pos}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Tile}$\ast$ Fragment\+::rget\+\_\+tile\+\_\+by\+\_\+pos (
+\begin{DoxyParamCaption}
+\item[{int}]{attribute\+\_\+id, }
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+) const}\label{classFragment_a7fbc6fb249aed1016111e9c92c95ac51}
+Returns a tile for a given attribute and tile position, when traversing tiles in reverse order. This is important so that the segments are retrieved from the disk such that the tile that triggeres the segment retrieval appears in the end of the segment, rather than in the beginning. \hypertarget{classFragment_a57731aa914ccb0f784333da54712b17d}{}\index{Fragment@{Fragment}!tile\+\_\+id@{tile\+\_\+id}}
+\index{tile\+\_\+id@{tile\+\_\+id}!Fragment@{Fragment}}
+\subsubsection[{tile\+\_\+id}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Fragment\+::tile\+\_\+id (
+\begin{DoxyParamCaption}
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+) const}\label{classFragment_a57731aa914ccb0f784333da54712b17d}
+Returns the id of the tile at the input position. \hypertarget{classFragment_ac1deb7dc6b163313c65be1877a40b42c}{}\index{Fragment@{Fragment}!tile\+\_\+num@{tile\+\_\+num}}
+\index{tile\+\_\+num@{tile\+\_\+num}!Fragment@{Fragment}}
+\subsubsection[{tile\+\_\+num}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Fragment\+::tile\+\_\+num (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classFragment_ac1deb7dc6b163313c65be1877a40b42c}
+Returns the number of tiles in the fragment. \hypertarget{classFragment_a8a3f38a8e4f868571f2bd4ab0b6c33b9}{}\index{Fragment@{Fragment}!write\+\_\+cell@{write\+\_\+cell}}
+\index{write\+\_\+cell@{write\+\_\+cell}!Fragment@{Fragment}}
+\subsubsection[{write\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void Fragment\+::write\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{cell}
+\end{DoxyParamCaption}
+) const}\label{classFragment_a8a3f38a8e4f868571f2bd4ab0b6c33b9}
+Writes a cell to the fragment. It takes as input a cell and its size. The cell has the following format\+: The coordinates appear first, and then the attribute values in the same order as the attributes are defined in the array schema. \hypertarget{classFragment_af0adee431f981147850b48dbb3245d5a}{}\index{Fragment@{Fragment}!write\+\_\+cell\+\_\+sorted@{write\+\_\+cell\+\_\+sorted}}
+\index{write\+\_\+cell\+\_\+sorted@{write\+\_\+cell\+\_\+sorted}!Fragment@{Fragment}}
+\subsubsection[{write\+\_\+cell\+\_\+sorted}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void Fragment\+::write\+\_\+cell\+\_\+sorted (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{cell}
+\end{DoxyParamCaption}
+)}\label{classFragment_af0adee431f981147850b48dbb3245d5a}
+Writes a cell into the fragment, respecting the global cell order. The input cell carries no ids. \hypertarget{classFragment_aca2661153d474f2c121556684074b325}{}\index{Fragment@{Fragment}!write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+2\+\_\+ids@{write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+2\+\_\+ids}}
+\index{write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+2\+\_\+ids@{write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+2\+\_\+ids}!Fragment@{Fragment}}
+\subsubsection[{write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+2\+\_\+ids}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void Fragment\+::write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+2\+\_\+ids (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{cell}
+\end{DoxyParamCaption}
+)}\label{classFragment_aca2661153d474f2c121556684074b325}
+Writes a cell into the fragment, respecting the global cell order. The input cell carries a tile and a cell id. \hypertarget{classFragment_a7272eae9c27e54d8860bc33e293b2898}{}\index{Fragment@{Fragment}!write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+id@{write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+id}}
+\index{write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+id@{write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+id}!Fragment@{Fragment}}
+\subsubsection[{write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+id}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void Fragment\+::write\+\_\+cell\+\_\+sorted\+\_\+with\+\_\+id (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{cell}
+\end{DoxyParamCaption}
+)}\label{classFragment_a7272eae9c27e54d8860bc33e293b2898}
+Writes a cell into the fragment, respecting the global cell order. The input cell carries a single (tile) id. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classFragment_a73e5302d11292ae775b0e8b444c6d8ce}{}\index{Fragment@{Fragment}!array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}}
+\index{array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}!Fragment@{Fragment}}
+\subsubsection[{array\+\_\+schema\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Array\+Schema}$\ast$ Fragment\+::array\+\_\+schema\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classFragment_a73e5302d11292ae775b0e8b444c6d8ce}
+The array schema (see \hyperlink{classArraySchema}{Array\+Schema}). \hypertarget{classFragment_ac6faae74468b65b3f51f9efa0ee49fb4}{}\index{Fragment@{Fragment}!book\+\_\+keeping\+\_\+@{book\+\_\+keeping\+\_\+}}
+\index{book\+\_\+keeping\+\_\+@{book\+\_\+keeping\+\_\+}!Fragment@{Fragment}}
+\subsubsection[{book\+\_\+keeping\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Book\+Keeping}$\ast$ Fragment\+::book\+\_\+keeping\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classFragment_ac6faae74468b65b3f51f9efa0ee49fb4}
+The book-\/keeping structures. \hypertarget{classFragment_a87cb215f66f4239fc9e78f2b5d6e6c15}{}\index{Fragment@{Fragment}!fragment\+\_\+name\+\_\+@{fragment\+\_\+name\+\_\+}}
+\index{fragment\+\_\+name\+\_\+@{fragment\+\_\+name\+\_\+}!Fragment@{Fragment}}
+\subsubsection[{fragment\+\_\+name\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string Fragment\+::fragment\+\_\+name\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classFragment_a87cb215f66f4239fc9e78f2b5d6e6c15}
+The fragment name. \hypertarget{classFragment_a526d3e88d0210c9afbc183b2f62429b0}{}\index{Fragment@{Fragment}!read\+\_\+state\+\_\+@{read\+\_\+state\+\_\+}}
+\index{read\+\_\+state\+\_\+@{read\+\_\+state\+\_\+}!Fragment@{Fragment}}
+\subsubsection[{read\+\_\+state\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Read\+State}$\ast$ Fragment\+::read\+\_\+state\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classFragment_a526d3e88d0210c9afbc183b2f62429b0}
+The read state. \hypertarget{classFragment_a18f4d5d8f97e867d8b6e54a3c922752e}{}\index{Fragment@{Fragment}!segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}}
+\index{segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}!Fragment@{Fragment}}
+\subsubsection[{segment\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Fragment\+::segment\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classFragment_a18f4d5d8f97e867d8b6e54a3c922752e}
+The segment size \hypertarget{classFragment_adc5e894a8229dc1089d455706f188653}{}\index{Fragment@{Fragment}!temp\+\_\+dirname\+\_\+@{temp\+\_\+dirname\+\_\+}}
+\index{temp\+\_\+dirname\+\_\+@{temp\+\_\+dirname\+\_\+}!Fragment@{Fragment}}
+\subsubsection[{temp\+\_\+dirname\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string Fragment\+::temp\+\_\+dirname\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classFragment_adc5e894a8229dc1089d455706f188653}
+Temporary directory. \hypertarget{classFragment_a8c66b30f81356a716125ddfa6caecb2a}{}\index{Fragment@{Fragment}!workspace\+\_\+@{workspace\+\_\+}}
+\index{workspace\+\_\+@{workspace\+\_\+}!Fragment@{Fragment}}
+\subsubsection[{workspace\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string Fragment\+::workspace\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classFragment_a8c66b30f81356a716125ddfa6caecb2a}
+The workspace where the array data are created. \hypertarget{classFragment_a2dafed41f6f3d9f361ca735d9a38e7e6}{}\index{Fragment@{Fragment}!write\+\_\+state\+\_\+@{write\+\_\+state\+\_\+}}
+\index{write\+\_\+state\+\_\+@{write\+\_\+state\+\_\+}!Fragment@{Fragment}}
+\subsubsection[{write\+\_\+state\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Write\+State}$\ast$ Fragment\+::write\+\_\+state\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classFragment_a2dafed41f6f3d9f361ca735d9a38e7e6}
+The write state. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/fragment/\hyperlink{fragment_8h}{fragment.\+h}\end{DoxyCompactItemize}

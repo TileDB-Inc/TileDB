@@ -32,16 +32,18 @@
  */
 
 #include "utils.h"
-#include <ctype.h>
-#include <sys/stat.h>
-#include <stdlib.h>
-#include <string.h>
-#include <dirent.h>
+#include <algorithm>
 #include <assert.h>
-#include <unistd.h>
-#include <stdio.h>
+#include <ctype.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <unistd.h>
 
 std::string absolute_path(const std::string& path) {
   if(path[0] == '~') 
@@ -57,15 +59,10 @@ void convert(const double* a, T* b, int size) {
   }
 }
 
-void create_directory(const std::string& dirname) {
-  struct stat st;
-  bool path_exists = is_file(dirname) || is_dir(dirname);
-
-  // If the directory path does not exist, create it
-  if(!path_exists) { 
-    int dir_flag = mkdir(dirname.c_str(), S_IRWXU);
-    assert(dir_flag == 0);
-  }
+int create_directory(const std::string& dirname) {
+  // If the directory does not exist, create it
+  if(!is_dir(dirname))  
+    return mkdir(dirname.c_str(), S_IRWXU);
 }
 
 void delete_directory(const std::string& dirname)  {
@@ -78,7 +75,7 @@ void delete_directory(const std::string& dirname)  {
   if(dir == NULL)
     return;
 
-  while(next_file = readdir(dir)) {
+  while((next_file = readdir(dir))) {
     if(strcmp(next_file->d_name, ".") == 0 ||
        strcmp(next_file->d_name, "..") == 0)
       continue;
@@ -163,19 +160,31 @@ size_t file_size(const std::string& filename) {
   return size;
 }
 
+std::string get_date() {
+  time_t timer;
+  char buffer[26];
+  struct tm* tm_info;
+  
+  time(&timer);
+  tm_info = localtime(&timer);
+
+  strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+
+  return std::string(buffer);
+}
+
 std::vector<std::string> get_filenames(const std::string& dirname) {
   std::vector<std::string> filenames; 
   std::string filename;
 
   struct dirent *next_file;
   DIR* dir = opendir(dirname.c_str());
-  struct stat st;
   
   // If the directory does not exist, exit
   if(dir == NULL)
     return filenames;
 
-  while(next_file = readdir(dir)) {
+  while((next_file = readdir(dir))) {
     if(strcmp(next_file->d_name, ".") == 0 ||
        strcmp(next_file->d_name, "..") == 0)
       continue;
@@ -225,6 +234,18 @@ bool inside_range(const T* point, const T* range, int dim_num) {
       return false;
   }
   return true;
+}
+
+template<class T>
+bool intersect(const std::vector<T>& v1, const std::vector<T>& v2) {
+  std::set<T> s1(v1.begin(), v1.end());
+  std::set<T> s2(v2.begin(), v2.end());
+  std::vector<T> intersect;
+  std::set_intersection(s1.begin(), s1.end(),
+                        s2.begin(), s2.end(),
+                        std::back_inserter(intersect));
+
+  return intersect.size() != 0; 
 }
 
 template<>
@@ -296,6 +317,26 @@ bool is_non_negative_integer(const char* s) {
   return true;
 }
 
+bool is_positive_integer(const char* s) {
+  int i=0;
+
+  if(s[0] == '-') // negative
+    return false;
+
+  if(s[0] == '0' && s[1] == '\0') // equal to 0
+    return false; 
+
+  if(s[0] == '+')
+    i = 1; // Skip the first character if it is the + sign
+
+  for(; s[i] != '\0'; ++i) {
+    if(!isdigit(s[i]))
+      return false;
+  }
+
+  return true;
+}
+
 template<>
 bool is_null(char v) {
   return v == NULL_CHAR;
@@ -347,6 +388,20 @@ bool is_valid_name(const char* s) {
   }
 
   return true;
+}
+
+void log_error(const std::string& err_msg) {
+  int fd = open(ERROR_LOG_FILENAME, O_WRONLY | O_APPEND | O_CREAT | O_SYNC,  
+                S_IRWXU);
+  assert(fd != -1);
+  if(fd == -1)
+    return;
+
+  std::string date = get_date();
+  std::string log = std::string("[") + date + "] " + err_msg + "\n";
+  write(fd, log.c_str(), log.size());
+
+  close(fd);
 }
 
 template<class T>
@@ -455,6 +510,10 @@ template void init_mbr<float>(
     const float* coords, float* mbr, int dim_num);
 template void init_mbr<double>(
     const double* coords, double* mbr, int dim_num);
+
+template bool intersect<std::string>(
+    const std::vector<std::string>& v1,
+    const std::vector<std::string>& v2);
 
 template bool no_duplicates<char>(const std::vector<char>& v);
 template bool no_duplicates<int>(const std::vector<int>& v);

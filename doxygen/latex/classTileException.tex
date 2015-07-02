@@ -1,0 +1,67 @@
+\hypertarget{classTileException}{}\section{Tile\+Exception Class Reference}
+\label{classTileException}\index{Tile\+Exception@{Tile\+Exception}}
+
+
+{\ttfamily \#include $<$tile.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classTileException_a3f5a7d465cd1d434d9bd3c19e93f0bc2}{Tile\+Exception} (const std\+::string \&msg, uint64\+\_\+t tile\+\_\+id)
+\item 
+const std\+::string \& \hyperlink{classTileException_af16c4c06bd1ecb6de22654e2d5f2a72c}{what} () const 
+\item 
+std\+::string \hyperlink{classTileException_a8a2b594acc333e22fc6381802fe20cd7}{where} () const 
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std\+::string \hyperlink{classTileException_a9197fbc5c85ba25009fae1e88b7f5881}{msg\+\_\+}
+\item 
+uint64\+\_\+t \hyperlink{classTileException_a9ff5e438cc1446df9a27bbf85e109e16}{tile\+\_\+id\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This exception is thrown by \hyperlink{classCoordinateTile}{Coordinate\+Tile} and \hyperlink{classAttributeTile}{Attribute\+Tile}. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classTileException_a3f5a7d465cd1d434d9bd3c19e93f0bc2}{}\index{Tile\+Exception@{Tile\+Exception}!Tile\+Exception@{Tile\+Exception}}
+\index{Tile\+Exception@{Tile\+Exception}!Tile\+Exception@{Tile\+Exception}}
+\subsubsection[{Tile\+Exception}]{\setlength{\rightskip}{0pt plus 5cm}Tile\+Exception\+::\+Tile\+Exception (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{msg, }
+\item[{uint64\+\_\+t}]{tile\+\_\+id}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classTileException_a3f5a7d465cd1d434d9bd3c19e93f0bc2}
+Simple constructor that takes the exception message and tile id as inputs. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classTileException_af16c4c06bd1ecb6de22654e2d5f2a72c}{}\index{Tile\+Exception@{Tile\+Exception}!what@{what}}
+\index{what@{what}!Tile\+Exception@{Tile\+Exception}}
+\subsubsection[{what}]{\setlength{\rightskip}{0pt plus 5cm}const std\+::string\& Tile\+Exception\+::what (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classTileException_af16c4c06bd1ecb6de22654e2d5f2a72c}
+Returns the exception message. \hypertarget{classTileException_a8a2b594acc333e22fc6381802fe20cd7}{}\index{Tile\+Exception@{Tile\+Exception}!where@{where}}
+\index{where@{where}!Tile\+Exception@{Tile\+Exception}}
+\subsubsection[{where}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string Tile\+Exception\+::where (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classTileException_a8a2b594acc333e22fc6381802fe20cd7}
+Returns information about where the exception occured. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classTileException_a9197fbc5c85ba25009fae1e88b7f5881}{}\index{Tile\+Exception@{Tile\+Exception}!msg\+\_\+@{msg\+\_\+}}
+\index{msg\+\_\+@{msg\+\_\+}!Tile\+Exception@{Tile\+Exception}}
+\subsubsection[{msg\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string Tile\+Exception\+::msg\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classTileException_a9197fbc5c85ba25009fae1e88b7f5881}
+Exception message. \hypertarget{classTileException_a9ff5e438cc1446df9a27bbf85e109e16}{}\index{Tile\+Exception@{Tile\+Exception}!tile\+\_\+id\+\_\+@{tile\+\_\+id\+\_\+}}
+\index{tile\+\_\+id\+\_\+@{tile\+\_\+id\+\_\+}!Tile\+Exception@{Tile\+Exception}}
+\subsubsection[{tile\+\_\+id\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}uint64\+\_\+t Tile\+Exception\+::tile\+\_\+id\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classTileException_a9ff5e438cc1446df9a27bbf85e109e16}
+\hyperlink{classTile}{Tile} id for which the exception occured. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+header/\hyperlink{tile_8h}{tile.\+h}\end{DoxyCompactItemize}

@@ -1,0 +1,467 @@
+\hypertarget{classStorageManager}{}\section{Storage\+Manager Class Reference}
+\label{classStorageManager}\index{Storage\+Manager@{Storage\+Manager}}
+
+
+{\ttfamily \#include $<$storage\+\_\+manager.\+h$>$}
+
+\subsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+typedef std\+::map$<$ std\+::string, int $>$ \hyperlink{classStorageManager_a029dfd29d09cbf61ea0c7151526d3924}{Open\+Arrays}
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classStorageManager_a7071b12eb47fd6a535a8d26ad466298e}{Storage\+Manager} (const std\+::string \&path, const \hyperlink{classMPIHandler}{M\+P\+I\+Handler} $\ast$mpi\+\_\+handler=N\+U\+L\+L, size\+\_\+t segment\+\_\+size=\hyperlink{special__values_8h_acbe07a3c3fe2056125230c357f85b870}{S\+E\+G\+M\+E\+N\+T\+\_\+\+S\+I\+Z\+E})
+\item 
+\hyperlink{classStorageManager_a10b35000dab64f83ee77d6847f0104c1}{$\sim$\+Storage\+Manager} ()
+\item 
+int \hyperlink{classStorageManager_a14d5a1f6f429513b5ecff122f3e66559}{err} () const 
+\item 
+void \hyperlink{classStorageManager_aac2b393b3767817d991fb88ff6c91ed7}{set\+\_\+segment\+\_\+size} (size\+\_\+t segment\+\_\+size)
+\item 
+bool \hyperlink{classStorageManager_a7132db9fd7d84701714150e2a8c8aa16}{array\+\_\+defined} (const std\+::string \&array\+\_\+name) const 
+\item 
+int \hyperlink{classStorageManager_ac94256a896d0b9f38daccdf88d073bd6}{clear\+\_\+array} (const std\+::string \&array\+\_\+name)
+\item 
+void \hyperlink{classStorageManager_a3713c351280d006c90c4153a2e8cad3b}{close\+\_\+array} (int ad)
+\item 
+int \hyperlink{classStorageManager_af35a50120983ab4778b76190134e137a}{define\+\_\+array} (const \hyperlink{classArraySchema}{Array\+Schema} $\ast$array\+\_\+schema)
+\item 
+int \hyperlink{classStorageManager_ae9a295f0da9291039eb988fe98acb399}{delete\+\_\+array} (const std\+::string \&array\+\_\+name)
+\item 
+void \hyperlink{classStorageManager_a50b93df7ce3a2360740862aef2bee92a}{forced\+\_\+close\+\_\+array} (int ad)
+\item 
+int \hyperlink{classStorageManager_a813989d59bf03222008993b3ea895bec}{get\+\_\+array\+\_\+schema} (int ad, const \hyperlink{classArraySchema}{Array\+Schema} $\ast$\&array\+\_\+schema, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classStorageManager_a97bfad3c8345c01bd26903a427488140}{get\+\_\+array\+\_\+schema} (const std\+::string \&array\+\_\+name, \hyperlink{classArraySchema}{Array\+Schema} $\ast$\&array\+\_\+schema) const 
+\item 
+int \hyperlink{classStorageManager_aa684003b8c78c5b6a13522cf47d6c7cb}{load\+\_\+sorted\+\_\+bin} (const std\+::string \&dirname, const std\+::string \&array\+\_\+name, std\+::string \&err\+\_\+msg)
+\item 
+int \hyperlink{classStorageManager_a566e1872beefb0b08364d03a0e82f4a7}{open\+\_\+array} (const std\+::string \&array\+\_\+name, const char $\ast$mode, std\+::string \&err\+\_\+msg)
+\item 
+{\footnotesize template$<$class T $>$ }\\\hyperlink{classArrayConstCellIterator}{Array\+Const\+Cell\+Iterator}$<$ T $>$ \hyperlink{classStorageManager_a4937c8bb623728447a003968edb55ce5}{begin} (int ad) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\\hyperlink{classArrayConstCellIterator}{Array\+Const\+Cell\+Iterator}$<$ T $>$ \hyperlink{classStorageManager_a5af14b46b015d01b6a113edb781ccd38}{begin} (int ad, const std\+::vector$<$ int $>$ \&attribute\+\_\+ids) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\\hyperlink{classArrayConstCellIterator}{Array\+Const\+Cell\+Iterator}$<$ T $>$ \hyperlink{classStorageManager_a11958acbf3550a0b6e9ca8b028b76889}{begin} (int ad, const T $\ast$range) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\\hyperlink{classArrayConstCellIterator}{Array\+Const\+Cell\+Iterator}$<$ T $>$ \hyperlink{classStorageManager_aa32e07289e6803e99e835330afbec0de}{begin} (int ad, const T $\ast$range, const std\+::vector$<$ int $>$ \&attribute\+\_\+ids) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\\hyperlink{classArrayConstReverseCellIterator}{Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$ \hyperlink{classStorageManager_af4ce673fdf84d4672ff065743614078d}{rbegin} (int ad) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\\hyperlink{classArrayConstReverseCellIterator}{Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$ \hyperlink{classStorageManager_a9037e3c1521b947eeabee8961e392419}{rbegin} (int ad, const std\+::vector$<$ int $>$ \&attribute\+\_\+ids) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\\hyperlink{classArrayConstReverseCellIterator}{Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$ \hyperlink{classStorageManager_ac34c8537c5835b7e43333da973886a32}{rbegin} (int ad, const T $\ast$range) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\\hyperlink{classArrayConstReverseCellIterator}{Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$ \hyperlink{classStorageManager_a2396f9d78a636d95255abd26f9616fa9}{rbegin} (int ad, const T $\ast$range, const std\+::vector$<$ int $>$ \&attribute\+\_\+ids) const 
+\item 
+void \hyperlink{classStorageManager_acc3da6e2e682cf3f796ab359801758b2}{read\+\_\+cells} (int ad, const void $\ast$range, const std\+::vector$<$ int $>$ \&attribute\+\_\+ids, void $\ast$\&cells, size\+\_\+t \&cells\+\_\+size) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classStorageManager_aa28e02f51d6ae440348474662699cdaa}{read\+\_\+cells} (int ad, const T $\ast$range, const std\+::vector$<$ int $>$ \&attribute\+\_\+ids, void $\ast$\&cells, size\+\_\+t \&cells\+\_\+size) const 
+\item 
+void \hyperlink{classStorageManager_a39e39288e7a40b6d6c9ab095fdbac48d}{read\+\_\+cells} (int ad, const void $\ast$range, const std\+::vector$<$ int $>$ \&attribute\+\_\+ids, void $\ast$\&cells, size\+\_\+t \&cells\+\_\+size, int rcv\+\_\+rank) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classStorageManager_a7d1ca5278f9e094319537dce4db6a494}{read\+\_\+cells} (int ad, const T $\ast$range, const std\+::vector$<$ int $>$ \&attribute\+\_\+ids, void $\ast$\&cells, size\+\_\+t \&cell\+\_\+num, int rcv\+\_\+rank) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classStorageManager_a9c40375b8672c978611a7056714b67df}{write\+\_\+cell} (int ad, const void $\ast$cell) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classStorageManager_a92a8332dfdf89b8268c4b9327fc81392}{write\+\_\+cell\+\_\+sorted} (int ad, const void $\ast$cell) const 
+\item 
+void \hyperlink{classStorageManager_af0758bf4fea21e0909d409d04c4f8123}{write\+\_\+cells} (int ad, const void $\ast$cells, size\+\_\+t cells\+\_\+size) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classStorageManager_adb958e2bbe6cc306e308d8c10aa1fba9}{write\+\_\+cells} (int ad, const void $\ast$cells, size\+\_\+t cells\+\_\+size) const 
+\item 
+void \hyperlink{classStorageManager_a0c96ed26b380e0907af6fe59a92be672}{write\+\_\+cells\+\_\+sorted} (int ad, const void $\ast$cells, size\+\_\+t cells\+\_\+size) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classStorageManager_adfe89e9ee8f8ac605003dd873fcc2725}{write\+\_\+cells\+\_\+sorted} (int ad, const void $\ast$cells, size\+\_\+t cells\+\_\+size) const 
+\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+static void \hyperlink{classStorageManager_a2cba3c99c6695df7d21836e75b806143}{get\+\_\+version} ()
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classStorageManager_a3c61cd62233f323613e966932ddcc288}{check\+\_\+on\+\_\+open\+\_\+array} (const std\+::string \&array\+\_\+name, const char $\ast$mode, std\+::string \&err\+\_\+msg) const 
+\item 
+bool \hyperlink{classStorageManager_a4e99148b22ffc6d3c3220777188070d5}{invalid\+\_\+array\+\_\+mode} (const char $\ast$mode) const 
+\item 
+void \hyperlink{classStorageManager_ab14ee151d33680cbb03e1bec5a3f26dd}{set\+\_\+workspace} (const std\+::string \&path)
+\item 
+int \hyperlink{classStorageManager_a8823ffd11bf4a62ae08ab20bc2019b87}{store\+\_\+array} (\hyperlink{classArray}{Array} $\ast$array)
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classArray}{Array} $\ast$$\ast$ \hyperlink{classStorageManager_a3d34312ce7468b1c708c8a3bc5e2ea08}{arrays\+\_\+}
+\item 
+int \hyperlink{classStorageManager_a3a36b5f640ef688962487bc1869b61e1}{err\+\_\+}
+\item 
+\hyperlink{classStorageManager_a029dfd29d09cbf61ea0c7151526d3924}{Open\+Arrays} \hyperlink{classStorageManager_a4f4d0447d153e3a33391d0663a63fdad}{open\+\_\+arrays\+\_\+}
+\item 
+const \hyperlink{classMPIHandler}{M\+P\+I\+Handler} $\ast$ \hyperlink{classStorageManager_af2070c85d3402bd1628d3d5fe7391c3e}{mpi\+\_\+handler\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classStorageManager_ac1fa2414c2d99753a416eaa3e2794fdd}{segment\+\_\+size\+\_\+}
+\item 
+std\+::string \hyperlink{classStorageManager_a3ab615f83f9697bbd2dd4f9fbb79f81f}{workspace\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classStorageManager_a70f86db65bc93b86d3bbcf46de12d4f3}{write\+\_\+state\+\_\+max\+\_\+size\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+A storage manager object is responsible for storing/fetching tiles to/from the disk. It maintains book-\/keeping structures in main memory to efficiently locate the tile data on disk. 
+
+\subsection{Member Typedef Documentation}
+\hypertarget{classStorageManager_a029dfd29d09cbf61ea0c7151526d3924}{}\index{Storage\+Manager@{Storage\+Manager}!Open\+Arrays@{Open\+Arrays}}
+\index{Open\+Arrays@{Open\+Arrays}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{Open\+Arrays}]{\setlength{\rightskip}{0pt plus 5cm}typedef std\+::map$<$std\+::string, int$>$ {\bf Storage\+Manager\+::\+Open\+Arrays}}\label{classStorageManager_a029dfd29d09cbf61ea0c7151526d3924}
+Mnemonic\+: \mbox{[}array\+\_\+name + \char`\"{}\+\_\+\char`\"{} + array\+\_\+name\mbox{]} --$>$ array\+\_\+descriptor 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classStorageManager_a7071b12eb47fd6a535a8d26ad466298e}{}\index{Storage\+Manager@{Storage\+Manager}!Storage\+Manager@{Storage\+Manager}}
+\index{Storage\+Manager@{Storage\+Manager}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{Storage\+Manager}]{\setlength{\rightskip}{0pt plus 5cm}Storage\+Manager\+::\+Storage\+Manager (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{path, }
+\item[{const {\bf M\+P\+I\+Handler} $\ast$}]{mpi\+\_\+handler = {\ttfamily NULL}, }
+\item[{size\+\_\+t}]{segment\+\_\+size = {\ttfamily {\bf S\+E\+G\+M\+E\+N\+T\+\_\+\+S\+I\+Z\+E}}}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_a7071b12eb47fd6a535a8d26ad466298e}
+Upon its creation, a storage manager object needs a workspace path. The latter is a folder in the disk where the storage manager creates all the tile and book-\/keeping data. Note that the input path must exist. If the workspace folder exists, the function does nothing, otherwise it creates it. The segment size determines the amount of data exchanged in an I/\+O operation between the disk and the main memory. The M\+P\+I handler takes care of the M\+P\+I communication in the distributed setting where there are multiple Tile\+D\+B processes runnign simultaneously. \hypertarget{classStorageManager_a10b35000dab64f83ee77d6847f0104c1}{}\index{Storage\+Manager@{Storage\+Manager}!````~Storage\+Manager@{$\sim$\+Storage\+Manager}}
+\index{````~Storage\+Manager@{$\sim$\+Storage\+Manager}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{$\sim$\+Storage\+Manager}]{\setlength{\rightskip}{0pt plus 5cm}Storage\+Manager\+::$\sim$\+Storage\+Manager (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_a10b35000dab64f83ee77d6847f0104c1}
+When a storage manager object is deleted, it closes all open arrays. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classStorageManager_a7132db9fd7d84701714150e2a8c8aa16}{}\index{Storage\+Manager@{Storage\+Manager}!array\+\_\+defined@{array\+\_\+defined}}
+\index{array\+\_\+defined@{array\+\_\+defined}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{array\+\_\+defined}]{\setlength{\rightskip}{0pt plus 5cm}bool Storage\+Manager\+::array\+\_\+defined (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{array\+\_\+name}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a7132db9fd7d84701714150e2a8c8aa16}
+Returns true if the array has been defined. \hypertarget{classStorageManager_a4937c8bb623728447a003968edb55ce5}{}\index{Storage\+Manager@{Storage\+Manager}!begin@{begin}}
+\index{begin@{begin}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{begin}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Array\+Const\+Cell\+Iterator}$<$T$>$ Storage\+Manager\+::begin (
+\begin{DoxyParamCaption}
+\item[{int}]{ad}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a4937c8bb623728447a003968edb55ce5}
+Takes as input an array descriptor and returns a cell iterator. \hypertarget{classStorageManager_a5af14b46b015d01b6a113edb781ccd38}{}\index{Storage\+Manager@{Storage\+Manager}!begin@{begin}}
+\index{begin@{begin}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{begin}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Array\+Const\+Cell\+Iterator}$<$T$>$ Storage\+Manager\+::begin (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const std\+::vector$<$ int $>$ \&}]{attribute\+\_\+ids}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a5af14b46b015d01b6a113edb781ccd38}
+Takes as input an array descriptor and a list of attribute ids. It returns a cell iterator that iterates over the specified attributes. \hypertarget{classStorageManager_a11958acbf3550a0b6e9ca8b028b76889}{}\index{Storage\+Manager@{Storage\+Manager}!begin@{begin}}
+\index{begin@{begin}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{begin}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Array\+Const\+Cell\+Iterator}$<$T$>$ Storage\+Manager\+::begin (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const T $\ast$}]{range}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a11958acbf3550a0b6e9ca8b028b76889}
+Takes as input an array descriptor and a range. It returns a cell iterator that iterates only over the cells whose coordinates lie within the input range (following the global cell order). \hypertarget{classStorageManager_aa32e07289e6803e99e835330afbec0de}{}\index{Storage\+Manager@{Storage\+Manager}!begin@{begin}}
+\index{begin@{begin}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{begin}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Array\+Const\+Cell\+Iterator}$<$T$>$ Storage\+Manager\+::begin (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const T $\ast$}]{range, }
+\item[{const std\+::vector$<$ int $>$ \&}]{attribute\+\_\+ids}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_aa32e07289e6803e99e835330afbec0de}
+Takes as input an array descriptor, a range, and a list of attribute ids. It returns a cell iterator that iterates only over the cells whose coordinates lie within the input range (following the global cell order), and only on the specified attributes. \hypertarget{classStorageManager_a3c61cd62233f323613e966932ddcc288}{}\index{Storage\+Manager@{Storage\+Manager}!check\+\_\+on\+\_\+open\+\_\+array@{check\+\_\+on\+\_\+open\+\_\+array}}
+\index{check\+\_\+on\+\_\+open\+\_\+array@{check\+\_\+on\+\_\+open\+\_\+array}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{check\+\_\+on\+\_\+open\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::check\+\_\+on\+\_\+open\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{array\+\_\+name, }
+\item[{const char $\ast$}]{mode, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_a3c61cd62233f323613e966932ddcc288}
+Checks when opening an array. \hypertarget{classStorageManager_ac94256a896d0b9f38daccdf88d073bd6}{}\index{Storage\+Manager@{Storage\+Manager}!clear\+\_\+array@{clear\+\_\+array}}
+\index{clear\+\_\+array@{clear\+\_\+array}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{clear\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::clear\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{array\+\_\+name}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_ac94256a896d0b9f38daccdf88d073bd6}
+Deletes all the fragments of an array. The array remains defined. \hypertarget{classStorageManager_a3713c351280d006c90c4153a2e8cad3b}{}\index{Storage\+Manager@{Storage\+Manager}!close\+\_\+array@{close\+\_\+array}}
+\index{close\+\_\+array@{close\+\_\+array}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{close\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::close\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{int}]{ad}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_a3713c351280d006c90c4153a2e8cad3b}
+Closes an array. \hypertarget{classStorageManager_af35a50120983ab4778b76190134e137a}{}\index{Storage\+Manager@{Storage\+Manager}!define\+\_\+array@{define\+\_\+array}}
+\index{define\+\_\+array@{define\+\_\+array}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{define\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::define\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{const {\bf Array\+Schema} $\ast$}]{array\+\_\+schema}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_af35a50120983ab4778b76190134e137a}
+Defines an array (stores its array schema). \hypertarget{classStorageManager_ae9a295f0da9291039eb988fe98acb399}{}\index{Storage\+Manager@{Storage\+Manager}!delete\+\_\+array@{delete\+\_\+array}}
+\index{delete\+\_\+array@{delete\+\_\+array}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{delete\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::delete\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{array\+\_\+name}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_ae9a295f0da9291039eb988fe98acb399}
+It deletes an array (regardless of whether it is open or not). \hypertarget{classStorageManager_a14d5a1f6f429513b5ecff122f3e66559}{}\index{Storage\+Manager@{Storage\+Manager}!err@{err}}
+\index{err@{err}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{err}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::err (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a14d5a1f6f429513b5ecff122f3e66559}
+Returns the current error code. It is 0 upon success. \hypertarget{classStorageManager_a50b93df7ce3a2360740862aef2bee92a}{}\index{Storage\+Manager@{Storage\+Manager}!forced\+\_\+close\+\_\+array@{forced\+\_\+close\+\_\+array}}
+\index{forced\+\_\+close\+\_\+array@{forced\+\_\+close\+\_\+array}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{forced\+\_\+close\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::forced\+\_\+close\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{int}]{ad}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_a50b93df7ce3a2360740862aef2bee92a}
+Forces an array to close. This is done during abnormal execution. If the array was opened in write or append mode, the last fragment must be deleted (since it was not properly loaded). \hypertarget{classStorageManager_a813989d59bf03222008993b3ea895bec}{}\index{Storage\+Manager@{Storage\+Manager}!get\+\_\+array\+\_\+schema@{get\+\_\+array\+\_\+schema}}
+\index{get\+\_\+array\+\_\+schema@{get\+\_\+array\+\_\+schema}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{get\+\_\+array\+\_\+schema}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::get\+\_\+array\+\_\+schema (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const {\bf Array\+Schema} $\ast$\&}]{array\+\_\+schema, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a813989d59bf03222008993b3ea895bec}
+Returns the schema of an array. The input is an array descriptor. \hypertarget{classStorageManager_a97bfad3c8345c01bd26903a427488140}{}\index{Storage\+Manager@{Storage\+Manager}!get\+\_\+array\+\_\+schema@{get\+\_\+array\+\_\+schema}}
+\index{get\+\_\+array\+\_\+schema@{get\+\_\+array\+\_\+schema}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{get\+\_\+array\+\_\+schema}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::get\+\_\+array\+\_\+schema (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{array\+\_\+name, }
+\item[{{\bf Array\+Schema} $\ast$\&}]{array\+\_\+schema}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a97bfad3c8345c01bd26903a427488140}
+Returns the schema of an array. \hypertarget{classStorageManager_a2cba3c99c6695df7d21836e75b806143}{}\index{Storage\+Manager@{Storage\+Manager}!get\+\_\+version@{get\+\_\+version}}
+\index{get\+\_\+version@{get\+\_\+version}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{get\+\_\+version}]{\setlength{\rightskip}{0pt plus 5cm}static void Storage\+Manager\+::get\+\_\+version (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [static]}}\label{classStorageManager_a2cba3c99c6695df7d21836e75b806143}
+Prints the version of the storage manager to the standard output. \hypertarget{classStorageManager_a4e99148b22ffc6d3c3220777188070d5}{}\index{Storage\+Manager@{Storage\+Manager}!invalid\+\_\+array\+\_\+mode@{invalid\+\_\+array\+\_\+mode}}
+\index{invalid\+\_\+array\+\_\+mode@{invalid\+\_\+array\+\_\+mode}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{invalid\+\_\+array\+\_\+mode}]{\setlength{\rightskip}{0pt plus 5cm}bool Storage\+Manager\+::invalid\+\_\+array\+\_\+mode (
+\begin{DoxyParamCaption}
+\item[{const char $\ast$}]{mode}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_a4e99148b22ffc6d3c3220777188070d5}
+Checks the validity of the array mode. \hypertarget{classStorageManager_aa684003b8c78c5b6a13522cf47d6c7cb}{}\index{Storage\+Manager@{Storage\+Manager}!load\+\_\+sorted\+\_\+bin@{load\+\_\+sorted\+\_\+bin}}
+\index{load\+\_\+sorted\+\_\+bin@{load\+\_\+sorted\+\_\+bin}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{load\+\_\+sorted\+\_\+bin}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::load\+\_\+sorted\+\_\+bin (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{dirname, }
+\item[{const std\+::string \&}]{array\+\_\+name, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_aa684003b8c78c5b6a13522cf47d6c7cb}
+Loads data into an array, which are stored in binary files in the input directory. Each file stores the cells in binary form, sorted on the global cell order specified in the array schema. \hypertarget{classStorageManager_a566e1872beefb0b08364d03a0e82f4a7}{}\index{Storage\+Manager@{Storage\+Manager}!open\+\_\+array@{open\+\_\+array}}
+\index{open\+\_\+array@{open\+\_\+array}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{open\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::open\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{array\+\_\+name, }
+\item[{const char $\ast$}]{mode, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_a566e1872beefb0b08364d03a0e82f4a7}
+Opens an array in the input mode. It returns an 'array descriptor', which is used in subsequent array operations. Currently, the following modes are supported\+:
+
+\char`\"{}r\char`\"{}\+: Read mode
+
+\char`\"{}w\char`\"{}\+: Write mode (if the array exists, it is deleted)
+
+\char`\"{}a\char`\"{}\+: Append mode \hypertarget{classStorageManager_af4ce673fdf84d4672ff065743614078d}{}\index{Storage\+Manager@{Storage\+Manager}!rbegin@{rbegin}}
+\index{rbegin@{rbegin}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{rbegin}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$T$>$ Storage\+Manager\+::rbegin (
+\begin{DoxyParamCaption}
+\item[{int}]{ad}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_af4ce673fdf84d4672ff065743614078d}
+Takes as input an array descriptor and returns a cell iterator. \hypertarget{classStorageManager_a9037e3c1521b947eeabee8961e392419}{}\index{Storage\+Manager@{Storage\+Manager}!rbegin@{rbegin}}
+\index{rbegin@{rbegin}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{rbegin}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$T$>$ Storage\+Manager\+::rbegin (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const std\+::vector$<$ int $>$ \&}]{attribute\+\_\+ids}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a9037e3c1521b947eeabee8961e392419}
+Takes as input an array descriptor and a list of attribute ids. It returns a cell iterator that iterates over the specified attributes. \hypertarget{classStorageManager_ac34c8537c5835b7e43333da973886a32}{}\index{Storage\+Manager@{Storage\+Manager}!rbegin@{rbegin}}
+\index{rbegin@{rbegin}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{rbegin}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$T$>$ Storage\+Manager\+::rbegin (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const T $\ast$}]{range}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_ac34c8537c5835b7e43333da973886a32}
+Takes as input an array descriptor and a range. It returns a cell iterator that iterates only over the cells whose coordinates lie within the input range (following the global cell order). \hypertarget{classStorageManager_a2396f9d78a636d95255abd26f9616fa9}{}\index{Storage\+Manager@{Storage\+Manager}!rbegin@{rbegin}}
+\index{rbegin@{rbegin}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{rbegin}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$T$>$ Storage\+Manager\+::rbegin (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const T $\ast$}]{range, }
+\item[{const std\+::vector$<$ int $>$ \&}]{attribute\+\_\+ids}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a2396f9d78a636d95255abd26f9616fa9}
+Takes as input an array descriptor, a range, and a list of attribute ids. It returns a cell iterator that iterates only over the cells whose coordinates lie within the input range (following the global cell order), and only on the specified attributes. \hypertarget{classStorageManager_acc3da6e2e682cf3f796ab359801758b2}{}\index{Storage\+Manager@{Storage\+Manager}!read\+\_\+cells@{read\+\_\+cells}}
+\index{read\+\_\+cells@{read\+\_\+cells}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{read\+\_\+cells}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::read\+\_\+cells (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const void $\ast$}]{range, }
+\item[{const std\+::vector$<$ int $>$ \&}]{attribute\+\_\+ids, }
+\item[{void $\ast$\&}]{cells, }
+\item[{size\+\_\+t \&}]{cells\+\_\+size}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_acc3da6e2e682cf3f796ab359801758b2}
+Takes as input an array descriptor and a multi-\/dimensional range, and returns the cells whose coordinates fall inside the range, as well as their collective size in bytes (last two arguments). \hypertarget{classStorageManager_aa28e02f51d6ae440348474662699cdaa}{}\index{Storage\+Manager@{Storage\+Manager}!read\+\_\+cells@{read\+\_\+cells}}
+\index{read\+\_\+cells@{read\+\_\+cells}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{read\+\_\+cells}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void Storage\+Manager\+::read\+\_\+cells (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const T $\ast$}]{range, }
+\item[{const std\+::vector$<$ int $>$ \&}]{attribute\+\_\+ids, }
+\item[{void $\ast$\&}]{cells, }
+\item[{size\+\_\+t \&}]{cells\+\_\+size}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_aa28e02f51d6ae440348474662699cdaa}
+Takes as input an array descriptor and a multi-\/dimensional range, and returns the cells whose coordinates fall inside the range, as well as their collective size in bytes (last two arguments). \hypertarget{classStorageManager_a39e39288e7a40b6d6c9ab095fdbac48d}{}\index{Storage\+Manager@{Storage\+Manager}!read\+\_\+cells@{read\+\_\+cells}}
+\index{read\+\_\+cells@{read\+\_\+cells}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{read\+\_\+cells}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::read\+\_\+cells (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const void $\ast$}]{range, }
+\item[{const std\+::vector$<$ int $>$ \&}]{attribute\+\_\+ids, }
+\item[{void $\ast$\&}]{cells, }
+\item[{size\+\_\+t \&}]{cells\+\_\+size, }
+\item[{int}]{rcv\+\_\+rank}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a39e39288e7a40b6d6c9ab095fdbac48d}
+Takes as input an array descriptor, a multi-\/dimensional range and the rank of the process that will receive the data. It returns form all the processes the cells whose coordinates fall inside the input range, as well as their collective size in bytes (last two arguments). \hypertarget{classStorageManager_a7d1ca5278f9e094319537dce4db6a494}{}\index{Storage\+Manager@{Storage\+Manager}!read\+\_\+cells@{read\+\_\+cells}}
+\index{read\+\_\+cells@{read\+\_\+cells}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{read\+\_\+cells}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void Storage\+Manager\+::read\+\_\+cells (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const T $\ast$}]{range, }
+\item[{const std\+::vector$<$ int $>$ \&}]{attribute\+\_\+ids, }
+\item[{void $\ast$\&}]{cells, }
+\item[{size\+\_\+t \&}]{cell\+\_\+num, }
+\item[{int}]{rcv\+\_\+rank}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a7d1ca5278f9e094319537dce4db6a494}
+Takes as input an array descriptor, a multi-\/dimensional range and the rank of the process that will receive the data. It returns form all the processes the cells whose coordinates fall inside the input range, as well as their collective size in bytes (last two arguments). \hypertarget{classStorageManager_aac2b393b3767817d991fb88ff6c91ed7}{}\index{Storage\+Manager@{Storage\+Manager}!set\+\_\+segment\+\_\+size@{set\+\_\+segment\+\_\+size}}
+\index{set\+\_\+segment\+\_\+size@{set\+\_\+segment\+\_\+size}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{set\+\_\+segment\+\_\+size}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::set\+\_\+segment\+\_\+size (
+\begin{DoxyParamCaption}
+\item[{size\+\_\+t}]{segment\+\_\+size}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_aac2b393b3767817d991fb88ff6c91ed7}
+Changes the default segment size. \hypertarget{classStorageManager_ab14ee151d33680cbb03e1bec5a3f26dd}{}\index{Storage\+Manager@{Storage\+Manager}!set\+\_\+workspace@{set\+\_\+workspace}}
+\index{set\+\_\+workspace@{set\+\_\+workspace}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{set\+\_\+workspace}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::set\+\_\+workspace (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{path}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_ab14ee151d33680cbb03e1bec5a3f26dd}
+Simply sets the workspace. \hypertarget{classStorageManager_a8823ffd11bf4a62ae08ab20bc2019b87}{}\index{Storage\+Manager@{Storage\+Manager}!store\+\_\+array@{store\+\_\+array}}
+\index{store\+\_\+array@{store\+\_\+array}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{store\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::store\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{{\bf Array} $\ast$}]{array}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_a8823ffd11bf4a62ae08ab20bc2019b87}
+Stores an array object and returns an array descriptor. \hypertarget{classStorageManager_a9c40375b8672c978611a7056714b67df}{}\index{Storage\+Manager@{Storage\+Manager}!write\+\_\+cell@{write\+\_\+cell}}
+\index{write\+\_\+cell@{write\+\_\+cell}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{write\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void Storage\+Manager\+::write\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const void $\ast$}]{cell}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a9c40375b8672c978611a7056714b67df}
+Writes a cell to an array. It takes as input an array descriptor, and a cell pointer. The cell has the following format\+: The coordinates appear first, and then the attribute values in the same order as the attributes are defined in the array schema. \hypertarget{classStorageManager_a92a8332dfdf89b8268c4b9327fc81392}{}\index{Storage\+Manager@{Storage\+Manager}!write\+\_\+cell\+\_\+sorted@{write\+\_\+cell\+\_\+sorted}}
+\index{write\+\_\+cell\+\_\+sorted@{write\+\_\+cell\+\_\+sorted}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{write\+\_\+cell\+\_\+sorted}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void Storage\+Manager\+::write\+\_\+cell\+\_\+sorted (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const void $\ast$}]{cell}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a92a8332dfdf89b8268c4b9327fc81392}
+Writes a cell to an array. It takes as input an array descriptor, and a cell pointer. The cell has the following format\+: The coordinates appear first, and then the attribute values in the same order as the attributes are defined in the array schema. This function is used only when it is guaranteed that the cells are written respecting the global cell order as specified in the array schema. \hypertarget{classStorageManager_af0758bf4fea21e0909d409d04c4f8123}{}\index{Storage\+Manager@{Storage\+Manager}!write\+\_\+cells@{write\+\_\+cells}}
+\index{write\+\_\+cells@{write\+\_\+cells}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{write\+\_\+cells}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::write\+\_\+cells (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const void $\ast$}]{cells, }
+\item[{size\+\_\+t}]{cells\+\_\+size}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_af0758bf4fea21e0909d409d04c4f8123}
+Writes a set of cells to an array. It takes as input an array descriptor, and a pointer to cells, which are serialized one after the other. Each cell has the following format\+: The coordinates appear first, and then the attribute values in the same order as the attributes are defined in the array schema. \hypertarget{classStorageManager_adb958e2bbe6cc306e308d8c10aa1fba9}{}\index{Storage\+Manager@{Storage\+Manager}!write\+\_\+cells@{write\+\_\+cells}}
+\index{write\+\_\+cells@{write\+\_\+cells}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{write\+\_\+cells}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void Storage\+Manager\+::write\+\_\+cells (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const void $\ast$}]{cells, }
+\item[{size\+\_\+t}]{cells\+\_\+size}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_adb958e2bbe6cc306e308d8c10aa1fba9}
+Writes a set of cells to an array. It takes as input an array descriptor, and a pointer to cells, which are serialized one after the other. Each cell has the following format\+: The coordinates appear first, and then the attribute values in the same order as the attributes are defined in the array schema. \hypertarget{classStorageManager_a0c96ed26b380e0907af6fe59a92be672}{}\index{Storage\+Manager@{Storage\+Manager}!write\+\_\+cells\+\_\+sorted@{write\+\_\+cells\+\_\+sorted}}
+\index{write\+\_\+cells\+\_\+sorted@{write\+\_\+cells\+\_\+sorted}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{write\+\_\+cells\+\_\+sorted}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::write\+\_\+cells\+\_\+sorted (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const void $\ast$}]{cells, }
+\item[{size\+\_\+t}]{cells\+\_\+size}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_a0c96ed26b380e0907af6fe59a92be672}
+Writes a set of cells to an array. It takes as input an array descriptor, and a pointer to cells, which are serialized one after the other. Each cell has the following format\+: The coordinates appear first, and then the attribute values in the same order as the attributes are defined in the array schema. This function is used only when it is guaranteed that the cells are written respecting the global cell order as specified in the array schema. \hypertarget{classStorageManager_adfe89e9ee8f8ac605003dd873fcc2725}{}\index{Storage\+Manager@{Storage\+Manager}!write\+\_\+cells\+\_\+sorted@{write\+\_\+cells\+\_\+sorted}}
+\index{write\+\_\+cells\+\_\+sorted@{write\+\_\+cells\+\_\+sorted}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{write\+\_\+cells\+\_\+sorted}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void Storage\+Manager\+::write\+\_\+cells\+\_\+sorted (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const void $\ast$}]{cells, }
+\item[{size\+\_\+t}]{cells\+\_\+size}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_adfe89e9ee8f8ac605003dd873fcc2725}
+Writes a set of cells to an array. It takes as input an array descriptor, and a pointer to cells, which are serialized one after the other. Each cell has the following format\+: The coordinates appear first, and then the attribute values in the same order as the attributes are defined in the array schema. This function is used only when it is guaranteed that the cells are written respecting the global cell order as specified in the array schema. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classStorageManager_a3d34312ce7468b1c708c8a3bc5e2ea08}{}\index{Storage\+Manager@{Storage\+Manager}!arrays\+\_\+@{arrays\+\_\+}}
+\index{arrays\+\_\+@{arrays\+\_\+}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{arrays\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Array}$\ast$$\ast$ Storage\+Manager\+::arrays\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_a3d34312ce7468b1c708c8a3bc5e2ea08}
+Stores all the open arrays. \hypertarget{classStorageManager_a3a36b5f640ef688962487bc1869b61e1}{}\index{Storage\+Manager@{Storage\+Manager}!err\+\_\+@{err\+\_\+}}
+\index{err\+\_\+@{err\+\_\+}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{err\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::err\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_a3a36b5f640ef688962487bc1869b61e1}
+Error code (0 on success). \hypertarget{classStorageManager_af2070c85d3402bd1628d3d5fe7391c3e}{}\index{Storage\+Manager@{Storage\+Manager}!mpi\+\_\+handler\+\_\+@{mpi\+\_\+handler\+\_\+}}
+\index{mpi\+\_\+handler\+\_\+@{mpi\+\_\+handler\+\_\+}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{mpi\+\_\+handler\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf M\+P\+I\+Handler}$\ast$ Storage\+Manager\+::mpi\+\_\+handler\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_af2070c85d3402bd1628d3d5fe7391c3e}
+The M\+P\+I communication handler. \hypertarget{classStorageManager_a4f4d0447d153e3a33391d0663a63fdad}{}\index{Storage\+Manager@{Storage\+Manager}!open\+\_\+arrays\+\_\+@{open\+\_\+arrays\+\_\+}}
+\index{open\+\_\+arrays\+\_\+@{open\+\_\+arrays\+\_\+}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{open\+\_\+arrays\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Open\+Arrays} Storage\+Manager\+::open\+\_\+arrays\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_a4f4d0447d153e3a33391d0663a63fdad}
+Keeps track of the descriptors of the currently open arrays. \hypertarget{classStorageManager_ac1fa2414c2d99753a416eaa3e2794fdd}{}\index{Storage\+Manager@{Storage\+Manager}!segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}}
+\index{segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{segment\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Storage\+Manager\+::segment\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_ac1fa2414c2d99753a416eaa3e2794fdd}
+Determines the amount of data that can be exchanged between the hard disk and the main memory in a single I/\+O operation. \hypertarget{classStorageManager_a3ab615f83f9697bbd2dd4f9fbb79f81f}{}\index{Storage\+Manager@{Storage\+Manager}!workspace\+\_\+@{workspace\+\_\+}}
+\index{workspace\+\_\+@{workspace\+\_\+}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{workspace\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string Storage\+Manager\+::workspace\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_a3ab615f83f9697bbd2dd4f9fbb79f81f}
+Is a folder in the disk where the storage manager creates all the array data (i.\+e., tile and index files). \hypertarget{classStorageManager_a70f86db65bc93b86d3bbcf46de12d4f3}{}\index{Storage\+Manager@{Storage\+Manager}!write\+\_\+state\+\_\+max\+\_\+size\+\_\+@{write\+\_\+state\+\_\+max\+\_\+size\+\_\+}}
+\index{write\+\_\+state\+\_\+max\+\_\+size\+\_\+@{write\+\_\+state\+\_\+max\+\_\+size\+\_\+}!Storage\+Manager@{Storage\+Manager}}
+\subsubsection[{write\+\_\+state\+\_\+max\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Storage\+Manager\+::write\+\_\+state\+\_\+max\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_a70f86db65bc93b86d3bbcf46de12d4f3}
+Max memory size of the write state when creating an array fragment. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/storage\+\_\+manager/\hyperlink{storage__manager_8h}{storage\+\_\+manager.\+h}\end{DoxyCompactItemize}

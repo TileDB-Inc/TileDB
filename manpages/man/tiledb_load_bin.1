@@ -1,0 +1,195 @@
+.TH tiledb_load_bin 1 "29 June 2015" "Version 0.1" "TileDB programs"
+ 
+.SH NAME
+tiledb_load_bin - loads a collection of binary files into an array
+
+.SH SYNOPSIS
+.B tiledb_load_bin 
+.BI "-w " "directory " "-A " "array_name " "-p " "path" 
+[
+.BI "-m " "mode"
+]
+
+.SH DESCRIPTION
+.B tiledb_load_bin
+loads a collection of binary files into an array. The user specifies in 
+option \fB-p\fR the path to a single binary file name, or to a directory 
+containing a collection of binary files (all of which will be loaded into
+the array). Moreover, the user may indicate whether the cells in each file
+are sorted along the cell order defined in the array schema or not. This
+has a dramatic effect on performance; if the cells are already sorted, then
+the costly sorting operation upon loading is avoided and, hence, the load
+performance is substantially improved. Note that, for the case of multiple
+sorted files, loading is essentially a \fImerge\fR operation (the cells
+are sorted in each file, but not necessarily across files). On error, it prints
+a message on stderr and returns an error code (see \fBEXIT STATUS\fR). 
+
+The following conventions apply to the \fBSYNOPSIS\fR section:
+
+.TS
+tab (@);
+c lx .
+\fBbold text\fR @ type exactly as shown
+\fIitalic text\fR @ replace with appropriate argument
+[\fB\-a \fIarg\fR]@ any or all options within [ ] are optional
+.TE
+
+
+\fBBinary file format\fR 
+
+Each binary file is essentially a collection of cells in binary form,
+concatenated one after the other in the file. The general format of each binary
+cell is the following (all values in binary format and of the corresponding
+type defined in the array schema, and '|' denotes binary concatenation):
+
+\fBc_1\fR | ... | \fBc_{dim_num}\fR | \fBa_1\fR | ... | \fBa_{attribute_num}\fR
+
+where \fBc_1\fR , ... , \fBc_{dim_num}\fR are the \fBdim_num\fR
+coordinates and \fBa_1\fR , ... , \fBa_{attribute_num}\fR are the 
+\fBattribute_num\fR attributes.
+
+If an attribute takes multiple values, but their number is \fIpredefined\fR in 
+the array schema (e.g., \fBint:3\fR), then these values are simply concatenated
+next to each other. However, if the number of values is \fIvariable\fR 
+(e.g, \fBint:var\fR), then the number of values must precede 
+the actual attribute values, and it should be of type \fBint\fR. For example,
+\fB3 | 0.1 | 0.2 | 0.3\fR for an attribute \fIattr1\fR whose type was defined as
+\fBfloat:var\fR means that this cell stores \fB3\fR values on attribute 
+\fIattr1\fR, namely \fB0.1,0.2,0.3\fR (more examples are provided below).
+Moreover, if even a single attribute is variable-sized, the size of the
+\fBentire\fR binary cell must be included immediately after the coordinates and 
+before the attributes, and it must be of type \fBsize_t\fR 
+(i.e., \fBunsigned int\fR). Note that the cell size is essentially the size
+of coordinates, plus the size of attributes, plus the size of a \fBsize_t\fR
+that holds the size value (examples below).
+
+A \fBnull\fR attribute value is represented by the \fBmaximum\fR value in
+the domain of the corresponding type. For attributes of type \fBchar\fR, null
+is represented by character \fB*\fR.
+
+A \fBdeletion\fR of a cell in TileDB is represented by a cell that 
+contains the coordinates of the cell to be deleted, and stores the 
+\fBmaximum-1\fR value of the corresponding type in \fIall\fR the attribute 
+fields. For attributes of type \fBchar\fR, a deletion is represented by
+character \fB$\fR.
+
+\fBExample binary cells\fR
+
+Suppose that the array contains \fB2 dimensions\fR and \fB3 attributes\fR, whose
+types are defined as \fBint:3,double,char,int64\fR (recall that the 
+last type corresponds always to all coordinates collectively). Observe that this
+schema essentially defines a \fBfixed size\fR for \fIall\fR cells in the array.
+.TP
+.B 1 | 3 | 10 | 11 | 12 | 0.1 | p 
+\fB(1,3)\fR are the coordinates of the cell (of type \fBint64\fR). 
+\fB(10,11,12)\fR is the value on the \fIfirst\fR attribute (of type \fBint\fR). 
+\fB0.1\fR  is the value of the \fIsecond\fR attribute (of type \fBdouble\fR). 
+Finally, \fBp\fR is the value of the \fIthird\fR attribute (of type \fBchar\fR).
+
+.PP
+Now suppose that the array contains \fB2 dimensions\fR and \fB3 attributes\fR as
+in the previous example, but their types are now defined as
+\fBint:3,double:var,char:var,int64\fR. This means that the cells of the array
+may be of \fBvariable size\fR. Also let an \fBint\fR value consume \fI4
+bytes\fR, a \fBsize_t\fR \fI4 bytes\fR, a \fBdouble\fR \fI8 bytes\fR, 
+a \fBchar\fR \fI1 byte\fR, and a \fBint64\fR \fI8 bytes\fR.
+.TP
+.B 1 | 3 | 60 | 10 | 11 | 12 | 2 | 0.1 | 0.2 | 4 | paok
+\fB(1,3)\fR are the coordinates of the cell (of type \fBint64\fR). \fB60\fR
+is the size in bytes of the entire cell (including even this size value itself).
+\fB(10,11,12)\fR is the value on the \fIfirst\fR attribute (of type \fBint\fR). 
+\fB2\fR is the number of values for the \fIsecond\fR attribute (of type 
+\fBint\fR). \fB(0.1,0.2)\fR is the values of the second attribute (of type 
+\fBdouble\fR). \fB4\fR is the number of characters in the string of the third 
+attribute (of type \fBint\fR). Finally, \fBpaok\fR is the string of the 
+\fIthird\fR attribute (of type \fBchar\fR), and my favorite soccer team in 
+Greece :P.
+ 
+.SH OPTIONS
+.TP
+.BI "-w" " directory" "\fR, " \fB --workspace=\fIdirectory\fR  
+The path to the workspace folder where the TileDB will be stored. The path
+must exist, and the caller must have read and write permissions on it.
+
+.TP
+.BI "-A" " array_name" "\fR, " \fB --array-name=\fIarray_name\fR  
+The name of the array where the data will be loaded. The array
+must be already defined. 
+
+.TP
+.BI "-p" " path" "\fR, " \fB --path=\fIpath\fR  
+The path to a binary file or to a directory of binary files. If it is
+a file, then this single file will be loaded. If it is a directory,
+\fBall\fR the files in the directory will be loaded.
+
+.TP
+.BI "-m" " mode" "\fR, " \fB --mode=\fImode\fR  
+It can be either \fBsorted\fR or \fBunsorted\fR. This is also optional;
+if it is omitted, the default is \fBunsorted\fR. This indicates whether the
+cells in the binary file(s) are sorted along the cell order defined in
+the array schema. This choice will have a great effect on performance
+(sorted cells are loaded substantially faster).
+
+.SH EXAMPLES
+.TP
+\fBtiledb_load_bin\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-A \fRmy_array \\
+    \fB-p \fRmy_array.bin
+
+This loads into array \fImy_array\fR in workspace folder \fImy_workspace\fR the
+data stored in the binary file \fImy_array.bin\fR. It is assumed that the cells
+are unsorted.
+
+.TP
+\fBtiledb_load_bin\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-A \fRmy_array \\
+    \fB-p \fRmy_bin_files/
+
+This is the same as the first example, but now all the files included in
+directory \fImy_bin_files/\fR will be loaded into the array.
+
+.TP
+\fBtiledb_load_bin\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-A \fRmy_array \\
+    \fB-p \fRmy_bin_files/ \\
+    \fB-m \fRsorted
+
+This is the same as the second example, but now the cells in each file
+(but not necessarily across files) are sorted on the cell order defined
+in the array schema.
+
+.SH EXIT STATUS
+.TP 
+.B 0
+Successful execution
+.TP 
+.B -1
+Parser error
+.TP 
+.B -2
+Undefined array
+.TP 
+.B -3
+File operation failed
+.TP 
+.B -7
+TileDB initialization failed
+.TP 
+.B -8
+TileDB finalization failed
+.TP 
+.B -14
+Failed to open array
+.TP 
+.B -15
+Failed to close array
+
+.SH SEE ALSO
+.BR "tiledb_define_array" "(1), " "tiledb_load_csv" "(1), " \
+"tiledb_export_csv" "(1), " "tiledb_generate_data" "(1) "
+
+.SH AUTHOR
+Stavros Papadopoulos <http://people.csail.mit.edu/stavrosp>, Copyright (c) 2015

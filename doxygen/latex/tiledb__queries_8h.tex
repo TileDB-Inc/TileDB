@@ -1,0 +1,544 @@
+\hypertarget{tiledb__queries_8h}{}\section{core/include/capis/tiledb\+\_\+queries.h File Reference}
+\label{tiledb__queries_8h}\index{core/include/capis/tiledb\+\_\+queries.\+h@{core/include/capis/tiledb\+\_\+queries.\+h}}
+{\ttfamily \#include \char`\"{}tiledb\+\_\+context.\+h\char`\"{}}\\*
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int \hyperlink{tiledb__queries_8h_a6645800136da7c6f9885f16089ddfbd4}{tiledb\+\_\+clear\+\_\+array} (const \hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context} $\ast$tiledb\+\_\+context, const char $\ast$array\+\_\+name)
+\item 
+T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int \hyperlink{tiledb__queries_8h_afe3a8940ab3800a55143bc7baeac2375}{tiledb\+\_\+define\+\_\+array} (const \hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context} $\ast$tiledb\+\_\+context, const char $\ast$array\+\_\+schema\+\_\+csv)
+\item 
+T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int \hyperlink{tiledb__queries_8h_a51f3ed9719ce68b4cbf73e4846e2eb04}{tiledb\+\_\+delete\+\_\+array} (const \hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context} $\ast$tiledb\+\_\+context, const char $\ast$array\+\_\+name)
+\item 
+T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int \hyperlink{tiledb__queries_8h_acc1589d4b0171cdafcf526ebd80f8f56}{tiledb\+\_\+export\+\_\+csv} (const \hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context} $\ast$tiledb\+\_\+context, const char $\ast$array\+\_\+name, const char $\ast$filename, const char $\ast$$\ast$dim\+\_\+names, int dim\+\_\+names\+\_\+num, const char $\ast$$\ast$attribute\+\_\+names, int attribute\+\_\+names\+\_\+num, bool reverse)
+\item 
+T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int \hyperlink{tiledb__queries_8h_ad8b6187b5a647f53ed523c2bc855edbe}{tiledb\+\_\+generate\+\_\+data} (const \hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context} $\ast$tiledb\+\_\+context, const char $\ast$array\+\_\+name, const char $\ast$filename, const char $\ast$filetype, unsigned int seed, int64\+\_\+t cell\+\_\+num)
+\item 
+T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int \hyperlink{tiledb__queries_8h_a539a59c691a6daa85509cc7943b02758}{tiledb\+\_\+load\+\_\+bin} (const \hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context} $\ast$tiledb\+\_\+context, const char $\ast$array\+\_\+name, const char $\ast$path, bool sorted)
+\item 
+T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int \hyperlink{tiledb__queries_8h_a132443942c8731971c22599c6dc353a6}{tiledb\+\_\+load\+\_\+csv} (const \hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context} $\ast$tiledb\+\_\+context, const char $\ast$array\+\_\+name, const char $\ast$filename)
+\item 
+T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int \hyperlink{tiledb__queries_8h_aeae1ff575618bf6a6cf1ef745c637b94}{tiledb\+\_\+show\+\_\+array\+\_\+schema} (const \hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context} $\ast$tiledb\+\_\+context, const char $\ast$array\+\_\+name)
+\item 
+T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int \hyperlink{tiledb__queries_8h_a4f87da93da89fdea9e505d2f5d488ef6}{tiledb\+\_\+subarray} (const \hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context} $\ast$tiledb\+\_\+context, const char $\ast$array\+\_\+name, const char $\ast$result\+\_\+name, const double $\ast$range, int range\+\_\+size, const char $\ast$$\ast$attribute\+\_\+names, int attribute\+\_\+names\+\_\+num)
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Stavros Papadopoulos \href{mailto:stavrosp@csail.mit.edu}{\tt stavrosp@csail.\+mit.\+edu}
+\end{DoxyAuthor}
+\hypertarget{index_LICENSE}{}\subsection{L\+I\+C\+E\+N\+S\+E}\label{index_LICENSE}
+The M\+I\+T License
+
+\begin{DoxyCopyright}{Copyright}
+Copyright (c) 2014 Stavros Papadopoulos \href{mailto:stavrosp@csail.mit.edu}{\tt stavrosp@csail.\+mit.\+edu}
+\end{DoxyCopyright}
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \char`\"{}\+Software\char`\"{}), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions\+:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+T\+H\+E S\+O\+F\+T\+W\+A\+R\+E I\+S P\+R\+O\+V\+I\+D\+E\+D \char`\"{}\+A\+S I\+S\char`\"{}, W\+I\+T\+H\+O\+U\+T W\+A\+R\+R\+A\+N\+T\+Y O\+F A\+N\+Y K\+I\+N\+D, E\+X\+P\+R\+E\+S\+S O\+R I\+M\+P\+L\+I\+E\+D, I\+N\+C\+L\+U\+D\+I\+N\+G B\+U\+T N\+O\+T L\+I\+M\+I\+T\+E\+D T\+O T\+H\+E W\+A\+R\+R\+A\+N\+T\+I\+E\+S O\+F M\+E\+R\+C\+H\+A\+N\+T\+A\+B\+I\+L\+I\+T\+Y, F\+I\+T\+N\+E\+S\+S F\+O\+R A P\+A\+R\+T\+I\+C\+U\+L\+A\+R P\+U\+R\+P\+O\+S\+E A\+N\+D N\+O\+N\+I\+N\+F\+R\+I\+N\+G\+E\+M\+E\+N\+T. I\+N N\+O E\+V\+E\+N\+T S\+H\+A\+L\+L T\+H\+E A\+U\+T\+H\+O\+R\+S O\+R C\+O\+P\+Y\+R\+I\+G\+H\+T H\+O\+L\+D\+E\+R\+S B\+E L\+I\+A\+B\+L\+E F\+O\+R A\+N\+Y C\+L\+A\+I\+M, D\+A\+M\+A\+G\+E\+S O\+R O\+T\+H\+E\+R L\+I\+A\+B\+I\+L\+I\+T\+Y, W\+H\+E\+T\+H\+E\+R I\+N A\+N A\+C\+T\+I\+O\+N O\+F C\+O\+N\+T\+R\+A\+C\+T, T\+O\+R\+T O\+R O\+T\+H\+E\+R\+W\+I\+S\+E, A\+R\+I\+S\+I\+N\+G F\+R\+O\+M, O\+U\+T O\+F O\+R I\+N C\+O\+N\+N\+E\+C\+T\+I\+O\+N W\+I\+T\+H T\+H\+E S\+O\+F\+T\+W\+A\+R\+E O\+R T\+H\+E U\+S\+E O\+R O\+T\+H\+E\+R D\+E\+A\+L\+I\+N\+G\+S I\+N T\+H\+E S\+O\+F\+T\+W\+A\+R\+E.\hypertarget{cmd__parser_8h_DESCRIPTION}{}\subsection{D\+E\+S\+C\+R\+I\+P\+T\+I\+O\+N}\label{cmd__parser_8h_DESCRIPTION}
+This file declares the C A\+P\+Is for the Tile\+D\+B queries. 
+
+\subsection{Function Documentation}
+\hypertarget{tiledb__queries_8h_a6645800136da7c6f9885f16089ddfbd4}{}\index{tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}!tiledb\+\_\+clear\+\_\+array@{tiledb\+\_\+clear\+\_\+array}}
+\index{tiledb\+\_\+clear\+\_\+array@{tiledb\+\_\+clear\+\_\+array}!tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}}
+\subsubsection[{tiledb\+\_\+clear\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int tiledb\+\_\+clear\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{const {\bf Tile\+D\+B\+\_\+\+Context} $\ast$}]{tiledb\+\_\+context, }
+\item[{const char $\ast$}]{array\+\_\+name}
+\end{DoxyParamCaption}
+)}\label{tiledb__queries_8h_a6645800136da7c6f9885f16089ddfbd4}
+Clears all data from an array. However, the array remains defined, i.\+e., one can still invoke \hyperlink{tiledb__queries_8h_a132443942c8731971c22599c6dc353a6}{tiledb\+\_\+load\+\_\+csv()} for this array, without having to redefine the array schema. 
+\begin{DoxyParams}{Parameters}
+{\em tiledb\+\_\+context} & The Tile\+D\+B state consisting of the Tile\+D\+B modules. \\
+\hline
+{\em array\+\_\+name} & The name of the array whose data will be deleted. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+An error code, which can be one of the following\+:
+\begin{DoxyItemize}
+\item {\bfseries 0}~\newline
+ Success
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+N\+D\+E\+F\+A\+R\+R}~\newline
+ Undefined array
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+F\+I\+L\+E}~\newline
+ File operation failed 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\begin{DoxySeeAlso}{See also}
+\hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context}, \hyperlink{tiledb__queries_8h_a51f3ed9719ce68b4cbf73e4846e2eb04}{tiledb\+\_\+delete\+\_\+array}, \hyperlink{tiledb__error_8h}{tiledb\+\_\+error.\+h} 
+\end{DoxySeeAlso}
+\hypertarget{tiledb__queries_8h_afe3a8940ab3800a55143bc7baeac2375}{}\index{tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}!tiledb\+\_\+define\+\_\+array@{tiledb\+\_\+define\+\_\+array}}
+\index{tiledb\+\_\+define\+\_\+array@{tiledb\+\_\+define\+\_\+array}!tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}}
+\subsubsection[{tiledb\+\_\+define\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int tiledb\+\_\+define\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{const {\bf Tile\+D\+B\+\_\+\+Context} $\ast$}]{tiledb\+\_\+context, }
+\item[{const char $\ast$}]{array\+\_\+schema\+\_\+csv}
+\end{DoxyParamCaption}
+)}\label{tiledb__queries_8h_afe3a8940ab3800a55143bc7baeac2375}
+Defines an array, specifying its schema. Every array must be defined prior to its use. On error, it prints appopriate messages on stderr and returns an error code (outlined below). Each array is comprised of a set of {\bfseries dimensions}, and a set of {\bfseries attributes}. Each array {\bfseries cell} is essentially a tuple, consisting of a set of dimension values, collectively called as {\itshape coordinates}, and a set of attribute values. The coordinates and attribute values may be of different {\bfseries types}. All coordinates though must have the same type. The coordinates draw their values from their corresponding {\bfseries dimension domains}. A cell may have {\itshape multiple} (fixed or variable) values on each attribute. Tile\+D\+B stores internally only the {\itshape non-\/empty} (i.\+e., non-\/null, non-\/zero) cells.
+
+An array is internally represented as a set of {\bfseries fragments} (i.\+e., snapshots of the array after a set of updates), each consisting of a set of {\bfseries tiles}. Each tile is essentially a {\itshape hyper-\/rectangle} in the {\itshape logical} (i.\+e., dimension) space that groups a set of non-\/empty cells. The tiles of an array may be {\itshape regular} or {\itshape irregular}. Regular tiles have {\itshape fixed} {\bfseries tile extents} across each dimension, i.\+e., they have the same shape in the, logical space, but may have a different non-\/empty cell {\bfseries capacity}. Irregular tiles have a {\itshape fixed} non-\/empty cell capacity, but may have different {\itshape shape} in the logical space.
+
+Each array stores its cells internally in a {\itshape sorted} {\bfseries tile order} and {\bfseries cell order}. For the case of irregular tiles, the tile order is implied by the cell order.
+
+Finally, Tile\+D\+B updates arrays in {\itshape batches}, i.\+e., it modifies {\itshape sets of cells} instead of single cells. When a new set of cells is inserted into an array, Tile\+D\+B initially creates a new array {\bfseries fragment} encompassing only the updates. Periodically, as new updates arrive, Tile\+D\+B {\bfseries consolidates} multiple fragments into a single one. The consolidation frequency is defined by a {\bfseries consolidation step} parameter. If this parameter is 1, every new fragment is always consolidated with the existing one. If it is larger than 1, then consolidation occurs in a {\itshape hierarchical} manner. For instance, if {\bfseries s} is the consolidation step, each new fragment essentially represents a leaf of a complete {\bfseries s}-\/ary tree that is constructed bottom-\/up. When {\bfseries s} fragment-\/leaves are created, they are consolidated into a single one, which becomes their parent node in the tree, and the leaves are disregarded for the rest of they system lifetime. In general, whenever {\bfseries s} fragment-\/nodes are created at the same level, they are consolidated into a new fragment that becomes their parent, and these nodes are disregarded thereafter.
+
+
+\begin{DoxyParams}{Parameters}
+{\em tiledb\+\_\+context} & The Tile\+D\+B state consisting of the Tile\+D\+B modules. \\
+\hline
+{\em array\+\_\+schema\+\_\+csv} & The array schema, serialized in a C\+S\+V line string as follows (no spaces before and after the commas, this is a {\itshape single} C\+S\+V line)\+: 
+
+ {\itshape array\+\_\+name} , {\itshape attribute\+\_\+num} , {\itshape attribute\+\_\+name\textsubscript{1}} , ... , {\itshape attribute\+\_\+name\textsubscript{attribute\+\_\+num}} , {\itshape dim\+\_\+num} , {\itshape dim\+\_\+name\textsubscript{1}} , ... , {\itshape dim\+\_\+name\textsubscript{dim\+\_\+num}} , ~\newline
+{\itshape dim\+\_\+domain\+\_\+low\textsubscript{1}}, {\itshape dim\+\_\+domain\+\_\+high\textsubscript{1}}, ... , {\itshape dim\+\_\+domain\+\_\+low\textsubscript{dim\+\_\+num}}, {\itshape dim\+\_\+domain\+\_\+high\textsubscript{dim\+\_\+num}}, ~\newline
+ {\itshape type\textsubscript{attribute\textsubscript{1}}} , ... , {\itshape type\textsubscript{attribute\textsubscript{attribute\+\_\+num}}} , {\itshape type\textsubscript{coordinates}} , {\itshape tile\+\_\+extent\textsubscript{1}}, ... , {\itshape tile\+\_\+extent\textsubscript{dim\+\_\+num}} , ~\newline
+{\itshape cell\+\_\+order} , {\itshape tile\+\_\+order} , {\itshape capacity} , {\itshape consolidation\+\_\+step} 
+
+ The details of each array schema item are as follows\+: ~\newline
+
+\begin{DoxyItemize}
+\item {\bfseries array name} -\/ {\itshape array\+\_\+name} \+: ~\newline
+ The name of the array whose schema is being defined. It can contain only alphanumerics and character '\+\_\+'.
+\item {\bfseries attribute names} -\/ {\itshape attribute\+\_\+num} , {\itshape attribute\+\_\+name\textsubscript{1}} , ... , {\itshape attribute\+\_\+name\textsubscript{attribute\+\_\+num}} \+: ~\newline
+ The names of the attributes of the array. Each name can contain only alphanumerics and character '\+\_\+'. The number of given names must comply with the {\itshape attribute\+\_\+num} value.
+\item {\bfseries dimension names} -\/ {\itshape dim\+\_\+num} , {\itshape dim\+\_\+name\textsubscript{1}} , ... , {\itshape dim\+\_\+name\textsubscript{dim\+\_\+num}} \+: ~\newline
+ The names of the dimensions of the array. Each name can contain only alphanumerics and character '\+\_\+'. The number of given names must comply with the {\itshape dim\+\_\+num} value.
+\item {\bfseries dimension domains} -\/ {\itshape dim\+\_\+domain\+\_\+low\textsubscript{1}}, {\itshape dim\+\_\+domain\+\_\+high\textsubscript{1}}, ... , {\itshape dim\+\_\+domain\+\_\+low\textsubscript{dim\+\_\+num}}, {\itshape dim\+\_\+domain\+\_\+high\textsubscript{dim\+\_\+num}} ~\newline
+ The domains of the dimensions. There should be a \mbox{[}low,high\mbox{]} pair for every dimension, whose order must follow that of the dimension names in the list {\itshape dim\+\_\+name\textsubscript{1}} , ... , {\itshape dim\+\_\+name\textsubscript{dim\+\_\+num}}.
+\item {\bfseries types} -\/ {\itshape type\textsubscript{attribute\textsubscript{1}}} , ... , {\itshape type\textsubscript{attribute\textsubscript{attribute\+\_\+num}}} , {\itshape type\textsubscript{coordinates}} ~\newline
+ The types of the attributes and (collectively) of the coordinates. Specifically, if there are {\itshape attribute\+\_\+num} attributes, there should be provided {\itshape attribute\+\_\+num+1} types. The types of the attributes must be given first, following the order of the attribute names in the {\itshape attribute\+\_\+name\textsubscript{1}} , ... , {\itshape attribute\+\_\+name\textsubscript{attribute\+\_\+num}} list. The type of the coordinates must be appear last. The supported attribute types are {\bfseries char}, {\bfseries int}, {\bfseries int64}, {\bfseries float}, and {\bfseries double}. The supported coordinate types are {\bfseries int}, {\bfseries int64}, {\bfseries float}, and {\bfseries double}.
+
+Optionally, one may specify the number of values to be stored for a particular attribute in each cell. This is done by appending '\+:' followed by the desired number of values after the type (e.\+g., {\bfseries int\+:3}). If no such value is provided, the default is 1. If one needs to specify that an attribute may take a variable (unknown a priori) number of values, '\+:var' must be appended after the type (e.\+g., {\bfseries int\+:var}). Note that the dimension type cannot have multiple values; a single set of coordinates uniquely identifies each cell.
+\item {\bfseries tile extents} -\/ {\itshape tile\+\_\+extent\textsubscript{1}}, ... , {\itshape tile\+\_\+extent\textsubscript{dim\+\_\+num}} ~\newline
+ It specifies the extent of a tile across each dimension. If this option is included, then the array will have {\itshape regular} tiles; if it is omitted, the array will have {\itshape irregular} tiles. If there are {\itshape dim\+\_\+num} dimensions, there should be provided {\itshape dim\+\_\+num} tile extents, following the same order as that of the dimension names in the {\itshape dim\+\_\+name\textsubscript{1}} , ... , {\itshape dim\+\_\+name\textsubscript{dim\+\_\+num}} list. Each tile extent must be a non-\/negative real number that does not exceed the corresponding domain size.
+\item {\bfseries cell order} -\/ {\itshape cell\+\_\+order} ~\newline
+ The order in which the cells will be stored internally. The supported orders are {\bfseries row-\/major}, {\bfseries column-\/major} and {\bfseries hilbert} (i.\+e., following the Hilbert space-\/filling curve). If no cell order is provided, the {\itshape default} is {\bfseries row-\/major}.
+\item {\bfseries tile order} -\/ {\itshape tile\+\_\+order} ~\newline
+ The order in which the tiles will be stored internally. The supported orders are {\bfseries row-\/major}, {\bfseries column-\/major} and {\bfseries hilbert} (i.\+e., following the Hilbert space-\/filling curve). If no cell order is provided, the default is {\bfseries row-\/major}. This is applicable only to regular tiles.
+\item {\bfseries capacity} -\/ {\itshape capacity} ~\newline
+ This specifies the fixed number of non-\/empty cells stored in each tile. It is applicable only to irregular tiles and, hence, cannot be used together with tile extents and tile order. If it is not provided, a default value is used.
+\item {\bfseries consolidation step} -\/ {\itshape consolidation\+\_\+step} ~\newline
+ It specifies the frequency of fragment consolidation, described above. If it is not provided, the default is 1.
+\end{DoxyItemize}~\newline
+ {\bfseries N\+O\+T\+E\+:} To omit an optional array schema item (e.\+g., tile extents, capacity, etc), you {\itshape must} put character '$\ast$' in the corresponding field of the C\+S\+V string.~\newline
+ ~\newline
+ {\bfseries Examples}
+\begin{DoxyItemize}
+\item my\+\_\+array , 3 , attr1 , attr2 , attr3 , 2 , dim1 , dim2 , 0 , 100 , 0 , 200 , int\+:3 , double , char\+:var , int64 , $\ast$ , hilbert , $\ast$ , 1000 , 5 ~\newline
+ This defines array {\itshape my\+\_\+array}, which has {\itshape 3} attributes and {\itshape 2} dimensions. Dimension {\itshape dim1} has domain \mbox{[}0,100\mbox{]}, {\itshape dim2} has domain \mbox{[}0,200\mbox{]}. The coordinates are of type {\bfseries int64}. Attribute {\itshape attr1} is of type {\bfseries int}, and each cell always stores {\itshape 3} values on this attribute. Attribute {\itshape attr2} is of type {\bfseries double}, and each cell always stores {\itshape 1} value on this attribute. Attribute {\itshape attr3} is of type {\bfseries char}, and each cell stores a {\itshape variable} number of values on this attribute (i.\+e., it stores arbitrary character strings). The array has {\itshape irregular} tiles. The cell order is {\bfseries hilbert}. Each tile accommodates exactly {\itshape 1000} (non-\/empty) cells. Finally, the consolidation step is set to {\itshape 5}.
+\item my\+\_\+array , 3 , attr1 , attr2 , attr3 , 2 , dim1 , dim2 , 0 , 100 , 0 , 200 , int\+:3 , double , char\+:var , int64 , 10, 20 , hilbert , row-\/major , $\ast$ , 5 ~\newline
+ This is similar to the previous example, but now the array has {\itshape regular} tiles. In detail, it defines array {\itshape my\+\_\+array}, which has {\itshape 3} attributes and {\itshape 2} dimensions. Dimension {\itshape dim1} has domain \mbox{[}0,100\mbox{]}, {\itshape dim2} has domain \mbox{[}0,200\mbox{]}. The coordinates are of type {\bfseries int64}. Attribute {\itshape attr1} is of type {\bfseries int}, and each cell always stores {\itshape 3} values on this attribute. Attribute {\itshape attr2} is of type {\bfseries double}, and each cell always stores {\itshape 1} value on this attribute. Attribute {\itshape attr3} is of type {\bfseries char}, and each cell stores a {\itshape variable} number of values on this attribute (i.\+e., it stores arbitrary character strings). The array has {\itshape regular} tiles. Each tile has (logical) size {\itshape 10x20}. The tile order is {\bfseries row-\/major}, whereas the cell order is {\bfseries hilbert}. Finally, the consolidation step is set to {\itshape 5}.
+\end{DoxyItemize}\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+An error code, which can be one of the following\+:
+\begin{DoxyItemize}
+\item {\bfseries 0}~\newline
+ Success
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+P\+R\+A\+R\+R\+S\+C\+H\+E\+M\+A}~\newline
+ Failed to parse array schema 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\begin{DoxySeeAlso}{See also}
+\hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context}, \hyperlink{tiledb__queries_8h_aeae1ff575618bf6a6cf1ef745c637b94}{tiledb\+\_\+show\+\_\+array\+\_\+schema}, \hyperlink{tiledb__error_8h}{tiledb\+\_\+error.\+h} 
+\end{DoxySeeAlso}
+\hypertarget{tiledb__queries_8h_a51f3ed9719ce68b4cbf73e4846e2eb04}{}\index{tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}!tiledb\+\_\+delete\+\_\+array@{tiledb\+\_\+delete\+\_\+array}}
+\index{tiledb\+\_\+delete\+\_\+array@{tiledb\+\_\+delete\+\_\+array}!tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}}
+\subsubsection[{tiledb\+\_\+delete\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int tiledb\+\_\+delete\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{const {\bf Tile\+D\+B\+\_\+\+Context} $\ast$}]{tiledb\+\_\+context, }
+\item[{const char $\ast$}]{array\+\_\+name}
+\end{DoxyParamCaption}
+)}\label{tiledb__queries_8h_a51f3ed9719ce68b4cbf73e4846e2eb04}
+Deletes all data from an array. Contrary to \hyperlink{tiledb__queries_8h_a6645800136da7c6f9885f16089ddfbd4}{tiledb\+\_\+clear\+\_\+array()}, the array does {\bfseries not} remain defined, i.\+e., one must redefine its schema (via \hyperlink{tiledb__queries_8h_afe3a8940ab3800a55143bc7baeac2375}{tiledb\+\_\+define\+\_\+array()}) prior to loading data to it (e.\+g., via \hyperlink{tiledb__queries_8h_a132443942c8731971c22599c6dc353a6}{tiledb\+\_\+load\+\_\+csv()}). 
+\begin{DoxyParams}{Parameters}
+{\em tiledb\+\_\+context} & The Tile\+D\+B state consisting of the Tile\+D\+B modules. \\
+\hline
+{\em array\+\_\+name} & The name of the array that will be deleted. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+An error code, which can be one of the following\+:
+\begin{DoxyItemize}
+\item {\bfseries 0}~\newline
+ Success
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+N\+D\+E\+F\+A\+R\+R}~\newline
+ Undefined array
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+F\+I\+L\+E}~\newline
+ File operation failed 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\begin{DoxySeeAlso}{See also}
+\hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context}, \hyperlink{tiledb__queries_8h_a51f3ed9719ce68b4cbf73e4846e2eb04}{tiledb\+\_\+delete\+\_\+array}, \hyperlink{tiledb__error_8h}{tiledb\+\_\+error.\+h} 
+\end{DoxySeeAlso}
+\hypertarget{tiledb__queries_8h_acc1589d4b0171cdafcf526ebd80f8f56}{}\index{tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}!tiledb\+\_\+export\+\_\+csv@{tiledb\+\_\+export\+\_\+csv}}
+\index{tiledb\+\_\+export\+\_\+csv@{tiledb\+\_\+export\+\_\+csv}!tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}}
+\subsubsection[{tiledb\+\_\+export\+\_\+csv}]{\setlength{\rightskip}{0pt plus 5cm}T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int tiledb\+\_\+export\+\_\+csv (
+\begin{DoxyParamCaption}
+\item[{const {\bf Tile\+D\+B\+\_\+\+Context} $\ast$}]{tiledb\+\_\+context, }
+\item[{const char $\ast$}]{array\+\_\+name, }
+\item[{const char $\ast$}]{filename, }
+\item[{const char $\ast$$\ast$}]{dim\+\_\+names, }
+\item[{int}]{dim\+\_\+names\+\_\+num, }
+\item[{const char $\ast$$\ast$}]{attribute\+\_\+names, }
+\item[{int}]{attribute\+\_\+names\+\_\+num, }
+\item[{bool}]{reverse}
+\end{DoxyParamCaption}
+)}\label{tiledb__queries_8h_acc1589d4b0171cdafcf526ebd80f8f56}
+Exports the (binary) data of an array into a C\+S\+V file. The documentation on the exported C\+S\+V format can be found in function \hyperlink{tiledb__queries_8h_a132443942c8731971c22599c6dc353a6}{tiledb\+\_\+load\+\_\+csv()}. On error, it prints a message on stderr and returns an error code (shown below).
+
+The user may also specify a subset of attributes and dimensions from the array to export. Also, he/she may specify any order of attributes and dimensions, as well as multiplicities.
+
+In case the user wishes to completely hide the dimensions or the attributes, he/she should include \char`\"{}\+\_\+\+\_\+hide\char`\"{} as the only name in the dimension or attribute name list.
+
+Finally, the user may specify whether the array cells should be exported in the stored order or in {\itshape reverse}.
+
+{\bfseries Examples}
+
+Supposing that tiledb\+\_\+context stores a pointer to a \hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context} object, and assuming that the array has dimensions {\itshape dim1},{\itshape dim2} and attributes {\itshape attr1},{\itshape attr2},{\itshape attr3} \+:
+\begin{DoxyItemize}
+\item tiledb\+\_\+export\+\_\+csv(tiledb\+\_\+context, \char`\"{}\+A\char`\"{}, \char`\"{}\+A.\+csv\char`\"{}, \{\}, 0, \{\}, 0, false) ~\newline
+ Exports into \char`\"{}\+A.\+csv\char`\"{} all the cells of \char`\"{}\+A\char`\"{} in the order they are stored, including all the coordinates and attributes.
+\item tiledb\+\_\+export(tiledb\+\_\+context, \char`\"{}\+A\char`\"{}, \char`\"{}\+A.\+csv\char`\"{}, \{\char`\"{}dim1\char`\"{}\}, 1, \{\char`\"{}attr1\char`\"{},\char`\"{}attr2\char`\"{}\}, 2, false) ~\newline
+ Exports into \char`\"{}\+A.\+csv\char`\"{} all the cells of \char`\"{}\+A\char`\"{} in the order they are stored, including only the coordinates on the {\itshape dim1} dimension and the values on the {\itshape attr1},{\itshape attr2} attributes.
+\item tiledb\+\_\+export\+\_\+csv(tiledb\+\_\+context, \char`\"{}\+A\char`\"{}, \char`\"{}\+A.\+csv\char`\"{}, \{\char`\"{}dim1\char`\"{}\}, 1, \{\char`\"{}attr1\char`\"{},\char`\"{}attr2\char`\"{}\}, 2, true) ~\newline
+ Same as above, but the cells are exported in the reverse order.
+\item tiledb\+\_\+export\+\_\+csv(tiledb\+\_\+context, \char`\"{}\+A\char`\"{}, \char`\"{}\+A.\+csv\char`\"{}, \{\char`\"{}\+\_\+\+\_\+hide\char`\"{}\}, 1, \{attr1,attr2\}, 2, false) ~\newline
+ Same as the first example, but no coordinate is exported.
+\item tiledb\+\_\+export\+\_\+csv(tiledb\+\_\+context, \char`\"{}\+A\char`\"{}, \char`\"{}\+A.\+csv\char`\"{}, \{\char`\"{}dim1\char`\"{}\}, 1, \{\char`\"{}\+\_\+\+\_\+hide\char`\"{}\}, 2, false) ~\newline
+ Same as the first example, but no attribute value is exported.
+\item tiledb\+\_\+export\+\_\+csv(tiledb\+\_\+context, \char`\"{}\+A\char`\"{}, \char`\"{}\+A.\+csv\char`\"{}, \{\char`\"{}dim1\char`\"{}\}, 1, \{\char`\"{}attr1\char`\"{},\char`\"{}attr2\char`\"{},\char`\"{}attr1\char`\"{}\}, 2, false) ~\newline
+ Same as the first example, but now the {\itshape attr1} values are shown twice (once before those of {\itshape attr2} and once after).
+\end{DoxyItemize}
+
+
+\begin{DoxyParams}{Parameters}
+{\em tiledb\+\_\+context} & The Tile\+D\+B state consisting of the Tile\+D\+B modules. \\
+\hline
+{\em array\+\_\+name} & The name of the array whose data will be exported. \\
+\hline
+{\em filename} & The name of the C\+S\+V file that will hold the output. \\
+\hline
+{\em dim\+\_\+names} & An array holding the dimension names to be exported. If it is empty, then all the coordinates will be exported. If it contains special name \char`\"{}\+\_\+\+\_\+hide\char`\"{}, then no coordinates will be exported. \\
+\hline
+{\em dim\+\_\+names\+\_\+num} & The number of elements in dim\+\_\+names \\
+\hline
+{\em attribute\+\_\+names} & An array holding the attribute names to be exported. If it is empty, then all the attribute values will be exported. If it contains special name \char`\"{}\+\_\+\+\_\+hide\char`\"{}, then no attribute values will be exported. \\
+\hline
+{\em attribute\+\_\+names\+\_\+num} & The number of elements in attribute\+\_\+names \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+An error code, which can be one of the following\+:
+\begin{DoxyItemize}
+\item {\bfseries 0}~\newline
+ Success
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+N\+D\+E\+F\+A\+R\+R}~\newline
+ Undefined array
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+F\+I\+L\+E}~\newline
+ File operation failed
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+O\+A\+R\+R}~\newline
+ Failed to open array
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+C\+A\+R\+R}~\newline
+ Failed to close array 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\begin{DoxySeeAlso}{See also}
+\hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context}, \hyperlink{tiledb__queries_8h_a132443942c8731971c22599c6dc353a6}{tiledb\+\_\+load\+\_\+csv}, \hyperlink{tiledb__queries_8h_ad8b6187b5a647f53ed523c2bc855edbe}{tiledb\+\_\+generate\+\_\+data}, \hyperlink{tiledb__error_8h}{tiledb\+\_\+error.\+h} 
+\end{DoxySeeAlso}
+\hypertarget{tiledb__queries_8h_ad8b6187b5a647f53ed523c2bc855edbe}{}\index{tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}!tiledb\+\_\+generate\+\_\+data@{tiledb\+\_\+generate\+\_\+data}}
+\index{tiledb\+\_\+generate\+\_\+data@{tiledb\+\_\+generate\+\_\+data}!tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}}
+\subsubsection[{tiledb\+\_\+generate\+\_\+data}]{\setlength{\rightskip}{0pt plus 5cm}T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int tiledb\+\_\+generate\+\_\+data (
+\begin{DoxyParamCaption}
+\item[{const {\bf Tile\+D\+B\+\_\+\+Context} $\ast$}]{tiledb\+\_\+context, }
+\item[{const char $\ast$}]{array\+\_\+name, }
+\item[{const char $\ast$}]{filename, }
+\item[{const char $\ast$}]{filetype, }
+\item[{unsigned int}]{seed, }
+\item[{int64\+\_\+t}]{cell\+\_\+num}
+\end{DoxyParamCaption}
+)}\label{tiledb__queries_8h_ad8b6187b5a647f53ed523c2bc855edbe}
+Generates a synthetic dataset in either {\bfseries C\+S\+V} or {\bfseries binary} form, which is acceptable by a Tile\+D\+B load command, namely \hyperlink{tiledb__queries_8h_a132443942c8731971c22599c6dc353a6}{tiledb\+\_\+load\+\_\+csv()} or \hyperlink{tiledb__queries_8h_a539a59c691a6daa85509cc7943b02758}{tiledb\+\_\+load\+\_\+bin()}, respectively. The dataset essentially consists of a collection of cells, whose format complies with the schema of an array given as input to the function. This means that the input array must already be defined. The number of cells to be generated, as well as the seed to the random generator, are given as inputs to the function as well.
+
+{\bfseries Data distribution}
+
+
+\begin{DoxyItemize}
+\item {\itshape Cooridinates} ~\newline
+ The coordinate values are drawn uniformly at random from their corresponding dimension domains defined in the array schema.
+\item {\itshape Attribute values} ~\newline
+ The attribute values depend on their type. The real data values (i.\+e., {\bfseries float} and {\bfseries double}) are drawn uniformly at random from \mbox{[}0.\+0,1.\+0\mbox{]}. The {\bfseries int} and {\bfseries int64\+\_\+t} data values are drawn uniformly at random from \mbox{[}0,max()\mbox{]}, where max() is the maximum value of the corresponding type supported by the system that calls the function. Finally, the {\bfseries char} values are drawn uniformly at random from A\+S\+C\+I\+I domain \mbox{[}45,126\mbox{]}, i.\+e., all the characters between and including '-\/' and '$\sim$'.
+\end{DoxyItemize}
+
+{\bfseries C\+S\+V file format} ~\newline
+This is described in detail in \hyperlink{tiledb__queries_8h_a132443942c8731971c22599c6dc353a6}{tiledb\+\_\+load\+\_\+csv()}. The difference is that the generated data do not contain null values and deletions.
+
+{\bfseries Binary file format} ~\newline
+This is described in detail in \hyperlink{tiledb__queries_8h_a539a59c691a6daa85509cc7943b02758}{tiledb\+\_\+load\+\_\+bin()}. The difference is that the generated data do not contain null values and deletions.
+
+
+\begin{DoxyParams}{Parameters}
+{\em tiledb\+\_\+context} & The Tile\+D\+B state consisting of the Tile\+D\+B modules. \\
+\hline
+{\em array\+\_\+name} & The name of the array for which the data will be generated. \\
+\hline
+{\em filename} & The name of the produced file. \\
+\hline
+{\em filetype} & The type of the generated file. It can be either {\bfseries csv} (C\+S\+V file) or {\bfseries bin} (binary file). \\
+\hline
+{\em seed} & The seed that will be used internally for the random generator. \\
+\hline
+{\em cell\+\_\+num} & The number of cells to be generated. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+An error code, which can be one of the following\+:
+\begin{DoxyItemize}
+\item {\bfseries 0}~\newline
+ Success
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+N\+D\+E\+F\+A\+R\+R}~\newline
+ Undefined array
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+F\+I\+L\+E}~\newline
+ File operation failed
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+I\+A\+R\+G}~\newline
+ Invalid argument 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\begin{DoxySeeAlso}{See also}
+\hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context}, \hyperlink{tiledb__queries_8h_a132443942c8731971c22599c6dc353a6}{tiledb\+\_\+load\+\_\+csv}, \hyperlink{tiledb__queries_8h_a539a59c691a6daa85509cc7943b02758}{tiledb\+\_\+load\+\_\+bin}, \hyperlink{tiledb__error_8h}{tiledb\+\_\+error.\+h} 
+\end{DoxySeeAlso}
+\hypertarget{tiledb__queries_8h_a539a59c691a6daa85509cc7943b02758}{}\index{tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}!tiledb\+\_\+load\+\_\+bin@{tiledb\+\_\+load\+\_\+bin}}
+\index{tiledb\+\_\+load\+\_\+bin@{tiledb\+\_\+load\+\_\+bin}!tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}}
+\subsubsection[{tiledb\+\_\+load\+\_\+bin}]{\setlength{\rightskip}{0pt plus 5cm}T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int tiledb\+\_\+load\+\_\+bin (
+\begin{DoxyParamCaption}
+\item[{const {\bf Tile\+D\+B\+\_\+\+Context} $\ast$}]{tiledb\+\_\+context, }
+\item[{const char $\ast$}]{array\+\_\+name, }
+\item[{const char $\ast$}]{path, }
+\item[{bool}]{sorted}
+\end{DoxyParamCaption}
+)}\label{tiledb__queries_8h_a539a59c691a6daa85509cc7943b02758}
+Loads a collection of binary files into an array. The user specifies the path to a single binary file name, or to a directory containing a collection of binary files (all of which will be loaded into the array). Moreover, the user may indicate whether the cells in each file are sorted along the cell order defined in the array schema or not. This has a dramatic effect on performance; if the cells are already sorted, then the costly sorting operation upon loading is avoided and, hence, the load performance is substantially improved. Note that, for the case of multiple sorted files, loading is essentially a {\itshape merge} operation (the cells are sorted in each file, but not necessarily across files). On error, it prints a message on stderr and returns an error code (see below).
+
+{\bfseries Binary file format} ~\newline
+ Each binary file is essentially a collection of cells in binary form, concatenated one after the other in the file. The general format of each binary cell is the following (all values in binary format and of the corresponding type defined in the array schema, and '$\vert$' denotes binary concatenation)\+:
+
+
+
+ {\itshape c\textsubscript{1}} $\vert$ ... $\vert$ {\itshape c\textsubscript{dim\+\_\+num}} $\vert$ {\itshape a\textsubscript{1}} $\vert$ ... $\vert$ {\itshape a\textsubscript{attribute\+\_\+num}} 
+
+
+
+where {\itshape c\textsubscript{1}} , ... , {\itshape c\textsubscript{dim\+\_\+num}} are the {\itshape dim\+\_\+num} coordinates and {\itshape a\textsubscript{1}} , ... , {\itshape a\textsubscript{attribute\+\_\+num}} are the {\itshape attribute\+\_\+num} attributes.
+
+If an attribute takes multiple values, but their number is {\itshape predefined} in the array schema (e.\+g., {\bfseries int\+:3}), then these values are simply concatenated next to each other. However, if the number of values is {\itshape variable} (e.\+g, {\bfseries int\+:var}), then the number of values must precede the actual attribute values, and it should be of type {\bfseries int}. For example, {\bfseries 3 $\vert$ 0.\+1 $\vert$ 0.\+2 $\vert$ 0.\+3} for an attribute {\itshape attr1} whose type was defined as {\bfseries float\+:var} means that this cell stores {\bfseries 3} values on attribute {\itshape attr1}, namely {\bfseries 0.\+1,0.\+2,0.\+3} (more examples are provided below). Moreover, if even a single attribute is variable-\/sized, the size of the {\bfseries entire} binary cell must be included immediately after the coordinates and before the attributes, and it must be of type {\bfseries size\+\_\+t} (i.\+e., {\bfseries unsigned int}). Note that the cell size is essentially the size of coordinates, plus the size of attributes, plus the size of a {\bfseries size\+\_\+t} that holds the size value (examples below).
+
+A {\bfseries null} attribute value is represented by the {\bfseries maximum} value in the domain of the corresponding type. For attributes of type {\bfseries char}, null is represented by character '$\ast$'.
+
+A {\bfseries deletion} of a cell in Tile\+D\+B is represented by a cell that contains the coordinates of the cell to be deleted, and stores the {\bfseries maximum-\/1} value of the corresponding type in {\itshape all} the attribute fields. For attributes of type {\bfseries char}, a deletion is represented by character '\$'.
+
+{\bfseries Example binary cells} ~\newline
+ Suppose that the array contains {\bfseries 2 dimensions} and {\bfseries 3 attributes}, whose types are defined as {\bfseries int\+:3,double,char,int64} (recall that the last type corresponds always to all coordinates collectively). Observe that this schema essentially defines a {\bfseries fixed size} for {\itshape all} cells in the array.
+\begin{DoxyItemize}
+\item 1 $\vert$ 3 $\vert$ 10 $\vert$ 11 $\vert$ 12 $\vert$ 0.\+1 $\vert$ p ~\newline
+ (1,3) are the coordinates of the cell (of type {\bfseries int64}). (10,11,12) is the value on the {\itshape first} attribute (of type {\bfseries int}). {\bfseries 0.\+1} is the value of the {\itshape second} attribute (of type {\bfseries double}). Finally, {\bfseries p} is the value of the {\itshape third} attribute (of type {\bfseries char}).
+\end{DoxyItemize}
+
+Now suppose that the array contains {\bfseries 2 dimensions} and {\bfseries 3 attributes} as in the previous example, but their types are now defined as {\bfseries int\+:3,double\+:var,char\+:var,int64}. This means that the cells of the array may be of {\bfseries variable size}. Also let an {\bfseries int} value consume {\itshape 4 bytes}, a {\bfseries size\+\_\+t} {\itshape 4 bytes}, a {\bfseries double} {\itshape 8 bytes}, a {\bfseries char} {\itshape 1 byte}, and a {\bfseries int64} {\itshape 8 bytes}.
+\begin{DoxyItemize}
+\item 1 $\vert$ 3 $\vert$ 60 $\vert$ 10 $\vert$ 11 $\vert$ 12 $\vert$ 2 $\vert$ 0.\+1 $\vert$ 0.\+2 $\vert$ 4 $\vert$ paok ~\newline
+ (1,3) are the coordinates of the cell (of type {\bfseries int64}). {\bfseries 60} is the size in bytes of the entire cell (including even this size value itself). (10,11,12) is the value on the {\itshape first} attribute (of type {\bfseries int}). {\bfseries 2} is the number of values for the {\itshape second} attribute (of type {\bfseries int}). (0.\+1,0.\+2) is the values of the {\itshape second} attribute (of type {\bfseries double}). {\bfseries 4} is the number of characters in the string of the {\itshape third} attribute (of type {\bfseries int}). Finally, {\bfseries paok} is the string of the {\itshape third} attribute (of type {\bfseries char}), and my favorite soccer team in Greece \+:P.
+\end{DoxyItemize}
+
+
+\begin{DoxyParams}{Parameters}
+{\em tiledb\+\_\+context} & The Tile\+D\+B state consisting of the Tile\+D\+B modules. \\
+\hline
+{\em array\+\_\+name} & The name of the array into which the binary file(s) is loaded. Note that the array must already be defined. \\
+\hline
+{\em path} & The path to a binary file or to a directory of binary files. If it is a file, then this single file will be loaded. If it is a directory, {\bfseries all} the files in the directory will be loaded. \\
+\hline
+{\em sorted} & Indicates whether the cells in the binary file(s) are sorted along the cell order defined in the array schema. This choice will have a great effect on performance (sorted cells are loaded substantially faster). \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+An error code, which can be one of the following\+:
+\begin{DoxyItemize}
+\item {\bfseries 0}~\newline
+ Success
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+N\+D\+E\+F\+A\+R\+R}~\newline
+ Undefined array
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+F\+I\+L\+E}~\newline
+ File operation failed
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+O\+A\+R\+R}~\newline
+ Failed to open array
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+C\+A\+R\+R}~\newline
+ Failed to close array 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\begin{DoxySeeAlso}{See also}
+\hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context}, \hyperlink{tiledb__queries_8h_afe3a8940ab3800a55143bc7baeac2375}{tiledb\+\_\+define\+\_\+array}, \hyperlink{tiledb__queries_8h_acc1589d4b0171cdafcf526ebd80f8f56}{tiledb\+\_\+export\+\_\+csv}, \hyperlink{tiledb__queries_8h_a132443942c8731971c22599c6dc353a6}{tiledb\+\_\+load\+\_\+csv}, \hyperlink{tiledb__queries_8h_ad8b6187b5a647f53ed523c2bc855edbe}{tiledb\+\_\+generate\+\_\+data}, \hyperlink{tiledb__error_8h}{tiledb\+\_\+error.\+h} 
+\end{DoxySeeAlso}
+\hypertarget{tiledb__queries_8h_a132443942c8731971c22599c6dc353a6}{}\index{tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}!tiledb\+\_\+load\+\_\+csv@{tiledb\+\_\+load\+\_\+csv}}
+\index{tiledb\+\_\+load\+\_\+csv@{tiledb\+\_\+load\+\_\+csv}!tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}}
+\subsubsection[{tiledb\+\_\+load\+\_\+csv}]{\setlength{\rightskip}{0pt plus 5cm}T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int tiledb\+\_\+load\+\_\+csv (
+\begin{DoxyParamCaption}
+\item[{const {\bf Tile\+D\+B\+\_\+\+Context} $\ast$}]{tiledb\+\_\+context, }
+\item[{const char $\ast$}]{array\+\_\+name, }
+\item[{const char $\ast$}]{filename}
+\end{DoxyParamCaption}
+)}\label{tiledb__queries_8h_a132443942c8731971c22599c6dc353a6}
+Loads a C\+S\+V file into an array. On error, it prints a message on stderr and returns an error code (shown below). The C\+S\+V file must have the following format.
+
+{\bfseries C\+S\+V file format} ~\newline
+ The C\+S\+V file is essentially a collection of (C\+S\+V) lines, where each line represents an array cell. The general format of each line is of the form (no spaces before and after each comma)\+:
+
+
+
+ {\itshape c\textsubscript{1}} , ... , {\itshape c\textsubscript{dim\+\_\+num}} , {\itshape a\textsubscript{1}} , ... , {\itshape a\textsubscript{attribute\+\_\+num}} 
+
+
+
+where {\itshape c\textsubscript{1}} , ... , {\itshape c\textsubscript{dim\+\_\+num}} are the {\itshape dim\+\_\+num} coordinates and {\itshape a\textsubscript{1}} , ... , {\itshape a\textsubscript{attribute\+\_\+num}} are the {\itshape attribute\+\_\+num} attributes.
+
+If an attribute takes multiple values, but their number is {\itshape predefined} in the array schema (e.\+g., {\bfseries int\+:3}), then these values are simply included next to each other and separated by comma. However, if the number of values is {\itshape variable} (e.\+g, {\bfseries int\+:var}), then the number of values must precede the actual attribute values (e.\+g., \char`\"{}3,0.\+1,0.\+2,0.\+3\char`\"{} for an attribute {\itshape attr1} whose type was defined as {\bfseries float\+:var} means that this cell stores three values on attribute {\itshape attr1}, namely 0.\+1, 0.\+2, and 0.\+3 (more examples are provided below).
+
+There is one exception of the above for the case of {\itshape strings} (i.\+e., variable lengthed attributes defined as {\bfseries char\+:var}). These are simply given in one C\+S\+V field (e.\+g., \char`\"{}abc\char`\"{}), since their number can be easily deduced by the size of the string (the same is not true for numerics). If multiple strings are to be included in a {\bfseries var\+:char} attribute, the user must simply include an arbitray separator. For instance, one may store strings \char`\"{}abc\char`\"{} and \char`\"{}defg\char`\"{} as \char`\"{}abc$\ast$defg\char`\"{}. It falls upon the \char`\"{}conslumer\char`\"{} of the data to recognize how to split the strings (Tile\+D\+B simply stores a variable number of characters). Finally, note that, if an attribute is defined, say, as {\bfseries char\+:3} (i.\+e., the number of characters for this attribute per cell is known upon definition), then the line must simply include a,b,c instead of \char`\"{}abc\char`\"{} (i.\+e., it is treated as in the case of the other types).
+
+A {\bfseries null} attribute value is represented by character '$\ast$'.
+
+A {\bfseries deletion} of a cell in Tile\+D\+B is represented by a C\+S\+V line that contains the coordinates of the cell to be deleted, and stores character '\$' in {\itshape all} the attribute fields.
+
+{\bfseries Example C\+S\+V lines} ~\newline
+ Suppose that the array contains {\bfseries 2 dimensions} and {\bfseries 3 attributes}, whose types are defined as {\bfseries int\+:2,double\+:var,char\+:var,int64} (recall that the last type corresponds always to all coordinates collectively).
+\begin{DoxyItemize}
+\item 1,3,10,11,2,0.\+1,0.\+2,paok ~\newline
+ (1,3) are the coordinates of the cell (of type int64). (10,11) is the value on the first attribute (of type int). (0.\+1,0.\+2) is the value of the second attribute (of type double). Finally, \char`\"{}paok\char`\"{} is the value of the third attribute (of type char), and my favorite soccer team in Greece \+:P.
+\item 1,3,10,11,$\ast$,paok ~\newline
+ Same as above, but now the second attribute value is null.
+\item 1,3,\$,\$,\$ ~\newline
+ Cell (1,3) is being deleted.
+\end{DoxyItemize}
+
+
+\begin{DoxyParams}{Parameters}
+{\em tiledb\+\_\+context} & The Tile\+D\+B state consisting of the Tile\+D\+B modules. \\
+\hline
+{\em array\+\_\+name} & The name of the array into which the C\+S\+V file is loaded. Note that the array must already be defined. \\
+\hline
+{\em filename} & The name of the C\+S\+V file to be loaded. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+An error code, which can be one of the following\+:
+\begin{DoxyItemize}
+\item {\bfseries 0}~\newline
+ Success
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+N\+D\+E\+F\+A\+R\+R}~\newline
+ Undefined array
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+F\+I\+L\+E}~\newline
+ File operation failed
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+O\+A\+R\+R}~\newline
+ Failed to open array
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+C\+A\+R\+R}~\newline
+ Failed to close array 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\begin{DoxySeeAlso}{See also}
+\hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context}, \hyperlink{tiledb__queries_8h_afe3a8940ab3800a55143bc7baeac2375}{tiledb\+\_\+define\+\_\+array}, \hyperlink{tiledb__queries_8h_acc1589d4b0171cdafcf526ebd80f8f56}{tiledb\+\_\+export\+\_\+csv}, \hyperlink{tiledb__queries_8h_a539a59c691a6daa85509cc7943b02758}{tiledb\+\_\+load\+\_\+bin}, \hyperlink{tiledb__queries_8h_ad8b6187b5a647f53ed523c2bc855edbe}{tiledb\+\_\+generate\+\_\+data}, \hyperlink{tiledb__error_8h}{tiledb\+\_\+error.\+h} 
+\end{DoxySeeAlso}
+\hypertarget{tiledb__queries_8h_aeae1ff575618bf6a6cf1ef745c637b94}{}\index{tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}!tiledb\+\_\+show\+\_\+array\+\_\+schema@{tiledb\+\_\+show\+\_\+array\+\_\+schema}}
+\index{tiledb\+\_\+show\+\_\+array\+\_\+schema@{tiledb\+\_\+show\+\_\+array\+\_\+schema}!tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}}
+\subsubsection[{tiledb\+\_\+show\+\_\+array\+\_\+schema}]{\setlength{\rightskip}{0pt plus 5cm}T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int tiledb\+\_\+show\+\_\+array\+\_\+schema (
+\begin{DoxyParamCaption}
+\item[{const {\bf Tile\+D\+B\+\_\+\+Context} $\ast$}]{tiledb\+\_\+context, }
+\item[{const char $\ast$}]{array\+\_\+name}
+\end{DoxyParamCaption}
+)}\label{tiledb__queries_8h_aeae1ff575618bf6a6cf1ef745c637b94}
+Prints the schema of an array on the standard output. The array must be defined. On error, it prints a message on stderr and returns an error code (shown below). 
+\begin{DoxyParams}{Parameters}
+{\em tiledb\+\_\+context} & The Tile\+D\+B state consisting of the Tile\+D\+B modules. \\
+\hline
+{\em array\+\_\+name} & The name of the array whose schema is printed. \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+An error code, which can be one of the following\+:
+\begin{DoxyItemize}
+\item {\bfseries 0}~\newline
+ Success
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+N\+D\+E\+F\+A\+R\+R}~\newline
+ Undefined array
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+F\+I\+L\+E}~\newline
+ File operation failed 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\begin{DoxySeeAlso}{See also}
+\hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context}, \hyperlink{tiledb__queries_8h_afe3a8940ab3800a55143bc7baeac2375}{tiledb\+\_\+define\+\_\+array}, \hyperlink{tiledb__error_8h}{tiledb\+\_\+error.\+h} 
+\end{DoxySeeAlso}
+\hypertarget{tiledb__queries_8h_a4f87da93da89fdea9e505d2f5d488ef6}{}\index{tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}!tiledb\+\_\+subarray@{tiledb\+\_\+subarray}}
+\index{tiledb\+\_\+subarray@{tiledb\+\_\+subarray}!tiledb\+\_\+queries.\+h@{tiledb\+\_\+queries.\+h}}
+\subsubsection[{tiledb\+\_\+subarray}]{\setlength{\rightskip}{0pt plus 5cm}T\+I\+L\+E\+D\+B\+\_\+\+E\+X\+P\+O\+R\+T int tiledb\+\_\+subarray (
+\begin{DoxyParamCaption}
+\item[{const {\bf Tile\+D\+B\+\_\+\+Context} $\ast$}]{tiledb\+\_\+context, }
+\item[{const char $\ast$}]{array\+\_\+name, }
+\item[{const char $\ast$}]{result\+\_\+name, }
+\item[{const double $\ast$}]{range, }
+\item[{int}]{range\+\_\+size, }
+\item[{const char $\ast$$\ast$}]{attribute\+\_\+names, }
+\item[{int}]{attribute\+\_\+names\+\_\+num}
+\end{DoxyParamCaption}
+)}\label{tiledb__queries_8h_a4f87da93da89fdea9e505d2f5d488ef6}
+Creates a new array with the same schema as the input array (or including a subset of the attributes in a potentially different order), conataining only the cells that lie in the input range. The range must be a hyper-\/rectangle that is completely contained in the dimension space. It is also given as a sequence of \mbox{[}low,high\mbox{]} pairs across each dimension. On error, it prints a message on stderr and returns an error code (shown below).
+
+{\bfseries Examples}
+
+Supposing that tiledb\+\_\+context stores a pointer to a \hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context} object, and assuming that the array has dimensions {\itshape dim1},{\itshape dim2} with domains \mbox{[}0,100\mbox{]} and \mbox{[}0,200\mbox{]}, respectively, and attributes {\itshape attr1},{\itshape attr2},{\itshape attr3} \+:
+\begin{DoxyItemize}
+\item tiledb\+\_\+subarray(tiledb\+\_\+context, \char`\"{}\+A\char`\"{}, \char`\"{}\+A\+\_\+sub\char`\"{}, \{10,20,100,150\}, 4, \{\}, 0) ~\newline
+ Creates a new array \char`\"{}\+A\+\_\+sub\char`\"{} with exactly the same schema as \char`\"{}\+A\char`\"{}, but only containing the cells within rectangle \mbox{[}10,20\mbox{]} ({\itshape dim1}) , \mbox{[}100,150\mbox{]} ($\ast$dim2).
+\item tiledb\+\_\+subarray(tiledb\+\_\+context, \char`\"{}\+A\char`\"{}, \char`\"{}\+A\+\_\+sub\char`\"{}, \{10,20,100,150\}, 4, \{\char`\"{}attr1\char`\"{},\char`\"{}attr2\char`\"{}\}, 2) ~\newline
+ Same as the first example, but now \char`\"{}\+A\+\_\+sub\char`\"{} contains only two attributes ({\itshape attr1},{\itshape attr2}).
+\item tiledb\+\_\+subarray(tiledb\+\_\+context, \char`\"{}\+A\char`\"{}, \char`\"{}\+A\+\_\+sub\char`\"{}, \{10,20,100,150\}, 4, \{\char`\"{}attr2\char`\"{},\char`\"{}attr1\char`\"{}\}, 2) ~\newline
+ Same as the second example, but {\itshape attr1} and {\itshape attr2} appear in a different order in \char`\"{}\+A\+\_\+sub\char`\"{}.
+\end{DoxyItemize}
+
+
+\begin{DoxyParams}{Parameters}
+{\em tiledb\+\_\+context} & The Tile\+D\+B state consisting of the Tile\+D\+B modules. \\
+\hline
+{\em array\+\_\+name} & The name of the array the subarray will be applied on. \\
+\hline
+{\em result\+\_\+name} & The name of the output array. \\
+\hline
+{\em range} & The range of the subarray. It must contain real values. \\
+\hline
+{\em range\+\_\+size} & The nunber of elements of the range vector. It must be equal to 2$\ast$dim\+\_\+num, where {\itshape dim\+\_\+num} is the number of the dimensions of the array. \\
+\hline
+{\em attribute\+\_\+names} & A vector holding the attribute names to be included in the schema of the result array. If it is empty, then all the attributes of the input array will appear in the output array. \\
+\hline
+{\em attribute\+\_\+names\+\_\+num} & The number of elements in attribute\+\_\+names \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+An error code, which can be one of the following\+:
+\begin{DoxyItemize}
+\item {\bfseries 0}~\newline
+ Success
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+N\+D\+E\+F\+A\+R\+R}~\newline
+ Undefined array
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+F\+I\+L\+E}~\newline
+ File operation failed
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+O\+A\+R\+R}~\newline
+ Failed to open array
+\item {\bfseries T\+I\+L\+E\+D\+B\+\_\+\+E\+C\+A\+R\+R}~\newline
+ Failed to close array 
+\end{DoxyItemize}
+\end{DoxyReturn}
+\begin{DoxySeeAlso}{See also}
+\hyperlink{structTileDB__Context}{Tile\+D\+B\+\_\+\+Context}, \hyperlink{tiledb__queries_8h_afe3a8940ab3800a55143bc7baeac2375}{tiledb\+\_\+define\+\_\+array}, \hyperlink{tiledb__error_8h}{tiledb\+\_\+error.\+h} 
+\end{DoxySeeAlso}

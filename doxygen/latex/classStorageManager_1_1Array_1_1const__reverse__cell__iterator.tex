@@ -1,0 +1,301 @@
+\hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator}{}\section{Storage\+Manager\+:\+:Array\+:\+:const\+\_\+reverse\+\_\+cell\+\_\+iterator$<$ T $>$ Class Template Reference}
+\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator$<$ T $>$@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator$<$ T $>$}}
+
+
+{\ttfamily \#include $<$storage\+\_\+manager.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a39c494e646fcc4700dc301229665eb22}{const\+\_\+reverse\+\_\+cell\+\_\+iterator} ()
+\item 
+\hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a7778814f01a6600067edba1e6b3d710e}{const\+\_\+reverse\+\_\+cell\+\_\+iterator} (\hyperlink{classStorageManager_1_1Array}{Array} $\ast$array)
+\item 
+\hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a3243c47a5b32b9e242cf024480dc7eb4}{const\+\_\+reverse\+\_\+cell\+\_\+iterator} (\hyperlink{classStorageManager_1_1Array}{Array} $\ast$array, const std\+::vector$<$ int $>$ \&fragment\+\_\+ids, bool return\+\_\+del)
+\item 
+\hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_add2de2158ea0892c3d47e6854f92a97f}{const\+\_\+reverse\+\_\+cell\+\_\+iterator} (\hyperlink{classStorageManager_1_1Array}{Array} $\ast$array, const std\+::vector$<$ int $>$ \&\hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad4e0c39197231c45db9faead252c2dd0}{attribute\+\_\+ids})
+\item 
+\hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_afcf9e32d2a0ba1eeb3f5543ed6db62e4}{const\+\_\+reverse\+\_\+cell\+\_\+iterator} (\hyperlink{classStorageManager_1_1Array}{Array} $\ast$array, const T $\ast$range)
+\item 
+\hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ae041950dda2fe99f8a3d9aa0211da613}{const\+\_\+reverse\+\_\+cell\+\_\+iterator} (\hyperlink{classStorageManager_1_1Array}{Array} $\ast$array, const T $\ast$range, const std\+::vector$<$ int $>$ \&\hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad4e0c39197231c45db9faead252c2dd0}{attribute\+\_\+ids})
+\item 
+\hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a1e64ec535427e572be20d364f25d04dc}{$\sim$const\+\_\+reverse\+\_\+cell\+\_\+iterator} ()
+\item 
+const std\+::vector$<$ int $>$ \& \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad4e0c39197231c45db9faead252c2dd0}{attribute\+\_\+ids} () const 
+\item 
+size\+\_\+t \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad1017ce348c44bb7623a8ad36b28bf92}{cell\+\_\+size} () const 
+\item 
+size\+\_\+t \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aa8438b91cf2d63197c84544a6afe8f9b}{cell\+\_\+size} (int fragment\+\_\+id) const 
+\item 
+bool \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a97475a3e5aa93f64f9962d5dc39ff9f1}{end} () const 
+\item 
+void \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_abb79b3277f6e49a03c0673c774c3c123}{operator++} ()
+\item 
+const void $\ast$ \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a477673a8462e6aa41d4ed8c8078dcd46}{operator$\ast$} ()
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aedaabb27f3c800ec4aee8fb1ee917b51}{advance\+\_\+cell} (int fragment\+\_\+id)
+\item 
+void \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aa36d101497be184e263d5a23774c974b}{advance\+\_\+cell\+\_\+in\+\_\+range} (int fragment\+\_\+id)
+\item 
+void \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ac6f63d1b1b268e5c3727d5df4395a94d}{find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range} (int fragment\+\_\+id)
+\item 
+int \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a49f2ee1cea305bd1c4e3e939d191efa1}{get\+\_\+next\+\_\+cell} ()
+\item 
+void \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a0757d5ce0f03b978172a40b6d910dd25}{init\+\_\+iterators} ()
+\item 
+void \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aa029ee5fd04ddd1ba94f866a54c7870c}{init\+\_\+iterators\+\_\+in\+\_\+range} ()
+\item 
+bool \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a3a783504da48f6577a2ad5d1db556aed}{precedes} (const \hyperlink{classTile_1_1const__reverse__cell__iterator}{Tile\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator} \&it\+\_\+\+A, const \hyperlink{classTile_1_1const__reverse__cell__iterator}{Tile\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator} \&it\+\_\+\+B) const 
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classStorageManager_1_1Array}{Array} $\ast$ \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ae9015a8497d6f8da85e1179812cc8585}{array\+\_\+}
+\item 
+std\+::vector$<$ int $>$ \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ab52d06b20baffddb47cf89c80e17c7de}{attribute\+\_\+ids\+\_\+}
+\item 
+int \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ae2ae35803cb3730571ee9f86f09fe941}{attribute\+\_\+num\+\_\+}
+\item 
+void $\ast$ \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a80af6f1e1e74dd28172ba6f5500289fb}{cell\+\_\+}
+\item 
+\hyperlink{classTile_1_1const__reverse__cell__iterator}{Tile\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator} $\ast$$\ast$ \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad4f58978cc17b0bcf4d498915a5cca1b}{cell\+\_\+its\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_af073bd6ff65c84ead2a53b23cf6ddf65}{cell\+\_\+size\+\_\+}
+\item 
+int \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a0b9070d214b7a1b7d5b419dbd2d0bfb6}{dim\+\_\+num\+\_\+}
+\item 
+bool \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a053deba563ae436f07b1c7c111aff8ab}{end\+\_\+}
+\item 
+std\+::vector$<$ int $>$ \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a7ea5fedc37a655e9dd65e471171c0266}{fragment\+\_\+ids\+\_\+}
+\item 
+int \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a1261d5ce3cade89ea94751531325dff4}{fragment\+\_\+num\+\_\+}
+\item 
+bool $\ast$ \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aad2b6034087c122241059f16bf6131b1}{full\+\_\+overlap\+\_\+}
+\item 
+bool \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ae3e2b057d538114638ac0ac0476a8ba8}{is\+\_\+del\+\_\+}
+\item 
+T $\ast$ \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_af6bad4e1e24814785b6ddca558735a24}{range\+\_\+}
+\item 
+bool \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a2de3135fe63b39f73d699a79d773828a}{return\+\_\+del\+\_\+}
+\item 
+\hyperlink{classStorageManager_1_1Fragment_1_1const__reverse__tile__iterator}{Fragment\+::const\+\_\+reverse\+\_\+tile\+\_\+iterator} $\ast$$\ast$ \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad3ec6eabf371f96e8b91d101f8e17675}{tile\+\_\+its\+\_\+}
+\item 
+bool \hyperlink{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a605db1ee1adf195b8c846e65a730c025}{var\+\_\+size\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$class T$>$class Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator$<$ T $>$}
+
+A constant reverse cell iterator that iterates over the cells of all the fragments of the array in the global cell order as specified by the array schema. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a39c494e646fcc4700dc301229665eb22}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!const\+\_\+reverse\+\_\+cell\+\_\+iterator@{const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\index{const\+\_\+reverse\+\_\+cell\+\_\+iterator@{const\+\_\+reverse\+\_\+cell\+\_\+iterator}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{const\+\_\+reverse\+\_\+cell\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::{\bf const\+\_\+reverse\+\_\+cell\+\_\+iterator} (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a39c494e646fcc4700dc301229665eb22}
+Constructor. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a7778814f01a6600067edba1e6b3d710e}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!const\+\_\+reverse\+\_\+cell\+\_\+iterator@{const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\index{const\+\_\+reverse\+\_\+cell\+\_\+iterator@{const\+\_\+reverse\+\_\+cell\+\_\+iterator}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{const\+\_\+reverse\+\_\+cell\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::{\bf const\+\_\+reverse\+\_\+cell\+\_\+iterator} (
+\begin{DoxyParamCaption}
+\item[{{\bf Array} $\ast$}]{array}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a7778814f01a6600067edba1e6b3d710e}
+Constructor. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a3243c47a5b32b9e242cf024480dc7eb4}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!const\+\_\+reverse\+\_\+cell\+\_\+iterator@{const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\index{const\+\_\+reverse\+\_\+cell\+\_\+iterator@{const\+\_\+reverse\+\_\+cell\+\_\+iterator}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{const\+\_\+reverse\+\_\+cell\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::{\bf const\+\_\+reverse\+\_\+cell\+\_\+iterator} (
+\begin{DoxyParamCaption}
+\item[{{\bf Array} $\ast$}]{array, }
+\item[{const std\+::vector$<$ int $>$ \&}]{fragment\+\_\+ids, }
+\item[{bool}]{return\+\_\+del}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a3243c47a5b32b9e242cf024480dc7eb4}
+Constructor. The second argument specifies the fragments the iterator will focus on. If the list is empty, then the iterator iterates over all fragments. The last argument indicates whether a cell representing a deletion must be returned or suppressed. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_add2de2158ea0892c3d47e6854f92a97f}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!const\+\_\+reverse\+\_\+cell\+\_\+iterator@{const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\index{const\+\_\+reverse\+\_\+cell\+\_\+iterator@{const\+\_\+reverse\+\_\+cell\+\_\+iterator}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{const\+\_\+reverse\+\_\+cell\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::{\bf const\+\_\+reverse\+\_\+cell\+\_\+iterator} (
+\begin{DoxyParamCaption}
+\item[{{\bf Array} $\ast$}]{array, }
+\item[{const std\+::vector$<$ int $>$ \&}]{attribute\+\_\+ids}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_add2de2158ea0892c3d47e6854f92a97f}
+Constructor. The second argument determines the attribute the iterator will focus on. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_afcf9e32d2a0ba1eeb3f5543ed6db62e4}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!const\+\_\+reverse\+\_\+cell\+\_\+iterator@{const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\index{const\+\_\+reverse\+\_\+cell\+\_\+iterator@{const\+\_\+reverse\+\_\+cell\+\_\+iterator}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{const\+\_\+reverse\+\_\+cell\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::{\bf const\+\_\+reverse\+\_\+cell\+\_\+iterator} (
+\begin{DoxyParamCaption}
+\item[{{\bf Array} $\ast$}]{array, }
+\item[{const T $\ast$}]{range}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_afcf9e32d2a0ba1eeb3f5543ed6db62e4}
+Constructor. Takes as input also a multi-\/dimensional range. The iterator will iterate only on the cells of the array whose coordinates fall into the input range. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ae041950dda2fe99f8a3d9aa0211da613}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!const\+\_\+reverse\+\_\+cell\+\_\+iterator@{const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\index{const\+\_\+reverse\+\_\+cell\+\_\+iterator@{const\+\_\+reverse\+\_\+cell\+\_\+iterator}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{const\+\_\+reverse\+\_\+cell\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::{\bf const\+\_\+reverse\+\_\+cell\+\_\+iterator} (
+\begin{DoxyParamCaption}
+\item[{{\bf Array} $\ast$}]{array, }
+\item[{const T $\ast$}]{range, }
+\item[{const std\+::vector$<$ int $>$ \&}]{attribute\+\_\+ids}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ae041950dda2fe99f8a3d9aa0211da613}
+Constructor. Takes as input also a multi-\/dimensional range. The iterator will iterate only on the cells of the array whose coordinates fall into the input range. The third argument determines the attributes the iterator will focus on. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a1e64ec535427e572be20d364f25d04dc}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!````~const\+\_\+reverse\+\_\+cell\+\_\+iterator@{$\sim$const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\index{````~const\+\_\+reverse\+\_\+cell\+\_\+iterator@{$\sim$const\+\_\+reverse\+\_\+cell\+\_\+iterator}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{$\sim$const\+\_\+reverse\+\_\+cell\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::$\sim${\bf const\+\_\+reverse\+\_\+cell\+\_\+iterator} (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a1e64ec535427e572be20d364f25d04dc}
+Destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aedaabb27f3c800ec4aee8fb1ee917b51}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!advance\+\_\+cell@{advance\+\_\+cell}}
+\index{advance\+\_\+cell@{advance\+\_\+cell}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{advance\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::advance\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{int}]{fragment\+\_\+id}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aedaabb27f3c800ec4aee8fb1ee917b51}
+Advances the cell iterators of all attributes of the fragment with the input id. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aa36d101497be184e263d5a23774c974b}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!advance\+\_\+cell\+\_\+in\+\_\+range@{advance\+\_\+cell\+\_\+in\+\_\+range}}
+\index{advance\+\_\+cell\+\_\+in\+\_\+range@{advance\+\_\+cell\+\_\+in\+\_\+range}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{advance\+\_\+cell\+\_\+in\+\_\+range}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::advance\+\_\+cell\+\_\+in\+\_\+range (
+\begin{DoxyParamCaption}
+\item[{int}]{fragment\+\_\+id}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aa36d101497be184e263d5a23774c974b}
+Advances the cell iterators of all attributes of the fragment with the input id, until the next cell in range is found. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad4e0c39197231c45db9faead252c2dd0}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!attribute\+\_\+ids@{attribute\+\_\+ids}}
+\index{attribute\+\_\+ids@{attribute\+\_\+ids}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{attribute\+\_\+ids}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ const std\+::vector$<$int$>$\& {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::attribute\+\_\+ids (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad4e0c39197231c45db9faead252c2dd0}
+Return the ids of the attributes the iterator iterates on. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad1017ce348c44bb7623a8ad36b28bf92}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!cell\+\_\+size@{cell\+\_\+size}}
+\index{cell\+\_\+size@{cell\+\_\+size}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{cell\+\_\+size}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ size\+\_\+t {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::cell\+\_\+size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad1017ce348c44bb7623a8ad36b28bf92}
+Returns the size of the current cell. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aa8438b91cf2d63197c84544a6afe8f9b}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!cell\+\_\+size@{cell\+\_\+size}}
+\index{cell\+\_\+size@{cell\+\_\+size}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{cell\+\_\+size}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ size\+\_\+t {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::cell\+\_\+size (
+\begin{DoxyParamCaption}
+\item[{int}]{fragment\+\_\+id}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aa8438b91cf2d63197c84544a6afe8f9b}
+Returns the size of the current cell pointed by the iterators of the fragment with id equal to fragment\+\_\+id. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a97475a3e5aa93f64f9962d5dc39ff9f1}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!end@{end}}
+\index{end@{end}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{end}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ bool {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::end (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a97475a3e5aa93f64f9962d5dc39ff9f1}
+Returns true if the iterator has reached the end of the cells. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ac6f63d1b1b268e5c3727d5df4395a94d}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range@{find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range}}
+\index{find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range@{find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range (
+\begin{DoxyParamCaption}
+\item[{int}]{fragment\+\_\+id}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ac6f63d1b1b268e5c3727d5df4395a94d}
+Finds the next cell from the input fragment along the global cell order, which falls inside the range stored upon initialization of the iterator (see \hyperlink{classStorageManager_1_1Array_1_1const__cell__iterator_abe48759f70358627df97e3aaec3fe8fd}{Storage\+Manager\+::\+Array\+::const\+\_\+cell\+\_\+iterator\+::range\+\_\+}). \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a49f2ee1cea305bd1c4e3e939d191efa1}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!get\+\_\+next\+\_\+cell@{get\+\_\+next\+\_\+cell}}
+\index{get\+\_\+next\+\_\+cell@{get\+\_\+next\+\_\+cell}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{get\+\_\+next\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ int {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::get\+\_\+next\+\_\+cell (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a49f2ee1cea305bd1c4e3e939d191efa1}
+Extracts the next cell from all the fragments along the global cell order. It returns the id of the fragment the cell was extracted from. If the end of the cells is reached, it returns -\/1. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a0757d5ce0f03b978172a40b6d910dd25}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!init\+\_\+iterators@{init\+\_\+iterators}}
+\index{init\+\_\+iterators@{init\+\_\+iterators}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{init\+\_\+iterators}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::init\+\_\+iterators (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a0757d5ce0f03b978172a40b6d910dd25}
+Initializes tile and cell iterators for the input fragments and attributes. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aa029ee5fd04ddd1ba94f866a54c7870c}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!init\+\_\+iterators\+\_\+in\+\_\+range@{init\+\_\+iterators\+\_\+in\+\_\+range}}
+\index{init\+\_\+iterators\+\_\+in\+\_\+range@{init\+\_\+iterators\+\_\+in\+\_\+range}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{init\+\_\+iterators\+\_\+in\+\_\+range}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::init\+\_\+iterators\+\_\+in\+\_\+range (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aa029ee5fd04ddd1ba94f866a54c7870c}
+Initializes tile and cell iterators that will irerate over tiles and cells that overlap with the stored range. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a477673a8462e6aa41d4ed8c8078dcd46}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!operator$\ast$@{operator$\ast$}}
+\index{operator$\ast$@{operator$\ast$}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{operator$\ast$}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ const void$\ast$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::operator$\ast$ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a477673a8462e6aa41d4ed8c8078dcd46}
+Dereference. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_abb79b3277f6e49a03c0673c774c3c123}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!operator++@{operator++}}
+\index{operator++@{operator++}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{operator++}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::operator++ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_abb79b3277f6e49a03c0673c774c3c123}
+Increment. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a3a783504da48f6577a2ad5d1db556aed}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!precedes@{precedes}}
+\index{precedes@{precedes}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{precedes}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ bool {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::precedes (
+\begin{DoxyParamCaption}
+\item[{const {\bf Tile\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$ \&}]{it\+\_\+\+A, }
+\item[{const {\bf Tile\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$ \&}]{it\+\_\+\+B}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a3a783504da48f6577a2ad5d1db556aed}
+True if the cell pointed by the first iterator precedes that of the second on the global cell order. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ae9015a8497d6f8da85e1179812cc8585}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!array\+\_\+@{array\+\_\+}}
+\index{array\+\_\+@{array\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{array\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Array}$\ast$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::array\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ae9015a8497d6f8da85e1179812cc8585}
+The array the cell iterator was created for. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ab52d06b20baffddb47cf89c80e17c7de}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!attribute\+\_\+ids\+\_\+@{attribute\+\_\+ids\+\_\+}}
+\index{attribute\+\_\+ids\+\_\+@{attribute\+\_\+ids\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{attribute\+\_\+ids\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ std\+::vector$<$int$>$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::attribute\+\_\+ids\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ab52d06b20baffddb47cf89c80e17c7de}
+The ids of the attributes the iterator iterates over. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ae2ae35803cb3730571ee9f86f09fe941}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!attribute\+\_\+num\+\_\+@{attribute\+\_\+num\+\_\+}}
+\index{attribute\+\_\+num\+\_\+@{attribute\+\_\+num\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{attribute\+\_\+num\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ int {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::attribute\+\_\+num\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ae2ae35803cb3730571ee9f86f09fe941}
+Number of attributes. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a80af6f1e1e74dd28172ba6f5500289fb}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!cell\+\_\+@{cell\+\_\+}}
+\index{cell\+\_\+@{cell\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{cell\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void$\ast$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::cell\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a80af6f1e1e74dd28172ba6f5500289fb}
+The current cell. Contains pointers to physical cells of all attibutes. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad4f58978cc17b0bcf4d498915a5cca1b}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!cell\+\_\+its\+\_\+@{cell\+\_\+its\+\_\+}}
+\index{cell\+\_\+its\+\_\+@{cell\+\_\+its\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{cell\+\_\+its\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Tile\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$\ast$$\ast$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::cell\+\_\+its\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad4f58978cc17b0bcf4d498915a5cca1b}
+Stores one cell iterator per fragment per attribute. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_af073bd6ff65c84ead2a53b23cf6ddf65}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!cell\+\_\+size\+\_\+@{cell\+\_\+size\+\_\+}}
+\index{cell\+\_\+size\+\_\+@{cell\+\_\+size\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{cell\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ size\+\_\+t {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::cell\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_af073bd6ff65c84ead2a53b23cf6ddf65}
+The size of the current cell. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a0b9070d214b7a1b7d5b419dbd2d0bfb6}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!dim\+\_\+num\+\_\+@{dim\+\_\+num\+\_\+}}
+\index{dim\+\_\+num\+\_\+@{dim\+\_\+num\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{dim\+\_\+num\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ int {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::dim\+\_\+num\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a0b9070d214b7a1b7d5b419dbd2d0bfb6}
+Number of dimensions. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a053deba563ae436f07b1c7c111aff8ab}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!end\+\_\+@{end\+\_\+}}
+\index{end\+\_\+@{end\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{end\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ bool {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::end\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a053deba563ae436f07b1c7c111aff8ab}
+True if the iterator has reached the end of all cells. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a7ea5fedc37a655e9dd65e471171c0266}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!fragment\+\_\+ids\+\_\+@{fragment\+\_\+ids\+\_\+}}
+\index{fragment\+\_\+ids\+\_\+@{fragment\+\_\+ids\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{fragment\+\_\+ids\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ std\+::vector$<$int$>$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::fragment\+\_\+ids\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a7ea5fedc37a655e9dd65e471171c0266}
+The ids of the fragments the iterator iterates over. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a1261d5ce3cade89ea94751531325dff4}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!fragment\+\_\+num\+\_\+@{fragment\+\_\+num\+\_\+}}
+\index{fragment\+\_\+num\+\_\+@{fragment\+\_\+num\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{fragment\+\_\+num\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ int {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::fragment\+\_\+num\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a1261d5ce3cade89ea94751531325dff4}
+The number of fragments. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aad2b6034087c122241059f16bf6131b1}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!full\+\_\+overlap\+\_\+@{full\+\_\+overlap\+\_\+}}
+\index{full\+\_\+overlap\+\_\+@{full\+\_\+overlap\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{full\+\_\+overlap\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ bool$\ast$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::full\+\_\+overlap\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_aad2b6034087c122241059f16bf6131b1}
+Stores a value per fragment. It is used when iterating cells that fall inside the stored range. It indicates whether the current logical tile under investigation is completely contained in the range or not. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ae3e2b057d538114638ac0ac0476a8ba8}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!is\+\_\+del\+\_\+@{is\+\_\+del\+\_\+}}
+\index{is\+\_\+del\+\_\+@{is\+\_\+del\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{is\+\_\+del\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ bool {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::is\+\_\+del\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ae3e2b057d538114638ac0ac0476a8ba8}
+True if the cell currently pointed to by the iterator represents a deletion. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_af6bad4e1e24814785b6ddca558735a24}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!range\+\_\+@{range\+\_\+}}
+\index{range\+\_\+@{range\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{range\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ T$\ast$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::range\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_af6bad4e1e24814785b6ddca558735a24}
+A multi-\/dimensional range. If not N\+U\+L\+L, the iterator will iterate only on the cells of the array whose coordinates fall into the input range. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a2de3135fe63b39f73d699a79d773828a}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!return\+\_\+del\+\_\+@{return\+\_\+del\+\_\+}}
+\index{return\+\_\+del\+\_\+@{return\+\_\+del\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{return\+\_\+del\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ bool {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::return\+\_\+del\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a2de3135fe63b39f73d699a79d773828a}
+If true, a cell representing a deletion must be returned, otherwise it is suppressed. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad3ec6eabf371f96e8b91d101f8e17675}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!tile\+\_\+its\+\_\+@{tile\+\_\+its\+\_\+}}
+\index{tile\+\_\+its\+\_\+@{tile\+\_\+its\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{tile\+\_\+its\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Fragment\+::const\+\_\+reverse\+\_\+tile\+\_\+iterator}$\ast$$\ast$ {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::tile\+\_\+its\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_ad3ec6eabf371f96e8b91d101f8e17675}
+Stores one tile iterator per fragment per attribute. \hypertarget{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a605db1ee1adf195b8c846e65a730c025}{}\index{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}!var\+\_\+size\+\_\+@{var\+\_\+size\+\_\+}}
+\index{var\+\_\+size\+\_\+@{var\+\_\+size\+\_\+}!Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator@{Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}}
+\subsubsection[{var\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ bool {\bf Storage\+Manager\+::\+Array\+::const\+\_\+reverse\+\_\+cell\+\_\+iterator}$<$ T $>$\+::var\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Array_1_1const__reverse__cell__iterator_a605db1ee1adf195b8c846e65a730c025}
+True if the iterator iterates over variable-\/sized cells. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/\hyperlink{storage__manager_8h}{storage\+\_\+manager.\+h}\end{DoxyCompactItemize}

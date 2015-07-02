@@ -1,0 +1,84 @@
+\hypertarget{classExpressionTree}{}\section{Expression\+Tree Class Reference}
+\label{classExpressionTree}\index{Expression\+Tree@{Expression\+Tree}}
+
+
+{\ttfamily \#include $<$expression\+\_\+tree.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classExpressionTree_a0d743ee804cf5d9c792906f936151886}{Expression\+Tree} ()
+\item 
+\hyperlink{classExpressionTree_a1f440e320b521da0b79962e46576e445}{Expression\+Tree} (\hyperlink{classExpressionNode}{Expression\+Node} $\ast$root)
+\item 
+\hyperlink{classExpressionTree_a7c172d77927af5a57fded65b1777fc17}{$\sim$\+Expression\+Tree} ()
+\item 
+const std\+::set$<$ std\+::string $>$ \& \hyperlink{classExpressionTree_aa0b1bf8079883e70cc7afa246223937c}{vars} () const 
+\item 
+double \hyperlink{classExpressionTree_a1e1800ce2b16f56e77f7970f8b7319eb}{evaluate} (const std\+::map$<$ std\+::string, double $>$ \&var\+\_\+values) const 
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classExpressionNode}{Expression\+Node} $\ast$ \hyperlink{classExpressionTree_a35b30d1e1b457452ffc581da4b781f78}{root\+\_\+}
+\item 
+std\+::set$<$ std\+::string $>$ \hyperlink{classExpressionTree_aa396f95ec3ecb764d9d0b0598c749964}{vars\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+An expression tree, used to represent and evaluate mathematical expressions. It consists of \hyperlink{classExpressionNode}{Expression\+Node} objects, which form a binary tree. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classExpressionTree_a0d743ee804cf5d9c792906f936151886}{}\index{Expression\+Tree@{Expression\+Tree}!Expression\+Tree@{Expression\+Tree}}
+\index{Expression\+Tree@{Expression\+Tree}!Expression\+Tree@{Expression\+Tree}}
+\subsubsection[{Expression\+Tree}]{\setlength{\rightskip}{0pt plus 5cm}Expression\+Tree\+::\+Expression\+Tree (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classExpressionTree_a0d743ee804cf5d9c792906f936151886}
+Empty constructor. \hypertarget{classExpressionTree_a1f440e320b521da0b79962e46576e445}{}\index{Expression\+Tree@{Expression\+Tree}!Expression\+Tree@{Expression\+Tree}}
+\index{Expression\+Tree@{Expression\+Tree}!Expression\+Tree@{Expression\+Tree}}
+\subsubsection[{Expression\+Tree}]{\setlength{\rightskip}{0pt plus 5cm}Expression\+Tree\+::\+Expression\+Tree (
+\begin{DoxyParamCaption}
+\item[{{\bf Expression\+Node} $\ast$}]{root}
+\end{DoxyParamCaption}
+)}\label{classExpressionTree_a1f440e320b521da0b79962e46576e445}
+Simple constructor that takes as input a tree root, and computes the set of variables the tree involves. \hypertarget{classExpressionTree_a7c172d77927af5a57fded65b1777fc17}{}\index{Expression\+Tree@{Expression\+Tree}!````~Expression\+Tree@{$\sim$\+Expression\+Tree}}
+\index{````~Expression\+Tree@{$\sim$\+Expression\+Tree}!Expression\+Tree@{Expression\+Tree}}
+\subsubsection[{$\sim$\+Expression\+Tree}]{\setlength{\rightskip}{0pt plus 5cm}Expression\+Tree\+::$\sim$\+Expression\+Tree (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classExpressionTree_a7c172d77927af5a57fded65b1777fc17}
+Destructor that deletes all the tree nodes. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classExpressionTree_a1e1800ce2b16f56e77f7970f8b7319eb}{}\index{Expression\+Tree@{Expression\+Tree}!evaluate@{evaluate}}
+\index{evaluate@{evaluate}!Expression\+Tree@{Expression\+Tree}}
+\subsubsection[{evaluate}]{\setlength{\rightskip}{0pt plus 5cm}double Expression\+Tree\+::evaluate (
+\begin{DoxyParamCaption}
+\item[{const std\+::map$<$ std\+::string, double $>$ \&}]{var\+\_\+values}
+\end{DoxyParamCaption}
+) const}\label{classExpressionTree_a1e1800ce2b16f56e77f7970f8b7319eb}
+It evaluates the expression represented in the tree, substituting the variables with their respective values provided in the input. \hypertarget{classExpressionTree_aa0b1bf8079883e70cc7afa246223937c}{}\index{Expression\+Tree@{Expression\+Tree}!vars@{vars}}
+\index{vars@{vars}!Expression\+Tree@{Expression\+Tree}}
+\subsubsection[{vars}]{\setlength{\rightskip}{0pt plus 5cm}const std\+::set$<$std\+::string$>$\& Expression\+Tree\+::vars (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classExpressionTree_aa0b1bf8079883e70cc7afa246223937c}
+Returns the variables involved in the expression. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classExpressionTree_a35b30d1e1b457452ffc581da4b781f78}{}\index{Expression\+Tree@{Expression\+Tree}!root\+\_\+@{root\+\_\+}}
+\index{root\+\_\+@{root\+\_\+}!Expression\+Tree@{Expression\+Tree}}
+\subsubsection[{root\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Expression\+Node}$\ast$ Expression\+Tree\+::root\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classExpressionTree_a35b30d1e1b457452ffc581da4b781f78}
+The tree root. \hypertarget{classExpressionTree_aa396f95ec3ecb764d9d0b0598c749964}{}\index{Expression\+Tree@{Expression\+Tree}!vars\+\_\+@{vars\+\_\+}}
+\index{vars\+\_\+@{vars\+\_\+}!Expression\+Tree@{Expression\+Tree}}
+\subsubsection[{vars\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::set$<$std\+::string$>$ Expression\+Tree\+::vars\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classExpressionTree_aa396f95ec3ecb764d9d0b0598c749964}
+The names of the variables included in the tree. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/query\+\_\+processor/\hyperlink{expression__tree_8h}{expression\+\_\+tree.\+h}\end{DoxyCompactItemize}

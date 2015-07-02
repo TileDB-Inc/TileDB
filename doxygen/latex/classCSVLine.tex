@@ -1,0 +1,231 @@
+\hypertarget{classCSVLine}{}\section{C\+S\+V\+Line Class Reference}
+\label{classCSVLine}\index{C\+S\+V\+Line@{C\+S\+V\+Line}}
+
+
+{\ttfamily \#include $<$csv\+\_\+line.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classCSVLine_a214a1f482627575b7c0defae2b048aa8}{C\+S\+V\+Line} ()
+\item 
+\hyperlink{classCSVLine_ae1370b48c447e55096bf0d6ce752df79}{C\+S\+V\+Line} (const std\+::string \&line)
+\item 
+\hyperlink{classCSVLine_a5d894d71fb45d4cbe9af2dd16b408327}{$\sim$\+C\+S\+V\+Line} ()
+\item 
+size\+\_\+t \hyperlink{classCSVLine_a55e47580ee57f802e8ea4d65217a0b23}{size} () const 
+\item 
+std\+::string \hyperlink{classCSVLine_af5825b91bf1329850b4ed00acd78342a}{str} () const 
+\item 
+const std\+::vector$<$ std\+::string $>$ \& \hyperlink{classCSVLine_ab7f413beb00cf9d629a56e655a469f13}{values} () const 
+\item 
+void \hyperlink{classCSVLine_a1ff1445feeccd9a8204b4f2aedd861db}{clear} ()
+\item 
+void \hyperlink{classCSVLine_a0db6daf70aff9d129d671bc174db3482}{reset} ()
+\item 
+const std\+::string \& \hyperlink{classCSVLine_ae0666050b9bf951381a35fdd3a8801c8}{operator$\ast$} () const 
+\item 
+void \hyperlink{classCSVLine_aaebd8997d214a37100ab4e37d480c919}{operator++} ()
+\item 
+void \hyperlink{classCSVLine_a344f8c4600145c55576f622c486c9a7c}{operator+=} (int step)
+\item 
+void \hyperlink{classCSVLine_aa12fa76a2dcfc65a9074acb51c0a9f8a}{operator$<$$<$} (const std\+::string \&value)
+\item 
+void \hyperlink{classCSVLine_a99f350267be73311e64c43a3fe5b6e0b}{operator$<$$<$} (const \hyperlink{classCSVLine}{C\+S\+V\+Line} \&value)
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classCSVLine_aef4dd2108bd5cf556992629d6eaa08e6}{operator$<$$<$} (T value)
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classCSVLine_a748487c66e0b0276d931669a39f77e8d}{operator$<$$<$} (const std\+::vector$<$ T $>$ \&\hyperlink{classCSVLine_ab7f413beb00cf9d629a56e655a469f13}{values})
+\item 
+{\footnotesize template$<$class T $>$ }\\bool \hyperlink{classCSVLine_acba2fa9b774450f592e8b6209a41c2ff}{operator$>$$>$} (T \&value)
+\item 
+void \hyperlink{classCSVLine_ad2786d4428cd255e1c68836f58e4b6c0}{operator=} (const std\+::string \&value)
+\item 
+void \hyperlink{classCSVLine_a02cf47d33c1fb69d336f004b7168f958}{operator=} (const \hyperlink{classCSVLine}{C\+S\+V\+Line} \&value)
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classCSVLine_ac09c6eaa3ecc4268c70a4499635c1f57}{operator=} (T value)
+\item 
+{\footnotesize template$<$class T $>$ }\\void \hyperlink{classCSVLine_a4aab81737cd4a47d8230a1e2c261a869}{operator=} (const std\+::vector$<$ T $>$ \&\hyperlink{classCSVLine_ab7f413beb00cf9d629a56e655a469f13}{values})
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classCSVLine_ae5d1bc71a20bbbe86ea0a1875e714a49}{tokenize} (std\+::string line)
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classCSVLine_ae589ad22949aef6a7533f7923f23d64d}{pos\+\_\+}
+\item 
+std\+::vector$<$ std\+::string $>$ \hyperlink{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{values\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This class implements a C\+S\+V line, which is comprised of text segments (values) separated by a comma character (','). A C\+S\+V line is the atomic unit of storage in a \hyperlink{classCSVFile}{C\+S\+V\+File} object. Note that a line that starts with '\#' is a comment line. A C\+S\+V\+\_\+\+N\+U\+L\+L\+\_\+\+V\+A\+L\+U\+E indicates a mising (N\+U\+L\+L) value, whereas a C\+S\+V\+\_\+\+D\+E\+L\+\_\+\+V\+A\+L\+U\+E indicates a deletion. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classCSVLine_a214a1f482627575b7c0defae2b048aa8}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\index{C\+S\+V\+Line@{C\+S\+V\+Line}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{C\+S\+V\+Line}]{\setlength{\rightskip}{0pt plus 5cm}C\+S\+V\+Line\+::\+C\+S\+V\+Line (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_a214a1f482627575b7c0defae2b048aa8}
+Simple constructor. \hypertarget{classCSVLine_ae1370b48c447e55096bf0d6ce752df79}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\index{C\+S\+V\+Line@{C\+S\+V\+Line}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{C\+S\+V\+Line}]{\setlength{\rightskip}{0pt plus 5cm}C\+S\+V\+Line\+::\+C\+S\+V\+Line (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{line}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [explicit]}}\label{classCSVLine_ae1370b48c447e55096bf0d6ce752df79}
+A simple constructor that takes as input a C\+S\+V line as a string, and tokenizes it into values inserted into \hyperlink{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{C\+S\+V\+Line\+::values\+\_\+} (see also \hyperlink{classCSVLine_ae5d1bc71a20bbbe86ea0a1875e714a49}{C\+S\+V\+Line\+::tokenize}). \hypertarget{classCSVLine_a5d894d71fb45d4cbe9af2dd16b408327}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!````~C\+S\+V\+Line@{$\sim$\+C\+S\+V\+Line}}
+\index{````~C\+S\+V\+Line@{$\sim$\+C\+S\+V\+Line}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{$\sim$\+C\+S\+V\+Line}]{\setlength{\rightskip}{0pt plus 5cm}C\+S\+V\+Line\+::$\sim$\+C\+S\+V\+Line (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_a5d894d71fb45d4cbe9af2dd16b408327}
+Empty destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classCSVLine_a1ff1445feeccd9a8204b4f2aedd861db}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!clear@{clear}}
+\index{clear@{clear}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{clear}]{\setlength{\rightskip}{0pt plus 5cm}void C\+S\+V\+Line\+::clear (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_a1ff1445feeccd9a8204b4f2aedd861db}
+Clears the C\+S\+V line (i.\+e., clears \hyperlink{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{C\+S\+V\+Line\+::values\+\_\+} and resets \hyperlink{classCSVLine_ae589ad22949aef6a7533f7923f23d64d}{C\+S\+V\+Line\+::pos\+\_\+}). \hypertarget{classCSVLine_ae0666050b9bf951381a35fdd3a8801c8}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!operator$\ast$@{operator$\ast$}}
+\index{operator$\ast$@{operator$\ast$}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{operator$\ast$}]{\setlength{\rightskip}{0pt plus 5cm}const std\+::string\& C\+S\+V\+Line\+::operator$\ast$ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classCSVLine_ae0666050b9bf951381a35fdd3a8801c8}
+Simply returns the currently pointed value as a string. \hypertarget{classCSVLine_aaebd8997d214a37100ab4e37d480c919}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!operator++@{operator++}}
+\index{operator++@{operator++}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{operator++}]{\setlength{\rightskip}{0pt plus 5cm}void C\+S\+V\+Line\+::operator++ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_aaebd8997d214a37100ab4e37d480c919}
+Simply increments C\+S\+V\+Line\+::pos. \hypertarget{classCSVLine_a344f8c4600145c55576f622c486c9a7c}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!operator+=@{operator+=}}
+\index{operator+=@{operator+=}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{operator+=}]{\setlength{\rightskip}{0pt plus 5cm}void C\+S\+V\+Line\+::operator+= (
+\begin{DoxyParamCaption}
+\item[{int}]{step}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_a344f8c4600145c55576f622c486c9a7c}
+Simply increments C\+S\+V\+Line\+::pos by step. \hypertarget{classCSVLine_aa12fa76a2dcfc65a9074acb51c0a9f8a}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!operator$<$$<$@{operator$<$$<$}}
+\index{operator$<$$<$@{operator$<$$<$}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{operator$<$$<$}]{\setlength{\rightskip}{0pt plus 5cm}void C\+S\+V\+Line\+::operator$<$$<$ (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{value}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_aa12fa76a2dcfc65a9074acb51c0a9f8a}
+Appends a string value to the C\+S\+V line, which is properly tokenized. \hypertarget{classCSVLine_a99f350267be73311e64c43a3fe5b6e0b}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!operator$<$$<$@{operator$<$$<$}}
+\index{operator$<$$<$@{operator$<$$<$}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{operator$<$$<$}]{\setlength{\rightskip}{0pt plus 5cm}void C\+S\+V\+Line\+::operator$<$$<$ (
+\begin{DoxyParamCaption}
+\item[{const {\bf C\+S\+V\+Line} \&}]{value}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_a99f350267be73311e64c43a3fe5b6e0b}
+Appends the input C\+S\+V line to the C\+S\+V line object. \hypertarget{classCSVLine_aef4dd2108bd5cf556992629d6eaa08e6}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!operator$<$$<$@{operator$<$$<$}}
+\index{operator$<$$<$@{operator$<$$<$}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{operator$<$$<$}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void C\+S\+V\+Line\+::operator$<$$<$ (
+\begin{DoxyParamCaption}
+\item[{T}]{value}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_aef4dd2108bd5cf556992629d6eaa08e6}
+Appends a value to the C\+S\+V line. If the value is a string, it tokenizes it (see \hyperlink{classCSVLine_ae5d1bc71a20bbbe86ea0a1875e714a49}{C\+S\+V\+Line\+::tokenize}). The line is treated as an output stream. \hypertarget{classCSVLine_a748487c66e0b0276d931669a39f77e8d}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!operator$<$$<$@{operator$<$$<$}}
+\index{operator$<$$<$@{operator$<$$<$}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{operator$<$$<$}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void C\+S\+V\+Line\+::operator$<$$<$ (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ T $>$ \&}]{values}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_a748487c66e0b0276d931669a39f77e8d}
+Appends a vector of values to the C\+S\+V line. The line is treated as an output stream. \hypertarget{classCSVLine_ad2786d4428cd255e1c68836f58e4b6c0}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!operator=@{operator=}}
+\index{operator=@{operator=}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{operator=}]{\setlength{\rightskip}{0pt plus 5cm}void C\+S\+V\+Line\+::operator= (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{value}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_ad2786d4428cd255e1c68836f58e4b6c0}
+Clears \hyperlink{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{C\+S\+V\+Line\+::values\+\_\+}, tokenizes the input string, and inserts the new values into \hyperlink{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{C\+S\+V\+Line\+::values\+\_\+}. \hypertarget{classCSVLine_a02cf47d33c1fb69d336f004b7168f958}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!operator=@{operator=}}
+\index{operator=@{operator=}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{operator=}]{\setlength{\rightskip}{0pt plus 5cm}void C\+S\+V\+Line\+::operator= (
+\begin{DoxyParamCaption}
+\item[{const {\bf C\+S\+V\+Line} \&}]{value}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_a02cf47d33c1fb69d336f004b7168f958}
+Clears \hyperlink{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{C\+S\+V\+Line\+::values\+\_\+} and copies into it the contents of the input C\+S\+V line. \hypertarget{classCSVLine_ac09c6eaa3ecc4268c70a4499635c1f57}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!operator=@{operator=}}
+\index{operator=@{operator=}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{operator=}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void C\+S\+V\+Line\+::operator= (
+\begin{DoxyParamCaption}
+\item[{T}]{value}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_ac09c6eaa3ecc4268c70a4499635c1f57}
+Clears \hyperlink{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{C\+S\+V\+Line\+::values\+\_\+} and inserts the new value in \hyperlink{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{C\+S\+V\+Line\+::values\+\_\+}. If the value is a string, it tokenizes it (see \hyperlink{classCSVLine_ae5d1bc71a20bbbe86ea0a1875e714a49}{C\+S\+V\+Line\+::tokenize}). \hypertarget{classCSVLine_a4aab81737cd4a47d8230a1e2c261a869}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!operator=@{operator=}}
+\index{operator=@{operator=}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{operator=}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void C\+S\+V\+Line\+::operator= (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ T $>$ \&}]{values}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_a4aab81737cd4a47d8230a1e2c261a869}
+Clears \hyperlink{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{C\+S\+V\+Line\+::values\+\_\+} and inserts the new values in \hyperlink{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{C\+S\+V\+Line\+::values\+\_\+}. \hypertarget{classCSVLine_acba2fa9b774450f592e8b6209a41c2ff}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!operator$>$$>$@{operator$>$$>$}}
+\index{operator$>$$>$@{operator$>$$>$}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{operator$>$$>$}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ bool C\+S\+V\+Line\+::operator$>$$>$ (
+\begin{DoxyParamCaption}
+\item[{T \&}]{value}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_acba2fa9b774450f592e8b6209a41c2ff}
+Retrieves the next value from the C\+S\+V line. The line is treated as an input stream. \hypertarget{classCSVLine_a0db6daf70aff9d129d671bc174db3482}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!reset@{reset}}
+\index{reset@{reset}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{reset}]{\setlength{\rightskip}{0pt plus 5cm}void C\+S\+V\+Line\+::reset (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classCSVLine_a0db6daf70aff9d129d671bc174db3482}
+Resets \hyperlink{classCSVLine_ae589ad22949aef6a7533f7923f23d64d}{C\+S\+V\+Line\+::pos\+\_\+} to zero. \hypertarget{classCSVLine_a55e47580ee57f802e8ea4d65217a0b23}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!size@{size}}
+\index{size@{size}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{size}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t C\+S\+V\+Line\+::size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classCSVLine_a55e47580ee57f802e8ea4d65217a0b23}
+Returns the number of C\+S\+V values. \hypertarget{classCSVLine_af5825b91bf1329850b4ed00acd78342a}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!str@{str}}
+\index{str@{str}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{str}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string C\+S\+V\+Line\+::str (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classCSVLine_af5825b91bf1329850b4ed00acd78342a}
+Returns the C\+S\+V line as a string of comma-\/separate values. To do so, it puts together the elements of \hyperlink{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{C\+S\+V\+Line\+::values\+\_\+}, separating them with the comma (',') character. \hypertarget{classCSVLine_ae5d1bc71a20bbbe86ea0a1875e714a49}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!tokenize@{tokenize}}
+\index{tokenize@{tokenize}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{tokenize}]{\setlength{\rightskip}{0pt plus 5cm}void C\+S\+V\+Line\+::tokenize (
+\begin{DoxyParamCaption}
+\item[{std\+::string}]{line}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classCSVLine_ae5d1bc71a20bbbe86ea0a1875e714a49}
+Tokenizes a line into values that are inserted into \hyperlink{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{C\+S\+V\+Line\+::values\+\_\+}, using ',' as the delimiter. \hypertarget{classCSVLine_ab7f413beb00cf9d629a56e655a469f13}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!values@{values}}
+\index{values@{values}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{values}]{\setlength{\rightskip}{0pt plus 5cm}const std\+::vector$<$std\+::string$>$\& C\+S\+V\+Line\+::values (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classCSVLine_ab7f413beb00cf9d629a56e655a469f13}
+Returns the list of values of the C\+S\+V line. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classCSVLine_ae589ad22949aef6a7533f7923f23d64d}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!pos\+\_\+@{pos\+\_\+}}
+\index{pos\+\_\+@{pos\+\_\+}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{pos\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int C\+S\+V\+Line\+::pos\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classCSVLine_ae589ad22949aef6a7533f7923f23d64d}
+The current position (index) in \hyperlink{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{C\+S\+V\+Line\+::values\+\_\+} for reading, when using \hyperlink{classCSVLine_acba2fa9b774450f592e8b6209a41c2ff}{C\+S\+V\+Line\+::operator$>$$>$}. \hypertarget{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}{}\index{C\+S\+V\+Line@{C\+S\+V\+Line}!values\+\_\+@{values\+\_\+}}
+\index{values\+\_\+@{values\+\_\+}!C\+S\+V\+Line@{C\+S\+V\+Line}}
+\subsubsection[{values\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$std\+::string$>$ C\+S\+V\+Line\+::values\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classCSVLine_a867dc78e96099853637cf5dbf828a1a7}
+Internally, the line is modeled as a vector of values (the ',' characters are not explicitly stored). 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/misc/\hyperlink{csv__line_8h}{csv\+\_\+line.\+h}\end{DoxyCompactItemize}

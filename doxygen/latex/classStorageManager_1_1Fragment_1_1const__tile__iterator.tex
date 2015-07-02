@@ -1,0 +1,204 @@
+\hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator}{}\section{Storage\+Manager\+:\+:Fragment\+:\+:const\+\_\+tile\+\_\+iterator Class Reference}
+\label{classStorageManager_1_1Fragment_1_1const__tile__iterator}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+
+
+{\ttfamily \#include $<$storage\+\_\+manager.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_ab113d3e34db7f22db7358c0178bf4f50}{const\+\_\+tile\+\_\+iterator} ()
+\item 
+\hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_a285e53d50a87c2f063305dad02518181}{const\+\_\+tile\+\_\+iterator} (\hyperlink{classStorageManager_1_1Fragment}{Fragment} $\ast$fragment, int attribute\+\_\+id, int64\+\_\+t \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_ac04a30e821b2046970f3ed6b6f5154be}{pos})
+\item 
+void \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_aae85a6da26c3d69c577539aedc965529}{operator=} (const \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator}{const\+\_\+tile\+\_\+iterator} \&rhs)
+\item 
+\hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator}{const\+\_\+tile\+\_\+iterator} \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_a77f13fc913b1cd015e9bf61201d1d791}{operator+} (int64\+\_\+t step)
+\item 
+void \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_a85cd6195209f517f5093d974e1335f2b}{operator+=} (int64\+\_\+t step)
+\item 
+\hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator}{const\+\_\+tile\+\_\+iterator} \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_ad4f3f5951a0675eb39ed184929e5f5ca}{operator++} ()
+\item 
+\hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator}{const\+\_\+tile\+\_\+iterator} \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_a47ec35646605b6141a310b0ee6b80f90}{operator++} (int junk)
+\item 
+bool \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_aa4a1e370f185ed9287229d110afa2a74}{operator==} (const \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator}{const\+\_\+tile\+\_\+iterator} \&rhs) const 
+\item 
+bool \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_ad8fb0aa74d0f622ac5aa067bc959a836}{operator!=} (const \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator}{const\+\_\+tile\+\_\+iterator} \&rhs) const 
+\item 
+const \hyperlink{classTile}{Tile} $\ast$ \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_acba2b0a1ddaa3eeea0ae201726407046}{operator$\ast$} () const 
+\item 
+const \hyperlink{classArraySchema}{Array\+Schema} $\ast$ \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_a0f9f6c91e5385650562fd5811eba8ec6}{array\+\_\+schema} () const 
+\item 
+\hyperlink{classStorageManager_a2b31e8ccd7a9daa2cf5f9fbf12080667}{Bounding\+Coordinates\+Pair} \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_a5012591b77d96a0e93743851c6c7825c}{bounding\+\_\+coordinates} () const 
+\item 
+bool \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_af014586805d403eb49fe9770fd0bca45}{end} () const 
+\item 
+\hyperlink{classStorageManager_abb895595763203bac1236a1e5886ae91}{M\+B\+R} \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_ab7d19fcd42b84b14f16304909ed76bc0}{mbr} () const 
+\item 
+int64\+\_\+t \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_ac04a30e821b2046970f3ed6b6f5154be}{pos} () const 
+\item 
+int64\+\_\+t \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_afdf6ab248d191ea0c3e854723d80275b}{tile\+\_\+id} () const 
+\item 
+int64\+\_\+t \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_ab136e68e5102f701c820d796c36713f0}{tile\+\_\+num} () const 
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_a99058e5d1b0fa402ca51afe1935b464c}{attribute\+\_\+id\+\_\+}
+\item 
+bool \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_ad88f490d13fdf07a45ed3a2fc37d19b7}{end\+\_\+}
+\item 
+\hyperlink{classStorageManager_1_1Fragment}{Fragment} $\ast$ \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_a745246a956752c2e9e1470040a95601d}{fragment\+\_\+}
+\item 
+int64\+\_\+t \hyperlink{classStorageManager_1_1Fragment_1_1const__tile__iterator_a3b800ee4b5a8358606e261e21b3a56f5}{pos\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This class implements a constant tile iterator. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_ab113d3e34db7f22db7358c0178bf4f50}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!const\+\_\+tile\+\_\+iterator@{const\+\_\+tile\+\_\+iterator}}
+\index{const\+\_\+tile\+\_\+iterator@{const\+\_\+tile\+\_\+iterator}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{const\+\_\+tile\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::const\+\_\+tile\+\_\+iterator (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_ab113d3e34db7f22db7358c0178bf4f50}
+Iterator constuctor. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_a285e53d50a87c2f063305dad02518181}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!const\+\_\+tile\+\_\+iterator@{const\+\_\+tile\+\_\+iterator}}
+\index{const\+\_\+tile\+\_\+iterator@{const\+\_\+tile\+\_\+iterator}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{const\+\_\+tile\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::const\+\_\+tile\+\_\+iterator (
+\begin{DoxyParamCaption}
+\item[{{\bf Fragment} $\ast$}]{fragment, }
+\item[{int}]{attribute\+\_\+id, }
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_a285e53d50a87c2f063305dad02518181}
+Iterator constuctor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_a0f9f6c91e5385650562fd5811eba8ec6}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!array\+\_\+schema@{array\+\_\+schema}}
+\index{array\+\_\+schema@{array\+\_\+schema}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{array\+\_\+schema}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Array\+Schema}$\ast$ Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::array\+\_\+schema (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_a0f9f6c91e5385650562fd5811eba8ec6}
+Returns the array schema associated with this tile. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_a5012591b77d96a0e93743851c6c7825c}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!bounding\+\_\+coordinates@{bounding\+\_\+coordinates}}
+\index{bounding\+\_\+coordinates@{bounding\+\_\+coordinates}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{bounding\+\_\+coordinates}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Bounding\+Coordinates\+Pair} Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::bounding\+\_\+coordinates (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_a5012591b77d96a0e93743851c6c7825c}
+Returns the bounding coordinates of the tile. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_af014586805d403eb49fe9770fd0bca45}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!end@{end}}
+\index{end@{end}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{end}]{\setlength{\rightskip}{0pt plus 5cm}bool Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::end (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_af014586805d403eb49fe9770fd0bca45}
+True if the iterators has reached its end. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_ab7d19fcd42b84b14f16304909ed76bc0}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!mbr@{mbr}}
+\index{mbr@{mbr}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{mbr}]{\setlength{\rightskip}{0pt plus 5cm}{\bf M\+B\+R} Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::mbr (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_ab7d19fcd42b84b14f16304909ed76bc0}
+Returns the M\+B\+R of the tile. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_ad8fb0aa74d0f622ac5aa067bc959a836}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!operator"!=@{operator"!=}}
+\index{operator"!=@{operator"!=}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{operator"!=}]{\setlength{\rightskip}{0pt plus 5cm}bool Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::operator!= (
+\begin{DoxyParamCaption}
+\item[{const {\bf const\+\_\+tile\+\_\+iterator} \&}]{rhs}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_ad8fb0aa74d0f622ac5aa067bc959a836}
+Returns true if the iterator is equal to that in the right hand side (rhs) of the operator. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_acba2b0a1ddaa3eeea0ae201726407046}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!operator$\ast$@{operator$\ast$}}
+\index{operator$\ast$@{operator$\ast$}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{operator$\ast$}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Tile}$\ast$ Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::operator$\ast$ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_acba2b0a1ddaa3eeea0ae201726407046}
+Returns the tile pointed by the iterator. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_a77f13fc913b1cd015e9bf61201d1d791}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!operator+@{operator+}}
+\index{operator+@{operator+}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{operator+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf const\+\_\+tile\+\_\+iterator} Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::operator+ (
+\begin{DoxyParamCaption}
+\item[{int64\+\_\+t}]{step}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_a77f13fc913b1cd015e9bf61201d1d791}
+Addition operator. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_ad4f3f5951a0675eb39ed184929e5f5ca}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!operator++@{operator++}}
+\index{operator++@{operator++}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{operator++}]{\setlength{\rightskip}{0pt plus 5cm}{\bf const\+\_\+tile\+\_\+iterator} Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::operator++ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_ad4f3f5951a0675eb39ed184929e5f5ca}
+Pre-\/increment operator. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_a47ec35646605b6141a310b0ee6b80f90}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!operator++@{operator++}}
+\index{operator++@{operator++}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{operator++}]{\setlength{\rightskip}{0pt plus 5cm}{\bf const\+\_\+tile\+\_\+iterator} Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::operator++ (
+\begin{DoxyParamCaption}
+\item[{int}]{junk}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_a47ec35646605b6141a310b0ee6b80f90}
+Post-\/increment operator. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_a85cd6195209f517f5093d974e1335f2b}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!operator+=@{operator+=}}
+\index{operator+=@{operator+=}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{operator+=}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::operator+= (
+\begin{DoxyParamCaption}
+\item[{int64\+\_\+t}]{step}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_a85cd6195209f517f5093d974e1335f2b}
+Addition-\/assignment operator. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_aae85a6da26c3d69c577539aedc965529}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!operator=@{operator=}}
+\index{operator=@{operator=}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{operator=}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::operator= (
+\begin{DoxyParamCaption}
+\item[{const {\bf const\+\_\+tile\+\_\+iterator} \&}]{rhs}
+\end{DoxyParamCaption}
+)}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_aae85a6da26c3d69c577539aedc965529}
+Assignment operator. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_aa4a1e370f185ed9287229d110afa2a74}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!operator==@{operator==}}
+\index{operator==@{operator==}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{operator==}]{\setlength{\rightskip}{0pt plus 5cm}bool Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::operator== (
+\begin{DoxyParamCaption}
+\item[{const {\bf const\+\_\+tile\+\_\+iterator} \&}]{rhs}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_aa4a1e370f185ed9287229d110afa2a74}
+Returns true if the iterator is equal to that in the right hand side (rhs) of the operator. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_ac04a30e821b2046970f3ed6b6f5154be}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!pos@{pos}}
+\index{pos@{pos}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{pos}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::pos (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_ac04a30e821b2046970f3ed6b6f5154be}
+Returns the position. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_afdf6ab248d191ea0c3e854723d80275b}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!tile\+\_\+id@{tile\+\_\+id}}
+\index{tile\+\_\+id@{tile\+\_\+id}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{tile\+\_\+id}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::tile\+\_\+id (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_afdf6ab248d191ea0c3e854723d80275b}
+Returns the id of the tile. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_ab136e68e5102f701c820d796c36713f0}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!tile\+\_\+num@{tile\+\_\+num}}
+\index{tile\+\_\+num@{tile\+\_\+num}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{tile\+\_\+num}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::tile\+\_\+num (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_ab136e68e5102f701c820d796c36713f0}
+Number of tiles in the fragment. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_a99058e5d1b0fa402ca51afe1935b464c}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!attribute\+\_\+id\+\_\+@{attribute\+\_\+id\+\_\+}}
+\index{attribute\+\_\+id\+\_\+@{attribute\+\_\+id\+\_\+}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{attribute\+\_\+id\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::attribute\+\_\+id\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_a99058e5d1b0fa402ca51afe1935b464c}
+The attribute id corresponding to this iterator. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_ad88f490d13fdf07a45ed3a2fc37d19b7}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!end\+\_\+@{end\+\_\+}}
+\index{end\+\_\+@{end\+\_\+}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{end\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}bool Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::end\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_ad88f490d13fdf07a45ed3a2fc37d19b7}
+True if the iterators has reached its end. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_a745246a956752c2e9e1470040a95601d}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!fragment\+\_\+@{fragment\+\_\+}}
+\index{fragment\+\_\+@{fragment\+\_\+}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{fragment\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Fragment}$\ast$ Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::fragment\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_a745246a956752c2e9e1470040a95601d}
+The array fragment corresponding to this iterator. \hypertarget{classStorageManager_1_1Fragment_1_1const__tile__iterator_a3b800ee4b5a8358606e261e21b3a56f5}{}\index{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}!pos\+\_\+@{pos\+\_\+}}
+\index{pos\+\_\+@{pos\+\_\+}!Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator@{Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator}}
+\subsubsection[{pos\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Storage\+Manager\+::\+Fragment\+::const\+\_\+tile\+\_\+iterator\+::pos\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1Fragment_1_1const__tile__iterator_a3b800ee4b5a8358606e261e21b3a56f5}
+The position of the current tile in the book-\/keeping structures. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/\hyperlink{storage__manager_8h}{storage\+\_\+manager.\+h}\end{DoxyCompactItemize}

@@ -1,0 +1,243 @@
+Content-type: text/html
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML><HEAD><TITLE>Man page of tiledb_export_csv</TITLE>
+</HEAD><BODY>
+<H1>tiledb_export_csv</H1>
+Section: TileDB programs (1)<BR>Updated: 27 June 2015<BR><A HREF="#index">Index</A>
+<A HREF="/cgi-bin/man/man2html">Return to Main Contents</A><HR>
+
+<BR>&nbsp;
+<A NAME="lbAB">&nbsp;</A>
+<H2>NAME</H2>
+
+tiledb_export_csv - exports the (binary) data of an array into a CSV file
+<P>
+<A NAME="lbAC">&nbsp;</A>
+<H2>SYNOPSIS</H2>
+
+<B>tiledb_export_csv </B>
+
+<B>-w </B><I>directory </I><B>-A </B><I>array_name </I><B>-f </B><I>filename</I>
+
+[
+<B>-a </B><I>attribute_name_1,...</I>
+
+]
+[
+<B>-d </B><I>dim_name_1,...</I>
+
+]
+[
+<B>-m </B><I>mode</I>
+
+]
+<P>
+<A NAME="lbAD">&nbsp;</A>
+<H2>DESCRIPTION</H2>
+
+<B>tiledb_export_csv</B>
+
+exports the (binary) data of an array into a CSV file. The documentation on
+the exported CSV format can be found in program <B>tiledb_load_csv</B>.
+On error, it prints a message on stderr and returns an error code 
+(see <B>EXIT STATUS</B>). 
+<P>
+The following conventions apply to the <B>SYNOPSIS</B> section:
+<P>
+<TABLE>
+<TR VALIGN=top><TD ALIGN=center><B>bold text</B> </TD><TD> type exactly as shown<BR></TD></TR>
+<TR VALIGN=top><TD ALIGN=center><I>italic text</I> </TD><TD> replace with appropriate argument<BR></TD></TR>
+<TR VALIGN=top><TD ALIGN=center>[<B>-a </B><I>arg</I>]</TD><TD> any or all options within [ ] are optional<BR></TD></TR>
+</TABLE>
+
+<P>
+The user may also specify a subset of attributes and dimensions from the
+array to export. Also, he/she may specify any order of attributes and 
+dimensions, as well as multiplicities. 
+<BR>&nbsp;
+In case the user wishes to completely hide the dimensions or the attributes,
+he/she should include <B>__hide</B> as the only name in the dimension 
+or attribute name list.
+<P>
+Finally, the user may specify whether the array cells should be exported
+in the stored order or in <B>reverse</B>.
+<BR>&nbsp;
+<A NAME="lbAE">&nbsp;</A>
+<H2>OPTIONS</H2>
+
+<DL COMPACT>
+<DT><B>-w</B><I> directory</I><B></B>, <I></I><B>--workspace=</B><I>directory</I>
+
+<DD>
+The path to the workspace folder where the TileDB are stored. The path
+must exist, and the caller must have read and write permissions on it.
+<P>
+<DT><B>-A</B><I> array_name</I><B></B>, <I></I><B>--array-name=</B><I>array_name</I>
+
+<DD>
+The name of the array whose data will be exported. The array
+must be already defined. 
+<P>
+<DT><B>-f</B><I> filename</I><B></B>, <I></I><B>--filename=</B><I>filename</I>
+
+<DD>
+The name of the CSV file. 
+<P>
+<DT><B>-a</B><I> attribute_name_1,...</I><B></B>, <I></I><B>--attribute-names=</B><I>attribute_name_1,...</I>
+
+<DD>
+The attributes to be exported. Any order and multiplicities are allowed. To
+export <B>no</B> attribute, include <B>__hide</B> instead of a name list. To
+export <B>all</B> attributes, omit the option.
+<P>
+<DT><B>-d</B><I> dim_name_1,...</I><B></B>, <I></I><B>--dim-names=</B><I>dim_name_1,...</I>
+
+<DD>
+The coordinates to be exported. Any order and multiplicities are allowed. To
+export <B>no</B> coordinates, include <B>__hide</B> instead of a name list. To
+export <B>all</B> coordinates, omit the option.
+<P>
+<DT><B>-m</B><I> mode</I><B></B>, <I></I><B>--mode=</B><I>mode</I>
+
+<DD>
+There are two modes: <B>normal</B> and <B>reverse</B>. In the former, the cells
+are exported in the same order they are stored (i.e., the native order specified
+in the array schema). In the latter, the cells are exported in the reverse order
+from the one they are stored. If the option is omitted, the default is 
+<B>normal</B>.
+<P>
+</DL>
+<A NAME="lbAF">&nbsp;</A>
+<H2>EXAMPLES</H2>
+
+Assuming that the array has dimensions <I>dim1</I>,<I>dim2</I> and attributes 
+<I>attr1</I>,<I>attr2</I>,<I>attr3</I>
+<DL COMPACT>
+<DT><B>tiledb_export_csv</B> \ <DD>
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-w&nbsp;</B>my_workspace/&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-A&nbsp;</B>A&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-f&nbsp;</B>A.csv
+<P>
+Exports into <I>A.csv</I> all the cells of array <I>A</I> in the order they are 
+stored, including all the coordinates and attributes.
+<P>
+<DT><B>tiledb_export_csv</B> \ <DD>
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-w&nbsp;</B>my_workspace/&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-A&nbsp;</B>A&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-f&nbsp;</B>A.csv&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-d&nbsp;</B>dim1&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-a&nbsp;</B>attr1,attr2
+<P>
+Exports int <I>A.csv</I> all the cells of <I>A</I> in the order they are stored,
+including only the coordinates on the <I>dim1</I> dimension and the values
+on the <I>attr1</I>,<I>attr2</I> attributes.
+<P>
+<DT><B>tiledb_export_csv</B> \ <DD>
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-w&nbsp;</B>my_workspace/&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-A&nbsp;</B>A&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-f&nbsp;</B>A.csv&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-d&nbsp;</B>dim1&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-a&nbsp;</B>attr1,attr2&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-m&nbsp;</B>reverse
+<P>
+Same as above, but the cells are exported in the reverse order.
+<P>
+<DT><B>tiledb_export_csv</B> \ <DD>
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-w&nbsp;</B>my_workspace/&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-A&nbsp;</B>A&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-f&nbsp;</B>A.csv&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-d&nbsp;</B>__hide&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-a&nbsp;</B>attr1,attr2&nbsp;
+<P>
+<BR>&nbsp;Same&nbsp;as&nbsp;the&nbsp;second&nbsp;example,&nbsp;but&nbsp;no&nbsp;coordinate&nbsp;is&nbsp;exported.
+<P>
+<DT><B>tiledb_export_csv</B> \ <DD>
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-w&nbsp;</B>my_workspace/&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-A&nbsp;</B>A&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-f&nbsp;</B>A.csv&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-d&nbsp;</B>dim1&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-a&nbsp;</B>__hide
+<P>
+Same as the second example, but no attribute value is exported.
+<P>
+<DT><B>tiledb_export_csv</B> \ <DD>
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-w&nbsp;</B>my_workspace/&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-A&nbsp;</B>A&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-f&nbsp;</B>A.csv&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-d&nbsp;</B>dim1&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-a&nbsp;</B>attr1,attr2,attr1
+<P>
+Same as the second example, but now the <I>attr1</I> values are shown twice
+(once before those of <I>attr2</I> and once after).
+<P>
+</DL>
+<A NAME="lbAG">&nbsp;</A>
+<H2>EXIT STATUS</H2>
+
+<DL COMPACT>
+<DT><B>0</B>
+
+<DD>
+Successful execution
+<DT><B>-1</B>
+
+<DD>
+Parser error
+<DT><B>-2</B>
+
+<DD>
+Undefined array
+<DT><B>-3</B>
+
+<DD>
+File operation failed
+<DT><B>-7</B>
+
+<DD>
+TileDB initialization failed
+<DT><B>-8</B>
+
+<DD>
+TileDB finalization failed
+<DT><B>-14</B>
+
+<DD>
+Failed to open array
+<DT><B>-15</B>
+
+<DD>
+Failed to close array
+<P>
+</DL>
+<A NAME="lbAH">&nbsp;</A>
+<H2>SEE ALSO</H2>
+
+<B><A HREF="/cgi-bin/man/man2html?1+tiledb_load_csv">tiledb_load_csv</A></B>(1) <B><A HREF="/cgi-bin/man/man2html?1+tiledb_generate_data">tiledb_generate_data</A></B>(1) 
+
+<P>
+<A NAME="lbAI">&nbsp;</A>
+<H2>AUTHOR</H2>
+
+Stavros Papadopoulos &lt;<A HREF="http://people.csail.mit.edu/stavrosp">http://people.csail.mit.edu/stavrosp</A>&gt;, Copyright (c) 2015
+<P>
+
+<HR>
+<A NAME="index">&nbsp;</A><H2>Index</H2>
+<DL>
+<DT><A HREF="#lbAB">NAME</A><DD>
+<DT><A HREF="#lbAC">SYNOPSIS</A><DD>
+<DT><A HREF="#lbAD">DESCRIPTION</A><DD>
+<DT><A HREF="#lbAE">OPTIONS</A><DD>
+<DT><A HREF="#lbAF">EXAMPLES</A><DD>
+<DT><A HREF="#lbAG">EXIT STATUS</A><DD>
+<DT><A HREF="#lbAH">SEE ALSO</A><DD>
+<DT><A HREF="#lbAI">AUTHOR</A><DD>
+</DL>
+<HR>
+This document was created by
+<A HREF="/cgi-bin/man/man2html">man2html</A>,
+using the manual pages.<BR>
+Time: 21:52:58 GMT, June 29, 2015
+</BODY>
+</HTML>

@@ -1,0 +1,204 @@
+\hypertarget{classFragmentConstReverseTileIterator}{}\section{Fragment\+Const\+Reverse\+Tile\+Iterator Class Reference}
+\label{classFragmentConstReverseTileIterator}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+
+
+{\ttfamily \#include $<$fragment\+\_\+const\+\_\+reverse\+\_\+tile\+\_\+iterator.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classFragmentConstReverseTileIterator_a3f47f3d24a5fb80a975f84fc50c82ce8}{Fragment\+Const\+Reverse\+Tile\+Iterator} ()
+\item 
+\hyperlink{classFragmentConstReverseTileIterator_aeb0d75d5329d735634935706dc05904f}{Fragment\+Const\+Reverse\+Tile\+Iterator} (const \hyperlink{classFragment}{Fragment} $\ast$fragment, int attribute\+\_\+id, int64\+\_\+t \hyperlink{classFragmentConstReverseTileIterator_abad807b99461a41a4f2da64592eed4d9}{pos})
+\item 
+const \hyperlink{classArraySchema}{Array\+Schema} $\ast$ \hyperlink{classFragmentConstReverseTileIterator_aaf08ff57920e114770c01daf7cc1acc9}{array\+\_\+schema} () const 
+\item 
+\hyperlink{classTile_a7103069b7ba05d1032733e3a026b8632}{Tile\+::\+Bounding\+Coordinates\+Pair} \hyperlink{classFragmentConstReverseTileIterator_a436dc8c4f7913b1189d0a4705d20f402}{bounding\+\_\+coordinates} () const 
+\item 
+bool \hyperlink{classFragmentConstReverseTileIterator_a029735dfa3284389c3b9fc83cef1462c}{end} () const 
+\item 
+\hyperlink{classTile_a0b0f911c937d339ce110c18a2d015a4d}{Tile\+::\+M\+B\+R} \hyperlink{classFragmentConstReverseTileIterator_ab574fee534d970f151ae306a01ed480a}{mbr} () const 
+\item 
+int64\+\_\+t \hyperlink{classFragmentConstReverseTileIterator_abad807b99461a41a4f2da64592eed4d9}{pos} () const 
+\item 
+int64\+\_\+t \hyperlink{classFragmentConstReverseTileIterator_a1d8bb60cc4f1a524eb470f0892a94c5f}{tile\+\_\+id} () const 
+\item 
+int64\+\_\+t \hyperlink{classFragmentConstReverseTileIterator_af97efdf12dc0fe63e67368f368a16553}{tile\+\_\+num} () const 
+\item 
+void \hyperlink{classFragmentConstReverseTileIterator_abb954ce9d8dda81edbef6faa874a6112}{operator=} (const \hyperlink{classFragmentConstReverseTileIterator}{Fragment\+Const\+Reverse\+Tile\+Iterator} \&rhs)
+\item 
+\hyperlink{classFragmentConstReverseTileIterator}{Fragment\+Const\+Reverse\+Tile\+Iterator} \hyperlink{classFragmentConstReverseTileIterator_a678bead3fc3379bcdf655075af214686}{operator+} (int64\+\_\+t step)
+\item 
+void \hyperlink{classFragmentConstReverseTileIterator_a9b6613187f90eb6d275cf36de08709ba}{operator+=} (int64\+\_\+t step)
+\item 
+\hyperlink{classFragmentConstReverseTileIterator}{Fragment\+Const\+Reverse\+Tile\+Iterator} \hyperlink{classFragmentConstReverseTileIterator_adb9351f609ca40b762cf360028eb392b}{operator++} ()
+\item 
+\hyperlink{classFragmentConstReverseTileIterator}{Fragment\+Const\+Reverse\+Tile\+Iterator} \hyperlink{classFragmentConstReverseTileIterator_a0e5b32dd36a47ed6aa242f9c5d73321e}{operator++} (int junk)
+\item 
+bool \hyperlink{classFragmentConstReverseTileIterator_a1013d5b4b8262d12a7b90628fd03556c}{operator==} (const \hyperlink{classFragmentConstReverseTileIterator}{Fragment\+Const\+Reverse\+Tile\+Iterator} \&rhs) const 
+\item 
+bool \hyperlink{classFragmentConstReverseTileIterator_a448fdf0af0dfac5b1d2c8d8dd69d8453}{operator!=} (const \hyperlink{classFragmentConstReverseTileIterator}{Fragment\+Const\+Reverse\+Tile\+Iterator} \&rhs) const 
+\item 
+const \hyperlink{classTile}{Tile} $\ast$ \hyperlink{classFragmentConstReverseTileIterator_a62824df10b443d3cc87d25f9a1b03d15}{operator$\ast$} () const 
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classFragmentConstReverseTileIterator_afffe973051da13418204a273ca99165a}{attribute\+\_\+id\+\_\+}
+\item 
+bool \hyperlink{classFragmentConstReverseTileIterator_a641c0a1101d1e40212f6ff08c194e306}{end\+\_\+}
+\item 
+const \hyperlink{classFragment}{Fragment} $\ast$ \hyperlink{classFragmentConstReverseTileIterator_a7643b8798b40236437f522158bbb0878}{fragment\+\_\+}
+\item 
+int64\+\_\+t \hyperlink{classFragmentConstReverseTileIterator_a7daa9b8ff23856d902e988b89a5b6aec}{pos\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This class implements a constant reverse tile iterator. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classFragmentConstReverseTileIterator_a3f47f3d24a5fb80a975f84fc50c82ce8}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{Fragment\+Const\+Reverse\+Tile\+Iterator}]{\setlength{\rightskip}{0pt plus 5cm}Fragment\+Const\+Reverse\+Tile\+Iterator\+::\+Fragment\+Const\+Reverse\+Tile\+Iterator (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classFragmentConstReverseTileIterator_a3f47f3d24a5fb80a975f84fc50c82ce8}
+Iterator constuctor. \hypertarget{classFragmentConstReverseTileIterator_aeb0d75d5329d735634935706dc05904f}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{Fragment\+Const\+Reverse\+Tile\+Iterator}]{\setlength{\rightskip}{0pt plus 5cm}Fragment\+Const\+Reverse\+Tile\+Iterator\+::\+Fragment\+Const\+Reverse\+Tile\+Iterator (
+\begin{DoxyParamCaption}
+\item[{const {\bf Fragment} $\ast$}]{fragment, }
+\item[{int}]{attribute\+\_\+id, }
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+)}\label{classFragmentConstReverseTileIterator_aeb0d75d5329d735634935706dc05904f}
+Iterator constuctor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classFragmentConstReverseTileIterator_aaf08ff57920e114770c01daf7cc1acc9}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!array\+\_\+schema@{array\+\_\+schema}}
+\index{array\+\_\+schema@{array\+\_\+schema}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{array\+\_\+schema}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Array\+Schema}$\ast$ Fragment\+Const\+Reverse\+Tile\+Iterator\+::array\+\_\+schema (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classFragmentConstReverseTileIterator_aaf08ff57920e114770c01daf7cc1acc9}
+Returns the array schema associated with this tile. \hypertarget{classFragmentConstReverseTileIterator_a436dc8c4f7913b1189d0a4705d20f402}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!bounding\+\_\+coordinates@{bounding\+\_\+coordinates}}
+\index{bounding\+\_\+coordinates@{bounding\+\_\+coordinates}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{bounding\+\_\+coordinates}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Tile\+::\+Bounding\+Coordinates\+Pair} Fragment\+Const\+Reverse\+Tile\+Iterator\+::bounding\+\_\+coordinates (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classFragmentConstReverseTileIterator_a436dc8c4f7913b1189d0a4705d20f402}
+Returns the bounding coordinates of the tile. \hypertarget{classFragmentConstReverseTileIterator_a029735dfa3284389c3b9fc83cef1462c}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!end@{end}}
+\index{end@{end}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{end}]{\setlength{\rightskip}{0pt plus 5cm}bool Fragment\+Const\+Reverse\+Tile\+Iterator\+::end (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classFragmentConstReverseTileIterator_a029735dfa3284389c3b9fc83cef1462c}
+True if the iterators has reached its end. \hypertarget{classFragmentConstReverseTileIterator_ab574fee534d970f151ae306a01ed480a}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!mbr@{mbr}}
+\index{mbr@{mbr}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{mbr}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Tile\+::\+M\+B\+R} Fragment\+Const\+Reverse\+Tile\+Iterator\+::mbr (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classFragmentConstReverseTileIterator_ab574fee534d970f151ae306a01ed480a}
+Returns the M\+B\+R of the tile. \hypertarget{classFragmentConstReverseTileIterator_a448fdf0af0dfac5b1d2c8d8dd69d8453}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!operator"!=@{operator"!=}}
+\index{operator"!=@{operator"!=}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{operator"!=}]{\setlength{\rightskip}{0pt plus 5cm}bool Fragment\+Const\+Reverse\+Tile\+Iterator\+::operator!= (
+\begin{DoxyParamCaption}
+\item[{const {\bf Fragment\+Const\+Reverse\+Tile\+Iterator} \&}]{rhs}
+\end{DoxyParamCaption}
+) const}\label{classFragmentConstReverseTileIterator_a448fdf0af0dfac5b1d2c8d8dd69d8453}
+Returns true if the iterator is equal to that in the right hand side (rhs) of the operator. \hypertarget{classFragmentConstReverseTileIterator_a62824df10b443d3cc87d25f9a1b03d15}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!operator$\ast$@{operator$\ast$}}
+\index{operator$\ast$@{operator$\ast$}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{operator$\ast$}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Tile}$\ast$ Fragment\+Const\+Reverse\+Tile\+Iterator\+::operator$\ast$ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classFragmentConstReverseTileIterator_a62824df10b443d3cc87d25f9a1b03d15}
+Returns the tile pointed by the iterator. \hypertarget{classFragmentConstReverseTileIterator_a678bead3fc3379bcdf655075af214686}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!operator+@{operator+}}
+\index{operator+@{operator+}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{operator+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Fragment\+Const\+Reverse\+Tile\+Iterator} Fragment\+Const\+Reverse\+Tile\+Iterator\+::operator+ (
+\begin{DoxyParamCaption}
+\item[{int64\+\_\+t}]{step}
+\end{DoxyParamCaption}
+)}\label{classFragmentConstReverseTileIterator_a678bead3fc3379bcdf655075af214686}
+Addition operator. \hypertarget{classFragmentConstReverseTileIterator_adb9351f609ca40b762cf360028eb392b}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!operator++@{operator++}}
+\index{operator++@{operator++}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{operator++}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Fragment\+Const\+Reverse\+Tile\+Iterator} Fragment\+Const\+Reverse\+Tile\+Iterator\+::operator++ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classFragmentConstReverseTileIterator_adb9351f609ca40b762cf360028eb392b}
+Pre-\/increment operator. \hypertarget{classFragmentConstReverseTileIterator_a0e5b32dd36a47ed6aa242f9c5d73321e}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!operator++@{operator++}}
+\index{operator++@{operator++}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{operator++}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Fragment\+Const\+Reverse\+Tile\+Iterator} Fragment\+Const\+Reverse\+Tile\+Iterator\+::operator++ (
+\begin{DoxyParamCaption}
+\item[{int}]{junk}
+\end{DoxyParamCaption}
+)}\label{classFragmentConstReverseTileIterator_a0e5b32dd36a47ed6aa242f9c5d73321e}
+Post-\/increment operator. \hypertarget{classFragmentConstReverseTileIterator_a9b6613187f90eb6d275cf36de08709ba}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!operator+=@{operator+=}}
+\index{operator+=@{operator+=}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{operator+=}]{\setlength{\rightskip}{0pt plus 5cm}void Fragment\+Const\+Reverse\+Tile\+Iterator\+::operator+= (
+\begin{DoxyParamCaption}
+\item[{int64\+\_\+t}]{step}
+\end{DoxyParamCaption}
+)}\label{classFragmentConstReverseTileIterator_a9b6613187f90eb6d275cf36de08709ba}
+Addition-\/assignment operator. \hypertarget{classFragmentConstReverseTileIterator_abb954ce9d8dda81edbef6faa874a6112}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!operator=@{operator=}}
+\index{operator=@{operator=}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{operator=}]{\setlength{\rightskip}{0pt plus 5cm}void Fragment\+Const\+Reverse\+Tile\+Iterator\+::operator= (
+\begin{DoxyParamCaption}
+\item[{const {\bf Fragment\+Const\+Reverse\+Tile\+Iterator} \&}]{rhs}
+\end{DoxyParamCaption}
+)}\label{classFragmentConstReverseTileIterator_abb954ce9d8dda81edbef6faa874a6112}
+Assignment operator. \hypertarget{classFragmentConstReverseTileIterator_a1013d5b4b8262d12a7b90628fd03556c}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!operator==@{operator==}}
+\index{operator==@{operator==}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{operator==}]{\setlength{\rightskip}{0pt plus 5cm}bool Fragment\+Const\+Reverse\+Tile\+Iterator\+::operator== (
+\begin{DoxyParamCaption}
+\item[{const {\bf Fragment\+Const\+Reverse\+Tile\+Iterator} \&}]{rhs}
+\end{DoxyParamCaption}
+) const}\label{classFragmentConstReverseTileIterator_a1013d5b4b8262d12a7b90628fd03556c}
+Returns true if the iterator is equal to that in the right hand side (rhs) of the operator. \hypertarget{classFragmentConstReverseTileIterator_abad807b99461a41a4f2da64592eed4d9}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!pos@{pos}}
+\index{pos@{pos}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{pos}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Fragment\+Const\+Reverse\+Tile\+Iterator\+::pos (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classFragmentConstReverseTileIterator_abad807b99461a41a4f2da64592eed4d9}
+Returns the position. \hypertarget{classFragmentConstReverseTileIterator_a1d8bb60cc4f1a524eb470f0892a94c5f}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!tile\+\_\+id@{tile\+\_\+id}}
+\index{tile\+\_\+id@{tile\+\_\+id}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{tile\+\_\+id}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Fragment\+Const\+Reverse\+Tile\+Iterator\+::tile\+\_\+id (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classFragmentConstReverseTileIterator_a1d8bb60cc4f1a524eb470f0892a94c5f}
+Returns the id of the tile. \hypertarget{classFragmentConstReverseTileIterator_af97efdf12dc0fe63e67368f368a16553}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!tile\+\_\+num@{tile\+\_\+num}}
+\index{tile\+\_\+num@{tile\+\_\+num}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{tile\+\_\+num}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Fragment\+Const\+Reverse\+Tile\+Iterator\+::tile\+\_\+num (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classFragmentConstReverseTileIterator_af97efdf12dc0fe63e67368f368a16553}
+Number of tiles in the fragment. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classFragmentConstReverseTileIterator_afffe973051da13418204a273ca99165a}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!attribute\+\_\+id\+\_\+@{attribute\+\_\+id\+\_\+}}
+\index{attribute\+\_\+id\+\_\+@{attribute\+\_\+id\+\_\+}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{attribute\+\_\+id\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int Fragment\+Const\+Reverse\+Tile\+Iterator\+::attribute\+\_\+id\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classFragmentConstReverseTileIterator_afffe973051da13418204a273ca99165a}
+The attribute id corresponding to this iterator. \hypertarget{classFragmentConstReverseTileIterator_a641c0a1101d1e40212f6ff08c194e306}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!end\+\_\+@{end\+\_\+}}
+\index{end\+\_\+@{end\+\_\+}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{end\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}bool Fragment\+Const\+Reverse\+Tile\+Iterator\+::end\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classFragmentConstReverseTileIterator_a641c0a1101d1e40212f6ff08c194e306}
+True if the iterators has reached its end. \hypertarget{classFragmentConstReverseTileIterator_a7643b8798b40236437f522158bbb0878}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!fragment\+\_\+@{fragment\+\_\+}}
+\index{fragment\+\_\+@{fragment\+\_\+}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{fragment\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Fragment}$\ast$ Fragment\+Const\+Reverse\+Tile\+Iterator\+::fragment\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classFragmentConstReverseTileIterator_a7643b8798b40236437f522158bbb0878}
+The array fragment corresponding to this iterator. \hypertarget{classFragmentConstReverseTileIterator_a7daa9b8ff23856d902e988b89a5b6aec}{}\index{Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}!pos\+\_\+@{pos\+\_\+}}
+\index{pos\+\_\+@{pos\+\_\+}!Fragment\+Const\+Reverse\+Tile\+Iterator@{Fragment\+Const\+Reverse\+Tile\+Iterator}}
+\subsubsection[{pos\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Fragment\+Const\+Reverse\+Tile\+Iterator\+::pos\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classFragmentConstReverseTileIterator_a7daa9b8ff23856d902e988b89a5b6aec}
+The position of the current tile in the book-\/keeping structures. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/fragment/\hyperlink{fragment__const__reverse__tile__iterator_8h}{fragment\+\_\+const\+\_\+reverse\+\_\+tile\+\_\+iterator.\+h}\end{DoxyCompactItemize}

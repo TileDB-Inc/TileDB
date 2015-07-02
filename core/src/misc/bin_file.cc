@@ -167,6 +167,7 @@ ssize_t BINFile::read(void* destination, size_t size) {
        return -1;
      memcpy(static_cast<char*>(destination) + destination_offset,
             buffer_ + buffer_offset_, bytes_to_be_read_from_file);
+    buffer_offset_ += bytes_to_be_read_from_file;
   }
   
   return size;
@@ -216,15 +217,19 @@ bool BINFile::operator>>(Cell& cell) {
     if(cell_ == NULL)
       cell_ = malloc(cell_size_);
     bytes_read = read(cell_, cell_size_);
-    if(bytes_read == 0)
+    if(bytes_read == 0) {
+      cell.set_cell(NULL);
       return false;
+    }
     assert(bytes_read != -1);
   } else {        // Variable-sized cells
     // Read coordinates
     bytes_read = read(coords_, coords_size_);
     assert(bytes_read != -1);
-    if(bytes_read == 0)
+    if(bytes_read == 0) {
+      cell.set_cell(NULL);
       return false;
+    }
 
     // Read cell size
     bytes_read = read(&cell_size_, sizeof(size_t));
@@ -247,9 +252,13 @@ bool BINFile::operator>>(Cell& cell) {
                       cell_size_ - coords_size_ - sizeof(size_t));
   }
 
+  if(bytes_read == 0) {
+    cell.set_cell(NULL);
+    return false;
+  }
+
   cell.set_cell(cell_);
- 
-  return (bytes_read > 0);
+  return true;
 }
 
 /******************************************************
@@ -297,6 +306,7 @@ ssize_t BINFile::read_segment() {
   // Read the new lines
   lseek(fd, file_offset_, SEEK_SET);
   ssize_t bytes_read = ::read(fd, buffer_, segment_size_);
+
   if(bytes_read == -1) {
     ::close(fd);
     return -1;

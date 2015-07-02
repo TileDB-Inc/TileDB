@@ -36,6 +36,7 @@
 
 #include "cell.h"
 #include "type_converter.h"
+#include <string.h>
 
 class Cell;
 

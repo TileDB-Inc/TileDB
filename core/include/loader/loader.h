@@ -37,6 +37,7 @@
 #include "array_schema.h"
 #include "csv_line.h"
 #include "storage_manager.h"
+#include "tiledb_error.h"
 
 /** The Loader creates an array from raw data. */
 class Loader {
@@ -46,18 +47,48 @@ class Loader {
    * Simple constructor. The storage manager is the module the loader 
    * interefaces with.
    */
-  Loader(StorageManager* storage_manager);
+  Loader(StorageManager* storage_manager, const std::string& workspace);
   /** Empty destructor. */
   ~Loader();
 
+  // ACCESSORS
+  /**
+   * Returns the error code. It is 0 upon success.
+   */
+  int err() const;
+
   // LOADING FUNCTIONS
+  /** Loads a binary file collection into an array. */
+  int load_bin(
+      const std::string& array_name, 
+      const std::string& path,
+      bool sorted) const;
+
+  /** Loads a CSV file collection into an array. */
+  int load_csv(
+      const std::string& array_name, 
+      const std::string& path,
+      bool sorted) const;
+
+  /** Loads a binary file collection into an array (creating a new fragment). */
+  int update_bin(
+      const std::string& array_name, 
+      const std::string& path,
+      bool sorted) const;
+
+  /** Loads a CSV file collection into an array (creating a new fragment). */
+  int update_csv(
+      const std::string& array_name, 
+      const std::string& path,
+      bool sorted) const;
+
   /** Loads a binary file into an array. */
   int load_bin(
       const std::string& filename, const std::string& array_name) const;
   /** Loads a CSV file into an array. */
   int load_csv(
-      const std::string& filename, const std::string& array_name, 
-      std::string& err_msg) const;
+      const std::string& array_name, 
+      const std::string& filename) const;
   /** Loads a sorted BIN file into an array. */
   int load_sorted_bin(
       const std::string& filename, const std::string& array_name) const;
@@ -77,6 +108,12 @@ class Loader {
   // PRIVATE ATTRIBUTES
   /** The StorageManager object the loader interfaces with. */
   StorageManager* storage_manager_;
+  /** Error code. Equal to 0 on success. */
+  int err_;
+  /** Max memory size of the write state when loading data. */
+  size_t write_state_max_size_;
+  /** Directory that stores the loader's data. */
+  std::string workspace_;
  
   // PRIVATE METHODS
   /** 
@@ -114,16 +151,31 @@ class Loader {
   bool csv_line_to_cell(const ArraySchema* array_schema, 
                         CSVLine& csv_line, void* cell, 
                         ssize_t cell_size) const;
+
+  /** Loads a binary file collection into an array. */
+  template<class T>
+  int load_bin(
+      int ad, 
+      const std::string& path,
+      bool sorted) const;
+
+  /** Loads a CSV file collection into an array. */
+  template<class T>
+  int load_csv(
+      int ad, 
+      const std::string& path,
+      bool sorted) const;
+
   /** Loads a CSV file into a new fragment for the input array descriptor. */
   int load_bin(const std::string& filename, int ad) const;
   /** Loads a CSV file into a new fragment for the input array descriptor. */
   template<class T>
   int load_bin(const std::string& filename, int ad) const;
   /** Loads a CSV file into a new fragment for the input array descriptor. */
-  int load_csv(const std::string& filename, int ad, std::string& err_msg) const;
+  int load_csv(int ad, const std::string& filename) const;
   /** Loads a CSV file into a new fragment for the input array descriptor. */
   template<class T>
-  int load_csv(const std::string& filename, int ad, std::string& err_msg) const;
+  int load_csv(int ad, const std::string& filename) const;
   /** 
    * Loads a sorted BIN file into a new fragment for the input array descriptor.
    */
@@ -133,6 +185,8 @@ class Loader {
    */
   template<class T>
   int load_sorted_bin(const std::string& filename, int ad) const;
+  /** Simply sets the workspace. */
+  void set_workspace(const std::string& path);
 };
 
 #endif

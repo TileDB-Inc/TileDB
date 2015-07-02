@@ -117,7 +117,7 @@ FragmentConstReverseTileIterator Array::rbegin(
 
 void Array::forced_close() {
   // If in write or append mode, delete the last fragment
-  if(mode_ == WRITE == 0 || mode_ == APPEND)  
+  if(mode_ == WRITE || mode_ == APPEND)  
     delete_fragment(fragments_.size()-1);
 
   // Close the rest of the fragments

@@ -32,8 +32,10 @@
  */
 
 #include "const_cell_iterator.h"
-#include "storage_manager.h"
 #include "special_values.h"
+#include "storage_manager.h"
+#include "tiledb_error.h"
+#include "utils.h"
 #include <algorithm>
 #include <assert.h>
 #include <dirent.h>
@@ -53,13 +55,42 @@
 StorageManager::StorageManager(const std::string& path, 
                                const MPIHandler* mpi_handler,
                                size_t segment_size)
-    : segment_size_(segment_size), mpi_handler_(mpi_handler) {
-  set_workspace(path);
-  create_directory(workspace_);
-  create_directory(workspace_ + "/" + TEMP + "/"); 
+    : mpi_handler_(mpi_handler), segment_size_(segment_size) {
+  // Success code
+  err_ = 0;
 
+  if(!is_dir(path)) {
+    std::cerr << ERROR_MSG_HEADER 
+              << " Workspace directory '" << path << "' does not exist.\n";
+    err_ = TILEDB_EDNEXIST;
+    return;
+  }
+
+  // Set workspace
+  set_workspace(path);
+
+  // Create directories
+  int rc;
+  rc = create_directory(workspace_);
+  if(rc) {
+    std::cerr << ERROR_MSG_HEADER 
+              << " Cannot create directory '" << workspace_ << "'.\n";
+    err_ = TILEDB_EDNCREAT;
+    return;
+  }
+  rc = create_directory(workspace_ + "/" + TEMP + "/"); 
+  if(rc) {
+    std::cerr << ERROR_MSG_HEADER 
+              << " Cannot create directory '" 
+              << workspace_ + "/" + TEMP + "/" << "'.\n";
+    err_ = TILEDB_EDNCREAT;
+    return;
+  }
+
+  // Set maximum size for write state
   write_state_max_size_ = WRITE_STATE_MAX_SIZE;
 
+  // Initializes the structure that holds the open arrays
   arrays_ = new Array*[MAX_OPEN_ARRAYS]; 
   for(int i=0; i<MAX_OPEN_ARRAYS; ++i)
     arrays_[i] = NULL;
@@ -72,6 +103,14 @@ StorageManager::~StorageManager() {
   }
 
   delete [] arrays_;
+}
+
+/******************************************************
+********************* ACCESSORS ************************
+******************************************************/
+
+int StorageManager::err() const {
+  return err_;
 }
 
 /******************************************************
@@ -101,12 +140,14 @@ bool StorageManager::array_defined(const std::string& array_name) const {
   }
 }
 
-int StorageManager::clear_array(
-    const std::string& array_name, std::string& err_msg) {
+int StorageManager::clear_array(const std::string& array_name) {
+// TODO: more error messages
+
   // Check if the array is defined
   if(!array_defined(array_name)) {
-    err_msg = std::string("Array '") + array_name + "' is not defined.";
-    return -1;
+    std::cerr << ERROR_MSG_HEADER 
+              << " Array '" + array_name + "' is not defined.\n";
+    return TILEDB_ENDEFARR;
   }
 
   // Close the array if it is open 
@@ -126,10 +167,13 @@ int StorageManager::clear_array(
                                       BOOK_KEEPING_FILE_SUFFIX;
   
   // If the directory does not exist, exit
-  if(dir == NULL)
-    return 0;
+  if(dir == NULL) {
+    std::cerr << ERROR_MSG_HEADER 
+              << " Cannot open directory '" + dirname + "'.\n";
+    return TILEDB_EFILE;
+  }
 
-  while(next_file = readdir(dir)) {
+  while((next_file = readdir(dir))) {
     if(strcmp(next_file->d_name, ".") == 0 ||
        strcmp(next_file->d_name, "..") == 0 ||
        strcmp(next_file->d_name, array_schema_filename.c_str()) == 0)
@@ -145,7 +189,6 @@ int StorageManager::clear_array(
   
   closedir(dir);
 
-  err_msg = "";
   return 0;
 }
 
@@ -158,14 +201,14 @@ void StorageManager::close_array(int ad) {
   arrays_[ad] = NULL;
 }
 
-int StorageManager::define_array(
-    const ArraySchema* array_schema, std::string& err_msg) {
+int StorageManager::define_array(const ArraySchema* array_schema) {
   // For easy reference
   const std::string& array_name = array_schema->array_name();
+  std::string err_msg;
 
   // Delete array if it exists
   if(array_defined(array_name)) 
-    delete_array(array_name, err_msg); 
+    delete_array(array_name); 
 
   // Create array directory
   std::string dir_name = workspace_ + "/" + array_name + "/"; 
@@ -177,10 +220,8 @@ int StorageManager::define_array(
                          BOOK_KEEPING_FILE_SUFFIX;
   remove(filename.c_str());
   int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  if(fd == -1) {
-    err_msg = "Cannot create the array schema file.";
+  if(fd == -1) 
     return -1;
-  }
 
   // Serialize array schema
   std::pair<const char*, size_t> ret = array_schema->serialize();
@@ -196,12 +237,12 @@ int StorageManager::define_array(
   return 0;
 }
 
-int StorageManager::delete_array(
-    const std::string& array_name, std::string& err_msg) {
+int StorageManager::delete_array(const std::string& array_name) {
   // Check if the array is defined
   if(!array_defined(array_name)) {
-    err_msg = std::string("Array '") + array_name + "' is not defined.";
-    return -1;
+    std::cerr << ERROR_MSG_HEADER 
+              << " Array '" + array_name + "' is not defined.\n";
+    return TILEDB_ENDEFARR;
   }
 
   // Close the array if it is open 
@@ -221,10 +262,14 @@ int StorageManager::delete_array(
   DIR* dir = opendir(dirname.c_str());
   
   // If the directory does not exist, exit
-  if(dir == NULL)
-    return 0;
+  if(dir == NULL) {
+    std::cerr << ERROR_MSG_HEADER 
+              << " Cannot open directory '" + dirname + "'.\n";
+    return TILEDB_EFILE;
+  }
 
-  while(next_file = readdir(dir)) {
+  // TODO: more error handling here
+  while((next_file = readdir(dir))) {
     if(strcmp(next_file->d_name, ".") == 0 ||
        strcmp(next_file->d_name, "..") == 0)
       continue;
@@ -240,6 +285,8 @@ int StorageManager::delete_array(
   
   closedir(dir);
   rmdir(dirname.c_str());
+
+  return 0;
 }
 
 void StorageManager::forced_close_array(int ad) {
@@ -256,6 +303,8 @@ void StorageManager::forced_close_array(int ad) {
 
 int StorageManager::get_array_schema(
     int ad, const ArraySchema*& array_schema, std::string& err_msg) const {
+ // TODO: Remove err_msg
+
   if(arrays_[ad] == NULL) {
     err_msg = "Array is not open.";
     return -1;
@@ -266,35 +315,58 @@ int StorageManager::get_array_schema(
 }
 
 int StorageManager::get_array_schema(
-    const std::string& array_name, ArraySchema*& array_schema,
-    std::string& err_msg) const {
-  // The schema to be returned
-  array_schema = new ArraySchema();
-
+    const std::string& array_name, 
+    ArraySchema*& array_schema) const {
   // Open file
   std::string filename = workspace_ + "/" + array_name + "/" + 
                          ARRAY_SCHEMA_FILENAME + 
                          BOOK_KEEPING_FILE_SUFFIX;
   int fd = open(filename.c_str(), O_RDONLY);
   if(fd == -1) {
-    err_msg = std::string("Cannot access array schema file for array '") +
-              array_name + "'.";
-    return -1;
+    if(!is_file(filename.c_str())) {
+      std::cerr << ERROR_MSG_HEADER 
+               << " Undefined array '" << array_name << "'.\n";
+      return TILEDB_ENDEFARR;
+    } else {
+      std::cerr << ERROR_MSG_HEADER 
+               << " Cannot open file '" << filename << "'.\n";
+      return TILEDB_EFILE;
+    }
   }
+
+  // The schema to be returned
+  array_schema = new ArraySchema();
 
   // Initialize buffer
   struct stat st;
   fstat(fd, &st);
-  size_t buffer_size = st.st_size;
+  ssize_t buffer_size = st.st_size;
+  if(buffer_size == 0) {
+    std::cerr << ERROR_MSG_HEADER 
+             << " File '" << filename << "' is empty.\n";
+    return TILEDB_EFILE;
+  }
   char* buffer = new char[buffer_size];
- 
+
   // Load array schema
-  read(fd, buffer, buffer_size);
+  ssize_t bytes_read = read(fd, buffer, buffer_size);
+  if(bytes_read != buffer_size) {
+    // Clean up
+    delete [] buffer;
+    std::cerr << ERROR_MSG_HEADER 
+             << " Cannot read schema from file '" << filename << "'.\n";
+    return TILEDB_EFILE;
+  } 
   array_schema->deserialize(buffer, buffer_size);
 
   // Clean up
-  close(fd);
   delete [] buffer;
+  int rc = close(fd);
+  if(rc != 0) {
+    std::cerr << ERROR_MSG_HEADER 
+             << " Cannot close file '" << filename << "'.\n";
+    return TILEDB_EFILE;
+  }
 
   return 0;
 }
@@ -339,11 +411,11 @@ int StorageManager::open_array(
 
   // If in write mode, delete the array if it exists
   if(array_mode == Array::WRITE) 
-    clear_array(array_name, err_msg); 
+    clear_array(array_name); 
 
   // Initialize an Array object
   ArraySchema* array_schema;
-  get_array_schema(array_name, array_schema, err_msg);
+  get_array_schema(array_name, array_schema);
   Array* array = new Array(workspace_, segment_size_,
                            write_state_max_size_,
                            array_schema, array_mode);

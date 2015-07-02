@@ -1,0 +1,129 @@
+.TH tiledb_subarray 1 "29 June 2015" "Version 0.1" "TileDB programs"
+ 
+.SH NAME
+tiledb_subarray - creates a new array with the same schema as the input array
+(or including a subset of the attributes in a potentially different order), 
+conataining only the cells that lie in the input range. 
+
+.SH SYNOPSIS
+.B tiledb_subarray 
+.BI "-w " "directory " "-A " "array_name " "-R " "result_name " \
+"-r " "range "
+[
+.BI "-a " "attribute_name_1,..."
+]
+
+.SH DESCRIPTION
+.B tiledb_subarray
+creates a new array with the same schema as the input array (or including a 
+subset of the attributes in a potentially different order), 
+conataining only the cells that lie in the input range. The range must be a 
+hyper-rectangle that is completely contained in the dimension space. It is also
+given as a sequence of [low,high] pairs across each dimension. 
+On error, it prints a message on stderr and returns an error code 
+(see \fBEXIT STATUS\fR). 
+
+The following conventions apply to the \fBSYNOPSIS\fR section:
+
+.TS
+tab (@);
+c lx .
+\fBbold text\fR @ type exactly as shown
+\fIitalic text\fR @ replace with appropriate argument
+[\fB\-a \fIarg\fR]@ any or all options within [ ] are optional
+.TE
+
+.SH OPTIONS
+.TP
+.BI "-w" " directory" "\fR, " \fB --workspace=\fIdirectory\fR  
+The path to the workspace folder where the TileDB are stored. The path
+must exist, and the caller must have read and write permissions on it.
+
+.TP
+.BI "-A" " array_name" "\fR, " \fB --array-name=\fIarray_name\fR  
+The name of the array the subarray will be applied on. The array
+must be already defined. 
+
+.TP
+.BI "-R" " result_name" "\fR, " \fB --result-name=\fIresult_name\fR  
+The name of the output array. 
+
+.TP
+.BI "-r" " range" "\fR, " \fB --range=\fIrange\fR  
+The range given as a sequence of [low,high] bounds across each dimension.
+Each range bound must be a real number. 
+
+.TP
+.BI "-a" " attribute_name_1,..." "\fR, " \
+\fB --attribute-names=\fIattribute_name_1,...\fR  
+The attributes to be included in the array schema of the output array. Any order
+is allowed. To export \fBall\fR attributes, omit the option.
+
+.SH EXAMPLES
+Assuming that the array has dimensions \fIdim1\fR,\fIdim2\fR with domains
+[0,100] and [0,200], respectively, and attributes 
+\fIattr1\fR,\fIattr2\fR,\fIattr3\fR
+.TP
+\fBtiledb_subarray\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-A \fRA \\
+    \fB-R \fRA_sub \\
+    \fB-r \fR10,20,100,150 
+
+Creates a new array \fIA_sub\fR with exactly the same schema as \fIA\fR, but 
+only containing the cells within rectangle \fB[10,20]\fR (\fIdim1\fR) , 
+\fB[100,150]\R (\fIdim2\fR).
+
+.TP
+\fBtiledb_subarray\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-A \fRA \\
+    \fB-R \fRA_sub \\
+    \fB-r \fR10,20,100,150 \\
+    \fB-a \fRattr1,attr2 
+
+Same as the first example, but now \fRA_sub\fR contains only two attributes
+(\fIattr1\fR,\fIattr2\fR).
+
+.TP
+\fBtiledb_subarray\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-A \fRA \\
+    \fB-R \fRA_sub \\
+    \fB-r \fR10,20,100,150 \\
+    \fB-a \fRattr2,attr1
+
+Same as the second example, but \fIattr1\fR and \fIattr2\fR appear
+in a different order in \fIA_sub\fR.
+
+.SH EXIT STATUS
+.TP 
+.B 0
+Successful execution
+.TP 
+.B -1
+Parser error
+.TP 
+.B -2
+Undefined array
+.TP 
+.B -3
+File operation failed
+.TP 
+.B -7
+TileDB initialization failed
+.TP 
+.B -8
+TileDB finalization failed
+.TP 
+.B -14
+Failed to open array
+.TP 
+.B -15
+Failed to close array
+
+.SH SEE ALSO
+.BR "tiledb_define_array" "(1) 
+
+.SH AUTHOR
+Stavros Papadopoulos <http://people.csail.mit.edu/stavrosp>, Copyright (c) 2015

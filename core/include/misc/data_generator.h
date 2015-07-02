@@ -52,71 +52,21 @@ class DataGenerator {
   /**
    * Generates a uniform binary file for the stored array schema. Takes as input
    * a seed used to generate the randomness, the name of the file to store the
-   * the generated cells, and the number of generated cells. The file is sorted
-   * on the global cell order of the array.
-   */
-  int generate_sorted_uniform_bin(
-      unsigned seed, const std::string& filename, 
-      int64_t cell_num, std::string& err_msg) const;
-  /**
-   * Generates a uniform binary file for the stored array schema. Takes as input
-   * a seed used to generate the randomness, the name of the file to store the
-   * the generated cells, and the size of the generated file. The file is sorted
-   * on the global cell order of the array.
-   */
-  int generate_sorted_uniform_bin(
-      unsigned seed, const std::string& filename, 
-      size_t file_size, std::string& err_msg) const;
-  /**
-   * Generates a uniform CSV file for the stored array schema. Takes as input
-   * a seed used to generate the randomness, the name of the file to store the
-   * the generated cells, and the number of generated cells. The file is sorted
-   * on the global cell order of the array.
-   */
-  int generate_sorted_uniform_csv(
-      unsigned seed, const std::string& filename, 
-      int64_t cell_num, std::string& err_msg) const;
-  /**
-   * Generates a uniform CSV file for the stored array schema. Takes as input
-   * a seed used to generate the randomness, the name of the file to store the
-   * the generated cells, and the size of the generated file. The file is sorted
-   * on the global cell order of the array.
-   */
-  int generate_sorted_uniform_csv(
-      unsigned seed, const std::string& filename, 
-      size_t file_size, std::string& err_msg) const;
-  /**
-   * Generates a uniform binary file for the stored array schema. Takes as input
-   * a seed used to generate the randomness, the name of the file to store the
    * the generated cells, and the number of generated cells.
    */
-  int generate_uniform_bin(
-      unsigned seed, const std::string& filename, 
-      int64_t cell_num, std::string& err_msg) const;
-  /**
-   * Generates a uniform binary file for the stored array schema. Takes as input
-   * a seed used to generate the randomness, the name of the file to store the
-   * the generated cells, and the size of the generated file.
-   */
-  int generate_uniform_bin(
-      unsigned seed, const std::string& filename, 
-      size_t file_size, std::string& err_msg) const;
+  int generate_bin(
+      unsigned seed, 
+      const std::string& filename, 
+      int64_t cell_num) const;
    /**
    * Generates a uniform CSV file for the stored array schema. Takes as input
    * a seed used to generate the randomness, the name of the file to store the
    * the generated cells, and the number of generated cells.
    */
-  int generate_uniform_csv(
-      unsigned seed, const std::string& filename, 
-      int64_t cell_num, std::string& err_msg) const;
-   /**
-   * Generates a uniform CSV file for the stored array schema. Takes as input
-   * a seed used to generate the randomness, the name of the file to store the
-   * the generated cells, and the size of the generate file.
-   */
-  int generate_uniform_csv(
-      unsigned seed, const std::string& filename, 
-      size_t file_size, std::string& err_msg) const;
+  int generate_csv(
+      unsigned seed, 
+      const std::string& filename, 
+      int64_t cell_num) const;
 
  private:
   // PRIVATE ATTRIBUTES

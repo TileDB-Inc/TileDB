@@ -1,0 +1,56 @@
+\hypertarget{classQueryProcessor_1_1GTColumn}{}\section{Query\+Processor\+:\+:G\+T\+Column Class Reference}
+\label{classQueryProcessor_1_1GTColumn}\index{Query\+Processor\+::\+G\+T\+Column@{Query\+Processor\+::\+G\+T\+Column}}
+
+
+{\ttfamily \#include $<$query\+\_\+processor.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classQueryProcessor_1_1GTColumn_a09790bb0ef837116bb6f660c639dfd22}{G\+T\+Column} (int64\+\_\+t col, uint64\+\_\+t row\+\_\+num)
+\end{DoxyCompactItemize}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std\+::vector$<$ std\+::vector$<$ std\+::string $>$ $>$ \hyperlink{classQueryProcessor_1_1GTColumn_abf580303e8ed309bea2d984d448984a4}{A\+L\+T\+\_\+}
+\item 
+int64\+\_\+t \hyperlink{classQueryProcessor_1_1GTColumn_a7155f2e2bcaec672df976209ab3b64cc}{col\+\_\+}
+\item 
+std\+::vector$<$ std\+::string $>$ \hyperlink{classQueryProcessor_1_1GTColumn_a368367e65449a63d93b96a800dc2ddc3}{R\+E\+F\+\_\+}
+\item 
+std\+::vector$<$ std\+::vector$<$ int $>$ $>$ \hyperlink{classQueryProcessor_1_1GTColumn_ae8ec6b1697723684e1c11a62cc4af5c9}{P\+L\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This class stores and processes information about a single column of the g\+V\+C\+F array. A column corresponds to a unique position in the genome. It holds the R\+E\+F, A\+L\+T and P\+L values of every row (i.\+e., individual) in the array. If a R\+E\+F value is equal to \char`\"{}\$\char`\"{} for a row, then it means that this row is N\+U\+L\+L (i.\+e., it contains no useful info for joint genotyping). 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classQueryProcessor_1_1GTColumn_a09790bb0ef837116bb6f660c639dfd22}{}\index{Query\+Processor\+::\+G\+T\+Column@{Query\+Processor\+::\+G\+T\+Column}!G\+T\+Column@{G\+T\+Column}}
+\index{G\+T\+Column@{G\+T\+Column}!Query\+Processor\+::\+G\+T\+Column@{Query\+Processor\+::\+G\+T\+Column}}
+\subsubsection[{G\+T\+Column}]{\setlength{\rightskip}{0pt plus 5cm}Query\+Processor\+::\+G\+T\+Column\+::\+G\+T\+Column (
+\begin{DoxyParamCaption}
+\item[{int64\+\_\+t}]{col, }
+\item[{uint64\+\_\+t}]{row\+\_\+num}
+\end{DoxyParamCaption}
+)}\label{classQueryProcessor_1_1GTColumn_a09790bb0ef837116bb6f660c639dfd22}
+Simple constructor. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classQueryProcessor_1_1GTColumn_abf580303e8ed309bea2d984d448984a4}{}\index{Query\+Processor\+::\+G\+T\+Column@{Query\+Processor\+::\+G\+T\+Column}!A\+L\+T\+\_\+@{A\+L\+T\+\_\+}}
+\index{A\+L\+T\+\_\+@{A\+L\+T\+\_\+}!Query\+Processor\+::\+G\+T\+Column@{Query\+Processor\+::\+G\+T\+Column}}
+\subsubsection[{A\+L\+T\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$std\+::vector$<$std\+::string$>$ $>$ Query\+Processor\+::\+G\+T\+Column\+::\+A\+L\+T\+\_\+}\label{classQueryProcessor_1_1GTColumn_abf580303e8ed309bea2d984d448984a4}
+Holds the (seqeuence of) A\+L\+T values for each row. \hypertarget{classQueryProcessor_1_1GTColumn_a7155f2e2bcaec672df976209ab3b64cc}{}\index{Query\+Processor\+::\+G\+T\+Column@{Query\+Processor\+::\+G\+T\+Column}!col\+\_\+@{col\+\_\+}}
+\index{col\+\_\+@{col\+\_\+}!Query\+Processor\+::\+G\+T\+Column@{Query\+Processor\+::\+G\+T\+Column}}
+\subsubsection[{col\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Query\+Processor\+::\+G\+T\+Column\+::col\+\_\+}\label{classQueryProcessor_1_1GTColumn_a7155f2e2bcaec672df976209ab3b64cc}
+The id of the column. \hypertarget{classQueryProcessor_1_1GTColumn_ae8ec6b1697723684e1c11a62cc4af5c9}{}\index{Query\+Processor\+::\+G\+T\+Column@{Query\+Processor\+::\+G\+T\+Column}!P\+L\+\_\+@{P\+L\+\_\+}}
+\index{P\+L\+\_\+@{P\+L\+\_\+}!Query\+Processor\+::\+G\+T\+Column@{Query\+Processor\+::\+G\+T\+Column}}
+\subsubsection[{P\+L\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$std\+::vector$<$int$>$ $>$ Query\+Processor\+::\+G\+T\+Column\+::\+P\+L\+\_\+}\label{classQueryProcessor_1_1GTColumn_ae8ec6b1697723684e1c11a62cc4af5c9}
+Holds the (seqeuence of) P\+L values for each row. \hypertarget{classQueryProcessor_1_1GTColumn_a368367e65449a63d93b96a800dc2ddc3}{}\index{Query\+Processor\+::\+G\+T\+Column@{Query\+Processor\+::\+G\+T\+Column}!R\+E\+F\+\_\+@{R\+E\+F\+\_\+}}
+\index{R\+E\+F\+\_\+@{R\+E\+F\+\_\+}!Query\+Processor\+::\+G\+T\+Column@{Query\+Processor\+::\+G\+T\+Column}}
+\subsubsection[{R\+E\+F\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$std\+::string$>$ Query\+Processor\+::\+G\+T\+Column\+::\+R\+E\+F\+\_\+}\label{classQueryProcessor_1_1GTColumn_a368367e65449a63d93b96a800dc2ddc3}
+Holds the R\+E\+F values for each row. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/\hyperlink{query__processor_8h}{query\+\_\+processor.\+h}\end{DoxyCompactItemize}

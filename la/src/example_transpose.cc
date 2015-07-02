@@ -46,9 +46,6 @@
 int transpose(StorageManager* storage_manager, MPIHandler* mpi_handler, 
               const std::string& A, const std::string& A_t,
               const ArraySchema* array_schema_A, std::string& err_msg) {
-  // For easy reference
-  size_t cell_size = array_schema_A->cell_size();
-
   // Open array A in read mode
   int ad_A = storage_manager->open_array(A, "r", err_msg);
   if(ad_A == -1)
@@ -135,7 +132,7 @@ const ArraySchema* get_array_schema() {
 
   // Number of values per cell per attribute
   std::vector<int> val_num;
-  for(int i=0; i<attribute_names.size(); ++i)
+  for(size_t i=0; i<attribute_names.size(); ++i)
     val_num.push_back(1);
 
   // Cell order (column-major order)
@@ -159,14 +156,16 @@ int main(int argc, char** argv) {
                          mpi_handler);
 
   // Create a loader module
-  Loader* loader = new Loader(storage_manager);
+  Loader* loader = new Loader(
+                       storage_manager,
+                       "~/stavrospapadopoulos/TileDB/example_transpose/");
 
   // Create a query processor module
   QueryProcessor* query_processor = new QueryProcessor(storage_manager); 
 
   // Define a matrix A with some ad hoc schema
   const ArraySchema* array_schema_A = get_array_schema();
-  err = storage_manager->define_array(array_schema_A, err_msg);
+  err = storage_manager->define_array(array_schema_A);
   if(err == -1) {
     std::cout << "[TileDB::fatal_error] " << err_msg << "\n";
     exit(-1);
@@ -174,7 +173,7 @@ int main(int argc, char** argv) {
 
   // Define the transpose of A, A_t
   const ArraySchema* array_schema_A_t = array_schema_A->transpose("A_t");
-  err = storage_manager->define_array(array_schema_A_t, err_msg);
+  err = storage_manager->define_array(array_schema_A_t);
   if(err == -1) {
     std::cout << "[TileDB::StorageManager::fatal_error] " << err_msg << "\n";
     exit(-1);
@@ -186,7 +185,7 @@ int main(int argc, char** argv) {
   std::stringstream csv_filename;
   csv_filename << "~/stavrospapadopoulos/TileDB/data/A_" 
                << mpi_handler->rank() << ".csv";
-  err = loader->load_csv(csv_filename.str(), "A", err_msg);
+  err = loader->load_csv("A", csv_filename.str());
   if(err == -1) {
     std::cout << "[Proc_" << mpi_handler->rank() 
               << "::TileDB::Loader::fatal_error] " << err_msg << "\n";
@@ -199,10 +198,10 @@ int main(int argc, char** argv) {
   csv_filename.str("");
   csv_filename.clear();
   csv_filename << "export_A_" << mpi_handler->rank() << ".csv";
-  err = query_processor->export_to_csv(
+  err = query_processor->export_csv(
       "A", csv_filename.str(), 
       std::vector<std::string>(), std::vector<std::string>(),
-      false, err_msg);
+      false);
   if(err == -1) {
     std::cout << "[Proc_" << mpi_handler->rank() 
               << "::TileDB::QueryProcessor::fatal_error] " 
@@ -228,10 +227,10 @@ int main(int argc, char** argv) {
   csv_filename.str("");
   csv_filename.clear();
   csv_filename << "export_A_t_" << mpi_handler->rank() << ".csv";
-  err = query_processor->export_to_csv(
+  err = query_processor->export_csv(
       "A_t", csv_filename.str(), 
       std::vector<std::string>(), std::vector<std::string>(),
-      false, err_msg);
+      false);
   if(err == -1) {
     std::cout << "[Proc_" << mpi_handler->rank() 
               << "::TileDB::QueryProcessor::fatal_error] " 

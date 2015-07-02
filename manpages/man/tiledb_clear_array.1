@@ -1,0 +1,66 @@
+.TH tiledb_clear_array 1 "29 June 2015" "Version 0.1" "TileDB programs"
+ 
+.SH NAME
+tiledb_clear_array - clears the data of an array
+
+.SH SYNOPSIS
+.B tiledb_clear_array
+.BI "-w " "directory " "-A " "array_name "
+
+.SH DESCRIPTION
+.B tiledb_clear_array
+clears the data of an array. However, the array remains defined after the
+program execution. This means that one can invoke \fBtiledb_load_csv\fR for this
+array without redefining the array schema. On error, it prints appopriate 
+messages on stderr and returns an error code (see \fBEXIT STATUS\fR). 
+
+The following conventions apply to the \fBSYNOPSIS\fR section:
+
+.TS
+tab (@);
+c l .
+\fBbold text\fR @ type exactly as shown
+\fIitalic text\fR @ replace with appropriate argument
+.TE
+ 
+.SH OPTIONS
+.TP
+.BI "-w" " directory" "\fR, " \fB --workspace=\fIdirectory\fR  
+The path to the workspace folder where the TileDB data are stored. The path
+must exist, and the caller must have read and write permissions on it.
+.TP
+.BI "-A" " array_name" "\fR, " \fB --array-name=\fIarray_name\fR  
+The name of the array whose data will be deleted. The array must already be 
+defined.
+
+.SH EXAMPLES
+.TP
+.B tiledb_clear_array -w \fImy_workspace/ \fB-A \fImy_array
+Clears the data of array \fImy_array\fR, whose data are stored in workspace
+folder \fImy_workspace/
+
+.SH EXIT STATUS
+.TP 
+.B 0
+Successful execution
+.TP 
+.B -1
+Parser error
+.TP 
+.B -2
+Undefined array
+.TP 
+.B -3
+File operation failed
+.TP 
+.B -7
+TileDB initialization failed
+.TP 
+.B -8
+TileDB finalization failed
+
+.SH SEE ALSO
+.BR tiledb_delete_array (1)
+
+.SH AUTHOR
+Stavros Papadopoulos <http://people.csail.mit.edu/stavrosp>, Copyright (c) 2015

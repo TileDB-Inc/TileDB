@@ -55,12 +55,16 @@ CSVLine::~CSVLine() {
 *********************** ACCESSORS *********************
 ******************************************************/
 
+size_t CSVLine::size() const {
+  return values_.size();
+}
+
 std::string CSVLine::str() const {
   if(values_.size() == 0) 
     return "";
 
   std::string ret = values_[0];
-  for(int i=1; i<values_.size(); i++)
+  for(size_t i=1; i<values_.size(); i++)
     ret += "," + values_[i];
   return ret;
 }
@@ -99,7 +103,10 @@ void CSVLine::operator+=(int step) {
 }
 
 void CSVLine::operator<<(const std::string& value) {
-  tokenize(value);
+  if(value == "")
+    values_.push_back(value);
+  else
+    tokenize(value);
 }
 
 void CSVLine::operator<<(const CSVLine& csv_line) {
@@ -121,6 +128,13 @@ template<>
 void CSVLine::operator<<(char value) {
   char s[2];
   sprintf(s, "%c", value); 
+  values_.push_back(s);
+}
+
+template<>
+void CSVLine::operator<<(size_t value) {
+  char s[CSV_MAX_DIGITS];
+  sprintf(s, "%u", value); 
   values_.push_back(s);
 }
 
@@ -155,8 +169,17 @@ void CSVLine::operator<<(double value) {
 template<>
 void CSVLine::operator<<(const std::vector<char>& values) {
   char s[2];
-  for(int i=0; i<values.size(); i++) {
+  for(size_t i=0; i<values.size(); i++) {
     sprintf(s, "%c", values[i]); 
+    values_.push_back(s);
+  }
+}
+
+template<>
+void CSVLine::operator<<(const std::vector<size_t>& values) {
+  char s[CSV_MAX_DIGITS];
+  for(size_t i=0; i<values.size(); i++) {
+    sprintf(s, "%u", values[i]); 
     values_.push_back(s);
   }
 }
@@ -164,7 +187,7 @@ void CSVLine::operator<<(const std::vector<char>& values) {
 template<>
 void CSVLine::operator<<(const std::vector<int>& values) {
   char s[CSV_MAX_DIGITS];
-  for(int i=0; i<values.size(); i++) {
+  for(size_t i=0; i<values.size(); i++) {
     sprintf(s, "%d", values[i]); 
     values_.push_back(s);
   }
@@ -173,7 +196,7 @@ void CSVLine::operator<<(const std::vector<int>& values) {
 template<>
 void CSVLine::operator<<(const std::vector<int64_t>& values) {
   char s[CSV_MAX_DIGITS];
-  for(int i=0; i<values.size(); i++) {
+  for(size_t i=0; i<values.size(); i++) {
     sprintf(s, "%lld", values[i]); 
     values_.push_back(s);
   }
@@ -182,7 +205,7 @@ void CSVLine::operator<<(const std::vector<int64_t>& values) {
 template<>
 void CSVLine::operator<<(const std::vector<float>& values) {
   char s[CSV_MAX_DIGITS];
-  for(int i=0; i<values.size(); i++) {
+  for(size_t i=0; i<values.size(); i++) {
     sprintf(s, "%g", values[i]); 
     values_.push_back(s);
   }
@@ -191,7 +214,7 @@ void CSVLine::operator<<(const std::vector<float>& values) {
 template<>
 void CSVLine::operator<<(const std::vector<double>& values) {
   char s[CSV_MAX_DIGITS];
-  for(int i=0; i<values.size(); i++) {
+  for(size_t i=0; i<values.size(); i++) {
     sprintf(s, "%lg", values[i]); 
     values_.push_back(s);
   }
@@ -234,6 +257,22 @@ bool CSVLine::operator>>(int& value) {
       value = DEL_INT;
     else 
       sscanf(values_[pos_].c_str(), "%d", &value);
+    ++pos_;
+    return true;
+  }
+}
+
+template<>
+bool CSVLine::operator>>(size_t& value) {
+  if(pos_ == values_.size()) {
+    return false;
+  } else {
+    if(values_[pos_] == NULL_VALUE) // Value missing
+      value = NULL_SIZE_T;
+    else if(values_[pos_] == DEL_VALUE) // Value deleted
+      value = DEL_SIZE_T;
+    else 
+      sscanf(values_[pos_].c_str(), "%u", &value);
     ++pos_;
     return true;
   }

@@ -1,0 +1,279 @@
+\hypertarget{classBookKeeping}{}\section{Book\+Keeping Class Reference}
+\label{classBookKeeping}\index{Book\+Keeping@{Book\+Keeping}}
+
+
+{\ttfamily \#include $<$book\+\_\+keeping.\+h$>$}
+
+\subsection*{Public Types}
+\begin{DoxyCompactItemize}
+\item 
+typedef std\+::vector$<$ \hyperlink{classTile_a7103069b7ba05d1032733e3a026b8632}{Tile\+::\+Bounding\+Coordinates\+Pair} $>$ \hyperlink{classBookKeeping_a1eea369202e1cf25c837fbf64a210c4e}{Bounding\+Coordinates}
+\item 
+typedef std\+::vector$<$ \hyperlink{classTile_a0b0f911c937d339ce110c18a2d015a4d}{Tile\+::\+M\+B\+R} $>$ \hyperlink{classBookKeeping_a3c3be3ebbeab5f23248df738f4d1c897}{M\+B\+Rs}
+\item 
+typedef std\+::vector$<$ int64\+\_\+t $>$ \hyperlink{classBookKeeping_a0abbce3d062de307549f04c8426203c7}{Offset\+List}
+\item 
+typedef std\+::vector$<$ \hyperlink{classBookKeeping_a0abbce3d062de307549f04c8426203c7}{Offset\+List} $>$ \hyperlink{classBookKeeping_ac6a1eb7b4c44fee25fda405547b666e1}{Offsets}
+\item 
+typedef std\+::vector$<$ int64\+\_\+t $>$ \hyperlink{classBookKeeping_aae405d90bdb11aabd768c4d49ac7f110}{Tile\+Ids}
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classBookKeeping_a8595c4d1ca7e56014a0b04fb3b041213}{Book\+Keeping} (const \hyperlink{classArraySchema}{Array\+Schema} $\ast$array\+\_\+schema, const std\+::string $\ast$fragment\+\_\+name, const std\+::string $\ast$workspace)
+\item 
+\hyperlink{classBookKeeping_a2aff624077614b9ef635cc49d31707b8}{$\sim$\+Book\+Keeping} ()
+\item 
+\hyperlink{classTile_a7103069b7ba05d1032733e3a026b8632}{Tile\+::\+Bounding\+Coordinates\+Pair} \hyperlink{classBookKeeping_a82804443caeeeccfede04599d024763f}{bounding\+\_\+coordinates} (int64\+\_\+t pos) const 
+\item 
+\hyperlink{classTile_a0b0f911c937d339ce110c18a2d015a4d}{Tile\+::\+M\+B\+R} \hyperlink{classBookKeeping_a4fec5081fa77f259f7433d0e37e9b770}{mbr} (int64\+\_\+t pos) const 
+\item 
+int64\+\_\+t \hyperlink{classBookKeeping_a2559203a93884827e06c642ce7e9e794}{offset} (int attribute\+\_\+id, int64\+\_\+t pos) const 
+\item 
+int64\+\_\+t \hyperlink{classBookKeeping_a101732972f7263c9ce11a9887e85450e}{tile\+\_\+id} (int64\+\_\+t pos) const 
+\item 
+int64\+\_\+t \hyperlink{classBookKeeping_a18bae8de0d33a205d962321cafe8fc44}{tile\+\_\+num} () const 
+\item 
+size\+\_\+t \hyperlink{classBookKeeping_adc27911bdd3a8ce45a1f67806d14908d}{tile\+\_\+size} (int attribute\+\_\+id, int64\+\_\+t pos) const 
+\item 
+void \hyperlink{classBookKeeping_a08f736f8639a2c9fc92c12f11af05f57}{commit} ()
+\item 
+void \hyperlink{classBookKeeping_adbff76aeb3de9b8ec8d57cdbe29f1acb}{init} ()
+\item 
+void \hyperlink{classBookKeeping_a72a8fbb241e645215f338c307e97bde8}{load} ()
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classBookKeeping_a5667e2212a7ad6d1e364e5e40741ea0f}{commit\+\_\+bounding\+\_\+coordinates} ()
+\item 
+void \hyperlink{classBookKeeping_a07591ac286b009bfefcda0bd57e327cc}{commit\+\_\+mbrs} ()
+\item 
+void \hyperlink{classBookKeeping_acb4d5a73ae51527a46df575f2e7544e4}{commit\+\_\+offsets} ()
+\item 
+void \hyperlink{classBookKeeping_ad763b288c38e96c8c2836fe264f27d54}{commit\+\_\+tile\+\_\+ids} ()
+\item 
+void \hyperlink{classBookKeeping_ac7826a7fdaadb30fdb37b009fa2996d7}{load\+\_\+bounding\+\_\+coordinates} ()
+\item 
+void \hyperlink{classBookKeeping_a318abbefe4a2c9c4aca2aee59bb78db8}{load\+\_\+mbrs} ()
+\item 
+void \hyperlink{classBookKeeping_a1e47c8969a398860f59d7bc142e4e583}{load\+\_\+offsets} ()
+\item 
+void \hyperlink{classBookKeeping_a1da6ddec8563cf966916e84469b2eaf0}{load\+\_\+tile\+\_\+ids} ()
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+const \hyperlink{classArraySchema}{Array\+Schema} $\ast$ \hyperlink{classBookKeeping_aeea198496f12889838389eaa6d0761ef}{array\+\_\+schema\+\_\+}
+\item 
+\hyperlink{classBookKeeping_a1eea369202e1cf25c837fbf64a210c4e}{Bounding\+Coordinates} \hyperlink{classBookKeeping_a58112c72f1ee2d6bd902a5a32be67741}{bounding\+\_\+coordinates\+\_\+}
+\item 
+const std\+::string $\ast$ \hyperlink{classBookKeeping_a169c2f606ef697f977717a687105ced9}{fragment\+\_\+name\+\_\+}
+\item 
+\hyperlink{classBookKeeping_a3c3be3ebbeab5f23248df738f4d1c897}{M\+B\+Rs} \hyperlink{classBookKeeping_a2e13bd47a7642e8e6e5062f9f7c8d664}{mbrs\+\_\+}
+\item 
+\hyperlink{classBookKeeping_ac6a1eb7b4c44fee25fda405547b666e1}{Offsets} \hyperlink{classBookKeeping_a7e5a14bb84511e4066f3b387805cb640}{offsets\+\_\+}
+\item 
+\hyperlink{classBookKeeping_aae405d90bdb11aabd768c4d49ac7f110}{Tile\+Ids} \hyperlink{classBookKeeping_aaccad3c678f7ac3099c9178120ada9d4}{tile\+\_\+ids\+\_\+}
+\item 
+const std\+::string $\ast$ \hyperlink{classBookKeeping_a87a02b5fe116f6d898da3810e3ab1523}{workspace\+\_\+}
+\end{DoxyCompactItemize}
+\subsection*{Friends}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classBookKeeping_aa4b41796e1fb4272f89a044f076395f5}{}class {\bfseries Write\+State}\label{classBookKeeping_aa4b41796e1fb4272f89a044f076395f5}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Stores the book-\/keeping structures of a fragment. 
+
+\subsection{Member Typedef Documentation}
+\hypertarget{classBookKeeping_a1eea369202e1cf25c837fbf64a210c4e}{}\index{Book\+Keeping@{Book\+Keeping}!Bounding\+Coordinates@{Bounding\+Coordinates}}
+\index{Bounding\+Coordinates@{Bounding\+Coordinates}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{Bounding\+Coordinates}]{\setlength{\rightskip}{0pt plus 5cm}typedef std\+::vector$<${\bf Tile\+::\+Bounding\+Coordinates\+Pair}$>$ {\bf Book\+Keeping\+::\+Bounding\+Coordinates}}\label{classBookKeeping_a1eea369202e1cf25c837fbf64a210c4e}
+Mnemonic\+: $<$bound\+\_\+coord\+\_\+pair\#1, bound\+\_\+coord\+\_\+pair\#2, ...$>$ \hypertarget{classBookKeeping_a3c3be3ebbeab5f23248df738f4d1c897}{}\index{Book\+Keeping@{Book\+Keeping}!M\+B\+Rs@{M\+B\+Rs}}
+\index{M\+B\+Rs@{M\+B\+Rs}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{M\+B\+Rs}]{\setlength{\rightskip}{0pt plus 5cm}typedef std\+::vector$<${\bf Tile\+::\+M\+B\+R}$>$ {\bf Book\+Keeping\+::\+M\+B\+Rs}}\label{classBookKeeping_a3c3be3ebbeab5f23248df738f4d1c897}
+Mnemonic\+: $<$M\+B\+R\#1, M\+B\+R\#2, ...$>$ \hypertarget{classBookKeeping_a0abbce3d062de307549f04c8426203c7}{}\index{Book\+Keeping@{Book\+Keeping}!Offset\+List@{Offset\+List}}
+\index{Offset\+List@{Offset\+List}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{Offset\+List}]{\setlength{\rightskip}{0pt plus 5cm}typedef std\+::vector$<$int64\+\_\+t$>$ {\bf Book\+Keeping\+::\+Offset\+List}}\label{classBookKeeping_a0abbce3d062de307549f04c8426203c7}
+Mnemonic\+: $<$offset\#1, offset\#2, ...$>$ \hypertarget{classBookKeeping_ac6a1eb7b4c44fee25fda405547b666e1}{}\index{Book\+Keeping@{Book\+Keeping}!Offsets@{Offsets}}
+\index{Offsets@{Offsets}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{Offsets}]{\setlength{\rightskip}{0pt plus 5cm}typedef std\+::vector$<${\bf Offset\+List}$>$ {\bf Book\+Keeping\+::\+Offsets}}\label{classBookKeeping_ac6a1eb7b4c44fee25fda405547b666e1}
+Mnemonic\+: \mbox{[}attribute\+\_\+id\mbox{]} --$>$ $<$offset\#1, offset\#2, ...$>$ \hypertarget{classBookKeeping_aae405d90bdb11aabd768c4d49ac7f110}{}\index{Book\+Keeping@{Book\+Keeping}!Tile\+Ids@{Tile\+Ids}}
+\index{Tile\+Ids@{Tile\+Ids}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{Tile\+Ids}]{\setlength{\rightskip}{0pt plus 5cm}typedef std\+::vector$<$int64\+\_\+t$>$ {\bf Book\+Keeping\+::\+Tile\+Ids}}\label{classBookKeeping_aae405d90bdb11aabd768c4d49ac7f110}
+Mnemonic\+: $<$tile\+\_\+id\#1, tile\+\_\+id\#2, ...$>$ 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classBookKeeping_a8595c4d1ca7e56014a0b04fb3b041213}{}\index{Book\+Keeping@{Book\+Keeping}!Book\+Keeping@{Book\+Keeping}}
+\index{Book\+Keeping@{Book\+Keeping}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{Book\+Keeping}]{\setlength{\rightskip}{0pt plus 5cm}Book\+Keeping\+::\+Book\+Keeping (
+\begin{DoxyParamCaption}
+\item[{const {\bf Array\+Schema} $\ast$}]{array\+\_\+schema, }
+\item[{const std\+::string $\ast$}]{fragment\+\_\+name, }
+\item[{const std\+::string $\ast$}]{workspace}
+\end{DoxyParamCaption}
+)}\label{classBookKeeping_a8595c4d1ca7e56014a0b04fb3b041213}
+Constructor. \hypertarget{classBookKeeping_a2aff624077614b9ef635cc49d31707b8}{}\index{Book\+Keeping@{Book\+Keeping}!````~Book\+Keeping@{$\sim$\+Book\+Keeping}}
+\index{````~Book\+Keeping@{$\sim$\+Book\+Keeping}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{$\sim$\+Book\+Keeping}]{\setlength{\rightskip}{0pt plus 5cm}Book\+Keeping\+::$\sim$\+Book\+Keeping (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classBookKeeping_a2aff624077614b9ef635cc49d31707b8}
+Destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classBookKeeping_a82804443caeeeccfede04599d024763f}{}\index{Book\+Keeping@{Book\+Keeping}!bounding\+\_\+coordinates@{bounding\+\_\+coordinates}}
+\index{bounding\+\_\+coordinates@{bounding\+\_\+coordinates}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{bounding\+\_\+coordinates}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Tile\+::\+Bounding\+Coordinates\+Pair} Book\+Keeping\+::bounding\+\_\+coordinates (
+\begin{DoxyParamCaption}
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+) const}\label{classBookKeeping_a82804443caeeeccfede04599d024763f}
+Returns the bounding coordinates of the tile at the input position. \hypertarget{classBookKeeping_a08f736f8639a2c9fc92c12f11af05f57}{}\index{Book\+Keeping@{Book\+Keeping}!commit@{commit}}
+\index{commit@{commit}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{commit}]{\setlength{\rightskip}{0pt plus 5cm}void Book\+Keeping\+::commit (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classBookKeeping_a08f736f8639a2c9fc92c12f11af05f57}
+Writes the book keeping structures on the disk. \hypertarget{classBookKeeping_a5667e2212a7ad6d1e364e5e40741ea0f}{}\index{Book\+Keeping@{Book\+Keeping}!commit\+\_\+bounding\+\_\+coordinates@{commit\+\_\+bounding\+\_\+coordinates}}
+\index{commit\+\_\+bounding\+\_\+coordinates@{commit\+\_\+bounding\+\_\+coordinates}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{commit\+\_\+bounding\+\_\+coordinates}]{\setlength{\rightskip}{0pt plus 5cm}void Book\+Keeping\+::commit\+\_\+bounding\+\_\+coordinates (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_a5667e2212a7ad6d1e364e5e40741ea0f}
+Writes the bounding coordinates on the disk. \hypertarget{classBookKeeping_a07591ac286b009bfefcda0bd57e327cc}{}\index{Book\+Keeping@{Book\+Keeping}!commit\+\_\+mbrs@{commit\+\_\+mbrs}}
+\index{commit\+\_\+mbrs@{commit\+\_\+mbrs}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{commit\+\_\+mbrs}]{\setlength{\rightskip}{0pt plus 5cm}void Book\+Keeping\+::commit\+\_\+mbrs (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_a07591ac286b009bfefcda0bd57e327cc}
+Writes the M\+B\+Rs on the disk. \hypertarget{classBookKeeping_acb4d5a73ae51527a46df575f2e7544e4}{}\index{Book\+Keeping@{Book\+Keeping}!commit\+\_\+offsets@{commit\+\_\+offsets}}
+\index{commit\+\_\+offsets@{commit\+\_\+offsets}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{commit\+\_\+offsets}]{\setlength{\rightskip}{0pt plus 5cm}void Book\+Keeping\+::commit\+\_\+offsets (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_acb4d5a73ae51527a46df575f2e7544e4}
+Writes the offsets on the disk. \hypertarget{classBookKeeping_ad763b288c38e96c8c2836fe264f27d54}{}\index{Book\+Keeping@{Book\+Keeping}!commit\+\_\+tile\+\_\+ids@{commit\+\_\+tile\+\_\+ids}}
+\index{commit\+\_\+tile\+\_\+ids@{commit\+\_\+tile\+\_\+ids}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{commit\+\_\+tile\+\_\+ids}]{\setlength{\rightskip}{0pt plus 5cm}void Book\+Keeping\+::commit\+\_\+tile\+\_\+ids (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_ad763b288c38e96c8c2836fe264f27d54}
+Writes the tile ids on the disk. \hypertarget{classBookKeeping_adbff76aeb3de9b8ec8d57cdbe29f1acb}{}\index{Book\+Keeping@{Book\+Keeping}!init@{init}}
+\index{init@{init}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{init}]{\setlength{\rightskip}{0pt plus 5cm}void Book\+Keeping\+::init (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classBookKeeping_adbff76aeb3de9b8ec8d57cdbe29f1acb}
+Intiializes the book keeping structures for writing. \hypertarget{classBookKeeping_a72a8fbb241e645215f338c307e97bde8}{}\index{Book\+Keeping@{Book\+Keeping}!load@{load}}
+\index{load@{load}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{load}]{\setlength{\rightskip}{0pt plus 5cm}void Book\+Keeping\+::load (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classBookKeeping_a72a8fbb241e645215f338c307e97bde8}
+Loads the book-\/keeping structures from the disk. \hypertarget{classBookKeeping_ac7826a7fdaadb30fdb37b009fa2996d7}{}\index{Book\+Keeping@{Book\+Keeping}!load\+\_\+bounding\+\_\+coordinates@{load\+\_\+bounding\+\_\+coordinates}}
+\index{load\+\_\+bounding\+\_\+coordinates@{load\+\_\+bounding\+\_\+coordinates}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{load\+\_\+bounding\+\_\+coordinates}]{\setlength{\rightskip}{0pt plus 5cm}void Book\+Keeping\+::load\+\_\+bounding\+\_\+coordinates (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_ac7826a7fdaadb30fdb37b009fa2996d7}
+Loads the bounding coordinates. \hypertarget{classBookKeeping_a318abbefe4a2c9c4aca2aee59bb78db8}{}\index{Book\+Keeping@{Book\+Keeping}!load\+\_\+mbrs@{load\+\_\+mbrs}}
+\index{load\+\_\+mbrs@{load\+\_\+mbrs}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{load\+\_\+mbrs}]{\setlength{\rightskip}{0pt plus 5cm}void Book\+Keeping\+::load\+\_\+mbrs (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_a318abbefe4a2c9c4aca2aee59bb78db8}
+Loads the tile M\+B\+Rs. \hypertarget{classBookKeeping_a1e47c8969a398860f59d7bc142e4e583}{}\index{Book\+Keeping@{Book\+Keeping}!load\+\_\+offsets@{load\+\_\+offsets}}
+\index{load\+\_\+offsets@{load\+\_\+offsets}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{load\+\_\+offsets}]{\setlength{\rightskip}{0pt plus 5cm}void Book\+Keeping\+::load\+\_\+offsets (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_a1e47c8969a398860f59d7bc142e4e583}
+Loads the tile offsets. \hypertarget{classBookKeeping_a1da6ddec8563cf966916e84469b2eaf0}{}\index{Book\+Keeping@{Book\+Keeping}!load\+\_\+tile\+\_\+ids@{load\+\_\+tile\+\_\+ids}}
+\index{load\+\_\+tile\+\_\+ids@{load\+\_\+tile\+\_\+ids}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{load\+\_\+tile\+\_\+ids}]{\setlength{\rightskip}{0pt plus 5cm}void Book\+Keeping\+::load\+\_\+tile\+\_\+ids (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_a1da6ddec8563cf966916e84469b2eaf0}
+Loads the tile ids. \hypertarget{classBookKeeping_a4fec5081fa77f259f7433d0e37e9b770}{}\index{Book\+Keeping@{Book\+Keeping}!mbr@{mbr}}
+\index{mbr@{mbr}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{mbr}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Tile\+::\+M\+B\+R} Book\+Keeping\+::mbr (
+\begin{DoxyParamCaption}
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+) const}\label{classBookKeeping_a4fec5081fa77f259f7433d0e37e9b770}
+Returns the M\+B\+R of the tile at the input position. \hypertarget{classBookKeeping_a2559203a93884827e06c642ce7e9e794}{}\index{Book\+Keeping@{Book\+Keeping}!offset@{offset}}
+\index{offset@{offset}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{offset}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Book\+Keeping\+::offset (
+\begin{DoxyParamCaption}
+\item[{int}]{attribute\+\_\+id, }
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+) const}\label{classBookKeeping_a2559203a93884827e06c642ce7e9e794}
+Returns the tile offset for the given attribute and position. \hypertarget{classBookKeeping_a101732972f7263c9ce11a9887e85450e}{}\index{Book\+Keeping@{Book\+Keeping}!tile\+\_\+id@{tile\+\_\+id}}
+\index{tile\+\_\+id@{tile\+\_\+id}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{tile\+\_\+id}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Book\+Keeping\+::tile\+\_\+id (
+\begin{DoxyParamCaption}
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+) const}\label{classBookKeeping_a101732972f7263c9ce11a9887e85450e}
+Returns the id of the tile at the input position. \hypertarget{classBookKeeping_a18bae8de0d33a205d962321cafe8fc44}{}\index{Book\+Keeping@{Book\+Keeping}!tile\+\_\+num@{tile\+\_\+num}}
+\index{tile\+\_\+num@{tile\+\_\+num}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{tile\+\_\+num}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Book\+Keeping\+::tile\+\_\+num (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classBookKeeping_a18bae8de0d33a205d962321cafe8fc44}
+Returns the number of tiles. \hypertarget{classBookKeeping_adc27911bdd3a8ce45a1f67806d14908d}{}\index{Book\+Keeping@{Book\+Keeping}!tile\+\_\+size@{tile\+\_\+size}}
+\index{tile\+\_\+size@{tile\+\_\+size}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{tile\+\_\+size}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Book\+Keeping\+::tile\+\_\+size (
+\begin{DoxyParamCaption}
+\item[{int}]{attribute\+\_\+id, }
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+) const}\label{classBookKeeping_adc27911bdd3a8ce45a1f67806d14908d}
+Returns the size of the tile for the input attribute at the input position. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classBookKeeping_aeea198496f12889838389eaa6d0761ef}{}\index{Book\+Keeping@{Book\+Keeping}!array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}}
+\index{array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{array\+\_\+schema\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Array\+Schema}$\ast$ Book\+Keeping\+::array\+\_\+schema\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_aeea198496f12889838389eaa6d0761ef}
+The array schema. \hypertarget{classBookKeeping_a58112c72f1ee2d6bd902a5a32be67741}{}\index{Book\+Keeping@{Book\+Keeping}!bounding\+\_\+coordinates\+\_\+@{bounding\+\_\+coordinates\+\_\+}}
+\index{bounding\+\_\+coordinates\+\_\+@{bounding\+\_\+coordinates\+\_\+}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{bounding\+\_\+coordinates\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Bounding\+Coordinates} Book\+Keeping\+::bounding\+\_\+coordinates\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_a58112c72f1ee2d6bd902a5a32be67741}
+Stores the bounding coordinates of every (coordinate) tile, i.\+e., the first and last cell of the tile (see \hyperlink{classTile_a797e4ed2dca8ac72d7b618bce2c62133}{Tile\+::bounding\+\_\+coordinates}). \hypertarget{classBookKeeping_a169c2f606ef697f977717a687105ced9}{}\index{Book\+Keeping@{Book\+Keeping}!fragment\+\_\+name\+\_\+@{fragment\+\_\+name\+\_\+}}
+\index{fragment\+\_\+name\+\_\+@{fragment\+\_\+name\+\_\+}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{fragment\+\_\+name\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const std\+::string$\ast$ Book\+Keeping\+::fragment\+\_\+name\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_a169c2f606ef697f977717a687105ced9}
+The fragment name. \hypertarget{classBookKeeping_a2e13bd47a7642e8e6e5062f9f7c8d664}{}\index{Book\+Keeping@{Book\+Keeping}!mbrs\+\_\+@{mbrs\+\_\+}}
+\index{mbrs\+\_\+@{mbrs\+\_\+}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{mbrs\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf M\+B\+Rs} Book\+Keeping\+::mbrs\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_a2e13bd47a7642e8e6e5062f9f7c8d664}
+Stores the M\+B\+R of every (coordinate) tile. \hypertarget{classBookKeeping_a7e5a14bb84511e4066f3b387805cb640}{}\index{Book\+Keeping@{Book\+Keeping}!offsets\+\_\+@{offsets\+\_\+}}
+\index{offsets\+\_\+@{offsets\+\_\+}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{offsets\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Offsets} Book\+Keeping\+::offsets\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_a7e5a14bb84511e4066f3b387805cb640}
+Stores the offset (i.\+e., starting position) of every tile of every attribute in the respective data file. \hypertarget{classBookKeeping_aaccad3c678f7ac3099c9178120ada9d4}{}\index{Book\+Keeping@{Book\+Keeping}!tile\+\_\+ids\+\_\+@{tile\+\_\+ids\+\_\+}}
+\index{tile\+\_\+ids\+\_\+@{tile\+\_\+ids\+\_\+}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{tile\+\_\+ids\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Tile\+Ids} Book\+Keeping\+::tile\+\_\+ids\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_aaccad3c678f7ac3099c9178120ada9d4}
+Stores all the tile ids of the fragment. \hypertarget{classBookKeeping_a87a02b5fe116f6d898da3810e3ab1523}{}\index{Book\+Keeping@{Book\+Keeping}!workspace\+\_\+@{workspace\+\_\+}}
+\index{workspace\+\_\+@{workspace\+\_\+}!Book\+Keeping@{Book\+Keeping}}
+\subsubsection[{workspace\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const std\+::string$\ast$ Book\+Keeping\+::workspace\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classBookKeeping_a87a02b5fe116f6d898da3810e3ab1523}
+The workspace. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/fragment/\hyperlink{book__keeping_8h}{book\+\_\+keeping.\+h}\end{DoxyCompactItemize}

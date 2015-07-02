@@ -44,8 +44,8 @@ std::string absolute_path(const std::string& path);
 template<class T>
 void convert(const double* a, T* b, int size);
 
-/** Creates a directory. */
-void create_directory(const std::string& dirname);
+/** Creates a directory. Returns 0 on success and an error code on error.  */
+int create_directory(const std::string& dirname);
 
 /** 
  * Deletes a directory (along with its files). 
@@ -71,6 +71,9 @@ void expand_buffer(void*& buffer, size_t size);
 /** Returns the size of the input file. */
 size_t file_size(const std::string& filename);
 
+/** Returns a string storing the current date in format YYYY-MM-DD HH:MM:SS. */
+std::string get_date();
+
 /** Returns a list with the names of all files in the input directory. */
 std::vector<std::string> get_filenames(const std::string& dirname);
 
@@ -85,6 +88,10 @@ void init_mbr(const T* coords, T* mbr, int dim_num);
 /** True if the point lies inside the range. */
 template<class T>
 bool inside_range(const T* point, const T* range, int dim_num);
+
+/** Returns true if the input vectors have common elements. */
+template<class T>
+bool intersect(const std::vector<T>& v1, const std::vector<T>& v2);
 
 /** True if the input is a del value (i.e., represents deletion). */
 template<class T>
@@ -102,6 +109,9 @@ bool is_integer(const char* s);
 /** Returns true if the input string is a non-negative integer number. */
 bool is_non_negative_integer(const char* s);
 
+/** Returns true if the input string is a positive (>0) integer number. */
+bool is_positive_integer(const char* s);
+
 /** True if the input is a null value. */
 template<class T>
 bool is_null(T v);
@@ -117,6 +127,9 @@ bool is_real(const char* s);
  * and potentially '_'.
  */
 bool is_valid_name(const char* s);
+
+/** Appends the input message to the error log file. */
+ void log_error(const std::string& err_msg);
 
 /** Returns true if there are no duplicates in the input vector. */
 template<class T>

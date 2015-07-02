@@ -36,8 +36,9 @@
 
 #include "array_schema.h"
 #include "csv_file.h"
-#include "storage_manager.h"
 #include "expression_tree.h"
+#include "storage_manager.h"
+#include "tiledb_error.h"
 
 /** 
  * This class implements the query processor module, which is responsible
@@ -52,6 +53,10 @@ class QueryProcessor {
    */
   QueryProcessor(StorageManager* storage_manager);
 
+  // ACCESSORS
+  /* Returns the current error code. */
+  int err() const;
+
   // QUERY FUNCTIONS
   /** 
    * Exports an array to a CSV file. Each line in the CSV file represents
@@ -63,12 +68,12 @@ class QueryProcessor {
    * allows for optionally exporting the cells in reverse order (if it
    * is true).
    */
-  int export_to_csv(
+  int export_csv(
       const std::string& array_name,
       const std::string& filename,
       const std::vector<std::string>& dim_names, 
       const std::vector<std::string>& attribute_names,
-      bool reverse, std::string& err_msg) const;
+      bool reverse) const;
   /** 
    * A subarray query creates a new array from the input array, 
    * containing only the cells whose coordinates fall into the input range. 
@@ -83,13 +88,14 @@ class QueryProcessor {
       const std::string& array_name, 
       const std::vector<double>& range,
       const std::string& result_array_name,
-      const std::vector<std::string>& attribute_names,
-      bool reverse, std::string& err_msg) const;
+      const std::vector<std::string>& attribute_names) const;
 
  private:
   // PRIVATE ATTRIBUTES
   /** The StorageManager object the QueryProcessor will be interfacing with. */
   StorageManager* storage_manager_;
+  /** The current error code. It is 0 on success. */
+  int err_;
 
   // PRIVATE METHODS
   /** 
@@ -104,7 +110,7 @@ class QueryProcessor {
    * coordinates.
    */
   template<class T>
-  void export_to_csv(
+  void export_csv(
       int ad, const ArraySchema* array_schema,
       const std::string& filename,
       const std::vector<int>& dim_ids,
@@ -114,7 +120,7 @@ class QueryProcessor {
    * CSV file in reverse order.
    */
   template<class T>
-  void export_to_csv_reverse(
+  void export_csv_reverse(
       int ad, const ArraySchema* array_schema,
       const std::string& filename,
       const std::vector<int>& dim_ids,
@@ -145,14 +151,6 @@ class QueryProcessor {
    */
   template<class T>
   void subarray(
-      int ad, const T* range, int result_ad,
-      const std::vector<int>& attribute_ids) const;
-  /** 
-   * Same as QueryProcessor::subarra, but the cells are written to the
-   * output array in reverse order.
-   */
-  template<class T>
-  void subarray_reverse(
       int ad, const T* range, int result_ad,
       const std::vector<int>& attribute_ids) const;
 };

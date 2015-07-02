@@ -1,0 +1,85 @@
+\hypertarget{structStorageManager_1_1WriteState}{}\section{Storage\+Manager\+:\+:Write\+State Struct Reference}
+\label{structStorageManager_1_1WriteState}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+
+
+{\ttfamily \#include $<$storage\+\_\+manager.\+h$>$}
+
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classStorageManager_a2b31e8ccd7a9daa2cf5f9fbf12080667}{Bounding\+Coordinates\+Pair} \hyperlink{structStorageManager_1_1WriteState_a064ab2412c1f90d76c54282d6652335f}{bounding\+\_\+coordinates\+\_\+}
+\item 
+std\+::vector$<$ \hyperlink{structStorageManager_1_1Cell}{Cell} $>$ \hyperlink{structStorageManager_1_1WriteState_a5a6dfa8165c9591f51d383e4a45b2895}{cells\+\_\+}
+\item 
+std\+::vector$<$ \hyperlink{structStorageManager_1_1CellWithId}{Cell\+With\+Id} $>$ \hyperlink{structStorageManager_1_1WriteState_a460d73b47fc73edf91fa7babaa1d2543}{cells\+\_\+with\+\_\+id\+\_\+}
+\item 
+std\+::vector$<$ \hyperlink{structStorageManager_1_1CellWith2Ids}{Cell\+With2\+Ids} $>$ \hyperlink{structStorageManager_1_1WriteState_a7d5e64047d6412bf0f2f851c2f2ec402}{cells\+\_\+with\+\_\+2\+\_\+ids\+\_\+}
+\item 
+int64\+\_\+t \hyperlink{structStorageManager_1_1WriteState_ad77bd2f8243f610ac81cd53a5bfd0447}{cell\+\_\+num\+\_\+}
+\item 
+std\+::vector$<$ int64\+\_\+t $>$ \hyperlink{structStorageManager_1_1WriteState_acd9557977b9b964b40981ce1114fcb93}{file\+\_\+offsets\+\_\+}
+\item 
+void $\ast$ \hyperlink{structStorageManager_1_1WriteState_a2f0d2f44d73d97bcbcdb627562f86dce}{mbr\+\_\+}
+\item 
+size\+\_\+t \hyperlink{structStorageManager_1_1WriteState_a9fac7bc7b5a38477520185f9918a5fce}{run\+\_\+offset\+\_\+}
+\item 
+size\+\_\+t \hyperlink{structStorageManager_1_1WriteState_a9403ab762032eb045a6bd890c42c8aa1}{run\+\_\+size\+\_\+}
+\item 
+int \hyperlink{structStorageManager_1_1WriteState_a2b66823e9497d9ffdbc4513f5aae4da0}{runs\+\_\+num\+\_\+}
+\item 
+\hyperlink{classStorageManager_ac40d6aec2ad9e7e4ecc7c765628dccb1}{Segments} \hyperlink{structStorageManager_1_1WriteState_a988a87b69e8faeacc8aeb3d705bc0d01}{segments\+\_\+}
+\item 
+\hyperlink{classStorageManager_a0a8bdd342987076d7d89da3e36f926d0}{Segment\+Utilization} \hyperlink{structStorageManager_1_1WriteState_a49054392be593764becbff60881c6f70}{segment\+\_\+utilization\+\_\+}
+\item 
+int64\+\_\+t \hyperlink{structStorageManager_1_1WriteState_a3dd377d4143a3f30f8127b6675818aad}{tile\+\_\+id\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Stores the state necessary when writing cells to a fragment. 
+
+\subsection{Member Data Documentation}
+\hypertarget{structStorageManager_1_1WriteState_a064ab2412c1f90d76c54282d6652335f}{}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}!bounding\+\_\+coordinates\+\_\+@{bounding\+\_\+coordinates\+\_\+}}
+\index{bounding\+\_\+coordinates\+\_\+@{bounding\+\_\+coordinates\+\_\+}!Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+\subsubsection[{bounding\+\_\+coordinates\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Bounding\+Coordinates\+Pair} Storage\+Manager\+::\+Write\+State\+::bounding\+\_\+coordinates\+\_\+}\label{structStorageManager_1_1WriteState_a064ab2412c1f90d76c54282d6652335f}
+The bounding coordinates of the currently populated tile. \hypertarget{structStorageManager_1_1WriteState_ad77bd2f8243f610ac81cd53a5bfd0447}{}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}!cell\+\_\+num\+\_\+@{cell\+\_\+num\+\_\+}}
+\index{cell\+\_\+num\+\_\+@{cell\+\_\+num\+\_\+}!Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+\subsubsection[{cell\+\_\+num\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Storage\+Manager\+::\+Write\+State\+::cell\+\_\+num\+\_\+}\label{structStorageManager_1_1WriteState_ad77bd2f8243f610ac81cd53a5bfd0447}
+The number of cell in the tile currently being populated. \hypertarget{structStorageManager_1_1WriteState_a5a6dfa8165c9591f51d383e4a45b2895}{}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}!cells\+\_\+@{cells\+\_\+}}
+\index{cells\+\_\+@{cells\+\_\+}!Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+\subsubsection[{cells\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf Cell}$>$ Storage\+Manager\+::\+Write\+State\+::cells\+\_\+}\label{structStorageManager_1_1WriteState_a5a6dfa8165c9591f51d383e4a45b2895}
+Stores logical cells. \hypertarget{structStorageManager_1_1WriteState_a7d5e64047d6412bf0f2f851c2f2ec402}{}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}!cells\+\_\+with\+\_\+2\+\_\+ids\+\_\+@{cells\+\_\+with\+\_\+2\+\_\+ids\+\_\+}}
+\index{cells\+\_\+with\+\_\+2\+\_\+ids\+\_\+@{cells\+\_\+with\+\_\+2\+\_\+ids\+\_\+}!Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+\subsubsection[{cells\+\_\+with\+\_\+2\+\_\+ids\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf Cell\+With2\+Ids}$>$ Storage\+Manager\+::\+Write\+State\+::cells\+\_\+with\+\_\+2\+\_\+ids\+\_\+}\label{structStorageManager_1_1WriteState_a7d5e64047d6412bf0f2f851c2f2ec402}
+Stores logical cells. \hypertarget{structStorageManager_1_1WriteState_a460d73b47fc73edf91fa7babaa1d2543}{}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}!cells\+\_\+with\+\_\+id\+\_\+@{cells\+\_\+with\+\_\+id\+\_\+}}
+\index{cells\+\_\+with\+\_\+id\+\_\+@{cells\+\_\+with\+\_\+id\+\_\+}!Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+\subsubsection[{cells\+\_\+with\+\_\+id\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf Cell\+With\+Id}$>$ Storage\+Manager\+::\+Write\+State\+::cells\+\_\+with\+\_\+id\+\_\+}\label{structStorageManager_1_1WriteState_a460d73b47fc73edf91fa7babaa1d2543}
+Stores logical cells. \hypertarget{structStorageManager_1_1WriteState_acd9557977b9b964b40981ce1114fcb93}{}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}!file\+\_\+offsets\+\_\+@{file\+\_\+offsets\+\_\+}}
+\index{file\+\_\+offsets\+\_\+@{file\+\_\+offsets\+\_\+}!Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+\subsubsection[{file\+\_\+offsets\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$int64\+\_\+t$>$ Storage\+Manager\+::\+Write\+State\+::file\+\_\+offsets\+\_\+}\label{structStorageManager_1_1WriteState_acd9557977b9b964b40981ce1114fcb93}
+Keeping track of the offsets of the attribute files (plus coordinates), when writing cells in a sorted manner to create the tiles. \hypertarget{structStorageManager_1_1WriteState_a2f0d2f44d73d97bcbcdb627562f86dce}{}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}!mbr\+\_\+@{mbr\+\_\+}}
+\index{mbr\+\_\+@{mbr\+\_\+}!Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+\subsubsection[{mbr\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ Storage\+Manager\+::\+Write\+State\+::mbr\+\_\+}\label{structStorageManager_1_1WriteState_a2f0d2f44d73d97bcbcdb627562f86dce}
+The M\+B\+R of the currently populated tile. \hypertarget{structStorageManager_1_1WriteState_a9fac7bc7b5a38477520185f9918a5fce}{}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}!run\+\_\+offset\+\_\+@{run\+\_\+offset\+\_\+}}
+\index{run\+\_\+offset\+\_\+@{run\+\_\+offset\+\_\+}!Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+\subsubsection[{run\+\_\+offset\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Storage\+Manager\+::\+Write\+State\+::run\+\_\+offset\+\_\+}\label{structStorageManager_1_1WriteState_a9fac7bc7b5a38477520185f9918a5fce}
+Stores the offset in the run buffer for the next write. \hypertarget{structStorageManager_1_1WriteState_a9403ab762032eb045a6bd890c42c8aa1}{}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}!run\+\_\+size\+\_\+@{run\+\_\+size\+\_\+}}
+\index{run\+\_\+size\+\_\+@{run\+\_\+size\+\_\+}!Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+\subsubsection[{run\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Storage\+Manager\+::\+Write\+State\+::run\+\_\+size\+\_\+}\label{structStorageManager_1_1WriteState_a9403ab762032eb045a6bd890c42c8aa1}
+Total memory consumption of the current run. \hypertarget{structStorageManager_1_1WriteState_a2b66823e9497d9ffdbc4513f5aae4da0}{}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}!runs\+\_\+num\+\_\+@{runs\+\_\+num\+\_\+}}
+\index{runs\+\_\+num\+\_\+@{runs\+\_\+num\+\_\+}!Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+\subsubsection[{runs\+\_\+num\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int Storage\+Manager\+::\+Write\+State\+::runs\+\_\+num\+\_\+}\label{structStorageManager_1_1WriteState_a2b66823e9497d9ffdbc4513f5aae4da0}
+Counts the number of sorted runs. \hypertarget{structStorageManager_1_1WriteState_a49054392be593764becbff60881c6f70}{}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}!segment\+\_\+utilization\+\_\+@{segment\+\_\+utilization\+\_\+}}
+\index{segment\+\_\+utilization\+\_\+@{segment\+\_\+utilization\+\_\+}!Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+\subsubsection[{segment\+\_\+utilization\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Segment\+Utilization} Storage\+Manager\+::\+Write\+State\+::segment\+\_\+utilization\+\_\+}\label{structStorageManager_1_1WriteState_a49054392be593764becbff60881c6f70}
+Stores the segment utilization. \hypertarget{structStorageManager_1_1WriteState_a988a87b69e8faeacc8aeb3d705bc0d01}{}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}!segments\+\_\+@{segments\+\_\+}}
+\index{segments\+\_\+@{segments\+\_\+}!Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+\subsubsection[{segments\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Segments} Storage\+Manager\+::\+Write\+State\+::segments\+\_\+}\label{structStorageManager_1_1WriteState_a988a87b69e8faeacc8aeb3d705bc0d01}
+Stores one segment per attribute. \hypertarget{structStorageManager_1_1WriteState_a3dd377d4143a3f30f8127b6675818aad}{}\index{Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}!tile\+\_\+id\+\_\+@{tile\+\_\+id\+\_\+}}
+\index{tile\+\_\+id\+\_\+@{tile\+\_\+id\+\_\+}!Storage\+Manager\+::\+Write\+State@{Storage\+Manager\+::\+Write\+State}}
+\subsubsection[{tile\+\_\+id\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Storage\+Manager\+::\+Write\+State\+::tile\+\_\+id\+\_\+}\label{structStorageManager_1_1WriteState_a3dd377d4143a3f30f8127b6675818aad}
+The id of the tile being currently populated. 
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/\hyperlink{storage__manager_8h}{storage\+\_\+manager.\+h}\end{DoxyCompactItemize}

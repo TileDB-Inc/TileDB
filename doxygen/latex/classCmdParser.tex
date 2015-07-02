@@ -1,0 +1,365 @@
+\hypertarget{classCmdParser}{}\section{Cmd\+Parser Class Reference}
+\label{classCmdParser}\index{Cmd\+Parser@{Cmd\+Parser}}
+
+
+{\ttfamily \#include $<$cmd\+\_\+parser.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classCmdParser_a2ea6dfe5c12c9effc1419764e46e076e}{Cmd\+Parser} ()
+\item 
+\hyperlink{classCmdParser_a6b7e3267e702350917314ae9730fcb3c}{$\sim$\+Cmd\+Parser} ()
+\item 
+int \hyperlink{classCmdParser_ac3ec2c0cf6f05e6c0e867b8bdb05eeca}{parse\+\_\+clear\+\_\+array} (int argc, char $\ast$$\ast$argv, std\+::string \&array\+\_\+name, std\+::string \&workspace, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_abe76873db2d0372ab597297fd90ad5ac}{parse\+\_\+define\+\_\+array} (int argc, char $\ast$$\ast$argv, const \hyperlink{classArraySchema}{Array\+Schema} $\ast$\&array\+\_\+schema, std\+::string \&workspace, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_af831576a9c80dfb100e3255d86bb74cf}{parse\+\_\+delete\+\_\+array} (int argc, char $\ast$$\ast$argv, std\+::string \&array\+\_\+name, std\+::string \&workspace, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_a01a18ee8be9150dd592208faa2067049}{parse\+\_\+export\+\_\+to\+\_\+csv} (int argc, char $\ast$$\ast$argv, std\+::string \&array\+\_\+name, std\+::string \&workspace, std\+::string \&filename, std\+::vector$<$ std\+::string $>$ \&dim\+\_\+names, std\+::vector$<$ std\+::string $>$ \&attribute\+\_\+names, bool \&reverse, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_a14906de8a1b053d72c6730c0e4342076}{parse\+\_\+generate\+\_\+synthetic\+\_\+data} (int argc, char $\ast$$\ast$argv, std\+::string \&array\+\_\+name, std\+::string \&workspace, std\+::string \&filename, std\+::string \&file\+\_\+type, unsigned \&seed, std\+::string \&distribution, int64\+\_\+t \&cell\+\_\+num, size\+\_\+t \&\hyperlink{utils_8h_aa14a014680a5fa9b4c32f4764f58aaee}{file\+\_\+size}, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_ad0a3de7c440a63b5c0aed88dd7105b70}{parse\+\_\+load\+\_\+bin} (int argc, char $\ast$$\ast$argv, std\+::string \&array\+\_\+name, std\+::string \&workspace, std\+::string \&filename, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_a2111ce6f2d0c078d8bd6a883ce554e42}{parse\+\_\+load\+\_\+csv} (int argc, char $\ast$$\ast$argv, std\+::string \&array\+\_\+name, std\+::string \&workspace, std\+::string \&filename, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_a29b5d52e02ff7a314933d2d2a8bfe244}{parse\+\_\+load\+\_\+sorted\+\_\+bin} (int argc, char $\ast$$\ast$argv, std\+::string \&array\+\_\+name, std\+::string \&workspace, std\+::string \&path, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_ad1e6efd0c7a71b0dad04564bb489ec0c}{parse\+\_\+show\+\_\+array\+\_\+schema} (int argc, char $\ast$$\ast$argv, std\+::string \&array\+\_\+name, std\+::string \&workspace, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_ac33ec6ec5fc4c75b3ac95c2ce135347e}{parse\+\_\+subarray} (int argc, char $\ast$$\ast$argv, std\+::string \&array\+\_\+name, std\+::string \&workspace, std\+::string \&result\+\_\+name, std\+::vector$<$ double $>$ \&range, std\+::vector$<$ std\+::string $>$ \&attribute\+\_\+names, bool \&reverse, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_aed9449c37dd273161420452a3fc423fb}{parse\+\_\+update\+\_\+csv} (int argc, char $\ast$$\ast$argv, std\+::string \&array\+\_\+name, std\+::string \&workspace, std\+::string \&filename, std\+::string \&err\+\_\+msg) const 
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classCmdParser_a57b953fa13a01a77e713c6cb0b50f53f}{get\+\_\+attribute\+\_\+names} (const std\+::string \&str\+\_\+attribute\+\_\+names, std\+::vector$<$ std\+::string $>$ \&attribute\+\_\+names, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_a06d4e25818a813dc88af1d41d808c2d6}{get\+\_\+capacity} (const std\+::string \&str\+\_\+capacity, int64\+\_\+t \&capacity, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_a1c1d4095bd87cd2bbbbf135362b02e29}{get\+\_\+cell\+\_\+order} (const std\+::string \&str\+\_\+cell\+\_\+order, \hyperlink{classArraySchema_a847601130253f905337b5e284e1b78f2}{Array\+Schema\+::\+Cell\+Order} \&cell\+\_\+order, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_ac19fbb24240f1dd0e056cb0a1a3d27ca}{get\+\_\+cell\+\_\+num} (const std\+::string \&str\+\_\+cell\+\_\+num, int64\+\_\+t \&cell\+\_\+num, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_a6766b29a1a5b23baf3e71acdf08c14d4}{get\+\_\+consolidation\+\_\+step} (const std\+::string \&str\+\_\+consolidation\+\_\+step, int \&consolidation\+\_\+step, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_abf09f29eb387029817b0128c74cc3998}{get\+\_\+dim\+\_\+domains} (const std\+::string \&str\+\_\+dim\+\_\+domains, int dim\+\_\+num, std\+::vector$<$ std\+::pair$<$ double, double $>$ $>$ \&dim\+\_\+domains, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_a552d6795c14da13f2e08ad16bf017b4a}{get\+\_\+dim\+\_\+names} (const std\+::string \&str\+\_\+dim\+\_\+names, const std\+::vector$<$ std\+::string $>$ \&attribute\+\_\+names, std\+::vector$<$ std\+::string $>$ \&dim\+\_\+names, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_a89c6bbde4d620c41c0f553f0c58676e9}{get\+\_\+file\+\_\+size} (const std\+::string \&str\+\_\+file\+\_\+size, size\+\_\+t \&\hyperlink{utils_8h_aa14a014680a5fa9b4c32f4764f58aaee}{file\+\_\+size}, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_ad9ec3dae496bddb8ae43c2e8c46e48fd}{get\+\_\+range} (const std\+::string \&str\+\_\+range, std\+::vector$<$ double $>$ \&range, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_a5468ad4d48ddb2162199085805460330}{get\+\_\+reverse} (const std\+::string \&mode, bool \&reverse, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_a8a73c11b2a0d7d750cda3f8735f3e8ec}{get\+\_\+seed} (const std\+::string \&str\+\_\+seed, unsigned \&seed, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_aea064b753d1181c6ac1b17dff3f4be43}{get\+\_\+tile\+\_\+extents} (const std\+::string \&str\+\_\+tile\+\_\+extents, int dim\+\_\+num, const std\+::vector$<$ std\+::pair$<$ double, double $>$ $>$ \&dim\+\_\+domains, std\+::vector$<$ double $>$ \&tile\+\_\+extents, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_a4e062bc25b032c2fda4eb81f3ce0d5a4}{get\+\_\+tile\+\_\+order} (const std\+::string \&str\+\_\+tile\+\_\+order, \hyperlink{classArraySchema_ae9240847f83a545b7de651f032ffde63}{Array\+Schema\+::\+Tile\+Order} \&tile\+\_\+order, std\+::string \&err\+\_\+msg) const 
+\item 
+int \hyperlink{classCmdParser_a6c3ea34050fe4d68d9cd0d4f0f701e65}{get\+\_\+types} (const std\+::string \&str\+\_\+types, int attribute\+\_\+num, std\+::vector$<$ const std\+::type\+\_\+info $\ast$ $>$ \&types, std\+::vector$<$ int $>$ \&val\+\_\+num, std\+::string \&err\+\_\+msg) const 
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Objects of this class properly parse Tile\+D\+B queries given from a command line. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classCmdParser_a2ea6dfe5c12c9effc1419764e46e076e}{}\index{Cmd\+Parser@{Cmd\+Parser}!Cmd\+Parser@{Cmd\+Parser}}
+\index{Cmd\+Parser@{Cmd\+Parser}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{Cmd\+Parser}]{\setlength{\rightskip}{0pt plus 5cm}Cmd\+Parser\+::\+Cmd\+Parser (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classCmdParser_a2ea6dfe5c12c9effc1419764e46e076e}
+Constructor. \hypertarget{classCmdParser_a6b7e3267e702350917314ae9730fcb3c}{}\index{Cmd\+Parser@{Cmd\+Parser}!````~Cmd\+Parser@{$\sim$\+Cmd\+Parser}}
+\index{````~Cmd\+Parser@{$\sim$\+Cmd\+Parser}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{$\sim$\+Cmd\+Parser}]{\setlength{\rightskip}{0pt plus 5cm}Cmd\+Parser\+::$\sim$\+Cmd\+Parser (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classCmdParser_a6b7e3267e702350917314ae9730fcb3c}
+Destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classCmdParser_a57b953fa13a01a77e713c6cb0b50f53f}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+attribute\+\_\+names@{get\+\_\+attribute\+\_\+names}}
+\index{get\+\_\+attribute\+\_\+names@{get\+\_\+attribute\+\_\+names}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+attribute\+\_\+names}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+attribute\+\_\+names (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{str\+\_\+attribute\+\_\+names, }
+\item[{std\+::vector$<$ std\+::string $>$ \&}]{attribute\+\_\+names, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_a57b953fa13a01a77e713c6cb0b50f53f}
+Retrieves the attribute names. \hypertarget{classCmdParser_a06d4e25818a813dc88af1d41d808c2d6}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+capacity@{get\+\_\+capacity}}
+\index{get\+\_\+capacity@{get\+\_\+capacity}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+capacity}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+capacity (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{str\+\_\+capacity, }
+\item[{int64\+\_\+t \&}]{capacity, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_a06d4e25818a813dc88af1d41d808c2d6}
+Gets the capacity. \hypertarget{classCmdParser_ac19fbb24240f1dd0e056cb0a1a3d27ca}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+cell\+\_\+num@{get\+\_\+cell\+\_\+num}}
+\index{get\+\_\+cell\+\_\+num@{get\+\_\+cell\+\_\+num}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+cell\+\_\+num}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+cell\+\_\+num (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{str\+\_\+cell\+\_\+num, }
+\item[{int64\+\_\+t \&}]{cell\+\_\+num, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_ac19fbb24240f1dd0e056cb0a1a3d27ca}
+Gets the number of cells. \hypertarget{classCmdParser_a1c1d4095bd87cd2bbbbf135362b02e29}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+cell\+\_\+order@{get\+\_\+cell\+\_\+order}}
+\index{get\+\_\+cell\+\_\+order@{get\+\_\+cell\+\_\+order}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+cell\+\_\+order}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+cell\+\_\+order (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{str\+\_\+cell\+\_\+order, }
+\item[{{\bf Array\+Schema\+::\+Cell\+Order} \&}]{cell\+\_\+order, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_a1c1d4095bd87cd2bbbbf135362b02e29}
+Gets the cell order. \hypertarget{classCmdParser_a6766b29a1a5b23baf3e71acdf08c14d4}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+consolidation\+\_\+step@{get\+\_\+consolidation\+\_\+step}}
+\index{get\+\_\+consolidation\+\_\+step@{get\+\_\+consolidation\+\_\+step}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+consolidation\+\_\+step}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+consolidation\+\_\+step (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{str\+\_\+consolidation\+\_\+step, }
+\item[{int \&}]{consolidation\+\_\+step, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_a6766b29a1a5b23baf3e71acdf08c14d4}
+Gets the consolidation step. \hypertarget{classCmdParser_abf09f29eb387029817b0128c74cc3998}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+dim\+\_\+domains@{get\+\_\+dim\+\_\+domains}}
+\index{get\+\_\+dim\+\_\+domains@{get\+\_\+dim\+\_\+domains}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+dim\+\_\+domains}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+dim\+\_\+domains (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{str\+\_\+dim\+\_\+domains, }
+\item[{int}]{dim\+\_\+num, }
+\item[{std\+::vector$<$ std\+::pair$<$ double, double $>$ $>$ \&}]{dim\+\_\+domains, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_abf09f29eb387029817b0128c74cc3998}
+Gets the dimension domains. \hypertarget{classCmdParser_a552d6795c14da13f2e08ad16bf017b4a}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+dim\+\_\+names@{get\+\_\+dim\+\_\+names}}
+\index{get\+\_\+dim\+\_\+names@{get\+\_\+dim\+\_\+names}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+dim\+\_\+names}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+dim\+\_\+names (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{str\+\_\+dim\+\_\+names, }
+\item[{const std\+::vector$<$ std\+::string $>$ \&}]{attribute\+\_\+names, }
+\item[{std\+::vector$<$ std\+::string $>$ \&}]{dim\+\_\+names, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_a552d6795c14da13f2e08ad16bf017b4a}
+Gets the dimension names. \hypertarget{classCmdParser_a89c6bbde4d620c41c0f553f0c58676e9}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+file\+\_\+size@{get\+\_\+file\+\_\+size}}
+\index{get\+\_\+file\+\_\+size@{get\+\_\+file\+\_\+size}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+file\+\_\+size}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+file\+\_\+size (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{str\+\_\+file\+\_\+size, }
+\item[{size\+\_\+t \&}]{file\+\_\+size, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_a89c6bbde4d620c41c0f553f0c58676e9}
+Gets the file size. \hypertarget{classCmdParser_ad9ec3dae496bddb8ae43c2e8c46e48fd}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+range@{get\+\_\+range}}
+\index{get\+\_\+range@{get\+\_\+range}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+range}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+range (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{str\+\_\+range, }
+\item[{std\+::vector$<$ double $>$ \&}]{range, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_ad9ec3dae496bddb8ae43c2e8c46e48fd}
+Gets the range. \hypertarget{classCmdParser_a5468ad4d48ddb2162199085805460330}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+reverse@{get\+\_\+reverse}}
+\index{get\+\_\+reverse@{get\+\_\+reverse}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+reverse}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+reverse (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{mode, }
+\item[{bool \&}]{reverse, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_a5468ad4d48ddb2162199085805460330}
+Gets the mode (reverse or not). \hypertarget{classCmdParser_a8a73c11b2a0d7d750cda3f8735f3e8ec}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+seed@{get\+\_\+seed}}
+\index{get\+\_\+seed@{get\+\_\+seed}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+seed}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+seed (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{str\+\_\+seed, }
+\item[{unsigned \&}]{seed, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_a8a73c11b2a0d7d750cda3f8735f3e8ec}
+Gets the seed. \hypertarget{classCmdParser_aea064b753d1181c6ac1b17dff3f4be43}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+tile\+\_\+extents@{get\+\_\+tile\+\_\+extents}}
+\index{get\+\_\+tile\+\_\+extents@{get\+\_\+tile\+\_\+extents}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+tile\+\_\+extents}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+tile\+\_\+extents (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{str\+\_\+tile\+\_\+extents, }
+\item[{int}]{dim\+\_\+num, }
+\item[{const std\+::vector$<$ std\+::pair$<$ double, double $>$ $>$ \&}]{dim\+\_\+domains, }
+\item[{std\+::vector$<$ double $>$ \&}]{tile\+\_\+extents, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_aea064b753d1181c6ac1b17dff3f4be43}
+Gets the tile extents. \hypertarget{classCmdParser_a4e062bc25b032c2fda4eb81f3ce0d5a4}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+tile\+\_\+order@{get\+\_\+tile\+\_\+order}}
+\index{get\+\_\+tile\+\_\+order@{get\+\_\+tile\+\_\+order}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+tile\+\_\+order}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+tile\+\_\+order (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{str\+\_\+tile\+\_\+order, }
+\item[{{\bf Array\+Schema\+::\+Tile\+Order} \&}]{tile\+\_\+order, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_a4e062bc25b032c2fda4eb81f3ce0d5a4}
+Gets the tile order. \hypertarget{classCmdParser_a6c3ea34050fe4d68d9cd0d4f0f701e65}{}\index{Cmd\+Parser@{Cmd\+Parser}!get\+\_\+types@{get\+\_\+types}}
+\index{get\+\_\+types@{get\+\_\+types}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{get\+\_\+types}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::get\+\_\+types (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{str\+\_\+types, }
+\item[{int}]{attribute\+\_\+num, }
+\item[{std\+::vector$<$ const std\+::type\+\_\+info $\ast$ $>$ \&}]{types, }
+\item[{std\+::vector$<$ int $>$ \&}]{val\+\_\+num, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classCmdParser_a6c3ea34050fe4d68d9cd0d4f0f701e65}
+Gets the types and number of values per attribute. \hypertarget{classCmdParser_ac3ec2c0cf6f05e6c0e867b8bdb05eeca}{}\index{Cmd\+Parser@{Cmd\+Parser}!parse\+\_\+clear\+\_\+array@{parse\+\_\+clear\+\_\+array}}
+\index{parse\+\_\+clear\+\_\+array@{parse\+\_\+clear\+\_\+array}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{parse\+\_\+clear\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::parse\+\_\+clear\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$$\ast$}]{argv, }
+\item[{std\+::string \&}]{array\+\_\+name, }
+\item[{std\+::string \&}]{workspace, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const}\label{classCmdParser_ac3ec2c0cf6f05e6c0e867b8bdb05eeca}
+Parse command line for query 'clear\+\_\+array'. \hypertarget{classCmdParser_abe76873db2d0372ab597297fd90ad5ac}{}\index{Cmd\+Parser@{Cmd\+Parser}!parse\+\_\+define\+\_\+array@{parse\+\_\+define\+\_\+array}}
+\index{parse\+\_\+define\+\_\+array@{parse\+\_\+define\+\_\+array}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{parse\+\_\+define\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::parse\+\_\+define\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$$\ast$}]{argv, }
+\item[{const {\bf Array\+Schema} $\ast$\&}]{array\+\_\+schema, }
+\item[{std\+::string \&}]{workspace, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const}\label{classCmdParser_abe76873db2d0372ab597297fd90ad5ac}
+Parse command line for query 'define\+\_\+array' and return the schema. \hypertarget{classCmdParser_af831576a9c80dfb100e3255d86bb74cf}{}\index{Cmd\+Parser@{Cmd\+Parser}!parse\+\_\+delete\+\_\+array@{parse\+\_\+delete\+\_\+array}}
+\index{parse\+\_\+delete\+\_\+array@{parse\+\_\+delete\+\_\+array}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{parse\+\_\+delete\+\_\+array}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::parse\+\_\+delete\+\_\+array (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$$\ast$}]{argv, }
+\item[{std\+::string \&}]{array\+\_\+name, }
+\item[{std\+::string \&}]{workspace, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const}\label{classCmdParser_af831576a9c80dfb100e3255d86bb74cf}
+Parse command line for query 'delete\+\_\+array'. \hypertarget{classCmdParser_a01a18ee8be9150dd592208faa2067049}{}\index{Cmd\+Parser@{Cmd\+Parser}!parse\+\_\+export\+\_\+to\+\_\+csv@{parse\+\_\+export\+\_\+to\+\_\+csv}}
+\index{parse\+\_\+export\+\_\+to\+\_\+csv@{parse\+\_\+export\+\_\+to\+\_\+csv}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{parse\+\_\+export\+\_\+to\+\_\+csv}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::parse\+\_\+export\+\_\+to\+\_\+csv (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$$\ast$}]{argv, }
+\item[{std\+::string \&}]{array\+\_\+name, }
+\item[{std\+::string \&}]{workspace, }
+\item[{std\+::string \&}]{filename, }
+\item[{std\+::vector$<$ std\+::string $>$ \&}]{dim\+\_\+names, }
+\item[{std\+::vector$<$ std\+::string $>$ \&}]{attribute\+\_\+names, }
+\item[{bool \&}]{reverse, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const}\label{classCmdParser_a01a18ee8be9150dd592208faa2067049}
+Parse command line for query 'export\+\_\+to\+\_\+csv'. \hypertarget{classCmdParser_a14906de8a1b053d72c6730c0e4342076}{}\index{Cmd\+Parser@{Cmd\+Parser}!parse\+\_\+generate\+\_\+synthetic\+\_\+data@{parse\+\_\+generate\+\_\+synthetic\+\_\+data}}
+\index{parse\+\_\+generate\+\_\+synthetic\+\_\+data@{parse\+\_\+generate\+\_\+synthetic\+\_\+data}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{parse\+\_\+generate\+\_\+synthetic\+\_\+data}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::parse\+\_\+generate\+\_\+synthetic\+\_\+data (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$$\ast$}]{argv, }
+\item[{std\+::string \&}]{array\+\_\+name, }
+\item[{std\+::string \&}]{workspace, }
+\item[{std\+::string \&}]{filename, }
+\item[{std\+::string \&}]{file\+\_\+type, }
+\item[{unsigned \&}]{seed, }
+\item[{std\+::string \&}]{distribution, }
+\item[{int64\+\_\+t \&}]{cell\+\_\+num, }
+\item[{size\+\_\+t \&}]{file\+\_\+size, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const}\label{classCmdParser_a14906de8a1b053d72c6730c0e4342076}
+Parse command line for query 'generate\+\_\+synthetic\+\_\+data'. \hypertarget{classCmdParser_ad0a3de7c440a63b5c0aed88dd7105b70}{}\index{Cmd\+Parser@{Cmd\+Parser}!parse\+\_\+load\+\_\+bin@{parse\+\_\+load\+\_\+bin}}
+\index{parse\+\_\+load\+\_\+bin@{parse\+\_\+load\+\_\+bin}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{parse\+\_\+load\+\_\+bin}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::parse\+\_\+load\+\_\+bin (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$$\ast$}]{argv, }
+\item[{std\+::string \&}]{array\+\_\+name, }
+\item[{std\+::string \&}]{workspace, }
+\item[{std\+::string \&}]{filename, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const}\label{classCmdParser_ad0a3de7c440a63b5c0aed88dd7105b70}
+Parse command line for query 'load\+\_\+bin'. \hypertarget{classCmdParser_a2111ce6f2d0c078d8bd6a883ce554e42}{}\index{Cmd\+Parser@{Cmd\+Parser}!parse\+\_\+load\+\_\+csv@{parse\+\_\+load\+\_\+csv}}
+\index{parse\+\_\+load\+\_\+csv@{parse\+\_\+load\+\_\+csv}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{parse\+\_\+load\+\_\+csv}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::parse\+\_\+load\+\_\+csv (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$$\ast$}]{argv, }
+\item[{std\+::string \&}]{array\+\_\+name, }
+\item[{std\+::string \&}]{workspace, }
+\item[{std\+::string \&}]{filename, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const}\label{classCmdParser_a2111ce6f2d0c078d8bd6a883ce554e42}
+Parse command line for query 'load\+\_\+csv'. \hypertarget{classCmdParser_a29b5d52e02ff7a314933d2d2a8bfe244}{}\index{Cmd\+Parser@{Cmd\+Parser}!parse\+\_\+load\+\_\+sorted\+\_\+bin@{parse\+\_\+load\+\_\+sorted\+\_\+bin}}
+\index{parse\+\_\+load\+\_\+sorted\+\_\+bin@{parse\+\_\+load\+\_\+sorted\+\_\+bin}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{parse\+\_\+load\+\_\+sorted\+\_\+bin}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::parse\+\_\+load\+\_\+sorted\+\_\+bin (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$$\ast$}]{argv, }
+\item[{std\+::string \&}]{array\+\_\+name, }
+\item[{std\+::string \&}]{workspace, }
+\item[{std\+::string \&}]{path, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const}\label{classCmdParser_a29b5d52e02ff7a314933d2d2a8bfe244}
+Parse command line for query 'load\+\_\+sorted\+\_\+bin'. \hypertarget{classCmdParser_ad1e6efd0c7a71b0dad04564bb489ec0c}{}\index{Cmd\+Parser@{Cmd\+Parser}!parse\+\_\+show\+\_\+array\+\_\+schema@{parse\+\_\+show\+\_\+array\+\_\+schema}}
+\index{parse\+\_\+show\+\_\+array\+\_\+schema@{parse\+\_\+show\+\_\+array\+\_\+schema}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{parse\+\_\+show\+\_\+array\+\_\+schema}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::parse\+\_\+show\+\_\+array\+\_\+schema (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$$\ast$}]{argv, }
+\item[{std\+::string \&}]{array\+\_\+name, }
+\item[{std\+::string \&}]{workspace, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const}\label{classCmdParser_ad1e6efd0c7a71b0dad04564bb489ec0c}
+Parse command line for query 'show\+\_\+array\+\_\+schema'. \hypertarget{classCmdParser_ac33ec6ec5fc4c75b3ac95c2ce135347e}{}\index{Cmd\+Parser@{Cmd\+Parser}!parse\+\_\+subarray@{parse\+\_\+subarray}}
+\index{parse\+\_\+subarray@{parse\+\_\+subarray}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{parse\+\_\+subarray}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::parse\+\_\+subarray (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$$\ast$}]{argv, }
+\item[{std\+::string \&}]{array\+\_\+name, }
+\item[{std\+::string \&}]{workspace, }
+\item[{std\+::string \&}]{result\+\_\+name, }
+\item[{std\+::vector$<$ double $>$ \&}]{range, }
+\item[{std\+::vector$<$ std\+::string $>$ \&}]{attribute\+\_\+names, }
+\item[{bool \&}]{reverse, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const}\label{classCmdParser_ac33ec6ec5fc4c75b3ac95c2ce135347e}
+Parse command line for query 'subarray'. \hypertarget{classCmdParser_aed9449c37dd273161420452a3fc423fb}{}\index{Cmd\+Parser@{Cmd\+Parser}!parse\+\_\+update\+\_\+csv@{parse\+\_\+update\+\_\+csv}}
+\index{parse\+\_\+update\+\_\+csv@{parse\+\_\+update\+\_\+csv}!Cmd\+Parser@{Cmd\+Parser}}
+\subsubsection[{parse\+\_\+update\+\_\+csv}]{\setlength{\rightskip}{0pt plus 5cm}int Cmd\+Parser\+::parse\+\_\+update\+\_\+csv (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$$\ast$}]{argv, }
+\item[{std\+::string \&}]{array\+\_\+name, }
+\item[{std\+::string \&}]{workspace, }
+\item[{std\+::string \&}]{filename, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const}\label{classCmdParser_aed9449c37dd273161420452a3fc423fb}
+Parse command line for query 'update\+\_\+csv'. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+tiledb\+\_\+cmd/include/\hyperlink{cmd__parser_8h}{cmd\+\_\+parser.\+h}\end{DoxyCompactItemize}

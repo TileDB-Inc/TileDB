@@ -1,0 +1,156 @@
+\hypertarget{classCommandLine}{}\section{Command\+Line Class Reference}
+\label{classCommandLine}\index{Command\+Line@{Command\+Line}}
+
+
+{\ttfamily \#include $<$command\+\_\+line.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classCommandLine_ac9bd8b583be689d970032d8ce975b523}{parse} (int argc, char $\ast$$\ast$argv)
+\end{DoxyCompactItemize}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+uint64\+\_\+t \hyperlink{classCommandLine_ab9c3f466109c4f8c0e21003af135482a}{arg\+\_\+bitmap\+\_\+}
+\item 
+std\+::vector$<$ char $\ast$ $>$ \hyperlink{classCommandLine_ac33bfae7756e68fa2f7fc2538cf4a8ac}{array\+\_\+names\+\_\+}
+\item 
+std\+::vector$<$ char $\ast$ $>$ \hyperlink{classCommandLine_ad900ef70d91535497ecedc948254805a}{attribute\+\_\+names\+\_\+}
+\item 
+char $\ast$ \hyperlink{classCommandLine_a4b2c6066274035a5bea2adcbe71bcfa3}{capacity\+\_\+}
+\item 
+char $\ast$ \hyperlink{classCommandLine_a881b548c171d82e592d19b8f91b7c4fe}{cell\+\_\+order\+\_\+}
+\item 
+char $\ast$ \hyperlink{classCommandLine_abb7c1c0a9693309c885c69c7d8243215}{consolidation\+\_\+step\+\_\+}
+\item 
+std\+::vector$<$ char $\ast$ $>$ \hyperlink{classCommandLine_abe5adf7e0e46e33bbacab8def5146d54}{coords\+\_\+}
+\item 
+std\+::vector$<$ char $\ast$ $>$ \hyperlink{classCommandLine_a5d7aca6c2ef5530d8f53850b485d93d2}{dim\+\_\+names\+\_\+}
+\item 
+std\+::vector$<$ char $\ast$ $>$ \hyperlink{classCommandLine_ab75e4302c09ff1ca0cc099374e914b93}{dim\+\_\+domains\+\_\+}
+\item 
+char $\ast$ \hyperlink{classCommandLine_a4503d0d4214e51a6884629b29e771ed7}{expression\+\_\+}
+\item 
+char $\ast$ \hyperlink{classCommandLine_aa4e002e557fc4b4974daa827a3883930}{filename\+\_\+}
+\item 
+char $\ast$ \hyperlink{classCommandLine_a584f279447430b2da687a3d5687c4d7e}{mode\+\_\+}
+\item 
+std\+::vector$<$ char $\ast$ $>$ \hyperlink{classCommandLine_a75a014324b812198360edc99ad4e84b6}{numbers\+\_\+}
+\item 
+int \hyperlink{classCommandLine_a63edf2445a1152f2989ac28b1a64f475}{option\+\_\+num\+\_\+}
+\item 
+char $\ast$ \hyperlink{classCommandLine_ab3a511c590a3202c4629d7770eb08dee}{query\+\_\+}
+\item 
+std\+::vector$<$ char $\ast$ $>$ \hyperlink{classCommandLine_a2df474de00bbcd25dfacacf28494220f}{range\+\_\+}
+\item 
+char $\ast$ \hyperlink{classCommandLine_a86248cf2fea828b7be7c3e4a174e3794}{result\+\_\+name\+\_\+}
+\item 
+char $\ast$ \hyperlink{classCommandLine_a84c6395881d3fec0f25c260e8b2b2cb1}{seed\+\_\+}
+\item 
+char $\ast$ \hyperlink{classCommandLine_a3f975e511512f21d28eeccd2ceb62ffd}{size\+\_\+}
+\item 
+std\+::vector$<$ char $\ast$ $>$ \hyperlink{classCommandLine_a2cd185d5e741976d04fd85f8ca22b1d1}{tile\+\_\+extents\+\_\+}
+\item 
+char $\ast$ \hyperlink{classCommandLine_a5d0c027e4b28133f763a1d1c9296b248}{tile\+\_\+order\+\_\+}
+\item 
+std\+::vector$<$ char $\ast$ $>$ \hyperlink{classCommandLine_a175f51137314bb9d0097e25130fed261}{types\+\_\+}
+\item 
+std\+::vector$<$ char $\ast$ $>$ \hyperlink{classCommandLine_ae6b472ea68d54589244dab9b65ab86e1}{val\+\_\+num\+\_\+}
+\item 
+char $\ast$ \hyperlink{classCommandLine_af9e82c06074c1bcb828b6d76e6285536}{workspace\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This class stores the command line options given by the user. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classCommandLine_ac9bd8b583be689d970032d8ce975b523}{}\index{Command\+Line@{Command\+Line}!parse@{parse}}
+\index{parse@{parse}!Command\+Line@{Command\+Line}}
+\subsubsection[{parse}]{\setlength{\rightskip}{0pt plus 5cm}void Command\+Line\+::parse (
+\begin{DoxyParamCaption}
+\item[{int}]{argc, }
+\item[{char $\ast$$\ast$}]{argv}
+\end{DoxyParamCaption}
+)}\label{classCommandLine_ac9bd8b583be689d970032d8ce975b523}
+Parses the command line. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classCommandLine_ab9c3f466109c4f8c0e21003af135482a}{}\index{Command\+Line@{Command\+Line}!arg\+\_\+bitmap\+\_\+@{arg\+\_\+bitmap\+\_\+}}
+\index{arg\+\_\+bitmap\+\_\+@{arg\+\_\+bitmap\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{arg\+\_\+bitmap\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}uint64\+\_\+t Command\+Line\+::arg\+\_\+bitmap\+\_\+}\label{classCommandLine_ab9c3f466109c4f8c0e21003af135482a}
+This bitmap is used to check which arguments are provided. From right to left, each bit corresponds to\+: \hyperlink{classCommandLine_ac33bfae7756e68fa2f7fc2538cf4a8ac}{Command\+Line\+::array\+\_\+names\+\_\+}, \hyperlink{classCommandLine_ad900ef70d91535497ecedc948254805a}{Command\+Line\+::attribute\+\_\+names\+\_\+}, \hyperlink{classCommandLine_a4b2c6066274035a5bea2adcbe71bcfa3}{Command\+Line\+::capacity\+\_\+}, \hyperlink{classCommandLine_a881b548c171d82e592d19b8f91b7c4fe}{Command\+Line\+::cell\+\_\+order\+\_\+}, \hyperlink{classCommandLine_abb7c1c0a9693309c885c69c7d8243215}{Command\+Line\+::consolidation\+\_\+step\+\_\+}, Command\+Line\+::coordinate\+\_\+, \hyperlink{classCommandLine_ab75e4302c09ff1ca0cc099374e914b93}{Command\+Line\+::dim\+\_\+domains\+\_\+}, \hyperlink{classCommandLine_a5d7aca6c2ef5530d8f53850b485d93d2}{Command\+Line\+::dim\+\_\+names\+\_\+}, \hyperlink{classCommandLine_a4503d0d4214e51a6884629b29e771ed7}{Command\+Line\+::expression\+\_\+}, \hyperlink{classCommandLine_aa4e002e557fc4b4974daa827a3883930}{Command\+Line\+::filename\+\_\+}. \hyperlink{classCommandLine_a584f279447430b2da687a3d5687c4d7e}{Command\+Line\+::mode\+\_\+}. \hyperlink{classCommandLine_a75a014324b812198360edc99ad4e84b6}{Command\+Line\+::numbers\+\_\+}. \hyperlink{classCommandLine_a2df474de00bbcd25dfacacf28494220f}{Command\+Line\+::range\+\_\+}. \hyperlink{classCommandLine_a86248cf2fea828b7be7c3e4a174e3794}{Command\+Line\+::result\+\_\+name\+\_\+}. \hyperlink{classCommandLine_a84c6395881d3fec0f25c260e8b2b2cb1}{Command\+Line\+::seed\+\_\+}. \hyperlink{classCommandLine_a3f975e511512f21d28eeccd2ceb62ffd}{Command\+Line\+::size\+\_\+}. \hyperlink{classCommandLine_a2cd185d5e741976d04fd85f8ca22b1d1}{Command\+Line\+::tile\+\_\+extents\+\_\+}, \hyperlink{classCommandLine_a5d0c027e4b28133f763a1d1c9296b248}{Command\+Line\+::tile\+\_\+order\+\_\+}, \hyperlink{classCommandLine_a175f51137314bb9d0097e25130fed261}{Command\+Line\+::types\+\_\+}, \hyperlink{classCommandLine_af9e82c06074c1bcb828b6d76e6285536}{Command\+Line\+::workspace\+\_\+}, \hypertarget{classCommandLine_ac33bfae7756e68fa2f7fc2538cf4a8ac}{}\index{Command\+Line@{Command\+Line}!array\+\_\+names\+\_\+@{array\+\_\+names\+\_\+}}
+\index{array\+\_\+names\+\_\+@{array\+\_\+names\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{array\+\_\+names\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$char$\ast$$>$ Command\+Line\+::array\+\_\+names\+\_\+}\label{classCommandLine_ac33bfae7756e68fa2f7fc2538cf4a8ac}
+\hyperlink{classArray}{Array} names. \hypertarget{classCommandLine_ad900ef70d91535497ecedc948254805a}{}\index{Command\+Line@{Command\+Line}!attribute\+\_\+names\+\_\+@{attribute\+\_\+names\+\_\+}}
+\index{attribute\+\_\+names\+\_\+@{attribute\+\_\+names\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{attribute\+\_\+names\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$char$\ast$$>$ Command\+Line\+::attribute\+\_\+names\+\_\+}\label{classCommandLine_ad900ef70d91535497ecedc948254805a}
+Attribute names. \hypertarget{classCommandLine_a4b2c6066274035a5bea2adcbe71bcfa3}{}\index{Command\+Line@{Command\+Line}!capacity\+\_\+@{capacity\+\_\+}}
+\index{capacity\+\_\+@{capacity\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{capacity\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ Command\+Line\+::capacity\+\_\+}\label{classCommandLine_a4b2c6066274035a5bea2adcbe71bcfa3}
+Capacity. \hypertarget{classCommandLine_a881b548c171d82e592d19b8f91b7c4fe}{}\index{Command\+Line@{Command\+Line}!cell\+\_\+order\+\_\+@{cell\+\_\+order\+\_\+}}
+\index{cell\+\_\+order\+\_\+@{cell\+\_\+order\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{cell\+\_\+order\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ Command\+Line\+::cell\+\_\+order\+\_\+}\label{classCommandLine_a881b548c171d82e592d19b8f91b7c4fe}
+\hyperlink{classCell}{Cell} order \hypertarget{classCommandLine_abb7c1c0a9693309c885c69c7d8243215}{}\index{Command\+Line@{Command\+Line}!consolidation\+\_\+step\+\_\+@{consolidation\+\_\+step\+\_\+}}
+\index{consolidation\+\_\+step\+\_\+@{consolidation\+\_\+step\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{consolidation\+\_\+step\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ Command\+Line\+::consolidation\+\_\+step\+\_\+}\label{classCommandLine_abb7c1c0a9693309c885c69c7d8243215}
+Consolidation step \hypertarget{classCommandLine_abe5adf7e0e46e33bbacab8def5146d54}{}\index{Command\+Line@{Command\+Line}!coords\+\_\+@{coords\+\_\+}}
+\index{coords\+\_\+@{coords\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{coords\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$char$\ast$$>$ Command\+Line\+::coords\+\_\+}\label{classCommandLine_abe5adf7e0e46e33bbacab8def5146d54}
+Coordinates. \hypertarget{classCommandLine_ab75e4302c09ff1ca0cc099374e914b93}{}\index{Command\+Line@{Command\+Line}!dim\+\_\+domains\+\_\+@{dim\+\_\+domains\+\_\+}}
+\index{dim\+\_\+domains\+\_\+@{dim\+\_\+domains\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{dim\+\_\+domains\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$char$\ast$$>$ Command\+Line\+::dim\+\_\+domains\+\_\+}\label{classCommandLine_ab75e4302c09ff1ca0cc099374e914b93}
+Dimension domains. \hypertarget{classCommandLine_a5d7aca6c2ef5530d8f53850b485d93d2}{}\index{Command\+Line@{Command\+Line}!dim\+\_\+names\+\_\+@{dim\+\_\+names\+\_\+}}
+\index{dim\+\_\+names\+\_\+@{dim\+\_\+names\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{dim\+\_\+names\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$char$\ast$$>$ Command\+Line\+::dim\+\_\+names\+\_\+}\label{classCommandLine_a5d7aca6c2ef5530d8f53850b485d93d2}
+Dimension names. \hypertarget{classCommandLine_a4503d0d4214e51a6884629b29e771ed7}{}\index{Command\+Line@{Command\+Line}!expression\+\_\+@{expression\+\_\+}}
+\index{expression\+\_\+@{expression\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{expression\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ Command\+Line\+::expression\+\_\+}\label{classCommandLine_a4503d0d4214e51a6884629b29e771ed7}
+Expression. \hypertarget{classCommandLine_aa4e002e557fc4b4974daa827a3883930}{}\index{Command\+Line@{Command\+Line}!filename\+\_\+@{filename\+\_\+}}
+\index{filename\+\_\+@{filename\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{filename\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ Command\+Line\+::filename\+\_\+}\label{classCommandLine_aa4e002e557fc4b4974daa827a3883930}
+File name. \hypertarget{classCommandLine_a584f279447430b2da687a3d5687c4d7e}{}\index{Command\+Line@{Command\+Line}!mode\+\_\+@{mode\+\_\+}}
+\index{mode\+\_\+@{mode\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{mode\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ Command\+Line\+::mode\+\_\+}\label{classCommandLine_a584f279447430b2da687a3d5687c4d7e}
+Mode. \hypertarget{classCommandLine_a75a014324b812198360edc99ad4e84b6}{}\index{Command\+Line@{Command\+Line}!numbers\+\_\+@{numbers\+\_\+}}
+\index{numbers\+\_\+@{numbers\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{numbers\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$char$\ast$$>$ Command\+Line\+::numbers\+\_\+}\label{classCommandLine_a75a014324b812198360edc99ad4e84b6}
+Numbers. \hypertarget{classCommandLine_a63edf2445a1152f2989ac28b1a64f475}{}\index{Command\+Line@{Command\+Line}!option\+\_\+num\+\_\+@{option\+\_\+num\+\_\+}}
+\index{option\+\_\+num\+\_\+@{option\+\_\+num\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{option\+\_\+num\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int Command\+Line\+::option\+\_\+num\+\_\+}\label{classCommandLine_a63edf2445a1152f2989ac28b1a64f475}
+Number of (option,value) pairs in the command line. \hypertarget{classCommandLine_ab3a511c590a3202c4629d7770eb08dee}{}\index{Command\+Line@{Command\+Line}!query\+\_\+@{query\+\_\+}}
+\index{query\+\_\+@{query\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{query\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ Command\+Line\+::query\+\_\+}\label{classCommandLine_ab3a511c590a3202c4629d7770eb08dee}
+The query. \hypertarget{classCommandLine_a2df474de00bbcd25dfacacf28494220f}{}\index{Command\+Line@{Command\+Line}!range\+\_\+@{range\+\_\+}}
+\index{range\+\_\+@{range\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{range\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$char$\ast$$>$ Command\+Line\+::range\+\_\+}\label{classCommandLine_a2df474de00bbcd25dfacacf28494220f}
+A multidimensional range \hypertarget{classCommandLine_a86248cf2fea828b7be7c3e4a174e3794}{}\index{Command\+Line@{Command\+Line}!result\+\_\+name\+\_\+@{result\+\_\+name\+\_\+}}
+\index{result\+\_\+name\+\_\+@{result\+\_\+name\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{result\+\_\+name\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ Command\+Line\+::result\+\_\+name\+\_\+}\label{classCommandLine_a86248cf2fea828b7be7c3e4a174e3794}
+The result name. \hypertarget{classCommandLine_a84c6395881d3fec0f25c260e8b2b2cb1}{}\index{Command\+Line@{Command\+Line}!seed\+\_\+@{seed\+\_\+}}
+\index{seed\+\_\+@{seed\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{seed\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ Command\+Line\+::seed\+\_\+}\label{classCommandLine_a84c6395881d3fec0f25c260e8b2b2cb1}
+Seed. \hypertarget{classCommandLine_a3f975e511512f21d28eeccd2ceb62ffd}{}\index{Command\+Line@{Command\+Line}!size\+\_\+@{size\+\_\+}}
+\index{size\+\_\+@{size\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ Command\+Line\+::size\+\_\+}\label{classCommandLine_a3f975e511512f21d28eeccd2ceb62ffd}
+Size. \hypertarget{classCommandLine_a2cd185d5e741976d04fd85f8ca22b1d1}{}\index{Command\+Line@{Command\+Line}!tile\+\_\+extents\+\_\+@{tile\+\_\+extents\+\_\+}}
+\index{tile\+\_\+extents\+\_\+@{tile\+\_\+extents\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{tile\+\_\+extents\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$char$\ast$$>$ Command\+Line\+::tile\+\_\+extents\+\_\+}\label{classCommandLine_a2cd185d5e741976d04fd85f8ca22b1d1}
+\hyperlink{classTile}{Tile} extents. \hypertarget{classCommandLine_a5d0c027e4b28133f763a1d1c9296b248}{}\index{Command\+Line@{Command\+Line}!tile\+\_\+order\+\_\+@{tile\+\_\+order\+\_\+}}
+\index{tile\+\_\+order\+\_\+@{tile\+\_\+order\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{tile\+\_\+order\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ Command\+Line\+::tile\+\_\+order\+\_\+}\label{classCommandLine_a5d0c027e4b28133f763a1d1c9296b248}
+\hyperlink{classTile}{Tile} order \hypertarget{classCommandLine_a175f51137314bb9d0097e25130fed261}{}\index{Command\+Line@{Command\+Line}!types\+\_\+@{types\+\_\+}}
+\index{types\+\_\+@{types\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{types\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$char$\ast$$>$ Command\+Line\+::types\+\_\+}\label{classCommandLine_a175f51137314bb9d0097e25130fed261}
+Types. \hypertarget{classCommandLine_ae6b472ea68d54589244dab9b65ab86e1}{}\index{Command\+Line@{Command\+Line}!val\+\_\+num\+\_\+@{val\+\_\+num\+\_\+}}
+\index{val\+\_\+num\+\_\+@{val\+\_\+num\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{val\+\_\+num\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$char$\ast$$>$ Command\+Line\+::val\+\_\+num\+\_\+}\label{classCommandLine_ae6b472ea68d54589244dab9b65ab86e1}
+Number of values per cell per attribute. \hypertarget{classCommandLine_af9e82c06074c1bcb828b6d76e6285536}{}\index{Command\+Line@{Command\+Line}!workspace\+\_\+@{workspace\+\_\+}}
+\index{workspace\+\_\+@{workspace\+\_\+}!Command\+Line@{Command\+Line}}
+\subsubsection[{workspace\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ Command\+Line\+::workspace\+\_\+}\label{classCommandLine_af9e82c06074c1bcb828b6d76e6285536}
+The workspace where the query will be executed. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+tiledb\+\_\+cmd/include/\hyperlink{command__line_8h}{command\+\_\+line.\+h}\end{DoxyCompactItemize}

@@ -1,0 +1,157 @@
+\hypertarget{classCSVFile}{}\section{C\+S\+V\+File Class Reference}
+\label{classCSVFile}\index{C\+S\+V\+File@{C\+S\+V\+File}}
+
+
+{\ttfamily \#include $<$csv\+\_\+file.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classCSVFile_af2bd30d331994368e6e308039da5aa98}{C\+S\+V\+File} ()
+\item 
+\hyperlink{classCSVFile_a4d51a07787223045f066920fd60bc8af}{C\+S\+V\+File} (const std\+::string \&filename, const char $\ast$mode)
+\item 
+\hyperlink{classCSVFile_a32ba16f45d8fb6c6eaed10dd174617c7}{$\sim$\+C\+S\+V\+File} ()
+\item 
+void \hyperlink{classCSVFile_a14bdfb97acae36e443355099a0038a3e}{close} ()
+\item 
+bool \hyperlink{classCSVFile_a0d43f229c3a7581451bef6e509e65f8f}{open} (const std\+::string \&filename, const char $\ast$mode, size\+\_\+t segment\+\_\+size=\hyperlink{csv__file_8h_ad397d5548431cda7e3459bd2d5ca0a0a}{C\+S\+V\+\_\+\+S\+E\+G\+M\+E\+N\+T\+\_\+\+S\+I\+Z\+E})
+\item 
+void \hyperlink{classCSVFile_a200a26b2e21bc62614e78fb37f4d8fea}{operator$<$$<$} (const \hyperlink{classCSVLine}{C\+S\+V\+Line} \&line)
+\item 
+bool \hyperlink{classCSVFile_a8f703896ad1b5f08bdd1c23f0aade6b7}{operator$>$$>$} (\hyperlink{classCSVLine}{C\+S\+V\+Line} \&line)
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classCSVFile_ab2c05ddc80eeff819c9a5851b0f2a796}{flush\+\_\+buffer} ()
+\item 
+bool \hyperlink{classCSVFile_aeafe98fc0be504d50f0ce13de68cfed6}{read\+\_\+segment} ()
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+char $\ast$ \hyperlink{classCSVFile_a64b8ce5ad1c95fff116ae5f55724b00f}{buffer\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classCSVFile_ae541df458cb6217c4f364f3c24a14519}{buffer\+\_\+end\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classCSVFile_a485ee2abd3a0dcf762199402140a6feb}{buffer\+\_\+offset\+\_\+}
+\item 
+int64\+\_\+t \hyperlink{classCSVFile_ace9c6c4b16ce537550986d2cd10e431c}{file\+\_\+offset\+\_\+}
+\item 
+std\+::string \hyperlink{classCSVFile_a05fa932716ac239f4371dcaad11c644c}{filename\+\_\+}
+\item 
+char \hyperlink{classCSVFile_ab9642a99f708e948eef64cbfbf08be16}{mode\+\_\+} \mbox{[}2\mbox{]}
+\item 
+size\+\_\+t \hyperlink{classCSVFile_a4f4728017d51972485e6e03d5a2cff46}{segment\+\_\+size\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This class implements a simple C\+S\+V file with basic operations such as getting a line from the file, or appending a line to it. It makes sure that the I/\+Os are performed such that about \hyperlink{classCSVFile_a4f4728017d51972485e6e03d5a2cff46}{C\+S\+V\+File\+::segment\+\_\+size\+\_\+} bytes are exchanged between the main memory and the disk, so that the disk seek time becomes insignificant when amortized over the data segment transfer. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classCSVFile_af2bd30d331994368e6e308039da5aa98}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!C\+S\+V\+File@{C\+S\+V\+File}}
+\index{C\+S\+V\+File@{C\+S\+V\+File}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{C\+S\+V\+File}]{\setlength{\rightskip}{0pt plus 5cm}C\+S\+V\+File\+::\+C\+S\+V\+File (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classCSVFile_af2bd30d331994368e6e308039da5aa98}
+Constructor. \hypertarget{classCSVFile_a4d51a07787223045f066920fd60bc8af}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!C\+S\+V\+File@{C\+S\+V\+File}}
+\index{C\+S\+V\+File@{C\+S\+V\+File}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{C\+S\+V\+File}]{\setlength{\rightskip}{0pt plus 5cm}C\+S\+V\+File\+::\+C\+S\+V\+File (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{filename, }
+\item[{const char $\ast$}]{mode}
+\end{DoxyParamCaption}
+)}\label{classCSVFile_a4d51a07787223045f066920fd60bc8af}
+Constructor. \hypertarget{classCSVFile_a32ba16f45d8fb6c6eaed10dd174617c7}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!````~C\+S\+V\+File@{$\sim$\+C\+S\+V\+File}}
+\index{````~C\+S\+V\+File@{$\sim$\+C\+S\+V\+File}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{$\sim$\+C\+S\+V\+File}]{\setlength{\rightskip}{0pt plus 5cm}C\+S\+V\+File\+::$\sim$\+C\+S\+V\+File (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classCSVFile_a32ba16f45d8fb6c6eaed10dd174617c7}
+Destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classCSVFile_a14bdfb97acae36e443355099a0038a3e}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!close@{close}}
+\index{close@{close}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{close}]{\setlength{\rightskip}{0pt plus 5cm}void C\+S\+V\+File\+::close (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classCSVFile_a14bdfb97acae36e443355099a0038a3e}
+Closes the C\+S\+V file. \hypertarget{classCSVFile_ab2c05ddc80eeff819c9a5851b0f2a796}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!flush\+\_\+buffer@{flush\+\_\+buffer}}
+\index{flush\+\_\+buffer@{flush\+\_\+buffer}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{flush\+\_\+buffer}]{\setlength{\rightskip}{0pt plus 5cm}void C\+S\+V\+File\+::flush\+\_\+buffer (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classCSVFile_ab2c05ddc80eeff819c9a5851b0f2a796}
+Writes the content of the buffer to the end of the file on the disk. \hypertarget{classCSVFile_a0d43f229c3a7581451bef6e509e65f8f}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!open@{open}}
+\index{open@{open}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{open}]{\setlength{\rightskip}{0pt plus 5cm}bool C\+S\+V\+File\+::open (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{filename, }
+\item[{const char $\ast$}]{mode, }
+\item[{size\+\_\+t}]{segment\+\_\+size = {\ttfamily {\bf C\+S\+V\+\_\+\+S\+E\+G\+M\+E\+N\+T\+\_\+\+S\+I\+Z\+E}}}
+\end{DoxyParamCaption}
+)}\label{classCSVFile_a0d43f229c3a7581451bef6e509e65f8f}
+Opens the C\+S\+V file in the input mode (see \hyperlink{classCSVFile_ab9642a99f708e948eef64cbfbf08be16}{C\+S\+V\+File\+::mode\+\_\+}). \hypertarget{classCSVFile_a200a26b2e21bc62614e78fb37f4d8fea}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!operator$<$$<$@{operator$<$$<$}}
+\index{operator$<$$<$@{operator$<$$<$}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{operator$<$$<$}]{\setlength{\rightskip}{0pt plus 5cm}void C\+S\+V\+File\+::operator$<$$<$ (
+\begin{DoxyParamCaption}
+\item[{const {\bf C\+S\+V\+Line} \&}]{line}
+\end{DoxyParamCaption}
+)}\label{classCSVFile_a200a26b2e21bc62614e78fb37f4d8fea}
+Appends a C\+S\+V line to the end of the C\+S\+V file. The C\+S\+V file is treated as an output stream. \hypertarget{classCSVFile_a8f703896ad1b5f08bdd1c23f0aade6b7}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!operator$>$$>$@{operator$>$$>$}}
+\index{operator$>$$>$@{operator$>$$>$}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{operator$>$$>$}]{\setlength{\rightskip}{0pt plus 5cm}bool C\+S\+V\+File\+::operator$>$$>$ (
+\begin{DoxyParamCaption}
+\item[{{\bf C\+S\+V\+Line} \&}]{line}
+\end{DoxyParamCaption}
+)}\label{classCSVFile_a8f703896ad1b5f08bdd1c23f0aade6b7}
+Retrieves the next C\+S\+V line from the C\+S\+V file. The C\+S\+V file is treated as an input stream. If a line starts with '\#', it is ignored as a comment line. \hypertarget{classCSVFile_aeafe98fc0be504d50f0ce13de68cfed6}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!read\+\_\+segment@{read\+\_\+segment}}
+\index{read\+\_\+segment@{read\+\_\+segment}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{read\+\_\+segment}]{\setlength{\rightskip}{0pt plus 5cm}bool C\+S\+V\+File\+::read\+\_\+segment (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classCSVFile_aeafe98fc0be504d50f0ce13de68cfed6}
+Reads a set of lines from the file, whose aggregate size is at most \hyperlink{classCSVFile_a4f4728017d51972485e6e03d5a2cff46}{C\+S\+V\+File\+::segment\+\_\+size\+\_\+}. Returns true if it could retrieve new lines from the file, and false otherwise. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classCSVFile_a64b8ce5ad1c95fff116ae5f55724b00f}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!buffer\+\_\+@{buffer\+\_\+}}
+\index{buffer\+\_\+@{buffer\+\_\+}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{buffer\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char$\ast$ C\+S\+V\+File\+::buffer\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classCSVFile_a64b8ce5ad1c95fff116ae5f55724b00f}
+The buffer will temporarily store the lines, before they are written to the file on the disk (in W\+R\+I\+T\+E/\+A\+P\+P\+E\+N\+D mode) or when segments are read from the disk (in R\+E\+A\+D mode). \hypertarget{classCSVFile_ae541df458cb6217c4f364f3c24a14519}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!buffer\+\_\+end\+\_\+@{buffer\+\_\+end\+\_\+}}
+\index{buffer\+\_\+end\+\_\+@{buffer\+\_\+end\+\_\+}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{buffer\+\_\+end\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t C\+S\+V\+File\+::buffer\+\_\+end\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classCSVFile_ae541df458cb6217c4f364f3c24a14519}
+The position A\+F\+T\+E\+R the last useful byte in buffer. \hypertarget{classCSVFile_a485ee2abd3a0dcf762199402140a6feb}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!buffer\+\_\+offset\+\_\+@{buffer\+\_\+offset\+\_\+}}
+\index{buffer\+\_\+offset\+\_\+@{buffer\+\_\+offset\+\_\+}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{buffer\+\_\+offset\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t C\+S\+V\+File\+::buffer\+\_\+offset\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classCSVFile_a485ee2abd3a0dcf762199402140a6feb}
+A pointer to the current position (for reading or writing) in the buffer. \hypertarget{classCSVFile_ace9c6c4b16ce537550986d2cd10e431c}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!file\+\_\+offset\+\_\+@{file\+\_\+offset\+\_\+}}
+\index{file\+\_\+offset\+\_\+@{file\+\_\+offset\+\_\+}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{file\+\_\+offset\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t C\+S\+V\+File\+::file\+\_\+offset\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classCSVFile_ace9c6c4b16ce537550986d2cd10e431c}
+A pointer to the current position in the file where the N\+E\+X\+T read will take place (used only by \hyperlink{classCSVFile_a8f703896ad1b5f08bdd1c23f0aade6b7}{C\+S\+V\+File\+::operator$>$$>$} in R\+E\+A\+D mode). \hypertarget{classCSVFile_a05fa932716ac239f4371dcaad11c644c}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!filename\+\_\+@{filename\+\_\+}}
+\index{filename\+\_\+@{filename\+\_\+}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{filename\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string C\+S\+V\+File\+::filename\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classCSVFile_a05fa932716ac239f4371dcaad11c644c}
+The name of the C\+S\+V file. \hypertarget{classCSVFile_ab9642a99f708e948eef64cbfbf08be16}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!mode\+\_\+@{mode\+\_\+}}
+\index{mode\+\_\+@{mode\+\_\+}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{mode\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char C\+S\+V\+File\+::mode\+\_\+\mbox{[}2\mbox{]}\hspace{0.3cm}{\ttfamily [private]}}\label{classCSVFile_ab9642a99f708e948eef64cbfbf08be16}
+The mode of the C\+S\+V file. There are three modes available\+:
+
+\char`\"{}r\char`\"{}\+: R\+E\+A\+D mode
+
+\char`\"{}w\char`\"{}\+: W\+R\+I\+T\+E mode
+
+\char`\"{}a\char`\"{}\+: A\+P\+P\+E\+N\+D mode \hypertarget{classCSVFile_a4f4728017d51972485e6e03d5a2cff46}{}\index{C\+S\+V\+File@{C\+S\+V\+File}!segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}}
+\index{segment\+\_\+size\+\_\+@{segment\+\_\+size\+\_\+}!C\+S\+V\+File@{C\+S\+V\+File}}
+\subsubsection[{segment\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t C\+S\+V\+File\+::segment\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classCSVFile_a4f4728017d51972485e6e03d5a2cff46}
+Determines the amount of data exchanged in an I/\+O operation between the disk and the main memory. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/misc/\hyperlink{csv__file_8h}{csv\+\_\+file.\+h}\end{DoxyCompactItemize}

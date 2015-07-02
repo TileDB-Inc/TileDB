@@ -1,0 +1,253 @@
+.TH tiledb_define_array 1 "24 June 2015" "Version 0.1" "TileDB programs"
+ 
+.SH NAME
+tiledb_define_array - defines an array, specifying an array schema
+
+.SH SYNOPSIS
+.B tiledb_define_array 
+.BI "-w " "directory " "-A " "array_name " \
+"-a " "attribute_name_1,... " "-d " "dim_name_1,... " 
+.br
+.BI "-D " "dim_domain_1_low,dim_domain_1_high,... " \
+"-t " "type_1,... " 
+[
+.BI "-o " "cell_order"
+] [
+.BI "-s " "consolidation_step"
+] 
+.br
+[ [ [
+.BI "-e " "tile_extent_1,..."
+] [
+.BI "-O " "tile_order"
+] ] | 
+[ 
+.BI "-c " "capacity"
+] ]
+
+.SH DESCRIPTION
+.B tiledb_define_array
+defines an array, specifying its schema. Every array must be defined prior to
+its use. On error, it prints appopriate messages on stderr and returns an error 
+code (see \fBEXIT STATUS\fR).
+
+Each array is comprised of a set of \fBdimensions\fR, and a set of 
+\fBattributes\fR. Each array \fBcell\fR is essentially a tuple, consisting of a
+set of dimension values, collectively called as \fIcoordinates\fR, and a set of
+attribute values. The coordinates and attribute values may be of different
+\fBtypes\fR. All coordinates though must have the same type. The 
+coordinates draw their values from their corresponding \fBdimension domains\fR.
+A cell may have \fImultiple\fR (fixed or variable) values on each
+attribute. TileDB stores internally only the \fInon-empty\fR (i.e., non-null,
+non-zero) cells. 
+
+An array is internally represented as a set of \fBfragments\fR (i.e., snapshots
+of the array after a set of updates), each consisting of a set of \fBtiles\fR. 
+Each tile is essentially a \fIhyper-rectangle\fR in the \fIlogical\fR (i.e., 
+dimension) space that groups a set of non-empty cells. The tiles of an
+array may be \fIregular\fR or \fIirregular\fR. Regular tiles have \fIfixed\fR
+\fBtile extents\fR across each dimension, i.e., they have the same shape in the,
+logical space, but may have a different non-empty cell \fBcapacity\fR.
+Irregular tiles have a \fIfixed\fR non-empty cell capacity, but may have 
+different \fIshape\fR in the logical space.
+
+Each array stores its cells internally in a \fIsorted\fR \fBtile order\fR and 
+\fBcell order\fR. For the case of irregular tiles, the tile order is implied
+by the cell order. 
+
+Finally, TileDB updates arrays in \fIbatches\fR, i.e., it modifies 
+\fIsets of cells\fR instead of single cells. When a new
+set of cells is inserted into an array, TileDB initially creates a new
+array \fBfragment\fR encompassing only the updates. Periodically, as new
+updates arrive, TileDB \fBconsolidates\fR multiple fragments into a single one.
+The consolidation frequency is defined by a \fBconsolidation step\fR parameter.
+If this parameter is 1, every new fragment is always consolidated with the
+existing one. If it is larger than 1, then consolidation occurs in a 
+\fIhierarchical\fR manner. For instance, if \fBs\fR is the consolidation step,
+each new fragment essentially represents a leaf of a complete \fBs\fR-ary 
+tree that is constructed bottom-up. When \fBs\fR fragment-leaves are created,
+they are consolidated into a single one, which becomes their parent node
+in the tree, and the leaves are disregarded for the rest of they system
+lifetime. In general, whenever \fBs\fR fragment-nodes are created at the
+same level, they are consolidated into a new fragment that becomes
+their parent, and these nodes are disregarded thereafter.
+
+The following conventions apply to the \fBSYNOPSIS\fR section:
+
+.TS
+tab (@);
+c lx .
+\fBbold text\fR @ type exactly as shown
+\fIitalic text\fR @ replace with appropriate argument
+[\fB\-a \fIarg\fR]@ any or all options within [ ] are optional
+\fB\-a \fIarg\fR | \fB\-b \fIarg\fR @ \
+options delimited by | cannot be used together
+.TE
+ 
+.SH OPTIONS
+.TP
+.BI "-w" " directory" "\fR, " \fB --workspace=\fIdirectory\fR  
+The path to the workspace folder where the TileDB data will be stored. The path
+must exist, and the caller must have read and write permissions on it.
+
+.TP
+.BI "-A" " array_name" "\fR, " \fB --array-name=\fIarray_name\fR  
+The name of the array whose schema is being defined. It can contain only
+alphanumerics and character '_'. 
+
+.TP
+.BI "-a" " attribute_name_1,..." "\fR, " \
+\fB --attribute-names=\fIattribute_name_1,...\fR  
+The names of the attributes of the array. They can contain only
+alphanumerics and character '_'. 
+
+.TP
+.BI "-d" " dim_name_1,..." "\fR, " \
+\fB --dim-names=\fIdim_name_1,...\fR  
+The names of the dimensions of the array. They can contain only
+alphanumerics and character '_'. 
+
+.TP
+.BI "-D" " dim_domain_1_low,dim_domain_1_high,..." "\fR, " \
+\fB --dim-domains=\fIdim_domain_1_low,dim_domain_1_high,...\fR  
+The domains of the dimensions. There should be a [low,high] pair for
+every dimension, whose order must follow that of the dimension names
+in the \fB\-d\fR option. 
+
+.TP
+.BI "-t" " type_1,..." "\fR, " \
+\fB --types=\fItype_1,...\fR  
+The types of the attributes and (collectively) of the coordinates. Specifically,
+if there are \fIattribute_num\fR attributes, there should be provided 
+\fIattribute_num+1\fR types. The types of the attributes must be given
+first, following the order of the attribute names in the \fB\-a\fR option.
+The type of the coordinates must be appear last. The supported attribute
+types are \fBchar\fR, \fBint\fR, \fBint64\fR, \fBfloat\fR, and \fBdouble\fR.
+The supported coordinate types are \fBint\fR, \fBint64\fR, \fBfloat\fR, and 
+\fBdouble\fR. 
+
+Optionally, one may specify the number of values to be stored for a particular
+attribute in each cell. This is done by appending '\fB:\fR' followed by the 
+desired number of values after the type (e.g., \fBint:3\fR). If no such value is
+provided, the default is 1. If one needs to specify that an attribute may
+take a variable (unknown a priori) number of values, '\fB:var\fR' must
+be appended after the type (e.g., \fBint:var\fR). Note that the dimension
+type cannot have multiple values; a single set of coordinates uniquely 
+identifies each cell.
+
+.TP 
+.BI "-e" " tile_extent_1,..." "\fR, " \
+\fB --tile_extents=\fItile_extent_1,...\fR  
+It specifies the extent of a tile across each dimension. If this option is
+included, then the array will have \fIregular\fR tiles; if it is omitted, the
+array will have \fIirregular\fR tiles. If there are \fIdim_num\fR dimensions,
+there should be provided \fIdim_num\fR tile extents, following the same order
+as that of the dimension names in the \fB-d\fR option. Each tile extent must
+be a non-negative real number that does not exceed the corresponding domain 
+size.
+
+.TP 
+.BI "-o" " cell_order"  "\fR, " \
+\fB --cell_order=\fIcell_order\fR  
+The order in which the cells will be stored internally. The supported orders
+are \fBrow-major\fR, \fBcolumn-major\fR and \fBhilbert\fR (i.e., following
+the Hilbert space-filling curve). If no cell order is provided, the default
+is \fBrow-major\fR.  
+
+.TP 
+.BI "-O" " tile_order"  "\fR, " \
+\fB --tile_order=\fItile_order\fR  
+The order in which the tiles will be stored internally. The supported orders
+are \fBrow-major\fR, \fBcolumn-major\fR and \fBhilbert\fR (i.e., following
+the Hilbert space-filling curve). If no cell order is provided, the default
+is \fBrow-major\fR. This is applicable only to regular tiles.
+
+.TP 
+.BI "-c" " capacity"  "\fR, " \
+\fB --capacity=\fIcapacity\fR  
+This specifies the fixed number of non-empty cells stored in each tile. It
+is applicable only to irregular tiles and, hence, cannot be used together
+with options \fB\-e\fR and \fB\-O\fR. If it is not provided, a default
+value is used. 
+
+.TP 
+.BI "-s" " consolidation_step"  "\fR, " \
+\fB --consolidation_step=\fIconsolidation_step\fR  
+It specifies the frequency of fragment consolidation, described in section 
+\fBDESCRIPTION\fR. If it is not provided, the default is 1.
+
+.SH EXAMPLES
+.TP
+\fBtiledb_define_array\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-A \fRmy_array \\
+    \fB-a \fRattr1,attr2,attr3 \\
+    \fB-d \fRdim1,dim2 \\
+    \fB-D \fR0,100,0,200 \\
+    \fB-t \fRint:3,double,char:var,int64 \\
+    \fB-o \fRhilbert \\
+    \fB-c \fR1000 \\
+    \fB-s \fR5
+
+This defines array \fImy_array\fR in workspace folder \fImy_workspace\fR. The
+array has \fI3\fR attributes and \fI2\fR dimensions. Dimension \fIdim1\fR has 
+domain \fI[0,100]\fR, \fIdim2\fR has domain \fI[0,200]\fR. The coordinates are
+of type \fBint64\fR. Attribute \fIattr1\fR is of type \fBint\fR, and each
+cell always stores \fI3\fR values on this attribute. Attribute \fIattr2\fR is 
+of type \fBdouble\fR, and each cell always stores \fI1\fR value on this 
+attribute. Attribute \fIattr3\fR is of type \fBchar\fR, and each
+cell stores a \fIvariable\fR number of values on this attribute (i.e., it stores
+arbitrary character strings). The array has \fIirregular\fR tiles.
+The cell order is \fBhilbert\fR. Each tile
+accommodates exactly \fI1000\fR (non-empty) cells. Finally, the consolidation
+step is set to \fI5\fR.
+
+.TP
+\fBtiledb_define_array\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-A \fRmy_array \\
+    \fB-a \fRattr1,attr2,attr3 \\
+    \fB-d \fRdim1,dim2 \\
+    \fB-D \fR0,100,0,200 \\
+    \fB-e \fR10,20 \\
+    \fB-t \fRint:3,double,char:var,int64 \\
+    \fB-O \fRrow-major \\
+    \fB-o \fRhilbert \\
+    \fB-s \fR5
+
+This is similar to the previous example, but now the array has \fIregular\fR 
+tiles. In detail, it defines array \fImy_array\fR in workspace folder 
+\fImy_workspace\fR. The array has \fI3\fR attributes and \fI2\fR dimensions. 
+Dimension \fIdim1\fR has domain \fI[0,100]\fR, \fIdim2\fR has domain
+\fI[0,200]\fR. The coordinates are of type \fBint64\fR. Attribute \fIattr1\fR is
+of type \fBint\fR, and each cell always stores \fI3\fR values on this 
+attribute. Attribute \fIattr2\fR is of type \fBdouble\fR, and each cell always 
+stores \fI1\fR value on this attribute. Attribute \fIattr3\fR is of type 
+\fBchar\fR, and each cell stores a \fIvariable\fR number of values on this 
+attribute (i.e., it stores arbitrary character strings). The array has
+\fIregular\fR tiles. Each tile has (logical) size \fI10x20\fR. The tile order is
+\fBrow-major\fR, whereas the cell order is \fBhilbert\fR. Finally, the 
+consolidation step is set to \fI5\fR.
+
+.SH EXIT STATUS
+.TP 
+.B 0
+Successful execution
+.TP 
+.B -1
+Parser error
+.TP 
+.B -7
+TileDB initialization failed
+.TP 
+.B -8
+TileDB finalization failed
+.TP 
+.B -9
+Failed to parse array schema
+
+.SH SEE ALSO
+.BR tiledb_show_array_schema (1)
+
+.SH AUTHOR
+Stavros Papadopoulos <http://people.csail.mit.edu/stavrosp>, Copyright (c) 2015

@@ -1,0 +1,72 @@
+.TH tiledb_show_array_schema 1 "22 June 2015" "Version 0.1" "TileDB programs"
+ 
+.SH NAME
+tiledb_show_array_schema - prints the schema of an array to standard output
+
+.SH SYNOPSIS
+.B tiledb_show_array_schema 
+.BI "-w " "directory " "-A " "array_name "
+
+.SH DESCRIPTION
+.B tiledb_show_array_schema
+prints the schema of an array in the standard output. This includes the array
+name, the attribute names, the dimension names, etc. The input array must 
+already be defined. On error, it prints appopriate messages on stderr and 
+returns an error code (see \fBEXIT STATUS\fR). 
+
+The following conventions apply to the \fBSYNOPSIS\fR section:
+
+.TS
+tab (@);
+c l .
+\fBbold text\fR @ type exactly as shown
+\fIitalic text\fR @ replace with appropriate argument
+.TE
+
+ 
+.SH OPTIONS
+.TP
+.BI "-w" " directory" "\fR, " \fB --workspace=\fIdirectory\fR  
+The path to the workspace folder where the TileDB data are stored. The path
+must exist, and the caller must have read and write permissions on it.
+.TP
+.BI "-A" " array_name" "\fR, " \fB --array-name=\fIarray_name\fR  
+The name of the array whose schema will be printed. The array must already be 
+defined.
+
+.SH EXAMPLES
+.TP
+.B tiledb_show_array_schema -w \fImy_workspace/ \fB-A \fImy_array
+Prints the schema of array \fImy_array\fR, whose data are stored in workspace
+folder \fImy_workspace/
+.TP
+.B tiledb_show_array_schema --workspace=\fImy_workspace/ \fB--array-name \
+\fImy_array\fR
+Prints the schema of array \fImy_array\fR, whose data are stored in workspace
+folder \fImy_workspace/\fR
+
+.SH EXIT STATUS
+.TP 
+.B 0
+Successful execution
+.TP 
+.B -1
+Parser error
+.TP 
+.B -2
+Undefined array
+.TP 
+.B -3
+File operation failed
+.TP 
+.B -7
+TileDB initialization failed
+.TP 
+.B -8
+TileDB finalization failed
+
+.SH SEE ALSO
+.BR tiledb_define_array (1)
+
+.SH AUTHOR
+Stavros Papadopoulos <http://people.csail.mit.edu/stavrosp>, Copyright (c) 2015

@@ -1,0 +1,301 @@
+\hypertarget{classArrayConstReverseCellIterator}{}\section{Array\+Const\+Reverse\+Cell\+Iterator$<$ T $>$ Class Template Reference}
+\label{classArrayConstReverseCellIterator}\index{Array\+Const\+Reverse\+Cell\+Iterator$<$ T $>$@{Array\+Const\+Reverse\+Cell\+Iterator$<$ T $>$}}
+
+
+{\ttfamily \#include $<$array\+\_\+const\+\_\+reverse\+\_\+cell\+\_\+iterator.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classArrayConstReverseCellIterator_a47b2e311a8f12581add8b3d05b084e36}{Array\+Const\+Reverse\+Cell\+Iterator} ()
+\item 
+\hyperlink{classArrayConstReverseCellIterator_a05308f2d1d1fede3385e9ba4ab9016f3}{Array\+Const\+Reverse\+Cell\+Iterator} (\hyperlink{classArray}{Array} $\ast$array)
+\item 
+\hyperlink{classArrayConstReverseCellIterator_ae67c03ec8e4646800a39b08a36183a3e}{Array\+Const\+Reverse\+Cell\+Iterator} (\hyperlink{classArray}{Array} $\ast$array, const std\+::vector$<$ int $>$ \&fragment\+\_\+ids, bool return\+\_\+del)
+\item 
+\hyperlink{classArrayConstReverseCellIterator_a402088aaa036ea2204c581ffe40bbb62}{Array\+Const\+Reverse\+Cell\+Iterator} (\hyperlink{classArray}{Array} $\ast$array, const std\+::vector$<$ int $>$ \&\hyperlink{classArrayConstReverseCellIterator_afaa7fc34fe9db187c6f3ed04f0e764e1}{attribute\+\_\+ids})
+\item 
+\hyperlink{classArrayConstReverseCellIterator_a7fb978de1681232a9a6a6f21aed07ad1}{Array\+Const\+Reverse\+Cell\+Iterator} (\hyperlink{classArray}{Array} $\ast$array, const T $\ast$range)
+\item 
+\hyperlink{classArrayConstReverseCellIterator_ae109313f4f71d1837d6ff6aac940e5b4}{Array\+Const\+Reverse\+Cell\+Iterator} (\hyperlink{classArray}{Array} $\ast$array, const T $\ast$range, const std\+::vector$<$ int $>$ \&\hyperlink{classArrayConstReverseCellIterator_afaa7fc34fe9db187c6f3ed04f0e764e1}{attribute\+\_\+ids})
+\item 
+\hyperlink{classArrayConstReverseCellIterator_a23bdd30cb926a94255c7ade3de0299cb}{$\sim$\+Array\+Const\+Reverse\+Cell\+Iterator} ()
+\item 
+const std\+::vector$<$ int $>$ \& \hyperlink{classArrayConstReverseCellIterator_afaa7fc34fe9db187c6f3ed04f0e764e1}{attribute\+\_\+ids} () const 
+\item 
+size\+\_\+t \hyperlink{classArrayConstReverseCellIterator_a96de92a88d40ce145089db6813ed1930}{cell\+\_\+size} () const 
+\item 
+size\+\_\+t \hyperlink{classArrayConstReverseCellIterator_a89da199cd6cee5fcc5c1324455be4218}{cell\+\_\+size} (int fragment\+\_\+id) const 
+\item 
+bool \hyperlink{classArrayConstReverseCellIterator_afa2863a5cd7685db0fec535962fdde48}{end} () const 
+\item 
+void \hyperlink{classArrayConstReverseCellIterator_a9c85b22b45dbda42cc2d5a5761c107d4}{operator++} ()
+\item 
+const void $\ast$ \hyperlink{classArrayConstReverseCellIterator_a61336a02b0499f5ffe845057af0e49eb}{operator$\ast$} ()
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classArrayConstReverseCellIterator_a87fcf5d92cb7d83ed56950e48af7aa2f}{advance\+\_\+cell} (int fragment\+\_\+id)
+\item 
+void \hyperlink{classArrayConstReverseCellIterator_a6262a6e2da7b91225b0c0b3c88c448b3}{advance\+\_\+cell\+\_\+in\+\_\+range} (int fragment\+\_\+id)
+\item 
+void \hyperlink{classArrayConstReverseCellIterator_a2c41eae75ebdda9a5b6030bc3fae4fcb}{find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range} (int fragment\+\_\+id)
+\item 
+int \hyperlink{classArrayConstReverseCellIterator_a6735c03e3d0468b3992d4b62554b6e61}{get\+\_\+next\+\_\+cell} ()
+\item 
+void \hyperlink{classArrayConstReverseCellIterator_ac996e02e69b1f6168db5a5bdd02798c2}{init\+\_\+iterators} ()
+\item 
+void \hyperlink{classArrayConstReverseCellIterator_aeffa5a65ccd6021df873163cf09fbbf9}{init\+\_\+iterators\+\_\+in\+\_\+range} ()
+\item 
+bool \hyperlink{classArrayConstReverseCellIterator_aa9a07a6f8278a22ff77f30c4dda62d90}{precedes} (const \hyperlink{classTileConstReverseCellIterator}{Tile\+Const\+Reverse\+Cell\+Iterator} \&it\+\_\+\+A, const \hyperlink{classTileConstReverseCellIterator}{Tile\+Const\+Reverse\+Cell\+Iterator} \&it\+\_\+\+B) const 
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classArray}{Array} $\ast$ \hyperlink{classArrayConstReverseCellIterator_a7b36c20cde839fa5c7c76aecd3995d48}{array\+\_\+}
+\item 
+std\+::vector$<$ int $>$ \hyperlink{classArrayConstReverseCellIterator_a19d149d56dc7278e5d8ea54d50ad453b}{attribute\+\_\+ids\+\_\+}
+\item 
+int \hyperlink{classArrayConstReverseCellIterator_ac94910d5042e331562589963880bd05a}{attribute\+\_\+num\+\_\+}
+\item 
+void $\ast$ \hyperlink{classArrayConstReverseCellIterator_a2376714f673c25eb19838da2d4fae9ac}{cell\+\_\+}
+\item 
+\hyperlink{classTileConstReverseCellIterator}{Tile\+Const\+Reverse\+Cell\+Iterator} $\ast$$\ast$ \hyperlink{classArrayConstReverseCellIterator_aadcf6aacd77397b27faf6405a4c4d406}{cell\+\_\+its\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classArrayConstReverseCellIterator_a748ade20b062b17bd18fe6a8feb41533}{cell\+\_\+size\+\_\+}
+\item 
+int \hyperlink{classArrayConstReverseCellIterator_aacda7582007c4940b40027f254fa2ada}{dim\+\_\+num\+\_\+}
+\item 
+bool \hyperlink{classArrayConstReverseCellIterator_a80133c14893b4c29077916474a0d619f}{end\+\_\+}
+\item 
+std\+::vector$<$ int $>$ \hyperlink{classArrayConstReverseCellIterator_a59352cf72f01630fbaf1569831ab1c50}{fragment\+\_\+ids\+\_\+}
+\item 
+int \hyperlink{classArrayConstReverseCellIterator_a616f2e6f4a96068623282746c0dcef3b}{fragment\+\_\+num\+\_\+}
+\item 
+bool $\ast$ \hyperlink{classArrayConstReverseCellIterator_a523e5c0d5dc9aab36984f9f439a0ec05}{full\+\_\+overlap\+\_\+}
+\item 
+bool \hyperlink{classArrayConstReverseCellIterator_af00286c2d74fdb62b27e5f1351872d34}{is\+\_\+del\+\_\+}
+\item 
+T $\ast$ \hyperlink{classArrayConstReverseCellIterator_a8a5a75b3a58299ea05075eb6c3987038}{range\+\_\+}
+\item 
+bool \hyperlink{classArrayConstReverseCellIterator_aee2b35201d187a50e2347e38d0a8d581}{return\+\_\+del\+\_\+}
+\item 
+\hyperlink{classFragmentConstReverseTileIterator}{Fragment\+Const\+Reverse\+Tile\+Iterator} $\ast$$\ast$ \hyperlink{classArrayConstReverseCellIterator_a3d086e369f78d6674a056c2707acd636}{tile\+\_\+its\+\_\+}
+\item 
+bool \hyperlink{classArrayConstReverseCellIterator_a8e34b265ffd40c681da15b32a94c8580}{var\+\_\+size\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$class T$>$class Array\+Const\+Reverse\+Cell\+Iterator$<$ T $>$}
+
+A constant reverse cell iterator that iterates over the cells of all the fragments of the array in the global cell order as specified by the array schema. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classArrayConstReverseCellIterator_a47b2e311a8f12581add8b3d05b084e36}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{Array\+Const\+Reverse\+Cell\+Iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::{\bf Array\+Const\+Reverse\+Cell\+Iterator} (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classArrayConstReverseCellIterator_a47b2e311a8f12581add8b3d05b084e36}
+Constructor. \hypertarget{classArrayConstReverseCellIterator_a05308f2d1d1fede3385e9ba4ab9016f3}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{Array\+Const\+Reverse\+Cell\+Iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::{\bf Array\+Const\+Reverse\+Cell\+Iterator} (
+\begin{DoxyParamCaption}
+\item[{{\bf Array} $\ast$}]{array}
+\end{DoxyParamCaption}
+)}\label{classArrayConstReverseCellIterator_a05308f2d1d1fede3385e9ba4ab9016f3}
+Constructor. \hypertarget{classArrayConstReverseCellIterator_ae67c03ec8e4646800a39b08a36183a3e}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{Array\+Const\+Reverse\+Cell\+Iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::{\bf Array\+Const\+Reverse\+Cell\+Iterator} (
+\begin{DoxyParamCaption}
+\item[{{\bf Array} $\ast$}]{array, }
+\item[{const std\+::vector$<$ int $>$ \&}]{fragment\+\_\+ids, }
+\item[{bool}]{return\+\_\+del}
+\end{DoxyParamCaption}
+)}\label{classArrayConstReverseCellIterator_ae67c03ec8e4646800a39b08a36183a3e}
+Constructor. The second argument specifies the fragments the iterator will focus on. If the list is empty, then the iterator iterates over all fragments. The last argument indicates whether a cell representing a deletion must be returned or suppressed. \hypertarget{classArrayConstReverseCellIterator_a402088aaa036ea2204c581ffe40bbb62}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{Array\+Const\+Reverse\+Cell\+Iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::{\bf Array\+Const\+Reverse\+Cell\+Iterator} (
+\begin{DoxyParamCaption}
+\item[{{\bf Array} $\ast$}]{array, }
+\item[{const std\+::vector$<$ int $>$ \&}]{attribute\+\_\+ids}
+\end{DoxyParamCaption}
+)}\label{classArrayConstReverseCellIterator_a402088aaa036ea2204c581ffe40bbb62}
+Constructor. The second argument determines the attribute the iterator will focus on. \hypertarget{classArrayConstReverseCellIterator_a7fb978de1681232a9a6a6f21aed07ad1}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{Array\+Const\+Reverse\+Cell\+Iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::{\bf Array\+Const\+Reverse\+Cell\+Iterator} (
+\begin{DoxyParamCaption}
+\item[{{\bf Array} $\ast$}]{array, }
+\item[{const T $\ast$}]{range}
+\end{DoxyParamCaption}
+)}\label{classArrayConstReverseCellIterator_a7fb978de1681232a9a6a6f21aed07ad1}
+Constructor. Takes as input also a multi-\/dimensional range. The iterator will iterate only on the cells of the array whose coordinates fall into the input range. \hypertarget{classArrayConstReverseCellIterator_ae109313f4f71d1837d6ff6aac940e5b4}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{Array\+Const\+Reverse\+Cell\+Iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::{\bf Array\+Const\+Reverse\+Cell\+Iterator} (
+\begin{DoxyParamCaption}
+\item[{{\bf Array} $\ast$}]{array, }
+\item[{const T $\ast$}]{range, }
+\item[{const std\+::vector$<$ int $>$ \&}]{attribute\+\_\+ids}
+\end{DoxyParamCaption}
+)}\label{classArrayConstReverseCellIterator_ae109313f4f71d1837d6ff6aac940e5b4}
+Constructor. Takes as input also a multi-\/dimensional range. The iterator will iterate only on the cells of the array whose coordinates fall into the input range. The third argument determines the attributes the iterator will focus on. \hypertarget{classArrayConstReverseCellIterator_a23bdd30cb926a94255c7ade3de0299cb}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!````~Array\+Const\+Reverse\+Cell\+Iterator@{$\sim$\+Array\+Const\+Reverse\+Cell\+Iterator}}
+\index{````~Array\+Const\+Reverse\+Cell\+Iterator@{$\sim$\+Array\+Const\+Reverse\+Cell\+Iterator}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{$\sim$\+Array\+Const\+Reverse\+Cell\+Iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::$\sim${\bf Array\+Const\+Reverse\+Cell\+Iterator} (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classArrayConstReverseCellIterator_a23bdd30cb926a94255c7ade3de0299cb}
+Destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classArrayConstReverseCellIterator_a87fcf5d92cb7d83ed56950e48af7aa2f}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!advance\+\_\+cell@{advance\+\_\+cell}}
+\index{advance\+\_\+cell@{advance\+\_\+cell}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{advance\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ void {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::advance\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{int}]{fragment\+\_\+id}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a87fcf5d92cb7d83ed56950e48af7aa2f}
+Advances the cell iterators of all attributes of the fragment with the input id. \hypertarget{classArrayConstReverseCellIterator_a6262a6e2da7b91225b0c0b3c88c448b3}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!advance\+\_\+cell\+\_\+in\+\_\+range@{advance\+\_\+cell\+\_\+in\+\_\+range}}
+\index{advance\+\_\+cell\+\_\+in\+\_\+range@{advance\+\_\+cell\+\_\+in\+\_\+range}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{advance\+\_\+cell\+\_\+in\+\_\+range}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ void {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::advance\+\_\+cell\+\_\+in\+\_\+range (
+\begin{DoxyParamCaption}
+\item[{int}]{fragment\+\_\+id}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a6262a6e2da7b91225b0c0b3c88c448b3}
+Advances the cell iterators of all attributes of the fragment with the input id, until the next cell in range is found. \hypertarget{classArrayConstReverseCellIterator_afaa7fc34fe9db187c6f3ed04f0e764e1}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!attribute\+\_\+ids@{attribute\+\_\+ids}}
+\index{attribute\+\_\+ids@{attribute\+\_\+ids}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{attribute\+\_\+ids}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ const std\+::vector$<$int$>$\& {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::attribute\+\_\+ids (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classArrayConstReverseCellIterator_afaa7fc34fe9db187c6f3ed04f0e764e1}
+Return the ids of the attributes the iterator iterates on. \hypertarget{classArrayConstReverseCellIterator_a96de92a88d40ce145089db6813ed1930}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!cell\+\_\+size@{cell\+\_\+size}}
+\index{cell\+\_\+size@{cell\+\_\+size}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{cell\+\_\+size}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ size\+\_\+t {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::cell\+\_\+size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classArrayConstReverseCellIterator_a96de92a88d40ce145089db6813ed1930}
+Returns the size of the current cell. \hypertarget{classArrayConstReverseCellIterator_a89da199cd6cee5fcc5c1324455be4218}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!cell\+\_\+size@{cell\+\_\+size}}
+\index{cell\+\_\+size@{cell\+\_\+size}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{cell\+\_\+size}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ size\+\_\+t {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::cell\+\_\+size (
+\begin{DoxyParamCaption}
+\item[{int}]{fragment\+\_\+id}
+\end{DoxyParamCaption}
+) const}\label{classArrayConstReverseCellIterator_a89da199cd6cee5fcc5c1324455be4218}
+Returns the size of the current cell pointed by the iterators of the fragment with id equal to fragment\+\_\+id. \hypertarget{classArrayConstReverseCellIterator_afa2863a5cd7685db0fec535962fdde48}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!end@{end}}
+\index{end@{end}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{end}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ bool {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::end (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classArrayConstReverseCellIterator_afa2863a5cd7685db0fec535962fdde48}
+Returns true if the iterator has reached the end of the cells. \hypertarget{classArrayConstReverseCellIterator_a2c41eae75ebdda9a5b6030bc3fae4fcb}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range@{find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range}}
+\index{find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range@{find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ void {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::find\+\_\+next\+\_\+cell\+\_\+in\+\_\+range (
+\begin{DoxyParamCaption}
+\item[{int}]{fragment\+\_\+id}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a2c41eae75ebdda9a5b6030bc3fae4fcb}
+Finds the next cell from the input fragment along the global cell order, which falls inside the range stored upon initialization of the iterator (see Storage\+Manager\+::\+Array\+::const\+\_\+cell\+\_\+iterator\+::range\+\_\+). \hypertarget{classArrayConstReverseCellIterator_a6735c03e3d0468b3992d4b62554b6e61}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!get\+\_\+next\+\_\+cell@{get\+\_\+next\+\_\+cell}}
+\index{get\+\_\+next\+\_\+cell@{get\+\_\+next\+\_\+cell}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{get\+\_\+next\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ int {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::get\+\_\+next\+\_\+cell (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a6735c03e3d0468b3992d4b62554b6e61}
+Extracts the next cell from all the fragments along the global cell order. It returns the id of the fragment the cell was extracted from. If the end of the cells is reached, it returns -\/1. \hypertarget{classArrayConstReverseCellIterator_ac996e02e69b1f6168db5a5bdd02798c2}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!init\+\_\+iterators@{init\+\_\+iterators}}
+\index{init\+\_\+iterators@{init\+\_\+iterators}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{init\+\_\+iterators}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ void {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::init\+\_\+iterators (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_ac996e02e69b1f6168db5a5bdd02798c2}
+Initializes tile and cell iterators for the input fragments and attributes. \hypertarget{classArrayConstReverseCellIterator_aeffa5a65ccd6021df873163cf09fbbf9}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!init\+\_\+iterators\+\_\+in\+\_\+range@{init\+\_\+iterators\+\_\+in\+\_\+range}}
+\index{init\+\_\+iterators\+\_\+in\+\_\+range@{init\+\_\+iterators\+\_\+in\+\_\+range}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{init\+\_\+iterators\+\_\+in\+\_\+range}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ void {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::init\+\_\+iterators\+\_\+in\+\_\+range (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_aeffa5a65ccd6021df873163cf09fbbf9}
+Initializes tile and cell iterators that will irerate over tiles and cells that overlap with the stored range. \hypertarget{classArrayConstReverseCellIterator_a61336a02b0499f5ffe845057af0e49eb}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!operator$\ast$@{operator$\ast$}}
+\index{operator$\ast$@{operator$\ast$}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{operator$\ast$}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ const void$\ast$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::operator$\ast$ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classArrayConstReverseCellIterator_a61336a02b0499f5ffe845057af0e49eb}
+Dereference. \hypertarget{classArrayConstReverseCellIterator_a9c85b22b45dbda42cc2d5a5761c107d4}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!operator++@{operator++}}
+\index{operator++@{operator++}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{operator++}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ void {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::operator++ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classArrayConstReverseCellIterator_a9c85b22b45dbda42cc2d5a5761c107d4}
+Increment. \hypertarget{classArrayConstReverseCellIterator_aa9a07a6f8278a22ff77f30c4dda62d90}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!precedes@{precedes}}
+\index{precedes@{precedes}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{precedes}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ bool {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::precedes (
+\begin{DoxyParamCaption}
+\item[{const {\bf Tile\+Const\+Reverse\+Cell\+Iterator} \&}]{it\+\_\+\+A, }
+\item[{const {\bf Tile\+Const\+Reverse\+Cell\+Iterator} \&}]{it\+\_\+\+B}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_aa9a07a6f8278a22ff77f30c4dda62d90}
+True if the cell pointed by the first iterator precedes that of the second on the global cell order. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classArrayConstReverseCellIterator_a7b36c20cde839fa5c7c76aecd3995d48}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!array\+\_\+@{array\+\_\+}}
+\index{array\+\_\+@{array\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{array\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ {\bf Array}$\ast$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::array\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a7b36c20cde839fa5c7c76aecd3995d48}
+The array the cell iterator was created for. \hypertarget{classArrayConstReverseCellIterator_a19d149d56dc7278e5d8ea54d50ad453b}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!attribute\+\_\+ids\+\_\+@{attribute\+\_\+ids\+\_\+}}
+\index{attribute\+\_\+ids\+\_\+@{attribute\+\_\+ids\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{attribute\+\_\+ids\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ std\+::vector$<$int$>$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::attribute\+\_\+ids\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a19d149d56dc7278e5d8ea54d50ad453b}
+The ids of the attributes the iterator iterates over. \hypertarget{classArrayConstReverseCellIterator_ac94910d5042e331562589963880bd05a}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!attribute\+\_\+num\+\_\+@{attribute\+\_\+num\+\_\+}}
+\index{attribute\+\_\+num\+\_\+@{attribute\+\_\+num\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{attribute\+\_\+num\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ int {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::attribute\+\_\+num\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_ac94910d5042e331562589963880bd05a}
+Number of attributes. \hypertarget{classArrayConstReverseCellIterator_a2376714f673c25eb19838da2d4fae9ac}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!cell\+\_\+@{cell\+\_\+}}
+\index{cell\+\_\+@{cell\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{cell\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ void$\ast$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::cell\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a2376714f673c25eb19838da2d4fae9ac}
+The current cell. Contains pointers to physical cells of all attibutes. \hypertarget{classArrayConstReverseCellIterator_aadcf6aacd77397b27faf6405a4c4d406}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!cell\+\_\+its\+\_\+@{cell\+\_\+its\+\_\+}}
+\index{cell\+\_\+its\+\_\+@{cell\+\_\+its\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{cell\+\_\+its\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ {\bf Tile\+Const\+Reverse\+Cell\+Iterator}$\ast$$\ast$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::cell\+\_\+its\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_aadcf6aacd77397b27faf6405a4c4d406}
+Stores one cell iterator per fragment per attribute. \hypertarget{classArrayConstReverseCellIterator_a748ade20b062b17bd18fe6a8feb41533}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!cell\+\_\+size\+\_\+@{cell\+\_\+size\+\_\+}}
+\index{cell\+\_\+size\+\_\+@{cell\+\_\+size\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{cell\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ size\+\_\+t {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::cell\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a748ade20b062b17bd18fe6a8feb41533}
+The size of the current cell. \hypertarget{classArrayConstReverseCellIterator_aacda7582007c4940b40027f254fa2ada}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!dim\+\_\+num\+\_\+@{dim\+\_\+num\+\_\+}}
+\index{dim\+\_\+num\+\_\+@{dim\+\_\+num\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{dim\+\_\+num\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ int {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::dim\+\_\+num\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_aacda7582007c4940b40027f254fa2ada}
+Number of dimensions. \hypertarget{classArrayConstReverseCellIterator_a80133c14893b4c29077916474a0d619f}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!end\+\_\+@{end\+\_\+}}
+\index{end\+\_\+@{end\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{end\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ bool {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::end\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a80133c14893b4c29077916474a0d619f}
+True if the iterator has reached the end of all cells. \hypertarget{classArrayConstReverseCellIterator_a59352cf72f01630fbaf1569831ab1c50}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!fragment\+\_\+ids\+\_\+@{fragment\+\_\+ids\+\_\+}}
+\index{fragment\+\_\+ids\+\_\+@{fragment\+\_\+ids\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{fragment\+\_\+ids\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ std\+::vector$<$int$>$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::fragment\+\_\+ids\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a59352cf72f01630fbaf1569831ab1c50}
+The ids of the fragments the iterator iterates over. \hypertarget{classArrayConstReverseCellIterator_a616f2e6f4a96068623282746c0dcef3b}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!fragment\+\_\+num\+\_\+@{fragment\+\_\+num\+\_\+}}
+\index{fragment\+\_\+num\+\_\+@{fragment\+\_\+num\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{fragment\+\_\+num\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ int {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::fragment\+\_\+num\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a616f2e6f4a96068623282746c0dcef3b}
+The number of fragments. \hypertarget{classArrayConstReverseCellIterator_a523e5c0d5dc9aab36984f9f439a0ec05}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!full\+\_\+overlap\+\_\+@{full\+\_\+overlap\+\_\+}}
+\index{full\+\_\+overlap\+\_\+@{full\+\_\+overlap\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{full\+\_\+overlap\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ bool$\ast$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::full\+\_\+overlap\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a523e5c0d5dc9aab36984f9f439a0ec05}
+Stores a value per fragment. It is used when iterating cells that fall inside the stored range. It indicates whether the current logical tile under investigation is completely contained in the range or not. \hypertarget{classArrayConstReverseCellIterator_af00286c2d74fdb62b27e5f1351872d34}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!is\+\_\+del\+\_\+@{is\+\_\+del\+\_\+}}
+\index{is\+\_\+del\+\_\+@{is\+\_\+del\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{is\+\_\+del\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ bool {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::is\+\_\+del\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_af00286c2d74fdb62b27e5f1351872d34}
+True if the cell currently pointed to by the iterator represents a deletion. \hypertarget{classArrayConstReverseCellIterator_a8a5a75b3a58299ea05075eb6c3987038}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!range\+\_\+@{range\+\_\+}}
+\index{range\+\_\+@{range\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{range\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ T$\ast$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::range\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a8a5a75b3a58299ea05075eb6c3987038}
+A multi-\/dimensional range. If not N\+U\+L\+L, the iterator will iterate only on the cells of the array whose coordinates fall into the input range. \hypertarget{classArrayConstReverseCellIterator_aee2b35201d187a50e2347e38d0a8d581}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!return\+\_\+del\+\_\+@{return\+\_\+del\+\_\+}}
+\index{return\+\_\+del\+\_\+@{return\+\_\+del\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{return\+\_\+del\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ bool {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::return\+\_\+del\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_aee2b35201d187a50e2347e38d0a8d581}
+If true, a cell representing a deletion must be returned, otherwise it is suppressed. \hypertarget{classArrayConstReverseCellIterator_a3d086e369f78d6674a056c2707acd636}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!tile\+\_\+its\+\_\+@{tile\+\_\+its\+\_\+}}
+\index{tile\+\_\+its\+\_\+@{tile\+\_\+its\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{tile\+\_\+its\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ {\bf Fragment\+Const\+Reverse\+Tile\+Iterator}$\ast$$\ast$ {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::tile\+\_\+its\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a3d086e369f78d6674a056c2707acd636}
+Stores one tile iterator per fragment per attribute. \hypertarget{classArrayConstReverseCellIterator_a8e34b265ffd40c681da15b32a94c8580}{}\index{Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}!var\+\_\+size\+\_\+@{var\+\_\+size\+\_\+}}
+\index{var\+\_\+size\+\_\+@{var\+\_\+size\+\_\+}!Array\+Const\+Reverse\+Cell\+Iterator@{Array\+Const\+Reverse\+Cell\+Iterator}}
+\subsubsection[{var\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T$>$ bool {\bf Array\+Const\+Reverse\+Cell\+Iterator}$<$ T $>$\+::var\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classArrayConstReverseCellIterator_a8e34b265ffd40c681da15b32a94c8580}
+True if the iterator iterates over variable-\/sized cells. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/array/\hyperlink{array__const__reverse__cell__iterator_8h}{array\+\_\+const\+\_\+reverse\+\_\+cell\+\_\+iterator.\+h}\end{DoxyCompactItemize}

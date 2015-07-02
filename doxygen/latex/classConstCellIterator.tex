@@ -1,0 +1,132 @@
+\hypertarget{classConstCellIterator}{}\section{Const\+Cell\+Iterator Class Reference}
+\label{classConstCellIterator}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+
+
+{\ttfamily \#include $<$const\+\_\+cell\+\_\+iterator.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classConstCellIterator_a9a711cc5586eede9dc63bb7cef0f4966}{Const\+Cell\+Iterator} ()
+\item 
+\hyperlink{classConstCellIterator_ac46e8f79a093643debfe14c700c4f96a}{Const\+Cell\+Iterator} (const void $\ast$cells, size\+\_\+t cells\+\_\+size, const \hyperlink{classArraySchema}{Array\+Schema} $\ast$array\+\_\+schema)
+\item 
+\hyperlink{classConstCellIterator_a80b816e6403dde4c58c509c00e0b4f44}{Const\+Cell\+Iterator} (const void $\ast$cells, size\+\_\+t cells\+\_\+size, const \hyperlink{classArraySchema}{Array\+Schema} $\ast$array\+\_\+schema, const std\+::vector$<$ int $>$ \&attribute\+\_\+ids)
+\item 
+\hyperlink{classConstCellIterator_a8ead6945445f98e801676bdc99d187ea}{$\sim$\+Const\+Cell\+Iterator} ()
+\item 
+bool \hyperlink{classConstCellIterator_ae9138f903e2ba0788a8b302b4a3f615a}{end} () const 
+\item 
+void \hyperlink{classConstCellIterator_ab44c41313f47fc30f788139c26025d54}{operator++} ()
+\item 
+const void $\ast$ \hyperlink{classConstCellIterator_a7b302537b92859ace3b68bba58a6b371}{operator$\ast$} () const 
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+const \hyperlink{classArraySchema}{Array\+Schema} $\ast$ \hyperlink{classConstCellIterator_a091a6b1b3a36f324ffdf137dd921da5e}{array\+\_\+schema\+\_\+}
+\item 
+std\+::vector$<$ int $>$ \hyperlink{classConstCellIterator_a1fe5f139b56c0d9f54c154518b125cb5}{attribute\+\_\+ids\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classConstCellIterator_a36497b3f8c5d56eba0baccc5e73957b4}{cell\+\_\+size\+\_\+}
+\item 
+const void $\ast$ \hyperlink{classConstCellIterator_a3e068d10abd01c3379ec072e9a05247b}{cells\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classConstCellIterator_a0690017c4778d17a5b61ae0215867dfb}{cells\+\_\+size\+\_\+}
+\item 
+bool \hyperlink{classConstCellIterator_a47ba693ca9b601e97b259a2662f09e90}{end\+\_\+}
+\item 
+size\+\_\+t \hyperlink{classConstCellIterator_a7eeda84048da7b521b00e315b8853665}{offset\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Objects of this class enable iterating over binary cell payloads serialized in main memory. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classConstCellIterator_a9a711cc5586eede9dc63bb7cef0f4966}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{Const\+Cell\+Iterator}]{\setlength{\rightskip}{0pt plus 5cm}Const\+Cell\+Iterator\+::\+Const\+Cell\+Iterator (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classConstCellIterator_a9a711cc5586eede9dc63bb7cef0f4966}
+Constructor. \hypertarget{classConstCellIterator_ac46e8f79a093643debfe14c700c4f96a}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{Const\+Cell\+Iterator}]{\setlength{\rightskip}{0pt plus 5cm}Const\+Cell\+Iterator\+::\+Const\+Cell\+Iterator (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{cells, }
+\item[{size\+\_\+t}]{cells\+\_\+size, }
+\item[{const {\bf Array\+Schema} $\ast$}]{array\+\_\+schema}
+\end{DoxyParamCaption}
+)}\label{classConstCellIterator_ac46e8f79a093643debfe14c700c4f96a}
+Constructor. \hypertarget{classConstCellIterator_a80b816e6403dde4c58c509c00e0b4f44}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{Const\+Cell\+Iterator}]{\setlength{\rightskip}{0pt plus 5cm}Const\+Cell\+Iterator\+::\+Const\+Cell\+Iterator (
+\begin{DoxyParamCaption}
+\item[{const void $\ast$}]{cells, }
+\item[{size\+\_\+t}]{cells\+\_\+size, }
+\item[{const {\bf Array\+Schema} $\ast$}]{array\+\_\+schema, }
+\item[{const std\+::vector$<$ int $>$ \&}]{attribute\+\_\+ids}
+\end{DoxyParamCaption}
+)}\label{classConstCellIterator_a80b816e6403dde4c58c509c00e0b4f44}
+Constructor. \hypertarget{classConstCellIterator_a8ead6945445f98e801676bdc99d187ea}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!````~Const\+Cell\+Iterator@{$\sim$\+Const\+Cell\+Iterator}}
+\index{````~Const\+Cell\+Iterator@{$\sim$\+Const\+Cell\+Iterator}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{$\sim$\+Const\+Cell\+Iterator}]{\setlength{\rightskip}{0pt plus 5cm}Const\+Cell\+Iterator\+::$\sim$\+Const\+Cell\+Iterator (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classConstCellIterator_a8ead6945445f98e801676bdc99d187ea}
+Destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classConstCellIterator_ae9138f903e2ba0788a8b302b4a3f615a}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!end@{end}}
+\index{end@{end}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{end}]{\setlength{\rightskip}{0pt plus 5cm}bool Const\+Cell\+Iterator\+::end (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classConstCellIterator_ae9138f903e2ba0788a8b302b4a3f615a}
+True if the end of cells has been reached. \hypertarget{classConstCellIterator_a7b302537b92859ace3b68bba58a6b371}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!operator$\ast$@{operator$\ast$}}
+\index{operator$\ast$@{operator$\ast$}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{operator$\ast$}]{\setlength{\rightskip}{0pt plus 5cm}const void$\ast$ Const\+Cell\+Iterator\+::operator$\ast$ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classConstCellIterator_a7b302537b92859ace3b68bba58a6b371}
+Returns the memory location of the current cell. \hypertarget{classConstCellIterator_ab44c41313f47fc30f788139c26025d54}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!operator++@{operator++}}
+\index{operator++@{operator++}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{operator++}]{\setlength{\rightskip}{0pt plus 5cm}void Const\+Cell\+Iterator\+::operator++ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classConstCellIterator_ab44c41313f47fc30f788139c26025d54}
+Advances the iterator to the next cell. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classConstCellIterator_a091a6b1b3a36f324ffdf137dd921da5e}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}}
+\index{array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{array\+\_\+schema\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Array\+Schema}$\ast$ Const\+Cell\+Iterator\+::array\+\_\+schema\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classConstCellIterator_a091a6b1b3a36f324ffdf137dd921da5e}
+The array schema. \hypertarget{classConstCellIterator_a1fe5f139b56c0d9f54c154518b125cb5}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!attribute\+\_\+ids\+\_\+@{attribute\+\_\+ids\+\_\+}}
+\index{attribute\+\_\+ids\+\_\+@{attribute\+\_\+ids\+\_\+}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{attribute\+\_\+ids\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$int$>$ Const\+Cell\+Iterator\+::attribute\+\_\+ids\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classConstCellIterator_a1fe5f139b56c0d9f54c154518b125cb5}
+The attributes that each cell contains. \hypertarget{classConstCellIterator_a36497b3f8c5d56eba0baccc5e73957b4}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!cell\+\_\+size\+\_\+@{cell\+\_\+size\+\_\+}}
+\index{cell\+\_\+size\+\_\+@{cell\+\_\+size\+\_\+}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{cell\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Const\+Cell\+Iterator\+::cell\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classConstCellIterator_a36497b3f8c5d56eba0baccc5e73957b4}
+Size of a single cell (could be V\+A\+R\+\_\+\+S\+I\+Z\+E). \hypertarget{classConstCellIterator_a3e068d10abd01c3379ec072e9a05247b}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!cells\+\_\+@{cells\+\_\+}}
+\index{cells\+\_\+@{cells\+\_\+}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{cells\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const void$\ast$ Const\+Cell\+Iterator\+::cells\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classConstCellIterator_a3e068d10abd01c3379ec072e9a05247b}
+The serialized cell payloads. \hypertarget{classConstCellIterator_a0690017c4778d17a5b61ae0215867dfb}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!cells\+\_\+size\+\_\+@{cells\+\_\+size\+\_\+}}
+\index{cells\+\_\+size\+\_\+@{cells\+\_\+size\+\_\+}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{cells\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Const\+Cell\+Iterator\+::cells\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classConstCellIterator_a0690017c4778d17a5b61ae0215867dfb}
+The collective size of all cells. \hypertarget{classConstCellIterator_a47ba693ca9b601e97b259a2662f09e90}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!end\+\_\+@{end\+\_\+}}
+\index{end\+\_\+@{end\+\_\+}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{end\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}bool Const\+Cell\+Iterator\+::end\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classConstCellIterator_a47ba693ca9b601e97b259a2662f09e90}
+True if the iterator has reached the end of the cells. \hypertarget{classConstCellIterator_a7eeda84048da7b521b00e315b8853665}{}\index{Const\+Cell\+Iterator@{Const\+Cell\+Iterator}!offset\+\_\+@{offset\+\_\+}}
+\index{offset\+\_\+@{offset\+\_\+}!Const\+Cell\+Iterator@{Const\+Cell\+Iterator}}
+\subsubsection[{offset\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Const\+Cell\+Iterator\+::offset\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classConstCellIterator_a7eeda84048da7b521b00e315b8853665}
+The current offset of the iterator on the cell payloads. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/cell/\hyperlink{const__cell__iterator_8h}{const\+\_\+cell\+\_\+iterator.\+h}\end{DoxyCompactItemize}

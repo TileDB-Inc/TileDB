@@ -1,0 +1,99 @@
+\hypertarget{classProgressBar}{}\section{Progress\+Bar Class Reference}
+\label{classProgressBar}\index{Progress\+Bar@{Progress\+Bar}}
+
+
+{\ttfamily \#include $<$progress\+\_\+bar.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classProgressBar_a38a5ddb0f36f71215ab1580195f1985e}{Progress\+Bar} (double complete, int max\+\_\+length=\hyperlink{progress__bar_8h_a18479b931ce473b3e2c104b8d6e76222}{P\+B\+\_\+\+M\+A\+X\+\_\+\+L\+E\+N\+G\+T\+H}, char filler=\hyperlink{progress__bar_8h_afe68959dcbb6a75980f1f3f436fd0e20}{P\+B\+\_\+\+F\+I\+L\+L\+E\+R})
+\item 
+\hyperlink{classProgressBar_aa0ced60c0ade467a4602c35443e7bc78}{$\sim$\+Progress\+Bar} ()
+\item 
+\hypertarget{classProgressBar_a6490c1cb7eaba05fbe661c6727e99e5c}{}void {\bfseries load} (size\+\_\+t amount)\label{classProgressBar_a6490c1cb7eaba05fbe661c6727e99e5c}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classProgressBar_a3dcedc2aef170c30b155e16ef9978f1a}{print} ()
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+double \hyperlink{classProgressBar_a467e3f119859dbd02d0c112754f64584}{incomplete\+\_\+}
+\item 
+double \hyperlink{classProgressBar_a97dbedb8fd9600ba38e5d113d84289b4}{complete\+\_\+}
+\item 
+char \hyperlink{classProgressBar_a35640d6a683ca685afdbe40b8cb2a24c}{filler\+\_\+}
+\item 
+double \hyperlink{classProgressBar_a8a8f9d73ac47931be9e2c3840af0d084}{last\+\_\+ratio\+\_\+}
+\item 
+int \hyperlink{classProgressBar_ad35a128decfee0e0283388a2364af2b9}{length\+\_\+}
+\item 
+double \hyperlink{classProgressBar_a1559657830813de8c347cdbb13026faf}{ratio\+\_\+}
+\item 
+int \hyperlink{classProgressBar_a6d1fb65b7330c5c997aecf6db9b6b612}{max\+\_\+length\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Implements a simple progress bar printed in standard output. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classProgressBar_a38a5ddb0f36f71215ab1580195f1985e}{}\index{Progress\+Bar@{Progress\+Bar}!Progress\+Bar@{Progress\+Bar}}
+\index{Progress\+Bar@{Progress\+Bar}!Progress\+Bar@{Progress\+Bar}}
+\subsubsection[{Progress\+Bar}]{\setlength{\rightskip}{0pt plus 5cm}Progress\+Bar\+::\+Progress\+Bar (
+\begin{DoxyParamCaption}
+\item[{double}]{complete, }
+\item[{int}]{max\+\_\+length = {\ttfamily {\bf P\+B\+\_\+\+M\+A\+X\+\_\+\+L\+E\+N\+G\+T\+H}}, }
+\item[{char}]{filler = {\ttfamily {\bf P\+B\+\_\+\+F\+I\+L\+L\+E\+R}}}
+\end{DoxyParamCaption}
+)}\label{classProgressBar_a38a5ddb0f36f71215ab1580195f1985e}
+Constructor. The first argument is the amount at which the bar must reach its maximum length. The second argument is the visual length of the bar. The third is the character that fills the bar. \hypertarget{classProgressBar_aa0ced60c0ade467a4602c35443e7bc78}{}\index{Progress\+Bar@{Progress\+Bar}!````~Progress\+Bar@{$\sim$\+Progress\+Bar}}
+\index{````~Progress\+Bar@{$\sim$\+Progress\+Bar}!Progress\+Bar@{Progress\+Bar}}
+\subsubsection[{$\sim$\+Progress\+Bar}]{\setlength{\rightskip}{0pt plus 5cm}Progress\+Bar\+::$\sim$\+Progress\+Bar (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classProgressBar_aa0ced60c0ade467a4602c35443e7bc78}
+Destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classProgressBar_a3dcedc2aef170c30b155e16ef9978f1a}{}\index{Progress\+Bar@{Progress\+Bar}!print@{print}}
+\index{print@{print}!Progress\+Bar@{Progress\+Bar}}
+\subsubsection[{print}]{\setlength{\rightskip}{0pt plus 5cm}void Progress\+Bar\+::print (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classProgressBar_a3dcedc2aef170c30b155e16ef9978f1a}
+Prints the bar with its current status. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classProgressBar_a97dbedb8fd9600ba38e5d113d84289b4}{}\index{Progress\+Bar@{Progress\+Bar}!complete\+\_\+@{complete\+\_\+}}
+\index{complete\+\_\+@{complete\+\_\+}!Progress\+Bar@{Progress\+Bar}}
+\subsubsection[{complete\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double Progress\+Bar\+::complete\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classProgressBar_a97dbedb8fd9600ba38e5d113d84289b4}
+The amount at which the bar reaches its maximum length. \hypertarget{classProgressBar_a35640d6a683ca685afdbe40b8cb2a24c}{}\index{Progress\+Bar@{Progress\+Bar}!filler\+\_\+@{filler\+\_\+}}
+\index{filler\+\_\+@{filler\+\_\+}!Progress\+Bar@{Progress\+Bar}}
+\subsubsection[{filler\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}char Progress\+Bar\+::filler\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classProgressBar_a35640d6a683ca685afdbe40b8cb2a24c}
+The character that fills the bar. \hypertarget{classProgressBar_a467e3f119859dbd02d0c112754f64584}{}\index{Progress\+Bar@{Progress\+Bar}!incomplete\+\_\+@{incomplete\+\_\+}}
+\index{incomplete\+\_\+@{incomplete\+\_\+}!Progress\+Bar@{Progress\+Bar}}
+\subsubsection[{incomplete\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double Progress\+Bar\+::incomplete\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classProgressBar_a467e3f119859dbd02d0c112754f64584}
+The current amount accummulated towards completion. \hypertarget{classProgressBar_a8a8f9d73ac47931be9e2c3840af0d084}{}\index{Progress\+Bar@{Progress\+Bar}!last\+\_\+ratio\+\_\+@{last\+\_\+ratio\+\_\+}}
+\index{last\+\_\+ratio\+\_\+@{last\+\_\+ratio\+\_\+}!Progress\+Bar@{Progress\+Bar}}
+\subsubsection[{last\+\_\+ratio\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double Progress\+Bar\+::last\+\_\+ratio\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classProgressBar_a8a8f9d73ac47931be9e2c3840af0d084}
+The incomplete/complete ratio upon the last print. \hypertarget{classProgressBar_ad35a128decfee0e0283388a2364af2b9}{}\index{Progress\+Bar@{Progress\+Bar}!length\+\_\+@{length\+\_\+}}
+\index{length\+\_\+@{length\+\_\+}!Progress\+Bar@{Progress\+Bar}}
+\subsubsection[{length\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int Progress\+Bar\+::length\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classProgressBar_ad35a128decfee0e0283388a2364af2b9}
+The bar current length. \hypertarget{classProgressBar_a6d1fb65b7330c5c997aecf6db9b6b612}{}\index{Progress\+Bar@{Progress\+Bar}!max\+\_\+length\+\_\+@{max\+\_\+length\+\_\+}}
+\index{max\+\_\+length\+\_\+@{max\+\_\+length\+\_\+}!Progress\+Bar@{Progress\+Bar}}
+\subsubsection[{max\+\_\+length\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int Progress\+Bar\+::max\+\_\+length\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classProgressBar_a6d1fb65b7330c5c997aecf6db9b6b612}
+The bar maximum length. \hypertarget{classProgressBar_a1559657830813de8c347cdbb13026faf}{}\index{Progress\+Bar@{Progress\+Bar}!ratio\+\_\+@{ratio\+\_\+}}
+\index{ratio\+\_\+@{ratio\+\_\+}!Progress\+Bar@{Progress\+Bar}}
+\subsubsection[{ratio\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double Progress\+Bar\+::ratio\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classProgressBar_a1559657830813de8c347cdbb13026faf}
+The current ratio incomplete/complete. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/misc/\hyperlink{progress__bar_8h}{progress\+\_\+bar.\+h}\end{DoxyCompactItemize}

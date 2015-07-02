@@ -63,6 +63,8 @@ class CSVLine {
   ~CSVLine();
  
   // ACCESSORS
+  /** Returns the number of CSV values. */
+  size_t size() const;
   /** 
     * Returns the CSV line as a string of comma-separate values. To do so, it 
     * puts together the elements of CSVLine::values_, separating them with the 

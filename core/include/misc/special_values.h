@@ -45,15 +45,21 @@
 /** Deleted char. */
 #define DEL_CHAR '$'
 /** Deleted int. */
-#define DEL_INT std::numeric_limits<int>::min()
+#define DEL_INT std::numeric_limits<int>::max()-1
 /** Deleted int64_t. */
-#define DEL_INT64_T std::numeric_limits<int64_t>::min()
+#define DEL_INT64_T std::numeric_limits<int64_t>::max()-1
 /** Deleted float. */
-#define DEL_FLOAT std::numeric_limits<float>::min()
+#define DEL_FLOAT std::numeric_limits<float>::max()-1
 /** Deleted double. */
-#define DEL_DOUBLE std::numeric_limits<double>::min()
+#define DEL_DOUBLE std::numeric_limits<double>::max()-1
+/** Deleted size_t. */
+#define DEL_SIZE_T std::numeric_limits<size_t>::max()-1
 /** Indicates a deleted value. */
 #define DEL_VALUE "$"
+/** Error log file name. */
+#define ERROR_LOG_FILENAME "tiledb_error.log"
+/** A header that precedes an error message. */
+#define ERROR_MSG_HEADER "[TileDB] ERROR:"
 /** Name of the file storing the fragment book-keeping info. */
 #define FRAGMENT_TREE_FILENAME "fragment_tree"
 /** Indicates an invalid tile position. */
@@ -64,6 +70,8 @@
 #define MAX_OPEN_ARRAYS 100
 /** Name of the file storing the MBR of each tile. */
 #define MBRS_FILENAME "mbrs"
+/** TileDB message header */
+#define MSG_HEADER "[TileDB]"
 /** Indicates a missing (NULL) value. */
 #define NULL_VALUE "*"
 /** Missing char. */
@@ -76,6 +84,8 @@
 #define NULL_FLOAT std::numeric_limits<float>::max()
 /** Missing double. */
 #define NULL_DOUBLE std::numeric_limits<double>::max()
+/** Missing size_t. */
+#define NULL_SIZE_T std::numeric_limits<size_t>::max()
 /** Name of the file storing the offset of each tile in its data file. */
 #define OFFSETS_FILENAME "offsets"
 /** 

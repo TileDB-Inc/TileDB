@@ -1,0 +1,117 @@
+\hypertarget{classDataGenerator}{}\section{Data\+Generator Class Reference}
+\label{classDataGenerator}\index{Data\+Generator@{Data\+Generator}}
+
+
+{\ttfamily \#include $<$data\+\_\+generator.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classDataGenerator_a3a85eb5bf95cf3a6ba07333d0da37207}{Data\+Generator} (const \hyperlink{classArraySchema}{Array\+Schema} $\ast$array\+\_\+schema)
+\item 
+\hyperlink{classDataGenerator_a1f847009ec0e063e0fa955d1936b9724}{$\sim$\+Data\+Generator} ()
+\item 
+int \hyperlink{classDataGenerator_a4acccc9fff235dd48ff1c5c413f661cf}{generate\+\_\+bin} (unsigned seed, const std\+::string \&filename, int64\+\_\+t cell\+\_\+num) const 
+\item 
+int \hyperlink{classDataGenerator_a5fa22f5e55efcda7b099c89f8c5503d0}{generate\+\_\+csv} (unsigned seed, const std\+::string \&filename, int64\+\_\+t cell\+\_\+num) const 
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classDataGenerator_a3c76c4329a15aae596cacf55a7d7d4d4}{generate\+\_\+uniform\+\_\+attributes} (std\+::default\+\_\+random\+\_\+engine \&generator, \hyperlink{classCSVLine}{C\+S\+V\+Line} \&csv\+\_\+line) const 
+\item 
+size\+\_\+t \hyperlink{classDataGenerator_a21f9c45b4a9398b190f55fb35bd49e4d}{generate\+\_\+uniform\+\_\+attributes} (std\+::default\+\_\+random\+\_\+engine \&generator, char $\ast$buffer) const 
+\item 
+void \hyperlink{classDataGenerator_ad3f5e9e61b448a0279ba06582ee94b0c}{generate\+\_\+uniform\+\_\+coordinates} (std\+::default\+\_\+random\+\_\+engine \&generator, \hyperlink{classCSVLine}{C\+S\+V\+Line} \&csv\+\_\+line) const 
+\item 
+void \hyperlink{classDataGenerator_a629304eaf77d3d38da1da55245c70f61}{generate\+\_\+uniform\+\_\+coordinates} (std\+::default\+\_\+random\+\_\+engine \&generator, char $\ast$buffer) const 
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+const \hyperlink{classArraySchema}{Array\+Schema} $\ast$ \hyperlink{classDataGenerator_aeb097c95b5aa5f18eb7e78619cd8cf02}{array\+\_\+schema\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Enables creating synthetic datasets for a particular array schema. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classDataGenerator_a3a85eb5bf95cf3a6ba07333d0da37207}{}\index{Data\+Generator@{Data\+Generator}!Data\+Generator@{Data\+Generator}}
+\index{Data\+Generator@{Data\+Generator}!Data\+Generator@{Data\+Generator}}
+\subsubsection[{Data\+Generator}]{\setlength{\rightskip}{0pt plus 5cm}Data\+Generator\+::\+Data\+Generator (
+\begin{DoxyParamCaption}
+\item[{const {\bf Array\+Schema} $\ast$}]{array\+\_\+schema}
+\end{DoxyParamCaption}
+)}\label{classDataGenerator_a3a85eb5bf95cf3a6ba07333d0da37207}
+Constructor. \hypertarget{classDataGenerator_a1f847009ec0e063e0fa955d1936b9724}{}\index{Data\+Generator@{Data\+Generator}!````~Data\+Generator@{$\sim$\+Data\+Generator}}
+\index{````~Data\+Generator@{$\sim$\+Data\+Generator}!Data\+Generator@{Data\+Generator}}
+\subsubsection[{$\sim$\+Data\+Generator}]{\setlength{\rightskip}{0pt plus 5cm}Data\+Generator\+::$\sim$\+Data\+Generator (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classDataGenerator_a1f847009ec0e063e0fa955d1936b9724}
+Destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classDataGenerator_a4acccc9fff235dd48ff1c5c413f661cf}{}\index{Data\+Generator@{Data\+Generator}!generate\+\_\+bin@{generate\+\_\+bin}}
+\index{generate\+\_\+bin@{generate\+\_\+bin}!Data\+Generator@{Data\+Generator}}
+\subsubsection[{generate\+\_\+bin}]{\setlength{\rightskip}{0pt plus 5cm}int Data\+Generator\+::generate\+\_\+bin (
+\begin{DoxyParamCaption}
+\item[{unsigned}]{seed, }
+\item[{const std\+::string \&}]{filename, }
+\item[{int64\+\_\+t}]{cell\+\_\+num}
+\end{DoxyParamCaption}
+) const}\label{classDataGenerator_a4acccc9fff235dd48ff1c5c413f661cf}
+Generates a uniform binary file for the stored array schema. Takes as input a seed used to generate the randomness, the name of the file to store the the generated cells, and the number of generated cells. \hypertarget{classDataGenerator_a5fa22f5e55efcda7b099c89f8c5503d0}{}\index{Data\+Generator@{Data\+Generator}!generate\+\_\+csv@{generate\+\_\+csv}}
+\index{generate\+\_\+csv@{generate\+\_\+csv}!Data\+Generator@{Data\+Generator}}
+\subsubsection[{generate\+\_\+csv}]{\setlength{\rightskip}{0pt plus 5cm}int Data\+Generator\+::generate\+\_\+csv (
+\begin{DoxyParamCaption}
+\item[{unsigned}]{seed, }
+\item[{const std\+::string \&}]{filename, }
+\item[{int64\+\_\+t}]{cell\+\_\+num}
+\end{DoxyParamCaption}
+) const}\label{classDataGenerator_a5fa22f5e55efcda7b099c89f8c5503d0}
+Generates a uniform C\+S\+V file for the stored array schema. Takes as input a seed used to generate the randomness, the name of the file to store the the generated cells, and the number of generated cells. \hypertarget{classDataGenerator_a3c76c4329a15aae596cacf55a7d7d4d4}{}\index{Data\+Generator@{Data\+Generator}!generate\+\_\+uniform\+\_\+attributes@{generate\+\_\+uniform\+\_\+attributes}}
+\index{generate\+\_\+uniform\+\_\+attributes@{generate\+\_\+uniform\+\_\+attributes}!Data\+Generator@{Data\+Generator}}
+\subsubsection[{generate\+\_\+uniform\+\_\+attributes}]{\setlength{\rightskip}{0pt plus 5cm}void Data\+Generator\+::generate\+\_\+uniform\+\_\+attributes (
+\begin{DoxyParamCaption}
+\item[{std\+::default\+\_\+random\+\_\+engine \&}]{generator, }
+\item[{{\bf C\+S\+V\+Line} \&}]{csv\+\_\+line}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classDataGenerator_a3c76c4329a15aae596cacf55a7d7d4d4}
+Generates and appends uniformly drawn attribute values to the C\+S\+V line. \hypertarget{classDataGenerator_a21f9c45b4a9398b190f55fb35bd49e4d}{}\index{Data\+Generator@{Data\+Generator}!generate\+\_\+uniform\+\_\+attributes@{generate\+\_\+uniform\+\_\+attributes}}
+\index{generate\+\_\+uniform\+\_\+attributes@{generate\+\_\+uniform\+\_\+attributes}!Data\+Generator@{Data\+Generator}}
+\subsubsection[{generate\+\_\+uniform\+\_\+attributes}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Data\+Generator\+::generate\+\_\+uniform\+\_\+attributes (
+\begin{DoxyParamCaption}
+\item[{std\+::default\+\_\+random\+\_\+engine \&}]{generator, }
+\item[{char $\ast$}]{buffer}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classDataGenerator_a21f9c45b4a9398b190f55fb35bd49e4d}
+Generates and stores uniformly drawn attribute values to buffer. Returns the total size in bytes written to buffer. \hypertarget{classDataGenerator_ad3f5e9e61b448a0279ba06582ee94b0c}{}\index{Data\+Generator@{Data\+Generator}!generate\+\_\+uniform\+\_\+coordinates@{generate\+\_\+uniform\+\_\+coordinates}}
+\index{generate\+\_\+uniform\+\_\+coordinates@{generate\+\_\+uniform\+\_\+coordinates}!Data\+Generator@{Data\+Generator}}
+\subsubsection[{generate\+\_\+uniform\+\_\+coordinates}]{\setlength{\rightskip}{0pt plus 5cm}void Data\+Generator\+::generate\+\_\+uniform\+\_\+coordinates (
+\begin{DoxyParamCaption}
+\item[{std\+::default\+\_\+random\+\_\+engine \&}]{generator, }
+\item[{{\bf C\+S\+V\+Line} \&}]{csv\+\_\+line}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classDataGenerator_ad3f5e9e61b448a0279ba06582ee94b0c}
+Generates and appends uniformly drawn coordinates to the C\+S\+V line. \hypertarget{classDataGenerator_a629304eaf77d3d38da1da55245c70f61}{}\index{Data\+Generator@{Data\+Generator}!generate\+\_\+uniform\+\_\+coordinates@{generate\+\_\+uniform\+\_\+coordinates}}
+\index{generate\+\_\+uniform\+\_\+coordinates@{generate\+\_\+uniform\+\_\+coordinates}!Data\+Generator@{Data\+Generator}}
+\subsubsection[{generate\+\_\+uniform\+\_\+coordinates}]{\setlength{\rightskip}{0pt plus 5cm}void Data\+Generator\+::generate\+\_\+uniform\+\_\+coordinates (
+\begin{DoxyParamCaption}
+\item[{std\+::default\+\_\+random\+\_\+engine \&}]{generator, }
+\item[{char $\ast$}]{buffer}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classDataGenerator_a629304eaf77d3d38da1da55245c70f61}
+Generates and stores uniformly drawn coordinates to buffer. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classDataGenerator_aeb097c95b5aa5f18eb7e78619cd8cf02}{}\index{Data\+Generator@{Data\+Generator}!array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}}
+\index{array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}!Data\+Generator@{Data\+Generator}}
+\subsubsection[{array\+\_\+schema\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Array\+Schema}$\ast$ Data\+Generator\+::array\+\_\+schema\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classDataGenerator_aeb097c95b5aa5f18eb7e78619cd8cf02}
+The array schema. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/misc/\hyperlink{data__generator_8h}{data\+\_\+generator.\+h}\end{DoxyCompactItemize}

@@ -1,0 +1,469 @@
+\hypertarget{classCoordinateTile}{}\section{Coordinate\+Tile$<$ T $>$ Class Template Reference}
+\label{classCoordinateTile}\index{Coordinate\+Tile$<$ T $>$@{Coordinate\+Tile$<$ T $>$}}
+
+
+{\ttfamily \#include $<$old\+\_\+tile.\+h$>$}
+
+Inheritance diagram for Coordinate\+Tile$<$ T $>$\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{classCoordinateTile}
+\end{center}
+\end{figure}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classCoordinateTile_aadff684690fb19be5636b3754b8a3ad0}{Coordinate\+Tile} (uint64\+\_\+t \hyperlink{classTile_a71625eedc3af0cb961f2ab213384f791}{tile\+\_\+id}, unsigned int \hyperlink{classCoordinateTile_a0cda1c5b005e93f8f0100813825b413f}{dim\+\_\+num})
+\item 
+\hyperlink{classCoordinateTile_ac50fc8fce140795685aef630e3c6eae7}{Coordinate\+Tile} (uint64\+\_\+t \hyperlink{classTile_a71625eedc3af0cb961f2ab213384f791}{tile\+\_\+id}, unsigned int \hyperlink{classCoordinateTile_a0cda1c5b005e93f8f0100813825b413f}{dim\+\_\+num}, uint64\+\_\+t capacity)
+\item 
+\hyperlink{classCoordinateTile_a0de55319aa462bbfe4559cfbc8732533}{$\sim$\+Coordinate\+Tile} ()
+\item 
+virtual std\+::pair$<$ std\+::vector$<$ double $>$, std\+::vector$<$ double $>$ $>$ \hyperlink{classCoordinateTile_ac07b0e8b543df680c704dc8e73fbbabe}{bounding\+\_\+coordinates} () const 
+\item 
+const std\+::vector$<$ T $>$ \& \hyperlink{classCoordinateTile_aa14fa596afafc4bdba343489af5cc549}{cell} (uint64\+\_\+t i) const 
+\item 
+virtual void \hyperlink{classCoordinateTile_acdbead96880fdf2424094909a89be9b7}{copy\+\_\+payload} (char $\ast$buffer) const 
+\item 
+virtual unsigned int \hyperlink{classCoordinateTile_a0cda1c5b005e93f8f0100813825b413f}{dim\+\_\+num} () const 
+\item 
+virtual const std\+::vector$<$ double $>$ \& \hyperlink{classCoordinateTile_a8818409c637ebacbe958b97d73989f47}{mbr} () const 
+\item 
+virtual void \hyperlink{classCoordinateTile_a32f166495e2d659c02a22c40e0f13df3}{set\+\_\+mbr} (const std\+::vector$<$ double $>$ \&\hyperlink{classCoordinateTile_a8818409c637ebacbe958b97d73989f47}{mbr})
+\item 
+virtual void \hyperlink{classCoordinateTile_a66fc504f7c19d0c567e16e9c7c8a39e6}{set\+\_\+payload} (const char $\ast$payload, uint64\+\_\+t payload\+\_\+size)
+\item 
+{\footnotesize template$<$typename T2 $>$ }\\void \hyperlink{classCoordinateTile_abd0211999559a83c29059092c04e95cc}{operator$<$$<$} (const std\+::vector$<$ T2 $>$ \&coordinates)
+\item 
+virtual void \hyperlink{classCoordinateTile_a2ca1d4f091b587c7b57d08a76f5c464b}{append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line} (uint64\+\_\+t pos, \hyperlink{classCSVLine}{C\+S\+V\+Line} \&csv\+\_\+line) const 
+\item 
+virtual bool \hyperlink{classCoordinateTile_accd55d7dce68d9c1fb878964014f5c4e}{cell\+\_\+inside\+\_\+range} (uint64\+\_\+t pos, const \hyperlink{classTile_afc4e8e753d24e2b07f4675bcd9c1dcca}{Range} \&range) const 
+\item 
+virtual void \hyperlink{classCoordinateTile_a0b4acb9b7b3c831deae994a35bcce13b}{print} () const 
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+virtual void \hyperlink{classCoordinateTile_a4a9c7b59ec820cd363f284f12490cead}{append\+\_\+cell} (const char \&value)
+\item 
+virtual void \hyperlink{classCoordinateTile_a530159b861b0ed55df38add74c217c39}{append\+\_\+cell} (const int \&value)
+\item 
+virtual void \hyperlink{classCoordinateTile_a0a818f6a5ecd35ee7c8be5f590d2770a}{append\+\_\+cell} (const int64\+\_\+t \&value)
+\item 
+virtual void \hyperlink{classCoordinateTile_a77e8b053fabbdfcf3a021c6ac276dda8}{append\+\_\+cell} (const float \&value)
+\item 
+virtual void \hyperlink{classCoordinateTile_a57965a6c40a0aeeced8e2ce26bedef48}{append\+\_\+cell} (const double \&value)
+\item 
+virtual void \hyperlink{classCoordinateTile_a1031406c4f7074b40e782fe217207b42}{append\+\_\+cell} (const std\+::vector$<$ int $>$ \&coordinates)
+\item 
+virtual void \hyperlink{classCoordinateTile_ac72935935ce1de72d19e3c2620ab8d91}{append\+\_\+cell} (const std\+::vector$<$ int64\+\_\+t $>$ \&coordinates)
+\item 
+virtual void \hyperlink{classCoordinateTile_adad817fb7d71acca0be30fc7e465d215}{append\+\_\+cell} (const std\+::vector$<$ float $>$ \&coordinates)
+\item 
+virtual void \hyperlink{classCoordinateTile_a4c2843cee79288be61c4c50c77281e13}{append\+\_\+cell} (const std\+::vector$<$ double $>$ \&coordinates)
+\item 
+virtual char \hyperlink{classCoordinateTile_a95234b5dbdfa07ac5b7af400108dffc5}{cell\+\_\+char} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual int \hyperlink{classCoordinateTile_a6a701fea1a0422e4272a3c3a3d8bb69c}{cell\+\_\+int} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual int64\+\_\+t \hyperlink{classCoordinateTile_a22d4a9bc85802c92a614534d1196b07e}{cell\+\_\+int64\+\_\+t} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual float \hyperlink{classCoordinateTile_a3d8fd5cb0b30f341dba7d70c0b5477b6}{cell\+\_\+float} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual double \hyperlink{classCoordinateTile_a11bde94e2c5bf6f04857a32f80c818a8}{cell\+\_\+double} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual std\+::vector$<$ int $>$ \hyperlink{classCoordinateTile_af30cbd799740bfd0d1f8f773f186fb8d}{cell\+\_\+v\+\_\+int} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual std\+::vector$<$ int64\+\_\+t $>$ \hyperlink{classCoordinateTile_a4a9268bd183262dae62be587da03fa71}{cell\+\_\+v\+\_\+int64\+\_\+t} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual std\+::vector$<$ float $>$ \hyperlink{classCoordinateTile_a469ad049834b15ac8ae8f0cd52a7be79}{cell\+\_\+v\+\_\+float} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual std\+::vector$<$ double $>$ \hyperlink{classCoordinateTile_adb236c3bcfab13653a6799fe81fae917}{cell\+\_\+v\+\_\+double} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+void \hyperlink{classCoordinateTile_ad8816e9a5481b0993b4f687f86b8938b}{update\+\_\+mbr} (const std\+::vector$<$ T $>$ \&coordinates)
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+unsigned int \hyperlink{classCoordinateTile_a1c4f8a58ab5a9848463901280d91fe54}{dim\+\_\+num\+\_\+}
+\item 
+std\+::vector$<$ double $>$ \hyperlink{classCoordinateTile_adfff0b1c24ab71f4d67784efff84ce68}{mbr\+\_\+}
+\item 
+std\+::vector$<$ std\+::vector$<$ T $>$ $>$ \hyperlink{classCoordinateTile_a3c8f3045b9d989d2a4313fb65b23e48d}{payload\+\_\+}
+\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$class T$>$class Coordinate\+Tile$<$ T $>$}
+
+This class defines a coordinate tile. In a coordinate tile, each cell is a set of coordinates of type T, whose number is specified by \hyperlink{classCoordinateTile_a1c4f8a58ab5a9848463901280d91fe54}{Coordinate\+Tile\+::dim\+\_\+num\+\_\+} ($>$ 0). A set of coordinates is modeled as a vector of type T. All coordinates are stored in a vector of vectors, namely \hyperlink{classCoordinateTile_a3c8f3045b9d989d2a4313fb65b23e48d}{Coordinate\+Tile\+::payload\+\_\+}.
+
+Every coordinate tile has a M\+B\+R (minimum bounding rectangle). This is essentially the tightest hyper-\/rectangle (represented by pairs of low/high bounds for each dimension) in the logical space that contains all the coordinates in the tile. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classCoordinateTile_aadff684690fb19be5636b3754b8a3ad0}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!Coordinate\+Tile@{Coordinate\+Tile}}
+\index{Coordinate\+Tile@{Coordinate\+Tile}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{Coordinate\+Tile}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Coordinate\+Tile}$<$ T $>$\+::{\bf Coordinate\+Tile} (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{tile\+\_\+id, }
+\item[{unsigned int}]{dim\+\_\+num}
+\end{DoxyParamCaption}
+)}\label{classCoordinateTile_aadff684690fb19be5636b3754b8a3ad0}
+Simple constructor that takes as input a tile id and the number of dimensions. \hypertarget{classCoordinateTile_ac50fc8fce140795685aef630e3c6eae7}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!Coordinate\+Tile@{Coordinate\+Tile}}
+\index{Coordinate\+Tile@{Coordinate\+Tile}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{Coordinate\+Tile}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Coordinate\+Tile}$<$ T $>$\+::{\bf Coordinate\+Tile} (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{tile\+\_\+id, }
+\item[{unsigned int}]{dim\+\_\+num, }
+\item[{uint64\+\_\+t}]{capacity}
+\end{DoxyParamCaption}
+)}\label{classCoordinateTile_ac50fc8fce140795685aef630e3c6eae7}
+Constructor that takes as input the tile id, dimension number and tile capacity. The tile capacity is the number of cells expected to reside in the tile. It does not put any constraints on the number of cells allowed in the tile. It is only used to reserve space upon initialization for \hyperlink{classCoordinateTile_a3c8f3045b9d989d2a4313fb65b23e48d}{Coordinate\+Tile\+::payload\+\_\+}. It prevents unnecessary expansions of \hyperlink{classCoordinateTile_a3c8f3045b9d989d2a4313fb65b23e48d}{Coordinate\+Tile\+::payload\+\_\+} when new cells are appended to it. \hypertarget{classCoordinateTile_a0de55319aa462bbfe4559cfbc8732533}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!````~Coordinate\+Tile@{$\sim$\+Coordinate\+Tile}}
+\index{````~Coordinate\+Tile@{$\sim$\+Coordinate\+Tile}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{$\sim$\+Coordinate\+Tile}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Coordinate\+Tile}$<$ T $>$\+::$\sim${\bf Coordinate\+Tile} (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classCoordinateTile_a0de55319aa462bbfe4559cfbc8732533}
+Empty destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classCoordinateTile_a4a9c7b59ec820cd363f284f12490cead}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const char \&}]{value}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a4a9c7b59ec820cd363f284f12490cead}
+Inapplicable to coordinate tiles. Coordinate tiles have vector cells. 
+
+Implements \hyperlink{classTile_a92944c74e0e3e3217285742121b687c6}{Tile}.
+
+\hypertarget{classCoordinateTile_a530159b861b0ed55df38add74c217c39}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const int \&}]{value}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a530159b861b0ed55df38add74c217c39}
+Inapplicable to coordinate tiles. Coordinate tiles have vector cells. 
+
+Implements \hyperlink{classTile_a63627f75ebeb2d463d07cf24837a27ea}{Tile}.
+
+\hypertarget{classCoordinateTile_a0a818f6a5ecd35ee7c8be5f590d2770a}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const int64\+\_\+t \&}]{value}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a0a818f6a5ecd35ee7c8be5f590d2770a}
+Inapplicable to coordinate tiles. Coordinate tiles have vector cells. 
+
+Implements \hyperlink{classTile_a0da7b465fc18e9b59767c5a99703b5fc}{Tile}.
+
+\hypertarget{classCoordinateTile_a77e8b053fabbdfcf3a021c6ac276dda8}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const float \&}]{value}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a77e8b053fabbdfcf3a021c6ac276dda8}
+Inapplicable to coordinate tiles. Coordinate tiles have vector cells. 
+
+Implements \hyperlink{classTile_abe10d4338e2066f3d355a8177e7efd68}{Tile}.
+
+\hypertarget{classCoordinateTile_a57965a6c40a0aeeced8e2ce26bedef48}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const double \&}]{value}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a57965a6c40a0aeeced8e2ce26bedef48}
+Inapplicable to coordinate tiles. Coordinate tiles have vector cells. 
+
+Implements \hyperlink{classTile_a1b390a98b6d94a6c111d44cefa2fccf1}{Tile}.
+
+\hypertarget{classCoordinateTile_a1031406c4f7074b40e782fe217207b42}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ int $>$ \&}]{coordinates}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a1031406c4f7074b40e782fe217207b42}
+Template-\/based dispatch of \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to virtual function dispatch. This allows \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to essentially call \hyperlink{classCoordinateTile_abd0211999559a83c29059092c04e95cc}{Coordinate\+Tile\+::operator$<$$<$} when Tile$\ast$ points to a \hyperlink{classCoordinateTile}{Coordinate\+Tile}. 
+
+Implements \hyperlink{classTile_ace56b78baf4c0979641dbbc7dd0ca68e}{Tile}.
+
+\hypertarget{classCoordinateTile_ac72935935ce1de72d19e3c2620ab8d91}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ int64\+\_\+t $>$ \&}]{coordinates}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_ac72935935ce1de72d19e3c2620ab8d91}
+Template-\/based dispatch of \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to virtual function dispatch. This allows \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to essentially call \hyperlink{classCoordinateTile_abd0211999559a83c29059092c04e95cc}{Coordinate\+Tile\+::operator$<$$<$} when Tile$\ast$ points to a \hyperlink{classCoordinateTile}{Coordinate\+Tile}. 
+
+Implements \hyperlink{classTile_a7505a9827ea8715a8d935af62719dddc}{Tile}.
+
+\hypertarget{classCoordinateTile_adad817fb7d71acca0be30fc7e465d215}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ float $>$ \&}]{coordinates}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_adad817fb7d71acca0be30fc7e465d215}
+Template-\/based dispatch of \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to virtual function dispatch. This allows \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to essentially call \hyperlink{classCoordinateTile_abd0211999559a83c29059092c04e95cc}{Coordinate\+Tile\+::operator$<$$<$} when Tile$\ast$ points to a \hyperlink{classCoordinateTile}{Coordinate\+Tile}. 
+
+Implements \hyperlink{classTile_a86202cbb97a7d4dc0bcd18fea2a6ee83}{Tile}.
+
+\hypertarget{classCoordinateTile_a4c2843cee79288be61c4c50c77281e13}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ double $>$ \&}]{coordinates}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a4c2843cee79288be61c4c50c77281e13}
+Template-\/based dispatch of \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to virtual function dispatch. This allows \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to essentially call \hyperlink{classCoordinateTile_abd0211999559a83c29059092c04e95cc}{Coordinate\+Tile\+::operator$<$$<$} when Tile$\ast$ points to a \hyperlink{classCoordinateTile}{Coordinate\+Tile}. 
+
+Implements \hyperlink{classTile_a604b6cb42f9b74cf9e30a1d377a597da}{Tile}.
+
+\hypertarget{classCoordinateTile_a2ca1d4f091b587c7b57d08a76f5c464b}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line@{append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line}}
+\index{append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line@{append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos, }
+\item[{{\bf C\+S\+V\+Line} \&}]{csv\+\_\+line}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [virtual]}}\label{classCoordinateTile_a2ca1d4f091b587c7b57d08a76f5c464b}
+Appends the pos-\/th coordinates to the input C\+S\+V line. 
+
+Implements \hyperlink{classTile_a862e1258bb8ce218572a41904de498be}{Tile}.
+
+\hypertarget{classCoordinateTile_ac07b0e8b543df680c704dc8e73fbbabe}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!bounding\+\_\+coordinates@{bounding\+\_\+coordinates}}
+\index{bounding\+\_\+coordinates@{bounding\+\_\+coordinates}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{bounding\+\_\+coordinates}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual std\+::pair$<$std\+::vector$<$double$>$, std\+::vector$<$double$>$ $>$ {\bf Coordinate\+Tile}$<$ T $>$\+::bounding\+\_\+coordinates (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [virtual]}}\label{classCoordinateTile_ac07b0e8b543df680c704dc8e73fbbabe}
+Returns the bounding coordinates, i.\+e., the first and last coordinates that were appended to the tile. The bounding coordinates are typically useful when the cells in the tile are sorted in a certain order. 
+
+Implements \hyperlink{classTile_a310b5f9321c9c8ea569c04f5d540ee39}{Tile}.
+
+\hypertarget{classCoordinateTile_aa14fa596afafc4bdba343489af5cc549}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!cell@{cell}}
+\index{cell@{cell}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ const std\+::vector$<$T$>$\& {\bf Coordinate\+Tile}$<$ T $>$\+::cell (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{i}
+\end{DoxyParamCaption}
+) const}\label{classCoordinateTile_aa14fa596afafc4bdba343489af5cc549}
+Returns the i-\/th cell. \hypertarget{classCoordinateTile_a95234b5dbdfa07ac5b7af400108dffc5}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!cell\+\_\+char@{cell\+\_\+char}}
+\index{cell\+\_\+char@{cell\+\_\+char}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{cell\+\_\+char}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual char {\bf Coordinate\+Tile}$<$ T $>$\+::cell\+\_\+char (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a95234b5dbdfa07ac5b7af400108dffc5}
+Inapplicable to coordinate tiles. Coordinate tiles have vector cells. 
+
+Implements \hyperlink{classTile_a6fd29d850f38da51e9d90da1f46f4106}{Tile}.
+
+\hypertarget{classCoordinateTile_a11bde94e2c5bf6f04857a32f80c818a8}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!cell\+\_\+double@{cell\+\_\+double}}
+\index{cell\+\_\+double@{cell\+\_\+double}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{cell\+\_\+double}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual double {\bf Coordinate\+Tile}$<$ T $>$\+::cell\+\_\+double (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a11bde94e2c5bf6f04857a32f80c818a8}
+Inapplicable to coordinate tiles. Coordinate tiles have vector cells. 
+
+Implements \hyperlink{classTile_a8a48eeb5eb60ef5b8852c07e0e30b15f}{Tile}.
+
+\hypertarget{classCoordinateTile_a3d8fd5cb0b30f341dba7d70c0b5477b6}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!cell\+\_\+float@{cell\+\_\+float}}
+\index{cell\+\_\+float@{cell\+\_\+float}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{cell\+\_\+float}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual float {\bf Coordinate\+Tile}$<$ T $>$\+::cell\+\_\+float (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a3d8fd5cb0b30f341dba7d70c0b5477b6}
+Inapplicable to coordinate tiles. Coordinate tiles have vector cells. 
+
+Implements \hyperlink{classTile_a0d35f2ad996ddc2f89302fbe3979ac6d}{Tile}.
+
+\hypertarget{classCoordinateTile_accd55d7dce68d9c1fb878964014f5c4e}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!cell\+\_\+inside\+\_\+range@{cell\+\_\+inside\+\_\+range}}
+\index{cell\+\_\+inside\+\_\+range@{cell\+\_\+inside\+\_\+range}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{cell\+\_\+inside\+\_\+range}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual bool {\bf Coordinate\+Tile}$<$ T $>$\+::cell\+\_\+inside\+\_\+range (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos, }
+\item[{const {\bf Range} \&}]{range}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [virtual]}}\label{classCoordinateTile_accd55d7dce68d9c1fb878964014f5c4e}
+Returns true if the pos-\/th coordinates fall inside the input range. 
+
+Implements \hyperlink{classTile_a0748a457deaec80721ab85da0fe7cb90}{Tile}.
+
+\hypertarget{classCoordinateTile_a6a701fea1a0422e4272a3c3a3d8bb69c}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!cell\+\_\+int@{cell\+\_\+int}}
+\index{cell\+\_\+int@{cell\+\_\+int}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{cell\+\_\+int}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual int {\bf Coordinate\+Tile}$<$ T $>$\+::cell\+\_\+int (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a6a701fea1a0422e4272a3c3a3d8bb69c}
+Inapplicable to coordinate tiles. Coordinate tiles have vector cells. 
+
+Implements \hyperlink{classTile_a8430cbcfaed0729a72f833dc7dc18487}{Tile}.
+
+\hypertarget{classCoordinateTile_a22d4a9bc85802c92a614534d1196b07e}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!cell\+\_\+int64\+\_\+t@{cell\+\_\+int64\+\_\+t}}
+\index{cell\+\_\+int64\+\_\+t@{cell\+\_\+int64\+\_\+t}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{cell\+\_\+int64\+\_\+t}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual int64\+\_\+t {\bf Coordinate\+Tile}$<$ T $>$\+::cell\+\_\+int64\+\_\+t (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a22d4a9bc85802c92a614534d1196b07e}
+Inapplicable to coordinate tiles. Coordinate tiles have vector cells. 
+
+Implements \hyperlink{classTile_acee1eb125f70eb0790df1bd3799da147}{Tile}.
+
+\hypertarget{classCoordinateTile_adb236c3bcfab13653a6799fe81fae917}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!cell\+\_\+v\+\_\+double@{cell\+\_\+v\+\_\+double}}
+\index{cell\+\_\+v\+\_\+double@{cell\+\_\+v\+\_\+double}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{cell\+\_\+v\+\_\+double}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual std\+::vector$<$double$>$ {\bf Coordinate\+Tile}$<$ T $>$\+::cell\+\_\+v\+\_\+double (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_adb236c3bcfab13653a6799fe81fae917}
+Template-\/based dispatch of \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to virtual function dispatch. This allows \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to essentially call \hyperlink{classCoordinateTile_aa14fa596afafc4bdba343489af5cc549}{Coordinate\+Tile\+::cell} when Tile$\ast$ points to an \hyperlink{classCoordinateTile}{Coordinate\+Tile}. 
+
+Implements \hyperlink{classTile_aea2250785e00d69d55cdb22a81f79ca0}{Tile}.
+
+\hypertarget{classCoordinateTile_a469ad049834b15ac8ae8f0cd52a7be79}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!cell\+\_\+v\+\_\+float@{cell\+\_\+v\+\_\+float}}
+\index{cell\+\_\+v\+\_\+float@{cell\+\_\+v\+\_\+float}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{cell\+\_\+v\+\_\+float}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual std\+::vector$<$float$>$ {\bf Coordinate\+Tile}$<$ T $>$\+::cell\+\_\+v\+\_\+float (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a469ad049834b15ac8ae8f0cd52a7be79}
+Template-\/based dispatch of \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to virtual function dispatch. This allows \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to essentially call \hyperlink{classCoordinateTile_aa14fa596afafc4bdba343489af5cc549}{Coordinate\+Tile\+::cell} when Tile$\ast$ points to an \hyperlink{classCoordinateTile}{Coordinate\+Tile}. 
+
+Implements \hyperlink{classTile_a2db310102c1fcce5a3ccea25c439de69}{Tile}.
+
+\hypertarget{classCoordinateTile_af30cbd799740bfd0d1f8f773f186fb8d}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!cell\+\_\+v\+\_\+int@{cell\+\_\+v\+\_\+int}}
+\index{cell\+\_\+v\+\_\+int@{cell\+\_\+v\+\_\+int}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{cell\+\_\+v\+\_\+int}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual std\+::vector$<$int$>$ {\bf Coordinate\+Tile}$<$ T $>$\+::cell\+\_\+v\+\_\+int (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_af30cbd799740bfd0d1f8f773f186fb8d}
+Template-\/based dispatch of \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to virtual function dispatch. This allows \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to essentially call \hyperlink{classCoordinateTile_aa14fa596afafc4bdba343489af5cc549}{Coordinate\+Tile\+::cell} when Tile$\ast$ points to an \hyperlink{classCoordinateTile}{Coordinate\+Tile}. 
+
+Implements \hyperlink{classTile_ab1152b3b8e1e620c00d2892cb6bb61a5}{Tile}.
+
+\hypertarget{classCoordinateTile_a4a9268bd183262dae62be587da03fa71}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!cell\+\_\+v\+\_\+int64\+\_\+t@{cell\+\_\+v\+\_\+int64\+\_\+t}}
+\index{cell\+\_\+v\+\_\+int64\+\_\+t@{cell\+\_\+v\+\_\+int64\+\_\+t}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{cell\+\_\+v\+\_\+int64\+\_\+t}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual std\+::vector$<$int64\+\_\+t$>$ {\bf Coordinate\+Tile}$<$ T $>$\+::cell\+\_\+v\+\_\+int64\+\_\+t (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a4a9268bd183262dae62be587da03fa71}
+Template-\/based dispatch of \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to virtual function dispatch. This allows \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to essentially call \hyperlink{classCoordinateTile_aa14fa596afafc4bdba343489af5cc549}{Coordinate\+Tile\+::cell} when Tile$\ast$ points to an \hyperlink{classCoordinateTile}{Coordinate\+Tile}. 
+
+Implements \hyperlink{classTile_a4caf085f8feca04bf899f435f98c448f}{Tile}.
+
+\hypertarget{classCoordinateTile_acdbead96880fdf2424094909a89be9b7}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!copy\+\_\+payload@{copy\+\_\+payload}}
+\index{copy\+\_\+payload@{copy\+\_\+payload}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{copy\+\_\+payload}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::copy\+\_\+payload (
+\begin{DoxyParamCaption}
+\item[{char $\ast$}]{buffer}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [virtual]}}\label{classCoordinateTile_acdbead96880fdf2424094909a89be9b7}
+Copies the tile payload into buffer. 
+
+Implements \hyperlink{classTile_a9003b925ae09081bc1dd8d3aa2ee4cb8}{Tile}.
+
+\hypertarget{classCoordinateTile_a0cda1c5b005e93f8f0100813825b413f}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!dim\+\_\+num@{dim\+\_\+num}}
+\index{dim\+\_\+num@{dim\+\_\+num}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{dim\+\_\+num}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual unsigned int {\bf Coordinate\+Tile}$<$ T $>$\+::dim\+\_\+num (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a0cda1c5b005e93f8f0100813825b413f}
+Returns the number of dimensions. 
+
+Implements \hyperlink{classTile_ab530c46e8a4b5ade05dc9d8055603520}{Tile}.
+
+\hypertarget{classCoordinateTile_a8818409c637ebacbe958b97d73989f47}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!mbr@{mbr}}
+\index{mbr@{mbr}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{mbr}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual const std\+::vector$<$double$>$\& {\bf Coordinate\+Tile}$<$ T $>$\+::mbr (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}\label{classCoordinateTile_a8818409c637ebacbe958b97d73989f47}
+Returns the M\+B\+R (minimum bounding rectangle), i.\+e., the tightest hyper-\/rectangle in the logical space that contains all the coordinates in the tile. The M\+B\+R is represented as a vector of low/high pairs of values in each dimension, i.\+e., (dim\#1\+\_\+low, dim\#1\+\_\+high, dim\#2\+\_\+low, dim\#2\+\_\+high, ...). 
+
+Implements \hyperlink{classTile_a35abe2a06ebd2fe261eff584098375c3}{Tile}.
+
+\hypertarget{classCoordinateTile_abd0211999559a83c29059092c04e95cc}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!operator$<$$<$@{operator$<$$<$}}
+\index{operator$<$$<$@{operator$<$$<$}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{operator$<$$<$}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ template$<$typename T2 $>$ void {\bf Coordinate\+Tile}$<$ T $>$\+::operator$<$$<$ (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ T2 $>$ \&}]{coordinates}
+\end{DoxyParamCaption}
+)}\label{classCoordinateTile_abd0211999559a83c29059092c04e95cc}
+Appends a set of coordinates to the (end of the) tile. \hypertarget{classCoordinateTile_a0b4acb9b7b3c831deae994a35bcce13b}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!print@{print}}
+\index{print@{print}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{print}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::print (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [virtual]}}\label{classCoordinateTile_a0b4acb9b7b3c831deae994a35bcce13b}
+Prints the details of the tile on the standard output. 
+
+Implements \hyperlink{classTile_adf38ade644fd1bc1157f4f7f274ec080}{Tile}.
+
+\hypertarget{classCoordinateTile_a32f166495e2d659c02a22c40e0f13df3}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!set\+\_\+mbr@{set\+\_\+mbr}}
+\index{set\+\_\+mbr@{set\+\_\+mbr}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{set\+\_\+mbr}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::set\+\_\+mbr (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ double $>$ \&}]{mbr}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [virtual]}}\label{classCoordinateTile_a32f166495e2d659c02a22c40e0f13df3}
+M\+B\+R setter. 
+
+Implements \hyperlink{classTile_a878f856c4d11042b54ec81c791e85c94}{Tile}.
+
+\hypertarget{classCoordinateTile_a66fc504f7c19d0c567e16e9c7c8a39e6}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!set\+\_\+payload@{set\+\_\+payload}}
+\index{set\+\_\+payload@{set\+\_\+payload}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{set\+\_\+payload}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Coordinate\+Tile}$<$ T $>$\+::set\+\_\+payload (
+\begin{DoxyParamCaption}
+\item[{const char $\ast$}]{payload, }
+\item[{uint64\+\_\+t}]{payload\+\_\+size}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [virtual]}}\label{classCoordinateTile_a66fc504f7c19d0c567e16e9c7c8a39e6}
+Payload setter. 
+
+Implements \hyperlink{classTile_ad5d6fccae173c455bb3f74ac5fd87791}{Tile}.
+
+\hypertarget{classCoordinateTile_ad8816e9a5481b0993b4f687f86b8938b}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!update\+\_\+mbr@{update\+\_\+mbr}}
+\index{update\+\_\+mbr@{update\+\_\+mbr}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{update\+\_\+mbr}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ void {\bf Coordinate\+Tile}$<$ T $>$\+::update\+\_\+mbr (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ T $>$ \&}]{coordinates}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classCoordinateTile_ad8816e9a5481b0993b4f687f86b8938b}
+Updates the tile M\+B\+R bounds. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classCoordinateTile_a1c4f8a58ab5a9848463901280d91fe54}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!dim\+\_\+num\+\_\+@{dim\+\_\+num\+\_\+}}
+\index{dim\+\_\+num\+\_\+@{dim\+\_\+num\+\_\+}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{dim\+\_\+num\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ unsigned int {\bf Coordinate\+Tile}$<$ T $>$\+::dim\+\_\+num\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classCoordinateTile_a1c4f8a58ab5a9848463901280d91fe54}
+The number of dimensions. \hypertarget{classCoordinateTile_adfff0b1c24ab71f4d67784efff84ce68}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!mbr\+\_\+@{mbr\+\_\+}}
+\index{mbr\+\_\+@{mbr\+\_\+}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{mbr\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ std\+::vector$<$double$>$ {\bf Coordinate\+Tile}$<$ T $>$\+::mbr\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classCoordinateTile_adfff0b1c24ab71f4d67784efff84ce68}
+The tile M\+B\+R (minimum bounding rectangle), i.\+e., the tightest hyper-\/rectangle in the logical space that contains all the coordinates in the tile. The M\+B\+R is represented as a vector of low/high pairs of values in each dimension, i.\+e., (dim\#1\+\_\+low, dim\#1\+\_\+high, dim\#2\+\_\+low, dim\#2\+\_\+high, ...). \hypertarget{classCoordinateTile_a3c8f3045b9d989d2a4313fb65b23e48d}{}\index{Coordinate\+Tile@{Coordinate\+Tile}!payload\+\_\+@{payload\+\_\+}}
+\index{payload\+\_\+@{payload\+\_\+}!Coordinate\+Tile@{Coordinate\+Tile}}
+\subsubsection[{payload\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ std\+::vector$<$std\+::vector$<$T$>$ $>$ {\bf Coordinate\+Tile}$<$ T $>$\+::payload\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classCoordinateTile_a3c8f3045b9d989d2a4313fb65b23e48d}
+The payload is a vector of coordinates (which are implemented also as vectors). 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/heads/old\+\_\+tile.\+h\end{DoxyCompactItemize}

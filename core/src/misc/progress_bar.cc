@@ -66,14 +66,14 @@ void ProgressBar::load(size_t amount) {
 }
 
 void ProgressBar::print() {
-  printf("%3d%% [", (int)(ratio_ * 100));
+  fprintf(stderr, "%3d%% [", (int)(ratio_ * 100));
 
   for(int i=0; i<length_; ++i)
-    printf("%c", filler_);
+    fprintf(stderr, "%c", filler_);
 
   for(int i=length_; i<max_length_; ++i)
-    printf(" ");
+    fprintf(stderr, " ");
 
-  printf("]\r");
-  fflush(stdout);
+  fprintf(stderr, "]\r");
+  fflush(stderr);
 }

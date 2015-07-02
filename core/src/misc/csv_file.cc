@@ -46,16 +46,30 @@
 ******************************************************/
 
 CSVFile::CSVFile() { 
+  array_schema_ = NULL;
   buffer_ = NULL;
   buffer_end_ = 0;
   buffer_offset_ = 0;
+  cell_ = NULL;
+  file_offset_ = 0;
+}
+
+CSVFile::CSVFile(const ArraySchema* array_schema) 
+    : array_schema_(array_schema) { 
+  buffer_ = NULL;
+  buffer_end_ = 0;
+  buffer_offset_ = 0;
+  if(array_schema_->cell_size() != VAR_SIZE)
+    cell_ = malloc(array_schema_->cell_size());
   file_offset_ = 0;
 }
 
 CSVFile::CSVFile(const std::string& filename, const char* mode) { 
+  array_schema_ = NULL;
   buffer_ = NULL;
   buffer_end_ = 0;
   buffer_offset_ = 0;
+  cell_ = NULL;
   file_offset_ = 0;
 
   open(filename, mode);
@@ -79,19 +93,25 @@ void CSVFile::close() {
     delete buffer_;
     buffer_ = NULL;
   }
+
+  if(cell_ != NULL) {
+    free(cell_);
+    cell_ = NULL;
+  }
 }
 
 bool CSVFile::open(const std::string& filename, 
                    const char* mode,
                    size_t segment_size) {
+// TODO: return error codes
   filename_ = absolute_path(filename);
 
-  if(strcmp(mode_, "r") == 0 && !is_file(filename_))
+  if(strcmp(mode, "r") == 0 && !is_file(filename_)) 
     return false;
 
   segment_size_ = segment_size;
   strcpy(mode_, mode);
-  
+
   // If mode is "w", delete the previous file in order to overwrite it.
   // After initialization and for as long as the CSVFile object is alive,
   // it will be in "a" mode.
@@ -176,6 +196,22 @@ bool CSVFile::operator>>(CSVLine& csv_line) {
 
   // Return line
   csv_line = line;
+
+  return true;
+}
+
+bool CSVFile::operator>>(Cell& cell) {
+  assert(strcmp(mode_, "r") == 0);
+  assert(array_schema_ != NULL);
+
+  CSVLine csv_line;
+  if(!(*this >> csv_line)) {
+    cell.set_cell(NULL);
+    return false;
+  }
+
+  array_schema_->csv_line_to_cell(csv_line, cell_);
+  cell.set_cell(cell_);
 
   return true;
 }

@@ -1,0 +1,135 @@
+Content-type: text/html
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML><HEAD><TITLE>Man page of tiledb_show_array_schema</TITLE>
+</HEAD><BODY>
+<H1>tiledb_show_array_schema</H1>
+Section: TileDB programs (1)<BR>Updated: 22 June 2015<BR><A HREF="#index">Index</A>
+<A HREF="/cgi-bin/man/man2html">Return to Main Contents</A><HR>
+
+<BR>&nbsp;
+<A NAME="lbAB">&nbsp;</A>
+<H2>NAME</H2>
+
+tiledb_show_array_schema - prints the schema of an array to standard output
+<P>
+<A NAME="lbAC">&nbsp;</A>
+<H2>SYNOPSIS</H2>
+
+<B>tiledb_show_array_schema </B>
+
+<B>-w </B><I>directory </I><B>-A </B><I>array_name </I>
+
+<P>
+<A NAME="lbAD">&nbsp;</A>
+<H2>DESCRIPTION</H2>
+
+<B>tiledb_show_array_schema</B>
+
+prints the schema of an array in the standard output. This includes the array
+name, the attribute names, the dimension names, etc. The input array must 
+already be defined. On error, it prints appopriate messages on stderr and 
+returns an error code (see <B>EXIT STATUS</B>). 
+<P>
+The following conventions apply to the <B>SYNOPSIS</B> section:
+<P>
+<TABLE>
+<TR VALIGN=top><TD ALIGN=center><B>bold text</B> </TD><TD> type exactly as shown<BR></TD></TR>
+<TR VALIGN=top><TD ALIGN=center><I>italic text</I> </TD><TD> replace with appropriate argument<BR></TD></TR>
+</TABLE>
+
+<P>
+<BR>&nbsp;
+<A NAME="lbAE">&nbsp;</A>
+<H2>OPTIONS</H2>
+
+<DL COMPACT>
+<DT><B>-w</B><I> directory</I><B></B>, <I></I><B>--workspace=</B><I>directory</I>
+
+<DD>
+The path to the workspace folder where the TileDB data are stored. The path
+must exist, and the caller must have read and write permissions on it.
+<DT><B>-A</B><I> array_name</I><B></B>, <I></I><B>--array-name=</B><I>array_name</I>
+
+<DD>
+The name of the array whose schema will be printed. The array must already be 
+defined.
+<P>
+</DL>
+<A NAME="lbAF">&nbsp;</A>
+<H2>EXAMPLES</H2>
+
+<DL COMPACT>
+<DT><B>tiledb_show_array_schema -w </B><I>my_workspace/ </I><B>-A </B><I>my_array</I>
+
+<DD>
+Prints the schema of array <I>my_array</I>, whose data are stored in workspace
+folder <I>my_workspace/
+<DT></I><B>tiledb_show_array_schema --workspace=</B><I>my_workspace/ </I><B>--array-name </B><I>my_array</I>
+
+<DD>
+Prints the schema of array <I>my_array</I>, whose data are stored in workspace
+folder <I>my_workspace/</I>
+<P>
+</DL>
+<A NAME="lbAG">&nbsp;</A>
+<H2>EXIT STATUS</H2>
+
+<DL COMPACT>
+<DT><B>0</B>
+
+<DD>
+Successful execution
+<DT><B>-1</B>
+
+<DD>
+Parser error
+<DT><B>-2</B>
+
+<DD>
+Undefined array
+<DT><B>-3</B>
+
+<DD>
+File operation failed
+<DT><B>-7</B>
+
+<DD>
+TileDB initialization failed
+<DT><B>-8</B>
+
+<DD>
+TileDB finalization failed
+<P>
+</DL>
+<A NAME="lbAH">&nbsp;</A>
+<H2>SEE ALSO</H2>
+
+<B><A HREF="/cgi-bin/man/man2html?1+tiledb_define_array">tiledb_define_array</A></B>(1)
+
+<P>
+<A NAME="lbAI">&nbsp;</A>
+<H2>AUTHOR</H2>
+
+Stavros Papadopoulos &lt;<A HREF="http://people.csail.mit.edu/stavrosp">http://people.csail.mit.edu/stavrosp</A>&gt;, Copyright (c) 2015
+<P>
+
+<HR>
+<A NAME="index">&nbsp;</A><H2>Index</H2>
+<DL>
+<DT><A HREF="#lbAB">NAME</A><DD>
+<DT><A HREF="#lbAC">SYNOPSIS</A><DD>
+<DT><A HREF="#lbAD">DESCRIPTION</A><DD>
+<DT><A HREF="#lbAE">OPTIONS</A><DD>
+<DT><A HREF="#lbAF">EXAMPLES</A><DD>
+<DT><A HREF="#lbAG">EXIT STATUS</A><DD>
+<DT><A HREF="#lbAH">SEE ALSO</A><DD>
+<DT><A HREF="#lbAI">AUTHOR</A><DD>
+</DL>
+<HR>
+This document was created by
+<A HREF="/cgi-bin/man/man2html">man2html</A>,
+using the manual pages.<BR>
+Time: 21:52:58 GMT, June 29, 2015
+</BODY>
+</HTML>

@@ -1,0 +1,118 @@
+.TH tiledb_update_csv 1 "27 June 2015" "Version 0.1" "TileDB programs"
+ 
+.SH NAME
+tiledb_update_csv - loads a collection of CSV files into an array,
+which represents updates to the existing data of the array.
+
+.SH SYNOPSIS
+.B tiledb_update_csv 
+.BI "-w " "directory " "-A " "array_name " "-p " "path" 
+[
+.BI "-m " "mode"
+]
+
+.SH DESCRIPTION
+.B tiledb_update_csv
+This is very similar to \fBtiledb_load_csv\fR(1). The difference is that the 
+loaded data create a new fragment in the array, which may be consolidated with
+some or all of the existing ones. The update mechanism is described in 
+detail in \fBtiledb_define_array\fR(1).
+
+The following conventions apply to the \fBSYNOPSIS\fR section:
+
+.TS
+tab (@);
+c lx .
+\fBbold text\fR @ type exactly as shown
+\fIitalic text\fR @ replace with appropriate argument
+.TE
+
+.SH OPTIONS
+.TP
+.BI "-w" " directory" "\fR, " \fB --workspace=\fIdirectory\fR  
+The path to the workspace folder where the TileDB will be stored. The path
+must exist, and the caller must have read and write permissions on it.
+
+.TP
+.BI "-A" " array_name" "\fR, " \fB --array-name=\fIarray_name\fR  
+The name of the array where the data will be loaded. The array
+must be already defined. 
+
+.TP
+
+.BI "-p" " path" "\fR, " \fB --path=\fIpath\fR  
+The path to a CSV file or to a directory of CSV files. If it is
+a file, then this single file will be loaded. If it is a directory,
+\fBall\fR the files in the directory will be loaded.
+
+.TP
+.BI "-m" " mode" "\fR, " \fB --mode=\fImode\fR  
+It can be either \fBsorted\fR or \fBunsorted\fR. This is also optional;
+if it is omitted, the default is \fBunsorted\fR. This indicates whether the
+cells in the CSV file(s) are sorted along the cell order defined in
+the array schema. This choice will have a great effect on performance
+(sorted cells are loaded substantially faster).
+
+.SH EXAMPLES
+.TP
+\fBtiledb_update_csv\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-A \fRmy_array \\
+    \fB-p \fRmy_array.csv
+
+This updates array \fImy_array\fR in workspace folder \fImy_workspace\fR with
+the data stored in the CSV file \fImy_array.bin\fR. It is assumed that the 
+cells are unsorted.
+
+.TP
+\fBtiledb_update_csv\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-A \fRmy_array \\
+    \fB-p \fRmy_csv_files/
+
+This is the same as the first example, but now all the files included in
+directory \fImy_csv_files/\fR will be loaded into the array.
+
+.TP
+\fBtiledb_update_csv\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-A \fRmy_array \\
+    \fB-p \fRmy_csv_files/ \\
+    \fB-m \fRsorted
+
+This is the same as the second example, but now the cells in each file
+(but not necessarily across files) are sorted on the cell order defined
+in the array schema.
+
+.SH EXIT STATUS
+.TP 
+.B 0
+Successful execution
+.TP 
+.B -1
+Parser error
+.TP 
+.B -2
+Undefined array
+.TP 
+.B -3
+File operation failed
+.TP 
+.B -7
+TileDB initialization failed
+.TP 
+.B -8
+TileDB finalization failed
+.TP 
+.B -14
+Failed to open array
+.TP 
+.B -15
+Failed to close array
+
+.SH SEE ALSO
+.BR "tiledb_define_array" "(1), " "tiledb_export_csv" "(1) " \
+"tiledb_generate_synthetic_data" "(1) "
+
+.SH AUTHOR
+Stavros Papadopoulos <http://people.csail.mit.edu/stavrosp>, Copyright (c) 2015

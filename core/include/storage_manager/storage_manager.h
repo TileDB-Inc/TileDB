@@ -37,8 +37,9 @@
 #include "array.h"
 #include "array_schema.h"
 #include "fragment.h"
-#include "tile.h"
 #include "mpi_handler.h"
+#include "tile.h"
+#include "tiledb_error.h"
 #include "utils.h"
 #include <unistd.h>
 #include <vector>
@@ -74,7 +75,13 @@ class StorageManager {
                  size_t segment_size = SEGMENT_SIZE);
   /** When a storage manager object is deleted, it closes all open arrays. */
   ~StorageManager();
- 
+
+  // ACCESSORS
+  /**
+   * Returns the current error code. It is 0 upon success.
+   */
+  int err() const;
+
   // MUTATORS
   /** Changes the default segment size. */
   void set_segment_size(size_t segment_size);
@@ -83,13 +90,13 @@ class StorageManager {
   /** Returns true if the array has been defined. */
   bool array_defined(const std::string& array_name) const;
   /** Deletes all the fragments of an array. The array remains defined. */
-  int clear_array(const std::string& array_name, std::string& err_msg);
+  int clear_array(const std::string& array_name);
   /** Closes an array. */
   void close_array(int ad);
   /** Defines an array (stores its array schema). */
-  int define_array(const ArraySchema* array_schema, std::string& err_msg);
+  int define_array(const ArraySchema* array_schema);
   /** It deletes an array (regardless of whether it is open or not). */
-  int delete_array(const std::string& array_name, std::string& err_msg);
+  int delete_array(const std::string& array_name);
   /** 
    * Forces an array to close. This is done during abnormal execution. 
    * If the array was opened in write or append mode, the last fragment
@@ -101,8 +108,8 @@ class StorageManager {
       int ad, const ArraySchema*& array_schema, std::string& err_msg) const;
   /** Returns the schema of an array. */
   int get_array_schema(
-      const std::string& array_name, ArraySchema*& array_schema,
-      std::string& err_msg) const;
+      const std::string& array_name, 
+      ArraySchema*& array_schema) const;
   /** Prints the version of the storage manager to the standard output. */
   static void get_version();
   /** 
@@ -282,10 +289,12 @@ class StorageManager {
 
  private: 
   // PRIVATE ATTRIBUTES
-  /** Keeps track of the descriptors of the currently open arrays. */
-  OpenArrays open_arrays_;
   /** Stores all the open arrays. */
   Array** arrays_; 
+  /** Error code (0 on success). */
+  int err_;
+  /** Keeps track of the descriptors of the currently open arrays. */
+  OpenArrays open_arrays_;
   /** The MPI communication handler. */
   const MPIHandler* mpi_handler_; 
   /** 

@@ -34,6 +34,7 @@
 #ifndef ARRAY_SCHEMA_H
 #define ARRAY_SCHEMA_H
 
+#include "csv_line.h"
 #include "special_values.h"
 #include <vector>
 #include <set>
@@ -48,7 +49,7 @@
 /** Default value for ArraySchema::consolidation_step_. */
 #define AS_CONSOLIDATION_STEP 1
 /** Name for the extra attribute representing the array coordinates. */
-#define AS_COORDINATE_TILE_NAME "__coords"
+#define AS_COORDINATES_NAME "__coords"
 /** Default value for ArraySchema::tile_order_. */
 #define AS_TILE_ORDER ArraySchema::TO_ROW_MAJOR
 
@@ -191,6 +192,40 @@ class ArraySchema {
   // MUTATORS
   /** It assigns values to the members of the object from the input buffer. */
   void deserialize(const char* buffer, size_t buffer_size);
+  /** 
+   * Creates an array schema (setting its members) from the serialized info
+   * in the input string. Returns 0 on success, and -1 on error.
+   */
+  int deserialize(const std::string& array_schema_str);
+  /** Sets the array name. Returns 0 on success and -1 on error. */
+  int set_array_name(const std::string& array_name);
+  /** Sets the attribute names. Returns 0 on success and -1 on error. */
+  int set_attribute_names(const std::vector<std::string>& attribute_names);
+  /** Sets the capacity. Returns 0 on success and -1 on error. */
+  int set_capacity(int64_t capacity);
+  /** Sets the cell order. Returns 0 on success and -1 on error. */
+  int set_cell_order(CellOrder cell_order);
+  /** Sets the compression. Returns 0 on success and -1 on error. */
+  int set_compression(const std::vector<CompressionType>& compression);
+  /** Sets the consolidation steo. Returns 0 on success and -1 on error. */
+  int set_consolidation_step(int consolidation_step);
+  /** Sets the dimension domains. Returns 0 on success and -1 on error. */
+  int set_dim_domains(
+      const std::vector<std::pair<double, double> >& dim_domains);
+  /** Sets the dimension names. Returns 0 on success and -1 on error. */
+  int set_dim_names(const std::vector<std::string>& dim_names);
+  /** Sets the tile extents. Returns 0 on success and -1 on error. */
+  int set_tile_extents(const std::vector<double>& tile_extents);
+  /** Sets the tile order. Returns 0 on success and -1 on error. */
+  int set_tile_order(TileOrder tile_order);
+  /** Sets the types. Returns 0 on success and -1 on error. */
+  int set_types(const std::vector<const std::type_info*>& types);
+  /** 
+   * Sets the number of values per attribute. 
+   * Returns 0 on success and -1 on error. 
+   */
+  int set_val_num(const std::vector<int>& val_num);
+
 	
   // MISC
   /** 
@@ -235,6 +270,8 @@ class ArraySchema {
       const ArraySchema& array_schema_A, 
       const ArraySchema& array_schema_B,
       const std::string& result_array_name);
+  /** Converts a cell from a CSV line format to a binary cell format. */
+  void csv_line_to_cell(CSVLine& csv_line, void*& cell) const;
   /** 
    * Returns a pair of vectors of attribute ids. The first contains the 
    * attribute ids corresponding to the input names. The second includes the 
@@ -407,6 +444,19 @@ class ArraySchema {
   std::vector<int> val_num_;
 
   // PRIVATE METHODS
+  /** Appends the attribute values from a CSV line to a cell. */
+  void append_attributes(CSVLine& csv_line, void* cell, size_t& offset) const;
+  /** Appends an attribute value from a CSV line to a cell. */
+  template<class T>
+  void append_attribute(
+      CSVLine& csv_line, int val_num, void* cell, size_t& offset) const;
+  /** Appends coordinates from a CSV line to a cell. */
+  void append_coordinates(CSVLine& csv_line, void* cell) const;
+  /** Appends coordinates from a CSV line to a cell. */
+  template<class T>
+  void append_coordinates(CSVLine& csv_line, void* cell) const;
+  /** Calculates the binary size of a CSV line. */
+  ssize_t calculate_cell_size(CSVLine& csv_line) const;
   /** Performs appropriate checks upon a tile id request. */
   template<typename T>
   bool check_on_tile_id_request(const T* coordinates) const;

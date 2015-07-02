@@ -1,0 +1,241 @@
+\hypertarget{classTile_1_1const__cell__iterator}{}\section{Tile\+:\+:const\+\_\+cell\+\_\+iterator Class Reference}
+\label{classTile_1_1const__cell__iterator}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+
+
+{\ttfamily \#include $<$tile.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classTile_1_1const__cell__iterator_ae9dd39bf179a77a9c03e33d7c674a3ca}{const\+\_\+cell\+\_\+iterator} ()
+\item 
+\hyperlink{classTile_1_1const__cell__iterator_a6f097166099c169153797ad92502602a}{const\+\_\+cell\+\_\+iterator} (const \hyperlink{classTile}{Tile} $\ast$\hyperlink{classTile_1_1const__cell__iterator_ab1d2bed3a3d0ddea0bb992a13e36bd19}{tile}, int64\+\_\+t \hyperlink{classTile_1_1const__cell__iterator_abbe541375b84ec14720c5e4b5fde34d0}{pos})
+\item 
+int64\+\_\+t \hyperlink{classTile_1_1const__cell__iterator_a2504e5f7879cd324d1b7eb21cee2c644}{cell\+\_\+num} () const 
+\item 
+size\+\_\+t \hyperlink{classTile_1_1const__cell__iterator_affa7e84a0e22199819fde53b2d3e45ed}{cell\+\_\+size} () const 
+\item 
+const std\+::type\+\_\+info $\ast$ \hyperlink{classTile_1_1const__cell__iterator_ad8d4b3f1ba489dffccc0c8f0052ec0ea}{cell\+\_\+type} () const 
+\item 
+int \hyperlink{classTile_1_1const__cell__iterator_a00a7a8915d31c493bb8a57a63ca1783d}{dim\+\_\+num} () const 
+\item 
+bool \hyperlink{classTile_1_1const__cell__iterator_a03ff84b5132ecdce417735d94063fcef}{end} () const 
+\item 
+int64\+\_\+t \hyperlink{classTile_1_1const__cell__iterator_abbe541375b84ec14720c5e4b5fde34d0}{pos} () const 
+\item 
+const \hyperlink{classTile}{Tile} $\ast$ \hyperlink{classTile_1_1const__cell__iterator_ab1d2bed3a3d0ddea0bb992a13e36bd19}{tile} () const 
+\item 
+int64\+\_\+t \hyperlink{classTile_1_1const__cell__iterator_adea9e3bb6d4629ccaafa7874687886d0}{tile\+\_\+id} () const 
+\item 
+bool \hyperlink{classTile_1_1const__cell__iterator_adead9b9ee2e87ce369d59ef0a238c579}{is\+\_\+del} () const 
+\item 
+bool \hyperlink{classTile_1_1const__cell__iterator_a5d4a12970dda025982daadda14b68d84}{is\+\_\+null} () const 
+\item 
+void \hyperlink{classTile_1_1const__cell__iterator_a6122d4937aec3b410b8266db67510092}{operator=} (const \hyperlink{classTile_1_1const__cell__iterator}{const\+\_\+cell\+\_\+iterator} \&rhs)
+\item 
+\hyperlink{classTile_1_1const__cell__iterator}{const\+\_\+cell\+\_\+iterator} \hyperlink{classTile_1_1const__cell__iterator_a79be7ade4f88950b0b1aaf93cb59614f}{operator+} (int64\+\_\+t step)
+\item 
+void \hyperlink{classTile_1_1const__cell__iterator_ab03e17f292568094c0200b0f602140e6}{operator+=} (int64\+\_\+t step)
+\item 
+\hyperlink{classTile_1_1const__cell__iterator}{const\+\_\+cell\+\_\+iterator} \hyperlink{classTile_1_1const__cell__iterator_a1a1c4596322fd4edbeb8fd52e97238a9}{operator++} ()
+\item 
+\hyperlink{classTile_1_1const__cell__iterator}{const\+\_\+cell\+\_\+iterator} \hyperlink{classTile_1_1const__cell__iterator_a7ce5ef1362668d794776c25f70cb9fb2}{operator++} (int junk)
+\item 
+bool \hyperlink{classTile_1_1const__cell__iterator_a36fe2da14617c82b8b746b12a5d67ba7}{operator==} (const \hyperlink{classTile_1_1const__cell__iterator}{const\+\_\+cell\+\_\+iterator} \&rhs) const 
+\item 
+bool \hyperlink{classTile_1_1const__cell__iterator_aa6e3d465717dd4136af9ed7627539715}{operator!=} (const \hyperlink{classTile_1_1const__cell__iterator}{const\+\_\+cell\+\_\+iterator} \&rhs) const 
+\item 
+const void $\ast$ \hyperlink{classTile_1_1const__cell__iterator_a51cfd339a7f157a3b4b913e8f2120a87}{operator$\ast$} () const 
+\item 
+{\footnotesize template$<$class T $>$ }\\bool \hyperlink{classTile_1_1const__cell__iterator_ac293f63b9c0aeec9b737695de55bc397}{cell\+\_\+inside\+\_\+range} (const T $\ast$range) const 
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+const void $\ast$ \hyperlink{classTile_1_1const__cell__iterator_aa85fe5a4880ed7df5b7b3bf1d988f7c2}{cell\+\_\+}
+\item 
+bool \hyperlink{classTile_1_1const__cell__iterator_a552f82cd9463ee10ce7ee6dfc25dea18}{end\+\_\+}
+\item 
+int64\+\_\+t \hyperlink{classTile_1_1const__cell__iterator_ad0f50c4bfcf45a0a4d02e593d8f3f17d}{pos\+\_\+}
+\item 
+const \hyperlink{classTile}{Tile} $\ast$ \hyperlink{classTile_1_1const__cell__iterator_a31003989c807143306371faee80b98f4}{tile\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This class implements a constant cell iterator. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classTile_1_1const__cell__iterator_ae9dd39bf179a77a9c03e33d7c674a3ca}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!const\+\_\+cell\+\_\+iterator@{const\+\_\+cell\+\_\+iterator}}
+\index{const\+\_\+cell\+\_\+iterator@{const\+\_\+cell\+\_\+iterator}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{const\+\_\+cell\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}Tile\+::const\+\_\+cell\+\_\+iterator\+::const\+\_\+cell\+\_\+iterator (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classTile_1_1const__cell__iterator_ae9dd39bf179a77a9c03e33d7c674a3ca}
+Empty iterator constuctor. \hypertarget{classTile_1_1const__cell__iterator_a6f097166099c169153797ad92502602a}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!const\+\_\+cell\+\_\+iterator@{const\+\_\+cell\+\_\+iterator}}
+\index{const\+\_\+cell\+\_\+iterator@{const\+\_\+cell\+\_\+iterator}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{const\+\_\+cell\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}Tile\+::const\+\_\+cell\+\_\+iterator\+::const\+\_\+cell\+\_\+iterator (
+\begin{DoxyParamCaption}
+\item[{const {\bf Tile} $\ast$}]{tile, }
+\item[{int64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+)}\label{classTile_1_1const__cell__iterator_a6f097166099c169153797ad92502602a}
+Constuctor that takes as input the tile for which the iterator is created, and a cell position in the tile payload. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classTile_1_1const__cell__iterator_ac293f63b9c0aeec9b737695de55bc397}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!cell\+\_\+inside\+\_\+range@{cell\+\_\+inside\+\_\+range}}
+\index{cell\+\_\+inside\+\_\+range@{cell\+\_\+inside\+\_\+range}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{cell\+\_\+inside\+\_\+range}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ bool Tile\+::const\+\_\+cell\+\_\+iterator\+::cell\+\_\+inside\+\_\+range (
+\begin{DoxyParamCaption}
+\item[{const T $\ast$}]{range}
+\end{DoxyParamCaption}
+) const}\label{classTile_1_1const__cell__iterator_ac293f63b9c0aeec9b737695de55bc397}
+Returns true if the coordinates pointed by the iterator fall inside the input range. It applies only to coordinate tiles. The range is in the form (dim\#1\+\_\+lower, dim\#1\+\_\+upper, ...).
+
+Make sure that type T is the same as the cell type. Otherwise, in debug mode an assert is triggered, whereas in release mode the behavior is unpredictable. \hypertarget{classTile_1_1const__cell__iterator_a2504e5f7879cd324d1b7eb21cee2c644}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!cell\+\_\+num@{cell\+\_\+num}}
+\index{cell\+\_\+num@{cell\+\_\+num}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{cell\+\_\+num}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Tile\+::const\+\_\+cell\+\_\+iterator\+::cell\+\_\+num (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classTile_1_1const__cell__iterator_a2504e5f7879cd324d1b7eb21cee2c644}
+Returns the number of cells in the tile. \hypertarget{classTile_1_1const__cell__iterator_affa7e84a0e22199819fde53b2d3e45ed}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!cell\+\_\+size@{cell\+\_\+size}}
+\index{cell\+\_\+size@{cell\+\_\+size}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{cell\+\_\+size}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t Tile\+::const\+\_\+cell\+\_\+iterator\+::cell\+\_\+size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classTile_1_1const__cell__iterator_affa7e84a0e22199819fde53b2d3e45ed}
+Returns the (potentially variable) size of the current cell. \hypertarget{classTile_1_1const__cell__iterator_ad8d4b3f1ba489dffccc0c8f0052ec0ea}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!cell\+\_\+type@{cell\+\_\+type}}
+\index{cell\+\_\+type@{cell\+\_\+type}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{cell\+\_\+type}]{\setlength{\rightskip}{0pt plus 5cm}const std\+::type\+\_\+info$\ast$ Tile\+::const\+\_\+cell\+\_\+iterator\+::cell\+\_\+type (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classTile_1_1const__cell__iterator_ad8d4b3f1ba489dffccc0c8f0052ec0ea}
+Returns the cell type of the tile. \hypertarget{classTile_1_1const__cell__iterator_a00a7a8915d31c493bb8a57a63ca1783d}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!dim\+\_\+num@{dim\+\_\+num}}
+\index{dim\+\_\+num@{dim\+\_\+num}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{dim\+\_\+num}]{\setlength{\rightskip}{0pt plus 5cm}int Tile\+::const\+\_\+cell\+\_\+iterator\+::dim\+\_\+num (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classTile_1_1const__cell__iterator_a00a7a8915d31c493bb8a57a63ca1783d}
+Returns the number of dimensions of the tile. \hypertarget{classTile_1_1const__cell__iterator_a03ff84b5132ecdce417735d94063fcef}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!end@{end}}
+\index{end@{end}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{end}]{\setlength{\rightskip}{0pt plus 5cm}bool Tile\+::const\+\_\+cell\+\_\+iterator\+::end (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classTile_1_1const__cell__iterator_a03ff84b5132ecdce417735d94063fcef}
+Returns true if the end of the iterator is reached. \hypertarget{classTile_1_1const__cell__iterator_adead9b9ee2e87ce369d59ef0a238c579}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!is\+\_\+del@{is\+\_\+del}}
+\index{is\+\_\+del@{is\+\_\+del}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{is\+\_\+del}]{\setlength{\rightskip}{0pt plus 5cm}bool Tile\+::const\+\_\+cell\+\_\+iterator\+::is\+\_\+del (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classTile_1_1const__cell__iterator_adead9b9ee2e87ce369d59ef0a238c579}
+True if the iterator points to a cell representing a deletion. \hypertarget{classTile_1_1const__cell__iterator_a5d4a12970dda025982daadda14b68d84}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!is\+\_\+null@{is\+\_\+null}}
+\index{is\+\_\+null@{is\+\_\+null}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{is\+\_\+null}]{\setlength{\rightskip}{0pt plus 5cm}bool Tile\+::const\+\_\+cell\+\_\+iterator\+::is\+\_\+null (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classTile_1_1const__cell__iterator_a5d4a12970dda025982daadda14b68d84}
+True if the iterator points to a N\+U\+L\+L cell. \hypertarget{classTile_1_1const__cell__iterator_aa6e3d465717dd4136af9ed7627539715}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!operator"!=@{operator"!=}}
+\index{operator"!=@{operator"!=}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{operator"!=}]{\setlength{\rightskip}{0pt plus 5cm}bool Tile\+::const\+\_\+cell\+\_\+iterator\+::operator!= (
+\begin{DoxyParamCaption}
+\item[{const {\bf const\+\_\+cell\+\_\+iterator} \&}]{rhs}
+\end{DoxyParamCaption}
+) const}\label{classTile_1_1const__cell__iterator_aa6e3d465717dd4136af9ed7627539715}
+Returns true if either the operands belong to different tiles, or the they point to different cells. \hypertarget{classTile_1_1const__cell__iterator_a51cfd339a7f157a3b4b913e8f2120a87}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!operator$\ast$@{operator$\ast$}}
+\index{operator$\ast$@{operator$\ast$}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{operator$\ast$}]{\setlength{\rightskip}{0pt plus 5cm}const void$\ast$ Tile\+::const\+\_\+cell\+\_\+iterator\+::operator$\ast$ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classTile_1_1const__cell__iterator_a51cfd339a7f157a3b4b913e8f2120a87}
+Returns the pointer in the tile payload of the cell it points to. \hypertarget{classTile_1_1const__cell__iterator_a79be7ade4f88950b0b1aaf93cb59614f}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!operator+@{operator+}}
+\index{operator+@{operator+}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{operator+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf const\+\_\+cell\+\_\+iterator} Tile\+::const\+\_\+cell\+\_\+iterator\+::operator+ (
+\begin{DoxyParamCaption}
+\item[{int64\+\_\+t}]{step}
+\end{DoxyParamCaption}
+)}\label{classTile_1_1const__cell__iterator_a79be7ade4f88950b0b1aaf93cb59614f}
+Addition operator. \hypertarget{classTile_1_1const__cell__iterator_a1a1c4596322fd4edbeb8fd52e97238a9}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!operator++@{operator++}}
+\index{operator++@{operator++}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{operator++}]{\setlength{\rightskip}{0pt plus 5cm}{\bf const\+\_\+cell\+\_\+iterator} Tile\+::const\+\_\+cell\+\_\+iterator\+::operator++ (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classTile_1_1const__cell__iterator_a1a1c4596322fd4edbeb8fd52e97238a9}
+Pre-\/increment operator. \hypertarget{classTile_1_1const__cell__iterator_a7ce5ef1362668d794776c25f70cb9fb2}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!operator++@{operator++}}
+\index{operator++@{operator++}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{operator++}]{\setlength{\rightskip}{0pt plus 5cm}{\bf const\+\_\+cell\+\_\+iterator} Tile\+::const\+\_\+cell\+\_\+iterator\+::operator++ (
+\begin{DoxyParamCaption}
+\item[{int}]{junk}
+\end{DoxyParamCaption}
+)}\label{classTile_1_1const__cell__iterator_a7ce5ef1362668d794776c25f70cb9fb2}
+Post-\/increment operator. \hypertarget{classTile_1_1const__cell__iterator_ab03e17f292568094c0200b0f602140e6}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!operator+=@{operator+=}}
+\index{operator+=@{operator+=}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{operator+=}]{\setlength{\rightskip}{0pt plus 5cm}void Tile\+::const\+\_\+cell\+\_\+iterator\+::operator+= (
+\begin{DoxyParamCaption}
+\item[{int64\+\_\+t}]{step}
+\end{DoxyParamCaption}
+)}\label{classTile_1_1const__cell__iterator_ab03e17f292568094c0200b0f602140e6}
+Addition-\/assignment operator. \hypertarget{classTile_1_1const__cell__iterator_a6122d4937aec3b410b8266db67510092}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!operator=@{operator=}}
+\index{operator=@{operator=}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{operator=}]{\setlength{\rightskip}{0pt plus 5cm}void Tile\+::const\+\_\+cell\+\_\+iterator\+::operator= (
+\begin{DoxyParamCaption}
+\item[{const {\bf const\+\_\+cell\+\_\+iterator} \&}]{rhs}
+\end{DoxyParamCaption}
+)}\label{classTile_1_1const__cell__iterator_a6122d4937aec3b410b8266db67510092}
+Assignment operator. \hypertarget{classTile_1_1const__cell__iterator_a36fe2da14617c82b8b746b12a5d67ba7}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!operator==@{operator==}}
+\index{operator==@{operator==}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{operator==}]{\setlength{\rightskip}{0pt plus 5cm}bool Tile\+::const\+\_\+cell\+\_\+iterator\+::operator== (
+\begin{DoxyParamCaption}
+\item[{const {\bf const\+\_\+cell\+\_\+iterator} \&}]{rhs}
+\end{DoxyParamCaption}
+) const}\label{classTile_1_1const__cell__iterator_a36fe2da14617c82b8b746b12a5d67ba7}
+Returns true if the operands belong to the same tile and they point to the same cell. \hypertarget{classTile_1_1const__cell__iterator_abbe541375b84ec14720c5e4b5fde34d0}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!pos@{pos}}
+\index{pos@{pos}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{pos}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Tile\+::const\+\_\+cell\+\_\+iterator\+::pos (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classTile_1_1const__cell__iterator_abbe541375b84ec14720c5e4b5fde34d0}
+Returns the current payload position of the cell iterator. \hypertarget{classTile_1_1const__cell__iterator_ab1d2bed3a3d0ddea0bb992a13e36bd19}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!tile@{tile}}
+\index{tile@{tile}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{tile}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Tile}$\ast$ Tile\+::const\+\_\+cell\+\_\+iterator\+::tile (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classTile_1_1const__cell__iterator_ab1d2bed3a3d0ddea0bb992a13e36bd19}
+Returns the tile the cell iterator belongs to. \hypertarget{classTile_1_1const__cell__iterator_adea9e3bb6d4629ccaafa7874687886d0}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!tile\+\_\+id@{tile\+\_\+id}}
+\index{tile\+\_\+id@{tile\+\_\+id}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{tile\+\_\+id}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Tile\+::const\+\_\+cell\+\_\+iterator\+::tile\+\_\+id (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classTile_1_1const__cell__iterator_adea9e3bb6d4629ccaafa7874687886d0}
+Returns the tile the cell iterator belongs to. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classTile_1_1const__cell__iterator_aa85fe5a4880ed7df5b7b3bf1d988f7c2}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!cell\+\_\+@{cell\+\_\+}}
+\index{cell\+\_\+@{cell\+\_\+}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{cell\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const void$\ast$ Tile\+::const\+\_\+cell\+\_\+iterator\+::cell\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classTile_1_1const__cell__iterator_aa85fe5a4880ed7df5b7b3bf1d988f7c2}
+The current cell. \hypertarget{classTile_1_1const__cell__iterator_a552f82cd9463ee10ce7ee6dfc25dea18}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!end\+\_\+@{end\+\_\+}}
+\index{end\+\_\+@{end\+\_\+}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{end\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}bool Tile\+::const\+\_\+cell\+\_\+iterator\+::end\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classTile_1_1const__cell__iterator_a552f82cd9463ee10ce7ee6dfc25dea18}
+True if the end of the iterator is reached. \hypertarget{classTile_1_1const__cell__iterator_ad0f50c4bfcf45a0a4d02e593d8f3f17d}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!pos\+\_\+@{pos\+\_\+}}
+\index{pos\+\_\+@{pos\+\_\+}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{pos\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Tile\+::const\+\_\+cell\+\_\+iterator\+::pos\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classTile_1_1const__cell__iterator_ad0f50c4bfcf45a0a4d02e593d8f3f17d}
+The position of the cell in the tile payload the iterator currently is pointing to. \hypertarget{classTile_1_1const__cell__iterator_a31003989c807143306371faee80b98f4}{}\index{Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}!tile\+\_\+@{tile\+\_\+}}
+\index{tile\+\_\+@{tile\+\_\+}!Tile\+::const\+\_\+cell\+\_\+iterator@{Tile\+::const\+\_\+cell\+\_\+iterator}}
+\subsubsection[{tile\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Tile}$\ast$ Tile\+::const\+\_\+cell\+\_\+iterator\+::tile\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classTile_1_1const__cell__iterator_a31003989c807143306371faee80b98f4}
+The tile object the iterator is created for. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/\hyperlink{tile_8h}{tile.\+h}\end{DoxyCompactItemize}

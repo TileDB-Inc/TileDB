@@ -1,0 +1,446 @@
+\hypertarget{classAttributeTile}{}\section{Attribute\+Tile$<$ T $>$ Class Template Reference}
+\label{classAttributeTile}\index{Attribute\+Tile$<$ T $>$@{Attribute\+Tile$<$ T $>$}}
+
+
+{\ttfamily \#include $<$old\+\_\+tile.\+h$>$}
+
+Inheritance diagram for Attribute\+Tile$<$ T $>$\+:\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2.000000cm]{classAttributeTile}
+\end{center}
+\end{figure}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classAttributeTile_a425f62f25b9464947c9806b5a130141a}{Attribute\+Tile} (uint64\+\_\+t \hyperlink{classTile_a71625eedc3af0cb961f2ab213384f791}{tile\+\_\+id})
+\item 
+\hyperlink{classAttributeTile_ad4a38b5826b495d3311e0dbca49b320e}{Attribute\+Tile} (uint64\+\_\+t \hyperlink{classTile_a71625eedc3af0cb961f2ab213384f791}{tile\+\_\+id}, uint64\+\_\+t capacity)
+\item 
+\hyperlink{classAttributeTile_aaac964cdbaa2cec107d6075419b86b83}{$\sim$\+Attribute\+Tile} ()
+\item 
+const T \& \hyperlink{classAttributeTile_a2b16189b318803219632bf4c23108d15}{cell} (uint64\+\_\+t i) const 
+\item 
+virtual void \hyperlink{classAttributeTile_a3efe457b7a8a7b3e037505f2ff727a16}{copy\+\_\+payload} (char $\ast$buffer) const 
+\item 
+virtual void \hyperlink{classAttributeTile_a93c023cc09e3f353055d1f5f0ebab9b6}{set\+\_\+mbr} (const std\+::vector$<$ double $>$ \&\hyperlink{classAttributeTile_ad02895381110d7c6c00e0149a1d96def}{mbr})
+\item 
+virtual void \hyperlink{classAttributeTile_a73b92c2721036091cf5cd6108050c64f}{set\+\_\+payload} (const char $\ast$payload, uint64\+\_\+t payload\+\_\+size)
+\item 
+{\footnotesize template$<$typename T2 $>$ }\\void \hyperlink{classAttributeTile_ab4acca838cb30b4429b5f17084704c38}{operator$<$$<$} (const T2 \&value)
+\item 
+virtual void \hyperlink{classAttributeTile_ae83002fe94e140d82b73c8fc8894dbef}{append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line} (uint64\+\_\+t pos, \hyperlink{classCSVLine}{C\+S\+V\+Line} \&csv\+\_\+line) const 
+\item 
+virtual bool \hyperlink{classAttributeTile_acfb6d96b024ee9b7c52b912b189834a3}{cell\+\_\+inside\+\_\+range} (uint64\+\_\+t pos, const \hyperlink{classTile_afc4e8e753d24e2b07f4675bcd9c1dcca}{Range} \&range) const 
+\item 
+virtual void \hyperlink{classAttributeTile_a2b7207f7204fcf8c274cb2eaaf1e6cc0}{print} () const 
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+virtual void \hyperlink{classAttributeTile_a6db83cba74bd09b9e0074b1fb62f0e26}{append\+\_\+cell} (const char \&value)
+\item 
+virtual void \hyperlink{classAttributeTile_a2c25b5f630a7cd3530e37aa5fca36122}{append\+\_\+cell} (const int \&value)
+\item 
+virtual void \hyperlink{classAttributeTile_a8b00219cc1216ea7e9c8a79167da77f5}{append\+\_\+cell} (const int64\+\_\+t \&value)
+\item 
+virtual void \hyperlink{classAttributeTile_a53e9b89b9874b5dfba39470dcfe239ac}{append\+\_\+cell} (const float \&value)
+\item 
+virtual void \hyperlink{classAttributeTile_ae0c3ae668e6175194cb20e52b811a75b}{append\+\_\+cell} (const double \&value)
+\item 
+virtual void \hyperlink{classAttributeTile_a119121baacac02c8cadc32fd26166ca2}{append\+\_\+cell} (const std\+::vector$<$ int $>$ \&coordinates)
+\item 
+virtual void \hyperlink{classAttributeTile_a696631dbaff92373ef0a35531e3177ec}{append\+\_\+cell} (const std\+::vector$<$ int64\+\_\+t $>$ \&coordinates)
+\item 
+virtual void \hyperlink{classAttributeTile_a9b8ca1d8d5a7bbc257a7a94efbb55dd9}{append\+\_\+cell} (const std\+::vector$<$ float $>$ \&coordinates)
+\item 
+virtual void \hyperlink{classAttributeTile_a5275877be1c67045529e64b84d4c92aa}{append\+\_\+cell} (const std\+::vector$<$ double $>$ \&coordinates)
+\item 
+virtual std\+::pair$<$ std\+::vector$<$ double $>$, std\+::vector$<$ double $>$ $>$ \hyperlink{classAttributeTile_a38f90eb7f90bc879783b8f16250518d8}{bounding\+\_\+coordinates} () const 
+\item 
+virtual char \hyperlink{classAttributeTile_ab97b0b330390fcaf624e9bd5b58f87a1}{cell\+\_\+char} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual int \hyperlink{classAttributeTile_a832d9ea2abc9b55cce292bf62c579190}{cell\+\_\+int} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual int64\+\_\+t \hyperlink{classAttributeTile_a33c3b6f461c5ab1ea67feb171a6097ff}{cell\+\_\+int64\+\_\+t} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual float \hyperlink{classAttributeTile_adfd423304a4a0b66976e32fc186d3d7b}{cell\+\_\+float} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual double \hyperlink{classAttributeTile_a131c4ab963db1e1e54fb723f38b96f40}{cell\+\_\+double} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual std\+::vector$<$ int $>$ \hyperlink{classAttributeTile_ad2fe04a74b4b89d57d94e7617f6de1f3}{cell\+\_\+v\+\_\+int} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual std\+::vector$<$ int64\+\_\+t $>$ \hyperlink{classAttributeTile_a19137fc5d96c7c0e909cdae58510ab57}{cell\+\_\+v\+\_\+int64\+\_\+t} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual std\+::vector$<$ float $>$ \hyperlink{classAttributeTile_a138fbef34ebd6ac21da27a283d41a67b}{cell\+\_\+v\+\_\+float} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual std\+::vector$<$ double $>$ \hyperlink{classAttributeTile_a7371aee0a0d75abc0623a10a646848f6}{cell\+\_\+v\+\_\+double} (uint64\+\_\+t pos\+\_\+) const 
+\item 
+virtual unsigned int \hyperlink{classAttributeTile_a1289416abc85465ff07c6454598d37ba}{dim\+\_\+num} () const 
+\item 
+virtual std\+::vector$<$ double $>$ \& \hyperlink{classAttributeTile_ad02895381110d7c6c00e0149a1d96def}{mbr} () const 
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std\+::vector$<$ T $>$ \hyperlink{classAttributeTile_a1fc1096adebca025565e774a89937736}{payload\+\_\+}
+\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$class T$>$class Attribute\+Tile$<$ T $>$}
+
+This class defines an attribute tile. Attribute tiles consist of a collection of cells of template type T, which are stored in vector \hyperlink{classAttributeTile_a1fc1096adebca025565e774a89937736}{Attribute\+Tile\+::payload\+\_\+}. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classAttributeTile_a425f62f25b9464947c9806b5a130141a}{}\index{Attribute\+Tile@{Attribute\+Tile}!Attribute\+Tile@{Attribute\+Tile}}
+\index{Attribute\+Tile@{Attribute\+Tile}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{Attribute\+Tile}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Attribute\+Tile}$<$ T $>$\+::{\bf Attribute\+Tile} (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{tile\+\_\+id}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [explicit]}}\label{classAttributeTile_a425f62f25b9464947c9806b5a130141a}
+Simple constructor that takes the tile id as an input. \hypertarget{classAttributeTile_ad4a38b5826b495d3311e0dbca49b320e}{}\index{Attribute\+Tile@{Attribute\+Tile}!Attribute\+Tile@{Attribute\+Tile}}
+\index{Attribute\+Tile@{Attribute\+Tile}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{Attribute\+Tile}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Attribute\+Tile}$<$ T $>$\+::{\bf Attribute\+Tile} (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{tile\+\_\+id, }
+\item[{uint64\+\_\+t}]{capacity}
+\end{DoxyParamCaption}
+)}\label{classAttributeTile_ad4a38b5826b495d3311e0dbca49b320e}
+Constructor that takes as input the tile id and tile capacity. The tile capacity is the number of cells expected to reside in the tile. It does not put any constraints on the number of cells allowed in the tile. It is only used to reserve space upon initialization for \hyperlink{classAttributeTile_a1fc1096adebca025565e774a89937736}{Attribute\+Tile\+::payload\+\_\+}. It prevents unnecessary expansions of \hyperlink{classAttributeTile_a1fc1096adebca025565e774a89937736}{Attribute\+Tile\+::payload\+\_\+} when new cells are appended to it. \hypertarget{classAttributeTile_aaac964cdbaa2cec107d6075419b86b83}{}\index{Attribute\+Tile@{Attribute\+Tile}!````~Attribute\+Tile@{$\sim$\+Attribute\+Tile}}
+\index{````~Attribute\+Tile@{$\sim$\+Attribute\+Tile}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{$\sim$\+Attribute\+Tile}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ {\bf Attribute\+Tile}$<$ T $>$\+::$\sim${\bf Attribute\+Tile} (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classAttributeTile_aaac964cdbaa2cec107d6075419b86b83}
+Empty destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classAttributeTile_a6db83cba74bd09b9e0074b1fb62f0e26}{}\index{Attribute\+Tile@{Attribute\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const char \&}]{value}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a6db83cba74bd09b9e0074b1fb62f0e26}
+Template-\/based dispatch of \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to virtual function dispatch. This allows \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to essentially call \hyperlink{classAttributeTile_ab4acca838cb30b4429b5f17084704c38}{Attribute\+Tile\+::operator$<$$<$} when Tile$\ast$ points to an \hyperlink{classAttributeTile}{Attribute\+Tile}. 
+
+Implements \hyperlink{classTile_a92944c74e0e3e3217285742121b687c6}{Tile}.
+
+\hypertarget{classAttributeTile_a2c25b5f630a7cd3530e37aa5fca36122}{}\index{Attribute\+Tile@{Attribute\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const int \&}]{value}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a2c25b5f630a7cd3530e37aa5fca36122}
+Template-\/based dispatch of \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to virtual function dispatch. This allows \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to essentially call \hyperlink{classAttributeTile_ab4acca838cb30b4429b5f17084704c38}{Attribute\+Tile\+::operator$<$$<$} when Tile$\ast$ points to an \hyperlink{classAttributeTile}{Attribute\+Tile}. 
+
+Implements \hyperlink{classTile_a63627f75ebeb2d463d07cf24837a27ea}{Tile}.
+
+\hypertarget{classAttributeTile_a8b00219cc1216ea7e9c8a79167da77f5}{}\index{Attribute\+Tile@{Attribute\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const int64\+\_\+t \&}]{value}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a8b00219cc1216ea7e9c8a79167da77f5}
+Template-\/based dispatch of \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to virtual function dispatch. This allows \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to essentially call \hyperlink{classAttributeTile_ab4acca838cb30b4429b5f17084704c38}{Attribute\+Tile\+::operator$<$$<$} when Tile$\ast$ points to an \hyperlink{classAttributeTile}{Attribute\+Tile}. 
+
+Implements \hyperlink{classTile_a0da7b465fc18e9b59767c5a99703b5fc}{Tile}.
+
+\hypertarget{classAttributeTile_a53e9b89b9874b5dfba39470dcfe239ac}{}\index{Attribute\+Tile@{Attribute\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const float \&}]{value}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a53e9b89b9874b5dfba39470dcfe239ac}
+Template-\/based dispatch of \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to virtual function dispatch. This allows \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to essentially call \hyperlink{classAttributeTile_ab4acca838cb30b4429b5f17084704c38}{Attribute\+Tile\+::operator$<$$<$} when Tile$\ast$ points to an \hyperlink{classAttributeTile}{Attribute\+Tile}. 
+
+Implements \hyperlink{classTile_abe10d4338e2066f3d355a8177e7efd68}{Tile}.
+
+\hypertarget{classAttributeTile_ae0c3ae668e6175194cb20e52b811a75b}{}\index{Attribute\+Tile@{Attribute\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const double \&}]{value}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_ae0c3ae668e6175194cb20e52b811a75b}
+Template-\/based dispatch of \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to virtual function dispatch. This allows \hyperlink{classTile_a29e0be344a4fceff5531871eea93091b}{Tile\+::operator$<$$<$} to essentially call \hyperlink{classAttributeTile_ab4acca838cb30b4429b5f17084704c38}{Attribute\+Tile\+::operator$<$$<$} when Tile$\ast$ points to an \hyperlink{classAttributeTile}{Attribute\+Tile}. 
+
+Implements \hyperlink{classTile_a1b390a98b6d94a6c111d44cefa2fccf1}{Tile}.
+
+\hypertarget{classAttributeTile_a119121baacac02c8cadc32fd26166ca2}{}\index{Attribute\+Tile@{Attribute\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ int $>$ \&}]{coordinates}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a119121baacac02c8cadc32fd26166ca2}
+Inapplicable to attribute tiles. Attribute tiles do not have vector cells. 
+
+Implements \hyperlink{classTile_ace56b78baf4c0979641dbbc7dd0ca68e}{Tile}.
+
+\hypertarget{classAttributeTile_a696631dbaff92373ef0a35531e3177ec}{}\index{Attribute\+Tile@{Attribute\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ int64\+\_\+t $>$ \&}]{coordinates}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a696631dbaff92373ef0a35531e3177ec}
+Inapplicable to attribute tiles. Attribute tiles do not have vector cells. 
+
+Implements \hyperlink{classTile_a7505a9827ea8715a8d935af62719dddc}{Tile}.
+
+\hypertarget{classAttributeTile_a9b8ca1d8d5a7bbc257a7a94efbb55dd9}{}\index{Attribute\+Tile@{Attribute\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ float $>$ \&}]{coordinates}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a9b8ca1d8d5a7bbc257a7a94efbb55dd9}
+Inapplicable to attribute tiles. Attribute tiles do not have vector cells. 
+
+Implements \hyperlink{classTile_a86202cbb97a7d4dc0bcd18fea2a6ee83}{Tile}.
+
+\hypertarget{classAttributeTile_a5275877be1c67045529e64b84d4c92aa}{}\index{Attribute\+Tile@{Attribute\+Tile}!append\+\_\+cell@{append\+\_\+cell}}
+\index{append\+\_\+cell@{append\+\_\+cell}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{append\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::append\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ double $>$ \&}]{coordinates}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a5275877be1c67045529e64b84d4c92aa}
+Inapplicable to attribute tiles. Attribute tiles do not have vector cells. 
+
+Implements \hyperlink{classTile_a604b6cb42f9b74cf9e30a1d377a597da}{Tile}.
+
+\hypertarget{classAttributeTile_ae83002fe94e140d82b73c8fc8894dbef}{}\index{Attribute\+Tile@{Attribute\+Tile}!append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line@{append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line}}
+\index{append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line@{append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::append\+\_\+cell\+\_\+to\+\_\+csv\+\_\+line (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos, }
+\item[{{\bf C\+S\+V\+Line} \&}]{csv\+\_\+line}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [virtual]}}\label{classAttributeTile_ae83002fe94e140d82b73c8fc8894dbef}
+Appends the pos-\/th attribute value to the input C\+S\+V line. 
+
+Implements \hyperlink{classTile_a862e1258bb8ce218572a41904de498be}{Tile}.
+
+\hypertarget{classAttributeTile_a38f90eb7f90bc879783b8f16250518d8}{}\index{Attribute\+Tile@{Attribute\+Tile}!bounding\+\_\+coordinates@{bounding\+\_\+coordinates}}
+\index{bounding\+\_\+coordinates@{bounding\+\_\+coordinates}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{bounding\+\_\+coordinates}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual std\+::pair$<$std\+::vector$<$double$>$, std\+::vector$<$double$>$ $>$ {\bf Attribute\+Tile}$<$ T $>$\+::bounding\+\_\+coordinates (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a38f90eb7f90bc879783b8f16250518d8}
+Inapplicable to attribute tiles. Attribute tiles do not have bounding coordinates. 
+
+Implements \hyperlink{classTile_a310b5f9321c9c8ea569c04f5d540ee39}{Tile}.
+
+\hypertarget{classAttributeTile_a2b16189b318803219632bf4c23108d15}{}\index{Attribute\+Tile@{Attribute\+Tile}!cell@{cell}}
+\index{cell@{cell}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ const T\& {\bf Attribute\+Tile}$<$ T $>$\+::cell (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{i}
+\end{DoxyParamCaption}
+) const}\label{classAttributeTile_a2b16189b318803219632bf4c23108d15}
+Returns the i-\/th cell. \hypertarget{classAttributeTile_ab97b0b330390fcaf624e9bd5b58f87a1}{}\index{Attribute\+Tile@{Attribute\+Tile}!cell\+\_\+char@{cell\+\_\+char}}
+\index{cell\+\_\+char@{cell\+\_\+char}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{cell\+\_\+char}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual char {\bf Attribute\+Tile}$<$ T $>$\+::cell\+\_\+char (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_ab97b0b330390fcaf624e9bd5b58f87a1}
+Template-\/based dispatch of \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to virtual function dispatch. This allows \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to essentially call \hyperlink{classAttributeTile_a2b16189b318803219632bf4c23108d15}{Attribute\+Tile\+::cell} when Tile$\ast$ points to an \hyperlink{classAttributeTile}{Attribute\+Tile}. 
+
+Implements \hyperlink{classTile_a6fd29d850f38da51e9d90da1f46f4106}{Tile}.
+
+\hypertarget{classAttributeTile_a131c4ab963db1e1e54fb723f38b96f40}{}\index{Attribute\+Tile@{Attribute\+Tile}!cell\+\_\+double@{cell\+\_\+double}}
+\index{cell\+\_\+double@{cell\+\_\+double}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{cell\+\_\+double}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual double {\bf Attribute\+Tile}$<$ T $>$\+::cell\+\_\+double (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a131c4ab963db1e1e54fb723f38b96f40}
+Template-\/based dispatch of \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to virtual function dispatch. This allows \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to essentially call \hyperlink{classAttributeTile_a2b16189b318803219632bf4c23108d15}{Attribute\+Tile\+::cell} when Tile$\ast$ points to an \hyperlink{classAttributeTile}{Attribute\+Tile}. 
+
+Implements \hyperlink{classTile_a8a48eeb5eb60ef5b8852c07e0e30b15f}{Tile}.
+
+\hypertarget{classAttributeTile_adfd423304a4a0b66976e32fc186d3d7b}{}\index{Attribute\+Tile@{Attribute\+Tile}!cell\+\_\+float@{cell\+\_\+float}}
+\index{cell\+\_\+float@{cell\+\_\+float}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{cell\+\_\+float}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual float {\bf Attribute\+Tile}$<$ T $>$\+::cell\+\_\+float (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_adfd423304a4a0b66976e32fc186d3d7b}
+Template-\/based dispatch of \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to virtual function dispatch. This allows \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to essentially call \hyperlink{classAttributeTile_a2b16189b318803219632bf4c23108d15}{Attribute\+Tile\+::cell} when Tile$\ast$ points to an \hyperlink{classAttributeTile}{Attribute\+Tile}. 
+
+Implements \hyperlink{classTile_a0d35f2ad996ddc2f89302fbe3979ac6d}{Tile}.
+
+\hypertarget{classAttributeTile_acfb6d96b024ee9b7c52b912b189834a3}{}\index{Attribute\+Tile@{Attribute\+Tile}!cell\+\_\+inside\+\_\+range@{cell\+\_\+inside\+\_\+range}}
+\index{cell\+\_\+inside\+\_\+range@{cell\+\_\+inside\+\_\+range}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{cell\+\_\+inside\+\_\+range}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual bool {\bf Attribute\+Tile}$<$ T $>$\+::cell\+\_\+inside\+\_\+range (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos, }
+\item[{const {\bf Range} \&}]{range}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [virtual]}}\label{classAttributeTile_acfb6d96b024ee9b7c52b912b189834a3}
+Inapplicable to attribute tiles. 
+
+Implements \hyperlink{classTile_a0748a457deaec80721ab85da0fe7cb90}{Tile}.
+
+\hypertarget{classAttributeTile_a832d9ea2abc9b55cce292bf62c579190}{}\index{Attribute\+Tile@{Attribute\+Tile}!cell\+\_\+int@{cell\+\_\+int}}
+\index{cell\+\_\+int@{cell\+\_\+int}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{cell\+\_\+int}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual int {\bf Attribute\+Tile}$<$ T $>$\+::cell\+\_\+int (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a832d9ea2abc9b55cce292bf62c579190}
+Template-\/based dispatch of \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to virtual function dispatch. This allows \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to essentially call \hyperlink{classAttributeTile_a2b16189b318803219632bf4c23108d15}{Attribute\+Tile\+::cell} when Tile$\ast$ points to an \hyperlink{classAttributeTile}{Attribute\+Tile}. 
+
+Implements \hyperlink{classTile_a8430cbcfaed0729a72f833dc7dc18487}{Tile}.
+
+\hypertarget{classAttributeTile_a33c3b6f461c5ab1ea67feb171a6097ff}{}\index{Attribute\+Tile@{Attribute\+Tile}!cell\+\_\+int64\+\_\+t@{cell\+\_\+int64\+\_\+t}}
+\index{cell\+\_\+int64\+\_\+t@{cell\+\_\+int64\+\_\+t}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{cell\+\_\+int64\+\_\+t}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual int64\+\_\+t {\bf Attribute\+Tile}$<$ T $>$\+::cell\+\_\+int64\+\_\+t (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a33c3b6f461c5ab1ea67feb171a6097ff}
+Template-\/based dispatch of \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to virtual function dispatch. This allows \hyperlink{classTile_1_1const__iterator_afe2bc5002bb3248a12caccb9f2f02039}{Tile\+::const\+\_\+iterator\+::operator$\ast$()} to essentially call \hyperlink{classAttributeTile_a2b16189b318803219632bf4c23108d15}{Attribute\+Tile\+::cell} when Tile$\ast$ points to an \hyperlink{classAttributeTile}{Attribute\+Tile}. 
+
+Implements \hyperlink{classTile_acee1eb125f70eb0790df1bd3799da147}{Tile}.
+
+\hypertarget{classAttributeTile_a7371aee0a0d75abc0623a10a646848f6}{}\index{Attribute\+Tile@{Attribute\+Tile}!cell\+\_\+v\+\_\+double@{cell\+\_\+v\+\_\+double}}
+\index{cell\+\_\+v\+\_\+double@{cell\+\_\+v\+\_\+double}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{cell\+\_\+v\+\_\+double}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual std\+::vector$<$double$>$ {\bf Attribute\+Tile}$<$ T $>$\+::cell\+\_\+v\+\_\+double (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a7371aee0a0d75abc0623a10a646848f6}
+Inapplicable to attribute tiles. Attribute tiles do not have vector cells. 
+
+Implements \hyperlink{classTile_aea2250785e00d69d55cdb22a81f79ca0}{Tile}.
+
+\hypertarget{classAttributeTile_a138fbef34ebd6ac21da27a283d41a67b}{}\index{Attribute\+Tile@{Attribute\+Tile}!cell\+\_\+v\+\_\+float@{cell\+\_\+v\+\_\+float}}
+\index{cell\+\_\+v\+\_\+float@{cell\+\_\+v\+\_\+float}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{cell\+\_\+v\+\_\+float}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual std\+::vector$<$float$>$ {\bf Attribute\+Tile}$<$ T $>$\+::cell\+\_\+v\+\_\+float (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a138fbef34ebd6ac21da27a283d41a67b}
+Inapplicable to attribute tiles. Attribute tiles do not have vector cells. 
+
+Implements \hyperlink{classTile_a2db310102c1fcce5a3ccea25c439de69}{Tile}.
+
+\hypertarget{classAttributeTile_ad2fe04a74b4b89d57d94e7617f6de1f3}{}\index{Attribute\+Tile@{Attribute\+Tile}!cell\+\_\+v\+\_\+int@{cell\+\_\+v\+\_\+int}}
+\index{cell\+\_\+v\+\_\+int@{cell\+\_\+v\+\_\+int}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{cell\+\_\+v\+\_\+int}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual std\+::vector$<$int$>$ {\bf Attribute\+Tile}$<$ T $>$\+::cell\+\_\+v\+\_\+int (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_ad2fe04a74b4b89d57d94e7617f6de1f3}
+Inapplicable to attribute tiles. Attribute tiles do not have vector cells. 
+
+Implements \hyperlink{classTile_ab1152b3b8e1e620c00d2892cb6bb61a5}{Tile}.
+
+\hypertarget{classAttributeTile_a19137fc5d96c7c0e909cdae58510ab57}{}\index{Attribute\+Tile@{Attribute\+Tile}!cell\+\_\+v\+\_\+int64\+\_\+t@{cell\+\_\+v\+\_\+int64\+\_\+t}}
+\index{cell\+\_\+v\+\_\+int64\+\_\+t@{cell\+\_\+v\+\_\+int64\+\_\+t}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{cell\+\_\+v\+\_\+int64\+\_\+t}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual std\+::vector$<$int64\+\_\+t$>$ {\bf Attribute\+Tile}$<$ T $>$\+::cell\+\_\+v\+\_\+int64\+\_\+t (
+\begin{DoxyParamCaption}
+\item[{uint64\+\_\+t}]{pos\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a19137fc5d96c7c0e909cdae58510ab57}
+Inapplicable to attribute tiles. Attribute tiles do not have vector cells. 
+
+Implements \hyperlink{classTile_a4caf085f8feca04bf899f435f98c448f}{Tile}.
+
+\hypertarget{classAttributeTile_a3efe457b7a8a7b3e037505f2ff727a16}{}\index{Attribute\+Tile@{Attribute\+Tile}!copy\+\_\+payload@{copy\+\_\+payload}}
+\index{copy\+\_\+payload@{copy\+\_\+payload}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{copy\+\_\+payload}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::copy\+\_\+payload (
+\begin{DoxyParamCaption}
+\item[{char $\ast$}]{buffer}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [virtual]}}\label{classAttributeTile_a3efe457b7a8a7b3e037505f2ff727a16}
+Copies the tile payload into buffer. 
+
+Implements \hyperlink{classTile_a9003b925ae09081bc1dd8d3aa2ee4cb8}{Tile}.
+
+\hypertarget{classAttributeTile_a1289416abc85465ff07c6454598d37ba}{}\index{Attribute\+Tile@{Attribute\+Tile}!dim\+\_\+num@{dim\+\_\+num}}
+\index{dim\+\_\+num@{dim\+\_\+num}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{dim\+\_\+num}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual unsigned int {\bf Attribute\+Tile}$<$ T $>$\+::dim\+\_\+num (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_a1289416abc85465ff07c6454598d37ba}
+Inapplicable to attribute tiles. Attribute tiles do not have dimensions. 
+
+Implements \hyperlink{classTile_ab530c46e8a4b5ade05dc9d8055603520}{Tile}.
+
+\hypertarget{classAttributeTile_ad02895381110d7c6c00e0149a1d96def}{}\index{Attribute\+Tile@{Attribute\+Tile}!mbr@{mbr}}
+\index{mbr@{mbr}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{mbr}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual std\+::vector$<$double$>$\& {\bf Attribute\+Tile}$<$ T $>$\+::mbr (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}, {\ttfamily [virtual]}}\label{classAttributeTile_ad02895381110d7c6c00e0149a1d96def}
+Inapplicable to attribute tiles. Attribute tiles do not have M\+B\+Rs. 
+
+Implements \hyperlink{classTile_a35abe2a06ebd2fe261eff584098375c3}{Tile}.
+
+\hypertarget{classAttributeTile_ab4acca838cb30b4429b5f17084704c38}{}\index{Attribute\+Tile@{Attribute\+Tile}!operator$<$$<$@{operator$<$$<$}}
+\index{operator$<$$<$@{operator$<$$<$}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{operator$<$$<$}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ template$<$typename T2 $>$ void {\bf Attribute\+Tile}$<$ T $>$\+::operator$<$$<$ (
+\begin{DoxyParamCaption}
+\item[{const T2 \&}]{value}
+\end{DoxyParamCaption}
+)}\label{classAttributeTile_ab4acca838cb30b4429b5f17084704c38}
+Appends a cell value to (end of the) tile. \hypertarget{classAttributeTile_a2b7207f7204fcf8c274cb2eaaf1e6cc0}{}\index{Attribute\+Tile@{Attribute\+Tile}!print@{print}}
+\index{print@{print}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{print}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::print (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [virtual]}}\label{classAttributeTile_a2b7207f7204fcf8c274cb2eaaf1e6cc0}
+Prints the details of the tile on the standard output. 
+
+Implements \hyperlink{classTile_adf38ade644fd1bc1157f4f7f274ec080}{Tile}.
+
+\hypertarget{classAttributeTile_a93c023cc09e3f353055d1f5f0ebab9b6}{}\index{Attribute\+Tile@{Attribute\+Tile}!set\+\_\+mbr@{set\+\_\+mbr}}
+\index{set\+\_\+mbr@{set\+\_\+mbr}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{set\+\_\+mbr}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::set\+\_\+mbr (
+\begin{DoxyParamCaption}
+\item[{const std\+::vector$<$ double $>$ \&}]{mbr}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [virtual]}}\label{classAttributeTile_a93c023cc09e3f353055d1f5f0ebab9b6}
+Inapplicable to attribute tiles. Attribute tiles do not have M\+B\+Rs. 
+
+Implements \hyperlink{classTile_a878f856c4d11042b54ec81c791e85c94}{Tile}.
+
+\hypertarget{classAttributeTile_a73b92c2721036091cf5cd6108050c64f}{}\index{Attribute\+Tile@{Attribute\+Tile}!set\+\_\+payload@{set\+\_\+payload}}
+\index{set\+\_\+payload@{set\+\_\+payload}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{set\+\_\+payload}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ virtual void {\bf Attribute\+Tile}$<$ T $>$\+::set\+\_\+payload (
+\begin{DoxyParamCaption}
+\item[{const char $\ast$}]{payload, }
+\item[{uint64\+\_\+t}]{payload\+\_\+size}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [virtual]}}\label{classAttributeTile_a73b92c2721036091cf5cd6108050c64f}
+Paylod setter. 
+
+Implements \hyperlink{classTile_ad5d6fccae173c455bb3f74ac5fd87791}{Tile}.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classAttributeTile_a1fc1096adebca025565e774a89937736}{}\index{Attribute\+Tile@{Attribute\+Tile}!payload\+\_\+@{payload\+\_\+}}
+\index{payload\+\_\+@{payload\+\_\+}!Attribute\+Tile@{Attribute\+Tile}}
+\subsubsection[{payload\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ std\+::vector$<$T$>$ {\bf Attribute\+Tile}$<$ T $>$\+::payload\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classAttributeTile_a1fc1096adebca025565e774a89937736}
+The payload is essentially the list of the cell values of the tile. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/heads/old\+\_\+tile.\+h\end{DoxyCompactItemize}

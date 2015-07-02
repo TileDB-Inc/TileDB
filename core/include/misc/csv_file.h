@@ -36,6 +36,8 @@
 #ifndef CSV_FILE_H
 #define CSV_FILE_H
 
+#include "array_schema.h"
+#include "cell.h"
 #include "csv_line.h"
 #include "special_values.h"
 #include <string>
@@ -64,6 +66,8 @@ class CSVFile {
   /** Constructor. */
   CSVFile();
   /** Constructor. */
+  CSVFile(const ArraySchema* array_schema);
+  /** Constructor. */
   CSVFile(const std::string& filename, const char* mode);
   /** Destructor. */
   ~CSVFile();
@@ -87,9 +91,13 @@ class CSVFile {
    * line.
    */
   bool operator>>(CSVLine& line);
+  /** Retrieves the next cell from the collection. */
+  bool operator>>(Cell& cell);
 
  private:
   // PRIVATE ATTRIBUTES
+  /** An array schema. */
+  const ArraySchema* array_schema_; 
   /** 
    * The buffer will temporarily store the lines, before they are written to
    * the file on the disk (in WRITE/APPEND mode) or when segments are read
@@ -104,6 +112,8 @@ class CSVFile {
     * A pointer to the current position (for reading or writing) in the buffer.
     */
   size_t buffer_offset_;
+  /** Stores the cell format of the lastly read CSV line. */
+  void* cell_;
   /** 
     * A pointer to the current position in the file where the NEXT read will 
     * take place (used only by CSVFile::operator>> in READ mode).

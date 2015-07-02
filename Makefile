@@ -8,7 +8,7 @@
 # CXX = g++ 
 
 # MPI compiler for C++
-CXX = mpicxx -std=c++11 -fmax-errors=5
+CXX = mpicxx -std=c++11 -fmax-errors=5 
 
 # --- Directories --- #
 # Directories for the core code of TileDB
@@ -43,8 +43,12 @@ LA_SRC_DIR = la/src
 LA_OBJ_DIR = la/obj
 LA_BIN_DIR = la/bin
 
-# Directory for documentation
-DOC_DIR = doc
+# Directory for Doxygen documentation
+DOXYGEN_DIR = doxygen
+
+# Manpages directories
+MANPAGES_MAN_DIR = manpages/man
+MANPAGES_HTML_DIR = manpages/html
 
 # Directories for the MPI files - not necessary if mpicxx used.
 MPI_INCLUDE_DIR := .
@@ -79,6 +83,8 @@ TILEDB_CMD_INCLUDE := $(wildcard $(TILEDB_CMD_INCLUDE_DIR)/*.h)
 TILEDB_CMD_SRC := $(wildcard $(TILEDB_CMD_SRC_DIR)/*.cc)
 TILEDB_CMD_OBJ := $(patsubst $(TILEDB_CMD_SRC_DIR)/%.cc,\
                              $(TILEDB_CMD_OBJ_DIR)/%.o, $(TILEDB_CMD_SRC))
+TILEDB_CMD_BIN := $(patsubst $(TILEDB_CMD_SRC_DIR)/%.cc,\
+                             $(TILEDB_CMD_BIN_DIR)/%, $(TILEDB_CMD_SRC)) 
 
 # Files of the Google Test
 GTEST_INCLUDE := $(wildcard $(GTEST_INCLUDE_DIR)/*.h)
@@ -94,22 +100,27 @@ LA_SRC := $(wildcard $(LA_SRC_DIR)/*.cc)
 LA_OBJ := $(patsubst $(LA_SRC_DIR)/%.cc, $(LA_OBJ_DIR)/%.o, $(LA_SRC))
 LA_BIN := $(patsubst $(LA_SRC_DIR)/%.cc, $(LA_BIN_DIR)/%, $(LA_SRC))
 
+# Files for the HTML version of the Manpages
+MANPAGES_MAN := $(wildcard $(MANPAGES_MAN_DIR)/*)
+MANPAGES_HTML := $(patsubst $(MANPAGES_MAN_DIR)/%,\
+                            $(MANPAGES_HTML_DIR)/%.html, $(MANPAGES_MAN)) 
+
 ###################
 # General Targets #
 ###################
 
-.PHONY: core example gtest test doc doc_doxygen clean_core clean_gtest \
+.PHONY: core example gtest test doc clean_core clean_gtest \
         clean_test clean_tiledb_cmd clean_la clean
 
-all: core tiledb_cmd la gtest test doc
+all: core tiledb_cmd la gtest test 
 
 core: $(CORE_OBJ) 
 
-tiledb_cmd: core $(TILEDB_CMD_BIN_DIR)/tiledb_cmd
+tiledb_cmd: core $(TILEDB_CMD_BIN)
 
 la: core $(LA_OBJ) $(LA_BIN_DIR)/example_transpose
 
-doc: doxyfile.inc
+doc: doxyfile.inc $(MANPAGES_HTML) 
 
 gtest: $(GTEST_OBJ_DIR)/gtest-all.o
 
@@ -162,9 +173,9 @@ $(TILEDB_CMD_OBJ_DIR)/%.o: $(TILEDB_CMD_SRC_DIR)/%.cc
 
 # --- Linking --- #
 
-$(TILEDB_CMD_BIN_DIR)/tiledb_cmd: $(TILEDB_CMD_OBJ) $(CORE_OBJ)
+$(TILEDB_CMD_BIN_DIR)/%: $(TILEDB_CMD_OBJ_DIR)/%.o $(CORE_OBJ)
 	@mkdir -p $(TILEDB_CMD_BIN_DIR)
-	@echo "Creating tiledb_cmd"
+	@echo "Creating $@"
 	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
                 -o $@ $^
 
@@ -241,15 +252,22 @@ clean_test:
 ################################
 
 doxyfile.inc: $(CORE_INCLUDE) $(TILEDB_CMD_INCLUDE) $(LA_INCLUDE)
-	@echo 'Creating documentation'
-	@echo INPUT = $(DOC_DIR)/mainpage.dox $(CORE_INCLUDE) \
+	@echo 'Creating Doxygen documentation'
+	@echo INPUT = $(DOXYGEN_DIR)/mainpage.dox $(CORE_INCLUDE) \
                       $(TILEDB_CMD_INCLUDE) $(LA_INCLUDE) > doxyfile.inc
 	@echo FILE_PATTERNS = *.h >> doxyfile.inc
 	@doxygen Doxyfile.mk > Doxyfile.log 2>&1
+
+echo_manpages_msg:
+	@echo 'Converting Manpages to HTML'
+
+$(MANPAGES_HTML_DIR)/%.html: $(MANPAGES_MAN_DIR)/% echo_manpages_msg  
+	@man2html $< > $@
 
 # --- Cleaning --- #
 
 clean_doc:
 	@echo "Cleaning documentation"
 	@rm -f doxyfile.inc
+	@rm -f $(MANPAGES_HTML)
 

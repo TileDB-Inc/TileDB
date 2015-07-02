@@ -1,0 +1,80 @@
+\hypertarget{structStorageManager_1_1ArrayInfo}{}\section{Storage\+Manager\+:\+:Array\+Info Struct Reference}
+\label{structStorageManager_1_1ArrayInfo}\index{Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}}
+
+
+{\ttfamily \#include $<$storage\+\_\+manager.\+h$>$}
+
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classStorageManager_a283b60c689883bc7c343ffbf1de8fc3d}{Array\+Mode} \hyperlink{structStorageManager_1_1ArrayInfo_a6563b5e958b9abf0971dd6efa82ff330}{array\+\_\+mode\+\_\+}
+\item 
+\hyperlink{classArraySchema}{Array\+Schema} \hyperlink{structStorageManager_1_1ArrayInfo_a493f3c1795042afdaecc997ab6878cb8}{array\+\_\+schema\+\_\+}
+\item 
+\hyperlink{classStorageManager_ab527f4f911acfefc5c92ecaddec41300}{Bounding\+Coordinates} \hyperlink{structStorageManager_1_1ArrayInfo_a1826af77bebd82f8f6996633893016ae}{bounding\+\_\+coordinates\+\_\+}
+\item 
+uint64\+\_\+t \hyperlink{structStorageManager_1_1ArrayInfo_a03f7d3a19af3b09d8ea5577b1605639f}{id\+\_\+}
+\item 
+std\+::string \hyperlink{structStorageManager_1_1ArrayInfo_a48f16de429210120242a73cc1bd79e6d}{fragment\+\_\+name\+\_\+}
+\item 
+std\+::vector$<$ uint64\+\_\+t $>$ \hyperlink{structStorageManager_1_1ArrayInfo_ad8a93fcfecfefc7a9d784f2474cc8683}{lastly\+\_\+appended\+\_\+tile\+\_\+ids\+\_\+}
+\item 
+\hyperlink{classStorageManager_a09f09fbac76952a268f77ac049da4070}{M\+B\+Rs} \hyperlink{structStorageManager_1_1ArrayInfo_a86031a1485d05c1eb6b83dfcfe376fbe}{mbrs\+\_\+}
+\item 
+\hyperlink{classStorageManager_a92535a9b1da2da9098d241c0ea6e1bea}{Offsets} \hyperlink{structStorageManager_1_1ArrayInfo_a827acecebaa566e97f0954fc59cb9fe0}{offsets\+\_\+}
+\item 
+\hyperlink{classStorageManager_aa9bfc155a79c21a94d554f576c2976ca}{Payload\+Sizes} \hyperlink{structStorageManager_1_1ArrayInfo_a499762205edde51a24aa6229ba17aa44}{payload\+\_\+sizes\+\_\+}
+\item 
+\hyperlink{classStorageManager_a926373393192b47df3a56bde96756fe4}{Rank\+Ranges} \hyperlink{structStorageManager_1_1ArrayInfo_af758a081c7584aed42a93693f92f3115}{rank\+\_\+ranges\+\_\+}
+\item 
+\hyperlink{classStorageManager_aa5b363e1fee4e3a9030d4cb3edf5db9b}{Tile\+Ids} \hyperlink{structStorageManager_1_1ArrayInfo_ae3b3ba9aaa9866f00897ec68ead6027d}{tile\+\_\+ids\+\_\+}
+\item 
+\hyperlink{classStorageManager_a2eb2f058a32a6279eaa277bcacdc663f}{Tiles} \hyperlink{structStorageManager_1_1ArrayInfo_afa92dcd8efd689d609d19ee65d5b1699}{tiles\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This struct groups info about an array (e.\+g., schema, book-\/keeping structures, etc.). 
+
+\subsection{Member Data Documentation}
+\hypertarget{structStorageManager_1_1ArrayInfo_a6563b5e958b9abf0971dd6efa82ff330}{}\index{Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}!array\+\_\+mode\+\_\+@{array\+\_\+mode\+\_\+}}
+\index{array\+\_\+mode\+\_\+@{array\+\_\+mode\+\_\+}!Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}}
+\subsubsection[{array\+\_\+mode\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Array\+Mode} Storage\+Manager\+::\+Array\+Info\+::array\+\_\+mode\+\_\+}\label{structStorageManager_1_1ArrayInfo_a6563b5e958b9abf0971dd6efa82ff330}
+The array mode (see \hyperlink{classStorageManager_a283b60c689883bc7c343ffbf1de8fc3d}{Storage\+Manager\+::\+Array\+Mode}). \hypertarget{structStorageManager_1_1ArrayInfo_a493f3c1795042afdaecc997ab6878cb8}{}\index{Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}!array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}}
+\index{array\+\_\+schema\+\_\+@{array\+\_\+schema\+\_\+}!Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}}
+\subsubsection[{array\+\_\+schema\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Array\+Schema} Storage\+Manager\+::\+Array\+Info\+::array\+\_\+schema\+\_\+}\label{structStorageManager_1_1ArrayInfo_a493f3c1795042afdaecc997ab6878cb8}
+The array schema (see class \hyperlink{classArraySchema}{Array\+Schema}). \hypertarget{structStorageManager_1_1ArrayInfo_a1826af77bebd82f8f6996633893016ae}{}\index{Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}!bounding\+\_\+coordinates\+\_\+@{bounding\+\_\+coordinates\+\_\+}}
+\index{bounding\+\_\+coordinates\+\_\+@{bounding\+\_\+coordinates\+\_\+}!Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}}
+\subsubsection[{bounding\+\_\+coordinates\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Bounding\+Coordinates} Storage\+Manager\+::\+Array\+Info\+::bounding\+\_\+coordinates\+\_\+}\label{structStorageManager_1_1ArrayInfo_a1826af77bebd82f8f6996633893016ae}
+Stores the bounding coordinates of every (coordinate) tile, i.\+e., the first and last cell of the tile (see \hyperlink{classTile_a310b5f9321c9c8ea569c04f5d540ee39}{Tile\+::bounding\+\_\+coordinates}). \hypertarget{structStorageManager_1_1ArrayInfo_a48f16de429210120242a73cc1bd79e6d}{}\index{Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}!fragment\+\_\+name\+\_\+@{fragment\+\_\+name\+\_\+}}
+\index{fragment\+\_\+name\+\_\+@{fragment\+\_\+name\+\_\+}!Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}}
+\subsubsection[{fragment\+\_\+name\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string Storage\+Manager\+::\+Array\+Info\+::fragment\+\_\+name\+\_\+}\label{structStorageManager_1_1ArrayInfo_a48f16de429210120242a73cc1bd79e6d}
+The fragment name. \hypertarget{structStorageManager_1_1ArrayInfo_a03f7d3a19af3b09d8ea5577b1605639f}{}\index{Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}!id\+\_\+@{id\+\_\+}}
+\index{id\+\_\+@{id\+\_\+}!Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}}
+\subsubsection[{id\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}uint64\+\_\+t Storage\+Manager\+::\+Array\+Info\+::id\+\_\+}\label{structStorageManager_1_1ArrayInfo_a03f7d3a19af3b09d8ea5577b1605639f}
+Unique \hyperlink{structStorageManager_1_1ArrayInfo}{Array\+Info} object id, for debugging purposes when using \hyperlink{classStorageManager_1_1ArrayDescriptor}{Storage\+Manager\+::\+Array\+Descriptor} objects (see \hyperlink{classStorageManager_1_1ArrayDescriptor_a78e3c352bcedee5707141275a4cbf17d}{Storage\+Manager\+::\+Array\+Descriptor\+::array\+\_\+info\+\_\+id\+\_\+}). \hypertarget{structStorageManager_1_1ArrayInfo_ad8a93fcfecfefc7a9d784f2474cc8683}{}\index{Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}!lastly\+\_\+appended\+\_\+tile\+\_\+ids\+\_\+@{lastly\+\_\+appended\+\_\+tile\+\_\+ids\+\_\+}}
+\index{lastly\+\_\+appended\+\_\+tile\+\_\+ids\+\_\+@{lastly\+\_\+appended\+\_\+tile\+\_\+ids\+\_\+}!Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}}
+\subsubsection[{lastly\+\_\+appended\+\_\+tile\+\_\+ids\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$uint64\+\_\+t$>$ Storage\+Manager\+::\+Array\+Info\+::lastly\+\_\+appended\+\_\+tile\+\_\+ids\+\_\+}\label{structStorageManager_1_1ArrayInfo_ad8a93fcfecfefc7a9d784f2474cc8683}
+It keeps the id of the lastly appended tile for each attribute. It is used for debugging purposes to ensure the array \char`\"{}correctness\char`\"{} in \hyperlink{classStorageManager_a7c45bdaf838c3be5472c51712af5b223}{Storage\+Manager\+::check\+\_\+on\+\_\+append\+\_\+tile}. \hypertarget{structStorageManager_1_1ArrayInfo_a86031a1485d05c1eb6b83dfcfe376fbe}{}\index{Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}!mbrs\+\_\+@{mbrs\+\_\+}}
+\index{mbrs\+\_\+@{mbrs\+\_\+}!Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}}
+\subsubsection[{mbrs\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf M\+B\+Rs} Storage\+Manager\+::\+Array\+Info\+::mbrs\+\_\+}\label{structStorageManager_1_1ArrayInfo_a86031a1485d05c1eb6b83dfcfe376fbe}
+Stores the M\+B\+R of every (coordinate) tile. \hypertarget{structStorageManager_1_1ArrayInfo_a827acecebaa566e97f0954fc59cb9fe0}{}\index{Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}!offsets\+\_\+@{offsets\+\_\+}}
+\index{offsets\+\_\+@{offsets\+\_\+}!Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}}
+\subsubsection[{offsets\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Offsets} Storage\+Manager\+::\+Array\+Info\+::offsets\+\_\+}\label{structStorageManager_1_1ArrayInfo_a827acecebaa566e97f0954fc59cb9fe0}
+Stores the offset (i.\+e., starting position) of every tile of every attribute in the respective data file. \hypertarget{structStorageManager_1_1ArrayInfo_a499762205edde51a24aa6229ba17aa44}{}\index{Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}!payload\+\_\+sizes\+\_\+@{payload\+\_\+sizes\+\_\+}}
+\index{payload\+\_\+sizes\+\_\+@{payload\+\_\+sizes\+\_\+}!Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}}
+\subsubsection[{payload\+\_\+sizes\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Payload\+Sizes} Storage\+Manager\+::\+Array\+Info\+::payload\+\_\+sizes\+\_\+}\label{structStorageManager_1_1ArrayInfo_a499762205edde51a24aa6229ba17aa44}
+Stores the aggregate payload size of the tiles currently stored in main memory for each attribute. \hypertarget{structStorageManager_1_1ArrayInfo_af758a081c7584aed42a93693f92f3115}{}\index{Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}!rank\+\_\+ranges\+\_\+@{rank\+\_\+ranges\+\_\+}}
+\index{rank\+\_\+ranges\+\_\+@{rank\+\_\+ranges\+\_\+}!Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}}
+\subsubsection[{rank\+\_\+ranges\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Rank\+Ranges} Storage\+Manager\+::\+Array\+Info\+::rank\+\_\+ranges\+\_\+}\label{structStorageManager_1_1ArrayInfo_af758a081c7584aed42a93693f92f3115}
+Stores the range of the ranks of the tiles currently in main memory, for each attribute. The rank of a tile is a sequence number indicating the order in which it was appended to the array with respect to the the other tiles appended to the array for the same attribute (e.\+g., 0 means that it was appended first, 1 second, etc.). \hypertarget{structStorageManager_1_1ArrayInfo_ae3b3ba9aaa9866f00897ec68ead6027d}{}\index{Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}!tile\+\_\+ids\+\_\+@{tile\+\_\+ids\+\_\+}}
+\index{tile\+\_\+ids\+\_\+@{tile\+\_\+ids\+\_\+}!Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}}
+\subsubsection[{tile\+\_\+ids\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Tile\+Ids} Storage\+Manager\+::\+Array\+Info\+::tile\+\_\+ids\+\_\+}\label{structStorageManager_1_1ArrayInfo_ae3b3ba9aaa9866f00897ec68ead6027d}
+Stores all the tile ids of the array. \hypertarget{structStorageManager_1_1ArrayInfo_afa92dcd8efd689d609d19ee65d5b1699}{}\index{Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}!tiles\+\_\+@{tiles\+\_\+}}
+\index{tiles\+\_\+@{tiles\+\_\+}!Storage\+Manager\+::\+Array\+Info@{Storage\+Manager\+::\+Array\+Info}}
+\subsubsection[{tiles\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Tiles} Storage\+Manager\+::\+Array\+Info\+::tiles\+\_\+}\label{structStorageManager_1_1ArrayInfo_afa92dcd8efd689d609d19ee65d5b1699}
+Stores the tiles of every attribute currently in main memory. 
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/\hyperlink{storage__manager_8h}{storage\+\_\+manager.\+h}\end{DoxyCompactItemize}

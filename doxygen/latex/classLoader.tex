@@ -1,0 +1,215 @@
+\hypertarget{classLoader}{}\section{Loader Class Reference}
+\label{classLoader}\index{Loader@{Loader}}
+
+
+{\ttfamily \#include $<$loader.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classLoader_aac50fd71320fd5bb76ea5c0ce74a3197}{Loader} (\hyperlink{classStorageManager}{Storage\+Manager} $\ast$storage\+\_\+manager)
+\item 
+\hyperlink{classLoader_a254054e8c7c1e17b8c422716d273914d}{$\sim$\+Loader} ()
+\item 
+int \hyperlink{classLoader_a644fc739f312738afe2fc93f4f712ca4}{err} () const 
+\item 
+int \hyperlink{classLoader_a3b8dcc3f41df467f728c78b358be29b6}{load\+\_\+bin} (const std\+::string \&filename, const std\+::string \&array\+\_\+name) const 
+\item 
+int \hyperlink{classLoader_a1c9d786adc04d507e00ace82f9b29319}{load\+\_\+csv} (const std\+::string \&array\+\_\+name, const std\+::string \&filename) const 
+\item 
+int \hyperlink{classLoader_a638cdb46ebae88bbbbe7aa4526e4d00f}{load\+\_\+sorted\+\_\+bin} (const std\+::string \&filename, const std\+::string \&array\+\_\+name) const 
+\item 
+int \hyperlink{classLoader_afcc5573de0149cda70c9a6a06e562559}{update\+\_\+csv} (const std\+::string \&filename, const std\+::string \&array\+\_\+name, std\+::string \&err\+\_\+msg) const 
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$class T $>$ }\\bool \hyperlink{classLoader_ad60ebef0b01c21972b0f11618ce38b5a}{append\+\_\+attribute} (\hyperlink{classCSVLine}{C\+S\+V\+Line} \&csv\+\_\+line, int val\+\_\+num, void $\ast$cell, size\+\_\+t \&offset) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\bool \hyperlink{classLoader_a7f6465abb8490a0bdb6f6240e499b2d7}{append\+\_\+coordinates} (\hyperlink{classCSVLine}{C\+S\+V\+Line} \&csv\+\_\+line, void $\ast$cell, int dim\+\_\+num) const 
+\item 
+ssize\+\_\+t \hyperlink{classLoader_a711d2b8f7110161e1a7ca90e5024ea0a}{calculate\+\_\+cell\+\_\+size} (\hyperlink{classCSVLine}{C\+S\+V\+Line} \&csv\+\_\+line, const \hyperlink{classArraySchema}{Array\+Schema} $\ast$array\+\_\+schema) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\bool \hyperlink{classLoader_a5e0760ac016e2c82a7a55cd3b7efcdbe}{csv\+\_\+line\+\_\+to\+\_\+cell} (const \hyperlink{classArraySchema}{Array\+Schema} $\ast$array\+\_\+schema, \hyperlink{classCSVLine}{C\+S\+V\+Line} \&csv\+\_\+line, void $\ast$cell, ssize\+\_\+t cell\+\_\+size) const 
+\item 
+int \hyperlink{classLoader_a46951a52895c6ca3558e62cb312c297a}{load\+\_\+bin} (const std\+::string \&filename, int ad) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\int \hyperlink{classLoader_ac9e7c924ac3126fa976c04ffb1598379}{load\+\_\+bin} (const std\+::string \&filename, int ad) const 
+\item 
+int \hyperlink{classLoader_a011c4d95cbe66aaf0b103c6e9dda9b3f}{load\+\_\+csv} (int ad, const std\+::string \&filename) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\int \hyperlink{classLoader_ae2aca5ad9d58bd8939d0ffc1bd9451d8}{load\+\_\+csv} (int ad, const std\+::string \&filename) const 
+\item 
+int \hyperlink{classLoader_a7c8a6bc94e113a6aeec9d5e40d4bf6c4}{load\+\_\+sorted\+\_\+bin} (const std\+::string \&filename, int ad) const 
+\item 
+{\footnotesize template$<$class T $>$ }\\int \hyperlink{classLoader_a80b0374ea4a019605ac8ccef9d26b238}{load\+\_\+sorted\+\_\+bin} (const std\+::string \&filename, int ad) const 
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classStorageManager}{Storage\+Manager} $\ast$ \hyperlink{classLoader_a1cb86b0fc70a5aa6bbf3675da552bb0a}{storage\+\_\+manager\+\_\+}
+\item 
+int \hyperlink{classLoader_a4beb8ac37011c2500175084c2ec98d62}{err\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+The \hyperlink{classLoader}{Loader} creates an array from raw data. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classLoader_aac50fd71320fd5bb76ea5c0ce74a3197}{}\index{Loader@{Loader}!Loader@{Loader}}
+\index{Loader@{Loader}!Loader@{Loader}}
+\subsubsection[{Loader}]{\setlength{\rightskip}{0pt plus 5cm}Loader\+::\+Loader (
+\begin{DoxyParamCaption}
+\item[{{\bf Storage\+Manager} $\ast$}]{storage\+\_\+manager}
+\end{DoxyParamCaption}
+)}\label{classLoader_aac50fd71320fd5bb76ea5c0ce74a3197}
+Simple constructor. The storage manager is the module the loader interefaces with. \hypertarget{classLoader_a254054e8c7c1e17b8c422716d273914d}{}\index{Loader@{Loader}!````~Loader@{$\sim$\+Loader}}
+\index{````~Loader@{$\sim$\+Loader}!Loader@{Loader}}
+\subsubsection[{$\sim$\+Loader}]{\setlength{\rightskip}{0pt plus 5cm}Loader\+::$\sim$\+Loader (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classLoader_a254054e8c7c1e17b8c422716d273914d}
+Empty destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classLoader_ad60ebef0b01c21972b0f11618ce38b5a}{}\index{Loader@{Loader}!append\+\_\+attribute@{append\+\_\+attribute}}
+\index{append\+\_\+attribute@{append\+\_\+attribute}!Loader@{Loader}}
+\subsubsection[{append\+\_\+attribute}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ bool Loader\+::append\+\_\+attribute (
+\begin{DoxyParamCaption}
+\item[{{\bf C\+S\+V\+Line} \&}]{csv\+\_\+line, }
+\item[{int}]{val\+\_\+num, }
+\item[{void $\ast$}]{cell, }
+\item[{size\+\_\+t \&}]{offset}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classLoader_ad60ebef0b01c21972b0f11618ce38b5a}
+Retrieves an attribute value from the C\+S\+V line and puts it into the input cell at the input offset. val\+\_\+num is the number of values in the attribute cell. If val\+\_\+num is equal to V\+A\+R\+\_\+\+S\+I\+Z\+E, then this attribute receives a variable number of values per cell. The function may expand the cell buffer, if it fills up (updating the cell\+\_\+size). It also updates the offset in the cell buffer. \hypertarget{classLoader_a7f6465abb8490a0bdb6f6240e499b2d7}{}\index{Loader@{Loader}!append\+\_\+coordinates@{append\+\_\+coordinates}}
+\index{append\+\_\+coordinates@{append\+\_\+coordinates}!Loader@{Loader}}
+\subsubsection[{append\+\_\+coordinates}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ bool Loader\+::append\+\_\+coordinates (
+\begin{DoxyParamCaption}
+\item[{{\bf C\+S\+V\+Line} \&}]{csv\+\_\+line, }
+\item[{void $\ast$}]{cell, }
+\item[{int}]{dim\+\_\+num}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classLoader_a7f6465abb8490a0bdb6f6240e499b2d7}
+Retrieves a set of coordinates from the C\+S\+V line and puts them into the input cell. \hypertarget{classLoader_a711d2b8f7110161e1a7ca90e5024ea0a}{}\index{Loader@{Loader}!calculate\+\_\+cell\+\_\+size@{calculate\+\_\+cell\+\_\+size}}
+\index{calculate\+\_\+cell\+\_\+size@{calculate\+\_\+cell\+\_\+size}!Loader@{Loader}}
+\subsubsection[{calculate\+\_\+cell\+\_\+size}]{\setlength{\rightskip}{0pt plus 5cm}ssize\+\_\+t Loader\+::calculate\+\_\+cell\+\_\+size (
+\begin{DoxyParamCaption}
+\item[{{\bf C\+S\+V\+Line} \&}]{csv\+\_\+line, }
+\item[{const {\bf Array\+Schema} $\ast$}]{array\+\_\+schema}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classLoader_a711d2b8f7110161e1a7ca90e5024ea0a}
+Applicable only to variable-\/sized attribute cells. It calculates the size needed to create a cell from a C\+S\+V line. Returns -\/1 on error. \hypertarget{classLoader_a5e0760ac016e2c82a7a55cd3b7efcdbe}{}\index{Loader@{Loader}!csv\+\_\+line\+\_\+to\+\_\+cell@{csv\+\_\+line\+\_\+to\+\_\+cell}}
+\index{csv\+\_\+line\+\_\+to\+\_\+cell@{csv\+\_\+line\+\_\+to\+\_\+cell}!Loader@{Loader}}
+\subsubsection[{csv\+\_\+line\+\_\+to\+\_\+cell}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ bool Loader\+::csv\+\_\+line\+\_\+to\+\_\+cell (
+\begin{DoxyParamCaption}
+\item[{const {\bf Array\+Schema} $\ast$}]{array\+\_\+schema, }
+\item[{{\bf C\+S\+V\+Line} \&}]{csv\+\_\+line, }
+\item[{void $\ast$}]{cell, }
+\item[{ssize\+\_\+t}]{cell\+\_\+size}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classLoader_a5e0760ac016e2c82a7a55cd3b7efcdbe}
+Treats the input C\+S\+V line as a logical cell, retrieves from it the coordinates and attribute values, and places them into the input cell in binary form (first the coordinates, then the attribute values in the order of their appearence in the input array schema). \hypertarget{classLoader_a644fc739f312738afe2fc93f4f712ca4}{}\index{Loader@{Loader}!err@{err}}
+\index{err@{err}!Loader@{Loader}}
+\subsubsection[{err}]{\setlength{\rightskip}{0pt plus 5cm}int Loader\+::err (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const}\label{classLoader_a644fc739f312738afe2fc93f4f712ca4}
+Returns the error code. It is 0 upon success. \hypertarget{classLoader_a3b8dcc3f41df467f728c78b358be29b6}{}\index{Loader@{Loader}!load\+\_\+bin@{load\+\_\+bin}}
+\index{load\+\_\+bin@{load\+\_\+bin}!Loader@{Loader}}
+\subsubsection[{load\+\_\+bin}]{\setlength{\rightskip}{0pt plus 5cm}int Loader\+::load\+\_\+bin (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{filename, }
+\item[{const std\+::string \&}]{array\+\_\+name}
+\end{DoxyParamCaption}
+) const}\label{classLoader_a3b8dcc3f41df467f728c78b358be29b6}
+Loads a binary file into an array. \hypertarget{classLoader_a46951a52895c6ca3558e62cb312c297a}{}\index{Loader@{Loader}!load\+\_\+bin@{load\+\_\+bin}}
+\index{load\+\_\+bin@{load\+\_\+bin}!Loader@{Loader}}
+\subsubsection[{load\+\_\+bin}]{\setlength{\rightskip}{0pt plus 5cm}int Loader\+::load\+\_\+bin (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{filename, }
+\item[{int}]{ad}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classLoader_a46951a52895c6ca3558e62cb312c297a}
+Loads a C\+S\+V file into a new fragment for the input array descriptor. \hypertarget{classLoader_ac9e7c924ac3126fa976c04ffb1598379}{}\index{Loader@{Loader}!load\+\_\+bin@{load\+\_\+bin}}
+\index{load\+\_\+bin@{load\+\_\+bin}!Loader@{Loader}}
+\subsubsection[{load\+\_\+bin}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ int Loader\+::load\+\_\+bin (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{filename, }
+\item[{int}]{ad}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classLoader_ac9e7c924ac3126fa976c04ffb1598379}
+Loads a C\+S\+V file into a new fragment for the input array descriptor. \hypertarget{classLoader_a1c9d786adc04d507e00ace82f9b29319}{}\index{Loader@{Loader}!load\+\_\+csv@{load\+\_\+csv}}
+\index{load\+\_\+csv@{load\+\_\+csv}!Loader@{Loader}}
+\subsubsection[{load\+\_\+csv}]{\setlength{\rightskip}{0pt plus 5cm}int Loader\+::load\+\_\+csv (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{array\+\_\+name, }
+\item[{const std\+::string \&}]{filename}
+\end{DoxyParamCaption}
+) const}\label{classLoader_a1c9d786adc04d507e00ace82f9b29319}
+Loads a C\+S\+V file into an array. \hypertarget{classLoader_a011c4d95cbe66aaf0b103c6e9dda9b3f}{}\index{Loader@{Loader}!load\+\_\+csv@{load\+\_\+csv}}
+\index{load\+\_\+csv@{load\+\_\+csv}!Loader@{Loader}}
+\subsubsection[{load\+\_\+csv}]{\setlength{\rightskip}{0pt plus 5cm}int Loader\+::load\+\_\+csv (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const std\+::string \&}]{filename}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classLoader_a011c4d95cbe66aaf0b103c6e9dda9b3f}
+Loads a C\+S\+V file into a new fragment for the input array descriptor. \hypertarget{classLoader_ae2aca5ad9d58bd8939d0ffc1bd9451d8}{}\index{Loader@{Loader}!load\+\_\+csv@{load\+\_\+csv}}
+\index{load\+\_\+csv@{load\+\_\+csv}!Loader@{Loader}}
+\subsubsection[{load\+\_\+csv}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ int Loader\+::load\+\_\+csv (
+\begin{DoxyParamCaption}
+\item[{int}]{ad, }
+\item[{const std\+::string \&}]{filename}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classLoader_ae2aca5ad9d58bd8939d0ffc1bd9451d8}
+Loads a C\+S\+V file into a new fragment for the input array descriptor. \hypertarget{classLoader_a638cdb46ebae88bbbbe7aa4526e4d00f}{}\index{Loader@{Loader}!load\+\_\+sorted\+\_\+bin@{load\+\_\+sorted\+\_\+bin}}
+\index{load\+\_\+sorted\+\_\+bin@{load\+\_\+sorted\+\_\+bin}!Loader@{Loader}}
+\subsubsection[{load\+\_\+sorted\+\_\+bin}]{\setlength{\rightskip}{0pt plus 5cm}int Loader\+::load\+\_\+sorted\+\_\+bin (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{filename, }
+\item[{const std\+::string \&}]{array\+\_\+name}
+\end{DoxyParamCaption}
+) const}\label{classLoader_a638cdb46ebae88bbbbe7aa4526e4d00f}
+Loads a sorted B\+I\+N file into an array. \hypertarget{classLoader_a7c8a6bc94e113a6aeec9d5e40d4bf6c4}{}\index{Loader@{Loader}!load\+\_\+sorted\+\_\+bin@{load\+\_\+sorted\+\_\+bin}}
+\index{load\+\_\+sorted\+\_\+bin@{load\+\_\+sorted\+\_\+bin}!Loader@{Loader}}
+\subsubsection[{load\+\_\+sorted\+\_\+bin}]{\setlength{\rightskip}{0pt plus 5cm}int Loader\+::load\+\_\+sorted\+\_\+bin (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{filename, }
+\item[{int}]{ad}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classLoader_a7c8a6bc94e113a6aeec9d5e40d4bf6c4}
+Loads a sorted B\+I\+N file into a new fragment for the input array descriptor. \hypertarget{classLoader_a80b0374ea4a019605ac8ccef9d26b238}{}\index{Loader@{Loader}!load\+\_\+sorted\+\_\+bin@{load\+\_\+sorted\+\_\+bin}}
+\index{load\+\_\+sorted\+\_\+bin@{load\+\_\+sorted\+\_\+bin}!Loader@{Loader}}
+\subsubsection[{load\+\_\+sorted\+\_\+bin}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ int Loader\+::load\+\_\+sorted\+\_\+bin (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{filename, }
+\item[{int}]{ad}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classLoader_a80b0374ea4a019605ac8ccef9d26b238}
+Loads a sorted B\+I\+N file into a new fragment for the input array descriptor. \hypertarget{classLoader_afcc5573de0149cda70c9a6a06e562559}{}\index{Loader@{Loader}!update\+\_\+csv@{update\+\_\+csv}}
+\index{update\+\_\+csv@{update\+\_\+csv}!Loader@{Loader}}
+\subsubsection[{update\+\_\+csv}]{\setlength{\rightskip}{0pt plus 5cm}int Loader\+::update\+\_\+csv (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{filename, }
+\item[{const std\+::string \&}]{array\+\_\+name, }
+\item[{std\+::string \&}]{err\+\_\+msg}
+\end{DoxyParamCaption}
+) const}\label{classLoader_afcc5573de0149cda70c9a6a06e562559}
+Updates an existing array with a new C\+S\+V file. This is similar to \hyperlink{classLoader_a1c9d786adc04d507e00ace82f9b29319}{Loader\+::load\+\_\+csv}, with the differnce being that \hyperlink{classLoader_a1c9d786adc04d507e00ace82f9b29319}{Loader\+::load\+\_\+csv} opens the array in write mode (i.\+e., it destroys the previous contents of the array), whereas \hyperlink{classLoader_afcc5573de0149cda70c9a6a06e562559}{Loader\+::update\+\_\+csv} incorporates the updates of the input C\+S\+V file into a potentially existing array. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classLoader_a4beb8ac37011c2500175084c2ec98d62}{}\index{Loader@{Loader}!err\+\_\+@{err\+\_\+}}
+\index{err\+\_\+@{err\+\_\+}!Loader@{Loader}}
+\subsubsection[{err\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int Loader\+::err\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classLoader_a4beb8ac37011c2500175084c2ec98d62}
+Error code. Equal to 0 on success. \hypertarget{classLoader_a1cb86b0fc70a5aa6bbf3675da552bb0a}{}\index{Loader@{Loader}!storage\+\_\+manager\+\_\+@{storage\+\_\+manager\+\_\+}}
+\index{storage\+\_\+manager\+\_\+@{storage\+\_\+manager\+\_\+}!Loader@{Loader}}
+\subsubsection[{storage\+\_\+manager\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Storage\+Manager}$\ast$ Loader\+::storage\+\_\+manager\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classLoader_a1cb86b0fc70a5aa6bbf3675da552bb0a}
+The \hyperlink{classStorageManager}{Storage\+Manager} object the loader interfaces with. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/loader/\hyperlink{loader_8h}{loader.\+h}\end{DoxyCompactItemize}

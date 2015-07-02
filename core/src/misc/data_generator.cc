@@ -55,42 +55,11 @@ DataGenerator::~DataGenerator() {
 ************* DATA GENERATION FUNCTIONS ***************
 ******************************************************/
 
-int DataGenerator::generate_sorted_uniform_bin(
-    unsigned seed, const std::string& filename, 
-    int64_t cell_num, std::string& err_msg) const {
-
-  // TODO
-  err_msg = "Under construction...";
-  return -1;
-}
-
-int DataGenerator::generate_sorted_uniform_bin(
-    unsigned seed, const std::string& filename, 
-    size_t file_size, std::string& err_msg) const {
-  // TODO
-  err_msg = "Under construction...";
-  return -1;
-}
-
-int DataGenerator::generate_sorted_uniform_csv(
-    unsigned seed, const std::string& filename, 
-    int64_t cell_num, std::string& err_msg) const {
-  // TODO
-  err_msg = "Under construction...";
-  return -1;
-}
-
-int DataGenerator::generate_sorted_uniform_csv(
-    unsigned seed, const std::string& filename, 
-    size_t file_size, std::string& err_msg) const {
-  // TODO
-  err_msg = "Under construction...";
-  return -1;
-}
-
-int DataGenerator::generate_uniform_bin(
-    unsigned seed, const std::string& filename, 
-    int64_t cell_num, std::string& err_msg) const {
+int DataGenerator::generate_bin(
+    unsigned seed, 
+    const std::string& filename, 
+    int64_t cell_num) const {
+// TODO: error messages
   assert(cell_num >= 0);
 
   // For easy reference
@@ -129,17 +98,11 @@ int DataGenerator::generate_uniform_bin(
   return 0;
 }
 
-int DataGenerator::generate_uniform_bin(
-    unsigned seed, const std::string& filename, 
-    size_t file_size, std::string& err_msg) const {
-  // TODO
-  err_msg = "Under construction...";
-  return -1;
-}
-
-int DataGenerator::generate_uniform_csv(
-    unsigned seed, const std::string& filename, 
-    int64_t cell_num, std::string& err_msg) const {
+int DataGenerator::generate_csv(
+    unsigned seed, 
+    const std::string& filename, 
+    int64_t cell_num) const {
+// TODO: error messages
   assert(cell_num >= 0);
 
   // Initialization of output CSV file
@@ -164,14 +127,6 @@ int DataGenerator::generate_uniform_csv(
   csv_file.close();
 
   return 0;
-}
-
-int DataGenerator::generate_uniform_csv(
-    unsigned seed, const std::string& filename, 
-    size_t file_size, std::string& err_msg) const {
-  // TODO
-  err_msg = "Under construction...";
-  return -1;
 }
 
 /******************************************************
@@ -359,6 +314,7 @@ void DataGenerator::generate_uniform_coordinates(
       std::uniform_int_distribution<int64_t> distribution(
           int64_t(dim_domains[i].first), int64_t(dim_domains[i].second));
       int64_t c = distribution(generator);
+
       memcpy(buffer + offset, &c, sizeof(int64_t));
       offset += sizeof(int64_t);
     }

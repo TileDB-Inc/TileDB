@@ -1,0 +1,221 @@
+Content-type: text/html
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<HTML><HEAD><TITLE>Man page of tiledb_generate_data</TITLE>
+</HEAD><BODY>
+<H1>tiledb_generate_data</H1>
+Section: TileDB programs (1)<BR>Updated: 28 June 2015<BR><A HREF="#index">Index</A>
+<A HREF="/cgi-bin/man/man2html">Return to Main Contents</A><HR>
+
+<BR>&nbsp;
+<A NAME="lbAB">&nbsp;</A>
+<H2>NAME</H2>
+
+tiledb_generate_data - generates synthetic data for a particular array schema
+in a <B>CSV</B> or <B>binary</B> form
+<P>
+<A NAME="lbAC">&nbsp;</A>
+<H2>SYNOPSIS</H2>
+
+<B>tiledb_generate_data </B>
+
+<B>-w </B><I>directory </I><B>-A </B><I>array_name </I><B>-f </B><I>filename </I><B>-t </B><I>filetype </I><B>-n </B><I>cell_num </I>
+
+[
+<B>-s </B><I>seed </I>
+
+]
+<P>
+<A NAME="lbAD">&nbsp;</A>
+<H2>DESCRIPTION</H2>
+
+<B>tiledb_generate_data</B>
+
+generates sythetic data for a particular array schema
+in a <B>CSV</B> or <B>binary</B> form. On error, it prints a message on stderr and
+returns an error code (see <B>EXIT STATUS</B>). 
+<P>
+The following conventions apply to the <B>SYNOPSIS</B> section:
+<P>
+<TABLE>
+<TR VALIGN=top><TD ALIGN=center><B>bold text</B> </TD><TD> type exactly as shown<BR></TD></TR>
+<TR VALIGN=top><TD ALIGN=center><I>italic text</I> </TD><TD> replace with appropriate argument<BR></TD></TR>
+<TR VALIGN=top><TD ALIGN=center>[<B>-a </B><I>arg</I>]</TD><TD> any or all options within [ ] are optional<BR></TD></TR>
+</TABLE>
+
+<P>
+The dataset essentially consists of a collection of cells, whose format 
+complies with the schema of an array given as argument to option <B>-A</B>.
+This means that the given array must already be defined. The number of cells to
+be generated, as well as the seed to the random generator, are given as 
+arguments to the program as well.
+<P>
+<DL COMPACT>
+<DT><B>Data distribution</B>
+
+<DD>
+<I>Cooridinates:</I>
+
+The coordinate values are drawn uniformly at random from their 
+corresponding dimension domains defined in the array schema.
+<P>
+<I>Attribute values:</I>
+
+The attribute values depend on their type. The real data values (i.e.,
+<B>float</B> and <B>double</B>) are drawn uniformly at random from 
+<B>[0.0,1.0]</B>. The <B>int</B> and <B>int64_t</B> data values are drawn uniformly
+<BR>&nbsp;at&nbsp;random&nbsp;from&nbsp;<B>[0,max()]</B>,&nbsp;where&nbsp;<B>max()</B>&nbsp;is&nbsp;the&nbsp;maximum&nbsp;value&nbsp;of&nbsp;the
+corresponding type supported by the system that calls the function. 
+Finally, the <B>char</B> values are drawn uniformly at random from ASCII
+domain <B>[45,126]</B>, i.e., all the characters between and including <B>'-'</B> 
+and <B>'~'</B>.
+<P>
+<DT><B>CSV file format</B>
+
+<DD>
+This is described in detail in <B><A HREF="/cgi-bin/man/man2html?1+tiledb_load_csv">tiledb_load_csv</A>(1)</B>. The difference is
+that the generated data do not contain null values and deletions.
+<P>
+<DT><B>Binary file format</B>
+
+<DD>
+This is described in detail in <B><A HREF="/cgi-bin/man/man2html?1+tiledb_load_bin">tiledb_load_bin</A>(1)</B>. The difference is
+that the generated data do not contain null values and deletions.
+<P>
+</DL>
+<A NAME="lbAE">&nbsp;</A>
+<H2>OPTIONS</H2>
+
+<DL COMPACT>
+<DT><B>-w</B><I> directory</I><B></B>, <I></I><B>--workspace=</B><I>directory</I>
+
+<DD>
+The path to the workspace folder where the TileDB array is stored. The path
+must exist, and the caller must have read and write permissions on it.
+<P>
+<DT><B>-A</B><I> array_name</I><B></B>, <I></I><B>--array-name=</B><I>array_name</I>
+
+<DD>
+The name of the array for which the data are generated exported. The array
+must be already defined. 
+<P>
+<DT><B>-f</B><I> filename</I><B></B>, <I></I><B>--filename=</B><I>filename</I>
+
+<DD>
+The name of the output file that will store the generated data. 
+<P>
+<DT><B>-t</B><I> filetype</I><B></B>, <I></I><B>--filetype=</B><I>filetype</I>
+
+<DD>
+The type of the generated file. It can be either <B>csv</B> (CSV file) or
+<B>bin</B> (binary file). 
+<P>
+<DT><B>-n</B><I> cell_num</I><B></B>, <I></I><B>--cell-num=</B><I>cell_num</I>
+
+<DD>
+The number of cells to be generated. 
+<P>
+<DT><B>-s</B><I> seed</I><B></B>, <I></I><B>--seed=</B><I>seed</I>
+
+<DD>
+The seed that will be used internally for the random generator. This is
+optional. If it is omitted, the default is the current time of day. 
+<P>
+</DL>
+<A NAME="lbAF">&nbsp;</A>
+<H2>EXAMPLES</H2>
+
+<DL COMPACT>
+<DT><B>tiledb_generate_data</B> \ <DD>
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-w&nbsp;</B>my_workspace/&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-A&nbsp;</B>A&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-f&nbsp;</B>A.csv&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-t&nbsp;</B>csv&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-n&nbsp;</B>10000&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-s&nbsp;</B>&nbsp;0
+<P>
+Creates CSV data for array <I>A</I>. The data consist of 10000 cells. A fixed 
+seed <B>0</B> was used, e.g., for repeatability purposes.
+<P>
+<B>tiledb_generate_data</B> \ 
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-w&nbsp;</B>my_workspace/&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-A&nbsp;</B>A&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-f&nbsp;</B>A.bin&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-t&nbsp;</B>bin&nbsp;\
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;<B>-n&nbsp;</B>10000
+<P>
+Creates binary data for array <I>A</I>. The data consist of 10000 cells. The 
+default current time of day is used as a seed (which means that a different
+dataset will be generated next time the program is executed with the same
+options).
+<P>
+</DL>
+<A NAME="lbAG">&nbsp;</A>
+<H2>EXIT STATUS</H2>
+
+<DL COMPACT>
+<DT><B>0</B>
+
+<DD>
+Successful execution
+<DT><B>-1</B>
+
+<DD>
+Parser error
+<DT><B>-2</B>
+
+<DD>
+Undefined array
+<DT><B>-3</B>
+
+<DD>
+File operation failed
+<DT><B>-7</B>
+
+<DD>
+TileDB initialization failed
+<DT><B>-8</B>
+
+<DD>
+TileDB finalization failed
+<DT><B>-14</B>
+
+<DD>
+Failed to open array
+<DT><B>-15</B>
+
+<DD>
+Failed to close array
+<P>
+</DL>
+<A NAME="lbAH">&nbsp;</A>
+<H2>SEE ALSO</H2>
+
+<B><A HREF="/cgi-bin/man/man2html?1+tiledb_define_array">tiledb_define_array</A></B>(1) <B><A HREF="/cgi-bin/man/man2html?1+tiledb_load_csv">tiledb_load_csv</A></B>(1) <B><A HREF="/cgi-bin/man/man2html?1+tiledb_load_bin">tiledb_load_bin</A></B>(1) 
+
+<P>
+<A NAME="lbAI">&nbsp;</A>
+<H2>AUTHOR</H2>
+
+Stavros Papadopoulos &lt;<A HREF="http://people.csail.mit.edu/stavrosp">http://people.csail.mit.edu/stavrosp</A>&gt;, Copyright (c) 2015
+<P>
+
+<HR>
+<A NAME="index">&nbsp;</A><H2>Index</H2>
+<DL>
+<DT><A HREF="#lbAB">NAME</A><DD>
+<DT><A HREF="#lbAC">SYNOPSIS</A><DD>
+<DT><A HREF="#lbAD">DESCRIPTION</A><DD>
+<DT><A HREF="#lbAE">OPTIONS</A><DD>
+<DT><A HREF="#lbAF">EXAMPLES</A><DD>
+<DT><A HREF="#lbAG">EXIT STATUS</A><DD>
+<DT><A HREF="#lbAH">SEE ALSO</A><DD>
+<DT><A HREF="#lbAI">AUTHOR</A><DD>
+</DL>
+<HR>
+This document was created by
+<A HREF="/cgi-bin/man/man2html">man2html</A>,
+using the manual pages.<BR>
+Time: 21:52:58 GMT, June 29, 2015
+</BODY>
+</HTML>

@@ -1,0 +1,135 @@
+\hypertarget{command__line_8h}{}\section{tiledb\+\_\+cmd/include/command\+\_\+line.h File Reference}
+\label{command__line_8h}\index{tiledb\+\_\+cmd/include/command\+\_\+line.\+h@{tiledb\+\_\+cmd/include/command\+\_\+line.\+h}}
+{\ttfamily \#include $<$vector$>$}\\*
+{\ttfamily \#include $<$stdlib.\+h$>$}\\*
+{\ttfamily \#include $<$getopt.\+h$>$}\\*
+{\ttfamily \#include $<$inttypes.\+h$>$}\\*
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classCommandLine}{Command\+Line}
+\end{DoxyCompactItemize}
+\subsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define \hyperlink{command__line_8h_a7bd9befdce09c289af8b741b424a4f19}{C\+L\+\_\+\+A\+R\+R\+A\+Y\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}~0x1
+\item 
+\#define \hyperlink{command__line_8h_ae2bb82f079cd0ee186d391380682f642}{C\+L\+\_\+\+A\+T\+T\+R\+I\+B\+U\+T\+E\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}~0x2
+\item 
+\#define \hyperlink{command__line_8h_a288e6ce341c1c274f86b847ffb305a1f}{C\+L\+\_\+\+C\+A\+P\+A\+C\+I\+T\+Y\+\_\+\+B\+I\+T\+M\+A\+P}~0x4
+\item 
+\#define \hyperlink{command__line_8h_a4ba2675c168489f1cd26225a407254d1}{C\+L\+\_\+\+C\+E\+L\+L\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P}~0x8
+\item 
+\#define \hyperlink{command__line_8h_a06648f21e8ebaa064922c6edae9ba532}{C\+L\+\_\+\+C\+O\+N\+S\+O\+L\+I\+D\+A\+T\+I\+O\+N\+\_\+\+S\+T\+E\+P\+\_\+\+B\+I\+T\+M\+A\+P}~0x10
+\item 
+\#define \hyperlink{command__line_8h_a7dbaa1da886358c6a963e8943895110a}{C\+L\+\_\+\+C\+O\+O\+R\+D\+I\+N\+A\+T\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}~0x20
+\item 
+\#define \hyperlink{command__line_8h_ac9a82bf319b5ac0c36f5d32144f59668}{C\+L\+\_\+\+D\+I\+M\+\_\+\+D\+O\+M\+A\+I\+N\+S\+\_\+\+B\+I\+T\+M\+A\+P}~0x40
+\item 
+\#define \hyperlink{command__line_8h_a5edb1da94f96c1255a440910b878b19d}{C\+L\+\_\+\+D\+I\+M\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}~0x80
+\item 
+\#define \hyperlink{command__line_8h_a6c60b4ea96dd08d8f153822892503af5}{C\+L\+\_\+\+E\+X\+P\+R\+E\+S\+S\+I\+O\+N\+\_\+\+B\+I\+T\+M\+A\+P}~0x100
+\item 
+\#define \hyperlink{command__line_8h_ac578e7f5cfcfdbab9dd2e1d3d7d9d0de}{C\+L\+\_\+\+F\+I\+L\+E\+N\+A\+M\+E\+\_\+\+B\+I\+T\+M\+A\+P}~0x200
+\item 
+\#define \hyperlink{command__line_8h_ae2d9a1fcd6ddefdb9785f9c451a41ac1}{C\+L\+\_\+\+M\+O\+D\+E\+\_\+\+B\+I\+T\+M\+A\+P}~0x400
+\item 
+\#define \hyperlink{command__line_8h_a15b375651b335995217fdbbc5b039b5c}{C\+L\+\_\+\+N\+U\+M\+B\+E\+R\+S\+\_\+\+B\+I\+T\+M\+A\+P}~0x800
+\item 
+\#define \hyperlink{command__line_8h_a6b9b527438b8fc9d6a5cff4f0d847bfb}{C\+L\+\_\+\+R\+A\+N\+G\+E\+\_\+\+B\+I\+T\+M\+A\+P}~0x1000
+\item 
+\#define \hyperlink{command__line_8h_a27eb752c55c118e5da12836077f239cc}{C\+L\+\_\+\+R\+E\+S\+U\+L\+T\+\_\+\+B\+I\+T\+M\+A\+P}~0x2000
+\item 
+\#define \hyperlink{command__line_8h_ad2d4088696a114bb7ddfd3f72318d050}{C\+L\+\_\+\+S\+E\+E\+D\+\_\+\+B\+I\+T\+M\+A\+P}~0x4000
+\item 
+\#define \hyperlink{command__line_8h_af5e5e30b192eb8bb11e07190adda4a0e}{C\+L\+\_\+\+S\+I\+Z\+E\+\_\+\+B\+I\+T\+M\+A\+P}~0x8000
+\item 
+\#define \hyperlink{command__line_8h_a9c6d0abc61ca5ea2863cadb7df21d606}{C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+E\+X\+T\+E\+N\+T\+S\+\_\+\+B\+I\+T\+M\+A\+P}~0x10000
+\item 
+\#define \hyperlink{command__line_8h_a712933cbad84226514ac4401d03816bc}{C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P}~0x20000
+\item 
+\#define \hyperlink{command__line_8h_a30f530738600a84a2d3df57e341f4c97}{C\+L\+\_\+\+T\+Y\+P\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}~0x40000
+\item 
+\#define \hyperlink{command__line_8h_a1af7b180829cb3dd9679a797dcef1730}{C\+L\+\_\+\+W\+O\+R\+K\+S\+P\+A\+C\+E\+\_\+\+B\+I\+T\+M\+A\+P}~0x80000
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\begin{DoxyAuthor}{Author}
+Stavros Papadopoulos \href{mailto:stavrosp@csail.mit.edu}{\tt stavrosp@csail.\+mit.\+edu}
+\end{DoxyAuthor}
+\hypertarget{index_LICENSE}{}\subsection{L\+I\+C\+E\+N\+S\+E}\label{index_LICENSE}
+The M\+I\+T License
+
+\begin{DoxyCopyright}{Copyright}
+Copyright (c) 2014 Stavros Papadopoulos \href{mailto:stavrosp@csail.mit.edu}{\tt stavrosp@csail.\+mit.\+edu}
+\end{DoxyCopyright}
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \char`\"{}\+Software\char`\"{}), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions\+:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+T\+H\+E S\+O\+F\+T\+W\+A\+R\+E I\+S P\+R\+O\+V\+I\+D\+E\+D \char`\"{}\+A\+S I\+S\char`\"{}, W\+I\+T\+H\+O\+U\+T W\+A\+R\+R\+A\+N\+T\+Y O\+F A\+N\+Y K\+I\+N\+D, E\+X\+P\+R\+E\+S\+S O\+R I\+M\+P\+L\+I\+E\+D, I\+N\+C\+L\+U\+D\+I\+N\+G B\+U\+T N\+O\+T L\+I\+M\+I\+T\+E\+D T\+O T\+H\+E W\+A\+R\+R\+A\+N\+T\+I\+E\+S O\+F M\+E\+R\+C\+H\+A\+N\+T\+A\+B\+I\+L\+I\+T\+Y, F\+I\+T\+N\+E\+S\+S F\+O\+R A P\+A\+R\+T\+I\+C\+U\+L\+A\+R P\+U\+R\+P\+O\+S\+E A\+N\+D N\+O\+N\+I\+N\+F\+R\+I\+N\+G\+E\+M\+E\+N\+T. I\+N N\+O E\+V\+E\+N\+T S\+H\+A\+L\+L T\+H\+E A\+U\+T\+H\+O\+R\+S O\+R C\+O\+P\+Y\+R\+I\+G\+H\+T H\+O\+L\+D\+E\+R\+S B\+E L\+I\+A\+B\+L\+E F\+O\+R A\+N\+Y C\+L\+A\+I\+M, D\+A\+M\+A\+G\+E\+S O\+R O\+T\+H\+E\+R L\+I\+A\+B\+I\+L\+I\+T\+Y, W\+H\+E\+T\+H\+E\+R I\+N A\+N A\+C\+T\+I\+O\+N O\+F C\+O\+N\+T\+R\+A\+C\+T, T\+O\+R\+T O\+R O\+T\+H\+E\+R\+W\+I\+S\+E, A\+R\+I\+S\+I\+N\+G F\+R\+O\+M, O\+U\+T O\+F O\+R I\+N C\+O\+N\+N\+E\+C\+T\+I\+O\+N W\+I\+T\+H T\+H\+E S\+O\+F\+T\+W\+A\+R\+E O\+R T\+H\+E U\+S\+E O\+R O\+T\+H\+E\+R D\+E\+A\+L\+I\+N\+G\+S I\+N T\+H\+E S\+O\+F\+T\+W\+A\+R\+E.\hypertarget{command__line_8h_DESCRIPTION}{}\subsection{D\+E\+S\+C\+R\+I\+P\+T\+I\+O\+N}\label{command__line_8h_DESCRIPTION}
+This file defines class \hyperlink{classCommandLine}{Command\+Line}, used to receive queries and options from the command line. 
+
+\subsection{Macro Definition Documentation}
+\hypertarget{command__line_8h_a7bd9befdce09c289af8b741b424a4f19}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+A\+R\+R\+A\+Y\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+A\+R\+R\+A\+Y\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+A\+R\+R\+A\+Y\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+A\+R\+R\+A\+Y\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+A\+R\+R\+A\+Y\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+A\+R\+R\+A\+Y\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P~0x1}\label{command__line_8h_a7bd9befdce09c289af8b741b424a4f19}
+Indicates array names were given as arguments. \hypertarget{command__line_8h_ae2bb82f079cd0ee186d391380682f642}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+A\+T\+T\+R\+I\+B\+U\+T\+E\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+A\+T\+T\+R\+I\+B\+U\+T\+E\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+A\+T\+T\+R\+I\+B\+U\+T\+E\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+A\+T\+T\+R\+I\+B\+U\+T\+E\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+A\+T\+T\+R\+I\+B\+U\+T\+E\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+A\+T\+T\+R\+I\+B\+U\+T\+E\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P~0x2}\label{command__line_8h_ae2bb82f079cd0ee186d391380682f642}
+Indicates attribute names were given as arguments. \hypertarget{command__line_8h_a288e6ce341c1c274f86b847ffb305a1f}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+C\+A\+P\+A\+C\+I\+T\+Y\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+C\+A\+P\+A\+C\+I\+T\+Y\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+C\+A\+P\+A\+C\+I\+T\+Y\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+C\+A\+P\+A\+C\+I\+T\+Y\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+C\+A\+P\+A\+C\+I\+T\+Y\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+C\+A\+P\+A\+C\+I\+T\+Y\+\_\+\+B\+I\+T\+M\+A\+P~0x4}\label{command__line_8h_a288e6ce341c1c274f86b847ffb305a1f}
+Indicates capacity was given as an argument. \hypertarget{command__line_8h_a4ba2675c168489f1cd26225a407254d1}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+C\+E\+L\+L\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+C\+E\+L\+L\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+C\+E\+L\+L\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+C\+E\+L\+L\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+C\+E\+L\+L\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+C\+E\+L\+L\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P~0x8}\label{command__line_8h_a4ba2675c168489f1cd26225a407254d1}
+Indicates cell order was given as an argument. \hypertarget{command__line_8h_a06648f21e8ebaa064922c6edae9ba532}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+C\+O\+N\+S\+O\+L\+I\+D\+A\+T\+I\+O\+N\+\_\+\+S\+T\+E\+P\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+C\+O\+N\+S\+O\+L\+I\+D\+A\+T\+I\+O\+N\+\_\+\+S\+T\+E\+P\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+C\+O\+N\+S\+O\+L\+I\+D\+A\+T\+I\+O\+N\+\_\+\+S\+T\+E\+P\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+C\+O\+N\+S\+O\+L\+I\+D\+A\+T\+I\+O\+N\+\_\+\+S\+T\+E\+P\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+C\+O\+N\+S\+O\+L\+I\+D\+A\+T\+I\+O\+N\+\_\+\+S\+T\+E\+P\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+C\+O\+N\+S\+O\+L\+I\+D\+A\+T\+I\+O\+N\+\_\+\+S\+T\+E\+P\+\_\+\+B\+I\+T\+M\+A\+P~0x10}\label{command__line_8h_a06648f21e8ebaa064922c6edae9ba532}
+Indicates consolidation step was given as an argument. \hypertarget{command__line_8h_a7dbaa1da886358c6a963e8943895110a}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+C\+O\+O\+R\+D\+I\+N\+A\+T\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+C\+O\+O\+R\+D\+I\+N\+A\+T\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+C\+O\+O\+R\+D\+I\+N\+A\+T\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+C\+O\+O\+R\+D\+I\+N\+A\+T\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+C\+O\+O\+R\+D\+I\+N\+A\+T\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+C\+O\+O\+R\+D\+I\+N\+A\+T\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P~0x20}\label{command__line_8h_a7dbaa1da886358c6a963e8943895110a}
+Indicates coordinates were given as arguments. \hypertarget{command__line_8h_ac9a82bf319b5ac0c36f5d32144f59668}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+D\+I\+M\+\_\+\+D\+O\+M\+A\+I\+N\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+D\+I\+M\+\_\+\+D\+O\+M\+A\+I\+N\+S\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+D\+I\+M\+\_\+\+D\+O\+M\+A\+I\+N\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+D\+I\+M\+\_\+\+D\+O\+M\+A\+I\+N\+S\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+D\+I\+M\+\_\+\+D\+O\+M\+A\+I\+N\+S\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+D\+I\+M\+\_\+\+D\+O\+M\+A\+I\+N\+S\+\_\+\+B\+I\+T\+M\+A\+P~0x40}\label{command__line_8h_ac9a82bf319b5ac0c36f5d32144f59668}
+Indicates dimension domains were given as arguments. \hypertarget{command__line_8h_a5edb1da94f96c1255a440910b878b19d}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+D\+I\+M\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+D\+I\+M\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+D\+I\+M\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+D\+I\+M\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+D\+I\+M\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+D\+I\+M\+\_\+\+N\+A\+M\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P~0x80}\label{command__line_8h_a5edb1da94f96c1255a440910b878b19d}
+Indicates dimension names were given as arguments. \hypertarget{command__line_8h_a6c60b4ea96dd08d8f153822892503af5}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+E\+X\+P\+R\+E\+S\+S\+I\+O\+N\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+E\+X\+P\+R\+E\+S\+S\+I\+O\+N\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+E\+X\+P\+R\+E\+S\+S\+I\+O\+N\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+E\+X\+P\+R\+E\+S\+S\+I\+O\+N\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+E\+X\+P\+R\+E\+S\+S\+I\+O\+N\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+E\+X\+P\+R\+E\+S\+S\+I\+O\+N\+\_\+\+B\+I\+T\+M\+A\+P~0x100}\label{command__line_8h_a6c60b4ea96dd08d8f153822892503af5}
+Indicates expression was given as an argument. \hypertarget{command__line_8h_ac578e7f5cfcfdbab9dd2e1d3d7d9d0de}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+F\+I\+L\+E\+N\+A\+M\+E\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+F\+I\+L\+E\+N\+A\+M\+E\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+F\+I\+L\+E\+N\+A\+M\+E\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+F\+I\+L\+E\+N\+A\+M\+E\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+F\+I\+L\+E\+N\+A\+M\+E\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+F\+I\+L\+E\+N\+A\+M\+E\+\_\+\+B\+I\+T\+M\+A\+P~0x200}\label{command__line_8h_ac578e7f5cfcfdbab9dd2e1d3d7d9d0de}
+Indicates range bounds were given as an argument. \hypertarget{command__line_8h_ae2d9a1fcd6ddefdb9785f9c451a41ac1}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+M\+O\+D\+E\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+M\+O\+D\+E\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+M\+O\+D\+E\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+M\+O\+D\+E\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+M\+O\+D\+E\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+M\+O\+D\+E\+\_\+\+B\+I\+T\+M\+A\+P~0x400}\label{command__line_8h_ae2d9a1fcd6ddefdb9785f9c451a41ac1}
+Indicates mode was given as an argument. \hypertarget{command__line_8h_a15b375651b335995217fdbbc5b039b5c}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+N\+U\+M\+B\+E\+R\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+N\+U\+M\+B\+E\+R\+S\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+N\+U\+M\+B\+E\+R\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+N\+U\+M\+B\+E\+R\+S\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+N\+U\+M\+B\+E\+R\+S\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+N\+U\+M\+B\+E\+R\+S\+\_\+\+B\+I\+T\+M\+A\+P~0x800}\label{command__line_8h_a15b375651b335995217fdbbc5b039b5c}
+Indicates numbers were given as arguments. \hypertarget{command__line_8h_a6b9b527438b8fc9d6a5cff4f0d847bfb}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+R\+A\+N\+G\+E\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+R\+A\+N\+G\+E\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+R\+A\+N\+G\+E\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+R\+A\+N\+G\+E\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+R\+A\+N\+G\+E\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+R\+A\+N\+G\+E\+\_\+\+B\+I\+T\+M\+A\+P~0x1000}\label{command__line_8h_a6b9b527438b8fc9d6a5cff4f0d847bfb}
+Indicates a range was given as an argument. \hypertarget{command__line_8h_a27eb752c55c118e5da12836077f239cc}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+R\+E\+S\+U\+L\+T\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+R\+E\+S\+U\+L\+T\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+R\+E\+S\+U\+L\+T\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+R\+E\+S\+U\+L\+T\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+R\+E\+S\+U\+L\+T\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+R\+E\+S\+U\+L\+T\+\_\+\+B\+I\+T\+M\+A\+P~0x2000}\label{command__line_8h_a27eb752c55c118e5da12836077f239cc}
+Indicates a result name was given as an argument. \hypertarget{command__line_8h_ad2d4088696a114bb7ddfd3f72318d050}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+S\+E\+E\+D\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+S\+E\+E\+D\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+S\+E\+E\+D\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+S\+E\+E\+D\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+S\+E\+E\+D\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+S\+E\+E\+D\+\_\+\+B\+I\+T\+M\+A\+P~0x4000}\label{command__line_8h_ad2d4088696a114bb7ddfd3f72318d050}
+Indicates a seed was given as an argument. \hypertarget{command__line_8h_af5e5e30b192eb8bb11e07190adda4a0e}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+S\+I\+Z\+E\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+S\+I\+Z\+E\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+S\+I\+Z\+E\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+S\+I\+Z\+E\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+S\+I\+Z\+E\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+S\+I\+Z\+E\+\_\+\+B\+I\+T\+M\+A\+P~0x8000}\label{command__line_8h_af5e5e30b192eb8bb11e07190adda4a0e}
+Indicates a size was given as an argument. \hypertarget{command__line_8h_a9c6d0abc61ca5ea2863cadb7df21d606}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+E\+X\+T\+E\+N\+T\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+E\+X\+T\+E\+N\+T\+S\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+E\+X\+T\+E\+N\+T\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+E\+X\+T\+E\+N\+T\+S\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+E\+X\+T\+E\+N\+T\+S\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+E\+X\+T\+E\+N\+T\+S\+\_\+\+B\+I\+T\+M\+A\+P~0x10000}\label{command__line_8h_a9c6d0abc61ca5ea2863cadb7df21d606}
+Indicates tile extents were given as arguments. \hypertarget{command__line_8h_a712933cbad84226514ac4401d03816bc}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+T\+I\+L\+E\+\_\+\+O\+R\+D\+E\+R\+\_\+\+B\+I\+T\+M\+A\+P~0x20000}\label{command__line_8h_a712933cbad84226514ac4401d03816bc}
+Indicates tile order was given as an argument. \hypertarget{command__line_8h_a30f530738600a84a2d3df57e341f4c97}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+T\+Y\+P\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+T\+Y\+P\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+T\+Y\+P\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+T\+Y\+P\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+T\+Y\+P\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+T\+Y\+P\+E\+S\+\_\+\+B\+I\+T\+M\+A\+P~0x40000}\label{command__line_8h_a30f530738600a84a2d3df57e341f4c97}
+Indicates types were given as arguments. \hypertarget{command__line_8h_a1af7b180829cb3dd9679a797dcef1730}{}\index{command\+\_\+line.\+h@{command\+\_\+line.\+h}!C\+L\+\_\+\+W\+O\+R\+K\+S\+P\+A\+C\+E\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+W\+O\+R\+K\+S\+P\+A\+C\+E\+\_\+\+B\+I\+T\+M\+A\+P}}
+\index{C\+L\+\_\+\+W\+O\+R\+K\+S\+P\+A\+C\+E\+\_\+\+B\+I\+T\+M\+A\+P@{C\+L\+\_\+\+W\+O\+R\+K\+S\+P\+A\+C\+E\+\_\+\+B\+I\+T\+M\+A\+P}!command\+\_\+line.\+h@{command\+\_\+line.\+h}}
+\subsubsection[{C\+L\+\_\+\+W\+O\+R\+K\+S\+P\+A\+C\+E\+\_\+\+B\+I\+T\+M\+A\+P}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+L\+\_\+\+W\+O\+R\+K\+S\+P\+A\+C\+E\+\_\+\+B\+I\+T\+M\+A\+P~0x80000}\label{command__line_8h_a1af7b180829cb3dd9679a797dcef1730}
+Indicates worspace was given as an argument. 

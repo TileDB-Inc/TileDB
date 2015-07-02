@@ -1,0 +1,58 @@
+\hypertarget{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret}{}\section{Tile\+:\+:const\+\_\+reverse\+\_\+iterator\+:\+:const\+\_\+reverse\+\_\+iterator\+\_\+ret Class Reference}
+\label{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret}\index{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret@{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret}}
+
+
+{\ttfamily \#include $<$tile.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret_a2d4ca34a843f9e40827840557ec1a163}{const\+\_\+reverse\+\_\+iterator\+\_\+ret} (const \hyperlink{classTile}{Tile} $\ast$\hyperlink{classTile_1_1const__reverse__iterator_ac30fa99b5b0d172a238701e54e5276bf}{tile}, uint64\+\_\+t \hyperlink{classTile_1_1const__reverse__iterator_ac88135a4eba24eb2f353026486ac44d3}{pos})
+\item 
+{\footnotesize template$<$class T $>$ }\\\hyperlink{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret_a7d740afa0d566bf62faa1685735bda2c}{operator T} ()
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+uint64\+\_\+t \hyperlink{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret_a444e0e8a11cf929858375db645c8624c}{pos\+\_\+}
+\item 
+const \hyperlink{classTile}{Tile} $\ast$ \hyperlink{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret_a4e0fd3c1cfb7ade67642633609e45f36}{tile\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This class essentially implements a trick for \hyperlink{classTile_1_1const__reverse__iterator_a559f8aeccc679811c9c335fbd98deab0}{Tile\+::const\+\_\+reverse\+\_\+iterator\+::operator$\ast$()}. If we made that operator templated, we would not be able to resolve the return type upon its call. Therefore, we create this class and implement a conversion operator. When an object of this class is assigned to a variable, its conversion operator is triggered while properly resolving the return type. Since the return type is resolved, we can do whatever we would do if we had templated \hyperlink{classTile_1_1const__reverse__iterator_a559f8aeccc679811c9c335fbd98deab0}{Tile\+::const\+\_\+reverse\+\_\+iterator\+::operator$\ast$()}. 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret_a2d4ca34a843f9e40827840557ec1a163}{}\index{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret@{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret}!const\+\_\+reverse\+\_\+iterator\+\_\+ret@{const\+\_\+reverse\+\_\+iterator\+\_\+ret}}
+\index{const\+\_\+reverse\+\_\+iterator\+\_\+ret@{const\+\_\+reverse\+\_\+iterator\+\_\+ret}!Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret@{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret}}
+\subsubsection[{const\+\_\+reverse\+\_\+iterator\+\_\+ret}]{\setlength{\rightskip}{0pt plus 5cm}Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret (
+\begin{DoxyParamCaption}
+\item[{const {\bf Tile} $\ast$}]{tile, }
+\item[{uint64\+\_\+t}]{pos}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret_a2d4ca34a843f9e40827840557ec1a163}
+Constructor that takes as input the tile for which the \hyperlink{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret}{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret} object was created, and the the cell position in the tile. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret_a7d740afa0d566bf62faa1685735bda2c}{}\index{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret@{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret}!operator T@{operator T}}
+\index{operator T@{operator T}!Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret@{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret}}
+\subsubsection[{operator T}]{\setlength{\rightskip}{0pt plus 5cm}template$<$class T $>$ Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret\+::operator T (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret_a7d740afa0d566bf62faa1685735bda2c}
+Conversion operator. Called when an object of this class is assigned to a variable. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret_a444e0e8a11cf929858375db645c8624c}{}\index{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret@{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret}!pos\+\_\+@{pos\+\_\+}}
+\index{pos\+\_\+@{pos\+\_\+}!Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret@{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret}}
+\subsubsection[{pos\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}uint64\+\_\+t Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret\+::pos\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret_a444e0e8a11cf929858375db645c8624c}
+The current cell position carried through the \hyperlink{classTile_1_1const__iterator}{Tile\+::const\+\_\+iterator} object that creates the Tile\+::const\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret object. \hypertarget{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret_a4e0fd3c1cfb7ade67642633609e45f36}{}\index{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret@{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret}!tile\+\_\+@{tile\+\_\+}}
+\index{tile\+\_\+@{tile\+\_\+}!Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret@{Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret}}
+\subsubsection[{tile\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Tile}$\ast$ Tile\+::const\+\_\+reverse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret\+::tile\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classTile_1_1const__reverse__iterator_1_1const__reverse__iterator__ret_a4e0fd3c1cfb7ade67642633609e45f36}
+The tile pointer carried through the \hyperlink{classTile_1_1const__iterator}{Tile\+::const\+\_\+iterator} object that creates the Tile\+::const\+\_\+revrse\+\_\+iterator\+::const\+\_\+reverse\+\_\+iterator\+\_\+ret object. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/\hyperlink{tile_8h}{tile.\+h}\end{DoxyCompactItemize}

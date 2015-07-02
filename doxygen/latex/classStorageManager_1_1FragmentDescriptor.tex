@@ -1,0 +1,130 @@
+\hypertarget{classStorageManager_1_1FragmentDescriptor}{}\section{Storage\+Manager\+:\+:Fragment\+Descriptor Class Reference}
+\label{classStorageManager_1_1FragmentDescriptor}\index{Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}}
+
+
+{\ttfamily \#include $<$storage\+\_\+manager.\+h$>$}
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classStorageManager_1_1FragmentDescriptor_ac2ea05fa7d89a5fb440cd4e2d242073e}{Fragment\+Descriptor} (\hyperlink{structStorageManager_1_1FragmentInfo}{Fragment\+Info} $\ast$\hyperlink{classStorageManager_1_1FragmentDescriptor_ac8f95b391bc405e272a65a9cbf1fd34c}{fragment\+\_\+info})
+\item 
+\hyperlink{classStorageManager_1_1FragmentDescriptor_a1be3ba8e53cbdf7fff8360e80a9e5aec}{$\sim$\+Fragment\+Descriptor} ()
+\item 
+const std\+::string \& \hyperlink{classStorageManager_1_1FragmentDescriptor_a10b586420f721f6527ae2b4820bd2492}{array\+\_\+name} () const 
+\item 
+const \hyperlink{classArraySchema}{Array\+Schema} $\ast$ \hyperlink{classStorageManager_1_1FragmentDescriptor_a391a2946ae3eb8ac5f702061cbb37d79}{array\+\_\+schema} () const 
+\item 
+const \hyperlink{structStorageManager_1_1FragmentInfo}{Fragment\+Info} $\ast$ \hyperlink{classStorageManager_1_1FragmentDescriptor_ac8f95b391bc405e272a65a9cbf1fd34c}{fragment\+\_\+info} () const 
+\item 
+const std\+::string \& \hyperlink{classStorageManager_1_1FragmentDescriptor_af932b5a3e8d3802c63dfb13fb41f2cdb}{fragment\+\_\+name} () const 
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classStorageManager_1_1FragmentDescriptor_a9f50e1eb044c1e856ffe274a828d770f}{operator delete} (void $\ast$ptr)
+\item 
+void \hyperlink{classStorageManager_1_1FragmentDescriptor_a59a1511a413e6593157079e9067f9a8d}{operator delete\mbox{[}$\,$\mbox{]}} (void $\ast$ptr)
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std\+::string \hyperlink{classStorageManager_1_1FragmentDescriptor_ada46f739e9df89b421776686b9bd1313}{array\+\_\+name\+\_\+}
+\item 
+\hyperlink{structStorageManager_1_1FragmentInfo}{Fragment\+Info} $\ast$ \hyperlink{classStorageManager_1_1FragmentDescriptor_a2f5330bdbf0aff8e03650dd103e46b39}{fragment\+\_\+info\+\_\+}
+\item 
+int64\+\_\+t \hyperlink{classStorageManager_1_1FragmentDescriptor_af22f12dd602adeb5b1fde62593fa1c1b}{fragment\+\_\+info\+\_\+id\+\_\+}
+\item 
+std\+::string \hyperlink{classStorageManager_1_1FragmentDescriptor_a6e93d68d8fd106ab867a4db03901b322}{fragment\+\_\+name\+\_\+}
+\end{DoxyCompactItemize}
+\subsection*{Friends}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classStorageManager_1_1FragmentDescriptor_aab928c97ba2ed82b71fb011b1c4fef74}{}class {\bfseries Storage\+Manager}\label{classStorageManager_1_1FragmentDescriptor_aab928c97ba2ed82b71fb011b1c4fef74}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+This class is a wrapper for a \hyperlink{structStorageManager_1_1FragmentInfo}{Fragment\+Info} object. It is returned by \hyperlink{classStorageManager_a8460f9de39a89ffe82f10512e59d4847}{Storage\+Manager\+::open\+\_\+fragment}, and used to append/get tiles to/from a fragment. Its purpose is to eliminate the cost of finding the fragment info in the book-\/keeping structures (and specifically in \hyperlink{classStorageManager_adb5e6670a3394342cc683288430446af}{Storage\+Manager\+::open\+\_\+fragments\+\_\+}) every time an operation must be executed for this fragment (e.\+g., \hyperlink{classStorageManager_a7027871a9acbb91efa82e4a8ca4d9231}{Storage\+Manager\+::get\+\_\+tile}). It contains a pointer to an \hyperlink{structStorageManager_1_1FragmentInfo}{Fragment\+Info} object in \hyperlink{classStorageManager_adb5e6670a3394342cc683288430446af}{Storage\+Manager\+::open\+\_\+fragments\+\_\+}, along with \hyperlink{classStorageManager_1_1FragmentDescriptor_af22f12dd602adeb5b1fde62593fa1c1b}{Fragment\+Descriptor\+::fragment\+\_\+info\+\_\+id\+\_\+} that is used for debugging purposes to check if the stored \hyperlink{structStorageManager_1_1FragmentInfo}{Fragment\+Info} object is obsolete (i.\+e., if it has been deleted by the storage manager when closing the fragment). 
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classStorageManager_1_1FragmentDescriptor_ac2ea05fa7d89a5fb440cd4e2d242073e}{}\index{Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}!Fragment\+Descriptor@{Fragment\+Descriptor}}
+\index{Fragment\+Descriptor@{Fragment\+Descriptor}!Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}}
+\subsubsection[{Fragment\+Descriptor}]{\setlength{\rightskip}{0pt plus 5cm}Storage\+Manager\+::\+Fragment\+Descriptor\+::\+Fragment\+Descriptor (
+\begin{DoxyParamCaption}
+\item[{{\bf Fragment\+Info} $\ast$}]{fragment\+\_\+info}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [explicit]}}\label{classStorageManager_1_1FragmentDescriptor_ac2ea05fa7d89a5fb440cd4e2d242073e}
+Simple constructor. \hypertarget{classStorageManager_1_1FragmentDescriptor_a1be3ba8e53cbdf7fff8360e80a9e5aec}{}\index{Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}!````~Fragment\+Descriptor@{$\sim$\+Fragment\+Descriptor}}
+\index{````~Fragment\+Descriptor@{$\sim$\+Fragment\+Descriptor}!Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}}
+\subsubsection[{$\sim$\+Fragment\+Descriptor}]{\setlength{\rightskip}{0pt plus 5cm}Storage\+Manager\+::\+Fragment\+Descriptor\+::$\sim$\+Fragment\+Descriptor (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classStorageManager_1_1FragmentDescriptor_a1be3ba8e53cbdf7fff8360e80a9e5aec}
+Empty destructor. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classStorageManager_1_1FragmentDescriptor_a10b586420f721f6527ae2b4820bd2492}{}\index{Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}!array\+\_\+name@{array\+\_\+name}}
+\index{array\+\_\+name@{array\+\_\+name}!Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}}
+\subsubsection[{array\+\_\+name}]{\setlength{\rightskip}{0pt plus 5cm}const std\+::string\& Storage\+Manager\+::\+Fragment\+Descriptor\+::array\+\_\+name (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classStorageManager_1_1FragmentDescriptor_a10b586420f721f6527ae2b4820bd2492}
+Returns the array name. \hypertarget{classStorageManager_1_1FragmentDescriptor_a391a2946ae3eb8ac5f702061cbb37d79}{}\index{Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}!array\+\_\+schema@{array\+\_\+schema}}
+\index{array\+\_\+schema@{array\+\_\+schema}!Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}}
+\subsubsection[{array\+\_\+schema}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Array\+Schema}$\ast$ Storage\+Manager\+::\+Fragment\+Descriptor\+::array\+\_\+schema (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classStorageManager_1_1FragmentDescriptor_a391a2946ae3eb8ac5f702061cbb37d79}
+Returns the array schema. \hypertarget{classStorageManager_1_1FragmentDescriptor_ac8f95b391bc405e272a65a9cbf1fd34c}{}\index{Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}!fragment\+\_\+info@{fragment\+\_\+info}}
+\index{fragment\+\_\+info@{fragment\+\_\+info}!Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}}
+\subsubsection[{fragment\+\_\+info}]{\setlength{\rightskip}{0pt plus 5cm}const {\bf Fragment\+Info}$\ast$ Storage\+Manager\+::\+Fragment\+Descriptor\+::fragment\+\_\+info (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classStorageManager_1_1FragmentDescriptor_ac8f95b391bc405e272a65a9cbf1fd34c}
+Returns the array info. \hypertarget{classStorageManager_1_1FragmentDescriptor_af932b5a3e8d3802c63dfb13fb41f2cdb}{}\index{Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}!fragment\+\_\+name@{fragment\+\_\+name}}
+\index{fragment\+\_\+name@{fragment\+\_\+name}!Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}}
+\subsubsection[{fragment\+\_\+name}]{\setlength{\rightskip}{0pt plus 5cm}const std\+::string\& Storage\+Manager\+::\+Fragment\+Descriptor\+::fragment\+\_\+name (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classStorageManager_1_1FragmentDescriptor_af932b5a3e8d3802c63dfb13fb41f2cdb}
+Returns the fragment name. \hypertarget{classStorageManager_1_1FragmentDescriptor_a9f50e1eb044c1e856ffe274a828d770f}{}\index{Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}!operator delete@{operator delete}}
+\index{operator delete@{operator delete}!Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}}
+\subsubsection[{operator delete}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Fragment\+Descriptor\+::operator delete (
+\begin{DoxyParamCaption}
+\item[{void $\ast$}]{ptr}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classStorageManager_1_1FragmentDescriptor_a9f50e1eb044c1e856ffe274a828d770f}
+Override the delete operator so that only a \hyperlink{classStorageManager}{Storage\+Manager} object can delete dynamically created \hyperlink{classStorageManager_1_1FragmentDescriptor}{Fragment\+Descriptor} objects. \hypertarget{classStorageManager_1_1FragmentDescriptor_a59a1511a413e6593157079e9067f9a8d}{}\index{Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}!operator delete\mbox{[}$\,$\mbox{]}@{operator delete[]}}
+\index{operator delete\mbox{[}$\,$\mbox{]}@{operator delete[]}!Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}}
+\subsubsection[{operator delete[]}]{\setlength{\rightskip}{0pt plus 5cm}void Storage\+Manager\+::\+Fragment\+Descriptor\+::operator delete\mbox{[}$\,$\mbox{]} (
+\begin{DoxyParamCaption}
+\item[{void $\ast$}]{ptr}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classStorageManager_1_1FragmentDescriptor_a59a1511a413e6593157079e9067f9a8d}
+Override the delete\mbox{[}\mbox{]} operator so that only a \hyperlink{classStorageManager}{Storage\+Manager} object can delete dynamically created \hyperlink{classStorageManager_1_1FragmentDescriptor}{Fragment\+Descriptor} objects. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classStorageManager_1_1FragmentDescriptor_ada46f739e9df89b421776686b9bd1313}{}\index{Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}!array\+\_\+name\+\_\+@{array\+\_\+name\+\_\+}}
+\index{array\+\_\+name\+\_\+@{array\+\_\+name\+\_\+}!Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}}
+\subsubsection[{array\+\_\+name\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string Storage\+Manager\+::\+Fragment\+Descriptor\+::array\+\_\+name\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1FragmentDescriptor_ada46f739e9df89b421776686b9bd1313}
+The array name. \hypertarget{classStorageManager_1_1FragmentDescriptor_a2f5330bdbf0aff8e03650dd103e46b39}{}\index{Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}!fragment\+\_\+info\+\_\+@{fragment\+\_\+info\+\_\+}}
+\index{fragment\+\_\+info\+\_\+@{fragment\+\_\+info\+\_\+}!Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}}
+\subsubsection[{fragment\+\_\+info\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Fragment\+Info}$\ast$ Storage\+Manager\+::\+Fragment\+Descriptor\+::fragment\+\_\+info\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1FragmentDescriptor_a2f5330bdbf0aff8e03650dd103e46b39}
+The fragment info. \hypertarget{classStorageManager_1_1FragmentDescriptor_af22f12dd602adeb5b1fde62593fa1c1b}{}\index{Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}!fragment\+\_\+info\+\_\+id\+\_\+@{fragment\+\_\+info\+\_\+id\+\_\+}}
+\index{fragment\+\_\+info\+\_\+id\+\_\+@{fragment\+\_\+info\+\_\+id\+\_\+}!Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}}
+\subsubsection[{fragment\+\_\+info\+\_\+id\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int64\+\_\+t Storage\+Manager\+::\+Fragment\+Descriptor\+::fragment\+\_\+info\+\_\+id\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1FragmentDescriptor_af22f12dd602adeb5b1fde62593fa1c1b}
+The id of the \hyperlink{classStorageManager_1_1FragmentDescriptor_a2f5330bdbf0aff8e03650dd103e46b39}{Fragment\+Descriptor\+::fragment\+\_\+info\+\_\+} object. This is used for debugging purposes to check if the stored \hyperlink{structStorageManager_1_1FragmentInfo}{Fragment\+Info} object is obsolete (i.\+e., if it has been deleted by the storage manager from \hyperlink{classStorageManager_adb5e6670a3394342cc683288430446af}{Storage\+Manager\+::open\+\_\+fragments\+\_\+} when closing the fragment). \hypertarget{classStorageManager_1_1FragmentDescriptor_a6e93d68d8fd106ab867a4db03901b322}{}\index{Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}!fragment\+\_\+name\+\_\+@{fragment\+\_\+name\+\_\+}}
+\index{fragment\+\_\+name\+\_\+@{fragment\+\_\+name\+\_\+}!Storage\+Manager\+::\+Fragment\+Descriptor@{Storage\+Manager\+::\+Fragment\+Descriptor}}
+\subsubsection[{fragment\+\_\+name\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string Storage\+Manager\+::\+Fragment\+Descriptor\+::fragment\+\_\+name\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classStorageManager_1_1FragmentDescriptor_a6e93d68d8fd106ab867a4db03901b322}
+The fragment name. 
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/heads/\hyperlink{storage__manager_8h}{storage\+\_\+manager.\+h}\end{DoxyCompactItemize}

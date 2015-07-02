@@ -1,0 +1,35 @@
+\hypertarget{structStorageManager_1_1ReadState}{}\section{Storage\+Manager\+:\+:Read\+State Struct Reference}
+\label{structStorageManager_1_1ReadState}\index{Storage\+Manager\+::\+Read\+State@{Storage\+Manager\+::\+Read\+State}}
+
+
+{\ttfamily \#include $<$storage\+\_\+manager.\+h$>$}
+
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classStorageManager_a118ac28e229231431d92b9993c28559d}{Pos\+Ranges} \hyperlink{structStorageManager_1_1ReadState_a0705f10a907f1d4b7b1f510ea3db3f06}{pos\+\_\+ranges\+\_\+}
+\item 
+\hyperlink{classStorageManager_ac40d6aec2ad9e7e4ecc7c765628dccb1}{Segments} \hyperlink{structStorageManager_1_1ReadState_a081db3c4d4e63810c2419e7fd731d0ef}{segments\+\_\+}
+\item 
+\hyperlink{classStorageManager_a2eb2f058a32a6279eaa277bcacdc663f}{Tiles} \hyperlink{structStorageManager_1_1ReadState_acf1541e41609d80545b309567267b519}{tiles\+\_\+}
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Stores the state necessary when reading tiles from a fragment. 
+
+\subsection{Member Data Documentation}
+\hypertarget{structStorageManager_1_1ReadState_a0705f10a907f1d4b7b1f510ea3db3f06}{}\index{Storage\+Manager\+::\+Read\+State@{Storage\+Manager\+::\+Read\+State}!pos\+\_\+ranges\+\_\+@{pos\+\_\+ranges\+\_\+}}
+\index{pos\+\_\+ranges\+\_\+@{pos\+\_\+ranges\+\_\+}!Storage\+Manager\+::\+Read\+State@{Storage\+Manager\+::\+Read\+State}}
+\subsubsection[{pos\+\_\+ranges\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Pos\+Ranges} Storage\+Manager\+::\+Read\+State\+::pos\+\_\+ranges\+\_\+}\label{structStorageManager_1_1ReadState_a0705f10a907f1d4b7b1f510ea3db3f06}
+Stores the range of the position of the tiles currently in main memory, for each attribute. The position of a tile is a sequence number indicating the order in which it was appended to the fragment with respect to the the other tiles appended to the fragment for the same attribute (e.\+g., 0 means that it was appended first, 1 second, etc.). The position helps in efficiently browsing tile info in the book-\/keeping structures. \hypertarget{structStorageManager_1_1ReadState_a081db3c4d4e63810c2419e7fd731d0ef}{}\index{Storage\+Manager\+::\+Read\+State@{Storage\+Manager\+::\+Read\+State}!segments\+\_\+@{segments\+\_\+}}
+\index{segments\+\_\+@{segments\+\_\+}!Storage\+Manager\+::\+Read\+State@{Storage\+Manager\+::\+Read\+State}}
+\subsubsection[{segments\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Segments} Storage\+Manager\+::\+Read\+State\+::segments\+\_\+}\label{structStorageManager_1_1ReadState_a081db3c4d4e63810c2419e7fd731d0ef}
+Stores one segment per attribute. \hypertarget{structStorageManager_1_1ReadState_acf1541e41609d80545b309567267b519}{}\index{Storage\+Manager\+::\+Read\+State@{Storage\+Manager\+::\+Read\+State}!tiles\+\_\+@{tiles\+\_\+}}
+\index{tiles\+\_\+@{tiles\+\_\+}!Storage\+Manager\+::\+Read\+State@{Storage\+Manager\+::\+Read\+State}}
+\subsubsection[{tiles\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Tiles} Storage\+Manager\+::\+Read\+State\+::tiles\+\_\+}\label{structStorageManager_1_1ReadState_acf1541e41609d80545b309567267b519}
+Stores the tiles of every attribute currently in main memory. 
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+core/include/\hyperlink{storage__manager_8h}{storage\+\_\+manager.\+h}\end{DoxyCompactItemize}

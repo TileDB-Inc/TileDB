@@ -52,18 +52,31 @@
 
 QueryProcessor::QueryProcessor(StorageManager* storage_manager) 
     : storage_manager_(storage_manager) {
+  // Success code
+  err_ = 0;
+}
+
+/******************************************************
+********************* ACCESSORS ************************
+******************************************************/
+
+int QueryProcessor::err() const {
+  return err_;
 }
 
 /******************************************************
 ****************** QUERY FUNCTIONS ********************
 ******************************************************/
 
-int QueryProcessor::export_to_csv(
+int QueryProcessor::export_csv(
     const std::string& array_name, 
     const std::string& filename, 
     const std::vector<std::string>& dim_names,
     const std::vector<std::string>& attribute_names,
-    bool reverse, std::string& err_msg) const {
+    bool reverse) const {
+  // TODO remove
+  std::string err_msg;
+
   // Open array in read mode
   int ad = storage_manager_->open_array(array_name, "r", err_msg);
   if(ad == -1) 
@@ -92,33 +105,33 @@ int QueryProcessor::export_to_csv(
   // Invoke the proper templated function
   if(coords_type == typeid(int)) { 
     if(!reverse)
-      export_to_csv<int>(ad, array_schema, filename, 
-                         dim_ids, attribute_ids); 
+      export_csv<int>(ad, array_schema, filename, 
+                      dim_ids, attribute_ids); 
     else
-      export_to_csv_reverse<int>(ad, array_schema, filename, 
-                                 dim_ids, attribute_ids);
+      export_csv_reverse<int>(ad, array_schema, filename, 
+                              dim_ids, attribute_ids);
   } else if(coords_type == typeid(int64_t)) {
 
     if(!reverse)
-      export_to_csv<int64_t>(ad, array_schema, filename, 
-                             dim_ids, attribute_ids);
+      export_csv<int64_t>(ad, array_schema, filename, 
+                          dim_ids, attribute_ids);
     else
-      export_to_csv_reverse<int64_t>(ad, array_schema, filename, 
-                                     dim_ids, attribute_ids); 
+      export_csv_reverse<int64_t>(ad, array_schema, filename, 
+                                  dim_ids, attribute_ids); 
   } else if(coords_type == typeid(float)) {
     if(!reverse)
-      export_to_csv<float>(ad, array_schema, filename, 
-                           dim_ids, attribute_ids); 
+      export_csv<float>(ad, array_schema, filename, 
+                        dim_ids, attribute_ids); 
     else
-      export_to_csv_reverse<float>(ad, array_schema, filename, 
-                                   dim_ids, attribute_ids); 
+      export_csv_reverse<float>(ad, array_schema, filename, 
+                                dim_ids, attribute_ids); 
   } else if(coords_type == typeid(double)) {
     if(!reverse)
-      export_to_csv<double>(ad, array_schema, filename, 
-                            dim_ids, attribute_ids); 
+      export_csv<double>(ad, array_schema, filename, 
+                         dim_ids, attribute_ids); 
     else
-      export_to_csv_reverse<double>(ad, array_schema, filename, 
-                                    dim_ids, attribute_ids); 
+      export_csv_reverse<double>(ad, array_schema, filename, 
+                                 dim_ids, attribute_ids); 
   }
 
   // Clean up
@@ -131,8 +144,9 @@ int QueryProcessor::subarray(
     const std::string& array_name, 
     const std::vector<double>& range,
     const std::string& result_array_name,
-    const std::vector<std::string>& attribute_names, 
-    bool reverse, std::string& err_msg) const {
+    const std::vector<std::string>& attribute_names) const {
+  std::string err_msg;
+
   // Open array in read mode
   int ad = storage_manager_->open_array(array_name, "r", err_msg);
   if(ad == -1)
@@ -174,7 +188,7 @@ int QueryProcessor::subarray(
                                                          attribute_ids); 
 
   // Define result array
-  err = storage_manager_->define_array(result_array_schema, err_msg);
+  err = storage_manager_->define_array(result_array_schema);
   if(err == -1)
     return -1;
 
@@ -187,34 +201,22 @@ int QueryProcessor::subarray(
   if(coords_type == typeid(int)) { 
     int* new_range = new int[2*dim_num]; 
     convert(&range[0], new_range, 2*dim_num);
-    if(!reverse)
-      subarray(ad, new_range, result_ad, attribute_ids); 
-    else
-      subarray_reverse(ad, new_range, result_ad, attribute_ids); 
+    subarray(ad, new_range, result_ad, attribute_ids); 
     delete [] new_range;
   } else if(coords_type == typeid(int64_t)) { 
     int64_t* new_range = new int64_t[2*dim_num]; 
     convert(&range[0], new_range, 2*dim_num);
-    if(!reverse)
-      subarray(ad, new_range, result_ad, attribute_ids); 
-    else
-      subarray_reverse(ad, new_range, result_ad, attribute_ids); 
+    subarray(ad, new_range, result_ad, attribute_ids); 
     delete [] new_range;
  } else if(coords_type == typeid(float)) { 
     float* new_range = new float[2*dim_num]; 
     convert(&range[0], new_range, 2*dim_num);
-    if(!reverse)
-      subarray(ad, new_range, result_ad, attribute_ids); 
-    else
-      subarray_reverse(ad, new_range, result_ad, attribute_ids); 
+    subarray(ad, new_range, result_ad, attribute_ids); 
     delete [] new_range;
   } else if(coords_type == typeid(double)) { 
     double* new_range = new double[2*dim_num]; 
     convert(&range[0], new_range, 2*dim_num);
-    if(!reverse)
-      subarray(ad, new_range, result_ad, attribute_ids); 
-    else
-      subarray_reverse(ad, new_range, result_ad, attribute_ids); 
+    subarray(ad, new_range, result_ad, attribute_ids); 
     delete [] new_range;
   }
 
@@ -231,7 +233,7 @@ int QueryProcessor::subarray(
 ******************************************************/
 
 template<class T>
-void QueryProcessor::export_to_csv(
+void QueryProcessor::export_csv(
     int ad,
     const ArraySchema* array_schema,
     const std::string& filename,
@@ -258,7 +260,7 @@ void QueryProcessor::export_to_csv(
 }
 
 template<class T>
-void QueryProcessor::export_to_csv_reverse(
+void QueryProcessor::export_csv_reverse(
     int ad, const ArraySchema* array_schema, 
     const std::string& filename,
     const std::vector<int>& dim_ids,
@@ -363,15 +365,3 @@ void QueryProcessor::subarray(
     storage_manager_->write_cell_sorted<T>(result_ad, *cell_it); 
 }
 
-template<class T>
-void QueryProcessor::subarray_reverse(
-    int ad, const T* range, int result_ad,
-    const std::vector<int>& attribute_ids) const { 
-  // Prepare cell iterator
-  ArrayConstReverseCellIterator<T> cell_it = 
-      storage_manager_->rbegin<T>(ad, range, attribute_ids);
-
-  // Write cells into the CSV file
-  for(; !cell_it.end(); ++cell_it) 
-    storage_manager_->write_cell_sorted<T>(result_ad, *cell_it); 
-}
