@@ -111,6 +111,9 @@ class MPIHandler {
   void Get_raw_many(int count, void* output[], void * remote_input[], int size[], int remote_proc[]) const;
   void Put_raw_many(int count, void* input[], void * remote_output[], int size[], int remote_proc[]) const;
 
+  void Get_index(void* output, void * remote_input, int size, int remote_proc) const;
+  void Put_index(void* input, void * remote_output, int size, int remote_proc) const;
+
  private:
   /** Initializes comm thread and polling. */
   void Start(void);

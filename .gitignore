@@ -4,6 +4,8 @@ core/bin/*
 core/obj/*
 core/include/temp
 core/src/temp
+tiledb_cmd/include/temp
+tiledb_cmd/src/temp
 tiledb_cmd/bin/*
 tiledb_cmd/obj/*
 la/bin/*
