@@ -1,8 +1,0 @@
-var searchData=
-[
-  ['segment_5f',['segment_',['../classSortedRun.html#a7b337cb68dd655e645fc6d6096f55721',1,'SortedRun']]],
-  ['segment_5fsize_5f',['segment_size_',['../classArray.html#aebadf41b4ba237440d26a448a6092bd4',1,'Array::segment_size_()'],['../classFragment.html#a18f4d5d8f97e867d8b6e54a3c922752e',1,'Fragment::segment_size_()'],['../classReadState.html#ace4b01c72d47f9cf2eaa10e2e4628696',1,'ReadState::segment_size_()'],['../classSortedRun.html#a713facebc827efc8f48d784d970531df',1,'SortedRun::segment_size_()'],['../classWriteState.html#a16f11023373160d16b4f7d55d28ec3ac',1,'WriteState::segment_size_()'],['../classBINFile.html#a55f579b9027292fa6f56cb7f0e90f922',1,'BINFile::segment_size_()'],['../classCSVFile.html#a4f4728017d51972485e6e03d5a2cff46',1,'CSVFile::segment_size_()'],['../classStorageManager.html#ac1fa2414c2d99753a416eaa3e2794fdd',1,'StorageManager::segment_size_()']]],
-  ['segment_5futilization_5f',['segment_utilization_',['../classSortedRun.html#a06c696f9cb490fe920f620ef42cbf665',1,'SortedRun::segment_utilization_()'],['../classWriteState.html#a45a9a04b9520ed82c87322acfa94a72c',1,'WriteState::segment_utilization_()']]],
-  ['segments_5f',['segments_',['../classReadState.html#a6037655555de80978e7139ad835182e9',1,'ReadState::segments_()'],['../classWriteState.html#a4261c22f11c9f6bd4e5ef0ad91e13c90',1,'WriteState::segments_()']]],
-  ['storage_5fmanager_5f',['storage_manager_',['../structTileDB__Context.html#a22167896c250fe3eee8746b151c76c5e',1,'TileDB_Context::storage_manager_()'],['../classLoader.html#a1cb86b0fc70a5aa6bbf3675da552bb0a',1,'Loader::storage_manager_()'],['../classQueryProcessor.html#a3cc164cc6022e092ca7cc42d2be88aa7',1,'QueryProcessor::storage_manager_()']]]
-];
