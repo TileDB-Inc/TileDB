@@ -46,23 +46,8 @@ extern "C" {
 #  define TILEDB_EXPORT
 #endif
 
-/** 
- * Constitutes the TileDB state, wrapping the TileDB modules. 
- */
-struct TileDB_Context {
-  /**
-   * Void pointer to a Loader object.  
-   */
-  void* loader_;
-  /**
-   * Void pointer to a QueryProcessor object.  
-   */
-  void* query_processor_;
-  /**
-   * Void pointer to a StorageManager object.  
-   */
-  void* storage_manager_;
-};
+/**  Constitutes the TileDB state, wrapping the TileDB modules. */
+typedef struct TileDB_Context TileDB_Context; 
 
 /** 
  * Finalizes the TileDB context. On error, it prints a message on stderr and

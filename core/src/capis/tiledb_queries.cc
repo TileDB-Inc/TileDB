@@ -40,12 +40,16 @@
 #include "tiledb_queries.h"
 #include <assert.h>
 
+typedef struct TileDB_Context{
+  Loader* loader_;
+  QueryProcessor* query_processor_;
+  StorageManager* storage_manager_;
+} TileDB_Context;
+
 int tiledb_clear_array(
     const TileDB_Context* tiledb_context,
     const char* array_name) {
-  StorageManager* storage_manager = 
-      static_cast<StorageManager*>(tiledb_context->storage_manager_);
-  return storage_manager->clear_array(array_name);
+  return tiledb_context->storage_manager_->clear_array(array_name);
 }
 
 int tiledb_define_array(
@@ -59,9 +63,7 @@ int tiledb_define_array(
   }
 
   // Define the array
-  StorageManager* storage_manager = 
-      static_cast<StorageManager*>(tiledb_context->storage_manager_);
-  if(storage_manager->define_array(array_schema)) { 
+  if(tiledb_context->storage_manager_->define_array(array_schema)) { 
     std::cerr << ERROR_MSG_HEADER << " Failed to define array.\n";
 // TODO: Print better message
     return TILEDB_EDEFARR;
@@ -76,9 +78,7 @@ int tiledb_define_array(
 int tiledb_delete_array(
     const TileDB_Context* tiledb_context,
     const char* array_name) {
-  StorageManager* storage_manager = 
-      static_cast<StorageManager*>(tiledb_context->storage_manager_);
-  return storage_manager->delete_array(array_name);
+  return tiledb_context->storage_manager_->delete_array(array_name);
 }
 
 int tiledb_export_csv(
@@ -97,9 +97,7 @@ int tiledb_export_csv(
   for(int i=0; i<attribute_names_num; ++i) 
     attribute_names_vec.push_back(attribute_names[i]);
 
-  QueryProcessor* query_processor = 
-      static_cast<QueryProcessor*>(tiledb_context->query_processor_);
-  return query_processor->export_csv(
+  return tiledb_context->query_processor_->export_csv(
       array_name, filename, dim_names_vec, attribute_names_vec, reverse);
 }
 
@@ -122,9 +120,8 @@ int tiledb_generate_data(
 
   // Get the array schema from the storage manager
   ArraySchema* array_schema;
-  StorageManager* storage_manager = 
-      static_cast<StorageManager*>(tiledb_context->storage_manager_);
-  rc = storage_manager->get_array_schema(array_name, array_schema);
+  rc = tiledb_context->storage_manager_->get_array_schema(
+           array_name, array_schema);
   if(rc) 
     return rc;
 
@@ -155,8 +152,7 @@ int tiledb_load_bin(
     const char* array_name,
     const char* path,
     bool sorted) {
-  Loader* loader = static_cast<Loader*>(tiledb_context->loader_);
-  return loader->load_bin(array_name, path, sorted);
+  return tiledb_context->loader_->load_bin(array_name, path, sorted);
 }
 
 int tiledb_load_csv(
@@ -164,8 +160,7 @@ int tiledb_load_csv(
     const char* array_name,
     const char* path,
     bool sorted) {
-  Loader* loader = static_cast<Loader*>(tiledb_context->loader_);
-  return loader->load_csv(array_name, path, sorted);
+  return tiledb_context->loader_->load_csv(array_name, path, sorted);
 }
     
 int tiledb_show_array_schema(
@@ -173,9 +168,8 @@ int tiledb_show_array_schema(
     const char* array_name) {
   // Get the array schema from the storage manager
   ArraySchema* array_schema;
-  StorageManager* storage_manager = 
-      static_cast<StorageManager*>(tiledb_context->storage_manager_);
-  int rc = storage_manager->get_array_schema(array_name, array_schema);
+  int rc = tiledb_context->storage_manager_->get_array_schema(
+               array_name, array_schema);
   if(rc) 
     return rc;
 
@@ -204,9 +198,7 @@ int tiledb_subarray(
   for(int i=0; i<range_size; ++i) 
     range_vec.push_back(range[i]);
 
-  QueryProcessor* query_processor = 
-      static_cast<QueryProcessor*>(tiledb_context->query_processor_);
-  return query_processor->subarray(
+  return tiledb_context->query_processor_->subarray(
       array_name, range_vec, result_name, attribute_names_vec);
 }
 
@@ -215,8 +207,7 @@ int tiledb_update_bin(
     const char* array_name,
     const char* path,
     bool sorted) {
-  Loader* loader = static_cast<Loader*>(tiledb_context->loader_);
-  return loader->update_bin(array_name, path, sorted);
+  return tiledb_context->loader_->update_bin(array_name, path, sorted);
 }
 
 int tiledb_update_csv(
@@ -224,6 +215,5 @@ int tiledb_update_csv(
     const char* array_name,
     const char* path,
     bool sorted) {
-  Loader* loader = static_cast<Loader*>(tiledb_context->loader_);
-  return loader->update_csv(array_name, path, sorted);
+  return tiledb_context->loader_->update_csv(array_name, path, sorted);
 }

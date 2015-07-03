@@ -1,5 +1,4 @@
 *.swp
-doc/
 core/bin/*
 core/obj/*
 core/include/temp
@@ -18,3 +17,6 @@ example*
 Doxyfile.log
 doxyfile.inc
 doxygen_sqlite3.db
+doxygen/html/
+doxygen/latex/
+manpages/html/

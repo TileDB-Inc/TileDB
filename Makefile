@@ -262,6 +262,7 @@ echo_manpages_msg:
 	@echo 'Converting Manpages to HTML'
 
 $(MANPAGES_HTML_DIR)/%.html: $(MANPAGES_MAN_DIR)/% echo_manpages_msg  
+	@mkdir -p $(MANPAGES_HTML_DIR)
 	@man2html $< > $@
 
 # --- Cleaning --- #

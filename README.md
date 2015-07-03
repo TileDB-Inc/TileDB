@@ -1,23 +1,57 @@
+Introduction
+============
 
-TileDB
-======
+TileDB is a new array storage manager, particularly efficient for the case of 
+**sparse** arrays. It currently offers a small set of queries implemented
+as stand-alone Linux programs. It also offers a set of C APIs that allow
+pragrammers of various softwares to manage arrays in persistent storage
+through TileDB, without being bothered about the underlying details. TileDB is 
+envisioned to be used either as an HDF5-like distributed file system, 
+or as a full-fledged distributed array database.
 
-The TileDB array database system
+TileDB is currently under heavy development. Benchmark results, tutorials,
+and research papers are under way. Stay tuned! 
 
-Examples
-========
+Kick-start for users
+====================
 
-To run example scripts, do the following:
+1. To keep track of the documentation, make sure you download Doxygen and
+add its bin directory to your $PATH.
+2. git clone the TileDB repo and stay on the master branch.
+3. Inside the root directory of the repo, run 'make' and then 'make doc'.
+4. The TileDB executable programs can be found in directory 'tiledb\_cmd/bin',
+and their corresponding documentation is in directory 'manpages', where you
+can find either the man files inside subdirectory 'manpages/man' or the 
+respective html in 'manpages/html'.
+5. First define an array of your choice with 'tiledb\_define\_array'. Read
+the documentation, it is quite extensive and it provides examples.
+6. Generate a synthetic dataset for the array you defined using
+'tiledb\_generate\_data', always reading the documentation. Try a CSV file
+first, so that you can see how it looks like in a text editor.
+7. Load the dataset into your array using 'tiledb\_load\_csv'. Check what
+kind of files TileDB creates in the workspace folder you provided. Every
+array is essentially a folder of binary files with simple metadata, similar
+to HDF5.
+8. Now you can do other various things, such as export the dataset back
+to a CSV file, choose a subarray, and make an update. Play with the queries,
+consulting their documentation.
 
-    1. Create a workspace directory
-    2. Update TILEDB_WORKSPACE and TILEDB_HOME environment variables
-    3. $ cd scripts 
-  
-    $ ./define_array.sh (defines the schema of two arrays)
-    $ ./load_array.sh (loads the above raw csv file into the two arrays)
-    $ ./export_to_csv.sh (exports the contents of the two arrays back to a csv file)
-    $ more REG.csv
-    $ more IREG.csv
+Kick-start for developers
+=========================
+
+Everything you need is in core/include/capis/. Given that you have run
+'make doc', you can see the documentation of each C API with detailed 
+guidelines on how to use it. Contact me if you require any particular 
+C API and I will try to develop it in a short time. 
+
+Under construction
+==================
+
+I will spend some time stabilizing the current code, heavily testing and
+documenting it. At the same time, I have a list with C APIs I gathered 
+from you, so I will try to have everything ready soon. Finally, we are
+preparing a paper with the specifics of the storage manager, as well
+as tutorials for both users and developers.
 
 TroubleShooting
 ===============
@@ -27,4 +61,5 @@ TroubleShooting
   * Use -std=c++0x instead
   * If OS is CentOS or RedHat, use the CXX = mpiicpc instead of mpicxx
   * Download latest Intel C/C++ compiler
-* MPI-3 support is required, so make sure that the default MPI implements v3 of the standard.
+* MPI-3 support is required, so make sure that the default MPI implements v3 of 
+the standard.
