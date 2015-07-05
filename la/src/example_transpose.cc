@@ -45,14 +45,14 @@
 // Creates the tranpose matrix A_t of A
 int transpose(StorageManager* storage_manager, MPIHandler* mpi_handler, 
               const std::string& A, const std::string& A_t,
-              const ArraySchema* array_schema_A, std::string& err_msg) {
+              const ArraySchema* array_schema_A) {
   // Open array A in read mode
-  int ad_A = storage_manager->open_array(A, "r", err_msg);
+  int ad_A = storage_manager->open_array(A, "r");
   if(ad_A == -1)
     return -1;
 
   // Open array A_t in write mode
-  int ad_A_t = storage_manager->open_array(A_t, "w", err_msg);
+  int ad_A_t = storage_manager->open_array(A_t, "w");
   if(ad_A_t == -1)
     return -1;
 
@@ -145,7 +145,6 @@ const ArraySchema* get_array_schema() {
 int main(int argc, char** argv) {
   // For error handling
   int err;
-  std::string err_msg;
 
   // Create an MPI handler, which initializes the MPI wolrd
   MPIHandler* mpi_handler = new MPIHandler(&argc, &argv);
@@ -167,7 +166,7 @@ int main(int argc, char** argv) {
   const ArraySchema* array_schema_A = get_array_schema();
   err = storage_manager->define_array(array_schema_A);
   if(err == -1) {
-    std::cout << "[TileDB::fatal_error] " << err_msg << "\n";
+// TODO    std::cout << "[TileDB::fatal_error] " << err_msg << "\n";
     exit(-1);
   }
 
@@ -175,7 +174,7 @@ int main(int argc, char** argv) {
   const ArraySchema* array_schema_A_t = array_schema_A->transpose("A_t");
   err = storage_manager->define_array(array_schema_A_t);
   if(err == -1) {
-    std::cout << "[TileDB::StorageManager::fatal_error] " << err_msg << "\n";
+// TODO    std::cout << "[TileDB::StorageManager::fatal_error] " << err_msg << "\n";
     exit(-1);
   }
 
@@ -187,8 +186,8 @@ int main(int argc, char** argv) {
                << mpi_handler->rank() << ".csv";
   err = loader->load_csv("A", csv_filename.str());
   if(err == -1) {
-    std::cout << "[Proc_" << mpi_handler->rank() 
-              << "::TileDB::Loader::fatal_error] " << err_msg << "\n";
+// TODO    std::cout << "[Proc_" << mpi_handler->rank() 
+//              << "::TileDB::Loader::fatal_error] " << err_msg << "\n";
     exit(-1);
   }
 
@@ -203,9 +202,9 @@ int main(int argc, char** argv) {
       std::vector<std::string>(), std::vector<std::string>(),
       false);
   if(err == -1) {
-    std::cout << "[Proc_" << mpi_handler->rank() 
-              << "::TileDB::QueryProcessor::fatal_error] " 
-              << err_msg << "\n";
+// TODO    std::cout << "[Proc_" << mpi_handler->rank() 
+//              << "::TileDB::QueryProcessor::fatal_error] " 
+//              << err_msg << "\n";
     exit(-1);
   }
 
@@ -213,11 +212,11 @@ int main(int argc, char** argv) {
   std::cout << "Proc " << mpi_handler->rank() 
             << ": Computing the tranpose A_t of array A...\n";
   err = transpose(storage_manager, mpi_handler, "A", "A_t", 
-                  array_schema_A, err_msg);
+                  array_schema_A);
   if(err == -1) {
-    std::cout << "[Proc_" << mpi_handler->rank() 
-              << "::TileDB::transpose::fatal_error] " 
-              << err_msg << "\n";
+// TODO   std::cout << "[Proc_" << mpi_handler->rank() 
+//              << "::TileDB::transpose::fatal_error] " 
+//              << err_msg << "\n";
     exit(-1);
   }
 
@@ -232,9 +231,9 @@ int main(int argc, char** argv) {
       std::vector<std::string>(), std::vector<std::string>(),
       false);
   if(err == -1) {
-    std::cout << "[Proc_" << mpi_handler->rank() 
-              << "::TileDB::QueryProcessor::fatal_error] " 
-              << err_msg << "\n";
+// TODO    std::cout << "[Proc_" << mpi_handler->rank() 
+//              << "::TileDB::QueryProcessor::fatal_error] " 
+//              << err_msg << "\n";
     exit(-1);
   }
 

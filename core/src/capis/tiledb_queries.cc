@@ -40,20 +40,20 @@
 #include "tiledb_queries.h"
 #include <assert.h>
 
-typedef struct TileDB_Context{
+typedef struct TileDB_CTX{
   Loader* loader_;
   QueryProcessor* query_processor_;
   StorageManager* storage_manager_;
-} TileDB_Context;
+} TileDB_CTX;
 
 int tiledb_clear_array(
-    const TileDB_Context* tiledb_context,
+    const TileDB_CTX* tiledb_ctx,
     const char* array_name) {
-  return tiledb_context->storage_manager_->clear_array(array_name);
+  return tiledb_ctx->storage_manager_->clear_array(array_name);
 }
 
 int tiledb_define_array(
-    const TileDB_Context* tiledb_context,
+    const TileDB_CTX* tiledb_ctx,
     const char* array_schema_str) {
   // Creare array schema from the input string 
   ArraySchema* array_schema = new ArraySchema();
@@ -63,7 +63,7 @@ int tiledb_define_array(
   }
 
   // Define the array
-  if(tiledb_context->storage_manager_->define_array(array_schema)) { 
+  if(tiledb_ctx->storage_manager_->define_array(array_schema)) { 
     std::cerr << ERROR_MSG_HEADER << " Failed to define array.\n";
 // TODO: Print better message
     return TILEDB_EDEFARR;
@@ -76,13 +76,13 @@ int tiledb_define_array(
 } 
 
 int tiledb_delete_array(
-    const TileDB_Context* tiledb_context,
+    const TileDB_CTX* tiledb_ctx,
     const char* array_name) {
-  return tiledb_context->storage_manager_->delete_array(array_name);
+  return tiledb_ctx->storage_manager_->delete_array(array_name);
 }
 
 int tiledb_export_csv(
-    const TileDB_Context* tiledb_context,
+    const TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const char* filename,
     const char** dim_names,
@@ -97,12 +97,12 @@ int tiledb_export_csv(
   for(int i=0; i<attribute_names_num; ++i) 
     attribute_names_vec.push_back(attribute_names[i]);
 
-  return tiledb_context->query_processor_->export_csv(
+  return tiledb_ctx->query_processor_->export_csv(
       array_name, filename, dim_names_vec, attribute_names_vec, reverse);
 }
 
 int tiledb_generate_data(
-    const TileDB_Context* tiledb_context,
+    const TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const char* filename,
     const char* filetype,
@@ -120,7 +120,7 @@ int tiledb_generate_data(
 
   // Get the array schema from the storage manager
   ArraySchema* array_schema;
-  rc = tiledb_context->storage_manager_->get_array_schema(
+  rc = tiledb_ctx->storage_manager_->get_array_schema(
            array_name, array_schema);
   if(rc) 
     return rc;
@@ -148,27 +148,27 @@ int tiledb_generate_data(
 }
 
 int tiledb_load_bin(
-    const TileDB_Context* tiledb_context,
+    const TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const char* path,
     bool sorted) {
-  return tiledb_context->loader_->load_bin(array_name, path, sorted);
+  return tiledb_ctx->loader_->load_bin(array_name, path, sorted);
 }
 
 int tiledb_load_csv(
-    const TileDB_Context* tiledb_context,
+    const TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const char* path,
     bool sorted) {
-  return tiledb_context->loader_->load_csv(array_name, path, sorted);
+  return tiledb_ctx->loader_->load_csv(array_name, path, sorted);
 }
     
 int tiledb_show_array_schema(
-    const TileDB_Context* tiledb_context,
+    const TileDB_CTX* tiledb_ctx,
     const char* array_name) {
   // Get the array schema from the storage manager
   ArraySchema* array_schema;
-  int rc = tiledb_context->storage_manager_->get_array_schema(
+  int rc = tiledb_ctx->storage_manager_->get_array_schema(
                array_name, array_schema);
   if(rc) 
     return rc;
@@ -183,7 +183,7 @@ int tiledb_show_array_schema(
 }
 
 int tiledb_subarray(
-    const TileDB_Context* tiledb_context,
+    const TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const char* result_name,
     const double* range,
@@ -198,22 +198,22 @@ int tiledb_subarray(
   for(int i=0; i<range_size; ++i) 
     range_vec.push_back(range[i]);
 
-  return tiledb_context->query_processor_->subarray(
+  return tiledb_ctx->query_processor_->subarray(
       array_name, range_vec, result_name, attribute_names_vec);
 }
 
 int tiledb_update_bin(
-    const TileDB_Context* tiledb_context,
+    const TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const char* path,
     bool sorted) {
-  return tiledb_context->loader_->update_bin(array_name, path, sorted);
+  return tiledb_ctx->loader_->update_bin(array_name, path, sorted);
 }
 
 int tiledb_update_csv(
-    const TileDB_Context* tiledb_context,
+    const TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const char* path,
     bool sorted) {
-  return tiledb_context->loader_->update_csv(array_name, path, sorted);
+  return tiledb_ctx->loader_->update_csv(array_name, path, sorted);
 }

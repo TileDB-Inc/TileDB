@@ -2225,6 +2225,36 @@ ArraySchema::get_attribute_ids(
                                                non_attribute_ids);
 }
 
+int ArraySchema::get_attribute_ids(
+    const std::vector<std::string>& attribute_names,
+    std::vector<int>& attribute_ids) const {
+  // Initialization
+  attribute_ids.clear();
+
+  // If "hide attributes" is selected, the return list should be empty
+  if(attribute_names.size() == 0 || attribute_names[0] != "__hide") {
+    // Default ids in case the name list is empty
+    if(attribute_names.size() == 0) {
+      attribute_ids.resize(attribute_num_);
+      for(int i=0; i<attribute_num_; ++i)
+        attribute_ids[i] = i;
+    } else { // Ids retrieved from the name list
+      attribute_ids.resize(attribute_names.size());
+      for(int i=0; i<attribute_names.size(); ++i) {
+        attribute_ids[i] = attribute_id(attribute_names[i]);
+        if(attribute_ids[i] == -1) {
+// TODO          err_msg = std::string("Invalid attribute name ") + 
+//                    attribute_names[i] + ".";
+          return -1;
+        }
+      }
+    }
+  }
+
+  return 0;
+
+}
+
 bool ArraySchema::valid_attribute_ids(
     const std::vector<int>& attribute_ids) const {
   for(int i=0; i<attribute_ids.size(); ++i) {

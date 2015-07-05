@@ -88,6 +88,8 @@ class ArrayConstCellIterator {
   ~ArrayConstCellIterator();
 
   // ACCESSORS
+  /** The array schema. */
+  const ArraySchema* array_schema() const;
   /** Return the ids of the attributes the iterator iterates on. */
   const std::vector<int>& attribute_ids() const;
   /** Returns the size of the current cell. */

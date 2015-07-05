@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_context.h
+ * @file   tiledb_IO.h
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
@@ -28,13 +28,13 @@
  * 
  * @section DESCRIPTION
  *
- * This file defines struct TileDB_Context, which constitutes the TileDB
- * state that wraps the various TileDB modules. It also declares the
- * context initialization/finalization functions of TileDB.
+ * This file declares the C APIs for basic Input/Output operations with arrays.
  */
 
-#ifndef __TILEDB_CONTEXT_H__
-#define __TILEDB_CONTEXT_H__
+#ifndef __TILEDB_IO_H__
+#define __TILEDB_IO_H__
+
+#include "tiledb_ctx.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,41 +46,39 @@ extern "C" {
 #  define TILEDB_EXPORT
 #endif
 
-/**  Constitutes the TileDB state, wrapping the TileDB modules. */
-typedef struct TileDB_Context TileDB_Context; 
+/** 
+ * Closes an array, cleaning its metadata from main memory.
+ * @param tiledb_context The TileDB state.
+ * @param ad The descriptor of the array to be closed
+ * @return An array descriptor (>=0) or an error code (<0). The error code may
+ * be one of the following:
+ * TBD
+ * @see TileDB_Context, tiledb_open_array
+ */
+TILEDB_EXPORT int tiledb_close_array(
+    TileDB_CTX* tiledb_ctx,
+    int ad);
 
 /** 
- * Finalizes the TileDB context. On error, it prints a message on stderr and
- * returns an error code (shown below).
+ * Prepares an array for reading or writing, reading its matadata in main 
+ * memory. It returns an **array descriptor**, which is used in subsequent array
+ * operations. 
  * @param tiledb_context The TileDB state.
- * @return An error code, which can be one of the following:
- *   - **0**\n 
- *     Success
- * @see TileDB_Context, tiledb_init
+ * @param array_name The name of the array to be opened
+ * @param mode The mode in which is the array is opened. Currently, the 
+ * following  modes are supported:
+ * - **r**: Read mode
+ * - **w**: Write mode (if the array exists, its data are cleared)
+ * - **a**: Append mode (used when updating the array)
+ * @return An array descriptor (>=0) or an error code (<0). The error code may
+ * be one of the following:
+ * TBD
+ * @see TileDB_Context, tiledb_close_array
  */
-TILEDB_EXPORT int tiledb_finalize(TileDB_Context*& tiledb_context);
-
-/** 
- * Initializes the TileDB context. On error, it prints a message on stderr and
- * returns an error code (shown below). 
- * @param workspace The path to the workspace folder, i.e., the directory where
- * TileDB will store the array data. The workspace must exist, and the caller
- * must have read and write permissions to it.
- * @param tiledb_context The TileDB state.
- * @return An error code, which can be one of the following:
- *   - **0**\n 
- *     Success
- *   - **TILEDB_ENSMCREAT**\n 
- *     Failed to create storage manager
- *   - **TILEDB_ENLDCREAT**\n 
- *     Failed to create loader
- *   - **TILEDB_ENQPCREAT**\n 
- *     Failed to create query processor
- * @see TileDB_Context, tiledb_finalize
- */
-TILEDB_EXPORT int tiledb_init(
-    const char* workspace, 
-    TileDB_Context*& tiledb_context);
+TILEDB_EXPORT int tiledb_open_array(
+    TileDB_CTX* tiledb_ctx,
+    const char* array_name,
+    const char* mode);
 
 #undef TILEDB_EXPORT
 

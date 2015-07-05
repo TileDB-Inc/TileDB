@@ -302,7 +302,9 @@ void StorageManager::forced_close_array(int ad) {
 }
 
 int StorageManager::get_array_schema(
-    int ad, const ArraySchema*& array_schema, std::string& err_msg) const {
+    int ad, const ArraySchema*& array_schema) const {
+std::string err_msg;
+
  // TODO: Remove err_msg
 
   if(arrays_[ad] == NULL) {
@@ -381,7 +383,7 @@ int StorageManager::load_sorted_bin(
   assert(is_dir(dirname));
 
   // Open array
-  int ad = open_array(array_name, "w", err_msg);
+  int ad = open_array(array_name, "w");
   if(ad == -1) 
     return -1;
 
@@ -394,9 +396,9 @@ int StorageManager::load_sorted_bin(
 }
 
 int StorageManager::open_array(
-    const std::string& array_name, const char* mode, std::string& err_msg) {
+    const std::string& array_name, const char* mode) {
   // Proper checks
-  int err = check_on_open_array(array_name, mode, err_msg);
+  int err = check_on_open_array(array_name, mode);
   if(err == -1)
     return -1;
 
@@ -430,8 +432,8 @@ int StorageManager::open_array(
   // Maximum open arrays reached
   if(ad == -1) {
     delete array; 
-    err_msg = std::string("Cannot open array' ") + array_name +
-              "'. Maximum open arrays reached.";
+// TODO    err_msg = std::string("Cannot open array' ") + array_name +
+//              "'. Maximum open arrays reached.";
     return -1;
   }
 
@@ -446,91 +448,92 @@ int StorageManager::open_array(
 ******************************************************/
 
 template<class T>
-ArrayConstCellIterator<T> StorageManager::begin(
+ArrayConstCellIterator<T>* StorageManager::begin(
     int ad) const {
   assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
   assert(arrays_[ad]->mode() == Array::READ);
   assert(!arrays_[ad]->empty());
 
-  return ArrayConstCellIterator<T>(arrays_[ad]);
+  return new ArrayConstCellIterator<T>(arrays_[ad]);
 }
 
 template<class T>
-ArrayConstCellIterator<T> StorageManager::begin(
+ArrayConstCellIterator<T>* StorageManager::begin(
     int ad, const std::vector<int>& attribute_ids) const {
   assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
   assert(arrays_[ad]->mode() == Array::READ);
   assert(!arrays_[ad]->empty());
 
-  return ArrayConstCellIterator<T>(arrays_[ad], attribute_ids);
+  return new ArrayConstCellIterator<T>(arrays_[ad], attribute_ids);
 }
 
 template<class T>
-ArrayConstCellIterator<T> StorageManager::begin(
+ArrayConstCellIterator<T>* StorageManager::begin(
     int ad, const T* range) const {
   assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
   assert(arrays_[ad]->mode() == Array::READ);
   assert(!arrays_[ad]->empty());
 
-  return ArrayConstCellIterator<T>(arrays_[ad], range);
+  return new ArrayConstCellIterator<T>(arrays_[ad], range);
 }
 
 template<class T>
-ArrayConstCellIterator<T> StorageManager::begin(
+ArrayConstCellIterator<T>* StorageManager::begin(
     int ad, const T* range, const std::vector<int>& attribute_ids) const {
   assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
   assert(arrays_[ad]->mode() == Array::READ);
   assert(!arrays_[ad]->empty());
 
-  return ArrayConstCellIterator<T>(arrays_[ad], range, attribute_ids);
+  return new ArrayConstCellIterator<T>(arrays_[ad], range, attribute_ids);
 }
 
 template<class T>
-ArrayConstReverseCellIterator<T> StorageManager::rbegin(
+ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
     int ad) const {
   assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
   assert(arrays_[ad]->mode() == Array::READ);
   assert(!arrays_[ad]->empty());
 
-  return ArrayConstReverseCellIterator<T>(arrays_[ad]);
+  return new ArrayConstReverseCellIterator<T>(arrays_[ad]);
 }
 
 template<class T>
-ArrayConstReverseCellIterator<T> StorageManager::rbegin(
+ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
     int ad, const std::vector<int>& attribute_ids) const {
   assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
   assert(arrays_[ad]->mode() == Array::READ);
   assert(!arrays_[ad]->empty());
 
-  return ArrayConstReverseCellIterator<T>(arrays_[ad], attribute_ids);
+  return new ArrayConstReverseCellIterator<T>(arrays_[ad], attribute_ids);
 }
 
 template<class T>
-ArrayConstReverseCellIterator<T> StorageManager::rbegin(
+ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
     int ad, const T* range) const {
   assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
   assert(arrays_[ad]->mode() == Array::READ);
   assert(!arrays_[ad]->empty());
 
-  return ArrayConstReverseCellIterator<T>(arrays_[ad], range);
+  return new ArrayConstReverseCellIterator<T>(arrays_[ad], range);
 }
 
 template<class T>
-ArrayConstReverseCellIterator<T> StorageManager::rbegin(
+ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
     int ad, const T* range, const std::vector<int>& attribute_ids) const {
   assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
   assert(arrays_[ad]->mode() == Array::READ);
   assert(!arrays_[ad]->empty());
 
-  return ArrayConstReverseCellIterator<T>(arrays_[ad], range, attribute_ids);
+  return new ArrayConstReverseCellIterator<T>(
+                 arrays_[ad], range, attribute_ids);
 }
 
 void StorageManager::read_cells(int ad, const void* range, 
@@ -589,10 +592,10 @@ void StorageManager::read_cells(int ad, const T* range,
   cells = malloc(buffer_size);
 
   // Prepare cell iterator
-  ArrayConstCellIterator<T> cell_it = begin<T>(ad, range, attribute_ids);
+  ArrayConstCellIterator<T>* cell_it = begin<T>(ad, range, attribute_ids);
 
   // Write cells into the CSV file
-  for(; !cell_it.end(); ++cell_it) { 
+  for(; !cell_it->end(); ++(*cell_it)) { 
     // Expand buffer
     if(cells_size == buffer_size) {
       expand_buffer(cells, buffer_size);
@@ -600,8 +603,8 @@ void StorageManager::read_cells(int ad, const T* range,
     } 
 
     // Retrieve cell size
-    cell_size = cell_it.cell_size();
-    memcpy(static_cast<char*>(cells) + cells_size, *cell_it, cell_size);
+    cell_size = cell_it->cell_size();
+    memcpy(static_cast<char*>(cells) + cells_size, **cell_it, cell_size);
     cells_size += cell_size;
   }
 }
@@ -701,23 +704,22 @@ void StorageManager::write_cells_sorted(
 ******************************************************/
 
 int StorageManager::check_on_open_array(
-    const std::string& array_name, const char* mode,
-    std::string& err_msg) const {
+    const std::string& array_name, const char* mode) const {
   // Check if the array is defined
   if(!array_defined(array_name)) {
-    err_msg = std::string("Array '") + array_name + "' is not defined.";
+    // TODO err_msg = std::string("Array '") + array_name + "' is not defined.";
     return -1;
   }
 
   // Check mode
   if(invalid_array_mode(mode)) {
-    err_msg = std::string("Invalid mode '") + mode + "'."; 
+    // TODO err_msg = std::string("Invalid mode '") + mode + "'."; 
     return -1;
   }
 
   // Check if array is already open
   if(open_arrays_.find(array_name) != open_arrays_.end()) {
-    err_msg = std::string("Array '") + array_name + "' already open."; 
+    // TODO err_msg = std::string("Array '") + array_name + "' already open."; 
     return -1;
   }
 
@@ -763,91 +765,91 @@ int StorageManager::store_array(Array* array) {
 }
 
 // Explicit template instantiations
-template ArrayConstCellIterator<int>
+template ArrayConstCellIterator<int>*
 StorageManager::begin<int>(int ad) const;
-template ArrayConstCellIterator<int64_t>
+template ArrayConstCellIterator<int64_t>*
 StorageManager::begin<int64_t>(int ad) const;
-template ArrayConstCellIterator<float>
+template ArrayConstCellIterator<float>*
 StorageManager::begin<float>(int ad) const;
-template ArrayConstCellIterator<double>
+template ArrayConstCellIterator<double>*
 StorageManager::begin<double>(int ad) const;
 
-template ArrayConstCellIterator<int>
+template ArrayConstCellIterator<int>*
 StorageManager::begin<int>(
     int ad, const std::vector<int>& attribute_ids) const;
-template ArrayConstCellIterator<int64_t>
+template ArrayConstCellIterator<int64_t>*
 StorageManager::begin<int64_t>(
     int ad, const std::vector<int>& attribute_ids) const;
-template ArrayConstCellIterator<float>
+template ArrayConstCellIterator<float>*
 StorageManager::begin<float>(
     int ad, const std::vector<int>& attribute_ids) const;
-template ArrayConstCellIterator<double>
+template ArrayConstCellIterator<double>*
 StorageManager::begin<double>(
     int ad, const std::vector<int>& attribute_ids) const;
 
-template ArrayConstCellIterator<int>
+template ArrayConstCellIterator<int>*
 StorageManager::begin<int>(int ad, const int* range) const;
-template ArrayConstCellIterator<int64_t>
+template ArrayConstCellIterator<int64_t>*
 StorageManager::begin<int64_t>(int ad, const int64_t* range) const;
-template ArrayConstCellIterator<float>
+template ArrayConstCellIterator<float>*
 StorageManager::begin<float>(int ad, const float* range) const;
-template ArrayConstCellIterator<double>
+template ArrayConstCellIterator<double>*
 StorageManager::begin<double>(int ad, const double* range) const;
 
-template ArrayConstCellIterator<int>
+template ArrayConstCellIterator<int>*
 StorageManager::begin<int>(
     int ad, const int* range, const std::vector<int>& attribute_ids) const;
-template ArrayConstCellIterator<int64_t>
+template ArrayConstCellIterator<int64_t>*
 StorageManager::begin<int64_t>(
     int ad, const int64_t* range, const std::vector<int>& attribute_ids) const;
-template ArrayConstCellIterator<float>
+template ArrayConstCellIterator<float>*
 StorageManager::begin<float>(
     int ad, const float* range, const std::vector<int>& attribute_ids) const;
-template ArrayConstCellIterator<double>
+template ArrayConstCellIterator<double>*
 StorageManager::begin<double>(
     int ad, const double* range, const std::vector<int>& attribute_ids) const;
 
-template ArrayConstReverseCellIterator<int>
+template ArrayConstReverseCellIterator<int>*
 StorageManager::rbegin<int>(int ad) const;
-template ArrayConstReverseCellIterator<int64_t>
+template ArrayConstReverseCellIterator<int64_t>*
 StorageManager::rbegin<int64_t>(int ad) const;
-template ArrayConstReverseCellIterator<float>
+template ArrayConstReverseCellIterator<float>*
 StorageManager::rbegin<float>(int ad) const;
-template ArrayConstReverseCellIterator<double>
+template ArrayConstReverseCellIterator<double>*
 StorageManager::rbegin<double>(int ad) const;
 
-template ArrayConstReverseCellIterator<int>
+template ArrayConstReverseCellIterator<int>*
 StorageManager::rbegin<int>(
     int ad, const std::vector<int>& attribute_ids) const;
-template ArrayConstReverseCellIterator<int64_t>
+template ArrayConstReverseCellIterator<int64_t>*
 StorageManager::rbegin<int64_t>(
     int ad, const std::vector<int>& attribute_ids) const;
-template ArrayConstReverseCellIterator<float>
+template ArrayConstReverseCellIterator<float>*
 StorageManager::rbegin<float>(
     int ad, const std::vector<int>& attribute_ids) const;
-template ArrayConstReverseCellIterator<double>
+template ArrayConstReverseCellIterator<double>*
 StorageManager::rbegin<double>(
     int ad, const std::vector<int>& attribute_ids) const;
 
-template ArrayConstReverseCellIterator<int>
+template ArrayConstReverseCellIterator<int>*
 StorageManager::rbegin<int>(int ad, const int* range) const;
-template ArrayConstReverseCellIterator<int64_t>
+template ArrayConstReverseCellIterator<int64_t>*
 StorageManager::rbegin<int64_t>(int ad, const int64_t* range) const;
-template ArrayConstReverseCellIterator<float>
+template ArrayConstReverseCellIterator<float>*
 StorageManager::rbegin<float>(int ad, const float* range) const;
-template ArrayConstReverseCellIterator<double>
+template ArrayConstReverseCellIterator<double>*
 StorageManager::rbegin<double>(int ad, const double* range) const;
 
-template ArrayConstReverseCellIterator<int>
+template ArrayConstReverseCellIterator<int>*
 StorageManager::rbegin<int>(
     int ad, const int* range, const std::vector<int>& attribute_ids) const;
-template ArrayConstReverseCellIterator<int64_t>
+template ArrayConstReverseCellIterator<int64_t>*
 StorageManager::rbegin<int64_t>(
     int ad, const int64_t* range, const std::vector<int>& attribute_ids) const;
-template ArrayConstReverseCellIterator<float>
+template ArrayConstReverseCellIterator<float>*
 StorageManager::rbegin<float>(
     int ad, const float* range, const std::vector<int>& attribute_ids) const;
-template ArrayConstReverseCellIterator<double>
+template ArrayConstReverseCellIterator<double>*
 StorageManager::rbegin<double>(
     int ad, const double* range, const std::vector<int>& attribute_ids) const;
 

@@ -34,7 +34,8 @@
 #ifndef __TILEDB_QUERIES_H__
 #define __TILEDB_QUERIES_H__
 
-#include "tiledb_context.h"
+#include "tiledb_ctx.h"
+#include <inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,7 +63,7 @@ extern "C" {
  * @see TileDB_Context, tiledb_delete_array, tiledb_error.h
  */
 TILEDB_EXPORT int tiledb_clear_array(    
-    const TileDB_Context* tiledb_context, 
+    const TileDB_CTX* tiledb_ctx, 
     const char* array_name);
 
 /** 
@@ -241,7 +242,7 @@ TILEDB_EXPORT int tiledb_clear_array(
  * @see TileDB_Context, tiledb_show_array_schema, tiledb_error.h
  */
 TILEDB_EXPORT int tiledb_define_array(
-    const TileDB_Context* tiledb_context, 
+    const TileDB_CTX* tiledb_ctx, 
     const char* array_schema_csv);
 
 /** 
@@ -261,7 +262,7 @@ TILEDB_EXPORT int tiledb_define_array(
  * @see TileDB_Context, tiledb_delete_array, tiledb_error.h
  */
 TILEDB_EXPORT int tiledb_delete_array(    
-    const TileDB_Context* tiledb_context, 
+    const TileDB_CTX* tiledb_ctx, 
     const char* array_name);
 
 /** 
@@ -335,7 +336,7 @@ TILEDB_EXPORT int tiledb_delete_array(
  * tiledb_generate_data, tiledb_error.h
  */
 TILEDB_EXPORT int tiledb_export_csv(    
-    const TileDB_Context* tiledb_context, 
+    const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* filename,
     const char** dim_names,
@@ -396,7 +397,7 @@ TILEDB_EXPORT int tiledb_export_csv(
  * @see TileDB_Context, tiledb_load_csv, tiledb_load_bin, tiledb_error.h
  */
 TILEDB_EXPORT int tiledb_generate_data(    
-    const TileDB_Context* tiledb_context, 
+    const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* filename,
     const char* filetype,
@@ -510,7 +511,7 @@ TILEDB_EXPORT int tiledb_generate_data(
  * tiledb_generate_data, tiledb_error.h
  */
 TILEDB_EXPORT int tiledb_load_bin( 
-    const TileDB_Context* tiledb_context, 
+    const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* path,
     bool sorted);
@@ -611,7 +612,7 @@ TILEDB_EXPORT int tiledb_load_bin(
  * tiledb_generate_data, tiledb_error.h
  */
 TILEDB_EXPORT int tiledb_load_csv(    
-    const TileDB_Context* tiledb_context, 
+    const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* path,
     bool sorted);
@@ -632,7 +633,7 @@ TILEDB_EXPORT int tiledb_load_csv(
  * @see TileDB_Context, tiledb_define_array, tiledb_error.h
  */
 TILEDB_EXPORT int tiledb_show_array_schema(    
-    const TileDB_Context* tiledb_context, 
+    const TileDB_CTX* tiledb_ctx, 
     const char* array_name);
 
 /** 
@@ -687,7 +688,7 @@ TILEDB_EXPORT int tiledb_show_array_schema(
  * @see TileDB_Context, tiledb_define_array, tiledb_error.h
  */
 TILEDB_EXPORT int tiledb_subarray(    
-    const TileDB_Context* tiledb_context, 
+    const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* result_name,
     const double* range,
@@ -725,7 +726,7 @@ TILEDB_EXPORT int tiledb_subarray(
  * tiledb_update_csv, tiledb_generate_data, tiledb_error.h
 */
 TILEDB_EXPORT int tiledb_update_bin( 
-    const TileDB_Context* tiledb_context, 
+    const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* path,
     bool sorted);
@@ -760,7 +761,7 @@ TILEDB_EXPORT int tiledb_update_bin(
  * tiledb_update_bin, tiledb_generate_data, tiledb_error.h
 */
 TILEDB_EXPORT int tiledb_update_csv( 
-    const TileDB_Context* tiledb_context, 
+    const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* path,
     bool sorted);

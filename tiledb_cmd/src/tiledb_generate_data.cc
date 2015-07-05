@@ -266,8 +266,8 @@ int main(int argc, char** argv) {
   }
 
   // Initialize TileDB
-  TileDB_Context* tiledb_context;
-  rc = tiledb_init(workspace.c_str(), tiledb_context);
+  TileDB_CTX* tiledb_ctx;
+  rc = tiledb_init(workspace.c_str(), tiledb_ctx);
   if(rc) {
     std::cerr << ERROR_MSG_HEADER << " Failed to initialize TileDB.\n";
     return TILEDB_EINIT;
@@ -275,13 +275,13 @@ int main(int argc, char** argv) {
 
   // Generate data
   rc = tiledb_generate_data(
-           tiledb_context, array_name.c_str(), filename.c_str(),
+           tiledb_ctx, array_name.c_str(), filename.c_str(),
            filetype.c_str(), seed, cell_num); 
   if(rc) 
     return rc;
 
   // Finalize TileDB
-  rc = tiledb_finalize(tiledb_context);
+  rc = tiledb_finalize(tiledb_ctx);
   if(rc) {
     std::cerr << ERROR_MSG_HEADER << " Failed to finalize TileDB.\n";
     return TILEDB_EFIN;

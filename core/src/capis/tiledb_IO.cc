@@ -1,12 +1,12 @@
 /**
- * @file   tiledb.h
+ * @file   tiledb_IO.cc
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,19 +25,39 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * This file groups the header files that declare the C APIs for TileDB.
+ * This file implements the C APIs for basic Input/Output operations with
+ * arrays.
  */
 
-#ifndef __TILEDB_H__
-#define __TILEDB_H__
-
-#include "tiledb_cell_iterators.h"
+#include "loader.h"
+#include "query_processor.h"
+#include "storage_manager.h"
 #include "tiledb_ctx.h"
-#include "tiledb_error.h"
 #include "tiledb_IO.h"
-#include "tiledb_queries.h"
+#include "tiledb_error.h"
 
-#endif
+typedef struct TileDB_CTX {
+  Loader* loader_;
+  QueryProcessor* query_processor_;
+  StorageManager* storage_manager_;
+} TileDB_CTX;
+
+int tiledb_close_array(
+    TileDB_CTX* tiledb_ctx,
+    int ad) {
+  // TODO: Error messages here
+  tiledb_ctx->storage_manager_->close_array(ad);
+
+  return 0;
+}
+
+int tiledb_open_array(
+    TileDB_CTX* tiledb_ctx,
+    const char* array_name,
+    const char* mode) {
+  return tiledb_ctx->storage_manager_->open_array(array_name, mode);
+}
+

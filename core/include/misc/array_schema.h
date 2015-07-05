@@ -279,6 +279,10 @@ class ArraySchema {
    */
   std::pair<AttributeIds, AttributeIds> get_attribute_ids(
       const std::set<std::string>& expr_attribute_names) const;
+  /** Returns the attribute ids of the input attribute names. */
+  int get_attribute_ids(
+      const std::vector<std::string>& attribute_names,
+      std::vector<int>& attribute_ids) const;
   /** 
    * Returns true if the array has irregular tiles (i.e., 
    * ArraySchema::tile_extents_ is empty), and false otherwise. 

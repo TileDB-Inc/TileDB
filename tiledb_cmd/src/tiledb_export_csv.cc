@@ -235,8 +235,8 @@ int main(int argc, char** argv) {
   }
 
   // Initialize TileDB
-  TileDB_Context* tiledb_context;
-  rc = tiledb_init(workspace.c_str(), tiledb_context);
+  TileDB_CTX* tiledb_ctx;
+  rc = tiledb_init(workspace.c_str(), tiledb_ctx);
   if(rc) {
     std::cerr << ERROR_MSG_HEADER << " Failed to initialize TileDB.\n";
     return TILEDB_EINIT;
@@ -255,7 +255,7 @@ int main(int argc, char** argv) {
 
   // Export to CSV
   rc = tiledb_export_csv(
-           tiledb_context, array_name.c_str(), filename.c_str(),
+           tiledb_ctx, array_name.c_str(), filename.c_str(),
            dim_names_c_str, dim_names_num, 
            attribute_names_c_str, attribute_names_num,
            reverse);
@@ -266,7 +266,7 @@ int main(int argc, char** argv) {
   }
 
   // Finalize TileDB
-  rc = tiledb_finalize(tiledb_context);
+  rc = tiledb_finalize(tiledb_ctx);
   if(rc) {
     delete [] dim_names_c_str;
     delete [] attribute_names_c_str;

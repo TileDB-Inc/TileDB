@@ -101,18 +101,15 @@ int Loader::load_bin(
 
   // TODO fix error messages
 
-  // TODO remove err_msg
-  std::string err_msg;
-
   // Open array in write mode
-  int ad = storage_manager_->open_array(array_name, "w", err_msg);
+  int ad = storage_manager_->open_array(array_name, "w");
   if(ad == -1) { 
     return -1;
   }
 
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  int err = storage_manager_->get_array_schema(ad, array_schema);
   if(err == -1)
     return -1;
   int attribute_num = array_schema->attribute_num();
@@ -139,18 +136,15 @@ int Loader::load_csv(
     bool sorted) const {
   // TODO fix error messages
 
-  // TODO remove err_msg
-  std::string err_msg;
-
   // Open array in write mode
-  int ad = storage_manager_->open_array(array_name, "w", err_msg);
+  int ad = storage_manager_->open_array(array_name, "w");
   if(ad == -1) { 
     return -1;
   }
 
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  int err = storage_manager_->get_array_schema(ad, array_schema);
   if(err == -1)
     return -1;
   int attribute_num = array_schema->attribute_num();
@@ -178,18 +172,15 @@ int Loader::update_bin(
 
   // TODO fix error messages
 
-  // TODO remove err_msg
-  std::string err_msg;
-
   // Open array in write mode
-  int ad = storage_manager_->open_array(array_name, "a", err_msg);
+  int ad = storage_manager_->open_array(array_name, "a");
   if(ad == -1) { 
     return -1;
   }
 
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  int err = storage_manager_->get_array_schema(ad, array_schema);
   if(err == -1)
     return -1;
   int attribute_num = array_schema->attribute_num();
@@ -216,18 +207,15 @@ int Loader::update_csv(
     bool sorted) const {
   // TODO fix error messages
 
-  // TODO remove err_msg
-  std::string err_msg;
-
   // Open array in write mode
-  int ad = storage_manager_->open_array(array_name, "a", err_msg);
+  int ad = storage_manager_->open_array(array_name, "a");
   if(ad == -1) { 
     return -1;
   }
 
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  int err = storage_manager_->get_array_schema(ad, array_schema);
   if(err == -1)
     return -1;
   int attribute_num = array_schema->attribute_num();
@@ -250,10 +238,8 @@ int Loader::update_csv(
 
 int Loader::load_bin(
     const std::string& filename, const std::string& array_name) const {
-  std::string err_msg;
-
   // Open array in write mode
-  int ad = storage_manager_->open_array(array_name, "w", err_msg);
+  int ad = storage_manager_->open_array(array_name, "w");
   if(ad == -1) { 
     return -1;
   }
@@ -270,12 +256,10 @@ int Loader::load_bin(
 int Loader::load_csv(
     const std::string& array_name,
     const std::string& filename) const {
-  std::string err_msg;
-
   // Open array in write mode
 // TODO: it should return an error code (failed to open or 
 // undefined)
-  int ad = storage_manager_->open_array(array_name, "w", err_msg);
+  int ad = storage_manager_->open_array(array_name, "w");
   if(ad == -1) { 
     std::cerr << ERROR_MSG_HEADER 
               << " Failed to open array '" << array_name << "'.\n";
@@ -296,11 +280,8 @@ int Loader::load_csv(
 
 int Loader::load_sorted_bin(
     const std::string& filename, const std::string& array_name) const {
-
-  std::string err_msg;
-
   // Open array in write mode
-  int ad = storage_manager_->open_array(array_name, "w", err_msg);
+  int ad = storage_manager_->open_array(array_name, "w");
   if(ad == -1) 
     return -1;
 
@@ -317,7 +298,7 @@ int Loader::update_csv(
     const std::string& filename, const std::string& array_name,
     std::string& err_msg) const {
   // Open array in append mode
-  int ad = storage_manager_->open_array(array_name, "a", err_msg);
+  int ad = storage_manager_->open_array(array_name, "a");
   if(ad == -1) 
     return -1;
 
@@ -498,11 +479,9 @@ bool Loader::csv_line_to_cell(
 }
 
 int Loader::load_bin(const std::string& filename, int ad) const {
-  std::string err_msg;
-
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  int err = storage_manager_->get_array_schema(ad, array_schema);
   if(err == -1)
     return -1;
   int attribute_num = array_schema->attribute_num();
@@ -520,11 +499,9 @@ int Loader::load_bin(const std::string& filename, int ad) const {
 
 template<class T>
 int Loader::load_bin(const std::string& filename, int ad) const {
-  std::string err_msg;
-
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  int err = storage_manager_->get_array_schema(ad, array_schema);
   if(err == -1)
     return -1;
   ssize_t cell_size = array_schema->cell_size();
@@ -554,11 +531,9 @@ int Loader::load_bin(
     int ad, 
     const std::string& path,
     bool sorted) const {
-  std::string err_msg;
-
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  int err = storage_manager_->get_array_schema(ad, array_schema);
   if(err == -1)
     return -1;
 
@@ -591,11 +566,9 @@ int Loader::load_csv(
     int ad, 
     const std::string& path,
     bool sorted) const {
-  std::string err_msg;
-
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  int err = storage_manager_->get_array_schema(ad, array_schema);
   if(err == -1)
     return -1;
 
@@ -624,12 +597,10 @@ int Loader::load_csv(
 }
 
 int Loader::load_csv(int ad, const std::string& filename) const {
-  std::string err_msg;
-
   // For easy reference
   const ArraySchema* array_schema;
   // TODO: Fix error message
-  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  int err = storage_manager_->get_array_schema(ad, array_schema);
   if(err == -1)
     return -1;
   int attribute_num = array_schema->attribute_num();
@@ -647,8 +618,6 @@ int Loader::load_csv(int ad, const std::string& filename) const {
 
 template<class T>
 int Loader::load_csv(int ad, const std::string& filename) const {
-  std::string err_msg;
-
   // Open the csv file 
   CSVLine csv_line;
   CSVFile csv_file;
@@ -665,7 +634,7 @@ int Loader::load_csv(int ad, const std::string& filename) const {
 
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  int err = storage_manager_->get_array_schema(ad, array_schema);
   if(err == -1)
     return -1;
   int64_t line = 0;
@@ -721,11 +690,9 @@ int Loader::load_csv(int ad, const std::string& filename) const {
 }
 
 int Loader::load_sorted_bin(const std::string& filename, int ad) const {
-  std::string err_msg;
-
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  int err = storage_manager_->get_array_schema(ad, array_schema);
   if(err == -1)
     return -1;
   int attribute_num = array_schema->attribute_num();
@@ -743,11 +710,9 @@ int Loader::load_sorted_bin(const std::string& filename, int ad) const {
 
 template<class T>
 int Loader::load_sorted_bin(const std::string& filename, int ad) const {
-  std::string err_msg;
-
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema, err_msg);
+  int err = storage_manager_->get_array_schema(ad, array_schema);
   if(err == -1)
     return -1;
   ssize_t cell_size = array_schema->cell_size();

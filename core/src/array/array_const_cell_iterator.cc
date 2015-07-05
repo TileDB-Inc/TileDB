@@ -297,6 +297,12 @@ ArrayConstCellIterator<T>::~ArrayConstCellIterator() {
 ******************************************************/
 
 template<class T>
+const ArraySchema* ArrayConstCellIterator<T>::array_schema() const {
+  return array_->array_schema();
+}
+
+
+template<class T>
 const std::vector<int>& ArrayConstCellIterator<T>::attribute_ids() const {
   return attribute_ids_;
 }

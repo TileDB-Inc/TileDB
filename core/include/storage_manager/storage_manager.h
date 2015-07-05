@@ -105,7 +105,7 @@ class StorageManager {
   void forced_close_array(int ad);
   /** Returns the schema of an array. The input is an array descriptor. */
   int get_array_schema(
-      int ad, const ArraySchema*& array_schema, std::string& err_msg) const;
+      int ad, const ArraySchema*& array_schema) const;
   /** Returns the schema of an array. */
   int get_array_schema(
       const std::string& array_name, 
@@ -131,19 +131,18 @@ class StorageManager {
    *
    * "a": Append mode
    */
-  int open_array(
-      const std::string& array_name, const char* mode, std::string& err_msg);
+  int open_array(const std::string& array_name, const char* mode);
 
   // CELL FUNCTIONS
   /** Takes as input an array descriptor and returns a cell iterator. */
   template<class T>
-  ArrayConstCellIterator<T> begin(int ad) const;
+  ArrayConstCellIterator<T>* begin(int ad) const;
   /** 
    * Takes as input an array descriptor and a list of attribute ids. It returns
    * a cell iterator that iterates over the specified attributes.
    */
   template<class T>
-  ArrayConstCellIterator<T> begin(
+  ArrayConstCellIterator<T>* begin(
       int ad, const std::vector<int>& attribute_ids) const;
   /** 
    * Takes as input an array descriptor and a range. It returns a cell iterator
@@ -151,7 +150,7 @@ class StorageManager {
    * range (following the global cell order).    
    */
   template<class T>
-  ArrayConstCellIterator<T> begin(
+  ArrayConstCellIterator<T>* begin(
       int ad, const T* range) const;
   /** 
    * Takes as input an array descriptor, a range, and a list of attribute
@@ -160,18 +159,18 @@ class StorageManager {
    * order), and only on the specified attributes.
    */
   template<class T>
-  ArrayConstCellIterator<T> begin(
+  ArrayConstCellIterator<T>* begin(
       int ad, const T* range,
       const std::vector<int>& attribute_ids) const;
   /** Takes as input an array descriptor and returns a cell iterator. */
   template<class T>
-  ArrayConstReverseCellIterator<T> rbegin(int ad) const;
+  ArrayConstReverseCellIterator<T>* rbegin(int ad) const;
   /** 
    * Takes as input an array descriptor and a list of attribute ids. It returns
    * a cell iterator that iterates over the specified attributes.
    */
   template<class T>
-  ArrayConstReverseCellIterator<T> rbegin(
+  ArrayConstReverseCellIterator<T>* rbegin(
       int ad, const std::vector<int>& attribute_ids) const;
   /** 
    * Takes as input an array descriptor and a range. It returns a cell iterator
@@ -179,7 +178,7 @@ class StorageManager {
    * range (following the global cell order).    
    */
   template<class T>
-  ArrayConstReverseCellIterator<T> rbegin(
+  ArrayConstReverseCellIterator<T>* rbegin(
       int ad, const T* range) const;
   /** 
    * Takes as input an array descriptor, a range, and a list of attribute
@@ -188,7 +187,7 @@ class StorageManager {
    * order), and only on the specified attributes.
    */
   template<class T>
-  ArrayConstReverseCellIterator<T> rbegin(
+  ArrayConstReverseCellIterator<T>* rbegin(
       int ad, const T* range,
       const std::vector<int>& attribute_ids) const;
   /**
@@ -313,8 +312,8 @@ class StorageManager {
   // PRIVATE METHODS
   /** Checks when opening an array. */
   int check_on_open_array(
-      const std::string& array_name, const char* mode,
-      std::string& err_msg) const;
+      const std::string& array_name, 
+      const char* mode) const;
   /** Checks the validity of the array mode. */
   bool invalid_array_mode(const char* mode) const;
   /** Simply sets the workspace. */

@@ -74,18 +74,17 @@ int QueryProcessor::export_csv(
     const std::vector<std::string>& dim_names,
     const std::vector<std::string>& attribute_names,
     bool reverse) const {
-  // TODO remove
   std::string err_msg;
 
   // Open array in read mode
-  int ad = storage_manager_->open_array(array_name, "r", err_msg);
+  int ad = storage_manager_->open_array(array_name, "r");
   if(ad == -1) 
     return -1;
 
   // For easy reference
   int err;
   const ArraySchema* array_schema;
-  err = storage_manager_->get_array_schema(ad, array_schema, err_msg); 
+  err = storage_manager_->get_array_schema(ad, array_schema); 
   if(err == -1)
     return -1;
   int attribute_num = array_schema->attribute_num();
@@ -93,10 +92,12 @@ int QueryProcessor::export_csv(
 
   // Get dimension and attribute ids
   std::vector<int> dim_ids;
+  // TODO: Replace with array_schema->get_dim_ids()
   err = parse_dim_names(dim_names, array_schema, dim_ids, err_msg);
   if(err == -1)
     return -1;
   std::vector<int> attribute_ids;
+  // TODO: Replace with array_schema->get_attribute_ids()
   err = parse_attribute_names(attribute_names, array_schema, 
                               attribute_ids, err_msg);
   if(err == -1)
@@ -148,14 +149,14 @@ int QueryProcessor::subarray(
   std::string err_msg;
 
   // Open array in read mode
-  int ad = storage_manager_->open_array(array_name, "r", err_msg);
+  int ad = storage_manager_->open_array(array_name, "r");
   if(ad == -1)
     return -1;
 
   // For easy reference
   const ArraySchema* array_schema;
   int err;
-  err = storage_manager_->get_array_schema(ad, array_schema, err_msg); 
+  err = storage_manager_->get_array_schema(ad, array_schema); 
   if(err == -1)
     return -1;
   int attribute_num = array_schema->attribute_num();
@@ -193,7 +194,7 @@ int QueryProcessor::subarray(
     return -1;
 
   // Open result array in write mode
-  int result_ad = storage_manager_->open_array(result_array_name, "w", err_msg);
+  int result_ad = storage_manager_->open_array(result_array_name, "w");
   if(result_ad == -1)
     return -1;
 
@@ -243,15 +244,15 @@ void QueryProcessor::export_csv(
   CSVFile csv_file(filename, "w");
 
   // Prepare cell iterators
-  ArrayConstCellIterator<T> cell_it = 
+  ArrayConstCellIterator<T>* cell_it = 
       storage_manager_->begin<T>(ad, attribute_ids);
 
   // Prepare a cell
-  Cell cell(array_schema, cell_it.attribute_ids(), true);
+  Cell cell(array_schema, cell_it->attribute_ids(), true);
 
   // Write cells into the CSV file
-  for(; !cell_it.end(); ++cell_it) { 
-    cell.set_cell(*cell_it);
+  for(; !cell_it->end(); ++(*cell_it)) { 
+    cell.set_cell(**cell_it);
     csv_file << cell.csv_line<T>(dim_ids, attribute_ids); 
   }
 
@@ -270,15 +271,15 @@ void QueryProcessor::export_csv_reverse(
   csv_file.open(filename, "w");
 
   // Prepare cell iterators
-  ArrayConstReverseCellIterator<T> cell_it = 
+  ArrayConstReverseCellIterator<T>* cell_it = 
       storage_manager_->rbegin<T>(ad, attribute_ids);
 
   // Prepare a cell
-  Cell cell(array_schema, cell_it.attribute_ids(), true);
+  Cell cell(array_schema, cell_it->attribute_ids(), true);
 
   // Write cells into the CSV file
-  for(; !cell_it.end(); ++cell_it) { 
-    cell.set_cell(*cell_it);
+  for(; !cell_it->end(); ++(*cell_it)) { 
+    cell.set_cell(**cell_it);
     csv_file << cell.csv_line<T>(dim_ids, attribute_ids); 
   }
 
@@ -357,11 +358,11 @@ void QueryProcessor::subarray(
     int ad, const T* range, int result_ad,
     const std::vector<int>& attribute_ids) const { 
   // Prepare cell iterator
-  ArrayConstCellIterator<T> cell_it = 
+  ArrayConstCellIterator<T>* cell_it = 
       storage_manager_->begin<T>(ad, range, attribute_ids);
 
   // Write cells into the CSV file
-  for(; !cell_it.end(); ++cell_it) 
-    storage_manager_->write_cell_sorted<T>(result_ad, *cell_it); 
+  for(; !cell_it->end(); ++(*cell_it)) 
+    storage_manager_->write_cell_sorted<T>(result_ad, **cell_it); 
 }
 
