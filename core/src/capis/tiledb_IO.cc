@@ -61,3 +61,53 @@ int tiledb_open_array(
   return tiledb_ctx->storage_manager_->open_array(array_name, mode);
 }
 
+int tiledb_write_cell(
+    TileDB_CTX* tiledb_ctx,
+    int ad,
+    const void* cell) {
+  // For easy reference
+  int err;
+  const ArraySchema* array_schema;
+  err = tiledb_ctx->storage_manager_->get_array_schema(
+            ad, array_schema); 
+  if(err == -1)
+    return -1; // TODO
+  const std::type_info* type = array_schema->coords_type();
+
+  if(type == &typeid(int))
+    tiledb_ctx->storage_manager_->write_cell<int>(ad, cell);
+  else if(type == &typeid(int64_t))
+    tiledb_ctx->storage_manager_->write_cell<int64_t>(ad, cell);
+  else if(type == &typeid(float))
+    tiledb_ctx->storage_manager_->write_cell<float>(ad, cell);
+  else if(type == &typeid(double))
+    tiledb_ctx->storage_manager_->write_cell<double>(ad, cell);
+
+  return 0;
+}
+
+int tiledb_write_cell_sorted(
+    TileDB_CTX* tiledb_ctx,
+    int ad,
+    const void* cell) {
+  // For easy reference
+  int err;
+  const ArraySchema* array_schema;
+  err = tiledb_ctx->storage_manager_->get_array_schema(
+            ad, array_schema); 
+  if(err == -1)
+    return -1; // TODO
+  const std::type_info* type = array_schema->coords_type();
+
+  if(type == &typeid(int))
+    tiledb_ctx->storage_manager_->write_cell_sorted<int>(ad, cell);
+  else if(type == &typeid(int64_t))
+    tiledb_ctx->storage_manager_->write_cell_sorted<int64_t>(ad, cell);
+  else if(type == &typeid(float))
+    tiledb_ctx->storage_manager_->write_cell_sorted<float>(ad, cell);
+  else if(type == &typeid(double))
+    tiledb_ctx->storage_manager_->write_cell_sorted<double>(ad, cell);
+
+  return 0;
+}
+

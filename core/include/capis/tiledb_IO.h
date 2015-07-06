@@ -80,6 +80,39 @@ TILEDB_EXPORT int tiledb_open_array(
     const char* array_name,
     const char* mode);
 
+/** 
+ * Writes a binary cell to an array. The format of the cell is discussed in
+ * tiledb_load_bin().
+ * @param tiledb_context The TileDB state.
+ * @param ad The descriptor of the array to receive the cell
+ * @param cell The binary cell to be written 
+ * @return An error code that may be one of the following:
+ * TBD
+ * @see TileDB_Context, tiledb_write_cell_sorted
+ */
+TILEDB_EXPORT int tiledb_write_cell(
+    TileDB_CTX* tiledb_ctx,
+    int ad, 
+    const void* cell);
+
+/** 
+ * Writes a binary cell to an array. The format of the cell is discussed in
+ * tiledb_load_bin(). The difference to tildb_write_cell() is that the 
+ * cells are assumed to be written in the same order as the cell order
+ * defined in the array. Therefore, this is a simple **append** command,
+ * whereas tiledb_write_cell() at some point triggers **sorting**.
+ * @param tiledb_context The TileDB state.
+ * @param ad The descriptor of the array to receive the cell
+ * @param cell The binary cell to be written 
+ * @return An error code that may be one of the following:
+ * TBD
+ * @see TileDB_Context, tiledb_write_cell
+ */
+TILEDB_EXPORT int tiledb_write_cell_sorted(
+    TileDB_CTX* tiledb_ctx,
+    int ad, 
+    const void* cell);
+
 #undef TILEDB_EXPORT
 
 #ifdef __cplusplus

@@ -297,6 +297,12 @@ ArrayConstReverseCellIterator<T>::~ArrayConstReverseCellIterator() {
 ******************************************************/
 
 template<class T>
+const ArraySchema* ArrayConstReverseCellIterator<T>::array_schema() const {
+  return array_->array_schema();
+}
+
+
+template<class T>
 const std::vector<int>& 
 ArrayConstReverseCellIterator<T>::attribute_ids() const {
   return attribute_ids_;
