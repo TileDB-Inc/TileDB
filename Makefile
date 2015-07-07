@@ -10,7 +10,7 @@ OS := $(shell uname)
 # CXX = g++ 
 
 # MPI compiler for C++
-CXX = mpicxx -std=c++11 -fPIC
+CXX = mpicxx -std=c++11 -fPIC -fvisibility=hidden
 
 # --- Directories --- #
 # Directories for the core code of TileDB
