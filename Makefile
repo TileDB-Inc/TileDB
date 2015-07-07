@@ -120,7 +120,11 @@ tiledb_cmd: core $(TILEDB_CMD_BIN)
 
 la: core $(LA_OBJ) $(LA_BIN_DIR)/example_transpose
 
-doc: doxyfile.inc $(MANPAGES_HTML) 
+man: doxyfile.inc $(MANPAGES_MAN)
+
+html: doxyfile.inc $(MANPAGES_HTML)
+
+doc: man html
 
 gtest: $(GTEST_OBJ_DIR)/gtest-all.o
 
