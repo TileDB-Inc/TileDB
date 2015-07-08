@@ -132,11 +132,9 @@ tiledb_cmd: core $(TILEDB_CMD_BIN)
 
 la: core $(LA_OBJ) $(LA_BIN_DIR)/example_transpose
 
-man: doxyfile.inc $(MANPAGES_MAN)
+html: $(MANPAGES_HTML)
 
-html: doxyfile.inc $(MANPAGES_HTML)
-
-doc: man html
+doc: doxyfile.inc html
 
 gtest: $(GTEST_OBJ_DIR)/gtest-all.o
 
@@ -192,7 +190,7 @@ endif
 $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT): $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
 	@echo "Creating libtiledb.$(SHLIB_EXT)"
-	@$(CXX) $(SHLIB_FLAGS) -o $(SONAME) $@ $^
+	@$(CXX) $(SHLIB_FLAGS) $(SONAME) -o $@ $^
 
 # --- Cleaning --- #
 
@@ -305,10 +303,8 @@ doxyfile.inc: $(CORE_INCLUDE) $(TILEDB_CMD_INCLUDE) $(LA_INCLUDE)
 	@echo FILE_PATTERNS = *.h >> doxyfile.inc
 	@doxygen Doxyfile.mk > Doxyfile.log 2>&1
 
-echo_manpages_msg:
-	@echo 'Converting Manpages to HTML'
-
-$(MANPAGES_HTML_DIR)/%.html: $(MANPAGES_MAN_DIR)/% echo_manpages_msg  
+$(MANPAGES_HTML_DIR)/%.html: $(MANPAGES_MAN_DIR)/%
+	@echo 'Converting $< to HTML'
 	@mkdir -p $(MANPAGES_HTML_DIR)
 	@man2html $< > $@
 
