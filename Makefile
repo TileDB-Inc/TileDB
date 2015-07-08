@@ -2,13 +2,15 @@
 # Macros #
 ##########
 
+OS := $(shell uname)
+
 # --- Compilers --- #
 
 # C++ compiler
 # CXX = g++ 
 
 # MPI compiler for C++
-CXX = mpicxx -std=c++11 -fmax-errors=5 
+CXX = mpicxx -std=c++11 -fPIC -fvisibility=hidden
 
 # --- Directories --- #
 # Directories for the core code of TileDB
@@ -18,6 +20,7 @@ CORE_SRC_DIR = core/src
 CORE_SRC_SUBDIRS = $(wildcard core/src/*)
 CORE_OBJ_DIR = core/obj
 CORE_BIN_DIR = core/bin
+CORE_LIB_DIR = core/lib
 
 # Directories for the command-line-based frontend of TileDB
 TILEDB_CMD_INCLUDE_DIR = tiledb_cmd/include
@@ -71,6 +74,13 @@ OPENMP_LIB_PATHS = -L$(OPENMP_LIB_DIR)
 MPI_LIB = -lmpi
 OPENMP_LIB = -fopenmp
 
+# --- File Extensions --- #
+ifeq ($(OS), Darwin)
+  SHLIB_EXT = dylib
+else
+  SHLIB_EXT = so
+endif
+
 # --- Files --- #
 
 # Files of the TileDB core
@@ -112,9 +122,11 @@ MANPAGES_HTML := $(patsubst $(MANPAGES_MAN_DIR)/%,\
 .PHONY: core example gtest test doc clean_core clean_gtest \
         clean_test clean_tiledb_cmd clean_la clean
 
-all: core tiledb_cmd la gtest test 
+all: core libtiledb tiledb_cmd la gtest test
 
 core: $(CORE_OBJ) 
+
+libtiledb: core $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT)
 
 tiledb_cmd: core $(TILEDB_CMD_BIN)
 
@@ -130,7 +142,7 @@ gtest: $(GTEST_OBJ_DIR)/gtest-all.o
 
 test: $(TEST_OBJ)
 
-clean: clean_core clean_tiledb_cmd clean_la clean_gtest \
+clean: clean_core clean_libtiledb clean_tiledb_cmd clean_la clean_gtest \
        clean_test clean_doc 
 
 ########
@@ -156,6 +168,37 @@ $(CORE_OBJ_DIR)/%.o: $(CORE_SRC_DIR)/%.cc
 clean_core: 
 	@echo 'Cleaning core'
 	@rm -rf $(CORE_OBJ_DIR)/* $(CORE_BIN_DIR)/* 
+
+#############
+# libtiledb #
+#############
+
+-include $(CORE_OBJ:%.o=%.d)
+
+# --- Linking --- #
+
+ifeq ($(0S), Darwin)
+  SHLIB_FLAGS = -dynamiclib
+else
+  SHLIB_FLAGS = -shared
+endif
+
+ifeq ($(SHLIB_EXT), so)
+  SONAME = -Wl,-soname=libtiledb.so
+else
+  SONAME =
+endif
+
+$(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT): $(CORE_OBJ)
+	@mkdir -p $(CORE_LIB_DIR)
+	@echo "Creating libtiledb.$(SHLIB_EXT)"
+	@$(CXX) $(SHLIB_FLAGS) -o $(SONAME) $@ $^
+
+# --- Cleaning --- #
+
+clean_libtiledb:
+	@echo "Cleaning libtiledb.$(SHLIB_EXT)"
+	@rm -rf $(CORE_LIB_DIR)/*
 
 ##############
 # TileDB_cmd #
@@ -187,7 +230,7 @@ $(TILEDB_CMD_BIN_DIR)/%: $(TILEDB_CMD_OBJ_DIR)/%.o $(CORE_OBJ)
 
 clean_tiledb_cmd:
 	@echo 'Cleaning tiledb_cmd'
-	@rm -f $(TILEDB_CMD_OBJ_DIR)/* $(TILEDB_CMD_BIN_DIR)/* 
+	@rm -f $(TILEDB_CMD_OBJ_DIR)/* $(TILEDB_CMD_BIN_DIR)/*
  
 ######
 # LA #
