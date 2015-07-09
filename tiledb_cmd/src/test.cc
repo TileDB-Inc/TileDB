@@ -9,9 +9,7 @@ int main() {
   int ad = tiledb_open_array(ctx, "IREG", "r"); 
 
   TileDB_ConstReverseCellIterator* it;
-  int64_t range[4];
-  range[0] = 0; range[1] = 40;
-  range[2] = 0; range[3] = 40;
+  int64_t range[4] = { 0,40, 0,40 };
   tiledb_const_reverse_cell_iterator_init_in_range(ctx, ad, NULL, 0, range, it);  
 
   const void* cell;
