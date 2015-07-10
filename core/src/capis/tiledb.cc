@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_cell_iterators.cc
+ * @file   tiledb.cc
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
@@ -28,22 +28,151 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the C APIs for cell iterators on TileDB arrays.
+ * This file defines the C APIs of TileDB.
  */
 
+#include "data_generator.h"
 #include "loader.h"
 #include "query_processor.h"
 #include "storage_manager.h"
-#include "tiledb_ctx.h"
+#include "tiledb.h"
 #include "tiledb_error.h"
-#include "tiledb_cell_iterators.h"
-#include <iomanip>
 
-typedef struct TileDB_CTX {
+/* ****************************** */
+/*            CONTEXT             */
+/* ****************************** */
+
+typedef struct TileDB_CTX{
   Loader* loader_;
   QueryProcessor* query_processor_;
   StorageManager* storage_manager_;
 } TileDB_CTX;
+
+int tiledb_finalize(TileDB_CTX*& tiledb_ctx) {
+  // Clear the TileDB modules
+  delete tiledb_ctx->storage_manager_;
+  delete tiledb_ctx->loader_;
+  delete tiledb_ctx->query_processor_;
+
+  // Delete the TileDB context
+  free(tiledb_ctx); 
+  tiledb_ctx = NULL;
+
+  return 0;
+}
+
+int tiledb_init(const char* workspace, TileDB_CTX*& tiledb_ctx) {
+  tiledb_ctx = (TileDB_CTX*) malloc(sizeof(struct TileDB_CTX)); 
+
+  // Create Storage Manager
+  tiledb_ctx->storage_manager_ = new StorageManager(workspace);
+  if(tiledb_ctx->storage_manager_->err()) {
+    delete tiledb_ctx->storage_manager_;
+    free(tiledb_ctx);
+    std::cerr << ERROR_MSG_HEADER << " Cannot create storage manager.\n";
+    return TILEDB_ENSMCREAT;
+  }
+
+  // Create Loader
+  tiledb_ctx->loader_ = 
+      new Loader(tiledb_ctx->storage_manager_, workspace);
+  if(tiledb_ctx->loader_->err()) {
+    delete tiledb_ctx->storage_manager_;
+    delete tiledb_ctx->loader_;
+    free(tiledb_ctx);
+    std::cerr << ERROR_MSG_HEADER << " Cannot create loader.\n";
+    return TILEDB_ENLDCREAT;
+  }
+
+  // Create Query Processor
+  tiledb_ctx->query_processor_ = 
+      new QueryProcessor(tiledb_ctx->storage_manager_);
+  if(tiledb_ctx->query_processor_->err()) {
+    delete tiledb_ctx->storage_manager_;
+    delete tiledb_ctx->loader_;
+    delete tiledb_ctx->query_processor_;
+    free(tiledb_ctx);
+    std::cerr << ERROR_MSG_HEADER << " Cannot create query processor.\n";
+    return TILEDB_ENQPCREAT;
+  }
+
+  return 0;
+}
+
+/* ****************************** */
+/*               I/O              */
+/* ****************************** */
+
+int tiledb_close_array(
+    TileDB_CTX* tiledb_ctx,
+    int ad) {
+  // TODO: Error messages here
+  tiledb_ctx->storage_manager_->close_array(ad);
+
+  return 0;
+}
+
+int tiledb_open_array(
+    TileDB_CTX* tiledb_ctx,
+    const char* array_name,
+    const char* mode) {
+  return tiledb_ctx->storage_manager_->open_array(array_name, mode);
+}
+
+int tiledb_write_cell(
+    TileDB_CTX* tiledb_ctx,
+    int ad,
+    const void* cell) {
+  // For easy reference
+  int err;
+  const ArraySchema* array_schema;
+  err = tiledb_ctx->storage_manager_->get_array_schema(
+            ad, array_schema); 
+  if(err == -1)
+    return -1; // TODO
+  const std::type_info* type = array_schema->coords_type();
+
+  if(type == &typeid(int))
+    tiledb_ctx->storage_manager_->write_cell<int>(ad, cell);
+  else if(type == &typeid(int64_t))
+    tiledb_ctx->storage_manager_->write_cell<int64_t>(ad, cell);
+  else if(type == &typeid(float))
+    tiledb_ctx->storage_manager_->write_cell<float>(ad, cell);
+  else if(type == &typeid(double))
+    tiledb_ctx->storage_manager_->write_cell<double>(ad, cell);
+
+  return 0;
+}
+
+int tiledb_write_cell_sorted(
+    TileDB_CTX* tiledb_ctx,
+    int ad,
+    const void* cell) {
+  // For easy reference
+  int err;
+  const ArraySchema* array_schema;
+  err = tiledb_ctx->storage_manager_->get_array_schema(
+            ad, array_schema); 
+  if(err == -1)
+    return -1; // TODO
+  const std::type_info* type = array_schema->coords_type();
+
+  if(type == &typeid(int))
+    tiledb_ctx->storage_manager_->write_cell_sorted<int>(ad, cell);
+  else if(type == &typeid(int64_t))
+    tiledb_ctx->storage_manager_->write_cell_sorted<int64_t>(ad, cell);
+  else if(type == &typeid(float))
+    tiledb_ctx->storage_manager_->write_cell_sorted<float>(ad, cell);
+  else if(type == &typeid(double))
+    tiledb_ctx->storage_manager_->write_cell_sorted<double>(ad, cell);
+
+  return 0;
+}
+
+
+/* ****************************** */
+/*          CELL ITERATORS        */
+/* ****************************** */
 
 typedef struct TileDB_ConstCellIterator {
   const ArraySchema* array_schema_;
@@ -440,4 +569,180 @@ int tiledb_const_reverse_cell_iterator_next(
   }
 
   return 0;
+}
+
+/* ****************************** */
+/*             QUERIES            */
+/* ****************************** */
+
+int tiledb_clear_array(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_name) {
+  return tiledb_ctx->storage_manager_->clear_array(array_name);
+}
+
+int tiledb_define_array(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_schema_str) {
+  // Creare array schema from the input string 
+  ArraySchema* array_schema = new ArraySchema();
+  if(array_schema->deserialize(array_schema_str)) {
+    std::cerr << ERROR_MSG_HEADER << " Failed to parse array schema.\n";
+    return TILEDB_EPARRSCHEMA;
+  }
+
+  // Define the array
+  if(tiledb_ctx->storage_manager_->define_array(array_schema)) { 
+    std::cerr << ERROR_MSG_HEADER << " Failed to define array.\n";
+// TODO: Print better message
+    return TILEDB_EDEFARR;
+  }
+
+  // Clean up 
+  delete array_schema;
+
+  return 0;
+} 
+
+int tiledb_delete_array(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_name) {
+  return tiledb_ctx->storage_manager_->delete_array(array_name);
+}
+
+int tiledb_export_csv(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_name,
+    const char* filename,
+    const char** dim_names,
+    int dim_names_num,
+    const char** attribute_names,
+    int attribute_names_num,
+    bool reverse) {
+  // Compute vectors for dim_names and attribute names 
+  std::vector<std::string> dim_names_vec, attribute_names_vec;
+  for(int i=0; i<dim_names_num; ++i) 
+    dim_names_vec.push_back(dim_names[i]);
+  for(int i=0; i<attribute_names_num; ++i) 
+    attribute_names_vec.push_back(attribute_names[i]);
+
+  return tiledb_ctx->query_processor_->export_csv(
+      array_name, filename, dim_names_vec, attribute_names_vec, reverse);
+}
+
+int tiledb_generate_data(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_name,
+    const char* filename,
+    const char* filetype,
+    unsigned int seed,
+    int64_t cell_num) {
+  // Check cell_num
+  if(cell_num <= 0) {
+    std::cerr << ERROR_MSG_HEADER 
+             << " The number of cells must be a positive integer.\n";
+    return TILEDB_EIARG;
+  }
+
+  // To handle return codes
+  int rc;
+
+  // Get the array schema from the storage manager
+  ArraySchema* array_schema;
+  rc = tiledb_ctx->storage_manager_->get_array_schema(
+           array_name, array_schema);
+  if(rc) 
+    return rc;
+
+  // Generate the file
+  DataGenerator data_generator(array_schema);
+  if(strcmp(filetype, "csv") == 0) {
+    rc = data_generator.generate_csv(seed, filename, cell_num);
+  } else if(strcmp(filetype, "bin") == 0) {
+    rc = data_generator.generate_bin(seed, filename, cell_num);
+  } else {
+    std::cerr << ERROR_MSG_HEADER 
+             << " Unknown file type '" << filetype << "'.\n";
+    return TILEDB_EIARG;
+  }
+
+  // Handle errors 
+  if(rc) 
+    return rc;
+
+  // Clean up
+  delete array_schema; 
+
+  return 0;
+}
+
+int tiledb_load_bin(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_name,
+    const char* path,
+    bool sorted) {
+  return tiledb_ctx->loader_->load_bin(array_name, path, sorted);
+}
+
+int tiledb_load_csv(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_name,
+    const char* path,
+    bool sorted) {
+  return tiledb_ctx->loader_->load_csv(array_name, path, sorted);
+}
+    
+int tiledb_show_array_schema(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_name) {
+  // Get the array schema from the storage manager
+  ArraySchema* array_schema;
+  int rc = tiledb_ctx->storage_manager_->get_array_schema(
+               array_name, array_schema);
+  if(rc) 
+    return rc;
+
+  // Print array schema
+  array_schema->print();
+
+  // Clean up
+  delete array_schema; 
+
+  return 0;
+}
+
+int tiledb_subarray(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_name,
+    const char* result_name,
+    const double* range,
+    int range_size,
+    const char** attribute_names,
+    int attribute_names_num) {
+  // Compute vectors for range and attribute names 
+  std::vector<std::string> attribute_names_vec;
+  for(int i=0; i<attribute_names_num; ++i) 
+    attribute_names_vec.push_back(attribute_names[i]);
+  std::vector<double> range_vec;
+  for(int i=0; i<range_size; ++i) 
+    range_vec.push_back(range[i]);
+
+  return tiledb_ctx->query_processor_->subarray(
+      array_name, range_vec, result_name, attribute_names_vec);
+}
+
+int tiledb_update_bin(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_name,
+    const char* path,
+    bool sorted) {
+  return tiledb_ctx->loader_->update_bin(array_name, path, sorted);
+}
+
+int tiledb_update_csv(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_name,
+    const char* path,
+    bool sorted) {
+  return tiledb_ctx->loader_->update_csv(array_name, path, sorted);
 }
