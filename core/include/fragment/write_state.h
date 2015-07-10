@@ -329,6 +329,8 @@ struct WriteState::SmallerCol {
       else if(coords_a[i] > coords_b[i]) 
         return false;
       // else coords_a[i] == coords_b[i] --> continue
+
+    return false;
   }
 
   /** Number of dimension. */
@@ -360,6 +362,8 @@ struct WriteState::SmallerColWithId {
       else if(coords_a[i] > coords_b[i]) 
         return false;
       // else coords_a[i] == coords_b[i] --> continue
+
+    return false;
   }
 
   /** Number of dimension. */
@@ -383,6 +387,8 @@ struct WriteState::SmallerRow {
       else if(coords_a[i] > coords_b[i]) 
         return false;
       // else coords_a[i] == coords_b[i] --> continue
+
+    return false;
   }
 
   /** Number of dimension. */
@@ -414,6 +420,8 @@ struct WriteState::SmallerRowWithId {
       else if(coords_a[i] > coords_b[i]) 
         return false;
       // else coords_a[i] == coords_b[i] --> continue
+
+    return false;
   }
 
   /** Number of dimension. */
@@ -452,11 +460,12 @@ struct WriteState::SmallerWith2Ids {
       else if(coords_a[i] > coords_b[i]) 
         return false;
       // else coords_a[i] == coords_b[i] --> continue
+
+    return false;
   }
 
   /** Number of dimension. */
   int dim_num_;
 };
-
 
 #endif
