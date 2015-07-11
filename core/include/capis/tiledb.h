@@ -98,9 +98,9 @@ TILEDB_EXPORT int tiledb_init(
  * @return An array descriptor (>=0) or an error code (<0). The error code may
  * be one of the following:
  * TBD
- * @see TileDB_Context, tiledb_open_array
+ * @see TileDB_Context, tiledb_array_open
  */
-TILEDB_EXPORT int tiledb_close_array(
+TILEDB_EXPORT int tiledb_array_close(
     TileDB_CTX* tiledb_ctx,
     int ad);
 
@@ -118,9 +118,9 @@ TILEDB_EXPORT int tiledb_close_array(
  * @return An array descriptor (>=0) or an error code (<0). The error code may
  * be one of the following:
  * TBD
- * @see TileDB_Context, tiledb_close_array
+ * @see TileDB_Context, tiledb_array_close
  */
-TILEDB_EXPORT int tiledb_open_array(
+TILEDB_EXPORT int tiledb_array_open(
     TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const char* mode);

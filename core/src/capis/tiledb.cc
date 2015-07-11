@@ -103,7 +103,7 @@ int tiledb_init(const char* workspace, TileDB_CTX*& tiledb_ctx) {
 /*               I/O              */
 /* ****************************** */
 
-int tiledb_close_array(
+int tiledb_array_close(
     TileDB_CTX* tiledb_ctx,
     int ad) {
   // TODO: Error messages here
@@ -112,7 +112,7 @@ int tiledb_close_array(
   return 0;
 }
 
-int tiledb_open_array(
+int tiledb_array_open(
     TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const char* mode) {

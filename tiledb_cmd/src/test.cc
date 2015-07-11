@@ -6,7 +6,7 @@ int main() {
   TileDB_CTX* ctx;
   tiledb_init("example/", ctx);
 
-  int ad = tiledb_open_array(ctx, "IREG", "r"); 
+  int ad = tiledb_array_open(ctx, "IREG", "r"); 
 
   TileDB_ConstReverseCellIterator* it;
   int64_t range[4] = { 0,40, 0,40 };
@@ -23,7 +23,7 @@ int main() {
   }
 
   tiledb_const_reverse_cell_iterator_finalize(it);  
-  tiledb_close_array(ctx, ad);
+  tiledb_array_close(ctx, ad);
 
   tiledb_finalize(ctx);
 
