@@ -45,12 +45,20 @@
 #include <time.h>
 #include <unistd.h>
 
+bool ends_with(const std::string& value, const std::string& ending) {
+  if (ending.size() == value.size() == 0)
+    return true;
+  if (ending.size() > value.size())
+    return false;
+  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
 std::string absolute_path(const std::string& path) {
   if(path[0] == '~') 
     return std::string(getenv("HOME")) + path.substr(1, path.size()-1);
   else
     return path;
-} 
+}
 
 template<class T>
 void convert(const double* a, T* b, int size) {

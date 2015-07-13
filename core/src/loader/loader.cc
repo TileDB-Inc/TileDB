@@ -742,5 +742,11 @@ void Loader::set_workspace(const std::string& path) {
   workspace_ = absolute_path(path);
   assert(is_dir(workspace_));
 
-  workspace_ += "/Loader/";
+  std::stringstream ss;
+  ss << workspace_;
+  if(!ends_with(workspace_, "/"))
+      ss << "/";
+  ss << "Loader";
+  workspace_  = ss.str();
+  return;
 }

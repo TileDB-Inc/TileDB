@@ -739,14 +739,16 @@ void StorageManager::set_workspace(const std::string& path) {
   workspace_ = absolute_path(path);
   assert(is_dir(workspace_));
 
-  if(mpi_handler_ == NULL) {
-    workspace_ += "/StorageManager/";
-  } else {
-    std::stringstream ss;
-    ss << workspace_<< "/StorageManager_"  
-       << mpi_handler_->rank() << "/"; 
-    workspace_ = ss.str();
-  }
+  std::stringstream ss;
+  ss << workspace_;
+  if(!ends_with(workspace_, "/"))
+    ss << "/";
+  if(mpi_handler_ == NULL)
+    ss << "StorageManager";
+  else
+    ss << "StorageManager_" << mpi_handler_->rank();
+  workspace_ = ss.str();
+  return;
 }
 
 int StorageManager::store_array(Array* array) {
