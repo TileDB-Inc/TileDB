@@ -48,7 +48,7 @@ typedef struct TileDB_CTX{
   StorageManager* storage_manager_;
 } TileDB_CTX;
 
-int tiledb_finalize(TileDB_CTX*& tiledb_ctx) {
+int tiledb_ctx_finalize(TileDB_CTX*& tiledb_ctx) {
   // Clear the TileDB modules
   delete tiledb_ctx->storage_manager_;
   delete tiledb_ctx->loader_;
@@ -61,7 +61,7 @@ int tiledb_finalize(TileDB_CTX*& tiledb_ctx) {
   return TILEDB_OK;
 }
 
-int tiledb_init(const char* workspace, TileDB_CTX*& tiledb_ctx) {
+int tiledb_ctx_init(const char* workspace, TileDB_CTX*& tiledb_ctx) {
   tiledb_ctx = (TileDB_CTX*) malloc(sizeof(struct TileDB_CTX)); 
 
   // Create Storage Manager

@@ -61,9 +61,9 @@ typedef struct TileDB_CTX TileDB_CTX;
  * @return An error code, which can be one of the following:
  *   - **TILEDB_OK**\n 
  *     Success
- * @see TileDB_Context, tiledb_init
+ * @see TileDB_CTX, tiledb_ctx_init
  */
-TILEDB_EXPORT int tiledb_finalize(TileDB_CTX*& tiledb_ctx);
+TILEDB_EXPORT int tiledb_ctx_finalize(TileDB_CTX*& tiledb_ctx);
 
 /** 
  * Initializes the TileDB context. On error, it prints a message on stderr and
@@ -81,9 +81,9 @@ TILEDB_EXPORT int tiledb_finalize(TileDB_CTX*& tiledb_ctx);
  *     Failed to create loader
  *   - **TILEDB_ENQPCREAT**\n 
  *     Failed to create query processor
- * @see TileDB_Context, tiledb_finalize
+ * @see TileDB_CTX, tiledb_ctx_finalize
  */
-TILEDB_EXPORT int tiledb_init(
+TILEDB_EXPORT int tiledb_ctx_init(
     const char* workspace, 
     TileDB_CTX*& tiledb_ctx);
 
@@ -118,7 +118,7 @@ TILEDB_EXPORT int tiledb_array_close(
  * @return An array descriptor (>=0) or an error code (<0). The error code may
  * be one of the following:
  * TBD
- * @see TileDB_Context, tiledb_array_close
+ * @see TileDB_CTX, tiledb_array_close
  */
 TILEDB_EXPORT int tiledb_array_open(
     TileDB_CTX* tiledb_ctx,
@@ -133,7 +133,7 @@ TILEDB_EXPORT int tiledb_array_open(
  * @param cell The binary cell to be written 
  * @return An error code that may be one of the following:
  * TBD
- * @see TileDB_Context, tiledb_write_cell_sorted
+ * @see TileDB_CTX, tiledb_write_cell_sorted
  */
 TILEDB_EXPORT int tiledb_write_cell(
     TileDB_CTX* tiledb_ctx,
@@ -151,7 +151,7 @@ TILEDB_EXPORT int tiledb_write_cell(
  * @param cell The binary cell to be written 
  * @return An error code that may be one of the following:
  * TBD
- * @see TileDB_Context, tiledb_write_cell
+ * @see TileDB_CTX, tiledb_write_cell
  */
 TILEDB_EXPORT int tiledb_write_cell_sorted(
     TileDB_CTX* tiledb_ctx,

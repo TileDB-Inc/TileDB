@@ -142,7 +142,7 @@ int main(int argc, char** argv) {
 
   // Initialize TileDB
   TileDB_CTX* tiledb_ctx;
-  rc = tiledb_init(workspace.c_str(), tiledb_ctx);
+  rc = tiledb_ctx_init(workspace.c_str(), tiledb_ctx);
   if(rc) {
     std::cerr << ERROR_MSG_HEADER << " Failed to initialize TileDB.\n";
     return TILEDB_EINIT;
@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
     return rc;
 
   // Finalize TileDB
-  rc = tiledb_finalize(tiledb_ctx);
+  rc = tiledb_ctx_finalize(tiledb_ctx);
   if(rc) {
     std::cerr << ERROR_MSG_HEADER << " Failed to finalize TileDB.\n";
     return TILEDB_EFIN;

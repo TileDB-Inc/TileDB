@@ -4,7 +4,7 @@
 
 int main() {
   TileDB_CTX* ctx;
-  tiledb_init("example/", ctx);
+  tiledb_ctx_init("example/", ctx);
 
   int ad = tiledb_array_open(ctx, "IREG", "r"); 
 
@@ -25,7 +25,7 @@ int main() {
   tiledb_const_reverse_cell_iterator_finalize(it);  
   tiledb_array_close(ctx, ad);
 
-  tiledb_finalize(ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }
