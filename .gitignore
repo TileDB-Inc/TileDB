@@ -1,6 +1,7 @@
 *.swp
 core/bin/*
 core/obj/*
+core/lib/*
 core/include/temp
 core/src/temp
 tiledb_cmd/include/temp
