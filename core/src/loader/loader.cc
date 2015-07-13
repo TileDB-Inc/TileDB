@@ -70,12 +70,14 @@ Loader::Loader(StorageManager* storage_manager, const std::string& path)
 
   // Create directories
   int rc;
-  rc = create_directory(workspace_);
-  if(rc) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " Cannot create directory '" << workspace_ << "'.\n";
-    err_ = TILEDB_EDNCREAT;
-    return;
+  if(!is_dir(workspace_)) {
+    rc = create_directory(workspace_);
+    if(rc) {
+      std::cerr << ERROR_MSG_HEADER
+                << " Cannot create directory '" << workspace_ << "'.\n";
+      err_ = TILEDB_EDNCREAT;
+      return;
+    }
   }
 }
 
