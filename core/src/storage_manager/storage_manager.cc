@@ -55,7 +55,7 @@
 StorageManager::StorageManager(const std::string& path, 
                                const MPIHandler* mpi_handler,
                                size_t segment_size)
-    : mpi_handler_(mpi_handler), segment_size_(segment_size) {
+    : mpi_handler_(mpi_handler), segment_size_(segment_size), arrays_(NULL) {
   // Success code
   err_ = TILEDB_OK;
 
@@ -97,12 +97,13 @@ StorageManager::StorageManager(const std::string& path,
 }
 
 StorageManager::~StorageManager() {
-  for(int i=0; i<MAX_OPEN_ARRAYS; ++i) {
-    if(arrays_[i] != NULL)
-      close_array(i);
+  if (arrays_ != NULL) {
+    for(int i=0; i<MAX_OPEN_ARRAYS; ++i) {
+      if(arrays_[i] != NULL)
+        close_array(i);
+    }
+    delete [] arrays_;
   }
-
-  delete [] arrays_;
 }
 
 /******************************************************
