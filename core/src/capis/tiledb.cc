@@ -58,7 +58,7 @@ int tiledb_finalize(TileDB_CTX*& tiledb_ctx) {
   free(tiledb_ctx); 
   tiledb_ctx = NULL;
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int tiledb_init(const char* workspace, TileDB_CTX*& tiledb_ctx) {
@@ -96,7 +96,7 @@ int tiledb_init(const char* workspace, TileDB_CTX*& tiledb_ctx) {
     return TILEDB_ENQPCREAT;
   }
 
-  return 0;
+  return TILEDB_OK;
 }
 
 /* ****************************** */
@@ -109,7 +109,7 @@ int tiledb_array_close(
   // TODO: Error messages here
   tiledb_ctx->storage_manager_->close_array(ad);
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int tiledb_array_open(
@@ -141,7 +141,7 @@ int tiledb_write_cell(
   else if(type == &typeid(double))
     tiledb_ctx->storage_manager_->write_cell<double>(ad, cell);
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int tiledb_write_cell_sorted(
@@ -166,7 +166,7 @@ int tiledb_write_cell_sorted(
   else if(type == &typeid(double))
     tiledb_ctx->storage_manager_->write_cell_sorted<double>(ad, cell);
 
-  return 0;
+  return TILEDB_OK;
 }
 
 
@@ -202,7 +202,7 @@ int tiledb_const_cell_iterator_finalize(
   free(cell_it);
   cell_it = NULL;
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int tiledb_const_reverse_cell_iterator_finalize(
@@ -221,7 +221,7 @@ int tiledb_const_reverse_cell_iterator_finalize(
   free(cell_it);
   cell_it = NULL;
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int tiledb_const_cell_iterator_init(
@@ -277,7 +277,7 @@ int tiledb_const_cell_iterator_init(
         ((ArrayConstCellIterator<double>*) cell_it->it_)->array_schema();
   }
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int tiledb_const_cell_iterator_init_in_range(
@@ -338,7 +338,7 @@ int tiledb_const_cell_iterator_init_in_range(
         ((ArrayConstCellIterator<double>*) cell_it->it_)->array_schema();
   }
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int tiledb_const_reverse_cell_iterator_init(
@@ -395,7 +395,7 @@ int tiledb_const_reverse_cell_iterator_init(
         ((ArrayConstReverseCellIterator<double>*) cell_it->it_)->array_schema();
   }
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int tiledb_const_reverse_cell_iterator_init_in_range(
@@ -456,7 +456,7 @@ int tiledb_const_reverse_cell_iterator_init_in_range(
         ((ArrayConstReverseCellIterator<double>*) cell_it->it_)->array_schema();
   }
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int tiledb_const_cell_iterator_next(
@@ -512,7 +512,7 @@ int tiledb_const_cell_iterator_next(
       cell = **it;
   }
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int tiledb_const_reverse_cell_iterator_next(
@@ -568,7 +568,7 @@ int tiledb_const_reverse_cell_iterator_next(
       cell = **it;
   }
 
-  return 0;
+  return TILEDB_OK;
 }
 
 /* ****************************** */
@@ -601,7 +601,7 @@ int tiledb_define_array(
   // Clean up 
   delete array_schema;
 
-  return 0;
+  return TILEDB_OK;
 } 
 
 int tiledb_delete_array(
@@ -673,7 +673,7 @@ int tiledb_generate_data(
   // Clean up
   delete array_schema; 
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int tiledb_load_bin(
@@ -708,7 +708,7 @@ int tiledb_show_array_schema(
   // Clean up
   delete array_schema; 
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int tiledb_subarray(

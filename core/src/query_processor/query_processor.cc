@@ -138,7 +138,7 @@ int QueryProcessor::export_csv(
   // Clean up
   storage_manager_->close_array(ad); 
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int QueryProcessor::subarray(
@@ -226,7 +226,7 @@ int QueryProcessor::subarray(
   storage_manager_->close_array(result_ad); 
   delete result_array_schema;
 
-  return 0;
+  return TILEDB_OK;
 }
 
 /******************************************************
@@ -317,7 +317,7 @@ int QueryProcessor::parse_attribute_names(
     }
   }
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int QueryProcessor::parse_dim_names(
@@ -329,7 +329,7 @@ int QueryProcessor::parse_dim_names(
 
   // Special case for "hide dimensions"
   if(dim_names.size() == 1 && dim_names[0] == "__hide")
-    return 0;
+    return TILEDB_OK;
 
   // For easy reference
   int dim_num = array_schema->dim_num();
@@ -350,7 +350,7 @@ int QueryProcessor::parse_dim_names(
     }
   }
 
-  return 0;
+  return TILEDB_OK;
 } 
 
 template<class T>

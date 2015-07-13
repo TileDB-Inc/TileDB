@@ -78,7 +78,7 @@ class StorageManager {
 
   // ACCESSORS
   /**
-   * Returns the current error code. It is 0 upon success.
+   * Returns the current error code. It is TILEDB_OK upon success.
    */
   int err() const;
 

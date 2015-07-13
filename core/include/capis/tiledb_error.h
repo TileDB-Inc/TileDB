@@ -35,6 +35,9 @@
 #ifndef __TILEDB_ERROR_H__
 #define __TILEDB_ERROR_H__
 
+#define TILEDB_OK 0
+#define TILEDB_OK_STR "No error"
+
 #define TILEDB_EPARSE -1
 #define TILEDB_EPARSE_STR "Parser error"
 

@@ -59,7 +59,7 @@ typedef struct TileDB_CTX TileDB_CTX;
  * returns an error code (shown below).
  * @param tiledb_context The TileDB state.
  * @return An error code, which can be one of the following:
- *   - **0**\n 
+ *   - **TILEDB_OK**\n 
  *     Success
  * @see TileDB_Context, tiledb_init
  */
@@ -73,7 +73,7 @@ TILEDB_EXPORT int tiledb_finalize(TileDB_CTX*& tiledb_ctx);
  * must have read and write permissions to it.
  * @param tiledb_context The TileDB state.
  * @return An error code, which can be one of the following:
- *   - **0**\n 
+ *   - **TILEDB_OK**\n 
  *     Success
  *   - **TILEDB_ENSMCREAT**\n 
  *     Failed to create storage manager
@@ -340,7 +340,7 @@ TILEDB_EXPORT int tiledb_const_reverse_cell_iterator_next(
  * @param tiledb_context The TileDB state consisting of the TileDB modules. 
  * @param array_name The name of the array whose data will be deleted.
  * @return An error code, which can be one of the following:
- *   - **0**\n 
+ *   - **TILEDB_OK**\n 
  *     Success
  *   - **TILEDB_ENDEFARR**\n
  *     Undefined array
@@ -521,7 +521,7 @@ TILEDB_EXPORT int tiledb_clear_array(
  *     consolidation step is set to *5*.
  *
  * @return An error code, which can be one of the following:
- *   - **0**\n 
+ *   - **TILEDB_OK**\n 
  *     Success
  *   - **TILEDB_PRARRSCHEMA**\n
  *     Failed to parse array schema
@@ -539,7 +539,7 @@ TILEDB_EXPORT int tiledb_define_array(
  * @param tiledb_context The TileDB state consisting of the TileDB modules. 
  * @param array_name The name of the array that will be deleted.
  * @return An error code, which can be one of the following:
- *   - **0**\n 
+ *   - **TILEDB_OK**\n 
  *     Success
  *   - **TILEDB_ENDEFARR**\n
  *     Undefined array
@@ -608,7 +608,7 @@ TILEDB_EXPORT int tiledb_delete_array(
  * exported.
  * @param attribute_names_num The number of elements in attribute_names 
  * @return An error code, which can be one of the following:
- *   - **0**\n 
+ *   - **TILEDB_OK**\n 
  *     Success
  *   - **TILEDB_ENDEFARR**\n
  *     Undefined array
@@ -672,7 +672,7 @@ TILEDB_EXPORT int tiledb_export_csv(
  * @param seed The seed that will be used internally for the random generator.
  * @param cell_num The number of cells to be generated.
  * @return An error code, which can be one of the following:
- *   - **0**\n 
+ *   - **TILEDB_OK**\n 
  *     Success
  *   - **TILEDB_ENDEFARR**\n
  *     Undefined array
@@ -783,7 +783,7 @@ TILEDB_EXPORT int tiledb_generate_data(
  * along the cell order defined in the array schema. This choice will have a 
  * great effect on performance (sorted cells are loaded substantially faster). 
  * @return An error code, which can be one of the following:
- *   - **0**\n 
+ *   - **TILEDB_OK**\n 
  *     Success
  *   - **TILEDB_ENDEFARR**\n
  *     Undefined array
@@ -884,7 +884,7 @@ TILEDB_EXPORT int tiledb_load_bin(
  * along the cell order defined in the array schema. This choice will have a 
  * great effect on performance (sorted cells are loaded substantially faster). 
  * @return An error code, which can be one of the following:
- *   - **0**\n 
+ *   - **TILEDB_OK**\n 
  *     Success
  *   - **TILEDB_ENDEFARR**\n
  *     Undefined array
@@ -910,7 +910,7 @@ TILEDB_EXPORT int tiledb_load_csv(
  * @param tiledb_context The TileDB state consisting of the TileDB modules. 
  * @param array_name The name of the array whose schema is printed.
  * @return An error code, which can be one of the following:
- *   - **0**\n 
+ *   - **TILEDB_OK**\n 
  *     Success
  *   - **TILEDB_ENDEFARR**\n
  *     Undefined array
@@ -961,7 +961,7 @@ TILEDB_EXPORT int tiledb_show_array_schema(
  * of the input array will appear in the output array.
  * @param attribute_names_num The number of elements in attribute_names 
  * @return An error code, which can be one of the following:
- *   - **0**\n 
+ *   - **TILEDB_OK**\n 
  *     Success
  *   - **TILEDB_ENDEFARR**\n
  *     Undefined array
@@ -998,7 +998,7 @@ TILEDB_EXPORT int tiledb_subarray(
  * along the cell order defined in the array schema. This choice will have a 
  * great effect on performance (sorted cells are loaded substantially faster). 
  * @return An error code, which can be one of the following:
- *   - **0**\n 
+ *   - **TILEDB_OK**\n 
  *     Success
  *   - **TILEDB_ENDEFARR**\n
  *     Undefined array
@@ -1033,7 +1033,7 @@ TILEDB_EXPORT int tiledb_update_bin(
  * along the cell order defined in the array schema. This choice will have a 
  * great effect on performance (sorted cells are loaded substantially faster). 
  * @return An error code, which can be one of the following:
- *   - **0**\n 
+ *   - **TILEDB_OK**\n 
  *     Success
  *   - **TILEDB_ENDEFARR**\n
  *     Undefined array

@@ -34,8 +34,8 @@
 #include "tiledb_error.h"
 
 const char* tiledb_strerror(int err) {
-  if(err == 0)                           // 0
-    return "No error";
+  if(err == TILEDB_OK)                   // 0
+    return TILEDB_OK_STR;
   else if(err == TILEDB_EPARSE)          // -1
     return TILEDB_EPARSE_STR;           
   else if(err == TILEDB_ENDEFARR)        // -2

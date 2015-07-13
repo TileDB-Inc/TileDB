@@ -523,7 +523,7 @@ int Loader::load_bin(const std::string& filename, int ad) const {
   // Clean up 
   bin_file.close();
 
-  return 0;
+  return TILEDB_OK;
 }
 
 template<class T>
@@ -558,7 +558,7 @@ int Loader::load_bin(
   if(err)
     return -1;
 
-  return 0;
+  return TILEDB_OK;
 }
 
 template<class T>
@@ -593,7 +593,7 @@ int Loader::load_csv(
   if(err)
     return -1;
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int Loader::load_csv(int ad, const std::string& filename) const {
@@ -686,7 +686,7 @@ int Loader::load_csv(int ad, const std::string& filename) const {
   csv_file.close();
   free(cell);
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int Loader::load_sorted_bin(const std::string& filename, int ad) const {
@@ -734,7 +734,7 @@ int Loader::load_sorted_bin(const std::string& filename, int ad) const {
   // Clean up 
   bin_file.close();
 
-  return 0;
+  return TILEDB_OK;
 }
 
 inline

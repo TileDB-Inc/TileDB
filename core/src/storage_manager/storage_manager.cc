@@ -57,7 +57,7 @@ StorageManager::StorageManager(const std::string& path,
                                size_t segment_size)
     : mpi_handler_(mpi_handler), segment_size_(segment_size) {
   // Success code
-  err_ = 0;
+  err_ = TILEDB_OK;
 
   if(!is_dir(path)) {
     std::cerr << ERROR_MSG_HEADER 
@@ -189,7 +189,7 @@ int StorageManager::clear_array(const std::string& array_name) {
   
   closedir(dir);
 
-  return 0;
+  return TILEDB_OK;
 }
 
 void StorageManager::close_array(int ad) {
@@ -234,7 +234,7 @@ int StorageManager::define_array(const ArraySchema* array_schema) {
   delete [] buffer;
   close(fd);
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int StorageManager::delete_array(const std::string& array_name) {
@@ -286,7 +286,7 @@ int StorageManager::delete_array(const std::string& array_name) {
   closedir(dir);
   rmdir(dirname.c_str());
 
-  return 0;
+  return TILEDB_OK;
 }
 
 void StorageManager::forced_close_array(int ad) {
@@ -313,7 +313,7 @@ std::string err_msg;
   }
 
   array_schema = arrays_[ad]->array_schema();
-  return 0;
+  return TILEDB_OK;
 }
 
 int StorageManager::get_array_schema(
@@ -370,7 +370,7 @@ int StorageManager::get_array_schema(
     return TILEDB_EFILE;
   }
 
-  return 0;
+  return TILEDB_OK;
 }
 
 void StorageManager::get_version() {
@@ -392,7 +392,7 @@ int StorageManager::load_sorted_bin(
   // Close array
   close_array(ad); 
 
-  return 0;
+  return TILEDB_OK;
 }
 
 int StorageManager::open_array(
@@ -723,7 +723,7 @@ int StorageManager::check_on_open_array(
     return -1;
   }
 
-  return 0;
+  return TILEDB_OK;
 }
 
 bool StorageManager::invalid_array_mode(const char* mode) const {
