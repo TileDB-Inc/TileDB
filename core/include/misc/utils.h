@@ -37,6 +37,9 @@
 #include "array_schema.h"
 #include "storage_manager.h"
 
+/** Returns true if string `value` ends with string `ending`. */
+bool ends_with(const std::string& value, const std::string& ending);
+
 /** Replaces '~' in the input path with the corresponding absolute path. */
 std::string absolute_path(const std::string& path);
 
