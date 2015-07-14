@@ -595,25 +595,25 @@ TILEDB_EXPORT int tiledb_delete_array(
  * Supposing that tiledb_context stores a pointer to a TileDB_Context object,
  * and assuming that the array has dimensions *dim1*,*dim2* and attributes
  * *attr1*,*attr2*,*attr3* :
- * - tiledb_export_csv(tiledb_context, "A", "A.csv", {}, 0, {}, 0, false) \n
+ * - tiledb_export_csv(tiledb_context, "A", "A.csv", {}, 0, {}, 0, 0) \n
  *     Exports into "A.csv" all the cells of "A" in the order they are stored,
  *     including all the coordinates and attributes.
  * - tiledb_export(tiledb_context, "A", "A.csv", {"dim1"}, 1, {"attr1","attr2"},
- * 2, false) \n
+ * 2, 0) \n
  *     Exports into "A.csv" all the cells of "A" in the order they are stored,
  *     including only the coordinates on the *dim1* dimension and the values
  *     on the *attr1*,*attr2* attributes.
  * - tiledb_export_csv(tiledb_context, "A", "A.csv", {"dim1"}, 1, 
- * {"attr1","attr2"}, 2, true) \n
+ * {"attr1","attr2"}, 2, 1) \n
  *     Same as above, but the cells are exported in the reverse order.
  * - tiledb_export_csv(tiledb_context, "A", "A.csv", {"__hide"}, 1, 
- * {attr1,attr2}, 2, false) \n
+ * {attr1,attr2}, 2, 0) \n
  *     Same as the first example, but no coordinate is exported.
  * - tiledb_export_csv(tiledb_context, "A", "A.csv", {"dim1"}, 1, {"__hide"}, 2,
- * false) \n
+ * 0) \n
  *     Same as the first example, but no attribute value is exported.
  * - tiledb_export_csv(tiledb_context, "A", "A.csv", {"dim1"}, 1, 
- * {"attr1","attr2","attr1"}, 2, false) \n
+ * {"attr1","attr2","attr1"}, 2, 0) \n
  *     Same as the first example, but now the *attr1* values are shown twice
  *     (once before those of *attr2* and once after).
  *
