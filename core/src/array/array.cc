@@ -348,7 +348,7 @@ void Array::flush_fragment_tree() {
   }
 
   // Name of the fragment tree file
-  std::string filename = workspace_ + array_schema_->array_name() + "/" +
+  std::string filename = workspace_ + "/" + array_schema_->array_name() + "/" +
                          FRAGMENT_TREE_FILENAME + 
                          BOOK_KEEPING_FILE_SUFFIX;
 

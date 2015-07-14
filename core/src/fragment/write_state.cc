@@ -407,7 +407,8 @@ void WriteState::flush_segment(int attribute_id) {
                          array_schema_->array_name() + "/" + 
                          *fragment_name_ + "/" + 
                          array_schema_->attribute_name(attribute_id) +
-                         TILE_DATA_FILE_SUFFIX;		
+                         TILE_DATA_FILE_SUFFIX;
+
   int fd = open(filename.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC,  
                 S_IRWXU);
   assert(fd != -1);
