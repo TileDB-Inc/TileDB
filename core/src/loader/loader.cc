@@ -125,11 +125,9 @@ int Loader::load_bin(
     return load_bin<float>(ad, path, sorted);
   else if(coords_type == typeid(double))
     return load_bin<double>(ad, path, sorted);
-
-  // Clean up
-  storage_manager_->close_array(ad); 
-
-  return err;
+  else
+    assert(false); // this shoud not happen
+  return -1;
 }
 
 int Loader::load_csv(
@@ -160,11 +158,9 @@ int Loader::load_csv(
     return load_csv<float>(ad, path, sorted);
   else if(coords_type == typeid(double))
     return load_csv<double>(ad, path, sorted);
-
-  // Clean up
-  storage_manager_->close_array(ad); 
-
-  return err;
+  else
+      assert(false); // this should not happen
+  return -1;
 }
 
 int Loader::update_bin(
@@ -196,11 +192,9 @@ int Loader::update_bin(
     return load_bin<float>(ad, path, sorted);
   else if(coords_type == typeid(double))
     return load_bin<double>(ad, path, sorted);
-
-  // Clean up
-  storage_manager_->close_array(ad); 
-
-  return err;
+  else
+    assert(false); // this should not happen
+  return -1;
 }
 
 int Loader::update_csv(
@@ -231,11 +225,9 @@ int Loader::update_csv(
     return load_csv<float>(ad, path, sorted);
   else if(coords_type == typeid(double))
     return load_csv<double>(ad, path, sorted);
-
-  // Clean up
-  storage_manager_->close_array(ad); 
-
-  return err;
+  else
+    assert(false); // this should not happen
+  return -1;
 }
 
 int Loader::load_bin(
@@ -269,13 +261,10 @@ int Loader::load_csv(
   }
 
   // Load CSV file
-  int err = load_csv(ad, filename); 
-  if(err)
-    return err;
-
+  int err = load_csv(ad, filename);
+ 
   // Clean up
-// TODO: It should return a value...
-  storage_manager_->close_array(ad); 
+  storage_manager_->close_array(ad);
 
   return err;
 }
@@ -527,6 +516,7 @@ int Loader::load_bin(const std::string& filename, int ad) const {
 
   // Clean up 
   bin_file.close();
+  storage_manager_->close_array(ad);
 
   return TILEDB_OK;
 }
@@ -559,6 +549,7 @@ int Loader::load_bin(
   }
 
   // Clean up
+  storage_manager_->close_array(ad);
   err = bin_file_collection.close();
   if(err)
     return -1;
@@ -594,6 +585,7 @@ int Loader::load_csv(
   }
 
   // Clean up
+  storage_manager_->close_array(ad);
   err = csv_file_collection.close();
   if(err)
     return -1;
@@ -692,6 +684,7 @@ int Loader::load_csv(int ad, const std::string& filename) const {
 
   // Clean up 
   csv_file.close();
+  storage_manager_->close_array(ad);
   free(cell);
 
   return TILEDB_OK;
@@ -744,6 +737,7 @@ int Loader::load_sorted_bin(const std::string& filename, int ad) const {
 
   // Clean up 
   bin_file.close();
+  storage_manager_->close_array(ad);
 
   return TILEDB_OK;
 }
