@@ -49,7 +49,10 @@ typedef struct TileDB_CTX{
   StorageManager* storage_manager_;
 } TileDB_CTX;
 
-int tiledb_ctx_finalize(TileDB_CTX*& tiledb_ctx) {
+int tiledb_ctx_finalize(TileDB_CTX* tiledb_ctx) {
+
+  if(tiledb_ctx == NULL)
+      return TILEDB_OK;
 
   // Clear the TileDB modules
   delete tiledb_ctx->storage_manager_;
@@ -59,7 +62,6 @@ int tiledb_ctx_finalize(TileDB_CTX*& tiledb_ctx) {
 
   // Delete the TileDB context
   free(tiledb_ctx);
-  tiledb_ctx = NULL;
 
   return TILEDB_OK;
 }

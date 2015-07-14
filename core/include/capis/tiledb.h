@@ -63,7 +63,7 @@ typedef struct TileDB_CTX TileDB_CTX;
  *     Success
  * @see TileDB_CTX, tiledb_ctx_init
  */
-TILEDB_EXPORT int tiledb_ctx_finalize(TileDB_CTX*& tiledb_ctx);
+TILEDB_EXPORT int tiledb_ctx_finalize(TileDB_CTX* tiledb_ctx);
 
 /** 
  * Initializes the TileDB context. On error, it prints a message on stderr and
