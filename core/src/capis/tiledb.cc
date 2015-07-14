@@ -593,6 +593,13 @@ int tiledb_clear_array(
   return tiledb_ctx->storage_manager_->clear_array(array_name);
 }
 
+int tiledb_array_defined(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_name) {
+    bool isdef = tiledb_ctx->storage_manager_->array_defined(array_name);
+    return isdef ? 1 : 0;
+}
+
 int tiledb_define_array(
     const TileDB_CTX* tiledb_ctx,
     const char* array_schema_str) {

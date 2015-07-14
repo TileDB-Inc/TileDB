@@ -539,6 +539,20 @@ TILEDB_EXPORT int tiledb_define_array(
     const TileDB_CTX* tiledb_ctx, 
     const char* array_schema_csv);
 
+/**
+ * Checks if the array with a given name is defined within the database.
+ * @param tiledb_context The TileDB state
+ * @param array_name The name of the array to query the database
+ * @return A boolean return code, which can be one of the following:
+ *   - **1**\n
+ *     Array is defined
+ *   - **0**\n
+ *     Array is not defined
+ */
+TILEDB_EXPORT int tiledb_array_defined(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_name);
+
 /** 
  * Deletes all data from an array. Contrary to tiledb_clear_array(), the array
  * does **not** remain defined, i.e., one must redefine its schema (via
