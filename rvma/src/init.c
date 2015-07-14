@@ -1,7 +1,3 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "internals.h"
 
 rvma_global_state_t RVMA_GLOBAL_STATE;
@@ -37,7 +33,7 @@ int rvma_initialize(MPI_Comm comm)
     if (!is_mpi_init) {
         fprintf(stderr, "You must initialize MPI to use RVMA\n");
         return 1;
-    } 
+    }
 
     /* Determine thread support and if mutex is required */
     int mpi_thread_level;
@@ -61,7 +57,7 @@ int rvma_initialize(MPI_Comm comm)
     if (is_intercomm) {
         fprintf(stderr, "You cannot initialize RVMA on an intercommunicator\n");
         return 1;
-    } 
+    }
 
     /* Duplicate the users communicator to avoid any cross-talk. */
     rc = MPI_Comm_dup(comm, &(RVMA_GLOBAL_STATE.rvma_comm) );
@@ -121,7 +117,7 @@ int rvma_initialize(MPI_Comm comm)
 #endif
 /* -- end weak symbols block -- */
 
-/** Finalize RVMA. 
+/** Finalize RVMA.
   * It is invalid to make RVMA calls after finalization.
   * Collective on the group of the communicator provided.
   *
@@ -152,10 +148,6 @@ int rvma_finalize(void)
         fprintf(stderr,"MPI_Comm_free failed\n");
         return 1;
     }
-    
+
     return 0;
 }
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif

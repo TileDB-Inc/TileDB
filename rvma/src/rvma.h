@@ -1,7 +1,3 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 int rvma_initialize(MPI_Comm comm);
 int rvma_finalize(void);
 
@@ -16,7 +12,3 @@ int rvma_flush(int proc);
 int rvma_poll(void);
 
 int rvma_is_same(void * ptr, int * is_same);
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif

@@ -1,9 +1,5 @@
 #include "internals.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /********************************************/
 
 static inline int rvmai_capture(void * data, size_t bytes)
@@ -11,7 +7,7 @@ static inline int rvmai_capture(void * data, size_t bytes)
     int rc;
 
     MPI_Aint size = (MPI_Aint)bytes;
-    
+
     rc = MPI_Win_attach(RVMA_GLOBAL_STATE.rvma_win, data, size);
     if (rc!=MPI_SUCCESS) {
         fprintf(stderr,"MPI_Win_attach failed\n");
@@ -219,7 +215,3 @@ int rvma_flush(int proc)
         return rvmai_flush(proc);
     }
 }
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif

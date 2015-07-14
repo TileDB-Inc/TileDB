@@ -1,7 +1,3 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "internals.h"
 
 static inline int rvmai_is_same(void * ptr, int * is_same)
@@ -12,7 +8,7 @@ static inline int rvmai_is_same(void * ptr, int * is_same)
     rc = MPI_Get_address(ptr, &address);
 
     MPI_Aint plusminus[2] = {address,-address};
-    
+
     rc = MPI_Allreduce(MPI_IN_PLACE, plusminus, 2, MPI_AINT, MPI_MAX,
                        RVMA_GLOBAL_STATE.rvma_comm);
     if (rc!=MPI_SUCCESS) {
@@ -46,7 +42,3 @@ int rvma_is_same(void * ptr, int * is_same)
         return rvmai_is_same(ptr, is_same);
     }
 }
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif

@@ -1,7 +1,3 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "internals.h"
 
 int rvma_poll(void)
@@ -69,7 +65,3 @@ int rvma_poll(void)
 
     return 0;
 }
-
-#ifdef __cplusplus
-} /* extern "C" */
-#endif
