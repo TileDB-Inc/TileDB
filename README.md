@@ -3,10 +3,9 @@ Introduction
 
 TileDB is a new array storage manager, particularly efficient for the case of 
 **sparse** arrays. It currently offers a small set of queries implemented
-as stand-alone Linux programs. It also offers a set of C APIs that allow
-pragrammers of various softwares to manage arrays in persistent storage
-through TileDB, without being bothered about the underlying details. TileDB is 
-envisioned to be used either as an HDF5-like distributed file system, 
+as stand-alone Linux programs. It also offers a high level C API that allows various
+programming languages to manage persistent arrays by interfacing with TileDB as a library.
+TileDB is envisioned to be used either as an HDF5-like distributed file system,
 or as a full-fledged distributed array database.
 
 TileDB is currently under heavy development. Benchmark results, tutorials,
