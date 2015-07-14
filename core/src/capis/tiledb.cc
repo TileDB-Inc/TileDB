@@ -43,19 +43,22 @@
 /* ****************************** */
 
 typedef struct TileDB_CTX{
+  std::string* workspace_;
   Loader* loader_;
   QueryProcessor* query_processor_;
   StorageManager* storage_manager_;
 } TileDB_CTX;
 
 int tiledb_ctx_finalize(TileDB_CTX*& tiledb_ctx) {
+
   // Clear the TileDB modules
   delete tiledb_ctx->storage_manager_;
   delete tiledb_ctx->loader_;
   delete tiledb_ctx->query_processor_;
+  delete tiledb_ctx->workspace_;
 
   // Delete the TileDB context
-  free(tiledb_ctx); 
+  free(tiledb_ctx);
   tiledb_ctx = NULL;
 
   return TILEDB_OK;
@@ -63,6 +66,9 @@ int tiledb_ctx_finalize(TileDB_CTX*& tiledb_ctx) {
 
 int tiledb_ctx_init(const char* workspace, TileDB_CTX*& tiledb_ctx) {
   tiledb_ctx = (TileDB_CTX*) malloc(sizeof(struct TileDB_CTX)); 
+
+  // Save the workspace path
+  tiledb_ctx-> workspace_ = new std::string(workspace);
 
   // Create Storage Manager
   tiledb_ctx->storage_manager_ = new StorageManager(workspace);
@@ -97,6 +103,10 @@ int tiledb_ctx_init(const char* workspace, TileDB_CTX*& tiledb_ctx) {
   }
 
   return TILEDB_OK;
+}
+
+const char* tiledb_ctx_workspace(TileDB_CTX* tiledb_ctx) {
+    return tiledb_ctx->workspace_->c_str();
 }
 
 /* ****************************** */

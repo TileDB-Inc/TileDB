@@ -87,6 +87,14 @@ TILEDB_EXPORT int tiledb_ctx_init(
     const char* workspace, 
     TileDB_CTX*& tiledb_ctx);
 
+/**
+ * Returns the workspace path of the TileDB_Context.
+ * @param tiledb_context The TileDB state.
+ * @return A C string pointer to the TileDB_Context's workspace.
+ * @see TileDB_Context
+ */
+TILEDB_EXPORT const char* tiledb_ctx_workspace(TileDB_CTX* tiledb_ctx);
+
 /* ********************************* */
 /*                I/O                */
 /* ********************************* */
