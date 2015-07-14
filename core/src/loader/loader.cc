@@ -105,7 +105,7 @@ int Loader::load_bin(
 
   // Open array in write mode
   int ad = storage_manager_->open_array(array_name, "w");
-  if(ad == -1) { 
+  if(ad == -1) {
     return -1;
   }
 
@@ -308,7 +308,7 @@ int Loader::update_csv(
   int err = load_csv(ad, filename); 
 
   // Clean up
-  storage_manager_->close_array(ad); 
+  storage_manager_->close_array(ad);
 
   return err;
 }
@@ -497,6 +497,9 @@ int Loader::load_bin(const std::string& filename, int ad) const {
     return load_bin<float>(filename, ad);
   else if(coords_type == typeid(double))
     return load_bin<double>(filename, ad);
+  else
+      assert(false); // this should not happen
+  return -1;
 }
 
 template<class T>
@@ -540,7 +543,7 @@ int Loader::load_bin(
     return -1;
 
   // Open the BIN file collection 
-  BINFileCollection<T> bin_file_collection(workspace_ + "/__temp");
+  BINFileCollection<T> bin_file_collection(workspace_ + "/" + "__temp");
   err = bin_file_collection.open(array_schema, path, sorted);
   if(err)
     return -1;
@@ -616,6 +619,9 @@ int Loader::load_csv(int ad, const std::string& filename) const {
     return load_csv<float>(ad, filename);
   else if(coords_type == typeid(double))
     return load_csv<double>(ad, filename);
+  else
+    assert(false); // this should not happen
+  return -1;
 }
 
 template<class T>
@@ -708,6 +714,9 @@ int Loader::load_sorted_bin(const std::string& filename, int ad) const {
     return load_sorted_bin<float>(filename, ad);
   else if(coords_type == typeid(double))
     return load_sorted_bin<double>(filename, ad);
+  else
+    assert(false); // this should not happen
+  return -1;
 }
 
 template<class T>

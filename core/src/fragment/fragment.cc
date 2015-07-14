@@ -79,6 +79,7 @@ Fragment::Fragment(
                        &workspace_, book_keeping_, 
                        segment_size_, write_state_max_size);
   }
+  assert(is_dir(fragment_dirname));
 }
 
 Fragment::~Fragment() {
@@ -96,7 +97,6 @@ Fragment::~Fragment() {
   }
 
   // Temp directory
-  assert(is_dir(temp_dirname_));
   delete_directory(temp_dirname_);
 }
 

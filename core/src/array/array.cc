@@ -414,7 +414,7 @@ void Array::load_fragment_tree() {
   next_fragment_seq_ = 0;
 
   // Name of the fragment tree file
-  std::string filename = workspace_ + array_schema_->array_name() + "/" +
+  std::string filename = workspace_ + "/" + array_schema_->array_name() + "/" +
                          FRAGMENT_TREE_FILENAME + 
                          BOOK_KEEPING_FILE_SUFFIX;
 
