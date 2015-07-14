@@ -40,11 +40,17 @@ TEST_SRC_DIR = test/src
 TEST_OBJ_DIR = test/obj
 TEST_BIN_DIR = test/bin
 
-# Directories for Linear Algebra applications 
+# Directories for Linear Algebra applications
 LA_INCLUDE_DIR = la/include
 LA_SRC_DIR = la/src
 LA_OBJ_DIR = la/obj
 LA_BIN_DIR = la/bin
+
+# Directories for distributed applications
+RVMA_INCLUDE_DIR = rvma/include
+RVMA_SRC_DIR     = rvma/src
+RVMA_OBJ_DIR     = rvma/obj
+RVMA_BIN_DIR     = rvma/bin
 
 # Directory for Doxygen documentation
 DOXYGEN_DIR = doxygen
@@ -260,6 +266,37 @@ $(LA_BIN_DIR)/example_transpose: $(LA_OBJ) $(CORE_OBJ)
 clean_la:
 	@echo 'Cleaning la'
 	@rm -f $(LA_OBJ_DIR)/* $(LA_BIN_DIR)/* 
+
+########
+# RVMA #
+########
+
+# --- Compilation and dependency genration --- #
+
+-include $(RVMA_OBJ:.o=.d)
+
+$(RVMA_OBJ_DIR)/%.o: $(RVMA_SRC_DIR)/%.cc
+	@test -d $(RVMA_OBJ_DIR) || mkdir -p $(RVMA_OBJ_DIR)
+	@echo "Compiling $<"
+	@$(CXX) $(RVMA_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< -o $@
+	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $(RVMA_INCLUDE_PATHS) $< > $(@:.o=.d)
+	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
+	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
+	@rm -f $(@:.o=.d.tmp)
+
+# --- Linking --- #
+
+$(RVMA_BIN_DIR)/simple_test: $(RVMA_OBJ) $(CORE_OBJ)
+	@mkdir -p $(RVMA_BIN_DIR)
+	@echo "Creating simple_test"
+	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
+               -o $@ $^
+
+# --- Cleaning --- #
+
+clean_rvma:
+	@echo 'Cleaning RVMA'
+	@rm -f $(RVMA_OBJ_DIR)/* $(RVMA_BIN_DIR)/*
 
 ###############
 # Google Test #
