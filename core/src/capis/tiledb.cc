@@ -685,12 +685,12 @@ int tiledb_generate_data(
     return TILEDB_EIARG;
   }
 
-  // Handle errors 
-  if(rc) 
-    return rc;
-
   // Clean up
-  delete array_schema; 
+  delete array_schema;
+
+  // Handle errors 
+  if(rc)
+    return rc;
 
   return TILEDB_OK;
 }
