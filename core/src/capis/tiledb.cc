@@ -637,16 +637,16 @@ int tiledb_export_csv(
     int dim_names_num,
     const char** attribute_names,
     int attribute_names_num,
-    bool reverse) {
+    int reverse) {
   // Compute vectors for dim_names and attribute names 
   std::vector<std::string> dim_names_vec, attribute_names_vec;
   for(int i=0; i<dim_names_num; ++i) 
     dim_names_vec.push_back(dim_names[i]);
   for(int i=0; i<attribute_names_num; ++i) 
     attribute_names_vec.push_back(attribute_names[i]);
-
+  bool rev = reverse != 0; 
   return tiledb_ctx->query_processor_->export_csv(
-      array_name, filename, dim_names_vec, attribute_names_vec, reverse);
+      array_name, filename, dim_names_vec, attribute_names_vec, rev);
 }
 
 int tiledb_generate_data(
@@ -699,16 +699,18 @@ int tiledb_load_bin(
     const TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const char* path,
-    bool sorted) {
-  return tiledb_ctx->loader_->load_bin(array_name, path, sorted);
+    int sorted) {
+  bool issorted = sorted != 0;
+  return tiledb_ctx->loader_->load_bin(array_name, path, issorted);
 }
 
 int tiledb_load_csv(
     const TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const char* path,
-    bool sorted) {
-  return tiledb_ctx->loader_->load_csv(array_name, path, sorted);
+    int sorted) {
+  bool issorted = sorted != 0;
+  return tiledb_ctx->loader_->load_csv(array_name, path, issorted);
 }
     
 int tiledb_show_array_schema(
@@ -754,14 +756,16 @@ int tiledb_update_bin(
     const TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const char* path,
-    bool sorted) {
-  return tiledb_ctx->loader_->update_bin(array_name, path, sorted);
+    int sorted) {
+  bool issorted = sorted != 0;
+  return tiledb_ctx->loader_->update_bin(array_name, path, issorted);
 }
 
 int tiledb_update_csv(
     const TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const char* path,
-    bool sorted) {
-  return tiledb_ctx->loader_->update_csv(array_name, path, sorted);
+    int sorted) {
+  bool issorted = sorted != 0;
+  return tiledb_ctx->loader_->update_csv(array_name, path, issorted);
 }

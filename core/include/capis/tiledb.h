@@ -651,7 +651,7 @@ TILEDB_EXPORT int tiledb_export_csv(
     int dim_names_num,
     const char** attribute_names,
     int attribute_names_num,
-    bool reverse);
+    int reverse);
 
 /** 
  * Generates a synthetic dataset in either **CSV** or **binary** form, which
@@ -822,7 +822,7 @@ TILEDB_EXPORT int tiledb_load_bin(
     const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* path,
-    bool sorted);
+    int sorted);
 
 /** 
  * Loads a collection of CSV files into an array. The user specifies
@@ -923,7 +923,7 @@ TILEDB_EXPORT int tiledb_load_csv(
     const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* path,
-    bool sorted);
+    int sorted);
 
 /** 
  * Prints the schema of an array on the standard output. The array must be
@@ -1037,7 +1037,7 @@ TILEDB_EXPORT int tiledb_update_bin(
     const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* path,
-    bool sorted);
+    int sorted);
 
 /**
  * This is very similar to tiledb_load_csv(). The difference is that the loaded
@@ -1072,7 +1072,7 @@ TILEDB_EXPORT int tiledb_update_csv(
     const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* path,
-    bool sorted);
+    int sorted);
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus
