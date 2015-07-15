@@ -1,3 +1,6 @@
+#include <stddef.h>
+#include <mpi.h>
+
 int rvma_initialize(MPI_Comm comm);
 int rvma_finalize(void);
 
