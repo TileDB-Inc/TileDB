@@ -183,7 +183,7 @@ typedef struct TileDB_ConstReverseCellIterator TileDB_ConstReverseCellIterator;
  * @see tiledb_const_cell_iterator_init, tiledb_const_cell_iterator_next
  */
 TILEDB_EXPORT int tiledb_const_cell_iterator_finalize(
-    TileDB_ConstCellIterator*& cell_it);
+    TileDB_ConstCellIterator* cell_it);
 
 /**
  * Finalizes a constant reverse cell iterator, clearing its state.
@@ -193,7 +193,7 @@ TILEDB_EXPORT int tiledb_const_cell_iterator_finalize(
  * tiledb_const_reverse_cell_iterator_next
  */
 TILEDB_EXPORT int tiledb_const_reverse_cell_iterator_finalize(
-    TileDB_ConstReverseCellIterator*& cell_it);
+    TileDB_ConstReverseCellIterator* cell_it);
 
 /** 
  * Initializes a constant cell iterator

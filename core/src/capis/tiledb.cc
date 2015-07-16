@@ -221,7 +221,7 @@ typedef struct TileDB_ConstReverseCellIterator {
 } TileDB_ConstReverseCellIterator;
 
 int tiledb_const_cell_iterator_finalize(
-    TileDB_ConstCellIterator*& cell_it) {
+    TileDB_ConstCellIterator* cell_it) {
 
   const std::type_info* type = cell_it->array_schema_->coords_type();
 
@@ -235,13 +235,12 @@ int tiledb_const_cell_iterator_finalize(
     delete (ArrayConstCellIterator<double>*) cell_it->it_;
 
   free(cell_it);
-  cell_it = NULL;
 
   return TILEDB_OK;
 }
 
 int tiledb_const_reverse_cell_iterator_finalize(
-    TileDB_ConstReverseCellIterator*& cell_it) {
+    TileDB_ConstReverseCellIterator* cell_it) {
   const std::type_info* type = cell_it->array_schema_->coords_type();
 
   if(type == &typeid(int))
@@ -254,7 +253,6 @@ int tiledb_const_reverse_cell_iterator_finalize(
     delete (ArrayConstReverseCellIterator<double>*) cell_it->it_;
 
   free(cell_it);
-  cell_it = NULL;
 
   return TILEDB_OK;
 }
