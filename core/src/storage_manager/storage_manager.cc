@@ -415,6 +415,8 @@ int StorageManager::open_array(
     array_mode = Array::APPEND;
   else if(strcmp(mode, "r") == 0)
     array_mode = Array::READ;
+  else
+    return -1; // TODO: better error here
 
   // If in write mode, delete the array if it exists
   if(array_mode == Array::WRITE) 

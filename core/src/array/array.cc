@@ -39,6 +39,7 @@
 #include <math.h>
 #include <sstream>
 #include <sys/stat.h>
+#include <cassert>
 
 /******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS **************
