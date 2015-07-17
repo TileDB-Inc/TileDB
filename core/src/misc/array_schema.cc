@@ -449,6 +449,97 @@ std::pair<const char*, size_t> ArraySchema::serialize() const {
   return std::pair<char*, size_t>(buffer, buffer_size);
 }
 
+std::string ArraySchema::serialize_csv() const {
+  CSVLine schema;
+  // Copy array name
+  schema << array_name_;
+  // Copy number of attributes / attribute names
+  schema << attribute_num_;
+  for(int i=0; i < attribute_num_; ++i) {
+    schema << attribute_names_[i];
+  }
+  // Copy number of dimensions / dimension names
+  schema << dim_num_;
+  for(int i=0; i < dim_num_; ++i) {
+    schema << dim_names_[i];
+  }
+  // Copy dimension domains
+  for(int i=0; i < dim_num_; ++i) {
+    schema << dim_domains_[i].first;
+    schema << dim_domains_[i].second;
+  }
+  // Copy attribute types
+  std::string typestr;
+  for(int i=0; i < attribute_num_; ++i) {
+    if(*types_[i] == typeid(char))
+      typestr = std::string("char:");
+    else if(*types_[i] == typeid(int))
+      typestr = std::string("int:");
+    else if(*types_[i] == typeid(int64_t))
+      typestr = std::string("int64:");
+    else if(*types_[i] == typeid(float))
+      typestr = std::string("float:");
+    else if(*types_[i] == typeid(double))
+      typestr = std::string("double:");
+    
+    if(val_num_[i] == VAR_SIZE)
+      typestr += "var";
+    else
+      typestr += std::to_string(val_num_[i]); 
+
+    schema << typestr;
+  }
+  // Copy coordinate type
+  if(*types_[attribute_num_] == typeid(char))
+    schema << "char"; 
+  else if(*types_[attribute_num_] == typeid(int))
+    schema << "int";
+  else if(*types_[attribute_num_] == typeid(int64_t))
+    schema << "int64";
+  else if(*types_[attribute_num_] == typeid(float))
+    schema << "float";
+  else if(*types_[attribute_num_] == typeid(double))
+    schema << "double";
+  
+  // Copy extent for regular Tiles 
+  if(has_irregular_tiles()) {
+    schema << "*";
+  } else {
+    for(int i=0; i < dim_num_; ++i) {
+      schema << tile_extents_[i];
+    }
+  }
+  
+  // Copy cell order
+  if(cell_order_ == CO_COLUMN_MAJOR)
+    schema << "column-major";
+  else if(cell_order_ == CO_ROW_MAJOR)
+    schema << "row-major";
+  else if(cell_order_ == CO_HILBERT)
+    schema << "hilbert";
+  
+  // Copy tile order (only for regular Tiles 
+  if(has_irregular_tiles())
+    schema << "*";
+  else if(tile_order_ == TO_COLUMN_MAJOR)
+    schema << "column-major";
+  else if(tile_order_ == TO_ROW_MAJOR)
+    schema << "row-major";
+  else if(tile_order_ == TO_HILBERT)
+    schema << "hilbert";
+
+  // Copy capacity for irregular Tiles
+  if(has_irregular_tiles())
+    schema << capacity_;
+  else
+    schema << "*";
+
+  // Copy consolidation step (default 1)  
+  schema << consolidation_step_; 
+
+  return schema.str();
+}
+
 int ArraySchema::smallest_attribute() const {
   int smallest_attribute = 0;
   size_t smallest_cell_size = this->cell_size(0);
@@ -696,7 +787,7 @@ void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
  * It returns 0 on success. On error, it prints a message on stderr and
  * returns -1. 
  */                                                            
-int ArraySchema::deserialize(const std::string& array_schema_str) {
+int ArraySchema::deserialize_csv(const std::string& array_schema_str) {
   // Create a CSVLine object to parse array_schema_str
   CSVLine array_schema_csv(array_schema_str);
 

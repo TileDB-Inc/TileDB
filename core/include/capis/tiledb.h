@@ -553,6 +553,31 @@ TILEDB_EXPORT int tiledb_array_defined(
     const TileDB_CTX* tiledb_ctx,
     const char* array_name);
 
+/**
+ * Copies the array schema CSV string description into schema_str.
+ * The maximum buffer length is given by schema_length.  If the schema
+ * string is longer than schema_length then the schema_string is not copied
+ * and the schema_length pointer is updated.
+ * 
+ * For a detailed decrption of the CSV schema format, see tiledb_array_defined.
+ *
+ * @param tiledb_ctx The TileDB state consisting of the TileDB modules. 
+ * @param array_name The name of the array to query the schema.
+ * @param schema_str A pointer to a pre-allocated buffer to copy the resulting
+ *                   CSV schema string.
+ * @param schema_length A pointer to the pre-allocated buffer maximum
+ *                   buffer length.
+ * @return An error code, which can be one of the following:
+ *   - **TILEDB_OK**\n 
+ *     Success
+ * @see TileDB_Context, tiledb_show_array_schema, tiledb_array_defined 
+ */
+TILEDB_EXPORT int tiledb_array_schema(
+    const TileDB_CTX* tiledb_ctx, 
+    const char* array_name,
+    char* schema_str, 
+    size_t* schema_length);
+
 /** 
  * Deletes all data from an array. Contrary to tiledb_clear_array(), the array
  * does **not** remain defined, i.e., one must redefine its schema (via

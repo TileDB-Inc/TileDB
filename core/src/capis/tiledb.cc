@@ -653,15 +653,43 @@ int tiledb_array_defined(
     return isdef ? 1 : 0;
 }
 
+int tiledb_array_schema(
+    const TileDB_CTX* tiledb_ctx, 
+    const char* array_name, 
+    char* array_schema_str,
+    size_t* schema_length) {
+
+  assert(tiledb_ctx && array_schema_str);
+  assert(*schema_length > 0);
+    
+  // Get the array schema from the storage manager
+  ArraySchema* array_schema;
+  int rc = tiledb_ctx->storage_manager_->get_array_schema(
+           array_name, array_schema);
+  if(rc)
+    return rc;
+  
+  std::string csv_schema = array_schema->serialize_csv();
+  size_t nbytes = csv_schema.size() + 1;   
+  if(*schema_length < nbytes) {
+    *schema_length = nbytes;
+  } else {
+    *schema_length = nbytes;
+    memcpy(array_schema_str, csv_schema.c_str(), nbytes);
+  }
+  delete array_schema;
+  return TILEDB_OK;
+}
+
 int tiledb_define_array(
     const TileDB_CTX* tiledb_ctx,
     const char* array_schema_str) {
 
   assert(tiledb_ctx && array_schema_str);
 
-  // Creare array schema from the input string
+  // Create an array schema from the input string
   ArraySchema* array_schema = new ArraySchema();
-  if(array_schema->deserialize(array_schema_str)) {
+  if(array_schema->deserialize_csv(array_schema_str)) {
     std::cerr << ERROR_MSG_HEADER << " Failed to parse array schema.\n";
     return TILEDB_EPARRSCHEMA;
   }
