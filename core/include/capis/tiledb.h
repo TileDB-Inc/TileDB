@@ -35,7 +35,8 @@
 #define __TILEDB_H__
 
 #include "tiledb_error.h"
-#include <inttypes.h>
+#include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
