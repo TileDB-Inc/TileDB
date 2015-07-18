@@ -146,11 +146,9 @@ la: core $(LA_OBJ) $(LA_BIN_DIR)/example_transpose
 
 rvma: core $(RVMA_OBJ) $(RVMA_BIN_DIR)/simple_test
 
-man: doxyfile.inc $(MANPAGES_MAN)
-
 html: $(MANPAGES_HTML)
 
-doc: man html
+doc: doxyfile.inc html
 
 gtest: $(GTEST_OBJ_DIR)/gtest-all.o
 
