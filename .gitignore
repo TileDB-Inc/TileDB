@@ -21,3 +21,4 @@ doxygen_sqlite3.db
 doxygen/html/
 doxygen/latex/
 manpages/html/
+rvma/obj/

@@ -382,24 +382,6 @@ void StorageManager::get_version() {
   std::cout << "TileDB StorageManager Version 0.1\n";
 }
 
-int StorageManager::load_sorted_bin(
-    const std::string& dirname, const std::string& array_name,
-    std::string& err_msg) {
-  assert(is_dir(dirname));
-
-  // Open array
-  int ad = open_array(array_name, "w");
-  if(ad == -1) 
-    return -1;
-
-  arrays_[ad]->load_sorted_bin(dirname);
- 
-  // Close array
-  close_array(ad); 
-
-  return TILEDB_OK;
-}
-
 int StorageManager::open_array(
     const std::string& array_name, const char* mode) {
   // Proper checks

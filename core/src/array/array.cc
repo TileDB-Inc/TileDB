@@ -134,10 +134,6 @@ void Array::forced_close() {
   }
 }
 
-void Array::load_sorted_bin(const std::string& dirname) {
-  fragments_.back()->load_sorted_bin(dirname);
-}
-
 void Array::new_fragment() {
   // Create a new Fragment object
   std::stringstream fragment_name;

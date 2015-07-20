@@ -76,12 +76,6 @@ class WriteState {
   // MUTATORS
   /** Flushes the write state onto the disk. */
   void flush();
-  /** 
-   * Loads data into a fragment, which are stored in binary file in the input
-   * directory. Each file stores the cells in binary form, sorted
-   * on the global cell order specified in the array schema. 
-   */
-  void load_sorted_bin(const std::string& dirname);
   /**  
    * Writes a cell to the write state. It takes as input a cell and its size
    * The cell has the following format: The coordinates
@@ -216,56 +210,6 @@ class WriteState {
   /** Makes tiles from existing sorted runs, stored in dirname. */
   template<class T>
   void make_tiles_with_2_ids(const std::string& dirname);
-  /** 
-   * Merges existing sorted runs. The dirname is the directory where the
-   * initial sorted runs are stored.
-   */
-  bool merge_sorted_runs(const std::string& dirname);
-  /** 
-   * Merges existing sorted runs. The dirname is the directory where the
-   * initial sorted runs are stored.
-   */
-  template<class T>
-  bool merge_sorted_runs(const std::string& dirname);
-  /**
-   * Each run is named after an integer identifier. This function 
-   * merges runs [first_run, last_run] into a new run called new_run in the 
-   * next merge operation.
-   */
-  template<class T>
-  void merge_sorted_runs(
-      const std::string& dirname, const std::vector<std::string>& filenames, 
-      int first_run, int last_run, int new_run);
-  /** 
-   * Merges existing sorted runs. The dirname is the directory where the
-   * initial sorted runs are stored.
-   */
-  template<class T>
-  bool merge_sorted_runs_with_id(const std::string& dirname); 
-  /**
-   * Each run is named after an integer identifier. This function 
-   * merges runs [first_run, last_run] into a new run called new_run in the 
-   * next merge operation.
-   */
-  template<class T>
-  void merge_sorted_runs_with_id(
-      const std::string& dirname, const std::vector<std::string>& filenames, 
-      int first_run, int last_run, int new_run);
-  /** 
-   * Merges existing sorted runs. The dirname is the directory where the
-   * initial sorted runs are stored.
-   */
-  template<class T>
-  bool merge_sorted_runs_with_2_ids(const std::string& dirname); 
-  /**
-   * Each run is named after an integer identifier. This function 
-   * merges runs [first_run, last_run] into a new run called new_run in the 
-   * next merge operation.
-   */
-  template<class T>
-  void merge_sorted_runs_with_2_ids(
-      const std::string& dirname, const std::vector<std::string>& filenames, 
-      int first_run, int last_run, int new_run);
   /** Sorts a run in main memory. */
   void sort_run();
   /** Sorts a run in main memory. */

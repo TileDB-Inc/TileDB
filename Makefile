@@ -155,7 +155,7 @@ gtest: $(GTEST_OBJ_DIR)/gtest-all.o
 test: $(TEST_OBJ)
 
 clean: clean_core clean_libtiledb clean_tiledb_cmd clean_la clean_gtest \
-       clean_test clean_doc 
+       clean_test clean_doc clean_rvma 
 
 ########
 # Core #

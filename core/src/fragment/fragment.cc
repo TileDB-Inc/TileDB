@@ -200,10 +200,6 @@ void Fragment::init_read_state() {
                      segment_size_);
 }
 
-void Fragment::load_sorted_bin(const std::string& dirname) {
-  write_state_->load_sorted_bin(dirname);
-}
-
 template<class T>
 void Fragment::write_cell(const void* cell) const {
   write_state_->write_cell<T>(cell);

@@ -113,14 +113,6 @@ class StorageManager {
   /** Prints the version of the storage manager to the standard output. */
   static void get_version();
   /** 
-   * Loads data into an array, which are stored in binary files in the input
-   * directory. Each file stores the cells in binary form, sorted
-   * on the global cell order specified in the array schema. 
-   */
-  int load_sorted_bin(
-      const std::string& dirname, const std::string& array_name,
-      std::string& err_msg);
-  /** 
    * Opens an array in the input mode. It returns an 'array descriptor',
    * which is used in subsequent array operations. Currently, the following
    * modes are supported:

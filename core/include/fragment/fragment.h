@@ -104,12 +104,6 @@ class Fragment {
    * reading).
    */
   void init_read_state();
-  /** 
-   * Loads data into the fragment, which are stored in binary files in the the
-   * input directory. Each file stores the cells in binary form, sorted
-   * on the global cell order specified in the array schema. 
-   */
-  void load_sorted_bin(const std::string& dirname);
   /**  
    * Writes a cell to the fragment. It takes as input a cell and its size. 
    * The cell has the following format: The coordinates
