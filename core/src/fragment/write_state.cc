@@ -994,6 +994,7 @@ bool WriteState::merge_sorted_runs(const std::string& dirname) {
 
 template<class T>
 bool WriteState::merge_sorted_runs(const std::string& dirname) {
+  // TODO: Make sure runs_per_megre are > 0
   int runs_per_merge = double(write_state_max_size_)/segment_size_-1;
   int merges, first_run, last_run;
   std::vector<std::string> filenames = get_filenames(dirname);
