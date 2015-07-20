@@ -35,7 +35,8 @@
 #define __TILEDB_H__
 
 #include "tiledb_error.h"
-#include <inttypes.h>
+#include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -63,7 +64,7 @@ typedef struct TileDB_CTX TileDB_CTX;
  *     Success
  * @see TileDB_CTX, tiledb_ctx_init
  */
-TILEDB_EXPORT int tiledb_ctx_finalize(TileDB_CTX*& tiledb_ctx);
+TILEDB_EXPORT int tiledb_ctx_finalize(TileDB_CTX* tiledb_ctx);
 
 /** 
  * Initializes the TileDB context. On error, it prints a message on stderr and
@@ -86,6 +87,14 @@ TILEDB_EXPORT int tiledb_ctx_finalize(TileDB_CTX*& tiledb_ctx);
 TILEDB_EXPORT int tiledb_ctx_init(
     const char* workspace, 
     TileDB_CTX*& tiledb_ctx);
+
+/**
+ * Returns the workspace path of the TileDB_Context.
+ * @param tiledb_context The TileDB state.
+ * @return A C string pointer to the TileDB_Context's workspace.
+ * @see TileDB_Context
+ */
+TILEDB_EXPORT const char* tiledb_ctx_workspace(TileDB_CTX* tiledb_ctx);
 
 /* ********************************* */
 /*                I/O                */
@@ -175,7 +184,7 @@ typedef struct TileDB_ConstReverseCellIterator TileDB_ConstReverseCellIterator;
  * @see tiledb_const_cell_iterator_init, tiledb_const_cell_iterator_next
  */
 TILEDB_EXPORT int tiledb_const_cell_iterator_finalize(
-    TileDB_ConstCellIterator*& cell_it);
+    TileDB_ConstCellIterator* cell_it);
 
 /**
  * Finalizes a constant reverse cell iterator, clearing its state.
@@ -185,7 +194,7 @@ TILEDB_EXPORT int tiledb_const_cell_iterator_finalize(
  * tiledb_const_reverse_cell_iterator_next
  */
 TILEDB_EXPORT int tiledb_const_reverse_cell_iterator_finalize(
-    TileDB_ConstReverseCellIterator*& cell_it);
+    TileDB_ConstReverseCellIterator* cell_it);
 
 /** 
  * Initializes a constant cell iterator
@@ -531,6 +540,45 @@ TILEDB_EXPORT int tiledb_define_array(
     const TileDB_CTX* tiledb_ctx, 
     const char* array_schema_csv);
 
+/**
+ * Checks if the array with a given name is defined within the database.
+ * @param tiledb_context The TileDB state
+ * @param array_name The name of the array to query the database
+ * @return A boolean return code, which can be one of the following:
+ *   - **1**\n
+ *     Array is defined
+ *   - **0**\n
+ *     Array is not defined
+ */
+TILEDB_EXPORT int tiledb_array_defined(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array_name);
+
+/**
+ * Copies the array schema CSV string description into schema_str.
+ * The maximum buffer length is given by schema_length.  If the schema
+ * string is longer than schema_length then the schema_string is not copied
+ * and the schema_length pointer is updated.
+ * 
+ * For a detailed decrption of the CSV schema format, see tiledb_array_defined.
+ *
+ * @param tiledb_ctx The TileDB state consisting of the TileDB modules. 
+ * @param array_name The name of the array to query the schema.
+ * @param schema_str A pointer to a pre-allocated buffer to copy the resulting
+ *                   CSV schema string.
+ * @param schema_length A pointer to the pre-allocated buffer maximum
+ *                   buffer length.
+ * @return An error code, which can be one of the following:
+ *   - **TILEDB_OK**\n 
+ *     Success
+ * @see TileDB_Context, tiledb_show_array_schema, tiledb_array_defined 
+ */
+TILEDB_EXPORT int tiledb_array_schema(
+    const TileDB_CTX* tiledb_ctx, 
+    const char* array_name,
+    char* schema_str, 
+    size_t* schema_length);
+
 /** 
  * Deletes all data from an array. Contrary to tiledb_clear_array(), the array
  * does **not** remain defined, i.e., one must redefine its schema (via
@@ -573,25 +621,25 @@ TILEDB_EXPORT int tiledb_delete_array(
  * Supposing that tiledb_context stores a pointer to a TileDB_Context object,
  * and assuming that the array has dimensions *dim1*,*dim2* and attributes
  * *attr1*,*attr2*,*attr3* :
- * - tiledb_export_csv(tiledb_context, "A", "A.csv", {}, 0, {}, 0, false) \n
+ * - tiledb_export_csv(tiledb_context, "A", "A.csv", {}, 0, {}, 0, 0) \n
  *     Exports into "A.csv" all the cells of "A" in the order they are stored,
  *     including all the coordinates and attributes.
  * - tiledb_export(tiledb_context, "A", "A.csv", {"dim1"}, 1, {"attr1","attr2"},
- * 2, false) \n
+ * 2, 0) \n
  *     Exports into "A.csv" all the cells of "A" in the order they are stored,
  *     including only the coordinates on the *dim1* dimension and the values
  *     on the *attr1*,*attr2* attributes.
  * - tiledb_export_csv(tiledb_context, "A", "A.csv", {"dim1"}, 1, 
- * {"attr1","attr2"}, 2, true) \n
+ * {"attr1","attr2"}, 2, 1) \n
  *     Same as above, but the cells are exported in the reverse order.
  * - tiledb_export_csv(tiledb_context, "A", "A.csv", {"__hide"}, 1, 
- * {attr1,attr2}, 2, false) \n
+ * {attr1,attr2}, 2, 0) \n
  *     Same as the first example, but no coordinate is exported.
  * - tiledb_export_csv(tiledb_context, "A", "A.csv", {"dim1"}, 1, {"__hide"}, 2,
- * false) \n
+ * 0) \n
  *     Same as the first example, but no attribute value is exported.
  * - tiledb_export_csv(tiledb_context, "A", "A.csv", {"dim1"}, 1, 
- * {"attr1","attr2","attr1"}, 2, false) \n
+ * {"attr1","attr2","attr1"}, 2, 0) \n
  *     Same as the first example, but now the *attr1* values are shown twice
  *     (once before those of *attr2* and once after).
  *
@@ -629,7 +677,7 @@ TILEDB_EXPORT int tiledb_export_csv(
     int dim_names_num,
     const char** attribute_names,
     int attribute_names_num,
-    bool reverse);
+    int reverse);
 
 /** 
  * Generates a synthetic dataset in either **CSV** or **binary** form, which
@@ -800,7 +848,7 @@ TILEDB_EXPORT int tiledb_load_bin(
     const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* path,
-    bool sorted);
+    int sorted);
 
 /** 
  * Loads a collection of CSV files into an array. The user specifies
@@ -901,7 +949,7 @@ TILEDB_EXPORT int tiledb_load_csv(
     const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* path,
-    bool sorted);
+    int sorted);
 
 /** 
  * Prints the schema of an array on the standard output. The array must be
@@ -1015,7 +1063,7 @@ TILEDB_EXPORT int tiledb_update_bin(
     const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* path,
-    bool sorted);
+    int sorted);
 
 /**
  * This is very similar to tiledb_load_csv(). The difference is that the loaded
@@ -1050,7 +1098,7 @@ TILEDB_EXPORT int tiledb_update_csv(
     const TileDB_CTX* tiledb_ctx, 
     const char* array_name,
     const char* path,
-    bool sorted);
+    int sorted);
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus

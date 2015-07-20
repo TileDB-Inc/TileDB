@@ -71,20 +71,24 @@ StorageManager::StorageManager(const std::string& path,
 
   // Create directories
   int rc;
-  rc = create_directory(workspace_);
-  if(rc) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " Cannot create directory '" << workspace_ << "'.\n";
-    err_ = TILEDB_EDNCREAT;
-    return;
+  if(!is_dir(workspace_)) {
+    rc = create_directory(workspace_);
+    if(rc) {
+      std::cerr << ERROR_MSG_HEADER
+                << " Cannot create directory '" << workspace_ << "'.\n";
+      err_ = TILEDB_EDNCREAT;
+      return;
+    }
   }
-  rc = create_directory(workspace_ + "/" + TEMP + "/"); 
-  if(rc) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " Cannot create directory '" 
-              << workspace_ + "/" + TEMP + "/" << "'.\n";
-    err_ = TILEDB_EDNCREAT;
-    return;
+  std::string tmpdir = workspace_ + "/" + TEMP + "/";
+  if(!is_dir(tmpdir)) {
+    rc = create_directory(tmpdir);
+    if(rc) {
+      std::cerr << ERROR_MSG_HEADER
+                << " Cannot create directory '" << tmpdir << "'.\n";
+      err_ = TILEDB_EDNCREAT;
+      return;
+    }
   }
 
   // Set maximum size for write state
@@ -411,6 +415,8 @@ int StorageManager::open_array(
     array_mode = Array::APPEND;
   else if(strcmp(mode, "r") == 0)
     array_mode = Array::READ;
+  else
+    return -1; // TODO: better error here
 
   // If in write mode, delete the array if it exists
   if(array_mode == Array::WRITE) 

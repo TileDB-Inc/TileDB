@@ -10,6 +10,7 @@ OS := $(shell uname)
 # CXX = g++ 
 
 # MPI compiler for C++
+CC  = mpicc -std=c11 -fPIC
 CXX = mpicxx -std=c++11 -fPIC -fvisibility=hidden
 
 # --- Directories --- #
@@ -40,11 +41,17 @@ TEST_SRC_DIR = test/src
 TEST_OBJ_DIR = test/obj
 TEST_BIN_DIR = test/bin
 
-# Directories for Linear Algebra applications 
+# Directories for Linear Algebra applications
 LA_INCLUDE_DIR = la/include
 LA_SRC_DIR = la/src
 LA_OBJ_DIR = la/obj
 LA_BIN_DIR = la/bin
+
+# Directories for distributed applications
+RVMA_INCLUDE_DIR = rvma/include
+RVMA_SRC_DIR     = rvma/src
+RVMA_OBJ_DIR     = rvma/obj
+RVMA_BIN_DIR     = rvma/bin
 
 # Directory for Doxygen documentation
 DOXYGEN_DIR = doxygen
@@ -110,6 +117,11 @@ LA_SRC := $(wildcard $(LA_SRC_DIR)/*.cc)
 LA_OBJ := $(patsubst $(LA_SRC_DIR)/%.cc, $(LA_OBJ_DIR)/%.o, $(LA_SRC))
 LA_BIN := $(patsubst $(LA_SRC_DIR)/%.cc, $(LA_BIN_DIR)/%, $(LA_SRC))
 
+# Files of the distributed applications
+RVMA_SRC := $(wildcard $(RVMA_SRC_DIR)/*.c)
+RVMA_OBJ := $(patsubst $(RVMA_SRC_DIR)/%.c, $(RVMA_OBJ_DIR)/%.o, $(RVMA_SRC))
+RVMA_BIN := $(patsubst $(RVMA_SRC_DIR)/%.c, $(RVMA_BIN_DIR)/%, $(RVMA_SRC))
+
 # Files for the HTML version of the Manpages
 MANPAGES_MAN := $(wildcard $(MANPAGES_MAN_DIR)/*)
 MANPAGES_HTML := $(patsubst $(MANPAGES_MAN_DIR)/%,\
@@ -122,7 +134,7 @@ MANPAGES_HTML := $(patsubst $(MANPAGES_MAN_DIR)/%,\
 .PHONY: core example gtest test doc clean_core clean_gtest \
         clean_test clean_tiledb_cmd clean_la clean
 
-all: core libtiledb tiledb_cmd la gtest test
+all: core libtiledb tiledb_cmd la gtest test rvma
 
 core: $(CORE_OBJ) 
 
@@ -131,6 +143,8 @@ libtiledb: core $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT)
 tiledb_cmd: core $(TILEDB_CMD_BIN)
 
 la: core $(LA_OBJ) $(LA_BIN_DIR)/example_transpose
+
+rvma: core $(RVMA_OBJ) $(RVMA_BIN_DIR)/simple_test
 
 html: $(MANPAGES_HTML)
 
@@ -260,6 +274,37 @@ $(LA_BIN_DIR)/example_transpose: $(LA_OBJ) $(CORE_OBJ)
 clean_la:
 	@echo 'Cleaning la'
 	@rm -f $(LA_OBJ_DIR)/* $(LA_BIN_DIR)/* 
+
+########
+# RVMA #
+########
+
+# --- Compilation and dependency genration --- #
+
+-include $(RVMA_OBJ:.o=.d)
+
+$(RVMA_OBJ_DIR)/%.o: $(RVMA_SRC_DIR)/%.c
+	@test -d $(RVMA_OBJ_DIR) || mkdir -p $(RVMA_OBJ_DIR)
+	@echo "Compiling $<"
+	@$(CC) $(RVMA_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< -o $@
+	@$(CC) -MM $(CORE_INCLUDE_PATHS) $(RVMA_INCLUDE_PATHS) $< > $(@:.o=.d)
+	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
+	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
+	@rm -f $(@:.o=.d.tmp)
+
+# --- Linking --- #
+
+$(RVMA_BIN_DIR)/simple_test: $(RVMA_OBJ) $(CORE_OBJ)
+	@mkdir -p $(RVMA_BIN_DIR)
+	@echo "Creating simple_test"
+	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
+               -o $@ $^
+
+# --- Cleaning --- #
+
+clean_rvma:
+	@echo 'Cleaning RVMA'
+	@rm -f $(RVMA_OBJ_DIR)/* $(RVMA_BIN_DIR)/*
 
 ###############
 # Google Test #

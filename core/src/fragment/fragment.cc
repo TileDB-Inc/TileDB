@@ -56,7 +56,8 @@ Fragment::Fragment(
 
   temp_dirname_ = workspace_ + "/" + TEMP + "/" + 
                   array_schema->array_name() + "_" + fragment_name + "/";
-  std::string fragment_dirname = workspace_ + 
+
+  std::string fragment_dirname = workspace_ + "/" +
                                  array_schema->array_name() + "/" + 
                                  fragment_name;
 
@@ -78,6 +79,7 @@ Fragment::Fragment(
                        &workspace_, book_keeping_, 
                        segment_size_, write_state_max_size);
   }
+  assert(is_dir(fragment_dirname));
 }
 
 Fragment::~Fragment() {
@@ -146,7 +148,7 @@ FragmentConstReverseTileIterator Fragment::rbegin(int attribute_id) const {
 }
 
 const Tile* Fragment::rget_tile_by_pos(int attribute_id, int64_t pos) const {
-  read_state_->rget_tile_by_pos(attribute_id, pos);
+  return read_state_->rget_tile_by_pos(attribute_id, pos);
 }
 
 int64_t Fragment::tile_id(int64_t pos) const {

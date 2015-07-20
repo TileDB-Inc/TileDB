@@ -173,6 +173,11 @@ class ArraySchema {
    */
   std::pair<const char*, size_t> serialize() const;
   /**
+   * It serializes the object into a ArraySchema CSV string description that can
+   * be deserialized with ArraySchema::deserialize_csv();
+   */
+  std::string serialize_csv() const;
+  /**
    * Returns the id of the attribute with the smallest size of values. If
    * all attributes are variable-sized, it returns the id of the attribute
    * with the smallest type. 
@@ -196,7 +201,7 @@ class ArraySchema {
    * Creates an array schema (setting its members) from the serialized info
    * in the input string. Returns 0 on success, and -1 on error.
    */
-  int deserialize(const std::string& array_schema_str);
+  int deserialize_csv(const std::string& array_schema_str);
   /** Sets the array name. Returns 0 on success and -1 on error. */
   int set_array_name(const std::string& array_name);
   /** Sets the attribute names. Returns 0 on success and -1 on error. */
