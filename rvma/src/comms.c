@@ -4,16 +4,12 @@
 
 static inline int rvmai_capture(void * data, size_t bytes)
 {
-    int rc;
-
     MPI_Aint size = (MPI_Aint)bytes;
-
-    rc = MPI_Win_attach(RVMA_GLOBAL_STATE.rvma_win, data, size);
+    int rc = MPI_Win_attach(RVMA_GLOBAL_STATE.rvma_win, data, size);
     if (rc!=MPI_SUCCESS) {
         fprintf(stderr,"MPI_Win_attach failed\n");
         return 1;
     }
-
     return 0;
 }
 
@@ -41,14 +37,11 @@ int rvma_capture(void * data, size_t bytes)
 
 static inline int rvmai_release(void * data)
 {
-    int rc;
-
-    rc = MPI_Win_detach(RVMA_GLOBAL_STATE.rvma_win, data);
+    int rc = MPI_Win_detach(RVMA_GLOBAL_STATE.rvma_win, data);
     if (rc!=MPI_SUCCESS) {
         fprintf(stderr,"MPI_Win_detach failed\n");
         return 1;
     }
-
     return 0;
 }
 
@@ -184,9 +177,7 @@ int rvma_put(void * local, int proc, void * addr, size_t bytes)
 
 static inline int rvmai_flush(int proc)
 {
-    int rc;
-
-    rc = MPI_Win_flush(proc, RVMA_GLOBAL_STATE.rvma_win);
+    int rc = MPI_Win_flush(proc, RVMA_GLOBAL_STATE.rvma_win);
     if (rc!=MPI_SUCCESS) {
         fprintf(stderr,"MPI_Win_flush failed\n");
         return 1;

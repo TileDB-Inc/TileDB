@@ -1,4 +1,13 @@
+#ifndef INCLUDE_RVMA_H
+#define INCLUDE_RVMA_H
+
+#ifdef __cplusplus
+#include <cstddef>
+extern "C" {
+#else
 #include <stddef.h>
+#endif
+
 #include <mpi.h>
 
 int rvma_initialize(MPI_Comm comm);
@@ -12,6 +21,8 @@ int rvma_put(void * local, int proc, void * addr, size_t bytes);
 
 int rvma_flush(int proc);
 
-int rvma_poll(void);
+#ifdef __cplusplus
+}
+#endif
 
-int rvma_is_same(void * ptr, int * is_same);
+#endif // INCLUDE_RVMA_H

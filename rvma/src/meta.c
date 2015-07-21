@@ -1,67 +1,71 @@
 #include "internals.h"
 
-int rvma_poll(void)
+void rvma_am_flush(int remote_proc)
 {
-    int rc;
-    MPI_Message message;
-    MPI_Status  status;
+    rvma_msg_info_t info = { .type    = RVMA_MSG_FLUSH,
+                             .address = NULL,
+                             .count   = 0,
+                             .dt      = MPI_BYTE };
+    MPI_Send(&info, sizeof(rvma_msg_info_t), MPI_BYTE, remote_proc, RVMA_MSG_INFO_TAG, (RVMA_GLOBAL_STATE.rvma_comm));
+    MPI_Recv(NULL, info.count, info.dt, remote_proc, RVMA_MSG_FLUSH_TAG, (RVMA_GLOBAL_STATE.rvma_comm), MPI_STATUS_IGNORE);
+}
 
-    /* See if a message has been sent. */
-    rc = MPI_Mprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, RVMA_GLOBAL_STATE.rvma_comm,
-                    &message, &status);
-    if (rc!=MPI_SUCCESS) {
-        fprintf(stderr,"MPI_Mprobe failed\n");
-        return 1;
+void rvma_am_get_raw(void* output, void * remote_input, int size, int remote_proc)
+{
+    rvma_msg_info_t info = { .type    = RVMA_MSG_GET_RAW,
+                             .address = remote_input,
+                             .count   = size,
+                             .dt      = MPI_BYTE };
+    MPI_Send(&info, sizeof(rvma_msg_info_t), MPI_BYTE, remote_proc, RVMA_MSG_INFO_TAG, (RVMA_GLOBAL_STATE.rvma_comm));
+
+    MPI_Status status;
+    MPI_Recv(output, info.count, info.dt, remote_proc, RVMA_MSG_GET_RAW_TAG, (RVMA_GLOBAL_STATE.rvma_comm), &status);
+
+    int rcount;
+    MPI_Get_count(&status, MPI_BYTE, &rcount);
+    if (info.count != rcount) {
+      printf("Get_raw message underflow");
+      MPI_Abort((RVMA_GLOBAL_STATE.rvma_comm), info.count-rcount);
     }
+}
 
-    int source = status.MPI_SOURCE;
-    int tag    = status.MPI_TAG;
-    int statrc = status.MPI_ERROR;
-    if (statrc!=MPI_SUCCESS) {
-        fprintf(stderr,"MPI_Mprobe status error\n");
-        return 1;
+void rvma_am_put_raw(void* input, void * remote_output, int size, int remote_proc)
+{
+    rvma_msg_info_t info = { .type    = RVMA_MSG_PUT_RAW,
+                             .address = remote_output,
+                             .count   = size,
+                             .dt      = MPI_BYTE };
+    MPI_Send(&info, sizeof(rvma_msg_info_t), MPI_BYTE, remote_proc, RVMA_MSG_INFO_TAG, (RVMA_GLOBAL_STATE.rvma_comm));
+    MPI_Send(input, info.count, info.dt, remote_proc, RVMA_MSG_PUT_RAW_TAG, (RVMA_GLOBAL_STATE.rvma_comm));
+}
+
+void rvma_am_put_index(void* input, void * remote_output, int size, int remote_proc)
+{
+    /* TODO pack metadata for lookup... */
+    rvma_msg_info_t info = { .type    = RVMA_MSG_PUT_INDEX,
+                             .address = remote_output,
+                             .count   = size,
+                             .dt      = MPI_BYTE };
+    MPI_Send(&info, sizeof(rvma_msg_info_t), MPI_BYTE, remote_proc, RVMA_MSG_INFO_TAG, (RVMA_GLOBAL_STATE.rvma_comm));
+    MPI_Send(input, info.count, info.dt, remote_proc, RVMA_MSG_PUT_INDEX_TAG, (RVMA_GLOBAL_STATE.rvma_comm));
+}
+
+void rvma_am_get_index(void* output, void * remote_input, int size, int remote_proc)
+{
+    /* TODO pack metadata for lookup... */
+    rvma_msg_info_t info = { .type    = RVMA_MSG_GET_INDEX,
+                             .address = remote_input,
+                             .count   = size,
+                             .dt      = MPI_BYTE };
+    MPI_Send(&info, sizeof(rvma_msg_info_t), MPI_BYTE, remote_proc, RVMA_MSG_INFO_TAG, (RVMA_GLOBAL_STATE.rvma_comm));
+
+    MPI_Status status;
+    MPI_Recv(output, info.count, info.dt, remote_proc, RVMA_MSG_GET_INDEX_TAG, (RVMA_GLOBAL_STATE.rvma_comm), &status);
+
+    int rcount;
+    MPI_Get_count(&status, MPI_BYTE, &rcount);
+    if (info.count != rcount) {
+      printf("Get_index message underflow");
+      MPI_Abort((RVMA_GLOBAL_STATE.rvma_comm), info.count-rcount);
     }
-
-    /* Determine how many bytes are in this message. */
-    int pcount; /* i.e. probe count */
-    rc = MPI_Get_elements(&status, MPI_BYTE, &pcount);
-    if (rc!=MPI_SUCCESS) {
-        fprintf(stderr,"MPI_Get_elements failed\n");
-        return 1;
-    }
-
-    void * buffer = NULL;
-    rc = MPI_Alloc_mem((MPI_Aint)pcount, MPI_INFO_NULL, &buffer);
-    if (rc!=MPI_SUCCESS || buffer==NULL) {
-        fprintf(stderr,"MPI_Alloc_mem failed\n");
-        return 1;
-    }
-
-    rc = MPI_Mrecv(buffer, pcount, MPI_BYTE, &message, &status);
-    if (rc!=MPI_SUCCESS) {
-        fprintf(stderr,"MPI_Mrecv failed\n");
-        return 1;
-    }
-
-    int rcount; /* i.e. receive count */
-    rc = MPI_Get_elements(&status, MPI_BYTE, &rcount);
-    if (rc!=MPI_SUCCESS) {
-        fprintf(stderr,"MPI_Get_elements failed\n");
-        return 1;
-    }
-
-    if (rcount!=pcount) {
-        fprintf(stderr,"MPI_Mrecv status count less than MPI_Mprobe status count\n");
-        return 1;
-    }
-
-    /* TODO process message */
-
-    rc = MPI_Free_mem(buffer);
-    if (rc!=MPI_SUCCESS) {
-        fprintf(stderr,"MPI_Free_mem failed\n");
-        return 1;
-    }
-
-    return 0;
 }
