@@ -11,7 +11,3 @@ int rvma_get(int proc, void * addr, size_t bytes, void * local);
 int rvma_put(void * local, int proc, void * addr, size_t bytes);
 
 int rvma_flush(int proc);
-
-int rvma_poll(void);
-
-int rvma_is_same(void * ptr, int * is_same);
