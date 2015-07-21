@@ -49,11 +49,18 @@ BINFile::BINFile() {
   init();
 }
 
-BINFile::BINFile(const ArraySchema* array_schema) { 
+BINFile::BINFile(const ArraySchema* array_schema, int id_num) 
+    : id_num_(id_num) { 
   init();
   array_schema_ = array_schema;
   cell_size_ = array_schema_->cell_size();
   var_size_ = (cell_size_ == VAR_SIZE);
+
+  if(id_num_ != 0) 
+    ids_ = malloc(id_num_ * sizeof(int64_t));
+  else
+    ids_ = NULL;
+
   if(var_size_) {
     coords_size_ = array_schema_->coords_size();
     coords_ = malloc(coords_size_);
@@ -68,11 +75,14 @@ BINFile::BINFile(const std::string& filename, const char* mode) {
 BINFile::~BINFile() {
   close();
 
-  if(cell_ != NULL) 
-    free(cell_);
+  if(ids_ != NULL)
+    free(ids_);
 
   if(coords_ != NULL) 
     free(coords_);
+
+  if(cell_ != NULL) 
+    free(cell_);
 }
 
 /******************************************************
@@ -202,6 +212,9 @@ ssize_t BINFile::write(const void* source, size_t size) {
 ******************************************************/
 
 bool BINFile::operator>>(Cell& cell) {
+
+  // TODO: Handle errors
+
   assert(strcmp(mode_, "r") == 0);
   assert(array_schema_ != NULL);
 
@@ -215,14 +228,24 @@ bool BINFile::operator>>(Cell& cell) {
  
   if(!var_size_) { // Fixed-sized cells
     if(cell_ == NULL)
-      cell_ = malloc(cell_size_);
-    bytes_read = read(cell_, cell_size_);
+      cell_ = malloc(cell_size_ + id_num_ * sizeof(int64_t));
+    bytes_read = read(cell_, cell_size_ + id_num_ * sizeof(int64_t) );
+
     if(bytes_read == 0) {
       cell.set_cell(NULL);
       return false;
     }
     assert(bytes_read != -1);
   } else {        // Variable-sized cells
+    // Read ids
+    if(ids_ != NULL) {
+      bytes_read = read(ids_, id_num_ * sizeof(int64_t));
+      if(bytes_read == 0) {
+        cell.set_cell(NULL);
+        return false;
+      }
+    }
+
     // Read coordinates
     bytes_read = read(coords_, coords_size_);
     assert(bytes_read != -1);
@@ -238,18 +261,21 @@ bool BINFile::operator>>(Cell& cell) {
     // Prepare a cell
     if(cell_ != NULL)
       free(cell_);
-    cell_ = malloc(cell_size_);
+    cell_ = malloc(cell_size_ + id_num_ * sizeof(int64_t));
 
-    // Copy coordinates and cell size to cell
-    memcpy(cell_, coords_, coords_size_);
-    size_t cell_offset = coords_size_;
+    // Copy ids, coordinates and cell size to cell
+    memcpy(cell_, ids_, id_num_ * sizeof(int64_t));
+    size_t cell_offset = id_num_ * sizeof(int64_t);
+    memcpy(static_cast<char*>(cell_) + cell_offset, coords_, coords_size_);
+    cell_offset += coords_size_;
     memcpy(static_cast<char*>(cell_) + cell_offset, 
            &cell_size_, sizeof(size_t));
     cell_offset += sizeof(size_t);
 
     // Read rest of attribute values into the appropriate offset in cell
     bytes_read = read(static_cast<char*>(cell_) + cell_offset, 
-                      cell_size_ - coords_size_ - sizeof(size_t));
+                      cell_size_ - coords_size_ - sizeof(size_t) - 
+                      id_num_ * sizeof(int64_t));
   }
 
   if(bytes_read == 0) {
@@ -259,6 +285,10 @@ bool BINFile::operator>>(Cell& cell) {
 
   cell.set_cell(cell_);
   return true;
+}
+
+bool BINFile::operator<<(const Cell& cell) {
+  write(cell.cell(), cell.cell_size());
 }
 
 /******************************************************

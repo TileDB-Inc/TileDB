@@ -38,7 +38,9 @@
 #include "cell_const_attr_iterator.h"
 #include "csv_line.h"
 #include "type_converter.h"
+#include <assert.h>
 #include <map>
+#include <string.h>
 
 class CellConstAttrIterator;
 
@@ -48,14 +50,24 @@ class CellConstAttrIterator;
  */
 class Cell {
  public:
+  template<typename T> struct Precedes;
+
   // CONSTRUCTORS AND DESTRUCTORS
-  /** Constructor. */
-  Cell(const ArraySchema* array_schema, bool random_access = false);
+  /**  
+   * Constructor. The number of ids indicates how many id values precede the
+   * cell actual payload.
+   */
+  Cell(const ArraySchema* array_schema, 
+       int id_num = 0,
+       bool random_access = false);
   /** 
    * Constructor. It takes as input the schema of the array the cell belongs to.
+   * Also the number of ids indicates how many id values precede the cell actual
+   * payload.
    */
   Cell(const void* cell,
        const ArraySchema* array_schema,
+       int id_num = 0,
        bool random_access = false);
   /** 
    * Constructor. It takes as input the schema of the array the cell belongs to,
@@ -72,6 +84,7 @@ class Cell {
    */
   Cell(const ArraySchema* array_schema,
        const std::vector<int>& attribute_ids,
+       int id_num = 0,
        bool random_access = false);
   /** Empty destructor. */
   ~Cell();
@@ -101,6 +114,10 @@ class Cell {
   CSVLine csv_line(
       const std::vector<int>& dim_ids,
       const std::vector<int>& attribute_ids) const;
+  /** Returns the i-th id of the cell (if it exists). */
+  int64_t id(int i) const;
+  /** Returns the size of all ids. */
+  size_t ids_size() const;
   /** Returns the number of values stored for the input attribute. */
   int val_num(int attribute_id) const; 
   /** Returns true if the entire cell is of variable size. */
@@ -138,7 +155,9 @@ class Cell {
   const void* cell_;
   /** The cell size (could be VAR_SIZE). */
   ssize_t cell_size_;
-  /** True to allow efficient accessing of cell attributes in random order. */
+  /** Number of ids that prece the actual cell payload. */
+  int id_num_;
+  /** True if operator [] is to be used for random access of cell elements. */
   bool random_access_;
   /** Stores the number of values for an attribute. */
   std::map<int, int> val_num_;
@@ -161,6 +180,62 @@ class Cell {
    * variable-size cells.
    */
   void init_val_num();
+};
+
+/** Wrapper of comparison function for sorting cells. */
+template<typename T>
+struct Cell::Precedes {
+  /** Constructor. */
+  Precedes() { }
+
+  /** Comparison operator. */
+  bool operator () (const Cell& a, 
+                    const Cell& b) {
+    assert(a.id_num_ == b.id_num_);
+
+    size_t offset = 0;
+
+    // Check tile id
+    if(a.id_num_ == 2) {
+      int64_t a_tile_id, b_tile_id;
+      memcpy(&a_tile_id, a.cell_, sizeof(int64_t));
+      memcpy(&b_tile_id, b.cell_, sizeof(int64_t));
+
+      if(a_tile_id < b_tile_id)
+        return true;
+      if(a_tile_id > b_tile_id)
+        return false;
+
+      offset += sizeof(int64_t);
+    }
+
+    // Check cell id
+    if(a.id_num_ > 0) {
+      int64_t a_cell_id, b_cell_id;
+      memcpy(&a_cell_id, 
+             static_cast<const char*>(a.cell_) + offset, 
+             sizeof(int64_t));
+      memcpy(&b_cell_id, 
+             static_cast<const char*>(b.cell_) + offset, 
+             sizeof(int64_t));
+
+      if(a_cell_id < b_cell_id)
+        return true;
+      if(a_cell_id > b_cell_id)
+        return false;
+
+      offset += sizeof(int64_t);
+    }
+
+    // a.tile_id_ == b.tile_id_ && 
+    // a.cell_id_ == b.cell_id_ 
+    const void* temp_a = static_cast<const char*>(a.cell_) + offset;
+    const void* temp_b = static_cast<const char*>(b.cell_) + offset;
+    const T* coords_a = static_cast<const T*>(temp_a);
+    const T* coords_b = static_cast<const T*>(temp_b);
+
+    return a.array_schema_->precedes(coords_a, coords_b);
+  }
 };
 
 #endif

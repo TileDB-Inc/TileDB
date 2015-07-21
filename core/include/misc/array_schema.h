@@ -193,6 +193,8 @@ class ArraySchema {
   size_t type_size(int i) const;
   /** Returns the number of values per attribute cell. */
   int val_num(int attribute_id) const;
+  /** True if the cells are of variable size. */
+  bool var_size() const;
   
   // MUTATORS
   /** It assigns values to the members of the object from the input buffer. */

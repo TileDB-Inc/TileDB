@@ -36,8 +36,8 @@
 
 #include "array_schema.h"
 #include "book_keeping.h"
-#include "sorted_run.h"
 #include "tile.h"
+#include <iostream>
 
 /** Stores the state necessary when writing cells to a fragment. */
 class WriteState {
@@ -175,30 +175,6 @@ class WriteState {
    * structures. 
    */
   void flush_tile_info_to_book_keeping();
-  /** 
-   * Gets the next cell from the input runs that precedes in the global
-   * cell order indicated by the input array schema. If the cell is
-   * variable-sized, the function will return into cell_size
-   * (passed by reference) the cell size.
-   */
-  template<class T>
-  void* get_next_cell(
-      SortedRun** runs, int runs_num, size_t& cell_size) const;
-  /** 
-   * Gets the next cell from the input runs that precedes in the global
-   * cell order indicated by the input array schema.
-   */
-  template<class T>
-  void* get_next_cell_with_id(SortedRun** runs, int runs_num, 
-                              size_t& cell_size) const;
-  /** 
-   * Gets the next cell from the input runs that precedes in the global
-   * cell order indicated by the input array schema.
-   */
-  template<class T>
-  void* get_next_cell_with_2_ids(SortedRun** runs, int runs_num, 
-                                 size_t& cell_size) const;
-
   /** Makes tiles from existing sorted runs, stored in dirname. */
   void make_tiles(const std::string& dirname);
   /** Makes tiles from existing sorted runs, stored in dirname. */
@@ -310,7 +286,7 @@ struct WriteState::SmallerColWithId {
     return false;
   }
 
-  /** Number of dimension. */
+  /** Number of dimensions. */
   int dim_num_;
 };
 
@@ -348,6 +324,7 @@ struct WriteState::SmallerRowWithId {
   /** Comparison operator. */
   bool operator () (const CellWithId& a, 
                     const CellWithId& b) {
+
     if(a.id_ < b.id_)
       return true;
 

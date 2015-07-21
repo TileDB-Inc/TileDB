@@ -534,7 +534,7 @@ int Loader::load_bin(
 
   // Open the BIN file collection 
   BINFileCollection<T> bin_file_collection(workspace_ + "/" + "__temp");
-  err = bin_file_collection.open(array_schema, path, sorted);
+  err = bin_file_collection.open(array_schema, 0, path, sorted);
   if(err)
     return -1;
 

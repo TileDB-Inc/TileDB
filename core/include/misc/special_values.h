@@ -92,7 +92,7 @@
  * Determines the mount of data that can be exchanged between the hard disk and
  * the main memory in a single I/O operation. 
  */
-#define SEGMENT_SIZE 10000000
+#define SEGMENT_SIZE 40000 // ~40KB
 /** Name for temp (usually used in directory paths). */
 #define TEMP "temp"
 /** Name of the file storing the id of each tile. */
@@ -102,6 +102,7 @@
 /** Special value that indicates a variable-sized object. */
 #define VAR_SIZE std::numeric_limits<int>::max()
 /** Max memory size (in bytes) used when creating a new array fragment. */
-#define WRITE_STATE_MAX_SIZE 1*1073741824 // 1GB
+//#define WRITE_STATE_MAX_SIZE 1*1073741824 // 1GB
+#define WRITE_STATE_MAX_SIZE 100000 
 
 #endif

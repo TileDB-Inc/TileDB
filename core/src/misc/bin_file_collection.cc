@@ -76,12 +76,14 @@ int BINFileCollection<T>::close() {
 template<class T>
 int BINFileCollection<T>::open(
     const ArraySchema* array_schema,
+    int id_num,
     const std::string& path,
     bool sorted) {
   // Initialization
   array_schema_ = array_schema;
   sorted_ = sorted;
   last_accessed_file_ = -1;
+  id_num_ = id_num;
 
   // Create directory
   create_directory(workspace_);
@@ -102,7 +104,7 @@ int BINFileCollection<T>::open(
   BINFile* bin_file;
   Cell* cell;
   for(int i=0; i<file_num; ++i) {
-    bin_file = new BINFile(array_schema_);  
+    bin_file = new BINFile(array_schema_, id_num_);  
     if(is_file(filenames_[i]))
       bin_file->open(filenames_[i], "r");
     else 
@@ -110,7 +112,7 @@ int BINFileCollection<T>::open(
 
     bin_files_.push_back(bin_file);
 
-    cell = new Cell(array_schema_);
+    cell = new Cell(array_schema_, id_num_);
     *bin_file >> *cell;
     cells_.push_back(cell);
   }
@@ -164,8 +166,7 @@ bool BINFileCollection<T>::operator>>(Cell& cell) {
     // Get the next cell in the global cell order
     for(int i=next_file+1; i<bin_files_.size(); ++i) {
       if(cells_[i]->cell() != NULL && 
-         array_schema_->precedes(static_cast<const T*>(cells_[i]->cell()), 
-                                 static_cast<const T*>(cell.cell()))) { 
+         Cell::Precedes<T>()(*cells_[i], cell)) { 
         cell = *cells_[i];
         next_file = i;
       }

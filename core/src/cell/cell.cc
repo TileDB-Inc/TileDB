@@ -41,32 +41,54 @@
 ************* CONSTRUCTORS & DESTRUCTORS **************
 ******************************************************/
 
-Cell::Cell(const ArraySchema* array_schema, bool random_access) 
-    : array_schema_(array_schema), random_access_(random_access) {
+Cell::Cell(
+    const ArraySchema* array_schema, 
+    int id_num,
+    bool random_access) 
+    : array_schema_(array_schema), 
+      random_access_(random_access),
+      id_num_(id_num) {
+  assert(id_num >= 0);
+
   // Set attribute_ids_
   attribute_ids_= array_schema_->attribute_ids();
 
   // Set cell_size_ and var_size_
-  cell_size_ = array_schema_->cell_size();
-  var_size_ = (cell_size_ == VAR_SIZE);
+  cell_size_ = array_schema_->cell_size() + id_num * sizeof(int64_t);
+  var_size_ = array_schema_->var_size();
 }
 
 Cell::Cell(
-    const void* cell, const ArraySchema* array_schema, bool random_access) 
-    : array_schema_(array_schema), cell_(cell), random_access_(random_access) {
+    const void* cell, 
+    const ArraySchema* array_schema, 
+    int id_num, 
+    bool random_access) 
+    : array_schema_(array_schema), 
+      id_num_(id_num), 
+      random_access_(random_access) {
+  assert(id_num >= 0);
+
   // Set attribute_ids_
   attribute_ids_= array_schema_->attribute_ids();
 
+  // Set cell
+  set_cell(cell);
+
   // Set cell_size_ and var_size_
-  cell_size_ = array_schema_->cell_size();
-  var_size_ = (cell_size_ == VAR_SIZE);
+  cell_size_ = array_schema_->cell_size() + id_num * sizeof(int64_t);
+  var_size_ = array_schema_->var_size();
 }
 
 Cell::Cell(
     const ArraySchema* array_schema,
     const std::vector<int>& attribute_ids,
+    int id_num,
     bool random_access) 
-    : array_schema_(array_schema), random_access_(random_access) {
+    : array_schema_(array_schema), 
+      id_num_(id_num),
+      random_access_(random_access) { 
+  assert(id_num >= 0);
+
   // For easy reference
   int attribute_num = array_schema->attribute_num(); 
 
@@ -79,8 +101,9 @@ Cell::Cell(
   attribute_ids_= attribute_ids;
 
   // Set cell_size_ and var_size_
-  cell_size_ = array_schema_->cell_size(attribute_ids_);
-  var_size_ = (cell_size_ == VAR_SIZE);
+  cell_size_ = array_schema_->cell_size(attribute_ids_) + 
+               id_num * sizeof(int64_t);
+  var_size_ = array_schema_->var_size();
 }
 
 Cell::~Cell() {
@@ -111,16 +134,18 @@ const void* Cell::cell() const {
 }
 
 ssize_t Cell::cell_size() const {
-  assert(cell_ != NULL);
+  if(cell_ == NULL)
+    return 0;
 
   if(!var_size_) {
     return cell_size_;
   } else {
     size_t cell_size;
     memcpy(&cell_size, 
-           static_cast<const char*>(cell_) + array_schema_->coords_size(), 
+           id_num_ * sizeof(int64_t) + array_schema_->coords_size() +
+           static_cast<const char*>(cell_), 
            sizeof(size_t));
-    return cell_size; 
+    return cell_size + id_num_ * sizeof(int64_t); 
   }
 }
 
@@ -135,14 +160,18 @@ CSVLine Cell::csv_line(
   // Initialization
   CSVLine csv_line;
 
-  // Append coordinates first
+  // Append ids
+  for(int i=0; i<id_num_; ++i) 
+    csv_line << id(i); 
+
+  // Append coordinates
   const T* coords = (*this)[attribute_num];
   for(int i=0; i<dim_ids.size(); ++i) {
     assert(dim_ids[i] >= 0 && dim_ids[i] < array_schema_->dim_num());
     csv_line << coords[dim_ids[i]];
   }
 
-  // Append attribute values next
+  // Append attribute values
   for(int i=0; i<attribute_ids.size(); ++i) {
     assert(attribute_ids[i] >= 0 && attribute_ids[i] < attribute_num);
 
@@ -165,6 +194,21 @@ CSVLine Cell::csv_line(
   }
 
   return csv_line;
+}
+
+int64_t Cell::id(int i) const {
+  assert(i >= 0 && i < id_num_); 
+
+  int64_t id_r;
+  memcpy(&id_r, 
+         static_cast<const char*>(cell_) + i * sizeof(int64_t), 
+         sizeof(int64_t)); 
+
+  return id_r;
+}
+
+size_t Cell::ids_size() const {
+  return id_num_ * sizeof(int64_t);
 }
 
 int Cell::val_num(int attribute_id) const {
@@ -193,13 +237,10 @@ bool Cell::var_size(int attribute_id) const {
 ******************************************************/
 
 void Cell::set_cell(const void* cell) {
-  // For easy reference
-  int attribute_num = array_schema_->attribute_num();
-
   cell_ = cell;
 
-  // Set attribute_offsets_;
-  if(random_access_) {
+  // Initialization
+  if(cell_ != NULL && random_access_) {
     init_val_num();
     init_attribute_offsets();
   }
@@ -270,8 +311,11 @@ void Cell::append_string(int attribute_id, CSVLine& csv_line) const {
 }
 
 void Cell::init_attribute_offsets() {
+  attribute_offsets_.clear();
+
   // Coordinates
-  attribute_offsets_[array_schema_->attribute_num()] = 0;  
+  attribute_offsets_[array_schema_->attribute_num()] = 
+      id_num_ * sizeof(int64_t); 
 
   // Attributes
   CellConstAttrIterator attr_it = begin();
@@ -280,11 +324,14 @@ void Cell::init_attribute_offsets() {
 }
 
 void Cell::init_val_num() {
+  val_num_.clear();
+
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
 
   if(var_size_) {
-    size_t offset = sizeof(size_t) + array_schema_->cell_size(attribute_num); 
+    size_t offset = id_num_ * sizeof(int64_t) + sizeof(size_t) + 
+                    array_schema_->cell_size(attribute_num); 
     
     // For all attributes (excluding coordinates)
     int val_num;

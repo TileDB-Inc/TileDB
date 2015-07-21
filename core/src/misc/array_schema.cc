@@ -597,6 +597,10 @@ int ArraySchema::val_num(int attribute_id) const {
   return val_num_[attribute_id];
 }
 
+bool ArraySchema::var_size() const {
+  return cell_size_ == VAR_SIZE;
+}
+
 /******************************************************
 *********************** MUTATORS **********************
 ******************************************************/
@@ -1053,7 +1057,10 @@ int ArraySchema::deserialize_csv(const std::string& array_schema_str) {
   // ----- check cell order
   TileOrder tile_order;
   if(s == "*") {
-    tile_order = AS_TILE_ORDER;
+    if(tile_extents_.size() == 0) // Irregular tiles
+      tile_order = TO_NONE;
+    else 
+      tile_order = AS_TILE_ORDER;
   } else if(s == "row-major") {
     tile_order = TO_ROW_MAJOR;
   } else if(s == "column-major") {
@@ -1349,7 +1356,8 @@ int ArraySchema::set_tile_order(TileOrder tile_order) {
   // Check tile order
   if(tile_order != TO_ROW_MAJOR && 
      tile_order != TO_COLUMN_MAJOR &&
-     tile_order != TO_HILBERT) {
+     tile_order != TO_HILBERT &&
+     tile_order != TO_NONE) {
     std::cerr << ERROR_MSG_HEADER
               << " Invalid tile order.\n";
     return -1;
@@ -1686,7 +1694,6 @@ std::pair<bool,std::string> ArraySchema::join_compatible(
 
   return std::pair<bool,std::string>(true,"");
 }
-
 
 bool ArraySchema::precedes(const void* coords_A,
                            const void* coords_B) const {

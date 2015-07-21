@@ -39,7 +39,6 @@
 #include "fragment_const_tile_iterator.h"
 #include "fragment_const_reverse_tile_iterator.h"
 #include "read_state.h"
-#include "sorted_run.h"
 #include "tile.h"
 #include "write_state.h"
 #include <string>

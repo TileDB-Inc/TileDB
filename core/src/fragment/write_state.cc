@@ -31,6 +31,8 @@
  * This file implements the WriteState class.
  */
 
+#include "bin_file.h"
+#include "bin_file_collection.h"
 #include "cell.h"
 #include "write_state.h"
 #include "utils.h"
@@ -118,7 +120,6 @@ WriteState::~WriteState() {
     free(bounding_coordinates_.second);
 }
 
-
 /******************************************************
 ******************** ACCESSORS ************************
 ******************************************************/
@@ -142,9 +143,6 @@ void WriteState::flush() {
 
 template<class T>
 void WriteState::write_cell(const void* input_cell) {
-  // For easy reference
-  int dim_num = array_schema_->dim_num();
-
   // Find cell size
   size_t cell_size = ::Cell(input_cell, array_schema_).cell_size();
 
@@ -254,7 +252,6 @@ void WriteState::write_cell_sorted(const void* cell) {
   attr_sizes.push_back(coords_size);
     
   // Update the info of the currently populated tile
-  if(!regular)
   update_tile_info<T>(static_cast<const T*>(cell), tile_id, attr_sizes);
 }
 
@@ -430,52 +427,24 @@ void WriteState::flush_segments() {
 }
 
 void WriteState::flush_sorted_run() {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size();
-  bool var_size = (cell_size == VAR_SIZE);
-  int attribute_num = array_schema_->attribute_num();
-  size_t coords_size = array_schema_->cell_size(attribute_num);
-
-  // Prepare file
+  // Prepare BIN file
   std::stringstream filename;
-  filename << *temp_dirname_ << runs_num_;
-  remove(filename.str().c_str());
-  int file = open(filename.str().c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  assert(file != -1);
+  filename << *temp_dirname_ << "/" << runs_num_;
+  BINFile file(array_schema_, 0);
+  file.open(filename.str(), "w", segment_size_);
+
+  // Prepare cell
+  ::Cell cell(array_schema_);
 
   // Write the cells into the file 
-  char* segment = new char[segment_size_];
-  size_t offset = 0; 
   int64_t cell_num = cells_.size();
-  char* cell;
-
-  for(int64_t i=0; i<cell_num; ++i) {
-    // For easy reference
-    cell = static_cast<char*>(cells_[i].cell_);
-
-    // If variable-sized, calculate size
-    if(var_size) 
-      memcpy(&cell_size, cell + coords_size, sizeof(size_t));
-
-    // Flush the segment to the file
-    if(offset + cell_size > segment_size_) { 
-      write(file, segment, offset);
-      offset = 0;
-    }
-
-    // Write cell to segment
-    memcpy(segment + offset, cell, cell_size);
-    offset += cell_size;
-  }
-
-  if(offset != 0) {
-    write(file, segment, offset);
-    offset = 0;
+  for(int64_t i=0; i<cell_num; ++i) { 
+    cell.set_cell(cells_[i].cell_);
+    file << cell;
   }
 
   // Clean up
-  close(file);
-  delete [] segment;
+  file.close();
 
   // Update write state
   for(int64_t i=0; i<cell_num; ++i)
@@ -486,56 +455,27 @@ void WriteState::flush_sorted_run() {
 }
 
 void WriteState::flush_sorted_run_with_id() {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size();
-  bool var_size = (cell_size == VAR_SIZE);
-  int attribute_num = array_schema_->attribute_num();
-  size_t coords_size = array_schema_->cell_size(attribute_num);
-
-  // Prepare file
+  // Prepare BIN file
   std::stringstream filename;
-  filename << *temp_dirname_ << runs_num_;
-  remove(filename.str().c_str());
-  int file = open(filename.str().c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  assert(file != -1);
+  filename << *temp_dirname_ << "/" << runs_num_;
+  BINFile file(array_schema_, 1);
+  file.open(filename.str(), "w", segment_size_);
+
+std::cout << filename.str() << "\n";
+
+  // Prepare cell
+  ::Cell cell(array_schema_);
 
   // Write the cells into the file 
-  char* buffer = new char[segment_size_];
-  size_t buffer_offset = 0; 
   int64_t cell_num = cells_with_id_.size();
-  char* cell;
-
-  for(int64_t i=0; i<cell_num; ++i) {
-    // For easy reference
-    cell = static_cast<char*>(cells_with_id_[i].cell_);
-
-    // If variable-sized, calculate size
-    if(var_size) 
-      memcpy(&cell_size, cell + coords_size, sizeof(size_t));
-
-    // Flush the segment to the file
-    if(buffer_offset + sizeof(int64_t) + cell_size > segment_size_) { 
-      write(file, buffer, buffer_offset);
-      buffer_offset = 0;
-    }
-
-    // Write id to segment
-    memcpy(buffer + buffer_offset, &cells_with_id_[i].id_, 
-           sizeof(int64_t));
-    buffer_offset += sizeof(int64_t);
-    // Write cell to segment
-    memcpy(buffer + buffer_offset, cell, cell_size);
-    buffer_offset += cell_size;
-  }
-
-  if(buffer_offset != 0) {
-    write(file, buffer, buffer_offset);
-    buffer_offset = 0;
+  for(int64_t i=0; i<cell_num; ++i) { 
+    file.write(&cells_with_id_[i].id_, sizeof(int64_t));
+    cell.set_cell(cells_with_id_[i].cell_);
+    file << cell;
   }
 
   // Clean up
-  delete [] buffer;
-  close(file);
+  file.close();
 
   // Update write state
   for(int64_t i=0; i<cell_num; ++i)
@@ -546,60 +486,26 @@ void WriteState::flush_sorted_run_with_id() {
 }
 
 void WriteState::flush_sorted_run_with_2_ids() {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size();
-  bool var_size = (cell_size == VAR_SIZE);
-  int attribute_num = array_schema_->attribute_num();
-  size_t coords_size = array_schema_->cell_size(attribute_num);
-
-  // Prepare file
+  // Prepare BIN file
   std::stringstream filename;
-  filename << *temp_dirname_ << runs_num_;
-  remove(filename.str().c_str());
-  int file = open(filename.str().c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  assert(file != -1);
+  filename << *temp_dirname_ << "/" << runs_num_;
+  BINFile file(array_schema_, 2);
+  file.open(filename.str(), "w", segment_size_);
+
+  // Prepare cell
+  ::Cell cell(array_schema_);
 
   // Write the cells into the file 
-  char* buffer = new char[segment_size_];
-  size_t buffer_offset = 0; 
   int64_t cell_num = cells_with_2_ids_.size();
-  char* cell;
-
-  for(int64_t i=0; i<cell_num; ++i) {
-    // For easy reference
-    cell = static_cast<char*>(cells_with_2_ids_[i].cell_);
-
-    // If variable-sized, calculate size
-    if(var_size) 
-      memcpy(&cell_size, cell + coords_size, sizeof(size_t));
-
-    // Flush the segment to the file
-    if(buffer_offset + 2*sizeof(int64_t) + cell_size > segment_size_) { 
-      write(file, buffer, buffer_offset);
-      buffer_offset = 0;
-    }
-
-    // Write tile id to segment
-    memcpy(buffer + buffer_offset, &cells_with_2_ids_[i].tile_id_, 
-           sizeof(int64_t));
-    buffer_offset += sizeof(int64_t);
-    // Write cell id to segment
-    memcpy(buffer + buffer_offset, &cells_with_2_ids_[i].cell_id_, 
-           sizeof(int64_t));
-    buffer_offset += sizeof(int64_t);
-    // Write cell to segment
-    memcpy(buffer + buffer_offset, cell, cell_size);
-    buffer_offset += cell_size;
-  }
-
-  if(buffer_offset != 0) {
-    write(file, buffer, buffer_offset);
-    buffer_offset = 0;
+  for(int64_t i=0; i<cell_num; ++i) { 
+    file.write(&cells_with_2_ids_[i].tile_id_, sizeof(int64_t));
+    file.write(&cells_with_2_ids_[i].cell_id_, sizeof(int64_t));
+    cell.set_cell(cells_with_2_ids_[i].cell_);
+    file << cell;
   }
 
   // Clean up
-  delete [] buffer;
-  close(file);
+  file.close();
 
   // Update write state
   for(int64_t i=0; i<cell_num; ++i)
@@ -631,168 +537,6 @@ void WriteState::flush_tile_info_to_book_keeping() {
   mbr_ = NULL;
   bounding_coordinates_.first = NULL;
   bounding_coordinates_.second = NULL;
-}
-
-template<class T>
-void* WriteState::get_next_cell(
-    SortedRun** runs, int runs_num, size_t& cell_size) const {
-  assert(runs_num > 0);
-  // For easy reference
-  int attribute_num = array_schema_->attribute_num();
-  size_t coords_size = array_schema_->cell_size(attribute_num);
-
-  // Get the first non-NULL cell
-  void *next_cell, *cell;
-  int next_run;
-  int r = 0;
-  do {
-    next_cell = runs[r]->current_cell(); 
-    ++r;
-  } while((next_cell == NULL) && (r < runs_num)); 
-
-  next_run = r-1;
-
-  // Get the next cell in the global cell order
-  for(int i=r; i<runs_num; ++i) {
-    cell = runs[i]->current_cell();
-    if(cell != NULL && 
-       array_schema_->precedes(static_cast<const T*>(cell), 
-                               static_cast<const T*>(next_cell))) { 
-      next_cell = cell;
-      next_run = i;
-    }
-  }
-
-  if(next_cell != NULL) {
-    if(runs[next_run]->var_size()) {
-      memcpy(&cell_size, static_cast<char*>(next_cell) + coords_size,
-             sizeof(size_t));
-    }
-
-    runs[next_run]->advance_cell(cell_size);
-  }
-
-  return next_cell;
-}
-
-template<class T>
-void* WriteState::get_next_cell_with_id(
-    SortedRun** runs, int runs_num, size_t& cell_size) const {
-  assert(runs_num > 0);
-  // For easy reference
-  int attribute_num = array_schema_->attribute_num();
-  size_t coords_size = array_schema_->cell_size(attribute_num);
-
-  // Get the first non-NULL cell
-  void *next_cell, *cell;
-  int next_run;
-  int r = 0;
-  do {
-    next_cell = runs[r]->current_cell(); 
-    ++r;
-  } while((next_cell == NULL) && (r < runs_num)); 
-
-  next_run = r-1;
-  int64_t* next_cell_id = static_cast<int64_t*>(next_cell);
-  void* next_cell_coords = next_cell_id + 1; 
-  int64_t* cell_id;
-  void* cell_coords;
-
-  // Get the next cell in the global cell order
-  for(int i=r; i<runs_num; ++i) {
-    cell = runs[i]->current_cell();
-    if(cell == NULL)
-      continue;
-
-    cell_id = static_cast<int64_t*>(cell);
-    cell_coords = cell_id + 1;
-
-    if(*cell_id < *next_cell_id || 
-       (*cell_id == *next_cell_id && 
-         array_schema_->precedes(static_cast<T*>(cell_coords), 
-                                 static_cast<T*>(next_cell_coords)))) { 
-      next_cell = cell;
-      next_cell_id = static_cast<int64_t*>(next_cell);
-      next_cell_coords = next_cell_id + 1; 
-      next_run = i;
-    }
-  }
-
-  if(next_cell != NULL) {
-    if(runs[next_run]->var_size()) {
-      memcpy(&cell_size, 
-             static_cast<char*>(next_cell) + sizeof(int64_t) + coords_size, 
-             sizeof(size_t));
-    }
-
-    runs[next_run]->advance_cell(cell_size + sizeof(int64_t));
-  }
-
-  return next_cell;
-}
-
-
-template<class T>
-void* WriteState::get_next_cell_with_2_ids(
-    SortedRun** runs, int runs_num, size_t& cell_size) const {
-  assert(runs_num > 0);
-  // For easy reference
-  int attribute_num = array_schema_->attribute_num();
-  size_t coords_size = array_schema_->cell_size(attribute_num);
-
-  // Get the first non-NULL cell
-  void *next_cell, *cell;
-  int next_run;
-  int r = 0;
-  do {
-    next_cell = runs[r]->current_cell(); 
-    ++r;
-  } while((next_cell == NULL) && (r < runs_num)); 
-
-  next_run = r-1;
-  int64_t* next_cell_tile_id = static_cast<int64_t*>(next_cell);
-  int64_t* next_cell_cell_id = next_cell_tile_id + 1;
-  void* next_cell_coords = next_cell_cell_id + 1; 
-  int64_t* cell_tile_id;
-  int64_t* cell_cell_id;
-  void* cell_coords; 
-
-  // Get the next cell in the global cell order
-  for(int i=r; i<runs_num; ++i) {
-    cell = runs[i]->current_cell();
-    if(cell == NULL)
-      continue;
-
-    cell_tile_id = static_cast<int64_t*>(cell);
-    cell_cell_id = cell_tile_id + 1;
-    cell_coords = cell_cell_id + 1;
-
-    if(*cell_tile_id < *next_cell_tile_id       ||
-       (*cell_tile_id == *next_cell_tile_id && 
-        *cell_cell_id < *next_cell_cell_id)     ||
-       (*cell_tile_id == *next_cell_tile_id && 
-        *cell_cell_id == *next_cell_cell_id &&
-         array_schema_->precedes(static_cast<T*>(cell_coords), 
-                                 static_cast<T*>(next_cell_coords)))) { 
-      next_cell = cell;
-      next_cell_tile_id = static_cast<int64_t*>(next_cell);
-      next_cell_cell_id = next_cell_tile_id;
-      next_cell_coords = next_cell_cell_id + 1; 
-      next_run = i;
-    }
-  }
-
-  if(next_cell != NULL) {
-    if(runs[next_run]->var_size()) {
-      memcpy(&cell_size, 
-             static_cast<char*>(next_cell) + 2*sizeof(int64_t) + coords_size, 
-             sizeof(size_t));
-    }
-
-    runs[next_run]->advance_cell(cell_size + 2*sizeof(int64_t));
-  }
-
-  return next_cell;
 }
 
 void WriteState::make_tiles(const std::string& dirname) {
@@ -842,97 +586,62 @@ void WriteState::make_tiles(const std::string& dirname) {
 // NOTE: This function applies only to irregular tiles
 template<class T>
 void WriteState::make_tiles(const std::string& dirname) {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size();
-  std::vector<std::string> filenames = get_filenames(dirname);
-  int runs_num = filenames.size();
+  int id_num = 0;
+  bool sorted = true;
 
-  if(runs_num == 0)
-    return;
+  // Create a cell
+  ::Cell cell(array_schema_, id_num);
 
-  // Information about the runs to be merged 
-  SortedRun** runs = new SortedRun*[runs_num];
-  for(int i=0; i<runs_num; ++i) {
-    runs[i] = new SortedRun(dirname + filenames[i], 
-                            cell_size == VAR_SIZE, 
-                            segment_size_);
-  }
+  // Create a file collection
+  BINFileCollection<T> bin_file_collection(*workspace_ + "/__temp");
+  bin_file_collection.open(array_schema_, id_num, dirname, sorted);
 
   // Loop over the cells
-  void* cell;
-  while((cell = get_next_cell<T>(runs, runs_num, cell_size)) != NULL) 
-    write_cell_sorted<T>(cell);
-
-  // Clean up
-  for(int i=0; i<runs_num; ++i) 
-    delete runs[i];
-  delete [] runs;
+  while(bin_file_collection >> cell) 
+    write_cell_sorted<T>(cell.cell());
 }
 
 // This function applies either to regular tiles with row- or column-major
 // order, or irregular tiles with Hilbert order
 template<class T>
 void WriteState::make_tiles_with_id(const std::string& dirname) {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size();
-  std::vector<std::string> filenames = get_filenames(dirname);
-  int runs_num = filenames.size();
+  int id_num = 1;
+  bool sorted = true;
 
-  if(runs_num == 0)
-    return;
+  // Create a cell
+  ::Cell cell(array_schema_, id_num);
 
-  // Information about the runs to be merged 
-  SortedRun** runs = new SortedRun*[runs_num];
-  for(int i=0; i<runs_num; ++i) {
-    runs[i] = new SortedRun(dirname + filenames[i], 
-                            cell_size == VAR_SIZE, 
-                            segment_size_);
-  }
+  // Create a file collection
+  BINFileCollection<T> bin_file_collection(*workspace_ + "/__temp");
+  bin_file_collection.open(array_schema_, id_num, dirname, sorted);
 
   // Loop over the cells
-  void* cell;
   if(array_schema_->has_regular_tiles()) {
-    while((cell = get_next_cell_with_id<T>(runs, runs_num, cell_size)) != NULL) 
-      write_cell_sorted_with_id<T>(cell);
-  } else { // Irregular + Hilbert cell order --> Skip the Hilber id
-    while((cell = get_next_cell_with_id<T>(runs, runs_num, cell_size)) != NULL) 
-      write_cell_sorted<T>(static_cast<char*>(cell) + sizeof(int64_t));
+    while(bin_file_collection >> cell) 
+      write_cell_sorted_with_id<T>(cell.cell());
+  } else {
+    while(bin_file_collection >> cell) 
+      write_cell_sorted<T>(static_cast<const char*>(cell.cell()) + 
+                           sizeof(int64_t));
   }
-
-  // Clean up
-  for(int i=0; i<runs_num; ++i) 
-    delete runs[i];
-  delete [] runs;
 }
 
 // NOTE: This function applies only to regular tiles
 template<class T>
 void WriteState::make_tiles_with_2_ids(const std::string& dirname) {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size();
-  std::vector<std::string> filenames = get_filenames(dirname);
-  int runs_num = filenames.size();
+  int id_num = 2;
+  bool sorted = true;
 
-  if(runs_num == 0)
-    return;
+  // Create a cell
+  ::Cell cell(array_schema_, id_num);
 
-  // Information about the runs to be merged 
-  SortedRun** runs = new SortedRun*[runs_num];
-  for(int i=0; i<runs_num; ++i) {
-    runs[i] = new SortedRun(dirname + filenames[i], 
-                            cell_size == VAR_SIZE, 
-                            segment_size_);
-  }
+  // Create a file collection
+  BINFileCollection<T> bin_file_collection(*workspace_ + "/__temp");
+  bin_file_collection.open(array_schema_, id_num,  dirname, sorted);
 
   // Loop over the cells
-  void* cell;
-  while((cell = get_next_cell_with_2_ids<T>(runs, runs_num, cell_size)) != NULL)
-    write_cell_sorted_with_2_ids<T>(cell);
-
-  // Clean up
-  for(int i=0; i<runs_num; ++i) 
-    delete runs[i];
-  delete [] runs;
+  while(bin_file_collection >> cell) 
+    write_cell_sorted<T>(cell.cell());
 }
 
 void WriteState::sort_run() {
@@ -992,7 +701,7 @@ void WriteState::sort_run_with_id() {
                 cells_with_id_.end(), 
                 SmallerRowWithId<double>(dim_num));
     }
-  } else if(cell_order == ArraySchema::CO_COLUMN_MAJOR) { // Rregular + col co
+  } else if(cell_order == ArraySchema::CO_COLUMN_MAJOR) { // Regular + col co
     if(*coords_type == typeid(int)) {
       std::sort(cells_with_id_.begin(), 
                 cells_with_id_.end(), 

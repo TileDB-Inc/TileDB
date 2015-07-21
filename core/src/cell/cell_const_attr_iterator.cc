@@ -44,7 +44,8 @@ CellConstAttrIterator::CellConstAttrIterator(
   int attribute_num = cell_->array_schema()->attribute_num();
 
   end_ = false;
-  offset_ = cell_->array_schema()->cell_size(attribute_num);
+  offset_ = cell_->array_schema()->cell_size(attribute_num) + 
+            cell_->ids_size();
   if(cell_->var_size())
     offset_ += sizeof(size_t);
 }

@@ -248,10 +248,10 @@ void QueryProcessor::export_csv(
       storage_manager_->begin<T>(ad, attribute_ids);
 
   // Prepare a cell
-  Cell cell(array_schema, cell_it->attribute_ids(), true);
+  Cell cell(array_schema, cell_it->attribute_ids(), 0, true);
 
   // Write cells into the CSV file
-  for(; !cell_it->end(); ++(*cell_it)) { 
+  for(int i=0; !cell_it->end(); ++(*cell_it), ++i) { 
     cell.set_cell(**cell_it);
     csv_file << cell.csv_line<T>(dim_ids, attribute_ids); 
   }
@@ -275,7 +275,7 @@ void QueryProcessor::export_csv_reverse(
       storage_manager_->rbegin<T>(ad, attribute_ids);
 
   // Prepare a cell
-  Cell cell(array_schema, cell_it->attribute_ids(), true);
+  Cell cell(array_schema, cell_it->attribute_ids(), 0, true);
 
   // Write cells into the CSV file
   for(; !cell_it->end(); ++(*cell_it)) { 

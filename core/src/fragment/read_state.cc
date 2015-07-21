@@ -34,6 +34,7 @@
 #include "read_state.h"
 #include <assert.h>
 #include <fcntl.h>
+#include <iostream>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -154,17 +155,23 @@ std::pair<size_t, int64_t> ReadState::load_payloads_into_segment(
   struct stat st;
   fstat(fd, &st);
   size_t segment_utilization = 0;
+  size_t offset_diff;
   int64_t tiles_in_segment = 0;
   int64_t pos = start_pos;
 
   // Calculate buffer size (largest size smaller than the segment_size_)
-  while(pos < tile_num && segment_utilization < segment_size_) {
+  while(pos < tile_num) {
     if(pos == tile_num-1)
-      segment_utilization += st.st_size - 
-                             book_keeping_->offset(attribute_id, pos);
+      offset_diff = st.st_size - 
+                    book_keeping_->offset(attribute_id, pos);
     else
-      segment_utilization += book_keeping_->offset(attribute_id, pos+1) - 
-                             book_keeping_->offset(attribute_id, pos);
+      offset_diff = book_keeping_->offset(attribute_id, pos+1) - 
+                    book_keeping_->offset(attribute_id, pos);
+    
+    if(segment_utilization + offset_diff > segment_size_)
+      break;
+
+    segment_utilization += offset_diff;
     pos++;
     tiles_in_segment++;
   }
@@ -172,6 +179,7 @@ std::pair<size_t, int64_t> ReadState::load_payloads_into_segment(
   assert(segment_utilization != 0);
   assert(book_keeping_->offset(attribute_id, start_pos) + segment_utilization <= 
          st.st_size);
+  assert(segment_utilization <= segment_size_);
 
   // Read payloads into buffer
   lseek(fd, book_keeping_->offset(attribute_id, start_pos), SEEK_SET);
@@ -183,7 +191,6 @@ std::pair<size_t, int64_t> ReadState::load_payloads_into_segment(
 
 void ReadState::load_tiles_from_disk(int attribute_id, int64_t start_pos) { 
   char* buffer;
-
   // Load the tile payloads from the disk into a segment, starting
   // from the tile at position start_pos
   std::pair<size_t, int64_t> ret = 

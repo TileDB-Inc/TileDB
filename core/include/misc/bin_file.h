@@ -42,7 +42,7 @@
  * between the BIN file (in hard disk) and the main memory in one I/O operation.
  * Unless otherwise defined, this default size is used. 
  */
-#define BIN_SEGMENT_SIZE 10000000 // 10 MB
+#define BIN_SEGMENT_SIZE 40000 // 40 KB
 
 /**
  * This class implements a simple BIN file with basic operations such as
@@ -54,7 +54,7 @@ class BINFile {
   /** Constructor. */
   BINFile();
   /** Constructor. */
-  BINFile(const ArraySchema* array_schema);
+  BINFile(const ArraySchema* array_schema, int id_num = 0);
   /** Constructor. */
   BINFile(const std::string& filename, const char* mode);
   /** Destructor. */
@@ -82,6 +82,8 @@ class BINFile {
   // OPERATORS
   /** Retrieves the next cell from the file.  */
   bool operator>>(Cell& cell);
+  /** Writes a cell to the file.  */
+  bool operator<<(const Cell& cell);
 
  private:
   // PRIVATE ATTRIBUTES
@@ -119,6 +121,10 @@ class BINFile {
   int64_t file_offset_;
     /** The name of the BIN file. */
   std::string filename_;
+  /** Number of ids in each cell stored in the file. */
+  int id_num_;
+  /** Stores the ids of a cell. */
+  void* ids_;
   /** 
    * The mode of the BIN file. There are three modes available:
    *

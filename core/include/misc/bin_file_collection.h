@@ -65,6 +65,7 @@ class BINFileCollection {
   /** Prepares the file collection. */
   int open( 
       const ArraySchema* array_schema,
+      int id_num,
       const std::string& path,
       bool sorted);
 
@@ -84,6 +85,8 @@ class BINFileCollection {
   std::vector<std::string> filenames_;
   /** File id from which we lastly accessed a cell. */
   int last_accessed_file_;
+  /** Number of ids in each cell. */
+  int id_num_;
   /** 
    * Determines the amount of data exchanged in an I/O operation between the 
    * disk and the main memory.
