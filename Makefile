@@ -12,7 +12,7 @@ OS := $(shell uname)
 # MPI compiler for C++
 MPIPATH = #/opt/mpich/dev/intel/default/bin/
 CC  = $(MPIPATH)mpicc -std=c11 -fPIC
-CXX = $(MPIPATH)mpicxx -std=c++11 -fPIC -fvisibility=hidden
+CXX = $(MPIPATH)mpicxx -std=c++11 -fPIC -fvisibility=hidden 
 
 # --- Directories --- #
 # Directories for the core code of TileDB

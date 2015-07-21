@@ -128,8 +128,6 @@ const Tile* ReadState::rget_tile_by_pos(int attribute_id, int64_t pos) {
     load_tiles_from_disk(attribute_id, start_pos);
   }
 
-  std::cout << "attr_id: " << attribute_id << "\n";
-  std::cout << pos_lower << " " << pos << " " << pos_upper << "\n";
   assert(pos >= pos_lower && pos <= pos_upper);
   assert(pos - pos_lower <= tiles_[attribute_id].size());
 

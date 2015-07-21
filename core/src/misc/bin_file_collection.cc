@@ -35,6 +35,7 @@
 #include "utils.h"
 #include <assert.h>
 #include <iostream>
+#include <queue>
 
 /******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS **************
@@ -45,6 +46,7 @@ BINFileCollection<T>::BINFileCollection(const std::string& path)
   : workspace_(path) {
   write_state_max_size_ = WRITE_STATE_MAX_SIZE;
   segment_size_ = SEGMENT_SIZE; 
+  pq_ = NULL;
 }
 
 template<class T>
@@ -58,16 +60,41 @@ BINFileCollection<T>::~BINFileCollection() {
 
 template<class T>
 int BINFileCollection<T>::close() {
+  // Clear BIN files
   int bin_files_num = int(bin_files_.size());
   for(int i=0; i<bin_files_num; ++i) {
     bin_files_[i]->close();
-    delete bin_files_[i];
-    delete cells_[i];
+    delete bin_files_[i]; 
   }
-
   bin_files_.clear();
+
+  // Clear cells
+  for(int i=0; i<cells_.size(); ++i)
+    delete cells_[i];
   cells_.clear();
 
+  // Clear the priority queue 
+  if(pq_ != NULL) {
+    std::priority_queue<std::pair<const Cell*, int>, 
+                        std::vector<std::pair<const Cell*, int> >, 
+                        Cell::Succeeds<T> >* 
+        pq = static_cast<std::priority_queue<
+                             std::pair<const Cell*, int>, 
+                             std::vector<std::pair<const Cell*, int> >,
+                             Cell::Succeeds<T> >*>(pq_);
+    while(!pq->empty()) {
+      delete pq->top().first;
+      pq->pop();
+    }
+    delete pq;
+    pq_ = NULL;
+  }
+
+  // Clear last popped cell
+  if(last_popped_cell_ != NULL)
+    delete last_popped_cell_;
+
+  // Delete directory
   delete_directory(workspace_);
 
   return 0;
@@ -83,6 +110,7 @@ int BINFileCollection<T>::open(
   array_schema_ = array_schema;
   sorted_ = sorted;
   last_accessed_file_ = -1;
+  last_popped_cell_ = NULL;
   id_num_ = id_num;
 
   // Create directory
@@ -97,6 +125,17 @@ int BINFileCollection<T>::open(
     std::cerr << ERROR_MSG_HEADER 
               << " Path '" << path << "' does not exists.\n";
     return TILEDB_EFILE;
+  }
+
+  // Create priority queue
+  std::priority_queue<std::pair<const Cell*, int>, 
+                      std::vector<std::pair<const Cell*, int> >, 
+                      Cell::Succeeds<T> >* pq;
+  if(sorted) {
+    pq = new std::priority_queue<std::pair<const Cell*, int>,
+                                 std::vector<std::pair<const Cell*, int> >,
+                                 Cell::Succeeds<T> >;
+    pq_ = pq;
   }
 
   // Open files and prepare first cells
@@ -114,7 +153,10 @@ int BINFileCollection<T>::open(
 
     cell = new Cell(array_schema_, id_num_);
     *bin_file >> *cell;
-    cells_.push_back(cell);
+    if(sorted)
+      pq->push(std::pair<const Cell*, int>(cell,i)); 
+    else
+      cells_.push_back(cell);
   }
 
   return 0;
@@ -129,10 +171,25 @@ bool BINFileCollection<T>::operator>>(Cell& cell) {
   assert(bin_files_.size());
 
   cell.set_cell(NULL);
+  std::priority_queue<std::pair<const Cell*, int>, 
+                        std::vector<std::pair<const Cell*, int> >, 
+                        Cell::Succeeds<T> >* 
+        pq = static_cast<std::priority_queue<
+                             std::pair<const Cell*, int>, 
+                             std::vector<std::pair<const Cell*, int> >,
+                             Cell::Succeeds<T> >*>(pq_);
 
   // Update the cell of the lastly accessed file
-  if(last_accessed_file_ != -1) 
-    *bin_files_[last_accessed_file_] >> *cells_[last_accessed_file_];
+  if(last_accessed_file_ != -1) { 
+    if(sorted_) {
+      Cell* cell = new Cell(array_schema_, id_num_); 
+      *bin_files_[last_accessed_file_] >> *cell;
+      if(cell->cell() != NULL)
+        pq->push(std::pair<const Cell*, int>(cell,last_accessed_file_));
+    } else { 
+      *bin_files_[last_accessed_file_] >> *cells_[last_accessed_file_];
+    }
+  }
 
   // In the case of 'sorted', we need to search for the 
   // the cell that appears first in the cell order
@@ -154,27 +211,14 @@ bool BINFileCollection<T>::operator>>(Cell& cell) {
       cell.set_cell(NULL);
     }
   } else {       // SORTED
-    int next_file;
-    // Get the first non-NULL cell
-    for(next_file=0; next_file<bin_files_.size(); ++next_file) {
-      if(cells_[next_file]->cell() != NULL) {
-        cell = *cells_[next_file];
-        break;
-      }
-    }
-
-    // Get the next cell in the global cell order
-    for(int i=next_file+1; i<bin_files_.size(); ++i) {
-      if(cells_[i]->cell() != NULL && 
-         Cell::Precedes<T>()(*cells_[i], cell)) { 
-        cell = *cells_[i];
-        next_file = i;
-      }
-    }
-
-    // The next file is the one to be accessed and, thus, 
-    // it will be the new last accessed file
-    last_accessed_file_ = next_file;
+    if(!pq->empty()) {
+      if(last_popped_cell_ != NULL)
+        delete last_popped_cell_;
+      cell = *(pq->top()).first;
+      last_popped_cell_ = (pq->top()).first;
+      last_accessed_file_ = (pq->top()).second;
+      pq->pop();
+    }  
   }
 
   if(cell.cell() != NULL) 
@@ -182,7 +226,6 @@ bool BINFileCollection<T>::operator>>(Cell& cell) {
   else 
     return false;
 }
-
 
 // Explicit template instantiations
 template class BINFileCollection<int>;

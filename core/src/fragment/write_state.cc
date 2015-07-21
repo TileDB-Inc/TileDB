@@ -461,8 +461,6 @@ void WriteState::flush_sorted_run_with_id() {
   BINFile file(array_schema_, 1);
   file.open(filename.str(), "w", segment_size_);
 
-std::cout << filename.str() << "\n";
-
   // Prepare cell
   ::Cell cell(array_schema_);
 
