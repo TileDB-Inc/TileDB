@@ -110,16 +110,26 @@ const Tile* ReadState::rget_tile_by_pos(int attribute_id, int64_t pos) {
     // Find the starting position, so that the pos tile is 
     // the last tile in the set of tiles loaded from the disk
     int64_t start_pos = pos; 
-    size_t segment_size = book_keeping_->tile_size(attribute_id, start_pos);
-    while(start_pos > 0 && segment_size < segment_size_) {
+    size_t segment_size = 0;
+    size_t tile_size;
+    while(start_pos >= 0) {
+      tile_size = book_keeping_->tile_size(attribute_id, start_pos);
+      if(segment_size + tile_size > segment_size_) {
+        ++start_pos;
+        break;
+      }
+      segment_size += tile_size;
       --start_pos;
-      segment_size += book_keeping_->tile_size(attribute_id, start_pos);
     }
+    if(start_pos < 0)
+      start_pos = 0;
 
     // The following updates pos_lower and pos_upper
     load_tiles_from_disk(attribute_id, start_pos);
   }
 
+  std::cout << "attr_id: " << attribute_id << "\n";
+  std::cout << pos_lower << " " << pos << " " << pos_upper << "\n";
   assert(pos >= pos_lower && pos <= pos_upper);
   assert(pos - pos_lower <= tiles_[attribute_id].size());
 
@@ -177,7 +187,7 @@ std::pair<size_t, int64_t> ReadState::load_payloads_into_segment(
   }
 
   assert(segment_utilization != 0);
-  assert(book_keeping_->offset(attribute_id, start_pos) + segment_utilization <= 
+  assert(book_keeping_->offset(attribute_id, start_pos) + segment_utilization <=
          st.st_size);
   assert(segment_utilization <= segment_size_);
 
