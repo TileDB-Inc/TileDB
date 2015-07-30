@@ -10,7 +10,7 @@ OS := $(shell uname)
 # CXX = g++ 
 
 # MPI compiler for C++
-MPIPATH = /opt/mpich/dev/intel/default/bin/
+MPIPATH = #/opt/mpich/dev/intel/default/bin/
 CXX = $(MPIPATH)mpicxx -std=c++11 -fPIC -fvisibility=hidden
 
 # --- Directories --- #
