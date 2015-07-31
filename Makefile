@@ -11,8 +11,7 @@ OS := $(shell uname)
 
 # MPI compiler for C++
 MPIPATH = #/opt/mpich/dev/intel/default/bin/
-CC  = $(MPIPATH)mpicc -std=c11 -fPIC
-CXX = $(MPIPATH)mpicxx -std=c++11 -fPIC -fvisibility=hidden 
+CXX = $(MPIPATH)mpicxx -std=c++11 -fPIC -fvisibility=hidden
 
 # --- Directories --- #
 # Directories for the core code of TileDB
@@ -145,7 +144,7 @@ tiledb_cmd: core $(TILEDB_CMD_BIN)
 
 la: core $(LA_OBJ) $(LA_BIN_DIR)/example_transpose
 
-rvma: core $(RVMA_OBJ) $(RVMA_BIN_DIR)/simple_test
+rvma: core $(RVMA_OBJ) #$(RVMA_BIN_DIR)/simple_test
 
 html: $(MANPAGES_HTML)
 
@@ -287,8 +286,8 @@ clean_la:
 $(RVMA_OBJ_DIR)/%.o: $(RVMA_SRC_DIR)/%.c
 	@test -d $(RVMA_OBJ_DIR) || mkdir -p $(RVMA_OBJ_DIR)
 	@echo "Compiling $<"
-	@$(CC) $(RVMA_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< -o $@
-	@$(CC) -MM $(CORE_INCLUDE_PATHS) $(RVMA_INCLUDE_PATHS) $< > $(@:.o=.d)
+	@$(CXX) $(RVMA_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< -o $@
+	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $(RVMA_INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
 	@rm -f $(@:.o=.d.tmp)
