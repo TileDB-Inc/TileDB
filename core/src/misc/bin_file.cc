@@ -58,13 +58,11 @@ BINFile::BINFile(const ArraySchema* array_schema, int id_num)
 
   if(id_num_ != 0) 
     ids_ = malloc(id_num_ * sizeof(int64_t));
-  else
-    ids_ = NULL;
 
   if(var_size_) {
     coords_size_ = array_schema_->coords_size();
     coords_ = malloc(coords_size_);
-  }
+  } 
 }
 
 BINFile::BINFile(const std::string& filename, const char* mode) { 
@@ -96,7 +94,7 @@ int BINFile::close() {
     if(((strcmp(mode_, "a") == 0) || (strcmp(mode_, "w") == 0)) && 
        buffer_offset_ != 0) {
       ssize_t bytes_flushed = flush_buffer();
-      if(bytes_flushed == -1)
+      if(bytes_flushed == -1) //TODO: delete buffer_
         return -1;
     }
     delete buffer_;
@@ -315,6 +313,7 @@ void BINFile::init() {
   buffer_end_ = 0;
   buffer_offset_ = 0;
   file_offset_ = 0;
+  ids_ = NULL;
 }
 
 ssize_t BINFile::read_segment() {
