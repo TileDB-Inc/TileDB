@@ -133,21 +133,14 @@ int64_t WriteState::cell_num() const {
 ******************************************************/
 
 void WriteState::flush() {
-
-std::cout << "1\n";
-
   // Make tiles, after finalizing the last run and merging the runs
   finalize_last_run();
-
-std::cout << "2\n";
 
   // Make tiles
   if(runs_num_ > 0)
     make_tiles(*temp_dirname_);
 
-std::cout << "3\n";
   flush_segments();
-std::cout << "4\n";
 }
 
 template<class T>

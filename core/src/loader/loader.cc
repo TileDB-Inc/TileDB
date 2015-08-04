@@ -584,8 +584,6 @@ int Loader::load_csv(
       storage_manager_->write_cell<T>(ad, cell.cell());
   }
 
-std::cout << "Wrote cells\n";
-
   // Clean up
   storage_manager_->close_array(ad);
   err = csv_file_collection.close();
