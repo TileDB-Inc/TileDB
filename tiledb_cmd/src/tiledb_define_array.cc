@@ -284,7 +284,7 @@ int parse_options(
   temp << dim_domains_str;
   if(temp.size() != 2*dim_num) {
     std::cerr << ERROR_MSG_HEADER  
-              << " The nunber of domain bounds does not match the"
+              << " The number of domain bounds does not match the"
               << " provided number of dimensions.\n";
     return -1;
   }
@@ -294,7 +294,7 @@ int parse_options(
   temp << types_str;
   if(temp.size() != attribute_num + 1) {
     std::cerr << ERROR_MSG_HEADER  
-              << " The nunber of types does not match the number of"
+              << " The number of types does not match the number of"
               << " attributes.\n";
     return -1;
   }
@@ -307,7 +307,7 @@ int parse_options(
     temp << tile_extents_str;
     if(temp.size() != dim_num) {
       std::cerr << ERROR_MSG_HEADER  
-                << " The nunber of tile extents does not match the number of"
+                << " The number of tile extents does not match the number of"
                 << " dimensions.\n";
       return -1;
     }

@@ -133,12 +133,21 @@ int64_t WriteState::cell_num() const {
 ******************************************************/
 
 void WriteState::flush() {
+
+std::cout << "1\n";
+
   // Make tiles, after finalizing the last run and merging the runs
   finalize_last_run();
 
+std::cout << "2\n";
+
   // Make tiles
-  make_tiles(*temp_dirname_);
+  if(runs_num_ > 0)
+    make_tiles(*temp_dirname_);
+
+std::cout << "3\n";
   flush_segments();
+std::cout << "4\n";
 }
 
 template<class T>
@@ -430,6 +439,7 @@ void WriteState::flush_sorted_run() {
   // Prepare BIN file
   std::stringstream filename;
   filename << *temp_dirname_ << "/" << runs_num_;
+
   BINFile file(array_schema_, 0);
   file.open(filename.str(), "w", segment_size_);
 
@@ -635,7 +645,7 @@ void WriteState::make_tiles_with_2_ids(const std::string& dirname) {
 
   // Create a file collection
   BINFileCollection<T> bin_file_collection(*workspace_ + "/__temp");
-  bin_file_collection.open(array_schema_, id_num,  dirname, sorted);
+  bin_file_collection.open(array_schema_, id_num, dirname, sorted);
 
   // Loop over the cells
   while(bin_file_collection >> cell) 
