@@ -107,6 +107,28 @@ void expand_buffer(void*& buffer, size_t size) {
   buffer = temp;
 }
 
+bool empty_directory(const std::string& dirname)  {
+  struct dirent *next_file;
+  DIR* dir = opendir(dirname.c_str());
+  
+  // If the directory does not exist, exit
+  if(dir == NULL)
+    return true;
+
+  int n = 0;
+
+  while((next_file = readdir(dir))) {
+    if(strcmp(next_file->d_name, ".") == 0 ||
+       strcmp(next_file->d_name, "..") == 0)
+      continue;
+    ++n;
+  } 
+  
+  closedir(dir);
+
+  return (n == 0) ? true : false;
+}
+
 void expand_mbr(const ArraySchema* array_schema,
                 const void* coords, void* mbr) {
   // For easy reference

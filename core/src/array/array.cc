@@ -61,15 +61,25 @@ Array::Array(
 Array::~Array() {
   if((mode_ == WRITE || mode_ == APPEND) && fragment_tree_.size() > 0) {
 
-    if(mode_ == APPEND && must_consolidate()) {
-      // Commit last fragment and prepare it for reading
-      fragments_.back()->flush_write_state();
-      fragments_.back()->commit_book_keeping();
-      fragments_.back()->init_read_state();
-      consolidate();
-    }
+    // Check if the last fragment is empty
+    std::string fragment_dirname = workspace_ + "/" +
+                                   array_schema_->array_name() + "/" + 
+                                   fragments_.back()->fragment_name();
 
-    flush_fragment_tree();
+    if(empty_directory(fragment_dirname)) { 
+      delete_fragment(fragments_.size()-1);
+      return;
+    } else { // Flush the last fragment
+      if(mode_ == APPEND && must_consolidate()) {
+        // Commit last fragment and prepare it for reading
+        fragments_.back()->flush_write_state();
+        fragments_.back()->commit_book_keeping();
+        fragments_.back()->init_read_state();
+        consolidate();
+      }
+
+      flush_fragment_tree();
+    }
   }
 
   close_fragments();

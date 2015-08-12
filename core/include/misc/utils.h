@@ -60,6 +60,9 @@ void delete_directory(const std::string& dirname);
 template<class T>
 bool duplicates(const std::vector<T>& v);
 
+/** True if the directory is empty or not existent. */
+bool empty_directory(const std::string& dirname); 
+
 /** Expands the input MBR with the input coordinates. */
 void expand_mbr(const ArraySchema* array_schema, 
                 const void* coords, void* mbr);

@@ -177,6 +177,10 @@ void BookKeeping::commit_bounding_coordinates() {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   int64_t tile_num = tile_ids_.size();
+
+  if(tile_num == 0)
+    return;
+
   size_t cell_size = array_schema_->cell_size(attribute_num);
 
   // Prepare filename
@@ -224,6 +228,10 @@ void BookKeeping::commit_mbrs() {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   int64_t tile_num = tile_ids_.size();
+
+  if(tile_num == 0)
+    return;
+
   size_t cell_size = array_schema_->cell_size(attribute_num);
 
   // prepare file name
@@ -267,6 +275,9 @@ void BookKeeping::commit_offsets() {
   // For easy reference
   int64_t tile_num = tile_ids_.size();
 
+  if(tile_num == 0)
+    return;
+
   // Prepare file name
   std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" + 
                          *fragment_name_ + "/" +
@@ -303,6 +314,9 @@ void BookKeeping::commit_offsets() {
 void BookKeeping::commit_tile_ids() {
   // For easy reference
   int64_t tile_num = tile_ids_.size();
+
+  if(tile_num == 0)
+    return;
 
   // Prepare file name
   std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
