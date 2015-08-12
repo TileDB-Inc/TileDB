@@ -627,12 +627,19 @@ template<class T>
 void StorageManager::write_cell(int ad, const void* cell) const {
   assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
+  assert(arrays_[ad]->mode() == Array::WRITE ||
+         arrays_[ad]->mode() == Array::APPEND);
 
   arrays_[ad]->write_cell<T>(cell);
 }
 
 template<class T>
 void StorageManager::write_cell_sorted(int ad, const void* cell) const {
+  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
+  assert(arrays_[ad] != NULL);
+  assert(arrays_[ad]->mode() == Array::WRITE ||
+         arrays_[ad]->mode() == Array::APPEND);
+
   arrays_[ad]->write_cell_sorted<T>(cell); 
 }
 
