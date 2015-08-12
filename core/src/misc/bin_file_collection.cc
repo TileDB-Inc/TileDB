@@ -91,8 +91,10 @@ int BINFileCollection<T>::close() {
   }
 
   // Clear last popped cell
-  if(last_popped_cell_ != NULL)
+  if(last_popped_cell_ != NULL) {
     delete last_popped_cell_;
+    last_popped_cell_ = NULL;
+  }
 
   // Delete directory
   delete_directory(workspace_);
