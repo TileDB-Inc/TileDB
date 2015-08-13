@@ -60,6 +60,9 @@ Array::Array(
 
 Array::~Array() {
   if((mode_ == WRITE || mode_ == APPEND) && fragment_tree_.size() > 0) {
+    // Commit last fragment
+    fragments_.back()->flush_write_state();
+    fragments_.back()->commit_book_keeping();
 
     // Check if the last fragment is empty
     std::string fragment_dirname = workspace_ + "/" +
@@ -68,14 +71,12 @@ Array::~Array() {
 
     if(empty_directory(fragment_dirname)) { 
       delete_fragment(fragments_.size()-1);
-      return;
-    } else { // Flush the last fragment
+    } else { 
       if(mode_ == APPEND && must_consolidate()) {
-        // Commit last fragment and prepare it for reading
-        fragments_.back()->flush_write_state();
-        fragments_.back()->commit_book_keeping();
+        // Prepare last fragment for reading
         fragments_.back()->init_read_state();
         consolidate();
+// TODO: Handle empty array after consolidation.
       }
 
       flush_fragment_tree();
