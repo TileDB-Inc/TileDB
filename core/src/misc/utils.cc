@@ -121,7 +121,8 @@ bool empty_directory(const std::string& dirname)  {
     if(strcmp(next_file->d_name, ".") == 0 ||
        strcmp(next_file->d_name, "..") == 0)
       continue;
-    ++n;
+    n = 1;
+    break;
   } 
   
   closedir(dir);

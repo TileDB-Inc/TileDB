@@ -4,6 +4,17 @@
 
 OS := $(shell uname)
 
+# --- Debug/Release mode handler --- #
+BUILD ?= debug
+CFLAGS =
+ifeq ($(BUILD),debug)
+  CFLAGS += -DDEBUG -Wall -O0 -g
+endif
+
+ifeq ($(BUILD),release)
+  CFLAGS += -DNDEBUG -O2 -s 
+endif
+
 # --- Compilers --- #
 
 # C++ compiler
@@ -11,7 +22,7 @@ OS := $(shell uname)
 
 # MPI compiler for C++
 MPIPATH = #/opt/mpich/dev/intel/default/bin/
-CXX = $(MPIPATH)mpicxx -std=c++11 -fPIC -fvisibility=hidden
+CXX = $(MPIPATH)mpicxx -std=c++11 -fPIC -fvisibility=hidden $(CFLAGS)
 
 # --- Directories --- #
 # Directories for the core code of TileDB
@@ -19,15 +30,42 @@ CORE_INCLUDE_DIR = core/include
 CORE_INCLUDE_SUBDIRS = $(wildcard core/include/*)
 CORE_SRC_DIR = core/src
 CORE_SRC_SUBDIRS = $(wildcard core/src/*)
-CORE_OBJ_DIR = core/obj
-CORE_BIN_DIR = core/bin
-CORE_LIB_DIR = core/lib
+CORE_OBJ_DEB_DIR = core/obj/debug
+CORE_BIN_DEB_DIR = core/bin/debug
+ifeq ($(BUILD),debug)
+  CORE_OBJ_DIR = $(CORE_OBJ_DEB_DIR)
+  CORE_BIN_DIR = $(CORE_BIN_DEB_DIR)
+endif
+CORE_OBJ_REL_DIR = core/obj/release
+CORE_BIN_REL_DIR = core/bin/release
+ifeq ($(BUILD),release)
+  CORE_OBJ_DIR = $(CORE_OBJ_REL_DIR)
+  CORE_BIN_DIR = $(CORE_BIN_REL_DIR)
+endif
+CORE_LIB_DEB_DIR = core/lib/debug
+ifeq ($(BUILD),debug)
+  CORE_LIB_DIR = $(CORE_LIB_DEB_DIR)
+endif
+CORE_LIB_REL_DIR = core/lib/release
+ifeq ($(BUILD),release)
+  CORE_LIB_DIR = $(CORE_LIB_REL_DIR)
+endif
 
 # Directories for the command-line-based frontend of TileDB
 TILEDB_CMD_INCLUDE_DIR = tiledb_cmd/include
 TILEDB_CMD_SRC_DIR = tiledb_cmd/src
-TILEDB_CMD_OBJ_DIR = tiledb_cmd/obj
-TILEDB_CMD_BIN_DIR = tiledb_cmd/bin
+TILEDB_CMD_OBJ_DEB_DIR = tiledb_cmd/obj/debug
+TILEDB_CMD_BIN_DEB_DIR = tiledb_cmd/bin/debug
+ifeq ($(BUILD),debug)
+  TILEDB_CMD_OBJ_DIR = $(TILEDB_CMD_OBJ_DEB_DIR)
+  TILEDB_CMD_BIN_DIR = $(TILEDB_CMD_BIN_DEB_DIR)
+endif
+TILEDB_CMD_OBJ_REL_DIR = tiledb_cmd/obj/release
+TILEDB_CMD_BIN_REL_DIR = tiledb_cmd/bin/release
+ifeq ($(BUILD),release)
+  TILEDB_CMD_OBJ_DIR = $(TILEDB_CMD_OBJ_REL_DIR)
+  TILEDB_CMD_BIN_DIR = $(TILEDB_CMD_BIN_REL_DIR)
+endif
 
 # Directories of Google Test
 GTEST_DIR = gtest
@@ -140,7 +178,7 @@ core: $(CORE_OBJ)
 
 libtiledb: core $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT)
 
-tiledb_cmd: core $(TILEDB_CMD_BIN)
+tiledb_cmd: core $(TILEDB_CMD_OBJ) $(TILEDB_CMD_BIN)
 
 la: core $(LA_OBJ) $(LA_BIN_DIR)/example_transpose
 
@@ -179,7 +217,8 @@ $(CORE_OBJ_DIR)/%.o: $(CORE_SRC_DIR)/%.cc
 
 clean_core: 
 	@echo 'Cleaning core'
-	@rm -rf $(CORE_OBJ_DIR)/* $(CORE_BIN_DIR)/* 
+	@rm -rf $(CORE_OBJ_DEB_DIR)/* $(CORE_OBJ_REL_DIR)/* \
+                $(CORE_BIN_DEB_DIR)/* $(CORE_BIN_REL_DIR)/*
 
 #############
 # libtiledb #
@@ -210,7 +249,7 @@ $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT): $(CORE_OBJ)
 
 clean_libtiledb:
 	@echo "Cleaning libtiledb.$(SHLIB_EXT)"
-	@rm -rf $(CORE_LIB_DIR)/*
+	@rm -rf $(CORE_LIB_DEB_DIR)/* $(CORE_LIB_REL_DIR)/*
 
 ##############
 # TileDB_cmd #
@@ -242,7 +281,8 @@ $(TILEDB_CMD_BIN_DIR)/%: $(TILEDB_CMD_OBJ_DIR)/%.o $(CORE_OBJ)
 
 clean_tiledb_cmd:
 	@echo 'Cleaning tiledb_cmd'
-	@rm -f $(TILEDB_CMD_OBJ_DIR)/* $(TILEDB_CMD_BIN_DIR)/*
+	@rm -f $(TILEDB_CMD_OBJ_DEB_DIR)/* $(TILEDB_CMD_OBJ_REL_DIR)/* \
+               $(TILEDB_CMD_BIN_DEB_DIR)/* $(TILEDB_CMD_BIN_REL_DIR)/*
  
 ######
 # LA #

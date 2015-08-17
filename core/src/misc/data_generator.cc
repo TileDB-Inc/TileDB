@@ -152,7 +152,7 @@ void DataGenerator::generate_uniform_attributes(
 
     // Generate value(s) for each attribute
     if(attr_type == &typeid(char)) {
-      if(val_num == VAR_SIZE) {
+      if(array_schema_->val_num(i) == VAR_SIZE) {
         std::stringstream s;
         std::uniform_int_distribution<char> distribution(45,126);
         for(int i=0; i<val_num; ++i) 
@@ -204,7 +204,7 @@ size_t DataGenerator::generate_uniform_attributes(
 
     // Generate value(s) for each attribute
     if(attr_type == &typeid(char)) {
-      if(val_num == VAR_SIZE) {
+      if(array_schema_->val_num(i) == VAR_SIZE) {
         std::stringstream s;
         std::uniform_int_distribution<char> distribution(45,126);
         for(int i=0; i<val_num; ++i) 
