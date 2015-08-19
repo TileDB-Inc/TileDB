@@ -36,13 +36,15 @@
 #include "cell.h"
 #include "write_state.h"
 #include "utils.h"
-#include <algorithm>
 #include <assert.h>
 #include <fcntl.h>
 #include <math.h>
+#include <parallel/algorithm>
 #include <sstream>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 
 /******************************************************
@@ -118,6 +120,7 @@ WriteState::~WriteState() {
     free(bounding_coordinates_.first);
   if(bounding_coordinates_.second != NULL) 
     free(bounding_coordinates_.second);
+
 }
 
 /******************************************************
@@ -148,69 +151,133 @@ void WriteState::write_cell(const void* input_cell) {
   // Find cell size
   size_t cell_size = ::Cell(input_cell, array_schema_).cell_size();
 
-  // Copy the input cell
-  void* cell = malloc(cell_size);
-  memcpy(cell, input_cell, cell_size);
-
   // Write each logical cell to the array
   if(array_schema_->has_irregular_tiles()) { // Irregular tiles
     if(array_schema_->cell_order() == ArraySchema::CO_ROW_MAJOR ||
        array_schema_->cell_order() == ArraySchema::CO_COLUMN_MAJOR) {
+      // Check if run must be flushed
+      size_t size_cost = sizeof(Cell) + cell_size;
+      if(run_size_ + size_cost > write_state_max_size_) {
+        sort_run();
+        flush_sorted_run();
+      }
+      // Create cell
       Cell new_cell;
-      new_cell.cell_ = cell;
-      write_cell(new_cell, cell_size); 
+      new_cell.cell_ = copy_cell(input_cell, cell_size);
+      cells_.push_back(new_cell);
+      run_size_ += size_cost;
     } else { // array_schema->cell_order() == ArraySchema::CO_HILBERT
+      // Check if run must be flushed
+      size_t size_cost = sizeof(CellWithId) + cell_size;
+      if(run_size_ + size_cost > write_state_max_size_) {
+        sort_run_with_id();
+        flush_sorted_run_with_id();
+      }
+      // Create cell
       CellWithId new_cell;
-      new_cell.cell_ = cell;
+      new_cell.cell_ = copy_cell(input_cell, cell_size);
       new_cell.id_ = 
-          array_schema_->cell_id_hilbert<T>(static_cast<const T*>(cell));
-      write_cell(new_cell, cell_size); 
+          array_schema_->cell_id_hilbert<T>
+              (static_cast<const T*>(new_cell.cell_));
+      cells_with_id_.push_back(new_cell);
+      run_size_ += size_cost;
     }
   } else { // Regular tiles
     if(array_schema_->tile_order() == ArraySchema::TO_ROW_MAJOR) { 
       if(array_schema_->cell_order() == ArraySchema::CO_ROW_MAJOR ||
          array_schema_->cell_order() == ArraySchema::CO_COLUMN_MAJOR) {
+        // Check if run must be flushed
+        size_t size_cost = sizeof(CellWithId) + cell_size;
+        if(run_size_ + size_cost > write_state_max_size_) {
+          sort_run_with_id();
+          flush_sorted_run_with_id();
+        }
+        // Create cell
         CellWithId new_cell;
-        new_cell.cell_ = cell;
-        new_cell.id_ = array_schema_->tile_id_row_major(cell);
-        write_cell(new_cell, cell_size); 
+        new_cell.cell_ = copy_cell(input_cell, cell_size);
+        new_cell.id_ = array_schema_->tile_id_row_major(new_cell.cell_);
+        cells_with_id_.push_back(new_cell);
+        run_size_ += size_cost;
       } else { // array_schema->cell_order() == ArraySchema::CO_HILBERT) {
+        // Check if run must be flushed
+        size_t size_cost = sizeof(CellWith2Ids) + cell_size;
+        if(run_size_ + size_cost > write_state_max_size_) {
+          sort_run_with_2_ids();
+          flush_sorted_run_with_2_ids();
+        }
+        // Create cell
         CellWith2Ids new_cell;
-        new_cell.cell_ = cell;
-        new_cell.tile_id_ = array_schema_->tile_id_row_major(cell);
+        new_cell.cell_ = copy_cell(input_cell, cell_size);
+        new_cell.tile_id_ = array_schema_->tile_id_row_major(new_cell.cell_);
         new_cell.cell_id_ = 
-          array_schema_->cell_id_hilbert<T>(static_cast<const T*>(cell));
-        write_cell(new_cell, cell_size); 
+          array_schema_->cell_id_hilbert<T>
+            (static_cast<const T*>(new_cell.cell_));
+        cells_with_2_ids_.push_back(new_cell);
+        run_size_ += size_cost;
       }
     } else if(array_schema_->tile_order() == ArraySchema::TO_COLUMN_MAJOR) { 
       if(array_schema_->cell_order() == ArraySchema::CO_ROW_MAJOR ||
          array_schema_->cell_order() == ArraySchema::CO_COLUMN_MAJOR) {
+        // Check if run must be flushed
+        size_t size_cost = sizeof(CellWithId) + cell_size;
+        if(run_size_ + size_cost > write_state_max_size_) {
+          sort_run_with_id();
+          flush_sorted_run_with_id();
+        }
+        // Create cell
         CellWithId new_cell;
-        new_cell.cell_ = cell;
-        new_cell.id_ = array_schema_->tile_id_column_major(cell);
-        write_cell(new_cell, cell_size); 
+        new_cell.cell_ = copy_cell(input_cell, cell_size);
+        new_cell.id_ = array_schema_->tile_id_column_major(new_cell.cell_);
+        cells_with_id_.push_back(new_cell);
+        run_size_ += size_cost;
       } else { // array_schema->cell_order() == ArraySchema::CO_HILBERT) {
+        // Check if run must be flushed
+        size_t size_cost = sizeof(CellWith2Ids) + cell_size;
+        if(run_size_ + size_cost > write_state_max_size_) {
+          sort_run_with_2_ids();
+          flush_sorted_run_with_2_ids();
+        }
+        // Create cell
         CellWith2Ids new_cell;
-        new_cell.cell_ = cell;
-        new_cell.tile_id_ = array_schema_->tile_id_column_major(cell);
+        new_cell.cell_ = copy_cell(input_cell, cell_size);
+        new_cell.tile_id_ = array_schema_->tile_id_column_major(new_cell.cell_);
         new_cell.cell_id_ = 
-          array_schema_->cell_id_hilbert<T>(static_cast<const T*>(cell));
-        write_cell(new_cell, cell_size); 
+              array_schema_->cell_id_hilbert<T>
+                (static_cast<const T*>(new_cell.cell_));
+        cells_with_2_ids_.push_back(new_cell);
+        run_size_ += size_cost;
       }
     } else if(array_schema_->tile_order() == ArraySchema::TO_HILBERT) { 
       if(array_schema_->cell_order() == ArraySchema::CO_ROW_MAJOR ||
          array_schema_->cell_order() == ArraySchema::CO_COLUMN_MAJOR) {
+        // Check if run must be flushed
+        size_t size_cost = sizeof(CellWithId) + cell_size;
+        if(run_size_ + size_cost > write_state_max_size_) {
+          sort_run_with_id();
+          flush_sorted_run_with_id();
+        }
+        // Create cell
         CellWithId new_cell;
-        new_cell.cell_ = cell;
-        new_cell.id_ = array_schema_->tile_id_hilbert(cell);
-        write_cell(new_cell, cell_size); 
+        new_cell.cell_ = copy_cell(input_cell, cell_size);
+        new_cell.id_ = array_schema_->tile_id_hilbert(new_cell.cell_);
+        cells_with_id_.push_back(new_cell);
+        run_size_ += size_cost;
       } else { // array_schema->cell_order() == ArraySchema::CO_HILBERT) {
+        // Check if run must be flushed
+        size_t size_cost = sizeof(CellWith2Ids) + cell_size;
+        if(run_size_ + size_cost > write_state_max_size_) {
+          sort_run_with_2_ids();
+          flush_sorted_run_with_2_ids();
+        }
+        // Create cell
         CellWith2Ids new_cell;
-        new_cell.cell_ = cell;
-        new_cell.tile_id_ = array_schema_->tile_id_hilbert(cell);
+        new_cell.cell_ = copy_cell(input_cell, cell_size);
+        new_cell.tile_id_ = array_schema_->tile_id_hilbert(new_cell.cell_);
         new_cell.cell_id_ = 
-          array_schema_->cell_id_hilbert<T>(static_cast<const T*>(cell));
-        write_cell(new_cell, cell_size); 
+          array_schema_->cell_id_hilbert<T>
+            (static_cast<const T*>(new_cell.cell_));
+        cells_with_2_ids_.push_back(new_cell);
+        run_size_ += size_cost;
       }
     } 
   }
@@ -369,6 +436,52 @@ void WriteState::append_coordinates_to_segment(
   segment_utilization_[attribute_num] += coords_size;
 }
 
+void* WriteState::copy_cell(const void* cell, size_t cell_size) {
+  int buffers_num = buffers_.size();
+
+  // First copy
+  if(buffers_num == 0) {
+    size_t new_size = BUFFER_INITIAL_SIZE;
+    while(cell_size > new_size)
+      new_size *= 2;
+    if(new_size > write_state_max_size_)
+      new_size = write_state_max_size_;
+    assert(cell_size < write_state_max_size_);
+    void* new_buffer = malloc(new_size);
+    buffers_.push_back(new_buffer);
+    ++buffers_num;
+    buffers_sizes_.push_back(new_size);
+    buffers_utilization_.push_back(0);
+  }
+
+  size_t total_buffer_size = 0;
+  for(int i=0; i<buffers_num; ++i)
+    total_buffer_size += buffers_sizes_[i];
+
+  // Buffer cannot hold the cell - new buffer allocation
+  if(buffers_utilization_.back() + cell_size > buffers_sizes_.back()) {
+    size_t new_size = buffers_sizes_.back() * 2;
+    while(cell_size > new_size)
+      new_size *= 2;
+    if(new_size > write_state_max_size_ - total_buffer_size)
+      new_size = write_state_max_size_ - total_buffer_size;
+    assert(cell_size < new_size);
+    void* new_buffer = malloc(new_size);
+    buffers_.push_back(new_buffer);
+    ++buffers_num;
+    buffers_sizes_.push_back(new_size);
+    buffers_utilization_.push_back(0);
+  }
+
+  // Copy cell to buffer
+  void* pointer_in_buffer = static_cast<char*>(buffers_.back()) + 
+                            buffers_utilization_.back();
+  memcpy(pointer_in_buffer, cell, cell_size);
+  buffers_utilization_.back() += cell_size;
+
+  return pointer_in_buffer;
+}
+
 void WriteState::finalize_last_run() {
   if(cells_.size() > 0) {
     sort_run();
@@ -431,7 +544,7 @@ void WriteState::flush_segments() {
 void WriteState::flush_sorted_run() {
   // Prepare BIN file
   std::stringstream filename;
-  filename << *temp_dirname_ << "/" << runs_num_;
+  filename << *temp_dirname_ << runs_num_;
 
   BINFile file(array_schema_, 0);
   file.open(filename.str(), "w", segment_size_);
@@ -441,7 +554,8 @@ void WriteState::flush_sorted_run() {
 
   // Write the cells into the file 
   int64_t cell_num = cells_.size();
-  for(int64_t i=0; i<cell_num; ++i) { 
+
+  for(int64_t i=0; i<cell_num; ++i) {
     cell.set_cell(cells_[i].cell_);
     file << cell;
   }
@@ -450,8 +564,11 @@ void WriteState::flush_sorted_run() {
   file.close();
 
   // Update write state
-  for(int64_t i=0; i<cell_num; ++i)
-    free(cells_[i].cell_);
+  for(int i=0; i<buffers_.size(); ++i)
+    free(buffers_[i]);
+  buffers_.clear();
+  buffers_sizes_.clear();
+  buffers_utilization_.clear();
   cells_.clear();
   run_size_ = 0;
   ++runs_num_;
@@ -479,8 +596,11 @@ void WriteState::flush_sorted_run_with_id() {
   file.close();
 
   // Update write state
-  for(int64_t i=0; i<cell_num; ++i)
-    free(cells_with_id_[i].cell_);
+  for(int i=0; i<buffers_.size(); ++i)
+    free(buffers_[i]);
+  buffers_.clear();
+  buffers_sizes_.clear();
+  buffers_utilization_.clear();
   cells_with_id_.clear();
   run_size_ = 0;
   ++runs_num_;
@@ -509,8 +629,11 @@ void WriteState::flush_sorted_run_with_2_ids() {
   file.close();
 
   // Update write state
-  for(int64_t i=0; i<cell_num; ++i)
-    free(cells_with_2_ids_[i].cell_);
+  for(int i=0; i<buffers_.size(); ++i)
+    free(buffers_[i]);
+  buffers_.clear();
+  buffers_sizes_.clear();
+  buffers_utilization_.clear();
   cells_with_2_ids_.clear();
   run_size_ = 0;
   ++runs_num_;
@@ -665,13 +788,13 @@ void WriteState::sort_run() {
     }
   } else if(cell_order == ArraySchema::CO_COLUMN_MAJOR) {
     if(*coords_type == typeid(int)) {
-      std::sort(cells_.begin(), cells_.end(), SmallerCol<int>(dim_num));
+      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerCol<int>(dim_num));
     } else if(*coords_type == typeid(int64_t)) {
-      std::sort(cells_.begin(), cells_.end(), SmallerCol<int64_t>(dim_num));
+      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerCol<int64_t>(dim_num));
     } else if(*coords_type == typeid(float)) {
-      std::sort(cells_.begin(), cells_.end(), SmallerCol<float>(dim_num));
+      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerCol<float>(dim_num));
     } else if(*coords_type == typeid(double)) {
-      std::sort(cells_.begin(), cells_.end(), SmallerCol<double>(dim_num));
+      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerCol<double>(dim_num));
     }
   }
 }
@@ -687,36 +810,36 @@ void WriteState::sort_run_with_id() {
   if(tile_order == ArraySchema::TO_NONE || // Irregular + Hilbert co
      cell_order == ArraySchema::CO_ROW_MAJOR) { // Regular + row co
     if(*coords_type == typeid(int)) {
-      std::sort(cells_with_id_.begin(), cells_with_id_.end(), 
+      __gnu_parallel::sort(cells_with_id_.begin(), cells_with_id_.end(), 
                 SmallerRowWithId<int>(dim_num));
     } else if(*coords_type == typeid(int64_t)) {
-      std::sort(cells_with_id_.begin(), 
+      __gnu_parallel::sort(cells_with_id_.begin(), 
                 cells_with_id_.end(), 
                 SmallerRowWithId<int64_t>(dim_num));
     } else if(*coords_type == typeid(float)) {
-      std::sort(cells_with_id_.begin(), 
+      __gnu_parallel::sort(cells_with_id_.begin(), 
                 cells_with_id_.end(), 
                 SmallerRowWithId<float>(dim_num));
     } else if(*coords_type == typeid(double)) {
-      std::sort(cells_with_id_.begin(), 
+      __gnu_parallel::sort(cells_with_id_.begin(), 
                 cells_with_id_.end(), 
                 SmallerRowWithId<double>(dim_num));
     }
   } else if(cell_order == ArraySchema::CO_COLUMN_MAJOR) { // Regular + col co
     if(*coords_type == typeid(int)) {
-      std::sort(cells_with_id_.begin(), 
+      __gnu_parallel::sort(cells_with_id_.begin(), 
                 cells_with_id_.end(), 
                 SmallerColWithId<int>(dim_num));
     } else if(*coords_type == typeid(int64_t)) {
-      std::sort(cells_with_id_.begin(), 
+      __gnu_parallel::sort(cells_with_id_.begin(), 
                 cells_with_id_.end(), 
                 SmallerColWithId<int64_t>(dim_num));
     } else if(*coords_type == typeid(float)) {
-      std::sort(cells_with_id_.begin(), 
+      __gnu_parallel::sort(cells_with_id_.begin(), 
                 cells_with_id_.end(), 
                 SmallerColWithId<float>(dim_num));
     } else if(*coords_type == typeid(double)) {
-      std::sort(cells_with_id_.begin(), 
+      __gnu_parallel::sort(cells_with_id_.begin(), 
                 cells_with_id_.end(), 
                 SmallerColWithId<double>(dim_num));
     }
@@ -730,59 +853,22 @@ void WriteState::sort_run_with_2_ids() {
   const std::type_info* coords_type = array_schema_->type(attribute_num);
 
   if(*coords_type == typeid(int)) {
-    std::sort(cells_with_2_ids_.begin(), 
+    __gnu_parallel::sort(cells_with_2_ids_.begin(), 
               cells_with_2_ids_.end(), 
               SmallerWith2Ids<int>(dim_num));
   } else if(*coords_type == typeid(int64_t)) {
-    std::sort(cells_with_2_ids_.begin(), 
+    __gnu_parallel::sort(cells_with_2_ids_.begin(), 
               cells_with_2_ids_.end(), 
               SmallerWith2Ids<int64_t>(dim_num));
   } else if(*coords_type == typeid(float)) {
-    std::sort(cells_with_2_ids_.begin(), 
+    __gnu_parallel::sort(cells_with_2_ids_.begin(), 
               cells_with_2_ids_.end(), 
               SmallerWith2Ids<float>(dim_num));
   } else if(*coords_type == typeid(double)) {
-    std::sort(cells_with_2_ids_.begin(), 
+    __gnu_parallel::sort(cells_with_2_ids_.begin(), 
               cells_with_2_ids_.end(), 
               SmallerWith2Ids<double>(dim_num));
   }
-}
-
-void WriteState::write_cell(const Cell& cell, size_t cell_size) {
-
-  size_t size_cost = sizeof(Cell) + cell_size;
-
-  if(run_size_ + size_cost > write_state_max_size_) {
-    sort_run();
-    flush_sorted_run();
-  }
-
-  cells_.push_back(cell);
-  run_size_ += size_cost;
-}
-
-void WriteState::write_cell(const CellWithId& cell, size_t cell_size) {
-  size_t size_cost = sizeof(CellWithId) + cell_size;
-
-  if(run_size_ + size_cost > write_state_max_size_) {
-    sort_run_with_id();
-    flush_sorted_run_with_id();
-  }
-
-  cells_with_id_.push_back(cell);
-  run_size_ += size_cost;
-}
-
-void WriteState::write_cell(const CellWith2Ids& cell, size_t cell_size) {
-  size_t size_cost = sizeof(CellWith2Ids) + cell_size;
-
-  if(run_size_ + size_cost > write_state_max_size_) {
-    sort_run_with_2_ids();
-    flush_sorted_run_with_2_ids();
-  }
-
-  cells_with_2_ids_.push_back(cell);
-  run_size_ += size_cost;
 }
 
 template<class T>

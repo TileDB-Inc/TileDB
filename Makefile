@@ -4,15 +4,19 @@
 
 OS := $(shell uname)
 
+# Large file support
+LFS_CFLAGS = -D_FILE_OFFSET_BITS=64
+
 # --- Debug/Release mode handler --- #
-BUILD ?= debug
-CFLAGS =
+BUILD ?= debug 
+CFLAGS = -fopenmp
 ifeq ($(BUILD),debug)
-  CFLAGS += -DDEBUG -Wall -O0 -g
+#  CFLAGS += -DDEBUG -Wall -O0 -g
+  CFLAGS += -DDEBUG -O0 -g
 endif
 
 ifeq ($(BUILD),release)
-  CFLAGS += -DNDEBUG -O2 -s 
+  CFLAGS += -DNDEBUG -O3 
 endif
 
 # --- Compilers --- #
@@ -22,7 +26,8 @@ endif
 
 # MPI compiler for C++
 MPIPATH = #/opt/mpich/dev/intel/default/bin/
-CXX = $(MPIPATH)mpicxx -std=c++11 -fPIC -fvisibility=hidden $(CFLAGS)
+CXX = $(MPIPATH)mpicxx -std=c++11 -fPIC -fvisibility=hidden \
+      $(LFS_CFLAGS) $(CFLAGS)
 
 # --- Directories --- #
 # Directories for the core code of TileDB
@@ -117,7 +122,7 @@ OPENMP_LIB_PATHS = -L$(OPENMP_LIB_DIR)
 
 # --- Libs --- #
 MPI_LIB = -lmpi
-OPENMP_LIB = -fopenmp
+OPENMP_LIB = -fopenmp 
 
 # --- File Extensions --- #
 ifeq ($(OS), Darwin)

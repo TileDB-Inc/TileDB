@@ -59,6 +59,12 @@ class CSVFileCollection {
   /** Destructor. */
   ~CSVFileCollection();
 
+  // ACCESSORS
+  /** Returns the number of bytes read from the collection. */
+  ssize_t bytes_read() const;
+  /** Returns the size of the collection in bytes. */
+  ssize_t size() const;
+
   // BASIC METHODS
   /** Clear the file collection data from main memory. */
   int close(); 

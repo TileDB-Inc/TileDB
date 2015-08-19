@@ -71,6 +71,12 @@ class CSVFile {
   CSVFile(const std::string& filename, const char* mode);
   /** Destructor. */
   ~CSVFile();
+
+  // ACCESSORS
+  /** Returns the number of bytes read from the file. */
+  ssize_t bytes_read() const;
+  /** Returns the size of the file in bytes. */
+  ssize_t size() const;
  
   // MUTATORS
   /** Closes the CSV file. */

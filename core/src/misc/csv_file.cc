@@ -80,6 +80,26 @@ CSVFile::~CSVFile() {
 }
 
 /******************************************************
+********************** ACCESSORS **********************
+******************************************************/
+
+ssize_t CSVFile::bytes_read() const {
+  if(file_offset_ == 0)
+    return 0;
+  else 
+    return file_offset_ - segment_size_ + buffer_offset_;
+}
+
+ssize_t CSVFile::size() const {
+  int fd = ::open(filename_.c_str(), O_RDONLY);
+  struct stat st;
+  fstat(fd, &st);
+  ::close(fd);
+
+  return st.st_size;
+}
+
+/******************************************************
 *********************** MUTATORS **********************
 ******************************************************/
 

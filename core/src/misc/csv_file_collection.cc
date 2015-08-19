@@ -35,6 +35,7 @@
 #include "utils.h"
 #include <assert.h>
 #include <iostream>
+#include <time.h>
 
 /******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS **************
@@ -47,6 +48,30 @@ CSVFileCollection<T>::CSVFileCollection() {
 template<class T>
 CSVFileCollection<T>::~CSVFileCollection() {
   close();
+}
+
+/******************************************************
+********************** ACCESSORS **********************
+******************************************************/
+
+template<class T>
+ssize_t CSVFileCollection<T>::bytes_read() const {
+  ssize_t r_bytes_read = 0;
+  int csv_files_num = int(csv_files_.size());
+  for(int i=0; i<csv_files_num; ++i) 
+    r_bytes_read += csv_files_[i]->bytes_read();
+
+  return r_bytes_read;
+}
+
+template<class T>
+ssize_t CSVFileCollection<T>::size() const {
+  ssize_t r_size = 0;
+  int csv_files_num = int(csv_files_.size());
+  for(int i=0; i<csv_files_num; ++i) 
+    r_size += csv_files_[i]->size();
+
+  return r_size;
 }
 
 /******************************************************

@@ -184,7 +184,7 @@ int main(int argc, char** argv) {
   std::stringstream csv_filename;
   csv_filename << "~/stavrospapadopoulos/TileDB/data/A_" 
                << mpi_handler->rank() << ".csv";
-  err = loader->load_csv("A", csv_filename.str());
+  err = loader->load_csv("A", csv_filename.str(), false);
   if(err == -1) {
 // TODO    std::cout << "[Proc_" << mpi_handler->rank() 
 //              << "::TileDB::Loader::fatal_error] " << err_msg << "\n";

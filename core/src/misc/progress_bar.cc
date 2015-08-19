@@ -55,6 +55,9 @@ ProgressBar::~ProgressBar() {
 
 void ProgressBar::load(size_t amount) {
   incomplete_ += amount;
+  if(incomplete_ > complete_)
+    incomplete_ = complete_;
+
   ratio_ = (incomplete_ / complete_);
   length_ = ratio_ * max_length_;
 

@@ -42,7 +42,7 @@
  * between the BIN file (in hard disk) and the main memory in one I/O operation.
  * Unless otherwise defined, this default size is used. 
  */
-#define BIN_SEGMENT_SIZE 40000 // 40 KB
+#define BIN_SEGMENT_SIZE 10000000 // ~10 MB
 
 /**
  * This class implements a simple BIN file with basic operations such as

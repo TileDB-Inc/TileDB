@@ -37,17 +37,20 @@
 #include "csv_file.h"
 #include "csv_file_collection.h"
 #include "loader.h"
+#include "progress_bar.h"
 #include "special_values.h"
 #include "utils.h"
+#include <assert.h>
+#include <fcntl.h>
+#include <iostream>
+#include <sstream>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <assert.h>
-#include <iostream>
-#include <sstream>
+#include <sys/time.h>
+#include <time.h>
+#include <unistd.h>
 
 /******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS***************
@@ -247,6 +250,7 @@ int Loader::load_bin(
   return err;
 }
 
+/*
 int Loader::load_csv(
     const std::string& array_name,
     const std::string& filename) const {
@@ -268,6 +272,7 @@ int Loader::load_csv(
 
   return err;
 }
+*/
 
 int Loader::load_sorted_bin(
     const std::string& filename, const std::string& array_name) const {
@@ -285,6 +290,7 @@ int Loader::load_sorted_bin(
   return err;
 }
 
+/*
 int Loader::update_csv(
     const std::string& filename, const std::string& array_name,
     std::string& err_msg) const {
@@ -301,6 +307,7 @@ int Loader::update_csv(
 
   return err;
 }
+*/
 
 /******************************************************
 ******************* PRIVATE METHODS *******************
@@ -593,6 +600,7 @@ int Loader::load_csv(
   return TILEDB_OK;
 }
 
+/*
 int Loader::load_csv(int ad, const std::string& filename) const {
   // For easy reference
   const ArraySchema* array_schema;
@@ -615,7 +623,9 @@ int Loader::load_csv(int ad, const std::string& filename) const {
     assert(false); // this should not happen
   return -1;
 }
+*/
 
+/*
 template<class T>
 int Loader::load_csv(int ad, const std::string& filename) const {
   // Open the csv file 
@@ -689,6 +699,7 @@ int Loader::load_csv(int ad, const std::string& filename) const {
 
   return TILEDB_OK;
 }
+*/
 
 int Loader::load_sorted_bin(const std::string& filename, int ad) const {
   // For easy reference
@@ -719,8 +730,6 @@ int Loader::load_sorted_bin(const std::string& filename, int ad) const {
   int err = storage_manager_->get_array_schema(ad, array_schema);
   if(err == -1)
     return -1;
-  ssize_t cell_size = array_schema->cell_size();
-  bool var_size = (cell_size == VAR_SIZE);
 
   // Open the BIN file 
   BINFile bin_file(array_schema);

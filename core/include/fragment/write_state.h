@@ -39,6 +39,9 @@
 #include "tile.h"
 #include <iostream>
 
+/** Initial buffer size (in bytes). It will keep on doubling. */
+#define BUFFER_INITIAL_SIZE 40000
+
 /** Stores the state necessary when writing cells to a fragment. */
 class WriteState {
  public:
@@ -111,6 +114,12 @@ class WriteState {
   BookKeeping* book_keeping_;
   /** The bounding coordinates of the currently populated tile. */
   Tile::BoundingCoordinatesPair bounding_coordinates_;
+  /** Buffers that store the cells. */
+  std::vector<void*> buffers_;
+  /** Sizes of buffers that store the cells. */
+  std::vector<size_t> buffers_sizes_;
+  /** Utilization of buffers that store the cells. */
+  std::vector<size_t> buffers_utilization_;
   /** Stores logical cells. */
   std::vector<Cell> cells_;
   /** Stores logical cells. */
@@ -158,6 +167,8 @@ class WriteState {
                                    size_t& attr_size);
   /** Appends the coordinate to the corresponding segment. */
   void append_coordinates_to_segment(const char* coords);
+  /** Copies a cell in the buffers of the write state. */
+  void* copy_cell(const void* cell, size_t cell_size);
   /** Sorts and writes the last run on the disk. */
   void finalize_last_run();
   /** Flushes a segment to its corresponding file. */
@@ -200,12 +211,6 @@ class WriteState {
   template<class T>
   void update_tile_info(const T* coords, int64_t tile_id, 
                         const std::vector<size_t>& attr_sizes);
-  /** Writes a cell into the fragment. */
-  void write_cell(const Cell& cell, size_t cell_size);
-  /** Writes a cell into the fragment. */
-  void write_cell(const CellWithId& cell, size_t cell_size);
-  /** Writes a cell into the fragment. */
-  void write_cell(const CellWith2Ids& cell, size_t cell_size);
 };
 
 /**  A logical cell. */
