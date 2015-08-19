@@ -34,6 +34,7 @@
 #include "csv_line.h"
 #include "special_values.h"
 #include <string.h>
+#include <time.h>
 
 /******************************************************
 ************ CONSTRUCTORS & DESTRUCTORS ***************

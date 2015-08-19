@@ -278,7 +278,8 @@ class ArraySchema {
       const ArraySchema& array_schema_B,
       const std::string& result_array_name);
   /** Converts a cell from a CSV line format to a binary cell format. */
-  void csv_line_to_cell(CSVLine& csv_line, void*& cell) const;
+  void csv_line_to_cell(
+      CSVLine& csv_line, void*& cell, size_t& cell_size) const;
   /** 
    * Returns a pair of vectors of attribute ids. The first contains the 
    * attribute ids corresponding to the input names. The second includes the 

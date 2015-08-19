@@ -59,8 +59,13 @@ CSVFile::CSVFile(const ArraySchema* array_schema)
   buffer_ = NULL;
   buffer_end_ = 0;
   buffer_offset_ = 0;
-  if(array_schema_->cell_size() != VAR_SIZE)
+  if(array_schema_->cell_size() != VAR_SIZE) {
     cell_ = malloc(array_schema_->cell_size());
+    allocated_cell_size_ = array_schema_->cell_size();
+  } else {
+    cell_ = malloc(CSV_INITIAL_VAR_CELL_SIZE);
+    allocated_cell_size_ = CSV_INITIAL_VAR_CELL_SIZE;
+  }
   file_offset_ = 0;
 }
 
@@ -230,7 +235,7 @@ bool CSVFile::operator>>(Cell& cell) {
     return false;
   }
 
-  array_schema_->csv_line_to_cell(csv_line, cell_);
+  array_schema_->csv_line_to_cell(csv_line, cell_, allocated_cell_size_);
   cell.set_cell(cell_);
 
   return true;

@@ -44,6 +44,9 @@
  */
 #define BIN_SEGMENT_SIZE 10000000 // ~10 MB
 
+/** Initial size for a variable cell. */
+#define BIN_INITIAL_VAR_CELL_SIZE 4000
+
 /**
  * This class implements a simple BIN file with basic operations such as
  * getting reading and writing of binary data. 
@@ -87,6 +90,8 @@ class BINFile {
 
  private:
   // PRIVATE ATTRIBUTES
+  /** Important for variable cells. */
+  size_t allocated_cell_size_;
   /** The array schema. */
   const ArraySchema* array_schema_;
   /** 

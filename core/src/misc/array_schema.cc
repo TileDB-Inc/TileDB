@@ -42,6 +42,7 @@
 #include <iostream>
 #include <set>
 #include <stdio.h>
+#include <time.h>
 
 /******************************************************
 ************ CONSTRUCTORS & DESTRUCTORS ***************
@@ -1619,17 +1620,23 @@ ArraySchema ArraySchema::create_join_result_schema(
                        array_schema_A.consolidation_step_);
 } 
 
+// --- Cell format ---
+// coordinates, cell_size, 
+//	attribute#1_value#1, ...            (fixed-sized attribute)
+// 	val_num, attribute#2_value#1,...,   (variable-sized attribute)
 void ArraySchema::csv_line_to_cell(
     CSVLine& csv_line,
-    void*& cell) const {
+    void*& cell,
+    size_t& cell_size) const {
   // In the case of variable cells, calculate cell size and create buffer
   // freeing the previous cell
-  size_t cell_size;
+  size_t var_cell_size;
   if(cell_size_ == VAR_SIZE) { 
-    cell_size = calculate_cell_size(csv_line);
-    if(cell != NULL)
-      free(cell);
-    cell = malloc(cell_size);
+    var_cell_size = calculate_cell_size(csv_line);
+    if(var_cell_size > cell_size) {
+      expand_buffer(cell, cell_size);
+      cell_size *= 2; 
+    }
   }
 
 // TODO: Error messages
@@ -1641,7 +1648,7 @@ void ArraySchema::csv_line_to_cell(
 
   // Append cell size 
   if(cell_size_ == VAR_SIZE) {
-    memcpy(static_cast<char*>(cell) + offset, &cell_size, sizeof(size_t));
+    memcpy(static_cast<char*>(cell) + offset, &var_cell_size, sizeof(size_t));
     offset += sizeof(size_t);
   }
 
@@ -2144,6 +2151,7 @@ ssize_t ArraySchema::calculate_cell_size(CSVLine& csv_line) const {
         ++csv_line;
       } else {
         int num;
+
         if(!(csv_line >> num))
           return -1; // Error
 

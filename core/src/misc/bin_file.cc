@@ -59,9 +59,14 @@ BINFile::BINFile(const ArraySchema* array_schema, int id_num)
   if(id_num_ != 0) 
     ids_ = malloc(id_num_ * sizeof(int64_t));
 
-  if(var_size_) {
+  if(!var_size_) {
+      cell_ = malloc(cell_size_ + id_num_ * sizeof(int64_t));
+      allocated_cell_size_ = cell_size_ + id_num_ * sizeof(int64_t);
+  } else {
     coords_size_ = array_schema_->coords_size();
     coords_ = malloc(coords_size_);
+    cell_ = malloc(BIN_INITIAL_VAR_CELL_SIZE);
+    allocated_cell_size_ = BIN_INITIAL_VAR_CELL_SIZE;
   } 
 }
 
@@ -225,8 +230,6 @@ bool BINFile::operator>>(Cell& cell) {
   }
  
   if(!var_size_) { // Fixed-sized cells
-    if(cell_ == NULL)
-      cell_ = malloc(cell_size_ + id_num_ * sizeof(int64_t));
     bytes_read = read(cell_, cell_size_ + id_num_ * sizeof(int64_t) );
 
     if(bytes_read == 0) {
@@ -257,9 +260,10 @@ bool BINFile::operator>>(Cell& cell) {
     assert(bytes_read > 0);
 
     // Prepare a cell
-    if(cell_ != NULL)
-      free(cell_);
-    cell_ = malloc(cell_size_ + id_num_ * sizeof(int64_t));
+    if(allocated_cell_size_ < cell_size_ + id_num_ * sizeof(int64_t)) {
+      expand_buffer(cell_, allocated_cell_size_);
+      allocated_cell_size_ *= 2;
+    }
 
     // Copy ids, coordinates and cell size to cell
     memcpy(cell_, ids_, id_num_ * sizeof(int64_t));
