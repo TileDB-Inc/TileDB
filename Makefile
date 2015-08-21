@@ -26,7 +26,7 @@ endif
 
 # MPI compiler for C++
 MPIPATH = #/opt/mpich/dev/intel/default/bin/
-CXX = g++ -std=c++11 -fPIC -fvisibility=hidden \
+CXX = $(MPIPATH)mpicxx -std=c++11 -fPIC -fvisibility=hidden \
       $(LFS_CFLAGS) $(CFLAGS)
 
 # --- Directories --- #
