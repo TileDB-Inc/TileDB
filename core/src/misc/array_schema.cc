@@ -49,6 +49,7 @@
 ******************************************************/
 
 ArraySchema::ArraySchema() {
+  coords_ = NULL;
 }
 
 ArraySchema::ArraySchema(
@@ -98,6 +99,8 @@ ArraySchema::ArraySchema(
     if(cell_size_ != VAR_SIZE)
       cell_size_ += cell_sizes_[i]; 
   }
+
+  coords_ = malloc(cell_sizes_[attribute_num_]);
 
   // Set type sizes
   type_sizes_.resize(attribute_num_ + 1);
@@ -166,6 +169,8 @@ ArraySchema::ArraySchema(
       cell_size_ += cell_sizes_[i]; 
   }
 
+  coords_ = malloc(cell_sizes_[attribute_num_]);
+
   // Set type sizes
   type_sizes_.resize(attribute_num_ + 1);
   for(int i=0; i<=attribute_num_; ++i)
@@ -181,6 +186,8 @@ ArraySchema::ArraySchema(
 }
 
 ArraySchema::~ArraySchema() {
+  if(coords_ != NULL)
+    free(coords_);
 }
 
 /******************************************************
@@ -538,7 +545,7 @@ std::string ArraySchema::serialize_csv() const {
   // Copy consolidation step (default 1)  
   schema << consolidation_step_; 
 
-  return schema.str();
+  return schema.c_str();
 }
 
 int ArraySchema::smallest_attribute() const {
@@ -767,6 +774,10 @@ void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
       cell_size_ += cell_sizes_[i]; 
   }
 
+  if(coords_ != NULL)
+    free(coords_);
+  coords_ = malloc(cell_sizes_[attribute_num_]);
+
   compute_hilbert_cell_bits();
   if(tile_extents_.size() != 0) { // Only for regular tiles
     compute_hilbert_tile_bits();
@@ -792,9 +803,9 @@ void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
  * It returns 0 on success. On error, it prints a message on stderr and
  * returns -1. 
  */                                                            
-int ArraySchema::deserialize_csv(const std::string& array_schema_str) {
+int ArraySchema::deserialize_csv(std::string array_schema_str) {
   // Create a CSVLine object to parse array_schema_str
-  CSVLine array_schema_csv(array_schema_str);
+  CSVLine array_schema_csv(&array_schema_str[0]);
 
   // Tempory variable to get a CSV value as a string
   std::string s; 
@@ -1433,6 +1444,10 @@ int ArraySchema::set_val_num(const std::vector<int>& val_num) {
       cell_size_ += cell_sizes_[i]; 
   }
 
+  if(coords_ != NULL)
+    free(coords_);
+  coords_ = malloc(cell_sizes_[attribute_num_]);
+
   return 0;
 }
 
@@ -1628,32 +1643,22 @@ void ArraySchema::csv_line_to_cell(
     CSVLine& csv_line,
     void*& cell,
     size_t& cell_size) const {
-  // In the case of variable cells, calculate cell size and create buffer
-  // freeing the previous cell
-  size_t var_cell_size;
-  if(cell_size_ == VAR_SIZE) { 
-    var_cell_size = calculate_cell_size(csv_line);
-    if(var_cell_size > cell_size) {
-      expand_buffer(cell, cell_size);
-      cell_size *= 2; 
-    }
-  }
-
 // TODO: Error messages
   size_t offset = 0;
 
   // Append coordinates
-  append_coordinates(csv_line, cell); 
-  offset += coords_size();
+  append_coordinates(csv_line, cell, cell_size, offset); 
+  size_t coords_size = offset; 
 
-  // Append cell size 
-  if(cell_size_ == VAR_SIZE) {
-    memcpy(static_cast<char*>(cell) + offset, &var_cell_size, sizeof(size_t));
+  // Make space for cell size 
+  if(cell_size_ == VAR_SIZE) 
     offset += sizeof(size_t);
-  }
 
   // Append attribute values
-  append_attributes(csv_line, cell, offset);
+  append_attributes(csv_line, cell, cell_size, offset);
+
+  if(cell_size_ == VAR_SIZE) 
+    memcpy(static_cast<char*>(cell) + coords_size, &offset, sizeof(size_t));
 }
 
 bool ArraySchema::has_irregular_tiles() const {
@@ -2055,28 +2060,34 @@ const ArraySchema* ArraySchema::transpose(
 ******************************************************/
 
 void ArraySchema::append_attributes(
-    CSVLine& csv_line, void* cell, size_t& offset) const {
+    CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const {
   for(int i=0; i<attribute_num_; ++i) {
     if(types_[i] == &typeid(char))
-      append_attribute<char>(csv_line, val_num_[i], cell, offset);
+      append_attribute<char>(csv_line, val_num_[i], cell, cell_size, offset);
     else if(types_[i] == &typeid(int))
-      append_attribute<int>(csv_line, val_num_[i], cell, offset);
+      append_attribute<int>(csv_line, val_num_[i], cell, cell_size, offset);
     else if(types_[i] == &typeid(int64_t))
-      append_attribute<int64_t>(csv_line, val_num_[i], cell, offset);
+      append_attribute<int64_t>(csv_line, val_num_[i], cell, cell_size, offset);
     else if(types_[i] == &typeid(float))
-      append_attribute<float>(csv_line, val_num_[i], cell, offset);
+      append_attribute<float>(csv_line, val_num_[i], cell, cell_size, offset);
     else if(types_[i] == &typeid(double))
-      append_attribute<double>(csv_line, val_num_[i], cell, offset);
+      append_attribute<double>(csv_line, val_num_[i], cell, cell_size, offset);
   }
 }
 
 template<class T>
 void ArraySchema::append_attribute(
-    CSVLine& csv_line, int val_num, void* cell, size_t& offset) const {
+    CSVLine& csv_line, int val_num, void*& cell, 
+    size_t& cell_size, size_t& offset) const {
   T v;
   char* c_cell = static_cast<char*>(cell);
 
   if(val_num != VAR_SIZE) { // Fixed-sized attribute 
+    while(offset + val_num*sizeof(T) > cell_size) {
+      expand_buffer(cell, cell_size);
+      c_cell = static_cast<char*>(cell);
+      cell_size *= 2;
+    } 
     for(int i=0; i<val_num; ++i) {
       csv_line >> v;
       memcpy(c_cell + offset, &v, sizeof(T));
@@ -2087,6 +2098,13 @@ void ArraySchema::append_attribute(
       std::string s;
       csv_line >> s;
       int s_size = s.size();
+
+      while(offset + s_size + sizeof(int) > cell_size) {
+        expand_buffer(cell, cell_size);
+        c_cell = static_cast<char*>(cell);
+        cell_size *= 2;
+      } 
+
       memcpy(c_cell + offset, &s_size, sizeof(int));
       offset += sizeof(int);
       memcpy(c_cell + offset, s.c_str(), s.size());
@@ -2094,6 +2112,13 @@ void ArraySchema::append_attribute(
     } else {
       int num;
       csv_line >> num;
+
+      while(offset + num*sizeof(T) + sizeof(int) > cell_size) {
+        expand_buffer(cell, cell_size);
+        c_cell = static_cast<char*>(cell);
+        cell_size *= 2;
+      } 
+
       memcpy(c_cell + offset, &num, sizeof(int));
       offset += sizeof(int);
       for(int i=0; i<num; ++i) {
@@ -2105,20 +2130,30 @@ void ArraySchema::append_attribute(
   }
 }
 
-void ArraySchema::append_coordinates(CSVLine& csv_line, void* cell) const {
+void ArraySchema::append_coordinates(
+    CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const {
   if(types_[attribute_num_] == &typeid(int))
-    append_coordinates<int>(csv_line, cell);
+    append_coordinates<int>(csv_line, cell, cell_size, offset);
   if(types_[attribute_num_] == &typeid(int64_t))
-    append_coordinates<int64_t>(csv_line, cell);
+    append_coordinates<int64_t>(csv_line, cell, cell_size, offset);
   if(types_[attribute_num_] == &typeid(float))
-    append_coordinates<float>(csv_line, cell);
+    append_coordinates<float>(csv_line, cell, cell_size, offset);
   if(types_[attribute_num_] == &typeid(double))
-    append_coordinates<double>(csv_line, cell);
+    append_coordinates<double>(csv_line, cell, cell_size, offset);
 }
 
 template<class T>
-void ArraySchema::append_coordinates(CSVLine& csv_line, void* cell) const {
-  T* coords = new T[dim_num_];
+void ArraySchema::append_coordinates(
+    CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const {
+//  T* coords = new T[dim_num_];
+
+  T* coords = static_cast<T*>(coords_);
+  size_t coords_size = dim_num_*sizeof(T);
+
+  while(offset + coords_size > cell_size) {
+    expand_buffer(cell, cell_size);
+    cell_size *= 2;
+  } 
 
   for(int i=0; i<dim_num_; ++i) {
     if(!(csv_line >> coords[i])) {
@@ -2126,9 +2161,10 @@ void ArraySchema::append_coordinates(CSVLine& csv_line, void* cell) const {
     }
   }
 
-  memcpy(cell, coords, dim_num_*sizeof(T));
+  memcpy(cell, coords, coords_size);
+  offset += coords_size;
 
-  delete [] coords;
+//  delete [] coords;
 }
 
 // --- Cell format ---
@@ -2147,7 +2183,7 @@ ssize_t ArraySchema::calculate_cell_size(CSVLine& csv_line) const {
       csv_line += val_num_[i];
     } else {                                     // Variable-sized attribute
       if(types_[i] == &typeid(char)) {
-        cell_size += sizeof(int) + (*csv_line).size()*sizeof(char);
+        cell_size += sizeof(int) + strlen(*csv_line)*sizeof(char);
         ++csv_line;
       } else {
         int num;

@@ -247,12 +247,11 @@ int parse_options(
 
   // ----- Check number of workspaces workspace
   temp << workspace;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one workspaces provided.\n";
     return -1;
   }
-  workspace = temp.str(); // Ignore trailing comma
 
   // *********************************************************
   // Serialize all array schema items into a single CSV string
@@ -261,7 +260,7 @@ int parse_options(
   // ----- array name
   temp.clear();
   temp << array_name;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one array names provided.\n";
     return -1;
@@ -270,19 +269,19 @@ int parse_options(
   // ----- attribute_num and attributes
   temp.clear();
   temp << attribute_names_str;
-  int attribute_num = temp.size();
+  int attribute_num = temp.val_num();
   array_schema_csv << attribute_num;
   array_schema_csv << temp;
   // ----- dim_num and dimensions
   temp.clear();
   temp << dim_names_str;
-  int dim_num = temp.size();
+  int dim_num = temp.val_num();
   array_schema_csv << dim_num;
   array_schema_csv << temp;
   // ----- dimension domains
   temp.clear();
   temp << dim_domains_str;
-  if(temp.size() != 2*dim_num) {
+  if(temp.val_num() != 2*dim_num) {
     std::cerr << ERROR_MSG_HEADER  
               << " The number of domain bounds does not match the"
               << " provided number of dimensions.\n";
@@ -292,7 +291,8 @@ int parse_options(
   // ----- types
   temp.clear();
   temp << types_str;
-  if(temp.size() != attribute_num + 1) {
+
+  if(temp.val_num() != attribute_num + 1) {
     std::cerr << ERROR_MSG_HEADER  
               << " The number of types does not match the number of"
               << " attributes.\n";
@@ -305,7 +305,7 @@ int parse_options(
     array_schema_csv << NULL_CHAR;
   } else {
     temp << tile_extents_str;
-    if(temp.size() != dim_num) {
+    if(temp.val_num() != dim_num) {
       std::cerr << ERROR_MSG_HEADER  
                 << " The number of tile extents does not match the number of"
                 << " dimensions.\n";
@@ -319,7 +319,7 @@ int parse_options(
     array_schema_csv << NULL_CHAR;
   } else {
     temp << cell_order_str;
-    if(temp.size() > 1) {
+    if(temp.val_num() > 1) {
       std::cerr << ERROR_MSG_HEADER  
                 << " More than one cell orders provided.\n";
       return -1;
@@ -332,7 +332,7 @@ int parse_options(
     array_schema_csv << NULL_CHAR;
   } else {
     temp << tile_order_str;
-    if(temp.size() > 1) {
+    if(temp.val_num() > 1) {
       std::cerr << ERROR_MSG_HEADER  
                 << " More than one tile orders provided.\n";
       return -1;
@@ -345,7 +345,7 @@ int parse_options(
     array_schema_csv << NULL_CHAR;
   } else {
     temp << capacity_str;
-    if(temp.size() > 1) {
+    if(temp.val_num() > 1) {
       std::cerr << ERROR_MSG_HEADER  
                 << " More than one capacities provided.\n";
       return -1;
@@ -358,7 +358,7 @@ int parse_options(
     array_schema_csv << NULL_CHAR;
   } else {
     temp << consolidation_step_str;
-    if(temp.size() > 1) {
+    if(temp.val_num() > 1) {
       std::cerr << ERROR_MSG_HEADER  
                 << " More than one consolidation steps provided.\n";
       return -1;
@@ -369,7 +369,7 @@ int parse_options(
   // *********************************************************
   // Set the array schema (CSV) string
   // *********************************************************
-  array_schema_str = array_schema_csv.str();
+  array_schema_str = array_schema_csv.c_str();
 
   return 0;
 }

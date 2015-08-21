@@ -132,39 +132,35 @@ int parse_options(
   // ----- array name
   CSVLine temp;
   temp << array_name;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one array names provided.\n";
     return -1;
   }
-  array_name = temp.str(); // Ignore trailing comma
   // ----- mode
   temp.clear();
   temp << mode;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one modes provided.\n";
     return -1;
   }
-  mode = temp.str(); // Ignore trailing comma
   // ----- path
   temp.clear();
   temp << path;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one paths provided.\n";
     return -1;
   }
-  path = temp.str(); // Ignore trailing comma
   // ----- workspace
   temp.clear();
   temp << workspace;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one workspaces provided.\n";
     return -1;
   }
-  workspace = temp.str(); // Ignore trailing comma
 
   // Get sorted
   if(mode == "" || mode == "unsorted") {

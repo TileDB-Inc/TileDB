@@ -164,39 +164,35 @@ int parse_options(
   // ----- array_name
   CSVLine temp;
   temp << array_name;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one array names provided.\n";
     return -1;
   }
-  array_name = temp.str(); // Ignore trailing comma
   // ----- workspace
   temp.clear();
   temp << workspace;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one workspaces provided.\n";
     return -1;
   }
-  workspace = temp.str(); // Ignore trailing comma
   // ----- filename
   temp.clear();
   temp << filename;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one files names provided.\n";
     return -1;
   }
-  filename = temp.str(); // Ignore trailing comma
   // ----- filetype
   temp.clear();
   temp << filetype;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one file types provided.\n";
     return -1;
   }
-  filetype = temp.str(); // Ignore trailing comma
   if(filetype != "csv" && filetype != "bin") {
     std::cerr << ERROR_MSG_HEADER 
               << " Unknown file type '" << filetype << "'.\n";
@@ -205,21 +201,19 @@ int parse_options(
   // ----- cell_num_str
   temp.clear();
   temp << cell_num_str;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one numbers of cells provided.\n";
     return -1;
   }
-  cell_num_str = temp.str(); // Ignore trailing comma
   // ----- seed_str
   temp.clear();
   temp << seed_str;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one seeds provided.\n";
     return -1;
   }
-  seed_str = temp.str(); // Ignore trailing comma
 
   // Get cell_num
   if(!is_non_negative_integer(cell_num_str.c_str())) {

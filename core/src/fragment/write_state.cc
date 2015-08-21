@@ -493,6 +493,10 @@ void WriteState::finalize_last_run() {
     sort_run_with_2_ids();
     flush_sorted_run_with_2_ids();
   }
+
+  cells_.clear();
+  cells_with_id_.clear();
+  cells_with_2_ids_.clear();
 }
 
 void WriteState::flush_segment(int attribute_id) {
@@ -570,6 +574,7 @@ void WriteState::flush_sorted_run() {
   buffers_sizes_.clear();
   buffers_utilization_.clear();
   cells_.clear();
+  cells_.reserve(cell_num);
   run_size_ = 0;
   ++runs_num_;
 }
@@ -602,6 +607,7 @@ void WriteState::flush_sorted_run_with_id() {
   buffers_sizes_.clear();
   buffers_utilization_.clear();
   cells_with_id_.clear();
+  cells_with_id_.reserve(cell_num);
   run_size_ = 0;
   ++runs_num_;
 }
@@ -635,6 +641,7 @@ void WriteState::flush_sorted_run_with_2_ids() {
   buffers_sizes_.clear();
   buffers_utilization_.clear();
   cells_with_2_ids_.clear();
+  cells_with_2_ids_.reserve(cell_num);
   run_size_ = 0;
   ++runs_num_;
 }

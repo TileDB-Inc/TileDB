@@ -203,7 +203,7 @@ class ArraySchema {
    * Creates an array schema (setting its members) from the serialized info
    * in the input string. Returns 0 on success, and -1 on error.
    */
-  int deserialize_csv(const std::string& array_schema_str);
+  int deserialize_csv(std::string array_schema_str);
   /** Sets the array name. Returns 0 on success and -1 on error. */
   int set_array_name(const std::string& array_name);
   /** Sets the attribute names. Returns 0 on success and -1 on error. */
@@ -410,6 +410,8 @@ class ArraySchema {
    * fragments takes place (more details are included in class Consolidator). 
    */
   int consolidation_step_;
+  /** Holds space for browsing coordinates. */
+  void* coords_;
   /** The list with the dimension domains.*/
   std::vector< std::pair< double, double > > dim_domains_;
   /** The list with the dimension names.*/
@@ -457,16 +459,20 @@ class ArraySchema {
 
   // PRIVATE METHODS
   /** Appends the attribute values from a CSV line to a cell. */
-  void append_attributes(CSVLine& csv_line, void* cell, size_t& offset) const;
+  void append_attributes(
+      CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const;
   /** Appends an attribute value from a CSV line to a cell. */
   template<class T>
   void append_attribute(
-      CSVLine& csv_line, int val_num, void* cell, size_t& offset) const;
+      CSVLine& csv_line, int val_num, void*& cell, size_t& cell_size, 
+      size_t& offset) const;
   /** Appends coordinates from a CSV line to a cell. */
-  void append_coordinates(CSVLine& csv_line, void* cell) const;
+  void append_coordinates(
+      CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const;
   /** Appends coordinates from a CSV line to a cell. */
   template<class T>
-  void append_coordinates(CSVLine& csv_line, void* cell) const;
+  void append_coordinates(
+      CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const;
   /** Calculates the binary size of a CSV line. */
   ssize_t calculate_cell_size(CSVLine& csv_line) const;
   /** Performs appropriate checks upon a tile id request. */

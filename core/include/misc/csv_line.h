@@ -29,7 +29,7 @@
  * @section DESCRIPTION
  *
  * This file defines class CSVLine. Each CSV line is comprised of text
- * segments (values) separated by a comma character (',').
+ * segments (values) separated by a special character (',' by default).
  */
 
 #ifndef CSV_LINE_H
@@ -38,121 +38,141 @@
 #include <string>
 #include <vector>
 
+// DEFINITIONS
+/** This character starts a comment CSV line (treated as an integral string). */
+#define CSV_COMMENT '#'
+/** 
+ * Determines a default initial number of values for a CSV line, which is used
+ * in initial memory allocation when the CSV line is created in READ mode
+ * (see CSVLine::Mode).
+ */
+#define CSV_INITIAL_VAL_NUM 40
+/** Initial byte allocation for a CSV line in WRITE mode. */
+#define CSV_INITIAL_LINE_SIZE 1000
 /** The maximum digits of a number appended to a CSV line. */
 #define CSV_MAX_DIGITS 50
+/** 
+ * The separator in the CSV line. 
+ * 
+ * **Note:** Currently, this class does not handle the case where the CSV line 
+ * contains the separator as an actual character in a string value, even when 
+ * inserted with escape character '\'.
+ */
+#define CSV_SEPARATOR ','
 
 /** 
  * This class implements a CSV line, which is comprised of text segments
- * (values) separated by a comma character (','). A CSV line is the atomic
- * unit of storage in a CSVFile object. Note that a line that starts with
- * '#' is a comment line. A CSV_NULL_VALUE indicates a mising (NULL) value,
- * whereas a CSV_DEL_VALUE indicates a deletion. 
+ * (values) separated by a special character (',' by default). 
+ * A CSV line is the atomic unit of storage in a CSVFile object. Note that a 
+ * line that starts with CSV_COMMENT. A NULL_VALUE indicates a mising
+ * (NULL) value, whereas a DEL_VALUE indicates a deletion.
+ *
+ * A CSV line has practically two modes of operation: READ and WRITE. In 
+ * either case, it functions as an input or output stream respectively.
+ * Specifically, the CSVLine object maintains the position of the next
+ * value to be retrieved, or the offset where the next value will be
+ * written.
  */
 class CSVLine {
  public:
+  // TYPE DEFINITIONS
+  /**
+   * A CSVLine line can be created in *read*, *write* or *none* (i.e., 
+   * unspecified) mode. If in *read* mode, writing functions cannot be used,
+   * and vice-versa.
+   */
+  enum Mode {READ, WRITE, NONE};
+
   // CONSTRUCTORS & DESTRUCTORS
-  /** Simple constructor. */
+  /** Simple constructor. The object is created in NONE mode. */
   CSVLine();
   /** 
-   * A simple constructor that takes as input a CSV line as a string, and 
-   * tokenizes it into values inserted into CSVLine::values_ (see also
-   * CSVLine::tokenize).  
+   * A simple constructor that takes as input a CSV line as a string. The 
+   * CSVLine object is created in READ mode. 
+   *
+   * **Note:** The input line is going to be modified and then stored. 
+   * Specifically, all the CSV_SEPARATOR characters in the input will be 
+   * substituted by '\0'. This is important for performance purposes, in order 
+   * to avoid extra copying costs of the input by the constructor. 
    */
-  explicit CSVLine(const std::string& line);
-  /** Empty destructor. */
+  explicit CSVLine(char* line);
+  /** Destructor. De-allocates only the space allocated in WRITE mode. */
   ~CSVLine();
  
   // ACCESSORS
-  /** Returns the number of CSV values. */
-  size_t size() const;
-  /** 
-    * Returns the CSV line as a string of comma-separate values. To do so, it 
-    * puts together the elements of CSVLine::values_, separating them with the 
-    * comma (',') character.
-    */
-  std::string str() const;
-  /** Returns the list of values of the CSV line. */
-  const std::vector<std::string>& values() const;
+  /** Returns the stored CSV line as a string. */
+  const char* c_str() const; 
+  /** Returns the size of the line string. */
+  size_t strlen() const; 
+  /** Returns the number of values in the CSV line. */
+  int val_num() const;
+  /** Returns the CSV line values as a vector of strings. */
+  std::vector<std::string> values_str_vec() const;
 
   // MUTATORS
-  /** 
-   * Clears the CSV line (i.e., clears CSVLine::values_ 
-   * and resets CSVLine::pos_). 
-   */
+  /** Clears the CSV line. */
   void clear();
-  /** Resets CSVLine::pos_ to zero. */
+  /** Resets the position to the next value (to be read) to zero. */
   void reset();
 
   // OPERATORS
-  /** Simply returns the currently pointed value as a string. */
-  const std::string& operator*() const;
-  /** Simply increments CSVLine::pos. */
+  /** Returns the currently pointed value as a string. */
+  const char* operator*() const;
+  /** Increments the position to the next value to be read. */
   void operator++();
-  /** Simply increments CSVLine::pos by step. */
+  /** Increments the position to the next value to be read by step. */
   void operator+=(int step);
-  /** Appends a string value to the CSV line, which is properly tokenized. */
+  /** Appends a string value to the CSV line. */
   void operator<<(const std::string& value);
+  /** Appends a string value to the CSV line. */
+  void operator<<(const char* value);
   /** Appends the input CSV line to the CSV line object. */
   void operator<<(const CSVLine& value);
-  /** 
-   * Appends a value to the CSV line. If the value is a string, it tokenizes 
-   * it (see CSVLine::tokenize). The line is treated as an output stream.
-   */
+  /** Appends a value to the CSV line.  */
   template<class T> 
   void operator<<(T value);
-  /** 
-   * Appends a vector of values to the CSV line. The line is treated as an 
-   * output stream.
-   */
-  template<class T> 
-  void operator<<(const std::vector<T>& values);
-  /** 
-   * Retrieves the next value from the CSV line. The line is treated as an input
-   * stream. 
-   */
+  /** Retrieves the next value from the CSV line. */
   template<class T> 
   bool operator>>(T& value);
-  /** 
-   * Clears CSVLine::values_, tokenizes the input string, and inserts the new
-   * values into CSVLine::values_. 
-   */
-  void operator=(const std::string& value);
-  /** 
-   * Clears CSVLine::values_ and copies into it the contents of the input
-   * CSV line. 
-   */
-  void operator=(const CSVLine& value);
-  /** 
-   * Clears CSVLine::values_ and inserts the new value in CSVLine::values_. 
-   * If the value is a string, it tokenizes it (see CSVLine::tokenize). 
-   */
-  template<class T> 
-  void operator=(T value);
-  /** 
-   * Clears CSVLine::values_ and inserts the new values in CSVLine::values_. 
-   */
-  template<class T> 
-  void operator=(const std::vector<T>& values);
+  /** Substitutes the current CSV line with the input line. */
+  void operator=(char* line);
 
  private:
   // PRIVATE ATTRIBUTES
+  /** The CSV line string. */
+  void* line_;
+  /** Allocated size of the line string in bytes (for WRITE mode only).*/
+  size_t line_allocated_size_;
   /** 
-   * The current position (index) in CSVLine::values_ for reading, when 
-   * using CSVLine::operator>>.
+   * Actual size of the line string in bytes (including last '\0' character). 
+   */
+  size_t line_size_;
+  /** Mode of the CSV line */
+  Mode mode_;
+  /** 
+   * The offsets in CSVLine::line_ pointing to the beginning of each CSV value.
+   * Used only in READ mode.
+   */
+  std::vector<size_t> offsets_;
+  /** Allocated space for the CSVLine::offsets_ vector. */
+  size_t offsets_allocated_size_;
+  /** 
+   * The current position in the CSV line (pointing to a value). It is used when
+   * reading from the CSV line with operator>>().
    */
   int pos_;
-  /** 
-   * Internally, the line is modeled as a vector of values (the ','
-   * characters are not explicitly stored). 
-   */
-  std::vector<std::string> values_;
+  /** Number of values in the CSV line. */
+  int val_num_;
 
   // PRIVATE METHODS
+  /** Appends the input value to the CSV line, which is of 'size' bytes. */
+  void append(const char* value, size_t size);
   /** 
-   * Tokenizes a line into values that are inserted into CSVLine::values_,
-   * using ',' as the delimiter.  
+   * Tokenizes the CSV line string. This practically means that CSV_SEPARATOR
+   * characters are replaced with '\0', and the CSVLine::offsets_ vector
+   * is populated.
    */
-  void tokenize(std::string line);
+  void tokenize();
 };
 
 #endif

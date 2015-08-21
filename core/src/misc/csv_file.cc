@@ -160,8 +160,8 @@ bool CSVFile::open(const std::string& filename,
 void CSVFile::operator<<(const CSVLine& csv_line) {
   assert(strcmp(mode_, "w") == 0 || strcmp(mode_, "a") == 0);
 
-  const std::string& line = csv_line.str(); 
-  assert(line.size() <= segment_size_);
+  size_t line_size = csv_line.strlen();
+  assert(line_size < segment_size_);
 
   // Initialize the buffer.
   if(buffer_ == NULL) 
@@ -170,14 +170,14 @@ void CSVFile::operator<<(const CSVLine& csv_line) {
   // Flush the buffer to the file if its stored data size plus the size of the
   // new line exceed CSVFile::segment_size_. The +1 is for the '\n' appended
   // after the line.
-  if(buffer_offset_ + line.size() + 1 > segment_size_) {	
+  if(buffer_offset_ + line_size + 1 > segment_size_) {	
     flush_buffer();
     buffer_offset_ = 0;
   }
 
   // Write the line in the buffer
-  memcpy(buffer_ + buffer_offset_, line.c_str(), line.size());
-  buffer_offset_ += line.size();
+  memcpy(buffer_ + buffer_offset_, csv_line.c_str(), line_size);
+  buffer_offset_ += line_size;
 
   // Write the '\n' character in the end
   char c = '\n';

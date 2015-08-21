@@ -106,21 +106,19 @@ int parse_options(
   // ----- array name
   CSVLine temp;
   temp << array_name;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one array names provided.\n";
     return -1;
   }
-  array_name = temp.str(); // Ignore trailing comma
   // ----- workspace
   temp.clear();
   temp << workspace;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one workspaces provided.\n";
     return -1;
   }
-  workspace = temp.str(); // Ignore trailing comma
 
   return 0;
 }

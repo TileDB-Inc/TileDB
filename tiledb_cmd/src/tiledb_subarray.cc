@@ -150,35 +150,32 @@ int parse_options(
   // ----- array name
   CSVLine temp;
   temp << array_name;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one array names provided.\n";
     return -1;
   }
-  array_name = temp.str(); // Ignore trailing comma
   // ----- workspace
   temp.clear();
   temp << workspace;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one workspaces provided.\n";
     return -1;
   }
-  workspace = temp.str(); // Ignore trailing comma
   // ----- result_name
   temp.clear();
   temp << result_name;
-  if(temp.size() > 1) {
+  if(temp.val_num() > 1) {
     std::cerr << ERROR_MSG_HEADER 
               << " More than one result names provided.\n";
     return -1;
   }
-  result_name = temp.str(); // Ignore trailing comma
 
   // Get range
   std::vector<std::string> range_str_vec;
   double range_bound;
-  range_str_vec = CSVLine(range_str).values();
+  range_str_vec = CSVLine(&range_str[0]).values_str_vec();
   for(int i=0; i<int(range_str_vec.size()); ++i) {
     if(!is_real(range_str_vec[i].c_str())) {
       std::cerr << ERROR_MSG_HEADER 
@@ -191,7 +188,7 @@ int parse_options(
 
   // Get attribute names
   if(attribute_names_str != "")
-    attribute_names = CSVLine(attribute_names_str).values();
+    attribute_names = CSVLine(&attribute_names_str[0]).values_str_vec();
 
   return 0;
 }
