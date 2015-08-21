@@ -37,7 +37,6 @@
 #include "array.h"
 #include "array_schema.h"
 #include "fragment.h"
-#include "mpi_handler.h"
 #include "tile.h"
 #include "tiledb_error.h"
 #include "utils.h"
@@ -71,7 +70,6 @@ class StorageManager {
    * setting where there are multiple TileDB processes runnign simultaneously.
    */
   StorageManager(const std::string& path, 
-                 const MPIHandler* mpi_handler = NULL,
                  size_t segment_size = SEGMENT_SIZE);
   /** When a storage manager object is deleted, it closes all open arrays. */
   ~StorageManager();
@@ -199,27 +197,6 @@ class StorageManager {
   void read_cells(int ad, const T* range, 
                   const std::vector<int>& attribute_ids,
                   void*& cells, size_t& cells_size) const;
-  /**
-   * Takes as input an array descriptor, a multi-dimensional range and 
-   * the rank of the process that will receive the data. It returns form
-   * all the processes the cells whose coordinates fall inside the input range,
-   * as well as their collective size in bytes (last two arguments).
-   */
-  void read_cells(int ad, const void* range, 
-                  const std::vector<int>& attribute_ids,
-                  void*& cells, size_t& cells_size,
-                  int rcv_rank) const;
-  /**
-   * Takes as input an array descriptor, a multi-dimensional range and 
-   * the rank of the process that will receive the data. It returns form
-   * all the processes the cells whose coordinates fall inside the input range,
-   * as well as their collective size in bytes (last two arguments).
-   */
-  template<class T>
-  void read_cells(int ad, const T* range,
-                  const std::vector<int>& attribute_ids,
-                  void*& cells, size_t& cell_num,
-                  int rcv_rank) const;
   /**  
    * Writes a cell to an array. It takes as input an array descriptor, and
    * a cell pointer. The cell has the following format: The coordinates
@@ -286,8 +263,6 @@ class StorageManager {
   int err_;
   /** Keeps track of the descriptors of the currently open arrays. */
   OpenArrays open_arrays_;
-  /** The MPI communication handler. */
-  const MPIHandler* mpi_handler_; 
   /** 
    * Determines the amount of data that can be exchanged between the 
    * hard disk and the main memory in a single I/O operation. 

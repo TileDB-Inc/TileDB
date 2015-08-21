@@ -53,9 +53,8 @@
 ******************************************************/
 
 StorageManager::StorageManager(const std::string& path, 
-                               const MPIHandler* mpi_handler,
                                size_t segment_size)
-    : mpi_handler_(mpi_handler), segment_size_(segment_size), arrays_(NULL) {
+    : segment_size_(segment_size), arrays_(NULL) {
   // Success code
   err_ = TILEDB_OK;
 
@@ -539,29 +538,6 @@ void StorageManager::read_cells(int ad, const void* range,
                        attribute_ids, cells, cells_size);
 }
 
-void StorageManager::read_cells(int ad, const void* range,
-                                const std::vector<int>& attribute_ids,
-                                void*& cells, size_t& cells_size,
-                                int rcv_rank) const {
-  // For easy reference
-  int attribute_num = arrays_[ad]->array_schema()->attribute_num();
-  const std::type_info& coords_type = 
-      *(arrays_[ad]->array_schema()->type(attribute_num));
-
-  if(coords_type == typeid(int))
-    read_cells<int>(ad, static_cast<const int*>(range), 
-                    attribute_ids, cells, cells_size, rcv_rank);
-  else if(coords_type == typeid(int64_t))
-    read_cells<int64_t>(ad, static_cast<const int64_t*>(range),
-                        attribute_ids, cells, cells_size, rcv_rank);
-  else if(coords_type == typeid(float))
-    read_cells<float>(ad, static_cast<const float*>(range),
-                      attribute_ids, cells, cells_size, rcv_rank);
-  else if(coords_type == typeid(double))
-    read_cells<double>(ad, static_cast<const double*>(range),
-                       attribute_ids, cells, cells_size, rcv_rank);
-}
-
 template<class T>
 void StorageManager::read_cells(int ad, const T* range, 
                                 const std::vector<int>& attribute_ids,
@@ -587,31 +563,6 @@ void StorageManager::read_cells(int ad, const T* range,
     cell_size = cell_it->cell_size();
     memcpy(static_cast<char*>(cells) + cells_size, **cell_it, cell_size);
     cells_size += cell_size;
-  }
-}
-
-template<class T>
-void StorageManager::read_cells(int ad, const T* range,
-                                const std::vector<int>& attribute_ids,
-                                void*& cells, size_t& cells_size,
-                                int rcv_rank) const {
-  assert(mpi_handler_ != NULL);
-
-  // Read local cells in the range
-  void* local_cells;
-  size_t local_cells_size;
-  read_cells(ad, range, attribute_ids, local_cells, local_cells_size);
-
-  // Collect all cells from all processes
-  void* all_cells;
-  size_t all_cells_size;
-  mpi_handler_->gather(local_cells, local_cells_size,
-                       all_cells, all_cells_size, 
-                       rcv_rank); 
-
-  if(rcv_rank == mpi_handler_->rank()) {
-    cells = all_cells;
-    cells_size = all_cells_size; 
   }
 }
 
@@ -724,17 +675,14 @@ bool StorageManager::invalid_array_mode(const char* mode) const {
 inline
 void StorageManager::set_workspace(const std::string& path) {
   workspace_ = absolute_path(path);
+
   assert(is_dir(workspace_));
 
-  std::stringstream ss;
-  ss << workspace_;
   if(!ends_with(workspace_, "/"))
-    ss << "/";
-  if(mpi_handler_ == NULL)
-    ss << "StorageManager";
-  else
-    ss << "StorageManager_" << mpi_handler_->rank();
-  workspace_ = ss.str();
+    workspace_ += "/";
+
+  workspace_ += "StorageManager";
+
   return;
 }
 
@@ -861,15 +809,3 @@ template void StorageManager::write_cell_sorted<float>(
 template void StorageManager::write_cell_sorted<double>(
     int ad, const void* cell) const;
 
-template void StorageManager::read_cells<int>(
-    int ad, const int* range, const std::vector<int>& attribute_ids, 
-    void*& cells, size_t& cells_size, int rcv_rank) const;
-template void StorageManager::read_cells<int64_t>(
-    int ad, const int64_t* range, const std::vector<int>& attribute_ids,
-    void*& cells, size_t& cells_size, int rcv_rank) const;
-template void StorageManager::read_cells<float>(
-    int ad, const float* range, const std::vector<int>& attribute_ids,
-    void*& cells, size_t& cells_size, int rcv_rank) const;
-template void StorageManager::read_cells<double>(
-    int ad, const double* range, const std::vector<int>& attribute_ids,
-    void*& cells, size_t& cells_size, int rcv_rank) const;

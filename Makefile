@@ -26,7 +26,7 @@ endif
 
 # MPI compiler for C++
 MPIPATH = #/opt/mpich/dev/intel/default/bin/
-CXX = $(MPIPATH)mpicxx -std=c++11 -fPIC -fvisibility=hidden \
+CXX = g++ -std=c++11 -fPIC -fvisibility=hidden \
       $(LFS_CFLAGS) $(CFLAGS)
 
 # --- Directories --- #
@@ -177,7 +177,7 @@ MANPAGES_HTML := $(patsubst $(MANPAGES_MAN_DIR)/%,\
 .PHONY: core example gtest test doc clean_core clean_gtest \
         clean_test clean_tiledb_cmd clean_la clean
 
-all: core libtiledb tiledb_cmd la gtest test rvma
+all: core libtiledb tiledb_cmd gtest test
 
 core: $(CORE_OBJ) 
 
@@ -197,8 +197,8 @@ gtest: $(GTEST_OBJ_DIR)/gtest-all.o
 
 test: $(TEST_OBJ)
 
-clean: clean_core clean_libtiledb clean_tiledb_cmd clean_la clean_gtest \
-       clean_test clean_doc clean_rvma 
+clean: clean_core clean_libtiledb clean_tiledb_cmd clean_gtest \
+       clean_test clean_doc 
 
 ########
 # Core #
@@ -295,30 +295,30 @@ clean_tiledb_cmd:
 
 # --- Compilation and dependency genration --- #
 
--include $(LA_OBJ:.o=.d)
+# -include $(LA_OBJ:.o=.d)
 
-$(LA_OBJ_DIR)/%.o: $(LA_SRC_DIR)/%.cc
-	@test -d $(LA_OBJ_DIR) || mkdir -p $(LA_OBJ_DIR)
-	@echo "Compiling $<"
-	@$(CXX) $(LA_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< -o $@
-	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $(LA_INCLUDE_PATHS) $< > $(@:.o=.d)
-	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
-	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
-	@rm -f $(@:.o=.d.tmp)
+# $(LA_OBJ_DIR)/%.o: $(LA_SRC_DIR)/%.cc
+#	@test -d $(LA_OBJ_DIR) || mkdir -p $(LA_OBJ_DIR)
+#	@echo "Compiling $<"
+#	@$(CXX) $(LA_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< -o $@
+#	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $(LA_INCLUDE_PATHS) $< > $(@:.o=.d)
+#	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
+#	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
+#	@rm -f $(@:.o=.d.tmp)
 
 # --- Linking --- #
 
-$(LA_BIN_DIR)/example_transpose: $(LA_OBJ) $(CORE_OBJ)
-	@mkdir -p $(LA_BIN_DIR)
-	@echo "Creating example_transpose"
-	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
-               -o $@ $^
+# $(LA_BIN_DIR)/example_transpose: $(LA_OBJ) $(CORE_OBJ)
+#	@mkdir -p $(LA_BIN_DIR)
+#	@echo "Creating example_transpose"
+#	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
+#               -o $@ $^
 
 # --- Cleaning --- #
 
-clean_la:
-	@echo 'Cleaning la'
-	@rm -f $(LA_OBJ_DIR)/* $(LA_BIN_DIR)/* 
+# clean_la:
+#	@echo 'Cleaning la'
+#	@rm -f $(LA_OBJ_DIR)/* $(LA_BIN_DIR)/* 
 
 ########
 # RVMA #
@@ -326,30 +326,30 @@ clean_la:
 
 # --- Compilation and dependency genration --- #
 
--include $(RVMA_OBJ:.o=.d)
+# -include $(RVMA_OBJ:.o=.d)
 
-$(RVMA_OBJ_DIR)/%.o: $(RVMA_SRC_DIR)/%.c
-	@test -d $(RVMA_OBJ_DIR) || mkdir -p $(RVMA_OBJ_DIR)
-	@echo "Compiling $<"
-	@$(CXX) $(RVMA_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< -o $@
-	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $(RVMA_INCLUDE_PATHS) $< > $(@:.o=.d)
-	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
-	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
-	@rm -f $(@:.o=.d.tmp)
+# $(RVMA_OBJ_DIR)/%.o: $(RVMA_SRC_DIR)/%.c
+#	@test -d $(RVMA_OBJ_DIR) || mkdir -p $(RVMA_OBJ_DIR)
+#	@echo "Compiling $<"
+#	@$(CXX) $(RVMA_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< -o $@
+#	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $(RVMA_INCLUDE_PATHS) $< > $(@:.o=.d)
+#	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
+#	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
+#	@rm -f $(@:.o=.d.tmp)
 
 # --- Linking --- #
 
-$(RVMA_BIN_DIR)/simple_test: $(RVMA_OBJ) $(CORE_OBJ)
-	@mkdir -p $(RVMA_BIN_DIR)
-	@echo "Creating simple_test"
-	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
-               -o $@ $^
+# $(RVMA_BIN_DIR)/simple_test: $(RVMA_OBJ) $(CORE_OBJ)
+#	@mkdir -p $(RVMA_BIN_DIR)
+#	@echo "Creating simple_test"
+#	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
+#               -o $@ $^
 
 # --- Cleaning --- #
 
-clean_rvma:
-	@echo 'Cleaning RVMA'
-	@rm -f $(RVMA_OBJ_DIR)/* $(RVMA_BIN_DIR)/*
+# clean_rvma:
+#	@echo 'Cleaning RVMA'
+#	@rm -f $(RVMA_OBJ_DIR)/* $(RVMA_BIN_DIR)/*
 
 ###############
 # Google Test #

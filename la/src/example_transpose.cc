@@ -46,6 +46,11 @@
 int transpose(StorageManager* storage_manager, MPIHandler* mpi_handler, 
               const std::string& A, const std::string& A_t,
               const ArraySchema* array_schema_A) {
+
+std::cout << "Under construction...\n";
+
+/*
+
   // Open array A in read mode
   int ad_A = storage_manager->open_array(A, "r");
   if(ad_A == -1)
@@ -102,6 +107,8 @@ int transpose(StorageManager* storage_manager, MPIHandler* mpi_handler,
   storage_manager->close_array(ad_A); 
   storage_manager->close_array(ad_A_t); 
 
+*/
+
   return 0;
 }
 
@@ -151,8 +158,7 @@ int main(int argc, char** argv) {
 
   // Create a storage manager module
   StorageManager* storage_manager = 
-      new StorageManager("~/stavrospapadopoulos/TileDB/example_transpose/",
-                         mpi_handler);
+      new StorageManager("~/stavrospapadopoulos/TileDB/example_transpose/");
 
   // Create a loader module
   Loader* loader = new Loader(
