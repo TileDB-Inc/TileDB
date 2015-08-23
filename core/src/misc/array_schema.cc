@@ -844,10 +844,11 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
     }
     attribute_names.push_back(s);
   }
+
   // ----- set attribute names
   if(set_attribute_names(attribute_names))
     return -1;
-  
+
  // Set dimension names
   // ----- retrieve number of dimensions
   if(!(array_schema_csv >> s)) {
@@ -952,7 +953,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
         return -1;
       }
     }
-    
+
     if(type == "char") {
       types.push_back(&typeid(char));
     } else if(type == "int") {
@@ -995,7 +996,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   // ----- Set val_num
   if(set_val_num(val_num))
     return -1;
-  
+
   // Set tile extents
   // ----- retrieve the first tile extent (could be "*")
   std::vector<double> tile_extents;
@@ -1030,7 +1031,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   // ----- set tile extents
   if(set_tile_extents(tile_extents))
     return -1;
-  
+
   // Get cell order
   // ----- retrieve cell order
   if(!(array_schema_csv >> s)) {

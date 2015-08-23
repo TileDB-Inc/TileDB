@@ -56,7 +56,7 @@ CSVLine::CSVLine(char* line) {
   line_ = line;
   line_allocated_size_ = 0;
   mode_ = READ;
-  offsets_.reserve(CSV_INITIAL_VAL_NUM);
+  offsets_.resize(CSV_INITIAL_VAL_NUM);
   offsets_allocated_size_ = CSV_INITIAL_VAL_NUM;
   pos_ = 0;
 
@@ -87,7 +87,7 @@ std::vector<std::string> CSVLine::values_str_vec() const {
 
   char* line = static_cast<char*>(line_);
 
-  for(int i=0; i<offsets_.size(); ++i) 
+  for(int i=0; i<val_num_; ++i) 
     ret.push_back(line + offsets_[i]);
 
   return ret;
@@ -200,8 +200,8 @@ bool CSVLine::operator>>(std::string& value) {
   if(mode_ != READ || pos_ == val_num_) {
     return false;
   } else {
+
     char* value_ = static_cast<char*>(line_) + offsets_[pos_];
-   
     value = value_;
 
     ++pos_;
@@ -336,7 +336,7 @@ void CSVLine::operator=(char* line) {
 
   if(mode_ != READ) {
     mode_ = READ;
-    offsets_.reserve(CSV_INITIAL_VAL_NUM);
+    offsets_.resize(CSV_INITIAL_VAL_NUM);
     offsets_allocated_size_ = CSV_INITIAL_VAL_NUM;
   }
 
@@ -418,7 +418,7 @@ void CSVLine::tokenize() {
       line[offset] = '\0';
       if(val_num_ == offsets_allocated_size_) {
         offsets_allocated_size_ *= 2;
-        offsets_.reserve(offsets_allocated_size_);
+        offsets_.resize(offsets_allocated_size_);
       } 
       offsets_[val_num_] = next_value_offset;
       ++val_num_;

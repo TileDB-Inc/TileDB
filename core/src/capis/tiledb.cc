@@ -689,6 +689,7 @@ int tiledb_define_array(
 
   // Create an array schema from the input string
   ArraySchema* array_schema = new ArraySchema();
+
   if(array_schema->deserialize_csv(array_schema_str)) {
     std::cerr << ERROR_MSG_HEADER << " Failed to parse array schema.\n";
     return TILEDB_EPARRSCHEMA;

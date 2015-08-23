@@ -399,6 +399,7 @@ int main(int argc, char** argv) {
 
   // Show the array schema
   rc = tiledb_define_array(tiledb_ctx, array_schema_str.c_str());
+
   if(rc) 
     return rc;
 
