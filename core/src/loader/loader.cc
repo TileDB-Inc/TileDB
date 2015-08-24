@@ -249,7 +249,7 @@ int Loader::load_bin(
     return -1;
 
   // Open the BIN file collection 
-  BINFileCollection<T> bin_file_collection(workspace_ + "/" + "__temp");
+  BINFileCollection<T> bin_file_collection;
   err = bin_file_collection.open(array_schema, 0, path, sorted);
   if(err)
     return -1;

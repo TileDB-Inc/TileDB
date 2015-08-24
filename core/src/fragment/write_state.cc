@@ -724,7 +724,7 @@ void WriteState::make_tiles(const std::string& dirname) {
   ::Cell cell(array_schema_, id_num);
 
   // Create a file collection
-  BINFileCollection<T> bin_file_collection(*workspace_ + "/__temp");
+  BINFileCollection<T> bin_file_collection;
   bin_file_collection.open(array_schema_, id_num, dirname, sorted);
 
   // Loop over the cells
@@ -743,7 +743,7 @@ void WriteState::make_tiles_with_id(const std::string& dirname) {
   ::Cell cell(array_schema_, id_num);
 
   // Create a file collection
-  BINFileCollection<T> bin_file_collection(*workspace_ + "/__temp");
+  BINFileCollection<T> bin_file_collection;
   bin_file_collection.open(array_schema_, id_num, dirname, sorted);
 
   // Loop over the cells
@@ -767,7 +767,7 @@ void WriteState::make_tiles_with_2_ids(const std::string& dirname) {
   ::Cell cell(array_schema_, id_num);
 
   // Create a file collection
-  BINFileCollection<T> bin_file_collection(*workspace_ + "/__temp");
+  BINFileCollection<T> bin_file_collection;
   bin_file_collection.open(array_schema_, id_num, dirname, sorted);
 
   // Loop over the cells

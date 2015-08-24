@@ -35,6 +35,7 @@
 #include "utils.h"
 #include <assert.h>
 #include <iostream>
+#include <queue>
 #include <time.h>
 
 /******************************************************
@@ -43,6 +44,7 @@
 
 template<class T>
 CSVFileCollection<T>::CSVFileCollection() {
+  pq_ = NULL;
 }
 
 template<class T>
@@ -51,46 +53,38 @@ CSVFileCollection<T>::~CSVFileCollection() {
 }
 
 /******************************************************
-********************** ACCESSORS **********************
-******************************************************/
-
-template<class T>
-ssize_t CSVFileCollection<T>::bytes_read() const {
-  ssize_t r_bytes_read = 0;
-  int csv_files_num = int(csv_files_.size());
-  for(int i=0; i<csv_files_num; ++i) 
-    r_bytes_read += csv_files_[i]->bytes_read();
-
-  return r_bytes_read;
-}
-
-template<class T>
-ssize_t CSVFileCollection<T>::size() const {
-  ssize_t r_size = 0;
-  int csv_files_num = int(csv_files_.size());
-  for(int i=0; i<csv_files_num; ++i) 
-    r_size += csv_files_[i]->size();
-
-  return r_size;
-}
-
-/******************************************************
 ******************** BASIC METHODS ********************
 ******************************************************/
 
 template<class T>
 int CSVFileCollection<T>::close() {
+  // Clear CSV files
   int csv_files_num = int(csv_files_.size());
   for(int i=0; i<csv_files_num; ++i) {
     csv_files_[i]->close();
-    delete csv_files_[i];
-    delete cells_[i];
+    delete csv_files_[i]; 
   }
-
   csv_files_.clear();
+
+  // Clear cells
+  for(int i=0; i<cells_.size(); ++i)
+    delete cells_[i];
   cells_.clear();
 
+  if(pq_ != NULL) { 
+    std::priority_queue<std::pair<const Cell*, int>, 
+                    std::vector<std::pair<const Cell*, int> >, 
+                    Cell::Succeeds<T> >* 
+    pq = static_cast<std::priority_queue<
+                         std::pair<const Cell*, int>, 
+                         std::vector<std::pair<const Cell*, int> >,
+                         Cell::Succeeds<T> >*>(pq_);
+    delete pq;
+    pq_ = NULL;
+  }
+
   return 0;
+
 }
 
 template<class T>
@@ -114,22 +108,35 @@ int CSVFileCollection<T>::open(
     return TILEDB_EFILE;
   }
 
+  // Create priority queue
+  std::priority_queue<std::pair<const Cell*, int>, 
+                      std::vector<std::pair<const Cell*, int> >, 
+                      Cell::Succeeds<T> >* pq;
+  if(sorted) {
+    pq = new std::priority_queue<std::pair<const Cell*, int>,
+                                 std::vector<std::pair<const Cell*, int> >,
+                                 Cell::Succeeds<T> >;
+    pq_ = pq;
+  }
+
   // Open files and prepare first cells
   int file_num = int(filenames_.size());
   CSVFile* csv_file;
   Cell* cell;
   for(int i=0; i<file_num; ++i) {
     csv_file = new CSVFile(array_schema_);  
-// TODO: Fix this
     if(is_file(filenames_[i]))
       csv_file->open(filenames_[i], "r");
     else 
       csv_file->open(path + "/" + filenames_[i], "r");
+
     csv_files_.push_back(csv_file);
 
     cell = new Cell(array_schema_);
     *csv_file >> *cell;
     cells_.push_back(cell);
+    if(sorted)
+      pq->push(std::pair<const Cell*, int>(cell,i)); 
   }
 
   return 0;
@@ -144,10 +151,21 @@ bool CSVFileCollection<T>::operator>>(Cell& cell) {
   assert(csv_files_.size());
 
   cell.set_cell(NULL);
+  std::priority_queue<std::pair<const Cell*, int>, 
+                        std::vector<std::pair<const Cell*, int> >, 
+                        Cell::Succeeds<T> >* 
+        pq = static_cast<std::priority_queue<
+                             std::pair<const Cell*, int>, 
+                             std::vector<std::pair<const Cell*, int> >,
+                             Cell::Succeeds<T> >*>(pq_);
 
   // Update the cell of the lastly accessed file
-  if(last_accessed_file_ != -1) 
+  if(last_accessed_file_ != -1) { 
     *csv_files_[last_accessed_file_] >> *cells_[last_accessed_file_];
+    if(sorted_ && cells_[last_accessed_file_]->cell() != NULL)
+        pq->push(std::pair<const Cell*, int>(
+                     cells_[last_accessed_file_],last_accessed_file_));
+  }
 
   // In the case of 'sorted', we need to search for the 
   // the cell that appears first in the cell order
@@ -169,28 +187,11 @@ bool CSVFileCollection<T>::operator>>(Cell& cell) {
       cell.set_cell(NULL);
     }
   } else {       // SORTED
-    int next_file;
-    // Get the first non-NULL cell
-    for(next_file=0; next_file<csv_files_.size(); ++next_file) {
-      if(cells_[next_file]->cell() != NULL) {
-        cell = *cells_[next_file];
-        break;
-      }
-    }
-
-    // Get the next cell in the global cell order
-    for(int i=next_file+1; i<csv_files_.size(); ++i) {
-      if(cells_[i]->cell() != NULL && 
-         array_schema_->precedes(static_cast<const T*>(cells_[i]->cell()), 
-                                 static_cast<const T*>(cell.cell()))) { 
-        cell = *cells_[i];
-        next_file = i;
-      }
-    }
-
-    // The next file is the one to be accessed and, thus, 
-    // it will be the new last accessed file
-    last_accessed_file_ = next_file;
+    if(!pq->empty()) {
+      cell = *(pq->top()).first;
+      last_accessed_file_ = (pq->top()).second;
+      pq->pop();
+    }  
   }
 
   if(cell.cell() != NULL) 

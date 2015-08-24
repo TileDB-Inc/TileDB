@@ -59,12 +59,6 @@ class CSVFileCollection {
   /** Destructor. */
   ~CSVFileCollection();
 
-  // ACCESSORS
-  /** Returns the number of bytes read from the collection. */
-  ssize_t bytes_read() const;
-  /** Returns the size of the collection in bytes. */
-  ssize_t size() const;
-
   // BASIC METHODS
   /** Clear the file collection data from main memory. */
   int close(); 
@@ -90,11 +84,8 @@ class CSVFileCollection {
   std::vector<std::string> filenames_;
   /** File id from which we lastly accessed a cell. */
   int last_accessed_file_;
-  /** 
-   * Determines the amount of data exchanged in an I/O operation between the 
-   * disk and the main memory.
-   */	
-  size_t segment_size_;
+  /** Priority queue for efficient retrieval of the next cell .*/
+  void* pq_; 
   /** True if this is a sorted file collection. */
   bool sorted_;
 };

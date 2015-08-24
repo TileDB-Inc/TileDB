@@ -55,7 +55,7 @@ class BINFileCollection {
  public: 
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
-  BINFileCollection(const std::string& workspace);
+  BINFileCollection();
   /** Destructor. */
   ~BINFileCollection();
 
@@ -83,28 +83,14 @@ class BINFileCollection {
   std::vector<Cell*> cells_;
   /** The names of the files included in the collection. */
   std::vector<std::string> filenames_;
-  /** Priority queue for efficient retrieval of the next cell .*/
-  void* pq_; 
   /** File id from which we lastly accessed a cell. */
   int last_accessed_file_;
-  /** The last popped cell. */
-  const Cell* last_popped_cell_;
+  /** Priority queue for efficient retrieval of the next cell .*/
+  void* pq_; 
   /** Number of ids in each cell. */
   int id_num_;
-  /** 
-   * Determines the amount of data exchanged in an I/O operation between the 
-   * disk and the main memory.
-   */	
-  size_t segment_size_;
   /** True if this is a sorted file collection. */
   bool sorted_;
-  /** Directory where temporary data will be stored. */
-  std::string workspace_;
-  /** Max memory size of the write state when merging the files. */
-  size_t write_state_max_size_;
-
-  // PRIVATE METHODS
-  void open_files();
 };
 
 #endif
