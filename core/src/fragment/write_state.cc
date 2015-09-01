@@ -5,7 +5,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,7 +25,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * This file implements the WriteState class.
@@ -39,7 +39,6 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <math.h>
-#include <parallel/algorithm>
 #include <sstream>
 #include <string.h>
 #include <sys/stat.h>
@@ -47,18 +46,26 @@
 #include <time.h>
 #include <unistd.h>
 
+#ifdef GNU_PARALLEL
+  #include <parallel/algorithm>
+  #define SORT(first, last, comp) __gnu_parallel::sort((first), (last), (comp))
+#else
+  #include <algorithm>
+  #define SORT(first, last, comp) std::sort((first), (last), (comp))
+#endif
+
 /******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS **************
 ******************************************************/
 
 WriteState::WriteState(
-    const ArraySchema* array_schema, 
+    const ArraySchema* array_schema,
     const std::string* fragment_name,
     const std::string* temp_dirname,
     const std::string* workspace,
     BookKeeping* book_keeping,
     size_t segment_size,
-    size_t write_state_max_size) 
+    size_t write_state_max_size)
     : array_schema_(array_schema),
       fragment_name_(fragment_name),
       temp_dirname_(temp_dirname),
@@ -76,17 +83,17 @@ WriteState::WriteState(
   runs_num_ = 0;
 
   mbr_ = NULL;
-  bounding_coordinates_.first = NULL; 
+  bounding_coordinates_.first = NULL;
   bounding_coordinates_.second = NULL;
 
   segments_.resize(attribute_num+1);
   segment_utilization_.resize(attribute_num+1);
   file_offsets_.resize(attribute_num+1);
   for(int i=0; i<= attribute_num; ++i) {
-    segments_[i] = malloc(segment_size_); 
+    segments_[i] = malloc(segment_size_);
     segment_utilization_[i] = 0;
     file_offsets_[i] = 0;
-  } 
+  }
 }
 
 WriteState::~WriteState() {
@@ -110,15 +117,15 @@ WriteState::~WriteState() {
   }
 
   // Clear segments
-  for(int i=0; i<=attribute_num; ++i) 
-    free(segments_[i]); 
+  for(int i=0; i<=attribute_num; ++i)
+    free(segments_[i]);
 
   // Clear MBR and bounding coordinates
-  if(mbr_ != NULL) 
+  if(mbr_ != NULL)
     free(mbr_);
-  if(bounding_coordinates_.first != NULL) 
+  if(bounding_coordinates_.first != NULL)
     free(bounding_coordinates_.first);
-  if(bounding_coordinates_.second != NULL) 
+  if(bounding_coordinates_.second != NULL)
     free(bounding_coordinates_.second);
 
 }
@@ -176,14 +183,14 @@ void WriteState::write_cell(const void* input_cell) {
       // Create cell
       CellWithId new_cell;
       new_cell.cell_ = copy_cell(input_cell, cell_size);
-      new_cell.id_ = 
+      new_cell.id_ =
           array_schema_->cell_id_hilbert<T>
               (static_cast<const T*>(new_cell.cell_));
       cells_with_id_.push_back(new_cell);
       run_size_ += size_cost;
     }
   } else { // Regular tiles
-    if(array_schema_->tile_order() == ArraySchema::TO_ROW_MAJOR) { 
+    if(array_schema_->tile_order() == ArraySchema::TO_ROW_MAJOR) {
       if(array_schema_->cell_order() == ArraySchema::CO_ROW_MAJOR ||
          array_schema_->cell_order() == ArraySchema::CO_COLUMN_MAJOR) {
         // Check if run must be flushed
@@ -209,13 +216,13 @@ void WriteState::write_cell(const void* input_cell) {
         CellWith2Ids new_cell;
         new_cell.cell_ = copy_cell(input_cell, cell_size);
         new_cell.tile_id_ = array_schema_->tile_id_row_major(new_cell.cell_);
-        new_cell.cell_id_ = 
+        new_cell.cell_id_ =
           array_schema_->cell_id_hilbert<T>
             (static_cast<const T*>(new_cell.cell_));
         cells_with_2_ids_.push_back(new_cell);
         run_size_ += size_cost;
       }
-    } else if(array_schema_->tile_order() == ArraySchema::TO_COLUMN_MAJOR) { 
+    } else if(array_schema_->tile_order() == ArraySchema::TO_COLUMN_MAJOR) {
       if(array_schema_->cell_order() == ArraySchema::CO_ROW_MAJOR ||
          array_schema_->cell_order() == ArraySchema::CO_COLUMN_MAJOR) {
         // Check if run must be flushed
@@ -241,13 +248,13 @@ void WriteState::write_cell(const void* input_cell) {
         CellWith2Ids new_cell;
         new_cell.cell_ = copy_cell(input_cell, cell_size);
         new_cell.tile_id_ = array_schema_->tile_id_column_major(new_cell.cell_);
-        new_cell.cell_id_ = 
+        new_cell.cell_id_ =
               array_schema_->cell_id_hilbert<T>
                 (static_cast<const T*>(new_cell.cell_));
         cells_with_2_ids_.push_back(new_cell);
         run_size_ += size_cost;
       }
-    } else if(array_schema_->tile_order() == ArraySchema::TO_HILBERT) { 
+    } else if(array_schema_->tile_order() == ArraySchema::TO_HILBERT) {
       if(array_schema_->cell_order() == ArraySchema::CO_ROW_MAJOR ||
          array_schema_->cell_order() == ArraySchema::CO_COLUMN_MAJOR) {
         // Check if run must be flushed
@@ -273,13 +280,13 @@ void WriteState::write_cell(const void* input_cell) {
         CellWith2Ids new_cell;
         new_cell.cell_ = copy_cell(input_cell, cell_size);
         new_cell.tile_id_ = array_schema_->tile_id_hilbert(new_cell.cell_);
-        new_cell.cell_id_ = 
+        new_cell.cell_id_ =
           array_schema_->cell_id_hilbert<T>
             (static_cast<const T*>(new_cell.cell_));
         cells_with_2_ids_.push_back(new_cell);
         run_size_ += size_cost;
       }
-    } 
+    }
   }
 }
 
@@ -290,25 +297,25 @@ void WriteState::write_cell_sorted(const void* cell) {
   size_t coords_size = array_schema_->cell_size(attribute_num);
   bool regular = array_schema_->has_regular_tiles();
   const char* c_cell = static_cast<const char*>(cell);
-  int64_t tile_id; 
+  int64_t tile_id;
   size_t cell_offset, attr_size;
   int64_t capacity; // only for irregular tiles
   std::vector<size_t> attr_sizes;
 
   // Initialization
-  if(regular)  
+  if(regular)
     tile_id = array_schema_->tile_id(static_cast<const T*>(cell));
-  else 
+  else
     capacity = array_schema_->capacity();
 
   // Flush tile info to book-keeping if a new tile must be created
-  if((regular && tile_id != tile_id_) || 
+  if((regular && tile_id != tile_id_) ||
      (!regular && (cell_num_ == capacity)))
     flush_tile_info_to_book_keeping();
 
-  // Append coordinates to segment  
+  // Append coordinates to segment
   append_coordinates_to_segment(c_cell);
-  cell_offset = coords_size; 
+  cell_offset = coords_size;
   if(array_schema_->cell_size() == VAR_SIZE)
     cell_offset += sizeof(size_t);
 
@@ -319,7 +326,7 @@ void WriteState::write_cell_sorted(const void* cell) {
     attr_sizes.push_back(attr_size);
   }
   attr_sizes.push_back(coords_size);
-    
+
   // Update the info of the currently populated tile
   update_tile_info<T>(static_cast<const T*>(cell), tile_id, attr_sizes);
 }
@@ -337,13 +344,13 @@ void WriteState::write_cell_sorted_with_id(const void* cell) {
   std::vector<size_t> attr_sizes;
 
   // Flush tile info to book-keeping if a new tile must be created
-  if((regular && id != tile_id_) || 
+  if((regular && id != tile_id_) ||
      (!regular && (cell_num_ == array_schema_->capacity())))
     flush_tile_info_to_book_keeping();
 
-  // Append coordinates to segment  
+  // Append coordinates to segment
   append_coordinates_to_segment(c_cell);
-  cell_offset = coords_size; 
+  cell_offset = coords_size;
   if(array_schema_->cell_size() == VAR_SIZE)
     cell_offset += sizeof(size_t);
 
@@ -354,7 +361,7 @@ void WriteState::write_cell_sorted_with_id(const void* cell) {
     attr_sizes.push_back(attr_size);
   }
   attr_sizes.push_back(coords_size);
-  
+
   // Update the info of the currently populated tile
   update_tile_info<T>(static_cast<const T*>(coords), id, attr_sizes);
 }
@@ -371,12 +378,12 @@ void WriteState::write_cell_sorted_with_2_ids(const void* cell) {
   std::vector<size_t> attr_sizes;
 
   // Flush tile info to book-keeping if a new tile must be created
-  if(id != tile_id_)    
+  if(id != tile_id_)
     flush_tile_info_to_book_keeping();
 
-  // Append coordinates to segment  
+  // Append coordinates to segment
   append_coordinates_to_segment(c_cell);
-  cell_offset = coords_size; 
+  cell_offset = coords_size;
   if(array_schema_->cell_size() == VAR_SIZE)
     cell_offset += sizeof(size_t);
 
@@ -402,20 +409,20 @@ void WriteState::append_attribute_to_segment(
   bool var_size = (array_schema_->cell_size(attribute_id) == VAR_SIZE);
 
   if(!var_size) {
-    attr_size = array_schema_->cell_size(attribute_id); 
+    attr_size = array_schema_->cell_size(attribute_id);
   } else {
     int val_num;
     memcpy(&val_num, attr, sizeof(int));
     attr_size = val_num * array_schema_->type_size(attribute_id) + sizeof(int);
-  }  
+  }
 
   // Check if the segment is full
   if(segment_utilization_[attribute_id] + attr_size > segment_size_)
     flush_segment(attribute_id);
 
   // Append cell to the segment
-  memcpy(static_cast<char*>(segments_[attribute_id]) + 
-         segment_utilization_[attribute_id], attr, attr_size); 
+  memcpy(static_cast<char*>(segments_[attribute_id]) +
+         segment_utilization_[attribute_id], attr, attr_size);
   segment_utilization_[attribute_id] += attr_size;
 }
 
@@ -431,8 +438,8 @@ void WriteState::append_coordinates_to_segment(
     flush_segment(attribute_num);
 
   // Append cell to the segment
-  memcpy(static_cast<char*>(segments_[attribute_num]) + 
-         segment_utilization_[attribute_num], cell, coords_size); 
+  memcpy(static_cast<char*>(segments_[attribute_num]) +
+         segment_utilization_[attribute_num], cell, coords_size);
   segment_utilization_[attribute_num] += coords_size;
 }
 
@@ -474,7 +481,7 @@ void* WriteState::copy_cell(const void* cell, size_t cell_size) {
   }
 
   // Copy cell to buffer
-  void* pointer_in_buffer = static_cast<char*>(buffers_.back()) + 
+  void* pointer_in_buffer = static_cast<char*>(buffers_.back()) +
                             buffers_utilization_.back();
   memcpy(pointer_in_buffer, cell, cell_size);
   buffers_utilization_.back() += cell_size;
@@ -505,13 +512,13 @@ void WriteState::flush_segment(int attribute_id) {
     return;
 
   // Open file
-  std::string filename = *workspace_ + "/" + 
-                         array_schema_->array_name() + "/" + 
-                         *fragment_name_ + "/" + 
+  std::string filename = *workspace_ + "/" +
+                         array_schema_->array_name() + "/" +
+                         *fragment_name_ + "/" +
                          array_schema_->attribute_name(attribute_id) +
                          TILE_DATA_FILE_SUFFIX;
 
-  int fd = open(filename.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC,  
+  int fd = open(filename.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC,
                 S_IRWXU);
   assert(fd != -1);
 
@@ -522,11 +529,11 @@ void WriteState::flush_segment(int attribute_id) {
 
   // Append the segment to the file
   write(fd, segments_[attribute_id], segment_utilization_[attribute_id]);
- 
-  // Update the write state 
+
+  // Update the write state
   segment_utilization_[attribute_id] = 0;
 
-  // Clean up 
+  // Clean up
   close(fd);
 }
 
@@ -540,7 +547,7 @@ void WriteState::flush_segments() {
   // Flush the segments
   for(int i=0; i<=attribute_num; ++i) {
     flush_segment(i);
-    free(segments_[i]); 
+    free(segments_[i]);
     segments_[i] = NULL;
   }
 }
@@ -556,7 +563,7 @@ void WriteState::flush_sorted_run() {
   // Prepare cell
   ::Cell cell(array_schema_);
 
-  // Write the cells into the file 
+  // Write the cells into the file
   int64_t cell_num = cells_.size();
 
   for(int64_t i=0; i<cell_num; ++i) {
@@ -589,9 +596,9 @@ void WriteState::flush_sorted_run_with_id() {
   // Prepare cell
   ::Cell cell(array_schema_);
 
-  // Write the cells into the file 
+  // Write the cells into the file
   int64_t cell_num = cells_with_id_.size();
-  for(int64_t i=0; i<cell_num; ++i) { 
+  for(int64_t i=0; i<cell_num; ++i) {
     file.write(&cells_with_id_[i].id_, sizeof(int64_t));
     cell.set_cell(cells_with_id_[i].cell_);
     file << cell;
@@ -622,9 +629,9 @@ void WriteState::flush_sorted_run_with_2_ids() {
   // Prepare cell
   ::Cell cell(array_schema_);
 
-  // Write the cells into the file 
+  // Write the cells into the file
   int64_t cell_num = cells_with_2_ids_.size();
-  for(int64_t i=0; i<cell_num; ++i) { 
+  for(int64_t i=0; i<cell_num; ++i) {
     file.write(&cells_with_2_ids_[i].tile_id_, sizeof(int64_t));
     file.write(&cells_with_2_ids_[i].cell_id_, sizeof(int64_t));
     cell.set_cell(cells_with_2_ids_[i].cell_);
@@ -656,7 +663,7 @@ void WriteState::flush_tile_info_to_book_keeping() {
   size_t coords_size = array_schema_->cell_size(attribute_num);
 
   // Flush info
-  for(int i=0; i<=attribute_num; ++i) 
+  for(int i=0; i<=attribute_num; ++i)
     book_keeping_->offsets_[i].push_back(file_offsets_[i]);
 
   book_keeping_->bounding_coordinates_.push_back(bounding_coordinates_);
@@ -681,36 +688,36 @@ void WriteState::make_tiles(const std::string& dirname) {
   if(!regular_tiles && (cell_order == ArraySchema::CO_ROW_MAJOR ||
                         cell_order == ArraySchema::CO_COLUMN_MAJOR)) {
     // Cell
-    if(*coords_type == typeid(int)) 
-      make_tiles<int>(dirname); 
-    else if(*coords_type == typeid(int64_t)) 
-      make_tiles<int64_t>(dirname); 
-    else if(*coords_type == typeid(float)) 
-      make_tiles<float>(dirname); 
-    else if(*coords_type == typeid(double)) 
-      make_tiles<double>(dirname); 
+    if(*coords_type == typeid(int))
+      make_tiles<int>(dirname);
+    else if(*coords_type == typeid(int64_t))
+      make_tiles<int64_t>(dirname);
+    else if(*coords_type == typeid(float))
+      make_tiles<float>(dirname);
+    else if(*coords_type == typeid(double))
+      make_tiles<double>(dirname);
   } else if((regular_tiles && (cell_order == ArraySchema::CO_ROW_MAJOR ||
                                cell_order == ArraySchema::CO_COLUMN_MAJOR)) ||
             (!regular_tiles && cell_order == ArraySchema::CO_HILBERT)) {
     // CellWithId
-    if(*coords_type == typeid(int)) 
-      make_tiles_with_id<int>(dirname); 
-    else if(*coords_type == typeid(int64_t)) 
-      make_tiles_with_id<int64_t>(dirname); 
-    else if(*coords_type == typeid(float)) 
-      make_tiles_with_id<float>(dirname); 
-    else if(*coords_type == typeid(double)) 
-      make_tiles_with_id<double>(dirname); 
+    if(*coords_type == typeid(int))
+      make_tiles_with_id<int>(dirname);
+    else if(*coords_type == typeid(int64_t))
+      make_tiles_with_id<int64_t>(dirname);
+    else if(*coords_type == typeid(float))
+      make_tiles_with_id<float>(dirname);
+    else if(*coords_type == typeid(double))
+      make_tiles_with_id<double>(dirname);
   } else if(regular_tiles && cell_order == ArraySchema::CO_HILBERT) {
     // CellWith2Ids
-    if(*coords_type == typeid(int)) 
-      make_tiles_with_2_ids<int>(dirname); 
-    else if(*coords_type == typeid(int64_t)) 
-      make_tiles_with_2_ids<int64_t>(dirname); 
-    else if(*coords_type == typeid(float)) 
-      make_tiles_with_2_ids<float>(dirname); 
-    else if(*coords_type == typeid(double)) 
-      make_tiles_with_2_ids<double>(dirname); 
+    if(*coords_type == typeid(int))
+      make_tiles_with_2_ids<int>(dirname);
+    else if(*coords_type == typeid(int64_t))
+      make_tiles_with_2_ids<int64_t>(dirname);
+    else if(*coords_type == typeid(float))
+      make_tiles_with_2_ids<float>(dirname);
+    else if(*coords_type == typeid(double))
+      make_tiles_with_2_ids<double>(dirname);
   }
 }
 
@@ -728,7 +735,7 @@ void WriteState::make_tiles(const std::string& dirname) {
   bin_file_collection.open(array_schema_, id_num, dirname, sorted);
 
   // Loop over the cells
-  while(bin_file_collection >> cell) 
+  while(bin_file_collection >> cell)
     write_cell_sorted<T>(cell.cell());
 }
 
@@ -748,11 +755,11 @@ void WriteState::make_tiles_with_id(const std::string& dirname) {
 
   // Loop over the cells
   if(array_schema_->has_regular_tiles()) {
-    while(bin_file_collection >> cell) 
+    while(bin_file_collection >> cell)
       write_cell_sorted_with_id<T>(cell.cell());
   } else {
-    while(bin_file_collection >> cell) 
-      write_cell_sorted<T>(static_cast<const char*>(cell.cell()) + 
+    while(bin_file_collection >> cell)
+      write_cell_sorted<T>(static_cast<const char*>(cell.cell()) +
                            sizeof(int64_t));
   }
 }
@@ -771,7 +778,7 @@ void WriteState::make_tiles_with_2_ids(const std::string& dirname) {
   bin_file_collection.open(array_schema_, id_num, dirname, sorted);
 
   // Loop over the cells
-  while(bin_file_collection >> cell) 
+  while(bin_file_collection >> cell)
     write_cell_sorted<T>(cell.cell());
 }
 
@@ -785,23 +792,23 @@ void WriteState::sort_run() {
   // Sort the cells
   if(cell_order == ArraySchema::CO_ROW_MAJOR) {
     if(*coords_type == typeid(int)) {
-      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerRow<int>(dim_num));
+      SORT(cells_.begin(), cells_.end(), SmallerRow<int>(dim_num));
     } else if(*coords_type == typeid(int64_t)) {
-      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerRow<int64_t>(dim_num));
+      SORT(cells_.begin(), cells_.end(), SmallerRow<int64_t>(dim_num));
     } else if(*coords_type == typeid(float)) {
-      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerRow<float>(dim_num));
+      SORT(cells_.begin(), cells_.end(), SmallerRow<float>(dim_num));
     } else if(*coords_type == typeid(double)) {
-      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerRow<double>(dim_num));
+      SORT(cells_.begin(), cells_.end(), SmallerRow<double>(dim_num));
     }
   } else if(cell_order == ArraySchema::CO_COLUMN_MAJOR) {
     if(*coords_type == typeid(int)) {
-      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerCol<int>(dim_num));
+      SORT(cells_.begin(), cells_.end(), SmallerCol<int>(dim_num));
     } else if(*coords_type == typeid(int64_t)) {
-      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerCol<int64_t>(dim_num));
+      SORT(cells_.begin(), cells_.end(), SmallerCol<int64_t>(dim_num));
     } else if(*coords_type == typeid(float)) {
-      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerCol<float>(dim_num));
+      SORT(cells_.begin(), cells_.end(), SmallerCol<float>(dim_num));
     } else if(*coords_type == typeid(double)) {
-      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerCol<double>(dim_num));
+      SORT(cells_.begin(), cells_.end(), SmallerCol<double>(dim_num));
     }
   }
 }
@@ -817,38 +824,31 @@ void WriteState::sort_run_with_id() {
   if(tile_order == ArraySchema::TO_NONE || // Irregular + Hilbert co
      cell_order == ArraySchema::CO_ROW_MAJOR) { // Regular + row co
     if(*coords_type == typeid(int)) {
-      __gnu_parallel::sort(cells_with_id_.begin(), cells_with_id_.end(), 
-                SmallerRowWithId<int>(dim_num));
+      SORT(cells_with_id_.begin(), cells_with_id_.end(),
+                    SmallerRowWithId<int>(dim_num));
     } else if(*coords_type == typeid(int64_t)) {
-      __gnu_parallel::sort(cells_with_id_.begin(), 
-                cells_with_id_.end(), 
-                SmallerRowWithId<int64_t>(dim_num));
+      SORT(cells_with_id_.begin(), cells_with_id_.end(),
+                    SmallerRowWithId<int64_t>(dim_num));
     } else if(*coords_type == typeid(float)) {
-      __gnu_parallel::sort(cells_with_id_.begin(), 
-                cells_with_id_.end(), 
-                SmallerRowWithId<float>(dim_num));
+      SORT(cells_with_id_.begin(), cells_with_id_.end(),
+                    SmallerRowWithId<float>(dim_num));
     } else if(*coords_type == typeid(double)) {
-      __gnu_parallel::sort(cells_with_id_.begin(), 
-                cells_with_id_.end(), 
-                SmallerRowWithId<double>(dim_num));
+      SORT(cells_with_id_.begin(), cells_with_id_.end(),
+                    SmallerRowWithId<double>(dim_num));
     }
   } else if(cell_order == ArraySchema::CO_COLUMN_MAJOR) { // Regular + col co
     if(*coords_type == typeid(int)) {
-      __gnu_parallel::sort(cells_with_id_.begin(), 
-                cells_with_id_.end(), 
-                SmallerColWithId<int>(dim_num));
+      SORT(cells_with_id_.begin(), cells_with_id_.end(),
+                    SmallerColWithId<int>(dim_num));
     } else if(*coords_type == typeid(int64_t)) {
-      __gnu_parallel::sort(cells_with_id_.begin(), 
-                cells_with_id_.end(), 
-                SmallerColWithId<int64_t>(dim_num));
+      SORT(cells_with_id_.begin(), cells_with_id_.end(),
+                    SmallerColWithId<int64_t>(dim_num));
     } else if(*coords_type == typeid(float)) {
-      __gnu_parallel::sort(cells_with_id_.begin(), 
-                cells_with_id_.end(), 
-                SmallerColWithId<float>(dim_num));
+      SORT(cells_with_id_.begin(), cells_with_id_.end(),
+                    SmallerColWithId<float>(dim_num));
     } else if(*coords_type == typeid(double)) {
-      __gnu_parallel::sort(cells_with_id_.begin(), 
-                cells_with_id_.end(), 
-                SmallerColWithId<double>(dim_num));
+      SORT(cells_with_id_.begin(), cells_with_id_.end(),
+                    SmallerColWithId<double>(dim_num));
     }
   }
 }
@@ -860,27 +860,23 @@ void WriteState::sort_run_with_2_ids() {
   const std::type_info* coords_type = array_schema_->type(attribute_num);
 
   if(*coords_type == typeid(int)) {
-    __gnu_parallel::sort(cells_with_2_ids_.begin(), 
-              cells_with_2_ids_.end(), 
-              SmallerWith2Ids<int>(dim_num));
+    SORT(cells_with_2_ids_.begin(), cells_with_2_ids_.end(),
+                  SmallerWith2Ids<int>(dim_num));
   } else if(*coords_type == typeid(int64_t)) {
-    __gnu_parallel::sort(cells_with_2_ids_.begin(), 
-              cells_with_2_ids_.end(), 
-              SmallerWith2Ids<int64_t>(dim_num));
+    SORT(cells_with_2_ids_.begin(), cells_with_2_ids_.end(),
+                  SmallerWith2Ids<int64_t>(dim_num));
   } else if(*coords_type == typeid(float)) {
-    __gnu_parallel::sort(cells_with_2_ids_.begin(), 
-              cells_with_2_ids_.end(), 
-              SmallerWith2Ids<float>(dim_num));
+    SORT(cells_with_2_ids_.begin(), cells_with_2_ids_.end(),
+                  SmallerWith2Ids<float>(dim_num));
   } else if(*coords_type == typeid(double)) {
-    __gnu_parallel::sort(cells_with_2_ids_.begin(), 
-              cells_with_2_ids_.end(), 
-              SmallerWith2Ids<double>(dim_num));
+    SORT(cells_with_2_ids_.begin(), cells_with_2_ids_.end(),
+                  SmallerWith2Ids<double>(dim_num));
   }
 }
 
 template<class T>
 void WriteState::update_tile_info(
-    const T* coords, int64_t tile_id, 
+    const T* coords, int64_t tile_id,
     const std::vector<size_t>& attr_sizes) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
@@ -891,9 +887,9 @@ void WriteState::update_tile_info(
   if(cell_num_ == 0) {
     // Allocate space for MBR and bounding coordinates
     mbr_ = malloc(2*array_schema_->cell_size(attribute_num));
-    bounding_coordinates_.first = 
+    bounding_coordinates_.first =
         malloc(array_schema_->cell_size(attribute_num));
-    bounding_coordinates_.second = 
+    bounding_coordinates_.second =
         malloc(array_schema_->cell_size(attribute_num));
 
     // Init MBR first bounding coordinate
@@ -909,7 +905,7 @@ void WriteState::update_tile_info(
   ++cell_num_;
 
   // Update file offsets
-  for(int i=0; i<=attribute_num; ++i) 
+  for(int i=0; i<=attribute_num; ++i)
     file_offsets_[i] += attr_sizes[i];
 }
 
