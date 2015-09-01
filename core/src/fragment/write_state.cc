@@ -785,13 +785,13 @@ void WriteState::sort_run() {
   // Sort the cells
   if(cell_order == ArraySchema::CO_ROW_MAJOR) {
     if(*coords_type == typeid(int)) {
-      std::sort(cells_.begin(), cells_.end(), SmallerRow<int>(dim_num));
+      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerRow<int>(dim_num));
     } else if(*coords_type == typeid(int64_t)) {
-      std::sort(cells_.begin(), cells_.end(), SmallerRow<int64_t>(dim_num));
+      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerRow<int64_t>(dim_num));
     } else if(*coords_type == typeid(float)) {
-      std::sort(cells_.begin(), cells_.end(), SmallerRow<float>(dim_num));
+      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerRow<float>(dim_num));
     } else if(*coords_type == typeid(double)) {
-      std::sort(cells_.begin(), cells_.end(), SmallerRow<double>(dim_num));
+      __gnu_parallel::sort(cells_.begin(), cells_.end(), SmallerRow<double>(dim_num));
     }
   } else if(cell_order == ArraySchema::CO_COLUMN_MAJOR) {
     if(*coords_type == typeid(int)) {
