@@ -43,6 +43,7 @@ template<class T>
 ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator() {
   array_ = NULL;
   cell_ = NULL;
+  cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   cell_its_ = NULL;
   end_ = false;
   range_ = NULL;
@@ -65,6 +66,7 @@ ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
   range_ = NULL;
   full_overlap_ = NULL;
   return_del_ = false;
+  cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   cell_its_ = NULL;
   tile_its_ = NULL; 
 
@@ -118,6 +120,7 @@ ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
   range_ = NULL;
   full_overlap_ = NULL;
   cell_its_ = NULL;
+  cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   tile_its_ = NULL;
 
   // Prepare the ids of the fragments the iterator will iterate on
@@ -169,6 +172,7 @@ ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
   full_overlap_ = NULL;
   return_del_ = false;
   cell_its_ = NULL;
+  cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   tile_its_ = NULL;
 
   // Prepare the ids of the fragments the iterator will iterate on
@@ -225,6 +229,7 @@ ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
   full_overlap_ = new bool[fragment_num_];
   memcpy(range_, range, 2*dim_num_*sizeof(T)); 
   cell_its_ = NULL;
+  cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   tile_its_ = NULL;
 
   // Prepare the ids of the fragments the iterator will iterate on
@@ -282,6 +287,7 @@ ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
   full_overlap_ = new bool[fragment_num_];
   memcpy(range_, range, 2*dim_num_*sizeof(T)); 
   cell_its_ = NULL;
+  cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   tile_its_ = NULL;
 
   // Prepare the ids of the fragments the iterator will iterate on
@@ -571,11 +577,18 @@ int ArrayConstReverseCellIterator<T>::get_next_cell() {
     // --- Prepare cell ---
     // Find cell size and create a new cell for variable-sized cells
     if(var_size_) {
-      if(cell_ != NULL)
-        free(cell_);
       cell_size_ = this->cell_size(fragment_id);
-      cell_ = malloc(cell_size_);
-    } 
+      size_t new_cell_buffer_size = cell_buffer_size_;
+      while(new_cell_buffer_size < cell_size_)
+        new_cell_buffer_size *= 2;
+      if(cell_ == NULL) {
+        cell_ = malloc(new_cell_buffer_size);
+      } else if(new_cell_buffer_size > cell_buffer_size_) {
+        free(cell_);
+        cell_ = malloc(new_cell_buffer_size);
+      }  
+      cell_buffer_size_ = new_cell_buffer_size;
+    }  
     char* cell = static_cast<char*>(cell_);
     size_t offset;
 
@@ -603,6 +616,8 @@ int ArrayConstReverseCellIterator<T>::get_next_cell() {
 
     return fragment_id;
   } else { // No more cells
+    if(cell_ != NULL) 
+      free(cell_);
     cell_ = NULL;
     end_ = true;
     is_del_ = false;

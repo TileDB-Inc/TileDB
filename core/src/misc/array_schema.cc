@@ -829,7 +829,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   int attribute_num;
   if(!is_positive_integer(s.c_str())) { 
     std::cerr << ERROR_MSG_HEADER  
-              << " The nunber of attributes must be a positive integer.\n";
+              << " The number of attributes must be a positive integer.\n";
     return -1;
   }
   sscanf(s.c_str(), "%d", &attribute_num); 
@@ -838,7 +838,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   for(int i=0; i<attribute_num; ++i) {
     if(!(array_schema_csv >> s)) {
       std::cerr << ERROR_MSG_HEADER  
-                << " The nunber of attribute names does not match the"
+                << " The number of attribute names does not match the"
                 << " provided number of attributes.\n";
       return -1;
     }
@@ -859,7 +859,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   int dim_num;
   if(!is_positive_integer(s.c_str())) { 
     std::cerr << ERROR_MSG_HEADER  
-              << " The nunber of dimensions must be a positive integer.\n";
+              << " The number of dimensions must be a positive integer.\n";
     return -1;
   }
   sscanf(s.c_str(), "%d", &dim_num); 
@@ -868,7 +868,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   for(int i=0; i<dim_num; ++i) {
     if(!(array_schema_csv >> s)) {
       std::cerr << ERROR_MSG_HEADER  
-                << " The nunber of dimension names does not match the"
+                << " The number of dimension names does not match the"
                 << " provided number of dimensions.\n";
       return -1;
     }
@@ -886,13 +886,13 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   for(int i=0; i<dim_num; ++i) {
     if(!(array_schema_csv >> lower_str)) {
       std::cerr << ERROR_MSG_HEADER  
-                << " The nunber of domain bounds does not match the"
+                << " The number of domain bounds does not match the"
                 << " provided number of dimensions.\n";
       return -1;
     }
     if(!(array_schema_csv >> upper_str)) {
       std::cerr << ERROR_MSG_HEADER  
-                << " The nunber of domain bounds does not match the"
+                << " The number of domain bounds does not match the"
                 << " provided number of dimensions.\n";
       return -1;
     }
@@ -920,7 +920,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   for(int i=0; i<attribute_num; ++i) { 
     if(!(array_schema_csv >> type_val_num)) {
       std::cerr << ERROR_MSG_HEADER  
-                << " The nunber of types does not match the number of"
+                << " The number of types does not match the number of"
                 << " attributes.\n";
       return -1;
     }
@@ -973,7 +973,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   // ----- Retrieve coordinate type
   if(!(array_schema_csv >> type)) {
     std::cerr << ERROR_MSG_HEADER  
-              << " The nunber of types does not match the number of"
+              << " The number of types does not match the number of"
               << " attributes.\n";
     return -1;
   }
@@ -1020,7 +1020,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
     for(int i=0; i<dim_num-1; ++i) { 
       if(!(array_schema_csv >> s)) {
         std::cerr << ERROR_MSG_HEADER  
-                  << " The nunber of tile extents does not match the number of"
+                  << " The number of tile extents does not match the number of"
                   << " dimensions.\n";
         return -1;
       }
@@ -1232,7 +1232,7 @@ int ArraySchema::set_compression(
   // Check number of compression types
   if(compression.size() != attribute_num_+1) {
     std::cerr << ERROR_MSG_HEADER
-              << " The nunber of compression types does not match the"
+              << " The number of compression types does not match the"
               << " number of attributes.\n";
     return -1;
   }
@@ -1261,7 +1261,7 @@ int ArraySchema::set_dim_domains(
     const std::vector<std::pair<double, double> >& dim_domains) {
   if(dim_domains.size() != dim_num_) {
     std::cerr << ERROR_MSG_HEADER
-              << " The nunber of domain bounds does not match the"
+              << " The number of domain bounds does not match the"
               << " provided number of dimensions.\n";
     return -1;
   }
@@ -1338,7 +1338,7 @@ int ArraySchema::set_tile_extents(
   // Check number of tile_extents
   if(tile_extents.size() != 0 && tile_extents.size() != dim_num_) {
     std::cerr << ERROR_MSG_HEADER
-              << " The nunber of tile extents does not match the number of"
+              << " The number of tile extents does not match the number of"
               << " dimensions.\n";
     return -1;
   }
@@ -1387,7 +1387,7 @@ int ArraySchema::set_types(
   // Check number of types
   if(types.size() != attribute_num_ + 1) {
     std::cerr << ERROR_MSG_HEADER
-              << " The nunber of types does not match the number of"
+              << " The number of types does not match the number of"
               << " attributes.\n";
     return -1;
   }
@@ -1426,7 +1426,7 @@ int ArraySchema::set_val_num(const std::vector<int>& val_num) {
   // Check number of val num
   if(val_num.size() != attribute_num_) {
     std::cerr << ERROR_MSG_HEADER
-              << " The nunber of attribute values per cell does not match"
+              << " The number of attribute values per cell does not match"
               << " number of attributes.\n";
     return -1;
   }

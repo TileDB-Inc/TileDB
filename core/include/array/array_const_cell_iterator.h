@@ -40,6 +40,12 @@
 #include "tile_const_cell_iterator.h"
 #include <vector>
 
+/** 
+ * Initial cell buffer size (in bytes) for variable-lengthed cells. 
+ * It will keep on doubling. 
+ */
+#define CELL_BUFFER_INITIAL_SIZE 40000
+
 class Array;
 
 /** 
@@ -122,6 +128,8 @@ class ArrayConstCellIterator {
   void* cell_;
   /** Stores one cell iterator per fragment per attribute. */
   TileConstCellIterator** cell_its_;
+  /** The size of the current buffer that holds a cell. */
+  size_t cell_buffer_size_;
   /** The size of the current cell. */
   size_t cell_size_;
   /** Number of dimensions. */
