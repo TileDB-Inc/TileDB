@@ -244,8 +244,13 @@ void QueryProcessor::export_csv(
   CSVFile csv_file(filename, "w");
 
   // Prepare cell iterators
+  ArrayConstDenseCellIterator<T>* cell_it = 
+      storage_manager_->begin_dense<T>(ad, attribute_ids);
+
+/*
   ArrayConstCellIterator<T>* cell_it = 
       storage_manager_->begin<T>(ad, attribute_ids);
+*/
 
   // Prepare a cell
   Cell cell(array_schema, cell_it->attribute_ids(), 0, true);
@@ -258,6 +263,7 @@ void QueryProcessor::export_csv(
 
   // Clean up 
   csv_file.close();
+  delete cell_it;
 }
 
 template<class T>
@@ -285,6 +291,7 @@ void QueryProcessor::export_csv_reverse(
 
   // Clean up 
   csv_file.close();
+  delete cell_it;
 }
 
 int QueryProcessor::parse_attribute_names(
@@ -364,5 +371,7 @@ void QueryProcessor::subarray(
   // Write cells into the CSV file
   for(; !cell_it->end(); ++(*cell_it)) 
     storage_manager_->write_cell_sorted<T>(result_ad, **cell_it); 
+
+  delete cell_it;
 }
 

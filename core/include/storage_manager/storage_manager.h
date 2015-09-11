@@ -155,6 +155,34 @@ class StorageManager {
   /** Takes as input an array descriptor and returns a cell iterator. */
   template<class T>
   ArrayConstReverseCellIterator<T>* rbegin(int ad) const;
+  /** Takes as input an array descriptor and returns a dense cell iterator. */
+  template<class T>
+  ArrayConstDenseCellIterator<T>* begin_dense(int ad) const;
+  /** 
+   * Takes as input an array descriptor and a list of attribute ids. It returns
+   * a dense cell iterator that iterates over the specified attributes.
+   */
+  template<class T>
+  ArrayConstDenseCellIterator<T>* begin_dense(
+      int ad, const std::vector<int>& attribute_ids) const;
+  /** 
+   * Takes as input an array descriptor and a range. It returns a dense cell 
+   * iterator that iterates only over the cells whose coordinates lie within 
+   * the input range (following the global cell order).    
+   */
+  template<class T>
+  ArrayConstDenseCellIterator<T>* begin_dense(
+      int ad, const T* range) const;
+  /** 
+   * Takes as input an array descriptor, a range, and a list of attribute
+   * ids. It returns a dense cell iterator that iterates only over the cells
+   * whose coordinates lie within the input range (following the global cell
+   * order), and only on the specified attributes.
+   */
+  template<class T>
+  ArrayConstDenseCellIterator<T>* begin_dense(
+      int ad, const T* range,
+      const std::vector<int>& attribute_ids) const;
   /** 
    * Takes as input an array descriptor and a list of attribute ids. It returns
    * a cell iterator that iterates over the specified attributes.

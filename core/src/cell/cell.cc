@@ -302,9 +302,9 @@ void Cell::append_string(int attribute_id, CSVLine& csv_line) const {
 
   v.assign(s, val_num);
 
-  if(is_null(v[0]))
+  if(is_null(v[0])) {
     csv_line << NULL_VALUE;
-  else if(is_del(v[0]))
+  } else if(is_del(v[0]))
     csv_line << DEL_VALUE;
   else 
     csv_line << v;

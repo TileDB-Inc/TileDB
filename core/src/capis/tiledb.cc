@@ -203,7 +203,6 @@ int tiledb_write_cell_sorted(TileDB_CTX* tiledb_ctx, int ad, const void* cell) {
   return TILEDB_OK;
 }
 
-
 /* ****************************** */
 /*          CELL ITERATORS        */
 /* ****************************** */
@@ -214,11 +213,23 @@ typedef struct TileDB_ConstCellIterator {
   bool begin_;
 } TileDB_ConstCellIterator;
 
+typedef struct TileDB_ConstDenseCellIterator {
+  const ArraySchema* array_schema_;
+  void* it_;
+  bool begin_;
+} TileDB_ConstDenseCellIterator;
+
 typedef struct TileDB_ConstReverseCellIterator {
   const ArraySchema* array_schema_;
   void* it_;
   bool begin_;
 } TileDB_ConstReverseCellIterator;
+
+typedef struct TileDB_ConstReverseDenseCellIterator {
+  const ArraySchema* array_schema_;
+  void* it_;
+  bool begin_;
+} TileDB_ConstReverseDenseCellIterator;
 
 int tiledb_const_cell_iterator_finalize(
     TileDB_ConstCellIterator* cell_it) {
@@ -233,6 +244,25 @@ int tiledb_const_cell_iterator_finalize(
     delete (ArrayConstCellIterator<float>*) cell_it->it_;
   else if(type == &typeid(double))
     delete (ArrayConstCellIterator<double>*) cell_it->it_;
+
+  free(cell_it);
+
+  return TILEDB_OK;
+}
+
+int tiledb_const_dense_cell_iterator_finalize(
+    TileDB_ConstDenseCellIterator* cell_it) {
+
+  const std::type_info* type = cell_it->array_schema_->coords_type();
+
+  if(type == &typeid(int))
+    delete (ArrayConstDenseCellIterator<int>*) cell_it->it_;
+  else if(type == &typeid(int64_t))
+    delete (ArrayConstDenseCellIterator<int64_t>*) cell_it->it_;
+  else if(type == &typeid(float))
+    delete (ArrayConstDenseCellIterator<float>*) cell_it->it_;
+  else if(type == &typeid(double))
+    delete (ArrayConstDenseCellIterator<double>*) cell_it->it_;
 
   free(cell_it);
 
@@ -318,6 +348,67 @@ int tiledb_const_cell_iterator_init(
   return TILEDB_OK;
 }
 
+int tiledb_const_dense_cell_iterator_init(
+    TileDB_CTX* tiledb_ctx,
+    int ad,
+    const char** attribute_names,
+    int attribute_names_num,
+    TileDB_ConstDenseCellIterator*& cell_it) {
+
+  assert(tiledb_ctx);
+  assert(ad >= 0);
+  assert(attribute_names_num >= 0);
+
+  // Initialize cell_it
+  cell_it = (TileDB_ConstDenseCellIterator*)
+             malloc(sizeof(struct TileDB_ConstDenseCellIterator));
+  cell_it->begin_ = true;
+
+  // For easy reference
+  int err;
+  const ArraySchema* array_schema;
+  err = tiledb_ctx->storage_manager_->get_array_schema(
+            ad, array_schema);
+  if(err == -1)
+    return -1; // TODO
+  const std::type_info* type = array_schema->coords_type();
+
+  // Get vector of attribute ids
+  std::vector<std::string> attribute_names_vec;
+  for(int i=0; i<attribute_names_num; ++i)
+    attribute_names_vec.push_back(attribute_names[i]);
+  std::vector<int> attribute_ids;
+  err = array_schema->get_attribute_ids(attribute_names_vec, attribute_ids);
+  if(err == -1)
+    return -1; // TODO
+
+  // Initialize the proper templated cell iterator
+  // TODO: Error messages here !!!
+  if(type == &typeid(int)) {
+    cell_it->it_ =
+        tiledb_ctx->storage_manager_->begin_dense<int>(ad, attribute_ids);
+    cell_it->array_schema_ =
+        ((ArrayConstCellIterator<int>*) cell_it->it_)->array_schema();
+  } else if(type == &typeid(int64_t)) {
+    cell_it->it_ =
+        tiledb_ctx->storage_manager_->begin_dense<int64_t>(ad, attribute_ids);
+    cell_it->array_schema_ =
+        ((ArrayConstCellIterator<int64_t>*) cell_it->it_)->array_schema();
+  } else if(type == &typeid(float)) {
+    cell_it->it_ =
+        tiledb_ctx->storage_manager_->begin_dense<float>(ad, attribute_ids);
+    cell_it->array_schema_ =
+        ((ArrayConstCellIterator<float>*) cell_it->it_)->array_schema();
+  } else if(type == &typeid(double)) {
+    cell_it->it_ =
+        tiledb_ctx->storage_manager_->begin_dense<double>(ad, attribute_ids);
+    cell_it->array_schema_ =
+        ((ArrayConstCellIterator<double>*) cell_it->it_)->array_schema();
+  }
+
+  return TILEDB_OK;
+}
+
 int tiledb_const_cell_iterator_init_in_range(
     TileDB_CTX* tiledb_ctx,
     int ad,
@@ -376,6 +467,72 @@ int tiledb_const_cell_iterator_init_in_range(
   } else if(type == &typeid(double)) {
     cell_it->it_ =
         tiledb_ctx->storage_manager_->begin<double>(
+            ad, (const double*) range, attribute_ids);
+    cell_it->array_schema_ =
+        ((ArrayConstCellIterator<double>*) cell_it->it_)->array_schema();
+  }
+
+  return TILEDB_OK;
+}
+
+int tiledb_const_dense_cell_iterator_init_in_range(
+    TileDB_CTX* tiledb_ctx,
+    int ad,
+    const char** attribute_names,
+    int attribute_names_num,
+    const void* range,
+    TileDB_ConstDenseCellIterator*& cell_it) {
+
+  assert(tiledb_ctx);
+  assert(ad >= 0);
+  assert(attribute_names_num >= 0);
+
+  // Initialize cell_it
+  cell_it = (TileDB_ConstDenseCellIterator*)
+             malloc(sizeof(struct TileDB_ConstDenseCellIterator));
+  cell_it->begin_ = true;
+
+  // For easy reference
+  int err;
+  const ArraySchema* array_schema;
+  err = tiledb_ctx->storage_manager_->get_array_schema(
+            ad, array_schema);
+  if(err == -1)
+    return -1; // TODO
+  const std::type_info* type = array_schema->coords_type();
+
+  // Get vector of attribute ids
+  std::vector<std::string> attribute_names_vec;
+  for(int i=0; i<attribute_names_num; ++i)
+    attribute_names_vec.push_back(attribute_names[i]);
+  std::vector<int> attribute_ids;
+  err = array_schema->get_attribute_ids(attribute_names_vec, attribute_ids);
+  if(err == -1)
+    return -1; // TODO
+
+  // Initialize the proper templated cell iterator
+  // TODO: Error messages here !!!
+  if(type == &typeid(int)) {
+    cell_it->it_ =
+        tiledb_ctx->storage_manager_->begin_dense<int>(
+             ad, (const int*) range, attribute_ids);
+    cell_it->array_schema_ =
+        ((ArrayConstCellIterator<int>*) cell_it->it_)->array_schema();
+  } else if(type == &typeid(int64_t)) {
+    cell_it->it_ =
+        tiledb_ctx->storage_manager_->begin_dense<int64_t>(
+            ad, (const int64_t*) range, attribute_ids);
+    cell_it->array_schema_ =
+        ((ArrayConstCellIterator<int64_t>*) cell_it->it_)->array_schema();
+  } else if(type == &typeid(float)) {
+    cell_it->it_ =
+        tiledb_ctx->storage_manager_->begin_dense<float>(
+            ad, (const float*) range, attribute_ids);
+    cell_it->array_schema_ =
+        ((ArrayConstCellIterator<float>*) cell_it->it_)->array_schema();
+  } else if(type == &typeid(double)) {
+    cell_it->it_ =
+        tiledb_ctx->storage_manager_->begin_dense<double>(
             ad, (const double*) range, attribute_ids);
     cell_it->array_schema_ =
         ((ArrayConstCellIterator<double>*) cell_it->it_)->array_schema();
@@ -558,6 +715,65 @@ int tiledb_const_cell_iterator_next(
   } else if(type == &typeid(double)) {
     ArrayConstCellIterator<double>* it =
         (ArrayConstCellIterator<double>*) cell_it->it_;
+    if(!cell_it->begin_)
+      ++(*it);
+    else
+      cell_it->begin_ = false;
+    if(it->end())
+      cell = NULL;
+    else
+      cell = **it;
+  }
+
+  return TILEDB_OK;
+}
+
+int tiledb_const_dense_cell_iterator_next(
+    TileDB_ConstDenseCellIterator* cell_it,
+    const void*& cell) {
+
+  assert(cell_it);
+
+  // For easy reference
+  const ArraySchema* array_schema = cell_it->array_schema_;
+  const std::type_info* type = array_schema->coords_type();
+
+  if(type == &typeid(int)) {
+    ArrayConstDenseCellIterator<int>* it =
+        (ArrayConstDenseCellIterator<int>*) cell_it->it_;
+    if(!cell_it->begin_)
+      ++(*it);
+    else
+      cell_it->begin_ = false;
+    if(it->end())
+      cell = NULL;
+    else
+      cell = **it;
+  } else if(type == &typeid(int64_t)) {
+    ArrayConstDenseCellIterator<int64_t>* it =
+        (ArrayConstDenseCellIterator<int64_t>*) cell_it->it_;
+    if(!cell_it->begin_)
+      ++(*it);
+    else
+      cell_it->begin_ = false;
+    if(it->end())
+      cell = NULL;
+    else
+      cell = **it;
+  } else if(type == &typeid(float)) {
+    ArrayConstDenseCellIterator<float>* it =
+        (ArrayConstDenseCellIterator<float>*) cell_it->it_;
+    if(!cell_it->begin_)
+      ++(*it);
+    else
+      cell_it->begin_ = false;
+    if(it->end())
+      cell = NULL;
+    else
+      cell = **it;
+  } else if(type == &typeid(double)) {
+    ArrayConstDenseCellIterator<double>* it =
+        (ArrayConstDenseCellIterator<double>*) cell_it->it_;
     if(!cell_it->begin_)
       ++(*it);
     else

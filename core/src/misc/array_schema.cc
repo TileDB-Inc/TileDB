@@ -1456,6 +1456,23 @@ int ArraySchema::set_val_num(const std::vector<int>& val_num) {
 ************************ MISC *************************
 ******************************************************/
 
+template<class T>
+bool ArraySchema::advance_coords(T* coords) const {
+  if(has_irregular_tiles()) { // Irregular tiles
+    if(cell_order_ == CO_ROW_MAJOR)
+      return advance_coords_irregular_row_major<T>(coords);
+    else if(cell_order_ == CO_COLUMN_MAJOR)
+      return advance_coords_irregular_column_major<T>(coords);
+    else if(cell_order_ == CO_HILBERT)
+      return advance_coords_irregular_hilbert<T>(coords);
+  } else { // Regular tiles 
+    // TODO
+    std::cout << "[TileDB Error] Dense iterators for regular tiles"
+                 " not supported yet.\n";
+    exit(-1);
+  }
+}
+
 int64_t ArraySchema::cell_id_hilbert(const void* coords) const {
   if(*(types_[attribute_num_]) == typeid(int))
     return cell_id_hilbert(static_cast<const int*>(coords));  
@@ -1576,6 +1593,16 @@ ArraySchema* ArraySchema::clone(int64_t capacity) const {
   return array_schema;
 }
 
+template<class T>
+bool ArraySchema::coords_match(const T* coords_A, const T* coords_B) const {
+  for(int i=0; i<dim_num_; ++i) {
+    if(coords_A[i] != coords_B[i])
+      return false;
+  } 
+
+  return true;
+}
+
 ArraySchema ArraySchema::create_join_result_schema(
     const ArraySchema& array_schema_A, 
     const ArraySchema& array_schema_B,
@@ -1662,12 +1689,193 @@ void ArraySchema::csv_line_to_cell(
     memcpy(static_cast<char*>(cell) + coords_size, &offset, sizeof(size_t));
 }
 
+template<class T>
+void ArraySchema::get_domain_end(T* coords) const {
+  if(has_regular_tiles()) { // TODO
+    std::cout << "[TileDB Error] get_domain_end not supported for"
+              << " regular tiles yet.\n";
+    exit(-1);
+  }
+
+  if(cell_order_ == CO_HILBERT) { // TODO
+    std::cout << "[TileDB Error] get_domain_end not supported for"
+              << " Hilbert order yet.\n";
+    exit(-1);
+  }
+
+  for(int i=0; i<dim_num_; ++i) 
+    coords[i] = dim_domains_[i].second;
+}
+
+template<class T>
+void ArraySchema::get_domain_start(T* coords) const {
+  if(has_regular_tiles()) {
+    std::cout << "[TileDB Error] get_domain_start not supported for"
+              << " regular tiles yet.\n";
+    exit(-1);
+  }
+
+  if(cell_order_ == CO_HILBERT) {
+    std::cout << "[TileDB Error] get_domain_start not supported for"
+              << " Hilbert order yet.\n";
+    exit(-1);
+  }
+
+  for(int i=0; i<dim_num_; ++i) 
+    coords[i] = dim_domains_[i].first;
+}
+
 bool ArraySchema::has_irregular_tiles() const {
   return (tile_extents_.size() == 0);
 }
 
 bool ArraySchema::has_regular_tiles() const {
   return (tile_extents_.size() != 0);
+}
+
+void ArraySchema::init_zero_cell(void*& cell) const {
+  // Fixed-size cell
+  if(cell_size_ != VAR_SIZE) {
+    cell = malloc(cell_size_);
+    
+    // For easy reference
+    char* c_cell = static_cast<char*>(cell);
+  
+    // Skip the coordinates
+    size_t offset = coords_size();
+
+    // Fill the attribute values
+    for(int i=0; i<attribute_num_; ++i) {
+      if(types_[i] == &typeid(char)) {
+        for(int i=0; i<val_num_[i]; ++i) {
+          char v = NULL_CHAR;
+          memcpy(c_cell + offset, &v, sizeof(char));
+          offset += sizeof(char);
+        }
+      } else if(types_[i] == &typeid(int)) {
+        for(int i=0; i<val_num_[i]; ++i) {
+          int v = 0;
+          memcpy(c_cell + offset, &v, sizeof(int));
+          offset += sizeof(int);
+        }
+      } else if(types_[i] == &typeid(int64_t)) {
+        for(int i=0; i<val_num_[i]; ++i) {
+          int64_t v = 0;
+          memcpy(c_cell + offset, &v, sizeof(int64_t));
+          offset += sizeof(int64_t);
+        }
+      } else if(types_[i] == &typeid(float)) {
+        for(int i=0; i<val_num_[i]; ++i) {
+          float v = 0;
+          memcpy(c_cell + offset, &v, sizeof(float));
+          offset += sizeof(float);
+        }
+      } else if(types_[i] == &typeid(double)) {
+        for(int i=0; i<val_num_[i]; ++i) {
+          double v = 0;
+          memcpy(c_cell + offset, &v, sizeof(double));
+          offset += sizeof(double);
+        }
+      }
+    }
+  } else { // Variable-length cell
+    // Calculate cell size
+    size_t cell_size = coords_size() + sizeof(size_t);
+    for(int i=0; i<attribute_num_; ++i) { 
+      if(val_num_[i] != VAR_SIZE)
+        cell_size += val_num_[i] * type_sizes_[i];
+      else
+        cell_size += sizeof(int) + type_sizes_[i];
+    }
+
+    cell = malloc(cell_size);
+
+    // For easy reference
+    char* c_cell = static_cast<char*>(cell);
+
+    // Skip the coordinates
+    size_t offset = coords_size();
+
+    // Fill the cell size
+    memcpy(c_cell + offset, &cell_size, sizeof(size_t));
+    offset += sizeof(size_t);
+
+    // Fill the attribute values
+    for(int i=0; i<attribute_num_; ++i) {
+      if(types_[i] == &typeid(char)) {
+        char v = NULL_CHAR;
+        int n = 1;
+        if(val_num_[i] != VAR_SIZE) {
+          for(int j=0; j<val_num_[i]; ++j) { 
+            memcpy(c_cell + offset, &v, sizeof(char));
+            offset += sizeof(char);
+          }
+        } else {
+          memcpy(c_cell + offset, &n, sizeof(int));
+          offset += sizeof(int);
+          memcpy(c_cell + offset, &v, sizeof(char));
+          offset += sizeof(char);
+        }
+      } else if(types_[i] == &typeid(int)) {
+        int v = 0;
+        int n = 1;
+        if(val_num_[i] != VAR_SIZE) {
+          for(int j=0; j<val_num_[i]; ++j) { 
+            memcpy(c_cell + offset, &v, sizeof(int));
+            offset += sizeof(int);
+          } 
+        } else {
+          memcpy(c_cell + offset, &n, sizeof(int));
+          offset += sizeof(int);
+          memcpy(c_cell + offset, &v, sizeof(int));
+          offset += sizeof(int);
+        }
+      } else if(types_[i] == &typeid(int64_t)) {
+        int64_t v = 0;
+        int n = 1;
+        if(val_num_[i] != VAR_SIZE) {
+          for(int j=0; j<val_num_[i]; ++j) { 
+            memcpy(c_cell + offset, &v, sizeof(int64_t));
+            offset += sizeof(int64_t);
+          }
+ 
+        } else {
+          memcpy(c_cell + offset, &n, sizeof(int));
+          offset += sizeof(int);
+          memcpy(c_cell + offset, &v, sizeof(int64_t));
+          offset += sizeof(int64_t);
+        }
+      } else if(types_[i] == &typeid(float)) {
+        float v = 0;
+        int n = 1;
+        if(val_num_[i] != VAR_SIZE) {
+          for(int j=0; j<val_num_[i]; ++j) { 
+            memcpy(c_cell + offset, &v, sizeof(float));
+            offset += sizeof(float);
+          } 
+        } else {
+          memcpy(c_cell + offset, &n, sizeof(int));
+          offset += sizeof(int);
+          memcpy(c_cell + offset, &v, sizeof(float));
+          offset += sizeof(float);
+        }
+      } else if(types_[i] == &typeid(double)) {
+        double v = 0;
+        int n = 1;
+        if(val_num_[i] != VAR_SIZE) {
+          for(int j=0; j<val_num_[i]; ++j) { 
+            memcpy(c_cell + offset, &v, sizeof(double));
+            offset += sizeof(double);
+          }
+        } else {
+          memcpy(c_cell + offset, &n, sizeof(int));
+          offset += sizeof(int);
+          memcpy(c_cell + offset, &v, sizeof(double));
+          offset += sizeof(double);
+        }
+      }
+    } 
+  }
 }
 
 std::pair<bool,std::string> ArraySchema::join_compatible(
@@ -2060,6 +2268,47 @@ const ArraySchema* ArraySchema::transpose(
 ******************* PRIVATE METHODS *******************
 ******************************************************/
 
+template<class T>
+bool ArraySchema::advance_coords_irregular_column_major(T* coords) const {
+  int i = 0;
+
+  ++coords[i];
+  while(i < dim_num_-1 && coords[i] > dim_domains_[i].second) {
+    coords[i] = dim_domains_[i].first;
+    ++coords[++i];
+  } 
+
+  if(coords[dim_num_-1] <= dim_domains_[dim_num_-1].second)
+    return true;
+  else 
+    return false;
+}
+
+
+template<class T>
+bool ArraySchema::advance_coords_irregular_hilbert(T* coords) const {
+  // TODO
+  std::cout << "[TileDB Error] Dense iterators for Hilbert order not"
+               " supported yet.\n";
+  exit(-1);
+}
+
+template<class T>
+bool ArraySchema::advance_coords_irregular_row_major(T* coords) const {
+  int i = dim_num_-1;
+
+  ++coords[i];
+  while(i > 0 && coords[i] > dim_domains_[i].second) {
+    coords[i] = dim_domains_[i].first;
+    ++coords[--i];
+  }
+
+  if(coords[0] <= dim_domains_[0].second)
+    return true;
+  else 
+    return false;
+}
+
 void ArraySchema::append_attributes(
     CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const {
   for(int i=0; i<attribute_num_; ++i) {
@@ -2409,6 +2658,21 @@ bool ArraySchema::valid_attribute_ids(
 }
 
 // Explicit template instantiations
+template bool ArraySchema::advance_coords<int>(int* coords) const;
+template bool ArraySchema::advance_coords<int64_t>(int64_t* coords) const;
+template bool ArraySchema::advance_coords<float>(float* coords) const;
+template bool ArraySchema::advance_coords<double>(double* coords) const;
+
+template void ArraySchema::get_domain_end<int>(int* coords) const;
+template void ArraySchema::get_domain_end<int64_t>(int64_t* coords) const;
+template void ArraySchema::get_domain_end<float>(float* coords) const;
+template void ArraySchema::get_domain_end<double>(double* coords) const;
+
+template void ArraySchema::get_domain_start<int>(int* coords) const;
+template void ArraySchema::get_domain_start<int64_t>(int64_t* coords) const;
+template void ArraySchema::get_domain_start<float>(float* coords) const;
+template void ArraySchema::get_domain_start<double>(double* coords) const;
+
 template bool ArraySchema::precedes<int>(
     const int* coords_A, const int* coords_B) const;
 template bool ArraySchema::precedes<int64_t>(
@@ -2435,6 +2699,15 @@ template int64_t ArraySchema::cell_id_hilbert<float>(
     const float* coords) const;
 template int64_t ArraySchema::cell_id_hilbert<double>(
     const double* coords) const;
+
+template bool ArraySchema::coords_match<int>(
+    const int* coords_A, const int* coords_B) const;
+template bool ArraySchema::coords_match<int64_t>(
+    const int64_t* coords_A, const int64_t* coords_B) const;
+template bool ArraySchema::coords_match<float>(
+    const float* coords_A, const float* coords_B) const;
+template bool ArraySchema::coords_match<double>(
+    const double* coords_A, const double* coords_B) const;
 
 template int64_t ArraySchema::tile_id<int>(
     const int* coords) const;

@@ -232,9 +232,16 @@ class ArraySchema {
    * Returns 0 on success and -1 on error. 
    */
   int set_val_num(const std::vector<int>& val_num);
-
 	
   // MISC
+  /** 
+   * Updates the coordinates such that they immediately follow the old
+   * ones along the global cell order, following a dense format.
+   * Returns true if the new coordinates are still within the dimensions
+   * domain, and false otherwise. 
+   */
+  template<class T>
+  bool advance_coords(T* coords) const;
   /** 
    * Returns the cell id of the input coordinates, along the Hilbert 
    * space-filling curve.
@@ -258,6 +265,9 @@ class ArraySchema {
   ArraySchema* clone(const std::string& array_name, CellOrder cell_order) const;
   /** Returns an identical schema assigning the input to the capacity. */
   ArraySchema* clone(int64_t capacity) const;
+  /** True if the input sets of coordinates are identical. */
+  template<class T>
+  bool coords_match(const T* coords_A, const T* coords_B) const;
   /** 
    * Returns the schema of the result when joining the arrays with the
    * input schemas. The result array name is given in the third argument. 
@@ -292,6 +302,18 @@ class ArraySchema {
       const std::vector<std::string>& attribute_names,
       std::vector<int>& attribute_ids) const;
   /** 
+   * Copies the last coordinates inside the domain following the global
+   * order for a dense format.
+   */
+  template<class T>
+  void get_domain_end(T* coords) const;
+  /** 
+   * Copies the first coordinates inside the domain following the global
+   * order for a dense format.
+   */
+  template<class T>
+  void get_domain_start(T* coords) const;
+  /** 
    * Returns true if the array has irregular tiles (i.e., 
    * ArraySchema::tile_extents_ is empty), and false otherwise. 
    */
@@ -301,6 +323,12 @@ class ArraySchema {
    * ArraySchema::tile_extents_ is not empty), and false otherwise. 
    */
   bool has_regular_tiles() const;
+  /** 
+   * Initializes a zero cell, with arbitrary coordinates (they are not
+   * important in the beginning - they are set later), 0 values for the
+   * numerical attributes, and NULL values for the non-numerical 
+   */
+  void init_zero_cell(void*& cell) const;
   /** 
    * Returns true if the input array schemas correspond to arrays that can be 
    * joined. Otherwise, it returns false along with an error message. 
@@ -413,7 +441,7 @@ class ArraySchema {
   /** Holds space for browsing coordinates. */
   void* coords_;
   /** The list with the dimension domains.*/
-  std::vector< std::pair< double, double > > dim_domains_;
+  std::vector< std::pair< double, double> > dim_domains_;
   /** The list with the dimension names.*/
   std::vector<std::string> dim_names_;
   /** The number of dimensions.*/
@@ -458,6 +486,30 @@ class ArraySchema {
   std::vector<int> val_num_;
 
   // PRIVATE METHODS
+  /** 
+   * Updates the coordinates such that they immediately follow the old
+   * ones along the column major order for the case of irregular tiles, 
+   * following a dense format. Returns true if the new coordinates are still
+   * within the dimensions domain, and false otherwise. 
+   */
+  template<class T>
+  bool advance_coords_irregular_column_major(T* coords) const;
+  /** 
+   * Updates the coordinates such that they immediately follow the old
+   * ones along the hilbert order for the case of irregular tiles, 
+   * following a dense format. Returns true if the new coordinates are still 
+   * within the dimensions domain, and false otherwise. 
+   */
+  template<class T>
+  bool advance_coords_irregular_hilbert(T* coords) const;
+  /** 
+   * Updates the coordinates such that they immediately follow the old
+   * ones along the row major order for the case of irregular tiles, 
+   * following a dense format. Returns true if the new coordinates are still 
+   * within the dimensions domain, and false otherwise. 
+   */
+  template<class T>
+  bool advance_coords_irregular_row_major(T* coords) const;
   /** Appends the attribute values from a CSV line to a cell. */
   void append_attributes(
       CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const;

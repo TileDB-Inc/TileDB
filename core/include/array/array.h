@@ -35,6 +35,7 @@
 #define ARRAY_H
 
 #include "array_const_cell_iterator.h"
+#include "array_const_dense_cell_iterator.h"
 #include "array_const_reverse_cell_iterator.h"
 #include "fragment.h"
 #include <inttypes.h>

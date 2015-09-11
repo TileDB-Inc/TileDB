@@ -476,6 +476,46 @@ ArrayConstCellIterator<T>* StorageManager::begin(
 }
 
 template<class T>
+ArrayConstDenseCellIterator<T>* StorageManager::begin_dense(
+    int ad) const {
+  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
+  assert(arrays_[ad] != NULL);
+  assert(arrays_[ad]->mode() == Array::READ);
+
+  return new ArrayConstDenseCellIterator<T>(arrays_[ad]);
+}
+
+template<class T>
+ArrayConstDenseCellIterator<T>* StorageManager::begin_dense(
+    int ad, const std::vector<int>& attribute_ids) const {
+  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
+  assert(arrays_[ad] != NULL);
+  assert(arrays_[ad]->mode() == Array::READ);
+
+  return new ArrayConstDenseCellIterator<T>(arrays_[ad], attribute_ids);
+}
+
+template<class T>
+ArrayConstDenseCellIterator<T>* StorageManager::begin_dense(
+    int ad, const T* range) const {
+  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
+  assert(arrays_[ad] != NULL);
+  assert(arrays_[ad]->mode() == Array::READ);
+
+  return new ArrayConstDenseCellIterator<T>(arrays_[ad], range);
+}
+
+template<class T>
+ArrayConstDenseCellIterator<T>* StorageManager::begin_dense(
+    int ad, const T* range, const std::vector<int>& attribute_ids) const {
+  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
+  assert(arrays_[ad] != NULL);
+  assert(arrays_[ad]->mode() == Array::READ);
+
+  return new ArrayConstDenseCellIterator<T>(arrays_[ad], range, attribute_ids);
+}
+
+template<class T>
 ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
     int ad) const {
   assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
@@ -745,6 +785,50 @@ StorageManager::begin<float>(
     int ad, const float* range, const std::vector<int>& attribute_ids) const;
 template ArrayConstCellIterator<double>*
 StorageManager::begin<double>(
+    int ad, const double* range, const std::vector<int>& attribute_ids) const;
+
+template ArrayConstDenseCellIterator<int>*
+StorageManager::begin_dense<int>(int ad) const;
+template ArrayConstDenseCellIterator<int64_t>*
+StorageManager::begin_dense<int64_t>(int ad) const;
+template ArrayConstDenseCellIterator<float>*
+StorageManager::begin_dense<float>(int ad) const;
+template ArrayConstDenseCellIterator<double>*
+StorageManager::begin_dense<double>(int ad) const;
+
+template ArrayConstDenseCellIterator<int>*
+StorageManager::begin_dense<int>(
+    int ad, const std::vector<int>& attribute_ids) const;
+template ArrayConstDenseCellIterator<int64_t>*
+StorageManager::begin_dense<int64_t>(
+    int ad, const std::vector<int>& attribute_ids) const;
+template ArrayConstDenseCellIterator<float>*
+StorageManager::begin_dense<float>(
+    int ad, const std::vector<int>& attribute_ids) const;
+template ArrayConstDenseCellIterator<double>*
+StorageManager::begin_dense<double>(
+    int ad, const std::vector<int>& attribute_ids) const;
+
+template ArrayConstDenseCellIterator<int>*
+StorageManager::begin_dense<int>(int ad, const int* range) const;
+template ArrayConstDenseCellIterator<int64_t>*
+StorageManager::begin_dense<int64_t>(int ad, const int64_t* range) const;
+template ArrayConstDenseCellIterator<float>*
+StorageManager::begin_dense<float>(int ad, const float* range) const;
+template ArrayConstDenseCellIterator<double>*
+StorageManager::begin_dense<double>(int ad, const double* range) const;
+
+template ArrayConstDenseCellIterator<int>*
+StorageManager::begin_dense<int>(
+    int ad, const int* range, const std::vector<int>& attribute_ids) const;
+template ArrayConstDenseCellIterator<int64_t>*
+StorageManager::begin_dense<int64_t>(
+    int ad, const int64_t* range, const std::vector<int>& attribute_ids) const;
+template ArrayConstDenseCellIterator<float>*
+StorageManager::begin_dense<float>(
+    int ad, const float* range, const std::vector<int>& attribute_ids) const;
+template ArrayConstDenseCellIterator<double>*
+StorageManager::begin_dense<double>(
     int ad, const double* range, const std::vector<int>& attribute_ids) const;
 
 template ArrayConstReverseCellIterator<int>*
