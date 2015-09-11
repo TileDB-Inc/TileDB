@@ -8,7 +8,12 @@ OS := $(shell uname)
 LFS_CFLAGS = -D_FILE_OFFSET_BITS=64
 
 # --- Debug/Release mode handler --- #
-BUILD ?= debug 
+BUILD =
+
+ifeq ($(BUILD),)
+  BUILD = release
+endif
+ 
 CFLAGS = -fopenmp
 ifeq ($(BUILD),debug)
 #  CFLAGS += -DDEBUG -Wall -O0 -g
