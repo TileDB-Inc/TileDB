@@ -51,9 +51,10 @@ CSVFile::CSVFile() {
   buffer_end_ = 0;
   buffer_offset_ = 0;
   cell_ = NULL;
-  file_offset_ = 0;
   compression_ = NONE;
+  eof_ = false;
   fd_ = -1;
+  fdz_ = NULL;
 }
 
 CSVFile::CSVFile(const ArraySchema* array_schema) 
@@ -68,9 +69,10 @@ CSVFile::CSVFile(const ArraySchema* array_schema)
     cell_ = malloc(CSV_INITIAL_VAR_CELL_SIZE);
     allocated_cell_size_ = CSV_INITIAL_VAR_CELL_SIZE;
   }
-  file_offset_ = 0;
   compression_ = NONE;
+  eof_ = false;
   fd_ = -1;
+  fdz_ = NULL;
 }
 
 CSVFile::CSVFile(const std::string& filename, const char* mode) { 
@@ -79,7 +81,9 @@ CSVFile::CSVFile(const std::string& filename, const char* mode) {
   buffer_end_ = 0;
   buffer_offset_ = 0;
   cell_ = NULL;
-  file_offset_ = 0;
+  eof_ = false;
+  fd_ = -1;
+  fdz_ = NULL;
 
   open(filename, mode);
 }
@@ -91,13 +95,6 @@ CSVFile::~CSVFile() {
 /******************************************************
 ********************** ACCESSORS **********************
 ******************************************************/
-
-ssize_t CSVFile::bytes_read() const {
-  if(file_offset_ == 0)
-    return 0;
-  else 
-    return file_offset_ - segment_size_ + buffer_offset_;
-}
 
 ssize_t CSVFile::size() const {
   assert(strcmp(mode_, "r") == 0);
@@ -125,8 +122,15 @@ void CSVFile::close() {
     cell_ = NULL;
   }
 
-  if(fd_ != -1)
-    ::close(fd_);	
+  if(fd_ != -1) {
+    ::close(fd_);
+    fd_ = -1;
+  }	
+
+  if(fdz_ != NULL) { 
+    gzclose(fdz_); 
+    fdz_ = NULL;
+  }
 }
 
 bool CSVFile::open(const std::string& filename, 
@@ -151,17 +155,25 @@ bool CSVFile::open(const std::string& filename,
   buffer_ = NULL;
   buffer_end_ = 0;
   buffer_offset_ = 0;
-  file_offset_ = 0;
 
-  if(strcmp(mode_, "r") == 0) {
-    fd_ = ::open(filename_.c_str(), O_RDONLY);
-    struct stat st;
-    fstat(fd_, &st);
-    file_size_ = st.st_size;
-  } else if(strcmp(mode_, "a") == 0) {
-    fd_ = ::open(filename_.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
-                  S_IRWXU);
-  }
+  // Determine compression
+  if(ends_with(filename, ".gz"))
+    compression_ = GZIP;
+  else
+    compression_ = NONE;
+
+  // Calculate file size
+  int fd = ::open(filename_.c_str(), O_RDONLY);
+  struct stat st;
+  fstat(fd, &st);
+  file_size_ = st.st_size;
+  ::close(fd);
+
+  if(file_size_ == 0)
+    eof_ = true;
+
+  // Open the file, depending on the compression
+  open_file(filename);
 
   // TODO: Error messages heres
 
@@ -263,16 +275,37 @@ bool CSVFile::operator>>(Cell& cell) {
 void CSVFile::flush_buffer() {
   assert(fd_ != -1);
 
-  ssize_t bytes_written = write(fd_, buffer_, buffer_offset_);
+  ssize_t bytes_written;
+
+  if(compression_ == NONE) 
+    bytes_written = write(fd_, buffer_, buffer_offset_);
+  else if(compression_ == GZIP) 
+    bytes_written = gzwrite(fdz_, buffer_, buffer_offset_);
 
   // TODO: Error messages here
+}
+
+void CSVFile::open_file(const std::string& filename) {
+  // No compression
+  if(compression_ == NONE) {
+    if(strcmp(mode_, "r") == 0) 
+      fd_ = ::open(filename_.c_str(), O_RDONLY);
+    else if(strcmp(mode_, "a") == 0) 
+      fd_ = ::open(filename_.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
+                   S_IRWXU);
+  } else if(compression_ == GZIP) {
+    if(strcmp(mode_, "r") == 0) 
+      fdz_ = gzopen(filename_.c_str(), "rb");
+    else if(strcmp(mode_, "a") == 0) 
+      fdz_ = gzopen(filename_.c_str(), "wb");
+  }
 }
 
 bool CSVFile::read_segment() {
   assert(fd_ != -1);
 
   // Handle end of the file
-  if(file_offset_ >= file_size_) 
+  if(eof_) 
     return false;
 
   // New bytes to read from the file
@@ -305,7 +338,17 @@ bool CSVFile::read_segment() {
   }
 
   // Read the new lines
-  size_t bytes_read = read(fd_, buffer_+bytes_to_copy, bytes_to_be_read);
+  size_t bytes_read;
+  if(compression_ == NONE) 
+    bytes_read = read(fd_, buffer_+bytes_to_copy, bytes_to_be_read);
+  else if(compression_ == GZIP)
+    bytes_read = gzread(fdz_, buffer_+bytes_to_copy, bytes_to_be_read);
+
+  if(bytes_read == 0) {
+    // TODO: Better error messages
+    eof_ = true;
+    return false;
+  }
 
   buffer_offset_ = 0;
   buffer_end_ = bytes_to_copy + bytes_read;
@@ -313,14 +356,10 @@ bool CSVFile::read_segment() {
   // We may need to backtrack until we find the last '\n' character,
   // so that we do not split lines in the middle at the boundaries of two
   // segments, unless we reached the end of the file.
-  if(file_offset_ + bytes_read != file_size_) { 
-    while(buffer_[buffer_end_-1] != '\n') {
-      --buffer_end_;
-      assert(buffer_end_ != 0); // Make sure line fits in the buffer.
-    }
+  while(buffer_[buffer_end_-1] != '\n') {
+    --buffer_end_;
+    assert(buffer_end_ != 0); // Make sure line fits in the buffer.
   }
-
-  file_offset_ += buffer_end_;
 
   return true;
 }

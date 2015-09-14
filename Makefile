@@ -43,7 +43,7 @@ endif
 # MPI compiler for C++
 MPIPATH = #/opt/mpich/dev/intel/default/bin/
 CXX = $(MPIPATH)mpicxx -lstdc++ -std=c++11 -fPIC -fvisibility=hidden \
-      $(LFS_CFLAGS) $(CFLAGS)
+      $(LFS_CFLAGS) $(CFLAGS)  
 
 # --- Directories --- #
 # Directories for the core code of TileDB
@@ -139,6 +139,7 @@ OPENMP_LIB_PATHS = -L$(OPENMP_LIB_DIR)
 # --- Libs --- #
 MPI_LIB = -lmpi
 OPENMP_LIB = -fopenmp 
+ZLIB = -lz
 
 # --- File Extensions --- #
 ifeq ($(OS), Darwin)
@@ -228,7 +229,7 @@ $(CORE_OBJ_DIR)/%.o: $(CORE_SRC_DIR)/%.cc
 	@mkdir -p $(dir $@) 
 	@echo "Compiling $<"
 	@$(CXX) $(CORE_INCLUDE_PATHS) $(OPENMP_INCLUDE_PATHS) \
-                $(MPI_INCLUDE_PATHS) -c $< -o $@
+                $(MPI_INCLUDE_PATHS) -c $< $(ZLIB) -o $@ 
 	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
@@ -283,7 +284,8 @@ clean_libtiledb:
 $(TILEDB_CMD_OBJ_DIR)/%.o: $(TILEDB_CMD_SRC_DIR)/%.cc
 	@mkdir -p $(TILEDB_CMD_OBJ_DIR)
 	@echo "Compiling $<"
-	@$(CXX) $(TILEDB_CMD_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< -o $@
+	@$(CXX) $(TILEDB_CMD_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< \
+         $(ZLIB) -o $@
 	@$(CXX) -MM $(TILEDB_CMD_INCLUDE_PATHS) \
                     $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
@@ -296,7 +298,7 @@ $(TILEDB_CMD_BIN_DIR)/%: $(TILEDB_CMD_OBJ_DIR)/%.o $(CORE_OBJ)
 	@mkdir -p $(TILEDB_CMD_BIN_DIR)
 	@echo "Creating $@"
 	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
-                -o $@ $^
+                -o $@ $^ $(ZLIB)
 
 # --- Cleaning --- #
 

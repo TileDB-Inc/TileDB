@@ -80,8 +80,6 @@ class CSVFile {
   ~CSVFile();
 
   // ACCESSORS
-  /** Returns the number of bytes read from the file. */
-  ssize_t bytes_read() const;
   /** Returns the size of the file in bytes. */
   ssize_t size() const;
  
@@ -134,13 +132,12 @@ class CSVFile {
   void* cell_;
   /** Compression mode. */
   Compression compression_;
+  /** True if the end of file has been reached. */
+  bool eof_;
   /** File descriptor for an uncompressed file. */
   int fd_;
-  /** 
-    * A pointer to the current position in the file where the NEXT read will 
-    * take place (used only by CSVFile::operator>> in READ mode).
-    */
-  int64_t file_offset_;
+  /** File descriptor for a gzipped file. */
+  gzFile fdz_;
   /** Size of the file opened in read mode. */
   size_t file_size_;
     /** The name of the CSV file. */
@@ -165,6 +162,8 @@ class CSVFile {
   // PRIVATE METHODS
   /** Writes the content of the buffer to the end of the file on the disk. */
   void flush_buffer();
+  /** */
+  void open_file(const std::string& filename);
   /** 
    * Reads a set of lines from the file, whose aggregate size is at most
    * CSVFile::segment_size_. Returns true if it could retrieve new lines
