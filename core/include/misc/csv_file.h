@@ -44,6 +44,7 @@
 #include <vector>
 #include <inttypes.h>
 #include <limits>
+#include <zlib.h>
 
 /** 
  * The segment size determines the amount of data that can be exchanged
@@ -65,6 +66,9 @@
  */
 class CSVFile {
  public:
+  // TYPE DEFINITIONS
+  enum Compression {NONE, GZIP};
+
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
   CSVFile();
@@ -128,11 +132,17 @@ class CSVFile {
   size_t buffer_offset_;
   /** Stores the cell format of the lastly read CSV line. */
   void* cell_;
+  /** Compression mode. */
+  Compression compression_;
+  /** File descriptor for an uncompressed file. */
+  int fd_;
   /** 
     * A pointer to the current position in the file where the NEXT read will 
     * take place (used only by CSVFile::operator>> in READ mode).
     */
   int64_t file_offset_;
+  /** Size of the file opened in read mode. */
+  size_t file_size_;
     /** The name of the CSV file. */
   std::string filename_;
   /** 

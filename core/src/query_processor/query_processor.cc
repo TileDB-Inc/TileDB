@@ -243,14 +243,8 @@ void QueryProcessor::export_csv(
   // Prepare CSV file
   CSVFile csv_file(filename, "w");
 
-  // Prepare cell iterators
-  ArrayConstDenseCellIterator<T>* cell_it = 
-      storage_manager_->begin_dense<T>(ad, attribute_ids);
-
-/*
   ArrayConstCellIterator<T>* cell_it = 
       storage_manager_->begin<T>(ad, attribute_ids);
-*/
 
   // Prepare a cell
   Cell cell(array_schema, cell_it->attribute_ids(), 0, true);

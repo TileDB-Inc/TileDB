@@ -52,6 +52,8 @@ CSVFile::CSVFile() {
   buffer_offset_ = 0;
   cell_ = NULL;
   file_offset_ = 0;
+  compression_ = NONE;
+  fd_ = -1;
 }
 
 CSVFile::CSVFile(const ArraySchema* array_schema) 
@@ -67,6 +69,8 @@ CSVFile::CSVFile(const ArraySchema* array_schema)
     allocated_cell_size_ = CSV_INITIAL_VAR_CELL_SIZE;
   }
   file_offset_ = 0;
+  compression_ = NONE;
+  fd_ = -1;
 }
 
 CSVFile::CSVFile(const std::string& filename, const char* mode) { 
@@ -96,19 +100,16 @@ ssize_t CSVFile::bytes_read() const {
 }
 
 ssize_t CSVFile::size() const {
-  int fd = ::open(filename_.c_str(), O_RDONLY);
-  struct stat st;
-  fstat(fd, &st);
-  ::close(fd);
+  assert(strcmp(mode_, "r") == 0);
 
-  return st.st_size;
+  return file_size_;
 }
 
 /******************************************************
 *********************** MUTATORS **********************
 ******************************************************/
 
-void CSVFile::close() {
+void CSVFile::close() { 
   if(buffer_ != NULL) {
     // If there are data in the buffer pending to be written in the file,
     // flush the buffer.
@@ -123,12 +124,14 @@ void CSVFile::close() {
     free(cell_);
     cell_ = NULL;
   }
+
+  if(fd_ != -1)
+    ::close(fd_);	
 }
 
 bool CSVFile::open(const std::string& filename, 
                    const char* mode,
                    size_t segment_size) {
-// TODO: return error codes
   filename_ = absolute_path(filename);
 
   if(strcmp(mode, "r") == 0 && !is_file(filename_)) 
@@ -149,6 +152,18 @@ bool CSVFile::open(const std::string& filename,
   buffer_end_ = 0;
   buffer_offset_ = 0;
   file_offset_ = 0;
+
+  if(strcmp(mode_, "r") == 0) {
+    fd_ = ::open(filename_.c_str(), O_RDONLY);
+    struct stat st;
+    fstat(fd_, &st);
+    file_size_ = st.st_size;
+  } else if(strcmp(mode_, "a") == 0) {
+    fd_ = ::open(filename_.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
+                  S_IRWXU);
+  }
+
+  // TODO: Error messages heres
 
   return true;
 }
@@ -246,47 +261,59 @@ bool CSVFile::operator>>(Cell& cell) {
 ******************************************************/
 
 void CSVFile::flush_buffer() {
-  // Open file
-  int fd = ::open(filename_.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
-                  S_IRWXU);
-  assert(fd != -1);
+  assert(fd_ != -1);
 
-  write(fd, buffer_, buffer_offset_);
-  ::close(fd);	
+  ssize_t bytes_written = write(fd_, buffer_, buffer_offset_);
+
+  // TODO: Error messages here
 }
 
 bool CSVFile::read_segment() {
-  int fd = ::open(filename_.c_str(), O_RDONLY);
-
-  assert(fd != -1);
-  struct stat st;
-  fstat(fd, &st);
+  assert(fd_ != -1);
 
   // Handle end of the file
-  if(file_offset_ >= st.st_size) {
-    ::close(fd);
+  if(file_offset_ >= file_size_) 
     return false;
+
+  // New bytes to read from the file
+  size_t bytes_to_be_read;
+  // Bytes to copy from buffer, not processed yet
+  size_t bytes_to_copy;
+
+  // First read
+  if(buffer_ == NULL) { 
+    buffer_ = new char[segment_size_ + 1];
+    buffer_[segment_size_] = '\0';
+    bytes_to_be_read = segment_size_;
+    bytes_to_copy = 0;
+  } else { // Subsequent reads
+    assert(buffer_end_ != 0);
+    bytes_to_be_read = buffer_end_;
+    bytes_to_copy = segment_size_ - buffer_end_; 
+    if(bytes_to_copy != 0) {
+      // Easy copy in-place
+      if(buffer_end_ < segment_size_ / 2) {
+        memcpy(buffer_, buffer_+buffer_end_, bytes_to_copy);
+      } else { // We need a new buffer (not in-place copy)
+        char* temp = buffer_;
+        buffer_ = new char[segment_size_ + 1];
+        buffer_[segment_size_] = '\0';
+        memcpy(buffer_, temp + buffer_end_, bytes_to_copy);
+        delete [] temp;
+      }
+    }
   }
 
-  size_t bytes_to_be_read = (st.st_size-file_offset_ >= segment_size_) 
-                              ? segment_size_ : st.st_size-file_offset_;
-
-  // Initialize the buffer
-  if(buffer_ != NULL)
-    delete buffer_;
-  buffer_ = new char[bytes_to_be_read + 1];
-
   // Read the new lines
-  lseek(fd, file_offset_, SEEK_SET);
-  read(fd, buffer_, bytes_to_be_read);
+  size_t bytes_read = read(fd_, buffer_+bytes_to_copy, bytes_to_be_read);
 
   buffer_offset_ = 0;
-  buffer_end_ = bytes_to_be_read;
+  buffer_end_ = bytes_to_copy + bytes_read;
    
   // We may need to backtrack until we find the last '\n' character,
   // so that we do not split lines in the middle at the boundaries of two
   // segments, unless we reached the end of the file.
-  if(file_offset_ + bytes_to_be_read != st.st_size) { 
+  if(file_offset_ + bytes_read != file_size_) { 
     while(buffer_[buffer_end_-1] != '\n') {
       --buffer_end_;
       assert(buffer_end_ != 0); // Make sure line fits in the buffer.
@@ -294,8 +321,6 @@ bool CSVFile::read_segment() {
   }
 
   file_offset_ += buffer_end_;
-  buffer_[buffer_end_] = '\0';
 
-  ::close(fd);
   return true;
 }
