@@ -59,6 +59,7 @@ ArraySchema::ArraySchema(
     const std::vector<std::pair<double, double> >& dim_domains,
     const std::vector<const std::type_info*>& types,
     const std::vector<int>& val_num,
+    const std::vector<CompressionType> compression,
     CellOrder cell_order,
     int64_t capacity,
     int consolidation_step) {
@@ -108,8 +109,13 @@ ArraySchema::ArraySchema(
     type_sizes_[i] = compute_type_size(i);
 
   // Set compression
-  for(int i=0; i<= attribute_num_; ++i)
-    compression_.push_back(NONE);
+  if(compression.size() == 0) {
+    for(int i=0; i<= attribute_num_; ++i)
+      compression_.push_back(NONE);
+  } else {
+    assert(compression.size() == attribute_num_ + 1);
+    compression_ = compression;
+  }
 
   compute_hilbert_cell_bits();
 }
@@ -122,6 +128,7 @@ ArraySchema::ArraySchema(
     const std::vector<const std::type_info*>& types,
     const std::vector<int>& val_num,
     const std::vector<double>& tile_extents,
+    const std::vector<CompressionType> compression,
     CellOrder cell_order,
     TileOrder tile_order,
     int consolidation_step) {
@@ -177,8 +184,13 @@ ArraySchema::ArraySchema(
     type_sizes_[i] = compute_type_size(i);
 
   // Set compression
-  for(int i=0; i<= attribute_num_; ++i)
-    compression_.push_back(NONE);
+  if(compression.size() == 0) {
+    for(int i=0; i<= attribute_num_; ++i)
+      compression_.push_back(NONE);
+  } else {
+    assert(compression.size() == attribute_num_ + 1);
+    compression_ = compression;
+  }
 
   compute_hilbert_cell_bits();
   compute_hilbert_tile_bits();
@@ -545,6 +557,17 @@ std::string ArraySchema::serialize_csv() const {
   // Copy consolidation step (default 1)  
   schema << consolidation_step_; 
 
+  // Copy compression
+  assert(compression_.size() == attribute_num_ + 1);
+  for(int i=0; i<= attribute_num_; ++i) {
+    if(compression_[i] == NONE)
+      schema << "NONE";
+    else if(compression_[i] == GZIP)
+      schema << "GZIP";
+    else
+      assert(0); // The code should not reach here
+  }
+
   return schema.c_str();
 }
 
@@ -796,6 +819,7 @@ void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
  * type_1,...,type_{attribute_num+1}
  * tile_extents_1,...,tile_extents_{dim_num},
  * cell_order,tile_order,capacity,consolidation_step
+ * compression_1,...,comprssion_{attribute_num+1}
  *
  * If one of the items is omitted (e.g., tile_order), then this CSV field
  * should contain '*' (e.g., it should be ...,cell_order,*,capacity,...). 
@@ -1067,7 +1091,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
               << " Put '*' to specify default tile order.\n";
     return -1;
   }
-  // ----- check cell order
+  // ----- check tile order
   TileOrder tile_order;
   if(s == "*") {
     if(tile_extents_.size() == 0) // Irregular tiles
@@ -1085,7 +1109,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
               << " Invalid tile order '" << s << "'.\n";
     return -1;
   }
-  // ----- set cell order
+  // ----- set tile order
   if(set_tile_order(tile_order))
     return -1;
 
@@ -1137,10 +1161,51 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   if(set_consolidation_step(consolidation_step))
     return -1;
 
-  // Set compression
+  // Get compression
   std::vector<CompressionType> compression;
-  for(int i=0; i<=attribute_num; ++i)
-    compression.push_back(NONE);
+  if(!(array_schema_csv >> s)) {
+    std::cerr << ERROR_MSG_HEADER  
+              << " No compression provided."
+              << " Put '*' to specify default comprssion.\n";
+    return -1;
+  }
+
+  if(s == "*") {
+    for(int i=0; i<=attribute_num; ++i)
+      compression.push_back(NONE);
+  } else {
+    // Handle the retrieved compression type
+    if(s == "NONE") { 
+      compression.push_back(NONE);
+    } else if(s == "GZIP") {
+      compression.push_back(GZIP);
+    } else {
+      std::cerr << ERROR_MSG_HEADER  
+                << " Invalid compression type '" << s << "'.\n";
+      return -1;
+    } 
+
+    // Handle the rest attribute_num compression types
+    for(int i=0; i<attribute_num_; ++i) {
+      if(!(array_schema_csv >> s)) {
+        std::cerr << ERROR_MSG_HEADER  
+                  << " Number of provided compression types does not agree with"
+                  << " the number of attributes.\n";
+        return -1;
+      }
+      if(s == "NONE") { 
+        compression.push_back(NONE);
+      } else if(s == "GZIP") {
+        compression.push_back(GZIP);
+      } else {
+        std::cerr << ERROR_MSG_HEADER  
+                  << " Invalid compression type '" << s << "'.\n";
+        return -1;
+      } 
+    }
+  }
+
+  // ----- set compression
   set_compression(compression);
 
   return 0;
@@ -1643,12 +1708,22 @@ ArraySchema ArraySchema::create_join_result_schema(
                       array_schema_B.val_num_.begin(),
                       array_schema_B.val_num_.end());
 
+  // Types
+  std::vector<CompressionType> join_compression;
+  join_compression.insert(join_compression.end(),
+                          array_schema_A.compression_.begin(),
+                          --array_schema_A.compression_.end());
+  join_compression.insert(join_compression.end(),
+                          array_schema_B.compression_.begin(),
+                          array_schema_B.compression_.end());
+
   // Irregular tiles
   if(array_schema_A.has_irregular_tiles())
     return ArraySchema(result_array_name, join_attribute_names, 
                        array_schema_A.dim_names_, 
                        array_schema_A.dim_domains_, 
                        join_types, join_val_num,
+                       join_compression,
                        array_schema_A.cell_order_, 
                        array_schema_A.capacity_,
                        array_schema_A.consolidation_step_);
@@ -1658,6 +1733,7 @@ ArraySchema ArraySchema::create_join_result_schema(
                        array_schema_A.dim_domains_, 
                        join_types, join_val_num,
                        array_schema_A.tile_extents_,
+                       join_compression,
                        array_schema_A.cell_order_,
                        array_schema_A.tile_order_,
                        array_schema_A.consolidation_step_);
@@ -2071,16 +2147,16 @@ void ArraySchema::print() const {
   for(int i=0; i<attribute_num_; ++i)
     if(compression_[i] == RLE)
       std::cout << "\t" << attribute_names_[i] << ": RLE\n";
-    else if(compression_[i] == ZIP)
-      std::cout << "\t" << attribute_names_[i] << ": ZIP\n";
+    else if(compression_[i] == GZIP)
+      std::cout << "\t" << attribute_names_[i] << ": GZIP\n";
     else if(compression_[i] == LZ)
       std::cout << "\t" << attribute_names_[i] << ": LZ\n";
     else if(compression_[i] == NONE)
       std::cout << "\t" << attribute_names_[i] << ": NONE\n";
   if(compression_[attribute_num_] == RLE)
     std::cout << "\tCoordinates: RLE\n";
-  else if(compression_[attribute_num_] == ZIP)
-    std::cout << "\tCoordinates: ZIP\n";
+  else if(compression_[attribute_num_] == GZIP)
+    std::cout << "\tCoordinates: GZIP\n";
   else if(compression_[attribute_num_] == LZ)
     std::cout << "\tCoordinates: LZ\n";
   else if(compression_[attribute_num_] == NONE)

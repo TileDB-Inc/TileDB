@@ -597,7 +597,10 @@ TILEDB_EXPORT int tiledb_clear_array(
  * *type<SUB>attribute<SUB>attribute_num</SUB></SUB>* , 
  * *type<SUB>coordinates</SUB>* , 
  * *tile_extent<SUB>1</SUB>*, ... , *tile_extent<SUB>dim_num</SUB>* , \n
- * *cell_order* , *tile_order* , *capacity* , *consolidation_step*
+ * *cell_order* , *tile_order* , *capacity* , *consolidation_step*, \n
+ * *compression<SUB>attribute<SUB>1</SUB></SUB>*, ..., 
+ * *compression<SUB>attribute<SUB>attribute_num</SUB></SUB>*, 
+ * *compression<SUB>coordinates</SUB>*
  * - - - 
  * The details of each array schema item are as follows: \n
  * - **array name** - *array_name* : \n 
@@ -669,7 +672,16 @@ TILEDB_EXPORT int tiledb_clear_array(
  *     default value is used. 
  * - **consolidation step** - *consolidation_step* \n
  *     It specifies the frequency of fragment consolidation, described above. 
- *     If it is not provided, the default is 1.
+ *     If it is not provided, the *default* is **1.
+ * - **compression** - *compression<SUB>attribute<SUB>1</SUB></SUB>*, ..., 
+ *   *compression<SUB>attribute<SUB>attribute_num</SUB></SUB>*, 
+ *   *compression<SUB>coordinates</SUB>* \n
+ *     It specifies the compression type of each attribute and coorinates.
+ *     Two compression types are currently supported: **NONE** and **GZIP**.
+ *     If it is not provided the default is NONE for every attribute and 
+ *     coordinates. If it is given, there should be an one
+ *     to one correspondence between the attributes and the compression types,
+ *     plus an extra compression type for the coordinates in the end.
  * .  
  * <br>
  * **NOTE:** To omit an optional array schema item (e.g., tile extents, 
@@ -679,7 +691,7 @@ TILEDB_EXPORT int tiledb_clear_array(
  * <br> <br> 
  * **Examples**
  * - my_array , 3 , attr1 , attr2 , attr3 , 2 , dim1 , dim2 , 0 , 100 , 0 , 
- * 200 , int:3 , double , char:var , int64 , * , hilbert , * , 1000 , 5 \n
+ * 200 , int:3 , double , char:var , int64 , * , hilbert , * , 1000 , 5, * \n
  *     This defines array *my_array*, which has *3* attributes and *2* 
  *     dimensions. Dimension *dim1* has domain [0,100], *dim2* has domain 
  *     [0,200]. The coordinates are of type **int64**. Attribute *attr1* is of 
@@ -690,9 +702,10 @@ TILEDB_EXPORT int tiledb_clear_array(
  *     stores arbitrary character strings). The array has *irregular* tiles.
  *     The cell order is **hilbert**. Each tile accommodates exactly *1000* 
  *     (non-empty) cells. Finally, the consolidation step is set to *5*.
+ *     No compression will be used for any attribute.
  * - my_array , 3 , attr1 , attr2 , attr3 , 2 , dim1 , dim2 , 0 , 100 , 0 , 
  * 200 , int:3 , double , char:var , int64 , 10, 20 , hilbert , 
- * row-major , * , 5 \n
+ * row-major , * , 5 , GZIP, GZIP, NONE, NONE \n
  *     This is similar to the previous example, but now the array has *regular*
  *     tiles. In detail, it defines array *my_array*, which has *3* attributes 
  *     and *2* dimensions. Dimension *dim1* has domain [0,100], *dim2* has 
@@ -703,8 +716,9 @@ TILEDB_EXPORT int tiledb_clear_array(
  *     **char**, and each cell stores a *variable* number of values on this 
  *     attribute (i.e., it stores arbitrary character strings). The array has
  *     *regular* tiles. Each tile has (logical) size *10x20*. The tile order is
- *     **row-major**, whereas the cell order is **hilbert**. Finally, the 
- *     consolidation step is set to *5*.
+ *     **row-major**, whereas the cell order is **hilbert**. The 
+ *     consolidation step is set to *5*. GZIP compression will be used for
+ *     *attr1* and *attr2*, and no compression for *attr3* and coordinates.
  *
  * @return An error code, which can be one of the following:
  *   - **TILEDB_OK**\n 
@@ -737,7 +751,7 @@ TILEDB_EXPORT int tiledb_array_defined(
  * string is longer than schema_length then the schema_string is not copied
  * and the schema_length pointer is updated.
  * 
- * For a detailed decrption of the CSV schema format, see tiledb_array_defined.
+ * For a detailed decrption of the CSV schema format, see tiledb_define_array().
  *
  * @param tiledb_ctx The TileDB state consisting of the TileDB modules. 
  * @param array_name The name of the array to query the schema.

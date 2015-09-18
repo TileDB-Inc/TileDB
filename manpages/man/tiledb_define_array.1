@@ -23,6 +23,8 @@ tiledb_define_array - defines an array, specifying an array schema
 ] ] | 
 [ 
 .BI "-c " "capacity"
+] [ 
+.BI "-z " "compression"
 ] ]
 
 .SH DESCRIPTION
@@ -54,6 +56,10 @@ different \fIshape\fR in the logical space.
 Each array stores its cells internally in a \fIsorted\fR \fBtile order\fR and 
 \fBcell order\fR. For the case of irregular tiles, the tile order is implied
 by the cell order. 
+
+The user may define a \fBcompression\fR type \fIper attribute\fR. The
+compression is performed on a tile basis. Currently, only GZIP compression
+is supported.
 
 Finally, TileDB updates arrays in \fIbatches\fR, i.e., it modifies 
 \fIsets of cells\fR instead of single cells. When a new
@@ -176,6 +182,15 @@ value is used.
 It specifies the frequency of fragment consolidation, described in section 
 \fBDESCRIPTION\fR. If it is not provided, the default is 1.
 
+.TP 
+.BI "-z" " compression_type"  "\fR, " \
+\fB --compression=\fIcompression_type\fR  
+It specifies the per-attribute compression type. Currently, there are two
+types supported: \fBNONE\fR and \fBGZIP\fR. The user must input as many
+types as the number of attributes (in the order of appearence in the 
+\fB\-a\fR option), plus one in the end for the coordinates. If omitted,
+the default is \fBNONE\fR for all the attributes and coordinates.
+
 .SH EXAMPLES
 .TP
 \fBtiledb_define_array\fR \\ 
@@ -199,8 +214,8 @@ attribute. Attribute \fIattr3\fR is of type \fBchar\fR, and each
 cell stores a \fIvariable\fR number of values on this attribute (i.e., it stores
 arbitrary character strings). The array has \fIirregular\fR tiles.
 The cell order is \fBhilbert\fR. Each tile
-accommodates exactly \fI1000\fR (non-empty) cells. Finally, the consolidation
-step is set to \fI5\fR.
+accommodates exactly \fI1000\fR (non-empty) cells. The consolidation
+step is set to \fI5\fR. There will be no compression.
 
 .TP
 \fBtiledb_define_array\fR \\ 
@@ -213,7 +228,8 @@ step is set to \fI5\fR.
     \fB-t \fRint:3,double,char:var,int64 \\
     \fB-O \fRrow-major \\
     \fB-o \fRhilbert \\
-    \fB-s \fR5
+    \fB-s \fR5 \\
+    \fB-z \fRGZIP,GZIP,NONE,NONE
 
 This is similar to the previous example, but now the array has \fIregular\fR 
 tiles. In detail, it defines array \fImy_array\fR in workspace folder 
@@ -226,8 +242,10 @@ stores \fI1\fR value on this attribute. Attribute \fIattr3\fR is of type
 \fBchar\fR, and each cell stores a \fIvariable\fR number of values on this 
 attribute (i.e., it stores arbitrary character strings). The array has
 \fIregular\fR tiles. Each tile has (logical) size \fI10x20\fR. The tile order is
-\fBrow-major\fR, whereas the cell order is \fBhilbert\fR. Finally, the 
-consolidation step is set to \fI5\fR.
+\fBrow-major\fR, whereas the cell order is \fBhilbert\fR. The 
+consolidation step is set to \fI5\fR. GZIP ompression will be used for
+attributes \fIattr1\fR and \fIattr2\fR, and no compression for \fIattr3\fR
+and the coordinates. 
 
 .SH EXIT STATUS
 .TP 
