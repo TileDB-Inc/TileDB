@@ -77,22 +77,31 @@ class ArrayConstReverseCellIterator {
    * Constructor. The second argument determines the attribute
    * the iterator will focus on.
    */
-  ArrayConstReverseCellIterator(Array* array, 
-                               const std::vector<int>& attribute_ids); 
+  ArrayConstReverseCellIterator(
+      Array* array, const std::vector<int>& attribute_ids); 
   /** 
-   * Constructor. Takes as input also a multi-dimensional 
-   * range. The iterator will iterate only on the cells of the array whose
-   * coordinates fall into the input range. 
-   */
-  ArrayConstReverseCellIterator(Array* array, const T* range);
-  /** 
-   * Constructor. Takes as input also a multi-dimensional 
-   * range. The iterator will iterate only on the cells of the array whose
-   * coordinates fall into the input range. The third argument determines 
-   * the attributes the iterator will focus on. 
+   * Takes as input an array descriptor, a multi-dimensional object, and a flag
+   * that indicates if the multi-dimensional object is a range or a single 
+   * element. If it is a range, it returns a cell iterator that iterates only 
+   * over the cells whose coordinates lie within the input range (following the
+   * If it is a single cell, the iterator iterates over all cells that lie on
+   * or before the input along global cell order.    
    */
   ArrayConstReverseCellIterator(
-      Array* array, const T* range, const std::vector<int>& attribute_ids);
+      Array* array, const T* multi_D_obj, bool is_range = true);
+  /** 
+   * Takes as input an array descriptor, a multi-dimensional object, and a flag
+   * that indicates if the multi-dimensional object is a range or a single 
+   * element. If it is a range, it returns a cell iterator that iterates only 
+   * over the cells whose coordinates lie within the input range (following the
+   * If it is a single cell, the iterator iterates over all cells that lie on
+   * or before the input along global cell order. This iterator returns cells 
+   * that have values only on the input attributes.
+   */
+  ArrayConstReverseCellIterator(
+      Array* array, const T* multi_D_obj, 
+      const std::vector<int>& attribute_ids,
+      bool is_range = true);
   /** Destructor. */
   ~ArrayConstReverseCellIterator();
 
@@ -181,6 +190,11 @@ class ArrayConstReverseCellIterator {
    */
   void advance_cell_in_range(int fragment_id);
   /** 
+   * Finds the cell from the input fragment that is either at the input 
+   * coordinates, or immediate suceeds them.
+   */
+  void find_cell_at_coords(int fragment_id, const T* coords);
+  /** 
    * Finds the next cell from the input fragment along the global cell
    * order, which falls inside the range stored upon initialization of the
    * iterator (see StorageManager::Array::const_cell_iterator::range_). 
@@ -202,6 +216,11 @@ class ArrayConstReverseCellIterator {
    * cells that overlap with the stored range. 
    */
   void init_iterators_in_range();
+  /** 
+   * Initializes tile and cell iterators that will irerate over tiles and
+   * cells that lie at or before the input coordinates. 
+   */
+  void init_iterators_at_coords(const T* coords);
   /** 
    * True if the cell pointed by the first iterator precedes that of the
    * second on the global cell order.

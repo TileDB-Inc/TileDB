@@ -217,20 +217,26 @@ ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
 
 template<class T>
 ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
-    Array* array, const T* range) : array_(array) {
+    Array* array, const T* multi_D_obj, bool is_range) : array_(array) {
   // Initialize private attributes
   const ArraySchema* array_schema = array_->array_schema();
   attribute_num_ = array_schema->attribute_num();
   dim_num_ = array_schema->dim_num();
   fragment_num_ = array_->fragment_num();
   end_ = false;
-  return_del_ = false;
-  range_ = new T[2*dim_num_];
-  full_overlap_ = new bool[fragment_num_];
-  memcpy(range_, range, 2*dim_num_*sizeof(T)); 
   cell_its_ = NULL;
   cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   tile_its_ = NULL;
+  return_del_ = false;
+
+  // Decide if the input is a range or cell coordinates
+  if(is_range) {
+    range_ = new T[2*dim_num_];
+    memcpy(range_, multi_D_obj, 2*dim_num_*sizeof(T)); 
+    full_overlap_ = new bool[fragment_num_];
+  } else {
+    range_ = NULL;
+  } 
 
   // Prepare the ids of the fragments the iterator will iterate on
   // By default it is all the fragments, but this may change in the future
@@ -260,19 +266,29 @@ ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
     cell_ = NULL;
 
   // Get first cell
-  init_iterators_in_range();
-  for(int i=0; i<fragment_num_; ++i)
-    find_next_cell_in_range(fragment_ids_[i]);
-  int fragment_id = get_next_cell(); 
-  if(fragment_id != -1)
-    advance_cell_in_range(fragment_id); 
+  if(is_range) { // Range
+    init_iterators_in_range();
+    for(int i=0; i<fragment_num_; ++i)
+      find_next_cell_in_range(fragment_ids_[i]);
+    int fragment_id = get_next_cell(); 
+    if(fragment_id != -1)
+      advance_cell_in_range(fragment_id); 
+  } else { // Cell coordinates
+    init_iterators_at_coords(multi_D_obj);
+    for(int i=0; i<fragment_num_; ++i)
+      find_cell_at_coords(fragment_ids_[i], multi_D_obj);
+    int fragment_id = get_next_cell(); 
+    if(fragment_id != -1)
+      advance_cell(fragment_id); 
+  }
 }
 
 template<class T>
 ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
     Array* array, 
-    const T* range,
-    const std::vector<int>& attribute_ids) : array_(array) {
+    const T* multi_D_obj,
+    const std::vector<int>& attribute_ids,
+    bool is_range) : array_(array) {
   // Check fragment and attribute ids
   assert(array_->array_schema()->valid_attribute_ids(attribute_ids));
 
@@ -283,12 +299,18 @@ ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
   fragment_num_ = array_->fragment_num();
   end_ = false;
   return_del_ = false;
-  range_ = new T[2*dim_num_];
-  full_overlap_ = new bool[fragment_num_];
-  memcpy(range_, range, 2*dim_num_*sizeof(T)); 
   cell_its_ = NULL;
   cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   tile_its_ = NULL;
+
+  // Decide if the input is a range or cell coordinates
+  if(is_range) {
+    range_ = new T[2*dim_num_];
+    memcpy(range_, multi_D_obj, 2*dim_num_*sizeof(T)); 
+    full_overlap_ = new bool[fragment_num_];
+  } else {
+    range_ = NULL;
+  } 
 
   // Prepare the ids of the fragments the iterator will iterate on
   // By default it is all the fragments, but this may change in the future
@@ -325,12 +347,21 @@ ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
     cell_ = NULL;
 
   // Get first cell
-  init_iterators_in_range();
-  for(int i=0; i<fragment_num_; ++i)
-    find_next_cell_in_range(fragment_ids_[i]);
-  int fragment_id = get_next_cell(); 
-  if(fragment_id != -1)
-    advance_cell_in_range(fragment_id); 
+  if(is_range) { // Range
+    init_iterators_in_range();
+    for(int i=0; i<fragment_num_; ++i)
+      find_next_cell_in_range(fragment_ids_[i]);
+    int fragment_id = get_next_cell(); 
+    if(fragment_id != -1)
+      advance_cell_in_range(fragment_id); 
+  } else { // Cell coordinates
+    init_iterators_at_coords(multi_D_obj);
+    for(int i=0; i<fragment_num_; ++i)
+      find_cell_at_coords(fragment_ids_[i], multi_D_obj);
+    int fragment_id = get_next_cell(); 
+    if(fragment_id != -1)
+      advance_cell(fragment_id); 
+  }
 }
 
 template<class T>
@@ -466,6 +497,64 @@ void ArrayConstReverseCellIterator<T>::advance_cell_in_range(
     ++cell_its_[fragment_id][attribute_ids_[j]];
 
   find_next_cell_in_range(fragment_id);
+}
+
+template<class T>
+void ArrayConstReverseCellIterator<T>::find_cell_at_coords(
+    int fragment_id, const T* coords) {
+  // For easy reference
+  const ArraySchema* array_schema = this->array_schema();
+  Tile::BoundingCoordinatesPair bounding_coords;
+  bounding_coords = 
+      tile_its_[fragment_id][attribute_num_].bounding_coordinates();
+
+  // If the input coords are not included in the current tile (and
+  // hence they succeed its second bounding coordinate) there is nothing
+  // to be done
+  if(array_schema->succeeds(
+      coords, static_cast<const T*>(bounding_coords.second)))
+    return;
+
+  // Otherwise, the input coordinates are inside the tile bounding range,
+  // so we need to perform a binary search
+  int64_t min, max, med; // For the binary search
+  int64_t pos; // Cell position inside each tile
+  int64_t cell_num = cell_its_[fragment_id][attribute_num_].cell_num();
+  const T* cell_coords;
+
+  // Binary search
+  min = 0;
+  max = cell_num - 1;
+  while(min <= max) {
+    med = min + ((max - min) / 2);
+    cell_coords = static_cast<const T*>( 
+        *(cell_its_[fragment_id][attribute_num_] + (cell_num - med - 1)));
+
+    if(array_schema->precedes<T>(coords, cell_coords)) {
+      max = med-1;
+    } else if(array_schema->succeeds<T>(coords, cell_coords)) {
+      min = med+1;
+    } else {
+      break; 
+    }
+  }
+
+  if(max < min) // coords preceding max
+    pos = max; 
+  else // coords included in a tile
+    pos = med; 
+
+  // Update the coordinates tile iterator
+  cell_its_[fragment_id][attribute_num_] += (cell_num - pos - 1); 
+
+  // Synchronize attribute cell iterators
+  for(int j=0; j<attribute_ids_.size()-1; ++j) {
+    if(!tile_its_[fragment_id][attribute_ids_[j]].end()) {
+      cell_its_[fragment_id][attribute_ids_[j]] += (cell_num - pos - 1);
+    } else {
+      cell_its_[fragment_id][attribute_ids_[j]] = Tile::rend(); 
+    }
+  }    
 }
 
 template<class T>
@@ -686,6 +775,83 @@ void ArrayConstReverseCellIterator<T>::init_iterators_in_range() {
       tile_its_[fragment_ids_[i]][attribute_ids_[j]] += 
           tile_its_[fragment_ids_[i]][attribute_num_].tile_num() -
           tile_its_[fragment_ids_[i]][attribute_num_].pos() - 1;
+    }    
+
+    // Initialize cell iterators
+    for(int j=0; j<attribute_ids_.size(); ++j) {
+      if(!tile_its_[fragment_ids_[i]][attribute_ids_[j]].end())
+        cell_its_[fragment_ids_[i]][attribute_ids_[j]] = 
+            (*tile_its_[fragment_ids_[i]][attribute_ids_[j]])->rbegin();
+      else
+        cell_its_[fragment_ids_[i]][attribute_ids_[j]] = Tile::rend();
+    }
+  }
+}
+
+template<class T>
+void ArrayConstReverseCellIterator<T>::init_iterators_at_coords(
+    const T* coords) {
+  // FIXME: This currently works only for irregular tiles
+  assert(array_schema()->has_irregular_tiles());
+
+  // Create tile and cell iterators
+  tile_its_ = new FragmentConstReverseTileIterator*[fragment_num_];
+  cell_its_ = new TileConstReverseCellIterator*[fragment_num_];
+
+  for(int i=0; i<fragment_num_; ++i) {
+    tile_its_[i] = new FragmentConstReverseTileIterator[attribute_num_+1];
+    cell_its_[i] = new TileConstReverseCellIterator[attribute_num_+1];
+  }
+
+  // For easy reference
+  const ArraySchema* array_schema = this->array_schema();
+  int64_t pos; // Tile position in each fragment 
+  int64_t tile_num; // Number of tiles in each fragment
+  int64_t min, max, med; // For the binary search
+  Tile::BoundingCoordinatesPair bounding_coords;
+
+  // Binary search for start tile
+  for(int i=0; i<fragment_ids_.size(); ++i) { 
+    // Initialize coordinate tile iterator
+    tile_its_[fragment_ids_[i]][attribute_num_] =  
+        array_->rbegin(fragment_ids_[i], attribute_num_);
+
+    // Get number of tiles
+    tile_num = tile_its_[fragment_ids_[i]][attribute_num_].tile_num();
+
+    // Binary search
+    min = 0;
+    max = tile_num - 1;
+    while(min <= max) {
+      med = min + ((max - min) / 2);
+      bounding_coords = 
+          (tile_its_[fragment_ids_[i]][attribute_num_] + (tile_num - med - 1)).
+              bounding_coordinates(); 
+
+      if(array_schema->precedes<T>(
+             coords, static_cast<const T*>(bounding_coords.first))) {
+        max = med-1;
+      } else if(array_schema->succeeds<T>(
+             coords, static_cast<const T*>(bounding_coords.second))) {
+        min = med+1;
+      } else { // coords included in a tile
+        break; 
+      }
+    } 
+
+    if(max < min) // coords preceding max
+      pos = max; 
+    else          // coords included in a tile
+      pos = med; 
+
+    // Update the coordinates tile iterator
+    tile_its_[fragment_ids_[i]][attribute_num_] += (tile_num - pos - 1); 
+
+    // Initialize and syncronize attribute tile iterators
+    for(int j=0; j<attribute_ids_.size()-1; ++j) {
+      tile_its_[fragment_ids_[i]][attribute_ids_[j]] = 
+          array_->rbegin(fragment_ids_[i], attribute_ids_[j]);
+      tile_its_[fragment_ids_[i]][attribute_ids_[j]] += (tile_num - pos - 1);
     }    
 
     // Initialize cell iterators

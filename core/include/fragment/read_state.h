@@ -128,7 +128,6 @@ class ReadState {
   void load_tiles_from_segment(
       int attribute_id, int64_t pos, 
       size_t segment_utilization, int64_t tiles_in_segment);
-
 };
 
 #endif
