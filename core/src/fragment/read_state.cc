@@ -32,6 +32,7 @@
  */
 
 #include "read_state.h"
+#include "utils.h"
 #include <assert.h>
 #include <fcntl.h>
 #include <iostream>
@@ -82,7 +83,7 @@ ReadState::~ReadState() {
 ******************** TILE FUNCTIONS *******************
 ******************************************************/
 
-const Tile* ReadState::get_tile_by_pos(int attribute_id, int64_t pos) {
+Tile* ReadState::get_tile_by_pos(int attribute_id, int64_t pos) {
   // For easy reference
   const int64_t& pos_lower = pos_ranges_[attribute_id].first;
   const int64_t& pos_upper = pos_ranges_[attribute_id].second;
@@ -99,7 +100,7 @@ const Tile* ReadState::get_tile_by_pos(int attribute_id, int64_t pos) {
   return tiles_[attribute_id][pos-pos_lower];
 }
 
-const Tile* ReadState::rget_tile_by_pos(int attribute_id, int64_t pos) {
+Tile* ReadState::rget_tile_by_pos(int attribute_id, int64_t pos) {
   // For easy reference
   const int64_t& pos_lower = pos_ranges_[attribute_id].first;
   const int64_t& pos_upper = pos_ranges_[attribute_id].second;
@@ -169,13 +170,14 @@ std::pair<size_t, int64_t> ReadState::load_payloads_into_segment(
 
   // Calculate buffer size (largest size smaller than the segment_size_)
   while(pos < tile_num) {
-    if(pos == tile_num-1)
+    if(pos == tile_num-1) {
       offset_diff = st.st_size - 
                     book_keeping_->offset(attribute_id, pos);
-    else
+    } else {
       offset_diff = book_keeping_->offset(attribute_id, pos+1) - 
                     book_keeping_->offset(attribute_id, pos);
-    
+    }    
+
     if(segment_utilization + offset_diff > segment_size_)
       break;
 
@@ -229,6 +231,8 @@ void ReadState::load_tiles_from_segment(
   const std::type_info* cell_type = array_schema_->type(attribute_id);
   int val_num  = (dim_num != 0) ? 1 : array_schema_->val_num(attribute_id);
   int64_t tile_num = book_keeping_->tile_num();
+  CompressionType compression = 
+      array_schema_->compression(attribute_id);
 
   // Initializations
   size_t segment_offset = 0, payload_size;
@@ -250,7 +254,7 @@ void ReadState::load_tiles_from_segment(
 
     payload = segment + segment_offset;
     
-    Tile* tile = new Tile(tile_id, dim_num, cell_type, val_num);
+    Tile* tile = new Tile(tile_id, dim_num, cell_type, val_num, compression);
     tile->set_payload(payload, payload_size);
     if(dim_num != 0) // Coordinate type
       tile->set_mbr(book_keeping_->mbr(pos));

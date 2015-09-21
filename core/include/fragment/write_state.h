@@ -135,6 +135,18 @@ class WriteState {
   std::vector<int64_t> file_offsets_;
   /** The fragment name. */
   const std::string* fragment_name_;
+  /** Temporary buffer used in GZIP compression. */
+  void* gz_buffer_;
+  /** 
+   * Stores one GZIP segment per attribute. A GZIP segment is essentially a
+   * buffer for the cells of exactly one tile of an attribute. Upon finishing
+   * writing the cells of each tile, the payload of this buffer gets GZIP'ed
+   * and flushed into the actual corresponding segment (which will periodically
+   * get flushed to the attribute file on the disk.
+   */
+  Segments gz_segments_;
+  /** Stores the GZIP segment utilization. */
+  SegmentUtilization gz_segment_utilization_;
   /** The MBR of the currently populated tile. */
   void* mbr_;
   /** Stores the offset in the run buffer for the next write. */
@@ -160,17 +172,53 @@ class WriteState {
 
   // PRIVATE METHODS
   /** 
-   * Appends an attribute value to the corresponding segment, and returns (by
-   * reference) the (potentially variable) attribute value size. 
+   * Appends an attribute value to the corresponding GZIP segment (see 
+   * WriteState::gz_segments_), and returns (by reference) the (potentially 
+   * variable) attribute value size. This is invoked when the attribute requires
+   * GZIP compression. 
    */
-  void append_attribute_to_segment(const char* attr, int attribute_id,
-                                   size_t& attr_size);
-  /** Appends the coordinate to the corresponding segment. */
+  void append_attribute_value_to_gz_segment(const char* attr, int attribute_id,
+                                            size_t& attr_size);
+  /** 
+   * Appends an attribute value to the corresponding segment, and returns (by
+   * reference) the (potentially variable) attribute value size. This is invoked
+   * when the attribute does not require compression. 
+   */
+  void append_attribute_value_to_segment(const char* attr, int attribute_id,
+                                         size_t& attr_size);
+  /** 
+   * Appends an attribute value to the corresponding buffer and eventually the
+   * corresponding file. It returns (by reference) the (potentially variable) 
+   * attribute value size. 
+   */
+  void append_attribute_value(const char* attr, int attribute_id,
+                              size_t& attr_size);
+  /** 
+   * Appends the coordinates to the corresponding buffer and eventually the 
+   * corresponding file. 
+   */
+  void append_coordinates(const char* coords);
+  /** 
+   * Appends the coordinates to the corresponding GZIP segment (see 
+   * WriteState::gz_segments_). This is invoked when the coordinates require 
+   * GZIP compression. 
+   */
+  void append_coordinates_to_gz_segment(const char* coords);
+  /** 
+   * Appends the coordinates to the corresponding segment. This is invoked when
+   * the coordinates do not require compression. 
+   */
   void append_coordinates_to_segment(const char* coords);
   /** Copies a cell in the buffers of the write state. */
   void* copy_cell(const void* cell, size_t cell_size);
   /** Sorts and writes the last run on the disk. */
   void finalize_last_run();
+  /** 
+   * Compresses the contents of gz_segments_[attribute_id], flushes the 
+   * compressed data to segments_[attribute_id], and returns the size of the 
+   * flushed (compressed data).
+   */
+  void flush_gz_segment_to_segment(int attribute_id, size_t& flushed);
   /** Flushes a segment to its corresponding file. */
   void flush_segment(int attribute_id);
   /** Flushes all segments to their corresponding files. */
@@ -183,7 +231,10 @@ class WriteState {
   void flush_sorted_run_with_2_ids();
   /** 
    * Writes the info about the lastly populated tile to the book keeping
-   * structures. 
+   * structures. In case compression is used for some attributes, it
+   * compresses the tile data held in gz_segments_ and flushes them
+   * to the corresponding segments_, updating properly the file offsets
+   * in book-keeping. 
    */
   void flush_tile_info_to_book_keeping();
   /** Makes tiles from existing sorted runs, stored in dirname. */

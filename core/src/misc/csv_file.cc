@@ -273,7 +273,7 @@ bool CSVFile::operator>>(Cell& cell) {
 ******************************************************/
 
 void CSVFile::flush_buffer() {
-  assert(fd_ != -1);
+  assert(fd_ != -1 || fdz_ != NULL);
 
   ssize_t bytes_written;
 

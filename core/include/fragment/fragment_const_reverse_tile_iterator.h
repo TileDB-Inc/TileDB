@@ -39,6 +39,7 @@
 #include "tile.h"
 
 class Fragment;
+class ArraySchema;
 
 /** This class implements a constant reverse tile iterator. */
 class FragmentConstReverseTileIterator {
@@ -88,7 +89,7 @@ class FragmentConstReverseTileIterator {
    */
   bool operator!=(const FragmentConstReverseTileIterator& rhs) const;
   /** Returns the tile pointed by the iterator. */
-  const Tile* operator*() const; 
+  Tile* operator*() const; 
 
  private:
   // PRIVATE ATTRIBUTES

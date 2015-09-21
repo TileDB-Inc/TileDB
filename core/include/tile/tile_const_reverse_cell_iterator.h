@@ -50,7 +50,7 @@ class TileConstReverseCellIterator {
    * Constuctor that takes as input the tile for which the 
    * iterator is created, and a cell position in the tile payload. 
    */
-  TileConstReverseCellIterator(const Tile* tile, int64_t pos);
+  TileConstReverseCellIterator(Tile* tile, int64_t pos);
     
   // ACCESSORS
   /** 
@@ -81,7 +81,7 @@ class TileConstReverseCellIterator {
   /** Returns the current payload position of the cell iterator. */
   int64_t pos() const;
   /** Returns the tile the cell iterator belongs to. */
-  const Tile* tile() const;
+  Tile* tile() const;
   /** Returns the tile the cell iterator belongs to. */
   int64_t tile_id() const;
 
@@ -121,7 +121,7 @@ class TileConstReverseCellIterator {
    */
   int64_t pos_;  
   /** The tile object the iterator is created for. */
-  const Tile* tile_;
+  Tile* tile_;
 };
 
 #endif

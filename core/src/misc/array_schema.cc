@@ -34,7 +34,6 @@
 #include "array_schema.h"
 #include "csv_line.h"
 #include "hilbert_curve.h"
-#include "utils.h"
 #include <assert.h>
 #include <string.h>
 #include <math.h>
@@ -111,7 +110,7 @@ ArraySchema::ArraySchema(
   // Set compression
   if(compression.size() == 0) {
     for(int i=0; i<= attribute_num_; ++i)
-      compression_.push_back(NONE);
+      compression_.push_back(NO_COMPRESSION);
   } else {
     assert(compression.size() == attribute_num_ + 1);
     compression_ = compression;
@@ -186,7 +185,7 @@ ArraySchema::ArraySchema(
   // Set compression
   if(compression.size() == 0) {
     for(int i=0; i<= attribute_num_; ++i)
-      compression_.push_back(NONE);
+      compression_.push_back(NO_COMPRESSION);
   } else {
     assert(compression.size() == attribute_num_ + 1);
     compression_ = compression;
@@ -272,6 +271,12 @@ size_t ArraySchema::cell_size(const std::vector<int>& attribute_ids) const {
   }
 
   return cell_size;
+}
+
+CompressionType ArraySchema::compression(int attribute_id) const {
+  assert(attribute_id >= 0 && attribute_id <= attribute_num_);
+
+  return compression_[attribute_id];
 }
 
 size_t ArraySchema::coords_size() const {
@@ -560,7 +565,7 @@ std::string ArraySchema::serialize_csv() const {
   // Copy compression
   assert(compression_.size() == attribute_num_ + 1);
   for(int i=0; i<= attribute_num_; ++i) {
-    if(compression_[i] == NONE)
+    if(compression_[i] == NO_COMPRESSION)
       schema << "NONE";
     else if(compression_[i] == GZIP)
       schema << "GZIP";
@@ -1172,11 +1177,11 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
 
   if(s == "*") {
     for(int i=0; i<=attribute_num; ++i)
-      compression.push_back(NONE);
+      compression.push_back(NO_COMPRESSION);
   } else {
     // Handle the retrieved compression type
     if(s == "NONE") { 
-      compression.push_back(NONE);
+      compression.push_back(NO_COMPRESSION);
     } else if(s == "GZIP") {
       compression.push_back(GZIP);
     } else {
@@ -1194,7 +1199,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
         return -1;
       }
       if(s == "NONE") { 
-        compression.push_back(NONE);
+        compression.push_back(NO_COMPRESSION);
       } else if(s == "GZIP") {
         compression.push_back(GZIP);
       } else {
@@ -2151,7 +2156,7 @@ void ArraySchema::print() const {
       std::cout << "\t" << attribute_names_[i] << ": GZIP\n";
     else if(compression_[i] == LZ)
       std::cout << "\t" << attribute_names_[i] << ": LZ\n";
-    else if(compression_[i] == NONE)
+    else if(compression_[i] == NO_COMPRESSION)
       std::cout << "\t" << attribute_names_[i] << ": NONE\n";
   if(compression_[attribute_num_] == RLE)
     std::cout << "\tCoordinates: RLE\n";
@@ -2159,7 +2164,7 @@ void ArraySchema::print() const {
     std::cout << "\tCoordinates: GZIP\n";
   else if(compression_[attribute_num_] == LZ)
     std::cout << "\tCoordinates: LZ\n";
-  else if(compression_[attribute_num_] == NONE)
+  else if(compression_[attribute_num_] == NO_COMPRESSION)
     std::cout << "\tCoordinates: NONE\n";
 }
 

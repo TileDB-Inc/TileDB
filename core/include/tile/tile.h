@@ -42,6 +42,7 @@
 #include "special_values.h"
 #include "tile_const_cell_iterator.h"
 #include "tile_const_reverse_cell_iterator.h"
+#include "utils.h"
 
 /** Default payload capacity. */
 #define TL_PAYLOAD_CAPACITY 100
@@ -84,13 +85,14 @@ class Tile {
    * stored per cell. It is equal to VAR_SIZE if the cell size is variable. 
    */
   Tile(int64_t tile_id, int dim_num, 
-       const std::type_info* cell_type, int val_num); 
+       const std::type_info* cell_type, int val_num,
+       CompressionType compression = NO_COMPRESSION); 
   /** Destructor. */
   ~Tile(); 
 
   // ACCESSORS
   /** Returns a cell iterator pointing to the first cell of the tile. */
-  TileConstCellIterator begin() const;
+  TileConstCellIterator begin();
   /** 
    * Returns the bounding coordinates, i.e., the first and 
    * last coordinates that were appended to the tile. It applies only to
@@ -99,29 +101,34 @@ class Tile {
    */
   BoundingCoordinatesPair bounding_coordinates() const;
   /** Returns the pointer to the pos-th cell. */
-  const void* cell(int64_t pos) const;
+  const void* cell(int64_t pos);
   /** Returns the cell size. Applicable only to fixed-sized cells. */
   size_t cell_size() const;
   /** Returns the number of cells in the tile. */
-  int64_t cell_num() const;
+  int64_t cell_num();
   /** Returns the cell type. */
   const std::type_info* cell_type() const;
   /** Copies the tile payload into buffer. */
   void copy_payload(void* buffer) const;
+  /** 
+   * Decompressed the tile payload. If it is already uncompressed, the
+   * the function does nothing.
+   */
+  void decompress();
   /** Returns the number of dimensions. It returns 0 for attribute tiles. */
   int dim_num() const;
   /** Returns a cell iterator signifying the end of the tile. */
   static TileConstCellIterator end();
   /** Returns true if the cell at position pos represents a deletion. */
-  bool is_del(int64_t pos) const;
+  bool is_del(int64_t pos);
   /** Returns true if the cell at position pos is NULL. */
-  bool is_null(int64_t pos) const;
+  bool is_null(int64_t pos);
   /** Returns the MBR (see Tile::mbr_). */
   MBR mbr() const;
   /** Returns the tile id. */
   int64_t tile_id() const;
   /** Returns the tile size (in bytes). */
-  size_t tile_size() const;
+  size_t tile_size();
   /** Returns the tile type. */
   TileType tile_type() const;
   /** Returns the cell type size. */
@@ -134,8 +141,15 @@ class Tile {
   void clear();
   /** MBR setter. Applicable only to coordinate tiles. */
   void set_mbr(const void* mbr);
-  /** Payload setter. */
-  void set_payload(void* payload, size_t payload_size); 
+  /** 
+   * Payload setter. The last argument states whether the input payload
+   * has been malloced by the tile object, so that it is properly freed
+   * upon destruction.
+   */
+  void set_payload(
+      void* payload, 
+      size_t payload_size, 
+      bool payload_malloced = false); 
 
   // MISC
   /** 
@@ -148,12 +162,12 @@ class Tile {
    * unpredictable.
    */
   template<class T>
-  bool cell_inside_range(int64_t pos, const T* range) const;
+  bool cell_inside_range(int64_t pos, const T* range);
   /** Prints the details of the tile on the standard output. */
-  void print() const;
+  void print();
 
   /** Returns a cell iterator pointing to the first cell of the tile. */
-  TileConstReverseCellIterator rbegin() const;
+  TileConstReverseCellIterator rbegin();
   /** Returns a cell iterator signifying the end of the tile. */
   static TileConstReverseCellIterator rend();
 
@@ -165,8 +179,18 @@ class Tile {
   size_t cell_size_;
   /** The cell type. */
   const std::type_info* cell_type_;
+  /** The compression type of the tile payload. */
+  CompressionType compression_;
+  /** True if the current payload is compressed. */
+  bool compressed_;
   /** The number of dimensions. It is equal to 0 for attribute tiles. */
   int dim_num_; 
+  /** 
+   * True if the payload buffer was malloced by the object (so that
+   * the destructor can clean it).
+   */
+  bool payload_malloced_;
+
   /** 
    * The tile MBR (minimum bounding rectangle), i.e., the tightest 
    * hyper-rectangle in the logical space that contains all the 
@@ -176,6 +200,11 @@ class Tile {
    * only for coordinate tiles (otherwise, it is set to NULL).
    */
   void* mbr_;
+  /** 
+   * This is populated only in the case of variable-sized cells. It is a list
+   * of offsets where each cell begins in the payload.
+   */
+  std::vector<size_t> offsets_;
   /** 
    * The payload stores the cell (attribute/coordinate) values. 
    * The coordinates are serialized, i.e., the payload first stores
@@ -204,11 +233,6 @@ class Tile {
   /** Expands the tile MBR bounds. Applicable only to coordinate tiles. */
   template<class T>
   void expand_mbr(const T* coords);  
-  /** 
-   * This is populated only in the case of variable-sized cells. It is a list
-   * of offsets where each cell begins in the payload.
-   */
-  std::vector<size_t> offsets_;
   /** Prints the bounding coordinates on the standard output. */
   template<class T>
   void print_bounding_coordinates() const;
@@ -217,7 +241,7 @@ class Tile {
   void print_mbr() const;
   /** Prints the payload on the standard output. */
   template<class T>
-  void print_payload() const;
+  void print_payload();
 };
 
 #endif

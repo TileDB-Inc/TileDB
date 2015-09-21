@@ -47,6 +47,12 @@
 #include <limits>
 #include <set>
 
+class ArraySchema;
+template<class T> class ArrayConstCellIterator;
+template<class T> class ArrayConstDenseCellIterator;
+template<class T> class ArrayConstReverseCellIterator;
+class Array;
+
 /** 
  * A storage manager object is responsible for storing/fetching tiles to/from 
  * the disk. It maintains book-keeping structures in main memory to efficiently

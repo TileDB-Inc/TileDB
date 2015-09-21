@@ -45,6 +45,7 @@
 
 class FragmentConstTileIterator;
 class FragmentConstReverseTileIterator;
+class ReadState;
 
 /** Contains information about a fragment. */
 class Fragment {
@@ -67,7 +68,7 @@ class Fragment {
   /** Returns the fragment name. */
   const std::string& fragment_name() const; 
   /** Returns a tile for a given attribute and tile position. */
-  const Tile* get_tile_by_pos(int attribute_id, int64_t pos) const;  
+  Tile* get_tile_by_pos(int attribute_id, int64_t pos) const;  
   /** Returns the MBR of the tile at the input position. */
   Tile::MBR mbr(int64_t pos) const;
   /** Begin reverse tile iterator. */
@@ -79,7 +80,7 @@ class Fragment {
    * segment retrieval appears in the end of the segment, rather than
    * in the beginning. 
    */
-  const Tile* rget_tile_by_pos(int attribute_id, int64_t pos) const;  
+  Tile* rget_tile_by_pos(int attribute_id, int64_t pos) const;  
 
   /** Returns the id of the tile at the input position. */
   int64_t tile_id(int64_t pos) const;

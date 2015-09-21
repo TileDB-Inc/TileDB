@@ -149,7 +149,7 @@ bool FragmentConstTileIterator::operator!=(
           fragment_ == rhs.fragment_)); 
 }
 
-const Tile* FragmentConstTileIterator::operator*() const {
+Tile* FragmentConstTileIterator::operator*() const {
   assert(pos_ >= 0 && pos_ < fragment_->tile_num());
 
   return fragment_->get_tile_by_pos(attribute_id_, pos_);

@@ -36,6 +36,7 @@
 
 #include "csv_line.h"
 #include "special_values.h"
+#include "utils.h"
 #include <vector>
 #include <set>
 #include <string>
@@ -84,8 +85,6 @@ class ArraySchema {
   enum CellType {CHAR, INT, INT64_T, FLOAT, DOUBLE};
   /** The cell order. */
   enum CellOrder {CO_COLUMN_MAJOR, CO_HILBERT, CO_ROW_MAJOR, CO_NONE};
-  /** The compression type. */
-  enum CompressionType {RLE, GZIP, LZ, NONE};
   /** The tile order (applicable only to regular tiles). */
   enum TileOrder {TO_COLUMN_MAJOR, TO_HILBERT, TO_ROW_MAJOR, TO_NONE};
 
@@ -157,6 +156,8 @@ class ArraySchema {
   size_t cell_size(int i) const;
   /** Returns the sum of the cell sizes of the input attributes. */
   size_t cell_size(const std::vector<int>& attribute_ids) const;
+  /** Returns the compression type of the i-th attribute */
+  CompressionType compression(int attribute_id) const;
   /** Returns the coordinates size. */
   size_t coords_size() const;
   /** Returns the type of the coordinates. */

@@ -31,6 +31,7 @@
  * This file implements useful (global) functions.
  */
 
+#include "special_values.h"
 #include "utils.h"
 #include <algorithm>
 #include <assert.h>
@@ -44,6 +45,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
+#include <zlib.h>
 
 bool ends_with(const std::string& value, const std::string& ending) {
   if (ending.size() > value.size())
@@ -130,13 +132,8 @@ bool empty_directory(const std::string& dirname)  {
   return (n == 0) ? true : false;
 }
 
-void expand_mbr(const ArraySchema* array_schema,
-                const void* coords, void* mbr) {
-  // For easy reference
-  int attribute_num = array_schema->attribute_num();
-  int dim_num = array_schema->dim_num();
-  const std::type_info* type = array_schema->type(attribute_num);
-
+void expand_mbr(const void* coords, void* mbr,
+                const std::type_info* type, int dim_num) {
   if(*type == typeid(int)) 
     expand_mbr(static_cast<const int*>(coords), 
                static_cast<int*>(mbr), dim_num);
@@ -227,13 +224,68 @@ std::vector<std::string> get_filenames(const std::string& dirname) {
   return filenames;
 }
 
-void init_mbr(const ArraySchema* array_schema,
-              const void* coords, void*& mbr) {
-  // For easy reference
-  int attribute_num = array_schema->attribute_num();
-  int dim_num = array_schema->dim_num();
-  const std::type_info* type = array_schema->type(attribute_num);
+void gzip(unsigned char* in, size_t in_size,
+          unsigned char* out, size_t avail_out, size_t& out_size) {
+  int ret;
+  unsigned have;
+  z_stream strm;
+  
+  // Allocate deflate state
+  strm.zalloc = Z_NULL;
+  strm.zfree = Z_NULL;
+  strm.opaque = Z_NULL;
+  ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
+  assert(ret == Z_OK); // TODO: Error messages here
 
+  // Compress
+  strm.next_in = in;
+  strm.next_out = out;
+  strm.avail_in = in_size;
+  strm.avail_out = avail_out;
+  ret = deflate(&strm, Z_FINISH);
+  assert(ret != Z_STREAM_ERROR);
+  assert(strm.avail_in == 0);
+
+  // Clean up
+  (void)deflateEnd(&strm);
+
+  // Calculate size of compressed data
+  out_size = avail_out - strm.avail_out; 
+}
+
+void gunzip(unsigned char* in, size_t in_size,
+            unsigned char* out, size_t avail_out, size_t& out_size) {
+  int ret;
+  unsigned have;
+  z_stream strm;
+  
+  // Allocate deflate state
+  strm.zalloc = Z_NULL;
+  strm.zfree = Z_NULL;
+  strm.opaque = Z_NULL;
+  strm.avail_in = 0;
+  strm.next_in = Z_NULL;
+  ret = inflateInit(&strm);
+  assert(ret == Z_OK); // TODO: Error messages here
+
+  // Compress
+  strm.next_in = in;
+  strm.next_out = out;
+  strm.avail_in = in_size;
+  strm.avail_out = avail_out;
+  ret = inflate(&strm, Z_FINISH);
+  assert(ret != Z_STREAM_ERROR);
+  assert(ret == Z_STREAM_END);
+
+  // Clean up
+  (void)inflateEnd(&strm);
+
+  // Calculate size of compressed data
+  out_size = avail_out - strm.avail_out; 
+}
+
+void init_mbr(const void* coords, void*& mbr,
+              const std::type_info* type, int dim_num) {
   if(*type == typeid(int)) 
     init_mbr(static_cast<const int*>(coords), 
              static_cast<int*>(mbr), dim_num);
