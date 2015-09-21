@@ -236,6 +236,7 @@ ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
     full_overlap_ = new bool[fragment_num_];
   } else {
     range_ = NULL;
+    full_overlap_ = NULL;
   } 
 
   // Prepare the ids of the fragments the iterator will iterate on
@@ -310,6 +311,7 @@ ArrayConstReverseCellIterator<T>::ArrayConstReverseCellIterator(
     full_overlap_ = new bool[fragment_num_];
   } else {
     range_ = NULL;
+    full_overlap_ = NULL;
   } 
 
   // Prepare the ids of the fragments the iterator will iterate on
@@ -502,6 +504,8 @@ void ArrayConstReverseCellIterator<T>::advance_cell_in_range(
 template<class T>
 void ArrayConstReverseCellIterator<T>::find_cell_at_coords(
     int fragment_id, const T* coords) {
+  if(tile_its_[fragment_id][attribute_num_].end())
+    return;
   // For easy reference
   const ArraySchema* array_schema = this->array_schema();
   Tile::BoundingCoordinatesPair bounding_coords;
