@@ -44,6 +44,7 @@
 #include <vector>
 #include <inttypes.h>
 #include <limits>
+#include <zlib.h>
 
 /** 
  * The segment size determines the amount of data that can be exchanged
@@ -65,6 +66,9 @@
  */
 class CSVFile {
  public:
+  // TYPE DEFINITIONS
+  enum Compression {NONE, GZIP};
+
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
   CSVFile();
@@ -76,8 +80,6 @@ class CSVFile {
   ~CSVFile();
 
   // ACCESSORS
-  /** Returns the number of bytes read from the file. */
-  ssize_t bytes_read() const;
   /** Returns the size of the file in bytes. */
   ssize_t size() const;
  
@@ -128,11 +130,16 @@ class CSVFile {
   size_t buffer_offset_;
   /** Stores the cell format of the lastly read CSV line. */
   void* cell_;
-  /** 
-    * A pointer to the current position in the file where the NEXT read will 
-    * take place (used only by CSVFile::operator>> in READ mode).
-    */
-  int64_t file_offset_;
+  /** Compression mode. */
+  Compression compression_;
+  /** True if the end of file has been reached. */
+  bool eof_;
+  /** File descriptor for an uncompressed file. */
+  int fd_;
+  /** File descriptor for a gzipped file. */
+  gzFile fdz_;
+  /** Size of the file opened in read mode. */
+  size_t file_size_;
     /** The name of the CSV file. */
   std::string filename_;
   /** 
@@ -155,6 +162,8 @@ class CSVFile {
   // PRIVATE METHODS
   /** Writes the content of the buffer to the end of the file on the disk. */
   void flush_buffer();
+  /** */
+  void open_file(const std::string& filename);
   /** 
    * Reads a set of lines from the file, whose aggregate size is at most
    * CSVFile::segment_size_. Returns true if it could retrieve new lines

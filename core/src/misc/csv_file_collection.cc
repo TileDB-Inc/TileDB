@@ -33,6 +33,7 @@
 
 #include "csv_file_collection.h"
 #include "utils.h"
+#include "tiledb_error.h"
 #include <assert.h>
 #include <iostream>
 #include <queue>

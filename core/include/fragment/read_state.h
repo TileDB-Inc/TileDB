@@ -40,6 +40,8 @@
 #include <inttypes.h>
 #include <vector>
 
+class BookKeeping;
+
 /** Stores the state necessary when reading tiles from a fragment. */
 class ReadState {
  public:
@@ -51,7 +53,7 @@ class ReadState {
   /** Mnemonic: [attribute_id] --> segment */
   typedef std::vector<void*> Segments;
   /** Mnemonic: <tile#1, tile#2, ...> */
-  typedef std::vector<const Tile*> TileList;
+  typedef std::vector<Tile*> TileList;
   /** Mnemonic: [attribute_id] --> <tile#1, tile#2, ...> */
   typedef std::vector<TileList> Tiles;
 
@@ -68,7 +70,7 @@ class ReadState {
 
   // TILE FUNCTIONS
   /** Returns a tile for a given attribute and tile position. */
-  const Tile* get_tile_by_pos(int attribute_id, int64_t pos);  
+  Tile* get_tile_by_pos(int attribute_id, int64_t pos);  
   /** 
    * Returns a tile for a given attribute and tile position, when traversing
    * tiles in reverse order. This is important so that the segments are
@@ -76,7 +78,7 @@ class ReadState {
    * segment retrieval appears in the end of the segment, rather than
    * in the beginning. 
    */
-  const Tile* rget_tile_by_pos(int attribute_id, int64_t pos);  
+  Tile* rget_tile_by_pos(int attribute_id, int64_t pos);  
 
  private:
   // PRIVATE ATTRIBUTES
@@ -128,7 +130,6 @@ class ReadState {
   void load_tiles_from_segment(
       int attribute_id, int64_t pos, 
       size_t segment_utilization, int64_t tiles_in_segment);
-
 };
 
 #endif

@@ -33,6 +33,7 @@
 
 #include "cell_iterator.h"
 #include "utils.h"
+#include <string.h>
 
 /******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS **************

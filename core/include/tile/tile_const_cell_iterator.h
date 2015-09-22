@@ -50,7 +50,7 @@ class TileConstCellIterator {
    * Constuctor that takes as input the tile for which the 
    * iterator is created, and a cell position in the tile payload. 
    */
-  TileConstCellIterator(const Tile* tile, int64_t pos);
+  TileConstCellIterator(Tile* tile, int64_t pos);
    
   // ACCESSORS
   /** 
@@ -81,7 +81,7 @@ class TileConstCellIterator {
   /** Returns the current payload position of the cell iterator. */
   int64_t pos() const;
   /** Returns the tile the cell iterator belongs to. */
-  const Tile* tile() const;
+  Tile* tile() const;
   /** Returns the tile the cell iterator belongs to. */
   int64_t tile_id() const;
 
@@ -120,7 +120,7 @@ class TileConstCellIterator {
    */
   int64_t pos_;  
   /** The tile object the iterator is created for. */
-  const Tile* tile_;
+  Tile* tile_;
 };
 
 #endif

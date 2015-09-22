@@ -35,11 +35,12 @@
 #include "string.h"
 #include "utils.h"
 #include <assert.h>
+#include <cassert>
 #include <fcntl.h>
 #include <math.h>
 #include <sstream>
 #include <sys/stat.h>
-#include <cassert>
+#include <unistd.h>
 
 /******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS **************

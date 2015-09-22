@@ -47,6 +47,8 @@
 #define CELL_BUFFER_INITIAL_SIZE 40000
 
 class Array;
+class ArraySchema;
+class FragmentConstTileIterator;
 
 /** 
  * A constant cell iterator that iterates over the cells of all the 

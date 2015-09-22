@@ -47,6 +47,12 @@
 #include <limits>
 #include <set>
 
+class ArraySchema;
+template<class T> class ArrayConstCellIterator;
+template<class T> class ArrayConstDenseCellIterator;
+template<class T> class ArrayConstReverseCellIterator;
+class Array;
+
 /** 
  * A storage manager object is responsible for storing/fetching tiles to/from 
  * the disk. It maintains book-keeping structures in main memory to efficiently
@@ -152,9 +158,6 @@ class StorageManager {
   ArrayConstCellIterator<T>* begin(
       int ad, const T* range,
       const std::vector<int>& attribute_ids) const;
-  /** Takes as input an array descriptor and returns a cell iterator. */
-  template<class T>
-  ArrayConstReverseCellIterator<T>* rbegin(int ad) const;
   /** Takes as input an array descriptor and returns a dense cell iterator. */
   template<class T>
   ArrayConstDenseCellIterator<T>* begin_dense(int ad) const;
@@ -183,6 +186,9 @@ class StorageManager {
   ArrayConstDenseCellIterator<T>* begin_dense(
       int ad, const T* range,
       const std::vector<int>& attribute_ids) const;
+  /** Takes as input an array descriptor and returns a cell iterator. */
+  template<class T>
+  ArrayConstReverseCellIterator<T>* rbegin(int ad) const;
   /** 
    * Takes as input an array descriptor and a list of attribute ids. It returns
    * a cell iterator that iterates over the specified attributes.
@@ -191,23 +197,31 @@ class StorageManager {
   ArrayConstReverseCellIterator<T>* rbegin(
       int ad, const std::vector<int>& attribute_ids) const;
   /** 
-   * Takes as input an array descriptor and a range. It returns a cell iterator
-   * that iterates only over the cells whose coordinates lie within the input 
-   * range (following the global cell order).    
+   * Takes as input an array descriptor, a multi-dimensional object, and a flag
+   * that indicates if the multi-dimensional object is a range or a single 
+   * element. If it is a range, it returns a cell iterator that iterates only 
+   * over the cells whose coordinates lie within the input  range (following the
+   * If it is a single cell, the iterator iterates over all cells that lie on
+   * or before the input along global cell order.    
    */
   template<class T>
   ArrayConstReverseCellIterator<T>* rbegin(
-      int ad, const T* range) const;
+      int ad, const T* multi_D_obj, bool is_range = true) const;
   /** 
-   * Takes as input an array descriptor, a range, and a list of attribute
-   * ids. It returns a cell iterator that iterates only over the cells
-   * whose coordinates lie within the input range (following the global cell
-   * order), and only on the specified attributes.
+   * Takes as input an array descriptor, a multi-dimensional object, and a flag
+   * that indicates if the multi-dimensional object is a range or a single 
+   * element. If it is a range, it returns a cell iterator that iterates only 
+   * over the cells whose coordinates lie within the input range (following the
+   * If it is a single cell, the iterator iterates over all cells that lie on
+   * or before the input along global cell order. This iterator returns cells 
+   * that have values only on the input attributes.
    */
   template<class T>
   ArrayConstReverseCellIterator<T>* rbegin(
-      int ad, const T* range,
-      const std::vector<int>& attribute_ids) const;
+      int ad, const T* multi_D_obj,
+      const std::vector<int>& attribute_ids,
+      bool is_range = true) const;
+
   /**
    * Takes as input an array descriptor and a multi-dimensional range, and 
    * returns the cells whose coordinates fall inside the range, as well as

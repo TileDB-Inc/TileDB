@@ -34,8 +34,16 @@
 #ifndef UTILS_H
 #define UTILS_H
 
-#include "array_schema.h"
-#include "storage_manager.h"
+#include <set>
+#include <string>
+#include <vector>
+
+/* **************** */
+/*    ENUM TYPES    */
+/* **************** */
+
+/** The compression type. */
+enum CompressionType {RLE, GZIP, LZ, NO_COMPRESSION};
 
 /** Returns true if string `value` ends with string `ending`. */
 bool ends_with(const std::string& value, const std::string& ending);
@@ -64,8 +72,8 @@ bool duplicates(const std::vector<T>& v);
 bool empty_directory(const std::string& dirname); 
 
 /** Expands the input MBR with the input coordinates. */
-void expand_mbr(const ArraySchema* array_schema, 
-                const void* coords, void* mbr);
+void expand_mbr(const void* coords, void* mbr,
+                const std::type_info* type, int dim_num);
 
 /** Expands the input MBR with the input coordinates. */
 template<class T>
@@ -83,9 +91,26 @@ std::string get_date();
 /** Returns a list with the names of all files in the input directory. */
 std::vector<std::string> get_filenames(const std::string& dirname);
 
+/** 
+ * GZIPs the input buffer and stores the result in the output buffer,
+ * of maximum size avail_out. It also stores the compressed data size 
+ * into out_size.
+ */
+void gzip(unsigned char* in, size_t in_size, 
+          unsigned char* out, size_t avail_out, size_t& out_size);
+
+/** 
+ * Decompresses the GZIPed input buffer and stores the result in the output 
+ * buffer, of maximum size avail_out. It also stores the decompressed data 
+ * size into out_size.
+ */
+void gunzip(unsigned char* in, size_t in_size, 
+            unsigned char* out, size_t avail_out, size_t& out_size);
+
+
 /** Initializes the input MBR with the input coordinates. */
-void init_mbr(const ArraySchema* array_schema, 
-              const void* coords, void*& mbr);
+void init_mbr(const void* coords, void*& mbr,
+              const std::type_info* type, int dim_num);
 
 /** Expands the input MBR with the input coordinates. */
 template<class T>

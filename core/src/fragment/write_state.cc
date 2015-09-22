@@ -88,12 +88,22 @@ WriteState::WriteState(
 
   segments_.resize(attribute_num+1);
   segment_utilization_.resize(attribute_num+1);
+  gz_segments_.resize(attribute_num+1);
+  gz_segment_utilization_.resize(attribute_num+1);
   file_offsets_.resize(attribute_num+1);
   for(int i=0; i<= attribute_num; ++i) {
     segments_[i] = malloc(segment_size_);
     segment_utilization_[i] = 0;
+    if(array_schema_->compression(i) == GZIP) 
+      gz_segments_[i] = malloc(segment_size_);
+    else if(array_schema_->compression(i) == NO_COMPRESSION) 
+      gz_segments_[i] = NULL;
+    gz_segment_utilization_[i] = 0;
     file_offsets_[i] = 0;
   }
+
+  // Prepare compression buffer
+  gz_buffer_ = malloc(segment_size_);
 }
 
 WriteState::~WriteState() {
@@ -117,8 +127,12 @@ WriteState::~WriteState() {
   }
 
   // Clear segments
-  for(int i=0; i<=attribute_num; ++i)
-    free(segments_[i]);
+  for(int i=0; i<=attribute_num; ++i) {
+    if(segments_[i] != NULL)
+      free(segments_[i]);
+    if(array_schema_->compression(i) == GZIP) 
+      free(gz_segments_[i]);
+  }
 
   // Clear MBR and bounding coordinates
   if(mbr_ != NULL)
@@ -128,6 +142,9 @@ WriteState::~WriteState() {
   if(bounding_coordinates_.second != NULL)
     free(bounding_coordinates_.second);
 
+  // Clear compression buffer
+  if(gz_buffer_ != NULL)
+    free(gz_buffer_);
 }
 
 /******************************************************
@@ -310,18 +327,19 @@ void WriteState::write_cell_sorted(const void* cell) {
 
   // Flush tile info to book-keeping if a new tile must be created
   if((regular && tile_id != tile_id_) ||
-     (!regular && (cell_num_ == capacity)))
+     (!regular && (cell_num_ == capacity))) 
     flush_tile_info_to_book_keeping();
 
   // Append coordinates to segment
-  append_coordinates_to_segment(c_cell);
+  append_coordinates(c_cell);
+
   cell_offset = coords_size;
   if(array_schema_->cell_size() == VAR_SIZE)
     cell_offset += sizeof(size_t);
 
   // Append attribute values to the respective segments
   for(int i=0; i<attribute_num; ++i) {
-    append_attribute_to_segment(c_cell + cell_offset, i, attr_size);
+    append_attribute_value(c_cell + cell_offset, i, attr_size);
     cell_offset += attr_size;
     attr_sizes.push_back(attr_size);
   }
@@ -345,18 +363,18 @@ void WriteState::write_cell_sorted_with_id(const void* cell) {
 
   // Flush tile info to book-keeping if a new tile must be created
   if((regular && id != tile_id_) ||
-     (!regular && (cell_num_ == array_schema_->capacity())))
+     (!regular && (cell_num_ == array_schema_->capacity()))) 
     flush_tile_info_to_book_keeping();
 
   // Append coordinates to segment
-  append_coordinates_to_segment(c_cell);
+  append_coordinates(c_cell);
   cell_offset = coords_size;
   if(array_schema_->cell_size() == VAR_SIZE)
     cell_offset += sizeof(size_t);
 
   // Append attribute values to the respective segments
   for(int i=0; i<attribute_num; ++i) {
-    append_attribute_to_segment(c_cell + cell_offset, i, attr_size);
+    append_attribute_value(c_cell + cell_offset, i, attr_size);
     cell_offset += attr_size;
     attr_sizes.push_back(attr_size);
   }
@@ -382,14 +400,14 @@ void WriteState::write_cell_sorted_with_2_ids(const void* cell) {
     flush_tile_info_to_book_keeping();
 
   // Append coordinates to segment
-  append_coordinates_to_segment(c_cell);
+  append_coordinates(c_cell);
   cell_offset = coords_size;
   if(array_schema_->cell_size() == VAR_SIZE)
     cell_offset += sizeof(size_t);
 
   // Append attribute values to the respective segments
   for(int i=0; i<attribute_num; ++i) {
-    append_attribute_to_segment(c_cell + cell_offset, i, attr_size);
+    append_attribute_value(c_cell + cell_offset, i, attr_size);
     cell_offset += attr_size;
     attr_sizes.push_back(attr_size);
   }
@@ -403,7 +421,44 @@ void WriteState::write_cell_sorted_with_2_ids(const void* cell) {
 ****************** PRIVATE METHODS ********************
 ******************************************************/
 
-void WriteState::append_attribute_to_segment(
+void WriteState::append_attribute_value(
+    const char* attr, int attribute_id, size_t& attr_size) {
+  // For easy reference
+  CompressionType compression = 
+      array_schema_->compression(attribute_id);
+
+  if(compression == NO_COMPRESSION) 
+    append_attribute_value_to_segment(attr, attribute_id, attr_size);
+  else if(compression == GZIP) 
+    append_attribute_value_to_gz_segment(attr, attribute_id, attr_size);
+  else
+    assert(0); // The code must never reach this point 
+}
+
+void WriteState::append_attribute_value_to_gz_segment(
+    const char* attr, int attribute_id, size_t& attr_size) {
+  // For easy reference
+  bool var_size = (array_schema_->cell_size(attribute_id) == VAR_SIZE);
+
+  if(!var_size) {
+    attr_size = array_schema_->cell_size(attribute_id);
+  } else {
+    int val_num;
+    memcpy(&val_num, attr, sizeof(int));
+    attr_size = val_num * array_schema_->type_size(attribute_id) + sizeof(int);
+  }
+
+  // Recall that a gz_segment holds only the cells of a single tile, and
+  // we assume that a tile can fit in a single gz_segment
+  assert(gz_segment_utilization_[attribute_id] + attr_size <= segment_size_);
+
+  // Append cell to the gz_segment
+  memcpy(static_cast<char*>(gz_segments_[attribute_id]) +
+         gz_segment_utilization_[attribute_id], attr, attr_size);
+  gz_segment_utilization_[attribute_id] += attr_size;
+}
+
+void WriteState::append_attribute_value_to_segment(
     const char* attr, int attribute_id, size_t& attr_size) {
   // For easy reference
   bool var_size = (array_schema_->cell_size(attribute_id) == VAR_SIZE);
@@ -424,6 +479,37 @@ void WriteState::append_attribute_to_segment(
   memcpy(static_cast<char*>(segments_[attribute_id]) +
          segment_utilization_[attribute_id], attr, attr_size);
   segment_utilization_[attribute_id] += attr_size;
+}
+
+void WriteState::append_coordinates(const char* cell) {
+  // For easy reference
+  int attribute_num = array_schema_->attribute_num();
+  CompressionType compression = 
+      array_schema_->compression(attribute_num);
+
+  if(compression == NO_COMPRESSION) 
+    append_coordinates_to_segment(cell);
+  else if(compression == GZIP)
+    append_coordinates_to_gz_segment(cell);
+  else
+    assert(0); // The code must never reach this point 
+}
+
+void WriteState::append_coordinates_to_gz_segment(
+    const char* cell) {
+  // For easy reference
+  int attribute_num = array_schema_->attribute_num();
+  bool var_size = (array_schema_->cell_size() == VAR_SIZE);
+  size_t coords_size = array_schema_->cell_size(attribute_num);
+
+  // Recall that a gz_segment holds only the cells of a single tile, and
+  // we assume that a tile can fit in a single gz_segment
+  assert(gz_segment_utilization_[attribute_num] + coords_size <= segment_size_);
+
+  // Append the coordinates
+  memcpy(static_cast<char*>(gz_segments_[attribute_num]) +
+         gz_segment_utilization_[attribute_num], cell, coords_size);
+  gz_segment_utilization_[attribute_num] += coords_size;
 }
 
 void WriteState::append_coordinates_to_segment(
@@ -504,6 +590,39 @@ void WriteState::finalize_last_run() {
   cells_.clear();
   cells_with_id_.clear();
   cells_with_2_ids_.clear();
+}
+
+void WriteState::flush_gz_segment_to_segment(
+    int attribute_id, size_t& flushed) {
+  assert(array_schema_->compression(attribute_id) == GZIP);
+
+  // Compress
+  size_t compressed_data_size;
+  gzip(static_cast<unsigned char*>(gz_segments_[attribute_id]), 
+       gz_segment_utilization_[attribute_id], 
+       static_cast<unsigned char*>(gz_buffer_),
+       segment_size_, 
+       compressed_data_size);
+
+  // Check if the segment is full
+  if(segment_utilization_[attribute_id] + compressed_data_size + sizeof(size_t)
+         > segment_size_)
+    flush_segment(attribute_id);
+
+  // Append compressed data to the segment
+  memcpy(static_cast<char*>(segments_[attribute_id]) +
+             segment_utilization_[attribute_id], 
+         &gz_segment_utilization_[attribute_id],
+         sizeof(size_t));
+  memcpy(static_cast<char*>(segments_[attribute_id]) +
+             segment_utilization_[attribute_id] + sizeof(size_t), 
+         gz_buffer_, 
+         compressed_data_size);
+  flushed = compressed_data_size + sizeof(size_t); // Return value
+  segment_utilization_[attribute_id] += flushed;
+
+  // Reset utilization
+  gz_segment_utilization_[attribute_id] = 0;
 }
 
 void WriteState::flush_segment(int attribute_id) {
@@ -663,8 +782,16 @@ void WriteState::flush_tile_info_to_book_keeping() {
   size_t coords_size = array_schema_->cell_size(attribute_num);
 
   // Flush info
-  for(int i=0; i<=attribute_num; ++i)
-    book_keeping_->offsets_[i].push_back(file_offsets_[i]);
+  for(int i=0; i<=attribute_num; ++i) {
+    if(array_schema_->compression(i) == NO_COMPRESSION) {
+      book_keeping_->offsets_[i].push_back(file_offsets_[i]);
+    } else { // Compress tile, flush to segment and update offset 
+      size_t flushed;
+      flush_gz_segment_to_segment(i, flushed);
+      file_offsets_[i] += flushed;
+      book_keeping_->offsets_[i].push_back(file_offsets_[i]);
+    }
+  }
 
   book_keeping_->bounding_coordinates_.push_back(bounding_coordinates_);
   book_keeping_->mbrs_.push_back(mbr_);
@@ -906,7 +1033,8 @@ void WriteState::update_tile_info(
 
   // Update file offsets
   for(int i=0; i<=attribute_num; ++i)
-    file_offsets_[i] += attr_sizes[i];
+    if(array_schema_->compression(i) == NO_COMPRESSION)
+      file_offsets_[i] += attr_sizes[i];
 }
 
 // Explicit template instantiations

@@ -44,9 +44,10 @@
 ******************************************************/
 
 Tile::Tile(int64_t tile_id, int dim_num, 
-           const std::type_info* cell_type, int val_num) 
+           const std::type_info* cell_type, int val_num,
+           CompressionType compression) 
     : tile_id_(tile_id), dim_num_(dim_num), cell_type_(cell_type), 
-      val_num_(val_num) {
+      val_num_(val_num), compression_(compression) {
   assert(dim_num >= 0);
 
   if(dim_num == 0) 
@@ -58,6 +59,12 @@ Tile::Tile(int64_t tile_id, int dim_num,
   cell_num_ = 0;
   tile_size_ = 0;
   payload_ = NULL;
+  payload_malloced_ = false;
+
+  if(compression_ == NO_COMPRESSION)
+    compressed_ = false;
+  else
+    compressed_ = true;
 
   // Set type size
   if(*cell_type == typeid(char)) {
@@ -92,7 +99,10 @@ Tile::~Tile() {
 ********************* ACCESSORS ***********************
 ******************************************************/
 
-TileConstCellIterator Tile::begin() const {
+TileConstCellIterator Tile::begin() {
+  if(compressed_ && compression_ == GZIP)
+    decompress();
+
   return TileConstCellIterator(this, 0);
 }
 
@@ -108,7 +118,10 @@ Tile::BoundingCoordinatesPair Tile::bounding_coordinates() const {
   return BoundingCoordinatesPair(lower, upper);
 }
 
-const void* Tile::cell(int64_t pos) const {
+const void* Tile::cell(int64_t pos) {
+  if(compressed_ && compression_ == GZIP)
+    decompress();
+
   // Fixed-sized cells
   if(val_num_ != VAR_SIZE) 
     return  static_cast<char*>(payload_) + pos*cell_size_; 
@@ -122,7 +135,10 @@ size_t Tile::cell_size() const {
   return cell_size_;
 }
 
-int64_t Tile::cell_num() const {
+int64_t Tile::cell_num() {
+  if(compressed_ && compression_ == GZIP)
+    decompress();
+
   return cell_num_;
 }
 
@@ -142,7 +158,10 @@ TileConstCellIterator Tile::end() {
   return TileConstCellIterator();
 }
 
-bool Tile::is_del(int64_t pos) const {
+bool Tile::is_del(int64_t pos) {
+  if(compressed_ && compression_ == GZIP)
+    decompress();
+
   // Applies only to attribute values
   assert(tile_type_ == ATTRIBUTE);
 
@@ -170,7 +189,10 @@ bool Tile::is_del(int64_t pos) const {
   }
 }
 
-bool Tile::is_null(int64_t pos) const {
+bool Tile::is_null(int64_t pos) {
+  if(compressed_ && compression_ == GZIP)
+    decompress();
+
   // Applies only to attribute values
   assert(tile_type_ == ATTRIBUTE);
 
@@ -206,7 +228,10 @@ int64_t Tile::tile_id() const {
   return tile_id_;
 }
 
-size_t Tile::tile_size() const {
+size_t Tile::tile_size() {
+  if(compressed_ && compression_ == GZIP)
+    decompress();
+
   return tile_size_;
 }
 
@@ -242,29 +267,33 @@ void Tile::set_mbr(const void* mbr) {
   memcpy(mbr_, mbr, mbr_size);
 }
 
-void Tile::set_payload(void* payload, size_t payload_size) {
+void Tile::set_payload(
+    void* payload, size_t payload_size, bool payload_malloced) {
   clear_payload();
   payload_ = payload;
   tile_size_ = payload_size;
+  payload_malloced_ = payload_malloced;
 
-  // Fixed-sized cells
-  if(val_num_ != VAR_SIZE) {
-    assert(payload_size % cell_size_ == 0);
-    cell_num_ = payload_size / cell_size_;
-  } else { // Variable-sized cells 
-    size_t offset = 0;
-    int val_num;
-    char* c_payload = static_cast<char*>(payload);
+  if(!compressed_) {
+    // Fixed-sized cells
+    if(val_num_ != VAR_SIZE) {
+      assert(payload_size % cell_size_ == 0);
+      cell_num_ = payload_size / cell_size_;
+    } else { // Variable-sized cells 
+      size_t offset = 0;
+      int val_num;
+      char* c_payload = static_cast<char*>(payload);
 
-    while(offset < payload_size) {
-      offsets_.push_back(offset); 
-      assert(offset + sizeof(int) < payload_size);
-      memcpy(&val_num, c_payload + offset, sizeof(int)); 
-      offset += sizeof(int) + val_num * type_size_;
+      while(offset < payload_size) {
+        offsets_.push_back(offset); 
+        assert(offset + sizeof(int) < payload_size);
+        memcpy(&val_num, c_payload + offset, sizeof(int)); 
+        offset += sizeof(int) + val_num * type_size_;
+      }
+      assert(offset == payload_size);
+
+      cell_num_ = offsets_.size();
     }
-    assert(offset == payload_size);
-
-    cell_num_ = offsets_.size();
   }
 }
 
@@ -272,16 +301,38 @@ void Tile::set_payload(void* payload, size_t payload_size) {
 ************************ MISC *************************
 ******************************************************/
 
-TileConstReverseCellIterator Tile::rbegin() const {
-  return TileConstReverseCellIterator(this, cell_num()-1);
-}
+void Tile::decompress() {
+  if(!compressed_ || payload_ == NULL)
+    return;
 
-TileConstReverseCellIterator Tile::rend() {
-  return TileConstReverseCellIterator();
+  // Currently works only with GZIP compression
+  assert(compression_ == GZIP);  
+
+  // Initialization
+  void* old_payload = payload_;
+  size_t old_payload_size = tile_size_;
+  size_t new_payload_size, decompressed_payload_size;
+  memcpy(&new_payload_size, payload_, sizeof(size_t));
+  void* new_payload = malloc(new_payload_size);
+
+  // Decompress 
+  gunzip(static_cast<unsigned char*>(old_payload) + sizeof(size_t),
+         old_payload_size,
+         static_cast<unsigned char*>(new_payload),
+         new_payload_size, decompressed_payload_size);
+
+  assert(new_payload_size == decompressed_payload_size);
+  compressed_ = false;
+
+  // Set new payload
+  set_payload(new_payload, new_payload_size, true);
 }
 
 template<class T> 
-bool Tile::cell_inside_range(int64_t pos, const T* range) const {
+bool Tile::cell_inside_range(int64_t pos, const T* range) {
+  if(compressed_ && compression_ == GZIP)
+    decompress();
+
   assert(*cell_type_ == typeid(T));
   assert(tile_type_ == COORDINATE);
 
@@ -294,7 +345,10 @@ bool Tile::cell_inside_range(int64_t pos, const T* range) const {
   return true;
 }
 
-void Tile::print() const {
+void Tile::print() {
+  if(compressed_ && compression_ == GZIP)
+    decompress();
+
   std::cout << "=========== Tile info ==========\n";
   std::cout << "Tile id: " << tile_id_ << "\n";
   std:: cout << "Dim num: " << dim_num_ << "\n";
@@ -369,6 +423,17 @@ void Tile::print() const {
   std::cout << "========== End of Tile info ========== \n\n";
 }
 
+TileConstReverseCellIterator Tile::rbegin() {
+  if(compressed_ && compression_ == GZIP)
+    decompress();
+
+  return TileConstReverseCellIterator(this, cell_num()-1);
+}
+
+TileConstReverseCellIterator Tile::rend() {
+  return TileConstReverseCellIterator();
+}
+
 /******************************************************
 ******************** PRIVATE METHODS ******************
 ******************************************************/
@@ -381,6 +446,9 @@ void Tile::clear_mbr() {
 }
 
 void Tile::clear_payload() {
+  if(payload_malloced_ && payload_ != NULL)
+    free(payload_);
+
   payload_ = NULL;
   cell_num_ = 0;
   tile_size_ = 0;
@@ -460,7 +528,7 @@ void Tile::print_mbr() const {
 }
 
 template<class T>
-void Tile::print_payload() const {
+void Tile::print_payload() {
   assert(cell_type_ == &typeid(T));
 
   std::cout << "Payload contents:\n";
@@ -523,13 +591,13 @@ void Tile::print_payload() const {
 
 // Explicit template instantiations
 template bool Tile::cell_inside_range<int>
-    (int64_t pos, const int* range) const;
+    (int64_t pos, const int* range);
 template bool Tile::cell_inside_range<int64_t>
-    (int64_t pos, const int64_t* range) const;
+    (int64_t pos, const int64_t* range);
 template bool Tile::cell_inside_range<float>
-    (int64_t pos, const float* range) const;
+    (int64_t pos, const float* range);
 template bool Tile::cell_inside_range<double>
-    (int64_t pos, const double* range) const;
+    (int64_t pos, const double* range);
 
 template void Tile::expand_mbr<int>(const int* coords);
 template void Tile::expand_mbr<int64_t>(const int64_t* coords);
@@ -546,7 +614,7 @@ template void Tile::print_mbr<int64_t>() const;
 template void Tile::print_mbr<float>() const;
 template void Tile::print_mbr<double>() const;
 
-template void Tile::print_payload<int>() const;
-template void Tile::print_payload<int64_t>() const;
-template void Tile::print_payload<float>() const;
-template void Tile::print_payload<double>() const;
+template void Tile::print_payload<int>();
+template void Tile::print_payload<int64_t>();
+template void Tile::print_payload<float>();
+template void Tile::print_payload<double>();

@@ -537,23 +537,25 @@ ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
 
 template<class T>
 ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
-    int ad, const T* range) const {
+    int ad, const T* multi_D_obj, bool range) const {
   assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
   assert(arrays_[ad]->mode() == Array::READ);
 
-  return new ArrayConstReverseCellIterator<T>(arrays_[ad], range);
+  return new ArrayConstReverseCellIterator<T>(arrays_[ad], multi_D_obj, range);
 }
 
 template<class T>
 ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
-    int ad, const T* range, const std::vector<int>& attribute_ids) const {
+    int ad, const T* multi_D_obj, 
+    const std::vector<int>& attribute_ids,
+    bool range) const {
   assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
   assert(arrays_[ad] != NULL);
   assert(arrays_[ad]->mode() == Array::READ);
 
   return new ArrayConstReverseCellIterator<T>(
-                 arrays_[ad], range, attribute_ids);
+                 arrays_[ad], multi_D_obj, attribute_ids, range);
 }
 
 void StorageManager::read_cells(int ad, const void* range, 
@@ -854,26 +856,38 @@ StorageManager::rbegin<double>(
     int ad, const std::vector<int>& attribute_ids) const;
 
 template ArrayConstReverseCellIterator<int>*
-StorageManager::rbegin<int>(int ad, const int* range) const;
+StorageManager::rbegin<int>(
+    int ad, const int* multi_D_obj, bool is_range) const;
 template ArrayConstReverseCellIterator<int64_t>*
-StorageManager::rbegin<int64_t>(int ad, const int64_t* range) const;
+StorageManager::rbegin<int64_t>(
+    int ad, const int64_t* multi_D_obj, bool is_range) const;
 template ArrayConstReverseCellIterator<float>*
-StorageManager::rbegin<float>(int ad, const float* range) const;
+StorageManager::rbegin<float>(
+    int ad, const float* multi_D_obj, bool is_range) const;
 template ArrayConstReverseCellIterator<double>*
-StorageManager::rbegin<double>(int ad, const double* range) const;
+StorageManager::rbegin<double>(
+    int ad, const double* multi_D_obj, bool is_range) const;
 
 template ArrayConstReverseCellIterator<int>*
 StorageManager::rbegin<int>(
-    int ad, const int* range, const std::vector<int>& attribute_ids) const;
+    int ad, const int* multi_D_obj, 
+    const std::vector<int>& attribute_ids,
+    bool is_range) const;
 template ArrayConstReverseCellIterator<int64_t>*
 StorageManager::rbegin<int64_t>(
-    int ad, const int64_t* range, const std::vector<int>& attribute_ids) const;
+    int ad, const int64_t* multi_D_obj, 
+    const std::vector<int>& attribute_ids,
+    bool is_range) const;
 template ArrayConstReverseCellIterator<float>*
 StorageManager::rbegin<float>(
-    int ad, const float* range, const std::vector<int>& attribute_ids) const;
+    int ad, const float* multi_D_obj, 
+    const std::vector<int>& attribute_ids,
+    bool is_range) const;
 template ArrayConstReverseCellIterator<double>*
 StorageManager::rbegin<double>(
-    int ad, const double* range, const std::vector<int>& attribute_ids) const;
+    int ad, const double* multi_D_obj, 
+    const std::vector<int>& attribute_ids,
+    bool is_range) const;
 
 template void StorageManager::write_cell<int>(
     int ad, const void* cell) const;

@@ -41,7 +41,7 @@ TileConstCellIterator::TileConstCellIterator()
     : tile_(NULL), pos_(-1), cell_(NULL), end_(true) {
 }
 
-TileConstCellIterator::TileConstCellIterator(const Tile* tile, int64_t pos)
+TileConstCellIterator::TileConstCellIterator(Tile* tile, int64_t pos)
     : tile_(tile), pos_(pos) {
   if(pos_ >= 0 && pos_ < tile_->cell_num()) {
     cell_ = tile_->cell(pos_);
@@ -101,7 +101,7 @@ int64_t TileConstCellIterator::pos() const {
   return pos_;
 }
 
-const Tile* TileConstCellIterator::tile() const {
+Tile* TileConstCellIterator::tile() const {
   return tile_;
 }
 

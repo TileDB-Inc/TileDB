@@ -37,6 +37,8 @@
 #include "array_schema.h"
 #include "tile.h"
 
+class ArraySchema;
+
 /** Stores the book-keeping structures of a fragment. */
 class BookKeeping {
  public:

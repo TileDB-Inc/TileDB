@@ -128,7 +128,7 @@ const std::string& Fragment::fragment_name() const {
   return fragment_name_;
 }
 
-const Tile* Fragment::get_tile_by_pos(int attribute_id, int64_t pos) const {
+Tile* Fragment::get_tile_by_pos(int attribute_id, int64_t pos) const {
   return read_state_->get_tile_by_pos(attribute_id, pos);
 }
 
@@ -147,7 +147,7 @@ FragmentConstReverseTileIterator Fragment::rbegin(int attribute_id) const {
     return FragmentConstReverseTileIterator();
 }
 
-const Tile* Fragment::rget_tile_by_pos(int attribute_id, int64_t pos) const {
+Tile* Fragment::rget_tile_by_pos(int attribute_id, int64_t pos) const {
   return read_state_->rget_tile_by_pos(attribute_id, pos);
 }
 

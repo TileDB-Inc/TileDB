@@ -42,6 +42,8 @@
 #include <vector>
 #include <string>
 
+class Fragment;
+
 /**  An array is a collection of Fragment objects. */
 class Array {
  public:

@@ -76,6 +76,7 @@ int parse_options(
   std::string tile_order_str("");
   std::string capacity_str("");
   std::string consolidation_step_str("");
+  std::string compression_str("");
 
   // --- Parse command line --- //
   // Define long options
@@ -92,10 +93,11 @@ int parse_options(
     {"consolidation-step",1,0,'s'},
     {"types",1,0,'t'},
     {"workspace",1,0,'w'},
+    {"compression",1,0,'z'},
     {0,0,0,0},
   };
   // Define short options
-  const char* short_options = "a:A:c:d:D:e:o:O:s:t:w:";
+  const char* short_options = "a:A:c:d:D:e:o:O:s:t:w:z:";
   // Get options
   int c;
   int option_num = 0;
@@ -189,6 +191,14 @@ int parse_options(
           return -1;
         }
         workspace = optarg;
+        break;
+      case 'z':
+        if(compression_str != "") {
+          std::cerr << ERROR_MSG_HEADER
+                    <<  "More than one attribute name lists provided.\n";
+          return -1;
+        }
+        compression_str = optarg;
         break;
       default:
         return -1;
@@ -365,6 +375,22 @@ int parse_options(
     }
     array_schema_csv << temp;
   }
+  // ----- compression
+  temp.clear();
+  temp << compression_str;
+
+  if(compression_str == "") {
+    array_schema_csv << NULL_CHAR; 
+  } else {
+    if(temp.val_num() != attribute_num + 1) {
+      std::cerr << ERROR_MSG_HEADER  
+                << " The number of compression types does not match the number"
+                << " of attributes.\n";
+      return -1;
+    }
+    array_schema_csv << temp;
+  }
+
 
   // *********************************************************
   // Set the array schema (CSV) string

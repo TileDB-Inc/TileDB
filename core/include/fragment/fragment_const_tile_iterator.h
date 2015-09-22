@@ -38,6 +38,7 @@
 #include "tile.h"
 
 class Fragment;
+class ArraySchema;
 
 /** This class implements a constant tile iterator. */
 class FragmentConstTileIterator {
@@ -87,7 +88,7 @@ class FragmentConstTileIterator {
    */
   bool operator!=(const FragmentConstTileIterator& rhs) const;
   /** Returns the tile pointed by the iterator. */
-  const Tile* operator*() const; 
+  Tile* operator*() const; 
  
  private:
   // PRIVATE ATTRIBUTES
