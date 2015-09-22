@@ -104,8 +104,7 @@ Cell::Cell(
   cell_size_ = array_schema->cell_size(attribute_ids_);
   var_size_ = (cell_size_ == VAR_SIZE);
   if(!var_size_)
-    cell_size_ = array_schema_->cell_size(attribute_ids_) + 
-      id_num * sizeof(int64_t);
+    cell_size_ += id_num * sizeof(int64_t);
 }
 
 Cell::~Cell() {
