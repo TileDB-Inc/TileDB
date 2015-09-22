@@ -127,7 +127,7 @@ TileConstReverseCellIterator TileConstReverseCellIterator::operator+(
   TileConstReverseCellIterator it = *this;
   it.pos_ -= step;
   if(it.pos_ >= 0 && it.pos_ < tile_->cell_num()) {
-    it.cell_ = tile_->cell(pos_);
+    it.cell_ = tile_->cell(it.pos_);
     it.end_ = false;
   } else {
     it.cell_ = NULL;
