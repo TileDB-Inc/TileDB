@@ -37,6 +37,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <typeinfo>
 
 /* **************** */
 /*    ENUM TYPES    */
