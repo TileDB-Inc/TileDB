@@ -76,10 +76,6 @@ int64_t FragmentConstReverseTileIterator::pos() const {
   return pos_;
 }
 
-int64_t FragmentConstReverseTileIterator::tile_id() const {
-  return fragment_->tile_id(pos_);
-}
-
 int64_t FragmentConstReverseTileIterator::tile_num() const {
   return fragment_->tile_num();
 }

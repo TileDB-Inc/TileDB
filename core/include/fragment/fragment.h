@@ -82,8 +82,6 @@ class Fragment {
    */
   Tile* rget_tile_by_pos(int attribute_id, int64_t pos) const;  
 
-  /** Returns the id of the tile at the input position. */
-  int64_t tile_id(int64_t pos) const;
   /** Returns the number of tiles in the fragment. */ 
   int64_t tile_num() const;
 

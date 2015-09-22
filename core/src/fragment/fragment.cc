@@ -151,10 +151,6 @@ Tile* Fragment::rget_tile_by_pos(int attribute_id, int64_t pos) const {
   return read_state_->rget_tile_by_pos(attribute_id, pos);
 }
 
-int64_t Fragment::tile_id(int64_t pos) const {
-  return book_keeping_->tile_id(pos);
-}
-
 int64_t Fragment::tile_num() const {
   return book_keeping_->tile_num();
 }

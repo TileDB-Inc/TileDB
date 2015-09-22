@@ -2235,6 +2235,19 @@ bool ArraySchema::succeeds(const T* coords_A,
   }
 }
 
+int64_t ArraySchema::tile_id(const void* coords) const {
+  const std::type_info* type = types_[attribute_num_];
+
+  if(type == &typeid(int))
+    return tile_id(static_cast<const int*>(coords)); 
+  else if(type == &typeid(int64_t))
+    return tile_id(static_cast<const int64_t*>(coords)); 
+  else if(type == &typeid(float))
+    return tile_id(static_cast<const float*>(coords)); 
+  else if(type == &typeid(double))
+    return tile_id(static_cast<const double*>(coords)); 
+}
+
 template<class T>
 int64_t ArraySchema::tile_id(const T* coords) const {
   // Applicable only to regular tiles
@@ -2364,7 +2377,6 @@ bool ArraySchema::advance_coords_irregular_column_major(T* coords) const {
   else 
     return false;
 }
-
 
 template<class T>
 bool ArraySchema::advance_coords_irregular_hilbert(T* coords) const {

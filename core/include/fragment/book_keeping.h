@@ -109,8 +109,6 @@ class BookKeeping {
    * attribute in the respective data file. 
    */
   Offsets offsets_;
-  /** Stores all the tile ids of the fragment. */
-  TileIds tile_ids_;
   /** The workspace. */
   const std::string* workspace_;
 
@@ -121,16 +119,12 @@ class BookKeeping {
   void commit_mbrs();
   /** Writes the offsets on the disk. */
   void commit_offsets();
-  /** Writes the tile ids on the disk. */
-  void commit_tile_ids();
   /** Loads the bounding coordinates. */
   void load_bounding_coordinates();
   /** Loads the tile MBRs. */
   void load_mbrs();
   /** Loads the tile offsets. */
   void load_offsets();
-  /** Loads the tile ids. */
-  void load_tile_ids();
 };
 
 #endif

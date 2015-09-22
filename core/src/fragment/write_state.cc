@@ -795,7 +795,6 @@ void WriteState::flush_tile_info_to_book_keeping() {
 
   book_keeping_->bounding_coordinates_.push_back(bounding_coordinates_);
   book_keeping_->mbrs_.push_back(mbr_);
-  book_keeping_->tile_ids_.push_back(tile_id_);
   cell_num_ = 0;
 
   // Nullify MBR and bounding coordinates

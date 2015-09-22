@@ -53,7 +53,7 @@ BookKeeping::BookKeeping(
 
 BookKeeping::~BookKeeping() {
   // For easy reference
-  int64_t tile_num = tile_ids_.size();
+  int64_t tile_num = mbrs_.size();
  
   for(int64_t i=0; i<tile_num; ++i) {
     if(bounding_coordinates_[i].first != NULL) {
@@ -75,7 +75,6 @@ BookKeeping::~BookKeeping() {
   bounding_coordinates_.clear();
   mbrs_.clear();
   offsets_.clear(); 
-  tile_ids_.clear(); 
 }
 
 /******************************************************
@@ -100,18 +99,21 @@ int64_t BookKeeping::offset(int attribute_id, int64_t pos) const {
 }
 
 int64_t BookKeeping::tile_id(int64_t pos) const {
-  assert(pos >= 0 && pos < tile_ids_.size());
+  assert(pos >= 0 && pos < mbrs_.size());
 
-  return tile_ids_[pos];
+  if(array_schema_->has_irregular_tiles())
+    return pos;
+  else 
+    return array_schema_->tile_id(bounding_coordinates_[pos].first);
 }
 
 int64_t BookKeeping::tile_num() const {
-  return tile_ids_.size();
+  return mbrs_.size();
 }
 
 size_t BookKeeping::tile_size(int attribute_id, int64_t pos) const {
   assert(tile_num() > 0);
-  assert(pos >= 0 && pos < tile_ids_.size());
+  assert(pos >= 0 && pos < tile_num());
 
   if(pos == tile_num() - 1) {
     const std::string& array_name = array_schema_->array_name();
@@ -141,9 +143,9 @@ void BookKeeping::commit() {
     return;
 
   commit_bounding_coordinates();
-  commit_mbrs();
   commit_offsets();
-  commit_tile_ids();
+  commit_mbrs();
+//  commit_tile_ids();
 
 }
 
@@ -156,9 +158,9 @@ void BookKeeping::init() {
 }
 
 void BookKeeping::load() {
-  load_tile_ids();
-  load_bounding_coordinates();
+  // load_tile_ids();
   load_mbrs();
+  load_bounding_coordinates();
   load_offsets();
 }
 
@@ -176,7 +178,7 @@ void BookKeeping::load() {
 void BookKeeping::commit_bounding_coordinates() {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
-  int64_t tile_num = tile_ids_.size();
+  int64_t tile_num = mbrs_.size();
 
   if(tile_num == 0)
     return;
@@ -227,7 +229,7 @@ void BookKeeping::commit_bounding_coordinates() {
 void BookKeeping::commit_mbrs() {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
-  int64_t tile_num = tile_ids_.size();
+  int64_t tile_num = mbrs_.size();
 
   if(tile_num == 0)
     return;
@@ -273,7 +275,7 @@ void BookKeeping::commit_mbrs() {
 // NOTE: Do not forget the extra coordinate attribute
 void BookKeeping::commit_offsets() {
   // For easy reference
-  int64_t tile_num = tile_ids_.size();
+  int64_t tile_num = mbrs_.size();
 
   if(tile_num == 0)
     return;
@@ -309,42 +311,6 @@ void BookKeeping::commit_offsets() {
 }
 
 // FILE FORMAT:
-// tile_num(int64_t)
-//   tile_id#1(int64_t) tile_id#2(int64_t)  ...
-void BookKeeping::commit_tile_ids() {
-  // For easy reference
-  int64_t tile_num = tile_ids_.size();
-
-  if(tile_num == 0)
-    return;
-
-  // Prepare file name
-  std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
-                         *fragment_name_ + "/" +
-                         TILE_IDS_FILENAME + BOOK_KEEPING_FILE_SUFFIX;
-
-  // Open file
-  int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  assert(fd != -1);
- 
-  if(tile_num != 0) { // If the array is not empty
-    // Prepare the buffer
-    size_t buffer_size = (tile_num+1) * sizeof(int64_t);
-    char* buffer = new char[buffer_size];
- 
-    // Populate buffer
-    memcpy(buffer, &tile_num, sizeof(int64_t));
-    memcpy(buffer+sizeof(int64_t), &tile_ids_[0], tile_num * sizeof(int64_t));
-
-    // Write buffer and clean up
-    write(fd, buffer, buffer_size);  
-    delete [] buffer;
-  }
-
-  close(fd);
-}
-
-// FILE FORMAT:
 // tile#1_lower_dim#1(T) tile#1_lower_dim#2(T) ... 
 // tile#1_upper_dim#1(T) tile#1_upper_dim#2(T) ... 
 // tile#2_lower_dim#1(T) tile#2_lower_dim#2(T) ... 
@@ -354,7 +320,7 @@ void BookKeeping::commit_tile_ids() {
 void BookKeeping::load_bounding_coordinates() {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
-  int64_t tile_num = tile_ids_.size();
+  int64_t tile_num = mbrs_.size();
   assert(tile_num != 0);
   size_t cell_size = array_schema_->cell_size(attribute_num);
  
@@ -405,8 +371,6 @@ void BookKeeping::load_mbrs() {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   size_t cell_size = array_schema_->cell_size(attribute_num);
-  int64_t tile_num = tile_ids_.size();
-  assert(tile_num != 0);
  
   // Open file
   std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
@@ -419,7 +383,10 @@ void BookKeeping::load_mbrs() {
   struct stat st;
   fstat(fd, &st);
   size_t buffer_size = st.st_size;
-  assert(buffer_size == tile_num * 2 * cell_size);
+  assert(buffer_size != 0);
+  assert(buffer_size % (2 * cell_size) == 0);
+  int64_t tile_num = buffer_size / (2 * cell_size);
+
   char* buffer = new char[buffer_size];
   read(fd, buffer, buffer_size);
   size_t offset = 0;
@@ -450,7 +417,7 @@ void BookKeeping::load_mbrs() {
 void BookKeeping::load_offsets() {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
-  int64_t tile_num = tile_ids_.size();
+  int64_t tile_num = mbrs_.size();
   assert(tile_num != 0);
  
   // Open file
@@ -482,6 +449,7 @@ void BookKeeping::load_offsets() {
   close(fd);
 }
 
+/*
 // FILE FORMAT:
 // tile_num(int64_t)
 //   tile_id#1(int64_t) tile_id#2(int64_t)  ...
@@ -516,4 +484,4 @@ void BookKeeping::load_tile_ids() {
   delete [] buffer;
   close(fd);
 }
-
+*/

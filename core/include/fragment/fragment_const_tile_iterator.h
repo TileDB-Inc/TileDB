@@ -61,8 +61,6 @@ class FragmentConstTileIterator {
   Tile::MBR mbr() const;
   /** Returns the position. */
   int64_t pos() const;
-  /** Returns the id of the tile. */
-  int64_t tile_id() const;
   /** Number of tiles in the fragment. */
   int64_t tile_num() const;
 

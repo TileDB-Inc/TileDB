@@ -375,6 +375,8 @@ class ArraySchema {
   template<class T>
   bool succeeds(const T* coords_A, const T* coords_B) const;
   /** Returns the tile id, based on the stored tile order. */
+  int64_t tile_id(const void* coords) const;
+  /** Returns the tile id, based on the stored tile order. */
   template<class T>
   int64_t tile_id(const T* coords) const;
   /** Returns a tile id following a column major order. */
