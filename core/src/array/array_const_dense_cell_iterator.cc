@@ -73,7 +73,7 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   coords_match_ = false;
   current_coords_ = new T[dim_num_];
-  array_schema->get_domain_start<T>(current_coords_); 
+  array_schema->get_domain_start<T>(current_coords_, range_); 
   tile_its_ = NULL;
   array_schema->init_zero_cell(zero_cell_);
 
@@ -130,7 +130,7 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   coords_match_ = false;
   current_coords_ = new T[dim_num_];
-  array_schema->get_domain_start<T>(current_coords_); 
+  array_schema->get_domain_start<T>(current_coords_, range_); 
   tile_its_ = NULL;
   array_schema->init_zero_cell(zero_cell_);
 
@@ -186,7 +186,7 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   cell_its_ = NULL;
   coords_match_ = false;
   current_coords_ = new T[dim_num_];
-  array_schema->get_domain_start<T>(current_coords_); 
+  array_schema->get_domain_start<T>(current_coords_, range_); 
   tile_its_ = NULL;
   array_schema->init_zero_cell(zero_cell_);
 
@@ -247,7 +247,7 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   cell_its_ = NULL;
   coords_match_ = false;
   current_coords_ = new T[dim_num_];
-  array_schema->get_domain_start<T>(current_coords_); 
+  array_schema->get_domain_start<T>(current_coords_, range_); 
   tile_its_ = NULL;
   array_schema->init_zero_cell(zero_cell_);
 
@@ -309,7 +309,7 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   cell_its_ = NULL;
   coords_match_ = false;
   current_coords_ = new T[dim_num_];
-  array_schema->get_domain_start<T>(current_coords_); 
+  array_schema->get_domain_start<T>(current_coords_, range_); 
   tile_its_ = NULL;
   array_schema->init_zero_cell(zero_cell_);
 
@@ -459,7 +459,8 @@ void ArrayConstDenseCellIterator<T>::operator++() {
 
   // Advance dense cell coordinates
   bool within_domain = 
-      array_->array_schema()->advance_coords<T>(current_coords_);
+      array_->array_schema()->advance_coords<T>(
+          current_coords_, static_cast<const T*>(range_));
 
   // Clean up if coordinates exceeded the domain
   if(!within_domain) {
