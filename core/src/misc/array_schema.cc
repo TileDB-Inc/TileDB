@@ -1527,14 +1527,14 @@ int ArraySchema::set_val_num(const std::vector<int>& val_num) {
 ******************************************************/
 
 template<class T>
-bool ArraySchema::advance_coords(T* coords) const {
+bool ArraySchema::advance_coords(T* coords, const T* range) const {
   if(has_irregular_tiles()) { // Irregular tiles
     if(cell_order_ == CO_ROW_MAJOR)
-      return advance_coords_irregular_row_major<T>(coords);
+      return advance_coords_irregular_row_major<T>(coords, range);
     else if(cell_order_ == CO_COLUMN_MAJOR)
-      return advance_coords_irregular_column_major<T>(coords);
+      return advance_coords_irregular_column_major<T>(coords, range);
     else if(cell_order_ == CO_HILBERT)
-      return advance_coords_irregular_hilbert<T>(coords);
+      return advance_coords_irregular_hilbert<T>(coords, range);
   } else { // Regular tiles 
     // TODO
     std::cout << "[TileDB Error] Dense iterators for regular tiles"
@@ -1771,25 +1771,7 @@ void ArraySchema::csv_line_to_cell(
 }
 
 template<class T>
-void ArraySchema::get_domain_end(T* coords) const {
-  if(has_regular_tiles()) { // TODO
-    std::cout << "[TileDB Error] get_domain_end not supported for"
-              << " regular tiles yet.\n";
-    exit(-1);
-  }
-
-  if(cell_order_ == CO_HILBERT) { // TODO
-    std::cout << "[TileDB Error] get_domain_end not supported for"
-              << " Hilbert order yet.\n";
-    exit(-1);
-  }
-
-  for(int i=0; i<dim_num_; ++i) 
-    coords[i] = dim_domains_[i].second;
-}
-
-template<class T>
-void ArraySchema::get_domain_start(T* coords) const {
+void ArraySchema::get_domain_start(T* coords, const T* range) const {
   if(has_regular_tiles()) {
     std::cout << "[TileDB Error] get_domain_start not supported for"
               << " regular tiles yet.\n";
@@ -1802,8 +1784,13 @@ void ArraySchema::get_domain_start(T* coords) const {
     exit(-1);
   }
 
-  for(int i=0; i<dim_num_; ++i) 
-    coords[i] = dim_domains_[i].first;
+  if(range == NULL) {
+    for(int i=0; i<dim_num_; ++i) 
+      coords[i] = dim_domains_[i].first;
+  } else {
+    for(int i=0; i<dim_num_; ++i) 
+      coords[i] = range[2*i];
+  }
 }
 
 bool ArraySchema::has_irregular_tiles() const {
@@ -2363,7 +2350,11 @@ const ArraySchema* ArraySchema::transpose(
 ******************************************************/
 
 template<class T>
-bool ArraySchema::advance_coords_irregular_column_major(T* coords) const {
+bool ArraySchema::advance_coords_irregular_column_major(
+    T* coords, const T* range) const {
+
+// TODO Handle range
+
   int i = 0;
 
   ++coords[i];
@@ -2379,7 +2370,8 @@ bool ArraySchema::advance_coords_irregular_column_major(T* coords) const {
 }
 
 template<class T>
-bool ArraySchema::advance_coords_irregular_hilbert(T* coords) const {
+bool ArraySchema::advance_coords_irregular_hilbert(
+    T* coords, const T* range) const {
   // TODO
   std::cout << "[TileDB Error] Dense iterators for Hilbert order not"
                " supported yet.\n";
@@ -2387,7 +2379,11 @@ bool ArraySchema::advance_coords_irregular_hilbert(T* coords) const {
 }
 
 template<class T>
-bool ArraySchema::advance_coords_irregular_row_major(T* coords) const {
+bool ArraySchema::advance_coords_irregular_row_major(
+    T* coords, const T* range) const {
+
+// TODO: Handle range
+
   int i = dim_num_-1;
 
   ++coords[i];
@@ -2751,20 +2747,23 @@ bool ArraySchema::valid_attribute_ids(
 }
 
 // Explicit template instantiations
-template bool ArraySchema::advance_coords<int>(int* coords) const;
-template bool ArraySchema::advance_coords<int64_t>(int64_t* coords) const;
-template bool ArraySchema::advance_coords<float>(float* coords) const;
-template bool ArraySchema::advance_coords<double>(double* coords) const;
+template bool ArraySchema::advance_coords<int>(
+    int* coords, const int* range) const;
+template bool ArraySchema::advance_coords<int64_t>(
+    int64_t* coords, const int64_t* range) const;
+template bool ArraySchema::advance_coords<float>(
+    float* coords, const float* range) const;
+template bool ArraySchema::advance_coords<double>(
+    double* coords, const double* range) const;
 
-template void ArraySchema::get_domain_end<int>(int* coords) const;
-template void ArraySchema::get_domain_end<int64_t>(int64_t* coords) const;
-template void ArraySchema::get_domain_end<float>(float* coords) const;
-template void ArraySchema::get_domain_end<double>(double* coords) const;
-
-template void ArraySchema::get_domain_start<int>(int* coords) const;
-template void ArraySchema::get_domain_start<int64_t>(int64_t* coords) const;
-template void ArraySchema::get_domain_start<float>(float* coords) const;
-template void ArraySchema::get_domain_start<double>(double* coords) const;
+template void ArraySchema::get_domain_start<int>(
+    int* coords, const int* range) const;
+template void ArraySchema::get_domain_start<int64_t>(
+    int64_t* coords, const int64_t* range) const;
+template void ArraySchema::get_domain_start<float>(
+    float* coords, const float* range) const;
+template void ArraySchema::get_domain_start<double>(
+    double* coords, const double* range) const;
 
 template bool ArraySchema::precedes<int>(
     const int* coords_A, const int* coords_B) const;

@@ -31,12 +31,15 @@
  * This file implements the BookKeeping class.
  */
 
+#include "bin_file.h"
 #include "book_keeping.h"
 #include "utils.h"
 #include <assert.h>
 #include <fcntl.h>
+#include <iostream>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <zlib.h>
 
 /******************************************************
 ************ CONSTRUCTORS & DESTRUCTORS ***************
@@ -142,11 +145,9 @@ void BookKeeping::commit() {
   if(is_file(filename)) 
     return;
 
-  commit_bounding_coordinates();
   commit_offsets();
+  commit_bounding_coordinates();
   commit_mbrs();
-//  commit_tile_ids();
-
 }
 
 void BookKeeping::init() {
@@ -158,7 +159,6 @@ void BookKeeping::init() {
 }
 
 void BookKeeping::load() {
-  // load_tile_ids();
   load_mbrs();
   load_bounding_coordinates();
   load_offsets();
@@ -183,7 +183,7 @@ void BookKeeping::commit_bounding_coordinates() {
   if(tile_num == 0)
     return;
 
-  size_t cell_size = array_schema_->cell_size(attribute_num);
+  size_t coords_size = array_schema_->cell_size(attribute_num);
 
   // Prepare filename
   std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
@@ -192,31 +192,17 @@ void BookKeeping::commit_bounding_coordinates() {
                          BOOK_KEEPING_FILE_SUFFIX;
 
   // Open file
-  int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  assert(fd != -1);
+  BINFile* bin_file = new BINFile(filename, "w"); 
 
-  if(tile_num != 0) { // If the array is not empty
-    // Prepare the buffer
-    size_t buffer_size = 2 * tile_num * cell_size;
-    char* buffer = new char[buffer_size];
- 
-    // Populate buffer
-    size_t offset = 0;
-    for(int64_t i=0; i<tile_num; ++i) {
-      // Lower bounding coordinates
-      memcpy(buffer+offset, bounding_coordinates_[i].first, cell_size);
-      offset += cell_size;
-      // Upper bounding coordinates
-      memcpy(buffer+offset, bounding_coordinates_[i].second, cell_size);
-      offset += cell_size;
-    }
+  // Write to file
+  for(int64_t i=0; i<tile_num; ++i) {
+    // Lower bounding coordinates
+    bin_file->write(bounding_coordinates_[i].first, coords_size);
+    // Upper bounding coordinates
+    bin_file->write(bounding_coordinates_[i].second, coords_size);
+  }
 
-    // Write buffer and clean up
-    write(fd, buffer, buffer_size);
-    delete [] buffer;
-  }  
-
-  close(fd);
+  delete bin_file;
 }
 
 // FILE FORMAT:
@@ -228,41 +214,27 @@ void BookKeeping::commit_bounding_coordinates() {
 // NOTE: T is the type of the dimensions of this array
 void BookKeeping::commit_mbrs() {
   // For easy reference
-  int attribute_num = array_schema_->attribute_num();
   int64_t tile_num = mbrs_.size();
+  int attribute_num = array_schema_->attribute_num();
 
   if(tile_num == 0)
     return;
 
-  size_t cell_size = array_schema_->cell_size(attribute_num);
+  size_t coords_size = array_schema_->cell_size(attribute_num);
 
   // prepare file name
-  std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" + 
+  std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
                          *fragment_name_ + "/" +
                          MBRS_FILENAME + BOOK_KEEPING_FILE_SUFFIX;
 
   // Open file
-  int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  assert(fd != -1);
+  BINFile* bin_file = new BINFile(filename, "w"); 
 
-  if(tile_num != 0) { // If the array is not empty
-    // Prepare the buffer
-    size_t buffer_size = tile_num * 2 * cell_size;
-    char* buffer = new char[buffer_size];
- 
-    // Populate buffer
-    size_t offset = 0;
-    for(int64_t i=0; i<tile_num; ++i) {
-      memcpy(buffer+offset, mbrs_[i], 2 * cell_size);
-      offset += 2 * cell_size;
-    }
+  // Write to file
+  for(int64_t i=0; i<tile_num; ++i) 
+    bin_file->write(mbrs_[i], 2 * coords_size);
 
-    // Write buffer and clean up
-    write(fd, buffer, buffer_size);
-    delete [] buffer;
-  }
-
-  close(fd);
+  delete bin_file;
 }
 
 // FILE FORMAT:
@@ -276,38 +248,27 @@ void BookKeeping::commit_mbrs() {
 void BookKeeping::commit_offsets() {
   // For easy reference
   int64_t tile_num = mbrs_.size();
+  int attribute_num = array_schema_->attribute_num();
 
   if(tile_num == 0)
     return;
 
   // Prepare file name
-  std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" + 
+  std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
                          *fragment_name_ + "/" +
                          OFFSETS_FILENAME + BOOK_KEEPING_FILE_SUFFIX;
 
   // Open file
-  int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  assert(fd != -1);
+  BINFile* bin_file = new BINFile(filename, "w"); 
 
-  if(tile_num != 0) { // If the array is not empty
-    // Prepare the buffer
-    int attribute_num = array_schema_->attribute_num();
-    size_t buffer_size = (attribute_num+1) * tile_num * sizeof(int64_t);
-    char* buffer = new char[buffer_size];
- 
-    // Populate buffer
-    int64_t offset = 0;
-    for(int i=0; i<=attribute_num; ++i) {
-      memcpy(buffer+offset, &offsets_[i][0], tile_num * sizeof(int64_t));
-      offset += tile_num * sizeof(int64_t);
-    }
-
-    // Write buffer and clean up
-    write(fd, buffer, buffer_size);
-    delete [] buffer;
+  // Write to the file
+  // TODO: This could be optimized a bit
+  for(int i=0; i<=attribute_num; ++i) {
+    for(int j=0; j<tile_num; ++j) 
+      bin_file->write(&offsets_[i][j], sizeof(int64_t));
   }
   
-  close(fd);
+  delete bin_file;
 }
 
 // FILE FORMAT:
@@ -322,42 +283,42 @@ void BookKeeping::load_bounding_coordinates() {
   int attribute_num = array_schema_->attribute_num();
   int64_t tile_num = mbrs_.size();
   assert(tile_num != 0);
-  size_t cell_size = array_schema_->cell_size(attribute_num);
+  size_t coords_size = array_schema_->cell_size(attribute_num);
  
-  // Open file
+  // Prepare file name
   std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
                          *fragment_name_ + "/" +
                          BOUNDING_COORDINATES_FILENAME + 
                          BOOK_KEEPING_FILE_SUFFIX;
-  int fd = open(filename.c_str(), O_RDONLY);
-  assert(fd != -1);
+
+  // Open file
+  BINFile* bin_file = new BINFile(filename, "r"); 
 
   // Initializations
-  struct stat st;
-  fstat(fd, &st);
-  size_t buffer_size = st.st_size;
-  assert(buffer_size == tile_num * 2 * cell_size);
-  char* buffer = new char[buffer_size];
-  read(fd, buffer, buffer_size);
-  int64_t offset = 0;
   bounding_coordinates_.resize(tile_num);
-  void* coord;
+  void* coords;
+  ssize_t bytes_read;
 
   // Load bounding coordinates
   for(int64_t i=0; i<tile_num; ++i) {
-    coord = malloc(cell_size);
-    memcpy(coord, buffer + offset, cell_size);
-    bounding_coordinates_[i].first = coord; 
-    offset += cell_size;
-    coord = malloc(cell_size);
-    memcpy(coord, buffer + offset, cell_size);
-    bounding_coordinates_[i].second = coord; 
-    offset += cell_size;
+    coords = malloc(coords_size);
+    bytes_read = bin_file->read(coords, coords_size);
+    assert(bytes_read == coords_size);
+    bounding_coordinates_[i].first = coords; 
+    coords = malloc(coords_size);
+    bytes_read = bin_file->read(coords, coords_size);
+    assert(bytes_read == coords_size);
+    bounding_coordinates_[i].second = coords; 
   }
 
+  // Correctness check
+  void* dummy = malloc(1); 
+  bytes_read = bin_file->read(dummy, 1);
+  assert(bytes_read == 0);
+  free(dummy);
+
   // Clean up
-  delete [] buffer;
-  close(fd);
+  delete bin_file;
 }
 
 // FILE FORMAT:
@@ -370,40 +331,34 @@ void BookKeeping::load_bounding_coordinates() {
 void BookKeeping::load_mbrs() {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
-  size_t cell_size = array_schema_->cell_size(attribute_num);
+  size_t coords_size = array_schema_->cell_size(attribute_num);
  
-  // Open file
+  // Prepare file name
   std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
                          *fragment_name_ + "/" +
                          MBRS_FILENAME + BOOK_KEEPING_FILE_SUFFIX;
-  int fd = open(filename.c_str(), O_RDONLY);
-  assert(fd != -1);
 
-  // Initializations
-  struct stat st;
-  fstat(fd, &st);
-  size_t buffer_size = st.st_size;
-  assert(buffer_size != 0);
-  assert(buffer_size % (2 * cell_size) == 0);
-  int64_t tile_num = buffer_size / (2 * cell_size);
-
-  char* buffer = new char[buffer_size];
-  read(fd, buffer, buffer_size);
-  size_t offset = 0;
-  mbrs_.resize(tile_num);
-  void* mbr;
+  // Open file
+  BINFile* bin_file = new BINFile(filename, "r"); 
 
   // Load MBRs
-  for(int64_t i=0; i<tile_num; ++i) {
-    mbr = malloc(2 * cell_size);
-    memcpy(mbr, buffer + offset, 2 * cell_size);
-    mbrs_[i] = mbr;
-    offset += 2 * cell_size;
-  }
+  void* mbr;
+  ssize_t bytes_read;
+  do {
+    mbr = malloc(2 * coords_size);
+    bytes_read = bin_file->read(mbr, 2 * coords_size);
+
+    if(bytes_read == 0) { 
+      free(mbr);
+    } else {
+      assert(bytes_read == 2 * coords_size);
+      mbrs_.push_back(mbr);
+    }
+  } while (bytes_read != 0);
+
 
   // Clean up
-  delete [] buffer;
-  close(fd);
+  delete bin_file;
 }
 
 // FILE FORMAT:
@@ -420,68 +375,32 @@ void BookKeeping::load_offsets() {
   int64_t tile_num = mbrs_.size();
   assert(tile_num != 0);
  
-  // Open file
+  // Prepare file name
   std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
                          *fragment_name_ + "/" +
                          OFFSETS_FILENAME + BOOK_KEEPING_FILE_SUFFIX;
-  int fd = open(filename.c_str(), O_RDONLY);
-  assert(fd != -1);
 
-  // Initializations
-  struct stat st;
-  fstat(fd, &st);
-  size_t buffer_size = st.st_size;
-  assert(buffer_size == (attribute_num+1)*tile_num*sizeof(int64_t));
-  char* buffer = new char[buffer_size];
-  read(fd, buffer, buffer_size);
-  int64_t offset = 0;
+  // Open file
+  BINFile* bin_file = new BINFile(filename, "r"); 
 
   // Load offsets
   offsets_.resize(attribute_num+1);
+  ssize_t bytes_read;
   for(int i=0; i<=attribute_num; ++i) {
     offsets_[i].resize(tile_num);
-    memcpy(&offsets_[i][0], buffer + offset, tile_num*sizeof(int64_t));
-    offset += tile_num * sizeof(int64_t);
+    for(int j=0; j<tile_num; ++j) {
+      bytes_read = bin_file->read(&offsets_[i][j], sizeof(int64_t));
+      assert(bytes_read == sizeof(int64_t));
+    }
   }
 
-  // Clean up
-  delete [] buffer;
-  close(fd);
-}
-
-/*
-// FILE FORMAT:
-// tile_num(int64_t)
-//   tile_id#1(int64_t) tile_id#2(int64_t)  ...
-void BookKeeping::load_tile_ids() {
-  // Open file
-  std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
-                         *fragment_name_ + "/" +
-                         TILE_IDS_FILENAME + BOOK_KEEPING_FILE_SUFFIX;
-  int fd = open(filename.c_str(), O_RDONLY);
-  assert(fd != -1);
-
-  // Initializations
-  struct stat st;
-  fstat(fd, &st);
-  size_t buffer_size = st.st_size;
-
-  if(buffer_size == 0) // Empty array
-    return;
-
-  assert(buffer_size > sizeof(int64_t));
-  char* buffer = new char[buffer_size];
-  read(fd, buffer, buffer_size);
-  int64_t tile_num;
-  memcpy(&tile_num, buffer, sizeof(int64_t));
-  assert(buffer_size == (tile_num+1)*sizeof(int64_t));
-  tile_ids_.resize(tile_num);
-
-  // Load tile_ids
-  memcpy(&tile_ids_[0], buffer+sizeof(int64_t), tile_num*sizeof(int64_t));
+  // Correctness check
+  void* dummy = malloc(1); 
+  bytes_read = bin_file->read(dummy, 1);
+  assert(bytes_read == 0);
+  free(dummy);
 
   // Clean up
-  delete [] buffer;
-  close(fd);
+  delete bin_file;
 }
-*/
+

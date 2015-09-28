@@ -38,8 +38,11 @@
 
 /** Name of the file storing the array schema. */
 #define ARRAY_SCHEMA_FILENAME "array_schema"
-/** Suffix of all book-keeping files. */
-#define BOOK_KEEPING_FILE_SUFFIX ".bkp"
+/** 
+ * Suffix of all book-keeping files. The .gz suffix implies that all the
+ * book-keeping structures will be GZIP compressed.
+ */
+#define BOOK_KEEPING_FILE_SUFFIX ".bkp.gz"
 /** Name of the file storing the bounding coordinates of each tile. */
 #define BOUNDING_COORDINATES_FILENAME "bounding_coordinates"
 /** Deleted char. */
@@ -95,8 +98,6 @@
 #define SEGMENT_SIZE 10000000 // ~10MB
 /** Name for temp (usually used in directory paths). */
 #define TEMP "temp"
-/** Name of the file storing the id of each tile. */
-#define TILE_IDS_FILENAME "tile_ids"
 /** Suffix of all tile data files. */
 #define TILE_DATA_FILE_SUFFIX ".tdt"
 /** Special value that indicates a variable-sized object. */

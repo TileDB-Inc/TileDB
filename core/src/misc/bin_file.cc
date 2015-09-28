@@ -77,15 +77,6 @@ BINFile::BINFile(const std::string& filename, const char* mode) {
 
 BINFile::~BINFile() {
   close();
-
-  if(ids_ != NULL)
-    free(ids_);
-
-  if(coords_ != NULL) 
-    free(coords_);
-
-  if(cell_ != NULL) 
-    free(cell_);
 }
 
 /******************************************************
@@ -104,6 +95,31 @@ int BINFile::close() {
     }
     delete buffer_;
     buffer_ = NULL;
+  }
+
+  if(ids_ != NULL) {
+    free(ids_);
+    ids_ = NULL;
+  }
+
+  if(coords_ != NULL) {
+    free(coords_);
+    coords_ = NULL;
+  }
+
+  if(cell_ != NULL)  {
+    free(cell_);
+    cell_ = NULL;
+  }
+
+  if(fd_ != -1) {
+    ::close(fd_);
+    fd_ = -1;
+  }	
+
+  if(fdz_ != NULL) { 
+    gzclose(fdz_); 
+    fdz_ = NULL;
   }
 
   return 0;
@@ -131,7 +147,25 @@ int BINFile::open(const std::string& filename,
   buffer_ = NULL;
   buffer_end_ = 0;
   buffer_offset_ = 0;
-  file_offset_ = 0;
+
+  // Determine compression
+  if(ends_with(filename, ".gz"))
+    compression_ = GZIP;
+  else
+    compression_ = NONE;
+
+  // Calculate file size
+  int fd = ::open(filename_.c_str(), O_RDONLY);
+  struct stat st;
+  fstat(fd, &st);
+  file_size_ = st.st_size;
+  ::close(fd);
+
+  if(file_size_ == 0)
+    eof_ = true;
+
+  // Open the file, depending on the compression
+  open_file(filename);
 
   return 0;
 }
@@ -178,17 +212,20 @@ ssize_t BINFile::read(void* destination, size_t size) {
        return 0;
      else if(bytes_read == -1)
        return -1;
+     else if(bytes_read < bytes_to_be_read_from_file)
+       bytes_to_be_read_from_file = bytes_read;
      memcpy(static_cast<char*>(destination) + destination_offset,
             buffer_ + buffer_offset_, bytes_to_be_read_from_file);
     buffer_offset_ += bytes_to_be_read_from_file;
   }
   
-  return size;
+  return bytes_to_be_read_from_buffer + bytes_to_be_read_from_file;
 }
 
 ssize_t BINFile::write(const void* source, size_t size) {
   assert(strcmp(mode_, "w") == 0 || strcmp(mode_, "a") == 0);
-  assert(size <= segment_size_);
+  assert(size <= segment_size_); // TODO: Fix this
+  assert(fd_ != -1 || fdz_ != NULL);
 
   // Initialize the buffer
   if(buffer_ == NULL) 
@@ -207,6 +244,7 @@ ssize_t BINFile::write(const void* source, size_t size) {
   memcpy(buffer_ + buffer_offset_, source, size);
   buffer_offset_ += size;
 
+  // TODO: better handling of returned value
   return size;
 }
 
@@ -236,7 +274,7 @@ bool BINFile::operator>>(Cell& cell) {
       cell.set_cell(NULL);
       return false;
     }
-    assert(bytes_read != -1);
+    assert(bytes_read == cell_size_ + id_num_ * sizeof(int64_t));
   } else {        // Variable-sized cells
     // Read ids
     if(ids_ != NULL) {
@@ -245,19 +283,20 @@ bool BINFile::operator>>(Cell& cell) {
         cell.set_cell(NULL);
         return false;
       }
+      assert(bytes_read == id_num_ * sizeof(int64_t));
     }
 
     // Read coordinates
     bytes_read = read(coords_, coords_size_);
-    assert(bytes_read != -1);
     if(bytes_read == 0) {
       cell.set_cell(NULL);
       return false;
     }
+    assert(bytes_read == coords_size_);
 
     // Read cell size
     bytes_read = read(&cell_size_, sizeof(size_t));
-    assert(bytes_read > 0);
+    assert(bytes_read == sizeof(size_t));
 
     // Prepare a cell
     if(allocated_cell_size_ < cell_size_ + id_num_ * sizeof(int64_t)) {
@@ -278,11 +317,8 @@ bool BINFile::operator>>(Cell& cell) {
     bytes_read = read(static_cast<char*>(cell_) + cell_offset, 
                       cell_size_ - coords_size_ - sizeof(size_t) - 
                       id_num_ * sizeof(int64_t));
-  }
-
-  if(bytes_read == 0) {
-    cell.set_cell(NULL);
-    return false;
+    assert(bytes_read == cell_size_ - coords_size_ - sizeof(size_t) - 
+                         id_num_ * sizeof(int64_t));
   }
 
   cell.set_cell(cell_);
@@ -298,15 +334,17 @@ bool BINFile::operator<<(const Cell& cell) {
 ******************************************************/
 
 ssize_t BINFile::flush_buffer() {
-  // Open file
-  int fd = ::open(filename_.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
-                  S_IRWXU);
-  assert(fd != -1);
+  assert(fd_ != -1 || fdz_ != NULL);
 
-  ssize_t bytes_flushed = ::write(fd, buffer_, buffer_offset_);
-  ::close(fd);	
+  ssize_t bytes_written;
+  if(compression_ == NONE) 
+    bytes_written = ::write(fd_, buffer_, buffer_offset_);
+  else if(compression_ == GZIP)  
+    bytes_written = gzwrite(fdz_, buffer_, buffer_offset_);
 
-  return bytes_flushed;
+  // TODO: Error messages here
+
+  return bytes_written;
 }
 
 void BINFile::init() {
@@ -316,39 +354,55 @@ void BINFile::init() {
   buffer_ = NULL;
   buffer_end_ = 0;
   buffer_offset_ = 0;
-  file_offset_ = 0;
   ids_ = NULL;
+  compression_ = NONE;
+  eof_ = false;
+  fd_ = -1;
+  fdz_ = NULL;
+  mode_[0] = '\0';
+}
+
+void BINFile::open_file(const std::string& filename) {
+  // No compression
+  if(compression_ == NONE) {
+    if(strcmp(mode_, "r") == 0) 
+      fd_ = ::open(filename_.c_str(), O_RDONLY);
+    else if(strcmp(mode_, "a") == 0) 
+      fd_ = ::open(filename_.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
+                   S_IRWXU);
+  } else if(compression_ == GZIP) {
+    if(strcmp(mode_, "r") == 0) 
+      fdz_ = gzopen(filename_.c_str(), "rb");
+    else if(strcmp(mode_, "a") == 0) 
+      fdz_ = gzopen(filename_.c_str(), "wb");
+  }
 }
 
 ssize_t BINFile::read_segment() {
-  int fd = ::open(filename_.c_str(), O_RDONLY);
-  assert(fd != -1);
-  struct stat st;
-  fstat(fd, &st);
+  assert(fd_ != -1 || fdz_ != NULL);
 
   // Handle end of the file
-  if(file_offset_ >= st.st_size) {
-    ::close(fd);
-    return 0;
-  }
+  if(eof_) 
+    return false;
 
   // Initialize the buffer
   if(buffer_ == NULL)
     buffer_ = new char[segment_size_];
 
   // Read the new lines
-  lseek(fd, file_offset_, SEEK_SET);
-  ssize_t bytes_read = ::read(fd, buffer_, segment_size_);
+  size_t bytes_read;
+  if(compression_ == NONE) 
+    bytes_read = ::read(fd_, buffer_, segment_size_);
+  else if(compression_ == GZIP)
+    bytes_read = gzread(fdz_, buffer_, segment_size_);
 
-  if(bytes_read == -1) {
-    ::close(fd);
-    return -1;
+  if(bytes_read == 0) {
+    // TODO: Better error messages
+    eof_ = true;
   }
 
   buffer_offset_ = 0;
   buffer_end_ = bytes_read;
-  file_offset_ += buffer_end_;
 
-  ::close(fd);
-  return true;
+  return bytes_read;
 }

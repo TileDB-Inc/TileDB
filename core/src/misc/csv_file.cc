@@ -55,6 +55,7 @@ CSVFile::CSVFile() {
   eof_ = false;
   fd_ = -1;
   fdz_ = NULL;
+  mode_[0] = '\0';
 }
 
 CSVFile::CSVFile(const ArraySchema* array_schema) 
@@ -73,6 +74,7 @@ CSVFile::CSVFile(const ArraySchema* array_schema)
   eof_ = false;
   fd_ = -1;
   fdz_ = NULL;
+  mode_[0] = '\0';
 }
 
 CSVFile::CSVFile(const std::string& filename, const char* mode) { 
@@ -84,6 +86,7 @@ CSVFile::CSVFile(const std::string& filename, const char* mode) {
   eof_ = false;
   fd_ = -1;
   fdz_ = NULL;
+  mode_[0] = '\0';
 
   open(filename, mode);
 }
@@ -276,7 +279,6 @@ void CSVFile::flush_buffer() {
   assert(fd_ != -1 || fdz_ != NULL);
 
   ssize_t bytes_written;
-
   if(compression_ == NONE) 
     bytes_written = write(fd_, buffer_, buffer_offset_);
   else if(compression_ == GZIP) 
@@ -302,7 +304,7 @@ void CSVFile::open_file(const std::string& filename) {
 }
 
 bool CSVFile::read_segment() {
-  assert(fd_ != -1);
+  assert(fd_ != -1 || fdz_ != NULL);
 
   // Handle end of the file
   if(eof_) 

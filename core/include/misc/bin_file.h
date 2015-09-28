@@ -35,7 +35,9 @@
 
 #include "array_schema.h"
 #include "cell.h"
+#include "special_values.h"
 #include <string>
+#include <zlib.h>
 
 /** 
  * The segment size determines the amount of data that can be exchanged
@@ -53,6 +55,9 @@
  */
 class BINFile {
  public:
+  // TYPE DEFINITIONS
+  enum Compression {NONE, GZIP};
+
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
   BINFile();
@@ -112,6 +117,8 @@ class BINFile {
   void* cell_;
   /** Part of the read state: stores the cell size. */
   ssize_t cell_size_;
+  /** Compression mode. */
+  Compression compression_;
   /** 
    * Part of the read state: stores the current coordinates to be 
    * read/written. 
@@ -119,13 +126,21 @@ class BINFile {
   void* coords_;
   /** The coordinates size. */
   size_t coords_size_;
+  /** True if the end of file has been reached. */
+  bool eof_;
   /** 
     * A pointer to the current position in the file where the NEXT read will 
     * take place (used only by BINFile::read in READ mode).
     */
-  int64_t file_offset_;
+// TODO: remove  int64_t file_offset_;
+  /** File descriptor for an uncompressed file. */
+  int fd_;
+  /** File descriptor for a gzipped file. */
+  gzFile fdz_;
     /** The name of the BIN file. */
   std::string filename_;
+  /** Size of the file opened in read mode. */
+  size_t file_size_;
   /** Number of ids in each cell stored in the file. */
   int id_num_;
   /** Stores the ids of a cell. */
@@ -157,6 +172,8 @@ class BINFile {
   ssize_t flush_buffer();
   /** Initialization. */
   void init();
+  /** Opens a file depneding on compression type. */
+  void open_file(const std::string& filename);
   /** 
    * Reads a segment of binary data with size BINFile::segment_size_. 
    * Returns the number of bytes read into the segment.

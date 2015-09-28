@@ -140,7 +140,7 @@ class CSVFile {
   gzFile fdz_;
   /** Size of the file opened in read mode. */
   size_t file_size_;
-    /** The name of the CSV file. */
+  /** The name of the CSV file. */
   std::string filename_;
   /** 
    * The mode of the CSV file. There are three modes available:
@@ -162,7 +162,7 @@ class CSVFile {
   // PRIVATE METHODS
   /** Writes the content of the buffer to the end of the file on the disk. */
   void flush_buffer();
-  /** */
+  /** Opens a file depneding on compression type. */
   void open_file(const std::string& filename);
   /** 
    * Reads a set of lines from the file, whose aggregate size is at most

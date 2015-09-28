@@ -131,8 +131,7 @@ void StorageManager::set_segment_size(size_t segment_size) {
 
 bool StorageManager::array_defined(const std::string& array_name) const {
   std::string filename = workspace_ + "/" + array_name + "/" + 
-                         ARRAY_SCHEMA_FILENAME + 
-                         BOOK_KEEPING_FILE_SUFFIX;
+                         ARRAY_SCHEMA_FILENAME;
 
   int fd = open(filename.c_str(), O_RDONLY);
 
@@ -167,8 +166,7 @@ int StorageManager::clear_array(const std::string& array_name) {
   DIR* dir = opendir(dirname.c_str());
   std::string fragments_filename = std::string(FRAGMENT_TREE_FILENAME) + 
                                    BOOK_KEEPING_FILE_SUFFIX;
-  std::string array_schema_filename = std::string(ARRAY_SCHEMA_FILENAME) + 
-                                      BOOK_KEEPING_FILE_SUFFIX;
+  std::string array_schema_filename = std::string(ARRAY_SCHEMA_FILENAME);
   
   // If the directory does not exist, exit
   if(dir == NULL) {
@@ -219,9 +217,7 @@ int StorageManager::define_array(const ArraySchema* array_schema) {
   create_directory(dir_name);
 
   // Open file
-  std::string filename = dir_name + 
-                         ARRAY_SCHEMA_FILENAME + 
-                         BOOK_KEEPING_FILE_SUFFIX;
+  std::string filename = dir_name + ARRAY_SCHEMA_FILENAME; 
   remove(filename.c_str());
   int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if(fd == -1) 
@@ -259,8 +255,7 @@ int StorageManager::delete_array(const std::string& array_name) {
   std::string filename; 
   std::string fragments_filename = std::string(FRAGMENT_TREE_FILENAME) + 
                                    BOOK_KEEPING_FILE_SUFFIX;
-  std::string array_schema_filename = std::string(ARRAY_SCHEMA_FILENAME) + 
-                                      BOOK_KEEPING_FILE_SUFFIX;
+  std::string array_schema_filename = std::string(ARRAY_SCHEMA_FILENAME);
 
   struct dirent *next_file;
   DIR* dir = opendir(dirname.c_str());
@@ -325,8 +320,7 @@ int StorageManager::get_array_schema(
     ArraySchema*& array_schema) const {
   // Open file
   std::string filename = workspace_ + "/" + array_name + "/" + 
-                         ARRAY_SCHEMA_FILENAME + 
-                         BOOK_KEEPING_FILE_SUFFIX;
+                         ARRAY_SCHEMA_FILENAME;
   int fd = open(filename.c_str(), O_RDONLY);
   if(fd == -1) {
     if(!is_file(filename.c_str())) {

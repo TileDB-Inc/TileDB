@@ -240,11 +240,11 @@ class ArraySchema {
   /** 
    * Updates the coordinates such that they immediately follow the old
    * ones along the global cell order, following a dense format.
-   * Returns true if the new coordinates are still within the dimensions
-   * domain, and false otherwise. 
+   * Returns true if the new coordinates are still within the range
+   * or domain if range=NULL, and false otherwise. 
    */
   template<class T>
-  bool advance_coords(T* coords) const;
+  bool advance_coords(T* coords, const T* range) const;
   /** 
    * Returns the cell id of the input coordinates, along the Hilbert 
    * space-filling curve.
@@ -305,17 +305,11 @@ class ArraySchema {
       const std::vector<std::string>& attribute_names,
       std::vector<int>& attribute_ids) const;
   /** 
-   * Copies the last coordinates inside the domain following the global
-   * order for a dense format.
+   * Copies the first coordinates inside the input range, or the domain (if
+   * range=NULL) following the global order for a dense format.
    */
   template<class T>
-  void get_domain_end(T* coords) const;
-  /** 
-   * Copies the first coordinates inside the domain following the global
-   * order for a dense format.
-   */
-  template<class T>
-  void get_domain_start(T* coords) const;
+  void get_domain_start(T* coords, const T* range) const;
   /** 
    * Returns true if the array has irregular tiles (i.e., 
    * ArraySchema::tile_extents_ is empty), and false otherwise. 
@@ -495,10 +489,10 @@ class ArraySchema {
    * Updates the coordinates such that they immediately follow the old
    * ones along the column major order for the case of irregular tiles, 
    * following a dense format. Returns true if the new coordinates are still
-   * within the dimensions domain, and false otherwise. 
+   * within the range (or domain if range=NULL), and false otherwise. 
    */
   template<class T>
-  bool advance_coords_irregular_column_major(T* coords) const;
+  bool advance_coords_irregular_column_major(T* coords, const T* range) const;
   /** 
    * Updates the coordinates such that they immediately follow the old
    * ones along the hilbert order for the case of irregular tiles, 
@@ -506,7 +500,7 @@ class ArraySchema {
    * within the dimensions domain, and false otherwise. 
    */
   template<class T>
-  bool advance_coords_irregular_hilbert(T* coords) const;
+  bool advance_coords_irregular_hilbert(T* coords, const T* range) const;
   /** 
    * Updates the coordinates such that they immediately follow the old
    * ones along the row major order for the case of irregular tiles, 
@@ -514,7 +508,7 @@ class ArraySchema {
    * within the dimensions domain, and false otherwise. 
    */
   template<class T>
-  bool advance_coords_irregular_row_major(T* coords) const;
+  bool advance_coords_irregular_row_major(T* coords, const T* range) const;
   /** Appends the attribute values from a CSV line to a cell. */
   void append_attributes(
       CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const;
