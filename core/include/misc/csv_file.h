@@ -40,6 +40,7 @@
 #include "cell.h"
 #include "csv_line.h"
 #include "special_values.h"
+#include "utils.h"
 #include <string>
 #include <vector>
 #include <inttypes.h>
@@ -66,9 +67,6 @@
  */
 class CSVFile {
  public:
-  // TYPE DEFINITIONS
-  enum Compression {NONE, GZIP};
-
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
   CSVFile();
@@ -131,7 +129,7 @@ class CSVFile {
   /** Stores the cell format of the lastly read CSV line. */
   void* cell_;
   /** Compression mode. */
-  Compression compression_;
+  CompressionType compression_;
   /** True if the end of file has been reached. */
   bool eof_;
   /** File descriptor for an uncompressed file. */

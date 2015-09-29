@@ -36,6 +36,7 @@
 #include "array_schema.h"
 #include "cell.h"
 #include "special_values.h"
+#include "utils.h"
 #include <string>
 #include <zlib.h>
 
@@ -55,9 +56,6 @@
  */
 class BINFile {
  public:
-  // TYPE DEFINITIONS
-  enum Compression {NONE, GZIP};
-
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
   BINFile();
@@ -118,7 +116,7 @@ class BINFile {
   /** Part of the read state: stores the cell size. */
   ssize_t cell_size_;
   /** Compression mode. */
-  Compression compression_;
+  CompressionType compression_;
   /** 
    * Part of the read state: stores the current coordinates to be 
    * read/written. 

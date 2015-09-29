@@ -243,7 +243,7 @@ void QueryProcessor::export_csv(
   // Prepare CSV file
   CSVFile csv_file(filename, "w");
 
-  ArrayConstCellIterator<T>* cell_it = 
+  ArrayConstCellIterator<T>* cell_it =  
       storage_manager_->begin<T>(ad, attribute_ids);
 
   // Prepare a cell

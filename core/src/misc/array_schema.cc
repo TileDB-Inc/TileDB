@@ -1788,8 +1788,12 @@ void ArraySchema::get_domain_start(T* coords, const T* range) const {
     for(int i=0; i<dim_num_; ++i) 
       coords[i] = dim_domains_[i].first;
   } else {
-    for(int i=0; i<dim_num_; ++i) 
+    for(int i=0; i<dim_num_; ++i) { 
+      assert(range[2*i] <= range[2*i+1]); 
+      assert(range[2*i] >= dim_domains_[i].first && 
+             range[2*i+1] <= dim_domains_[i].second);
       coords[i] = range[2*i];
+    }
   }
 }
 
@@ -2352,21 +2356,31 @@ const ArraySchema* ArraySchema::transpose(
 template<class T>
 bool ArraySchema::advance_coords_irregular_column_major(
     T* coords, const T* range) const {
-
-// TODO Handle range
-
   int i = 0;
 
   ++coords[i];
-  while(i < dim_num_-1 && coords[i] > dim_domains_[i].second) {
-    coords[i] = dim_domains_[i].first;
-    ++coords[++i];
-  } 
 
-  if(coords[dim_num_-1] <= dim_domains_[dim_num_-1].second)
-    return true;
-  else 
-    return false;
+  if(range == NULL) {
+    while(i < dim_num_-1 && coords[i] > dim_domains_[i].second) {
+      coords[i] = dim_domains_[i].first;
+      ++coords[++i];
+    } 
+
+    if(coords[dim_num_-1] <= dim_domains_[dim_num_-1].second)
+      return true;
+    else 
+      return false;
+  } else {
+    while(i < dim_num_-1 && coords[i] > range[2*i+1]) {
+      coords[i] = range[2*i];
+      ++coords[++i];
+    } 
+
+    if(coords[dim_num_-1] <= range[2*(dim_num_-1) + 1])
+      return true;
+    else 
+      return false;
+  }
 }
 
 template<class T>
@@ -2381,21 +2395,31 @@ bool ArraySchema::advance_coords_irregular_hilbert(
 template<class T>
 bool ArraySchema::advance_coords_irregular_row_major(
     T* coords, const T* range) const {
-
-// TODO: Handle range
-
   int i = dim_num_-1;
 
   ++coords[i];
-  while(i > 0 && coords[i] > dim_domains_[i].second) {
-    coords[i] = dim_domains_[i].first;
-    ++coords[--i];
-  }
 
-  if(coords[0] <= dim_domains_[0].second)
-    return true;
-  else 
-    return false;
+  if(range == NULL) { 
+    while(i > 0 && coords[i] > dim_domains_[i].second) {
+      coords[i] = dim_domains_[i].first;
+      ++coords[--i];
+    }
+
+    if(coords[0] <= dim_domains_[0].second)
+      return true;
+    else 
+      return false;
+  } else {
+    while(i > 0 && coords[i] > range[2*i+1]) {
+      coords[i] = range[2*i];
+      ++coords[--i];
+    }
+
+    if(coords[0] <= range[1])
+      return true;
+    else 
+      return false;
+  }
 }
 
 void ArraySchema::append_attributes(
