@@ -35,6 +35,7 @@
 #define ARRAY_SCHEMA_H
 
 #include "csv_line.h"
+#include "hilbert_curve.h"
 #include "special_values.h"
 #include "utils.h"
 #include <vector>
@@ -439,6 +440,8 @@ class ArraySchema {
   int consolidation_step_;
   /** Holds space for browsing coordinates. */
   void* coords_;
+  /** To be used when calculating Hilbert ids. */
+  int* coords_for_hilbert_;
   /** The list with the dimension domains.*/
   std::vector< std::pair< double, double> > dim_domains_;
   /** The list with the dimension names.*/
@@ -450,6 +453,10 @@ class ArraySchema {
    * Hilbert curve, via ArraySchema::cell_id_hilbert. 
    */
   int hilbert_cell_bits_;
+  /** A Hilbert curve object for finding cell ids. */
+  HilbertCurve* hilbert_curve_for_cells_;
+  /** A Hilbert curve object for finding tile ids. */
+  HilbertCurve* hilbert_curve_for_tiles_;
   /** 
    * Number of bits used for the calculation of tile ids with the 
    * Hilbert curve, via ArraySchema::tile_id_hilbert. 

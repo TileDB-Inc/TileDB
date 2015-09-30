@@ -1,84 +1,211 @@
-#ifndef HilbertCurve_class
-#define HilbertCurve_class
+/**
+ * @file   hilbert_curve.h
+ * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ *
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * 
+ * @section DESCRIPTION
+ *
+ * This file defines the HilbertCurve class. 
+ */
 
+#ifndef HILBERT_CURVE_H
+#define HILBERT_CURVE_H
+
+#include <cstdlib>
 #include <iostream>
 #include <sys/types.h>
-#include <cstdlib>
+
+/** 
+ * Maximum number of dimensions for defining the Hilbert curve. Although the
+ * Hilbert curve can be defined over arbitrary dimensionality, we limit the
+ * number of dimensions because they affect the number of bits used to 
+ * represent a Hilbert value; in our class, a Hilbert value is a int64_t
+ * number and, thus, it cannot exceed 64 bits.
+ */
+#define HC_MAX_DIM 16
+
+/**
+ * The Hilbert curve fills a multi-dimensional space in a particular manner
+ * with a 1D line. The typical operations of this class is converting a 
+ * multi-dimensional tuple of coordinates into a 1D Hilbert value, and 
+ * vice versa. 
+ *
+ * For the 2D case, the Hilbert curve looks as follows:
+ *
+ \verbatim
+         |
+      15 |    @---@   @---@   @---@   @---@   @---@   @---@   @---@   @---@
+         |    |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
+         |    @   @---@   @   @   @---@   @   @   @---@   @   @   @---@   @
+         |    |           |   |           |   |           |   |           |
+         |    @---@   @---@   @---@   @---@   @---@   @---@   @---@   @---@
+         |        |   |           |   |           |   |           |   |    
+         |    @---@   @---@---@---@   @---@   @---@   @---@---@---@   @---@
+         |    |                           |   |                           |
+         |    @   @---@---@   @---@---@   @   @   @---@---@   @---@---@   @
+         |    |   |       |   |       |   |   |   |       |   |       |   |
+   Dim[1]|    @---@   @---@   @---@   @---@   @---@   @---@   @---@   @---@
+         |            |           |                   |           |        
+         |    @---@   @---@   @---@   @---@   @---@   @---@   @---@   @---@
+         |    |   |       |   |       |   |   |   |       |   |       |   |
+         |    @   @---@---@   @---@---@   @---@   @---@---@   @---@---@   @
+         |    |                                                           |
+         |    @---@   @---@---@   @---@---@   @---@---@   @---@---@   @---@
+         |        |   |       |   |       |   |       |   |       |   |    
+         |    @---@   @---@   @---@   @---@   @---@   @---@   @---@   @---@
+         |    |           |           |           |           |           |
+         |    @   @---@   @   @---@   @---@   @---@   @---@   @   @---@   @
+         |    |   |   |   |   |   |       |   |       |   |   |   |   |   |
+         |    @---@   @---@   @   @---@---@   @---@---@   @   @---@   @---@
+         |                    |                           |                
+       3 |    5---6   9---@   @   @---@---@   @---@---@   @   @---@   @---@
+         |    |   |   |   |   |   |       |   |       |   |   |   |   |   |
+       2 |    4   7---8   @   @---@   @---@   @---@   @---@   @   @---@   @
+         |    |           |           |           |           |           |
+       1 |    3---2   @---@   @---@   @---@   @---@   @---@   @---@   @---@
+         |        |   |       |   |       |   |       |   |       |   |    
+       0 |    0---1   @---@---@   @---@---@   @---@---@   @---@---@   @--255
+         |
+          -------------------------------------------------------------------
+              0   1   2   3               Dim[0]                          15
+ 
+ \endverbatim
+ *
+ * The Hilbert value of (2,3) is 9, whereas the coordinates corresponding to 
+ * Hilbert value 2 are (1,1).
+ *
+ * The class utilizes two functions from John Skilling's work:
+ * John Skilling, "Programming the Hilbert Curve". In AIP, 2003
+ */
+class HilbertCurve {
+ public:
+  // CONSTRUCTORS AND DESTRUCTORS
+  /** 
+   * Constructor.
+   * @param bits Number of bits used for coordinate values across each dimension
+   * @param dim_num Number of dimensions
+   */
+  HilbertCurve(int bits, int dim_num);
+  /** Simple destructor. */
+  ~HilbertCurve();
+
+  // MAIN FUNCTIONS
+  /**  
+   * Converts a Hilbert value into a set of coordinates.
+   * @param hilbert The Hilbert value to be converted.
+   * @param coords The output coordinates.
+   * @see coords_to_hilbert
+   */
+  void hilbert_to_coords(int64_t hilbert, int* coords);
+  /**  
+   * Converts a set of coordinates to a Hilbert value.
+   * @param coords The coordinates to be converted.
+   * @param hilbert The outpu Hilbert value.
+   * @see hilbert_to_coords
+   */
+  void coords_to_hilbert(const int* coords, int64_t& hilbert); 
+
+ private:
+  // PRIVATE ATTRIBUTES
+  /** Number of bits for representing a coordinate per dimension. */	
+  int bits_;
+  /** Number of dimensions. */	
+  int dim_num_;
+  /** Temporary buffer. */
+  int temp_[HC_MAX_DIM];
+
+  // PRIVATE METHODS
+  /**
+   * Identical to John Skilling's work. It converts the input coordinates
+   * to what is called the transpose of the Hilbert value. This is done
+   * in place.
+   *
+   * **Example**
+   *
+   * Let b=5 and n=3. Let the 15-bit Hilbert value of the input coordinates
+   * be A B C D E a b c d e 1 2 3 4 5. The function places this number into
+   * parameter X as follows:
+   *
+   \verbatim   
+             X[0] = A D b e 3                  X[1]|  
+             X[1] = B E c 1 4    <------->         |  /X[2]
+             X[2] = C a d 2 5                axes  | /
+                    high  low                      |/______
+  
+                                                         X[0]
+   \endverbatim
+   *
+   * The X value after the function terminates is called the transpose form
+   * of the Hilbert value.
+   * @param X Input coordinates, and output transpose (the conversion is
+   * done in place).
+   * @param b Number of bits for representing a coordinate per dimension
+   * (it should be equal to HilbertCurve::bits_). 
+   * @param n Number of dimensions (it should be equal to 
+   * HilbertCurve::dim_num_). 
+   * @author John Skilling
+   * @see TransposetoAxes
+   *
+   */	
+  void AxestoTranspose(int* X, int b, int n);
+  /**
+   * Identical to John Skilling's work. It converts the transpose of a
+   * Hilbert value into the corresponding coordinates. This is done in place.
+   *
+   * **Example**
+   *
+   * Let b=5 and n=3. Let the 15-bit Hilbert value of the output coordinates
+   * be A B C D E a b c d e 1 2 3 4 5. The function takes as input the tranpose 
+   * form of the Hilbert value, which is stored in X as follows:
+   *
+   \verbatim   
+             X[0] = A D b e 3                  X[1]|  
+             X[1] = B E c 1 4    <------->         |  /X[2]
+             X[2] = C a d 2 5                axes  | /
+                    high  low                      |/______
+  
+                                                         X[0]
+   \endverbatim
+   *
+   * The X value after the function terminates will contain the coordinates
+   * corresponding to the Hilbert value. 
+   * @param X Input transpose, and output coordinates (the conversion is
+   * done in place).
+   * @param b Number of bits for representing a coordinate per dimension
+   * (it should be equal to HilbertCurve::bits_). 
+   * @param n Number of dimensions (it should be equal to 
+   * HilbertCurve::dim_num_). 
+   * @author John Skilling
+   * @see AxestoTranspose
+   *
+   */	
+  void TransposetoAxes(int* X, int b, int n);
+};
 
 
-//=============================================================================
-//              Hilbert-curve (a space-filling Peano curve) library
-//=============================================================================
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Functions: LinetoAxes
-//            AxestoLine
-//
-// Purpose:   Serial Hilbert length  <---->   multidimensional Axes position.
-//
-//   Space  = n-dimensional hypercube of side R = 2^b
-//            Number of cells = N = R^n = 2^(n*b)
-//
-//   Line   = serial number of cell along Hilbert curve through hypercube
-//          = extended integer of n*b bits ranging from 0 to N-1,
-//            stored as vector of n unsigned b-bit integers with [0] high.
-//
-//
-//  A composite-integer is a multi-word unsigned integer "Label" stored
-//  "big endian" in N conventional unsigned integers with [0] high.
-//        ___________________________________________________
-//       |            |            |            |            |
-//       |  Label[0]  |  Label[1]  |    ....    | Label[N-1] |
-//       |____________|____________|____________|____________|
-//            high                                   low
-//
-//   Axes   = Geometrical position of cell
-//          = n b-bit integers representing coordinates.
-//
-// Example:   side R = 16, dimension n = 2, number of cells = N = 256.
-//            Line = 9, stored in base-16 words as
-//                   Line[0] = 0 (high),   Line[1] = 9 (low),
-//            corresponds to position (2,3) as in diagram, stored as
-//                   Axes[0] = 2,   Axes[1] = 3.
-// 
-//        |
-//     15 |    @---@   @---@   @---@   @---@   @---@   @---@   @---@   @---@
-//        |    |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
-//        |    @   @---@   @   @   @---@   @   @   @---@   @   @   @---@   @
-//        |    |           |   |           |   |           |   |           |
-//        |    @---@   @---@   @---@   @---@   @---@   @---@   @---@   @---@
-//        |        |   |           |   |           |   |           |   |    
-//        |    @---@   @---@---@---@   @---@   @---@   @---@---@---@   @---@
-//        |    |                           |   |                           |
-//        |    @   @---@---@   @---@---@   @   @   @---@---@   @---@---@   @
-//        |    |   |       |   |       |   |   |   |       |   |       |   |
-// Axes[1]|    @---@   @---@   @---@   @---@   @---@   @---@   @---@   @---@
-//        |            |           |                   |           |        
-//        |    @---@   @---@   @---@   @---@   @---@   @---@   @---@   @---@
-//        |    |   |       |   |       |   |   |   |       |   |       |   |
-//        |    @   @---@---@   @---@---@   @---@   @---@---@   @---@---@   @
-//        |    |                                                           |
-//        |    @---@   @---@---@   @---@---@   @---@---@   @---@---@   @---@
-//        |        |   |       |   |       |   |       |   |       |   |    
-//        |    @---@   @---@   @---@   @---@   @---@   @---@   @---@   @---@
-//        |    |           |           |           |           |           |
-//        |    @   @---@   @   @---@   @---@   @---@   @---@   @   @---@   @
-//        |    |   |   |   |   |   |       |   |       |   |   |   |   |   |
-//        |    @---@   @---@   @   @---@---@   @---@---@   @   @---@   @---@
-//        |                    |                           |                
-//      3 |    5---6   9---@   @   @---@---@   @---@---@   @   @---@   @---@
-//        |    |   |   |   |   |   |       |   |       |   |   |   |   |   |
-//      2 |    4   7---8   @   @---@   @---@   @---@   @---@   @   @---@   @
-//        |    |           |           |           |           |           |
-//      1 |    3---2   @---@   @---@   @---@   @---@   @---@   @---@   @---@
-//        |        |   |       |   |       |   |       |   |       |   |    
-//      0 |    0---1   @---@---@   @---@---@   @---@---@   @---@---@   @--255
-//        |
-//         -------------------------------------------------------------------
-//             0   1   2   3          ---> Axes[0]                         15
-//
-// Notes: (1) Unit change in Line yields single unit change in Axes position:
-//            the Hilbert curve is maximally local.
-//        (2) CPU proportional to total number of bits, = b * n.
 //
 // History:   John Skilling  20 Apr 2001, 11 Jan 2003, 3 Sep 2003
 //-----------------------------------------------------------------------------
@@ -108,11 +235,6 @@
 //
 // Example:   b=5 bits for each of n=3 coordinates
 //            Hilbert transpose
-//             X[0] = A D b e 3                  X[1]|  
-//             X[1] = B E c 1 4    <------->         |  /X[2]
-//             X[2] = C a d 2 5                axes  | /
-//                    high  low                      |/______
-//                                                         X[0]
 //            Axes are stored conventially as b-bit integers.
 //         
 //-----------------------------------------------------------------------------
@@ -121,46 +243,5 @@
 
 
 
-class HilbertCurve
-{
-	public:
-		HilbertCurve(){};
-		~HilbertCurve(){};
 
-
-		void TransposetoLine(
-        		int* Line,         //  Hilbert integer 
-        		int* X,            //  Transpose      
-        		int  b,            //  # bits
-        		int  n);            //  dimension
-		
-		int64_t AxestoLine(
-        		int* Axes,    //    multidimensional geometrical axes  
-       			int b,        //    # bits used in each word
-        		int n);        //    dimension
-		
-		void LinetoAxes(
-        		int* Axes,    //    multidimensional geometrical axes  
-		        int* Line,    //    linear serial number, stored as     
-        		int b,        //    # bits used in each word
-       	 		int n);        //    dimension
-		
-		
-		void TransposetoAxes(
-        		int* X,      //   position  
-        		int b,       //   # bits
-        		int n);       //   dimension
-		
-		void AxestoTranspose(
-        		int* X,   //  position      
-        		int b,    //  # bits    
-        		int n);    //  dimension 		
-		
-		void LinetoTranspose(
-        		int* X,     //   Transpose        
-        		int* Line,  //   Hilbert integer  
-        		int b,      //   # bits
-        		int n);      //   dimension  	
-
-};
 #endif

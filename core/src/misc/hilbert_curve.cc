@@ -1,170 +1,121 @@
-#include <math.h>
 #include "hilbert_curve.h"
+#include <assert.h>
+#include <string.h>
 
-void HilbertCurve::TransposetoLine(
-	int* Line,         //  Hilbert integer 
-	int* X,            //  Transpose      
-	int  b,            //  # bits
-	int  n)            //  dimension
-{
-	int j, p, M;
-	int i, q;
+/******************************************************
+************ CONSTRUCTORS & DESTRUCTORS ***************
+******************************************************/
 
-    	M = 1 << (b - 1);
-    	q = 0;    p = M;
-    	for( i = 0; i < n; i++ )
-    	{
-        	Line[i] = 0;
-        	for( j = M; j; j >>= 1 )
-        	{
-            		if( X[q] & p )
-                		Line[i] |= j;
-            		if( ++q == n )
-        		{
-	                	q = 0;    
-				p >>= 1;
-            		}
-        	}
-    	}
+HilbertCurve::HilbertCurve(int bits, int dim_num) 
+    : bits_(bits), dim_num_(dim_num) {
+  assert(dim_num >=0 && dim_num < HC_MAX_DIM);
+  assert(bits * dim_num <= sizeof(int64_t)*8);
 }
 
-
-int64_t HilbertCurve::AxestoLine(
-	int* Axes,    //    multidimensional geometrical axes  
-	int b,        //    # bits used in each word
-	int n)        //    dimension
-{
-	int store[1024];   // avoid overwriting Axes
-	int i;             // counter
-    	int Line[n];
-
-
-    	if( n <= 1 )            // trivial case
-        	*Line = *Axes;
-    	else if( n <= 1024 )    // surely the usual case
-    	{
-        	for( i = 0; i < n; ++i )
-           		store[i] = Axes[i];
-        	AxestoTranspose(store, b, n);
-        	TransposetoLine(Line, store, b, n);
-    	}
-    	else                    // must do in place at greater cost
-    	{
-        	AxestoTranspose(Axes, b, n);
-        	TransposetoLine(Line, Axes, b, n);
-        	TransposetoAxes(Axes, b, n);
-    	}
-
-    	int64_t result = 0;
-    	for(i = 0; i < n; i++)
-		result+=Line[i]*pow(2,(b*(n-i-1)));
-
-    	return result;
+HilbertCurve::~HilbertCurve() {
 }
 
+/******************************************************
+******************* MAIN FUNCTIONS ********************
+******************************************************/
 
-void HilbertCurve::LinetoAxes(
-	int* Axes,    //    multidimensional geometrical axes  
-	int* Line,    //    linear serial number, stored as     
-	int b,        //    # bits used in each word
-	int n)        //    dimension
-{
-	if( n <= 1 )            // trivial case
-        	*Axes = *Line;
-    	else
-    	{
-        	LinetoTranspose(Axes, Line, b, n);
-        	TransposetoAxes(Axes,       b, n);
-    	}
+void HilbertCurve::coords_to_hilbert(const int* coords, int64_t& hilbert) {
+  // Copy coords to temporary storage
+  memcpy(temp_, coords, dim_num_ * sizeof(int));
+
+  // Convert coords to the transpose form of the hilbert value
+  AxestoTranspose(temp_, bits_, dim_num_);
+
+  // Convert the hilbert transpose form into an int64_t hilbert value
+  hilbert = 0; 
+  int64_t c = 1; // This is a bit shifted from right to left over temp_[i]
+  int64_t h = 1; // This is a bit shifted from right to left over hilbert
+  for(int j=0; j<bits_; ++j, c <<= 1) {
+    for(int i=dim_num_-1; i>=0; --i, h <<= 1) {
+      if(temp_[i] & c)
+        hilbert |= h; 
+    } 
+  }
 }
 
+void HilbertCurve::hilbert_to_coords(int64_t hilbert, int* coords) {
+  // Initialization
+  for(int i=0; i<dim_num_; ++i) 
+    temp_[i] = 0;
 
+  // Convert the int64_t hilbert value to its transpose form
+  int64_t c = 1; // This is a bit shifted from right to left over temp_[i]
+  int64_t h = 1; // This is a bit shifted from right to left over hilbert
+  for(int j=0; j<bits_; ++j, c <<= 1) {
+    for(int i=dim_num_-1; i>=0; --i, h <<= 1) {
+      if(hilbert & h)
+        temp_[i] |= c; 
+    } 
+  }
 
-void HilbertCurve::TransposetoAxes(
-	int* X,      //   position  
-	int b,       //   # bits
-	int n)       //   dimension
-{
-	int M, P, Q, t;
-    	int i;
+  // Convert coords to the transpose form of the hilbert value
+  TransposetoAxes(temp_, bits_, dim_num_);
 
-	// Gray decode by  H ^ (H/2)
-    	t = X[n-1] >> 1;
-    	for( i = n-1; i; i-- )
-        	X[i] ^= X[i-1];
-    	X[0] ^= t;
+  // Copy from the temporary storage to the (output) coords
+  memcpy(coords, temp_, dim_num_ * sizeof(int));
+}
 
-	// Undo excess work
-    	M = 2 << (b - 1);
-    	for( Q = 2; Q != M; Q <<= 1 )
-    	{
-        	P = Q - 1;
-        	for( i = n-1; i; i-- )
-            		if( X[i] & Q ) X[0] ^= P;                              // invert
-            		else{ t = (X[0] ^ X[i]) & P;  X[0] ^= t;  X[i] ^= t; } // exchange
-        	if( X[0] & Q ) X[0] ^= P;                                  // invert
-    	}
+/******************************************************
+******************* MAIN FUNCTIONS ********************
+******************************************************/
+
+void HilbertCurve::AxestoTranspose(int* X, int b, int n) {
+  int P, Q, t, i;
+
+  // Inverse undo
+  for( Q = 1 << (b - 1); Q > 1; Q >>= 1 ) {
+    P = Q - 1;
+    if( X[0] & Q )      // invert
+      X[0] ^= P;                                 
+    for( i = 1; i < n; i++ ) 
+      if( X[i] & Q )    // invert
+        X[0] ^= P;                              
+      else {            // exchange
+        t = (X[0] ^ X[i]) & P;  
+        X[0] ^= t;  
+        X[i] ^= t; 
+      } 
+  }
+
+  // Gray encode (inverse of decode)
+  for( i = 1; i < n; i++ )
+    X[i] ^= X[i-1];
+  t = X[n-1];
+  for( i = 1; i < b; i <<= 1 )
+    X[n-1] ^= X[n-1] >> i;
+  t ^= X[n-1];
+  for( i = n-2; i >= 0; i-- )
+    X[i] ^= t;
+}
+
+void HilbertCurve::TransposetoAxes(int* X, int b, int n) {
+  int M, P, Q, t, i;
+
+  // Gray decode by H ^ (H/2)
+  t = X[n-1] >> 1;
+  for( i = n-1; i; i-- )
+    X[i] ^= X[i-1];
+  X[0] ^= t;
+
+  // Undo excess work
+  M = 2 << (b - 1);
+  for( Q = 2; Q != M; Q <<= 1 ) {
+    P = Q - 1;
+    for( i = n-1; i; i-- )
+      if( X[i] & Q )  // invert
+        X[0] ^= P;                              
+      else {          // exchange
+        t = (X[0] ^ X[i]) & P;  
+        X[0] ^= t;  
+        X[i] ^= t; 
+      } 
+      if( X[0] & Q )  // invert
+        X[0] ^= P; 
+  }
 } 
 
-
-
-void HilbertCurve::AxestoTranspose(
-	int* X,   //  position 
-	int b,    //  # bits
-	int n)    //  dimension
-{
-	int P, Q, t;
-    	int i;
-
-	// Inverse undo
-    	for( Q = 1 << (b - 1); Q > 1; Q >>= 1 )
-    	{
-        	P = Q - 1;
-        	if( X[0] & Q ) X[0] ^= P;                                  // invert
-        	for( i = 1; i < n; i++ )
-            		if( X[i] & Q ) X[0] ^= P;                              // invert
-            		else{ t = (X[0] ^ X[i]) & P;  X[0] ^= t;  X[i] ^= t; } // exchange
-    	}
-
-	// Gray encode (inverse of decode)
-    	for( i = 1; i < n; i++ )
-        	X[i] ^= X[i-1];
-    	t = X[n-1];
-    	for( i = 1; i < b; i <<= 1 )
-        	X[n-1] ^= X[n-1] >> i;
-    	t ^= X[n-1];
-    	for( i = n-2; i >= 0; i-- )
-        	X[i] ^= t;
-}
-
-
-
-
-void HilbertCurve::LinetoTranspose(
-	int* X,     //   Transpose        
-	int* Line,  //   Hilbert integer  
-	int b,      //   # bits
-	int n)      //   dimension
-{
-	int j, p, M;
-	int i, q;
-
-	M = 1 << (b - 1);
-	for( i = 0; i < n; i++ )
-		X[i] = 0;
-    	q = 0;    
-	p = M;
-    	for( i = 0; i < n; i++ )
-    	{
-        	for( j = M; j; j >>= 1 )
-        	{
-            		if( Line[i] & j )
-                		X[q] |= p;
-            		if( ++q == n )
-            		{
-                		q = 0;    
-				p >>= 1;
-            		}
-        	}	
-    	}
-}

@@ -33,7 +33,6 @@
 
 #include "array_schema.h"
 #include "csv_line.h"
-#include "hilbert_curve.h"
 #include <assert.h>
 #include <string.h>
 #include <math.h>
@@ -49,6 +48,9 @@
 
 ArraySchema::ArraySchema() {
   coords_ = NULL;
+  hilbert_curve_for_cells_ = NULL;
+  hilbert_curve_for_tiles_ = NULL;
+  coords_for_hilbert_ = NULL;
 }
 
 ArraySchema::ArraySchema(
@@ -117,6 +119,9 @@ ArraySchema::ArraySchema(
   }
 
   compute_hilbert_cell_bits();
+  hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
+  hilbert_curve_for_tiles_ = NULL;
+  coords_for_hilbert_ = new int[dim_num_];
 }
 
 ArraySchema::ArraySchema(
@@ -193,12 +198,24 @@ ArraySchema::ArraySchema(
 
   compute_hilbert_cell_bits();
   compute_hilbert_tile_bits();
+  hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
+  hilbert_curve_for_tiles_ = new HilbertCurve(hilbert_tile_bits_, dim_num_);
+  coords_for_hilbert_ = new int[dim_num_];
   compute_tile_id_offsets();
 }
 
 ArraySchema::~ArraySchema() {
   if(coords_ != NULL)
     free(coords_);
+
+  if(hilbert_curve_for_cells_ != NULL)
+    delete hilbert_curve_for_cells_;
+
+  if(hilbert_curve_for_tiles_ != NULL)
+    delete hilbert_curve_for_tiles_;
+
+  if(coords_for_hilbert_ != NULL)
+    delete [] coords_for_hilbert_;
 }
 
 /******************************************************
@@ -807,8 +824,12 @@ void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
   coords_ = malloc(cell_sizes_[attribute_num_]);
 
   compute_hilbert_cell_bits();
+  hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
+  coords_for_hilbert_ = new int[dim_num_];
   if(tile_extents_.size() != 0) { // Only for regular tiles
     compute_hilbert_tile_bits();
+    hilbert_curve_for_tiles_ = 
+        new HilbertCurve(hilbert_tile_bits_, dim_num_);
     compute_tile_id_offsets();
   }
 }
@@ -1350,6 +1371,11 @@ int ArraySchema::set_dim_domains(
 
   // Calculate necessary information for computing hilbert ids 
   compute_hilbert_cell_bits();
+  hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
+  compute_hilbert_tile_bits();
+  compute_tile_id_offsets();
+  hilbert_curve_for_tiles_ = new HilbertCurve(hilbert_tile_bits_, dim_num_);
+  coords_for_hilbert_ = new int[dim_num_];
 
   return 0;
 }
@@ -1402,6 +1428,9 @@ int ArraySchema::set_tile_extents(
   if(tile_extents.size() == 0) { 
     tile_extents_ = tile_extents;
     compute_hilbert_cell_bits();
+    hilbert_curve_for_cells_ = 
+        new HilbertCurve(hilbert_cell_bits_, dim_num_);
+    coords_for_hilbert_ = new int[dim_num_];
     return 0;
   }
 
@@ -1428,9 +1457,10 @@ int ArraySchema::set_tile_extents(
   tile_extents_ = tile_extents; 
 
   // Calculate necessary info for computing hilbert ids 
-  compute_hilbert_cell_bits();
   compute_hilbert_tile_bits();
   compute_tile_id_offsets();
+  hilbert_curve_for_tiles_ = new HilbertCurve(hilbert_tile_bits_, dim_num_);
+  coords_for_hilbert_ = new int[dim_num_];
 
   return 0;
 }
@@ -1565,22 +1595,17 @@ int64_t ArraySchema::cell_id_hilbert(const T* coordinates) const {
 
   bool regular = (tile_extents_.size() != 0);
 
-  HilbertCurve *hc = new HilbertCurve();
-  int *coord = new int[dim_num_];
- 
   if(regular) {
     for(int i = 0; i < dim_num_; ++i) 
-      coord[i] = int(coordinates[i]) % int(tile_extents_[i]);
+      coords_for_hilbert_[i] = int(coordinates[i]) % int(tile_extents_[i]);
   } else { 
     for(int i = 0; i < dim_num_; ++i) 
-      coord[i] = int(coordinates[i]);
+      coords_for_hilbert_[i] = int(coordinates[i]);
   }
 
-  int64_t cell_ID = hc->AxestoLine(coord, hilbert_cell_bits_, dim_num_);	
+  int64_t cell_ID;
+  hilbert_curve_for_cells_->coords_to_hilbert(coords_for_hilbert_, cell_ID);
 
-  delete hc;
-  delete [] coord;
-	
   return cell_ID;
 }
 
@@ -2292,16 +2317,11 @@ template<typename T>
 int64_t ArraySchema::tile_id_hilbert(const T* coords) const {
   assert(check_on_tile_id_request(coords));
   	
-  HilbertCurve *hc = new HilbertCurve();
-  int *int_coords = new int[dim_num_];
-
   for(int i = 0; i < dim_num_; ++i) 
-    int_coords[i] = static_cast<int>(coords[i]/tile_extents_[i]);
+    coords_for_hilbert_[i] = int(coords[i]/tile_extents_[i]);
 
-  int64_t tile_ID = hc->AxestoLine(int_coords, hilbert_tile_bits_, dim_num_);	
-
-  delete hc;
-  delete [] int_coords;
+  int64_t tile_ID;
+  hilbert_curve_for_tiles_->coords_to_hilbert(coords_for_hilbert_, tile_ID);
 
   return tile_ID;
 }
@@ -2635,7 +2655,8 @@ void ArraySchema::compute_hilbert_cell_bits() {
       max_domain_range = domain_range;
   }
 
-  hilbert_cell_bits_ = ceil(log2(static_cast<int64_t>(max_domain_range+0.5)));
+  hilbert_cell_bits_ = ceil(log2(int64_t(max_domain_range+0.5)));
+  assert(hilbert_cell_bits_ * dim_num_ <= sizeof(int64_t)*8);
 }
 
 void ArraySchema::compute_hilbert_tile_bits() {
