@@ -93,23 +93,23 @@ optional. If it is omitted, the default is the current time of day.
 .TP
 \fBtiledb_generate_data\fR \\ 
     \fB-w \fRmy_workspace/ \\
-    \fB-A \fRA \\
-    \fB-f \fRA.csv \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_array.csv \\
     \fB-t \fRcsv \\
     \fB-n \fR10000 \\
     \fB-s \fR 0
 
-Creates CSV data for array \fIA\fR. The data consist of 10000 cells. A fixed 
+Creates CSV data for array \fImy_array\fR. The data consist of 10000 cells. A fixed 
 seed \fB0\fR was used, e.g., for repeatability purposes.
 
 \fBtiledb_generate_data\fR \\ 
     \fB-w \fRmy_workspace/ \\
-    \fB-A \fRA \\
-    \fB-f \fRA.bin \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_array.bin \\
     \fB-t \fRbin \\
     \fB-n \fR10000
 
-Creates binary data for array \fIA\fR. The data consist of 10000 cells. The 
+Creates binary data for array \fImy_array\fR. The data consist of 10000 cells. The 
 default current time of day is used as a seed (which means that a different
 dataset will be generated next time the program is executed with the same
 options).
