@@ -218,7 +218,7 @@ ssize_t BINFile::read(void* destination, size_t size) {
             buffer_ + buffer_offset_, bytes_to_be_read_from_file);
     buffer_offset_ += bytes_to_be_read_from_file;
   }
-  
+
   return bytes_to_be_read_from_buffer + bytes_to_be_read_from_file;
 }
 
@@ -293,7 +293,7 @@ bool BINFile::operator>>(Cell& cell) {
       return false;
     }
     assert(bytes_read == coords_size_);
-
+   
     // Read cell size
     bytes_read = read(&cell_size_, sizeof(size_t));
     assert(bytes_read == sizeof(size_t));
@@ -307,6 +307,7 @@ bool BINFile::operator>>(Cell& cell) {
     // Copy ids, coordinates and cell size to cell
     memcpy(cell_, ids_, id_num_ * sizeof(int64_t));
     size_t cell_offset = id_num_ * sizeof(int64_t);
+
     memcpy(static_cast<char*>(cell_) + cell_offset, coords_, coords_size_);
     cell_offset += coords_size_;
     memcpy(static_cast<char*>(cell_) + cell_offset, 
@@ -315,8 +316,8 @@ bool BINFile::operator>>(Cell& cell) {
 
     // Read rest of attribute values into the appropriate offset in cell
     bytes_read = read(static_cast<char*>(cell_) + cell_offset, 
-                      cell_size_ - coords_size_ - sizeof(size_t) - 
-                      id_num_ * sizeof(int64_t));
+                      cell_size_ - coords_size_ - sizeof(size_t));
+
     assert(bytes_read == cell_size_ - coords_size_ - sizeof(size_t) - 
                          id_num_ * sizeof(int64_t));
   }

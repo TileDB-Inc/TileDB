@@ -118,10 +118,17 @@ ArraySchema::ArraySchema(
     compression_ = compression;
   }
 
-  compute_hilbert_cell_bits();
-  hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
+  // Hilbert curves
+  if(cell_order_ == CO_HILBERT) {
+    compute_hilbert_cell_bits();
+    hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
+    coords_for_hilbert_ = new int[dim_num_];
+  } else {
+    hilbert_curve_for_cells_ = NULL;
+    coords_for_hilbert_ = NULL;
+  }
+
   hilbert_curve_for_tiles_ = NULL;
-  coords_for_hilbert_ = new int[dim_num_];
 }
 
 ArraySchema::ArraySchema(
@@ -196,12 +203,25 @@ ArraySchema::ArraySchema(
     compression_ = compression;
   }
 
-  compute_hilbert_cell_bits();
-  compute_hilbert_tile_bits();
-  hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
-  hilbert_curve_for_tiles_ = new HilbertCurve(hilbert_tile_bits_, dim_num_);
-  coords_for_hilbert_ = new int[dim_num_];
-  compute_tile_id_offsets();
+  // Hilbert curves
+  if(cell_order_ == CO_HILBERT) {
+    compute_hilbert_cell_bits();
+    hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
+    coords_for_hilbert_ = new int[dim_num_];
+  } else {
+    hilbert_curve_for_cells_ = NULL;
+    coords_for_hilbert_ = NULL;
+  }
+
+  if(tile_order_ == TO_HILBERT) {
+    compute_hilbert_tile_bits();
+    hilbert_curve_for_tiles_ = new HilbertCurve(hilbert_tile_bits_, dim_num_);
+    compute_tile_id_offsets();
+    if(coords_for_hilbert_ == NULL)
+      coords_for_hilbert_ = new int[dim_num_];
+  } else {
+    hilbert_curve_for_tiles_ = NULL;
+  }
 }
 
 ArraySchema::~ArraySchema() {
@@ -823,14 +843,27 @@ void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
     free(coords_);
   coords_ = malloc(cell_sizes_[attribute_num_]);
 
-  compute_hilbert_cell_bits();
-  hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
-  coords_for_hilbert_ = new int[dim_num_];
+  // Hilbert curves
+  if(cell_order_ == CO_HILBERT) {
+    compute_hilbert_cell_bits();
+    hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
+    coords_for_hilbert_ = new int[dim_num_];
+  } else {
+    hilbert_curve_for_cells_ = NULL;
+    coords_for_hilbert_ = NULL;
+  }
+
   if(tile_extents_.size() != 0) { // Only for regular tiles
-    compute_hilbert_tile_bits();
-    hilbert_curve_for_tiles_ = 
-        new HilbertCurve(hilbert_tile_bits_, dim_num_);
-    compute_tile_id_offsets();
+    if(tile_order_ == TO_HILBERT) {
+      compute_hilbert_tile_bits();
+      hilbert_curve_for_tiles_ = 
+          new HilbertCurve(hilbert_tile_bits_, dim_num_);
+      compute_tile_id_offsets();
+      if(coords_for_hilbert_ == NULL)
+        coords_for_hilbert_ = new int[dim_num_];
+    } else {
+      hilbert_curve_for_tiles_ = NULL;
+    }
   }
 }
 
@@ -1370,12 +1403,24 @@ int ArraySchema::set_dim_domains(
   dim_domains_ = dim_domains;
 
   // Calculate necessary information for computing hilbert ids 
-  compute_hilbert_cell_bits();
-  hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
-  compute_hilbert_tile_bits();
-  compute_tile_id_offsets();
-  hilbert_curve_for_tiles_ = new HilbertCurve(hilbert_tile_bits_, dim_num_);
-  coords_for_hilbert_ = new int[dim_num_];
+  if(cell_order_ == CO_HILBERT) {
+    compute_hilbert_cell_bits();
+    hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
+    coords_for_hilbert_ = new int[dim_num_];
+  } else {
+    hilbert_curve_for_cells_ = NULL;
+    coords_for_hilbert_ = NULL;
+  }
+
+  if(has_regular_tiles() && tile_order_ == TO_HILBERT) {
+    compute_hilbert_tile_bits();
+    compute_tile_id_offsets();
+    hilbert_curve_for_tiles_ = new HilbertCurve(hilbert_tile_bits_, dim_num_);
+    if(coords_for_hilbert_ == NULL)
+      coords_for_hilbert_ = new int[dim_num_];
+  } else {
+    hilbert_curve_for_tiles_ = NULL;
+  }
 
   return 0;
 }
@@ -1427,10 +1472,18 @@ int ArraySchema::set_tile_extents(
   // Case of irregular tiles 
   if(tile_extents.size() == 0) { 
     tile_extents_ = tile_extents;
-    compute_hilbert_cell_bits();
-    hilbert_curve_for_cells_ = 
-        new HilbertCurve(hilbert_cell_bits_, dim_num_);
-    coords_for_hilbert_ = new int[dim_num_];
+    if(cell_order_ == CO_HILBERT) {
+      compute_hilbert_cell_bits();
+      hilbert_curve_for_cells_ = 
+          new HilbertCurve(hilbert_cell_bits_, dim_num_);
+      coords_for_hilbert_ = new int[dim_num_];
+    } else {
+      hilbert_curve_for_cells_ = NULL;
+      coords_for_hilbert_ = NULL;
+    }
+
+    hilbert_curve_for_tiles_ = NULL;   
+
     return 0;
   }
 
@@ -1457,10 +1510,15 @@ int ArraySchema::set_tile_extents(
   tile_extents_ = tile_extents; 
 
   // Calculate necessary info for computing hilbert ids 
-  compute_hilbert_tile_bits();
-  compute_tile_id_offsets();
-  hilbert_curve_for_tiles_ = new HilbertCurve(hilbert_tile_bits_, dim_num_);
-  coords_for_hilbert_ = new int[dim_num_];
+  if(tile_order_ == TO_HILBERT) {
+    compute_hilbert_tile_bits();
+    compute_tile_id_offsets();
+    hilbert_curve_for_tiles_ = new HilbertCurve(hilbert_tile_bits_, dim_num_);
+    if(coords_for_hilbert_ == NULL) 
+      coords_for_hilbert_ = new int[dim_num_];
+  } else {
+    hilbert_curve_for_tiles_ = NULL;
+  }
 
   return 0;
 }

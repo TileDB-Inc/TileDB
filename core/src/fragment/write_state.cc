@@ -193,6 +193,7 @@ void WriteState::write_cell(const void* input_cell) {
     } else { // array_schema->cell_order() == ArraySchema::CO_HILBERT
       // Check if run must be flushed
       size_t size_cost = sizeof(CellWithId) + cell_size;
+
       if(run_size_ + size_cost > write_state_max_size_) {
         sort_run_with_id();
         flush_sorted_run_with_id();
@@ -203,6 +204,7 @@ void WriteState::write_cell(const void* input_cell) {
       new_cell.id_ =
           array_schema_->cell_id_hilbert<T>
               (static_cast<const T*>(new_cell.cell_));
+
       cells_with_id_.push_back(new_cell);
       run_size_ += size_cost;
     }
