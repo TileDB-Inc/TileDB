@@ -87,29 +87,29 @@ Assuming that the array has dimensions \fIdim1\fR,\fIdim2\fR and attributes
 .TP
 \fBtiledb_export_csv\fR \\ 
     \fB-w \fRmy_workspace/ \\
-    \fB-A \fRA \\
-    \fB-f \fRA.csv
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_array.csv
 
-Exports into \fIA.csv\fR all the cells of array \fIA\fR in the order they are 
+Exports into \fImy_array.csv\fR all the cells of array \fImy_array\fR in the order they are 
 stored, including all the coordinates and attributes.
 
 .TP
 \fBtiledb_export_csv\fR \\ 
     \fB-w \fRmy_workspace/ \\
-    \fB-A \fRA \\
-    \fB-f \fRA.csv \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_array.csv \\
     \fB-d \fRdim1 \\
     \fB-a \fRattr1,attr2
 
-Exports int \fIA.csv\fR all the cells of \fIA\fR in the order they are stored,
+Exports int \fImy_array.csv\fR all the cells of \fImy_array\fR in the order they are stored,
 including only the coordinates on the \fIdim1\fR dimension and the values
 on the \fIattr1\fR,\fIattr2\fR attributes.
 
 .TP
 \fBtiledb_export_csv\fR \\ 
     \fB-w \fRmy_workspace/ \\
-    \fB-A \fRA \\
-    \fB-f \fRA.csv \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_array.csv \\
     \fB-d \fRdim1 \\
     \fB-a \fRattr1,attr2 \\
     \fB-m \fRreverse
@@ -119,8 +119,8 @@ Same as above, but the cells are exported in the reverse order.
 .TP
 \fBtiledb_export_csv\fR \\ 
     \fB-w \fRmy_workspace/ \\
-    \fB-A \fRA \\
-    \fB-f \fRA.csv \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_array.csv \\
     \fB-d \fR__hide \\
     \fB-a \fRattr1,attr2 
 
@@ -129,8 +129,8 @@ Same as above, but the cells are exported in the reverse order.
 .TP
 \fBtiledb_export_csv\fR \\ 
     \fB-w \fRmy_workspace/ \\
-    \fB-A \fRA \\
-    \fB-f \fRA.csv \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_array.csv \\
     \fB-d \fRdim1 \\
     \fB-a \fR__hide
 
@@ -139,8 +139,8 @@ Same as the second example, but no attribute value is exported.
 .TP
 \fBtiledb_export_csv\fR \\ 
     \fB-w \fRmy_workspace/ \\
-    \fB-A \fRA \\
-    \fB-f \fRA.csv \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_array.csv \\
     \fB-d \fRdim1 \\
     \fB-a \fRattr1,attr2,attr1
 
