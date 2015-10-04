@@ -66,35 +66,35 @@ Assuming that the array has dimensions \fIdim1\fR,\fIdim2\fR with domains
 .TP
 \fBtiledb_subarray\fR \\ 
     \fB-w \fRmy_workspace/ \\
-    \fB-A \fRA \\
-    \fB-R \fRA_sub \\
+    \fB-A \fRmy_array \\
+    \fB-R \fRmy_array_sub \\
     \fB-r \fR10,20,100,150 
 
-Creates a new array \fIA_sub\fR with exactly the same schema as \fIA\fR, but 
+Creates a new array \fImy_array_sub\fR with exactly the same schema as \fImy_array\fR, but 
 only containing the cells within rectangle \fB[10,20]\fR (\fIdim1\fR) , 
 \fB[100,150]\R (\fIdim2\fR).
 
 .TP
 \fBtiledb_subarray\fR \\ 
     \fB-w \fRmy_workspace/ \\
-    \fB-A \fRA \\
-    \fB-R \fRA_sub \\
+    \fB-A \fRmy_array \\
+    \fB-R \fRmy_array_sub \\
     \fB-r \fR10,20,100,150 \\
     \fB-a \fRattr1,attr2 
 
-Same as the first example, but now \fRA_sub\fR contains only two attributes
+Same as the first example, but now \fRmy_array_sub\fR contains only two attributes
 (\fIattr1\fR,\fIattr2\fR).
 
 .TP
 \fBtiledb_subarray\fR \\ 
     \fB-w \fRmy_workspace/ \\
-    \fB-A \fRA \\
-    \fB-R \fRA_sub \\
+    \fB-A \fRmy_array \\
+    \fB-R \fRmy_array_sub \\
     \fB-r \fR10,20,100,150 \\
     \fB-a \fRattr2,attr1
 
 Same as the second example, but \fIattr1\fR and \fIattr2\fR appear
-in a different order in \fIA_sub\fR.
+in a different order in \fImy_array_sub\fR.
 
 .SH EXIT STATUS
 .TP 
