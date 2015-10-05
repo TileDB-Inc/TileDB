@@ -4,14 +4,14 @@
 
 int main() {
   TileDB_CTX* ctx;
-  tiledb_ctx_init("example/", ctx);
+  tiledb_ctx_init(ctx);
 
-  int ad = tiledb_array_open(ctx, "IREG", "r"); 
+  int ad = tiledb_array_open(ctx, "workspace", "group", "IREG", "r"); 
 
   TileDB_ConstReverseCellIterator* it;
 
   int64_t range[4] = { 0,50, 0,50 };
-  tiledb_const_reverse_cell_iterator_init_in_range(ctx, ad, NULL, 0, range, it);
+  tiledb_const_reverse_cell_iterator_in_range_init(ctx, ad, NULL, 0, range, it);
 
   const void* cell;
   int64_t c;

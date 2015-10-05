@@ -6,7 +6,7 @@
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@
 #include "csv_file.h"
 #include "data_generator.h"
 #include "progress_bar.h"
+#include "special_values.h"
 #include "utils.h"
 #include <assert.h>
 #include <iostream>
@@ -58,20 +59,20 @@ DataGenerator::~DataGenerator() {
 int DataGenerator::generate_bin(
     unsigned seed, 
     const std::string& filename, 
-    int64_t cell_num) const {
-// TODO: error messages
+    int64_t cell_num,
+    CompressionType compression) const {
+
   assert(cell_num >= 0);
 
   // For easy reference
   bool var_size = (array_schema_->cell_size() == VAR_SIZE);
   size_t coords_size = array_schema_->coords_size();
-  int err;
 
   // Intialize a progress bar
   ProgressBar bar(cell_num);
 
   // Initialization of output BIN file
-  BINFile bin_file(filename, "w");
+  BINFile bin_file(filename, "w", compression);
 
   // Initialization of generators
   std::default_random_engine generator(seed);
@@ -87,8 +88,11 @@ int DataGenerator::generate_bin(
     offset += generate_uniform_attributes(generator, buffer+offset);
     if(var_size)
       memcpy(buffer+coords_size, &offset, sizeof(size_t));
-    err = bin_file.write(buffer, offset);
-    assert(err != -1);
+    if(bin_file.write(buffer, offset) == -1) {
+      bin_file.close();
+      delete [] buffer;
+      return -1;
+    }
   }
 
   // Clean up
@@ -101,13 +105,15 @@ int DataGenerator::generate_bin(
 int DataGenerator::generate_csv(
     unsigned seed, 
     const std::string& filename, 
-    int64_t cell_num) const {
-// TODO: error messages
+    int64_t cell_num,
+    CompressionType compression,
+    char delimiter) const {
+
   assert(cell_num >= 0);
 
   // Initialization of output CSV file
-  CSVFile csv_file(filename, "w");
-  CSVLine csv_line;
+  CSVFile csv_file(filename, "w", compression, delimiter);
+  CSVLine csv_line(delimiter);
 
   // Intialize a progress bar
   ProgressBar bar(cell_num);
@@ -119,7 +125,10 @@ int DataGenerator::generate_csv(
     bar.load(1);
     generate_uniform_coordinates(generator, csv_line);
     generate_uniform_attributes(generator, csv_line);
-    csv_file << csv_line;
+    if(csv_file << csv_line) {
+      csv_file.close();
+      return -1;
+    }
     csv_line.clear();
   }
 

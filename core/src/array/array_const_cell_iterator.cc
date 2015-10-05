@@ -32,8 +32,21 @@
  */
 
 #include "array_const_cell_iterator.h"
+#include "special_values.h"
 #include "utils.h"
 #include <assert.h>
+
+// Macro for printing error and warning messages in stderr in VERBOSE mode
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << "[TileDB::ArrayConstCellIterator] Error: " << x \
+                                   << ".\n" 
+#  define PRINT_WARNING(x) std::cerr << "[TileDB::ArrayConstCellIterator] Warning: " \
+                                     << x \
+                                     << ".\n" 
+#else
+#  define PRINT_ERROR(x) do { } while(0) 
+#  define PRINT_WARNING(x) do { } while(0) 
+#endif
 
 /******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS **************
@@ -52,11 +65,16 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator() {
   is_del_ = false;
   var_size_ = false;
   cell_size_ = 0;
+  created_successfully_ = true;
+  finalized_ = false;
 }
 
 template<class T>
 ArrayConstCellIterator<T>::ArrayConstCellIterator(
     Array* array) : array_(array) {
+
+  // TODO: Error messages
+
   // Initialize private attributes
   const ArraySchema* array_schema = array_->array_schema();
   attribute_num_ = array_schema->attribute_num();
@@ -69,6 +87,7 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   cell_its_ = NULL;
   cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   tile_its_ = NULL;
+  finalized_ = false;
 
   // Prepare the ids of the fragments the iterator will iterate on
   for(int i=0; i<fragment_num_; ++i)
@@ -79,12 +98,13 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
     attribute_ids_.push_back(i);
 
   // Case where the array is empty
-  if(array_->empty()) {
+  if(array_->is_empty()) {
     cell_size_ = 0;
     var_size_ = false;
     cell_ = NULL;
     end_ = true;
     is_del_ = false;
+    created_successfully_ = true;
     return;
   }
 
@@ -101,6 +121,8 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell(fragment_id); 
+
+  created_successfully_ = true;
 }
 
 template<class T>
@@ -122,6 +144,7 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   cell_its_ = NULL;
   cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   tile_its_ = NULL;
+  finalized_ = false;
 
   // Prepare the ids of the fragments the iterator will iterate on
   fragment_ids_ = fragment_ids;
@@ -131,12 +154,13 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
     attribute_ids_.push_back(i);
 
   // Case where the array is empty
-  if(array_->empty()) {
+  if(array_->is_empty()) {
     cell_size_ = 0;
     var_size_ = false;
     cell_ = NULL;
     end_ = true;
     is_del_ = false;
+    created_successfully_ = true;
     return;
   }
 
@@ -153,6 +177,8 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell(fragment_id); 
+
+  created_successfully_ = true;
 }
 
 template<class T>
@@ -167,6 +193,9 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   attribute_num_ = array_schema->attribute_num();
   dim_num_ = array_schema->dim_num();
   fragment_num_ = array_->fragment_num();
+
+  // TODO: Handle empty arrays.
+
   end_ = false;
   range_ = NULL;
   full_overlap_ = NULL;
@@ -174,6 +203,7 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   cell_its_ = NULL;
   tile_its_ = NULL;
+  finalized_ = false;
 
   // Prepare the ids of the fragments the iterator will iterate on
   for(int i=0; i<fragment_num_; ++i)
@@ -191,12 +221,13 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   attribute_ids_ = rdedup(attribute_ids_);
 
   // Case where the array is empty
-  if(array_->empty()) {
+  if(array_->is_empty()) {
     cell_size_ = 0;
     var_size_ = false;
     cell_ = NULL;
     end_ = true;
     is_del_ = false;
+    created_successfully_ = true;
     return;
   }
 
@@ -213,6 +244,8 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell(fragment_id); 
+
+  created_successfully_ = true;
 }
 
 template<class T>
@@ -231,6 +264,7 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   cell_its_ = NULL;
   tile_its_ = NULL;
+  finalized_ = false;
 
   // Prepare the ids of the fragments the iterator will iterate on
   // By default it is all the fragments, but this may change in the future
@@ -242,12 +276,13 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
     attribute_ids_.push_back(i);
 
   // Case where the array is empty
-  if(array_->empty()) {
+  if(array_->is_empty()) {
     cell_size_ = 0;
     var_size_ = false;
     cell_ = NULL;
     end_ = true;
     is_del_ = false;
+    created_successfully_ = true;
     return;
   }
 
@@ -266,6 +301,8 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell_in_range(fragment_id); 
+
+  created_successfully_ = true;
 }
 
 template<class T>
@@ -289,6 +326,7 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   cell_buffer_size_ = CELL_BUFFER_INITIAL_SIZE;
   cell_its_ = NULL;
   tile_its_ = NULL;
+  finalized_ = false;
 
   // Prepare the ids of the fragments the iterator will iterate on
   // By default it is all the fragments, but this may change in the future
@@ -307,12 +345,13 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   attribute_ids_ = rdedup(attribute_ids_);
 
   // Case where the array is empty
-  if(array_->empty()) {
+  if(array_->is_empty()) {
     cell_size_ = 0;
     var_size_ = false;
     cell_ = NULL;
     end_ = true;
     is_del_ = false;
+    created_successfully_ = true;
     return;
   }
 
@@ -331,10 +370,17 @@ ArrayConstCellIterator<T>::ArrayConstCellIterator(
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell_in_range(fragment_id); 
+
+  created_successfully_ = true;
 }
 
 template<class T>
-ArrayConstCellIterator<T>::~ArrayConstCellIterator() {
+bool ArrayConstCellIterator<T>::created_successfully() const {
+  return created_successfully_;
+}
+
+template<class T>
+int ArrayConstCellIterator<T>::finalize() {
   if(cell_ != NULL) 
     free(cell_);
 
@@ -356,6 +402,19 @@ ArrayConstCellIterator<T>::~ArrayConstCellIterator() {
 
   if(full_overlap_ != NULL)
     delete [] full_overlap_;
+
+  finalized_ = true;
+
+  return 0;
+}
+
+template<class T>
+ArrayConstCellIterator<T>::~ArrayConstCellIterator() {
+  if(!finalized_) {
+    PRINT_WARNING("ArrayConstCellIterator not finalized. "
+                  "Finalizing now");
+    finalize();
+  }
 }
 
 /******************************************************
@@ -412,8 +471,10 @@ bool ArrayConstCellIterator<T>::end() const {
 ******************************************************/
 
 template<class T>
-void ArrayConstCellIterator<T>::operator++() {
+int ArrayConstCellIterator<T>::operator++() {
   int fragment_id = get_next_cell();
+  if(fragment_id == -1)
+    return -1;
 
   // Advance cell
   if(fragment_id != -1) {
@@ -422,11 +483,14 @@ void ArrayConstCellIterator<T>::operator++() {
     else 
       advance_cell(fragment_id);
   } 
+
+  return 0;
 }
 
 template<class T>
 const void* ArrayConstCellIterator<T>::operator*() {
   while(is_del_ && !return_del_ && cell_ != NULL)
+    // TODO: error messages here
     ++(*this);
 
   return cell_;

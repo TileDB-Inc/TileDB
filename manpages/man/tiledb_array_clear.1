@@ -1,0 +1,72 @@
+.TH tiledb_array_clear 1 "11 October 2015" "Version 0.1" "TileDB programs"
+ 
+.SH NAME
+tiledb_array_clear - clears the data of an array, keeping it defined.
+
+.SH SYNOPSIS
+.B tiledb_array_clear 
+.BI "-A " "array_name "
+[
+.BI "-w " "workspace "
+] [
+.BI "-g " "group "
+]
+
+.SH DESCRIPTION
+.B tiledb_array_clear
+clears the data of an array. However, the array remains defined after the
+program execution. This means that one can invoke \fBtiledb_array_load\fR for 
+this array without redefining the array schema. On error, it returns \fB-1\fR. 
+Moreover, if it is compiled in \fBVERBOSE\fR mode, it prints comprehensive error
+messages on \fIstderr\fR. On success, it returns \fB0\fR. 
+
+The following conventions apply to the \fBSYNOPSIS\fR section:
+
+.TS
+tab (@);
+c lx .
+\fBbold text\fR @ type exactly as shown
+\fIitalic text\fR @ replace with appropriate argument
+[\fB\-a \fIarg\fR]@ any or all options within [ ] are optional
+.TE
+ 
+.SH OPTIONS
+.TP
+.BI "-A" " array_name" "\fR, " \fB --array-name=\fIarray_name\fR  
+The name of the array whose data will be deleted. The array must already be 
+defined.
+
+.TP
+.BI "-w" " workspace" "\fR, " \fB --workspace=\fIworkspace\fR  
+The path to the workspace folder where the array is stored. If it is not 
+provided, the current working directory is set as the workspace by default.
+
+.TP
+.BI "-g" " group" "\fR, " \fB --group=\fIgroup\fR  
+This is a directory inside the workspace where the array is stored.
+Note that any group path provided is converted into an absolute path 
+\fBrelative to the workspace directory\fR, i.e., regarding all home ("\\~/"), 
+current ("./") and root ("/") as the workspace directory. If the group is not 
+provided, the workspace is set as the default group.
+
+.SH EXAMPLES
+.TP
+\fBtiledb_array_clear\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-g \fRmy_group/ \\
+    \fB-A \fRmy_array 
+
+Clears array \fImy_array\fR, stored in directory 
+\fImy_workspace/my_group/my_array\fR.
+
+
+.SH EXIT STATUS
+.TP 
+\fB0\fR for success and \fB-1\fR for error.
+
+
+.SH SEE ALSO
+.BR tiledb_array_delete (1)
+
+.SH AUTHOR
+Stavros Papadopoulos <http://people.csail.mit.edu/stavrosp>, Copyright (c) 2015

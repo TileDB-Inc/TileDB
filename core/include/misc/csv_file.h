@@ -39,7 +39,7 @@
 #include "array_schema.h"
 #include "cell.h"
 #include "csv_line.h"
-#include "special_values.h"
+#include "global.h"
 #include "utils.h"
 #include <string>
 #include <vector>
@@ -68,12 +68,19 @@
 class CSVFile {
  public:
   // CONSTRUCTORS & DESTRUCTORS
+  /** Constructor. TODO: Put default delimiter and compression. */
+  CSVFile(CompressionType compression, char delimiter);
   /** Constructor. */
-  CSVFile();
+  CSVFile(
+      const ArraySchema* array_schema,
+      CompressionType compression,
+      char delimiter);
   /** Constructor. */
-  CSVFile(const ArraySchema* array_schema);
-  /** Constructor. */
-  CSVFile(const std::string& filename, const char* mode);
+  CSVFile(
+      const std::string& filename, 
+      const char* mode,
+      CompressionType compression,
+      char delimiter);
   /** Destructor. */
   ~CSVFile();
 
@@ -85,15 +92,17 @@ class CSVFile {
   /** Closes the CSV file. */
   void close();
   /** Opens the CSV file in the input mode (see CSVFile::mode_). */
-  bool open(const std::string& filename, const char* mode, 
-            size_t segment_size = CSV_SEGMENT_SIZE);
+  int open(
+      const std::string& filename, 
+      const char* mode, 
+      size_t segment_size = CSV_SEGMENT_SIZE);
  
   // OPERATORS
   /** 
    * Appends a CSV line to the end of the CSV file. The CSV file is treated
-   * as an output stream.
+   * as an output stream. -1 for error.
    */
-  void operator<<(const CSVLine& line);
+  int operator<<(const CSVLine& line);
   /** 
    * Retrieves the next CSV line from the CSV file. The CSV file is treated
    * as an input stream. If a line starts with '#', it is ignored as a comment
@@ -130,6 +139,8 @@ class CSVFile {
   void* cell_;
   /** Compression mode. */
   CompressionType compression_;
+  /** The CSV line delimiter */
+  char delimiter_;
   /** True if the end of file has been reached. */
   bool eof_;
   /** File descriptor for an uncompressed file. */

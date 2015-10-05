@@ -6,7 +6,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,8 +35,8 @@
 #define ARRAY_SCHEMA_H
 
 #include "csv_line.h"
+#include "global.h"
 #include "hilbert_curve.h"
-#include "special_values.h"
 #include "utils.h"
 #include <vector>
 #include <set>
@@ -202,7 +202,7 @@ class ArraySchema {
   
   // MUTATORS
   /** It assigns values to the members of the object from the input buffer. */
-  void deserialize(const char* buffer, size_t buffer_size);
+  int deserialize(const char* buffer, size_t buffer_size);
   /** 
    * Creates an array schema (setting its members) from the serialized info
    * in the input string. Returns 0 on success, and -1 on error.
@@ -301,10 +301,28 @@ class ArraySchema {
    */
   std::pair<AttributeIds, AttributeIds> get_attribute_ids(
       const std::set<std::string>& expr_attribute_names) const;
-  /** Returns the attribute ids of the input attribute names. */
+  /**
+   * Retrieves the attribute ids that correspond to the input attribute
+   * names. If *attribute_names*  is empty, then *all* attribute ids
+   * are returned. If *attribute_names* contains only "__hide", then
+   * the returned *attribute_ids* is empty.
+   */
   int get_attribute_ids(
       const std::vector<std::string>& attribute_names,
       std::vector<int>& attribute_ids) const;
+  /**
+   * Retrieves the dimension ids that correspond to the input dimension
+   * names. If *dim_names*  is empty, then *all* dimension ids are returned.
+   * If *dim_names* contains only "__hide", then the returned *dim_ids* is 
+   * empty.
+   */
+  int get_dim_ids(
+      const std::vector<std::string>& dim_names,
+      std::vector<int>& dim_ids) const;
+  /**
+   * Retrieves all the dimension ids.
+   */
+  std::vector<int> get_dim_ids() const;
   /** 
    * Copies the first coordinates inside the input range, or the domain (if
    * range=NULL) following the global order for a dense format.

@@ -31,8 +31,8 @@
  * This file defines class ReadState. 
  */
 
-#ifndef READ_STATE_H
-#define READ_STATE_H
+#ifndef __READ_STATE_H__
+#define __READ_STATE_H__
 
 #include "array_schema.h"
 #include "book_keeping.h"
@@ -63,8 +63,7 @@ class ReadState {
       const ArraySchema* array_schema, 
       const BookKeeping* book_keeping,
       const std::string* fragment_name,
-      const std::string* workspace,
-      size_t segment_size);
+      const std::string* dirname);
   /** Destructor. */
   ~ReadState();
 
@@ -96,6 +95,8 @@ class ReadState {
   PosRanges pos_ranges_;
   /** The array book-keeping structures. */
   const BookKeeping* book_keeping_;
+  /** The fragment directory name. */
+  const std::string* dirname_;
   /** The fragment name. */
   const std::string* fragment_name_;
   /** The segment size */
@@ -104,8 +105,6 @@ class ReadState {
   Segments segments_;
   /** Stores the tiles of every attribute currently in main memory. */
   Tiles tiles_;
-  /** The workspace. */
-  const std::string* workspace_;
 
   // PRIVATE METHODS
   /** Deletes the tiles of an attribute from main memory. */

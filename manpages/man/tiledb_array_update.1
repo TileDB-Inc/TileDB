@@ -1,0 +1,150 @@
+.TH tiledb_array_update 1 "14 October 2015" "Version 0.1" "TileDB programs"
+ 
+.SH NAME
+tiledb_array_update - loads a collection of CSV or binary files into an array,
+which represent updates to the existing data of the array.
+
+.SH SYNOPSIS
+.B tiledb_array_update 
+.BI "-A " "array_name " "-p " "path" 
+.br
+[
+.BI "-w " "workspace "
+] [
+.BI "-g " "group "
+] [
+.BI "-F " "format "
+] [
+.BI "-l " "delimiter "
+] [
+.BI "-c " "consolidate "
+]
+
+.SH DESCRIPTION
+.B tiledb_array_update
+This is very similar to \fBtiledb_array_load\fR(1). The difference is that this 
+program creates and \fIadds\fR a new fragment in the array (i.e., it does not 
+delete the previous data), which may be consolidated with some or all of the 
+existing fragments. The update mechanism is described in detail in
+\fBtiledb_array_define\fR(1). Also see \fBtiledb_array_consolidate\fR(1) for
+some more information on consolidation.
+
+The following conventions apply to the \fBSYNOPSIS\fR section:
+
+.TS
+tab (@);
+c lx .
+\fBbold text\fR @ type exactly as shown
+\fIitalic text\fR @ replace with appropriate argument
+[\fB\-a \fIarg\fR]@ any or all options within [ ] are optional
+.TE
+
+.SH OPTIONS
+.TP
+.BI "-w" " workspace" "\fR, " \fB --workspace=\fIworkspace\fR  
+The path to the workspace folder where the array is defined. If it is not 
+provided, the current working directory is set as the workspace by default.
+
+.TP
+.BI "-g" " group" "\fR, " \fB --group=\fIgroup\fR  
+This is a directory inside the workspace where the array is defined.
+Note that any group path provided is converted into an absolute path 
+\fBrelative to the workspace directory\fR, i.e., regarding all home ("\\~/"), 
+current ("./") and root ("/") as the workspace directory. If the group is not 
+provided, the workspace is set as the default group.
+
+.TP
+.BI "-A" " array_name" "\fR, " \fB --array-name=\fIarray_name\fR  
+The name of the array where the data will be loaded into. The array
+must be already defined. 
+
+.TP
+.BI "-p" " path" "\fR, " \fB --path=\fIpath\fR  
+The path to a CSV/binary file or to a directory of CSV/binary files. If it is
+a file, then this single file will be loaded. If it is a directory,
+\fBall\fR the files in the directory will be loaded.
+
+.TP
+.BI "-F" " format" "\fR, " \fB --format=\fIformat\fR  
+It can be one of the following: \fBcsv\fR (CSV format), \fBcsv.gz\fR 
+(GZIP-compressed CSV format), \fBsorted.csv\fR (CSV sorted format), 
+\fBsorted.csv.gz\fR (GZIP-compressed CSV sorted format), \fBbin\fR (binary 
+format), \fBbin.gz\fR (GZIP-compressed binary format), \fBsorted.bin\fR (binary
+sorted format), \fBsorted.bin.gz\fR (GZIP-compressed binary sorted format).
+If it is not provided, then the program resolves their format by checking if
+the file name contains any of the above suffices. For instance, "my_file.bin"
+implies that the file is binary, whereas "my_file.csv.gz" implies that the file 
+is CSV and compressed with GZIP. However, if a directory is given in option
+\fB\-p\fR instead of a file, the user must explicitly define the format.
+\fBNOTE:\fR All the files in a directory path must be in the \fIsame\fR format.
+
+.TP
+.BI "-l" " delimiter" "\fR, " \fB --delimiter=\fIdelimiter\fR  
+This is meaningful only for CSV format. It stands for the delimiter which 
+separates the values in a CSV line in the CSV file. If not given, the default is
+\fB','\fR. For using a tab as a delimiter, the user must specify it simply 
+as \fBtab\fR.
+
+.TP
+.BI "-c" " consolidate" "\fR, " \fB --consolidate=\fIconsolidate\fR  
+This can be either \fBtrue\fR of \fBfalse\fR. If \fItrue\fR, then after the
+creation of the new fragment, consolidation will take place as explained
+in \fBtiledb_array_define\fR(1), whereas if \fIfalse\fR the fragments will
+remain intact. If not provided, the default is \fIfalse\fR. The reason
+why one may choose to consolidate on demand is \fIparallelism\fR. For instance,
+if one wishes to parallelize loading a huge CSV file, he/she may split the
+file into, say, 10 CSV files, and spawn 10 different
+\fBtiledb_array_update\fR(1) processes, which all can work in parallel. He/She
+can then consolidate on demand by invoking a separate command
+\fBtiledb_array_consolidate\fR(1).
+
+.SH EXAMPLES
+.TP
+\fBtiledb_array_update\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-w \fRmy_group/ \\
+    \fB-A \fRmy_array \\
+    \fB-p \fRmy_array.csv
+
+This loads into array \fImy_array\fR, defined in folder 
+\fImy_workspace/my_group/my_array\fR, the data stored in the CSV file 
+\fImy_array.csv\fR. It is assumed that the cells are unsorted.
+
+.TP
+\fBtiledb_array_update\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-w \fRmy_group/ \\
+    \fB-A \fRmy_array \\
+    \fB-p \fRmy_csv_files/ \\
+    \fB-l \fRtab \\
+    \fB-F \fRcsv 
+
+This is the same as the first example, but now all the files included in
+directory \fImy_csv_files/\fR will be loaded into the array. Also \fBtab\fR
+is used as a delimiter in the CSV files.
+
+.TP
+\fBtiledb_array_update\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-A \fRmy_array \\
+    \fB-p \fRmy_file \\
+    \fB-F \fRsorted.bin.gz \\
+    \fB-c \fRtrue
+
+This loads into array \fImy_array\fR, defined in folder 
+\fImy_workspace/my_array\fR, the data stored in the GZIP'ed 
+binary file \fImy_file\fR. The cells in this file are sorted.
+Moreover, after this loading takes place, the existing fragments
+will be consolidated using the technique explained in detail in
+\fBtiledb_array_define\fR(1).
+
+.SH EXIT STATUS
+.TP 
+\fB0\fR for success and \fB-1\fR for error.
+
+.SH SEE ALSO
+.BR "tiledb_array_load" "(1), " "tiledb_array_define" "(1), " \
+"tiledb_array_export" "(1) " "tiledb_dataset_generate" "(1) "
+
+.SH AUTHOR
+Stavros Papadopoulos <http://people.csail.mit.edu/stavrosp>, Copyright (c) 2015

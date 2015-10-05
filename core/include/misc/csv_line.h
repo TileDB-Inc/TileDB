@@ -35,6 +35,7 @@
 #ifndef CSV_LINE_H
 #define CSV_LINE_H
 
+#include "special_values.h"
 #include <string>
 #include <vector>
 
@@ -51,14 +52,6 @@
 #define CSV_INITIAL_LINE_SIZE 1000
 /** The maximum digits of a number appended to a CSV line. */
 #define CSV_MAX_DIGITS 50
-/** 
- * The separator in the CSV line. 
- * 
- * **Note:** Currently, this class does not handle the case where the CSV line 
- * contains the separator as an actual character in a string value, even when 
- * inserted with escape character '\'.
- */
-#define CSV_SEPARATOR ','
 
 /** 
  * This class implements a CSV line, which is comprised of text segments
@@ -85,7 +78,7 @@ class CSVLine {
 
   // CONSTRUCTORS & DESTRUCTORS
   /** Simple constructor. The object is created in NONE mode. */
-  CSVLine();
+  CSVLine(char delimiter = CSV_DELIMITER);
   /** 
    * A simple constructor that takes as input a CSV line as a string. The 
    * CSVLine object is created in READ mode. 
@@ -95,7 +88,9 @@ class CSVLine {
    * substituted by '\0'. This is important for performance purposes, in order 
    * to avoid extra copying costs of the input by the constructor. 
    */
-  explicit CSVLine(char* line);
+  explicit CSVLine(
+      char* line,
+      char delimiter = CSV_DELIMITER);
   /** Destructor. De-allocates only the space allocated in WRITE mode. */
   ~CSVLine();
  
@@ -139,6 +134,8 @@ class CSVLine {
 
  private:
   // PRIVATE ATTRIBUTES
+  /** The CSV delimiter (default is ','). */
+  char delimiter_;
   /** The CSV line string. */
   void* line_;
   /** Allocated size of the line string in bytes (for WRITE mode only).*/

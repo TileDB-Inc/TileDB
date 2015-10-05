@@ -42,7 +42,8 @@
 ************ CONSTRUCTORS & DESTRUCTORS ***************
 ******************************************************/
 
-CSVLine::CSVLine() {
+CSVLine::CSVLine(char delimiter) 
+    : delimiter_(delimiter) {
   line_ = NULL;
   line_size_ = 0;
   line_allocated_size_ = 0;
@@ -52,7 +53,8 @@ CSVLine::CSVLine() {
   val_num_ = 0;
 }
 
-CSVLine::CSVLine(char* line) {
+CSVLine::CSVLine(char* line, char delimiter) 
+    : delimiter_(delimiter){
   line_ = line;
   line_allocated_size_ = 0;
   mode_ = READ;
@@ -366,8 +368,7 @@ void CSVLine::append(const char* value, size_t size) {
 
   // Substitute last '\0' with a separator
   if(line_size_ != 0) {
-    char c = CSV_SEPARATOR;
-    memcpy(line + line_size_ - 1, &c, sizeof(char));
+    memcpy(line + line_size_ - 1, &delimiter_, sizeof(char));
   }
 
   // Append the value
@@ -378,7 +379,7 @@ void CSVLine::append(const char* value, size_t size) {
   ++val_num_; // One is for sure
   for(int i=0; i<size; ++i) {
     // In case the string contains more separators
-    if(value[i] == CSV_SEPARATOR)
+    if(value[i] == delimiter_)
       ++val_num_;
   }
 }
@@ -414,7 +415,7 @@ void CSVLine::tokenize() {
 
   // Tokenize 
   while(line[offset] != '\0') {
-    if(line[offset] == CSV_SEPARATOR) {
+    if(line[offset] == delimiter_) {
       line[offset] = '\0';
       if(val_num_ == offsets_allocated_size_) {
         offsets_allocated_size_ *= 2;

@@ -6,7 +6,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,127 +31,702 @@
  * This file defines class QueryProcessor. 
  */
 
-#ifndef QUERY_PROCESSOR_H
-#define QUERY_PROCESSOR_H
+#ifndef __QUERY_PROCESSOR_H__
+#define __QUERY_PROCESSOR_H__
 
 #include "array_schema.h"
 #include "csv_file.h"
 #include "expression_tree.h"
 #include "storage_manager.h"
-#include "tiledb_error.h"
 
 /** 
  * This class implements the query processor module, which is responsible
- * for processing the various queries. 
+ * for processing the various TileDB queries. 
+ *
+ * For better understanding of this class, some useful information is 
+ * summarized below:
+ *
+ * - **Workspace** <br>
+ *   This is the main place where the arrays persist on the disk. It is
+ *   implemented as a directory in the underlying file system. 
+ * - **Group** <br>
+ *   Groups enable hierarchical organization of the arrays. They are 
+ *   implemented as sub-directories inside the workspace directory. Even
+ *   the workspace directory is regarded as a group (i.e., the root
+ *   group of all groups in the workspace). Note that a group path inserted
+ *   by the user is translated with respect to the workspace, i.e., all
+ *   home ("~/"), current ("./") and root ("/") refer to the workspace.
+ *   For instance, if the user gives "W1" as a workspace, and "~/G1" as
+ *   a group, then the directory in which the array directory will be
+ *   stored is "W1/G1".  
+ * - **Canonicalized absolute workspace/group paths** <br>
+ *   Most of the functions of this class take as arguments a workspace and
+ *   a group path. These paths may be given in relative format (e.g., "W1") and 
+ *   potentially including strings like "../". The canonicalized
+ *   absolute format of a path is an absolute path that does not contain 
+ *   "../" or mulitplicities of slashes. Moreover, the canonicalized absolute
+ *   format of the group is the *full* path of the group in the disk. For
+ *   instance, suppose the current working directory is "/stavros/TileDB",
+ *   and the user provided "W1" as the workspace, and "~/G1/G2/../" as the 
+ *   group. The canonicalized absolute path of the workspace is 
+ *   "/stavros/TileDB/W1" and that of the group is 
+ *   "/stavros/TileDB/W1/G2". Most functions take an extra argument called
+ *   *real_path* or *real_paths*, which indicates whether the input workspace
+ *   and group path(s) are already in canonicalized absolute (i.e., real) 
+ *   format, so that the function avoids redundant conversions. Finally, note 
+ *   that an empty ("") workspace refers to the current working directory, 
+ *   whereas an empty group refers to the default workspace group.
+ * - <b>%Array</b> <br>
+ *   A TileDB array. All the data of the array are stored in a directory 
+ *   named after the array, which is placed in a certain group inside
+ *   a workspace. See class Array for more information.
+ * - <b>%Array descriptor</b> <br> 
+ *   When an array is opened, an array descriptor is returned. This 
+ *   descriptor is used in all subsequent operations with this array.
+ * - <b>%Array schema</b> <br>
+ *   An array consists of *dimensions* and *attributes*. The dimensions have a
+ *   specific domain that orients the *coordinates* of the array cells. The
+ *   attributes and coordinates have potentially different data types. Each
+ *   array specifies a *global cell order*. This determines the order in which
+ *   the cells are stored on the disk. See ArraySchema for more information.
  */
 class QueryProcessor {
  public:
-  // CONSTRUCTORS AND DESTRUCTORS
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
   /** 
-   * Simple constructor. The storage manager is the module the query processor
-   * interefaces with.
+   * Constructor. 
+   *
+   * @param storage_manager The storage manager is the module the query 
+   * processor interefaces with.
    */
   QueryProcessor(StorageManager* storage_manager);
 
-  // ACCESSORS
-  /* Returns the current error code. */
-  int err() const;
-
-  // QUERY FUNCTIONS
-  /** 
-   * Exports an array to a CSV file. Each line in the CSV file represents
-   * a logical cell comprised of coordinates and attribute values. The 
-   * coordinates are written first, and then the attribute values,
-   * following the order as defined in the schema of the array.
-   * The input dimension and attribute names allow for selective exporting
-   * of coordinates and attribute values respectively. Argument reverse
-   * allows for optionally exporting the cells in reverse order (if it
-   * is true).
+  /**
+   * Checks if the constructor of the object was executed successfully.
+   * Always check this function after creating a QueryProcessor object.
+   *
+   * @return *True* for successfull creation and *false* otherwise. 
    */
-  int export_csv(
+  bool created_successfully() const;
+
+  /** 
+   * Finalizes a QueryProcessor object. Always execute this function before 
+   * deleting a QueryProcessor object (otherwise a warning will be printed in 
+   * the destructor, if compiled in VERBOSE mode). 
+   *
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int finalize();
+
+  /** Destructor. */
+  ~QueryProcessor();
+
+  /* ********************************* */
+  /*          QUERY FUNCTIONS        */
+  /* ********************************* */
+
+  /** 
+   * Exports the data of an array into a CSV or binary file. The documentation
+   * on the exported CSV or binary format can be found in 
+   * tiledb_array_load(). Also more information is included in 
+   * tilebd_array_export(). 
+   *
+   * @param workspace The workspace where the array is defined.
+   * @param group The group inside the workspace where the array is defined.
+   * @param array_name The name of the array whose data will be exported.
+   * @param filename The name of the exported file. 
+   * @param format It can be one of the following: 
+   * - **csv** (CSV format)
+   * - **csv.gz** (GZIP-compressed CSV format)
+   * - **dense.csv** (dense CSV format)
+   * - **dense.csv.gz** (GZIP-compressed dense CSV format)
+   * - **reverse.csv** (CSV format in reverse order)
+   * - **reverse.csv.gz** (GZIP-compressed CSV format in reverse order)
+   * - **reverse.dense.csv** (dense CSV format in reverse order)
+   * - **reverse.dense.csv.gz** (dense GZIP-compressed CSV format in reverse 
+   *   order)
+   * - **bin** (binary format)
+   * - **bin.gz** (GZIP-compressed binary format)
+   * - **dense.bin** (dense binary format)
+   * - **dense.bin.gz** (GZIP-compressed dense binary format)
+   * - **reverse.bin** (binary format in reverse order)
+   * - **reverse.bin.gz** (GZIP-compressed binary format in reverse order)
+   * - **reverse.dense.bin** (dense binary format in reverse order)
+   * - **reverse.dense.bin.gz** (dense GZIP-compressed binary format in reverse 
+   *   order).
+   * @param dim_names A vector holding the dimension names to be exported. If it
+   * is empty, then all the coordinates will be exported. If it contains special
+   * name "__hide", then no coordinates will be exported.
+   * @param attribute_names A vector holding the attribute names to be exported.
+   * If it is empty, then all the attribute values will be exported. If it 
+   * contains special name "__hide", then no attribute values will be
+   * exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param delimiter This is meaningful only for CSV format. It stands for the 
+   * delimiter which separates the values in a CSV line in the CSV file. If not 
+   * given, the default is CSV_DELIMITER. The delimiter is ignored in the case
+   * of loading binary data.    
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int array_export(
+      const std::string& workspace,
+      const std::string& group,
       const std::string& array_name,
       const std::string& filename,
+      const std::string& format,
       const std::vector<std::string>& dim_names, 
       const std::vector<std::string>& attribute_names,
-      bool reverse) const;
+      const std::vector<double>& range,
+      char delimiter = CSV_DELIMITER) const;
+
   /** 
-   * A subarray query creates a new array from the input array, 
-   * containing only the cells whose coordinates fall into the input range. 
-   * The new array will have the input result name. The fourth argument
-   * specifies which attributes from the input array will be written
-   * to the output array. If this list is empty, then all attributes
-   * of the input array are written to the output array. The last argument
-   * allows for optionally writing the cells to the output in reverse order (if
-   * it is true).
+   * Creates a new array with the same schema as the input array (or including a
+   * subset of the attributes in a potentially different order), 
+   * conataining only the cells that lie in the input range. The range must be a
+   * hyper-rectangle that is completely contained in the dimension space. It is
+   * also given as a sequence of [low,high] pairs across each dimension. 
+   *
+   * @param workspace The workspace where the array is defined.
+   * @param workspace_sub The path to the workspace where the subarray result
+   * will be stored. If *workspace_sub* is "", then the input array workspace
+   * is set as the result workspace by default.
+   * @param group The group inside the workspace where the array is defined.
+   * @param group_sub The path to the group where the subarray result is stored.
+   * If *group_sub* is "", then *workspace_sub* is set as the group by default.
+   * @param array_name The name of the array the subarray will be applied on.
+   * @param array_name_sub The name of the output array.
+   * @param range The range of the subarray. 
+   * @param attribute_names An array holding the attribute names to be included
+   * in the schema of the result array. If it is empty, then all the attributes
+   * of the input array will appear in the output array.
+   * @return **0** for success and <b>-1</b> for error.
    */
   int subarray(
+      const std::string& workspace, 
+      const std::string& workspace_sub, 
+      const std::string& group, 
+      const std::string& group_sub, 
       const std::string& array_name, 
+      const std::string& array_name_sub, 
       const std::vector<double>& range,
-      const std::string& result_array_name,
       const std::vector<std::string>& attribute_names) const;
 
  private:
-  // PRIVATE ATTRIBUTES
-  /** The StorageManager object the QueryProcessor will be interfacing with. */
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /** *True* if the constructor succeeded, or *false* otherwise. */
+  bool created_successfully_;
+  /** *True* if the object was finalized, or *false* otherwise. */
+  bool finalized_;
+  /** The StorageManager object the query processor will be interfacing with. */
   StorageManager* storage_manager_;
-  /** The current error code. It is 0 on success. */
-  int err_;
 
-  // PRIVATE METHODS
-  /** 
-   * Exports an array to a CSV file. Each line in the CSV file represents
-   * a logical cell comprised of coordinates and attribute values. The 
-   * coordinates are written first, and then the attribute values,
-   * following the order as defined in the schema of the array.
-   * The function is templated on the coordinates type. It takes as input an
-   * array descriptor instead of its name. The input dimension and attribute ids
-   * allow for selective exporting of coordinates and attribute values
-   * respectively. Note that the attribute ids must NOT contain the id of the
-   * coordinates.
-   */
-  template<class T>
-  void export_csv(
-      int ad, const ArraySchema* array_schema,
-      const std::string& filename,
-      const std::vector<int>& dim_ids,
-      const std::vector<int>& attribute_ids) const;
-  /** 
-   * Same as QueryProcessor::export_to_csv, but the cells are exporting to the
-   * CSV file in reverse order.
-   */
-  template<class T>
-  void export_csv_reverse(
-      int ad, const ArraySchema* array_schema,
-      const std::string& filename,
-      const std::vector<int>& dim_ids,
-      const std::vector<int>& attribute_ids) const;
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
 
   /** 
-   * Parses the attribute names and returns the corresponding attribute ids,
-   * which will be used to initialize a cell iterator.
+   * Exports the data of an array into a CSV file. The data are exported in the
+   * reverse order of the native cell order of the array. Also they are exported
+   * in dense form, i.e., even the empty cells will be exported (which will
+   * have 0 in the numerical attributes, and NULL_CHAR in the char attributes).
+   *
+   * @param ad The array descriptor.
+   * @param filename The name of the exported CSV file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @param delimiter It stands for the delimiter which separates the values in 
+   * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @return **0** for success and <b>-1</b> for error.
    */
-  int parse_attribute_names(
-      const std::vector<std::string>& attribute_names,
-      const ArraySchema* array_schema,
-      std::vector<int>& attribute_ids, std::string& err_msg) const;
-  /** Parses the dimension names and returns the corresponding dimension ids. */
-  int parse_dim_names(
-      const std::vector<std::string>& dim_names,
-      const ArraySchema* array_schema,
-      std::vector<int>& dim_ids, std::string& err_msg) const;
+  int array_export_csv_reverse_dense(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const std::vector<double>& range,
+      CompressionType compression,
+      char delimiter = CSV_DELIMITER) const;
+
   /** 
-   * A subarray query creates a new array from the input array, 
-   * containing only the cells whose coordinates fall into the input range. 
-   * The new array will have the input result name. The function is templated on
-   * the coordinates type. It takes as input array descriptors instead of names.
-   * The input attribute ids allow for selective writing of attribute values to
-   * the output array, respectively. Note that the attribute ids must NOT
-   * contain the id of the coordinates. Also the attribute ids can be in an
-   * arbitrary order (not necessarily the one specified in the input array).
+   * Exports the data of an array into a CSV file. The data are exported in the
+   * reverse order of the native cell order of the array. Also they are exported
+   * in dense form, i.e., even the empty cells will be exported (which will
+   * have 0 in the numerical attributes, and NULL_CHAR in the char attributes).
+   *
+   * @tparam T The array coordinates type.
+   * @param ad The array descriptor.
+   * @param filename The name of the exported CSV file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @param delimiter It stands for the delimiter which separates the values in 
+   * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @return **0** for success and <b>-1</b> for error.
    */
   template<class T>
-  void subarray(
-      int ad, const T* range, int result_ad,
+  int array_export_csv_reverse_dense(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const T* range,
+      CompressionType compression,
+      char delimiter) const;
+
+  /** 
+   * Exports the data of an array into a CSV file. The data are exported in the
+   * reverse order of the native cell order of the array. Also they are exported
+   * in sparse form, i.e., the empty cells will *not* be exported.
+   *
+   * @param ad The array descriptor.
+   * @param filename The name of the exported CSV file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @param delimiter It stands for the delimiter which separates the values in 
+   * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int array_export_csv_reverse_sparse(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const std::vector<double>& range,
+      CompressionType compression,
+      char delimiter) const;
+
+  /** 
+   * Exports the data of an array into a CSV file. The data are exported in the
+   * reverse order of the native cell order of the array. Also they are exported
+   * in sparse form, i.e., the empty cells will *not* be exported.
+   *
+   * @tparam T The array coordinates type.
+   * @param ad The array descriptor.
+   * @param filename The name of the exported CSV file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @param delimiter It stands for the delimiter which separates the values in 
+   * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  template<class T>
+  int array_export_csv_reverse_sparse(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const T* range,
+      CompressionType compression,
+      char delimiter) const;
+
+  /** 
+   * Exports the data of an array into a CSV file. The data are exported in the
+   * native cell order of the array. Also they are exported
+   * in dense form, i.e., even the empty cells will be exported.
+   *
+   * @param ad The array descriptor.
+   * @param filename The name of the exported CSV file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @param delimiter It stands for the delimiter which separates the values in 
+   * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int array_export_csv_normal_dense(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const std::vector<double>& range,
+      CompressionType compression,
+      char delimiter) const;
+
+  /** 
+   * Exports the data of an array into a CSV file. The data are exported in the
+   * native cell order of the array. Also they are exported
+   * in dense form, i.e., even the empty cells will be exported.
+   *
+   * @tparam T The array coordinates type.
+   * @param ad The array descriptor.
+   * @param filename The name of the exported CSV file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @param delimiter It stands for the delimiter which separates the values in 
+   * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  template<class T>
+  int array_export_csv_normal_dense(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const T* range,
+      CompressionType compression,
+      char delimiter) const;
+
+  /** 
+   * Exports the data of an array into a CSV file. The data are exported in the
+   * native cell order of the array. Also they are exported
+   * in sparse form, i.e., the empty cells will *not* be exported.
+   *
+   * @param ad The array descriptor.
+   * @param filename The name of the exported CSV file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @param delimiter It stands for the delimiter which separates the values in 
+   * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int array_export_csv_normal_sparse(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const std::vector<double>& range,
+      CompressionType compression,
+      char delimiter) const;
+
+  /** 
+   * Exports the data of an array into a CSV file. The data are exported in the
+   * native cell order of the array. Also they are exported
+   * in sparse form, i.e., the empty cells will *not* be exported.
+   *
+   * @tparam T The array coordinates type.
+   * @param ad The array descriptor.
+   * @param filename The name of the exported CSV file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @param delimiter It stands for the delimiter which separates the values in 
+   * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  template<class T>
+  int array_export_csv_normal_sparse(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const T* range,
+      CompressionType compression,
+      char delimiter) const;
+
+  /** 
+   * Exports the data of an array into a binary file. The data are exported in 
+   * the reverse order of the native cell order of the array. Also they are
+   * exported in dense form, i.e., even the empty cells will be exported.
+   *
+   * @param ad The array descriptor.
+   * @param filename The name of the exported binary file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int array_export_bin_reverse_dense(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const std::vector<double>& range,
+      CompressionType compression) const;
+
+  /** 
+   * Exports the data of an array into a binary file. The data are exported in 
+   * the reverse order of the native cell order of the array. Also they are
+   * exported in dense form, i.e., even the empty cells will be exported.
+   *
+   * @tparam T The array coordinates type.
+   * @param ad The array descriptor.
+   * @param filename The name of the exported binary file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  template<class T>
+  int array_export_bin_reverse_dense(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const T* range,
+      CompressionType compression) const;
+
+  /** 
+   * Exports the data of an array into a binary file. The data are exported in
+   * the reverse order of the native cell order of the array. Also they are
+   * exported in sparse form, i.e., the empty cells will *not* be exported.
+   *
+   * @param ad The array descriptor.
+   * @param filename The name of the exported binary file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int array_export_bin_reverse_sparse(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const std::vector<double>& range,
+      CompressionType compression) const;
+
+  /** 
+   * Exports the data of an array into a binary file. The data are exported in
+   * the reverse order of the native cell order of the array. Also they are
+   * exported in sparse form, i.e., the empty cells will *not* be exported.
+   *
+   * @tparam T The array coordinates type.
+   * @param ad The array descriptor.
+   * @param filename The name of the exported binary file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  template<class T>
+  int array_export_bin_reverse_sparse(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const T* range,
+      CompressionType compression) const;
+
+  /** 
+   * Exports the data of an array into a binary file. The data are exported in
+   * the native cell order of the array. Also they are exported
+   * in dense form, i.e., even the empty cells will be exported.
+   *
+   * @param ad The array descriptor.
+   * @param filename The name of the exported binary file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int array_export_bin_normal_dense(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const std::vector<double>& range,
+      CompressionType compression) const;
+
+  /** 
+   * Exports the data of an array into a binary file. The data are exported in
+   * the native cell order of the array. Also they are exported
+   * in dense form, i.e., even the empty cells will be exported.
+   *
+   * @tparam T The array coordinates type.
+   * @param ad The array descriptor.
+   * @param filename The name of the exported binary file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  template<class T>
+  int array_export_bin_normal_dense(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const T* range,
+      CompressionType compression) const;
+
+  /** 
+   * Exports the data of an array into a binary file. The data are exported in
+   * the native cell order of the array. Also they are exported
+   * in sparse form, i.e., the empty cells will *not* be exported.
+   *
+   * @param ad The array descriptor.
+   * @param filename The name of the exported binary file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int array_export_bin_normal_sparse(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const std::vector<double>& range,
+      CompressionType compression) const;
+
+  /** 
+   * Exports the data of an array into a binary file. The data are exported in
+   * the native cell order of the array. Also they are exported
+   * in sparse form, i.e., the empty cells will *not* be exported.
+   *
+   * @tparam T The array coordinates type.
+   * @param ad The array descriptor.
+   * @param filename The name of the exported binary file. 
+   * @param dim_ids A vector holding the ids of the dimensions to be exported.
+   * If empty, no dimension is exported.
+   * @param attribute_ids A vector holding the attribute ids to be exported.
+   * If empty, no attribute is exported.
+   * @param range A range given as a sequence of [low,high] bounds across each 
+   * dimension. Each range bound must be a real number. The range constrains the
+   * exported cells into a subarray.
+   * @param compression The compression type of the exported file.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  template<class T>
+  int array_export_bin_normal_sparse(
+      int ad,
+      const std::string& filename,
+      const std::vector<int>& dim_ids, 
+      const std::vector<int>& attribute_ids,
+      const T* range,
+      CompressionType compression) const;
+
+  /** 
+   * Converts the input *old_range* (which is always double), to the 
+   * appropriate templated type.
+   *
+   * @tparam T The target type of the new range.
+   * @param old_range The input range to be converted.
+   * @param new_range The new range in the templated type.
+   */
+  template<class T>
+  void calculate_new_range(
+      const std::vector<double>& old_range,
+      T*& new_range) const;
+
+  /** 
+   * Performs the subarray query on the first array, storing the result on
+   * the second array, using the input range and focusing on the input
+   * attribute ids. The result is stored in sparse format, i.e., the empty
+   * cells are not stored. 
+   *
+   * @param ad The descriptor of the input array.
+   * @param ad_sub The descriptor of the result array.
+   * @param range The range of the subarray.
+   * @param attribute_ids A vector holding the ids of the attributes
+   * in the schema of the result array. If it is empty, then all the attributes
+   * of the input array will appear in the output array.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int subarray(
+      int ad, 
+      int ad_sub, 
+      const std::vector<double>& range,
+      const std::vector<int>& attribute_ids) const;
+
+  /** 
+   * Performs the subarray query on the first array, storing the result on
+   * the second array, using the input range and focusing on the input
+   * attribute ids. The result is stored in sparse format, i.e., the empty
+   * cells are not stored. 
+   *
+   * @tparam T The coordinates type (of both arrays).
+   * @param ad The descriptor of the input array.
+   * @param ad_sub The descriptor of the result array.
+   * @param range The range of the subarray.
+   * @param attribute_ids A vector holding the ids of the attributes
+   * in the schema of the result array. If it is empty, then all the attributes
+   * of the input array will appear in the output array.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  template<class T>
+  int subarray(
+      int ad, 
+      int ad_sub, 
+      const T* range,
       const std::vector<int>& attribute_ids) const;
 };
 

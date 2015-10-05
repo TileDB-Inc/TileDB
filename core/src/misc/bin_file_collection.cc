@@ -33,17 +33,27 @@
 
 #include "bin_file_collection.h"
 #include "utils.h"
-#include "tiledb_error.h"
 #include <assert.h>
 #include <iostream>
 #include <queue>
+
+// Macro for printing error message in VERBOSE mode
+#ifdef VERBOSE
+  #define PRINT_ERROR(x) std::cerr << "[TileDB::BINFileCollection] Error: " \
+                                   <<  x \
+                                   << ".\n" 
+#else
+  #define PRINT_ERROR(x) do { } while(0) 
+#endif
+
 
 /******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS **************
 ******************************************************/
 
 template<class T>
-BINFileCollection<T>::BINFileCollection() {
+BINFileCollection<T>::BINFileCollection(CompressionType compression)
+    : compression_(compression) {
   pq_ = NULL;
 }
 
@@ -104,9 +114,8 @@ int BINFileCollection<T>::open(
   } else if(is_dir(path)) {
     filenames_ = get_filenames(path);
   } else {
-    std::cerr << ERROR_MSG_HEADER 
-              << " Path '" << path << "' does not exists.\n";
-    return TILEDB_EFILE;
+    PRINT_ERROR("Path '" + path + "' does not exist");
+    return -1;
   }
 
   // Create priority queue
@@ -125,7 +134,7 @@ int BINFileCollection<T>::open(
   BINFile* bin_file;
   Cell* cell;
   for(int i=0; i<file_num; ++i) {
-    bin_file = new BINFile(array_schema_, id_num_);  
+    bin_file = new BINFile(array_schema_, compression_, id_num_);  
     if(is_file(filenames_[i]))
       bin_file->open(filenames_[i], "r");
     else 

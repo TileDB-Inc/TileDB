@@ -1,0 +1,222 @@
+.TH tiledb_array_export 1 "12 October 2015" "Version 0.1" "TileDB programs"
+ 
+.SH NAME
+tiledb_array_export - exports the data of an array into a CSV or binary file
+
+.SH SYNOPSIS
+.B tiledb_array_export 
+.BI "-A " "array_name " "-f " "filename" 
+.br
+[
+.BI "-w " "workspace "
+] [
+.BI "-g " "group "
+] 
+.br
+[
+.BI "-a " "attribute_name_1,..."
+] [
+.BI "-d " "dim_name_1,..."
+] [
+.BI "-r " "range"
+] [ 
+.BI "-F " format"
+] [
+.BI "-l " delimiter"
+]
+
+.SH DESCRIPTION
+.B tiledb_export_csv
+exports the data of an array into a CSV or binary file. The documentation on
+the exported CSV or binary format can be found in program 
+\fBtiledb_array_load\fR(1).  
+
+The user can specify a subset of dimensions and attributes to export, as well as
+to constrain the exported cell to a subarray. In addition, the user may specify 
+whether to export the cells in the normal cell
+order they are stored or in \fBreverse\fR order. Finally, the user may select to
+export the array in \fBdense\fR format, in which case even the empty cells
+are going to be exported, having special "empty" values in their attributes
+(e.g., 0 for numerics, and NULL_CHAR, '*', for strings). 
+
+On error, it returns \fB-1\fR. Moreover, if it is compiled in \fBVERBOSE\fR 
+mode, it prints comprehensive error messages on \fIstderr\fR. On success, it 
+returns \fB0\fR. 
+
+The following conventions apply to the \fBSYNOPSIS\fR section:
+
+.TS
+tab (@);
+c lx .
+\fBbold text\fR @ type exactly as shown
+\fIitalic text\fR @ replace with appropriate argument
+[\fB\-a \fIarg\fR]@ any or all options within [ ] are optional
+.TE
+
+.SH OPTIONS
+.TP
+.BI "-w" " workspace" "\fR, " \fB --workspace=\fIworkspace\fR  
+The path to the workspace folder where the array is stored. If it is not 
+provided, the current working directory is set as the workspace by default.
+
+.TP
+.BI "-g" " group" "\fR, " \fB --group=\fIgroup\fR  
+This is a directory inside the workspace where the array is stored.
+Note that any group path provided is converted into an absolute path 
+\fBrelative to the workspace directory\fR, i.e., regarding all home ("\\~/"), 
+current ("./") and root ("/") as the workspace directory. If the group is not 
+provided, the workspace is set as the default group.
+
+.TP
+.BI "-A" " array_name" "\fR, " \fB --array-name=\fIarray_name\fR  
+The name of the array whose data will be exported. The array
+must be already defined. 
+
+.TP
+.BI "-f" " filename" "\fR, " \fB --filename=\fIfilename\fR  
+The name of the exported file. 
+
+.TP
+.BI "-a" " attribute_name_1,..." "\fR, " \
+\fB --attribute-names=\fIattribute_name_1,...\fR  
+The attributes to be exported. Any order and multiplicities are allowed. To
+export \fBno\fR attribute, include \fB__hide\fR instead of a name list. To
+export \fBall\fR attributes, omit the option.
+
+.TP
+.BI "-d" " dim_name_1,..." "\fR, " \
+\fB --dim-names=\fIdim_name_1,...\fR  
+The coordinates to be exported. Any order and multiplicities are allowed. To
+export \fBno\fR coordinates, include \fB__hide\fR instead of a name list. To
+export \fBall\fR coordinates, omit the option.
+
+.TP
+.BI "-r" " range" "\fR, " \fB --range=\fIrange\fR  
+A range given as a sequence of [low,high] bounds across each dimension.
+Each range bound must be a real number. The range constrains the exported
+cells into a subarray.
+
+.TP
+.BI "-F" " format" "\fR, " \fB --format=\fIformat\fR  
+It can be one of the following: 
+\fBcsv\fR (CSV format), 
+\fBcsv.gz\fR (GZIP-compressed CSV format), 
+\fBdense.csv\fR (dense CSV format), 
+\fBdense.csv.gz\fR (GZIP-compressed dense CSV format), 
+\fBreverse.csv\fR (CSV format in reverse order), 
+\fBreverse.csv.gz\fR (GZIP-compressed CSV format in reverse order), 
+\fBreverse.dense.csv\fR (dense CSV format in reverse order), 
+\fBreverse.dense.csv.gz\fR (dense GZIP-compressed CSV format in reverse order), 
+\fBbin\fR (binary format), 
+\fBbin.gz\fR (GZIP-compressed binary format), 
+\fBdense.bin\fR (dense binary format), 
+\fBdense.bin.gz\fR (GZIP-compressed dense binary format), 
+\fBreverse.bin\fR (binary format in reverse order), 
+\fBreverse.bin.gz\fR (GZIP-compressed binary format in reverse order), 
+\fBreverse.dense.bin\fR (dense binary format in reverse order), 
+\fBreverse.dense.bin.gz\fR (dense GZIP-compressed binary format in reverse 
+order).
+If it is not provided, then the program resolves the format by checking if
+the file name contains any of the above suffices. For instance, "my_file.bin"
+implies that the file is binary, whereas "my_file.csv.gz" implies that the file 
+is CSV and compressed with GZIP. 
+
+.TP
+.BI "-l" " delimiter" "\fR, " \fB --delimiter=\fIdelimiter\fR  
+This is meaningful only for CSV format. It stands for the delimiter which 
+separates the values in a CSV line in the CSV file. If not given, the default is
+\fB','\fR. For using a tab as a delimiter, the user must specify it simply 
+as \fBtab\fR.
+
+.SH EXAMPLES
+Assuming that the array has dimensions \fIdim1\fR,\fIdim2\fR and attributes 
+\fIattr1\fR,\fIattr2\fR,\fIattr3\fR
+.TP
+\fBtiledb_array_export\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-g \fRmy_group/ \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_file.csv \\
+    \fB-l \fR'|'
+
+Exports into \fImy_array.csv\fR all the cells of array \fImy_array\fR, stored in
+folder \fImy_workspace/my_group/my_array\fR, in their native order, including 
+all the coordinates and attributes. Also they are exported in sparse format.
+The delimiter used for the values in each CSV line is '|'.
+
+.TP
+\fBtiledb_array_export\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-g \fRmy_group/ \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_file \\
+    \fB-d \fRdim1 \\
+    \fB-F \fRdense.bin.gz \\
+    \fB-a \fRattr1,attr2
+
+Exports into GZIP compressed binary file \fImy_file\fR all the cells of 
+\fImy_array\fR, stored in folder \fImy_workspace/my_group/my_array\fR, in the 
+native order, including only the coordinates on the \fIdim1\fR dimension and the
+values on the \fIattr1\fR,\fIattr2\fR attributes. The array is 
+exported in dense form, i.e., even the empty cell coordinates will appear in
+the file, having "empty" attribute values.
+
+.TP
+\fBtiledb_array_export\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-g \fRmy_group/ \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_file \\
+    \fB-d \fRdim1 \\
+    \fB-a \fRattr1,attr2 \\
+    \fB-F \fRreverse.dense.bin.gz
+
+Same as above, but the cells are exported in the reverse order.
+
+\fBtiledb_array_export\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-g \fRmy_group/ \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_file.dense.bin.gz \\
+    \fB-d \fR__hide \\
+    \fB-r \fR0,10,10,20 \\
+    \fB-a \fRattr1,attr2 
+
+Same as the second example, but no coordinate is exported, and only the cells
+with dim1 in [0,10] and dim2 in [10,20] are exported. Also notice that the
+file format is derived from the suffix of the file name.
+
+.TP
+\fBtiledb_array_export\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-g \fRmy_group/ \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_file \\
+    \fB-d \fRdim1 \\
+    \fB-F \fRdense.bin.gz \\
+    \fB-a \fR__hide
+
+Same as the second example, but no attribute value is exported.
+
+.TP
+\fBtiledb_array_export\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-g \fRmy_group/ \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_file \\
+    \fB-d \fRdim1 \\
+    \fB-F \fRdense.bin.gz \\
+    \fB-a \fRattr1,attr2,attr1
+
+Same as the second example, but now the \fIattr1\fR values are shown twice
+(once before those of \fIattr2\fR and once after).
+
+.SH EXIT STATUS
+.TP 
+\fB0\fR for success and \fB-1\fR for error.
+
+.SH SEE ALSO
+.BR "tiledb_array_load" "(1) " "tiledb_dataset_generate" "(1) "
+
+.SH AUTHOR
+Stavros Papadopoulos <http://people.csail.mit.edu/stavrosp>, Copyright (c) 2015

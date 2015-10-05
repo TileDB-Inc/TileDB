@@ -32,6 +32,7 @@
  */
 
 #include "cell_const_attr_iterator.h"
+#include "special_values.h"
 #include <string.h>
 
 /******************************************************

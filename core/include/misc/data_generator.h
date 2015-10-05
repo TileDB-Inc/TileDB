@@ -6,7 +6,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@
 
 #include "array_schema.h"
 #include "csv_line.h"
+#include "global.h"
 #include <random>
 #include <string>
 
@@ -57,7 +58,8 @@ class DataGenerator {
   int generate_bin(
       unsigned seed, 
       const std::string& filename, 
-      int64_t cell_num) const;
+      int64_t cell_num,
+      CompressionType compression) const;
    /**
    * Generates a uniform CSV file for the stored array schema. Takes as input
    * a seed used to generate the randomness, the name of the file to store the
@@ -66,7 +68,10 @@ class DataGenerator {
   int generate_csv(
       unsigned seed, 
       const std::string& filename, 
-      int64_t cell_num) const;
+      int64_t cell_num,
+      CompressionType compression,
+      char delimiter) const;
+   // TODO: default delimiter
 
  private:
   // PRIVATE ATTRIBUTES

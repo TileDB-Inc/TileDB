@@ -45,6 +45,14 @@
 #define BOOK_KEEPING_FILE_SUFFIX ".bkp.gz"
 /** Name of the file storing the bounding coordinates of each tile. */
 #define BOUNDING_COORDINATES_FILENAME "bounding_coordinates"
+/** 
+ * The default delimiter in the CSV line. 
+ * 
+ * **Note:** Currently, this class does not handle the case where the CSV line 
+ * contains the separator as an actual character in a string value, even when 
+ * inserted with escape character '\'.
+ */
+#define CSV_DELIMITER ','
 /** Deleted char. */
 #define DEL_CHAR '$'
 /** Deleted int. */
@@ -61,16 +69,14 @@
 #define DEL_VALUE '$'
 /** Error log file name. */
 #define ERROR_LOG_FILENAME "tiledb_error.log"
-/** A header that precedes an error message. */
-#define ERROR_MSG_HEADER "[TileDB] ERROR:"
 /** Name of the file storing the fragment book-keeping info. */
 #define FRAGMENT_TREE_FILENAME "fragment_tree"
+/** Suffix for files to be GZIP compressed. */
+#define GZIP_SUFFIX ".gz"
 /** Indicates an invalid tile position. */
 #define INVALID_TILE_POS -1
 /** Indicates an invalid tile id. */
 #define INVALID_TILE_ID -1
-/** Maximum number of arrays that can be simultaneously open. */
-#define MAX_OPEN_ARRAYS 100
 /** Name of the file storing the MBR of each tile. */
 #define MBRS_FILENAME "mbrs"
 /** TileDB message header */
@@ -97,7 +103,7 @@
  */
 #define SEGMENT_SIZE 10000000 // ~10MB
 /** Name for temp (usually used in directory paths). */
-#define TEMP "temp"
+#define TEMP ".__temp"
 /** Suffix of all tile data files. */
 #define TILE_DATA_FILE_SUFFIX ".tdt"
 /** Special value that indicates a variable-sized object. */

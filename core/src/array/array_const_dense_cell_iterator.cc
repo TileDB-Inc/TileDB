@@ -32,8 +32,21 @@
  */
 
 #include "array_const_dense_cell_iterator.h"
+#include "special_values.h"
 #include "utils.h"
 #include <assert.h>
+
+// Macro for printing error and warning messages in stderr in VERBOSE mode
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << "[TileDB::ArrayConstDenseCellIterator] Error: " << x \
+                                   << ".\n" 
+#  define PRINT_WARNING(x) std::cerr << "[TileDB::ArrayConstDenseCellIterator] Warning: " \
+                                     << x \
+                                     << ".\n" 
+#else
+#  define PRINT_ERROR(x) do { } while(0) 
+#  define PRINT_WARNING(x) do { } while(0) 
+#endif
 
 /******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS **************
@@ -55,6 +68,8 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator() {
   is_del_ = false;
   var_size_ = false;
   cell_size_ = 0;
+  created_successfully_ = true;
+  finalized_ = false;
 }
 
 template<class T>
@@ -76,6 +91,7 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   array_schema->get_domain_start<T>(current_coords_, range_); 
   tile_its_ = NULL;
   array_schema->init_zero_cell(zero_cell_);
+  finalized_ = false;
 
   // Prepare the ids of the fragments the iterator will iterate on
   for(int i=0; i<fragment_num_; ++i)
@@ -86,12 +102,13 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
     attribute_ids_.push_back(i);
 
   // Case where the array is empty
-  if(array_->empty()) {
+  if(array_->is_empty()) {
     cell_size_ = 0;
     var_size_ = false;
     cell_ = NULL;
     end_ = true;
     is_del_ = false;
+    created_successfully_ = true;
     return;
   }
 
@@ -108,6 +125,8 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell(fragment_id); 
+
+  created_successfully_ = true;
 }
 
 template<class T>
@@ -133,6 +152,7 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   array_schema->get_domain_start<T>(current_coords_, range_); 
   tile_its_ = NULL;
   array_schema->init_zero_cell(zero_cell_);
+  finalized_ = false;
 
   // Prepare the ids of the fragments the iterator will iterate on
   fragment_ids_ = fragment_ids;
@@ -142,12 +162,13 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
     attribute_ids_.push_back(i);
 
   // Case where the array is empty
-  if(array_->empty()) {
+  if(array_->is_empty()) {
     cell_size_ = 0;
     var_size_ = false;
     cell_ = NULL;
     end_ = true;
     is_del_ = false;
+    created_successfully_ = true;
     return;
   }
 
@@ -164,6 +185,8 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell(fragment_id); 
+
+  created_successfully_ = true;
 }
 
 template<class T>
@@ -189,6 +212,7 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   array_schema->get_domain_start<T>(current_coords_, range_); 
   tile_its_ = NULL;
   array_schema->init_zero_cell(zero_cell_);
+  finalized_ = false;
 
   // Prepare the ids of the fragments the iterator will iterate on
   for(int i=0; i<fragment_num_; ++i)
@@ -206,12 +230,13 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   attribute_ids_ = rdedup(attribute_ids_);
 
   // Case where the array is empty
-  if(array_->empty()) {
+  if(array_->is_empty()) {
     cell_size_ = 0;
     var_size_ = false;
     cell_ = NULL;
     end_ = true;
     is_del_ = false;
+    created_successfully_ = true;
     return;
   }
 
@@ -228,6 +253,8 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell(fragment_id); 
+
+  created_successfully_ = true;
 }
 
 template<class T>
@@ -250,6 +277,7 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   array_schema->get_domain_start<T>(current_coords_, range_); 
   tile_its_ = NULL;
   array_schema->init_zero_cell(zero_cell_);
+  finalized_ = false;
 
   // Prepare the ids of the fragments the iterator will iterate on
   // By default it is all the fragments, but this may change in the future
@@ -261,12 +289,13 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
     attribute_ids_.push_back(i);
 
   // Case where the array is empty
-  if(array_->empty()) {
+  if(array_->is_empty()) {
     cell_size_ = 0;
     var_size_ = false;
     cell_ = NULL;
     end_ = true;
     is_del_ = false;
+    created_successfully_ = true;
     return;
   }
 
@@ -285,6 +314,8 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell_in_range(fragment_id); 
+
+  created_successfully_ = true;
 }
 
 template<class T>
@@ -312,6 +343,7 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   array_schema->get_domain_start<T>(current_coords_, range_); 
   tile_its_ = NULL;
   array_schema->init_zero_cell(zero_cell_);
+  finalized_ = false;
 
   // Prepare the ids of the fragments the iterator will iterate on
   // By default it is all the fragments, but this may change in the future
@@ -330,12 +362,13 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   attribute_ids_ = rdedup(attribute_ids_);
 
   // Case where the array is empty
-  if(array_->empty()) {
+  if(array_->is_empty()) {
     cell_size_ = 0;
     var_size_ = false;
     cell_ = NULL;
     end_ = true;
     is_del_ = false;
+    created_successfully_ = true;
     return;
   }
 
@@ -354,10 +387,18 @@ ArrayConstDenseCellIterator<T>::ArrayConstDenseCellIterator(
   int fragment_id = get_next_cell(); 
   if(fragment_id != -1)
     advance_cell_in_range(fragment_id); 
+
+  created_successfully_ = true;
 }
 
 template<class T>
-ArrayConstDenseCellIterator<T>::~ArrayConstDenseCellIterator() {
+bool ArrayConstDenseCellIterator<T>::created_successfully() const {
+  return created_successfully_;
+}
+
+
+template<class T>
+int ArrayConstDenseCellIterator<T>::finalize() {
   if(cell_ != NULL) 
     free(cell_);
 
@@ -385,7 +426,22 @@ ArrayConstDenseCellIterator<T>::~ArrayConstDenseCellIterator() {
 
   if(zero_cell_ != NULL)
     free(zero_cell_);
+
+  finalized_ = true;
+
+  return 0;
 }
+
+template<class T>
+ArrayConstDenseCellIterator<T>::~ArrayConstDenseCellIterator() {
+  if(!finalized_) {
+    PRINT_WARNING("ArrayConstDenseCellIterator not finalized. "
+                  "Finalizing now");
+    finalize();
+  }
+}
+
+
 
 /******************************************************
 ********************* ACCESSORS ***********************
@@ -441,9 +497,11 @@ bool ArrayConstDenseCellIterator<T>::end() const {
 ******************************************************/
 
 template<class T>
-void ArrayConstDenseCellIterator<T>::operator++() {
+int ArrayConstDenseCellIterator<T>::operator++() {
   if(coords_match_) {
     int fragment_id = get_next_cell();
+    if(fragment_id == -1)
+      return -1;
 
     // Advance cell
     if(fragment_id != -1) {
@@ -468,10 +526,15 @@ void ArrayConstDenseCellIterator<T>::operator++() {
     current_coords_ = NULL;
     end_ = true;
   }
+
+  return 0;
 }
 
 template<class T>
 const void* ArrayConstDenseCellIterator<T>::operator*() {
+
+  // TODO: error messages everywhere
+
   while(is_del_ && !return_del_ && cell_ != NULL)
     ++(*this);
 

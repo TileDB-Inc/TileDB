@@ -33,18 +33,31 @@
 
 #include "csv_file_collection.h"
 #include "utils.h"
-#include "tiledb_error.h"
 #include <assert.h>
 #include <iostream>
 #include <queue>
 #include <time.h>
+
+// Macro for printing error message in VERBOSE mode
+#ifdef VERBOSE
+  #define PRINT_ERROR(x) std::cerr << "[TileDB::CSVFileCollection] Error " \
+                                   << x \
+                                   << ".\n" 
+#else
+  #define PRINT_ERROR(x) do { } while(0) 
+#endif
+
 
 /******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS **************
 ******************************************************/
 
 template<class T>
-CSVFileCollection<T>::CSVFileCollection() {
+CSVFileCollection<T>::CSVFileCollection(
+    CompressionType compression,
+    char delimiter) 
+    : compression_(compression),
+      delimiter_(delimiter) {
   pq_ = NULL;
 }
 
@@ -104,9 +117,8 @@ int CSVFileCollection<T>::open(
   } else if(is_dir(path)) {
     filenames_ = get_filenames(path);
   } else {
-    std::cerr << ERROR_MSG_HEADER 
-              << " Path '" << path << "' does not exists.\n";
-    return TILEDB_EFILE;
+    PRINT_ERROR("Path does not exist");
+    return -1;
   }
 
   // Create priority queue
@@ -125,7 +137,7 @@ int CSVFileCollection<T>::open(
   CSVFile* csv_file;
   Cell* cell;
   for(int i=0; i<file_num; ++i) {
-    csv_file = new CSVFile(array_schema_);  
+    csv_file = new CSVFile(array_schema_, compression_, delimiter_);  
     if(is_file(filenames_[i]))
       csv_file->open(filenames_[i], "r");
     else 

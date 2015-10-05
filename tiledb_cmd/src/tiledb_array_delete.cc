@@ -1,12 +1,12 @@
 /**
- * @file   tiledb_delete_array.cc
+ * @file   tiledb_array_delete.cc
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,7 @@
  * 
  * @section DESCRIPTION
  *
- * Implements command "tiledb_delete_array".
+ * Implements command "tiledb_array_delete".
  */
 
 #include "csv_line.h"
@@ -38,6 +38,9 @@
 #include <iostream>
 #include <string>
 
+#define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n"
+#define PRINT(x) std::cout << "[TileDB] " << x << ".\n"
+
 /** 
  * Parses the command options. It returns 0 on success. On error, it prints
  * a message on stderr and returns -1.
@@ -45,21 +48,29 @@
 int parse_options(
     int argc, 
     char** argv, 
-    std::string& array_name, 
-    std::string& workspace) {
+    std::string& workspace,
+    std::string& group,
+    std::string& array_name) { 
+
   // Initialization
-  array_name = "";
   workspace = "";
+  group = "";
+  array_name = "";
+
+  // Auxiliary variable
+  CSVLine temp;
 
   // Define long options
   static struct option long_options[] = 
   {
     {"array-name",1,0,'A'},
+    {"group",1,0,'g'},
     {"workspace",1,0,'w'},
     {0,0,0,0},
   };
+
   // Define short options
-  const char* short_options = "A:w:";
+  const char* short_options = "A:g:w:";
   // Get options
   int c;
   int option_num = 0;
@@ -68,16 +79,21 @@ int parse_options(
     switch(c) {
       case 'A':
         if(array_name != "") {
-          std::cerr << ERROR_MSG_HEADER 
-                    << " More than one array names provided.\n";
+          PRINT_ERROR("More than one array names provided");
           return -1;
         }
         array_name = optarg;
         break;
+      case 'g':
+        if(group != "") {
+          PRINT_ERROR("More than one groups provided");
+          return -1;
+        }
+        group = optarg;
+        break;
       case 'w':
         if(workspace != "") {
-          std::cerr << ERROR_MSG_HEADER 
-                    << " More than one workspaces provided.\n";
+          PRINT_ERROR("More than one workspaces provided");
           return -1;
         }
         workspace = optarg;
@@ -87,78 +103,68 @@ int parse_options(
     }
   }
 
-  // Check number of arguments
-  if((argc-1) != 2*option_num) {
-    std::cerr << ERROR_MSG_HEADER << " Arguments-options mismatch.\n";
-    return -1;
-  }
-  // Check if correct arguments have been ginen
-  if(array_name == "") {
-    std::cerr << ERROR_MSG_HEADER << " Array name not provided.\n";
-    return -1;
-  }
-  if(workspace == "") {
-    std::cerr << ERROR_MSG_HEADER << " Workspace not provided.\n";
-    return -1;
-  }
+  // ******************* //
+  // Check correctness * //
+  // ******************* //
 
-  // Check number of arguments
-  // ----- array name
-  CSVLine temp;
+  // ----- Check number of arguments -----
+  if((argc-1) != 2*option_num) {
+    PRINT_ERROR("Arguments-options mismatch");
+    return -1;
+  }
+  // ----- array name ----- //
+  if(array_name == "") {
+    PRINT_ERROR("Array name not provided");
+    return -1;
+  }
   temp << array_name;
   if(temp.val_num() > 1) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " More than one array names provided.\n";
+    PRINT_ERROR("More than one array names provided");
     return -1;
   }
-  // ----- workspace
+  // ----- workspace ----- //
   temp.clear();
   temp << workspace;
   if(temp.val_num() > 1) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " More than one workspaces provided.\n";
+    PRINT_ERROR("More than one workspaces provided");
+    return -1;
+  }
+  // ----- group ----- //
+  temp.clear();
+  temp << group;
+  if(temp.val_num() > 1) {
+    PRINT_ERROR("More than one groups provided");
     return -1;
   }
 
+  // Success
   return 0;
 }
 
 int main(int argc, char** argv) {
-  // Arguments
-  std::string array_name;
-  std::string workspace;
-
-  // Stores the return code of the various functions below
-  int rc; 
- 
   // Parse command line
-  rc = parse_options(argc, argv, array_name, workspace);
-  if(rc) {
-    std::cerr << ERROR_MSG_HEADER << " Failed to parse the command line.\n";
-    return TILEDB_EPARSE;
-  }
+  std::string workspace, group, array_name;
+  if(parse_options(argc, argv, workspace, group, array_name)) 
+    return -1;
 
   // Initialize TileDB
   TileDB_CTX* tiledb_ctx;
-  rc = tiledb_ctx_init(workspace.c_str(), tiledb_ctx);
-  if(rc) {
-    std::cerr << ERROR_MSG_HEADER << " Failed to initialize TileDB.\n";
-    return TILEDB_EINIT;
-  }
+  if(tiledb_ctx_init(tiledb_ctx))
+    return -1;
 
   // Delete the array
-  rc = tiledb_delete_array(tiledb_ctx, array_name.c_str());
-  if(rc) 
-    return rc;
-
-  // Finalize TileDB
-  rc = tiledb_ctx_finalize(tiledb_ctx);
-  if(rc) {
-    std::cerr << ERROR_MSG_HEADER << " Failed to finalize TileDB.\n";
-    return TILEDB_EFIN;
+  if(tiledb_array_delete(tiledb_ctx, workspace.c_str(), 
+                         group.c_str(), array_name.c_str())) {
+    tiledb_ctx_finalize(tiledb_ctx);
+    return -1;
   }
 
-  std::cout << MSG_HEADER << " Program executed successfully!\n";
+  // Finalize TileDB
+  if(tiledb_ctx_finalize(tiledb_ctx))
+    return -1;
+
+  // Success
+  PRINT("Program executed successfully");
   
   return 0;
 }

@@ -1,0 +1,110 @@
+.TH tiledb_array_consolidate 1 "14 October 2015" "Version 0.1" "TileDB programs"
+ 
+.SH NAME
+tiledb_array_consolidate - consolidates the fragments of an array, using the
+technique described in detail in \fItiledb_array_define\fR(1)
+
+.SH SYNOPSIS
+.B tiledb_array_schema_show 
+.BI "-A " "array_name "
+[
+.BI "-w " "workspace "
+] [
+.BI "-g " "group "
+]
+
+.SH DESCRIPTION
+.B tiledb_array_schema_show
+consolidates the fragments of an array, using the technique described in detail
+in \fItiledb_array_define\fR(1). On error, it returns \fB-1\fR. Moreover, if it
+is compiled in \fBVERBOSE\fR mode, it prints comprehensive error messages on
+\fIstderr\fR. On success, it returns \fB0\fR. 
+
+The following conventions apply to the \fBSYNOPSIS\fR section:
+
+.TS
+tab (@);
+c lx .
+\fBbold text\fR @ type exactly as shown
+\fIitalic text\fR @ replace with appropriate argument
+[\fB\-a \fIarg\fR]@ any or all options within [ ] are optional
+.TE
+
+\fB----- Fragment directory name conventions -----\fR 
+
+When a fragment is created, either via \fBtiledb_array_load\fR(1) or
+\fBtiledb_array_update\fR(1), it is given a temporary name of the form
+\fB"__pid_timestamp"\fR, where "pid" is id of the process that created it
+and "timestamp" is the time of creation in milliseconds. During consolidation, 
+the first thing that happens is changing these temporary names to the form 
+\fB"0_y+1"\fR, \fB"0_y+2"\fR, etc., where "y" here is the \fIlargest\fR number 
+appearing in older fragments of the form "0_y". For instance, if before 
+consolidation there were existing fragments with names "0_1" and "0_2" (and no
+other fragment name starting with "0_"), then the temporary names would
+be changed to "0_3", "0_4", etc.
+
+One important invariant of the consolidation is that, after it occurs,
+the fragment names represent nodes in the merge tree explained in 
+\fBtiledb_array_define\fR(1). Specifically, they are in the form
+\fB"x_y"\fR where "x" indicates the level of the corresponding node and "y"
+is the node id at that level. By the definition of the merge tree and the
+consolidation algorithm, the names appear in a non-increasing order of
+"x" and a strictly increasing order of "y". For instance, if the consolidation
+step is 3 (meaning that the merge tree is 3-ary) and there have been loaded
+8 batches (creating 8 fragments), after consolidation, the following 
+fragments will appear: \fB"1_1"\fR, \fB"1_2"\fR, \fB"0_1"\fR, \fB"0_2"\fR.
+This means that there are 2 fragments at level 1 in the merge tree (each
+encompassing three earlier fragments/batches), and 2 fragments at level
+0 (each encompassing just one fragment/batch).
+
+Continuing the above example, suppose that there are another 5 batches loaded,
+without activating the consolidation flag in \fBtiledb_array_update\fR(1).
+When consolidation is triggered by executing this program, first the new
+fragments are renamed to \fB"0_3"\fR, ..., \fB"0_7"\fR. Now we have fragments
+\fB"1_1"\fR, \fB"1_2"\fR, \fB"0_1"\fR, ..., \fB"0_7"\fR. What consolidation
+does is the following. It understands that it has to merge \fB"0_1"\fR, 
+\fB"0_2"\fR, \fB"0_3"\fR into \fB"1_3"\fR, and then \fB"1_1"\fR, \fB"1_2"\fR, 
+\fB"1_3"\fR into \fB"2_1"\fR. Instead of doing this recursively, it directly 
+merges \fB"1_1"\fR, \fB"1_2"\fR, \fB"0_1"\fR, \fB"0_2"\fR, \fB"0_3"\fR, into
+\fB"2_1"\fR. Then it merges \fB"0_4"\fR, \fB"0_5"\fR and \fB"0_6"\fR into
+\fB"1_1"\fR. Finally, there is only one fragment remaining at level 0, 
+namely \fB"0_7"\fR. The program renames this into \fB"0_1"\fR, in order to
+maintain the invariant mentioned above, and then terminates.
+ 
+.SH OPTIONS
+.TP
+.BI "-A" " array_name" "\fR, " \fB --array-name=\fIarray_name\fR  
+The name of the array whose fragments will be consolidated. 
+
+.TP
+.BI "-w" " workspace" "\fR, " \fB --workspace=\fIworkspace\fR  
+The path to the workspace folder where the array is stored. If it is not 
+provided, the current working directory is set as the workspace by default.
+
+.TP
+.BI "-g" " group" "\fR, " \fB --group=\fIgroup\fR  
+This is a directory inside the workspace where the array is stored.
+Note that any group path provided is converted into an absolute path 
+\fBrelative to the workspace directory\fR, i.e., regarding all home ("~/"), 
+current ("./") and root ("/") as the workspace directory. If the group is not 
+provided, the workspace is set as the default group.
+
+.SH EXAMPLES
+.TP
+\fBtiledb_array_consolidate\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-g \fRmy_group/ \\
+    \fB-A \fRmy_array 
+
+Consolidates the fragments of array \fImy_array\fR, whose data are stored in
+directory \fI./my_workspace/my_group/my_array\fR.
+
+.SH EXIT STATUS
+.TP 
+\fB0\fR for success and \fB-1\fR for error.
+
+.SH SEE ALSO
+.BR tiledb_array_define (1)
+
+.SH AUTHOR
+Stavros Papadopoulos <http://people.csail.mit.edu/stavrosp>, Copyright (c) 2015

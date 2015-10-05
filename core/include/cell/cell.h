@@ -101,6 +101,14 @@ class Cell {
   CellConstAttrIterator begin() const;
   /** Returns the cell payload. */
   const void* cell() const;
+  /** TODO */
+  template<class T>
+  void cell( 
+      const std::vector<int>& dim_ids,
+      const std::vector<int>& attribute_ids,
+      void*& cell_ret,
+      size_t& cell_ret_capacity,
+      size_t& cell_ret_size) const;
   /** Returns the cell size. */
   ssize_t cell_size() const;
   /** 
@@ -114,7 +122,8 @@ class Cell {
   template<class T>
   CSVLine csv_line(
       const std::vector<int>& dim_ids,
-      const std::vector<int>& attribute_ids) const;
+      const std::vector<int>& attribute_ids,
+      char delimiter) const;
   /** Returns the i-th id of the cell (if it exists). */
   int64_t id(int i) const;
   /** Returns the size of all ids. */
@@ -169,6 +178,13 @@ class Cell {
   /** Appends an attribute value to the input CSV line. */
   template<class T>
   void append_attribute(int attribute_id, CSVLine& csv_line) const;
+  /** TODO */
+  template<class T>
+  void append_attribute(
+      int attribute_id, 
+      void*& cell, 
+      size_t& cell_capacity,
+      size_t& cell_size) const;
   /** 
    * Appends the string stored in the attribute with the input id to the input
    * CSV line.

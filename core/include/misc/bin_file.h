@@ -35,7 +35,7 @@
 
 #include "array_schema.h"
 #include "cell.h"
-#include "special_values.h"
+#include "global.h"
 #include "utils.h"
 #include <string>
 #include <zlib.h>
@@ -58,11 +58,17 @@ class BINFile {
  public:
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
-  BINFile();
+  BINFile(CompressionType compression);
   /** Constructor. */
-  BINFile(const ArraySchema* array_schema, int id_num = 0);
+  BINFile(
+      const ArraySchema* array_schema, 
+      CompressionType compression,
+      int id_num = 0);
   /** Constructor. */
-  BINFile(const std::string& filename, const char* mode);
+  BINFile(
+      const std::string& filename, 
+      const char* mode,
+      CompressionType compression);
   /** Destructor. */
   ~BINFile();
  
@@ -76,12 +82,13 @@ class BINFile {
   // READ/WRITE
   /** 
    * Reads binary data from the file and into destination, whose amount is
-   * specified by the input size. Returns the number of bytes read.
+   * specified by the input size. Returns the number of bytes read. -1
+   * for error.
    */
   ssize_t read(void* destination, size_t size);
   /** 
    * Writes data from the source into the file, whose amount is specified
-   * by the input size.
+   * by the input size. -1 for error
    */
   ssize_t write(const void* source, size_t data);
 

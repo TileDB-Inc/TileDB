@@ -6,7 +6,7 @@
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,9 @@
 #include <iostream>
 #include <string>
 
+#define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n"
+#define PRINT(x) std::cout << "[TileDB] " << x << ".\n"
+
 /** 
  * Parses the command options. It returns 0 on success. On error, it prints
  * a message on stderr and returns -1.
@@ -47,31 +50,46 @@ int parse_options(
     int argc, 
     char** argv, 
     std::string& workspace,
+    std::string& workspace_sub,
+    std::string& group,
+    std::string& group_sub,
     std::string& array_name, 
-    std::string& result_name, 
-    std::vector<double>& range,
+    std::string& array_name_sub, 
+    double*& range,
+    int& range_size,
     std::vector<std::string>& attribute_names) {
   // Initialization
   workspace = "";
+  workspace_sub = "";
+  group = "";
+  group_sub = "";
   array_name = "";
-  result_name = "";
+  array_name_sub = "";
+  std::string workspaces_str, groups_str, array_names_str;
   std::string range_str("");
   std::string attribute_names_str("");
-  range.clear();
   attribute_names.clear();
+
+  // Auxiliary variable
+  CSVLine temp;
+
+  // *************** //
+  // Parse options * //
+  // *************** // 
 
   // Define long options
   static struct option long_options[] = 
   {
     {"attribute-names",1,0,'a'},
     {"array-name",1,0,'A'},
+    {"group",1,0,'g'},
     {"range",1,0,'r'},
-    {"result-name",1,0,'R'},
     {"workspace",1,0,'w'},
     {0,0,0,0},
   };
   // Define short options
-  const char* short_options = "a:A:r:R:w:";
+  const char* short_options = "a:A:g:r:w:";
+
   // Get options
   int c;
   int option_num = 0;
@@ -80,176 +98,175 @@ int parse_options(
     switch(c) {
       case 'a':
         if(attribute_names_str != "") {
-          std::cerr << ERROR_MSG_HEADER 
-                    << " More than one attribute name lists provided.\n";
+          PRINT_ERROR("More than one attribute name lists provided");
           return -1;
         }
         attribute_names_str = optarg;
         break;
       case 'A':
-        if(array_name != "") {
-          std::cerr << ERROR_MSG_HEADER 
-                    << " More than one array names provided.\n";
+        if(array_names_str != "") {
+          PRINT_ERROR("More than one array name lists provided");
           return -1;
         }
-        array_name = optarg;
+        array_names_str = optarg;
+        break;
+      case 'g':
+        if(groups_str != "") {
+          PRINT_ERROR("More than one group lists provided");
+          return -1;
+        }
+        groups_str = optarg;
         break;
       case 'r':
         if(range_str != "") {
-          std::cerr << ERROR_MSG_HEADER 
-                    << " More than one ranges provided.\n";
+          PRINT_ERROR("More than one ranges provided");
           return -1;
         }
         range_str = optarg;
         break;
-      case 'R':
-        if(result_name != "") {
-          std::cerr << ERROR_MSG_HEADER 
-                    << " More than one result names provided.\n";
-          return -1;
-        }
-        result_name = optarg;
-        break;
       case 'w':
-        if(workspace != "") {
-          std::cerr << ERROR_MSG_HEADER 
-                    << " More than one workspaces provided.\n";
+        if(workspaces_str != "") {
+          PRINT_ERROR("More than one workspace lists provided");
           return -1;
         }
-        workspace = optarg;
+        workspaces_str = optarg;
         break; 
       default:
         return -1;
     }
   }
 
+  // ******************* //
+  // Check correctness * //
+  // ******************* //
+
   // Check number of arguments
   if((argc-1) != 2*option_num) {
-    std::cerr << ERROR_MSG_HEADER << " Arguments-options mismatch.\n";
+    PRINT_ERROR("Arguments-options mismatch");
     return -1;
   }
-  // Check if correct arguments have been ginen
-  if(array_name == "") {
-    std::cerr << ERROR_MSG_HEADER << " Array name not provided.\n";
+  //----- array names ----- //
+  if(array_names_str == "") {
+    PRINT_ERROR("Array names not provided");
     return -1;
   }
-  if(workspace == "") {
-    std::cerr << ERROR_MSG_HEADER << " Workspace not provided.\n";
+  temp = &array_names_str[0];
+  if(temp.val_num() != 2) {
+    PRINT_ERROR("Invalid number of array names");
     return -1;
   }
-  if(result_name == "") {
-    std::cerr << ERROR_MSG_HEADER << " Result name not provided.\n";
-    return -1;
-  }
-  if(range_str == "") {
-    std::cerr << ERROR_MSG_HEADER << " Range not provided.\n";
-    return -1;
-  }
-
-  // Check number of arguments
-  // ----- array name
-  CSVLine temp;
-  temp << array_name;
-  if(temp.val_num() > 1) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " More than one array names provided.\n";
-    return -1;
-  }
-  // ----- workspace
+  temp >> array_name;
+  temp >> array_name_sub;
+  // ----- workspaces ----- //
   temp.clear();
-  temp << workspace;
-  if(temp.val_num() > 1) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " More than one workspaces provided.\n";
+  temp = &workspaces_str[0];
+  if(temp.val_num() > 2) {
+    PRINT_ERROR("Invalid number of workspaces");
     return -1;
   }
-  // ----- result_name
+  temp >> workspace; 
+  temp >> workspace_sub; 
+  if(workspace_sub == "")
+    workspace_sub = workspace;
+  // ----- groups ----- //
   temp.clear();
-  temp << result_name;
-  if(temp.val_num() > 1) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " More than one result names provided.\n";
+  temp = &groups_str[0];
+  if(temp.val_num() > 2) {
+    PRINT_ERROR("Invalid number of groups");
     return -1;
   }
-
-  // Get range
-  std::vector<std::string> range_str_vec;
-  double range_bound;
-  range_str_vec = CSVLine(&range_str[0]).values_str_vec();
-  for(int i=0; i<int(range_str_vec.size()); ++i) {
-    if(!is_real(range_str_vec[i].c_str())) {
-      std::cerr << ERROR_MSG_HEADER 
-                << " The range bounds must be real numbers.\n";
-      return -1;
-    }
-    sscanf(range_str_vec[i].c_str(), "%lf", &range_bound); 
-    range.push_back(range_bound);
-  }
-
-  // Get attribute names
+  temp >> group; 
+  temp >> group_sub;
+ // ----- attribute names ----- //
   if(attribute_names_str != "")
     attribute_names = CSVLine(&attribute_names_str[0]).values_str_vec();
+  // ----- range ----- //
+  std::vector<std::string> range_str_vec;
+  range_str_vec = CSVLine(&range_str[0]).values_str_vec();
+  range_size = int(range_str_vec.size());
+  if(range_size == 0) {
+    PRINT_ERROR("Range not provided");
+    return -1;
+  } else {
+    range = new double[range_size];
+    for(int i=0; i<range_size; ++i) {
+      if(!is_real(range_str_vec[i].c_str())) {
+        PRINT_ERROR("The range bounds must be real numbers");
+        delete [] range;
+        return -1;
+      }
+      sscanf(range_str_vec[i].c_str(), "%lf", &range[i]); 
+    }
+  }   
 
+  // Success
   return 0;
 }
 
 int main(int argc, char** argv) {
-  // Arguments
-  std::string workspace;
-  std::string array_name;
-  std::string result_name;
-  std::vector<double> range;
-  std::vector<std::string> attribute_names;
-  const char** attribute_names_c_str;
-
-  // Stores the return code of the various functions below
-  int rc; 
- 
   // Parse command line
-  rc = parse_options(
-           argc, argv, workspace, array_name, result_name,
-           range, attribute_names);
-  if(rc) {
-    std::cerr << ERROR_MSG_HEADER << " Failed to parse the command line.\n";
-    return TILEDB_EPARSE;
-  }
+  std::string workspace;
+  std::string workspace_sub;
+  std::string group;
+  std::string group_sub;
+  std::string array_name;
+  std::string array_name_sub;
+  double* range = NULL;
+  int range_size = 0;
+  const char** attribute_names_c_str;
+  int attribute_names_num = 0;
+  std::vector<std::string> attribute_names;
+ 
+  if(parse_options(
+         argc, argv, workspace, workspace_sub, group, group_sub,
+         array_name, array_name_sub, range, range_size,
+         attribute_names))
+    return -1;
 
   // Initialize TileDB
   TileDB_CTX* tiledb_ctx;
-  rc = tiledb_ctx_init(workspace.c_str(), tiledb_ctx);
-  if(rc) {
-    std::cerr << ERROR_MSG_HEADER << " Failed to initialize TileDB.\n";
-    return TILEDB_EINIT;
-  }
+  if(tiledb_ctx_init(tiledb_ctx))
+    return -1;
 
-  // Populate attribute_names_c_str
-  int attribute_names_num = int(attribute_names.size());
-  attribute_names_c_str = new const char*[attribute_names_num];
-  for(int i=0; i<attribute_names_num; ++i) 
-    attribute_names_c_str[i] = attribute_names[i].c_str();
+  // Get vector for attribute names
+  attribute_names_num = int(attribute_names.size());
+  if(attribute_names_num == 0) {
+    attribute_names_c_str = NULL;
+  } else {
+    attribute_names_c_str = new const char*[attribute_names_num];
+    for(int i=0; i<attribute_names_num; ++i) 
+      attribute_names_c_str[i] = attribute_names[i].c_str();
+  }
 
   // Subarray
-  rc = tiledb_subarray(
-           tiledb_ctx, array_name.c_str(), result_name.c_str(),
-           &range[0], int(range.size()),
-           attribute_names_c_str, attribute_names_num);
-  if(rc) { 
-    delete [] attribute_names_c_str;
-    return rc;
+  if(tiledb_subarray(
+         tiledb_ctx, 
+         workspace.c_str(), workspace_sub.c_str(),
+         group.c_str(), group_sub.c_str(),
+         array_name.c_str(), array_name_sub.c_str(),
+         range, range_size,
+         attribute_names_c_str, attribute_names_num)) {
+    // Error
+    if(attribute_names_c_str != NULL) 
+      delete [] attribute_names_c_str;
+    if(range != NULL)
+      delete [] range;
+    tiledb_ctx_finalize(tiledb_ctx);
+    return -1;
   }
-
-  // Finalize TileDB
-  rc = tiledb_ctx_finalize(tiledb_ctx);
-  if(rc) {
-    delete [] attribute_names_c_str;
-    std::cerr << ERROR_MSG_HEADER << " Failed to finalize TileDB.\n";
-    return TILEDB_EFIN;
-  }
-
-  std::cout << MSG_HEADER << " Program executed successfully!\n";
 
   // Clean up  
-  delete [] attribute_names_c_str;
+  if(attribute_names_c_str != NULL) 
+    delete [] attribute_names_c_str;
+  if(range != NULL)
+    delete [] range;
 
+  // Finalize TileDB
+  if(tiledb_ctx_finalize(tiledb_ctx))
+    return -1;
+
+  // Success
+  PRINT("Program executed successfully");
+  
   return 0;
 }

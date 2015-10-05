@@ -32,6 +32,7 @@
  */
 
 #include "csv_file.h"
+#include "special_values.h"
 #include "utils.h"
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -41,25 +42,42 @@
 #include <assert.h>
 #include <iostream>
 
+// Macro for printing error message in VERBOSE mode
+#ifdef VERBOSE
+  #define PRINT_ERROR(x) std::cerr << "[TileDB::CSVFile] Error: " << x \
+                                   << ".\n" 
+#else
+  #define PRINT_ERROR(x) do { } while(0) 
+#endif
+
+
 /******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS **************
 ******************************************************/
 
-CSVFile::CSVFile() { 
+CSVFile::CSVFile(
+    CompressionType compression,
+    char delimiter)
+    : compression_(compression),
+      delimiter_(delimiter) { 
   array_schema_ = NULL;
   buffer_ = NULL;
   buffer_end_ = 0;
   buffer_offset_ = 0;
   cell_ = NULL;
-  compression_ = NO_COMPRESSION;
   eof_ = false;
   fd_ = -1;
   fdz_ = NULL;
   mode_[0] = '\0';
 }
 
-CSVFile::CSVFile(const ArraySchema* array_schema) 
-    : array_schema_(array_schema) { 
+CSVFile::CSVFile(
+    const ArraySchema* array_schema,
+    CompressionType compression,
+    char delimiter)
+    : array_schema_(array_schema), 
+      compression_(compression),
+      delimiter_(delimiter) { 
   buffer_ = NULL;
   buffer_end_ = 0;
   buffer_offset_ = 0;
@@ -70,14 +88,19 @@ CSVFile::CSVFile(const ArraySchema* array_schema)
     cell_ = malloc(CSV_INITIAL_VAR_CELL_SIZE);
     allocated_cell_size_ = CSV_INITIAL_VAR_CELL_SIZE;
   }
-  compression_ = NO_COMPRESSION;
   eof_ = false;
   fd_ = -1;
   fdz_ = NULL;
   mode_[0] = '\0';
 }
 
-CSVFile::CSVFile(const std::string& filename, const char* mode) { 
+CSVFile::CSVFile(
+    const std::string& filename, 
+    const char* mode,
+    CompressionType compression,
+    char delimiter) 
+    : compression_(compression),
+      delimiter_(delimiter) { 
   array_schema_ = NULL;
   buffer_ = NULL;
   buffer_end_ = 0;
@@ -136,13 +159,19 @@ void CSVFile::close() {
   }
 }
 
-bool CSVFile::open(const std::string& filename, 
+int CSVFile::open(const std::string& filename, 
                    const char* mode,
                    size_t segment_size) {
-  filename_ = absolute_path(filename);
+  filename_ = real_path(filename);
+  if(filename_ == "") {
+    PRINT_ERROR("Invalid filename");
+    return -1;
+  }
 
-  if(strcmp(mode, "r") == 0 && !is_file(filename_)) 
-    return false;
+  if(!strcmp(mode, "r") && !is_file(filename_)) {
+    PRINT_ERROR(std::string("File '") + filename_ + "' does not exist");
+    return -1;
+  }
 
   segment_size_ = segment_size;
   strcpy(mode_, mode);
@@ -159,12 +188,6 @@ bool CSVFile::open(const std::string& filename,
   buffer_end_ = 0;
   buffer_offset_ = 0;
 
-  // Determine compression
-  if(ends_with(filename, ".gz"))
-    compression_ = GZIP;
-  else
-    compression_ = NO_COMPRESSION;
-
   // Calculate file size
   int fd = ::open(filename_.c_str(), O_RDONLY);
   struct stat st;
@@ -178,16 +201,17 @@ bool CSVFile::open(const std::string& filename,
   // Open the file, depending on the compression
   open_file(filename);
 
-  // TODO: Error messages heres
-
-  return true;
+  return 0;
 }
 
 /******************************************************
 ********************** OPERATORS **********************
 ******************************************************/
 
-void CSVFile::operator<<(const CSVLine& csv_line) {
+int CSVFile::operator<<(const CSVLine& csv_line) {
+
+  // TODO: -1 for error
+
   assert(strcmp(mode_, "w") == 0 || strcmp(mode_, "a") == 0);
 
   size_t line_size = csv_line.strlen();
@@ -213,6 +237,8 @@ void CSVFile::operator<<(const CSVLine& csv_line) {
   char c = '\n';
   memcpy(buffer_ + buffer_offset_, &c, sizeof(c));
   buffer_offset_ += sizeof(c);
+
+  return 0;
 }
 
 bool CSVFile::operator>>(CSVLine& csv_line) {
@@ -259,7 +285,7 @@ bool CSVFile::operator>>(Cell& cell) {
   assert(strcmp(mode_, "r") == 0);
   assert(array_schema_ != NULL);
 
-  CSVLine csv_line;
+  CSVLine csv_line(delimiter_);
   if(!(*this >> csv_line)) {
     cell.set_cell(NULL);
     return false;
@@ -279,9 +305,9 @@ void CSVFile::flush_buffer() {
   assert(fd_ != -1 || fdz_ != NULL);
 
   ssize_t bytes_written;
-  if(compression_ == NO_COMPRESSION) 
+  if(compression_ == CMP_NONE) 
     bytes_written = write(fd_, buffer_, buffer_offset_);
-  else if(compression_ == GZIP) 
+  else if(compression_ == CMP_GZIP) 
     bytes_written = gzwrite(fdz_, buffer_, buffer_offset_);
 
   // TODO: Error messages here
@@ -289,13 +315,13 @@ void CSVFile::flush_buffer() {
 
 void CSVFile::open_file(const std::string& filename) {
   // No compression
-  if(compression_ == NO_COMPRESSION) {
+  if(compression_ == CMP_NONE) {
     if(strcmp(mode_, "r") == 0) 
       fd_ = ::open(filename_.c_str(), O_RDONLY);
     else if(strcmp(mode_, "a") == 0) 
       fd_ = ::open(filename_.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
                    S_IRWXU);
-  } else if(compression_ == GZIP) {
+  } else if(compression_ == CMP_GZIP) {
     if(strcmp(mode_, "r") == 0) 
       fdz_ = gzopen(filename_.c_str(), "rb");
     else if(strcmp(mode_, "a") == 0) 
@@ -341,9 +367,9 @@ bool CSVFile::read_segment() {
 
   // Read the new lines
   size_t bytes_read;
-  if(compression_ == NO_COMPRESSION) 
+  if(compression_ == CMP_NONE) 
     bytes_read = read(fd_, buffer_+bytes_to_copy, bytes_to_be_read);
-  else if(compression_ == GZIP)
+  else if(compression_ == CMP_GZIP)
     bytes_read = gzread(fdz_, buffer_+bytes_to_copy, bytes_to_be_read);
 
   if(bytes_read == 0) {

@@ -34,15 +34,15 @@
 #ifndef TILE_H
 #define TILE_H
 
+#include "global.h"
+#include "tile_const_cell_iterator.h"
+#include "tile_const_reverse_cell_iterator.h"
+#include "utils.h"
 #include <typeinfo>
 #include <limits>
 #include <string>
 #include <vector>
 #include <inttypes.h>
-#include "special_values.h"
-#include "tile_const_cell_iterator.h"
-#include "tile_const_reverse_cell_iterator.h"
-#include "utils.h"
 
 /** Default payload capacity. */
 #define TL_PAYLOAD_CAPACITY 100
@@ -86,7 +86,7 @@ class Tile {
    */
   Tile(int64_t tile_id, int dim_num, 
        const std::type_info* cell_type, int val_num,
-       CompressionType compression = NO_COMPRESSION); 
+       CompressionType compression = CMP_NONE); 
   /** Destructor. */
   ~Tile(); 
 

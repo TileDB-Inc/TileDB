@@ -102,6 +102,13 @@ class ArrayConstReverseCellIterator {
       Array* array, const T* multi_D_obj, 
       const std::vector<int>& attribute_ids,
       bool is_range = true);
+
+  /** TODO */
+  bool created_successfully() const;
+
+  /** TODO */
+  int finalize();
+
   /** Destructor. */
   ~ArrayConstReverseCellIterator();
 
@@ -122,7 +129,7 @@ class ArrayConstReverseCellIterator {
 
   // OPERATORS
   /** Increment. */
-  void operator++();
+  int operator++();
   /** Dereference. */
   const void* operator*();
 
@@ -144,10 +151,14 @@ class ArrayConstReverseCellIterator {
   size_t cell_buffer_size_;
   /** The size of the current cell. */
   size_t cell_size_;
+  /** *True* if the constructor succeeded, or *false* otherwise. */
+  bool created_successfully_;
   /** Number of dimensions. */
   int dim_num_;
   /** True if the iterator has reached the end of all cells. */
   bool end_;
+  /** *True* if the object was finalized, or *false* otherwise. */
+  bool finalized_;
   /** The ids of the fragments the iterator iterates over. */
   std::vector<int> fragment_ids_;
   /** The number of fragments. */

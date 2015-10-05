@@ -32,6 +32,7 @@
  */
 
 #include "bin_file.h"
+#include "special_values.h"
 #include "utils.h"
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -41,17 +42,31 @@
 #include <assert.h>
 #include <iostream>
 
+// Macro for printing error message in VERBOSE mode
+#ifdef VERBOSE
+  #define PRINT_ERROR(x) std::cerr << "[TileDB::BINFile] Error: " <<  x \
+                                   << ".\n" 
+#else
+  #define PRINT_ERROR(x) do { } while(0) 
+#endif
+
+
 /******************************************************
 ************* CONSTRUCTORS & DESTRUCTORS **************
 ******************************************************/
 
-BINFile::BINFile() { 
+BINFile::BINFile(CompressionType compression) { 
   init();
+  compression_ = compression;
 }
 
-BINFile::BINFile(const ArraySchema* array_schema, int id_num) 
+BINFile::BINFile(
+    const ArraySchema* array_schema, 
+    CompressionType compression,
+    int id_num) 
     : id_num_(id_num) { 
   init();
+  compression_ = compression;
   array_schema_ = array_schema;
   cell_size_ = array_schema_->cell_size();
   var_size_ = (cell_size_ == VAR_SIZE);
@@ -70,8 +85,12 @@ BINFile::BINFile(const ArraySchema* array_schema, int id_num)
   } 
 }
 
-BINFile::BINFile(const std::string& filename, const char* mode) { 
+BINFile::BINFile(
+    const std::string& filename, 
+    const char* mode,
+    CompressionType compression) { 
   init();
+  compression_ = compression;
   open(filename, mode);
 }
 
@@ -128,10 +147,16 @@ int BINFile::close() {
 int BINFile::open(const std::string& filename, 
                   const char* mode,
                   size_t segment_size) {
-  filename_ = absolute_path(filename);
-
-  if(strcmp(mode_, "r") == 0 && !is_file(filename_))
+  filename_ = real_path(filename);
+  if(filename_ == "") {
+    PRINT_ERROR("Invalid filename");
     return -1;
+  }
+
+  if(strcmp(mode_, "r") == 0 && !is_file(filename_)) {
+    PRINT_ERROR(std::string("File '") + filename_ + "' does not exist");
+    return -1;
+  }
 
   segment_size_ = segment_size;
   strcpy(mode_, mode);
@@ -147,12 +172,6 @@ int BINFile::open(const std::string& filename,
   buffer_ = NULL;
   buffer_end_ = 0;
   buffer_offset_ = 0;
-
-  // Determine compression
-  if(ends_with(filename, ".gz"))
-    compression_ = GZIP;
-  else
-    compression_ = NO_COMPRESSION;
 
   // Calculate file size
   int fd = ::open(filename_.c_str(), O_RDONLY);
@@ -338,9 +357,9 @@ ssize_t BINFile::flush_buffer() {
   assert(fd_ != -1 || fdz_ != NULL);
 
   ssize_t bytes_written;
-  if(compression_ == NO_COMPRESSION) 
+  if(compression_ == CMP_NONE) 
     bytes_written = ::write(fd_, buffer_, buffer_offset_);
-  else if(compression_ == GZIP)  
+  else if(compression_ == CMP_GZIP) 
     bytes_written = gzwrite(fdz_, buffer_, buffer_offset_);
 
   // TODO: Error messages here
@@ -356,7 +375,7 @@ void BINFile::init() {
   buffer_end_ = 0;
   buffer_offset_ = 0;
   ids_ = NULL;
-  compression_ = NO_COMPRESSION;
+  compression_ = CMP_NONE;
   eof_ = false;
   fd_ = -1;
   fdz_ = NULL;
@@ -365,13 +384,13 @@ void BINFile::init() {
 
 void BINFile::open_file(const std::string& filename) {
   // No compression
-  if(compression_ == NO_COMPRESSION) {
+  if(compression_ == CMP_NONE) {
     if(strcmp(mode_, "r") == 0) 
       fd_ = ::open(filename_.c_str(), O_RDONLY);
     else if(strcmp(mode_, "a") == 0) 
       fd_ = ::open(filename_.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
                    S_IRWXU);
-  } else if(compression_ == GZIP) {
+  } else if(compression_ == CMP_GZIP) {
     if(strcmp(mode_, "r") == 0) 
       fdz_ = gzopen(filename_.c_str(), "rb");
     else if(strcmp(mode_, "a") == 0) 
@@ -392,9 +411,9 @@ ssize_t BINFile::read_segment() {
 
   // Read the new lines
   size_t bytes_read;
-  if(compression_ == NO_COMPRESSION) 
+  if(compression_ == CMP_NONE) 
     bytes_read = ::read(fd_, buffer_, segment_size_);
-  else if(compression_ == GZIP)
+  else if(compression_ == CMP_GZIP)
     bytes_read = gzread(fdz_, buffer_, segment_size_);
 
   if(bytes_read == 0) {

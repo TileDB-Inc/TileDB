@@ -31,6 +31,8 @@
  * This file implements the Tile class.
  */
 
+#include "global.h"
+#include "special_values.h"
 #include "tile.h"
 #include "utils.h"
 #include <assert.h>
@@ -61,7 +63,7 @@ Tile::Tile(int64_t tile_id, int dim_num,
   payload_ = NULL;
   payload_malloced_ = false;
 
-  if(compression_ == NO_COMPRESSION)
+  if(compression_ == CMP_NONE)
     compressed_ = false;
   else
     compressed_ = true;
@@ -100,7 +102,7 @@ Tile::~Tile() {
 ******************************************************/
 
 TileConstCellIterator Tile::begin() {
-  if(compressed_ && compression_ == GZIP)
+  if(compressed_ && compression_ == CMP_GZIP)
     decompress();
 
   return TileConstCellIterator(this, 0);
@@ -119,7 +121,7 @@ Tile::BoundingCoordinatesPair Tile::bounding_coordinates() const {
 }
 
 const void* Tile::cell(int64_t pos) {
-  if(compressed_ && compression_ == GZIP)
+  if(compressed_ && compression_ == CMP_GZIP)
     decompress();
 
   // Fixed-sized cells
@@ -136,7 +138,7 @@ size_t Tile::cell_size() const {
 }
 
 int64_t Tile::cell_num() {
-  if(compressed_ && compression_ == GZIP)
+  if(compressed_ && compression_ == CMP_GZIP)
     decompress();
 
   return cell_num_;
@@ -159,7 +161,7 @@ TileConstCellIterator Tile::end() {
 }
 
 bool Tile::is_del(int64_t pos) {
-  if(compressed_ && compression_ == GZIP)
+  if(compressed_ && compression_ == CMP_GZIP)
     decompress();
 
   // Applies only to attribute values
@@ -190,7 +192,7 @@ bool Tile::is_del(int64_t pos) {
 }
 
 bool Tile::is_null(int64_t pos) {
-  if(compressed_ && compression_ == GZIP)
+  if(compressed_ && compression_ == CMP_GZIP)
     decompress();
 
   // Applies only to attribute values
@@ -229,7 +231,7 @@ int64_t Tile::tile_id() const {
 }
 
 size_t Tile::tile_size() {
-  if(compressed_ && compression_ == GZIP)
+  if(compressed_ && compression_ == CMP_GZIP)
     decompress();
 
   return tile_size_;
@@ -306,7 +308,7 @@ void Tile::decompress() {
     return;
 
   // Currently works only with GZIP compression
-  assert(compression_ == GZIP);  
+  assert(compression_ == CMP_GZIP);  
 
   // Initialization
   void* old_payload = payload_;
@@ -330,7 +332,7 @@ void Tile::decompress() {
 
 template<class T> 
 bool Tile::cell_inside_range(int64_t pos, const T* range) {
-  if(compressed_ && compression_ == GZIP)
+  if(compressed_ && compression_ == CMP_GZIP)
     decompress();
 
   assert(*cell_type_ == typeid(T));
@@ -346,7 +348,7 @@ bool Tile::cell_inside_range(int64_t pos, const T* range) {
 }
 
 void Tile::print() {
-  if(compressed_ && compression_ == GZIP)
+  if(compressed_ && compression_ == CMP_GZIP)
     decompress();
 
   std::cout << "=========== Tile info ==========\n";
@@ -424,7 +426,7 @@ void Tile::print() {
 }
 
 TileConstReverseCellIterator Tile::rbegin() {
-  if(compressed_ && compression_ == GZIP)
+  if(compressed_ && compression_ == CMP_GZIP)
     decompress();
 
   return TileConstReverseCellIterator(this, cell_num()-1);

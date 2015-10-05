@@ -33,6 +33,7 @@
 
 #include "bin_file.h"
 #include "book_keeping.h"
+#include "special_values.h"
 #include "utils.h"
 #include <assert.h>
 #include <fcntl.h>
@@ -48,10 +49,10 @@
 BookKeeping::BookKeeping(
     const ArraySchema* array_schema,
     const std::string* fragment_name,
-    const std::string* workspace) 
+    const std::string* dirname) 
     : array_schema_(array_schema), 
       fragment_name_(fragment_name),
-      workspace_(workspace) {
+      dirname_(dirname) {
 }
 
 BookKeeping::~BookKeeping() {
@@ -122,8 +123,7 @@ size_t BookKeeping::tile_size(int attribute_id, int64_t pos) const {
     const std::string& array_name = array_schema_->array_name();
     const std::string& attribute_name = 
         array_schema_->attribute_name(attribute_id);
-    std::string filename = *workspace_ + "/" + array_name + "/" +
-                           *fragment_name_ + "/" +
+    std::string filename = *dirname_ + "/" +
                            attribute_name + TILE_DATA_FILE_SUFFIX;
     return file_size(filename) - offsets_[attribute_id][pos]; 
   } else {
@@ -137,8 +137,7 @@ size_t BookKeeping::tile_size(int attribute_id, int64_t pos) const {
 
 void BookKeeping::commit() {
   // Do nothing if the book keeping files exist
-  std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
-                         *fragment_name_ + "/" +
+  std::string filename = *dirname_ + "/" +
                          BOUNDING_COORDINATES_FILENAME + 
                          BOOK_KEEPING_FILE_SUFFIX;
 
@@ -186,13 +185,12 @@ void BookKeeping::commit_bounding_coordinates() {
   size_t coords_size = array_schema_->cell_size(attribute_num);
 
   // Prepare filename
-  std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
-                         *fragment_name_ + "/" +
+  std::string filename = *dirname_ + "/" +
                          BOUNDING_COORDINATES_FILENAME + 
                          BOOK_KEEPING_FILE_SUFFIX;
 
   // Open file
-  BINFile* bin_file = new BINFile(filename, "w"); 
+  BINFile* bin_file = new BINFile(filename, "w", CMP_GZIP); 
 
   // Write to file
   for(int64_t i=0; i<tile_num; ++i) {
@@ -223,12 +221,11 @@ void BookKeeping::commit_mbrs() {
   size_t coords_size = array_schema_->cell_size(attribute_num);
 
   // prepare file name
-  std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
-                         *fragment_name_ + "/" +
+  std::string filename = *dirname_ + "/" +
                          MBRS_FILENAME + BOOK_KEEPING_FILE_SUFFIX;
 
   // Open file
-  BINFile* bin_file = new BINFile(filename, "w"); 
+  BINFile* bin_file = new BINFile(filename, "w", CMP_GZIP); 
 
   // Write to file
   for(int64_t i=0; i<tile_num; ++i) 
@@ -254,12 +251,11 @@ void BookKeeping::commit_offsets() {
     return;
 
   // Prepare file name
-  std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
-                         *fragment_name_ + "/" +
+  std::string filename = *dirname_ + "/" +
                          OFFSETS_FILENAME + BOOK_KEEPING_FILE_SUFFIX;
 
   // Open file
-  BINFile* bin_file = new BINFile(filename, "w"); 
+  BINFile* bin_file = new BINFile(filename, "w", CMP_GZIP); 
 
   // Write to the file
   // TODO: This could be optimized a bit
@@ -286,13 +282,12 @@ void BookKeeping::load_bounding_coordinates() {
   size_t coords_size = array_schema_->cell_size(attribute_num);
  
   // Prepare file name
-  std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
-                         *fragment_name_ + "/" +
+  std::string filename = *dirname_ + "/" +
                          BOUNDING_COORDINATES_FILENAME + 
                          BOOK_KEEPING_FILE_SUFFIX;
 
   // Open file
-  BINFile* bin_file = new BINFile(filename, "r"); 
+  BINFile* bin_file = new BINFile(filename, "r", CMP_GZIP); 
 
   // Initializations
   bounding_coordinates_.resize(tile_num);
@@ -334,12 +329,11 @@ void BookKeeping::load_mbrs() {
   size_t coords_size = array_schema_->cell_size(attribute_num);
  
   // Prepare file name
-  std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
-                         *fragment_name_ + "/" +
+  std::string filename = *dirname_ + "/" +
                          MBRS_FILENAME + BOOK_KEEPING_FILE_SUFFIX;
 
   // Open file
-  BINFile* bin_file = new BINFile(filename, "r"); 
+  BINFile* bin_file = new BINFile(filename, "r", CMP_GZIP); 
 
   // Load MBRs
   void* mbr;
@@ -376,12 +370,11 @@ void BookKeeping::load_offsets() {
   assert(tile_num != 0);
  
   // Prepare file name
-  std::string filename = *workspace_ + "/" + array_schema_->array_name() + "/" +
-                         *fragment_name_ + "/" +
+  std::string filename = *dirname_ + "/" +
                          OFFSETS_FILENAME + BOOK_KEEPING_FILE_SUFFIX;
 
   // Open file
-  BINFile* bin_file = new BINFile(filename, "r"); 
+  BINFile* bin_file = new BINFile(filename, "r", CMP_GZIP); 
 
   // Load offsets
   offsets_.resize(attribute_num+1);

@@ -1,0 +1,168 @@
+.TH tiledb_dataset_generate 1 "13 October 2015" "Version 0.1" "TileDB programs"
+ 
+.SH NAME
+tiledb_dataset_generate - generates synthetic data for a particular array schema
+in a \fBCSV\fR or \fBbinary\fR form, \fBcompressed\fR or \fBuncompressed\fR.
+
+.SH SYNOPSIS
+.B tiledb_dataset_generate 
+.BI "-A " "array_name " "-f " "filename " "-n " "cell_num " 
+.br
+[
+.BI "-w " "workspace "
+] [
+.BI "-g " "group "
+] [
+.BI "-s " "seed "
+] [
+.BI "-F " "format "
+] [
+.BI "-l " "delimiter "
+]
+
+.SH DESCRIPTION
+.B tiledb_dataset_generate
+generates a sythetic dataset for a particular array schema in a \fBCSV\fR or
+\fBbinary\fR format, \fBcompressed\fR or \fBuncompressed\fR. For the CSV format,
+the user can specify any character \fBdelimiter\fR, including \fItab\fR. The
+output dataset essentially consists of a collection of cells, whose format 
+complies with the schema of the input array. This means that the given array
+must already be defined. The coordinate values are drawn uniformly at random 
+from their corresponding dimension domains defined in the array schema. The 
+attribute values depend on their type. The real attribute values (i.e., 
+\fBfloat32\fR and \fBfloat64\fR) are drawn uniformly at random from 
+\fB[0.0,1.0]\fR. The \fBint32\fR and \fBint64\fR data values are drawn uniformly
+at random from \fB[0,max()]\fR, where \fBmax()\fR is the maximum value of the 
+corresponding type supported by the system that calls the function. Finally, the
+\fBchar\fR values are drawn uniformly at random from ASCII domain 
+\fB[45,126]\fR, i.e., all the characters between and including \fB'-'\fR and 
+\fB'~'\fR.
+
+The user can either specify explicitly the data format, or let the program 
+derive it from the provided file name. For instance, if the user does not 
+specify the format, then file name "my_file.bin" implies that the data will be 
+stored in uncompressed binary format, whereas "my_file.csv.gz" implies that the 
+data will be stored in GZIP-compressed CSV format. The CSV and binary formats 
+are explained in detail in \fBtiledb_array_load\fR(1). Note that the generated data
+do not contain deletions.
+
+In addition, specifically or the case of CSV file, the use may specify a custom
+delimiter. Finally, the user may specify a random seed, so that he/she can 
+generate the same "random" dataset multiple times (e.g., for experiment
+reproducibility purposes).
+
+On error, it returns \fB-1\fR. Moreover, if it is compiled in \fBVERBOSE\fR 
+mode, it prints comprehensive error messages on \fIstderr\fR. On success, it 
+returns \fB0\fR. 
+
+The following conventions apply to the \fBSYNOPSIS\fR section:
+
+.TS
+tab (@);
+c lx .
+\fBbold text\fR @ type exactly as shown
+\fIitalic text\fR @ replace with appropriate argument
+[\fB\-a \fIarg\fR]@ any or all options within [ ] are optional
+.TE
+
+.SH OPTIONS
+.TP
+.BI "-w" " workspace" "\fR, " \fB --workspace=\fIworkspace\fR  
+The path to the workspace folder where the array is stored. If it is not 
+provided, the current working directory is set as the workspace by default.
+
+.TP
+.BI "-g" " group" "\fR, " \fB --group=\fIgroup\fR  
+This is a directory inside the workspace where the array is stored.
+Note that any group path provided is converted into an absolute path 
+\fBrelative to the workspace directory\fR, i.e., regarding all home ("\\~/"), 
+current ("./") and root ("/") as the workspace directory. If the group is not 
+provided, the workspace is set as the default group.
+
+.TP
+.BI "-A" " array_name" "\fR, " \fB --array-name=\fIarray_name\fR  
+The name of the array for which the data are generated. The array
+must be already defined. 
+
+.TP
+.BI "-f" " filename" "\fR, " \fB --filename=\fIfilename\fR  
+The name of the output file that will store the generated data. If the user does
+not specify explicitly the file format, the program derives it automaticalyy 
+from the provided file name. For instance, if the user does not specify the 
+format, then file name "my_file.bin" implies that the data will be stored in 
+uncompressed binary format, whereas "my_file.csv.gz" implies that the data will 
+be stored in GZIP-compressed CSV format.
+
+.TP
+.BI "-n" " cell_num" "\fR, " \fB --cell_num=\fIcell_num\fR  
+The number of cells to be generated.
+
+.TP
+.BI "-s" " seed" "\fR, " \fB --seed=\fIseed\fR  
+The seed that will be used internally by the random generator. This is
+optional. If it is omitted, the default is the current time of day. 
+
+.TP
+.BI "-F" " format" "\fR, " \fB --format=\fIformat\fR  
+It can be one of the following: \fBcsv\fR (CSV format), \fBcsv.gz\fR 
+(GZIP-compressed CSV format), \fBbin\fR (binary format), \fBbin.gz\fR 
+(GZIP-compressed binary format). If it is not provided, the program will derive
+it from the file name as described above for option '\fB\-f\fR'.
+
+.TP
+.BI "-l" " delimiter" "\fR, " \fB --delimiter=\fIdelimiter\fR  
+This is meaningful only for CSV format. It stands for the delimiter which 
+separates the values in a CSV line in the CSV file. If not given, the default is
+\fB','\fR. For using a tab as a delimiter, the user must specify it simply 
+as \fBtab\fR.
+
+.SH EXAMPLES
+.TP
+\fBtiledb_dataset_generate\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-g \fRmy_group/ \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_array \\
+    \fB-F \fRcsv \\
+    \fB-l \fR';' \\
+    \fB-n \fR10000 \\
+    \fB-s \fR 0
+
+Creates CSV data for array \fImy_array\fR that is stored in directory
+\fImy_workspace/my_group/my_array\fR. The output file is \fI"my_array"\fR.
+The delimiter character for each CSV line/cell is \fI';'\fR.
+The file will contain \fI10000\fR cells. A fixed seed \fB0\fR was used.
+
+\fBtiledb_dataset_generate\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-g \fRmy_group/ \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_array \\
+    \fB-F \fRcsv.gz \\
+    \fB-l \fRtab \\
+    \fB-n \fR10000 \\
+    \fB-s \fR 0
+
+Same as above but now the delimiter is \fItab\fR, and the CSV file is 
+\fIGZIP-compressed\fR.
+
+\fBtiledb_dataset_generate\fR \\ 
+    \fB-w \fRmy_workspace/ \\
+    \fB-g \fRmy_group/ \\
+    \fB-A \fRmy_array \\
+    \fB-f \fRmy_array.bin.gz \\
+    \fB-n \fR10000
+
+Same as the first example, but now the file format is automatically derived from
+the file name as binary GZIP-compressed. Moreover, the seed used in the random 
+generator is the \fIcurrent time\fR.
+
+.SH EXIT STATUS
+.TP 
+\fB0\fR for success and \fB-1\fR for error.
+
+.SH SEE ALSO
+.BR "tiledb_array_define" "(1) " "tiledb_array_load" "(1) 
+
+.SH AUTHOR
+Stavros Papadopoulos <http://people.csail.mit.edu/stavrosp>, Copyright (c) 2015

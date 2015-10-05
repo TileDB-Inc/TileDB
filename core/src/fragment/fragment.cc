@@ -6,7 +6,7 @@
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
  */
 
 #include "fragment.h"
+#include "special_values.h"
 #include "utils.h"
 #include <algorithm>
 #include <assert.h>
@@ -45,59 +46,68 @@
 ******************************************************/
 
 Fragment::Fragment(
-    const std::string& workspace, size_t segment_size,
-    size_t write_state_max_size,
-    const ArraySchema* array_schema, const std::string& fragment_name)
-    : workspace_(workspace), array_schema_(array_schema),
-      fragment_name_(fragment_name), segment_size_(segment_size) {
-  book_keeping_ = new BookKeeping(array_schema_, &fragment_name_, &workspace_);
+    const std::string& dirname, 
+    const ArraySchema* array_schema, 
+    const std::string& fragment_name)
+    : dirname_(dirname), 
+      array_schema_(array_schema),
+      fragment_name_(fragment_name) {
+  book_keeping_ = new BookKeeping(array_schema_, &fragment_name_, &dirname_);
   read_state_ = NULL;
   write_state_ = NULL;
 
-  temp_dirname_ = workspace_ + "/" + TEMP + "/" + 
-                  array_schema->array_name() + "_" + fragment_name + "/";
+  // TODO: flag for error
 
-  std::string fragment_dirname = workspace_ + "/" +
-                                 array_schema->array_name() + "/" + 
-                                 fragment_name;
+  temp_dirname_ = dirname_ + "/" + TEMP;
 
-  if(is_dir(fragment_dirname)) {
+  if(is_dir(dirname_)) {
     book_keeping_->load();
-    read_state_ = new ReadState(
-                      array_schema_, book_keeping_, 
-                      &fragment_name_, &workspace_,
-                      segment_size_);
+    read_state_ = 
+        new ReadState(
+            array_schema_, 
+            book_keeping_, 
+            &fragment_name_, 
+            &dirname_);
   } else { 
     // Create directories 
-    create_directory(fragment_dirname);
-    create_directory(temp_dirname_);
+    directory_create(dirname_);
+    directory_create(temp_dirname_);
 
     // Initialize write state and book-keeping structures
     book_keeping_->init();
     write_state_ = 
-        new WriteState(array_schema, &fragment_name_, &temp_dirname_, 
-                       &workspace_, book_keeping_, 
-                       segment_size_, write_state_max_size);
+        new WriteState(
+            array_schema, 
+            &fragment_name_, 
+            &temp_dirname_, 
+            &dirname_, 
+            book_keeping_);
   }
-  assert(is_dir(fragment_dirname));
+
+  assert(is_dir(dirname_));
 }
 
 Fragment::~Fragment() {
-  // Read state
+  // Clear read state
   if(read_state_ != NULL)
     delete read_state_;
 
-  // Write state
-  flush_write_state();
+  if(write_state_ != NULL) {
+    flush_write_state();
+    // Commit book keeping
+    if(book_keeping_ != NULL)
+      book_keeping_->commit();
+  }
 
-  // Book-keeping
+  // Clear book keeping
   if(book_keeping_ != NULL) {
-    commit_book_keeping();
-    clear_book_keeping();
+    delete book_keeping_;
+    book_keeping_ = NULL;
   }
 
   // Delete temp directory
-  delete_directory(temp_dirname_);
+  if(is_dir(temp_dirname_))
+    directory_delete(temp_dirname_);
 }
 
 /******************************************************
@@ -126,6 +136,10 @@ Tile::BoundingCoordinatesPair Fragment::bounding_coordinates(
 
 const std::string& Fragment::fragment_name() const {
   return fragment_name_;
+}
+
+const std::string& Fragment::dirname() const {
+  return dirname_;
 }
 
 Tile* Fragment::get_tile_by_pos(int attribute_id, int64_t pos) const {
@@ -159,31 +173,12 @@ int64_t Fragment::tile_num() const {
 *********************** MUTATORS **********************
 ******************************************************/
 
-void Fragment::clear_book_keeping() {
-  if(book_keeping_ != NULL)
-    delete book_keeping_;
-
-  book_keeping_ = NULL;
-}
-
-void Fragment::clear_write_state() {
-  if(write_state_ != NULL)
-    delete write_state_;
-
-  write_state_ = NULL;
-}
-
-void Fragment::commit_book_keeping() {
-  book_keeping_->commit();
-}
-
 void Fragment::flush_write_state() {
   if(write_state_ != NULL) {
     write_state_->flush();
     delete write_state_;
+    write_state_ = NULL;
   }
- 
-  write_state_ = NULL;
 }
 
 void Fragment::init_read_state() {
@@ -191,38 +186,39 @@ void Fragment::init_read_state() {
     delete read_state_;
 
   read_state_ = new ReadState(
-                     array_schema_, book_keeping_, 
-                     &fragment_name_, &workspace_,
-                     segment_size_);
+                     array_schema_, 
+                     book_keeping_, 
+                     &fragment_name_,
+                     &dirname_);
 }
 
 template<class T>
-void Fragment::write_cell(const void* cell) const {
-  write_state_->write_cell<T>(cell);
+int Fragment::cell_write(const void* cell) const {
+  return write_state_->cell_write<T>(cell);
 }
 
 template<class T>
-void Fragment::write_cell_sorted(const void* cell) {
-  write_state_->write_cell_sorted<T>(cell);
+int Fragment::cell_write_sorted(const void* cell) {
+  return write_state_->cell_write_sorted<T>(cell);
 }
 
 template<class T>
-void Fragment::write_cell_sorted_with_id(const void* cell) {
-  write_state_->write_cell_sorted_with_id<T>(cell);
+int Fragment::cell_write_sorted_with_id(const void* cell) {
+  return write_state_->cell_write_sorted_with_id<T>(cell);
 }
 
 template<class T>
-void Fragment::write_cell_sorted_with_2_ids(const void* cell) {
-  write_state_->write_cell_sorted_with_2_ids<T>(cell);
+int Fragment::cell_write_sorted_with_2_ids(const void* cell) {
+  return write_state_->cell_write_sorted_with_2_ids<T>(cell);
 }
 
 // Explicit template instantiations
-template void Fragment::write_cell<int>(const void* cell) const;
-template void Fragment::write_cell<int64_t>(const void* cell) const;
-template void Fragment::write_cell<float>(const void* cell) const;
-template void Fragment::write_cell<double>(const void* cell) const;
+template int Fragment::cell_write<int>(const void* cell) const;
+template int Fragment::cell_write<int64_t>(const void* cell) const;
+template int Fragment::cell_write<float>(const void* cell) const;
+template int Fragment::cell_write<double>(const void* cell) const;
 
-template void Fragment::write_cell_sorted<int>(const void* cell);
-template void Fragment::write_cell_sorted<int64_t>(const void* cell);
-template void Fragment::write_cell_sorted<float>(const void* cell);
-template void Fragment::write_cell_sorted<double>(const void* cell);
+template int Fragment::cell_write_sorted<int>(const void* cell);
+template int Fragment::cell_write_sorted<int64_t>(const void* cell);
+template int Fragment::cell_write_sorted<float>(const void* cell);
+template int Fragment::cell_write_sorted<double>(const void* cell);

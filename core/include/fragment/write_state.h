@@ -6,7 +6,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,8 +31,8 @@
  * This file defines class WriteState. 
  */
 
-#ifndef WRITE_STATE_H
-#define WRITE_STATE_H
+#ifndef __WRITE_STATE_H__
+#define __WRITE_STATE_H__
 
 #include "array_schema.h"
 #include "book_keeping.h"
@@ -65,10 +65,8 @@ class WriteState {
       const ArraySchema* array_schema, 
       const std::string* fragment_name,
       const std::string* temp_dirname,
-      const std::string* workspace,
-      BookKeeping* book_keeping,
-      size_t segment_size,
-      size_t write_state_max_size);  
+      const std::string* dirname,
+      BookKeeping* book_keeping);  
   /** Destructor. */
   ~WriteState();
 
@@ -86,25 +84,25 @@ class WriteState {
    * as the attributes are defined in the array schema.
    */
   template<class T>
-  void write_cell(const void* cell);
+  int cell_write(const void* cell);
   /** 
    * Writes a cell into the fragment, respecting the global cell order. 
    * The input cell carries no ids.
    */
   template<class T>
-  void write_cell_sorted(const void* cell); 
+  int cell_write_sorted(const void* cell); 
   /** 
    * Writes a cell into the fragment, respecting the global cell order. 
    * The input cell carries a single (tile) id.
    */
   template<class T>
-  void write_cell_sorted_with_id(const void* cell); 
+  int cell_write_sorted_with_id(const void* cell); 
   /** 
    * Writes a cell into the fragment, respecting the global cell order. 
    * The input cell carries a tile and a cell id.
    */
   template<class T>
-  void write_cell_sorted_with_2_ids(const void* cell); 
+  int cell_write_sorted_with_2_ids(const void* cell); 
 
  private:
   // PRIVATE ATTRIBUTES
@@ -128,6 +126,8 @@ class WriteState {
   std::vector<CellWith2Ids> cells_with_2_ids_;
   /** The number of cell in the tile currently being populated. */
   int64_t cell_num_;
+  /** The fragment directory name. */
+  const std::string* dirname_; 
   /** 
    * Keeping track of the offsets of the attribute files (plus coordinates),
    * when writing cells in a sorted manner to create the tiles.
@@ -165,8 +165,6 @@ class WriteState {
   const std::string* temp_dirname_;
   /** The id of the tile being currently populated. */
   int64_t tile_id_;
-  /** The workspace. */
-  const std::string* workspace_; 
   /** Max memory size of the write state when creating an array fragment. */
   size_t write_state_max_size_;
 

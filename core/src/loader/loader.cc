@@ -38,7 +38,6 @@
 #include "csv_file_collection.h"
 #include "loader.h"
 #include "progress_bar.h"
-#include "special_values.h"
 #include "utils.h"
 #include <assert.h>
 #include <fcntl.h>
@@ -51,274 +50,235 @@
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
+#include <utils.h>
 
-/******************************************************
-************* CONSTRUCTORS & DESTRUCTORS***************
-******************************************************/
+// Macro for printing error message in VERBOSE mode
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << "[TileDB::Loader] Error: " << x \
+                                   << ".\n" 
+#  define PRINT_WARNING(x) std::cerr << "[TileDB::Loader] Warning: " \
+                                     << x << ".\n" 
+#else
+#  define PRINT_ERROR(x) do { } while(0) 
+#  define PRINT_WARNING(x) do { } while(0) 
+#endif
 
-Loader::Loader(StorageManager* storage_manager, const std::string& path)
+/* ****************************** */
+/*   CONSTRUCTORS & DESTRUCTORS   */
+/* ****************************** */
+
+Loader::Loader(StorageManager* storage_manager)
     : storage_manager_(storage_manager) {
-  // Success code
-  err_ = 0;
+  finalized_ = false;
+  created_successfully_ = true;
+}
 
-  if(!is_dir(path)) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " Workspace directory '" << path << "' does not exist.\n";
-    err_ = TILEDB_EDNEXIST;
-    return;
-  }
+bool Loader::created_successfully() const {
+  return created_successfully_;
+}
 
-  // Set workspace
-  set_workspace(path);
+int Loader::finalize() {
+  finalized_ = true;
 
-  // Create directories
-  int rc;
-  if(!is_dir(workspace_)) {
-    rc = create_directory(workspace_);
-    if(rc) {
-      std::cerr << ERROR_MSG_HEADER
-                << " Cannot create directory '" << workspace_ << "'.\n";
-      err_ = TILEDB_EDNCREAT;
-      return;
-    }
-  }
+  // Success
+  return 0;
 }
 
 Loader::~Loader() {
+  if(!finalized_) {
+    PRINT_WARNING("Loader not finalized. Finalizing now");
+    finalize();
+  }
 }
 
-/******************************************************
-********************* ACCESSORS ************************
-******************************************************/
+/* ****************************** */
+/*        LOADING FUNCTIONS       */
+/* ****************************** */
 
-int Loader::err() const {
-  return err_;
-}
-
-/******************************************************
-******************* LOADING FUNCTIONS *****************
-******************************************************/
-
-int Loader::load_bin(
+int Loader::array_load(
+    const std::string& workspace, 
+    const std::string& group, 
     const std::string& array_name, 
     const std::string& path,
-    bool sorted) const {
-
-  // TODO fix error messages
-
-  // Open array in write mode
-  int ad = storage_manager_->open_array(array_name, "w");
-  if(ad == -1) {
+    const std::string& format,
+    char delimiter,
+    bool update,
+    bool real_paths) const {
+  // Get real paths
+  std::string workspace_real, group_real, path_real; 
+  if(storage_manager_->real_paths_get(
+         workspace,  
+         group, 
+         workspace_real, 
+         group_real, 
+         real_paths))
+    return -1;
+  if(real_paths) 
+    path_real = path;
+  else 
+    path_real = real_path(path);
+  if(path_real == "") {
+    PRINT_ERROR("Invalid path for loading");
     return -1;
   }
 
+  // Open array
+  int ad = storage_manager_->array_open(
+               workspace_real, 
+               group_real, 
+               array_name, 
+               (update) ? "a" : "w", 
+               true);
+  if(ad == -1) 
+    return -1;
+
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema);
-  if(err == -1)
+  if(storage_manager_->array_schema_get(ad, array_schema))
     return -1;
-  int attribute_num = array_schema->attribute_num();
-  const std::type_info& coords_type = *(array_schema->type(attribute_num));
+  const std::type_info* coords_type = array_schema->coords_type();
 
-  if(coords_type == typeid(int))
-    return load_bin<int>(ad, path, sorted);
-  else if(coords_type == typeid(int64_t))
-    return load_bin<int64_t>(ad, path, sorted);
-  else if(coords_type == typeid(float))
-    return load_bin<float>(ad, path, sorted);
-  else if(coords_type == typeid(double))
-    return load_bin<double>(ad, path, sorted);
-  else
-    assert(false); // this shoud not happen
-  return -1;
-}
-
-int Loader::load_csv(
-    const std::string& array_name, 
-    const std::string& path,
-    bool sorted) const {
-  // TODO fix error messages
-
-  // Open array in write mode
-  int ad = storage_manager_->open_array(array_name, "w");
-  if(ad == -1) { 
+  // Resolve CSV or BIN
+  bool bin = 
+      (format == "bin" || format == "bin.gz" || format == "sorted.bin.gz");
+  bool csv = 
+      (format == "csv" || format == "csv.gz" || format == "sorted.csv.gz");
+  if(!bin && !csv) {
+    PRINT_ERROR("Invalid collection format");
     return -1;
   }
 
-  // For easy reference
-  const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema);
-  if(err == -1)
-    return -1;
-  int attribute_num = array_schema->attribute_num();
-  const std::type_info& coords_type = *(array_schema->type(attribute_num));
-
-  if(coords_type == typeid(int))
-    return load_csv<int>(ad, path, sorted);
-  else if(coords_type == typeid(int64_t))
-    return load_csv<int64_t>(ad, path, sorted);
-  else if(coords_type == typeid(float))
-    return load_csv<float>(ad, path, sorted);
-  else if(coords_type == typeid(double))
-    return load_csv<double>(ad, path, sorted);
+  // Resolve compression type
+  CompressionType compression;
+  if(ends_with(format, ".gz"))
+    compression = CMP_GZIP;
   else
-      assert(false); // this should not happen
-  return -1;
-}
+    compression = CMP_NONE;
 
-int Loader::update_bin(
-    const std::string& array_name, 
-    const std::string& path,
-    bool sorted) const {
+  // Resolve if sorted or not
+  bool sorted;
+  if(starts_with(format, "sorted"))
+    sorted = true;
+  else
+    sorted = false;
 
-  // TODO fix error messages
-
-  // Open array in write mode
-  int ad = storage_manager_->open_array(array_name, "a");
-  if(ad == -1) { 
-    return -1;
+  // Load
+  int rc; 
+  if(coords_type == &typeid(int)) {
+    if(bin)
+      rc = array_load_bin<int>(ad, path, sorted, compression);
+    else if(csv)
+      rc = array_load_csv<int>(ad, path, sorted, compression, delimiter);
+  } else if(coords_type == &typeid(int64_t)) {
+    if(bin)
+      rc = array_load_bin<int64_t>(ad, path, sorted, compression);
+    else if(csv)
+      rc = array_load_csv<int64_t>(ad, path, sorted, compression, delimiter);
+  } else if(coords_type == &typeid(float)) {
+    if(bin)
+      rc = array_load_bin<float>(ad, path, sorted, compression);
+    else if(csv)
+      rc = array_load_csv<float>(ad, path, sorted, compression, delimiter);
+  } else if(coords_type == &typeid(double)) {
+    if(bin)
+      rc = array_load_bin<double>(ad, path, sorted, compression);
+    else if(csv)
+      rc = array_load_csv<double>(ad, path, sorted, compression, delimiter);
+  } else {
+    PRINT_ERROR("Invalid array coordinates type");
+    rc = -1;
   }
 
-  // For easy reference
-  const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema);
-  if(err == -1)
-    return -1;
-  int attribute_num = array_schema->attribute_num();
-  const std::type_info& coords_type = *(array_schema->type(attribute_num));
-
-  if(coords_type == typeid(int))
-    return load_bin<int>(ad, path, sorted);
-  else if(coords_type == typeid(int64_t))
-    return load_bin<int64_t>(ad, path, sorted);
-  else if(coords_type == typeid(float))
-    return load_bin<float>(ad, path, sorted);
-  else if(coords_type == typeid(double))
-    return load_bin<double>(ad, path, sorted);
-  else
-    assert(false); // this should not happen
-  return -1;
-}
-
-int Loader::update_csv(
-    const std::string& array_name, 
-    const std::string& path,
-    bool sorted) const {
-  // TODO fix error messages
-
-  // Open array in write mode
-  int ad = storage_manager_->open_array(array_name, "a");
-  if(ad == -1) { 
-    return -1;
+  // Close array 
+  if(rc == -1) {
+    storage_manager_->array_close_forced(ad);
+    storage_manager_->array_delete(
+        workspace_real, group_real, array_name, true);
+  } else {
+    if(storage_manager_->array_close(ad))
+      rc = -1;
   }
 
-  // For easy reference
-  const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema);
-  if(err == -1)
-    return -1;
-  int attribute_num = array_schema->attribute_num();
-  const std::type_info& coords_type = *(array_schema->type(attribute_num));
-
-  if(coords_type == typeid(int))
-    return load_csv<int>(ad, path, sorted);
-  else if(coords_type == typeid(int64_t))
-    return load_csv<int64_t>(ad, path, sorted);
-  else if(coords_type == typeid(float))
-    return load_csv<float>(ad, path, sorted);
-  else if(coords_type == typeid(double))
-    return load_csv<double>(ad, path, sorted);
-  else
-    assert(false); // this should not happen
-  return -1;
+  return rc;
 }
 
-/******************************************************
-******************* PRIVATE METHODS *******************
-******************************************************/
+/* ****************************** */
+/*         PRIVATE METHODS        */
+/* ****************************** */
 
 template<class T>
-int Loader::load_bin(
+int Loader::array_load_bin(
     int ad, 
     const std::string& path,
-    bool sorted) const {
+    bool sorted,
+    CompressionType compression) const {
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema);
-  if(err == -1)
+  if(storage_manager_->array_schema_get(ad, array_schema))
     return -1;
 
   // Open the BIN file collection 
-  BINFileCollection<T> bin_file_collection;
-  err = bin_file_collection.open(array_schema, 0, path, sorted);
-  if(err)
+  BINFileCollection<T> bin_file_collection(compression);
+  if(bin_file_collection.open(array_schema, 0, path, sorted))
     return -1;
 
   // Prepare a cell
   Cell cell(array_schema);
 
+  // Load
   while(bin_file_collection >> cell) { 
-    if(sorted)
-      storage_manager_->write_cell_sorted<T>(ad, cell.cell());
-    else 
-      storage_manager_->write_cell<T>(ad, cell.cell());
+    if(sorted) {
+      if(storage_manager_->cell_write_sorted<T>(ad, cell.cell()))
+        return -1;
+    } else {
+      if(storage_manager_->cell_write<T>(ad, cell.cell()))
+        return -1;
+    }
   }
 
   // Clean up
-  storage_manager_->close_array(ad);
-  err = bin_file_collection.close();
-  if(err)
+  if(bin_file_collection.close())
     return -1;
 
-  return TILEDB_OK;
+  return 0;
 }
 
 template<class T>
-int Loader::load_csv(
+int Loader::array_load_csv(
     int ad, 
     const std::string& path,
-    bool sorted) const {
+    bool sorted,
+    CompressionType compression,
+    char delimiter) const {
   // For easy reference
   const ArraySchema* array_schema;
-  int err = storage_manager_->get_array_schema(ad, array_schema);
-  if(err == -1)
+  if(storage_manager_->array_schema_get(ad, array_schema))
     return -1;
 
   // Open the CSV file collection 
-  CSVFileCollection<T> csv_file_collection;
-  err = csv_file_collection.open(array_schema, path, sorted);
-  if(err)
+  CSVFileCollection<T> csv_file_collection(compression, delimiter);
+  if(csv_file_collection.open(array_schema, path, sorted))
     return -1;
 
   // Prepare a cell
   Cell cell(array_schema);
 
+  // Load
   while(csv_file_collection >> cell) { 
-    if(sorted)
-      storage_manager_->write_cell_sorted<T>(ad, cell.cell());
-    else 
-      storage_manager_->write_cell<T>(ad, cell.cell());
+    if(sorted) {
+      if(storage_manager_->cell_write_sorted<T>(ad, cell.cell()))
+        return -1;
+    } else {
+      if(storage_manager_->cell_write<T>(ad, cell.cell()))
+        return -1;
+    }
   }
 
   // Clean up
-  storage_manager_->close_array(ad);
-  err = csv_file_collection.close();
-  if(err)
+  if(csv_file_collection.close())
     return -1;
 
-  return TILEDB_OK;
+  return 0;
 }
 
-inline
-void Loader::set_workspace(const std::string& path) {
-  workspace_ = absolute_path(path);
-  assert(is_dir(workspace_));
 
-  std::stringstream ss;
-  ss << workspace_;
-  if(!ends_with(workspace_, "/"))
-      ss << "/";
-  ss << "Loader";
-  workspace_  = ss.str();
-  return;
-}

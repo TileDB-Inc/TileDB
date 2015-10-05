@@ -55,7 +55,7 @@ class CSVFileCollection {
  public: 
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
-  CSVFileCollection();
+  CSVFileCollection(CompressionType compression, char delimiter);
   /** Destructor. */
   ~CSVFileCollection();
 
@@ -76,10 +76,14 @@ class CSVFileCollection {
   // PRIVATE ATTRIBUTES
   /** The array schema. */
   const ArraySchema* array_schema_;
+  /** The compression type. */
+  CompressionType compression_;
   /** The BIN file collection. */
   std::vector<CSVFile*> csv_files_;
   /** Stores the next cell in each file in the collection. */
   std::vector<Cell*> cells_;
+  /** The CSV line delimiter */
+  char delimiter_;
   /** The names of the files included in the collection. */
   std::vector<std::string> filenames_;
   /** File id from which we lastly accessed a cell. */

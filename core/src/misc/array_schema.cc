@@ -33,6 +33,7 @@
 
 #include "array_schema.h"
 #include "csv_line.h"
+#include "special_values.h"
 #include <assert.h>
 #include <string.h>
 #include <math.h>
@@ -40,7 +41,16 @@
 #include <iostream>
 #include <set>
 #include <stdio.h>
+#include <sstream>
 #include <time.h>
+
+// Macro for printing error message in VERBOSE mode
+#ifdef VERBOSE
+  #define PRINT_ERROR(x) std::cerr << "[TileDB::ArraySchema] Error: " << x \
+                                   << ".\n" 
+#else
+  #define PRINT_ERROR(x) do { } while(0) 
+#endif
 
 /******************************************************
 ************ CONSTRUCTORS & DESTRUCTORS ***************
@@ -112,7 +122,7 @@ ArraySchema::ArraySchema(
   // Set compression
   if(compression.size() == 0) {
     for(int i=0; i<= attribute_num_; ++i)
-      compression_.push_back(NO_COMPRESSION);
+      compression_.push_back(CMP_NONE);
   } else {
     assert(compression.size() == attribute_num_ + 1);
     compression_ = compression;
@@ -197,7 +207,7 @@ ArraySchema::ArraySchema(
   // Set compression
   if(compression.size() == 0) {
     for(int i=0; i<= attribute_num_; ++i)
-      compression_.push_back(NO_COMPRESSION);
+      compression_.push_back(CMP_NONE);
   } else {
     assert(compression.size() == attribute_num_ + 1);
     compression_ = compression;
@@ -368,6 +378,7 @@ int ArraySchema::dim_num() const {
 // type#1(char) type#2(char) ... 
 // val_num#1(int) val_num#2(int) ... 
 // compression#1(char) compression#2(char) ...
+//TODO Perhaps make it return int for errors?
 std::pair<const char*, size_t> ArraySchema::serialize() const {
   size_t buffer_size = 0;
 
@@ -536,13 +547,13 @@ std::string ArraySchema::serialize_csv() const {
     if(*types_[i] == typeid(char))
       typestr = std::string("char:");
     else if(*types_[i] == typeid(int))
-      typestr = std::string("int:");
+      typestr = std::string("int32:");
     else if(*types_[i] == typeid(int64_t))
       typestr = std::string("int64:");
     else if(*types_[i] == typeid(float))
-      typestr = std::string("float:");
+      typestr = std::string("float32:");
     else if(*types_[i] == typeid(double))
-      typestr = std::string("double:");
+      typestr = std::string("float64:");
     
     if(val_num_[i] == VAR_SIZE)
       typestr += "var";
@@ -555,13 +566,13 @@ std::string ArraySchema::serialize_csv() const {
   if(*types_[attribute_num_] == typeid(char))
     schema << "char"; 
   else if(*types_[attribute_num_] == typeid(int))
-    schema << "int";
+    schema << "int32";
   else if(*types_[attribute_num_] == typeid(int64_t))
     schema << "int64";
   else if(*types_[attribute_num_] == typeid(float))
-    schema << "float";
+    schema << "float32";
   else if(*types_[attribute_num_] == typeid(double))
-    schema << "double";
+    schema << "float64";
   
   // Copy extent for regular Tiles 
   if(has_irregular_tiles()) {
@@ -602,9 +613,9 @@ std::string ArraySchema::serialize_csv() const {
   // Copy compression
   assert(compression_.size() == attribute_num_ + 1);
   for(int i=0; i<= attribute_num_; ++i) {
-    if(compression_[i] == NO_COMPRESSION)
+    if(compression_[i] == CMP_NONE)
       schema << "NONE";
-    else if(compression_[i] == GZIP)
+    else if(compression_[i] == CMP_GZIP)
       schema << "GZIP";
     else
       assert(0); // The code should not reach here
@@ -700,7 +711,9 @@ bool ArraySchema::var_size() const {
 // type#1(char) type#2(char) ... 
 // val_num#1(int) val_num#2(int) ... 
 // compression#1(char) compression#2(char) ...
-void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
+int ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
+  // TODO: Perform checks as well?
+
   size_t offset = 0;
 
   // Load array_name_ 
@@ -865,6 +878,8 @@ void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
       hilbert_curve_for_tiles_ = NULL;
     }
   }
+
+  return 0;
 }
 
 /* 
@@ -883,8 +898,7 @@ void ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
  * If one of the items is omitted (e.g., tile_order), then this CSV field
  * should contain '*' (e.g., it should be ...,cell_order,*,capacity,...). 
  * 
- * It returns 0 on success. On error, it prints a message on stderr and
- * returns -1. 
+ * It returns 0 on success. On error, it returns an error code. 
  */                                                            
 int ArraySchema::deserialize_csv(std::string array_schema_str) {
   // Create a CSVLine object to parse array_schema_str
@@ -895,8 +909,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
 
   // Set array name
   if(!(array_schema_csv >> s)) {
-    std::cerr << ERROR_MSG_HEADER  
-              << " Array name not provided.\n";
+    PRINT_ERROR("Array name not provided");
     return -1;
   }
   if(set_array_name(s))
@@ -905,14 +918,12 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   // Set attribute names
   // ----- retrieve number of attributes
   if(!(array_schema_csv >> s)) {
-    std::cerr << ERROR_MSG_HEADER  
-              << " Number of attributes not provided.\n";
+    PRINT_ERROR("Number of attributes not provided");
     return -1;
   }
   int attribute_num;
   if(!is_positive_integer(s.c_str())) { 
-    std::cerr << ERROR_MSG_HEADER  
-              << " The number of attributes must be a positive integer.\n";
+    PRINT_ERROR("The number of attributes must be a positive integer");
     return -1;
   }
   sscanf(s.c_str(), "%d", &attribute_num); 
@@ -920,9 +931,8 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   std::vector<std::string> attribute_names;
   for(int i=0; i<attribute_num; ++i) {
     if(!(array_schema_csv >> s)) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " The number of attribute names does not match the"
-                << " provided number of attributes.\n";
+      PRINT_ERROR("The number of attribute names does not match the "
+                  "provided number of attributes");
       return -1;
     }
     attribute_names.push_back(s);
@@ -935,14 +945,12 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
  // Set dimension names
   // ----- retrieve number of dimensions
   if(!(array_schema_csv >> s)) {
-    std::cerr << ERROR_MSG_HEADER  
-              << " Number of dimensions not provided.\n";
+    PRINT_ERROR("Number of dimensions not provided");
     return -1;
   }
   int dim_num;
   if(!is_positive_integer(s.c_str())) { 
-    std::cerr << ERROR_MSG_HEADER  
-              << " The number of dimensions must be a positive integer.\n";
+    PRINT_ERROR("The number of dimensions must be a positive integer");
     return -1;
   }
   sscanf(s.c_str(), "%d", &dim_num); 
@@ -950,9 +958,8 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   std::vector<std::string> dim_names;
   for(int i=0; i<dim_num; ++i) {
     if(!(array_schema_csv >> s)) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " The number of dimension names does not match the"
-                << " provided number of dimensions.\n";
+      PRINT_ERROR("The number of dimension names does not match the "
+                  "provided number of dimensions");
       return -1;
     }
     dim_names.push_back(s);
@@ -968,20 +975,17 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   std::string lower_str, upper_str; 
   for(int i=0; i<dim_num; ++i) {
     if(!(array_schema_csv >> lower_str)) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " The number of domain bounds does not match the"
-                << " provided number of dimensions.\n";
+      PRINT_ERROR("The number of domain bounds does not match the "
+                  "provided number of dimensions");
       return -1;
     }
     if(!(array_schema_csv >> upper_str)) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " The number of domain bounds does not match the"
-                << " provided number of dimensions.\n";
+      PRINT_ERROR("The number of domain bounds does not match the "
+                  "provided number of dimensions");
       return -1;
     }
     if(!is_real(lower_str.c_str()) || !is_real(upper_str.c_str())) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " The domain bounds must be real numbers.\n";
+      PRINT_ERROR("The domain bounds must be real numbers");
       return -1;
     } else {
       sscanf(lower_str.c_str(), "%lf", &lower);
@@ -1002,9 +1006,8 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   int num;
   for(int i=0; i<attribute_num; ++i) { 
     if(!(array_schema_csv >> type_val_num)) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " The number of types does not match the number of"
-                << " attributes.\n";
+      PRINT_ERROR("The number of types does not match the number of "
+                  "attributes");
       return -1;
     }
 
@@ -1019,9 +1022,8 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
         val_num.push_back(VAR_SIZE);
       } else if(!is_positive_integer(token)) { 
         // Invalid number of attribute values
-        std::cerr << ERROR_MSG_HEADER  
-                  << " The number of attribute values per cell must be a"
-                  << " positive integer.\n";
+        PRINT_ERROR("The number of attribute values per cell must be a "
+                    "positive integer");
         return -1;
       } else { // Valid number of attribute values per cell
         sscanf(token, "%d", &num);
@@ -1031,46 +1033,42 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
       // No other token should follow
       token = strtok(NULL, ":");
       if(token != NULL) {
-        std::cerr << ERROR_MSG_HEADER  
-                  << " Redundant arguments in definition of cell type.\n";
+        PRINT_ERROR("Redundant arguments in definition of attribute type");
         return -1;
       }
     }
 
     if(type == "char") {
       types.push_back(&typeid(char));
-    } else if(type == "int") {
+    } else if(type == "int32") {
       types.push_back(&typeid(int));
     } else if(type == "int64") {
       types.push_back(&typeid(int64_t));
-    } else if(type == "float") {
+    } else if(type == "float32") {
       types.push_back(&typeid(float));
-    } else if(type == "double") {
+    } else if(type == "float64") {
       types.push_back(&typeid(double));
     } else {
-      std::cerr << ERROR_MSG_HEADER  
-                << " Invalid attribute type '" << type << "'.\n";
+      PRINT_ERROR(std::string("Invalid attribute type '") + type + "'");
       return -1;
     }
   } 
   // ----- Retrieve coordinate type
   if(!(array_schema_csv >> type)) {
-    std::cerr << ERROR_MSG_HEADER  
-              << " The number of types does not match the number of"
-              << " attributes.\n";
+    PRINT_ERROR("The number of types does not match the number of "
+                "attributes");
     return -1;
   }
-  if(type == "int") {
+  if(type == "int32") {
     types.push_back(&typeid(int));
   } else if(type == "int64") {
     types.push_back(&typeid(int64_t));
-  } else if(type == "float") {
+  } else if(type == "float32") {
     types.push_back(&typeid(float));
-  } else if(type == "double") {
+  } else if(type == "float64") {
     types.push_back(&typeid(double));
   } else {
-      std::cerr << ERROR_MSG_HEADER  
-                << " Invalid coordinates type '" << type << "'\n.";
+      PRINT_ERROR(std::string("Invalid coordinates type '") + type + "'");
     return -1;
   }
   // ----- Set types
@@ -1085,16 +1083,13 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   std::vector<double> tile_extents;
   double tile_extent;
   if(!(array_schema_csv >> s)) {
-    std::cerr << ERROR_MSG_HEADER  
-              << " No tile extents provided."
-              << " Put '*' to specify iregular tiles.\n";
+    PRINT_ERROR("No tile extents provided. Put '*' to specify iregular tiles");
     return -1;
   }
 
   if(s != "*") {
     if(!is_real(s.c_str())) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " The tile extents must be real numbers.\n";
+      PRINT_ERROR("The tile extents must be real numbers");
       return -1;
     }
     sscanf(s.c_str(), "%lf", &tile_extent); 
@@ -1102,9 +1097,8 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
     // ----- retrieve the rest dim_num-1 tile extents
     for(int i=0; i<dim_num-1; ++i) { 
       if(!(array_schema_csv >> s)) {
-        std::cerr << ERROR_MSG_HEADER  
-                  << " The number of tile extents does not match the number of"
-                  << " dimensions.\n";
+        PRINT_ERROR("The number of tile extents does not match the number of "
+                    "dimensions");
         return -1;
       }
       sscanf(s.c_str(), "%lf", &tile_extent); 
@@ -1118,9 +1112,8 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   // Get cell order
   // ----- retrieve cell order
   if(!(array_schema_csv >> s)) {
-    std::cerr << ERROR_MSG_HEADER  
-              << " No cell order provided."
-              << " Put '*' to specify default cell order.\n";
+    PRINT_ERROR("No cell order provided. "
+                "Put '*' to specify default cell order");
     return -1;
   }
   // ----- check cell order
@@ -1134,8 +1127,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   } else if(s == "hilbert") {
     cell_order = CO_HILBERT;
   } else {
-    std::cerr << ERROR_MSG_HEADER  
-              << " Invalid cell order '" << s << "'.\n";
+    PRINT_ERROR(std::string("Invalid cell order '") + s + "'");
     return -1;
   }
   // ----- set cell order
@@ -1145,9 +1137,8 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   // Get tile order
   // ----- retrieve tile order
   if(!(array_schema_csv >> s)) {
-    std::cerr << ERROR_MSG_HEADER  
-              << " No tile order provided."
-              << " Put '*' to specify default tile order.\n";
+    PRINT_ERROR("No tile order provided. "
+                "Put '*' to specify default tile order");
     return -1;
   }
   // ----- check tile order
@@ -1164,8 +1155,7 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   } else if(s == "hilbert") {
     tile_order = TO_HILBERT;
   } else {
-    std::cerr << ERROR_MSG_HEADER  
-              << " Invalid tile order '" << s << "'.\n";
+    PRINT_ERROR(std::string("Invalid tile order '") + s + "'");
     return -1;
   }
   // ----- set tile order
@@ -1176,16 +1166,14 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   // ----- retrieve capacity
   int64_t capacity;
   if(!(array_schema_csv >> s)) {
-    std::cerr << ERROR_MSG_HEADER  
-              << " No capacity provided."
-              << " Put '*' to specify default capacity.\n";
+    PRINT_ERROR("No capacity provided. "
+                "Put '*' to specify default capacity");
     return -1;
   }
 
   if(s != "*") {
     if(!is_positive_integer(s.c_str())) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " The capacity must be a positive integer.\n";
+      PRINT_ERROR("The capacity must be a positive integer");
       return -1;
     }
     sscanf(s.c_str(), "%lld", &capacity); 
@@ -1199,16 +1187,14 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   // Get consolidation step
   int consolidation_step;
   if(!(array_schema_csv >> s)) {
-    std::cerr << ERROR_MSG_HEADER  
-              << " No consolidation step provided."
-              << " Put '*' to specify default consolidation step.\n";
+    PRINT_ERROR("No consolidation step provided. "
+                "Put '*' to specify default consolidation step");
     return -1;
   }
 
   if(s != "*") {
     if(!is_positive_integer(s.c_str())) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " The consolidation step must be a positive integer.\n";
+      PRINT_ERROR("The consolidation step must be a positive integer");
       return -1;
     }
     sscanf(s.c_str(), "%d", &consolidation_step); 
@@ -1223,42 +1209,38 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   // Get compression
   std::vector<CompressionType> compression;
   if(!(array_schema_csv >> s)) {
-    std::cerr << ERROR_MSG_HEADER  
-              << " No compression provided."
-              << " Put '*' to specify default comprssion.\n";
+    PRINT_ERROR("No compression provided. "
+                "Put '*' to specify default comprssion");
     return -1;
   }
 
   if(s == "*") {
     for(int i=0; i<=attribute_num; ++i)
-      compression.push_back(NO_COMPRESSION);
+      compression.push_back(CMP_NONE);
   } else {
     // Handle the retrieved compression type
     if(s == "NONE") { 
-      compression.push_back(NO_COMPRESSION);
+      compression.push_back(CMP_NONE);
     } else if(s == "GZIP") {
-      compression.push_back(GZIP);
+      compression.push_back(CMP_GZIP);
     } else {
-      std::cerr << ERROR_MSG_HEADER  
-                << " Invalid compression type '" << s << "'.\n";
+      PRINT_ERROR(std::string("Invalid compression type '") + s + "'");
       return -1;
     } 
 
     // Handle the rest attribute_num compression types
     for(int i=0; i<attribute_num_; ++i) {
       if(!(array_schema_csv >> s)) {
-        std::cerr << ERROR_MSG_HEADER  
-                  << " Number of provided compression types does not agree with"
-                  << " the number of attributes.\n";
+        PRINT_ERROR("Number of provided compression types does not agree with "
+                    "the number of attributes");
         return -1;
       }
       if(s == "NONE") { 
-        compression.push_back(NO_COMPRESSION);
+        compression.push_back(CMP_NONE);
       } else if(s == "GZIP") {
-        compression.push_back(GZIP);
+        compression.push_back(CMP_GZIP);
       } else {
-        std::cerr << ERROR_MSG_HEADER  
-                  << " Invalid compression type '" << s << "'.\n";
+        PRINT_ERROR(std::string("Invalid compression type '") + s + "'");
         return -1;
       } 
     }
@@ -1272,10 +1254,8 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
 
 int ArraySchema::set_array_name(const std::string& array_name) {
   // Check the array name for validity
-  if(!is_valid_name(array_name.c_str())) {
-    std::cerr << ERROR_MSG_HEADER  
-              << " '" << array_name << "' is not a valid array name."
-              << " The array name can contain only alphanumerics and '_'.\n";
+  if(!name_is_valid(array_name.c_str())) {
+    PRINT_ERROR(std::string("Invalid array name '") + array_name + "'");
     return -1;
   }
 
@@ -1290,26 +1270,22 @@ int ArraySchema::set_attribute_names(
   attribute_num_ = attribute_names.size();
 
   for(size_t i=0; i<attribute_num_; ++i) {
-    if(!is_valid_name(attribute_names[i].c_str())) {
-      std::cerr << ERROR_MSG_HEADER 
-                << " '" << attribute_names[i] 
-                << "' is not a valid attribute name."
-                " An attribute name can contain only alphanumerics and '_'.\n";
+    if(!name_is_valid(attribute_names[i].c_str())) {
+      PRINT_ERROR(std::string("Invalid attribute name '") + 
+                  attribute_names[i] + "'");
       return -1;
     }
   }
 
   // Check for duplicate attribute names
   if(duplicates(attribute_names)) {
-    std::cerr << ERROR_MSG_HEADER
-              << " Duplicate attribute names provided.\n";
+    PRINT_ERROR("Duplicate attribute names provided");
     return -1;
   }
 
   // Check if a dimension has the same name as an attribute 
   if(intersect(attribute_names, dim_names_)) {
-    std::cerr << ERROR_MSG_HEADER
-              << " An attribute name cannot be the same as a dimension name.\n";
+    PRINT_ERROR("An attribute name cannot be the same as a dimension name");
     return -1;
   }
 
@@ -1324,8 +1300,7 @@ int ArraySchema::set_attribute_names(
 int ArraySchema::set_capacity(int64_t capacity) {
   // Check capacity
   if(capacity <= 0) {
-    std::cerr << ERROR_MSG_HEADER
-              << " The capacity must be a positive integer.\n";
+    PRINT_ERROR("The capacity must be a positive integer");
     return -1;
   }
  
@@ -1340,8 +1315,7 @@ int ArraySchema::set_cell_order(CellOrder cell_order) {
   if(cell_order != CO_ROW_MAJOR && 
      cell_order != CO_COLUMN_MAJOR &&
      cell_order != CO_HILBERT) {
-    std::cerr << ERROR_MSG_HEADER
-              << " Invalid cell order.\n";
+    PRINT_ERROR("Invalid cell order");
     return -1;
   }
 
@@ -1355,9 +1329,8 @@ int ArraySchema::set_compression(
     const std::vector<CompressionType>& compression) {
   // Check number of compression types
   if(compression.size() != attribute_num_+1) {
-    std::cerr << ERROR_MSG_HEADER
-              << " The number of compression types does not match the"
-              << " number of attributes.\n";
+    PRINT_ERROR("The number of compression types does not match the "
+                "number of attributes");
     return -1;
   }
  
@@ -1370,8 +1343,7 @@ int ArraySchema::set_compression(
 int ArraySchema::set_consolidation_step(int consolidation_step) {
   // Check consolidation_step
   if(consolidation_step <= 0) {
-    std::cerr << ERROR_MSG_HEADER
-              << " The consolidation step must be a positive integer.\n";
+    PRINT_ERROR("The consolidation step must be a positive integer");
     return -1;
   }
  
@@ -1384,17 +1356,15 @@ int ArraySchema::set_consolidation_step(int consolidation_step) {
 int ArraySchema::set_dim_domains(
     const std::vector<std::pair<double, double> >& dim_domains) {
   if(dim_domains.size() != dim_num_) {
-    std::cerr << ERROR_MSG_HEADER
-              << " The number of domain bounds does not match the"
-              << " provided number of dimensions.\n";
+    PRINT_ERROR("The number of domain bounds does not match the "
+                "provided number of dimensions");
     return -1;
   }
 
   for(int i=0; i<dim_num_; ++i) {
     if(dim_domains[i].first > dim_domains[i].second) {
-      std::cerr << ERROR_MSG_HEADER
-                << " A lower domain bound cannot be larger than its"
-                << " corresponding upper.";
+      PRINT_ERROR("A lower domain bound cannot be larger than its "
+                  "corresponding upper");
       return -1;
     }
   }
@@ -1430,26 +1400,21 @@ int ArraySchema::set_dim_names(
   dim_num_ = dim_names.size();
 
   for(size_t i=0; i<dim_num_; ++i) {
-    if(!is_valid_name(dim_names[i].c_str())) {
-      std::cerr << ERROR_MSG_HEADER 
-                << " '" << dim_names[i] 
-                << "' is not a valid dimension name."
-                " A dimension name can contain only alphanumerics and '_'.\n";
+    if(!name_is_valid(dim_names[i].c_str())) {
+      PRINT_ERROR(std::string("Invalid dimension name '") + dim_names[i] + "'");
       return -1;
     }
   }
 
   // Check for duplicate dimension names
   if(duplicates(dim_names)) {
-    std::cerr << ERROR_MSG_HEADER
-              << " Duplicate dimension names provided.\n";
+    PRINT_ERROR("Duplicate dimension names provided");
     return -1;
   }
 
   // Check if a dimension has the same name as an attribute 
   if(intersect(attribute_names_, dim_names)) {
-    std::cerr << ERROR_MSG_HEADER
-              << " A dimension name cannot be the same as an attribute name.\n";
+    PRINT_ERROR("A dimension name cannot be the same as an attribute name");
     return -1;
   }
 
@@ -1463,9 +1428,8 @@ int ArraySchema::set_tile_extents(
     const std::vector<double>& tile_extents) {
   // Check on dimension domains first
   if(dim_domains_.size() == 0) {
-    std::cerr << ERROR_MSG_HEADER
-              << " The dimension domains must be set before setting the tile"
-              << " extents.\n";
+    PRINT_ERROR("The dimension domains must be set before setting the tile "
+                "extents");
     return -1;
   }
 
@@ -1489,9 +1453,8 @@ int ArraySchema::set_tile_extents(
 
   // Check number of tile_extents
   if(tile_extents.size() != 0 && tile_extents.size() != dim_num_) {
-    std::cerr << ERROR_MSG_HEADER
-              << " The number of tile extents does not match the number of"
-              << " dimensions.\n";
+    PRINT_ERROR("The number of tile extents does not match the number of "
+                "dimensions");
     return -1;
   }
 
@@ -1500,8 +1463,10 @@ int ArraySchema::set_tile_extents(
   // Check soundness of tile extents
   for(int i=0; i<dim_num_; ++i) {
     if(tile_extents[i] > dim_domains_[i].second - dim_domains_[i].first + 1) {
-      std::cerr << ERROR_MSG_HEADER
-                << " Tile extent exceeds its corresponding domain range.\n";
+      std::stringstream tile_extent_ss;
+      tile_extent_ss << tile_extents[i];
+      PRINT_ERROR(std::string("Tile extent '") + tile_extent_ss.str() + 
+                  "' exceeds its corresponding domain range");
       return-1;
     }
   }
@@ -1529,8 +1494,7 @@ int ArraySchema::set_tile_order(TileOrder tile_order) {
      tile_order != TO_COLUMN_MAJOR &&
      tile_order != TO_HILBERT &&
      tile_order != TO_NONE) {
-    std::cerr << ERROR_MSG_HEADER
-              << " Invalid tile order.\n";
+    PRINT_ERROR("Invalid tile order");
     return -1;
   }
 
@@ -1544,9 +1508,8 @@ int ArraySchema::set_types(
     const std::vector<const std::type_info*>& types) {
   // Check number of types
   if(types.size() != attribute_num_ + 1) {
-    std::cerr << ERROR_MSG_HEADER
-              << " The number of types does not match the number of"
-              << " attributes.\n";
+    PRINT_ERROR("The number of types does not match the number of "
+                "attributes");
     return -1;
   }
 
@@ -1555,7 +1518,7 @@ int ArraySchema::set_types(
     if(types[i] != &typeid(char) && types[i] != &typeid(int) &&
        types[i] != &typeid(int64_t) && types[i] != &typeid(float) &&
        types[i] != &typeid(double)) {
-      std::cerr << ERROR_MSG_HEADER << " Invalid attribute type.\n";
+      PRINT_ERROR("Invalid attribute type");
       return -1;
     }
   } 
@@ -1564,7 +1527,7 @@ int ArraySchema::set_types(
      types[attribute_num_] != &typeid(int64_t) && 
      types[attribute_num_] != &typeid(float) &&
      types[attribute_num_] != &typeid(double)) {
-    std::cerr << ERROR_MSG_HEADER << " Invalid coordinate type.\n";
+    PRINT_ERROR("Invalid coordinate type");
     return -1;
   }
 
@@ -1583,9 +1546,8 @@ int ArraySchema::set_types(
 int ArraySchema::set_val_num(const std::vector<int>& val_num) {
   // Check number of val num
   if(val_num.size() != attribute_num_) {
-    std::cerr << ERROR_MSG_HEADER
-              << " The number of attribute values per cell does not match"
-              << " number of attributes.\n";
+    PRINT_ERROR("The number of attribute values per cell does not match "
+                "number of attributes");
     return -1;
   }
 
@@ -2189,13 +2151,13 @@ void ArraySchema::print() const {
     if(*types_[i] == typeid(char)) {
       std::cout << "\t" << attribute_names_[i] << ": char[";
     } else if(*types_[i] == typeid(int)) {
-      std::cout << "\t" << attribute_names_[i] << ": int[";
+      std::cout << "\t" << attribute_names_[i] << ": int32[";
     } else if(*types_[i] == typeid(int64_t)) {
       std::cout << "\t" << attribute_names_[i] << ": int64[";
     } else if(*types_[i] == typeid(float)) {
-      std::cout << "\t" << attribute_names_[i] << ": float[";
+      std::cout << "\t" << attribute_names_[i] << ": float32[";
     } else if(*types_[i] == typeid(double)) {
-      std::cout << "\t" << attribute_names_[i] << ": double[";
+      std::cout << "\t" << attribute_names_[i] << ": float64[";
     }
     if(val_num_[i] == VAR_SIZE)
       std::cout << "var]\n";
@@ -2203,13 +2165,13 @@ void ArraySchema::print() const {
       std::cout << val_num_[i] << "]\n";
   }
   if(*types_[attribute_num_] == typeid(int))
-    std::cout << "\tCoordinates: int\n";
+    std::cout << "\tCoordinates: int32\n";
   else if(*types_[attribute_num_] == typeid(int64_t))
     std::cout << "\tCoordinates: int64\n";
   else if(*types_[attribute_num_] == typeid(float))
-    std::cout << "\tCoordinates: float\n";
+    std::cout << "\tCoordinates: float32\n";
   else if(*types_[attribute_num_] == typeid(double))
-    std::cout << "\tCoordinates: double\n";
+    std::cout << "\tCoordinates: float64\n";
 
   std::cout << "Cell sizes (in bytes):\n";
   for(int i=0; i<=attribute_num_; ++i) {
@@ -2224,21 +2186,21 @@ void ArraySchema::print() const {
 
   std::cout << "Compression types:\n";
   for(int i=0; i<attribute_num_; ++i)
-    if(compression_[i] == RLE)
+    if(compression_[i] == CMP_RLE)
       std::cout << "\t" << attribute_names_[i] << ": RLE\n";
-    else if(compression_[i] == GZIP)
+    else if(compression_[i] == CMP_GZIP)
       std::cout << "\t" << attribute_names_[i] << ": GZIP\n";
-    else if(compression_[i] == LZ)
+    else if(compression_[i] == CMP_LZ)
       std::cout << "\t" << attribute_names_[i] << ": LZ\n";
-    else if(compression_[i] == NO_COMPRESSION)
+    else if(compression_[i] == CMP_NONE)
       std::cout << "\t" << attribute_names_[i] << ": NONE\n";
-  if(compression_[attribute_num_] == RLE)
+  if(compression_[attribute_num_] == CMP_RLE)
     std::cout << "\tCoordinates: RLE\n";
-  else if(compression_[attribute_num_] == GZIP)
+  else if(compression_[attribute_num_] == CMP_GZIP)
     std::cout << "\tCoordinates: GZIP\n";
-  else if(compression_[attribute_num_] == LZ)
+  else if(compression_[attribute_num_] == CMP_LZ)
     std::cout << "\tCoordinates: LZ\n";
-  else if(compression_[attribute_num_] == NO_COMPRESSION)
+  else if(compression_[attribute_num_] == CMP_NONE)
     std::cout << "\tCoordinates: NONE\n";
 }
 
@@ -2815,28 +2777,67 @@ int ArraySchema::get_attribute_ids(
   // Initialization
   attribute_ids.clear();
 
-  // If "hide attributes" is selected, the return list should be empty
-  if(attribute_names.size() == 0 || attribute_names[0] != "__hide") {
-    // Default ids in case the name list is empty
-    if(attribute_names.size() == 0) {
-      attribute_ids.resize(attribute_num_);
-      for(int i=0; i<attribute_num_; ++i)
-        attribute_ids[i] = i;
-    } else { // Ids retrieved from the name list
-      attribute_ids.resize(attribute_names.size());
-      for(int i=0; i<attribute_names.size(); ++i) {
-        attribute_ids[i] = attribute_id(attribute_names[i]);
-        if(attribute_ids[i] == -1) {
-// TODO          err_msg = std::string("Invalid attribute name ") + 
-//                    attribute_names[i] + ".";
-          return -1;
-        }
+  // If attribute_names contains only "__hide", then the returned list should 
+  // be empty
+  if(attribute_names.size() == 1 && attribute_names[0] == "__hide") {
+    // Success
+    return 0;
+  } else if(attribute_names.size() == 0) { // Include all attribute ids
+    for(int i=0; i<attribute_num_; ++i)
+      attribute_ids.push_back(i);
+    // Success
+    return 0;
+  } else {
+    attribute_ids.resize(attribute_names.size());
+    for(int i=0; i<attribute_names.size(); ++i) {
+      attribute_ids[i] = attribute_id(attribute_names[i]);
+      if(attribute_ids[i] == -1) {
+        PRINT_ERROR("Invalid attribute name");
+        return -1;
       }
     }
+    // Success
+    return 0;
   }
+}
 
-  return 0;
+int ArraySchema::get_dim_ids(
+   const std::vector<std::string>& dim_names,
+   std::vector<int>& dim_ids) const {
+  // Initialization
+  dim_ids.clear();
 
+  // If dim_names contains only "__hide", then the returned list should 
+  // be empty
+  if(dim_names.size() == 1 && dim_names[0] == "__hide") {
+    // Success
+    return 0;
+  } else if(dim_names.size() == 0) { // Include all dimension ids
+    for(int i=0; i<dim_num_; ++i)
+      dim_ids.push_back(i);
+    // Success
+    return 0;
+  } else {
+    dim_ids.resize(dim_names.size());
+    for(int i=0; i<dim_names.size(); ++i) {
+      dim_ids[i] = dim_id(dim_names[i]);
+      if(dim_ids[i] == -1) {
+        PRINT_ERROR("Invalid dimension name");
+        return -1;
+      }
+    }
+    // Success
+    return 0;
+  }
+} 
+
+std::vector<int> ArraySchema::get_dim_ids() const {
+  std::vector<int> dim_ids;
+
+  for(int i=0; i<dim_num_; ++i)
+    dim_ids.push_back(i);
+
+  return dim_ids;
 }
 
 bool ArraySchema::valid_attribute_ids(

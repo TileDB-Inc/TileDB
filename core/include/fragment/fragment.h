@@ -6,7 +6,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,8 +31,8 @@
  * This file defines class Fragment. 
  */
 
-#ifndef FRAGMENT_H
-#define FRAGMENT_H
+#ifndef __FRAGMENT_H__
+#define __FRAGMENT_H__
 
 #include "array_schema.h"
 #include "book_keeping.h"
@@ -52,9 +52,9 @@ class Fragment {
  public:
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
-  Fragment(const std::string& workspace, size_t segment_size,
-           size_t write_state_max_size,
-           const ArraySchema* array_schema, const std::string& fragment_name);
+  Fragment(const std::string& dirname, 
+           const ArraySchema* array_schema, 
+           const std::string& fragment_name);
   /** Destructor. */
   ~Fragment();
 
@@ -65,6 +65,11 @@ class Fragment {
   FragmentConstTileIterator begin(int attribute_id) const;
   /** Returns the bounding coordinates of the tile at the input position. */
   Tile::BoundingCoordinatesPair bounding_coordinates(int64_t pos) const;
+  /** 
+   * Returns the directory name of the fragment, which is in the form
+   * "workspace/group/array_name/fragment_name".
+   */
+  const std::string& dirname() const;
   /** Returns the fragment name. */
   const std::string& fragment_name() const; 
   /** Returns a tile for a given attribute and tile position. */
@@ -109,25 +114,25 @@ class Fragment {
    * as the attributes are defined in the array schema.
    */
   template<class T>
-  void write_cell(const void* cell) const; 
+  int cell_write(const void* cell) const; 
   /** 
    * Writes a cell into the fragment, respecting the global cell order. 
    * The input cell carries no ids.
    */
   template<class T>
-  void write_cell_sorted(const void* cell); 
+  int cell_write_sorted(const void* cell); 
   /** 
    * Writes a cell into the fragment, respecting the global cell order. 
    * The input cell carries a single (tile) id.
    */
   template<class T>
-  void write_cell_sorted_with_id(const void* cell); 
+  int cell_write_sorted_with_id(const void* cell); 
   /** 
    * Writes a cell into the fragment, respecting the global cell order. 
    * The input cell carries a tile and a cell id.
    */
   template<class T>
-  void write_cell_sorted_with_2_ids(const void* cell); 
+  int cell_write_sorted_with_2_ids(const void* cell); 
  
  private:
   // PRIVATE ATTRIBUTES
@@ -135,16 +140,14 @@ class Fragment {
   const ArraySchema* array_schema_;
   /** The book-keeping structures. */
   BookKeeping* book_keeping_;
+  /** The fragment directory name. */
+  std::string dirname_; 
   /** The fragment name. */
   std::string fragment_name_;
   /** The read state. */ 
   ReadState* read_state_;
-  /** The segment size */
-  size_t segment_size_;
   /** Temporary directory. */
   std::string temp_dirname_;
-  /** The workspace where the array data are created. */
-  std::string workspace_; 
   /** The write state. */ 
   WriteState* write_state_;
 };

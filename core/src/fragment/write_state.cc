@@ -6,7 +6,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,8 +34,10 @@
 #include "bin_file.h"
 #include "bin_file_collection.h"
 #include "cell.h"
-#include "write_state.h"
+#include "global.h"
+#include "special_values.h"
 #include "utils.h"
+#include "write_state.h"
 #include <assert.h>
 #include <fcntl.h>
 #include <math.h>
@@ -62,19 +64,18 @@ WriteState::WriteState(
     const ArraySchema* array_schema,
     const std::string* fragment_name,
     const std::string* temp_dirname,
-    const std::string* workspace,
-    BookKeeping* book_keeping,
-    size_t segment_size,
-    size_t write_state_max_size)
+    const std::string* dirname,
+    BookKeeping* book_keeping)
     : array_schema_(array_schema),
       fragment_name_(fragment_name),
       temp_dirname_(temp_dirname),
-      workspace_(workspace),
-      book_keeping_(book_keeping),
-      segment_size_(segment_size),
-      write_state_max_size_(write_state_max_size) {
+      dirname_(dirname),
+      book_keeping_(book_keeping) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
+
+  segment_size_ = SEGMENT_SIZE;
+  write_state_max_size_ = WRITE_STATE_MAX_SIZE;
 
   tile_id_ = INVALID_TILE_ID;
   cell_num_ = 0;
@@ -94,9 +95,9 @@ WriteState::WriteState(
   for(int i=0; i<= attribute_num; ++i) {
     segments_[i] = malloc(segment_size_);
     segment_utilization_[i] = 0;
-    if(array_schema_->compression(i) == GZIP) 
+    if(array_schema_->compression(i) == CMP_GZIP) 
       gz_segments_[i] = malloc(segment_size_);
-    else if(array_schema_->compression(i) == NO_COMPRESSION) 
+    else if(array_schema_->compression(i) == CMP_NONE) 
       gz_segments_[i] = NULL;
     gz_segment_utilization_[i] = 0;
     file_offsets_[i] = 0;
@@ -114,7 +115,7 @@ WriteState::~WriteState() {
   int64_t cells_with_2_ids_num = cells_with_2_ids_.size();
 
   if(cells_num > 0) {
-    for(int64_t i=0; i<cells_num; ++i)
+    for(int64_t i=0; i<cells_num; ++i) 
       free(cells_[i].cell_);
   }
   if(cells_with_id_num > 0) {
@@ -130,7 +131,7 @@ WriteState::~WriteState() {
   for(int i=0; i<=attribute_num; ++i) {
     if(segments_[i] != NULL)
       free(segments_[i]);
-    if(array_schema_->compression(i) == GZIP) 
+    if(array_schema_->compression(i) == CMP_GZIP) 
       free(gz_segments_[i]);
   }
 
@@ -171,7 +172,7 @@ void WriteState::flush() {
 }
 
 template<class T>
-void WriteState::write_cell(const void* input_cell) {
+int WriteState::cell_write(const void* input_cell) {
   // Find cell size
   size_t cell_size = ::Cell(input_cell, array_schema_).cell_size();
 
@@ -307,10 +308,12 @@ void WriteState::write_cell(const void* input_cell) {
       }
     }
   }
+
+  return 0;
 }
 
 template<class T>
-void WriteState::write_cell_sorted(const void* cell) {
+int WriteState::cell_write_sorted(const void* cell) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   size_t coords_size = array_schema_->cell_size(attribute_num);
@@ -349,10 +352,12 @@ void WriteState::write_cell_sorted(const void* cell) {
 
   // Update the info of the currently populated tile
   update_tile_info<T>(static_cast<const T*>(cell), tile_id, attr_sizes);
+
+  return 0;
 }
 
 template<class T>
-void WriteState::write_cell_sorted_with_id(const void* cell) {
+int WriteState::cell_write_sorted_with_id(const void* cell) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   size_t coords_size = array_schema_->cell_size(attribute_num);
@@ -384,10 +389,12 @@ void WriteState::write_cell_sorted_with_id(const void* cell) {
 
   // Update the info of the currently populated tile
   update_tile_info<T>(static_cast<const T*>(coords), id, attr_sizes);
+
+  return 0;
 }
 
 template<class T>
-void WriteState::write_cell_sorted_with_2_ids(const void* cell) {
+int WriteState::cell_write_sorted_with_2_ids(const void* cell) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   size_t coords_size = array_schema_->cell_size(attribute_num);
@@ -417,6 +424,8 @@ void WriteState::write_cell_sorted_with_2_ids(const void* cell) {
 
   // Update the info of the currently populated tile
   update_tile_info<T>(static_cast<const T*>(coords), id, attr_sizes);
+
+  return 0;
 }
 
 /******************************************************
@@ -429,9 +438,9 @@ void WriteState::append_attribute_value(
   CompressionType compression = 
       array_schema_->compression(attribute_id);
 
-  if(compression == NO_COMPRESSION) 
+  if(compression == CMP_NONE) 
     append_attribute_value_to_segment(attr, attribute_id, attr_size);
-  else if(compression == GZIP) 
+  else if(compression == CMP_GZIP) 
     append_attribute_value_to_gz_segment(attr, attribute_id, attr_size);
   else
     assert(0); // The code must never reach this point 
@@ -489,9 +498,9 @@ void WriteState::append_coordinates(const char* cell) {
   CompressionType compression = 
       array_schema_->compression(attribute_num);
 
-  if(compression == NO_COMPRESSION) 
+  if(compression == CMP_NONE) 
     append_coordinates_to_segment(cell);
-  else if(compression == GZIP)
+  else if(compression == CMP_GZIP)
     append_coordinates_to_gz_segment(cell);
   else
     assert(0); // The code must never reach this point 
@@ -596,7 +605,7 @@ void WriteState::finalize_last_run() {
 
 void WriteState::flush_gz_segment_to_segment(
     int attribute_id, size_t& flushed) {
-  assert(array_schema_->compression(attribute_id) == GZIP);
+  assert(array_schema_->compression(attribute_id) == CMP_GZIP);
 
   // Compress
   size_t compressed_data_size;
@@ -633,9 +642,7 @@ void WriteState::flush_segment(int attribute_id) {
     return;
 
   // Open file
-  std::string filename = *workspace_ + "/" +
-                         array_schema_->array_name() + "/" +
-                         *fragment_name_ + "/" +
+  std::string filename = *dirname_ + "/" +
                          array_schema_->attribute_name(attribute_id) +
                          TILE_DATA_FILE_SUFFIX;
 
@@ -674,11 +681,14 @@ void WriteState::flush_segments() {
 }
 
 void WriteState::flush_sorted_run() {
+
   // Prepare BIN file
   std::stringstream filename;
-  filename << *temp_dirname_ << runs_num_;
+  filename << *temp_dirname_ << "/" << runs_num_;
+  // TODO: The runs could be gzipped. This could go in the config file
+  // filename << *temp_dirname_ << runs_num_ << GZIP_SUFFIX;
 
-  BINFile file(array_schema_, 0);
+  BINFile file(array_schema_, CMP_NONE, 0);
   file.open(filename.str(), "w", segment_size_);
 
   // Prepare cell
@@ -711,7 +721,10 @@ void WriteState::flush_sorted_run_with_id() {
   // Prepare BIN file
   std::stringstream filename;
   filename << *temp_dirname_ << "/" << runs_num_;
-  BINFile file(array_schema_, 1);
+  // TODO: The runs could be gzipped. This could go in the config file
+  // filename << *temp_dirname_ << runs_num_ << GZIP_SUFFIX;
+
+  BINFile file(array_schema_, CMP_NONE, 1);
   file.open(filename.str(), "w", segment_size_);
 
   // Prepare cell
@@ -744,7 +757,10 @@ void WriteState::flush_sorted_run_with_2_ids() {
   // Prepare BIN file
   std::stringstream filename;
   filename << *temp_dirname_ << "/" << runs_num_;
-  BINFile file(array_schema_, 2);
+  // TODO: The runs could be gzipped. This could go in the config file
+  // filename << *temp_dirname_ << runs_num_ << GZIP_SUFFIX;
+
+  BINFile file(array_schema_, CMP_NONE, 2);
   file.open(filename.str(), "w", segment_size_);
 
   // Prepare cell
@@ -785,7 +801,7 @@ void WriteState::flush_tile_info_to_book_keeping() {
 
   // Flush info
   for(int i=0; i<=attribute_num; ++i) {
-    if(array_schema_->compression(i) == NO_COMPRESSION) {
+    if(array_schema_->compression(i) == CMP_NONE) {
       book_keeping_->offsets_[i].push_back(file_offsets_[i]);
     } else { // Compress tile, flush to segment and update offset 
       size_t flushed;
@@ -859,12 +875,13 @@ void WriteState::make_tiles(const std::string& dirname) {
   ::Cell cell(array_schema_, id_num);
 
   // Create a file collection
-  BINFileCollection<T> bin_file_collection;
+  BINFileCollection<T> bin_file_collection(CMP_NONE);
   bin_file_collection.open(array_schema_, id_num, dirname, sorted);
 
   // Loop over the cells
   while(bin_file_collection >> cell)
-    write_cell_sorted<T>(cell.cell());
+    // TODO: this should return a value
+    cell_write_sorted<T>(cell.cell());
 }
 
 // This function applies either to regular tiles with row- or column-major
@@ -878,16 +895,17 @@ void WriteState::make_tiles_with_id(const std::string& dirname) {
   ::Cell cell(array_schema_, id_num);
 
   // Create a file collection
-  BINFileCollection<T> bin_file_collection;
+  BINFileCollection<T> bin_file_collection(CMP_NONE);
   bin_file_collection.open(array_schema_, id_num, dirname, sorted);
 
   // Loop over the cells
+  // TODO this should return a value
   if(array_schema_->has_regular_tiles()) {
     while(bin_file_collection >> cell)
-      write_cell_sorted_with_id<T>(cell.cell());
+      cell_write_sorted_with_id<T>(cell.cell());
   } else {
     while(bin_file_collection >> cell)
-      write_cell_sorted<T>(static_cast<const char*>(cell.cell()) +
+      cell_write_sorted<T>(static_cast<const char*>(cell.cell()) +
                            sizeof(int64_t));
   }
 }
@@ -902,12 +920,13 @@ void WriteState::make_tiles_with_2_ids(const std::string& dirname) {
   ::Cell cell(array_schema_, id_num);
 
   // Create a file collection
-  BINFileCollection<T> bin_file_collection;
+  BINFileCollection<T> bin_file_collection(CMP_NONE);
   bin_file_collection.open(array_schema_, id_num, dirname, sorted);
 
   // Loop over the cells
+  // TODO: this should return a value
   while(bin_file_collection >> cell)
-    write_cell_sorted<T>(cell.cell());
+    cell_write_sorted<T>(cell.cell());
 }
 
 void WriteState::sort_run() {
@@ -1034,13 +1053,13 @@ void WriteState::update_tile_info(
 
   // Update file offsets
   for(int i=0; i<=attribute_num; ++i)
-    if(array_schema_->compression(i) == NO_COMPRESSION)
+    if(array_schema_->compression(i) == CMP_NONE)
       file_offsets_[i] += attr_sizes[i];
 }
 
 // Explicit template instantiations
-template void WriteState::write_cell<int>(const void* cell);
-template void WriteState::write_cell<int64_t>(const void* cell);
-template void WriteState::write_cell<float>(const void* cell);
-template void WriteState::write_cell<double>(const void* cell);
+template int WriteState::cell_write<int>(const void* cell);
+template int WriteState::cell_write<int64_t>(const void* cell);
+template int WriteState::cell_write<float>(const void* cell);
+template int WriteState::cell_write<double>(const void* cell);
 

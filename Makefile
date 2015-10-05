@@ -20,8 +20,9 @@ else
   CFLAGS =
 endif
 
-# --- Debug/Release mode handler --- #
+# --- Debug/Release/Verbose mode handler --- #
 BUILD =
+VERBOSE=
 
 ifeq ($(BUILD),)
   BUILD = release
@@ -32,7 +33,19 @@ ifeq ($(BUILD),release)
 endif
 
 ifeq ($(BUILD),debug)
-  CFLAGS += -DDEBUG -O0 -g
+  CFLAGS += -DDEBUG -O0 -g -Wall
+endif
+
+ifeq ($(VERBOSE),)
+  VERBOSE = 1
+endif
+
+ifeq ($(VERBOSE),0)
+  CFLAGS += -DNVERBOSE
+endif
+
+ifeq ($(VERBOSE),1)
+  CFLAGS += -DVERBOSE
 endif
 
 # --- Compilers --- #

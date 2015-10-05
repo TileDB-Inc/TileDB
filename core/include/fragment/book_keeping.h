@@ -62,7 +62,7 @@ class BookKeeping {
   BookKeeping(
       const ArraySchema* array_schema,
       const std::string* fragment_name,
-      const std::string* workspace);  
+      const std::string* dirname);  
   /** Destructor. */
   ~BookKeeping();
 
@@ -100,6 +100,8 @@ class BookKeeping {
    * first and last cell of the tile (see Tile::bounding_coordinates).
    */
   BoundingCoordinates bounding_coordinates_;   
+  /** The fragment directory name. */
+  const std::string* dirname_;
   /** The fragment name. */
   const std::string* fragment_name_;
   /** Stores the MBR of every (coordinate) tile. */
@@ -109,8 +111,6 @@ class BookKeeping {
    * attribute in the respective data file. 
    */
   Offsets offsets_;
-  /** The workspace. */
-  const std::string* workspace_;
 
   // PRIVATE METHODS
   /** Writes the bounding coordinates on the disk. */

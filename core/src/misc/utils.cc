@@ -1,12 +1,12 @@
 /**
- * @file   tile.cc
+ * @file   utils.cc
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,8 +37,10 @@
 #include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <iostream>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -47,17 +49,188 @@
 #include <unistd.h>
 #include <zlib.h>
 
+// Macro for printing error message in VERBOSE mode
+#ifdef VERBOSE
+  #define PRINT_ERROR(x) std::cerr << "[TileDB::Utils] Error: " <<  x \
+                                   << ".\n" 
+#else
+  #define PRINT_ERROR(x) do { } while(0) 
+#endif
+
+bool name_is_valid(const char* name) {
+  if(name == NULL || name[0] == '\0')
+    return false;
+
+  for(const char* p=name; *p != '\0'; ++p)
+    if(!isalnum(*p) && *p != '_' && *p != '-' && *p != '.')
+      return false;
+
+  return true;
+}
+
+// TODO: Make sure that path is absolute !!!
+bool is_bin_collection(const std::string& path) {
+  // Open directory
+  std::string filename; 
+  struct dirent *next_file;
+  DIR* dir = opendir(path.c_str());
+  if(dir == NULL) 
+    return false;
+
+  // Check each of the files
+  while((next_file = readdir(dir))) {
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, ".."))
+      continue;
+    filename = path + "/" + next_file->d_name;
+    if(!is_file(filename) || 
+       (!ends_with(filename, ".bin") && !ends_with(filename, ".bin.gz")))
+      return false;
+  } 
+ 
+  // Close directory 
+  if(closedir(dir)) 
+    return false;
+
+  // It is a binary file collection
+  return true;
+}
+
+bool is_csv_collection(const std::string& path) {
+  // Open directory
+  std::string filename; 
+  struct dirent *next_file;
+  DIR* dir = opendir(path.c_str());
+  if(dir == NULL) 
+    return false;
+
+  // Check each of the files
+  while((next_file = readdir(dir))) {
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, ".."))
+      continue;
+    filename = path + "/" + next_file->d_name;
+    if(!is_file(filename) || 
+       (!ends_with(filename, ".csv") && !ends_with(filename, ".csv.gz")))
+      return false;
+  } 
+ 
+  // Close directory 
+  if(closedir(dir)) 
+    return false;
+
+  // It is a CSV file collection
+  return true;
+}
+
+
 bool ends_with(const std::string& value, const std::string& ending) {
   if (ending.size() > value.size())
     return false;
   return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
-std::string absolute_path(const std::string& path) {
-  if(path[0] == '~') 
-    return std::string(getenv("HOME")) + path.substr(1, path.size()-1);
-  else
-    return path;
+bool starts_with(const std::string& value, const std::string& prefix) {
+  if (prefix.size() > value.size())
+    return false;
+  return std::equal(prefix.begin(), prefix.end(), value.begin());
+}
+
+bool both_slashes(char a, char b) {
+  return a == '/' && b == '/';
+}
+
+void adjacent_slashes_dedup(std::string& value) {
+  value.erase(std::unique(value.begin(), value.end(), both_slashes),
+              value.end()); 
+}
+
+void path_purge_dots(std::string& path) {
+  // For easy reference
+  size_t path_size = path.size(); 
+
+  // Trivial case
+  if(path_size == 0 || path == "/")
+    return;
+
+  // It expects an absolute path
+  assert(path[0] == '/');
+
+  // Tokenize
+  const char* token_c_str = path.c_str() + 1;
+  std::vector<std::string> tokens, final_tokens;
+  std::string token;
+
+  for(int i=1; i<path_size; ++i) {
+    if(path[i] == '/') {
+      path[i] = '\0';
+      token = token_c_str;
+      if(token != "")
+        tokens.push_back(token); 
+      token_c_str = path.c_str() + i + 1;
+    }
+  }
+  token = token_c_str;
+  if(token != "")
+    tokens.push_back(token); 
+
+  // Purge dots
+  for(int i=0; i<tokens.size(); ++i) {
+    if(tokens[i] == ".") { // Skip single dots
+      continue;
+    } else if(tokens[i] == "..") {
+      if(final_tokens.size() == 0) {
+        // Invalid path
+        path = "";
+        return;
+      } else {
+        final_tokens.pop_back();
+      }
+    } else {
+      final_tokens.push_back(tokens[i]);
+    }
+  } 
+
+  // Assemble final path
+  path = "/";
+  for(int i=0; i<final_tokens.size(); ++i) 
+    path += ((i != 0) ? "/" : "") + final_tokens[i]; 
+}
+
+std::string real_path(
+    const std::string& path, 
+    const std::string& current, 
+    const std::string& home,
+    const std::string& root) {
+  // Initial checks
+  if(!starts_with(current, "/") ||
+     !starts_with(home, "/") ||
+     !starts_with(root, "/")) 
+    return "";
+
+  // Easy cases
+  if(path == "" || path == "." || path == "./")
+    return current;
+  else if(path == "~")
+    return home;
+  else if(path == "/")
+    return root; 
+
+  // Other cases
+  std::string ret_path;
+  if(starts_with(path, "/"))
+    ret_path = root + path;
+  else if(starts_with(path, "~/"))
+    ret_path = home + path.substr(1, path.size()-1);
+  else if(starts_with(path, "./"))
+    ret_path = current + path.substr(1, path.size()-1);
+  else 
+    ret_path = current + "/" + path;
+
+  adjacent_slashes_dedup(ret_path);
+  path_purge_dots(ret_path);
+
+  return ret_path;
 }
 
 template<class T>
@@ -67,32 +240,137 @@ void convert(const double* a, T* b, int size) {
   }
 }
 
-int create_directory(const std::string& dirname) {
+// TODO: mention that it sets errno
+int directory_create(const std::string& dirname, bool real_path) {
+  // Get real path
+  std::string dirname_real;
+  if(real_path)
+    dirname_real = dirname;
+  else
+    dirname_real = ::real_path(dirname); 
+
   // If the directory does not exist, create it
-  if(!is_dir(dirname))  
-    return mkdir(dirname.c_str(), S_IRWXU);
+  if(!is_dir(dirname_real, true)) { 
+    if(mkdir(dirname_real.c_str(), S_IRWXU))
+      return -1;
+    else 
+      return 0;
+  } else {
+    return 0;
+  }
 }
 
-void delete_directory(const std::string& dirname)  {
-  std::string filename; 
+int path_create(const std::string& path) {
+  // Auxiliary variables
+  char path_tmp[PATH_MAX];
+  char* p = NULL;
+  size_t len;
+  std::vector<std::string> paths_created;
+  bool success = true;
 
+  // Function works only with absolute paths
+  assert(path != "" && path[0] == '/'); 
+
+  // Initialzation
+  snprintf(path_tmp, sizeof(path_tmp), "%s", path.c_str());
+  len = strlen(path_tmp);
+  if(path_tmp[len-1] == '/')
+    path_tmp[len-1] = '\0';
+
+  // Create the directories in the path one by one 
+  for(p = path_tmp + 1; *p; ++p) {
+    if(*p == '/') {
+      // Cut path
+      *p = '\0';
+
+      // Skip if directory exists
+      if(!is_dir(path_tmp, true)) { 
+        // Create directory
+        if(directory_create(path_tmp, true)) {
+          success = false;
+          break;
+        }
+
+        // Record created directories
+        paths_created.push_back(path_tmp);
+      }
+
+      // Stitch path back
+      *p = '/';
+    }
+  }
+
+  if(success) { // Success
+    return directory_create(path_tmp);
+  } else {      // Error - delete created directories
+    for(int i=0; i<paths_created.size(); ++i) 
+      rmdir(paths_created[i].c_str());
+    return -1;
+  }
+}
+
+std::string current_dirname() {
+  std::string dirname = "";
+  char* path = get_current_dir_name();
+
+  if(path == NULL) {
+    PRINT_ERROR(std::string("Cannot get current directory: ") + 
+                strerror(errno));
+  } else {
+    dirname = path;
+    free(path);
+  }
+
+  return dirname; 
+}
+
+int directory_delete(const std::string& dirname, bool real_path) {
+  // Get real path
+  std::string dirname_real;
+  if(real_path)
+    dirname_real = dirname;
+  else
+    dirname_real = ::real_path(dirname); 
+
+  // Delete the contents of the directory
+  std::string filename; 
   struct dirent *next_file;
-  DIR* dir = opendir(dirname.c_str());
-  
-  // If the directory does not exist, exit
-  if(dir == NULL)
-    return;
+  DIR* dir = opendir(dirname_real.c_str());
+
+  if(dir == NULL) {
+    PRINT_ERROR(std::string("Cannot open directory: ") + 
+                strerror(errno));
+    return -1;
+  }
 
   while((next_file = readdir(dir))) {
-    if(strcmp(next_file->d_name, ".") == 0 ||
-       strcmp(next_file->d_name, "..") == 0)
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, ".."))
       continue;
-    filename = dirname + "/" + next_file->d_name;
-    remove(filename.c_str());
+    filename = dirname_real + "/" + next_file->d_name;
+    if(remove(filename.c_str())) {
+      PRINT_ERROR(std::string("Cannot delete file: ") +
+                  strerror(errno));
+      return -1;
+    }
   } 
-  
-  closedir(dir);
-  rmdir(dirname.c_str());
+ 
+  // Close directory 
+  if(closedir(dir)) {
+    PRINT_ERROR(std::string("Cannot close directory: ") + 
+                strerror(errno));
+    return -1;
+  }
+
+  // Remove directory
+  if(rmdir(dirname.c_str())) {
+    PRINT_ERROR(std::string("Cannot delete directory: ") + 
+                strerror(errno));
+    return -1;
+  }
+
+  // Success
+  return 0;
 }
 
 template<class T>
@@ -103,13 +381,20 @@ bool duplicates(const std::vector<T>& v) {
 }
 
 void expand_buffer(void*& buffer, size_t size) {
+  buffer = realloc(buffer, 2*size);
+
+  // TODO: check if buffer is NULL 
+  // TODO: change return type to int
+
+/* TODO remove
   void* temp = malloc(2*size);
   memcpy(temp, buffer, size);
   free(buffer);
   buffer = temp;
+*/
 }
 
-bool empty_directory(const std::string& dirname)  {
+bool directory_is_empty(const std::string& dirname)  {
   struct dirent *next_file;
   DIR* dir = opendir(dirname.c_str());
   
@@ -354,15 +639,23 @@ bool is_del(double v) {
   return v == DEL_DOUBLE;
 }
 
-bool is_dir(const std::string& dirname) {
-  std::string path = absolute_path(dirname);
+bool is_dir(const std::string& path, bool real_path) {
+  std::string path_real; 
+  if(real_path) 
+    path_real = path;
+  else
+    path_real = ::real_path(path); 
 
   struct stat st;
-  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+  return stat(path_real.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
-bool is_file(const std::string& filename) {
-  std::string path = absolute_path(filename);
+bool is_file(const std::string& path, bool real_path) {
+  std::string path_real; 
+  if(real_path) 
+    path_real = path;
+  else
+    path_real = ::real_path(path); 
 
   struct stat st;
   return (stat(path.c_str(), &st) == 0)  && !S_ISDIR(st.st_mode);
@@ -382,6 +675,10 @@ bool is_integer(const char* s) {
 }
 
 bool is_non_negative_integer(const char* s) {
+  // Hnadle empty input
+  if(s == NULL || s[0] == '\0')
+    return false;
+
   int i=0;
 
   if(s[0] == '-')
@@ -456,15 +753,6 @@ bool is_real(const char* s) {
       else
         return false;
     } else if(!isdigit(s[i]))
-      return false;
-  }
-
-  return true;
-}
-
-bool is_valid_name(const char* s) {
-  for(int i=0; s[i] != '\0'; ++i) {
-    if(!isalnum(s[i]) && s[i] != '_')
       return false;
   }
 

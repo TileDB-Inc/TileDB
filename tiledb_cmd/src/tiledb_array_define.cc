@@ -1,12 +1,12 @@
 /**
- * @file   tiledb_define_array.cc
+ * @file   tiledb_array_define.cc
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,8 @@
  * 
  * @section DESCRIPTION
  *
- * Implements command "tiledb_define_array".
+ * Implements command "tiledb_array_define", which enables the user to define
+ * an array, specifying its array schema.
  */
 
 #include "csv_line.h"
@@ -38,10 +39,13 @@
 #include <iostream>
 #include <string>
 
-/** 
- * Parses the command options. It sets the workspace, as well as the array
- * serialized in a CSV string. The format of the final string (stored
- * in array_schema_str) is the following (single line, no '\n' characters 
+#define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n"
+#define PRINT(x) std::cout << "[TileDB] " << x << ".\n"
+
+/* 
+ * Parses the command options. It returns the array workspace, group, and 
+ * array schema. The array schema is serialized in CSV string array_schema_str.
+ * The format of this string is the following (single line, no '\n' characters
  * involved):
  * 
  * array_name,attribute_num,attribute_1,...,attribute_{attribute_num},
@@ -50,22 +54,25 @@
  * dim_domain_{dim_num}_low,dim_domain_{dim_num}_high
  * type_1,...,type_{attribute_num+1}
  * tile_extents_1,...,tile_extents_{dim_num},
- * cell_order,tile_order,capacity,consolidation_step
+ * cell_order,tile_order,capacity,consolidation_step,
+ * compression_type_1,...,compression_type_{attribute_num+1}
  *
  * If one of the items is omitted (e.g., tile_order), then this CSV field will
  * contain character '*' (e.g., it should be ...,cell_order,*,capacity,...). 
  * 
- * It returns 0 on success. On error, it prints a message on stderr and
- * returns -1. 
+ * It returns 0 on success. On error, it prints a message on stderr if compiled
+ * in VERBOSE mode and returns -1.
  */                                                            
 int parse_options(
     int argc, 
     char** argv, 
-    std::string& array_schema_str,
-    std::string& workspace) {
+    std::string& workspace,
+    std::string& group,
+    std::string& array_schema_str) {
 
   // Initialization
   workspace = "";
+  group = "";
   std::string array_name("");
   std::string attribute_names_str("");
   std::string dim_names_str("");
@@ -78,7 +85,13 @@ int parse_options(
   std::string consolidation_step_str("");
   std::string compression_str("");
 
-  // --- Parse command line --- //
+  // Auxiliary variables
+  CSVLine temp, array_schema_csv;
+
+  // *************** //
+  // Parse options * //
+  // *************** // 
+
   // Define long options
   static struct option long_options[] = 
   {
@@ -88,6 +101,7 @@ int parse_options(
     {"dim-names",1,0,'d'},
     {"dim-domains",1,0,'D'},
     {"tile-extents",1,0,'e'},
+    {"group",1,0,'g'},
     {"cell-order",1,0,'o'},
     {"tile-order",1,0,'O'},
     {"consolidation-step",1,0,'s'},
@@ -96,8 +110,9 @@ int parse_options(
     {"compression",1,0,'z'},
     {0,0,0,0},
   };
+
   // Define short options
-  const char* short_options = "a:A:c:d:D:e:o:O:s:t:w:z:";
+  const char* short_options = "a:A:c:d:D:e:g:o:O:s:t:w:z:";
   // Get options
   int c;
   int option_num = 0;
@@ -106,96 +121,91 @@ int parse_options(
     switch(c) {
       case 'a':
         if(attribute_names_str != "") {
-          std::cerr << ERROR_MSG_HEADER
-                    <<  "More than one attribute name lists provided.\n";
+          PRINT_ERROR("More than one attribute name lists provided");
           return -1;
         }
         attribute_names_str = optarg;
         break;
       case 'A':
         if(array_name != "") {
-          std::cerr << ERROR_MSG_HEADER
-                    << " More than one array names provided.\n";
+          PRINT_ERROR("More than one array names provided");
           return -1;
         }
         array_name = optarg;
         break;
       case 'c':
         if(capacity_str != "") {
-          std::cerr << ERROR_MSG_HEADER
-                    << " More than one capacities provided.\n";
+          PRINT_ERROR("More than one capacities provided");
           return -1;
         }
         capacity_str = optarg;
         break;
       case 'd':
         if(dim_names_str != "") {
-          std::cerr << ERROR_MSG_HEADER
-                    << " More than one dimension name lists provided.\n";
+          PRINT_ERROR("More than one dimension name lists provided");
           return -1;
         }
         dim_names_str = optarg;
         break;
       case 'D':
         if(dim_domains_str != "") {
-          std::cerr << ERROR_MSG_HEADER
-                    << " More than one dimension domain lists provided.\n";
+          PRINT_ERROR("More than one dimension domain lists provided");
           return -1;
         }
         dim_domains_str = optarg;
         break;
       case 'e':
         if(tile_extents_str != "") {
-          std::cerr << ERROR_MSG_HEADER
-                    << " More than one tile extent lists provided.\n";
+          PRINT_ERROR("More than one tile extent lists provided");
           return -1;
         }
         tile_extents_str = optarg;
         break;
+      case 'g':
+        if(group != "") {
+          PRINT_ERROR("More than one groups provided");
+          return -1;
+        }
+        group = optarg;
+        break;
       case 'o':
         if(cell_order_str != "") {
-          std::cerr << ERROR_MSG_HEADER
-                    << " More than one cell orders provided.\n";
+          PRINT_ERROR("More than one cell orders provided");
           return -1;
         }
         cell_order_str = optarg;
         break;
       case 'O':
         if(tile_order_str != "") {
-          std::cerr << ERROR_MSG_HEADER
-                    << " More than one tile orders provided.\n";
+          PRINT_ERROR("More than one tile orders provided");
           return -1;
         }
         tile_order_str = optarg;
         break;
       case 's':
         if(consolidation_step_str != "") {
-          std::cerr << ERROR_MSG_HEADER
-                    << " More than one consolidation steps provided.\n";
+          PRINT_ERROR("More than one consolidation steps provided");
           return -1;
         }
         consolidation_step_str = optarg;
         break;
       case 't':
         if(types_str != "") {
-          std::cerr << ERROR_MSG_HEADER
-                    << " More than one type lists provided.\n";
+          PRINT_ERROR("More than one type lists provided");
           return -1;
         }
         types_str = optarg;
         break;
       case 'w':
         if(workspace != "") {
-          std::cerr << ERROR_MSG_HEADER
-                    << " More than one workspaces provided.\n";
+          PRINT_ERROR("More than one workspaces provided");
           return -1;
         }
         workspace = optarg;
         break;
       case 'z':
         if(compression_str != "") {
-          std::cerr << ERROR_MSG_HEADER
-                    <<  "More than one attribute name lists provided.\n";
+          PRINT_ERROR("More than one compression type lists provided");
           return -1;
         }
         compression_str = optarg;
@@ -205,238 +215,229 @@ int parse_options(
     }
   }
 
-  // Auxiliary variables
-  CSVLine temp, array_schema_csv;
+  // ******************* //
+  // Check correctness * //
+  // ******************* //
 
-  // *********************************************************
-  // Check correctness
-  // *********************************************************
-  // ----- Check number of arguments
+  // ----- Check number of arguments -----
   if((argc-1) != 2*option_num) {
-    std::cerr << ERROR_MSG_HEADER << " Arguments-options mismatch.\n"; 
+    PRINT_ERROR("Arguments-options mismatch"); 
     return -1;
   }
-  // ----- Check if correct arguments have been ginen
+  // ----- Check if correct arguments have been given ----- //
   if(array_name == "") {
-    std::cerr << ERROR_MSG_HEADER << " Array name not provided.\n";
+    PRINT_ERROR("Array name not provided");
     return -1;
   }
   if(attribute_names_str == "") {
-    std::cerr << ERROR_MSG_HEADER << " Attribute names not provided.\n";
+    PRINT_ERROR("Attribute names not provided");
     return -1;
   }
   if(dim_names_str == "") {
-    std::cerr << ERROR_MSG_HEADER << " Dimension names not provided.\n";
+    PRINT_ERROR("Dimension names not provided");
     return -1;
   }
   if(dim_domains_str == "") {
-    std::cerr << ERROR_MSG_HEADER << " Dimension domains not provided.\n";
+    PRINT_ERROR("Dimension domains not provided");
     return -1;
   }
   if(types_str == "") {
-    std::cerr << ERROR_MSG_HEADER << " Types not provided.\n";
+    PRINT_ERROR("Types not provided");
     return -1;
   }
-  if(workspace == "") {
-    std::cerr << ERROR_MSG_HEADER << " Workspace not provided.\n";
-    return -1;
-  }
-
-  // ----- The capacity cannot be set for regular tiles
+  // ----- The capacity cannot be set for regular tiles ----- //
   if(tile_extents_str != "" && capacity_str != "") {
-    std::cerr << ERROR_MSG_HEADER 
-              << " Capacity is meaningless in the case of regular tiles.\n";
+    PRINT_ERROR("Capacity is meaningless in the case of regular tiles");
     return -1;
   }
-  // ----- Tile order must not be given if the tiles are irregular
+  // ----- Tile order must not be given if the tiles are irregular ----- //
   if(tile_extents_str == "" && tile_order_str != "") {
-    std::cerr << ERROR_MSG_HEADER 
-              << " Tile order is meaningless in the case of irregular tiles.\n";
+    PRINT_ERROR("Tile order is meaningless in the case of irregular tiles");
     return -1;
-  }
+  } 
+  // ----- Tile order must not be given together with capacity ----- //
+  if(capacity_str != "" && tile_order_str != "") {
+    PRINT_ERROR("It is meaningless to provide both tile order and capacity");
+    return -1;
+  } 
 
-  // ----- Check number of workspaces workspace
+  // ----- Check workspace and group multiplicities ----- //
+  temp.clear();
   temp << workspace;
   if(temp.val_num() > 1) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " More than one workspaces provided.\n";
+    PRINT_ERROR("More than one workspaces provided");
+    return -1;
+  }
+  temp.clear();
+  temp << group;
+  if(temp.val_num() > 1) {
+    PRINT_ERROR("More than one groups provided");
     return -1;
   }
 
-  // *********************************************************
-  // Serialize all array schema items into a single CSV string
-  // and perform necessary checks
-  // *********************************************************
-  // ----- array name
+  // ********************************** //
+  // Serialize into a single CSV string //
+  // ********************************** //
+
+  // ----- array name ----- //
   temp.clear();
   temp << array_name;
   if(temp.val_num() > 1) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " More than one array names provided.\n";
+    PRINT_ERROR("More than one array names provided");
     return -1;
   }
   array_schema_csv << temp;
-  // ----- attribute_num and attributes
+
+  // ----- attribute_num and attribute names ----- //
   temp.clear();
   temp << attribute_names_str;
   int attribute_num = temp.val_num();
   array_schema_csv << attribute_num;
   array_schema_csv << temp;
-  // ----- dim_num and dimensions
+
+  // ----- dim_num and dimension names ----- //
   temp.clear();
   temp << dim_names_str;
   int dim_num = temp.val_num();
   array_schema_csv << dim_num;
   array_schema_csv << temp;
-  // ----- dimension domains
+
+  // ----- dimension domains ----- //
   temp.clear();
   temp << dim_domains_str;
   if(temp.val_num() != 2*dim_num) {
-    std::cerr << ERROR_MSG_HEADER  
-              << " The number of domain bounds does not match the"
-              << " provided number of dimensions.\n";
+    PRINT_ERROR("The number of domain bounds does not match the "
+                "provided number of dimensions");
     return -1;
   }
   array_schema_csv << temp;
-  // ----- types
+
+  // ----- types ----- // 
   temp.clear();
   temp << types_str;
-
   if(temp.val_num() != attribute_num + 1) {
-    std::cerr << ERROR_MSG_HEADER  
-              << " The number of types does not match the number of"
-              << " attributes.\n";
+    PRINT_ERROR("The number of types does not match the number of "
+                "attributes");
     return -1;
   }
   array_schema_csv << temp;
-  // ----- tile extents
+
+  // ----- tile extents ----- //
   temp.clear();
   if(tile_extents_str == "") {
     array_schema_csv << NULL_CHAR;
   } else {
     temp << tile_extents_str;
     if(temp.val_num() != dim_num) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " The number of tile extents does not match the number of"
-                << " dimensions.\n";
+      PRINT_ERROR("The number of tile extents does not match the number of "
+                  "dimensions");
       return -1;
     }
     array_schema_csv << temp;
   }
-  // ----- cell order
+
+  // ----- cell order ----- //
   temp.clear();
   if(cell_order_str == "") {
     array_schema_csv << NULL_CHAR;
   } else {
     temp << cell_order_str;
     if(temp.val_num() > 1) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " More than one cell orders provided.\n";
+      PRINT_ERROR("More than one cell orders provided");
       return -1;
     }
-  array_schema_csv << temp;
+    array_schema_csv << temp;
   }
-  // ----- tile order
+
+  // ----- tile order ----- //
   temp.clear();
   if(tile_order_str == "") {
     array_schema_csv << NULL_CHAR;
   } else {
     temp << tile_order_str;
     if(temp.val_num() > 1) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " More than one tile orders provided.\n";
+      PRINT_ERROR("More than one tile orders provided");
       return -1;
     }
     array_schema_csv << temp;
   }
-  // ----- capacity
+
+  // ----- capacity ----- //
   temp.clear();
   if(capacity_str == "") {
     array_schema_csv << NULL_CHAR;
   } else {
     temp << capacity_str;
     if(temp.val_num() > 1) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " More than one capacities provided.\n";
+      PRINT_ERROR("More than one capacities provided");
       return -1;
     }
     array_schema_csv << temp;
   }
-  // ----- consolidation step
+
+  // ----- consolidation step ----- //
   temp.clear();
   if(consolidation_step_str == "") {
     array_schema_csv << NULL_CHAR;
   } else {
     temp << consolidation_step_str;
     if(temp.val_num() > 1) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " More than one consolidation steps provided.\n";
+      PRINT_ERROR("More than one consolidation steps provided");
       return -1;
     }
     array_schema_csv << temp;
   }
-  // ----- compression
+
+  // ----- compression ----- // 
   temp.clear();
   temp << compression_str;
-
   if(compression_str == "") {
     array_schema_csv << NULL_CHAR; 
   } else {
     if(temp.val_num() != attribute_num + 1) {
-      std::cerr << ERROR_MSG_HEADER  
-                << " The number of compression types does not match the number"
-                << " of attributes.\n";
+      PRINT_ERROR("The number of compression types does not match the number "
+                  "of attributes");
       return -1;
     }
     array_schema_csv << temp;
   }
 
-
-  // *********************************************************
-  // Set the array schema (CSV) string
-  // *********************************************************
+  // ********************************* //
+  // Set the array schema (CSV) string //
+  // ********************************* //
   array_schema_str = array_schema_csv.c_str();
 
+  // Success
   return 0;
 }
 
 int main(int argc, char** argv) {
-  // Arguments
-  std::string array_schema_str; // Holds the schema serialized in a CSV string
-  std::string workspace;
-
-  // Stores the return code of the various functions below
-  int rc; 
- 
   // Parse command line
-  rc = parse_options(argc, argv, array_schema_str, workspace);
-  if(rc) {
-    std::cerr << ERROR_MSG_HEADER << " Failed to parse the command line.\n";
-    return TILEDB_EPARSE;
+  std::string workspace, group, array_schema_str;
+  if(parse_options(argc, argv, workspace, group, array_schema_str)) { 
+    PRINT_ERROR("Program failed");
+    return -1;
   }
 
   // Initialize TileDB
   TileDB_CTX* tiledb_ctx;
-  rc = tiledb_ctx_init(workspace.c_str(), tiledb_ctx);
-  if(rc) {
-    std::cerr << ERROR_MSG_HEADER << " Failed to initialize TileDB.\n";
-    return TILEDB_EINIT;
+  if(tiledb_ctx_init(tiledb_ctx))
+    return -1;
+
+  // Store the array schema
+  if(tiledb_array_define(tiledb_ctx, workspace.c_str(), group.c_str(), 
+                         array_schema_str.c_str())) {
+    tiledb_ctx_finalize(tiledb_ctx);
+    PRINT_ERROR("Program failed");
+    return -1;
   }
-
-  // Show the array schema
-  rc = tiledb_define_array(tiledb_ctx, array_schema_str.c_str());
-
-  if(rc) 
-    return rc;
 
   // Finalize TileDB
-  rc = tiledb_ctx_finalize(tiledb_ctx);
-  if(rc) {
-    std::cerr << ERROR_MSG_HEADER << " Failed to finalize TileDB.\n";
-    return TILEDB_EFIN;
-  }
+  if(tiledb_ctx_finalize(tiledb_ctx))
+    return -1;
 
-  std::cout << MSG_HEADER << " Program executed successfully!\n";
+  // Success
+  PRINT("Program executed successfully");
   
   return 0;
 }

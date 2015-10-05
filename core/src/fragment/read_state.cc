@@ -6,7 +6,7 @@
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
  */
 
 #include "read_state.h"
+#include "special_values.h"
 #include "utils.h"
 #include <assert.h>
 #include <fcntl.h>
@@ -47,15 +48,16 @@ ReadState::ReadState(
     const ArraySchema* array_schema, 
     const BookKeeping* book_keeping,
     const std::string* fragment_name,
-    const std::string* workspace,
-    size_t segment_size) 
+    const std::string* dirname) 
     : array_schema_(array_schema), 
       book_keeping_(book_keeping),
       fragment_name_(fragment_name),
-      workspace_(workspace),
-      segment_size_(segment_size) {
+      dirname_(dirname) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
+
+  // Set segment size
+  segment_size_ = SEGMENT_SIZE;
 
   // Initialize segments
   segments_.resize(attribute_num+1);
@@ -153,8 +155,7 @@ std::pair<size_t, int64_t> ReadState::load_payloads_into_segment(
   int64_t tile_num = book_keeping_->tile_num();
 
   // Open file
-  std::string filename = *workspace_ + "/" + array_name + "/" +
-                         *fragment_name_ + "/" +
+  std::string filename = *dirname_ + "/" +
                          attribute_name + 
                          TILE_DATA_FILE_SUFFIX;
   int fd = open(filename.c_str(), O_RDONLY);

@@ -32,6 +32,7 @@
  */
 
 #include "cell.h"
+#include "special_values.h"
 #include "utils.h"
 #include <iostream>
 #include <string.h>
@@ -134,6 +135,82 @@ const void* Cell::cell() const {
   return cell_;
 }
 
+template<class T>
+void Cell::cell(
+    const std::vector<int>& dim_ids,
+    const std::vector<int>& attribute_ids,
+    void*& cell_ret,
+    size_t& cell_ret_capacity,
+    size_t& cell_ret_size) const {
+  // Initialization
+  if(cell_ret == NULL) {
+    cell_ret = malloc(1000);
+    cell_ret_capacity = 1000;
+  }
+  cell_ret_size = 0;
+
+  // For easy reference
+  int dim_num = array_schema_->dim_num();
+  int attribute_num = array_schema_->attribute_num();
+
+  // Append ids
+  for(int i=0; i<id_num_; ++i) {
+    if(cell_ret_size + sizeof(int64_t) > cell_ret_capacity) {
+      expand_buffer(cell_ret, cell_ret_capacity);
+      cell_ret_capacity *= 2;
+    }
+    int64_t id_tmp = id(i);
+    memcpy(static_cast<char*>(cell_ret) + cell_ret_size,
+           &id_tmp, sizeof(int64_t));
+    cell_ret_size += sizeof(int64_t);
+  }
+     
+  // Append coordinates
+  const T* coords = (*this)[attribute_num];
+  for(int i=0; i<dim_ids.size(); ++i) {
+    assert(dim_ids[i] >= 0 && dim_ids[i] < dim_num);
+    if(cell_ret_size + sizeof(T) > cell_ret_capacity) {
+      expand_buffer(cell_ret, cell_ret_capacity);
+      cell_ret_capacity *= 2;
+    }
+    memcpy(static_cast<char*>(cell_ret) + cell_ret_size,
+           &coords[dim_ids[i]], sizeof(T));
+    cell_ret_size += sizeof(T);
+  }
+
+  // Leave space for the cell size
+  size_t cell_size_offset = cell_ret_size;
+  cell_ret_size += sizeof(int);
+
+  // Append attribute values
+  for(int i=0; i<attribute_ids.size(); ++i) {
+    assert(attribute_ids[i] >= 0 && attribute_ids[i] < attribute_num);
+
+    const std::type_info* attr_type = array_schema_->type(attribute_ids[i]);
+
+    if(attr_type == &typeid(char)) {
+      append_attribute<char>(
+          attribute_ids[i], cell_ret, cell_ret_capacity, cell_ret_size);
+    } else if(attr_type == &typeid(int)) {
+      append_attribute<int>(
+          attribute_ids[i], cell_ret, cell_ret_capacity, cell_ret_size);
+    } else if(attr_type == &typeid(int64_t)) {
+      append_attribute<int64_t>(
+          attribute_ids[i], cell_ret, cell_ret_capacity, cell_ret_size);
+    } else if(attr_type == &typeid(float)) {
+      append_attribute<float>(
+          attribute_ids[i], cell_ret, cell_ret_capacity, cell_ret_size);
+    } else if(attr_type == &typeid(double)) {
+      append_attribute<double>(
+          attribute_ids[i], cell_ret, cell_ret_capacity, cell_ret_size);
+    } 
+  }
+
+  // Copy the cell size
+  memcpy(static_cast<char*>(cell_ret) + cell_size_offset,
+         &cell_ret_size, sizeof(int));
+}
+
 ssize_t Cell::cell_size() const {
   if(cell_ == NULL)
     return 0;
@@ -153,13 +230,14 @@ ssize_t Cell::cell_size() const {
 template<class T>
 CSVLine Cell::csv_line(
     const std::vector<int>& dim_ids,
-    const std::vector<int>& attribute_ids) const {
+    const std::vector<int>& attribute_ids,
+    char delimiter) const {
   // For easy reference
   int dim_num = array_schema_->dim_num();
   int attribute_num = array_schema_->attribute_num();
 
   // Initialization
-  CSVLine csv_line;
+  CSVLine csv_line(delimiter);
 
   // Append ids
   for(int i=0; i<id_num_; ++i) 
@@ -294,6 +372,44 @@ void Cell::append_attribute(int attribute_id, CSVLine& csv_line) const {
   }
 }
 
+template<class T>
+void Cell::append_attribute(
+    int attribute_id, 
+    void*& cell,
+    size_t& cell_capacity,
+    size_t& cell_size) const {
+  int val_num = this->val_num(attribute_id);
+  bool var_size = this->var_size(attribute_id);
+
+  // Number of values for the case of variable-sized attribute
+  if(var_size) { 
+    if(cell_size + sizeof(int) > cell_capacity) {
+      expand_buffer(cell, cell_capacity);
+      cell_capacity *= 2; 
+    }
+    memcpy(static_cast<char*>(cell) + cell_size, &val_num, sizeof(int));
+    cell_size += sizeof(int);
+  }
+
+  // Append attribute values
+  const T* v;
+  if(!var_size) {
+    v = (*this)[attribute_id];
+  } else { // Skip the val_num
+    const void* temp = 
+        static_cast<const char*>((*this)[attribute_id]) + sizeof(int);
+    v = static_cast<const T*>(temp);
+  }
+
+  if(cell_size + sizeof(T) * val_num > cell_capacity) {
+    expand_buffer(cell, cell_capacity);
+    cell_capacity *= 2; 
+  }
+  memcpy(static_cast<char*>(cell) + cell_size, 
+         v, sizeof(T) * val_num);
+  cell_size += sizeof(T) * val_num;
+}
+
 void Cell::append_string(int attribute_id, CSVLine& csv_line) const {
   int val_num = this->val_num(attribute_id);
   std::string v;
@@ -310,6 +426,7 @@ void Cell::append_string(int attribute_id, CSVLine& csv_line) const {
   else 
     csv_line << v;
 }
+
 
 void Cell::init_attribute_offsets() {
   attribute_offsets_.clear();
@@ -351,13 +468,46 @@ void Cell::init_val_num() {
 // Explicit template instantiations
 template CSVLine Cell::csv_line<int>(
     const std::vector<int>& dim_ids,
-    const std::vector<int>& attribute_ids) const;
+    const std::vector<int>& attribute_ids,
+    char delimiter) const;
 template CSVLine Cell::csv_line<int64_t>(
     const std::vector<int>& dim_ids,
-    const std::vector<int>& attribute_ids) const;
+    const std::vector<int>& attribute_ids,
+    char delimiter) const;
 template CSVLine Cell::csv_line<float>(
     const std::vector<int>& dim_ids,
-    const std::vector<int>& attribute_ids) const;
+    const std::vector<int>& attribute_ids,
+    char delimiter) const;
 template CSVLine Cell::csv_line<double>(
     const std::vector<int>& dim_ids,
-    const std::vector<int>& attribute_ids) const;
+    const std::vector<int>& attribute_ids,
+    char delimiter) const;
+
+template void Cell::cell<int>(
+    const std::vector<int>& dim_ids,
+    const std::vector<int>& attribute_ids,
+    void*& cell_ret,
+    size_t& cell_ret_capacity,
+    size_t& cell_ret_size) const;
+
+template void Cell::cell<int64_t>(
+    const std::vector<int>& dim_ids,
+    const std::vector<int>& attribute_ids,
+    void*& cell_ret,
+    size_t& cell_ret_capacity,
+    size_t& cell_ret_size) const;
+
+template void Cell::cell<float>(
+    const std::vector<int>& dim_ids,
+    const std::vector<int>& attribute_ids,
+    void*& cell_ret,
+    size_t& cell_ret_capacity,
+    size_t& cell_ret_size) const;
+
+template void Cell::cell<double>(
+    const std::vector<int>& dim_ids,
+    const std::vector<int>& attribute_ids,
+    void*& cell_ret,
+    size_t& cell_ret_capacity,
+    size_t& cell_ret_size) const;
+

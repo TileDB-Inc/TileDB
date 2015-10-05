@@ -62,6 +62,13 @@ class ArrayConstDenseCellIterator {
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
   ArrayConstDenseCellIterator();
+
+  /** TODO */
+  bool created_successfully() const;
+
+  /** TODO */
+  int finalize();
+
   /** Constructor. */
   ArrayConstDenseCellIterator(Array* array); 
   /** 
@@ -115,7 +122,7 @@ class ArrayConstDenseCellIterator {
 
   // OPERATORS
   /** Increment. */
-  void operator++();
+  int operator++();
   /** Dereference. */
   const void* operator*();
     
@@ -142,6 +149,8 @@ class ArrayConstDenseCellIterator {
    * with the current_coords_ ones that simulate the dense array.
    */
   bool coords_match_;
+  /** *True* if the constructor succeeded, or *false* otherwise. */
+  bool created_successfully_;
   /** 
    * Goes through all the coordinates simulating a dense array, following the 
    * specified cell order.
@@ -151,6 +160,8 @@ class ArrayConstDenseCellIterator {
   int dim_num_;
   /** True if the iterator has reached the end of all cells. */
   bool end_;
+  /** *True* if the object was finalized, or *false* otherwise. */
+  bool finalized_;
   /** The ids of the fragments the iterator iterates over. */
   std::vector<int> fragment_ids_;
   /** The number of fragments. */

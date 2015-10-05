@@ -6,7 +6,7 @@
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,106 +31,258 @@
  * This file implements the StorageManager class.
  */
 
+#include "cell.h"
 #include "const_cell_iterator.h"
 #include "special_values.h"
 #include "storage_manager.h"
-#include "tiledb_error.h"
 #include "utils.h"
-#include <algorithm>
 #include <assert.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <iostream>
-#include <sstream>
-#include <stdlib.h>
+#include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <typeinfo>
+#include <unistd.h>
 
-/******************************************************
-************* CONSTRUCTORS & DESTRUCTORS **************
-******************************************************/
+// Macro for printing error and warning messages in stderr in VERBOSE mode
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << "[TileDB::StorageManager] Error: " << x \
+                                   << ".\n" 
+#  define PRINT_WARNING(x) std::cerr << "[TileDB::StorageManager] Warning: " \
+                                     << x \
+                                     << ".\n" 
+#else
+#  define PRINT_ERROR(x) do { } while(0) 
+#  define PRINT_WARNING(x) do { } while(0) 
+#endif
 
-StorageManager::StorageManager(const std::string& path, 
-                               size_t segment_size)
-    : segment_size_(segment_size), arrays_(NULL) {
-  // Success code
-  err_ = TILEDB_OK;
+/* ****************************** */
+/*   CONSTRUCTORS & DESTRUCTORS   */
+/* ****************************** */
 
-  if(!is_dir(path)) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " Workspace directory '" << path << "' does not exist.\n";
-    err_ = TILEDB_EDNEXIST;
-    return;
-  }
-
-  // Set workspace
-  set_workspace(path);
-
-  // Create directories
-  int rc;
-  if(!is_dir(workspace_)) {
-    rc = create_directory(workspace_);
-    if(rc) {
-      std::cerr << ERROR_MSG_HEADER
-                << " Cannot create directory '" << workspace_ << "'.\n";
-      err_ = TILEDB_EDNCREAT;
-      return;
-    }
-  }
-  std::string tmpdir = workspace_ + "/" + TEMP + "/";
-  if(!is_dir(tmpdir)) {
-    rc = create_directory(tmpdir);
-    if(rc) {
-      std::cerr << ERROR_MSG_HEADER
-                << " Cannot create directory '" << tmpdir << "'.\n";
-      err_ = TILEDB_EDNCREAT;
-      return;
-    }
-  }
-
-  // Set maximum size for write state
-  write_state_max_size_ = WRITE_STATE_MAX_SIZE;
-
-  // Initializes the structure that holds the open arrays
-  arrays_ = new Array*[MAX_OPEN_ARRAYS]; 
-  for(int i=0; i<MAX_OPEN_ARRAYS; ++i)
+StorageManager::StorageManager() {
+  // Initialize the structure that holds the open arrays
+  arrays_ = new Array*[SM_OPEN_ARRAYS_MAX]; 
+  for(int i=0; i<SM_OPEN_ARRAYS_MAX; ++i)
     arrays_[i] = NULL;
+
+  finalized_ = false;
+  created_successfully_ = true;
+}
+
+bool StorageManager::created_successfully() const {
+  return created_successfully_;
+}
+
+int StorageManager::finalize() {
+  assert(arrays_ != NULL);
+
+  for(int i=0; i<SM_OPEN_ARRAYS_MAX; ++i) {
+    if(arrays_[i] != NULL)
+      if(array_close(i))
+        return -1;
+  }
+  delete [] arrays_;
+
+  finalized_ = true;
+
+  return 0;
 }
 
 StorageManager::~StorageManager() {
-  if (arrays_ != NULL) {
-    for(int i=0; i<MAX_OPEN_ARRAYS; ++i) {
-      if(arrays_[i] != NULL)
-        close_array(i);
-    }
-    delete [] arrays_;
+  if(!finalized_) {
+    PRINT_WARNING("StorageManager not finalized. Finalizing now");
+    finalize();
   }
 }
 
-/******************************************************
-********************* ACCESSORS ************************
-******************************************************/
+/* ****************************** */
+/*         ARRAY FUNCTIONS        */
+/* ****************************** */
 
-int StorageManager::err() const {
-  return err_;
+int StorageManager::array_clear(
+    const std::string& workspace,
+    const std::string& group,
+    const std::string& array_name,
+    bool real_paths) {
+  // Get real workspace and group paths
+  std::string workspace_real, group_real;
+  if(real_paths_get(workspace, group, workspace_real, group_real, real_paths)) 
+    return -1;
+
+  // Check if the array is defined
+  if(!array_is_defined(workspace_real, group_real, array_name, true)) {
+    PRINT_ERROR("Array not defined");
+    return -1;
+  }
+
+  // Calculate the (real) array directory name
+  std::string array_dirname = group_real + "/" + array_name;
+
+  // Close the array if it is open 
+  OpenArrays::iterator it = open_arrays_.find(array_dirname);
+  if(it != open_arrays_.end())
+    array_close_forced(it->second);
+
+  // Delete the entire array directory except for the array schema file
+  std::string filename; 
+  struct dirent *next_file;
+  DIR* dir = opendir(array_dirname.c_str());
+  
+  if(dir == NULL) {
+    PRINT_ERROR(std::string("Cannot open array directory - ") + 
+                strerror(errno));
+    return -1;
+  }
+
+  while((next_file = readdir(dir))) {
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, "..") ||
+       !strcmp(next_file->d_name, ARRAY_SCHEMA_FILENAME))
+      continue;
+    if(is_file(array_dirname + "/" + next_file->d_name, true)) {
+      filename = array_dirname + "/" + next_file->d_name;
+      if(remove(filename.c_str())) {
+        PRINT_ERROR(std::string("Cannot delete file - ") +
+                    strerror(errno));
+        return -1;
+      }
+    } else {  // It is a fragment directory
+      if(directory_delete(array_dirname + "/" + next_file->d_name, true))
+        return -1;
+    }
+  } 
+
+  // Close array directory  
+  if(closedir(dir)) {
+    PRINT_ERROR(std::string("Cannot close the array directory - ") + 
+                strerror(errno));
+    return -1;
+  }
+
+  // Success
+  return 0;
 }
 
-/******************************************************
-********************* MUTATORS ************************
-******************************************************/
+int StorageManager::array_close(int ad) {
+  // Sanity check
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return -1;
+  }
 
-void StorageManager::set_segment_size(size_t segment_size) {
-  segment_size_ = segment_size;
+  // Trivial case
+  if(arrays_[ad] == NULL)
+    return 0;
+
+  // Close array
+  open_arrays_.erase(arrays_[ad]->dirname());
+  arrays_[ad]->finalize();
+  delete arrays_[ad];
+  arrays_[ad] = NULL;
+
+  // Success
+  return 0;
 }
 
-/******************************************************
-****************** ARRAY FUNCTIONS ********************
-******************************************************/
+int StorageManager::array_close_forced(int ad) {
+  // Sanity check
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return -1;
+  }
 
-bool StorageManager::array_defined(const std::string& array_name) const {
-  std::string filename = workspace_ + "/" + array_name + "/" + 
+  // Trivial case
+  if(arrays_[ad] == NULL)
+    return -1;
+
+  // Close array
+  if(arrays_[ad]->close_forced())
+    return -1;
+
+  open_arrays_.erase(arrays_[ad]->dirname());
+  arrays_[ad]->finalize();
+  delete arrays_[ad];
+  arrays_[ad] = NULL;
+
+  // Success
+  return 0;
+}
+
+int StorageManager::array_consolidate(
+    const std::string& workspace,
+    const std::string& group,
+    const std::string& array_name,
+    bool real_paths) {
+  // Open array
+  int ad = array_open(workspace, group, array_name, "c");
+  if(ad == -1)
+    return -1;
+
+  // Consolidate
+  if(arrays_[ad]->consolidate())
+    return -1;
+
+  // Clean up
+  array_close(ad);
+
+  // Success
+  return 0;
+}
+
+int StorageManager::array_delete(
+    const std::string& workspace,
+    const std::string& group,
+    const std::string& array_name,
+    bool real_paths) {
+  // Get real workspace and group paths
+  std::string workspace_real, group_real;
+  if(real_paths_get(workspace, group, workspace_real, group_real, real_paths))
+    return -1;
+
+  // Clear the array (necessary for closing the array and deleting
+  // the fragment folders)
+  if(array_clear(workspace_real, group_real, array_name, true))
+    return -1;
+
+  // Delete the directory (remaining files plus the folder itself)
+  std::string array_dirname = group_real + "/" + array_name;
+  if(directory_delete(array_dirname, true))
+    return -1; 
+
+  // Success
+  return 0;
+}
+
+bool StorageManager::array_is_defined(
+    const std::string& workspace,
+    const std::string& group,
+    const std::string& array_name,
+    bool real_paths) const {
+  // Get real workspace path
+  std::string workspace_real, group_real;
+  if(real_paths)
+    workspace_real = workspace;
+  else
+    workspace_real = real_path(workspace);
+
+  // Check if workspace exists
+  if(!workspace_exists(workspace_real))
+    return false;
+
+  // Get real group path
+  if(real_paths)
+    group_real = group;
+  else
+    group_real = real_path(group, workspace_real,
+                           workspace_real, workspace_real);
+
+  // Check if array schema file exists
+  std::string filename = group_real + "/" + array_name + "/" +
                          ARRAY_SCHEMA_FILENAME;
 
   int fd = open(filename.c_str(), O_RDONLY);
@@ -143,195 +295,116 @@ bool StorageManager::array_defined(const std::string& array_name) const {
   }
 }
 
-int StorageManager::clear_array(const std::string& array_name) {
-// TODO: more error messages
-
-  // Check if the array is defined
-  if(!array_defined(array_name)) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " Array '" + array_name + "' is not defined.\n";
-    return TILEDB_ENDEFARR;
+bool StorageManager::array_name_is_valid(const char* array_name) const {
+  for(int i=0; array_name[i] != '\0'; ++i) {
+    if(!isalnum(array_name[i]) && 
+       array_name[i] != '_' && array_name[i] != '-' && array_name[i] != '.')
+      return false;
   }
 
-  // Close the array if it is open 
-  OpenArrays::iterator it = open_arrays_.find(array_name);
-  if(it != open_arrays_.end())
-    forced_close_array(it->second);
-
-  // Delete the entire array directory
-  std::string dirname = workspace_ + "/" + array_name + "/";
-  std::string filename; 
-
-  struct dirent *next_file;
-  DIR* dir = opendir(dirname.c_str());
-  std::string fragments_filename = std::string(FRAGMENT_TREE_FILENAME) + 
-                                   BOOK_KEEPING_FILE_SUFFIX;
-  std::string array_schema_filename = std::string(ARRAY_SCHEMA_FILENAME);
-  
-  // If the directory does not exist, exit
-  if(dir == NULL) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " Cannot open directory '" + dirname + "'.\n";
-    return TILEDB_EFILE;
-  }
-
-  while((next_file = readdir(dir))) {
-    if(strcmp(next_file->d_name, ".") == 0 ||
-       strcmp(next_file->d_name, "..") == 0 ||
-       strcmp(next_file->d_name, array_schema_filename.c_str()) == 0)
-      continue;
-    if(strcmp(next_file->d_name, fragments_filename.c_str()) == 0)  {
-      filename = dirname + next_file->d_name;
-      remove(filename.c_str());
-    }
-    else {  // It is a fragment directory
-      delete_directory(dirname + next_file->d_name);
-    }
-  } 
-  
-  closedir(dir);
-
-  return TILEDB_OK;
+  return true;
 }
 
-void StorageManager::close_array(int ad) {
-  if(arrays_[ad] == NULL)
-    return;
-
-  open_arrays_.erase(arrays_[ad]->array_schema()->array_name());
-  delete arrays_[ad];
-  arrays_[ad] = NULL;
-}
-
-int StorageManager::define_array(const ArraySchema* array_schema) {
-  // For easy reference
-  const std::string& array_name = array_schema->array_name();
-  std::string err_msg;
-
-  // Delete array if it exists
-  if(array_defined(array_name)) 
-    delete_array(array_name); 
-
-  // Create array directory
-  std::string dir_name = workspace_ + "/" + array_name + "/"; 
-  create_directory(dir_name);
-
-  // Open file
-  std::string filename = dir_name + ARRAY_SCHEMA_FILENAME; 
-  remove(filename.c_str());
-  int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  if(fd == -1) 
-    return -1;
-
-  // Serialize array schema
-  std::pair<const char*, size_t> ret = array_schema->serialize();
-  const char* buffer = ret.first;
-  size_t buffer_size = ret.second; 
-
-  // Store the array schema
-  write(fd, buffer, buffer_size); 
-
-  delete [] buffer;
-  close(fd);
-
-  return TILEDB_OK;
-}
-
-int StorageManager::delete_array(const std::string& array_name) {
-  // Check if the array is defined
-  if(!array_defined(array_name)) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " Array '" + array_name + "' is not defined.\n";
-    return TILEDB_ENDEFARR;
-  }
-
-  // Close the array if it is open 
-  OpenArrays::iterator it = open_arrays_.find(array_name);
-  if(it != open_arrays_.end())
-    forced_close_array(it->second);
-
-  // Delete the entire array directory
-  std::string dirname = workspace_ + "/" + array_name + "/";
-  std::string filename; 
-  std::string fragments_filename = std::string(FRAGMENT_TREE_FILENAME) + 
-                                   BOOK_KEEPING_FILE_SUFFIX;
-  std::string array_schema_filename = std::string(ARRAY_SCHEMA_FILENAME);
-
-  struct dirent *next_file;
-  DIR* dir = opendir(dirname.c_str());
-  
-  // If the directory does not exist, exit
-  if(dir == NULL) {
-    std::cerr << ERROR_MSG_HEADER 
-              << " Cannot open directory '" + dirname + "'.\n";
-    return TILEDB_EFILE;
-  }
-
-  // TODO: more error handling here
-  while((next_file = readdir(dir))) {
-    if(strcmp(next_file->d_name, ".") == 0 ||
-       strcmp(next_file->d_name, "..") == 0)
-      continue;
-    if(strcmp(next_file->d_name, fragments_filename.c_str()) == 0 ||
-       strcmp(next_file->d_name, array_schema_filename.c_str()) == 0) {
-      filename = dirname + next_file->d_name;
-      remove(filename.c_str());
-    }
-    else {  // It is a fragment directory
-      delete_directory(dirname + next_file->d_name);
-    }
-  } 
-  
-  closedir(dir);
-  rmdir(dirname.c_str());
-
-  return TILEDB_OK;
-}
-
-void StorageManager::forced_close_array(int ad) {
-  if(arrays_[ad] == NULL)
-    return;
-
-  const std::string& array_name = arrays_[ad]->array_schema()->array_name();
-
-  arrays_[ad]->forced_close();
-  open_arrays_.erase(array_name);
-  delete arrays_[ad];
-  arrays_[ad] = NULL;
-}
-
-int StorageManager::get_array_schema(
-    int ad, const ArraySchema*& array_schema) const {
-std::string err_msg;
-
- // TODO: Remove err_msg
-
-  if(arrays_[ad] == NULL) {
-    err_msg = "Array is not open.";
-    return -1;
-  }
-
-  array_schema = arrays_[ad]->array_schema();
-  return TILEDB_OK;
-}
-
-int StorageManager::get_array_schema(
+int StorageManager::array_open(
+    const std::string& workspace, 
+    const std::string& group, 
     const std::string& array_name, 
-    ArraySchema*& array_schema) const {
-  // Open file
-  std::string filename = workspace_ + "/" + array_name + "/" + 
+    const char* mode,
+    bool real_paths) {
+  // Get real workspace, group and array paths
+  std::string workspace_real, group_real;
+  if(real_paths_get(workspace, group, workspace_real, group_real, real_paths))
+    return -1;
+  std::string array_dirname = group_real + "/" + array_name;
+
+  // Check if the array is defined
+  if(!array_is_defined(workspace_real, group_real, array_name, true)) {
+    PRINT_ERROR("Undefined array '" + array_name + "'");
+    return -1;
+  }
+
+  // If the array is already open, return its stored descriptor
+  OpenArrays::iterator it = open_arrays_.find(array_dirname);
+  if(it != open_arrays_.end())
+    return it->second;
+
+  // If in write mode, clear the array if it exists
+  if(!strcmp(mode, "w")) 
+    if(array_clear(workspace_real, group_real, array_name, true))
+      return -1;
+
+  // Get array mode
+  Array::Mode array_mode;
+  if(!strcmp(mode, "w") || !strcmp(mode, "a")) {
+    array_mode = Array::WRITE;
+  } else if(!strcmp(mode, "r")) {
+    array_mode = Array::READ;
+  } else if(!strcmp(mode, "c")) {
+    array_mode = Array::CONSOLIDATE;
+  } else {
+    PRINT_ERROR("Invalid array mode");
+    return -1; 
+  }
+
+  // Initialize an Array object
+  ArraySchema* array_schema;
+  if(array_schema_get(workspace_real, group_real, 
+                      array_name, array_schema, true))
+    return -1;
+  Array* array = new Array(array_dirname, array_schema, array_mode);
+  if(!array->created_successfully()) {
+    array->finalize();
+    delete array;
+    return -1;
+  }
+
+  // Get a new array descriptor
+  int ad = -1;
+  for(int i=0; i<SM_OPEN_ARRAYS_MAX; ++i) {
+    if(arrays_[i] == NULL) {
+      ad = i; 
+      break;
+    }
+  }
+
+  // Success
+  if(ad != -1) { 
+    arrays_[ad] = array;
+    open_arrays_[array_dirname] = ad;
+    return ad;
+  } else { // Error
+    PRINT_ERROR("Cannot open array: reached maximum open arrays limit");
+    array->finalize();
+    delete array; 
+    return -1;
+  }
+}
+
+int StorageManager::array_schema_get(
+    const std::string& workspace,
+    const std::string& group,
+    const std::string& array_name, 
+    ArraySchema*& array_schema,
+    bool real_paths) const {
+  // Get real workspace and group paths
+  std::string workspace_real, group_real;
+  if(real_paths_get(workspace, group, workspace_real, group_real, real_paths))
+    return -1;
+
+  // Check if the array is defined
+  if(!array_is_defined(workspace_real, group_real, array_name, true)) {
+    PRINT_ERROR("Array not defined");
+    return -1;
+  }
+
+  // Open array schema file
+  std::string filename = group_real + "/" + array_name + "/" + 
                          ARRAY_SCHEMA_FILENAME;
   int fd = open(filename.c_str(), O_RDONLY);
   if(fd == -1) {
-    if(!is_file(filename.c_str())) {
-      std::cerr << ERROR_MSG_HEADER 
-               << " Undefined array '" << array_name << "'.\n";
-      return TILEDB_ENDEFARR;
-    } else {
-      std::cerr << ERROR_MSG_HEADER 
-               << " Cannot open file '" << filename << "'.\n";
-      return TILEDB_EFILE;
-    }
+    PRINT_ERROR(std::string( "Cannot open array schema file - ") +
+                strerror(errno));
+    return -1;
   }
 
   // The schema to be returned
@@ -342,400 +415,1029 @@ int StorageManager::get_array_schema(
   fstat(fd, &st);
   ssize_t buffer_size = st.st_size;
   if(buffer_size == 0) {
-    std::cerr << ERROR_MSG_HEADER 
-             << " File '" << filename << "' is empty.\n";
-    return TILEDB_EFILE;
+    PRINT_ERROR("Array schema file is empty");
+    delete array_schema;
+    return -1;
   }
   char* buffer = new char[buffer_size];
 
   // Load array schema
   ssize_t bytes_read = read(fd, buffer, buffer_size);
   if(bytes_read != buffer_size) {
-    // Clean up
     delete [] buffer;
-    std::cerr << ERROR_MSG_HEADER 
-             << " Cannot read schema from file '" << filename << "'.\n";
-    return TILEDB_EFILE;
+    delete array_schema;
+    if(bytes_read == -1)
+      PRINT_ERROR(std::string("Failed to read from array schema file - ") +
+                  strerror(errno));
+    else
+      PRINT_ERROR("Failed to properly read from array schema file");
+    return -1;
   } 
-  array_schema->deserialize(buffer, buffer_size);
+  if(array_schema->deserialize(buffer, buffer_size)) {
+    delete [] buffer;
+    delete array_schema;
+    return -1;
+  }
 
   // Clean up
   delete [] buffer;
-  int rc = close(fd);
-  if(rc != 0) {
-    std::cerr << ERROR_MSG_HEADER 
-             << " Cannot close file '" << filename << "'.\n";
-    return TILEDB_EFILE;
+  if(close(fd)) {
+    delete array_schema;
+    PRINT_ERROR("Failed to close array schema file");
+    return -1;
   }
 
-  return TILEDB_OK;
+  // Success
+  return 0;
 }
 
-void StorageManager::get_version() {
-  std::cout << "TileDB StorageManager Version 0.1\n";
+int StorageManager::array_schema_get(
+    int ad, 
+    const ArraySchema*& array_schema) const {
+  // Sanity check
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Cannot get array schema - Invalid array descriptor");
+    return -1;
+  }
+
+  // Check if array is open
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Cannot get array schema - Array not open");
+    return -1;
+  }
+
+  // Get array schema
+  array_schema = arrays_[ad]->array_schema();
+
+  // Success
+  return 0;
 }
 
-int StorageManager::open_array(
-    const std::string& array_name, const char* mode) {
-  // Proper checks
-  int err = check_on_open_array(array_name, mode);
-  if(err == -1)
+int StorageManager::array_schema_store(
+    const std::string& workspace,
+    const std::string& group,
+    const ArraySchema* array_schema,
+    bool real_paths) {
+  // Check array schema
+  if(array_schema == NULL) {
+    PRINT_ERROR("Cannot store array schema - The array schema cannot be empty");
+    return -1;
+  }
+
+  // Get real workspace and group paths
+  std::string workspace_real, group_real;
+  if(real_paths_get(workspace, group, workspace_real, group_real, real_paths))
     return -1;
 
-  // Get array mode
-  Array::Mode array_mode;
-  if(strcmp(mode, "w") == 0)
-    array_mode = Array::WRITE;
-  else if(strcmp(mode, "a") == 0) 
-    array_mode = Array::APPEND;
-  else if(strcmp(mode, "r") == 0)
-    array_mode = Array::READ;
+  // Create workspace
+  if(workspace_create(workspace_real, true))
+    return -1;
+ 
+  // Create group
+  if(group_create(workspace_real, group_real, true))
+    return -1;
+
+  // Check array name
+  const std::string& array_name = array_schema->array_name();
+  if(!name_is_valid(array_name.c_str())) { 
+    PRINT_ERROR("Cannot store array schema - Invalid array name");
+    return -1;
+  }
+
+  // Delete array if it exists
+  if(array_is_defined(workspace_real, group_real, array_name, true)) 
+    if(array_delete(workspace_real, group_real, array_name, true))
+      return -1;
+
+  // Create array directory
+  std::string array_path = group_real + "/" + array_name;
+  if(directory_create(array_path, true)) 
+    return -1;
+  assert(is_dir(array_path, true));
+
+  // Open array schema file
+  std::string filename = array_path + "/" + ARRAY_SCHEMA_FILENAME; 
+  int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+  if(fd == -1) {
+    PRINT_ERROR(std::string("Failed to create array schema file - ") + 
+                strerror(errno));
+    return -1;
+  }
+
+  // Serialize array schema
+  std::pair<const char*, size_t> ret = array_schema->serialize();
+  const char* array_schema_c_str = ret.first;
+  ssize_t array_schema_c_strlen = ret.second; 
+
+  // Store the array schema
+  ssize_t bytes_written = write(fd, array_schema_c_str, array_schema_c_strlen);
+  if(bytes_written != array_schema_c_strlen) {
+    if(bytes_written == -1)
+      PRINT_ERROR(std::string("Failed to write the array schema to file - ") +
+                  strerror(errno));
+    else
+      PRINT_ERROR("Failed to properly write the array schema to file");
+    delete [] array_schema_c_str;
+    return -1;
+  }
+
+  // Clean up
+  delete [] array_schema_c_str;
+  if(close(fd)) {
+    PRINT_ERROR("Failed to close the array schema file"); 
+    return -1;
+  }
+
+  // Success
+  return 0;
+}
+
+int StorageManager::group_create(
+    const std::string& workspace,
+    const std::string& group,
+    bool real_paths) const {
+  // Get real workspace and group paths
+  std::string workspace_real, group_real;
+  if(real_paths_get(workspace, group, workspace_real, group_real, real_paths))
+    return -1;
+
+  if(!workspace_exists(workspace_real, true)) {
+    PRINT_ERROR(std::string("Invalid workspace '") +
+                workspace_real + "'"); 
+    return -1;
+  }
+
+  // Do nothing if the array exists already
+  if(group_exists(workspace_real, group_real, true)) 
+    return 0;
+
+  // Return with error if the group directory is inside an array directory
+  if(path_inside_array_directory(group_real, true)) { 
+    PRINT_ERROR("Cannot create a group inside an array directory");
+    return -1;
+  }
+
+  // Create group directory path 
+  if(path_create(group_real)) { 
+    PRINT_ERROR(std::string("Cannot create group '") +
+                group_real + "' - " + 
+                strerror(errno));
+    return -1;
+  }
+  assert(is_dir(group_real, true));
+
+  // Create a "group file" for each group folder along the path from the
+  // workspace path to the full group path
+  if(group_files_create(workspace_real, group_real))
+    return -1;
+
+  // Success
+  return 0;
+}
+
+bool StorageManager::group_exists(
+    const std::string& workspace,
+    const std::string& group,
+    bool real_paths) const {
+  // Get real workspace path
+  std::string workspace_real, group_real;
+  if(real_paths)
+    workspace_real = workspace;
   else
-    return -1; // TODO: better error here
+    workspace_real = real_path(workspace);
+  if(workspace_real == "") 
+    return false;
 
-  // If in write mode, delete the array if it exists
-  if(array_mode == Array::WRITE) 
-    clear_array(array_name); 
+  // Get real group path
+  if(real_paths)
+    group_real = group;
+  else
+    group_real = real_path(group, workspace_real,
+                           workspace_real, workspace_real);
+  if(group_real == "") 
+    return false;
 
-  // Initialize an Array object
-  ArraySchema* array_schema;
-  get_array_schema(array_name, array_schema);
-  Array* array = new Array(workspace_, segment_size_,
-                           write_state_max_size_,
-                           array_schema, array_mode);
+  // Check workspace
+  if(!workspace_exists(workspace_real, true)) 
+    return false;
 
-  // If the array is in write or append mode, initialize a new fragment
-  if(array_mode == Array::WRITE || array_mode == Array::APPEND)
-    array->new_fragment();
+  // Check group
+  if(is_dir(group_real, true) && 
+     is_file(group_real + "/" + SM_GROUP_FILENAME, true)) 
+    return true;
+  else
+    return false;
+}
 
-  // Stores the Array object and returns an array descriptor
-  int ad = store_array(array);
+int StorageManager::real_paths_get(
+    const std::string& workspace,
+    const std::string& group,
+    std::string& workspace_real,
+    std::string& group_real,
+    bool real_paths) const {
+  // Get real workspace path
+  if(real_paths)
+    workspace_real = workspace;
+  else
+    workspace_real = real_path(workspace);
 
-  // Maximum open arrays reached
-  if(ad == -1) {
-    delete array; 
-// TODO    err_msg = std::string("Cannot open array' ") + array_name +
-//              "'. Maximum open arrays reached.";
+  if(workspace_real == "") {
+    PRINT_ERROR("Invalid workspace");
     return -1;
   }
 
-  // Keep track of the opened array
-  open_arrays_[array_name] = ad;
+  // Get real group path
+  if(real_paths)
+    group_real = group;
+  else
+    group_real = real_path(group, workspace_real,
+                           workspace_real, workspace_real);
 
-  return ad;
+  if(group_real == "") {
+    PRINT_ERROR("Invalid group");
+    return -1;
+  }
+
+  // Success
+  return 0;
 }
 
-/******************************************************
-******************* CELL FUNCTIONS ********************
-******************************************************/
+int StorageManager::workspace_create(
+    const std::string& workspace, 
+    bool real_path) const {
+  // Get real path
+  std::string workspace_real;
+  if(real_path)
+    workspace_real = workspace;
+  else
+    workspace_real = ::real_path(workspace);
 
-template<class T>
-ArrayConstCellIterator<T>* StorageManager::begin(
-    int ad) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::READ);
+  if(workspace_real == "") {
+    PRINT_ERROR(std::string("Invalid workspace '") +
+                workspace + "'"); 
+    return -1;
+  }
 
-  return new ArrayConstCellIterator<T>(arrays_[ad]);
+  // Check if workspace exists
+  if(workspace_exists(workspace_real, true))
+    return 0;
+
+  // Create directory 
+  if(path_create(workspace_real)) { 
+    PRINT_ERROR(std::string("Cannot create workspace '") +
+                workspace_real + "' - " + 
+                strerror(errno));
+    return -1;
+  }
+  assert(is_dir(workspace_real, true));
+
+  // Create (empty) workspace file 
+  std::string filename = workspace_real + "/" + SM_WORKSPACE_FILENAME;
+  // ----- open -----
+  int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+  if(fd == -1) {
+    PRINT_ERROR(std::string("Failed to create workspace file: ") +
+                strerror(errno));
+    return -1;
+  }
+  // ----- close -----
+  if(close(fd)) {
+    PRINT_ERROR(std::string("Failed to close workspace file: ") +
+                strerror(errno));
+    return -1;
+  }
+
+  // Success
+  return 0;
 }
 
-template<class T>
-ArrayConstCellIterator<T>* StorageManager::begin(
-    int ad, const std::vector<int>& attribute_ids) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::READ);
+bool StorageManager::workspace_exists(
+    const std::string& workspace,
+    bool real_path) const {
+  // Get real path
+  std::string workspace_real;
+  if(real_path)
+    workspace_real = workspace;
+  else
+    workspace_real = ::real_path(workspace);
 
-  return new ArrayConstCellIterator<T>(arrays_[ad], attribute_ids);
+  // Check existence
+  if(is_dir(workspace_real, true) && 
+     is_file(workspace_real + "/" + SM_WORKSPACE_FILENAME, true)) 
+    return true;
+  else
+    return false;
 }
 
-template<class T>
-ArrayConstCellIterator<T>* StorageManager::begin(
-    int ad, const T* range) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::READ);
-
-  return new ArrayConstCellIterator<T>(arrays_[ad], range);
-}
+/* ****************************** */
+/*         ARRAY FUNCTIONS        */
+/* ****************************** */
 
 template<class T>
-ArrayConstCellIterator<T>* StorageManager::begin(
-    int ad, const T* range, const std::vector<int>& attribute_ids) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::READ);
+int StorageManager::cell_write(int ad, const void* cell) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return -1;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return -1;
+  }
+  if(arrays_[ad]->mode() != Array::WRITE) {
+    PRINT_ERROR("Invalid array mode");
+    return -1;
+  }
 
-  return new ArrayConstCellIterator<T>(arrays_[ad], range, attribute_ids);
-}
-
-template<class T>
-ArrayConstDenseCellIterator<T>* StorageManager::begin_dense(
-    int ad) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::READ);
-
-  return new ArrayConstDenseCellIterator<T>(arrays_[ad]);
-}
-
-template<class T>
-ArrayConstDenseCellIterator<T>* StorageManager::begin_dense(
-    int ad, const std::vector<int>& attribute_ids) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::READ);
-
-  return new ArrayConstDenseCellIterator<T>(arrays_[ad], attribute_ids);
-}
-
-template<class T>
-ArrayConstDenseCellIterator<T>* StorageManager::begin_dense(
-    int ad, const T* range) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::READ);
-
-  return new ArrayConstDenseCellIterator<T>(arrays_[ad], range);
-}
-
-template<class T>
-ArrayConstDenseCellIterator<T>* StorageManager::begin_dense(
-    int ad, const T* range, const std::vector<int>& attribute_ids) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::READ);
-
-  return new ArrayConstDenseCellIterator<T>(arrays_[ad], range, attribute_ids);
-}
-
-template<class T>
-ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
-    int ad) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::READ);
-
-  return new ArrayConstReverseCellIterator<T>(arrays_[ad]);
-}
-
-template<class T>
-ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
-    int ad, const std::vector<int>& attribute_ids) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::READ);
-
-  return new ArrayConstReverseCellIterator<T>(arrays_[ad], attribute_ids);
+  // Write cell
+  return arrays_[ad]->cell_write<T>(cell);
 }
 
 template<class T>
-ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
-    int ad, const T* multi_D_obj, bool range) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::READ);
+int StorageManager::cell_write_sorted(int ad, const void* cell) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return -1;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return -1;
+  }
+  if(arrays_[ad]->mode() != Array::WRITE) {
+    PRINT_ERROR("Invalid array mode");
+    return -1;
+  }
 
-  return new ArrayConstReverseCellIterator<T>(arrays_[ad], multi_D_obj, range);
+  return arrays_[ad]->cell_write_sorted<T>(cell); 
 }
 
-template<class T>
-ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
-    int ad, const T* multi_D_obj, 
+int StorageManager::cells_read(
+    int ad, 
+    const void* range, 
     const std::vector<int>& attribute_ids,
-    bool range) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::READ);
-
-  return new ArrayConstReverseCellIterator<T>(
-                 arrays_[ad], multi_D_obj, attribute_ids, range);
-}
-
-void StorageManager::read_cells(int ad, const void* range, 
-                                const std::vector<int>& attribute_ids,
-                                void*& cells, size_t& cells_size) const {
+    void*& cells, 
+    size_t& cells_size) const {
   // For easy reference
-  int attribute_num = arrays_[ad]->array_schema()->attribute_num();
-  const std::type_info& coords_type = 
-      *(arrays_[ad]->array_schema()->type(attribute_num));
+  const std::type_info* coords_type = 
+      arrays_[ad]->array_schema()->coords_type();
 
-  if(coords_type == typeid(int))
-    read_cells<int>(ad, static_cast<const int*>(range), 
-                    attribute_ids, cells, cells_size);
-  else if(coords_type == typeid(int64_t))
-    read_cells<int64_t>(ad, static_cast<const int64_t*>(range), 
-                        attribute_ids, cells, cells_size);
-  else if(coords_type == typeid(float))
-    read_cells<float>(ad, static_cast<const float*>(range), 
-                      attribute_ids, cells, cells_size);
-  else if(coords_type == typeid(double))
-    read_cells<double>(ad, static_cast<const double*>(range), 
-                       attribute_ids, cells, cells_size);
+  if(coords_type == &typeid(int)) {
+    return cells_read<int>(ad, static_cast<const int*>(range), 
+                           attribute_ids, cells, cells_size);
+  } else if(coords_type == &typeid(int64_t)) {
+    return cells_read<int64_t>(ad, static_cast<const int64_t*>(range), 
+                               attribute_ids, cells, cells_size);
+  } else if(coords_type == &typeid(float)) {
+    return cells_read<float>(ad, static_cast<const float*>(range), 
+                             attribute_ids, cells, cells_size);
+  } else if(coords_type == &typeid(double)) {
+    return cells_read<double>(ad, static_cast<const double*>(range), 
+                              attribute_ids, cells, cells_size);
+  } else {
+    PRINT_ERROR("Invalid array coordinates type");
+    return -1;
+  }
 }
 
 template<class T>
-void StorageManager::read_cells(int ad, const T* range, 
-                                const std::vector<int>& attribute_ids,
-                                void*& cells, size_t& cells_size) const {
+int StorageManager::cells_read(
+    int ad, 
+    const T* range, 
+    const std::vector<int>& attribute_ids,
+    void*& cells, 
+    size_t& cells_size) const {
   // Initialization
-  size_t cell_size;          // Single cell
-  cells_size = 0;            // All cells collectively
-  size_t buffer_size = segment_size_;
+  cells_size = 0; 
+  size_t buffer_size = SEGMENT_SIZE;
   cells = malloc(buffer_size);
 
   // Prepare cell iterator
   ArrayConstCellIterator<T>* cell_it = begin<T>(ad, range, attribute_ids);
+  if(cell_it == NULL)
+    return -1;
 
-  // Write cells into the CSV file
+  // Prepare a cell
+  Cell cell(cell_it->array_schema(), cell_it->attribute_ids(), 0, true);
+  
+  // Prepare C-style cell to hold the actual cell to be written in the file
+  void* cell_c = NULL;
+  size_t cell_c_capacity = 0, cell_c_size = 0;
+
+  // Write cells into the buffer
   for(; !cell_it->end(); ++(*cell_it)) { 
     // Expand buffer
     if(cells_size == buffer_size) {
       expand_buffer(cells, buffer_size);
       buffer_size *= 2;
-    } 
+    }
 
-    // Retrieve cell size
-    cell_size = cell_it->cell_size();
-    memcpy(static_cast<char*>(cells) + cells_size, **cell_it, cell_size);
-    cells_size += cell_size;
+    // Write a cell
+    cell.set_cell(**cell_it);
+    cell.cell<T>(
+        arrays_[ad]->array_schema()->get_dim_ids(), 
+        attribute_ids, 
+        cell_c, 
+        cell_c_capacity,  
+        cell_c_size);
+    memcpy(static_cast<char*>(cells) + cells_size, **cell_it, cell_c_size);
+    cells_size += cell_c_size;
+  }
+
+  return 0;
+}
+
+int StorageManager::cells_write(
+    int ad, 
+    const void* cells, 
+    size_t cells_size) const {
+  // For easy reference
+  const std::type_info* coords_type = 
+      arrays_[ad]->array_schema()->coords_type();
+
+  if(coords_type == &typeid(int)) {
+    return cells_write<int>(ad, cells, cells_size);
+  } else if(coords_type == &typeid(int64_t)) {
+    return cells_write<int64_t>(ad, cells, cells_size);
+  } else if(coords_type == &typeid(float)) {
+    return cells_write<float>(ad, cells, cells_size);
+  } else if(coords_type == &typeid(double)) {
+    return cells_write<double>(ad, cells, cells_size);
+  } else {
+    PRINT_ERROR("Invalid array coordinates type");
+    return -1;
   }
 }
 
 template<class T>
-void StorageManager::write_cell(int ad, const void* cell) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::WRITE ||
-         arrays_[ad]->mode() == Array::APPEND);
+int StorageManager::cells_write(
+    int ad, 
+    const void* cells, 
+    size_t cells_size) const {
+  // Trivial case
+  if(cells == NULL)
+    return 0;
 
-  arrays_[ad]->write_cell<T>(cell);
-}
-
-template<class T>
-void StorageManager::write_cell_sorted(int ad, const void* cell) const {
-  assert(ad >= 0 && ad < MAX_OPEN_ARRAYS);
-  assert(arrays_[ad] != NULL);
-  assert(arrays_[ad]->mode() == Array::WRITE ||
-         arrays_[ad]->mode() == Array::APPEND);
-
-  arrays_[ad]->write_cell_sorted<T>(cell); 
-}
-
-void StorageManager::write_cells(
-    int ad, const void* cells, size_t cells_size) const {
-  // For easy reference
-  int attribute_num = arrays_[ad]->array_schema()->attribute_num();
-  const std::type_info& coords_type = 
-      *(arrays_[ad]->array_schema()->type(attribute_num));
-
-  if(coords_type == typeid(int))
-    write_cells<int>(ad, cells, cells_size);
-  else if(coords_type == typeid(int64_t))
-    write_cells<int64_t>(ad, cells, cells_size);
-  else if(coords_type == typeid(float))
-    write_cells<float>(ad, cells, cells_size);
-  else if(coords_type == typeid(double))
-    write_cells<double>(ad, cells, cells_size);
-}
-
-template<class T>
-void StorageManager::write_cells(
-    int ad, const void* cells, size_t cells_size) const {
   ConstCellIterator cell_it(cells, cells_size, arrays_[ad]->array_schema());
 
   for(; !cell_it.end(); ++cell_it) 
-    write_cell<T>(ad, *cell_it);
+    if(cell_write<T>(ad, *cell_it))
+      return -1;
+
+  // Success
+  return 0;
 }
 
-void StorageManager::write_cells_sorted(
-    int ad, const void* cells, size_t cells_size) const {
+int StorageManager::cells_write_sorted(
+    int ad, 
+    const void* cells, 
+    size_t cells_size) const {
   // For easy reference
-  int attribute_num = arrays_[ad]->array_schema()->attribute_num();
-  const std::type_info& coords_type = 
-      *(arrays_[ad]->array_schema()->type(attribute_num));
+  const std::type_info* coords_type = 
+      arrays_[ad]->array_schema()->coords_type();
 
-  if(coords_type == typeid(int))
-    write_cells_sorted<int>(ad, cells, cells_size);
-  else if(coords_type == typeid(int64_t))
-    write_cells_sorted<int64_t>(ad, cells, cells_size);
-  else if(coords_type == typeid(float))
-    write_cells_sorted<float>(ad, cells, cells_size);
-  else if(coords_type == typeid(double))
-    write_cells_sorted<double>(ad, cells, cells_size);
+  if(coords_type == &typeid(int)) {
+    return cells_write_sorted<int>(ad, cells, cells_size);
+  } else if(coords_type == &typeid(int64_t)) {
+    return cells_write_sorted<int64_t>(ad, cells, cells_size);
+  } else if(coords_type == &typeid(float)) {
+    return cells_write_sorted<float>(ad, cells, cells_size);
+  } else if(coords_type == &typeid(double)) {
+    return cells_write_sorted<double>(ad, cells, cells_size);
+  } else {
+    PRINT_ERROR("Invalid array coordinates type");
+    return -1;
+  }
 }
 
 template<class T>
-void StorageManager::write_cells_sorted(
+int StorageManager::cells_write_sorted(
     int ad, const void* cells, size_t cells_size) const {
+  // Trivial case
+  if(cells == NULL)
+    return 0;
+
   ConstCellIterator cell_it(cells, cells_size, arrays_[ad]->array_schema());
 
   for(; !cell_it.end(); ++cell_it) 
-    write_cell_sorted<T>(ad, *cell_it);
+    if(cell_write_sorted<T>(ad, *cell_it))
+      return -1;
+
+  // Success
+  return 0;
 }
 
-/******************************************************
-***************** PRIVATE FUNCTIONS *******************
-******************************************************/
+/* ****************************** */
+/*          CELL ITERATORS        */
+/* ****************************** */
 
-int StorageManager::check_on_open_array(
-    const std::string& array_name, const char* mode) const {
-  // Check if the array is defined
-  if(!array_defined(array_name)) {
-    // TODO err_msg = std::string("Array '") + array_name + "' is not defined.";
-    return -1;
+template<class T>
+ArrayConstCellIterator<T>* StorageManager::begin(
+    int ad) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return NULL;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return NULL;
+  }
+  if(arrays_[ad]->mode() != Array::READ) {
+    PRINT_ERROR("Invalid array mode");
+    return NULL;
   }
 
-  // Check mode
-  if(invalid_array_mode(mode)) {
-    // TODO err_msg = std::string("Invalid mode '") + mode + "'."; 
-    return -1;
+  // Create iterator
+  ArrayConstCellIterator<T>* cell_it = 
+      new ArrayConstCellIterator<T>(arrays_[ad]);
+
+  // Return iterator, performing a proper check first
+  if(cell_it->created_successfully()) {
+    return cell_it;
+  } else {
+    cell_it->finalize();
+    delete cell_it;
+    return NULL;
+  }
+}
+
+template<class T>
+ArrayConstCellIterator<T>* StorageManager::begin(
+    int ad, 
+    const std::vector<int>& attribute_ids) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return NULL;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return NULL;
+  }
+  if(arrays_[ad]->mode() != Array::READ) {
+    PRINT_ERROR("Invalid array mode");
+    return NULL;
   }
 
-  // Check if array is already open
-  if(open_arrays_.find(array_name) != open_arrays_.end()) {
-    // TODO err_msg = std::string("Array '") + array_name + "' already open."; 
-    return -1;
+  // Create iterator
+  ArrayConstCellIterator<T>* cell_it = 
+      new ArrayConstCellIterator<T>(arrays_[ad], attribute_ids);
+
+  // Return iterator, performing a proper check first
+  if(cell_it->created_successfully()) {
+    return cell_it;
+  } else {
+    cell_it->finalize();
+    delete cell_it;
+    return NULL;
+  }
+}
+
+template<class T>
+ArrayConstCellIterator<T>* StorageManager::begin(
+    int ad, 
+    const T* range) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return NULL;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return NULL;
+  }
+  if(arrays_[ad]->mode() != Array::READ) {
+    PRINT_ERROR("Invalid array mode");
+    return NULL;
   }
 
-  return TILEDB_OK;
+  // Create iterator
+  ArrayConstCellIterator<T>* cell_it = 
+      new ArrayConstCellIterator<T>(arrays_[ad], range);
+
+  // Return iterator, performing a proper check first
+  if(cell_it->created_successfully()) {
+    return cell_it;
+  } else {
+    cell_it->finalize();
+    delete cell_it;
+    return NULL;
+  }
 }
 
-bool StorageManager::invalid_array_mode(const char* mode) const {
-  if(strcmp(mode, "r") && strcmp(mode, "w") && strcmp(mode, "a"))
-    return true;
-  else 
-    return false;
+template<class T>
+ArrayConstCellIterator<T>* StorageManager::begin(
+    int ad, 
+    const T* range, 
+    const std::vector<int>& attribute_ids) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return NULL;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return NULL;
+  }
+  if(arrays_[ad]->mode() != Array::READ) {
+    PRINT_ERROR("Invalid array mode");
+    return NULL;
+  }
+
+  // Create iterator
+  ArrayConstCellIterator<T>* cell_it = 
+      new ArrayConstCellIterator<T>(arrays_[ad], range, attribute_ids);
+
+  // Return iterator, performing a proper check first
+  if(cell_it->created_successfully()) {
+    return cell_it;
+  } else {
+    cell_it->finalize();
+    delete cell_it;
+    return NULL;
+  }
 }
 
-inline
-void StorageManager::set_workspace(const std::string& path) {
-  workspace_ = absolute_path(path);
+template<class T>
+ArrayConstDenseCellIterator<T>* StorageManager::begin_dense(
+    int ad) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return NULL;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return NULL;
+  }
+  if(arrays_[ad]->mode() != Array::READ) {
+    PRINT_ERROR("Invalid array mode");
+    return NULL;
+  }
 
-  assert(is_dir(workspace_));
+  // Create iterator
+  ArrayConstDenseCellIterator<T>* cell_it = 
+      new ArrayConstDenseCellIterator<T>(arrays_[ad]);
 
-  if(!ends_with(workspace_, "/"))
-    workspace_ += "/";
-
-  workspace_ += "StorageManager";
-
-  return;
+  // Return iterator, performing a proper check first
+  if(cell_it->created_successfully()) {
+    return cell_it;
+  } else {
+    cell_it->finalize();
+    delete cell_it;
+    return NULL;
+  }
 }
 
-int StorageManager::store_array(Array* array) {
-  int ad = -1;
+template<class T>
+ArrayConstDenseCellIterator<T>* StorageManager::begin_dense(
+    int ad, 
+    const std::vector<int>& attribute_ids) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return NULL;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return NULL;
+  }
+  if(arrays_[ad]->mode() != Array::READ) {
+    PRINT_ERROR("Invalid array mode");
+    return NULL;
+  }
 
-  for(int i=0; i<MAX_OPEN_ARRAYS; ++i) {
-    if(arrays_[i] == NULL) {
-      ad = i; 
-      break;
+  // Create iterator
+  ArrayConstDenseCellIterator<T>* cell_it = 
+      new ArrayConstDenseCellIterator<T>(arrays_[ad], attribute_ids);
+
+  // Return iterator, performing a proper check first
+  if(cell_it->created_successfully()) {
+    return cell_it;
+  } else {
+    cell_it->finalize();
+    delete cell_it;
+    return NULL;
+  }
+}
+
+template<class T>
+ArrayConstDenseCellIterator<T>* StorageManager::begin_dense(
+    int ad, 
+    const T* range) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return NULL;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return NULL;
+  }
+  if(arrays_[ad]->mode() != Array::READ) {
+    PRINT_ERROR("Invalid array mode");
+    return NULL;
+  }
+
+  // Create iterator
+  ArrayConstDenseCellIterator<T>* cell_it = 
+      new ArrayConstDenseCellIterator<T>(arrays_[ad], range);
+
+  // Return iterator, performing a proper check first
+  if(cell_it->created_successfully()) {
+    return cell_it;
+  } else {
+    cell_it->finalize();
+    delete cell_it;
+    return NULL;
+  }
+}
+
+template<class T>
+ArrayConstDenseCellIterator<T>* StorageManager::begin_dense(
+    int ad, 
+    const T* range, 
+    const std::vector<int>& attribute_ids) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return NULL;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return NULL;
+  }
+  if(arrays_[ad]->mode() != Array::READ) {
+    PRINT_ERROR("Invalid array mode");
+    return NULL;
+  }
+
+  // Create iterator
+  ArrayConstDenseCellIterator<T>* cell_it = 
+      new ArrayConstDenseCellIterator<T>(arrays_[ad], range, attribute_ids);
+
+  // Return iterator, performing a proper check first
+  if(cell_it->created_successfully()) {
+    return cell_it;
+  } else {
+    cell_it->finalize();
+    delete cell_it;
+    return NULL;
+  }
+}
+
+template<class T>
+ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
+    int ad) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return NULL;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return NULL;
+  }
+  if(arrays_[ad]->mode() != Array::READ) {
+    PRINT_ERROR("Invalid array mode");
+    return NULL;
+  }
+
+  // Create iterator
+  ArrayConstReverseCellIterator<T>* cell_it = 
+      new ArrayConstReverseCellIterator<T>(arrays_[ad]);
+
+  // Return iterator, performing a proper check first
+  if(cell_it->created_successfully()) {
+    return cell_it;
+  } else {
+    cell_it->finalize();
+    delete cell_it;
+    return NULL;
+  }
+}
+
+template<class T>
+ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
+    int ad, 
+    const std::vector<int>& attribute_ids) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return NULL;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return NULL;
+  }
+  if(arrays_[ad]->mode() != Array::READ) {
+    PRINT_ERROR("Invalid array mode");
+    return NULL;
+  }
+
+  // Create iterator
+  ArrayConstReverseCellIterator<T>* cell_it = 
+      new ArrayConstReverseCellIterator<T>(arrays_[ad], attribute_ids);
+
+  // Return iterator, performing a proper check first
+  if(cell_it->created_successfully()) {
+    return cell_it;
+  } else {
+    cell_it->finalize();
+    delete cell_it;
+    return NULL;
+  }
+}
+
+template<class T>
+ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
+    int ad, 
+    const T* multi_D_obj, 
+    bool range) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return NULL;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return NULL;
+  }
+  if(arrays_[ad]->mode() != Array::READ) {
+    PRINT_ERROR("Invalid array mode");
+    return NULL;
+  }
+
+  // Create iterator
+  ArrayConstReverseCellIterator<T>* cell_it = 
+      new ArrayConstReverseCellIterator<T>(arrays_[ad], multi_D_obj, range);
+
+  // Return iterator, performing a proper check first
+  if(cell_it->created_successfully()) {
+    return cell_it;
+  } else {
+    cell_it->finalize();
+    delete cell_it;
+    return NULL;
+  }
+}
+
+template<class T>
+ArrayConstReverseCellIterator<T>* StorageManager::rbegin(
+    int ad, 
+    const T* multi_D_obj, 
+    const std::vector<int>& attribute_ids,
+    bool range) const {
+  // Checks
+  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
+    PRINT_ERROR("Invalid array descriptor");
+    return NULL;
+  }
+  if(arrays_[ad] == NULL) {
+    PRINT_ERROR("Array not open");
+    return NULL;
+  }
+  if(arrays_[ad]->mode() != Array::READ) {
+    PRINT_ERROR("Invalid array mode");
+    return NULL;
+  }
+
+  // Create iterator
+  ArrayConstReverseCellIterator<T>* cell_it = 
+      new ArrayConstReverseCellIterator<T>(
+              arrays_[ad], multi_D_obj, attribute_ids, range);
+
+  // Return iterator, performing a proper check first
+  if(cell_it->created_successfully()) {
+    return cell_it;
+  } else {
+    cell_it->finalize();
+    delete cell_it;
+    return NULL;
+  }
+}
+
+/* ****************************** */
+/*         PRIVATE METHODS        */
+/* ****************************** */
+
+int StorageManager::group_files_create(
+    const std::string& workspace,
+    const std::string& group) const {
+  // Function works only with absolute paths
+  assert(workspace != "" && workspace[0] == '/' && workspace.back() != '/'); 
+  assert(group != "" && group[0] == '/' && group.back() != '/'); 
+
+  // Auxiliary variables
+  char path_tmp[PATH_MAX];
+  char* p = NULL;
+
+  // Initialzation
+  snprintf(path_tmp, sizeof(path_tmp), "%s", group.c_str());
+
+  // Create the directories in the path one by one 
+  for(p = path_tmp + workspace.size(); *p; ++p) {
+    if(*p == '/') {
+      // Cut path
+      *p = '\0';
+
+      // Create group file if it does not exist
+      std::string filename = std::string(path_tmp) + "/" + SM_GROUP_FILENAME;
+      if(!is_file(filename.c_str(), true)) { 
+        // ----- open -----
+        int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+        if(fd == -1) {
+          PRINT_ERROR(std::string("Failed to create group file - ") +
+                      strerror(errno));
+          return -1;
+        }
+        // ----- close -----
+        if(close(fd)) {
+          PRINT_ERROR(std::string("Failed to close group file - ") +
+                      strerror(errno));
+          return -1;
+        }
+      }
+
+      // Stitch path back
+      *p = '/';
     }
   }
 
-  if(ad != -1) 
-    arrays_[ad] = array;
+  // Create last group file 
+  std::string filename = group + "/" + SM_GROUP_FILENAME;
+  if(!is_file(filename.c_str(), true)) { 
+    // ----- open -----
+    int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+    if(fd == -1) {
+      PRINT_ERROR(std::string("Failed to create group file - ") +
+                  strerror(errno));
+      return -1;
+    }
+    // ----- close -----
+    if(close(fd)) {
+      PRINT_ERROR(std::string("Failed to close group file - ") +
+                  strerror(errno));
+      return -1;
+    }
+  }
 
-  return ad;
+  return 0;
+}
+
+bool StorageManager::path_inside_array_directory(
+    const std::string& path, 
+    bool real_path) const {
+  // Get real path
+  std::string path_real;
+  if(real_path)
+    path_real = path;
+  else
+    path_real = ::real_path(path);
+
+  if(path_real == "") 
+    return false;
+
+  // Initialization
+  char path_tmp[PATH_MAX];
+  char* p = NULL;
+  size_t len;
+  std::string filename;
+  int fd;
+  snprintf(path_tmp, sizeof(path_tmp), "%s", path.c_str());
+  len = strlen(path_tmp);
+  if(path_tmp[len-1] == '/')
+    path_tmp[len-1] = '\0';
+
+  // Check directories on the path one by one
+  for(p = path_tmp + 1; *p; ++p) {
+    if(*p == '/') {
+      // Cut path
+      *p = '\0';
+
+      // Check for array schema file
+      filename = std::string(path_tmp) + "/" +  ARRAY_SCHEMA_FILENAME;
+      fd = open(filename.c_str(), O_RDONLY);
+      if(fd != -1) { // File exists - path is an array directory
+        close(fd);
+        return true;
+      } 
+
+      // Stitch path back
+      *p = '/';
+    }
+  }
+
+  // Handle last path
+  filename = std::string(path_tmp) + "/" +  ARRAY_SCHEMA_FILENAME;
+  fd = open(filename.c_str(), O_RDONLY);
+  if(fd != -1) { // File exists - path is an array directory
+    close(fd);
+    return true;
+  }
+
+  return false;
 }
 
 // Explicit template instantiations
@@ -883,21 +1585,21 @@ StorageManager::rbegin<double>(
     const std::vector<int>& attribute_ids,
     bool is_range) const;
 
-template void StorageManager::write_cell<int>(
+template int StorageManager::cell_write<int>(
     int ad, const void* cell) const;
-template void StorageManager::write_cell<int64_t>(
+template int StorageManager::cell_write<int64_t>(
     int ad, const void* cell) const;
-template void StorageManager::write_cell<float>(
+template int StorageManager::cell_write<float>(
     int ad, const void* cell) const;
-template void StorageManager::write_cell<double>(
+template int StorageManager::cell_write<double>(
     int ad, const void* cell) const;
 
-template void StorageManager::write_cell_sorted<int>(
+template int StorageManager::cell_write_sorted<int>(
     int ad, const void* cell) const;
-template void StorageManager::write_cell_sorted<int64_t>(
+template int StorageManager::cell_write_sorted<int64_t>(
     int ad, const void* cell) const;
-template void StorageManager::write_cell_sorted<float>(
+template int StorageManager::cell_write_sorted<float>(
     int ad, const void* cell) const;
-template void StorageManager::write_cell_sorted<double>(
+template int StorageManager::cell_write_sorted<double>(
     int ad, const void* cell) const;
 
