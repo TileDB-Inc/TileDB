@@ -20,8 +20,9 @@ your package manager of choice.
 
 ```bash
 git clone git@github.com:stavrospapadopoulos/TileDB.git
+cd TileDB
 cat packages.txt | xargs sudo apt-get -y install
-cd TileDB; make; make doc;
+make; make doc;
 ```
 The TileDB executable programs can be found in directory `tiledb_cmd/bin`, and
 their corresponding documentation is in directory `manpages`, where you can
