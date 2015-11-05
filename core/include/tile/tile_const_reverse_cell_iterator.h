@@ -35,7 +35,6 @@
 #define TILE_CONST_REVERSE_CELL_ITERATOR_H
 
 #include "tile.h"
-#include <inttypes.h>
 #include <string.h>
 
 class Tile;

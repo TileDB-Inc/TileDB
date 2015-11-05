@@ -34,15 +34,15 @@
 #ifndef TILE_H
 #define TILE_H
 
-#include "global.h"
-#include "tile_const_cell_iterator.h"
-#include "tile_const_reverse_cell_iterator.h"
-#include "utils.h"
 #include <typeinfo>
 #include <limits>
 #include <string>
 #include <vector>
-#include <inttypes.h>
+
+#include "global.h"
+#include "utils.h"
+#include "tile_const_cell_iterator.h"
+#include "tile_const_reverse_cell_iterator.h"
 
 /** Default payload capacity. */
 #define TL_PAYLOAD_CAPACITY 100

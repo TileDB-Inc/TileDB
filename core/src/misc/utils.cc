@@ -311,7 +311,7 @@ int path_create(const std::string& path) {
 
 std::string current_dirname() {
   std::string dirname = "";
-  char* path = get_current_dir_name();
+  char* path = getcwd(NULL,0);
 
   if(path == NULL) {
     PRINT_ERROR(std::string("Cannot get current directory: ") + 
