@@ -231,13 +231,14 @@ template<class T>
 CSVLine Cell::csv_line(
     const std::vector<int>& dim_ids,
     const std::vector<int>& attribute_ids,
-    char delimiter) const {
+    char delimiter,
+    int precision) const {
   // For easy reference
   int dim_num = array_schema_->dim_num();
   int attribute_num = array_schema_->attribute_num();
 
   // Initialization
-  CSVLine csv_line(delimiter);
+  CSVLine csv_line(delimiter, precision);
 
   // Append ids
   for(int i=0; i<id_num_; ++i) 
@@ -469,19 +470,23 @@ void Cell::init_val_num() {
 template CSVLine Cell::csv_line<int>(
     const std::vector<int>& dim_ids,
     const std::vector<int>& attribute_ids,
-    char delimiter) const;
+    char delimiter,
+    int precision) const;
 template CSVLine Cell::csv_line<int64_t>(
     const std::vector<int>& dim_ids,
     const std::vector<int>& attribute_ids,
-    char delimiter) const;
+    char delimiter,
+    int precision) const;
 template CSVLine Cell::csv_line<float>(
     const std::vector<int>& dim_ids,
     const std::vector<int>& attribute_ids,
-    char delimiter) const;
+    char delimiter,
+    int precision) const;
 template CSVLine Cell::csv_line<double>(
     const std::vector<int>& dim_ids,
     const std::vector<int>& attribute_ids,
-    char delimiter) const;
+    char delimiter,
+    int precision) const;
 
 template void Cell::cell<int>(
     const std::vector<int>& dim_ids,

@@ -123,7 +123,8 @@ class Cell {
   CSVLine csv_line(
       const std::vector<int>& dim_ids,
       const std::vector<int>& attribute_ids,
-      char delimiter) const;
+      char delimiter,
+      int precision) const;
   /** Returns the i-th id of the cell (if it exists). */
   int64_t id(int i) const;
   /** Returns the size of all ids. */

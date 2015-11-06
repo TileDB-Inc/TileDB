@@ -171,6 +171,10 @@ class QueryProcessor {
    * delimiter which separates the values in a CSV line in the CSV file. If not 
    * given, the default is CSV_DELIMITER. The delimiter is ignored in the case
    * of loading binary data.    
+   * @param precision This only applies to exporting to CSV files (it is ignored
+   * in the case of binary files). It indicates the number of decimal digits
+   * to print for the case of real values. If not given, the default is 
+   * PRECISION.
    * @return **0** for success and <b>-1</b> for error.
    */
   int array_export(
@@ -182,7 +186,8 @@ class QueryProcessor {
       const std::vector<std::string>& dim_names, 
       const std::vector<std::string>& attribute_names,
       const std::vector<double>& range,
-      char delimiter = CSV_DELIMITER) const;
+      char delimiter = CSV_DELIMITER,
+      int precision = PRECISION) const;
 
   /** 
    * Creates a new array with the same schema as the input array (or including a
@@ -250,6 +255,10 @@ class QueryProcessor {
    * @param compression The compression type of the exported file.
    * @param delimiter It stands for the delimiter which separates the values in 
    * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @param precision This only applies to exporting to CSV files (it is ignored
+   * in the case of binary files). It indicates the number of decimal digits
+   * to print for the case of real values. If not given, the default is 
+   * PRECISION.
    * @return **0** for success and <b>-1</b> for error.
    */
   int array_export_csv_reverse_dense(
@@ -259,7 +268,8 @@ class QueryProcessor {
       const std::vector<int>& attribute_ids,
       const std::vector<double>& range,
       CompressionType compression,
-      char delimiter = CSV_DELIMITER) const;
+      char delimiter = CSV_DELIMITER,
+      int precision = PRECISION) const;
 
   /** 
    * Exports the data of an array into a CSV file. The data are exported in the
@@ -280,6 +290,10 @@ class QueryProcessor {
    * @param compression The compression type of the exported file.
    * @param delimiter It stands for the delimiter which separates the values in 
    * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @param precision This only applies to exporting to CSV files (it is ignored
+   * in the case of binary files). It indicates the number of decimal digits
+   * to print for the case of real values. If not given, the default is 
+   * PRECISION.
    * @return **0** for success and <b>-1</b> for error.
    */
   template<class T>
@@ -290,7 +304,8 @@ class QueryProcessor {
       const std::vector<int>& attribute_ids,
       const T* range,
       CompressionType compression,
-      char delimiter) const;
+      char delimiter = CSV_DELIMITER,
+      int precision = PRECISION) const;
 
   /** 
    * Exports the data of an array into a CSV file. The data are exported in the
@@ -309,6 +324,10 @@ class QueryProcessor {
    * @param compression The compression type of the exported file.
    * @param delimiter It stands for the delimiter which separates the values in 
    * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @param precision This only applies to exporting to CSV files (it is ignored
+   * in the case of binary files). It indicates the number of decimal digits
+   * to print for the case of real values. If not given, the default is 
+   * PRECISION.
    * @return **0** for success and <b>-1</b> for error.
    */
   int array_export_csv_reverse_sparse(
@@ -318,7 +337,8 @@ class QueryProcessor {
       const std::vector<int>& attribute_ids,
       const std::vector<double>& range,
       CompressionType compression,
-      char delimiter) const;
+      char delimiter = CSV_DELIMITER, 
+      int precision = PRECISION) const;
 
   /** 
    * Exports the data of an array into a CSV file. The data are exported in the
@@ -338,6 +358,10 @@ class QueryProcessor {
    * @param compression The compression type of the exported file.
    * @param delimiter It stands for the delimiter which separates the values in 
    * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @param precision This only applies to exporting to CSV files (it is ignored
+   * in the case of binary files). It indicates the number of decimal digits
+   * to print for the case of real values. If not given, the default is 
+   * PRECISION.
    * @return **0** for success and <b>-1</b> for error.
    */
   template<class T>
@@ -348,7 +372,8 @@ class QueryProcessor {
       const std::vector<int>& attribute_ids,
       const T* range,
       CompressionType compression,
-      char delimiter) const;
+      char delimiter = CSV_DELIMITER,
+      int precision = PRECISION) const;
 
   /** 
    * Exports the data of an array into a CSV file. The data are exported in the
@@ -367,6 +392,10 @@ class QueryProcessor {
    * @param compression The compression type of the exported file.
    * @param delimiter It stands for the delimiter which separates the values in 
    * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @param precision This only applies to exporting to CSV files (it is ignored
+   * in the case of binary files). It indicates the number of decimal digits
+   * to print for the case of real values. If not given, the default is 
+   * PRECISION.
    * @return **0** for success and <b>-1</b> for error.
    */
   int array_export_csv_normal_dense(
@@ -376,7 +405,8 @@ class QueryProcessor {
       const std::vector<int>& attribute_ids,
       const std::vector<double>& range,
       CompressionType compression,
-      char delimiter) const;
+      char delimiter = CSV_DELIMITER,
+      int precision = PRECISION) const;
 
   /** 
    * Exports the data of an array into a CSV file. The data are exported in the
@@ -396,6 +426,10 @@ class QueryProcessor {
    * @param compression The compression type of the exported file.
    * @param delimiter It stands for the delimiter which separates the values in 
    * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @param precision This only applies to exporting to CSV files (it is ignored
+   * in the case of binary files). It indicates the number of decimal digits
+   * to print for the case of real values. If not given, the default is 
+   * PRECISION.
    * @return **0** for success and <b>-1</b> for error.
    */
   template<class T>
@@ -406,7 +440,8 @@ class QueryProcessor {
       const std::vector<int>& attribute_ids,
       const T* range,
       CompressionType compression,
-      char delimiter) const;
+      char delimiter = CSV_DELIMITER,
+      int precision = PRECISION) const;
 
   /** 
    * Exports the data of an array into a CSV file. The data are exported in the
@@ -425,6 +460,10 @@ class QueryProcessor {
    * @param compression The compression type of the exported file.
    * @param delimiter It stands for the delimiter which separates the values in 
    * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @param precision This only applies to exporting to CSV files (it is ignored
+   * in the case of binary files). It indicates the number of decimal digits
+   * to print for the case of real values. If not given, the default is 
+   * PRECISION.
    * @return **0** for success and <b>-1</b> for error.
    */
   int array_export_csv_normal_sparse(
@@ -434,7 +473,8 @@ class QueryProcessor {
       const std::vector<int>& attribute_ids,
       const std::vector<double>& range,
       CompressionType compression,
-      char delimiter) const;
+      char delimiter = CSV_DELIMITER,
+      int precision = PRECISION) const;
 
   /** 
    * Exports the data of an array into a CSV file. The data are exported in the
@@ -454,6 +494,10 @@ class QueryProcessor {
    * @param compression The compression type of the exported file.
    * @param delimiter It stands for the delimiter which separates the values in 
    * a CSV line in the CSV file. If not given, the default is CSV_DELIMITER.
+   * @param precision This only applies to exporting to CSV files (it is ignored
+   * in the case of binary files). It indicates the number of decimal digits
+   * to print for the case of real values. If not given, the default is 
+   * PRECISION.
    * @return **0** for success and <b>-1</b> for error.
    */
   template<class T>
@@ -464,7 +508,8 @@ class QueryProcessor {
       const std::vector<int>& attribute_ids,
       const T* range,
       CompressionType compression,
-      char delimiter) const;
+      char delimiter = CSV_DELIMITER,
+      int precision = PRECISION) const;
 
   /** 
    * Exports the data of an array into a binary file. The data are exported in 

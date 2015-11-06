@@ -97,6 +97,8 @@
 #define NULL_SIZE_T std::numeric_limits<size_t>::max()
 /** Name of the file storing the offset of each tile in its data file. */
 #define OFFSETS_FILENAME "offsets"
+/** Default number of digital digits. */
+#define PRECISION 6
 /** 
  * Determines the mount of data that can be exchanged between the hard disk and
  * the main memory in a single I/O operation. 

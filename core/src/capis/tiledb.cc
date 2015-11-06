@@ -1263,7 +1263,8 @@ int tiledb_array_export(
     int attribute_names_num,
     double* range,
     int range_size,
-    char delimiter) {
+    char delimiter,
+    int precision) {
   // Sanity check
   if(tiledb_ctx == NULL) {
     PRINT_ERROR("Cannot export array: Invalid TileDB context");
@@ -1283,7 +1284,7 @@ int tiledb_array_export(
   return tiledb_ctx->query_processor_->array_export(
       workspace, group, array_name, filename, format,
       dim_names_vec, attribute_names_vec, range_vec,
-      delimiter);
+      delimiter, precision);
 }
 
 int tiledb_dataset_generate(
@@ -1324,7 +1325,7 @@ int tiledb_dataset_generate(
     rc = data_generator.generate_bin(seed, filename, cell_num,
                                      CMP_GZIP);
   } else {
-    PRINT_ERROR("Unknown file type");
+    PRINT_ERROR("Unknown format");
     rc = -1;
   }
 

@@ -40,6 +40,7 @@
 #include "cell.h"
 #include "csv_line.h"
 #include "global.h"
+#include "special_values.h"
 #include "utils.h"
 #include <string>
 #include <vector>
@@ -68,19 +69,21 @@
 class CSVFile {
  public:
   // CONSTRUCTORS & DESTRUCTORS
-  /** Constructor. TODO: Put default delimiter and compression. */
-  CSVFile(CompressionType compression, char delimiter);
+  /** Constructor. */
+  CSVFile(
+      CompressionType compression, 
+      char delimiter = CSV_DELIMITER);
   /** Constructor. */
   CSVFile(
       const ArraySchema* array_schema,
       CompressionType compression,
-      char delimiter);
+      char delimiter = CSV_DELIMITER);
   /** Constructor. */
   CSVFile(
       const std::string& filename, 
       const char* mode,
       CompressionType compression,
-      char delimiter);
+      char delimiter = CSV_DELIMITER);
   /** Destructor. */
   ~CSVFile();
 

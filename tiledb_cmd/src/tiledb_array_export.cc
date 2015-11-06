@@ -58,7 +58,8 @@ int parse_options(
     std::vector<std::string>& attribute_names,
     double*& range,
     int& range_size,
-    char& delimiter) {
+    char& delimiter,
+    int& precision) {
 
   // Initialization
   workspace = "";
@@ -73,6 +74,7 @@ int parse_options(
   attribute_names.clear();
   format = "";
   std::string delimiter_str = "";
+  std::string precision_str = "";
 
   // Auxiliary variable
   CSVLine temp;
@@ -91,13 +93,14 @@ int parse_options(
     {"format",1,0,'F'},
     {"group",1,0,'g'},
     {"delimiter",1,0,'l'},
+    {"precision",1,0,'p'},
     {"range",1,0,'r'},
     {"workspace",1,0,'w'},
     {0,0,0,0},
   };
 
   // Define short options
-  const char* short_options = "a:A:d:f:F:g:l:r:w:";
+  const char* short_options = "a:A:d:f:F:g:l:p:r:w:";
   // Get options
   int c;
   int option_num = 0;
@@ -152,6 +155,13 @@ int parse_options(
           return -1;
         }
         delimiter_str = optarg;
+        break;
+      case 'p':
+        if(precision_str != "") {
+          PRINT_ERROR("More than one precision values provided");
+          return -1;
+        }
+        precision_str = optarg;
         break;
       case 'r':
         if(range_str != "") {
@@ -305,6 +315,23 @@ int parse_options(
       sscanf(range_str_vec[i].c_str(), "%lf", &range[i]); 
     }
   }   
+  // ----- precision ----- //
+  if(precision_str == "") {
+    precision = 6; // Default
+  } else {
+    temp.clear();
+    temp << precision_str;
+    if(temp.val_num() > 1) {
+      PRINT_ERROR("More than one precision values");
+      return -1;
+    }
+    if(!is_non_negative_integer(precision_str.c_str())) {
+      PRINT_ERROR("The precision value must be a non-negative integer");
+      return -1;
+    } else {
+      sscanf(precision_str.c_str(), "%d", &precision); 
+    }
+  }
 
   // Success
   return 0;
@@ -322,13 +349,13 @@ int main(int argc, char** argv) {
   const char** dim_names_c_str;
   const char** attribute_names_c_str;
   double* range = NULL;
-  int dim_names_num, attribute_names_num, range_size;
+  int dim_names_num, attribute_names_num, range_size, precision;
   char delimiter;
 
   if(parse_options(
          argc, argv, workspace, group, array_name, filename,
          format, dim_names, attribute_names,
-         range, range_size, delimiter))
+         range, range_size, delimiter, precision))
     return -1;
 
   // Initialize TileDB
@@ -360,7 +387,7 @@ int main(int argc, char** argv) {
          array_name.c_str(), filename.c_str(), format.c_str(),
          dim_names_c_str, dim_names_num, 
          attribute_names_c_str, attribute_names_num,
-         range, range_size, delimiter)) { 
+         range, range_size, delimiter, precision)) { 
     // Error - Clean up
     tiledb_ctx_finalize(tiledb_ctx);
     if(dim_names_c_str != NULL) 

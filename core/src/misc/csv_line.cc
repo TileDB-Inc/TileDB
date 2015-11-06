@@ -42,8 +42,9 @@
 ************ CONSTRUCTORS & DESTRUCTORS ***************
 ******************************************************/
 
-CSVLine::CSVLine(char delimiter) 
-    : delimiter_(delimiter) {
+CSVLine::CSVLine(char delimiter, int precision) 
+    : delimiter_(delimiter),
+      precision_(precision) {
   line_ = NULL;
   line_size_ = 0;
   line_allocated_size_ = 0;
@@ -53,8 +54,9 @@ CSVLine::CSVLine(char delimiter)
   val_num_ = 0;
 }
 
-CSVLine::CSVLine(char* line, char delimiter) 
-    : delimiter_(delimiter){
+CSVLine::CSVLine(char* line, char delimiter, int precision) 
+    : delimiter_(delimiter),
+      precision_(precision) {
   line_ = line;
   line_allocated_size_ = 0;
   mode_ = READ;
@@ -186,14 +188,14 @@ void CSVLine::operator<<(int64_t value) {
 template<>
 void CSVLine::operator<<(float value) {
   char s[CSV_MAX_DIGITS];
-  sprintf(s, "%g", value); 
+  sprintf(s, "%.*g", precision_, value); 
   append(s, ::strlen(s) + 1);
 }
 
 template<>
 void CSVLine::operator<<(double value) {
   char s[CSV_MAX_DIGITS];
-  sprintf(s, "%lg", value); 
+  sprintf(s, "%.*lg", precision_, value); 
   append(s, ::strlen(s) + 1);
 }
 

@@ -128,7 +128,8 @@ TILEDB_EXPORT int tiledb_array_close(
  * which is used in subsequent array operations. 
  * @param tiledb_ctx The TileDB state.
  * @param workspace The path to the workspace directory where the array is 
- * stored. 
+ * stored. If it is "", the current working directory is 
+ * set as the workspace by default.
  * @param group This is a directory inside the workspace where the array is 
  * stored. Note that any group path provided is converted into an 
  * absolute path **relative to the workspace directory**, i.e., 
@@ -136,7 +137,7 @@ TILEDB_EXPORT int tiledb_array_close(
  * directory. For instance, if *workspace* is *W1* and *group* is *~/G1*, and
  * supposing that the array name is *A*, then the 
  * **canonicalized absolute path** of the group is *W1/G1*, and the array
- * data will be stored in directory *W1/G1/A*. If the group is not provided, 
+ * data will be stored in directory *W1/G1/A*. If the group is "", 
  * the workspace is the default group.
  * @param array_name The name of the array to be opened.
  * @param mode The mode in which is the array is opened. Currently, the 
@@ -529,7 +530,8 @@ TILEDB_EXPORT int tiledb_const_reverse_dense_cell_iterator_next(
  * to redefine the array schema.
  * @param tiledb_ctx The TileDB state consisting of the TileDB modules. 
  * @param workspace The path to the workspace folder where the array is 
- * stored. 
+ * stored. If it is "", the current working directory is 
+ * set as the workspace by default.
  * @param group This is a directory inside the workspace where the array 
  * is stored. Note that any group path provided is converted into an 
  * absolute path **relative to the workspace directory**, i.e., 
@@ -537,7 +539,7 @@ TILEDB_EXPORT int tiledb_const_reverse_dense_cell_iterator_next(
  * directory. For instance, if *workspace* is *W1* and *group* is *~/G1*, and
  * supposing that the array name is *A*, then the 
  * **canonicalized absolute path** of the group is *W1/G1*, and the array
- * data will be stored in directory *W1/G1/A*. If the group is not provided, 
+ * data will be stored in directory *W1/G1/A*. If the group is "", 
  * the workspace is the default group.
  * @param array_name The name of the array to be cleared.
  * @return **0** for success and <b>-1</b> for error.
@@ -596,7 +598,8 @@ TILEDB_EXPORT int tiledb_array_clear(
  *
  * @param tiledb_ctx The TileDB state consisting of the TileDB modules. 
  * @param workspace The path to the workspace folder where the array is 
- * defined. 
+ * defined. If it is "", the current working directory is 
+ * set as the workspace by default.
  * @param group This is a directory inside the workspace where the array 
  * is defined. Note that any group path provided is converted into an 
  * absolute path **relative to the workspace directory**, i.e., 
@@ -604,7 +607,7 @@ TILEDB_EXPORT int tiledb_array_clear(
  * directory. For instance, if *workspace* is *W1* and *group* is *~/G1*, and
  * supposing that the array name is *A*, then the 
  * **canonicalized absolute path** of the group is *W1/G1*, and the array
- * data will be stored in directory *W1/G1/A*. If the group is not provided, 
+ * data will be stored in directory *W1/G1/A*. If the group is "", 
  * the workspace is the default group.
  * @param array_name The name of the array to be consolidated.
  * @return **0** for success and <b>-1</b> for error.
@@ -686,7 +689,7 @@ TILEDB_EXPORT int tiledb_array_consolidate(
  * @param workspace The path to the workspace folder where TileDB arrays can be
  * stored. Note that all non-existent directories in the workspace path will be
  * created. Moreover, the caller must have read and write permissions on the 
- * workspace directory. If it is not provided, the current working directory is 
+ * workspace directory. If it is "", the current working directory is 
  * set as the workspace by default.
  * @param group This is a directory inside the workspace where the array data 
  * will be stored. Note that any group path provided is converted into an 
@@ -697,7 +700,7 @@ TILEDB_EXPORT int tiledb_array_consolidate(
  * **canonicalized absolute path** of the group is *W1/G1*, and the array
  * data will be stored is directory *W1/G1/A*. The groups allow the 
  * hierarchical organization of TileDB arrays into sub-directories within the 
- * workspace directory. If the group is not provided, the workspace is the 
+ * workspace directory. If the group "", the workspace is the 
  * default group. Note that all non-existent directories in the group path 
  * will be created.
  * @param array_schema_csv The array schema, serialized in a CSV line string
@@ -856,7 +859,8 @@ TILEDB_EXPORT int tiledb_array_define(
  * or tiledb_array_update().
  * @param tiledb_ctx The TileDB state consisting of the TileDB modules. 
  * @param workspace The path to the workspace folder where the array is 
- * stored. 
+ * stored. If it is "", the current working directory is 
+ * set as the workspace by default.
  * @param group This is a directory inside the workspace where the array 
  * is stored. Note that any group path provided is converted into an 
  * absolute path **relative to the workspace directory**, i.e., 
@@ -864,7 +868,7 @@ TILEDB_EXPORT int tiledb_array_define(
  * directory. For instance, if *workspace* is *W1* and *group* is *~/G1*, and
  * supposing that the array name is *A*, then the 
  * **canonicalized absolute path** of the group is *W1/G1*, and the array
- * data will be stored in directory *W1/G1/A*. If the group is not provided, 
+ * data will be stored in directory *W1/G1/A*. If the group is "", 
  * the workspace is the default group.
  * @param array_name The name of the array to be deleted.
  * @return **0** for success and <b>-1</b> for error.
@@ -884,10 +888,12 @@ TILEDB_EXPORT int tiledb_array_delete(
  * The user can specify a subset of dimensions and attributes to export, as well
  * as to constrain the exported cell to a subarray. In addition, the user may 
  * specify whether to export the cells in the normal cell order they are stored
- * or in **reverse** order. Finally, the user may select to export the array in
+ * or in **reverse** order. The user may also select to export the array in
  * **dense** format, in which case even the empty cells are going to be 
  * exported, having special "empty" values in their attributes (e.g., 0 for 
- * numerics, and NULL_CHAR, '*', for strings).
+ * numerics, and NULL_CHAR, '*', for strings). Finally, the user may specify a 
+ * custom delimiter, as well as the number of decimal digits to be printed for 
+ * real numbers, for the case of exporting to CSV files.
  *
  * On error, it returns <b>-1</b>. Moreover, if it is compiled in **VERBOSE**
  * mode, it prints comprehensive error messages on *stderr*. On success, it 
@@ -900,47 +906,54 @@ TILEDB_EXPORT int tiledb_array_delete(
  * *attr1*,*attr2*,*attr3* :
  * - <b>tiledb_array_export(
  *         tiledb_ctx, "my_workspace", "my_group", "my_array",
- *         "my_array.csv", "csv", NULL, 0, NULL, 0, NULL, 0, '\\t') </b> \n
+ *         "my_array.csv", "csv", NULL, 0, NULL, 0, NULL, 0, '\\t', 3) </b> \n
  *    Exports into *my_array.csv* all the cells of array *my_array*, stored
  *    in folder *my_workspace/my_group/my_array*, in their native order, 
  *    including *all* the coordinates and attributes. They are exported in
- *    sparse format, and the CSV delimiter is the *tab*.
+ *    sparse format, and the CSV delimiter is the *tab*. The precision of
+ *    real attribute values is limited to 3 digits.
  * - <b>tiledb_array_export(
  *         tiledb_ctx, "my_workspace", "my_group", "my_array",
  *         "my_array.bin.gz", "dense.bin.gz", {"dim1"}, 1,
- *         {"attr1","attr2"}, 2, NULL, 0) </b> \n
+ *         {"attr1","attr2"}, 2, NULL, 0, ',', 6) </b> \n
  *    Exports into GZIP compressed binary file *my_array.csv.gz* all the cells
  *    of *my_array*, stored in folder *my_workspace/my_group/my_array*, in the 
  *    native order, including only the coordinates on the *dim1* dimension and 
  *    the values on the *attr1*, *attr2* attributes. This time the array is 
  *    exported in dense form, i.e., even the empty cell coordinates will appear 
- *    in the file, having "empty" attribute values.
+ *    in the file, having "empty" attribute values. The delimiter is ',' and
+ *    the precision is 6 digits.
  * - <b> tiledb_array_export(
  *         tiledb_ctx, "my_workspace", "my_group", "my_array",
  *         "my_array.bin.gz", "reverse.dense.bin.gz", {"dim1"}, 1,
- *         {"attr1","attr2"}, 2, NULL, 0) </b> \n
- *   Same as above, but the cells are exported in the reverse order.
+ *         {"attr1","attr2"}, 2, NULL, 0, 0, 0) </b> \n
+ *   Same as above, but the cells are exported in the reverse order. Moreover,
+ *   the delimiter and the precision values (0 in the example) are ignored.
  * - <b> tiledb_array_export(
  *         tiledb_ctx, "my_workspace", "my_group", "my_array",
  *         "my_array.bin.gz", "dense.bin.gz", {"__hide"}, 1,
- *         {"attr1","attr2"}, 2, {0,10,10,20}, 4) </b> \n
+ *         {"attr1","attr2"}, 2, {0,10,10,20}, 4, 0 , 0) </b> \n
  *   Same as the second example, but no coordinate is exported, and only the 
- *   cells with dim1 in [0,10] and dim2 in [10,20] are exported.
+ *   cells with dim1 in [0,10] and dim2 in [10,20] are exported. Moreover,
+ *   the delimiter and the precision values (0 in the example) are ignored.
  * - <b> tiledb_array_export(
  *         tiledb_ctx, "my_workspace", "my_group", "my_array",
  *         "my_array.bin.gz", "dense.bin.gz", {"dim1"}, 1,
- *         {"__hide"}, 1, NULL, 0) </b> \n
- *   Same as the second example, but no attribute value is exported.
+ *         {"__hide"}, 1, NULL, 0, 0, 0) </b> \n
+ *   Same as the second example, but no attribute value is exported. Moreover,
+ *   the delimiter and the precision values (0 in the example) are ignored.
  * - <b> tiledb_array_export(
  *         tiledb_ctx, "my_workspace", "my_group", "my_array",
  *         "my_array.bin.gz", "dense.bin.gz", {"dim1"}, 1,
- *         {"attr1,attr2,attr1"}, 1, NULL, 0) </b> \n
+ *         {"attr1,attr2,attr1"}, 1, NULL, 0, 0, 0) </b> \n
  *   Same as the second example, but now the *attr1* values are shown twice
- *   (once before those of *attr2* and once after).
+ *   (once before those of *attr2* and once after). Moreover,
+ *   the delimiter and the precision values (0 in the example) are ignored.
  *
  * @param tiledb_ctx The TileDB state consisting of the TileDB modules. 
  * @param workspace The path to the workspace directory where the array is 
- * stored. 
+ * stored. If it is "", the current working directory is 
+ * set as the workspace by default.
  * @param group This is a directory inside the workspace where the array is 
  * stored. Note that any group path provided is converted into an 
  * absolute path **relative to the workspace directory**, i.e., 
@@ -948,7 +961,7 @@ TILEDB_EXPORT int tiledb_array_delete(
  * directory. For instance, if *workspace* is *W1* and *group* is *~/G1*, and
  * supposing that the array name is *A*, then the 
  * **canonicalized absolute path** of the group is *W1/G1*, and the array
- * data will be stored in directory *W1/G1/A*. If the group is not provided, 
+ * data will be stored in directory *W1/G1/A*. If the group is "", 
  * the workspace is the default group.
  * @param array_name The name of the array whose data will be exported.
  * @param filename The name of the exported file. 
@@ -971,29 +984,26 @@ TILEDB_EXPORT int tiledb_array_delete(
  * - **reverse.dense.bin** (dense binary format in reverse order)
  * - **reverse.dense.bin.gz** (dense GZIP-compressed binary format in reverse 
  *   order).
- * . 
- * <br>
- * If it is not provided, then the program resolves the format by checking if
- * the file name contains any of the above suffices. For instance, "my_file.bin"
- * implies that the file is binary, whereas "my_file.csv.gz" implies that the 
- * file is CSV and compressed with GZIP.
  * @param dim_names An array holding the dimension names to be exported. If it
- * is empty, then all the coordinates will be exported. If it contains special 
+ * is NULL, then all the coordinates will be exported. If it contains special 
  * name <b>"__hide"</b>, then no coordinates will be exported.
  * @param dim_names_num The number of elements in dim_names. 
  * @param attribute_names An array holding the attribute names to be exported.
- * If it is empty, then all the attribute values will be exported. If it 
+ * If it is NULL, then all the attribute values will be exported. If it 
  * contains special name <b>"__hide"</b>, then no attribute values will be
  * exported.
  * @param attribute_names_num The number of elements in attribute_names. 
  * @param range A range given as a sequence of [low,high] bounds across each 
  * dimension. Each range bound must be a real number. The range constrains the
- * exported cells into a subarray.
+ * exported cells into a subarray. If the entire array must be exported, NULL
+ * should be given.
  * @param range_size The number of elements in the *range* array.
  * @param delimiter This is meaningful only for CSV format. It stands for the 
- * delimiter which separates the values in a CSV line in the CSV file. If not 
- * given, the default is <b>','</b>. The delimiter is ignored in the case of
- * exporting to binary files. 
+ * delimiter which separates the values in a CSV line in the CSV file.The 
+ * delimiter is ignored in the case of exporting to binary files. 
+ * @param precision This applies only to exporting to CSV files (it is ignored
+ * in the case of binary files). It indicates the number of decimal digits to
+ * be printed for the real values.
  * @return **0** for success and <b>-1</b> for error.
  * @see TileDB_Context, tiledb_array_load, tiledb_dataset_generate
  */
@@ -1010,7 +1020,8 @@ TILEDB_EXPORT int tiledb_array_export(
     int attribute_names_num,
     double* range,
     int range_size,
-    char delimiter);
+    char delimiter,
+    int precision);
 
 /** 
  * Generates sythetic data for a particular array schema in a **CSV** or
@@ -1027,11 +1038,7 @@ TILEDB_EXPORT int tiledb_array_export(
  * random from ASCII domain **[45,126]**, i.e., all the characters between and
  * including **'-'** and **'~'**.
  *
- * The user can either specify explicitly the data format, or let the program 
- * derive it from the provided file name. For instance, if the user does not 
- * specify the format, then file name "my_file.bin" implies that the data will 
- * be stored in uncompressed binary format, whereas "my_file.csv.gz" implies  
- * that the data will be stored in GZIP-compressed CSV format. The CSV and 
+ * The user can must specify explicitly the data format. The CSV and 
  * binary formats are explained in detail in tiledb_array_load(). Note that the
  * generated data do not contain deletions.
  *
@@ -1046,7 +1053,8 @@ TILEDB_EXPORT int tiledb_array_export(
  *
  * @param tiledb_ctx The TileDB state consisting of the TileDB modules. 
  * @param workspace The path to the workspace directory where the array is 
- * defined. 
+ * defined. If it is "", the current working directory is 
+ * set as the workspace by default.
  * @param group This is a directory inside the workspace where the array is 
  * defined. Note that any group path provided is converted into an 
  * absolute path **relative to the workspace directory**, i.e., 
@@ -1054,7 +1062,7 @@ TILEDB_EXPORT int tiledb_array_export(
  * directory. For instance, if *workspace* is *W1* and *group* is *~/G1*, and
  * supposing that the array name is *A*, then the 
  * **canonicalized absolute path** of the group is *W1/G1*, and the array
- * data will be stored in directory *W1/G1/A*. If the group is not provided, 
+ * data will be stored in directory *W1/G1/A*. If the group is "", 
  * the workspace is the default group.
  * @param array_name The name of the array for which the data will be generated.
  * @param filename The name of the produced file. 
@@ -1063,19 +1071,12 @@ TILEDB_EXPORT int tiledb_array_export(
  * - **csv.gz** (GZIP-compressed CSV format)
  * - **bin** (binary format)
  * - **bin.gz** (GZIP-compressed binary format)
- * . 
- * <br>
- * If it is not provided, then the program resolves the format by checking if
- * the file name contains any of the above suffices. For instance, "my_file.bin"
- * implies that the file is binary, whereas "my_file.csv.gz" implies that the 
- * file is CSV and compressed with GZIP.
  * @param seed The seed that will be used internally for the random generator.
  * @param cell_num The number of cells to be generated. It must be a positive
  * number
  * @param delimiter This is meaningful only for CSV format. It stands for the 
- * delimiter which separates the values in a CSV line in the CSV file. If not 
- * given, the default is <b>','</b>. The delimiter is ignored in the case of
- * generating binary data. 
+ * delimiter which separates the values in a CSV line in the CSV file. The 
+ * delimiter is ignored in the case of generating binary data. 
  * @return **0** for success and <b>-1</b> for error.
  * @see TileDB_Context, tiledb_array_load_csv
  */
@@ -1094,7 +1095,7 @@ TILEDB_EXPORT int tiledb_dataset_generate(
  * Checks if an array is defined within the database.
  * @param tiledb_ctx The TileDB context.
  * @param workspace The path to the workspace directory where the array is
- * stored. If it is not provided, the current working directory is 
+ * stored. If it is "", the current working directory is 
  * set as the workspace by default.
  * @param group This is a directory inside the workspace where the array is 
  * stored. Note that any group path provided is converted into an 
@@ -1103,7 +1104,7 @@ TILEDB_EXPORT int tiledb_dataset_generate(
  * directory. For instance, if *workspace* is *W1* and *group* is *~/G1*, and
  * supposing that the array name is *A*, then the 
  * **canonicalized absolute path** of the group is *W1/G1*, and the array
- * data are stored in directory *W1/G1/A*. If the group is not provided, the 
+ * data are stored in directory *W1/G1/A*. If the group is "", the 
  * the workspace is the default group.
  * @param array_name The name of the array to check.
  * @return **1** if the array is defined and **0** otherwise.
@@ -1293,7 +1294,8 @@ TILEDB_EXPORT int tiledb_array_is_defined(
  *
  * @param tiledb_ctx The TileDB state consisting of the TileDB modules. 
  * @param workspace The path to the workspace directory where the array is 
- * defined. 
+ * defined. If it is "", the current working directory is 
+ * set as the workspace by default.
  * @param group This is a directory inside the workspace where the array is 
  * defined. Note that any group path provided is converted into an 
  * absolute path **relative to the workspace directory**, i.e., 
@@ -1301,7 +1303,7 @@ TILEDB_EXPORT int tiledb_array_is_defined(
  * directory. For instance, if *workspace* is *W1* and *group* is *~/G1*, and
  * supposing that the array name is *A*, then the 
  * **canonicalized absolute path** of the group is *W1/G1*, and the array
- * data will be stored in directory *W1/G1/A*. If the group is not provided, 
+ * data will be stored in directory *W1/G1/A*. If the group is "", 
  * the workspace is the default group.
  * @param array_name The name of the array into which the file(s) are
  * loaded. Note that the array must already be defined.
@@ -1345,7 +1347,8 @@ TILEDB_EXPORT int tiledb_array_load(
  *
  * @param tiledb_ctx The TileDB state consisting of the TileDB modules. 
  * @param workspace The path to the workspace folder where the array is 
- * defined. 
+ * defined. If it is "", the current working directory is 
+ * set as the workspace by default.
  * @param group This is a directory inside the workspace where the array 
  * is defined. Note that any group path provided is converted into an 
  * absolute path **relative to the workspace directory**, i.e., 
@@ -1353,7 +1356,7 @@ TILEDB_EXPORT int tiledb_array_load(
  * directory. For instance, if *workspace* is *W1* and *group* is *~/G1*, and
  * supposing that the array name is *A*, then the 
  * **canonicalized absolute path** of the group is *W1/G1*, and the array
- * data will be stored in directory *W1/G1/A*. If the group is not provided, 
+ * data will be stored in directory *W1/G1/A*. If the group is "", 
  * the workspace is the default group.
  * @param array_name The name of the array whose schema is retrieved.
  * @param array_schema_c_str A pointer to a **pre-allocated** buffer to copy the
@@ -1377,7 +1380,8 @@ TILEDB_EXPORT int tiledb_array_schema_get(
  * defined. 
  * @param tiledb_ctx The TileDB state consisting of the TileDB modules. 
  * @param workspace The path to the workspace folder where the array is 
- * defined. 
+ * defined. If it is "", the current working directory is 
+ * set as the workspace by default.
  * @param group This is a directory inside the workspace where the array 
  * is defined. Note that any group path provided is converted into an 
  * absolute path **relative to the workspace directory**, i.e., 
@@ -1385,7 +1389,7 @@ TILEDB_EXPORT int tiledb_array_schema_get(
  * directory. For instance, if *workspace* is *W1* and *group* is *~/G1*, and
  * supposing that the array name is *A*, then the 
  * **canonicalized absolute path** of the group is *W1/G1*, and the array
- * data will be stored in directory *W1/G1/A*. If the group is not provided, 
+ * data will be stored in directory *W1/G1/A*. If the group is "", 
  * the workspace is the default group.
  * @param array_name The name of the array whose schema is printed.
  * @return **0** for success and <b>-1</b> for error.
@@ -1496,7 +1500,8 @@ TILEDB_EXPORT int tiledb_subarray(
  *
  * @param tiledb_ctx The TileDB state consisting of the TileDB modules. 
  * @param workspace The path to the workspace directory where the array is 
- * defined. 
+ * defined. If it is "", the current working directory is 
+ * set as the workspace by default.
  * @param group This is a directory inside the workspace where the array is 
  * defined. Note that any group path provided is converted into an 
  * absolute path **relative to the workspace directory**, i.e., 
@@ -1504,7 +1509,7 @@ TILEDB_EXPORT int tiledb_subarray(
  * directory. For instance, if *workspace* is *W1* and *group* is *~/G1*, and
  * supposing that the array name is *A*, then the 
  * **canonicalized absolute path** of the group is *W1/G1*, and the array
- * data will be stored in directory *W1/G1/A*. If the group is not provided, 
+ * data will be stored in directory *W1/G1/A*. If the group is "", 
  * the workspace is the default group.
  * @param array_name The name of the array into which the file(s) are
  * loaded. Note that the array must already be defined.
@@ -1519,17 +1524,10 @@ TILEDB_EXPORT int tiledb_subarray(
  * - **bin** (binary format)
  * - **sorted.bin** (sorted binary format)
  * - **bin.gz** (GZIP-compressed binary format)
- * - **sorted.bin.gz** (sorted GZIP-compressed binary format)
- * . 
- * <br>
- * If it is not provided, then the program resolves the format by checking if
- * the file name contains any of the above suffices. For instance, "my_file.bin"
- * implies that the file is binary, whereas "my_file.csv.gz" implies that the 
- * file is CSV and compressed with GZIP. 
+ * - **sorted.bin.gz** (sorted GZIP-compressed binary format) 
  * @param delimiter This is meaningful only for CSV format. It stands for the 
- * delimiter which separates the values in a CSV line in the CSV file. If not 
- * given, the default is <b>','</b>. The delimiter is ignored in the case of
- * loading binary data.
+ * delimiter which separates the values in a CSV line in the CSV file. The 
+ * delimiter is ignored in the case of loading binary data.
  * @param consolidate If *1*, then after the creation of the new fragment,
  * consolidation will take place as explained in tiledb_array_define(), whereas
  * if *0* the fragments will remain intact. The reason why one may choose to 

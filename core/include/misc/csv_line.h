@@ -78,7 +78,9 @@ class CSVLine {
 
   // CONSTRUCTORS & DESTRUCTORS
   /** Simple constructor. The object is created in NONE mode. */
-  CSVLine(char delimiter = CSV_DELIMITER);
+  CSVLine(
+      char delimiter = CSV_DELIMITER,
+      int precision = PRECISION);
   /** 
    * A simple constructor that takes as input a CSV line as a string. The 
    * CSVLine object is created in READ mode. 
@@ -90,7 +92,8 @@ class CSVLine {
    */
   explicit CSVLine(
       char* line,
-      char delimiter = CSV_DELIMITER);
+      char delimiter = CSV_DELIMITER,
+      int precision = PRECISION);
   /** Destructor. De-allocates only the space allocated in WRITE mode. */
   ~CSVLine();
  
@@ -158,6 +161,8 @@ class CSVLine {
    * reading from the CSV line with operator>>().
    */
   int pos_;
+  /** Number of decimal digits for real values. */
+  int precision_;
   /** Number of values in the CSV line. */
   int val_num_;
 

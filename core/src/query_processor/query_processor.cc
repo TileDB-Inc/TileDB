@@ -99,7 +99,8 @@ int QueryProcessor::array_export(
     const std::vector<std::string>& dim_names,
     const std::vector<std::string>& attribute_names,
     const std::vector<double>& range,
-    char delimiter) const {
+    char delimiter,
+    int precision) const {
   // Open array in read mode
   int ad = storage_manager_->array_open(workspace, group, array_name, "r");
   if(ad == -1) 
@@ -171,19 +172,19 @@ int QueryProcessor::array_export(
   if(csv && reverse && dense) 
     rc = array_export_csv_reverse_dense(
              ad, filename, dim_ids, attribute_ids, range, 
-             compression, delimiter);
+             compression, delimiter, precision);
   else if(csv && reverse && !dense) 
     rc = array_export_csv_reverse_sparse(
              ad, filename, dim_ids, attribute_ids, range, 
-             compression, delimiter);
+             compression, delimiter, precision);
   else if(csv && !reverse && dense) 
     rc = array_export_csv_normal_dense(
              ad, filename, dim_ids, attribute_ids, range, 
-             compression, delimiter);
+             compression, delimiter, precision);
   else if(csv && !reverse && !dense) 
     rc = array_export_csv_normal_sparse(
              ad, filename, dim_ids, attribute_ids, range, 
-             compression, delimiter);
+             compression, delimiter, precision);
   else if(bin && reverse && dense) 
     rc = array_export_bin_reverse_dense(
              ad, filename, dim_ids, attribute_ids, range, compression);
@@ -297,7 +298,8 @@ int QueryProcessor::array_export_csv_reverse_dense(
     const std::vector<int>& attribute_ids,
     const std::vector<double>& range,
     CompressionType compression,
-    char delimiter) const {
+    char delimiter,
+    int precision) const {
   // For easy reference
   const ArraySchema* array_schema;
   if(storage_manager_->array_schema_get(ad, array_schema))
@@ -311,7 +313,8 @@ int QueryProcessor::array_export_csv_reverse_dense(
     calculate_new_range<int>(range, new_range); 
     rc = array_export_csv_reverse_dense<int>(ad, filename, dim_ids,
                                              attribute_ids, new_range,
-                                             compression, delimiter);
+                                             compression, delimiter, 
+                                             precision);
     if(new_range != NULL)
       delete [] new_range;
   } else if(coords_type == &typeid(int64_t)) {
@@ -319,7 +322,8 @@ int QueryProcessor::array_export_csv_reverse_dense(
     calculate_new_range<int64_t>(range, new_range); 
     rc = array_export_csv_reverse_dense<int64_t>(ad, filename, dim_ids,
                                                  attribute_ids, new_range,
-                                                 compression, delimiter);
+                                                 compression, delimiter,
+                                                 precision);
     if(new_range != NULL)
       delete [] new_range;
   } else if(coords_type == &typeid(float)) {
@@ -327,7 +331,8 @@ int QueryProcessor::array_export_csv_reverse_dense(
     calculate_new_range<float>(range, new_range); 
     rc = array_export_csv_reverse_dense<float>(ad, filename, dim_ids,
                                                attribute_ids, new_range,
-                                               compression, delimiter);
+                                               compression, delimiter,
+                                               precision);
     if(new_range != NULL)
       delete [] new_range;
   } else if(coords_type == &typeid(double)) {
@@ -335,7 +340,8 @@ int QueryProcessor::array_export_csv_reverse_dense(
     calculate_new_range<double>(range, new_range); 
     rc = array_export_csv_reverse_dense<double>(ad, filename, dim_ids,
                                                 attribute_ids, new_range,
-                                                compression, delimiter);
+                                                compression, delimiter,
+                                                precision);
     if(new_range != NULL)
       delete [] new_range;
   }
@@ -352,7 +358,8 @@ int QueryProcessor::array_export_csv_reverse_dense(
     const std::vector<int>& attribute_ids,
     const T* range,
     CompressionType compression,
-    char delimiter) const {
+    char delimiter,
+    int precision) const {
   // TODO
   PRINT_ERROR("This export mode is not supported yet");
   exit(-1);
@@ -365,7 +372,8 @@ int QueryProcessor::array_export_csv_reverse_sparse(
     const std::vector<int>& attribute_ids,
     const std::vector<double>& range,
     CompressionType compression,
-    char delimiter) const {
+    char delimiter,
+    int precision) const {
   // For easy reference
   const ArraySchema* array_schema;
   if(storage_manager_->array_schema_get(ad, array_schema))
@@ -379,7 +387,8 @@ int QueryProcessor::array_export_csv_reverse_sparse(
     calculate_new_range<int>(range, new_range); 
     rc = array_export_csv_reverse_sparse<int>(ad, filename, dim_ids,
                                               attribute_ids, new_range,
-                                              compression, delimiter);
+                                              compression, delimiter,
+                                              precision);
     if(new_range != NULL)
       delete [] new_range;
   } else if(coords_type == &typeid(int64_t)) {
@@ -387,7 +396,8 @@ int QueryProcessor::array_export_csv_reverse_sparse(
     calculate_new_range<int64_t>(range, new_range); 
     rc = array_export_csv_reverse_sparse<int64_t>(ad, filename, dim_ids,
                                                   attribute_ids, new_range,
-                                                  compression, delimiter);
+                                                  compression, delimiter,
+                                                  precision);
     if(new_range != NULL)
       delete [] new_range;
   } else if(coords_type == &typeid(float)) {
@@ -395,7 +405,8 @@ int QueryProcessor::array_export_csv_reverse_sparse(
     calculate_new_range<float>(range, new_range); 
     rc = array_export_csv_reverse_sparse<float>(ad, filename, dim_ids,
                                                 attribute_ids, new_range,
-                                                compression, delimiter);
+                                                compression, delimiter,
+                                                precision);
     if(new_range != NULL)
       delete [] new_range;
   } else if(coords_type == &typeid(double)) {
@@ -403,7 +414,8 @@ int QueryProcessor::array_export_csv_reverse_sparse(
     calculate_new_range<double>(range, new_range); 
     rc = array_export_csv_reverse_sparse<double>(ad, filename, dim_ids,
                                                  attribute_ids, new_range,
-                                                 compression, delimiter);
+                                                 compression, delimiter,
+                                                 precision);
     if(new_range != NULL)
       delete [] new_range;
   }
@@ -420,9 +432,10 @@ int QueryProcessor::array_export_csv_reverse_sparse(
     const std::vector<int>& attribute_ids,
     const T* range,
     CompressionType compression,
-    char delimiter) const {
+    char delimiter,
+    int precision) const {
   // Prepare CSV file
-  CSVFile csv_file(compression, delimiter);
+  CSVFile csv_file(compression);
   csv_file.open(filename, "w");
 
   // Prepare cell iterators
@@ -438,7 +451,8 @@ int QueryProcessor::array_export_csv_reverse_sparse(
   // Write cells into the CSV file
   for(; !cell_it->end(); ++(*cell_it)) { 
     cell.set_cell(**cell_it);
-    if(csv_file << cell.csv_line<T>(dim_ids, attribute_ids, delimiter)) {
+    if(csv_file << cell.csv_line<T>(dim_ids, attribute_ids, 
+                                    delimiter, precision)) {
       csv_file.close();
       cell_it->finalize();
       delete cell_it;
@@ -462,7 +476,8 @@ int QueryProcessor::array_export_csv_normal_dense(
     const std::vector<int>& attribute_ids,
     const std::vector<double>& range,
     CompressionType compression,
-    char delimiter) const {
+    char delimiter,
+    int precision) const {
   // For easy reference
   const ArraySchema* array_schema;
   if(storage_manager_->array_schema_get(ad, array_schema))
@@ -476,7 +491,8 @@ int QueryProcessor::array_export_csv_normal_dense(
     calculate_new_range<int>(range, new_range); 
     rc = array_export_csv_normal_dense<int>(ad, filename, dim_ids,
                                             attribute_ids, new_range,
-                                            compression, delimiter);
+                                            compression, delimiter,
+                                            precision);
     if(new_range != NULL)
       delete [] new_range;
   } else if(coords_type == &typeid(int64_t)) {
@@ -484,7 +500,8 @@ int QueryProcessor::array_export_csv_normal_dense(
     calculate_new_range<int64_t>(range, new_range); 
     rc = array_export_csv_normal_dense<int64_t>(ad, filename, dim_ids,
                                                 attribute_ids, new_range,
-                                                compression, delimiter);
+                                                compression, delimiter,
+                                                precision);
     if(new_range != NULL)
       delete [] new_range;
   } else if(coords_type == &typeid(float)) {
@@ -492,7 +509,8 @@ int QueryProcessor::array_export_csv_normal_dense(
     calculate_new_range<float>(range, new_range); 
     rc = array_export_csv_normal_dense<float>(ad, filename, dim_ids,
                                               attribute_ids, new_range,
-                                              compression, delimiter);
+                                              compression, delimiter,
+                                              precision);
     if(new_range != NULL)
       delete [] new_range;
   } else if(coords_type == &typeid(double)) {
@@ -500,7 +518,8 @@ int QueryProcessor::array_export_csv_normal_dense(
     calculate_new_range<double>(range, new_range); 
     rc = array_export_csv_normal_dense<double>(ad, filename, dim_ids,
                                                attribute_ids, new_range,
-                                               compression, delimiter);
+                                               compression, delimiter,
+                                               precision);
     if(new_range != NULL)
       delete [] new_range;
   }
@@ -517,9 +536,10 @@ int QueryProcessor::array_export_csv_normal_dense(
     const std::vector<int>& attribute_ids,
     const T* range,
     CompressionType compression,
-    char delimiter) const {
+    char delimiter,
+    int precision) const {
   // Prepare CSV file
-  CSVFile csv_file(compression, delimiter);
+  CSVFile csv_file(compression);
   csv_file.open(filename, "w");
 
   // Prepare cell iterators
@@ -535,7 +555,8 @@ int QueryProcessor::array_export_csv_normal_dense(
   // Write cells into the CSV file
   for(; !cell_it->end(); ++(*cell_it)) { 
     cell.set_cell(**cell_it);
-    if(csv_file << cell.csv_line<T>(dim_ids, attribute_ids, delimiter)) {
+    if(csv_file << cell.csv_line<T>(dim_ids, attribute_ids, 
+                                    delimiter, precision)) {
       csv_file.close();
       cell_it->finalize();
       delete cell_it;
@@ -559,7 +580,8 @@ int QueryProcessor::array_export_csv_normal_sparse(
     const std::vector<int>& attribute_ids,
     const std::vector<double>& range,
     CompressionType compression,
-    char delimiter) const {
+    char delimiter,
+    int precision) const {
   // For easy reference
   const ArraySchema* array_schema;
   if(storage_manager_->array_schema_get(ad, array_schema))
@@ -573,7 +595,8 @@ int QueryProcessor::array_export_csv_normal_sparse(
     calculate_new_range<int>(range, new_range); 
     rc = array_export_csv_normal_sparse<int>(ad, filename, dim_ids,
                                              attribute_ids, new_range,
-                                             compression, delimiter);
+                                             compression, delimiter,
+                                             precision);
     if(new_range != NULL)
       delete [] new_range;
   } else if(coords_type == &typeid(int64_t)) {
@@ -581,7 +604,8 @@ int QueryProcessor::array_export_csv_normal_sparse(
     calculate_new_range<int64_t>(range, new_range); 
     rc = array_export_csv_normal_sparse<int64_t>(ad, filename, dim_ids,
                                                  attribute_ids, new_range,
-                                                 compression, delimiter);
+                                                 compression, delimiter,
+                                                 precision);
     if(new_range != NULL)
       delete [] new_range;
   } else if(coords_type == &typeid(float)) {
@@ -589,7 +613,8 @@ int QueryProcessor::array_export_csv_normal_sparse(
     calculate_new_range<float>(range, new_range); 
     rc = array_export_csv_normal_sparse<float>(ad, filename, dim_ids,
                                                attribute_ids, new_range,
-                                               compression, delimiter);
+                                               compression, delimiter,
+                                               precision);
     if(new_range != NULL)
       delete [] new_range;
   } else if(coords_type == &typeid(double)) {
@@ -597,7 +622,8 @@ int QueryProcessor::array_export_csv_normal_sparse(
     calculate_new_range<double>(range, new_range); 
     rc = array_export_csv_normal_sparse<double>(ad, filename, dim_ids,
                                                 attribute_ids, new_range,
-                                                compression, delimiter);
+                                                compression, delimiter,
+                                                precision);
     if(new_range != NULL)
       delete [] new_range;
   }
@@ -613,9 +639,10 @@ int QueryProcessor::array_export_csv_normal_sparse(
     const std::vector<int>& attribute_ids,
     const T* range,
     CompressionType compression,
-    char delimiter) const {
+    char delimiter,
+    int precision) const {
   // Prepare CSV file
-  CSVFile csv_file(compression, delimiter);
+  CSVFile csv_file(compression);
   csv_file.open(filename, "w");
 
   // Prepare cell iterators
@@ -631,7 +658,8 @@ int QueryProcessor::array_export_csv_normal_sparse(
   // Write cells into the CSV file
   for(; !cell_it->end(); ++(*cell_it)) { 
     cell.set_cell(**cell_it);
-    if(csv_file << cell.csv_line<T>(dim_ids, attribute_ids, delimiter)) {
+    if(csv_file << cell.csv_line<T>(dim_ids, attribute_ids, 
+                                    delimiter, precision)) {
       csv_file.close();
       cell_it->finalize();
       delete cell_it;
