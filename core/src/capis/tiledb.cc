@@ -203,6 +203,8 @@ int tiledb_subarray_buf(
     int ad,
     const double* range,
     int range_size,
+    const char** dim_names,
+    int dim_names_num,
     const char** attribute_names,
     int attribute_names_num,
     void* buffer,
@@ -214,7 +216,9 @@ int tiledb_subarray_buf(
   }
 
   // Compute vectors for range and attribute names
-  std::vector<std::string> attribute_names_vec;
+  std::vector<std::string> dim_names_vec, attribute_names_vec;
+  for(int i=0; i<dim_names_num; ++i)
+    dim_names_vec.push_back(dim_names[i]);
   for(int i=0; i<attribute_names_num; ++i)
     attribute_names_vec.push_back(attribute_names[i]);
   std::vector<double> range_vec;
@@ -223,7 +227,7 @@ int tiledb_subarray_buf(
 
   // Read cells
   return tiledb_ctx->query_processor_->subarray_buf(
-      ad, range_vec, attribute_names_vec, buffer, *buffer_size);
+      ad, range_vec, dim_names_vec, attribute_names_vec, buffer, *buffer_size);
 }
  
 

@@ -230,9 +230,15 @@ class QueryProcessor {
    *
    * @param ad The descriptor of the array where the subarray is applied.
    * @param range The range of the subarray. 
-   * @param attribute_names An array holding the attribute names to be included
-   * in the schema of the result array. If it is empty, then all the attributes
-   * of the input array will appear in the output array.
+   * @param dim_names A vector holding the names of the dimensions whose 
+   * coordinates will appear in the result cells. If it is NULL, then *all* the 
+   * coordinates will appear in the result cells. If it contains special 
+   * name <b>"__hide"</b>, then *no* coordinates will appear.
+   * @param attribute_names A vector holding the names of the attribute whose
+   * values will be included in the result cells. If it is NULL, then *all* the 
+   * attributes of the input array will appear in the result cells. If there is 
+   * only one special attribute name "__hide", then *no* attribute value will be
+   * included in the result cells.
    * @param buffer The buffer where the result cells are written.
    * @param buffer_size The size of the input buffer. If the function succeeds,
    * it is set to the actual size occupied by the result cells. If the function
@@ -243,6 +249,7 @@ class QueryProcessor {
   int subarray_buf(
       int ad,
       const std::vector<double>& range,
+      const std::vector<std::string>& dim_names,
       const std::vector<std::string>& attribute_names,
       void* buffer,
       size_t& buffer_size) const;
@@ -769,8 +776,7 @@ class QueryProcessor {
    * @param ad_sub The descriptor of the result array.
    * @param range The range of the subarray.
    * @param attribute_ids A vector holding the ids of the attributes
-   * in the schema of the result array. If it is empty, then all the attributes
-   * of the input array will appear in the output array.
+   * in the schema of the result array. 
    * @return **0** for success and <b>-1</b> for error.
    */
   template<class T>
@@ -790,9 +796,10 @@ class QueryProcessor {
    * @tparam T The array coordinates type.
    * @param ad The descriptor of the array where the subarray is applied.
    * @param range The range of the subarray. 
+   * @param dim_ids A vector holding the ids of the dimension coordinates
+   * to be included in the result cells. 
    * @param attribute_ids A vector holding the ids of the attributes
-   * to be included in the result cells. If it is empty, then all the attributes
-   * of the input array will appear in the output cells.
+   * to be included in the result cells. 
    * @param buffer The buffer where the result cells are written.
    * @param buffer_size The size of the input buffer. If the function succeeds,
    * it is set to the actual size occupied by the result cells. If the function
@@ -804,6 +811,7 @@ class QueryProcessor {
   int subarray_buf(
       int ad,
       const T* range,
+      const std::vector<int>& dim_ids,
       const std::vector<int>& attribute_ids,
       void* buffer,
       size_t& buffer_size) const;

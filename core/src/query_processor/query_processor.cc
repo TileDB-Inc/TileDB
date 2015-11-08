@@ -313,6 +313,7 @@ int QueryProcessor::subarray(
 int QueryProcessor::subarray_buf(
     int ad,
     const std::vector<double>& range,
+    const std::vector<std::string>& dim_names,
     const std::vector<std::string>& attribute_names,
     void* buffer,
     size_t& buffer_size) const {
@@ -333,6 +334,13 @@ int QueryProcessor::subarray_buf(
     return -1;
   }
 
+  // Get dimension ids
+  std::vector<int> dim_ids;
+  if(array_schema->get_dim_ids(dim_names, dim_ids)) {
+    storage_manager_->array_close(ad);
+    return -1;
+  }
+
   // Get attribute ids
   std::vector<int> attribute_ids;
   if(array_schema->get_attribute_ids(attribute_names, attribute_ids)) {
@@ -345,23 +353,25 @@ int QueryProcessor::subarray_buf(
   if(coords_type == &typeid(int)) { 
     int* new_range = new int[2*dim_num]; 
     convert(&range[0], new_range, 2*dim_num);
-    rc = subarray_buf<int>(ad, new_range, attribute_ids, buffer, buffer_size);
+    rc = subarray_buf<int>(ad, new_range, dim_ids, attribute_ids, 
+                           buffer, buffer_size);
     delete [] new_range;
   } else if(coords_type == &typeid(int64_t)) {
     int64_t* new_range = new int64_t[2*dim_num]; 
     convert(&range[0], new_range, 2*dim_num);
-    rc = subarray_buf<int64_t>(ad, new_range, attribute_ids, 
+    rc = subarray_buf<int64_t>(ad, new_range, dim_ids, attribute_ids, 
                                buffer, buffer_size);
     delete [] new_range;
   } else if(coords_type == &typeid(float)) {
     float* new_range = new float[2*dim_num]; 
     convert(&range[0], new_range, 2*dim_num);
-    rc = subarray_buf<float>(ad, new_range, attribute_ids, buffer, buffer_size);
+    rc = subarray_buf<float>(ad, new_range, dim_ids, attribute_ids, 
+                             buffer, buffer_size);
     delete [] new_range;
   } else if(coords_type == &typeid(double)) {
     double* new_range = new double[2*dim_num]; 
     convert(&range[0], new_range, 2*dim_num);
-    rc = subarray_buf<double>(ad, new_range, attribute_ids, 
+    rc = subarray_buf<double>(ad, new_range, dim_ids, attribute_ids, 
                               buffer, buffer_size);
     delete [] new_range;
   }
@@ -1184,6 +1194,7 @@ template<class T>
 int QueryProcessor::subarray_buf(
     int ad,
     const T* range,
+    const std::vector<int>& dim_ids,
     const std::vector<int>& attribute_ids,
     void* buffer,
     size_t& buffer_size) const {
@@ -1208,7 +1219,7 @@ int QueryProcessor::subarray_buf(
     // Write a cell
     cell.set_cell(**cell_it);
     cell.cell<T>(
-        cell_it->array_schema()->get_dim_ids(), 
+        dim_ids,
         attribute_ids, 
         cell_c, 
         cell_c_capacity,  

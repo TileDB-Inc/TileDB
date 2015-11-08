@@ -170,9 +170,16 @@ TILEDB_EXPORT int tiledb_cell_write_sorted(
  * @param range_size The nunber of elements of the range vector. It must be
  * equal to 2*dim_num, where *dim_num* is the number of the dimensions of the
  * array.
- * @param attribute_names An array holding the attribute names to be included
- * in the schema of the result array. If it is NULL, then all the attributes
- * of the input array will appear in the output array.
+ * @param dim_names An array holding the names of the dimensions whose 
+ * coordinates will appear in the result cells. If it is NULL, then *all* the 
+ * coordinates will appear in the result cells. If it contains special 
+ * name <b>"__hide"</b>, then *no* coordinates will appear.
+ * @param dim_names_num The number of elements in *dim_names*. 
+ * @param attribute_names An array holding the names of the attribute whose
+ * values will be included in the result cells. If it is NULL, then *all* the 
+ * attributes of the input array will appear in the result cells. If there is 
+ * only one special attribute name "__hide", then *no* attribute value will be 
+ * included in the result cells.
  * @param attribute_names_num The number of elements in attribute_names.
  * @param buffer The buffer where the result cells are written.
  * @param buffer_size The size of the input buffer. If the function succeeds,
@@ -187,6 +194,8 @@ TILEDB_EXPORT int tiledb_subarray_buf(
     int ad, 
     const double* range,
     int range_size,
+    const char** dim_names,
+    int dim_names_num,
     const char** attribute_names,
     int attribute_names_num,
     void* buffer,
