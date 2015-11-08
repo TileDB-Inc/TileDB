@@ -114,6 +114,34 @@ int tiledb_ctx_init(TileDB_CTX*& tiledb_ctx) {
 /*               I/O              */
 /* ****************************** */
 
+int tiledb_array_close(TileDB_CTX* tiledb_ctx, int ad) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot close array - Invalid TileDB context");
+    return -1;
+  }
+
+  // Close array
+  return tiledb_ctx->storage_manager_->array_close(ad);
+}
+
+int tiledb_array_open(
+    TileDB_CTX* tiledb_ctx,
+    const char* workspace,
+    const char* group,
+    const char* array_name,
+    const char* mode) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot open array - Invalid TileDB context");
+    return -1;
+  }
+
+  // Open array
+  return tiledb_ctx->storage_manager_->array_open(
+             workspace, group, array_name, mode);
+}
+
 int tiledb_cell_write(TileDB_CTX* tiledb_ctx, int ad, const void* cell) {
   // Sanity check
   if(tiledb_ctx == NULL) {
@@ -170,33 +198,34 @@ int tiledb_cell_write_sorted(TileDB_CTX* tiledb_ctx, int ad, const void* cell) {
   }
 }
 
-int tiledb_array_close(TileDB_CTX* tiledb_ctx, int ad) {
+int tiledb_subarray_buf(
+    const TileDB_CTX* tiledb_ctx,
+    int ad,
+    const double* range,
+    int range_size,
+    const char** attribute_names,
+    int attribute_names_num,
+    void* buffer,
+    size_t* buffer_size) {
   // Sanity check
   if(tiledb_ctx == NULL) {
-    PRINT_ERROR("Cannot close array - Invalid TileDB context");
+    PRINT_ERROR("Cannot compute subarray: Invalid TileDB context");
     return -1;
   }
 
-  // Close array
-  return tiledb_ctx->storage_manager_->array_close(ad);
-}
+  // Compute vectors for range and attribute names
+  std::vector<std::string> attribute_names_vec;
+  for(int i=0; i<attribute_names_num; ++i)
+    attribute_names_vec.push_back(attribute_names[i]);
+  std::vector<double> range_vec;
+  for(int i=0; i<range_size; ++i)
+    range_vec.push_back(range[i]);
 
-int tiledb_array_open(
-    TileDB_CTX* tiledb_ctx,
-    const char* workspace,
-    const char* group,
-    const char* array_name,
-    const char* mode) {
-  // Sanity check
-  if(tiledb_ctx == NULL) {
-    PRINT_ERROR("Cannot open array - Invalid TileDB context");
-    return -1;
-  }
-
-  // Open array
-  return tiledb_ctx->storage_manager_->array_open(
-             workspace, group, array_name, mode);
+  // Read cells
+  return tiledb_ctx->query_processor_->subarray_buf(
+      ad, range_vec, attribute_names_vec, buffer, *buffer_size);
 }
+ 
 
 /* ****************************** */
 /*          CELL ITERATORS        */

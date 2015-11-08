@@ -231,10 +231,12 @@ int QueryProcessor::subarray(
     storage_manager_->array_close(ad);
     return -1;
   }
+  const std::type_info* coords_type = array_schema->coords_type();
+  int dim_num = array_schema->dim_num();
 
   // Check range 
   int range_size = (int) range.size();
-  if(range_size != 2*array_schema->dim_num()) {
+  if(range_size != 2*dim_num) {
     PRINT_ERROR("Invalid range");
     storage_manager_->array_close(ad);
     return -1;
@@ -268,8 +270,29 @@ int QueryProcessor::subarray(
     return -1;
   }
 
-  // Perform subarray
-  int rc = subarray(ad, ad_sub, range, attribute_ids);
+  // Invoke the proper function, templated on the array coordinates type
+  int rc;
+  if(coords_type == &typeid(int)) { 
+    int* new_range = new int[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    rc = subarray<int>(ad, ad_sub, new_range, attribute_ids);
+    delete [] new_range;
+  } else if(coords_type == &typeid(int64_t)) {
+    int64_t* new_range = new int64_t[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    rc = subarray<int64_t>(ad, ad_sub, new_range, attribute_ids);
+    delete [] new_range;
+  } else if(coords_type == &typeid(float)) {
+    float* new_range = new float[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    rc = subarray<float>(ad, ad_sub, new_range, attribute_ids);
+    delete [] new_range;
+  } else if(coords_type == &typeid(double)) {
+    double* new_range = new double[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    rc = subarray<double>(ad, ad_sub, new_range, attribute_ids);
+    delete [] new_range;
+  }
 
   // Clean up
   if(rc == -1) {
@@ -281,6 +304,66 @@ int QueryProcessor::subarray(
       rc = -1;
     if(storage_manager_->array_close(ad_sub))
       rc = -1;
+  }
+
+  // 0 for success and -1 for error
+  return rc;
+}
+
+int QueryProcessor::subarray_buf(
+    int ad,
+    const std::vector<double>& range,
+    const std::vector<std::string>& attribute_names,
+    void* buffer,
+    size_t& buffer_size) const {
+  // Get input array schema
+  const ArraySchema* array_schema;
+  if(storage_manager_->array_schema_get(ad, array_schema)) {
+    storage_manager_->array_close(ad);
+    return -1;
+  }
+  const std::type_info* coords_type = array_schema->coords_type();
+  int dim_num = array_schema->dim_num();
+
+  // Check range 
+  int range_size = (int) range.size();
+  if(range_size != 2*dim_num) {
+    PRINT_ERROR("Invalid range");
+    storage_manager_->array_close(ad);
+    return -1;
+  }
+
+  // Get attribute ids
+  std::vector<int> attribute_ids;
+  if(array_schema->get_attribute_ids(attribute_names, attribute_ids)) {
+    storage_manager_->array_close(ad);
+    return -1;
+  }
+
+  // Invoke the proper function, templated on the array coordinates type
+  int rc;
+  if(coords_type == &typeid(int)) { 
+    int* new_range = new int[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    rc = subarray_buf<int>(ad, new_range, attribute_ids, buffer, buffer_size);
+    delete [] new_range;
+  } else if(coords_type == &typeid(int64_t)) {
+    int64_t* new_range = new int64_t[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    rc = subarray_buf<int64_t>(ad, new_range, attribute_ids, 
+                               buffer, buffer_size);
+    delete [] new_range;
+  } else if(coords_type == &typeid(float)) {
+    float* new_range = new float[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    rc = subarray_buf<float>(ad, new_range, attribute_ids, buffer, buffer_size);
+    delete [] new_range;
+  } else if(coords_type == &typeid(double)) {
+    double* new_range = new double[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    rc = subarray_buf<double>(ad, new_range, attribute_ids, 
+                              buffer, buffer_size);
+    delete [] new_range;
   }
 
   // 0 for success and -1 for error
@@ -1070,53 +1153,6 @@ void QueryProcessor::calculate_new_range(
   }
 }
 
-int QueryProcessor::subarray(
-    int ad,
-    int ad_sub,
-    const std::vector<double>& range,
-    const std::vector<int>& attribute_ids) const {
-  // For easy reference
-  const ArraySchema* array_schema;
-  if(storage_manager_->array_schema_get(ad, array_schema))
-    return -1;
-  const std::type_info* coords_type = array_schema->coords_type();
-  int dim_num = array_schema->dim_num();
-  int rc;
-
-  // Sanity check
-  int range_size = (int) range.size();
-  if(range_size != 2*dim_num) {
-    PRINT_ERROR("Invalid range");
-    return -1;
-  }
-
-  // Invoke the proper templated function
-  if(coords_type == &typeid(int)) { 
-    int* new_range = new int[2*dim_num]; 
-    convert(&range[0], new_range, 2*dim_num);
-    rc = subarray<int>(ad, ad_sub, new_range, attribute_ids);
-    delete [] new_range;
-  } else if(coords_type == &typeid(int64_t)) {
-    int64_t* new_range = new int64_t[2*dim_num]; 
-    convert(&range[0], new_range, 2*dim_num);
-    rc = subarray<int64_t>(ad, ad_sub, new_range, attribute_ids);
-    delete [] new_range;
-  } else if(coords_type == &typeid(float)) {
-    float* new_range = new float[2*dim_num]; 
-    convert(&range[0], new_range, 2*dim_num);
-    rc = subarray<float>(ad, ad_sub, new_range, attribute_ids);
-    delete [] new_range;
-  } else if(coords_type == &typeid(double)) {
-    double* new_range = new double[2*dim_num]; 
-    convert(&range[0], new_range, 2*dim_num);
-    rc = subarray<double>(ad, ad_sub, new_range, attribute_ids);
-    delete [] new_range;
-  }
-
-  // 0 for success and -1 for error
-  return rc;
-}
-
 template<class T>
 int QueryProcessor::subarray(
     int ad, 
@@ -1142,4 +1178,51 @@ int QueryProcessor::subarray(
 
   // 0 for success and -1 for error
   return rc;
+}
+
+template<class T>
+int QueryProcessor::subarray_buf(
+    int ad,
+    const T* range,
+    const std::vector<int>& attribute_ids,
+    void* buffer,
+    size_t& buffer_size) const {
+  // Initialization
+  size_t cells_size = 0; 
+
+  // Prepare cell iterator
+  ArrayConstCellIterator<T>* cell_it = 
+      storage_manager_->begin<T>(ad, range, attribute_ids);
+  if(cell_it == NULL)
+    return -1;
+
+  // Prepare a cell
+  Cell cell(cell_it->array_schema(), cell_it->attribute_ids(), 0, true);
+  
+  // Prepare C-style cell to hold the actual cell to be written in the buffer
+  void* cell_c = NULL;
+  size_t cell_c_capacity = 0, cell_c_size = 0;
+
+  // Write cells into the buffer
+  for(; !cell_it->end(); ++(*cell_it)) { 
+    // Write a cell
+    cell.set_cell(**cell_it);
+    cell.cell<T>(
+        cell_it->array_schema()->get_dim_ids(), 
+        attribute_ids, 
+        cell_c, 
+        cell_c_capacity,  
+        cell_c_size);
+    if(cells_size + cell_c_size > buffer_size) {
+      PRINT_ERROR("Cannot write cell - buffer overflow");
+      buffer_size = -1;
+      return -1;
+    }
+    memcpy(static_cast<char*>(buffer) + cells_size, **cell_it, cell_c_size);
+    cells_size += cell_c_size;
+  }
+
+  // Success
+  buffer_size = cells_size;
+  return 0;
 }

@@ -221,6 +221,32 @@ class QueryProcessor {
       const std::vector<double>& range,
       const std::vector<std::string>& attribute_names) const;
 
+  /** 
+   * This is very similar to subarray(). The difference is that the result
+   * cells are written in the provided buffer, serialized one after the other.
+   * See tiledb_array_load() for more information on the binary cell format.
+   * The function fails if the provided buffer size is not sufficient to hold
+   * all the cells, and the buffer size is set to -1.
+   *
+   * @param ad The descriptor of the array where the subarray is applied.
+   * @param range The range of the subarray. 
+   * @param attribute_names An array holding the attribute names to be included
+   * in the schema of the result array. If it is empty, then all the attributes
+   * of the input array will appear in the output array.
+   * @param buffer The buffer where the result cells are written.
+   * @param buffer_size The size of the input buffer. If the function succeeds,
+   * it is set to the actual size occupied by the result cells. If the function
+   * fails because the size of the result cells exceeds the buffer size, it is 
+   * set to -1.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int subarray_buf(
+      int ad,
+      const std::vector<double>& range,
+      const std::vector<std::string>& attribute_names,
+      void* buffer,
+      size_t& buffer_size) const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -738,26 +764,6 @@ class QueryProcessor {
    * attribute ids. The result is stored in sparse format, i.e., the empty
    * cells are not stored. 
    *
-   * @param ad The descriptor of the input array.
-   * @param ad_sub The descriptor of the result array.
-   * @param range The range of the subarray.
-   * @param attribute_ids A vector holding the ids of the attributes
-   * in the schema of the result array. If it is empty, then all the attributes
-   * of the input array will appear in the output array.
-   * @return **0** for success and <b>-1</b> for error.
-   */
-  int subarray(
-      int ad, 
-      int ad_sub, 
-      const std::vector<double>& range,
-      const std::vector<int>& attribute_ids) const;
-
-  /** 
-   * Performs the subarray query on the first array, storing the result on
-   * the second array, using the input range and focusing on the input
-   * attribute ids. The result is stored in sparse format, i.e., the empty
-   * cells are not stored. 
-   *
    * @tparam T The coordinates type (of both arrays).
    * @param ad The descriptor of the input array.
    * @param ad_sub The descriptor of the result array.
@@ -773,6 +779,34 @@ class QueryProcessor {
       int ad_sub, 
       const T* range,
       const std::vector<int>& attribute_ids) const;
+
+  /** 
+   * This is very similar to subarray(). The difference is that the result
+   * cells are written in the provided buffer, serialized one after the other.
+   * See tiledb_array_load() for more information on the binary cell format.
+   * The function fails if the provided buffer size is not sufficient to hold
+   * all the cells, and the buffer size is set to -1.
+   *
+   * @tparam T The array coordinates type.
+   * @param ad The descriptor of the array where the subarray is applied.
+   * @param range The range of the subarray. 
+   * @param attribute_ids A vector holding the ids of the attributes
+   * to be included in the result cells. If it is empty, then all the attributes
+   * of the input array will appear in the output cells.
+   * @param buffer The buffer where the result cells are written.
+   * @param buffer_size The size of the input buffer. If the function succeeds,
+   * it is set to the actual size occupied by the result cells. If the function
+   * fails because the size of the result cells exceeds the buffer size, it is 
+   * set to -1.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  template<class T>
+  int subarray_buf(
+      int ad,
+      const T* range,
+      const std::vector<int>& attribute_ids,
+      void* buffer,
+      size_t& buffer_size) const;
 };
 
 #endif

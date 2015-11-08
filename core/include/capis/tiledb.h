@@ -82,37 +82,6 @@ TILEDB_EXPORT int tiledb_ctx_init(TileDB_CTX*& tiledb_ctx);
 /* ********************************* */
 
 /** 
- * Writes a binary cell to an array. The format of the cell is discussed in
- * tiledb_array_load().
- * @param tiledb_ctx The TileDB state.
- * @param ad The descriptor of the array to receive the cell.
- * @param cell The binary cell to be written.
- * @return **0** for success and <b>-1</b> for error.
- * @see TileDB_CTX, tiledb_cell_write_sorted
- */
-TILEDB_EXPORT int tiledb_cell_write(
-    TileDB_CTX* tiledb_ctx,
-    int ad, 
-    const void* cell);
-
-/** 
- * Writes a binary cell to an array. The format of the cell is discussed in
- * tiledb_array_load(). The difference to tildb_cell_write() is that the 
- * cells are assumed to be written in the same order as the global cell order
- * of the array. Therefore, this is a simple **append** command,
- * whereas tiledb_cell_write() triggers **sorting** at some point.
- * @param tiledb_ctx The TileDB state.
- * @param ad The descriptor of the array to receive the cell.
- * @param cell The binary cell to be written.
- * @return **0** for success and <b>-1</b> for error.
- * @see TileDB_CTX, tiledb_cell_write
- */
-TILEDB_EXPORT int tiledb_cell_write_sorted(
-    TileDB_CTX* tiledb_ctx,
-    int ad, 
-    const void* cell);
-
-/** 
  * Closes an array, cleaning its metadata from main memory.
  * @param tiledb_ctx The TileDB state.
  * @param ad The descriptor of the array to be closed
@@ -155,6 +124,73 @@ TILEDB_EXPORT int tiledb_array_open(
     const char* group,
     const char* array_name,
     const char* mode);
+
+/** 
+ * Writes a binary cell to an array. The format of the cell is discussed in
+ * tiledb_array_load().
+ * @param tiledb_ctx The TileDB state.
+ * @param ad The descriptor of the array to receive the cell.
+ * @param cell The binary cell to be written.
+ * @return **0** for success and <b>-1</b> for error.
+ * @see TileDB_CTX, tiledb_cell_write_sorted
+ */
+TILEDB_EXPORT int tiledb_cell_write(
+    TileDB_CTX* tiledb_ctx,
+    int ad, 
+    const void* cell);
+
+/** 
+ * Writes a binary cell to an array. The format of the cell is discussed in
+ * tiledb_array_load(). The difference to tildb_cell_write() is that the 
+ * cells are assumed to be written in the same order as the global cell order
+ * of the array. Therefore, this is a simple **append** command,
+ * whereas tiledb_cell_write() triggers **sorting** at some point.
+ *
+ * @param tiledb_ctx The TileDB state.
+ * @param ad The descriptor of the array to receive the cell.
+ * @param cell The binary cell to be written.
+ * @return **0** for success and <b>-1</b> for error.
+ * @see TileDB_CTX, tiledb_cell_write
+ */
+TILEDB_EXPORT int tiledb_cell_write_sorted(
+    TileDB_CTX* tiledb_ctx,
+    int ad, 
+    const void* cell);
+
+/** 
+ * This is very similar to tiledb_subarray(). The difference is that the result
+ * cells are written in the provided buffer, serialized one after the other.
+ * See tiledb_array_load() for more information on the binary cell format.
+ * The function fails if the provided buffer size is not sufficient to hold
+ * all the cells, and the buffer size is set to -1.
+ *
+ * @param tiledb_ctx The TileDB state.
+ * @param ad The descriptor of the array where the subarray is applied.
+ * @param range The range of the subarray. It must contain real values.
+ * @param range_size The nunber of elements of the range vector. It must be
+ * equal to 2*dim_num, where *dim_num* is the number of the dimensions of the
+ * array.
+ * @param attribute_names An array holding the attribute names to be included
+ * in the schema of the result array. If it is NULL, then all the attributes
+ * of the input array will appear in the output array.
+ * @param attribute_names_num The number of elements in attribute_names.
+ * @param buffer The buffer where the result cells are written.
+ * @param buffer_size The size of the input buffer. If the function succeeds,
+ * it is set to the actual size occupied by the result cells. If the function
+ * fails because the size of the result cells exceeds the buffer size, it is set
+ * to -1. 
+ * @return **0** for success and <b>-1</b> for error.
+ * @see TileDB_CTX, tiledb_subarray, tiledb_array_load
+ */
+TILEDB_EXPORT int tiledb_subarray_buf( 
+    const TileDB_CTX* tiledb_ctx, 
+    int ad, 
+    const double* range,
+    int range_size,
+    const char** attribute_names,
+    int attribute_names_num,
+    void* buffer,
+    size_t* buffer_size);
 
 /* ********************************* */
 /*           CELL ITERATORS          */

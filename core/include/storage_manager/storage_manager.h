@@ -459,56 +459,6 @@ class StorageManager {
   template<class T>
   int cell_write_sorted(int ad, const void* cell) const; 
 
-  /**
-   * Returns the cells whose coordinates fall inside the input range, as well as
-   * their collective size in bytes (last two arguments). The cells contain only
-   * values for the input attributes ids. Note that the returned cell buffer
-   * should be freed by the caller.
-   *
-   * @param ad The array descriptor.
-   * @param range The hyper-rectangle (dim#1_low, dim#1_high, dim#2_low, ...) 
-   * that orients a subarray, i.e., a subspace inside the array domain.
-   * @param attribute_ids A vector with the ids of the selected attributes. Note
-   * that the vector is ordered.
-   * @param cells The buffer that will hold the cells to be read. This buffer is
-   * allocated space by the function, but the caller is responsible for freeing
-   * it.
-   * @param The size of the buffer that holds the retrieved cells. 
-   * @return **0** for success and <b>-1</b> for error.
-   */
-  int cells_read(
-      int ad, 
-      const void* range, 
-      const std::vector<int>& attribute_ids,
-      void*& cells, 
-      size_t& cells_size) const;
-
-  /**
-   * Returns the cells whose coordinates fall inside the input range, as well as
-   * their collective size in bytes (last two arguments). The cells contain only
-   * values for the input attributes ids. Note that the returned cell buffer
-   * should be freed by the caller.
-   *
-   * @tparam T The array coordinates type.
-   * @param ad The array descriptor.
-   * @param range The hyper-rectangle (dim#1_low, dim#1_high, dim#2_low, ...) 
-   * that orients a subarray, i.e., a subspace inside the array domain.
-   * @param attribute_ids A vector with the ids of the selected attributes. Note
-   * that the vector is ordered.
-   * @param cells The buffer that will hold the cells to be read. This buffer is
-   * allocated space by the function, but the caller is responsible for freeing
-   * it.
-   * @param The size of the buffer that holds the retrieved cells. 
-   * @return **0** for success and <b>-1</b> for error.
-   */
-  template<class T>
-  int cells_read(
-      int ad, 
-      const T* range, 
-      const std::vector<int>& attribute_ids,
-      void*& cells, 
-      size_t& cells_size) const;
-
   /**  
    * Writes a set of cells to an array. 
    *
