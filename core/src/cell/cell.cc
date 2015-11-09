@@ -152,6 +152,7 @@ void Cell::cell(
   // For easy reference
   int dim_num = array_schema_->dim_num();
   int attribute_num = array_schema_->attribute_num();
+  bool var_size = (array_schema_->cell_size(attribute_ids) == VAR_SIZE);
 
   // Append ids
   for(int i=0; i<id_num_; ++i) {
@@ -180,7 +181,8 @@ void Cell::cell(
 
   // Leave space for the cell size
   size_t cell_size_offset = cell_ret_size;
-  cell_ret_size += sizeof(int);
+  if(var_size)
+    cell_ret_size += sizeof(int);
 
   // Append attribute values
   for(int i=0; i<attribute_ids.size(); ++i) {
@@ -207,8 +209,9 @@ void Cell::cell(
   }
 
   // Copy the cell size
-  memcpy(static_cast<char*>(cell_ret) + cell_size_offset,
-         &cell_ret_size, sizeof(int));
+  if(var_size)
+    memcpy(static_cast<char*>(cell_ret) + cell_size_offset,
+           &cell_ret_size, sizeof(int));
 }
 
 ssize_t Cell::cell_size() const {

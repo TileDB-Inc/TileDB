@@ -1229,7 +1229,7 @@ int QueryProcessor::subarray_buf(
       buffer_size = -1;
       return -1;
     }
-    memcpy(static_cast<char*>(buffer) + cells_size, **cell_it, cell_c_size);
+    memcpy(static_cast<char*>(buffer) + cells_size, cell_c, cell_c_size);
     cells_size += cell_c_size;
   }
 
