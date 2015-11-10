@@ -140,9 +140,9 @@ int Loader::array_load(
 
   // Resolve CSV or BIN
   bool bin = 
-      (format == "bin" || format == "bin.gz" || format == "sorted.bin.gz");
+      (format == "bin" || format == "sorted.bin" || format == "bin.gz" || format == "sorted.bin.gz");
   bool csv = 
-      (format == "csv" || format == "csv.gz" || format == "sorted.csv.gz");
+      (format == "csv" || format == "sorted.csv" || format == "csv.gz" || format == "sorted.csv.gz");
   if(!bin && !csv) {
     PRINT_ERROR("Invalid collection format");
     return -1;
