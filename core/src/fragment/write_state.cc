@@ -1422,3 +1422,7 @@ template int WriteState::cell_write<int64_t>(const void* cell);
 template int WriteState::cell_write<float>(const void* cell);
 template int WriteState::cell_write<double>(const void* cell);
 
+template int WriteState::cell_write_sorted<int>(const void* cell, bool without_coords);
+template int WriteState::cell_write_sorted<int64_t>(const void* cell, bool without_coords);
+template int WriteState::cell_write_sorted<float>(const void* cell, bool without_coords);
+template int WriteState::cell_write_sorted<double>(const void* cell, bool without_coords);
