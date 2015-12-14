@@ -110,7 +110,7 @@ ifeq ($(BUILD),debug)
   EXAMPLES_OBJ_DIR = $(EXAMPLES_OBJ_DEB_DIR)
   EXAMPLES_BIN_DIR = $(EXAMPLES_BIN_DEB_DIR)
 endif
-EXAMPLES_OBJ_REL_DIR = excamples/obj/release
+EXAMPLES_OBJ_REL_DIR = examples/obj/release
 EXAMPLES_BIN_REL_DIR = examples/bin/release
 ifeq ($(BUILD),release)
   EXAMPLES_OBJ_DIR = $(EXAMPLES_OBJ_REL_DIR)
