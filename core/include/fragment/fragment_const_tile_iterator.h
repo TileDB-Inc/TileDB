@@ -44,9 +44,9 @@ class ArraySchema;
 class FragmentConstTileIterator {
  public:
   // CONSTRUCTORS & DESTRUCTORS
-  /** Iterator constuctor. */
+  /** Iterator constructor. */
   FragmentConstTileIterator();
-  /** Iterator constuctor. */
+  /** Iterator constructor. */
   FragmentConstTileIterator(
       const Fragment* fragment, int attribute_id, int64_t pos); 
 

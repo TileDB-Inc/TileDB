@@ -55,17 +55,26 @@ class CSVFileCollection {
  public: 
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
-  CSVFileCollection(CompressionType compression, char delimiter);
+  CSVFileCollection(
+       CompressionType compression, 
+       char delimiter, 
+       bool metadata = false);
   /** Destructor. */
   ~CSVFileCollection();
 
   // BASIC METHODS
   /** Clear the file collection data from main memory. */
   int close(); 
-  /** Prepares the file collection. */
+  /** Prepares the file collection. TODO: remove*/
   int open( 
       const ArraySchema* array_schema,
       const std::string& path,
+      bool sorted);
+
+  /** Prepares the file collection. */
+  int open( 
+      const ArraySchema* array_schema,
+      const std::vector<std::string>& files,
       bool sorted);
 
   // OPERATORS
@@ -88,6 +97,8 @@ class CSVFileCollection {
   std::vector<std::string> filenames_;
   /** File id from which we lastly accessed a cell. */
   int last_accessed_file_;
+  //  TODO
+  bool metadata_;
   /** Priority queue for efficient retrieval of the next cell .*/
   void* pq_; 
   /** True if this is a sorted file collection. */

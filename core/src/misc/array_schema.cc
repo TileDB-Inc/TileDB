@@ -1,4 +1,4 @@
-/**
+/*
  * @file   array_schema.cc
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
@@ -39,6 +39,8 @@
 #include <math.h>
 #include <algorithm>
 #include <iostream>
+#include <limits.h>
+#include <openssl/md5.h>
 #include <set>
 #include <stdio.h>
 #include <sstream>
@@ -303,6 +305,16 @@ size_t ArraySchema::cell_size(int i) const {
   return cell_sizes_[i];
 }
 
+int64_t ArraySchema::cell_num_in_tile() const {
+  assert(dense_);
+
+  int64_t cell_num = 1;
+  for(int i=0; i<dim_num_; ++i)  
+    cell_num *= tile_extents_[i];
+
+  return cell_num;
+}
+
 size_t ArraySchema::cell_size(const std::vector<int>& attribute_ids) const {
   assert(valid_attribute_ids(attribute_ids));
   assert(no_duplicates(attribute_ids));
@@ -338,6 +350,10 @@ int ArraySchema::consolidation_step() const {
   return consolidation_step_;
 }
 
+bool ArraySchema::dense() const {
+  return dense_;
+}
+
 const ArraySchema::DimDomains& ArraySchema::dim_domains() const {
   return dim_domains_;
 }
@@ -356,8 +372,24 @@ int ArraySchema::dim_num() const {
   return dim_num_;
 }
 
+std::string ArraySchema::group_name() const {
+  // Start from the end of the string
+  int pos = array_name_.size() - 1;
+
+  // Skip the potential last '/'
+  if(array_name_[pos] == '/')
+    --pos;
+
+  // Scan backwords until you find the next '/'
+  while(pos > 0 && array_name_[pos] != '/')
+    --pos;
+
+  return array_name_.substr(0, pos); 
+}
+
 // FORMAT:
 // array_name_size(int) array_name(string)
+// dense(bool)
 // tile_order(char)
 // cell_order(char)
 // capacity(int64_t)
@@ -385,6 +417,8 @@ std::pair<const char*, size_t> ArraySchema::serialize() const {
   // ====== Calculation of buffer_size ======
   // Size for array_name_ 
   buffer_size += sizeof(int) + array_name_.size();
+  // Size for dense_
+  buffer_size += sizeof(bool);
   // Size for tile_order_ and cell_order_
   buffer_size += 2 * sizeof(char);
   // Size for capacity_ 
@@ -423,6 +457,10 @@ std::pair<const char*, size_t> ArraySchema::serialize() const {
   assert(offset < buffer_size);
   memcpy(buffer + offset, array_name_.c_str(), array_name_size);
   offset += array_name_size;
+  // Copy dense_
+  assert(offset < buffer_size);
+  memcpy(buffer + offset, &dense_, sizeof(bool));
+  offset += sizeof(bool);
   // Copy tile_order_ and cell_order_
   char tile_order = tile_order_;
   assert(offset < buffer_size);
@@ -691,6 +729,7 @@ bool ArraySchema::var_size() const {
 
 // FORMAT:
 // array_name_size(int) array_name(string)
+// dense(bool)
 // tile_order(char)
 // cell_order(char)
 // capacity(int64_t)
@@ -725,6 +764,10 @@ int ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
   assert(offset < buffer_size);
   memcpy(&array_name_[0], buffer + offset, array_name_size);
   offset += array_name_size;
+  // Load dense_
+  assert(offset < buffer_size);
+  memcpy(&dense_, buffer + offset, sizeof(bool));
+  offset += sizeof(bool);
   // Load tile_order_ and cell_order_
   char tile_order;
   assert(offset < buffer_size);
@@ -856,22 +899,27 @@ int ArraySchema::deserialize(const char* buffer, size_t buffer_size) {
     free(coords_);
   coords_ = malloc(cell_sizes_[attribute_num_]);
 
-  // Hilbert curves
+  // ----- calculate necessary information for computing hilbert ids 
   if(cell_order_ == CO_HILBERT) {
     compute_hilbert_cell_bits();
+    if(hilbert_curve_for_cells_ != NULL)
+      delete hilbert_curve_for_cells_;
     hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
+    if(coords_for_hilbert_ != NULL)
+      delete [] coords_for_hilbert_;
     coords_for_hilbert_ = new int[dim_num_];
   } else {
     hilbert_curve_for_cells_ = NULL;
     coords_for_hilbert_ = NULL;
   }
 
-  if(tile_extents_.size() != 0) { // Only for regular tiles
+  if(has_regular_tiles()) {
+    compute_tile_id_offsets();
     if(tile_order_ == TO_HILBERT) {
       compute_hilbert_tile_bits();
-      hilbert_curve_for_tiles_ = 
-          new HilbertCurve(hilbert_tile_bits_, dim_num_);
-      compute_tile_id_offsets();
+      if(hilbert_curve_for_cells_ != NULL)
+        delete hilbert_curve_for_cells_;
+      hilbert_curve_for_tiles_ = new HilbertCurve(hilbert_tile_bits_, dim_num_);
       if(coords_for_hilbert_ == NULL)
         coords_for_hilbert_ = new int[dim_num_];
     } else {
@@ -1249,6 +1297,407 @@ int ArraySchema::deserialize_csv(std::string array_schema_str) {
   // ----- set compression
   set_compression(compression);
 
+  // ----- calculate necessary information for computing hilbert ids 
+  if(cell_order_ == CO_HILBERT) {
+    compute_hilbert_cell_bits();
+    if(hilbert_curve_for_cells_ != NULL)
+      delete hilbert_curve_for_cells_;
+    hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
+    if(coords_for_hilbert_ != NULL)
+      delete [] coords_for_hilbert_;
+    coords_for_hilbert_ = new int[dim_num_];
+  } else {
+    hilbert_curve_for_cells_ = NULL;
+    coords_for_hilbert_ = NULL;
+  }
+
+  if(has_regular_tiles() && tile_order_ == TO_HILBERT) {
+    compute_hilbert_tile_bits();
+    compute_tile_id_offsets();
+    if(hilbert_curve_for_cells_ != NULL)
+      delete hilbert_curve_for_cells_;
+    hilbert_curve_for_tiles_ = new HilbertCurve(hilbert_tile_bits_, dim_num_);
+    if(coords_for_hilbert_ == NULL)
+      coords_for_hilbert_ = new int[dim_num_];
+  } else {
+    hilbert_curve_for_tiles_ = NULL;
+  }
+
+  return 0;
+}
+
+int ArraySchema::init(const TileDB_ArraySchema* array_schema) {
+  // Set array name
+  std::string array_name_real = real_path(array_schema->array_name_);
+  if(set_array_name(array_name_real))
+    return -1;
+
+  // Set attribute names
+  if(array_schema->attribute_num_ <= 0) {
+    PRINT_ERROR("The number of attributes must be greater than 0");
+    return -1;
+  }
+  std::vector<std::string> attribute_names;
+  for(int i=0; i<array_schema->attribute_num_; ++i) 
+    attribute_names.push_back(array_schema->attributes_[i]);
+  if(set_attribute_names(attribute_names))
+    return -1;
+
+  // Set dense
+  dense_ = array_schema->dense_;
+  if(dense_ && array_schema->tile_extents_ == NULL) {
+    PRINT_ERROR("Dense arrays should have regular tiles");
+    return -1;
+  }
+
+  // Set dimension names
+  if(array_schema->dim_num_ <= 0) {
+    PRINT_ERROR("The number of dimensions must be greater than 0");
+    return -1;
+  }
+  std::vector<std::string> dim_names;
+  for(int i=0; i<array_schema->dim_num_; ++i) 
+    dim_names.push_back(array_schema->dimensions_[i]);
+  if(set_dim_names(dim_names))
+    return -1;
+
+  // Set dimension domains
+  std::vector<std::pair<double,double> > dim_domains;
+  for(int i=0; i<array_schema->dim_num_; ++i)
+    dim_domains.push_back(
+        std::pair<double,double>(
+            array_schema->domain_[2*i], 
+            array_schema->domain_[2*i+1]));
+  if(set_dim_domains(dim_domains))
+    return -1;
+
+  // Set types, val num, types sizes and cell sizes 
+  // ----- set attribute types
+  std::string type_val_num;
+  std::string type;
+  std::vector<int> val_num;
+  std::vector<const std::type_info*> types;
+  int num;
+
+  for(int i=0; i<array_schema->attribute_num_; ++i) { 
+    type_val_num = array_schema->types_[i];
+    char* token = strtok(&type_val_num[0], ":"); // Type extraction
+    type = token;    
+    token = strtok(NULL, ":"); // Number of attribute values per cell extraction
+    if(token == NULL) { // Missing number of attribute values per cell
+      val_num.push_back(1);
+    } else {
+      // Process next token
+      if(!strcmp(token, "var")) { // Variable-sized cell
+        val_num.push_back(VAR_SIZE);
+      } else if(!is_positive_integer(token)) { 
+        // Invalid number of attribute values
+        PRINT_ERROR("The number of attribute values per cell must be a "
+                    "positive integer");
+        return -1;
+      } else { // Valid number of attribute values per cell
+        sscanf(token, "%d", &num);
+        val_num.push_back(num);
+      }
+
+      // No other token should follow
+      token = strtok(NULL, ":");
+      if(token != NULL) {
+        PRINT_ERROR("Redundant arguments in definition of attribute type");
+        return -1;
+      }
+    }
+
+    if(type == "char") {
+      types.push_back(&typeid(char));
+    } else if(type == "int32") {
+      types.push_back(&typeid(int));
+    } else if(type == "int64") {
+      types.push_back(&typeid(int64_t));
+    } else if(type == "float32") {
+      types.push_back(&typeid(float));
+    } else if(type == "float64") {
+      types.push_back(&typeid(double));
+    } else {
+      PRINT_ERROR(std::string("Invalid attribute type '") + type + "'");
+      return -1;
+    }
+  } 
+  // ----- set coordinate type
+  type = array_schema->types_[array_schema->attribute_num_];
+  if(type == "int32") {
+    types.push_back(&typeid(int));
+  } else if(type == "int64") {
+    types.push_back(&typeid(int64_t));
+  } else if(type == "float32") {
+    types.push_back(&typeid(float));
+  } else if(type == "float64") {
+    types.push_back(&typeid(double));
+  } else {
+      PRINT_ERROR(std::string("Invalid coordinates type '") + type + "'");
+    return -1;
+  }
+  if(set_types(types))
+    return -1;
+  if(set_val_num(val_num))
+    return -1;
+
+  // Set tile extents
+  std::vector<double> tile_extents;
+  if(array_schema->tile_extents_ != NULL) {
+    int tile_extents_num = array_schema->dim_num_;
+    for(int i=0; i<tile_extents_num; ++i)
+      tile_extents.push_back(array_schema->tile_extents_[i]);
+  }
+  if(set_tile_extents(tile_extents))
+    return -1;
+
+  // Set cell order
+  CellOrder cell_order;
+  if(array_schema->cell_order_ == NULL) {
+    cell_order = AS_CELL_ORDER;
+  } else if(!strcmp(array_schema->cell_order_, "row-major")) {
+    cell_order = CO_ROW_MAJOR;
+  } else if(!strcmp(array_schema->cell_order_, "column-major")) {
+    cell_order = CO_COLUMN_MAJOR;
+  } else if(!strcmp(array_schema->cell_order_, "hilbert")) {
+    cell_order = CO_HILBERT;
+  } else {
+    PRINT_ERROR(std::string("Invalid cell order '") + 
+                array_schema->cell_order_ + "'");
+    return -1;
+  }
+  set_cell_order(cell_order);
+
+  // Set tile order
+  if(array_schema->tile_extents_ == NULL && 
+     array_schema->tile_order_ != NULL) {
+    PRINT_ERROR("Tile order is meaningless in the case of irregular tiles");
+    return -1;
+  }
+  TileOrder tile_order;
+  if(array_schema->tile_order_ == NULL) {
+    if(array_schema->tile_extents_ == NULL)
+      tile_order = TO_NONE;
+    else
+      tile_order = AS_TILE_ORDER;
+  } else if(!strcmp(array_schema->tile_order_, "row-major")) {
+    tile_order = TO_ROW_MAJOR;
+  } else if(!strcmp(array_schema->tile_order_, "column-major")) {
+    tile_order = TO_COLUMN_MAJOR;
+  } else if(!strcmp(array_schema->tile_order_, "hilbert")) {
+    tile_order = TO_HILBERT;
+  } else {
+    PRINT_ERROR(std::string("Invalid tile order '") + 
+                array_schema->tile_order_ + "'");
+    return -1;
+  }
+  set_tile_order(tile_order);
+
+  // Set capacity
+  if(array_schema->tile_extents_ != NULL &&
+     array_schema->capacity_ != 0) {
+    PRINT_ERROR("Capacity is meaningless in the case of regular tiles");
+    return -1;
+  }
+  if(array_schema->capacity_ == 0)
+    set_capacity(AS_CAPACITY);
+  else
+    set_capacity(array_schema->capacity_);
+
+  // Set consilidation step
+  if(array_schema->consolidation_step_ == 0)
+    set_consolidation_step(AS_CONSOLIDATION_STEP);
+  else
+    set_consolidation_step(array_schema->consolidation_step_);
+
+  // Set compression  
+  std::vector<CompressionType> compression;
+  if(array_schema->compression_ == NULL) {
+    for(int i=0; i<array_schema->attribute_num_+1; ++i)
+      compression.push_back(CMP_NONE);
+  } else {
+    for(int i=0; i<array_schema->attribute_num_+1; ++i) {
+      if(!strcmp(array_schema->compression_[i], "NONE")) { 
+        compression.push_back(CMP_NONE);
+      } else if(!strcmp(array_schema->compression_[i], "GZIP")) {
+        compression.push_back(CMP_GZIP);
+      } else {
+        PRINT_ERROR(std::string("Invalid compression type '") + 
+                    array_schema->compression_[i] + "'");
+        return -1;
+      }
+    }
+  }
+  set_compression(compression);
+
+  // ----- calculate necessary information for computing hilbert ids 
+  if(cell_order_ == CO_HILBERT) {
+    compute_hilbert_cell_bits();
+    if(hilbert_curve_for_cells_ != NULL)
+      delete hilbert_curve_for_cells_;
+    hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
+    if(coords_for_hilbert_ != NULL)
+      delete [] coords_for_hilbert_;
+    coords_for_hilbert_ = new int[dim_num_];
+  } else {
+    hilbert_curve_for_cells_ = NULL;
+    coords_for_hilbert_ = NULL;
+  }
+
+  if(has_regular_tiles()) {
+    compute_tile_id_offsets();
+    if(tile_order_ == TO_HILBERT) {
+      compute_hilbert_tile_bits();
+      if(hilbert_curve_for_cells_ != NULL)
+        delete hilbert_curve_for_cells_;
+      hilbert_curve_for_tiles_ = new HilbertCurve(hilbert_tile_bits_, dim_num_);
+      if(coords_for_hilbert_ == NULL)
+        coords_for_hilbert_ = new int[dim_num_];
+    } else {
+      hilbert_curve_for_tiles_ = NULL;
+    }
+  }
+
+  // Success 
+  return 0;
+}
+
+int ArraySchema::init(const TileDB_MetadataSchema* metadata_schema) {
+  // Set array name
+  std::string metadata_name_real = real_path(metadata_schema->metadata_name_);
+  if(set_array_name(metadata_name_real))
+    return -1;
+
+  // Set attribute names
+  if(metadata_schema->attribute_num_ <= 0) {
+    PRINT_ERROR("The number of attributes must be greater than 0");
+    return -1;
+  }
+  std::vector<std::string> attribute_names;
+  for(int i=0; i<metadata_schema->attribute_num_; ++i) 
+    attribute_names.push_back(metadata_schema->attributes_[i]);
+  if(set_attribute_names(attribute_names))
+    return -1;
+
+  // Set dimension names
+  std::vector<std::string> dim_names;
+  dim_names.push_back(TILEDB_AS_METADATA_DIM_NAME_1);
+  dim_names.push_back(TILEDB_AS_METADATA_DIM_NAME_2);
+  dim_names.push_back(TILEDB_AS_METADATA_DIM_NAME_3);
+  dim_names.push_back(TILEDB_AS_METADATA_DIM_NAME_4);
+  if(set_dim_names(dim_names))
+    return -1;
+
+  // Set dimension domains
+  std::vector<std::pair<double,double> > dim_domains;
+  dim_domains.push_back(std::pair<double, double>(0, INT_MAX));
+  dim_domains.push_back(std::pair<double, double>(0, INT_MAX));
+  dim_domains.push_back(std::pair<double, double>(0, INT_MAX));
+  dim_domains.push_back(std::pair<double, double>(0, INT_MAX));
+  // ----- set dimension domains
+  if(set_dim_domains(dim_domains))
+    return -1;
+
+  // Set types, val num, types sizes and cell sizes 
+  // ----- set attribute types
+  std::string type_val_num;
+  std::string type;
+  std::vector<int> val_num;
+  std::vector<const std::type_info*> types;
+  int num;
+
+  for(int i=0; i<metadata_schema->attribute_num_; ++i) { 
+    type_val_num = metadata_schema->types_[i];
+    char* token = strtok(&type_val_num[0], ":"); // Type extraction
+    type = token;    
+    token = strtok(NULL, ":"); // Number of attribute values per cell extraction
+    if(token == NULL) { // Missing number of attribute values per cell
+      val_num.push_back(1);
+    } else {
+      // Process next token
+      if(!strcmp(token, "var")) { // Variable-sized cell
+        val_num.push_back(VAR_SIZE);
+      } else if(!is_positive_integer(token)) { 
+        // Invalid number of attribute values
+        PRINT_ERROR("The number of attribute values per cell must be a "
+                    "positive integer");
+        return -1;
+      } else { // Valid number of attribute values per cell
+        sscanf(token, "%d", &num);
+        val_num.push_back(num);
+      }
+
+      // No other token should follow
+      token = strtok(NULL, ":");
+      if(token != NULL) {
+        PRINT_ERROR("Redundant arguments in definition of attribute type");
+        return -1;
+      }
+    }
+
+    if(type == "char") {
+      types.push_back(&typeid(char));
+    } else if(type == "int32") {
+      types.push_back(&typeid(int));
+    } else if(type == "int64") {
+      types.push_back(&typeid(int64_t));
+    } else if(type == "float32") {
+      types.push_back(&typeid(float));
+    } else if(type == "float64") {
+      types.push_back(&typeid(double));
+    } else {
+      PRINT_ERROR(std::string("Invalid attribute type '") + type + "'");
+      return -1;
+    }
+  } 
+  // ----- set coordinate type
+  types.push_back(&typeid(int));
+  if(set_types(types))
+    return -1;
+  if(set_val_num(val_num))
+    return -1;
+
+  // Set tile extents
+  tile_extents_.clear();
+
+  // Set cell order
+  set_cell_order(CO_ROW_MAJOR);
+
+  // Set tile order
+  set_tile_order(TO_NONE);
+
+  // Set capacity
+  set_capacity(AS_CAPACITY);
+
+  // Set consilidation step
+  if(metadata_schema->consolidation_step_ == 0)
+    set_consolidation_step(AS_CONSOLIDATION_STEP);
+  else
+    set_consolidation_step(metadata_schema->consolidation_step_);
+
+  // Set compression  
+  std::vector<CompressionType> compression;
+  if(metadata_schema->compression_ == NULL) {
+    for(int i=0; i<metadata_schema->attribute_num_; ++i)
+      compression.push_back(CMP_NONE);
+  } else {
+    for(int i=0; i<metadata_schema->attribute_num_; ++i) {
+      if(!strcmp(metadata_schema->compression_[i], "NONE")) { 
+        compression.push_back(CMP_NONE);
+      } else if(!strcmp(metadata_schema->compression_[i], "GZIP")) {
+        compression.push_back(CMP_GZIP);
+      } else {
+        PRINT_ERROR(std::string("Invalid compression type '") + 
+                    metadata_schema->compression_[i] + "'");
+        return -1;
+      }
+    }
+  }
+  compression.push_back(CMP_NONE); // For the coordinates
+  set_compression(compression);
+
+  // Success 
   return 0;
 }
 
@@ -1372,26 +1821,6 @@ int ArraySchema::set_dim_domains(
   // Set the dimension domains
   dim_domains_ = dim_domains;
 
-  // Calculate necessary information for computing hilbert ids 
-  if(cell_order_ == CO_HILBERT) {
-    compute_hilbert_cell_bits();
-    hilbert_curve_for_cells_ = new HilbertCurve(hilbert_cell_bits_, dim_num_);
-    coords_for_hilbert_ = new int[dim_num_];
-  } else {
-    hilbert_curve_for_cells_ = NULL;
-    coords_for_hilbert_ = NULL;
-  }
-
-  if(has_regular_tiles() && tile_order_ == TO_HILBERT) {
-    compute_hilbert_tile_bits();
-    compute_tile_id_offsets();
-    hilbert_curve_for_tiles_ = new HilbertCurve(hilbert_tile_bits_, dim_num_);
-    if(coords_for_hilbert_ == NULL)
-      coords_for_hilbert_ = new int[dim_num_];
-  } else {
-    hilbert_curve_for_tiles_ = NULL;
-  }
-
   return 0;
 }
 
@@ -1438,6 +1867,7 @@ int ArraySchema::set_tile_extents(
     tile_extents_ = tile_extents;
     if(cell_order_ == CO_HILBERT) {
       compute_hilbert_cell_bits();
+      // TODO: free previous ones
       hilbert_curve_for_cells_ = 
           new HilbertCurve(hilbert_cell_bits_, dim_num_);
       coords_for_hilbert_ = new int[dim_num_];
@@ -1522,7 +1952,7 @@ int ArraySchema::set_types(
       return -1;
     }
   } 
-  // Check the attribute types
+  // Check the coordinate types
   if(types[attribute_num_] != &typeid(int) &&
      types[attribute_num_] != &typeid(int64_t) && 
      types[attribute_num_] != &typeid(float) &&
@@ -1530,6 +1960,13 @@ int ArraySchema::set_types(
     PRINT_ERROR("Invalid coordinate type");
     return -1;
   }
+
+  if(dense_ && 
+     (types[attribute_num_] == &typeid(float) ||
+      types[attribute_num_] == &typeid(double))) {
+    PRINT_ERROR("Dense arrays cannot have real coordinates");
+    return -1;
+ }
 
   // Set types
   types_ = types;
@@ -1586,10 +2023,12 @@ bool ArraySchema::advance_coords(T* coords, const T* range) const {
     else if(cell_order_ == CO_HILBERT)
       return advance_coords_irregular_hilbert<T>(coords, range);
   } else { // Regular tiles 
-    // TODO
-    std::cout << "[TileDB Error] Dense iterators for regular tiles"
-                 " not supported yet.\n";
-    exit(-1);
+    if(cell_order_ == CO_ROW_MAJOR && tile_order_ == TO_ROW_MAJOR)
+      return advance_coords_regular_to_row_co_row<T>(coords, range);
+    else {
+      PRINT_ERROR("Dense iterators for regular tiles are limited to row major only");
+      exit(-1);
+    }
   }
 }
 
@@ -1793,15 +2232,27 @@ ArraySchema ArraySchema::create_join_result_schema(
 // coordinates, cell_size, 
 //	attribute#1_value#1, ...            (fixed-sized attribute)
 // 	val_num, attribute#2_value#1,...,   (variable-sized attribute)
-void ArraySchema::csv_line_to_cell(
+int ArraySchema::csv_line_to_cell(
     CSVLine& csv_line,
-    void*& cell,
-    size_t& cell_size) const {
-// TODO: Error messages
+    void* cell,
+    size_t cell_size,
+    bool metadata,
+    bool dense) const {
   size_t offset = 0;
-
+  int rc;
+ 
   // Append coordinates
-  append_coordinates(csv_line, cell, cell_size, offset); 
+  if(!dense) {
+    if(!metadata) {
+      rc = append_coordinates(csv_line, cell, cell_size, offset);
+      if(rc != TILEDB_AS_OK)
+        return rc;
+    } else {
+      rc = append_key(csv_line, cell, cell_size, offset);
+      if(rc != TILEDB_AS_OK)
+        return rc;
+    }
+  }
   size_t coords_size = offset; 
 
   // Make space for cell size 
@@ -1809,30 +2260,35 @@ void ArraySchema::csv_line_to_cell(
     offset += sizeof(size_t);
 
   // Append attribute values
-  append_attributes(csv_line, cell, cell_size, offset);
+  rc = append_attributes(csv_line, cell, cell_size, offset);
+  if(rc != TILEDB_AS_OK)
+    return rc;
 
   if(cell_size_ == VAR_SIZE) 
     memcpy(static_cast<char*>(cell) + coords_size, &offset, sizeof(size_t));
+
+  // Success
+  return TILEDB_AS_OK;
 }
 
 template<class T>
 void ArraySchema::get_domain_start(T* coords, const T* range) const {
-  if(has_regular_tiles()) {
-    std::cout << "[TileDB Error] get_domain_start not supported for"
-              << " regular tiles yet.\n";
-    exit(-1);
-  }
-
-  if(cell_order_ == CO_HILBERT) {
-    std::cout << "[TileDB Error] get_domain_start not supported for"
-              << " Hilbert order yet.\n";
-    exit(-1);
-  }
-
   if(range == NULL) {
     for(int i=0; i<dim_num_; ++i) 
       coords[i] = dim_domains_[i].first;
   } else {
+    if(has_regular_tiles()) {
+      std::cout << "[TileDB Error] get_domain_start not supported for"
+                << " regular tiles yet.\n";
+      exit(-1);
+    }
+
+    if(cell_order_ == CO_HILBERT) {
+      std::cout << "[TileDB Error] get_domain_start not supported for"
+                << " Hilbert order yet.\n";
+      exit(-1);
+    }
+
     for(int i=0; i<dim_num_; ++i) { 
       assert(range[2*i] <= range[2*i+1]); 
       assert(range[2*i] >= dim_domains_[i].first && 
@@ -1850,16 +2306,160 @@ bool ArraySchema::has_regular_tiles() const {
   return (tile_extents_.size() != 0);
 }
 
-void ArraySchema::init_zero_cell(void*& cell) const {
+void ArraySchema::copy_zero_attributes(void* cell) const {
   // Fixed-size cell
   if(cell_size_ != VAR_SIZE) {
-    cell = malloc(cell_size_);
+    // For easy reference
+    char* c_cell = static_cast<char*>(cell);
+  
+    // Fill the attribute values
+    size_t offset = 0;
+    for(int i=0; i<attribute_num_; ++i) {
+      if(types_[i] == &typeid(char)) {
+        for(int i=0; i<val_num_[i]; ++i) {
+          char v = NULL_CHAR;
+          memcpy(c_cell + offset, &v, sizeof(char));
+          offset += sizeof(char);
+        }
+      } else if(types_[i] == &typeid(int)) {
+        for(int i=0; i<val_num_[i]; ++i) {
+          int v = 0;
+          memcpy(c_cell + offset, &v, sizeof(int));
+          offset += sizeof(int);
+        }
+      } else if(types_[i] == &typeid(int64_t)) {
+        for(int i=0; i<val_num_[i]; ++i) {
+          int64_t v = 0;
+          memcpy(c_cell + offset, &v, sizeof(int64_t));
+          offset += sizeof(int64_t);
+        }
+      } else if(types_[i] == &typeid(float)) {
+        for(int i=0; i<val_num_[i]; ++i) {
+          float v = 0;
+          memcpy(c_cell + offset, &v, sizeof(float));
+          offset += sizeof(float);
+        }
+      } else if(types_[i] == &typeid(double)) {
+        for(int i=0; i<val_num_[i]; ++i) {
+          double v = 0;
+          memcpy(c_cell + offset, &v, sizeof(double));
+          offset += sizeof(double);
+        }
+      }
+    }
+  } else { // Variable-length cell
+    // Calculate cell size
+    size_t cell_size = sizeof(size_t);
+    for(int i=0; i<attribute_num_; ++i) { 
+      if(val_num_[i] != VAR_SIZE)
+        cell_size += val_num_[i] * type_sizes_[i];
+      else
+        cell_size += sizeof(int) + type_sizes_[i];
+    }
+
+    cell = malloc(cell_size);
+
+    // For easy reference
+    char* c_cell = static_cast<char*>(cell);
+
+    // Fill the cell size
+    size_t offset = 0;
+    memcpy(c_cell + offset, &cell_size, sizeof(size_t));
+    offset += sizeof(size_t);
+
+    // Fill the attribute values
+    for(int i=0; i<attribute_num_; ++i) {
+      if(types_[i] == &typeid(char)) {
+        char v = NULL_CHAR;
+        int n = 1;
+        if(val_num_[i] != VAR_SIZE) {
+          for(int j=0; j<val_num_[i]; ++j) { 
+            memcpy(c_cell + offset, &v, sizeof(char));
+            offset += sizeof(char);
+          }
+        } else {
+          memcpy(c_cell + offset, &n, sizeof(int));
+          offset += sizeof(int);
+          memcpy(c_cell + offset, &v, sizeof(char));
+          offset += sizeof(char);
+        }
+      } else if(types_[i] == &typeid(int)) {
+        int v = 0;
+        int n = 1;
+        if(val_num_[i] != VAR_SIZE) {
+          for(int j=0; j<val_num_[i]; ++j) { 
+            memcpy(c_cell + offset, &v, sizeof(int));
+            offset += sizeof(int);
+          } 
+        } else {
+          memcpy(c_cell + offset, &n, sizeof(int));
+          offset += sizeof(int);
+          memcpy(c_cell + offset, &v, sizeof(int));
+          offset += sizeof(int);
+        }
+      } else if(types_[i] == &typeid(int64_t)) {
+        int64_t v = 0;
+        int n = 1;
+        if(val_num_[i] != VAR_SIZE) {
+          for(int j=0; j<val_num_[i]; ++j) { 
+            memcpy(c_cell + offset, &v, sizeof(int64_t));
+            offset += sizeof(int64_t);
+          }
+ 
+        } else {
+          memcpy(c_cell + offset, &n, sizeof(int));
+          offset += sizeof(int);
+          memcpy(c_cell + offset, &v, sizeof(int64_t));
+          offset += sizeof(int64_t);
+        }
+      } else if(types_[i] == &typeid(float)) {
+        float v = 0;
+        int n = 1;
+        if(val_num_[i] != VAR_SIZE) {
+          for(int j=0; j<val_num_[i]; ++j) { 
+            memcpy(c_cell + offset, &v, sizeof(float));
+            offset += sizeof(float);
+          } 
+        } else {
+          memcpy(c_cell + offset, &n, sizeof(int));
+          offset += sizeof(int);
+          memcpy(c_cell + offset, &v, sizeof(float));
+          offset += sizeof(float);
+        }
+      } else if(types_[i] == &typeid(double)) {
+        double v = 0;
+        int n = 1;
+        if(val_num_[i] != VAR_SIZE) {
+          for(int j=0; j<val_num_[i]; ++j) { 
+            memcpy(c_cell + offset, &v, sizeof(double));
+            offset += sizeof(double);
+          }
+        } else {
+          memcpy(c_cell + offset, &n, sizeof(int));
+          offset += sizeof(int);
+          memcpy(c_cell + offset, &v, sizeof(double));
+          offset += sizeof(double);
+        }
+      }
+    } 
+  }
+}
+
+void ArraySchema::init_zero_cell(void*& cell, bool with_coords) const {
+  // Fixed-size cell
+  if(cell_size_ != VAR_SIZE) {
+    if(with_coords)
+      cell = malloc(cell_size_);
+    else
+      cell = malloc(cell_size_ - coords_size());
     
     // For easy reference
     char* c_cell = static_cast<char*>(cell);
   
-    // Skip the coordinates
-    size_t offset = coords_size();
+    //sizeof(size_t) Skip the coordinates
+    size_t offset = 0;
+    if(with_coords)
+      offset = coords_size();
 
     // Fill the attribute values
     for(int i=0; i<attribute_num_; ++i) {
@@ -1897,7 +2497,11 @@ void ArraySchema::init_zero_cell(void*& cell) const {
     }
   } else { // Variable-length cell
     // Calculate cell size
-    size_t cell_size = coords_size() + sizeof(size_t);
+    size_t cell_size;
+    if(with_coords)
+      cell_size = coords_size() + sizeof(size_t);
+    else
+      cell_size = sizeof(size_t);
     for(int i=0; i<attribute_num_; ++i) { 
       if(val_num_[i] != VAR_SIZE)
         cell_size += val_num_[i] * type_sizes_[i];
@@ -1911,7 +2515,9 @@ void ArraySchema::init_zero_cell(void*& cell) const {
     char* c_cell = static_cast<char*>(cell);
 
     // Skip the coordinates
-    size_t offset = coords_size();
+    size_t offset = 0;
+    if(with_coords)
+      offset = coords_size();
 
     // Fill the cell size
     memcpy(c_cell + offset, &cell_size, sizeof(size_t));
@@ -2363,8 +2969,9 @@ int64_t ArraySchema::tile_id_row_major(const T* coords) const {
  
   int64_t tile_ID = 0;
   int64_t partition_id;
+
   for(int i = 0; i < dim_num_; ++i) {
-    partition_id = floor(coords[i] / tile_extents_[i]);
+    partition_id = floor((coords[i] - dim_domains_[i].first) / tile_extents_[i]);
     tile_ID += partition_id * tile_id_offsets_row_major_[i];
   }	
 
@@ -2462,113 +3069,224 @@ bool ArraySchema::advance_coords_irregular_row_major(
   }
 }
 
-void ArraySchema::append_attributes(
-    CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const {
-  for(int i=0; i<attribute_num_; ++i) {
-    if(types_[i] == &typeid(char))
-      append_attribute<char>(csv_line, val_num_[i], cell, cell_size, offset);
-    else if(types_[i] == &typeid(int))
-      append_attribute<int>(csv_line, val_num_[i], cell, cell_size, offset);
-    else if(types_[i] == &typeid(int64_t))
-      append_attribute<int64_t>(csv_line, val_num_[i], cell, cell_size, offset);
-    else if(types_[i] == &typeid(float))
-      append_attribute<float>(csv_line, val_num_[i], cell, cell_size, offset);
-    else if(types_[i] == &typeid(double))
-      append_attribute<double>(csv_line, val_num_[i], cell, cell_size, offset);
+template<class T>
+bool ArraySchema::advance_coords_regular_to_row_co_row(
+    T* coords, const T* range) const {
+  // TODO: This should not work for float/double!!!
+  bool ret;
+
+  if(range != NULL) {
+    PRINT_ERROR("Dense iterators in range for regular tiles not supported yet");
+    exit(-1);
   }
+
+  for(int i=0; i<dim_num_; ++i)
+    if(dim_domains_[i].first < 0 || dim_domains_[i].second < 0) {
+      PRINT_ERROR("Dense iterators do not work for negative coordinates yet");
+      exit(-1);
+    }
+
+  // Compute tile domain
+  // TODO: This should be computed once
+  T* tile_domain = new T[2*dim_num_];
+  for(int i=0; i<dim_num_; ++i) {
+    tile_domain[2*i] = 0;
+    tile_domain[2*i+1] = ceil((dim_domains_[i].second - dim_domains_[i].first) / 
+                         tile_extents_[i]) - 1;
+  }
+
+  // Compute tile coordinates
+  T* tile_coords = new T[dim_num_];
+  for(int i=0; i<dim_num_; ++i) {
+    tile_coords[i] = floor((coords[i] - dim_domains_[i].first) / tile_extents_[i]);
+}
+
+  // Compute tile cell domain
+  T* tile_cell_domain = new T[2*dim_num_];
+  for(int i=0; i<dim_num_; ++i) {
+    tile_cell_domain[2*i] = tile_coords[i] * tile_extents_[i] + dim_domains_[i].first; 
+    tile_cell_domain[2*i+1] = tile_cell_domain[2*i] + tile_extents_[i] - 1; 
+  }
+
+  int i = dim_num_-1;
+
+  ++coords[i];
+
+  while(i > 0 && coords[i] > tile_cell_domain[2*i + 1]) {
+    coords[i] = tile_cell_domain[2*i];
+    ++coords[--i];
+  }
+
+  // Check if the coords exceed the tile, and calculate
+  // the next tile. Also check if there is no other tile. 
+  if(coords[0] <= tile_cell_domain[1]) {
+    ret = true;
+  } else {
+    i = dim_num_-1;
+    ++tile_coords[i];
+    while(i > 0 && tile_coords[i] > tile_domain[2*i + 1]) {
+      tile_coords[i] = tile_domain[2*i];
+      ++tile_coords[--i];
+    }
+   
+    if(tile_coords[0] <= tile_domain[1]) {
+      for(int i=0; i<dim_num_; ++i) 
+        coords[i] = tile_coords[i] * tile_extents_[i] + dim_domains_[i].first;
+
+      ret = true;
+    } else {
+      ret = false;
+    }
+  }
+
+  // Clean up
+  delete [] tile_coords;
+  delete [] tile_domain;
+  delete [] tile_cell_domain;
+
+  return ret;
+}
+
+int ArraySchema::append_attributes(
+    CSVLine& csv_line, void* cell, size_t cell_size, size_t& offset) const {
+  int rc = 0;
+
+  for(int i=0; rc == 0 && i<attribute_num_; ++i) {
+    if(types_[i] == &typeid(char)) 
+      rc = append_attribute<char>(csv_line, val_num_[i], cell, cell_size, offset);
+    else if(types_[i] == &typeid(int)) 
+      rc = append_attribute<int>(csv_line, val_num_[i], cell, cell_size, offset);
+    else if(types_[i] == &typeid(int64_t))
+      rc =  append_attribute<int64_t>(csv_line, val_num_[i], cell, cell_size, offset);
+    else if(types_[i] == &typeid(float)) 
+      rc = append_attribute<float>(csv_line, val_num_[i], cell, cell_size, offset);
+    else if(types_[i] == &typeid(double))
+      rc = append_attribute<double>(csv_line, val_num_[i], cell, cell_size, offset);
+  }
+
+  return rc;
 }
 
 template<class T>
-void ArraySchema::append_attribute(
-    CSVLine& csv_line, int val_num, void*& cell, 
-    size_t& cell_size, size_t& offset) const {
+int ArraySchema::append_attribute(
+    CSVLine& csv_line, int val_num, void* cell, 
+    size_t cell_size, size_t& offset) const {
+
   T v;
   char* c_cell = static_cast<char*>(cell);
 
   if(val_num != VAR_SIZE) { // Fixed-sized attribute 
-    while(offset + val_num*sizeof(T) > cell_size) {
-      expand_buffer(cell, cell_size);
-      c_cell = static_cast<char*>(cell);
-      cell_size *= 2;
-    } 
+    if(offset + val_num*sizeof(T) > cell_size)
+      return TILEDB_AS_ERR_BUFFER_OVERFLOW;
     for(int i=0; i<val_num; ++i) {
-      csv_line >> v;
+      if(!(csv_line >> v)) {
+        PRINT_ERROR("Expecting more values in the CSV line");
+        return TILEDB_AS_ERR;
+      }
       memcpy(c_cell + offset, &v, sizeof(T));
       offset += sizeof(T);
     }
   } else {                  // Variable-sized attribute 
-    if(typeid(T) == typeid(char)) {
+    if(typeid(T) == typeid(char)) { // Strings
       std::string s;
-      csv_line >> s;
+      if(!(csv_line >> s)) {
+        PRINT_ERROR("Expecting more values in the CSV line");
+        return TILEDB_AS_ERR;
+      }
       int s_size = s.size();
 
-      while(offset + s_size + sizeof(int) > cell_size) {
-        expand_buffer(cell, cell_size);
-        c_cell = static_cast<char*>(cell);
-        cell_size *= 2;
-      } 
+      if(offset + s_size + sizeof(int) > cell_size)
+        return TILEDB_AS_ERR_BUFFER_OVERFLOW;
 
       memcpy(c_cell + offset, &s_size, sizeof(int));
       offset += sizeof(int);
       memcpy(c_cell + offset, s.c_str(), s.size());
       offset += s.size(); 
-    } else {
+    } else { // Non-strings
       int num;
-      csv_line >> num;
+      if(!(csv_line >> num)) {
+        PRINT_ERROR("Expecting more values in the CSV line");
+        return TILEDB_AS_ERR;
+      }
 
-      while(offset + num*sizeof(T) + sizeof(int) > cell_size) {
-        expand_buffer(cell, cell_size);
-        c_cell = static_cast<char*>(cell);
-        cell_size *= 2;
-      } 
+      if(offset + num*sizeof(T) + sizeof(int) > cell_size)
+        return TILEDB_AS_ERR_BUFFER_OVERFLOW;
 
       memcpy(c_cell + offset, &num, sizeof(int));
       offset += sizeof(int);
       for(int i=0; i<num; ++i) {
-        csv_line >> v;
+        if(!(csv_line >> v)) {
+          PRINT_ERROR("Expecting more values in the CSV line");
+          return TILEDB_AS_ERR;
+        }
         memcpy(c_cell + offset, &v, sizeof(T));
         offset += sizeof(T);
       }
     }
   }
+
+  return TILEDB_AS_OK;
 }
 
-void ArraySchema::append_coordinates(
-    CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const {
+int ArraySchema::append_coordinates(
+    CSVLine& csv_line, void* cell, size_t cell_size, size_t& offset) const {
   if(types_[attribute_num_] == &typeid(int))
-    append_coordinates<int>(csv_line, cell, cell_size, offset);
+    return append_coordinates<int>(csv_line, cell, cell_size, offset);
   if(types_[attribute_num_] == &typeid(int64_t))
-    append_coordinates<int64_t>(csv_line, cell, cell_size, offset);
+    return append_coordinates<int64_t>(csv_line, cell, cell_size, offset);
   if(types_[attribute_num_] == &typeid(float))
-    append_coordinates<float>(csv_line, cell, cell_size, offset);
+    return append_coordinates<float>(csv_line, cell, cell_size, offset);
   if(types_[attribute_num_] == &typeid(double))
-    append_coordinates<double>(csv_line, cell, cell_size, offset);
+    return append_coordinates<double>(csv_line, cell, cell_size, offset);
 }
 
 template<class T>
-void ArraySchema::append_coordinates(
-    CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const {
-//  T* coords = new T[dim_num_];
-
+int ArraySchema::append_coordinates(
+    CSVLine& csv_line, void* cell, size_t cell_size, size_t& offset) const {
   T* coords = static_cast<T*>(coords_);
   size_t coords_size = dim_num_*sizeof(T);
 
-  while(offset + coords_size > cell_size) {
-    expand_buffer(cell, cell_size);
-    cell_size *= 2;
-  } 
+  if(offset + coords_size > cell_size) 
+    return TILEDB_AS_ERR_BUFFER_OVERFLOW;
 
   for(int i=0; i<dim_num_; ++i) {
-    if(!(csv_line >> coords[i])) {
-      delete [] coords;
+    if(!(csv_line >> coords[i])) { 
+      PRINT_ERROR("Expecting more values in the CSV line");
+      return TILEDB_AS_ERR;
     }
   }
 
   memcpy(cell, coords, coords_size);
   offset += coords_size;
 
-//  delete [] coords;
+  return TILEDB_AS_OK;
 }
+
+int ArraySchema::append_key(
+    CSVLine& csv_line, void* cell, size_t cell_size, size_t& offset) const {
+  int* coords = static_cast<int*>(coords_);
+  size_t coords_size = dim_num_*sizeof(int);
+
+  if(offset + coords_size > cell_size) 
+    return TILEDB_AS_ERR_BUFFER_OVERFLOW;
+
+  std::string key;
+  if(!(csv_line >> key)) {
+    PRINT_ERROR("Expecting more values in the CSV line");
+    return TILEDB_AS_ERR;
+  }
+ 
+  // TODO: capture errors
+  MD5((const unsigned char*) key.c_str(), 
+       key.size(), 
+       (unsigned char*) coords);
+
+  memcpy(cell, coords, coords_size);
+  offset += coords_size;
+
+  return TILEDB_AS_OK;
+}
+
 
 // --- Cell format ---
 // coordinates, cell_size, 
@@ -2707,23 +3425,23 @@ void ArraySchema::compute_tile_id_offsets() {
   tile_id_offsets_column_major_.push_back(offset_column);	
 
   for(int i=0; i<dim_num_-1 ; ++i) {
-    // Row major
+    // Column major
     domain_range = dim_domains_[i].second - dim_domains_[i].first + 1;
     partition_num = ceil(domain_range / tile_extents_[i]);
-    offset_row *= partition_num;
-    tile_id_offsets_row_major_.push_back(offset_row);
+    offset_column *= partition_num;
+    tile_id_offsets_column_major_.push_back(offset_column);
    
-    // Column major
+    // Row major
     domain_range = dim_domains_[dim_num_-1-i].second - 
                    dim_domains_[dim_num_-1-i].first + 1;
     partition_num = ceil(domain_range / tile_extents_[dim_num_-1-i]);
-    offset_column *= partition_num;
-    tile_id_offsets_column_major_.push_back(offset_column);
+    offset_row *= partition_num;
+    tile_id_offsets_row_major_.push_back(offset_row);
   }
  
-  // For column major only 
-  std::reverse(tile_id_offsets_column_major_.begin(), 
-               tile_id_offsets_column_major_.end());
+  // For row major only 
+  std::reverse(tile_id_offsets_row_major_.begin(), 
+               tile_id_offsets_row_major_.end());
 }
 
 size_t ArraySchema::compute_type_size(int i) const {

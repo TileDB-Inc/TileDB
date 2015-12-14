@@ -42,6 +42,9 @@
 #include <string>
 #include <vector>
 
+
+#define METADATA_SCHEMA_FILENAME           "metadata_schema"
+
 class Fragment;
 
 /**  
@@ -119,9 +122,9 @@ class Array {
 
   // ----- ITERATORS ----- //
   /** Returns a tile iterator for the input fragment and attribute. */
-  FragmentConstTileIterator begin(int fragment_id, int attribute_id) const;
+  FragmentConstTileIterator* begin(int fragment_id, int attribute_id) const;
   /** Returns a reverse tile iterator for the input fragment and attribute. */
-  FragmentConstReverseTileIterator rbegin(
+  FragmentConstReverseTileIterator* rbegin(
       int fragment_id, 
       int attribute_id) const;
 
@@ -143,7 +146,7 @@ class Array {
    * @return **0** for success and <b>-1</b> for error.
    */ 
   template<class T>
-  int cell_write_sorted(const void* cell);
+  int cell_write_sorted(const void* cell, bool without_coords = false);
   /** 
    * Forces the array to close, during abnormal execution. If the array was
    * opened in WRITE mode, the created fragment is deleted (since its creation
@@ -180,6 +183,10 @@ class Array {
   Mode mode_;
 
   // ----- PRIVATE METHODS ----- //
+
+  // TODO
+  bool fragment_is_dense(const std::string& fragment) const;
+
   /*
    * Consolidates a range of fragments, deleting their directories and creating
    * a new directory with the new fragment's data. 
@@ -260,6 +267,14 @@ class Array {
   static bool greater_smaller(
       const std::pair<int, std::pair<int, std::string> >& a,
       const std::pair<int, std::pair<int, std::string> >& b);
+
+  // TODO: this has to move
+  bool metadata_exists(
+      const std::string& metadata_name,
+      bool real_paths = false) const;
+
+  // TODO
+  bool has_fragments() const;
 };
 
 #endif

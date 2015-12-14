@@ -37,6 +37,7 @@
 #include "csv_line.h"
 #include "global.h"
 #include "hilbert_curve.h"
+#include "tiledb.h"
 #include "utils.h"
 #include <vector>
 #include <set>
@@ -44,16 +45,23 @@
 #include <inttypes.h>
 #include <typeinfo>
 
-/** Default value for ArraySchema::capacity_. */
+/* ********************************* */
+/*              CONSTANT             */
+/* ********************************* */
+
 #define AS_CAPACITY 10000
-/** Default value for ArraySchema::cell_order_. */
 #define AS_CELL_ORDER ArraySchema::CO_ROW_MAJOR
-/** Default value for ArraySchema::consolidation_step_. */
 #define AS_CONSOLIDATION_STEP 1
-/** Name for the extra attribute representing the array coordinates. */
 #define AS_COORDINATES_NAME "__coords"
-/** Default value for ArraySchema::tile_order_. */
 #define AS_TILE_ORDER ArraySchema::TO_ROW_MAJOR
+#define TILEDB_AS_METADATA_CONSOLIDATION_STEP       1
+#define TILEDB_AS_METADATA_DIM_NAME_1 "key_1"
+#define TILEDB_AS_METADATA_DIM_NAME_2 "key_2"
+#define TILEDB_AS_METADATA_DIM_NAME_3 "key_3"
+#define TILEDB_AS_METADATA_DIM_NAME_4 "key_4"
+#define TILEDB_AS_OK 0
+#define TILEDB_AS_ERR -1
+#define TILEDB_AS_ERR_BUFFER_OVERFLOW -2
 
 /**
  * Objects of this class store information about the schema of an array, and
@@ -148,6 +156,8 @@ class ArraySchema {
   int64_t capacity() const;
   /** Returns the tile order.  */
   CellOrder cell_order() const;
+  /** Only for the dense case. */
+  int64_t cell_num_in_tile() const;
   /** 
    * Returns the size of an entire logical cell (coordinates and
    * and attributes).
@@ -165,12 +175,16 @@ class ArraySchema {
   const std::type_info* coords_type() const;
   /** Returns the consolidation step. */
   int consolidation_step() const;
+  /** Returns true if dense and false otherwise. */
+  bool dense() const;
   /** Returns the domains. */
   const std::vector<std::pair< double, double> >& dim_domains() const; 
   /** Returns the id of the i-th dimension (-1 if the name is not found). */
   int dim_id(const std::string& dim_name) const;
   /** Returns the number of dimensions. */
   int dim_num() const;
+  /** Returns the name of the group directory where the array is stored. */
+  std::string group_name() const;
   /** 
    * It serializes the object into a buffer of bytes. It returns a pointer
    * to the buffer it creates, along with the size of the buffer.
@@ -208,6 +222,10 @@ class ArraySchema {
    * in the input string. Returns 0 on success, and -1 on error.
    */
   int deserialize_csv(std::string array_schema_str);
+  /** Initializes an array schema that corresponds to the input metadata schema. */
+  int init(const TileDB_MetadataSchema* metadata_schema);
+  // TODO
+  int init(const TileDB_ArraySchema* array_schema);
   /** Sets the array name. Returns 0 on success and -1 on error. */
   int set_array_name(const std::string& array_name);
   /** Sets the attribute names. Returns 0 on success and -1 on error. */
@@ -292,8 +310,12 @@ class ArraySchema {
       const ArraySchema& array_schema_B,
       const std::string& result_array_name);
   /** Converts a cell from a CSV line format to a binary cell format. */
-  void csv_line_to_cell(
-      CSVLine& csv_line, void*& cell, size_t& cell_size) const;
+  int csv_line_to_cell(
+      CSVLine& csv_line, 
+      void* cell, 
+      size_t cell_size,
+      bool metadata = false,
+      bool dense = false) const;
   /** 
    * Returns a pair of vectors of attribute ids. The first contains the 
    * attribute ids corresponding to the input names. The second includes the 
@@ -344,7 +366,11 @@ class ArraySchema {
    * important in the beginning - they are set later), 0 values for the
    * numerical attributes, and NULL values for the non-numerical 
    */
-  void init_zero_cell(void*& cell) const;
+  void init_zero_cell(void*& cell, bool with_coords = true) const;
+
+  // TODO
+  void copy_zero_attributes(void* cell) const;
+
   /** 
    * Returns true if the input array schemas correspond to arrays that can be 
    * joined. Otherwise, it returns false along with an error message. 
@@ -460,6 +486,8 @@ class ArraySchema {
   void* coords_;
   /** To be used when calculating Hilbert ids. */
   int* coords_for_hilbert_;
+  /** Indicates whether the array is dense or not. */
+  bool dense_;
   /** The list with the dimension domains.*/
   std::vector< std::pair< double, double> > dim_domains_;
   /** The list with the dimension names.*/
@@ -518,6 +546,9 @@ class ArraySchema {
    */
   template<class T>
   bool advance_coords_irregular_column_major(T* coords, const T* range) const;
+
+
+
   /** 
    * Updates the coordinates such that they immediately follow the old
    * ones along the hilbert order for the case of irregular tiles, 
@@ -526,6 +557,9 @@ class ArraySchema {
    */
   template<class T>
   bool advance_coords_irregular_hilbert(T* coords, const T* range) const;
+
+
+
   /** 
    * Updates the coordinates such that they immediately follow the old
    * ones along the row major order for the case of irregular tiles, 
@@ -534,21 +568,30 @@ class ArraySchema {
    */
   template<class T>
   bool advance_coords_irregular_row_major(T* coords, const T* range) const;
+
+
+  // TODO
+  template<class T>
+  bool advance_coords_regular_to_row_co_row(T* coords, const T* range) const;
+
   /** Appends the attribute values from a CSV line to a cell. */
-  void append_attributes(
-      CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const;
+  int append_attributes(
+      CSVLine& csv_line, void* cell, size_t cell_size, size_t& offset) const;
   /** Appends an attribute value from a CSV line to a cell. */
   template<class T>
-  void append_attribute(
-      CSVLine& csv_line, int val_num, void*& cell, size_t& cell_size, 
+  int append_attribute(
+      CSVLine& csv_line, int val_num, void* cell, size_t cell_size, 
       size_t& offset) const;
   /** Appends coordinates from a CSV line to a cell. */
-  void append_coordinates(
-      CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const;
+  int append_coordinates(
+      CSVLine& csv_line, void* cell, size_t cell_size, size_t& offset) const;
   /** Appends coordinates from a CSV line to a cell. */
   template<class T>
-  void append_coordinates(
-      CSVLine& csv_line, void*& cell, size_t& cell_size, size_t& offset) const;
+  int append_coordinates(
+      CSVLine& csv_line, void* cell, size_t cell_size, size_t& offset) const;
+  /** Appends the coordinates derived from a metadata key. */
+  int append_key(
+      CSVLine& csv_line, void* cell, size_t cell_size, size_t& offset) const;
   /** Calculates the binary size of a CSV line. */
   ssize_t calculate_cell_size(CSVLine& csv_line) const;
   /** Performs appropriate checks upon a tile id request. */

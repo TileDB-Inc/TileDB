@@ -66,7 +66,8 @@ class WriteState {
       const std::string* fragment_name,
       const std::string* temp_dirname,
       const std::string* dirname,
-      BookKeeping* book_keeping);  
+      BookKeeping* book_keeping,
+      bool dense = false);  
   /** Destructor. */
   ~WriteState();
 
@@ -90,7 +91,7 @@ class WriteState {
    * The input cell carries no ids.
    */
   template<class T>
-  int cell_write_sorted(const void* cell); 
+  int cell_write_sorted(const void* cell, bool without_coords = false); 
   /** 
    * Writes a cell into the fragment, respecting the global cell order. 
    * The input cell carries a single (tile) id.
@@ -126,6 +127,10 @@ class WriteState {
   std::vector<CellWith2Ids> cells_with_2_ids_;
   /** The number of cell in the tile currently being populated. */
   int64_t cell_num_;
+  /** For the dense case. */
+  void* current_coords_;
+  /** Indicates whether the fragment is dense or not. */
+  bool dense_;
   /** The fragment directory name. */
   const std::string* dirname_; 
   /** 
@@ -147,6 +152,8 @@ class WriteState {
   Segments gz_segments_;
   /** Stores the GZIP segment utilization. */
   SegmentUtilization gz_segment_utilization_;
+  /** True if current_coords_ are inside the array domain. */
+  bool in_domain_; 
   /** The MBR of the currently populated tile. */
   void* mbr_;
   /** Stores the offset in the run buffer for the next write. */
@@ -167,6 +174,8 @@ class WriteState {
   int64_t tile_id_;
   /** Max memory size of the write state when creating an array fragment. */
   size_t write_state_max_size_;
+  /** For the dense case. */
+  void* zero_cell_;
 
   // PRIVATE METHODS
   /** 

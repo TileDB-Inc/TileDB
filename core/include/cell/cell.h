@@ -60,7 +60,8 @@ class Cell {
    */
   Cell(const ArraySchema* array_schema, 
        int id_num = 0,
-       bool random_access = false);
+       bool random_access = false,
+       bool without_coords = false);
   /** 
    * Constructor. It takes as input the schema of the array the cell belongs to.
    * Also the number of ids indicates how many id values precede the cell actual
@@ -86,7 +87,8 @@ class Cell {
   Cell(const ArraySchema* array_schema,
        const std::vector<int>& attribute_ids,
        int id_num = 0,
-       bool random_access = false);
+       bool random_access = false,
+       bool without_coords = false);
   /** Empty destructor. */
   ~Cell();
 
@@ -174,6 +176,8 @@ class Cell {
   std::map<int, int> val_num_;
   /** True if the size of the cell is variable. */
   bool var_size_;
+  /** TODO */
+  bool without_coords_;
 
   // PRIVATE METHODS
   /** Appends an attribute value to the input CSV line. */

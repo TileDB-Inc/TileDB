@@ -39,6 +39,7 @@
 #include <string>
 #include <vector>
 
+#include "array_schema.h"
 #include "global.h"
 #include "utils.h"
 #include "tile_const_cell_iterator.h"
@@ -84,15 +85,22 @@ class Tile {
    * it is a coordinate tile. The val_num indicates how many values are 
    * stored per cell. It is equal to VAR_SIZE if the cell size is variable. 
    */
-  Tile(int64_t tile_id, int dim_num, 
-       const std::type_info* cell_type, int val_num,
-       CompressionType compression = CMP_NONE); 
+  Tile(
+      int64_t tile_id, 
+      const ArraySchema* array_schema,
+      int attribute_id,
+//       int dim_num, 
+//       const std::type_info* cell_type, int val_num,
+//       CompressionType compression = CMP_NONE,
+       bool dense_coords = false); 
   /** Destructor. */
   ~Tile(); 
 
   // ACCESSORS
+  /** Returns the array schema. */
+  const ArraySchema* array_schema() const;
   /** Returns a cell iterator pointing to the first cell of the tile. */
-  TileConstCellIterator begin();
+  TileConstCellIterator* begin();
   /** 
    * Returns the bounding coordinates, i.e., the first and 
    * last coordinates that were appended to the tile. It applies only to
@@ -115,10 +123,12 @@ class Tile {
    * the function does nothing.
    */
   void decompress();
+  /** True if this is a tile of dense coordinates. */
+  bool dense_coords() const;
   /** Returns the number of dimensions. It returns 0 for attribute tiles. */
   int dim_num() const;
   /** Returns a cell iterator signifying the end of the tile. */
-  static TileConstCellIterator end();
+  static TileConstCellIterator* end();
   /** Returns true if the cell at position pos represents a deletion. */
   bool is_del(int64_t pos);
   /** Returns true if the cell at position pos is NULL. */
@@ -150,6 +160,8 @@ class Tile {
       void* payload, 
       size_t payload_size, 
       bool payload_malloced = false); 
+  /** Sets the tile id */
+  void set_tile_id(int64_t tile_id);
 
   // MISC
   /** 
@@ -167,12 +179,14 @@ class Tile {
   void print();
 
   /** Returns a cell iterator pointing to the first cell of the tile. */
-  TileConstReverseCellIterator rbegin();
+  TileConstReverseCellIterator* rbegin();
   /** Returns a cell iterator signifying the end of the tile. */
-  static TileConstReverseCellIterator rend();
+  static TileConstReverseCellIterator* rend();
 
  private:
   // PRIVATE ATTRIBUTES
+  /** The array schema. */
+  const ArraySchema* array_schema_;
   /** The number of cells in the tile. */
   int64_t cell_num_;
   /** The cell size. For variable-sized cells, it is equal to VAR_SIZE. */
@@ -183,6 +197,8 @@ class Tile {
   CompressionType compression_;
   /** True if the current payload is compressed. */
   bool compressed_;
+  /** True if the tile corresponds to dense coordinates. */
+  bool dense_coords_;
   /** The number of dimensions. It is equal to 0 for attribute tiles. */
   int dim_num_; 
   /** 

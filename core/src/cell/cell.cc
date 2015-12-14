@@ -45,10 +45,12 @@
 Cell::Cell(
     const ArraySchema* array_schema, 
     int id_num,
-    bool random_access) 
+    bool random_access,
+    bool without_coords) 
     : array_schema_(array_schema), 
       random_access_(random_access),
-      id_num_(id_num) {
+      id_num_(id_num),
+      without_coords_(without_coords) {
   assert(id_num >= 0);
 
   // Set attribute_ids_
@@ -69,6 +71,8 @@ Cell::Cell(
       random_access_(random_access) {
   assert(id_num >= 0);
 
+  without_coords_ = false;
+
   // Set attribute_ids_
   attribute_ids_= array_schema_->attribute_ids();
 
@@ -84,10 +88,12 @@ Cell::Cell(
     const ArraySchema* array_schema,
     const std::vector<int>& attribute_ids,
     int id_num,
-    bool random_access) 
+    bool random_access,
+    bool without_coords) 
     : array_schema_(array_schema), 
       id_num_(id_num),
-      random_access_(random_access) { 
+      random_access_(random_access),
+      without_coords_(without_coords) { 
   assert(id_num >= 0);
 
   // For easy reference
@@ -324,6 +330,7 @@ void Cell::set_cell(const void* cell) {
 
   // Initialization
   if(cell_ != NULL && random_access_) {
+    assert(!without_coords_);
     init_val_num();
     init_attribute_offsets();
   }
@@ -409,6 +416,7 @@ void Cell::append_attribute(
     expand_buffer(cell, cell_capacity);
     cell_capacity *= 2; 
   }
+
   memcpy(static_cast<char*>(cell) + cell_size, 
          v, sizeof(T) * val_num);
   cell_size += sizeof(T) * val_num;
@@ -441,8 +449,9 @@ void Cell::init_attribute_offsets() {
 
   // Attributes
   CellConstAttrIterator attr_it = begin();
-  for(; !attr_it.end(); ++attr_it) 
+  for(; !attr_it.end(); ++attr_it) { 
     attribute_offsets_[attr_it.attribute_id()] = attr_it.offset();
+  }
 }
 
 void Cell::init_val_num() {

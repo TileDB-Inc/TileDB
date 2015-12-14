@@ -57,12 +57,52 @@
   #define PRINT_ERROR(x) do { } while(0) 
 #endif
 
+std::string parent_folder(const std::string& name) {
+  // Start from the end of the string
+  int pos = name.size() - 1;
+
+  // Skip the potential last '/'
+  if(name[pos] == '/')
+    --pos;
+
+  // Scan backwords until you find the next '/'
+  while(pos > 0 && name[pos] != '/')
+    --pos;
+
+  return name.substr(0, pos); 
+}
+
+std::string get_file_format(const std::string& file) {
+  std::string format;
+
+  if(ends_with(file, ".bin"))
+    format = "bin";
+  else if(ends_with(file, ".sorted.bin"))
+    format = "sorted.bin";
+  else if(ends_with(file, ".bin.gz"))
+    format = "bin.gz";
+  else if(ends_with(file, ".sorted.bin.gz"))
+    format = "sorted.bin.gz";
+  else if(ends_with(file, ".csv"))
+    format = "csv";
+  else if(ends_with(file, ".sorted.bin"))
+    format = "sorted.csv";
+  else if(ends_with(file, ".csv.gz"))
+    format = "csv.gz";
+  else if(ends_with(file, ".sorted.csv.gz"))
+    format = "sorted.csv.gz";
+  else
+    format = "";
+
+  return format;
+}
+
 bool name_is_valid(const char* name) {
   if(name == NULL || name[0] == '\0')
     return false;
 
   for(const char* p=name; *p != '\0'; ++p)
-    if(!isalnum(*p) && *p != '_' && *p != '-' && *p != '.')
+    if(!isalnum(*p) && *p != '_' && *p != '-' && *p != '.' && *p != '/')
       return false;
 
   return true;
@@ -385,13 +425,6 @@ void expand_buffer(void*& buffer, size_t size) {
 
   // TODO: check if buffer is NULL 
   // TODO: change return type to int
-
-/* TODO remove
-  void* temp = malloc(2*size);
-  memcpy(temp, buffer, size);
-  free(buffer);
-  buffer = temp;
-*/
 }
 
 bool directory_is_empty(const std::string& dirname)  {

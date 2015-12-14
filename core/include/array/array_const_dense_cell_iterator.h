@@ -139,7 +139,7 @@ class ArrayConstDenseCellIterator {
    */
   void* cell_;
   /** Stores one cell iterator per fragment per attribute. */
-  TileConstCellIterator** cell_its_;
+  TileConstCellIterator*** cell_its_;
   /** The size of the current buffer that holds a cell. */
   size_t cell_buffer_size_;
   /** The size of the current cell. */
@@ -188,7 +188,7 @@ class ArrayConstDenseCellIterator {
    */
   bool return_del_;
   /** Stores one tile iterator per fragment per attribute. */
-  FragmentConstTileIterator** tile_its_;
+  FragmentConstTileIterator*** tile_its_;
   /** True if the iterator iterates over variable-sized cells. */
   bool var_size_;
   /** 

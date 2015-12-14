@@ -120,7 +120,8 @@ FragmentConstReverseTileIterator::operator++() {
   else
     end_ = true;
 
-  return *this;
+  FragmentConstReverseTileIterator it = *this;
+  return it;
 }
 
 FragmentConstReverseTileIterator 

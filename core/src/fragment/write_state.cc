@@ -65,17 +65,22 @@ WriteState::WriteState(
     const std::string* fragment_name,
     const std::string* temp_dirname,
     const std::string* dirname,
-    BookKeeping* book_keeping)
+    BookKeeping* book_keeping,
+    bool dense)
     : array_schema_(array_schema),
       fragment_name_(fragment_name),
       temp_dirname_(temp_dirname),
       dirname_(dirname),
-      book_keeping_(book_keeping) {
+      book_keeping_(book_keeping),
+      dense_(dense) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
 
   segment_size_ = SEGMENT_SIZE;
   write_state_max_size_ = WRITE_STATE_MAX_SIZE;
+
+  current_coords_ = NULL;
+  zero_cell_ = NULL;
 
   tile_id_ = INVALID_TILE_ID;
   cell_num_ = 0;
@@ -134,6 +139,12 @@ WriteState::~WriteState() {
     if(array_schema_->compression(i) == CMP_GZIP) 
       free(gz_segments_[i]);
   }
+
+  // Clear current_coords_ and zero_cell_
+  if(current_coords_ != NULL) 
+    free(current_coords_);
+  if(zero_cell_ != NULL) 
+    free(zero_cell_);
 
   // Clear MBR and bounding coordinates
   if(mbr_ != NULL)
@@ -219,6 +230,7 @@ int WriteState::cell_write(const void* input_cell) {
           sort_run_with_id();
           flush_sorted_run_with_id();
         }
+
         // Create cell
         CellWithId new_cell;
         new_cell.cell_ = copy_cell(input_cell, cell_size);
@@ -313,10 +325,12 @@ int WriteState::cell_write(const void* input_cell) {
 }
 
 template<class T>
-int WriteState::cell_write_sorted(const void* cell) {
+int WriteState::cell_write_sorted(
+    const void* cell, 
+    bool without_coords) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
-  size_t coords_size = array_schema_->cell_size(attribute_num);
+  size_t coords_size = array_schema_->coords_size();
   bool regular = array_schema_->has_regular_tiles();
   const char* c_cell = static_cast<const char*>(cell);
   int64_t tile_id;
@@ -324,40 +338,143 @@ int WriteState::cell_write_sorted(const void* cell) {
   int64_t capacity; // only for irregular tiles
   std::vector<size_t> attr_sizes;
 
-  // Initialization
-  if(regular)
-    tile_id = array_schema_->tile_id(static_cast<const T*>(cell));
-  else
-    capacity = array_schema_->capacity();
-
-  // Flush tile info to book-keeping if a new tile must be created
-  if((regular && tile_id != tile_id_) ||
-     (!regular && (cell_num_ == capacity))) 
-    flush_tile_info_to_book_keeping();
-
-  // Append coordinates to segment
-  append_coordinates(c_cell);
-
-  cell_offset = coords_size;
-  if(array_schema_->cell_size() == VAR_SIZE)
-    cell_offset += sizeof(size_t);
-
-  // Append attribute values to the respective segments
-  for(int i=0; i<attribute_num; ++i) {
-    append_attribute_value(c_cell + cell_offset, i, attr_size);
-    cell_offset += attr_size;
-    attr_sizes.push_back(attr_size);
+  if(dense_ && (current_coords_ == NULL)) { 
+    current_coords_ = malloc(coords_size);
+    array_schema_->get_domain_start<T>(
+        static_cast<T*>(current_coords_),  
+        NULL); 
+    in_domain_ = true;
+    array_schema_->init_zero_cell(zero_cell_, false);
   }
-  attr_sizes.push_back(coords_size);
+  const char* z_cell = static_cast<const char*>(zero_cell_);
 
-  // Update the info of the currently populated tile
-  update_tile_info<T>(static_cast<const T*>(cell), tile_id, attr_sizes);
+  if(dense_) { // DENSE
+    if(!without_coords) { // WITH COORDS
+      // Store zero cells
+      while(in_domain_ && !array_schema_->coords_match(
+                 static_cast<const T*>(current_coords_),
+                 static_cast<const T*>(cell))) {
+        tile_id = array_schema_->tile_id(static_cast<const T*>(current_coords_));
+
+        if(tile_id != tile_id_)
+          flush_tile_info_to_book_keeping();
+
+        cell_offset = 0;
+        if(array_schema_->cell_size() == VAR_SIZE)
+          cell_offset += sizeof(size_t);
+
+        // Append attribute values to the respective segments
+        attr_sizes.clear();
+        for(int i=0; i<attribute_num; ++i) {
+          append_attribute_value(z_cell + cell_offset, i, attr_size);
+          cell_offset += attr_size;
+          attr_sizes.push_back(attr_size);
+        }
+        attr_sizes.push_back(coords_size);
+
+        update_tile_info<T>( 
+            static_cast<const T*>(current_coords_), 
+            tile_id, attr_sizes);
+
+        in_domain_ = array_schema_->advance_coords<T>(
+            static_cast<T*>(current_coords_), 
+            NULL);
+      }
+      // Store the input cell
+      // Initialization
+      tile_id = array_schema_->tile_id(static_cast<const T*>(cell));
+
+      // Flush tile info to book-keeping if a new tile must be created
+      if(tile_id != tile_id_)
+        flush_tile_info_to_book_keeping();
+
+      // Skip coordinates
+      cell_offset = coords_size;
+
+      if(array_schema_->cell_size() == VAR_SIZE)
+        cell_offset += sizeof(size_t);
+
+      // Append attribute values to the respective segments
+      attr_sizes.clear();
+      for(int i=0; i<attribute_num; ++i) {
+        append_attribute_value(c_cell + cell_offset, i, attr_size);
+        cell_offset += attr_size;
+        attr_sizes.push_back(attr_size);
+      }
+      attr_sizes.push_back(coords_size);
+
+      // Update the info of the currently populated tile
+      update_tile_info<T>(static_cast<const T*>(cell), tile_id, attr_sizes);
+
+      in_domain_ = array_schema_->advance_coords<T>(
+          static_cast<T*>(current_coords_), 
+          NULL);
+    } else { // WITHOUT COORDS
+      tile_id = array_schema_->tile_id(static_cast<const T*>(current_coords_));
+      if(tile_id != tile_id_)
+        flush_tile_info_to_book_keeping();
+
+      cell_offset = 0;
+      if(array_schema_->cell_size() == VAR_SIZE)
+        cell_offset += sizeof(size_t);
+
+      // Append attribute values to the respective segments
+      attr_sizes.clear();
+      for(int i=0; i<attribute_num; ++i) {
+        append_attribute_value(c_cell + cell_offset, i, attr_size);
+        cell_offset += attr_size;
+        attr_sizes.push_back(attr_size);
+      }
+      attr_sizes.push_back(coords_size);
+
+      update_tile_info<T>( 
+          static_cast<const T*>(current_coords_), 
+          tile_id, attr_sizes);
+
+      in_domain_ = array_schema_->advance_coords<T>(
+          static_cast<T*>(current_coords_), 
+          NULL);
+
+      if(!in_domain_)
+        flush_tile_info_to_book_keeping();
+    }
+  } else { // SPARSE
+    // Initialization
+    if(regular)
+      tile_id = array_schema_->tile_id(static_cast<const T*>(cell));
+    else
+      capacity = array_schema_->capacity();
+
+    // Flush tile info to book-keeping if a new tile must be created
+    if((regular && tile_id != tile_id_) ||
+       (!regular && (cell_num_ == capacity))) 
+      flush_tile_info_to_book_keeping();
+
+    // Append coordinates to segment
+    append_coordinates(c_cell);
+
+    cell_offset = coords_size;
+    if(array_schema_->cell_size() == VAR_SIZE)
+      cell_offset += sizeof(size_t);
+
+    // Append attribute values to the respective segments
+    for(int i=0; i<attribute_num; ++i) {
+      append_attribute_value(c_cell + cell_offset, i, attr_size);
+      cell_offset += attr_size;
+      attr_sizes.push_back(attr_size);
+    }
+    attr_sizes.push_back(coords_size);
+
+    // Update the info of the currently populated tile
+    update_tile_info<T>(static_cast<const T*>(cell), tile_id, attr_sizes);
+  }
 
   return 0;
 }
 
 template<class T>
-int WriteState::cell_write_sorted_with_id(const void* cell) {
+int WriteState::cell_write_sorted_with_id(
+    const void* cell) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   size_t coords_size = array_schema_->cell_size(attribute_num);
@@ -368,33 +485,104 @@ int WriteState::cell_write_sorted_with_id(const void* cell) {
   size_t cell_offset, attr_size;
   std::vector<size_t> attr_sizes;
 
-  // Flush tile info to book-keeping if a new tile must be created
-  if((regular && id != tile_id_) ||
-     (!regular && (cell_num_ == array_schema_->capacity()))) 
-    flush_tile_info_to_book_keeping();
-
-  // Append coordinates to segment
-  append_coordinates(c_cell);
-  cell_offset = coords_size;
-  if(array_schema_->cell_size() == VAR_SIZE)
-    cell_offset += sizeof(size_t);
-
-  // Append attribute values to the respective segments
-  for(int i=0; i<attribute_num; ++i) {
-    append_attribute_value(c_cell + cell_offset, i, attr_size);
-    cell_offset += attr_size;
-    attr_sizes.push_back(attr_size);
+  if(dense_ && (current_coords_ == NULL)) { 
+    current_coords_ = malloc(coords_size);
+    array_schema_->get_domain_start<T>(
+        static_cast<T*>(current_coords_),  
+        NULL); 
+    in_domain_ = true;
+    array_schema_->init_zero_cell(zero_cell_, false);
   }
-  attr_sizes.push_back(coords_size);
+  const char* z_cell = static_cast<const char*>(zero_cell_);
 
-  // Update the info of the currently populated tile
-  update_tile_info<T>(static_cast<const T*>(coords), id, attr_sizes);
+  if(dense_) { // DENSE
+    // Store zero cells
+    while(!array_schema_->coords_match(
+               static_cast<const T*>(current_coords_),
+               static_cast<const T*>(coords))) {
+      int64_t tile_id = array_schema_->tile_id(static_cast<const T*>(current_coords_));
+      if(tile_id != tile_id_)
+        flush_tile_info_to_book_keeping();
+
+      cell_offset = 0;
+      if(array_schema_->cell_size() == VAR_SIZE)
+        cell_offset += sizeof(size_t);
+
+      // Append attribute values to the respective segments
+      attr_sizes.clear();
+      for(int i=0; i<attribute_num; ++i) {
+        append_attribute_value(z_cell + cell_offset, i, attr_size);
+        cell_offset += attr_size;
+        attr_sizes.push_back(attr_size);
+      }
+      attr_sizes.push_back(coords_size);
+
+      update_tile_info<T>( 
+          static_cast<const T*>(current_coords_), 
+          tile_id, attr_sizes);
+
+      in_domain_ = array_schema_->advance_coords<T>(
+          static_cast<T*>(current_coords_), 
+          NULL);
+    }
+    // Store the input cell
+
+    // Flush tile info to book-keeping if a new tile must be created
+    if(id != tile_id_)
+      flush_tile_info_to_book_keeping();
+
+    // Skip coordinates
+    cell_offset = coords_size;
+
+    if(array_schema_->cell_size() == VAR_SIZE)
+      cell_offset += sizeof(size_t);
+
+    // Append attribute values to the respective segments
+    attr_sizes.clear();
+    for(int i=0; i<attribute_num; ++i) {
+      append_attribute_value(c_cell + cell_offset, i, attr_size);
+      cell_offset += attr_size;
+      attr_sizes.push_back(attr_size);
+    }
+    attr_sizes.push_back(coords_size);
+
+    // Update the info of the currently populated tile
+    update_tile_info<T>(static_cast<const T*>(coords), id, attr_sizes);
+
+    in_domain_ = array_schema_->advance_coords<T>(
+        static_cast<T*>(current_coords_), 
+        NULL);
+
+  } else { // SPARSE
+    // Flush tile info to book-keeping if a new tile must be created
+    if((regular && id != tile_id_) ||
+       (!regular && (cell_num_ == array_schema_->capacity()))) 
+      flush_tile_info_to_book_keeping();
+
+    // Append coordinates to segment
+    append_coordinates(c_cell);
+    cell_offset = coords_size;
+    if(array_schema_->cell_size() == VAR_SIZE)
+      cell_offset += sizeof(size_t);
+
+    // Append attribute values to the respective segments
+    for(int i=0; i<attribute_num; ++i) {
+      append_attribute_value(c_cell + cell_offset, i, attr_size);
+      cell_offset += attr_size;
+      attr_sizes.push_back(attr_size);
+    }
+    attr_sizes.push_back(coords_size);
+
+    // Update the info of the currently populated tile
+    update_tile_info<T>(static_cast<const T*>(coords), id, attr_sizes);
+  }
 
   return 0;
 }
 
 template<class T>
-int WriteState::cell_write_sorted_with_2_ids(const void* cell) {
+int WriteState::cell_write_sorted_with_2_ids(
+    const void* cell) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   size_t coords_size = array_schema_->cell_size(attribute_num);
@@ -404,26 +592,96 @@ int WriteState::cell_write_sorted_with_2_ids(const void* cell) {
   size_t cell_offset, attr_size;
   std::vector<size_t> attr_sizes;
 
-  // Flush tile info to book-keeping if a new tile must be created
-  if(id != tile_id_)
-    flush_tile_info_to_book_keeping();
-
-  // Append coordinates to segment
-  append_coordinates(c_cell);
-  cell_offset = coords_size;
-  if(array_schema_->cell_size() == VAR_SIZE)
-    cell_offset += sizeof(size_t);
-
-  // Append attribute values to the respective segments
-  for(int i=0; i<attribute_num; ++i) {
-    append_attribute_value(c_cell + cell_offset, i, attr_size);
-    cell_offset += attr_size;
-    attr_sizes.push_back(attr_size);
+  if(dense_ && (current_coords_ == NULL)) { 
+    current_coords_ = malloc(coords_size);
+    array_schema_->get_domain_start<T>(
+        static_cast<T*>(current_coords_),  
+        NULL); 
+    in_domain_ = true;
+    array_schema_->init_zero_cell(zero_cell_, false);
   }
-  attr_sizes.push_back(coords_size);
+  const char* z_cell = static_cast<const char*>(zero_cell_);
 
-  // Update the info of the currently populated tile
-  update_tile_info<T>(static_cast<const T*>(coords), id, attr_sizes);
+  if(dense_) { // DENSE
+    // Store zero cells
+    while(!array_schema_->coords_match(
+               static_cast<const T*>(current_coords_),
+               static_cast<const T*>(coords))) {
+      int64_t tile_id = array_schema_->tile_id(static_cast<const T*>(current_coords_));
+      if(tile_id != tile_id_)
+        flush_tile_info_to_book_keeping();
+
+      cell_offset = 0;
+      if(array_schema_->cell_size() == VAR_SIZE)
+        cell_offset += sizeof(size_t);
+
+      // Append attribute values to the respective segments
+      attr_sizes.clear();
+      for(int i=0; i<attribute_num; ++i) {
+        append_attribute_value(z_cell + cell_offset, i, attr_size);
+        cell_offset += attr_size;
+        attr_sizes.push_back(attr_size);
+      }
+      attr_sizes.push_back(coords_size);
+
+      update_tile_info<T>( 
+          static_cast<const T*>(current_coords_), 
+          tile_id, attr_sizes);
+
+      in_domain_ = array_schema_->advance_coords<T>(
+          static_cast<T*>(current_coords_), 
+          NULL);
+    }
+    // Store the input cell
+
+    // Flush tile info to book-keeping if a new tile must be created
+    if(id != tile_id_)
+      flush_tile_info_to_book_keeping();
+
+    // Skip coordinates
+    cell_offset = coords_size;
+
+    if(array_schema_->cell_size() == VAR_SIZE)
+      cell_offset += sizeof(size_t);
+
+    // Append attribute values to the respective segments
+    attr_sizes.clear();
+    for(int i=0; i<attribute_num; ++i) {
+      append_attribute_value(c_cell + cell_offset, i, attr_size);
+      cell_offset += attr_size;
+      attr_sizes.push_back(attr_size);
+    }
+    attr_sizes.push_back(coords_size);
+
+    // Update the info of the currently populated tile
+    update_tile_info<T>(static_cast<const T*>(coords), id, attr_sizes);
+
+    in_domain_ = array_schema_->advance_coords<T>(
+        static_cast<T*>(current_coords_), 
+        NULL);
+
+  } else { // SPARSE
+    // Flush tile info to book-keeping if a new tile must be created
+    if(id != tile_id_)
+      flush_tile_info_to_book_keeping();
+
+    // Append coordinates to segment
+    append_coordinates(c_cell);
+    cell_offset = coords_size;
+    if(array_schema_->cell_size() == VAR_SIZE)
+      cell_offset += sizeof(size_t);
+
+    // Append attribute values to the respective segments
+    for(int i=0; i<attribute_num; ++i) {
+      append_attribute_value(c_cell + cell_offset, i, attr_size);
+      cell_offset += attr_size;
+      attr_sizes.push_back(attr_size);
+    }
+    attr_sizes.push_back(coords_size);
+
+    // Update the info of the currently populated tile
+    update_tile_info<T>(static_cast<const T*>(coords), id, attr_sizes);
+  }
 
   return 0;
 }
@@ -882,6 +1140,39 @@ void WriteState::make_tiles(const std::string& dirname) {
   while(bin_file_collection >> cell)
     // TODO: this should return a value
     cell_write_sorted<T>(cell.cell());
+
+  // Store zero cells
+  size_t cell_offset, attr_size;
+  std::vector<size_t> attr_sizes;
+  int attribute_num = array_schema_->attribute_num();
+  size_t coords_size = array_schema_->coords_size();
+  const char* z_cell = static_cast<const char*>(zero_cell_);
+  while(in_domain_) {
+    int64_t tile_id = array_schema_->tile_id(static_cast<const T*>(current_coords_));
+    if(tile_id != tile_id_)
+      flush_tile_info_to_book_keeping();
+
+    cell_offset = 0;
+      if(array_schema_->cell_size() == VAR_SIZE)
+        cell_offset += sizeof(size_t);
+
+    // Append attribute values to the respective segments
+    attr_sizes.clear();
+    for(int i=0; i<attribute_num; ++i) {
+      append_attribute_value(z_cell + cell_offset, i, attr_size);
+      cell_offset += attr_size;
+      attr_sizes.push_back(attr_size);
+    }
+    attr_sizes.push_back(coords_size);
+
+    update_tile_info<T>( 
+        static_cast<const T*>(current_coords_), 
+        tile_id, attr_sizes);
+
+    in_domain_ = array_schema_->advance_coords<T>(
+        static_cast<T*>(current_coords_), 
+         NULL);
+  }
 }
 
 // This function applies either to regular tiles with row- or column-major
@@ -908,6 +1199,40 @@ void WriteState::make_tiles_with_id(const std::string& dirname) {
       cell_write_sorted<T>(static_cast<const char*>(cell.cell()) +
                            sizeof(int64_t));
   }
+
+  // Store zero cells
+  size_t cell_offset, attr_size;
+  std::vector<size_t> attr_sizes;
+  int attribute_num = array_schema_->attribute_num();
+  size_t coords_size = array_schema_->coords_size();
+  const char* z_cell = static_cast<const char*>(zero_cell_);
+  while(in_domain_) {
+    int64_t tile_id = array_schema_->tile_id(static_cast<const T*>(current_coords_));
+    if(tile_id != tile_id_)
+      flush_tile_info_to_book_keeping();
+
+    cell_offset = 0;
+      if(array_schema_->cell_size() == VAR_SIZE)
+        cell_offset += sizeof(size_t);
+
+    // Append attribute values to the respective segments
+    attr_sizes.clear();
+    for(int i=0; i<attribute_num; ++i) {
+      append_attribute_value(z_cell + cell_offset, i, attr_size);
+      cell_offset += attr_size;
+      attr_sizes.push_back(attr_size);
+    }
+    attr_sizes.push_back(coords_size);
+
+    update_tile_info<T>( 
+        static_cast<const T*>(current_coords_), 
+        tile_id, attr_sizes);
+
+    in_domain_ = array_schema_->advance_coords<T>(
+        static_cast<T*>(current_coords_), 
+         NULL);
+  }
+
 }
 
 // NOTE: This function applies only to regular tiles
@@ -927,6 +1252,40 @@ void WriteState::make_tiles_with_2_ids(const std::string& dirname) {
   // TODO: this should return a value
   while(bin_file_collection >> cell)
     cell_write_sorted<T>(cell.cell());
+
+  // Store zero cells
+  size_t cell_offset, attr_size;
+  std::vector<size_t> attr_sizes;
+  int attribute_num = array_schema_->attribute_num();
+  size_t coords_size = array_schema_->coords_size();
+  const char* z_cell = static_cast<const char*>(zero_cell_);
+
+  while(in_domain_) {
+    int64_t tile_id = array_schema_->tile_id(static_cast<const T*>(current_coords_));
+    if(tile_id != tile_id_)
+      flush_tile_info_to_book_keeping();
+
+    cell_offset = 0;
+      if(array_schema_->cell_size() == VAR_SIZE)
+        cell_offset += sizeof(size_t);
+
+    // Append attribute values to the respective segments
+    attr_sizes.clear();
+    for(int i=0; i<attribute_num; ++i) {
+      append_attribute_value(z_cell + cell_offset, i, attr_size);
+      cell_offset += attr_size;
+      attr_sizes.push_back(attr_size);
+    }
+    attr_sizes.push_back(coords_size);
+
+    update_tile_info<T>( 
+        static_cast<const T*>(current_coords_), 
+        tile_id, attr_sizes);
+
+    in_domain_ = array_schema_->advance_coords<T>(
+        static_cast<T*>(current_coords_), 
+         NULL);
+  }
 }
 
 void WriteState::sort_run() {

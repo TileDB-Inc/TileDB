@@ -1,0 +1,348 @@
+body {
+    width: 100%;
+    margin-left: 0;
+    position: fixed;
+    text-rendering: optimizeLegibility;
+}
+
+div#header {
+    width: 100%;
+    height: 4em;
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin-bottom: 0px;
+    background-color: #FFFFFF;
+    font-family: 'Roboto', sans-serif;
+    box-shadow: 0px 1px 2px #999999;
+}
+
+div#invisible-header {
+    height: 2em;
+    visibility: hidden;
+}
+
+div#invisible-header-2 {
+    height: 1em;
+    visibility: hidden;
+}
+
+div#header img {
+    float: left;
+    margin: 0.7em 0 0 0.5em;
+}
+
+div#main-wrapper {
+    background-color: #FFFFFF;
+    font-family: 'Raleway', sans-serif;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: none;
+    height: 100vh;
+}
+
+div#title {
+    padding-top: 2.5em;
+    height: 16em;
+    background-color: #EEEFEF;
+    font-family: 'Raleway', sans-serif;
+    text-align: center;
+}
+
+div#title h1 {
+    padding-top: 1.5em;
+    padding-bottom: 1.5em;
+    font-weight: normal;
+}
+
+div#content-wrapper {
+    background-color: #FFFFFF;
+    font-family: 'Raleway', sans-serif;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: none;
+    height: 100vh;
+}
+
+div.content-column-2 {
+    padding-left: 14%;
+    width: 30%;
+    float: left;
+}
+
+div.content-column-2 h2 {
+    color: darkgreen;
+    text-align: center;
+    font-family: 'Raleway', sans-serif;
+}
+
+div.content-column-1 {
+    padding-left: 35%;
+    width: 30%;
+}
+
+div.content-column-1 h2 {
+    color: darkgreen;
+    text-align: center;
+    font-family: 'Raleway', sans-serif;
+}
+
+
+div#footer-wrapper {
+    height: 8em;
+    background-color: black;
+    font-family: 'Roboto', sans-serif;
+    color: #4CC417;
+    font-size: 0.8em;
+}
+
+.no-wrap {
+    clear: both;
+}
+
+p.vspace {
+    margin-top: 2em;
+}
+
+div#navbar {
+    width: 100%;
+    margin-left: 7%;
+}
+
+div#navbar ul {
+    list-style-type: none;
+}
+
+div#navbar ul li a {
+    font-family: 'Raleway', sans-serif;
+    font-size: 1.1em;
+    text-decoration: none;
+    display: block;
+    padding: .75em;
+}
+
+div#navbar ul li {
+    display: inline;
+    float: left;
+    padding-right: .5em;
+}
+
+a.changeForeground {
+    color: silver;
+}
+
+a.changeForeground:hover {
+    color: black;
+}
+
+button {
+    background: #41f505;
+    background-image: -webkit-linear-gradient(top, #41f505, #0c380c);
+    background-image: -moz-linear-gradient(top, #41f505, #0c380c);
+    background-image: -ms-linear-gradient(top, #41f505, #0c380c);
+    background-image: -o-linear-gradient(top, #41f505, #0c380c);
+    background-image: linear-gradient(to bottom, #41f505, #0c380c);
+    -webkit-border-radius: 8;
+    -moz-border-radius: 8;  
+    border-radius: 8px;
+    font-family: 'Raleway', sans-serif;
+    color: #ffffff;
+    font-size: 20px;
+    padding: 10px 20px 10px 20px;
+    text-decoration: none;
+    border: none;
+}
+
+button:hover {
+    background: #08fa10;
+    background-image: -webkit-linear-gradient(top, #08fa10, #1e751e);
+    background-image: -moz-linear-gradient(top, #08fa10, #1e751e);
+    background-image: -ms-linear-gradient(top, #08fa10, #1e751e);
+    background-image: -o-linear-gradient(top, #08fa10, #1e751e);
+    background-image: linear-gradient(to bottom, #08fa10, #1e751e);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+div#tutorial-navbar {
+    margin-top: 2em;
+    font-family: 'Open Sans', sans-serif;
+    float: left;
+    width 25%;
+    height: 80vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: none;
+}
+
+div#tutorial-navbar > ul {
+    list-style-type: none;
+    padding-right: 1.5em;
+}
+
+div#tutorial-navbar > ul > li > div > ul {
+    padding-left: 1em;
+    list-style-type: none;
+}
+
+div#tutorial-navbar > ul > li > a,
+div#tutorial-navbar > ul > li > label {
+    padding-top: 1.2em;
+    display: block;
+    text-decoration: none;
+    color: black;
+    font-weight: bold;
+}
+
+div#tutorial-navbar > ul > li > a:hover,
+div#tutorial-navbar > ul > li > label:hover {
+    color: darkgreen;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+div#tutorial-navbar > ul > li > input {
+    display: none;
+    visibility: hidden;
+}
+
+div#tutorial-navbar > ul > li > input:checked + label {
+    color: darkgreen;
+}
+
+div#tutorial-navbar > ul > li > input:checked + label + div {
+    max-height: 500px;
+}
+
+div#tutorial-navbar > ul > li > div > ul > li > a {
+    padding-top: 0.3em;
+    display: block;
+    text-decoration: none;
+    color: black;
+    font-size: 0.9em;
+}
+
+div#tutorial-navbar > ul > li > div {
+    max-height: 0;
+    overflow: hidden;
+    transition: all .2s linear;
+}
+
+div#tutorial-navbar > ul > li > div > ul > li > a:hover {
+    color: darkgreen;
+    font-weight: bold;
+}
+
+div#tutorial-frame-wrapper {
+    padding-top: 2em;
+    margin-right: 2em;
+    font-family: 'Open Sans', sans-serif;
+    float: right;
+    width: 75%;
+    height: 100vh;
+}
+
+div.tutorial-main {
+    font-family: 'Open Sans', sans-serif;
+    height: 90vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: none;
+}
+
+div.tutorial-main > h1 {
+    padding-top: 0.5em;
+    padding-bottom: 0.5em;
+}
+
+div.tutorial-main > h2, h3 {
+    color: darkgreen;
+}
+
+div.tutorial-main img {
+    display: block;    
+    margin: 0 auto;
+    width: 65%;
+    height: auto;
+}
+
+.bold-text {
+    color: forestgreen;
+    font-weight: bold;
+}
+
+.MathJax {
+    font-size: 0.47em !important;
+}
+
+.code-font {
+    font-family: monospace;
+    font-size: 1.1em;
+}
+
+p.api-declaration {
+    padding: 0.5em 0.5em 0.5em 0.5em;
+    background-color: #E9F2E8;
+    font-family: monospace;
+    -webkit-border-radius: 4;
+    -moz-border-radius: 4;  
+    border-radius: 4px;
+    max-height: 300px;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: none;
+}
+
+p.api-explanation {
+    padding-bottom: 1.5em;
+}
+
+.tutorial-main p a:link {
+    text-decoration: none;
+    color: darkgreen;
+    font-weight: bold;
+}
+
+.tutorial-main p a:visited {
+    color: darkgreen;
+}
+
+.tutorial-main p a:hover {
+    color: forestgreen;
+}
+
+p.code-block {
+    border-style: solid;
+    border-width: 1px;
+    border-color: #D0E5E0;
+    max-height: 300px;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    -ms-overflow-style: none;
+    padding: 0.5em 0.5em 0.5em 0.5em;
+    background-color: #E7F5F0;
+    font-family: monospace;
+    -webkit-border-radius: 4;
+    -moz-border-radius: 4;  
+    border-radius: 4px;
+    margin-bottom: 3em;
+}
+
+.code-comment {
+    font-family: monospace;
+    color: darkgrey;
+}
+
+p.margin {
+    margin-top: 2.5em;
+}
+
+.console {
+    padding: 0.5em 0.5em 0.5em 0.5em;
+    margin-bottom: 2.5em;
+    background-color: black;
+    color: lawngreen;
+    font-family: monospace;
+}

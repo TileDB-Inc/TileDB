@@ -22,7 +22,7 @@ endif
 
 # --- Debug/Release/Verbose mode handler --- #
 BUILD =
-VERBOSE=
+VERBOSE =
 
 ifeq ($(BUILD),)
   BUILD = release
@@ -33,7 +33,7 @@ ifeq ($(BUILD),release)
 endif
 
 ifeq ($(BUILD),debug)
-  CFLAGS += -DDEBUG -O0 -g -Wall
+  CFLAGS += -DDEBUG -O0 -g
 endif
 
 ifeq ($(VERBOSE),)
@@ -44,8 +44,8 @@ ifeq ($(VERBOSE),0)
   CFLAGS += -DNVERBOSE
 endif
 
-ifeq ($(VERBOSE),1)
-  CFLAGS += -DVERBOSE
+ifneq ($(VERBOSE),0)
+  CFLAGS += -DVERBOSE=$(VERBOSE)
 endif
 
 # --- Compilers --- #
@@ -101,6 +101,22 @@ ifeq ($(BUILD),release)
   TILEDB_CMD_BIN_DIR = $(TILEDB_CMD_BIN_REL_DIR)
 endif
 
+# Directories for the examples
+EXAMPLES_INCLUDE_DIR = examples/include
+EXAMPLES_SRC_DIR = examples/src
+EXAMPLES_OBJ_DEB_DIR = examples/obj/debug
+EXAMPLES_BIN_DEB_DIR = examples/bin/debug
+ifeq ($(BUILD),debug)
+  EXAMPLES_OBJ_DIR = $(EXAMPLES_OBJ_DEB_DIR)
+  EXAMPLES_BIN_DIR = $(EXAMPLES_BIN_DEB_DIR)
+endif
+EXAMPLES_OBJ_REL_DIR = excamples/obj/release
+EXAMPLES_BIN_REL_DIR = examples/bin/release
+ifeq ($(BUILD),release)
+  EXAMPLES_OBJ_DIR = $(EXAMPLES_OBJ_REL_DIR)
+  EXAMPLES_BIN_DIR = $(EXAMPLES_BIN_REL_DIR)
+endif
+
 # Directories of Google Test
 GTEST_DIR = gtest
 GTEST_INCLUDE_DIR = gtest/include
@@ -143,6 +159,7 @@ OPENMP_LIB_DIR = .
 # --- Paths --- #
 CORE_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
 TILEDB_CMD_INCLUDE_PATHS = -I$(TILEDB_CMD_INCLUDE_DIR)
+EXAMPLES_INCLUDE_PATHS = -I$(EXAMPLES_INCLUDE_DIR)
 LA_INCLUDE_PATHS = -I$(LA_INCLUDE_DIR)
 MPI_INCLUDE_PATHS = -I$(MPI_INCLUDE_DIR)
 MPI_LIB_PATHS = -L$(MPI_LIB_DIR)
@@ -153,6 +170,7 @@ OPENMP_LIB_PATHS = -L$(OPENMP_LIB_DIR)
 MPI_LIB = -lmpi
 OPENMP_LIB = -fopenmp 
 ZLIB = -lz
+OPENSSLLIB = -lcrypto
 
 # --- File Extensions --- #
 ifeq ($(OS), Darwin)
@@ -175,6 +193,13 @@ TILEDB_CMD_OBJ := $(patsubst $(TILEDB_CMD_SRC_DIR)/%.cc,\
                              $(TILEDB_CMD_OBJ_DIR)/%.o, $(TILEDB_CMD_SRC))
 TILEDB_CMD_BIN := $(patsubst $(TILEDB_CMD_SRC_DIR)/%.cc,\
                              $(TILEDB_CMD_BIN_DIR)/%, $(TILEDB_CMD_SRC)) 
+# Files of the examples
+EXAMPLES_INCLUDE := $(wildcard $(EXAMPLES_INCLUDE_DIR)/*.h)
+EXAMPLES_SRC := $(wildcard $(EXAMPLES_SRC_DIR)/*.cc)
+EXAMPLES_OBJ := $(patsubst $(EXAMPLES_SRC_DIR)/%.cc,\
+                             $(EXAMPLES_OBJ_DIR)/%.o, $(EXAMPLES_SRC))
+EXAMPLES_BIN := $(patsubst $(EXAMPLES_SRC_DIR)/%.cc,\
+                             $(EXAMPLES_BIN_DIR)/%, $(EXAMPLES_SRC)) 
 
 # Files of the Google Test
 GTEST_INCLUDE := $(wildcard $(GTEST_INCLUDE_DIR)/*.h)
@@ -204,16 +229,18 @@ MANPAGES_HTML := $(patsubst $(MANPAGES_MAN_DIR)/%,\
 # General Targets #
 ###################
 
-.PHONY: core example gtest test doc clean_core clean_gtest \
-        clean_test clean_tiledb_cmd clean_la clean
+.PHONY: core examples gtest test doc clean_core clean_gtest \
+        clean_test clean_tiledb_cmd clean_examples clean_la clean
 
-all: core libtiledb tiledb_cmd gtest test
+all: core libtiledb tiledb_cmd examples gtest test
 
 core: $(CORE_OBJ) 
 
 libtiledb: core $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT)
 
 tiledb_cmd: core $(TILEDB_CMD_OBJ) $(TILEDB_CMD_BIN)
+
+examples: core $(EXAMPLES_OBJ) $(EXAMPLES_BIN)
 
 la: core $(LA_OBJ) $(LA_BIN_DIR)/example_transpose
 
@@ -228,7 +255,7 @@ gtest: $(GTEST_OBJ_DIR)/gtest-all.o
 test: $(TEST_OBJ)
 
 clean: clean_core clean_libtiledb clean_tiledb_cmd clean_gtest \
-       clean_test clean_doc 
+       clean_test clean_doc clean_examples 
 
 ########
 # Core #
@@ -242,7 +269,7 @@ $(CORE_OBJ_DIR)/%.o: $(CORE_SRC_DIR)/%.cc
 	@mkdir -p $(dir $@) 
 	@echo "Compiling $<"
 	@$(CXX) $(CORE_INCLUDE_PATHS) $(OPENMP_INCLUDE_PATHS) \
-                $(MPI_INCLUDE_PATHS) -c $< $(ZLIB) -o $@ 
+                $(MPI_INCLUDE_PATHS) -c $< $(ZLIB) $(OPENSSLLIB) -o $@ 
 	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
@@ -278,7 +305,7 @@ endif
 $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT): $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
 	@echo "Creating libtiledb.$(SHLIB_EXT)"
-	@$(CXX) $(SHLIB_FLAGS) $(SONAME) $(ZLIB) -o $@ $^
+	@$(CXX) $(SHLIB_FLAGS) $(SONAME) $(ZLIB) $(OPENSSLLIB) -o $@ $^
 
 # --- Cleaning --- #
 
@@ -298,7 +325,7 @@ $(TILEDB_CMD_OBJ_DIR)/%.o: $(TILEDB_CMD_SRC_DIR)/%.cc
 	@mkdir -p $(TILEDB_CMD_OBJ_DIR)
 	@echo "Compiling $<"
 	@$(CXX) $(TILEDB_CMD_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< \
-         $(ZLIB) -o $@
+         $(ZLIB) $(OPENSSLLIB) -o $@
 	@$(CXX) -MM $(TILEDB_CMD_INCLUDE_PATHS) \
                     $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
@@ -311,7 +338,7 @@ $(TILEDB_CMD_BIN_DIR)/%: $(TILEDB_CMD_OBJ_DIR)/%.o $(CORE_OBJ)
 	@mkdir -p $(TILEDB_CMD_BIN_DIR)
 	@echo "Creating $@"
 	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
-                -o $@ $^ $(ZLIB)
+                -o $@ $^ $(ZLIB) $(OPENSSLLIB)
 
 # --- Cleaning --- #
 
@@ -319,7 +346,42 @@ clean_tiledb_cmd:
 	@echo 'Cleaning tiledb_cmd'
 	@rm -f $(TILEDB_CMD_OBJ_DEB_DIR)/* $(TILEDB_CMD_OBJ_REL_DIR)/* \
                $(TILEDB_CMD_BIN_DEB_DIR)/* $(TILEDB_CMD_BIN_REL_DIR)/*
- 
+
+##############
+#  Examples  #
+##############
+
+# --- Compilation and dependency genration --- #
+
+-include $(EXAMPLES_OBJ:.o=.d)
+
+$(EXAMPLES_OBJ_DIR)/%.o: $(EXAMPLES_SRC_DIR)/%.cc
+	@mkdir -p $(EXAMPLES_OBJ_DIR)
+	@echo "Compiling $<"
+	@$(CXX) $(EXAMPLES_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< \
+         $(ZLIB) $(OPENSSLLIB) -o $@
+	@$(CXX) -MM $(EXAMPLES_INCLUDE_PATHS) \
+                    $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
+	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
+	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
+	@rm -f $(@:.o=.d.tmp)
+
+# --- Linking --- #
+
+$(EXAMPLES_BIN_DIR)/%: $(EXAMPLES_OBJ_DIR)/%.o $(CORE_OBJ)
+	@mkdir -p $(EXAMPLES_BIN_DIR)
+	@echo "Creating $@"
+	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
+                -o $@ $^ $(ZLIB) $(OPENSSLLIB)
+
+# --- Cleaning --- #
+
+clean_examples:
+	@echo 'Cleaning examples'
+	@rm -f $(EXAMPLES_OBJ_DEB_DIR)/* $(EXAMPLES_OBJ_REL_DIR)/* \
+               $(EXAMPLES_BIN_DEB_DIR)/* $(EXAMPLES_BIN_REL_DIR)/*
+
+
 ######
 # LA #
 ######

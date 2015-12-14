@@ -55,18 +55,24 @@ class BINFileCollection {
  public: 
   // CONSTRUCTORS & DESTRUCTORS
   /** Constructor. */
-  explicit BINFileCollection(CompressionType compression);
+  BINFileCollection(CompressionType compression);
   /** Destructor. */
   ~BINFileCollection();
 
   // BASIC METHODS
   /** Clear the file collection data from main memory. */
   int close(); 
-  /** Prepares the file collection. */
+  /** Prepares the file collection.  TODO: remove */
   int open( 
       const ArraySchema* array_schema,
       int id_num,
       const std::string& path,
+      bool sorted);
+
+  int open( 
+      const ArraySchema* array_schema,
+      int id_num,
+      const std::vector<std::string>& files,
       bool sorted);
 
   // OPERATORS

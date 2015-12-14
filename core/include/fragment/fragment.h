@@ -54,7 +54,8 @@ class Fragment {
   /** Constructor. */
   Fragment(const std::string& dirname, 
            const ArraySchema* array_schema, 
-           const std::string& fragment_name);
+           const std::string& fragment_name,
+           bool dense = false);
   /** Destructor. */
   ~Fragment();
 
@@ -62,7 +63,7 @@ class Fragment {
   /** Returns the array schema. */ 
   const ArraySchema* array_schema() const; 
   /** Begin tile iterator. */
-  FragmentConstTileIterator begin(int attribute_id) const;
+  FragmentConstTileIterator* begin(int attribute_id) const;
   /** Returns the bounding coordinates of the tile at the input position. */
   Tile::BoundingCoordinatesPair bounding_coordinates(int64_t pos) const;
   /** 
@@ -77,7 +78,7 @@ class Fragment {
   /** Returns the MBR of the tile at the input position. */
   Tile::MBR mbr(int64_t pos) const;
   /** Begin reverse tile iterator. */
-  FragmentConstReverseTileIterator rbegin(int attribute_id) const;
+  FragmentConstReverseTileIterator* rbegin(int attribute_id) const;
   /** 
    * Returns a tile for a given attribute and tile position, when traversing
    * tiles in reverse order. This is important so that the segments are
@@ -120,7 +121,7 @@ class Fragment {
    * The input cell carries no ids.
    */
   template<class T>
-  int cell_write_sorted(const void* cell); 
+  int cell_write_sorted(const void* cell, bool without_coords = false); 
   /** 
    * Writes a cell into the fragment, respecting the global cell order. 
    * The input cell carries a single (tile) id.
@@ -140,6 +141,8 @@ class Fragment {
   const ArraySchema* array_schema_;
   /** The book-keeping structures. */
   BookKeeping* book_keeping_;
+  /** Indicates whether the fragment is dense or not. */
+  bool dense_;
   /** The fragment directory name. */
   std::string dirname_; 
   /** The fragment name. */

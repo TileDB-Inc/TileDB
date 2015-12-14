@@ -40,12 +40,20 @@
 #include <string>
 #include <vector>
 
-/** Name of file created inside each group. */
-#define SM_GROUP_FILENAME ".tiledb_group"
-/** Maximum number of arrays that can be simultaneously open. */
-#define SM_OPEN_ARRAYS_MAX 100
-/** Name of file created inside each workspace. */
-#define SM_WORKSPACE_FILENAME ".tiledb_workspace"
+
+/* ********************************* */
+/*             CONSTANTS            */
+/* ********************************* */
+
+#define SM_GROUP_FILENAME                              ".tiledb_group"
+#define SM_OPEN_ARRAYS_MAX                                         100
+#define SM_OPEN_METADATA_MAX                                       100
+#define SM_WORKSPACE_FILENAME                      ".tiledb_workspace"
+#define TILEDB_SM_OK                                                 0
+#define TILEDB_SM_ERR                                               -1
+#define TILEDB_SM_READ_BUFFER_OVERFLOW                              -2
+#define TILEDB_SM_METADATA_SCHEMA_FILENAME           "metadata_schema"
+#define TILEDB_SM_MASTER_CATALOG_FILENAME     ".tiledb_master_catalog"
 
 /** 
  * The storage manager administrates the various TileDB objects, e.g., it 
@@ -138,13 +146,10 @@ class StorageManager {
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
-  /** 
-   * **Mnemonic:** [*array_dirname*] --> array descriptor \n
-   * where *array_dirname* = *group_real* + '/' + *array_name*,
-   * noting that *group_real*, and hence also *array_dirname*, is in 
-   * canonicalized absolute form.
-   */
+  /**  **Mnemonic:** [*array real directory*] --> array descriptor */
   typedef std::map<std::string, int> OpenArrays;
+  /**  **Mnemonic:** [*metadata real directory*] --> metadata descriptor */
+  typedef std::map<std::string, int> OpenMetadata;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -176,6 +181,11 @@ class StorageManager {
   /** Destructor. */
   ~StorageManager();
 
+
+  /* ********************************* */
+  /*          METADATA FUNCTIONS       */
+  /* ********************************* */
+
   /* ********************************* */
   /*           ARRAY FUNCTIONS         */
   /* ********************************* */
@@ -197,6 +207,8 @@ class StorageManager {
       const std::string& array_name,
       bool real_paths = false);
 
+
+
   /** 
    * Closes an array. 
    *
@@ -204,6 +216,7 @@ class StorageManager {
    * @return void
    */
   int array_close(int ad);
+
 
   /** 
    * Forces an array to close. This is typically done during abnormal execution.
@@ -233,6 +246,12 @@ class StorageManager {
       const std::string& array_name,
       bool real_paths = false);
 
+  // TODO
+  int metadata_consolidate(const std::string& metadata);
+
+  // TODO
+  int array_consolidate(const std::string& array);
+
   /** 
    * It deletes an array. If the array is open, it will be properly closed
    * before being deleted. 
@@ -249,6 +268,19 @@ class StorageManager {
       const std::string& group,
       const std::string& array_name,
       bool real_paths = false);
+
+  /** 
+   * Checks if the array exists. 
+   *
+   * @param array_name The name of the array.
+   * @param real_path *True* if both the array name is in
+   * canonicalized absolute from, and *false* otherwise. 
+   * @return *True* if the array exists, *false* otherwise.
+   */
+  bool array_exists(
+      const std::string& array_name,
+      bool real_path = false) const;
+
 
   /** 
    * Checks if the array has been defined (i.e., its schema has been stored). 
@@ -299,6 +331,12 @@ class StorageManager {
       const char* mode,
       bool real_paths = false);
 
+  // TODO
+  int array_open(const std::string& array_name, const char* mode);
+ 
+  // TODO
+  int metadata_open(const std::string& metadata_name, const char* mode);
+
   /** 
    * Returns the schema of an array. 
    *
@@ -315,6 +353,23 @@ class StorageManager {
       const std::string& workspace,
       const std::string& group,
       const std::string& array_name, 
+      ArraySchema*& array_schema,
+      bool real_paths = false) const;
+
+  // TODO
+  int array_schema_get(
+      const std::string& array_name, 
+      ArraySchema*& array_schema,
+      bool real_paths = false) const;
+
+  // TODO
+  int metadata_schema_get(
+      int md,
+      const ArraySchema*& array_schema) const;
+
+  // TODO
+  int metadata_schema_get(
+      const std::string& metadata_name, 
       ArraySchema*& array_schema,
       bool real_paths = false) const;
 
@@ -351,6 +406,9 @@ class StorageManager {
       const ArraySchema* array_schema,
       bool real_paths = false);
 
+  // TODO
+  int array_schema_store(const ArraySchema* array_schema);
+
   /**
    * Creates a group directory (and all non-existent directories in the
    * group path) inside an *existing* workspace. It also creates a special 
@@ -369,6 +427,64 @@ class StorageManager {
       const std::string& group,
       bool real_paths = false) const;
 
+
+  int workspace_clear(const std::string& workspace);
+
+  int workspace_list(const std::string& workspace);
+
+  int workspace_create(
+      const std::string& workspace,
+      const std::string& master_catalog);
+
+  int workspace_delete(
+      const std::string& workspace, 
+      const std::string& master_catalog);
+
+  int workspace_move(
+      const std::string& old_workspace,
+      const std::string& new_workspace,
+      const std::string& master_catalog);
+
+  bool is_fragment(const std::string& filename, bool real_path = false);
+
+  int group_clear(const std::string& group);
+
+  int group_list(const std::string& group);
+
+  int array_list(const std::string& array);
+
+  int fragment_list(const std::string& fragment);
+
+  int metadata_list(const std::string& metadata);
+
+  int group_create(const std::string& group) const;
+
+  int group_delete(const std::string& group, bool real_path = false);
+
+  int master_catalog_delete(const std::string& master_catalog, bool real_path = false);
+
+  int master_catalog_clear(const std::string& master_catalog, bool real_path = false);
+
+  bool is_array_schema(const std::string& file, bool real_path = false) const; 
+
+  bool is_metadata_schema(const std::string& file, bool real_path = false) const; 
+
+  int array_schema_print(const std::string& file, bool real_path = false) const;
+
+  int metadata_schema_print(const std::string& file, bool real_path = false) const;
+
+  // TODO
+  int group_move(
+      const std::string& old_group,
+      const std::string& new_group,
+      bool real_paths = false);
+
+  // TODO
+  int master_catalog_move(
+      const std::string& old_master_catalog,
+      const std::string& new_master_catalog,
+      bool real_paths = false);
+
   /**
    * Checks if the input group exists.
    *
@@ -382,6 +498,107 @@ class StorageManager {
       const std::string& workspace,
       const std::string& group,
       bool real_paths = false) const; 
+
+  /**
+   * Checks if the input group exists.
+   *
+   * @param group The group path to be checked.
+   * @param real_path *True* if the group path is in 
+   * canonicalized absolute form, and *false* otherwise.
+   * @return *True* if the group exists and *false* otherwise.
+   */  
+  bool group_exists(
+      const std::string& group,
+      bool real_path = false) const; 
+
+  /** 
+   * Clears the metadata, but leaves its folder and metadata schema. 
+   *
+   * @param metadata_name The name of the metadata.
+   * @param real_path *True* if the metadata name is in
+   * canonicalized absolute from, and *false* otherwise. 
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int metadata_clear(
+      const std::string& metadata_name,
+      bool real_path = false);
+
+  // TODO
+  int array_clear(
+      const std::string& array_name,
+      bool real_path = false);
+
+  // TODO
+  int metadata_move(
+      const std::string& old_metadata,
+      const std::string& new_metadata,
+      bool real_paths = false);
+
+  // TODO
+  int array_move(
+      const std::string& old_array,
+      const std::string& new_array,
+      bool real_paths = false);
+
+  /** 
+   * Closes the input metadata. 
+   *
+   * @param md The metadata descriptor.
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int metadata_close(int md);
+
+  /** 
+   * Forces the input metadata to close. This is typically done 
+   * during abnormal execution.
+   * If the metadata was opened in "write", the created fragment
+   * is deleted (since it was not properly loaded).
+   *
+   * @param md The descriptor of the metadata to be closed.
+   * @return **0** for success and <b>-1</b> for error.
+   * @see metadata_open, metadata_close
+   */
+  int metadata_close_forced(int md);
+
+  /** 
+   * Checks if the metadata exists. 
+   *
+   * @param metadata_name The name of the metadata.
+   * @param real_path *True* if both the metadata name is in
+   * canonicalized absolute from, and *false* otherwise. 
+   * @return *True* if the metadata exists, *false* otherwise.
+   */
+  bool metadata_exists(
+      const std::string& metadata_name,
+      bool real_paths = false) const;
+
+  /** 
+   * It deletes the input metadata. 
+   *
+   * @param metadata_name The name of the metadata.
+   * @param real_path *True* if both the metadata name is in
+   * canonicalized absolute from, and *false* otherwise. 
+   * @return **0** for success and <b>-1</b> for error.
+   */
+  int metadata_delete(
+      const std::string& metadata_name,
+      bool real_path = false);
+
+  // TODO
+  int array_delete(
+      const std::string& array_name,
+      bool real_path = false);
+
+  /** 
+   * Stores the metadata schema, expressed essentially as an array schema.
+   *
+   * @param array_schema The array schema corresponding to the metadata schema
+   * to be stored.
+   */
+  int metadata_schema_store(
+      const ArraySchema* array_schema, 
+      bool master_catalog = false);
+
 
   /**
    * Retrieves the real (i.e., absolute canonicalized) workspace and group 
@@ -413,7 +630,7 @@ class StorageManager {
    * form, and *false* otherwise.
    * @return **0** for success and <b>-1</b> for error.
    */
-  int workspace_create(
+  int workspace_create_2(
       const std::string& workspace, 
       bool real_path = false) const;
 
@@ -428,6 +645,18 @@ class StorageManager {
   bool workspace_exists(
       const std::string& workspace, 
       bool real_path = false) const;
+
+  bool master_catalog_exists(
+      const std::string& master_catalog,
+      bool real_path = false) const;
+
+  int master_catalog_create(
+      const std::string& master_catalog,
+      bool real_path = false);
+
+  int list(const std::string& item);
+
+  int master_catalog_list(const std::string& master_catalog);
 
   /* ********************************* */
   /*           CELL FUNCTIONS          */
@@ -445,6 +674,12 @@ class StorageManager {
   template<class T>
   int cell_write(int ad, const void* cell) const; 
 
+  template<class T>
+  int metadata_write(int md, const void* cell) const; 
+
+  template<class T>
+  int metadata_write_sorted(int md, const void* cell) const; 
+
   /**  
    * Writes a cell to an array. This function is used only when it is guaranteed
    * that the cells are written respecting the global cell order (it has a large
@@ -457,7 +692,7 @@ class StorageManager {
    * @return **0** for success and <b>-1</b> for error.
    */
   template<class T>
-  int cell_write_sorted(int ad, const void* cell) const; 
+  int cell_write_sorted(int ad, const void* cell, bool without_coords = false) const; 
 
   /**  
    * Writes a set of cells to an array. 
@@ -514,6 +749,17 @@ class StorageManager {
    */
   template<class T>
   int cells_write_sorted(int ad, const void* cells, size_t cells_size) const; 
+
+  // TODO
+  template<class T>
+  int array_read_dense(
+      int ad,
+      const T* range,
+      const std::vector<int>& attribute_ids,
+      void* buffer,
+      int* buffer_size);
+
+
 
   /* ********************************* */
   /*           CELL ITERATORS          */
@@ -596,6 +842,16 @@ class StorageManager {
   ArrayConstCellIterator<T>* begin(
       int ad, const T* range,
       const std::vector<int>& attribute_ids) const;
+
+  // TODO
+  template<class T>
+  ArrayConstCellIterator<T>* metadata_begin(
+      int md, const T* range,
+      const std::vector<int>& attribute_ids) const;
+
+  // TODO
+  template<class T>
+  ArrayConstCellIterator<T>* metadata_begin(int md) const;
 
   /** 
    * Returns a (forward) constant dense cell iterator for an array associated 
@@ -813,8 +1069,12 @@ class StorageManager {
   bool created_successfully_;
   /** *True* if the object was finalized, or *false* otherwise. */
   bool finalized_;
+  /** Stores all the open metadata. */
+  Array** metadata_; 
   /** Keeps track of the descriptors of the currently open arrays. */
   OpenArrays open_arrays_; 
+  /** Keeps track of the descriptors of the currently open metadata. */
+  OpenMetadata open_metadata_; 
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

@@ -39,6 +39,14 @@
 #include "special_values.h"
 #include "storage_manager.h"
 
+/* ********************************* */
+/*             CONSTANTS             */
+/* ********************************* */
+
+#define TILEDB_LD_OK        0
+#define TILEDB_LD_ERR      -1
+
+
 /** 
  * The Loader creates TileDB data from raw data, interfacing with the 
  * StorageManager. 
@@ -169,6 +177,20 @@ class Loader {
       bool update = false,
       bool real_paths = false) const;
 
+  /** TODO */
+  int metadata_load(
+      const std::string& metadata_name, 
+      const std::vector<std::string>& files,
+      const std::string& format,
+      char delimiter = CSV_DELIMITER) const;
+
+  /** TODO */
+  int array_load(
+      const std::string& array_name, 
+      const std::vector<std::string>& files,
+      const std::string& format,
+      char delimiter = CSV_DELIMITER) const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -205,6 +227,8 @@ class Loader {
       bool sorted,
       CompressionType compression) const;
 
+
+
   /** 
    * Loads a CSV file collection into an array. 
    *
@@ -228,6 +252,47 @@ class Loader {
       bool sorted,
       CompressionType compression,
       char delimiter = CSV_DELIMITER) const;
+
+  // TODO
+  template<class T>
+  int metadata_load_csv(
+      int md, 
+      const std::vector<std::string>& files,
+      bool sorted,
+      CompressionType compression,
+      char delimiter = CSV_DELIMITER) const;
+
+  // TODO
+  template<class T>
+  int array_load_csv(
+      int ad, 
+      const std::vector<std::string>& files,
+      bool sorted,
+      CompressionType compression,
+      char delimiter = CSV_DELIMITER) const;
+
+  // TODO
+  template<class T>
+  int array_load_bin(
+      int ad, 
+      const std::vector<std::string>& files,
+      bool sorted,
+      CompressionType compression) const;
+
+  // TODO
+  template<class T>
+  int array_load_csv_dense(
+      int ad, 
+      const std::string& file,
+      CompressionType compression,
+      char delimiter = CSV_DELIMITER) const;
+
+  // TODO
+  template<class T>
+  int array_load_bin_dense(
+      int ad, 
+      const std::string& file,
+      CompressionType compression) const;
 };
 
 #endif

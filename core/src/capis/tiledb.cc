@@ -28,7 +28,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines the C APIs of TileDB.
+ * This file defines the C API of TileDB.
  */
 
 #include "data_generator.h"
@@ -37,9 +37,16 @@
 #include "storage_manager.h"
 #include "tiledb.h"
 #include <cassert>
+#include <openssl/md5.h>
 
-// Macro for printing error message in VERBOSE mode
-#ifdef VERBOSE
+
+/* ****************************** */
+/*             MACROS             */
+/* ****************************** */
+
+#if VERBOSE == 1
+#  define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n" 
+#elif VERBOSE == 2
 #  define PRINT_ERROR(x) std::cerr << "[TileDB::capis] Error: " << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 
@@ -55,10 +62,35 @@ typedef struct TileDB_CTX{
   StorageManager* storage_manager_;
 } TileDB_CTX;
 
+int tiledb_ctx_init(TileDB_CTX** tiledb_ctx) {
+  // Initialize context
+  *tiledb_ctx = (TileDB_CTX*) malloc(sizeof(struct TileDB_CTX));
+  if(*tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot initialize TileDB context; Failed to allocate memory "
+                "space for the context");
+    return TILEDB_ERR;
+  }
+
+  // Create modules
+  (*tiledb_ctx)->storage_manager_ = new StorageManager();
+  if(!(*tiledb_ctx)->storage_manager_->created_successfully())
+    return TILEDB_ERR;
+  (*tiledb_ctx)->loader_ = new Loader((*tiledb_ctx)->storage_manager_);
+  if(!(*tiledb_ctx)->loader_->created_successfully())
+    return TILEDB_ERR;
+  (*tiledb_ctx)->query_processor_ =
+      new QueryProcessor((*tiledb_ctx)->storage_manager_);
+  if(!(*tiledb_ctx)->query_processor_->created_successfully())
+    return TILEDB_ERR;
+
+  // Success
+  return TILEDB_OK;
+}
+
 int tiledb_ctx_finalize(TileDB_CTX* tiledb_ctx) {
   // Trivial case
   if(tiledb_ctx == NULL)
-    return 0;
+    return TILEDB_OK;
 
   // Sanity checks
   assert(tiledb_ctx->storage_manager_ &&
@@ -67,65 +99,1061 @@ int tiledb_ctx_finalize(TileDB_CTX* tiledb_ctx) {
 
   // Clear the TileDB modules
   if(tiledb_ctx->storage_manager_->finalize())
-    return -1;
+    return TILEDB_ERR;
   delete tiledb_ctx->storage_manager_;
 
   if(tiledb_ctx->loader_->finalize())
-    return -1;
+    return TILEDB_ERR;
   delete tiledb_ctx->loader_;
 
   if(tiledb_ctx->query_processor_->finalize())
-    return -1;
+    return TILEDB_ERR;
   delete tiledb_ctx->query_processor_;
 
   // Delete the TileDB context
   free(tiledb_ctx);
 
   // Success
-  return 0;
+  return TILEDB_OK;
 }
 
-int tiledb_ctx_init(TileDB_CTX*& tiledb_ctx) {
-  // Initialize context
-  tiledb_ctx = (TileDB_CTX*) malloc(sizeof(struct TileDB_CTX));
+/* ****************************** */
+/*           WORKSPACE            */
+/* ****************************** */
+
+int tiledb_workspace_create(
+    const TileDB_CTX* tiledb_ctx,
+    const char* workspace,
+    const char* master_catalog) {
+  // Sanity check
   if(tiledb_ctx == NULL) {
-    PRINT_ERROR("Cannot initialize TileDB context - Failed to allocate memory "
-                "space for the context");
+    PRINT_ERROR("Cannot create workspace; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute the query
+  if(tiledb_ctx->storage_manager_->workspace_create(
+             workspace,
+             master_catalog) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_workspace_move(
+    const TileDB_CTX* tiledb_ctx,
+    const char* old_workspace,
+    const char* new_workspace,
+    const char* master_catalog) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot move workspace; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  if(tiledb_ctx->storage_manager_->workspace_move(
+             old_workspace,
+             new_workspace,
+             master_catalog) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_workspace_clear(
+    const TileDB_CTX* tiledb_ctx,
+    const char* workspace) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot clear workspace; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute the query
+  if(tiledb_ctx->storage_manager_->workspace_clear(workspace) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_workspace_delete(
+    const TileDB_CTX* tiledb_ctx,
+    const char* workspace,
+    const char* master_catalog) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot delete workspace; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute the query
+  if(tiledb_ctx->storage_manager_->workspace_delete(
+             workspace,
+             master_catalog) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_master_catalog_move(
+    const TileDB_CTX* tiledb_ctx,
+    const char* old_master_catalog,
+    const char* new_master_catalog) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot move master catalog; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  if(tiledb_ctx->storage_manager_->master_catalog_move(
+             old_master_catalog,
+             new_master_catalog) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_master_catalog_delete(
+    const TileDB_CTX* tiledb_ctx,
+    const char* master_catalog) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot delete master catalog; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute the query
+  if(tiledb_ctx->storage_manager_->master_catalog_delete(
+             master_catalog) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+/* ****************************** */
+/*             GROUP              */
+/* ****************************** */
+
+int tiledb_group_create(
+    const TileDB_CTX* tiledb_ctx,
+    const char* group) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot create group; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute the query
+  if(tiledb_ctx->storage_manager_->group_create(group) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_group_move(
+    const TileDB_CTX* tiledb_ctx,
+    const char* old_group,
+    const char* new_group) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot move group; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute the query
+  if(tiledb_ctx->storage_manager_->group_move(
+             old_group,
+             new_group) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_group_clear(
+    const TileDB_CTX* tiledb_ctx,
+    const char* group) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot clear group; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute the query
+  if(tiledb_ctx->storage_manager_->group_clear(group) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_group_delete(
+    const TileDB_CTX* tiledb_ctx,
+    const char* group) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot delete group; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute the query
+  if(tiledb_ctx->storage_manager_->group_delete(group) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+/* ****************************** */
+/*            ARRAY               */
+/* ****************************** */
+
+int tiledb_array_create(
+    const TileDB_CTX* tiledb_ctx,
+    const TileDB_ArraySchema* array_schema_struct) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot create array; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Create an array schema from the input string
+  ArraySchema* array_schema = new ArraySchema();
+  if(array_schema->init(array_schema_struct)) {
+    delete array_schema;
+    return TILEDB_ERR;
+  }
+
+  // Store array schema
+  int rc = tiledb_ctx->storage_manager_->array_schema_store(array_schema);
+
+  // Clean up
+  delete array_schema;
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_array_move(
+    const TileDB_CTX* tiledb_ctx,
+    const char* old_array,
+    const char* new_array) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot move array; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute query
+  if(tiledb_ctx->storage_manager_->array_move(
+             old_array,
+             new_array) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_array_clear(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot clear array; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute query
+  if(tiledb_ctx->storage_manager_->array_clear(array) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_array_delete(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot delete array; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute query
+  if(tiledb_ctx->storage_manager_->array_delete(array) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_array_open(
+    TileDB_CTX* tiledb_ctx,
+    const char* array,
+    int mode) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot open array; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Get mode
+  const char* mode_str;
+  if(mode == TILEDB_ARRAY_MODE_READ) {
+    mode_str = "r";
+  } else if(mode == TILEDB_ARRAY_MODE_WRITE) {
+    mode_str = "w";
+  } else {
+    PRINT_ERROR("Cannot open array; Invalid array mode");
+    return TILEDB_ERR;
+  }
+
+  // Open array
+  int ad = tiledb_ctx->storage_manager_->array_open(array, mode_str);
+
+  // Return array descriptor
+  if(ad < 0) 
+    return TILEDB_ERR;
+  else
+    return ad;
+}
+
+int tiledb_array_close(TileDB_CTX* tiledb_ctx, int ad) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot close array; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Close array
+  if(tiledb_ctx->storage_manager_->array_close(ad) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_array_write_dense(
+    const TileDB_CTX* tiledb_ctx,
+    int ad,
+    const void* cell) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot write to array; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Get the coordinates type
+  const ArraySchema* array_schema;
+  if(tiledb_ctx->storage_manager_->array_schema_get(ad, array_schema) 
+     == TILEDB_SM_ERR)
+    return TILEDB_ERR;
+  const std::type_info* coords_type = array_schema->coords_type();
+
+  // Perform the query
+  int rc;
+  if(coords_type == &typeid(int)) {
+    rc = tiledb_ctx->storage_manager_->cell_write_sorted<int>(
+             ad, cell, true);
+  } else if(coords_type == &typeid(int64_t)) {
+    rc = tiledb_ctx->storage_manager_->cell_write_sorted<int64_t>(
+             ad, cell, true);
+  } else {
+    PRINT_ERROR("Cannot write to array; invalid coordinates type");
+    return TILEDB_ERR;
+  }
+
+  if(rc == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+   return TILEDB_ERR;
+}
+
+int tiledb_array_read_dense(
+    const TileDB_CTX* tiledb_ctx,
+    int ad,
+    const double* range,
+    const char** attributes,
+    int attribute_num,
+    void* buffer,
+    int* buffer_size) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot read from array; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Get attribute ids and the coordinates type
+  const ArraySchema* array_schema;
+  if(tiledb_ctx->storage_manager_->array_schema_get(ad, array_schema) 
+     == TILEDB_SM_ERR)
+    return TILEDB_ERR;
+  const std::type_info* coords_type = array_schema->coords_type();
+  int dim_num = array_schema->dim_num();
+  std::vector<int> attribute_ids;
+  int id;
+  if(attributes == NULL) {
+    for(int i=0; i<array_schema->attribute_num(); ++i) 
+      attribute_ids.push_back(i);
+  } else {
+    for(int i=0; i<attribute_num; ++i) {
+      id = array_schema->attribute_id(attributes[i]);
+      if(id == -1) {
+        PRINT_ERROR("Cannot read from array; invalid attribute name");
+        return TILEDB_ERR;
+      }
+      attribute_ids.push_back(id);
+    }
+  }
+
+  // Perform the query
+  int rc;
+  if(coords_type == &typeid(int)) { 
+    int* new_range = new int[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    tiledb_ctx->storage_manager_->array_read_dense<int>(
+        ad, new_range, attribute_ids, buffer, buffer_size);
+    delete [] new_range;
+  } else if(coords_type == &typeid(int64_t)) { 
+    int64_t* new_range = new int64_t[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    tiledb_ctx->storage_manager_->array_read_dense<int64_t>(
+        ad, new_range, attribute_ids, buffer, buffer_size);
+    delete [] new_range;
+  } else {
+    PRINT_ERROR("Cannot read from array; invalid coordinates type");
+    return TILEDB_ERR;
+  }
+
+  // Return 
+  if(rc == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else if(rc == TILEDB_SM_READ_BUFFER_OVERFLOW)
+    return TILEDB_READ_BUFFER_OVERFLOW;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_array_consolidate(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot consolidate array; Invalid TileDB context");
+     return TILEDB_ERR;
+  }
+
+  // Perform the query
+  if(tiledb_ctx->storage_manager_->array_consolidate(array) == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+/* ****************************** */
+/*            METADATA            */
+/* ****************************** */
+
+int tiledb_metadata_create(
+    const TileDB_CTX* tiledb_ctx,
+    const TileDB_MetadataSchema* metadata_schema) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot create metadata; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Create an array schema from the metadata schema
+  ArraySchema* array_schema = new ArraySchema();
+  if(array_schema->init(metadata_schema)) 
+    return TILEDB_ERR;
+
+  // Store the array schema
+  int rc = tiledb_ctx->storage_manager_->metadata_schema_store(
+        array_schema);
+
+  // Clean up
+  delete array_schema;
+
+  // Return
+  if (rc == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_metadata_move(
+    const TileDB_CTX* tiledb_ctx,
+    const char* old_metadata,
+    const char* new_metadata) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot move metadata; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute query
+  if(tiledb_ctx->storage_manager_->metadata_move(
+             old_metadata,
+             new_metadata) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_metadata_clear(
+    const TileDB_CTX* tiledb_ctx,
+    const char* metadata) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot clear metadata; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute query
+  if(tiledb_ctx->storage_manager_->metadata_clear(metadata) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+
+int tiledb_metadata_delete(
+    const TileDB_CTX* tiledb_ctx,
+    const char* metadata) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot delete metadata; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Execute query
+  if(tiledb_ctx->storage_manager_->metadata_delete(metadata) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_metadata_open(
+    TileDB_CTX* tiledb_ctx,
+    const char* metadata,
+    int mode) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot open metadata; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Get mode
+  const char* mode_str;
+  if(mode == TILEDB_METADATA_MODE_READ) {
+    mode_str = "r";
+  } else if(mode == TILEDB_METADATA_MODE_WRITE) {
+    mode_str = "w";
+  } else {
+    PRINT_ERROR("Cannot open metadata; Invalid array mode");
+    return TILEDB_ERR;
+  }
+
+  // Open metadata
+  int md = tiledb_ctx->storage_manager_->metadata_open(metadata, mode_str);
+
+  // Return metadata descriptor
+  if(md < 0) 
+    return TILEDB_ERR;
+  else
+    return md;
+}
+
+int tiledb_metadata_close(TileDB_CTX* tiledb_ctx, int md) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot close metadata; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Close metadata
+  if(tiledb_ctx->storage_manager_->metadata_close(md) == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_metadata_write(
+    const TileDB_CTX* tiledb_ctx,
+    int md,
+    const char* key,
+    const void* value) {
+  // Sanity checks
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot write to metadata; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // For easy reference
+  const ArraySchema* array_schema;
+  if(tiledb_ctx->storage_manager_->metadata_schema_get(md, array_schema))
+    return -1;
+
+  // Get coordinates from key
+  int coords[4];
+  MD5((const unsigned char*) key, 
+       strlen(key), 
+       (unsigned char*) &coords);
+
+  // Get cell size
+  const void* attributes;
+  size_t attributes_size, cell_size;
+  size_t coords_size = array_schema->coords_size();
+  bool var_size = (array_schema->cell_size() == VAR_SIZE);
+  if(!var_size) { 
+    cell_size = array_schema->cell_size();
+    attributes_size = cell_size - coords_size;
+    attributes = value;
+  } else { 
+    size_t value_size;
+    memcpy(&value_size, value, sizeof(size_t));
+    cell_size = coords_size + value_size; 
+    attributes_size = value_size - sizeof(size_t);
+    attributes = (const char*) value + sizeof(size_t);
+  }
+
+  // Create new cell
+  size_t offset = 0;
+  void* cell = malloc(cell_size);
+  memcpy(cell, coords, coords_size);
+  offset += coords_size;
+  if(var_size) {
+    memcpy((char*) cell + coords_size, &cell_size, sizeof(size_t));
+    offset += sizeof(size_t);
+  }
+  memcpy((char*) cell + offset, attributes, attributes_size);
+
+  // Write cell
+  tiledb_ctx->storage_manager_->metadata_write<int>(md, cell);
+
+  // Clean up
+  free(cell);
+
+  return TILEDB_OK;
+}
+
+int tiledb_metadata_read(
+    const TileDB_CTX* tiledb_ctx,
+    int md,
+    const char* key,
+    const char** attributes,
+    int attributes_num,
+    void* value,
+    int* value_size) {
+  // Sanity checks
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot read from metadata; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+  
+  // Get coordinates from key
+  int coords[4];
+  MD5((const unsigned char*) key, 
+       strlen(key), 
+       (unsigned char*) &coords);
+
+  // Create a range covering a single cell
+  int range[8];
+  for(int i=0; i<4; ++i) {
+    range[2*i] = coords[i];
+    range[2*i+1] = coords[i];
+  }
+
+  // For easy reference
+  const ArraySchema* array_schema;
+  if(tiledb_ctx->storage_manager_->metadata_schema_get(md, array_schema))
+    return -1;
+
+  // Get attribute ids
+  std::vector<int> attribute_ids;
+  if(attributes == NULL) {
+    attribute_ids = array_schema->attribute_ids();
+  } else {  
+    std::vector<std::string> attributes_vec;
+    for(int i=0; i<attributes_num; ++i)
+      attributes_vec.push_back(attributes[i]);
+    if(array_schema->get_attribute_ids(attributes_vec, attribute_ids))
+      return TILEDB_ERR;
+  }
+
+  // Create iterator
+  ArrayConstCellIterator<int>* cell_it = 
+      tiledb_ctx->storage_manager_->metadata_begin(md, range, attribute_ids);
+
+  // Prepare a cell
+  Cell cell(cell_it->array_schema(), cell_it->attribute_ids(), 0, true);
+
+  // Write cell into the value buffer
+  size_t cell_c_size = 0;
+  size_t cell_c_capacity = 0;
+  const void* cell_it_c = **cell_it;
+  void* cell_c = NULL;
+  if(cell_it_c == NULL) {
+    *value_size = 0;
+  } else {
+    std::vector<int> dim_ids;
+    cell.set_cell(cell_it_c);
+    cell.cell<int>(dim_ids, attribute_ids, cell_c, cell_c_capacity, cell_c_size);
+    // TODO: This can be optimized
+    if(cell_c_size > *value_size) {
+      PRINT_ERROR("Cannot read from metadata; input buffer overflow");
+      free(cell_c);
+      return TILEDB_ERR;
+    } else {
+      memcpy(value, cell_c, cell_c_size);
+      *value_size = cell_c_size;
+      free(cell_c);
+    } 
+  }
+
+  return TILEDB_OK;
+}
+
+int tiledb_metadata_consolidate(
+    const TileDB_CTX* tiledb_ctx,
+    const char* metadata) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot consolidate metadata: Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  if(tiledb_ctx->storage_manager_->metadata_consolidate(metadata) == 
+     TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR; 
+}
+
+
+
+
+// ------------------------------------------- //
+// TODO: Clean up from this point and onwards  //
+// ------------------------------------------- //
+
+
+
+
+
+
+
+
+
+int tiledb_array_exists(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array) {
+  return (tiledb_ctx->storage_manager_->array_exists(array) ? 1 : 0);
+}
+
+int tiledb_array_read_into_array(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array,
+    const char* out,
+    const double* range,
+    int range_num,
+    const char** dimensions,
+    int dimensions_num,
+    const char** attributes,
+    int attributes_num) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot compute subarray: Invalid TileDB context");
     return -1;
   }
 
-  // Create modules
-  tiledb_ctx->storage_manager_ = new StorageManager();
-  if(!tiledb_ctx->storage_manager_->created_successfully())
-    return -1;
-  tiledb_ctx->loader_ = new Loader(tiledb_ctx->storage_manager_);
-  if(!tiledb_ctx->loader_->created_successfully())
-    return -1;
-  tiledb_ctx->query_processor_ =
-      new QueryProcessor(tiledb_ctx->storage_manager_);
-  if(!tiledb_ctx->query_processor_->created_successfully())
-    return -1;
+  // Compute vectors for range and attribute names
+  std::vector<std::string> attribute_names_vec;
+  for(int i=0; i<attributes_num; ++i)
+    attribute_names_vec.push_back(attributes[i]);
+  std::vector<double> range_vec;
+  for(int i=0; i<range_num; ++i)
+    range_vec.push_back(range[i]);
 
-  // Success
-  return 0;
+  // Perform the subarray query
+  return tiledb_ctx->query_processor_->subarray(
+      array, out, 
+      range_vec, attribute_names_vec);
 }
+
+int tiledb_array_read_into_file(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array,
+    const char* file,
+    const double* range,
+    int range_num,
+    const char** dimensions,
+    int dimensions_num,
+    const char** attributes,
+    int attributes_num,
+    const char* format,
+    char delimiter,
+    int precision) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot export array: Invalid TileDB context");
+    return -1;
+  }
+
+  // Compute vectors for dim_names, attribute names and range
+  std::vector<std::string> dimensions_vec, attributes_vec;
+  std::vector<double> range_vec;
+  for(int i=0; i<dimensions_num; ++i)
+    dimensions_vec.push_back(dimensions[i]);
+  for(int i=0; i<attributes_num; ++i)
+    attributes_vec.push_back(attributes[i]);
+  for(int i=0; i<range_num; ++i)
+    range_vec.push_back(range[i]);
+
+  return tiledb_ctx->query_processor_->array_export(
+      array, file, format,
+      dimensions_vec, attributes_vec, range_vec,
+      delimiter, precision);
+}
+
+
+
+
+
+
+
+
+int tiledb_metadata_read_into_file(
+    const TileDB_CTX* tiledb_ctx,
+    const char* metadata,
+    const char* output,
+    const char* key,
+    const char** attributes,
+    int attributes_num,
+    const char* format,
+    char delimiter,
+    int precision) {
+  // Sanity checks
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot read from metadata; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+  if(output == NULL) {
+    PRINT_ERROR("Cannot read from metadata; No output given");
+    return TILEDB_ERR;
+  }
+
+  // Get output file
+  std::string file;
+  if(!strcmp(output, "/dev/stdout") || is_file(output)) {
+    file = output;
+  } else {
+    PRINT_ERROR(std::string("Invalid output '") + output + "'");
+    return TILEDB_ERR;
+  }
+
+  // Get attributes
+  std::vector<std::string> attributes_vec;
+  for(int i=0; i<attributes_num; ++i)
+    attributes_vec.push_back(attributes[i]);
+
+  // Determine format
+  std::string format_str;
+  if(format != NULL && format[0] != '\0')  // Format given
+    format_str = format;
+  else // Determine automatically
+    std::string file_format = get_file_format(file);
+
+  if(format_str == "") { // If still format not determined
+    PRINT_ERROR("Could not automatically determine input format");
+    return -1;
+  }
+
+  // Determine delimiter
+  if(delimiter == 0)
+    delimiter = CSV_DELIMITER;
+
+  // Load the data into metadata
+  if(tiledb_ctx->query_processor_->metadata_export(
+          metadata, 
+          file, 
+          key,
+          attributes_vec,
+          format_str, 
+          delimiter,
+          precision) == TILEDB_LD_OK)
+     return TILEDB_OK;
+  else
+     return TILEDB_ERR;
+}
+
+int tiledb_metadata_write_from_file(
+    const TileDB_CTX* tiledb_ctx,
+    const char* metadata,
+    const char** inputs,
+    int inputs_num,
+    const char* format,
+    char delimiter) {
+  // Sanity checks
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot write to metadata; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+  if(inputs == NULL || inputs_num == 0) {
+    PRINT_ERROR("Cannot write to metadata; No input given");
+    return TILEDB_ERR;
+  }
+
+  // Get input files
+  std::vector<std::string> files;
+  for(int i=0; i<inputs_num; ++i) {
+    if(!strcmp(inputs[i], "/dev/stdin") || is_file(inputs[i])) {
+      files.push_back(inputs[i]);
+    } else if(is_dir(inputs[i])) {
+      std::vector<std::string> dir_files = get_filenames(inputs[i]);
+      files.insert(
+          std::end(files), 
+          std::begin(dir_files), 
+          std::end(dir_files));
+    } else {
+      PRINT_ERROR(std::string("Unknown input '") + inputs[i] + "'");
+      return TILEDB_ERR;
+    }
+  }
+
+  // Determine format
+  std::string format_str;
+  if(format != NULL && format[0] != '\0') { // Format given
+    format_str = format;
+  } else { // Determine automatically
+    int files_num = files.size();
+    std::string file_format;
+    for(int i=0; i<files_num; ++i) {
+      file_format = get_file_format(files[i]); 
+      if(format_str != "" && file_format != "" &&
+         format_str != file_format) {
+        PRINT_ERROR("Could not automatically determine input format; "
+                    "conflicting inputs formats detected");
+        return -1;
+      }
+      format_str = file_format;
+    }
+  }
+
+  if(format_str == "") { // If still format not determined
+    PRINT_ERROR("Could not automatically determine input format");
+    return -1;
+  }
+
+  // Determine delimiter
+  if(delimiter == 0)
+    delimiter = CSV_DELIMITER;
+
+  // Load the data into metadata
+  if(tiledb_ctx->loader_->metadata_load(
+          metadata, 
+          files, 
+          format_str, 
+          delimiter) == TILEDB_LD_OK)
+     return TILEDB_OK;
+  else
+     return TILEDB_ERR;
+}
+
+int tiledb_array_write_from_file(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array,
+    const char** inputs,
+    int inputs_num,
+    const char* format,
+    char delimiter) {
+  // Sanity checks
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot write to array; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+  if(inputs == NULL || inputs_num == 0) {
+    PRINT_ERROR("Cannot write to array; No input given");
+    return TILEDB_ERR;
+  }
+
+  // Get input files
+  std::vector<std::string> files;
+  for(int i=0; i<inputs_num; ++i) {
+    if(!strcmp(inputs[i], "/dev/stdin") || is_file(inputs[i])) {
+      files.push_back(inputs[i]);
+    } else if(is_dir(inputs[i])) {
+      std::vector<std::string> dir_files = get_filenames(inputs[i]);
+      files.insert(
+          std::end(files), 
+          std::begin(dir_files), 
+          std::end(dir_files));
+    } else {
+      PRINT_ERROR(std::string("Unknown input '") + inputs[i] + "'");
+      return TILEDB_ERR;
+    }
+  }
+
+  // Determine format
+  std::string format_str;
+  if(format != NULL && format[0] != '\0') { // Format given
+    format_str = format;
+  } else { // Determine automatically
+    int files_num = files.size();
+    std::string file_format;
+    for(int i=0; i<files_num; ++i) {
+      file_format = get_file_format(files[i]); 
+      if(format_str != "" && file_format != "" &&
+         format_str != file_format) {
+        PRINT_ERROR("Could not automatically determine input format; "
+                    "conflicting input formats detected");
+        return -1;
+      }
+      format_str = file_format;
+    }
+  }
+
+  if(format_str == "") { // If still format not determined
+    PRINT_ERROR("Could not automatically determine input format");
+    return -1;
+  }
+
+  // Determine delimiter
+  if(delimiter == 0)
+    delimiter = CSV_DELIMITER;
+
+  // Load the data into metadata
+  if(tiledb_ctx->loader_->array_load(
+          array, 
+          files, 
+          format_str, 
+          delimiter) == TILEDB_LD_OK)
+     return TILEDB_OK;
+  else
+     return TILEDB_ERR;
+}
+
+
+
+int tiledb_list(
+    const TileDB_CTX* tiledb_ctx,
+    const char* item) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot list item: Invalid TileDB context");
+    return -1;
+  }
+
+  return tiledb_ctx->storage_manager_->list(item);
+}
+
+
 
 /* ****************************** */
 /*               I/O              */
 /* ****************************** */
 
-int tiledb_array_close(TileDB_CTX* tiledb_ctx, int ad) {
-  // Sanity check
-  if(tiledb_ctx == NULL) {
-    PRINT_ERROR("Cannot close array - Invalid TileDB context");
-    return -1;
-  }
 
-  // Close array
-  return tiledb_ctx->storage_manager_->array_close(ad);
-}
 
-int tiledb_array_open(
+int tiledb_array_open_2(
     TileDB_CTX* tiledb_ctx,
     const char* workspace,
     const char* group,
@@ -1206,7 +2234,7 @@ int tiledb_const_reverse_dense_cell_iterator_next(
 /*             QUERIES            */
 /* ****************************** */
 
-int tiledb_array_clear(
+int tiledb_array_clear_2(
     const TileDB_CTX* tiledb_ctx,
     const char* workspace,
     const char* group,
@@ -1221,7 +2249,15 @@ int tiledb_array_clear(
                                            workspace, group, array_name);
 }
 
-int tiledb_array_consolidate(
+
+
+
+
+
+
+
+
+int tiledb_array_consolidate_2(
     const TileDB_CTX* tiledb_ctx,
     const char* workspace,
     const char* group,
@@ -1235,6 +2271,8 @@ int tiledb_array_consolidate(
   return tiledb_ctx->storage_manager_->array_consolidate(
              workspace, group, array_name); 
 }
+
+
 
 int tiledb_array_define(
     const TileDB_CTX* tiledb_ctx,
@@ -1268,7 +2306,7 @@ int tiledb_array_define(
   return 0;
 }
 
-int tiledb_array_delete(
+int tiledb_array_delete_2(
     const TileDB_CTX* tiledb_ctx,
     const char* workspace,
     const char* group,
@@ -1523,7 +2561,7 @@ int tiledb_array_update(
 
   // Potentially consolidate fragments
   if(consolidate)
-    if(tiledb_array_consolidate(tiledb_ctx, workspace, group, array_name))
+    if(tiledb_array_consolidate_2(tiledb_ctx, workspace, group, array_name))
       return -1;
 
   // Success

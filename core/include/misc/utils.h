@@ -40,6 +40,10 @@
 #include <vector>
 #include <typeinfo>
 
+std::string parent_folder(const std::string& name);
+
+std::string get_file_format(const std::string& file);
+
 /** 
  * Returns true if the name is valid (in POSIX format) and false
  * false otherwise.

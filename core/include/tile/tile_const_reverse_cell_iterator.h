@@ -92,9 +92,7 @@ class TileConstReverseCellIterator {
   /** Addition-assignment operator. */
   void operator+=(int64_t step);
   /** Pre-increment operator. */
-  TileConstReverseCellIterator operator++();
-  /** Post-increment operator. */
-  TileConstReverseCellIterator operator++(int junk);
+  TileConstReverseCellIterator& operator++();
   /**
    * Returns true if the operands belong to the same tile and they point to
    * the same cell. 

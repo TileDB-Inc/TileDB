@@ -48,10 +48,12 @@
 Fragment::Fragment(
     const std::string& dirname, 
     const ArraySchema* array_schema, 
-    const std::string& fragment_name)
+    const std::string& fragment_name,
+    bool dense)
     : dirname_(dirname), 
       array_schema_(array_schema),
-      fragment_name_(fragment_name) {
+      fragment_name_(fragment_name), 
+      dense_(dense) {
   book_keeping_ = new BookKeeping(array_schema_, &fragment_name_, &dirname_);
   read_state_ = NULL;
   write_state_ = NULL;
@@ -67,7 +69,8 @@ Fragment::Fragment(
             array_schema_, 
             book_keeping_, 
             &fragment_name_, 
-            &dirname_);
+            &dirname_,
+            dense_);
   } else { 
     // Create directories 
     directory_create(dirname_);
@@ -81,7 +84,8 @@ Fragment::Fragment(
             &fragment_name_, 
             &temp_dirname_, 
             &dirname_, 
-            book_keeping_);
+            book_keeping_,
+            dense_);
   }
 
   assert(is_dir(dirname_));
@@ -118,15 +122,14 @@ const ArraySchema* Fragment::array_schema() const {
   return array_schema_;
 }
 
-FragmentConstTileIterator Fragment::begin(int attribute_id) const {
+FragmentConstTileIterator* Fragment::begin(int attribute_id) const {
   // Check attribute id
   assert(attribute_id <= array_schema_->attribute_num());
 
   if(book_keeping_->tile_num() > 0) 
-    return FragmentConstTileIterator(this, attribute_id, 0);
+    return new FragmentConstTileIterator(this, attribute_id, 0);
   else
-    return FragmentConstTileIterator();
-
+    return new FragmentConstTileIterator();
 }
 
 Tile::BoundingCoordinatesPair Fragment::bounding_coordinates(
@@ -150,15 +153,15 @@ Tile::MBR Fragment::mbr(int64_t pos) const {
   return book_keeping_->mbr(pos);
 }
 
-FragmentConstReverseTileIterator Fragment::rbegin(int attribute_id) const {
+FragmentConstReverseTileIterator* Fragment::rbegin(int attribute_id) const {
   // Check attribute id
   assert(attribute_id <= array_schema_->attribute_num());
 
   if(book_keeping_->tile_num() > 0) 
-    return FragmentConstReverseTileIterator(this, attribute_id, 
+    return new FragmentConstReverseTileIterator(this, attribute_id, 
                                             book_keeping_->tile_num()-1);
   else
-    return FragmentConstReverseTileIterator();
+    return new FragmentConstReverseTileIterator();
 }
 
 Tile* Fragment::rget_tile_by_pos(int attribute_id, int64_t pos) const {
@@ -189,7 +192,8 @@ void Fragment::init_read_state() {
                      array_schema_, 
                      book_keeping_, 
                      &fragment_name_,
-                     &dirname_);
+                     &dirname_,
+                     dense_);
 }
 
 template<class T>
@@ -198,8 +202,8 @@ int Fragment::cell_write(const void* cell) const {
 }
 
 template<class T>
-int Fragment::cell_write_sorted(const void* cell) {
-  return write_state_->cell_write_sorted<T>(cell);
+int Fragment::cell_write_sorted(const void* cell, bool without_coords) {
+  return write_state_->cell_write_sorted<T>(cell, without_coords);
 }
 
 template<class T>
@@ -218,7 +222,7 @@ template int Fragment::cell_write<int64_t>(const void* cell) const;
 template int Fragment::cell_write<float>(const void* cell) const;
 template int Fragment::cell_write<double>(const void* cell) const;
 
-template int Fragment::cell_write_sorted<int>(const void* cell);
-template int Fragment::cell_write_sorted<int64_t>(const void* cell);
-template int Fragment::cell_write_sorted<float>(const void* cell);
-template int Fragment::cell_write_sorted<double>(const void* cell);
+template int Fragment::cell_write_sorted<int>(const void* cell, bool without_coords);
+template int Fragment::cell_write_sorted<int64_t>(const void* cell, bool without_coords);
+template int Fragment::cell_write_sorted<float>(const void* cell, bool without_coords);
+template int Fragment::cell_write_sorted<double>(const void* cell, bool without_coords);

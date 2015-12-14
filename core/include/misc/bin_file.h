@@ -76,8 +76,11 @@ class BINFile {
   /** Closes the BIN file. Returns 0 on success and -1 on failure. */
   int close();
   /** Opens the BIN file in the input mode (see BINFile::mode_). */
-  int open(const std::string& filename, const char* mode, 
-           size_t segment_size = BIN_SEGMENT_SIZE);
+  int open(
+      const std::string& filename,  
+      const char* mode, 
+      bool dense = false,
+      size_t segment_size = BIN_SEGMENT_SIZE);
  
   // READ/WRITE
   /** 
@@ -131,6 +134,7 @@ class BINFile {
   void* coords_;
   /** The coordinates size. */
   size_t coords_size_;
+  bool dense_;
   /** True if the end of file has been reached. */
   bool eof_;
   /** 

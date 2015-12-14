@@ -125,7 +125,21 @@ class QueryProcessor {
   ~QueryProcessor();
 
   /* ********************************* */
-  /*          QUERY FUNCTIONS        */
+  /*              METADATA             */
+  /* ********************************* */
+
+  // TODO
+  int metadata_export(
+      const std::string& metadata,
+      const std::string& file,
+      const std::string& key,
+      const std::vector<std::string>& attributes,
+      const std::string& format,
+      char delimiter,
+      int precision) const;
+
+  /* ********************************* */
+  /*          QUERY FUNCTIONS          */
   /* ********************************* */
 
   /** 
@@ -189,6 +203,16 @@ class QueryProcessor {
       char delimiter = CSV_DELIMITER,
       int precision = PRECISION) const;
 
+  int array_export(
+      const std::string& array_name,
+      const std::string& filename,
+      const std::string& format,
+      const std::vector<std::string>& dim_names, 
+      const std::vector<std::string>& attribute_names,
+      const std::vector<double>& range,
+      char delimiter = CSV_DELIMITER,
+      int precision = PRECISION) const;
+
   /** 
    * Creates a new array with the same schema as the input array (or including a
    * subset of the attributes in a potentially different order), 
@@ -216,6 +240,12 @@ class QueryProcessor {
       const std::string& workspace_sub, 
       const std::string& group, 
       const std::string& group_sub, 
+      const std::string& array_name, 
+      const std::string& array_name_sub, 
+      const std::vector<double>& range,
+      const std::vector<std::string>& attribute_names) const;
+
+  int subarray(
       const std::string& array_name, 
       const std::string& array_name_sub, 
       const std::vector<double>& range,
@@ -815,6 +845,46 @@ class QueryProcessor {
       const std::vector<int>& attribute_ids,
       void* buffer,
       size_t& buffer_size) const;
+
+
+
+  // TODO
+  int metadata_export_csv(
+      int md,
+      const std::string& file,
+      const std::string& key,
+      const std::vector<int>& attribute_ids,
+      CompressionType compression,
+      char delimiter,
+      int precision) const;
+
+  // TODO
+  template<class T>
+  int metadata_export_csv(
+      int md,
+      const std::string& file,
+      const std::string& key,
+      const std::vector<int>& attribute_ids,
+      CompressionType compression,
+      char delimiter,
+      int precision) const;
+
+  // TODO
+  int metadata_export_bin(
+      int md,
+      const std::string& file,
+      const std::string& key,
+      const std::vector<int>& attribute_ids,
+      CompressionType compression) const;
+
+  // TODO
+  template<class T>
+  int metadata_export_bin(
+      int md,
+      const std::string& file,
+      const std::string& key,
+      const std::vector<int>& attribute_ids,
+      CompressionType compression) const;
 };
 
 #endif

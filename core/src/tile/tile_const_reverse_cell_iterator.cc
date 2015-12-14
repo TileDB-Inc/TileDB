@@ -147,7 +147,7 @@ void TileConstReverseCellIterator::operator+=(int64_t step) {
   }
 }
 
-TileConstReverseCellIterator 
+TileConstReverseCellIterator& 
 TileConstReverseCellIterator::operator++() {
   --pos_;
   if(pos_ >= 0 && pos_ < tile_->cell_num()) {
@@ -157,21 +157,8 @@ TileConstReverseCellIterator::operator++() {
     cell_ = NULL;
     end_ = true;
   }
-  return *this;
-}
 
-TileConstReverseCellIterator 
-TileConstReverseCellIterator::operator++(int junk) {
-  TileConstReverseCellIterator it = *this;
-  --pos_;
-  if(pos_ >= 0 && pos_ < tile_->cell_num()) {
-    cell_ = tile_->cell(pos_);
-    end_ = false;
-  } else {
-    cell_ = NULL;
-    end_ = true;
-  }
-  return it;
+  return *this;
 }
 
 bool TileConstReverseCellIterator::operator==(

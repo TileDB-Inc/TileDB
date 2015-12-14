@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+
+<html>
+
+    <head>
+        <link rel="stylesheet" type="text/css" href="../css/tiledb.css">
+        <link href='https://fonts.googleapis.com/css?family=Roboto|Open+Sans|Source+Sans+Pro|Lora|Raleway' rel='stylesheet' type='text/css'>
+        <script>document.domain = document.domain;</script>
+        <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"></script>
+    </head>
+
+    <body>        
+        
+        <div class="tutorial-main">
+            
+            <h1>TileDB Mechanics 101</h1>
+            
+            <h2><a name="arrays">Arrays</a></h2>
+                
+            <p>
+                TileDB is a storage management system for data that are naturally represented as 
+                <span class=bold-text>multi-dimensional arrays</span>. An array in TileDB can be 
+                thought of as a multi-dimensional space, oriented by axes called 
+                <span class=bold-text>dimensions</span>. An array contains multi-dimensional objects,
+                called <span class=bold-text>cells</span>. Each dimension has
+                a <u>name</u> and a <u>domain</u>. Moreover, all dimensions have a common
+                <u>type</u>, which can be one of the following: <span class=bold-text>int32</span>,
+                <span class=bold-text>int64</span>, <span class=bold-text>float32</span>,
+                <span class=bold-text>float64</span>. Each cell is an object defined uniquely 
+                by a set of dimension domain values, called <span class=bold-text>coordinates</span>.
+            </p>
+                
+            <p>
+                Figure 1 illustrates two examples, focusing on 2 dimensions, without loss of generality.
+                Figure 1(a) depicts a \(3\times 4\) matrix \(A\), which is defined exactly as in Linera Algebra, i.e.,
+                it has 3 rows and 4 columns, and the indices start from the upper left corner. It has 2
+                dimensions, \(r\) for the rows and \(c\) for the columns. Dimension \(r\) has domain
+                \([1,3]\), whereas \(c\) has domain \([1,4]\). We suppose that all indices in these domains
+                are represented as <span class=bold-text>int32</span> values. A cell is an element of this matrix, 
+                i.e., it is defined by a unique pair \((i,j)\) of indices within the dimension domains, such as 
+                \(A[2,3]\). 
+            </p>
+            
+            <img src="tiledb_mechanics_101_figures/Figure_1.png" />
+                
+            <p>
+                TileDB goes beyond Linear Algebra matrices. The flexibility of TileDB in storing multi-dimensional
+                data is illustrated in Figure 1(b), which depicts our geographic coordinate system. This can
+                be represented by an array \(B\) with 2 dimensions, longitude and latitude. The domain of each dimension
+                contains <u>real</u> numbers; it is \([-90.0, 90.0]\) for longitude and \([-180.0, 180.0]\) for latitude. 
+                We represent the type of both domains as <span class=bold-text>float64</span>. A cell 
+                is essentially a 2-dimensional point in this space, determined by a unique pair of 
+                <span class=bold-text>float64</span> longitude and latitute values. For instance, 
+                \(B[42.3618017, -71.09017419999999]\) is the cell corresponding to the MIT Stata building. Note that 
+                the order of the dimensions in TileDB is important: in the TileDB world, for any 2D example, the first
+                dimension corresponds to the vertical axis, and the second to the horizontal. In other words, <u>TileDB follows
+                the Linear Algebra matrix orientation</u>. TileDB can very efficiently store cells with real coordinates, 
+                exactly because of its ability to handle immensely sparse arrays, such as this example. The reason will 
+                be clear soon. Finally, note that both the above examples easily generalize to an arbitrary number of dimensions.
+            </p>
+                
+            <p>
+                We next overview the <span class=bold-text>cell internals</span>. As explained above, a cell is determined
+                by a <u>unique</u> set of coordinates. But what does each cell store? In TileDB, a cell is a 
+                <span class=bold-text>tuple</span> with a particular <span class=bold-text>schema</span> (defined by 
+                the user when creating the array). All cells in a given array follow the same schema. The schema specifies 
+                the cell <span class=bold-text>attributes</span>, namely the <u>name</u> of each attribute and the <u>type</u> 
+                of the attribute values. TileDB supports the following types for the cell attributes: 
+                <span class=bold-text>char</span>, <span class=bold-text>int32</span>,
+                <span class=bold-text>int64</span>, <span class=bold-text>float32</span>,
+                <span class=bold-text>float64</span>. 
+            </p>
+            
+            <p>
+                In addition, TileDB supports storing <u>multiple</u> values per attribute.
+                For instance, if the user specifies an attribute to have type <span class=bold-text>int32:3</span>, then this 
+                means that the cell stores exactly 3 integers on that attribute (e.g., the cell may be a pixel of an image, 
+                storing the three RGB integer values in its 'color' attribute). Moreover, TileDB supports storing 
+                a <u>variable</u> number of values per attribute. For example, if the user specifies 
+                <span class=bold-text>char:var</span> as the type of an attribute, then a cell can store any arbitrary string
+                in that attribute (e.g., the cell may represent a geotagged tweet from Twitter, and store its text as a large 
+                string in its 'message' attribute). The <span class=bold-text>:var</span> keyword works with all the supported 
+                types. Note that these basic types, in combination with the ability to store arbitrary number of
+                values per attribute, give enormous flexibility to the user to store arbitrarily complex information
+                inside a cell. Especially the <span class=bold-text>char:var</span> type can be thought of as a sequence of
+                bytes, which can be used to store any arbitrary user-defined data object, given appropriate
+                wrappers for serialization/deserialization of this object to/from bytes.
+            </p>
+                
+            <h2><a name="tiles">Tiles</a></h2>
+            
+            <h2><a name="cells">Cells</a></h2>
+                
+            <h2><a name="physical_org">Physical Data Organization</a></h2>
+                
+            <h2><a name="book_keeping">Book-keeping</a></h2>
+                
+            <h2><a name="fragments">Fragments</a></h2>
+                
+            <h2><a name="writing">Writing Data</a></h2>
+            
+            <h2><a name="reading">Reading Data</a></h2>
+                
+            <h2><a name="workspaces_groups">Workspaces and Groups</a></h2>
+                
+            <h2><a name="metadata">Metadata</a></h2>
+
+            <h2><a name="file_organization">File Organization</a></h2>
+                
+        </div>
+        
+        <div class="no-wrap"></div>
+        
+    </body>
+
+</html>

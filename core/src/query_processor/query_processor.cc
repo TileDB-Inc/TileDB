@@ -45,6 +45,7 @@
 #include <algorithm>
 #include <functional>
 #include <math.h>
+#include <openssl/md5.h>
 #include <string.h>
 
 // Macro for printing error message in VERBOSE mode
@@ -85,6 +86,79 @@ QueryProcessor::~QueryProcessor() {
     finalize();
   }
 }
+
+/* ****************************** */
+/*            METADATA            */
+/* ****************************** */
+
+int QueryProcessor::metadata_export(
+    const std::string& metadata,
+    const std::string& file,
+    const std::string& key,
+    const std::vector<std::string>& attributes,
+    const std::string& format,
+    char delimiter,
+    int precision) const {
+  // Open metadata in read mode
+  int md = storage_manager_->metadata_open(metadata, "r");
+  if(md == -1) 
+    return -1;
+
+  // For easy reference
+  const ArraySchema* array_schema;
+  if(storage_manager_->metadata_schema_get(md, array_schema)) {
+    storage_manager_->metadata_close(md); 
+    return -1;
+  }
+
+  // Get attribute ids
+  std::vector<int> attribute_ids;
+  if(array_schema->get_attribute_ids(attributes, attribute_ids)) {
+    storage_manager_->metadata_close(md); 
+    return -1;
+  }
+
+  // Resolve CSV or BIN
+  bool csv = false;
+  bool bin = false;
+  if(ends_with(format, "csv") || ends_with(format, "csv.gz")) {
+    csv = true;
+  } else if(ends_with(format, "bin") || ends_with(format, "bin.gz")) {
+    bin = true; 
+  } else  {
+    PRINT_ERROR("Invalid file name");
+    storage_manager_->metadata_close(md); 
+    return -1;
+  }
+
+  // Resolve compression type
+  CompressionType compression;
+  if(ends_with(format, ".gz"))
+    compression = CMP_GZIP;
+  else
+    compression = CMP_NONE;
+
+  // Export
+  int rc;
+  if(csv) 
+    rc = metadata_export_csv(
+             md, file, key, attribute_ids, compression, 
+             delimiter, precision);
+  else  
+    rc = metadata_export_bin(
+             md, file, key, attribute_ids, compression);
+
+  // Clean up
+  if(rc == -1) { 
+    storage_manager_->metadata_close_forced(md); 
+  } else {
+    if(storage_manager_->metadata_close(md))
+      rc = -1;
+  }
+
+  // 0 for success and -1 for error 
+  return rc;
+} 
 
 /* ****************************** */
 /*         QUERY FUNCTIONS        */
@@ -207,6 +281,207 @@ int QueryProcessor::array_export(
   }
 
   // 0 for success and -1 for error 
+  return rc;
+}
+
+int QueryProcessor::array_export(
+    const std::string& array_name, 
+    const std::string& filename, 
+    const std::string& format, 
+    const std::vector<std::string>& dim_names,
+    const std::vector<std::string>& attribute_names,
+    const std::vector<double>& range,
+    char delimiter,
+    int precision) const {
+  // Open array in read mode
+  int ad = storage_manager_->array_open(array_name, "r");
+  if(ad == -1) 
+    return -1;
+
+  // For easy reference
+  const ArraySchema* array_schema;
+  if(storage_manager_->array_schema_get(ad, array_schema)) {
+    storage_manager_->array_close(ad); 
+    return -1;
+  }
+
+  // Get dimension and attribute ids
+  std::vector<int> dim_ids;
+  if(array_schema->get_dim_ids(dim_names, dim_ids)) {
+    storage_manager_->array_close(ad); 
+    return -1;
+  }
+  std::vector<int> attribute_ids;
+  if(array_schema->get_attribute_ids(attribute_names, attribute_ids)) {
+    storage_manager_->array_close(ad); 
+    return -1;
+  }
+
+  // Check range
+  int range_size = (int) range.size();
+  if(range_size != 0 && range_size != 2*array_schema->dim_num()) {
+    PRINT_ERROR("Invalid range");
+    storage_manager_->array_close(ad); 
+    return -1;
+  }
+
+  // Resolve CSV or BIN
+  bool csv = false;
+  bool bin = false;
+  if(ends_with(format, "csv") || ends_with(format, "csv.gz")) {
+    csv = true;
+  } else if(ends_with(format, "bin") || ends_with(format, "bin.gz")) {
+    bin = true; 
+  } else  {
+    PRINT_ERROR("Invalid file name");
+    storage_manager_->array_close(ad); 
+    return -1;
+  }
+
+  // Resolve dense
+  bool dense;
+  if(starts_with(format, "dense") || starts_with(format, "reverse.dense")) 
+    dense = true;
+  else
+    dense = false;
+
+  // Resolve reverse
+  bool reverse;
+  if(starts_with(format, "reverse")) 
+    reverse = true;
+  else
+    reverse = false;
+
+  // Resolve compression type
+  CompressionType compression;
+  if(ends_with(format, ".gz"))
+    compression = CMP_GZIP;
+  else
+    compression = CMP_NONE;
+
+  // Export (2^3 = 8 possible combinations)
+  int rc;
+  if(csv && reverse && dense) 
+    rc = array_export_csv_reverse_dense(
+             ad, filename, dim_ids, attribute_ids, range, 
+             compression, delimiter, precision);
+  else if(csv && reverse && !dense) 
+    rc = array_export_csv_reverse_sparse(
+             ad, filename, dim_ids, attribute_ids, range, 
+             compression, delimiter, precision);
+  else if(csv && !reverse && dense)  
+    rc = array_export_csv_normal_dense(
+             ad, filename, dim_ids, attribute_ids, range, 
+             compression, delimiter, precision);
+  else if(csv && !reverse && !dense) 
+    rc = array_export_csv_normal_sparse(
+             ad, filename, dim_ids, attribute_ids, range, 
+             compression, delimiter, precision);
+  else if(bin && reverse && dense) 
+    rc = array_export_bin_reverse_dense(
+             ad, filename, dim_ids, attribute_ids, range, compression);
+  else if(bin && reverse && !dense) 
+    rc = array_export_bin_reverse_sparse(
+             ad, filename, dim_ids, attribute_ids, range, compression);
+  else if(bin && !reverse && dense) 
+    rc = array_export_bin_normal_dense(
+             ad, filename, dim_ids, attribute_ids, range, compression);
+  else if(bin && !reverse && !dense) 
+    rc = array_export_bin_normal_sparse(
+             ad, filename, dim_ids, attribute_ids, range, compression);
+
+  // Clean up
+  if(rc == -1) { 
+    storage_manager_->array_close_forced(ad); 
+  } else {
+    if(storage_manager_->array_close(ad))
+      rc = -1;
+  }
+
+  // 0 for success and -1 for error 
+  return rc;
+}
+
+int QueryProcessor::subarray(
+    const std::string& array_name, 
+    const std::string& array_name_sub, 
+    const std::vector<double>& range,
+    const std::vector<std::string>& attribute_names) const {
+  // Open input array in read mode
+  int ad = storage_manager_->array_open(
+               array_name, "r");
+  if(ad == -1)
+    return -1;
+
+  // Get input array schema
+  const ArraySchema* array_schema;
+  if(storage_manager_->array_schema_get(ad, array_schema)) {
+    storage_manager_->array_close(ad);
+    return -1;
+  }
+  const std::type_info* coords_type = array_schema->coords_type();
+  int dim_num = array_schema->dim_num();
+
+  // Check range 
+  int range_size = (int) range.size();
+  if(range_size != 2*dim_num) {
+    PRINT_ERROR("Invalid range");
+    storage_manager_->array_close(ad);
+    return -1;
+  }
+
+  // Get attribute ids
+  std::vector<int> attribute_ids;
+  if(array_schema->get_attribute_ids(attribute_names, attribute_ids)) {
+    storage_manager_->array_close(ad);
+    return -1;
+  }
+
+  // Open result array in write mode
+  int ad_sub = storage_manager_->array_open(
+                   array_name_sub, "w");
+  if(ad_sub == -1) {
+    storage_manager_->array_close(ad);
+    return -1;
+  }
+
+  // Invoke the proper function, templated on the array coordinates type
+  int rc;
+  if(coords_type == &typeid(int)) { 
+    int* new_range = new int[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    rc = subarray<int>(ad, ad_sub, new_range, attribute_ids);
+    delete [] new_range;
+  } else if(coords_type == &typeid(int64_t)) {
+    int64_t* new_range = new int64_t[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    rc = subarray<int64_t>(ad, ad_sub, new_range, attribute_ids);
+    delete [] new_range;
+  } else if(coords_type == &typeid(float)) {
+    float* new_range = new float[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    rc = subarray<float>(ad, ad_sub, new_range, attribute_ids);
+    delete [] new_range;
+  } else if(coords_type == &typeid(double)) {
+    double* new_range = new double[2*dim_num]; 
+    convert(&range[0], new_range, 2*dim_num);
+    rc = subarray<double>(ad, ad_sub, new_range, attribute_ids);
+    delete [] new_range;
+  }
+
+  // Clean up
+  if(rc == -1) {
+    storage_manager_->array_close_forced(ad); 
+    storage_manager_->array_close_forced(ad_sub); 
+    storage_manager_->array_delete(array_name_sub);
+  } else {
+    if(storage_manager_->array_close(ad))
+      rc = -1;
+    if(storage_manager_->array_close(ad_sub))
+      rc = -1;
+  }
+
+  // 0 for success and -1 for error
   return rc;
 }
 
@@ -742,7 +1017,7 @@ int QueryProcessor::array_export_csv_normal_sparse(
   ArrayConstCellIterator<T>* cell_it;
   if(range == NULL) 
     cell_it = storage_manager_->begin<T>(ad, attribute_ids);
-  else
+  else 
     cell_it = storage_manager_->begin<T>(ad, range, attribute_ids);
 
   // Prepare a cell
@@ -1235,5 +1510,203 @@ int QueryProcessor::subarray_buf(
 
   // Success
   buffer_size = cells_size;
+
+  // Clean up 
+  if(cell_c != NULL)
+    free(cell_c);
+  cell_it->finalize();
+  delete cell_it;
+
   return 0;
+}
+
+int QueryProcessor::metadata_export_csv(
+    int md,
+    const std::string& file,
+    const std::string& key,
+    const std::vector<int>& attribute_ids,
+    CompressionType compression,
+    char delimiter,
+    int precision) const {
+  // For easy reference
+  const ArraySchema* array_schema;
+  if(storage_manager_->metadata_schema_get(md, array_schema))
+    return -1;
+  const std::type_info* coords_type = array_schema->coords_type();
+  int rc;
+
+  // Invoke the proper function, templated on the array coordinates type
+  if(coords_type == &typeid(int)) { 
+    rc = metadata_export_csv<int>(
+             md, file, key, attribute_ids, compression,
+             delimiter, precision);
+  } else if(coords_type == &typeid(int64_t)) {
+    rc = metadata_export_csv<int64_t>(
+             md, file, key, attribute_ids, compression,
+             delimiter, precision);
+  } else if(coords_type == &typeid(float)) {
+    rc = metadata_export_csv<float>(
+             md, file, key, attribute_ids, compression,
+             delimiter, precision);
+  } else if(coords_type == &typeid(double)) {
+    rc = metadata_export_csv<double>(
+             md, file, key, attribute_ids, compression,
+             delimiter, precision);
+  }
+
+  return rc;
+}
+
+template<class T>
+int QueryProcessor::metadata_export_csv(
+    int md,
+    const std::string& file,
+    const std::string& key,
+    const std::vector<int>& attribute_ids,
+    CompressionType compression,
+    char delimiter,
+    int precision) const {
+  // Prepare CSV file
+  CSVFile csv_file(compression);
+  csv_file.open(file, "w");
+
+  // Get coordinates from key
+  T coords[4];
+  MD5((const unsigned char*) key.c_str(), 
+       key.size(), 
+       (unsigned char*) &coords);
+
+  // Create a range covering a single cell
+  T range[8];
+  for(int i=0; i<4; ++i) {
+    range[2*i] = coords[i];
+    range[2*i+1] = coords[i];
+  }
+
+  // Create iterator
+  ArrayConstCellIterator<T>* cell_it = 
+      storage_manager_->metadata_begin(md, range, attribute_ids);
+
+  // Prepare a cell
+  Cell cell(cell_it->array_schema(), cell_it->attribute_ids(), 0, true);
+
+  // Write cell into the CSV file
+  std::vector<int> dim_ids;
+  const void* cell_c = **cell_it;
+  if(cell_c == NULL) {
+    std::string msg = std::string("key '") + key + "' has no value";
+    CSVLine csv_line;
+    csv_line << &msg[0];
+    csv_file << csv_line;
+  } else {
+    cell.set_cell(cell_c);
+    if(csv_file << cell.csv_line<T>(dim_ids, attribute_ids, 
+                                    delimiter, precision)) {
+      csv_file.close();
+      cell_it->finalize();
+      delete cell_it;
+      return -1;
+    } 
+  }
+
+  // Clean up 
+  csv_file.close();
+  int rc = cell_it->finalize();
+  delete cell_it;
+
+  return rc;
+}
+
+int QueryProcessor::metadata_export_bin(
+    int md,
+    const std::string& file,
+    const std::string& key,
+    const std::vector<int>& attribute_ids,
+    CompressionType compression) const {
+  // For easy reference
+  const ArraySchema* array_schema;
+  if(storage_manager_->metadata_schema_get(md, array_schema))
+    return -1;
+  const std::type_info* coords_type = array_schema->coords_type();
+  int rc;
+
+  // Invoke the proper function, templated on the array coordinates type
+  if(coords_type == &typeid(int)) { 
+    rc = metadata_export_bin<int>(
+             md, file, key, attribute_ids, compression);
+  } else if(coords_type == &typeid(int64_t)) {
+    rc = metadata_export_bin<int64_t>(
+             md, file, key, attribute_ids, compression);
+  } else if(coords_type == &typeid(float)) {
+    rc = metadata_export_bin<float>(
+             md, file, key, attribute_ids, compression);
+  } else if(coords_type == &typeid(double)) {
+    rc = metadata_export_bin<double>(
+             md, file, key, attribute_ids, compression);
+  }
+
+  return rc;
+}
+
+template<class T>
+int QueryProcessor::metadata_export_bin(
+    int md,
+    const std::string& file,
+    const std::string& key,
+    const std::vector<int>& attribute_ids,
+    CompressionType compression) const {
+  // Prepare BIN file
+  BINFile bin_file(compression);
+  bin_file.open(file, "w");
+
+  // Get coordinates from key
+  T coords[4];
+  MD5((const unsigned char*) key.c_str(), 
+       key.size(), 
+       (unsigned char*) &coords);
+
+  // Create a range covering a single cell
+  T range[8];
+  for(int i=0; i<4; ++i) {
+    range[2*i] = coords[i];
+    range[2*i+1] = coords[i];
+  }
+
+  // Create iterator
+  ArrayConstCellIterator<T>* cell_it = 
+      storage_manager_->metadata_begin(md, range, attribute_ids);
+
+  // Prepare a cell
+  Cell cell(cell_it->array_schema(), cell_it->attribute_ids(), 0, true);  
+
+  // Write cells into the BIN file
+  size_t cell_c_capacity = 0, cell_c_size = 0;
+  std::vector<int> dim_ids;
+  const void* cell_it_c = **cell_it;
+  void* cell_c = NULL;
+  if(cell_it_c == NULL) {
+    std::string msg = std::string("key '") + key + "' has no value";
+    std::cout << msg << "\n"; // TODO
+  } else {
+    cell.set_cell(cell_it_c);
+    cell.cell<T>(dim_ids, attribute_ids, cell_c, cell_c_capacity, cell_c_size);
+    if(bin_file.write(cell_c, cell_c_size) < 0) {
+      bin_file.close();
+      cell_it->finalize();
+      delete cell_it;
+      if(cell_c != NULL)
+        free(cell_c);
+      return -1;
+    }
+  }
+
+  // Clean up 
+  bin_file.close();
+  int rc = cell_it->finalize();
+  delete cell_it;
+  if(cell_c != NULL)
+    free(cell_c);
+
+  // 0 for success and -1 for error
+  return rc;
 }

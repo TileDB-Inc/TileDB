@@ -63,7 +63,8 @@ class ReadState {
       const ArraySchema* array_schema, 
       const BookKeeping* book_keeping,
       const std::string* fragment_name,
-      const std::string* dirname);
+      const std::string* dirname,
+      bool dense = false);
   /** Destructor. */
   ~ReadState();
 
@@ -95,6 +96,10 @@ class ReadState {
   PosRanges pos_ranges_;
   /** The array book-keeping structures. */
   const BookKeeping* book_keeping_;
+  /** True if it corresponds to a dense fragment. */
+  bool dense_;
+  /** For the case of dense coordinates. */
+  Tile* dense_coords_tile_;
   /** The fragment directory name. */
   const std::string* dirname_;
   /** The fragment name. */

@@ -146,7 +146,7 @@ class ArrayConstReverseCellIterator {
    */
   void* cell_;
   /** Stores one cell iterator per fragment per attribute. */
-  TileConstReverseCellIterator** cell_its_;
+  TileConstReverseCellIterator*** cell_its_;
   /** The size of the current buffer that holds a cell. */
   size_t cell_buffer_size_;
   /** The size of the current cell. */
@@ -185,7 +185,7 @@ class ArrayConstReverseCellIterator {
    */
   bool return_del_;
   /** Stores one tile iterator per fragment per attribute. */
-  FragmentConstReverseTileIterator** tile_its_;
+  FragmentConstReverseTileIterator*** tile_its_;
   /** True if the iterator iterates over variable-sized cells. */
   bool var_size_;
 

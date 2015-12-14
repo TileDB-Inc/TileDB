@@ -52,7 +52,8 @@
 ******************************************************/
 
 template<class T>
-BINFileCollection<T>::BINFileCollection(CompressionType compression)
+BINFileCollection<T>::BINFileCollection(
+    CompressionType compression)
     : compression_(compression) {
   pq_ = NULL;
 }
@@ -140,6 +141,49 @@ int BINFileCollection<T>::open(
     else 
       bin_file->open(path + "/" + filenames_[i], "r");
 
+    bin_files_.push_back(bin_file);
+
+    cell = new Cell(array_schema_, id_num_);
+    *bin_file >> *cell;
+    cells_.push_back(cell);
+    if(sorted)
+      pq->push(std::pair<const Cell*, int>(cell,i)); 
+  }
+
+  return 0;
+}
+
+template<class T>
+int BINFileCollection<T>::open(
+    const ArraySchema* array_schema,
+    int id_num,
+    const std::vector<std::string>& files,
+    bool sorted) {
+  // Initialization
+  array_schema_ = array_schema;
+  sorted_ = sorted;
+  last_accessed_file_ = -1;
+  id_num_ = id_num;
+  filenames_ = files;
+
+  // Create priority queue
+  std::priority_queue<std::pair<const Cell*, int>, 
+                      std::vector<std::pair<const Cell*, int> >, 
+                      Cell::Succeeds<T> >* pq;
+  if(sorted) {
+    pq = new std::priority_queue<std::pair<const Cell*, int>,
+                                 std::vector<std::pair<const Cell*, int> >,
+                                 Cell::Succeeds<T> >;
+    pq_ = pq;
+  }
+
+  // Open files and prepare first cells
+  int file_num = int(filenames_.size());
+  BINFile* bin_file;
+  Cell* cell;
+  for(int i=0; i<file_num; ++i) {
+    bin_file = new BINFile(array_schema_, compression_, id_num_);  
+    bin_file->open(real_path(filenames_[i]), "r");
     bin_files_.push_back(bin_file);
 
     cell = new Cell(array_schema_, id_num_);

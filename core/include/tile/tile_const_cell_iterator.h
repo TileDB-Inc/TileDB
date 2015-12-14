@@ -51,6 +51,8 @@ class TileConstCellIterator {
    * iterator is created, and a cell position in the tile payload. 
    */
   TileConstCellIterator(Tile* tile, int64_t pos);
+  /** Destructor constuctor. */
+  ~TileConstCellIterator();
    
   // ACCESSORS
   /** 
@@ -93,9 +95,7 @@ class TileConstCellIterator {
   /** Addition-assignment operator. */
   void operator+=(int64_t step);
   /** Pre-increment operator. */
-  TileConstCellIterator operator++();
-  /** Post-increment operator. */
-  TileConstCellIterator operator++(int junk);
+  TileConstCellIterator& operator++();
   /**
    * Returns true if the operands belong to the same tile and they point to
    * the same cell. 
@@ -112,6 +112,10 @@ class TileConstCellIterator {
  private:
   /** The current cell. */
   const void* cell_;
+  /** For the dense case only. */
+  void* current_coords_;
+  /** True if this iterates over dense coordinates. */
+  bool dense_coords_;
   /** True if the end of the iterator is reached. */
   bool end_;
   /** 
@@ -121,6 +125,9 @@ class TileConstCellIterator {
   int64_t pos_;  
   /** The tile object the iterator is created for. */
   Tile* tile_;
+
+  // PRIVATE METHODS
+  void init_current_coords();
 };
 
 #endif

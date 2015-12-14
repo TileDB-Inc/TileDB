@@ -146,7 +146,12 @@ int BINFile::close() {
 
 int BINFile::open(const std::string& filename, 
                   const char* mode,
+                  bool dense,
                   size_t segment_size) {
+  dense_ = dense;
+  if(dense && !var_size_)
+    cell_size_ -= coords_size_;
+
   filename_ = real_path(filename);
   if(filename_ == "") {
     PRINT_ERROR("Invalid filename");
@@ -306,12 +311,14 @@ bool BINFile::operator>>(Cell& cell) {
     }
 
     // Read coordinates
-    bytes_read = read(coords_, coords_size_);
-    if(bytes_read == 0) {
-      cell.set_cell(NULL);
-      return false;
+    if(!dense_) {
+      bytes_read = read(coords_, coords_size_);
+      if(bytes_read == 0) {
+        cell.set_cell(NULL);
+        return false;
+      }
+      assert(bytes_read == coords_size_);
     }
-    assert(bytes_read == coords_size_);
    
     // Read cell size
     bytes_read = read(&cell_size_, sizeof(size_t));
@@ -327,18 +334,22 @@ bool BINFile::operator>>(Cell& cell) {
     memcpy(cell_, ids_, id_num_ * sizeof(int64_t));
     size_t cell_offset = id_num_ * sizeof(int64_t);
 
-    memcpy(static_cast<char*>(cell_) + cell_offset, coords_, coords_size_);
-    cell_offset += coords_size_;
+    if(!dense_) {
+      memcpy(static_cast<char*>(cell_) + cell_offset, coords_, coords_size_);
+      cell_offset += coords_size_;
+    }
+
     memcpy(static_cast<char*>(cell_) + cell_offset, 
            &cell_size_, sizeof(size_t));
     cell_offset += sizeof(size_t);
 
     // Read rest of attribute values into the appropriate offset in cell
-    bytes_read = read(static_cast<char*>(cell_) + cell_offset, 
-                      cell_size_ - coords_size_ - sizeof(size_t));
+    size_t attr_size = cell_size_ - coords_size_ - sizeof(size_t);
+    if(dense_)
+      attr_size += coords_size_;
+    bytes_read = read(static_cast<char*>(cell_) + cell_offset, attr_size);
 
-    assert(bytes_read == cell_size_ - coords_size_ - sizeof(size_t) - 
-                         id_num_ * sizeof(int64_t));
+    assert(bytes_read == attr_size); 
   }
 
   cell.set_cell(cell_);

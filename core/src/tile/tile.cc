@@ -45,14 +45,25 @@
 ************* CONSTRUCTORS & DESTRUCTORS **************
 ******************************************************/
 
-Tile::Tile(int64_t tile_id, int dim_num, 
-           const std::type_info* cell_type, int val_num,
-           CompressionType compression) 
-    : tile_id_(tile_id), dim_num_(dim_num), cell_type_(cell_type), 
-      val_num_(val_num), compression_(compression) {
-  assert(dim_num >= 0);
+Tile::Tile(
+    int64_t tile_id, 
+    const ArraySchema* array_schema,       
+    int attribute_id,
+    bool dense_coords) 
+    : tile_id_(tile_id), 
+      array_schema_(array_schema),
+      dense_coords_(dense_coords) {
+  // Set private attributes
+  int dim_num = array_schema_->dim_num();
+  int attribute_num = array_schema_->attribute_num();
+  dim_num_ = (attribute_id == attribute_num) ? dim_num : 0;
+  cell_type_ = array_schema_->type(attribute_id), 
+  val_num_ = (attribute_id == attribute_num) ? 1 : array_schema_->val_num(attribute_id);
+  compression_ = array_schema_->compression(attribute_id);
 
-  if(dim_num == 0) 
+  assert(dim_num_ >= 0);
+
+  if(dim_num_ == 0) 
     tile_type_ = ATTRIBUTE;
   else
     tile_type_ = COORDINATE;
@@ -61,7 +72,7 @@ Tile::Tile(int64_t tile_id, int dim_num,
   cell_num_ = 0;
   tile_size_ = 0;
   payload_ = NULL;
-  payload_malloced_ = false;
+  payload_malloced_ = false; // TODO: remove this
 
   if(compression_ == CMP_NONE)
     compressed_ = false;
@@ -69,28 +80,36 @@ Tile::Tile(int64_t tile_id, int dim_num,
     compressed_ = true;
 
   // Set type size
-  if(*cell_type == typeid(char)) {
+  if(cell_type_ == &typeid(char)) {
     assert(tile_type_ == ATTRIBUTE); // Char not supported for coordinate cells 
     type_size_ = sizeof(char);
-  } else if(*cell_type == typeid(int)) {
+  } else if(cell_type_ == &typeid(int)) {
     type_size_ = sizeof(int);
-  } else if(*cell_type == typeid(int64_t)) {
+  } else if(cell_type_ == &typeid(int64_t)) {
     type_size_ = sizeof(int64_t);
-  } else if(*cell_type == typeid(float)) {
+  } else if(cell_type_ == &typeid(float)) {
     type_size_ = sizeof(float);
-  } else if(*cell_type == typeid(double)) {
+  } else if(cell_type_ == &typeid(double)) {
     type_size_ = sizeof(double);
   } else {
     assert(0); // No other cell type is supported
   }
 
-  if(val_num != VAR_SIZE) {
+  // Set cell size
+  if(val_num_ != VAR_SIZE) {
     cell_size_ = val_num_ * type_size_;
     if(tile_type_ == COORDINATE)
       cell_size_ *= dim_num_;
   } else {
     cell_size_ = VAR_SIZE;
   }
+
+  // Set cell num and tile size for the dense case
+  if(dense_coords_) {
+    cell_num_ = array_schema_->cell_num_in_tile();
+    tile_size_ = cell_num_*cell_size_;
+  }
+
 }
 
 Tile::~Tile() {
@@ -101,11 +120,15 @@ Tile::~Tile() {
 ********************* ACCESSORS ***********************
 ******************************************************/
 
-TileConstCellIterator Tile::begin() {
+const ArraySchema* Tile::array_schema() const {
+  return array_schema_;
+}
+
+TileConstCellIterator* Tile::begin() {
   if(compressed_ && compression_ == CMP_GZIP)
     decompress();
 
-  return TileConstCellIterator(this, 0);
+  return new TileConstCellIterator(this, 0);
 }
 
 Tile::BoundingCoordinatesPair Tile::bounding_coordinates() const {
@@ -121,6 +144,11 @@ Tile::BoundingCoordinatesPair Tile::bounding_coordinates() const {
 }
 
 const void* Tile::cell(int64_t pos) {
+  if(dense_coords_) {
+    std::cout << "Function cell() is not supported for dense coordinates";
+    exit(-1);
+  }
+
   if(compressed_ && compression_ == CMP_GZIP)
     decompress();
 
@@ -152,12 +180,16 @@ void Tile::copy_payload(void* buffer) const {
   memcpy(buffer, payload_, tile_size_);
 }
 
+bool Tile::dense_coords() const {
+  return dense_coords_;
+}
+
 int Tile::dim_num() const {
   return dim_num_;
 }
 
-TileConstCellIterator Tile::end() {
-  return TileConstCellIterator();
+TileConstCellIterator* Tile::end() {
+  return new TileConstCellIterator();
 }
 
 bool Tile::is_del(int64_t pos) {
@@ -299,6 +331,10 @@ void Tile::set_payload(
   }
 }
 
+void Tile::set_tile_id(int64_t tile_id) {
+  tile_id_ = tile_id;
+}
+
 /******************************************************
 ************************ MISC *************************
 ******************************************************/
@@ -425,15 +461,15 @@ void Tile::print() {
   std::cout << "========== End of Tile info ========== \n\n";
 }
 
-TileConstReverseCellIterator Tile::rbegin() {
+TileConstReverseCellIterator* Tile::rbegin() {
   if(compressed_ && compression_ == CMP_GZIP)
     decompress();
 
-  return TileConstReverseCellIterator(this, cell_num()-1);
+  return new TileConstReverseCellIterator(this, cell_num()-1);
 }
 
-TileConstReverseCellIterator Tile::rend() {
-  return TileConstReverseCellIterator();
+TileConstReverseCellIterator* Tile::rend() {
+  return new TileConstReverseCellIterator();
 }
 
 /******************************************************
@@ -488,6 +524,11 @@ void Tile::expand_mbr(const T* coords) {
 
 template<class T>
 void Tile::print_bounding_coordinates() const {
+
+  // Do not print the bounding coordinates for dense coordinate tiles
+  if(dense_coords_)
+    return;
+
   assert(*cell_type_ == typeid(T));
 
   // Applies only to coordinate tiles
@@ -531,6 +572,11 @@ void Tile::print_mbr() const {
 
 template<class T>
 void Tile::print_payload() {
+
+  // Do not print the payload for dense coordinate tiles
+  if(dense_coords_)
+    return;
+
   assert(cell_type_ == &typeid(T));
 
   std::cout << "Payload contents:\n";

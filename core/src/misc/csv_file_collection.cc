@@ -55,9 +55,11 @@
 template<class T>
 CSVFileCollection<T>::CSVFileCollection(
     CompressionType compression,
-    char delimiter) 
+    char delimiter,
+    bool metadata) 
     : compression_(compression),
-      delimiter_(delimiter) {
+      delimiter_(delimiter),
+      metadata_(metadata) {
   pq_ = NULL;
 }
 
@@ -137,12 +139,58 @@ int CSVFileCollection<T>::open(
   CSVFile* csv_file;
   Cell* cell;
   for(int i=0; i<file_num; ++i) {
-    csv_file = new CSVFile(array_schema_, compression_, delimiter_);  
+    csv_file = new CSVFile(array_schema_, compression_, delimiter_);
     if(is_file(filenames_[i]))
       csv_file->open(filenames_[i], "r");
     else 
       csv_file->open(path + "/" + filenames_[i], "r");
 
+    csv_files_.push_back(csv_file);
+
+    cell = new Cell(array_schema_);
+    *csv_file >> *cell;
+    cells_.push_back(cell);
+    if(sorted)
+      pq->push(std::pair<const Cell*, int>(cell,i)); 
+  }
+
+  return 0;
+}
+
+template<class T>
+int CSVFileCollection<T>::open(
+    const ArraySchema* array_schema,
+    const std::vector<std::string>& files,
+    bool sorted) {
+  // Initialization
+  array_schema_ = array_schema;
+  sorted_ = sorted;
+  last_accessed_file_ = -1;
+  filenames_ = files;
+
+  if(filenames_.size() == 0) {
+    PRINT_ERROR("Cannot open collection; empty collection given");
+    return -1;
+  }
+
+  // Create priority queue
+  std::priority_queue<std::pair<const Cell*, int>, 
+                      std::vector<std::pair<const Cell*, int> >, 
+                      Cell::Succeeds<T> >* pq;
+  if(sorted) {
+    pq = new std::priority_queue<std::pair<const Cell*, int>,
+                                 std::vector<std::pair<const Cell*, int> >,
+                                 Cell::Succeeds<T> >;
+    pq_ = pq;
+  }
+
+  // Open files and prepare first cells
+  int file_num = int(filenames_.size());
+  CSVFile* csv_file;
+  Cell* cell;
+  for(int i=0; i<file_num; ++i) {
+    csv_file = new CSVFile(array_schema_, compression_, delimiter_, metadata_);  
+    csv_file->open(real_path(filenames_[i]), "r");
     csv_files_.push_back(csv_file);
 
     cell = new Cell(array_schema_);

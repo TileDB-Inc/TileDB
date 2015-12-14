@@ -48,13 +48,18 @@ ReadState::ReadState(
     const ArraySchema* array_schema, 
     const BookKeeping* book_keeping,
     const std::string* fragment_name,
-    const std::string* dirname) 
+    const std::string* dirname,
+    bool dense) 
     : array_schema_(array_schema), 
       book_keeping_(book_keeping),
       fragment_name_(fragment_name),
-      dirname_(dirname) {
+      dirname_(dirname),
+      dense_(dense) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
+
+  // Dense coordinates tile
+  dense_coords_tile_ = NULL;
 
   // Set segment size
   segment_size_ = SEGMENT_SIZE;
@@ -79,6 +84,10 @@ ReadState::~ReadState() {
   // Clean-up segments
   for(int i=0; i<segments_.size(); ++i)
     free(segments_[i]);
+
+  // Clear dense coordinates tile
+  if(dense_coords_tile_ != NULL)
+    delete dense_coords_tile_;
 }
 
 /******************************************************
@@ -86,6 +95,21 @@ ReadState::~ReadState() {
 ******************************************************/
 
 Tile* ReadState::get_tile_by_pos(int attribute_id, int64_t pos) {
+  // Dense coordinates case
+  if(dense_ && (attribute_id == array_schema_->attribute_num())) {
+    // For easy reference 
+    int dim_num = array_schema_->dim_num();
+    const std::type_info* cell_type = array_schema_->coords_type();
+    int64_t tile_id = book_keeping_->tile_id(pos);
+
+    if(dense_coords_tile_ == NULL) 
+      dense_coords_tile_ = new Tile(tile_id, array_schema_, attribute_id, true);
+    else 
+      dense_coords_tile_->set_tile_id(tile_id);
+    dense_coords_tile_->set_mbr(book_keeping_->mbr(pos));
+    return dense_coords_tile_; 
+  }
+
   // For easy reference
   const int64_t& pos_lower = pos_ranges_[attribute_id].first;
   const int64_t& pos_upper = pos_ranges_[attribute_id].second;
@@ -255,7 +279,7 @@ void ReadState::load_tiles_from_segment(
 
     payload = segment + segment_offset;
     
-    Tile* tile = new Tile(tile_id, dim_num, cell_type, val_num, compression);
+    Tile* tile = new Tile(tile_id, array_schema_, attribute_id);
     tile->set_payload(payload, payload_size);
     if(dim_num != 0) // Coordinate type
       tile->set_mbr(book_keeping_->mbr(pos));

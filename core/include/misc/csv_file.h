@@ -72,18 +72,22 @@ class CSVFile {
   /** Constructor. */
   CSVFile(
       CompressionType compression, 
-      char delimiter = CSV_DELIMITER);
+      char delimiter = CSV_DELIMITER,
+      bool metadata = false);
   /** Constructor. */
   CSVFile(
       const ArraySchema* array_schema,
       CompressionType compression,
-      char delimiter = CSV_DELIMITER);
+      char delimiter = CSV_DELIMITER,
+      bool dense = false,
+      bool metadata = false);
   /** Constructor. */
   CSVFile(
       const std::string& filename, 
       const char* mode,
       CompressionType compression,
-      char delimiter = CSV_DELIMITER);
+      char delimiter = CSV_DELIMITER,
+      bool metadata = false);
   /** Destructor. */
   ~CSVFile();
 
@@ -138,10 +142,14 @@ class CSVFile {
     * A pointer to the current position (for reading or writing) in the buffer.
     */
   size_t buffer_offset_;
+  // TODO
+  size_t buffer_utilization_;
   /** Stores the cell format of the lastly read CSV line. */
   void* cell_;
   /** Compression mode. */
   CompressionType compression_;
+  /** For the dense case. */
+  bool dense_;
   /** The CSV line delimiter */
   char delimiter_;
   /** True if the end of file has been reached. */
@@ -154,6 +162,8 @@ class CSVFile {
   size_t file_size_;
   /** The name of the CSV file. */
   std::string filename_;
+  /** True if the file contains metadata. */
+  bool metadata_;
   /** 
    * The mode of the CSV file. There are three modes available:
    *

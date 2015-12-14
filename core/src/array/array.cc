@@ -77,7 +77,7 @@ Array::Array(
   created_successfully_ = false;
 
   if(array_schema_ == NULL) {
-    PRINT_ERROR("Cannot construct array - Invalid array schema");
+    PRINT_ERROR("Cannot construct array; Invalid array schema");
     return;
   }
 
@@ -102,9 +102,10 @@ bool Array::created_successfully() const {
 }
 
 int Array::finalize() {
-  if(mode_ == WRITE) {
-    assert(fragments_.size() == 1);
+  if(fragments_.size() == 0)
+    return 0;
 
+  if(mode_ == WRITE) {
     // Commit (the only) fragment by deleting it
     std::string fragment_dirname = fragments_[0]->dirname();
     delete fragments_[0];
@@ -118,6 +119,7 @@ int Array::finalize() {
     // Rename new fragment directory
     std::string new_dirname = dirname_ + "/" + 
                               fragment_dirname.substr(dirname_.size() + 2);
+
     if(rename(fragment_dirname.c_str(), new_dirname.c_str())) {
       PRINT_ERROR(std::string("Cannot rename new fragment directory - ") +
                   strerror(errno));
@@ -177,21 +179,21 @@ Array::Mode Array::mode() const {
 ******************** ITERATORS ************************
 ******************************************************/
 
-FragmentConstTileIterator Array::begin(
+FragmentConstTileIterator* Array::begin(
     int fragment_id, int attribute_id) const {
   if(mode_ != READ && mode_ != CONSOLIDATE) {
     PRINT_ERROR("Failed to begin tile iterator because of invalid array mode.");
-    return FragmentConstTileIterator();
+    return NULL;
   }
 
   return fragments_[fragment_id]->begin(attribute_id);
 }
 
-FragmentConstReverseTileIterator Array::rbegin(
+FragmentConstReverseTileIterator* Array::rbegin(
     int fragment_id, int attribute_id) const {
   if(mode_ != READ && mode_ != CONSOLIDATE) {
     PRINT_ERROR("Failed to begin tile iterator because of invalid array mode.");
-    return FragmentConstReverseTileIterator();
+    return NULL;
   }
 
   return fragments_[fragment_id]->rbegin(attribute_id);
@@ -214,7 +216,7 @@ int Array::cell_write(const void* cell) const {
 }
 
 template<class T>
-int Array::cell_write_sorted(const void* cell) {
+int Array::cell_write_sorted(const void* cell, bool without_coords) {
   if(mode_ != WRITE) {
     PRINT_ERROR("Failed to write to array because of invalid array mode.");
     return -1;
@@ -222,7 +224,7 @@ int Array::cell_write_sorted(const void* cell) {
 
   assert(fragments_.size() == 1);
 
-  return fragments_[0]->cell_write_sorted<T>(cell);
+  return fragments_[0]->cell_write_sorted<T>(cell, without_coords);
 }
 
 int Array::close_forced() {
@@ -318,12 +320,18 @@ int Array::new_fragment_init() {
   uint64_t ms = tp.tv_sec * 1000 + tp.tv_usec / 1000;
   fragment_name << ".__" << getpid() << "_" << ms; 
 
+  // Check if dense
+  bool dense = false;
+  if(!has_fragments() && array_schema_->dense())
+    dense = true;
+
   // Create a new Fragment object
   fragments_.push_back(
       new Fragment(
           dirname_ + "/" + fragment_name.str(), 
           array_schema_, 
-          fragment_name.str()));
+          fragment_name.str(),
+          dense));
 
   return 0;
 }
@@ -396,7 +404,7 @@ int Array::fragment_name_parse(
       break;
     }
   }
- 
+
   // Check fragment name correctness
   if(!is_non_negative_integer(x_str.c_str()) || 
      !is_non_negative_integer(y_str.c_str())) {
@@ -417,6 +425,31 @@ void Array::fragments_close() {
   fragments_.clear(); 
 }
 
+bool Array::has_fragments() const {
+  bool ret = false;
+
+  struct dirent *next_file;
+  DIR* dir = opendir(dirname_.c_str());
+  if(dir == NULL) 
+    return false;
+
+  while((next_file = readdir(dir))) {
+    if(strcmp(next_file->d_name, ".") &&
+       strcmp(next_file->d_name, "..") &&
+       is_dir(dirname_ + "/" + next_file->d_name) &&
+       !metadata_exists(dirname_ + "/" + next_file->d_name)) { 
+      ret = true;
+      break;
+    }
+  } 
+ 
+  // Close directory 
+  if(closedir(dir)) 
+    return false;
+
+  return ret;
+}
+
 int Array::fragment_names_get(std::vector<std::string>& fragment_names) const {
   fragment_names.clear(); 
   struct dirent *next_file;
@@ -431,7 +464,7 @@ int Array::fragment_names_get(std::vector<std::string>& fragment_names) const {
     if(strcmp(next_file->d_name, ".") &&
        strcmp(next_file->d_name, "..") &&
        is_dir(dirname_ + "/" + next_file->d_name) &&
-       !starts_with(next_file->d_name, ".")) 
+       !metadata_exists(dirname_ + "/" + next_file->d_name))  
       fragment_names.push_back(next_file->d_name);
   } 
  
@@ -457,14 +490,49 @@ int Array::fragments_open() {
 
   // Create a new Fragment object for each fragment name
   // TODO: check for errors in initialization of fragments
+  // NOTE: In the case of dense arrays, the first fragment is
+  // always dense
   for(int i=0; i<fragment_names.size(); ++i) { 
     fragments_.push_back(
         new Fragment(dirname_ + "/" + fragment_names[i],
                      array_schema_, 
-                     fragment_names[i]));
+                     fragment_names[i],
+                     fragment_is_dense(dirname_ + "/" + fragment_names[i])));
   }
 
   return 0;
+}
+
+bool Array::fragment_is_dense(const std::string& fragment) const {
+  if(array_schema_->dense() && 
+     !is_file(fragment + "/" + AS_COORDINATES_NAME + TILE_DATA_FILE_SUFFIX))
+    return true;
+  else
+    return false;
+}
+
+bool Array::metadata_exists(
+    const std::string& metadata_name,
+    bool real_path) const {
+  // Get real metadata directory name
+  std::string metadata_name_real;
+  if(real_path)
+    metadata_name_real = metadata_name;
+  else
+    metadata_name_real = ::real_path(metadata_name);
+
+  // Check if metadata schema file exists
+  std::string filename = metadata_name_real + "/" +
+                         METADATA_SCHEMA_FILENAME;
+
+  int fd = open(filename.c_str(), O_RDONLY);
+
+  if(fd == -1) {
+    return false;
+  } else {
+    close(fd);
+    return true;
+  }
 }
 
 int Array::fragment_names_sort(std::vector<std::string>& fragment_names) const {
@@ -488,7 +556,9 @@ int Array::fragment_names_sort(std::vector<std::string>& fragment_names) const {
 
   // Parse the names into a new structure, which is "sortable"
   for(int i=0; i<fragment_names.size(); ++i) {
-    if(starts_with(fragment_names[i], "__")) {
+    if(metadata_exists(dirname_ + "/" + fragment_names[i])) {
+      continue;
+    } else if(starts_with(fragment_names[i], "__")) {
       unconsolidated_fragments.push_back(fragment_names[i]);
       continue;
     } else {
@@ -772,7 +842,7 @@ template int Array::cell_write<int64_t>(const void* cell) const;
 template int Array::cell_write<float>(const void* cell) const;
 template int Array::cell_write<double>(const void* cell) const;
 
-template int Array::cell_write_sorted<int>(const void* cell);
-template int Array::cell_write_sorted<int64_t>(const void* cell);
-template int Array::cell_write_sorted<float>(const void* cell);
-template int Array::cell_write_sorted<double>(const void* cell);
+template int Array::cell_write_sorted<int>(const void* cell, bool without_coords);
+template int Array::cell_write_sorted<int64_t>(const void* cell, bool without_coords);
+template int Array::cell_write_sorted<float>(const void* cell, bool without_coords);
+template int Array::cell_write_sorted<double>(const void* cell, bool without_coords);

@@ -13,13 +13,14 @@ la/obj/*
 la/include/*.tmp
 la/src/*.tmp
 gtest/obj/*
-data/*
-example*
 Doxyfile.log
 doxyfile.inc
 doxygen_sqlite3.db
 doxygen/html/
 doxygen/latex/
-manpages/html/
 rvma/obj/
 rvma/bin/
+my_workspace*
+.directory
+examples/bin/*
+examples/obj/*

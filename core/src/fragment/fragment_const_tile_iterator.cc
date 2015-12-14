@@ -43,8 +43,12 @@ FragmentConstTileIterator::FragmentConstTileIterator()
 }
 
 FragmentConstTileIterator::FragmentConstTileIterator(
-    const Fragment* fragment, int attribute_id, int64_t pos)
-    : fragment_(fragment), attribute_id_(attribute_id), pos_(pos) {
+    const Fragment* fragment, 
+    int attribute_id, 
+    int64_t pos)
+    : fragment_(fragment), 
+      attribute_id_(attribute_id),
+      pos_(pos) {
   if(pos_ >= 0 && pos_ < fragment_->tile_num())
     end_ = false;
   else
@@ -118,7 +122,8 @@ FragmentConstTileIterator FragmentConstTileIterator::operator++() {
   else
     end_ = true;
 
-  return *this;
+  FragmentConstTileIterator it = *this;
+  return it;
 }
 
 FragmentConstTileIterator FragmentConstTileIterator::operator++(int junk) {

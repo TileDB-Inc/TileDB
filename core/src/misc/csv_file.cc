@@ -57,9 +57,11 @@
 
 CSVFile::CSVFile(
     CompressionType compression,
-    char delimiter)
+    char delimiter,
+    bool metadata)
     : compression_(compression),
-      delimiter_(delimiter) { 
+      delimiter_(delimiter), 
+      metadata_(metadata) { 
   array_schema_ = NULL;
   buffer_ = NULL;
   buffer_end_ = 0;
@@ -74,13 +76,18 @@ CSVFile::CSVFile(
 CSVFile::CSVFile(
     const ArraySchema* array_schema,
     CompressionType compression,
-    char delimiter)
+    char delimiter,
+    bool dense,
+    bool metadata)
     : array_schema_(array_schema), 
       compression_(compression),
-      delimiter_(delimiter) { 
+      delimiter_(delimiter),
+      dense_(dense),
+      metadata_(metadata) { 
   buffer_ = NULL;
   buffer_end_ = 0;
   buffer_offset_ = 0;
+  buffer_utilization_ = 0;
   if(array_schema_->cell_size() != VAR_SIZE) {
     cell_ = malloc(array_schema_->cell_size());
     allocated_cell_size_ = array_schema_->cell_size();
@@ -98,13 +105,16 @@ CSVFile::CSVFile(
     const std::string& filename, 
     const char* mode,
     CompressionType compression,
-    char delimiter) 
+    char delimiter,
+    bool metadata) 
     : compression_(compression),
-      delimiter_(delimiter) { 
+      delimiter_(delimiter),
+      metadata_(metadata) { 
   array_schema_ = NULL;
   buffer_ = NULL;
   buffer_end_ = 0;
   buffer_offset_ = 0;
+  buffer_utilization_ = 0;
   cell_ = NULL;
   eof_ = false;
   fd_ = -1;
@@ -195,7 +205,7 @@ int CSVFile::open(const std::string& filename,
   file_size_ = st.st_size;
   ::close(fd);
 
-  if(file_size_ == 0)
+  if(filename != "/dev/stdin" && file_size_ == 0)
     eof_ = true;
 
   // Open the file, depending on the compression
@@ -281,20 +291,35 @@ bool CSVFile::operator>>(CSVLine& csv_line) {
   return true;
 }
 
+// TODO: change this to int and return proper codes...
 bool CSVFile::operator>>(Cell& cell) {
   assert(strcmp(mode_, "r") == 0);
   assert(array_schema_ != NULL);
 
+  // TODO: do not create a new CSV line all the time
   CSVLine csv_line(delimiter_);
   if(!(*this >> csv_line)) {
     cell.set_cell(NULL);
     return false;
   }
 
-  array_schema_->csv_line_to_cell(csv_line, cell_, allocated_cell_size_);
-  cell.set_cell(cell_);
+  int rc;
+  while((rc = array_schema_->csv_line_to_cell(
+                  csv_line, cell_, 
+                  allocated_cell_size_, 
+                  metadata_, dense_)) == TILEDB_AS_ERR_BUFFER_OVERFLOW) {
+    expand_buffer(cell_, allocated_cell_size_);
+    allocated_cell_size_ *= 2;
+  }
 
-  return true;
+  if(rc == TILEDB_AS_OK) {
+    cell.set_cell(cell_);
+    return true;
+  } else {
+    // TODO: return another error code here
+    cell.set_cell(NULL);
+    return false;
+  }
 }
 
 /******************************************************
@@ -336,37 +361,34 @@ bool CSVFile::read_segment() {
   if(eof_) 
     return false;
 
-  // New bytes to read from the file
-  size_t bytes_to_be_read;
-  // Bytes to copy from buffer, not processed yet
-  size_t bytes_to_copy;
-
   // First read
   if(buffer_ == NULL) { 
     buffer_ = new char[segment_size_ + 1];
     buffer_[segment_size_] = '\0';
-    bytes_to_be_read = segment_size_;
-    bytes_to_copy = 0;
-  } else { // Subsequent reads
-    assert(buffer_end_ != 0);
-    bytes_to_be_read = buffer_end_;
-    bytes_to_copy = segment_size_ - buffer_end_; 
-    if(bytes_to_copy != 0) {
-      // Easy copy in-place
-      if(buffer_end_ < segment_size_ / 2) {
-        memcpy(buffer_, buffer_+buffer_end_, bytes_to_copy);
-      } else { // We need a new buffer (not in-place copy)
-        char* temp = buffer_;
-        buffer_ = new char[segment_size_ + 1];
-        buffer_[segment_size_] = '\0';
-        memcpy(buffer_, temp + buffer_end_, bytes_to_copy);
-        delete [] temp;
-      }
+  }
+
+  // Bytes to copy from buffer, not processed yet
+  size_t bytes_to_copy = buffer_utilization_ - buffer_end_; 
+  // New bytes to read from the file
+  size_t bytes_to_be_read = segment_size_ - bytes_to_copy;
+
+  // Copy useful bytes
+  if(bytes_to_copy != 0) {
+    // Easy copy in-place
+    if(buffer_end_ < segment_size_ / 2) {
+      memcpy(buffer_, buffer_+buffer_end_, bytes_to_copy);
+    } else { // We need a new buffer (not in-place copy)
+      char* temp = buffer_;
+      buffer_ = new char[segment_size_ + 1];
+      buffer_[segment_size_] = '\0';
+      memcpy(buffer_, temp + buffer_end_, bytes_to_copy);
+      delete [] temp;
     }
   }
 
   // Read the new lines
   size_t bytes_read;
+
   if(compression_ == CMP_NONE) 
     bytes_read = read(fd_, buffer_+bytes_to_copy, bytes_to_be_read);
   else if(compression_ == CMP_GZIP)
@@ -379,15 +401,14 @@ bool CSVFile::read_segment() {
   }
 
   buffer_offset_ = 0;
-  buffer_end_ = bytes_to_copy + bytes_read;
-   
+  buffer_utilization_ = bytes_to_copy + bytes_read;
+  buffer_end_ = buffer_utilization_;
+
   // We may need to backtrack until we find the last '\n' character,
   // so that we do not split lines in the middle at the boundaries of two
   // segments, unless we reached the end of the file.
-  while(buffer_[buffer_end_-1] != '\n') {
+  while(buffer_end_ != 0 && buffer_[buffer_end_-1] != '\n') 
     --buffer_end_;
-    assert(buffer_end_ != 0); // Make sure line fits in the buffer.
-  }
 
   return true;
 }

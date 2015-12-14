@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+
+<html>
+
+    <head>
+        <title> TileDB </title>
+        <link rel="stylesheet" type="text/css" href="../css/tiledb.css">     
+        <link href='https://fonts.googleapis.com/css?family=Roboto|Open+Sans|Source+Sans+Pro|Lora|Raleway' rel='stylesheet' type='text/css'>
+        <link rel="icon" type="image/png" href="../images/TileDB_icon.png">
+        <script>document.domain = document.domain;</script>
+    </head>
+
+    <body>
+        
+        <div id="header">
+            <a href="../index.html"><img src="../images/TileDB_logo.png" alt="TileDB logo" width="120" height="60"></a>
+            <div id="navbar">
+                <ul>
+                    <li><a class="changeForeground" href="">Download</a></li>
+                    <li><a class="changeForeground" href="">Tutorials</a></li>
+                    <li><a class="changeForeground" href="">Papers</a></li>
+                    <li><a class="changeForeground" href="">Coming Up</a></li>
+                    <li><a class="changeForeground" href="">About</a></li>
+                </ul>
+            </div>
+        </div>
+        <div id="invisible-header-2">
+            Header
+        </div>
+        
+        <div id="tutorial-navbar">
+            <ul>
+                <li>
+                    <input type="radio" name="tutorial-navbar-L1" id="TileDB-tutorials-prologue" checked/>
+                    <label for="TileDB-tutorials-prologue" onclick='document.getElementById("tutorial-frame").src="prologue.html"'>Prologue</label> 
+                </li>
+                <li>
+                    <input type="radio" name="tutorial-navbar-L1" id="TileDB-mechanics-101"/>
+                    <label for="TileDB-mechanics-101" 
+                           onclick='document.getElementById("tutorial-frame").src="tiledb_mechanics_101.html"'>TileDB Mechanics 101</label> 
+                    <div>
+                        <ul>
+                            <li><a href="tiledb_mechanics_101.html#arrays" target="tutorial-frame">Arrays</a>
+                            <li><a href="tiledb_mechanics_101.html#tiles" target="tutorial-frame">Tiles</a>
+                            <li><a href="tiledb_mechanics_101.html#cells" target="tutorial-frame">Cells</a>
+                            <li><a href="tiledb_mechanics_101.html#psysical_org" target="tutorial-frame">Physical Data Organization</a>
+                            <li><a href="tiledb_mechanics_101.html#book_keeping" target="tutorial-frame">Book-keeping</a>
+                            <li><a href="tiledb_mechanics_101.html#fragments" target="tutorial-frame">Fragments</a>
+                            <li><a href="tiledb_mechanics_101.html#writing" target="tutorial-frame">Writing Data</a>
+                            <li><a href="tiledb_mechanics_101.html#reading" target="tutorial-frame">Reading Data</a>
+                            <li><a href="tiledb_mechanics_101.html#workspaces_groups" target="tutorial-frame">Workspaces and Groups</a>
+                            <li><a href="tiledb_mechanics_101.html#metadata" target="tutorial-frame">Metadata</a>
+                            <li><a href="tiledb_mechanics_101.html#file_organization" target="tutorial-frame">File Organization</a>
+                        </ul>
+                    </div>
+                </li>
+                <li>
+                    <input type="radio" name="tutorial-navbar-L1" id="TileDB Installation" />
+                    <label for="TileDB Installation" onclick='document.getElementById("tutorial-frame").src="tiledb_installation.html"'>TileDB Installation</label>
+                    <div>
+                        <ul>
+                            <li><a href="#">Placeholder 1</a>
+                            <li><a href="#">Placeholder 2</a>
+                        </ul>
+                    </div>
+                </li>
+                <li>
+                    <input type="radio" name="tutorial-navbar-L1" id="TileDB-Executable" />
+                    <label for="TileDB-Executable" onclick='document.getElementById("tutorial-frame").src="tiledb_executable.html"'>TileDB Executable</label>
+                    <div>
+                        <ul>
+                            <li><a href="#">Placeholder 1</a>
+                            <li><a href="#">Placeholder 2</a>
+                        </ul>
+                    </div>
+                </li>
+                <li>
+                    <input type="radio" name="tutorial-navbar-L1" id="TileDB-C-API" />
+                    <label for="TileDB-C-API" onclick='document.getElementById("tutorial-frame").src="tiledb_c_api.html"'>TileDB C API</label>
+                    <div>
+                        <ul>
+                            <li><a href="tiledb_c_api.html#version" target="tutorial-frame">Version</a>
+                            <li><a href="tiledb_c_api.html#constants" target="tutorial-frame">Constants</a>
+                            <li><a href="tiledb_c_api.html#context" target="tutorial-frame">TileDB Context</a>
+                            <li><a href="tiledb_c_api.html#workspaces" target="tutorial-frame">Workspaces</a>
+                            <li><a href="tiledb_c_api.html#groups" target="tutorial-frame">Groups</a>
+                            <li><a href="tiledb_c_api.html#arrays" target="tutorial-frame">Arrays</a>
+                            <li><a href="tiledb_c_api.html#metadata" target="tutorial-frame">Metadata</a>
+                        </ul>
+                    </div>
+                </li>
+                <li>
+                    <input type="radio" name="tutorial-navbar-L1" id="TileDB Parallel Programming" />
+                    <label for="TileDB Parallel Programming" onclick='document.getElementById("tutorial-frame").src="tiledb_parallel_programming.html"'>TileDB Parallel Programming</label>
+                    <div>
+                        <ul>
+                            <li><a href="#">Placeholder 1</a>
+                            <li><a href="#">Placeholder 2</a>
+                        </ul>
+                    </div>
+                </li>
+                <li>
+                    <input type="radio" name="tutorial-navbar-L1" id="TileDB Implementation" />
+                    <label for="TileDB Implementation" onclick='document.getElementById("tutorial-frame").src="tiledb_implementation.html"'>TileDB Implementation</label>
+                    <div>
+                        <ul>
+                            <li><a href="#">Placeholder 1</a>
+                            <li><a href="#">Placeholder 2</a>
+                        </ul>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        
+        <div id="tutorial-frame-wrapper">
+            <iframe id="tutorial-frame" name="tutorial-frame" src="prologue.html" frameBorder="0" width=100% height=100%></iframe>
+        </div>
+        
+        <div class="no-wrap"></div>
+        
+    </body>
+
+</html>

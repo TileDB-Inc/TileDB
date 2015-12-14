@@ -35,6 +35,7 @@
 #include "special_values.h"
 #include "utils.h"
 #include <assert.h>
+#include <iostream>
 #include <string.h>
 #include <time.h>
 
