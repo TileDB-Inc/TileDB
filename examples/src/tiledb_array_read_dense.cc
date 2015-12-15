@@ -26,14 +26,19 @@ int main() {
   double range[4] = {1, 2, 2, 4};
   float buffer[6];  
   int buffer_size = 6*sizeof(float);
+  const char** dimensions = new const char*[1];
+  dimensions[0] = "__hide";
+  int dim_num = 1;
   const char** attributes = NULL;
   int attribute_num = 0;
 
   /* Read cells. */
-  tiledb_array_read_dense(
+  tiledb_array_read(
       tiledb_ctx,
       ad,
       range,
+      dimensions,
+      dim_num,
       attributes,
       attribute_num,
       buffer,
@@ -52,6 +57,9 @@ int main() {
 
   /* Finalize context. */
   tiledb_ctx_finalize(tiledb_ctx);
+
+  /* Clean up. */
+  delete [] dimensions;
 
   return 0;
 }

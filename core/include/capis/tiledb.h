@@ -303,7 +303,8 @@ typedef struct TileDB_ArraySchema {
   int consolidation_step_;
   /** 
    * If it is equal to 1, the array is in dense format; if it is equal to 0
-   * the array is in sparse format.
+   * the array is in sparse format. If the array is specified as dense, then
+   * the user must specify tile extents (see below) for regular tiles.
    */
   int dense_;
   /** The dimension names. */
@@ -316,14 +317,15 @@ typedef struct TileDB_ArraySchema {
    */
   double* domain_;
   /** 
-   * The tile extents (only applicable to regular tiles and dense arrays). 
-   * There should be one value for each dimension.
+   * The tile extents (only applicable to regular tiles). There should be one 
+   * value for each dimension. If it is NULL, then it means that the array has
+   * irregular tiles (and, hence, it is sparse).
    */
   double* tile_extents_;
   /**
-   * The tile order (only applicable to regular tiles and dense arrays). The 
-   * supported orders are **row-major**, **column-major** and **hilbert**. If it
-   * is set to NULL, then **row-major** is selected as default.
+   * The tile order (only applicable to regular tiles). The supported orders are
+   * **row-major**, **column-major** and **hilbert**. If it is set to NULL, then
+   * **row-major** is selected as default.
    */
   const char* tile_order_;
   /** 
@@ -421,6 +423,44 @@ TILEDB_EXPORT int tiledb_array_close(
     TileDB_CTX* tiledb_ctx,
     int ad);
 
+/** 
+ * Writes a binary cell to an array. The cell is in sparse format, i.e., it
+ * carries also the coordinates. See the TileDB Mechanics 101 tutorial for
+ * more information on the binary cell format. Note that this fucntion works for
+ * both dense and sparse arrays.
+ *
+ * @param tiledb_ctx The TileDB state.
+ * @param ad The descriptor of the array where the write will occur.
+ * @param cell The binary cell to be written.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ * @see tiledb_array_write_sorted, tiledb_array_read
+ */
+TILEDB_EXPORT int tiledb_array_write(
+    TileDB_CTX* tiledb_ctx,
+    int ad, 
+    const void* cell);
+
+/** 
+ * Writes a binary cell to an array. The cell is in sparse format, i.e., it
+ * carries also the coordinates. See the TileDB Mechanics 101 tutorial for
+ * more information on the binary cell format. The difference to 
+ * tildb_array_write() is that the cells are assumed to be written in the same 
+ * order as the global tile/cell orders of the array. Therefore, this is a 
+ * simple <b>append</b> command, whereas tiledb_array_write() entails a
+ * <b>sorting</p> process. Note that this function works for both dense
+ * and sparse arrays.
+ *
+ * @param tiledb_ctx The TileDB state.
+ * @param ad The descriptor of the array where the write will occur.
+ * @param cell The binary cell to be written.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ * @see tiledb_array_write, tiledb_array_read
+ */
+TILEDB_EXPORT int tiledb_array_write_sorted(
+    TileDB_CTX* tiledb_ctx,
+    int ad, 
+    const void* cell);
+
 /**
  * Writes a cell into an array in dense mode. This means that the user must
  * make sure to write the cells one after the other respecting the array's
@@ -440,23 +480,31 @@ int tiledb_array_write_dense(
     int ad,
     const void* cell);
 
-/**
+/** 
  * Reads into an input buffer all the cells that lie within an input range 
- * (subarray). The cells are written in the dense binary cell format 
+ * (subarray). The cells are written in the sparse binary cell format 
  * (see the TileDB Mechanics 101 for more details on this format). Moreover,
  * the cells are written in the buffer respecting the array tile and cell
- * orders. Finally, for each cell, the function reads only the attribute values
- * specified in the "attributes" argument.  
+ * orders. Finally, for each cell, the function reads only the coordinate
+ * values of the dimensions specified in the "dimensions" argument, and the
+ * attribute values specified in the "attributes" argument.
  *
  * @param tiledb_ctx The TileDB context.
  * @param ad The descriptor of the array where the read will occur.
  * @param range The range (subarray) of the cells to be read. It must be given
  *      as a list of pairs (lower, upper). The number of pairs should be equal
  *      to the number of array dimensions. 
- * @param attributes The names of the attributes whose values will be included
- *      for each cell. If NULL is provided instead, the **all** cell attributes 
- *      will be read.
- * @param attribute_num The number of attributes.
+ * @param dimensions An array holding the names of the dimensions whose 
+ * coordinates will appear in the result cells. If it is NULL, then <b>all</b> 
+ * the coordinates will appear in the result cells. If it contains special 
+ * name <b>"__hide"</b>, then <b>no</b> coordinates will appear.
+ * @param dim_num The number of elements in *dimensions*. 
+ * @param attributes An array holding the names of the attributes whose
+ * values will be included in the result cells. If it is NULL, then <b>all</b>
+ * the attributes of the input array will appear in the result cells. If there
+ * is only one special attribute name <b>"__hide"</b>, then **no** attribute 
+ * value will be included in the result cells.
+ * @param attribute_num The number of elements in *attributes*.
  * @param buffer The buffer which the cells will be read into. Note that this
  *      buffer is owned by the caller.
  * @param buffer_size The capacity of the input buffer. This is used by the
@@ -465,12 +513,14 @@ int tiledb_array_write_dense(
  *      that it used to write the cells.
  * @return TILEDB_OK for success, TILEDB_READ_BUFFER_OVERFLOW in case 
  *     writing into the buffer overflows, and TILEDB_ERR for error.
- * @see tiledb_array_write_dense
+ * @see tiledb_array_write, tiledb_array_write_sorted_
  */
-TILEDB_EXPORT int tiledb_array_read_dense(
-    const TileDB_CTX* tiledb_ctx,
-    int ad,
+TILEDB_EXPORT int tiledb_array_read( 
+    const TileDB_CTX* tiledb_ctx, 
+    int ad, 
     const double* range,
+    const char** dimensions,
+    int dim_num,
     const char** attributes,
     int attribute_num,
     void* buffer,

@@ -72,6 +72,7 @@ int tiledb_ctx_init(TileDB_CTX** tiledb_ctx) {
   }
 
   // Create modules
+  
   (*tiledb_ctx)->storage_manager_ = new StorageManager();
   if(!(*tiledb_ctx)->storage_manager_->created_successfully())
     return TILEDB_ERR;
@@ -109,9 +110,6 @@ int tiledb_ctx_finalize(TileDB_CTX* tiledb_ctx) {
   if(tiledb_ctx->query_processor_->finalize())
     return TILEDB_ERR;
   delete tiledb_ctx->query_processor_;
-
-  // Delete the TileDB context
-  free(tiledb_ctx);
 
   // Success
   return TILEDB_OK;
@@ -466,10 +464,88 @@ int tiledb_array_write_dense(
    return TILEDB_ERR;
 }
 
-int tiledb_array_read_dense(
+int tiledb_array_write(
+    TileDB_CTX* tiledb_ctx, 
+    int ad, 
+    const void* cell) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot write cell to array; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // For easy reference
+  const ArraySchema* array_schema;
+  if(tiledb_ctx->storage_manager_->array_schema_get(ad, array_schema))
+    return -1;
+  const std::type_info* type = array_schema->coords_type();
+
+  // Write cell, templating on coordinates type
+  int rc;
+  if(type == &typeid(int)) {
+    rc = tiledb_ctx->storage_manager_->cell_write<int>(ad, cell);
+  } else if(type == &typeid(int64_t)) {
+    rc = tiledb_ctx->storage_manager_->cell_write<int64_t>(ad, cell);
+  } else if(type == &typeid(float)) {
+    rc = tiledb_ctx->storage_manager_->cell_write<float>(ad, cell);
+  } else if(type == &typeid(double)) {
+    rc = tiledb_ctx->storage_manager_->cell_write<double>(ad, cell);
+  } else {
+    PRINT_ERROR("Cannot write cell to array; Invalid coordinates type");
+    return TILEDB_ERR;
+  }
+
+  // Return
+  if(rc == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_array_write_sorted(
+    TileDB_CTX* tiledb_ctx, 
+    int ad, 
+    const void* cell) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot write cell to array; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // For easy reference
+  const ArraySchema* array_schema;
+  if(tiledb_ctx->storage_manager_->array_schema_get(ad, array_schema))
+    return -1;
+  const std::type_info* type = array_schema->coords_type();
+
+  // Write cell, templating on coordinates type
+  int rc;
+  if(type == &typeid(int)) {
+    rc = tiledb_ctx->storage_manager_->cell_write_sorted<int>(ad, cell);
+  } else if(type == &typeid(int64_t)) {
+    rc = tiledb_ctx->storage_manager_->cell_write_sorted<int64_t>(ad, cell);
+  } else if(type == &typeid(float)) {
+    rc = tiledb_ctx->storage_manager_->cell_write_sorted<float>(ad, cell);
+  } else if(type == &typeid(double)) {
+    rc = tiledb_ctx->storage_manager_->cell_write_sorted<double>(ad, cell);
+  } else {
+    PRINT_ERROR("Cannot write cell to array; Invalid coordinates type");
+    return TILEDB_ERR;
+  }
+
+  // Return
+  if(rc == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_array_read(
     const TileDB_CTX* tiledb_ctx,
     int ad,
     const double* range,
+    const char** dimensions,
+    int dim_num,
     const char** attributes,
     int attribute_num,
     void* buffer,
@@ -480,15 +556,30 @@ int tiledb_array_read_dense(
     return TILEDB_ERR;
   }
 
-  // Get attribute ids and the coordinates type
+  // Get dimension ids, attribute ids and the coordinates type
   const ArraySchema* array_schema;
   if(tiledb_ctx->storage_manager_->array_schema_get(ad, array_schema) 
      == TILEDB_SM_ERR)
     return TILEDB_ERR;
   const std::type_info* coords_type = array_schema->coords_type();
-  int dim_num = array_schema->dim_num();
+  std::vector<int> dim_ids;
   std::vector<int> attribute_ids;
   int id;
+  if(dimensions == NULL) {
+    for(int i=0; i<dim_num; ++i) 
+      dim_ids.push_back(i);
+  } else if(dim_num == 1 && !strcmp(dimensions[0], "__hide")) {
+    // Do nothing - dim_ids should be empty
+  } else {
+    for(int i=0; i<dim_num; ++i) {
+      id = array_schema->dim_id(dimensions[i]);
+      if(id == -1) {
+        PRINT_ERROR("Cannot read from array; invalid dimension name");
+        return TILEDB_ERR;
+      }
+      dim_ids.push_back(id);
+    }
+  }
   if(attributes == NULL) {
     for(int i=0; i<array_schema->attribute_num(); ++i) 
       attribute_ids.push_back(i);
@@ -506,16 +597,28 @@ int tiledb_array_read_dense(
   // Perform the query
   int rc;
   if(coords_type == &typeid(int)) { 
-    int* new_range = new int[2*dim_num]; 
-    convert(&range[0], new_range, 2*dim_num);
-    tiledb_ctx->storage_manager_->array_read_dense<int>(
-        ad, new_range, attribute_ids, buffer, buffer_size);
+    int* new_range = new int[2*array_schema->dim_num()]; 
+    convert(&range[0], new_range, 2*array_schema->dim_num());
+    rc = tiledb_ctx->storage_manager_->array_read<int>(
+        ad, new_range, dim_ids, attribute_ids, buffer, buffer_size);
     delete [] new_range;
   } else if(coords_type == &typeid(int64_t)) { 
-    int64_t* new_range = new int64_t[2*dim_num]; 
-    convert(&range[0], new_range, 2*dim_num);
-    tiledb_ctx->storage_manager_->array_read_dense<int64_t>(
-        ad, new_range, attribute_ids, buffer, buffer_size);
+    int64_t* new_range = new int64_t[2*array_schema->dim_num()]; 
+    convert(&range[0], new_range, 2*array_schema->dim_num());
+    rc = tiledb_ctx->storage_manager_->array_read<int64_t>(
+        ad, new_range, dim_ids, attribute_ids, buffer, buffer_size);
+    delete [] new_range;
+  } else if(coords_type == &typeid(float)) { 
+    float* new_range = new float[2*array_schema->dim_num()]; 
+    convert(&range[0], new_range, 2*array_schema->dim_num());
+    rc = tiledb_ctx->storage_manager_->array_read<float>(
+        ad, new_range, dim_ids, attribute_ids, buffer, buffer_size);
+    delete [] new_range;
+  } else if(coords_type == &typeid(double)) { 
+    double* new_range = new double[2*array_schema->dim_num()]; 
+    convert(&range[0], new_range, 2*array_schema->dim_num());
+    rc = tiledb_ctx->storage_manager_->array_read<double>(
+        ad, new_range, dim_ids, attribute_ids, buffer, buffer_size);
     delete [] new_range;
   } else {
     PRINT_ERROR("Cannot read from array; invalid coordinates type");

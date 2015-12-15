@@ -759,7 +759,15 @@ class StorageManager {
       void* buffer,
       int* buffer_size);
 
-
+  // TODO
+  template<class T>
+  int array_read(
+      int ad,
+      const T* range,
+      const std::vector<int>& dim_ids,
+      const std::vector<int>& attribute_ids,
+      void* buffer,
+      int* buffer_size);
 
   /* ********************************* */
   /*           CELL ITERATORS          */
