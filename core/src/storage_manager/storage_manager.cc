@@ -711,7 +711,7 @@ int StorageManager::group_create(const std::string& group) const {
   std::string group_real_parent_folder = parent_folder(group_real);
   if(!workspace_exists(group_real_parent_folder, true) &&
      !group_exists(group_real_parent_folder, true)) {
-    PRINT_ERROR("The group must be contained in a worksapce "
+    PRINT_ERROR("The group must be contained in a workspace "
                 "or another group");
     return -1;
   }
