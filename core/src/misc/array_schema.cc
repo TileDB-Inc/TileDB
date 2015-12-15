@@ -1599,6 +1599,9 @@ int ArraySchema::init(const TileDB_MetadataSchema* metadata_schema) {
   if(set_dim_domains(dim_domains))
     return -1;
 
+  // Set dense
+  dense_ = false;
+
   // Set types, val num, types sizes and cell sizes 
   // ----- set attribute types
   std::string type_val_num;

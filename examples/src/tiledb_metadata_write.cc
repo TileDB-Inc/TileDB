@@ -30,13 +30,13 @@ int main() {
   const char* key = "stavros";
   int a1[3] = {1, 2, 3};
   float a2[2] = {0.1, 0.2};
-  int value_size = 3*sizeof(int) + 2*sizeof(float) + 2*sizeof(int);
+  size_t value_size = 3*sizeof(int) + 2*sizeof(float) + sizeof(int) + sizeof(size_t);
   int a2_val_num = 2;
   void* value = malloc(value_size);
-  memcpy(value, &value_size, sizeof(int));
-  memcpy((char*) value + sizeof(int), a1, 3*sizeof(int));
-  memcpy((char*) value + 4*sizeof(int), &a2_val_num, sizeof(int));
-  memcpy((char*) value + 5*sizeof(int), a2, 2*sizeof(float));
+  memcpy(value, &value_size, sizeof(size_t));
+  memcpy((char*) value + sizeof(size_t), a1, 3*sizeof(int));
+  memcpy((char*) value + sizeof(size_t) + 3*sizeof(int), &a2_val_num, sizeof(int));
+  memcpy((char*) value + sizeof(size_t) + 4*sizeof(int), a2, 2*sizeof(float));
 
   /* Write to metadata. */
   tiledb_metadata_write(tiledb_ctx, md, key, value);

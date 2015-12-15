@@ -475,7 +475,7 @@ TILEDB_EXPORT int tiledb_array_write_sorted(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  * @see tiledb_array_read_dense
  */
-int tiledb_array_write_dense(
+TILEDB_EXPORT int tiledb_array_write_dense(
     const TileDB_CTX* tiledb_ctx,
     int ad,
     const void* cell);
@@ -666,7 +666,7 @@ TILEDB_EXPORT int tiledb_metadata_close(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  * @see tiledb_metadata_read
  */
-int tiledb_metadata_write(
+TILEDB_EXPORT int tiledb_metadata_write(
     const TileDB_CTX* tiledb_ctx,
     int md,
     const char* key,
@@ -692,7 +692,7 @@ int tiledb_metadata_write(
  *     writing into the value buffer overflows, and TILEDB_ERR for error.
  * @see tiledb_metadata_write
  */
-int tiledb_metadata_read(
+TILEDB_EXPORT int tiledb_metadata_read(
     const TileDB_CTX* tiledb_ctx,
     int md,
     const char* key,

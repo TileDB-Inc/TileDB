@@ -821,6 +821,7 @@ int tiledb_metadata_write(
   // Create new cell
   size_t offset = 0;
   void* cell = malloc(cell_size);
+  assert(cell != NULL);
   memcpy(cell, coords, coords_size);
   offset += coords_size;
   if(var_size) {
