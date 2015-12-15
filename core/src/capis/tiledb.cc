@@ -428,42 +428,6 @@ int tiledb_array_close(TileDB_CTX* tiledb_ctx, int ad) {
     return TILEDB_ERR;
 }
 
-int tiledb_array_write_dense(
-    const TileDB_CTX* tiledb_ctx,
-    int ad,
-    const void* cell) {
-  // Sanity check
-  if(tiledb_ctx == NULL) {
-    PRINT_ERROR("Cannot write to array; Invalid TileDB context");
-    return TILEDB_ERR;
-  }
-
-  // Get the coordinates type
-  const ArraySchema* array_schema;
-  if(tiledb_ctx->storage_manager_->array_schema_get(ad, array_schema) 
-     == TILEDB_SM_ERR)
-    return TILEDB_ERR;
-  const std::type_info* coords_type = array_schema->coords_type();
-
-  // Perform the query
-  int rc;
-  if(coords_type == &typeid(int)) {
-    rc = tiledb_ctx->storage_manager_->cell_write_sorted<int>(
-             ad, cell, true);
-  } else if(coords_type == &typeid(int64_t)) {
-    rc = tiledb_ctx->storage_manager_->cell_write_sorted<int64_t>(
-             ad, cell, true);
-  } else {
-    PRINT_ERROR("Cannot write to array; invalid coordinates type");
-    return TILEDB_ERR;
-  }
-
-  if(rc == TILEDB_SM_OK)
-    return TILEDB_OK;
-  else
-   return TILEDB_ERR;
-}
-
 int tiledb_array_write(
     TileDB_CTX* tiledb_ctx, 
     int ad, 
@@ -540,6 +504,42 @@ int tiledb_array_write_sorted(
     return TILEDB_ERR;
 }
 
+int tiledb_array_write_dense(
+    const TileDB_CTX* tiledb_ctx,
+    int ad,
+    const void* cell) {
+  // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot write to array; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Get the coordinates type
+  const ArraySchema* array_schema;
+  if(tiledb_ctx->storage_manager_->array_schema_get(ad, array_schema) 
+     == TILEDB_SM_ERR)
+    return TILEDB_ERR;
+  const std::type_info* coords_type = array_schema->coords_type();
+
+  // Perform the query
+  int rc;
+  if(coords_type == &typeid(int)) {
+    rc = tiledb_ctx->storage_manager_->cell_write_sorted<int>(
+             ad, cell, true);
+  } else if(coords_type == &typeid(int64_t)) {
+    rc = tiledb_ctx->storage_manager_->cell_write_sorted<int64_t>(
+             ad, cell, true);
+  } else {
+    PRINT_ERROR("Cannot write to array; invalid coordinates type");
+    return TILEDB_ERR;
+  }
+
+  if(rc == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+   return TILEDB_ERR;
+}
+
 int tiledb_array_read(
     const TileDB_CTX* tiledb_ctx,
     int ad,
@@ -549,7 +549,7 @@ int tiledb_array_read(
     const char** attributes,
     int attribute_num,
     void* buffer,
-    int* buffer_size) {
+    size_t* buffer_size) {
   // Sanity check
   if(tiledb_ctx == NULL) {
     PRINT_ERROR("Cannot read from array; Invalid TileDB context");
@@ -846,7 +846,7 @@ int tiledb_metadata_read(
     const char** attributes,
     int attributes_num,
     void* value,
-    int* value_size) {
+    size_t* value_size) {
   // Sanity checks
   if(tiledb_ctx == NULL) {
     PRINT_ERROR("Cannot read from metadata; Invalid TileDB context");

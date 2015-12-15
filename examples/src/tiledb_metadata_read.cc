@@ -24,7 +24,7 @@ int main() {
    * Prepare to read only the first attribute of the entry with key "stavros".
    * The returned value will have a fixed size equal to 3 integers.
    */
-  int value_size = 3*sizeof(int);
+  size_t value_size = 3*sizeof(int);
   void* value = malloc(value_size);
   int attribute_num = 1;
   const char** attributes = new const char*[attribute_num];

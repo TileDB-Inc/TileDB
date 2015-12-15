@@ -426,8 +426,8 @@ TILEDB_EXPORT int tiledb_array_close(
 /** 
  * Writes a binary cell to an array. The cell is in sparse format, i.e., it
  * carries also the coordinates. See the TileDB Mechanics 101 tutorial for
- * more information on the binary cell format. Note that this fucntion works for
- * both dense and sparse arrays.
+ * more information on the sparse binary cell format. Note that this fucntion
+ * works for both dense and sparse arrays.
  *
  * @param tiledb_ctx The TileDB state.
  * @param ad The descriptor of the array where the write will occur.
@@ -445,7 +445,7 @@ TILEDB_EXPORT int tiledb_array_write(
  * carries also the coordinates. See the TileDB Mechanics 101 tutorial for
  * more information on the binary cell format. The difference to 
  * tildb_array_write() is that the cells are assumed to be written in the same 
- * order as the global tile/cell orders of the array. Therefore, this is a 
+ * order as the tile/cell orders of the array. Therefore, this is a 
  * simple <b>append</b> command, whereas tiledb_array_write() entails a
  * <b>sorting</p> process. Note that this function works for both dense
  * and sparse arrays.
@@ -524,7 +524,7 @@ TILEDB_EXPORT int tiledb_array_read(
     const char** attributes,
     int attribute_num,
     void* buffer,
-    int* buffer_size);
+    size_t* buffer_size);
 
 /**
  * Consolidates the fragments of a TileDB array. 
@@ -699,7 +699,7 @@ TILEDB_EXPORT int tiledb_metadata_read(
     const char** attributes,
     int attribute_num,
     void* value,
-    int* value_size);
+    size_t* value_size);
 
 /**
  * Consolidates the fragments of a metadata structure. 
@@ -906,7 +906,7 @@ TILEDB_EXPORT int tiledb_cell_write(
 /** 
  * Writes a binary cell to an array. The format of the cell is discussed in
  * tiledb_array_load(). The difference to tildb_cell_write() is that the 
- * cells are assumed to be written in the same order as the global cell order
+ * cells are assumed to be written in the same order as the cell order
  * of the array. Therefore, this is a simple **append** command,
  * whereas tiledb_cell_write() triggers **sorting** at some point.
  *

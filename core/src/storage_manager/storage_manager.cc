@@ -3022,70 +3022,13 @@ int StorageManager::cells_write_sorted(
 }
 
 template<class T>
-int StorageManager::array_read_dense(
-    int ad,
-    const T* range,
-    const std::vector<int>& attribute_ids,
-    void* buffer,
-    int* buffer_size) {
-  // Sanity check
-  if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
-    PRINT_ERROR("Invalid array descriptor");
-    return -1;
-  }
-
-  // Keep track the offset in the buffer
-  int offset = 0;
-
-  // Prepare cell iterator
-  ArrayConstCellIterator<T>* cell_it = begin<T>(ad, range, attribute_ids);
-
-  // Prepare a cell
-  Cell cell(cell_it->array_schema(), cell_it->attribute_ids(), 0, true);
-
-  // Prepare C-style cell to hold the actual cell to be written in the buffer
-  void* cell_c = NULL;
-  size_t cell_c_capacity = 0, cell_c_size = 0;
-  std::vector<int> dim_ids;
-
-  // Write cells into the CSV file
-  for(; !cell_it->end(); ++(*cell_it)) { 
-    cell.set_cell(**cell_it);
-    cell.cell<T>(
-        dim_ids,
-        attribute_ids, 
-        cell_c, 
-        cell_c_capacity,  
-        cell_c_size);
-
-    if(offset + cell_c_size > *buffer_size) {
-      PRINT_ERROR("Cannot read from array; buffer overflow");  
-      return TILEDB_SM_READ_BUFFER_OVERFLOW;
-    }
-
-    memcpy(static_cast<char*>(buffer) + offset, cell_c, cell_c_size);
-    offset += cell_c_size;
-  }
-
-  // Clean up
-  if(cell_c != NULL)
-    free(cell_c);
-  cell_it->finalize();
-  delete cell_it;
-
-  *buffer_size = offset;
-
-  return TILEDB_SM_OK;
-}
-
-template<class T>
 int StorageManager::array_read(
     int ad,
     const T* range,
     const std::vector<int>& dim_ids,
     const std::vector<int>& attribute_ids,
     void* buffer,
-    int* buffer_size) {
+    size_t* buffer_size) {
   // Sanity check
   if(ad < 0 || ad >= SM_OPEN_ARRAYS_MAX) {
     PRINT_ERROR("Invalid array descriptor");
@@ -3907,26 +3850,13 @@ template int StorageManager::metadata_write_sorted<float>(
 template int StorageManager::metadata_write_sorted<double>(
     int md, const void* cell) const;
 
-template int StorageManager::array_read_dense<int>(
-    int ad,
-    const int* range,
-    const std::vector<int>& attribute_ids,
-    void* buffer,
-    int* buffer_size);
-template int StorageManager::array_read_dense<int64_t>(
-    int ad,
-    const int64_t* range,
-    const std::vector<int>& attribute_ids,
-    void* buffer,
-    int* buffer_size);
-
 template int StorageManager::array_read<int>(
     int ad,
     const int* range,
     const std::vector<int>& dim_ids,
     const std::vector<int>& attribute_ids,
     void* buffer,
-    int* buffer_size);
+    size_t* buffer_size);
 
 template int StorageManager::array_read<int64_t>(
     int ad,
@@ -3934,7 +3864,7 @@ template int StorageManager::array_read<int64_t>(
     const std::vector<int>& dim_ids,
     const std::vector<int>& attribute_ids,
     void* buffer,
-    int* buffer_size);
+    size_t* buffer_size);
 
 template int StorageManager::array_read<float>(
     int ad,
@@ -3942,7 +3872,7 @@ template int StorageManager::array_read<float>(
     const std::vector<int>& dim_ids,
     const std::vector<int>& attribute_ids,
     void* buffer,
-    int* buffer_size);
+    size_t* buffer_size);
 
 template int StorageManager::array_read<double>(
     int ad,
@@ -3950,4 +3880,4 @@ template int StorageManager::array_read<double>(
     const std::vector<int>& dim_ids,
     const std::vector<int>& attribute_ids,
     void* buffer,
-    int* buffer_size);
+    size_t* buffer_size);

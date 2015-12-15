@@ -25,7 +25,7 @@ int main() {
    */
   double range[4] = {1, 2, 2, 4};
   float buffer[6];  
-  int buffer_size = 6*sizeof(float);
+  size_t buffer_size = 6*sizeof(float);
   const char** dimensions = new const char*[1];
   dimensions[0] = "__hide";
   int dim_num = 1;
