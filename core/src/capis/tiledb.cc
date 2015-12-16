@@ -31,6 +31,7 @@
  * This file defines the C API of TileDB.
  */
 
+#include "cell_crafter.h"
 #include "data_generator.h"
 #include "loader.h"
 #include "query_processor.h"
@@ -297,6 +298,47 @@ int tiledb_group_delete(
     return TILEDB_OK;
   else
     return TILEDB_ERR;
+}
+
+/* ****************************** */
+/*            CELL                */
+/* ****************************** */
+
+typedef struct TileDB_Cell{
+  CellCrafter* cell_crafter_;
+} TileDB_Cell;
+
+int tiledb_cell_init(
+    TileDB_CTX* tiledb_ctx,
+    int ad,
+    TileDB_Cell** tiledb_cell) {
+   // Sanity check
+  if(tiledb_ctx == NULL) {
+    PRINT_ERROR("Cannot initialize cell; Invalid TileDB context");
+    return TILEDB_ERR;
+  }
+
+  // Get array schema
+  const ArraySchema* array_schema;
+  if(tiledb_ctx->storage_manager_->array_schema_get(
+         ad, array_schema) == TILEDB_SM_ERR)
+    return TILEDB_ERR;
+
+  // Initialize cell struct
+  *tiledb_cell = (TileDB_Cell*) malloc(sizeof(struct TileDB_Cell));
+  (*tiledb_cell)->cell_crafter_ = new CellCrafter(array_schema);
+}
+
+int tiledb_cell_finalize(TileDB_Cell* tiledb_cell) {
+  // Sanity check
+  if(tiledb_cell == NULL) {
+    PRINT_ERROR("Cannot finalize cell; Invalid TileDB cell");
+    return TILEDB_ERR;
+  }
+
+  // Free memory
+  delete tiledb_cell->cell_crafter_;
+  free(tiledb_cell);
 }
 
 /* ****************************** */

@@ -264,6 +264,37 @@ TILEDB_EXPORT int tiledb_group_delete(
     const TileDB_CTX* tiledb_ctx,
     const char* group);
 
+/* ********************************* */
+/*                CELL               */
+/* ********************************* */
+
+/** A cell struct, used in some array write functions. */
+typedef struct TileDB_Cell TileDB_Cell;
+
+// TODO
+TILEDB_EXPORT int tiledb_cell_init(
+    TileDB_CTX* tiledb_ctx,
+    int ad,
+    const TileDB_Cell** tiledb_cell);
+
+// TODO
+TILEDB_EXPORT int tiledb_cell_finalize(TileDB_Cell* tiledb_cell);
+
+// TODO
+TILEDB_EXPORT int tiledb_cell_append_coords(
+    const TileDB_Cell* tiledb_cell,
+    const void* coords);
+
+// TODO
+TILEDB_EXPORT int tiledb_cell_append_attr(
+    const TileDB_Cell* tiledb_cell,
+    const void* attr, 
+    int val_num);
+
+// TODO
+TILEDB_EXPORT int tiledb_cell_reset(
+    const TileDB_Cell* tiledb_cell);
+
 
 /* ********************************* */
 /*               ARRAY               */
@@ -482,8 +513,8 @@ TILEDB_EXPORT int tiledb_array_write_dense(
 
 /** 
  * Reads into an input buffer all the cells that lie within an input range 
- * (subarray). The cells are written in the sparse binary cell format 
- * (see the TileDB Mechanics 101 for more details on this format). Moreover,
+ * (subarray). The cells are written either in sparse or dense binary format 
+ * (see the TileDB Mechanics 101 for more details on the cell format). Moreover,
  * the cells are written in the buffer respecting the array tile and cell
  * orders. Finally, for each cell, the function reads only the coordinate
  * values of the dimensions specified in the "dimensions" argument, and the
