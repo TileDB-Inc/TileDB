@@ -1062,10 +1062,12 @@ void WriteState::flush_tile_info_to_book_keeping() {
     if(array_schema_->compression(i) == CMP_NONE) {
       book_keeping_->offsets_[i].push_back(file_offsets_[i]);
     } else { // Compress tile, flush to segment and update offset 
-      size_t flushed;
-      flush_gz_segment_to_segment(i, flushed);
-      file_offsets_[i] += flushed;
-      book_keeping_->offsets_[i].push_back(file_offsets_[i]);
+      if(i != attribute_num) {
+        size_t flushed;
+        flush_gz_segment_to_segment(i, flushed);
+        file_offsets_[i] += flushed;
+        book_keeping_->offsets_[i].push_back(file_offsets_[i]);
+      }
     }
   }
 
