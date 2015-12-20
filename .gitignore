@@ -24,3 +24,4 @@ my_workspace*
 .directory
 examples/bin/*
 examples/obj/*
+*temp*

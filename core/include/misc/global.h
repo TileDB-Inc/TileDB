@@ -28,17 +28,22 @@
  * 
  * @section DESCRIPTION
  *
- * This file contains useful global types, variables, and functions.
+ * This file contains global definitions. 
  */
 
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
-/* **************** */
-/*    ENUM TYPES    */
-/* **************** */
+/** Name of the coordinates attribute. */
+#define TILEDB_COORDS_NAME "__coords"
 
-/** The compression type. */
-enum CompressionType {CMP_RLE, CMP_GZIP, CMP_LZ, CMP_NONE};
+/** The TileDB data types. */ 
+enum DataType {
+    TILEDB_CHAR, 
+    TILEDB_INT32, 
+    TILEDB_INT64, 
+    TILEDB_FLOAT32, 
+    TILEDB_FLOAT64
+};
 
 #endif
