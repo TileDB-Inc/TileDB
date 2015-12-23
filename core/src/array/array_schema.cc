@@ -657,12 +657,6 @@ int ArraySchema::init(const ArraySchemaC* array_schema_c) {
     return TILEDB_AS_ERR;
   // Set capacity
   set_capacity(array_schema_c->capacity_);
-  // Set cell order
-  if(set_cell_order(array_schema_c->cell_order_) == TILEDB_AS_ERR)
-    return TILEDB_AS_ERR;
-  // Set tile order
-  if(set_tile_order(array_schema_c->tile_order_) == TILEDB_AS_ERR)
-    return TILEDB_AS_ERR;
   // Set dimensions
   if(set_dimensions(
       array_schema_c->dimensions_, 
@@ -675,6 +669,13 @@ int ArraySchema::init(const ArraySchemaC* array_schema_c) {
   set_consolidation_step(array_schema_c->consolidation_step_);
   // Set dense
   set_dense(array_schema_c->dense_);
+  // Set cell order
+  if(set_cell_order(array_schema_c->cell_order_) == TILEDB_AS_ERR)
+    return TILEDB_AS_ERR;
+  // Set tile order
+  if(set_tile_order(array_schema_c->tile_order_) == TILEDB_AS_ERR)
+    return TILEDB_AS_ERR;
+
   // Set types
   if(set_types(array_schema_c->types_) == TILEDB_AS_ERR)
     return TILEDB_AS_ERR;
@@ -748,6 +749,11 @@ int ArraySchema::set_cell_order(const char* cell_order) {
   } else if(!strcmp(cell_order, "column-major")) {
     cell_order_ = TILEDB_AS_CO_COLUMN_MAJOR;
   } else if(!strcmp(cell_order, "hilbert")) {
+    if(dense_) {
+      PRINT_ERROR("Cannot set cell order; Dense arrays do not support "
+                  "hilbert order");
+      return TILEDB_AS_ERR;
+    }
     cell_order_ = TILEDB_AS_CO_HILBERT;
   } else {
     PRINT_ERROR(std::string("Cannot set cell order; Invalid cell order '") + 
@@ -916,6 +922,11 @@ int ArraySchema::set_tile_order(const char* tile_order) {
   } else if(!strcmp(tile_order, "column-major")) {
     tile_order_ = TILEDB_AS_TO_COLUMN_MAJOR;
   } else if(!strcmp(tile_order, "hilbert")) {
+    if(dense_) {
+      PRINT_ERROR("Cannot set tile order; Dense arrays do not support "
+                  "hilbert order");
+      return TILEDB_AS_ERR;
+    }
     tile_order_ = TILEDB_AS_TO_HILBERT;
   } else {
     PRINT_ERROR(std::string("Cannot set tile order; Invalid tile order '") + 
