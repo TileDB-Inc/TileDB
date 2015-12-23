@@ -148,6 +148,11 @@ int tiledb_group_create(
 /*              ARRAY             */
 /* ****************************** */
 
+typedef struct TileDB_Array {
+  Array* array_;
+  const TileDB_CTX* tiledb_ctx_;
+} TileDB_Array;
+
 int tiledb_array_create(
     const TileDB_CTX* tiledb_ctx,
     const TileDB_ArraySchema* array_schema) {
@@ -178,6 +183,72 @@ int tiledb_array_create(
   if(rc == TILEDB_SM_OK)
     return TILEDB_OK;
   else
+    return TILEDB_ERR;
+}
+
+int tiledb_array_init(
+    const TileDB_CTX* tiledb_ctx,
+    TileDB_Array* tiledb_array,
+    const char* dir,
+    int mode,
+    const void* range,
+    const char** attributes,
+    int attribute_num) {
+  // Sanity check
+  if(!sanity_check(tiledb_ctx))
+    return TILEDB_ERR;
+
+  // Init the array
+  int rc = tiledb_ctx->storage_manager_->array_init(
+               tiledb_array->array_,
+               dir,
+               mode, 
+               range, 
+               attributes,
+               attribute_num);
+
+  // Set TileDB context
+  tiledb_array->tiledb_ctx_ = tiledb_ctx;
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR; 
+}
+
+int tiledb_array_finalize(TileDB_Array* tiledb_array) {
+  // Sanity check
+  if(!sanity_check(tiledb_array->tiledb_ctx_))
+    return TILEDB_ERR;
+
+  // Finalize array
+  int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_finalize(
+               tiledb_array->array_);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR; 
+}
+
+int tiledb_array_write(
+    const TileDB_Array* tiledb_array,
+    const void** buffers,
+    const size_t* buffer_sizes) {
+  // Sanity check
+  if(!sanity_check(tiledb_array->tiledb_ctx_))
+    return TILEDB_ERR;
+
+  // Finalize array
+  int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_write(
+               tiledb_array->array_, buffers, buffer_sizes);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
     return TILEDB_ERR;
 }
 

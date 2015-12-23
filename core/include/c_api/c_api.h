@@ -49,26 +49,6 @@ extern "C" {
 #endif
 
 /* ********************************* */
-/*              VERSION              */
-/* ********************************* */
-
-#define TILEDB_VERSION "0.1"
-
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/* Return codes. */
-#define TILEDB_OK                     0
-#define TILEDB_ERR                   -1
-
-/* Array modes. */
-#define TILEDB_READ                   1
-#define TILEDB_READ_REVERSE           2
-#define TILEDB_WRITE                  3
-#define TILEDB_WRITE_UNSORTED         4
-
-/* ********************************* */
 /*              CONTEXT              */
 /* ********************************* */
 
@@ -174,17 +154,17 @@ typedef struct TileDB_ArraySchema {
   /** The number of dimensions. */
   int dim_num_;
   /**  
-   * The domain. It should contain one [lower, upper] pair per dimension. The type
-   * of the values stored in this buffer should match the coordinates type. If the 
-   * coordinates type is <b>char:var</b>, this field is ignored.
+   * The domain. It should contain one [lower, upper] pair per dimension. The
+   * type of the values stored in this buffer should match the coordinates type.
+   * If the  coordinates type is <b>char:var</b>, this field is ignored.
    */
   void* domain_;
   /** 
    * The tile extents (only applicable to regular tiles). There should be one 
-   * value for each dimension. The type of the values stored in this buffer should 
-   * match the coordinates type. If it is NULL, then it means that the array has
-   * irregular tiles (and, hence, it is sparse). If the coordinates type is
-   * <b>char:var</b>, this field is ignored.
+   * value for each dimension. The type of the values stored in this buffer
+   * should match the coordinates type. If it is NULL, then it means that the
+   * array has irregular tiles (and, hence, it is sparse). If the coordinates
+   * type is <b>char:var</b>, this field is ignored.
    */
   void* tile_extents_;
   /**
@@ -222,18 +202,25 @@ TILEDB_EXPORT int tiledb_array_create(
     const TileDB_CTX* tiledb_ctx,
     const TileDB_ArraySchema* array_schema);
 
-// TODO
+/**
+ * Initializes a TileDB array.
+ *
+ * @param tiledb_ctx The TileDB context.
+ * @param tiledb_array The array object to be initialized.
+ * @param dir The directory of the array to be initialized.
+ * @param mode The mode of the array. It must be one of the following:
+ *    - TILEDB_WRITE 
+ *    - TILEDB_WRITE_UNSORTED 
+ *    - TILEDB_READ 
+ *    - TILEDB_READ_REVERSE 
+ * @param range The range in which the array read/write will be constrained.
+ * @param attributes A subset of the array attributes the read/write will be
+ *     constrained. A NULL value indicates **all** attributes.
+ * @param attribute_num The number of the input attributes.
+ * @return TILEDB_OK on success, and TILEDB_ERR on error.
+ */
 TILEDB_EXPORT int tiledb_array_init(
-    TileDB_CTX* tiledb_ctx,
-    TileDB_Array** tiledb_array,
-    const char* dir,
-    int mode,
-    const char** attributes,
-    int attribute_num);
-
-// TODO
-TILEDB_EXPORT int tiledb_array_init_in_range(
-    TileDB_CTX* tiledb_ctx,
+    const TileDB_CTX* tiledb_ctx,
     TileDB_Array** tiledb_array,
     const char* dir,
     int mode,
@@ -241,15 +228,20 @@ TILEDB_EXPORT int tiledb_array_init_in_range(
     const char** attributes,
     int attribute_num);
 
-// TODO
+/** 
+ * Finalizes an TileDB array. 
+ *
+ * @param tiledb_array The array to be finalized.
+ * @return TILEDB_OK on success, and TILEDB_ERR on error.
+ */
 TILEDB_EXPORT int tiledb_array_finalize(
     TileDB_Array* tiledb_array);
 
 // TODO
 TILEDB_EXPORT int tiledb_array_write(
     const TileDB_Array* tiledb_array,
-    void** buffers,
-    size_t* buffer_sizes);
+    const void** buffers,
+    const size_t* buffer_sizes);
 
 // TODO
 TILEDB_EXPORT int tiledb_array_read(

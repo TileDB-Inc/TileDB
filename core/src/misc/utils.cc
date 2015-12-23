@@ -35,10 +35,12 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <fcntl.h>
 #include <iostream>
 #include <set>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <zlib.h>
 
 /* ****************************** */
 /*             MACROS             */
@@ -97,6 +99,48 @@ std::string current_dir() {
   }
 
   return dir; 
+}
+
+ssize_t gzip(
+    unsigned char* in, 
+    size_t in_size,
+    unsigned char* out, 
+    size_t out_size) {
+
+  ssize_t ret;
+  unsigned have;
+  z_stream strm;
+ 
+  // Allocate deflate state
+  strm.zalloc = Z_NULL;
+  strm.zfree = Z_NULL;
+  strm.opaque = Z_NULL;
+  ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
+
+  if(ret != Z_OK) {
+    PRINT_ERROR("Cannot compress with GZIP");
+    (void)deflateEnd(&strm);
+    return -1;
+  }
+
+  // Compress
+  strm.next_in = in;
+  strm.next_out = out;
+  strm.avail_in = in_size;
+  strm.avail_out = out_size;
+  ret = deflate(&strm, Z_FINISH);
+
+  // Clean up
+  (void)deflateEnd(&strm);
+
+  // Return 
+  if(ret == Z_STREAM_ERROR || strm.avail_in == 0) {
+    PRINT_ERROR("Cannot compress with GZIP");
+    return -1;
+  } else {
+    // Return size of compressed data
+    return out_size - strm.avail_out; 
+  }
 }
 
 template<class T>
@@ -253,6 +297,34 @@ bool starts_with(const std::string& value, const std::string& prefix) {
   if (prefix.size() > value.size())
     return false;
   return std::equal(prefix.begin(), prefix.end(), value.begin());
+}
+
+int write_to_file(
+    const char* filename,
+    const void* buffer,
+    size_t buffer_size) {
+  // Open file
+  int fd = open(filename, O_WRONLY | O_APPEND | O_CREAT | O_SYNC, S_IRWXU);
+  if(fd == -1) {
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
+    return TILEDB_UT_ERR;
+  }
+
+  // Append attribute data to the file
+  ssize_t bytes_written = ::write(fd, buffer, buffer_size);
+  if(bytes_written != buffer_size) {
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
+    return TILEDB_UT_ERR;
+  }
+
+  // Close file
+  if(close(fd)) {
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
+    return TILEDB_UT_ERR;
+  }
+
+  // Success 
+  return TILEDB_UT_OK;
 }
 
 // Explicit template instantiations

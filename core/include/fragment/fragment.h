@@ -1,5 +1,5 @@
 /**
- * @file   global.h
+ * @file   fragment.h
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
@@ -28,50 +28,66 @@
  * 
  * @section DESCRIPTION
  *
- * This file contains global definitions. 
+ * This file defines class Fragment. 
  */
 
-#ifndef __GLOBAL_H__
-#define __GLOBAL_H__
+#ifndef __FRAGMENT_H__
+#define __FRAGMENT_H__
 
-/** Version */
-#define TILEDB_VERSION "0.1"
+#include "array.h"
+#include "array_schema.h"
+#include "book_keeping.h"
+#include "global.h"
+#include "write_state.h"
+#include <vector>
 
-/* Return codes. */
-#define TILEDB_OK                     0
-#define TILEDB_ERR                   -1
+/* ********************************* */
+/*             CONSTANTS             */
+/* ********************************* */
 
-/* Array modes. */
-#define TILEDB_READ                   1
-#define TILEDB_READ_REVERSE           2
-#define TILEDB_WRITE                  3
-#define TILEDB_WRITE_UNSORTED         4
+#define TILEDB_FG_OK     0
+#define TILEDB_FG_ERR   -1
 
-/** Name of the coordinates attribute. */
-#define TILEDB_COORDS_NAME "__coords"
+class Array;
+class BookKeeping;
+class WriteState;
 
-/** 
- * The segment size, which is used in some cases as the atomic unit of I/O. 
- */
-#define TILEDB_SEGMENT_SIZE 10000000 // ~ 10MB
+/** Contains information about an array fragment. */
+class Fragment {
+ public:
+  // CONSTRUCTORS & DESTRUCTORS
+  
+  /** 
+   * Constructor. 
+   *
+   * @param fragment_name The fragment name.
+   * @param array The array the fragment belongs to.
+   */
+  Fragment(const std::string& fragment_name, const Array* array);
 
-/** 
- * The segment size used in zlib (compression) operations, takining inot account
- * zlib's maximum expansion factor. 
- */
-#define TILEDB_Z_SEGMENT_SIZE \
-    TILEDB_SEGMENT_SIZE + 6 + 5*(ceil(TILEDB_SEGMENT_SIZE/16834.0)) 
+  /** Destructor. */
+  ~Fragment();
 
-/** Suffix of a TileDB file. */
-#define TILEDB_FILE_SUFFIX ".tdb"
+  // ACCESSORS
+  
+  /** Returns the array the fragment belongs to. */
+  const Array* array() const;
 
-/** The TileDB data types. */ 
-enum DataType {
-    TILEDB_CHAR, 
-    TILEDB_INT32, 
-    TILEDB_INT64, 
-    TILEDB_FLOAT32, 
-    TILEDB_FLOAT64
+  // WRITE FUNCTIONS
+
+  // TODO
+  int write(const void** buffers, const size_t* buffer_sizes);
+ 
+ private:
+  // PRIVATE ATTRIBUTES
+  /** The array the fragment belongs to. */
+  const Array* array_;
+  /** A book-keeping structure. */
+  BookKeeping* book_keeping_;
+  /** The fragment name. */
+  std::string fragment_name_;
+  /** A write statr structure. */
+  WriteState* write_state_;
 };
 
 #endif

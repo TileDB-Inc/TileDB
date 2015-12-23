@@ -122,15 +122,6 @@ int StorageManager::group_create(const std::string& dir) const {
 /*             ARRAY              */
 /* ****************************** */
 
-bool StorageManager::is_array(const std::string& dir) const {
-  // Check existence
-  if(is_dir(dir) && 
-     is_file(dir + "/" + TILEDB_SM_ARRAY_SCHEMA_FILENAME)) 
-    return true;
-  else
-    return false;
-}
-
 int StorageManager::array_create(const ArraySchemaC* array_schema_c) const {
   // Initialize array schema
   ArraySchema* array_schema = new ArraySchema();
@@ -210,15 +201,136 @@ int StorageManager::array_create(const ArraySchema* array_schema) const {
   return 0;
 }
 
+int StorageManager::array_init(
+    Array*& array,
+    const char* dir,
+    int mode,
+    const void* range,
+    const char** attributes,
+    int attribute_num)  const {
+  // Load array schema
+  ArraySchema* array_schema;
+  if(array_load_schema(dir, array_schema) == TILEDB_SM_ERR)
+    return TILEDB_SM_ERR;
+
+  // TODO: debugging
+  array_schema->print();
+
+  // Create Array object
+  array = new Array();
+  int rc = array->init(array_schema, mode, attributes, attribute_num, range);
+
+  // Return
+  if(rc == TILEDB_AR_ERR) {
+    delete array;
+    delete array_schema;
+    return TILEDB_SM_ERR;
+  } else {
+    return TILEDB_SM_OK;
+  }
+}
+
+int StorageManager::array_finalize(Array* array) const {
+  if(array->finalize() == TILEDB_AR_ERR) {
+    return TILEDB_SM_ERR;
+  } else {
+    delete array;
+    return TILEDB_SM_OK;
+  }
+}
+
+int StorageManager::array_load_schema(
+    const char* dir,
+    ArraySchema*& array_schema) const {
+  // Get real array path
+  std::string real_dir = ::real_dir(dir);
+
+  // Check if array exists
+  if(!is_array(real_dir)) {
+    PRINT_ERROR(std::string("Cannot load array schema; Array '") + real_dir + 
+                "' does not exist");
+    return TILEDB_SM_ERR;
+  }
+
+  // Open array schema file
+  std::string filename = real_dir + "/" + TILEDB_SM_ARRAY_SCHEMA_FILENAME;
+  int fd = ::open(filename.c_str(), O_RDONLY);
+  if(fd == -1) {
+    PRINT_ERROR("Cannot load schema; File opening error");
+    return TILEDB_SM_ERR;
+  }
+
+  // Initialize buffer
+  struct stat st;
+  fstat(fd, &st);
+  ssize_t buffer_size = st.st_size;
+  if(buffer_size == 0) {
+    PRINT_ERROR("Cannot load array schema; Empty array schema file");
+    return TILEDB_SM_ERR;
+  }
+  void* buffer = malloc(buffer_size);
+
+  // Load array schema
+  ssize_t bytes_read = ::read(fd, buffer, buffer_size);
+  if(bytes_read != buffer_size) {
+    PRINT_ERROR("Cannot load array schema; File reading error");
+    free(buffer);
+    return TILEDB_SM_ERR;
+  } 
+
+  // Initialize array schema
+  array_schema = new ArraySchema();
+  if(array_schema->deserialize(buffer, buffer_size) == TILEDB_AS_ERR) {
+    free(buffer);
+    delete array_schema;
+    return TILEDB_SM_ERR;
+  }
+
+  // Clean up
+  free(buffer);
+  if(::close(fd)) {
+    delete array_schema;
+    PRINT_ERROR("Cannot load array schema; File closing error");
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::array_write(
+    Array* array,
+    const void** buffers,
+    const size_t* buffer_sizes) const {
+  if(array->write(buffers, buffer_sizes) == TILEDB_AR_ERR) {
+    return TILEDB_SM_ERR;
+  } else {
+    delete array;
+    return TILEDB_SM_OK;
+  }
+}
+
+bool StorageManager::is_array(const std::string& dir) const {
+  // Check existence
+  if(is_dir(dir) && 
+     is_file(dir + "/" + TILEDB_SM_ARRAY_SCHEMA_FILENAME)) 
+    return true;
+  else
+    return false;
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
 int StorageManager::config_set(const std::string& config_filename) {
+  // TODO
+
   return TILEDB_SM_OK;
 } 
 
 void StorageManager::config_set_default() {
+  // TODO
 } 
 
 int StorageManager::create_group_file(const std::string& dir) const {

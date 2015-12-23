@@ -45,17 +45,17 @@
 /* ********************************* */
 
 // Return codes.
-#define TILEDB_AS_OK       0
-#define TILEDB_AS_ERR     -1
+#define TILEDB_AS_OK                                             0
+#define TILEDB_AS_ERR                                           -1
 
 // Default parameters.
-#define TILEDB_AS_CAPACITY 10000
-#define TILEDB_AS_CONSOLIDATION_STEP 1
-#define TILEDB_AS_CELL_ORDER TILEDB_AS_CO_ROW_MAJOR
-#define TILEDB_AS_TILE_ORDER TILEDB_AS_TO_ROW_MAJOR
+#define TILEDB_AS_CAPACITY                                   10000
+#define TILEDB_AS_CONSOLIDATION_STEP                             1
+#define TILEDB_AS_CELL_ORDER                TILEDB_AS_CO_ROW_MAJOR
+#define TILEDB_AS_TILE_ORDER                TILEDB_AS_TO_ROW_MAJOR
 
 // Special value that indicates a variable-sized attribute.
-#define TILEDB_AS_VAR_SIZE std::numeric_limits<int>::max()
+#define TILEDB_AS_VAR_SIZE          std::numeric_limits<int>::max()
 
 /** Specifies the array schema. */
 class ArraySchema {
@@ -90,10 +90,56 @@ class ArraySchema {
   // ACCESSORS
 
   /** Returns the array name. */
-  const std::string array_name() const;
+  const std::string& array_name() const;
+
+  /** Returns the name of the attribute with the input id. */
+  const std::string& attribute(int attribute_id) const;
+
+  /** 
+   * Returns the id of the input attribute. 
+   *
+   * @param attribute The attribute name whose id will be retrieved.
+   * @return The attribute id if the input attribute exists, and TILEDB_AS_ERR
+   *     otherwise.
+   */
+  int attribute_id(const std::string& attribute) const;
+  
+  /** Returns the number of attributes. */
+  int attribute_num() const;
+
+  /** Returns the attributes. */
+  const std::vector<std::string>& attributes() const;
+
+  /** 
+   * Returns the number of cells per tile. Meaningful only for the dense case.
+   */
+  int64_t cell_num_per_tile() const;
+
+  /** Returns the size of cell on the input attribute. */
+  size_t cell_size(int attribute_id) const;
+
+  /** Returns the compression type of the attribute with the input id. */
+  Compression compression(int attribute_id) const;
 
   /** Returns the coordinates size. */
   size_t coords_size() const;
+
+  /** True if the array is dense. */
+  bool dense() const;
+
+  /**
+   * Gets the ids of the input attributes.
+   *
+   * @param attributes The name of the attributes whose ids will be retrieved.
+   * @param attribute_ids The ids that are retrieved by the function.
+   * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
+   */
+  int get_attribute_ids(
+      const std::vector<std::string>& attributes,
+      std::vector<int>& attribute_ids) const;
+
+  /** Prints information about the array schema to stdout. */
+  void print() const;
 
   /*
    * Serializes the array schema object into a binary buffer.
@@ -105,6 +151,12 @@ class ArraySchema {
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
   int serialize(void*& array_schema_bin, size_t& array_schema_bin_size) const;
+
+  /** Returns the numver of attributes with variable-sized values. */
+  int var_attribute_num() const;
+
+  /** Returns true if the indicated attribute has variable-sized values. */
+  bool var_size(int attribute_id) const;
 
   // MUTATORS
 
@@ -243,6 +295,8 @@ class ArraySchema {
    * TileDB will use its default.
    */
   int64_t capacity_;
+  /** The number of cells per tile. Meaningful only for the dense case. */
+  int64_t cell_num_per_tile_;
   /**
    * The cell order. The supported orders are TILEDB_AS_CO_ROW_MAJOR, 
    * TILEDB_AS_CO_COLUMN_MAJOR, and TILEDB_AS_CO_HILBERT.
@@ -309,6 +363,8 @@ class ArraySchema {
    * attribute. This is indicated by special value TILEDB_AS_VAR_SIZE. 
    */
   std::vector<int> val_num_;
+  /** Number of attributes with variable-sized values. */
+  int var_attribute_num_;
 
   // PRIVATE METHODS
 
@@ -316,6 +372,11 @@ class ArraySchema {
    * Computes and returns the size of the binary representation of the object. 
    */  
   size_t compute_bin_size() const;
+
+  /** 
+   * Compute the number of cells per tile. Meaningful only for the dense case.
+   */
+  void compute_cell_num_per_tile();
 
   /** Computes and returns the size of an attribute (or coordinates). */
   size_t compute_cell_size(int attribute_id) const;

@@ -79,6 +79,22 @@ int create_dir(const std::string& dir);
  */
 std::string current_dir();
 
+/** 
+ * GZIPs the input buffer and stores the result in the output buffer, returning
+ * the size of compressed data. 
+ *
+ * @param in The input buffer.
+ * @param in_size The size of the input buffer.
+ * @param out The output buffer.
+ * @param avail_out_size The available size in the output buffer.
+ * @return The size of compressed data.
+ */
+ssize_t gzip(
+    unsigned char* in, 
+    size_t in_size, 
+    unsigned char* out, 
+    size_t out_size);
+
 /** Returns true if there are duplicates in the input vector. */
 template<class T>
 bool has_duplicates(const std::vector<T>& v);
@@ -143,5 +159,19 @@ std::string real_dir(const std::string& dir);
  * @return *True* if *value* starts with the *prefix* and *false* otherwise. 
  */
 bool starts_with(const std::string& value, const std::string& prefix);
+
+
+/** 
+ * Write the input buffer to a file.
+ * 
+ * @param filename The name of the file.
+ * @param buffer The input buffer.
+ * @param buffer_size The size of the input buffer.
+ * @return 0 on success, and -1 on error.
+ */
+int write_to_file(
+    const char* filename,
+    const void* buffer, 
+    size_t buffer_size);
 
 #endif

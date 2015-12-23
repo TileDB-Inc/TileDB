@@ -1,12 +1,12 @@
 /**
- * @file   global.h
+ * @file   book_keeping.h
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2014 Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,50 +28,47 @@
  * 
  * @section DESCRIPTION
  *
- * This file contains global definitions. 
+ * This file defines class BookKeeping. 
  */
 
-#ifndef __GLOBAL_H__
-#define __GLOBAL_H__
+#ifndef __BOOK_KEEPING_H__
+#define __BOOK_KEEPING_H__
 
-/** Version */
-#define TILEDB_VERSION "0.1"
+#include "fragment.h"
+#include <vector>
 
-/* Return codes. */
-#define TILEDB_OK                     0
-#define TILEDB_ERR                   -1
+class Fragment;
 
-/* Array modes. */
-#define TILEDB_READ                   1
-#define TILEDB_READ_REVERSE           2
-#define TILEDB_WRITE                  3
-#define TILEDB_WRITE_UNSORTED         4
+/** Stores the book-keeping structures of a fragment. */
+class BookKeeping {
+ public:
+  // CONSTRUCTORS & DESTRUCTORS
 
-/** Name of the coordinates attribute. */
-#define TILEDB_COORDS_NAME "__coords"
+  /** 
+   * Constructor. 
+   *
+   * @param fragment The fragment the book-keeping structure belongs to.
+   */
+  BookKeeping(const Fragment* fragment);
 
-/** 
- * The segment size, which is used in some cases as the atomic unit of I/O. 
- */
-#define TILEDB_SEGMENT_SIZE 10000000 // ~ 10MB
+  /** Destructor. */
+  ~BookKeeping();
 
-/** 
- * The segment size used in zlib (compression) operations, takining inot account
- * zlib's maximum expansion factor. 
- */
-#define TILEDB_Z_SEGMENT_SIZE \
-    TILEDB_SEGMENT_SIZE + 6 + 5*(ceil(TILEDB_SEGMENT_SIZE/16834.0)) 
+  // MUTATORS 
+ 
+  /** Appends a tile offset for the input attribute. */
+  void append_tile_offset(int attribute_id, size_t offset);
 
-/** Suffix of a TileDB file. */
-#define TILEDB_FILE_SUFFIX ".tdb"
+  // MISC
+  void flush();
 
-/** The TileDB data types. */ 
-enum DataType {
-    TILEDB_CHAR, 
-    TILEDB_INT32, 
-    TILEDB_INT64, 
-    TILEDB_FLOAT32, 
-    TILEDB_FLOAT64
+ private:
+  // PRIVATE ATTRIBUTES
+
+  /** The fragment the book-keeping belongs to. */
+  const Fragment* fragment_;
+  /** The tile offsets in their corresponding attribute files. */
+  std::vector<std::vector<size_t> > tile_offsets_;
 };
 
 #endif

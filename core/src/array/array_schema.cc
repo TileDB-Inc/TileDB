@@ -61,6 +61,7 @@
 /* ****************************** */
 
 ArraySchema::ArraySchema() {
+  cell_num_per_tile_ = -1;
   domain_ = NULL;
   tile_extents_ = NULL;
 }
@@ -77,12 +78,227 @@ ArraySchema::~ArraySchema() {
 /*            ACCESSORS           */
 /* ****************************** */
 
-const std::string ArraySchema::array_name() const {
+const std::string& ArraySchema::array_name() const {
   return array_name_;
+}
+
+const std::string& ArraySchema::attribute(int attribute_id) const {
+  assert(attribute_id>= 0 && attribute_id <= attribute_num_);
+
+  return attributes_[attribute_id];
+}
+
+int ArraySchema::attribute_id(const std::string& attribute) const {
+  for(int i=0; i<attribute_num_; ++i) {
+    if(attributes_[i] == attribute)
+      return i;
+  }
+
+  // Attribute not found
+  return TILEDB_AS_ERR;
+}
+
+int ArraySchema::attribute_num() const {
+  return attribute_num_;
+}
+
+const std::vector<std::string>& ArraySchema::attributes() const {
+  return attributes_;
+}
+
+ArraySchema::Compression ArraySchema::compression(int attribute_id) const {
+  assert(attribute_id >= 0 && attribute_id <= attribute_num_);
+
+  return compression_[attribute_id];
+}
+
+int64_t ArraySchema::cell_num_per_tile() const {
+  return cell_num_per_tile_;
+}
+
+size_t ArraySchema::cell_size(int attribute_id) const {
+  return cell_sizes_[attribute_id];
 }
 
 size_t ArraySchema::coords_size() const {
   return cell_sizes_[attribute_num_];
+}
+
+bool ArraySchema::dense() const {
+  return dense_;
+}
+
+int ArraySchema::get_attribute_ids(
+    const std::vector<std::string>& attributes,
+    std::vector<int>& attribute_ids) const {
+  // Initialization
+  attribute_ids.clear();
+  int attribute_num = attributes.size();
+  int id;
+
+  // Get attribute ids
+  for(int i=0; i<attribute_num; ++i) {
+    id = attribute_id(attributes[i]);
+    if(id == TILEDB_AS_ERR) {
+      PRINT_ERROR(std::string("Cannot get attribute id; Attribute '") + 
+                  attributes[i] + "' does not exist");
+      return TILEDB_AS_ERR;
+    } else {
+      attribute_ids.push_back(id);
+    }
+  }
+
+  // Success
+  return TILEDB_AS_OK;
+}
+
+void ArraySchema::print() const {
+  // Array name
+  std::cout << "Array name:\n\t" << array_name_ << "\n";
+  // Dimension names
+  std::cout << "Dimension names:\n";
+  for(int i=0; i<dim_num_; ++i)
+    std::cout << "\t" << dimensions_[i] << "\n";
+  // Attribute names
+  std::cout << "Attribute names:\n";
+  for(int i=0; i<attribute_num_; ++i)
+    std::cout << "\t" << attributes_[i] << "\n";
+  // Domain
+  std::cout << "Domain:\n";
+  if(types_[attribute_num_] == &typeid(int)) {
+    int* domain_int = (int*) domain_; 
+    for(int i=0; i<dim_num_; ++i) {
+      std::cout << "\t"<<  dimensions_[i] << ": [" << domain_int[2*i] << ","
+                                          << domain_int[2*i+1] << "]\n";
+    }
+  } else if(types_[attribute_num_] == &typeid(int64_t)) {
+    int64_t* domain_int64 = (int64_t*) domain_; 
+    for(int i=0; i<dim_num_; ++i) {
+      std::cout << "\t" << dimensions_[i] << ": [" << domain_int64[2*i] << ","
+                                          << domain_int64[2*i+1] << "]\n";
+    }
+  } else if(types_[attribute_num_] == &typeid(float)) {
+    float* domain_float = (float*) domain_; 
+    for(int i=0; i<dim_num_; ++i) {
+      std::cout << "\t" << dimensions_[i] << ": [" << domain_float[2*i] << ","
+                                          << domain_float[2*i+1] << "]\n";
+    }
+  } else if(types_[attribute_num_] == &typeid(double)) {
+    double* domain_double = (double*) domain_; 
+    for(int i=0; i<dim_num_; ++i) {
+      std::cout << "\t" << dimensions_[i] <<  ": [" << domain_double[2*i] << ","
+                                          << domain_double[2*i+1] << "]\n";
+    }
+  }
+  // Types
+  std::cout << "Types:\n";
+  for(int i=0; i<attribute_num_; ++i) {
+    if(*types_[i] == typeid(char)) {
+      std::cout << "\t" << attributes_[i] << ": char[";
+    } else if(*types_[i] == typeid(int)) {
+      std::cout << "\t" << attributes_[i] << ": int32[";
+    } else if(*types_[i] == typeid(int64_t)) {
+      std::cout << "\t" << attributes_[i] << ": int64[";
+    } else if(*types_[i] == typeid(float)) {
+      std::cout << "\t" << attributes_[i] << ": float32[";
+    } else if(*types_[i] == typeid(double)) {
+      std::cout << "\t" << attributes_[i] << ": float64[";
+    }
+    if(val_num_[i] == TILEDB_AS_VAR_SIZE)
+      std::cout << "var]\n";
+    else
+      std::cout << val_num_[i] << "]\n";
+  }
+  if(key_value_)
+    std::cout << "\tCoordinates: char: var\n";
+  else if(*types_[attribute_num_] == typeid(int))
+    std::cout << "\tCoordinates: int32\n";
+  else if(*types_[attribute_num_] == typeid(int64_t))
+    std::cout << "\tCoordinates: int64\n";
+  else if(*types_[attribute_num_] == typeid(float))
+    std::cout << "\tCoordinates: float32\n";
+  else if(*types_[attribute_num_] == typeid(double))
+    std::cout << "\tCoordinates: float64\n";
+  // Cell sizes
+  std::cout << "Cell sizes (in bytes):\n";
+  for(int i=0; i<=attribute_num_; ++i) {
+    std::cout << "\t" << ((i==attribute_num_) ? "Coordinates"  
+                                              : attributes_[i]) 
+                      << ": ";
+    if(cell_sizes_[i] == TILEDB_AS_VAR_SIZE)
+      std::cout << "var\n"; 
+    else
+      std::cout << cell_sizes_[i] << "\n"; 
+  }
+  // Dense
+  std::cout << "Dense:\n\t" << (dense_ ? "true" : "false") << "\n";
+  // Key-value
+  std::cout << "Key-value:\n\t" << (key_value_ ? "true" : "false") << "\n";
+  // Tile types
+  std::cout << "Tile types:\n\t" 
+            << (tile_extents_ == NULL ? "irregular" : "regular") << "\n";
+  // Tile order
+  std::cout << "Tile order:\n\t";
+  if(tile_extents_ == NULL) {
+    std::cout << "-\n";
+  } else {
+    if(tile_order_ == TILEDB_AS_TO_COLUMN_MAJOR)
+      std::cout << "column-major\n";
+    else if(tile_order_ == TILEDB_AS_TO_HILBERT)
+      std::cout << "hilbert\n";
+    else if(tile_order_ == TILEDB_AS_TO_ROW_MAJOR)
+      std::cout << "row-major\n";
+  }
+  // Cell order
+  std::cout << "Cell order:\n\t";
+  if(cell_order_ == TILEDB_AS_CO_COLUMN_MAJOR)
+    std::cout << "column-major\n";
+  else if(cell_order_ == TILEDB_AS_CO_HILBERT)
+    std::cout << "hilbert\n";
+  else if(cell_order_ == TILEDB_AS_CO_ROW_MAJOR)
+    std::cout << "row-major\n";
+  // Capacity
+  std::cout << "Capacity:\n\t";
+  if(tile_extents_ != NULL)
+    std::cout << "-\n";
+  else
+    std::cout << capacity_ << "\n";
+  // Tile extents
+  std::cout << "Tile extents:\n";
+  if(tile_extents_ == NULL) {
+    std::cout << "-\n"; 
+  } else {
+    if(types_[attribute_num_] == &typeid(int)) {
+      int* tile_extents_int = (int*) tile_extents_;
+      for(int i=0; i<dim_num_; ++i)
+        std::cout << "\t" << dimensions_[i] << ": " << tile_extents_int[i] << "\n";
+    } else if(types_[attribute_num_] == &typeid(int64_t)) {
+      int64_t* tile_extents_int64 = (int64_t*) tile_extents_;
+      for(int i=0; i<dim_num_; ++i)
+        std::cout << "\t" << dimensions_[i] << ": " << tile_extents_int64[i] << "\n";
+    } else if(types_[attribute_num_] == &typeid(float)) {
+      float* tile_extents_float = (float*) tile_extents_;
+      for(int i=0; i<dim_num_; ++i)
+        std::cout << "\t" << dimensions_[i] << ": " << tile_extents_float[i] << "\n";
+    } else if(types_[attribute_num_] == &typeid(double)) {
+      double* tile_extents_double = (double*) tile_extents_;
+      for(int i=0; i<dim_num_; ++i)
+        std::cout << "\t" << dimensions_[i] << ": " << tile_extents_double[i] << "\n";
+    }
+  }
+  // Consolidation step
+  std::cout << "Consolidation step:\n\t" << consolidation_step_ << "\n";
+  // Compression types
+  std::cout << "Compression types:\n";
+  for(int i=0; i<attribute_num_; ++i)
+    if(compression_[i] == TILEDB_AS_CMP_GZIP)
+      std::cout << "\t" << attributes_[i] << ": GZIP\n";
+    else if(compression_[i] == TILEDB_AS_CMP_NONE)
+      std::cout << "\t" << attributes_[i] << ": NONE\n";
+  if(compression_[attribute_num_] == TILEDB_AS_CMP_GZIP)
+    std::cout << "\tCoordinates: GZIP\n";
+  else if(compression_[attribute_num_] == TILEDB_AS_CMP_NONE)
+    std::cout << "\tCoordinates: NONE\n";
 }
 
 // ===== FORMAT =====
@@ -240,6 +456,14 @@ int ArraySchema::serialize(
   return TILEDB_AS_OK;
 }
 
+bool ArraySchema::var_size(int attribute_id) const {
+  return cell_sizes_[attribute_id] == TILEDB_AS_VAR_SIZE; 
+}
+
+int ArraySchema::var_attribute_num() const {
+  return var_attribute_num_;
+}
+
 /* ****************************** */
 /*             MUTATORS           */
 /* ****************************** */
@@ -391,10 +615,13 @@ int ArraySchema::deserialize(
     }
   }
   // Load val_num_
+  var_attribute_num_ = 0;
   val_num_.resize(attribute_num_); 
   for(int i=0; i<attribute_num_; ++i) {
     assert(offset + sizeof(int) < buffer_size);
     memcpy(&val_num_[i], buffer + offset, sizeof(int));
+    if(val_num_[i] == TILEDB_AS_VAR_SIZE)
+      ++var_attribute_num_;
     offset += sizeof(int);
   }
   // Load compression_
@@ -413,6 +640,9 @@ int ArraySchema::deserialize(
   cell_sizes_.resize(attribute_num_+1);
   for(int i=0; i<= attribute_num_; ++i) 
     cell_sizes_[i] = compute_cell_size(i);
+
+  // Compute number of cells per tile
+  compute_cell_num_per_tile();
 
   return TILEDB_AS_OK;
 }
@@ -454,6 +684,8 @@ int ArraySchema::init(const ArraySchemaC* array_schema_c) {
   // Set tile extents
   if(set_tile_extents(array_schema_c->tile_extents_) == TILEDB_AS_ERR)
     return TILEDB_AS_ERR;
+  // Compute number of cells per tile
+  compute_cell_num_per_tile();
 
   return TILEDB_AS_OK;
 }
@@ -705,6 +937,7 @@ int ArraySchema::set_types(const char** types) {
   std::string type_val_num;
   std::string type;
   int num;
+  var_attribute_num_ = 0;
 
   for(int i=0; i<attribute_num_; ++i) { 
     type_val_num = types[i];
@@ -717,6 +950,7 @@ int ArraySchema::set_types(const char** types) {
       // Process next token
       if(!strcmp(token, "var")) { // Variable-sized cell
         val_num_.push_back(TILEDB_AS_VAR_SIZE);
+        ++var_attribute_num_;
       } else if(!is_positive_integer(token)) { 
         PRINT_ERROR("Cannot set types; The number of attribute values per "
                     "cell must be a positive integer");
@@ -865,6 +1099,24 @@ size_t ArraySchema::compute_bin_size() const {
   bin_size += (attribute_num_+1) * sizeof(char);
 
   return bin_size;
+}
+
+void ArraySchema::compute_cell_num_per_tile() {
+  if(tile_extents_ == NULL)
+    return;
+
+  // Compute for the first time
+  if(types_[attribute_num_] == &typeid(int)) {
+    int* tile_extents = (int*) tile_extents_;
+    cell_num_per_tile_ = 1;
+    for(int i=0; i<dim_num_; ++i)
+      cell_num_per_tile_ *= tile_extents[i]; 
+  } else if(types_[attribute_num_] == &typeid(int64_t)) {
+    int64_t* tile_extents = (int64_t*) tile_extents_;
+    cell_num_per_tile_ = 1;
+    for(int i=0; i<dim_num_; ++i)
+      cell_num_per_tile_ *= tile_extents[i]; 
+  }
 }
 
 size_t ArraySchema::compute_cell_size(int i) const {

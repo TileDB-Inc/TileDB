@@ -37,7 +37,7 @@ ifeq ($(BUILD),debug)
 endif
 
 ifeq ($(VERBOSE),)
-  VERBOSE = 1
+  VERBOSE = 2
 endif
 
 ifeq ($(VERBOSE),0)
