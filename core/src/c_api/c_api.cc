@@ -163,6 +163,7 @@ int tiledb_array_create(
   // Copy array schema to the proper struct
   ArraySchemaC array_schema_c;
   array_schema_c.array_name_ = array_schema->array_name_;
+  array_schema_c.attributes_ = array_schema->attributes_;
   array_schema_c.attribute_num_ = array_schema->attribute_num_;
   array_schema_c.capacity_ = array_schema->capacity_;
   array_schema_c.cell_order_ = array_schema->cell_order_;
@@ -188,7 +189,7 @@ int tiledb_array_create(
 
 int tiledb_array_init(
     const TileDB_CTX* tiledb_ctx,
-    TileDB_Array* tiledb_array,
+    TileDB_Array** tiledb_array,
     const char* dir,
     int mode,
     const void* range,
@@ -198,17 +199,20 @@ int tiledb_array_init(
   if(!sanity_check(tiledb_ctx))
     return TILEDB_ERR;
 
+  // Allocate memory for the array struct
+  *tiledb_array = (TileDB_Array*) malloc(sizeof(struct TileDB_Array));
+
+  // Set TileDB context
+  (*tiledb_array)->tiledb_ctx_ = tiledb_ctx;
+
   // Init the array
   int rc = tiledb_ctx->storage_manager_->array_init(
-               tiledb_array->array_,
+               (*tiledb_array)->array_,
                dir,
                mode, 
                range, 
                attributes,
                attribute_num);
-
-  // Set TileDB context
-  tiledb_array->tiledb_ctx_ = tiledb_ctx;
 
   // Return
   if(rc == TILEDB_SM_OK) 
@@ -225,6 +229,8 @@ int tiledb_array_finalize(TileDB_Array* tiledb_array) {
   // Finalize array
   int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_finalize(
                tiledb_array->array_);
+
+  free(tiledb_array);
 
   // Return
   if(rc == TILEDB_SM_OK) 

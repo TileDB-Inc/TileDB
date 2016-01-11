@@ -64,15 +64,14 @@
 
 Array::Array() {
   array_schema_ = NULL;
-  range_ = NULL;
 }
 
 Array::~Array() {
+  for(int i=0; i<fragments_.size(); ++i)
+    delete fragments_[i];
+
   if(array_schema_ != NULL)
     delete array_schema_;
-
-  if(range_ != NULL)
-    free(range_);
 }
 
 /* ****************************** */
@@ -89,10 +88,6 @@ const std::vector<int>& Array::attribute_ids() const {
 
 int Array::mode() const {
   return mode_;
-}
-
-const void* Array::range() const {
-  return range_;
 }
 
 /* ****************************** */
@@ -118,6 +113,8 @@ int Array::init(
   std::vector<std::string> attributes_vec;
   if(attributes == NULL) { // Default: all attributes
     attributes_vec = array_schema->attributes();
+    if(array_schema->dense()) // Remove coordinates attribute for dense
+      attributes_vec.pop_back(); 
   } else {
     for(int i=0; i<attribute_num; ++i) {
       attributes_vec.push_back(attributes[i]);
@@ -140,28 +137,30 @@ int Array::init(
   // Set mode
   mode_ = mode;
 
-  // Set range
-  if(range == NULL) {
-    range_ = NULL;
-  } else {
-    size_t range_size = 2*array_schema->coords_size();
-    range_ = malloc(range_size);
-    memcpy(range_, range, range_size);
-  }
+  // Initialize new fragment if needed
+  if(fragments_.size() == 0)
+    fragments_.push_back(new Fragment(new_fragment_name(), this, range));
 }
 
 int Array::finalize() {
-  return TILEDB_AR_OK; 
+  int rc;
+
+  for(int i=0; i<fragments_.size(); ++i) {
+    rc = fragments_[i]->finalize();
+    if(rc != TILEDB_FG_OK)
+      break;
+  }
+
+  if(rc == TILEDB_AR_OK)
+    return TILEDB_AR_OK; 
+  else
+    return TILEDB_AR_ERR; 
 }
 
 int Array::write(const void** buffers, const size_t* buffer_sizes) {
   // Sanity checks
   assert(mode_ == TILEDB_WRITE || mode_ == TILEDB_WRITE_UNSORTED);
-  assert(fragments_.size() <= 1);
-
-  // Initialize new fragment if needed
-  if(fragments_.size() == 0)
-    fragments_.push_back(new Fragment(new_fragment_name(), this));
+  assert(fragments_.size() == 1);
 
   // Dispatch the write command to the new fragment
   int rc = fragments_[0]->write(buffers, buffer_sizes);

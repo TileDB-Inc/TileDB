@@ -61,7 +61,7 @@ class StorageManager {
   // CONSTRUCTORS & DESTRUCTORS  
 
   /** Constructor. */
-  StorageManager(const std::string& config_filename);
+  StorageManager(const char* config_filename);
 
   /** Destructor. */
   ~StorageManager();
@@ -173,7 +173,7 @@ class StorageManager {
   bool is_array(const std::string& dir) const;
 
 
-  // CLEAR, DELETE, MOVE
+  // COMMON
   // TODO
   int clear(const std::string& dir) const;
 
@@ -194,7 +194,7 @@ class StorageManager {
    *     be in the form <parameter> <value> (i.e., space-separated).
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
-  int config_set(const std::string& config_filename);
+  int config_set(const char* config_filename);
 
   /** 
    * Sets the TileDB configuration parameters to default values. This is called

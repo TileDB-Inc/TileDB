@@ -120,34 +120,46 @@ WriteState::~WriteState() {
 /*         WRITE FUNCTIONS        */
 /* ****************************** */
 
-void WriteState::flush() {
-  // TODO: Write empty cells if needed
-  // TODO: Write rest of the segments to disk
-}
+int WriteState::write( const void** buffers, const size_t* buffer_sizes) {
+  // Create fragment directory if it does not exist
+  std::string fragment_name = fragment_->fragment_name();
+  if(!is_dir(fragment_name)) {
+    if(create_dir(fragment_name) != TILEDB_UT_OK)
+      return TILEDB_WS_ERR;
+  }
 
-int WriteState::write(
-    const void** buffers,
-    const size_t* buffer_sizes) {
   // For easy reference
   const Array* array = fragment_->array();
 
   // Dispatch the proper write command
   if(array->mode() == TILEDB_WRITE) {    // SORTED
-    if(array->array_schema()->dense()) {            // DENSE
-      if(has_coords())                                // SPARSE
+    if(array->array_schema()->dense()) {            // DENSE ARRAY
+      if(has_coords()) {                                // SPARSE CELLS
         return write_sparse(buffers, buffer_sizes);
-      else {                                          // DENSE 
-        if(array->range() == NULL)
-          return write_dense(buffers, buffer_sizes);          // DENSE
+      } else {                                          // DENSE ARRAY 
+        if(book_keeping_->range() == NULL)
+          return write_dense(buffers, buffer_sizes);          // DENSE CELLS
         else 
           return write_dense_in_range(buffers, buffer_sizes); // DENSE IN RANGE
       }
-    } else {                                // SPARSE
+    } else {                                // SPARSE ARRAY
       return write_sparse(buffers, buffer_sizes);
     }
-  } else {                       // UNSORTED
+  } else if (array->mode() == TILEDB_WRITE_UNSORTED) { // UNSORTED
     return write_sparse_unsorted(buffers, buffer_sizes);
+  } else {
+    PRINT_ERROR("Cannot write to fragment; Invalid mode");
+    return TILEDB_WS_ERR;
   } 
+}
+
+/* ****************************** */
+/*              MISC              */
+/* ****************************** */
+
+int WriteState::finalize() {
+  // TODO: Write empty cells if needed
+  // TODO: Write rest of the segments to disk
 }
 
 /* ****************************** */
@@ -165,17 +177,18 @@ ssize_t WriteState::compress_tile_into_segment(
           tile_size, 
           static_cast<unsigned char*>(current_tiles_compressed_[attribute_id]), 
           TILEDB_Z_SEGMENT_SIZE);
-  if(current_tile_compressed_size == -1) 
+  if(current_tile_compressed_size != TILEDB_UT_OK) 
     return TILEDB_WS_ERR;
 
   // Write segment to disk if full
   if(segment_offsets_[attribute_id] + current_tile_compressed_size > 
      TILEDB_SEGMENT_SIZE) 
-    if(write_segment_to_file(attribute_id))
+    if(write_segment_to_file(attribute_id) != TILEDB_WS_OK)
       return TILEDB_WS_ERR;
 
   // Copy compressed tile to segment
-  memcpy((char*) segments_[attribute_id] + segment_offsets_[attribute_id],
+  memcpy(static_cast<char*>(segments_[attribute_id]) + 
+             segment_offsets_[attribute_id],
          current_tiles_compressed_[attribute_id],
          current_tile_compressed_size);
   segment_offsets_[attribute_id] += current_tile_compressed_size;
@@ -226,22 +239,21 @@ int WriteState::write_dense(
   int i=0; 
   int rc;
   while(i<attribute_id_num) {
-    // Fixed-sized cells
-    if(!array_schema->var_size(attribute_ids[i])) { 
+    if(!array_schema->var_size(attribute_ids[i])) { // FIXED CELLS
       rc = write_dense_attr(attribute_ids[i], buffers[i], buffer_sizes[i]);
-      ++i;
       if(rc != TILEDB_WS_OK)
         break;
-    } else { // Variable-sized cells
+      ++i;
+    } else {                                        // VARIBALE-SIZED CELLS
       rc = write_dense_attr_var(
           attribute_ids[i], 
           buffers[i], 
           buffer_sizes[i],
           buffers[i+1], 
           buffer_sizes[i+1]);
-      i+=2;
       if(rc != TILEDB_WS_OK)
         break;
+      i+=2;
     }
   }
 
@@ -300,7 +312,7 @@ int WriteState::write_dense_attr_cmp_none(
   current_tile_cell_num_[attribute_id] += buffer_cell_num;
 
   // Write buffer to file 
-  std::string filename = 
+  std::string filename = fragment_->fragment_name() + "/" + 
       fragment_->array()->array_schema()->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
   int rc = write_to_file(filename.c_str(), buffer, buffer_size);
@@ -361,7 +373,7 @@ int WriteState::write_dense_attr_cmp_gzip(
               attribute_id,
               current_tile, 
               tile_size);
-    if(compressed_tile_size == TILEDB_WS_ERR)
+    if(compressed_tile_size != TILEDB_WS_OK)
       return TILEDB_WS_ERR;
 
     // Append offset
@@ -370,7 +382,7 @@ int WriteState::write_dense_attr_cmp_gzip(
       
   // Continue to fill and compress entire tiles
   while(buffer_cell_num >= cell_num_per_tile) {
-    // Prepare tle
+    // Prepare tile
     memcpy(
         current_tile, 
         static_cast<const char*>(buffer) + buffer_offset,
@@ -384,7 +396,7 @@ int WriteState::write_dense_attr_cmp_gzip(
             attribute_id,
             current_tile, 
             tile_size);
-    if(compressed_tile_size == TILEDB_WS_ERR)
+    if(compressed_tile_size != TILEDB_WS_OK)
       return TILEDB_WS_ERR;
       
     // Append offset
@@ -433,6 +445,24 @@ int WriteState::write_dense_attr_var(
                buffer_val_size,
                buffer_val_num,  
                buffer_val_num_size);
+}
+
+int WriteState::write_dense_attr_var_cmp_none(
+    int attribute_id,
+    const void* buffer_val,
+    size_t buffer_val_size,
+    const void* buffer_val_num,
+    size_t buffer_val_num_size) {
+  // TODO
+}
+
+int WriteState::write_dense_attr_var_cmp_gzip(
+    int attribute_id,
+    const void* buffer_val,
+    size_t buffer_val_size,
+    const void* buffer_val_num,
+    size_t buffer_val_num_size) {
+  // TODO
 }
 
 int WriteState::write_dense_in_range(

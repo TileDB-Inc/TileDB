@@ -37,7 +37,7 @@
 #include "array.h"
 #include "array_schema.h"
 #include "book_keeping.h"
-#include "global.h"
+#include "constants.h"
 #include "write_state.h"
 #include <vector>
 
@@ -62,8 +62,13 @@ class Fragment {
    *
    * @param fragment_name The fragment name.
    * @param array The array the fragment belongs to.
+   * @param range The range in which the fragment read/write will be
+   *     constrained.
    */
-  Fragment(const std::string& fragment_name, const Array* array);
+  Fragment(
+      const std::string& fragment_name, 
+      const Array* array,
+      const void* range);
 
   /** Destructor. */
   ~Fragment();
@@ -73,10 +78,18 @@ class Fragment {
   /** Returns the array the fragment belongs to. */
   const Array* array() const;
 
+  /** Returns the fragment name. */
+  const std::string& fragment_name() const;
+
   // WRITE FUNCTIONS
 
   // TODO
   int write(const void** buffers, const size_t* buffer_sizes);
+
+  // MISC
+  
+  // TODO
+  int finalize();
  
  private:
   // PRIVATE ATTRIBUTES
@@ -88,6 +101,14 @@ class Fragment {
   std::string fragment_name_;
   /** A write statr structure. */
   WriteState* write_state_;
+
+  // PRIVATE METHODS
+  /** 
+   * Changes the temporary fragment name into a stable one.
+   *
+   * @return TILEDB_FG_OK for success, and TILEDB_FG_ERR for error.
+   */
+  int rename_fragment();
 };
 
 #endif

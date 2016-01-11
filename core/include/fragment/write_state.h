@@ -63,14 +63,16 @@ class WriteState {
   ~WriteState();
 
   // WRITE FUNCTIONS
- 
-  // TODO 
-  void flush();
- 
+  
   // TODO
   int write(
       const void** buffers, 
       const size_t* buffer_sizes);
+
+  // MISC
+
+  // TODO 
+  int finalize();
 
  private:
   // PRIVATE ATTRIBUTES

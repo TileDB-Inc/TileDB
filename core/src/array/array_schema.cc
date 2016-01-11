@@ -32,7 +32,7 @@
  */
 
 #include "array_schema.h"
-#include "global.h"
+#include "constants.h"
 #include "utils.h"
 #include <cassert>
 #include <cstring>
@@ -89,6 +89,10 @@ const std::string& ArraySchema::attribute(int attribute_id) const {
 }
 
 int ArraySchema::attribute_id(const std::string& attribute) const {
+  // Special case - coordinates
+  if(attribute == TILEDB_COORDS_NAME)
+    return attribute_num_;
+
   for(int i=0; i<attribute_num_; ++i) {
     if(attributes_[i] == attribute)
       return i;
@@ -234,7 +238,7 @@ void ArraySchema::print() const {
   std::cout << "Dense:\n\t" << (dense_ ? "true" : "false") << "\n";
   // Key-value
   std::cout << "Key-value:\n\t" << (key_value_ ? "true" : "false") << "\n";
-  // Tile types
+  // Tile type
   std::cout << "Tile types:\n\t" 
             << (tile_extents_ == NULL ? "irregular" : "regular") << "\n";
   // Tile order
@@ -288,8 +292,8 @@ void ArraySchema::print() const {
   }
   // Consolidation step
   std::cout << "Consolidation step:\n\t" << consolidation_step_ << "\n";
-  // Compression types
-  std::cout << "Compression types:\n";
+  // Compression type
+  std::cout << "Compression type:\n";
   for(int i=0; i<attribute_num_; ++i)
     if(compression_[i] == TILEDB_AS_CMP_GZIP)
       std::cout << "\t" << attributes_[i] << ": GZIP\n";
@@ -347,7 +351,7 @@ int ArraySchema::serialize(
   memcpy(buffer + offset, &array_name_size, sizeof(int));
   offset += sizeof(int);
   assert(offset + array_name_size < buffer_size);
-  memcpy(buffer + offset, array_name_.c_str(), array_name_size);
+  memcpy(buffer + offset, &array_name_[0], array_name_size);
   offset += array_name_size;
   // Copy dense_
   assert(offset + sizeof(bool) < buffer_size);
@@ -378,7 +382,7 @@ int ArraySchema::serialize(
   // Copy attributes_
   assert(offset + sizeof(int) < buffer_size);
   memcpy(buffer + offset, &attribute_num_, sizeof(int));
-  offset += sizeof(unsigned int);
+  offset += sizeof(int);
   int attribute_size;
   for(int i=0; i<attribute_num_; i++) {
     attribute_size = attributes_[i].size();
@@ -406,9 +410,10 @@ int ArraySchema::serialize(
   // Copy domain_
   int domain_size = 2*coords_size();
   assert(offset + sizeof(int) < buffer_size);
-  memcpy(buffer, &domain_size, sizeof(int));
+  memcpy(buffer + offset, &domain_size, sizeof(int));
+  offset += sizeof(int);
   assert(offset + domain_size < buffer_size);
-  memcpy(buffer, domain_, domain_size);
+  memcpy(buffer + offset, domain_, domain_size);
   offset += 2*coords_size();
   // Copy tile_extents_
   int tile_extents_size = ((tile_extents_ == NULL) ? 0 : coords_size()); 
@@ -417,7 +422,7 @@ int ArraySchema::serialize(
   offset += sizeof(int);
   if(tile_extents_ != NULL) {
     assert(offset + tile_extents_size < buffer_size);
-    memcpy(buffer, tile_extents_, tile_extents_size);
+    memcpy(buffer + offset, tile_extents_, tile_extents_size);
     offset += tile_extents_size;
   }
   // Copy types_
@@ -498,7 +503,7 @@ int ArraySchema::deserialize(
     const void* array_schema_bin, 
     size_t array_schema_bin_size) {
   // For easy reference
-  const char* buffer = (const char*) array_schema_bin;
+  const char* buffer = static_cast<const char*>(array_schema_bin);
   size_t buffer_size = array_schema_bin_size;
   size_t offset = 0;
 
@@ -547,7 +552,7 @@ int ArraySchema::deserialize(
   int attribute_size;
   for(int i=0; i<attribute_num_; ++i) {
     assert(offset + sizeof(int) < buffer_size);
-    memcpy(&attribute_size, buffer+offset, sizeof(int)); 
+    memcpy(&attribute_size, buffer + offset, sizeof(int)); 
     offset += sizeof(int);
     attributes_[i].resize(attribute_size);
     assert(offset + attribute_size < buffer_size);
@@ -575,6 +580,7 @@ int ArraySchema::deserialize(
   memcpy(&domain_size, buffer + offset, sizeof(int));
   offset += sizeof(int);
   assert(offset + domain_size < buffer_size);
+  domain_ = malloc(domain_size);
   memcpy(domain_, buffer + offset, domain_size); 
   offset += domain_size;
   // Load tile_extents_
@@ -586,6 +592,7 @@ int ArraySchema::deserialize(
     tile_extents_ = NULL;
   } else {
     assert(offset + tile_extents_size < buffer_size);
+    tile_extents_ = malloc(tile_extents_size); 
     memcpy(tile_extents_, buffer + offset, tile_extents_size);
     offset += tile_extents_size;
   }
@@ -632,8 +639,7 @@ int ArraySchema::deserialize(
     offset += sizeof(char);
     compression_.push_back(static_cast<Compression>(compression));
   }
-  assert(offset == buffer_size);
- 
+  assert(offset == buffer_size); 
   // Add extra coordinate attribute
   attributes_.push_back(TILEDB_COORDS_NAME);
   // Set cell sizes
@@ -653,37 +659,36 @@ int ArraySchema::init(const ArraySchemaC* array_schema_c) {
   // Set attributes
   if(set_attributes(
       array_schema_c->attributes_, 
-      array_schema_c->attribute_num_) == TILEDB_AS_ERR)
+      array_schema_c->attribute_num_) != TILEDB_AS_OK)
     return TILEDB_AS_ERR;
   // Set capacity
   set_capacity(array_schema_c->capacity_);
   // Set dimensions
   if(set_dimensions(
       array_schema_c->dimensions_, 
-      array_schema_c->dim_num_) == TILEDB_AS_ERR)
+      array_schema_c->dim_num_) != TILEDB_AS_OK)
     return TILEDB_AS_ERR;
   // Set compression
-  if(set_compression(array_schema_c->compression_) == TILEDB_AS_ERR)
+  if(set_compression(array_schema_c->compression_) != TILEDB_AS_OK)
     return TILEDB_AS_ERR;
   // Set consolidation step
   set_consolidation_step(array_schema_c->consolidation_step_);
   // Set dense
   set_dense(array_schema_c->dense_);
   // Set cell order
-  if(set_cell_order(array_schema_c->cell_order_) == TILEDB_AS_ERR)
+  if(set_cell_order(array_schema_c->cell_order_) != TILEDB_AS_OK)
     return TILEDB_AS_ERR;
   // Set tile order
-  if(set_tile_order(array_schema_c->tile_order_) == TILEDB_AS_ERR)
+  if(set_tile_order(array_schema_c->tile_order_) != TILEDB_AS_OK)
     return TILEDB_AS_ERR;
-
   // Set types
-  if(set_types(array_schema_c->types_) == TILEDB_AS_ERR)
+  if(set_types(array_schema_c->types_) != TILEDB_AS_OK)
     return TILEDB_AS_ERR;
   // Set domain
-  if(set_domain(array_schema_c->domain_) == TILEDB_AS_ERR)
+  if(set_domain(array_schema_c->domain_) != TILEDB_AS_OK)
     return TILEDB_AS_ERR;
   // Set tile extents
-  if(set_tile_extents(array_schema_c->tile_extents_) == TILEDB_AS_ERR)
+  if(set_tile_extents(array_schema_c->tile_extents_) != TILEDB_AS_OK)
     return TILEDB_AS_ERR;
   // Compute number of cells per tile
   compute_cell_num_per_tile();
@@ -702,6 +707,12 @@ void ArraySchema::set_array_name(const char* array_name) {
 int ArraySchema::set_attributes(
     const char** attributes,
     int attribute_num) {
+  // Sanity check on attributes
+  if(attributes == NULL) {
+    PRINT_ERROR("Cannot set attributes; No attributes given");
+    return TILEDB_AS_ERR;
+  }
+
   // Sanity check on attribute number
   if(attribute_num <= 0) {
     PRINT_ERROR("Cannot set attributes; "
@@ -802,6 +813,12 @@ void ArraySchema::set_dense(int dense) {
 int ArraySchema::set_dimensions(
     const char** dimensions,
     int dim_num) {
+  // Sanity check on dimensions
+  if(dimensions == NULL) {
+    PRINT_ERROR("Cannot set dimensions; No dimensions given");
+    return TILEDB_AS_ERR;
+  }
+
   // Sanity check on dimension number
   if(dim_num <= 0) {
     PRINT_ERROR("Cannot set dimensions; "
@@ -882,9 +899,12 @@ int ArraySchema::set_domain(const void* domain) {
         return TILEDB_AS_ERR;
       }
     }
+  } else {
+    PRINT_ERROR("Cannot set domain; Invalid coordinates type");
+    return TILEDB_AS_ERR;
   }
 
-  return TILEDB_AS_ERR;
+  return TILEDB_AS_OK;
 }
 
 int ArraySchema::set_tile_extents(const void* tile_extents) {

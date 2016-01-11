@@ -81,7 +81,7 @@ typedef struct ArraySchemaC {
    * of the values stored in this buffer should match the coordinates type. If the 
    * coordinates type is <b>char:var</b>, this field is ignored.
    */
-  void* domain_;
+  const void* domain_;
   /** 
    * The tile extents (only applicable to regular tiles). There should be one 
    * value for each dimension. The type of the values stored in this buffer should 
@@ -89,7 +89,7 @@ typedef struct ArraySchemaC {
    * irregular tiles (and, hence, it is sparse). If the coordinates type is
    * <b>char:var</b>, this field is ignored.
    */
-  void* tile_extents_;
+  const void* tile_extents_;
   /**
    * The tile order (only applicable to regular tiles). The supported orders are
    * **row-major**, **column-major** and **hilbert**. If it is set to NULL, then

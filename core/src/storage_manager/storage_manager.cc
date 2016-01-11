@@ -32,6 +32,7 @@
  */
 
 #include "storage_manager.h"
+#include <cassert>
 #include <cstring>
 #include <fcntl.h>
 #include <iostream>
@@ -62,7 +63,7 @@
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-StorageManager::StorageManager(const std::string& config_filename) {
+StorageManager::StorageManager(const char* config_filename) {
   // Set configuration parameters
   if(config_set(config_filename) == TILEDB_SM_ERR)
     config_set_default();
@@ -82,6 +83,10 @@ bool StorageManager::is_workspace(const std::string& dir) const {
     return true;
   else
     return false;
+}
+
+int StorageManager::workspace_create(const std::string& dir) const {
+  // TODO
 }
 
 /* ****************************** */
@@ -210,11 +215,8 @@ int StorageManager::array_init(
     int attribute_num)  const {
   // Load array schema
   ArraySchema* array_schema;
-  if(array_load_schema(dir, array_schema) == TILEDB_SM_ERR)
+  if(array_load_schema(dir, array_schema) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
-
-  // TODO: debugging
-  array_schema->print();
 
   // Create Array object
   array = new Array();
@@ -231,12 +233,13 @@ int StorageManager::array_init(
 }
 
 int StorageManager::array_finalize(Array* array) const {
-  if(array->finalize() == TILEDB_AR_ERR) {
-    return TILEDB_SM_ERR;
-  } else {
-    delete array;
+  int rc = array->finalize();
+  delete array;
+
+  if(rc == TILEDB_AR_OK)
     return TILEDB_SM_OK;
-  }
+  else
+    return TILEDB_SM_ERR;
 }
 
 int StorageManager::array_load_schema(
@@ -302,12 +305,12 @@ int StorageManager::array_write(
     Array* array,
     const void** buffers,
     const size_t* buffer_sizes) const {
-  if(array->write(buffers, buffer_sizes) == TILEDB_AR_ERR) {
+  assert(array != NULL); 
+
+  if(array->write(buffers, buffer_sizes) == TILEDB_AR_ERR) 
     return TILEDB_SM_ERR;
-  } else {
-    delete array;
+  else
     return TILEDB_SM_OK;
-  }
 }
 
 bool StorageManager::is_array(const std::string& dir) const {
@@ -320,10 +323,28 @@ bool StorageManager::is_array(const std::string& dir) const {
 }
 
 /* ****************************** */
+/*             COMMON             */
+/* ****************************** */
+
+int StorageManager::clear(const std::string& dir) const {
+  // TODO
+}
+
+int StorageManager::delete_entire(const std::string& dir) const {
+  // TODO
+}
+
+int StorageManager::move(
+    const std::string& old_dir,
+    const std::string& new_dir) const {
+  // TODO
+}
+
+/* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-int StorageManager::config_set(const std::string& config_filename) {
+int StorageManager::config_set(const char* config_filename) {
   // TODO
 
   return TILEDB_SM_OK;

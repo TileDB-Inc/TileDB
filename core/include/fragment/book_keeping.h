@@ -37,6 +37,15 @@
 #include "fragment.h"
 #include <vector>
 
+/* ********************************* */
+/*             CONSTANTS             */
+/* ********************************* */
+
+#define TILEDB_BK_OK     0
+#define TILEDB_BK_ERR   -1
+
+#define TILEDB_BK_BUFFER_SIZE 10000
+
 class Fragment;
 
 /** Stores the book-keeping structures of a fragment. */
@@ -48,11 +57,17 @@ class BookKeeping {
    * Constructor. 
    *
    * @param fragment The fragment the book-keeping structure belongs to.
+   * @param range The range in which the array read/write will be constrained.
    */
-  BookKeeping(const Fragment* fragment);
+  BookKeeping(const Fragment* fragment, const void* range);
 
   /** Destructor. */
   ~BookKeeping();
+
+  // ACCESSORS
+
+  /** Returns the range in which the fragment is constrained. */
+  const void* range() const;
 
   // MUTATORS 
  
@@ -60,15 +75,66 @@ class BookKeeping {
   void append_tile_offset(int attribute_id, size_t offset);
 
   // MISC
-  void flush();
+
+  // TODO
+  int finalize();
 
  private:
   // PRIVATE ATTRIBUTES
 
   /** The fragment the book-keeping belongs to. */
   const Fragment* fragment_;
+  /** The offsets of the next tile to be appended for each attribute. */
+  std::vector<size_t> next_tile_offsets_;
+  /**
+   * The range in which the fragment is constrained. Note that the type of the
+   * range must be the same as the type of the array coordinates.
+   */
+  void* range_;
   /** The tile offsets in their corresponding attribute files. */
   std::vector<std::vector<size_t> > tile_offsets_;
+
+  // PRIVATE METHODS
+
+  /** 
+   * Serializes the book-keeping object into a buffer.
+   *
+   * @param buffer The buffer where the book-keeping object is copied.
+   * @param buffer_size The size of the buffer after serialization.
+   * @return TILEDB_BK_OK for succes, and TILEDB_BK_ERR for error.
+   */ 
+  int serialize(void*& buffer, size_t& buffer_size) const;
+
+  /** 
+   * Serializes the range into the buffer.
+   *
+   * @param buffer The buffer where the range is copied.
+   * @param buffer_allocated_size The allocated size of the buffer. Note that 
+   *     this may change if the buffer gets full, in which case the buffer is
+   *     expanded and the allocated size gets doubled.
+   * @param buffer_size The current (useful) size of the buffer.
+   * @return TILEDB_BK_OK for succes, and TILEDB_BK_ERR for error.
+   */ 
+  int serialize_range(
+      void*& buffer, 
+      size_t& buffer_allocated_size, 
+      size_t& buffer_size) const;
+
+  /** 
+   * Serializes the tile offsets into the buffer.
+   *
+   * @param buffer The buffer where the tile offsets are copied.
+   * @param buffer_allocated_size The allocated size of the buffer. Note that 
+   *     this may change if the buffer gets full, in which case the buffer is
+   *     expanded and the allocated size gets doubled.
+   * @param buffer_size The current (useful) size of the buffer.
+   * @return TILEDB_BK_OK for succes, and TILEDB_BK_ERR for error.
+   */ 
+  int serialize_tile_offsets(
+      void*& buffer, 
+      size_t& buffer_allocated_size, 
+      size_t& buffer_size) const;
+
 };
 
 #endif

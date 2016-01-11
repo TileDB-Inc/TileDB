@@ -80,6 +80,16 @@ int create_dir(const std::string& dir);
 std::string current_dir();
 
 /** 
+ * Doubles the size of the buffer.
+ *
+ * @param buffer The buffer to be expanded. 
+ * @param buffer_allocated_size The original allocated size of the buffer.
+ *     After the function call, the size doubles.
+ * @param return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ */
+int expand_buffer(void*& buffer, size_t& buffer_allocated_size);
+
+/** 
  * GZIPs the input buffer and stores the result in the output buffer, returning
  * the size of compressed data. 
  *
@@ -170,6 +180,19 @@ bool starts_with(const std::string& value, const std::string& prefix);
  * @return 0 on success, and -1 on error.
  */
 int write_to_file(
+    const char* filename,
+    const void* buffer, 
+    size_t buffer_size);
+
+/** 
+ * Write the input buffer to a file, compressed with GZIP.
+ * 
+ * @param filename The name of the file.
+ * @param buffer The input buffer.
+ * @param buffer_size The size of the input buffer.
+ * @return 0 on success, and -1 on error.
+ */
+int write_to_file_cmp_gzip(
     const char* filename,
     const void* buffer, 
     size_t buffer_size);

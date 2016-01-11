@@ -101,6 +101,16 @@ std::string current_dir() {
   return dir; 
 }
 
+int expand_buffer(void*& buffer, size_t& buffer_allocated_size) {
+  buffer_allocated_size *= 2;
+  buffer = realloc(buffer, buffer_allocated_size);
+  
+  if(buffer == NULL)
+    return TILEDB_UT_ERR;
+  else
+    return TILEDB_UT_OK;
+}
+
 ssize_t gzip(
     unsigned char* in, 
     size_t in_size,
@@ -120,7 +130,7 @@ ssize_t gzip(
   if(ret != Z_OK) {
     PRINT_ERROR("Cannot compress with GZIP");
     (void)deflateEnd(&strm);
-    return -1;
+    return TILEDB_UT_ERR;
   }
 
   // Compress
@@ -136,7 +146,7 @@ ssize_t gzip(
   // Return 
   if(ret == Z_STREAM_ERROR || strm.avail_in == 0) {
     PRINT_ERROR("Cannot compress with GZIP");
-    return -1;
+    return TILEDB_UT_ERR;
   } else {
     // Return size of compressed data
     return out_size - strm.avail_out; 
@@ -319,6 +329,34 @@ int write_to_file(
 
   // Close file
   if(close(fd)) {
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
+    return TILEDB_UT_ERR;
+  }
+
+  // Success 
+  return TILEDB_UT_OK;
+}
+
+int write_to_file_cmp_gzip(
+    const char* filename,
+    const void* buffer,
+    size_t buffer_size) {
+  // Open file
+  gzFile fd = gzopen(filename, "wb");
+  if(fd == NULL) {
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
+    return TILEDB_UT_ERR;
+  }
+
+  // Append attribute data to the file
+  ssize_t bytes_written = gzwrite(fd, buffer, buffer_size);
+  if(bytes_written != buffer_size) {
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
+    return TILEDB_UT_ERR;
+  }
+
+  // Close file
+  if(gzclose(fd)) {
     PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
     return TILEDB_UT_ERR;
   }

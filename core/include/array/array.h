@@ -35,8 +35,8 @@
 #define __ARRAY_H__
 
 #include "array_schema.h"
+#include "constants.h"
 #include "fragment.h"
-#include "global.h"
 
 /* ********************************* */
 /*             CONSTANTS             */
@@ -71,9 +71,6 @@ class Array {
 
   /** Returns the array mode. */
   int mode() const;
-
-  /** Returns the array range. */
-  const void* range() const;
 
   // MUTATORS
  
@@ -130,11 +127,6 @@ class Array {
    *    - TILEDB_READ_REVERSE 
    */
   int mode_;
-  /**
-   * The range in which the array is constrained. Note that the type of the
-   * range must be the same as the type of the array coordinates.
-   */
-  void* range_;
 
   // PRIVATE METHODS
   

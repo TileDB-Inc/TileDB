@@ -1,5 +1,5 @@
 /**
- * @file   global.h
+ * @file   constants.h
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
@@ -28,11 +28,11 @@
  * 
  * @section DESCRIPTION
  *
- * This file contains global definitions. 
+ * This file contains global constants. 
  */
 
-#ifndef __GLOBAL_H__
-#define __GLOBAL_H__
+#ifndef __CONSTANTS_H__
+#define __CONSTANTS_H__
 
 /** Version */
 #define TILEDB_VERSION "0.1"
@@ -64,6 +64,12 @@
 
 /** Suffix of a TileDB file. */
 #define TILEDB_FILE_SUFFIX ".tdb"
+
+/** Suffix of a GZIP-compressed file. */
+#define TILEDB_GZIP_SUFFIX ".gz"
+
+/** Name of book-keeping file*/
+#define TILEDB_BOOK_KEEPING_FILENAME "__book_keeping"
 
 /** The TileDB data types. */ 
 enum DataType {
