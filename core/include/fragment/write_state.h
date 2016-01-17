@@ -104,6 +104,7 @@ class WriteState {
       void* tile,
       size_t tile_size);
 
+
   /** True if the coordinates are included in the fragment attributes. */
   bool has_coords() const;
 

@@ -31,10 +31,12 @@
  * This file implements useful (global) functions.
  */
 
+#include "constants.h"
 #include "utils.h"
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <dirent.h>
 #include <fcntl.h>
 #include <iostream>
 #include <set>
@@ -69,6 +71,16 @@ bool both_slashes(char a, char b) {
   return a == '/' && b == '/';
 }
 
+template<class T>
+int64_t cell_num_in_range(const T* range, int dim_num) {
+  int64_t cell_num = 1;
+
+  for(int i=0; i<dim_num; ++i)
+    cell_num *= range[2*i+1] - range[2*i] + 1;
+
+  return cell_num;
+}
+
 int create_dir(const std::string& dir) {
   // Get real directory path
   std::string real_dir = ::real_dir(dir);
@@ -87,6 +99,18 @@ int create_dir(const std::string& dir) {
                 "'; Directory already exists"); 
     return TILEDB_UT_ERR;
   }
+}
+
+int create_fragment_file(const std::string& dir) {
+  std::string filename = std::string(dir) + "/" + TILEDB_FRAGMENT_FILENAME;
+  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+  if(fd == -1 || ::close(fd)) {
+    PRINT_ERROR(std::string("Failed to create fragment file; ") +
+                strerror(errno));
+    return TILEDB_UT_ERR;
+  }
+
+  return TILEDB_UT_OK;
 }
 
 std::string current_dir() {
@@ -109,6 +133,31 @@ int expand_buffer(void*& buffer, size_t& buffer_allocated_size) {
     return TILEDB_UT_ERR;
   else
     return TILEDB_UT_OK;
+}
+
+std::vector<std::string> get_dirs(const std::string& dir) {
+  std::vector<std::string> dirs;
+  std::string new_dir; 
+  struct dirent *next_file;
+  DIR* c_dir = opendir(dir.c_str());
+
+  if(c_dir == NULL) 
+    return std::vector<std::string>();
+
+  while((next_file = readdir(c_dir))) {
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, "..") ||
+       !is_dir(dir + "/" + next_file->d_name))
+      continue;
+    new_dir = dir + "/" + next_file->d_name;
+    dirs.push_back(new_dir);
+  } 
+
+  // Close array directory  
+  closedir(c_dir);
+
+  // Return
+  return dirs;
 }
 
 ssize_t gzip(
@@ -172,6 +221,15 @@ bool intersect(const std::vector<T>& v1, const std::vector<T>& v2) {
   return intersect.size() != 0; 
 }
 
+bool is_array(const std::string& dir) {
+  // Check existence
+  if(is_dir(dir) && 
+     is_file(dir + "/" + TILEDB_ARRAY_SCHEMA_FILENAME)) 
+    return true;
+  else
+    return false;
+}
+
 bool is_dir(const std::string& dir) {
   struct stat st;
   return stat(dir.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
@@ -180,6 +238,24 @@ bool is_dir(const std::string& dir) {
 bool is_file(const std::string& file) {
   struct stat st;
   return (stat(file.c_str(), &st) == 0)  && !S_ISDIR(st.st_mode);
+}
+
+bool is_fragment(const std::string& dir) {
+  // Check existence
+  if(is_dir(dir) && 
+     is_file(dir + "/" + TILEDB_FRAGMENT_FILENAME)) 
+    return true;
+  else
+    return false;
+}
+
+bool is_group(const std::string& dir) {
+  // Check existence
+  if(is_dir(dir) && 
+     is_file(dir + "/" + TILEDB_GROUP_FILENAME)) 
+    return true;
+  else
+    return false;
 }
 
 bool is_positive_integer(const char* s) {
@@ -200,6 +276,15 @@ bool is_positive_integer(const char* s) {
   }
 
   return true;
+}
+
+bool is_workspace(const std::string& dir) {
+  // Check existence
+  if(is_dir(dir) && 
+     is_file(dir + "/" + TILEDB_WORKSPACE_FILENAME)) 
+    return true;
+  else
+    return false;
 }
 
 std::string parent_dir(const std::string& dir) {
@@ -371,3 +456,8 @@ template bool has_duplicates<std::string>(const std::vector<std::string>& v);
 template bool intersect<std::string>(
     const std::vector<std::string>& v1,
     const std::vector<std::string>& v2);
+
+template int64_t cell_num_in_range<int>(const int* range, int dim_num);
+template int64_t cell_num_in_range<int64_t>(const int64_t* range, int dim_num);
+template int64_t cell_num_in_range<float>(const float* range, int dim_num);
+template int64_t cell_num_in_range<double>(const double* range, int dim_num);

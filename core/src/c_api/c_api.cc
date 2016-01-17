@@ -247,8 +247,27 @@ int tiledb_array_write(
   if(!sanity_check(tiledb_array->tiledb_ctx_))
     return TILEDB_ERR;
 
-  // Finalize array
+  // Write
   int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_write(
+               tiledb_array->array_, buffers, buffer_sizes);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR;
+}
+
+int tiledb_array_read(
+    const TileDB_Array* tiledb_array,
+    void** buffers,
+    size_t* buffer_sizes) {
+  // Sanity check
+  if(!sanity_check(tiledb_array->tiledb_ctx_))
+    return TILEDB_ERR;
+
+  // Read
+  int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_read(
                tiledb_array->array_, buffers, buffer_sizes);
 
   // Return

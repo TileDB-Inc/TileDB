@@ -34,7 +34,9 @@
 #include "array_schema.h"
 #include "constants.h"
 #include "utils.h"
+#include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstring>
 #include <iostream>
 
@@ -64,6 +66,7 @@ ArraySchema::ArraySchema() {
   cell_num_per_tile_ = -1;
   domain_ = NULL;
   tile_extents_ = NULL;
+  tile_domain_ = NULL;
 }
 
 ArraySchema::~ArraySchema() {
@@ -72,6 +75,9 @@ ArraySchema::~ArraySchema() {
 
   if(tile_extents_ != NULL)
     free(tile_extents_);
+
+  if(tile_domain_ != NULL)
+    free(tile_domain_);
 }
 
 /* ****************************** */
@@ -128,8 +134,20 @@ size_t ArraySchema::coords_size() const {
   return cell_sizes_[attribute_num_];
 }
 
+const std::type_info* ArraySchema::coords_type() const {
+  return type(attribute_num_);
+}
+
 bool ArraySchema::dense() const {
   return dense_;
+}
+
+int ArraySchema::dim_num() const {
+  return dim_num_;
+}
+
+const void* ArraySchema::domain() const {
+  return domain_;
 }
 
 int ArraySchema::get_attribute_ids(
@@ -461,6 +479,28 @@ int ArraySchema::serialize(
   return TILEDB_AS_OK;
 }
 
+const void* ArraySchema::tile_domain() const {
+  return tile_domain_;
+}
+
+const void* ArraySchema::tile_extents() const {
+  return tile_extents_;
+}
+
+size_t ArraySchema::tile_size(int attribute_id) const {
+  // Sanity checks
+  assert(dense_ || tile_extents_ == NULL);
+
+  return tile_sizes_[attribute_id];
+}
+
+const std::type_info* ArraySchema::type(int i) const {
+  if(i<0 || i>attribute_num_)
+    return NULL;
+  else
+    return types_[i];
+}
+
 bool ArraySchema::var_size(int attribute_id) const {
   return cell_sizes_[attribute_id] == TILEDB_AS_VAR_SIZE; 
 }
@@ -650,6 +690,12 @@ int ArraySchema::deserialize(
   // Compute number of cells per tile
   compute_cell_num_per_tile();
 
+  // Compute tile sizes
+  compute_tile_sizes();
+
+  // Compute tile domain
+  compute_tile_domain();
+
   return TILEDB_AS_OK;
 }
 
@@ -690,8 +736,15 @@ int ArraySchema::init(const ArraySchemaC* array_schema_c) {
   // Set tile extents
   if(set_tile_extents(array_schema_c->tile_extents_) != TILEDB_AS_OK)
     return TILEDB_AS_ERR;
+
   // Compute number of cells per tile
   compute_cell_num_per_tile();
+
+  // Compute tile sizes
+  compute_tile_sizes();
+
+  // Compute tile domain
+  compute_tile_domain();
 
   return TILEDB_AS_OK;
 }
@@ -1065,6 +1118,284 @@ int ArraySchema::set_types(const char** types) {
 }
 
 /* ****************************** */
+/*              MISC              */
+/* ****************************** */
+
+template<class T>
+T ArraySchema::cell_num_in_range_slab(const T* range) const {
+  // Invoke the proper function based on the cell order
+  if(cell_order_ == TILEDB_AS_CO_ROW_MAJOR)
+    return cell_num_in_range_slab_row(range);
+  else if(cell_order_ == TILEDB_AS_CO_COLUMN_MAJOR)
+    return cell_num_in_range_slab_col(range);
+  else
+    return -1;
+}
+
+template<class T>
+T ArraySchema::cell_num_in_range_slab_col(const T* range) const {
+  return range[1] - range[0] + 1;
+}
+
+template<class T>
+T ArraySchema::cell_num_in_range_slab_row(const T* range) const {
+  return range[2*(dim_num_-1)+1] - range[2*(dim_num_-1)] + 1;
+}
+
+template<class T>
+T ArraySchema::cell_num_in_tile_slab() const {
+  // Invoke the proper function based on the cell order
+  if(cell_order_ == TILEDB_AS_CO_ROW_MAJOR)
+    return cell_num_in_tile_slab_row<T>();
+  else if(cell_order_ == TILEDB_AS_CO_COLUMN_MAJOR)
+    return cell_num_in_tile_slab_col<T>();
+  else
+    return -1;
+}
+
+template<class T>
+T ArraySchema::cell_num_in_tile_slab_col() const {
+  // For easy reference
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  return tile_extents[0];
+}
+
+template<class T>
+T ArraySchema::cell_num_in_tile_slab_row() const {
+  // For easy reference
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  return tile_extents[dim_num_-1];
+}
+
+template<class T>
+int64_t ArraySchema::get_cell_pos(const T* coords) const {
+  // Invoke the proper function based on the cell order
+  if(cell_order_ == TILEDB_AS_CO_ROW_MAJOR)
+    return get_cell_pos_row(coords);
+  else if(cell_order_ == TILEDB_AS_CO_COLUMN_MAJOR)
+    return get_cell_pos_col(coords);
+  else
+    return -1;
+}
+
+template<class T>
+int64_t ArraySchema::get_cell_pos_col(const T* coords) const {
+  // For easy reference
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  int64_t pos = 0;
+  
+  // Calculate cell offsets
+  int64_t cell_num; // Per dimension
+  std::vector<int64_t> cell_offsets;
+  cell_offsets.push_back(1);
+  for(int i=1; i<dim_num_; ++i) {
+    cell_num = tile_extents[i-1]; 
+    cell_offsets.push_back(cell_offsets.back() * cell_num);
+  }
+ 
+  // Calculate position
+  for(int i=0; i<dim_num_; ++i) 
+    pos += coords[i] * cell_offsets[i];
+
+  return pos;
+}
+
+template<class T>
+int64_t ArraySchema::get_cell_pos_row(const T* coords) const {
+  // For easy reference
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  int64_t pos = 0;
+  
+  // Calculate cell offsets
+  int64_t cell_num; // Per dimension
+  std::vector<int64_t> cell_offsets;
+  cell_offsets.push_back(1);
+  for(int i=dim_num_-2; i>=0; --i) {
+    cell_num = tile_extents[i+1];
+    cell_offsets.push_back(cell_offsets.back() * cell_num);
+  }
+  std::reverse(cell_offsets.begin(), cell_offsets.end());
+ 
+  // Calculate position
+  for(int i=0; i<dim_num_; ++i) 
+    pos += coords[i] * cell_offsets[i];
+
+  return pos;
+}
+
+template<class T>
+void ArraySchema::get_next_tile_coords(
+    const T* domain,
+    T* tile_coords) const {
+  // Invoke the proper function based on the tile order
+  if(tile_order_ == TILEDB_AS_TO_ROW_MAJOR)
+    get_next_tile_coords_col(domain, tile_coords);
+  else if(tile_order_ == TILEDB_AS_TO_COLUMN_MAJOR)
+    get_next_tile_coords_row(domain, tile_coords);
+}
+
+template<class T>
+void ArraySchema::get_next_tile_coords_col(
+    const T* domain,
+    T* tile_coords) const {
+  int i = 0;
+  ++tile_coords[i];
+
+  while(i < dim_num_-1 && tile_coords[i] > domain[2*i+1]) {
+    tile_coords[i] = domain[2*i];
+    ++tile_coords[++i];
+  } 
+}
+
+template<class T>
+void ArraySchema::get_next_tile_coords_row(
+    const T* domain,
+    T* tile_coords) const {
+  int i = dim_num_-1;
+  ++tile_coords[i];
+
+  while(i > 0 && tile_coords[i] > domain[2*i+1]) {
+    tile_coords[i] = domain[2*i];
+    ++tile_coords[--i];
+  } 
+}
+
+template<class T>
+int64_t ArraySchema::get_tile_pos(const T* tile_coords) const {
+  // Invoke the proper function based on the tile order
+  if(tile_order_ == TILEDB_AS_TO_ROW_MAJOR)
+    get_tile_pos_col(tile_coords);
+  else if(tile_order_ == TILEDB_AS_TO_COLUMN_MAJOR)
+    get_tile_pos_row(tile_coords);
+}
+
+template<class T>
+int64_t ArraySchema::get_tile_pos_col(const T* tile_coords) const {
+  // For easy reference
+  const T* domain = static_cast<const T*>(domain_);
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  int64_t pos = 0;
+  
+  // Calculate tile offsets
+  int64_t tile_num; // Per dimension
+  std::vector<int64_t> tile_offsets;
+  tile_offsets.push_back(1);
+  for(int i=1; i<dim_num_; ++i) {
+    tile_num = (domain[2*(i-1)+1] - 
+                domain[2*(i-1)] + 1) / tile_extents[i-1];
+    tile_offsets.push_back(tile_offsets.back() * tile_num);
+  }
+ 
+  // Calculate position
+  for(int i=0; i<dim_num_; ++i) 
+    pos += tile_coords[i] * tile_offsets[i];
+
+  return pos;
+}
+
+template<class T>
+int64_t ArraySchema::get_tile_pos_row(const T* tile_coords) const {
+  // For easy reference
+  const T* domain = static_cast<const T*>(domain_);
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  int64_t pos = 0;
+  
+  // Calculate tile offsets
+  int64_t tile_num; // Per dimension
+  std::vector<int64_t> tile_offsets;
+  tile_offsets.push_back(1);
+  for(int i=dim_num_-2; i>=0; --i) {
+    tile_num = (domain[2*(i+1)+1] - 
+                domain[2*(i+1)] + 1) / tile_extents[i+1];
+    tile_offsets.push_back(tile_offsets.back() * tile_num);
+  }
+  std::reverse(tile_offsets.begin(), tile_offsets.end());
+ 
+  // Calculate position
+  for(int i=0; i<dim_num_; ++i) 
+    pos += tile_coords[i] * tile_offsets[i];
+
+  return pos;
+}
+
+template<class T>
+void ArraySchema::get_tile_range_overlap(
+    const T* range,
+    const T* tile_coords,
+    T* overlap_range,
+    int& overlap) const {
+  // For easy reference
+  const T* domain = static_cast<const T*>(domain_);
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  // Get tile range
+  T* tile_range = new T[2*dim_num_];
+  for(int i=0; i<dim_num_; ++i) {
+    tile_range[2*i] = domain[2*i] + tile_coords[i] * tile_extents[i];
+    tile_range[2*i+1] = tile_range[2*i] + tile_extents[i] - 1;
+  }
+
+  // Get overlap range
+  for(int i=0; i<dim_num_; ++i) {
+    overlap_range[2*i] = 
+        std::max(tile_range[2*i], range[2*i]) - tile_range[2*i];
+    overlap_range[2*i+1] = 
+        std::min(tile_range[2*i+1], range[2*i+1]) - tile_range[2*i];
+  }
+
+  // Check overlap
+  overlap = 1;
+  for(int i=0; i<dim_num_; ++i) {
+    if(overlap_range[2*i] > tile_range[2*i+1] ||
+       overlap_range[2*i+1] < tile_range[2*i]) {
+      overlap = 0;
+      break;
+    }
+  }
+
+  // Check partial overlap
+  if(overlap > 0) {
+    for(int i=0; i<2*dim_num_; ++i) {
+      if(overlap_range[i] != tile_range[i]) {
+        overlap = 2;
+        break;
+      }
+    }
+  }
+
+  // Check special overlap
+  if(overlap == 2) {
+    overlap = 3;
+    if(tile_order_ == TILEDB_AS_TO_ROW_MAJOR) {           // Row major
+      for(int i=1; i<dim_num_; ++i) {
+        if(overlap_range[2*i] != tile_range[2*i] ||
+           overlap_range[2*i+1] != tile_range[2*i+1]) {
+          overlap = 2;
+          break;
+        }
+      }
+    } else if(tile_order_ == TILEDB_AS_TO_COLUMN_MAJOR) { // Column major
+      for(int i=dim_num_-2; i>=0; --i) {
+        if(overlap_range[2*i] != tile_range[2*i] ||
+           overlap_range[2*i+1] != tile_range[2*i+1]) {
+          overlap = 2;
+          break;
+        }
+      }
+    }
+  }
+  
+  // Clean up
+  delete tile_range;
+}
+
+/* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
@@ -1133,21 +1464,37 @@ size_t ArraySchema::compute_bin_size() const {
 }
 
 void ArraySchema::compute_cell_num_per_tile() {
+  if(dense_) {  // Dense
+    // Invoke the proper templated function
+    const std::type_info* coords_type = types_[attribute_num_];
+    if(coords_type == &typeid(int)) {
+      compute_cell_num_per_tile<int>();
+    } else if(coords_type == &typeid(int64_t)) {
+      compute_cell_num_per_tile<int64_t>();
+    } else {
+      // It should never reach here
+      assert(0); 
+    }
+  } else {      // Sparse
+    // Not applicable to regular tiles
+    if(tile_extents_ != NULL)
+      return;
+    
+    // The capacity is essentially the number of cells per tile
+    cell_num_per_tile_ = capacity_; 
+  }
+}
+
+template<class T>
+void ArraySchema::compute_cell_num_per_tile() {
   if(tile_extents_ == NULL)
     return;
 
-  // Compute for the first time
-  if(types_[attribute_num_] == &typeid(int)) {
-    int* tile_extents = (int*) tile_extents_;
-    cell_num_per_tile_ = 1;
-    for(int i=0; i<dim_num_; ++i)
-      cell_num_per_tile_ *= tile_extents[i]; 
-  } else if(types_[attribute_num_] == &typeid(int64_t)) {
-    int64_t* tile_extents = (int64_t*) tile_extents_;
-    cell_num_per_tile_ = 1;
-    for(int i=0; i<dim_num_; ++i)
-      cell_num_per_tile_ *= tile_extents[i]; 
-  }
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+  cell_num_per_tile_ = 1;
+
+  for(int i=0; i<dim_num_; ++i)
+    cell_num_per_tile_ *= tile_extents[i]; 
 }
 
 size_t ArraySchema::compute_cell_size(int i) const {
@@ -1186,6 +1533,60 @@ size_t ArraySchema::compute_cell_size(int i) const {
   return size; 
 }
 
+void ArraySchema::compute_tile_domain() {
+  // For easy reference 
+  const std::type_info* coords_type = types_[attribute_num_];
+
+  // Invoke the proper templated function
+  if(coords_type == &typeid(int))
+    compute_tile_domain<int>();
+  else if(coords_type == &typeid(int64_t))
+    compute_tile_domain<int64_t>();
+  else if(coords_type == &typeid(float))
+    compute_tile_domain<float>();
+  else if(coords_type == &typeid(double))
+    compute_tile_domain<double>();
+}
+
+template<class T>
+void ArraySchema::compute_tile_domain() {
+  if(tile_extents_ == NULL)
+    return;  
+
+  // For easy reference
+  const T* domain = static_cast<const T*>(domain_);
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  // Allocate space for the tile domain
+  assert(tile_domain_ == NULL);
+  tile_domain_ = malloc(2*dim_num_*sizeof(T));
+
+  // For easy reference
+  T* tile_domain = static_cast<T*>(tile_domain_);
+  T tile_num; // Per dimension
+
+  // Calculate tile domain
+  for(int i=0; i<dim_num_; ++i) {
+    tile_num = ceil(double(domain[2*i+1] - domain[2*i] + 1) / tile_extents[i]);
+    tile_domain[2*i] = 0;
+    tile_domain[2*i+1] = tile_num - 1;
+  }
+}
+
+void ArraySchema::compute_tile_sizes() {
+  if(tile_extents_ == NULL)
+    return;  
+
+  tile_sizes_.resize(attribute_num_ + 1);
+
+  for(int i=0; i<attribute_num_+1; ++i) {
+    if(var_size(i))
+      tile_sizes_[i] = 0;
+    else
+      tile_sizes_[i] = cell_num_per_tile_ * cell_size(i); 
+  }
+}
+
 size_t ArraySchema::compute_type_size(int i) const {
   assert(i>= 0 && i <= attribute_num_);
 
@@ -1200,3 +1601,70 @@ size_t ArraySchema::compute_type_size(int i) const {
   else if(types_[i] == &typeid(double))
     return sizeof(double);
 }
+
+// Explicit template instantiations
+template int ArraySchema::cell_num_in_range_slab(
+    const int* range) const;
+template int64_t ArraySchema::cell_num_in_range_slab(
+    const int64_t* range) const;
+template float ArraySchema::cell_num_in_range_slab(
+    const float* range) const;
+template double ArraySchema::cell_num_in_range_slab(
+    const double* range) const;
+
+template int ArraySchema::cell_num_in_tile_slab() const;
+template int64_t ArraySchema::cell_num_in_tile_slab() const;
+template float ArraySchema::cell_num_in_tile_slab() const;
+template double ArraySchema::cell_num_in_tile_slab() const;
+
+template void ArraySchema::get_next_tile_coords<int>(
+    const int* domain,
+    int* tile_coords) const;
+template void ArraySchema::get_next_tile_coords<int64_t>(
+    const int64_t* domain,
+    int64_t* tile_coords) const;
+template void ArraySchema::get_next_tile_coords<float>(
+    const float* domain,
+    float* tile_coords) const;
+template void ArraySchema::get_next_tile_coords<double>(
+    const double* domain,
+    double* tile_coords) const;
+
+template int64_t ArraySchema::get_tile_pos<int>(
+    const int* tile_coords) const;
+template int64_t ArraySchema::get_tile_pos<int64_t>(
+    const int64_t* tile_coords) const;
+template int64_t ArraySchema::get_tile_pos<float>(
+    const float* tile_coords) const;
+template int64_t ArraySchema::get_tile_pos<double>(
+    const double* tile_coords) const;
+
+template void ArraySchema::get_tile_range_overlap<int>(
+    const int* range,
+    const int* tile_coords,
+    int* overlap_range,
+    int& overlap) const;
+template void ArraySchema::get_tile_range_overlap<int64_t>(
+    const int64_t* range,
+    const int64_t* tile_coords,
+    int64_t* overlap_range,
+    int& overlap) const;
+template void ArraySchema::get_tile_range_overlap<float>(
+    const float* range,
+    const float* tile_coords,
+    float* overlap_range,
+    int& overlap) const;
+template void ArraySchema::get_tile_range_overlap<double>(
+    const double* range,
+    const double* tile_coords,
+    double* overlap_range,
+    int& overlap) const;
+
+template int64_t ArraySchema::get_cell_pos<int>(
+    const int* coords) const;
+template int64_t ArraySchema::get_cell_pos<int64_t>(
+    const int64_t* coords) const;
+template int64_t ArraySchema::get_cell_pos<float>(
+    const float* coords) const;
+template int64_t ArraySchema::get_cell_pos<double>(
+    const double* coords) const;

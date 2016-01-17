@@ -38,6 +38,7 @@
 #include "array_schema.h"
 #include "book_keeping.h"
 #include "constants.h"
+#include "read_state.h"
 #include "write_state.h"
 #include <vector>
 
@@ -50,6 +51,7 @@
 
 class Array;
 class BookKeeping;
+class ReadState;
 class WriteState;
 
 /** Contains information about an array fragment. */
@@ -60,16 +62,9 @@ class Fragment {
   /** 
    * Constructor. 
    *
-   * @param fragment_name The fragment name.
    * @param array The array the fragment belongs to.
-   * @param range The range in which the fragment read/write will be
-   *     constrained.
    */
-  Fragment(
-      const std::string& fragment_name, 
-      const Array* array,
-      const void* range);
-
+  Fragment(const Array* array);
   /** Destructor. */
   ~Fragment();
 
@@ -81,7 +76,13 @@ class Fragment {
   /** Returns the fragment name. */
   const std::string& fragment_name() const;
 
-  // WRITE FUNCTIONS
+  // TODO
+  int read(void** buffers, size_t* buffer_sizes);
+
+  //MUTATORS
+  
+  // TODO
+  int init(const std::string& fragment_name, const void* range);
 
   // TODO
   int write(const void** buffers, const size_t* buffer_sizes);
@@ -99,7 +100,9 @@ class Fragment {
   BookKeeping* book_keeping_;
   /** The fragment name. */
   std::string fragment_name_;
-  /** A write statr structure. */
+  /** A read state structure. */
+  ReadState* read_state_;
+  /** A write state structure. */
   WriteState* write_state_;
 
   // PRIVATE METHODS

@@ -68,8 +68,13 @@
 /** Suffix of a GZIP-compressed file. */
 #define TILEDB_GZIP_SUFFIX ".gz"
 
-/** Name of book-keeping file*/
-#define TILEDB_BOOK_KEEPING_FILENAME "__book_keeping"
+// Special file names
+#define TILEDB_ARRAY_SCHEMA_FILENAME   "__array_schema.tdb"
+#define TILEDB_BOOK_KEEPING_FILENAME   "__book_keeping"
+#define TILEDB_FRAGMENT_FILENAME       "__tiledb_fragment.tdb"
+#define TILEDB_GROUP_FILENAME          "__tiledb_group.tdb"
+#define TILEDB_WORKSPACE_FILENAME      "__tiledb_workspace.tdb"
+
 
 /** The TileDB data types. */ 
 enum DataType {

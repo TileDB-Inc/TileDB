@@ -76,15 +76,6 @@ StorageManager::~StorageManager() {
 /*           WORKSPACE            */
 /* ****************************** */
 
-bool StorageManager::is_workspace(const std::string& dir) const {
-  // Check existence
-  if(is_dir(dir) && 
-     is_file(dir + "/" + TILEDB_SM_WORKSPACE_FILENAME)) 
-    return true;
-  else
-    return false;
-}
-
 int StorageManager::workspace_create(const std::string& dir) const {
   // TODO
 }
@@ -92,15 +83,6 @@ int StorageManager::workspace_create(const std::string& dir) const {
 /* ****************************** */
 /*             GROUP              */
 /* ****************************** */
-
-bool StorageManager::is_group(const std::string& dir) const {
-  // Check existence
-  if(is_dir(dir) && 
-     is_file(dir + "/" + TILEDB_SM_GROUP_FILENAME)) 
-    return true;
-  else
-    return false;
-}
 
 int StorageManager::group_create(const std::string& dir) const {
   // Check if the group is inside a workspace or another group
@@ -112,11 +94,11 @@ int StorageManager::group_create(const std::string& dir) const {
   }
 
   // Create group directory
-  if(create_dir(dir) == TILEDB_UT_ERR)  
+  if(create_dir(dir) != TILEDB_UT_OK)  
     return TILEDB_SM_ERR;
 
   // Create group file
-  if(create_group_file(dir) == TILEDB_SM_ERR)
+  if(create_group_file(dir) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
 
   // Success
@@ -173,7 +155,7 @@ int StorageManager::array_create(const ArraySchema* array_schema) const {
     return TILEDB_SM_ERR;
 
   // Open array schema file
-  std::string filename = dir + "/" + TILEDB_SM_ARRAY_SCHEMA_FILENAME; 
+  std::string filename = dir + "/" + TILEDB_ARRAY_SCHEMA_FILENAME; 
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if(fd == -1) {
     PRINT_ERROR(std::string("Cannot create array; ") + strerror(errno));
@@ -223,9 +205,9 @@ int StorageManager::array_init(
   int rc = array->init(array_schema, mode, attributes, attribute_num, range);
 
   // Return
-  if(rc == TILEDB_AR_ERR) {
+  if(rc != TILEDB_AR_OK) {
     delete array;
-    delete array_schema;
+    array = NULL;
     return TILEDB_SM_ERR;
   } else {
     return TILEDB_SM_OK;
@@ -233,9 +215,15 @@ int StorageManager::array_init(
 }
 
 int StorageManager::array_finalize(Array* array) const {
+  // If the array is NULL, do nothing
+  if(array == NULL)
+    return TILEDB_SM_OK;
+
+  // Finalize array
   int rc = array->finalize();
   delete array;
 
+  // Return
   if(rc == TILEDB_AR_OK)
     return TILEDB_SM_OK;
   else
@@ -256,7 +244,7 @@ int StorageManager::array_load_schema(
   }
 
   // Open array schema file
-  std::string filename = real_dir + "/" + TILEDB_SM_ARRAY_SCHEMA_FILENAME;
+  std::string filename = real_dir + "/" + TILEDB_ARRAY_SCHEMA_FILENAME;
   int fd = ::open(filename.c_str(), O_RDONLY);
   if(fd == -1) {
     PRINT_ERROR("Cannot load schema; File opening error");
@@ -305,21 +293,33 @@ int StorageManager::array_write(
     Array* array,
     const void** buffers,
     const size_t* buffer_sizes) const {
-  assert(array != NULL); 
+  // Sanity check
+  if(array == NULL) {
+    PRINT_ERROR("Cannot write to array; Invalid array pointer");
+    return TILEDB_SM_ERR;
+  }
 
-  if(array->write(buffers, buffer_sizes) == TILEDB_AR_ERR) 
+  // Write array
+  if(array->write(buffers, buffer_sizes) != TILEDB_AR_OK) 
     return TILEDB_SM_ERR;
   else
     return TILEDB_SM_OK;
 }
 
-bool StorageManager::is_array(const std::string& dir) const {
-  // Check existence
-  if(is_dir(dir) && 
-     is_file(dir + "/" + TILEDB_SM_ARRAY_SCHEMA_FILENAME)) 
-    return true;
+int StorageManager::array_read(
+    Array* array,
+    void** buffers,
+    size_t* buffer_sizes) const {
+  // Sanity check
+  if(array == NULL) {
+    PRINT_ERROR("Cannot read from array; Invalid array pointer");
+    return TILEDB_SM_ERR;
+  }
+
+  if(array->read(buffers, buffer_sizes) == TILEDB_AR_ERR) 
+    return TILEDB_SM_ERR;
   else
-    return false;
+    return TILEDB_SM_OK;
 }
 
 /* ****************************** */
@@ -355,7 +355,7 @@ void StorageManager::config_set_default() {
 } 
 
 int StorageManager::create_group_file(const std::string& dir) const {
-  std::string filename = std::string(dir) + "/" + TILEDB_SM_GROUP_FILENAME;
+  std::string filename = std::string(dir) + "/" + TILEDB_GROUP_FILENAME;
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if(fd == -1 || ::close(fd)) {
     PRINT_ERROR(std::string("Failed to create group file; ") +

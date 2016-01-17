@@ -47,11 +47,6 @@
 #define TILEDB_SM_OK        0
 #define TILEDB_SM_ERR      -1
 
-// Special file names
-#define TILEDB_SM_ARRAY_SCHEMA_FILENAME   "__array_schema.tdb"
-#define TILEDB_SM_GROUP_FILENAME          "__tiledb_group.tdb"
-#define TILEDB_SM_WORKSPACE_FILENAME      "__tiledb_workspace.tdb"
-
 /** 
  * The Storage Manager is the most important module of TileDB, which is
  * repsonsible pretty much for everything.
@@ -68,27 +63,10 @@ class StorageManager {
 
   // WORKSPACE
 
-  /**
-   * Checks if the input directory is a workspace.
-   *
-   * @param dir The directory to be checked.
-   * @return True if the directory is a workspace, and false otherwise.
-   */
-  bool is_workspace(const std::string& dir) const;
-
-
   // TODO
   int workspace_create(const std::string& dir) const; 
 
   // GROUP
-
-  /**
-   * Checks if the input directory is a group.
-   *
-   * @param dir The directory to be checked.
-   * @return True if the directory is a group, and false otherwise.
-   */
-  bool is_group(const std::string& dir) const;
 
   /**
    * Creates a new group.
@@ -163,15 +141,12 @@ class StorageManager {
       Array* array,
       const void** buffers, 
       const size_t* buffer_sizes) const;
- 
-  /**
-   * Checks if the input directory is an array.
-   *
-   * @param dir The directory to be checked.
-   * @return True if the directory is an array, and false otherwise.
-   */
-  bool is_array(const std::string& dir) const;
 
+  // TODO
+  int array_read(
+      Array* array,
+      void** buffers, 
+      size_t* buffer_sizes) const;
 
   // COMMON
   // TODO

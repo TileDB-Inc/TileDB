@@ -124,8 +124,17 @@ class ArraySchema {
   /** Returns the coordinates size. */
   size_t coords_size() const;
 
+  /** Returns the type of the coordinates. */
+  const std::type_info* coords_type() const;
+
   /** True if the array is dense. */
   bool dense() const;
+
+  /** Returns the number of dimensions. */
+  int dim_num() const;
+
+  /** Returns the domain. */
+  const void* domain() const;
 
   /**
    * Gets the ids of the input attributes.
@@ -151,6 +160,22 @@ class ArraySchema {
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
   int serialize(void*& array_schema_bin, size_t& array_schema_bin_size) const;
+
+  /** Returns the tile domain. */
+  const void* tile_domain() const;
+
+  /** Returns the tile extents. */
+  const void* tile_extents() const;
+
+  /**
+   * Returns the tile size for the input attribute. Applicable only to dense
+   * arrays, or sparse arrays with irregular tiles (i.e., fixed tile capacity).
+   * Moreover, it returns 0 if the attribute is variable-sized.
+   */
+  size_t tile_size(int attribute_id) const;
+
+  /** Returns the type of the i-th attribute, or NULL if 'i' is invalid. */
+  const std::type_info* type(int i) const;
 
   /** Returns the numver of attributes with variable-sized values. */
   int var_attribute_num() const;
@@ -278,6 +303,81 @@ class ArraySchema {
    */
   int set_types(const char** types);
 
+  // MISC
+
+  // TODO
+  template<class T>
+  T cell_num_in_range_slab(const T* range) const;
+
+  // TODO
+  template<class T>
+  T cell_num_in_range_slab_col(const T* range) const;
+
+  // TODO
+  template<class T>
+  T cell_num_in_range_slab_row(const T* range) const;
+
+  // TODO
+  template<class T>
+  T cell_num_in_tile_slab() const;
+
+  // TODO
+  template<class T>
+  T cell_num_in_tile_slab_col() const;
+
+  // TODO
+  template<class T>
+  T cell_num_in_tile_slab_row() const;
+
+  // TODO
+  template<class T>
+  int64_t get_cell_pos(const T* range) const;
+
+  // TODO
+  template<class T>
+  int64_t get_cell_pos_col(const T* range) const;
+
+  // TODO
+  template<class T>
+  int64_t get_cell_pos_row(const T* range) const;
+
+  // TODO
+  template<class T> 
+  void get_next_tile_coords(const T* domain, T* tile_coords) const;
+
+  // TODO
+  template<class T> 
+  void get_next_tile_coords_col(const T* domain, T* tile_coords) const;
+
+  // TODO
+  template<class T> 
+  void get_next_tile_coords_row(const T* domain, T* tile_coords) const;
+
+  // TODO
+  template<class T> 
+  int64_t get_tile_pos(const T* tile_coords) const;
+
+  // TODO
+  template<class T> 
+  int64_t get_tile_pos_col(const T* tile_coords) const;
+
+  // TODO
+  template<class T> 
+  int64_t get_tile_pos_row(const T* tile_coords) const;
+
+  // TODO
+  // Overlap value meaning:
+  // 0: NONE
+  // 1: FULL
+  // 2: PARTIAL
+  // 3: PARTILA_SPECIAL
+  template<class T> 
+  void get_tile_range_overlap(
+      const T* range,
+      const T* tile_coords,
+      T* overlap_range,
+      int& overlap) const;
+
  private:
   // PRIVATE ATTRIBUTES
 
@@ -335,6 +435,15 @@ class ArraySchema {
    */
   bool key_value_;
   /** 
+   * The domain where each tile is a distinct set of coordinates. For instance,
+   * if the array is 2D, the domain is (1,10), (1,10) and the tile extents are 2
+   * and 5, then the tile domain is (0,4), (0,1), as there are 5 tiles across
+   * the row dimension, and 2 tiles across the column dimension. Then, the tile
+   * in the upper left corner has coordinates (0,0), the one on its right has
+   * coordinates (0,1), and so on. Applicable only to arrays with regular tiles.
+   */
+  void* tile_domain_;
+  /** 
    * The tile extents (only applicable to regular tiles). There should be one 
    * value for each dimension. The type of the values stored in this buffer
    * should match the coordinates type. If it is NULL, then it means that the
@@ -346,6 +455,8 @@ class ArraySchema {
    * TILEDB_AS_TO_COLUMN_MAJOR, and TILEDB_AS_TO_HILBERT.
    */
   TileOrder tile_order_;
+  /** The tile size for each attribute. */
+  std::vector<size_t> tile_sizes_;
   /** 
    * The attribute and coordinate types. There should be one type per 
    * attribute plus one (the last one) for the coordinates. The supported types
@@ -378,8 +489,33 @@ class ArraySchema {
    */
   void compute_cell_num_per_tile();
 
+  /** 
+   * Compute the number of cells per tile. Meaningful only for the dense case.
+   *
+   * @template T The coordinates type.
+   */
+  template<class T>
+  void compute_cell_num_per_tile();
+
   /** Computes and returns the size of an attribute (or coordinates). */
   size_t compute_cell_size(int attribute_id) const;
+
+  /** Computes the tile domain. Applicable only to arrays with regular tiles. */
+  void compute_tile_domain();
+
+  /** 
+   * Computes the tile domain. Applicable only to arrays with regular tiles.
+   *
+   * @template T The coordinates type.
+   */
+  template<class T>
+  void compute_tile_domain();
+
+  /** 
+   * Computes (and stores) the tile size for each attribute. Applicable only
+   * to arrays with regular tiles.
+   */
+  void compute_tile_sizes();
 
   /** Computes and returns the size of a type. */
   size_t compute_type_size(int attribute_id) const;

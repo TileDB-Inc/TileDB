@@ -35,7 +35,10 @@
 #include "utils.h"
 #include <cassert>
 #include <cstring>
+#include <fcntl.h>
 #include <iostream>
+#include <sys/stat.h>
+#include <unistd.h>
 
 /* ****************************** */
 /*             MACROS             */
@@ -59,26 +62,9 @@
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-BookKeeping::BookKeeping(const Fragment* fragment, const void* range)
+BookKeeping::BookKeeping(const Fragment* fragment)
     : fragment_(fragment) {
-  // For easy reference
-  const ArraySchema* array_schema = fragment->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-
-  // Set range
-  if(range == NULL) {
-    range_ = NULL;
-  } else {
-    size_t range_size = 2*array_schema->coords_size();
-    range_ = malloc(range_size);
-    memcpy(range_, range, range_size);
-  }
-
-  // Initialize tile offsets
-  tile_offsets_.resize(attribute_num+1);
-  next_tile_offsets_.resize(attribute_num+1);
-  for(int i=0; i<attribute_num+1; ++i)
-    next_tile_offsets_[i] = 0;
+  range_ = NULL;
 }
 
 BookKeeping::~BookKeeping() {
@@ -106,42 +92,73 @@ void BookKeeping::append_tile_offset(
   next_tile_offsets_[attribute_id] = new_offset;  
 }
 
-/* ****************************** */
-/*               MISC             */
-/* ****************************** */
+int BookKeeping::init(const void* range) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
 
-int BookKeeping::finalize() {
-  // Do nothing if the fragment directory does not exist (fragment empty) 
-  std::string fragment_name = fragment_->fragment_name();
-  if(!is_dir(fragment_name))
-    return TILEDB_BK_OK;
+  // Set range
+  if(range == NULL) {
+    range_ = NULL;
+  } else {
+    size_t range_size = 2*array_schema->coords_size();
+    range_ = malloc(range_size);
+    memcpy(range_, range, range_size);
+  }
 
-  // Serialize book-keeping
-  void* buffer;
-  size_t buffer_size; 
-  if(serialize(buffer, buffer_size) == TILEDB_BK_ERR)
-    return TILEDB_BK_ERR;
+  // Initialize tile offsets
+  tile_offsets_.resize(attribute_num+1);
+  next_tile_offsets_.resize(attribute_num+1);
+  for(int i=0; i<attribute_num+1; ++i)
+    next_tile_offsets_[i] = 0;
 
-  // Prepare file name 
-  std::string filename = fragment_name + "/" +
-      TILEDB_BOOK_KEEPING_FILENAME + TILEDB_FILE_SUFFIX + TILEDB_GZIP_SUFFIX;
- 
-  // Write buffer to file
-  if(write_to_file_cmp_gzip(filename.c_str(), buffer, buffer_size) != 
-     TILEDB_UT_OK) {
-    free(buffer);
+  // Success
+  return TILEDB_BK_OK;
+}
+
+/* FORMAT:
+ * range_size(size_t) range(void*)  
+ * tile_offsets_num(int)
+ * tile_num(int64_t)
+ * tile_offsets_attr_#1_tile_#1(size_t) ... 
+ * tile_offsets_attr_#1_tile_#tile_num(size_t)
+ * ...
+ * tile_offsets_attr_#attribute_num_tile_#1(size_t) ... 
+ * tile_offsets_attr_#attribute_num_tile_#tile_num(size_t)
+ */
+int BookKeeping::load() {
+  // Prepare file name
+  std::string filename = fragment_->fragment_name() + "/" +
+                         TILEDB_BOOK_KEEPING_FILENAME + 
+                         TILEDB_FILE_SUFFIX + TILEDB_GZIP_SUFFIX;
+
+  // Open book-keeping file
+  gzFile fd = gzopen(filename.c_str(), "rb");
+  if(fd == NULL) {
+    PRINT_ERROR("Cannot load book-keeping; Cannot open file");
     return TILEDB_BK_ERR;
   }
 
-  // Clean up
-  free(buffer);
+  // Load range
+  if(load_range(fd) != TILEDB_BK_OK)
+    return TILEDB_BK_ERR;
+
+  // Load tile offsets
+  if(load_tile_offsets(fd) != TILEDB_BK_OK)
+    return TILEDB_BK_ERR;
+
+  // Close file
+  if(gzclose(fd)) {
+    PRINT_ERROR("Cannot finalize book-keeping; Cannot close file");
+    return TILEDB_BK_ERR;
+  }
 
   // Success
-  return TILEDB_BK_OK;  
+  return TILEDB_BK_OK;
 }
 
 /* ****************************** */
-/*        PRIVATE METHODS         */
+/*               MISC             */
 /* ****************************** */
 
 /* FORMAT:
@@ -154,60 +171,75 @@ int BookKeeping::finalize() {
  * tile_offsets_attr_#attribute_num_tile_#1(size_t) ... 
  * tile_offsets_attr_#attribute_num_tile_#tile_num(size_t)
  */
-int BookKeeping::serialize(void*& buffer, size_t& buffer_size) const {
-  size_t buffer_allocated_size = TILEDB_BK_BUFFER_SIZE;
-  buffer = malloc(buffer_allocated_size); 
-  buffer_size = 0;
+int BookKeeping::finalize() {
+  // Nothing to do in READ mode
+  int mode = fragment_->array()->mode();
+  if(mode == TILEDB_READ || mode == TILEDB_READ_REVERSE)
+    return TILEDB_BK_OK;
 
-  // Serialize range
-  if(serialize_range(buffer, buffer_allocated_size, buffer_size) != 
-     TILEDB_BK_OK)
+  // Do nothing if the fragment directory does not exist (fragment empty) 
+  std::string fragment_name = fragment_->fragment_name();
+  if(!is_dir(fragment_name))
+    return TILEDB_BK_OK;
+
+  // Prepare file name 
+  std::string filename = fragment_name + "/" +
+                         TILEDB_BOOK_KEEPING_FILENAME + 
+                         TILEDB_FILE_SUFFIX + TILEDB_GZIP_SUFFIX;
+
+  // Open book-keeping file
+  gzFile fd = gzopen(filename.c_str(), "wb");
+  if(fd == NULL) {
+    PRINT_ERROR("Cannot finalize book-keeping; Cannot open file");
+    return TILEDB_BK_ERR;
+  }
+  
+  // Write range
+  if(flush_range(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
 
-  // Serialize tile offsets
-  if(serialize_tile_offsets(buffer, buffer_allocated_size, buffer_size) != 
-     TILEDB_BK_OK)
+  // Write tile offsets
+  if(flush_tile_offsets(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
+
+  // Close file
+  if(gzclose(fd)) {
+    PRINT_ERROR("Cannot finalize book-keeping; Cannot close file");
+    return TILEDB_BK_ERR;
+  }
 
   // Success
-  return TILEDB_BK_OK;
+  return TILEDB_BK_OK;  
 }
 
-int BookKeeping::serialize_range(
-    void*& buffer, 
-    size_t& buffer_allocated_size,
-    size_t& buffer_size) const {
-  // Sanity check
-  assert(buffer != NULL);
- 
-  // For easy reference
+/* ****************************** */
+/*        PRIVATE METHODS         */
+/* ****************************** */
+
+int BookKeeping::flush_range(gzFile fd) const {
   size_t range_size = (range_ == NULL) ? 0 : 
       fragment_->array()->array_schema()->coords_size() * 2;
-
-  // Expand buffer if necessary
-  while(buffer_size + range_size > buffer_allocated_size) {
-    if(expand_buffer(buffer, buffer_allocated_size) != TILEDB_UT_OK)
-      return TILEDB_BK_ERR;
+  if(gzwrite(fd, &range_size, sizeof(size_t)) != sizeof(size_t)) {
+    PRINT_ERROR("Cannot finalize book-keeping; Writing range size failed");
+    return TILEDB_BK_ERR;
   }
-
-  // Copy range
-  memcpy(static_cast<char*>(buffer) + buffer_size, &range_size, sizeof(size_t));
-  buffer_size += sizeof(size_t);
   if(range_ != NULL) {
-    memcpy(static_cast<char*>(buffer) + buffer_size, range_, range_size);
-    buffer_size += range_size;
+    if(gzwrite(fd, range_, range_size) != range_size) {
+      PRINT_ERROR("Cannot finalize book-keeping; Writing range failed");
+      return TILEDB_BK_ERR;
+    }
   }
 
   // Success
   return TILEDB_BK_OK;
 }
 
-int BookKeeping::serialize_tile_offsets(
-    void*& buffer, 
-    size_t& buffer_allocated_size,
-    size_t& buffer_size) const {
-  // Sanity check
-  assert(buffer != NULL);
+int BookKeeping::flush_tile_offsets(gzFile fd) const {
+  // If the array is dense, do nothing
+  // TODO: Probably this will be true also for sparse arrays with irregular
+  // tiles
+  if(fragment_->array()->array_schema()->dense())
+    return TILEDB_BK_OK;
 
   // Get number of offsets, number of tiles, and size of offsets
   int tile_offsets_num = tile_offsets_.size();
@@ -217,32 +249,63 @@ int BookKeeping::serialize_tile_offsets(
   assert(tile_num > 0);
   size_t tile_offsets_size = tile_offsets_num * tile_num * sizeof(size_t); 
 
-   // Expand buffer if necessary
-  while(buffer_size + sizeof(int) + sizeof(int64_t) + tile_offsets_size > 
-        buffer_allocated_size) {
-    if(expand_buffer(buffer, buffer_allocated_size) != TILEDB_UT_OK)
-      return TILEDB_BK_ERR;
-  }  
-
-  // Copy number of offsets
-  memcpy(
-      static_cast<char*>(buffer) + buffer_size, 
-      &tile_offsets_num, 
-      sizeof(int));
-  buffer_size += sizeof(int);
-
-  // Copy tile_num
-  memcpy(static_cast<char*>(buffer) + buffer_size, &tile_num, sizeof(int64_t));
-  buffer_size += sizeof(int64_t);
-
-  // Copy tile offsets
-  for(int i=0; i<tile_offsets_num; ++i) {
-    memcpy(
-        static_cast<char*>(buffer) + buffer_size,
-        &tile_offsets_[i][0], 
-        tile_num * sizeof(size_t));
-    buffer_size += tile_num * sizeof(size_t);
+  // Write number of offsets
+  if(gzwrite(fd, &tile_offsets_num, sizeof(int)) != sizeof(int)) {
+    PRINT_ERROR("Cannot finalize book-keeping; Writing number of "
+                "tile offsets failed");
+    return TILEDB_BK_ERR;
   }
+
+  // Write tile_num
+  if(gzwrite(fd, &tile_num, sizeof(int64_t)) != sizeof(int64_t)) {
+    PRINT_ERROR("Cannot finalize book-keeping; Writing number of tiles failed");
+    return TILEDB_BK_ERR;
+  }
+
+  // Write tile offsets
+  for(int i=0; i<tile_offsets_num; ++i) {
+    if(gzwrite(fd, &tile_offsets_[i][0], tile_num * sizeof(size_t)) !=
+       tile_num * sizeof(size_t)) {
+      PRINT_ERROR("Cannot finalize book-keeping; Writing tile offsets failed");
+      return TILEDB_BK_ERR;
+    }
+  }
+
+  // Success
+  return TILEDB_BK_OK;
+}
+
+int BookKeeping::load_range(gzFile fd) {
+  // Get range size
+  size_t range_size;
+  if(gzread(fd, &range_size, sizeof(size_t)) != sizeof(size_t)) {
+    PRINT_ERROR("Cannot load book-keeping; Reading range size failed");
+    return TILEDB_BK_ERR;
+  }
+
+  // Get range
+  if(range_size == 0) {
+    range_ = NULL;
+  } else {
+    range_ = malloc(range_size);
+    if(gzread(fd, range_, range_size) != range_size) {
+      PRINT_ERROR("Cannot load book-keeping; Reading range failed");
+      return TILEDB_BK_ERR;
+    }
+  }
+
+  // Success
+  return TILEDB_BK_OK;
+}
+
+int BookKeeping::load_tile_offsets(gzFile fd) {
+  // If the array is dense, do nothing
+  // TODO: Probably this will be true also for sparse arrays with irregular
+  // tiles
+  if(fragment_->array()->array_schema()->dense())
+    return TILEDB_BK_OK;
+
+  // TODO
 
   // Success
   return TILEDB_BK_OK;

@@ -36,6 +36,7 @@
 
 #include "fragment.h"
 #include <vector>
+#include <zlib.h>
 
 /* ********************************* */
 /*             CONSTANTS             */
@@ -57,9 +58,8 @@ class BookKeeping {
    * Constructor. 
    *
    * @param fragment The fragment the book-keeping structure belongs to.
-   * @param range The range in which the array read/write will be constrained.
    */
-  BookKeeping(const Fragment* fragment, const void* range);
+  BookKeeping(const Fragment* fragment);
 
   /** Destructor. */
   ~BookKeeping();
@@ -73,6 +73,16 @@ class BookKeeping {
  
   /** Appends a tile offset for the input attribute. */
   void append_tile_offset(int attribute_id, size_t offset);
+  /*
+   * Initializes the book-keeping structure.
+   * 
+   * @param range The range in which the array read/write will be constrained.
+   * @return TILEDB_BK_OK for success, and TILEDB_OK_ERR for error.
+   */
+  int init(const void* range);
+
+  // TODO
+  int load();
 
   // MISC
 
@@ -96,45 +106,17 @@ class BookKeeping {
 
   // PRIVATE METHODS
 
-  /** 
-   * Serializes the book-keeping object into a buffer.
-   *
-   * @param buffer The buffer where the book-keeping object is copied.
-   * @param buffer_size The size of the buffer after serialization.
-   * @return TILEDB_BK_OK for succes, and TILEDB_BK_ERR for error.
-   */ 
-  int serialize(void*& buffer, size_t& buffer_size) const;
+  // TODO
+  int flush_range(gzFile fd) const;
 
-  /** 
-   * Serializes the range into the buffer.
-   *
-   * @param buffer The buffer where the range is copied.
-   * @param buffer_allocated_size The allocated size of the buffer. Note that 
-   *     this may change if the buffer gets full, in which case the buffer is
-   *     expanded and the allocated size gets doubled.
-   * @param buffer_size The current (useful) size of the buffer.
-   * @return TILEDB_BK_OK for succes, and TILEDB_BK_ERR for error.
-   */ 
-  int serialize_range(
-      void*& buffer, 
-      size_t& buffer_allocated_size, 
-      size_t& buffer_size) const;
+  // TODO
+  int flush_tile_offsets(gzFile fd) const;
 
-  /** 
-   * Serializes the tile offsets into the buffer.
-   *
-   * @param buffer The buffer where the tile offsets are copied.
-   * @param buffer_allocated_size The allocated size of the buffer. Note that 
-   *     this may change if the buffer gets full, in which case the buffer is
-   *     expanded and the allocated size gets doubled.
-   * @param buffer_size The current (useful) size of the buffer.
-   * @return TILEDB_BK_OK for succes, and TILEDB_BK_ERR for error.
-   */ 
-  int serialize_tile_offsets(
-      void*& buffer, 
-      size_t& buffer_allocated_size, 
-      size_t& buffer_size) const;
+  // TODO
+  int load_range(gzFile fd);
 
+  // TODO
+  int load_tile_offsets(gzFile fd);
 };
 
 #endif

@@ -64,6 +64,7 @@
 
 Array::Array() {
   array_schema_ = NULL;
+  range_ = NULL;
 }
 
 Array::~Array() {
@@ -72,10 +73,13 @@ Array::~Array() {
 
   if(array_schema_ != NULL)
     delete array_schema_;
+
+  if(range_ != NULL)
+    free(range_);
 }
 
 /* ****************************** */
-/*            MUTATORS            */
+/*           ACCESSORS            */
 /* ****************************** */
 
 const ArraySchema* Array::array_schema() const {
@@ -88,6 +92,35 @@ const std::vector<int>& Array::attribute_ids() const {
 
 int Array::mode() const {
   return mode_;
+}
+
+const void* Array::range() const {
+  return range_;
+}
+
+int Array::read(void** buffers, size_t* buffer_sizes) {
+  // Sanity checks
+  if(mode_ != TILEDB_READ && mode_ != TILEDB_READ_REVERSE) {
+    PRINT_ERROR("Cannot read from array; Invalid mode");
+    return TILEDB_AR_ERR;
+  }
+
+  int rc;
+  if(fragments_.size() == 0) { // No fragments - read nothing
+    for(int i=0; i<attribute_ids_.size(); ++i)
+      buffer_sizes[i] = 0;
+    rc = TILEDB_FG_OK;
+  } else if(fragments_.size() == 1) { // Single-fragment read 
+    rc = fragments_[0]->read(buffers, buffer_sizes);
+  } else { // Multi-fragment read
+    // TODO
+  }  
+
+  // Return
+  if(rc == TILEDB_FG_OK)
+    return TILEDB_AR_OK;
+  else
+    return TILEDB_AR_ERR;
 }
 
 /* ****************************** */
@@ -107,6 +140,15 @@ int Array::init(
      mode != TILEDB_WRITE_UNSORTED) {
     PRINT_ERROR("Cannot initialize array; Invalid array mode");
     return TILEDB_AR_ERR;
+  }
+
+  // Set range
+  if(range == NULL) {
+    range_ = NULL;
+  } else {
+    size_t range_size = 2*array_schema->coords_size();
+    range_ = malloc(range_size);
+    memcpy(range_, range, range_size);
   }
 
   // Get attributes
@@ -138,13 +180,22 @@ int Array::init(
   mode_ = mode;
 
   // Initialize new fragment if needed
-  if(fragments_.size() == 0)
-    fragments_.push_back(new Fragment(new_fragment_name(), this, range));
+  if(mode_ == TILEDB_WRITE || mode_ == TILEDB_WRITE_UNSORTED) {
+    Fragment* fragment = new Fragment(this);
+    fragments_.push_back(fragment);
+    if(fragment->init(new_fragment_name(), range) != TILEDB_FG_OK)
+      return TILEDB_AR_ERR;
+  } else if(mode_ == TILEDB_READ || mode_ == TILEDB_READ_REVERSE) {
+    if(open_fragments() != TILEDB_AR_OK)
+      return TILEDB_AR_ERR;
+  }
+
+  // Return
+  return TILEDB_AR_OK;
 }
 
 int Array::finalize() {
   int rc;
-
   for(int i=0; i<fragments_.size(); ++i) {
     rc = fragments_[i]->finalize();
     if(rc != TILEDB_FG_OK)
@@ -159,7 +210,10 @@ int Array::finalize() {
 
 int Array::write(const void** buffers, const size_t* buffer_sizes) {
   // Sanity checks
-  assert(mode_ == TILEDB_WRITE || mode_ == TILEDB_WRITE_UNSORTED);
+  if(mode_ != TILEDB_WRITE && mode_ != TILEDB_WRITE_UNSORTED) {
+    PRINT_ERROR("Cannot write to array; Invalid mode");
+    return TILEDB_AR_ERR;
+  }
   assert(fragments_.size() == 1);
 
   // Dispatch the write command to the new fragment
@@ -185,4 +239,22 @@ std::string Array::new_fragment_name() const {
                 << getpid() << "_" << ms;
 
   return fragment_name.str();
+}
+
+int Array::open_fragments() {
+  // Get directory names in the array folder
+  std::vector<std::string> dirs = get_dirs(array_schema_->array_name()); 
+
+  // Create a fragment for each fragment directory
+  for(int i=0; i<dirs.size(); ++i) {
+    if(is_fragment(dirs[i])) {
+      Fragment* fragment = new Fragment(this);
+      fragments_.push_back(fragment);
+      if(fragment->init(dirs[i], NULL) != TILEDB_FG_OK)
+        return TILEDB_AR_ERR;
+    }
+  } 
+
+  // Return
+  return TILEDB_AR_OK;
 }

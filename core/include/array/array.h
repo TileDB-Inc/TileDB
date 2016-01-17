@@ -72,6 +72,12 @@ class Array {
   /** Returns the array mode. */
   int mode() const;
 
+  /** Returns the range in which the array is constrained. */
+  const void* range() const;
+
+  // TODO
+  int read(void** buffers, size_t* buffer_sizes); 
+
   // MUTATORS
  
   /**
@@ -105,7 +111,7 @@ class Array {
 
   // TODO
   int write(const void** buffers, const size_t* buffer_sizes); 
-  
+
  private:
   // PRIVATE ATTRIBUTES
 
@@ -127,6 +133,11 @@ class Array {
    *    - TILEDB_READ_REVERSE 
    */
   int mode_;
+  /**
+   * The range in which the array is constrained. Note that the type of the
+   * range must be the same as the type of the array coordinates.
+   */
+  void* range_;
 
   // PRIVATE METHODS
   
@@ -140,6 +151,9 @@ class Array {
    * may change later by a consolidation process.
    */
   std::string new_fragment_name() const;
+
+  // TODO
+  int open_fragments();
 };
 
 #endif

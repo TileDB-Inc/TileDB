@@ -36,7 +36,9 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
+#include <fcntl.h>
 #include <iostream>
+#include <unistd.h>
 
 /* ****************************** */
 /*             MACROS             */
@@ -101,19 +103,20 @@ WriteState::WriteState(
 }
 
 WriteState::~WriteState() { 
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-
-  // Free current tiles, current compressed tiles and segments
-  for(int i=0; i<attribute_num+1; ++i) {
+  // Free current tiles
+  for(int i=0; i<current_tiles_.size(); ++i) 
     if(current_tiles_[i] != NULL)
       free(current_tiles_[i]);
+
+  // Free current compressed tiles
+  for(int i=0; i<current_tiles_compressed_.size(); ++i) 
     if(current_tiles_compressed_[i] != NULL)
       free(current_tiles_compressed_[i]);
+
+  // Free segments
+  for(int i=0; i<segments_.size(); ++i) 
     if(segments_[i] != NULL)
       free(segments_[i]);
-  }
 }
 
 /* ****************************** */
@@ -298,15 +301,12 @@ int WriteState::write_dense_attr_cmp_none(
   if(buffer_cell_num >= current_tile_cells_to_fill) {
     // Fill up current tile, and append offset to book-keeping
     buffer_cell_num -= current_tile_cells_to_fill;
-    book_keeping_->append_tile_offset(attribute_id, tile_size);
     current_tile_cell_num_[attribute_id] = 0;
   }
 
   // Continue filling up entire tiles
-  while(buffer_cell_num >= cell_num_per_tile) {
-    book_keeping_->append_tile_offset(attribute_id, tile_size);
+  while(buffer_cell_num >= cell_num_per_tile) 
     buffer_cell_num -= cell_num_per_tile;
-  }
 
   // Partially fill the (new) current tile
   current_tile_cell_num_[attribute_id] += buffer_cell_num;

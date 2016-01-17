@@ -63,6 +63,15 @@ void adjacent_slashes_dedup(std::string& value);
  */
 bool both_slashes(char a, char b);
 
+/** 
+ * Returns the number of cells in the input range. 
+ *
+ * @param range The input range.
+ * @param dim_num The number of dimensions of the range.
+ * @return The number of cells in the input range.
+ */
+template<class T>
+int64_t cell_num_in_range(const T* range, int dim_num);
 
 /**
  * Creates a new directory.
@@ -71,6 +80,9 @@ bool both_slashes(char a, char b);
  * @return TILEDB_UT_OK upon success, and TILEDB_UT_ERR upon failure. 
  */
 int create_dir(const std::string& dir);
+
+// TODO
+int create_fragment_file(const std::string& dir);
 
 /** 
  * Returns the directory where the program is executed. 
@@ -88,6 +100,9 @@ std::string current_dir();
  * @param return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
 int expand_buffer(void*& buffer, size_t& buffer_allocated_size);
+
+/** Returns the names of the directories inside the input directory. */
+std::vector<std::string> get_dirs(const std::string& dir);
 
 /** 
  * GZIPs the input buffer and stores the result in the output buffer, returning
@@ -113,6 +128,14 @@ bool has_duplicates(const std::vector<T>& v);
 template<class T>
 bool intersect(const std::vector<T>& v1, const std::vector<T>& v2);
 
+ /**
+ * Checks if the input directory is an array.
+ *
+ * @param dir The directory to be checked.
+ * @return True if the directory is an array, and false otherwise.
+ */
+bool is_array(const std::string& dir);
+
 /** 
  * Checks if the input is an existing directory. 
  *
@@ -129,8 +152,32 @@ bool is_dir(const std::string& dir);
  */ 
 bool is_file(const std::string& file);
 
+/**
+ * Checks if the input directory is a fragment.
+ *
+ * @param dir The directory to be checked.
+ * @return True if the directory is a fragment, and false otherwise.
+ */
+bool is_fragment(const std::string& dir);
+
+/**
+ * Checks if the input directory is a group.
+ *
+ * @param dir The directory to be checked.
+ * @return True if the directory is a group, and false otherwise.
+ */
+bool is_group(const std::string& dir);
+
 /** Returns true if the input string is a positive (>0) integer number. */
 bool is_positive_integer(const char* s);
+
+/**
+ * Checks if the input directory is a workspace.
+ *
+ * @param dir The directory to be checked.
+ * @return True if the directory is a workspace, and false otherwise.
+ */
+bool is_workspace(const std::string& dir);
 
 /** 
  * Returns the parent directory of the input directory. 
