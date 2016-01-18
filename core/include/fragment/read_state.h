@@ -166,6 +166,7 @@ class ReadState {
       int attribute_id,
       void* buffer, 
       size_t buffer_size, 
+      size_t tile_size,
       size_t& buffer_offset);
 
   // TODO

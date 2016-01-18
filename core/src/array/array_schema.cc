@@ -1233,9 +1233,9 @@ void ArraySchema::get_next_tile_coords(
     T* tile_coords) const {
   // Invoke the proper function based on the tile order
   if(tile_order_ == TILEDB_AS_TO_ROW_MAJOR)
-    get_next_tile_coords_col(domain, tile_coords);
-  else if(tile_order_ == TILEDB_AS_TO_COLUMN_MAJOR)
     get_next_tile_coords_row(domain, tile_coords);
+  else if(tile_order_ == TILEDB_AS_TO_COLUMN_MAJOR)
+    get_next_tile_coords_col(domain, tile_coords);
 }
 
 template<class T>
@@ -1268,9 +1268,9 @@ template<class T>
 int64_t ArraySchema::get_tile_pos(const T* tile_coords) const {
   // Invoke the proper function based on the tile order
   if(tile_order_ == TILEDB_AS_TO_ROW_MAJOR)
-    get_tile_pos_col(tile_coords);
-  else if(tile_order_ == TILEDB_AS_TO_COLUMN_MAJOR)
     get_tile_pos_row(tile_coords);
+  else if(tile_order_ == TILEDB_AS_TO_COLUMN_MAJOR)
+    get_tile_pos_col(tile_coords);
 }
 
 template<class T>
@@ -1352,8 +1352,8 @@ void ArraySchema::get_tile_range_overlap(
   // Check overlap
   overlap = 1;
   for(int i=0; i<dim_num_; ++i) {
-    if(overlap_range[2*i] > tile_range[2*i+1] ||
-       overlap_range[2*i+1] < tile_range[2*i]) {
+    if(overlap_range[2*i] >= tile_extents[i] ||
+       overlap_range[2*i+1] < 0) {
       overlap = 0;
       break;
     }
@@ -1361,8 +1361,9 @@ void ArraySchema::get_tile_range_overlap(
 
   // Check partial overlap
   if(overlap > 0) {
-    for(int i=0; i<2*dim_num_; ++i) {
-      if(overlap_range[i] != tile_range[i]) {
+    for(int i=0; i<dim_num_; ++i) {
+      if(overlap_range[2*i] != 0 ||
+         overlap_range[2*i+1] != tile_extents[i] - 1) {
         overlap = 2;
         break;
       }
@@ -1374,16 +1375,16 @@ void ArraySchema::get_tile_range_overlap(
     overlap = 3;
     if(tile_order_ == TILEDB_AS_TO_ROW_MAJOR) {           // Row major
       for(int i=1; i<dim_num_; ++i) {
-        if(overlap_range[2*i] != tile_range[2*i] ||
-           overlap_range[2*i+1] != tile_range[2*i+1]) {
+        if(overlap_range[2*i] != 0 ||
+           overlap_range[2*i+1] != tile_extents[i] - 1) {
           overlap = 2;
           break;
         }
       }
     } else if(tile_order_ == TILEDB_AS_TO_COLUMN_MAJOR) { // Column major
       for(int i=dim_num_-2; i>=0; --i) {
-        if(overlap_range[2*i] != tile_range[2*i] ||
-           overlap_range[2*i+1] != tile_range[2*i+1]) {
+        if(overlap_range[2*i] != 0 ||
+           overlap_range[2*i+1] != tile_extents[i] - 1) {
           overlap = 2;
           break;
         }

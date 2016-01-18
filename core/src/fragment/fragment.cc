@@ -92,7 +92,7 @@ const Array* Fragment::array() const {
 
 int Fragment::read(void** buffers, size_t* buffer_sizes) {
   // Sanity check
-  if(book_keeping_->range() == NULL) {
+  if(array_->range() == NULL) {
     PRINT_ERROR("Cannot read from fragment; Invalid range");
     return TILEDB_BK_ERR;
   }

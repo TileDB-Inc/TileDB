@@ -174,7 +174,11 @@ void ReadState::get_next_overlapping_tile() {
     for(int i=0; i<dim_num; ++i)
       coords[i] = range_in_tile_domain[2*i]; 
   } else {                              // Every other tile
-      array_schema->get_next_tile_coords<T>(range_in_tile_domain, coords);
+    const T* previous_coords = 
+        static_cast<const T*>(overlapping_tiles_.back().coords_);
+    for(int i=0; i<dim_num; ++i)
+      coords[i] = previous_coords[i]; 
+    array_schema->get_next_tile_coords<T>(range_in_tile_domain, coords);
   }
 
   // Get the position
@@ -187,6 +191,7 @@ void ReadState::get_next_overlapping_tile() {
       coords,          // tile coordinates in tile domain
       overlap_range,   // returned overlap in terms of cell coordinates in tile
       overlap);        // returned type of overlap
+
   if(overlap == 0) {
     overlapping_tile.overlap_ = NONE;
   } else if(overlap == 1) {
@@ -454,6 +459,7 @@ int ReadState::copy_tile_full(
         attribute_id, 
         buffer, 
         buffer_size, 
+        tile_size,
         buffer_offset);
   } else {                             // Two-step copy
     // Get tile from the disk to the local buffer
@@ -473,10 +479,10 @@ int ReadState::copy_tile_full_direct(
     int attribute_id,
     void* buffer,
     size_t buffer_size,
+    size_t tile_size,
     size_t& buffer_offset) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t tile_size = array_schema->tile_size(attribute_id);
   char* buffer_c = static_cast<char*>(buffer);
 
   // Sanity check
@@ -653,7 +659,7 @@ bool ReadState::is_empty_attribute(int attribute_id) const {
       TILEDB_FILE_SUFFIX;
 
   // Check if the attribute file exists
-  return is_file(filename);
+  return !is_file(filename);
 }
 
 int ReadState::read_dense(
