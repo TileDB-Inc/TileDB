@@ -1373,7 +1373,7 @@ void ArraySchema::get_tile_range_overlap(
   // Check special overlap
   if(overlap == 2) {
     overlap = 3;
-    if(tile_order_ == TILEDB_AS_TO_ROW_MAJOR) {           // Row major
+    if(cell_order_ == TILEDB_AS_CO_ROW_MAJOR) {           // Row major
       for(int i=1; i<dim_num_; ++i) {
         if(overlap_range[2*i] != 0 ||
            overlap_range[2*i+1] != tile_extents[i] - 1) {
@@ -1381,7 +1381,7 @@ void ArraySchema::get_tile_range_overlap(
           break;
         }
       }
-    } else if(tile_order_ == TILEDB_AS_TO_COLUMN_MAJOR) { // Column major
+    } else if(cell_order_ == TILEDB_AS_CO_COLUMN_MAJOR) { // Column major
       for(int i=dim_num_-2; i>=0; --i) {
         if(overlap_range[2*i] != 0 ||
            overlap_range[2*i+1] != tile_extents[i] - 1) {
