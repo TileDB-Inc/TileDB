@@ -310,7 +310,7 @@ void ReadState::copy_from_tile_buffer_partial(
   int64_t range_end_cell_pos = 
       array_schema->get_cell_pos<T>(range_end_coords);
   size_t range_start_offset = range_start_cell_pos * cell_size; 
-  size_t range_end_offset = range_end_cell_pos * cell_size; 
+  size_t range_end_offset = (range_end_cell_pos + 1) * cell_size - 1; 
 
   // If current tile offset is 0, set it to the beginning of the overlap range
   if(tile_offsets_[attribute_id] == 0) 
@@ -339,7 +339,10 @@ void ReadState::copy_from_tile_buffer_partial(
       bytes_to_copy);
   buffer_offset += bytes_to_copy;
   tile_offsets_[attribute_id] += bytes_to_copy;
- 
+
+  if(tile_offsets_[attribute_id] != range_end_offset + 1)
+    tile_offsets_[attribute_id] += tile_slab_size - range_slab_size;
+
   // Copy rest of the slabs
   while(buffer_offset != buffer_size &&
         tile_offsets_[attribute_id] != range_end_offset + 1) {
@@ -352,20 +355,20 @@ void ReadState::copy_from_tile_buffer_partial(
         bytes_to_copy);
     
     buffer_offset += bytes_to_copy;
-    if(bytes_to_copy == range_slab_size) // Go to the start of the next slab
-      tile_offsets_[attribute_id] += tile_slab_size;
-    else // The copy stops in the middles of a slab - the loop will exit
-      tile_offsets_[attribute_id] += bytes_to_copy;
+    tile_offsets_[attribute_id] += bytes_to_copy;
+
+    if(bytes_to_copy == range_slab_size &&
+       tile_offsets_[attribute_id] != range_end_offset + 1) { 
+      // Go to the start of the next slab
+      tile_offsets_[attribute_id] += tile_slab_size - bytes_to_copy;
+    }
   } 
 
   // Update overlapping tile position if necessary
   if(tile_offsets_[attribute_id] == range_end_offset + 1) { // This tile is done
     tile_offsets_[attribute_id] = tile_sizes_[attribute_id]; 
     ++overlapping_tile_pos_[attribute_id];
-  }
-
-  // Check for overflow
-  if(tile_offsets_[attribute_id] != range_end_offset  +1) { 
+  } else { // Check for overflow
     // This tile is NOT done
     assert(buffer_offset == buffer_size); // Buffer full
     ++buffer_offset;  // This will indicate the overflow
@@ -432,10 +435,7 @@ void ReadState::copy_from_tile_buffer_partial_special(
   if(tile_offsets_[attribute_id] == end_offset + 1) { // This tile is done
     tile_offsets_[attribute_id] = tile_sizes_[attribute_id]; 
     ++overlapping_tile_pos_[attribute_id];
-  }
-
-  // Check for overflow
-  if(tile_offsets_[attribute_id] != end_offset + 1) { // This tile is NOT done
+  } else { // Check for overflow
     assert(buffer_offset == buffer_size); // Buffer full
     ++buffer_offset;  // This will indicate the overflow
   }
