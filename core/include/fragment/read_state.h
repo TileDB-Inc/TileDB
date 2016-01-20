@@ -52,10 +52,10 @@ class ReadState {
  public:
   // TYPE DEFINITIONS
   /** 
-   * Type of tile overlap with the query range. PARTIAL_SPECIAL means that
+   * Type of tile overlap with the query range. PARTIAL_CONTIG means that
    * the qualifying cells are all contiguous on the disk. 
    */
-  enum Overlap {NONE, FULL, PARTIAL, PARTIAL_SPECIAL};
+  enum Overlap {NONE, FULL, PARTIAL_NON_CONTIG, PARTIAL_CONTIG};
 
   /** An overlapping tile with the query range. */
   struct OverlappingTile {
@@ -139,7 +139,7 @@ class ReadState {
 
   // TODO
   template<class T>
-  void copy_from_tile_buffer_partial(
+  void copy_from_tile_buffer_partial_non_contig(
       int attribute_id,
       void* buffer, 
       size_t buffer_size, 
@@ -147,12 +147,11 @@ class ReadState {
 
   // TODO
   template<class T>
-  void copy_from_tile_buffer_partial_special(
+  void copy_from_tile_buffer_partial_contig(
       int attribute_id,
       void* buffer, 
       size_t buffer_size, 
       size_t& buffer_offset);
-
 
   // TODO
   int copy_tile_full(
@@ -171,7 +170,24 @@ class ReadState {
 
   // TODO
   template<class T>
-  int copy_tile_partial(
+  int copy_tile_partial_contig_direct(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t result_size,
+      size_t& buffer_offset);
+
+  // TODO
+  template<class T>
+  int copy_tile_partial_non_contig(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t& buffer_offset);
+
+  // TODO
+  template<class T>
+  int copy_tile_partial_contig(
       int attribute_id,
       void* buffer, 
       size_t buffer_size, 

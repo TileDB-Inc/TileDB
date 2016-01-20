@@ -197,9 +197,9 @@ void ReadState::get_next_overlapping_tile() {
   } else if(overlap == 1) {
     overlapping_tile.overlap_ = FULL;
   } else if(overlap == 2) {
-    overlapping_tile.overlap_ = PARTIAL;
+    overlapping_tile.overlap_ = PARTIAL_NON_CONTIG;
   } else if(overlap == 3) {
-    overlapping_tile.overlap_ = PARTIAL_SPECIAL;
+    overlapping_tile.overlap_ = PARTIAL_CONTIG;
   }
  
   // Store the new tile
@@ -220,15 +220,15 @@ void ReadState::copy_from_tile_buffer(
         buffer_size, 
         buffer_offset);
   else if(overlapping_tiles_[overlapping_tile_pos_[attribute_id]].overlap_
-          == PARTIAL)
-    copy_from_tile_buffer_partial<T>(
+          == PARTIAL_NON_CONTIG)
+    copy_from_tile_buffer_partial_non_contig<T>(
         attribute_id, 
         buffer, 
         buffer_size, 
         buffer_offset);
   else if(overlapping_tiles_[overlapping_tile_pos_[attribute_id]].overlap_
-          == PARTIAL_SPECIAL)
-    copy_from_tile_buffer_partial_special<T>(
+          == PARTIAL_CONTIG)
+    copy_from_tile_buffer_partial_contig<T>(
         attribute_id, 
         buffer, 
         buffer_size, 
@@ -272,7 +272,7 @@ void ReadState::copy_from_tile_buffer_full(
 }
 
 template<class T>
-void ReadState::copy_from_tile_buffer_partial(
+void ReadState::copy_from_tile_buffer_partial_non_contig(
     int attribute_id,
     void* buffer,
     size_t buffer_size,
@@ -380,7 +380,7 @@ void ReadState::copy_from_tile_buffer_partial(
 }
 
 template<class T>
-void ReadState::copy_from_tile_buffer_partial_special(
+void ReadState::copy_from_tile_buffer_partial_contig(
     int attribute_id,
     void* buffer,
     size_t buffer_size,
@@ -528,30 +528,133 @@ int ReadState::copy_tile_full_direct(
 }
 
 template<class T>
-int ReadState::copy_tile_partial(
+int ReadState::copy_tile_partial_contig_direct(
+    int attribute_id,
+    void* buffer,
+    size_t buffer_size,
+    size_t result_size,
+    size_t& buffer_offset) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  OverlappingTile& overlapping_tile = 
+      overlapping_tiles_[overlapping_tile_pos_[attribute_id]];
+  const T* overlap_range = 
+      static_cast<const T*>(overlapping_tile.overlap_range_);
+  int dim_num = array_schema->dim_num();
+  T* start_coords = new T[dim_num]; 
+  for(int i=0; i<dim_num; ++i)
+    start_coords[i] = overlap_range[2*i];
+  char* buffer_c = static_cast<char*>(buffer);
+
+  // Sanity check
+  assert(!array_schema->var_size(attribute_id));
+
+  // Find the offset at the beginning and end of the overlap range
+  size_t tile_size = array_schema->tile_size(attribute_id);
+  size_t cell_size = array_schema->cell_size(attribute_id);
+  int64_t start_cell_pos = array_schema->get_cell_pos<T>(start_coords);
+  size_t start_offset = start_cell_pos * cell_size; 
+  
+  // Prepare attribute file name
+  std::string filename = fragment_->fragment_name() + "/" +
+                         array_schema->attribute(attribute_id) +
+                         TILEDB_FILE_SUFFIX;
+
+  // Open file
+  int fd = open(filename.c_str(), O_RDONLY);
+  if(fd == -1) {
+    PRINT_ERROR("Cannot copy partial contig tile to buffer; "
+                "File opening error");
+    return TILEDB_RS_ERR;
+  }
+
+  // Find file offset where the tile begins
+  int64_t pos = overlapping_tile.pos_;
+  size_t file_offset = pos * tile_size + start_offset;
+
+  // Read tile
+  lseek(fd, file_offset, SEEK_SET); 
+  ssize_t bytes_read = ::read(fd, buffer_c + buffer_offset, result_size);
+  if(bytes_read != result_size) {
+    PRINT_ERROR("Cannot copy partial contig tile to buffer; "
+                "File reading error");
+    return TILEDB_RS_ERR;
+  }
+  
+  // Close file
+  if(close(fd)) {
+    PRINT_ERROR("Cannot copy partial contig tile to buffer; "
+                "File closing error");
+    return TILEDB_RS_ERR;
+  }
+
+  // Update offset and overlapping tile pos
+  buffer_offset += result_size;
+  ++overlapping_tile_pos_[attribute_id];
+  
+  // Success
+  return TILEDB_RS_OK;
+}
+
+template<class T>
+int ReadState::copy_tile_partial_non_contig(
     int attribute_id,
     void* buffer,
     size_t buffer_size,
     size_t& buffer_offset) {
-
   // Get tile from the disk into the local buffer
-  if(get_tile_from_disk(attribute_id) != TILEDB_RS_OK)
+  if(get_tile_from_disk(attribute_id) != TILEDB_RS_OK) 
     return TILEDB_RS_ERR;
 
   // Copy as much data as it fits from local buffer into input buffer
-  if(overlapping_tiles_[attribute_id].overlap_ == PARTIAL)
-    copy_from_tile_buffer_partial<T>(
+  copy_from_tile_buffer_partial_non_contig<T>(
+      attribute_id, 
+      buffer, 
+      buffer_size, 
+      buffer_offset);
+
+  // Success
+  return TILEDB_RS_OK;
+}
+
+template<class T>
+int ReadState::copy_tile_partial_contig(
+    int attribute_id,
+    void* buffer,
+    size_t buffer_size,
+    size_t& buffer_offset) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  OverlappingTile& overlapping_tile = 
+      overlapping_tiles_[overlapping_tile_pos_[attribute_id]];
+  const T* overlap_range = 
+      static_cast<const T*>(overlapping_tile.overlap_range_);
+
+  // Check if the partial read results fit in the buffer
+  size_t buffer_free_space = buffer_size - buffer_offset;
+  size_t cell_size = array_schema->cell_size(attribute_id);
+  size_t result_size = cell_num_in_range(overlap_range, dim_num) * cell_size;
+
+  if(result_size <= buffer_free_space) { // Direct disk to buffer access
+    copy_tile_partial_contig_direct<T>(
+        attribute_id, 
+        buffer, 
+        buffer_size, 
+        result_size,
+        buffer_offset);
+  } else {                               // Need to buffer the tile locally
+    // Get tile from the disk into the local buffer
+    if(get_tile_from_disk(attribute_id) != TILEDB_RS_OK) 
+      return TILEDB_RS_ERR;
+    
+    // Copy the relevant data to the input buffer
+    copy_from_tile_buffer_partial_contig<T>(
         attribute_id, 
         buffer, 
         buffer_size, 
         buffer_offset);
-  else if(overlapping_tiles_[attribute_id].overlap_ == PARTIAL_SPECIAL)
-    copy_from_tile_buffer_partial_special<T>(
-        attribute_id, 
-        buffer, 
-        buffer_size, 
-        buffer_offset);
- 
+  }
 
   // Success
   return TILEDB_RS_OK;
@@ -778,8 +881,16 @@ int ReadState::read_dense_attr_cmp_none(
              buffer_size, 
              buffer_offset) != TILEDB_RS_OK)
         return TILEDB_RS_ERR;
-    } else {                      // Partial tile
-      if(copy_tile_partial<T>(
+    } else if(overlapping_tiles_[overlapping_tile_pos_[attribute_id]].overlap_ 
+              == PARTIAL_CONTIG) { // Partial tile, contig
+      if(copy_tile_partial_contig<T>(
+             attribute_id, 
+             buffer, 
+             buffer_size, 
+             buffer_offset) != TILEDB_RS_OK)
+        return TILEDB_RS_ERR;
+    } else {                       // Partial tile, non-contig
+      if(copy_tile_partial_non_contig<T>(
              attribute_id, 
              buffer, 
              buffer_size, 

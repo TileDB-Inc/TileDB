@@ -13,7 +13,7 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
   /* Initialize a range. */
-  const int64_t range[] = { 1, 4, 2, 4 };
+  const int64_t range[] = { 1, 3, 2, 4 };
 
   /* Subset over attribute "a1". */
   const char* attributes[] = { "a1" };
@@ -30,15 +30,15 @@ int main() {
       1);      
 
   /* Prepare cell buffers for attributes "a1" and "a2". */
-  int buffer_a1[12];
+  int buffer_a1[9];
   void* buffers[] = { buffer_a1 };
-  size_t buffer_sizes[1] = { 12*sizeof(int) };
+  size_t buffer_sizes[1] = { 9*sizeof(int) };
 
   /* Read from array. */
   tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
 
   /* Print the read values. */
-  for(int i=0; i<12; ++i) 
+  for(int i=0; i<9; ++i) 
     std::cout << buffer_a1[i] << "\n";
 
   /* Finalize the array. */
