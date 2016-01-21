@@ -135,6 +135,19 @@ int expand_buffer(void*& buffer, size_t& buffer_allocated_size) {
     return TILEDB_UT_OK;
 }
 
+template<class T>
+void expand_mbr(T* mbr, const T* coords, int dim_num) {
+  for(int i=0; i<dim_num; ++i) {
+    // Update lower bound on dimension i
+    if(mbr[2*i] > coords[i])
+      mbr[2*i] = coords[i];
+
+    // Update upper bound on dimension i
+    if(mbr[2*i+1] < coords[i])
+      mbr[2*i+1] = coords[i];   
+  }	
+} 
+
 std::vector<std::string> get_dirs(const std::string& dir) {
   std::vector<std::string> dirs;
   std::string new_dir; 
@@ -461,3 +474,20 @@ template int64_t cell_num_in_range<int>(const int* range, int dim_num);
 template int64_t cell_num_in_range<int64_t>(const int64_t* range, int dim_num);
 template int64_t cell_num_in_range<float>(const float* range, int dim_num);
 template int64_t cell_num_in_range<double>(const double* range, int dim_num);
+
+template void expand_mbr<int>(
+    int* mbr, 
+    const int* coords, 
+    int dim_num);
+template void expand_mbr<int64_t>(
+    int64_t* mbr, 
+    const int64_t* coords, 
+    int dim_num);
+template void expand_mbr<float>(
+    float* mbr, 
+    const float* coords, 
+    int dim_num);
+template void expand_mbr<double>(
+    double* mbr, 
+    const double* coords, 
+    int dim_num);

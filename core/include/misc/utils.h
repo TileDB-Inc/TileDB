@@ -101,6 +101,10 @@ std::string current_dir();
  */
 int expand_buffer(void*& buffer, size_t& buffer_allocated_size);
 
+// TODO
+template<class T>
+void expand_mbr(T* mbr, const T* coords, int dim_num);
+
 /** Returns the names of the directories inside the input directory. */
 std::vector<std::string> get_dirs(const std::string& dir);
 

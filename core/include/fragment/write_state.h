@@ -79,6 +79,8 @@ class WriteState {
 
   /** The book-keeping structure of the fragment the write state belongs to. */
   BookKeeping* book_keeping_;
+  /** The MBR of the tile currently being populated. */
+  void* current_mbr_;
   /** The number of cells written in the current tile. */
   std::vector<std::int64_t> current_tile_cell_num_;
   /** Internal buffers used in the case of compression. */
@@ -104,6 +106,9 @@ class WriteState {
       void* tile,
       size_t tile_size);
 
+  // TODO
+  template<class T>
+  void expand_mbr(const T* coords);
 
   /** True if the coordinates are included in the fragment attributes. */
   bool has_coords() const;
@@ -116,6 +121,13 @@ class WriteState {
 
   /** Iniatializes a segment for the input attribute. */
   void init_segment(int attribute_id); 
+
+  // TODO
+  void update_mbrs(const void* buffer, size_t buffer_size);
+
+  // TODO
+  template<class T>
+  void update_mbrs(const void* buffer, size_t buffer_size);
 
   // TODO
   int write_dense(
@@ -175,10 +187,42 @@ class WriteState {
       const size_t* buffer_sizes);
 
   // TODO
+  int write_sparse_attr(
+      int attribute_id,
+      const void* buffers, 
+      size_t buffer_sizes);
+
+  // TODO
+  int write_sparse_attr_cmp_none(
+      int attribute_id,
+      const void* buffer, 
+      size_t buffer_size);
+
+  // TODO
+  int write_sparse_attr_cmp_gzip(
+      int attribute_id,
+      const void* buffer, 
+      size_t buffer_size);
+
+  // TODO
+  int write_sparse_coords(
+      const void* buffers, 
+      size_t buffer_sizes);
+
+  // TODO
+  int write_sparse_coords_cmp_none(
+      const void* buffers, 
+      size_t buffer_sizes);
+
+  // TODO
+  int write_sparse_coords_cmp_gzip(
+      const void* buffers, 
+      size_t buffer_sizes);
+
+  // TODO
   int write_sparse_unsorted(
       const void** buffers, 
       const size_t* buffer_sizes);
-
 
   // TODO
   int write_segment_to_file(int attribute_id);

@@ -70,6 +70,7 @@ WriteState::WriteState(
   // For easy reference
   const ArraySchema* array_schema = fragment->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
+  size_t coords_size = array_schema->coords_size();
 
   // Initialize the number of cells written in the current tile
   current_tile_cell_num_.resize(attribute_num+1);
@@ -100,6 +101,9 @@ WriteState::WriteState(
   current_tile_offsets_.resize(attribute_num+1);
   for(int i=0; i<attribute_num+1; ++i)
     current_tile_offsets_[i] = 0;
+
+  // Initialize current MBR
+  current_mbr_ = malloc(2*coords_size);
 }
 
 WriteState::~WriteState() { 
@@ -117,6 +121,9 @@ WriteState::~WriteState() {
   for(int i=0; i<segments_.size(); ++i) 
     if(segments_[i] != NULL)
       free(segments_[i]);
+
+  // Free current MBR
+  free(current_mbr_);
 }
 
 /* ****************************** */
@@ -161,8 +168,15 @@ int WriteState::write( const void** buffers, const size_t* buffer_sizes) {
 /* ****************************** */
 
 int WriteState::finalize() {
-  // TODO: Write empty cells if needed
-  // TODO: Write rest of the segments to disk
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+
+  // Send current MBR to book-keeping
+  if(current_tile_cell_num_[attribute_num] != 0) {
+    book_keeping_->append_mbr(current_mbr_);
+    current_tile_cell_num_[attribute_num] = 0;
+  } 
 }
 
 /* ****************************** */
@@ -199,6 +213,25 @@ ssize_t WriteState::compress_tile_into_segment(
   return TILEDB_WS_OK;
 }
 
+template<class T>
+void WriteState::expand_mbr(const T* coords) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  int dim_num = array_schema->dim_num();
+  T* current_mbr = static_cast<T*>(current_mbr_);
+
+  // Initialize MBR 
+  if(current_tile_cell_num_[attribute_num] == 0) {
+    for(int i=0; i<dim_num; ++i) {
+      current_mbr[2*i] = coords[i];
+      current_mbr[2*i+1] = coords[i];
+    }
+  } else { // Expand MBR 
+    ::expand_mbr(current_mbr, coords, dim_num);
+  }
+}
+
 bool WriteState::has_coords() const {
   const Array* array = fragment_->array();
   const std::vector<int>& attribute_ids = array->attribute_ids();
@@ -227,6 +260,55 @@ void WriteState::init_segment(int attribute_id) {
   if(segments_[attribute_id] == NULL) {
     segments_[attribute_id] = malloc(TILEDB_SEGMENT_SIZE);
     segment_offsets_[attribute_id] = 0;
+  }
+}
+
+void WriteState::update_mbrs(
+    const void* buffer,
+    size_t buffer_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const std::type_info* coords_type = array_schema->coords_type();
+
+  // Invoke the proper templated function
+  if(coords_type == &typeid(int))
+    update_mbrs<int>(buffer, buffer_size);
+  else if(coords_type == &typeid(int64_t))
+    update_mbrs<int64_t>(buffer, buffer_size);
+  else if(coords_type == &typeid(float))
+    update_mbrs<float>(buffer, buffer_size);
+  else if(coords_type == &typeid(double))
+    update_mbrs<double>(buffer, buffer_size);
+}
+
+template<class T>
+void WriteState::update_mbrs(
+    const void* buffer,
+    size_t buffer_size) {
+  // Trivial case
+  if(buffer_size == 0)
+    return;
+
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  int dim_num = array_schema->dim_num();
+  int64_t capacity = array_schema->capacity();
+  size_t coords_size = array_schema->coords_size();
+  int64_t buffer_cell_num = buffer_size / coords_size;
+  const T* buffer_T = static_cast<const T*>(buffer); 
+
+  // Update MBRs
+  for(int i = 0; i<buffer_cell_num; ++i) {
+    // Expand MBR
+    expand_mbr(&buffer_T[dim_num*i]);
+    ++current_tile_cell_num_[attribute_num];
+
+    // Send MBR to book-keeping and re-allocate
+    if(current_tile_cell_num_[attribute_num] == capacity) {
+      book_keeping_->append_mbr(current_mbr_);
+      current_tile_cell_num_[attribute_num] = 0; 
+    }
   }
 }
 
@@ -285,35 +367,10 @@ int WriteState::write_dense_attr_cmp_none(
     size_t buffer_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int64_t cell_num_per_tile = array_schema->cell_num_per_tile();
-  size_t cell_size = array_schema->cell_size(attribute_id);
-  size_t tile_size = cell_num_per_tile * cell_size; 
-  int64_t buffer_cell_num = buffer_size / cell_size;
-
-  // Update total number of cells
-  total_cell_num_[attribute_id] += buffer_cell_num;
-
-  // Calculate number of cells needed to fill the current tile
-  int64_t current_tile_cells_to_fill =
-      (cell_num_per_tile - current_tile_cell_num_[attribute_id]);
-
-  // The buffer has enough cells to fill at least one tile
-  if(buffer_cell_num >= current_tile_cells_to_fill) {
-    // Fill up current tile, and append offset to book-keeping
-    buffer_cell_num -= current_tile_cells_to_fill;
-    current_tile_cell_num_[attribute_id] = 0;
-  }
-
-  // Continue filling up entire tiles
-  while(buffer_cell_num >= cell_num_per_tile) 
-    buffer_cell_num -= cell_num_per_tile;
-
-  // Partially fill the (new) current tile
-  current_tile_cell_num_[attribute_id] += buffer_cell_num;
 
   // Write buffer to file 
   std::string filename = fragment_->fragment_name() + "/" + 
-      fragment_->array()->array_schema()->attribute(attribute_id) + 
+      array_schema->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
   int rc = write_to_file(filename.c_str(), buffer, buffer_size);
 
@@ -474,6 +531,114 @@ int WriteState::write_dense_in_range(
 int WriteState::write_sparse(
     const void** buffers,
     const size_t* buffer_sizes) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
+  int attribute_id_num = attribute_ids.size(); 
+
+  // Write each attribute individually
+  int i=0; 
+  int rc;
+  while(i<attribute_id_num) {
+    if(!array_schema->var_size(attribute_ids[i])) { // FIXED CELLS
+      if(attribute_ids[i] == attribute_num) // coordinates
+        rc = write_sparse_coords(buffers[i], buffer_sizes[i]);
+      else                                  // attribute
+        rc = write_sparse_attr(attribute_ids[i], buffers[i], buffer_sizes[i]);
+      if(rc != TILEDB_WS_OK)
+        break;
+      ++i;
+    } else {                                        // VARIABLE-SIZED CELLS
+      // TODO
+    }
+  }
+
+  return rc;
+}
+
+int WriteState::write_sparse_attr(
+    int attribute_id,
+    const void* buffer,
+    size_t buffer_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  ArraySchema::Compression compression = 
+      array_schema->compression(attribute_id);
+
+  // No compression
+  if(compression == ArraySchema::TILEDB_AS_CMP_NONE)
+    return write_sparse_attr_cmp_none(attribute_id, buffer, buffer_size);
+  else // GZIP
+    return write_sparse_attr_cmp_gzip(attribute_id, buffer, buffer_size);
+
+}
+
+int WriteState::write_sparse_attr_cmp_none(
+    int attribute_id,
+    const void* buffer,
+    size_t buffer_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+
+  // Write buffer to file 
+  std::string filename = fragment_->fragment_name() + "/" + 
+      array_schema->attribute(attribute_id) + 
+      TILEDB_FILE_SUFFIX;
+  int rc = write_to_file(filename.c_str(), buffer, buffer_size);
+
+  // Return
+  if(rc == TILEDB_UT_OK)
+    return TILEDB_WS_OK;
+  else
+    return TILEDB_WS_ERR;
+}
+
+int WriteState::write_sparse_attr_cmp_gzip(
+    int attribute_id,
+    const void* buffer,
+    size_t buffer_size) {
+  // TODO
+}
+
+int WriteState::write_sparse_coords(
+    const void* buffer,
+    size_t buffer_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  ArraySchema::Compression compression = 
+      array_schema->compression(attribute_num);
+
+  // No compression
+  if(compression == ArraySchema::TILEDB_AS_CMP_NONE)
+    return write_sparse_coords_cmp_none(buffer, buffer_size);
+  else // GZIP
+    return write_sparse_coords_cmp_gzip(buffer, buffer_size);
+}
+
+int WriteState::write_sparse_coords_cmp_none(
+    const void* buffer,
+    size_t buffer_size) {
+  // Update MBRs
+  update_mbrs(buffer, buffer_size);
+
+  // Write buffer to file 
+  std::string filename = fragment_->fragment_name() + "/" + 
+      TILEDB_COORDS_NAME + 
+      TILEDB_FILE_SUFFIX;
+  int rc = write_to_file(filename.c_str(), buffer, buffer_size);
+
+  // Return
+  if(rc == TILEDB_UT_OK)
+    return TILEDB_WS_OK;
+  else
+    return TILEDB_WS_ERR;
+}
+
+int WriteState::write_sparse_coords_cmp_gzip(
+    const void* buffer,
+    size_t buffer_size) {
   // TODO
 }
 

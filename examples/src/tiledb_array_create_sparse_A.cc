@@ -1,7 +1,7 @@
 /*
- * File: tiledb_array_create_dense_A.cc
+ * File: tiledb_array_create_sparse_A.cc
  * 
- * Demonstrates how to create a dense array, called "dense_A".
+ * Demonstrates how to create a sparse array, called "sparse_A".
  */
 
 #include "c_api.h"
@@ -17,13 +17,16 @@ int main() {
   */
   TileDB_ArraySchema array_schema = {};
 
-  /* Set array name to "dense_A", inside (existing) workspace "workspace". */
-  array_schema.array_name_ = "workspace/dense_A";
+  /* Set array name to "sparse_A", inside (existing) workspace "workspace". */
+  array_schema.array_name_ = "workspace/sparse_A";
 
   /* Set attributes and number of attributes. */
   const char* attributes[] = { "a1", "a2" };
   array_schema.attributes_ = attributes;
   array_schema.attribute_num_ = 2;
+
+  /* Set capacity. */
+  array_schema.capacity_ = 4;
 
   /* Set cell order. */ 
   array_schema.cell_order_ = "column-major";
@@ -44,16 +47,9 @@ int main() {
   const int64_t domain[] = { 1, 4, 1, 4};
   array_schema.domain_ = domain;
 
-  /* The array has regular, 2x2 tiles. */
-  const int64_t tile_extents[] = { 2, 2 };
-  array_schema.tile_extents_ = tile_extents;
-
-  /* The array is dense. */
-  array_schema.dense_ = 1;
-
   /* 
    * NOTE: The rest of the array schema members will be set to default values.
-   * This implies that the array has "row-major" tile order, no compression,
+   * This implies that the array is sparse, has irregular tiles, no compression,
    * and consolidation step equal to 1.
    */
 

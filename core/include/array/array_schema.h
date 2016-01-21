@@ -110,6 +110,9 @@ class ArraySchema {
   /** Returns the attributes. */
   const std::vector<std::string>& attributes() const;
 
+  /** Returns the capacity. */
+  int64_t capacity() const;
+
   /** 
    * Returns the number of cells per tile. Meaningful only for the dense case.
    */

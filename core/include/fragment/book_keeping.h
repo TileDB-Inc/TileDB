@@ -70,6 +70,9 @@ class BookKeeping {
   const void* range() const;
 
   // MUTATORS 
+
+  /** Appends the input MBR to the book-keeping structure. */
+  void append_mbr(const void* mbr);
  
   /** Appends a tile offset for the input attribute. */
   void append_tile_offset(int attribute_id, size_t offset);
@@ -94,6 +97,8 @@ class BookKeeping {
 
   /** The fragment the book-keeping belongs to. */
   const Fragment* fragment_;
+  /** The MBRs (applicable only to the sparse case with irregular tiles). */
+  std::vector<void*> mbrs_;
   /** The offsets of the next tile to be appended for each attribute. */
   std::vector<size_t> next_tile_offsets_;
   /**
@@ -105,6 +110,9 @@ class BookKeeping {
   std::vector<std::vector<size_t> > tile_offsets_;
 
   // PRIVATE METHODS
+
+  // TODO
+  int flush_mbrs(gzFile fd) const;
 
   // TODO
   int flush_range(gzFile fd) const;

@@ -70,6 +70,9 @@ BookKeeping::BookKeeping(const Fragment* fragment)
 BookKeeping::~BookKeeping() {
   if(range_ != NULL)
     free(range_);
+
+  for(int i=0; i<mbrs_.size(); ++i)
+    free(mbrs_[i]);
 }
 
 /* ****************************** */
@@ -83,6 +86,17 @@ const void* BookKeeping::range() const {
 /* ****************************** */
 /*             MUTATORS           */
 /* ****************************** */
+
+void BookKeeping::append_mbr(const void* mbr) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  size_t mbr_size = 2*array_schema->coords_size();
+
+  // Copy and append MBR
+  void* new_mbr = malloc(mbr_size);
+  memcpy(new_mbr, mbr, mbr_size);
+  mbrs_.push_back(new_mbr);
+}
 
 void BookKeeping::append_tile_offset(
     int attribute_id,
@@ -118,13 +132,8 @@ int BookKeeping::init(const void* range) {
 
 /* FORMAT:
  * range_size(size_t) range(void*)  
- * tile_offsets_num(int)
- * tile_num(int64_t)
- * tile_offsets_attr_#1_tile_#1(size_t) ... 
- * tile_offsets_attr_#1_tile_#tile_num(size_t)
- * ...
- * tile_offsets_attr_#attribute_num_tile_#1(size_t) ... 
- * tile_offsets_attr_#attribute_num_tile_#tile_num(size_t)
+ * mbr_num(int64_t)
+ * mbr_#1 mbr_#2 ... mbr_#<mbr_num>
  */
 int BookKeeping::load() {
   // Prepare file name
@@ -143,9 +152,7 @@ int BookKeeping::load() {
   if(load_range(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
 
-  // Load tile offsets
-  if(load_tile_offsets(fd) != TILEDB_BK_OK)
-    return TILEDB_BK_ERR;
+  // TODO: Load MBRs
 
   // Close file
   if(gzclose(fd)) {
@@ -163,13 +170,8 @@ int BookKeeping::load() {
 
 /* FORMAT:
  * range_size(size_t) range(void*)  
- * tile_offsets_num(int)
- * tile_num(int64_t)
- * tile_offsets_attr_#1_tile_#1(size_t) ... 
- * tile_offsets_attr_#1_tile_#tile_num(size_t)
- * ...
- * tile_offsets_attr_#attribute_num_tile_#1(size_t) ... 
- * tile_offsets_attr_#attribute_num_tile_#tile_num(size_t)
+ * mbr_num(int64_t)
+ * mbr_#1 mbr_#2 ... mbr_#<mbr_num>
  */
 int BookKeeping::finalize() {
   // Nothing to do in READ mode
@@ -198,8 +200,8 @@ int BookKeeping::finalize() {
   if(flush_range(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
 
-  // Write tile offsets
-  if(flush_tile_offsets(fd) != TILEDB_BK_OK)
+  // Write MBRs
+  if(flush_mbrs(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
 
   // Close file
@@ -216,13 +218,44 @@ int BookKeeping::finalize() {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
+/* FORMAT:
+ * mbr_num(int64_t)
+ * mbr_#1(void*) mbr_#2(void*) ... mbr_#<mbr_num>(void*)
+ */
+int BookKeeping::flush_mbrs(gzFile fd) const {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  size_t mbr_size = 2*array_schema->coords_size();
+
+  int64_t mbr_num = mbrs_.size();
+
+  if(gzwrite(fd, &mbr_num, sizeof(int64_t)) != sizeof(int64_t)) {
+    PRINT_ERROR("Cannot finalize book-keeping; Writing number of MBRs failed");
+    return TILEDB_BK_ERR;
+  }
+
+  for(int i=0; i<mbr_num; ++i) {
+    if(gzwrite(fd, mbrs_[i], mbr_size) != mbr_size) {
+      PRINT_ERROR("Cannot finalize book-keeping; Writing MBR failed");
+      return TILEDB_BK_ERR;
+    }
+  } 
+  
+  return TILEDB_BK_OK;
+}
+
+/* FORMAT:
+ * range_size(size_t) range(void*)  
+ */
 int BookKeeping::flush_range(gzFile fd) const {
   size_t range_size = (range_ == NULL) ? 0 : 
       fragment_->array()->array_schema()->coords_size() * 2;
+
   if(gzwrite(fd, &range_size, sizeof(size_t)) != sizeof(size_t)) {
     PRINT_ERROR("Cannot finalize book-keeping; Writing range size failed");
     return TILEDB_BK_ERR;
   }
+
   if(range_ != NULL) {
     if(gzwrite(fd, range_, range_size) != range_size) {
       PRINT_ERROR("Cannot finalize book-keeping; Writing range failed");
@@ -238,8 +271,8 @@ int BookKeeping::flush_tile_offsets(gzFile fd) const {
   // If the array is dense, do nothing
   // TODO: Probably this will be true also for sparse arrays with irregular
   // tiles
-  if(fragment_->array()->array_schema()->dense())
-    return TILEDB_BK_OK;
+  // TODO: If there is compression though, this should change!
+  return TILEDB_BK_OK;
 
   // Get number of offsets, number of tiles, and size of offsets
   int tile_offsets_num = tile_offsets_.size();
@@ -275,6 +308,9 @@ int BookKeeping::flush_tile_offsets(gzFile fd) const {
   return TILEDB_BK_OK;
 }
 
+/* FORMAT:
+ * range_size(size_t) range(void*)  
+ */
 int BookKeeping::load_range(gzFile fd) {
   // Get range size
   size_t range_size;
@@ -302,8 +338,7 @@ int BookKeeping::load_tile_offsets(gzFile fd) {
   // If the array is dense, do nothing
   // TODO: Probably this will be true also for sparse arrays with irregular
   // tiles
-  if(fragment_->array()->array_schema()->dense())
-    return TILEDB_BK_OK;
+  return TILEDB_BK_OK;
 
   // TODO
 

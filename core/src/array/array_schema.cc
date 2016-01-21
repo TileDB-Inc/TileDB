@@ -116,6 +116,10 @@ const std::vector<std::string>& ArraySchema::attributes() const {
   return attributes_;
 }
 
+int64_t ArraySchema::capacity() const {
+  return capacity_;
+}
+
 ArraySchema::Compression ArraySchema::compression(int attribute_id) const {
   assert(attribute_id >= 0 && attribute_id <= attribute_num_);
 
@@ -974,14 +978,16 @@ int ArraySchema::set_tile_extents(const void* tile_extents) {
     return TILEDB_AS_ERR;
   }
 
-  // Clear tile extents
-  if(tile_extents_ != NULL)
+  // Set tile extents
+  if(tile_extents_ != NULL) {
+    // Free existing tile extends
     free(tile_extents_);
 
-  // Set tile extents
-  size_t tile_extents_size = coords_size();
-  tile_extents_ = malloc(tile_extents_size); 
-  memcpy(tile_extents_, tile_extents, tile_extents_size);
+    // Copy tile extents
+    size_t tile_extents_size = coords_size();
+    tile_extents_ = malloc(tile_extents_size); 
+    memcpy(tile_extents_, tile_extents, tile_extents_size);
+  }
 
   return TILEDB_AS_OK;
 }
