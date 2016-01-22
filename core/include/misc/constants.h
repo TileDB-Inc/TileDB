@@ -75,6 +75,8 @@
 #define TILEDB_GROUP_FILENAME          "__tiledb_group.tdb"
 #define TILEDB_WORKSPACE_FILENAME      "__tiledb_workspace.tdb"
 
+/** The size of the sorted buffer. */
+#define TILEDB_SORTED_BUFFER_SIZE 10000000  // ~10MB
 
 /** The TileDB data types. */ 
 enum DataType {

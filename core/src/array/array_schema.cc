@@ -64,7 +64,9 @@
 
 ArraySchema::ArraySchema() {
   cell_num_per_tile_ = -1;
+  coords_for_hilbert_ = NULL;
   domain_ = NULL;
+  hilbert_curve_ = NULL;
   tile_extents_ = NULL;
   tile_domain_ = NULL;
 }
@@ -73,11 +75,17 @@ ArraySchema::~ArraySchema() {
   if(domain_ != NULL)
     free(domain_);
 
+  if(hilbert_curve_ != NULL)
+    delete hilbert_curve_;
+
   if(tile_extents_ != NULL)
     free(tile_extents_);
 
   if(tile_domain_ != NULL)
     free(tile_domain_);
+
+  if(coords_for_hilbert_ != NULL)
+    delete [] coords_for_hilbert_;
 }
 
 /* ****************************** */
@@ -128,6 +136,10 @@ ArraySchema::Compression ArraySchema::compression(int attribute_id) const {
 
 int64_t ArraySchema::cell_num_per_tile() const {
   return cell_num_per_tile_;
+}
+
+ArraySchema::CellOrder ArraySchema::cell_order() const {
+  return cell_order_;
 }
 
 size_t ArraySchema::cell_size(int attribute_id) const {
@@ -517,6 +529,22 @@ int ArraySchema::var_attribute_num() const {
 /*             MUTATORS           */
 /* ****************************** */
 
+template<class T>
+void ArraySchema::compute_hilbert_bits() {
+  // For easy reference
+  const T* domain = static_cast<const T*>(domain_);
+  T max_domain_range = 0;
+  T domain_range;
+
+  for(int i = 0; i < dim_num_; ++i) { 
+    domain_range = domain[2*i+1] - domain[2*i] + 1;
+    if(max_domain_range < domain_range)
+      max_domain_range = domain_range;
+  }
+
+  hilbert_bits_ = ceil(log2(int64_t(max_domain_range+0.5)));
+}
+
 // ===== FORMAT =====
 // array_name_size(int) 
 //     array_name(string)
@@ -700,6 +728,9 @@ int ArraySchema::deserialize(
   // Compute tile domain
   compute_tile_domain();
 
+  // Initialize Hilbert curve
+  init_hilbert_curve();
+
   return TILEDB_AS_OK;
 }
 
@@ -750,7 +781,33 @@ int ArraySchema::init(const ArraySchemaC* array_schema_c) {
   // Compute tile domain
   compute_tile_domain();
 
+  // Initialize Hilbert curve
+  init_hilbert_curve();
+
   return TILEDB_AS_OK;
+}
+
+void ArraySchema::init_hilbert_curve() {
+  // Applicable only to Hilbert cell order
+  if(cell_order_ != TILEDB_AS_CO_HILBERT) 
+    return;
+
+  // Allocate some space for the Hilbert coordinates
+  if(coords_for_hilbert_ == NULL)
+    coords_for_hilbert_ = new int[dim_num_];
+
+  // Compute Hilbert bits, invoking the proper templated function
+  if(types_[attribute_num_] == &typeid(int))
+    compute_hilbert_bits<int>();
+  else if(types_[attribute_num_] == &typeid(int64_t))
+    compute_hilbert_bits<int64_t>();
+  else if(types_[attribute_num_] == &typeid(float))
+    compute_hilbert_bits<float>();
+  else if(types_[attribute_num_] == &typeid(double))
+    compute_hilbert_bits<double>();
+
+  // Create new Hilberrt curve
+  hilbert_curve_ = new HilbertCurve(hilbert_bits_, dim_num_);
 }
 
 void ArraySchema::set_array_name(const char* array_name) {
@@ -1402,6 +1459,20 @@ void ArraySchema::get_tile_range_overlap(
   delete tile_range;
 }
 
+template<typename T>
+int64_t ArraySchema::hilbert_id(const T* coords) const {
+  // For easy reference
+  const T* domain = static_cast<const T*>(domain_);
+
+  for(int i = 0; i < dim_num_; ++i) 
+    coords_for_hilbert_[i] = static_cast<int>(coords[i] - domain[2*i]);
+
+  int64_t id;
+  hilbert_curve_->coords_to_hilbert(coords_for_hilbert_, id);
+
+  return id;
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -1674,4 +1745,13 @@ template int64_t ArraySchema::get_cell_pos<int64_t>(
 template int64_t ArraySchema::get_cell_pos<float>(
     const float* coords) const;
 template int64_t ArraySchema::get_cell_pos<double>(
+    const double* coords) const;
+
+template int64_t ArraySchema::hilbert_id<int>(
+    const int* coords) const;
+template int64_t ArraySchema::hilbert_id<int64_t>(
+    const int64_t* coords) const;
+template int64_t ArraySchema::hilbert_id<float>(
+    const float* coords) const;
+template int64_t ArraySchema::hilbert_id<double>(
     const double* coords) const;

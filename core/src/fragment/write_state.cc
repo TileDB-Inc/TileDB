@@ -31,6 +31,7 @@
  * This file implements the WriteState class.
  */
 
+#include "constants.h"
 #include "utils.h"
 #include "write_state.h"
 #include <cassert>
@@ -56,6 +57,14 @@
 #else
 #  define PRINT_ERROR(x) do { } while(0) 
 #  define PRINT_WARNING(x) do { } while(0) 
+#endif
+
+#ifdef GNU_PARALLEL
+  #include <parallel/algorithm>
+  #define SORT(first, last, comp) __gnu_parallel::sort((first), (last), (comp))
+#else
+  #include <algorithm>
+  #define SORT(first, last, comp) std::sort((first), (last), (comp))
 #endif
 
 /* ****************************** */
@@ -260,6 +269,73 @@ void WriteState::init_segment(int attribute_id) {
   if(segments_[attribute_id] == NULL) {
     segments_[attribute_id] = malloc(TILEDB_SEGMENT_SIZE);
     segment_offsets_[attribute_id] = 0;
+  }
+}
+
+void WriteState::sort_cell_pos(
+    const void* buffer,
+    size_t buffer_size,
+    std::vector<int64_t>& cell_pos) const {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const std::type_info* coords_type = array_schema->coords_type();
+
+  // Invoke the proper templated function
+  if(coords_type == &typeid(int))
+    sort_cell_pos<int>(buffer, buffer_size, cell_pos);
+  else if(coords_type == &typeid(int64_t))
+    sort_cell_pos<int64_t>(buffer, buffer_size, cell_pos);
+  else if(coords_type == &typeid(float))
+    sort_cell_pos<float>(buffer, buffer_size, cell_pos);
+  else if(coords_type == &typeid(double))
+    sort_cell_pos<double>(buffer, buffer_size, cell_pos);
+}
+
+template<class T>
+void WriteState::sort_cell_pos(
+    const void* buffer,
+    size_t buffer_size,
+    std::vector<int64_t>& cell_pos) const {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  size_t coords_size = array_schema->coords_size();
+  int64_t buffer_cell_num = buffer_size / coords_size;
+  ArraySchema::CellOrder cell_order = array_schema->cell_order();
+  const T* buffer_T = static_cast<const T*>(buffer);
+
+  // Populate cell_pos
+  cell_pos.resize(buffer_cell_num);
+  for(int i=0; i<buffer_cell_num; ++i)
+    cell_pos[i] = i;
+
+  // Invoke the proper sort function, based on the cell order
+  if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) {
+    // Sort cell positions
+    SORT(
+        cell_pos.begin(), 
+        cell_pos.end(), 
+        SmallerRow<T>(buffer_T, dim_num)); 
+  } else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) {
+    // Sort cell positions
+    SORT(
+        cell_pos.begin(), 
+        cell_pos.end(), 
+        SmallerCol<T>(buffer_T, dim_num)); 
+  } else if(cell_order == ArraySchema::TILEDB_AS_CO_HILBERT) {
+    // Get hilbert ids
+    std::vector<int64_t> ids;
+    ids.resize(buffer_cell_num);
+    for(int i=0; i<buffer_cell_num; ++i)
+      ids[i] = array_schema->hilbert_id<T>(&buffer_T[i * dim_num]); 
+
+    // Sort cell positions
+    SORT(
+        cell_pos.begin(), 
+        cell_pos.end(), 
+        SmallerIdRow<T>(buffer_T, dim_num, ids)); 
+  } else {
+    assert(0); // The code should never reach here
   }
 }
 
@@ -645,7 +721,173 @@ int WriteState::write_sparse_coords_cmp_gzip(
 int WriteState::write_sparse_unsorted(
     const void** buffers,
     const size_t* buffer_sizes) {
-  // TODO
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
+  int attribute_id_num = attribute_ids.size(); 
+
+  // Find the coordinates buffer
+  int coords_id = -1;
+  for(int i=0; i<attribute_id_num; ++i) { 
+    if(attribute_ids[i] == attribute_num) {
+      coords_id = i;
+      break;
+    }
+  }
+  
+  // Coordinates are missing
+  if(coords_id == -1) {
+    PRINT_ERROR("Cannot write sparse unsorted; Coordinates missing");
+    return TILEDB_WS_ERR;
+  }
+
+  // Sort cell positions
+  std::vector<int64_t> cell_pos;
+  sort_cell_pos(buffers[coords_id], buffer_sizes[coords_id], cell_pos);
+
+  // Write each attribute individually
+  int i=0; 
+  int rc;
+  while(i<attribute_id_num) {
+    if(!array_schema->var_size(attribute_ids[i])) { // FIXED CELLS
+      if(attribute_ids[i] == attribute_num) // coordinates
+        rc = write_sparse_unsorted_coords(
+                 buffers[i], 
+                 buffer_sizes[i],
+                 cell_pos);
+      else                                  // attribute
+        rc = write_sparse_unsorted_attr(
+                 attribute_ids[i], 
+                 buffers[i], 
+                 buffer_sizes[i],
+                 cell_pos);
+      if(rc != TILEDB_WS_OK)
+        break;
+      ++i;
+    } else {                                        // VARIABLE-SIZED CELLS
+      // TODO
+    }
+  }
+
+  return rc;
+}
+
+int WriteState::write_sparse_unsorted_attr(
+    int attribute_id,
+    const void* buffer,
+    size_t buffer_size,
+    const std::vector<int64_t>& cell_pos) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  size_t cell_size = array_schema->cell_size(attribute_id); 
+  const char* buffer_c = static_cast<const char*>(buffer); 
+
+  // Check number of cells in buffer
+  int64_t buffer_cell_num = buffer_size / cell_size;
+  if(buffer_cell_num != cell_pos.size()) {
+    PRINT_ERROR(std::string("Cannot write sparse unsorted; Invalid number of "
+                "cells in attribute '") + 
+                array_schema->attribute(attribute_id) + "'");
+    return TILEDB_WS_ERR;
+  }
+
+  // Allocate a local buffer to hold the sorted cells
+  char* sorted_buffer = new char[TILEDB_SORTED_BUFFER_SIZE]; 
+  size_t sorted_buffer_size = 0;
+
+  // Sort and write attribute values in batches
+  for(int i=0; i<buffer_cell_num; ++i) {
+    // Write batch
+    if(sorted_buffer_size + cell_size > TILEDB_SORTED_BUFFER_SIZE) {
+      if(write_sparse_attr(
+             attribute_id,
+             sorted_buffer, 
+             sorted_buffer_size) != TILEDB_WS_OK) {
+        delete [] sorted_buffer;
+        return TILEDB_WS_ERR;
+      } else {
+        sorted_buffer_size = 0;
+      }
+    }
+
+    // Keep on copying the cells in the sorted order in the sorted buffer
+    memcpy(
+        sorted_buffer + sorted_buffer_size, 
+        buffer_c + cell_pos[i] * cell_size, 
+        cell_size);
+    sorted_buffer_size += cell_size;
+  }
+
+  // Write final batch
+  if(sorted_buffer_size != 0) {
+    if(write_sparse_attr(
+           attribute_id, 
+           sorted_buffer, 
+           sorted_buffer_size) != TILEDB_WS_OK) {
+      delete [] sorted_buffer;
+      return TILEDB_WS_ERR;
+    }
+  }
+
+  // Clean up
+  delete [] sorted_buffer;
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
+int WriteState::write_sparse_unsorted_coords(
+    const void* buffer,
+    size_t buffer_size,
+    const std::vector<int64_t>& cell_pos) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  size_t coords_size = array_schema->coords_size(); 
+  const char* buffer_c = static_cast<const char*>(buffer); 
+
+  // Allocate a local buffer to hold the sorted cells
+  char* sorted_buffer = new char[TILEDB_SORTED_BUFFER_SIZE]; 
+  size_t sorted_buffer_size = 0;
+
+  // Sort and write coordinates in batches
+  int64_t buffer_cell_num = buffer_size / coords_size;
+  for(int i=0; i<buffer_cell_num; ++i) {
+    // Write batch
+    if(sorted_buffer_size + coords_size > TILEDB_SORTED_BUFFER_SIZE) {
+      if(write_sparse_coords(
+             sorted_buffer, 
+             sorted_buffer_size) != TILEDB_WS_OK) {
+        delete [] sorted_buffer;
+        return TILEDB_WS_ERR;
+      } else {
+        sorted_buffer_size = 0;
+      }
+    }
+
+    // Keep on copying the cells in the sorted order in the sorted buffer
+    memcpy(
+        sorted_buffer + sorted_buffer_size, 
+        buffer_c + cell_pos[i] * coords_size, 
+        coords_size);
+    sorted_buffer_size += coords_size;
+  }
+
+  // Write final batch
+  if(sorted_buffer_size != 0) {
+    if(write_sparse_coords(
+           sorted_buffer, 
+           sorted_buffer_size) != TILEDB_WS_OK) {
+      delete [] sorted_buffer;
+      return TILEDB_WS_ERR;
+    }
+  }
+
+  // Clean up
+  delete [] sorted_buffer;
+
+  // Success
+  return TILEDB_WS_OK;
 }
 
 int WriteState::write_segment_to_file(int attribute_id) {

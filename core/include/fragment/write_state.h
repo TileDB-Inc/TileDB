@@ -37,6 +37,7 @@
 #include "book_keeping.h"
 #include "fragment.h"
 #include <vector>
+#include <iostream>
 
 /* ********************************* */
 /*             CONSTANTS             */
@@ -50,6 +51,15 @@ class BookKeeping;
 /** Stores the state necessary when writing cells to a fragment. */
 class WriteState {
  public:
+  // TYPE DEFINITIONS
+
+  /** Custom comparator in cell sorting. */
+  template<typename T> struct SmallerIdRow;
+  /** Custom comparator in cell sorting. */
+  template<class T> class SmallerRow;
+  /** Custom comparator in cell sorting. */
+  template<class T> class SmallerCol;
+
   // CONSTRUCTORS & DESTRUCTORS
 
   /** 
@@ -123,6 +133,19 @@ class WriteState {
   void init_segment(int attribute_id); 
 
   // TODO
+  void sort_cell_pos(
+      const void* buffer, 
+      size_t buffer_size,
+      std::vector<int64_t>& cell_pos) const;
+
+  // TODO
+  template<class T>
+  void sort_cell_pos(
+      const void* buffer, 
+      size_t buffer_size,
+      std::vector<int64_t>& cell_pos) const;
+
+  // TODO
   void update_mbrs(const void* buffer, size_t buffer_size);
 
   // TODO
@@ -189,8 +212,8 @@ class WriteState {
   // TODO
   int write_sparse_attr(
       int attribute_id,
-      const void* buffers, 
-      size_t buffer_sizes);
+      const void* buffer, 
+      size_t buffer_size);
 
   // TODO
   int write_sparse_attr_cmp_none(
@@ -206,18 +229,18 @@ class WriteState {
 
   // TODO
   int write_sparse_coords(
-      const void* buffers, 
-      size_t buffer_sizes);
+      const void* buffer, 
+      size_t buffer_size);
 
   // TODO
   int write_sparse_coords_cmp_none(
-      const void* buffers, 
-      size_t buffer_sizes);
+      const void* buffer, 
+      size_t buffer_size);
 
   // TODO
   int write_sparse_coords_cmp_gzip(
-      const void* buffers, 
-      size_t buffer_sizes);
+      const void* buffer, 
+      size_t buffer_size);
 
   // TODO
   int write_sparse_unsorted(
@@ -225,8 +248,123 @@ class WriteState {
       const size_t* buffer_sizes);
 
   // TODO
+  int write_sparse_unsorted_attr(
+      int attribute_id,
+      const void* buffer, 
+      size_t buffer_size,
+      const std::vector<int64_t>& cell_pos);
+
+  // TODO
+  int write_sparse_unsorted_coords(
+      const void* buffer, 
+      size_t buffer_size,
+      const std::vector<int64_t>& cell_pos);
+
+  // TODO
   int write_segment_to_file(int attribute_id);
 };
 
+/** Wrapper of comparison function for sorting cells. */
+template<class T>
+class WriteState::SmallerIdRow {
+ public:
+  /** Constructor. */
+  SmallerIdRow(const T* buffer, int dim_num, const std::vector<int64_t>& ids) 
+      : buffer_(buffer),
+        dim_num_(dim_num),
+        ids_(ids) { }
+
+  /** Comparison operator. */
+  bool operator () (int64_t a, int64_t b) {
+    if(ids_[a] < ids_[b])
+      return true;
+
+    if(ids_[a] > ids_[b])
+      return false;
+
+    // a.id_ == b.id_ --> check coordinates
+    const T* coords_a = &buffer_[a * dim_num_];
+    const T* coords_b = &buffer_[b * dim_num_];
+
+    for(int i=0; i<dim_num_; ++i) 
+      if(coords_a[i] < coords_b[i]) 
+        return true;
+      else if(coords_a[i] > coords_b[i]) 
+        return false;
+      // else coords_a[i] == coords_b[i] --> continue
+
+    return false;
+  }
+
+ private:
+  /** Cell buffer. */
+  const T* buffer_;
+  /** Number of dimensions. */
+  int dim_num_;
+  /** The cell ids. */
+  const std::vector<int64_t>& ids_;
+};
+
+/** Wrapper of comparison function for sorting cells. */
+template<class T>
+class WriteState::SmallerRow {
+ public:
+  /** Constructor. */
+  SmallerRow(const T* buffer, int dim_num) 
+      : buffer_(buffer),
+        dim_num_(dim_num) { }
+
+  /** Comparison operator. */
+  bool operator () (int64_t a, int64_t b) {
+    const T* coords_a = &buffer_[a * dim_num_];
+    const T* coords_b = &buffer_[b * dim_num_];
+
+    for(int i=0; i<dim_num_; ++i) 
+      if(coords_a[i] < coords_b[i]) 
+        return true;
+      else if(coords_a[i] > coords_b[i]) 
+        return false;
+      // else coords_a[i] == coords_b[i] --> continue
+
+    return false;
+  }
+
+ private:
+  /** Cell buffer. */
+  const T* buffer_;
+  /** Number of dimensions. */
+  int dim_num_;
+};
+
+/** Wrapper of comparison function for sorting cells. */
+template<class T>
+class WriteState::SmallerCol {
+ public:
+  /** Constructor. */
+  SmallerCol(const T* buffer, int dim_num) 
+      : buffer_(buffer),
+        dim_num_(dim_num) { }
+
+  /** Comparison operator. */
+  bool operator () (int64_t a, int64_t b) {
+    const T* coords_a = &buffer_[a * dim_num_];
+    const T* coords_b = &buffer_[b * dim_num_];
+
+    for(int i=dim_num_-1; i>=0; --i) 
+      if(coords_a[i] < coords_b[i]) 
+        return true;
+      else if(coords_a[i] > coords_b[i]) 
+        return false;
+      // else coords_a[i] == coords_b[i] --> continue
+
+    return false;
+  }
+
+ private:
+  /** Cell buffer. */
+  const T* buffer_;
+  /** Number of dimensions. */
+  int dim_num_;
+};
 
 #endif

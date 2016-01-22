@@ -214,10 +214,27 @@ int Array::write(const void** buffers, const size_t* buffer_sizes) {
     PRINT_ERROR("Cannot write to array; Invalid mode");
     return TILEDB_AR_ERR;
   }
+
+  // In WRITE_UNSORTED mode, a fragment may need to be intialized
+  if(fragments_.size() == 0) {
+    Fragment* fragment = new Fragment(this);
+    fragments_.push_back(fragment);
+    if(fragment->init(new_fragment_name(), range_) != TILEDB_FG_OK)
+      return TILEDB_AR_ERR;
+  }
+ 
+  // Sanity check
   assert(fragments_.size() == 1);
 
   // Dispatch the write command to the new fragment
   int rc = fragments_[0]->write(buffers, buffer_sizes);
+
+  // In WRITE_UNSORTED mode, the fragment must be finalized
+  if(mode_ == TILEDB_WRITE_UNSORTED) {
+    fragments_[0]->finalize();
+    delete fragments_[0];
+    fragments_.clear();
+  }
 
   // Return
   if(rc == TILEDB_FG_OK)

@@ -29,7 +29,7 @@ int main() {
   array_schema.capacity_ = 4;
 
   /* Set cell order. */ 
-  array_schema.cell_order_ = "column-major";
+  array_schema.cell_order_ = "hilbert";
 
   /* Set dimensions and number of dimensions. */
   const char* dimensions[] = { "d1", "d2" };

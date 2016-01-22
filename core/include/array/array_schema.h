@@ -35,6 +35,7 @@
 #define ARRAY_SCHEMA_H
 
 #include "array_schema_c.h"
+#include "hilbert_curve.h"
 #include <limits>
 #include <string>
 #include <typeinfo>
@@ -118,6 +119,9 @@ class ArraySchema {
    */
   int64_t cell_num_per_tile() const;
 
+  /** Returns the cell order. */
+  CellOrder cell_order() const;
+
   /** Returns the size of cell on the input attribute. */
   size_t cell_size(int attribute_id) const;
 
@@ -188,6 +192,10 @@ class ArraySchema {
 
   // MUTATORS
 
+  /** Computes the number of bits required by the Hilbert curve. */
+  template<class T>
+  void compute_hilbert_bits();
+
   /** 
    * It assigns values to the members of the object from the input buffer. 
    *
@@ -205,6 +213,9 @@ class ArraySchema {
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */ 
   int init(const ArraySchemaC* array_schema_c);  
+
+  /** Initializes a Hilbert curve. */
+  void init_hilbert_curve();
 
   /** Sets the array name. */
   void set_array_name(const char* array_name);
@@ -381,6 +392,10 @@ class ArraySchema {
       T* overlap_range,
       int& overlap) const;
 
+  /** Returns the Hilbert id of the input coordinates. */
+  template<class T>
+  int64_t hilbert_id(const T* coords) const;
+
  private:
   // PRIVATE ATTRIBUTES
 
@@ -416,6 +431,8 @@ class ArraySchema {
   std::vector<Compression> compression_;
   /** The consolidation step. */
   int consolidation_step_;
+  /** To be used when calculating Hilbert ids. */
+  int* coords_for_hilbert_;
   /** 
    * True if the array is in dense format; false if the array is sparse. If the
    * array is dense, then the user must specify tile extents for regular tiles.
@@ -431,6 +448,13 @@ class ArraySchema {
    * type. 
    */
   void* domain_;
+  /** 
+   * Number of bits used for the calculation of cell ids with the 
+   * Hilbert curve. 
+   */
+  int hilbert_bits_;
+  /** A Hilbert curve object for finding cell ids. */
+  HilbertCurve* hilbert_curve_;
   /** 
    * True if the array is a key-value store, in which case the actual
    * coordinates type is <b>char:var</b>, but in fact the coordinates are
