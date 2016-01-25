@@ -661,6 +661,9 @@ int ArraySchema::deserialize(
   memcpy(&tile_extents_size, buffer + offset, sizeof(int));
   offset += sizeof(int);
   if(tile_extents_size == 0) {
+
+std::cout << "null\n";
+
     tile_extents_ = NULL;
   } else {
     assert(offset + tile_extents_size < buffer_size);
@@ -1039,12 +1042,12 @@ int ArraySchema::set_tile_extents(const void* tile_extents) {
   if(tile_extents_ != NULL) {
     // Free existing tile extends
     free(tile_extents_);
-
-    // Copy tile extents
-    size_t tile_extents_size = coords_size();
-    tile_extents_ = malloc(tile_extents_size); 
-    memcpy(tile_extents_, tile_extents, tile_extents_size);
   }
+
+  // Copy tile extents
+  size_t tile_extents_size = coords_size();
+  tile_extents_ = malloc(tile_extents_size); 
+  memcpy(tile_extents_, tile_extents, tile_extents_size);
 
   return TILEDB_AS_OK;
 }
