@@ -66,10 +66,22 @@ class BookKeeping {
 
   // ACCESSORS
 
+  /** Returns the bounding coordinates. */
+  const std::vector<void*>& bounding_coords() const; 
+
+  /** Returns the MBRs. */
+  const std::vector<void*>& mbrs() const; 
+
   /** Returns the range in which the fragment is constrained. */
   const void* range() const;
 
+  /** Returns the number of tiles in the fragment. */
+  int64_t tile_num() const;
+
   // MUTATORS 
+
+  /** Appends the tile bounding coordinates to the book-keeping structure. */
+  void append_bounding_coords(const void* bounding_coords);
 
   /** Appends the input MBR to the book-keeping structure. */
   void append_mbr(const void* mbr);
@@ -95,6 +107,8 @@ class BookKeeping {
  private:
   // PRIVATE ATTRIBUTES
 
+  /** The first and last coordinates of each tile. */
+  std::vector<void*> bounding_coords_;
   /** The fragment the book-keeping belongs to. */
   const Fragment* fragment_;
   /** The MBRs (applicable only to the sparse case with irregular tiles). */
@@ -112,6 +126,9 @@ class BookKeeping {
   // PRIVATE METHODS
 
   // TODO
+  int flush_bounding_coords(gzFile fd) const;
+
+  // TODO
   int flush_mbrs(gzFile fd) const;
 
   // TODO
@@ -119,6 +136,12 @@ class BookKeeping {
 
   // TODO
   int flush_tile_offsets(gzFile fd) const;
+
+  // TODO
+  int load_bounding_coords(gzFile fd);
+
+  // TODO
+  int load_mbrs(gzFile fd);
 
   // TODO
   int load_range(gzFile fd);

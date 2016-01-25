@@ -73,19 +73,45 @@ BookKeeping::~BookKeeping() {
 
   for(int i=0; i<mbrs_.size(); ++i)
     free(mbrs_[i]);
+
+  for(int i=0; i<bounding_coords_.size(); ++i)
+    free(bounding_coords_[i]);
 }
 
 /* ****************************** */
 /*             ACCESSORS          */
 /* ****************************** */
 
+const std::vector<void*>& BookKeeping::bounding_coords() const {
+  return bounding_coords_;
+}
+
+const std::vector<void*>& BookKeeping::mbrs() const {
+  return mbrs_;
+}
+
 const void* BookKeeping::range() const {
   return range_;
+}
+
+int64_t BookKeeping::tile_num() const {
+  return mbrs_.size();
 }
 
 /* ****************************** */
 /*             MUTATORS           */
 /* ****************************** */
+
+void BookKeeping::append_bounding_coords(const void* bounding_coords) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  size_t bounding_coords_size = 2*array_schema->coords_size();
+
+  // Copy and append MBR
+  void* new_bounding_coords = malloc(bounding_coords_size);
+  memcpy(new_bounding_coords, bounding_coords, bounding_coords_size);
+  bounding_coords_.push_back(new_bounding_coords);
+}
 
 void BookKeeping::append_mbr(const void* mbr) {
   // For easy reference
@@ -133,7 +159,9 @@ int BookKeeping::init(const void* range) {
 /* FORMAT:
  * range_size(size_t) range(void*)  
  * mbr_num(int64_t)
- * mbr_#1 mbr_#2 ... mbr_#<mbr_num>
+ * mbr_#1(void*) mbr_#2(void*) ... 
+ * bounding_coords_num(int64_t)
+ * bounding_coords_#1(void*) bounding_coords_#2(void*) ...
  */
 int BookKeeping::load() {
   // Prepare file name
@@ -152,11 +180,17 @@ int BookKeeping::load() {
   if(load_range(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
 
-  // TODO: Load MBRs
+  // Load MBRs
+  if(load_mbrs(fd) != TILEDB_BK_OK)
+    return TILEDB_BK_ERR;
+
+  // Load bounding coordinates
+  if(load_bounding_coords(fd) != TILEDB_BK_OK)
+    return TILEDB_BK_ERR;
 
   // Close file
   if(gzclose(fd)) {
-    PRINT_ERROR("Cannot finalize book-keeping; Cannot close file");
+    PRINT_ERROR("Cannot load book-keeping; Cannot close file");
     return TILEDB_BK_ERR;
   }
 
@@ -171,7 +205,9 @@ int BookKeeping::load() {
 /* FORMAT:
  * range_size(size_t) range(void*)  
  * mbr_num(int64_t)
- * mbr_#1 mbr_#2 ... mbr_#<mbr_num>
+ * mbr_#1(void*) mbr_#2(void*) ... 
+ * bounding_coords_num(int64_t)
+ * bounding_coords_#1(void*) bounding_coords_#2(void*) ...
  */
 int BookKeeping::finalize() {
   // Nothing to do in READ mode
@@ -204,6 +240,10 @@ int BookKeeping::finalize() {
   if(flush_mbrs(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
 
+  // Write bounding coordinates
+  if(flush_bounding_coords(fd) != TILEDB_BK_OK)
+    return TILEDB_BK_ERR;
+
   // Close file
   if(gzclose(fd)) {
     PRINT_ERROR("Cannot finalize book-keeping; Cannot close file");
@@ -219,14 +259,41 @@ int BookKeeping::finalize() {
 /* ****************************** */
 
 /* FORMAT:
+ * bounding_coords_num(int64_t)
+ * bounding_coords_#1(void*) bounding_coords_#2(void*) ...
+ */
+int BookKeeping::flush_bounding_coords(gzFile fd) const {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  size_t bounding_coords_size = 2*array_schema->coords_size();
+  int64_t bounding_coords_num = bounding_coords_.size();
+
+  if(gzwrite(fd, &bounding_coords_num, sizeof(int64_t)) != sizeof(int64_t)) {
+    PRINT_ERROR("Cannot finalize book-keeping; Writing number of bounding "
+                "coordinates failed");
+    return TILEDB_BK_ERR;
+  }
+
+  for(int i=0; i<bounding_coords_num; ++i) {
+    if(gzwrite(fd, bounding_coords_[i], bounding_coords_size) != 
+       bounding_coords_size) {
+      PRINT_ERROR("Cannot finalize book-keeping; Writing bounding coordinates "
+                  "failed");
+      return TILEDB_BK_ERR;
+    }
+  } 
+
+  return TILEDB_BK_OK;
+}
+
+/* FORMAT:
  * mbr_num(int64_t)
- * mbr_#1(void*) mbr_#2(void*) ... mbr_#<mbr_num>(void*)
+ * mbr_#1(void*) mbr_#2(void*) ... 
  */
 int BookKeeping::flush_mbrs(gzFile fd) const {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   size_t mbr_size = 2*array_schema->coords_size();
-
   int64_t mbr_num = mbrs_.size();
 
   if(gzwrite(fd, &mbr_num, sizeof(int64_t)) != sizeof(int64_t)) {
@@ -240,7 +307,7 @@ int BookKeeping::flush_mbrs(gzFile fd) const {
       return TILEDB_BK_ERR;
     }
   } 
-  
+
   return TILEDB_BK_OK;
 }
 
@@ -302,6 +369,75 @@ int BookKeeping::flush_tile_offsets(gzFile fd) const {
       PRINT_ERROR("Cannot finalize book-keeping; Writing tile offsets failed");
       return TILEDB_BK_ERR;
     }
+  }
+
+  // Success
+  return TILEDB_BK_OK;
+}
+
+/* FORMAT:
+ * bounding_coords_num(int64_t)
+ * bounding_coords_#1(void*) bounding_coords_#2(void*) ...
+ */
+int BookKeeping::load_bounding_coords(gzFile fd) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  size_t bounding_coords_size = 2*array_schema->coords_size();
+
+  // Get number of bounding coordinates
+  int64_t bounding_coords_num;
+  if(gzread(fd, &bounding_coords_num, sizeof(int64_t)) != sizeof(int64_t)) {
+    PRINT_ERROR("Cannot load book-keeping; Reading number of "
+                "bounding coordinates failed");
+    return TILEDB_BK_ERR;
+  }
+
+  // Get bounding coordinates
+  void* bounding_coords;
+  bounding_coords_.resize(bounding_coords_num);
+  for(int64_t i=0; i<bounding_coords_num; ++i) {
+    bounding_coords = malloc(bounding_coords_size);
+    if(gzread(fd, bounding_coords, bounding_coords_size) != 
+       bounding_coords_size) {
+      PRINT_ERROR("Cannot load book-keeping; Reading bounding coordinates "
+                  "failed");
+      free(bounding_coords);
+      return TILEDB_BK_ERR;
+    }
+    bounding_coords_[i] = bounding_coords;
+  }
+
+  // Success
+  return TILEDB_BK_OK;
+}
+
+/* FORMAT:
+ * mbr_num(int64_t)
+ * mbr_#1(void*) mbr_#2(void*) ... mbr_#<mbr_num>(void*)
+ */
+int BookKeeping::load_mbrs(gzFile fd) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  size_t mbr_size = 2*array_schema->coords_size();
+
+  // Get number of MBRs
+  int64_t mbr_num;
+  if(gzread(fd, &mbr_num, sizeof(int64_t)) != sizeof(int64_t)) {
+    PRINT_ERROR("Cannot load book-keeping; Reading number of MBRs failed");
+    return TILEDB_BK_ERR;
+  }
+
+  // Get MBRs
+  void* mbr;
+  mbrs_.resize(mbr_num);
+  for(int64_t i=0; i<mbr_num; ++i) {
+    mbr = malloc(mbr_size);
+    if(gzread(fd, mbr, mbr_size) != mbr_size) {
+      PRINT_ERROR("Cannot load book-keeping; Reading MBR failed");
+      free(mbr);
+      return TILEDB_BK_ERR;
+    }
+    mbrs_[i] = mbr;
   }
 
   // Success

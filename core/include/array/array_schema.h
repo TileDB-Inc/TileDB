@@ -383,8 +383,21 @@ class ArraySchema {
   // Overlap value meaning:
   // 0: NONE
   // 1: FULL
-  // 2: PARTIAL
-  // 3: PARTILA_SPECIAL
+  // 2: PARTIAL_NON_CONTIG
+  // 3: PARTILA_CONTIG
+  template<class T> 
+  void get_mbr_range_overlap(
+      const T* range,
+      const T* mbr,
+      T* overlap_range,
+      int& overlap) const;
+
+  // TODO
+  // Overlap value meaning:
+  // 0: NONE
+  // 1: FULL
+  // 2: PARTIAL_NON_CONTIG
+  // 3: PARTILA_CONTIG
   template<class T> 
   void get_tile_range_overlap(
       const T* range,

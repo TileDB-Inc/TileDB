@@ -1388,6 +1388,64 @@ int64_t ArraySchema::get_tile_pos_row(const T* tile_coords) const {
 }
 
 template<class T>
+void ArraySchema::get_mbr_range_overlap(
+    const T* range,
+    const T* mbr,
+    T* overlap_range,
+    int& overlap) const {
+  // Get overlap range
+  for(int i=0; i<dim_num_; ++i) {
+    overlap_range[2*i] = 
+        std::max(mbr[2*i], range[2*i]);
+    overlap_range[2*i+1] = 
+        std::min(mbr[2*i+1], range[2*i+1]);
+  }
+
+  // Check overlap
+  overlap = 1;
+  for(int i=0; i<dim_num_; ++i) {
+    if(overlap_range[2*i] > mbr[2*i+1] ||
+       overlap_range[2*i+1] < mbr[2*i]) {
+      overlap = 0;
+      break;
+    }
+  }
+
+  // Check partial overlap
+  if(overlap == 1) {
+    for(int i=0; i<dim_num_; ++i) {
+      if(overlap_range[2*i] != mbr[2*i] ||
+         overlap_range[2*i+1] != mbr[2*i+1]) {
+        overlap = 2;
+        break;
+      }
+    }
+  }
+
+  // Check contig overlap (not applicable to Hilbert order)
+  if(overlap == 2 && cell_order_ != TILEDB_AS_CO_HILBERT) {
+    overlap = 3;
+    if(cell_order_ == TILEDB_AS_CO_ROW_MAJOR) {           // Row major
+      for(int i=1; i<dim_num_; ++i) {
+        if(overlap_range[2*i] != mbr[2*i] ||
+           overlap_range[2*i+1] != mbr[2*i+1]) {
+          overlap = 2;
+          break;
+        }
+      }
+    } else if(cell_order_ == TILEDB_AS_CO_COLUMN_MAJOR) { // Column major
+      for(int i=dim_num_-2; i>=0; --i) {
+        if(overlap_range[2*i] != mbr[2*i] ||
+           overlap_range[2*i+1] != mbr[2*i+1]) {
+          overlap = 2;
+          break;
+        }
+      }
+    }
+  }
+}
+
+template<class T>
 void ArraySchema::get_tile_range_overlap(
     const T* range,
     const T* tile_coords,
@@ -1422,7 +1480,7 @@ void ArraySchema::get_tile_range_overlap(
     }
   }
 
-  // Check partial overlap
+  // Check contig overlap
   if(overlap > 0) {
     for(int i=0; i<dim_num_; ++i) {
       if(overlap_range[2*i] != 0 ||
@@ -1716,6 +1774,27 @@ template int64_t ArraySchema::get_tile_pos<float>(
     const float* tile_coords) const;
 template int64_t ArraySchema::get_tile_pos<double>(
     const double* tile_coords) const;
+
+template void ArraySchema::get_mbr_range_overlap<int>(
+    const int* range,
+    const int* mbr,
+    int* overlap_range,
+    int& overlap) const;
+template void ArraySchema::get_mbr_range_overlap<int64_t>(
+    const int64_t* range,
+    const int64_t* mbr,
+    int64_t* overlap_range,
+    int& overlap) const;
+template void ArraySchema::get_mbr_range_overlap<float>(
+    const float* range,
+    const float* mbr,
+    float* overlap_range,
+    int& overlap) const;
+template void ArraySchema::get_mbr_range_overlap<double>(
+    const double* range,
+    const double* mbr,
+    double* overlap_range,
+    int& overlap) const;
 
 template void ArraySchema::get_tile_range_overlap<int>(
     const int* range,

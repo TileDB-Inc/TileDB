@@ -89,6 +89,8 @@ class WriteState {
 
   /** The book-keeping structure of the fragment the write state belongs to. */
   BookKeeping* book_keeping_;
+  /** The first and last coordinates of the tile currently being populated. */
+  void* current_bounding_coords_;
   /** The MBR of the tile currently being populated. */
   void* current_mbr_;
   /** The number of cells written in the current tile. */
@@ -146,11 +148,11 @@ class WriteState {
       std::vector<int64_t>& cell_pos) const;
 
   // TODO
-  void update_mbrs(const void* buffer, size_t buffer_size);
+  void update_book_keeping(const void* buffer, size_t buffer_size);
 
   // TODO
   template<class T>
-  void update_mbrs(const void* buffer, size_t buffer_size);
+  void update_book_keeping(const void* buffer, size_t buffer_size);
 
   // TODO
   int write_dense(

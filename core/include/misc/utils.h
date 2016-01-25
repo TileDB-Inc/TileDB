@@ -56,12 +56,12 @@ void adjacent_slashes_dedup(std::string& value);
 /**
  * Checks if both inputs represent the '/' character. This is an auxiliary
  * function to adjacent_slashes_dedup().
- *
- * @param a The first input.
- * @param b The second input.
- * @return *True* if *a* == *b* == '/', and *false* otherwise. 
  */
 bool both_slashes(char a, char b);
+
+/** Returns true if the input cell is inside the input range. */
+template<class T>
+bool cell_in_range(const T* cell, const T* range, int dim_num);
 
 /** 
  * Returns the number of cells in the input range. 
@@ -72,6 +72,40 @@ bool both_slashes(char a, char b);
  */
 template<class T>
 int64_t cell_num_in_range(const T* range, int dim_num);
+
+// TODO: 
+// -1 if a precedes b
+// +1 if b precedes a
+// 0 if a is equal to b
+template<class T>
+int cmp_col_order(
+    const T* coords_a, 
+    const T* coords_b, 
+    int dim_num); 
+
+
+// TODO: 
+// -1 if a precedes b
+// +1 if b precedes a
+// 0 if a is equal to b
+template<class T>
+int cmp_row_order(
+    const T* coords_a, 
+    const T* coords_b, 
+    int dim_num); 
+
+
+// TODO: 
+// -1 if a precedes b
+// +1 if b precedes a
+// 0 if a is equal to b
+template<class T>
+int cmp_row_order(
+    int64_t id_a, 
+    const T* coords_a, 
+    int64_t id_b, 
+    const T* coords_b, 
+    int dim_num); 
 
 /**
  * Creates a new directory.
@@ -174,6 +208,10 @@ bool is_group(const std::string& dir);
 
 /** Returns true if the input string is a positive (>0) integer number. */
 bool is_positive_integer(const char* s);
+
+/** Returns true if the range contains a single element. */
+template<class T>
+bool is_unary_range(const T* range, int dim_num);
 
 /**
  * Checks if the input directory is a workspace.

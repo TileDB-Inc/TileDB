@@ -72,6 +72,16 @@ bool both_slashes(char a, char b) {
 }
 
 template<class T>
+bool cell_in_range(const T* cell, const T* range, int dim_num) {
+  for(int i=0; i<dim_num; ++i) {
+    if(cell[i] < range[2*i] || cell[i] > range[2*i+1])
+      return false;
+  }
+  
+  return true;
+}
+
+template<class T>
 int64_t cell_num_in_range(const T* range, int dim_num) {
   int64_t cell_num = 1;
 
@@ -79,6 +89,70 @@ int64_t cell_num_in_range(const T* range, int dim_num) {
     cell_num *= range[2*i+1] - range[2*i] + 1;
 
   return cell_num;
+}
+
+template<class T> 
+int cmp_col_order(
+    const T* coords_a,
+    const T* coords_b,
+    int dim_num) {
+  for(int i=dim_num-1; i>=0; --i) {
+    // a precedes b
+    if(coords_a[i] < coords_b[i])
+      return -1;
+    // b precedes a
+    else if(coords_a[i] > coords_b[i])
+      return 1;
+  }
+
+  // a and b are equal
+  return 0;
+}
+
+template<class T> 
+int cmp_row_order(
+    const T* coords_a,
+    const T* coords_b,
+    int dim_num) {
+  for(int i=0; i<dim_num; ++i) {
+    // a precedes b
+    if(coords_a[i] < coords_b[i])
+      return -1;
+    // b precedes a
+    else if(coords_a[i] > coords_b[i])
+      return 1;
+  }
+
+  // a and b are equal
+  return 0;
+}
+
+template<class T> 
+int cmp_row_order(
+    int64_t id_a,
+    const T* coords_a,
+    int64_t id_b,
+    const T* coords_b,
+    int dim_num) {
+  // a precedes b
+  if(id_a < id_b)
+    return -1;
+
+  // b precedes a
+  if(id_a > id_b)
+    return 1;
+
+  for(int i=0; i<dim_num; ++i) {
+    // a precedes b
+    if(coords_a[i] < coords_b[i])
+      return -1;
+    // b precedes a
+    else if(coords_a[i] > coords_b[i])
+      return 1;
+  }
+
+  // a and b are equal
+  return 0;
 }
 
 int create_dir(const std::string& dir) {
@@ -291,6 +365,15 @@ bool is_positive_integer(const char* s) {
   return true;
 }
 
+template<class T>
+bool is_unary_range(const T* range, int dim_num) {
+  for(int i=0; i<dim_num; ++i)  
+    if(range[2*i] != range[2*i+1])
+      return false;
+
+  return true;
+}
+
 bool is_workspace(const std::string& dir) {
   // Check existence
   if(is_dir(dir) && 
@@ -490,4 +573,85 @@ template void expand_mbr<float>(
 template void expand_mbr<double>(
     double* mbr, 
     const double* coords, 
+    int dim_num);
+
+template bool is_unary_range<int>(const int* range, int dim_num);
+template bool is_unary_range<int64_t>(const int64_t* range, int dim_num);
+template bool is_unary_range<float>(const float* range, int dim_num);
+template bool is_unary_range<double>(const double* range, int dim_num);
+
+template int cmp_col_order<int>(
+    const int* coords_a,
+    const int* coords_b,
+    int dim_num);
+template int cmp_col_order<int64_t>(
+    const int64_t* coords_a,
+    const int64_t* coords_b,
+    int dim_num);
+template int cmp_col_order<float>(
+    const float* coords_a,
+    const float* coords_b,
+    int dim_num);
+template int cmp_col_order<double>(
+    const double* coords_a,
+    const double* coords_b,
+    int dim_num);
+
+template int cmp_row_order<int>(
+    const int* coords_a,
+    const int* coords_b,
+    int dim_num);
+template int cmp_row_order<int64_t>(
+    const int64_t* coords_a,
+    const int64_t* coords_b,
+    int dim_num);
+template int cmp_row_order<float>(
+    const float* coords_a,
+    const float* coords_b,
+    int dim_num);
+template int cmp_row_order<double>(
+    const double* coords_a,
+    const double* coords_b,
+    int dim_num);
+
+template int cmp_row_order<int>(
+    int64_t id_a,
+    const int* coords_a,
+    int64_t id_b,
+    const int* coords_b,
+    int dim_num);
+template int cmp_row_order<int64_t>(
+    int64_t id_a,
+    const int64_t* coords_a,
+    int64_t id_b,
+    const int64_t* coords_b,
+    int dim_num);
+template int cmp_row_order<float>(
+    int64_t id_a,
+    const float* coords_a,
+    int64_t id_b,
+    const float* coords_b,
+    int dim_num);
+template int cmp_row_order<double>(
+    int64_t id_a,
+    const double* coords_a,
+    int64_t id_b,
+    const double* coords_b,
+    int dim_num);
+
+template bool cell_in_range<int>(
+    const int* cell,
+    const int* range,
+    int dim_num);
+template bool cell_in_range<int64_t>(
+    const int64_t* cell,
+    const int64_t* range,
+    int dim_num);
+template bool cell_in_range<float>(
+    const float* cell,
+    const float* range,
+    int dim_num);
+template bool cell_in_range<double>(
+    const double* cell,
+    const double* range,
     int dim_num);

@@ -113,6 +113,9 @@ WriteState::WriteState(
 
   // Initialize current MBR
   current_mbr_ = malloc(2*coords_size);
+
+  // Initialize current bounding coordinates
+  current_bounding_coords_ = malloc(2*coords_size);
 }
 
 WriteState::~WriteState() { 
@@ -133,6 +136,9 @@ WriteState::~WriteState() {
 
   // Free current MBR
   free(current_mbr_);
+
+  // Free current bounding coordinates
+  free(current_bounding_coords_);
 }
 
 /* ****************************** */
@@ -184,6 +190,7 @@ int WriteState::finalize() {
   // Send current MBR to book-keeping
   if(current_tile_cell_num_[attribute_num] != 0) {
     book_keeping_->append_mbr(current_mbr_);
+    book_keeping_->append_bounding_coords(current_bounding_coords_);
     current_tile_cell_num_[attribute_num] = 0;
   } 
 }
@@ -339,7 +346,7 @@ void WriteState::sort_cell_pos(
   }
 }
 
-void WriteState::update_mbrs(
+void WriteState::update_book_keeping(
     const void* buffer,
     size_t buffer_size) {
   // For easy reference
@@ -348,17 +355,17 @@ void WriteState::update_mbrs(
 
   // Invoke the proper templated function
   if(coords_type == &typeid(int))
-    update_mbrs<int>(buffer, buffer_size);
+    update_book_keeping<int>(buffer, buffer_size);
   else if(coords_type == &typeid(int64_t))
-    update_mbrs<int64_t>(buffer, buffer_size);
+    update_book_keeping<int64_t>(buffer, buffer_size);
   else if(coords_type == &typeid(float))
-    update_mbrs<float>(buffer, buffer_size);
+    update_book_keeping<float>(buffer, buffer_size);
   else if(coords_type == &typeid(double))
-    update_mbrs<double>(buffer, buffer_size);
+    update_book_keeping<double>(buffer, buffer_size);
 }
 
 template<class T>
-void WriteState::update_mbrs(
+void WriteState::update_book_keeping(
     const void* buffer,
     size_t buffer_size) {
   // Trivial case
@@ -374,15 +381,28 @@ void WriteState::update_mbrs(
   int64_t buffer_cell_num = buffer_size / coords_size;
   const T* buffer_T = static_cast<const T*>(buffer); 
 
-  // Update MBRs
-  for(int i = 0; i<buffer_cell_num; ++i) {
+  // Update bounding coordinates and MBRs
+  for(int64_t i = 0; i<buffer_cell_num; ++i) {
+    // Set first bounding coordinates
+    if(current_tile_cell_num_[attribute_num] == 0) 
+      memcpy(current_bounding_coords_, &buffer_T[i*dim_num], coords_size);
+
+    // Set second bounding coordinates
+    memcpy(
+        static_cast<char*>(current_bounding_coords_) + coords_size,
+        &buffer_T[i*dim_num], 
+        coords_size);
+
     // Expand MBR
-    expand_mbr(&buffer_T[dim_num*i]);
+    expand_mbr(&buffer_T[i*dim_num]);
+
+    // Advance a cell
     ++current_tile_cell_num_[attribute_num];
 
-    // Send MBR to book-keeping and re-allocate
+    // Send MBR and bounding coordinates to book-keeping
     if(current_tile_cell_num_[attribute_num] == capacity) {
       book_keeping_->append_mbr(current_mbr_);
+      book_keeping_->append_bounding_coords(current_bounding_coords_);
       current_tile_cell_num_[attribute_num] = 0; 
     }
   }
@@ -696,8 +716,8 @@ int WriteState::write_sparse_coords(
 int WriteState::write_sparse_coords_cmp_none(
     const void* buffer,
     size_t buffer_size) {
-  // Update MBRs
-  update_mbrs(buffer, buffer_size);
+  // Update book-keeping
+  update_book_keeping(buffer, buffer_size);
 
   // Write buffer to file 
   std::string filename = fragment_->fragment_name() + "/" + 
@@ -797,10 +817,10 @@ int WriteState::write_sparse_unsorted_attr(
   size_t sorted_buffer_size = 0;
 
   // Sort and write attribute values in batches
-  for(int i=0; i<buffer_cell_num; ++i) {
+  for(int64_t i=0; i<buffer_cell_num; ++i) {
     // Write batch
     if(sorted_buffer_size + cell_size > TILEDB_SORTED_BUFFER_SIZE) {
-      if(write_sparse_attr(
+      if(write_sparse_attr_cmp_none(
              attribute_id,
              sorted_buffer, 
              sorted_buffer_size) != TILEDB_WS_OK) {
@@ -821,7 +841,7 @@ int WriteState::write_sparse_unsorted_attr(
 
   // Write final batch
   if(sorted_buffer_size != 0) {
-    if(write_sparse_attr(
+    if(write_sparse_attr_cmp_none(
            attribute_id, 
            sorted_buffer, 
            sorted_buffer_size) != TILEDB_WS_OK) {
@@ -855,7 +875,7 @@ int WriteState::write_sparse_unsorted_coords(
   for(int i=0; i<buffer_cell_num; ++i) {
     // Write batch
     if(sorted_buffer_size + coords_size > TILEDB_SORTED_BUFFER_SIZE) {
-      if(write_sparse_coords(
+      if(write_sparse_coords_cmp_none(
              sorted_buffer, 
              sorted_buffer_size) != TILEDB_WS_OK) {
         delete [] sorted_buffer;
@@ -875,7 +895,7 @@ int WriteState::write_sparse_unsorted_coords(
 
   // Write final batch
   if(sorted_buffer_size != 0) {
-    if(write_sparse_coords(
+    if(write_sparse_coords_cmp_none(
            sorted_buffer, 
            sorted_buffer_size) != TILEDB_WS_OK) {
       delete [] sorted_buffer;

@@ -1,5 +1,5 @@
 /*
- * File: tiledb_array_read_dense_A.cc
+ * File: tiledb_array_read_sparse_A.cc
  * 
  * Demonstrates how to read from dense array "workspace/A".
  */
@@ -23,7 +23,7 @@ int main() {
   tiledb_array_init(
       tiledb_ctx, 
       &tiledb_array,
-      "workspace/dense_A",
+      "workspace/sparse_A",
       TILEDB_READ,
       range, 
       attributes,           
@@ -38,7 +38,8 @@ int main() {
   tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
 
   /* Print the read values. */
-  for(int i=0; i<9; ++i) 
+  int result_num = buffer_sizes[0] / sizeof(int);
+  for(int i=0; i<result_num; ++i) 
     std::cout << buffer_a1[i] << "\n";
 
   /* Finalize the array. */
