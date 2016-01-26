@@ -59,6 +59,8 @@ class ReadState {
 
   /** An overlapping tile with the query range. */
   struct OverlappingTile {
+    /** Number of cells in this tile. */
+    int64_t cell_num_;
    /**
      * Ranges of positions of qualifying cells in the range.
      * Applicable only to sparse arrays.
@@ -99,6 +101,8 @@ class ReadState {
 
   /** The book-keeping structure of the fragment the write state belongs to. */
   BookKeeping* book_keeping_;
+  /** True if the coordinates tile is fetched into the memory. */
+  bool coords_tile_fetched_;
   /** The fragment the write state belongs to. */
   const Fragment* fragment_;
   /** Specifies which tiles overlap the query range. */

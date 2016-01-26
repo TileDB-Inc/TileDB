@@ -661,9 +661,6 @@ int ArraySchema::deserialize(
   memcpy(&tile_extents_size, buffer + offset, sizeof(int));
   offset += sizeof(int);
   if(tile_extents_size == 0) {
-
-std::cout << "null\n";
-
     tile_extents_ = NULL;
   } else {
     assert(offset + tile_extents_size < buffer_size);
@@ -1044,10 +1041,14 @@ int ArraySchema::set_tile_extents(const void* tile_extents) {
     free(tile_extents_);
   }
 
-  // Copy tile extents
-  size_t tile_extents_size = coords_size();
-  tile_extents_ = malloc(tile_extents_size); 
-  memcpy(tile_extents_, tile_extents, tile_extents_size);
+  // Set tile extents
+  if(tile_extents == NULL) {
+    tile_extents_ = NULL;
+  } else { 
+    size_t tile_extents_size = coords_size();
+    tile_extents_ = malloc(tile_extents_size); 
+    memcpy(tile_extents_, tile_extents, tile_extents_size);
+  }
 
   return TILEDB_AS_OK;
 }
@@ -1391,7 +1392,7 @@ int64_t ArraySchema::get_tile_pos_row(const T* tile_coords) const {
 }
 
 template<class T>
-void ArraySchema::get_mbr_range_overlap(
+void ArraySchema::compute_mbr_range_overlap(
     const T* range,
     const T* mbr,
     T* overlap_range,
@@ -1449,7 +1450,7 @@ void ArraySchema::get_mbr_range_overlap(
 }
 
 template<class T>
-void ArraySchema::get_tile_range_overlap(
+void ArraySchema::compute_tile_range_overlap(
     const T* range,
     const T* tile_coords,
     T* overlap_range,
@@ -1713,9 +1714,6 @@ void ArraySchema::compute_tile_domain() {
 }
 
 void ArraySchema::compute_tile_sizes() {
-  if(tile_extents_ == NULL)
-    return;  
-
   tile_sizes_.resize(attribute_num_ + 1);
 
   for(int i=0; i<attribute_num_+1; ++i) {
@@ -1778,43 +1776,43 @@ template int64_t ArraySchema::get_tile_pos<float>(
 template int64_t ArraySchema::get_tile_pos<double>(
     const double* tile_coords) const;
 
-template void ArraySchema::get_mbr_range_overlap<int>(
+template void ArraySchema::compute_mbr_range_overlap<int>(
     const int* range,
     const int* mbr,
     int* overlap_range,
     int& overlap) const;
-template void ArraySchema::get_mbr_range_overlap<int64_t>(
+template void ArraySchema::compute_mbr_range_overlap<int64_t>(
     const int64_t* range,
     const int64_t* mbr,
     int64_t* overlap_range,
     int& overlap) const;
-template void ArraySchema::get_mbr_range_overlap<float>(
+template void ArraySchema::compute_mbr_range_overlap<float>(
     const float* range,
     const float* mbr,
     float* overlap_range,
     int& overlap) const;
-template void ArraySchema::get_mbr_range_overlap<double>(
+template void ArraySchema::compute_mbr_range_overlap<double>(
     const double* range,
     const double* mbr,
     double* overlap_range,
     int& overlap) const;
 
-template void ArraySchema::get_tile_range_overlap<int>(
+template void ArraySchema::compute_tile_range_overlap<int>(
     const int* range,
     const int* tile_coords,
     int* overlap_range,
     int& overlap) const;
-template void ArraySchema::get_tile_range_overlap<int64_t>(
+template void ArraySchema::compute_tile_range_overlap<int64_t>(
     const int64_t* range,
     const int64_t* tile_coords,
     int64_t* overlap_range,
     int& overlap) const;
-template void ArraySchema::get_tile_range_overlap<float>(
+template void ArraySchema::compute_tile_range_overlap<float>(
     const float* range,
     const float* tile_coords,
     float* overlap_range,
     int& overlap) const;
-template void ArraySchema::get_tile_range_overlap<double>(
+template void ArraySchema::compute_tile_range_overlap<double>(
     const double* range,
     const double* tile_coords,
     double* overlap_range,

@@ -1,11 +1,11 @@
 /*
- * File: tiledb_array_write_dense_A.cc
+ * File: tiledb_array_write_sparse_unsorted_A.cc
  * 
- * Demonstrates how to write to dense array "workspace/A", in dense mode.
+ * Demonstrates how to write to sparse array "workspace/sparse_A", in 
+ * in unsorted mode.
  */
 
 #include "c_api.h"
-#include <iostream>
 
 int main() {
   /* Intialize context with the default configuration parameters. */

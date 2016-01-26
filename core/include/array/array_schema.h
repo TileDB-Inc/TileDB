@@ -386,7 +386,7 @@ class ArraySchema {
   // 2: PARTIAL_NON_CONTIG
   // 3: PARTILA_CONTIG
   template<class T> 
-  void get_mbr_range_overlap(
+  void compute_mbr_range_overlap(
       const T* range,
       const T* mbr,
       T* overlap_range,
@@ -399,7 +399,7 @@ class ArraySchema {
   // 2: PARTIAL_NON_CONTIG
   // 3: PARTILA_CONTIG
   template<class T> 
-  void get_tile_range_overlap(
+  void compute_tile_range_overlap(
       const T* range,
       const T* tile_coords,
       T* overlap_range,

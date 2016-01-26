@@ -333,7 +333,7 @@ void WriteState::sort_cell_pos(
     // Get hilbert ids
     std::vector<int64_t> ids;
     ids.resize(buffer_cell_num);
-    for(int i=0; i<buffer_cell_num; ++i)
+    for(int i=0; i<buffer_cell_num; ++i) 
       ids[i] = array_schema->hilbert_id<T>(&buffer_T[i * dim_num]); 
 
     // Sort cell positions
