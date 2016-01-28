@@ -174,6 +174,13 @@ class ArraySchema {
   /** Returns the tile extents. */
   const void* tile_extents() const;
 
+  /** Returns the number of tiles - applicable only to dense arrays. */
+  int64_t tile_num() const;
+
+  /** Returns the number of tiles - applicable only to dense arrays. */
+  template<class T>
+  int64_t tile_num() const;
+
   /**
    * Returns the tile size for the input attribute. Applicable only to dense
    * arrays, or sparse arrays with irregular tiles (i.e., fixed tile capacity).

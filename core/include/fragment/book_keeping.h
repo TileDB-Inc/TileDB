@@ -69,6 +69,9 @@ class BookKeeping {
   /** Returns the bounding coordinates. */
   const std::vector<void*>& bounding_coords() const; 
 
+  /** Returns the number of cells in the last tile. */
+  int64_t last_tile_cell_num() const;
+
   /** Returns the MBRs. */
   const std::vector<void*>& mbrs() const; 
 
@@ -77,6 +80,9 @@ class BookKeeping {
 
   /** Returns the number of tiles in the fragment. */
   int64_t tile_num() const;
+
+  /** Returns the tile offsets. */
+  const std::vector<std::vector<size_t> >& tile_offsets() const;
 
   // MUTATORS 
 
@@ -99,6 +105,9 @@ class BookKeeping {
   // TODO
   int load();
 
+  // TODO
+  void set_last_tile_cell_num(int64_t cell_num);
+
   // MISC
 
   // TODO
@@ -111,6 +120,8 @@ class BookKeeping {
   std::vector<void*> bounding_coords_;
   /** The fragment the book-keeping belongs to. */
   const Fragment* fragment_;
+  /** Number of cells in the last tile (meaningful only in the sparse case. */
+  int64_t last_tile_cell_num_;
   /** The MBRs (applicable only to the sparse case with irregular tiles). */
   std::vector<void*> mbrs_;
   /** The offsets of the next tile to be appended for each attribute. */
@@ -129,6 +140,9 @@ class BookKeeping {
   int flush_bounding_coords(gzFile fd) const;
 
   // TODO
+  int flush_last_tile_cell_num(gzFile fd) const;
+
+  // TODO
   int flush_mbrs(gzFile fd) const;
 
   // TODO
@@ -139,6 +153,9 @@ class BookKeeping {
 
   // TODO
   int load_bounding_coords(gzFile fd);
+
+  // TODO
+  int load_last_tile_cell_num(gzFile fd);
 
   // TODO
   int load_mbrs(gzFile fd);

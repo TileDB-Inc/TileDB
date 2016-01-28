@@ -86,6 +86,10 @@ const std::vector<void*>& BookKeeping::bounding_coords() const {
   return bounding_coords_;
 }
 
+int64_t BookKeeping::last_tile_cell_num() const {
+  return last_tile_cell_num_;
+}
+
 const std::vector<void*>& BookKeeping::mbrs() const {
   return mbrs_;
 }
@@ -95,7 +99,17 @@ const void* BookKeeping::range() const {
 }
 
 int64_t BookKeeping::tile_num() const {
-  return mbrs_.size();
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+
+  if(array_schema->dense())
+    return array_schema->tile_num();
+  else 
+    return mbrs_.size();
+}
+
+const std::vector<std::vector<size_t> >& BookKeeping::tile_offsets() const {
+  return tile_offsets_;
 }
 
 /* ****************************** */
@@ -162,6 +176,12 @@ int BookKeeping::init(const void* range) {
  * mbr_#1(void*) mbr_#2(void*) ... 
  * bounding_coords_num(int64_t)
  * bounding_coords_#1(void*) bounding_coords_#2(void*) ...
+ * tile_offsets_attr#0_num(int64_t)
+ * tile_offsets_attr#0_#1 tile_offsets_attr#0_#2 ...
+ * ...
+ * tile_offsets_attr#<attribute_num>_num(int64_t)
+ * tile_offsets_attr#<attribute_num>_#1 tile_offsets_attr#<attribute_num>_#2 ...
+ * last_tile_cell_num(int64_t)
  */
 int BookKeeping::load() {
   // Prepare file name
@@ -188,6 +208,14 @@ int BookKeeping::load() {
   if(load_bounding_coords(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
 
+  // Load tile offsets
+  if(load_tile_offsets(fd) != TILEDB_BK_OK)
+    return TILEDB_BK_ERR;
+
+  // Load tile offsets
+  if(load_last_tile_cell_num(fd) != TILEDB_BK_OK)
+    return TILEDB_BK_ERR;
+
   // Close file
   if(gzclose(fd)) {
     PRINT_ERROR("Cannot load book-keeping; Cannot close file");
@@ -196,6 +224,10 @@ int BookKeeping::load() {
 
   // Success
   return TILEDB_BK_OK;
+}
+
+void BookKeeping::set_last_tile_cell_num(int64_t cell_num) {
+  last_tile_cell_num_ = cell_num;
 }
 
 /* ****************************** */
@@ -208,6 +240,12 @@ int BookKeeping::load() {
  * mbr_#1(void*) mbr_#2(void*) ... 
  * bounding_coords_num(int64_t)
  * bounding_coords_#1(void*) bounding_coords_#2(void*) ...
+ * tile_offsets_attr#0_num(int64_t)
+ * tile_offsets_attr#0_#1 tile_offsets_attr#0_#2 ...
+ * ...
+ * tile_offsets_attr#<attribute_num>_num(int64_t)
+ * tile_offsets_attr#<attribute_num>_#1 tile_offsets_attr#<attribute_num>_#2 ...
+ * last_tile_cell_num(int64_t)
  */
 int BookKeeping::finalize() {
   // Nothing to do in READ mode
@@ -242,6 +280,14 @@ int BookKeeping::finalize() {
 
   // Write bounding coordinates
   if(flush_bounding_coords(fd) != TILEDB_BK_OK)
+    return TILEDB_BK_ERR;
+
+  // Write tile offsets
+  if(flush_tile_offsets(fd) != TILEDB_BK_OK)
+    return TILEDB_BK_ERR;
+
+  // Write tile offsets
+  if(flush_last_tile_cell_num(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
 
   // Close file
@@ -283,6 +329,28 @@ int BookKeeping::flush_bounding_coords(gzFile fd) const {
     }
   } 
 
+  return TILEDB_BK_OK;
+}
+
+/* FORMAT:
+ * last_tile_cell_num(int64_t) 
+ */
+int BookKeeping::flush_last_tile_cell_num(gzFile fd) const {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int64_t cell_num_per_tile = array_schema->cell_num_per_tile();
+
+  // Handle the case of zero
+  int64_t last_tile_cell_num = 
+      (last_tile_cell_num_ == 0) ? cell_num_per_tile : last_tile_cell_num_;
+
+  if(gzwrite(fd, &last_tile_cell_num, sizeof(int64_t)) != sizeof(int64_t)) {
+    PRINT_ERROR("Cannot finalize book-keeping; Writing last tile cell "
+                "number failed");
+    return TILEDB_BK_ERR;
+  }
+
+  // Success
   return TILEDB_BK_OK;
 }
 
@@ -334,38 +402,33 @@ int BookKeeping::flush_range(gzFile fd) const {
   return TILEDB_BK_OK;
 }
 
+/* FORMAT:
+ * tile_offsets_attr#0_num(int64_t)
+ * tile_offsets_attr#0_#1 tile_offsets_attr#0_#2 ...
+ * ...
+ * tile_offsets_attr#<attribute_num>_num(int64_t)
+ * tile_offsets_attr#<attribute_num>_#1 
+ * tile_offsets_attr#<attribute_num>_#2 ...
+ */
 int BookKeeping::flush_tile_offsets(gzFile fd) const {
-  // If the array is dense, do nothing
-  // TODO: Probably this will be true also for sparse arrays with irregular
-  // tiles
-  // TODO: If there is compression though, this should change!
-  return TILEDB_BK_OK;
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  int64_t tile_offsets_num;
 
-  // Get number of offsets, number of tiles, and size of offsets
-  int tile_offsets_num = tile_offsets_.size();
-  if(tile_offsets_.back().size() == 0) // No coordinates tiles
-    --tile_offsets_num;
-  int64_t tile_num = tile_offsets_[0].size();
-  assert(tile_num > 0);
-  size_t tile_offsets_size = tile_offsets_num * tile_num * sizeof(size_t); 
+  // Write tile offsets for each attribute
+  for(int i=0; i<attribute_num+1; ++i) {
+    // Write number of offsets
+    tile_offsets_num = tile_offsets_[i].size(); 
+    if(gzwrite(fd, &tile_offsets_num, sizeof(int64_t)) != sizeof(int64_t)) {
+      PRINT_ERROR("Cannot finalize book-keeping; Writing number of "
+                  "tile offsets failed");
+      return TILEDB_BK_ERR;
+    }
 
-  // Write number of offsets
-  if(gzwrite(fd, &tile_offsets_num, sizeof(int)) != sizeof(int)) {
-    PRINT_ERROR("Cannot finalize book-keeping; Writing number of "
-                "tile offsets failed");
-    return TILEDB_BK_ERR;
-  }
-
-  // Write tile_num
-  if(gzwrite(fd, &tile_num, sizeof(int64_t)) != sizeof(int64_t)) {
-    PRINT_ERROR("Cannot finalize book-keeping; Writing number of tiles failed");
-    return TILEDB_BK_ERR;
-  }
-
-  // Write tile offsets
-  for(int i=0; i<tile_offsets_num; ++i) {
-    if(gzwrite(fd, &tile_offsets_[i][0], tile_num * sizeof(size_t)) !=
-       tile_num * sizeof(size_t)) {
+    // Write tile offsets
+    if(gzwrite(fd, &tile_offsets_[i][0], tile_offsets_num * sizeof(size_t)) !=
+       tile_offsets_num * sizeof(size_t)) {
       PRINT_ERROR("Cannot finalize book-keeping; Writing tile offsets failed");
       return TILEDB_BK_ERR;
     }
@@ -405,6 +468,21 @@ int BookKeeping::load_bounding_coords(gzFile fd) {
       return TILEDB_BK_ERR;
     }
     bounding_coords_[i] = bounding_coords;
+  }
+
+  // Success
+  return TILEDB_BK_OK;
+}
+
+/* FORMAT:
+ * last_tile_cell_num(int64_t)  
+ */
+int BookKeeping::load_last_tile_cell_num(gzFile fd) {
+  // Get last tile cell number
+  if(gzread(fd, &last_tile_cell_num_, sizeof(int64_t)) != sizeof(int64_t)) {
+    PRINT_ERROR("Cannot load book-keeping; Reading last tile cell "
+                "number failed");
+    return TILEDB_BK_ERR;
   }
 
   // Success
@@ -470,13 +548,43 @@ int BookKeeping::load_range(gzFile fd) {
   return TILEDB_BK_OK;
 }
 
+/* FORMAT:
+ * tile_offsets_attr#0_num(int64_t)
+ * tile_offsets_attr#0_#1 tile_offsets_attr#0_#2 ...
+ * ...
+ * tile_offsets_attr#<attribute_num>_num(int64_t)
+ * tile_offsets_attr#<attribute_num>_#1 
+ * tile_offsets_attr#<attribute_num>_#2 ...
+ */
 int BookKeeping::load_tile_offsets(gzFile fd) {
-  // If the array is dense, do nothing
-  // TODO: Probably this will be true also for sparse arrays with irregular
-  // tiles
-  return TILEDB_BK_OK;
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  int64_t tile_offsets_num;
 
-  // TODO
+  // Allocate tile offsets
+  tile_offsets_.resize(attribute_num+1);
+
+  // For all attributes, get the tile offsets
+  for(int i=0; i<attribute_num+1; ++i) {
+    // Get number of tile offsets
+    if(gzread(fd, &tile_offsets_num, sizeof(int64_t)) != sizeof(int64_t)) {
+      PRINT_ERROR("Cannot load book-keeping; Reading number of tile "
+                  "offsets failed");
+      return TILEDB_BK_ERR;
+    }
+ 
+    if(tile_offsets_num == 0)
+      continue;
+
+    // Get tile offsets
+    tile_offsets_[i].resize(tile_offsets_num);
+    if(gzread(fd, &tile_offsets_[i][0], tile_offsets_num * sizeof(size_t)) != 
+       tile_offsets_num * sizeof(size_t)) {
+      PRINT_ERROR("Cannot load book-keeping; Reading tile offsets failed");
+      return TILEDB_BK_ERR;
+    }
+  }
 
   // Success
   return TILEDB_BK_OK;

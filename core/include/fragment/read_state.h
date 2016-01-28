@@ -112,6 +112,10 @@ class ReadState {
    * (one per attribute). 
    */
   std::vector<int64_t> overlapping_tile_pos_;
+  /** Internal buffer used in the case of compression. */
+  void* tile_compressed_;
+  /** Allocated size for internal buffer used in the case of compression. */
+  size_t tile_compressed_allocated_size_;
   /** 
    * The query range mapped to the tile domain. In other words, it contains
    * the coordinates of the tiles (in the tile domain) that the range overlaps
@@ -304,7 +308,10 @@ class ReadState {
       size_t& buffer_offset);
 
   // TODO
-  int get_tile_from_disk(int attribute_id);
+  int get_tile_from_disk_cmp_none(int attribute_id);
+
+  // TODO
+  int get_tile_from_disk_cmp_gzip(int attribute_id);
 
   // TODO
   void init_range_in_tile_domain();
@@ -366,6 +373,13 @@ class ReadState {
       size_t& buffer_size);
 
   // TODO
+  template<class T>
+  int read_dense_attr_cmp_gzip(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size);
+
+  // TODO
   int read_sparse(
       void** buffers, 
       size_t* buffer_sizes);
@@ -385,6 +399,19 @@ class ReadState {
   // TODO
   template<class T>
   int read_sparse_attr_cmp_none(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size);
+
+  // TODO
+  int read_sparse_attr_cmp_gzip(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size);
+
+  // TODO
+  template<class T>
+  int read_sparse_attr_cmp_gzip(
       int attribute_id,
       void* buffer, 
       size_t& buffer_size);

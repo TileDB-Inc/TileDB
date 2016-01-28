@@ -158,6 +158,18 @@ ssize_t gzip(
     unsigned char* out, 
     size_t out_size);
 
+/** 
+ * decompresses the gziped input buffer and stores the result in the output 
+ * buffer, of maximum size avail_out. it also stores the decompressed data 
+ * size into out_size.
+ */
+int gunzip(
+    unsigned char* in, 
+    size_t in_size, 
+    unsigned char* out, 
+    size_t avail_out, 
+    size_t& out_size);
+
 /** Returns true if there are duplicates in the input vector. */
 template<class T>
 bool has_duplicates(const std::vector<T>& v);

@@ -90,33 +90,28 @@ class WriteState {
   /** The book-keeping structure of the fragment the write state belongs to. */
   BookKeeping* book_keeping_;
   /** The first and last coordinates of the tile currently being populated. */
-  void* current_bounding_coords_;
-  /** The MBR of the tile currently being populated. */
-  void* current_mbr_;
-  /** The number of cells written in the current tile. */
-  std::vector<std::int64_t> current_tile_cell_num_;
-  /** Internal buffers used in the case of compression. */
-  std::vector<void*> current_tiles_;
-  /** Internal buffers used in the case of compression. */
-  std::vector<void*> current_tiles_compressed_;
-  /** Offsets to the internal curent_tiles_ buffers used in compression. */
-  std::vector<size_t> current_tile_offsets_;
+  void* bounding_coords_;
   /** The fragment the write state belongs to. */
   const Fragment* fragment_;
+  /** The MBR of the tile currently being populated. */
+  void* mbr_;
+  /** The number of cells written in the current tile. */
+  int64_t tile_cell_num_;
   /** Internal buffers used in the case of compression. */
-  std::vector<void*> segments_;
-  /** The offsets inside the segments_ buffers. */
-  std::vector<size_t> segment_offsets_;
+  std::vector<void*> tiles_;
+  /** Internal buffer used in the case of compression. */
+  void* tile_compressed_;
+  /** Allocated size for internal buffer used in the case of compression. */
+  size_t tile_compressed_allocated_size_;
+  /** Offsets to the internal curent_tiles_ buffers used in compression. */
+  std::vector<size_t> tile_offsets_;
   /** Total number of cells written. */
   std::vector<std::int64_t> total_cell_num_;
 
   // PRIVATE METHODS
 
   // TODO
-  ssize_t compress_tile_into_segment(
-      int attribute_id,
-      void* tile,
-      size_t tile_size);
+  int compress_and_write_tile(int attribute_id);
 
   // TODO
   template<class T>
@@ -124,15 +119,6 @@ class WriteState {
 
   /** True if the coordinates are included in the fragment attributes. */
   bool has_coords() const;
-
-  /** Iniatializes a tile buffer for the input attribute. */
-  void init_current_tile(int attribute_id); 
-
-  /** Iniatializes a tile buffer for the input attribute used in compression. */
-  void init_current_tile_compressed(int attribute_id); 
-
-  /** Iniatializes a segment for the input attribute. */
-  void init_segment(int attribute_id); 
 
   // TODO
   void sort_cell_pos(
@@ -230,21 +216,6 @@ class WriteState {
       size_t buffer_size);
 
   // TODO
-  int write_sparse_coords(
-      const void* buffer, 
-      size_t buffer_size);
-
-  // TODO
-  int write_sparse_coords_cmp_none(
-      const void* buffer, 
-      size_t buffer_size);
-
-  // TODO
-  int write_sparse_coords_cmp_gzip(
-      const void* buffer, 
-      size_t buffer_size);
-
-  // TODO
   int write_sparse_unsorted(
       const void** buffers, 
       const size_t* buffer_sizes);
@@ -257,13 +228,21 @@ class WriteState {
       const std::vector<int64_t>& cell_pos);
 
   // TODO
-  int write_sparse_unsorted_coords(
+  int write_sparse_unsorted_attr_cmp_none(
+      int attribute_id,
       const void* buffer, 
       size_t buffer_size,
       const std::vector<int64_t>& cell_pos);
 
   // TODO
-  int write_segment_to_file(int attribute_id);
+  int write_sparse_unsorted_attr_cmp_gzip(
+      int attribute_id,
+      const void* buffer, 
+      size_t buffer_size,
+      const std::vector<int64_t>& cell_pos);
+
+  // TODO
+  int write_last_tile();
 };
 
 /** Wrapper of comparison function for sorting cells. */

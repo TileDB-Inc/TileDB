@@ -503,6 +503,29 @@ const void* ArraySchema::tile_extents() const {
   return tile_extents_;
 }
 
+int64_t ArraySchema::tile_num() const {
+  // Invoke the proper template function 
+  if(types_[attribute_num_] == &typeid(int))
+    return tile_num<int>();
+  else if(types_[attribute_num_] == &typeid(int64_t))
+    return tile_num<int64_t>();
+  else
+    assert(0);
+}
+
+template<class T>
+int64_t ArraySchema::tile_num() const {
+  // For easy reference
+  const T* domain = static_cast<const T*>(domain_);
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  int64_t ret = 1;
+  for(int i=0; i<dim_num_; ++i) 
+    ret *= (domain[2*i+1] - domain[2*i] + 1) / tile_extents[i];
+
+  return ret; 
+}
+
 size_t ArraySchema::tile_size(int attribute_id) const {
   // Sanity checks
   assert(dense_ || tile_extents_ == NULL);

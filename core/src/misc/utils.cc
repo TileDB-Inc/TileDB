@@ -280,13 +280,58 @@ ssize_t gzip(
   (void)deflateEnd(&strm);
 
   // Return 
-  if(ret == Z_STREAM_ERROR || strm.avail_in == 0) {
+  if(ret == Z_STREAM_ERROR || strm.avail_in != 0) {
     PRINT_ERROR("Cannot compress with GZIP");
     return TILEDB_UT_ERR;
   } else {
     // Return size of compressed data
     return out_size - strm.avail_out; 
   }
+}
+
+int gunzip(
+    unsigned char* in, 
+    size_t in_size,
+    unsigned char* out, 
+    size_t avail_out, 
+    size_t& out_size) {
+  int ret;
+  unsigned have;
+  z_stream strm;
+  
+  // Allocate deflate state
+  strm.zalloc = Z_NULL;
+  strm.zfree = Z_NULL;
+  strm.opaque = Z_NULL;
+  strm.avail_in = 0;
+  strm.next_in = Z_NULL;
+  ret = inflateInit(&strm);
+
+  if(ret != Z_OK) {
+    PRINT_ERROR("Cannot decompress with GZIP");
+    return TILEDB_UT_ERR;
+  }
+
+  // Compress
+  strm.next_in = in;
+  strm.next_out = out;
+  strm.avail_in = in_size;
+  strm.avail_out = avail_out;
+  ret = inflate(&strm, Z_FINISH);
+
+  if(ret == Z_STREAM_ERROR || ret != Z_STREAM_END) {
+    PRINT_ERROR("Cannot decompress with GZIP");
+    return TILEDB_UT_ERR;
+  }
+
+  // Clean up
+  (void)inflateEnd(&strm);
+
+  // Calculate size of compressed data
+  out_size = avail_out - strm.avail_out; 
+
+  // Success
+  return TILEDB_UT_OK;
 }
 
 template<class T>

@@ -81,6 +81,8 @@ ReadState::ReadState(
   tile_offsets_.resize(attribute_num+1);
   tile_sizes_.resize(attribute_num+1);
   coords_tile_fetched_ = false;
+  tile_compressed_ = NULL;
+  tile_compressed_allocated_size_ = 0;
 
   for(int i=0; i<attribute_num+1; ++i) {
     overlapping_tile_pos_[i] = 0;
@@ -107,7 +109,7 @@ ReadState::~ReadState() {
 
     if(overlapping_tiles_[i].coords_ != NULL)
       free(overlapping_tiles_[i].coords_);
-   }
+  }
 
   for(int i=0; i<attribute_num+1; ++i) {
     if(tiles_[i] != NULL)
@@ -116,6 +118,9 @@ ReadState::~ReadState() {
 
   if(range_in_tile_domain_ != NULL)
     free(range_in_tile_domain_);
+
+  if(tile_compressed_ != NULL)
+    free(tile_compressed_);
 }
 
 /* ****************************** */
@@ -271,26 +276,10 @@ void ReadState::get_next_overlapping_tile_sparse() {
   }
 
   // Compute number of cells in the tile
-  if(overlapping_tile.pos_ != tile_num-1) { // Not last tile
+  if(overlapping_tile.pos_ != tile_num-1)  // Not last tile
     overlapping_tile.cell_num_ = array_schema->capacity();
-  } else {                                  // Last tile
-    ssize_t file_size = -1;
-    std::string filename = fragment_->fragment_name() + "/" +
-                           array_schema->attribute(attribute_num) +
-                           TILEDB_FILE_SUFFIX;
-    int fd = open(filename.c_str(), O_RDONLY);
-    struct stat st;
-    fstat(fd, &st);
-    file_size = st.st_size;
-    close(fd);
-    assert(file_size > 0);
-
-    if(file_size % full_tile_size == 0) // Last tile is full 
-      overlapping_tile.cell_num_ = array_schema->capacity();
-    else                                // Last tile is not full
-      overlapping_tile.cell_num_ = 
-          (file_size - (tile_num-1) * full_tile_size) / coords_size;
-  }
+  else                                     // Last tile
+    overlapping_tile.cell_num_ = book_keeping_->last_tile_cell_num();
 
   // Store the new tile
   overlapping_tiles_.push_back(overlapping_tile); 
@@ -346,7 +335,7 @@ void ReadState::compute_cell_pos_ranges() {
   const T* range = static_cast<const T*>(fragment_->array()->range());
 
   // Bring coordinates tile in main memory
-  get_tile_from_disk(attribute_num);
+  get_tile_from_disk_cmp_none(attribute_num);
 
   // Invoke the proper function based on the type of range and overlap
   if(is_unary_range(range, dim_num))
@@ -1237,7 +1226,7 @@ int ReadState::copy_tile_full(
         buffer_offset);
   } else {                             // Two-step copy
     // Get tile from the disk to the local buffer
-    if(get_tile_from_disk(attribute_id) != TILEDB_RS_OK)
+    if(get_tile_from_disk_cmp_none(attribute_id) != TILEDB_RS_OK)
       return TILEDB_RS_ERR;
     // Copy as much data as it fits from local buffer into input buffer
     copy_from_tile_buffer_full(
@@ -1440,7 +1429,7 @@ int ReadState::copy_tile_partial_non_contig_dense(
     size_t buffer_size,
     size_t& buffer_offset) {
   // Get tile from the disk into the local buffer
-  if(get_tile_from_disk(attribute_id) != TILEDB_RS_OK) 
+  if(get_tile_from_disk_cmp_none(attribute_id) != TILEDB_RS_OK) 
     return TILEDB_RS_ERR;
 
   // Copy as much data as it fits from local buffer into input buffer
@@ -1461,7 +1450,7 @@ int ReadState::copy_tile_partial_non_contig_sparse(
     size_t buffer_size,
     size_t& buffer_offset) {
   // Get tile from the disk into the local buffer
-  if(get_tile_from_disk(attribute_id) != TILEDB_RS_OK) 
+  if(get_tile_from_disk_cmp_none(attribute_id) != TILEDB_RS_OK) 
     return TILEDB_RS_ERR;
 
   // Copy as much data as it fits from local buffer into input buffer
@@ -1503,7 +1492,7 @@ int ReadState::copy_tile_partial_contig_dense(
         buffer_offset);
   } else {                               // Need to buffer the tile locally
     // Get tile from the disk into the local buffer
-    if(get_tile_from_disk(attribute_id) != TILEDB_RS_OK) 
+    if(get_tile_from_disk_cmp_none(attribute_id) != TILEDB_RS_OK) 
       return TILEDB_RS_ERR;
     
     // Copy the relevant data to the input buffer
@@ -1554,7 +1543,7 @@ int ReadState::copy_tile_partial_contig_sparse(
         buffer_offset);
   } else {                               // Need to buffer the tile locally
     // Get tile from the disk into the local buffer
-    if(get_tile_from_disk(attribute_id) != TILEDB_RS_OK) 
+    if(get_tile_from_disk_cmp_none(attribute_id) != TILEDB_RS_OK) 
       return TILEDB_RS_ERR;
     
     // Copy the relevant data to the input buffer
@@ -1569,7 +1558,7 @@ int ReadState::copy_tile_partial_contig_sparse(
   return TILEDB_RS_OK;
 }
 
-int ReadState::get_tile_from_disk(int attribute_id) {
+int ReadState::get_tile_from_disk_cmp_none(int attribute_id) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
@@ -1586,10 +1575,11 @@ int ReadState::get_tile_from_disk(int attribute_id) {
   size_t tile_size = overlapping_tile.cell_num_ * cell_size;
 
   // Allocate space for the tile if needed
-  if(tiles_[attribute_id] == NULL) {
-    tiles_[attribute_id] = malloc(tile_size);
-    tile_sizes_[attribute_id] = tile_size;
-  } 
+  if(tiles_[attribute_id] == NULL) 
+    tiles_[attribute_id] = malloc(full_tile_size);
+
+  // Set the actual tile size
+  tile_sizes_[attribute_id] = tile_size; 
 
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
@@ -1620,6 +1610,108 @@ int ReadState::get_tile_from_disk(int attribute_id) {
     PRINT_ERROR("Cannot get tile from disk; File closing error");
     return TILEDB_RS_ERR;
   }
+
+  // Update tile offset
+  tile_offsets_[attribute_id] = 0;
+
+  // Set flag
+  if(attribute_id == attribute_num)
+    coords_tile_fetched_ = true;
+  
+  // Success
+  return TILEDB_RS_OK;
+}
+
+int ReadState::get_tile_from_disk_cmp_gzip(int attribute_id) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+
+  // Check if the coodinates tile is already in memory
+  if(attribute_id == attribute_num && coords_tile_fetched_)
+    return TILEDB_RS_OK;
+
+  // For easy reference
+  size_t cell_size = array_schema->cell_size(attribute_id);
+  OverlappingTile& overlapping_tile = 
+      overlapping_tiles_[overlapping_tile_pos_[attribute_id]];
+  size_t full_tile_size = array_schema->tile_size(attribute_id);
+  size_t tile_size = overlapping_tile.cell_num_ * cell_size;
+  const std::vector<std::vector<size_t> >& tile_offsets = 
+      book_keeping_->tile_offsets(); 
+  int64_t tile_num = book_keeping_->tile_num();
+
+  // Potentially allocate or expand compressed tile buffer
+  if(tile_compressed_ == NULL) {
+    tile_compressed_allocated_size_ = 
+        tile_size + 6 + 5*(ceil(tile_size/16834.0));
+    tile_compressed_ = malloc(tile_compressed_allocated_size_); 
+  }
+
+  // Expand comnpressed tile if necessary
+  while(tile_size + 6 + 5*(ceil(tile_size/16834.0)) > 
+        tile_compressed_allocated_size_) 
+    expand_buffer(tile_compressed_, tile_compressed_allocated_size_);
+
+  // Allocate space for the tile if needed
+  if(tiles_[attribute_id] == NULL) 
+    tiles_[attribute_id] = malloc(full_tile_size);
+
+  // Set the actual tile size
+  tile_sizes_[attribute_id] = tile_size;
+
+  // Prepare attribute file name
+  std::string filename = fragment_->fragment_name() + "/" +
+                         array_schema->attribute(attribute_id) +
+                         TILEDB_FILE_SUFFIX;
+
+  // Open file
+  int fd = open(filename.c_str(), O_RDONLY);
+  if(fd == -1) {
+    PRINT_ERROR("Cannot get tile from disk; File opening error");
+    return TILEDB_RS_ERR;
+  }
+
+  // Get file size
+  struct stat st;
+  fstat(fd, &st);
+  ssize_t file_size = st.st_size;
+
+  // Find file offset where the tile begins
+  int64_t pos = overlapping_tile.pos_;
+  size_t file_offset = tile_offsets[attribute_id][pos];
+  size_t tile_compressed_size = 
+      (pos == tile_num-1) ? file_size - tile_offsets[attribute_id][pos] 
+                          : tile_offsets[attribute_id][pos+1] - 
+                            tile_offsets[attribute_id][pos];
+
+  // Read tile
+  lseek(fd, file_offset, SEEK_SET); 
+  ssize_t bytes_read = ::read(fd, tile_compressed_, tile_compressed_size);
+
+  if(bytes_read != tile_compressed_size) {
+    PRINT_ERROR("Cannot get tile from disk; File reading error");
+    return TILEDB_RS_ERR;
+  }
+ 
+  // Close file
+  if(close(fd)) {
+    PRINT_ERROR("Cannot get tile from disk; File closing error");
+    return TILEDB_RS_ERR;
+  }
+
+  // Decompress tile 
+  size_t gunzip_out_size;
+  if(gunzip(
+         static_cast<unsigned char*>(tile_compressed_), 
+         tile_compressed_size, 
+         static_cast<unsigned char*>(tiles_[attribute_id]),
+         full_tile_size,
+         gunzip_out_size) != TILEDB_UT_OK)
+    return TILEDB_RS_ERR;
+
+  // Sanity check
+  assert(gunzip_out_size == tile_size);
 
   // Update tile offset
   tile_offsets_[attribute_id] = 0;
@@ -2073,7 +2165,7 @@ int ReadState::read_dense_attr(
   if(compression == ArraySchema::TILEDB_AS_CMP_NONE) {
     return read_dense_attr_cmp_none(attribute_id, buffer, buffer_size);
   } else { // GZIP
-    // TODO
+    return read_dense_attr_cmp_gzip(attribute_id, buffer, buffer_size);
   }
 }
 
@@ -2168,6 +2260,101 @@ int ReadState::read_dense_attr_cmp_none(
   }
 }
 
+int ReadState::read_dense_attr_cmp_gzip(
+    int attribute_id,
+    void* buffer,
+    size_t& buffer_size) {
+  // Hanlde empty attributes
+  if(is_empty_attribute(attribute_id)) {
+    buffer_size = 0;
+    return TILEDB_RS_OK;
+  }
+
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const std::type_info* coords_type = array_schema->coords_type();
+
+  // Invoke the proper templated function
+  if(coords_type == &typeid(int)) {
+    return read_dense_attr_cmp_gzip<int>(attribute_id, buffer, buffer_size);
+  } else if(coords_type == &typeid(int64_t)) {
+    return read_dense_attr_cmp_gzip<int64_t>(attribute_id, buffer, buffer_size);
+  } else {
+    PRINT_ERROR("Cannot read from fragment; Invalid coordinates type");
+    return TILEDB_RS_ERR;
+  }
+}
+
+template<class T>
+int ReadState::read_dense_attr_cmp_gzip(
+    int attribute_id,
+    void* buffer,
+    size_t& buffer_size) {
+  // Auxiliary variables
+  size_t buffer_offset = 0;
+
+  // The following loop should break somewhere inside
+  for(;;) {
+    // There are still data pending inside the local tile buffers
+    if(tile_offsets_[attribute_id] < tile_sizes_[attribute_id]) 
+      copy_from_tile_buffer_dense<T>(
+          attribute_id, 
+          buffer, 
+          buffer_size, 
+          buffer_offset); 
+
+    // If the buffer overflows, return
+    if(buffer_offset > buffer_size) {
+      ++buffer_size; // This will indicate the overflow
+      return TILEDB_RS_OK; 
+    }
+
+    // Compute the next overlapping tile
+    if(overlapping_tile_pos_[attribute_id] >= overlapping_tiles_.size())
+      get_next_overlapping_tile_dense<T>();
+
+    // Fectch and decompress tile
+    if(overlapping_tiles_[overlapping_tile_pos_[attribute_id]].overlap_
+       != NONE) {
+      if(get_tile_from_disk_cmp_gzip(attribute_id) != TILEDB_RS_OK)
+        return TILEDB_RS_ERR;
+    }
+
+    // Invoke proper copy command
+    if(overlapping_tiles_[overlapping_tile_pos_[attribute_id]].overlap_
+       == NONE) {                 // No more tiles
+      buffer_size = buffer_offset;
+      return TILEDB_RS_OK; 
+    } else if(overlapping_tiles_[overlapping_tile_pos_[attribute_id]].overlap_ 
+              == FULL) {          // Full tile
+      copy_from_tile_buffer_full(
+          attribute_id, 
+          buffer, 
+          buffer_size, 
+          buffer_offset);
+    } else if(overlapping_tiles_[overlapping_tile_pos_[attribute_id]].overlap_ 
+              == PARTIAL_CONTIG) { // Partial tile, contig
+      copy_from_tile_buffer_partial_contig_dense<T>(
+          attribute_id, 
+          buffer, 
+          buffer_size, 
+          buffer_offset);
+    } else {                       // Partial tile, non-contig
+      copy_from_tile_buffer_partial_non_contig_dense<T>(
+          attribute_id, 
+          buffer, 
+          buffer_size, 
+          buffer_offset);
+    }
+
+    // If the buffer overflows, return
+    if(buffer_offset > buffer_size) {
+      ++buffer_size; // This will indicate the overflow
+      return TILEDB_RS_OK; 
+    }
+  }
+}
+
 int ReadState::read_sparse(
     void** buffers,
     size_t* buffer_sizes) {
@@ -2211,7 +2398,7 @@ int ReadState::read_sparse_attr(
   if(compression == ArraySchema::TILEDB_AS_CMP_NONE) {
     return read_sparse_attr_cmp_none(attribute_id, buffer, buffer_size);
   } else { // GZIP
-    // TODO
+    return read_sparse_attr_cmp_gzip(attribute_id, buffer, buffer_size);
   }
 }
 
@@ -2312,6 +2499,117 @@ int ReadState::read_sparse_attr_cmp_none(
              buffer_size, 
              buffer_offset) != TILEDB_RS_OK)
         return TILEDB_RS_ERR;
+    }
+
+    // If the buffer overflows, return
+    if(buffer_offset > buffer_size) {
+      ++buffer_size; // This will indicate the overflow
+      return TILEDB_RS_OK; 
+    }
+  }
+}
+
+int ReadState::read_sparse_attr_cmp_gzip(
+    int attribute_id,
+    void* buffer,
+    size_t& buffer_size) {
+  // Hanlde empty attributes
+  if(is_empty_attribute(attribute_id)) {
+    buffer_size = 0;
+    return TILEDB_RS_OK;
+  }
+
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const std::type_info* coords_type = array_schema->coords_type();
+
+  // Invoke the proper templated function
+  if(coords_type == &typeid(int)) {
+    return read_sparse_attr_cmp_gzip<int>(
+               attribute_id, 
+               buffer, 
+               buffer_size);
+  } else if(coords_type == &typeid(int64_t)) {
+    return read_sparse_attr_cmp_gzip<int64_t>(
+               attribute_id, 
+               buffer, 
+               buffer_size);
+  } else if(coords_type == &typeid(float)) {
+    return read_sparse_attr_cmp_gzip<float>(
+               attribute_id, 
+               buffer, 
+               buffer_size);
+  } else if(coords_type == &typeid(double)) {
+    return read_sparse_attr_cmp_gzip<double>(
+               attribute_id, 
+               buffer, 
+               buffer_size);
+  } else {
+    PRINT_ERROR("Cannot read from fragment; Invalid coordinates type");
+    return TILEDB_RS_ERR;
+  }
+}
+
+template<class T>
+int ReadState::read_sparse_attr_cmp_gzip(
+    int attribute_id,
+    void* buffer,
+    size_t& buffer_size) {
+  // Auxiliary variables
+  size_t buffer_offset = 0;
+
+  // The following loop should break somewhere inside
+  for(;;) {
+    // There are still data pending inside the local tile buffers
+    if(tile_offsets_[attribute_id] < tile_sizes_[attribute_id]) 
+      copy_from_tile_buffer_sparse<T>(
+          attribute_id, 
+          buffer, 
+          buffer_size, 
+          buffer_offset); 
+
+    // If the buffer overflows, return
+    if(buffer_offset > buffer_size) {
+      ++buffer_size; // This will indicate the overflow
+      return TILEDB_RS_OK; 
+    }
+
+    // Compute the next overlapping tile
+    if(overlapping_tile_pos_[attribute_id] >= overlapping_tiles_.size())
+      get_next_overlapping_tile_sparse<T>();
+
+    // Fectch and decompress tile
+    if(overlapping_tiles_[overlapping_tile_pos_[attribute_id]].overlap_
+       != NONE) {
+      if(get_tile_from_disk_cmp_gzip(attribute_id) != TILEDB_RS_OK)
+        return TILEDB_RS_ERR;
+    }
+
+    // Invoke proper copy command
+    if(overlapping_tiles_[overlapping_tile_pos_[attribute_id]].overlap_
+       == NONE) {                 // No more tiles
+      buffer_size = buffer_offset;
+      return TILEDB_RS_OK; 
+    } else if(overlapping_tiles_[overlapping_tile_pos_[attribute_id]].overlap_ 
+              == FULL) {          // Full tile
+      copy_from_tile_buffer_full(
+          attribute_id, 
+          buffer, 
+          buffer_size, 
+          buffer_offset);
+    } else if(overlapping_tiles_[overlapping_tile_pos_[attribute_id]].overlap_ 
+              == PARTIAL_CONTIG) { // Partial tile, contig
+      copy_from_tile_buffer_partial_contig_sparse<T>(
+          attribute_id, 
+          buffer, 
+          buffer_size, 
+          buffer_offset);
+    } else {                       // Partial tile, non-contig
+      copy_from_tile_buffer_partial_non_contig_sparse<T>(
+          attribute_id, 
+          buffer, 
+          buffer_size, 
+          buffer_offset);
     }
 
     // If the buffer overflows, return

@@ -29,7 +29,7 @@ int main() {
   array_schema.capacity_ = 4;
 
   /* Set cell order. */ 
-  array_schema.cell_order_ = "hilbert";
+  array_schema.cell_order_ = "row-major";
 
   /* Set dimensions and number of dimensions. */
   const char* dimensions[] = { "d1", "d2" };
@@ -47,9 +47,13 @@ int main() {
   const int64_t domain[] = { 1, 4, 1, 4};
   array_schema.domain_ = domain;
 
+  /* Compression for "a1" is GZIP, none for the rest. */
+  const char* compression[] = { "GZIP", "NONE", "NONE" };
+  array_schema.compression_ = compression;
+
   /* 
    * NOTE: The rest of the array schema members will be set to default values.
-   * This implies that the array is sparse, has irregular tiles, no compression,
+   * This implies that the array is sparse, has irregular tiles,
    * and consolidation step equal to 1.
    */
 

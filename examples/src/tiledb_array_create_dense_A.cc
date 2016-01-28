@@ -51,9 +51,13 @@ int main() {
   /* The array is dense. */
   array_schema.dense_ = 1;
 
+  /* Compression for "a1" is GZIP, none for the rest. */
+  const char* compression[] = { "GZIP", "NONE", "NONE" };
+  array_schema.compression_ = compression;
+
   /* 
    * NOTE: The rest of the array schema members will be set to default values.
-   * This implies that the array has "row-major" tile order, no compression,
+   * This implies that the array has "row-major" tile order,
    * and consolidation step equal to 1.
    */
 

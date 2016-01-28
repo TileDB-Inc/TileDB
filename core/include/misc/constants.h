@@ -50,18 +50,6 @@
 /** Name of the coordinates attribute. */
 #define TILEDB_COORDS_NAME "__coords"
 
-/** 
- * The segment size, which is used in some cases as the atomic unit of I/O. 
- */
-#define TILEDB_SEGMENT_SIZE 10000000 // ~ 10MB
-
-/** 
- * The segment size used in zlib (compression) operations, takining inot account
- * zlib's maximum expansion factor. 
- */
-#define TILEDB_Z_SEGMENT_SIZE \
-    TILEDB_SEGMENT_SIZE + 6 + 5*(ceil(TILEDB_SEGMENT_SIZE/16834.0)) 
-
 /** Suffix of a TileDB file. */
 #define TILEDB_FILE_SUFFIX ".tdb"
 
