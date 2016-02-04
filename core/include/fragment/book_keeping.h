@@ -84,6 +84,12 @@ class BookKeeping {
   /** Returns the tile offsets. */
   const std::vector<std::vector<size_t> >& tile_offsets() const;
 
+  /** Returns the variable tile offsets. */
+  const std::vector<std::vector<size_t> >& tile_var_offsets() const;
+
+  /** Returns the variable tile sizes. */
+  const std::vector<std::vector<size_t> >& tile_var_sizes() const;
+
   // MUTATORS 
 
   /** Appends the tile bounding coordinates to the book-keeping structure. */
@@ -94,6 +100,13 @@ class BookKeeping {
  
   /** Appends a tile offset for the input attribute. */
   void append_tile_offset(int attribute_id, size_t offset);
+
+  /** Appends a variable tile offset for the input attribute. */
+  void append_tile_var_offset(int attribute_id, size_t offset);
+
+  /** Appends a variable tile size for the input attribute. */
+  void append_tile_var_size(int attribute_id, size_t size);
+
   /*
    * Initializes the book-keeping structure.
    * 
@@ -124,8 +137,10 @@ class BookKeeping {
   int64_t last_tile_cell_num_;
   /** The MBRs (applicable only to the sparse case with irregular tiles). */
   std::vector<void*> mbrs_;
-  /** The offsets of the next tile to be appended for each attribute. */
+  /** The offsets of the next tile for each attribute. */
   std::vector<size_t> next_tile_offsets_;
+  /** The offsets of the next variable tile for each attribute. */
+  std::vector<size_t> next_tile_var_offsets_;
   /**
    * The range in which the fragment is constrained. Note that the type of the
    * range must be the same as the type of the array coordinates.
@@ -133,6 +148,10 @@ class BookKeeping {
   void* range_;
   /** The tile offsets in their corresponding attribute files. */
   std::vector<std::vector<size_t> > tile_offsets_;
+  /** The variable tile offsets in their corresponding attribute files. */
+  std::vector<std::vector<size_t> > tile_var_offsets_;
+  /** The sizes of the variable tiles. */
+  std::vector<std::vector<size_t> > tile_var_sizes_;
 
   // PRIVATE METHODS
 
@@ -152,6 +171,12 @@ class BookKeeping {
   int flush_tile_offsets(gzFile fd) const;
 
   // TODO
+  int flush_tile_var_offsets(gzFile fd) const;
+
+  // TODO
+  int flush_tile_var_sizes(gzFile fd) const;
+
+  // TODO
   int load_bounding_coords(gzFile fd);
 
   // TODO
@@ -165,6 +190,12 @@ class BookKeeping {
 
   // TODO
   int load_tile_offsets(gzFile fd);
+
+  // TODO
+  int load_tile_var_offsets(gzFile fd);
+
+  // TODO
+  int load_tile_var_sizes(gzFile fd);
 };
 
 #endif

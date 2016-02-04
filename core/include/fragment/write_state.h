@@ -91,27 +91,44 @@ class WriteState {
   BookKeeping* book_keeping_;
   /** The first and last coordinates of the tile currently being populated. */
   void* bounding_coords_;
+  /**  
+   * The current buffer offsets of the variable-sized attributes in their 
+   * respective files.
+   */
+  std::vector<size_t> buffer_var_offsets_;
   /** The fragment the write state belongs to. */
   const Fragment* fragment_;
   /** The MBR of the tile currently being populated. */
   void* mbr_;
-  /** The number of cells written in the current tile. */
-  int64_t tile_cell_num_;
+  /** The number of cells written in the current tile for each attribute. */
+  std::vector<int64_t> tile_cell_num_;
   /** Internal buffers used in the case of compression. */
   std::vector<void*> tiles_;
+  /** Offsets of the current tiles inside the files. */
+  std::vector<size_t> tiles_var_file_offsets_;
+  /** Offsets to the internal variable tile buffers. */
+  std::vector<size_t> tiles_var_offsets_;
+  /** Internal buffers used in the case of compression for variable tiles. */
+  std::vector<void*> tiles_var_;
+  /** 
+   * Sizes of internal buffers used in the case of compression for variable 
+   * tiles. 
+   */
+  std::vector<size_t> tiles_var_sizes_;
   /** Internal buffer used in the case of compression. */
   void* tile_compressed_;
   /** Allocated size for internal buffer used in the case of compression. */
   size_t tile_compressed_allocated_size_;
-  /** Offsets to the internal curent_tiles_ buffers used in compression. */
+  /** Offsets to the internal tile buffers used in compression. */
   std::vector<size_t> tile_offsets_;
-  /** Total number of cells written. */
-  std::vector<std::int64_t> total_cell_num_;
 
   // PRIVATE METHODS
 
   // TODO
   int compress_and_write_tile(int attribute_id);
+
+  // TODO
+  int compress_and_write_tile_var(int attribute_id);
 
   // TODO
   template<class T>
@@ -121,6 +138,14 @@ class WriteState {
   bool has_coords() const;
 
   // TODO
+  void shift_var_offsets(
+      int attribute_id,
+      size_t buffer_var_size,
+      const void* buffer,
+      size_t buffer_size,
+      void* shifted_buffer);
+
+  // TODO
   void sort_cell_pos(
       const void* buffer, 
       size_t buffer_size,
@@ -139,6 +164,9 @@ class WriteState {
   // TODO
   template<class T>
   void update_book_keeping(const void* buffer, size_t buffer_size);
+
+  // TODO
+  void update_tile_cell_num(int attribute_id, int64_t buffer_cell_num);
 
   // TODO
   int write_dense(
@@ -166,26 +194,26 @@ class WriteState {
   // TODO
   int write_dense_attr_var(
       int attribute_id,
-      const void* buffer_val, 
-      size_t buffer_val_size,
-      const void* buffer_val_num, 
-      size_t buffer_val_num_size);
+      const void* buffer, 
+      size_t buffer_size,
+      const void* buffer_var, 
+      size_t buffer_var_size);
 
   // TODO
   int write_dense_attr_var_cmp_none(
       int attribute_id,
-      const void* buffer_val, 
-      size_t buffer_val_size,
-      const void* buffer_val_num, 
-      size_t buffer_val_num_size);
+      const void* buffer, 
+      size_t buffer_size,
+      const void* buffer_var, 
+      size_t buffer_var_size);
 
   // TODO
   int write_dense_attr_var_cmp_gzip(
       int attribute_id,
-      const void* buffer_val, 
-      size_t buffer_val_size,
-      const void* buffer_val_num, 
-      size_t buffer_val_num_size);
+      const void* buffer, 
+      size_t buffer_size,
+      const void* buffer_var, 
+      size_t buffer_var_size);
 
   // TODO
   int write_dense_in_range(
@@ -216,6 +244,30 @@ class WriteState {
       size_t buffer_size);
 
   // TODO
+  int write_sparse_attr_var(
+      int attribute_id,
+      const void* buffer, 
+      size_t buffer_size,
+      const void* buffer_var, 
+      size_t buffer_var_size);
+
+  // TODO
+  int write_sparse_attr_var_cmp_none(
+      int attribute_id,
+      const void* buffer, 
+      size_t buffer_size,
+      const void* buffer_var, 
+      size_t buffer_var_size);
+
+  // TODO
+  int write_sparse_attr_var_cmp_gzip(
+      int attribute_id,
+      const void* buffer, 
+      size_t buffer_size,
+      const void* buffer_var, 
+      size_t buffer_var_size);
+
+  // TODO
   int write_sparse_unsorted(
       const void** buffers, 
       const size_t* buffer_sizes);
@@ -239,6 +291,33 @@ class WriteState {
       int attribute_id,
       const void* buffer, 
       size_t buffer_size,
+      const std::vector<int64_t>& cell_pos);
+
+  // TODO
+  int write_sparse_unsorted_attr_var(
+      int attribute_id,
+      const void* buffer, 
+      size_t buffer_size,
+      const void* buffer_var, 
+      size_t buffer_var_size,
+      const std::vector<int64_t>& cell_pos);
+
+  // TODO
+  int write_sparse_unsorted_attr_var_cmp_none(
+      int attribute_id,
+      const void* buffer, 
+      size_t buffer_size,
+      const void* buffer_var, 
+      size_t buffer_var_size,
+      const std::vector<int64_t>& cell_pos);
+
+  // TODO
+  int write_sparse_unsorted_attr_var_cmp_gzip(
+      int attribute_id,
+      const void* buffer, 
+      size_t buffer_size,
+      const void* buffer_var, 
+      size_t buffer_var_size,
       const std::vector<int64_t>& cell_pos);
 
   // TODO

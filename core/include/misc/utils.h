@@ -139,6 +139,9 @@ int expand_buffer(void*& buffer, size_t& buffer_allocated_size);
 template<class T>
 void expand_mbr(T* mbr, const T* coords, int dim_num);
 
+/** Returns the size of the input file and TILEDB_UT_ERR for error. */
+ssize_t file_size(const std::string& filename);
+
 /** Returns the names of the directories inside the input directory. */
 std::vector<std::string> get_dirs(const std::string& dir);
 
@@ -168,6 +171,14 @@ int gunzip(
     size_t in_size, 
     unsigned char* out, 
     size_t avail_out, 
+    size_t& out_size);
+
+// TODO
+int gunzip_unknown_output_size(
+    unsigned char* in, 
+    size_t in_size, 
+    void*& out, 
+    size_t& avail_out, 
     size_t& out_size);
 
 /** Returns true if there are duplicates in the input vector. */

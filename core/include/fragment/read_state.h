@@ -101,6 +101,8 @@ class ReadState {
 
   /** The book-keeping structure of the fragment the write state belongs to. */
   BookKeeping* book_keeping_;
+  // TODO
+  std::vector<int64_t> cell_pos_range_pos_;
   /** True if the coordinates tile is fetched into the memory. */
   bool coords_tile_fetched_;
   /** The fragment the write state belongs to. */
@@ -124,8 +126,14 @@ class ReadState {
   void* range_in_tile_domain_;
   /** Local tile buffers (one per attribute). */
   std::vector<void*> tiles_;
+  /** Local variable tile buffers (one per attribute). */
+  std::vector<void*> tiles_var_;
+  /** Allocated sizes for the local varible tile buffers. */
+  std::vector<size_t> tiles_var_allocated_size_;
   /** Current offsets in tiles_ (one per attribute). */
   std::vector<size_t> tile_offsets_;
+  /** Current offsets in tiles_var_ (one per attribute). */
+  std::vector<size_t> tile_var_offsets_;
   /** 
    * A range indicating the positions of the adjacent tiles to be searched. 
    * Applicable only to the sparse case.
@@ -133,6 +141,8 @@ class ReadState {
   int64_t tile_search_range_[2];
   /** Sizes of tiles_ (one per attribute). */
   std::vector<size_t> tile_sizes_;
+  /** Sizes of tiles_var_ (one per attribute). */
+  std::vector<size_t> tile_var_sizes_;
 
   // PRIVATE METHODS
 
@@ -145,7 +155,23 @@ class ReadState {
   void get_next_overlapping_tile_sparse();
 
   // TODO
+  int compute_tile_var_size(
+      int attribute_id, 
+      int tile_pos,
+      size_t& tile_size);
+
+  // TODO
   void clean_up_processed_overlapping_tiles();
+
+  // TODO
+  void compute_bytes_to_copy(
+      int attribute_id,
+      int64_t start_cell_pos,
+      int64_t end_cell_pos,
+      size_t buffer_free_space, 
+      size_t buffer_var_free_space,
+      size_t& bytes_to_copy,
+      size_t& bytes_var_to_copy) const;
 
   // TODO
   template<class T>
@@ -197,6 +223,17 @@ class ReadState {
 
   // TODO
   template<class T>
+  void copy_from_tile_buffer_dense_var(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t& buffer_offset,
+      void* buffer_var, 
+      size_t buffer_var_size,
+      size_t& buffer_var_offset);
+
+  // TODO
+  template<class T>
   void copy_from_tile_buffer_sparse(
       int attribute_id,
       void* buffer, 
@@ -204,11 +241,32 @@ class ReadState {
       size_t& buffer_offset);
 
   // TODO
+  template<class T>
+  void copy_from_tile_buffer_sparse_var(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t& buffer_offset,
+      void* buffer_var, 
+      size_t buffer_var_size,
+      size_t& buffer_var_offset);
+
+  // TODO
   void copy_from_tile_buffer_full(
       int attribute_id,
       void* buffer, 
       size_t buffer_size, 
       size_t& buffer_offset);
+
+  // TODO
+  void copy_from_tile_buffer_full_var(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t& buffer_offset,
+      void* buffer_var, 
+      size_t buffer_var_size,
+      size_t& buffer_var_offset);
 
   // TODO
   template<class T>
@@ -220,11 +278,33 @@ class ReadState {
 
   // TODO
   template<class T>
+  void copy_from_tile_buffer_partial_non_contig_dense_var(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t& buffer_offset,
+      void* buffer_var, 
+      size_t buffer_var_size, 
+      size_t& buffer_var_offset);
+
+  // TODO
+  template<class T>
   void copy_from_tile_buffer_partial_non_contig_sparse(
       int attribute_id,
       void* buffer, 
       size_t buffer_size, 
       size_t& buffer_offset);
+
+  // TODO
+  template<class T>
+  void copy_from_tile_buffer_partial_non_contig_sparse_var(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t& buffer_offset,
+      void* buffer_var, 
+      size_t buffer_var_size, 
+      size_t& buffer_var_offset);
 
   // TODO
   template<class T>
@@ -236,11 +316,33 @@ class ReadState {
 
   // TODO
   template<class T>
+  void copy_from_tile_buffer_partial_contig_dense_var(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t& buffer_offset,
+      void* buffer_var,
+      size_t buffer_var_size,
+      size_t& buffer_var_offset);
+
+  // TODO
+  template<class T>
   void copy_from_tile_buffer_partial_contig_sparse(
       int attribute_id,
       void* buffer, 
       size_t buffer_size, 
       size_t& buffer_offset);
+
+  // TODO
+  template<class T>
+  void copy_from_tile_buffer_partial_contig_sparse_var(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t& buffer_offset,
+      void* buffer_var,
+      size_t buffer_var_size,
+      size_t& buffer_var_offset);
 
   // TODO
   int copy_tile_full(
@@ -250,12 +352,34 @@ class ReadState {
       size_t& buffer_offset);
 
   // TODO
+  int copy_tile_full_var(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t& buffer_offset,
+      void* buffer_var, 
+      size_t buffer_var_size, 
+      size_t& buffer_var_offset);
+
+  // TODO
   int copy_tile_full_direct(
       int attribute_id,
       void* buffer, 
       size_t buffer_size, 
       size_t tile_size,
       size_t& buffer_offset);
+
+  // TODO
+  int copy_tile_full_direct_var(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t tile_size,
+      size_t& buffer_offset,
+      void* buffer_var, 
+      size_t buffer_var_size,
+      size_t tile_var_size,
+      size_t& buffer_var_offset);
 
   // TODO
   template<class T>
@@ -285,11 +409,33 @@ class ReadState {
 
   // TODO
   template<class T>
+  int copy_tile_partial_non_contig_dense_var(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t& buffer_offset,
+      void* buffer_var, 
+      size_t buffer_var_size,
+      size_t& buffer_var_offset);
+
+  // TODO
+  template<class T>
   int copy_tile_partial_non_contig_sparse(
       int attribute_id,
       void* buffer, 
       size_t buffer_size, 
       size_t& buffer_offset);
+
+  // TODO
+  template<class T>
+  int copy_tile_partial_non_contig_sparse_var(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t& buffer_offset,
+      void* buffer_var, 
+      size_t buffer_var_size,
+      size_t& buffer_var_offset);
 
   // TODO
   template<class T>
@@ -301,6 +447,17 @@ class ReadState {
 
   // TODO
   template<class T>
+  int copy_tile_partial_contig_dense_var(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t& buffer_offset,
+      void* buffer_var, 
+      size_t buffer_var_size, 
+      size_t& buffer_var_offset);
+
+  // TODO
+  template<class T>
   int copy_tile_partial_contig_sparse(
       int attribute_id,
       void* buffer, 
@@ -308,10 +465,27 @@ class ReadState {
       size_t& buffer_offset);
 
   // TODO
+  template<class T>
+  int copy_tile_partial_contig_sparse_var(
+      int attribute_id,
+      void* buffer, 
+      size_t buffer_size, 
+      size_t& buffer_offset,
+      void* buffer_var, 
+      size_t buffer_var_size, 
+      size_t& buffer_var_offset);
+
+  // TODO
   int get_tile_from_disk_cmp_none(int attribute_id);
 
   // TODO
+  int get_tile_from_disk_var_cmp_none(int attribute_id);
+
+  // TODO
   int get_tile_from_disk_cmp_gzip(int attribute_id);
+
+  // TODO
+  int get_tile_from_disk_var_cmp_gzip(int attribute_id);
 
   // TODO
   void init_range_in_tile_domain();
@@ -380,6 +554,48 @@ class ReadState {
       size_t& buffer_size);
 
   // TODO
+  int read_dense_attr_var(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size,
+      void* buffer_var, 
+      size_t& buffer_var_size);
+
+  // TODO
+  int read_dense_attr_var_cmp_none(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size,
+      void* buffer_var, 
+      size_t& buffer_var_size);
+
+  // TODO
+  template<class T>
+  int read_dense_attr_var_cmp_none(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size,
+      void* buffer_var, 
+      size_t& buffer_var_size);
+
+  // TODO
+  int read_dense_attr_var_cmp_gzip(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size,
+      void* buffer_var, 
+      size_t& buffer_var_size);
+
+  // TODO
+  template<class T>
+  int read_dense_attr_var_cmp_gzip(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size,
+      void* buffer_var, 
+      size_t& buffer_var_size);
+
+  // TODO
   int read_sparse(
       void** buffers, 
       size_t* buffer_sizes);
@@ -415,6 +631,54 @@ class ReadState {
       int attribute_id,
       void* buffer, 
       size_t& buffer_size);
+
+  // TODO
+  int read_sparse_attr_var(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size,
+      void* buffer_var, 
+      size_t& buffer_var_size);
+
+  // TODO
+  int read_sparse_attr_var_cmp_none(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size,
+      void* buffer_var, 
+      size_t& buffer_var_size);
+
+  // TODO
+  template<class T>
+  int read_sparse_attr_var_cmp_none(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size,
+      void* buffer_var, 
+      size_t& buffer_var_size);
+
+  // TODO
+  int read_sparse_attr_var_cmp_gzip(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size,
+      void* buffer_var, 
+      size_t& buffer_var_size);
+
+  // TODO
+  template<class T>
+  int read_sparse_attr_var_cmp_gzip(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size,
+      void* buffer_var, 
+      size_t& buffer_var_size);
+
+  // TODO
+  void shift_var_offsets(int attribute_id);
+
+  // TODO
+  void shift_var_offsets(void* buffer, size_t buffer_size);
 };
 
 

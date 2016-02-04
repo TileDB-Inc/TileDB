@@ -112,6 +112,14 @@ const std::vector<std::vector<size_t> >& BookKeeping::tile_offsets() const {
   return tile_offsets_;
 }
 
+const std::vector<std::vector<size_t> >& BookKeeping::tile_var_offsets() const {
+  return tile_var_offsets_;
+}
+
+const std::vector<std::vector<size_t> >& BookKeeping::tile_var_sizes() const {
+  return tile_var_sizes_;
+}
+
 /* ****************************** */
 /*             MUTATORS           */
 /* ****************************** */
@@ -146,6 +154,21 @@ void BookKeeping::append_tile_offset(
   next_tile_offsets_[attribute_id] = new_offset;  
 }
 
+void BookKeeping::append_tile_var_offset(
+    int attribute_id,
+    size_t step) {
+  tile_var_offsets_[attribute_id].push_back(
+      next_tile_var_offsets_[attribute_id]);
+  size_t new_offset = tile_var_offsets_[attribute_id].back() + step;
+  next_tile_var_offsets_[attribute_id] = new_offset;  
+}
+
+void BookKeeping::append_tile_var_size(
+    int attribute_id,
+    size_t size) {
+  tile_var_sizes_[attribute_id].push_back(size);
+}
+
 int BookKeeping::init(const void* range) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
@@ -166,6 +189,15 @@ int BookKeeping::init(const void* range) {
   for(int i=0; i<attribute_num+1; ++i)
     next_tile_offsets_[i] = 0;
 
+  // Initialize variable tile offsets
+  tile_var_offsets_.resize(attribute_num);
+  next_tile_var_offsets_.resize(attribute_num);
+  for(int i=0; i<attribute_num; ++i)
+    next_tile_var_offsets_[i] = 0;
+
+  // Initialize variable tile sizes
+  tile_var_sizes_.resize(attribute_num);
+
   // Success
   return TILEDB_BK_OK;
 }
@@ -180,7 +212,20 @@ int BookKeeping::init(const void* range) {
  * tile_offsets_attr#0_#1 tile_offsets_attr#0_#2 ...
  * ...
  * tile_offsets_attr#<attribute_num>_num(int64_t)
- * tile_offsets_attr#<attribute_num>_#1 tile_offsets_attr#<attribute_num>_#2 ...
+ * tile_offsets_attr#<attribute_num>_#1(size_t) 
+ *     tile_offsets_attr#<attribute_num>_#2 ...
+ * tile_var_offsets_attr#0_num(int64_t)
+ * tile_var_offsets_attr#0_#1 tile_offsets_attr#0_#2 ...
+ * ...
+ * tile_var_offsets_attr#<attribute_num-1>_num(int64_t)
+ * tile_var_offsets_attr#<attribute_num-1>_#1(size_t) 
+ *     tile_var_offsets_attr#<attribute_num-1>_#2 ...
+ * tile_var_sizes_attr#0_num(int64_t)
+ * tile_var_sizes_attr#0_#1(size_t) tile_sizes_attr#0_#2 ...
+ * ...
+ * tile_var_sizes_attr#<attribute_num-1>_num(int64_t)
+ * tile_var_sizes__attr#<attribute_num-1>_#1(size_t) 
+ *     tile_var_sizes_attr#<attribute_num-1>_#2 ...
  * last_tile_cell_num(int64_t)
  */
 int BookKeeping::load() {
@@ -210,6 +255,14 @@ int BookKeeping::load() {
 
   // Load tile offsets
   if(load_tile_offsets(fd) != TILEDB_BK_OK)
+    return TILEDB_BK_ERR;
+
+  // Load variable tile offsets
+  if(load_tile_var_offsets(fd) != TILEDB_BK_OK)
+    return TILEDB_BK_ERR;
+
+  // Load variable tile sizes
+  if(load_tile_var_sizes(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
 
   // Load tile offsets
@@ -244,7 +297,20 @@ void BookKeeping::set_last_tile_cell_num(int64_t cell_num) {
  * tile_offsets_attr#0_#1 tile_offsets_attr#0_#2 ...
  * ...
  * tile_offsets_attr#<attribute_num>_num(int64_t)
- * tile_offsets_attr#<attribute_num>_#1 tile_offsets_attr#<attribute_num>_#2 ...
+ * tile_offsets_attr#<attribute_num>_#1(size_t) 
+ *     tile_offsets_attr#<attribute_num>_#2 ...
+ * tile_var_offsets_attr#0_num(int64_t)
+ * tile_var_offsets_attr#0_#1 tile_offsets_attr#0_#2 ...
+ * ...
+ * tile_var_offsets_attr#<attribute_num-1>_num(int64_t)
+ * tile_var_offsets_attr#<attribute_num-1>_#1(size_t) 
+ *     tile_var_offsets_attr#<attribute_num-1>_#2 ...
+ * tile_var_sizes_attr#0_num(int64_t)
+ * tile_var_sizes_attr#0_#1(size_t) tile_sizes_attr#0_#2 ...
+ * ...
+ * tile_var_sizes_attr#<attribute_num-1>_num(int64_t)
+ * tile_var_sizes__attr#<attribute_num-1>_#1(size_t) 
+ *     tile_var_sizes_attr#<attribute_num-1>_#2 ...
  * last_tile_cell_num(int64_t)
  */
 int BookKeeping::finalize() {
@@ -284,6 +350,14 @@ int BookKeeping::finalize() {
 
   // Write tile offsets
   if(flush_tile_offsets(fd) != TILEDB_BK_OK)
+    return TILEDB_BK_ERR;
+
+  // Write variable tile offsets
+  if(flush_tile_var_offsets(fd) != TILEDB_BK_OK)
+    return TILEDB_BK_ERR;
+
+  // Write variable tile sizes
+  if(flush_tile_var_sizes(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
 
   // Write tile offsets
@@ -439,6 +513,86 @@ int BookKeeping::flush_tile_offsets(gzFile fd) const {
 }
 
 /* FORMAT:
+ * tile_var_offsets_attr#0_num(int64_t)
+ * tile_var_offsets_attr#0_#1 tile_offsets_attr#0_#2 ...
+ * ...
+ * tile_var_offsets_attr#<attribute_num-1>_num(int64_t)
+ * tile_var_offsets_attr#<attribute_num-1>_#1 
+ *     tile_offsets_attr#<attribute_num-1>_#2 ...
+ */
+int BookKeeping::flush_tile_var_offsets(gzFile fd) const {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  int64_t tile_var_offsets_num;
+
+  // Write tile offsets for each attribute
+  for(int i=0; i<attribute_num; ++i) {
+    // Write number of offsets
+    tile_var_offsets_num = tile_var_offsets_[i].size(); 
+    if(gzwrite(fd, &tile_var_offsets_num, sizeof(int64_t)) != sizeof(int64_t)) {
+      PRINT_ERROR("Cannot finalize book-keeping; Writing number of "
+                  "variable tile offsets failed");
+      return TILEDB_BK_ERR;
+    }
+
+    // Write tile offsets
+    if(gzwrite(
+           fd,  
+           &tile_var_offsets_[i][0], 
+           tile_var_offsets_num * sizeof(size_t)) !=
+       tile_var_offsets_num * sizeof(size_t)) {
+      PRINT_ERROR("Cannot finalize book-keeping; Writing variable tile "
+                  "offsets failed");
+      return TILEDB_BK_ERR;
+    }
+  }
+
+  // Success
+  return TILEDB_BK_OK;
+}
+ 
+/* FORMAT:
+ * tile_var_sizes_attr#0_num(int64_t)
+ * tile_var_sizes_attr#0_#1(size_t) tile_sizes_attr#0_#2 ...
+ * ...
+ * tile_var_sizes_attr#<attribute_num-1>_num(int64_t)
+ * tile_var_sizes__attr#<attribute_num-1>_#1(size_t) 
+ *     tile_var_sizes_attr#<attribute_num-1>_#2 ...
+ */
+int BookKeeping::flush_tile_var_sizes(gzFile fd) const {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  int64_t tile_var_sizes_num;
+
+  // Write tile sizes for each attribute
+  for(int i=0; i<attribute_num; ++i) {
+    // Write number of sizes
+    tile_var_sizes_num = tile_var_sizes_[i].size(); 
+    if(gzwrite(fd, &tile_var_sizes_num, sizeof(int64_t)) != sizeof(int64_t)) {
+      PRINT_ERROR("Cannot finalize book-keeping; Writing number of "
+                  "variable tile sizes failed");
+      return TILEDB_BK_ERR;
+    }
+
+    // Write tile sizes
+    if(gzwrite(
+           fd,  
+           &tile_var_sizes_[i][0], 
+           tile_var_sizes_num * sizeof(size_t)) !=
+       tile_var_sizes_num * sizeof(size_t)) {
+      PRINT_ERROR("Cannot finalize book-keeping; Writing variable tile "
+                  "sizes failed");
+      return TILEDB_BK_ERR;
+    }
+  }
+
+  // Success
+  return TILEDB_BK_OK;
+}
+
+/* FORMAT:
  * bounding_coords_num(int64_t)
  * bounding_coords_#1(void*) bounding_coords_#2(void*) ...
  */
@@ -582,6 +736,98 @@ int BookKeeping::load_tile_offsets(gzFile fd) {
     if(gzread(fd, &tile_offsets_[i][0], tile_offsets_num * sizeof(size_t)) != 
        tile_offsets_num * sizeof(size_t)) {
       PRINT_ERROR("Cannot load book-keeping; Reading tile offsets failed");
+      return TILEDB_BK_ERR;
+    }
+  }
+
+  // Success
+  return TILEDB_BK_OK;
+}
+
+/* FORMAT:
+ * tile_var_offsets_attr#0_num(int64_t)
+ * tile_var_offsets_attr#0_#1 tile_offsets_attr#0_#2 ...
+ * ...
+ * tile_var_offsets_attr#<attribute_num-1>_num(int64_t)
+ * tile_var_offsets_attr#<attribute_num-1>_#1 
+ *     tile_offsets_attr#<attribute_num-1>_#2 ...
+ */
+int BookKeeping::load_tile_var_offsets(gzFile fd) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  int64_t tile_var_offsets_num;
+
+  // Allocate tile offsets
+  tile_var_offsets_.resize(attribute_num);
+
+  // For all attributes, get the variable tile offsets
+  for(int i=0; i<attribute_num; ++i) {
+    // Get number of tile offsets
+    if(gzread(fd, &tile_var_offsets_num, sizeof(int64_t)) != sizeof(int64_t)) {
+      PRINT_ERROR("Cannot load book-keeping; Reading number of variable tile "
+                  "offsets failed");
+      return TILEDB_BK_ERR;
+    }
+ 
+    if(tile_var_offsets_num == 0)
+      continue;
+
+    // Get variable tile offsets
+    tile_var_offsets_[i].resize(tile_var_offsets_num);
+    if(gzread(
+           fd, 
+           &tile_var_offsets_[i][0], 
+           tile_var_offsets_num * sizeof(size_t)) != 
+       tile_var_offsets_num * sizeof(size_t)) {
+      PRINT_ERROR("Cannot load book-keeping; Reading variable tile "
+                  "offsets failed");
+      return TILEDB_BK_ERR;
+    }
+  }
+
+  // Success
+  return TILEDB_BK_OK;
+}
+
+/* FORMAT:
+ * tile_var_sizes_attr#0_num(int64_t)
+ * tile_var_sizes_attr#0_#1(size_t) tile_sizes_attr#0_#2 ...
+ * ...
+ * tile_var_sizes_attr#<attribute_num-1>_num(int64_t)
+ * tile_var_sizes__attr#<attribute_num-1>_#1(size_t) 
+ *     tile_var_sizes_attr#<attribute_num-1>_#2 ...
+ */
+int BookKeeping::load_tile_var_sizes(gzFile fd) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  int64_t tile_var_sizes_num;
+
+  // Allocate tile sizes
+  tile_var_sizes_.resize(attribute_num);
+
+  // For all attributes, get the variable tile sizes
+  for(int i=0; i<attribute_num; ++i) {
+    // Get number of tile sizes
+    if(gzread(fd, &tile_var_sizes_num, sizeof(int64_t)) != sizeof(int64_t)) {
+      PRINT_ERROR("Cannot load book-keeping; Reading number of variable tile "
+                  "sizes failed");
+      return TILEDB_BK_ERR;
+    }
+ 
+    if(tile_var_sizes_num == 0)
+      continue;
+
+    // Get variable tile sizes
+    tile_var_sizes_[i].resize(tile_var_sizes_num);
+    if(gzread(
+           fd, 
+           &tile_var_sizes_[i][0], 
+           tile_var_sizes_num * sizeof(size_t)) != 
+       tile_var_sizes_num * sizeof(size_t)) {
+      PRINT_ERROR("Cannot load book-keeping; Reading variable tile "
+                  "sizes failed");
       return TILEDB_BK_ERR;
     }
   }

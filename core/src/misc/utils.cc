@@ -222,6 +222,22 @@ void expand_mbr(T* mbr, const T* coords, int dim_num) {
   }	
 } 
 
+ssize_t file_size(const std::string& filename) {
+  int fd = open(filename.c_str(), O_RDONLY);
+  if(fd == -1) {
+    PRINT_ERROR("Cannot get file size; File opening error");
+    return TILEDB_UT_ERR;
+  }
+
+  struct stat st;
+  fstat(fd, &st);
+  ssize_t file_size = st.st_size;
+  
+  close(fd);
+
+  return file_size;
+}
+
 std::vector<std::string> get_dirs(const std::string& dir) {
   std::vector<std::string> dirs;
   std::string new_dir; 
@@ -312,7 +328,7 @@ int gunzip(
     return TILEDB_UT_ERR;
   }
 
-  // Compress
+  // Decompress
   strm.next_in = in;
   strm.next_out = out;
   strm.avail_in = in_size;
@@ -329,6 +345,68 @@ int gunzip(
 
   // Calculate size of compressed data
   out_size = avail_out - strm.avail_out; 
+
+  // Success
+  return TILEDB_UT_OK;
+}
+
+int gunzip_unknown_output_size(
+    unsigned char* in, 
+    size_t in_size,
+    void*& out, 
+    size_t& avail_out, 
+    size_t& out_size) {
+  int ret;
+  unsigned have;
+  z_stream strm;
+  unsigned char chunk[TILEDB_GZIP_CHUNK_SIZE];
+  size_t inflated_bytes;
+  
+  // Allocate deflate state
+  strm.zalloc = Z_NULL;
+  strm.zfree = Z_NULL;
+  strm.opaque = Z_NULL;
+  strm.avail_in = 0;
+  strm.next_in = Z_NULL;
+  ret = inflateInit(&strm);
+
+  if(ret != Z_OK) {
+    PRINT_ERROR("Cannot decompress with GZIP");
+    return TILEDB_UT_ERR;
+  }
+
+  // Decompress
+  strm.next_in = in;
+  strm.avail_in = in_size;
+  out_size = 0;
+
+  do {
+    strm.next_out = chunk;
+    strm.avail_out = TILEDB_GZIP_CHUNK_SIZE;
+    ret = inflate(&strm, Z_FINISH);
+
+    if(ret == Z_STREAM_ERROR) {
+      PRINT_ERROR("Cannot decompress with GZIP");
+      return TILEDB_UT_ERR;
+    }
+
+    inflated_bytes = TILEDB_GZIP_CHUNK_SIZE - strm.avail_out;
+
+    if(inflated_bytes != 0) {
+      if(out_size + inflated_bytes > avail_out)
+        expand_buffer(out, avail_out);
+
+      memcpy(
+          static_cast<char*>(out) + out_size,
+          chunk,
+          inflated_bytes);
+
+      out_size += inflated_bytes;
+    }
+  } while(strm.avail_out == 0);
+
+  // Clean up
+  (void)inflateEnd(&strm);
 
   // Success
   return TILEDB_UT_OK;

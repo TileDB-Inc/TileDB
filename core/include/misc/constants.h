@@ -56,6 +56,9 @@
 /** Suffix of a GZIP-compressed file. */
 #define TILEDB_GZIP_SUFFIX ".gz"
 
+/** Chunk size in GZIP decompression. */
+#define TILEDB_GZIP_CHUNK_SIZE 131072 // 128KB
+
 // Special file names
 #define TILEDB_ARRAY_SCHEMA_FILENAME   "__array_schema.tdb"
 #define TILEDB_BOOK_KEEPING_FILENAME   "__book_keeping"
@@ -65,6 +68,8 @@
 
 /** The size of the sorted buffer. */
 #define TILEDB_SORTED_BUFFER_SIZE 10000000  // ~10MB
+/** The size of the sorted buffer for varibale attributes. */
+#define TILEDB_SORTED_BUFFER_VAR_SIZE 10000000  // ~10MB
 
 /** The TileDB data types. */ 
 enum DataType {
