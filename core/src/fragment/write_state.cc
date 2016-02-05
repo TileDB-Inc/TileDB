@@ -110,6 +110,11 @@ WriteState::WriteState(
   for(int i=0; i<attribute_num; ++i)
     tiles_var_offsets_[i] = 0;
 
+  // Initialize current variable tile offsets
+  tiles_var_sizes_.resize(attribute_num);
+  for(int i=0; i<attribute_num; ++i)
+    tiles_var_sizes_[i] = 0;
+
   // Initialize the current size of the variable attribute file
   buffer_var_offsets_.resize(attribute_num);
   for(int i=0; i<attribute_num; ++i)
@@ -529,24 +534,29 @@ int WriteState::write_dense(
   int attribute_id_num = attribute_ids.size(); 
 
   // Write each attribute individually
-  int i=0; 
+  int buffer_i = 0;
   int rc;
-  while(i<attribute_id_num) {
+  for(int i=0; i<attribute_id_num; ++i) {
     if(!array_schema->var_size(attribute_ids[i])) { // FIXED CELLS
-      rc = write_dense_attr(attribute_ids[i], buffers[i], buffer_sizes[i]);
+      rc = write_dense_attr(
+               attribute_ids[i], 
+               buffers[buffer_i], 
+               buffer_sizes[buffer_i]);
+
       if(rc != TILEDB_WS_OK)
         break;
-      ++i;
+      ++buffer_i;
     } else {                                        // VARIABLE-SIZED CELLS
       rc = write_dense_attr_var(
                attribute_ids[i], 
-               buffers[i],       // offsets 
-               buffer_sizes[i],
-               buffers[i+1],     // actual values
-               buffer_sizes[i+1]);
+               buffers[buffer_i],       // offsets 
+               buffer_sizes[buffer_i],
+               buffers[buffer_i+1],     // actual values
+               buffer_sizes[buffer_i+1]);
+
       if(rc != TILEDB_WS_OK)
         break;
-      i+=2;
+      buffer_i += 2;
     }
   }
 

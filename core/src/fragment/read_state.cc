@@ -87,6 +87,7 @@ ReadState::ReadState(
   coords_tile_fetched_ = false;
   tile_compressed_ = NULL;
   tile_compressed_allocated_size_ = 0;
+  tiles_var_allocated_size_.resize(attribute_num);
 
   for(int i=0; i<attribute_num+1; ++i) {
     overlapping_tile_pos_[i] = 0;
@@ -100,6 +101,7 @@ ReadState::ReadState(
     cell_pos_range_pos_[i] = 0;
     tile_var_offsets_[i] = 0;
     tile_var_sizes_[i] = 0;
+    tiles_var_allocated_size_[i] = 0;
   }
 
   // More initializations
@@ -381,6 +383,7 @@ int ReadState::compute_tile_var_size(
   // Read start variable tile offset
   size_t start_tile_var_offset;
   lseek(fd, file_offset, SEEK_SET); 
+
   size_t bytes_read = ::read(fd, &start_tile_var_offset, cell_size);
   if(bytes_read != cell_size) {
     PRINT_ERROR("Cannot compute variable tile size; File reading error");
@@ -437,21 +440,13 @@ void ReadState::compute_bytes_to_copy(
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int64_t cell_num_per_tile = array_schema->cell_num_per_tile(); 
-  const char* tile = static_cast<const char*>(tiles_[attribute_id]);
-  const void* tile_start = tile + tile_offsets_[attribute_id];
-  const char* tile_var = static_cast<const char*>(tiles_var_[attribute_id]);
-  const void* tile_var_start = tile_var + tile_var_offsets_[attribute_id];
+  const size_t* tile = static_cast<const size_t*>(tiles_[attribute_id]);
 
   // Calculate bytes to copy from the variable tile
-  if(end_cell_pos + 1 < cell_num_per_tile) {
-    bytes_var_to_copy = 
-        static_cast<const size_t*>(tile_start)[end_cell_pos + 1] -  
-        static_cast<const size_t*>(tile_start)[start_cell_pos];
-  } else {
-    bytes_var_to_copy = 
-        tile_var_sizes_[attribute_id] - 
-        static_cast<const size_t*>(tile_start)[start_cell_pos];
-  }
+  if(end_cell_pos + 1 < cell_num_per_tile) 
+    bytes_var_to_copy = tile[end_cell_pos + 1] - tile[start_cell_pos];
+  else 
+    bytes_var_to_copy = tile_var_sizes_[attribute_id] - tile[start_cell_pos];
 
   // If bytes do not fit in variable buffer, we need to adjust
   if(bytes_var_to_copy > buffer_var_free_space) {
@@ -463,9 +458,7 @@ void ReadState::compute_bytes_to_copy(
       med = min + ((max - min) / 2);
 
       // Calculate variable bytes to copy
-      bytes_var_to_copy = 
-          static_cast<const size_t*>(tile_start)[med] -  
-          static_cast<const size_t*>(tile_start)[start_cell_pos];
+      bytes_var_to_copy = tile[med] - tile[start_cell_pos];
 
       // Check condition
       if(bytes_var_to_copy > buffer_var_free_space) 
@@ -480,14 +473,14 @@ void ReadState::compute_bytes_to_copy(
     if(max < min)  
       end_cell_pos = max - 1;     
     else 
-      end_cell_pos = med;
+      end_cell_pos = med;  
 
-    // Update bytes to copy
-    bytes_to_copy = (end_cell_pos - start_cell_pos + 1) * sizeof(size_t);
-    bytes_var_to_copy = 
-          static_cast<const size_t*>(tile_start)[end_cell_pos + 1] -  
-          static_cast<const size_t*>(tile_start)[start_cell_pos];
+    // Update variable bytes to copy
+    bytes_var_to_copy = tile[end_cell_pos + 1] - tile[start_cell_pos];
   }
+
+  // Update bytes to copy
+  bytes_to_copy = (end_cell_pos - start_cell_pos + 1) * sizeof(size_t);
 }
 
 template<class T>
@@ -1187,6 +1180,13 @@ void ReadState::copy_from_tile_buffer_full_var(
     buffer_offset += bytes_to_copy;
     bytes_left_to_copy -= bytes_to_copy;
 
+    // Shift offsets
+    shift_var_offsets(
+        buffer_start, 
+        end_cell_pos - start_cell_pos + 1, 
+        buffer_var_offset); 
+    
+
     // Copy from variable tile
     memcpy(buffer_var_start, tile_var_start, bytes_var_to_copy);
     tile_var_offsets_[attribute_id] += bytes_var_to_copy;
@@ -1350,6 +1350,7 @@ void ReadState::copy_from_tile_buffer_partial_non_contig_dense_var(
     range_end_coords[i] = overlap_range[2*i+1];
   }
   char* buffer_c = static_cast<char*>(buffer);
+  void* buffer_start = buffer_c + buffer_offset;
   char* buffer_var_c = static_cast<char*>(buffer_var);
   char* tile = static_cast<char*>(tiles_[attribute_id]);
   char* tile_var = static_cast<char*>(tiles_var_[attribute_id]);
@@ -1357,7 +1358,7 @@ void ReadState::copy_from_tile_buffer_partial_non_contig_dense_var(
   size_t cell_size = sizeof(size_t);
 
   // Sanity check
-  assert(!array_schema->var_size(attribute_id));
+  assert(array_schema->var_size(attribute_id));
 
   // Find the offset at the beginning and end of the overlap range
   int64_t range_start_cell_pos = 
@@ -1385,7 +1386,7 @@ void ReadState::copy_from_tile_buffer_partial_non_contig_dense_var(
   size_t bytes_in_current_slab_left_to_copy = 
       current_slab_end_offset - tile_offsets_[attribute_id] + 1;
   int64_t start_cell_pos = current_slab_start_offset / sizeof(size_t);
-  int64_t end_cell_pos = (current_slab_end_offset + 1) / sizeof(size_t);
+  int64_t end_cell_pos = ((current_slab_end_offset + 1) / sizeof(size_t)) - 1;
 
   // If current tile offset is 0, set it to the beginning of the overlap range
   if(tile_var_offsets_[attribute_id] == 0) 
@@ -1415,6 +1416,12 @@ void ReadState::copy_from_tile_buffer_partial_non_contig_dense_var(
   buffer_offset += bytes_to_copy;
   tile_offsets_[attribute_id] += bytes_to_copy;
 
+  // Shift variable offsets
+  shift_var_offsets(
+      buffer_start, 
+      end_cell_pos - start_cell_pos + 1, 
+      buffer_var_offset); 
+
   memcpy(
       buffer_var_c + buffer_var_offset, 
       tile_var + tile_var_offsets_[attribute_id],
@@ -1437,6 +1444,7 @@ void ReadState::copy_from_tile_buffer_partial_non_contig_dense_var(
     buffer_free_space = buffer_size - buffer_offset;
     buffer_var_free_space = buffer_var_size - buffer_var_offset;
 
+    buffer_start = buffer_c + buffer_offset;
     start_cell_pos = tile_offsets_[attribute_id] / sizeof(size_t);
     end_cell_pos = start_cell_pos + cell_num_in_range_slab - 1;
 
@@ -1459,6 +1467,12 @@ void ReadState::copy_from_tile_buffer_partial_non_contig_dense_var(
         bytes_to_copy);
     buffer_offset += bytes_to_copy;
     tile_offsets_[attribute_id] += bytes_to_copy;
+
+    // Shift variable offsets
+    shift_var_offsets(
+        buffer_start, 
+        end_cell_pos - start_cell_pos + 1, 
+        buffer_var_offset); 
 
     memcpy(
         buffer_var_c + buffer_var_offset, 
@@ -1785,10 +1799,6 @@ void ReadState::copy_from_tile_buffer_partial_contig_dense_var(
   int64_t end_cell_pos = start_cell_pos + cell_num_in_range - 1;
   size_t end_offset = start_offset + range_size - 1;
 
-  // If current tile offset is 0, set it to the beginning of the overlap range
-  if(tile_offsets_[attribute_id] == 0) 
-    tile_offsets_[attribute_id] = start_offset;
-
   // Compute actual bytes to copy 
   size_t bytes_to_copy, bytes_var_to_copy;
   compute_bytes_to_copy(
@@ -1799,6 +1809,18 @@ void ReadState::copy_from_tile_buffer_partial_contig_dense_var(
       buffer_var_free_space,
       bytes_to_copy,
       bytes_var_to_copy);
+
+  // Overflow
+  if(bytes_to_copy == 0) {
+    buffer_offset = buffer_size + 1; // This will indicate the overflow
+    buffer_var_offset = buffer_var_size + 1; // This will indicate the overflow
+    return;
+  }
+
+  // Set properly the tile offsets
+  tile_offsets_[attribute_id] = start_cell_pos * cell_size;
+  tile_var_offsets_[attribute_id] = 
+      static_cast<const size_t*>(tiles_[attribute_id])[start_cell_pos];
 
   // For easy reference
   char* buffer_c = static_cast<char*>(buffer);
@@ -1814,6 +1836,12 @@ void ReadState::copy_from_tile_buffer_partial_contig_dense_var(
   memcpy(buffer_start, tile_start, bytes_to_copy);
   buffer_offset += bytes_to_copy;
   tile_offsets_[attribute_id] += bytes_to_copy; 
+
+  // Shift variable offsets
+  shift_var_offsets(
+      buffer_start, 
+      end_cell_pos - start_cell_pos + 1, 
+      buffer_var_offset); 
 
   // Copy and update current variable buffer and variable tile offsets
   memcpy(buffer_var_start, tile_var_start, bytes_var_to_copy);
@@ -1937,10 +1965,6 @@ void ReadState::copy_from_tile_buffer_partial_contig_sparse_var(
   size_t end_offset = 
       (overlapping_tile.cell_pos_ranges_[0].second + 1) * cell_size - 1;
 
-  // Potentially set the tile offset to the beginning of the current range
-  if(tile_offsets_[attribute_id] < start_offset) 
-    tile_offsets_[attribute_id] = start_offset;
-
   // Compute actual bytes to copy 
   size_t bytes_to_copy, bytes_var_to_copy;
   int64_t start_cell_pos = overlapping_tile.cell_pos_ranges_[0].first;
@@ -1954,6 +1978,18 @@ void ReadState::copy_from_tile_buffer_partial_contig_sparse_var(
       bytes_to_copy,
       bytes_var_to_copy);
 
+  // Overflow
+  if(bytes_to_copy == 0) {
+    buffer_offset = buffer_size + 1; // This will indicate the overflow
+    buffer_var_offset = buffer_var_size + 1; // This will indicate the overflow
+    return;
+  }
+
+  // Set properly the tile offsets
+  tile_offsets_[attribute_id] = start_cell_pos * cell_size;
+  tile_var_offsets_[attribute_id] = 
+      static_cast<const size_t*>(tiles_[attribute_id])[start_cell_pos];
+
   // Copy and update current buffer and tile offsets
   memcpy(
       buffer_c + buffer_offset, 
@@ -1961,6 +1997,12 @@ void ReadState::copy_from_tile_buffer_partial_contig_sparse_var(
       bytes_to_copy);
   buffer_offset += bytes_to_copy;
   tile_offsets_[attribute_id] += bytes_to_copy; 
+
+  // Shift variable offsets
+  shift_var_offsets(
+      buffer_c + buffer_offset, 
+      end_cell_pos - start_cell_pos + 1, 
+      buffer_var_offset);
 
   // Copy and update current buffer and tile offsets
   memcpy(
@@ -2206,7 +2248,10 @@ int ReadState::copy_tile_full_direct_var(
   }
 
   // Shift variable cell offsets
-  shift_var_offsets(buffer_at_tile_start, tile_size);
+  shift_var_offsets(
+      buffer_at_tile_start, 
+      tile_size / cell_size,
+      buffer_var_offset);
 
   // Update buffer offset and overlapping tile position
   buffer_offset += tile_size;
@@ -2501,7 +2546,7 @@ int ReadState::copy_tile_partial_contig_dense_var(
   // Get tile from the disk into the local buffer
   if(get_tile_from_disk_var_cmp_none(attribute_id) != TILEDB_RS_OK) 
     return TILEDB_RS_ERR;
-    
+
   // Copy the relevant data to the input buffer
   copy_from_tile_buffer_partial_contig_dense_var<T>(
       attribute_id, 
@@ -2918,7 +2963,7 @@ int ReadState::get_tile_from_disk_var_cmp_gzip(int attribute_id) {
   size_t cell_size = sizeof(size_t);
   OverlappingTile& overlapping_tile = 
       overlapping_tiles_[overlapping_tile_pos_[attribute_id]];
-  size_t full_tile_size = array_schema->tile_size(attribute_id);
+  size_t full_tile_size = array_schema->cell_num_per_tile() * cell_size;
   size_t tile_size = overlapping_tile.cell_num_ * cell_size;
   const std::vector<std::vector<size_t> >& tile_offsets = 
       book_keeping_->tile_offsets(); 
@@ -2992,7 +3037,7 @@ int ReadState::get_tile_from_disk_var_cmp_gzip(int attribute_id) {
          static_cast<unsigned char*>(tile_compressed_), 
          tile_compressed_size, 
          static_cast<unsigned char*>(tiles_[attribute_id]),
-         full_tile_size,
+         tile_size,
          gunzip_out_size) != TILEDB_UT_OK)
     return TILEDB_RS_ERR;
 
@@ -4633,13 +4678,15 @@ void ReadState::shift_var_offsets(int attribute_id) {
     tile_s[i] -= first_offset;
 }
 
-void ReadState::shift_var_offsets(void* buffer, size_t buffer_size) {
+void ReadState::shift_var_offsets(
+    void* buffer, 
+    int64_t cell_num,
+    size_t new_start_offset) {
   // For easy reference
-  int64_t cell_num = buffer_size / sizeof(size_t);
   size_t* buffer_s = static_cast<size_t*>(buffer);
-  size_t first_offset = buffer_s[0];
+  size_t start_offset = buffer_s[0];
 
   // Shift offsets
   for(int64_t i=0; i<cell_num; ++i) 
-    buffer_s[i] -= first_offset;
+    buffer_s[i] = buffer_s[i] - start_offset + new_start_offset;
 }

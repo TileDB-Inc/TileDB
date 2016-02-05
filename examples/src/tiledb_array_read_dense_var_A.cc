@@ -13,7 +13,7 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
   /* Initialize a range. */
-  const int64_t range[] = { 1, 2, 1, 4 };
+  const int64_t range[] = { 1, 4, 1, 4 };
 
   /* Subset over attribute "a1". */
   const char* attributes[] = { "a1" };
@@ -23,23 +23,25 @@ int main() {
   tiledb_array_init(
       tiledb_ctx, 
       &tiledb_array,
-      "workspace/dense_A",
+      "workspace/dense_var_A",
       TILEDB_READ,
       range, 
       attributes,           
       1);      
 
   /* Prepare cell buffers for attribute "a1". */
-  int buffer_a1[9];
-  void* buffers[] = { buffer_a1 };
-  size_t buffer_sizes[1] = { 9*sizeof(int) };
+  int buffer_a1[16];
+  char buffer_var_a1[66];
+  void* buffers[] = { buffer_a1, buffer_var_a1 };
+  size_t buffer_sizes[2] = { sizeof(buffer_a1), 66 };
 
   /* Read from array. */
   tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
 
   /* Print the read values. */
-  for(int i=0; i<8; ++i) 
-    std::cout << buffer_a1[i] << "\n";
+  int64_t result_num = buffer_sizes[0] / sizeof(size_t);
+  for(int i=0; i<result_num; ++i) 
+    std::cout << buffer_var_a1 + buffer_a1[i] << "\n";
 
   /* Finalize the array. */
   tiledb_array_finalize(tiledb_array);

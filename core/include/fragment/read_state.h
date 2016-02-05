@@ -678,7 +678,10 @@ class ReadState {
   void shift_var_offsets(int attribute_id);
 
   // TODO
-  void shift_var_offsets(void* buffer, size_t buffer_size);
+  void shift_var_offsets(
+      void* buffer, 
+      int64_t cell_num, 
+      size_t new_start_offset);
 };
 
 
