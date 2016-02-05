@@ -183,6 +183,8 @@ int BookKeeping::init(const void* range) {
     memcpy(range_, range, range_size);
   }
 
+  last_tile_cell_num_ = 0;
+
   // Initialize tile offsets
   tile_offsets_.resize(attribute_num+1);
   next_tile_offsets_.resize(attribute_num+1);
@@ -270,7 +272,7 @@ int BookKeeping::load() {
     return TILEDB_BK_ERR;
 
   // Close file
-  if(gzclose(fd)) {
+  if(gzclose(fd) != Z_OK) {
     PRINT_ERROR("Cannot load book-keeping; Cannot close file");
     return TILEDB_BK_ERR;
   }
@@ -365,7 +367,7 @@ int BookKeeping::finalize() {
     return TILEDB_BK_ERR;
 
   // Close file
-  if(gzclose(fd)) {
+  if(gzclose(fd) != Z_OK) {
     PRINT_ERROR("Cannot finalize book-keeping; Cannot close file");
     return TILEDB_BK_ERR;
   }
@@ -500,6 +502,9 @@ int BookKeeping::flush_tile_offsets(gzFile fd) const {
       return TILEDB_BK_ERR;
     }
 
+    if(tile_offsets_num == 0)
+      continue;
+
     // Write tile offsets
     if(gzwrite(fd, &tile_offsets_[i][0], tile_offsets_num * sizeof(size_t)) !=
        tile_offsets_num * sizeof(size_t)) {
@@ -535,6 +540,9 @@ int BookKeeping::flush_tile_var_offsets(gzFile fd) const {
                   "variable tile offsets failed");
       return TILEDB_BK_ERR;
     }
+
+    if(tile_var_offsets_num == 0)
+      continue;
 
     // Write tile offsets
     if(gzwrite(
@@ -575,6 +583,9 @@ int BookKeeping::flush_tile_var_sizes(gzFile fd) const {
                   "variable tile sizes failed");
       return TILEDB_BK_ERR;
     }
+
+    if(tile_var_sizes_num == 0)
+      continue;
 
     // Write tile sizes
     if(gzwrite(
