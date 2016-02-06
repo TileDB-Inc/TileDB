@@ -18,7 +18,7 @@ int main() {
   TileDB_ArraySchema array_schema = {};
 
   /* Set array name to "sparse_A", inside (existing) workspace "workspace". */
-  array_schema.array_name_ = "workspace/sparse_A";
+  array_schema.array_name_ = "workspace/sparse_var_A";
 
   /* Set attributes and number of attributes. */
   const char* attributes[] = { "a1", "a2" };
@@ -29,7 +29,7 @@ int main() {
   array_schema.capacity_ = 4;
 
   /* Set cell order. */ 
-  array_schema.cell_order_ = "column-major";
+  array_schema.cell_order_ = "row-major";
 
   /* Set dimensions and number of dimensions. */
   const char* dimensions[] = { "d1", "d2" };
@@ -40,7 +40,7 @@ int main() {
    * Set types: **int32** for "a1", **float32** for "a2" and **int64** for the 
    * coordinates. 
    */
-  const char* types[] = { "int32", "float32", "int64" };
+  const char* types[] = { "char:var", "float32", "int64" };
   array_schema.types_ = types; 
 
   /* Set domain to [1,4], [1,4]. */

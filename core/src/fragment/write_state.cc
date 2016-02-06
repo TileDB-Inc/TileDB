@@ -481,7 +481,7 @@ void WriteState::update_book_keeping(
   size_t coords_size = array_schema->coords_size();
   int64_t buffer_cell_num = buffer_size / coords_size;
   const T* buffer_T = static_cast<const T*>(buffer); 
-  int64_t tile_cell_num = tile_cell_num_[attribute_num];
+  int64_t& tile_cell_num = tile_cell_num_[attribute_num];
 
   // Update bounding coordinates and MBRs
   for(int64_t i = 0; i<buffer_cell_num; ++i) {
@@ -921,32 +921,37 @@ int WriteState::write_sparse(
     const size_t* buffer_sizes) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
   const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
   int attribute_id_num = attribute_ids.size(); 
 
   // Write each attribute individually
-  int i=0; 
+  int buffer_i = 0;
   int rc;
-  while(i<attribute_id_num) {
+  for(int i=0; i<attribute_id_num; ++i) {
     if(!array_schema->var_size(attribute_ids[i])) { // FIXED CELLS
-      rc = write_sparse_attr(attribute_ids[i], buffers[i], buffer_sizes[i]);
+      rc = write_sparse_attr(
+               attribute_ids[i], 
+               buffers[buffer_i], 
+               buffer_sizes[buffer_i]);
+
       if(rc != TILEDB_WS_OK)
         break;
-      ++i;
+      ++buffer_i;
     } else {                                        // VARIABLE-SIZED CELLS
       rc = write_sparse_attr_var(
                attribute_ids[i], 
-               buffers[i],       // offsets 
-               buffer_sizes[i],
-               buffers[i+1],     // actual values
-               buffer_sizes[i+1]);
+               buffers[buffer_i],       // offsets 
+               buffer_sizes[buffer_i],
+               buffers[buffer_i+1],     // actual values
+               buffer_sizes[buffer_i+1]);
+
       if(rc != TILEDB_WS_OK)
         break;
-      i+=2;
+      buffer_i += 2;
     }
   }
 
+  // Return
   return rc;
 }
 
@@ -1324,45 +1329,54 @@ int WriteState::write_sparse_unsorted(
   int attribute_id_num = attribute_ids.size(); 
 
   // Find the coordinates buffer
-  int coords_id = -1;
+  int coords_buffer_i = -1;
+  int buffer_i = 0;
   for(int i=0; i<attribute_id_num; ++i) { 
     if(attribute_ids[i] == attribute_num) {
-      coords_id = i;
+      coords_buffer_i = buffer_i;
       break;
     }
+    if(!array_schema->var_size(attribute_ids[i])) // FIXED CELLS
+      ++buffer_i;
+    else
+      buffer_i +=2;
   }
-  
+
   // Coordinates are missing
-  if(coords_id == -1) {
+  if(coords_buffer_i == -1) {
     PRINT_ERROR("Cannot write sparse unsorted; Coordinates missing");
     return TILEDB_WS_ERR;
   }
 
   // Sort cell positions
   std::vector<int64_t> cell_pos;
-  sort_cell_pos(buffers[coords_id], buffer_sizes[coords_id], cell_pos);
+  sort_cell_pos(
+      buffers[coords_buffer_i], 
+      buffer_sizes[coords_buffer_i], 
+      cell_pos);
 
   // Write each attribute individually
-  int i=0; 
+  buffer_i=0; 
   int rc;
-  while(i<attribute_id_num) {
+  for(int i=0; i<attribute_id_num; ++i) {
     if(!array_schema->var_size(attribute_ids[i])) { // FIXED CELLS
       rc = write_sparse_unsorted_attr(
                attribute_ids[i], 
-               buffers[i], 
-               buffer_sizes[i],
+               buffers[buffer_i], 
+               buffer_sizes[buffer_i],
                cell_pos);
       if(rc != TILEDB_WS_OK)
         break;
-      ++i;
+      ++buffer_i;
     } else {                                        // VARIABLE-SIZED CELLS
       rc = write_sparse_unsorted_attr_var(
                attribute_ids[i], 
-               buffers[i],       // offsets 
-               buffer_sizes[i],
-               buffers[i+1],     // actual values
-               buffer_sizes[i+1],
+               buffers[buffer_i],       // offsets 
+               buffer_sizes[buffer_i],
+               buffers[buffer_i+1],     // actual values
+               buffer_sizes[buffer_i+1],
                cell_pos);
+      buffer_i += 2;
     }
   }
 
@@ -1611,7 +1625,7 @@ int WriteState::write_sparse_unsorted_attr_var_cmp_none(
     // Keep on copying the cells in sorted order in the sorted buffer
     memcpy(
         sorted_buffer + sorted_buffer_size, 
-        buffer_c + cell_pos[i] * cell_size, 
+        &sorted_buffer_var_size, 
         cell_size);
     sorted_buffer_size += cell_size;
 
@@ -1652,6 +1666,7 @@ int WriteState::write_sparse_unsorted_attr_var_cmp_gzip(
     const void* buffer_var,
     size_t buffer_var_size,
     const std::vector<int64_t>& cell_pos) {
+
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   size_t cell_size = sizeof(size_t); 
@@ -1703,7 +1718,7 @@ int WriteState::write_sparse_unsorted_attr_var_cmp_gzip(
     // Keep on copying the cells in sorted order in the sorted buffer
     memcpy(
         sorted_buffer + sorted_buffer_size, 
-        buffer_c + cell_pos[i] * cell_size, 
+        &sorted_buffer_var_size, 
         cell_size);
     sorted_buffer_size += cell_size;
 
@@ -1752,10 +1767,9 @@ int WriteState::write_last_tile() {
   // memory
   for(int i=0; i<attribute_num+1; ++i) {
     if(array_schema->compression(i) == ArraySchema::TILEDB_AS_CMP_GZIP) {
-      if(!array_schema->var_size(i)) {
-        if(compress_and_write_tile(i) != TILEDB_WS_OK)
-          return TILEDB_WS_ERR;
-      } else {
+      if(compress_and_write_tile(i) != TILEDB_WS_OK)
+        return TILEDB_WS_ERR;
+      if(array_schema->var_size(i)) {
         if(compress_and_write_tile_var(i) != TILEDB_WS_OK)
           return TILEDB_WS_ERR;
       }
