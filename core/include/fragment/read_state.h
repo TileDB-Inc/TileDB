@@ -132,6 +132,10 @@ class ReadState {
   std::vector<void*> map_addr_;
   /** The corresponding lengths of the buffers in map_addr_. */
   std::vector<size_t> map_addr_lengths_;
+  /** A buffer mapping a compressed tile from disk. */
+  void* map_addr_compressed_;
+  /** The corresponding length of the map_addr_compressed_ buffer. */
+  size_t map_addr_compressed_length_;
   /** 
    * A buffer for each attribute used by mmap for mapping a variable tile from
    * disk. 
@@ -624,14 +628,26 @@ class ReadState {
   template<class T>
   void get_next_overlapping_tile_sparse();
 
-  // TODO
+  /**
+   * Reads a tile from the disk into a local buffer for an attribute. This
+   * function focuses on the case there is GZIP compression.
+   *
+   * @param attribute_id The id of the attribute the tile is read for. 
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
   int get_tile_from_disk_cmp_gzip(int attribute_id);
+
+  /**
+   * Reads a tile from the disk into a local buffer for an attribute. This
+   * function focuses on the case there is no compression.
+   *
+   * @param attribute_id The id of the attribute the tile is read for. 
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int get_tile_from_disk_cmp_none(int attribute_id);
 
   // TODO
   int get_tile_from_disk_var_cmp_gzip(int attribute_id);
-
-  // TODO
-  int get_tile_from_disk_cmp_none(int attribute_id);
 
   // TODO
   int get_tile_from_disk_var_cmp_none(int attribute_id);
@@ -708,7 +724,17 @@ class ReadState {
       void* buffer, 
       size_t& buffer_size);
 
-  // TODO
+  /** 
+   * Reads cells into an attribute buffer, for the range specified in
+   * Array::init. This function focuses only on the dense case, and 
+   * especially the case of GZIP compression.
+   * 
+   * @template The coordinates type.
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer into which the cells will be written. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+    @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   template<class T>
   int read_dense_attr_cmp_gzip(
       int attribute_id,
@@ -869,16 +895,33 @@ class ReadState {
       size_t& buffer_var_size);
 
   /** 
-   * Reads a tile from the disk for an attribute into a local buffer.   
+   * Reads a tile from the disk for an attribute into a local buffer. This
+   * function focuses on the case there is GZIP compression. 
+   *
+   * @param attribute_id The id of the attribute the read occurs for.
+   * @param offset The offset at which the tile starts in the file.
+   * @param tile_compressed_max_size The maximum size for a compressed tile 
+   *     (used for initialization).
+   * @param tile_compressed_size The actual compressed tile size. 
+   */
+  int read_tile_from_file_cmp_gzip(
+      int attribute_id,
+      off_t offset,
+      size_t tile_compressed_max_size,
+      size_t tile_compressed_size);
+
+  /** 
+   * Reads a tile from the disk for an attribute into a local buffer. This
+   * function focuses on the case there is no compression. 
    *
    * @param attribute_id The id of the attribute the read occurs for.
    * @param offset The offset at which the tile starts in the file.
    * @param full_tile_size The size of a full tile (used for initialization).
-   * @param tile_size The actual tile size. Note that this may be different for
-   *     "fill_tile_size" only in the sparse case, and only for the very last
+   * @param tile_size The actual tile size. Note that this may be different than
+   *     "full_tile_size" only in the sparse case, and only for the very last
    *     tile in the global order.
    */
-  int read_tile_from_file(
+  int read_tile_from_file_cmp_none(
       int attribute_id,
       off_t offset,
       size_t full_tile_size,
@@ -887,16 +930,29 @@ class ReadState {
   /** 
    * Reads a tile from the disk for an attribute into a local buffer, using 
    * memory map (mmap). This function is invoked in place of
-   * ReadState::read_tile_from_file if the program is compiled defining
-   * _TILEDB_USE_MMAP.
+   * ReadState::read_tile_from_file_cmp_gzip if _TILEDB_USE_MMAP is defined.
    *
    * @param attribute_id The id of the attribute the read occurs for.
    * @param offset The offset at which the tile starts in the file.
-   * @param tile_size The actual tile size. Note that this may be different for
-   *     "fill_tile_size" only in the sparse case, and only for the very last
+   * @param tile_compressed_size The actual compressed_tile size. 
+   */
+  int read_tile_from_file_with_mmap_cmp_gzip(
+      int attribute_id,
+      off_t offset,
+      size_t tile_compressed_size);
+
+  /** 
+   * Reads a tile from the disk for an attribute into a local buffer, using 
+   * memory map (mmap). This function is invoked in place of
+   * ReadState::read_tile_from_file_cmp_none if _TILEDB_USE_MMAP is defined.
+   *
+   * @param attribute_id The id of the attribute the read occurs for.
+   * @param offset The offset at which the tile starts in the file.
+   * @param tile_size The actual tile size. Note that this may be different than
+   *     "full_tile_size" only in the sparse case, and only for the very last
    *     tile in the global order.
    */
-  int read_tile_from_file_with_mmap(
+  int read_tile_from_file_with_mmap_cmp_none(
       int attribute_id,
       off_t offset,
       size_t tile_size);

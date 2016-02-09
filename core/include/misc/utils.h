@@ -140,7 +140,7 @@ template<class T>
 void expand_mbr(T* mbr, const T* coords, int dim_num);
 
 /** Returns the size of the input file and TILEDB_UT_ERR for error. */
-ssize_t file_size(const std::string& filename);
+off_t file_size(const std::string& filename);
 
 /** Returns the names of the directories inside the input directory. */
 std::vector<std::string> get_dirs(const std::string& dir);

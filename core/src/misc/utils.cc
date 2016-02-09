@@ -223,7 +223,7 @@ void expand_mbr(T* mbr, const T* coords, int dim_num) {
   }	
 } 
 
-ssize_t file_size(const std::string& filename) {
+off_t file_size(const std::string& filename) {
   int fd = open(filename.c_str(), O_RDONLY);
   if(fd == -1) {
     PRINT_ERROR("Cannot get file size; File opening error");
@@ -232,7 +232,7 @@ ssize_t file_size(const std::string& filename) {
 
   struct stat st;
   fstat(fd, &st);
-  ssize_t file_size = st.st_size;
+  off_t file_size = st.st_size;
   
   close(fd);
 
