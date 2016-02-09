@@ -266,6 +266,34 @@ std::string parent_dir(const std::string& dir);
 void purge_dots_from_path(std::string& path);
 
 /**
+ * Reads data from a file into a buffer.
+ *
+ * @param filename The name of the file
+ * @param offset The offset in the file from which the read will start.
+ * @param buffer The buffer into which the data will be written.
+ * @param length The size of the data to be read from the file.
+ */
+int read_from_file(
+    const std::string& filaname,
+    off_t offset,
+    void* buffer,
+    size_t length);
+
+/**
+ * Reads data from a file into a buffer, using memory map (mmap).
+ *
+ * @param filename The name of the file
+ * @param offset The offset in the file from which the read will start.
+ * @param buffer The buffer into which the data will be written.
+ * @param length The size of the data to be read from the file.
+ */
+int read_from_file_with_mmap(
+    const std::string& filaname,
+    off_t offset,
+    void* buffer,
+    size_t length);
+
+/**
  * Returns the absolute canonicalized directory path of the input directory.
  *
  * @param The input directory to be canonicalized.

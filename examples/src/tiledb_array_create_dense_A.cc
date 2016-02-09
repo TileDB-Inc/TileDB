@@ -52,7 +52,7 @@ int main() {
   array_schema.dense_ = 1;
 
   /* Compression for "a1" is GZIP, none for the rest. */
-  const char* compression[] = { "GZIP", "NONE", "NONE" };
+  const char* compression[] = { "NONE", "NONE", "NONE" };
   array_schema.compression_ = compression;
 
   /* 

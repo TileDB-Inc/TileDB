@@ -4,6 +4,14 @@
 
 OS := $(shell uname)
 
+# Configuration flags
+CONFIG_FLAGS =
+USE_MMAP =
+
+ifeq ($(USE_MMAP),1)
+  CONFIG_FLAGS += -D_TILEDB_USE_MMAP
+endif
+
 # Large file support
 LFS_CFLAGS = -D_FILE_OFFSET_BITS=64
 
@@ -56,7 +64,7 @@ endif
 # MPI compiler for C++
 MPIPATH = #/opt/mpich/dev/intel/default/bin/
 CXX = $(MPIPATH)mpicxx -lstdc++ -std=c++11 -fPIC -fvisibility=hidden \
-      $(LFS_CFLAGS) $(CFLAGS)  
+      $(LFS_CFLAGS) $(CFLAGS) $(CONFIG_FLAGS) 
 
 # --- Directories --- #
 # Directories for the core code of TileDB

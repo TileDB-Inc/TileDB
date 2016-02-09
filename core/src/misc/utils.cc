@@ -40,6 +40,7 @@
 #include <fcntl.h>
 #include <iostream>
 #include <set>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <zlib.h>
@@ -574,6 +575,81 @@ void purge_dots_from_path(std::string& path) {
   path = "/";
   for(int i=0; i<final_tokens.size(); ++i) 
     path += ((i != 0) ? "/" : "") + final_tokens[i]; 
+}
+
+int read_from_file(
+    const std::string& filename,
+    off_t offset,
+    void* buffer,
+    size_t length) {
+  // Open file
+  int fd = open(filename.c_str(), O_RDONLY);
+  if(fd == -1) {
+    PRINT_ERROR("Cannot read from file; File opening error");
+    return TILEDB_UT_ERR;
+  }
+
+  // Read
+  lseek(fd, offset, SEEK_SET); 
+  ssize_t bytes_read = ::read(fd, buffer, length);
+  if(bytes_read != length) {
+    PRINT_ERROR("Cannot read from file; File reading error");
+    return TILEDB_UT_ERR;
+  }
+  
+  // Close file
+  if(close(fd)) {
+    PRINT_ERROR("Cannot read from file; File closing error");
+    return TILEDB_UT_ERR;
+  }
+
+  // Success
+  return TILEDB_UT_OK;
+}
+
+int read_from_file_with_mmap(
+    const std::string& filename,
+    off_t offset,
+    void* buffer,
+    size_t length) {
+  // Calculate offset considering the page size
+  size_t page_size = sysconf(_SC_PAGE_SIZE);
+  off_t start_offset = (offset / page_size) * page_size;
+  size_t extra_offset = offset - start_offset;
+  size_t new_length = length + extra_offset;
+
+  // Open file
+  int fd = open(filename.c_str(), O_RDONLY);
+  if(fd == -1) {
+    PRINT_ERROR("Cannot read from file; File opening error");
+    return TILEDB_UT_ERR;
+  }
+ 
+  // Map
+  void* addr = 
+      mmap(NULL, new_length, PROT_READ, MAP_PRIVATE, fd, start_offset);
+  if(addr == MAP_FAILED) {
+    PRINT_ERROR("Cannot read from file; Memory map error");
+    return TILEDB_UT_ERR;
+  }
+
+  // Copy bytes 
+  memcpy(buffer, static_cast<char*>(addr) + extra_offset, length);
+
+  // Close file
+  if(close(fd)) {
+    PRINT_ERROR("Cannot read from file; File closing error");
+    return TILEDB_UT_ERR;
+  }
+
+  // Unmap
+  if(munmap(addr, new_length)) {
+    PRINT_ERROR("Cannot read from file; Memory unmap error");
+    return TILEDB_UT_ERR;
+  }
+
+  // Success
+  return TILEDB_UT_OK;
 }
 
 std::string real_dir(const std::string& dir) {
