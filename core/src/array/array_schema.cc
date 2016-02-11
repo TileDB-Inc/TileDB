@@ -1741,7 +1741,7 @@ void ArraySchema::compute_tile_sizes() {
 
   for(int i=0; i<attribute_num_+1; ++i) {
     if(var_size(i))
-      tile_sizes_[i] = 0;
+      tile_sizes_[i] = cell_num_per_tile_ * TILEDB_CELL_VAR_OFFSET_SIZE;
     else
       tile_sizes_[i] = cell_num_per_tile_ * cell_size(i); 
   }

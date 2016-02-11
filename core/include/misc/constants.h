@@ -71,6 +71,9 @@
 /** The size of the sorted buffer for varibale attributes. */
 #define TILEDB_SORTED_BUFFER_VAR_SIZE 10000000  // ~10MB
 
+/** Size of the starting offset of a variable cell. */
+#define TILEDB_CELL_VAR_OFFSET_SIZE sizeof(size_t)
+
 /** The TileDB data types. */ 
 enum DataType {
     TILEDB_CHAR, 
