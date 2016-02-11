@@ -437,7 +437,28 @@ class ReadState {
       size_t buffer_size, 
       size_t& buffer_offset);
 
-  // TODO
+  /** 
+   * Copies cells from local buffers into two attribute buffers, for the range
+   * specified in Array::init. The second buffer will store
+   * the actual variable-sized cell values, whereas the first one will store
+   * the starting offsets of each cell in the second buffer.
+   * This function focuses only on the sparse case. 
+   * 
+   * @template T The coordinates type.
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer that will store the starting offsets in 
+   *     "buffer_var" of the variable-sized cells. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_offset The offset in "buffer" where the copy will start
+   *     from.
+   * @param buffer_var The buffer that will store the actual variable-sized
+   *     cells.
+   * @param buffer_var_size The corresponding size of the "buffer_var"
+   *     parameter.
+   * @param buffer_var_offset The offset in "buffer_var" where the copy will
+   *     start from.
+   * @return void.
+   */
   template<class T>
   void copy_from_tile_buffer_sparse_var(
       int attribute_id,
@@ -521,7 +542,29 @@ class ReadState {
       size_t buffer_size, 
       size_t& buffer_offset);
 
-  // TODO
+  /** 
+   * Copies cells from local buffers into two attribute buffers, for the range
+   * specified in Array::init. The second buffer will store
+   * the actual variable-sized cell values, whereas the first one will store
+   * the starting offsets of each cell in the second buffer.
+   * This function focuses only on the sparse case, variable-sized cells, and
+   * a tile with partial contiguous overlap with the range. 
+   * 
+   * @template T The coordinates type.
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer that will store the starting offsets in 
+   *     "buffer_var" of the variable-sized cells. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_offset The offset in "buffer" where the copy will start
+   *     from.
+   * @param buffer_var The buffer that will store the actual variable-sized
+   *     cells.
+   * @param buffer_var_size The corresponding size of the "buffer_var"
+   *     parameter.
+   * @param buffer_var_offset The offset in "buffer_var" where the copy will
+   *     start from.
+   * @return void.
+   */
   template<class T>
   void copy_from_tile_buffer_partial_contig_sparse_var(
       int attribute_id,
@@ -552,7 +595,7 @@ class ReadState {
       size_t buffer_size, 
       size_t& buffer_offset);
 
-    /** 
+  /** 
    * Copies cells from local buffers into two attribute buffers, for the range
    * specified in Array::init. The second buffer will store
    * the actual variable-sized cell values, whereas the first one will store
@@ -605,7 +648,29 @@ class ReadState {
       size_t buffer_size, 
       size_t& buffer_offset);
 
-  // TODO
+  /** 
+   * Copies cells from local buffers into two attribute buffers, for the range
+   * specified in Array::init. The second buffer will store
+   * the actual variable-sized cell values, whereas the first one will store
+   * the starting offsets of each cell in the second buffer.
+   * This function focuses only on the sparse case, variable-sized cells, and
+   * a tile with partial non-contiguous overlap with the range. 
+   * 
+   * @template T The coordinates type.
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer that will store the starting offsets in 
+   *     "buffer_var" of the variable-sized cells. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_offset The offset in "buffer" where the copy will start
+   *     from.
+   * @param buffer_var The buffer that will store the actual variable-sized
+   *     cells.
+   * @param buffer_var_size The corresponding size of the "buffer_var"
+   *     parameter.
+   * @param buffer_var_offset The offset in "buffer_var" where the copy will
+   *     start from.
+   * @return void.
+   */
   template<class T>
   void copy_from_tile_buffer_partial_non_contig_sparse_var(
       int attribute_id,
@@ -830,7 +895,28 @@ class ReadState {
       size_t buffer_size, 
       size_t& buffer_offset);
 
-  // TODO
+  /** 
+   * Copies a tile into two attribute buffers, which has a partial contiguous
+   * overlap with the range specified in Array::init. The second buffer will
+   * store the actual variable-sized cell values, whereas the first one will
+   * store the starting offsets of each cell in the second buffer. This
+   * function focuses on the sparse case.
+   * 
+   * @template T The coordinates type.
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer that will store the starting offsets in 
+   *     "buffer_var" of the variable-sized cells. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_offset The offset in "buffer" where the copy will start
+   *     from.
+   * @param buffer_var The buffer that will store the actual variable-sized
+   *     cells.
+   * @param buffer_var_size The corresponding size of the "buffer_var"
+   *     parameter.
+   * @param buffer_var_offset The offset in "buffer_var" where the copy will
+   *     start from.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   template<class T>
   int copy_tile_partial_contig_sparse_var(
       int attribute_id,
@@ -913,7 +999,28 @@ class ReadState {
       size_t buffer_size, 
       size_t& buffer_offset);
 
-  // TODO
+  /** 
+   * Copies into two attribute buffers a tile that has a partial non-contiguous
+   * overlap with the range specified in Array::init. The second buffer will
+   * store the actual variable-sized cell values, whereas the first one will
+   * store the starting offsets of each cell in the second buffer. This
+   * function focuses on the sparse case.
+   * 
+   * @template T The coordinates type.
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer that will store the starting offsets in 
+   *     "buffer_var" of the variable-sized cells. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_offset The offset in "buffer" where the copy will start
+   *     from.
+   * @param buffer_var The buffer that will store the actual variable-sized
+   *     cells.
+   * @param buffer_var_size The corresponding size of the "buffer_var"
+   *     parameter.
+   * @param buffer_var_offset The offset in "buffer_var" where the copy will
+   *     start from.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   template<class T>
   int copy_tile_partial_non_contig_sparse_var(
       int attribute_id,
@@ -992,7 +1099,7 @@ class ReadState {
    * coordinates instead of cell coordinates. Applicable only to the dense
    * case.
    *
-   * @template The coordinates type.
+   * @template T The coordinates type.
    * @return void.
    */
   template<class T>
@@ -1367,7 +1474,23 @@ class ReadState {
       void* buffer, 
       size_t& buffer_size);
 
-  // TODO
+  /** 
+   * Reads cells into two attribute buffers, for the range specified in
+   * Array::init. This function focuses only on the sparse case, and
+   * specifically on variable-sized cells. The second buffer will store
+   * the actual variable-sized cell values, whereas the first one will store
+   * the starting offsets of each cell in the second buffer.
+   * 
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer that will store the starting offsets in 
+   *     "buffer_var" of the variable-sized cells. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_var The buffer that will store the actual variable-sized
+   *     cells.
+   * @param buffer_var_size The corresponding size of the "buffer_var"
+   *     parameter.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   int read_sparse_attr_var(
       int attribute_id,
       void* buffer, 
@@ -1375,7 +1498,24 @@ class ReadState {
       void* buffer_var, 
       size_t& buffer_var_size);
 
-  // TODO
+  /** 
+   * Reads cells into two attribute buffers, for the range specified in
+   * Array::init. The second buffer will store
+   * the actual variable-sized cell values, whereas the first one will store
+   * the starting offsets of each cell in the second buffer.
+   * This function focuses only on the sparse case, and specifically on 
+   * variable-sized cells and GZIP compression. 
+   * 
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer that will store the starting offsets in 
+   *     "buffer_var" of the variable-sized cells. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_var The buffer that will store the actual variable-sized
+   *     cells.
+   * @param buffer_var_size The corresponding size of the "buffer_var"
+   *     parameter.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   int read_sparse_attr_var_cmp_gzip(
       int attribute_id,
       void* buffer, 
@@ -1383,7 +1523,25 @@ class ReadState {
       void* buffer_var, 
       size_t& buffer_var_size);
 
-  // TODO
+  /** 
+   * Reads cells into two attribute buffers, for the range specified in
+   * Array::init. The second buffer will store
+   * the actual variable-sized cell values, whereas the first one will store
+   * the starting offsets of each cell in the second buffer.
+   * This function focuses only on the sparse case, and specifically on 
+   * variable-sized cells and GZIP compression. 
+   * 
+   * @template T The coordinates type.
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer that will store the starting offsets in 
+   *     "buffer_var" of the variable-sized cells. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_var The buffer that will store the actual variable-sized
+   *     cells.
+   * @param buffer_var_size The corresponding size of the "buffer_var"
+   *     parameter.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   template<class T>
   int read_sparse_attr_var_cmp_gzip(
       int attribute_id,
@@ -1392,7 +1550,24 @@ class ReadState {
       void* buffer_var, 
       size_t& buffer_var_size);
 
-  // TODO
+  /** 
+   * Reads cells into two attribute buffers, for the range specified in
+   * Array::init. The second buffer will store
+   * the actual variable-sized cell values, whereas the first one will store
+   * the starting offsets of each cell in the second buffer.
+   * This function focuses only on the sparse case, and specifically on 
+   * variable-sized cells and no compression. 
+   * 
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer that will store the starting offsets in 
+   *     "buffer_var" of the variable-sized cells. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_var The buffer that will store the actual variable-sized
+   *     cells.
+   * @param buffer_var_size The corresponding size of the "buffer_var"
+   *     parameter.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   int read_sparse_attr_var_cmp_none(
       int attribute_id,
       void* buffer, 
@@ -1400,7 +1575,25 @@ class ReadState {
       void* buffer_var, 
       size_t& buffer_var_size);
 
-  // TODO
+  /** 
+   * Reads cells into two attribute buffers, for the range specified in
+   * Array::init. The second buffer will store
+   * the actual variable-sized cell values, whereas the first one will store
+   * the starting offsets of each cell in the second buffer.
+   * This function focuses only on the sparse case, and specifically on 
+   * variable-sized cells and no compression. 
+   * 
+   * @template T The coordinate type.
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer that will store the starting offsets in 
+   *     "buffer_var" of the variable-sized cells. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_var The buffer that will store the actual variable-sized
+   *     cells.
+   * @param buffer_var_size The corresponding size of the "buffer_var"
+   *     parameter.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   template<class T>
   int read_sparse_attr_var_cmp_none(
       int attribute_id,
