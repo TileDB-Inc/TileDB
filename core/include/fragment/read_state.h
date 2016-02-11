@@ -222,43 +222,85 @@ class ReadState {
       size_t& bytes_to_copy,
       size_t& bytes_var_to_copy) const;
 
-  // TODO
+  /** 
+   * Computes the ranges of positions of cells in a tile that overlap with
+   * the query range.
+   */
   template<class T>
   void compute_cell_pos_ranges(); 
 
-  // TODO
+  /** 
+   * Computes the ranges of positions of cells in a tile that overlap with
+   * the query range. This function focuses on the case the tile overlap
+   * tile is partial contiguous.
+   */
   template<class T>
   void compute_cell_pos_ranges_contig(); 
 
-  // TODO
+  /** 
+   * Computes the ranges of positions of cells in a tile that overlap with
+   * the query range. This function focuses on the case the tile overlap
+   * tile is partial contiguous, and specifically on the column-major
+   * cell order.
+   */
   template<class T>
   void compute_cell_pos_ranges_contig_col(); 
 
-  // TODO
+  /** 
+   * Computes the ranges of positions of cells in a tile that overlap with
+   * the query range. This function focuses on the case the tile overlap
+   * tile is partial contiguous, and specifically on the row-major
+   * cell order.
+   */
   template<class T>
   void compute_cell_pos_ranges_contig_row(); 
 
-  // TODO
+  /** 
+   * Computes the ranges of positions of cells in a tile that overlap with
+   * the query range. This function focuses on the case the tile overlap
+   * tile is partial non-contiguous.
+   */
   template<class T>
   void compute_cell_pos_ranges_non_contig(); 
 
-  // TODO
+  /** 
+   * Computes the ranges of positions of cells in a tile that overlap with
+   * the query range. This function focuses on the case the tile overlap
+   * tile is partial, and computes the ranges by scanning the cells between
+   * the input start and end positions.
+   *
+   * @param start_pos The starting cell position of the scan.
+   * @param end_pos The ending cell position of the scan.
+   * @return void.
+   */
   template<class T>
   void compute_cell_pos_ranges_scan(int64_t start_pos, int64_t end_pos); 
 
-  // TODO
+  /** 
+   * Searches for the cell with coordinates that are included in the
+   * unary query range.
+   */
   template<class T>
   void compute_cell_pos_ranges_unary(); 
 
-  // TODO
+  /** 
+   * Searches for the cell with coordinates that are included in the
+   * unary query range. This function focuses on column-major cell order.
+   */
   template<class T>
   void compute_cell_pos_ranges_unary_col(); 
 
-  // TODO
+  /** 
+   * Searches for the cell with coordinates that are included in the
+   * unary query range. This function focuses on Hilbert cell order.
+   */
   template<class T>
   void compute_cell_pos_ranges_unary_hil(); 
 
-  // TODO
+  /** 
+   * Searches for the cell with coordinates that are included in the
+   * unary query range. This function focuses on row-major cell order.
+   */
   template<class T>
   void compute_cell_pos_ranges_unary_row(); 
 
@@ -375,7 +417,19 @@ class ReadState {
       size_t buffer_var_size,
       size_t& buffer_var_offset);
 
-  // TODO
+  /** 
+   * Copies cells from a locally cached tile buffer into an attribute buffer,
+   * for the range specified in Array::init. This function focuses only on the
+   * sparse case.
+   * 
+   * @template T The coordinates type.
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer into which the cells will be written. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_offset The offset in the "buffer" parameter the copy will
+   *     start from.
+   * @return void.
+   */
   template<class T>
   void copy_from_tile_buffer_sparse(
       int attribute_id,
@@ -447,7 +501,19 @@ class ReadState {
       size_t buffer_var_size,
       size_t& buffer_var_offset);
 
-  // TODO
+  /** 
+   * Copies cells from a locally cached tile buffer into an attribute buffer,
+   * for the range specified in Array::init. This function focuses only on the
+   * case of a partial contiguous overlapping tile with the range, and 
+   * especially for the sparse case.
+   * 
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer into which the cells will be written. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_offset The offset in the "buffer" parameter the copy will
+   *     start from.
+   * @return void. 
+   */
   template<class T>
   void copy_from_tile_buffer_partial_contig_sparse(
       int attribute_id,
@@ -519,7 +585,19 @@ class ReadState {
       size_t buffer_var_size, 
       size_t& buffer_var_offset);
 
-  // TODO
+  /** 
+   * Copies cells from a locally cached tile buffer into an attribute buffer,
+   * for the range specified in Array::init. This function focuses only on the
+   * case of a partial non-contiguous overlapping tile with the range, and 
+   * especially for the sparse case.
+   * 
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer into which the cells will be written. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_offset The offset in the "buffer" parameter the copy will
+   *     start from.
+   * @return void. 
+   */
   template<class T>
   void copy_from_tile_buffer_partial_non_contig_sparse(
       int attribute_id,
@@ -638,10 +716,10 @@ class ReadState {
       size_t tile_var_size,
       size_t& buffer_var_offset);
 
-    /** 
+  /** 
    * Copies a tile with partial conitguous overlap with the range specified in
    * Array::init, into an attribute buffer, by reading directly from the file
-   * into the buffer.
+   * into the buffer. This function focuses on the dense case.
    * 
    * @param attribute_id The id of the attribute the read focuses on.
    * @param buffer The buffer into which the cells will be written. 
@@ -659,7 +737,19 @@ class ReadState {
       size_t result_size,
       size_t& buffer_offset);
 
-  // TODO
+  /** 
+   * Copies a tile with partial conitguous overlap with the range specified in
+   * Array::init, into an attribute buffer, by reading directly from the file
+   * into the buffer. This function focuses on the sparse case.
+   * 
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer into which the cells will be written. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param result_size The size of the partial tile (result) to be read.
+   * @param buffer_offset The offset in the "buffer" parameter the copy will
+   *     start from.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   template<class T>
   int copy_tile_partial_contig_direct_sparse(
       int attribute_id,
@@ -670,7 +760,8 @@ class ReadState {
 
   /** 
    * Copies a tile with partial contiguous overlap with the range specified in
-   * Array::init, into an attribute buffer.
+   * Array::init, into an attribute buffer. This function focuses on the dense
+   * case.
    * 
    * @template T The coordinates type.
    * @param attribute_id The id of the attribute the read focuses on.
@@ -719,7 +810,19 @@ class ReadState {
       size_t buffer_var_size, 
       size_t& buffer_var_offset);
 
-  // TODO
+  /** 
+   * Copies a tile with partial contiguous overlap with the range specified in
+   * Array::init, into an attribute buffer. This function focuses on the sparse
+   * case.
+   * 
+   * @template T The coordinates type.
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer into which the cells will be written. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_offset The offset in the "buffer" parameter the copy will
+   *     start from.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   template<class T>
   int copy_tile_partial_contig_sparse(
       int attribute_id,
@@ -740,7 +843,8 @@ class ReadState {
 
   /** 
    * Copies a tile with partial non contiguous overlap with the range specified
-   * in Array::init, into an attribute buffer.
+   * in Array::init, into an attribute buffer. This function focuses on the 
+   * dense case.
    * 
    * @template T The coordinates type.
    * @param attribute_id The id of the attribute the read focuses on.
@@ -789,7 +893,19 @@ class ReadState {
       size_t buffer_var_size,
       size_t& buffer_var_offset);
 
-  // TODO
+  /** 
+   * Copies a tile with partial non contiguous overlap with the range specified
+   * in Array::init, into an attribute buffer. This function focuses on the 
+   * sparse case.
+   * 
+   * @template T The coordinates type.
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer into which the cells will be written. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @param buffer_offset The offset in the "buffer" parameter the copy will
+   *     start from.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   template<class T>
   int copy_tile_partial_non_contig_sparse(
       int attribute_id,
@@ -818,7 +934,13 @@ class ReadState {
   template<class T>
   void get_next_overlapping_tile_dense();
 
-  // TODO
+  /**
+   * Computes the next tile that overlaps with the range given in Array::init.
+   * Applicable only to the sparse case.
+   *
+   * @template T The coordinates type.
+   * @return void 
+   */
   template<class T>
   void get_next_overlapping_tile_sparse();
 
@@ -858,29 +980,75 @@ class ReadState {
    */
   int get_tile_from_disk_var_cmp_none(int attribute_id);
 
-  // TODO
+  /** 
+   * Maps the query range into the tile domain, which is oriented by tile
+   * coordinates instead of cell coordinates. Applicable only to the dense
+   * case.
+   */
   void init_range_in_tile_domain();
 
-  // TODO
+  /** 
+   * Maps the query range into the tile domain, which is oriented by tile
+   * coordinates instead of cell coordinates. Applicable only to the dense
+   * case.
+   *
+   * @template The coordinates type.
+   * @return void.
+   */
   template<class T>
   void init_range_in_tile_domain();
 
-  // TODO
+  /** 
+   * Computes a range of tile positions (along the global tile order), which
+   * the read will focus on (since these tiles may overlap with the query
+   * range). This function is applicable only to the sparse case.
+   */
   void init_tile_search_range();
 
-  // TODO
+  /** 
+   * Computes a range of tile positions (along the global tile order), which
+   * the read will focus on (since these tiles may overlap with the query
+   * range). This function is applicable only to the sparse case.
+   *
+   * @template T The coordinates type.
+   * @return void.
+   */
   template<class T>
   void init_tile_search_range();
 
-  // TODO
+  /** 
+   * Computes a range of tile positions (along the global tile order), which
+   * the read will focus on (since these tiles may overlap with the query
+   * range). This function is applicable only to the sparse case. It also
+   * focuses on column-major cell order.
+   *
+   * @template T The coordinates type.
+   * @return void.
+   */
   template<class T>
   void init_tile_search_range_col();
 
-  // TODO
+  /** 
+   * Computes a range of tile positions (along the global tile order), which
+   * the read will focus on (since these tiles may overlap with the query
+   * range). This function is applicable only to the sparse case. It also
+   * focuses on Hilbert cell order.
+   *
+   * @template T The coordinates type.
+   * @return void.
+   */
   template<class T>
   void init_tile_search_range_hil();
 
-  // TODO
+  /** 
+   * Computes a range of tile positions (along the global tile order), which
+   * the read will focus on (since these tiles may overlap with the query
+   * range). This function is applicable only to the sparse case. It also
+   * focuses on row-major cell order.
+   *
+   * @template T The coordinates type.
+   * @return void.
+   */
   template<class T>
   void init_tile_search_range_row();
 
@@ -923,7 +1091,7 @@ class ReadState {
    * @param attribute_id The id of the attribute the read focuses on.
    * @param buffer The buffer into which the cells will be written. 
    * @param buffer_size The corresponding size of the "buffer" parameter.
-    @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
   int read_dense_attr_cmp_gzip(
       int attribute_id,
@@ -1107,37 +1275,92 @@ class ReadState {
       void* buffer_var, 
       size_t& buffer_var_size);
 
-  // TODO
+  /** 
+   * Reads cells into the buffers, for the range specified in Array::init. This
+   * function focuses only on the sparse case.
+   * 
+   * @param buffers The buffers into which the cells will be written. These
+   *     buffers are allocated and provided by the caller. Their order should
+   *     follow the order of the attributes given in Array::init. 
+   * @param buffer_sizes The corresponding sizes of the "buffers" parameter.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   int read_sparse(
       void** buffers, 
       size_t* buffer_sizes);
 
-  // TODO
+  /** 
+   * Reads cells into an attribute buffer, for the range specified in
+   * Array::init. This function focuses only on the sparse case.
+   * 
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer into which the cells will be read. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   int read_sparse_attr(
       int attribute_id,
       void* buffer, 
       size_t& buffer_size);
 
-  // TODO
+  /** 
+   * Reads cells into an attribute buffer, for the range specified in
+   * Array::init. This function focuses only on the sparse case, and 
+   * especially the case of GZIP compression.
+   * 
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer into which the cells will be written. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   int read_sparse_attr_cmp_gzip(
       int attribute_id,
       void* buffer, 
       size_t& buffer_size);
 
-  // TODO
+  /** 
+   * Reads cells into an attribute buffer, for the range specified in
+   * Array::init. This function focuses only on the sparse case, and 
+   * especially the case of GZIP compression.
+   * 
+   * @template T The coordinates type.
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer into which the cells will be written. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   template<class T>
   int read_sparse_attr_cmp_gzip(
       int attribute_id,
       void* buffer, 
       size_t& buffer_size);
 
-  // TODO
+  /** 
+   * Reads cells into an attribute buffer, for the range specified in
+   * Array::init. This function focuses only on the sparse case, and 
+   * especially the case of no compression.
+   * 
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer into which the cells will be written. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   int read_sparse_attr_cmp_none(
       int attribute_id,
       void* buffer, 
       size_t& buffer_size);
 
-  // TODO
+  /** 
+   * Reads cells into an attribute buffer, for the range specified in
+   * Array::init. This function focuses only on the sparse case, and 
+   * especially the case of no compression.
+   * 
+   * @template T The coordinates type.
+   * @param attribute_id The id of the attribute the read focuses on.
+   * @param buffer The buffer into which the cells will be written. 
+   * @param buffer_size The corresponding size of the "buffer" parameter.
+   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   */
   template<class T>
   int read_sparse_attr_cmp_none(
       int attribute_id,
