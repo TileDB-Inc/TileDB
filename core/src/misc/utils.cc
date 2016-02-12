@@ -627,7 +627,7 @@ int read_from_file_with_mmap(
  
   // Map
   void* addr = 
-      mmap(NULL, new_length, PROT_READ, MAP_PRIVATE, fd, start_offset);
+      mmap(NULL, new_length, PROT_READ, MAP_SHARED, fd, start_offset);
   if(addr == MAP_FAILED) {
     PRINT_ERROR("Cannot read from file; Memory map error");
     return TILEDB_UT_ERR;

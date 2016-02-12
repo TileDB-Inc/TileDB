@@ -4549,14 +4549,13 @@ int ReadState::read_tile_from_file_with_mmap_cmp_gzip(
   }
 
   // Map
-  map_addr_compressed_ = 
-      mmap(
-          map_addr_compressed_, 
-          new_length, 
-          PROT_READ | PROT_WRITE, 
-          MAP_PRIVATE, 
-          fd, 
-          start_offset);
+  map_addr_compressed_ = mmap(
+                             map_addr_compressed_, 
+                             new_length, 
+                             PROT_READ, 
+                             MAP_SHARED, 
+                             fd, 
+                             start_offset);
   if(map_addr_compressed_ == MAP_FAILED) {
     map_addr_compressed_ = NULL;
     map_addr_compressed_length_ = 0;
@@ -4619,14 +4618,11 @@ int ReadState::read_tile_from_file_with_mmap_cmp_none(
   }
 
   // Map
+  bool var_size = fragment_->array()->array_schema()->var_size(attribute_id);
+  int prot = var_size ? (PROT_READ | PROT_WRITE) : PROT_READ;
+  int flags = var_size ? MAP_PRIVATE : MAP_SHARED;
   map_addr_[attribute_id] = 
-      mmap(
-          map_addr_[attribute_id], 
-          new_length, 
-          PROT_READ | PROT_WRITE, 
-          MAP_PRIVATE, 
-          fd, 
-          start_offset);
+      mmap(map_addr_[attribute_id], new_length, prot, flags, fd, start_offset);
   if(map_addr_[attribute_id] == MAP_FAILED) {
     map_addr_[attribute_id] = NULL;
     map_addr_lengths_[attribute_id] = 0;
@@ -4755,14 +4751,13 @@ int ReadState::read_tile_from_file_with_mmap_var_cmp_gzip(
   }
 
   // Map
-  map_addr_compressed_ = 
-      mmap(
-          map_addr_compressed_, 
-          new_length, 
-          PROT_READ | PROT_WRITE, 
-          MAP_PRIVATE, 
-          fd, 
-          start_offset);
+  map_addr_compressed_ = mmap(
+                             map_addr_compressed_, 
+                             new_length, 
+                             PROT_READ, 
+                             MAP_SHARED, 
+                             fd, 
+                             start_offset);
   if(map_addr_compressed_ == MAP_FAILED) {
     map_addr_compressed_ = NULL;
     map_addr_compressed_length_ = 0;
@@ -4827,14 +4822,13 @@ int ReadState::read_tile_from_file_with_mmap_var_cmp_none(
   }
 
   // Map
-  map_addr_var_[attribute_id] = 
-      mmap(
-          map_addr_var_[attribute_id], 
-          new_length, 
-          PROT_READ | PROT_WRITE, 
-          MAP_PRIVATE, 
-          fd, 
-          start_offset);
+  map_addr_var_[attribute_id] = mmap(
+                                    map_addr_var_[attribute_id], 
+                                    new_length, 
+                                    PROT_READ, 
+                                    MAP_SHARED, 
+                                    fd, 
+                                    start_offset);
   if(map_addr_var_[attribute_id] == MAP_FAILED) {
     map_addr_var_[attribute_id] = NULL;
     map_addr_var_lengths_[attribute_id] = 0;
