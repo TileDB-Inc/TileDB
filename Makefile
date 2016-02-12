@@ -6,7 +6,13 @@ OS := $(shell uname)
 
 # Configuration flags
 CONFIG_FLAGS =
+
+# Use of mmap function for reading
 USE_MMAP =
+
+ifeq ($(USE_MMAP),)
+  USE_MMAP = 1
+endif
 
 ifeq ($(USE_MMAP),1)
   CONFIG_FLAGS += -D_TILEDB_USE_MMAP

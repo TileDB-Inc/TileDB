@@ -2881,7 +2881,6 @@ int ReadState::get_tile_from_disk_var_cmp_none(int attribute_id) {
   // For easy reference
   OverlappingTile& overlapping_tile = 
       overlapping_tiles_[overlapping_tiles_pos_[attribute_id]];
-  int64_t cell_num_per_tile = array_schema->cell_num_per_tile();
   size_t full_tile_size = array_schema->tile_size(attribute_id);
   size_t tile_size = overlapping_tile.cell_num_ * TILEDB_CELL_VAR_OFFSET_SIZE;
   int64_t tile_num = book_keeping_->tile_num();

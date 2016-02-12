@@ -632,9 +632,16 @@ int read_from_file_with_mmap(
     PRINT_ERROR("Cannot read from file; Memory map error");
     return TILEDB_UT_ERR;
   }
+  void* addr_start = static_cast<char*>(addr) + extra_offset;
+
+  // Give advice for sequential access
+  if(madvise(addr_start, length, MADV_SEQUENTIAL)) {
+    PRINT_ERROR("Cannot read from file; Memory advice error");
+    return TILEDB_UT_ERR;
+  }
 
   // Copy bytes 
-  memcpy(buffer, static_cast<char*>(addr) + extra_offset, length);
+  memcpy(buffer, addr_start, length);
 
   // Close file
   if(close(fd)) {
