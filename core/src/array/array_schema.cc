@@ -779,20 +779,20 @@ int ArraySchema::init(const ArraySchemaC* array_schema_c) {
   set_consolidation_step(array_schema_c->consolidation_step_);
   // Set dense
   set_dense(array_schema_c->dense_);
+  // Set types
+  if(set_types(array_schema_c->types_) != TILEDB_AS_OK)
+    return TILEDB_AS_ERR;
+  // Set tile extents
+  if(set_tile_extents(array_schema_c->tile_extents_) != TILEDB_AS_OK)
+    return TILEDB_AS_ERR;
   // Set cell order
   if(set_cell_order(array_schema_c->cell_order_) != TILEDB_AS_OK)
     return TILEDB_AS_ERR;
   // Set tile order
   if(set_tile_order(array_schema_c->tile_order_) != TILEDB_AS_OK)
     return TILEDB_AS_ERR;
-  // Set types
-  if(set_types(array_schema_c->types_) != TILEDB_AS_OK)
-    return TILEDB_AS_ERR;
   // Set domain
   if(set_domain(array_schema_c->domain_) != TILEDB_AS_OK)
-    return TILEDB_AS_ERR;
-  // Set tile extents
-  if(set_tile_extents(array_schema_c->tile_extents_) != TILEDB_AS_OK)
     return TILEDB_AS_ERR;
 
   // Compute number of cells per tile
@@ -897,9 +897,9 @@ int ArraySchema::set_cell_order(const char* cell_order) {
   } else if(!strcmp(cell_order, "column-major")) {
     cell_order_ = TILEDB_AS_CO_COLUMN_MAJOR;
   } else if(!strcmp(cell_order, "hilbert")) {
-    if(dense_) {
-      PRINT_ERROR("Cannot set cell order; Dense arrays do not support "
-                  "hilbert order");
+    if(tile_extents_ != NULL) {
+      PRINT_ERROR("Cannot set cell order; Arrays with non-null tile extents do "
+                  "not support hilbert order");
       return TILEDB_AS_ERR;
     }
     cell_order_ = TILEDB_AS_CO_HILBERT;
@@ -1051,13 +1051,6 @@ int ArraySchema::set_tile_extents(const void* tile_extents) {
     return TILEDB_AS_ERR;
   }
 
-  // Key-value stores must not have tile extents
-  if(tile_extents != NULL && key_value_) { 
-    PRINT_ERROR("Cannot set tile extents; Key-value arrays must not have tile "
-                "extents");
-    return TILEDB_AS_ERR;
-  }
-
   // Set tile extents
   if(tile_extents_ != NULL) {
     // Free existing tile extends
@@ -1085,9 +1078,9 @@ int ArraySchema::set_tile_order(const char* tile_order) {
   } else if(!strcmp(tile_order, "column-major")) {
     tile_order_ = TILEDB_AS_TO_COLUMN_MAJOR;
   } else if(!strcmp(tile_order, "hilbert")) {
-    if(dense_) {
-      PRINT_ERROR("Cannot set tile order; Dense arrays do not support "
-                  "hilbert order");
+    if(tile_extents_ != NULL) {
+      PRINT_ERROR("Cannot set tile order; Arrays with non-null tile extents do "
+                  "not support hilbert order");
       return TILEDB_AS_ERR;
     }
     tile_order_ = TILEDB_AS_TO_HILBERT;

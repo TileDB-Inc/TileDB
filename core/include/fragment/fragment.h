@@ -73,6 +73,9 @@ class Fragment {
   /** Returns the array the fragment belongs to. */
   const Array* array() const;
 
+  /** Returns true if the fragment is dense, and false if it is sparse. */
+  bool dense() const;
+
   /** Returns the fragment name. */
   const std::string& fragment_name() const;
 

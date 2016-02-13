@@ -171,16 +171,12 @@ int WriteState::write( const void** buffers, const size_t* buffer_sizes) {
 
   // Dispatch the proper write command
   if(array->mode() == TILEDB_WRITE) {    // SORTED
-    if(array->array_schema()->dense()) {            // DENSE ARRAY
-      if(has_coords()) {                                // SPARSE CELLS
-        return write_sparse(buffers, buffer_sizes);
-      } else {                                          // DENSE ARRAY 
-        if(book_keeping_->range() == NULL)
-          return write_dense(buffers, buffer_sizes);          // DENSE CELLS
-        else 
-          return write_dense_in_range(buffers, buffer_sizes); // DENSE IN RANGE
-      }
-    } else {                                // SPARSE ARRAY
+    if(fragment_->dense()) {                // DENSE FRAGMENT
+      if(book_keeping_->range() == NULL)
+        return write_dense(buffers, buffer_sizes);          
+      else 
+        return write_dense_in_range(buffers, buffer_sizes); 
+    } else {                                // SPARSE FRAGMENT
       return write_sparse(buffers, buffer_sizes);
     }
   } else if (array->mode() == TILEDB_WRITE_UNSORTED) { // UNSORTED
@@ -343,19 +339,6 @@ void WriteState::expand_mbr(const T* coords) {
   } else { // Expand MBR 
     ::expand_mbr(mbr, coords, dim_num);
   }
-}
-
-bool WriteState::has_coords() const {
-  const Array* array = fragment_->array();
-  const std::vector<int>& attribute_ids = array->attribute_ids();
-  int id_num = attribute_ids.size();
-  int attribute_num = array->array_schema()->attribute_num();
-  for(int i=0; i<id_num; ++i) {
-    if(attribute_ids[i] == attribute_num) 
-      return true;
-  }
-
-  return false;
 }
 
 void WriteState::shift_var_offsets(

@@ -89,7 +89,7 @@ ReadState::ReadState(
   // For easy reference 
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
-  bool dense = array_schema->dense();
+  bool dense = fragment_->dense();
 
   // Initializations
   cell_pos_range_pos_.resize(attribute_num+1);
@@ -133,7 +133,6 @@ ReadState::ReadState(
   }
 
   if(dense)         // DENSE
-    // TODO: Handle the case where it is dense but the fragment is sparse
     init_range_in_tile_domain();
   else              // SPARSE
     init_tile_search_range();
@@ -192,14 +191,12 @@ int ReadState::read(void** buffers, size_t* buffer_sizes) {
   reset_overflow();
 
   // Dispatch the proper write command
-  if(array->mode() == TILEDB_READ) {                 // NORMAL
-    if(array->array_schema()->dense()) {                   // DENSE
-      // TODO: Check if the fragment has coordinates, i.e., sparse updates
+  if(array->mode() == TILEDB_READ) {                 // NORMAL READ
+    if(fragment_->dense())                                // DENSE FRAGMENT
       return read_dense(buffers, buffer_sizes);       
-    } else {                                               // SPARSE ARRAY
+    else                                                  // SPARSE FRAGMENT
       return read_sparse(buffers, buffer_sizes);       
-    }
-  } else if (array->mode() == TILEDB_READ_REVERSE) { // REVERSE
+  } else if (array->mode() == TILEDB_READ_REVERSE) { // REVERSE READ
     // TODO
     return TILEDB_RS_OK;
   } else {

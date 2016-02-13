@@ -82,12 +82,32 @@ Fragment::~Fragment() {
 /*            ACCESSORS           */
 /* ****************************** */
 
-const std::string& Fragment::fragment_name() const {
-  return fragment_name_;
-}
-
 const Array* Fragment::array() const {
   return array_;
+}
+
+bool Fragment::dense() const {
+  if(array_->mode() == TILEDB_WRITE || 
+     array_->mode() == TILEDB_WRITE_UNSORTED) {
+    // Check the attributes given upon initialization
+    const std::vector<int>& attribute_ids = array_->attribute_ids();
+    int id_num = attribute_ids.size();
+    int attribute_num = array_->array_schema()->attribute_num();
+    for(int i=0; i<id_num; ++i) {
+      if(attribute_ids[i] == attribute_num) 
+        return false;
+    }
+
+    return true;
+  } else { // The array mode is TILEDB_READ or TILEDB_READ_REVERSE 
+    // The coordinates file should not exist
+    return !is_file(
+                fragment_name_ + "/" + TILEDB_COORDS_NAME + TILEDB_FILE_SUFFIX);
+  }
+}
+
+const std::string& Fragment::fragment_name() const {
+  return fragment_name_;
 }
 
 int Fragment::read(void** buffers, size_t* buffer_sizes) {

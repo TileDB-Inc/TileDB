@@ -134,9 +134,6 @@ class WriteState {
   template<class T>
   void expand_mbr(const T* coords);
 
-  /** True if the coordinates are included in the fragment attributes. */
-  bool has_coords() const;
-
   // TODO
   void shift_var_offsets(
       int attribute_id,
