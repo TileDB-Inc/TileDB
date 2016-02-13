@@ -54,6 +54,8 @@ class WriteState {
   // TYPE DEFINITIONS
 
   /** Custom comparator in cell sorting. */
+  template<typename T> struct SmallerIdCol;
+  /** Custom comparator in cell sorting. */
   template<typename T> struct SmallerIdRow;
   /** Custom comparator in cell sorting. */
   template<class T> class SmallerRow;
@@ -344,6 +346,47 @@ class WriteState::SmallerIdRow {
     const T* coords_b = &buffer_[b * dim_num_];
 
     for(int i=0; i<dim_num_; ++i) 
+      if(coords_a[i] < coords_b[i]) 
+        return true;
+      else if(coords_a[i] > coords_b[i]) 
+        return false;
+      // else coords_a[i] == coords_b[i] --> continue
+
+    return false;
+  }
+
+ private:
+  /** Cell buffer. */
+  const T* buffer_;
+  /** Number of dimensions. */
+  int dim_num_;
+  /** The cell ids. */
+  const std::vector<int64_t>& ids_;
+};
+
+/** Wrapper of comparison function for sorting cells. */
+template<class T>
+class WriteState::SmallerIdCol {
+ public:
+  /** Constructor. */
+  SmallerIdCol(const T* buffer, int dim_num, const std::vector<int64_t>& ids) 
+      : buffer_(buffer),
+        dim_num_(dim_num),
+        ids_(ids) { }
+
+  /** Comparison operator. */
+  bool operator () (int64_t a, int64_t b) {
+    if(ids_[a] < ids_[b])
+      return true;
+
+    if(ids_[a] > ids_[b])
+      return false;
+
+    // a.id_ == b.id_ --> check coordinates
+    const T* coords_a = &buffer_[a * dim_num_];
+    const T* coords_b = &buffer_[b * dim_num_];
+
+    for(int i=dim_num_-1; i>=0; --i) 
       if(coords_a[i] < coords_b[i]) 
         return true;
       else if(coords_a[i] > coords_b[i]) 

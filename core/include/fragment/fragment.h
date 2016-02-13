@@ -73,6 +73,9 @@ class Fragment {
   /** Returns the array the fragment belongs to. */
   const Array* array() const;
 
+  // TODO
+  int64_t cell_num_per_tile() const;
+
   /** Returns true if the fragment is dense, and false if it is sparse. */
   bool dense() const;
 
@@ -81,6 +84,9 @@ class Fragment {
 
   // TODO
   int read(void** buffers, size_t* buffer_sizes);
+
+  // TODO
+  size_t tile_size(int attribute_id) const;
 
   //MUTATORS
   
@@ -101,6 +107,8 @@ class Fragment {
   const Array* array_;
   /** A book-keeping structure. */
   BookKeeping* book_keeping_;
+  // TODO
+  bool dense_;
   /** The fragment name. */
   std::string fragment_name_;
   /** A read state structure. */

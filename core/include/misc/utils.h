@@ -83,6 +83,17 @@ int cmp_col_order(
     const T* coords_b, 
     int dim_num); 
 
+// TODO: 
+// -1 if a precedes b
+// +1 if b precedes a
+// 0 if a is equal to b
+template<class T>
+int cmp_col_order(
+    int64_t id_a,
+    const T* coords_a, 
+    int64_t id_b,
+    const T* coords_b, 
+    int dim_num);
 
 // TODO: 
 // -1 if a precedes b
@@ -93,7 +104,6 @@ int cmp_row_order(
     const T* coords_a, 
     const T* coords_b, 
     int dim_num); 
-
 
 // TODO: 
 // -1 if a precedes b

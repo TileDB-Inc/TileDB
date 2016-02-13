@@ -1159,6 +1159,34 @@ class ReadState {
   template<class T>
   void init_tile_search_range_row();
 
+  /** 
+   * Computes a range of tile positions (along the global tile order), which
+   * the read will focus on (since these tiles may overlap with the query
+   * range). This function is applicable only to the sparse case. It also
+   * focuses on orders that rely on some tile decomposition and column-major
+   * cell order.
+   *
+   * @template T The coordinates type.
+   * @return void.
+   */
+  template<class T>
+  void init_tile_search_range_id_col();
+
+  /** 
+   * Computes a range of tile positions (along the global tile order), which
+   * the read will focus on (since these tiles may overlap with the query
+   * range). This function is applicable only to the sparse case. It also
+   * focuses on orders that rely on some tile decomposition and row-major
+   * cell order.
+   *
+   * @template T The coordinates type.
+   * @return void.
+   */
+  template<class T>
+  void init_tile_search_range_id_row();
+
+
+
   /** True if the file of the input attribute is empty. */
   bool is_empty_attribute(int attribute_id) const;
 

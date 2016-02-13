@@ -797,7 +797,7 @@ int ReadState::compute_tile_var_size(
   // ========= Non-Compression case ========= // 
 
   // For easy reference
-  size_t full_tile_size = array_schema->tile_size(attribute_id);
+  size_t full_tile_size = fragment_->tile_size(attribute_id);
   int64_t tile_num = book_keeping_->tile_num();
 
   // Prepare attribute file name
@@ -2048,7 +2048,7 @@ int ReadState::copy_tile_full_direct(
 
   // Find file offset where the tile begins
   int64_t pos = overlapping_tiles_[overlapping_tiles_pos_[attribute_id]].pos_;
-  off_t file_offset = pos * array_schema->tile_size(attribute_id);
+  off_t file_offset = pos * fragment_->tile_size(attribute_id);
 
   // Read from file
   if(READ_FROM_FILE(
@@ -2082,7 +2082,7 @@ int ReadState::copy_tile_full_direct_var(
   char* buffer_var_c = static_cast<char*>(buffer_var);
   void* buffer_start = buffer_c + buffer_offset; 
   void* buffer_var_start = buffer_var_c + buffer_var_offset; 
-  size_t full_tile_size = array_schema->tile_size(attribute_id);
+  size_t full_tile_size = fragment_->tile_size(attribute_id);
 
   // Sanity check
   assert(tile_size <= buffer_size - buffer_offset);
@@ -2163,7 +2163,7 @@ int ReadState::copy_tile_partial_contig_direct_dense(
   assert(!array_schema->var_size(attribute_id));
 
   // Find the offset at the beginning and end of the overlap range
-  size_t tile_size = array_schema->tile_size(attribute_id);
+  size_t tile_size = fragment_->tile_size(attribute_id);
   size_t cell_size = array_schema->cell_size(attribute_id);
   int64_t start_cell_pos = array_schema->get_cell_pos<T>(start_coords);
   size_t start_offset = start_cell_pos * cell_size; 
@@ -2210,7 +2210,7 @@ int ReadState::copy_tile_partial_contig_direct_sparse(
   assert(!array_schema->var_size(attribute_id));
 
   // Find the offset at the beginning and end of the overlap range
-  size_t tile_size = array_schema->tile_size(attribute_id);
+  size_t tile_size = fragment_->tile_size(attribute_id);
   size_t cell_size = array_schema->cell_size(attribute_id);
   const std::pair<int64_t, int64_t>& cell_pos_range = 
       overlapping_tile.cell_pos_ranges_[0];
@@ -2644,8 +2644,9 @@ int ReadState::get_tile_from_disk_cmp_gzip(int attribute_id) {
 
   // For easy reference
   size_t cell_size = array_schema->cell_size(attribute_id);
-  size_t full_tile_size = array_schema->tile_size(attribute_id);
+  size_t full_tile_size = fragment_->tile_size(attribute_id);
   size_t tile_size = overlapping_tile.cell_num_ * cell_size;
+
   const std::vector<std::vector<size_t> >& tile_offsets = 
       book_keeping_->tile_offsets(); 
   int64_t tile_num = book_keeping_->tile_num();
@@ -2716,7 +2717,7 @@ int ReadState::get_tile_from_disk_cmp_none(int attribute_id) {
 
   // For easy reference
   size_t cell_size = array_schema->cell_size(attribute_id);
-  size_t full_tile_size = array_schema->tile_size(attribute_id);
+  size_t full_tile_size = fragment_->tile_size(attribute_id);
   size_t tile_size = overlapping_tile.cell_num_ * cell_size;
 
   // Find file offset where the tile begins
@@ -2752,7 +2753,7 @@ int ReadState::get_tile_from_disk_var_cmp_gzip(int attribute_id) {
   size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
   OverlappingTile& overlapping_tile = 
       overlapping_tiles_[overlapping_tiles_pos_[attribute_id]];
-  size_t full_tile_size = array_schema->cell_num_per_tile() * cell_size;
+  size_t full_tile_size = fragment_->tile_size(attribute_id);
   size_t tile_size = overlapping_tile.cell_num_ * cell_size;
   const std::vector<std::vector<size_t> >& tile_offsets = 
       book_keeping_->tile_offsets(); 
@@ -2878,7 +2879,7 @@ int ReadState::get_tile_from_disk_var_cmp_none(int attribute_id) {
   // For easy reference
   OverlappingTile& overlapping_tile = 
       overlapping_tiles_[overlapping_tiles_pos_[attribute_id]];
-  size_t full_tile_size = array_schema->tile_size(attribute_id);
+  size_t full_tile_size = fragment_->tile_size(attribute_id);
   size_t tile_size = overlapping_tile.cell_num_ * TILEDB_CELL_VAR_OFFSET_SIZE;
   int64_t tile_num = book_keeping_->tile_num();
   int64_t pos = overlapping_tile.pos_;
@@ -3026,13 +3027,30 @@ void ReadState::init_tile_search_range() {
   ArraySchema::CellOrder cell_order = array_schema->cell_order();
 
   // Initialize the tile search range
-  if(cell_order == ArraySchema::TILEDB_AS_CO_HILBERT) { // HILBERT
-    init_tile_search_range_hil<T>();
-  } else if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) { // ROW MAJOR
-    init_tile_search_range_row<T>();
-  } else { // COLUMN MAJOR
-    init_tile_search_range_col<T>();
-  } 
+  if(array_schema->tile_extents() == NULL) { // Null tile extents
+    if(cell_order == ArraySchema::TILEDB_AS_CO_HILBERT) {      
+      // HILBERT
+      init_tile_search_range_hil<T>();
+    } else if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) { 
+      // ROW MAJOR
+      init_tile_search_range_row<T>();
+    } else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) { 
+      // COLUMN MAJOR
+      init_tile_search_range_col<T>();
+    } else {
+      assert(0);
+    }
+  } else {                                   // Non-null tile extents
+    if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) {    
+      // ROW MAJOR
+      init_tile_search_range_id_row<T>();
+    } else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) { 
+      // COLUMN MAJOR
+      init_tile_search_range_id_col<T>();
+    } else {
+      assert(0);
+    }
+  }
 
   // Get the first overlapping tile in case of no overlap
   if(tile_search_range_[1] < tile_search_range_[0]) {
@@ -3078,7 +3096,7 @@ void ReadState::init_tile_search_range_col() {
     // Get info for bounding coordinates
     tile_start_coords = static_cast<const T*>(bounding_coords[med]);
     tile_end_coords = &(static_cast<const T*>(bounding_coords[med])[dim_num]);
-     
+
     // Calculate precedence
     if(cmp_col_order(
            range_min_coords,
@@ -3301,6 +3319,240 @@ void ReadState::init_tile_search_range_row() {
         max = med-1;
       } else if(cmp_row_order(
              range_max_coords,
+             tile_end_coords,
+             dim_num) > 0) {   // Range max succeeds MBR
+        min = med+1;
+      } else {                 // Range max in MBR
+        break; 
+      }
+    }
+
+    // Determine the start position of the range
+    if(max < min)    // Range max succeeds the tile at position max 
+      tile_search_range_[1] = max;     
+    else             // Range max included in a tile
+      tile_search_range_[1] = med;
+  }
+
+  // Clean up
+  delete [] range_min_coords;
+  delete [] range_max_coords;
+}
+
+template<class T>
+void ReadState::init_tile_search_range_id_col() {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  const T* range = static_cast<const T*>(fragment_->array()->range());
+  int64_t tile_num = book_keeping_->tile_num();
+  const std::vector<void*>& bounding_coords = 
+      book_keeping_->bounding_coords();
+
+  // Calculate range coordinates
+  T* range_min_coords = new T[dim_num];
+  T* range_max_coords = new T[dim_num];
+  for(int i=0; i<dim_num; ++i) {
+    memcpy(&range_min_coords[i], &range[2*i], sizeof(T)); 
+    memcpy(&range_max_coords[i], &range[2*i+1], sizeof(T)); 
+  }
+  int64_t range_min_coords_id = array_schema->tile_id(range_min_coords);
+  int64_t range_max_coords_id = array_schema->tile_id(range_max_coords);
+
+  // For the bounding coordinates of each investigated tile
+  const T* tile_start_coords;
+  const T* tile_end_coords;
+  int64_t tile_start_coords_id;
+  int64_t tile_end_coords_id;
+
+  // --- Finding the start tile in search range
+
+  // Perform binary search
+  int64_t min = 0;
+  int64_t max = tile_num - 1;
+  int64_t med;
+  while(min <= max) {
+    med = min + ((max - min) / 2);
+
+    // Get info for bounding coordinates
+    tile_start_coords = static_cast<const T*>(bounding_coords[med]);
+    tile_end_coords = &(static_cast<const T*>(bounding_coords[med])[dim_num]);
+    tile_start_coords_id = array_schema->tile_id(tile_start_coords);
+    tile_end_coords_id = array_schema->tile_id(tile_end_coords);
+
+    // Calculate precedence
+    if(cmp_col_order(
+           range_min_coords_id,
+           range_min_coords,
+           tile_start_coords_id,
+           tile_start_coords,
+           dim_num) < 0) {   // Range min precedes MBR
+      max = med-1;
+    } else if(cmp_col_order(
+           range_min_coords_id,
+           range_min_coords,
+           tile_end_coords_id,
+           tile_end_coords,
+           dim_num) > 0) {   // Range min succeeds MBR
+      min = med+1;
+    } else {                 // Range min in MBR
+      break; 
+    }
+  }
+
+  // Determine the start position of the range
+  if(max < min)    // Range min precedes the tile at position min  
+    tile_search_range_[0] = min;     
+  else             // Range min included in a tile
+    tile_search_range_[0] = med;
+
+  if(is_unary_range(range, dim_num)) {  // Unary range
+    // The end position is the same as the start
+    tile_search_range_[1] = tile_search_range_[0];
+  } else { // Need to find the end position
+    // --- Finding the end tile in search range
+
+    // Perform binary search
+    min = 0;
+    max = tile_num - 1;
+    while(min <= max) {
+      med = min + ((max - min) / 2);
+
+      // Get info for bounding coordinates
+      tile_start_coords = static_cast<const T*>(bounding_coords[med]);
+      tile_end_coords = &(static_cast<const T*>(bounding_coords[med])[dim_num]);
+      tile_start_coords_id = array_schema->tile_id(tile_start_coords);
+      tile_end_coords_id = array_schema->tile_id(tile_end_coords);
+     
+      // Calculate precedence
+      if(cmp_col_order(
+             range_max_coords_id,
+             range_max_coords,
+             tile_start_coords_id,
+             tile_start_coords,
+             dim_num) < 0) {   // Range max precedes MBR
+        max = med-1;
+      } else if(cmp_col_order(
+             range_max_coords_id,
+             range_max_coords,
+             tile_end_coords_id,
+             tile_end_coords,
+             dim_num) > 0) {   // Range max succeeds MBR
+        min = med+1;
+      } else {                 // Range max in MBR
+        break; 
+      }
+    }
+
+    // Determine the start position of the range
+    if(max < min)    // Range max succeeds the tile at position max 
+      tile_search_range_[1] = max;     
+    else             // Range max included in a tile
+      tile_search_range_[1] = med;
+  }
+
+  // Clean up
+  delete [] range_min_coords;
+  delete [] range_max_coords;
+}
+
+template<class T>
+void ReadState::init_tile_search_range_id_row() {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  const T* range = static_cast<const T*>(fragment_->array()->range());
+  int64_t tile_num = book_keeping_->tile_num();
+  const std::vector<void*>& bounding_coords = 
+      book_keeping_->bounding_coords();
+
+  // Calculate range coordinates
+  T* range_min_coords = new T[dim_num];
+  T* range_max_coords = new T[dim_num];
+  for(int i=0; i<dim_num; ++i) {
+    memcpy(&range_min_coords[i], &range[2*i], sizeof(T)); 
+    memcpy(&range_max_coords[i], &range[2*i+1], sizeof(T)); 
+  }
+  int64_t range_min_coords_id = array_schema->tile_id(range_min_coords);
+  int64_t range_max_coords_id = array_schema->tile_id(range_max_coords);
+
+  // For the bounding coordinates of each investigated tile
+  const T* tile_start_coords;
+  const T* tile_end_coords;
+  int64_t tile_start_coords_id;
+  int64_t tile_end_coords_id;
+
+  // --- Finding the start tile in search range
+
+  // Perform binary search
+  int64_t min = 0;
+  int64_t max = tile_num - 1;
+  int64_t med;
+  while(min <= max) {
+    med = min + ((max - min) / 2);
+
+    // Get info for bounding coordinates
+    tile_start_coords = static_cast<const T*>(bounding_coords[med]);
+    tile_end_coords = &(static_cast<const T*>(bounding_coords[med])[dim_num]);
+    tile_start_coords_id = array_schema->tile_id(tile_start_coords);
+    tile_end_coords_id = array_schema->tile_id(tile_end_coords);
+     
+    // Calculate precedence
+    if(cmp_row_order(
+           range_min_coords_id,
+           range_min_coords,
+           tile_start_coords_id,
+           tile_start_coords,
+           dim_num) < 0) {   // Range min precedes MBR
+      max = med-1;
+    } else if(cmp_row_order(
+           range_min_coords_id,
+           range_min_coords,
+           tile_end_coords_id,
+           tile_end_coords,
+           dim_num) > 0) {   // Range min succeeds MBR
+      min = med+1;
+    } else {                 // Range min in MBR
+      break; 
+    }
+  }
+
+  // Determine the start position of the range
+  if(max < min)    // Range min precedes the tile at position min  
+    tile_search_range_[0] = min;     
+  else             // Range min included in a tile
+    tile_search_range_[0] = med;
+
+  if(is_unary_range(range, dim_num)) {  // Unary range
+    // The end positions is the same as the start
+    tile_search_range_[1] = tile_search_range_[0];
+  } else { // Need to find the end position
+    // --- Finding the end tile in search range
+
+    // Perform binary search
+    min = 0;
+    max = tile_num - 1;
+    while(min <= max) {
+      med = min + ((max - min) / 2);
+
+      // Get info for bounding coordinates
+      tile_start_coords = static_cast<const T*>(bounding_coords[med]);
+      tile_end_coords = &(static_cast<const T*>(bounding_coords[med])[dim_num]);
+      tile_start_coords_id = array_schema->tile_id(tile_start_coords);
+      tile_end_coords_id = array_schema->tile_id(tile_end_coords);
+     
+      // Calculate precedence
+      if(cmp_row_order(
+             range_max_coords_id,
+             range_max_coords,
+             tile_start_coords_id,
+             tile_start_coords,
+             dim_num) < 0) {   // Range max precedes MBR
+        max = med-1;
+      } else if(cmp_row_order(
+             range_max_coords_id,
+             range_max_coords,
+             tile_end_coords_id,
              tile_end_coords,
              dim_num) > 0) {   // Range max succeeds MBR
         min = med+1;
@@ -4461,7 +4713,7 @@ int ReadState::read_tile_from_file_cmp_gzip(
   // Potentially allocate compressed tile buffer
   if(tile_compressed_ == NULL) {
     const ArraySchema* array_schema = fragment_->array()->array_schema();
-    size_t full_tile_size = array_schema->tile_size(attribute_id);
+    size_t full_tile_size = fragment_->tile_size(attribute_id);
     size_t tile_max_size = 
         full_tile_size + 6 + 5*(ceil(full_tile_size/16834.0));
     tile_compressed_ = malloc(tile_max_size); 
@@ -4489,7 +4741,7 @@ int ReadState::read_tile_from_file_cmp_none(
   // Allocate space for the tile if needed
   if(tiles_[attribute_id] == NULL) {
     const ArraySchema* array_schema = fragment_->array()->array_schema();
-    size_t full_tile_size = array_schema->tile_size(attribute_id);
+    size_t full_tile_size = fragment_->tile_size(attribute_id);
     tiles_[attribute_id] = malloc(full_tile_size);
   }
 

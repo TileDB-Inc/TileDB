@@ -401,32 +401,55 @@ void WriteState::sort_cell_pos(
     cell_pos[i] = i;
 
   // Invoke the proper sort function, based on the cell order
-  if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) {
-    // Sort cell positions
-    SORT(
-        cell_pos.begin(), 
-        cell_pos.end(), 
-        SmallerRow<T>(buffer_T, dim_num)); 
-  } else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) {
-    // Sort cell positions
-    SORT(
-        cell_pos.begin(), 
-        cell_pos.end(), 
-        SmallerCol<T>(buffer_T, dim_num)); 
-  } else if(cell_order == ArraySchema::TILEDB_AS_CO_HILBERT) {
-    // Get hilbert ids
+  if(array_schema->tile_extents() == NULL)  {    // NO TILE GRID
+    if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) {
+      // Sort cell positions
+      SORT(
+          cell_pos.begin(), 
+          cell_pos.end(), 
+          SmallerRow<T>(buffer_T, dim_num)); 
+    } else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) {
+      // Sort cell positions
+      SORT(
+          cell_pos.begin(), 
+          cell_pos.end(), 
+          SmallerCol<T>(buffer_T, dim_num)); 
+    } else if(cell_order == ArraySchema::TILEDB_AS_CO_HILBERT) {
+      // Get hilbert ids
+      std::vector<int64_t> ids;
+      ids.resize(buffer_cell_num);
+      for(int i=0; i<buffer_cell_num; ++i) 
+        ids[i] = array_schema->hilbert_id<T>(&buffer_T[i * dim_num]); 
+ 
+      // Sort cell positions
+      SORT(
+          cell_pos.begin(), 
+          cell_pos.end(), 
+          SmallerIdRow<T>(buffer_T, dim_num, ids)); 
+    } else {
+      assert(0); // The code should never reach here
+    }
+  } else {                                       // TILE GRID
+    // Get tile ids
     std::vector<int64_t> ids;
     ids.resize(buffer_cell_num);
     for(int i=0; i<buffer_cell_num; ++i) 
-      ids[i] = array_schema->hilbert_id<T>(&buffer_T[i * dim_num]); 
-
+      ids[i] = array_schema->tile_id<T>(&buffer_T[i * dim_num]); 
+ 
     // Sort cell positions
-    SORT(
-        cell_pos.begin(), 
-        cell_pos.end(), 
-        SmallerIdRow<T>(buffer_T, dim_num, ids)); 
-  } else {
-    assert(0); // The code should never reach here
+    if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) {
+      SORT(
+          cell_pos.begin(), 
+          cell_pos.end(), 
+          SmallerIdRow<T>(buffer_T, dim_num, ids)); 
+    } else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) {
+       SORT(
+          cell_pos.begin(), 
+          cell_pos.end(), 
+          SmallerIdCol<T>(buffer_T, dim_num, ids));
+    } else {
+      assert(0); // The code should never reach here
+    }
   }
 }
 
@@ -498,14 +521,15 @@ void WriteState::update_tile_cell_num(
     int64_t buffer_cell_num) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int64_t cell_num_per_tile = array_schema->cell_num_per_tile();
+  int64_t cell_num_per_tile = fragment_->cell_num_per_tile();
 
   // Update the current tile cell number
   if(buffer_cell_num + tile_cell_num_[attribute_id] > cell_num_per_tile) {
     buffer_cell_num -= (cell_num_per_tile - tile_cell_num_[attribute_id]);
-    buffer_cell_num %= cell_num_per_tile;
+    tile_cell_num_[attribute_id] = buffer_cell_num % cell_num_per_tile;
+  } else {
+    tile_cell_num_[attribute_id] += buffer_cell_num;
   }
-  tile_cell_num_[attribute_id] += buffer_cell_num;
 }
 
 int WriteState::write_dense(
@@ -589,7 +613,7 @@ int WriteState::write_dense_attr_cmp_gzip(
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   size_t cell_size = array_schema->cell_size(attribute_id); 
-  size_t tile_size = array_schema->tile_size(attribute_id); 
+  size_t tile_size = fragment_->tile_size(attribute_id); 
 
   // Initialize local tile buffer if needed
   if(tiles_[attribute_id] == NULL)
@@ -732,8 +756,8 @@ int WriteState::write_dense_attr_var_cmp_gzip(
     size_t buffer_var_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t cell_size = sizeof(size_t); 
-  int64_t cell_num_per_tile = array_schema->cell_num_per_tile();
+  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE; 
+  int64_t cell_num_per_tile = fragment_->cell_num_per_tile();
   size_t tile_size = cell_num_per_tile * cell_size; 
 
   // Initialize local tile buffer if needed
@@ -967,7 +991,7 @@ int WriteState::write_sparse_attr_cmp_none(
   // Update book-keeping
   if(attribute_id == attribute_num) {
     update_book_keeping(buffer, buffer_size);
-    update_tile_cell_num(attribute_num, buffer_cell_num);
+    //update_tile_cell_num(attribute_num, buffer_cell_num);
   }
 
   // Write buffer to file 
@@ -991,13 +1015,13 @@ int WriteState::write_sparse_attr_cmp_gzip(
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
   size_t cell_size = array_schema->cell_size(attribute_id); 
-  size_t tile_size = array_schema->tile_size(attribute_id); 
+  size_t tile_size = fragment_->tile_size(attribute_id); 
   int64_t buffer_cell_num = buffer_size / cell_size;
 
   // Update book-keeping
   if(attribute_id == attribute_num) {
     update_book_keeping(buffer, buffer_size);
-    update_tile_cell_num(attribute_num, buffer_cell_num);
+    //update_tile_cell_num(attribute_num, buffer_cell_num);
   }
 
   // Initialize local tile buffer if needed
@@ -1144,9 +1168,9 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
     size_t buffer_var_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t cell_size = sizeof(size_t); 
-  int64_t cell_num_per_tile = array_schema->cell_num_per_tile();
-  size_t tile_size = cell_num_per_tile * cell_size; 
+  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  int64_t cell_num_per_tile = array_schema->capacity();
+  size_t tile_size = fragment_->tile_size(attribute_id); 
 
   // Sanity check
   assert(attribute_id != array_schema->attribute_num());

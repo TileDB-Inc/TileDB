@@ -181,13 +181,6 @@ class ArraySchema {
   template<class T>
   int64_t tile_num() const;
 
-  /**
-   * Returns the tile size for the input attribute. Applicable only to dense
-   * arrays, or sparse arrays with irregular tiles (i.e., fixed tile capacity).
-   * Moreover, it returns 0 if the attribute is variable-sized.
-   */
-  size_t tile_size(int attribute_id) const;
-
   /** Returns the type of the i-th attribute, or NULL if 'i' is invalid. */
   const std::type_info* type(int i) const;
 
@@ -238,7 +231,7 @@ class ArraySchema {
   int set_attributes(const char** attributes, int attribute_num);
 
   /** Sets the tile capacity. */
-  void set_capacity(int capacity);
+  void set_capacity(int64_t capacity);
 
   /** 
    * Sets the cell order. supported cell orders: "row-major", "column-major",
@@ -416,6 +409,10 @@ class ArraySchema {
   template<class T>
   int64_t hilbert_id(const T* coords) const;
 
+  /** Returns the id of the tile the coordinates fall into. */
+  template<class T>
+  int64_t tile_id(const T* cell_coords) const;
+
  private:
   // PRIVATE ATTRIBUTES
 
@@ -502,8 +499,6 @@ class ArraySchema {
    * TILEDB_AS_TO_COLUMN_MAJOR, and TILEDB_AS_TO_HILBERT.
    */
   TileOrder tile_order_;
-  /** The tile size for each attribute. */
-  std::vector<size_t> tile_sizes_;
   /** 
    * The attribute and coordinate types. There should be one type per 
    * attribute plus one (the last one) for the coordinates. The supported types
@@ -557,12 +552,6 @@ class ArraySchema {
    */
   template<class T>
   void compute_tile_domain();
-
-  /** 
-   * Computes (and stores) the tile size for each attribute. Applicable only
-   * to arrays with regular tiles.
-   */
-  void compute_tile_sizes();
 
   /** Computes and returns the size of a type. */
   size_t compute_type_size(int attribute_id) const;

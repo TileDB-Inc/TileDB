@@ -500,15 +500,9 @@ doxyfile.inc: $(CORE_INCLUDE) $(TILEDB_CMD_INCLUDE) $(LA_INCLUDE)
 	@echo FILE_PATTERNS = *.h >> doxyfile.inc
 	@doxygen Doxyfile.mk > Doxyfile.log 2>&1
 
-$(MANPAGES_HTML_DIR)/%.html: $(MANPAGES_MAN_DIR)/%
-	@echo 'Converting $< to HTML'
-	@mkdir -p $(MANPAGES_HTML_DIR)
-	@man2html $< > $@
-
 # --- Cleaning --- #
 
 clean_doc:
 	@echo "Cleaning documentation"
 	@rm -f doxyfile.inc
-	@rm -f $(MANPAGES_HTML)
 

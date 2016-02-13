@@ -111,6 +111,34 @@ int cmp_col_order(
 }
 
 template<class T> 
+int cmp_col_order(
+    int64_t id_a,
+    const T* coords_a,
+    int64_t id_b,
+    const T* coords_b,
+    int dim_num) {
+  // a precedes b
+  if(id_a < id_b)
+    return -1;
+
+  // b precedes a
+  if(id_a > id_b)
+    return 1;
+
+  for(int i=dim_num-1; i>=0; --i) {
+    // a precedes b
+    if(coords_a[i] < coords_b[i])
+      return -1;
+    // b precedes a
+    else if(coords_a[i] > coords_b[i])
+      return 1;
+  }
+
+  // a and b are equal
+  return 0;
+}
+
+template<class T> 
 int cmp_row_order(
     const T* coords_a,
     const T* coords_b,
@@ -799,6 +827,31 @@ template int cmp_col_order<float>(
     int dim_num);
 template int cmp_col_order<double>(
     const double* coords_a,
+    const double* coords_b,
+    int dim_num);
+
+template int cmp_col_order<int>(
+    int64_t id_a,
+    const int* coords_a,
+    int64_t id_b,
+    const int* coords_b,
+    int dim_num);
+template int cmp_col_order<int64_t>(
+    int64_t id_a,
+    const int64_t* coords_a,
+    int64_t id_b,
+    const int64_t* coords_b,
+    int dim_num);
+template int cmp_col_order<float>(
+    int64_t id_a,
+    const float* coords_a,
+    int64_t id_b,
+    const float* coords_b,
+    int dim_num);
+template int cmp_col_order<double>(
+    int64_t id_a,
+    const double* coords_a,
+    int64_t id_b,
     const double* coords_b,
     int dim_num);
 

@@ -86,24 +86,13 @@ const Array* Fragment::array() const {
   return array_;
 }
 
-bool Fragment::dense() const {
-  if(array_->mode() == TILEDB_WRITE || 
-     array_->mode() == TILEDB_WRITE_UNSORTED) {
-    // Check the attributes given upon initialization
-    const std::vector<int>& attribute_ids = array_->attribute_ids();
-    int id_num = attribute_ids.size();
-    int attribute_num = array_->array_schema()->attribute_num();
-    for(int i=0; i<id_num; ++i) {
-      if(attribute_ids[i] == attribute_num) 
-        return false;
-    }
+int64_t Fragment::cell_num_per_tile() const {
+  return (dense_) ? array_->array_schema()->cell_num_per_tile() : 
+                    array_->array_schema()->capacity(); 
+}
 
-    return true;
-  } else { // The array mode is TILEDB_READ or TILEDB_READ_REVERSE 
-    // The coordinates file should not exist
-    return !is_file(
-                fragment_name_ + "/" + TILEDB_COORDS_NAME + TILEDB_FILE_SUFFIX);
-  }
+bool Fragment::dense() const {
+  return dense_;
 }
 
 const std::string& Fragment::fragment_name() const {
@@ -126,6 +115,20 @@ int Fragment::read(void** buffers, size_t* buffer_sizes) {
     return TILEDB_FG_ERR;
 }
 
+size_t Fragment::tile_size(int attribute_id) const {
+  // For easy reference
+  const ArraySchema* array_schema = array_->array_schema();
+  bool var_size = array_schema->var_size(attribute_id);
+
+  int64_t cell_num_per_tile = (dense_) ? 
+              array_schema->cell_num_per_tile() : 
+              array_schema->capacity(); 
+ 
+  return (var_size) ? 
+             cell_num_per_tile * TILEDB_CELL_VAR_OFFSET_SIZE :
+             cell_num_per_tile * array_schema->cell_size(attribute_id);
+}
+
 /* ****************************** */
 /*            MUTATORS            */
 /* ****************************** */
@@ -133,6 +136,26 @@ int Fragment::read(void** buffers, size_t* buffer_sizes) {
 int Fragment::init(const std::string& fragment_name, const void* range) {
   // Set fragment name
   fragment_name_ = fragment_name;
+
+  // Check if the array is dense or not
+  if(array_->mode() == TILEDB_WRITE || 
+     array_->mode() == TILEDB_WRITE_UNSORTED) {
+    dense_ = true;
+    // Check the attributes given upon initialization
+    const std::vector<int>& attribute_ids = array_->attribute_ids();
+    int id_num = attribute_ids.size();
+    int attribute_num = array_->array_schema()->attribute_num();
+    for(int i=0; i<id_num; ++i) {
+      if(attribute_ids[i] == attribute_num) {
+        dense_ = false;
+        break;
+      }
+    }
+  } else { // The array mode is TILEDB_READ or TILEDB_READ_REVERSE 
+    // The coordinates file should not exist
+    dense_ = !is_file(
+                fragment_name_ + "/" + TILEDB_COORDS_NAME + TILEDB_FILE_SUFFIX);
+  }
 
   // For easy referece
   int mode = array_->mode();

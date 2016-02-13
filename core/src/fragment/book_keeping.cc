@@ -99,11 +99,8 @@ const void* BookKeeping::range() const {
 }
 
 int64_t BookKeeping::tile_num() const {
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-
-  if(array_schema->dense())
-    return array_schema->tile_num();
+  if(fragment_->dense())
+    return fragment_->array()->array_schema()->tile_num();
   else 
     return mbrs_.size();
 }

@@ -135,6 +135,9 @@ ArraySchema::Compression ArraySchema::compression(int attribute_id) const {
 }
 
 int64_t ArraySchema::cell_num_per_tile() const {
+  // Sanity check
+  assert(dense_);
+
   return cell_num_per_tile_;
 }
 
@@ -526,13 +529,6 @@ int64_t ArraySchema::tile_num() const {
   return ret; 
 }
 
-size_t ArraySchema::tile_size(int attribute_id) const {
-  // Sanity checks
-  assert(dense_ || tile_extents_ == NULL);
-
-  return tile_sizes_[attribute_id];
-}
-
 const std::type_info* ArraySchema::type(int i) const {
   if(i<0 || i>attribute_num_)
     return NULL;
@@ -745,9 +741,6 @@ int ArraySchema::deserialize(
   // Compute number of cells per tile
   compute_cell_num_per_tile();
 
-  // Compute tile sizes
-  compute_tile_sizes();
-
   // Compute tile domain
   compute_tile_domain();
 
@@ -797,9 +790,6 @@ int ArraySchema::init(const ArraySchemaC* array_schema_c) {
 
   // Compute number of cells per tile
   compute_cell_num_per_tile();
-
-  // Compute tile sizes
-  compute_tile_sizes();
 
   // Compute tile domain
   compute_tile_domain();
@@ -880,9 +870,11 @@ int ArraySchema::set_attributes(
   return TILEDB_AS_OK;
 }
 
-void ArraySchema::set_capacity(int capacity) {
+void ArraySchema::set_capacity(int64_t capacity) {
+  assert(capacity >= 0);
+
   // Set capacity
-  if(capacity > 0)
+  if(capacity > 0) 
     capacity_ = capacity;
   else
     capacity_ = TILEDB_AS_CAPACITY;
@@ -899,7 +891,7 @@ int ArraySchema::set_cell_order(const char* cell_order) {
   } else if(!strcmp(cell_order, "hilbert")) {
     if(tile_extents_ != NULL) {
       PRINT_ERROR("Cannot set cell order; Arrays with non-null tile extents do "
-                  "not support hilbert order");
+                  "not support Hilbert cell order");
       return TILEDB_AS_ERR;
     }
     cell_order_ = TILEDB_AS_CO_HILBERT;
@@ -1078,12 +1070,8 @@ int ArraySchema::set_tile_order(const char* tile_order) {
   } else if(!strcmp(tile_order, "column-major")) {
     tile_order_ = TILEDB_AS_TO_COLUMN_MAJOR;
   } else if(!strcmp(tile_order, "hilbert")) {
-    if(tile_extents_ != NULL) {
-      PRINT_ERROR("Cannot set tile order; Arrays with non-null tile extents do "
-                  "not support hilbert order");
-      return TILEDB_AS_ERR;
-    }
-    tile_order_ = TILEDB_AS_TO_HILBERT;
+    PRINT_ERROR("Cannot support Hilbert tile order");
+    return TILEDB_AS_ERR;
   } else {
     PRINT_ERROR(std::string("Cannot set tile order; Invalid tile order '") + 
                 tile_order + "'");
@@ -1551,6 +1539,26 @@ int64_t ArraySchema::hilbert_id(const T* coords) const {
   return id;
 }
 
+template<typename T>
+int64_t ArraySchema::tile_id(const T* cell_coords) const {
+  // For easy reference
+  const T* domain = static_cast<const T*>(domain_);
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  // Calculate tile coordinates
+  T* tile_coords = new T[dim_num_];   
+  for(int i=0; i<dim_num_; ++i)
+    tile_coords[i] = (cell_coords[i] - domain[2*i]) / tile_extents[i]; 
+
+  int tile_id = get_tile_pos(tile_coords);
+
+  // Clean up
+  delete [] tile_coords;
+
+  // Return
+  return tile_id;
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -1619,7 +1627,7 @@ size_t ArraySchema::compute_bin_size() const {
   return bin_size;
 }
 
-void ArraySchema::compute_cell_num_per_tile() {
+void ArraySchema::compute_cell_num_per_tile() { 
   if(dense_) {  // Dense
     // Invoke the proper templated function
     const std::type_info* coords_type = types_[attribute_num_];
@@ -1631,14 +1639,7 @@ void ArraySchema::compute_cell_num_per_tile() {
       // It should never reach here
       assert(0); 
     }
-  } else {      // Sparse
-    // Not applicable to regular tiles
-    if(tile_extents_ != NULL)
-      return;
-    
-    // The capacity is essentially the number of cells per tile
-    cell_num_per_tile_ = capacity_; 
-  }
+  } 
 }
 
 template<class T>
@@ -1726,17 +1727,6 @@ void ArraySchema::compute_tile_domain() {
     tile_num = ceil(double(domain[2*i+1] - domain[2*i] + 1) / tile_extents[i]);
     tile_domain[2*i] = 0;
     tile_domain[2*i+1] = tile_num - 1;
-  }
-}
-
-void ArraySchema::compute_tile_sizes() {
-  tile_sizes_.resize(attribute_num_ + 1);
-
-  for(int i=0; i<attribute_num_+1; ++i) {
-    if(var_size(i))
-      tile_sizes_[i] = cell_num_per_tile_ * TILEDB_CELL_VAR_OFFSET_SIZE;
-    else
-      tile_sizes_[i] = cell_num_per_tile_ * cell_size(i); 
   }
 }
 
@@ -1851,3 +1841,12 @@ template int64_t ArraySchema::hilbert_id<float>(
     const float* coords) const;
 template int64_t ArraySchema::hilbert_id<double>(
     const double* coords) const;
+
+template int64_t ArraySchema::tile_id<int>(
+    const int* cell_coords) const;
+template int64_t ArraySchema::tile_id<int64_t>(
+    const int64_t* cell_coords) const;
+template int64_t ArraySchema::tile_id<float>(
+    const float* cell_coords) const;
+template int64_t ArraySchema::tile_id<double>(
+    const double* cell_coords) const;
