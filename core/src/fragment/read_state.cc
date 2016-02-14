@@ -2503,6 +2503,7 @@ void ReadState::get_next_overlapping_tile_dense() {
   overlapping_tile.overlap_range_ = malloc(2*coords_size);
 
   // For easy reference
+  const T* domain = static_cast<const T*>(book_keeping_->domain());
   const T* range_in_tile_domain = static_cast<const T*>(range_in_tile_domain_);
   T* coords = static_cast<T*>(overlapping_tile.coords_);
   T* overlap_range = static_cast<T*>(overlapping_tile.overlap_range_);
@@ -2523,13 +2524,14 @@ void ReadState::get_next_overlapping_tile_dense() {
   }
 
   // Get the tile position in the global tile order
-  overlapping_tile.pos_ = array_schema->get_tile_pos<T>(coords);
+  overlapping_tile.pos_ = array_schema->get_tile_pos<T>(domain, coords);
 
   // Get tile overlap
   int overlap;
   array_schema->compute_tile_range_overlap<T>(
+      domain,          // fragment domain
       range,           // query range in array domain
-      coords,          // tile coordinates in tile domain
+      coords,          // tile coordinates in range in tile domain
       overlap_range,   // returned overlap in terms of cell coordinates in tile
       overlap);        // returned type of overlap
 
@@ -2958,10 +2960,21 @@ void ReadState::init_range_in_tile_domain() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
-  const T* domain = static_cast<const T*>(array_schema->domain());
+  const T* domain = static_cast<const T*>(book_keeping_->domain());
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
   const T* range = static_cast<const T*>(fragment_->array()->range());
-  const T* tile_domain = static_cast<const T*>(array_schema->tile_domain());
+
+  // Sanity check
+  assert(tile_extents != NULL);
+
+  // Compute tile domain
+  T* tile_domain = new T[2*dim_num];
+  T tile_num; // Per dimension
+  for(int i=0; i<dim_num; ++i) {
+    tile_num = ceil(double(domain[2*i+1] - domain[2*i] + 1) / tile_extents[i]);
+    tile_domain[2*i] = 0;
+    tile_domain[2*i+1] = tile_num - 1;
+  }
 
   // Allocate space for the range in tile domain
   assert(range_in_tile_domain_ == NULL);
@@ -2998,6 +3011,9 @@ void ReadState::init_range_in_tile_domain() {
     overlapping_tile.coords_ = NULL;
     overlapping_tiles_.push_back(overlapping_tile);
   }
+
+  // Clean up
+  delete [] tile_domain;
 }
 
 void ReadState::init_tile_search_range() {

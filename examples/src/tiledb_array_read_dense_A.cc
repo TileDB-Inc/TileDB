@@ -30,7 +30,7 @@ int main() {
       1);      
 
   /* Prepare cell buffers for attribute "a1". */
-  int buffer_a1[4];
+  int buffer_a1[10];
   void* buffers[] = { buffer_a1 };
   size_t buffer_sizes[1] = { sizeof(buffer_a1) };
 

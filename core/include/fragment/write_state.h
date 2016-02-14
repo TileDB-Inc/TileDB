@@ -215,11 +215,6 @@ class WriteState {
       size_t buffer_var_size);
 
   // TODO
-  int write_dense_in_range(
-      const void** buffers, 
-      const size_t* buffer_sizes);
-
-  // TODO
   int write_sparse(
       const void** buffers, 
       const size_t* buffer_sizes);

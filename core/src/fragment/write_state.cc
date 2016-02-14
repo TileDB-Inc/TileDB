@@ -170,15 +170,11 @@ int WriteState::write( const void** buffers, const size_t* buffer_sizes) {
   const Array* array = fragment_->array();
 
   // Dispatch the proper write command
-  if(array->mode() == TILEDB_WRITE) {    // SORTED
-    if(fragment_->dense()) {                // DENSE FRAGMENT
-      if(book_keeping_->range() == NULL)
-        return write_dense(buffers, buffer_sizes);          
-      else 
-        return write_dense_in_range(buffers, buffer_sizes); 
-    } else {                                // SPARSE FRAGMENT
+  if(array->mode() == TILEDB_WRITE) {                  // SORTED
+    if(fragment_->dense())           // DENSE FRAGMENT
+      return write_dense(buffers, buffer_sizes);          
+    else                             // SPARSE FRAGMENT
       return write_sparse(buffers, buffer_sizes);
-    }
   } else if (array->mode() == TILEDB_WRITE_UNSORTED) { // UNSORTED
     return write_sparse_unsorted(buffers, buffer_sizes);
   } else {
@@ -915,12 +911,6 @@ int WriteState::write_dense_attr_var_cmp_gzip(
   }
 
   return TILEDB_WS_OK;
-}
-
-int WriteState::write_dense_in_range(
-    const void** buffers,
-    const size_t* buffer_sizes) {
-  // TODO
 }
 
 int WriteState::write_sparse(

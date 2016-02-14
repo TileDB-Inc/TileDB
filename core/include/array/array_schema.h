@@ -181,6 +181,14 @@ class ArraySchema {
   template<class T>
   int64_t tile_num() const;
 
+  // TODO
+  int64_t tile_num(const void* domain) const;
+
+  // TODO
+  template<class T>
+  int64_t tile_num(const T* domain) const;
+
+
   /** Returns the type of the i-th attribute, or NULL if 'i' is invalid. */
   const std::type_info* type(int i) const;
 
@@ -369,15 +377,21 @@ class ArraySchema {
 
   // TODO
   template<class T> 
-  int64_t get_tile_pos(const T* tile_coords) const;
+  int64_t get_tile_pos(
+      const T* domain,
+      const T* tile_coords) const;
 
   // TODO
   template<class T> 
-  int64_t get_tile_pos_col(const T* tile_coords) const;
+  int64_t get_tile_pos_col(
+      const T* domain,
+      const T* tile_coords) const;
 
   // TODO
   template<class T> 
-  int64_t get_tile_pos_row(const T* tile_coords) const;
+  int64_t get_tile_pos_row(
+      const T* domain,
+      const T* tile_coords) const;
 
   // TODO
   // Overlap value meaning:
@@ -400,6 +414,7 @@ class ArraySchema {
   // 3: PARTILA_CONTIG
   template<class T> 
   void compute_tile_range_overlap(
+      const T* domain,
       const T* range,
       const T* tile_coords,
       T* overlap_range,

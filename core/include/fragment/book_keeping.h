@@ -75,8 +75,8 @@ class BookKeeping {
   /** Returns the MBRs. */
   const std::vector<void*>& mbrs() const; 
 
-  /** Returns the range in which the fragment is constrained. */
-  const void* range() const;
+  /** Returns the domain in which the fragment is constrained. */
+  const void* domain() const;
 
   /** Returns the number of tiles in the fragment. */
   int64_t tile_num() const;
@@ -110,10 +110,10 @@ class BookKeeping {
   /*
    * Initializes the book-keeping structure.
    * 
-   * @param range The range in which the array read/write will be constrained.
+   * @param domain The domain in which the array read/write will be constrained.
    * @return TILEDB_BK_OK for success, and TILEDB_OK_ERR for error.
    */
-  int init(const void* range);
+  int init(const void* domain);
 
   // TODO
   int load();
@@ -142,10 +142,10 @@ class BookKeeping {
   /** The offsets of the next variable tile for each attribute. */
   std::vector<size_t> next_tile_var_offsets_;
   /**
-   * The range in which the fragment is constrained. Note that the type of the
-   * range must be the same as the type of the array coordinates.
+   * The domain in which the fragment is constrained. Note that the type of the
+   * domain must be the same as the type of the array coordinates.
    */
-  void* range_;
+  void* domain_;
   /** The tile offsets in their corresponding attribute files. */
   std::vector<std::vector<size_t> > tile_offsets_;
   /** The variable tile offsets in their corresponding attribute files. */
@@ -165,7 +165,7 @@ class BookKeeping {
   int flush_mbrs(gzFile fd) const;
 
   // TODO
-  int flush_range(gzFile fd) const;
+  int flush_domain(gzFile fd) const;
 
   // TODO
   int flush_tile_offsets(gzFile fd) const;
@@ -186,7 +186,7 @@ class BookKeeping {
   int load_mbrs(gzFile fd);
 
   // TODO
-  int load_range(gzFile fd);
+  int load_domain(gzFile fd);
 
   // TODO
   int load_tile_offsets(gzFile fd);

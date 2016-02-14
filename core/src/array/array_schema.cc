@@ -529,6 +529,30 @@ int64_t ArraySchema::tile_num() const {
   return ret; 
 }
 
+int64_t ArraySchema::tile_num(const void* domain) const {
+  // Invoke the proper template function 
+  if(types_[attribute_num_] == &typeid(int))
+    return tile_num<int>(static_cast<const int*>(domain));
+  else if(types_[attribute_num_] == &typeid(int64_t))
+    return tile_num<int64_t>(static_cast<const int64_t*>(domain));
+  else
+    assert(0);
+}
+
+template<class T>
+int64_t ArraySchema::tile_num(const T* domain) const {
+  // For easy reference
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  int64_t ret = 1;
+  for(int i=0; i<dim_num_; ++i) 
+    ret *= (domain[2*i+1] - domain[2*i] + 1) / tile_extents[i];
+
+  return ret; 
+}
+
+
+
 const std::type_info* ArraySchema::type(int i) const {
   if(i<0 || i>attribute_num_)
     return NULL;
@@ -1336,18 +1360,21 @@ void ArraySchema::get_next_tile_coords_row(
 }
 
 template<class T>
-int64_t ArraySchema::get_tile_pos(const T* tile_coords) const {
+int64_t ArraySchema::get_tile_pos(
+    const T* domain,
+    const T* tile_coords) const {
   // Invoke the proper function based on the tile order
   if(tile_order_ == TILEDB_AS_TO_ROW_MAJOR)
-    get_tile_pos_row(tile_coords);
+    get_tile_pos_row(domain, tile_coords);
   else if(tile_order_ == TILEDB_AS_TO_COLUMN_MAJOR)
-    get_tile_pos_col(tile_coords);
+    get_tile_pos_col(domain, tile_coords);
 }
 
 template<class T>
-int64_t ArraySchema::get_tile_pos_col(const T* tile_coords) const {
+int64_t ArraySchema::get_tile_pos_col(
+    const T* domain,
+    const T* tile_coords) const {
   // For easy reference
-  const T* domain = static_cast<const T*>(domain_);
   const T* tile_extents = static_cast<const T*>(tile_extents_);
 
   int64_t pos = 0;
@@ -1370,9 +1397,10 @@ int64_t ArraySchema::get_tile_pos_col(const T* tile_coords) const {
 }
 
 template<class T>
-int64_t ArraySchema::get_tile_pos_row(const T* tile_coords) const {
+int64_t ArraySchema::get_tile_pos_row(
+    const T* domain,
+    const T* tile_coords) const {
   // For easy reference
-  const T* domain = static_cast<const T*>(domain_);
   const T* tile_extents = static_cast<const T*>(tile_extents_);
 
   int64_t pos = 0;
@@ -1455,12 +1483,12 @@ void ArraySchema::compute_mbr_range_overlap(
 
 template<class T>
 void ArraySchema::compute_tile_range_overlap(
+    const T* domain,
     const T* range,
     const T* tile_coords,
     T* overlap_range,
     int& overlap) const {
   // For easy reference
-  const T* domain = static_cast<const T*>(domain_);
   const T* tile_extents = static_cast<const T*>(tile_extents_);
 
   // Get tile range
@@ -1550,7 +1578,7 @@ int64_t ArraySchema::tile_id(const T* cell_coords) const {
   for(int i=0; i<dim_num_; ++i)
     tile_coords[i] = (cell_coords[i] - domain[2*i]) / tile_extents[i]; 
 
-  int tile_id = get_tile_pos(tile_coords);
+  int tile_id = get_tile_pos(domain, tile_coords);
 
   // Clean up
   delete [] tile_coords;
@@ -1774,12 +1802,16 @@ template void ArraySchema::get_next_tile_coords<double>(
     double* tile_coords) const;
 
 template int64_t ArraySchema::get_tile_pos<int>(
+    const int* domain,
     const int* tile_coords) const;
 template int64_t ArraySchema::get_tile_pos<int64_t>(
+    const int64_t* domain,
     const int64_t* tile_coords) const;
 template int64_t ArraySchema::get_tile_pos<float>(
+    const float* domain,
     const float* tile_coords) const;
 template int64_t ArraySchema::get_tile_pos<double>(
+    const double* domain,
     const double* tile_coords) const;
 
 template void ArraySchema::compute_mbr_range_overlap<int>(
@@ -1804,21 +1836,25 @@ template void ArraySchema::compute_mbr_range_overlap<double>(
     int& overlap) const;
 
 template void ArraySchema::compute_tile_range_overlap<int>(
+    const int* domain,
     const int* range,
     const int* tile_coords,
     int* overlap_range,
     int& overlap) const;
 template void ArraySchema::compute_tile_range_overlap<int64_t>(
+    const int64_t* domain,
     const int64_t* range,
     const int64_t* tile_coords,
     int64_t* overlap_range,
     int& overlap) const;
 template void ArraySchema::compute_tile_range_overlap<float>(
+    const float* domain,
     const float* range,
     const float* tile_coords,
     float* overlap_range,
     int& overlap) const;
 template void ArraySchema::compute_tile_range_overlap<double>(
+    const double* domain,
     const double* range,
     const double* tile_coords,
     double* overlap_range,
