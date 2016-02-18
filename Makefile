@@ -69,7 +69,8 @@ endif
 
 # MPI compiler for C++
 MPIPATH = #/opt/mpich/dev/intel/default/bin/
-CXX = $(MPIPATH)mpicxx -lstdc++ -std=c++11 -fPIC -fvisibility=hidden \
+MPICXX = mpicxx
+CXX = $(MPIPATH)$(MPICXX) -lstdc++ -std=c++11 -fPIC -fvisibility=hidden \
       $(LFS_CFLAGS) $(CFLAGS) $(CONFIG_FLAGS) 
 
 # --- Directories --- #
