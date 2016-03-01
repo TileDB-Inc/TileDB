@@ -82,6 +82,10 @@ Fragment::~Fragment() {
 /*            ACCESSORS           */
 /* ****************************** */
 
+bool Fragment::full_domain() const {
+  return full_domain_;
+}
+
 bool Fragment::overflow(int attribute_id) const {
   return read_state_->overflow(attribute_id);
 }
@@ -173,6 +177,29 @@ int Fragment::copy_cell_range(
     return TILEDB_FG_OK;
 }
 
+template<class T>
+int Fragment::copy_cell_range_var(
+    int attribute_id,
+    void* buffer,  
+    size_t buffer_size,
+    size_t& buffer_offset,
+    void* buffer_var,  
+    size_t buffer_var_size,
+    size_t& buffer_var_offset,
+    const CellPosRange& cell_pos_range) {
+  if(read_state_->copy_cell_range_var<T>(
+         attribute_id, 
+         buffer,
+         buffer_size,
+         buffer_offset,
+         buffer_var,
+         buffer_var_size,
+         buffer_var_offset,
+         cell_pos_range) != TILEDB_RS_OK)
+    return TILEDB_FG_ERR;
+  else
+    return TILEDB_FG_OK;
+}
 
 /* ****************************** */
 /*            MUTATORS            */
@@ -269,6 +296,10 @@ int Fragment::init(const std::string& fragment_name, const void* range) {
       return TILEDB_FG_ERR;
     }
     read_state_ = new ReadState(this, book_keeping_);
+    full_domain_ = !memcmp(
+                       book_keeping_->non_empty_domain(), 
+                       array_->array_schema()->domain(), 
+                       2*array_->array_schema()->coords_size());
   }
 
   // Success
@@ -423,3 +454,40 @@ template bool Fragment::coords_exist<int>(const int* coords);
 template bool Fragment::coords_exist<int64_t>(const int64_t* coords);
 template bool Fragment::coords_exist<float>(const float* coords);
 template bool Fragment::coords_exist<double>(const double* coords);
+
+template int Fragment::copy_cell_range_var<int>(
+    int attribute_id,
+    void* buffer,  
+    size_t buffer_size,
+    size_t& buffer_offset,
+    void* buffer_var,  
+    size_t buffer_var_size,
+    size_t& buffer_var_offset,
+    const CellPosRange& cell_pos_range);
+template int Fragment::copy_cell_range_var<int64_t>(
+    int attribute_id,
+    void* buffer,  
+    size_t buffer_size,
+    size_t& buffer_offset,
+    void* buffer_var,  
+    size_t buffer_var_size,
+    size_t& buffer_var_offset,
+    const CellPosRange& cell_pos_range);
+template int Fragment::copy_cell_range_var<float>(
+    int attribute_id,
+    void* buffer,  
+    size_t buffer_size,
+    size_t& buffer_offset,
+    void* buffer_var,  
+    size_t buffer_var_size,
+    size_t& buffer_var_offset,
+    const CellPosRange& cell_pos_range);
+template int Fragment::copy_cell_range_var<double>(
+    int attribute_id,
+    void* buffer,  
+    size_t buffer_size,
+    size_t& buffer_offset,
+    void* buffer_var,  
+    size_t buffer_var_size,
+    size_t& buffer_var_offset,
+    const CellPosRange& cell_pos_range);

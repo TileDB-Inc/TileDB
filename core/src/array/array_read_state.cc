@@ -65,6 +65,7 @@ ArrayReadState::ArrayReadState(
   int attribute_num = array_schema->attribute_num();
 
   // Initializations
+  empty_cells_written_.resize(attribute_num+1);
   tile_done_.resize(attribute_num);
   max_overlap_range_ = NULL;
   range_global_tile_coords_ = NULL;
@@ -72,6 +73,7 @@ ArrayReadState::ArrayReadState(
   fragment_cell_pos_ranges_pos_.resize(attribute_num+1);
   fragment_cell_pos_ranges_vec_pos_.resize(attribute_num+1);
   for(int i=0; i<attribute_num+1; ++i) {
+    empty_cells_written_[i] = 0;
     fragment_cell_pos_ranges_pos_[i] = 0;
     fragment_cell_pos_ranges_vec_pos_[i] = 0;
     tile_done_[i] = true;
@@ -159,7 +161,243 @@ void ArrayReadState::copy_cell_range_with_empty(
     size_t buffer_size,
     size_t& buffer_offset,
     const CellPosRange& cell_pos_range) {
-// TODO
+  // For easy reference
+  const ArraySchema* array_schema = array_->array_schema();
+  size_t cell_size = array_schema->cell_size(attribute_id);
+  char* buffer_c = static_cast<char*>(buffer);
+
+  // Calculate free space in buffer
+  size_t buffer_free_space = buffer_size - buffer_offset;
+  if(buffer_free_space == 0) { // Overflow
+    overflow_[attribute_id] = true;
+    return;
+  }
+
+  // Sanity check
+  assert(!array_schema->var_size(attribute_id));
+
+  // For each cell position range, copy the respective cells to the buffer
+  size_t start_offset, end_offset;
+
+  // Calculate number of empty cells to write
+  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1; 
+  int64_t cell_num_left_to_copy = 
+      cell_num_in_range - empty_cells_written_[attribute_id]; 
+  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
+  size_t bytes_to_copy = std::min(bytes_left_to_copy, buffer_free_space); 
+  int64_t cell_num_to_copy = bytes_to_copy / cell_size; 
+
+  // Get the empty value 
+  const std::type_info* type = array_schema->type(attribute_id);
+  void* empty_cell = malloc(cell_size);
+  if(type == &typeid(int)) {
+    int empty_cell_v = TILEDB_EMPTY_INT32;
+    memcpy(empty_cell, &empty_cell_v, cell_size);
+  } else if(type == &typeid(int64_t)) {
+    int64_t empty_cell_v = TILEDB_EMPTY_INT64;
+    memcpy(empty_cell, &empty_cell_v, cell_size);
+  } else if(type == &typeid(float)) {
+    float empty_cell_v = TILEDB_EMPTY_FLOAT32;
+    memcpy(empty_cell, &empty_cell_v, cell_size);
+  } else if(type == &typeid(double)) {
+    double empty_cell_v = TILEDB_EMPTY_FLOAT64;
+    memcpy(empty_cell, &empty_cell_v, cell_size);
+  } else if(type == &typeid(char)) {
+    char empty_cell_v = TILEDB_EMPTY_CHAR;
+    memcpy(empty_cell, &empty_cell_v, cell_size);
+  }
+
+  // Copy empty cells to buffer
+  for(int64_t i=0; i<cell_num_to_copy; ++i) {
+    memcpy(buffer_c + buffer_offset, empty_cell, cell_size);
+    buffer_offset += cell_size;
+  } 
+  empty_cells_written_[attribute_id] += cell_num_to_copy;
+
+  // Handle buffer overflow
+  if(empty_cells_written_[attribute_id] != cell_num_in_range) 
+    overflow_[attribute_id] = true;
+  else // Done copying this range
+    empty_cells_written_[attribute_id] = 0;
+
+  // Clean up
+  free(empty_cell);
+}
+
+template<class T>
+void ArrayReadState::copy_cell_range_with_empty_var(
+    int attribute_id,
+    void* buffer,  
+    size_t buffer_size,
+    size_t& buffer_offset,
+    void* buffer_var,  
+    size_t buffer_var_size,
+    size_t& buffer_var_offset,
+    const CellPosRange& cell_pos_range) {
+  // Calculate free space in buffer
+  size_t buffer_free_space = buffer_size - buffer_offset;
+  size_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
+
+  // Handle overflow
+  if(buffer_free_space == 0 || buffer_var_free_space == 0) { // Overflow
+    overflow_[attribute_id] = true; 
+    return;
+  }
+
+  // For easy reference
+  const ArraySchema* array_schema = array_->array_schema();
+  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  char* buffer_c = static_cast<char*>(buffer);
+  char* buffer_var_c = static_cast<char*>(buffer_var);
+
+  // Get the empty value 
+  const std::type_info* type = array_schema->type(attribute_id);
+  void* empty_cell = malloc(cell_size);
+  size_t cell_size_var;
+  if(type == &typeid(int)) {
+    int empty_cell_v = TILEDB_EMPTY_INT32;
+    memcpy(empty_cell, &empty_cell_v, cell_size);
+    cell_size_var = sizeof(int);
+  } else if(type == &typeid(int64_t)) {
+    int64_t empty_cell_v = TILEDB_EMPTY_INT64;
+    memcpy(empty_cell, &empty_cell_v, cell_size);
+    cell_size_var = sizeof(int64_t);
+  } else if(type == &typeid(float)) {
+    float empty_cell_v = TILEDB_EMPTY_FLOAT32;
+    memcpy(empty_cell, &empty_cell_v, cell_size);
+    cell_size_var = sizeof(float);
+  } else if(type == &typeid(double)) {
+    double empty_cell_v = TILEDB_EMPTY_FLOAT64;
+    memcpy(empty_cell, &empty_cell_v, cell_size);
+    cell_size_var = sizeof(double);
+  } else if(type == &typeid(char)) {
+    char empty_cell_v = TILEDB_EMPTY_CHAR;
+    memcpy(empty_cell, &empty_cell_v, cell_size);
+    cell_size_var = sizeof(char);
+  }
+
+  // Sanity check
+  assert(array_schema->var_size(attribute_id));
+
+  // Calculate cell number to copy
+  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1; 
+  int64_t cell_num_left_to_copy = 
+      cell_num_in_range - empty_cells_written_[attribute_id]; 
+  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
+  size_t bytes_left_to_copy_var = cell_num_left_to_copy * cell_size_var;
+  size_t bytes_to_copy = std::min(bytes_left_to_copy, buffer_free_space); 
+  size_t bytes_to_copy_var = 
+      std::min(bytes_left_to_copy_var, buffer_var_free_space); 
+  int64_t cell_num_to_copy = bytes_to_copy / cell_size; 
+  int64_t cell_num_to_copy_var = bytes_to_copy_var / cell_size_var; 
+  cell_num_to_copy = std::min(cell_num_to_copy, cell_num_to_copy_var);
+
+  // Copy empty cells to buffers
+  for(int64_t i=0; i<cell_num_to_copy; ++i) {
+    memcpy(
+        buffer_c + buffer_offset, 
+        &buffer_var_offset, 
+        cell_size);
+    buffer_offset += cell_size;
+    memcpy(
+        buffer_var_c + buffer_var_offset, 
+        empty_cell,
+        cell_size_var);
+    buffer_var_offset += cell_size_var;
+  }
+  empty_cells_written_[attribute_id] += cell_num_to_copy;
+
+  // Handle buffer overflow
+  if(empty_cells_written_[attribute_id] != cell_num_in_range) 
+    overflow_[attribute_id] = true;
+  else // Done copying this range
+    empty_cells_written_[attribute_id] = 0;
+
+  // Clean up
+  free(empty_cell);
+}
+
+template<class T>
+int ArrayReadState::copy_cell_ranges_var(
+    int attribute_id,
+    void* buffer,  
+    size_t buffer_size,
+    size_t& buffer_offset,
+    void* buffer_var,  
+    size_t buffer_var_size,
+    size_t& buffer_var_offset) {
+  // For easy reference
+  const ArraySchema* array_schema = array_->array_schema();
+  int64_t pos = fragment_cell_pos_ranges_vec_pos_[attribute_id];
+  size_t coords_size = array_schema->coords_size();
+  FragmentCellPosRanges& fragment_cell_pos_ranges = 
+      fragment_cell_pos_ranges_vec_[pos];
+  int64_t fragment_cell_pos_ranges_num = fragment_cell_pos_ranges.size();
+  std::vector<Fragment*> fragments = array_->fragments();
+  int fragment_num = fragments.size();
+  int fragment_i;
+
+  // Sanity check
+  assert(array_schema->var_size(attribute_id));
+
+  // Copy the cell ranges one by one
+  for(int64_t i=0; i<fragment_cell_pos_ranges_num; ++i) {
+    fragment_i = fragment_cell_pos_ranges[i].first; 
+    CellPosRange& cell_pos_range = fragment_cell_pos_ranges[i].second; 
+
+    // Handle empty fragment
+    if(fragment_i == -1) {
+      copy_cell_range_with_empty_var<T>(
+           attribute_id,
+           buffer,
+           buffer_size,
+           buffer_offset,
+           buffer_var,
+           buffer_var_size,
+           buffer_var_offset,
+           cell_pos_range);
+      if(overflow_[attribute_id])
+        break;
+      else
+        continue;
+    }
+
+    // Handle non-empty fragment
+    if(fragments[fragment_i]->copy_cell_range_var<T>(
+           attribute_id,
+           buffer,
+           buffer_size,
+           buffer_offset,
+           buffer_var,
+           buffer_var_size,
+           buffer_var_offset,
+           cell_pos_range) != TILEDB_FG_OK)
+       return TILEDB_ARS_ERR;
+
+     // Handle overflow
+     if(fragments[fragment_i]->overflow(attribute_id)) {
+       overflow_[attribute_id] = true;
+       break;
+     }
+  } 
+
+  // Handle the case the tile is done for this attribute
+  if(!overflow_[attribute_id]) {
+    for(int i=0; i<fragment_num; ++i)
+      if(fragment_global_tile_coords_[i] != NULL &&
+         !memcmp(
+              fragment_global_tile_coords_[i], 
+              range_global_tile_coords_, 
+              coords_size))
+        fragments[i]->tile_done(attribute_id);
+    ++fragment_cell_pos_ranges_vec_pos_[attribute_id];
+    tile_done_[attribute_id] = true;
+  } else {
+    tile_done_[attribute_id] = false;
+  }
+
+  // Success
+  return TILEDB_ARS_OK;
 }
 
 template<class T>
@@ -281,7 +519,8 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
 
     // Trivial case: just insert the popped range into the results and stop
     if(pq.empty()) {
-      if(fragments[popped_fragment_i]->dense() ||
+      if(popped_fragment_i == -1 ||
+         fragments[popped_fragment_i]->dense() ||
          memcmp(
                popped_range, 
                &popped_range[dim_num], 
@@ -298,13 +537,15 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
     top_range = static_cast<T*>(top.second);
 
     // Dinstinguish two cases
-    if(fragments[popped_fragment_i]->dense() ||
+    if(popped_fragment_i == -1 ||
+       fragments[popped_fragment_i]->dense() ||
        !memcmp(
            popped_range, 
            &popped_range[dim_num], 
            coords_size)) {                          // DENSE POPPED OR UNARY
       // If the unary sparse range is empty, discard it
-      if(!fragments[popped_fragment_i]->dense() && 
+      if(popped_fragment_i != -1 &&
+         !fragments[popped_fragment_i]->dense() && 
          !fragments[popped_fragment_i]->coords_exist<T>(popped_range)) {
         free(popped.second);
         continue;
@@ -1025,7 +1266,97 @@ int ArrayReadState::read_multiple_fragments_dense_attr_var(
     size_t& buffer_size,
     void* buffer_var,  
     size_t& buffer_var_size) {
-  // TODO
+  // For easy reference
+  const ArraySchema* array_schema = array_->array_schema();
+  const std::type_info* coords_type = array_schema->coords_type();
+
+  // Invoke the proper templated function
+  if(coords_type == &typeid(int)) {
+    return read_multiple_fragments_dense_attr_var<int>(
+               attribute_id, 
+               buffer, 
+               buffer_size,
+               buffer_var, 
+               buffer_var_size);
+  } else if(coords_type == &typeid(int64_t)) {
+    return read_multiple_fragments_dense_attr_var<int64_t>(
+               attribute_id, 
+               buffer, 
+               buffer_size,
+               buffer_var, 
+               buffer_var_size);
+  } else {
+    PRINT_ERROR("Cannot read from array; Invalid coordinates type");
+    return TILEDB_ARS_ERR;
+  }
+}
+
+template<class T>
+int ArrayReadState::read_multiple_fragments_dense_attr_var(
+    int attribute_id,
+    void* buffer,  
+    size_t& buffer_size,
+    void* buffer_var,  
+    size_t& buffer_var_size) {
+    // Auxiliary variables
+  size_t buffer_offset = 0;
+  size_t buffer_var_offset = 0;
+
+  // Until read is done or there is a buffer overflow 
+  for(;;) {
+    // Continue copying from the previous unfinished tile
+    if(!tile_done_[attribute_id])
+      if(copy_cell_ranges_var<T>(
+             attribute_id,
+             buffer, 
+             buffer_size, 
+             buffer_offset,
+             buffer_var, 
+             buffer_var_size,
+             buffer_var_offset) != TILEDB_ARS_OK)
+        return TILEDB_ARS_ERR;
+
+    // Check for overflow
+    if(overflow_[attribute_id]) {
+      buffer_size = buffer_offset;
+      buffer_var_size = buffer_var_offset;
+      return TILEDB_ARS_OK;
+    }
+
+    // Prepare the cell ranges for the next tile under investigation, if
+    // has not be done already
+    if(fragment_cell_pos_ranges_vec_pos_[attribute_id] >= 
+       fragment_cell_pos_ranges_vec_.size()) {
+      // Get next overlapping tiles
+      if(get_next_cell_ranges_dense<T>() != TILEDB_ARS_OK)
+        return TILEDB_ARS_ERR;
+    }
+
+    // Check if read is done
+    if(done_) {
+      buffer_size = buffer_offset;
+      buffer_var_size = buffer_var_offset;
+      return TILEDB_ARS_OK;
+    }
+ 
+    // Process the heap and copy cells to buffers
+    if(copy_cell_ranges_var<T>(
+             attribute_id,
+             buffer, 
+             buffer_size, 
+             buffer_offset,
+             buffer_var, 
+             buffer_var_size,
+             buffer_var_offset) != TILEDB_ARS_OK)
+      return TILEDB_ARS_ERR;
+
+    // Check for buffer overflow
+    if(overflow_[attribute_id]) {
+      buffer_size = buffer_offset;
+      buffer_var_size = buffer_var_offset;
+      return TILEDB_ARS_OK;
+    }
+  }
 }
 
 int ArrayReadState::read_multiple_fragments_sparse(

@@ -91,6 +91,8 @@ class ArrayReadState {
   // PRIVATE ATTRIBUTES
   
   // TODO
+  std::vector<int64_t> empty_cells_written_;
+  // TODO
   std::vector<bool> tile_done_;
   // TODO
   const Array* array_;
@@ -130,6 +132,19 @@ class ArrayReadState {
 
   // TODO
   template<class T>
+  void copy_cell_range_with_empty_var(
+      int attribute_id,
+      void* buffer,
+      size_t buffer_size,
+      size_t& buffer_offset,
+      void* buffer_var,
+      size_t buffer_var_size,
+      size_t& buffer_var_offset,
+      const CellPosRange& cell_pos_range);
+
+
+  // TODO
+  template<class T>
   void compute_max_overlap_range();
 
   template<class T>
@@ -152,6 +167,17 @@ class ArrayReadState {
       void* buffer,
       size_t buffer_size,
       size_t& buffer_offset);
+
+  // TODO
+  template<class T>
+  int copy_cell_ranges_var(
+      int attribute_id,
+      void* buffer,
+      size_t buffer_size,
+      size_t& buffer_offset,
+      void* buffer_var,
+      size_t buffer_var_size,
+      size_t& buffer_var_offset);
 
   // TODO
   template<class T>
@@ -182,6 +208,15 @@ class ArrayReadState {
       size_t& buffer_size);
 
   // TODO
+  int read_multiple_fragments_dense_attr_var(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size,
+      void* buffer_var, 
+      size_t& buffer_var_size);
+
+  // TODO
+  template<class T>
   int read_multiple_fragments_dense_attr_var(
       int attribute_id,
       void* buffer, 

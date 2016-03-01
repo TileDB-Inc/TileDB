@@ -129,6 +129,18 @@ class Fragment {
       size_t& buffer_offset,
       const CellPosRange& cell_pos_range);
 
+  // TODO
+  template<class T>
+  int copy_cell_range_var(
+      int attribute_id,
+      void* buffer,
+      size_t buffer_size,
+      size_t& buffer_offset,
+      void* buffer_var,
+      size_t buffer_var_size,
+      size_t& buffer_var_offset,
+      const CellPosRange& cell_pos_range);
+
   //MUTATORS
 
   // TODO
@@ -169,6 +181,9 @@ class Fragment {
 
   // TODO
   int write(const void** buffers, const size_t* buffer_sizes);
+
+  // TODO
+  bool full_domain() const;
 
   // MISC
   
