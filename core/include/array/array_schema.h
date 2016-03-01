@@ -62,6 +62,7 @@
 class ArraySchema {
  public:
   // TYPE DEFINITIONS
+
   /** Supported compression types. */
   enum Compression {
       TILEDB_AS_CMP_NONE,
@@ -329,6 +330,14 @@ class ArraySchema {
 
   // TODO
   template<class T>
+  int cell_order_cmp(const T* coords_a, const T* coords_b) const;
+
+  // TODO
+  template<class T>
+  int tile_order_cmp(const T* coords_a, const T* coords_b) const;
+
+  // TODO
+  template<class T>
   T cell_num_in_range_slab(const T* range) const;
 
   // TODO
@@ -352,6 +361,13 @@ class ArraySchema {
   T cell_num_in_tile_slab_row() const;
 
   // TODO
+  void expand_domain(void* domain) const;
+
+  // TODO
+  template<class T>
+  void expand_domain(T* domain) const;
+
+  // TODO
   template<class T>
   int64_t get_cell_pos(const T* range) const;
 
@@ -362,6 +378,30 @@ class ArraySchema {
   // TODO
   template<class T>
   int64_t get_cell_pos_row(const T* range) const;
+
+  // TODO
+  template<class T> 
+  void get_next_cell_coords(const T* domain, T* cell_coords) const;
+
+  // TODO
+  template<class T> 
+  void get_next_cell_coords_col(const T* domain, T* cell_coords) const;
+
+  // TODO
+  template<class T> 
+  void get_next_cell_coords_row(const T* domain, T* cell_coords) const;
+
+  // TODO
+  template<class T> 
+  void get_previous_cell_coords(const T* domain, T* cell_coords) const;
+
+  // TODO
+  template<class T> 
+  void get_previous_cell_coords_col(const T* domain, T* cell_coords) const;
+
+  // TODO
+  template<class T> 
+  void get_previous_cell_coords_row(const T* domain, T* cell_coords) const;
 
   // TODO
   template<class T> 
@@ -415,6 +455,7 @@ class ArraySchema {
   template<class T> 
   void compute_tile_range_overlap(
       const T* domain,
+      const T* non_empty_domain,
       const T* range,
       const T* tile_coords,
       T* overlap_range,

@@ -34,6 +34,7 @@
 #ifndef __ARRAY_H__
 #define __ARRAY_H__
 
+#include "array_read_state.h"
 #include "array_schema.h"
 #include "constants.h"
 #include "fragment.h"
@@ -45,6 +46,7 @@
 #define TILEDB_AR_OK     0
 #define TILEDB_AR_ERR   -1
 
+class ArrayReadState;
 class Fragment;
 
 /**
@@ -68,6 +70,12 @@ class Array {
 
   /** Returns the attribute ids the array focuses on. */
   const std::vector<int>& attribute_ids() const;
+
+  // TODO
+  std::vector<Fragment*> fragments() const;
+
+  // TODO
+  int fragment_num() const;
 
   /** Returns the array mode. */
   int mode() const;
@@ -117,6 +125,8 @@ class Array {
 
   /** The array schema. */
   const ArraySchema* array_schema_;
+  // TODO
+  ArrayReadState* array_read_state_;
   /** 
    * The ids of the attributes the array is initialized with. Note that the
    * array may be initialized with a subset of attributes when writing or
@@ -154,6 +164,9 @@ class Array {
 
   // TODO
   int open_fragments();
+
+  // TODO
+  void sort_fragment_names(std::vector<std::string>& fragment_names) const;
 };
 
 #endif

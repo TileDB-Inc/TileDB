@@ -13,10 +13,10 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
   /* Initialize a range. */
-  const int64_t range[] = { 1, 4, 1, 4 };
+  const int64_t range[] = { 2, 3, 1, 4 };
 
   /* Subset over attribute "a1" and the coordinates. */
-  const char* attributes[] = { TILEDB_COORDS_NAME, "a1" };
+  const char* attributes[] = { "a1", TILEDB_COORDS_NAME };
 
   /* Initialize the array in READ mode. */
   TileDB_Array* tiledb_array;
@@ -32,14 +32,14 @@ int main() {
   /* Prepare cell buffers for attribute "a1". */
   int buffer_a1[9];
   int64_t buffer_coords[18];
-  void* buffers[] = { buffer_coords, buffer_a1 };
-  size_t buffer_sizes[2] = { 12*sizeof(int64_t), 6*sizeof(int) };
+  void* buffers[] = { buffer_a1, buffer_coords };
+  size_t buffer_sizes[2] = { 6*sizeof(int), 12*sizeof(int64_t) };
 
   /* Read from array. */
   tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
 
   /* Print the read values. */
-  int result_num = buffer_sizes[1] / sizeof(int);
+  int result_num = buffer_sizes[0] / sizeof(int);
   for(int i=0; i<result_num; ++i) { 
     std::cout << "(" << buffer_coords[2*i] << ", " << buffer_coords[2*i+1]  
               << "): " << buffer_a1[i] << "\n";

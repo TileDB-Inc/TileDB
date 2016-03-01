@@ -65,11 +65,15 @@
 BookKeeping::BookKeeping(const Fragment* fragment)
     : fragment_(fragment) {
   domain_ = NULL;
+  non_empty_domain_ = NULL;
 }
 
 BookKeeping::~BookKeeping() {
   if(domain_ != NULL)
     free(domain_);
+
+  if(non_empty_domain_ != NULL)
+    free(non_empty_domain_);
 
   for(int i=0; i<mbrs_.size(); ++i)
     free(mbrs_[i]);
@@ -96,6 +100,10 @@ const std::vector<void*>& BookKeeping::mbrs() const {
 
 const void* BookKeeping::domain() const {
   return domain_;
+}
+
+const void* BookKeeping::non_empty_domain() const {
+  return non_empty_domain_;
 }
 
 int64_t BookKeeping::tile_num() const {
@@ -170,22 +178,29 @@ void BookKeeping::append_tile_var_size(
   tile_var_sizes_[attribute_id].push_back(size);
 }
 
-int BookKeeping::init(const void* domain) {
+int BookKeeping::init(const void* non_empty_domain) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
 
   // Sanity check
+  assert(non_empty_domain_ == NULL);
   assert(domain_ == NULL);
 
-  // Set domain
+  // Set non-empty domain
   size_t domain_size = 2*array_schema->coords_size();
-  domain_ = malloc(domain_size);
-  if(domain == NULL) 
-    memcpy(domain_, array_schema->domain(), domain_size);
+  non_empty_domain_ = malloc(domain_size);
+  if(non_empty_domain == NULL) 
+    memcpy(non_empty_domain_, array_schema->domain(), domain_size);
   else
-    memcpy(domain_, domain, domain_size);
+    memcpy(non_empty_domain_, non_empty_domain, domain_size);
+  
+  // Set expaned domain
+  domain_ = malloc(domain_size);
+  memcpy(domain_, non_empty_domain_, domain_size);
+  array_schema->expand_domain(domain_);
 
+  // Set last tile cell number
   last_tile_cell_num_ = 0;
 
   // Initialize tile offsets
@@ -208,7 +223,7 @@ int BookKeeping::init(const void* domain) {
 }
 
 /* FORMAT:
- * domain_size(size_t) domain(void*)  
+ * domain_size(size_t) non_empty_domain(void*)  
  * mbr_num(int64_t)
  * mbr_#1(void*) mbr_#2(void*) ... 
  * bounding_coords_num(int64_t)
@@ -246,8 +261,8 @@ int BookKeeping::load() {
     return TILEDB_BK_ERR;
   }
 
-  // Load domain
-  if(load_domain(fd) != TILEDB_BK_OK)
+  // Load non-empty domain
+  if(load_non_empty_domain(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
 
   // Load MBRs
@@ -293,7 +308,7 @@ void BookKeeping::set_last_tile_cell_num(int64_t cell_num) {
 /* ****************************** */
 
 /* FORMAT:
- * domain_size(size_t) domain(void*)  
+ * domain_size(size_t) non_empty_domain(void*)  
  * mbr_num(int64_t)
  * mbr_#1(void*) mbr_#2(void*) ... 
  * bounding_coords_num(int64_t)
@@ -341,8 +356,8 @@ int BookKeeping::finalize() {
     return TILEDB_BK_ERR;
   }
   
-  // Write domain
-  if(flush_domain(fd) != TILEDB_BK_OK)
+  // Write non-empty domain
+  if(flush_non_empty_domain(fd) != TILEDB_BK_OK)
     return TILEDB_BK_ERR;
 
   // Write MBRs
@@ -461,10 +476,10 @@ int BookKeeping::flush_mbrs(gzFile fd) const {
 }
 
 /* FORMAT:
- * domain_size(size_t) domain(void*)  
+ * domain_size(size_t) non_empty_domain(void*)  
  */
-int BookKeeping::flush_domain(gzFile fd) const {
-  size_t domain_size = (domain_ == NULL) ? 0 : 
+int BookKeeping::flush_non_empty_domain(gzFile fd) const {
+  size_t domain_size = (non_empty_domain_ == NULL) ? 0 : 
       fragment_->array()->array_schema()->coords_size() * 2;
 
   if(gzwrite(fd, &domain_size, sizeof(size_t)) != sizeof(size_t)) {
@@ -472,8 +487,8 @@ int BookKeeping::flush_domain(gzFile fd) const {
     return TILEDB_BK_ERR;
   }
 
-  if(domain_ != NULL) {
-    if(gzwrite(fd, domain_, domain_size) != domain_size) {
+  if(non_empty_domain_ != NULL) {
+    if(gzwrite(fd, non_empty_domain_, domain_size) != domain_size) {
       PRINT_ERROR("Cannot finalize book-keeping; Writing domain failed");
       return TILEDB_BK_ERR;
     }
@@ -693,9 +708,9 @@ int BookKeeping::load_mbrs(gzFile fd) {
 }
 
 /* FORMAT:
- * domain_size(size_t) domain(void*)  
+ * domain_size(size_t) non_empty_domain(void*)  
  */
-int BookKeeping::load_domain(gzFile fd) {
+int BookKeeping::load_non_empty_domain(gzFile fd) {
   // Get domain size
   size_t domain_size;
   if(gzread(fd, &domain_size, sizeof(size_t)) != sizeof(size_t)) {
@@ -703,15 +718,25 @@ int BookKeeping::load_domain(gzFile fd) {
     return TILEDB_BK_ERR;
   }
 
-  // Get domain
+  // Get non-empty domain
   if(domain_size == 0) {
-    domain_ = NULL;
+    non_empty_domain_ = NULL;
   } else {
-    domain_ = malloc(domain_size);
-    if(gzread(fd, domain_, domain_size) != domain_size) {
+    non_empty_domain_ = malloc(domain_size);
+    if(gzread(fd, non_empty_domain_, domain_size) != domain_size) {
       PRINT_ERROR("Cannot load book-keeping; Reading domain failed");
       return TILEDB_BK_ERR;
     }
+  }
+
+  // Get expanded domain
+  if(non_empty_domain_ == NULL) {
+    domain_ = NULL;
+  } else { 
+    domain_ = malloc(domain_size);
+    const ArraySchema* array_schema = fragment_->array()->array_schema();
+    memcpy(domain_, non_empty_domain_, domain_size);
+    array_schema->expand_domain(domain_);
   }
 
   // Success

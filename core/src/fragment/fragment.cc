@@ -82,6 +82,15 @@ Fragment::~Fragment() {
 /*            ACCESSORS           */
 /* ****************************** */
 
+bool Fragment::overflow(int attribute_id) const {
+  return read_state_->overflow(attribute_id);
+}
+
+template<class T>
+bool Fragment::max_overlap(const T* max_overlap_range) const {
+  return read_state_->max_overlap<T>(max_overlap_range);
+}
+
 const Array* Fragment::array() const {
   return array_;
 }
@@ -97,6 +106,19 @@ bool Fragment::dense() const {
 
 const std::string& Fragment::fragment_name() const {
   return fragment_name_;
+}
+
+template<class T>
+void Fragment::compute_fragment_cell_ranges(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges) const {
+  read_state_->compute_fragment_cell_ranges<T>(
+      fragment_i, 
+      fragment_cell_ranges);
+}
+
+const void* Fragment::get_global_tile_coords() const {
+  return read_state_->get_global_tile_coords();
 }
 
 int Fragment::read(void** buffers, size_t* buffer_sizes) {
@@ -115,6 +137,10 @@ int Fragment::read(void** buffers, size_t* buffer_sizes) {
     return TILEDB_FG_ERR;
 }
 
+ReadState* Fragment::read_state() const {
+  return read_state_;
+}
+
 size_t Fragment::tile_size(int attribute_id) const {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
@@ -129,9 +155,73 @@ size_t Fragment::tile_size(int attribute_id) const {
              cell_num_per_tile * array_schema->cell_size(attribute_id);
 }
 
+template<class T>
+int Fragment::copy_cell_range(
+    int attribute_id,
+    void* buffer,  
+    size_t buffer_size,
+    size_t& buffer_offset,
+    const CellPosRange& cell_pos_range) {
+  if(read_state_->copy_cell_range<T>(
+         attribute_id, 
+         buffer,
+         buffer_size,
+         buffer_offset,
+         cell_pos_range) != TILEDB_RS_OK)
+    return TILEDB_FG_ERR;
+  else
+    return TILEDB_FG_OK;
+}
+
+
 /* ****************************** */
 /*            MUTATORS            */
 /* ****************************** */
+
+// TODO: make it return int (errors)
+template<class T>
+bool Fragment::coords_exist(const T* coords) {
+  return read_state_->coords_exist<T>(coords);
+}
+
+void Fragment::tile_done(int attribute_id) {
+  read_state_->tile_done(attribute_id);
+}
+
+void Fragment::reset_overflow() {
+  read_state_->reset_overflow();
+}
+
+template<class T>
+int Fragment::get_first_two_coords(
+    T* start_coords,
+    T* first_coords,
+    T* second_coords) {
+  return read_state_->get_first_two_coords<T>(
+      start_coords, 
+      first_coords, 
+      second_coords);
+}
+
+void Fragment::get_next_overlapping_tile_mult() {
+  read_state_->get_next_overlapping_tile_mult();
+}
+
+template<class T>
+int Fragment::get_cell_pos_ranges_sparse(
+    int fragment_i,
+    const T* tile_domain,
+    const T* cell_range,
+    FragmentCellPosRanges& fragment_cell_pos_ranges) {
+  if(read_state_->get_cell_pos_ranges_sparse(
+             fragment_i,
+             tile_domain,
+             cell_range,
+             fragment_cell_pos_ranges) != TILEDB_RS_OK)
+    return TILEDB_FG_ERR;
+  else
+    return TILEDB_FG_OK;
+}
 
 int Fragment::init(const std::string& fragment_name, const void* range) {
   // Set fragment name
@@ -242,3 +332,94 @@ int Fragment::rename_fragment() {
 
   return TILEDB_FG_OK;
 }
+
+// Explicit template instantiations
+template void Fragment::compute_fragment_cell_ranges<int>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges) const;
+template void Fragment::compute_fragment_cell_ranges<int64_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges) const;
+template void Fragment::compute_fragment_cell_ranges<float>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges) const;
+template void Fragment::compute_fragment_cell_ranges<double>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges) const;
+
+template bool Fragment::max_overlap<int>(
+    const int* max_overlap_range) const;
+template bool Fragment::max_overlap<int64_t>(
+    const int64_t* max_overlap_range) const;
+template bool Fragment::max_overlap<float>(
+    const float* max_overlap_range) const;
+template bool Fragment::max_overlap<double>(
+    const double* max_overlap_range) const;
+
+template int Fragment::get_first_two_coords<int>(
+    int* start_coords,
+    int* first_coords,
+    int* second_coords);
+template int Fragment::get_first_two_coords<int64_t>(
+    int64_t* start_coords,
+    int64_t* first_coords,
+    int64_t* second_coords);
+template int Fragment::get_first_two_coords<float>(
+    float* start_coords,
+    float* first_coords,
+    float* second_coords);
+template int Fragment::get_first_two_coords<double>(
+    double* start_coords,
+    double* first_coords,
+    double* second_coords);
+
+template int Fragment::get_cell_pos_ranges_sparse<int>(
+    int fragment_i,
+    const int* tile_domain,
+    const int* cell_range,
+    FragmentCellPosRanges& fragment_cell_pos_ranges);
+template int Fragment::get_cell_pos_ranges_sparse<int64_t>(
+    int fragment_i,
+    const int64_t* tile_domain,
+    const int64_t* cell_range,
+    FragmentCellPosRanges& fragment_cell_pos_ranges);
+template int Fragment::get_cell_pos_ranges_sparse<float>(
+    int fragment_i,
+    const float* tile_domain,
+    const float* cell_range,
+    FragmentCellPosRanges& fragment_cell_pos_ranges);
+template int Fragment::get_cell_pos_ranges_sparse<double>(
+    int fragment_i,
+    const double* tile_domain,
+    const double* cell_range,
+    FragmentCellPosRanges& fragment_cell_pos_ranges);
+
+template int Fragment::copy_cell_range<int>(
+    int attribute_id,
+    void* buffer,  
+    size_t buffer_size,
+    size_t& buffer_offset,
+    const CellPosRange& cell_pos_range);
+template int Fragment::copy_cell_range<int64_t>(
+    int attribute_id,
+    void* buffer,  
+    size_t buffer_size,
+    size_t& buffer_offset,
+    const CellPosRange& cell_pos_range);
+template int Fragment::copy_cell_range<float>(
+    int attribute_id,
+    void* buffer,  
+    size_t buffer_size,
+    size_t& buffer_offset,
+    const CellPosRange& cell_pos_range);
+template int Fragment::copy_cell_range<double>(
+    int attribute_id,
+    void* buffer,  
+    size_t buffer_size,
+    size_t& buffer_offset,
+    const CellPosRange& cell_pos_range);
+
+template bool Fragment::coords_exist<int>(const int* coords);
+template bool Fragment::coords_exist<int64_t>(const int64_t* coords);
+template bool Fragment::coords_exist<float>(const float* coords);
+template bool Fragment::coords_exist<double>(const double* coords);

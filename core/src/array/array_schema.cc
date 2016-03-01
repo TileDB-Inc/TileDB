@@ -1217,6 +1217,80 @@ int ArraySchema::set_types(const char** types) {
 /* ****************************** */
 
 template<class T>
+int ArraySchema::cell_order_cmp(const T* coords_a, const T* coords_b) const {
+  // For easy reference
+  size_t coords_size = cell_sizes_[attribute_num_];
+
+  // Check if they are equal
+    if(memcmp(coords_a, coords_b, coords_size) == 0)
+      return 0;
+
+  // Check for precedence
+  if(cell_order_ == TILEDB_AS_CO_COLUMN_MAJOR) {    // COLUMN-MAJOR
+    for(int i=dim_num_-1; i>=0; --i) {
+      if(coords_a[i] < coords_b[i])
+        return -1;
+      else if(coords_a[i] > coords_b[i])
+        return 1;
+    }
+  } else if(cell_order_ == TILEDB_AS_CO_ROW_MAJOR) { // ROW-MAJOR
+    for(int i=0; i<dim_num_; ++i) {
+      if(coords_a[i] < coords_b[i])
+        return -1;
+      else if(coords_a[i] > coords_b[i])
+        return 1;
+    }
+  } else if(cell_order_ == TILEDB_AS_CO_HILBERT) {   // HILBERT
+    // Check hilbert ids
+    int64_t id_a = hilbert_id(coords_a);
+    int64_t id_b = hilbert_id(coords_b);
+    if(id_a < id_b)
+      return -1;
+    else if(id_a > id_b)
+      return 1;
+
+    // Hilbert ids match - check coordinates
+    for(int i=0; i<dim_num_; ++i) {
+      if(coords_a[i] < coords_b[i])
+        return -1;
+      else if(coords_a[i] > coords_b[i])
+        return 1;
+    }
+  } else {
+    assert(0);
+  }
+}
+
+template<class T>
+int ArraySchema::tile_order_cmp(const T* coords_a, const T* coords_b) const {
+  // For easy reference
+  size_t coords_size = cell_sizes_[attribute_num_];
+
+  // Check if they are equal
+  if(memcmp(coords_a, coords_b, coords_size) == 0)
+    return 0;
+
+  // Check for precedence
+  if(tile_order_ == TILEDB_AS_TO_COLUMN_MAJOR) {    // COLUMN-MAJOR
+    for(int i=dim_num_-1; i>=0; --i) {
+      if(coords_a[i] < coords_b[i])
+        return -1;
+      else if(coords_a[i] > coords_b[i])
+        return 1;
+    }
+  } else if(tile_order_ == TILEDB_AS_TO_ROW_MAJOR) { // ROW-MAJOR
+    for(int i=0; i<dim_num_; ++i) {
+      if(coords_a[i] < coords_b[i])
+        return -1;
+      else if(coords_a[i] > coords_b[i])
+        return 1;
+    }
+  } else {
+    assert(0);
+  }
+}
+
+template<class T>
 T ArraySchema::cell_num_in_range_slab(const T* range) const {
   // Invoke the proper function based on the cell order
   if(cell_order_ == TILEDB_AS_CO_ROW_MAJOR)
@@ -1262,6 +1336,28 @@ T ArraySchema::cell_num_in_tile_slab_row() const {
   const T* tile_extents = static_cast<const T*>(tile_extents_);
 
   return tile_extents[dim_num_-1];
+}
+
+void ArraySchema::expand_domain(void* domain) const {
+  if(types_[attribute_num_] == &typeid(int))
+    expand_domain<int>(static_cast<int*>(domain));
+  else if(types_[attribute_num_] == &typeid(int64_t))
+    expand_domain<int64_t>(static_cast<int64_t*>(domain));
+}
+
+template<class T>
+void ArraySchema::expand_domain(T* domain) const {
+  const T* tile_extents = static_cast<const T*>(tile_extents_); 
+  const T* domain_T_ = static_cast<const T*>(domain_); 
+
+  for(int i=0; i<dim_num_; ++i) {
+    domain[2*i] = 
+        ((domain[2*i] - domain_T_[2*i]) / tile_extents[i] * 
+        tile_extents[i]) + domain_T_[2*i];
+    domain[2*i+1] = 
+        (ceil((domain[2*i+1] - domain_T_[2*i]) / double(tile_extents[i])) * 
+        tile_extents[i]) + domain_T_[2*i] - 1;
+  }
 }
 
 template<class T>
@@ -1320,6 +1416,80 @@ int64_t ArraySchema::get_cell_pos_row(const T* coords) const {
     pos += coords[i] * cell_offsets[i];
 
   return pos;
+}
+
+template<class T>
+void ArraySchema::get_next_cell_coords(
+    const T* domain,
+    T* cell_coords) const {
+  // Invoke the proper function based on the tile order
+  if(cell_order_ == TILEDB_AS_CO_ROW_MAJOR)
+    get_next_cell_coords_row(domain, cell_coords);
+  else if(cell_order_ == TILEDB_AS_CO_COLUMN_MAJOR)
+    get_next_cell_coords_col(domain, cell_coords);
+}
+
+template<class T>
+void ArraySchema::get_next_cell_coords_col(
+    const T* domain,
+    T* cell_coords) const {
+  int i = 0;
+  ++cell_coords[i];
+
+  while(i < dim_num_-1 && cell_coords[i] > domain[2*i+1]) {
+    cell_coords[i] = domain[2*i];
+    ++cell_coords[++i];
+  } 
+}
+
+template<class T>
+void ArraySchema::get_next_cell_coords_row(
+    const T* domain,
+    T* cell_coords) const {
+  int i = dim_num_-1;
+  ++cell_coords[i];
+
+  while(i > 0 && cell_coords[i] > domain[2*i+1]) {
+    cell_coords[i] = domain[2*i];
+    ++cell_coords[--i];
+  } 
+}
+
+template<class T>
+void ArraySchema::get_previous_cell_coords(
+    const T* domain,
+    T* cell_coords) const {
+  // Invoke the proper function based on the tile order
+  if(cell_order_ == TILEDB_AS_CO_ROW_MAJOR)
+    get_previous_cell_coords_row(domain, cell_coords);
+  else if(cell_order_ == TILEDB_AS_CO_COLUMN_MAJOR)
+    get_previous_cell_coords_col(domain, cell_coords);
+}
+
+template<class T>
+void ArraySchema::get_previous_cell_coords_col(
+    const T* domain,
+    T* cell_coords) const {
+  int i = 0;
+  --cell_coords[i];
+
+  while(i < dim_num_-1 && cell_coords[i] < domain[2*i]) {
+    cell_coords[i] = domain[2*i+1];
+    --cell_coords[++i];
+  } 
+}
+
+template<class T>
+void ArraySchema::get_previous_cell_coords_row(
+    const T* domain,
+    T* cell_coords) const {
+  int i = dim_num_-1;
+  --cell_coords[i];
+
+  while(i > 0 && cell_coords[i] < domain[2*i]) {
+    cell_coords[i] = domain[2*i+1];
+    --cell_coords[--i];
+  } 
 }
 
 template<class T>
@@ -1484,6 +1654,7 @@ void ArraySchema::compute_mbr_range_overlap(
 template<class T>
 void ArraySchema::compute_tile_range_overlap(
     const T* domain,
+    const T* non_empty_domain,
     const T* range,
     const T* tile_coords,
     T* overlap_range,
@@ -1494,6 +1665,7 @@ void ArraySchema::compute_tile_range_overlap(
   // Get tile range
   T* tile_range = new T[2*dim_num_];
   for(int i=0; i<dim_num_; ++i) {
+    // Get tile range in domain
     tile_range[2*i] = domain[2*i] + tile_coords[i] * tile_extents[i];
     tile_range[2*i+1] = tile_range[2*i] + tile_extents[i] - 1;
   }
@@ -1501,9 +1673,15 @@ void ArraySchema::compute_tile_range_overlap(
   // Get overlap range
   for(int i=0; i<dim_num_; ++i) {
     overlap_range[2*i] = 
-        std::max(tile_range[2*i], range[2*i]) - tile_range[2*i];
+        std::max(
+            std::max(tile_range[2*i], non_empty_domain[2*i]), 
+            range[2*i]) - 
+        tile_range[2*i];
     overlap_range[2*i+1] = 
-        std::min(tile_range[2*i+1], range[2*i+1]) - tile_range[2*i];
+        std::min(
+            std::min(tile_range[2*i+1], non_empty_domain[2*i+1]), 
+            range[2*i+1]) - 
+        tile_range[2*i];
   }
 
   // Check overlap
@@ -1548,9 +1726,9 @@ void ArraySchema::compute_tile_range_overlap(
       }
     }
   }
-  
+
   // Clean up
-  delete tile_range;
+  delete [] tile_range;
 }
 
 template<typename T>
@@ -1788,6 +1966,32 @@ template int64_t ArraySchema::cell_num_in_tile_slab() const;
 template float ArraySchema::cell_num_in_tile_slab() const;
 template double ArraySchema::cell_num_in_tile_slab() const;
 
+template void ArraySchema::get_next_cell_coords<int>(
+    const int* domain,
+    int* cell_coords) const;
+template void ArraySchema::get_next_cell_coords<int64_t>(
+    const int64_t* domain,
+    int64_t* cell_coords) const;
+template void ArraySchema::get_next_cell_coords<float>(
+    const float* domain,
+    float* cell_coords) const;
+template void ArraySchema::get_next_cell_coords<double>(
+    const double* domain,
+    double* cell_coords) const;
+
+template void ArraySchema::get_previous_cell_coords<int>(
+    const int* domain,
+    int* cell_coords) const;
+template void ArraySchema::get_previous_cell_coords<int64_t>(
+    const int64_t* domain,
+    int64_t* cell_coords) const;
+template void ArraySchema::get_previous_cell_coords<float>(
+    const float* domain,
+    float* cell_coords) const;
+template void ArraySchema::get_previous_cell_coords<double>(
+    const double* domain,
+    double* cell_coords) const;
+
 template void ArraySchema::get_next_tile_coords<int>(
     const int* domain,
     int* tile_coords) const;
@@ -1837,24 +2041,28 @@ template void ArraySchema::compute_mbr_range_overlap<double>(
 
 template void ArraySchema::compute_tile_range_overlap<int>(
     const int* domain,
+    const int* non_empty_domain,
     const int* range,
     const int* tile_coords,
     int* overlap_range,
     int& overlap) const;
 template void ArraySchema::compute_tile_range_overlap<int64_t>(
     const int64_t* domain,
+    const int64_t* non_empty_domain,
     const int64_t* range,
     const int64_t* tile_coords,
     int64_t* overlap_range,
     int& overlap) const;
 template void ArraySchema::compute_tile_range_overlap<float>(
     const float* domain,
+    const float* non_empty_domain,
     const float* range,
     const float* tile_coords,
     float* overlap_range,
     int& overlap) const;
 template void ArraySchema::compute_tile_range_overlap<double>(
     const double* domain,
+    const double* non_empty_domain,
     const double* range,
     const double* tile_coords,
     double* overlap_range,
@@ -1886,3 +2094,29 @@ template int64_t ArraySchema::tile_id<float>(
     const float* cell_coords) const;
 template int64_t ArraySchema::tile_id<double>(
     const double* cell_coords) const;
+
+template int ArraySchema::cell_order_cmp<int>(
+    const int* coords_a, 
+    const int* coords_b) const;
+template int ArraySchema::cell_order_cmp<int64_t>(
+    const int64_t* coords_a, 
+    const int64_t* coords_b) const;
+template int ArraySchema::cell_order_cmp<float>(
+    const float* coords_a, 
+    const float* coords_b) const;
+template int ArraySchema::cell_order_cmp<double>(
+    const double* coords_a, 
+    const double* coords_b) const;
+
+template int ArraySchema::tile_order_cmp<int>(
+    const int* coords_a, 
+    const int* coords_b) const;
+template int ArraySchema::tile_order_cmp<int64_t>(
+    const int64_t* coords_a, 
+    const int64_t* coords_b) const;
+template int ArraySchema::tile_order_cmp<float>(
+    const float* coords_a, 
+    const float* coords_b) const;
+template int ArraySchema::tile_order_cmp<double>(
+    const double* coords_a, 
+    const double* coords_b) const;

@@ -728,7 +728,10 @@ int write_to_file(
     const void* buffer,
     size_t buffer_size) {
   // Open file
-  int fd = open(filename, O_WRONLY | O_APPEND | O_CREAT | O_SYNC, S_IRWXU);
+  int fd = open(
+      filename, 
+      O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
+      S_IRWXU);
   if(fd == -1) {
     PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
     return TILEDB_UT_ERR;

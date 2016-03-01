@@ -34,6 +34,9 @@
 #ifndef __CONSTANTS_H__
 #define __CONSTANTS_H__
 
+#include <float.h>
+#include <limits.h>
+
 /** Version */
 #define TILEDB_VERSION "0.1"
 
@@ -46,6 +49,13 @@
 #define TILEDB_READ_REVERSE           2
 #define TILEDB_WRITE                  3
 #define TILEDB_WRITE_UNSORTED         4
+
+/** Special cell values. */
+#define TILEDB_EMPTY_INT32 INT_MAX
+#define TILEDB_EMPTY_INT64 LLONG_MAX
+#define TILEDB_EMPTY_FLOAT32 FLT_MAX
+#define TILEDB_EMPTY_FLOAT64 DBL_MAX
+#define TILEDB_EMPTY_CHAR CHAR_MAX
 
 /** Name of the coordinates attribute. */
 #define TILEDB_COORDS_NAME "__coords"

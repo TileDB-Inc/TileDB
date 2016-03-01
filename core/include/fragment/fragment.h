@@ -57,6 +57,19 @@ class WriteState;
 /** Contains information about an array fragment. */
 class Fragment {
  public:
+  // TYPE DEFINITIONS
+
+  // TODO
+  typedef std::pair<int64_t, int64_t> CellPosRange;
+  // TODO
+  typedef std::pair<int, CellPosRange> FragmentCellPosRange;
+  // TODO
+  typedef std::vector<FragmentCellPosRange> FragmentCellPosRanges;
+  // TODO
+  typedef std::pair<int, void*> FragmentCellRange;
+  // TODO
+  typedef std::vector<FragmentCellRange> FragmentCellRanges;
+
   // CONSTRUCTORS & DESTRUCTORS
   
   /** 
@@ -83,13 +96,74 @@ class Fragment {
   const std::string& fragment_name() const;
 
   // TODO
+  template<class T>
+  void compute_fragment_cell_ranges(
+      int fragment_i,
+      FragmentCellRanges& fragment_cell_ranges) const;
+
+  // TODO
+  const void* get_global_tile_coords() const;
+
+  // TODO
   int read(void** buffers, size_t* buffer_sizes);
+
+  // TODO
+  bool overflow(int attribute_id) const;
 
   // TODO
   size_t tile_size(int attribute_id) const;
 
+  // TODO
+  ReadState* read_state() const;
+
+  // TODO
+  template<class T>
+  bool max_overlap(const T* max_overlap_range) const;
+
+  // TODO
+  template<class T>
+  int copy_cell_range(
+      int attribute_id,
+      void* buffer,
+      size_t buffer_size,
+      size_t& buffer_offset,
+      const CellPosRange& cell_pos_range);
+
   //MUTATORS
-  
+
+  // TODO
+  template<class T>
+  bool coords_exist(const T* coords);
+
+  // TODO
+  void tile_done(int attribute_id);
+
+  // TODO
+  void reset_overflow();
+
+  /**
+   * Computes the next tile that overlaps with the range given in Array::init.
+   * Applicable only when the read is applied on multipled fragments.
+   *
+   * @return void 
+   */
+  void get_next_overlapping_tile_mult();
+
+// TODO
+  template<class T>
+  int get_cell_pos_ranges_sparse(
+      int fragment_i,
+      const T* tile_domain,
+      const T* cell_range,
+      FragmentCellPosRanges& fragment_cell_pos_ranges);
+
+  // TODO
+  template<class T>
+  int get_first_two_coords(
+      T* start_coords,
+      T* first_coords,
+      T* second_coords);
+
   // TODO
   int init(const std::string& fragment_name, const void* range);
 
@@ -111,6 +185,8 @@ class Fragment {
   bool dense_;
   /** The fragment name. */
   std::string fragment_name_;
+  /** True if this fragment covers the full array domain. */
+  bool full_domain_;
   /** A read state structure. */
   ReadState* read_state_;
   /** A write state structure. */

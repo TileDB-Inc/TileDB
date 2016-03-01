@@ -54,9 +54,9 @@ class WriteState {
   // TYPE DEFINITIONS
 
   /** Custom comparator in cell sorting. */
-  template<typename T> struct SmallerIdCol;
+  template<typename T> class SmallerIdCol;
   /** Custom comparator in cell sorting. */
-  template<typename T> struct SmallerIdRow;
+  template<typename T> class SmallerIdRow;
   /** Custom comparator in cell sorting. */
   template<class T> class SmallerRow;
   /** Custom comparator in cell sorting. */

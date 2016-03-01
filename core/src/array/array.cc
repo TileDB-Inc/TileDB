@@ -59,6 +59,20 @@
 #  define PRINT_WARNING(x) do { } while(0) 
 #endif
 
+#ifdef GNU_PARALLEL
+  #include <parallel/algorithm>
+  #define SORT_LIB __gnu_parallel
+#else
+  #include <algorithm>
+  #define SORT_LIB std 
+#endif
+
+#define SORT_2(first, last) SORT_LIB::sort((first), (last))
+#define SORT_3(first, last, comp) SORT_LIB::sort((first), (last), (comp))
+#define GET_MACRO(_1, _2, _3, NAME, ...) NAME
+#define SORT(...) GET_MACRO(__VA_ARGS__, SORT_3, SORT_2)(__VA_ARGS__)
+
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -66,6 +80,7 @@
 Array::Array() {
   array_schema_ = NULL;
   range_ = NULL;
+  array_read_state_ = NULL;
 }
 
 Array::~Array() {
@@ -77,6 +92,9 @@ Array::~Array() {
 
   if(range_ != NULL)
     free(range_);
+
+  if(array_read_state_ != NULL)
+    delete array_read_state_;
 }
 
 /* ****************************** */
@@ -89,6 +107,14 @@ const ArraySchema* Array::array_schema() const {
 
 const std::vector<int>& Array::attribute_ids() const {
   return attribute_ids_;
+}
+
+std::vector<Fragment*> Array::fragments() const {
+  return fragments_;
+}
+
+int Array::fragment_num() const {
+  return fragments_.size();
 }
 
 int Array::mode() const {
@@ -106,19 +132,29 @@ int Array::read(void** buffers, size_t* buffer_sizes) {
     return TILEDB_AR_ERR;
   }
 
-  int rc;
-  if(fragments_.size() == 0) { // No fragments - read nothing
-    for(int i=0; i<attribute_ids_.size(); ++i)
-      buffer_sizes[i] = 0;
-    rc = TILEDB_FG_OK;
-  } else if(fragments_.size() == 1) { // Single-fragment read 
-    rc = fragments_[0]->read(buffers, buffer_sizes);
-  } else { // Multi-fragment read
-    // TODO
+  int buffer_i = 0;
+  int attribute_id_num = attribute_ids_.size();
+  bool success = false;
+  if(fragments_.size() == 0) {             // No fragments - read nothing
+    for(int i=0; i<attribute_id_num; ++i) {
+      buffer_sizes[buffer_i] = 0; 
+      if(!array_schema_->var_size(attribute_ids_[i])) 
+        ++buffer_i;
+      else 
+        buffer_i += 2;
+    }
+    success = true;
+  } else if(fragments_.size() == 1) {      // Single-fragment read 
+    if(fragments_[0]->read(buffers, buffer_sizes) == TILEDB_FG_OK)
+      success = true;
+  } else {                                 // Multi-fragment read
+    if(array_read_state_->read_multiple_fragments(buffers, buffer_sizes) == 
+       TILEDB_ARS_OK)
+      success = true;
   }  
 
   // Return
-  if(rc == TILEDB_FG_OK)
+  if(success)
     return TILEDB_AR_OK;
   else
     return TILEDB_AR_ERR;
@@ -189,6 +225,8 @@ int Array::init(
   } else if(mode_ == TILEDB_READ || mode_ == TILEDB_READ_REVERSE) {
     if(open_fragments() != TILEDB_AR_OK)
       return TILEDB_AR_ERR;
+    if(fragments_.size() > 1)
+      array_read_state_ = new ArrayReadState(this);
   }
 
   // Return
@@ -201,6 +239,11 @@ int Array::finalize() {
     rc = fragments_[i]->finalize();
     if(rc != TILEDB_FG_OK)
       break;
+  }
+
+  if(array_read_state_ != NULL) {
+    delete array_read_state_;
+    array_read_state_ = NULL;
   }
 
   if(rc == TILEDB_AR_OK)
@@ -252,6 +295,7 @@ std::string Array::new_fragment_name() const {
   std::stringstream fragment_name;
   struct timeval tp;
   gettimeofday(&tp, NULL);
+  // TODO: This may need fixing
   uint64_t ms = tp.tv_sec * 1000 + tp.tv_usec / 1000;
   fragment_name << array_schema_->array_name() << "/.__" 
                 << getpid() << "_" << ms;
@@ -262,6 +306,9 @@ std::string Array::new_fragment_name() const {
 int Array::open_fragments() {
   // Get directory names in the array folder
   std::vector<std::string> dirs = get_dirs(array_schema_->array_name()); 
+
+  // Sort the fragment names
+  sort_fragment_names(dirs);
 
   // Create a fragment for each fragment directory
   for(int i=0; i<dirs.size(); ++i) {
@@ -276,3 +323,42 @@ int Array::open_fragments() {
   // Return
   return TILEDB_AR_OK;
 }
+
+void Array::sort_fragment_names(
+    std::vector<std::string>& fragment_names) const {
+  // Initializations
+  int fragment_num = fragment_names.size();
+  std::string t_str;
+  int64_t stripped_fragment_name_size, t;
+  std::vector<std::pair<int64_t, int> > t_pos_vec;
+  t_pos_vec.resize(fragment_num);
+
+  // Get the timestamp for each fragment
+  for(int i=0; i<fragment_num; ++i) {
+    std::string& fragment_name = fragment_names[i];
+    std::string parent_fragment_name = parent_dir(fragment_name);
+    std::string stripped_fragment_name = 
+        fragment_name.substr(parent_fragment_name.size() + 1);
+    assert(starts_with(stripped_fragment_name, "__"));
+    stripped_fragment_name_size = stripped_fragment_name.size();
+    // Search for the timestamp in the end of the name after '_'
+    for(int j=2; j<stripped_fragment_name_size; ++j) {
+      if(stripped_fragment_name[j] == '_') {
+        t_str = stripped_fragment_name.substr(
+                    j+1,stripped_fragment_name_size-j);
+        sscanf(t_str.c_str(), "%lld", &t); 
+        t_pos_vec[i] = std::pair<int64_t, int>(t, i);
+        break;
+      }
+    }
+  }
+
+  // Sort the names based on the timestamps
+  SORT(t_pos_vec.begin(), t_pos_vec.end()); 
+  std::vector<std::string> fragment_names_sorted; 
+  fragment_names_sorted.resize(fragment_num);
+  for(int i=0; i<fragment_num; ++i) 
+    fragment_names_sorted[i] = fragment_names[t_pos_vec[i].second];
+  fragment_names = fragment_names_sorted;
+}
+

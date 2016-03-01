@@ -78,6 +78,9 @@ class BookKeeping {
   /** Returns the domain in which the fragment is constrained. */
   const void* domain() const;
 
+  /** Returns the non-empty domain in which the fragment is constrained. */
+  const void* non_empty_domain() const;
+
   /** Returns the number of tiles in the fragment. */
   int64_t tile_num() const;
 
@@ -110,10 +113,11 @@ class BookKeeping {
   /*
    * Initializes the book-keeping structure.
    * 
-   * @param domain The domain in which the array read/write will be constrained.
+   * @param non_empty_domain The non-empty domain in which the array read/write
+   *     will be constrained.
    * @return TILEDB_BK_OK for success, and TILEDB_OK_ERR for error.
    */
-  int init(const void* domain);
+  int init(const void* non_empty_domain);
 
   // TODO
   int load();
@@ -131,6 +135,12 @@ class BookKeeping {
 
   /** The first and last coordinates of each tile. */
   std::vector<void*> bounding_coords_;
+  /**
+   * The (expanded) domain in which the fragment is constrained. Note that
+   * the type of the domain must be the same as the type of the array
+   * coordinates.
+   */
+  void* domain_;
   /** The fragment the book-keeping belongs to. */
   const Fragment* fragment_;
   /** Number of cells in the last tile (meaningful only in the sparse case. */
@@ -142,10 +152,10 @@ class BookKeeping {
   /** The offsets of the next variable tile for each attribute. */
   std::vector<size_t> next_tile_var_offsets_;
   /**
-   * The domain in which the fragment is constrained. Note that the type of the
-   * domain must be the same as the type of the array coordinates.
+   * The non-empty domain in which the fragment is constrained. Note that the
+   * type of the domain must be the same as the type of the array coordinates.
    */
-  void* domain_;
+  void* non_empty_domain_;
   /** The tile offsets in their corresponding attribute files. */
   std::vector<std::vector<size_t> > tile_offsets_;
   /** The variable tile offsets in their corresponding attribute files. */
@@ -165,7 +175,7 @@ class BookKeeping {
   int flush_mbrs(gzFile fd) const;
 
   // TODO
-  int flush_domain(gzFile fd) const;
+  int flush_non_empty_domain(gzFile fd) const;
 
   // TODO
   int flush_tile_offsets(gzFile fd) const;
@@ -186,7 +196,7 @@ class BookKeeping {
   int load_mbrs(gzFile fd);
 
   // TODO
-  int load_domain(gzFile fd);
+  int load_non_empty_domain(gzFile fd);
 
   // TODO
   int load_tile_offsets(gzFile fd);

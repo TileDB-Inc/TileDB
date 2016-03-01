@@ -13,7 +13,7 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
   /* Initialize a range. */
-  const int64_t range[] = { 2, 2, 1, 4 };
+  const int64_t range[] = { 3, 3, 8, 8 };
 
   /* Subset over attribute "a1". */
   const char* attributes[] = { "a1" };
@@ -23,16 +23,19 @@ int main() {
   tiledb_array_init(
       tiledb_ctx, 
       &tiledb_array,
-      "workspace/dense_A",
+      "workspace/dense_B",
       TILEDB_READ,
       range, 
       attributes,           
       1);      
 
   /* Prepare cell buffers for attribute "a1". */
-  int buffer_a1[10];
+  int buffer_a1[64];
+  size_t buffer_a2[64];
+  char buffer_a2_var[500];
+  float buffer_a3[128];
   void* buffers[] = { buffer_a1 };
-  size_t buffer_sizes[1] = { sizeof(buffer_a1) };
+  size_t buffer_sizes[] = { sizeof(buffer_a1) };
 
   /* Read from array. */
   tiledb_array_read(tiledb_array, buffers, buffer_sizes); 

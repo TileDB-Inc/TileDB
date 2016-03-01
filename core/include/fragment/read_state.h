@@ -51,6 +51,18 @@ class BookKeeping;
 class ReadState {
  public:
   // TYPE DEFINITIONS
+
+  // TODO
+  typedef std::pair<int64_t, int64_t> CellPosRange;
+  // TODO
+  typedef std::pair<int, CellPosRange> FragmentCellPosRange;
+  // TODO
+  typedef std::vector<FragmentCellPosRange> FragmentCellPosRanges;
+  // TODO
+  typedef std::pair<int, void*> FragmentCellRange;
+  // TODO
+  typedef std::vector<FragmentCellRange> FragmentCellRanges;
+
   /** 
    * Type of tile overlap with the query range. PARTIAL_CONTIG means that all
    * the qualifying cells are all contiguous on the disk; PARTIAL_NON_CONTIG
@@ -62,7 +74,7 @@ class ReadState {
   struct OverlappingTile {
     /** Number of cells in this tile. */
     int64_t cell_num_;
-   /**
+    /**
      * Ranges of positions of qualifying cells in the range.
      * Applicable only to sparse arrays.
      */
@@ -77,6 +89,12 @@ class ReadState {
      * to the sparse case.
      */
     bool coords_tile_fetched_;
+    // TODO
+    void* global_coords_;
+    // TODO
+    void* mbr_coords_;
+    // TODO
+    void* mbr_in_tile_domain_;
     /** The type of the overlap of the tile with the query range. */
     Overlap overlap_;
     /** 
@@ -88,7 +106,9 @@ class ReadState {
     void* overlap_range_;
     /** The position of the tile in the global tile order. */
     int64_t pos_;
-    };
+// TODO    /** The global position of the overlapping tile. */
+// TODO    int64_t global_pos_;
+  };
 
   // CONSTRUCTORS & DESTRUCTORS
 
@@ -116,8 +136,90 @@ class ReadState {
    */
   int read(void** buffers, size_t* buffer_sizes);
 
+  // ACCESSORS
+
+  // TODO
+  template<class T>
+  int get_cell_pos_ranges_sparse(
+      int fragment_i,
+      const T* tile_domain,
+      const T* cell_range,
+      FragmentCellPosRanges& fragment_cell_pos_ranges);
+
+  // TODO
+  bool overflow(int attribute_id) const;
+
+  // TODO
+  template<class T>
+  bool max_overlap(const T* max_overlap_range) const;
+
+  // TODO
+  template<class T>
+  void compute_fragment_cell_ranges(
+      int fragment_i,
+      FragmentCellRanges& fragment_cell_ranges) const;
+
+  // TODO
+  template<class T>
+  void compute_fragment_cell_ranges_dense(
+      int fragment_i,
+      FragmentCellRanges& fragment_cell_ranges) const;
+
+  // TODO
+  template<class T>
+  void compute_fragment_cell_ranges_sparse(
+      int fragment_i,
+      FragmentCellRanges& fragment_cell_ranges) const;
+
+  // TODO
+  const void* get_global_tile_coords() const;
+
+  // TODO
+  template<class T>
+  int copy_cell_range(
+      int attribute_id,
+      void* buffer,
+      size_t buffer_size,
+      size_t& buffer_offset,
+      const CellPosRange& cell_pos_range);
+
+  // MUTATORS
+
+  // TODO
+  void tile_done(int attribute_id);
+
+  /** 
+   * Resets the overflow flag of every attribute to *false*. 
+   *
+   * @return void.
+   */
+  void reset_overflow();
+
+  // TODO
+  template<class T>
+  bool coords_exist(const T* coords);
+
+
+  /**
+   * Computes the next tile that overlaps with the range given in Array::init.
+   * This is applicable only to reads on multiple fragments.
+   *
+   * @return void 
+   */
+  void get_next_overlapping_tile_mult();
+
+  // TODO
+  template<class T>
+  int get_first_two_coords(
+      T* start_coords,
+      T* first_coords,
+      T* second_coords);
+
  private:
   // PRIVATE ATTRIBUTES
+
+  // TODO
+  std::vector<bool> tile_done_;
 
   /** The book-keeping structure of the fragment the read state belongs to. */
   BookKeeping* book_keeping_;
@@ -145,6 +247,8 @@ class ReadState {
   std::vector<size_t> map_addr_var_lengths_;
   /** Indicates buffer overflow for each attribute. */ 
   std::vector<bool> overflow_;
+  // TODO
+  bool overlap_;
   /** 
    * A list of tiles overlapping the query range. Each attribute points to a
    * tile in this list.
@@ -186,7 +290,6 @@ class ReadState {
   std::vector<size_t> tiles_var_sizes_;
 
   // PRIVATE METHODS
-
   /** 
    * Cleans up processed overlapping tiles with the range across all attributed
    * specified in Array::init, properly freeing up the allocated memory.
@@ -1035,11 +1138,47 @@ class ReadState {
    * Computes the next tile that overlaps with the range given in Array::init.
    * Applicable only to the dense case.
    *
+   * @return void 
+   */
+  void get_next_overlapping_tile_dense();
+
+  /**
+   * Computes the next tile that overlaps with the range given in Array::init.
+   * Applicable only to the dense case.
+   *
    * @template T The coordinates type.
    * @return void 
    */
   template<class T>
   void get_next_overlapping_tile_dense();
+
+  /**
+   * Computes the next tile that overlaps with the range given in Array::init.
+   * Applicable only to the dense case, and especially when there are multiple
+   * fragments.
+   *
+   * @return void 
+   */
+  void get_next_overlapping_tile_dense_mult();
+
+  /**
+   * Computes the next tile that overlaps with the range given in Array::init.
+   * Applicable only to the dense case, and especially when there are multiple
+   * fragments.
+   *
+   * @template T The coordinates type.
+   * @return void 
+   */
+  template<class T>
+  void get_next_overlapping_tile_dense_mult();
+
+  /**
+   * Computes the next tile that overlaps with the range given in Array::init.
+   * Applicable only to the sparse case.
+   *
+   * @return void 
+   */
+  void get_next_overlapping_tile_sparse();
 
   /**
    * Computes the next tile that overlaps with the range given in Array::init.
@@ -1050,6 +1189,26 @@ class ReadState {
    */
   template<class T>
   void get_next_overlapping_tile_sparse();
+
+  /**
+   * Computes the next tile that overlaps with the range given in Array::init.
+   * Applicable only to the sparse case, and especially when there are multiple
+   * fragments.
+   *
+   * @return void 
+   */
+  void get_next_overlapping_tile_sparse_mult();
+
+  /**
+   * Computes the next tile that overlaps with the range given in Array::init.
+   * Applicable only to the sparse case, and especially when there are multiple
+   * fragments.
+   *
+   * @template T The coordinates type.
+   * @return void 
+   */
+  template<class T>
+  void get_next_overlapping_tile_sparse_mult();
 
   /**
    * Reads a tile from the disk into a local buffer for an attribute. This
@@ -1745,13 +1904,6 @@ class ReadState {
       int attribute_id,
       off_t offset,
       size_t tile_size);
-
-  /** 
-   * Resets the overflow flag of every attribute to *false*. 
-   *
-   * @return void.
-   */
-  void reset_overflow();
 
   /**
    * Shifts the offsets stored in the input tile buffer such that the first one
