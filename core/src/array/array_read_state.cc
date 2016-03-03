@@ -81,9 +81,6 @@ ArrayReadState::ArrayReadState(
 }
 
 ArrayReadState::~ArrayReadState() { 
-  // For easy reference
-  int fragment_num = array_->fragments().size();
-
   if(max_overlap_range_ != NULL)
     free(max_overlap_range_);
  
@@ -93,7 +90,7 @@ ArrayReadState::~ArrayReadState() {
   if(range_global_tile_domain_ != NULL)
     free(range_global_tile_domain_);
 
-  for(int i=0; i<fragment_num; ++i)
+  for(int i=0; i<fragment_bounding_coords_.size(); ++i)
     if(fragment_bounding_coords_[i] != NULL)
       free(fragment_bounding_coords_[i]);
 }
@@ -736,7 +733,7 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
             }
           } 
        
-          if(inside_tile) 
+          if(!inside_tile) 
             free(popped.second);
           else // Re-insert to the queue the now trimmed popped range
             pq.push(popped);
