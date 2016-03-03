@@ -82,6 +82,9 @@ class Fragment {
   ~Fragment();
 
   // ACCESSORS
+
+  // TODO
+  bool overlaps() const;
   
   /** Returns the array the fragment belongs to. */
   const Array* array() const;
@@ -168,6 +171,13 @@ class Fragment {
       const T* tile_domain,
       const T* cell_range,
       FragmentCellPosRanges& fragment_cell_pos_ranges);
+
+  // TODO
+  void get_bounding_coords(void* bounding_coords) const;
+
+  // TODO
+  template<class T>
+  void get_next_overlapping_tile_sparse();
 
   // TODO
   template<class T>

@@ -107,6 +107,8 @@ class ArrayReadState {
   // TODO
   std::vector<const void*> fragment_global_tile_coords_;
   // TODO
+  std::vector<void*> fragment_bounding_coords_;
+  // TODO
   int max_overlap_i_;
   // TODO
   Overlap max_overlap_type_;
@@ -185,6 +187,10 @@ class ArrayReadState {
 
   // TODO
   template<class T>
+  int get_next_cell_ranges_sparse();
+
+  // TODO
+  template<class T>
   void get_next_range_global_tile_coords();
 
   // TODO
@@ -226,6 +232,36 @@ class ArrayReadState {
 
   // TODO
   int read_multiple_fragments_sparse(void** buffers, size_t* buffer_sizes); 
+
+  // TODO
+  int read_multiple_fragments_sparse_attr(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size); 
+
+  // TODO
+  template<class T>
+  int read_multiple_fragments_sparse_attr(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size);
+
+  // TODO
+  int read_multiple_fragments_sparse_attr_var(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size,
+      void* buffer_var, 
+      size_t& buffer_var_size);
+
+  // TODO
+  template<class T>
+  int read_multiple_fragments_sparse_attr_var(
+      int attribute_id,
+      void* buffer, 
+      size_t& buffer_size,
+      void* buffer_var, 
+      size_t& buffer_var_size);
 };
 
 /** 

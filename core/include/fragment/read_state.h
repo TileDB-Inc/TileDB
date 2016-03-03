@@ -139,6 +139,12 @@ class ReadState {
   // ACCESSORS
 
   // TODO
+  Overlap overlap() const;
+
+  // TODO
+  void get_bounding_coords(void* bounding_coords) const;
+
+  // TODO
   template<class T>
   int get_cell_pos_ranges_sparse(
       int fragment_i,
@@ -197,6 +203,25 @@ class ReadState {
 
 
   // MUTATORS
+
+  /**
+   * Computes the next tile that overlaps with the range given in Array::init.
+   * Applicable only to the sparse case.
+   *
+   * @return void 
+   */
+  void get_next_overlapping_tile_sparse();
+
+  /**
+   * Computes the next tile that overlaps with the range given in Array::init.
+   * Applicable only to the sparse case.
+   *
+   * @template T The coordinates type.
+   * @return void 
+   */
+  template<class T>
+  void get_next_overlapping_tile_sparse();
+
 
   // TODO
   void tile_done(int attribute_id);
@@ -1184,24 +1209,6 @@ class ReadState {
    */
   template<class T>
   void get_next_overlapping_tile_dense_mult();
-
-  /**
-   * Computes the next tile that overlaps with the range given in Array::init.
-   * Applicable only to the sparse case.
-   *
-   * @return void 
-   */
-  void get_next_overlapping_tile_sparse();
-
-  /**
-   * Computes the next tile that overlaps with the range given in Array::init.
-   * Applicable only to the sparse case.
-   *
-   * @template T The coordinates type.
-   * @return void 
-   */
-  template<class T>
-  void get_next_overlapping_tile_sparse();
 
   /**
    * Computes the next tile that overlaps with the range given in Array::init.

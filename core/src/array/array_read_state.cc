@@ -81,6 +81,9 @@ ArrayReadState::ArrayReadState(
 }
 
 ArrayReadState::~ArrayReadState() { 
+  // For easy reference
+  int fragment_num = array_->fragments().size();
+
   if(max_overlap_range_ != NULL)
     free(max_overlap_range_);
  
@@ -89,6 +92,10 @@ ArrayReadState::~ArrayReadState() {
 
   if(range_global_tile_domain_ != NULL)
     free(range_global_tile_domain_);
+
+  for(int i=0; i<fragment_num; ++i)
+    if(fragment_bounding_coords_[i] != NULL)
+      free(fragment_bounding_coords_[i]);
 }
 
 /* ****************************** */
@@ -600,15 +607,32 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
          top_fragment_i > popped_fragment_i && 
          array_schema->cell_order_cmp(
              top_range, 
-             &popped_range[dim_num]) <= 0) {
-         // Potentially create a new popped range
-         if(array_schema->cell_order_cmp(
-                &top_range[dim_num], 
-                &popped_range[dim_num]) < 0) {
+             &popped_range[dim_num]) <= 0) {         
+         // Top is sparse
+         if(!fragments[top_fragment_i]->dense()) {
+           // Create a new popped range
            FragmentCellRange extra_popped;
            extra_popped.first = popped_fragment_i;
            extra_popped.second = malloc(2*coords_size);
            T* extra_popped_range = static_cast<T*>(extra_popped.second);
+
+           memcpy(extra_popped_range, top_range, coords_size);
+           memcpy(
+               &extra_popped_range[dim_num], 
+               &popped_range[dim_num], 
+               coords_size);
+
+           // Re-instert the extra popped range into the queue
+           pq.push(extra_popped);
+         } else if(array_schema->cell_order_cmp(
+                  &top_range[dim_num], 
+                  &popped_range[dim_num]) < 0) {
+           // Create a new popped range
+           FragmentCellRange extra_popped;
+           extra_popped.first = popped_fragment_i;
+           extra_popped.second = malloc(2*coords_size);
+           T* extra_popped_range = static_cast<T*>(extra_popped.second);
+
            memcpy(extra_popped_range, &top_range[dim_num], coords_size);
            memcpy(
                &extra_popped_range[dim_num], 
@@ -635,10 +659,26 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
        fragment_cell_ranges.push_back(popped);
     } else {                               // SPARSE POPPED
       // If popped does not overlap with top, insert popped into results
-      if(!pq.empty() &&
-         array_schema->cell_order_cmp(
-             top_range, 
-             &popped_range[dim_num]) > 0) {
+      int64_t top_range_tile_id, popped_range_tile_id;
+      int cmp;
+      
+      if(!pq.empty()) {
+        top_range_tile_id = array_schema->tile_id(top_range);
+        popped_range_tile_id = array_schema->tile_id(&popped_range[dim_num]);
+
+        if(top_range_tile_id == popped_range_tile_id) {
+          cmp = array_schema->cell_order_cmp(
+                                  top_range, 
+                                  &popped_range[dim_num]);
+        } else {
+          if(top_range_tile_id < popped_range_tile_id)
+            cmp = -1;
+          else 
+            cmp = 1;
+        }
+      }
+
+      if(!pq.empty() && cmp > 0) {
         fragment_cell_ranges.push_back(popped);
       } else { // Need to expand popped
         // Create a new unary range
@@ -669,24 +709,37 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
           return TILEDB_ARS_ERR;
         }
 
+        // Check if the now trimmed popped range exceeds the tile domain
+        bool inside_tile = true;
+        for(int i=0; i<dim_num; ++i) {
+          if(unary_range[i] < tile_domain[2*i] || 
+             unary_range[i] > tile_domain[2*i+1]) {
+            inside_tile = false;
+            break;
+          }
+        }
+
         // Copy second boundary of unary and re-insert to the queue
-        if(array_schema->cell_order_cmp(
-               unary_range,
-               tile_domain_end) > 0) {
+        if(!inside_tile) {
           free(unary.second);
         } else {
           memcpy(&unary_range[dim_num], unary_range, coords_size);
           pq.push(unary);
 
           // Check if the now trimmed popped range exceeds the tile domain
-          if(array_schema->cell_order_cmp(
-                 popped_range,
-                 tile_domain_end) > 0) {
+          bool inside_tile = true;
+          for(int i=0; i<dim_num; ++i) {
+            if(popped_range[i] < tile_domain[2*i] || 
+               popped_range[i] > tile_domain[2*i+1]) {
+              inside_tile = false;
+              break;
+            }
+          } 
+       
+          if(inside_tile) 
             free(popped.second);
-          } else {
-            // Re-insert to the queue the now trimmed popped range
+          else // Re-insert to the queue the now trimmed popped range
             pq.push(popped);
-          }
         }
       }
     }
@@ -859,6 +912,7 @@ int ArrayReadState::get_next_cell_ranges_dense() {
            fragment_global_tile_coords_[i], 
            range_global_tile_coords_, 
            coords_size)) { 
+      // TODO: Put error
       fragments[i]->compute_fragment_cell_ranges<T>(
           i,
           unsorted_fragment_cell_ranges);
@@ -881,6 +935,149 @@ int ArrayReadState::get_next_cell_ranges_dense() {
 
   // Clean up processed overlapping tiles
   clean_up_processed_fragment_cell_pos_ranges();
+
+  // Success
+  return TILEDB_ARS_OK;
+}
+
+template<class T>
+int ArrayReadState::get_next_cell_ranges_sparse() {
+  // For easy reference
+  const ArraySchema* array_schema = array_->array_schema();
+  int dim_num = array_schema->dim_num();
+  size_t coords_size = array_schema->coords_size();
+  std::vector<Fragment*> fragments = array_->fragments();
+  int fragment_num = fragments.size();
+
+  // First invocation: bring the first overlapping tile for each fragment
+  if(fragment_cell_pos_ranges_vec_.size() == 0) {
+    assert(fragment_bounding_coords_.size() == 0);
+    fragment_bounding_coords_.resize(fragment_num);
+    // Get next overlapping tile and MBR cell range
+    for(int i=0; i<fragment_num; ++i) { 
+      fragments[i]->get_next_overlapping_tile_sparse<T>();
+      if(fragments[i]->overlaps()) {
+        fragment_bounding_coords_[i] = malloc(2*coords_size);
+        fragments[i]->get_bounding_coords(
+            fragment_bounding_coords_[i]);
+      } else {
+        fragment_bounding_coords_[i] = NULL;
+      }
+    }
+  } else {
+/*
+    // TODO
+    // Temporarily store the current range global tile coordinates
+    assert(range_global_tile_coords_ != NULL);
+    T* previous_range_global_tile_coords = new T[dim_num];
+    memcpy(
+        previous_range_global_tile_coords,
+        range_global_tile_coords_,
+        coords_size);
+
+    // Advance range coordinates
+    get_next_range_global_tile_coords<T>();
+
+    // Return if there are no more overlapping tiles
+    if(range_global_tile_coords_ == NULL) {
+      done_ = true;
+      delete [] previous_range_global_tile_coords;
+      return TILEDB_ARS_OK;
+    }
+
+    // Subsequent invocations: get next overallping tiles for the processed
+    // fragments
+    for(int i=0; i<fragment_num; ++i) {
+      if(fragment_global_tile_coords_[i] != NULL &&
+         !memcmp(
+             fragment_global_tile_coords_[i], 
+             previous_range_global_tile_coords, 
+             coords_size)) { 
+        fragments[i]->get_next_overlapping_tile_mult();
+        fragment_global_tile_coords_[i] = 
+            fragments[i]->get_global_tile_coords(); 
+      }
+    }
+
+    // Clean up
+    delete [] previous_range_global_tile_coords;
+*/
+  }
+
+// TODO: CHECK WHEN DONE!!!
+
+
+/*
+
+  // Advance properly the sparse fragments
+  for(int i=0; i<fragment_num; ++i) {
+    while(!fragments[i]->dense() && 
+          fragment_global_tile_coords_[i] != NULL &&
+          array_schema->tile_order_cmp<T>(
+               static_cast<const T*>(fragment_global_tile_coords_[i]), 
+               static_cast<const T*>(range_global_tile_coords_)) < 0) {
+       fragments[i]->get_next_overlapping_tile_mult();
+       fragment_global_tile_coords_[i] = 
+           fragments[i]->get_global_tile_coords();
+    }
+
+  }
+
+  // Compute the maximum overlap range for this tile
+  compute_max_overlap_range<T>();
+
+  // Find the most recent fragment with a full dense tile in the smallest global
+  // tile position
+  max_overlap_i_ = -1;
+  for(int i=fragment_num-1; i>=0; --i) { 
+    if(fragment_global_tile_coords_[i] != NULL &&
+       !memcmp(
+            fragment_global_tile_coords_[i], 
+            range_global_tile_coords_, 
+            coords_size) &&
+       fragments[i]->max_overlap<T>(
+           static_cast<const T*>(max_overlap_range_))) {
+      max_overlap_i_ = i;
+      break; 
+    }
+  } 
+
+  // This will hold the unsorted fragment cell ranges
+  FragmentCellRanges unsorted_fragment_cell_ranges;
+
+  // Compute initial cell ranges for the fragment with the max overlap
+  compute_max_overlap_fragment_cell_ranges<T>(unsorted_fragment_cell_ranges);  
+
+  // Compute cell ranges for the rest of the relevant fragments
+  for(int i=max_overlap_i_+1; i<fragment_num; ++i) {
+    if(fragment_global_tile_coords_[i] != NULL &&
+       !memcmp(
+           fragment_global_tile_coords_[i], 
+           range_global_tile_coords_, 
+           coords_size)) { 
+      fragments[i]->compute_fragment_cell_ranges<T>(
+          i,
+          unsorted_fragment_cell_ranges);
+    }
+  } 
+
+  // Compute the fragment cell position ranges
+  FragmentCellPosRanges fragment_cell_pos_ranges;
+  if(compute_fragment_cell_pos_ranges<T>(
+         unsorted_fragment_cell_ranges, 
+         fragment_cell_pos_ranges) != TILEDB_ARS_OK) {
+    // Clean up
+    for(int64_t i=0; i<unsorted_fragment_cell_ranges.size(); ++i)
+      free(unsorted_fragment_cell_ranges[i].second);
+    return TILEDB_ARS_ERR;
+  }
+
+  // Insert cell pos ranges in the state
+  fragment_cell_pos_ranges_vec_.push_back(fragment_cell_pos_ranges);
+
+  // Clean up processed overlapping tiles
+  clean_up_processed_fragment_cell_pos_ranges();
+*/
 
   // Success
   return TILEDB_ARS_OK;
@@ -1362,9 +1559,244 @@ int ArrayReadState::read_multiple_fragments_dense_attr_var(
 int ArrayReadState::read_multiple_fragments_sparse(
     void** buffers,  
     size_t* buffer_sizes) {
-  // TODO
+  // For easy reference
+  const ArraySchema* array_schema = array_->array_schema();
+  std::vector<int> attribute_ids = array_->attribute_ids();
+  int attribute_id_num = attribute_ids.size(); 
+
+  // Write each attribute individually
+  int buffer_i = 0;
+  int rc;
+  for(int i=0; i<attribute_id_num; ++i) {
+    if(!array_schema->var_size(attribute_ids[i])) { // FIXED CELLS
+      rc = read_multiple_fragments_sparse_attr(
+               attribute_ids[i], 
+               buffers[buffer_i], 
+               buffer_sizes[buffer_i]);
+
+      if(rc != TILEDB_AR_OK)
+        break;
+      ++buffer_i;
+    } else {                                         // VARIABLE-SIZED CELLS
+      rc = read_multiple_fragments_sparse_attr_var(
+               attribute_ids[i], 
+               buffers[buffer_i],       // offsets 
+               buffer_sizes[buffer_i],
+               buffers[buffer_i+1],     // actual values
+               buffer_sizes[buffer_i+1]);
+
+      if(rc != TILEDB_AR_OK)
+        break;
+      buffer_i += 2;
+    }
+  }
+
+  return rc;
 }
 
+int ArrayReadState::read_multiple_fragments_sparse_attr(
+    int attribute_id,
+    void* buffer,  
+    size_t& buffer_size) {
+  // For easy reference
+  const ArraySchema* array_schema = array_->array_schema();
+  const std::type_info* coords_type = array_schema->coords_type();
+
+  // Invoke the proper templated function
+  if(coords_type == &typeid(int)) {
+    return read_multiple_fragments_sparse_attr<int>(
+               attribute_id, 
+               buffer, 
+               buffer_size);
+  } else if(coords_type == &typeid(int64_t)) {
+    return read_multiple_fragments_sparse_attr<int64_t>(
+               attribute_id, 
+               buffer, 
+               buffer_size);
+  } else if(coords_type == &typeid(float)) {
+    return read_multiple_fragments_sparse_attr<float>(
+               attribute_id, 
+               buffer, 
+               buffer_size);
+  } else if(coords_type == &typeid(double)) {
+    return read_multiple_fragments_sparse_attr<double>(
+               attribute_id, 
+               buffer, 
+               buffer_size);
+  } else {
+    PRINT_ERROR("Cannot read from array; Invalid coordinates type");
+    return TILEDB_ARS_ERR;
+  }
+}
+
+template<class T>
+int ArrayReadState::read_multiple_fragments_sparse_attr(
+    int attribute_id,
+    void* buffer,  
+    size_t& buffer_size) {
+  // Auxiliary variables
+  size_t buffer_offset = 0;
+
+  // Until read is done or there is a buffer overflow 
+  for(;;) {
+    // Continue copying from the previous unfinished tile
+    if(!tile_done_[attribute_id])
+      if(copy_cell_ranges<T>(
+             attribute_id,
+             buffer, 
+             buffer_size, 
+             buffer_offset) != TILEDB_ARS_OK)
+        return TILEDB_ARS_ERR;
+
+    // Check for overflow
+    if(overflow_[attribute_id]) {
+      buffer_size = buffer_offset;
+      return TILEDB_ARS_OK;
+    }
+
+    // Prepare the cell ranges for the next tile under investigation, if
+    // has not be done already
+    if(fragment_cell_pos_ranges_vec_pos_[attribute_id] >= 
+       fragment_cell_pos_ranges_vec_.size()) {
+      // Get next overlapping tiles
+      if(get_next_cell_ranges_sparse<T>() != TILEDB_ARS_OK)
+        return TILEDB_ARS_ERR;
+    }
+
+    // Check if read is done
+    if(done_) {
+      buffer_size = buffer_offset;
+      return TILEDB_ARS_OK;
+    }
+ 
+    // Process the heap and copy cells to buffers
+    if(copy_cell_ranges<T>(
+           attribute_id, 
+           buffer, 
+           buffer_size, 
+           buffer_offset) != TILEDB_ARS_OK)
+      return TILEDB_ARS_ERR;
+
+    // Check for buffer overflow
+    if(overflow_[attribute_id]) {
+      buffer_size = buffer_offset;
+      return TILEDB_ARS_OK;
+    }
+  } 
+}
+
+int ArrayReadState::read_multiple_fragments_sparse_attr_var(
+    int attribute_id,
+    void* buffer,  
+    size_t& buffer_size,
+    void* buffer_var,  
+    size_t& buffer_var_size) {
+  // For easy reference
+  const ArraySchema* array_schema = array_->array_schema();
+  const std::type_info* coords_type = array_schema->coords_type();
+
+  // Invoke the proper templated function
+  if(coords_type == &typeid(int)) {
+    return read_multiple_fragments_sparse_attr_var<int>(
+               attribute_id, 
+               buffer, 
+               buffer_size,
+               buffer_var, 
+               buffer_var_size);
+  } else if(coords_type == &typeid(int64_t)) {
+    return read_multiple_fragments_sparse_attr_var<int64_t>(
+               attribute_id, 
+               buffer, 
+               buffer_size,
+               buffer_var, 
+               buffer_var_size);
+  } else if(coords_type == &typeid(float)) {
+    return read_multiple_fragments_sparse_attr_var<float>(
+               attribute_id, 
+               buffer, 
+               buffer_size,
+               buffer_var, 
+               buffer_var_size);
+  } else if(coords_type == &typeid(double)) {
+    return read_multiple_fragments_sparse_attr_var<double>(
+               attribute_id, 
+               buffer, 
+               buffer_size,
+               buffer_var, 
+               buffer_var_size);
+  } else {
+    PRINT_ERROR("Cannot read from array; Invalid coordinates type");
+    return TILEDB_ARS_ERR;
+  }
+}
+
+template<class T>
+int ArrayReadState::read_multiple_fragments_sparse_attr_var(
+    int attribute_id,
+    void* buffer,  
+    size_t& buffer_size,
+    void* buffer_var,  
+    size_t& buffer_var_size) {
+    // Auxiliary variables
+  size_t buffer_offset = 0;
+  size_t buffer_var_offset = 0;
+
+  // Until read is done or there is a buffer overflow 
+  for(;;) {
+    // Continue copying from the previous unfinished tile
+    if(!tile_done_[attribute_id])
+      if(copy_cell_ranges_var<T>(
+             attribute_id,
+             buffer, 
+             buffer_size, 
+             buffer_offset,
+             buffer_var, 
+             buffer_var_size,
+             buffer_var_offset) != TILEDB_ARS_OK)
+        return TILEDB_ARS_ERR;
+
+    // Check for overflow
+    if(overflow_[attribute_id]) {
+      buffer_size = buffer_offset;
+      buffer_var_size = buffer_var_offset;
+      return TILEDB_ARS_OK;
+    }
+
+    // Prepare the cell ranges for the next tile under investigation, if
+    // has not be done already
+    if(fragment_cell_pos_ranges_vec_pos_[attribute_id] >= 
+       fragment_cell_pos_ranges_vec_.size()) {
+      // Get next overlapping tiles
+      if(get_next_cell_ranges_sparse<T>() != TILEDB_ARS_OK)
+        return TILEDB_ARS_ERR;
+    }
+
+    // Check if read is done
+    if(done_) {
+      buffer_size = buffer_offset;
+      buffer_var_size = buffer_var_offset;
+      return TILEDB_ARS_OK;
+    }
+ 
+    // Process the heap and copy cells to buffers
+    if(copy_cell_ranges_var<T>(
+             attribute_id,
+             buffer, 
+             buffer_size, 
+             buffer_offset,
+             buffer_var, 
+             buffer_var_size,
+             buffer_var_offset) != TILEDB_ARS_OK)
+      return TILEDB_ARS_ERR;
+
+    // Check for buffer overflow
+    if(overflow_[attribute_id]) {
+      buffer_size = buffer_offset;
+      buffer_var_size = buffer_var_offset;
+      return TILEDB_ARS_OK;
+    }
+  }
+}
 
 template<class T>
 ArrayReadState::SmallerFragmentCellRange<T>::SmallerFragmentCellRange()

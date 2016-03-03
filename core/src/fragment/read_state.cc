@@ -205,9 +205,6 @@ bool ReadState::coords_exist(const T* coords) {
   int64_t cell_num = overlapping_tiles_.back().cell_num_;
   int rc;
 
-  // Sanity check
-  assert(cell_num >= 2);
-
   // Bring coordinates tile in main memory
   if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
     rc = get_tile_from_disk_cmp_gzip(attribute_num);
@@ -224,13 +221,25 @@ bool ReadState::coords_exist(const T* coords) {
   int64_t max = cell_num - 1;
   int64_t med;
   int cmp;
+  int64_t coords_tile_id, tile_coords_tile_id;
   while(min <= max) {
     med = min + ((max - min) / 2);
 
-    // Calculate precedence
-    cmp = array_schema->cell_order_cmp<T>(
-              coords,
-              &tile[med*dim_num]);
+    // Calculate precedence of tile ids
+    coords_tile_id = array_schema->tile_id(coords);
+    tile_coords_tile_id = array_schema->tile_id(&tile[med*dim_num]);
+
+    // Calculate precedence of cells
+    if(coords_tile_id == tile_coords_tile_id) {
+      cmp = array_schema->cell_order_cmp<T>(
+                coords,
+                &tile[med*dim_num]);
+    } else {
+      if(coords_tile_id < tile_coords_tile_id)
+        cmp = -1;
+      else 
+        cmp = 1;
+    }
 
     // Update search range
     if(cmp < 0) 
@@ -477,6 +486,10 @@ int ReadState::read(void** buffers, size_t* buffer_sizes) {
 /* ****************************** */
 /*           ACCESSORS            */
 /* ****************************** */
+
+ReadState::Overlap ReadState::overlap() const {
+  return overlapping_tiles_.back().overlap_;
+}
 
 bool ReadState::overflow(int attribute_id) const {
   return overflow_[attribute_id];
@@ -3104,13 +3117,25 @@ int ReadState::get_first_two_coords(
   int64_t med;
   int64_t first_coords_pos;
   int cmp;
+  int64_t start_coords_tile_id, tile_coords_tile_id;
   while(min <= max) {
     med = min + ((max - min) / 2);
 
-    // Calculate precedence
-    cmp = array_schema->cell_order_cmp<T>(
-              start_coords,
-              &tile[med*dim_num]);
+    // Calculate precedence of tile ids
+    start_coords_tile_id = array_schema->tile_id(start_coords);
+    tile_coords_tile_id = array_schema->tile_id(&tile[med*dim_num]);
+
+    // Calculate precedence of cells
+    if(start_coords_tile_id == tile_coords_tile_id) {
+      cmp = array_schema->cell_order_cmp<T>(
+                start_coords,
+                &tile[med*dim_num]);
+    } else {
+      if(start_coords_tile_id < tile_coords_tile_id)
+        cmp = -1;
+      else 
+        cmp = 1;
+    }
 
     // Update search range
     if(cmp < 0) 
@@ -3169,13 +3194,25 @@ int ReadState::get_cell_pos_ranges_sparse(
   int64_t med;
   int64_t first_pos;
   int cmp;
+  int64_t tile_coords_tile_id, start_range_coords_tile_id, end_range_coords_tile_id;
   while(min <= max) {
     med = min + ((max - min) / 2);
 
-    // Calculate precedence
-    cmp = array_schema->cell_order_cmp<T>(
-              start_range_coords,
-              &tile[med*dim_num]);
+    // Calculate precedence of tile ids
+    start_range_coords_tile_id = array_schema->tile_id(start_range_coords);
+    tile_coords_tile_id = array_schema->tile_id(&tile[med*dim_num]);
+
+    // Calculate precedence of cells
+    if(start_range_coords_tile_id == tile_coords_tile_id) {
+      cmp = array_schema->cell_order_cmp<T>(
+                start_range_coords,
+                &tile[med*dim_num]);
+    } else {
+      if(start_range_coords_tile_id < tile_coords_tile_id)
+        cmp = -1;
+      else 
+        cmp = 1;
+    }
 
     // Update search range
     if(cmp < 0) 
@@ -3208,10 +3245,21 @@ int ReadState::get_cell_pos_ranges_sparse(
   while(min <= max) {
     med = min + ((max - min) / 2);
 
-    // Calculate precedence
-    cmp = array_schema->cell_order_cmp<T>(
-              end_range_coords,
-              &tile[med*dim_num]);
+        // Calculate precedence of tile ids
+    end_range_coords_tile_id = array_schema->tile_id(end_range_coords);
+    tile_coords_tile_id = array_schema->tile_id(&tile[med*dim_num]);
+
+    // Calculate precedence of cells
+    if(end_range_coords_tile_id == tile_coords_tile_id) {
+      cmp = array_schema->cell_order_cmp<T>(
+                end_range_coords,
+                &tile[med*dim_num]);
+    } else {
+      if(end_range_coords_tile_id < tile_coords_tile_id)
+        cmp = -1;
+      else 
+        cmp = 1;
+    }
 
     // Update search range
     if(cmp < 0) 
@@ -3358,6 +3406,14 @@ void ReadState::get_next_overlapping_tile_dense() {
 
   // Clean up processed overlapping tiles
   clean_up_processed_overlapping_tiles();
+}
+
+void ReadState::get_bounding_coords(void* bounding_coords) const {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  size_t coords_size = array_schema->coords_size();
+  int64_t pos = overlapping_tiles_.back().pos_;
+  memcpy(bounding_coords, book_keeping_->bounding_coords()[pos], 2*coords_size);
 }
 
 void ReadState::get_next_overlapping_tile_dense_mult() {
@@ -3760,8 +3816,10 @@ void ReadState::get_next_overlapping_tile_sparse_mult() {
     T* mbr_coords = static_cast<T*>(overlapping_tile.mbr_coords_);
 
     for(int i=0; i<dim_num; ++i) {
+      mbr_in_tile_domain[2*i] = (mbr[2*i] - global_domain[2*i]) / tile_extents[i]; 
+      mbr_in_tile_domain[2*i+1] = (mbr[2*i+1] - global_domain[2*i]) / tile_extents[i];
+      mbr_in_tile_domain[2*i+1] -= mbr_in_tile_domain[2*i];
       mbr_in_tile_domain[2*i] = 0;
-      mbr_in_tile_domain[2*i+1] = (mbr[2*i+1] - mbr[2*i] + 1) / tile_extents[i];
       mbr_coords[i] = 0;
     }
   }

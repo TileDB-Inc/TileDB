@@ -82,6 +82,13 @@ Fragment::~Fragment() {
 /*            ACCESSORS           */
 /* ****************************** */
 
+bool Fragment::overlaps() const {
+  if(read_state_->overlap() == ReadState::NONE)
+    return false;
+  else
+    return true;
+}
+
 bool Fragment::full_domain() const {
   return full_domain_;
 }
@@ -248,6 +255,15 @@ int Fragment::get_cell_pos_ranges_sparse(
     return TILEDB_FG_ERR;
   else
     return TILEDB_FG_OK;
+}
+
+template<class T>
+void Fragment::get_next_overlapping_tile_sparse() {
+  read_state_->get_next_overlapping_tile_sparse<T>();
+}
+
+void Fragment::get_bounding_coords(void* bounding_coords) const {
+  read_state_->get_bounding_coords(bounding_coords);
 }
 
 int Fragment::init(const std::string& fragment_name, const void* range) {
@@ -491,3 +507,8 @@ template int Fragment::copy_cell_range_var<double>(
     size_t buffer_var_size,
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range);
+
+template void Fragment::get_next_overlapping_tile_sparse<int>();
+template void Fragment::get_next_overlapping_tile_sparse<int64_t>();
+template void Fragment::get_next_overlapping_tile_sparse<float>();
+template void Fragment::get_next_overlapping_tile_sparse<double>();
