@@ -62,11 +62,13 @@ class Fragment {
   // TODO
   typedef std::pair<int64_t, int64_t> CellPosRange;
   // TODO
-  typedef std::pair<int, CellPosRange> FragmentCellPosRange;
+  typedef std::pair<int, int> FragmentInfo;
+  // TODO
+  typedef std::pair<FragmentInfo, CellPosRange> FragmentCellPosRange;
   // TODO
   typedef std::vector<FragmentCellPosRange> FragmentCellPosRanges;
   // TODO
-  typedef std::pair<int, void*> FragmentCellRange;
+  typedef std::pair<FragmentInfo, void*> FragmentCellRange;
   // TODO
   typedef std::vector<FragmentCellRange> FragmentCellRanges;
 
@@ -101,7 +103,7 @@ class Fragment {
   // TODO
   template<class T>
   void compute_fragment_cell_ranges(
-      int fragment_i,
+      const FragmentInfo& fragment_info,
       FragmentCellRanges& fragment_cell_ranges) const;
 
   // TODO
@@ -167,7 +169,7 @@ class Fragment {
 // TODO
   template<class T>
   int get_cell_pos_ranges_sparse(
-      int fragment_i,
+      const FragmentInfo& fragment_info,
       const T* tile_domain,
       const T* cell_range,
       FragmentCellPosRanges& fragment_cell_pos_ranges);

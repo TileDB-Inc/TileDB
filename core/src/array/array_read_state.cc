@@ -346,7 +346,7 @@ int ArrayReadState::copy_cell_ranges_var(
 
   // Copy the cell ranges one by one
   for(int64_t i=0; i<fragment_cell_pos_ranges_num; ++i) {
-    fragment_i = fragment_cell_pos_ranges[i].first; 
+    fragment_i = fragment_cell_pos_ranges[i].first.first; 
     CellPosRange& cell_pos_range = fragment_cell_pos_ranges[i].second; 
 
     // Handle empty fragment
@@ -426,7 +426,7 @@ int ArrayReadState::copy_cell_ranges(
 
   // Copy the cell ranges one by one
   for(int64_t i=0; i<fragment_cell_pos_ranges_num; ++i) {
-    fragment_i = fragment_cell_pos_ranges[i].first; 
+    fragment_i = fragment_cell_pos_ranges[i].first.first; 
     CellPosRange& cell_pos_range = fragment_cell_pos_ranges[i].second; 
 
     // Handle empty fragment
@@ -513,11 +513,13 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
   FragmentCellRanges fragment_cell_ranges;
   FragmentCellRange popped, top;
   int popped_fragment_i, top_fragment_i;
+  int popped_tile_i, top_tile_i;
   T* popped_range, *top_range;
   while(!pq.empty()) {
     // Pop the first entry and mark it as popped
     popped = pq.top();
-    popped_fragment_i = popped.first;
+    popped_fragment_i = popped.first.first;
+    popped_tile_i = popped.first.second;
     popped_range = static_cast<T*>(popped.second);
     pq.pop();
 
@@ -537,7 +539,8 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
 
     // Mark the second entry (now top) as top
     top = pq.top();
-    top_fragment_i = top.first;
+    top_fragment_i = top.first.first;
+    top_tile_i = top.first.second;
     top_range = static_cast<T*>(top.second);
 
     // Dinstinguish two cases
@@ -571,7 +574,7 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
                &popped_range[dim_num]) > 0) {
           // Create the new range
           FragmentCellRange trimmed_top;
-          trimmed_top.first = top_fragment_i;
+          trimmed_top.first = FragmentInfo(top_fragment_i, top_tile_i);
           trimmed_top.second = malloc(2*coords_size);
           T* trimmed_top_range = static_cast<T*>(trimmed_top.second);
           memcpy(
@@ -595,7 +598,8 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
         // Get a new top
         pq.pop();
         top = pq.top();
-        top_fragment_i = top.first;
+        top_fragment_i = top.first.first;
+        top_tile_i = top.first.second;
         top_range = static_cast<T*>(top.second);
       }
 
@@ -609,7 +613,8 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
          if(!fragments[top_fragment_i]->dense()) {
            // Create a new popped range
            FragmentCellRange extra_popped;
-           extra_popped.first = popped_fragment_i;
+           extra_popped.first.first = popped_fragment_i;
+           extra_popped.first.second = popped_tile_i;
            extra_popped.second = malloc(2*coords_size);
            T* extra_popped_range = static_cast<T*>(extra_popped.second);
 
@@ -626,7 +631,8 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
                   &popped_range[dim_num]) < 0) {
            // Create a new popped range
            FragmentCellRange extra_popped;
-           extra_popped.first = popped_fragment_i;
+           extra_popped.first.first = popped_fragment_i;
+           extra_popped.first.second = popped_tile_i;
            extra_popped.second = malloc(2*coords_size);
            T* extra_popped_range = static_cast<T*>(extra_popped.second);
 
@@ -680,7 +686,8 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
       } else { // Need to expand popped
         // Create a new unary range
         FragmentCellRange unary;
-        unary.first = popped_fragment_i;
+        unary.first.first = popped_fragment_i;
+        unary.first.second = popped_tile_i;
         unary.second = malloc(2*coords_size);
         T* unary_range = static_cast<T*>(unary.second);
         
@@ -748,8 +755,8 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
   // Compute fragment cell position ranges
   for(int64_t i=0; i<fragment_cell_ranges.size(); ++i) { 
     // Dense case
-    if(fragment_cell_ranges[i].first == -1 ||
-       fragments[fragment_cell_ranges[i].first]->dense()) {
+    if(fragment_cell_ranges[i].first.first == -1 ||
+       fragments[fragment_cell_ranges[i].first.first]->dense()) {
       // Create a new fragment cell position range
       FragmentCellPosRange fragment_cell_pos_range;
       fragment_cell_pos_range.first = fragment_cell_ranges[i].first;
@@ -766,7 +773,7 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
       fragment_cell_pos_ranges.push_back(fragment_cell_pos_range); 
     } else { // Sparse case
      FragmentCellPosRanges sparse_cell_pos_ranges; 
-     if(fragments[fragment_cell_ranges[i].first]->
+     if(fragments[fragment_cell_ranges[i].first.first]->
             get_cell_pos_ranges_sparse<T>(
                 fragment_cell_ranges[i].first,
                 tile_domain,
@@ -911,8 +918,9 @@ int ArrayReadState::get_next_cell_ranges_dense() {
            coords_size)) { 
       // TODO: Put error
       fragments[i]->compute_fragment_cell_ranges<T>(
-          i,
+          FragmentInfo(i, 0),
           unsorted_fragment_cell_ranges);
+      // TODO: Fix for sparse fragments
     }
   } 
 
@@ -1116,7 +1124,7 @@ void ArrayReadState::compute_max_overlap_fragment_cell_ranges(
       cell_range_T[dim_num + i] = global_max_overlap_range[2*i+1];
     }
     fragment_cell_ranges.push_back(
-        FragmentCellRange(max_overlap_i_, cell_range));
+        FragmentCellRange(FragmentInfo(max_overlap_i_, 0), cell_range));
   } else { // Non-contiguous cells, multiple ranges
     // Initialize the coordinates at the beginning of the global range
     T* coords = new T[dim_num];
@@ -1139,7 +1147,7 @@ void ArrayReadState::compute_max_overlap_fragment_cell_ranges(
 
         // Insert the new range into the result vector
         fragment_cell_ranges.push_back(
-            FragmentCellRange(max_overlap_i_, cell_range));
+            FragmentCellRange(FragmentInfo(max_overlap_i_, 0), cell_range));
  
         // Advance coordinates
         i=dim_num-2;
@@ -1163,7 +1171,7 @@ void ArrayReadState::compute_max_overlap_fragment_cell_ranges(
 
         // Insert the new range into the result vector
         fragment_cell_ranges.push_back(
-            FragmentCellRange(max_overlap_i_, cell_range));
+            FragmentCellRange(FragmentInfo(max_overlap_i_, 0), cell_range));
  
         // Advance coordinates
         i=1;
@@ -1818,12 +1826,18 @@ bool ArrayReadState::SmallerFragmentCellRange<T>::operator () (
       static_cast<const T*>(a.second), 
       static_cast<const T*>(b.second)); 
 
-  if(cmp < 0)      // a's range start precedes b's
+  if(cmp < 0) {        // a's range start precedes b's
     return false;
-  else if(cmp > 0) // b's range start preceded a's
+  } else if(cmp > 0) { // b's range start preceded a's
     return true;
-  else             // a's and b's range starts match - latest fragment wins
-    return (a.first < b.first); 
+  } else {             // a's and b's range starts match - latest fragment wins
+    if(a.first.first < b.first.first)
+      return true;
+    else if(a.first.first > b.first.first)
+      return false;
+    else
+      return (a.first.second > b.first.second); 
+  }
 }
 
 // Explicit template instantiations

@@ -65,13 +65,15 @@ class ArrayReadState {
   // TODO
   typedef std::pair<int64_t, int64_t> CellPosRange;
   // TODO
-  typedef std::pair<int, CellPosRange> FragmentCellPosRange;
+  typedef std::pair<int, int> FragmentInfo;
+  // TODO
+  typedef std::pair<FragmentInfo, CellPosRange> FragmentCellPosRange;
   // TODO
   typedef std::vector<FragmentCellPosRange> FragmentCellPosRanges;
   // TODO
   typedef std::vector<FragmentCellPosRanges> FragmentCellPosRangesVec;
   // TODO
-  typedef std::pair<int, void*> FragmentCellRange;
+  typedef std::pair<FragmentInfo, void*> FragmentCellRange;
   // TODO
   typedef std::vector<FragmentCellRange> FragmentCellRanges;
   

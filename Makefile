@@ -47,7 +47,7 @@ ifeq ($(BUILD),release)
 endif
 
 ifeq ($(BUILD),debug)
-  CFLAGS += -DDEBUG -O0 -g 
+  CFLAGS += -DDEBUG -O0 -g
 endif
 
 ifeq ($(VERBOSE),)

@@ -518,18 +518,18 @@ bool ReadState::max_overlap(const T* max_overlap_range) const {
 
 template<class T>
 void ReadState::compute_fragment_cell_ranges(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const {
 
   if(fragment_->dense()) // DENSE
-    compute_fragment_cell_ranges_dense<T>(fragment_i, fragment_cell_ranges);
+    compute_fragment_cell_ranges_dense<T>(fragment_info, fragment_cell_ranges);
   else                   // SPARSE
-    compute_fragment_cell_ranges_sparse<T>(fragment_i, fragment_cell_ranges);
+    compute_fragment_cell_ranges_sparse<T>(fragment_info, fragment_cell_ranges);
 }
 
 template<class T>
 void ReadState::compute_fragment_cell_ranges_dense(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
@@ -565,7 +565,7 @@ void ReadState::compute_fragment_cell_ranges_dense(
       cell_range_T[dim_num + i] = global_overlap_range[2*i+1];
     }
     fragment_cell_ranges.push_back(
-        FragmentCellRange(fragment_i, cell_range));
+        FragmentCellRange(fragment_info, cell_range));
   } else { // Non-contiguous cells, multiple ranges
     // Initialize the coordinates at the beginning of the global range
     T* coords = new T[dim_num];
@@ -588,7 +588,7 @@ void ReadState::compute_fragment_cell_ranges_dense(
 
         // Insert the new range into the result vector
         fragment_cell_ranges.push_back(
-            FragmentCellRange(fragment_i, cell_range));
+            FragmentCellRange(fragment_info, cell_range));
  
         // Advance coordinates
         i=dim_num-2;
@@ -612,7 +612,7 @@ void ReadState::compute_fragment_cell_ranges_dense(
 
         // Insert the new range into the result vector
         fragment_cell_ranges.push_back(
-            FragmentCellRange(fragment_i, cell_range));
+            FragmentCellRange(fragment_info, cell_range));
  
         // Advance coordinates
         i=1;
@@ -635,7 +635,7 @@ void ReadState::compute_fragment_cell_ranges_dense(
 
 template<class T>
 void ReadState::compute_fragment_cell_ranges_sparse(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
@@ -716,7 +716,7 @@ void ReadState::compute_fragment_cell_ranges_sparse(
       cell_range_T[dim_num + i] = tile_overlap_range[2*i+1];
     }
     fragment_cell_ranges.push_back(
-        FragmentCellRange(fragment_i, cell_range));
+        FragmentCellRange(fragment_info, cell_range));
   } else { // Non-contiguous cells, multiple ranges
     // Initialize the coordinates at the beginning of the global range
     T* coords = new T[dim_num];
@@ -739,7 +739,7 @@ void ReadState::compute_fragment_cell_ranges_sparse(
 
         // Insert the new range into the result vector
         fragment_cell_ranges.push_back(
-            FragmentCellRange(fragment_i, cell_range));
+            FragmentCellRange(fragment_info, cell_range));
  
         // Advance coordinates
         i=dim_num-2;
@@ -763,7 +763,7 @@ void ReadState::compute_fragment_cell_ranges_sparse(
 
         // Insert the new range into the result vector
         fragment_cell_ranges.push_back(
-            FragmentCellRange(fragment_i, cell_range));
+            FragmentCellRange(fragment_info, cell_range));
  
         // Advance coordinates
         i=1;
@@ -3162,7 +3162,7 @@ int ReadState::get_first_two_coords(
 
 template<class T>
 int ReadState::get_cell_pos_ranges_sparse(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     const T* tile_domain,
     const T* cell_range, 
     FragmentCellPosRanges& fragment_cell_pos_ranges) {
@@ -3232,7 +3232,7 @@ int ReadState::get_cell_pos_ranges_sparse(
   // If the range is unary, create a single position range and return
   if(!memcmp(start_range_coords, end_range_coords, coords_size)) {
     FragmentCellPosRange fragment_cell_pos_range;
-    fragment_cell_pos_range.first = fragment_i;
+    fragment_cell_pos_range.first = fragment_info;
     fragment_cell_pos_range.second = CellPosRange(first_pos, first_pos);
     fragment_cell_pos_ranges.push_back(fragment_cell_pos_range);
     return TILEDB_RS_OK;
@@ -3291,7 +3291,7 @@ int ReadState::get_cell_pos_ranges_sparse(
     } else {
       if(i-1 == current_end_pos) { // The range needs to be added to the list
         FragmentCellPosRange fragment_cell_pos_range;
-        fragment_cell_pos_range.first = fragment_i;
+        fragment_cell_pos_range.first = fragment_info;
         fragment_cell_pos_range.second = CellPosRange(current_start_pos, current_end_pos);
         fragment_cell_pos_ranges.push_back(fragment_cell_pos_range);
         current_end_pos = -2; // This indicates that there is no active range
@@ -3302,7 +3302,7 @@ int ReadState::get_cell_pos_ranges_sparse(
   // Add last cell range
   if(current_end_pos != -2) {
     FragmentCellPosRange fragment_cell_pos_range;
-    fragment_cell_pos_range.first = fragment_i;
+    fragment_cell_pos_range.first = fragment_info;
     fragment_cell_pos_range.second = CellPosRange(current_start_pos, current_end_pos);
     fragment_cell_pos_ranges.push_back(fragment_cell_pos_range);
   }
@@ -6375,16 +6375,16 @@ void ReadState::shift_var_offsets(
 
 // Explicit template instantiations
 template void ReadState::compute_fragment_cell_ranges<int>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const;
 template void ReadState::compute_fragment_cell_ranges<int64_t>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const;
 template void ReadState::compute_fragment_cell_ranges<float>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const;
 template void ReadState::compute_fragment_cell_ranges<double>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const;
 
 template bool ReadState::max_overlap<int>(
@@ -6414,22 +6414,22 @@ template int ReadState::get_first_two_coords<double>(
     double* second_coords);
 
 template int ReadState::get_cell_pos_ranges_sparse<int>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     const int* tile_domain,
     const int* cell_range,
     FragmentCellPosRanges& fragment_cell_pos_ranges);
 template int ReadState::get_cell_pos_ranges_sparse<int64_t>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     const int64_t* tile_domain,
     const int64_t* cell_range,
     FragmentCellPosRanges& fragment_cell_pos_ranges);
 template int ReadState::get_cell_pos_ranges_sparse<float>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     const float* tile_domain,
     const float* cell_range,
     FragmentCellPosRanges& fragment_cell_pos_ranges);
 template int ReadState::get_cell_pos_ranges_sparse<double>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     const double* tile_domain,
     const double* cell_range,
     FragmentCellPosRanges& fragment_cell_pos_ranges);

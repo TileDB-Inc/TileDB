@@ -121,10 +121,10 @@ const std::string& Fragment::fragment_name() const {
 
 template<class T>
 void Fragment::compute_fragment_cell_ranges(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const {
   read_state_->compute_fragment_cell_ranges<T>(
-      fragment_i, 
+      fragment_info, 
       fragment_cell_ranges);
 }
 
@@ -243,12 +243,12 @@ void Fragment::get_next_overlapping_tile_mult() {
 
 template<class T>
 int Fragment::get_cell_pos_ranges_sparse(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     const T* tile_domain,
     const T* cell_range,
     FragmentCellPosRanges& fragment_cell_pos_ranges) {
   if(read_state_->get_cell_pos_ranges_sparse(
-             fragment_i,
+             fragment_info,
              tile_domain,
              cell_range,
              fragment_cell_pos_ranges) != TILEDB_RS_OK)
@@ -382,16 +382,16 @@ int Fragment::rename_fragment() {
 
 // Explicit template instantiations
 template void Fragment::compute_fragment_cell_ranges<int>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const;
 template void Fragment::compute_fragment_cell_ranges<int64_t>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const;
 template void Fragment::compute_fragment_cell_ranges<float>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const;
 template void Fragment::compute_fragment_cell_ranges<double>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const;
 
 template bool Fragment::max_overlap<int>(
@@ -421,22 +421,22 @@ template int Fragment::get_first_two_coords<double>(
     double* second_coords);
 
 template int Fragment::get_cell_pos_ranges_sparse<int>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     const int* tile_domain,
     const int* cell_range,
     FragmentCellPosRanges& fragment_cell_pos_ranges);
 template int Fragment::get_cell_pos_ranges_sparse<int64_t>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     const int64_t* tile_domain,
     const int64_t* cell_range,
     FragmentCellPosRanges& fragment_cell_pos_ranges);
 template int Fragment::get_cell_pos_ranges_sparse<float>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     const float* tile_domain,
     const float* cell_range,
     FragmentCellPosRanges& fragment_cell_pos_ranges);
 template int Fragment::get_cell_pos_ranges_sparse<double>(
-    int fragment_i,
+    const FragmentInfo& fragment_info,
     const double* tile_domain,
     const double* cell_range,
     FragmentCellPosRanges& fragment_cell_pos_ranges);
