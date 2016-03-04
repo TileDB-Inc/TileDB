@@ -672,6 +672,20 @@ void ReadState::compute_fragment_cell_ranges_sparse(
     const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const {
   // For easy reference
+  int64_t pos = overlapping_tiles_.back().pos_;
+  const void* bounding_coords = book_keeping_->bounding_coords()[pos];
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  size_t coords_size = array_schema->coords_size();
+  
+  void* cell_range = malloc(2*coords_size);
+  memcpy(cell_range, bounding_coords, 2*coords_size);
+  fragment_cell_ranges.push_back(
+      FragmentCellRange(fragment_info, cell_range));
+ 
+
+// TODO: remove
+/*
+  // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
@@ -816,6 +830,8 @@ void ReadState::compute_fragment_cell_ranges_sparse(
 
   // Clean up
   delete [] tile_overlap_range;
+
+*/
 }
 
 const void* ReadState::get_global_tile_coords() const {

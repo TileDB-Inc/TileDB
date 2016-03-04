@@ -93,6 +93,8 @@ class ArrayReadState {
   // PRIVATE ATTRIBUTES
   
   // TODO
+  void* bounding_coords_end_;
+  // TODO
   std::vector<int64_t> appended_tiles_;
   // TODO
   std::vector<int64_t> last_tile_i_;

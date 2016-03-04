@@ -65,6 +65,7 @@ ArrayReadState::ArrayReadState(
   int attribute_num = array_schema->attribute_num();
 
   // Initializations
+  bounding_coords_end_ = NULL;
   empty_cells_written_.resize(attribute_num+1);
   tile_done_.resize(attribute_num);
   max_overlap_range_ = NULL;
@@ -89,6 +90,9 @@ ArrayReadState::~ArrayReadState() {
 
   if(range_global_tile_domain_ != NULL)
     free(range_global_tile_domain_);
+
+  if(bounding_coords_end_ != NULL)
+    free(bounding_coords_end_);
 
   for(int i=0; i<fragment_bounding_coords_.size(); ++i)
     if(fragment_bounding_coords_[i] != NULL)
@@ -989,77 +993,78 @@ int ArrayReadState::get_next_cell_ranges_sparse() {
 
   // First invocation: bring the first overlapping tile for each fragment
   if(fragment_cell_pos_ranges_vec_.size() == 0) {
+    // Initializations 
     assert(fragment_bounding_coords_.size() == 0);
     fragment_bounding_coords_.resize(fragment_num);
+    assert(bounding_coords_end_ == NULL);
+    bounding_coords_end_ = malloc(coords_size);
+
     // Get next overlapping tile and MBR cell range
+    done_ = true;
     for(int i=0; i<fragment_num; ++i) { 
       fragments[i]->get_next_overlapping_tile_sparse<T>();
       if(fragments[i]->overlaps()) {
         fragment_bounding_coords_[i] = malloc(2*coords_size);
-        fragments[i]->get_bounding_coords(
-            fragment_bounding_coords_[i]);
+        fragments[i]->get_bounding_coords(fragment_bounding_coords_[i]);
+        done_ = false;
       } else {
         fragment_bounding_coords_[i] = NULL;
       }
     }
-  } else {
-/*
-    // TODO
-    // Temporarily store the current range global tile coordinates
-    assert(range_global_tile_coords_ != NULL);
-    T* previous_range_global_tile_coords = new T[dim_num];
-    memcpy(
-        previous_range_global_tile_coords,
-        range_global_tile_coords_,
-        coords_size);
-
-    // Advance range coordinates
-    get_next_range_global_tile_coords<T>();
 
     // Return if there are no more overlapping tiles
-    if(range_global_tile_coords_ == NULL) {
-      done_ = true;
-      delete [] previous_range_global_tile_coords;
+    if(done_) 
       return TILEDB_ARS_OK;
-    }
 
+  } else { 
     // Subsequent invocations: get next overallping tiles for the processed
     // fragments
-    for(int i=0; i<fragment_num; ++i) {
-      if(fragment_global_tile_coords_[i] != NULL &&
+    done_ = true;
+    for(int i=0; i<fragment_num; ++i) { 
+      if(fragment_bounding_coords_[i] != NULL &&
          !memcmp(
-             fragment_global_tile_coords_[i], 
-             previous_range_global_tile_coords, 
+             fragment_bounding_coords_[i], 
+             bounding_coords_end_, 
              coords_size)) { 
-        fragments[i]->get_next_overlapping_tile_mult();
-        fragment_global_tile_coords_[i] = 
-            fragments[i]->get_global_tile_coords(); 
+        fragments[i]->get_next_overlapping_tile_sparse<T>();
+        if(fragments[i]->overlaps()) {
+          fragments[i]->get_bounding_coords(fragment_bounding_coords_[i]);
+          done_ = false;
+        } else {
+          fragment_bounding_coords_[i] = NULL;
+        }
       }
     }
 
-    // Clean up
-    delete [] previous_range_global_tile_coords;
-*/
+    // Return if there are no more overlapping tiles
+    if(done_) 
+      return TILEDB_ARS_OK;
   }
 
-// TODO: CHECK WHEN DONE!!!
-
+  // Find smallest end bounding coordinates
+  int first = true;
+  for(int i=0; i<fragment_num; ++i) {
+    T* fragment_bounding_coords = static_cast<T*>(fragment_bounding_coords_[i]);
+    T* bounding_coords_end = static_cast<T*>(bounding_coords_end_);
+    if(fragment_bounding_coords != NULL) {
+      if(first) {
+        memcpy(
+            bounding_coords_end, 
+            &fragment_bounding_coords[dim_num], 
+            coords_size);
+        first = false;
+      } else if(array_schema->cell_order_cmp( 
+                    &fragment_bounding_coords[dim_num],
+                    bounding_coords_end) < 0) {
+        memcpy(
+            bounding_coords_end, 
+            &fragment_bounding_coords[dim_num], 
+            coords_size);
+      }
+    }
+  }
 
 /*
-
-  // Advance properly the sparse fragments
-  for(int i=0; i<fragment_num; ++i) {
-    while(!fragments[i]->dense() && 
-          fragment_global_tile_coords_[i] != NULL &&
-          array_schema->tile_order_cmp<T>(
-               static_cast<const T*>(fragment_global_tile_coords_[i]), 
-               static_cast<const T*>(range_global_tile_coords_)) < 0) {
-       fragments[i]->get_next_overlapping_tile_mult();
-       fragment_global_tile_coords_[i] = 
-           fragments[i]->get_global_tile_coords();
-    }
-
-  }
 
   // Compute the maximum overlap range for this tile
   compute_max_overlap_range<T>();
