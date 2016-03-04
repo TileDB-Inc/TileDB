@@ -92,7 +92,6 @@ ReadState::ReadState(
   bool dense = fragment_->dense();
 
   // Initializations
-  tile_done_.resize(attribute_num+1);
   cell_pos_range_pos_.resize(attribute_num+1);
   map_addr_.resize(attribute_num+1);
   map_addr_lengths_.resize(attribute_num+1);
@@ -114,7 +113,6 @@ ReadState::ReadState(
   tiles_var_allocated_size_.resize(attribute_num);
 
   for(int i=0; i<attribute_num+1; ++i) {
-    tile_done_[i] = false;
     cell_pos_range_pos_[i] = 0;
     map_addr_[i] = NULL;
     map_addr_lengths_[i] = 0;
@@ -256,18 +254,51 @@ bool ReadState::coords_exist(const T* coords) {
     return true;
 }
 
+int64_t ReadState::overlapping_tiles_num() const {
+  return overlapping_tiles_.size();
+}
+
+template<class T>
 void ReadState::tile_done(int attribute_id) {
   if(fragment_->dense()) {
     tiles_offsets_[attribute_id] = tiles_sizes_[attribute_id];
     ++overlapping_tiles_pos_[attribute_id];
   } else {
-    tile_done_[attribute_id] = true;
+    // Get next tile coordinates inside the MBR
+    const ArraySchema* array_schema = fragment_->array()->array_schema();
+    int dim_num = array_schema->dim_num();
+    size_t coords_size = array_schema->coords_size();
+    const T* mbr_in_tile_domain = 
+        static_cast<const T*>(overlapping_tiles_.back().mbr_in_tile_domain_);
+    T* mbr_coords = new T[dim_num];
+    memcpy(mbr_coords, overlapping_tiles_.back().mbr_coords_, coords_size);
+    array_schema->get_next_tile_coords<T>(mbr_in_tile_domain, mbr_coords);
+
+    // Check if the new coordinates exceeded the MBR tile domain
+    bool inside_mbr = true;
+    for(int i=0; i<dim_num; ++i) {
+      if(mbr_coords[i] > mbr_in_tile_domain[2*i+1] ||
+         mbr_coords[i] < mbr_in_tile_domain[2*i]) {
+        inside_mbr = false;
+        break;
+      }
+    }
+
+    // Clean up
+    delete [] mbr_coords;
+
+    // Advance overlapping tile
+    if(!inside_mbr) {
+      tiles_offsets_[attribute_id] = tiles_sizes_[attribute_id];
+      ++overlapping_tiles_pos_[attribute_id];
+    }
   }
 }
 
 template<class T>
 int ReadState::copy_cell_range(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
@@ -282,15 +313,16 @@ int ReadState::copy_cell_range(
   ArraySchema::Compression compression = 
       array_schema->compression(attribute_id);
 
+  // Important
+  overlapping_tiles_pos_[attribute_id] = tile_i; 
+
   // Fetch the attribute tile from disk if necessary
-  if(tiles_offsets_[attribute_id] >= tiles_sizes_[attribute_id]) {
-    if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
-      rc = get_tile_from_disk_cmp_gzip(attribute_id);
-    else
-      rc = get_tile_from_disk_cmp_none(attribute_id);
-    if(rc != TILEDB_RS_OK)
-      return TILEDB_RS_ERR;
-  }
+  if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
+    rc = get_tile_from_disk_cmp_gzip(attribute_id);
+  else
+    rc = get_tile_from_disk_cmp_none(attribute_id);
+  if(rc != TILEDB_RS_OK)
+    return TILEDB_RS_ERR;
 
   // For easy reference
   char* tile = static_cast<char*>(tiles_[attribute_id]);
@@ -345,6 +377,7 @@ int ReadState::copy_cell_range(
 template<class T>
 int ReadState::copy_cell_range_var(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
@@ -362,6 +395,9 @@ int ReadState::copy_cell_range_var(
     return TILEDB_RS_OK;
   }
 
+  // Important
+  overlapping_tiles_pos_[attribute_id] = tile_i; 
+
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
@@ -375,14 +411,12 @@ int ReadState::copy_cell_range_var(
   int rc;
 
   // Fetch the attribute tile from disk if necessary
-  if(tiles_offsets_[attribute_id] >= tiles_sizes_[attribute_id]) {
-    if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
-      rc = get_tile_from_disk_var_cmp_gzip(attribute_id);
-    else
-      rc = get_tile_from_disk_var_cmp_none(attribute_id);
-    if(rc != TILEDB_RS_OK)
-      return TILEDB_RS_ERR;
-  }
+  if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
+    rc = get_tile_from_disk_var_cmp_gzip(attribute_id);
+  else
+    rc = get_tile_from_disk_var_cmp_none(attribute_id);
+  if(rc != TILEDB_RS_OK)
+    return TILEDB_RS_ERR;
 
   // For easy reference
   char* tile = static_cast<char*>(tiles_[attribute_id]);
@@ -3085,6 +3119,7 @@ int ReadState::copy_tile_partial_non_contig_sparse_var(
 
 template<class T>
 int ReadState::get_first_two_coords(
+    int tile_i,
     T* start_coords,
     T* first_coords,
     T* second_coords) {
@@ -3099,6 +3134,9 @@ int ReadState::get_first_two_coords(
 
   // Sanity check
   assert(cell_num >= 2);
+
+  // Important
+  overlapping_tiles_pos_[attribute_num] = tile_i; 
 
   // Bring coordinates tile in main memory
   if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
@@ -3544,7 +3582,7 @@ void ReadState::get_next_overlapping_tile_dense_mult() {
   overlapping_tiles_.push_back(overlapping_tile); 
 
   // Clean up processed overlapping tiles
-  clean_up_processed_overlapping_tiles();
+// TODO:  clean_up_processed_overlapping_tiles();
 }
 
 void ReadState::get_next_overlapping_tile_sparse() {
@@ -3569,6 +3607,7 @@ template<class T>
 void ReadState::get_next_overlapping_tile_sparse() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
   size_t coords_size = array_schema->coords_size();
   const T* range = static_cast<const T*>(fragment_->array()->range());
   int64_t tile_num = book_keeping_->mbrs().size();
@@ -3579,7 +3618,9 @@ void ReadState::get_next_overlapping_tile_sparse() {
   overlapping_tile.overlap_range_ = malloc(2*coords_size);
 
   // Reset flag
-  overlapping_tile.coords_tile_fetched_ = false;
+  overlapping_tile.tile_fetched_.resize(attribute_num+1);
+  for(int i=0; i<attribute_num+1; ++i)
+    overlapping_tile.tile_fetched_[i] = false;
 
   // For easy reference
   T* overlap_range = static_cast<T*>(overlapping_tile.overlap_range_);
@@ -3663,6 +3704,11 @@ void ReadState::get_next_overlapping_tile_sparse_mult() {
 
 template<class T>
 void ReadState::get_next_overlapping_tile_sparse_mult() {
+  // Trivial case
+  if(overlapping_tiles_.size() != 0 && 
+     overlapping_tiles_.back().overlap_ == NONE)
+    return;
+
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
@@ -3674,7 +3720,8 @@ void ReadState::get_next_overlapping_tile_sparse_mult() {
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
 
   // Attempt to advance only the global position
-  if(overlapping_tiles_.size() != 0) {
+  if(overlapping_tiles_.size() != 0 && 
+     overlapping_tiles_.back().mbr_in_tile_domain_ != NULL) {
     // Get next tile coordinates inside the MBR
     const T* mbr_in_tile_domain = 
         static_cast<const T*>(overlapping_tiles_.back().mbr_in_tile_domain_);
@@ -3713,24 +3760,15 @@ void ReadState::get_next_overlapping_tile_sparse_mult() {
     }
   }
 
-  // Update the positions of all attributes that are done with the last tile
-  for(int i=0; i<attribute_num+1; ++i) {
-    if(overlapping_tiles_pos_[i] == overlapping_tiles_.size()-1 &&
-       tile_done_[i]) {
-      tiles_offsets_[i] = tiles_sizes_[i];
-      ++overlapping_tiles_pos_[i];
-      tile_done_[i] = false;
-    }
-  }
-
   // The next overlapping tile
   OverlappingTile overlapping_tile = {};
   // TODO: overlapping_tile.coords_ = NULL; // Applicable only to dense arrays
   overlapping_tile.overlap_range_ = malloc(2*coords_size);
 
-
   // Reset flag
-  overlapping_tile.coords_tile_fetched_ = false;
+  overlapping_tile.tile_fetched_.resize(attribute_num+1);
+  for(int i=0; i<attribute_num+1; ++i)
+    overlapping_tile.tile_fetched_[i] = false;
 
   // For easy reference
   T* overlap_range = static_cast<T*>(overlapping_tile.overlap_range_);
@@ -3828,7 +3866,7 @@ void ReadState::get_next_overlapping_tile_sparse_mult() {
   overlapping_tiles_.push_back(overlapping_tile); 
 
   // Clean up processed overlapping tiles
-  clean_up_processed_overlapping_tiles();
+// TODO  clean_up_processed_overlapping_tiles();
 }
 
 int ReadState::get_tile_from_disk_cmp_gzip(int attribute_id) {
@@ -3839,8 +3877,7 @@ int ReadState::get_tile_from_disk_cmp_gzip(int attribute_id) {
       overlapping_tiles_[overlapping_tiles_pos_[attribute_id]];
 
   // Check if the coodinates tile is already in memory
-  if(attribute_id == attribute_num && 
-     overlapping_tile.coords_tile_fetched_)
+  if(overlapping_tile.tile_fetched_[attribute_id])
     return TILEDB_RS_OK;
 
   // For easy reference
@@ -3897,8 +3934,7 @@ int ReadState::get_tile_from_disk_cmp_gzip(int attribute_id) {
   tiles_offsets_[attribute_id] = 0;
 
   // Set flag
-  if(attribute_id == attribute_num)
-    overlapping_tile.coords_tile_fetched_ = true;
+  overlapping_tile.tile_fetched_[attribute_id] = true;
   
   // Success
   return TILEDB_RS_OK;
@@ -3912,8 +3948,7 @@ int ReadState::get_tile_from_disk_cmp_none(int attribute_id) {
       overlapping_tiles_[overlapping_tiles_pos_[attribute_id]];
 
   // Check if the coodinates tile is already in memory
-  if(attribute_id == attribute_num && 
-     overlapping_tile.coords_tile_fetched_) 
+  if(overlapping_tile.tile_fetched_[attribute_id]) 
     return TILEDB_RS_OK;
 
   // For easy reference
@@ -3925,7 +3960,6 @@ int ReadState::get_tile_from_disk_cmp_none(int attribute_id) {
   int64_t pos = overlapping_tile.pos_;
   off_t file_offset = pos * full_tile_size;
 
-  // Read tile from file
   if(READ_TILE_FROM_FILE_CMP_NONE(
          attribute_id, 
          file_offset, 
@@ -3936,8 +3970,7 @@ int ReadState::get_tile_from_disk_cmp_none(int attribute_id) {
   tiles_offsets_[attribute_id] = 0;
 
   // Set flag
-  if(attribute_id == attribute_num)
-    overlapping_tile.coords_tile_fetched_ = true;
+  overlapping_tile.tile_fetched_[attribute_id] = true;
   
   // Success
   return TILEDB_RS_OK;
@@ -3946,14 +3979,18 @@ int ReadState::get_tile_from_disk_cmp_none(int attribute_id) {
 int ReadState::get_tile_from_disk_var_cmp_gzip(int attribute_id) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
+  OverlappingTile& overlapping_tile = 
+      overlapping_tiles_[overlapping_tiles_pos_[attribute_id]];
 
   // Sanity check
   assert(array_schema->var_size(attribute_id));
 
+  // Check if the coodinates tile is already in memory
+  if(overlapping_tile.tile_fetched_[attribute_id]) 
+    return TILEDB_RS_OK;
+
   // For easy reference
   size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
-  OverlappingTile& overlapping_tile = 
-      overlapping_tiles_[overlapping_tiles_pos_[attribute_id]];
   size_t full_tile_size = fragment_->tile_size(attribute_id);
   size_t tile_size = overlapping_tile.cell_num_ * cell_size;
   const std::vector<std::vector<size_t> >& tile_offsets = 
@@ -4066,6 +4103,9 @@ int ReadState::get_tile_from_disk_var_cmp_gzip(int attribute_id) {
   // Shift variable cell offsets
   shift_var_offsets(attribute_id);
 
+  // Set flag
+  overlapping_tile.tile_fetched_[attribute_id] = true;
+
   // Success
   return TILEDB_RS_OK;
 }
@@ -4073,13 +4113,17 @@ int ReadState::get_tile_from_disk_var_cmp_gzip(int attribute_id) {
 int ReadState::get_tile_from_disk_var_cmp_none(int attribute_id) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
+  OverlappingTile& overlapping_tile = 
+      overlapping_tiles_[overlapping_tiles_pos_[attribute_id]];
 
   // Sanity check
   assert(array_schema->var_size(attribute_id));
 
+  // Check if the coodinates tile is already in memory
+  if(overlapping_tile.tile_fetched_[attribute_id]) 
+    return TILEDB_RS_OK;
+
   // For easy reference
-  OverlappingTile& overlapping_tile = 
-      overlapping_tiles_[overlapping_tiles_pos_[attribute_id]];
   size_t full_tile_size = fragment_->tile_size(attribute_id);
   size_t tile_size = overlapping_tile.cell_num_ * TILEDB_CELL_VAR_OFFSET_SIZE;
   int64_t tile_num = book_keeping_->tile_num();
@@ -4133,6 +4177,9 @@ int ReadState::get_tile_from_disk_var_cmp_none(int attribute_id) {
 
   // Shift starting offsets of variable-sized cells
   shift_var_offsets(attribute_id);
+
+  // Set flag
+  overlapping_tile.tile_fetched_[attribute_id] = true;
 
   // Success
   return TILEDB_RS_OK;
@@ -4260,10 +4307,10 @@ void ReadState::init_tile_search_range() {
 
   // Get the first overlapping tile in case of no overlap
   if(tile_search_range_[1] < tile_search_range_[0]) {
-    OverlappingTile overlapping_tile;
+    OverlappingTile overlapping_tile = {};
     overlapping_tile.overlap_ = NONE;
-    overlapping_tile.overlap_range_ = NULL; 
-    overlapping_tile.coords_ = NULL;
+    //overlapping_tile.overlap_range_ = NULL; 
+    //overlapping_tile.coords_ = NULL;
     overlapping_tiles_.push_back(overlapping_tile);
   }
 }
@@ -5565,6 +5612,9 @@ int ReadState::read_sparse_attr_cmp_none(
     int attribute_id,
     void* buffer,
     size_t& buffer_size) {
+  // For easy refernece
+  int attribute_num = fragment_->array()->array_schema()->attribute_num();
+
   // Auxiliary variables
   size_t buffer_offset = 0;
 
@@ -5593,7 +5643,7 @@ int ReadState::read_sparse_attr_cmp_none(
     int64_t pos = overlapping_tiles_pos_[attribute_id];
     Overlap overlap = overlapping_tiles_[pos].overlap_;
     if(attribute_id == fragment_->array()->array_schema()->attribute_num() &&
-       overlapping_tiles_[pos].coords_tile_fetched_) {
+       overlapping_tiles_[pos].tile_fetched_[attribute_num]) {
       // The coordinates tile is already in main memory
       copy_from_tile_buffer_sparse<T>(
           attribute_id, 
@@ -6397,18 +6447,22 @@ template bool ReadState::max_overlap<double>(
     const double* max_overlap_range) const;
 
 template int ReadState::get_first_two_coords<int>(
+    int tile_i,
     int* start_coords,
     int* first_coords,
     int* second_coords);
 template int ReadState::get_first_two_coords<int64_t>(
+    int tile_i,
     int64_t* start_coords,
     int64_t* first_coords,
     int64_t* second_coords);
 template int ReadState::get_first_two_coords<float>(
+    int tile_i,
     float* start_coords,
     float* first_coords,
     float* second_coords);
 template int ReadState::get_first_two_coords<double>(
+    int tile_i,
     double* start_coords,
     double* first_coords,
     double* second_coords);
@@ -6436,24 +6490,28 @@ template int ReadState::get_cell_pos_ranges_sparse<double>(
 
 template int ReadState::copy_cell_range<int>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
     const CellPosRange& cell_pos_range);
 template int ReadState::copy_cell_range<int64_t>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
     const CellPosRange& cell_pos_range);
 template int ReadState::copy_cell_range<float>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
     const CellPosRange& cell_pos_range);
 template int ReadState::copy_cell_range<double>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
@@ -6466,6 +6524,7 @@ template bool ReadState::coords_exist<double>(const double* coords);
 
 template int ReadState::copy_cell_range_var<int>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
@@ -6475,6 +6534,7 @@ template int ReadState::copy_cell_range_var<int>(
     const CellPosRange& cell_pos_range);
 template int ReadState::copy_cell_range_var<int64_t>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
@@ -6484,6 +6544,7 @@ template int ReadState::copy_cell_range_var<int64_t>(
     const CellPosRange& cell_pos_range);
 template int ReadState::copy_cell_range_var<float>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
@@ -6493,6 +6554,7 @@ template int ReadState::copy_cell_range_var<float>(
     const CellPosRange& cell_pos_range);
 template int ReadState::copy_cell_range_var<double>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
@@ -6500,3 +6562,8 @@ template int ReadState::copy_cell_range_var<double>(
     size_t buffer_var_size,
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range);
+
+template void ReadState::tile_done<int>(int attribute_id);
+template void ReadState::tile_done<int64_t>(int attribute_id);
+template void ReadState::tile_done<float>(int attribute_id);
+template void ReadState::tile_done<double>(int attribute_id);

@@ -65,7 +65,7 @@ class ArrayReadState {
   // TODO
   typedef std::pair<int64_t, int64_t> CellPosRange;
   // TODO
-  typedef std::pair<int, int> FragmentInfo;
+  typedef std::pair<int, int64_t> FragmentInfo;
   // TODO
   typedef std::pair<FragmentInfo, CellPosRange> FragmentCellPosRange;
   // TODO
@@ -92,6 +92,10 @@ class ArrayReadState {
  private:
   // PRIVATE ATTRIBUTES
   
+  // TODO
+  std::vector<int64_t> appended_tiles_;
+  // TODO
+  std::vector<int64_t> last_tile_i_;
   // TODO
   std::vector<int64_t> empty_cells_written_;
   // TODO

@@ -169,12 +169,14 @@ size_t Fragment::tile_size(int attribute_id) const {
 template<class T>
 int Fragment::copy_cell_range(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
     const CellPosRange& cell_pos_range) {
   if(read_state_->copy_cell_range<T>(
          attribute_id, 
+         tile_i,
          buffer,
          buffer_size,
          buffer_offset,
@@ -187,6 +189,7 @@ int Fragment::copy_cell_range(
 template<class T>
 int Fragment::copy_cell_range_var(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
@@ -196,6 +199,7 @@ int Fragment::copy_cell_range_var(
     const CellPosRange& cell_pos_range) {
   if(read_state_->copy_cell_range_var<T>(
          attribute_id, 
+         tile_i,
          buffer,
          buffer_size,
          buffer_offset,
@@ -218,8 +222,13 @@ bool Fragment::coords_exist(const T* coords) {
   return read_state_->coords_exist<T>(coords);
 }
 
+int64_t Fragment::overlapping_tiles_num() const {
+  return read_state_->overlapping_tiles_num();
+}
+
+template<class T>
 void Fragment::tile_done(int attribute_id) {
-  read_state_->tile_done(attribute_id);
+  read_state_->tile_done<T>(attribute_id);
 }
 
 void Fragment::reset_overflow() {
@@ -228,10 +237,12 @@ void Fragment::reset_overflow() {
 
 template<class T>
 int Fragment::get_first_two_coords(
+    int tile_i,
     T* start_coords,
     T* first_coords,
     T* second_coords) {
   return read_state_->get_first_two_coords<T>(
+      tile_i,
       start_coords, 
       first_coords, 
       second_coords);
@@ -404,18 +415,22 @@ template bool Fragment::max_overlap<double>(
     const double* max_overlap_range) const;
 
 template int Fragment::get_first_two_coords<int>(
+    int tile_i,
     int* start_coords,
     int* first_coords,
     int* second_coords);
 template int Fragment::get_first_two_coords<int64_t>(
+    int tile_i,
     int64_t* start_coords,
     int64_t* first_coords,
     int64_t* second_coords);
 template int Fragment::get_first_two_coords<float>(
+    int tile_i,
     float* start_coords,
     float* first_coords,
     float* second_coords);
 template int Fragment::get_first_two_coords<double>(
+    int tile_i,
     double* start_coords,
     double* first_coords,
     double* second_coords);
@@ -443,24 +458,28 @@ template int Fragment::get_cell_pos_ranges_sparse<double>(
 
 template int Fragment::copy_cell_range<int>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
     const CellPosRange& cell_pos_range);
 template int Fragment::copy_cell_range<int64_t>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
     const CellPosRange& cell_pos_range);
 template int Fragment::copy_cell_range<float>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
     const CellPosRange& cell_pos_range);
 template int Fragment::copy_cell_range<double>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
@@ -473,6 +492,7 @@ template bool Fragment::coords_exist<double>(const double* coords);
 
 template int Fragment::copy_cell_range_var<int>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
@@ -482,6 +502,7 @@ template int Fragment::copy_cell_range_var<int>(
     const CellPosRange& cell_pos_range);
 template int Fragment::copy_cell_range_var<int64_t>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
@@ -491,6 +512,7 @@ template int Fragment::copy_cell_range_var<int64_t>(
     const CellPosRange& cell_pos_range);
 template int Fragment::copy_cell_range_var<float>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
@@ -500,6 +522,7 @@ template int Fragment::copy_cell_range_var<float>(
     const CellPosRange& cell_pos_range);
 template int Fragment::copy_cell_range_var<double>(
     int attribute_id,
+    int tile_i,
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset,
@@ -512,3 +535,8 @@ template void Fragment::get_next_overlapping_tile_sparse<int>();
 template void Fragment::get_next_overlapping_tile_sparse<int64_t>();
 template void Fragment::get_next_overlapping_tile_sparse<float>();
 template void Fragment::get_next_overlapping_tile_sparse<double>();
+
+template void Fragment::tile_done<int>(int attribute_id);
+template void Fragment::tile_done<int64_t>(int attribute_id);
+template void Fragment::tile_done<float>(int attribute_id);
+template void Fragment::tile_done<double>(int attribute_id);

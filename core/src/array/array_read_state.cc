@@ -340,12 +340,14 @@ int ArrayReadState::copy_cell_ranges_var(
   std::vector<Fragment*> fragments = array_->fragments();
   int fragment_num = fragments.size();
   int fragment_i;
+  int64_t tile_i;
 
   // Sanity check
   assert(array_schema->var_size(attribute_id));
 
   // Copy the cell ranges one by one
   for(int64_t i=0; i<fragment_cell_pos_ranges_num; ++i) {
+    tile_i = fragment_cell_pos_ranges[i].first.second; 
     fragment_i = fragment_cell_pos_ranges[i].first.first; 
     CellPosRange& cell_pos_range = fragment_cell_pos_ranges[i].second; 
 
@@ -369,6 +371,7 @@ int ArrayReadState::copy_cell_ranges_var(
     // Handle non-empty fragment
     if(fragments[fragment_i]->copy_cell_range_var<T>(
            attribute_id,
+           tile_i,
            buffer,
            buffer_size,
            buffer_offset,
@@ -387,13 +390,13 @@ int ArrayReadState::copy_cell_ranges_var(
 
   // Handle the case the tile is done for this attribute
   if(!overflow_[attribute_id]) {
-    for(int i=0; i<fragment_num; ++i)
-      if(fragment_global_tile_coords_[i] != NULL &&
-         !memcmp(
-              fragment_global_tile_coords_[i], 
-              range_global_tile_coords_, 
-              coords_size))
-        fragments[i]->tile_done(attribute_id);
+//    for(int i=0; i<fragment_num; ++i)
+//      if(fragment_global_tile_coords_[i] != NULL &&
+//         !memcmp(
+//              fragment_global_tile_coords_[i], 
+//              range_global_tile_coords_, 
+//              coords_size))
+//        fragments[i]->tile_done<T>(attribute_id);
     ++fragment_cell_pos_ranges_vec_pos_[attribute_id];
     tile_done_[attribute_id] = true;
   } else {
@@ -420,13 +423,16 @@ int ArrayReadState::copy_cell_ranges(
   std::vector<Fragment*> fragments = array_->fragments();
   int fragment_num = fragments.size();
   int fragment_i;
+  int64_t tile_i;
 
   // Sanity check
   assert(!array_schema->var_size(attribute_id));
 
   // Copy the cell ranges one by one
   for(int64_t i=0; i<fragment_cell_pos_ranges_num; ++i) {
+    int64_t tile_i = fragment_cell_pos_ranges[i].first.second;
     fragment_i = fragment_cell_pos_ranges[i].first.first; 
+    tile_i = fragment_cell_pos_ranges[i].first.second; 
     CellPosRange& cell_pos_range = fragment_cell_pos_ranges[i].second; 
 
     // Handle empty fragment
@@ -446,6 +452,7 @@ int ArrayReadState::copy_cell_ranges(
     // Handle non-empty fragment
     if(fragments[fragment_i]->copy_cell_range<T>(
            attribute_id,
+           tile_i,
            buffer,
            buffer_size,
            buffer_offset,
@@ -467,7 +474,7 @@ int ArrayReadState::copy_cell_ranges(
               fragment_global_tile_coords_[i], 
               range_global_tile_coords_, 
               coords_size))
-        fragments[i]->tile_done(attribute_id);
+        fragments[i]->tile_done<T>(attribute_id);
     ++fragment_cell_pos_ranges_vec_pos_[attribute_id];
     tile_done_[attribute_id] = true;
   } else {
@@ -497,7 +504,7 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
       FragmentCellRanges,
       SmallerFragmentCellRange<T> > pq(array_schema);
   int unsorted_fragment_cell_ranges_num = unsorted_fragment_cell_ranges.size();
-  for(int64_t i=0; i<unsorted_fragment_cell_ranges_num; ++i) 
+  for(int64_t i=0; i<unsorted_fragment_cell_ranges_num; ++i)  
     pq.push(unsorted_fragment_cell_ranges[i]);
 
   // Compute tile domain
@@ -693,6 +700,7 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
         
         // Get the first two coordinates from the coordinates tile 
         if(fragments[popped_fragment_i]->get_first_two_coords<T>(
+               popped_tile_i, // Tile
                popped_range,   // Starting point
                unary_range,    // First coords
                popped_range)   // Second coords
@@ -702,7 +710,6 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
           delete [] tile_domain;
           delete [] tile_domain_end;
           free(popped.second);
-          free(top.second);
           while(!pq.empty()) {
             free(pq.top().second);
             pq.pop();
@@ -811,6 +818,11 @@ int ArrayReadState::get_next_cell_ranges_dense() {
   std::vector<Fragment*> fragments = array_->fragments();
   int fragment_num = fragments.size();
 
+  // Initializations
+  last_tile_i_.resize(fragment_num);
+  for(int i=0; i<fragment_num; ++i) 
+    last_tile_i_[i] = 0;
+
   // First invocation: bring the first overlapping tile for each fragment
   if(fragment_cell_pos_ranges_vec_.size() == 0) {
     // Allocate space for the maximum overlap range
@@ -918,9 +930,30 @@ int ArrayReadState::get_next_cell_ranges_dense() {
            coords_size)) { 
       // TODO: Put error
       fragments[i]->compute_fragment_cell_ranges<T>(
-          FragmentInfo(i, 0),
+          FragmentInfo(i, fragments[i]->overlapping_tiles_num()-1),
           unsorted_fragment_cell_ranges);
-      // TODO: Fix for sparse fragments
+
+      // Special case for sparse fragments having tiles in the same dense tile
+      if(!fragments[i]->dense()) {
+        for(;;) {
+          fragments[i]->get_next_overlapping_tile_mult();
+          fragment_global_tile_coords_[i] = 
+              fragments[i]->get_global_tile_coords();
+          if(fragment_global_tile_coords_[i] != NULL &&
+             !memcmp(
+                  fragment_global_tile_coords_[i], 
+                  range_global_tile_coords_, 
+                  coords_size)) {
+
+            // TODO: Put error
+            fragments[i]->compute_fragment_cell_ranges<T>(
+                FragmentInfo(i, fragments[i]->overlapping_tiles_num()-1),
+                unsorted_fragment_cell_ranges);
+          } else {
+            break;
+          }
+        }
+      }
     }
   } 
 
@@ -1103,6 +1136,7 @@ void ArrayReadState::compute_max_overlap_fragment_cell_ranges(
       static_cast<const T*>(range_global_tile_coords_);
   const T* max_overlap_range = 
       static_cast<const T*>(max_overlap_range_);
+  std::vector<Fragment*> fragments = array_->fragments();
 
   // Compute global coordinates of max_overlap_range
   T* global_max_overlap_range = new T[2*dim_num]; 
@@ -1123,8 +1157,16 @@ void ArrayReadState::compute_max_overlap_fragment_cell_ranges(
       cell_range_T[i] = global_max_overlap_range[2*i];
       cell_range_T[dim_num + i] = global_max_overlap_range[2*i+1];
     }
-    fragment_cell_ranges.push_back(
-        FragmentCellRange(FragmentInfo(max_overlap_i_, 0), cell_range));
+    if(max_overlap_i_ == -1)
+      fragment_cell_ranges.push_back(
+          FragmentCellRange(FragmentInfo(max_overlap_i_, 0), cell_range));
+    else 
+      fragment_cell_ranges.push_back(
+          FragmentCellRange(
+              FragmentInfo(
+                  max_overlap_i_, 
+                  fragments[max_overlap_i_]->overlapping_tiles_num()-1), 
+              cell_range));
   } else { // Non-contiguous cells, multiple ranges
     // Initialize the coordinates at the beginning of the global range
     T* coords = new T[dim_num];
@@ -1146,8 +1188,16 @@ void ArrayReadState::compute_max_overlap_fragment_cell_ranges(
         cell_range_T[2*dim_num-1] = global_max_overlap_range[2*(dim_num-1)+1];
 
         // Insert the new range into the result vector
-        fragment_cell_ranges.push_back(
-            FragmentCellRange(FragmentInfo(max_overlap_i_, 0), cell_range));
+        if(max_overlap_i_ == -1)
+          fragment_cell_ranges.push_back(
+              FragmentCellRange(FragmentInfo(max_overlap_i_, 0), cell_range));
+        else 
+          fragment_cell_ranges.push_back(
+              FragmentCellRange(
+                   FragmentInfo(
+                       max_overlap_i_, 
+                       fragments[max_overlap_i_]->overlapping_tiles_num()-1), 
+                   cell_range));
  
         // Advance coordinates
         i=dim_num-2;
@@ -1170,8 +1220,16 @@ void ArrayReadState::compute_max_overlap_fragment_cell_ranges(
         cell_range_T[dim_num] = global_max_overlap_range[1];
 
         // Insert the new range into the result vector
-        fragment_cell_ranges.push_back(
-            FragmentCellRange(FragmentInfo(max_overlap_i_, 0), cell_range));
+        if(max_overlap_i_ == -1)
+          fragment_cell_ranges.push_back(
+              FragmentCellRange(FragmentInfo(max_overlap_i_, 0), cell_range));
+        else 
+          fragment_cell_ranges.push_back(
+              FragmentCellRange(
+                   FragmentInfo(
+                       max_overlap_i_, 
+                       fragments[max_overlap_i_]->overlapping_tiles_num()-1), 
+                   cell_range));
  
         // Advance coordinates
         i=1;

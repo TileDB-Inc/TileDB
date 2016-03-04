@@ -55,7 +55,7 @@ class ReadState {
   // TODO
   typedef std::pair<int64_t, int64_t> CellPosRange;
   // TODO
-  typedef std::pair<int, int> FragmentInfo;
+  typedef std::pair<int, int64_t> FragmentInfo;
   // TODO
   typedef std::pair<FragmentInfo, CellPosRange> FragmentCellPosRange;
   // TODO
@@ -86,11 +86,8 @@ class ReadState {
      * dense case.
      */
     void* coords_;
-    /** 
-     * True if the coordinates tile is fetched into the memory. Applicable only 
-     * to the sparse case.
-     */
-    bool coords_tile_fetched_;
+    // TODO
+    std::vector<bool> tile_fetched_;
     // TODO
     void* global_coords_;
     // TODO
@@ -186,6 +183,7 @@ class ReadState {
   template<class T>
   int copy_cell_range(
       int attribute_id,
+      int tile_i,
       void* buffer,
       size_t buffer_size,
       size_t& buffer_offset,
@@ -195,6 +193,7 @@ class ReadState {
   template<class T>
   int copy_cell_range_var(
       int attribute_id,
+      int tile_i,
       void* buffer,
       size_t buffer_size,
       size_t& buffer_offset,
@@ -226,6 +225,7 @@ class ReadState {
 
 
   // TODO
+  template<class T>
   void tile_done(int attribute_id);
 
   /** 
@@ -239,6 +239,9 @@ class ReadState {
   template<class T>
   bool coords_exist(const T* coords);
 
+  // TODO
+  int64_t overlapping_tiles_num() const;
+
 
   /**
    * Computes the next tile that overlaps with the range given in Array::init.
@@ -251,15 +254,13 @@ class ReadState {
   // TODO
   template<class T>
   int get_first_two_coords(
+      int tile_i,
       T* start_coords,
       T* first_coords,
       T* second_coords);
 
  private:
   // PRIVATE ATTRIBUTES
-
-  // TODO
-  std::vector<bool> tile_done_;
 
   /** The book-keeping structure of the fragment the read state belongs to. */
   BookKeeping* book_keeping_;

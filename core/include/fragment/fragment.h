@@ -62,7 +62,7 @@ class Fragment {
   // TODO
   typedef std::pair<int64_t, int64_t> CellPosRange;
   // TODO
-  typedef std::pair<int, int> FragmentInfo;
+  typedef std::pair<int, int64_t> FragmentInfo;
   // TODO
   typedef std::pair<FragmentInfo, CellPosRange> FragmentCellPosRange;
   // TODO
@@ -129,6 +129,7 @@ class Fragment {
   template<class T>
   int copy_cell_range(
       int attribute_id,
+      int tile_i,
       void* buffer,
       size_t buffer_size,
       size_t& buffer_offset,
@@ -138,6 +139,7 @@ class Fragment {
   template<class T>
   int copy_cell_range_var(
       int attribute_id,
+      int tile_i,
       void* buffer,
       size_t buffer_size,
       size_t& buffer_offset,
@@ -153,6 +155,7 @@ class Fragment {
   bool coords_exist(const T* coords);
 
   // TODO
+  template<class T>
   void tile_done(int attribute_id);
 
   // TODO
@@ -182,8 +185,12 @@ class Fragment {
   void get_next_overlapping_tile_sparse();
 
   // TODO
+  int64_t overlapping_tiles_num() const;
+
+  // TODO
   template<class T>
   int get_first_two_coords(
+      int tile_i,
       T* start_coords,
       T* first_coords,
       T* second_coords);
