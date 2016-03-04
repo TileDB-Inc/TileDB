@@ -468,13 +468,13 @@ int ArrayReadState::copy_cell_ranges(
 
   // Handle the case the tile is done for this attribute
   if(!overflow_[attribute_id]) {
-    for(int i=0; i<fragment_num; ++i)
-      if(fragment_global_tile_coords_[i] != NULL &&
-         !memcmp(
-              fragment_global_tile_coords_[i], 
-              range_global_tile_coords_, 
-              coords_size))
-        fragments[i]->tile_done<T>(attribute_id);
+//    for(int i=0; i<fragment_num; ++i)
+//      if(fragment_global_tile_coords_[i] != NULL &&
+//         !memcmp(
+//              fragment_global_tile_coords_[i], 
+//              range_global_tile_coords_, 
+//              coords_size))
+//        fragments[i]->tile_done<T>(attribute_id);
     ++fragment_cell_pos_ranges_vec_pos_[attribute_id];
     tile_done_[attribute_id] = true;
   } else {
