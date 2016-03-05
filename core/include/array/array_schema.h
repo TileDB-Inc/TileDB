@@ -330,6 +330,10 @@ class ArraySchema {
 
   // TODO
   template<class T>
+  int cell_order_cmp_2(const T* coords_a, const T* coords_b) const;
+
+  // TODO
+  template<class T>
   int cell_order_cmp(const T* coords_a, const T* coords_b) const;
 
   // TODO

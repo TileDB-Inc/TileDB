@@ -32,6 +32,7 @@
  */
 
 #include "array_read_state.h"
+#include "utils.h"
 #include <cassert>
 #include <cmath>
 
@@ -604,8 +605,73 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
           // Advance the first trimmed range coordinates by one
           array_schema->get_next_cell_coords<T>(tile_domain, trimmed_top_range);
 
-          // Re-insert into the queue
-          pq.push(trimmed_top);
+          // Special case for sparse fragment
+          if(!fragments[top_fragment_i]->dense()) { // SPARSE
+            FragmentCellRange unary;
+            unary.first.first = top_fragment_i;
+            unary.first.second = top_tile_i;
+            unary.second = malloc(2*coords_size);
+            T* unary_range = static_cast<T*>(unary.second);
+
+            // Get the first two coordinates from the coordinates tile 
+            if(fragments[top_fragment_i]->get_first_two_coords<T>(
+                   top_tile_i,          // Tile
+                   trimmed_top_range,   // Starting point
+                   unary_range,         // First coords
+                   trimmed_top_range)   // Second coords
+                != TILEDB_FG_OK) {  
+              // Clean up
+              free(unary.second);
+              delete [] tile_domain;
+              delete [] tile_domain_end;
+              free(trimmed_top.second);
+              while(!pq.empty()) {
+                free(pq.top().second);
+                pq.pop();
+              }
+              for(int i=0; i<fragment_cell_ranges.size(); ++i)
+                free(fragment_cell_ranges[i].second);
+
+              return TILEDB_ARS_ERR;
+            }
+
+            // Check if the now trimmed popped range exceeds the tile domain
+            bool inside_tile = true;
+            for(int i=0; i<dim_num; ++i) {
+              if(unary_range[i] < tile_domain[2*i] || 
+                 unary_range[i] > tile_domain[2*i+1]) {
+                inside_tile = false;
+                break;
+              }
+            }
+
+            // Copy second boundary of unary and re-insert to the queue
+            if(!inside_tile) {
+              free(unary.second);
+            } else {
+              memcpy(&unary_range[dim_num], unary_range, coords_size);
+              pq.push(unary);
+
+              // Check if the now trimmed popped range exceeds the tile domain
+              bool inside_tile = true;
+              for(int i=0; i<dim_num; ++i) {
+                if(trimmed_top_range[i] < tile_domain[2*i] || 
+                   trimmed_top_range[i] > tile_domain[2*i+1]) {
+                  inside_tile = false;
+                  break;
+                }
+              } 
+       
+              if(!inside_tile) { 
+                free(trimmed_top.second);
+              } else { // Re-insert to the queue the now trimmed popped range
+                pq.push(trimmed_top);
+              }
+            }
+          } else {       // DENSE
+            // Re-insert into the queue
+            pq.push(trimmed_top);
+          }
         } else { // Simply discard top and get a new one
           free(top.second);
         }
@@ -1026,9 +1092,11 @@ int ArrayReadState::get_next_cell_ranges_sparse() {
     // fragments
     done_ = true;
     for(int i=0; i<fragment_num; ++i) { 
+      T* fragment_bounding_coords = 
+          static_cast<T*>(fragment_bounding_coords_[i]);
       if(fragment_bounding_coords_[i] != NULL &&
          !memcmp(
-             fragment_bounding_coords_[i], 
+             &fragment_bounding_coords[dim_num], 
              bounding_coords_end_, 
              coords_size)) { 
         fragments[i]->get_next_overlapping_tile_sparse<T>();
@@ -1058,7 +1126,7 @@ int ArrayReadState::get_next_cell_ranges_sparse() {
             &fragment_bounding_coords[dim_num], 
             coords_size);
         first = false;
-      } else if(array_schema->cell_order_cmp( 
+      } else if(array_schema->cell_order_cmp_2( 
                     &fragment_bounding_coords[dim_num],
                     bounding_coords_end) < 0) {
         memcpy(
@@ -1069,45 +1137,46 @@ int ArrayReadState::get_next_cell_ranges_sparse() {
     }
   }
 
-/*
-
-  // Compute the maximum overlap range for this tile
-  compute_max_overlap_range<T>();
-
-  // Find the most recent fragment with a full dense tile in the smallest global
-  // tile position
-  max_overlap_i_ = -1;
-  for(int i=fragment_num-1; i>=0; --i) { 
-    if(fragment_global_tile_coords_[i] != NULL &&
-       !memcmp(
-            fragment_global_tile_coords_[i], 
-            range_global_tile_coords_, 
-            coords_size) &&
-       fragments[i]->max_overlap<T>(
-           static_cast<const T*>(max_overlap_range_))) {
-      max_overlap_i_ = i;
-      break; 
-    }
-  } 
-
-  // This will hold the unsorted fragment cell ranges
+  // Compute the cell ranges needed for this run, and update bounding coords
   FragmentCellRanges unsorted_fragment_cell_ranges;
+  for(int i=0; i<fragment_num; ++i) {
+    T* fragment_bounding_coords = static_cast<T*>(fragment_bounding_coords_[i]);
+    T* bounding_coords_end = static_cast<T*>(bounding_coords_end_);
+    if(fragment_bounding_coords != NULL &&
+       array_schema->cell_order_cmp_2(
+             fragment_bounding_coords,
+             bounding_coords_end) <= 0) {
+      FragmentCellRange fragment_cell_range;
+      fragment_cell_range.second = malloc(2*coords_size);
+      T* cell_range = static_cast<T*>(fragment_cell_range.second);
+      memcpy(cell_range, fragment_bounding_coords, coords_size);
+      memcpy(&cell_range[dim_num], bounding_coords_end_, coords_size);
+      fragment_cell_range.first = 
+          FragmentInfo(i, fragments[i]->overlapping_tiles_num()-1);
+      unsorted_fragment_cell_ranges.push_back(fragment_cell_range);
 
-  // Compute initial cell ranges for the fragment with the max overlap
-  compute_max_overlap_fragment_cell_ranges<T>(unsorted_fragment_cell_ranges);  
+      // If the end bounding coordinate is not the same, update the start
+      // bounding coordinate
+      if(memcmp(
+             &fragment_bounding_coords[dim_num], 
+             bounding_coords_end, 
+             coords_size)) {
+        // Get the first coordinates AFTER the current position 
+        if(fragments[i]->get_first_coords_after<T>(
+               fragments[i]->overlapping_tiles_num()-1,  // Tile
+               bounding_coords_end,                      // Starting point
+               fragment_bounding_coords)                 // First coords
+            != TILEDB_FG_OK) {  
+          // Clean up
+          // TODO
+          return TILEDB_ARS_ERR;
+        }
 
-  // Compute cell ranges for the rest of the relevant fragments
-  for(int i=max_overlap_i_+1; i<fragment_num; ++i) {
-    if(fragment_global_tile_coords_[i] != NULL &&
-       !memcmp(
-           fragment_global_tile_coords_[i], 
-           range_global_tile_coords_, 
-           coords_size)) { 
-      fragments[i]->compute_fragment_cell_ranges<T>(
-          i,
-          unsorted_fragment_cell_ranges);
+        // Sanity check
+        assert(!empty_value(*fragment_bounding_coords));
+      } 
     }
-  } 
+  }
 
   // Compute the fragment cell position ranges
   FragmentCellPosRanges fragment_cell_pos_ranges;
@@ -1125,7 +1194,6 @@ int ArrayReadState::get_next_cell_ranges_sparse() {
 
   // Clean up processed overlapping tiles
   clean_up_processed_fragment_cell_pos_ranges();
-*/
 
   // Success
   return TILEDB_ARS_OK;

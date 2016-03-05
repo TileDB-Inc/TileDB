@@ -86,6 +86,9 @@ class Fragment {
   // ACCESSORS
 
   // TODO
+  void* mbr(int64_t pos) const;
+
+  // TODO
   bool overlaps() const;
   
   /** Returns the array the fragment belongs to. */
@@ -194,6 +197,13 @@ class Fragment {
       T* start_coords,
       T* first_coords,
       T* second_coords);
+
+  // TODO
+  template<class T>
+  int get_first_coords_after(
+      int tile_i,
+      T* start_coords_before,
+      T* first_coords);
 
   // TODO
   int init(const std::string& fragment_name, const void* range);

@@ -45,6 +45,10 @@
 #include <string>
 #include <vector>
 
+// TODO
+template<class T>
+bool empty_value(T value);
+
 /**  
  * Deduplicates adjacent '/' characters in the input.
  *

@@ -1217,13 +1217,72 @@ int ArraySchema::set_types(const char** types) {
 /* ****************************** */
 
 template<class T>
+int ArraySchema::cell_order_cmp_2(const T* coords_a, const T* coords_b) const {
+  // For easy reference
+  size_t coords_size = cell_sizes_[attribute_num_];
+
+  // Check if they are equal
+  if(memcmp(coords_a, coords_b, coords_size) == 0)
+    return 0;
+
+  // If there are regular tiles, first check tile ids
+  if(tile_extents_ != NULL) {
+    int64_t tile_id_a = tile_id(coords_a);
+    int64_t tile_id_b = tile_id(coords_b);
+
+    if(tile_id_a < tile_id_b)
+      return -1;
+    else if(tile_id_a > tile_id_b)
+      return 1;
+  }
+
+  // From this point and onwards, either there are not regular tiles,
+  // or the tile ids are the same
+
+  // Check for precedence
+  if(cell_order_ == TILEDB_AS_CO_COLUMN_MAJOR) {    // COLUMN-MAJOR
+    for(int i=dim_num_-1; i>=0; --i) {
+      if(coords_a[i] < coords_b[i])
+        return -1;
+      else if(coords_a[i] > coords_b[i])
+        return 1;
+    }
+  } else if(cell_order_ == TILEDB_AS_CO_ROW_MAJOR) { // ROW-MAJOR
+    for(int i=0; i<dim_num_; ++i) {
+      if(coords_a[i] < coords_b[i])
+        return -1;
+      else if(coords_a[i] > coords_b[i])
+        return 1;
+    }
+  } else if(cell_order_ == TILEDB_AS_CO_HILBERT) {   // HILBERT
+    // Check hilbert ids
+    int64_t id_a = hilbert_id(coords_a);
+    int64_t id_b = hilbert_id(coords_b);
+    if(id_a < id_b)
+      return -1;
+    else if(id_a > id_b)
+      return 1;
+
+    // Hilbert ids match - check coordinates
+    for(int i=0; i<dim_num_; ++i) {
+      if(coords_a[i] < coords_b[i])
+        return -1;
+      else if(coords_a[i] > coords_b[i])
+        return 1;
+    }
+  } else {
+    assert(0);
+  }
+}
+
+template<class T>
 int ArraySchema::cell_order_cmp(const T* coords_a, const T* coords_b) const {
   // For easy reference
   size_t coords_size = cell_sizes_[attribute_num_];
 
   // Check if they are equal
-    if(memcmp(coords_a, coords_b, coords_size) == 0)
-      return 0;
+  if(memcmp(coords_a, coords_b, coords_size) == 0)
+    return 0;
 
   // Check for precedence
   if(cell_order_ == TILEDB_AS_CO_COLUMN_MAJOR) {    // COLUMN-MAJOR
@@ -2105,6 +2164,19 @@ template int ArraySchema::cell_order_cmp<float>(
     const float* coords_a, 
     const float* coords_b) const;
 template int ArraySchema::cell_order_cmp<double>(
+    const double* coords_a, 
+    const double* coords_b) const;
+
+template int ArraySchema::cell_order_cmp_2<int>(
+    const int* coords_a, 
+    const int* coords_b) const;
+template int ArraySchema::cell_order_cmp_2<int64_t>(
+    const int64_t* coords_a, 
+    const int64_t* coords_b) const;
+template int ArraySchema::cell_order_cmp_2<float>(
+    const float* coords_a, 
+    const float* coords_b) const;
+template int ArraySchema::cell_order_cmp_2<double>(
     const double* coords_a, 
     const double* coords_b) const;
 

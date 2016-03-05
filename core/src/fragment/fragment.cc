@@ -82,6 +82,10 @@ Fragment::~Fragment() {
 /*            ACCESSORS           */
 /* ****************************** */
 
+void* Fragment::mbr(int64_t pos) const {
+  return book_keeping_->mbrs()[pos];
+}
+
 bool Fragment::overlaps() const {
   if(read_state_->overlap() == ReadState::NONE)
     return false;
@@ -248,6 +252,17 @@ int Fragment::get_first_two_coords(
       start_coords, 
       first_coords, 
       second_coords);
+}
+
+template<class T>
+int Fragment::get_first_coords_after(
+    int tile_i,
+    T* start_coords_before,
+    T* first_coords) {
+  return read_state_->get_first_coords_after<T>(
+      tile_i,
+      start_coords_before, 
+      first_coords);
 }
 
 void Fragment::get_next_overlapping_tile_mult() {
@@ -550,3 +565,21 @@ template void Fragment::tile_done<int>(int attribute_id);
 template void Fragment::tile_done<int64_t>(int attribute_id);
 template void Fragment::tile_done<float>(int attribute_id);
 template void Fragment::tile_done<double>(int attribute_id);
+
+template int Fragment::get_first_coords_after<int>(
+    int tile_i,
+    int* start_coords_before,
+    int* first_coords);
+template int Fragment::get_first_coords_after<int64_t>(
+    int tile_i,
+    int64_t* start_coords_before,
+    int64_t* first_coords);
+template int Fragment::get_first_coords_after<float>(
+    int tile_i,
+    float* start_coords_before,
+    float* first_coords);
+template int Fragment::get_first_coords_after<double>(
+    int tile_i,
+    double* start_coords_before,
+    double* first_coords);
+

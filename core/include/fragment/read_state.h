@@ -259,6 +259,13 @@ class ReadState {
       T* first_coords,
       T* second_coords);
 
+  // TODO
+  template<class T>
+  int get_first_coords_after(
+      int tile_i,
+      T* start_coords_after,
+      T* first_coords);
+
  private:
   // PRIVATE ATTRIBUTES
 

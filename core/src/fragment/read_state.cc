@@ -680,8 +680,6 @@ void ReadState::compute_fragment_cell_ranges_sparse(
     const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const {
   // For easy reference
-// TODO  int64_t pos = overlapping_tiles_.back().pos_;
-// TODO  const void* bounding_coords = book_keeping_->bounding_coords()[pos];
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
@@ -3173,13 +3171,13 @@ int ReadState::copy_tile_partial_non_contig_sparse_var(
 }
 
 template<class T>
-int ReadState::get_first_two_coords(
+int ReadState::get_first_coords_after(
     int tile_i,
-    T* start_coords,
-    T* first_coords,
-    T* second_coords) {
+    T* start_coords_before,
+    T* first_coords) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const void* tile_extents = array_schema->tile_extents();
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
@@ -3216,8 +3214,115 @@ int ReadState::get_first_two_coords(
     med = min + ((max - min) / 2);
 
     // Calculate precedence of tile ids
-    start_coords_tile_id = array_schema->tile_id(start_coords);
-    tile_coords_tile_id = array_schema->tile_id(&tile[med*dim_num]);
+    if(tile_extents != NULL) {
+      start_coords_tile_id = array_schema->tile_id(start_coords_before);
+      tile_coords_tile_id = array_schema->tile_id(&tile[med*dim_num]);
+    } else {
+      start_coords_tile_id = 0;
+      tile_coords_tile_id = 0;
+    }
+
+    // Calculate precedence of cells
+    if(start_coords_tile_id == tile_coords_tile_id) {
+      cmp = array_schema->cell_order_cmp<T>(
+                start_coords_before,
+                &tile[med*dim_num]);
+    } else {
+      if(start_coords_tile_id < tile_coords_tile_id)
+        cmp = -1;
+      else 
+        cmp = 1;
+    }
+
+    // Update search range
+    if(cmp < 0) 
+      max = med-1;
+    else if(cmp > 0)  
+      min = med+1;
+    else       
+      break; 
+  }
+
+  // Find the position of the first coordinates
+  if(max < min)    
+    first_coords_pos = max + 1;
+  else             
+    first_coords_pos = med + 1;
+
+  // Copy the first coordinates
+  if(first_coords_pos < cell_num) {
+    memcpy(first_coords, &tile[first_coords_pos * dim_num], coords_size);
+  } else {
+    // Initialize empty value
+    if(&typeid(T) == &typeid(int))
+      empty_coord = T(TILEDB_EMPTY_INT32);
+    else if(&typeid(T) == &typeid(int64_t))
+      empty_coord = T(TILEDB_EMPTY_INT64);
+    else if(&typeid(T) == &typeid(float))
+      empty_coord = T(TILEDB_EMPTY_FLOAT64);
+    else if(&typeid(T) == &typeid(double))
+      empty_coord = T(TILEDB_EMPTY_FLOAT64);
+
+    // Copy empty value
+    memcpy(first_coords, &empty_coord, sizeof(T));
+  }
+
+  // Success
+  return TILEDB_RS_OK;
+}
+
+template<class T>
+int ReadState::get_first_two_coords(
+    int tile_i,
+    T* start_coords,
+    T* first_coords,
+    T* second_coords) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  const void* tile_extents = array_schema->tile_extents();
+  int dim_num = array_schema->dim_num();
+  size_t coords_size = array_schema->coords_size();
+  ArraySchema::Compression compression = array_schema->compression(attribute_num);
+  T empty_coord = 0;
+  int rc;
+
+  // Important
+  overlapping_tiles_pos_[attribute_num] = tile_i; 
+  int64_t cell_num = overlapping_tiles_[tile_i].cell_num_;
+
+  // Sanity check
+  assert(cell_num >= 2);
+
+  // Bring coordinates tile in main memory
+  if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
+    rc = get_tile_from_disk_cmp_gzip(attribute_num);
+  else 
+    rc = get_tile_from_disk_cmp_none(attribute_num);
+  const T* tile = static_cast<const T*>(tiles_[attribute_num]);
+
+  // Exit on error
+  if(rc != TILEDB_RS_OK)
+    return TILEDB_RS_ERR;
+
+  // Perform binary search to find the position of start_coords in the tile
+  int64_t min = 0;
+  int64_t max = cell_num - 1;
+  int64_t med;
+  int64_t first_coords_pos;
+  int cmp;
+  int64_t start_coords_tile_id, tile_coords_tile_id;
+  while(min <= max) {
+    med = min + ((max - min) / 2);
+
+    // Calculate precedence of tile ids
+    if(tile_extents != NULL) {
+      start_coords_tile_id = array_schema->tile_id(start_coords);
+      tile_coords_tile_id = array_schema->tile_id(&tile[med*dim_num]);
+    } else { 
+      start_coords_tile_id = 0;
+      tile_coords_tile_id = 0;
+    }
 
     // Calculate precedence of cells
     if(start_coords_tile_id == tile_coords_tile_id) {
@@ -6556,6 +6661,23 @@ template int ReadState::get_first_two_coords<double>(
     double* start_coords,
     double* first_coords,
     double* second_coords);
+
+template int ReadState::get_first_coords_after<int>(
+    int tile_i,
+    int* start_coords_before,
+    int* first_coords);
+template int ReadState::get_first_coords_after<int64_t>(
+    int tile_i,
+    int64_t* start_coords_before,
+    int64_t* first_coords);
+template int ReadState::get_first_coords_after<float>(
+    int tile_i,
+    float* start_coords_before,
+    float* first_coords);
+template int ReadState::get_first_coords_after<double>(
+    int tile_i,
+    double* start_coords_before,
+    double* first_coords);
 
 template int ReadState::get_cell_pos_ranges_sparse<int>(
     const FragmentInfo& fragment_info,

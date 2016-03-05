@@ -63,6 +63,18 @@
 #  define PRINT_WARNING(x) do { } while(0) 
 #endif
 
+template<class T>
+bool empty_value(T value) {
+  if(&typeid(T) == &typeid(int))
+    return value == T(TILEDB_EMPTY_INT32);
+  else if(&typeid(T) == &typeid(int64_t))
+    return value == T(TILEDB_EMPTY_INT64);
+  else if(&typeid(T) == &typeid(float))
+    return value == T(TILEDB_EMPTY_FLOAT32);
+  else if(&typeid(T) == &typeid(double))
+    return value == T(TILEDB_EMPTY_FLOAT64);
+}
+
 void adjacent_slashes_dedup(std::string& value) {
   value.erase(std::unique(value.begin(), value.end(), both_slashes),
               value.end()); 
@@ -916,3 +928,8 @@ template bool cell_in_range<double>(
     const double* cell,
     const double* range,
     int dim_num);
+
+template bool empty_value<int>(int value);
+template bool empty_value<int64_t>(int64_t value);
+template bool empty_value<float>(float value);
+template bool empty_value<double>(double value);
