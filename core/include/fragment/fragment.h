@@ -152,7 +152,7 @@ class Fragment {
 
   // TODO
   template<class T>
-  bool coords_exist(const T* coords);
+  bool coords_exist(int64_t tile_i, const T* coords);
 
   // TODO
   template<class T>

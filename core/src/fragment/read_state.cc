@@ -193,15 +193,23 @@ ReadState::~ReadState() {
 /* ****************************** */
 
 template<class T>
-bool ReadState::coords_exist(const T* coords) {
+bool ReadState::coords_exist(
+    int64_t tile_i,
+    const T* coords) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
   ArraySchema::Compression compression = array_schema->compression(attribute_num);
-  int64_t cell_num = overlapping_tiles_.back().cell_num_;
   int rc;
+
+  // Important
+  overlapping_tiles_pos_[attribute_num] = tile_i; 
+  int64_t cell_num = overlapping_tiles_[tile_i].cell_num_;
+
+  // Sanity check
+  assert(cell_num >= 2);
 
   // Bring coordinates tile in main memory
   if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
@@ -672,13 +680,44 @@ void ReadState::compute_fragment_cell_ranges_sparse(
     const FragmentInfo& fragment_info,
     FragmentCellRanges& fragment_cell_ranges) const {
   // For easy reference
-  int64_t pos = overlapping_tiles_.back().pos_;
-  const void* bounding_coords = book_keeping_->bounding_coords()[pos];
+// TODO  int64_t pos = overlapping_tiles_.back().pos_;
+// TODO  const void* bounding_coords = book_keeping_->bounding_coords()[pos];
   const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
+  const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
+  const T* global_domain = static_cast<const T*>(array_schema->domain());
+  const T* global_tile_coords = 
+      static_cast<const T*>(overlapping_tiles_.back().global_coords_);
+  const T* overlap_range = 
+      static_cast<const T*>(overlapping_tiles_.back().overlap_range_);
+
+  // Compute overlap range coordinates inside the tile
+  T* tile_overlap_range = new T[2*dim_num]; 
+  for(int i=0; i<dim_num; ++i) {
+    tile_overlap_range[2*i] = 
+        std::max(
+            global_tile_coords[i] * tile_extents[i] + global_domain[2*i],
+            overlap_range[2*i]);
+    tile_overlap_range[2*i+1] = 
+        std::min(
+            (global_tile_coords[i]+1) * tile_extents[i] - 1 + global_domain[2*i],
+            overlap_range[2*i+1]);
+  }
   
+/* TODO: remove
   void* cell_range = malloc(2*coords_size);
   memcpy(cell_range, bounding_coords, 2*coords_size);
+  fragment_cell_ranges.push_back(
+      FragmentCellRange(fragment_info, cell_range));
+*/
+
+  void* cell_range = malloc(2*coords_size);
+  T* cell_range_T = static_cast<T*>(cell_range);
+  for(int i=0; i<dim_num; ++i) {
+    cell_range_T[i] = tile_overlap_range[2*i];
+    cell_range_T[dim_num + i] = tile_overlap_range[2*i+1];
+  }
   fragment_cell_ranges.push_back(
       FragmentCellRange(fragment_info, cell_range));
  
@@ -3145,14 +3184,15 @@ int ReadState::get_first_two_coords(
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
   ArraySchema::Compression compression = array_schema->compression(attribute_num);
-  int64_t cell_num = overlapping_tiles_.back().cell_num_;
+  T empty_coord = 0;
   int rc;
-
-  // Sanity check
-  assert(cell_num >= 2);
 
   // Important
   overlapping_tiles_pos_[attribute_num] = tile_i; 
+  int64_t cell_num = overlapping_tiles_[tile_i].cell_num_;
+
+  // Sanity check
+  assert(cell_num >= 2);
 
   // Bring coordinates tile in main memory
   if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
@@ -3206,9 +3246,43 @@ int ReadState::get_first_two_coords(
   else             
     first_coords_pos = med;
 
-  // Copy the first and second coordinates
-  memcpy(first_coords, &tile[first_coords_pos * dim_num], coords_size);
-  memcpy(second_coords, &tile[(first_coords_pos+1) * dim_num], coords_size);
+  // Copy the first coordinates
+  if(first_coords_pos < cell_num) {
+    memcpy(first_coords, &tile[first_coords_pos * dim_num], coords_size);
+  } else {
+    // Initialize empty value
+    if(&typeid(T) == &typeid(int))
+      empty_coord = T(TILEDB_EMPTY_INT32);
+    else if(&typeid(T) == &typeid(int64_t))
+      empty_coord = T(TILEDB_EMPTY_INT64);
+    else if(&typeid(T) == &typeid(float))
+      empty_coord = T(TILEDB_EMPTY_FLOAT64);
+    else if(&typeid(T) == &typeid(double))
+      empty_coord = T(TILEDB_EMPTY_FLOAT64);
+
+    // Copy empty value
+    memcpy(first_coords, &empty_coord, sizeof(T));
+  }
+
+  // Copy the second coordinates
+  if(first_coords_pos+1 < cell_num) {
+    memcpy(second_coords, &tile[(first_coords_pos+1) * dim_num], coords_size);
+  } else {
+    // Initialize empty value
+    if(empty_coord == 0) { // If empty value not set
+      if(&typeid(T) == &typeid(int))
+        empty_coord = T(TILEDB_EMPTY_INT32);
+      else if(&typeid(T) == &typeid(int64_t))
+        empty_coord = T(TILEDB_EMPTY_INT64);
+      else if(&typeid(T) == &typeid(float))
+        empty_coord = T(TILEDB_EMPTY_FLOAT64);
+      else if(&typeid(T) == &typeid(double))
+        empty_coord = T(TILEDB_EMPTY_FLOAT64);
+    }
+
+    // Copy empty value
+    memcpy(second_coords, &empty_coord, sizeof(T));
+  }
 
   // Success
   return TILEDB_RS_OK;
@@ -6533,10 +6607,18 @@ template int ReadState::copy_cell_range<double>(
     size_t& buffer_offset,
     const CellPosRange& cell_pos_range);
 
-template bool ReadState::coords_exist<int>(const int* coords);
-template bool ReadState::coords_exist<int64_t>(const int64_t* coords);
-template bool ReadState::coords_exist<float>(const float* coords);
-template bool ReadState::coords_exist<double>(const double* coords);
+template bool ReadState::coords_exist<int>(
+    int64_t tile_i,
+    const int* coords);
+template bool ReadState::coords_exist<int64_t>(
+    int64_t tile_i,
+    const int64_t* coords);
+template bool ReadState::coords_exist<float>(
+    int64_t tile_i,
+    const float* coords);
+template bool ReadState::coords_exist<double>(
+    int64_t tile_i,
+    const double* coords);
 
 template int ReadState::copy_cell_range_var<int>(
     int attribute_id,

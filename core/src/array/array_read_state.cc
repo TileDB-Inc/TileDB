@@ -542,7 +542,9 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
                popped_range, 
                &popped_range[dim_num], 
                coords_size) || 
-          fragments[popped_fragment_i]->coords_exist<T>(popped_range)) {
+          fragments[popped_fragment_i]->coords_exist<T>(
+              popped_tile_i, 
+              popped_range)) {
         fragment_cell_ranges.push_back(popped);
         break;
       }
@@ -564,7 +566,9 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
       // If the unary sparse range is empty, discard it
       if(popped_fragment_i != -1 &&
          !fragments[popped_fragment_i]->dense() && 
-         !fragments[popped_fragment_i]->coords_exist<T>(popped_range)) {
+         !fragments[popped_fragment_i]->coords_exist<T>(
+             popped_tile_i,
+             popped_range)) {
         free(popped.second);
         continue;
       }
@@ -704,7 +708,7 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
         
         // Get the first two coordinates from the coordinates tile 
         if(fragments[popped_fragment_i]->get_first_two_coords<T>(
-               popped_tile_i, // Tile
+               popped_tile_i,  // Tile
                popped_range,   // Starting point
                unary_range,    // First coords
                popped_range)   // Second coords
@@ -751,10 +755,11 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
             }
           } 
        
-          if(!inside_tile) 
+          if(!inside_tile) { 
             free(popped.second);
-          else // Re-insert to the queue the now trimmed popped range
+          } else { // Re-insert to the queue the now trimmed popped range
             pq.push(popped);
+          }
         }
       }
     }

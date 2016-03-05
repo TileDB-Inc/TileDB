@@ -237,7 +237,7 @@ class ReadState {
 
   // TODO
   template<class T>
-  bool coords_exist(const T* coords);
+  bool coords_exist(int64_t tile_i, const T* coords);
 
   // TODO
   int64_t overlapping_tiles_num() const;

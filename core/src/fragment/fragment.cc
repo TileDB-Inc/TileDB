@@ -218,8 +218,10 @@ int Fragment::copy_cell_range_var(
 
 // TODO: make it return int (errors)
 template<class T>
-bool Fragment::coords_exist(const T* coords) {
-  return read_state_->coords_exist<T>(coords);
+bool Fragment::coords_exist(
+    int64_t tile_i,
+    const T* coords) {
+  return read_state_->coords_exist<T>(tile_i, coords);
 }
 
 int64_t Fragment::overlapping_tiles_num() const {
@@ -485,10 +487,18 @@ template int Fragment::copy_cell_range<double>(
     size_t& buffer_offset,
     const CellPosRange& cell_pos_range);
 
-template bool Fragment::coords_exist<int>(const int* coords);
-template bool Fragment::coords_exist<int64_t>(const int64_t* coords);
-template bool Fragment::coords_exist<float>(const float* coords);
-template bool Fragment::coords_exist<double>(const double* coords);
+template bool Fragment::coords_exist<int>(
+    int64_t tile_i,
+    const int* coords);
+template bool Fragment::coords_exist<int64_t>(
+    int64_t tile_i,
+    const int64_t* coords);
+template bool Fragment::coords_exist<float>(
+    int64_t tile_i,
+    const float* coords);
+template bool Fragment::coords_exist<double>(
+    int64_t tile_i,
+    const double* coords);
 
 template int Fragment::copy_cell_range_var<int>(
     int attribute_id,
