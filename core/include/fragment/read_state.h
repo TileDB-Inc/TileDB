@@ -74,6 +74,8 @@ class ReadState {
 
   /** An overlapping tile with the query range. */
   struct OverlappingTile {
+    // TODO
+    bool coords_tile_fetched_reset_;
     /** Number of cells in this tile. */
     int64_t cell_num_;
     /**

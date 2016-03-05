@@ -17,7 +17,7 @@ int main() {
   tiledb_array_init(
       tiledb_ctx, 
       &tiledb_array,
-      "workspace/dense_B",
+      "workspace/sparse_B",
       TILEDB_WRITE_UNSORTED,
       NULL,            // No range - entire domain
       attributes,      // No projection - all attributes
@@ -26,18 +26,19 @@ int main() {
   /* Prepare cell buffers for attributes "a1" and "a2". */
   int64_t buffer_coords[] 
   {
-    4, 4,
+    3, 3,
+ //   4, 4,
     4, 6,
     5, 6,
-//    5, 8,
-    5, 7,
+    5, 8,
+//    5, 7,
     7, 1,
     7, 2, 
     8, 3
   };
   int buffer_a1[] =
   {
-    223, 227, 241, 244, 248, 249, 254
+    323, 327, 341, 344, 348, 349, 354
   };
   size_t buffer_a2[] =
   {

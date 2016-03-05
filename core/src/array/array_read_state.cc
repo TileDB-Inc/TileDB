@@ -418,6 +418,7 @@ int ArrayReadState::copy_cell_ranges(
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset) {
+
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   int64_t pos = fragment_cell_pos_ranges_vec_pos_[attribute_id];
@@ -513,12 +514,16 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
     pq.push(unsorted_fragment_cell_ranges[i]);
 
   // Compute tile domain
-  T* tile_domain = new T[2*dim_num];
-  T* tile_domain_end = new T[dim_num];
-  for(int i=0; i<dim_num; ++i) {
-    tile_domain[2*i] = global_domain[2*i] + tile_coords[i] * tile_extents[i];
-    tile_domain[2*i+1] = tile_domain[2*i] + tile_extents[i] - 1;
-    tile_domain_end[i] = tile_domain[2*i+1];
+  T* tile_domain = NULL;
+  T* tile_domain_end = NULL;
+  if(tile_coords != NULL) {
+    tile_domain = new T[2*dim_num];
+    tile_domain_end = new T[dim_num];
+    for(int i=0; i<dim_num; ++i) {
+      tile_domain[2*i] = global_domain[2*i] + tile_coords[i] * tile_extents[i];
+      tile_domain[2*i+1] = tile_domain[2*i] + tile_extents[i] - 1;
+      tile_domain_end[i] = tile_domain[2*i+1];
+    }
   }
   
   // Start processing the queue
@@ -603,10 +608,12 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
               coords_size);
 
           // Advance the first trimmed range coordinates by one
-          array_schema->get_next_cell_coords<T>(tile_domain, trimmed_top_range);
-
-          // Special case for sparse fragment
-          if(!fragments[top_fragment_i]->dense()) { // SPARSE
+          if(fragments[top_fragment_i]->dense()) { // DENSE
+            array_schema->get_next_cell_coords<T>(
+                tile_domain, 
+                trimmed_top_range);
+            pq.push(trimmed_top);
+          } else { // SPARSE
             FragmentCellRange unary;
             unary.first.first = top_fragment_i;
             unary.first.second = top_tile_i;
@@ -622,8 +629,10 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
                 != TILEDB_FG_OK) {  
               // Clean up
               free(unary.second);
-              delete [] tile_domain;
-              delete [] tile_domain_end;
+              if(tile_domain != NULL)
+                delete [] tile_domain;
+              if(tile_domain_end != NULL)
+                delete [] tile_domain_end;
               free(trimmed_top.second);
               while(!pq.empty()) {
                 free(pq.top().second);
@@ -637,13 +646,8 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
 
             // Check if the now trimmed popped range exceeds the tile domain
             bool inside_tile = true;
-            for(int i=0; i<dim_num; ++i) {
-              if(unary_range[i] < tile_domain[2*i] || 
-                 unary_range[i] > tile_domain[2*i+1]) {
-                inside_tile = false;
-                break;
-              }
-            }
+            if(empty_value(*unary_range)) 
+              inside_tile = false;
 
             // Copy second boundary of unary and re-insert to the queue
             if(!inside_tile) {
@@ -654,13 +658,8 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
 
               // Check if the now trimmed popped range exceeds the tile domain
               bool inside_tile = true;
-              for(int i=0; i<dim_num; ++i) {
-                if(trimmed_top_range[i] < tile_domain[2*i] || 
-                   trimmed_top_range[i] > tile_domain[2*i+1]) {
-                  inside_tile = false;
-                  break;
-                }
-              } 
+              if(empty_value(*trimmed_top_range)) 
+                inside_tile = false;
        
               if(!inside_tile) { 
                 free(trimmed_top.second);
@@ -668,9 +667,6 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
                 pq.push(trimmed_top);
               }
             }
-          } else {       // DENSE
-            // Re-insert into the queue
-            pq.push(trimmed_top);
           }
         } else { // Simply discard top and get a new one
           free(top.second);
@@ -781,8 +777,10 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
             != TILEDB_FG_OK) {  
           // Clean up
           free(unary.second);
-          delete [] tile_domain;
-          delete [] tile_domain_end;
+          if(tile_domain != NULL)
+            delete [] tile_domain;
+          if(tile_domain_end != NULL)
+            delete [] tile_domain_end;
           free(popped.second);
           while(!pq.empty()) {
             free(pq.top().second);
@@ -796,12 +794,17 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
 
         // Check if the now trimmed popped range exceeds the tile domain
         bool inside_tile = true;
-        for(int i=0; i<dim_num; ++i) {
-          if(unary_range[i] < tile_domain[2*i] || 
-             unary_range[i] > tile_domain[2*i+1]) {
-            inside_tile = false;
-            break;
+        if(tile_domain != NULL) {
+          for(int i=0; i<dim_num; ++i) {
+            if(unary_range[i] < tile_domain[2*i] || 
+               unary_range[i] > tile_domain[2*i+1]) {
+              inside_tile = false;
+              break;
+            }
           }
+        } else {
+          if(empty_value(*unary_range)) 
+            inside_tile = false;
         }
 
         // Copy second boundary of unary and re-insert to the queue
@@ -813,13 +816,18 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
 
           // Check if the now trimmed popped range exceeds the tile domain
           bool inside_tile = true;
-          for(int i=0; i<dim_num; ++i) {
-            if(popped_range[i] < tile_domain[2*i] || 
-               popped_range[i] > tile_domain[2*i+1]) {
+          if(tile_domain != NULL) {
+            for(int i=0; i<dim_num; ++i) {
+              if(popped_range[i] < tile_domain[2*i] || 
+                 popped_range[i] > tile_domain[2*i+1]) {
+                inside_tile = false;
+                break;
+              }
+            } 
+          } else {
+            if(empty_value(*popped_range)) 
               inside_tile = false;
-              break;
-            }
-          } 
+          }
        
           if(!inside_tile) { 
             free(popped.second);
@@ -877,8 +885,10 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
   }
 
   // Clean up 
-  delete [] tile_domain;
-  delete [] tile_domain_end;
+  if(tile_domain != NULL)
+    delete [] tile_domain;
+  if(tile_domain_end != NULL)
+    delete [] tile_domain_end;
   
   // Success
   return TILEDB_ARS_OK;
@@ -1577,7 +1587,9 @@ int ArrayReadState::read_multiple_fragments_dense_attr(
     }
 
     // Check if read is done
-    if(done_) {
+    if(done_ &&
+       fragment_cell_pos_ranges_vec_pos_[attribute_id] == 
+       fragment_cell_pos_ranges_vec_.size()) {
       buffer_size = buffer_offset;
       return TILEDB_ARS_OK;
     }
@@ -1671,7 +1683,9 @@ int ArrayReadState::read_multiple_fragments_dense_attr_var(
     }
 
     // Check if read is done
-    if(done_) {
+    if(done_ &&
+       fragment_cell_pos_ranges_vec_pos_[attribute_id] == 
+       fragment_cell_pos_ranges_vec_.size()) {
       buffer_size = buffer_offset;
       buffer_var_size = buffer_var_offset;
       return TILEDB_ARS_OK;
@@ -1805,11 +1819,13 @@ int ArrayReadState::read_multiple_fragments_sparse_attr(
     }
 
     // Check if read is done
-    if(done_) {
+    if(done_ && 
+       fragment_cell_pos_ranges_vec_pos_[attribute_id] == 
+       fragment_cell_pos_ranges_vec_.size()) {
       buffer_size = buffer_offset;
       return TILEDB_ARS_OK;
     }
- 
+
     // Process the heap and copy cells to buffers
     if(copy_cell_ranges<T>(
            attribute_id, 
@@ -1913,7 +1929,9 @@ int ArrayReadState::read_multiple_fragments_sparse_attr_var(
     }
 
     // Check if read is done
-    if(done_) {
+    if(done_ &&
+       fragment_cell_pos_ranges_vec_pos_[attribute_id] == 
+       fragment_cell_pos_ranges_vec_.size()) {
       buffer_size = buffer_offset;
       buffer_var_size = buffer_var_offset;
       return TILEDB_ARS_OK;

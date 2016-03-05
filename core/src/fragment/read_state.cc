@@ -313,6 +313,7 @@ int ReadState::copy_cell_range(
     const CellPosRange& cell_pos_range) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
   size_t cell_size = array_schema->cell_size(attribute_id);
   OverlappingTile& overlapping_tile = 
       overlapping_tiles_[overlapping_tiles_pos_[attribute_id]];
@@ -323,6 +324,14 @@ int ReadState::copy_cell_range(
 
   // Important
   overlapping_tiles_pos_[attribute_id] = tile_i; 
+
+  // Update only in the case of coordinates attribute
+  if(attribute_id == attribute_num &&
+     tile_i < overlapping_tiles_.size()-1 && 
+     !overlapping_tiles_[tile_i].coords_tile_fetched_reset_) {
+    overlapping_tiles_[tile_i].tile_fetched_[attribute_num] = false; 
+    overlapping_tiles_[tile_i].coords_tile_fetched_reset_ = true; 
+  }
 
   // Fetch the attribute tile from disk if necessary
   if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
@@ -393,6 +402,10 @@ int ReadState::copy_cell_range_var(
     size_t buffer_var_size,
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+
   // Calculate free space in buffer
   size_t buffer_free_space = buffer_size - buffer_offset;
   size_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
@@ -406,8 +419,15 @@ int ReadState::copy_cell_range_var(
   // Important
   overlapping_tiles_pos_[attribute_id] = tile_i; 
 
+  // Update only in the case of coordinates attribute
+  if(attribute_id == attribute_num &&
+     tile_i < overlapping_tiles_.size()-1 && 
+     !overlapping_tiles_[tile_i].coords_tile_fetched_reset_) {
+    overlapping_tiles_[tile_i].tile_fetched_[attribute_num] = false; 
+    overlapping_tiles_[tile_i].coords_tile_fetched_reset_ = true; 
+  }
+
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
   size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
   OverlappingTile& overlapping_tile = 
       overlapping_tiles_[overlapping_tiles_pos_[attribute_id]];
@@ -3638,7 +3658,7 @@ void ReadState::get_next_overlapping_tile_dense() {
   overlapping_tiles_.push_back(overlapping_tile); 
 
   // Clean up processed overlapping tiles
-  clean_up_processed_overlapping_tiles();
+// TODO:  clean_up_processed_overlapping_tiles();
 }
 
 void ReadState::get_bounding_coords(void* bounding_coords) const {
@@ -3871,7 +3891,7 @@ void ReadState::get_next_overlapping_tile_sparse() {
   overlapping_tiles_.push_back(overlapping_tile); 
 
   // Clean up processed overlapping tiles
-  clean_up_processed_overlapping_tiles();
+// TODO:  clean_up_processed_overlapping_tiles();
 
   // In case of partial overlap, find the ranges of qualifying cells
   if(overlapping_tile.overlap_ == PARTIAL_CONTIG ||

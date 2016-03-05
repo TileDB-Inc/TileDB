@@ -17,7 +17,7 @@ int main() {
   tiledb_array_init(
       tiledb_ctx, 
       &tiledb_array,
-      "workspace/dense_B",
+      "workspace/sparse_B",
       TILEDB_WRITE_UNSORTED,
       NULL,            // No range - entire domain
       attributes,      // No projection - all attributes
