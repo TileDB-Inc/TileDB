@@ -139,6 +139,13 @@ GTEST_SRC_DIR = gtest/src
 GTEST_OBJ_DIR = gtest/obj
 GTEST_BIN_DIR = gtest/bin
 
+# Directories of Google Mock
+GMOCK_DIR = gmock
+GMOCK_INCLUDE_DIR = gmock/include
+GMOCK_SRC_DIR = gmock/src
+GMOCK_OBJ_DIR = gmock/obj
+GMOCK_BIN_DIR = gmock/bin
+
 # Directories for TileDB tests
 TEST_SRC_DIR = test/src
 TEST_OBJ_DIR = test/obj
@@ -174,6 +181,9 @@ OPENMP_LIB_DIR = .
 # --- Paths --- #
 CORE_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
 TILEDB_CMD_INCLUDE_PATHS = -I$(TILEDB_CMD_INCLUDE_DIR)
+TEST_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS)) \
+                     -I$(GTEST_INCLUDE_DIR) \
+										 -I$(GMOCK_INCLUDE_DIR)
 EXAMPLES_INCLUDE_PATHS = -I$(EXAMPLES_INCLUDE_DIR)
 LA_INCLUDE_PATHS = -I$(LA_INCLUDE_DIR)
 MPI_INCLUDE_PATHS = -I$(MPI_INCLUDE_DIR)
@@ -220,6 +230,11 @@ EXAMPLES_BIN := $(patsubst $(EXAMPLES_SRC_DIR)/%.cc,\
 GTEST_INCLUDE := $(wildcard $(GTEST_INCLUDE_DIR)/*.h)
 GTEST_OBJ := $(patsubst $(GTEST_SRC_DIR)/%.cc, $(GTEST_OBJ_DIR)/%.o,\
                         $(GTEST_SRC))
+                        
+# Files of the Google Mock
+GMOCK_INCLUDE := $(wildcard $(GMOCK_INCLUDE_DIR)/*.h)
+GMOCK_OBJ := $(patsubst $(GMOCK_SRC_DIR)/%.cc, $(GMOCK_OBJ_DIR)/%.o,\
+                        $(GMOCK_SRC))
 
 # Files of the TileDB tests
 TEST_SRC := $(wildcard $(TEST_SRC_DIR)/*.cc)
@@ -244,10 +259,11 @@ MANPAGES_HTML := $(patsubst $(MANPAGES_MAN_DIR)/%,\
 # General Targets #
 ###################
 
-.PHONY: core examples gtest test doc clean_core clean_gtest \
-        clean_test clean_tiledb_cmd clean_examples clean_la clean
+.PHONY: core examples gtest gmock check doc clean_core clean_gtest \
+        clean_gmock clean_check clean_tiledb_cmd clean_examples \
+        clean
 
-all: core libtiledb tiledb_cmd examples gtest test
+all: core libtiledb tiledb_cmd examples gtest gmock test
 
 core: $(CORE_OBJ) 
 
@@ -257,8 +273,6 @@ tiledb_cmd: core $(TILEDB_CMD_OBJ) $(TILEDB_CMD_BIN)
 
 examples: core $(EXAMPLES_OBJ) $(EXAMPLES_BIN)
 
-la: core $(LA_OBJ) $(LA_BIN_DIR)/example_transpose
-
 rvma: core $(RVMA_OBJ) #$(RVMA_BIN_DIR)/simple_test
 
 html: $(MANPAGES_HTML)
@@ -267,10 +281,14 @@ doc: doxyfile.inc html
 
 gtest: $(GTEST_OBJ_DIR)/gtest-all.o
 
-test: $(TEST_OBJ)
+gmock: $(GMOCK_OBJ_DIR)/gmock-all.o
+
+check: $(TEST_OBJ)
+	@echo "Running test"
+	@$(TEST_BIN_DIR)/test_cmd
 
 clean: clean_core clean_libtiledb clean_tiledb_cmd clean_gtest \
-       clean_test clean_doc clean_examples 
+       clean_gmock clean_check clean_doc clean_examples 
 
 ########
 # Core #
@@ -472,23 +490,78 @@ $(GTEST_OBJ_DIR)/gtest-all.o: gtest/src/gtest-all.cc \
 	@$(CXX) -isystem $(GTEST_INCLUDE_DIR) -I$(GTEST_DIR) \
                 -pthread -c $< -o $@
 
+$(GTEST_OBJ_DIR)/gtest_main.o: gtest/src/gtest_main.cc \
+                              $(wildcard gtest/include/gtest/*.h)
+	@echo "Compiling $<"
+	@$(CXX) -isystem $(GTEST_INCLUDE_DIR) -I$(GTEST_DIR) \
+                -pthread -c $< -o $@
+
 # --- Cleaning --- #
 
 clean_gtest:
 	@echo "Cleaning gtest"
-	@rm -f $(GTEST_OBJ_DIR)/* $(GTEST_BIN_DIR)/* 
+	@rm -f $(GTEST_OBJ_DIR)/* $(GTEST_BIN_DIR)/*
+	
 
+###############
+# Google Mock #
+###############
+
+# --- Compilation --- #
+
+$(GMOCK_OBJ_DIR)/gmock-all.o: gmock/src/gmock-all.cc \
+                              $(wildcard gmock/include/gmock/*.h)
+	@echo "Compiling $<"
+	@$(CXX) -isystem $(GMOCK_INCLUDE_DIR) -I$(GTEST_INCLUDE_DIR) -I$(GMOCK_DIR) \
+                -pthread -c $< -o $@
+
+$(GMOCK_OBJ_DIR)/gmock_main.o: gmock/src/gmock_main.cc \
+                              $(wildcard gmock/include/gmock/*.h)
+	@echo "Compiling $<"
+	@$(CXX) -isystem $(GMOCK_INCLUDE_DIR) -I$(GTEST_INCLUDE_DIR) -I$(GMOCK_DIR) \
+                -pthread -c $< -o $@
+
+# --- Cleaning --- #
+
+clean_gmock:
+	@echo "Cleaning gmock"
+	@rm -f $(GMOCK_OBJ_DIR)/* $(GMOCK_BIN_DIR)/*
+	
+	
 ################
 # TileDB Tests #
 ################
 
-# Coming up soon...
+# --- Compilation and dependency genration --- #
+
+-include $(TEST_OBJ:.o=.d)
+
+$(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
+	@mkdir -p $(dir $@) 
+	@echo "Compiling $<"
+	@$(CXX) $(TEST_INCLUDE_PATHS) -c $< -o $@
+	@$(CXX) -MM $(TEST_INCLUDE_PATHS) \
+                    $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
+	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
+	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
+	@rm -f $(@:.o=.d.tmp)
+
+# --- Linking --- #
+
+$(TEST_BIN_DIR)/test_cmd: $(TEST_OBJ) $(CORE_OBJ) $(GTEST_OBJ_DIR)/gtest-all.o \
+                          $(GTEST_OBJ_DIR)/gtest_main.o \
+                          $(GMOCK_OBJ_DIR)/gmock-all.o
+	@mkdir -p $(TEST_BIN_DIR)
+	@echo "Creating test_cmd"
+	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
+                -o $@ $^
 
 # --- Cleaning --- #
 
-clean_test:
+clean_check:
 	@echo "Cleaning test"
-	@rm -f $(TEST_OBJ_DIR)/* $(TEST_BIN_DIR)/* 
+	@rm -rf $(TEST_OBJ_DIR)/* $(TEST_BIN_DIR)/*
+	
 
 ################################
 # Documentation (with Doxygen) #
