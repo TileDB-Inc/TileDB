@@ -186,6 +186,9 @@ class StorageManager {
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
   int create_group_file(const std::string& dir) const;
+
+  // TODO
+  int create_workspace_file(const std::string& dir) const;
 }; 
 
 #endif

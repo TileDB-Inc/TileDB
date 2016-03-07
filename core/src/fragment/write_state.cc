@@ -365,16 +365,16 @@ void WriteState::sort_cell_pos(
     std::vector<int64_t>& cell_pos) const {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int))
+  if(coords_type == TILEDB_INT32)
     sort_cell_pos<int>(buffer, buffer_size, cell_pos);
-  else if(coords_type == &typeid(int64_t))
+  else if(coords_type == TILEDB_INT64)
     sort_cell_pos<int64_t>(buffer, buffer_size, cell_pos);
-  else if(coords_type == &typeid(float))
+  else if(coords_type == TILEDB_FLOAT32)
     sort_cell_pos<float>(buffer, buffer_size, cell_pos);
-  else if(coords_type == &typeid(double))
+  else if(coords_type == TILEDB_FLOAT64)
     sort_cell_pos<double>(buffer, buffer_size, cell_pos);
 }
 
@@ -388,7 +388,7 @@ void WriteState::sort_cell_pos(
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
   int64_t buffer_cell_num = buffer_size / coords_size;
-  ArraySchema::CellOrder cell_order = array_schema->cell_order();
+  int cell_order = array_schema->cell_order();
   const T* buffer_T = static_cast<const T*>(buffer);
 
   // Populate cell_pos
@@ -398,19 +398,19 @@ void WriteState::sort_cell_pos(
 
   // Invoke the proper sort function, based on the cell order
   if(array_schema->tile_extents() == NULL)  {    // NO TILE GRID
-    if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) {
+    if(cell_order == TILEDB_ROW_MAJOR) {
       // Sort cell positions
       SORT(
           cell_pos.begin(), 
           cell_pos.end(), 
           SmallerRow<T>(buffer_T, dim_num)); 
-    } else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) {
+    } else if(cell_order == TILEDB_COL_MAJOR) {
       // Sort cell positions
       SORT(
           cell_pos.begin(), 
           cell_pos.end(), 
           SmallerCol<T>(buffer_T, dim_num)); 
-    } else if(cell_order == ArraySchema::TILEDB_AS_CO_HILBERT) {
+    } else if(cell_order == TILEDB_HILBERT) {
       // Get hilbert ids
       std::vector<int64_t> ids;
       ids.resize(buffer_cell_num);
@@ -433,12 +433,12 @@ void WriteState::sort_cell_pos(
       ids[i] = array_schema->tile_id<T>(&buffer_T[i * dim_num]); 
  
     // Sort cell positions
-    if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) {
+    if(cell_order == TILEDB_ROW_MAJOR) {
       SORT(
           cell_pos.begin(), 
           cell_pos.end(), 
           SmallerIdRow<T>(buffer_T, dim_num, ids)); 
-    } else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) {
+    } else if(cell_order == TILEDB_COL_MAJOR) {
        SORT(
           cell_pos.begin(), 
           cell_pos.end(), 
@@ -454,16 +454,16 @@ void WriteState::update_book_keeping(
     size_t buffer_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int))
+  if(coords_type == TILEDB_INT32)
     update_book_keeping<int>(buffer, buffer_size);
-  else if(coords_type == &typeid(int64_t))
+  else if(coords_type == TILEDB_INT64)
     update_book_keeping<int64_t>(buffer, buffer_size);
-  else if(coords_type == &typeid(float))
+  else if(coords_type == TILEDB_FLOAT32)
     update_book_keeping<float>(buffer, buffer_size);
-  else if(coords_type == &typeid(double))
+  else if(coords_type == TILEDB_FLOAT64)
     update_book_keeping<double>(buffer, buffer_size);
 }
 
@@ -572,11 +572,10 @@ int WriteState::write_dense_attr(
     size_t buffer_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::Compression compression = 
-      array_schema->compression(attribute_id);
+  int compression = array_schema->compression(attribute_id);
 
   // No compression
-  if(compression == ArraySchema::TILEDB_AS_CMP_NONE)
+  if(compression == TILEDB_NO_COMPRESSION)
     return write_dense_attr_cmp_none(attribute_id, buffer, buffer_size);
   else // GZIP
     return write_dense_attr_cmp_gzip(attribute_id, buffer, buffer_size);
@@ -677,11 +676,10 @@ int WriteState::write_dense_attr_var(
     size_t buffer_var_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::Compression compression = 
-      array_schema->compression(attribute_id);
+  int compression = array_schema->compression(attribute_id);
 
   // No compression
-  if(compression == ArraySchema::TILEDB_AS_CMP_NONE)
+  if(compression == TILEDB_NO_COMPRESSION)
     return write_dense_attr_var_cmp_none(
                attribute_id, 
                buffer,  
@@ -958,11 +956,10 @@ int WriteState::write_sparse_attr(
     size_t buffer_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::Compression compression = 
-      array_schema->compression(attribute_id);
+  int compression = array_schema->compression(attribute_id);
 
   // No compression
-  if(compression == ArraySchema::TILEDB_AS_CMP_NONE)
+  if(compression == TILEDB_NO_COMPRESSION)
     return write_sparse_attr_cmp_none(attribute_id, buffer, buffer_size);
   else // GZIP
     return write_sparse_attr_cmp_gzip(attribute_id, buffer, buffer_size);
@@ -1080,11 +1077,10 @@ int WriteState::write_sparse_attr_var(
     size_t buffer_var_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::Compression compression = 
-      array_schema->compression(attribute_id);
+  int compression = array_schema->compression(attribute_id);
 
   // No compression
-  if(compression == ArraySchema::TILEDB_AS_CMP_NONE)
+  if(compression == TILEDB_NO_COMPRESSION)
     return write_sparse_attr_var_cmp_none(
                attribute_id, 
                buffer,  
@@ -1387,11 +1383,10 @@ int WriteState::write_sparse_unsorted_attr(
     const std::vector<int64_t>& cell_pos) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::Compression compression = 
-      array_schema->compression(attribute_id);
+  int compression = array_schema->compression(attribute_id);
 
   // No compression
-  if(compression == ArraySchema::TILEDB_AS_CMP_NONE)
+  if(compression == TILEDB_NO_COMPRESSION)
     return write_sparse_unsorted_attr_cmp_none(
                attribute_id, 
                buffer, 
@@ -1542,11 +1537,10 @@ int WriteState::write_sparse_unsorted_attr_var(
     const std::vector<int64_t>& cell_pos) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::Compression compression = 
-      array_schema->compression(attribute_id);
+  int compression = array_schema->compression(attribute_id);
 
   // No compression
-  if(compression == ArraySchema::TILEDB_AS_CMP_NONE)
+  if(compression == TILEDB_NO_COMPRESSION)
     return write_sparse_unsorted_attr_var_cmp_none(
                attribute_id, 
                buffer,
@@ -1763,7 +1757,7 @@ int WriteState::write_last_tile() {
   // Flush the last tile for each compressed attribute (it is still in main
   // memory
   for(int i=0; i<attribute_num+1; ++i) {
-    if(array_schema->compression(i) == ArraySchema::TILEDB_AS_CMP_GZIP) {
+    if(array_schema->compression(i) == TILEDB_GZIP) {
       if(compress_and_write_tile(i) != TILEDB_WS_OK)
         return TILEDB_WS_ERR;
       if(array_schema->var_size(i)) {

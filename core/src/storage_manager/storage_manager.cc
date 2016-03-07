@@ -77,7 +77,18 @@ StorageManager::~StorageManager() {
 /* ****************************** */
 
 int StorageManager::workspace_create(const std::string& dir) const {
-  // TODO
+  // Create group directory
+  if(create_dir(dir) != TILEDB_UT_OK)  
+    return TILEDB_SM_ERR;
+
+  // Create workspace file
+  if(create_workspace_file(dir) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // TODO: Create master catalog
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 /* ****************************** */
@@ -143,10 +154,9 @@ int StorageManager::array_create(const ArraySchema* array_schema) const {
 
   // Check if the array directory is contained in a workspace, group or array
   if(!is_workspace(parent_dir) && 
-     !is_group(parent_dir) && 
-     !is_array(parent_dir)) {
+     !is_group(parent_dir)) {
     PRINT_ERROR(std::string("Cannot create array; Directory '") + parent_dir + 
-                "' must be a TileDB workspace, group, or array");
+                "' must be a TileDB workspace or group");
     return TILEDB_SM_ERR;
   }
 
@@ -359,6 +369,18 @@ int StorageManager::create_group_file(const std::string& dir) const {
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if(fd == -1 || ::close(fd)) {
     PRINT_ERROR(std::string("Failed to create group file; ") +
+                strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::create_workspace_file(const std::string& dir) const {
+  std::string filename = std::string(dir) + "/" + TILEDB_WORKSPACE_FILENAME;
+  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+  if(fd == -1 || ::close(fd)) {
+    PRINT_ERROR(std::string("Failed to create workspace file; ") +
                 strerror(errno));
     return TILEDB_SM_ERR;
   }

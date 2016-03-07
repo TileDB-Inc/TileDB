@@ -51,36 +51,10 @@
 
 // Default parameters.
 #define TILEDB_AS_CAPACITY                                   10000
-#define TILEDB_AS_CONSOLIDATION_STEP                             1
-#define TILEDB_AS_CELL_ORDER                TILEDB_AS_CO_ROW_MAJOR
-#define TILEDB_AS_TILE_ORDER                TILEDB_AS_TO_ROW_MAJOR
-
-// Special value that indicates a variable-sized attribute.
-#define TILEDB_AS_VAR_SIZE          std::numeric_limits<int>::max()
 
 /** Specifies the array schema. */
 class ArraySchema {
  public:
-  // TYPE DEFINITIONS
-
-  /** Supported compression types. */
-  enum Compression {
-      TILEDB_AS_CMP_NONE,
-      TILEDB_AS_CMP_GZIP
-  };
-  /** Supported cell orders. */
-  enum CellOrder {
-      TILEDB_AS_CO_COLUMN_MAJOR, 
-      TILEDB_AS_CO_HILBERT, 
-      TILEDB_AS_CO_ROW_MAJOR
-  };
-  /** Supported tile orders (applicable only to regular tiles). */
-  enum TileOrder {
-      TILEDB_AS_TO_COLUMN_MAJOR, 
-      TILEDB_AS_TO_HILBERT, 
-      TILEDB_AS_TO_ROW_MAJOR
-  };
-
   // CONSTRUCTORS & DESTRUCTORS
 
   /** Constructor. */
@@ -90,6 +64,9 @@ class ArraySchema {
   ~ArraySchema();  
 
   // ACCESSORS
+
+  // TODO
+  void array_schema_export(ArraySchemaC* array_schema_c) const;
 
   /** Returns the array name. */
   const std::string& array_name() const;
@@ -121,19 +98,19 @@ class ArraySchema {
   int64_t cell_num_per_tile() const;
 
   /** Returns the cell order. */
-  CellOrder cell_order() const;
+  int cell_order() const;
 
   /** Returns the size of cell on the input attribute. */
   size_t cell_size(int attribute_id) const;
 
   /** Returns the compression type of the attribute with the input id. */
-  Compression compression(int attribute_id) const;
+  int compression(int attribute_id) const;
 
   /** Returns the coordinates size. */
   size_t coords_size() const;
 
   /** Returns the type of the coordinates. */
-  const std::type_info* coords_type() const;
+  int coords_type() const;
 
   /** True if the array is dense. */
   bool dense() const;
@@ -191,10 +168,7 @@ class ArraySchema {
 
 
   /** Returns the type of the i-th attribute, or NULL if 'i' is invalid. */
-  const std::type_info* type(int i) const;
-
-  /** Returns the numver of attributes with variable-sized values. */
-  int var_attribute_num() const;
+  int type(int i) const;
 
   /** Returns true if the indicated attribute has variable-sized values. */
   bool var_size(int attribute_id) const;
@@ -228,6 +202,9 @@ class ArraySchema {
 
   /** Sets the array name. */
   void set_array_name(const char* array_name);
+  
+  // TODO
+  void set_cell_val_num(const int* cell_val_num);
  
   /** 
    * Sets attribute names. There should not be any duplicate names. Moreover,
@@ -237,7 +214,7 @@ class ArraySchema {
    * @param attribute_num The number of attributes.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  int set_attributes(const char** attributes, int attribute_num);
+  int set_attributes(char** attributes, int attribute_num);
 
   /** Sets the tile capacity. */
   void set_capacity(int64_t capacity);
@@ -249,13 +226,10 @@ class ArraySchema {
    * @param cell_order The cell order.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  int set_cell_order(const char* cell_order);
+  int set_cell_order(int cell_order);
 
   /** Sets the compression types. */
-  int set_compression(const char** compression);
-
-  /** Sets the consolidation step. */
-  void set_consolidation_step(int consolidation_step);
+  int set_compression(int* compression);
 
   /** Sets the proper flag to indicate if the array is dense. */
   void set_dense(int dense);
@@ -268,13 +242,13 @@ class ArraySchema {
    * @param dim_num The number of dimensions.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  int set_dimensions(const char** dimensions, int dim_num);
+  int set_dimensions(char** dimensions, int dim_num);
 
   /**
    * Sets the domain. 
    *
    * @param domain The domain. It should contain one [lower, upper] pair per
-   *     dimension. The type  of the values stored in this buffer should match
+   *     dimension. Thie type  of the values stored in this buffer should match
    *     the coordinates type.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    * 
@@ -305,7 +279,7 @@ class ArraySchema {
    * @param tile_order The tile order.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  int set_tile_order(const char* tile_order);
+  int set_tile_order(int tile_order);
 
   /** 
    * Sets the types. There should be one type per attribute plus one (the last
@@ -324,7 +298,7 @@ class ArraySchema {
    * @note The attributes, dimensions and the dense flag must have already been
    *     set before calling this function.
    */
-  int set_types(const char** types);
+  int set_types(int* types);
 
   // MISC
 
@@ -496,18 +470,11 @@ class ArraySchema {
    * The cell order. The supported orders are TILEDB_AS_CO_ROW_MAJOR, 
    * TILEDB_AS_CO_COLUMN_MAJOR, and TILEDB_AS_CO_HILBERT.
    */
-  CellOrder cell_order_;
+  int cell_order_;
   /** Stores the size of every attribute (plus coordinates in the end). */
   std::vector<size_t> cell_sizes_;
-  /** 
-   * The type of compression. The supported compression types are 
-   * TILEDB_AS_CMP_NONE and TILEDB_AS_CMP_GZIP. The number of compression 
-   * types given should be equal to the number of attributes, plus one (the 
-   * last one) for the coordinates. 
-   */
-  std::vector<Compression> compression_;
-  /** The consolidation step. */
-  int consolidation_step_;
+  // TODO
+  std::vector<int> compression_;
   /** To be used when calculating Hilbert ids. */
   int* coords_for_hilbert_;
   /** 
@@ -558,15 +525,9 @@ class ArraySchema {
    * The tile order. The supported orders are TILEDB_AS_TO_ROW_MAJOR, 
    * TILEDB_AS_TO_COLUMN_MAJOR, and TILEDB_AS_TO_HILBERT.
    */
-  TileOrder tile_order_;
-  /** 
-   * The attribute and coordinate types. There should be one type per 
-   * attribute plus one (the last one) for the coordinates. The supported types
-   * for the attributes are **char**, **int**, **int64_t**, **float**, and 
-   * **double**. The supported types for the coordinates are **int**, 
-   * **int64_t**, **float**, and **double**.
-   */
-  std::vector<const std::type_info*> types_;
+  int tile_order_;
+  // TODO
+  std::vector<int> types_;
   /** Stores the size of every attribute type (plus coordinates in the end). */
   std::vector<size_t> type_sizes_;
   /** 
@@ -576,8 +537,6 @@ class ArraySchema {
    * attribute. This is indicated by special value TILEDB_AS_VAR_SIZE. 
    */
   std::vector<int> val_num_;
-  /** Number of attributes with variable-sized values. */
-  int var_attribute_num_;
 
   // PRIVATE METHODS
 

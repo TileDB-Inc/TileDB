@@ -10,49 +10,51 @@ int main() {
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
- /* 
-  * Prepare the array schema struct, initalizing all numeric members to 0
-  * and pointers to NULL. 
-  */
-  TileDB_ArraySchema array_schema = {};
-
-  /* Set array name to "dense_B", inside (existing) workspace "workspace". */
-  array_schema.array_name_ = "workspace/dense_B";
-
-  /* Set attributes and number of attributes. */
+  // Set array schema
+  TileDB_ArraySchema array_schema;
   const char* attributes[] = { "a1", "a2", "a3" };
-  array_schema.attributes_ = attributes;
-  array_schema.attribute_num_ = 3;
-
-  /* Set cell order. */ 
-  array_schema.cell_order_ = "row-major";
-
-  /* Set dimensions and number of dimensions. */
   const char* dimensions[] = { "d1", "d2" };
-  array_schema.dimensions_ = dimensions;
-  array_schema.dim_num_ = 2; 
-
-  /* Set types. */
-  const char* types[] = { "int32", "char:var", "float32:2", "int64" };
-  array_schema.types_ = types; 
-
-  /* Set domain to [1,4], [1,4]. */
-  const int64_t domain[] = { 1, 8, 1, 8};
-  array_schema.domain_ = domain;
-
-  /* The array has regular, 2x2 tiles. */
-  const int64_t tile_extents[] = { 2, 2 };
-  array_schema.tile_extents_ = tile_extents;
-
-  /* The array is dense. */
-  array_schema.dense_ = 1;
-
-  /* Compression for "a1" is GZIP, none for the rest. */
-  const char* compression[] = { "NONE", "NONE", "NONE", "NONE" };
-  array_schema.compression_ = compression;
-
-  /* Set capacity. */
-  array_schema.capacity_ = 4;
+  int64_t domain[] = { 1, 8, 1, 8 };
+  int64_t tile_extents[] = { 2, 2 };
+  const int types[] = 
+      { TILEDB_INT32, TILEDB_CHAR, TILEDB_FLOAT32, TILEDB_INT64 };
+  const int cell_val_num[] = { 1, TILEDB_VAR_NUM, 2 };
+  tiledb_array_set_schema(
+      // The array schema struct
+      &array_schema,
+      // Array name
+      "workspace/dense_B",
+      // Attributes
+      attributes,
+      // Number of attributes
+      3,
+      // Dimensions
+      dimensions,
+      // Number of dimensions
+      2,
+      // Dense array
+      1,
+      // Domain
+      domain,
+      // Domain length in bytes
+      4*sizeof(int64_t),
+      // Tile extents (no regular tiles defined)
+      tile_extents,
+      // Tile extents in bytes
+      2*sizeof(int64_t), 
+      // Types 
+      types,
+      // Number of cell values per attribute (NULL means 1 everywhere)
+      cell_val_num,
+      // Cell order
+      TILEDB_ROW_MAJOR,
+      // Tile order (0 means ignore in sparse arrays and default in dense)
+      0,
+      // Capacity
+      4,
+      // Compression
+      NULL
+  );
 
   /* Create the array. */
   tiledb_array_create(tiledb_ctx, &array_schema); 
