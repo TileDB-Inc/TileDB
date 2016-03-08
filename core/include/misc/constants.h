@@ -57,6 +57,25 @@
 #define TILEDB_EMPTY_FLOAT64 DBL_MAX
 #define TILEDB_EMPTY_CHAR CHAR_MAX
 
+// TODO
+#define TILEDB_VAR_NUM       INT_MAX
+
+/** Types */
+#define TILEDB_INT32    0
+#define TILEDB_INT64    1
+#define TILEDB_FLOAT32  2
+#define TILEDB_FLOAT64  3
+#define TILEDB_CHAR     4
+
+/** Tile and cell orders. */
+#define TILEDB_ROW_MAJOR 0
+#define TILEDB_COL_MAJOR 1
+#define TILEDB_HILBERT   2
+
+/** Compression */
+#define TILEDB_NO_COMPRESSION    0
+#define TILEDB_GZIP              1
+
 /** Name of the coordinates attribute. */
 #define TILEDB_COORDS_NAME "__coords"
 
@@ -83,14 +102,5 @@
 
 /** Size of the starting offset of a variable cell. */
 #define TILEDB_CELL_VAR_OFFSET_SIZE sizeof(size_t)
-
-/** The TileDB data types. */ 
-enum DataType {
-    TILEDB_CHAR, 
-    TILEDB_INT32, 
-    TILEDB_INT64, 
-    TILEDB_FLOAT32, 
-    TILEDB_FLOAT64
-};
 
 #endif

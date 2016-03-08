@@ -197,21 +197,21 @@ void ArrayReadState::copy_cell_range_with_empty(
   int64_t cell_num_to_copy = bytes_to_copy / cell_size; 
 
   // Get the empty value 
-  const std::type_info* type = array_schema->type(attribute_id);
+  int type = array_schema->type(attribute_id);
   void* empty_cell = malloc(cell_size);
-  if(type == &typeid(int)) {
+  if(type == TILEDB_INT32) {
     int empty_cell_v = TILEDB_EMPTY_INT32;
     memcpy(empty_cell, &empty_cell_v, cell_size);
-  } else if(type == &typeid(int64_t)) {
+  } else if(type == TILEDB_INT64) {
     int64_t empty_cell_v = TILEDB_EMPTY_INT64;
     memcpy(empty_cell, &empty_cell_v, cell_size);
-  } else if(type == &typeid(float)) {
+  } else if(type == TILEDB_FLOAT32) {
     float empty_cell_v = TILEDB_EMPTY_FLOAT32;
     memcpy(empty_cell, &empty_cell_v, cell_size);
-  } else if(type == &typeid(double)) {
+  } else if(type == TILEDB_FLOAT64) {
     double empty_cell_v = TILEDB_EMPTY_FLOAT64;
     memcpy(empty_cell, &empty_cell_v, cell_size);
-  } else if(type == &typeid(char)) {
+  } else if(type == TILEDB_CHAR) {
     char empty_cell_v = TILEDB_EMPTY_CHAR;
     memcpy(empty_cell, &empty_cell_v, cell_size);
   }
@@ -260,26 +260,26 @@ void ArrayReadState::copy_cell_range_with_empty_var(
   char* buffer_var_c = static_cast<char*>(buffer_var);
 
   // Get the empty value 
-  const std::type_info* type = array_schema->type(attribute_id);
+  int type = array_schema->type(attribute_id);
   void* empty_cell = malloc(cell_size);
   size_t cell_size_var;
-  if(type == &typeid(int)) {
+  if(type == TILEDB_INT32) {
     int empty_cell_v = TILEDB_EMPTY_INT32;
     memcpy(empty_cell, &empty_cell_v, cell_size);
     cell_size_var = sizeof(int);
-  } else if(type == &typeid(int64_t)) {
+  } else if(type == TILEDB_INT64) {
     int64_t empty_cell_v = TILEDB_EMPTY_INT64;
     memcpy(empty_cell, &empty_cell_v, cell_size);
     cell_size_var = sizeof(int64_t);
-  } else if(type == &typeid(float)) {
+  } else if(type == TILEDB_FLOAT32) {
     float empty_cell_v = TILEDB_EMPTY_FLOAT32;
     memcpy(empty_cell, &empty_cell_v, cell_size);
     cell_size_var = sizeof(float);
-  } else if(type == &typeid(double)) {
+  } else if(type == TILEDB_FLOAT64) {
     double empty_cell_v = TILEDB_EMPTY_FLOAT64;
     memcpy(empty_cell, &empty_cell_v, cell_size);
     cell_size_var = sizeof(double);
-  } else if(type == &typeid(char)) {
+  } else if(type == TILEDB_CHAR) {
     char empty_cell_v = TILEDB_EMPTY_CHAR;
     memcpy(empty_cell, &empty_cell_v, cell_size);
     cell_size_var = sizeof(char);
@@ -418,7 +418,6 @@ int ArrayReadState::copy_cell_ranges(
     void* buffer,  
     size_t buffer_size,
     size_t& buffer_offset) {
-
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   int64_t pos = fragment_cell_pos_ranges_vec_pos_[attribute_id];
@@ -1216,7 +1215,7 @@ void ArrayReadState::compute_max_overlap_fragment_cell_ranges(
   const ArraySchema* array_schema = array_->array_schema();
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
-  ArraySchema::CellOrder cell_order = array_schema->cell_order();
+  int cell_order = array_schema->cell_order();
   size_t cell_range_size = 2*coords_size;
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
   const T* global_domain = static_cast<const T*>(array_schema->domain());
@@ -1263,7 +1262,7 @@ void ArrayReadState::compute_max_overlap_fragment_cell_ranges(
 
     // Handle the different cell orders
     int i;
-    if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) {           // ROW
+    if(cell_order == TILEDB_ROW_MAJOR) {           // ROW
       while(coords[0] <= global_max_overlap_range[1]) {
         // Make a cell range representing a slab       
         void* cell_range = malloc(cell_range_size);
@@ -1295,7 +1294,7 @@ void ArrayReadState::compute_max_overlap_fragment_cell_ranges(
           ++coords[--i];
         } 
       }
-    } else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) { // COLUMN
+    } else if(cell_order == TILEDB_COL_MAJOR) { // COLUMN
       while(coords[dim_num-1] <= global_max_overlap_range[2*(dim_num-1)+1]) {
         // Make a cell range representing a slab       
         void* cell_range = malloc(cell_range_size);
@@ -1343,7 +1342,7 @@ void ArrayReadState::compute_max_overlap_range() {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   int dim_num = array_schema->dim_num();
-  ArraySchema::CellOrder cell_order = array_schema->cell_order();
+  int cell_order = array_schema->cell_order();
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
   const T* global_domain = static_cast<const T*>(array_schema->domain());
   const T* range = static_cast<const T*>(array_->range());
@@ -1372,7 +1371,7 @@ void ArrayReadState::compute_max_overlap_range() {
 
   if(max_overlap_type_ == PARTIAL_NON_CONTIG) {
     max_overlap_type_ = PARTIAL_CONTIG;
-    if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) {   // Row major
+    if(cell_order == TILEDB_ROW_MAJOR) {   // Row major
       for(int i=1; i<dim_num; ++i) {
         if(max_overlap_range[2*i] != 0 ||
            max_overlap_range[2*i+1] != tile_extents[i] - 1) {
@@ -1380,7 +1379,7 @@ void ArrayReadState::compute_max_overlap_range() {
           break;
         }
       }
-    } else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) { 
+    } else if(cell_order == TILEDB_COL_MAJOR) { 
       // Column major
       for(int i=dim_num-2; i>=0; --i) {
         if(max_overlap_range[2*i] != 0 ||
@@ -1533,15 +1532,15 @@ int ArrayReadState::read_multiple_fragments_dense_attr(
     size_t& buffer_size) {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     return read_multiple_fragments_dense_attr<int>(
                attribute_id, 
                buffer, 
                buffer_size);
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     return read_multiple_fragments_dense_attr<int64_t>(
                attribute_id, 
                buffer, 
@@ -1618,17 +1617,17 @@ int ArrayReadState::read_multiple_fragments_dense_attr_var(
     size_t& buffer_var_size) {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     return read_multiple_fragments_dense_attr_var<int>(
                attribute_id, 
                buffer, 
                buffer_size,
                buffer_var, 
                buffer_var_size);
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     return read_multiple_fragments_dense_attr_var<int64_t>(
                attribute_id, 
                buffer, 
@@ -1755,25 +1754,25 @@ int ArrayReadState::read_multiple_fragments_sparse_attr(
     size_t& buffer_size) {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     return read_multiple_fragments_sparse_attr<int>(
                attribute_id, 
                buffer, 
                buffer_size);
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     return read_multiple_fragments_sparse_attr<int64_t>(
                attribute_id, 
                buffer, 
                buffer_size);
-  } else if(coords_type == &typeid(float)) {
+  } else if(coords_type == TILEDB_FLOAT32) {
     return read_multiple_fragments_sparse_attr<float>(
                attribute_id, 
                buffer, 
                buffer_size);
-  } else if(coords_type == &typeid(double)) {
+  } else if(coords_type == TILEDB_FLOAT64) {
     return read_multiple_fragments_sparse_attr<double>(
                attribute_id, 
                buffer, 
@@ -1850,31 +1849,31 @@ int ArrayReadState::read_multiple_fragments_sparse_attr_var(
     size_t& buffer_var_size) {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     return read_multiple_fragments_sparse_attr_var<int>(
                attribute_id, 
                buffer, 
                buffer_size,
                buffer_var, 
                buffer_var_size);
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     return read_multiple_fragments_sparse_attr_var<int64_t>(
                attribute_id, 
                buffer, 
                buffer_size,
                buffer_var, 
                buffer_var_size);
-  } else if(coords_type == &typeid(float)) {
+  } else if(coords_type == TILEDB_FLOAT32) {
     return read_multiple_fragments_sparse_attr_var<float>(
                attribute_id, 
                buffer, 
                buffer_size,
                buffer_var, 
                buffer_var_size);
-  } else if(coords_type == &typeid(double)) {
+  } else if(coords_type == TILEDB_FLOAT64) {
     return read_multiple_fragments_sparse_attr_var<double>(
                attribute_id, 
                buffer, 

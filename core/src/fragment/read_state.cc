@@ -201,7 +201,7 @@ bool ReadState::coords_exist(
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
-  ArraySchema::Compression compression = array_schema->compression(attribute_num);
+  int compression = array_schema->compression(attribute_num);
   int rc;
 
   // Important
@@ -212,7 +212,7 @@ bool ReadState::coords_exist(
   assert(cell_num >= 2);
 
   // Bring coordinates tile in main memory
-  if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
+  if(compression == TILEDB_GZIP)
     rc = get_tile_from_disk_cmp_gzip(attribute_num);
   else 
     rc = get_tile_from_disk_cmp_none(attribute_num);
@@ -319,8 +319,7 @@ int ReadState::copy_cell_range(
       overlapping_tiles_[overlapping_tiles_pos_[attribute_id]];
   char* buffer_c = static_cast<char*>(buffer);
   int rc;
-  ArraySchema::Compression compression = 
-      array_schema->compression(attribute_id);
+  int compression = array_schema->compression(attribute_id);
 
   // Important
   overlapping_tiles_pos_[attribute_id] = tile_i; 
@@ -334,7 +333,7 @@ int ReadState::copy_cell_range(
   }
 
   // Fetch the attribute tile from disk if necessary
-  if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
+  if(compression == TILEDB_GZIP)
     rc = get_tile_from_disk_cmp_gzip(attribute_id);
   else
     rc = get_tile_from_disk_cmp_none(attribute_id);
@@ -434,12 +433,11 @@ int ReadState::copy_cell_range_var(
   char* buffer_c = static_cast<char*>(buffer);
   void* buffer_start = buffer_c + buffer_offset;
   char* buffer_var_c = static_cast<char*>(buffer_var);
-  ArraySchema::Compression compression = 
-      array_schema->compression(attribute_id);
+  int compression = array_schema->compression(attribute_id);
   int rc;
 
   // Fetch the attribute tile from disk if necessary
-  if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
+  if(compression == TILEDB_GZIP)
     rc = get_tile_from_disk_var_cmp_gzip(attribute_id);
   else
     rc = get_tile_from_disk_var_cmp_none(attribute_id);
@@ -597,7 +595,7 @@ void ReadState::compute_fragment_cell_ranges_dense(
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
-  ArraySchema::CellOrder cell_order = array_schema->cell_order();
+  int cell_order = array_schema->cell_order();
   size_t cell_range_size = 2*coords_size;
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
   const T* global_domain = static_cast<const T*>(array_schema->domain());
@@ -636,7 +634,7 @@ void ReadState::compute_fragment_cell_ranges_dense(
 
     // Handle the different cell orders
     int i;
-    if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) {           // ROW
+    if(cell_order == TILEDB_ROW_MAJOR) {           // ROW
       while(coords[0] <= global_overlap_range[1]) {
         // Make a cell range representing a slab       
         void* cell_range = malloc(cell_range_size);
@@ -660,7 +658,7 @@ void ReadState::compute_fragment_cell_ranges_dense(
           ++coords[--i];
         } 
       }
-    } else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) { // COLUMN
+    } else if(cell_order == TILEDB_COL_MAJOR) { // COLUMN
       while(coords[dim_num-1] <= global_overlap_range[2*(dim_num-1)+1]) {
         // Make a cell range representing a slab       
         void* cell_range = malloc(cell_range_size);
@@ -1010,10 +1008,10 @@ void ReadState::compute_cell_pos_ranges() {
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
   const T* range = static_cast<const T*>(fragment_->array()->range());
-  ArraySchema::Compression compression = array_schema->compression(attribute_num);
+  int compression = array_schema->compression(attribute_num);
 
   // Bring coordinates tile in main memory
-  if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
+  if(compression == TILEDB_GZIP)
     get_tile_from_disk_cmp_gzip(attribute_num);
   else
     get_tile_from_disk_cmp_none(attribute_num);
@@ -1031,12 +1029,12 @@ template<class T>
 void ReadState::compute_cell_pos_ranges_contig() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::CellOrder cell_order = array_schema->cell_order();
+  int cell_order = array_schema->cell_order();
 
   // Invoke the proper function based on the cell order
-  if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR)
+  if(cell_order == TILEDB_ROW_MAJOR)
     compute_cell_pos_ranges_contig_row<T>();
-  else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR)
+  else if(cell_order == TILEDB_COL_MAJOR)
     compute_cell_pos_ranges_contig_col<T>();
 }
 
@@ -1240,11 +1238,11 @@ template<class T>
 void ReadState::compute_cell_pos_ranges_non_contig() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::CellOrder cell_order = array_schema->cell_order();
+  int cell_order = array_schema->cell_order();
 
   // Invoke the proper function based on the cell order
-  if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR ||
-     cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) {
+  if(cell_order == TILEDB_ROW_MAJOR ||
+     cell_order == TILEDB_COL_MAJOR) {
     // Find the largest range in which there are results
     compute_cell_pos_ranges_contig<T>();
     if(overlapping_tiles_.back().cell_pos_ranges_.size() == 0) // No results
@@ -1255,7 +1253,7 @@ void ReadState::compute_cell_pos_ranges_non_contig() {
 
     // Scan each cell in the cell range and check if it is in the query range
     compute_cell_pos_ranges_scan<T>(start_pos, end_pos);
-  } else if(cell_order == ArraySchema::TILEDB_AS_CO_HILBERT) {
+  } else if(cell_order == TILEDB_HILBERT) {
     // Scan each cell in the entire tile and check if it is inside the range
     int64_t cell_num = array_schema->capacity();
     compute_cell_pos_ranges_scan<T>(0, cell_num-1);
@@ -1305,14 +1303,14 @@ template<class T>
 void ReadState::compute_cell_pos_ranges_unary() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::CellOrder cell_order = array_schema->cell_order();
+  int cell_order = array_schema->cell_order();
 
   // Invoke the proper function based on the cell order
-  if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR)
+  if(cell_order == TILEDB_ROW_MAJOR)
     compute_cell_pos_ranges_unary_row<T>();
-  else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR)
+  else if(cell_order == TILEDB_COL_MAJOR)
     compute_cell_pos_ranges_unary_col<T>();
-  else if(cell_order == ArraySchema::TILEDB_AS_CO_HILBERT)
+  else if(cell_order == TILEDB_HILBERT)
     compute_cell_pos_ranges_unary_hil<T>();
 }
 
@@ -1488,8 +1486,7 @@ int ReadState::compute_tile_var_size(
   const ArraySchema* array_schema = fragment_->array()->array_schema();
 
   // =========== Compression case =========== // 
-  if(array_schema->compression(attribute_id) ==  
-     ArraySchema::TILEDB_AS_CMP_GZIP) {
+  if(array_schema->compression(attribute_id) == TILEDB_GZIP) {
     tile_var_size = book_keeping_->tile_var_sizes()[attribute_id][tile_pos]; 
     return TILEDB_RS_OK;
   }
@@ -3201,7 +3198,7 @@ int ReadState::get_first_coords_after(
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
-  ArraySchema::Compression compression = array_schema->compression(attribute_num);
+  int compression = array_schema->compression(attribute_num);
   T empty_coord = 0;
   int rc;
 
@@ -3213,7 +3210,7 @@ int ReadState::get_first_coords_after(
   assert(cell_num >= 2);
 
   // Bring coordinates tile in main memory
-  if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
+  if(compression == TILEDB_GZIP)
     rc = get_tile_from_disk_cmp_gzip(attribute_num);
   else 
     rc = get_tile_from_disk_cmp_none(attribute_num);
@@ -3303,7 +3300,7 @@ int ReadState::get_first_two_coords(
   const void* tile_extents = array_schema->tile_extents();
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
-  ArraySchema::Compression compression = array_schema->compression(attribute_num);
+  int compression = array_schema->compression(attribute_num);
   T empty_coord = 0;
   int rc;
 
@@ -3315,7 +3312,7 @@ int ReadState::get_first_two_coords(
   assert(cell_num >= 2);
 
   // Bring coordinates tile in main memory
-  if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
+  if(compression == TILEDB_GZIP)
     rc = get_tile_from_disk_cmp_gzip(attribute_num);
   else 
     rc = get_tile_from_disk_cmp_none(attribute_num);
@@ -3424,14 +3421,14 @@ int ReadState::get_cell_pos_ranges_sparse(
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
-  ArraySchema::Compression compression = array_schema->compression(attribute_num);
+  int compression = array_schema->compression(attribute_num);
   int64_t cell_num = overlapping_tiles_.back().cell_num_;
   const T* start_range_coords = cell_range;
   const T* end_range_coords = &cell_range[dim_num];
   int rc;
 
   // Bring coordinates tile in main memory
-  if(compression == ArraySchema::TILEDB_AS_CMP_GZIP)
+  if(compression == TILEDB_GZIP)
     rc = get_tile_from_disk_cmp_gzip(attribute_num);
   else 
     rc = get_tile_from_disk_cmp_none(attribute_num);
@@ -3574,12 +3571,12 @@ void ReadState::get_next_overlapping_tile_mult() {
 void ReadState::get_next_overlapping_tile_dense() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function 
-  if(coords_type == &typeid(int))
+  if(coords_type == TILEDB_INT32)
     get_next_overlapping_tile_dense<int>();
-  else if(coords_type == &typeid(int64_t))
+  else if(coords_type == TILEDB_INT64)
     get_next_overlapping_tile_dense<int64_t>();
   else
     assert(0); // The code should never reach this point
@@ -3672,12 +3669,12 @@ void ReadState::get_bounding_coords(void* bounding_coords) const {
 void ReadState::get_next_overlapping_tile_dense_mult() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function 
-  if(coords_type == &typeid(int))
+  if(coords_type == TILEDB_INT32)
     get_next_overlapping_tile_dense_mult<int>();
-  else if(coords_type == &typeid(int64_t))
+  else if(coords_type == TILEDB_INT64)
     get_next_overlapping_tile_dense_mult<int64_t>();
   else
     assert(0); // The code should never reach this point
@@ -3803,16 +3800,16 @@ void ReadState::get_next_overlapping_tile_dense_mult() {
 void ReadState::get_next_overlapping_tile_sparse() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function 
-  if(coords_type == &typeid(int))
+  if(coords_type == TILEDB_INT32)
     get_next_overlapping_tile_sparse<int>();
-  else if(coords_type == &typeid(int64_t))
+  else if(coords_type == TILEDB_INT64)
     get_next_overlapping_tile_sparse<int64_t>();
-  else if(coords_type == &typeid(float))
+  else if(coords_type == TILEDB_FLOAT32)
     get_next_overlapping_tile_sparse<float>();
-  else if(coords_type == &typeid(double))
+  else if(coords_type == TILEDB_FLOAT64)
     get_next_overlapping_tile_sparse<double>();
   else
     assert(0); // The code should never reach this point
@@ -3902,16 +3899,16 @@ void ReadState::get_next_overlapping_tile_sparse() {
 void ReadState::get_next_overlapping_tile_sparse_mult() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function 
-  if(coords_type == &typeid(int))
+  if(coords_type == TILEDB_INT32)
     get_next_overlapping_tile_sparse_mult<int>();
-  else if(coords_type == &typeid(int64_t))
+  else if(coords_type == TILEDB_INT64)
     get_next_overlapping_tile_sparse_mult<int64_t>();
-  else if(coords_type == &typeid(float))
+  else if(coords_type == TILEDB_FLOAT32)
     get_next_overlapping_tile_sparse_mult<float>();
-  else if(coords_type == &typeid(double))
+  else if(coords_type == TILEDB_FLOAT64)
     get_next_overlapping_tile_sparse_mult<double>();
   else
     assert(0); // The code should never reach this point
@@ -4403,12 +4400,12 @@ int ReadState::get_tile_from_disk_var_cmp_none(int attribute_id) {
 void ReadState::init_range_in_tile_domain() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     init_range_in_tile_domain<int>();
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     init_range_in_tile_domain<int64_t>();
   } else {
     // The code should never reach here
@@ -4471,16 +4468,16 @@ void ReadState::init_range_in_tile_domain() {
 void ReadState::init_tile_search_range() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     init_tile_search_range<int>();
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     init_tile_search_range<int64_t>();
-  } else if(coords_type == &typeid(float)) {
+  } else if(coords_type == TILEDB_FLOAT32) {
     init_tile_search_range<float>();
-  } else if(coords_type == &typeid(double)) {
+  } else if(coords_type == TILEDB_FLOAT64) {
     init_tile_search_range<double>();
   } else {
     // The code should never reach here
@@ -4492,27 +4489,27 @@ template<class T>
 void ReadState::init_tile_search_range() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::CellOrder cell_order = array_schema->cell_order();
+  int cell_order = array_schema->cell_order();
 
   // Initialize the tile search range
   if(array_schema->tile_extents() == NULL) { // Null tile extents
-    if(cell_order == ArraySchema::TILEDB_AS_CO_HILBERT) {      
+    if(cell_order == TILEDB_HILBERT) {      
       // HILBERT
       init_tile_search_range_hil<T>();
-    } else if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) { 
+    } else if(cell_order == TILEDB_ROW_MAJOR) { 
       // ROW MAJOR
       init_tile_search_range_row<T>();
-    } else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) { 
+    } else if(cell_order ==TILEDB_COL_MAJOR) { 
       // COLUMN MAJOR
       init_tile_search_range_col<T>();
     } else {
       assert(0);
     }
   } else {                                   // Non-null tile extents
-    if(cell_order == ArraySchema::TILEDB_AS_CO_ROW_MAJOR) {    
+    if(cell_order == TILEDB_ROW_MAJOR) {    
       // ROW MAJOR
       init_tile_search_range_id_row<T>();
-    } else if(cell_order == ArraySchema::TILEDB_AS_CO_COLUMN_MAJOR) { 
+    } else if(cell_order == TILEDB_COL_MAJOR) { 
       // COLUMN MAJOR
       init_tile_search_range_id_col<T>();
     } else {
@@ -5102,11 +5099,10 @@ int ReadState::read_dense_attr(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::Compression compression = 
-      array_schema->compression(attribute_id);
+  int compression = array_schema->compression(attribute_id);
 
   // No compression
-  if(compression == ArraySchema::TILEDB_AS_CMP_NONE) {
+  if(compression == TILEDB_NO_COMPRESSION) {
     return read_dense_attr_cmp_none(attribute_id, buffer, buffer_size);
   } else { // GZIP
     return read_dense_attr_cmp_gzip(attribute_id, buffer, buffer_size);
@@ -5125,12 +5121,12 @@ int ReadState::read_dense_attr_cmp_gzip(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     return read_dense_attr_cmp_gzip<int>(attribute_id, buffer, buffer_size);
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     return read_dense_attr_cmp_gzip<int64_t>(attribute_id, buffer, buffer_size);
   } else {
     PRINT_ERROR("Cannot read from fragment; Invalid coordinates type");
@@ -5220,12 +5216,12 @@ int ReadState::read_dense_attr_cmp_none(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     return read_dense_attr_cmp_none<int>(attribute_id, buffer, buffer_size);
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     return read_dense_attr_cmp_none<int64_t>(attribute_id, buffer, buffer_size);
   } else {
     PRINT_ERROR("Cannot read from fragment; Invalid coordinates type");
@@ -5314,11 +5310,10 @@ int ReadState::read_dense_attr_var(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::Compression compression = 
-      array_schema->compression(attribute_id);
+  int compression = array_schema->compression(attribute_id);
 
   // No compression
-  if(compression == ArraySchema::TILEDB_AS_CMP_NONE) {
+  if(compression == TILEDB_NO_COMPRESSION) {
     return read_dense_attr_var_cmp_none(
                attribute_id, 
                buffer, 
@@ -5350,17 +5345,17 @@ int ReadState::read_dense_attr_var_cmp_gzip(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     return read_dense_attr_var_cmp_gzip<int>(
                attribute_id, 
                buffer, 
                buffer_size,
                buffer_var,
                buffer_var_size);
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     return read_dense_attr_var_cmp_gzip<int64_t>(
                attribute_id, 
                buffer, 
@@ -5475,17 +5470,17 @@ int ReadState::read_dense_attr_var_cmp_none(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     return read_dense_attr_var_cmp_none<int>(
                attribute_id, 
                buffer, 
                buffer_size,
                buffer_var,
                buffer_var_size);
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     return read_dense_attr_var_cmp_none<int64_t>(
                attribute_id, 
                buffer, 
@@ -5660,11 +5655,10 @@ int ReadState::read_sparse_attr(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::Compression compression = 
-      array_schema->compression(attribute_id);
+  int compression = array_schema->compression(attribute_id);
 
   // No compression
-  if(compression == ArraySchema::TILEDB_AS_CMP_NONE) {
+  if(compression == TILEDB_NO_COMPRESSION) {
     return read_sparse_attr_cmp_none(attribute_id, buffer, buffer_size);
   } else { // GZIP
     return read_sparse_attr_cmp_gzip(attribute_id, buffer, buffer_size);
@@ -5683,25 +5677,25 @@ int ReadState::read_sparse_attr_cmp_gzip(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     return read_sparse_attr_cmp_gzip<int>(
                attribute_id, 
                buffer, 
                buffer_size);
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     return read_sparse_attr_cmp_gzip<int64_t>(
                attribute_id, 
                buffer, 
                buffer_size);
-  } else if(coords_type == &typeid(float)) {
+  } else if(coords_type == TILEDB_FLOAT32) {
     return read_sparse_attr_cmp_gzip<float>(
                attribute_id, 
                buffer, 
                buffer_size);
-  } else if(coords_type == &typeid(double)) {
+  } else if(coords_type == TILEDB_FLOAT64) {
     return read_sparse_attr_cmp_gzip<double>(
                attribute_id, 
                buffer, 
@@ -5793,25 +5787,25 @@ int ReadState::read_sparse_attr_cmp_none(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     return read_sparse_attr_cmp_none<int>(
                attribute_id, 
                buffer, 
                buffer_size);
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     return read_sparse_attr_cmp_none<int64_t>(
                attribute_id, 
                buffer, 
                buffer_size);
-  } else if(coords_type == &typeid(float)) {
+  } else if(coords_type == TILEDB_FLOAT32) {
     return read_sparse_attr_cmp_none<float>(
                attribute_id, 
                buffer, 
                buffer_size);
-  } else if(coords_type == &typeid(double)) {
+  } else if(coords_type == TILEDB_FLOAT64) {
     return read_sparse_attr_cmp_none<double>(
                attribute_id, 
                buffer, 
@@ -5915,11 +5909,10 @@ int ReadState::read_sparse_attr_var(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  ArraySchema::Compression compression = 
-      array_schema->compression(attribute_id);
+  int compression = array_schema->compression(attribute_id);
 
   // No compression
-  if(compression == ArraySchema::TILEDB_AS_CMP_NONE) {
+  if(compression == TILEDB_NO_COMPRESSION) {
     return read_sparse_attr_var_cmp_none(
                attribute_id, 
                buffer, 
@@ -5951,31 +5944,31 @@ int ReadState::read_sparse_attr_var_cmp_gzip(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     return read_sparse_attr_var_cmp_gzip<int>(
                attribute_id, 
                buffer, 
                buffer_size,
                buffer_var, 
                buffer_var_size);
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     return read_sparse_attr_var_cmp_gzip<int64_t>(
                attribute_id, 
                buffer, 
                buffer_size,
                buffer_var, 
                buffer_var_size);
-  } else if(coords_type == &typeid(float)) {
+  } else if(coords_type == TILEDB_FLOAT32) {
     return read_sparse_attr_var_cmp_gzip<float>(
                attribute_id, 
                buffer, 
                buffer_size,
                buffer_var, 
                buffer_var_size);
-  } else if(coords_type == &typeid(double)) {
+  } else if(coords_type == TILEDB_FLOAT64) {
     return read_sparse_attr_var_cmp_gzip<double>(
                attribute_id, 
                buffer, 
@@ -6088,31 +6081,31 @@ int ReadState::read_sparse_attr_var_cmp_none(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  const std::type_info* coords_type = array_schema->coords_type();
+  int coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if(coords_type == &typeid(int)) {
+  if(coords_type == TILEDB_INT32) {
     return read_sparse_attr_var_cmp_none<int>(
                attribute_id, 
                buffer, 
                buffer_size,
                buffer_var, 
                buffer_var_size);
-  } else if(coords_type == &typeid(int64_t)) {
+  } else if(coords_type == TILEDB_INT64) {
     return read_sparse_attr_var_cmp_none<int64_t>(
                attribute_id, 
                buffer, 
                buffer_size,
                buffer_var, 
                buffer_var_size);
-  } else if(coords_type == &typeid(float)) {
+  } else if(coords_type == TILEDB_FLOAT32) {
     return read_sparse_attr_var_cmp_none<float>(
                attribute_id, 
                buffer, 
                buffer_size,
                buffer_var, 
                buffer_var_size);
-  } else if(coords_type == &typeid(double)) {
+  } else if(coords_type == TILEDB_FLOAT64) {
     return read_sparse_attr_var_cmp_none<double>(
                attribute_id, 
                buffer, 

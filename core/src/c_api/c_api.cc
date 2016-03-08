@@ -102,6 +102,15 @@ bool sanity_check(const TileDB_CTX* tiledb_ctx) {
   }
 }
 
+bool sanity_check(const TileDB_Array* tiledb_array) {
+  if(tiledb_array == NULL) {
+    PRINT_ERROR("Invalid TileDB array");
+    return false;
+  } else {
+    return true;
+  }
+}
+
 /* ****************************** */
 /*            WORKSPACE           */
 /* ****************************** */
@@ -167,8 +176,8 @@ int tiledb_array_create(
   array_schema_c.attribute_num_ = array_schema->attribute_num_;
   array_schema_c.capacity_ = array_schema->capacity_;
   array_schema_c.cell_order_ = array_schema->cell_order_;
+  array_schema_c.cell_val_num_ = array_schema->cell_val_num_;
   array_schema_c.compression_ = array_schema->compression_;
-  array_schema_c.consolidation_step_ = array_schema->consolidation_step_;
   array_schema_c.dense_ = array_schema->dense_;
   array_schema_c.dimensions_ = array_schema->dimensions_;
   array_schema_c.dim_num_ = array_schema->dim_num_;
@@ -237,6 +246,206 @@ int tiledb_array_finalize(TileDB_Array* tiledb_array) {
     return TILEDB_OK;
   else 
     return TILEDB_ERR; 
+}
+
+int tiledb_array_free_schema(
+    TileDB_ArraySchema* tiledb_array_schema) {
+  // Sanity check
+  // TODO
+
+  // Free name
+  free(tiledb_array_schema->array_name_);
+
+  // Free attributes
+  for(int i=0; i<tiledb_array_schema->attribute_num_; ++i)
+    free(tiledb_array_schema->attributes_[i]);
+  free(tiledb_array_schema->attributes_);
+
+  // Free dimensions
+  for(int i=0; i<tiledb_array_schema->dim_num_; ++i)
+    free(tiledb_array_schema->dimensions_[i]);
+  free(tiledb_array_schema->dimensions_);
+
+  // Free domain
+  free(tiledb_array_schema->domain_);
+
+  // Free tile extents
+  if(tiledb_array_schema->tile_extents_ != NULL)
+    free(tiledb_array_schema->tile_extents_);
+
+  // Free types
+  free(tiledb_array_schema->types_);
+
+  // Free compression
+  free(tiledb_array_schema->compression_);
+
+  // Free cell val num
+  free(tiledb_array_schema->cell_val_num_);
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_array_load_schema(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array,
+    TileDB_ArraySchema* tiledb_array_schema) {
+  // Sanity check
+  if(!sanity_check(tiledb_ctx))
+    return TILEDB_ERR;
+
+  // Get the array schema
+  ArraySchema* array_schema;
+  // TODO: handle errors
+  tiledb_ctx->storage_manager_->array_load_schema(array, array_schema); 
+  ArraySchemaC array_schema_c;
+  array_schema->array_schema_export(&array_schema_c);
+
+  // Copy the array schema C struct to the output
+  tiledb_array_schema->array_name_ = array_schema_c.array_name_;
+  tiledb_array_schema->attributes_ = array_schema_c.attributes_; 
+  tiledb_array_schema->attribute_num_ = array_schema_c.attribute_num_;
+  tiledb_array_schema->capacity_ = array_schema_c.capacity_;
+  tiledb_array_schema->cell_order_ = array_schema_c.cell_order_;
+  tiledb_array_schema->cell_val_num_ = array_schema_c.cell_val_num_;
+  tiledb_array_schema->compression_ = array_schema_c.compression_;
+  tiledb_array_schema->dense_ = array_schema_c.dense_;
+  tiledb_array_schema->dimensions_ = array_schema_c.dimensions_;
+  tiledb_array_schema->dim_num_ = array_schema_c.dim_num_;
+  tiledb_array_schema->domain_ = array_schema_c.domain_;
+  tiledb_array_schema->tile_extents_ = array_schema_c.tile_extents_;
+  tiledb_array_schema->tile_order_ = array_schema_c.tile_order_;
+  tiledb_array_schema->types_ = array_schema_c.types_;
+
+  // Clean up
+  delete array_schema;
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_array_get_schema(
+    const TileDB_Array* tiledb_array,
+    TileDB_ArraySchema* tiledb_array_schema) {
+  // Sanity check
+  if(!sanity_check(tiledb_array))
+    return TILEDB_ERR;
+
+  // Get the array schema
+  ArraySchemaC array_schema_c;
+  tiledb_array->array_->array_schema()->array_schema_export(&array_schema_c); 
+
+  // Copy the array schema C struct to the output
+  tiledb_array_schema->array_name_ = array_schema_c.array_name_;
+  tiledb_array_schema->attributes_ = array_schema_c.attributes_; 
+  tiledb_array_schema->attribute_num_ = array_schema_c.attribute_num_;
+  tiledb_array_schema->capacity_ = array_schema_c.capacity_;
+  tiledb_array_schema->cell_order_ = array_schema_c.cell_order_;
+  tiledb_array_schema->cell_val_num_ = array_schema_c.cell_val_num_;
+  tiledb_array_schema->compression_ = array_schema_c.compression_;
+  tiledb_array_schema->dense_ = array_schema_c.dense_;
+  tiledb_array_schema->dimensions_ = array_schema_c.dimensions_;
+  tiledb_array_schema->dim_num_ = array_schema_c.dim_num_;
+  tiledb_array_schema->domain_ = array_schema_c.domain_;
+  tiledb_array_schema->tile_extents_ = array_schema_c.tile_extents_;
+  tiledb_array_schema->tile_order_ = array_schema_c.tile_order_;
+  tiledb_array_schema->types_ = array_schema_c.types_;
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_array_set_schema(
+    TileDB_ArraySchema* tiledb_array_schema,
+    const char* array_name,
+    const char** attributes,
+    int attribute_num,
+    const char** dimensions, 
+    int dim_num,
+    int dense,
+    const void* domain,
+    size_t domain_len,
+    const void* tile_extents,
+    size_t tile_extents_len,
+    const int* types,
+    const int* cell_val_num,
+    int cell_order,
+    int tile_order,
+    int64_t capacity,
+    const int* compression) {
+  // set array name
+  size_t array_name_len = strlen(array_name); 
+  tiledb_array_schema->array_name_ = (char*) malloc(array_name_len+1);
+  strcpy(tiledb_array_schema->array_name_, array_name);
+
+  /* set attributes and number of attributes. */
+  tiledb_array_schema->attribute_num_ = attribute_num;
+  tiledb_array_schema->attributes_ = 
+      (char**) malloc(attribute_num*sizeof(char*));
+  for(int i=0; i<attribute_num; ++i) { 
+    size_t attribute_len = strlen(attributes[i]);
+    tiledb_array_schema->attributes_[i] = (char*) malloc(attribute_len+1);
+    strcpy(tiledb_array_schema->attributes_[i], attributes[i]);
+  }
+
+  // set dimensions
+  tiledb_array_schema->dim_num_ = dim_num; 
+  tiledb_array_schema->dimensions_ = (char**) malloc(dim_num*sizeof(char*));
+  for(int i=0; i<dim_num; ++i) { 
+    size_t dimension_len = strlen(dimensions[i]);
+    tiledb_array_schema->dimensions_[i] = (char*) malloc(dimension_len+1);
+    strcpy(tiledb_array_schema->dimensions_[i], dimensions[i]);
+  }
+
+  // set dense
+  tiledb_array_schema->dense_ = dense;
+
+  // set domain
+  tiledb_array_schema->domain_ = malloc(domain_len); 
+  memcpy(tiledb_array_schema->domain_, domain, domain_len);
+
+  // set tile extents
+  if(tile_extents == NULL) {
+    tiledb_array_schema->tile_extents_ = NULL;
+  } else {
+    tiledb_array_schema->tile_extents_ = malloc(tile_extents_len); 
+    memcpy(tiledb_array_schema->tile_extents_, tile_extents, tile_extents_len);
+  }
+
+  // set types
+  tiledb_array_schema->types_ = (int*) malloc((attribute_num+1)*sizeof(int));
+  for(int i=0; i<attribute_num+1; ++i)
+    tiledb_array_schema->types_[i] = types[i];
+
+  // set cell val num
+  if(cell_val_num == NULL) {
+    tiledb_array_schema->cell_val_num_ = NULL; 
+  } else {
+    tiledb_array_schema->cell_val_num_ = 
+        (int*) malloc((attribute_num)*sizeof(int));
+    for(int i=0; i<attribute_num; ++i) {
+      tiledb_array_schema->cell_val_num_[i] = cell_val_num[i];
+    }
+  }
+
+  // set cell order
+  tiledb_array_schema->cell_order_ = cell_order;
+
+  // set tile order
+  tiledb_array_schema->tile_order_ = tile_order;
+
+  // set capacity
+  tiledb_array_schema->capacity_ = capacity;
+
+  // set cell val num
+  if(compression == NULL) {
+    tiledb_array_schema->compression_ = NULL; 
+  } else {
+    tiledb_array_schema->compression_ = 
+        (int*) malloc((attribute_num+1)*sizeof(int));
+    for(int i=0; i<attribute_num+1; ++i)
+      tiledb_array_schema->compression_[i] = compression[i];
+  }
 }
 
 int tiledb_array_write(
