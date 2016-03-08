@@ -147,6 +147,7 @@ GMOCK_OBJ_DIR = gmock/obj
 GMOCK_BIN_DIR = gmock/bin
 
 # Directories for TileDB tests
+TEST_SRC_SUBDIRS = $(wildcard test/src/*)
 TEST_SRC_DIR = test/src
 TEST_OBJ_DIR = test/obj
 TEST_BIN_DIR = test/bin
@@ -237,7 +238,7 @@ GMOCK_OBJ := $(patsubst $(GMOCK_SRC_DIR)/%.cc, $(GMOCK_OBJ_DIR)/%.o,\
                         $(GMOCK_SRC))
 
 # Files of the TileDB tests
-TEST_SRC := $(wildcard $(TEST_SRC_DIR)/*.cc)
+TEST_SRC := $(wildcard $(foreach D,$(TEST_SRC_SUBDIRS),$D/*.cc))
 TEST_OBJ := $(patsubst $(TEST_SRC_DIR)/%.cc, $(TEST_OBJ_DIR)/%.o, $(TEST_SRC))
 
 # Files of the Linear Algebra applications
@@ -263,7 +264,7 @@ MANPAGES_HTML := $(patsubst $(MANPAGES_MAN_DIR)/%,\
         clean_gmock clean_check clean_tiledb_cmd clean_examples \
         clean
 
-all: core libtiledb tiledb_cmd examples gtest gmock test
+all: core libtiledb tiledb_cmd examples
 
 core: $(CORE_OBJ) 
 
@@ -283,9 +284,9 @@ gtest: $(GTEST_OBJ_DIR)/gtest-all.o
 
 gmock: $(GMOCK_OBJ_DIR)/gmock-all.o
 
-check: $(TEST_OBJ)
-	@echo "Running test"
-	@$(TEST_BIN_DIR)/test_cmd
+check: libtiledb gtest gmock $(TEST_BIN_DIR)/tiledb_test
+	@echo "Running TileDB tests"
+	@$(TEST_BIN_DIR)/tiledb_test
 
 clean: clean_core clean_libtiledb clean_tiledb_cmd clean_gtest \
        clean_gmock clean_check clean_doc clean_examples 
@@ -548,21 +549,24 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 
 # --- Linking --- #
 
-$(TEST_BIN_DIR)/test_cmd: $(TEST_OBJ) $(CORE_OBJ) $(GTEST_OBJ_DIR)/gtest-all.o \
+$(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_OBJ) $(GTEST_OBJ_DIR)/gtest-all.o \
                           $(GTEST_OBJ_DIR)/gtest_main.o \
                           $(GMOCK_OBJ_DIR)/gmock-all.o
 	@mkdir -p $(TEST_BIN_DIR)
 	@echo "Creating test_cmd"
 	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
-                -o $@ $^
+                -o $@ $^ $(ZLIB) $(OPENSSLLIB)
 
 # --- Cleaning --- #
 
 clean_check:
-	@echo "Cleaning test"
-	@rm -rf $(TEST_OBJ_DIR)/* $(TEST_BIN_DIR)/*
+	@echo "Cleaning check"
+	@rm -rf $(TEST_OBJ_DIR) $(TEST_BIN_DIR)
 	
 
+#$(GTEST_OBJ_DIR)/gtest-all.o \
+#                          $(GTEST_OBJ_DIR)/gtest_main.o \
+#                          $(GMOCK_OBJ_DIR)/gmock-all.o
 ################################
 # Documentation (with Doxygen) #
 ################################
