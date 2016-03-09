@@ -501,7 +501,7 @@ $(GTEST_OBJ_DIR)/gtest_main.o: gtest/src/gtest_main.cc \
 
 clean_gtest:
 	@echo "Cleaning gtest"
-	@rm -f $(GTEST_OBJ_DIR)/* $(GTEST_BIN_DIR)/*
+	@rm -rf $(GTEST_OBJ_DIR) $(GTEST_BIN_DIR)
 	
 
 ###############
@@ -512,6 +512,7 @@ clean_gtest:
 
 $(GMOCK_OBJ_DIR)/gmock-all.o: gmock/src/gmock-all.cc \
                               $(wildcard gmock/include/gmock/*.h)
+	@test -d $(GMOCK_OBJ_DIR) || mkdir -p $(GMOCK_OBJ_DIR)
 	@echo "Compiling $<"
 	@$(CXX) -isystem $(GMOCK_INCLUDE_DIR) -I$(GTEST_INCLUDE_DIR) -I$(GMOCK_DIR) \
                 -pthread -c $< -o $@
@@ -526,7 +527,7 @@ $(GMOCK_OBJ_DIR)/gmock_main.o: gmock/src/gmock_main.cc \
 
 clean_gmock:
 	@echo "Cleaning gmock"
-	@rm -f $(GMOCK_OBJ_DIR)/* $(GMOCK_BIN_DIR)/*
+	@rm -rf $(GMOCK_OBJ_DIR) $(GMOCK_BIN_DIR)
 	
 	
 ################
