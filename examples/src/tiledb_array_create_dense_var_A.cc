@@ -9,12 +9,12 @@
 #include <string.h>
 
 int main() {
-  /* Intialize context with the default configuration parameters. */
+  /* Initialize context with the default configuration parameters. */
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
  /* 
-  * Prepare the array schema struct, initalizing all numeric members to 0
+  * Prepare the array schema struct, initializing all numeric members to 0
   * and pointers to NULL. 
   */
   TileDB_ArraySchema array_schema;
@@ -27,7 +27,7 @@ int main() {
   const int types[] = { TILEDB_CHAR, TILEDB_FLOAT32, TILEDB_INT64 };
   const int cell_val_num[] = { TILEDB_VAR_NUM, 1 };
   tiledb_array_set_schema(
-      // The array schema struct
+      // The array schema object
       &array_schema,
       // Array name
       "workspace/dense_var_A",

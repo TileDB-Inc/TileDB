@@ -25,3 +25,5 @@ my_workspace*
 examples/bin/*
 examples/obj/*
 *temp*
+.project
+.cproject
