@@ -102,6 +102,19 @@ Array::~Array() {
 /*           ACCESSORS            */
 /* ****************************** */
 
+bool Array::overflow(int attribute_id) const {
+  assert(mode_ == TILEDB_READ);
+
+ if(fragments_.size() > 1 || // Multi-fragment read
+     (fragments_.size() == 1 &&
+        ((array_schema_->dense() && !fragments_[0]->dense()) || 
+         (array_schema_->dense() && !fragments_[0]->full_domain()))))
+   return array_read_state_->overflow(attribute_id);
+ else 
+   return fragments_[0]->overflow(attribute_id);
+
+}
+
 const ArraySchema* Array::array_schema() const {
   return array_schema_;
 }
@@ -184,11 +197,12 @@ int Array::init(
   }
 
   // Set range
+  size_t range_size = 2*array_schema->coords_size();
+  range_ = malloc(range_size);
   if(range == NULL) {
-    range_ = NULL;
+    memcpy(range_, array_schema->domain(), range_size);
+    // range_ = NULL;
   } else {
-    size_t range_size = 2*array_schema->coords_size();
-    range_ = malloc(range_size);
     memcpy(range_, range, range_size);
   }
 

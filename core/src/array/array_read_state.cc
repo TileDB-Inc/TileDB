@@ -66,6 +66,7 @@ ArrayReadState::ArrayReadState(
   int attribute_num = array_schema->attribute_num();
 
   // Initializations
+  done_ = false;
   bounding_coords_end_ = NULL;
   empty_cells_written_.resize(attribute_num+1);
   tile_done_.resize(attribute_num);
@@ -101,6 +102,14 @@ ArrayReadState::~ArrayReadState() {
 }
 
 /* ****************************** */
+/*           ACCESSORS            */
+/* ****************************** */
+
+bool ArrayReadState::overflow(int attribute_id) const {
+  return overflow_[attribute_id];
+}
+
+/* ****************************** */
 /*          READ FUNCTIONS        */
 /* ****************************** */
 
@@ -120,7 +129,6 @@ int ArrayReadState::read_multiple_fragments(
   overflow_.resize(attribute_num+1); 
   for(int i=0; i<attribute_num+1; ++i)
     overflow_[i] = false;
-  done_ = false;
  
   for(int i=0; i<fragment_num; ++i)
     fragments[i]->reset_overflow();
@@ -895,6 +903,10 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
 
 template<class T>
 int ArrayReadState::get_next_cell_ranges_dense() {
+  // Trivial case
+  if(done_)
+    return TILEDB_ARS_OK;
+
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   int dim_num = array_schema->dim_num();
@@ -1064,6 +1076,10 @@ int ArrayReadState::get_next_cell_ranges_dense() {
 
 template<class T>
 int ArrayReadState::get_next_cell_ranges_sparse() {
+  // Trivial case
+  if(done_)
+    return TILEDB_ARS_OK;
+
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   int dim_num = array_schema->dim_num();

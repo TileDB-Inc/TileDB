@@ -465,6 +465,8 @@ int ReadState::copy_cell_range_var(
   // Potentially set the tile offset to the beginning of the current range
   if(tiles_offsets_[attribute_id] < start_offset) 
     tiles_offsets_[attribute_id] = start_offset;
+  else if(tiles_offsets_[attribute_id] > end_offset) // This range is written
+    return TILEDB_RS_OK;
 
   // Calculate the total size to copy
   bytes_left_to_copy = end_offset - tiles_offsets_[attribute_id] + 1;
@@ -6033,6 +6035,7 @@ int ReadState::read_sparse_attr_var_cmp_gzip(
     // Invoke proper copy command
     if(overlap == NONE) {                 // No more tiles
       buffer_size = buffer_offset;
+      buffer_var_size = buffer_var_offset;
       return TILEDB_RS_OK; 
     } else if(overlap == FULL) {          // Full tile
       copy_from_tile_buffer_full_var(
@@ -6164,6 +6167,7 @@ int ReadState::read_sparse_attr_var_cmp_none(
     Overlap overlap = overlapping_tiles_[pos].overlap_;
     if(overlap == NONE) {                 // No more tiles
       buffer_size = buffer_offset;
+      buffer_var_size = buffer_var_offset;
       return TILEDB_RS_OK; 
     } else if(overlap == FULL) {          // Full tile
       if(copy_tile_full_var(

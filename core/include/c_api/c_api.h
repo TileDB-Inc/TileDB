@@ -417,6 +417,44 @@ TILEDB_EXPORT int tiledb_metadata_load_schema(
     const char* metadata,
     TileDB_MetadataSchema* tiledb_metadata_schema);
 
+/* ********************************* */
+/*              ITERATORS            */
+/* ********************************* */
+
+// TODO
+typedef struct TileDB_ArrayIterator TileDB_ArrayIterator;
+
+// TODO
+TILEDB_EXPORT int tiledb_array_iterator_init(
+    const TileDB_CTX* tiledb_ctx,
+    TileDB_ArrayIterator** tiledb_array_it,
+    const char* dir,
+    const void* range,
+    const char** attributes,
+    int attribute_num,
+    void** buffers,
+    size_t* buffer_sizes);
+
+// TODO
+TILEDB_EXPORT int tiledb_array_iterator_finalize(
+    TileDB_ArrayIterator* tiledb_array_iterator);
+
+// TODO
+TILEDB_EXPORT int tiledb_array_iterator_end(
+    TileDB_ArrayIterator* tiledb_array_iterator);
+
+// TODO
+TILEDB_EXPORT int tiledb_array_iterator_get_value(
+    TileDB_ArrayIterator* tiledb_array_iterator,
+    int attribute_id, 
+    const void** value,
+    size_t* value_size);
+
+// TODO
+TILEDB_EXPORT int tiledb_array_iterator_next(
+    TileDB_ArrayIterator* tiledb_array_iterator);
+
+
 #undef TILEDB_EXPORT
 #ifdef __cplusplus
 }
