@@ -35,6 +35,7 @@
 #define __STORAGE_MANAGER_H__
 
 #include "array.h"
+#include "array_iterator.h"
 #include "array_schema.h"
 #include "array_schema_c.h"
 #include "metadata.h"
@@ -122,6 +123,16 @@ class StorageManager {
       int attribute_num) const;
 
   // TODO
+  int array_iterator_init(
+      ArrayIterator*& array_it,
+      const char* dir,
+      const void* range,
+      const char** attributes,
+      int attribute_num,
+      void** buffers,
+      size_t* buffer_sizes) const;
+
+  // TODO
   int array_reinit_subarray(
       Array* array,
       const void* range) const;
@@ -142,6 +153,9 @@ class StorageManager {
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
   int array_finalize(Array* array) const;
+
+  // TODO
+  int array_iterator_finalize(ArrayIterator* array_iterator) const;
 
   /**
    * Loads the schema of an array from the disk.

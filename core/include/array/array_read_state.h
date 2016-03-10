@@ -85,6 +85,11 @@ class ArrayReadState {
   // TODO
   ~ArrayReadState();
 
+  // ACCESSORS
+
+  // TODO
+  bool overflow(int attribute_id) const;
+
   // READ METHODS
   // TODO
   int read_multiple_fragments(void** buffers, size_t* buffer_sizes); 

@@ -237,6 +237,41 @@ int StorageManager::array_init(
   }
 }
 
+int StorageManager::array_iterator_init(
+    ArrayIterator*& array_iterator,
+    const char* dir,
+    const void* range,
+    const char** attributes,
+    int attribute_num,
+    void** buffers,
+    size_t* buffer_sizes)  const {
+  // Load array schema
+  ArraySchema* array_schema;
+  if(array_load_schema(dir, array_schema) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Create Array object
+  Array* array = new Array();
+  if(array->init(array_schema, TILEDB_READ, attributes, attribute_num, range) !=
+     TILEDB_AR_OK) {
+    delete array;
+    array_iterator = NULL;
+    return TILEDB_SM_ERR;
+  } 
+
+  // Create ArrayIterator object
+  array_iterator = new ArrayIterator();
+  if(array_iterator->init(array, buffers, buffer_sizes) != TILEDB_AIT_OK) {
+    delete array;
+    delete array_iterator;
+    array_iterator = NULL;
+    return TILEDB_SM_ERR;
+  } 
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
 int StorageManager::array_reinit_subarray(
     Array* array,
     const void* subarray)  const {
@@ -261,6 +296,23 @@ int StorageManager::array_finalize(Array* array) const {
 
   // Return
   if(rc == TILEDB_AR_OK)
+    return TILEDB_SM_OK;
+  else
+    return TILEDB_SM_ERR;
+}
+
+int StorageManager::array_iterator_finalize(
+    ArrayIterator* array_iterator) const {
+  // If the array iterator is NULL, do nothing
+  if(array_iterator == NULL)
+    return TILEDB_SM_OK;
+
+  // Finalize array
+  int rc = array_iterator->finalize();
+  delete array_iterator;
+
+  // Return
+  if(rc == TILEDB_AIT_OK)
     return TILEDB_SM_OK;
   else
     return TILEDB_SM_ERR;

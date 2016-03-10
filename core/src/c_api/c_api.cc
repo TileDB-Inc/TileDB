@@ -775,7 +775,8 @@ int tiledb_metadata_get_schema(
 
   // Get the metadata schema
   MetadataSchemaC metadata_schema_c;
-  tiledb_metadata->metadata_->array_schema()->array_schema_export(&metadata_schema_c); 
+  tiledb_metadata->metadata_->array_schema()->array_schema_export(
+      &metadata_schema_c); 
 
   // Copy the metadata schema C struct to the output
   tiledb_metadata_schema->metadata_name_ = metadata_schema_c.metadata_name_;
@@ -820,4 +821,104 @@ int tiledb_metadata_load_schema(
 
   // Success
   return TILEDB_OK;
+}
+
+/* ****************************** */
+/*            ITERATORS           */
+/* ****************************** */
+
+typedef struct TileDB_ArrayIterator {
+  ArrayIterator* array_it_;
+  const TileDB_CTX* tiledb_ctx_;
+} TileDB_ArrayIterator;
+
+int tiledb_array_iterator_init(
+    const TileDB_CTX* tiledb_ctx,
+    TileDB_ArrayIterator** tiledb_array_iterator,
+    const char* dir,
+    const void* range,
+    const char** attributes,
+    int attribute_num,
+    void** buffers,
+    size_t* buffer_sizes) {
+  // Sanity check
+  // TODO
+
+  // Allocate memory for the array struct
+  *tiledb_array_iterator = 
+      (TileDB_ArrayIterator*) malloc(sizeof(struct TileDB_ArrayIterator));
+
+  // Set TileDB context
+  (*tiledb_array_iterator)->tiledb_ctx_ = tiledb_ctx;
+
+  // Init the array
+  int rc = tiledb_ctx->storage_manager_->array_iterator_init(
+               (*tiledb_array_iterator)->array_it_,
+               dir,
+               range, 
+               attributes,
+               attribute_num,
+               buffers,
+               buffer_sizes);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR; 
+}
+
+int tiledb_array_iterator_finalize(
+    TileDB_ArrayIterator* tiledb_array_iterator) {
+  // Sanity check
+  // TODO
+
+  // Finalize array
+  int rc = tiledb_array_iterator->tiledb_ctx_->
+               storage_manager_->array_iterator_finalize(
+                   tiledb_array_iterator->array_it_);
+
+  free(tiledb_array_iterator);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR; 
+}
+
+int tiledb_array_iterator_end(
+    TileDB_ArrayIterator* tiledb_array_iterator) {
+  // Sanity check
+  // TODO
+
+  return (int) tiledb_array_iterator->array_it_->end();
+}
+
+int tiledb_array_iterator_get_value(
+    TileDB_ArrayIterator* tiledb_array_iterator,
+    int attribute_id,
+    const void** value,
+    size_t* value_size) {
+  // Sanity check
+  // TODO
+
+  if(tiledb_array_iterator->array_it_->get_value(
+          attribute_id, 
+          value, 
+          value_size) != TILEDB_AIT_OK)
+    return TILEDB_ERR;
+  else
+    return TILEDB_OK;
+}
+
+int tiledb_array_iterator_next(
+    TileDB_ArrayIterator* tiledb_array_iterator) {
+  // Sanity check
+  // TODO
+
+  if(tiledb_array_iterator->array_it_->next() != TILEDB_AIT_OK)
+    return TILEDB_ERR;
+  else
+    return TILEDB_OK;
 }
