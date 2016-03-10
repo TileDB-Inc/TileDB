@@ -37,6 +37,8 @@
 #include "array.h"
 #include "array_schema.h"
 #include "array_schema_c.h"
+#include "metadata.h"
+#include "metadata_schema_c.h"
 #include <string>
 
 /* ********************************* */
@@ -119,6 +121,20 @@ class StorageManager {
       const char** attributes,
       int attribute_num) const;
 
+  // TODO
+  int array_reinit_subarray(
+      Array* array,
+      const void* range) const;
+
+  // TODO
+  int metadata_init(
+      Metadata*& metadata,
+      const char* dir,
+      int mode, 
+      const char** attributes,
+      int attribute_num) const;
+
+
   /** 
    * Finalizes an array. 
    *
@@ -157,6 +173,35 @@ class StorageManager {
 
   // TODO
   int move(const std::string& old_dir, const std::string& new_dir) const;
+
+  // METADATA
+
+  // TODO
+  int metadata_create(const MetadataSchemaC* metadata_schema_c) const; 
+
+  // TODO
+  int metadata_create(const ArraySchema* array_schema) const; 
+
+  // TODO
+  int metadata_load_schema(const char* dir, ArraySchema*& array_schema) const;
+
+  // TODO
+  int metadata_finalize(Metadata* array) const;
+
+  // TODO
+  int metadata_write(
+      Metadata* metadata,
+      const char* keys,
+      size_t keys_size,
+      const void** buffers, 
+      const size_t* buffer_sizes) const;
+
+  // TODO
+  int metadata_read(
+      Metadata* metadata,
+      const char* key,
+      void** buffers, 
+      size_t* buffer_sizes) const;
 
  private:
   // PRIVATE METHODS

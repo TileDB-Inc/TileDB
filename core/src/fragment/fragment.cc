@@ -364,6 +364,12 @@ int Fragment::write(const void** buffers, const size_t* buffer_sizes) {
 /*               MISC             */
 /* ****************************** */
 
+void Fragment::reinit_read_state() {
+  if(read_state_ != NULL)
+    delete read_state_;
+  read_state_ = new ReadState(this, book_keeping_);
+}
+
 int Fragment::finalize() {
   // The fragment was opened for writing
   if(write_state_ != NULL) {

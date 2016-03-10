@@ -35,6 +35,7 @@
 #define ARRAY_SCHEMA_H
 
 #include "array_schema_c.h"
+#include "metadata_schema_c.h"
 #include "hilbert_curve.h"
 #include <limits>
 #include <string>
@@ -67,6 +68,9 @@ class ArraySchema {
 
   // TODO
   void array_schema_export(ArraySchemaC* array_schema_c) const;
+
+  // TODO
+  void array_schema_export(MetadataSchemaC* metadata_schema_c) const;
 
   /** Returns the array name. */
   const std::string& array_name() const;
@@ -196,6 +200,9 @@ class ArraySchema {
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */ 
   int init(const ArraySchemaC* array_schema_c);  
+
+  // TODO
+  int init(const MetadataSchemaC* metadata_schema_c);  
 
   /** Initializes a Hilbert curve. */
   void init_hilbert_curve();
@@ -499,12 +506,6 @@ class ArraySchema {
   int hilbert_bits_;
   /** A Hilbert curve object for finding cell ids. */
   HilbertCurve* hilbert_curve_;
-  /** 
-   * True if the array is a key-value store, in which case the actual
-   * coordinates type is <b>char:var</b>, but in fact the coordinates are
-   * materialized as integers.
-   */
-  bool key_value_;
   /** 
    * The domain where each tile is a distinct set of coordinates. For instance,
    * if the array is 2D, the domain is (1,10), (1,10) and the tile extents are 2

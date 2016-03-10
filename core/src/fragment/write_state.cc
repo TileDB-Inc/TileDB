@@ -158,7 +158,7 @@ WriteState::~WriteState() {
 /*         WRITE FUNCTIONS        */
 /* ****************************** */
 
-int WriteState::write( const void** buffers, const size_t* buffer_sizes) {
+int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   // Create fragment directory if it does not exist
   std::string fragment_name = fragment_->fragment_name();
   if(!is_dir(fragment_name)) {

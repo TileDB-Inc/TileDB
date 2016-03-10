@@ -85,7 +85,8 @@ Array::Array() {
 
 Array::~Array() {
   for(int i=0; i<fragments_.size(); ++i)
-    delete fragments_[i];
+    if(fragments_[i] != NULL)
+       delete fragments_[i];
 
   if(array_schema_ != NULL)
     delete array_schema_;
@@ -237,6 +238,42 @@ int Array::init(
 
   // Return
   return TILEDB_AR_OK;
+}
+
+int Array::reinit_subarray(const void* subarray) {
+  // Sanity check on mode
+  if(mode_ != TILEDB_READ) {
+    PRINT_ERROR("Cannot re-initialize subarray; Invalid array mode");
+    return TILEDB_AR_ERR;
+  }
+
+  // Set range
+  if(subarray == NULL) {
+    if(range_ != NULL) {
+      free(range_);
+      range_ = NULL;
+    }
+  } else {
+    size_t range_size = 2*array_schema_->coords_size();
+    if(range_ == NULL) 
+      range_ = malloc(range_size);
+    memcpy(range_, subarray, range_size);
+  }
+
+  // Re-initialize the read state of the fragments
+  for(int i=0; i<fragments_.size(); ++i) 
+    fragments_[i]->reinit_read_state();
+
+  if(array_read_state_ != NULL) {
+    delete array_read_state_;
+    array_read_state_ = NULL;
+  }
+
+  if(fragments_.size() > 1 || // Multi-fragment read
+     (fragments_.size() == 1 &&
+        ((array_schema_->dense() && !fragments_[0]->dense()) || 
+         (array_schema_->dense() && !fragments_[0]->full_domain()))))
+    array_read_state_ = new ArrayReadState(this);
 }
 
 int Array::finalize() {

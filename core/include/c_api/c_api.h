@@ -211,6 +211,10 @@ TILEDB_EXPORT int tiledb_array_init(
     const char** attributes,
     int attribute_num);
 
+TILEDB_EXPORT int tiledb_array_reinit_subarray(
+    const TileDB_Array* tiledb_array,
+    const void* subarray);
+
 /**
  * Retrieves the array schema.
  *
@@ -326,6 +330,92 @@ TILEDB_EXPORT int tiledb_move(
     const char* old_dir,
     const char* new_dir);
 
+/* ********************************* */
+/*             METADATA              */
+/* ********************************* */
+
+/** Specifies the metadata schema. */
+typedef struct TileDB_MetadataSchema {
+  // TODO
+  char* metadata_name_;
+  /** The attribute names. */
+  char** attributes_;
+  /** The number of attributes. */
+  int attribute_num_;
+  /** 
+   * The tile capacity (only applicable to irregular tiles). If it is <=0,
+   * TileDB will use its default.
+   */
+  int64_t capacity_;
+  // TODO
+  int* cell_val_num_;
+  /** It can be either TILEDB_NO_COMPRESSION or TILEDB_GZIP. */
+  int* compression_;
+  // TODO
+  int* types_;
+} TileDB_MetadataSchema;
+
+/** A TileDB Metadata structure. */
+typedef struct TileDB_Metadata TileDB_Metadata;
+
+// TODO
+TILEDB_EXPORT int tiledb_metadata_create(
+    const TileDB_CTX* tiledb_ctx,
+    const TileDB_MetadataSchema* metadata_schema);
+
+// TODO
+TILEDB_EXPORT int tiledb_metadata_set_schema(
+    TileDB_MetadataSchema* tiledb_metadata_schema,
+    const char* metadata_name,
+    const char** attributes,
+    int attribute_num,
+    const int* types,
+    const int* cell_val_num,
+    int64_t capacity,
+    const int* compression);
+
+// TODO
+TILEDB_EXPORT int tiledb_metadata_free_schema(
+    TileDB_MetadataSchema* tiledb_metadata_schema);
+
+// TODO
+TILEDB_EXPORT int tiledb_metadata_init(
+    const TileDB_CTX* tiledb_ctx,
+    TileDB_Metadata** tiledb_metadata,
+    const char* dir,
+    int mode,
+    const char** attributes,
+    int attribute_num);
+
+// TODO
+TILEDB_EXPORT int tiledb_metadata_finalize(
+    TileDB_Metadata* tiledb_metadata);
+
+// TODO
+TILEDB_EXPORT int tiledb_metadata_write(
+    const TileDB_Metadata* tiledb_metadata,
+    const char* keys,
+    size_t keys_size,
+    const void** buffers,
+    const size_t* buffer_sizes);
+
+// TODO
+TILEDB_EXPORT int tiledb_metadata_read(
+    const TileDB_Metadata* tiledb_metadata,
+    const char* key,
+    void** buffers,
+    size_t* buffer_sizes);
+
+// TODO
+TILEDB_EXPORT int tiledb_metadata_get_schema(
+    const TileDB_Metadata* tiledb_metadata,
+    TileDB_MetadataSchema* tiledb_metadata_schema);
+
+// TODO
+TILEDB_EXPORT int tiledb_metadata_load_schema(
+    const TileDB_CTX* tiledb_ctx,
+    const char* metadata,
+    TileDB_MetadataSchema* tiledb_metadata_schema);
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus

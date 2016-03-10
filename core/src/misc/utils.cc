@@ -232,6 +232,7 @@ std::string current_dir() {
   std::string dir = "";
   char* path = getcwd(NULL,0);
 
+
   if(path != NULL) {
     dir = path;
     free(path);
@@ -476,6 +477,15 @@ bool is_array(const std::string& dir) {
   // Check existence
   if(is_dir(dir) && 
      is_file(dir + "/" + TILEDB_ARRAY_SCHEMA_FILENAME)) 
+    return true;
+  else
+    return false;
+}
+
+bool is_metadata(const std::string& dir) {
+  // Check existence
+  if(is_dir(dir) && 
+     is_file(dir + "/" + TILEDB_METADATA_SCHEMA_FILENAME)) 
     return true;
   else
     return false;

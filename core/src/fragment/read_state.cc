@@ -4424,6 +4424,7 @@ void ReadState::init_range_in_tile_domain() {
 
   // Sanity check
   assert(tile_extents != NULL);
+  assert(range != NULL);
 
   // Compute tile domain
   T* tile_domain = new T[2*dim_num];
@@ -4709,6 +4710,11 @@ void ReadState::init_tile_search_range_row() {
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
   const T* range = static_cast<const T*>(fragment_->array()->range());
+
+  // Trivial case
+  if(range == NULL)
+    return;
+
   int64_t tile_num = book_keeping_->tile_num();
   const std::vector<void*>& bounding_coords = 
       book_keeping_->bounding_coords();

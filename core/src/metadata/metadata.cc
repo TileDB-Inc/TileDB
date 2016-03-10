@@ -1,0 +1,381 @@
+/**
+ * @file   metadata.cc
+ * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ * 
+ * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * 
+ * @section DESCRIPTION
+ *
+ * This file implements the Metadata class.
+ */
+
+#include "metadata.h"
+#include <cassert>
+#include <cstring>
+#include <openssl/md5.h>
+
+/* ****************************** */
+/*             MACROS             */
+/* ****************************** */
+
+#if VERBOSE == 1
+#  define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n" 
+#  define PRINT_WARNING(x) std::cerr << "[TileDB] Warning: " \
+                                     << x << ".\n"
+#elif VERBOSE == 2
+#  define PRINT_ERROR(x) std::cerr << "[TileDB::Metadata] Error: " \
+                                   << x << ".\n" 
+#  define PRINT_WARNING(x) std::cerr << "[TileDB::Metadata] Warning: " \
+                                     << x << ".\n"
+#else
+#  define PRINT_ERROR(x) do { } while(0) 
+#  define PRINT_WARNING(x) do { } while(0) 
+#endif
+
+/* ****************************** */
+/*   CONSTRUCTORS & DESTRUCTORS   */
+/* ****************************** */
+
+Metadata::Metadata() {
+  array_ = NULL;
+}
+
+Metadata::~Metadata() {
+  if(array_ != NULL)
+    delete array_;
+}
+
+/* ****************************** */
+/*           ACCESSORS            */
+/* ****************************** */
+
+const ArraySchema* Metadata::array_schema() const {
+  return array_->array_schema();
+}
+
+/*
+const std::vector<int>& Array::attribute_ids() const {
+  return attribute_ids_;
+}
+
+std::vector<Fragment*> Array::fragments() const {
+  return fragments_;
+}
+
+int Array::fragment_num() const {
+  return fragments_.size();
+}
+
+int Array::mode() const {
+  return mode_;
+}
+
+const void* Array::range() const {
+  return range_;
+}
+*/
+
+int Metadata::read(const char* key, void** buffers, size_t* buffer_sizes) {
+  // Sanity checks
+  if(mode_ != TILEDB_METADATA_READ) {
+    PRINT_ERROR("Cannot read from metadata; Invalid mode");
+    return TILEDB_MT_ERR;
+  }
+
+  // Compute subarray for the read
+  int subarray[8];
+  int coords[4];
+  MD5((const unsigned char*) key, strlen(key)+1, (unsigned char*) coords);
+  for(int i=0; i<4; ++i) {
+    subarray[2*i] = coords[i];
+    subarray[2*i+1] = coords[i];
+  } 
+
+  // Re-init sub array
+  if(array_->reinit_subarray(subarray) != TILEDB_AR_OK)
+    return TILEDB_MT_ERR;
+
+  // Read from array
+  if(array_->read(buffers, buffer_sizes) != TILEDB_AR_OK)
+    return TILEDB_MT_ERR;
+  else
+    return TILEDB_MT_OK;
+}
+
+
+/* ****************************** */
+/*            MUTATORS            */
+/* ****************************** */
+
+int Metadata::init(
+    const ArraySchema* array_schema,
+    int mode,
+    const char** attributes,
+    int attribute_num) {
+  // Sanity check on mode
+  if(mode != TILEDB_METADATA_READ &&
+     mode != TILEDB_METADATA_WRITE) {
+    PRINT_ERROR("Cannot initialize metadata; Invalid metadata mode");
+    return TILEDB_MT_ERR;
+  }
+
+  // Set mode
+  mode_ = mode;
+  int array_mode = (mode == TILEDB_METADATA_READ) 
+                    ? TILEDB_READ : TILEDB_WRITE_UNSORTED;
+
+  // Set attributes
+  char** array_attributes;
+  int array_attribute_num;
+  if(attributes == NULL) {
+    array_attribute_num =  
+        (mode == TILEDB_METADATA_WRITE) ? array_schema->attribute_num() + 1 
+                                        : array_schema->attribute_num();
+    array_attributes = new char*[array_attribute_num];
+    for(int i=0; i<array_attribute_num; ++i) {
+      const char* attribute = array_schema->attribute(i).c_str();
+      size_t attribute_len = strlen(attribute);
+      array_attributes[i] = new char[attribute_len+1];
+      strcpy(array_attributes[i], attribute);
+    } 
+  } else {
+    array_attribute_num = 
+        (mode == TILEDB_METADATA_WRITE) ? attribute_num + 1 
+                                        : attribute_num;
+    array_attributes = new char*[array_attribute_num];
+    for(int i=0; i<attribute_num; ++i) {
+      size_t attribute_len = strlen(attributes[i]);
+      array_attributes[i] = new char[attribute_len+1];
+      strcpy(array_attributes[i], attributes[i]);
+    }
+    if(mode == TILEDB_METADATA_WRITE) {
+      size_t attribute_len = strlen(TILEDB_COORDS_NAME);
+      array_attributes[array_attribute_num] = new char[attribute_len+1];
+      strcpy(array_attributes[array_attribute_num], TILEDB_COORDS_NAME);
+    }
+  }
+
+  // Initialize array
+  array_ = new Array();
+  int rc = array_->init(
+              array_schema, 
+              array_mode, 
+              (const char**) array_attributes, 
+              array_attribute_num, 
+              NULL);
+
+  // Clean up
+  for(int i=0; i<array_attribute_num; ++i) 
+    delete [] array_attributes[i];
+  delete [] array_attributes;
+
+  // Success
+  if(rc != TILEDB_AR_OK)
+    return TILEDB_MT_ERR;
+  else
+    return TILEDB_MT_OK;
+}
+
+int Metadata::finalize() {
+  int rc = array_->finalize();
+
+  delete array_;
+  array_ = NULL;
+
+  if(rc == TILEDB_AR_OK)
+    return TILEDB_MT_OK; 
+  else
+    return TILEDB_MT_ERR; 
+}
+
+int Metadata::write(
+    const char* keys,
+    size_t keys_size,
+    const void** buffers, 
+    const size_t* buffer_sizes) {
+  // Sanity checks
+  if(mode_ != TILEDB_METADATA_WRITE) {
+    PRINT_ERROR("Cannot write to metadata; Invalid mode");
+    return TILEDB_MT_ERR;
+  }
+  if(keys == NULL) { 
+    PRINT_ERROR("Cannot write to metadata; No keys given");
+    return TILEDB_MT_ERR;
+  }
+
+  // Compute array coordinates
+  void* coords;
+  size_t coords_size; 
+  size_t* keys_offsets; 
+  size_t keys_offsets_size;
+  compute_array_coords(
+      keys, 
+      keys_size, 
+      keys_offsets, 
+      keys_offsets_size, 
+      coords, 
+      coords_size);
+
+  // Prepare array buffers
+  const void** array_buffers;
+  size_t* array_buffer_sizes;
+  prepare_array_buffers(
+      keys, 
+      keys_size, 
+      keys_offsets, 
+      keys_offsets_size, 
+      coords,
+      coords_size,
+      buffers, 
+      buffer_sizes,
+      array_buffers,
+      array_buffer_sizes);
+
+  // Write the metadata
+  int rc = array_->write(array_buffers, array_buffer_sizes);
+
+  // Clean up
+  free(coords);
+  free(keys_offsets); 
+  free(array_buffers);
+  free(array_buffer_sizes);
+
+  // Return
+  if(rc == TILEDB_AR_OK)
+    return TILEDB_MT_OK;
+  else
+    return TILEDB_MT_ERR;
+}
+
+/* ****************************** */
+/*          PRIVATE METHODS       */
+/* ****************************** */
+
+void Metadata::compute_array_coords(
+    const char* keys,
+    size_t keys_size,
+    size_t*& keys_offsets, 
+    size_t& keys_offsets_size,
+    void*& coords,
+    size_t& coords_size) const {
+  // Compute keys offsets
+  keys_offsets = (size_t*) malloc(10*sizeof(size_t)); 
+  size_t keys_num_allocated = 10;
+  int64_t keys_num = 0;
+  bool null_char_found = true;
+  for(size_t i=0; i<keys_size; ++i) {
+    if(null_char_found) {
+      if(keys_num == keys_num_allocated) {
+        keys_num_allocated *= 2;
+        keys_offsets = 
+            (size_t*) realloc(keys_offsets, keys_num_allocated*sizeof(size_t));
+      }
+      keys_offsets[keys_num] = i;
+      ++keys_num;
+      null_char_found = false;
+    }
+    if(keys[i] == '\0') { 
+      null_char_found = true;
+    }
+  }
+  assert(keys_num > 0);
+  keys_offsets_size = keys_num * sizeof(size_t);
+
+  // Compute coords
+  coords_size = keys_num * 4 * sizeof(int); 
+  coords = malloc(coords_size);
+  size_t key_size;
+  const unsigned char* keys_c;
+  unsigned char* coords_c;
+  for(int64_t i=0; i<keys_num; ++i) {
+    key_size = (i != keys_num-1) ? keys_offsets[i+1] - keys_offsets[i] 
+                                 : keys_size - keys_offsets[i];
+    keys_c = ((const unsigned char*) keys) + keys_offsets[i];
+    coords_c = ((unsigned char*) coords) + i*4*sizeof(int);
+    MD5(keys_c, key_size, coords_c);
+  }
+}
+
+void Metadata::prepare_array_buffers(
+    const char* keys,
+    size_t keys_size,
+    const size_t* keys_offsets,
+    size_t keys_offsets_size,
+    const void* coords,
+    size_t coords_size,
+    const void** buffers,
+    const size_t* buffer_sizes,
+    const void**& array_buffers,
+    size_t*& array_buffer_sizes) const{
+  // For easy reference
+  const ArraySchema* array_schema = array_->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  const std::vector<int> attribute_ids = array_->attribute_ids();
+  int attribute_id_num = attribute_ids.size();
+
+  // Count number of variable-sized attributes
+  int var_attribute_num = 0;
+  for(int i=0; i<attribute_id_num; ++i) 
+    if(array_schema->var_size(attribute_ids[i]))
+      ++var_attribute_num;
+
+  // Allocate space for the array buffers
+  array_buffers = 
+      (const void**) malloc(
+           (attribute_id_num + var_attribute_num)*sizeof(const void**));
+  array_buffer_sizes = 
+      (size_t*) malloc(
+           (attribute_id_num + var_attribute_num)*sizeof(size_t*));
+
+  // Set the array buffers
+  int buffer_i = 0;
+  int array_buffer_i = 0;
+  for(int i=0; i<attribute_id_num; ++i) {
+    if(attribute_ids[i] == attribute_num) { // Coordinates 
+      array_buffers[array_buffer_i] = coords;
+      array_buffer_sizes[array_buffer_i] = coords_size;
+      ++array_buffer_i;
+    } else if(attribute_ids[i] == attribute_num-1) { // Keys
+      array_buffers[array_buffer_i] = keys_offsets;
+      array_buffer_sizes[array_buffer_i] = keys_offsets_size;
+      ++array_buffer_i;
+      array_buffers[array_buffer_i] = keys;
+      array_buffer_sizes[array_buffer_i] = keys_size;
+      ++array_buffer_i;
+    } else { // Any other attribute 
+      array_buffers[array_buffer_i] = buffers[buffer_i];
+      array_buffer_sizes[array_buffer_i] = buffer_sizes[buffer_i];
+      ++array_buffer_i;
+      ++buffer_i;
+      if(array_schema->var_size(attribute_ids[i])) { // Variable-sized 
+        array_buffers[array_buffer_i] = buffers[buffer_i];
+        array_buffer_sizes[array_buffer_i] = buffer_sizes[buffer_i];
+        ++array_buffer_i;
+        ++buffer_i;
+      }
+    }
+  }
+}
+
