@@ -50,6 +50,10 @@
 #define TILEDB_WRITE                  3
 #define TILEDB_WRITE_UNSORTED         4
 
+/** Metadata modes. */
+#define TILEDB_METADATA_READ  0
+#define TILEDB_METADATA_WRITE 1
+
 /** Special cell values. */
 #define TILEDB_EMPTY_INT32 INT_MAX
 #define TILEDB_EMPTY_INT64 LLONG_MAX
@@ -79,6 +83,13 @@
 /** Name of the coordinates attribute. */
 #define TILEDB_COORDS_NAME "__coords"
 
+// TODO
+#define TILEDB_KEY_NAME "__key"
+#define TILEDB_KEY_DIM1_NAME "__key_dim_1"
+#define TILEDB_KEY_DIM2_NAME "__key_dim_2"
+#define TILEDB_KEY_DIM3_NAME "__key_dim_3"
+#define TILEDB_KEY_DIM4_NAME "__key_dim_4"
+
 /** Suffix of a TileDB file. */
 #define TILEDB_FILE_SUFFIX ".tdb"
 
@@ -89,11 +100,12 @@
 #define TILEDB_GZIP_CHUNK_SIZE 131072 // 128KB
 
 // Special file names
-#define TILEDB_ARRAY_SCHEMA_FILENAME   "__array_schema.tdb"
-#define TILEDB_BOOK_KEEPING_FILENAME   "__book_keeping"
-#define TILEDB_FRAGMENT_FILENAME       "__tiledb_fragment.tdb"
-#define TILEDB_GROUP_FILENAME          "__tiledb_group.tdb"
-#define TILEDB_WORKSPACE_FILENAME      "__tiledb_workspace.tdb"
+#define TILEDB_ARRAY_SCHEMA_FILENAME      "__array_schema.tdb"
+#define TILEDB_METADATA_SCHEMA_FILENAME   "__metadata_schema.tdb"
+#define TILEDB_BOOK_KEEPING_FILENAME      "__book_keeping"
+#define TILEDB_FRAGMENT_FILENAME          "__tiledb_fragment.tdb"
+#define TILEDB_GROUP_FILENAME             "__tiledb_group.tdb"
+#define TILEDB_WORKSPACE_FILENAME         "__tiledb_workspace.tdb"
 
 /** The size of the sorted buffer. */
 #define TILEDB_SORTED_BUFFER_SIZE 10000000  // ~10MB

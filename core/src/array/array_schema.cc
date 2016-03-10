@@ -160,6 +160,43 @@ void ArraySchema::array_schema_export(ArraySchemaC* array_schema_c) const {
     array_schema_c->compression_[i] = compression_[i];
 }
 
+void ArraySchema::array_schema_export(MetadataSchemaC* metadata_schema_c) const {
+  // set metadata name
+  size_t array_name_len = array_name_.size(); 
+  metadata_schema_c->metadata_name_ = (char*) malloc(array_name_len+1);
+  strcpy(metadata_schema_c->metadata_name_, array_name_.c_str());
+
+  /* set attributes and number of attributes. */
+  metadata_schema_c->attribute_num_ = attribute_num_ - 1;
+  metadata_schema_c->attributes_ = 
+      (char**) malloc((attribute_num_-1)*sizeof(char*));
+  for(int i=0; i<attribute_num_-1; ++i) { 
+    size_t attribute_len = attributes_[i].size();
+    metadata_schema_c->attributes_[i] = (char*) malloc(attribute_len+1);
+    strcpy(metadata_schema_c->attributes_[i], attributes_[i].c_str());
+  }
+
+  // set types
+  metadata_schema_c->types_ = (int*) malloc((attribute_num_-1)*sizeof(int));
+  for(int i=0; i<attribute_num_-1; ++i)
+    metadata_schema_c->types_[i] = types_[i];
+
+  // set cell val num
+  metadata_schema_c->cell_val_num_ = 
+      (int*) malloc((attribute_num_-1)*sizeof(int));
+  for(int i=0; i<attribute_num_-1; ++i)
+    metadata_schema_c->cell_val_num_[i] = val_num_[i];
+
+  // set capacity
+  metadata_schema_c->capacity_ = capacity_;
+
+  // set compression
+  metadata_schema_c->compression_ = 
+      (int*) malloc(attribute_num_*sizeof(int));
+  for(int i=0; i<attribute_num_; ++i)
+    metadata_schema_c->compression_[i] = compression_[i];
+}
+
 const std::string& ArraySchema::array_name() const {
   return array_name_;
 }
@@ -318,9 +355,7 @@ void ArraySchema::print() const {
     else
       std::cout << val_num_[i] << "]\n";
   }
-  if(key_value_)
-    std::cout << "\tCoordinates: char: var\n";
-  else if(types_[attribute_num_] == TILEDB_INT32)
+  if(types_[attribute_num_] == TILEDB_INT32)
     std::cout << "\tCoordinates: int32\n";
   else if(types_[attribute_num_] == TILEDB_INT64)
     std::cout << "\tCoordinates: int64\n";
@@ -341,8 +376,6 @@ void ArraySchema::print() const {
   }
   // Dense
   std::cout << "Dense:\n\t" << (dense_ ? "true" : "false") << "\n";
-  // Key-value
-  std::cout << "Key-value:\n\t" << (key_value_ ? "true" : "false") << "\n";
   // Tile type
   std::cout << "Tile types:\n\t" 
             << (tile_extents_ == NULL ? "irregular" : "regular") << "\n";
@@ -412,7 +445,6 @@ void ArraySchema::print() const {
 // array_name_size(int) 
 //     array_name(string)
 // dense(bool)
-// key_value(bool)
 // tile_order(char)
 // cell_order(char)
 // capacity(int64_t)
@@ -458,10 +490,6 @@ int ArraySchema::serialize(
   // Copy dense_
   assert(offset + sizeof(bool) < buffer_size);
   memcpy(buffer + offset, &dense_, sizeof(bool));
-  offset += sizeof(bool);
-  // Copy key_value_
-  assert(offset + sizeof(bool) < buffer_size);
-  memcpy(buffer + offset, &key_value_, sizeof(bool));
   offset += sizeof(bool);
   // Copy tile_order_
   char tile_order = tile_order_;
@@ -640,7 +668,6 @@ void ArraySchema::compute_hilbert_bits() {
 // array_name_size(int) 
 //     array_name(string)
 // dense(bool)
-// key_value(bool)
 // tile_order(char)
 // cell_order(char)
 // capacity(int64_t)
@@ -681,10 +708,6 @@ int ArraySchema::deserialize(
   // Load dense_
   assert(offset + sizeof(bool) < buffer_size);
   memcpy(&dense_, buffer + offset, sizeof(bool));
-  offset += sizeof(bool);
-  // Load key_value_
-  assert(offset + sizeof(bool) < buffer_size);
-  memcpy(&key_value_, buffer + offset, sizeof(bool));
   offset += sizeof(bool);
   // Load tile_order_ 
   char tile_order;
@@ -845,6 +868,109 @@ int ArraySchema::init(const ArraySchemaC* array_schema_c) {
 
   // Initialize Hilbert curve
   init_hilbert_curve();
+
+  return TILEDB_AS_OK;
+}
+
+int ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
+  // Create an array schema C struct and populate it
+  ArraySchemaC array_schema_c;
+  array_schema_c.array_name_ = metadata_schema_c->metadata_name_;
+  array_schema_c.capacity_ = metadata_schema_c->capacity_;
+  array_schema_c.cell_order_ = TILEDB_ROW_MAJOR;
+  array_schema_c.tile_order_ = TILEDB_ROW_MAJOR;
+  array_schema_c.tile_extents_ = NULL;
+  array_schema_c.dense_ = 0;
+
+  // Set attributes
+  char** attributes = 
+      (char**) malloc((metadata_schema_c->attribute_num_+1)*sizeof(char*));
+  size_t attribute_len;
+  for(int i=0; i<metadata_schema_c->attribute_num_; ++i) {
+    attribute_len = strlen(metadata_schema_c->attributes_[i]);
+    attributes[i] = (char*) malloc(attribute_len+1);
+    strcpy(attributes[i], metadata_schema_c->attributes_[i]);
+  }
+  attribute_len = strlen(TILEDB_KEY_NAME);
+  attributes[metadata_schema_c->attribute_num_] = 
+      (char*) malloc(attribute_len+1);
+  strcpy(attributes[metadata_schema_c->attribute_num_],TILEDB_KEY_NAME);
+  array_schema_c.attributes_ = attributes; 
+  array_schema_c.attribute_num_ = metadata_schema_c->attribute_num_ + 1;
+
+  // Set dimensions
+  char** dimensions = (char**) malloc(4*sizeof(char*));
+  size_t dimension_len;
+  dimension_len = strlen(TILEDB_KEY_DIM1_NAME); 
+  dimensions[0] = (char*) malloc(dimension_len+1);
+  strcpy(dimensions[0], TILEDB_KEY_DIM1_NAME); 
+  dimension_len = strlen(TILEDB_KEY_DIM2_NAME); 
+  dimensions[1] = (char*) malloc(dimension_len+1);
+  strcpy(dimensions[1], TILEDB_KEY_DIM2_NAME); 
+  dimension_len = strlen(TILEDB_KEY_DIM3_NAME); 
+  dimensions[2] = (char*) malloc(dimension_len+1);
+  strcpy(dimensions[2], TILEDB_KEY_DIM3_NAME); 
+  array_schema_c.dimensions_ = dimensions;
+  dimension_len = strlen(TILEDB_KEY_DIM4_NAME); 
+  dimensions[3] = (char*) malloc(dimension_len+1);
+  strcpy(dimensions[3], TILEDB_KEY_DIM4_NAME); 
+  array_schema_c.dimensions_ = dimensions;
+  array_schema_c.dim_num_ = 4;
+
+  // Set domain
+  int* domain = (int*) malloc(8*sizeof(int));
+  for(int i=0; i<4; ++i) {
+    domain[2*i] = INT_MIN;
+    domain[2*i+1] = INT_MAX;
+  }
+  array_schema_c.domain_ = domain;
+
+  // Set types
+  int* types = (int*) malloc((metadata_schema_c->attribute_num_+2)*sizeof(int));
+  for(int i=0; i<metadata_schema_c->attribute_num_; ++i)
+    types[i] = metadata_schema_c->types_[i];
+  types[metadata_schema_c->attribute_num_] = TILEDB_CHAR;
+  types[metadata_schema_c->attribute_num_+1] = TILEDB_INT32;
+  array_schema_c.types_ = types;
+ 
+  // Set cell num val
+  int* cell_val_num = (int*) malloc((metadata_schema_c->attribute_num_+1)*sizeof(int));
+  if(metadata_schema_c->cell_val_num_ == NULL) {
+    for(int i=0; i<metadata_schema_c->attribute_num_; ++i)
+      cell_val_num[i] = 1;
+  } else {
+    for(int i=0; i<metadata_schema_c->attribute_num_; ++i)
+      cell_val_num[i] = metadata_schema_c->cell_val_num_[i];
+  }
+  cell_val_num[metadata_schema_c->attribute_num_] = TILEDB_VAR_NUM;
+  array_schema_c.cell_val_num_ = cell_val_num;
+
+  // Set compression
+  int* compression = (int*) malloc((metadata_schema_c->attribute_num_+2)*sizeof(int));
+  if(metadata_schema_c->cell_val_num_ == NULL) {
+    for(int i=0; i<metadata_schema_c->attribute_num_+1; ++i)
+      compression[i] = TILEDB_NO_COMPRESSION;
+  } else {
+    for(int i=0; i<metadata_schema_c->attribute_num_+1; ++i)
+      compression[i] = metadata_schema_c->compression_[i];
+  }
+  compression[metadata_schema_c->attribute_num_+1] = TILEDB_NO_COMPRESSION;
+  array_schema_c.compression_ = compression;
+
+  // Initialize schema through the array schema C struct
+  init(&array_schema_c);
+
+  // Clean up
+  for(int i=0; i<array_schema_c.attribute_num_; ++i)
+    free(attributes[i]);
+  free(attributes);
+  for(int i=0; i<4; ++i)
+    free(dimensions[i]);
+  free(dimensions);
+  free(domain);
+  free(types);
+  free(compression);
+  free(cell_val_num);
 
   return TILEDB_AS_OK;
 }
@@ -1346,6 +1472,9 @@ void ArraySchema::expand_domain(void* domain) const {
 
 template<class T>
 void ArraySchema::expand_domain(T* domain) const {
+  if(tile_extents_ == NULL)
+    return;
+
   const T* tile_extents = static_cast<const T*>(tile_extents_); 
   const T* domain_T_ = static_cast<const T*>(domain_); 
 
@@ -1772,7 +1901,6 @@ int64_t ArraySchema::tile_id(const T* cell_coords) const {
 // array_name_size(int)
 //     array_name(string)
 // dense(bool)
-// key_value(bool)
 // tile_order(char)
 // cell_order(char)
 // capacity(int64_t)
@@ -1800,8 +1928,6 @@ size_t ArraySchema::compute_bin_size() const {
   // Size for array_name_ 
   bin_size += sizeof(int) + array_name_.size();
   // Size for dense_
-  bin_size += sizeof(bool);
-  // Size for key_value_
   bin_size += sizeof(bool);
   // Size for tile_order_ and cell_order_
   bin_size += 2 * sizeof(char);

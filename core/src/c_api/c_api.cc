@@ -230,6 +230,24 @@ int tiledb_array_init(
     return TILEDB_ERR; 
 }
 
+int tiledb_array_reinit_subarray(
+    const TileDB_Array* tiledb_array,
+    const void* subarray) {
+  // Sanity check
+  // TODO
+
+  // Re-Init the array
+  int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_reinit_subarray(
+               tiledb_array->array_,
+               subarray);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR; 
+}
+
 int tiledb_array_finalize(TileDB_Array* tiledb_array) {
   // Sanity check
   if(!sanity_check(tiledb_array->tiledb_ctx_))
@@ -540,4 +558,266 @@ int tiledb_move(
     return TILEDB_OK;
   else
     return TILEDB_ERR;
+}
+
+/* ****************************** */
+/*            METADATA            */
+/* ****************************** */
+
+typedef struct TileDB_Metadata {
+  Metadata* metadata_;
+  const TileDB_CTX* tiledb_ctx_;
+} TileDB_Metadata;
+
+int tiledb_metadata_create(
+    const TileDB_CTX* tiledb_ctx,
+    const TileDB_MetadataSchema* metadata_schema) {
+  // Sanity check
+  if(!sanity_check(tiledb_ctx))
+    return TILEDB_ERR;
+
+  // Copy metadata schema to the proper struct
+  MetadataSchemaC metadata_schema_c;
+  metadata_schema_c.metadata_name_ = metadata_schema->metadata_name_;
+  metadata_schema_c.attributes_ = metadata_schema->attributes_;
+  metadata_schema_c.attribute_num_ = metadata_schema->attribute_num_;
+  metadata_schema_c.capacity_ = metadata_schema->capacity_;
+  metadata_schema_c.cell_val_num_ = metadata_schema->cell_val_num_;
+  metadata_schema_c.compression_ = metadata_schema->compression_;
+  metadata_schema_c.types_ = metadata_schema->types_;
+
+  // Create the metadata
+  int rc = tiledb_ctx->storage_manager_->metadata_create(&metadata_schema_c);
+
+  // Return
+  if(rc == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
+}
+
+int tiledb_metadata_set_schema(
+    TileDB_MetadataSchema* tiledb_metadata_schema,
+    const char* metadata_name,
+    const char** attributes,
+    int attribute_num,
+    const int* types,
+    const int* cell_val_num,
+    int64_t capacity,
+    const int* compression) {
+  // set metadata name
+  size_t metadata_name_len = strlen(metadata_name); 
+  tiledb_metadata_schema->metadata_name_ = (char*) malloc(metadata_name_len+1);
+  strcpy(tiledb_metadata_schema->metadata_name_, metadata_name);
+
+  /* set attributes and number of attributes. */
+  tiledb_metadata_schema->attribute_num_ = attribute_num;
+  tiledb_metadata_schema->attributes_ = 
+      (char**) malloc(attribute_num*sizeof(char*));
+  for(int i=0; i<attribute_num; ++i) { 
+    size_t attribute_len = strlen(attributes[i]);
+    tiledb_metadata_schema->attributes_[i] = (char*) malloc(attribute_len+1);
+    strcpy(tiledb_metadata_schema->attributes_[i], attributes[i]);
+  }
+
+  // set types
+  tiledb_metadata_schema->types_ = (int*) malloc((attribute_num+1)*sizeof(int));
+  for(int i=0; i<attribute_num+1; ++i)
+    tiledb_metadata_schema->types_[i] = types[i];
+
+  // set cell val num
+  if(cell_val_num == NULL) {
+    tiledb_metadata_schema->cell_val_num_ = NULL; 
+  } else {
+    tiledb_metadata_schema->cell_val_num_ = 
+        (int*) malloc((attribute_num)*sizeof(int));
+    for(int i=0; i<attribute_num; ++i) {
+      tiledb_metadata_schema->cell_val_num_[i] = cell_val_num[i];
+    }
+  }
+
+  // set capacity
+  tiledb_metadata_schema->capacity_ = capacity;
+
+  // set compression
+  if(compression == NULL) {
+    tiledb_metadata_schema->compression_ = NULL; 
+  } else {
+    tiledb_metadata_schema->compression_ = 
+        (int*) malloc((attribute_num+1)*sizeof(int));
+    for(int i=0; i<attribute_num+1; ++i)
+      tiledb_metadata_schema->compression_[i] = compression[i];
+  }
+}
+
+int tiledb_metadata_free_schema(
+    TileDB_MetadataSchema* tiledb_metadata_schema) {
+  // Sanity check
+  // TODO
+
+  // Free name
+  free(tiledb_metadata_schema->metadata_name_);
+
+  // Free attributes
+  for(int i=0; i<tiledb_metadata_schema->attribute_num_; ++i)
+    free(tiledb_metadata_schema->attributes_[i]);
+  free(tiledb_metadata_schema->attributes_);
+
+  // Free types
+  free(tiledb_metadata_schema->types_);
+
+  // Free compression
+  free(tiledb_metadata_schema->compression_);
+
+  // Free cell val num
+  free(tiledb_metadata_schema->cell_val_num_);
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_metadata_init(
+    const TileDB_CTX* tiledb_ctx,
+    TileDB_Metadata** tiledb_metadata,
+    const char* dir,
+    int mode,
+    const char** attributes,
+    int attribute_num) {
+  // Sanity check
+  // TODO
+
+  // Allocate memory for the array struct
+  *tiledb_metadata = (TileDB_Metadata*) malloc(sizeof(struct TileDB_Metadata));
+
+  // Set TileDB context
+  (*tiledb_metadata)->tiledb_ctx_ = tiledb_ctx;
+
+  // Init the metadata
+  int rc = tiledb_ctx->storage_manager_->metadata_init(
+               (*tiledb_metadata)->metadata_,
+               dir,
+               mode, 
+               attributes,
+               attribute_num);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR; 
+}
+
+int tiledb_metadata_finalize(TileDB_Metadata* tiledb_metadata) {
+  // Sanity check
+  // TODO
+
+  // Finalize array
+  int rc = tiledb_metadata->tiledb_ctx_->storage_manager_->metadata_finalize(
+               tiledb_metadata->metadata_);
+
+  free(tiledb_metadata);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR; 
+}
+
+int tiledb_metadata_write(
+    const TileDB_Metadata* tiledb_metadata,
+    const char* keys,
+    size_t keys_size,
+    const void** buffers,
+    const size_t* buffer_sizes) {
+  // Sanity check
+  // TODO
+
+  // Write
+  int rc = tiledb_metadata->tiledb_ctx_->storage_manager_->metadata_write(
+               tiledb_metadata->metadata_, 
+               keys, 
+               keys_size, 
+               buffers, 
+               buffer_sizes);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR;
+}
+
+int tiledb_metadata_read(
+    const TileDB_Metadata* tiledb_metadata,
+    const char* key,
+    void** buffers,
+    size_t* buffer_sizes) {
+  // Sanity check
+  // TODO
+
+  // Read
+  int rc = tiledb_metadata->tiledb_ctx_->storage_manager_->metadata_read(
+               tiledb_metadata->metadata_, key, buffers, buffer_sizes);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR;
+}
+
+int tiledb_metadata_get_schema(
+    const TileDB_Metadata* tiledb_metadata,
+    TileDB_MetadataSchema* tiledb_metadata_schema) {
+  // Sanity check
+  // TODO
+
+  // Get the metadata schema
+  MetadataSchemaC metadata_schema_c;
+  tiledb_metadata->metadata_->array_schema()->array_schema_export(&metadata_schema_c); 
+
+  // Copy the metadata schema C struct to the output
+  tiledb_metadata_schema->metadata_name_ = metadata_schema_c.metadata_name_;
+  tiledb_metadata_schema->attributes_ = metadata_schema_c.attributes_; 
+  tiledb_metadata_schema->attribute_num_ = metadata_schema_c.attribute_num_;
+  tiledb_metadata_schema->capacity_ = metadata_schema_c.capacity_;
+  tiledb_metadata_schema->cell_val_num_ = metadata_schema_c.cell_val_num_;
+  tiledb_metadata_schema->compression_ = metadata_schema_c.compression_;
+  tiledb_metadata_schema->types_ = metadata_schema_c.types_;
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_metadata_load_schema(
+    const TileDB_CTX* tiledb_ctx,
+    const char* metadata,
+    TileDB_MetadataSchema* tiledb_metadata_schema) {
+  // Sanity check
+  if(!sanity_check(tiledb_ctx))
+    return TILEDB_ERR;
+
+  // Get the array schema
+  ArraySchema* array_schema;
+  // TODO: handle errors
+  tiledb_ctx->storage_manager_->metadata_load_schema(metadata, array_schema); 
+  MetadataSchemaC metadata_schema_c;
+  array_schema->array_schema_export(&metadata_schema_c);
+  array_schema->print();
+
+  // Copy the metadata schema C struct to the output
+  tiledb_metadata_schema->metadata_name_ = metadata_schema_c.metadata_name_;
+  tiledb_metadata_schema->attributes_ = metadata_schema_c.attributes_; 
+  tiledb_metadata_schema->attribute_num_ = metadata_schema_c.attribute_num_;
+  tiledb_metadata_schema->capacity_ = metadata_schema_c.capacity_;
+  tiledb_metadata_schema->cell_val_num_ = metadata_schema_c.cell_val_num_;
+  tiledb_metadata_schema->compression_ = metadata_schema_c.compression_;
+  tiledb_metadata_schema->types_ = metadata_schema_c.types_;
+
+  // Clean up
+  delete array_schema;
+
+  // Success
+  return TILEDB_OK;
 }

@@ -1,5 +1,5 @@
 /**
- * @file   array.h
+ * @file   metadata.h
  * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
@@ -28,40 +28,31 @@
  * 
  * @section DESCRIPTION
  *
- * This file defines class Array. 
+ * This file defines class Metadata. 
  */
 
-#ifndef __ARRAY_H__
-#define __ARRAY_H__
+#ifndef __METADATA_H__
+#define __METADATA_H__
 
-#include "array_read_state.h"
-#include "array_schema.h"
-#include "constants.h"
-#include "fragment.h"
+#include "array.h"
 
 /* ********************************* */
 /*             CONSTANTS             */
 /* ********************************* */
 
-#define TILEDB_AR_OK     0
-#define TILEDB_AR_ERR   -1
+#define TILEDB_MT_OK     0
+#define TILEDB_MT_ERR   -1
 
-class ArrayReadState;
-class Fragment;
-
-/**
- * Manages an array object. This is typically used for writing to and reading
- * from a TileDB array.
- */
-class Array {
+// TODO
+class Metadata {
  public:
   // CONSTRUCTORS & DESTRUCTORS
   
   /** Constructor. */
-  Array();
+  Metadata();
 
   /** Destructor. */
-  ~Array();
+  ~Metadata();
 
   // ACCESSORS
 
@@ -69,75 +60,61 @@ class Array {
   const ArraySchema* array_schema() const;
 
   /** Returns the attribute ids the array focuses on. */
-  const std::vector<int>& attribute_ids() const;
+//  const std::vector<int>& attribute_ids() const;
 
   // TODO
-  std::vector<Fragment*> fragments() const;
+//  std::vector<Fragment*> fragments() const;
 
   // TODO
-  int fragment_num() const;
+//  int fragment_num() const;
 
   /** Returns the array mode. */
-  int mode() const;
+//  int mode() const;
 
   /** Returns the range in which the array is constrained. */
-  const void* range() const;
+//  const void* range() const;
 
   // TODO
-  int read(void** buffers, size_t* buffer_sizes); 
+  int read(const char* key, void** buffers, size_t* buffer_sizes); 
 
   // MUTATORS
  
-  /**
-   * Initializes an array object.
-   *
-   * @param array_schema The schema of the array.
-   * @param mode The mode of the array. It must be one of the following:
-   *    - TILEDB_WRITE 
-   *    - TILEDB_WRITE_UNSORTED 
-   *    - TILEDB_READ 
-   *    - TILEDB_READ_REVERSE 
-   * @param range The range in which the array read/write will be constrained.
-   * @param attributes A subset of the array attributes the read/write will be
-   *     constrained.
-   * @param attribute_num The number of the input attributes.
-   * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
-   */
   int init(
       const ArraySchema* array_schema, 
       int mode,
       const char** attributes,
-      int attribute_num,
-      const void* range);
-
-  // TODO
-  int reinit_subarray(const void* subarray);
+      int attribute_num);
 
   /**
    * Finalizes the array.
    *
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
+  // TODO
   int finalize();
 
   // TODO
-  int write(const void** buffers, const size_t* buffer_sizes); 
+  int write(
+      const char* keys,
+      size_t keys_size,
+      const void** buffers, 
+      const size_t* buffer_sizes); 
 
  private:
   // PRIVATE ATTRIBUTES
 
   /** The array schema. */
-  const ArraySchema* array_schema_;
+//  const ArraySchema* array_schema_;
   // TODO
-  ArrayReadState* array_read_state_;
+  Array* array_;
   /** 
    * The ids of the attributes the array is initialized with. Note that the
    * array may be initialized with a subset of attributes when writing or
    * reading.
    */
-  std::vector<int> attribute_ids_;
+//  std::vector<int> attribute_ids_;
   /** The array fragments. */
-  std::vector<Fragment*> fragments_;
+//  std::vector<Fragment*> fragments_;
   /** 
    * The array mode. It must be one of the following:
    *    - TILEDB_WRITE 
@@ -150,9 +127,31 @@ class Array {
    * The range in which the array is constrained. Note that the type of the
    * range must be the same as the type of the array coordinates.
    */
-  void* range_;
+//  void* range_;
 
   // PRIVATE METHODS
+
+  // TODO
+  void compute_array_coords(
+      const char* keys,
+      size_t keys_size,
+      size_t*& keys_offsets,
+      size_t& keys_offsets_size,
+      void*& coords,
+      size_t& coords_size) const;
+
+  // TODO
+  void prepare_array_buffers(
+      const char* keys,
+      size_t keys_size,
+      const size_t* keys_offsets,
+      size_t keys_offsets_size,
+      const void* coords,
+      size_t coords_size,
+      const void** buffers,
+      const size_t* buffer_sizes,
+      const void**& array_buffers,
+      size_t*& array_buffer_sizes) const;
   
   /** 
    * Returns a new fragment name, which is in the form: <br>
@@ -163,13 +162,13 @@ class Array {
    * by removing the leading '.' character. Moreover, the fragment name
    * may change later by a consolidation process.
    */
-  std::string new_fragment_name() const;
+//  std::string new_fragment_name() const;
 
   // TODO
-  int open_fragments();
+//  int open_fragments();
 
   // TODO
-  void sort_fragment_names(std::vector<std::string>& fragment_names) const;
+//  void sort_fragment_names(std::vector<std::string>& fragment_names) const;
 };
 
 #endif

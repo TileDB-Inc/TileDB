@@ -195,7 +195,7 @@ int BookKeeping::init(const void* non_empty_domain) {
   else
     memcpy(non_empty_domain_, non_empty_domain, domain_size);
   
-  // Set expaned domain
+  // Set expanded domain
   domain_ = malloc(domain_size);
   memcpy(domain_, non_empty_domain_, domain_size);
   array_schema->expand_domain(domain_);

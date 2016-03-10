@@ -209,6 +209,9 @@ class Fragment {
   int init(const std::string& fragment_name, const void* range);
 
   // TODO
+  void reinit_read_state();
+
+  // TODO
   int write(const void** buffers, const size_t* buffer_sizes);
 
   // TODO
