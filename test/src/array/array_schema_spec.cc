@@ -26,37 +26,41 @@
  */
 
 #include "gtest/gtest.h"
+#include <unistd.h>
 #include "c_api.h"
 
 class ArraySchemaTest: public testing::Test {
 
-  const std::string WORKSPACE = "/tmp/.__workspace/";
+public:
+  const std::string WORKSPACE = ".__workspace/";
   const std::string ARRAYNAME = "dense_test_100x100_10x10";
 
-public:
   // Array schema object under test
-  TileDB_ArraySchema testSchema;
+  TileDB_ArraySchema test_schema;
   // TileDB context
-  TileDB_CTX* tiledbCtx;
+  TileDB_CTX* tiledb_ctx;
   // Array name is initialized with the workspace folder
-  std::string arrayName;
+  std::string array_name;
 
   int create_dense_array();
 
   virtual void SetUp() {
     // Initialize context with the default configuration parameters
-    tiledb_ctx_init(&tiledbCtx, NULL);
-    if (tiledb_workspace_create(tiledbCtx, WORKSPACE.c_str()) != TILEDB_OK) {
+    tiledb_ctx_init(&tiledb_ctx, NULL);
+
+    if (tiledb_workspace_create(
+    	  tiledb_ctx,
+		  WORKSPACE.c_str()) != TILEDB_OK) {
       exit(EXIT_FAILURE);
     }
 
-    arrayName.append(WORKSPACE);
-    arrayName.append(ARRAYNAME);
+    array_name.append(WORKSPACE);
+    array_name.append(ARRAYNAME);
   }
 
   virtual void TearDown() {
     // Finalize TileDB context
-    tiledb_ctx_finalize(tiledbCtx);
+    tiledb_ctx_finalize(tiledb_ctx);
 
     // Remove the temporary workspace
     std::string command = "rm -rf ";
@@ -76,9 +80,9 @@ int ArraySchemaTest::create_dense_array() {
 
   tiledb_array_set_schema(
       // The array schema structure
-      &testSchema,
+      &test_schema,
       // Array name
-      arrayName.c_str(),
+      array_name.c_str(),
       // Attributes
       attributes,
       // Number of attributes
@@ -112,7 +116,7 @@ int ArraySchemaTest::create_dense_array() {
   );
 
   /* Create the array. */
-  return tiledb_array_create(tiledbCtx, &testSchema);
+  return tiledb_array_create(tiledb_ctx, &test_schema);
 }
 
 /***************************/
@@ -125,26 +129,40 @@ TEST_F(ArraySchemaTest, DenseSchemaTest) {
   }
 
   TileDB_ArraySchema schemaFromDisk;
-  tiledb_array_load_schema(tiledbCtx, arrayName.c_str(), &schemaFromDisk);
+  tiledb_array_load_schema(tiledb_ctx, array_name.c_str(), &schemaFromDisk);
 
-  ASSERT_STREQ(schemaFromDisk.array_name_, testSchema.array_name_);
+  const int size = 1024;
+  char *cwd = new char [size];
+  char *ptr = getcwd(cwd, size);
 
-  ASSERT_EQ(schemaFromDisk.attribute_num_, testSchema.attribute_num_);
-  ASSERT_EQ(schemaFromDisk.dim_num_, testSchema.dim_num_);
-  ASSERT_EQ(schemaFromDisk.capacity_, testSchema.capacity_);
-  ASSERT_EQ(schemaFromDisk.cell_order_, testSchema.cell_order_);
-  ASSERT_EQ(schemaFromDisk.tile_order_, testSchema.tile_order_);
-  ASSERT_EQ(schemaFromDisk.dense_, testSchema.dense_);
-  ASSERT_STREQ(schemaFromDisk.attributes_[0], testSchema.attributes_[0]);
+  // If error reading the current working directory, fail the test
+  if (ptr == NULL) {
+	ASSERT_EQ(0, 1);
+  }
 
-  ASSERT_EQ(schemaFromDisk.compression_[0], testSchema.compression_[0]);
-  ASSERT_EQ(schemaFromDisk.compression_[1], testSchema.compression_[1]);
+  std::string full_array_path;
+  full_array_path.append(cwd);
+  full_array_path.append("/");
+  full_array_path.append(test_schema.array_name_);
 
-  ASSERT_EQ(schemaFromDisk.types_[0], testSchema.types_[0]);
-  ASSERT_EQ(schemaFromDisk.types_[1], testSchema.types_[1]);
+  ASSERT_STREQ(schemaFromDisk.array_name_, full_array_path.c_str());
+
+  ASSERT_EQ(schemaFromDisk.attribute_num_, test_schema.attribute_num_);
+  ASSERT_EQ(schemaFromDisk.dim_num_, test_schema.dim_num_);
+  ASSERT_EQ(schemaFromDisk.capacity_, test_schema.capacity_);
+  ASSERT_EQ(schemaFromDisk.cell_order_, test_schema.cell_order_);
+  ASSERT_EQ(schemaFromDisk.tile_order_, test_schema.tile_order_);
+  ASSERT_EQ(schemaFromDisk.dense_, test_schema.dense_);
+  ASSERT_STREQ(schemaFromDisk.attributes_[0], test_schema.attributes_[0]);
+
+  ASSERT_EQ(schemaFromDisk.compression_[0], test_schema.compression_[0]);
+  ASSERT_EQ(schemaFromDisk.compression_[1], test_schema.compression_[1]);
+
+  ASSERT_EQ(schemaFromDisk.types_[0], test_schema.types_[0]);
+  ASSERT_EQ(schemaFromDisk.types_[1], test_schema.types_[1]);
 
   int* lhs_tile_extents = static_cast<int*>(schemaFromDisk.tile_extents_);
-  int* rhs_tile_extents = static_cast<int*>(testSchema.tile_extents_);
+  int* rhs_tile_extents = static_cast<int*>(test_schema.tile_extents_);
 
   ASSERT_EQ(lhs_tile_extents[0], rhs_tile_extents[0]);
 

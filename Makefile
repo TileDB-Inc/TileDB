@@ -62,6 +62,10 @@ ifneq ($(VERBOSE),0)
   CFLAGS += -DVERBOSE=$(VERBOSE)
 endif
 
+# --- Set library path to Google Test shared objects --- #
+LDFLAGS += -L$(PWD)/3rdparty/gtest/lib
+LDFLAGS += -Wl,-R$(PWD)/3rdparty/gtest/lib `$$ORIGIN`
+
 # --- Compilers --- #
 
 # C++ compiler
@@ -132,21 +136,8 @@ ifeq ($(BUILD),release)
   EXAMPLES_BIN_DIR = $(EXAMPLES_BIN_REL_DIR)
 endif
 
-# Directories of Google Test
-GTEST_DIR = gtest
-GTEST_INCLUDE_DIR = gtest/include
-GTEST_SRC_DIR = gtest/src
-GTEST_OBJ_DIR = gtest/obj
-GTEST_BIN_DIR = gtest/bin
-
-# Directories of Google Mock
-GMOCK_DIR = gmock
-GMOCK_INCLUDE_DIR = gmock/include
-GMOCK_SRC_DIR = gmock/src
-GMOCK_OBJ_DIR = gmock/obj
-GMOCK_BIN_DIR = gmock/bin
-
 # Directories for TileDB tests
+GTEST_INCLUDE_DIR = 3rdparty/gtest/include
 TEST_SRC_SUBDIRS = $(wildcard test/src/*)
 TEST_SRC_DIR = test/src
 TEST_OBJ_DIR = test/obj
@@ -183,8 +174,8 @@ OPENMP_LIB_DIR = .
 CORE_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
 TILEDB_CMD_INCLUDE_PATHS = -I$(TILEDB_CMD_INCLUDE_DIR)
 TEST_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS)) \
-                     -I$(GTEST_INCLUDE_DIR) \
-										 -I$(GMOCK_INCLUDE_DIR)
+                     -I$(GTEST_INCLUDE_DIR)
+
 EXAMPLES_INCLUDE_PATHS = -I$(EXAMPLES_INCLUDE_DIR)
 LA_INCLUDE_PATHS = -I$(LA_INCLUDE_DIR)
 MPI_INCLUDE_PATHS = -I$(MPI_INCLUDE_DIR)
@@ -227,16 +218,6 @@ EXAMPLES_OBJ := $(patsubst $(EXAMPLES_SRC_DIR)/%.cc,\
 EXAMPLES_BIN := $(patsubst $(EXAMPLES_SRC_DIR)/%.cc,\
                              $(EXAMPLES_BIN_DIR)/%, $(EXAMPLES_SRC)) 
 
-# Files of the Google Test
-GTEST_INCLUDE := $(wildcard $(GTEST_INCLUDE_DIR)/*.h)
-GTEST_OBJ := $(patsubst $(GTEST_SRC_DIR)/%.cc, $(GTEST_OBJ_DIR)/%.o,\
-                        $(GTEST_SRC))
-                        
-# Files of the Google Mock
-GMOCK_INCLUDE := $(wildcard $(GMOCK_INCLUDE_DIR)/*.h)
-GMOCK_OBJ := $(patsubst $(GMOCK_SRC_DIR)/%.cc, $(GMOCK_OBJ_DIR)/%.o,\
-                        $(GMOCK_SRC))
-
 # Files of the TileDB tests
 TEST_SRC := $(wildcard $(foreach D,$(TEST_SRC_SUBDIRS),$D/*.cc))
 TEST_OBJ := $(patsubst $(TEST_SRC_DIR)/%.cc, $(TEST_OBJ_DIR)/%.o, $(TEST_SRC))
@@ -260,8 +241,8 @@ MANPAGES_HTML := $(patsubst $(MANPAGES_MAN_DIR)/%,\
 # General Targets #
 ###################
 
-.PHONY: core examples gtest gmock check doc clean_core clean_gtest \
-        clean_gmock clean_check clean_tiledb_cmd clean_examples \
+.PHONY: core examples check doc clean_core \
+        clean_check clean_tiledb_cmd clean_examples \
         clean
 
 all: core libtiledb tiledb_cmd examples
@@ -280,16 +261,12 @@ html: $(MANPAGES_HTML)
 
 doc: doxyfile.inc html
 
-gtest: $(GTEST_OBJ_DIR)/gtest-all.o
-
-gmock: $(GMOCK_OBJ_DIR)/gmock-all.o
-
-check: libtiledb gtest gmock $(TEST_BIN_DIR)/tiledb_test
+check: libtiledb $(TEST_BIN_DIR)/tiledb_test
 	@echo "Running TileDB tests"
 	@$(TEST_BIN_DIR)/tiledb_test
 
-clean: clean_core clean_libtiledb clean_tiledb_cmd clean_gtest \
-       clean_gmock clean_check clean_doc clean_examples 
+clean: clean_core clean_libtiledb clean_tiledb_cmd \
+       clean_check clean_doc clean_examples 
 
 ########
 # Core #
@@ -476,59 +453,7 @@ clean_examples:
 
 # clean_rvma:
 #	@echo 'Cleaning RVMA'
-#	@rm -f $(RVMA_OBJ_DIR)/* $(RVMA_BIN_DIR)/*
-
-###############
-# Google Test #
-###############
-
-# --- Compilation --- #
-
-$(GTEST_OBJ_DIR)/gtest-all.o: gtest/src/gtest-all.cc \
-                              $(wildcard gtest/include/gtest/*.h)
-	@test -d $(GTEST_OBJ_DIR) || mkdir -p $(GTEST_OBJ_DIR)
-	@echo "Compiling $<"
-	@$(CXX) -isystem $(GTEST_INCLUDE_DIR) -I$(GTEST_DIR) \
-                -pthread -c $< -o $@
-
-$(GTEST_OBJ_DIR)/gtest_main.o: gtest/src/gtest_main.cc \
-                              $(wildcard gtest/include/gtest/*.h)
-	@echo "Compiling $<"
-	@$(CXX) -isystem $(GTEST_INCLUDE_DIR) -I$(GTEST_DIR) \
-                -pthread -c $< -o $@
-
-# --- Cleaning --- #
-
-clean_gtest:
-	@echo "Cleaning gtest"
-	@rm -rf $(GTEST_OBJ_DIR) $(GTEST_BIN_DIR)
-	
-
-###############
-# Google Mock #
-###############
-
-# --- Compilation --- #
-
-$(GMOCK_OBJ_DIR)/gmock-all.o: gmock/src/gmock-all.cc \
-                              $(wildcard gmock/include/gmock/*.h)
-	@test -d $(GMOCK_OBJ_DIR) || mkdir -p $(GMOCK_OBJ_DIR)
-	@echo "Compiling $<"
-	@$(CXX) -isystem $(GMOCK_INCLUDE_DIR) -I$(GTEST_INCLUDE_DIR) -I$(GMOCK_DIR) \
-                -pthread -c $< -o $@
-
-$(GMOCK_OBJ_DIR)/gmock_main.o: gmock/src/gmock_main.cc \
-                              $(wildcard gmock/include/gmock/*.h)
-	@echo "Compiling $<"
-	@$(CXX) -isystem $(GMOCK_INCLUDE_DIR) -I$(GTEST_INCLUDE_DIR) -I$(GMOCK_DIR) \
-                -pthread -c $< -o $@
-
-# --- Cleaning --- #
-
-clean_gmock:
-	@echo "Cleaning gmock"
-	@rm -rf $(GMOCK_OBJ_DIR) $(GMOCK_BIN_DIR)
-	
+#	@rm -f $(RVMA_OBJ_DIR)/* $(RVMA_BIN_DIR)/*	
 	
 ################
 # TileDB Tests #
@@ -550,13 +475,12 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 
 # --- Linking --- #
 
-$(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_OBJ) $(GTEST_OBJ_DIR)/gtest-all.o \
-                          $(GTEST_OBJ_DIR)/gtest_main.o \
-                          $(GMOCK_OBJ_DIR)/gmock-all.o
+$(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_OBJ)
 	@mkdir -p $(TEST_BIN_DIR)
 	@echo "Creating test_cmd"
-	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
-                -o $@ $^ $(ZLIB) $(OPENSSLLIB)
+	@$(CXX) $(LDFLAGS) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) \
+			$(MPI_LIB_PATHS) $(MPI_LIB) \
+      -o $@ $^ $(ZLIB) $(OPENSSLLIB) -lgtest -lgtest_main
 
 # --- Cleaning --- #
 
@@ -565,9 +489,6 @@ clean_check:
 	@rm -rf $(TEST_OBJ_DIR) $(TEST_BIN_DIR)
 	
 
-#$(GTEST_OBJ_DIR)/gtest-all.o \
-#                          $(GTEST_OBJ_DIR)/gtest_main.o \
-#                          $(GMOCK_OBJ_DIR)/gmock-all.o
 ################################
 # Documentation (with Doxygen) #
 ################################

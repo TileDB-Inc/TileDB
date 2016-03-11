@@ -269,7 +269,6 @@ int TileDBAPITest::update_dense_array(
     buffer_coords[coords_index++] = d0;
     buffer_coords[coords_index++] = d1;
     buffer_a1[i] = x;
-    //std::cout << "(" << d0 << "," << d1 << "," << x << ")\n";
   }
 
   /* Write to array. */
