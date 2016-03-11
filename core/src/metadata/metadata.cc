@@ -75,6 +75,10 @@ const ArraySchema* Metadata::array_schema() const {
   return array_->array_schema();
 }
 
+Array* Metadata::array() const {
+  return array_;
+}
+
 /*
 const std::vector<int>& Array::attribute_ids() const {
   return attribute_ids_;

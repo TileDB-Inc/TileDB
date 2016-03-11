@@ -922,3 +922,97 @@ int tiledb_array_iterator_next(
   else
     return TILEDB_OK;
 }
+
+typedef struct TileDB_MetadataIterator {
+  MetadataIterator* metadata_it_;
+  const TileDB_CTX* tiledb_ctx_;
+} TileDB_MetadataIterator;
+
+int tiledb_metadata_iterator_init(
+    const TileDB_CTX* tiledb_ctx,
+    TileDB_MetadataIterator** tiledb_metadata_iterator,
+    const char* dir,
+    const char** attributes,
+    int attribute_num,
+    void** buffers,
+    size_t* buffer_sizes) {
+  // Sanity check
+  // TODO
+
+  // Allocate memory for the array struct
+  *tiledb_metadata_iterator = 
+      (TileDB_MetadataIterator*) malloc(sizeof(struct TileDB_MetadataIterator));
+
+  // Set TileDB context
+  (*tiledb_metadata_iterator)->tiledb_ctx_ = tiledb_ctx;
+
+  // Init the array
+  int rc = tiledb_ctx->storage_manager_->metadata_iterator_init(
+               (*tiledb_metadata_iterator)->metadata_it_,
+               dir,
+               attributes,
+               attribute_num,
+               buffers,
+               buffer_sizes);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR; 
+}
+
+int tiledb_metadata_iterator_finalize(
+    TileDB_MetadataIterator* tiledb_metadata_iterator) {
+  // Sanity check
+  // TODO
+
+  // Finalize array
+  int rc = tiledb_metadata_iterator->tiledb_ctx_->
+               storage_manager_->metadata_iterator_finalize(
+                   tiledb_metadata_iterator->metadata_it_);
+
+  free(tiledb_metadata_iterator);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR; 
+}
+
+int tiledb_metadata_iterator_end(
+    TileDB_MetadataIterator* tiledb_metadata_iterator) {
+  // Sanity check
+  // TODO
+
+  return (int) tiledb_metadata_iterator->metadata_it_->end();
+}
+
+int tiledb_metadata_iterator_get_value(
+    TileDB_MetadataIterator* tiledb_metadata_iterator,
+    int attribute_id,
+    const void** value,
+    size_t* value_size) {
+  // Sanity check
+  // TODO
+
+  if(tiledb_metadata_iterator->metadata_it_->get_value(
+          attribute_id, 
+          value, 
+          value_size) != TILEDB_MIT_OK)
+    return TILEDB_ERR;
+  else
+    return TILEDB_OK;
+}
+
+int tiledb_metadata_iterator_next(
+    TileDB_MetadataIterator* tiledb_metadata_iterator) {
+  // Sanity check
+  // TODO
+
+  if(tiledb_metadata_iterator->metadata_it_->next() != TILEDB_MIT_OK)
+    return TILEDB_ERR;
+  else
+    return TILEDB_OK;
+}

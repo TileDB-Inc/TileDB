@@ -272,6 +272,44 @@ int StorageManager::array_iterator_init(
   return TILEDB_SM_OK;
 }
 
+int StorageManager::metadata_iterator_init(
+    MetadataIterator*& metadata_iterator,
+    const char* dir,
+    const char** attributes,
+    int attribute_num,
+    void** buffers,
+    size_t* buffer_sizes)  const {
+  // Load array schema
+  ArraySchema* array_schema;
+  if(metadata_load_schema(dir, array_schema) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Create Array object
+  Metadata* metadata = new Metadata();
+  if(metadata->init(
+         array_schema, 
+         TILEDB_METADATA_READ, 
+         attributes, 
+         attribute_num) !=
+     TILEDB_MT_OK) {
+    delete metadata;
+    metadata_iterator = NULL;
+    return TILEDB_SM_ERR;
+  } 
+
+  // Create ArrayIterator object
+  metadata_iterator = new MetadataIterator();
+  if(metadata_iterator->init(metadata, buffers, buffer_sizes) != TILEDB_MIT_OK) {
+    delete metadata;
+    delete metadata_iterator;
+    metadata_iterator = NULL;
+    return TILEDB_SM_ERR;
+  } 
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
 int StorageManager::array_reinit_subarray(
     Array* array,
     const void* subarray)  const {
@@ -313,6 +351,23 @@ int StorageManager::array_iterator_finalize(
 
   // Return
   if(rc == TILEDB_AIT_OK)
+    return TILEDB_SM_OK;
+  else
+    return TILEDB_SM_ERR;
+}
+
+int StorageManager::metadata_iterator_finalize(
+    MetadataIterator* metadata_iterator) const {
+  // If the metadata iterator is NULL, do nothing
+  if(metadata_iterator == NULL)
+    return TILEDB_SM_OK;
+
+  // Finalize array
+  int rc = metadata_iterator->finalize();
+  delete metadata_iterator;
+
+  // Return
+  if(rc == TILEDB_MIT_OK)
     return TILEDB_SM_OK;
   else
     return TILEDB_SM_ERR;

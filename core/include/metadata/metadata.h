@@ -59,6 +59,9 @@ class Metadata {
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
+  // TODO
+  Array* array() const;
+
   /** Returns the attribute ids the array focuses on. */
 //  const std::vector<int>& attribute_ids() const;
 

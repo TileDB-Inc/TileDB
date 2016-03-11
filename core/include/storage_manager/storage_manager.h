@@ -39,6 +39,7 @@
 #include "array_schema.h"
 #include "array_schema_c.h"
 #include "metadata.h"
+#include "metadata_iterator.h"
 #include "metadata_schema_c.h"
 #include <string>
 
@@ -133,6 +134,15 @@ class StorageManager {
       size_t* buffer_sizes) const;
 
   // TODO
+  int metadata_iterator_init(
+      MetadataIterator*& metadata_it,
+      const char* dir,
+      const char** attributes,
+      int attribute_num,
+      void** buffers,
+      size_t* buffer_sizes) const;
+
+  // TODO
   int array_reinit_subarray(
       Array* array,
       const void* range) const;
@@ -156,6 +166,9 @@ class StorageManager {
 
   // TODO
   int array_iterator_finalize(ArrayIterator* array_iterator) const;
+
+  // TODO
+  int metadata_iterator_finalize(MetadataIterator* metadata_iterator) const;
 
   /**
    * Loads the schema of an array from the disk.
