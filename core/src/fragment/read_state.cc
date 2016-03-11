@@ -3429,6 +3429,16 @@ int ReadState::get_cell_pos_ranges_sparse(
   const T* end_range_coords = &cell_range[dim_num];
   int rc;
 
+  // Important
+  overlapping_tiles_pos_[attribute_num] = fragment_info.second; 
+
+  // Update only in the case of coordinates attribute
+  if(fragment_info.second < overlapping_tiles_.size()-1 && 
+     !overlapping_tiles_[fragment_info.second].coords_tile_fetched_reset_) {
+    overlapping_tiles_[fragment_info.second].tile_fetched_[attribute_num] = false; 
+    overlapping_tiles_[fragment_info.second].coords_tile_fetched_reset_ = true; 
+  }
+
   // Bring coordinates tile in main memory
   if(compression == TILEDB_GZIP)
     rc = get_tile_from_disk_cmp_gzip(attribute_num);
