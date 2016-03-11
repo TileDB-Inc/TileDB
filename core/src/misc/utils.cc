@@ -63,6 +63,51 @@
 #  define PRINT_WARNING(x) do { } while(0) 
 #endif
 
+int delete_dir(const std::string& dirname) {
+  // Get real path
+  std::string dirname_real = ::real_dir(dirname); 
+
+  // Delete the contents of the directory
+  std::string filename; 
+  struct dirent *next_file;
+  DIR* dir = opendir(dirname_real.c_str());
+
+  if(dir == NULL) {
+    PRINT_ERROR(std::string("Cannot open directory: ") + 
+                strerror(errno));
+    return TILEDB_UT_ERR;
+  }
+
+  while((next_file = readdir(dir))) {
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, ".."))
+      continue;
+    filename = dirname_real + "/" + next_file->d_name;
+    if(remove(filename.c_str())) {
+      PRINT_ERROR(std::string("Cannot delete file: ") +
+                  strerror(errno));
+      return TILEDB_UT_ERR;
+    }
+  } 
+ 
+  // Close directory 
+  if(closedir(dir)) {
+    PRINT_ERROR(std::string("Cannot close directory; ") + 
+                strerror(errno));
+    return TILEDB_UT_ERR;
+  }
+
+  // Remove directory
+  if(rmdir(dirname.c_str())) {
+    PRINT_ERROR(std::string("Cannot delete directory; ") + 
+                strerror(errno));
+    return TILEDB_UT_ERR;
+  }
+
+  // Success
+  return TILEDB_UT_OK;
+}
+
 template<class T>
 bool empty_value(T value) {
   if(&typeid(T) == &typeid(int))

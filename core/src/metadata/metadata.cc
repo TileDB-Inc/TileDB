@@ -71,6 +71,10 @@ Metadata::~Metadata() {
 /*           ACCESSORS            */
 /* ****************************** */
 
+bool Metadata::overflow(int attribute_id) const {
+  return array_->overflow(attribute_id);
+}
+
 const ArraySchema* Metadata::array_schema() const {
   return array_->array_schema();
 }

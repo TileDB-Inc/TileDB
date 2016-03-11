@@ -34,6 +34,7 @@
 #include "storage_manager.h"
 #include <cassert>
 #include <cstring>
+#include <dirent.h>
 #include <fcntl.h>
 #include <iostream>
 #include <string>
@@ -65,11 +66,57 @@
 
 StorageManager::StorageManager(const char* config_filename) {
   // Set configuration parameters
-  if(config_set(config_filename) == TILEDB_SM_ERR)
+  if(config_filename == NULL)
     config_set_default();
+
+  // TODO: Make an init function
+  tiledb_home_ = TILEDB_HOME;
+  if(tiledb_home_ == "") {
+    tiledb_home_ = getenv("HOME");
+    if(tiledb_home_ == "") {
+      char cwd[1024];
+      if(getcwd(cwd, sizeof(cwd)) != NULL)
+        tiledb_home_ = cwd;
+      // TODO: error
+      else
+        assert(0);
+    }
+    tiledb_home_ += "/.tiledb";
+  }
+
+  if(!is_dir(tiledb_home_)) { 
+    // TODO: Check for errors
+    create_dir(tiledb_home_);
+    master_catalog_create();
+  }
 }
 
 StorageManager::~StorageManager() {
+}
+
+int StorageManager::master_catalog_create() const {
+  MetadataSchemaC metadata_schema_c = {};
+  metadata_schema_c.metadata_name_ = 
+      (char*) (tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG).c_str();
+
+ // Initialize array schema
+  ArraySchema* array_schema = new ArraySchema();
+  if(array_schema->init(&metadata_schema_c) != TILEDB_AS_OK) {
+    delete array_schema;
+    return TILEDB_SM_ERR;
+  }
+
+  // Create array with the new schema
+  int rc = metadata_create(array_schema);
+
+  // Clean up
+  delete array_schema;
+
+  // Return
+  if(rc == TILEDB_SM_OK)
+    return TILEDB_SM_OK;
+  else
+    return TILEDB_SM_ERR;
 }
 
 /* ****************************** */
@@ -88,7 +135,6 @@ int StorageManager::workspace_create(const std::string& dir) const {
     return TILEDB_SM_ERR;
   }
 
-
   // Create group directory
   if(create_dir(dir) != TILEDB_UT_OK)  
     return TILEDB_SM_ERR;
@@ -97,7 +143,41 @@ int StorageManager::workspace_create(const std::string& dir) const {
   if(create_workspace_file(dir) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
 
-  // TODO: Create master catalog
+  // Create master catalog entry
+  if(create_master_catalog_entry(dir, TILEDB_SM_MC_INS) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::create_master_catalog_entry(
+    const std::string& dir,
+    MasterCatalogOp op) const {
+  // Initialize master catalog
+  std::string real_dir = ::real_dir(dir);
+  Metadata* metadata;
+  std::string master_catalog_name = 
+      tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG;
+  if(metadata_init(
+         metadata, 
+         master_catalog_name.c_str(), 
+         TILEDB_METADATA_WRITE, 
+         NULL, 
+         0) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Write entry
+  // TODO: Handle deletions
+  const void* buffers[] = { real_dir.c_str() };
+  const size_t buffer_sizes[] = { real_dir.size()+1 };
+  if(metadata->write(real_dir.c_str(), real_dir.size()+1, buffers, buffer_sizes) 
+     != TILEDB_MT_OK)
+    return TILEDB_SM_ERR;
+
+  // Finalize master catalog
+  if(metadata_finalize(metadata) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
 
   // Success
   return TILEDB_SM_OK;
@@ -469,18 +549,558 @@ int StorageManager::array_read(
 /*             COMMON             */
 /* ****************************** */
 
+int StorageManager::group_clear(
+    const std::string& group) const {
+  // Get real group path
+  std::string group_real = ::real_dir(group); 
+
+  // Check if group exists
+  if(!is_group(group_real)) {
+    PRINT_ERROR(std::string("Group '") + group_real + "' does not exist");
+    return TILEDB_SM_ERR;
+  }
+
+  // Do not delete if it is a workspace
+  if(is_workspace(group_real)) {
+    PRINT_ERROR(std::string("Group '") + group_real + "' is also a workspace");
+    return TILEDB_SM_ERR;
+  }
+
+  // Delete all groups and arrays inside the group directory
+  std::string filename; 
+  struct dirent *next_file;
+  DIR* dir = opendir(group_real.c_str());
+  
+  if(dir == NULL) {
+    PRINT_ERROR(std::string("Cannot open group directory '") + 
+                group_real + "'; " + strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  while((next_file = readdir(dir))) {
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, "..") ||
+       !strcmp(next_file->d_name, TILEDB_GROUP_FILENAME))
+      continue;
+    filename = group_real + "/" + next_file->d_name;
+    if(is_group(filename)) { // Group
+      if(group_delete(filename))
+        return TILEDB_SM_ERR;
+    } else if(is_metadata(filename)) { // Metadata
+      if(metadata_delete(filename))
+        return TILEDB_SM_ERR;
+    } else if(is_array(filename)){  // Array
+      if(array_delete(filename))
+        return TILEDB_SM_ERR;
+    } else { // Non TileDB related
+      PRINT_ERROR(std::string("Cannot delete non TileDB related element '") +
+                  filename + "'");
+      return TILEDB_SM_ERR;
+    }
+  } 
+
+  // Close array directory  
+  if(closedir(dir)) {
+    PRINT_ERROR(std::string("Cannot close the group directory; ") + 
+                strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::array_clear(
+    const std::string& array_name) const {
+  // Get real array directory name
+  std::string array_name_real = ::real_dir(array_name);
+
+  // Check if the array exists
+  if(!is_array(array_name_real)) {
+    PRINT_ERROR(std::string("Array '") + array_name_real + 
+                "' does not exist");
+    return TILEDB_SM_ERR;
+  }
+
+  // Delete the entire array directory except for the array schema file
+  std::string filename; 
+  struct dirent *next_file;
+  DIR* dir = opendir(array_name_real.c_str());
+  
+  if(dir == NULL) {
+    PRINT_ERROR(std::string("Cannot open array directory; ") + 
+                strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  while((next_file = readdir(dir))) {
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, "..") ||
+       !strcmp(next_file->d_name, TILEDB_ARRAY_SCHEMA_FILENAME))
+      continue;
+    filename = array_name_real + "/" + next_file->d_name;
+    if(is_file(filename)) {
+      if(remove(filename.c_str())) {
+        PRINT_ERROR(std::string("Cannot delete array file; ") +
+                    strerror(errno));
+        return TILEDB_SM_ERR;
+      }
+    } else if(is_metadata(filename)) { // It is metadata
+      metadata_delete(filename);
+    } else if(is_fragment(filename)){  // It is a fragment directory
+      if(delete_dir(filename) != TILEDB_UT_OK)
+        return TILEDB_SM_ERR;
+    } else {                           // Non TileDB related
+      PRINT_ERROR(std::string("Cannot delete non TileDB related element '") +
+                  filename + "'");
+      return TILEDB_SM_ERR;
+    }
+  } 
+
+  // Close array directory  
+  if(closedir(dir)) {
+    PRINT_ERROR(std::string("Cannot close the array directory; ") + 
+                strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::metadata_clear(
+    const std::string& metadata_name) const {
+  // Get real metadata directory name
+  std::string metadata_name_real = ::real_dir(metadata_name);
+
+  // Check if the metadata exists
+  if(!is_metadata(metadata_name_real)) {
+    PRINT_ERROR(std::string("Metadata '") + metadata_name_real + 
+                "' do not exist");
+    return TILEDB_SM_ERR;
+  }
+
+  // Delete the entire metadata directory except for the array schema file
+  std::string filename; 
+  struct dirent *next_file;
+  DIR* dir = opendir(metadata_name_real.c_str());
+  
+  if(dir == NULL) {
+    PRINT_ERROR(std::string("Cannot open metadata directory; ") + 
+                strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  while((next_file = readdir(dir))) {
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, "..") ||
+       !strcmp(next_file->d_name, TILEDB_METADATA_SCHEMA_FILENAME))
+      continue;
+    filename = metadata_name_real + "/" + next_file->d_name;
+    if(is_file(filename)) {  // TODO: Probably remove
+      if(remove(filename.c_str())) {
+        PRINT_ERROR(std::string("Cannot delete metadata file; ") +
+                    strerror(errno));
+        return TILEDB_SM_ERR;
+      }
+    } else if(is_fragment(filename)) {  // It is a fragment directory
+      if(delete_dir(filename))
+        return TILEDB_SM_ERR;
+    } else {                           // Non TileDB related
+      PRINT_ERROR(std::string("Cannot delete non TileDB related element '") +
+                  filename + "'");
+      return TILEDB_SM_ERR;
+    }
+  } 
+
+  // Close metadata directory  
+  if(closedir(dir)) {
+    PRINT_ERROR(std::string("Cannot close the metadata directory; ") + 
+                strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::metadata_delete(
+    const std::string& metadata_name) const {
+  // Get real metadata directory name
+  std::string metadata_name_real = ::real_dir(metadata_name);
+
+  // Clear the metadata
+  if(metadata_clear(metadata_name_real))
+    return TILEDB_SM_ERR;
+
+  // Delete metadata directory
+  if(delete_dir(metadata_name_real))
+    return TILEDB_SM_ERR; 
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::group_delete(
+    const std::string& group) const {
+  // Clear the group
+  if(group_clear(group) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Delete group directory
+  if(delete_dir(group) != TILEDB_UT_OK)
+    return TILEDB_SM_ERR; 
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::array_delete(
+    const std::string& array_name) const {
+  // Clear the array
+  if(array_clear(array_name) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Delete array directory
+  if(delete_dir(array_name) != TILEDB_UT_OK)
+    return TILEDB_SM_ERR; 
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::workspace_delete(
+    const std::string& workspace) const { 
+  // Get real paths
+  std::string workspace_real, master_catalog_real;
+  workspace_real = real_dir(workspace);
+  master_catalog_real = real_dir(tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG);
+
+  // Check if workspace exists
+  if(!is_workspace(workspace_real)) {
+    PRINT_ERROR(std::string("Workspace '") + workspace_real + "' does not exist");
+    return TILEDB_SM_ERR;
+  }  
+
+  // Master catalog should exist
+  if(!is_metadata(master_catalog_real)) {
+    PRINT_ERROR(std::string("Master catalog '") + master_catalog_real + 
+                            "' does not exist'");
+    return TILEDB_SM_ERR;
+  }  
+
+  // Clear workspace 
+  if(workspace_clear(workspace_real) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Delete directory
+  if(delete_dir(workspace_real))
+    return TILEDB_SM_ERR;
+
+  // Update master catalog by deleting workspace 
+  create_master_catalog_entry(workspace_real, TILEDB_SM_MC_DEL); 
+
+  // TODO: consolidate?
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::workspace_clear(const std::string& workspace) const {
+  // Get real workspace path
+  std::string workspace_real = real_dir(workspace); 
+
+  // Delete all groups, arrays and metadata inside the group directory
+  std::string filename; 
+  struct dirent *next_file;
+  DIR* dir = opendir(workspace_real.c_str());
+  
+  if(dir == NULL) {
+    PRINT_ERROR(std::string("Cannot open workspace directory '") + 
+               workspace_real + "'; " + strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  while((next_file = readdir(dir))) {
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, "..") ||
+       !strcmp(next_file->d_name, TILEDB_WORKSPACE_FILENAME) ||
+       !strcmp(next_file->d_name, TILEDB_GROUP_FILENAME))
+      continue;
+    filename = workspace_real + "/" + next_file->d_name;
+    if(is_group(filename)) { // Group
+      if(group_delete(filename))
+        return TILEDB_SM_ERR;
+    } else if(is_metadata(filename)) { // Metadata
+      if(metadata_delete(filename))
+        return TILEDB_SM_ERR;
+    } else if(is_array(filename)){  // Array
+      if(is_array(filename))
+        return TILEDB_SM_ERR;
+    } else { // Non TileDB related
+      PRINT_ERROR(std::string("Cannot delete non TileDB related element '") +
+                  filename + "'");
+      return TILEDB_SM_ERR;
+    }
+  } 
+
+  // Close array directory  
+  if(closedir(dir)) {
+    PRINT_ERROR(std::string("Cannot close the workspace directory; ") + 
+                strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
 int StorageManager::clear(const std::string& dir) const {
-  // TODO
+  if(is_workspace(dir)) {
+    return workspace_clear(dir);
+  } else if(is_group(dir)) {
+    return group_clear(dir);
+  } else if(is_array(dir)) {
+    return array_clear(dir);
+  } else if(is_metadata(dir)) {
+    return metadata_clear(dir);
+  } else {
+    PRINT_ERROR("Clear failed; Invalid directory");
+    return TILEDB_SM_ERR;
+  }
 }
 
 int StorageManager::delete_entire(const std::string& dir) const {
+  if(is_workspace(dir)) {
+    return workspace_delete(dir);
+  } else if(is_group(dir)) {
+    return group_delete(dir);
+  } else if(is_array(dir)) {
+    return array_delete(dir);
+  } else if(is_metadata(dir)) {
+    return metadata_delete(dir);
+  } else {
+    PRINT_ERROR("Clear failed; Invalid directory");
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::array_move(
+    const std::string& old_array,
+    const std::string& new_array) const {
+  // Get real array directory name
+  std::string old_array_real = real_dir(old_array);
+  std::string new_array_real = real_dir(new_array);
+
+  // Check if the old array exists
+  if(!is_array(old_array_real)) {
+    PRINT_ERROR(std::string("Array '") + old_array_real + 
+                "' does not exist");
+    return TILEDB_SM_ERR;
+  }
+
+  // Make sure that the new array is not an existing directory
+  if(is_dir(new_array_real)) {
+    PRINT_ERROR(std::string("Directory '") + new_array_real + "' already exists");
+    return TILEDB_SM_ERR;
+  }
+
+  // Check if the new array are inside a workspace or group
+  std::string new_array_parent_folder = parent_dir(new_array_real);
+
+  if(!is_group(new_array_parent_folder) && 
+     !is_workspace(new_array_parent_folder)) {
+    PRINT_ERROR(std::string("Folder '") + new_array_parent_folder + "' must "
+                "be either a workspace or a group");
+    return TILEDB_SM_ERR;
+  }
+
+  // Rename
+  if(rename(old_array_real.c_str(), new_array_real.c_str())) {
+    PRINT_ERROR(std::string("Cannot move array; ") + 
+                strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::workspace_move(
+    const std::string& old_workspace, 
+    const std::string& new_workspace) const {
+  // Get real paths
+  std::string old_workspace_real = real_dir(old_workspace);
+  std::string new_workspace_real = real_dir(new_workspace);
+  std::string master_catalog_real = 
+      real_dir(tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG);
+
+  // Check if old workspace exists
+  if(!is_workspace(old_workspace_real)) {
+    PRINT_ERROR(std::string("Workspace '") + old_workspace_real + "' does not exist");
+    return TILEDB_SM_ERR;
+  }  
+
+  // Check new workspace
+  if(new_workspace_real == "") {
+    PRINT_ERROR(std::string("Invalid workspace '") +
+                new_workspace_real + "'"); 
+    return TILEDB_SM_ERR;
+  }
+  if(is_dir(new_workspace_real)) {
+    PRINT_ERROR(std::string("Directory '") + new_workspace_real + 
+                            "' already exists"); 
+    return TILEDB_SM_ERR;
+  }
+
+  // New workspace should not be inside another workspace or group or array or metadata
+  std::string new_workspace_real_parent = parent_dir(new_workspace_real);
+  if(is_workspace(new_workspace_real_parent) ||
+     is_group(new_workspace_real_parent) ||
+     is_array(new_workspace_real_parent) ||
+     is_metadata(new_workspace_real_parent)) {
+    PRINT_ERROR(std::string("Folder '") + new_workspace_real_parent + 
+                            "' should not be a workspace, group, "
+                            "array, or metadata");
+    return TILEDB_SM_ERR;
+  }
+
+  // Master catalog should exist
+  if(!is_metadata(master_catalog_real)) {
+    PRINT_ERROR(std::string("Master catalog '") + master_catalog_real + 
+                            "' does not exist'");
+    return TILEDB_SM_ERR;
+  }  
+
+  // Rename directory 
+  if(rename(old_workspace_real.c_str(), new_workspace_real.c_str())) {
+    PRINT_ERROR(std::string("Cannot move group; ") + 
+                strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  // Update master catalog by adding new workspace 
+  create_master_catalog_entry(old_workspace_real, TILEDB_SM_MC_DEL);
+  create_master_catalog_entry(new_workspace_real, TILEDB_SM_MC_INS);
+
+  // Consolidate
   // TODO
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::metadata_move(
+    const std::string& old_metadata,
+    const std::string& new_metadata) const {
+  // Get real metadata directory name
+  std::string old_metadata_real = real_dir(old_metadata);
+  std::string new_metadata_real = real_dir(new_metadata);
+
+  // Check if the old metadata exists
+  if(!is_metadata(old_metadata_real)) {
+    PRINT_ERROR(std::string("Metadata '") + old_metadata_real + 
+                "' do not exist");
+    return TILEDB_SM_ERR;
+  }
+
+  // Make sure that the new metadata is not an existing directory
+  if(is_dir(new_metadata_real)) {
+    PRINT_ERROR(std::string("Directory '") + new_metadata_real + "' already exists");
+    return TILEDB_SM_ERR;
+  }
+
+  // Check if the new metadata are inside a workspace, group or array
+  std::string new_metadata_parent_folder = parent_dir(new_metadata_real);
+
+  if(!is_group(new_metadata_parent_folder) && 
+     !is_workspace(new_metadata_parent_folder) &&
+     !is_array(new_metadata_parent_folder)) {
+    PRINT_ERROR(std::string("Folder '") + new_metadata_parent_folder + "' must "
+                "be either a workspace or a group or an array");
+    return TILEDB_SM_ERR;
+  }
+
+  // Rename
+  if(rename(old_metadata_real.c_str(), new_metadata_real.c_str())) {
+    PRINT_ERROR(std::string("Cannot move metadata; ") + 
+                strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::group_move(
+    const std::string& old_group,
+    const std::string& new_group) const {
+  // Get real group directory names
+  std::string old_group_real = real_dir(old_group);
+  std::string new_group_real = real_dir(new_group);
+
+  // Check if the old group is also a workspace
+  if(is_workspace(old_group_real)) {
+    PRINT_ERROR(std::string("Group '") + old_group_real + 
+                "' is also a workspace");
+    return TILEDB_SM_ERR;
+  }
+
+  // Check if the old group exists
+  if(!is_group(old_group_real)) {
+    PRINT_ERROR(std::string("Group '") + old_group_real + 
+                "' does not exist");
+    return TILEDB_SM_ERR;
+  }
+
+  // Make sure that the new group is not an existing directory
+  if(is_dir(new_group_real)) {
+    PRINT_ERROR(std::string("Directory '") + new_group_real + "' already exists");
+    return TILEDB_SM_ERR;
+  }
+
+  // Check if the new group is inside a workspace or group
+  std::string new_group_parent_folder = parent_dir(new_group_real);
+
+  if(!is_group(new_group_parent_folder) && 
+     !is_workspace(new_group_parent_folder)) {
+    PRINT_ERROR(std::string("Folder '") + new_group_parent_folder + "' must "
+                "be either a workspace or a group");
+    return TILEDB_SM_ERR;
+  }
+
+  // Rename
+  if(rename(old_group_real.c_str(), new_group_real.c_str())) {
+    PRINT_ERROR(std::string("Cannot move group; ") + 
+                strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::move(
     const std::string& old_dir,
     const std::string& new_dir) const {
-  // TODO
+  if(is_workspace(old_dir)) {
+    return workspace_move(old_dir, new_dir);
+  } else if(is_group(old_dir)) {
+    return group_move(old_dir, new_dir);
+  } else if(is_array(old_dir)) {
+    return array_move(old_dir, new_dir);
+  } else if(is_metadata(old_dir)) {
+    return metadata_move(old_dir, new_dir);
+  } else {
+    PRINT_ERROR("Move failed; Invalid source directory");
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 /* ****************************** */
@@ -554,7 +1174,7 @@ int StorageManager::metadata_create(
   delete array_schema;
 
   // Return
-  if(rc == TILEDB_AS_OK)
+  if(rc == TILEDB_SM_OK)
     return TILEDB_SM_OK;
   else
     return TILEDB_SM_ERR;

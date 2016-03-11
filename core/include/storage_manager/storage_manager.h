@@ -50,6 +50,7 @@
 // Return codes
 #define TILEDB_SM_OK        0
 #define TILEDB_SM_ERR      -1
+#define TILEDB_SM_MASTER_CATALOG "master_catalog"
 
 /** 
  * The Storage Manager is the most important module of TileDB, which is
@@ -57,6 +58,11 @@
  */
 class StorageManager {
  public: 
+  // TYPE DEFINITIONS
+
+  // TODO
+  enum MasterCatalogOp {TILEDB_SM_MC_INS, TILEDB_SM_MC_DEL};
+
   // CONSTRUCTORS & DESTRUCTORS  
 
   /** Constructor. */
@@ -65,7 +71,52 @@ class StorageManager {
   /** Destructor. */
   ~StorageManager();
 
+  // TODO
+  int master_catalog_create() const;
+
+  // TODO
+  int create_master_catalog_entry(
+      const std::string& dir, 
+      MasterCatalogOp op) const;
+
   // WORKSPACE
+// TODO
+  int metadata_move(
+       const std::string& old_dir,
+       const std::string& new_dir) const;
+  // TODO
+  int array_move(
+       const std::string& old_dir,
+       const std::string& new_dir) const;
+  // TODO
+  int group_move(
+       const std::string& old_dir,
+       const std::string& new_dir) const;
+  // TODO
+  int workspace_move(
+       const std::string& old_dir,
+       const std::string& new_dir) const;
+
+  // TODO
+  int metadata_delete(const std::string& dir) const;
+  // TODO
+  int array_delete(const std::string& dir) const;
+  // TODO
+  int group_delete(const std::string& dir) const;
+  // TODO
+  int workspace_delete(const std::string& dir) const;
+
+  // TODO
+  int metadata_clear(const std::string& dir) const;
+
+  // TODO
+  int group_clear(const std::string& dir) const;
+
+  // TODO
+  int array_clear(const std::string& dir) const;
+
+  // TODO
+  int workspace_clear(const std::string& dir) const;
 
   // TODO
   int workspace_create(const std::string& dir) const; 
@@ -231,6 +282,9 @@ class StorageManager {
       size_t* buffer_sizes) const;
 
  private:
+  // PRIVATE ATTRBUTES
+  std::string tiledb_home_;
+
   // PRIVATE METHODS
 
   /** 

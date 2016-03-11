@@ -45,6 +45,10 @@
 #include <string>
 #include <vector>
 
+
+// TODO
+int delete_dir(const std::string& dirname);
+
 // TODO
 template<class T>
 bool empty_value(T value);
@@ -138,6 +142,7 @@ int create_fragment_file(const std::string& dir);
  * @return The directory where the program is executed.
  */
 std::string current_dir();
+
 
 /** 
  * Doubles the size of the buffer.

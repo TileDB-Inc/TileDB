@@ -54,6 +54,9 @@
 #define TILEDB_METADATA_READ  0
 #define TILEDB_METADATA_WRITE 1
 
+// TODO
+#define TILEDB_HOME ""
+
 /** Special cell values. */
 #define TILEDB_EMPTY_INT32 INT_MAX
 #define TILEDB_EMPTY_INT64 LLONG_MAX

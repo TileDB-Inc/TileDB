@@ -56,6 +56,9 @@ class Metadata {
 
   // ACCESSORS
 
+  // TODO
+  bool overflow(int attribute_id) const;
+
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 

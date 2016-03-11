@@ -504,6 +504,12 @@ int tiledb_array_read(
     return TILEDB_ERR;
 }
 
+int tiledb_array_overflow(
+    const TileDB_Array* tiledb_array,
+    int attribute_id) {
+  return (int) tiledb_array->array_->overflow(attribute_id);
+}
+
 /* ****************************** */
 /*       CLEAR, DELETE, MOVE      */
 /* ****************************** */
@@ -821,6 +827,12 @@ int tiledb_metadata_load_schema(
 
   // Success
   return TILEDB_OK;
+}
+
+int tiledb_metadata_overflow(
+    const TileDB_Metadata* tiledb_metadata,
+    int attribute_id) {
+  return (int) tiledb_metadata->metadata_->overflow(attribute_id);
 }
 
 /* ****************************** */
