@@ -365,13 +365,13 @@ void Metadata::prepare_array_buffers(
       array_buffers[array_buffer_i] = coords;
       array_buffer_sizes[array_buffer_i] = coords_size;
       ++array_buffer_i;
-    } else if(attribute_ids[i] == attribute_num-1) { // Keys
-      array_buffers[array_buffer_i] = keys_offsets;
-      array_buffer_sizes[array_buffer_i] = keys_offsets_size;
-      ++array_buffer_i;
-      array_buffers[array_buffer_i] = keys;
-      array_buffer_sizes[array_buffer_i] = keys_size;
-      ++array_buffer_i;
+//    } else if(attribute_ids[i] == attribute_num-1) { // Keys
+//     array_buffers[array_buffer_i] = keys_offsets;
+//      array_buffer_sizes[array_buffer_i] = keys_offsets_size;
+//      ++array_buffer_i;
+//      array_buffers[array_buffer_i] = keys;
+//      array_buffer_sizes[array_buffer_i] = keys_size;
+//      ++array_buffer_i;
     } else { // Any other attribute 
       array_buffers[array_buffer_i] = buffers[buffer_i];
       array_buffer_sizes[array_buffer_i] = buffer_sizes[buffer_i];

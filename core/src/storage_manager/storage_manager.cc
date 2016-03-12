@@ -168,10 +168,14 @@ int StorageManager::create_master_catalog_entry(
     return TILEDB_SM_ERR;
 
   // Write entry
-  // TODO: Handle deletions
-  const void* buffers[] = { real_dir.c_str() };
-  const size_t buffer_sizes[] = { real_dir.size()+1 };
-  if(metadata->write(real_dir.c_str(), real_dir.size()+1, buffers, buffer_sizes) 
+  const char empty_char = TILEDB_EMPTY_CHAR;
+  const char* entry_var = (op == TILEDB_SM_MC_INS) ? 
+                      real_dir.c_str() : &empty_char;
+  const size_t entry[] = { 0 };
+  const void* buffers[] = { entry, entry_var };
+  const size_t buffer_sizes[] = { sizeof(entry), strlen(entry_var)+1 };
+
+  if(metadata->write(real_dir.c_str(), real_dir.size()+1, buffers, buffer_sizes)
      != TILEDB_MT_OK)
     return TILEDB_SM_ERR;
 
@@ -835,7 +839,7 @@ int StorageManager::workspace_clear(const std::string& workspace) const {
       if(metadata_delete(filename))
         return TILEDB_SM_ERR;
     } else if(is_array(filename)){  // Array
-      if(is_array(filename))
+      if(array_delete(filename))
         return TILEDB_SM_ERR;
     } else { // Non TileDB related
       PRINT_ERROR(std::string("Cannot delete non TileDB related element '") +

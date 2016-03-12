@@ -208,9 +208,6 @@ bool ReadState::coords_exist(
   overlapping_tiles_pos_[attribute_num] = tile_i; 
   int64_t cell_num = overlapping_tiles_[tile_i].cell_num_;
 
-  // Sanity check
-  assert(cell_num >= 2);
-
   // Bring coordinates tile in main memory
   if(compression == TILEDB_GZIP)
     rc = get_tile_from_disk_cmp_gzip(attribute_num);
@@ -258,7 +255,7 @@ bool ReadState::coords_exist(
 
   if(max < min)    
     return false;
-  else             
+  else
     return true;
 }
 

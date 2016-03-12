@@ -1879,6 +1879,10 @@ int64_t ArraySchema::tile_id(const T* cell_coords) const {
   const T* domain = static_cast<const T*>(domain_);
   const T* tile_extents = static_cast<const T*>(tile_extents_);
 
+  // Trivial case
+  if(tile_extents == NULL)
+    return 0;
+
   // Calculate tile coordinates
   T* tile_coords = new T[dim_num_];   
   for(int i=0; i<dim_num_; ++i)

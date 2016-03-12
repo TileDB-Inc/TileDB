@@ -1,6 +1,4 @@
 /*
- * File: tiledb_array_read_dense_A.cc
- * 
  * Demonstrates how to read from dense array "workspace/A".
  */
 
@@ -11,8 +9,7 @@ int main() {
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
-  // Create the workspace
-  tiledb_workspace_create(tiledb_ctx, "workspace_2");
+  tiledb_move(tiledb_ctx, "workspace_2", "workspace");
 
   /* Finalize context. */
   tiledb_ctx_finalize(tiledb_ctx);

@@ -12,7 +12,7 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
   // Create the workspace
-  tiledb_workspace_create(tiledb_ctx, "workspace_2");
+  tiledb_group_create(tiledb_ctx, "workspace/group");
 
   /* Finalize context. */
   tiledb_ctx_finalize(tiledb_ctx);

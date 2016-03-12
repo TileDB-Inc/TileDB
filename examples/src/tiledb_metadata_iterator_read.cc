@@ -13,26 +13,26 @@ int main() {
 
   /* Subset over attribute "a1". */
   //const char* attributes[] = { "a1" };
-  const char* attributes[] = { TILEDB_KEY_NAME, "a2" };
+  const char* attributes[] = { TILEDB_KEY_NAME };
 
   /* Prepare cell buffers for attribute "a1". */
   int buffer_a1[8];
   float buffer_a2[8];
   size_t buffer_key[8];
-  char buffer_key_var[50];
+  char buffer_key_var[500];
   //void* buffers[] = { buffer_a1 };
   //size_t buffer_sizes[] = { sizeof(buffer_a1) };
-  void* buffers[] = { buffer_key, buffer_key_var, buffer_a2 };
-  size_t buffer_sizes[] = { sizeof(buffer_key), sizeof(buffer_key_var), sizeof(buffer_a2) };
+  void* buffers[] = { buffer_key, buffer_key_var };
+  size_t buffer_sizes[] = { sizeof(buffer_key), sizeof(buffer_key_var) };
 
   /* Initialize the array in READ mode. */
   TileDB_MetadataIterator* tiledb_metadata_iterator;
   tiledb_metadata_iterator_init(
       tiledb_ctx, 
       &tiledb_metadata_iterator,
-      "workspace/meta_A",
+      "~/.tiledb/master_catalog",
       attributes,           
-      2,
+      1,
       buffers,
       buffer_sizes);      
 
@@ -43,9 +43,10 @@ int main() {
 
   while(!tiledb_metadata_iterator_end(tiledb_metadata_iterator)) {
     tiledb_metadata_iterator_get_value(tiledb_metadata_iterator, 0, (const void**) &key, &key_size);
-    std::cout << key << " " << key_size << "\n";
-    tiledb_metadata_iterator_get_value(tiledb_metadata_iterator, 1, (const void**) &a, &a_size);
-    std::cout << *a << " " << a_size << "\n";
+    if(key[0] == TILEDB_EMPTY_CHAR)
+      std::cout << "EMPTY\n";
+    else
+      std::cout << key << " " << key_size << "\n";
     tiledb_metadata_iterator_next(tiledb_metadata_iterator);
   }
 
