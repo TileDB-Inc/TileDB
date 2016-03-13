@@ -71,6 +71,7 @@ class StorageManager {
   /** Destructor. */
   ~StorageManager();
 
+
   // TODO
   int master_catalog_create() const;
 
@@ -197,6 +198,9 @@ class StorageManager {
   int array_reinit_subarray(
       Array* array,
       const void* range) const;
+
+  // TODO
+  int array_consolidate(Array* array) const;
 
   // TODO
   int metadata_init(

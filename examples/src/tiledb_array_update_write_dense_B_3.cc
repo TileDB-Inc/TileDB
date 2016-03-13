@@ -59,7 +59,7 @@ int main() {
   };
   const void* buffers[] = 
   { 
-    buffer_coords, buffer_a1, buffer_a2, buffer_var_a2, buffer_coords
+    buffer_coords, buffer_a1, buffer_a2, buffer_var_a2, buffer_a3
   };
   size_t buffer_sizes[] = { 
       sizeof(buffer_coords), 

@@ -215,6 +215,11 @@ TILEDB_EXPORT int tiledb_array_reinit_subarray(
     const TileDB_Array* tiledb_array,
     const void* subarray);
 
+TILEDB_EXPORT int tiledb_array_reinit_attributes(
+    const TileDB_Array* tiledb_array,
+    const char** attributes,
+    int attribute_num);
+
 /**
  * Retrieves the array schema.
  *
@@ -290,9 +295,7 @@ TILEDB_EXPORT int tiledb_array_overflow(
     int attribute_id);
 
 // TODO
-TILEDB_EXPORT int tiledb_array_consolidate(
-    const TileDB_CTX* tiledb_ctx, 
-    const char* array_name);
+TILEDB_EXPORT int tiledb_array_consolidate(const TileDB_Array* tiledb_array);
 
 /* ********************************* */
 /*         CLEAR, DELETE, MOVE       */
@@ -426,6 +429,16 @@ TILEDB_EXPORT int tiledb_metadata_load_schema(
 TILEDB_EXPORT int tiledb_metadata_overflow(
     const TileDB_Metadata* tiledb_metadata,
     int attribute_id);
+
+// TODO
+TILEDB_EXPORT int tiledb_metadata_reinit_attributes(
+    const TileDB_Metadata* tiledb_metadata,
+    const char** attributes,
+    int attribute_num);
+
+// TODO
+TILEDB_EXPORT int tiledb_metadata_consolidate(
+    const TileDB_Metadata* tiledb_metadata);
 
 /* ********************************* */
 /*              ITERATORS            */

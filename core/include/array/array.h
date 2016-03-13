@@ -90,6 +90,14 @@ class Array {
   int read(void** buffers, size_t* buffer_sizes); 
 
   // MUTATORS
+
+  // TODO
+  int consolidate();
+
+  // TODO
+  int consolidate(
+      Fragment* new_fragment,
+      int attribute_id);
  
   /**
    * Initializes an array object.
@@ -115,6 +123,9 @@ class Array {
 
   // TODO
   int reinit_subarray(const void* subarray);
+
+  // TODO
+  int reinit_attributes(const char** attributes, int attribute_num);
 
   /**
    * Finalizes the array.

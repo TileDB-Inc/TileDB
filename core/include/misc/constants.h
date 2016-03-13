@@ -57,6 +57,9 @@
 // TODO
 #define TILEDB_HOME ""
 
+// TODO
+#define TILEDB_CONSOLIDATION_BUFFER 100000000 
+
 /** Special cell values. */
 #define TILEDB_EMPTY_INT32 INT_MAX
 #define TILEDB_EMPTY_INT64 LLONG_MAX

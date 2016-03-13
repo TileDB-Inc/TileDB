@@ -248,6 +248,23 @@ int tiledb_array_reinit_subarray(
     return TILEDB_ERR; 
 }
 
+int tiledb_array_reinit_attributes(
+    const TileDB_Array* tiledb_array,
+    const char** attributes, 
+    int attribute_num) {
+  // Sanity check
+  // TODO
+
+  // Re-Init the array
+  int rc = tiledb_array->array_->reinit_attributes(attributes, attribute_num);
+
+  // Return
+  if(rc == TILEDB_AR_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR; 
+}
+
 int tiledb_array_finalize(TileDB_Array* tiledb_array) {
   // Sanity check
   if(!sanity_check(tiledb_array->tiledb_ctx_))
@@ -835,6 +852,21 @@ int tiledb_metadata_overflow(
   return (int) tiledb_metadata->metadata_->overflow(attribute_id);
 }
 
+int tiledb_metadata_consolidate(
+    const TileDB_Metadata* tiledb_metadata) {
+  // Sanity check
+  // TODO
+
+  // Read
+  int rc = tiledb_metadata->metadata_->consolidate();
+
+  // Return
+  if(rc == TILEDB_MT_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR;
+}
+
 /* ****************************** */
 /*            ITERATORS           */
 /* ****************************** */
@@ -1027,4 +1059,38 @@ int tiledb_metadata_iterator_next(
     return TILEDB_ERR;
   else
     return TILEDB_OK;
+}
+
+int tiledb_metadata_reinit_attributes(
+    const TileDB_Metadata* tiledb_metadata,
+    const char** attributes, 
+    int attribute_num) {
+  // Sanity check
+  // TODO
+
+  // Re-Init the metadata
+  int rc = tiledb_metadata->metadata_->reinit_attributes(
+               attributes, 
+               attribute_num);
+
+  // Return
+  if(rc == TILEDB_MT_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR; 
+}
+
+int tiledb_array_consolidate(const TileDB_Array* tiledb_array) {
+  // Sanity check
+  // TODO
+
+  // Read
+  int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_consolidate(
+               tiledb_array->array_);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR;
 }

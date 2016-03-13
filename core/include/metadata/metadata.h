@@ -84,6 +84,12 @@ class Metadata {
   int read(const char* key, void** buffers, size_t* buffer_sizes); 
 
   // MUTATORS
+
+  // TODO
+  int consolidate();
+
+  // TODO
+  int reinit_attributes(const char** attributes, int attribute_num);
  
   int init(
       const ArraySchema* array_schema, 

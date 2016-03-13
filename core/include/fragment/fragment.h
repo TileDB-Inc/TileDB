@@ -206,7 +206,10 @@ class Fragment {
       T* first_coords);
 
   // TODO
-  int init(const std::string& fragment_name, const void* range);
+  int init(
+      const std::string& fragment_name, 
+      int mode,
+      const void* range);
 
   // TODO
   void reinit_read_state();
@@ -217,6 +220,9 @@ class Fragment {
   // TODO
   bool full_domain() const;
 
+  // TODO
+  int mode() const;
+
   // MISC
   
   // TODO
@@ -224,6 +230,9 @@ class Fragment {
  
  private:
   // PRIVATE ATTRIBUTES
+  //TODO
+  int mode_;
+
   /** The array the fragment belongs to. */
   const Array* array_;
   /** A book-keeping structure. */

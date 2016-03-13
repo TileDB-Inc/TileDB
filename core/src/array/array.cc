@@ -161,14 +161,14 @@ int Array::read(void** buffers, size_t* buffer_sizes) {
   } else if(fragments_.size() > 1 || // Multi-fragment read
             (fragments_.size() == 1 &&
               ((array_schema_->dense() && !fragments_[0]->dense()) || 
-               (array_schema_->dense() && !fragments_[0]->full_domain())))) {       
+               (array_schema_->dense() && !fragments_[0]->full_domain())))) {
     if(array_read_state_->read_multiple_fragments(buffers, buffer_sizes) == 
        TILEDB_ARS_OK)
       success = true;
   } else if(fragments_.size() == 1) {      // Single-fragment read 
     if(fragments_[0]->read(buffers, buffer_sizes) == TILEDB_FG_OK)
       success = true;
-    }  
+  }  
 
   // Return
   if(success)
@@ -180,6 +180,141 @@ int Array::read(void** buffers, size_t* buffer_sizes) {
 /* ****************************** */
 /*            MUTATORS            */
 /* ****************************** */
+
+int Array::consolidate() {
+  // Reinit with all attributes and whole domain
+  finalize();
+  init(array_schema_, TILEDB_READ, NULL, 0, NULL);
+
+  // Create new fragment
+  Fragment* new_fragment = new Fragment(this);
+  if(new_fragment->init(new_fragment_name(), TILEDB_WRITE, range_) != 
+     TILEDB_FG_OK)
+    return TILEDB_AR_ERR;
+
+  // Consolidate on a per-attribute basis
+  for(int i=0; i<array_schema_->attribute_num()+1; ++i) {
+    if(consolidate(new_fragment, i) != TILEDB_AR_OK) {
+      delete_dir(new_fragment->fragment_name());
+      delete new_fragment;
+      return TILEDB_AR_ERR;
+    }
+  }
+
+  // Finalize new fragment
+  new_fragment->finalize(); 
+  delete new_fragment;
+
+  // Delete old fragments
+  int rc;
+  for(int i=0; i<fragments_.size(); ++i) {
+    rc = fragments_[i]->finalize();
+    
+    if(rc != TILEDB_FG_OK)
+      return TILEDB_AR_ERR;
+
+    if(delete_dir(fragments_[i]->fragment_name()) != TILEDB_UT_OK)
+      return TILEDB_AR_ERR;
+
+    delete fragments_[i];
+  }
+  fragments_.clear();
+
+  // Success
+  return TILEDB_AR_OK;
+}
+
+int Array::consolidate(
+    Fragment* new_fragment,
+    int attribute_id) {
+  // For easy reference
+  int attribute_num = array_schema_->attribute_num();
+
+  // Do nothing if the array is dense for the coordinates attribute
+  if(array_schema_->dense() && attribute_id == attribute_num)
+    return TILEDB_AR_OK;
+
+  // Prepare buffers
+  void** buffers;
+  size_t* buffer_sizes;
+
+  // Count the number of variable attributes
+  int var_attribute_num = 0;
+  for(int i=0; i<attribute_num; ++i)
+    if(array_schema_->var_size(i))
+      ++var_attribute_num;
+
+  // Populate the buffers
+  int buffer_num = attribute_num + 1 + var_attribute_num;
+  buffers = (void**) malloc(buffer_num * sizeof(void*));
+  buffer_sizes = (size_t*) malloc(buffer_num * sizeof(size_t));
+  int buffer_i = 0;
+  for(int i=0; i<attribute_num+1; ++i) {
+    if(i == attribute_id) {
+      buffers[buffer_i] = malloc(TILEDB_CONSOLIDATION_BUFFER);
+      buffer_sizes[buffer_i] = TILEDB_CONSOLIDATION_BUFFER;
+      ++buffer_i;
+      if(array_schema_->var_size(i)) {
+        buffers[buffer_i] = malloc(TILEDB_CONSOLIDATION_BUFFER);
+        buffer_sizes[buffer_i] = TILEDB_CONSOLIDATION_BUFFER;
+        ++buffer_i;
+      }
+    } else {
+      buffers[buffer_i] = NULL;
+      buffer_sizes[buffer_i] = 0;
+      ++buffer_i;
+      if(array_schema_->var_size(i)) {
+        buffers[buffer_i] = NULL;
+        buffer_sizes[buffer_i] = 0;
+        ++buffer_i;
+      }
+    }
+  }
+
+  // Read and write attribute until there is no overflow
+  do {
+    // Read
+    if(read(buffers, buffer_sizes) != TILEDB_AR_OK) 
+      return TILEDB_AR_ERR;
+    // Write
+    if(new_fragment->write(
+       (const void**) buffers, 
+       (const size_t*) buffer_sizes) != TILEDB_FG_OK)
+      return TILEDB_AR_ERR;
+  } while(overflow(attribute_id));
+
+  // Success
+  return TILEDB_AR_OK;
+}
+
+int Array::reinit_attributes(
+    const char** attributes,
+    int attribute_num) {
+  // Get attributes
+  std::vector<std::string> attributes_vec;
+  if(attributes == NULL) { // Default: all attributes
+    attributes_vec = array_schema_->attributes();
+    if(array_schema_->dense()) // Remove coordinates attribute for dense
+      attributes_vec.pop_back(); 
+  } else {
+    for(int i=0; i<attribute_num; ++i) {
+      attributes_vec.push_back(attributes[i]);
+    }
+    // Sanity check on duplicates 
+    if(has_duplicates(attributes_vec)) {
+      PRINT_ERROR("Cannot initialize array; Duplicate attributes");
+      return TILEDB_AR_ERR;
+    }
+  }
+
+  // Set attribute ids
+  if(array_schema_->get_attribute_ids(attributes_vec, attribute_ids_) 
+         == TILEDB_AS_ERR)
+    return TILEDB_AR_ERR;
+
+  // Success
+  return TILEDB_AR_OK;
+}
 
 int Array::init(
     const ArraySchema* array_schema,
@@ -238,7 +373,7 @@ int Array::init(
   if(mode_ == TILEDB_WRITE || mode_ == TILEDB_WRITE_UNSORTED) {
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
-    if(fragment->init(new_fragment_name(), range) != TILEDB_FG_OK)
+    if(fragment->init(new_fragment_name(), mode_, range) != TILEDB_FG_OK)
       return TILEDB_AR_ERR;
   } else if(mode_ == TILEDB_READ || mode_ == TILEDB_READ_REVERSE) {
     if(open_fragments() != TILEDB_AR_OK)
@@ -288,6 +423,8 @@ int Array::reinit_subarray(const void* subarray) {
         ((array_schema_->dense() && !fragments_[0]->dense()) || 
          (array_schema_->dense() && !fragments_[0]->full_domain()))))
     array_read_state_ = new ArrayReadState(this);
+
+  return TILEDB_AR_OK;
 }
 
 int Array::finalize() {
@@ -296,7 +433,9 @@ int Array::finalize() {
     rc = fragments_[i]->finalize();
     if(rc != TILEDB_FG_OK)
       break;
+    delete fragments_[i];
   }
+  fragments_.clear();
 
   if(array_read_state_ != NULL) {
     delete array_read_state_;
@@ -320,7 +459,7 @@ int Array::write(const void** buffers, const size_t* buffer_sizes) {
   if(fragments_.size() == 0) {
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
-    if(fragment->init(new_fragment_name(), range_) != TILEDB_FG_OK)
+    if(fragment->init(new_fragment_name(), mode_, range_) != TILEDB_FG_OK)
       return TILEDB_AR_ERR;
   }
  
@@ -372,7 +511,7 @@ int Array::open_fragments() {
     if(is_fragment(dirs[i])) {
       Fragment* fragment = new Fragment(this);
       fragments_.push_back(fragment);
-      if(fragment->init(dirs[i], NULL) != TILEDB_FG_OK)
+      if(fragment->init(dirs[i], mode_, NULL) != TILEDB_FG_OK)
         return TILEDB_AR_ERR;
     }
   } 

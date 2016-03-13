@@ -394,6 +394,16 @@ int StorageManager::metadata_iterator_init(
   return TILEDB_SM_OK;
 }
 
+int StorageManager::array_consolidate(Array* array)  const {
+  int rc = array->consolidate();
+
+  // Return
+  if(rc != TILEDB_AR_OK) 
+    return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
+}
+
 int StorageManager::array_reinit_subarray(
     Array* array,
     const void* subarray)  const {

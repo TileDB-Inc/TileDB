@@ -170,12 +170,12 @@ int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   const Array* array = fragment_->array();
 
   // Dispatch the proper write command
-  if(array->mode() == TILEDB_WRITE) {                  // SORTED
+  if(fragment_->mode() == TILEDB_WRITE) {                  // SORTED
     if(fragment_->dense())           // DENSE FRAGMENT
       return write_dense(buffers, buffer_sizes);          
     else                             // SPARSE FRAGMENT
       return write_sparse(buffers, buffer_sizes);
-  } else if (array->mode() == TILEDB_WRITE_UNSORTED) { // UNSORTED
+  } else if (fragment_->mode() == TILEDB_WRITE_UNSORTED) { // UNSORTED
     return write_sparse_unsorted(buffers, buffer_sizes);
   } else {
     PRINT_ERROR("Cannot write to fragment; Invalid mode");
