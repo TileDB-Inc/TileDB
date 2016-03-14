@@ -211,10 +211,12 @@ TILEDB_EXPORT int tiledb_array_init(
     const char** attributes,
     int attribute_num);
 
+// TODO
 TILEDB_EXPORT int tiledb_array_reinit_subarray(
     const TileDB_Array* tiledb_array,
     const void* subarray);
 
+// TODO
 TILEDB_EXPORT int tiledb_array_reinit_attributes(
     const TileDB_Array* tiledb_array,
     const char** attributes,
@@ -508,6 +510,20 @@ TILEDB_EXPORT int tiledb_metadata_iterator_get_value(
 // TODO
 TILEDB_EXPORT int tiledb_metadata_iterator_next(
     TileDB_MetadataIterator* tiledb_metadata_iterator);
+
+// TODO
+TILEDB_EXPORT int tiledb_ls_workspaces(
+    const TileDB_CTX* tiledb_ctx,
+    char** workspaces,
+    int* workspace_num);
+
+// TODO
+TILEDB_EXPORT int tiledb_ls(
+    const TileDB_CTX* tiledb_ctx,
+    const char* parent_dir,
+    char** dirs,
+    int* dir_types,
+    int* dir_num);
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus

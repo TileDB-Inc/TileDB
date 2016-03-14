@@ -58,6 +58,15 @@
 #define TILEDB_HOME ""
 
 // TODO
+#define TILEDB_WORKSPACE 0
+#define TILEDB_GROUP     1
+#define TILEDB_ARRAY     2
+#define TILEDB_METADATA  2
+
+// TODO
+#define TILEDB_NAME_LEN 256
+
+// TODO
 #define TILEDB_CONSOLIDATION_BUFFER 100000000 
 
 /** Special cell values. */

@@ -1094,3 +1094,45 @@ int tiledb_array_consolidate(const TileDB_Array* tiledb_array) {
   else 
     return TILEDB_ERR;
 }
+
+int tiledb_ls_workspaces(
+    const TileDB_CTX* tiledb_ctx,
+    char** workspaces,
+    int* workspace_num) {
+  // Sanity check
+  // TODO
+
+  // Read
+  int rc = tiledb_ctx->storage_manager_->ls_workspaces(
+               workspaces,
+               *workspace_num);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR;
+}
+
+int tiledb_ls(
+    const TileDB_CTX* tiledb_ctx,
+    const char* parent_dir,
+    char** dirs,
+    int* dir_types,
+    int* dir_num) {
+  // Sanity check
+  // TODO
+
+  // Read
+  int rc = tiledb_ctx->storage_manager_->ls(
+               parent_dir,
+               dirs,
+               dir_types,
+               *dir_num);
+
+  // Return
+  if(rc == TILEDB_SM_OK) 
+    return TILEDB_OK;
+  else 
+    return TILEDB_ERR;
+}

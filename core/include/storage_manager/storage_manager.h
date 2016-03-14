@@ -81,7 +81,19 @@ class StorageManager {
       MasterCatalogOp op) const;
 
   // WORKSPACE
-// TODO
+  // TODO
+  int ls_workspaces(
+      char** workspaces,
+      int& workspace_num) const;
+
+  // TODO
+  int ls(
+      const char* parent_dir,
+      char** dirs,
+      int* dir_types,
+      int& dir_num) const;
+
+  // TODO
   int metadata_move(
        const std::string& old_dir,
        const std::string& new_dir) const;

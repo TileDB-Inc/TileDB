@@ -123,6 +123,121 @@ int StorageManager::master_catalog_create() const {
 /*           WORKSPACE            */
 /* ****************************** */
 
+int StorageManager::ls_workspaces(
+    char** workspaces,
+    int& workspace_num) const {
+  // Initialize the master catalog iterator
+  const char* attributes[] = { TILEDB_KEY_NAME };
+  MetadataIterator* metadata_it;
+  size_t buffer_key[100];
+  char buffer_key_var[1000];
+  void* buffers[] = { buffer_key, buffer_key_var };
+  size_t buffer_sizes[] = { sizeof(buffer_key), sizeof(buffer_key_var) };
+  if(metadata_iterator_init(
+       metadata_it,
+       (tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG).c_str(),
+       attributes,
+       1,
+       buffers,
+       buffer_sizes) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Copy workspaces
+  int workspace_i = 0;
+  const char* key;
+  size_t key_size;
+
+  while(!metadata_it->end()) {
+    // Get workspace
+    if(metadata_it->get_value(0, (const void**) &key, &key_size) != 
+       TILEDB_MT_OK) {
+      metadata_iterator_finalize(metadata_it);
+      return TILEDB_MT_ERR;
+    }
+
+    // Copy workspace
+    if(key_size != 1 || key[0] != TILEDB_EMPTY_CHAR) {
+      strcpy(workspaces[workspace_i], key);
+      ++workspace_i;
+    }
+
+    // Advance
+    if(metadata_it->next() != TILEDB_MT_OK) {
+      metadata_iterator_finalize(metadata_it);
+      return TILEDB_MT_ERR;
+    }
+  }
+
+  // Set the workspace number
+  workspace_num = workspace_i;
+
+  // Finalize the master catalog iterator
+  metadata_iterator_finalize(metadata_it);
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::ls(
+    const char* parent_dir,
+    char** dirs, 
+    int* dir_types,
+    int& dir_num) const {
+  // Get real parent directory
+  std::string parent_dir_real = ::real_dir(parent_dir); 
+
+  // Initialize directory counter
+  int dir_i =0;
+
+  // Delete all groups and arrays inside the group directory
+  std::string filename; 
+  struct dirent *next_file;
+  DIR* dir = opendir(parent_dir_real.c_str());
+  
+  if(dir == NULL) {
+    PRINT_ERROR(std::string("Cannot open directory '") + 
+                parent_dir_real + "'; " + strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  while((next_file = readdir(dir))) {
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, ".."))
+      continue;
+    filename = parent_dir_real + "/" +  next_file->d_name;
+    if(is_group(filename)) { // Group
+      strcpy(dirs[dir_i], next_file->d_name);
+      dir_types[dir_i] = TILEDB_GROUP;
+      ++dir_i;
+    } else if(is_metadata(filename)) { // Metadata
+      strcpy(dirs[dir_i], next_file->d_name);
+      dir_types[dir_i] = TILEDB_METADATA;
+      ++dir_i;
+    } else if(is_array(filename)){  // Array
+      strcpy(dirs[dir_i], next_file->d_name);
+      dir_types[dir_i] = TILEDB_ARRAY;
+      ++dir_i;
+    } else if(is_workspace(filename)){  // Workspace
+      strcpy(dirs[dir_i], next_file->d_name);
+      dir_types[dir_i] = TILEDB_WORKSPACE;
+      ++dir_i;
+    } 
+  } 
+
+  // Close array directory  
+  if(closedir(dir)) {
+    PRINT_ERROR(std::string("Cannot close parent directory; ") + 
+                strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  // Set the number of directories
+  dir_num = dir_i;
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
 int StorageManager::workspace_create(const std::string& dir) const {
   // Check if the group is inside a workspace or another group
   std::string parent_dir = ::parent_dir(dir);
@@ -173,7 +288,9 @@ int StorageManager::create_master_catalog_entry(
                       real_dir.c_str() : &empty_char;
   const size_t entry[] = { 0 };
   const void* buffers[] = { entry, entry_var };
-  const size_t buffer_sizes[] = { sizeof(entry), strlen(entry_var)+1 };
+  size_t entry_var_size = (op == TILEDB_SM_MC_INS) ? 
+                      strlen(entry_var)+1 : 1;
+  const size_t buffer_sizes[] = { sizeof(entry), entry_var_size };
 
   if(metadata->write(real_dir.c_str(), real_dir.size()+1, buffers, buffer_sizes)
      != TILEDB_MT_OK)
