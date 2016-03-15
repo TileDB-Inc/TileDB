@@ -287,7 +287,7 @@ int Array::consolidate(
   return TILEDB_AR_OK;
 }
 
-int Array::reinit_attributes(
+int Array::reset_attributes(
     const char** attributes,
     int attribute_num) {
   // Get attributes
@@ -389,7 +389,7 @@ int Array::init(
   return TILEDB_AR_OK;
 }
 
-int Array::reinit_subarray(const void* subarray) {
+int Array::reset_subarray(const void* subarray) {
   // Sanity check on mode
   if(mode_ != TILEDB_ARRAY_READ) {
     PRINT_ERROR("Cannot re-initialize subarray; Invalid array mode");

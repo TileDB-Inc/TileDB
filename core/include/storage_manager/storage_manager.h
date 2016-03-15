@@ -66,11 +66,13 @@ class StorageManager {
   // CONSTRUCTORS & DESTRUCTORS  
 
   /** Constructor. */
-  StorageManager(const char* config_filename);
+  StorageManager();
 
   /** Destructor. */
   ~StorageManager();
 
+  // TODO
+  int init(const char* config_filename);
 
   // TODO
   int master_catalog_create() const;
@@ -207,14 +209,6 @@ class StorageManager {
       size_t* buffer_sizes) const;
 
   // TODO
-  int array_reinit_subarray(
-      Array* array,
-      const void* range) const;
-
-  // TODO
-  int array_consolidate(Array* array) const;
-
-  // TODO
   int metadata_init(
       Metadata*& metadata,
       const char* dir,
@@ -246,18 +240,6 @@ class StorageManager {
    */
   int array_load_schema(const char* dir, ArraySchema*& array_schema) const;
 
-  // TODO
-  int array_write(
-      Array* array,
-      const void** buffers, 
-      const size_t* buffer_sizes) const;
-
-  // TODO
-  int array_read(
-      Array* array,
-      void** buffers, 
-      size_t* buffer_sizes) const;
-
   // COMMON
   // TODO
   int clear(const std::string& dir) const;
@@ -281,21 +263,6 @@ class StorageManager {
 
   // TODO
   int metadata_finalize(Metadata* array) const;
-
-  // TODO
-  int metadata_write(
-      Metadata* metadata,
-      const char* keys,
-      size_t keys_size,
-      const void** buffers, 
-      const size_t* buffer_sizes) const;
-
-  // TODO
-  int metadata_read(
-      Metadata* metadata,
-      const char* key,
-      void** buffers, 
-      size_t* buffer_sizes) const;
 
  private:
   // PRIVATE ATTRBUTES

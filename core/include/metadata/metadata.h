@@ -89,7 +89,7 @@ class Metadata {
   int consolidate();
 
   // TODO
-  int reinit_attributes(const char** attributes, int attribute_num);
+  int reset_attributes(const char** attributes, int attribute_num);
  
   int init(
       const ArraySchema* array_schema, 

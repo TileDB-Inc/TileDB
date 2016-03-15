@@ -64,7 +64,13 @@
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-StorageManager::StorageManager(const char* config_filename) {
+StorageManager::StorageManager() {
+}
+
+StorageManager::~StorageManager() {
+}
+
+int StorageManager::init(const char* config_filename) {
   // Set configuration parameters
   if(config_filename == NULL)
     config_set_default();
@@ -89,9 +95,8 @@ StorageManager::StorageManager(const char* config_filename) {
     create_dir(tiledb_home_);
     master_catalog_create();
   }
-}
 
-StorageManager::~StorageManager() {
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::master_catalog_create() const {
@@ -511,29 +516,6 @@ int StorageManager::metadata_iterator_init(
   return TILEDB_SM_OK;
 }
 
-int StorageManager::array_consolidate(Array* array)  const {
-  int rc = array->consolidate();
-
-  // Return
-  if(rc != TILEDB_AR_OK) 
-    return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
-}
-
-int StorageManager::array_reinit_subarray(
-    Array* array,
-    const void* subarray)  const {
-  int rc = array->reinit_subarray(subarray);
-
-  // Return
-  if(rc != TILEDB_AR_OK) 
-    return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
-}
-
-
 int StorageManager::array_finalize(Array* array) const {
   // If the array is NULL, do nothing
   if(array == NULL)
@@ -641,39 +623,6 @@ int StorageManager::array_load_schema(
 
   // Success
   return TILEDB_SM_OK;
-}
-
-int StorageManager::array_write(
-    Array* array,
-    const void** buffers,
-    const size_t* buffer_sizes) const {
-  // Sanity check
-  if(array == NULL) {
-    PRINT_ERROR("Cannot write to array; Invalid array pointer");
-    return TILEDB_SM_ERR;
-  }
-
-  // Write array
-  if(array->write(buffers, buffer_sizes) != TILEDB_AR_OK) 
-    return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
-}
-
-int StorageManager::array_read(
-    Array* array,
-    void** buffers,
-    size_t* buffer_sizes) const {
-  // Sanity check
-  if(array == NULL) {
-    PRINT_ERROR("Cannot read from array; Invalid array pointer");
-    return TILEDB_SM_ERR;
-  }
-
-  if(array->read(buffers, buffer_sizes) == TILEDB_AR_ERR) 
-    return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
 }
 
 /* ****************************** */
@@ -1455,41 +1404,5 @@ int StorageManager::metadata_finalize(Metadata* metadata) const {
     return TILEDB_SM_OK;
   else
     return TILEDB_SM_ERR;
-}
-
-int StorageManager::metadata_write(
-    Metadata* metadata,
-    const char* keys,
-    size_t keys_size,
-    const void** buffers,
-    const size_t* buffer_sizes) const {
-  // Sanity check
-  if(metadata == NULL) {
-    PRINT_ERROR("Cannot write to metadata; Invalid metadata pointer");
-    return TILEDB_SM_ERR;
-  }
-
-  // Write metadata
-  if(metadata->write(keys, keys_size, buffers, buffer_sizes) != TILEDB_MT_OK) 
-    return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
-}
-
-int StorageManager::metadata_read(
-    Metadata* metadata,
-    const char* key,
-    void** buffers,
-    size_t* buffer_sizes) const {
-  // Sanity check
-  if(metadata == NULL) {
-    PRINT_ERROR("Cannot read from metadata; Invalid metadata pointer");
-    return TILEDB_SM_ERR;
-  }
-
-  if(metadata->read(key, buffers, buffer_sizes) != TILEDB_MT_OK) 
-    return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
 }
 

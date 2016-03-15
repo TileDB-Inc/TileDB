@@ -122,7 +122,7 @@ int Metadata::read(const char* key, void** buffers, size_t* buffer_sizes) {
   } 
 
   // Re-init sub array
-  if(array_->reinit_subarray(subarray) != TILEDB_AR_OK)
+  if(array_->reset_subarray(subarray) != TILEDB_AR_OK)
     return TILEDB_MT_ERR;
 
   // Read from array
@@ -144,7 +144,7 @@ int Metadata::consolidate() {
     return TILEDB_MT_OK;
 }
 
-int Metadata::reinit_attributes(
+int Metadata::reset_attributes(
     const char** attributes,
     int attribute_num) {
   // Set attributes

@@ -166,7 +166,6 @@ class HilbertCurve {
    * (it should be equal to HilbertCurve::bits_). 
    * @param n Number of dimensions (it should be equal to 
    * HilbertCurve::dim_num_). 
-   * @author John Skilling
    * @see TransposetoAxes
    *
    */	
@@ -198,50 +197,10 @@ class HilbertCurve {
    * (it should be equal to HilbertCurve::bits_). 
    * @param n Number of dimensions (it should be equal to 
    * HilbertCurve::dim_num_). 
-   * @author John Skilling
    * @see AxestoTranspose
    *
    */	
   void TransposetoAxes(int* X, int b, int n);
 };
-
-
-//
-// History:   John Skilling  20 Apr 2001, 11 Jan 2003, 3 Sep 2003
-//-----------------------------------------------------------------------------
-// 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Functions: LinetoTranspose
-//            TransposetoLine
-//
-// Purpose:   Recover Hilbert integer by bit-transposition
-//
-// Example:   b=5 bits for each of n=3 coordinates
-//               15-bit Hilbert integer = A B C D E a b c d e 1 2 3 4 5
-//                                        X[0]..... X[1]..... X[2].....
-//            transposed to
-//               X[0](high) = A D b e 3
-//               X[1]       = B E c 1 4
-//               X[2](low)  = C a d 2 5
-//                            high  low
-//
-//-----------------------------------------------------------------------------
-// 
-//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// Functions: TransposetoAxes
-//            AxestoTranspose
-//
-// Purpose:   Transform between Hilbert transpose and geometrical axes
-//
-// Example:   b=5 bits for each of n=3 coordinates
-//            Hilbert transpose
-//            Axes are stored conventially as b-bit integers.
-//         
-//-----------------------------------------------------------------------------
-
-
-
-
-
 
 #endif

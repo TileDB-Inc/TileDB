@@ -122,10 +122,10 @@ class Array {
       const void* range);
 
   // TODO
-  int reinit_subarray(const void* subarray);
+  int reset_subarray(const void* subarray);
 
   // TODO
-  int reinit_attributes(const char** attributes, int attribute_num);
+  int reset_attributes(const char** attributes, int attribute_num);
 
   /**
    * Finalizes the array.
