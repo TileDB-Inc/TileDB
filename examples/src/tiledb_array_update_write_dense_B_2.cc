@@ -18,7 +18,7 @@ int main() {
       tiledb_ctx, 
       &tiledb_array,
       "workspace/dense_B",
-      TILEDB_WRITE,
+      TILEDB_ARRAY_WRITE,
       range,           // No range - entire domain
       NULL,            // No projection - all attributes
       0);              // Meaningless when "attributes" is NULL

@@ -46,6 +46,11 @@
 /*             CONSTANTS             */
 /* ********************************* */
 
+#define TILEDB_KEY_DIM1_NAME "__key_dim_1"
+#define TILEDB_KEY_DIM2_NAME "__key_dim_2"
+#define TILEDB_KEY_DIM3_NAME "__key_dim_3"
+#define TILEDB_KEY_DIM4_NAME "__key_dim_4"
+
 // Return codes.
 #define TILEDB_AS_OK                                             0
 #define TILEDB_AS_ERR                                           -1

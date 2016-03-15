@@ -13,7 +13,7 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
   /* Subset over attribute "a1" and the coordinates. */
-  const char* attributes[] = { "a1", "a2", TILEDB_COORDS_NAME };
+  const char* attributes[] = { "a1", "a2", TILEDB_COORDS };
 
   /* Initialize the array in WRITE mode. */
   TileDB_Array* tiledb_array;
@@ -21,7 +21,7 @@ int main() {
       tiledb_ctx, 
       &tiledb_array,
       "workspace/dense_A",
-      TILEDB_WRITE_UNSORTED,
+      TILEDB_ARRAY_WRITE_UNSORTED,
       NULL,            // No range - entire domain
       attributes,            // No projection - all attributes
       3);              // Meaningless when "attributes" is NULL

@@ -307,8 +307,8 @@ int Fragment::init(
   mode_ = mode;
 
   // Check if the array is dense or not
-  if(mode == TILEDB_WRITE || 
-     mode == TILEDB_WRITE_UNSORTED) {
+  if(mode == TILEDB_ARRAY_WRITE || 
+     mode == TILEDB_ARRAY_WRITE_UNSORTED) {
     dense_ = true;
     // Check the attributes given upon initialization
     const std::vector<int>& attribute_ids = array_->attribute_ids();
@@ -323,12 +323,13 @@ int Fragment::init(
   } else { // The array mode is TILEDB_READ or TILEDB_READ_REVERSE 
     // The coordinates file should not exist
     dense_ = !is_file(
-                fragment_name_ + "/" + TILEDB_COORDS_NAME + TILEDB_FILE_SUFFIX);
+                fragment_name_ + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX);
   }
 
   // Initialize book-keeping and write state
   book_keeping_ = new BookKeeping(this);
-  if(mode == TILEDB_WRITE || mode == TILEDB_WRITE_UNSORTED) {
+  if(mode == TILEDB_ARRAY_WRITE || 
+     mode == TILEDB_ARRAY_WRITE_UNSORTED) {
     read_state_ = NULL;
     if(book_keeping_->init(range) != TILEDB_BK_OK) {
       delete book_keeping_;
@@ -337,7 +338,7 @@ int Fragment::init(
       return TILEDB_FG_ERR;
     }
     write_state_ = new WriteState(this, book_keeping_);
-  } else if(mode == TILEDB_READ || mode == TILEDB_READ_REVERSE) {
+  } else if(mode == TILEDB_ARRAY_READ) {
     write_state_ = NULL;
     if(book_keeping_->load() != TILEDB_BK_OK) {
       delete book_keeping_;
@@ -404,7 +405,7 @@ int Fragment::finalize() {
 
 int Fragment::rename_fragment() {
   // Do nothing in READ mode
-  if(mode_ == TILEDB_READ || mode_ == TILEDB_READ_REVERSE)
+  if(mode_ == TILEDB_ARRAY_READ)
     return TILEDB_FG_OK;
 
   std::string parent_dir = ::parent_dir(fragment_name_);

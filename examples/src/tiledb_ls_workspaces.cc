@@ -14,7 +14,7 @@ int main() {
   char* workspaces[100];
   int workspace_num = 100;
   for(int i=0; i<workspace_num; ++i)
-    workspaces[i] = new char[TILEDB_NAME_LEN];
+    workspaces[i] = new char[TILEDB_NAME_MAX_LEN];
   tiledb_ls_workspaces(tiledb_ctx, (char**) workspaces, &workspace_num);
 
   // Print workspace

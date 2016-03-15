@@ -18,7 +18,7 @@ int main() {
       tiledb_ctx, 
       &tiledb_array,
       "workspace/sparse_A",
-      TILEDB_WRITE_UNSORTED,
+      TILEDB_ARRAY_WRITE_UNSORTED,
       NULL,            // No range - entire domain
       NULL,            // No projection - all attributes
       0);              // Meaningless when "attributes" is NULL

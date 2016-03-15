@@ -20,7 +20,7 @@ int main() {
       tiledb_ctx, 
       &tiledb_array,
       "workspace/dense_B",
-      TILEDB_READ,
+      TILEDB_ARRAY_READ,
       range, 
       NULL,           
       1);

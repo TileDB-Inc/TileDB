@@ -173,9 +173,9 @@ int Metadata::reinit_attributes(
       strcpy(array_attributes[i], attributes[i]);
     }
     if(mode_ == TILEDB_METADATA_WRITE) {
-      size_t attribute_len = strlen(TILEDB_COORDS_NAME);
+      size_t attribute_len = strlen(TILEDB_COORDS);
       array_attributes[array_attribute_num] = new char[attribute_len+1];
-      strcpy(array_attributes[array_attribute_num], TILEDB_COORDS_NAME);
+      strcpy(array_attributes[array_attribute_num], TILEDB_COORDS);
     }
   }
 
@@ -204,7 +204,7 @@ int Metadata::init(
   // Set mode
   mode_ = mode;
   int array_mode = (mode == TILEDB_METADATA_READ) 
-                    ? TILEDB_READ : TILEDB_WRITE_UNSORTED;
+                    ? TILEDB_ARRAY_READ : TILEDB_ARRAY_WRITE_UNSORTED;
 
   // Set attributes
   char** array_attributes;
@@ -231,9 +231,9 @@ int Metadata::init(
       strcpy(array_attributes[i], attributes[i]);
     }
     if(mode == TILEDB_METADATA_WRITE) {
-      size_t attribute_len = strlen(TILEDB_COORDS_NAME);
+      size_t attribute_len = strlen(TILEDB_COORDS);
       array_attributes[array_attribute_num] = new char[attribute_len+1];
-      strcpy(array_attributes[array_attribute_num], TILEDB_COORDS_NAME);
+      strcpy(array_attributes[array_attribute_num], TILEDB_COORDS);
     }
   }
 

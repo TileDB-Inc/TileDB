@@ -1,12 +1,11 @@
 /**
  * @file   c_api.cc
- * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * Copyright (c) 2016 MIT and Intel Corp.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal

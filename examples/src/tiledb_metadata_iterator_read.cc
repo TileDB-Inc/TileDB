@@ -13,7 +13,7 @@ int main() {
 
   /* Subset over attribute "a1". */
   //const char* attributes[] = { "a1" };
-  const char* attributes[] = { TILEDB_KEY_NAME };
+  const char* attributes[] = { TILEDB_KEY };
 
   /* Prepare cell buffers for attribute "a1". */
   int buffer_a1[8];

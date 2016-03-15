@@ -209,7 +209,7 @@ const std::string& ArraySchema::attribute(int attribute_id) const {
 
 int ArraySchema::attribute_id(const std::string& attribute) const {
   // Special case - coordinates
-  if(attribute == TILEDB_COORDS_NAME)
+  if(attribute == TILEDB_COORDS)
     return attribute_num_;
 
   for(int i=0; i<attribute_num_; ++i) {
@@ -804,7 +804,7 @@ int ArraySchema::deserialize(
   }
   assert(offset == buffer_size); 
   // Add extra coordinate attribute
-  attributes_.push_back(TILEDB_COORDS_NAME);
+  attributes_.push_back(TILEDB_COORDS);
   // Set cell sizes
   cell_sizes_.resize(attribute_num_+1);
   for(int i=0; i<= attribute_num_; ++i) 
@@ -891,10 +891,10 @@ int ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
     attributes[i] = (char*) malloc(attribute_len+1);
     strcpy(attributes[i], metadata_schema_c->attributes_[i]);
   }
-  attribute_len = strlen(TILEDB_KEY_NAME);
+  attribute_len = strlen(TILEDB_KEY);
   attributes[metadata_schema_c->attribute_num_] = 
       (char*) malloc(attribute_len+1);
-  strcpy(attributes[metadata_schema_c->attribute_num_],TILEDB_KEY_NAME);
+  strcpy(attributes[metadata_schema_c->attribute_num_],TILEDB_KEY);
   array_schema_c.attributes_ = attributes; 
   array_schema_c.attribute_num_ = metadata_schema_c->attribute_num_ + 1;
 
@@ -1028,7 +1028,7 @@ int ArraySchema::set_attributes(
   attribute_num_ = attribute_num;
 
   // Append extra coordinates name
-  attributes_.push_back(TILEDB_COORDS_NAME);
+  attributes_.push_back(TILEDB_COORDS);
 
   // Check for duplicate attribute names
   if(has_duplicates(attributes_)) {

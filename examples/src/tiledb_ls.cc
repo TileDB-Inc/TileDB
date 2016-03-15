@@ -16,7 +16,7 @@ int main() {
   int dir_types[100];
   const char* parent_dir = "workspace";
   for(int i=0; i<dir_num; ++i)
-    dirs[i] = new char[TILEDB_NAME_LEN];
+    dirs[i] = new char[TILEDB_NAME_MAX_LEN];
   tiledb_ls(tiledb_ctx, parent_dir, (char**) dirs, dir_types, &dir_num);
 
   // Print workspace

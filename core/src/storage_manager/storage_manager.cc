@@ -127,7 +127,7 @@ int StorageManager::ls_workspaces(
     char** workspaces,
     int& workspace_num) const {
   // Initialize the master catalog iterator
-  const char* attributes[] = { TILEDB_KEY_NAME };
+  const char* attributes[] = { TILEDB_KEY };
   MetadataIterator* metadata_it;
   size_t buffer_key[100];
   char buffer_key_var[1000];
@@ -453,7 +453,7 @@ int StorageManager::array_iterator_init(
 
   // Create Array object
   Array* array = new Array();
-  if(array->init(array_schema, TILEDB_READ, attributes, attribute_num, range) !=
+  if(array->init(array_schema, TILEDB_ARRAY_READ, attributes, attribute_num, range) !=
      TILEDB_AR_OK) {
     delete array;
     array_iterator = NULL;

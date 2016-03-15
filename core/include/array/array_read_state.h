@@ -48,6 +48,9 @@
 #define TILEDB_ARS_OK     0
 #define TILEDB_ARS_ERR   -1
 
+/** Size of the starting offset of a variable cell value. */
+#define TILEDB_CELL_VAR_OFFSET_SIZE     sizeof(size_t)
+
 class Array;
 
 /** Stores the state necessary when reading cells from multiple fragments. */

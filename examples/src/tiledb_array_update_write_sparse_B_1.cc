@@ -10,7 +10,7 @@ int main() {
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
-  const char* attributes[] = {TILEDB_COORDS_NAME, "a1", "a2", "a3"};
+  const char* attributes[] = {TILEDB_COORDS, "a1", "a2", "a3"};
 
   /* Initialize the array in WRITE mode. */
   TileDB_Array* tiledb_array;
@@ -18,7 +18,7 @@ int main() {
       tiledb_ctx, 
       &tiledb_array,
       "workspace/sparse_B",
-      TILEDB_WRITE_UNSORTED,
+      TILEDB_ARRAY_WRITE_UNSORTED,
       NULL,            // No range - entire domain
       attributes,      // No projection - all attributes
       4);              // Meaningless when "attributes" is NULL

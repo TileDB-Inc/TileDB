@@ -336,7 +336,7 @@ void BookKeeping::set_last_tile_cell_num(int64_t cell_num) {
 int BookKeeping::finalize() {
   // Nothing to do in READ mode
   int mode = fragment_->mode();
-  if(mode == TILEDB_READ || mode == TILEDB_READ_REVERSE)
+  if(mode == TILEDB_ARRAY_READ)
     return TILEDB_BK_OK;
 
   // Do nothing if the fragment directory does not exist (fragment empty) 

@@ -528,14 +528,11 @@ int ReadState::read(void** buffers, size_t* buffer_sizes) {
   reset_overflow();
 
   // Dispatch the proper write command
-  if(array->mode() == TILEDB_READ) {                 // NORMAL READ
+  if(array->mode() == TILEDB_ARRAY_READ) {                 // NORMAL READ
     if(fragment_->dense())                                // DENSE FRAGMENT
       return read_dense(buffers, buffer_sizes);       
     else                                                  // SPARSE FRAGMENT
       return read_sparse(buffers, buffer_sizes);       
-  } else if (array->mode() == TILEDB_READ_REVERSE) { // REVERSE READ
-    // TODO
-    return TILEDB_RS_OK;
   } else {
     PRINT_ERROR("Cannot read from fragment; Invalid mode");
     return TILEDB_RS_ERR;

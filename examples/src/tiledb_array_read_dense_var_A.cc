@@ -24,7 +24,7 @@ int main() {
       tiledb_ctx, 
       &tiledb_array,
       "workspace/dense_var_A",
-      TILEDB_READ,
+      TILEDB_ARRAY_READ,
       range, 
       attributes,           
       1);      

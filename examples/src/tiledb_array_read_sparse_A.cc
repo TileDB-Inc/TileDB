@@ -16,7 +16,7 @@ int main() {
   const int64_t range[] = { 2, 3, 1, 4 };
 
   /* Subset over attribute "a1" and the coordinates. */
-  const char* attributes[] = { "a1", TILEDB_COORDS_NAME };
+  const char* attributes[] = { "a1", TILEDB_COORDS };
 
   /* Initialize the array in READ mode. */
   TileDB_Array* tiledb_array;
@@ -24,7 +24,7 @@ int main() {
       tiledb_ctx, 
       &tiledb_array,
       "workspace/sparse_A",
-      TILEDB_READ,
+      TILEDB_ARRAY_READ,
       range, 
       attributes,           
       2);      

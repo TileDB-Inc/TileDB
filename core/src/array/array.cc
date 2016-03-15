@@ -103,7 +103,7 @@ Array::~Array() {
 /* ****************************** */
 
 bool Array::overflow(int attribute_id) const {
-  assert(mode_ == TILEDB_READ);
+  assert(mode_ == TILEDB_ARRAY_READ);
 
  if(fragments_.size() > 1 || // Multi-fragment read
      (fragments_.size() == 1 &&
@@ -141,7 +141,7 @@ const void* Array::range() const {
 
 int Array::read(void** buffers, size_t* buffer_sizes) {
   // Sanity checks
-  if(mode_ != TILEDB_READ && mode_ != TILEDB_READ_REVERSE) {
+  if(mode_ != TILEDB_ARRAY_READ) {
     PRINT_ERROR("Cannot read from array; Invalid mode");
     return TILEDB_AR_ERR;
   }
@@ -184,11 +184,11 @@ int Array::read(void** buffers, size_t* buffer_sizes) {
 int Array::consolidate() {
   // Reinit with all attributes and whole domain
   finalize();
-  init(array_schema_, TILEDB_READ, NULL, 0, NULL);
+  init(array_schema_, TILEDB_ARRAY_READ, NULL, 0, NULL);
 
   // Create new fragment
   Fragment* new_fragment = new Fragment(this);
-  if(new_fragment->init(new_fragment_name(), TILEDB_WRITE, range_) != 
+  if(new_fragment->init(new_fragment_name(), TILEDB_ARRAY_WRITE, range_) != 
      TILEDB_FG_OK)
     return TILEDB_AR_ERR;
 
@@ -251,12 +251,12 @@ int Array::consolidate(
   int buffer_i = 0;
   for(int i=0; i<attribute_num+1; ++i) {
     if(i == attribute_id) {
-      buffers[buffer_i] = malloc(TILEDB_CONSOLIDATION_BUFFER);
-      buffer_sizes[buffer_i] = TILEDB_CONSOLIDATION_BUFFER;
+      buffers[buffer_i] = malloc(TILEDB_CONSOLIDATION_BUFFER_SIZE);
+      buffer_sizes[buffer_i] = TILEDB_CONSOLIDATION_BUFFER_SIZE;
       ++buffer_i;
       if(array_schema_->var_size(i)) {
-        buffers[buffer_i] = malloc(TILEDB_CONSOLIDATION_BUFFER);
-        buffer_sizes[buffer_i] = TILEDB_CONSOLIDATION_BUFFER;
+        buffers[buffer_i] = malloc(TILEDB_CONSOLIDATION_BUFFER_SIZE);
+        buffer_sizes[buffer_i] = TILEDB_CONSOLIDATION_BUFFER_SIZE;
         ++buffer_i;
       }
     } else {
@@ -323,10 +323,9 @@ int Array::init(
     int attribute_num,
     const void* range) {
   // Sanity check on mode
-  if(mode != TILEDB_READ &&
-     mode != TILEDB_READ_REVERSE &&
-     mode != TILEDB_WRITE &&
-     mode != TILEDB_WRITE_UNSORTED) {
+  if(mode != TILEDB_ARRAY_READ &&
+     mode != TILEDB_ARRAY_WRITE &&
+     mode != TILEDB_ARRAY_WRITE_UNSORTED) {
     PRINT_ERROR("Cannot initialize array; Invalid array mode");
     return TILEDB_AR_ERR;
   }
@@ -370,12 +369,13 @@ int Array::init(
   mode_ = mode;
 
   // Initialize new fragment if needed
-  if(mode_ == TILEDB_WRITE || mode_ == TILEDB_WRITE_UNSORTED) {
+  if(mode_ == TILEDB_ARRAY_WRITE || 
+     mode_ == TILEDB_ARRAY_WRITE_UNSORTED) {
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
     if(fragment->init(new_fragment_name(), mode_, range) != TILEDB_FG_OK)
       return TILEDB_AR_ERR;
-  } else if(mode_ == TILEDB_READ || mode_ == TILEDB_READ_REVERSE) {
+  } else if(mode_ == TILEDB_ARRAY_READ) {
     if(open_fragments() != TILEDB_AR_OK)
       return TILEDB_AR_ERR;
     if(fragments_.size() > 1 || // Multi-fragment read
@@ -391,7 +391,7 @@ int Array::init(
 
 int Array::reinit_subarray(const void* subarray) {
   // Sanity check on mode
-  if(mode_ != TILEDB_READ) {
+  if(mode_ != TILEDB_ARRAY_READ) {
     PRINT_ERROR("Cannot re-initialize subarray; Invalid array mode");
     return TILEDB_AR_ERR;
   }
@@ -450,7 +450,8 @@ int Array::finalize() {
 
 int Array::write(const void** buffers, const size_t* buffer_sizes) {
   // Sanity checks
-  if(mode_ != TILEDB_WRITE && mode_ != TILEDB_WRITE_UNSORTED) {
+  if(mode_ != TILEDB_ARRAY_WRITE && 
+     mode_ != TILEDB_ARRAY_WRITE_UNSORTED) {
     PRINT_ERROR("Cannot write to array; Invalid mode");
     return TILEDB_AR_ERR;
   }
@@ -470,7 +471,7 @@ int Array::write(const void** buffers, const size_t* buffer_sizes) {
   int rc = fragments_[0]->write(buffers, buffer_sizes);
 
   // In WRITE_UNSORTED mode, the fragment must be finalized
-  if(mode_ == TILEDB_WRITE_UNSORTED) {
+  if(mode_ == TILEDB_ARRAY_WRITE_UNSORTED) {
     fragments_[0]->finalize();
     delete fragments_[0];
     fragments_.clear();
