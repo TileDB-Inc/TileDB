@@ -1,12 +1,11 @@
 /**
  * @file   metadata.cc
- * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2016 MIT and Intel Corp.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +35,9 @@
 #include <cstring>
 #include <openssl/md5.h>
 
+
+
+
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
@@ -54,6 +56,9 @@
 #  define PRINT_WARNING(x) do { } while(0) 
 #endif
 
+
+
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -67,43 +72,24 @@ Metadata::~Metadata() {
     delete array_;
 }
 
+
+
+
 /* ****************************** */
 /*           ACCESSORS            */
 /* ****************************** */
 
-bool Metadata::overflow(int attribute_id) const {
-  return array_->overflow(attribute_id);
+Array* Metadata::array() const {
+  return array_;
 }
 
 const ArraySchema* Metadata::array_schema() const {
   return array_->array_schema();
 }
 
-Array* Metadata::array() const {
-  return array_;
+bool Metadata::overflow(int attribute_id) const {
+  return array_->overflow(attribute_id);
 }
-
-/*
-const std::vector<int>& Array::attribute_ids() const {
-  return attribute_ids_;
-}
-
-std::vector<Fragment*> Array::fragments() const {
-  return fragments_;
-}
-
-int Array::fragment_num() const {
-  return fragments_.size();
-}
-
-int Array::mode() const {
-  return mode_;
-}
-
-const void* Array::range() const {
-  return range_;
-}
-*/
 
 int Metadata::read(const char* key, void** buffers, size_t* buffer_sizes) {
   // Sanity checks
@@ -133,6 +119,8 @@ int Metadata::read(const char* key, void** buffers, size_t* buffer_sizes) {
 }
 
 
+
+
 /* ****************************** */
 /*            MUTATORS            */
 /* ****************************** */
@@ -144,49 +132,16 @@ int Metadata::consolidate() {
     return TILEDB_MT_OK;
 }
 
-int Metadata::reset_attributes(
-    const char** attributes,
-    int attribute_num) {
-  // Set attributes
-  const ArraySchema* array_schema = array_->array_schema();
-  char** array_attributes;
-  int array_attribute_num;
-  if(attributes == NULL) {
-    array_attribute_num =  
-        (mode_ == TILEDB_METADATA_WRITE) ? array_schema->attribute_num() + 1 
-                                        : array_schema->attribute_num();
-    array_attributes = new char*[array_attribute_num];
-    for(int i=0; i<array_attribute_num; ++i) {
-      const char* attribute = array_schema->attribute(i).c_str();
-      size_t attribute_len = strlen(attribute);
-      array_attributes[i] = new char[attribute_len+1];
-      strcpy(array_attributes[i], attribute);
-    } 
-  } else {
-    array_attribute_num = 
-        (mode_ == TILEDB_METADATA_WRITE) ? attribute_num + 1 
-                                        : attribute_num;
-    array_attributes = new char*[array_attribute_num];
-    for(int i=0; i<attribute_num; ++i) {
-      size_t attribute_len = strlen(attributes[i]);
-      array_attributes[i] = new char[attribute_len+1];
-      strcpy(array_attributes[i], attributes[i]);
-    }
-    if(mode_ == TILEDB_METADATA_WRITE) {
-      size_t attribute_len = strlen(TILEDB_COORDS);
-      array_attributes[array_attribute_num] = new char[attribute_len+1];
-      strcpy(array_attributes[array_attribute_num], TILEDB_COORDS);
-    }
-  }
+int Metadata::finalize() {
+  int rc = array_->finalize();
 
-  // Clean up
-  for(int i=0; i<array_attribute_num; ++i) 
-    delete [] array_attributes[i];
-  delete [] array_attributes;
+  delete array_;
+  array_ = NULL;
 
-  // Success
-  return TILEDB_MT_OK;
-
+  if(rc == TILEDB_AR_OK)
+    return TILEDB_MT_OK; 
+  else
+    return TILEDB_MT_ERR; 
 }
 
 int Metadata::init(
@@ -258,16 +213,48 @@ int Metadata::init(
     return TILEDB_MT_OK;
 }
 
-int Metadata::finalize() {
-  int rc = array_->finalize();
+int Metadata::reset_attributes(
+    const char** attributes,
+    int attribute_num) {
+  // Set attributes
+  const ArraySchema* array_schema = array_->array_schema();
+  char** array_attributes;
+  int array_attribute_num;
+  if(attributes == NULL) {
+    array_attribute_num =  
+        (mode_ == TILEDB_METADATA_WRITE) ? array_schema->attribute_num() + 1 
+                                        : array_schema->attribute_num();
+    array_attributes = new char*[array_attribute_num];
+    for(int i=0; i<array_attribute_num; ++i) {
+      const char* attribute = array_schema->attribute(i).c_str();
+      size_t attribute_len = strlen(attribute);
+      array_attributes[i] = new char[attribute_len+1];
+      strcpy(array_attributes[i], attribute);
+    } 
+  } else {
+    array_attribute_num = 
+        (mode_ == TILEDB_METADATA_WRITE) ? attribute_num + 1 
+                                        : attribute_num;
+    array_attributes = new char*[array_attribute_num];
+    for(int i=0; i<attribute_num; ++i) {
+      size_t attribute_len = strlen(attributes[i]);
+      array_attributes[i] = new char[attribute_len+1];
+      strcpy(array_attributes[i], attributes[i]);
+    }
+    if(mode_ == TILEDB_METADATA_WRITE) {
+      size_t attribute_len = strlen(TILEDB_COORDS);
+      array_attributes[array_attribute_num] = new char[attribute_len+1];
+      strcpy(array_attributes[array_attribute_num], TILEDB_COORDS);
+    }
+  }
 
-  delete array_;
-  array_ = NULL;
+  // Clean up
+  for(int i=0; i<array_attribute_num; ++i) 
+    delete [] array_attributes[i];
+  delete [] array_attributes;
 
-  if(rc == TILEDB_AR_OK)
-    return TILEDB_MT_OK; 
-  else
-    return TILEDB_MT_ERR; 
+  // Success
+  return TILEDB_MT_OK;
 }
 
 int Metadata::write(
@@ -288,13 +275,9 @@ int Metadata::write(
   // Compute array coordinates
   void* coords;
   size_t coords_size; 
-  size_t* keys_offsets; 
-  size_t keys_offsets_size;
   compute_array_coords(
       keys, 
       keys_size, 
-      keys_offsets, 
-      keys_offsets_size, 
       coords, 
       coords_size);
 
@@ -302,10 +285,6 @@ int Metadata::write(
   const void** array_buffers;
   size_t* array_buffer_sizes;
   prepare_array_buffers(
-      keys, 
-      keys_size, 
-      keys_offsets, 
-      keys_offsets_size, 
       coords,
       coords_size,
       buffers, 
@@ -318,7 +297,6 @@ int Metadata::write(
 
   // Clean up
   free(coords);
-  free(keys_offsets); 
   free(array_buffers);
   free(array_buffer_sizes);
 
@@ -336,16 +314,15 @@ int Metadata::write(
 void Metadata::compute_array_coords(
     const char* keys,
     size_t keys_size,
-    size_t*& keys_offsets, 
-    size_t& keys_offsets_size,
     void*& coords,
     size_t& coords_size) const {
   // Compute keys offsets
-  keys_offsets = (size_t*) malloc(10*sizeof(size_t)); 
+  size_t* keys_offsets = (size_t*) malloc(10*sizeof(size_t)); 
   size_t keys_num_allocated = 10;
   int64_t keys_num = 0;
   bool null_char_found = true;
   for(size_t i=0; i<keys_size; ++i) {
+    // In case the null character is found
     if(null_char_found) {
       if(keys_num == keys_num_allocated) {
         keys_num_allocated *= 2;
@@ -356,12 +333,12 @@ void Metadata::compute_array_coords(
       ++keys_num;
       null_char_found = false;
     }
-    if(keys[i] == '\0') { 
+
+    // Null character found and proper flag is set
+    if(keys[i] == '\0')  
       null_char_found = true;
-    }
   }
   assert(keys_num > 0);
-  keys_offsets_size = keys_num * sizeof(size_t);
 
   // Compute coords
   coords_size = keys_num * 4 * sizeof(int); 
@@ -379,10 +356,6 @@ void Metadata::compute_array_coords(
 }
 
 void Metadata::prepare_array_buffers(
-    const char* keys,
-    size_t keys_size,
-    const size_t* keys_offsets,
-    size_t keys_offsets_size,
     const void* coords,
     size_t coords_size,
     const void** buffers,
@@ -404,27 +377,20 @@ void Metadata::prepare_array_buffers(
   // Allocate space for the array buffers
   array_buffers = 
       (const void**) malloc(
-           (attribute_id_num + var_attribute_num)*sizeof(const void**));
+           (attribute_id_num + var_attribute_num)*sizeof(const void*));
   array_buffer_sizes = 
       (size_t*) malloc(
-           (attribute_id_num + var_attribute_num)*sizeof(size_t*));
+           (attribute_id_num + var_attribute_num)*sizeof(size_t));
 
   // Set the array buffers
   int buffer_i = 0;
   int array_buffer_i = 0;
   for(int i=0; i<attribute_id_num; ++i) {
-    if(attribute_ids[i] == attribute_num) { // Coordinates 
+    if(attribute_ids[i] == attribute_num) {   // Coordinates 
       array_buffers[array_buffer_i] = coords;
       array_buffer_sizes[array_buffer_i] = coords_size;
       ++array_buffer_i;
-//    } else if(attribute_ids[i] == attribute_num-1) { // Keys
-//     array_buffers[array_buffer_i] = keys_offsets;
-//      array_buffer_sizes[array_buffer_i] = keys_offsets_size;
-//      ++array_buffer_i;
-//      array_buffers[array_buffer_i] = keys;
-//      array_buffer_sizes[array_buffer_i] = keys_size;
-//      ++array_buffer_i;
-    } else { // Any other attribute 
+    } else {                                  // Any other attribute 
       array_buffers[array_buffer_i] = buffers[buffer_i];
       array_buffer_sizes[array_buffer_i] = buffer_sizes[buffer_i];
       ++array_buffer_i;

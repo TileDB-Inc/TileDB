@@ -698,6 +698,7 @@ TILEDB_EXPORT int tiledb_metadata_init(
 
 /**
  * Resets the attributes used upon initialization of the metadata. 
+ *
  * @param tiledb_metadata The TileDB metadata.
  * @param attributes The new attributes to focus on. If it is NULL, then
  *     all the attributes are used (including the key as an extra attribute
@@ -793,9 +794,7 @@ TILEDB_EXPORT int tiledb_metadata_write(
  *     buffers (there is a one-to-one correspondence). The function will attempt
  *     to write value corresponding to the key. If a buffer cannot hold the
  *     result, the function will still succeed, turning on an overflow
- *     flag which can be checked with function tiledb_metadata_overflow(). The
- *     next invocation will resume for the point the previous one stopped,
- *     without inflicting a considerable performance penalty due to overflow.
+ *     flag which can be checked with function tiledb_metadata_overflow(). 
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_metadata_read(

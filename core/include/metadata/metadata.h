@@ -1,12 +1,11 @@
 /**
  * @file   metadata.h
- * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2016 MIT and Intel Corp.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,13 +39,19 @@
 /*             CONSTANTS             */
 /* ********************************* */
 
-#define TILEDB_MT_OK     0
-#define TILEDB_MT_ERR   -1
+/**@{*/
+/** Return code. */
+#define TILEDB_MT_OK           0
+#define TILEDB_MT_ERR         -1
+/**@}*/
 
-// TODO
+
+/** Manages a TileDB metadata object. */
 class Metadata {
  public:
-  // CONSTRUCTORS & DESTRUCTORS
+  /* ********************************* */
+  /*    CONSTRUCTORS & DESTRUCTORS     */
+  /* ********************************* */
   
   /** Constructor. */
   Metadata();
@@ -54,43 +59,91 @@ class Metadata {
   /** Destructor. */
   ~Metadata();
 
-  // ACCESSORS
 
-  // TODO
-  bool overflow(int attribute_id) const;
+
+
+  /* ********************************* */
+  /*             ACCESSORS             */
+  /* ********************************* */
+
+  /** Returns the array that implements the metadata. */
+  Array* array() const;
 
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
-  // TODO
-  Array* array() const;
+  /**
+   * Checks if a read operation for a particular attribute resulted in a
+   * buffer overflow.
+   * 
+   * @param attribute_id The id of the attribute for which the overflow is
+   *     checked. This id corresponds to the position of the attribute name
+   *     placed in the *attributes* input of init(), or reset_attributes(). If
+   *     *attributes* was NULL in the above functions, then the attribute id
+   *     corresponds to the order in which the attributes were defined in the
+   *     array schema upon the array creation. Note that, in that case, the
+   *     extra key attribute corresponds to the last extra attribute, i.e., its
+   *     id is *attribute_num*. 
+   * @return *true* for overflow and *false* otherwise.
+   */
+  bool overflow(int attribute_id) const;
 
-  /** Returns the attribute ids the array focuses on. */
-//  const std::vector<int>& attribute_ids() const;
-
-  // TODO
-//  std::vector<Fragment*> fragments() const;
-
-  // TODO
-//  int fragment_num() const;
-
-  /** Returns the array mode. */
-//  int mode() const;
-
-  /** Returns the range in which the array is constrained. */
-//  const void* range() const;
-
-  // TODO
+  /**
+   * Performs a read operation in a metadata object, which must be initialized
+   * with mode TILEDB_METADATA_READ. The read is performed on a single key. 
+   * 
+   * @param key This is the query key, which must be a string.
+   * @param buffers An array of buffers, one for each attribute. These must be
+   *     provided in the same order as the attributes specified in init() or 
+   *     reset_attributes(). The case of variable-sized attributes is special.
+   *     Instead of providing a single buffer for such an attribute, **two**
+   *     must be provided: the second will hold the variable-sized values,
+   *     whereas the first holds the start offsets of each value in the second
+   *     buffer.
+   * @param buffer_sizes The sizes (in bytes) allocated by the user for the
+   *     input buffers (there is a one-to-one correspondence). The function will
+   *     attempt to write value corresponding to the key. If a buffer cannot
+   *     hold the result, the function will still succeed, turning on an
+   *     overflow flag which can be checked with function overflow(). 
+   * @return TILEDB_MT_OK for success and TILEDB_MT_ERR for error.
+   */
   int read(const char* key, void** buffers, size_t* buffer_sizes); 
 
-  // MUTATORS
 
-  // TODO
+
+
+  /* ********************************* */
+  /*             MUTATORS              */
+  /* ********************************* */
+
+  /**
+   * Consolidates the fragments of a metadata object into a single fragment. 
+   * 
+   * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
+   */
   int consolidate();
 
-  // TODO
-  int reset_attributes(const char** attributes, int attribute_num);
+  /**
+   * Finalizes the metadata, properly freeing up the memory space.
+   *
+   * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
+   */
+  int finalize();
  
+  /**
+   * Initializes a TileDB metadata object.
+   *
+   * @param array_schema This essentially encapsulates the metadata schema.
+   * @param mode The mode of the metadata. It must be one of the following:
+   *    - TILEDB_METADATA_WRITE 
+   *    - TILEDB_METADATA_READ 
+   * @param attributes A subset of the metadata attributes the read/write will
+   *     be constrained on. A NULL value indicates **all** attributes (including
+   *     the key as an extra attribute in the end).
+   * @param attribute_num The number of the input attributes. If *attributes* is
+   *     NULL, then this should be set to 0.
+   * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
+   */
   int init(
       const ArraySchema* array_schema, 
       int mode,
@@ -98,89 +151,115 @@ class Metadata {
       int attribute_num);
 
   /**
-   * Finalizes the array.
+   * Resets the attributes used upon initialization of the metadata. 
    *
-   * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
+   * @param attributes The new attributes to focus on. If it is NULL, then
+   *     all the attributes are used (including the key as an extra attribute
+   *     in the end).
+   * @param attribute_num The number of the attributes. If *attributes* is NULL,
+   *     then this should be 0.
+   * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
    */
-  // TODO
-  int finalize();
+  int reset_attributes(const char** attributes, int attribute_num);
 
-  // TODO
+  /**
+   * Performs a write operation in metadata object. The values are provided
+   * in a set of buffers (one per attribute specified upon initialization).
+   * Note that there must be a one-to-one correspondance between the 
+   * values across the attribute buffers.
+   *
+   * The metadata must be initialized with mode TILEDB_METADATA_WRITE.
+   * 
+   * @param keys The buffer holding the metadata keys. These keys must be
+   *     strings, serialized one after the other in the *keys* buffer.
+   * @param keys_size The size (in bytes) of buffer *keys*.
+   * @param buffers An array of buffers, one for each attribute. These must be
+   *     provided in the same order as the attributes specified in
+   *     init() or reset_attributes(). The case of variable-sized attributes is
+   *     special. Instead of providing a single buffer for such an attribute,
+   *     **two** must be provided: the second holds the variable-sized values,
+   *     whereas the first holds the start offsets of each value in the second
+   *     buffer.
+   * @param buffer_sizes The sizes (in bytes) of the input buffers (there is
+   *     a one-to-one correspondence).
+   * @return TILEDB_MT_OK for success and TILEDB_MT_ERR for error.
+   */
   int write(
       const char* keys,
       size_t keys_size,
       const void** buffers, 
       const size_t* buffer_sizes); 
 
- private:
-  // PRIVATE ATTRIBUTES
 
-  /** The array schema. */
-//  const ArraySchema* array_schema_;
-  // TODO
+
+
+ private:
+  /* ********************************* */
+  /*        PRIVATE ATTRIBUTES         */
+  /* ********************************* */
+
+  /** The underlying array that implements the metadata. */
   Array* array_;
   /** 
-   * The ids of the attributes the array is initialized with. Note that the
-   * array may be initialized with a subset of attributes when writing or
-   * reading.
-   */
-//  std::vector<int> attribute_ids_;
-  /** The array fragments. */
-//  std::vector<Fragment*> fragments_;
-  /** 
-   * The array mode. It must be one of the following:
-   *    - TILEDB_WRITE 
-   *    - TILEDB_WRITE_UNSORTED 
-   *    - TILEDB_READ 
-   *    - TILEDB_READ_REVERSE 
+   * The metadata mode. It must be one of the following:
+   *    - TILEDB_METADATA_WRITE 
+   *    - TILEDB_METADATA_READ 
    */
   int mode_;
+
+
+
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
   /**
-   * The range in which the array is constrained. Note that the type of the
-   * range must be the same as the type of the array coordinates.
+   * Computes the coordinates for each key (through the MD5 hash function),
+   * which will be used when storing the metadata to the underlying array.
+   *
+   * @param keys The buffer holding the metadata keys. These keys must be
+   *     strings, serialized one after the other in the *keys* buffer.
+   * @param keys_size The size (in bytes) of buffer *keys*.
+   * @param coords A buffer holding the computed coordinates for *keys*.
+   * @param coords_size The size (in bytes) of the input *coords* buffer.
+   * @return void
    */
-//  void* range_;
-
-  // PRIVATE METHODS
-
-  // TODO
   void compute_array_coords(
       const char* keys,
       size_t keys_size,
-      size_t*& keys_offsets,
-      size_t& keys_offsets_size,
       void*& coords,
       size_t& coords_size) const;
 
-  // TODO
+  /**
+   * Prepares the buffers that will be passed to the underlying array when 
+   * writing metadata.
+   *
+   * @param coords A buffer holding the computed coordinates for the keys to be
+   *     written.
+   * @param coords_size The size (in bytes) of the input *coords* buffer.
+   * @param buffers An array of buffers, one for each attribute. These must be
+   *     provided in the same order as the attributes specified in
+   *     init() or reset_attributes(). The case of variable-sized attributes is
+   *     special. Instead of providing a single buffer for such an attribute,
+   *     **two** must be provided: the second holds the variable-sized values,
+   *     whereas the first holds the start offsets of each value in the second
+   *     buffer.
+   * @param buffer_sizes The sizes (in bytes) of the input buffers (there is
+   *     a one-to-one correspondence).
+   * @param array_buffers These are the produced buffers that will be passed
+   *     in the write() function.
+   * @param array_buffer_sizes The sizes (in bytes) of the corresponding buffers
+   *     in the *buffers* parameter.
+   * @return void
+   */
   void prepare_array_buffers(
-      const char* keys,
-      size_t keys_size,
-      const size_t* keys_offsets,
-      size_t keys_offsets_size,
       const void* coords,
       size_t coords_size,
       const void** buffers,
       const size_t* buffer_sizes,
       const void**& array_buffers,
       size_t*& array_buffer_sizes) const;
-  
-  /** 
-   * Returns a new fragment name, which is in the form: <br>
-   * .__<process_id>_<current_timestamp>
-   *
-   * Note that this is a temporary name, initiated by a new write process.
-   * After the new fragmemt is finalized, the array will change its name
-   * by removing the leading '.' character. Moreover, the fragment name
-   * may change later by a consolidation process.
-   */
-//  std::string new_fragment_name() const;
-
-  // TODO
-//  int open_fragments();
-
-  // TODO
-//  void sort_fragment_names(std::vector<std::string>& fragment_names) const;
 };
 
 #endif
