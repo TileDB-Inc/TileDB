@@ -1,12 +1,11 @@
 /**
  * @file   metadata_schema_c.h
- * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2016 MIT and Intel Corp.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,22 +37,42 @@
 
 /** Specifies the metadata schema. */
 typedef struct MetadataSchemaC {
-  // TODO
+  /** 
+   * The metadata name. It is a directory, whose parent must be a TileDB
+   * workspace, group, or array.
+   */
   char* metadata_name_;
   /** The attribute names. */
   char** attributes_;
   /** The number of attributes. */
   int attribute_num_;
   /** 
-   * The tile capacity (only applicable to irregular tiles). If it is <=0,
-   * TileDB will use its default.
+   * The tile capacity. If it is <=0, TileDB will use its default.
    */
   int64_t capacity_;
-  // TODO
+  /**
+   * Specifies the number of values per attribute for a cell. If it is NULL,
+   * then each attribute has a single value per cell. If for some attribute
+   * the number of values is variable (e.g., in the case off strings), then
+   * TILEDB_VAR_NUM must be used.
+   */
   int* cell_val_num_;
-  /** It can be either TILEDB_NO_COMPRESSION or TILEDB_GZIP. */
+  /** 
+   * The compression type for each attribute (plus one extra at the end for the
+   * key. It can be one of the following: 
+   *    - TILEDB_NO_COMPRESSION
+   *    - TILEDB_GZIP. 
+   */
   int* compression_;
-  // TODO
+  /** 
+   * The attribute types.
+   * The attribute type can be one of the following: 
+   *    - TILEDB_INT32
+   *    - TILEDB_INT64
+   *    - TILEDB_FLOAT32
+   *    - TILEDB_FLOAT64
+   *    - TILEDB_CHAR. 
+   */
   int* types_;
 } MetadataSchemaC;
 
