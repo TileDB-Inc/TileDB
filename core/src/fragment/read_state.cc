@@ -1003,7 +1003,7 @@ void ReadState::compute_cell_pos_ranges() {
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
-  const T* range = static_cast<const T*>(fragment_->array()->range());
+  const T* range = static_cast<const T*>(fragment_->array()->subarray());
   int compression = array_schema->compression(attribute_num);
 
   // Bring coordinates tile in main memory
@@ -1264,7 +1264,7 @@ void ReadState::compute_cell_pos_ranges_scan(
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
-  const T* range = static_cast<const T*>(fragment_->array()->range());
+  const T* range = static_cast<const T*>(fragment_->array()->subarray());
   const T* tile = static_cast<const T*>(tiles_[attribute_num]);
   const T* cell;
   int64_t current_start_pos, current_end_pos = -2; 
@@ -3607,7 +3607,7 @@ void ReadState::get_next_overlapping_tile_dense() {
   const T* range_in_tile_domain = static_cast<const T*>(range_in_tile_domain_);
   T* coords = static_cast<T*>(overlapping_tile.coords_);
   T* overlap_range = static_cast<T*>(overlapping_tile.overlap_range_);
-  const T* range = static_cast<const T*>(fragment_->array()->range());
+  const T* range = static_cast<const T*>(fragment_->array()->subarray());
 
   // Get coordinates
   if(overlapping_tiles_.size() == 0) {  // First tile
@@ -3705,7 +3705,7 @@ void ReadState::get_next_overlapping_tile_dense_mult() {
   const T* range_in_tile_domain = static_cast<const T*>(range_in_tile_domain_);
   T* coords = static_cast<T*>(overlapping_tile.coords_);
   T* overlap_range = static_cast<T*>(overlapping_tile.overlap_range_);
-  const T* range = static_cast<const T*>(fragment_->array()->range());
+  const T* range = static_cast<const T*>(fragment_->array()->subarray());
 
   // Get coordinates
   if(overlapping_tiles_.size() == 0) {  // First tile
@@ -3827,7 +3827,7 @@ void ReadState::get_next_overlapping_tile_sparse() {
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
   size_t coords_size = array_schema->coords_size();
-  const T* range = static_cast<const T*>(fragment_->array()->range());
+  const T* range = static_cast<const T*>(fragment_->array()->subarray());
   int64_t tile_num = book_keeping_->mbrs().size();
 
   // The next overlapping tile
@@ -3932,7 +3932,7 @@ void ReadState::get_next_overlapping_tile_sparse_mult() {
   int dim_num = array_schema->dim_num();
   int attribute_num = array_schema->attribute_num();
   size_t coords_size = array_schema->coords_size();
-  const T* range = static_cast<const T*>(fragment_->array()->range());
+  const T* range = static_cast<const T*>(fragment_->array()->subarray());
   int64_t tile_num = book_keeping_->mbrs().size();
   const T* global_domain = static_cast<const T*>(array_schema->domain());
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
@@ -4426,7 +4426,7 @@ void ReadState::init_range_in_tile_domain() {
   int dim_num = array_schema->dim_num();
   const T* domain = static_cast<const T*>(book_keeping_->domain());
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
-  const T* range = static_cast<const T*>(fragment_->array()->range());
+  const T* range = static_cast<const T*>(fragment_->array()->subarray());
 
   // Sanity check
   assert(tile_extents != NULL);
@@ -4539,7 +4539,7 @@ void ReadState::init_tile_search_range_col() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
-  const T* range = static_cast<const T*>(fragment_->array()->range());
+  const T* range = static_cast<const T*>(fragment_->array()->subarray());
   int64_t tile_num = book_keeping_->tile_num();
   const std::vector<void*>& bounding_coords = 
       book_keeping_->bounding_coords();
@@ -4640,7 +4640,7 @@ void ReadState::init_tile_search_range_hil() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
-  const T* range = static_cast<const T*>(fragment_->array()->range());
+  const T* range = static_cast<const T*>(fragment_->array()->subarray());
   int64_t tile_num = book_keeping_->tile_num();
 
   if(is_unary_range(range, dim_num)) {  // Unary range
@@ -4715,7 +4715,7 @@ void ReadState::init_tile_search_range_row() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
-  const T* range = static_cast<const T*>(fragment_->array()->range());
+  const T* range = static_cast<const T*>(fragment_->array()->subarray());
 
   // Trivial case
   if(range == NULL)
@@ -4821,7 +4821,7 @@ void ReadState::init_tile_search_range_id_col() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
-  const T* range = static_cast<const T*>(fragment_->array()->range());
+  const T* range = static_cast<const T*>(fragment_->array()->subarray());
   int64_t tile_num = book_keeping_->tile_num();
   const std::vector<void*>& bounding_coords = 
       book_keeping_->bounding_coords();
@@ -4938,7 +4938,7 @@ void ReadState::init_tile_search_range_id_row() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
-  const T* range = static_cast<const T*>(fragment_->array()->range());
+  const T* range = static_cast<const T*>(fragment_->array()->subarray());
   int64_t tile_num = book_keeping_->tile_num();
   const std::vector<void*>& bounding_coords = 
       book_keeping_->bounding_coords();

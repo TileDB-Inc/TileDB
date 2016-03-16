@@ -92,6 +92,15 @@ ArraySchema::~ArraySchema() {
 /*            ACCESSORS           */
 /* ****************************** */
 
+int ArraySchema::var_attribute_num() const {
+  int var_attribute_num = 0;
+  for(int i=0; i<attribute_num_; ++i)
+    if(var_size(i))
+      ++var_attribute_num;
+
+  return var_attribute_num;
+}
+
 void ArraySchema::array_schema_export(ArraySchemaC* array_schema_c) const {
   // set array name
   size_t array_name_len = array_name_.size(); 

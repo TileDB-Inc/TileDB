@@ -157,6 +157,7 @@ RVMA_BIN_DIR     = rvma/bin
 
 # Directory for Doxygen documentation
 DOXYGEN_DIR = doxygen
+DOXYGEN_MAINPAGE = $(DOXYGEN_DIR)/mainpage.dox
 
 # Manpages directories
 MANPAGES_MAN_DIR = manpages/man
@@ -493,7 +494,8 @@ clean_check:
 # Documentation (with Doxygen) #
 ################################
 
-doxyfile.inc: $(CORE_INCLUDE) $(TILEDB_CMD_INCLUDE) $(LA_INCLUDE)
+doxyfile.inc: $(CORE_INCLUDE) $(TILEDB_CMD_INCLUDE) $(LA_INCLUDE) \
+              $(DOXYGEN_MAINPAGE)
 	@echo 'Creating Doxygen documentation'
 	@echo INPUT = $(DOXYGEN_DIR)/mainpage.dox $(CORE_INCLUDE) \
                       $(TILEDB_CMD_INCLUDE) $(LA_INCLUDE) > doxyfile.inc

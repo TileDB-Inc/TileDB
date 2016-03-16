@@ -1367,7 +1367,7 @@ void ArrayReadState::compute_max_overlap_range() {
   int cell_order = array_schema->cell_order();
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
   const T* global_domain = static_cast<const T*>(array_schema->domain());
-  const T* range = static_cast<const T*>(array_->range());
+  const T* range = static_cast<const T*>(array_->subarray());
 
   T tile_coords;
   T* max_overlap_range = static_cast<T*>(max_overlap_range_);
@@ -1454,7 +1454,7 @@ void ArrayReadState::init_range_global_tile_coords() {
   size_t coords_size = array_schema->coords_size();
   const T* domain = static_cast<const T*>(array_schema->domain());
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
-  const T* range = static_cast<const T*>(array_->range());
+  const T* range = static_cast<const T*>(array_->subarray());
 
   // Sanity check
   assert(tile_extents != NULL);

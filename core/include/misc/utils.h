@@ -164,6 +164,9 @@ off_t file_size(const std::string& filename);
 /** Returns the names of the directories inside the input directory. */
 std::vector<std::string> get_dirs(const std::string& dir);
 
+/** Returns the names of the fragments inside the input directory. */
+std::vector<std::string> get_fragment_dirs(const std::string& dir);
+
 /** 
  * GZIPs the input buffer and stores the result in the output buffer, returning
  * the size of compressed data. 

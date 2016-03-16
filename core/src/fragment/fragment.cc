@@ -138,8 +138,8 @@ const void* Fragment::get_global_tile_coords() const {
 
 int Fragment::read(void** buffers, size_t* buffer_sizes) {
   // Sanity check
-  if(array_->range() == NULL) {
-    PRINT_ERROR("Cannot read from fragment; Invalid range");
+  if(array_->subarray() == NULL) {
+    PRINT_ERROR("Cannot read from fragment; Invalid subarray");
     return TILEDB_BK_ERR;
   }
 

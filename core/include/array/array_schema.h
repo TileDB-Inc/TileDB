@@ -72,6 +72,9 @@ class ArraySchema {
   // ACCESSORS
 
   // TODO
+  int var_attribute_num() const;
+
+  // TODO
   void array_schema_export(ArraySchemaC* array_schema_c) const;
 
   // TODO

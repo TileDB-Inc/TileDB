@@ -350,6 +350,32 @@ std::vector<std::string> get_dirs(const std::string& dir) {
   return dirs;
 }
 
+std::vector<std::string> get_fragment_dirs(const std::string& dir) {
+  std::vector<std::string> dirs;
+  std::string new_dir; 
+  struct dirent *next_file;
+  DIR* c_dir = opendir(dir.c_str());
+
+  if(c_dir == NULL) 
+    return std::vector<std::string>();
+
+  while((next_file = readdir(c_dir))) {
+    new_dir = dir + "/" + next_file->d_name;
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, "..") ||
+       !is_dir(new_dir) ||
+       !is_fragment(new_dir))
+      continue;
+    dirs.push_back(new_dir);
+  } 
+
+  // Close array directory  
+  closedir(c_dir);
+
+  // Return
+  return dirs;
+}
+
 ssize_t gzip(
     unsigned char* in, 
     size_t in_size,
