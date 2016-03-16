@@ -1,12 +1,11 @@
 /**
  * @file   array_iterator.cc
- * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2016 MIT and Intel Corp.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -222,19 +221,19 @@ int ArrayIterator::next() {
 
   // Perform a new read
   if(needs_new_read.size() > 0) {
-    size_t* buffer_sizes = new size_t[attribute_id_num + var_attribute_num_]; 
+    // Properly set the buffer sizes
     for(int i=0; i<attribute_id_num + var_attribute_num_; ++i) 
-      buffer_sizes[i] = 0;
+      buffer_sizes_[i] = 0;
     int buffer_i;
     for(int i=0; i<needs_new_read.size(); ++i) {
       buffer_i = buffer_i_[needs_new_read[i]];
-      buffer_sizes[buffer_i] = buffer_allocated_sizes_[buffer_i]; 
+      buffer_sizes_[buffer_i] = buffer_allocated_sizes_[buffer_i]; 
       if(cell_sizes_[needs_new_read[i]] == TILEDB_VAR_SIZE) 
-        buffer_sizes[buffer_i+1] = buffer_allocated_sizes_[buffer_i+1]; 
+        buffer_sizes_[buffer_i+1] = buffer_allocated_sizes_[buffer_i+1]; 
     }
 
     // Perform first read
-    if(array_->read(buffers_, buffer_sizes) != TILEDB_AR_OK)
+    if(array_->read(buffers_, buffer_sizes_) != TILEDB_AR_OK)
       return TILEDB_AIT_ERR;
 
     // Check if read went well and update internal state
@@ -242,33 +241,29 @@ int ArrayIterator::next() {
       buffer_i = buffer_i_[needs_new_read[i]];
 
       // End
-      if(buffer_sizes[buffer_i] == 0 && 
+      if(buffer_sizes_[buffer_i] == 0 && 
          !array_->overflow(attribute_ids[needs_new_read[i]])) {
          end_ = true;
         return TILEDB_AIT_OK;
       } 
 
       // Error
-      if(buffer_sizes[buffer_i] == 0 && 
+      if(buffer_sizes_[buffer_i] == 0 && 
          array_->overflow(attribute_ids[needs_new_read[i]])) {
         PRINT_ERROR("Cannot advance iterator; Buffer overflow");
         return TILEDB_AIT_ERR;
       }
 
       // Update cell num
-      cell_num_[needs_new_read[i]] = buffer_sizes[buffer_i] / sizeof(size_t);
+      if(cell_sizes_[needs_new_read[i]] == TILEDB_VAR_SIZE)  // VARIABLE
+        cell_num_[needs_new_read[i]] = buffer_sizes_[buffer_i] / sizeof(size_t);
+      else                                   // FIXED 
+        cell_num_[needs_new_read[i]] = 
+            buffer_sizes_[buffer_i] / cell_sizes_[needs_new_read[i]]; 
 
       // Update pos
       pos_[needs_new_read[i]] = 0;
-
-      // Update the new buffer sizes
-      buffer_sizes_[buffer_i] = buffer_sizes[buffer_i]; 
-      if(cell_sizes_[needs_new_read[i]] == TILEDB_VAR_SIZE) 
-        buffer_sizes_[buffer_i+1] = buffer_sizes[buffer_i+1]; 
     }
-
-    // Clean up
-    delete [] buffer_sizes;
   }
 
   // Success

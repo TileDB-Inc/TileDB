@@ -104,12 +104,10 @@ class ArrayIterator {
   /* ********************************* */
 
   /**
-   * Initializes an array iterator for reading cells, potentially constraining
-   * it on a subset of attributes, as well as a subarray. The cells will be read
-   * in the order they are stored on the disk, maximing performance. 
+   * Initializes an iterator for reading cells from an initialized array.  
    *
    * @param array The array the iterator is initialized for.
-   * @param buffers This is an array of buffers similar to tiledb_array_read.
+   * @param buffers This is an array of buffers similar to Array::read().
    *     It is the user that allocates and provides buffers that the iterator
    *     will use for internal buffering of the read cells. The iterator will
    *     read from the disk the relevant cells in batches, by fitting as many
@@ -120,49 +118,70 @@ class ArrayIterator {
    *     memory space for *buffers*. The function will prefetch from the
    *     disk as many cells as can fit in the buffers, whenever it finishes
    *     iterating over the previously prefetched data.
-   * @return TILEDB_OK on success, and TILEDB_ERR on error.
+   * @return TILEDB_AIT_OK on success, and TILEDB_AIT_ERR on error.
    */
   int init(
       Array* array, 
       void** buffers, 
       size_t* buffer_sizes);
 
-  // TODO
+  /**
+   * Finalizes the array iterator, properly freeing the allocating memory space.
+   * 
+   * @return TILEDB_AIT_OK on success, and TILEDB_AIT_ERR on error.
+   */
   int finalize();
 
-  // TODO
+  /**
+   * Advances the iterator by one cell.
+   *
+   * @return TILEDB_AIT_OK on success, and TILEDB_AIT_ERR on error.
+   */
   int next();
 
  private:
-  // PRIVATE ATTRIBUTES
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
 
-  // TODO
+  /** The array the iterator works on. */
   Array* array_;
 
-  // TODO
+  /** The buffers used for prefetching. */
   void** buffers_;
 
-  // TODO
+  /** 
+   * The corresponding sizes of *buffers*. These will be likely changed upon
+   * each prefetching.
+   */
   size_t* buffer_sizes_;
 
+  /**
+   *  The original corresponding sizes of *buffers*, as they were passed in
+   * init(). 
+   */
   std::vector<size_t> buffer_allocated_sizes_;
 
-  // TODO
+  /** A flag indicating whether the iterator has reached its end. */
   bool end_;
 
-  // TODO
+  /**
+   * The position of the current value the iterator is on in the currently
+   * buffered cells in *buffers*. A separate position is maintained for each
+   * attribute buffer.
+   */
   std::vector<int64_t> pos_;
 
-  // TODO
+  /** The number of cells currently in *buffers* (one per attribute). */
   std::vector<int64_t> cell_num_;
 
-  // TODO
+  /** Stores the cell size of each attribute. */
   std::vector<size_t> cell_sizes_;
 
-  // TODO
+  /** The index of the *buffers* element each attribute corresponds to. */
   std::vector<int> buffer_i_;
   
-  // TODO
+  /** Number of variable attributes. */
   int var_attribute_num_;
 };
 
