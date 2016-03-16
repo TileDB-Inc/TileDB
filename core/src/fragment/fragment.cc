@@ -1,12 +1,11 @@
 /**
  * @file   fragment.cc
- * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2016 MIT and Intel Corp.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +37,9 @@
 #include <cstring>
 #include <iostream>
 
+
+
+
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
@@ -55,6 +57,9 @@
 #  define PRINT_ERROR(x) do { } while(0) 
 #  define PRINT_WARNING(x) do { } while(0) 
 #endif
+
+
+
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -77,6 +82,9 @@ Fragment::~Fragment() {
   if(book_keeping_ != NULL)
     delete book_keeping_;
 }
+
+
+
 
 /* ****************************** */
 /*            ACCESSORS           */

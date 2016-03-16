@@ -33,6 +33,9 @@
 
 #include "array_iterator.h"
 
+
+
+
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
@@ -51,6 +54,9 @@
 #  define PRINT_WARNING(x) do { } while(0) 
 #endif
 
+
+
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -65,6 +71,9 @@ ArrayIterator::ArrayIterator() {
 
 ArrayIterator::~ArrayIterator() {
 }
+
+
+
 
 /* ****************************** */
 /*           ACCESSORS            */
@@ -90,10 +99,10 @@ int ArrayIterator::get_value(
   int buffer_i = buffer_i_[attribute_id];
   int64_t pos = pos_[attribute_id];
   size_t cell_size = cell_sizes_[attribute_id];
-  if(cell_size != TILEDB_VAR_NUM) { // FIXED
+  if(cell_size != TILEDB_VAR_SIZE) { // FIXED
     *value = static_cast<const char*>(buffers_[buffer_i]) + pos*cell_size;
     *value_size = cell_size;
-  } else {                          // VARIABLE
+  } else {                           // VARIABLE
     size_t offset = static_cast<size_t*>(buffers_[buffer_i])[pos];
     *value = static_cast<const char*>(buffers_[buffer_i+1]) + offset;
     if(pos < cell_num_[attribute_id] - 1) 
@@ -106,6 +115,9 @@ int ArrayIterator::get_value(
   // Success
   return TILEDB_AIT_OK; 
 }
+
+
+
 
 /* ****************************** */
 /*            MUTATORS            */
@@ -122,7 +134,7 @@ int ArrayIterator::init(
   end_ = false;
   var_attribute_num_ = 0;
 
-  // Initialize next, cell num, cell sizes and buffer_i
+  // Initialize next, cell num, cell sizes, buffer_i and var_attribute_num
   const ArraySchema* array_schema = array_->array_schema();
   const std::vector<int> attribute_ids = array_->attribute_ids();
   int attribute_id_num = attribute_ids.size();
@@ -137,7 +149,7 @@ int ArrayIterator::init(
     cell_sizes_[i] = array_schema->cell_size(attribute_ids[i]);
     buffer_i_[i] = buffer_i;
     buffer_allocated_sizes_.push_back(buffer_sizes[buffer_i]);
-    if(cell_sizes_[i] != TILEDB_VAR_NUM) {
+    if(cell_sizes_[i] != TILEDB_VAR_SIZE) {
       ++buffer_i;
     } else {
       buffer_allocated_sizes_.push_back(buffer_sizes[buffer_i+1]);
@@ -167,7 +179,10 @@ int ArrayIterator::init(
     }
 
     // Update cell num
-    cell_num_[i] = buffer_sizes[buffer_i_[i]] / sizeof(size_t);
+    if(cell_sizes_[i] == TILEDB_VAR_SIZE)  // VARIABLE
+      cell_num_[i] = buffer_sizes[buffer_i_[i]] / sizeof(size_t);
+    else                                   // FIXED 
+      cell_num_[i] = buffer_sizes[buffer_i_[i]] / cell_sizes_[i]; 
   }
 
   // Return
@@ -214,7 +229,7 @@ int ArrayIterator::next() {
     for(int i=0; i<needs_new_read.size(); ++i) {
       buffer_i = buffer_i_[needs_new_read[i]];
       buffer_sizes[buffer_i] = buffer_allocated_sizes_[buffer_i]; 
-      if(cell_sizes_[needs_new_read[i]] == TILEDB_VAR_NUM) 
+      if(cell_sizes_[needs_new_read[i]] == TILEDB_VAR_SIZE) 
         buffer_sizes[buffer_i+1] = buffer_allocated_sizes_[buffer_i+1]; 
     }
 
@@ -248,7 +263,7 @@ int ArrayIterator::next() {
 
       // Update the new buffer sizes
       buffer_sizes_[buffer_i] = buffer_sizes[buffer_i]; 
-      if(cell_sizes_[needs_new_read[i]] == TILEDB_VAR_NUM) 
+      if(cell_sizes_[needs_new_read[i]] == TILEDB_VAR_SIZE) 
         buffer_sizes_[buffer_i+1] = buffer_sizes[buffer_i+1]; 
     }
 

@@ -1,12 +1,11 @@
 /**
  * @file   fragment.h
- * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2016 MIT and Intel Corp.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,22 +41,33 @@
 #include "write_state.h"
 #include <vector>
 
+
+
+
 /* ********************************* */
 /*             CONSTANTS             */
 /* ********************************* */
 
-#define TILEDB_FG_OK     0
-#define TILEDB_FG_ERR   -1
+/**@{*/
+/** Return code. */
+#define TILEDB_FG_OK        0
+#define TILEDB_FG_ERR      -1
+/**@}*/
 
 class Array;
 class BookKeeping;
 class ReadState;
 class WriteState;
 
-/** Contains information about an array fragment. */
+
+
+
+/** Manages a TileDB fragment object. */
 class Fragment {
  public:
-  // TYPE DEFINITIONS
+  /* ********************************* */
+  /*           TYPE DEFINITIONS        */
+  /* ********************************* */
 
   // TODO
   typedef std::pair<int64_t, int64_t> CellPosRange;
@@ -72,7 +82,12 @@ class Fragment {
   // TODO
   typedef std::vector<FragmentCellRange> FragmentCellRanges;
 
-  // CONSTRUCTORS & DESTRUCTORS
+
+
+
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
   
   /** 
    * Constructor. 
@@ -80,6 +95,7 @@ class Fragment {
    * @param array The array the fragment belongs to.
    */
   Fragment(const Array* array);
+
   /** Destructor. */
   ~Fragment();
 

@@ -378,7 +378,7 @@ void ArraySchema::print() const {
     std::cout << "\t" << ((i==attribute_num_) ? "Coordinates"  
                                               : attributes_[i]) 
                       << ": ";
-    if(cell_sizes_[i] == TILEDB_VAR_NUM)
+    if(cell_sizes_[i] == TILEDB_VAR_SIZE)
       std::cout << "var\n"; 
     else
       std::cout << cell_sizes_[i] << "\n"; 
@@ -650,7 +650,7 @@ int ArraySchema::type(int i) const {
 }
 
 bool ArraySchema::var_size(int attribute_id) const {
-  return cell_sizes_[attribute_id] == TILEDB_VAR_NUM; 
+  return cell_sizes_[attribute_id] == TILEDB_VAR_SIZE; 
 }
 
 /* ****************************** */
@@ -2000,7 +2000,7 @@ size_t ArraySchema::compute_cell_size(int i) const {
 
   // Variable-sized cell
   if(i<attribute_num_ && val_num_[i] == TILEDB_VAR_NUM)
-    return TILEDB_VAR_NUM;
+    return TILEDB_VAR_SIZE;
 
   // Fixed-sized cell
   size_t size;
