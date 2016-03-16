@@ -1,12 +1,11 @@
 /**
  * @file   metadata_iterator.cc
- * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2016 MIT and Intel Corp.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +32,9 @@
 
 #include "metadata_iterator.h"
 
+
+
+
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
@@ -51,6 +53,9 @@
 #  define PRINT_WARNING(x) do { } while(0) 
 #endif
 
+
+
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -60,7 +65,12 @@ MetadataIterator::MetadataIterator() {
 }
 
 MetadataIterator::~MetadataIterator() {
+  if(array_it_ != NULL)
+    delete array_it_;
 }
+
+
+
 
 /* ****************************** */
 /*           ACCESSORS            */
@@ -80,9 +90,23 @@ int MetadataIterator::get_value(
     return TILEDB_MIT_OK; 
 }
 
+
+
+
 /* ****************************** */
 /*            MUTATORS            */
 /* ****************************** */
+
+int MetadataIterator::finalize() {
+  int rc = array_it_->finalize();
+  delete array_it_;
+  array_it_ = NULL;
+
+  if(rc != TILEDB_AIT_OK)
+    return TILEDB_MIT_ERR;
+  else
+    return TILEDB_MIT_OK;
+}
 
 int MetadataIterator::init(
     Metadata* metadata,
@@ -99,18 +123,6 @@ int MetadataIterator::init(
   
   // Return
   return TILEDB_MIT_OK;
-}
-
-
-int MetadataIterator::finalize() {
-  int rc = array_it_->finalize();
-  delete array_it_;
-  array_it_ = NULL;
-
-  if(rc != TILEDB_AIT_OK)
-    return TILEDB_MIT_ERR;
-  else
-    return TILEDB_MIT_OK;
 }
 
 int MetadataIterator::next() {

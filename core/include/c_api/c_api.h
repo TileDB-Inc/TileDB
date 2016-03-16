@@ -512,7 +512,7 @@ typedef struct TileDB_ArrayIterator TileDB_ArrayIterator;
  *     the coordinates in the case of sparse arrays).
  * @param attribute_num The number of the input attributes. If *attributes* is
  *     NULL, then this should be set to 0.
- * @param buffers This is an array of buffers similar to tiledb_array_read.
+ * @param buffers This is an array of buffers similar to tiledb_array_read().
  *     It is the user that allocates and provides buffers that the iterator
  *     will use for internal buffering of the read cells. The iterator will
  *     read from the disk the relevant cells in batches, by fitting as many
@@ -859,7 +859,7 @@ typedef struct TileDB_MetadataIterator TileDB_MetadataIterator;
  *     the key as an extra attribute in the end).
  * @param attribute_num The number of the input attributes. If *attributes* is
  *     NULL, then this should be set to 0.
- * @param buffers This is an array of buffers similar to tiledb_metadata_read.
+ * @param buffers This is an array of buffers similar to tiledb_metadata_read().
  *     It is the user that allocates and provides buffers that the iterator
  *     will use for internal buffering of the read values. The iterator will
  *     read from the disk the values in batches, by fitting as many
@@ -868,7 +868,7 @@ typedef struct TileDB_MetadataIterator TileDB_MetadataIterator;
  *     depending on the application. 
  * @param buffer_sizes The corresponding sizes (in bytes) of the allocated 
  *     memory space for *buffers*. The function will prefetch from the
- *     disk as many cells as can fit in the buffers, whenever it finishes
+ *     disk as many values as can fit in the buffers, whenever it finishes
  *     iterating over the previously prefetched data.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
