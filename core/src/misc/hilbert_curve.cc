@@ -1,10 +1,45 @@
+/**
+ * @file   hilbert_curve.cc
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ * 
+ * @copyright Copyright (c) 2016 MIT and Intel Corp.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * 
+ * @section DESCRIPTION
+ *
+ * This file implements the HilbertCurve class.
+ */
+
 #include "hilbert_curve.h"
 #include <assert.h>
 #include <string.h>
 
-/******************************************************
-************ CONSTRUCTORS & DESTRUCTORS ***************
-******************************************************/
+
+
+
+/* ****************************** */
+/*   CONSTRUCTORS & DESTRUCTORS   */
+/* ****************************** */
 
 HilbertCurve::HilbertCurve(int bits, int dim_num) 
     : bits_(bits), dim_num_(dim_num) {
@@ -15,9 +50,12 @@ HilbertCurve::HilbertCurve(int bits, int dim_num)
 HilbertCurve::~HilbertCurve() {
 }
 
-/******************************************************
-******************* MAIN FUNCTIONS ********************
-******************************************************/
+
+
+
+/* ****************************** */
+/*        BASIC FUNCTIONS         */
+/* ****************************** */
 
 void HilbertCurve::coords_to_hilbert(const int* coords, int64_t& hilbert) {
   // Copy coords to temporary storage
@@ -60,22 +98,25 @@ void HilbertCurve::hilbert_to_coords(int64_t hilbert, int* coords) {
   memcpy(coords, temp_, dim_num_ * sizeof(int));
 }
 
-/******************************************************
-******************* MAIN FUNCTIONS ********************
-******************************************************/
+
+
+
+/* ****************************** */
+/*        PRIVATE METHODS         */
+/* ****************************** */
 
 void HilbertCurve::AxestoTranspose(int* X, int b, int n) {
   int P, Q, t, i;
 
   // Inverse undo
-  for( Q = 1 << (b - 1); Q > 1; Q >>= 1 ) {
+  for(Q = 1 << (b - 1); Q > 1; Q >>= 1) {
     P = Q - 1;
-    if( X[0] & Q )      // invert
+    if(X[0] & Q)      // invert
       X[0] ^= P;                                 
-    for( i = 1; i < n; i++ ) 
-      if( X[i] & Q )    // invert
+    for(i = 1; i < n; i++) 
+      if(X[i] & Q)    // invert
         X[0] ^= P;                              
-      else {            // exchange
+      else {          // exchange
         t = (X[0] ^ X[i]) & P;  
         X[0] ^= t;  
         X[i] ^= t; 
@@ -83,13 +124,13 @@ void HilbertCurve::AxestoTranspose(int* X, int b, int n) {
   }
 
   // Gray encode (inverse of decode)
-  for( i = 1; i < n; i++ )
+  for(i = 1; i < n; i++)
     X[i] ^= X[i-1];
   t = X[n-1];
-  for( i = 1; i < b; i <<= 1 )
+  for(i = 1; i < b; i <<= 1)
     X[n-1] ^= X[n-1] >> i;
   t ^= X[n-1];
-  for( i = n-2; i >= 0; i-- )
+  for(i = n-2; i >= 0; i--)
     X[i] ^= t;
 }
 
@@ -98,23 +139,23 @@ void HilbertCurve::TransposetoAxes(int* X, int b, int n) {
 
   // Gray decode by H ^ (H/2)
   t = X[n-1] >> 1;
-  for( i = n-1; i; i-- )
+  for(i = n-1; i; i--)
     X[i] ^= X[i-1];
   X[0] ^= t;
 
   // Undo excess work
   M = 2 << (b - 1);
-  for( Q = 2; Q != M; Q <<= 1 ) {
+  for(Q = 2; Q != M; Q <<= 1) {
     P = Q - 1;
-    for( i = n-1; i; i-- )
-      if( X[i] & Q )  // invert
+    for(i = n-1; i; i--)
+      if(X[i] & Q)  // invert
         X[0] ^= P;                              
-      else {          // exchange
+      else {        // exchange
         t = (X[0] ^ X[i]) & P;  
         X[0] ^= t;  
         X[i] ^= t; 
       } 
-      if( X[0] & Q )  // invert
+      if(X[0] & Q)  // invert
         X[0] ^= P; 
   }
 } 

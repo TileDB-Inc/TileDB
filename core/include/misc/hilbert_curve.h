@@ -1,12 +1,11 @@
 /**
  * @file   hilbert_curve.h
- * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2016 MIT and Intel Corp.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,12 +30,19 @@
  * This file defines the HilbertCurve class. 
  */
 
-#ifndef HILBERT_CURVE_H
-#define HILBERT_CURVE_H
+#ifndef __HILBERT_CURVE_H__
+#define __HILBERT_CURVE_H__
 
 #include <cstdlib>
 #include <iostream>
 #include <sys/types.h>
+
+
+
+
+/* ********************************* */
+/*             CONSTANTS             */
+/* ********************************* */
 
 /** 
  * Maximum number of dimensions for defining the Hilbert curve. Although the
@@ -46,6 +52,9 @@
  * number and, thus, it cannot exceed 64 bits.
  */
 #define HC_MAX_DIM 16
+
+
+
 
 /**
  * The Hilbert curve fills a multi-dimensional space in a particular manner
@@ -97,39 +106,59 @@
  * The Hilbert value of (2,3) is 9, whereas the coordinates corresponding to 
  * Hilbert value 2 are (1,1).
  *
- * The class utilizes two functions from John Skilling's work:
- * John Skilling, "Programming the Hilbert Curve". In AIP, 2003
+ * The class utilizes two functions from John Skilling's work published in:
+ * John Skilling, "Programming the Hilbert Curve". In AIP, 2004
  */
 class HilbertCurve {
  public:
-  // CONSTRUCTORS AND DESTRUCTORS
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
   /** 
    * Constructor.
+   *
    * @param bits Number of bits used for coordinate values across each dimension
    * @param dim_num Number of dimensions
    */
   HilbertCurve(int bits, int dim_num);
-  /** Simple destructor. */
+
+  /** Destructor. */
   ~HilbertCurve();
 
-  // MAIN FUNCTIONS
-  /**  
-   * Converts a Hilbert value into a set of coordinates.
-   * @param hilbert The Hilbert value to be converted.
-   * @param coords The output coordinates.
-   * @see coords_to_hilbert
-   */
-  void hilbert_to_coords(int64_t hilbert, int* coords);
+
+
+
+  /* ********************************* */
+  /*           MAIN FUNCTIONS          */
+  /* ********************************* */
+
   /**  
    * Converts a set of coordinates to a Hilbert value.
+   *
    * @param coords The coordinates to be converted.
-   * @param hilbert The outpu Hilbert value.
-   * @see hilbert_to_coords
+   * @param hilbert The output Hilbert value.
+   * @return void
    */
   void coords_to_hilbert(const int* coords, int64_t& hilbert); 
 
+  /**  
+   * Converts a Hilbert value into a set of coordinates.
+   *
+   * @param hilbert The Hilbert value to be converted.
+   * @param coords The output coordinates.
+   * @return void
+   */
+  void hilbert_to_coords(int64_t hilbert, int* coords);
+
+
+
+
  private:
-  // PRIVATE ATTRIBUTES
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
   /** Number of bits for representing a coordinate per dimension. */	
   int bits_;
   /** Number of dimensions. */	
@@ -137,7 +166,13 @@ class HilbertCurve {
   /** Temporary buffer. */
   int temp_[HC_MAX_DIM];
 
-  // PRIVATE METHODS
+
+
+
+  /* ********************************* */
+  /*           PRIVATE METHODS         */
+  /* ********************************* */
+
   /**
    * Identical to John Skilling's work. It converts the input coordinates
    * to what is called the transpose of the Hilbert value. This is done
@@ -160,16 +195,17 @@ class HilbertCurve {
    *
    * The X value after the function terminates is called the transpose form
    * of the Hilbert value.
-   * @param X Input coordinates, and output transpose (the conversion is
-   * done in place).
-   * @param b Number of bits for representing a coordinate per dimension
-   * (it should be equal to HilbertCurve::bits_). 
-   * @param n Number of dimensions (it should be equal to 
-   * HilbertCurve::dim_num_). 
-   * @see TransposetoAxes
    *
+   * @param X Input coordinates, and output transpose (the conversion is
+   *     done in place).
+   * @param b Number of bits for representing a coordinate per dimension
+   *     (it should be equal to HilbertCurve::bits_). 
+   * @param n Number of dimensions (it should be equal to 
+   *     HilbertCurve::dim_num_). 
+   * @return void
    */	
   void AxestoTranspose(int* X, int b, int n);
+
   /**
    * Identical to John Skilling's work. It converts the transpose of a
    * Hilbert value into the corresponding coordinates. This is done in place.
@@ -191,14 +227,14 @@ class HilbertCurve {
    *
    * The X value after the function terminates will contain the coordinates
    * corresponding to the Hilbert value. 
-   * @param X Input transpose, and output coordinates (the conversion is
-   * done in place).
-   * @param b Number of bits for representing a coordinate per dimension
-   * (it should be equal to HilbertCurve::bits_). 
-   * @param n Number of dimensions (it should be equal to 
-   * HilbertCurve::dim_num_). 
-   * @see AxestoTranspose
    *
+   * @param X Input transpose, and output coordinates (the conversion is
+   *     done in place).
+   * @param b Number of bits for representing a coordinate per dimension
+   *     (it should be equal to HilbertCurve::bits_). 
+   * @param n Number of dimensions (it should be equal to 
+   *     HilbertCurve::dim_num_). 
+   * @return void
    */	
   void TransposetoAxes(int* X, int b, int n);
 };

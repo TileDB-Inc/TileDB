@@ -38,6 +38,9 @@
 #include "constants.h"
 #include "fragment.h"
 
+
+
+
 /* ********************************* */
 /*             CONSTANTS             */
 /* ********************************* */
@@ -50,6 +53,9 @@
 
 class ArrayReadState;
 class Fragment;
+
+
+
 
 /** Manages a TileDB array object. */
 class Array {
