@@ -87,7 +87,8 @@ TILEDB_EXPORT int tiledb_ctx_finalize(TileDB_CTX* tiledb_ctx);
  *
  * @param tiledb_ctx The TileDB context.
  * @param workspace The directory to the workspace to be created in the file 
- *     system.
+ *     system. This directory should not be inside another TileDB workspace,
+ *     group, array or metadata directory.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_workspace_create(
@@ -96,7 +97,7 @@ TILEDB_EXPORT int tiledb_workspace_create(
 
 /**
  * Lists all TileDB workspaces, copying their directory names in the input
- *     string buffers.
+ * string buffers.
  *
  * @param tiledb_ctx The TileDB context.
  * @param workspaces An array of strings that will store the listed workspaces.
@@ -576,9 +577,9 @@ TILEDB_EXPORT int tiledb_array_iterator_end(
     TileDB_ArrayIterator* tiledb_array_it);
 
 /**
- * Finalizes the iterator, properly freeing the allocating memory space.
+ * Finalizes an array iterator, properly freeing the allocating memory space.
  * 
- * @param tiledb_array_it The TileDB array iterator.
+ * @param tiledb_array_it The TileDB array iterator to be finalized.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_iterator_finalize(
@@ -995,6 +996,7 @@ TILEDB_EXPORT int tiledb_move(
  * @param dir_num The number of elements allocated by the user for *dirs*. After
  *     the function terminates, this will hold the actual number of TileDB
  *     objects that were stored in *dirs*.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_ls(
     const TileDB_CTX* tiledb_ctx,

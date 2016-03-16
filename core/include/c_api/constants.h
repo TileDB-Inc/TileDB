@@ -40,13 +40,13 @@
 #define TILEDB_VERSION                           "0.1"
 
 /**@{*/
-/* Return code. */  
+/** Return code. */  
 #define TILEDB_ERR                                  -1
 #define TILEDB_OK                                    0
 /**@}*/
 
 /**@{*/
-/* Array mode. */
+/** Array mode. */
 #define TILEDB_ARRAY_READ                            0
 #define TILEDB_ARRAY_WRITE                           1
 #define TILEDB_ARRAY_WRITE_UNSORTED                  2
