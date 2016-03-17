@@ -241,7 +241,7 @@ int WriteState::compress_and_write_tile(int attribute_id) {
   // Compress tile
   ssize_t tile_compressed_size = 
       gzip(tile, tile_size, tile_compressed, tile_compressed_allocated_size_);
-  if(tile_compressed_size == TILEDB_UT_ERR) 
+  if(tile_compressed_size != TILEDB_UT_OK) 
     return TILEDB_WS_ERR;
 
   // Get the attribute file name
@@ -513,21 +513,40 @@ void WriteState::update_book_keeping(
   }
 }
 
-void WriteState::update_tile_cell_num(
-    int attribute_id,
-    int64_t buffer_cell_num) {
+int WriteState::write_last_tile() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int64_t cell_num_per_tile = fragment_->cell_num_per_tile();
+  int attribute_num = array_schema->attribute_num();
+  size_t tile_size;
 
-  // Update the current tile cell number
-  if(buffer_cell_num + tile_cell_num_[attribute_id] > cell_num_per_tile) {
-    buffer_cell_num -= (cell_num_per_tile - tile_cell_num_[attribute_id]);
-    tile_cell_num_[attribute_id] = buffer_cell_num % cell_num_per_tile;
-  } else {
-    tile_cell_num_[attribute_id] += buffer_cell_num;
-  }
+  // Send last MBR, bounding coordinates and tile cell number to book-keeping
+  book_keeping_->append_mbr(mbr_);
+  book_keeping_->append_bounding_coords(bounding_coords_);
+  book_keeping_->set_last_tile_cell_num(tile_cell_num_[attribute_num]);
+
+  // Flush the last tile for each compressed attribute (it is still in main
+  // memory
+  for(int i=0; i<attribute_num+1; ++i) {
+    if(array_schema->compression(i) == TILEDB_GZIP) {
+      if(compress_and_write_tile(i) != TILEDB_WS_OK)
+        return TILEDB_WS_ERR;
+      if(array_schema->var_size(i)) {
+        if(compress_and_write_tile_var(i) != TILEDB_WS_OK)
+          return TILEDB_WS_ERR;
+      }
+    }
+  } 
+
+  // Success
+  return TILEDB_WS_OK;
 }
+
+
+
+
+
+
+
 
 int WriteState::write_dense(
     const void** buffers,
@@ -539,32 +558,28 @@ int WriteState::write_dense(
 
   // Write each attribute individually
   int buffer_i = 0;
-  int rc;
   for(int i=0; i<attribute_id_num; ++i) {
     if(!array_schema->var_size(attribute_ids[i])) { // FIXED CELLS
-      rc = write_dense_attr(
-               attribute_ids[i], 
-               buffers[buffer_i], 
-               buffer_sizes[buffer_i]);
-
-      if(rc != TILEDB_WS_OK)
-        break;
+      if(write_dense_attr(
+             attribute_ids[i], 
+             buffers[buffer_i], 
+             buffer_sizes[buffer_i]) != TILEDB_WS_OK)
+        return TILEDB_WS_ERR;
       ++buffer_i;
     } else {                                        // VARIABLE-SIZED CELLS
-      rc = write_dense_attr_var(
-               attribute_ids[i], 
-               buffers[buffer_i],       // offsets 
-               buffer_sizes[buffer_i],
-               buffers[buffer_i+1],     // actual values
-               buffer_sizes[buffer_i+1]);
-
-      if(rc != TILEDB_WS_OK)
-        break;
+      if(write_dense_attr_var(
+             attribute_ids[i], 
+             buffers[buffer_i],       // offsets 
+             buffer_sizes[buffer_i],
+             buffers[buffer_i+1],     // actual cell values
+             buffer_sizes[buffer_i+1]) != TILEDB_WS_OK)
+        return TILEDB_WS_ERR;
       buffer_i += 2;
     }
   }
 
-  return rc;
+  // Success
+  return TILEDB_WS_OK;
 }
 
 int WriteState::write_dense_attr(
@@ -593,13 +608,10 @@ int WriteState::write_dense_attr_cmp_none(
   std::string filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
-  int rc = write_to_file(filename.c_str(), buffer, buffer_size);
-
-  // Return
-  if(rc == TILEDB_UT_OK)
-    return TILEDB_WS_OK;
-  else
+  if(write_to_file(filename.c_str(), buffer, buffer_size) != TILEDB_UT_OK)
     return TILEDB_WS_ERR;
+  else
+    return TILEDB_WS_OK;
 }
 
 int WriteState::write_dense_attr_cmp_gzip(
@@ -666,6 +678,7 @@ int WriteState::write_dense_attr_cmp_gzip(
     tile_offset += bytes_to_fill;
   }
 
+  // Success
   return TILEDB_WS_OK;
 }
 
@@ -895,9 +908,12 @@ int WriteState::write_dense_attr_var_cmp_gzip(
     bytes_to_fill_var = buffer_var_size - buffer_var_offset;
 
     // Potentially expand the variable tile buffer
-    while(tile_var_offset + bytes_to_fill_var >  
-          tiles_var_sizes_[attribute_id])
-      expand_buffer(tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
+    if(tile_var_offset + bytes_to_fill_var >  
+       tiles_var_sizes_[attribute_id]) {
+      tiles_var_sizes_[attribute_id] = tile_var_offset + bytes_to_fill_var;
+      tiles_var_[attribute_id] = 
+          realloc(tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
+    }
 
     // Fill up current variable tile
     memcpy(
@@ -909,6 +925,7 @@ int WriteState::write_dense_attr_var_cmp_gzip(
     tile_var_offset += bytes_to_fill_var;
   }
 
+  // Success
   return TILEDB_WS_OK;
 }
 
@@ -922,33 +939,28 @@ int WriteState::write_sparse(
 
   // Write each attribute individually
   int buffer_i = 0;
-  int rc;
   for(int i=0; i<attribute_id_num; ++i) {
     if(!array_schema->var_size(attribute_ids[i])) { // FIXED CELLS
-      rc = write_sparse_attr(
-               attribute_ids[i], 
-               buffers[buffer_i], 
-               buffer_sizes[buffer_i]);
-
-      if(rc != TILEDB_WS_OK)
-        break;
+      if(write_sparse_attr(
+             attribute_ids[i], 
+             buffers[buffer_i], 
+             buffer_sizes[buffer_i]) != TILEDB_WS_OK)
+        return TILEDB_WS_ERR;
       ++buffer_i;
     } else {                                        // VARIABLE-SIZED CELLS
-      rc = write_sparse_attr_var(
-               attribute_ids[i], 
-               buffers[buffer_i],       // offsets 
-               buffer_sizes[buffer_i],
-               buffers[buffer_i+1],     // actual values
-               buffer_sizes[buffer_i+1]);
-
-      if(rc != TILEDB_WS_OK)
-        break;
+      if(write_sparse_attr_var(
+             attribute_ids[i], 
+             buffers[buffer_i],       // offsets 
+             buffer_sizes[buffer_i],
+             buffers[buffer_i+1],     // actual cell values
+             buffer_sizes[buffer_i+1]) != TILEDB_WS_OK)
+        return TILEDB_WS_ERR;
       buffer_i += 2;
     }
   }
 
-  // Return
-  return rc;
+  // Success
+  return TILEDB_WS_OK;
 }
 
 int WriteState::write_sparse_attr(
@@ -977,22 +989,17 @@ int WriteState::write_sparse_attr_cmp_none(
   int64_t buffer_cell_num = buffer_size / cell_size;
 
   // Update book-keeping
-  if(attribute_id == attribute_num) {
+  if(attribute_id == attribute_num) 
     update_book_keeping(buffer, buffer_size);
-    //update_tile_cell_num(attribute_num, buffer_cell_num);
-  }
 
   // Write buffer to file 
   std::string filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
-  int rc = write_to_file(filename.c_str(), buffer, buffer_size);
-
-  // Return
-  if(rc == TILEDB_UT_OK)
-    return TILEDB_WS_OK;
-  else
+  if(write_to_file(filename.c_str(), buffer, buffer_size) != TILEDB_UT_OK)
     return TILEDB_WS_ERR;
+  else
+    return TILEDB_WS_OK;
 }
 
 int WriteState::write_sparse_attr_cmp_gzip(
@@ -1007,10 +1014,8 @@ int WriteState::write_sparse_attr_cmp_gzip(
   int64_t buffer_cell_num = buffer_size / cell_size;
 
   // Update book-keeping
-  if(attribute_id == attribute_num) {
+  if(attribute_id == attribute_num) 
     update_book_keeping(buffer, buffer_size);
-    //update_tile_cell_num(attribute_num, buffer_cell_num);
-  }
 
   // Initialize local tile buffer if needed
   if(tiles_[attribute_id] == NULL)
@@ -1067,6 +1072,7 @@ int WriteState::write_sparse_attr_cmp_gzip(
     tile_offset += bytes_to_fill;
   }
  
+  // Success
   return TILEDB_WS_OK;
 }
 
@@ -1159,7 +1165,7 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
   int64_t cell_num_per_tile = array_schema->capacity();
   size_t tile_size = fragment_->tile_size(attribute_id); 
 
-  // Sanity check
+  // Sanity check (coordinates are always fixed-sized)
   assert(attribute_id != array_schema->attribute_num());
 
   // Initialize local tile buffer if needed
@@ -1264,9 +1270,12 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
      end_cell_pos += cell_num_per_tile;
 
     // Potentially expand the variable tile buffer
-    while(tile_var_offset + bytes_to_fill_var >  
-          tiles_var_sizes_[attribute_id])
-      expand_buffer(tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
+    if(tile_var_offset + bytes_to_fill_var >  
+          tiles_var_sizes_[attribute_id]) {
+      tiles_var_sizes_[attribute_id] = tile_var_offset + bytes_to_fill_var;
+      tiles_var_[attribute_id] = 
+          realloc(tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
+    }
 
     // Fill up current variable tile
     memcpy(
@@ -1296,9 +1305,12 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
     bytes_to_fill_var = buffer_var_size - buffer_var_offset;
 
     // Potentially expand the variable tile buffer
-    while(tile_var_offset + bytes_to_fill_var >  
-          tiles_var_sizes_[attribute_id])
-      expand_buffer(tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
+    if(tile_var_offset + bytes_to_fill_var >  
+          tiles_var_sizes_[attribute_id]) {
+      tiles_var_sizes_[attribute_id] = tile_var_offset + bytes_to_fill_var;
+      tiles_var_[attribute_id] = 
+          realloc(tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
+    }
 
     // Fill up current variable tile
     memcpy(
@@ -1310,6 +1322,7 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
     tile_var_offset += bytes_to_fill_var;
   }
 
+  // Success
   return TILEDB_WS_OK;
 }
 
@@ -1332,7 +1345,7 @@ int WriteState::write_sparse_unsorted(
     }
     if(!array_schema->var_size(attribute_ids[i])) // FIXED CELLS
       ++buffer_i;
-    else
+    else                                          // VARIABLE-SIZED CELLS
       buffer_i +=2;
   }
 
@@ -1351,30 +1364,30 @@ int WriteState::write_sparse_unsorted(
 
   // Write each attribute individually
   buffer_i=0; 
-  int rc;
   for(int i=0; i<attribute_id_num; ++i) {
     if(!array_schema->var_size(attribute_ids[i])) { // FIXED CELLS
-      rc = write_sparse_unsorted_attr(
-               attribute_ids[i], 
-               buffers[buffer_i], 
-               buffer_sizes[buffer_i],
-               cell_pos);
-      if(rc != TILEDB_WS_OK)
-        break;
+      if(write_sparse_unsorted_attr(
+             attribute_ids[i], 
+             buffers[buffer_i], 
+             buffer_sizes[buffer_i],
+             cell_pos) != TILEDB_WS_OK)
+        return TILEDB_WS_ERR;
       ++buffer_i;
     } else {                                        // VARIABLE-SIZED CELLS
-      rc = write_sparse_unsorted_attr_var(
-               attribute_ids[i], 
-               buffers[buffer_i],       // offsets 
-               buffer_sizes[buffer_i],
-               buffers[buffer_i+1],     // actual values
-               buffer_sizes[buffer_i+1],
-               cell_pos);
+      if(write_sparse_unsorted_attr_var(
+             attribute_ids[i], 
+             buffers[buffer_i],       // offsets 
+             buffer_sizes[buffer_i],
+             buffers[buffer_i+1],     // actual values
+             buffer_sizes[buffer_i+1],
+             cell_pos) != TILEDB_WS_OK)
+        return TILEDB_WS_ERR;
       buffer_i += 2;
     }
   }
 
-  return rc;
+  // Success
+  return TILEDB_WS_OK;
 }
 
 int WriteState::write_sparse_unsorted_attr(
@@ -1568,7 +1581,7 @@ int WriteState::write_sparse_unsorted_attr_var_cmp_none(
     const std::vector<int64_t>& cell_pos) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t cell_size = sizeof(size_t); 
+  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE; 
   size_t cell_var_size;
   const char* buffer_c = static_cast<const char*>(buffer); 
   const size_t* buffer_s = static_cast<const size_t*>(buffer);
@@ -1661,7 +1674,7 @@ int WriteState::write_sparse_unsorted_attr_var_cmp_gzip(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t cell_size = sizeof(size_t); 
+  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE; 
   size_t cell_var_size;
   const char* buffer_c = static_cast<const char*>(buffer); 
   const size_t* buffer_s = static_cast<const size_t*>(buffer);
@@ -1744,30 +1757,3 @@ int WriteState::write_sparse_unsorted_attr_var_cmp_gzip(
   return TILEDB_WS_OK;
 }
 
-int WriteState::write_last_tile() {
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-  size_t tile_size;
-
-  // Send last MBR, bounding coordinates and tile cell number to book-keeping
-  book_keeping_->append_mbr(mbr_);
-  book_keeping_->append_bounding_coords(bounding_coords_);
-  book_keeping_->set_last_tile_cell_num(tile_cell_num_[attribute_num]);
-
-  // Flush the last tile for each compressed attribute (it is still in main
-  // memory
-  for(int i=0; i<attribute_num+1; ++i) {
-    if(array_schema->compression(i) == TILEDB_GZIP) {
-      if(compress_and_write_tile(i) != TILEDB_WS_OK)
-        return TILEDB_WS_ERR;
-      if(array_schema->var_size(i)) {
-        if(compress_and_write_tile_var(i) != TILEDB_WS_OK)
-          return TILEDB_WS_ERR;
-      }
-    }
-  } 
-
-  // Success
-  return TILEDB_WS_OK;
-}
