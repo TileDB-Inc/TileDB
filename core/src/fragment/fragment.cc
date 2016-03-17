@@ -328,7 +328,7 @@ int Fragment::init(
         break;
       }
     }
-  } else { // The array mode is TILEDB_READ or TILEDB_READ_REVERSE 
+  } else { // The array mode is TILEDB_READ 
     // The coordinates file should not exist
     dense_ = !is_file(
                 fragment_name_ + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX);
@@ -391,7 +391,7 @@ int Fragment::finalize() {
     int rc_ws = write_state_->finalize();
     int rc_bk = book_keeping_->finalize();
     int rc_rn = TILEDB_FG_OK;
-    int rc_cf = TILEDB_FG_OK;
+    int rc_cf = TILEDB_UT_OK;
     if(is_dir(fragment_name_)) {
       rc_rn = rename_fragment();
       rc_cf = create_fragment_file(fragment_name_);

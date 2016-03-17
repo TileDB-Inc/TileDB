@@ -4103,7 +4103,7 @@ int ReadState::get_tile_from_disk_cmp_gzip(int attribute_id) {
   size_t full_tile_size = fragment_->tile_size(attribute_id);
   size_t tile_size = overlapping_tile.cell_num_ * cell_size;
 
-  const std::vector<std::vector<size_t> >& tile_offsets = 
+  const std::vector<std::vector<off_t> >& tile_offsets = 
       book_keeping_->tile_offsets(); 
   int64_t tile_num = book_keeping_->tile_num();
 
@@ -4211,9 +4211,9 @@ int ReadState::get_tile_from_disk_var_cmp_gzip(int attribute_id) {
   size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
   size_t full_tile_size = fragment_->tile_size(attribute_id);
   size_t tile_size = overlapping_tile.cell_num_ * cell_size;
-  const std::vector<std::vector<size_t> >& tile_offsets = 
+  const std::vector<std::vector<off_t> >& tile_offsets = 
       book_keeping_->tile_offsets(); 
-  const std::vector<std::vector<size_t> >& tile_var_offsets = 
+  const std::vector<std::vector<off_t> >& tile_var_offsets = 
       book_keeping_->tile_var_offsets(); 
   int64_t tile_num = book_keeping_->tile_num();
 

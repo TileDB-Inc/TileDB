@@ -170,8 +170,8 @@ int WriteState::finalize() {
 
   // Write last tile (applicable only to the sparse case)
   if(tile_cell_num_[attribute_num] != 0) { 
-    if(write_last_tile() != TILEDB_RS_OK)
-      return TILEDB_RS_ERR;
+    if(write_last_tile() != TILEDB_WS_OK)
+      return TILEDB_WS_ERR;
     tile_cell_num_[attribute_num] = 0;
   }
 
@@ -253,7 +253,7 @@ int WriteState::compress_and_write_tile(int attribute_id) {
   if(write_to_file(
          filename.c_str(),
          tile_compressed_,
-         tile_compressed_size) != TILEDB_WS_OK)
+         tile_compressed_size) != TILEDB_UT_OK)
     return TILEDB_WS_ERR;
 
   // Append offset to book-keeping
@@ -308,7 +308,7 @@ int WriteState::compress_and_write_tile_var(int attribute_id) {
   if(write_to_file(
          filename.c_str(),
          tile_compressed_,
-         tile_compressed_size) != TILEDB_WS_OK)
+         tile_compressed_size) != TILEDB_UT_OK)
     return TILEDB_WS_ERR;
 
   // Append offset to book-keeping
