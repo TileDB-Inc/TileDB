@@ -2108,7 +2108,7 @@ void ReadState::copy_from_tile_buffer_partial_contig_sparse_var(
 
   // Shift variable offsets
   shift_var_offsets(
-      buffer_c + buffer_offset, 
+      buffer_c,
       end_cell_pos - start_cell_pos + 1, 
       buffer_var_offset);
 
