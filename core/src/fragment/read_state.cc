@@ -1013,7 +1013,7 @@ void ReadState::compute_cell_pos_ranges() {
     get_tile_from_disk_cmp_none(attribute_num);
 
   // Invoke the proper function based on the type of range and overlap
-  if(is_unary_range(range, dim_num))
+  if(is_unary_subarray(range, dim_num))
     compute_cell_pos_ranges_unary<T>();
   else if(overlapping_tiles_.back().overlap_ == PARTIAL_CONTIG)
     compute_cell_pos_ranges_contig<T>();
@@ -1273,7 +1273,7 @@ void ReadState::compute_cell_pos_ranges_scan(
   // Compute the cell position ranges
   for(int64_t i=start_pos; i<=end_pos; ++i) {
     cell = &tile[i*dim_num];
-    if(cell_in_range<T>(cell, range, dim_num)) {
+    if(cell_in_subarray<T>(cell, range, dim_num)) {
       if(i-1 == current_end_pos) { // The range is expanded
        ++current_end_pos;
       } else {                     // A new range starts
@@ -1833,7 +1833,7 @@ void ReadState::copy_from_tile_buffer_partial_contig_dense(
   size_t cell_size = array_schema->cell_size(attribute_id);
   int64_t start_cell_pos = array_schema->get_cell_pos<T>(start_coords);
   size_t start_offset = start_cell_pos * cell_size; 
-  size_t range_size = cell_num_in_range(overlap_range, dim_num) * cell_size;
+  size_t range_size = cell_num_in_subarray(overlap_range, dim_num) * cell_size;
   size_t end_offset = start_offset + range_size - 1;
 
   // If current tile offset is 0, set it to the beginning of the overlap range
@@ -1901,7 +1901,7 @@ void ReadState::copy_from_tile_buffer_partial_contig_dense_var(
   // Find the offset at the beginning of the overlap range in the fixed tile
   int64_t start_cell_pos = array_schema->get_cell_pos<T>(start_coords);
   size_t start_offset = start_cell_pos * TILEDB_CELL_VAR_OFFSET_SIZE; 
-  int64_t cell_num_in_range = ::cell_num_in_range(overlap_range, dim_num);
+  int64_t cell_num_in_range = ::cell_num_in_subarray(overlap_range, dim_num);
   size_t range_size = cell_num_in_range * TILEDB_CELL_VAR_OFFSET_SIZE;
   int64_t end_cell_pos = start_cell_pos + cell_num_in_range - 1;
   size_t end_offset = start_offset + range_size - 1;
@@ -2957,7 +2957,7 @@ int ReadState::copy_tile_partial_contig_dense(
 
   // Check if the partial read results fit in the buffer
   size_t cell_size = array_schema->cell_size(attribute_id);
-  size_t result_size = cell_num_in_range(overlap_range, dim_num) * cell_size;
+  size_t result_size = cell_num_in_subarray(overlap_range, dim_num) * cell_size;
 
   if(result_size <= buffer_free_space) { // Direct disk to buffer access
     copy_tile_partial_contig_direct_dense<T>(
@@ -3537,7 +3537,7 @@ int ReadState::get_cell_pos_ranges_sparse(
   int64_t current_start_pos, current_end_pos = -2; 
   for(int64_t i=first_pos; i<=second_pos; ++i) {
     cell = &tile[i*dim_num];
-    if(cell_in_range<T>(cell, tile_domain, dim_num)) {
+    if(cell_in_subarray<T>(cell, tile_domain, dim_num)) {
       if(i-1 == current_end_pos) { // The range is expanded
        ++current_end_pos;
       } else {                     // A new range starts
@@ -4591,7 +4591,7 @@ void ReadState::init_tile_search_range_col() {
   else             // Range min included in a tile
     tile_search_range_[0] = med;
 
-  if(is_unary_range(range, dim_num)) {  // Unary range
+  if(is_unary_subarray(range, dim_num)) {  // Unary range
     // The end position is the same as the start
     tile_search_range_[1] = tile_search_range_[0];
   } else { // Need to find the end position
@@ -4643,7 +4643,7 @@ void ReadState::init_tile_search_range_hil() {
   const T* range = static_cast<const T*>(fragment_->array()->subarray());
   int64_t tile_num = book_keeping_->tile_num();
 
-  if(is_unary_range(range, dim_num)) {  // Unary range
+  if(is_unary_subarray(range, dim_num)) {  // Unary range
     // For easy reference
     const std::vector<void*>& bounding_coords = 
         book_keeping_->bounding_coords();
@@ -4772,7 +4772,7 @@ void ReadState::init_tile_search_range_row() {
   else             // Range min included in a tile
     tile_search_range_[0] = med;
 
-  if(is_unary_range(range, dim_num)) {  // Unary range
+  if(is_unary_subarray(range, dim_num)) {  // Unary range
     // The end positions is the same as the start
     tile_search_range_[1] = tile_search_range_[0];
   } else { // Need to find the end position
@@ -4883,7 +4883,7 @@ void ReadState::init_tile_search_range_id_col() {
   else             // Range min included in a tile
     tile_search_range_[0] = med;
 
-  if(is_unary_range(range, dim_num)) {  // Unary range
+  if(is_unary_subarray(range, dim_num)) {  // Unary range
     // The end position is the same as the start
     tile_search_range_[1] = tile_search_range_[0];
   } else { // Need to find the end position
@@ -5000,7 +5000,7 @@ void ReadState::init_tile_search_range_id_row() {
   else             // Range min included in a tile
     tile_search_range_[0] = med;
 
-  if(is_unary_range(range, dim_num)) {  // Unary range
+  if(is_unary_subarray(range, dim_num)) {  // Unary range
     // The end positions is the same as the start
     tile_search_range_[1] = tile_search_range_[0];
   } else { // Need to find the end position
