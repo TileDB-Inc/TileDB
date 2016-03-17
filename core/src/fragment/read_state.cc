@@ -2103,14 +2103,14 @@ void ReadState::copy_from_tile_buffer_partial_contig_sparse_var(
       buffer_c + buffer_offset, 
       tile + tiles_offsets_[attribute_id], 
       bytes_to_copy);
-  buffer_offset += bytes_to_copy;
-  tiles_offsets_[attribute_id] += bytes_to_copy; 
 
   // Shift variable offsets
   shift_var_offsets(
-      buffer_c,
+      buffer_c + buffer_offset,
       end_cell_pos - start_cell_pos + 1, 
       buffer_var_offset);
+  buffer_offset += bytes_to_copy;
+  tiles_offsets_[attribute_id] += bytes_to_copy; 
 
   // Copy and update current buffer and tile offsets
   memcpy(
