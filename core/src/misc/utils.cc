@@ -1,12 +1,11 @@
 /**
  * @file   utils.cc
- * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2016 MIT and Intel Corp.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +45,9 @@
 #include <zlib.h>
 #include <typeinfo>
 
+
+
+
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
@@ -63,6 +65,183 @@
 #  define PRINT_ERROR(x) do { } while(0) 
 #  define PRINT_WARNING(x) do { } while(0) 
 #endif
+
+
+
+
+/* ****************************** */
+/*           FUNCTIONS            */
+/* ****************************** */
+
+void adjacent_slashes_dedup(std::string& value) {
+  value.erase(std::unique(value.begin(), value.end(), both_slashes),
+              value.end()); 
+}
+
+bool both_slashes(char a, char b) {
+  return a == '/' && b == '/';
+}
+
+template<class T>
+bool cell_in_subarray(const T* cell, const T* subarray, int dim_num) {
+  for(int i=0; i<dim_num; ++i) {
+    if(cell[i] < subarray[2*i] || cell[i] > subarray[2*i+1])
+      return false;
+  }
+  
+  return true;
+}
+
+template<class T>
+int64_t cell_num_in_subarray(const T* subarray, int dim_num) {
+  int64_t cell_num = 1;
+
+  for(int i=0; i<dim_num; ++i)
+    cell_num *= subarray[2*i+1] - subarray[2*i] + 1;
+
+  return cell_num;
+}
+
+template<class T> 
+int cmp_col_order(
+    const T* coords_a,
+    const T* coords_b,
+    int dim_num) {
+  for(int i=dim_num-1; i>=0; --i) {
+    // a precedes b
+    if(coords_a[i] < coords_b[i])
+      return -1;
+    // b precedes a
+    else if(coords_a[i] > coords_b[i])
+      return 1;
+  }
+
+  // a and b are equal
+  return 0;
+}
+
+template<class T> 
+int cmp_col_order(
+    int64_t id_a,
+    const T* coords_a,
+    int64_t id_b,
+    const T* coords_b,
+    int dim_num) {
+  // a precedes b
+  if(id_a < id_b)
+    return -1;
+
+  // b precedes a
+  if(id_a > id_b)
+    return 1;
+
+  // ids are equal, check the coordinates
+  for(int i=dim_num-1; i>=0; --i) {
+    // a precedes b
+    if(coords_a[i] < coords_b[i])
+      return -1;
+    // b precedes a
+    else if(coords_a[i] > coords_b[i])
+      return 1;
+  }
+
+  // a and b are equal
+  return 0;
+}
+
+template<class T> 
+int cmp_row_order(
+    const T* coords_a,
+    const T* coords_b,
+    int dim_num) {
+  for(int i=0; i<dim_num; ++i) {
+    // a precedes b
+    if(coords_a[i] < coords_b[i])
+      return -1;
+    // b precedes a
+    else if(coords_a[i] > coords_b[i])
+      return 1;
+  }
+
+  // a and b are equal
+  return 0;
+}
+
+template<class T> 
+int cmp_row_order(
+    int64_t id_a,
+    const T* coords_a,
+    int64_t id_b,
+    const T* coords_b,
+    int dim_num) {
+  // a precedes b
+  if(id_a < id_b)
+    return -1;
+
+  // b precedes a
+  if(id_a > id_b)
+    return 1;
+
+  // ids are equal, check the coordinates
+  for(int i=0; i<dim_num; ++i) {
+    // a precedes b
+    if(coords_a[i] < coords_b[i])
+      return -1;
+    // b precedes a
+    else if(coords_a[i] > coords_b[i])
+      return 1;
+  }
+
+  // a and b are equal
+  return 0;
+}
+
+int create_dir(const std::string& dir) {
+  // Get real directory path
+  std::string real_dir = ::real_dir(dir);
+
+  // If the directory does not exist, create it
+  if(!is_dir(real_dir)) { 
+    if(mkdir(real_dir.c_str(), S_IRWXU)) {
+      PRINT_ERROR(std::string("Cannot create directory '") + real_dir + "'; " + 
+                  strerror(errno));
+      return TILEDB_UT_ERR;
+    } else {
+      return TILEDB_UT_OK;
+    }
+  } else { // Error
+    PRINT_ERROR(std::string("Cannot create directory '") + real_dir +
+                "'; Directory already exists"); 
+    return TILEDB_UT_ERR;
+  }
+}
+
+int create_fragment_file(const std::string& dir) {
+  // Create the special fragment file
+  std::string filename = std::string(dir) + "/" + TILEDB_FRAGMENT_FILENAME;
+  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+  if(fd == -1 || ::close(fd)) {
+    PRINT_ERROR(std::string("Failed to create fragment file; ") +
+                strerror(errno));
+    return TILEDB_UT_ERR;
+  }
+
+  // Success
+  return TILEDB_UT_OK;
+}
+
+std::string current_dir() {
+  std::string dir = "";
+  char* path = getcwd(NULL,0);
+
+
+  if(path != NULL) {
+    dir = path;
+    free(path);
+  }
+
+  return dir; 
+}
 
 int delete_dir(const std::string& dirname) {
   // Get real path
@@ -119,172 +298,6 @@ bool empty_value(T value) {
     return value == T(TILEDB_EMPTY_FLOAT32);
   else if(&typeid(T) == &typeid(double))
     return value == T(TILEDB_EMPTY_FLOAT64);
-}
-
-void adjacent_slashes_dedup(std::string& value) {
-  value.erase(std::unique(value.begin(), value.end(), both_slashes),
-              value.end()); 
-}
-
-bool both_slashes(char a, char b) {
-  return a == '/' && b == '/';
-}
-
-template<class T>
-bool cell_in_range(const T* cell, const T* range, int dim_num) {
-  for(int i=0; i<dim_num; ++i) {
-    if(cell[i] < range[2*i] || cell[i] > range[2*i+1])
-      return false;
-  }
-  
-  return true;
-}
-
-template<class T>
-int64_t cell_num_in_range(const T* range, int dim_num) {
-  int64_t cell_num = 1;
-
-  for(int i=0; i<dim_num; ++i)
-    cell_num *= range[2*i+1] - range[2*i] + 1;
-
-  return cell_num;
-}
-
-template<class T> 
-int cmp_col_order(
-    const T* coords_a,
-    const T* coords_b,
-    int dim_num) {
-  for(int i=dim_num-1; i>=0; --i) {
-    // a precedes b
-    if(coords_a[i] < coords_b[i])
-      return -1;
-    // b precedes a
-    else if(coords_a[i] > coords_b[i])
-      return 1;
-  }
-
-  // a and b are equal
-  return 0;
-}
-
-template<class T> 
-int cmp_col_order(
-    int64_t id_a,
-    const T* coords_a,
-    int64_t id_b,
-    const T* coords_b,
-    int dim_num) {
-  // a precedes b
-  if(id_a < id_b)
-    return -1;
-
-  // b precedes a
-  if(id_a > id_b)
-    return 1;
-
-  for(int i=dim_num-1; i>=0; --i) {
-    // a precedes b
-    if(coords_a[i] < coords_b[i])
-      return -1;
-    // b precedes a
-    else if(coords_a[i] > coords_b[i])
-      return 1;
-  }
-
-  // a and b are equal
-  return 0;
-}
-
-template<class T> 
-int cmp_row_order(
-    const T* coords_a,
-    const T* coords_b,
-    int dim_num) {
-  for(int i=0; i<dim_num; ++i) {
-    // a precedes b
-    if(coords_a[i] < coords_b[i])
-      return -1;
-    // b precedes a
-    else if(coords_a[i] > coords_b[i])
-      return 1;
-  }
-
-  // a and b are equal
-  return 0;
-}
-
-template<class T> 
-int cmp_row_order(
-    int64_t id_a,
-    const T* coords_a,
-    int64_t id_b,
-    const T* coords_b,
-    int dim_num) {
-  // a precedes b
-  if(id_a < id_b)
-    return -1;
-
-  // b precedes a
-  if(id_a > id_b)
-    return 1;
-
-  for(int i=0; i<dim_num; ++i) {
-    // a precedes b
-    if(coords_a[i] < coords_b[i])
-      return -1;
-    // b precedes a
-    else if(coords_a[i] > coords_b[i])
-      return 1;
-  }
-
-  // a and b are equal
-  return 0;
-}
-
-int create_dir(const std::string& dir) {
-  // Get real directory path
-  std::string real_dir = ::real_dir(dir);
-
-  // If the directory does not exist, create it
-  if(!is_dir(real_dir)) { 
-    if(mkdir(real_dir.c_str(), S_IRWXU)) {
-      PRINT_ERROR(std::string("Cannot create directory '") + real_dir + "'; " + 
-                  strerror(errno));
-      return TILEDB_UT_ERR;
-    } else {
-      return TILEDB_UT_OK;
-    }
-  } else {
-    PRINT_ERROR(std::string("Cannot create directory '") + real_dir +
-                "'; Directory already exists"); 
-    return TILEDB_UT_ERR;
-  }
-}
-
-int create_fragment_file(const std::string& dir) {
-  std::string filename = std::string(dir) + "/" + TILEDB_FRAGMENT_FILENAME;
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  if(fd == -1 || ::close(fd)) {
-    PRINT_ERROR(std::string("Failed to create fragment file; ") +
-                strerror(errno));
-    return TILEDB_UT_ERR;
-  }
-
-  return TILEDB_UT_OK;
-}
-
-std::string current_dir() {
-  std::string dir = "";
-  char* path = getcwd(NULL,0);
-
-
-  if(path != NULL) {
-    dir = path;
-    free(path);
-  }
-
-  return dir; 
 }
 
 int expand_buffer(void*& buffer, size_t& buffer_allocated_size) {
@@ -362,12 +375,8 @@ std::vector<std::string> get_fragment_dirs(const std::string& dir) {
 
   while((next_file = readdir(c_dir))) {
     new_dir = dir + "/" + next_file->d_name;
-    if(!strcmp(next_file->d_name, ".") ||
-       !strcmp(next_file->d_name, "..") ||
-       !is_dir(new_dir) ||
-       !is_fragment(new_dir))
-      continue;
-    dirs.push_back(new_dir);
+    if(is_fragment(new_dir))
+      dirs.push_back(new_dir);
   } 
 
   // Close array directory  
@@ -464,68 +473,6 @@ int gunzip(
   return TILEDB_UT_OK;
 }
 
-int gunzip_unknown_output_size(
-    unsigned char* in, 
-    size_t in_size,
-    void*& out, 
-    size_t& avail_out, 
-    size_t& out_size) {
-  int ret;
-  unsigned have;
-  z_stream strm;
-  unsigned char chunk[TILEDB_GZIP_CHUNK_SIZE];
-  size_t inflated_bytes;
-  
-  // Allocate deflate state
-  strm.zalloc = Z_NULL;
-  strm.zfree = Z_NULL;
-  strm.opaque = Z_NULL;
-  strm.avail_in = 0;
-  strm.next_in = Z_NULL;
-  ret = inflateInit(&strm);
-
-  if(ret != Z_OK) {
-    PRINT_ERROR("Cannot decompress with GZIP");
-    return TILEDB_UT_ERR;
-  }
-
-  // Decompress
-  strm.next_in = in;
-  strm.avail_in = in_size;
-  out_size = 0;
-
-  do {
-    strm.next_out = chunk;
-    strm.avail_out = TILEDB_GZIP_CHUNK_SIZE;
-    ret = inflate(&strm, Z_FINISH);
-
-    if(ret == Z_STREAM_ERROR) {
-      PRINT_ERROR("Cannot decompress with GZIP");
-      return TILEDB_UT_ERR;
-    }
-
-    inflated_bytes = TILEDB_GZIP_CHUNK_SIZE - strm.avail_out;
-
-    if(inflated_bytes != 0) {
-      if(out_size + inflated_bytes > avail_out)
-        expand_buffer(out, avail_out);
-
-      memcpy(
-          static_cast<char*>(out) + out_size,
-          chunk,
-          inflated_bytes);
-
-      out_size += inflated_bytes;
-    }
-  } while(strm.avail_out == 0);
-
-  // Clean up
-  (void)inflateEnd(&strm);
-
-  // Success
-  return TILEDB_UT_OK;
-}
-
 template<class T>
 bool has_duplicates(const std::vector<T>& v) {
   std::set<T> s(v.begin(), v.end());
@@ -549,15 +496,6 @@ bool is_array(const std::string& dir) {
   // Check existence
   if(is_dir(dir) && 
      is_file(dir + "/" + TILEDB_ARRAY_SCHEMA_FILENAME)) 
-    return true;
-  else
-    return false;
-}
-
-bool is_metadata(const std::string& dir) {
-  // Check existence
-  if(is_dir(dir) && 
-     is_file(dir + "/" + TILEDB_METADATA_SCHEMA_FILENAME)) 
     return true;
   else
     return false;
@@ -591,6 +529,15 @@ bool is_group(const std::string& dir) {
     return false;
 }
 
+bool is_metadata(const std::string& dir) {
+  // Check existence
+  if(is_dir(dir) && 
+     is_file(dir + "/" + TILEDB_METADATA_SCHEMA_FILENAME)) 
+    return true;
+  else
+    return false;
+}
+
 bool is_positive_integer(const char* s) {
   int i=0;
 
@@ -612,9 +559,9 @@ bool is_positive_integer(const char* s) {
 }
 
 template<class T>
-bool is_unary_range(const T* range, int dim_num) {
+bool is_unary_subarray(const T* subarray, int dim_num) {
   for(int i=0; i<dim_num; ++i)  
-    if(range[2*i] != range[2*i+1])
+    if(subarray[2*i] != subarray[2*i+1])
       return false;
 
   return true;
@@ -827,20 +774,23 @@ int write_to_file(
       O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
       S_IRWXU);
   if(fd == -1) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                "'; File opening error");
     return TILEDB_UT_ERR;
   }
 
   // Append attribute data to the file
   ssize_t bytes_written = ::write(fd, buffer, buffer_size);
   if(bytes_written != buffer_size) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                "'; File writing error");
     return TILEDB_UT_ERR;
   }
 
   // Close file
   if(close(fd)) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                "'; File closing error");
     return TILEDB_UT_ERR;
   }
 
@@ -855,20 +805,23 @@ int write_to_file_cmp_gzip(
   // Open file
   gzFile fd = gzopen(filename, "wb");
   if(fd == NULL) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                "'; File opening error");
     return TILEDB_UT_ERR;
   }
 
   // Append attribute data to the file
   ssize_t bytes_written = gzwrite(fd, buffer, buffer_size);
   if(bytes_written != buffer_size) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                "'; File writing error");
     return TILEDB_UT_ERR;
   }
 
   // Close file
   if(gzclose(fd)) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + "'");
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                "'; File closing error");
     return TILEDB_UT_ERR;
   }
 
@@ -877,16 +830,124 @@ int write_to_file_cmp_gzip(
 }
 
 // Explicit template instantiations
-template bool has_duplicates<std::string>(const std::vector<std::string>& v);
+template int64_t cell_num_in_subarray<int>(
+    const int* subarray, 
+    int dim_num);
+template int64_t cell_num_in_subarray<int64_t>(
+    const int64_t* subarray, 
+    int dim_num);
+template int64_t cell_num_in_subarray<float>(
+    const float* subarray, 
+    int dim_num);
+template int64_t cell_num_in_subarray<double>(
+    const double* subarray, 
+    int dim_num);
 
-template bool intersect<std::string>(
-    const std::vector<std::string>& v1,
-    const std::vector<std::string>& v2);
+template bool cell_in_subarray<int>(
+    const int* cell,
+    const int* subarray,
+    int dim_num);
+template bool cell_in_subarray<int64_t>(
+    const int64_t* cell,
+    const int64_t* subarray,
+    int dim_num);
+template bool cell_in_subarray<float>(
+    const float* cell,
+    const float* subarray,
+    int dim_num);
+template bool cell_in_subarray<double>(
+    const double* cell,
+    const double* subarray,
+    int dim_num);
 
-template int64_t cell_num_in_range<int>(const int* range, int dim_num);
-template int64_t cell_num_in_range<int64_t>(const int64_t* range, int dim_num);
-template int64_t cell_num_in_range<float>(const float* range, int dim_num);
-template int64_t cell_num_in_range<double>(const double* range, int dim_num);
+template int cmp_col_order<int>(
+    const int* coords_a,
+    const int* coords_b,
+    int dim_num);
+template int cmp_col_order<int64_t>(
+    const int64_t* coords_a,
+    const int64_t* coords_b,
+    int dim_num);
+template int cmp_col_order<float>(
+    const float* coords_a,
+    const float* coords_b,
+    int dim_num);
+template int cmp_col_order<double>(
+    const double* coords_a,
+    const double* coords_b,
+    int dim_num);
+
+template int cmp_col_order<int>(
+    int64_t id_a,
+    const int* coords_a,
+    int64_t id_b,
+    const int* coords_b,
+    int dim_num);
+template int cmp_col_order<int64_t>(
+    int64_t id_a,
+    const int64_t* coords_a,
+    int64_t id_b,
+    const int64_t* coords_b,
+    int dim_num);
+template int cmp_col_order<float>(
+    int64_t id_a,
+    const float* coords_a,
+    int64_t id_b,
+    const float* coords_b,
+    int dim_num);
+template int cmp_col_order<double>(
+    int64_t id_a,
+    const double* coords_a,
+    int64_t id_b,
+    const double* coords_b,
+    int dim_num);
+
+template int cmp_row_order<int>(
+    const int* coords_a,
+    const int* coords_b,
+    int dim_num);
+template int cmp_row_order<int64_t>(
+    const int64_t* coords_a,
+    const int64_t* coords_b,
+    int dim_num);
+template int cmp_row_order<float>(
+    const float* coords_a,
+    const float* coords_b,
+    int dim_num);
+template int cmp_row_order<double>(
+    const double* coords_a,
+    const double* coords_b,
+    int dim_num);
+
+template int cmp_row_order<int>(
+    int64_t id_a,
+    const int* coords_a,
+    int64_t id_b,
+    const int* coords_b,
+    int dim_num);
+template int cmp_row_order<int64_t>(
+    int64_t id_a,
+    const int64_t* coords_a,
+    int64_t id_b,
+    const int64_t* coords_b,
+    int dim_num);
+template int cmp_row_order<float>(
+    int64_t id_a,
+    const float* coords_a,
+    int64_t id_b,
+    const float* coords_b,
+    int dim_num);
+template int cmp_row_order<double>(
+    int64_t id_a,
+    const double* coords_a,
+    int64_t id_b,
+    const double* coords_b,
+    int dim_num);
+
+template bool empty_value<int>(int value);
+template bool empty_value<int64_t>(int64_t value);
+template bool empty_value<float>(float value);
+template bool empty_value<double>(double value);
 
 template void expand_mbr<int>(
     int* mbr, 
@@ -905,113 +966,16 @@ template void expand_mbr<double>(
     const double* coords, 
     int dim_num);
 
-template bool is_unary_range<int>(const int* range, int dim_num);
-template bool is_unary_range<int64_t>(const int64_t* range, int dim_num);
-template bool is_unary_range<float>(const float* range, int dim_num);
-template bool is_unary_range<double>(const double* range, int dim_num);
+template bool has_duplicates<std::string>(const std::vector<std::string>& v);
 
-template int cmp_col_order<int>(
-    const int* coords_a,
-    const int* coords_b,
-    int dim_num);
-template int cmp_col_order<int64_t>(
-    const int64_t* coords_a,
-    const int64_t* coords_b,
-    int dim_num);
-template int cmp_col_order<float>(
-    const float* coords_a,
-    const float* coords_b,
-    int dim_num);
-template int cmp_col_order<double>(
-    const double* coords_a,
-    const double* coords_b,
-    int dim_num);
+template bool intersect<std::string>(
+    const std::vector<std::string>& v1,
+    const std::vector<std::string>& v2);
 
-template int cmp_col_order<int>(
-    int64_t id_a,
-    const int* coords_a,
-    int64_t id_b,
-    const int* coords_b,
-    int dim_num);
-template int cmp_col_order<int64_t>(
-    int64_t id_a,
-    const int64_t* coords_a,
-    int64_t id_b,
-    const int64_t* coords_b,
-    int dim_num);
-template int cmp_col_order<float>(
-    int64_t id_a,
-    const float* coords_a,
-    int64_t id_b,
-    const float* coords_b,
-    int dim_num);
-template int cmp_col_order<double>(
-    int64_t id_a,
-    const double* coords_a,
-    int64_t id_b,
-    const double* coords_b,
-    int dim_num);
+template bool is_unary_subarray<int>(const int* subarray, int dim_num);
+template bool is_unary_subarray<int64_t>(const int64_t* subarray, int dim_num);
+template bool is_unary_subarray<float>(const float* subarray, int dim_num);
+template bool is_unary_subarray<double>(const double* subarray, int dim_num);
 
-template int cmp_row_order<int>(
-    const int* coords_a,
-    const int* coords_b,
-    int dim_num);
-template int cmp_row_order<int64_t>(
-    const int64_t* coords_a,
-    const int64_t* coords_b,
-    int dim_num);
-template int cmp_row_order<float>(
-    const float* coords_a,
-    const float* coords_b,
-    int dim_num);
-template int cmp_row_order<double>(
-    const double* coords_a,
-    const double* coords_b,
-    int dim_num);
 
-template int cmp_row_order<int>(
-    int64_t id_a,
-    const int* coords_a,
-    int64_t id_b,
-    const int* coords_b,
-    int dim_num);
-template int cmp_row_order<int64_t>(
-    int64_t id_a,
-    const int64_t* coords_a,
-    int64_t id_b,
-    const int64_t* coords_b,
-    int dim_num);
-template int cmp_row_order<float>(
-    int64_t id_a,
-    const float* coords_a,
-    int64_t id_b,
-    const float* coords_b,
-    int dim_num);
-template int cmp_row_order<double>(
-    int64_t id_a,
-    const double* coords_a,
-    int64_t id_b,
-    const double* coords_b,
-    int dim_num);
 
-template bool cell_in_range<int>(
-    const int* cell,
-    const int* range,
-    int dim_num);
-template bool cell_in_range<int64_t>(
-    const int64_t* cell,
-    const int64_t* range,
-    int dim_num);
-template bool cell_in_range<float>(
-    const float* cell,
-    const float* range,
-    int dim_num);
-template bool cell_in_range<double>(
-    const double* cell,
-    const double* range,
-    int dim_num);
-
-template bool empty_value<int>(int value);
-template bool empty_value<int64_t>(int64_t value);
-template bool empty_value<float>(float value);
-template bool empty_value<double>(double value);
