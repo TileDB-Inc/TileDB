@@ -292,7 +292,7 @@ int Array::consolidate(
 }
 
 int Array::finalize() {
-  int rc;
+  int rc = TILEDB_FG_OK;
   for(int i=0; i<fragments_.size(); ++i) {
     rc = fragments_[i]->finalize();
     if(rc != TILEDB_FG_OK)
@@ -306,7 +306,7 @@ int Array::finalize() {
     array_read_state_ = NULL;
   }
 
-  if(rc == TILEDB_AR_OK)
+  if(rc == TILEDB_FG_OK)
     return TILEDB_AR_OK; 
   else
     return TILEDB_AR_ERR; 
