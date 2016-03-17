@@ -366,7 +366,7 @@ int ReadState::copy_cell_range(
 
   // Calculate the total size to copy
   bytes_left_to_copy = end_offset - tiles_offsets_[attribute_id] + 1;
-  bytes_to_copy = std::min(bytes_left_to_copy, buffer_free_space); 
+  bytes_to_copy = std::min(bytes_left_to_copy, buffer_free_space); // TODO: Fix this for integral cells 
 
   // Copy and update current buffer and tile offsets
   if(bytes_to_copy != 0) {
