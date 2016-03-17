@@ -1,12 +1,11 @@
 /**
  * @file   write_state.cc
- * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2016 MIT and Intel Corp.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,6 +40,9 @@
 #include <iostream>
 #include <unistd.h>
 
+
+
+
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
@@ -67,6 +69,9 @@
   #define SORT(first, last, comp) std::sort((first), (last), (comp))
 #endif
 
+
+
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -74,8 +79,8 @@
 WriteState::WriteState(
     const Fragment* fragment, 
     BookKeeping* book_keeping)
-    : fragment_(fragment),
-      book_keeping_(book_keeping) {
+    : book_keeping_(book_keeping),
+      fragment_(fragment) {
   // For easy reference
   const ArraySchema* array_schema = fragment->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
@@ -110,7 +115,7 @@ WriteState::WriteState(
   for(int i=0; i<attribute_num; ++i)
     tiles_var_offsets_[i] = 0;
 
-  // Initialize current variable tile offsets
+  // Initialize current variable tile sizes
   tiles_var_sizes_.resize(attribute_num);
   for(int i=0; i<attribute_num; ++i)
     tiles_var_sizes_[i] = 0;
@@ -119,11 +124,6 @@ WriteState::WriteState(
   buffer_var_offsets_.resize(attribute_num);
   for(int i=0; i<attribute_num; ++i)
     buffer_var_offsets_[i] = 0;
-
-  // Initialize tot
-  tiles_var_file_offsets_.resize(attribute_num);
-  for(int i=0; i<attribute_num; ++i)
-    tiles_var_file_offsets_[i] = 0;
 
   // Initialize current MBR
   mbr_ = malloc(2*coords_size);
@@ -148,43 +148,19 @@ WriteState::~WriteState() {
     free(tile_compressed_);
 
   // Free current MBR
-  free(mbr_);
+  if(mbr_ != NULL)
+    free(mbr_);
 
   // Free current bounding coordinates
-  free(bounding_coords_);
+  if(bounding_coords_ != NULL)
+    free(bounding_coords_);
 }
 
-/* ****************************** */
-/*         WRITE FUNCTIONS        */
-/* ****************************** */
 
-int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
-  // Create fragment directory if it does not exist
-  std::string fragment_name = fragment_->fragment_name();
-  if(!is_dir(fragment_name)) {
-    if(create_dir(fragment_name) != TILEDB_UT_OK)
-      return TILEDB_WS_ERR;
-  }
 
-  // For easy reference
-  const Array* array = fragment_->array();
-
-  // Dispatch the proper write command
-  if(fragment_->mode() == TILEDB_ARRAY_WRITE) {                  // SORTED
-    if(fragment_->dense())           // DENSE FRAGMENT
-      return write_dense(buffers, buffer_sizes);          
-    else                             // SPARSE FRAGMENT
-      return write_sparse(buffers, buffer_sizes);
-  } else if (fragment_->mode() == TILEDB_ARRAY_WRITE_UNSORTED) { // UNSORTED
-    return write_sparse_unsorted(buffers, buffer_sizes);
-  } else {
-    PRINT_ERROR("Cannot write to fragment; Invalid mode");
-    return TILEDB_WS_ERR;
-  } 
-}
 
 /* ****************************** */
-/*              MISC              */
+/*           MUTATORS             */
 /* ****************************** */
 
 int WriteState::finalize() {
@@ -202,6 +178,31 @@ int WriteState::finalize() {
   // Success
   return TILEDB_WS_OK;
 }
+
+int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
+  // Create fragment directory if it does not exist
+  std::string fragment_name = fragment_->fragment_name();
+  if(!is_dir(fragment_name)) {
+    if(create_dir(fragment_name) != TILEDB_UT_OK)
+      return TILEDB_WS_ERR;
+  }
+
+  // Dispatch the proper write command
+  if(fragment_->mode() == TILEDB_ARRAY_WRITE) {                  // SORTED
+    if(fragment_->dense())           // DENSE FRAGMENT
+      return write_dense(buffers, buffer_sizes);          
+    else                             // SPARSE FRAGMENT
+      return write_sparse(buffers, buffer_sizes);
+  } else if (fragment_->mode() == TILEDB_ARRAY_WRITE_UNSORTED) { // UNSORTED
+    return write_sparse_unsorted(buffers, buffer_sizes);
+  } else {
+    PRINT_ERROR("Cannot write to fragment; Invalid mode");
+    return TILEDB_WS_ERR;
+  } 
+}
+
+
+
 
 /* ****************************** */
 /*         PRIVATE METHODS        */
