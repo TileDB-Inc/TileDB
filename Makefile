@@ -250,7 +250,7 @@ all: core libtiledb tiledb_cmd examples
 
 core: $(CORE_OBJ) 
 
-libtiledb: core $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT)
+libtiledb: core $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT) $(CORE_LIB_DIR)/libtiledb.a
 
 tiledb_cmd: core $(TILEDB_CMD_OBJ) $(TILEDB_CMD_BIN)
 
@@ -318,6 +318,11 @@ $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT): $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
 	@echo "Creating libtiledb.$(SHLIB_EXT)"
 	@$(CXX) $(SHLIB_FLAGS) $(SONAME) -o $@ $^ $(ZLIB) $(OPENSSLLIB)
+
+$(CORE_LIB_DIR)/libtiledb.a: $(CORE_OBJ)
+	@mkdir -p $(CORE_LIB_DIR)
+	@echo "Creating static library libtiledb.a"
+	@ar rcs $(CORE_LIB_DIR)/libtiledb.a $^
 
 # --- Cleaning --- #
 
