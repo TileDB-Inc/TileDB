@@ -510,15 +510,8 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
   const T* tile_coords = static_cast<const T*>(range_global_tile_coords_);
   std::vector<Fragment*> fragments = array_->fragments();
-
-  // Populate queue
-  std::priority_queue<
-      FragmentCellRange,
-      FragmentCellRanges,
-      SmallerFragmentCellRange<T> > pq(array_schema);
-  int unsorted_fragment_cell_ranges_num = unsorted_fragment_cell_ranges.size();
-  for(int64_t i=0; i<unsorted_fragment_cell_ranges_num; ++i)  
-    pq.push(unsorted_fragment_cell_ranges[i]);
+  int fragment_num = fragments.size();
+  FragmentCellRanges fragment_cell_ranges;
 
   // Compute tile domain
   T* tile_domain = NULL;
@@ -532,322 +525,334 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
       tile_domain_end[i] = tile_domain[2*i+1];
     }
   }
-  
-  // Start processing the queue
-  FragmentCellRanges fragment_cell_ranges;
-  FragmentCellRange popped, top;
-  int popped_fragment_i, top_fragment_i;
-  int popped_tile_i, top_tile_i;
-  T* popped_range, *top_range;
-  while(!pq.empty()) {
-    // Pop the first entry and mark it as popped
-    popped = pq.top();
-    popped_fragment_i = popped.first.first;
-    popped_tile_i = popped.first.second;
-    popped_range = static_cast<T*>(popped.second);
-    pq.pop();
 
-    // Trivial case: just insert the popped range into the results and stop
-    if(pq.empty()) {
+  if(fragment_num == 1) {
+    fragment_cell_ranges = unsorted_fragment_cell_ranges;
+  } else {
+    // Populate queue
+    std::priority_queue<
+        FragmentCellRange,
+        FragmentCellRanges,
+        SmallerFragmentCellRange<T> > pq(array_schema);
+    int unsorted_fragment_cell_ranges_num = unsorted_fragment_cell_ranges.size();
+    for(int64_t i=0; i<unsorted_fragment_cell_ranges_num; ++i)  
+      pq.push(unsorted_fragment_cell_ranges[i]);
+  
+    // Start processing the queue
+    FragmentCellRange popped, top;
+    int popped_fragment_i, top_fragment_i;
+    int popped_tile_i, top_tile_i;
+    T* popped_range, *top_range;
+    while(!pq.empty()) {
+      // Pop the first entry and mark it as popped
+      popped = pq.top();
+      popped_fragment_i = popped.first.first;
+      popped_tile_i = popped.first.second;
+      popped_range = static_cast<T*>(popped.second);
+      pq.pop();
+
+      // Trivial case: just insert the popped range into the results and stop
+      if(pq.empty()) {
+        if(popped_fragment_i == -1 ||
+           fragments[popped_fragment_i]->dense() ||
+           memcmp(
+                 popped_range, 
+                 &popped_range[dim_num], 
+                 coords_size) || 
+            fragments[popped_fragment_i]->coords_exist<T>(
+                popped_tile_i, 
+                popped_range)) {
+          fragment_cell_ranges.push_back(popped);
+          break;
+        }
+      }
+
+      // Mark the second entry (now top) as top
+      top = pq.top();
+      top_fragment_i = top.first.first;
+      top_tile_i = top.first.second;
+      top_range = static_cast<T*>(top.second);
+
+      // Dinstinguish two cases
       if(popped_fragment_i == -1 ||
          fragments[popped_fragment_i]->dense() ||
-         memcmp(
-               popped_range, 
-               &popped_range[dim_num], 
-               coords_size) || 
-          fragments[popped_fragment_i]->coords_exist<T>(
-              popped_tile_i, 
-              popped_range)) {
-        fragment_cell_ranges.push_back(popped);
-        break;
-      }
-    }
+         !memcmp(
+             popped_range, 
+             &popped_range[dim_num], 
+             coords_size)) {                          // DENSE POPPED OR UNARY
+        // If the unary sparse range is empty, discard it
+        if(popped_fragment_i != -1 &&
+           !fragments[popped_fragment_i]->dense() && 
+           !fragments[popped_fragment_i]->coords_exist<T>(
+               popped_tile_i,
+               popped_range)) {
+          free(popped.second);
+          continue;
+        }
 
-    // Mark the second entry (now top) as top
-    top = pq.top();
-    top_fragment_i = top.first.first;
-    top_tile_i = top.first.second;
-    top_range = static_cast<T*>(top.second);
+        // Keep on discarding ranges from the queue
+        while(!pq.empty() &&
+              top_fragment_i < popped_fragment_i &&
+              array_schema->cell_order_cmp(
+                  top_range, 
+                  popped_range) >= 0 &&
+              array_schema->cell_order_cmp(
+                  top_range, 
+                  &popped_range[dim_num]) <= 0) {
 
-    // Dinstinguish two cases
-    if(popped_fragment_i == -1 ||
-       fragments[popped_fragment_i]->dense() ||
-       !memcmp(
-           popped_range, 
-           &popped_range[dim_num], 
-           coords_size)) {                          // DENSE POPPED OR UNARY
-      // If the unary sparse range is empty, discard it
-      if(popped_fragment_i != -1 &&
-         !fragments[popped_fragment_i]->dense() && 
-         !fragments[popped_fragment_i]->coords_exist<T>(
-             popped_tile_i,
-             popped_range)) {
-        free(popped.second);
-        continue;
-      }
+          // Cut the top range and re-insert, only if there is partial overlap
+          if(array_schema->cell_order_cmp(
+                 &top_range[dim_num], 
+                 &popped_range[dim_num]) > 0) {
+            // Create the new range
+            FragmentCellRange trimmed_top;
+            trimmed_top.first = FragmentInfo(top_fragment_i, top_tile_i);
+            trimmed_top.second = malloc(2*coords_size);
+            T* trimmed_top_range = static_cast<T*>(trimmed_top.second);
+            memcpy(
+                trimmed_top_range, 
+                &popped_range[dim_num], 
+                coords_size);
+            memcpy(
+                &trimmed_top_range[dim_num], 
+                &top_range[dim_num], 
+                coords_size);
 
-      // Keep on discarding ranges from the queue
-      while(!pq.empty() &&
-            top_fragment_i < popped_fragment_i &&
-            array_schema->cell_order_cmp(
-                top_range, 
-                popped_range) >= 0 &&
-            array_schema->cell_order_cmp(
-                top_range, 
-                &popped_range[dim_num]) <= 0) {
+            // Advance the first trimmed range coordinates by one
+            if(fragments[top_fragment_i]->dense()) { // DENSE
+              array_schema->get_next_cell_coords<T>(
+                  tile_domain, 
+                  trimmed_top_range);
+              pq.push(trimmed_top);
+            } else { // SPARSE
+              FragmentCellRange unary;
+              unary.first.first = top_fragment_i;
+              unary.first.second = top_tile_i;
+              unary.second = malloc(2*coords_size);
+              T* unary_range = static_cast<T*>(unary.second);
 
-        // Cut the top range and re-insert, only if there is partial overlap
-        if(array_schema->cell_order_cmp(
-               &top_range[dim_num], 
-               &popped_range[dim_num]) > 0) {
-          // Create the new range
-          FragmentCellRange trimmed_top;
-          trimmed_top.first = FragmentInfo(top_fragment_i, top_tile_i);
-          trimmed_top.second = malloc(2*coords_size);
-          T* trimmed_top_range = static_cast<T*>(trimmed_top.second);
-          memcpy(
-              trimmed_top_range, 
-              &popped_range[dim_num], 
-              coords_size);
-          memcpy(
-              &trimmed_top_range[dim_num], 
-              &top_range[dim_num], 
-              coords_size);
-
-          // Advance the first trimmed range coordinates by one
-          if(fragments[top_fragment_i]->dense()) { // DENSE
-            array_schema->get_next_cell_coords<T>(
-                tile_domain, 
-                trimmed_top_range);
-            pq.push(trimmed_top);
-          } else { // SPARSE
-            FragmentCellRange unary;
-            unary.first.first = top_fragment_i;
-            unary.first.second = top_tile_i;
-            unary.second = malloc(2*coords_size);
-            T* unary_range = static_cast<T*>(unary.second);
-
-            // Get the first two coordinates from the coordinates tile 
-            if(fragments[top_fragment_i]->get_first_two_coords<T>(
-                   top_tile_i,          // Tile
-                   trimmed_top_range,   // Starting point
-                   unary_range,         // First coords
-                   trimmed_top_range)   // Second coords
-                != TILEDB_FG_OK) {  
-              // Clean up
-              free(unary.second);
-              if(tile_domain != NULL)
-                delete [] tile_domain;
-              if(tile_domain_end != NULL)
-                delete [] tile_domain_end;
-              free(trimmed_top.second);
-              while(!pq.empty()) {
-                free(pq.top().second);
-                pq.pop();
+              // Get the first two coordinates from the coordinates tile 
+              if(fragments[top_fragment_i]->get_first_two_coords<T>(
+                     top_tile_i,          // Tile
+                     trimmed_top_range,   // Starting point
+                     unary_range,         // First coords
+                     trimmed_top_range)   // Second coords
+                  != TILEDB_FG_OK) {  
+                // Clean up
+                free(unary.second);
+                if(tile_domain != NULL)
+                  delete [] tile_domain;
+                if(tile_domain_end != NULL)
+                  delete [] tile_domain_end;
+                free(trimmed_top.second);
+                while(!pq.empty()) {
+                  free(pq.top().second);
+                  pq.pop();
+                }
+                for(int i=0; i<fragment_cell_ranges.size(); ++i)
+                  free(fragment_cell_ranges[i].second);
+  
+                return TILEDB_ARS_ERR;
               }
-              for(int i=0; i<fragment_cell_ranges.size(); ++i)
-                free(fragment_cell_ranges[i].second);
-
-              return TILEDB_ARS_ERR;
-            }
-
-            // Check if the now trimmed popped range exceeds the tile domain
-            bool inside_tile = true;
-            if(empty_value(*unary_range)) 
-              inside_tile = false;
-
-            // Copy second boundary of unary and re-insert to the queue
-            if(!inside_tile) {
-              free(unary.second);
-            } else {
-              memcpy(&unary_range[dim_num], unary_range, coords_size);
-              pq.push(unary);
 
               // Check if the now trimmed popped range exceeds the tile domain
               bool inside_tile = true;
-              if(empty_value(*trimmed_top_range)) 
+              if(empty_value(*unary_range)) 
                 inside_tile = false;
+
+              // Copy second boundary of unary and re-insert to the queue
+              if(!inside_tile) {
+                free(unary.second);
+              } else {
+                memcpy(&unary_range[dim_num], unary_range, coords_size);
+                pq.push(unary);
+
+                // Check if the now trimmed popped range exceeds the tile domain
+                bool inside_tile = true;
+                if(empty_value(*trimmed_top_range)) 
+                  inside_tile = false;
        
-              if(!inside_tile) { 
-                free(trimmed_top.second);
-              } else { // Re-insert to the queue the now trimmed popped range
-                pq.push(trimmed_top);
+                if(!inside_tile) { 
+                  free(trimmed_top.second);
+                } else { // Re-insert to the queue the now trimmed popped range
+                  pq.push(trimmed_top);
+                }
               }
             }
+          } else { // Simply discard top and get a new one
+            free(top.second);
           }
-        } else { // Simply discard top and get a new one
-          free(top.second);
+
+          // Get a new top
+          pq.pop();
+          top = pq.top();
+          top_fragment_i = top.first.first;
+          top_tile_i = top.first.second;
+          top_range = static_cast<T*>(top.second);
         }
 
-        // Get a new top
-        pq.pop();
-        top = pq.top();
-        top_fragment_i = top.first.first;
-        top_tile_i = top.first.second;
-        top_range = static_cast<T*>(top.second);
-      }
+        //Potentially trim the popped range
+        if(!pq.empty() && 
+           top_fragment_i > popped_fragment_i && 
+           array_schema->cell_order_cmp(
+               top_range, 
+               &popped_range[dim_num]) <= 0) {         
+           // Top is sparse
+           if(!fragments[top_fragment_i]->dense()) {
+             // Create a new popped range
+             FragmentCellRange extra_popped;
+             extra_popped.first.first = popped_fragment_i;
+             extra_popped.first.second = popped_tile_i;
+             extra_popped.second = malloc(2*coords_size);
+             T* extra_popped_range = static_cast<T*>(extra_popped.second);
 
-      //Potentially trim the popped range
-      if(!pq.empty() && 
-         top_fragment_i > popped_fragment_i && 
-         array_schema->cell_order_cmp(
-             top_range, 
-             &popped_range[dim_num]) <= 0) {         
-         // Top is sparse
-         if(!fragments[top_fragment_i]->dense()) {
-           // Create a new popped range
-           FragmentCellRange extra_popped;
-           extra_popped.first.first = popped_fragment_i;
-           extra_popped.first.second = popped_tile_i;
-           extra_popped.second = malloc(2*coords_size);
-           T* extra_popped_range = static_cast<T*>(extra_popped.second);
+             memcpy(extra_popped_range, top_range, coords_size);
+             memcpy(
+                 &extra_popped_range[dim_num], 
+                 &popped_range[dim_num], 
+                 coords_size);
 
-           memcpy(extra_popped_range, top_range, coords_size);
-           memcpy(
-               &extra_popped_range[dim_num], 
-               &popped_range[dim_num], 
-               coords_size);
+             // Re-instert the extra popped range into the queue
+             pq.push(extra_popped);
+           } else if(array_schema->cell_order_cmp(
+                    &top_range[dim_num], 
+                    &popped_range[dim_num]) < 0) {
+             // Create a new popped range
+             FragmentCellRange extra_popped;
+             extra_popped.first.first = popped_fragment_i;
+             extra_popped.first.second = popped_tile_i;
+             extra_popped.second = malloc(2*coords_size);
+             T* extra_popped_range = static_cast<T*>(extra_popped.second);
 
-           // Re-instert the extra popped range into the queue
-           pq.push(extra_popped);
-         } else if(array_schema->cell_order_cmp(
-                  &top_range[dim_num], 
-                  &popped_range[dim_num]) < 0) {
-           // Create a new popped range
-           FragmentCellRange extra_popped;
-           extra_popped.first.first = popped_fragment_i;
-           extra_popped.first.second = popped_tile_i;
-           extra_popped.second = malloc(2*coords_size);
-           T* extra_popped_range = static_cast<T*>(extra_popped.second);
+             memcpy(extra_popped_range, &top_range[dim_num], coords_size);
+             memcpy(
+                 &extra_popped_range[dim_num], 
+                 &popped_range[dim_num], 
+                 coords_size);
+             array_schema->get_next_cell_coords<T>(
+                 tile_domain, 
+                 extra_popped_range);
 
-           memcpy(extra_popped_range, &top_range[dim_num], coords_size);
-           memcpy(
-               &extra_popped_range[dim_num], 
-               &popped_range[dim_num], 
-               coords_size);
-           array_schema->get_next_cell_coords<T>(
+             // Re-instert the extra popped range into the queue
+             pq.push(extra_popped);
+           }
+
+           // Trim last range coordinates of popped
+           memcpy(&popped_range[dim_num], top_range, coords_size);
+
+           // Get previous cell of the last range coordinates of popped
+           array_schema->get_previous_cell_coords<T>(
                tile_domain, 
-               extra_popped_range);
-
-           // Re-instert the extra popped range into the queue
-           pq.push(extra_popped);
-         }
-
-         // Trim last range coordinates of popped
-         memcpy(&popped_range[dim_num], top_range, coords_size);
-
-         // Get previous cell of the last range coordinates of popped
-         array_schema->get_previous_cell_coords<T>(
-             tile_domain, 
-             &popped_range[dim_num]);
-       }  
+               &popped_range[dim_num]);
+         }  
      
-       // Insert the final popped range into the results
-       fragment_cell_ranges.push_back(popped);
-    } else {                               // SPARSE POPPED
-      // If popped does not overlap with top, insert popped into results
-      int64_t top_range_tile_id, popped_range_tile_id;
-      int cmp;
+         // Insert the final popped range into the results
+         fragment_cell_ranges.push_back(popped);
+      } else {                               // SPARSE POPPED
+        // If popped does not overlap with top, insert popped into results
+        int64_t top_range_tile_id, popped_range_tile_id;
+        int cmp;
       
-      if(!pq.empty()) {
-        top_range_tile_id = array_schema->tile_id(top_range);
-        popped_range_tile_id = array_schema->tile_id(&popped_range[dim_num]);
+        if(!pq.empty()) {
+          top_range_tile_id = array_schema->tile_id(top_range);
+          popped_range_tile_id = array_schema->tile_id(&popped_range[dim_num]);
 
-        if(top_range_tile_id == popped_range_tile_id) {
-          cmp = array_schema->cell_order_cmp(
-                                  top_range, 
-                                  &popped_range[dim_num]);
-        } else {
-          if(top_range_tile_id < popped_range_tile_id)
-            cmp = -1;
-          else 
-            cmp = 1;
+          if(top_range_tile_id == popped_range_tile_id) {
+            cmp = array_schema->cell_order_cmp(
+                                    top_range, 
+                                    &popped_range[dim_num]);
+          } else {
+            if(top_range_tile_id < popped_range_tile_id)
+              cmp = -1;
+            else 
+              cmp = 1;
+          }
         }
-      }
 
-      if(!pq.empty() && cmp > 0) {
-        fragment_cell_ranges.push_back(popped);
-      } else { // Need to expand popped
-        // Create a new unary range
-        FragmentCellRange unary;
-        unary.first.first = popped_fragment_i;
-        unary.first.second = popped_tile_i;
-        unary.second = malloc(2*coords_size);
-        T* unary_range = static_cast<T*>(unary.second);
+        if(!pq.empty() && cmp > 0) {
+          fragment_cell_ranges.push_back(popped);
+        } else { // Need to expand popped
+          // Create a new unary range
+          FragmentCellRange unary;
+          unary.first.first = popped_fragment_i;
+          unary.first.second = popped_tile_i;
+          unary.second = malloc(2*coords_size);
+          T* unary_range = static_cast<T*>(unary.second);
         
-        // Get the first two coordinates from the coordinates tile 
-        if(fragments[popped_fragment_i]->get_first_two_coords<T>(
-               popped_tile_i,  // Tile
-               popped_range,   // Starting point
-               unary_range,    // First coords
-               popped_range)   // Second coords
-            != TILEDB_FG_OK) {  
-          // Clean up
-          free(unary.second);
-          if(tile_domain != NULL)
-            delete [] tile_domain;
-          if(tile_domain_end != NULL)
-            delete [] tile_domain_end;
-          free(popped.second);
-          while(!pq.empty()) {
-            free(pq.top().second);
-            pq.pop();
-          }
-          for(int i=0; i<fragment_cell_ranges.size(); ++i)
-            free(fragment_cell_ranges[i].second);
-
-          return TILEDB_ARS_ERR;
-        }
-
-        // Check if the now trimmed popped range exceeds the tile domain
-        bool inside_tile = true;
-        if(tile_domain != NULL) {
-          for(int i=0; i<dim_num; ++i) {
-            if(unary_range[i] < tile_domain[2*i] || 
-               unary_range[i] > tile_domain[2*i+1]) {
-              inside_tile = false;
-              break;
+          // Get the first two coordinates from the coordinates tile 
+          if(fragments[popped_fragment_i]->get_first_two_coords<T>(
+                 popped_tile_i,  // Tile
+                 popped_range,   // Starting point
+                 unary_range,    // First coords
+                 popped_range)   // Second coords
+              != TILEDB_FG_OK) {  
+            // Clean up
+            free(unary.second);
+            if(tile_domain != NULL)
+              delete [] tile_domain;
+            if(tile_domain_end != NULL)
+              delete [] tile_domain_end;
+            free(popped.second);
+            while(!pq.empty()) {
+              free(pq.top().second);
+              pq.pop();
             }
-          }
-        } else {
-          if(empty_value(*unary_range)) 
-            inside_tile = false;
-        }
+            for(int i=0; i<fragment_cell_ranges.size(); ++i)
+              free(fragment_cell_ranges[i].second);
 
-        // Copy second boundary of unary and re-insert to the queue
-        if(!inside_tile) {
-          free(unary.second);
-        } else {
-          memcpy(&unary_range[dim_num], unary_range, coords_size);
-          pq.push(unary);
+            return TILEDB_ARS_ERR;
+          }
 
           // Check if the now trimmed popped range exceeds the tile domain
           bool inside_tile = true;
           if(tile_domain != NULL) {
             for(int i=0; i<dim_num; ++i) {
-              if(popped_range[i] < tile_domain[2*i] || 
-                 popped_range[i] > tile_domain[2*i+1]) {
+              if(unary_range[i] < tile_domain[2*i] || 
+                 unary_range[i] > tile_domain[2*i+1]) {
                 inside_tile = false;
                 break;
               }
-            } 
+            }
           } else {
-            if(empty_value(*popped_range)) 
+            if(empty_value(*unary_range)) 
               inside_tile = false;
           }
+
+          // Copy second boundary of unary and re-insert to the queue
+          if(!inside_tile) {
+            free(unary.second);
+          } else {
+            memcpy(&unary_range[dim_num], unary_range, coords_size);
+            pq.push(unary);
+
+            // Check if the now trimmed popped range exceeds the tile domain
+            bool inside_tile = true;
+            if(tile_domain != NULL) {
+              for(int i=0; i<dim_num; ++i) {
+                if(popped_range[i] < tile_domain[2*i] || 
+                   popped_range[i] > tile_domain[2*i+1]) {
+                  inside_tile = false;
+                  break;
+                }
+              } 
+            } else {
+              if(empty_value(*popped_range)) 
+                inside_tile = false;
+            }
        
-          if(!inside_tile) { 
-            free(popped.second);
-          } else { // Re-insert to the queue the now trimmed popped range
-            pq.push(popped);
+            if(!inside_tile) { 
+              free(popped.second);
+            } else { // Re-insert to the queue the now trimmed popped range
+              pq.push(popped);
+            }
           }
         }
       }
     }
-  }
 
-  // Sanity check
-  assert(pq.empty());
+    // Sanity check
+    assert(pq.empty());
+  }
 
   // Compute fragment cell position ranges
   for(int64_t i=0; i<fragment_cell_ranges.size(); ++i) { 

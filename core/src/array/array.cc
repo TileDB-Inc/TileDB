@@ -133,13 +133,13 @@ bool Array::overflow(int attribute_id) const {
   if(fragments_.size() == 0)
     return false;
 
-  if(fragments_.size() > 1 || // Multi-fragment read
-     (fragments_.size() == 1 &&
-        ((array_schema_->dense() && !fragments_[0]->dense()) || 
-         (array_schema_->dense() && !fragments_[0]->full_domain()))))
+//  if(fragments_.size() > 1 || // Multi-fragment read
+//     (fragments_.size() == 1 &&
+//        ((array_schema_->dense() && !fragments_[0]->dense()) || 
+//         (array_schema_->dense() && !fragments_[0]->full_domain()))))
     return array_read_state_->overflow(attribute_id);
-  else                        // Single-fragment read 
-    return fragments_[0]->overflow(attribute_id);
+//  else                        // Single-fragment read 
+//    return fragments_[0]->overflow(attribute_id);
 }
 
 int Array::read(void** buffers, size_t* buffer_sizes) {
@@ -161,17 +161,19 @@ int Array::read(void** buffers, size_t* buffer_sizes) {
         buffer_i += 2;
     }
     success = true;
-  } else if(fragments_.size() > 1 ||       // Multi-fragment read
-            (fragments_.size() == 1 &&
-              ((array_schema_->dense() && !fragments_[0]->dense()) || 
-               (array_schema_->dense() && !fragments_[0]->full_domain())))) {
+    } else {
+//  } else if(fragments_.size() > 1 ||       // Multi-fragment read
+//            (fragments_.size() == 1 &&
+//              ((array_schema_->dense() && !fragments_[0]->dense()) || 
+//               (array_schema_->dense() && !fragments_[0]->full_domain())))) {
     if(array_read_state_->read_multiple_fragments(buffers, buffer_sizes) == 
        TILEDB_ARS_OK)
       success = true;
-  } else if(fragments_.size() == 1) {      // Single-fragment read 
-    if(fragments_[0]->read(buffers, buffer_sizes) == TILEDB_FG_OK)
-      success = true;
-  }  
+  }
+//  } else if(fragments_.size() == 1) {      // Single-fragment read 
+//    if(fragments_[0]->read(buffers, buffer_sizes) == TILEDB_FG_OK)
+//      success = true;
+//  }  
 
   // Return
   if(success)
@@ -372,10 +374,10 @@ int Array::init(
   } else if(mode_ == TILEDB_ARRAY_READ) {
     if(open_fragments() != TILEDB_AR_OK)
       return TILEDB_AR_ERR;
-    if(fragments_.size() > 1 || // Multi-fragment read
-       (fragments_.size() == 1 &&
-          ((array_schema_->dense() && !fragments_[0]->dense()) || 
-           (array_schema_->dense() && !fragments_[0]->full_domain()))))
+//    if(fragments_.size() > 1 || // Multi-fragment read
+//       (fragments_.size() == 1 &&
+//          ((array_schema_->dense() && !fragments_[0]->dense()) || 
+//           (array_schema_->dense() && !fragments_[0]->full_domain()))))
       array_read_state_ = new ArrayReadState(this);
   }
 
@@ -438,10 +440,10 @@ int Array::reset_subarray(const void* subarray) {
     array_read_state_ = NULL;
   }
 
-  if(fragments_.size() > 1 || // Multi-fragment read
-     (fragments_.size() == 1 &&
-        ((array_schema_->dense() && !fragments_[0]->dense()) || 
-         (array_schema_->dense() && !fragments_[0]->full_domain()))))
+//  if(fragments_.size() > 1 || // Multi-fragment read
+//     (fragments_.size() == 1 &&
+//        ((array_schema_->dense() && !fragments_[0]->dense()) || 
+//         (array_schema_->dense() && !fragments_[0]->full_domain()))))
     array_read_state_ = new ArrayReadState(this);
 
   return TILEDB_AR_OK;

@@ -341,7 +341,8 @@ int ReadState::copy_cell_range(
   char* tile = static_cast<char*>(tiles_[attribute_id]);
 
   // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
+  size_t buffer_free_space = buffer_size - buffer_offset; 
+  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
   if(buffer_free_space == 0) { // Overflow
     overflow_[attribute_id] = true;
     return TILEDB_RS_OK;
@@ -366,7 +367,7 @@ int ReadState::copy_cell_range(
 
   // Calculate the total size to copy
   bytes_left_to_copy = end_offset - tiles_offsets_[attribute_id] + 1;
-  bytes_to_copy = std::min(bytes_left_to_copy, buffer_free_space); // TODO: Fix this for integral cells 
+  bytes_to_copy = std::min(bytes_left_to_copy, buffer_free_space);  
 
   // Copy and update current buffer and tile offsets
   if(bytes_to_copy != 0) {
@@ -401,9 +402,11 @@ int ReadState::copy_cell_range_var(
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
+  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
 
   // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
+  size_t buffer_free_space = buffer_size - buffer_offset; 
+  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
   size_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
 
   // Handle overflow
@@ -424,7 +427,6 @@ int ReadState::copy_cell_range_var(
   }
 
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
   OverlappingTile& overlapping_tile = 
       overlapping_tiles_[overlapping_tiles_pos_[attribute_id]];
   char* buffer_c = static_cast<char*>(buffer);
