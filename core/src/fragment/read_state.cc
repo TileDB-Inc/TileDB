@@ -473,7 +473,7 @@ int ReadState::copy_cell_range_var(
 
   // Compute actual bytes to copy
   start_cell_pos = tiles_offsets_[attribute_id] / cell_size;
-  end_cell_pos = cell_pos_range.second;
+  end_cell_pos = start_cell_pos + bytes_to_copy/cell_size - 1;
   compute_bytes_to_copy(
       attribute_id,
       start_cell_pos,

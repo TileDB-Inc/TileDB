@@ -221,9 +221,17 @@ int ArrayIterator::next() {
 
   // Perform a new read
   if(needs_new_read.size() > 0) {
+    //Need to copy buffer_sizes_ and restore at the end
+    //Why? buffer_sizes_ must be set to 0 for array->read() to work correctly, i.e., do not fetch new data for fields
+    //which still have pending data in buffers_. However, the correct value of buffer_sizes_ for such fields is required for
+    //correct operation of the iterator in subsequent calls
+    std::vector<size_t> copy_buffer_sizes(attribute_id_num+var_attribute_num_);
     // Properly set the buffer sizes
     for(int i=0; i<attribute_id_num + var_attribute_num_; ++i) 
+    {
+      copy_buffer_sizes[i] = buffer_sizes_[i];
       buffer_sizes_[i] = 0;
+    }
     int buffer_i;
     for(int i=0; i<needs_new_read.size(); ++i) {
       buffer_i = buffer_i_[needs_new_read[i]];
@@ -263,6 +271,19 @@ int ArrayIterator::next() {
 
       // Update pos
       pos_[needs_new_read[i]] = 0;
+    }
+    //Restore buffer sizes for attributes which still had pending data
+    for(int i=0, needs_new_read_idx=0; i<attribute_id_num; ++i) {
+      if(static_cast<size_t>(needs_new_read_idx) < needs_new_read.size()
+          && i == needs_new_read[needs_new_read_idx]) //buffer_size would have been set by array->read()
+        ++needs_new_read_idx;
+      else //restore buffer size from copy
+      {
+        buffer_i = buffer_i_[i];
+        buffer_sizes_[buffer_i] = copy_buffer_sizes[buffer_i];
+        if(cell_sizes_[i] == TILEDB_VAR_SIZE) 
+          buffer_sizes_[buffer_i+1] = copy_buffer_sizes[buffer_i+1]; 
+      }
     }
   }
 
