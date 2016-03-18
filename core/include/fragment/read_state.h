@@ -369,7 +369,7 @@ class ReadState {
   void compute_bytes_to_copy(
       int attribute_id,
       int64_t start_cell_pos,
-      int64_t end_cell_pos,
+      int64_t& end_cell_pos,
       size_t buffer_free_space, 
       size_t buffer_var_free_space,
       size_t& bytes_to_copy,

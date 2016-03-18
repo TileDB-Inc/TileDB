@@ -940,7 +940,7 @@ void ReadState::clean_up_processed_overlapping_tiles() {
 void ReadState::compute_bytes_to_copy(
     int attribute_id,
     int64_t start_cell_pos,
-    int64_t end_cell_pos,
+    int64_t& end_cell_pos,
     size_t buffer_free_space,
     size_t buffer_var_free_space,
     size_t& bytes_to_copy,
@@ -967,9 +967,11 @@ void ReadState::compute_bytes_to_copy(
   if(bytes_var_to_copy > buffer_var_free_space) {
     // Perform binary search
     int64_t min = start_cell_pos;
-    int64_t max = end_cell_pos;
+    int64_t max = end_cell_pos+1;
     int64_t med;
-    while(min <= max) {
+    //Invariant: all data upto min cell (not including min cell) fits in buffer
+    //all data upto max (not including max cell) does not fit into buffer
+    while(min < max-1) {
       med = min + ((max - min) / 2);
 
       // Calculate variable bytes to copy
@@ -977,18 +979,18 @@ void ReadState::compute_bytes_to_copy(
 
       // Check condition
       if(bytes_var_to_copy > buffer_var_free_space) 
-        max = med-1;
+        max = med;
       else if(bytes_var_to_copy < buffer_var_free_space)
-        min = med+1;
+        min = med;
       else   
         break; 
     }
 
     // Determine the start position of the range
-    if(max < min)  
-      end_cell_pos = max - 1;     
+    if(min == max-1)  
+      end_cell_pos = min - 1;     
     else 
-      end_cell_pos = med;  
+      end_cell_pos = med - 1;  
 
     // Update variable bytes to copy
     bytes_var_to_copy = tile[end_cell_pos + 1] - tile[start_cell_pos];
