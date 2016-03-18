@@ -3411,7 +3411,7 @@ int ReadState::get_first_two_coords(
 template<class T>
 int ReadState::get_cell_pos_ranges_sparse(
     const FragmentInfo& fragment_info,
-    const T* tile_domain,
+    const T* subarray,
     const T* cell_range, 
     FragmentCellPosRanges& fragment_cell_pos_ranges) {
   // For easy reference
@@ -3534,12 +3534,18 @@ int ReadState::get_cell_pos_ranges_sparse(
   else             
     second_pos = med;
 
+// TODO: This can be improved by checking if the query subarray includes
+// results that appear contiguous on the disk, by checking the MBR overalp
+
   // Create the cell position ranges for all cells in the position range 
   const T* cell;
   int64_t current_start_pos, current_end_pos = -2; 
   for(int64_t i=first_pos; i<=second_pos; ++i) {
     cell = &tile[i*dim_num];
-    if(cell_in_subarray<T>(cell, tile_domain, dim_num)) {
+    if(cell_in_subarray<T>(
+           cell, 
+           static_cast<const T*>(overlapping_tiles_[fragment_info.second].overlap_range_), 
+           dim_num)) {
       if(i-1 == current_end_pos) { // The range is expanded
        ++current_end_pos;
       } else {                     // A new range starts
