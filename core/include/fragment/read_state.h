@@ -328,6 +328,8 @@ class ReadState {
   std::vector<void*> tiles_;
   /** Current offsets in tiles_ (one per attribute). */
   std::vector<size_t> tiles_offsets_;
+  /* Current offset for the coords tile*/
+  size_t coords_tile_offset_;
   /** Sizes of tiles_ (one per attribute). */
   std::vector<size_t> tiles_sizes_;
   /** Local variable tile buffers (one per attribute). */

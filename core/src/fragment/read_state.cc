@@ -106,6 +106,7 @@ ReadState::ReadState(
   tile_compressed_allocated_size_ = 0;
   tiles_.resize(attribute_num+1);
   tiles_offsets_.resize(attribute_num+1);
+  coords_tile_offset_ = 0ull;
   tiles_sizes_.resize(attribute_num+1);
   tiles_var_.resize(attribute_num);
   tiles_var_offsets_.resize(attribute_num);
@@ -337,6 +338,10 @@ int ReadState::copy_cell_range(
   if(rc != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
+  //Restore coords_tile_offset_
+  if(attribute_id == attribute_num)
+    tiles_offsets_[attribute_id] = coords_tile_offset_;
+
   // For easy reference
   char* tile = static_cast<char*>(tiles_[attribute_id]);
 
@@ -379,6 +384,10 @@ int ReadState::copy_cell_range(
     tiles_offsets_[attribute_id] += bytes_to_copy; 
     buffer_free_space = buffer_size - buffer_offset;
   }
+
+  //Backup coordinates tile offset
+  if(attribute_id == attribute_num)
+    coords_tile_offset_ = tiles_offsets_[attribute_id];
 
   // Handle buffer overflow
   if(tiles_offsets_[attribute_id] != end_offset + 1) 
