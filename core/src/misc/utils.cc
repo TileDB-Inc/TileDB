@@ -481,6 +481,15 @@ bool has_duplicates(const std::vector<T>& v) {
 }
 
 template<class T>
+bool inside_subarray(const T* coords, const T* subarray, int dim_num) {
+  for(int i=0; i<dim_num; ++i)
+    if(coords[i] < subarray[2*i] || coords[i] > subarray[2*i+1])
+      return false;
+
+  return true;
+}
+
+template<class T>
 bool intersect(const std::vector<T>& v1, const std::vector<T>& v2) {
   std::set<T> s1(v1.begin(), v1.end());
   std::set<T> s2(v2.begin(), v2.end());
@@ -967,6 +976,23 @@ template void expand_mbr<double>(
     int dim_num);
 
 template bool has_duplicates<std::string>(const std::vector<std::string>& v);
+
+template bool inside_subarray<int>(
+    const int* coords, 
+    const int* subarray, 
+    int dim_num);
+template bool inside_subarray<int64_t>(
+    const int64_t* coords, 
+    const int64_t* subarray, 
+    int dim_num);
+template bool inside_subarray<float>(
+    const float* coords, 
+    const float* subarray, 
+    int dim_num);
+template bool inside_subarray<double>(
+    const double* coords, 
+    const double* subarray, 
+    int dim_num);
 
 template bool intersect<std::string>(
     const std::vector<std::string>& v1,

@@ -541,13 +541,6 @@ int WriteState::write_last_tile() {
   return TILEDB_WS_OK;
 }
 
-
-
-
-
-
-
-
 int WriteState::write_dense(
     const void** buffers,
     const size_t* buffer_sizes) {

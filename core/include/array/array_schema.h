@@ -1,12 +1,11 @@
 /**
  * @file   array_schema.h
- * @author Stavros Papadopoulos <stavrosp@csail.mit.edu>
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2015 Stavros Papadopoulos <stavrosp@csail.mit.edu>
+ * @copyright Copyright (c) 2016 MIT and Intel Corp.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,8 +30,8 @@
  * This file defines class ArraySchema. 
  */
 
-#ifndef ARRAY_SCHEMA_H
-#define ARRAY_SCHEMA_H
+#ifndef __ARRAY_SCHEMA_H__
+#define __ARRAY_SCHEMA_H__
 
 #include "array_schema_c.h"
 #include "metadata_schema_c.h"
@@ -42,26 +41,39 @@
 #include <typeinfo>
 #include <vector>
 
+
+
+
 /* ********************************* */
 /*             CONSTANTS             */
 /* ********************************* */
 
-#define TILEDB_KEY_DIM1_NAME "__key_dim_1"
-#define TILEDB_KEY_DIM2_NAME "__key_dim_2"
-#define TILEDB_KEY_DIM3_NAME "__key_dim_3"
-#define TILEDB_KEY_DIM4_NAME "__key_dim_4"
+/**@{*/
+/** Special key dimension name. */
+#define TILEDB_AS_KEY_DIM1_NAME "__key_dim_1"
+#define TILEDB_AS_KEY_DIM2_NAME "__key_dim_2"
+#define TILEDB_AS_KEY_DIM3_NAME "__key_dim_3"
+#define TILEDB_AS_KEY_DIM4_NAME "__key_dim_4"
+/**@}*/
 
-// Return codes.
-#define TILEDB_AS_OK                                             0
-#define TILEDB_AS_ERR                                           -1
+/**@{*/
+/** Return code. */
+#define TILEDB_AS_OK                       0
+#define TILEDB_AS_ERR                     -1
+/**@}*/
 
 // Default parameters.
-#define TILEDB_AS_CAPACITY                                   10000
+#define TILEDB_AS_CAPACITY             10000
+
+
+
 
 /** Specifies the array schema. */
 class ArraySchema {
  public:
-  // CONSTRUCTORS & DESTRUCTORS
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
 
   /** Constructor. */
   ArraySchema();
@@ -69,19 +81,21 @@ class ArraySchema {
   /** Destructor. */
   ~ArraySchema();  
 
-  // ACCESSORS
 
-  // TODO
-  int var_attribute_num() const;
 
-  // TODO
-  void array_schema_export(ArraySchemaC* array_schema_c) const;
 
-  // TODO
-  void array_schema_export(MetadataSchemaC* metadata_schema_c) const;
+  /* ********************************* */
+  /*             ACCESSORS             */
+  /* ********************************* */
 
   /** Returns the array name. */
   const std::string& array_name() const;
+
+  /** Exports the array schema into the input array schema struct. */
+  void array_schema_export(ArraySchemaC* array_schema_c) const;
+
+  /** Exports the array schema into the input metadata schema struct. */
+  void array_schema_export(MetadataSchemaC* metadata_schema_c) const;
 
   /** Returns the name of the attribute with the input id. */
   const std::string& attribute(int attribute_id) const;
@@ -164,17 +178,36 @@ class ArraySchema {
   /** Returns the tile extents. */
   const void* tile_extents() const;
 
-  /** Returns the number of tiles - applicable only to dense arrays. */
+  /** 
+   * Returns the number of tiles in the array domain (applicable only to dense
+   * arrays). 
+   */
   int64_t tile_num() const;
 
-  /** Returns the number of tiles - applicable only to dense arrays. */
+  /** 
+   * Returns the number of tiles in the array domain (applicable only to dense
+   * arrays). 
+   *
+   * @template T The coordinates type.
+   * @return The number of tiles.
+   */
   template<class T>
   int64_t tile_num() const;
 
-  // TODO
+  /** 
+   * Returns the number of tiles in the input domain (applicable only to dense
+   * arrays). 
+   */
   int64_t tile_num(const void* domain) const;
 
-  // TODO
+  /** 
+   * Returns the number of tiles in the input domain (applicable only to dense
+   * arrays). 
+   *
+   * @template T The coordinates type.
+   * @param domain The input domain.
+   * @return The number of tiles.
+   */
   template<class T>
   int64_t tile_num(const T* domain) const;
 
@@ -182,14 +215,18 @@ class ArraySchema {
   /** Returns the type of the i-th attribute, or NULL if 'i' is invalid. */
   int type(int i) const;
 
-  /** Returns true if the indicated attribute has variable-sized values. */
+  /** Returns the number of attributes with variable-sized values. */
+  int var_attribute_num() const;
+
+  /** Returns *true* if the indicated attribute has variable-sized values. */
   bool var_size(int attribute_id) const;
 
-  // MUTATORS
 
-  /** Computes the number of bits required by the Hilbert curve. */
-  template<class T>
-  void compute_hilbert_bits();
+
+
+  /* ********************************* */
+  /*             ACCESSORS             */
+  /* ********************************* */
 
   /** 
    * It assigns values to the members of the object from the input buffer. 
@@ -202,25 +239,25 @@ class ArraySchema {
  
   /** 
    * Initializes the ArraySchema object using the information provided in the
-   * inpur C-style ArraySchemaC struct.
+   * input C-style ArraySchemaC struct.
    *
    * @param array_schema_c The array schema in a C-style struct.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */ 
   int init(const ArraySchemaC* array_schema_c);  
 
-  // TODO
+  /** 
+   * Initializes the ArraySchema object using the information provided in the
+   * inpur C-style MetadataSchemaC struct.
+   *
+   * @param metadata_schema_c The metadata schema in a C-style struct.
+   * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
+   */
   int init(const MetadataSchemaC* metadata_schema_c);  
-
-  /** Initializes a Hilbert curve. */
-  void init_hilbert_curve();
 
   /** Sets the array name. */
   void set_array_name(const char* array_name);
   
-  // TODO
-  void set_cell_val_num(const int* cell_val_num);
- 
   /** 
    * Sets attribute names. There should not be any duplicate names. Moreover,
    * there should not be an attribute with the same name as a dimension.
@@ -234,9 +271,14 @@ class ArraySchema {
   /** Sets the tile capacity. */
   void set_capacity(int64_t capacity);
 
+  /** Sets the number of cell values per attribute. */
+  void set_cell_val_num(const int* cell_val_num);
+
   /** 
-   * Sets the cell order. supported cell orders: "row-major", "column-major",
-   * "hilbert". 
+   * Sets the cell order. Supported cell orders: 
+   *    - TILEDB_ROW_MAJOR
+   *    - TILEDB_COL_MAJOR
+   *    - TILEDB_HILBSERT
    *
    * @param cell_order The cell order.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
@@ -288,8 +330,10 @@ class ArraySchema {
   int set_tile_extents(const void* tile_extents);
 
   /** 
-   * Sets the tile order. supported tile orders: "row-major", "column-major",
-   * "hilbert". 
+   * Sets the tile order. Supported tile orders. 
+   *    - TILEDB_ROW_MAJOR
+   *    - TILEDB_COL_MAJOR
+   *    - TILEDB_HILBSERT
    *
    * @param tile_order The tile order.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
@@ -298,14 +342,19 @@ class ArraySchema {
 
   /** 
    * Sets the types. There should be one type per attribute plus one (the last
-   * one) for the coordinates. The supported types for the attributes are 
-   * **char**, **int32**, **int64**, **float32**, and **float64**. If one
-   * attribute takes a fixed number N of values, string <b>":N"</b> must be
-   * appended to the type. If an attribute takes a variable number of values,
-   * string <b>":var"</b> must be appended to the type. The supported types
-   * for the coordinates are <b>char:var</b>, **int32**, **int64**, **float32**,
-   * and **float64**. If the array is dense, then only **int32** and **int64**
-   * are admissible types. 
+   * one) for the coordinates. 
+   * The supported types for the attributes are:
+   *     - TILEDB_CHAR
+   *     - TILEDB_INT32
+   *     - TILEDB_INT64
+   *     - TILEDB_FLOAT32
+   *     - TILEDB_FLOAT64
+   *
+   * The supported types for the coordinates are:
+   *     - TILEDB_INT32
+   *     - TILEDB_INT64
+   *     - TILEDB_FLOAT32
+   *     - TILEDB_FLOAT64
    *
    * @param types The types.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
@@ -313,161 +362,172 @@ class ArraySchema {
    * @note The attributes, dimensions and the dense flag must have already been
    *     set before calling this function.
    */
-  int set_types(int* types);
+  int set_types(const int* types);
 
-  // MISC
 
-  // TODO
-  template<class T>
-  int cell_order_cmp_2(const T* coords_a, const T* coords_b) const;
 
-  // TODO
+
+  /* ********************************* */
+  /*               MISC                */
+  /* ********************************* */
+
+  /**
+   * Checks the cell order of the input coordinates. Note that, in the presence
+   * of a regular tile grid, this function assumes that the cells are in the
+   * same regular tile.
+   *
+   * @template T The coordinates type.
+   * @param coords_a The first input coordinates.
+   * @param coords_b The second input coordinates.
+   * @return One of the following:
+   *    - -1 if the first coordinates precede the second
+   *    -  0 if the two coordinates are identical
+   *    - +1 if the first coordinates succeed the second
+   */
   template<class T>
   int cell_order_cmp(const T* coords_a, const T* coords_b) const;
 
-  // TODO
-  template<class T>
-  int tile_order_cmp(const T* coords_a, const T* coords_b) const;
-
-  // TODO
-  template<class T>
-  T cell_num_in_range_slab(const T* range) const;
-
-  // TODO
-  template<class T>
-  T cell_num_in_range_slab_col(const T* range) const;
-
-  // TODO
-  template<class T>
-  T cell_num_in_range_slab_row(const T* range) const;
-
-  // TODO
-  template<class T>
-  T cell_num_in_tile_slab() const;
-
-  // TODO
-  template<class T>
-  T cell_num_in_tile_slab_col() const;
-
-  // TODO
-  template<class T>
-  T cell_num_in_tile_slab_row() const;
-
-  // TODO
+  /** 
+   * Expands the input domain such that it coincides with the boundaries of
+   * the array's regular tiles (i.e., it maps it on the regular tile grid).
+   * If the array has no regular tile grid, the function does not do anything.
+   *
+   * @param domain The domain to be expanded.
+   * @return void
+   */
   void expand_domain(void* domain) const;
 
-  // TODO
+  /** 
+   * Expands the input domain such that it coincides with the boundaries of
+   * the array's regular tiles (i.e., it maps it on the regular tile grid).
+   * If the array has no regular tile grid, the function does not do anything.
+   *
+   * @template The domain type.
+   * @param domain The domain to be expanded.
+   * @return void
+   */
   template<class T>
   void expand_domain(T* domain) const;
 
-  // TODO
+  /**
+   * Returns the position of the input coordinates inside its corresponding
+   * tile, based on the array cell order. Applicable only to **dense** arrays. 
+   * 
+   * @template T The coordinates type.
+   * @param coords The input coordindates, which are expressed as global 
+   *     coordinates in the array domain.
+   * @return The position of the cell coordinates in the array cell order
+   *     within its corresponding tile. In case of error, the function returns
+   *     TILEDB_AS_ERR.
+   */
   template<class T>
-  int64_t get_cell_pos(const T* range) const;
+  int64_t get_cell_pos(const T* coords) const;
 
-  // TODO
-  template<class T>
-  int64_t get_cell_pos_col(const T* range) const;
-
-  // TODO
-  template<class T>
-  int64_t get_cell_pos_row(const T* range) const;
-
-  // TODO
+  /**
+   * Retrieves the next coordinates along the array cell order within a given
+   * domain (desregarding whether the domain is split into tiles or not). 
+   * Applicable only to **dense** arrays.  
+   *
+   * @template T The coordinates type.
+   * @param domain The targeted domain.
+   * @param cell_coords The input cell coordinates, which the function modifies
+   *     to store the next coordinates at termination.
+   * @return void
+   */
   template<class T> 
   void get_next_cell_coords(const T* domain, T* cell_coords) const;
 
-  // TODO
-  template<class T> 
-  void get_next_cell_coords_col(const T* domain, T* cell_coords) const;
-
-  // TODO
-  template<class T> 
-  void get_next_cell_coords_row(const T* domain, T* cell_coords) const;
-
-  // TODO
-  template<class T> 
-  void get_previous_cell_coords(const T* domain, T* cell_coords) const;
-
-  // TODO
-  template<class T> 
-  void get_previous_cell_coords_col(const T* domain, T* cell_coords) const;
-
-  // TODO
-  template<class T> 
-  void get_previous_cell_coords_row(const T* domain, T* cell_coords) const;
-
-  // TODO
+  /**
+   * Retrieves the next tile coordinates along the array tile order within a
+   * given tile domain. Applicable only to **dense** arrays.  
+   *
+   * @template T The coordinates type.
+   * @param domain The targeted domain.
+   * @param tile_coords The input tile coordinates, which the function modifies
+   *     to store the next tile coordinates at termination.
+   * @return void
+   */
   template<class T> 
   void get_next_tile_coords(const T* domain, T* tile_coords) const;
 
-  // TODO
+  /**
+   * Retrieves the previous coordinates along the array cell order within a 
+   * given domain (desregarding whether the domain is split into tiles or not). 
+   * Applicable only to **dense** arrays.  
+   *
+   * @template T The coordinates type.
+   * @param domain The targeted domain.
+   * @param cell_coords The input cell coordinates, which the function modifies
+   *     to store the previous coordinates at termination.
+   * @return void
+   */
   template<class T> 
-  void get_next_tile_coords_col(const T* domain, T* tile_coords) const;
+  void get_previous_cell_coords(const T* domain, T* cell_coords) const;
 
-  // TODO
-  template<class T> 
-  void get_next_tile_coords_row(const T* domain, T* tile_coords) const;
-
-  // TODO
+  /**
+   * Returns the tile position along the array tile order within the input
+   * domain. Applicable only to **dense** arrays.
+   * 
+   * @template T The domain type.
+   * @param The input domain, which is a cell domain partitioned into regular
+   *     tiles in the same manner as that of the array domain (however *domain*
+   *     may be a sub-domain of the array domain).
+   * @param tile_coords The tile coordinates. 
+   * @return The tile position of *tile_coords* along the tile order of the
+   *     array inside the input domain.
+   */
   template<class T> 
   int64_t get_tile_pos(
       const T* domain,
       const T* tile_coords) const;
 
-  // TODO
-  template<class T> 
-  int64_t get_tile_pos_col(
-      const T* domain,
-      const T* tile_coords) const;
-
-  // TODO
-  template<class T> 
-  int64_t get_tile_pos_row(
-      const T* domain,
-      const T* tile_coords) const;
-
-  // TODO
-  // Overlap value meaning:
-  // 0: NONE
-  // 1: FULL
-  // 2: PARTIAL_NON_CONTIG
-  // 3: PARTILA_CONTIG
-  template<class T> 
-  void compute_mbr_range_overlap(
-      const T* range,
-      const T* mbr,
-      T* overlap_range,
-      int& overlap) const;
-
-  // TODO
-  // Overlap value meaning:
-  // 0: NONE
-  // 1: FULL
-  // 2: PARTIAL_NON_CONTIG
-  // 3: PARTILA_CONTIG
-  template<class T> 
-  void compute_tile_range_overlap(
-      const T* domain,
-      const T* non_empty_domain,
-      const T* range,
-      const T* tile_coords,
-      T* overlap_range,
-      int& overlap) const;
-
-  /** Returns the Hilbert id of the input coordinates. */
+  /** 
+   * Returns the Hilbert id of the input coordinates. 
+   *
+   * @template T The coordinates type.
+   * @param The coordinates for which the Hilbert id is computed.
+   * @return The computed Hilbert id.
+   */
   template<class T>
   int64_t hilbert_id(const T* coords) const;
 
-  /** Returns the id of the tile the coordinates fall into. */
+  /**
+   * Checks the order of the input coordinates. First the tile order is checked
+   * (which, in case of non-regular tiles, is always the same), breaking the
+   * tie by checking the cell order. 
+   *
+   * @template T The coordinates type.
+   * @param coords_a The first input coordinates.
+   * @param coords_b The second input coordinates.
+   * @return One of the following:
+   *    - -1 if the first coordinates precede the second
+   *    -  0 if the two coordinates are identical
+   *    - +1 if the first coordinates succeed the second
+   */
+  template<class T>
+  int tile_cell_order_cmp(const T* coords_a, const T* coords_b) const;
+
+  /** 
+   * Returns the id of the tile the input coordinates fall into. 
+   * 
+   * @template T The coordinates type.
+   * @param cell_coords The input coordinates.
+   * @return The computed tile id.
+   */
   template<class T>
   int64_t tile_id(const T* cell_coords) const;
 
+
+
+
  private:
-  // PRIVATE ATTRIBUTES
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
 
   /** 
-   * The array name. It is a path to a directory, whose parent is a TileDB 
-   * workspace, group or array.
+   * The array name. It is a directory, whose parent must be a TileDB workspace,
+   * or group.
    */
   std::string array_name_;
   /** The attribute names. */
@@ -475,26 +535,39 @@ class ArraySchema {
   /** The number of attributes. */
   int attribute_num_;
   /** 
-   * The tile capacity (only applicable to irregular tiles). If it is <=0,
-   * TileDB will use its default.
+   * The tile capacity for the case of sparse fragments.
    */
   int64_t capacity_;
-  /** The number of cells per tile. Meaningful only for the dense case. */
+  /** The number of cells per tile. Meaningful only for the **dense** case. */
   int64_t cell_num_per_tile_;
-  /**
-   * The cell order. The supported orders are TILEDB_AS_CO_ROW_MAJOR, 
-   * TILEDB_AS_CO_COLUMN_MAJOR, and TILEDB_AS_CO_HILBERT.
+  /** 
+   * The cell order. It can be one of the following:
+   *    - TILEDB_ROW_MAJOR
+   *    - TILEDB_COL_MAJOR
+   *    - TILEDB_HILBERT. 
    */
   int cell_order_;
   /** Stores the size of every attribute (plus coordinates in the end). */
   std::vector<size_t> cell_sizes_;
-  // TODO
+  /**
+   * Specifies the number of values per attribute for a cell. If it is NULL,
+   * then each attribute has a single value per cell. If for some attribute
+   * the number of values is variable (e.g., in the case off strings), then
+   * TILEDB_VAR_NUM must be used.
+   */
+  std::vector<int> cell_val_num_;
+  /** 
+   * The compression type for each attribute (plus one extra at the end for the
+   * coordinates. It can be one of the following: 
+   *    - TILEDB_NO_COMPRESSION
+   *    - TILEDB_GZIP. 
+   */
   std::vector<int> compression_;
-  /** To be used when calculating Hilbert ids. */
+  /** Auxiliary variable used when calculating Hilbert ids. */
   int* coords_for_hilbert_;
   /** 
-   * True if the array is in dense format; false if the array is sparse. If the
-   * array is dense, then the user must specify tile extents for regular tiles.
+   * Specifies if the array is dense or sparse. If the array is dense, 
+   * then the user must specify tile extents (see below).
    */
   bool dense_;
   /** The dimension names. */
@@ -502,9 +575,9 @@ class ArraySchema {
   /** The number of dimensions. */
   int dim_num_;
   /**  
-   * The domain. It should contain one [lower, upper] pair per dimension. The
-   * type  of the values stored in this buffer should match the coordinates
-   * type. 
+   * The array domain. It should contain one [lower, upper] pair per dimension. 
+   * The type of the values stored in this buffer should match the coordinates
+   * type.
    */
   void* domain_;
   /** 
@@ -514,13 +587,10 @@ class ArraySchema {
   int hilbert_bits_;
   /** A Hilbert curve object for finding cell ids. */
   HilbertCurve* hilbert_curve_;
-  /** 
-   * The domain where each tile is a distinct set of coordinates. For instance,
-   * if the array is 2D, the domain is (1,10), (1,10) and the tile extents are 2
-   * and 5, then the tile domain is (0,4), (0,1), as there are 5 tiles across
-   * the row dimension, and 2 tiles across the column dimension. Then, the tile
-   * in the upper left corner has coordinates (0,0), the one on its right has
-   * coordinates (0,1), and so on. Applicable only to arrays with regular tiles.
+  /**  
+   * The array domain. It should contain one [lower, upper] pair per dimension. 
+   * The type of the values stored in this buffer should match the coordinates
+   * type.
    */
   void* tile_domain_;
   /** 
@@ -530,39 +600,57 @@ class ArraySchema {
    * array has irregular tiles (and, hence, it is sparse).
    */
   void* tile_extents_;
-  /**
-   * The tile order. The supported orders are TILEDB_AS_TO_ROW_MAJOR, 
-   * TILEDB_AS_TO_COLUMN_MAJOR, and TILEDB_AS_TO_HILBERT.
+  /** 
+   * The tile order. It can be one of the following:
+   *    - TILEDB_ROW_MAJOR
+   *    - TILEDB_COL_MAJOR. 
    */
   int tile_order_;
-  // TODO
+  /** 
+   * The attribute types, plus an extra one in the end for the coordinates.
+   * The attribute type can be one of the following: 
+   *    - TILEDB_INT32
+   *    - TILEDB_INT64
+   *    - TILEDB_FLOAT32
+   *    - TILEDB_FLOAT64
+   *    - TILEDB_CHAR. 
+   * The coordinate type can be one of the following: 
+   *    - TILEDB_INT32
+   *    - TILEDB_INT64
+   *    - TILEDB_FLOAT32
+   *    - TILEDB_FLOAT64
+   */
   std::vector<int> types_;
   /** Stores the size of every attribute type (plus coordinates in the end). */
   std::vector<size_t> type_sizes_;
-  /** 
-   * The list of number of values per attribute per cell. Specifically, each
-   * attribute may store more than one values of the specified type.
-   * Moreover, a cell may store a variable number of values for some 
-   * attribute. This is indicated by special value TILEDB_AS_VAR_SIZE. 
-   */
-  std::vector<int> val_num_;
 
-  // PRIVATE METHODS
+
+
+
+  /* ********************************* */
+  /*           PRIVATE METHODS         */
+  /* ********************************* */
 
   /** 
-   * Computes and returns the size of the binary representation of the object. 
+   * Computes and returns the size of the binary representation of the
+   * ArraySchema object. 
    */  
   size_t compute_bin_size() const;
 
   /** 
-   * Compute the number of cells per tile. Meaningful only for the dense case.
+   * Compute the number of cells per tile. Meaningful only for the **dense**
+   * case.
+   *
+   * @return void
    */
   void compute_cell_num_per_tile();
 
   /** 
-   * Compute the number of cells per tile. Meaningful only for the dense case.
+   * Compute the number of cells per tile. Meaningful only for the **dense**
+   * case.
    *
    * @template T The coordinates type.
+   * @return void
    */
   template<class T>
   void compute_cell_num_per_tile();
@@ -570,19 +658,190 @@ class ArraySchema {
   /** Computes and returns the size of an attribute (or coordinates). */
   size_t compute_cell_size(int attribute_id) const;
 
-  /** Computes the tile domain. Applicable only to arrays with regular tiles. */
+  /** 
+   * Computes the number of bits per dimension required by the Hilbert curve. 
+   *
+   * @template T The domain type.
+   * @return void
+   */
+  template<class T>
+  void compute_hilbert_bits();
+
+  /**
+   * Computes the tile domain. Applicable only to arrays with regular tiles. 
+   *
+   * @return void
+   */
   void compute_tile_domain();
 
   /** 
    * Computes the tile domain. Applicable only to arrays with regular tiles.
    *
-   * @template T The coordinates type.
+   * @template T The domain type.
+   * @return void
    */
   template<class T>
   void compute_tile_domain();
 
   /** Computes and returns the size of a type. */
   size_t compute_type_size(int attribute_id) const;
+
+  /**
+   * Returns the position of the input coordinates inside its corresponding
+   * tile, based on the array cell order. Applicable only to **dense** arrays,
+   * and focusing on the **column-major** cell order. 
+   * 
+   * @template T The coordinates type.
+   * @param coords The input coordindates, which are expressed as global 
+   *     coordinates in the array domain.
+   * @return The position of the cell coordinates in the array cell order
+   *     within its corresponding tile. In case of error, the function returns
+   *     TILEDB_AS_ERR.
+   */
+  template<class T>
+  int64_t get_cell_pos_col(const T* range) const;
+
+  /**
+   * Returns the position of the input coordinates inside its corresponding
+   * tile, based on the array cell order. Applicable only to **dense** arrays,
+   * and focusing on the **row-major** cell order. 
+   * 
+   * @template T The coordinates type.
+   * @param coords The input coordindates, which are expressed as global 
+   *     coordinates in the array domain.
+   * @return The position of the cell coordinates in the array cell order
+   *     within its corresponding tile. In case of error, the function returns
+   *     TILEDB_AS_ERR.
+   */
+  template<class T>
+  int64_t get_cell_pos_row(const T* range) const;
+
+  /**
+   * Retrieves the next coordinates along the array cell order within a given
+   * domain (desregarding whether the domain is split into tiles or not). 
+   * Applicable only to **dense** arrays, and focusing on **column-major** 
+   * cell order.
+   *
+   * @template T The coordinates type.
+   * @param domain The targeted domain.
+   * @param cell_coords The input cell coordinates, which the function modifies
+   *     to store the next coordinates at termination.
+   * @return void
+   */
+  template<class T> 
+  void get_next_cell_coords_col(const T* domain, T* cell_coords) const;
+
+  /**
+   * Retrieves the next coordinates along the array cell order within a given
+   * domain (desregarding whether the domain is split into tiles or not). 
+   * Applicable only to **dense** arrays, and focusing on **row-major** 
+   * cell order.
+   *
+   * @template T The coordinates type.
+   * @param domain The targeted domain.
+   * @param cell_coords The input cell coordinates, which the function modifies
+   *     to store the next coordinates at termination.
+   * @return void
+   */
+  template<class T> 
+  void get_next_cell_coords_row(const T* domain, T* cell_coords) const;
+
+  /**
+   * Retrieves the next tile coordinates along the array tile order within a
+   * given tile domain. Applicable only to **dense** arrays, and focusing on
+   * the **column-major** tile order. 
+   *
+   * @template T The coordinates type.
+   * @param domain The targeted domain.
+   * @param tile_coords The input tile coordinates, which the function modifies
+   *     to store the next tile coordinates at termination.
+   * @return void
+   */
+  template<class T> 
+  void get_next_tile_coords_col(const T* domain, T* tile_coords) const;
+
+  /**
+   * Retrieves the next tile coordinates along the array tile order within a
+   * given tile domain. Applicable only to **dense** arrays, and focusing on
+   * the **row-major** tile order. 
+   *
+   * @template T The coordinates type.
+   * @param domain The targeted domain.
+   * @param tile_coords The input tile coordinates, which the function modifies
+   *     to store the next tile coordinates at termination.
+   * @return void
+   */
+  template<class T> 
+  void get_next_tile_coords_row(const T* domain, T* tile_coords) const;
+
+  /**
+   * Retrieves the previous coordinates along the array cell order within a 
+   * given domain (desregarding whether the domain is split into tiles or not). 
+   * Applicable only to **dense** arrays, and focusing on the **column-major**
+   * cell order. 
+   *
+   * @template T The coordinates type.
+   * @param domain The targeted domain.
+   * @param cell_coords The input cell coordinates, which the function modifies
+   *     to store the previous coordinates at termination.
+   * @return void
+   */
+  template<class T> 
+  void get_previous_cell_coords_col(const T* domain, T* cell_coords) const;
+
+  /**
+   * Retrieves the previous coordinates along the array cell order within a 
+   * given domain (desregarding whether the domain is split into tiles or not). 
+   * Applicable only to **dense** arrays, and focusing on the **row-major**
+   * cell order. 
+   *
+   * @template T The coordinates type.
+   * @param domain The targeted domain.
+   * @param cell_coords The input cell coordinates, which the function modifies
+   *     to store the previous coordinates at termination.
+   * @return void
+   */
+  template<class T> 
+  void get_previous_cell_coords_row(const T* domain, T* cell_coords) const;
+
+  /**
+   * Returns the tile position along the array tile order within the input
+   * domain. Applicable only to **dense** arrays, and focusing on the 
+   * **column-major** tile order.
+   * 
+   * @template T The domain type.
+   * @param The input domain, which is a cell domain partitioned into regular
+   *     tiles in the same manner as that of the array domain (however *domain*
+   *     may be a sub-domain of the array domain).
+   * @param tile_coords The tile coordinates. 
+   * @return The tile position of *tile_coords* along the tile order of the
+   *     array inside the input domain.
+   */
+  template<class T> 
+  int64_t get_tile_pos_col(
+      const T* domain,
+      const T* tile_coords) const;
+
+  /**
+   * Returns the tile position along the array tile order within the input
+   * domain. Applicable only to **dense** arrays, and focusing on the 
+   * **row-major** tile order.
+   * 
+   * @template T The domain type.
+   * @param The input domain, which is a cell domain partitioned into regular
+   *     tiles in the same manner as that of the array domain (however *domain*
+   *     may be a sub-domain of the array domain).
+   * @param tile_coords The tile coordinates. 
+   * @return The tile position of *tile_coords* along the tile order of the
+   *     array inside the input domain.
+   */
+  template<class T> 
+  int64_t get_tile_pos_row(
+      const T* domain,
+      const T* tile_coords) const;
+
+  /** Initializes a Hilbert curve. */
+  void init_hilbert_curve();
 };
 
 #endif

@@ -303,8 +303,8 @@ class WriteState {
   /**
    * Performs the write operation for the case of a dense fragment.
    *
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write().
+   * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense(
@@ -316,8 +316,8 @@ class WriteState {
    * on a single fixed-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write().
+   * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense_attr(
@@ -330,8 +330,8 @@ class WriteState {
    * on a single fixed-sized attribute and the case of no compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write().
+   * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense_attr_cmp_none(
@@ -344,8 +344,8 @@ class WriteState {
    * on a single fixed-sized attribute and the case of GZIP compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write().
+   * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense_attr_cmp_gzip(
@@ -358,8 +358,10 @@ class WriteState {
    * on a single variable-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write() - start offsets in *buffer_var*.
+   * @param buffer_size See write().
+   * @param buffer_var See write() - actual variable-sized values.
+   * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense_attr_var(
@@ -374,8 +376,10 @@ class WriteState {
    * on a single variable-sized attribute and the case of no compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write() - start offsets in *buffer_var*.
+   * @param buffer_size See write().
+   * @param buffer_var See write() - actual variable-sized values.
+   * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense_attr_var_cmp_none(
@@ -390,8 +394,10 @@ class WriteState {
    * on a single variable-sized attribute and the case of GZIP compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write() - start offsets in *buffer_var*.
+   * @param buffer_size See write().
+   * @param buffer_var See write() - actual variable-sized values.
+   * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense_attr_var_cmp_gzip(
@@ -404,8 +410,8 @@ class WriteState {
   /**
    * Performs the write operation for the case of a sparse fragment.
    *
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffers See write().
+   * @param buffer_sizes See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse(
@@ -417,8 +423,8 @@ class WriteState {
    * on a single fixed-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write().
+   * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse_attr(
@@ -431,8 +437,8 @@ class WriteState {
    * on a single fixed-sized attribute and the case of no compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write().
+   * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse_attr_cmp_none(
@@ -445,8 +451,8 @@ class WriteState {
    * on a single fixed-sized attribute and the case of GZIP compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write().
+   * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse_attr_cmp_gzip(
@@ -459,8 +465,10 @@ class WriteState {
    * on a single variable-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write() - start offsets in *buffer_var*.
+   * @param buffer_size See write().
+   * @param buffer_var See write() - actual variable-sized values.
+   * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse_attr_var(
@@ -475,8 +483,10 @@ class WriteState {
    * on a single variable-sized attribute and the case of no compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write() - start offsets in *buffer_var*.
+   * @param buffer_size See write().
+   * @param buffer_var See write() - actual variable-sized values.
+   * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse_attr_var_cmp_none(
@@ -491,8 +501,10 @@ class WriteState {
    * on a single variable-sized attribute and the case of GZIP compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write() - start offsets in *buffer_var*.
+   * @param buffer_size See write().
+   * @param buffer_var See write() - actual variable-sized values.
+   * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse_attr_var_cmp_gzip(
@@ -506,8 +518,8 @@ class WriteState {
    * Performs the write operation for the case of a sparse fragment when the 
    * coordinates are unsorted.
    *
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffers See write().
+   * @param buffer_sizes See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse_unsorted(
@@ -519,8 +531,8 @@ class WriteState {
    * coordinates are unsorted, focusing on a single fixed-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write().
+   * @param buffer_size See write().
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
@@ -536,8 +548,8 @@ class WriteState {
    * the case of no compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write().
+   * @param buffer_size See write().
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
@@ -553,8 +565,8 @@ class WriteState {
    * the case of GZIP compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write().
+   * @param buffer_size See write().
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
@@ -569,8 +581,10 @@ class WriteState {
    * coordinates are unsorted, focusing on a single variable-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write() - start offsets in *buffer_var*.
+   * @param buffer_size See write().
+   * @param buffer_var See write() - actual variable-sized values.
+   * @param buffer_size See write().
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
@@ -588,8 +602,10 @@ class WriteState {
    * the case of no compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write() - start offsets in *buffer_var*.
+   * @param buffer_size See write().
+   * @param buffer_var See write() - actual variable-sized values.
+   * @param buffer_size See write().
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
@@ -607,8 +623,10 @@ class WriteState {
    * the case of GZIP compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffers The same as in write().
-   * @param buffer_sizes The same as in write().
+   * @param buffer See write() - start offsets in *buffer_var*.
+   * @param buffer_size See in write().
+   * @param buffer_var See write() - actual variable-sized values.
+   * @param buffer_size See write().
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */

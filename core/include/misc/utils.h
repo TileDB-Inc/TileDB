@@ -297,6 +297,18 @@ int gunzip(
 template<class T>
 bool has_duplicates(const std::vector<T>& v);
 
+/**
+ * Checks if the input coordinates lie inside the input subarray.
+ *
+ * @template T The coordinates and subarray type.
+ * @param coords The input coordinates.
+ * @param subarray The input subarray.
+ * @param dim_num The number of dimensions of the subarray.
+ * @return *true* if the coordinates lie in the subarray, and *false* otherwise.
+ */
+template<class T>
+bool inside_subarray(const T* coords, const T* subarray, int dim_num);
+
 /** 
  * Checks if the input vectors have common elements. 
  *
