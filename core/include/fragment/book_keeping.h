@@ -82,6 +82,9 @@ class BookKeeping {
   /** Returns the bounding coordinates. */
   const std::vector<void*>& bounding_coords() const; 
 
+  /** Returns the number of cells in the tile at the input position. */
+  int64_t cell_num(int64_t tile_pos) const;
+
   /** Returns the (expanded) domain in which the fragment is constrained. */
   const void* domain() const;
 

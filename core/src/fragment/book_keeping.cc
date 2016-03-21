@@ -100,6 +100,21 @@ const std::vector<void*>& BookKeeping::bounding_coords() const {
   return bounding_coords_;
 }
 
+int64_t BookKeeping::cell_num(int64_t tile_pos) const {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+
+  if(fragment_->dense()) {
+    return array_schema->cell_num_per_tile(); 
+  } else {
+    int64_t tile_num = this->tile_num();
+    if(tile_pos != tile_num-1)
+      return array_schema->capacity();
+    else
+      return last_tile_cell_num();
+  }
+}
+
 const void* BookKeeping::domain() const {
   return domain_;
 }
@@ -118,9 +133,7 @@ const void* BookKeeping::non_empty_domain() const {
 
 int64_t BookKeeping::tile_num() const {
   if(fragment_->dense()) {
-    // For easy reference
     const ArraySchema* array_schema = fragment_->array()->array_schema();
-
     return array_schema->tile_num(domain_);
   } else { 
     return mbrs_.size();

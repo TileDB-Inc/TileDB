@@ -278,9 +278,9 @@ int ArrayReadState::compute_unsorted_fragment_cell_ranges_dense(
 
   // Compute cell ranges for all fragments
   for(int i=0; i<fragment_num_; ++i) {
-    if(fragment_global_tile_coords_[i] != NULL &&
+    if(fragment_tile_coords_[i] != NULL &&
        !memcmp(
-           fragment_global_tile_coords_[i], 
+           fragment_tile_coords_[i], 
            subarray_tile_coords_, 
            coords_size)) { 
       if(fragment_read_states_[i]->dense()) {
@@ -361,7 +361,7 @@ int ArrayReadState::compute_unsorted_fragment_cell_ranges_sparse(
 }
 
 template<class T>
-int ArrayReadState::copy_cell_ranges(
+int ArrayReadState::copy_cells(
     int attribute_id,
     void* buffer,  
     size_t buffer_size,
@@ -388,7 +388,7 @@ int ArrayReadState::copy_cell_ranges(
 
     // Handle empty fragment
     if(fragment_i == -1) {
-      copy_cell_range_with_empty<T>(
+      copy_cells_with_empty<T>(
            attribute_id,
            buffer,
            buffer_size,
@@ -401,7 +401,7 @@ int ArrayReadState::copy_cell_ranges(
     }
 
     // Handle non-empty fragment
-    if(fragment_read_states_[fragment_i]->copy_cell_range<T>(
+    if(fragment_read_states_[fragment_i]->copy_cells(
            attribute_id,
            tile_i,
            buffer,
@@ -430,7 +430,7 @@ int ArrayReadState::copy_cell_ranges(
 }
 
 template<class T>
-int ArrayReadState::copy_cell_ranges_var(
+int ArrayReadState::copy_cells_var(
     int attribute_id,
     void* buffer,  
     size_t buffer_size,
@@ -459,7 +459,7 @@ int ArrayReadState::copy_cell_ranges_var(
 
     // Handle empty fragment
     if(fragment_i == -1) {
-      copy_cell_range_with_empty_var<T>(
+      copy_cells_with_empty_var<T>(
            attribute_id,
            buffer,
            buffer_size,
@@ -475,7 +475,7 @@ int ArrayReadState::copy_cell_ranges_var(
     }
 
     // Handle non-empty fragment
-    if(fragment_read_states_[fragment_i]->copy_cell_range_var<T>(
+    if(fragment_read_states_[fragment_i]->copy_cells_var(
            attribute_id,
            tile_i,
            buffer,
@@ -507,7 +507,7 @@ int ArrayReadState::copy_cell_ranges_var(
 }
 
 template<class T>
-void ArrayReadState::copy_cell_range_with_empty(
+void ArrayReadState::copy_cells_with_empty(
     int attribute_id,
     void* buffer,  
     size_t buffer_size,
@@ -578,7 +578,7 @@ void ArrayReadState::copy_cell_range_with_empty(
 }
 
 template<class T>
-void ArrayReadState::copy_cell_range_with_empty_var(
+void ArrayReadState::copy_cells_with_empty_var(
     int attribute_id,
     void* buffer,  
     size_t buffer_size,
@@ -772,7 +772,7 @@ void ArrayReadState::get_next_overlapping_tiles_dense() {
   // Get the first overlapping tile for each fragment
   if(fragment_cell_pos_ranges_vec_.size() == 0) {
 
-    // Initialize range global tile coordinates
+    // Initialize subarray tile coordinates
     init_subarray_tile_coords<T>();
 
     // Return if there are no more overlapping tiles
@@ -783,7 +783,7 @@ void ArrayReadState::get_next_overlapping_tiles_dense() {
 
     // Get next overlapping tile and calculate its global position for
     // every fragment
-    fragment_global_tile_coords_.resize(fragment_num_);
+    fragment_tile_coords_.resize(fragment_num_);
     for(int i=0; i<fragment_num_; ++i) { 
       if(fragment_read_states_[i]->dense())
         fragment_read_states_[i]->get_next_overlapping_tile_dense<T>(
@@ -791,11 +791,11 @@ void ArrayReadState::get_next_overlapping_tiles_dense() {
       else
         fragment_read_states_[i]->get_next_overlapping_tile_sparse<T>(
             static_cast<const T*>(subarray_tile_coords_));
-      fragment_global_tile_coords_[i] = 
-          fragment_read_states_[i]->get_global_tile_coords();
+      fragment_tile_coords_[i] = 
+          fragment_read_states_[i]->get_tile_coords();
     }
   } else { 
-    // Temporarily store the current subarray global tile coordinates
+    // Temporarily store the current subarray tile coordinates
     assert(subarray_tile_coords_ != NULL);
     T* previous_subarray_tile_coords = new T[dim_num];
     memcpy(
@@ -815,9 +815,9 @@ void ArrayReadState::get_next_overlapping_tiles_dense() {
 
     // Get next overlapping tiles for the processed fragments
     for(int i=0; i<fragment_num_; ++i) {
-      if(fragment_global_tile_coords_[i] != NULL &&
+      if(fragment_tile_coords_[i] != NULL &&
          !memcmp(
-             fragment_global_tile_coords_[i], 
+             fragment_tile_coords_[i], 
              previous_subarray_tile_coords, 
              coords_size)) { 
         if(fragment_read_states_[i]->dense())
@@ -826,8 +826,8 @@ void ArrayReadState::get_next_overlapping_tiles_dense() {
         else
           fragment_read_states_[i]->get_next_overlapping_tile_sparse<T>(
             static_cast<const T*>(subarray_tile_coords_));
-        fragment_global_tile_coords_[i] = 
-            fragment_read_states_[i]->get_global_tile_coords(); 
+        fragment_tile_coords_[i] = 
+            fragment_read_states_[i]->get_tile_coords(); 
       }
     }
 
@@ -853,7 +853,7 @@ void ArrayReadState::get_next_overlapping_tiles_sparse() {
     done_ = true;
     for(int i=0; i<fragment_num_; ++i) { 
       fragment_read_states_[i]->get_next_overlapping_tile_sparse<T>();
-      if(fragment_read_states_[i]->overlaps()) {
+      if(!fragment_read_states_[i]->done()) {
         fragment_bounding_coords_[i] = malloc(2*coords_size);
         fragment_read_states_[i]->get_bounding_coords(
             fragment_bounding_coords_[i]);
@@ -879,7 +879,7 @@ void ArrayReadState::get_next_overlapping_tiles_sparse() {
              min_bounding_coords_end_, 
              coords_size)) { 
         fragment_read_states_[i]->get_next_overlapping_tile_sparse<T>();
-        if(fragment_read_states_[i]->overlaps()) {
+        if(!fragment_read_states_[i]->done()) {
           fragment_read_states_[i]->get_bounding_coords(
               fragment_bounding_coords_[i]);
         } else {
@@ -938,7 +938,7 @@ void ArrayReadState::init_subarray_tile_coords() {
     }
   }
 
-  // Calculate subarray global tile coordinates
+  // Calculate subarray tile coordinates
   if(!overlap) {  // No overlap
     free(subarray_tile_domain_);
     subarray_tile_domain_ = NULL; 
@@ -1056,7 +1056,7 @@ int ArrayReadState::read_dense_attr(
   for(;;) {
     // Continue copying from the previous unfinished read round
     if(!read_round_done_[attribute_id])
-      if(copy_cell_ranges<T>(
+      if(copy_cells<T>(
              attribute_id,
              buffer, 
              buffer_size, 
@@ -1086,7 +1086,7 @@ int ArrayReadState::read_dense_attr(
     }
  
     // Copy cells to buffers
-    if(copy_cell_ranges<T>(
+    if(copy_cells<T>(
            attribute_id, 
            buffer, 
            buffer_size, 
@@ -1147,7 +1147,7 @@ int ArrayReadState::read_dense_attr_var(
   for(;;) {
     // Continue copying from the previous unfinished read round
     if(!read_round_done_[attribute_id])
-      if(copy_cell_ranges_var<T>(
+      if(copy_cells_var<T>(
              attribute_id,
              buffer, 
              buffer_size, 
@@ -1182,7 +1182,7 @@ int ArrayReadState::read_dense_attr_var(
     }
  
     // Copy cells to buffers
-    if(copy_cell_ranges_var<T>(
+    if(copy_cells_var<T>(
              attribute_id,
              buffer, 
              buffer_size, 
@@ -1314,7 +1314,7 @@ int ArrayReadState::read_sparse_attr(
   for(;;) {
     // Continue copying from the previous unfinished read round
     if(!read_round_done_[attribute_id])
-      if(copy_cell_ranges<T>(
+      if(copy_cells<T>(
              attribute_id,
              buffer, 
              buffer_size, 
@@ -1344,7 +1344,7 @@ int ArrayReadState::read_sparse_attr(
     }
 
     // Copy cells to buffers
-    if(copy_cell_ranges<T>(
+    if(copy_cells<T>(
            attribute_id, 
            buffer, 
            buffer_size, 
@@ -1419,7 +1419,7 @@ int ArrayReadState::read_sparse_attr_var(
   for(;;) {
     // Continue copying from the previous unfinished read round
     if(!read_round_done_[attribute_id])
-      if(copy_cell_ranges_var<T>(
+      if(copy_cells_var<T>(
              attribute_id,
              buffer, 
              buffer_size, 
@@ -1454,7 +1454,7 @@ int ArrayReadState::read_sparse_attr_var(
     }
  
     // Copy cells to buffers
-    if(copy_cell_ranges_var<T>(
+    if(copy_cells_var<T>(
              attribute_id,
              buffer, 
              buffer_size, 

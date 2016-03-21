@@ -182,7 +182,7 @@ class ArrayReadState {
    * The global tile coordinates currently overlapping with a tile for all
    * fragments. Applicable only to the **dense** array case.
    */
-  std::vector<const void*> fragment_global_tile_coords_;
+  std::vector<const void*> fragment_tile_coords_;
   /** Number of array fragments. */
   int fragment_num_;
   /** Stores the read state of each fragment. */
@@ -278,7 +278,7 @@ class ArrayReadState {
    * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
    */
   template<class T>
-  int copy_cell_ranges(
+  int copy_cells(
       int attribute_id,
       void* buffer,
       size_t buffer_size,
@@ -302,7 +302,7 @@ class ArrayReadState {
    * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
    */
   template<class T>
-  int copy_cell_ranges_var(
+  int copy_cells_var(
       int attribute_id,
       void* buffer,
       size_t buffer_size,
@@ -324,7 +324,7 @@ class ArrayReadState {
    * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
    */
   template<class T>
-  void copy_cell_range_with_empty(
+  void copy_cells_with_empty(
       int attribute_id,
       void* buffer,
       size_t buffer_size,
@@ -351,7 +351,7 @@ class ArrayReadState {
    * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
    */
   template<class T>
-  void copy_cell_range_with_empty_var(
+  void copy_cells_with_empty_var(
       int attribute_id,
       void* buffer,
       size_t buffer_size,
