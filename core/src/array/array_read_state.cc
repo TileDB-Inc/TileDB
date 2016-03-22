@@ -209,7 +209,7 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
             get_fragment_cell_pos_range_sparse<T>(
                 fragment_cell_ranges[i].first,
                 static_cast<T*>(fragment_cell_ranges[i].second),
-                fragment_cell_pos_range) != TILEDB_FG_OK) {
+                fragment_cell_pos_range) != TILEDB_RS_OK) {
         // Clean up
         for(int j=i; j<fragment_cell_ranges_num; ++j) 
           free(fragment_cell_ranges[j].second);
@@ -343,10 +343,10 @@ int ArrayReadState::compute_unsorted_fragment_cell_ranges_sparse(
              coords_size)) {
         // Get the first coordinates AFTER the min bounding coords end 
         bool coords_retrieved;
-        if(fragment_read_states_[i]->get_first_coords_after<T>(
-               min_bounding_coords_end,              
+        if(fragment_read_states_[i]->get_coords_after<T>(
+               min_bounding_coords_end, 
                fragment_bounding_coords,
-               coords_retrieved) != TILEDB_FG_OK) {  
+               coords_retrieved) != TILEDB_RS_OK) {  
           return TILEDB_ARS_ERR;
         }
 
@@ -407,7 +407,7 @@ int ArrayReadState::copy_cells(
            buffer,
            buffer_size,
            buffer_offset,
-           cell_pos_range) != TILEDB_FG_OK)
+           cell_pos_range) != TILEDB_RS_OK)
        return TILEDB_ARS_ERR;
 
      // Handle overflow
@@ -484,7 +484,7 @@ int ArrayReadState::copy_cells_var(
            buffer_var,
            buffer_var_size,
            buffer_var_offset,
-           cell_pos_range) != TILEDB_FG_OK)
+           cell_pos_range) != TILEDB_RS_OK)
        return TILEDB_ARS_ERR;
 
      // Handle overflow
@@ -1637,7 +1637,7 @@ int ArrayReadState::sort_fragment_cell_ranges(
                left_retrieved,         // Left retrieved 
                right_retrieved,        // Right retrieved 
                target_exists)          // Target exists
-            != TILEDB_FG_OK) {  
+            != TILEDB_RS_OK) {  
           free(left.second);
           free(popped.second);
           rc = TILEDB_ARS_ERR;

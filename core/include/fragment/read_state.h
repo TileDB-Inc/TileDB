@@ -96,14 +96,12 @@ class ReadState {
   /** 
    * Constructor. 
    *
-   * @param fragment The fragment the write state belongs to.
-   * @param book_keeping The book-keeping structures for this fragment.
+   * @param fragment The fragment the read state belongs to.
+   * @param book_keeping The book-keeping of the fragment.
    */
-  // TODO
   ReadState(const Fragment* fragment, BookKeeping* book_keeping);
 
   /** Destructor. */
-  // TODO
   ~ReadState();
 
 
@@ -204,7 +202,38 @@ class ReadState {
       size_t& buffer_var_offset,
       const CellPosRange& cell_pos_range);
 
-  // TODO
+  /** 
+   * Retrieves the coordinates after the input coordinates in the search tile.
+   * 
+   * @template T The coordinates type.
+   * @param coords The target coordinates.
+   * @param coords_after The coordinates to be retrieved.
+   * @param coords_retrieved *true* if *coords_after* are indeed retrieved.
+   * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
+   */
+  template<class T>
+  int get_coords_after(
+      const T* coords,
+      T* coords_after,
+      bool& coords_retrieved);
+
+  /**
+   * Given a target coordinates set, it returns the coordinates preceding and
+   * succeeding it in a designated tile and inside an indicated coordinate
+   * range. 
+   *
+   * @template T The coordinates type.
+   * @param tile_i The targeted tile position. 
+   * @param target_coords The target coordinates.
+   * @param start_coords The starting coordinates of the target cell range.
+   * @param end_coords The ending coordinates of the target cell range.
+   * @param left_coords The returned preceding coordinates.
+   * @param right_coords The returned succeeding coordinates.
+   * @param left_retrieved *true* if the preceding coordinates are retrieved.
+   * @param right_retrieved *true* if the succeeding coordinates are retrieved.
+   * @param target_exists *true* if the target coordinates exist in the tile.
+   * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
+   */
   template<class T>
   int get_enclosing_coords(
       int tile_i,
@@ -217,14 +246,17 @@ class ReadState {
       bool& right_retrieved,
       bool& target_exists);
 
-  // TODO
-  template<class T>
-  int get_first_coords_after(
-      T* start_coords_after,
-      T* first_coords,
-      bool& coords_retrieved);
-
-  // TODO
+  /**
+   * Retrieves the cell position range corresponding to the input cell range,
+   * for the case of **sparse** fragments.
+   *
+   * @template T The coordinates type.
+   * @param fragment_info The (fragment id, tile position) pair corresponding
+   *     to the cell position range to be retrieved.
+   * @param cell_range The targeted cell range.
+   * @param fragment_cell_pos_range The result cell position range.
+   * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
+   */
   template<class T>
   int get_fragment_cell_pos_range_sparse(
       const FragmentInfo& fragment_info,
@@ -255,7 +287,13 @@ class ReadState {
   template<class T>
   void get_next_overlapping_tile_dense(const T* subarray_tile_coords);
 
-  // TODO
+  /**
+   * Gets the next overlapping tile from each fragment. This is applicable
+   * only to **sparse** arrays.
+   *
+   * @template T The coordinates type.
+   * @return void
+   */
   template<class T>
   void get_next_overlapping_tile_sparse();
 
@@ -273,8 +311,10 @@ class ReadState {
 
   /** The book-keeping of the fragment the read state belongs to. */
   BookKeeping* book_keeping_;
-  // TODO
+  /** Indicates if the read operation on this fragment finished. */
   bool done_;
+  /** Keeps track of which tile is in main memory for each attribute. */ 
+  std::vector<int64_t> fetched_tile_;
   /** The fragment the read state belongs to. */
   const Fragment* fragment_;
   /** 
@@ -299,18 +339,32 @@ class ReadState {
   std::vector<size_t> map_addr_var_lengths_;
   /** Indicates buffer overflow for each attribute. */ 
   std::vector<bool> overflow_;
+  /**
+   * The type of overlap of the current search tile with the query subarray
+   * is full or not. It can be one of the following:
+   *    - 0: No overlap
+   *    - 1: The query subarrya fully covers the search tile
+   *    - 2: Partial overlap
+   */
+  int search_tile_overlap_;
+  /** The positions of the currently investigated tile. */
+  int64_t search_tile_pos_;
   /** Internal buffer used in the case of compression. */
   void* tile_compressed_;
   /** Allocated size for internal buffer used in the case of compression. */
   size_t tile_compressed_allocated_size_;
-  /** Local tile buffers (one per attribute). */
+  /** 
+   * Local tile buffers, one per attribute, plus two for coordinates 
+   * (the second one is for searching). 
+   */
   std::vector<void*> tiles_;
-  // TODO
-  std::vector<bool> fetched_tile_;
-  // TODO
-  int64_t search_tile_pos_;
   /** Current offsets in tiles_ (one per attribute). */
   std::vector<size_t> tiles_offsets_;
+  /**
+   * The tile position range the search for overlapping tiles with the 
+   * subarray query will focus on.
+   */
+  int64_t tile_search_range_[2];
   /** Sizes of tiles_ (one per attribute). */
   std::vector<size_t> tiles_sizes_;
   /** Local variable tile buffers (one per attribute). */
@@ -358,6 +412,82 @@ class ReadState {
       size_t buffer_var_free_space,
       size_t& bytes_to_copy,
       size_t& bytes_var_to_copy) const;
+
+  /** 
+   * Computes the ranges of tile positions that need to be searched for finding
+   * overlapping tiles with the query subarray.
+   *
+   * @return void
+   */
+  void compute_tile_search_range();
+
+  /** 
+   * Computes the ranges of tile positions that need to be searched for finding
+   * overlapping tiles with the query subarray.
+   *
+   * @template T The coordinates type.
+   * @return void
+   */
+  template<class T>
+  void compute_tile_search_range();
+
+  /** 
+   * Computes the ranges of tile positions that need to be searched for finding
+   * overlapping tiles with the query subarray. This function focuses on the
+   * case of column- or row-major cell orders.
+   *
+   * @template T The coordinates type.
+   * @return void
+   */
+  template<class T>
+  void compute_tile_search_range_col_or_row();
+
+  /** 
+   * Computes the ranges of tile positions that need to be searched for finding
+   * overlapping tiles with the query subarray. This function focuses on the
+   * case of the Hilbert cell order.
+   *
+   * @template T The coordinates type.
+   * @return void
+   */
+  template<class T>
+  void compute_tile_search_range_hil();
+
+  /** 
+   * Returns the cell position in the search tile that is after the
+   * input coordinates.
+   *
+   * @template T The coordinates type.
+   * @param coords The input coordinates.
+   * @return The cell position in the search tile that is after the
+   *     input coordinates.
+   */
+  template<class T>
+  int64_t get_cell_pos_after(const T* coords) const;
+
+  /** 
+   * Returns the cell position in the search tile that is at or after the
+   * input coordinates.
+   *
+   * @template T The coordinates type.
+   * @param coords The input coordinates.
+   * @return The cell position in the search tile that is at or after the
+   *     input coordinates.
+   */
+  template<class T>
+  int64_t get_cell_pos_at_or_after(const T* coords) const;
+
+  /** 
+   * Returns the cell position in the search tile that is at or before the
+   * input coordinates.
+   *
+   * @template T The coordinates type.
+   * @param coords The input coordinates.
+   * @return The cell position in the search tile that is at or before the
+   *     input coordinates.
+   */
+  template<class T>
+  int64_t get_cell_pos_at_or_before(const T* coords) const;
 
   /**
    * Reads/maps a tile from the disk into a local buffer for an attribute. This
