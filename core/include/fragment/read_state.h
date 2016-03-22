@@ -265,19 +265,46 @@ class ReadState {
       const T* cell_range,
       FragmentCellPosRange& fragment_cell_pos_range);
 
-  // TODO
+  /**
+   * Computes the fragment cell ranges corresponding to the current search
+   * tile. Applicable only to **dense**.
+   *
+   * @template T The coordinates type.
+   * @param fragment_i The fragment id. 
+   * @param fragment_cell_ranges The output fragment cell ranges.
+   * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
+   */
   template<class T>
   int get_fragment_cell_ranges_dense(
       int fragment_i,
       FragmentCellRanges& fragment_cell_ranges); 
 
-  // TODO
+  /**
+   * Computes the fragment cell ranges corresponding to the current search
+   * tile. Applicable only to **sparse** fragments for **dense** arrays.
+   *
+   * @template T The coordinates type.
+   * @param fragment_i The fragment id. 
+   * @param fragment_cell_ranges The output fragment cell ranges.
+   * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
+   */
   template<class T>
   int get_fragment_cell_ranges_sparse(
       int fragment_i,
       FragmentCellRanges& fragment_cell_ranges); 
 
-  // TODO
+  /**
+   * Computes the fragment cell ranges corresponding to the current search
+   * tile, which are contained within the input start and end coordinates.
+   * Applicable only to **sparse** fragments for **sparse** arrays.
+   *
+   * @template T The coordinates type.
+   * @param fragment_i The fragment id. 
+   * @param start_coords The start coordinates of the specified range.
+   * @param end_coords The end coordinates of the specified range.
+   * @param fragment_cell_ranges The output fragment cell ranges.
+   * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
+   */
   template<class T>
   int get_fragment_cell_ranges_sparse(
       int fragment_i,
@@ -285,7 +312,15 @@ class ReadState {
       const T* end_coords,
       FragmentCellRanges& fragment_cell_ranges); 
 
-  // TODO
+  /**
+   * Gets the next overlapping tile from the fragment, which may overlap or not
+   * with the tile specified by the input tile coordinates. This is applicable
+   * only to **dense** fragments.
+   *
+   * @template T The coordinates type.
+   * @param tile_coords The input tile coordinates.
+   * @return void
+   */
   template<class T>
   void get_next_overlapping_tile_dense(const T* tile_coords);
 
