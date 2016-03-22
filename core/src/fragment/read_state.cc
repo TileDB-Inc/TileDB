@@ -94,18 +94,20 @@ ReadState::ReadState(
   // For easy reference 
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
+  size_t coords_size = array_schema->coords_size();
 
   done_ = false;
   fetched_tile_.resize(attribute_num+2);
   overflow_.resize(attribute_num+1);
+  last_tile_coords_ = NULL;
   map_addr_.resize(attribute_num+2);
   map_addr_lengths_.resize(attribute_num+2);
   map_addr_compressed_ = NULL;
   map_addr_compressed_length_ = 0;
   map_addr_var_.resize(attribute_num);
   map_addr_var_lengths_.resize(attribute_num);
+  search_tile_overlap_subarray_ = malloc(2*coords_size);
   search_tile_pos_ = -1;
-  tile_coords_ = NULL;
   tile_compressed_ = NULL;
   tile_compressed_allocated_size_ = 0;
   tiles_.resize(attribute_num+2);
@@ -141,8 +143,8 @@ ReadState::ReadState(
 }
 
 ReadState::~ReadState() { 
-  if(tile_coords_ != NULL)
-    free(tile_coords_);
+  if(last_tile_coords_ != NULL)
+    free(last_tile_coords_);
 
   for(int i=0; i<int(tiles_.size()); ++i) {
     if(map_addr_[i] == NULL && tiles_[i] != NULL)
@@ -171,6 +173,9 @@ ReadState::~ReadState() {
   if(map_addr_compressed_ != NULL &&  
      munmap(map_addr_compressed_, map_addr_compressed_length_))
     PRINT_WARNING("Problem in finalizing ReadState; Memory unmap error");
+
+  if(search_tile_overlap_subarray_ != NULL)
+    free(search_tile_overlap_subarray_);
 }
 
 
@@ -198,8 +203,8 @@ void ReadState::get_bounding_coords(void* bounding_coords) const {
   memcpy(bounding_coords, book_keeping_->bounding_coords()[pos], 2*coords_size);
 }
 
-const void* ReadState::get_tile_coords() const {
-  return tile_coords_;
+bool ReadState::mbr_overlaps_tile() const {
+  return mbr_tile_overlap_;
 }
 
 bool ReadState::overflow(int attribute_id) const {
@@ -575,13 +580,46 @@ int ReadState::get_fragment_cell_ranges_dense(
     int fragment_i,
     FragmentCellRanges& fragment_cell_ranges) {
   // TODO
+
+  // TODO: if done, return
+  // TODO: if no overlap, return
 }
 
 template<class T>
 int ReadState::get_fragment_cell_ranges_sparse(
     int fragment_i,
     FragmentCellRanges& fragment_cell_ranges) {
-  // TODO
+  // Trivial cases
+  if(done_ || !search_tile_overlap_ || !mbr_tile_overlap_)
+    return TILEDB_RS_OK;
+
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  const T* search_tile_overlap_subarray = 
+      static_cast<const T*>(search_tile_overlap_subarray_);
+
+  // Create start and end coordinates for the overlap
+  T* start_coords = new T[dim_num];
+  T* end_coords = new T[dim_num];
+  for(int i=0; i<dim_num; ++i) {
+    start_coords[i] = search_tile_overlap_subarray[2*i];
+    end_coords[i] = search_tile_overlap_subarray[2*i+1];
+  }
+  
+  // Get fragment cell ranges inside range [start_coords, end_coords]
+  int rc = get_fragment_cell_ranges_sparse(
+               fragment_i,
+               start_coords,
+               end_coords,
+               fragment_cell_ranges); 
+
+  // Clean up
+  delete [] start_coords;
+  delete [] end_coords;
+
+  // Return
+  return rc;
 }
 
 template<class T>
@@ -611,6 +649,7 @@ int ReadState::get_fragment_cell_ranges_sparse(
     memcpy(cell_range, start_coords, coords_size);
     memcpy(&cell_range[dim_num], end_coords, coords_size);
     fragment_cell_ranges.push_back(fragment_cell_range); 
+    return TILEDB_RS_OK;
   }
 
   // Fetch the coordinates search tile from disk if necessary
@@ -674,7 +713,7 @@ int ReadState::get_fragment_cell_ranges_sparse(
 
 template<class T> 
 void ReadState::get_next_overlapping_tile_dense(
-    const T* subarray_tile_coords) {
+    const T* tile_coords) {
 /*
 
 
@@ -768,14 +807,14 @@ void ReadState::get_next_overlapping_tile_sparse() {
   const std::vector<void*>& mbrs = book_keeping_->mbrs();
   const T* subarray = static_cast<const T*>(fragment_->array()->subarray());
 
-  // Find the position to the next overlapping tile with the query range
-  do {
-    // Update the search tile position
-    if(search_tile_pos_ == -1)                   // First time
-      search_tile_pos_ = tile_search_range_[0];
-    else                                         // Subsequent times
-      ++search_tile_pos_;
+  // Update the search tile position
+  if(search_tile_pos_ == -1)
+     search_tile_pos_ = tile_search_range_[0];
+  else
+    ++search_tile_pos_;
 
+  // Find the position to the next overlapping tile with the query range
+  for(;;) {
     // No overlap - exit
     if(search_tile_pos_ > tile_search_range_[1]) {
       done_ = true;
@@ -783,15 +822,127 @@ void ReadState::get_next_overlapping_tile_sparse() {
     }
 
     const T* mbr = static_cast<const T*>(mbrs[search_tile_pos_]);
-    search_tile_overlap_ = subarray_overlap(subarray, mbr, dim_num);
-  } while(!search_tile_overlap_);
-}
+    search_tile_overlap_ = 
+        array_schema->subarray_overlap(
+            subarray,
+            mbr, 
+            static_cast<T*>(search_tile_overlap_subarray_));
 
+  if(!search_tile_overlap_)
+    ++search_tile_pos_;
+  else
+    return;
+  }
+}
 
 template<class T> 
 void ReadState::get_next_overlapping_tile_sparse(
-    const T* subarray_tile_coords) {
-  // TODO
+    const T* tile_coords) {
+  // Trivial case
+  if(done_)
+    return;
+
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  size_t coords_size = array_schema->coords_size();
+  const std::vector<void*>& mbrs = book_keeping_->mbrs();
+  const T* subarray = static_cast<const T*>(fragment_->array()->subarray());
+
+  // Compute the tile subarray
+  T* tile_subarray = new T[2*dim_num];
+  T* mbr_tile_overlap_subarray = new T[2*dim_num];
+  T* tile_subarray_end = new T[dim_num];
+  array_schema->get_tile_subarray(tile_coords, tile_subarray); 
+  for(int i=0; i<dim_num; ++i)
+    tile_subarray_end[i] = tile_subarray[2*i+1];
+
+  // Update the search tile position
+  if(search_tile_pos_ == -1)
+     search_tile_pos_ = tile_search_range_[0];
+ 
+  // Reset overlaps
+  search_tile_overlap_ = 0;
+  mbr_tile_overlap_ = 0;
+
+  // Check against last coordinates
+  if(last_tile_coords_ == NULL) {
+    last_tile_coords_ = malloc(coords_size);
+    memcpy(last_tile_coords_, tile_coords, coords_size); 
+  } else {
+    if(!memcmp(last_tile_coords_, tile_coords, coords_size)) {
+      // Advance only if the MBR does not exceed the tile
+      const T* bounding_coords = 
+          static_cast<const T*>(
+              book_keeping_->bounding_coords()[search_tile_pos_]);
+      if(array_schema->tile_cell_order_cmp(
+             &bounding_coords[dim_num], 
+             tile_subarray_end) <= 0) {
+        ++search_tile_pos_;
+      } else {
+        return;
+      }
+    } else { 
+      memcpy(last_tile_coords_, tile_coords, coords_size);
+    }
+  }
+
+  // Find the position to the next overlapping tile with the input tile
+  for(;;) {
+    // No overlap - exit
+    if(search_tile_pos_ > tile_search_range_[1]) {
+      done_ = true;
+      break;
+    }
+
+    // Get overlap between MBR and tile subarray
+    const T* mbr = static_cast<const T*>(mbrs[search_tile_pos_]);
+    mbr_tile_overlap_ = 
+        array_schema->subarray_overlap(
+            tile_subarray,
+            mbr, 
+            mbr_tile_overlap_subarray);
+
+    // No overlap with the tile
+    if(!mbr_tile_overlap_) {
+      // Check if we need to break or continue
+      const T* bounding_coords = 
+          static_cast<const T*>(
+              book_keeping_->bounding_coords()[search_tile_pos_]);
+      if(array_schema->tile_cell_order_cmp(
+             &bounding_coords[dim_num], 
+             tile_subarray_end) > 0) {
+        break;
+      } else {
+        ++search_tile_pos_;
+        continue;
+      }
+    }
+  
+    // Get overlap of MBR with the query inside the tile subarray
+    search_tile_overlap_ = 
+        array_schema->subarray_overlap(
+            subarray,
+            mbr_tile_overlap_subarray, 
+            static_cast<T*>(search_tile_overlap_subarray_));
+
+    // Update the search tile overlap if necessary
+    if(search_tile_overlap_) {
+      // The overlap is full only when both the MBR-tile and MBR-tile-subarray
+      // overlaps are full 
+      search_tile_overlap_ = (mbr_tile_overlap_ == 1 && 
+                              search_tile_overlap_ == 1) ? 1 : 2;
+    }
+
+    // The MBR overlaps with the tile. Regardless of overlap with the
+    // query in the tile, break.
+    break;
+  }
+
+  // Clean up
+  delete [] tile_subarray;
+  delete [] tile_subarray_end;
+  delete [] mbr_tile_overlap_subarray;
 }
 
 
@@ -2100,14 +2251,14 @@ template int ReadState::get_fragment_cell_ranges_dense<int64_t>(
     FragmentCellRanges& fragment_cell_ranges);
 
 template void ReadState::get_next_overlapping_tile_dense<int>(
-    const int* subarray_tile_coords);
+    const int* tile_coords);
 template void ReadState::get_next_overlapping_tile_dense<int64_t>(
-    const int64_t* subarray_tile_coords);
+    const int64_t* tile_coords);
 
 template void ReadState::get_next_overlapping_tile_sparse<int>(
-    const int* subarray_tile_coords);
+    const int* tile_coords);
 template void ReadState::get_next_overlapping_tile_sparse<int64_t>(
-    const int64_t* subarray_tile_coords);
+    const int64_t* tile_coords);
 
 template void ReadState::get_next_overlapping_tile_sparse<int>();
 template void ReadState::get_next_overlapping_tile_sparse<int64_t>();

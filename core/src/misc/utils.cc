@@ -769,42 +769,6 @@ bool starts_with(const std::string& value, const std::string& prefix) {
   return std::equal(prefix.begin(), prefix.end(), value.begin());
 }
 
-template<class T>
-int subarray_overlap(const T* subarray_a, const T* subarray_b, int dim_num) {
-  // Get overlap range
-  T overlap_subarray[2*dim_num];
-  for(int i=0; i<dim_num; ++i) {
-    overlap_subarray[2*i] = 
-        std::max(subarray_a[2*i], subarray_b[2*i]);
-    overlap_subarray[2*i+1] = 
-        std::min(subarray_a[2*i+1], subarray_b[2*i+1]);
-  }
-
-  // Check overlap
-  int overlap = 1;
-  for(int i=0; i<dim_num; ++i) {
-    if(overlap_subarray[2*i] > subarray_b[2*i+1] ||
-       overlap_subarray[2*i+1] < subarray_b[2*i]) {
-      overlap = 0;
-      break;
-    }
-  }
-
-  // Check partial overlap
-  if(overlap == 1) {
-    for(int i=0; i<dim_num; ++i) {
-      if(overlap_subarray[2*i] != subarray_b[2*i] ||
-         overlap_subarray[2*i+1] != subarray_b[2*i+1]) {
-        overlap = 2;
-        break;
-      }
-    }
-  }
-
-  // Return
-  return overlap;
-}
-
 int write_to_file(
     const char* filename,
     const void* buffer,
@@ -1035,19 +999,3 @@ template bool is_unary_subarray<int64_t>(const int64_t* subarray, int dim_num);
 template bool is_unary_subarray<float>(const float* subarray, int dim_num);
 template bool is_unary_subarray<double>(const double* subarray, int dim_num);
 
-template int subarray_overlap<int>(
-    const int* subarray_a, 
-    const int* subarray_b, 
-    int dim_num);
-template int subarray_overlap<int64_t>(
-    const int64_t* subarray_a, 
-    const int64_t* subarray_b, 
-    int dim_num);
-template int subarray_overlap<float>(
-    const float* subarray_a, 
-    const float* subarray_b, 
-    int dim_num);
-template int subarray_overlap<double>(
-    const double* subarray_a, 
-    const double* subarray_b, 
-    int dim_num);

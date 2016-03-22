@@ -278,23 +278,38 @@ int ArrayReadState::compute_unsorted_fragment_cell_ranges_dense(
 
   // Compute cell ranges for all fragments
   for(int i=0; i<fragment_num_; ++i) {
-    if(fragment_tile_coords_[i] != NULL &&
-       !memcmp(
-           fragment_tile_coords_[i], 
-           subarray_tile_coords_, 
-           coords_size)) { 
-      if(fragment_read_states_[i]->dense()) {
+    if(!fragment_read_states_[i]->done()) {
+      if(fragment_read_states_[i]->dense()) {     // DENSE
+        // Get fragment cell ranges
         FragmentCellRanges fragment_cell_ranges;
         if(fragment_read_states_[i]->get_fragment_cell_ranges_dense<T>(
             i,
             fragment_cell_ranges) != TILEDB_RS_OK)
           return TILEDB_ARS_ERR;
-      } else {
+        // Insert fragment cell ranges to the result
+        unsorted_fragment_cell_ranges.insert(
+            unsorted_fragment_cell_ranges.end(),
+            fragment_cell_ranges.begin(),
+            fragment_cell_ranges.end());
+      } else {                                    // SPARSE
         FragmentCellRanges fragment_cell_ranges;
-        if(fragment_read_states_[i]->get_fragment_cell_ranges_sparse<T>(
-            i,
-            fragment_cell_ranges) != TILEDB_RS_OK)
-          return TILEDB_ARS_ERR;
+        do {
+          // Get next overlapping tiles
+          fragment_read_states_[i]->get_next_overlapping_tile_sparse<T>(
+              static_cast<const T*>(subarray_tile_coords_));
+          // Get fragment cell ranges
+          fragment_cell_ranges.clear();
+          if(fragment_read_states_[i]->get_fragment_cell_ranges_sparse<T>(
+             i,
+             fragment_cell_ranges) != TILEDB_RS_OK)
+            return TILEDB_ARS_ERR;
+          // Insert fragment cell ranges to the result
+          unsorted_fragment_cell_ranges.insert(
+              unsorted_fragment_cell_ranges.end(),
+              fragment_cell_ranges.begin(),
+              fragment_cell_ranges.end()); 
+        } while(!fragment_read_states_[i]->done() &&
+                fragment_read_states_[i]->mbr_overlaps_tile());
       }
     }
   }
@@ -781,18 +796,12 @@ void ArrayReadState::get_next_overlapping_tiles_dense() {
       return;
     }
 
-    // Get next overlapping tile and calculate its global position for
-    // every fragment
-    fragment_tile_coords_.resize(fragment_num_);
+    // Get next overlapping tile
     for(int i=0; i<fragment_num_; ++i) { 
       if(fragment_read_states_[i]->dense())
         fragment_read_states_[i]->get_next_overlapping_tile_dense<T>(
             static_cast<const T*>(subarray_tile_coords_));
-      else
-        fragment_read_states_[i]->get_next_overlapping_tile_sparse<T>(
-            static_cast<const T*>(subarray_tile_coords_));
-      fragment_tile_coords_[i] = 
-          fragment_read_states_[i]->get_tile_coords();
+      // else, it is handled in compute_unsorted_fragment_cell_ranges
     }
   } else { 
     // Temporarily store the current subarray tile coordinates
@@ -815,19 +824,11 @@ void ArrayReadState::get_next_overlapping_tiles_dense() {
 
     // Get next overlapping tiles for the processed fragments
     for(int i=0; i<fragment_num_; ++i) {
-      if(fragment_tile_coords_[i] != NULL &&
-         !memcmp(
-             fragment_tile_coords_[i], 
-             previous_subarray_tile_coords, 
-             coords_size)) { 
+      if(!fragment_read_states_[i]->done()) {
         if(fragment_read_states_[i]->dense())
           fragment_read_states_[i]->get_next_overlapping_tile_dense<T>(
             static_cast<const T*>(subarray_tile_coords_));
-        else
-          fragment_read_states_[i]->get_next_overlapping_tile_sparse<T>(
-            static_cast<const T*>(subarray_tile_coords_));
-        fragment_tile_coords_[i] = 
-            fragment_read_states_[i]->get_tile_coords(); 
+        // else, it is handled in compute_unsorted_fragment_cell_ranges
       }
     }
 
@@ -900,32 +901,20 @@ void ArrayReadState::init_subarray_tile_coords() {
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
   const T* subarray = static_cast<const T*>(array_->subarray());
 
-  // Sanity check
+  // Sanity checks
   assert(tile_extents != NULL);
-
-  // Compute tile domain
-  T* tile_domain = new T[2*dim_num];
-  T tile_num; // Per dimension
-  for(int i=0; i<dim_num; ++i) {
-    tile_num = ceil(double(domain[2*i+1] - domain[2*i] + 1) / tile_extents[i]);
-    tile_domain[2*i] = 0;
-    tile_domain[2*i+1] = tile_num - 1;
-  }
-
-  // Allocate space for the range in tile domain
   assert(subarray_tile_domain_ == NULL);
+
+  // Allocate space for tile domain and subarray tile domain
+  T* tile_domain = new T[2*dim_num];
   subarray_tile_domain_ = malloc(2*dim_num*sizeof(T));
   T* subarray_tile_domain = static_cast<T*>(subarray_tile_domain_);
 
-  // Calculate subarray in tile domain
-  for(int i=0; i<dim_num; ++i) {
-    subarray_tile_domain[2*i] = 
-        std::max((subarray[2*i] - domain[2*i]) / tile_extents[i],
-            tile_domain[2*i]); 
-    subarray_tile_domain[2*i+1] = 
-        std::min((subarray[2*i+1] - domain[2*i]) / tile_extents[i],
-            tile_domain[2*i+1]); 
-  }
+  // Get subarray in tile domain
+  array_schema->get_subarray_tile_domain<T>(
+      subarray, 
+      tile_domain,
+      subarray_tile_domain);
 
   // Check if there is any overlap between the subarray tile domain and the
   // array tile domain
@@ -942,6 +931,7 @@ void ArrayReadState::init_subarray_tile_coords() {
   if(!overlap) {  // No overlap
     free(subarray_tile_domain_);
     subarray_tile_domain_ = NULL; 
+    assert(subarray_tile_coords_ == NULL); 
   } else {        // Overlap
     subarray_tile_coords_ = malloc(coords_size);
     T* subarray_tile_coords = static_cast<T*>(subarray_tile_coords_);

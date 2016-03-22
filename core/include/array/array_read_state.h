@@ -178,11 +178,6 @@ class ArrayReadState {
   FragmentCellPosRangesVec fragment_cell_pos_ranges_vec_;
   /** Practically records which read round each attribute is on. */
   std::vector<int64_t> fragment_cell_pos_ranges_vec_pos_;
-  /** 
-   * The global tile coordinates currently overlapping with a tile for all
-   * fragments. Applicable only to the **dense** array case.
-   */
-  std::vector<const void*> fragment_tile_coords_;
   /** Number of array fragments. */
   int fragment_num_;
   /** Stores the read state of each fragment. */

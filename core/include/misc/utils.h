@@ -452,21 +452,6 @@ std::string real_dir(const std::string& dir);
  */
 bool starts_with(const std::string& value, const std::string& prefix);
 
-/**
- * Returns the type of overlap of the input subarrays.
- *
- * @template T The types of the subarrays.
- * @param subarray_a The first input subarray.
- * @param subarray_b The second input subarray.
- * @param dim_num The number of dimensions of the subarrays.
- * @return The type of overlap, which can be one of the following:
- *    - 0: No overlap
- *    - 1: *subarray_a* fully covers *subarray_b*
- *    - 2: Partial overlap
- */
-template<class T>
-int subarray_overlap(const T* subarray_a, const T* subarray_b, int dim_num);
-
 /** 
  * Write the input buffer to a file.
  * 

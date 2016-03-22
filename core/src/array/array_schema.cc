@@ -593,6 +593,67 @@ int ArraySchema::serialize(
   return TILEDB_AS_OK;
 }
 
+template<class T>
+int ArraySchema::subarray_overlap(
+    const T* subarray_a, 
+    const T* subarray_b, 
+    T* overlap_subarray) const {
+  // Get overlap range
+  for(int i=0; i<dim_num_; ++i) {
+    overlap_subarray[2*i] = 
+        std::max(subarray_a[2*i], subarray_b[2*i]);
+    overlap_subarray[2*i+1] = 
+        std::min(subarray_a[2*i+1], subarray_b[2*i+1]);
+  }
+
+  // Check overlap
+  int overlap = 1;
+  for(int i=0; i<dim_num_; ++i) {
+    if(overlap_subarray[2*i] > subarray_b[2*i+1] ||
+       overlap_subarray[2*i+1] < subarray_b[2*i]) {
+      overlap = 0;
+      break;
+    }
+  }
+
+  // Check partial overlap
+  if(overlap == 1) {
+    for(int i=0; i<dim_num_; ++i) {
+      if(overlap_subarray[2*i] != subarray_b[2*i] ||
+         overlap_subarray[2*i+1] != subarray_b[2*i+1]) {
+        overlap = 2;
+        break;
+      }
+    }
+  }
+
+  // Check contig overlap (not applicable to Hilbert order)
+  if(overlap == 2 && cell_order_ != TILEDB_HILBERT) {
+    overlap = 3;
+    if(cell_order_ == TILEDB_ROW_MAJOR) {           // Row major
+      for(int i=1; i<dim_num_; ++i) {
+        if(overlap_subarray[2*i] != subarray_b[2*i] ||
+           overlap_subarray[2*i+1] != subarray_b[2*i+1]) {
+          overlap = 2;
+          break;
+        }
+      }
+    } else if(cell_order_ == TILEDB_COL_MAJOR) {    // Column major
+      for(int i=dim_num_-2; i>=0; --i) {
+        if(overlap_subarray[2*i] != subarray_b[2*i] ||
+           overlap_subarray[2*i+1] != subarray_b[2*i+1]) {
+          overlap = 2;
+          break;
+        }
+      }
+    }
+  } 
+
+  // Return
+  return overlap;
+}
+
+
 const void* ArraySchema::tile_domain() const {
   return tile_domain_;
 }
@@ -1416,6 +1477,34 @@ void ArraySchema::get_previous_cell_coords(
 }
 
 template<class T>
+void ArraySchema::get_subarray_tile_domain(
+    const T* subarray,
+    T* tile_domain,
+    T* subarray_tile_domain) const {
+  // For easy reference
+  const T* domain = static_cast<const T*>(domain_);
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  // Get tile domain
+  T tile_num; // Per dimension
+  for(int i=0; i<dim_num_; ++i) {
+    tile_num = ceil(double(domain[2*i+1] - domain[2*i] + 1) / tile_extents[i]);
+    tile_domain[2*i] = 0;
+    tile_domain[2*i+1] = tile_num - 1;
+  }
+
+  // Calculate subarray in tile domain
+  for(int i=0; i<dim_num_; ++i) {
+    subarray_tile_domain[2*i] = 
+        std::max((subarray[2*i] - domain[2*i]) / tile_extents[i],
+            tile_domain[2*i]); 
+    subarray_tile_domain[2*i+1] = 
+        std::min((subarray[2*i+1] - domain[2*i]) / tile_extents[i],
+            tile_domain[2*i+1]); 
+  }
+}
+
+template<class T>
 int64_t ArraySchema::get_tile_pos(
     const T* domain,
     const T* tile_coords) const {
@@ -1429,6 +1518,21 @@ int64_t ArraySchema::get_tile_pos(
     get_tile_pos_col(domain, tile_coords);
   else  // Sanity check
     assert(0);
+}
+
+template<class T>
+void ArraySchema::get_tile_subarray(
+    const T* tile_coords,
+    T* tile_subarray) const {
+  // For easy reference
+  const T* domain = static_cast<const T*>(domain_);
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  for(int i=0; i<dim_num_; ++i) {
+    tile_subarray[2*i] = tile_coords[i] * tile_extents[i] + domain[2*i];
+    tile_subarray[2*i+1] = 
+        (tile_coords[i] + 1) * tile_extents[i] - 1 + domain[2*i];
+  }
 }
 
 template<typename T>
@@ -1978,6 +2082,15 @@ template void ArraySchema::get_previous_cell_coords<double>(
     const double* domain,
     double* cell_coords) const;
 
+template void ArraySchema::get_subarray_tile_domain<int>(
+    const int* subarray,
+    int* tile_domain,
+    int* subarray_tile_domain) const;
+template void ArraySchema::get_subarray_tile_domain<int64_t>(
+    const int64_t* subarray,
+    int64_t* tile_domain,
+    int64_t* subarray_tile_domain) const;
+
 template int64_t ArraySchema::get_tile_pos<int>(
     const int* domain,
     const int* tile_coords) const;
@@ -1991,6 +2104,13 @@ template int64_t ArraySchema::get_tile_pos<double>(
     const double* domain,
     const double* tile_coords) const;
 
+template void ArraySchema::get_tile_subarray<int>(
+    const int* tile_coords,
+    int* tile_subarray) const;
+template void ArraySchema::get_tile_subarray<int64_t>(
+    const int64_t* tile_coords,
+    int64_t* tile_subarray) const;
+
 template int64_t ArraySchema::hilbert_id<int>(
     const int* coords) const;
 template int64_t ArraySchema::hilbert_id<int64_t>(
@@ -1999,6 +2119,23 @@ template int64_t ArraySchema::hilbert_id<float>(
     const float* coords) const;
 template int64_t ArraySchema::hilbert_id<double>(
     const double* coords) const;
+
+template int ArraySchema::subarray_overlap<int>(
+    const int* subarray_a, 
+    const int* subarray_b, 
+    int* overlap_subarray) const;
+template int ArraySchema::subarray_overlap<int64_t>(
+    const int64_t* subarray_a, 
+    const int64_t* subarray_b, 
+    int64_t* overlap_subarray) const;
+template int ArraySchema::subarray_overlap<float>(
+    const float* subarray_a, 
+    const float* subarray_b, 
+    float* overlap_subarray) const;
+template int ArraySchema::subarray_overlap<double>(
+    const double* subarray_a, 
+    const double* subarray_b, 
+    double* overlap_subarray) const;
 
 template int ArraySchema::tile_cell_order_cmp<int>(
     const int* coords_a, 

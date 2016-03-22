@@ -124,10 +124,12 @@ class ReadState {
   void get_bounding_coords(void* bounding_coords) const;
 
   /** 
-   * Returns the current tile coordinates of the current search tile
-   * qualifying the query subarray.
+   * Returns *true* if the MBR of the search tile overlaps with the current
+   * tile under investigation. Applicable only to **sparse** fragments in
+   * **dense** arrays. NOTE: if the MBR of the search tile has not not changed
+   * and the function is invoked again, it will return *false*. 
    */
-  const void* get_tile_coords() const;
+  bool mbr_overlaps_tile() const;
 
   /** Returns *true* if the read buffers overflowed for the input attribute. */
   bool overflow(int attribute_id) const;
@@ -285,10 +287,10 @@ class ReadState {
 
   // TODO
   template<class T>
-  void get_next_overlapping_tile_dense(const T* subarray_tile_coords);
+  void get_next_overlapping_tile_dense(const T* tile_coords);
 
   /**
-   * Gets the next overlapping tile from each fragment. This is applicable
+   * Gets the next overlapping tile from the fragment. This is applicable
    * only to **sparse** arrays.
    *
    * @template T The coordinates type.
@@ -297,9 +299,17 @@ class ReadState {
   template<class T>
   void get_next_overlapping_tile_sparse();
 
-  // TODO
+  /**
+   * Gets the next overlapping tile from the fragment, such that it overlaps or
+   * succeeds the tile with the input tile coordinates. This is applicable
+   * only to **sparse** fragments for **dense** arrays.
+   *
+   * @template T The coordinates type.
+   * @param tile_coords The input tile coordinates.
+   * @return void
+   */
   template<class T>
-  void get_next_overlapping_tile_sparse(const T* subarray_tile_coords);
+  void get_next_overlapping_tile_sparse(const T* tile_coords);
 
 
 
@@ -318,10 +328,10 @@ class ReadState {
   /** The fragment the read state belongs to. */
   const Fragment* fragment_;
   /** 
-   * The tile coordinates of the currently investigated tile. Applicable
-   * only to **dense** fragments.
+   * Last investigated tile coordinates. Applicable only to **sparse** fragments
+   * for **dense** arrays.
    */
-  void* tile_coords_;
+  void* last_tile_coords_;
   /** A buffer for each attribute used by mmap for mapping a tile from disk. */
   std::vector<void*> map_addr_;
   /** The corresponding lengths of the buffers in map_addr_. */
@@ -337,16 +347,29 @@ class ReadState {
   std::vector<void*> map_addr_var_;
   /** The corresponding lengths of the buffers in map_addr_var_. */
   std::vector<size_t> map_addr_var_lengths_;
+  /** 
+   * The overlap between an MBR and the current tile under investigation
+   * in the case of **sparse** fragments in **dense** arrays. The overlap
+   * can be one of the following:
+   *    - 0: No overlap
+   *    - 1: The query subarray fully covers the search tile
+   *    - 2: Partial overlap
+   *    - 3: Partial overlap contig
+   */
+  int mbr_tile_overlap_;
   /** Indicates buffer overflow for each attribute. */ 
   std::vector<bool> overflow_;
   /**
    * The type of overlap of the current search tile with the query subarray
    * is full or not. It can be one of the following:
    *    - 0: No overlap
-   *    - 1: The query subarrya fully covers the search tile
+   *    - 1: The query subarray fully covers the search tile
    *    - 2: Partial overlap
+   *    - 3: Partial overlap contig
    */
   int search_tile_overlap_;
+  /** The overlap between the current search tile and the query subarray. */
+  void* search_tile_overlap_subarray_;
   /** The positions of the currently investigated tile. */
   int64_t search_tile_pos_;
   /** Internal buffer used in the case of compression. */

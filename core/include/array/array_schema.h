@@ -172,6 +172,26 @@ class ArraySchema {
    */
   int serialize(void*& array_schema_bin, size_t& array_schema_bin_size) const;
 
+  /**
+   * Returns the type of overlap of the input subarrays.
+   *
+   * @template T The types of the subarrays.
+   * @param subarray_a The first input subarray.
+   * @param subarray_b The second input subarray.
+   * @param overlap_subarray The overlap area between *subarray_a* and
+   *     *subarray_b*.
+   * @return The type of overlap, which can be one of the following:
+   *    - 0: No overlap
+   *    - 1: *subarray_a* fully covers *subarray_b*
+   *    - 2: Partial overlap (non-contig)
+   *    - 3: Partial overlap (contig)
+   */
+  template<class T>
+  int subarray_overlap(
+      const T* subarray_a, 
+      const T* subarray_b, 
+      T* overlap_subarray) const;
+
   /** Returns the tile domain. */
   const void* tile_domain() const;
 
@@ -465,6 +485,23 @@ class ArraySchema {
   void get_previous_cell_coords(const T* domain, T* cell_coords) const;
 
   /**
+   * Gets a subarray of tile coordinates for the input (cell) subarray
+   * over the input array domain. Retrieves also the tile domain of
+   * the array..
+   *
+   * @template T The domain type.
+   * @param subarray The input (cell) subarray.
+   * @param tile_domain The array tile domain to be retrieved. 
+   * @param subarray_in_tile_domain The output (tile) subarray.
+   * @return void
+   */
+  template<class T>
+  void get_subarray_tile_domain(
+      const T* subarray,
+      T* tile_domain,
+      T* subarray_in_tile_domain) const;
+
+  /**
    * Returns the tile position along the array tile order within the input
    * domain. Applicable only to **dense** arrays.
    * 
@@ -480,6 +517,17 @@ class ArraySchema {
   int64_t get_tile_pos(
       const T* domain,
       const T* tile_coords) const;
+
+  /**
+   * Gets the tile subarray for the input tile coordinates.
+   * 
+   * @template T The coordinates type.
+   * @param tile_coords The input tile coordinates.
+   * @param tile_subarray The output tile subarray.
+   * @return void.
+   */
+  template<class T>
+  void get_tile_subarray(const T* tile_coords, T* tile_subarray) const;
 
   /** 
    * Returns the Hilbert id of the input coordinates. 
