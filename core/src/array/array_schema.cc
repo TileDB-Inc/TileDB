@@ -1509,7 +1509,7 @@ int64_t ArraySchema::get_tile_pos(
     const T* domain,
     const T* tile_coords) const {
   // Sanity check
-  assert(dense_);
+  assert(tile_extents_);
 
   // Invoke the proper function based on the tile order
   if(tile_order_ == TILEDB_ROW_MAJOR)

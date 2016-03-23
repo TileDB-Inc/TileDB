@@ -164,9 +164,9 @@ ReadState::~ReadState() {
       PRINT_WARNING("Problem in finalizing ReadState; Memory unmap error");
   }
 
-  for(int i=0; i<int(map_addr_.size()); ++i) {
+  for(int i=0; i<int(map_addr_var_.size()); ++i) {
     if(map_addr_var_[i] != NULL && 
-       munmap(map_addr_var_[i], map_addr_var_lengths_[i]))
+       munmap(map_addr_var_[i], map_addr_var_lengths_[i])) 
       PRINT_WARNING("Problem in finalizing ReadState; Memory unmap error");
   }
 
@@ -1121,6 +1121,7 @@ void ReadState::compute_tile_search_range() {
   if(tile_search_range_[0] == -1 ||
      tile_search_range_[1] == -1) 
     done_ = true; 
+  
 }
 
 template<class T>
@@ -1133,12 +1134,12 @@ void ReadState::compute_tile_search_range_col_or_row() {
   const std::vector<void*>& bounding_coords = 
       book_keeping_->bounding_coords();
 
-  // Calculate range coordinates
+  // Calculate subarray coordinates
   T* subarray_min_coords = new T[dim_num];
   T* subarray_max_coords = new T[dim_num];
   for(int i=0; i<dim_num; ++i) {
     subarray_min_coords[i] = subarray[2*i]; 
-    subarray_max_coords[i] = subarray[2*i+1], sizeof(T); 
+    subarray_max_coords[i] = subarray[2*i+1]; 
   }
 
   // --- Find the start tile in search range
