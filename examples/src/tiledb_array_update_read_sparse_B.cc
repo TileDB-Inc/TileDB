@@ -13,7 +13,7 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
   /* Initialize a range. */
-  const int64_t range[] = { 4, 5, 6, 6 };
+  const int64_t range[] = { 4, 6, 5, 8 };
 
   /* Subset over attribute "a1". */
   //const char* attributes[] = { "a1", TILEDB_COORDS };

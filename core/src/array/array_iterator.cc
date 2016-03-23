@@ -106,9 +106,8 @@ int ArrayIterator::get_value(
     *value = static_cast<const char*>(buffers_[buffer_i+1]) + offset;
     if(pos < cell_num_[attribute_id] - 1) 
       *value_size = static_cast<size_t*>(buffers_[buffer_i])[pos+1] - offset;
-    else {
+    else 
       *value_size = buffer_sizes_[buffer_i+1] - offset;
-    }
   }
 
   // Success
@@ -179,7 +178,7 @@ int ArrayIterator::init(
 
     // Update cell num
     if(cell_sizes_[i] == TILEDB_VAR_SIZE)  // VARIABLE
-      cell_num_[i] = buffer_sizes[buffer_i_[i]] / sizeof(size_t);
+      cell_num_[i] = buffer_sizes[buffer_i_[i]] / TILEDB_CELL_VAR_OFFSET_SIZE;
     else                                   // FIXED 
       cell_num_[i] = buffer_sizes[buffer_i_[i]] / cell_sizes_[i]; 
   }

@@ -12,7 +12,7 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
   /* Initialize a range. */
-  const int64_t range[] = { 4, 5, 3, 6 };
+  const int64_t range[] = { 4, 6, 5, 8 };
 
   /* Subset over attribute "a1". */
   //const char* attributes[] = { "a1" };
@@ -34,7 +34,7 @@ int main() {
       tiledb_ctx, 
       &tiledb_array_iterator,
       "workspace/sparse_B",
-      range, 
+      NULL, // range, 
       attributes,           
       1,
       buffers,
@@ -46,7 +46,7 @@ int main() {
 
   while(!tiledb_array_iterator_end(tiledb_array_iterator)) {
     tiledb_array_iterator_get_value(tiledb_array_iterator, 0, (const void**) &b, &b_size);
-    std::cout << b << " " << b_size << "\n";
+    std::cout << *b << " " << b_size << "\n";
     tiledb_array_iterator_next(tiledb_array_iterator);
   }
 
