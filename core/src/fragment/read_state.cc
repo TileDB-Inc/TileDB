@@ -589,18 +589,19 @@ int ReadState::get_fragment_cell_ranges_dense(
   int cell_order = array_schema->cell_order();
   size_t cell_range_size = 2*array_schema->coords_size();
   const T* search_tile_overlap_subarray = 
-      static_cast<const T*>(search_tile_overlap_subarray);
+      static_cast<const T*>(search_tile_overlap_subarray_);
   FragmentInfo fragment_info = FragmentInfo(fragment_i, search_tile_pos_);
 
   // Contiguous cells, single cell range
   if(search_tile_overlap_ == 1 || 
-     search_tile_overlap_ == 2) {
+     search_tile_overlap_ == 3) {
     void* cell_range = malloc(cell_range_size);
     T* cell_range_T = static_cast<T*>(cell_range);
     for(int i=0; i<dim_num; ++i) {
       cell_range_T[i] = search_tile_overlap_subarray[2*i];
       cell_range_T[dim_num + i] = search_tile_overlap_subarray[2*i+1];
     }
+
     fragment_cell_ranges.push_back(
         FragmentCellRange(fragment_info, cell_range));
   } else { // Non-contiguous cells, multiple ranges
@@ -668,6 +669,9 @@ int ReadState::get_fragment_cell_ranges_dense(
     // Clean up
     delete [] coords;
   }
+
+  // Success
+  return TILEDB_RS_OK;
 }
 
 template<class T>

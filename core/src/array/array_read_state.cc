@@ -719,7 +719,6 @@ int ArrayReadState::get_next_fragment_cell_ranges_dense() {
          fragment_cell_pos_ranges) != TILEDB_ARS_OK) 
     return TILEDB_ARS_ERR;
 
-
   // Insert cell pos ranges in the state
   fragment_cell_pos_ranges_vec_.push_back(fragment_cell_pos_ranges);
 

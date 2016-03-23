@@ -1792,17 +1792,6 @@ size_t ArraySchema::compute_type_size(int i) const {
     return sizeof(double);
 }
 
-
-
-
-
-
-
-
-
-
-
-
 template<class T>
 int64_t ArraySchema::get_cell_pos_col(const T* coords) const {
   // For easy reference
@@ -1822,9 +1811,8 @@ int64_t ArraySchema::get_cell_pos_col(const T* coords) const {
   T coords_norm; // Normalized coordinates inside the tile
   int64_t pos = 0;
   for(int i=0; i<dim_num_; ++i) { 
-    coords_norm = 
-        coords[i] - ((coords[i] - domain[2*i]) / tile_extents[i]) * 
-        tile_extents[i] + domain[2*i];
+    coords_norm = (coords[i] - domain[2*i]);
+    coords_norm -=  (coords_norm / tile_extents[i]) * tile_extents[i];
     pos += coords_norm * cell_offsets[i];
   }
 
@@ -1852,9 +1840,8 @@ int64_t ArraySchema::get_cell_pos_row(const T* coords) const {
   T coords_norm; // Normalized coordinates inside the tile
   int64_t pos = 0;
   for(int i=0; i<dim_num_; ++i) { 
-    coords_norm = 
-        coords[i] - ((coords[i] - domain[2*i]) / tile_extents[i]) * 
-        tile_extents[i] + domain[2*i];
+    coords_norm = (coords[i] - domain[2*i]);
+    coords_norm -=  (coords_norm / tile_extents[i]) * tile_extents[i];
     pos += coords_norm * cell_offsets[i];
   }
 
