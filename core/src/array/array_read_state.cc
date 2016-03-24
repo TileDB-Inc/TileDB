@@ -878,6 +878,8 @@ void ArrayReadState::get_next_overlapping_tiles_sparse() {
           fragment_read_states_[i]->get_bounding_coords(
               fragment_bounding_coords_[i]);
         } else {
+          if(fragment_bounding_coords_[i])
+            free(fragment_bounding_coords_[i]);
           fragment_bounding_coords_[i] = NULL;
         }
       }
