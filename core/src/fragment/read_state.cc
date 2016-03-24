@@ -421,6 +421,11 @@ int ReadState::copy_cells_var(
   if(tiles_offsets_[attribute_id] != end_offset + 1) 
     overflow_[attribute_id] = true;
 
+  //Entering this if condition implies that the var data in this cell is so large
+  //that the allocated buffer cannot hold it
+  if(buffer_offset == 0u && bytes_to_copy == 0u)
+    return TILEDB_RS_ERR;
+
   // Success
   return TILEDB_RS_OK;
 }
@@ -1048,10 +1053,13 @@ void ReadState::compute_bytes_to_copy(
   // If bytes do not fit in variable buffer, we need to adjust
   if(bytes_var_to_copy > buffer_var_free_space) {
     // Perform binary search
-    int64_t min = start_cell_pos;
+    int64_t min = start_cell_pos + 1;
     int64_t max = end_cell_pos;
     int64_t med;
-    while(min < max) {
+    // Invariants:
+    // (tile[min-1] - tile[start_cell_pos]) < buffer_var_free_space AND
+    // (tile[max+1] - tile[start_cell_pos]) > buffer_var_free_space
+    while(min <= max) {
       med = min + ((max - min) / 2);
 
       // Calculate variable bytes to copy
@@ -1067,10 +1075,13 @@ void ReadState::compute_bytes_to_copy(
     }
 
     // Determine the end position of the range
-    if(min == max)  
-      end_cell_pos = min - 1;     
-    else 
-      end_cell_pos = med - 1;  
+    int64_t tmp_end = -1;
+    if(min > max)
+      tmp_end = min - 2 ;
+    else
+      tmp_end = med - 1;
+
+    end_cell_pos = std::max(tmp_end, start_cell_pos-1);
 
     // Update variable bytes to copy
     bytes_var_to_copy = tile[end_cell_pos + 1] - tile[start_cell_pos];
