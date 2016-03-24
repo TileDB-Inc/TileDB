@@ -2071,20 +2071,27 @@ int ReadState::read_tile_from_file_with_mmap_var_cmp_gzip(
   }
 
   // Map
-  map_addr_compressed_ = mmap(
-                             map_addr_compressed_, 
-                             new_length, 
-                             PROT_READ, 
-                             MAP_SHARED, 
-                             fd, 
-                             start_offset);
-  if(map_addr_compressed_ == MAP_FAILED) {
-    map_addr_compressed_ = NULL;
-    map_addr_compressed_length_ = 0;
-    tile_compressed_ = NULL;
-    PRINT_ERROR("Cannot read tile from file; Memory map error");
-    return TILEDB_RS_ERR;
+  // new_length could be 0 for variable length fields, mmap will fail
+  // if new_length == 0
+  if(new_length > 0u)
+  {
+    map_addr_compressed_ = mmap(
+        map_addr_compressed_, 
+        new_length, 
+        PROT_READ, 
+        MAP_SHARED, 
+        fd, 
+        start_offset);
+    if(map_addr_compressed_ == MAP_FAILED) {
+      map_addr_compressed_ = NULL;
+      map_addr_compressed_length_ = 0;
+      tile_compressed_ = NULL;
+      PRINT_ERROR("Cannot read tile from file; Memory map error");
+      return TILEDB_RS_ERR;
+    }
   }
+  else
+    map_addr_var_[attribute_id] = 0;
   map_addr_compressed_length_ = new_length;
 
   // Set properly the compressed tile pointer
@@ -2142,21 +2149,28 @@ int ReadState::read_tile_from_file_with_mmap_var_cmp_none(
   }
 
   // Map
-  map_addr_var_[attribute_id] = mmap(
-                                    map_addr_var_[attribute_id], 
-                                    new_length, 
-                                    PROT_READ, 
-                                    MAP_SHARED, 
-                                    fd, 
-                                    start_offset);
-  if(map_addr_var_[attribute_id] == MAP_FAILED) {
-    map_addr_var_[attribute_id] = NULL;
-    map_addr_var_lengths_[attribute_id] = 0;
-    tiles_var_[attribute_id] = NULL;
-    tiles_var_sizes_[attribute_id] = 0;
-    PRINT_ERROR("Cannot read tile from file; Memory map error");
-    return TILEDB_RS_ERR;
+  // new_length could be 0 for variable length fields, mmap will fail
+  // if new_length == 0
+  if(new_length > 0u)
+  {
+    map_addr_var_[attribute_id] = mmap(
+        map_addr_var_[attribute_id], 
+        new_length, 
+        PROT_READ, 
+        MAP_SHARED, 
+        fd, 
+        start_offset);
+    if(map_addr_var_[attribute_id] == MAP_FAILED) {
+      map_addr_var_[attribute_id] = NULL;
+      map_addr_var_lengths_[attribute_id] = 0;
+      tiles_var_[attribute_id] = NULL;
+      tiles_var_sizes_[attribute_id] = 0;
+      PRINT_ERROR("Cannot read tile from file; Memory map error");
+      return TILEDB_RS_ERR;
+    }
   }
+  else
+    map_addr_var_[attribute_id] = 0;
   map_addr_var_lengths_[attribute_id] = new_length;
 
   // Set properly the tile pointer
