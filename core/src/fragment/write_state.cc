@@ -271,7 +271,12 @@ int WriteState::compress_and_write_tile_var(int attribute_id) {
 
   // Trivial case - No in-memory tile
   if(tile_size == 0)
+  {
+    // Append offset to book-keeping
+    book_keeping_->append_tile_var_offset(attribute_id, 0u);
+    book_keeping_->append_tile_var_size(attribute_id, 0u);
     return TILEDB_WS_OK;
+  }
 
   // Allocate space to store the compressed tile
   if(tile_compressed_ == NULL) {
