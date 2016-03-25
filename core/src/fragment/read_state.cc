@@ -1617,36 +1617,40 @@ int ReadState::get_tile_from_disk_var_cmp_gzip(
   // Get size of decompressed tile
   size_t tile_var_size = book_keeping_->tile_var_sizes()[attribute_id][tile_i];
 
-  // Potentially allocate space for buffer
-  if(tiles_var_[attribute_id] == NULL) {
-    tiles_var_[attribute_id] = malloc(tile_var_size);
-    tiles_var_allocated_size_[attribute_id] = tile_var_size;
+  //Non-empty tile, decompress
+  if(tile_var_size > 0u)
+  {
+    // Potentially allocate space for buffer
+    if(tiles_var_[attribute_id] == NULL) {
+      tiles_var_[attribute_id] = malloc(tile_var_size);
+      tiles_var_allocated_size_[attribute_id] = tile_var_size;
+    }
+
+    // Potentially expand buffer
+    if(tile_var_size > tiles_var_allocated_size_[attribute_id]) {
+      tiles_var_[attribute_id] = realloc(tiles_var_[attribute_id], tile_var_size);
+      tiles_var_allocated_size_[attribute_id] = tile_var_size;
+    }
+
+    // Read tile from file
+    if(READ_TILE_FROM_FILE_VAR_CMP_GZIP(
+          attribute_id, 
+          file_offset, 
+          tile_compressed_size) != TILEDB_RS_OK)
+      return TILEDB_RS_ERR;
+
+    // Decompress tile 
+    if(gunzip(
+          static_cast<unsigned char*>(tile_compressed_), 
+          tile_compressed_size, 
+          static_cast<unsigned char*>(tiles_var_[attribute_id]),
+          tile_var_size,
+          gunzip_out_size) != TILEDB_UT_OK)
+      return TILEDB_RS_ERR;
+
+    // Sanity check
+    assert(gunzip_out_size == tile_var_size);
   }
-
-  // Potentially expand buffer
-  if(tile_var_size > tiles_var_allocated_size_[attribute_id]) {
-    tiles_var_[attribute_id] = realloc(tiles_var_[attribute_id], tile_var_size);
-    tiles_var_allocated_size_[attribute_id] = tile_var_size;
-  }
-
-  // Read tile from file
-  if(READ_TILE_FROM_FILE_VAR_CMP_GZIP(
-         attribute_id, 
-         file_offset, 
-         tile_compressed_size) != TILEDB_RS_OK)
-    return TILEDB_RS_ERR;
-
-  // Decompress tile 
-  if(gunzip(
-         static_cast<unsigned char*>(tile_compressed_), 
-         tile_compressed_size, 
-         static_cast<unsigned char*>(tiles_var_[attribute_id]),
-         tile_var_size,
-         gunzip_out_size) != TILEDB_UT_OK)
-    return TILEDB_RS_ERR;
-
-  // Sanity check
-  assert(gunzip_out_size == tile_var_size);
 
   // Set the variable tile size
   tiles_var_sizes_[attribute_id] = tile_var_size; 
