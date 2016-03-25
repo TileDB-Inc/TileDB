@@ -813,8 +813,7 @@ int WriteState::write_dense_attr_var_cmp_gzip(
     tile_offset += bytes_to_fill;
 
     // Compress current tile and write it to disk
-    if(compress_and_write_tile(attribute_id) != TILEDB_WS_OK)
-    {
+    if(compress_and_write_tile(attribute_id) != TILEDB_WS_OK) {
       free(shifted_buffer);
       return TILEDB_WS_ERR;
     }
@@ -828,7 +827,7 @@ int WriteState::write_dense_attr_var_cmp_gzip(
       tiles_var_sizes_[attribute_id] = tile_var_offset + bytes_to_fill_var;
       tiles_var_[attribute_id] = 
           realloc(tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
-      //Re-allocation may assign tiles_var_ to a different region of memory
+      // Re-allocation may assign tiles_var_ to a different region of memory
       tile_var = static_cast<char*>(tiles_var_[attribute_id]);
     }
 
@@ -841,8 +840,7 @@ int WriteState::write_dense_attr_var_cmp_gzip(
     tile_var_offset += bytes_to_fill_var;
 
     // Compress current tile and write it to disk
-    if(compress_and_write_tile_var(attribute_id) != TILEDB_WS_OK)
-    {
+    if(compress_and_write_tile_var(attribute_id) != TILEDB_WS_OK) {
       free(shifted_buffer);
       return TILEDB_WS_ERR;
     }
@@ -858,8 +856,7 @@ int WriteState::write_dense_attr_var_cmp_gzip(
     tile_offset += tile_size;
 
     // Compress and write current tile
-    if(compress_and_write_tile(attribute_id) != TILEDB_WS_OK)
-    {
+    if(compress_and_write_tile(attribute_id) != TILEDB_WS_OK) {
       free(shifted_buffer);
       return TILEDB_WS_ERR;
     }
@@ -881,7 +878,7 @@ int WriteState::write_dense_attr_var_cmp_gzip(
       tiles_var_sizes_[attribute_id] = tile_var_offset + bytes_to_fill_var;
       tiles_var_[attribute_id] = 
           realloc(tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
-      //Re-allocation may assign tiles_var_ to a different region of memory
+      // Re-allocation may assign tiles_var_ to a different region of memory
       tile_var = static_cast<char*>(tiles_var_[attribute_id]);
     }
 
@@ -894,8 +891,7 @@ int WriteState::write_dense_attr_var_cmp_gzip(
     tile_var_offset += bytes_to_fill_var;
 
     // Compress current tile and write it to disk
-    if(compress_and_write_tile_var(attribute_id) != TILEDB_WS_OK)
-    {
+    if(compress_and_write_tile_var(attribute_id) != TILEDB_WS_OK) {
       free(shifted_buffer);
       return TILEDB_WS_ERR;
     }
@@ -921,7 +917,7 @@ int WriteState::write_dense_attr_var_cmp_gzip(
       tiles_var_sizes_[attribute_id] = tile_var_offset + bytes_to_fill_var;
       tiles_var_[attribute_id] = 
           realloc(tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
-      //Re-allocation may assign tiles_var_ to a different region of memory
+      // Re-allocation may assign tiles_var_ to a different region of memory
       tile_var = static_cast<char*>(tiles_var_[attribute_id]);
     }
 
@@ -935,7 +931,9 @@ int WriteState::write_dense_attr_var_cmp_gzip(
     tile_var_offset += bytes_to_fill_var;
   }
 
+  // Clean up
   free(shifted_buffer);
+
   // Success
   return TILEDB_WS_OK;
 }
@@ -1231,8 +1229,7 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
     tile_offset += bytes_to_fill;
 
     // Compress current tile and write it to disk
-    if(compress_and_write_tile(attribute_id) != TILEDB_WS_OK)
-    {
+    if(compress_and_write_tile(attribute_id) != TILEDB_WS_OK) {
       free(shifted_buffer);
       return TILEDB_WS_ERR;
     }
@@ -1244,7 +1241,7 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
     while(tile_var_offset + bytes_to_fill_var >  
           tiles_var_sizes_[attribute_id])
       expand_buffer(tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
-    //Re-allocation may assign tiles_var_ to a different region of memory
+    // Re-allocation may assign tiles_var_ to a different region of memory
     tile_var = static_cast<char*>(tiles_var_[attribute_id]);
 
     // Fill up current variable tile
@@ -1256,8 +1253,7 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
     tile_var_offset += bytes_to_fill_var;
 
     // Compress current tile and write it to disk
-    if(compress_and_write_tile_var(attribute_id) != TILEDB_WS_OK)
-    {
+    if(compress_and_write_tile_var(attribute_id) != TILEDB_WS_OK) {
       free(shifted_buffer);
       return TILEDB_WS_ERR;
     }
@@ -1274,8 +1270,7 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
     tile_offset += tile_size;
 
     // Compress and write current tile
-    if(compress_and_write_tile(attribute_id) != TILEDB_WS_OK)
-    {
+    if(compress_and_write_tile(attribute_id) != TILEDB_WS_OK) {
       free(shifted_buffer);
       return TILEDB_WS_ERR;
     }
@@ -1297,7 +1292,7 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
       tiles_var_sizes_[attribute_id] = tile_var_offset + bytes_to_fill_var;
       tiles_var_[attribute_id] = 
           realloc(tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
-      //Re-allocation may assign tiles_var_ to a different region of memory
+      // Re-allocation may assign tiles_var_ to a different region of memory
       tile_var = static_cast<char*>(tiles_var_[attribute_id]);
     }
 
@@ -1310,8 +1305,7 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
     tile_var_offset += bytes_to_fill_var;
 
     // Compress current tile and write it to disk
-    if(compress_and_write_tile_var(attribute_id) != TILEDB_WS_OK)
-    {
+    if(compress_and_write_tile_var(attribute_id) != TILEDB_WS_OK) {
       free(shifted_buffer);
       return TILEDB_WS_ERR;
     }
@@ -1337,7 +1331,7 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
       tiles_var_sizes_[attribute_id] = tile_var_offset + bytes_to_fill_var;
       tiles_var_[attribute_id] = 
           realloc(tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
-      //Re-allocation may assign tiles_var_ to a different region of memory
+      // Re-allocation may assign tiles_var_ to a different region of memory
       tile_var = static_cast<char*>(tiles_var_[attribute_id]);
     }
 
@@ -1350,7 +1344,10 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
     assert(buffer_var_offset == buffer_var_size);
     tile_var_offset += bytes_to_fill_var;
   }
+
+  // Clean up
   free(shifted_buffer);
+
   // Success
   return TILEDB_WS_OK;
 }
