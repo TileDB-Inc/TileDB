@@ -1618,8 +1618,7 @@ int ReadState::get_tile_from_disk_var_cmp_gzip(
   size_t tile_var_size = book_keeping_->tile_var_sizes()[attribute_id][tile_i];
 
   //Non-empty tile, decompress
-  if(tile_var_size > 0u)
-  {
+  if(tile_var_size > 0u) {
     // Potentially allocate space for buffer
     if(tiles_var_[attribute_id] == NULL) {
       tiles_var_[attribute_id] = malloc(tile_var_size);
@@ -1628,7 +1627,8 @@ int ReadState::get_tile_from_disk_var_cmp_gzip(
 
     // Potentially expand buffer
     if(tile_var_size > tiles_var_allocated_size_[attribute_id]) {
-      tiles_var_[attribute_id] = realloc(tiles_var_[attribute_id], tile_var_size);
+      tiles_var_[attribute_id] = 
+          realloc(tiles_var_[attribute_id], tile_var_size);
       tiles_var_allocated_size_[attribute_id] = tile_var_size;
     }
 
