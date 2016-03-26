@@ -688,7 +688,7 @@ int WriteState::write_dense_attr_cmp_gzip(
   // Partially fill the (new) current tile
   bytes_to_fill = buffer_size - buffer_offset;
   if(bytes_to_fill != 0) {
-    memcpy(tile, buffer_c + buffer_offset, bytes_to_fill); 
+    memcpy(tile + tile_offset, buffer_c + buffer_offset, bytes_to_fill);
     buffer_offset += bytes_to_fill;
     assert(buffer_offset == buffer_size);
     tile_offset += bytes_to_fill;
@@ -926,7 +926,7 @@ int WriteState::write_dense_attr_var_cmp_gzip(
   // Partially fill the (new) current tile
   bytes_to_fill = buffer_size - buffer_offset;
   if(bytes_to_fill != 0) {
-    memcpy(tile, shifted_buffer_c + buffer_offset, bytes_to_fill); 
+    memcpy(tile + tile_offset, shifted_buffer_c + buffer_offset, bytes_to_fill);
     buffer_offset += bytes_to_fill;
     assert(buffer_offset == buffer_size);
     tile_offset += bytes_to_fill;
@@ -1098,7 +1098,7 @@ int WriteState::write_sparse_attr_cmp_gzip(
   // Partially fill the (new) current tile
   bytes_to_fill = buffer_size - buffer_offset;
   if(bytes_to_fill != 0) {
-    memcpy(tile, buffer_c + buffer_offset, bytes_to_fill); 
+    memcpy(tile + tile_offset, buffer_c + buffer_offset, bytes_to_fill);
     buffer_offset += bytes_to_fill;
     assert(buffer_offset == buffer_size);
     tile_offset += bytes_to_fill;
@@ -1340,7 +1340,7 @@ int WriteState::write_sparse_attr_var_cmp_gzip(
   // Partially fill the (new) current tile
   bytes_to_fill = buffer_size - buffer_offset;
   if(bytes_to_fill != 0) {
-    memcpy(tile, shifted_buffer_c + buffer_offset, bytes_to_fill); 
+    memcpy(tile + tile_offset, shifted_buffer_c + buffer_offset, bytes_to_fill);
     buffer_offset += bytes_to_fill;
     assert(buffer_offset == buffer_size);
     tile_offset += bytes_to_fill;
