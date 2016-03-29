@@ -5,6 +5,11 @@ dist: trusty
 install:
     #Install lcov and MPICH
     - sudo apt-get -y install lcov mpich zlib1g-dev libssl-dev libgtest-dev
+    - cd /usr/src/gtest
+    - sudo cmake .
+    - sudo make
+    - sudo mv libgtest* /usr/lib/
+    - cd "$(TRAVIS_BUILD_DIR)"
     # install lcov to coveralls conversion + upload tool
     - gem install coveralls-lcov
 
