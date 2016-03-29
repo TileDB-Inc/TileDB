@@ -1015,6 +1015,7 @@ int StorageManager::create_master_catalog_entry(
   if(metadata->finalize() != TILEDB_MT_OK)
     return TILEDB_SM_ERR;
 
+  delete metadata;
   // Success
   return TILEDB_SM_OK;
 }

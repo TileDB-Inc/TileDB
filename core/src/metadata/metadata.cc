@@ -353,6 +353,7 @@ void Metadata::compute_array_coords(
     coords_c = ((unsigned char*) coords) + i*4*sizeof(int);
     MD5(keys_c, key_size, coords_c);
   }
+  free(keys_offsets);
 }
 
 void Metadata::prepare_array_buffers(
