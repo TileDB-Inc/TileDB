@@ -1,0 +1,19 @@
+#Adapted from http://gronlier.fr/blog/2015/01/adding-code-coverage-to-your-c-project/
+sudo: required
+dist: trusty
+
+install:
+    #Install lcov and MPICH
+    - sudo apt-get -y install lcov mpich zlib1g-dev libssl-dev libgtest-dev
+    # install lcov to coveralls conversion + upload tool
+    - gem install coveralls-lcov
+
+before_script:
+#    - lcov --directory . --zerocounters
+
+script:
+    - make -j 4
+    - make check
+
+after_success:
+    - lcov --list tests/coverage.info # debug before upload
