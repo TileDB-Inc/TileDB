@@ -9,7 +9,7 @@ install:
     - sudo cmake .
     - sudo make
     - sudo mv libgtest* /usr/lib/
-    - cd "$(TRAVIS_BUILD_DIR)"
+    - cd $TRAVIS_BUILD_DIR
     # install lcov to coveralls conversion + upload tool
     - gem install coveralls-lcov
 
