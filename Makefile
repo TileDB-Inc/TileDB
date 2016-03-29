@@ -7,6 +7,10 @@ OS := $(shell uname)
 # Configuration flags
 CONFIG_FLAGS =
 
+ifdef TRAVIS
+  CONFIG_FLAGS += --coverage
+endif
+
 # Use of mmap function for reading
 USE_MMAP =
 
