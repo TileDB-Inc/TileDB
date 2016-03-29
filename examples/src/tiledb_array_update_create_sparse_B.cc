@@ -28,12 +28,20 @@ int main() {
       attributes,
       // Number of attributes
       3,
+      // Capacity
+      4,
+      // Cell order
+      TILEDB_ROW_MAJOR,
+      // Number of cell values per attribute (NULL means 1 everywhere)
+      cell_val_num,
+      // Compression
+      NULL,
+      // Sparse array
+      0,
       // Dimensions
       dimensions,
       // Number of dimensions
       2,
-      // Sparse array
-      0,
       // Domain
       domain,
       // Domain length in bytes
@@ -42,18 +50,10 @@ int main() {
       tile_extents,
       // Tile extents in bytes
       2*sizeof(int64_t), 
-      // Types 
-      types,
-      // Number of cell values per attribute (NULL means 1 everywhere)
-      cell_val_num,
-      // Cell order
-      TILEDB_ROW_MAJOR,
       // Tile order (0 means ignore in sparse arrays and default in dense)
       0,
-      // Capacity
-      4,
-      // Compression
-      NULL
+      // Types 
+      types
   );
 
   /* Create the array. */

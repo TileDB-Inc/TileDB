@@ -217,19 +217,19 @@ int tiledb_array_set_schema(
     const char* array_name,
     const char** attributes,
     int attribute_num,
+    int64_t capacity,
+    int cell_order,
+    const int* cell_val_num,
+    const int* compression,
+    int dense,
     const char** dimensions, 
     int dim_num,
-    int dense,
     const void* domain,
     size_t domain_len,
     const void* tile_extents,
     size_t tile_extents_len,
-    const int* types,
-    const int* cell_val_num,
-    int cell_order,
     int tile_order,
-    int64_t capacity,
-    const int* compression) {
+    const int* types) {
   // Sanity check
   if(tiledb_array_schema == NULL) {
     PRINT_ERROR("Invalid array schema pointer");

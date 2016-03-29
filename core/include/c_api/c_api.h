@@ -86,7 +86,7 @@ TILEDB_EXPORT int tiledb_ctx_finalize(TileDB_CTX* tiledb_ctx);
  * Creates a new TileDB workspace.
  *
  * @param tiledb_ctx The TileDB context.
- * @param workspace The directory to the workspace to be created in the file 
+ * @param workspace The directory of the workspace to be created in the file 
  *     system. This directory should not be inside another TileDB workspace,
  *     group, array or metadata directory.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
@@ -179,7 +179,7 @@ typedef struct TileDB_ArraySchema {
   int* cell_val_num_;
   /** 
    * The compression type for each attribute (plus one extra at the end for the
-   * coordinates. It can be one of the following: 
+   * coordinates). It can be one of the following: 
    *    - TILEDB_NO_COMPRESSION
    *    - TILEDB_GZIP. 
    */
@@ -201,9 +201,8 @@ typedef struct TileDB_ArraySchema {
   void* domain_;
   /** 
    * The tile extents. There should be one value for each dimension. The type of
-   * the values stored in this buffer should match the coordinates type. If it
-   * is NULL (applicable only to sparse arrays), then it means that the
-   * array has irregular tiles.
+   * the values stored in this buffer should match the coordinates type. It
+   * can be NULL only for sparse arrays.
    */
   void* tile_extents_;
   /** 
@@ -219,7 +218,8 @@ typedef struct TileDB_ArraySchema {
    *    - TILEDB_INT64
    *    - TILEDB_FLOAT32
    *    - TILEDB_FLOAT64
-   *    - TILEDB_CHAR. 
+   *    - TILEDB_CHAR 
+   *
    * The coordinate type can be one of the following: 
    *    - TILEDB_INT32
    *    - TILEDB_INT64
@@ -230,25 +230,25 @@ typedef struct TileDB_ArraySchema {
 } TileDB_ArraySchema;
 
 /**
- * Populates a TileDB array schema struct.
+ * Populates a TileDB array schema object.
  *
  * @param array_name The array name.
  * @param attributes The attribute names.
  * @param attribute_num The number of attributes.
+ * @param capacity The tile capacity.
+ * @param cell_order The cell order.
+ * @param cell_val_num The number of values per attribute per cell.
+ * @param compression The compression type for each attribute (plus an extra one
+ *     in the end for the coordinates).
+ * @param dense Specifies if the array is dense (1) or sparse (0).
  * @param dimensions The dimension names.
  * @param dim_num The number of dimensions.
- * @param dense Specifies if the array is dense (1) or sparse (0).
  * @param domain The array domain.
  * @param domain_len The length of *domain* in bytes.
  * @param tile_extents The tile extents.
  * @param tile_extents_len The length of *tile_extents* in bytes.
- * @param types The attribute types (plus one in the end for the coordinates).
- * @param cell_val_num The number of values per attribute per cell.
- * @param cell_order The cell order.
  * @param tile_order The tile order.
- * @param capacity The tile capacity.
- * @param compression The compression type for each attribute (plus an extra one
- *     in the end for the coordinates).
+ * @param types The attribute types (plus one in the end for the coordinates).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  * @see TileDB_ArraySchema
  */
@@ -257,19 +257,19 @@ TILEDB_EXPORT int tiledb_array_set_schema(
     const char* array_name,
     const char** attributes,
     int attribute_num,
+    int64_t capacity,
+    int cell_order,
+    const int* cell_val_num,
+    const int* compression,
+    int dense,
     const char** dimensions,
     int dim_num,
-    int dense,
     const void* domain,
     size_t domain_len,
     const void* tile_extents,
     size_t tile_extents_len,
-    const int* types,
-    const int* cell_val_num,
-    int cell_order,
     int tile_order,
-    int64_t capacity,
-    const int* compression);
+    const int* types);
 
 /**
  * Creates a new TileDB array.

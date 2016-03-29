@@ -80,7 +80,7 @@
 #define TILEDB_CONSOLIDATION_BUFFER_SIZE      10000000 // ~10 MB
 
 /**@{*/
-/** Special cell value. */
+/** Special empty cell value. */
 #define TILEDB_EMPTY_INT32                     INT_MAX
 #define TILEDB_EMPTY_INT64                   LLONG_MAX
 #define TILEDB_EMPTY_FLOAT32                   FLT_MAX
@@ -132,7 +132,7 @@
 #define TILEDB_GZIP_CHUNK_SIZE                  131072 // 128KB
 
 /**@{*/
-/** Special file name. */
+/** Special TileDB file name. */
 #define TILEDB_ARRAY_SCHEMA_FILENAME         "__array_schema.tdb"
 #define TILEDB_METADATA_SCHEMA_FILENAME   "__metadata_schema.tdb"
 #define TILEDB_BOOK_KEEPING_FILENAME             "__book_keeping"
@@ -142,7 +142,7 @@
 /**@}*/
 
 /**@{*/
-/** Sizes of buffers used for sorting. */
+/** Size of buffer used for sorting. */
 #define TILEDB_SORTED_BUFFER_SIZE             10000000  // ~10MB
 #define TILEDB_SORTED_BUFFER_VAR_SIZE         10000000  // ~10MB
 /**@}*/
