@@ -22,4 +22,4 @@ script:
     - lcov --directory . --capture --output-file coverage.info
 
 after_success:
-    - lcov --list tests/coverage.info # debug before upload
+    - lcov --list coverage.info # debug before upload
