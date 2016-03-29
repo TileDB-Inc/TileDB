@@ -95,29 +95,6 @@ TILEDB_EXPORT int tiledb_workspace_create(
     const TileDB_CTX* tiledb_ctx,
     const char* workspace);
 
-/**
- * Lists all TileDB workspaces, copying their directory names in the input
- * string buffers.
- *
- * @param tiledb_ctx The TileDB context.
- * @param workspaces An array of strings that will store the listed workspaces.
- *     Note that this should be pre-allocated by the user. If the size of
- *     each string is smaller than the corresponding workspace path name, the
- *     function will probably segfault. It is a good idea to allocate to each
- *     workspace string TILEDB_NAME_MAX_LEN characters. 
- * @param workspace_num The number of allocated elements of the *workspaces*
- *     string array. After the function execution, this will hold the actual
- *     number of workspaces written in the *workspaces* string array. If the
- *     number of allocated elements is smaller than the number of existing
- *     TileDB workspaces, the function will return an error.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_ls_workspaces(
-    const TileDB_CTX* tiledb_ctx,
-    char** workspaces,
-    int* workspace_num);
-
-
 
 
 /* ********************************* */
@@ -232,6 +209,7 @@ typedef struct TileDB_ArraySchema {
 /**
  * Populates a TileDB array schema object.
  *
+ * @oaram tiledb_array_schema The array schema to be populated.
  * @param array_name The array name.
  * @param attributes The attribute names.
  * @param attribute_num The number of attributes.
@@ -275,12 +253,12 @@ TILEDB_EXPORT int tiledb_array_set_schema(
  * Creates a new TileDB array.
  *
  * @param tiledb_ctx The TileDB context.
- * @param array_schema The array schema. 
+ * @param tiledb_array_schema The array schema. 
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_create(
     const TileDB_CTX* tiledb_ctx,
-    const TileDB_ArraySchema* array_schema);
+    const TileDB_ArraySchema* tiledb_array_schema);
 
 /**
  * Initializes a TileDB array.
@@ -298,8 +276,9 @@ TILEDB_EXPORT int tiledb_array_create(
  *     array domain. For the case of writes, this is meaningful only for
  *     dense arrays, and specifically dense writes.
  * @param attributes A subset of the array attributes the read/write will be
- *     constrained on. A NULL value indicates **all** attributes (including
- *     the coordinates in the case of sparse arrays).
+ *     constrained on. Note that the coordinates have special attribute name
+ *     TILEDB_COORDS. A NULL value indicates **all** attributes (including
+ *     the coordinates as the last attribute in the case of sparse arrays).
  * @param attribute_num The number of the input attributes. If *attributes* is
  *     NULL, then this should be set to 0.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
@@ -330,6 +309,7 @@ TILEDB_EXPORT int tiledb_array_reset_subarray(
 
 /**
  * Resets the attributes used upon initialization of the array. 
+ *
  * @param tiledb_array The TileDB array.
  * @param attributes The new attributes to focus on. If it is NULL, then
  *     all the attributes are used (including the coordinates in the case of
@@ -346,7 +326,6 @@ TILEDB_EXPORT int tiledb_array_reset_attributes(
 /**
  * Retrieves the schema of an already initialized array.
  *
- * @param tiledb_ctx The TileDB context.
  * @param tiledb_array The TileDB array object (must already be initialized). 
  * @param tiledb_array_schema The array schema to be retrieved. 
  * @return TILEDB_OK for success and TILEDB_ERR for error.
@@ -484,7 +463,7 @@ TILEDB_EXPORT int tiledb_array_overflow(
 TILEDB_EXPORT int tiledb_array_consolidate(const TileDB_Array* tiledb_array);
 
 /** 
- * Finalizes a TileDB array, properly freeing the memory space. 
+ * Finalizes a TileDB array, properly freeing its memory space. 
  *
  * @param tiledb_array The array to be finalized.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
@@ -936,7 +915,7 @@ TILEDB_EXPORT int tiledb_metadata_iterator_finalize(
 
 
 /* ********************************* */
-/*               MISC                */
+/*       DIRECTORY MANAGEMENT        */
 /* ********************************* */
 
 /**
@@ -975,6 +954,29 @@ TILEDB_EXPORT int tiledb_move(
     const TileDB_CTX* tiledb_ctx, 
     const char* old_dir,
     const char* new_dir);
+
+/**
+ * Lists all TileDB workspaces, copying their directory names in the input
+ * string buffers.
+ *
+ * @param tiledb_ctx The TileDB context.
+ * @param workspaces An array of strings that will store the listed workspaces.
+ *     Note that this should be pre-allocated by the user. If the size of
+ *     each string is smaller than the corresponding workspace path name, the
+ *     function will probably segfault. It is a good idea to allocate to each
+ *     workspace string TILEDB_NAME_MAX_LEN characters. 
+ * @param workspace_num The number of allocated elements of the *workspaces*
+ *     string array. After the function execution, this will hold the actual
+ *     number of workspaces written in the *workspaces* string array. If the
+ *     number of allocated elements is smaller than the number of existing
+ *     TileDB workspaces, the function will return an error.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_ls_workspaces(
+    const TileDB_CTX* tiledb_ctx,
+    char** workspaces,
+    int* workspace_num);
+
 
 /**
  * Lists all the TileDB objects in a directory, copying them into the input

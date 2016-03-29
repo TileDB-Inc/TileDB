@@ -162,23 +162,6 @@ int tiledb_workspace_create(
     return TILEDB_OK;
 }
 
-int tiledb_ls_workspaces(
-    const TileDB_CTX* tiledb_ctx,
-    char** workspaces,
-    int* workspace_num) {
-  // Sanity check
-  if(!sanity_check(tiledb_ctx))
-    return TILEDB_ERR;
-
-  // List workspaces
-  if(tiledb_ctx->storage_manager_->ls_workspaces(
-               workspaces,
-               *workspace_num) != TILEDB_SM_OK)
-    return TILEDB_ERR;
-  else 
-    return TILEDB_OK;
-}
-
 
 
 
@@ -1131,7 +1114,7 @@ int tiledb_metadata_iterator_finalize(
 
 
 /* ****************************** */
-/*             MISC               */
+/*       DIRECTORY MANAGEMENT     */
 /* ****************************** */
 
 int tiledb_clear(
@@ -1174,6 +1157,23 @@ int tiledb_move(
   if(tiledb_ctx->storage_manager_->move(old_dir, new_dir) != TILEDB_SM_OK)
     return TILEDB_ERR;
   else
+    return TILEDB_OK;
+}
+
+int tiledb_ls_workspaces(
+    const TileDB_CTX* tiledb_ctx,
+    char** workspaces,
+    int* workspace_num) {
+  // Sanity check
+  if(!sanity_check(tiledb_ctx))
+    return TILEDB_ERR;
+
+  // List workspaces
+  if(tiledb_ctx->storage_manager_->ls_workspaces(
+               workspaces,
+               *workspace_num) != TILEDB_SM_OK)
+    return TILEDB_ERR;
+  else 
     return TILEDB_OK;
 }
 
