@@ -5,7 +5,6 @@
  */
 
 #include "c_api.h"
-#include <cstdio>
 
 int main() {
   // Intialize context with the default configuration parameters
