@@ -1021,7 +1021,7 @@ int ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
   // Set compression
   int* compression = 
       (int*) malloc((metadata_schema_c->attribute_num_+2)*sizeof(int));
-  if(metadata_schema_c->cell_val_num_ == NULL) {
+  if(metadata_schema_c->compression_ == NULL) {
     for(int i=0; i<metadata_schema_c->attribute_num_+1; ++i)
       compression[i] = TILEDB_NO_COMPRESSION;
   } else {
