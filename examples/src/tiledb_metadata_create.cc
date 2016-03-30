@@ -23,14 +23,14 @@ int main() {
       attributes,
       // Number of attributes
       2,
-      // Types 
-      types,
-      // Number of cell values per attribute (NULL means 1 everywhere)
-      NULL,
       // Capacity
       4,
+      // Number of cell values per attribute (NULL means 1 everywhere)
+      NULL,
       // Compression
-      NULL
+      NULL,
+      // Types 
+      types
   );
 
   /* Create the array. */

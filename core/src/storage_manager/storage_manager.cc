@@ -187,6 +187,11 @@ int StorageManager::ls_workspaces(
 
     // Copy workspace
     if(key_size != 1 || key[0] != TILEDB_EMPTY_CHAR) {
+      if(workspace_i == workspace_num) {
+        PRINT_ERROR("Cannot list workspaces; Workspaces buffer overflow");
+        return TILEDB_SM_ERR;
+      }
+
       strcpy(workspaces[workspace_i], key);
       ++workspace_i;
     }
@@ -758,18 +763,34 @@ int StorageManager::ls(
       continue;
     filename = parent_dir_real + "/" +  next_file->d_name;
     if(is_group(filename)) {                  // Group
+      if(dir_i == dir_num) {
+        PRINT_ERROR("Cannot list TileDB directory; Directory buffer overflow");
+        return TILEDB_SM_ERR;
+      }
       strcpy(dirs[dir_i], next_file->d_name);
       dir_types[dir_i] = TILEDB_GROUP;
       ++dir_i;
     } else if(is_metadata(filename)) {        // Metadata
+      if(dir_i == dir_num) {
+        PRINT_ERROR("Cannot list TileDB directory; Directory buffer overflow");
+        return TILEDB_SM_ERR;
+      }
       strcpy(dirs[dir_i], next_file->d_name);
       dir_types[dir_i] = TILEDB_METADATA;
       ++dir_i;
     } else if(is_array(filename)){            // Array
+      if(dir_i == dir_num) {
+        PRINT_ERROR("Cannot list TileDB directory; Directory buffer overflow");
+        return TILEDB_SM_ERR;
+      }
       strcpy(dirs[dir_i], next_file->d_name);
       dir_types[dir_i] = TILEDB_ARRAY;
       ++dir_i;
     } else if(is_workspace(filename)){        // Workspace
+      if(dir_i == dir_num) {
+        PRINT_ERROR("Cannot list TileDB directory; Directory buffer overflow");
+        return TILEDB_SM_ERR;
+      }
       strcpy(dirs[dir_i], next_file->d_name);
       dir_types[dir_i] = TILEDB_WORKSPACE;
       ++dir_i;

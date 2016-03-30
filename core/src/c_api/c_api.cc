@@ -705,10 +705,10 @@ int tiledb_metadata_set_schema(
     const char* metadata_name,
     const char** attributes,
     int attribute_num,
-    const int* types,
-    const int* cell_val_num,
     int64_t capacity,
-    const int* compression) {
+    const int* cell_val_num,
+    const int* compression,
+    const int* types) {
   // Sanity check
   if(tiledb_metadata_schema == NULL) {
     PRINT_ERROR("Invalid metadata schema pointer");
