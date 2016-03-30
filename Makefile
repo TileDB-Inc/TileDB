@@ -108,22 +108,6 @@ ifeq ($(BUILD),release)
   CORE_LIB_DIR = $(CORE_LIB_REL_DIR)
 endif
 
-# Directories for the command-line-based frontend of TileDB
-TILEDB_CMD_INCLUDE_DIR = tiledb_cmd/include
-TILEDB_CMD_SRC_DIR = tiledb_cmd/src
-TILEDB_CMD_OBJ_DEB_DIR = tiledb_cmd/obj/debug
-TILEDB_CMD_BIN_DEB_DIR = tiledb_cmd/bin/debug
-ifeq ($(BUILD),debug)
-  TILEDB_CMD_OBJ_DIR = $(TILEDB_CMD_OBJ_DEB_DIR)
-  TILEDB_CMD_BIN_DIR = $(TILEDB_CMD_BIN_DEB_DIR)
-endif
-TILEDB_CMD_OBJ_REL_DIR = tiledb_cmd/obj/release
-TILEDB_CMD_BIN_REL_DIR = tiledb_cmd/bin/release
-ifeq ($(BUILD),release)
-  TILEDB_CMD_OBJ_DIR = $(TILEDB_CMD_OBJ_REL_DIR)
-  TILEDB_CMD_BIN_DIR = $(TILEDB_CMD_BIN_REL_DIR)
-endif
-
 # Directories for the examples
 EXAMPLES_INCLUDE_DIR = examples/include
 EXAMPLES_SRC_DIR = examples/src
@@ -146,25 +130,9 @@ TEST_SRC_DIR = test/src
 TEST_OBJ_DIR = test/obj
 TEST_BIN_DIR = test/bin
 
-# Directories for Linear Algebra applications
-LA_INCLUDE_DIR = la/include
-LA_SRC_DIR = la/src
-LA_OBJ_DIR = la/obj
-LA_BIN_DIR = la/bin
-
-# Directories for distributed applications
-RVMA_INCLUDE_DIR = rvma/include
-RVMA_SRC_DIR     = rvma/src
-RVMA_OBJ_DIR     = rvma/obj
-RVMA_BIN_DIR     = rvma/bin
-
 # Directory for Doxygen documentation
 DOXYGEN_DIR = doxygen
 DOXYGEN_MAINPAGE = $(DOXYGEN_DIR)/mainpage.dox
-
-# Manpages directories
-MANPAGES_MAN_DIR = manpages/man
-MANPAGES_HTML_DIR = manpages/html
 
 # Directories for the MPI files - not necessary if mpicxx used.
 MPI_INCLUDE_DIR := .
@@ -176,7 +144,6 @@ OPENMP_LIB_DIR = .
 
 # --- Paths --- #
 CORE_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
-TILEDB_CMD_INCLUDE_PATHS = -I$(TILEDB_CMD_INCLUDE_DIR)
 TEST_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
 
 EXAMPLES_INCLUDE_PATHS = -I$(EXAMPLES_INCLUDE_DIR)
@@ -206,13 +173,6 @@ CORE_INCLUDE := $(foreach D,$(CORE_INCLUDE_SUBDIRS),$D/*.h)
 CORE_SRC := $(wildcard $(foreach D,$(CORE_SRC_SUBDIRS),$D/*.cc))
 CORE_OBJ := $(patsubst $(CORE_SRC_DIR)/%.cc, $(CORE_OBJ_DIR)/%.o, $(CORE_SRC))
 
-# Files of the TileDB command-line-based frontend
-TILEDB_CMD_INCLUDE := $(wildcard $(TILEDB_CMD_INCLUDE_DIR)/*.h)
-TILEDB_CMD_SRC := $(wildcard $(TILEDB_CMD_SRC_DIR)/*.cc)
-TILEDB_CMD_OBJ := $(patsubst $(TILEDB_CMD_SRC_DIR)/%.cc,\
-                             $(TILEDB_CMD_OBJ_DIR)/%.o, $(TILEDB_CMD_SRC))
-TILEDB_CMD_BIN := $(patsubst $(TILEDB_CMD_SRC_DIR)/%.cc,\
-                             $(TILEDB_CMD_BIN_DIR)/%, $(TILEDB_CMD_SRC)) 
 # Files of the examples
 EXAMPLES_INCLUDE := $(wildcard $(EXAMPLES_INCLUDE_DIR)/*.h)
 EXAMPLES_SRC := $(wildcard $(EXAMPLES_SRC_DIR)/*.cc)
@@ -225,21 +185,6 @@ EXAMPLES_BIN := $(patsubst $(EXAMPLES_SRC_DIR)/%.cc,\
 TEST_SRC := $(wildcard $(foreach D,$(TEST_SRC_SUBDIRS),$D/*.cc))
 TEST_OBJ := $(patsubst $(TEST_SRC_DIR)/%.cc, $(TEST_OBJ_DIR)/%.o, $(TEST_SRC))
 
-# Files of the Linear Algebra applications
-LA_SRC := $(wildcard $(LA_SRC_DIR)/*.cc)
-LA_OBJ := $(patsubst $(LA_SRC_DIR)/%.cc, $(LA_OBJ_DIR)/%.o, $(LA_SRC))
-LA_BIN := $(patsubst $(LA_SRC_DIR)/%.cc, $(LA_BIN_DIR)/%, $(LA_SRC))
-
-# Files of the distributed applications
-RVMA_SRC := $(wildcard $(RVMA_SRC_DIR)/*.c)
-RVMA_OBJ := $(patsubst $(RVMA_SRC_DIR)/%.c, $(RVMA_OBJ_DIR)/%.o, $(RVMA_SRC))
-RVMA_BIN := $(patsubst $(RVMA_SRC_DIR)/%.c, $(RVMA_BIN_DIR)/%, $(RVMA_SRC))
-
-# Files for the HTML version of the Manpages
-MANPAGES_MAN := $(wildcard $(MANPAGES_MAN_DIR)/*)
-MANPAGES_HTML := $(patsubst $(MANPAGES_MAN_DIR)/%,\
-                            $(MANPAGES_HTML_DIR)/%.html, $(MANPAGES_MAN)) 
-
 ###################
 # General Targets #
 ###################
@@ -248,27 +193,21 @@ MANPAGES_HTML := $(patsubst $(MANPAGES_MAN_DIR)/%,\
         clean_check clean_tiledb_cmd clean_examples \
         clean
 
-all: core libtiledb tiledb_cmd examples
+all: core libtiledb 
 
 core: $(CORE_OBJ) 
 
 libtiledb: core $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT) $(CORE_LIB_DIR)/libtiledb.a
 
-tiledb_cmd: core $(TILEDB_CMD_OBJ) $(TILEDB_CMD_BIN)
-
 examples: core $(EXAMPLES_OBJ) $(EXAMPLES_BIN)
 
-rvma: core $(RVMA_OBJ) #$(RVMA_BIN_DIR)/simple_test
-
-html: $(MANPAGES_HTML)
-
-doc: doxyfile.inc html
+doc: doxyfile.inc 
 
 check: libtiledb $(TEST_BIN_DIR)/tiledb_test
 	@echo "Running TileDB tests"
 	@$(TEST_BIN_DIR)/tiledb_test
 
-clean: clean_core clean_libtiledb clean_tiledb_cmd \
+clean: clean_core clean_libtiledb \
        clean_check clean_doc clean_examples 
 
 ########
@@ -333,40 +272,6 @@ clean_libtiledb:
 	@rm -rf $(CORE_LIB_DEB_DIR)/* $(CORE_LIB_REL_DIR)/*
 
 ##############
-# TileDB_cmd #
-##############
-
-# --- Compilation and dependency genration --- #
-
--include $(TILEDB_CMD_OBJ:.o=.d)
-
-$(TILEDB_CMD_OBJ_DIR)/%.o: $(TILEDB_CMD_SRC_DIR)/%.cc
-	@mkdir -p $(TILEDB_CMD_OBJ_DIR)
-	@echo "Compiling $<"
-	@$(CXX) $(TILEDB_CMD_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< \
-         $(ZLIB) $(OPENSSLLIB) -o $@
-	@$(CXX) -MM $(TILEDB_CMD_INCLUDE_PATHS) \
-                    $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
-	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
-	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
-	@rm -f $(@:.o=.d.tmp)
-
-# --- Linking --- #
-
-$(TILEDB_CMD_BIN_DIR)/%: $(TILEDB_CMD_OBJ_DIR)/%.o $(CORE_OBJ)
-	@mkdir -p $(TILEDB_CMD_BIN_DIR)
-	@echo "Creating $@"
-	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
-                -o $@ $^ $(ZLIB) $(OPENSSLLIB)
-
-# --- Cleaning --- #
-
-clean_tiledb_cmd:
-	@echo 'Cleaning tiledb_cmd'
-	@rm -f $(TILEDB_CMD_OBJ_DEB_DIR)/* $(TILEDB_CMD_OBJ_REL_DIR)/* \
-               $(TILEDB_CMD_BIN_DEB_DIR)/* $(TILEDB_CMD_BIN_REL_DIR)/*
-
-##############
 #  Examples  #
 ##############
 
@@ -400,69 +305,6 @@ clean_examples:
 	@rm -f $(EXAMPLES_OBJ_DEB_DIR)/* $(EXAMPLES_OBJ_REL_DIR)/* \
                $(EXAMPLES_BIN_DEB_DIR)/* $(EXAMPLES_BIN_REL_DIR)/*
 
-
-######
-# LA #
-######
-
-# --- Compilation and dependency genration --- #
-
-# -include $(LA_OBJ:.o=.d)
-
-# $(LA_OBJ_DIR)/%.o: $(LA_SRC_DIR)/%.cc
-#	@test -d $(LA_OBJ_DIR) || mkdir -p $(LA_OBJ_DIR)
-#	@echo "Compiling $<"
-#	@$(CXX) $(LA_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< -o $@
-#	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $(LA_INCLUDE_PATHS) $< > $(@:.o=.d)
-#	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
-#	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
-#	@rm -f $(@:.o=.d.tmp)
-
-# --- Linking --- #
-
-# $(LA_BIN_DIR)/example_transpose: $(LA_OBJ) $(CORE_OBJ)
-#	@mkdir -p $(LA_BIN_DIR)
-#	@echo "Creating example_transpose"
-#	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
-#               -o $@ $^
-
-# --- Cleaning --- #
-
-# clean_la:
-#	@echo 'Cleaning la'
-#	@rm -f $(LA_OBJ_DIR)/* $(LA_BIN_DIR)/* 
-
-########
-# RVMA #
-########
-
-# --- Compilation and dependency genration --- #
-
-# -include $(RVMA_OBJ:.o=.d)
-
-# $(RVMA_OBJ_DIR)/%.o: $(RVMA_SRC_DIR)/%.c
-#	@test -d $(RVMA_OBJ_DIR) || mkdir -p $(RVMA_OBJ_DIR)
-#	@echo "Compiling $<"
-#	@$(CXX) $(RVMA_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< -o $@
-#	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $(RVMA_INCLUDE_PATHS) $< > $(@:.o=.d)
-#	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
-#	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
-#	@rm -f $(@:.o=.d.tmp)
-
-# --- Linking --- #
-
-# $(RVMA_BIN_DIR)/simple_test: $(RVMA_OBJ) $(CORE_OBJ)
-#	@mkdir -p $(RVMA_BIN_DIR)
-#	@echo "Creating simple_test"
-#	@$(CXX) $(OPENMP_LIB_PATHS) $(OPENMP_LIB) $(MPI_LIB_PATHS) $(MPI_LIB) \
-#               -o $@ $^
-
-# --- Cleaning --- #
-
-# clean_rvma:
-#	@echo 'Cleaning RVMA'
-#	@rm -f $(RVMA_OBJ_DIR)/* $(RVMA_BIN_DIR)/*	
-	
 ################
 # TileDB Tests #
 ################
