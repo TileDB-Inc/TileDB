@@ -1,7 +1,7 @@
 /*
  * File: tiledb_array_create_sparse.cc
  * 
- * Creating a sparse array.
+ * It creates a sparse array.
  *
  * It assumes that the following programs have been run:
  *    - tiledb_workspace_group_create.cc

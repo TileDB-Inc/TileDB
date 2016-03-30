@@ -1,7 +1,7 @@
 /*
  * File: tiledb_workspace_group_create.cc
  * 
- * Creating workspaces and groups.
+ * It creates a workspace and two groups.
  */
 
 #include "c_api.h"
