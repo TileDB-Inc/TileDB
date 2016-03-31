@@ -1,12 +1,13 @@
 /*
- * File: tiledb_metadata_write.cc
+ * File: tiledb_metadata_update.cc
  * 
- * It shows how to write to metadata.
+ * It shows how to update a metadata object.
  *
  * It assumes that the following programs have been run:
  *    - tiledb_workspace_group_create.cc
  *    - tiledb_array_create_sparse.cc
  *    - tiledb_metadata_create.cc
+ *    - tiledb_metadata_write.cc
  */
 
 #include "c_api.h"
@@ -27,11 +28,16 @@ int main() {
       0);                                            // Number of attributes 
 
   // Prepare cell buffers
-  int buffer_a1[] = { 1, 2, 3 };
-  size_t buffer_a2[] = { 0, 1, 3 };
-  char buffer_var_a2[] = "abbccc";
-  size_t buffer_keys[] = { 0, 3, 6 };
-  char buffer_var_keys[] = "k1\0k2\0k3";
+  int buffer_a1[] = { 100, TILEDB_EMPTY_INT32 };
+  size_t buffer_a2[] = { 0, 1 };
+  char buffer_var_a2[] = { 'A', TILEDB_EMPTY_CHAR };
+  char keys[] = "k1\0k2";
+  size_t buffer_keys[] = { 0, 3 };
+  char buffer_var_keys[] = 
+  {
+       'k', '1', '\0',                               // k1 modified key value
+        TILEDB_EMPTY_CHAR                            // k2 deleted value
+  };
   const void* buffers[] = 
   { 
       buffer_a1,                                     // a1
@@ -43,12 +49,12 @@ int main() {
       sizeof(buffer_a2), sizeof(buffer_var_a2),      // a2 
       sizeof(buffer_keys), sizeof(buffer_var_keys)   // TILEDB_KEY
   };
-  size_t keys_size = sizeof(buffer_var_keys);
+  size_t keys_size = sizeof(keys);
 
   // Write metadata
   tiledb_metadata_write(
       tiledb_metadata,                               // Metadata object
-      buffer_var_keys,                               // Keys
+      keys,                                          // Keys
       keys_size,                                     // Keys size
       buffers,                                       // Attribute buffers
       buffer_sizes);                                 // Attribute buffer sizes

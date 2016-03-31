@@ -1,38 +1,90 @@
 /*
- * Demonstrates how to read from dense array "workspace/A".
+ * File: tiledb_metadata_read.cc
+ * 
+ * It shows how to read from metadata.
+ *
+ * It assumes that the following programs have been run:
+ *    - tiledb_workspace_group_create.cc
+ *    - tiledb_array_create_sparse.cc
+ *    - tiledb_metadata_create.cc
+ *    - tiledb_metadata_write.cc
  */
 
 #include "c_api.h"
-#include <iostream>
+#include <cstdio>
+#include <cstring>
 
-int main() {
-  /* Intialize context with the default configuration parameters. */
+int main(int argc, char** argv) {
+  // Sanity check
+  if(argc != 2) {
+    fprintf(stderr, "Usage: ./tiledb_metadata_read key\n");
+    return -1;
+  }
+
+  // Intialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
-  /* Subset over attribute "a1". */
-  const char* attributes[] = { "a1" };
+  // Subset over attributes
+  const char* attributes[] = { "a1", "a2" };
 
-  /* Initialize the array in READ mode. */
+  // Initialize metadata
   TileDB_Metadata* tiledb_metadata;
   tiledb_metadata_init(
-      tiledb_ctx, 
-      &tiledb_metadata,
-      "workspace/meta_A",
-      TILEDB_METADATA_READ,
-      attributes,           
-      1);      
+      tiledb_ctx,                                    // Context
+      &tiledb_metadata,                              // Metadata object
+      "my_workspace/sparse_arrays/my_array_B/meta",  // Metadata name
+      TILEDB_METADATA_READ,                          // Mode
+      attributes,                                    // Attributes
+      2);                                            // Number of attributes
 
-  /* Prepare cell buffers for attribute "a1". */
-  int buffer_a1[10];
-  void* buffers[] = { buffer_a1 };
-  size_t buffer_sizes[1] = { sizeof(buffer_a1) };
+  // Prepare cell buffers
+  int buffer_a1[1];
+  size_t buffer_a2[1];
+  char buffer_var_a2[2];
+  void* buffers[] = 
+  { 
+      buffer_a1,                                     // a1 
+      buffer_a2, buffer_var_a2                       // a2
+  };
+  size_t buffer_sizes[] = 
+  { 
+      sizeof(buffer_a1),                             // a1 
+      sizeof(buffer_a2), sizeof(buffer_var_a2)       // a2
+  };
 
-  /* Read from array. */
-  tiledb_metadata_read(tiledb_metadata, "key1", buffers, buffer_sizes); 
-  std::cout << buffer_a1[0] << "\n";
-  tiledb_metadata_read(tiledb_metadata, "key2", buffers, buffer_sizes); 
-  std::cout << buffer_a1[0] << "\n";
+  char a2_str[10];  // Auxiliary variable
+
+  // Read from metadata
+  tiledb_metadata_read(tiledb_metadata, argv[1], buffers, buffer_sizes); 
+ 
+  // Check existence
+  if(buffer_sizes[0] == 0 && !tiledb_metadata_overflow(tiledb_metadata, 0)) {
+    fprintf(stderr, "Key '%s' does not exist in the metadata!\n", argv[1]);
+    return -1;
+  }
+
+  // Check overflow for a2 
+  if(buffer_sizes[2] == 0 && tiledb_metadata_overflow(tiledb_metadata, 1)) {
+    fprintf(stderr, "Reading values on attribute a2 for key '%s' resulted in "
+            "a buffer overflow!\n", argv[1]);
+    return -1;
+  }
+
+  // Check if deleted
+  if(static_cast<int*>(buffers[0])[0] == TILEDB_EMPTY_INT32) {
+    fprintf(stderr, "Key '%s' has been deleted!\n", argv[1]);
+    return -1;
+  }
+
+  // Print attribute values
+  memcpy(a2_str, buffers[2], buffer_sizes[2]);  // Prepare string for a2 value
+  a2_str[buffer_sizes[2]] = '\0';
+  printf(
+      "%s: a1=%d, a2=%s\n", 
+      argv[1], 
+      static_cast<int*>(buffers[0])[0],
+      a2_str);
 
   /* Finalize the array. */
   tiledb_metadata_finalize(tiledb_metadata);

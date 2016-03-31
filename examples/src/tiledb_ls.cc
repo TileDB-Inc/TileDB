@@ -1,42 +1,63 @@
 /*
- * Demonstrates how to read from dense array "workspace/A".
+ * File: tiledb_list.cc
+ * 
+ * It shows how to explore the contents of a TileDB directory.
+ *
+ * It assumes that the following programs have been run:
+ *    - tiledb_workspace_group_create.cc
+ *    - tiledb_array_create_dense.cc
+ *    - tiledb_array_create_sparse.cc
+ *    - tiledb_metadata_create.cc
  */
 
 #include "c_api.h"
-#include <iostream>
+#include <cstdio>
+#include <cstdlib>
 
-int main() {
-  /* Intialize context with the default configuration parameters. */
+int main(int argc, char** argv) {
+  // Sanity check
+  if(argc != 2) {
+    fprintf(stderr, "Usage: ./tiledb_list parent_dir\n");
+    return -1;
+  }
+
+  // Intialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
-  // Get workspaces
-  char* dirs[100];
-  int dir_num = 100;
-  int dir_types[100];
-  const char* parent_dir = "workspace";
+  // Initialize variables
+  char* dirs[10];
+  int dir_num = 10;
+  int dir_types[10];
   for(int i=0; i<dir_num; ++i)
-    dirs[i] = new char[TILEDB_NAME_MAX_LEN];
-  tiledb_ls(tiledb_ctx, parent_dir, (char**) dirs, dir_types, &dir_num);
+    dirs[i] = (char*) malloc(TILEDB_NAME_MAX_LEN);
 
-  // Print workspace
+  // List TileDB objects
+  tiledb_ls(
+      tiledb_ctx,                                    // Context
+      argv[1],                                       // Parent directory
+      (char**) dirs,                                 // Directories
+      dir_types,                                     // Directory types
+      &dir_num);                                     // Directory number
+
+  // Print TileDB objects
   for(int i=0; i<dir_num; ++i) {
-    std::cout << dirs[i] << " ";
+    printf("%s ", dirs[i]);
     if(dir_types[i] == TILEDB_ARRAY)
-      std::cout << "ARRAY\n";
+      printf("ARRAY\n");
     else if(dir_types[i] == TILEDB_METADATA)
-      std::cout << "METADATA\n";
+      printf("METADATA\n");
     else if(dir_types[i] == TILEDB_GROUP)
-      std::cout << "GROUP\n";
+      printf("GROUP\n");
     else if(dir_types[i] == TILEDB_WORKSPACE)
-      std::cout << "WORKSPACE\n";
+      printf("WORKSPACE\n");
   }
  
   // Clean up
   for(int i=0; i<dir_num; ++i)
-    delete [] dirs[i];
+    free(dirs[i]);
 
-  /* Finalize context. */
+  // Finalize context
   tiledb_ctx_finalize(tiledb_ctx);
 
   return 0;

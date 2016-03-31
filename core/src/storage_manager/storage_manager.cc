@@ -752,9 +752,8 @@ int StorageManager::ls(
   DIR* dir = opendir(parent_dir_real.c_str());
   
   if(dir == NULL) {
-    PRINT_ERROR(std::string("Cannot open parent directory '") + 
-                parent_dir_real + "'; " + strerror(errno));
-    return TILEDB_SM_ERR;
+    dir_num = 0;
+    return TILEDB_SM_OK;
   }
 
   while((next_file = readdir(dir))) {
