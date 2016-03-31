@@ -327,7 +327,9 @@ int Array::init(
   std::vector<std::string> attributes_vec;
   if(attributes == NULL) { // Default: all attributes
     attributes_vec = array_schema->attributes();
-    if(array_schema->dense()) // Remove coordinates attribute for dense arrays
+    if(array_schema->dense() && mode != TILEDB_ARRAY_WRITE_UNSORTED) 
+      // Remove coordinates attribute for dense arrays, 
+      // unless in TILEDB_WRITE_UNSORTED mode
       attributes_vec.pop_back(); 
   } else {                 // Custom attributes
     for(int i=0; i<attribute_num; ++i) {
