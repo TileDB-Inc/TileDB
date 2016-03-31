@@ -188,13 +188,13 @@ int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
     // For variable length attributes, ensure an empty file exists
     // This is because if the current fragment contains no valid values for this
     // attribute, then the file never gets created. This messes up querying
-    //  functions
+    // functions
     const ArraySchema* array_schema = fragment_->array()->array_schema();
     const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
     const std::string file_prefix = fragment_->fragment_name() + "/";
     std::string filename = "";
     // Go over var length attributes
-    for(auto i=0ull; i<attribute_ids.size(); ++i) {
+    for(int i=0; i<attribute_ids.size(); ++i) {
       if(array_schema->var_size(attribute_ids[i])) {
         filename = file_prefix + array_schema->attribute(attribute_ids[i]) + 
                    "_var" + TILEDB_FILE_SUFFIX;
@@ -602,6 +602,10 @@ int WriteState::write_dense_attr(
     int attribute_id,
     const void* buffer,
     size_t buffer_size) {
+  // Trivial case
+  if(buffer_size == 0)
+    return TILEDB_WS_OK;
+
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int compression = array_schema->compression(attribute_id);
@@ -704,6 +708,10 @@ int WriteState::write_dense_attr_var(
     size_t buffer_size,
     const void* buffer_var,
     size_t buffer_var_size) {
+  // Trivial case
+  if(buffer_size == 0 || buffer_var_size == 0)
+    return TILEDB_WS_OK;
+
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int compression = array_schema->compression(attribute_id);
@@ -999,6 +1007,10 @@ int WriteState::write_sparse_attr(
     int attribute_id,
     const void* buffer,
     size_t buffer_size) {
+  // Trivial case
+  if(buffer_size == 0)
+    return TILEDB_WS_OK;
+
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int compression = array_schema->compression(attribute_id);
@@ -1114,6 +1126,10 @@ int WriteState::write_sparse_attr_var(
     size_t buffer_size,
     const void* buffer_var,
     size_t buffer_var_size) {
+  // Trivial case
+  if(buffer_size == 0 || buffer_var_size == 0)
+    return TILEDB_WS_OK;
+
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int compression = array_schema->compression(attribute_id);
