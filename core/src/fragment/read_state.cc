@@ -842,8 +842,9 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
     // Find the search tile position
     T* tile_coords_norm = new T[dim_num];
     for(int i=0; i<dim_num; ++i)
-      tile_coords_norm[i] = (domain[2*i] - array_domain[2*i]) / tile_extents[i];
-    search_tile_pos_ = array_schema->get_tile_pos(domain, tile_coords);
+      tile_coords_norm[i] = 
+          tile_coords[i] - (domain[2*i]-array_domain[2*i]) / tile_extents[i]; 
+    search_tile_pos_ = array_schema->get_tile_pos(domain, tile_coords_norm);
     delete [] tile_coords_norm;
 
     // Compute overlap of the query subarray with tile
@@ -1454,6 +1455,9 @@ int ReadState::get_tile_from_disk_cmp_gzip(int attribute_id, int64_t tile_i) {
           : tile_offsets[attribute_id_real][tile_i+1] - 
             tile_offsets[attribute_id_real][tile_i];
 
+std::cout << attribute_id << " " << tile_i << " " << tile_compressed_size << "\n";
+std::cout << fragment_->fragment_name() << "\n";
+
   // Read tile from file
   if(READ_TILE_FROM_FILE_CMP_GZIP(
          attribute_id, 
@@ -1863,7 +1867,6 @@ int ReadState::read_tile_from_file_with_mmap_cmp_gzip(
   off_t start_offset = (offset / page_size) * page_size;
   size_t extra_offset = offset - start_offset;
   size_t new_length = tile_size + extra_offset;
-
 
   // Open file
   int fd = open(filename.c_str(), O_RDONLY);
