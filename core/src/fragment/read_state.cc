@@ -1455,9 +1455,6 @@ int ReadState::get_tile_from_disk_cmp_gzip(int attribute_id, int64_t tile_i) {
           : tile_offsets[attribute_id_real][tile_i+1] - 
             tile_offsets[attribute_id_real][tile_i];
 
-std::cout << attribute_id << " " << tile_i << " " << tile_compressed_size << "\n";
-std::cout << fragment_->fragment_name() << "\n";
-
   // Read tile from file
   if(READ_TILE_FROM_FILE_CMP_GZIP(
          attribute_id, 
