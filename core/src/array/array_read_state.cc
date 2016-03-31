@@ -888,9 +888,10 @@ void ArrayReadState::get_next_overlapping_tiles_sparse() {
     // Check if done
     done_ = true;
     for(int i=0; i<fragment_num_; ++i) { 
-      if(fragment_bounding_coords_[i] != NULL) 
+      if(fragment_bounding_coords_[i] != NULL) { 
         done_ = false;
         break;
+      }
     }
   }
 }
