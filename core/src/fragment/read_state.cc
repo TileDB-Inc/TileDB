@@ -1432,7 +1432,6 @@ int ReadState::get_tile_from_disk_cmp_gzip(int attribute_id, int64_t tile_i) {
   size_t full_tile_size = fragment_->tile_size(attribute_id_real);
   int64_t cell_num = book_keeping_->cell_num(tile_i);  
   size_t tile_size = cell_num * cell_size; 
-
   const std::vector<std::vector<off_t> >& tile_offsets = 
       book_keeping_->tile_offsets(); 
   int64_t tile_num = book_keeping_->tile_num();
@@ -1864,6 +1863,7 @@ int ReadState::read_tile_from_file_with_mmap_cmp_gzip(
   off_t start_offset = (offset / page_size) * page_size;
   size_t extra_offset = offset - start_offset;
   size_t new_length = tile_size + extra_offset;
+
 
   // Open file
   int fd = open(filename.c_str(), O_RDONLY);
