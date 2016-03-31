@@ -421,10 +421,12 @@ int ReadState::copy_cells_var(
   if(tiles_offsets_[attribute_id] != end_offset + 1) 
     overflow_[attribute_id] = true;
 
-  //Entering this if condition implies that the var data in this cell is so large
-  //that the allocated buffer cannot hold it
-  if(buffer_offset == 0u && bytes_to_copy == 0u)
-    return TILEDB_RS_ERR;
+  // Entering this if condition implies that the var data in this cell is so large
+  // that the allocated buffer cannot hold it
+  if(buffer_offset == 0u && bytes_to_copy == 0u) {
+    overflow_[attribute_id] = true; 
+    return TILEDB_RS_OK;
+  }
 
   // Success
   return TILEDB_RS_OK;
