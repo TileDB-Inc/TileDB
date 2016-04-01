@@ -185,6 +185,10 @@ int Array::consolidate() {
   finalize();
   init(array_schema_, TILEDB_ARRAY_READ, NULL, 0, NULL);
 
+  // Trivial case
+  if(fragments_.size() == 1)
+    return TILEDB_AS_OK;
+
   // Create new fragment
   Fragment* new_fragment = new Fragment(this);
   if(new_fragment->init(new_fragment_name(), TILEDB_ARRAY_WRITE, subarray_) != 

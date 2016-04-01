@@ -1370,6 +1370,7 @@ int ArraySchema::cell_order_cmp(const T* coords_a, const T* coords_b) const {
     // Check hilbert ids
     int64_t id_a = hilbert_id(coords_a);
     int64_t id_b = hilbert_id(coords_b);
+
     if(id_a < id_b)
       return -1;
     else if(id_a > id_b)
