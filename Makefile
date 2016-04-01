@@ -189,8 +189,8 @@ TEST_OBJ := $(patsubst $(TEST_SRC_DIR)/%.cc, $(TEST_OBJ_DIR)/%.o, $(TEST_SRC))
 # General Targets #
 ###################
 
-.PHONY: core examples check doc clean_core \
-        clean_check clean_tiledb_cmd clean_examples \
+.PHONY: core examples test doc clean_core \
+        clean_test clean_tiledb_cmd clean_examples \
         clean
 
 all: core libtiledb 
@@ -203,12 +203,12 @@ examples: core $(EXAMPLES_OBJ) $(EXAMPLES_BIN)
 
 doc: doxyfile.inc 
 
-check: libtiledb $(TEST_BIN_DIR)/tiledb_test
+test: libtiledb $(TEST_BIN_DIR)/tiledb_test
 	@echo "Running TileDB tests"
 	@$(TEST_BIN_DIR)/tiledb_test
 
 clean: clean_core clean_libtiledb \
-       clean_check clean_doc clean_examples 
+       clean_test clean_doc clean_examples 
 
 ########
 # Core #
@@ -334,8 +334,8 @@ $(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_OBJ)
 
 # --- Cleaning --- #
 
-clean_check:
-	@echo "Cleaning check"
+clean_test:
+	@echo "Cleaning test"
 	@rm -rf $(TEST_OBJ_DIR) $(TEST_BIN_DIR)
 	
 
