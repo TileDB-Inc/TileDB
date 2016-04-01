@@ -2,9 +2,6 @@
  * File: tiledb_ls_workspaces.cc
  * 
  * It shows how to list the TileDB workspaces.
- *
- * It assumes that the following programs have been run:
- *    - tiledb_workspace_group_create.cc
  */
 
 #include "c_api.h"

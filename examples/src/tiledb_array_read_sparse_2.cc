@@ -3,7 +3,7 @@
  * 
  * It shows how to read from a sparse array, constraining the read
  * to a specific subarray and subset of attributes. Moreover, the
- * program shows how to handle deletion and detect buffer overflow. 
+ * program shows how to handle deletions and detect buffer overflow. 
  */
 
 #include "c_api.h"

@@ -2,10 +2,6 @@
  * File: tiledb_array_write_dense_1.cc
  * 
  * It shows how to write to a dense array.
- *
- * It assumes that the following programs have been run:
- *    - tiledb_workspace_group_create.cc
- *    - tiledb_array_create_dense.cc
  */
 
 #include "c_api.h"

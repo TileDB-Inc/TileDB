@@ -1,7 +1,7 @@
 /*
  * File: tiledb_array_read_sparse_1.cc
  * 
- * It shows how to read from a sparse array.
+ * It shows how to read a complete sparse array.
  */
 
 #include "c_api.h"
@@ -45,15 +45,15 @@ int main() {
 
   // Print cell values
   int64_t result_num = buffer_sizes[0] / sizeof(int);
-  printf("coords\t a1\t   a2\t (a3.first, a3.second)\n");
-  printf("----------------------------------------------\n");
+  printf("coords\t a1\t   a2\t     (a3.first, a3.second)\n");
+  printf("--------------------------------------------------\n");
   for(int i=0; i<result_num; ++i) { 
     printf("(%lld, %lld)", buffer_coords[2*i], buffer_coords[2*i+1]);
-    printf("\t %2d", buffer_a1[i]);
+    printf("\t %3d", buffer_a1[i]);
     size_t var_size = (i != result_num-1) ? buffer_a2[i+1] - buffer_a2[i] 
                                           : buffer_sizes[2] - buffer_a2[i];
     printf("\t %4.*s", var_size, &buffer_var_a2[buffer_a2[i]]);
-    printf("\t\t (%3.1f, %3.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
+    printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
   }
 
   // Finalize the array

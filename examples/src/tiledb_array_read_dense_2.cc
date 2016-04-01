@@ -4,11 +4,6 @@
  * It shows how to read from a dense array, constraining the read
  * to a specific subarray and subset of attributes. Moreover, the
  * program shows how to detect buffer overflow.
- *
- * It assumes that the following programs have been run:
- *    - tiledb_workspace_group_create.cc
- *    - tiledb_array_create_dense.cc
- *    - tiledb_array_write_dense_1.cc
  */
 
 #include "c_api.h"

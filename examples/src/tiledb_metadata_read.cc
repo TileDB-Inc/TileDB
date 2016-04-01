@@ -2,17 +2,10 @@
  * File: tiledb_metadata_read.cc
  * 
  * It shows how to read from metadata.
- *
- * It assumes that the following programs have been run:
- *    - tiledb_workspace_group_create.cc
- *    - tiledb_array_create_sparse.cc
- *    - tiledb_metadata_create.cc
- *    - tiledb_metadata_write.cc
  */
 
 #include "c_api.h"
 #include <cstdio>
-#include <cstring>
 
 int main(int argc, char** argv) {
   // Sanity check
@@ -53,7 +46,6 @@ int main(int argc, char** argv) {
       sizeof(buffer_a2), sizeof(buffer_var_a2)       // a2
   };
 
-  char a2_str[10];  // Auxiliary variable
 
   // Read from metadata
   tiledb_metadata_read(tiledb_metadata, argv[1], buffers, buffer_sizes); 
@@ -66,7 +58,7 @@ int main(int argc, char** argv) {
 
   // Check overflow for a2 
   if(buffer_sizes[2] == 0 && tiledb_metadata_overflow(tiledb_metadata, 1)) {
-    fprintf(stderr, "Reading values on attribute a2 for key '%s' resulted in "
+    fprintf(stderr, "Reading value on attribute 'a2' for key '%s' resulted in "
             "a buffer overflow!\n", argv[1]);
     return -1;
   }
@@ -78,13 +70,12 @@ int main(int argc, char** argv) {
   }
 
   // Print attribute values
-  memcpy(a2_str, buffers[2], buffer_sizes[2]);  // Prepare string for a2 value
-  a2_str[buffer_sizes[2]] = '\0';
   printf(
-      "%s: a1=%d, a2=%s\n", 
+      "%s: a1=%d, a2=%.*s\n", 
       argv[1], 
       static_cast<int*>(buffers[0])[0],
-      a2_str);
+      buffer_sizes[2],
+      static_cast<char*>(buffers[2]));
 
   /* Finalize the array. */
   tiledb_metadata_finalize(tiledb_metadata);

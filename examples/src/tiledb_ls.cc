@@ -2,12 +2,6 @@
  * File: tiledb_list.cc
  * 
  * It shows how to explore the contents of a TileDB directory.
- *
- * It assumes that the following programs have been run:
- *    - tiledb_workspace_group_create.cc
- *    - tiledb_array_create_dense.cc
- *    - tiledb_array_create_sparse.cc
- *    - tiledb_metadata_create.cc
  */
 
 #include "c_api.h"

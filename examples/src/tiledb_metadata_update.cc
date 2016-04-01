@@ -1,13 +1,7 @@
 /*
  * File: tiledb_metadata_update.cc
  * 
- * It shows how to update a metadata object.
- *
- * It assumes that the following programs have been run:
- *    - tiledb_workspace_group_create.cc
- *    - tiledb_array_create_sparse.cc
- *    - tiledb_metadata_create.cc
- *    - tiledb_metadata_write.cc
+ * It shows how to modify or delete a metadata item.
  */
 
 #include "c_api.h"

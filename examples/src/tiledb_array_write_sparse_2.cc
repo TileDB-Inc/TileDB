@@ -1,7 +1,7 @@
 /*
  * File: tiledb_array_write_sparse_2.cc
  * 
- * It shows how to write to a sparse array in two sorted batches.
+ * It shows how to write to a sparse array with two sorted batch writes.
  */
 
 #include "c_api.h"

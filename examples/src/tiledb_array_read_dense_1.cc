@@ -1,12 +1,7 @@
 /*
  * File: tiledb_array_read_dense_1.cc
  * 
- * It shows how to read from a dense array.
- *
- * It assumes that the following programs have been run:
- *    - tiledb_workspace_group_create.cc
- *    - tiledb_array_create_dense.cc
- *    - tiledb_array_write_dense_1.cc
+ * It shows how to read a complete dense array.
  */
 
 #include "c_api.h"
@@ -47,14 +42,14 @@ int main() {
 
   // Print cell values
   int64_t result_num = buffer_sizes[0] / sizeof(int);
-  printf("a1\t   a2\t (a3.first, a3.second)\n");
+  printf(" a1\t    a2\t   (a3.first, a3.second)\n");
   printf("-----------------------------------------\n");
   for(int i=0; i<result_num; ++i) { 
-    printf("%2d", buffer_a1[i]);
+    printf("%3d", buffer_a1[i]);
     size_t var_size = (i != result_num-1) ? buffer_a2[i+1] - buffer_a2[i] 
                                           : buffer_sizes[2] - buffer_a2[i];
     printf("\t %4.*s", var_size, &buffer_var_a2[buffer_a2[i]]);
-    printf("\t\t (%4.1f, %4.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
+    printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
   }
 
   // Finalize the array

@@ -2,16 +2,6 @@
  * File: tiledb_clear_delete_move.cc
  * 
  * It shows how to clear, delete and move TileDB objects.
- *
- * It assumes that the following programs have been run:
- *    - tiledb_workspace_group_create.cc
- *    - tiledb_array_create_dense.cc
- *    - tiledb_array_create_sparse.cc
- *    - tiledb_array_write_dense_1.cc
- *    - tiledb_array_write_sparse_1.cc
- *    - tiledb_metadata_create.cc
- *    - tiledb_metadata_write.cc
- *    - tiledb_metadata_update.cc
  */
 
 #include "c_api.h"

@@ -1,7 +1,7 @@
 /*
  * File: tiledb_array_write_sparse_4.cc
  * 
- * It shows how to write unsorted cells to a sparse array, in two batches.
+ * It shows how to write unsorted cells to a sparse array with two batch writes.
  */
 
 #include "c_api.h"

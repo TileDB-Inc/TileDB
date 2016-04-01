@@ -2,13 +2,7 @@
  * File: tiledb_array_update_dense_1.cc
  * 
  * It shows how to update a dense array, writing into a subarray of the
- * of the array domain. Observe that updates are carried out as simple
- * writes.
- *
- * It assumes that the following programs have been run:
- *    - tiledb_workspace_group_create.cc
- *    - tiledb_array_create_dense.cc
- *    - tiledb_array_write_dense_1.cc
+ * array domain. Observe that updates are carried out as simple writes.
  */
 
 #include "c_api.h"

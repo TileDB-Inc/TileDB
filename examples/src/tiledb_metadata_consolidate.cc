@@ -2,13 +2,6 @@
  * File: tiledb_metadata_consolidate.cc
  * 
  * It shows how to consolidate metadata.
- *
- * It assumes that the following programs have been run:
- *    - tiledb_workspace_group_create.cc
- *    - tiledb_array_create_sparse.cc
- *    - tiledb_metadata_create.cc
- *    - tiledb_metadata_write.cc
- *    - tiledb_metadata_update.cc
  */
 
 #include "c_api.h"

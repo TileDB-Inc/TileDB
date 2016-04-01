@@ -2,11 +2,6 @@
  * File: tiledb_array_primitive.cc
  * 
  * It shows how to initialize/finalize an array, and explore its schema.
- *
- * It assumes that the following programs have been run:
- *    - tiledb_workspace_group_create.cc
- *    - tiledb_array_create_dense.cc
- *    - tiledb_array_create_sparse.cc
  */
 
 #include "c_api.h"
