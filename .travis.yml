@@ -18,7 +18,7 @@ before_script:
 
 script:
     - make -j 4
-    - make check
+    - make test
     - lcov --directory . --capture --output-file coverage.info
 
 after_success:
