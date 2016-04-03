@@ -281,7 +281,7 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 $(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(TEST_BIN_DIR)
 	@echo "Creating test_cmd"
-	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(ZLIB) $(OPENSSLLIB) \
+	@$(CXX) $(LDFLAGS) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(ZLIB) $(OPENSSLLIB) \
 		$(GTESTLIB) -fopenmp 
 
 # --- Cleaning --- #
