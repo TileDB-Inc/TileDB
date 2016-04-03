@@ -5,11 +5,12 @@
 OS := $(shell uname)
 
 # --- Configuration flags --- #
-CONFIG_FLAGS =
+CPPFLAGS = -std=gnu++11 -fPIC -fvisibility=hidden \
+      -D_FILE_OFFSET_BITS=64 
 
 # For the Travis integration
 ifdef TRAVIS
-  CONFIG_FLAGS += --coverage
+  CPPFLAGS += --coverage
 endif
 
 # --- Use of mmap function for reading --- #
@@ -18,11 +19,8 @@ ifeq ($(USE_MMAP),)
   USE_MMAP = 1
 endif
 ifeq ($(USE_MMAP),1)
-  CONFIG_FLAGS += -D_TILEDB_USE_MMAP
-endif
-
-# --- Large file support --- #
-LFS_CFLAGS = -D_FILE_OFFSET_BITS=64
+  CPPFLAGS += -D_TILEDB_USE_MMAP
+endif 
 
 # --- Parallel sort --- #
 GNU_PARALLEL =
@@ -30,9 +28,7 @@ ifeq ($(GNU_PARALLEL),)
   GNU_PARALLEL = 1
 endif
 ifeq ($(GNU_PARALLEL),1)
-  CFLAGS = -fopenmp -DGNU_PARALLEL
-else
-  CFLAGS =
+  CPPFLAGS += -DGNU_PARALLEL
 endif
 
 # --- Debug/Release mode handler --- #
@@ -42,11 +38,11 @@ ifeq ($(BUILD),)
 endif
  
 ifeq ($(BUILD),release)
-  CFLAGS += -DNDEBUG -O3 
+  CPPFLAGS += -DNDEBUG -O3 
 endif
 
 ifeq ($(BUILD),debug)
-  CFLAGS += -DDEBUG -gdwarf-3 -g3
+  CPPFLAGS += -DDEBUG -gdwarf-3 -g3
 endif
 
 # --- Verbose mode handler --- #
@@ -55,15 +51,14 @@ ifeq ($(VERBOSE),)
   VERBOSE = 2
 endif
 ifeq ($(VERBOSE),0)
-  CFLAGS += -DNVERBOSE
+  CPPFLAGS += -DNVERBOSE
 endif
 ifneq ($(VERBOSE),0)
-  CFLAGS += -DVERBOSE=$(VERBOSE)
+  CPPFLAGS += -DVERBOSE=$(VERBOSE)
 endif
 
 # --- Compilers --- #
-CXX = g++ -lstdc++ -std=c++11 -fPIC -fvisibility=hidden \
-      $(LFS_CFLAGS) $(CFLAGS) $(CONFIG_FLAGS) 
+CXX = g++   
 
 # --- Directories --- #
 CORE_INCLUDE_DIR = core/include
@@ -112,9 +107,11 @@ DOXYGEN_DIR = doxygen
 DOXYGEN_MAINPAGE = $(DOXYGEN_DIR)/mainpage.dox
 
 # --- Paths --- #
+INCLUDE_PATHS =
 CORE_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
 EXAMPLES_INCLUDE_PATHS = -I$(EXAMPLES_INCLUDE_DIR)
 TEST_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
+LIBRARY_PATHS =
 
 # --- Libraries --- #
 ZLIB = -lz
@@ -155,7 +152,7 @@ core: $(CORE_OBJ)
 libtiledb: core $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT) \
                 $(CORE_LIB_DIR)/libtiledb.a
 
-examples: core $(EXAMPLES_OBJ) $(EXAMPLES_BIN)
+examples: libtiledb $(EXAMPLES_OBJ) $(EXAMPLES_BIN)
 
 doc: doxyfile.inc 
 
@@ -177,7 +174,7 @@ clean: clean_core clean_libtiledb \
 $(CORE_OBJ_DIR)/%.o: $(CORE_SRC_DIR)/%.cc
 	@mkdir -p $(dir $@) 
 	@echo "Compiling $<"
-	@$(CXX) $(CORE_INCLUDE_PATHS) -c $< $(ZLIB) $(OPENSSLLIB) -o $@ 
+	@$(CXX) $(CPPFLAGS) $(INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< -o $@ 
 	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
@@ -213,7 +210,7 @@ endif
 $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT): $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
 	@echo "Creating dynamic library libtiledb.$(SHLIB_EXT)"
-	@$(CXX) $(SHLIB_FLAGS) $(SONAME) -o $@ $^ $(ZLIB) $(OPENSSLLIB)
+	@$(CXX) $(SHLIB_FLAGS) $(SONAME) -o $@ $^ $(LIBRARY_PATHS) $(ZLIB) $(OPENSSLLIB) -fopenmp 
 
 $(CORE_LIB_DIR)/libtiledb.a: $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
@@ -223,7 +220,7 @@ $(CORE_LIB_DIR)/libtiledb.a: $(CORE_OBJ)
 # --- Cleaning --- #
 
 clean_libtiledb:
-	@echo "Cleaning libtiledb.$(SHLIB_EXT)"
+	@echo "Cleaning libtiledb"
 	@rm -rf $(CORE_LIB_DEB_DIR)/* $(CORE_LIB_REL_DIR)/*
 
 # **************** # 
@@ -237,8 +234,8 @@ clean_libtiledb:
 $(EXAMPLES_OBJ_DIR)/%.o: $(EXAMPLES_SRC_DIR)/%.cc
 	@mkdir -p $(EXAMPLES_OBJ_DIR)
 	@echo "Compiling $<"
-	@$(CXX) $(EXAMPLES_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< \
-         $(ZLIB) $(OPENSSLLIB) -o $@
+	@$(CXX) $(CPPFLAGS) $(INCLUDE_PATHS) $(EXAMPLES_INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< \
+         -o $@
 	@$(CXX) -MM $(EXAMPLES_INCLUDE_PATHS) \
                     $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
@@ -247,10 +244,10 @@ $(EXAMPLES_OBJ_DIR)/%.o: $(EXAMPLES_SRC_DIR)/%.cc
 
 # --- Linking --- #
 
-$(EXAMPLES_BIN_DIR)/%: $(EXAMPLES_OBJ_DIR)/%.o $(CORE_OBJ)
+$(EXAMPLES_BIN_DIR)/%: $(EXAMPLES_OBJ_DIR)/%.o $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(EXAMPLES_BIN_DIR)
 	@echo "Creating $@"
-	@$(CXX) -o $@ $^ $(ZLIB) $(OPENSSLLIB)
+	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(ZLIB) $(OPENSSLLIB) -fopenmp 
 
 # --- Cleaning --- #
 
@@ -260,7 +257,7 @@ clean_examples:
                $(EXAMPLES_BIN_DEB_DIR)/* $(EXAMPLES_BIN_REL_DIR)/*
 
 # **************** # 
-#   TileDB Tests   #
+#       Test       #
 # **************** # 
 
 # --- Compilation and dependency genration --- #
@@ -270,7 +267,7 @@ clean_examples:
 $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 	@mkdir -p $(dir $@) 
 	@echo "Compiling $<"
-	@$(CXX) $(TEST_INCLUDE_PATHS) -c $< -o $@
+	@$(CXX) $(CPPFLAGS) $(TEST_INCLUDE_PATHS) -c $< -o $@
 	@$(CXX) -MM $(TEST_INCLUDE_PATHS) \
                     $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
@@ -279,10 +276,10 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 
 # --- Linking --- #
 
-$(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_OBJ)
+$(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(TEST_BIN_DIR)
 	@echo "Creating test_cmd"
-	@$(CXX) $(LDFLAGS) -o $@ $^ $(ZLIB) $(OPENSSLLIB) $(GTESTLIB) 
+	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(ZLIB) $(OPENSSLLIB) $(GTESTLIB) -fopenmp 
 
 # --- Cleaning --- #
 
