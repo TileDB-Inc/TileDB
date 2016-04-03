@@ -38,5 +38,7 @@
  *
  * Visit the TileDB website (http://istc-bigdata.org/tiledb/) to learn more
  * about TileDB, as well as to read the detailed documentation on the internal
- * TileDB mechanics and the usage of the C API library.
+ * TileDB mechanics and the usage of the C API library. Also check the TileDB
+ * GitHub wiki (https://github.com/Intel-HLS/TileDB/wiki) for installation
+ * guidelines and information about the code organization. 
  */
