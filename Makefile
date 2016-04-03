@@ -10,7 +10,7 @@ CPPFLAGS = -std=gnu++11 -fPIC -fvisibility=hidden \
 
 # For the Travis integration
 ifdef TRAVIS
-  CPPFLAGS += -lgcov --coverage
+  CPPFLAGS += --coverage
 endif
 
 # --- Use of mmap function for reading --- #
@@ -278,7 +278,7 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 
 # --- Linking --- #
 
-$(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_LIB_DIR)/libtiledb.a
+$(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) libtiledb
 	@mkdir -p $(TEST_BIN_DIR)
 	@echo "Creating test_cmd"
 	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(ZLIB) $(OPENSSLLIB) \
