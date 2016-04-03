@@ -108,8 +108,10 @@ int StorageManager::init(const char* config_filename) {
   // Create the TileDB home directory if it does not exists, as well
   // as the master catalog.
   if(!is_dir(tiledb_home_)) { 
+
     if(create_dir(tiledb_home_) != TILEDB_UT_OK)
       return TILEDB_SM_ERR;
+
     if(master_catalog_create() != TILEDB_SM_OK)
       return TILEDB_SM_ERR;
   }
@@ -1205,8 +1207,7 @@ int StorageManager::master_catalog_consolidate() const {
 int StorageManager::master_catalog_create() const {
   // Create a metadata schema
   MetadataSchemaC metadata_schema_c = {};
-  metadata_schema_c.metadata_name_ = 
-      (char*) (tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG).c_str();
+  metadata_schema_c.metadata_name_ = (char*) master_catalog_dir_.c_str(); 
 
  // Initialize array schema
   ArraySchema* array_schema = new ArraySchema();
