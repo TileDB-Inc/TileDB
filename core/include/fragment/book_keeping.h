@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corp.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -233,10 +233,13 @@ class BookKeeping {
   std::vector<std::vector<off_t> > tile_offsets_;
   /**
    * The variable tile offsets in their corresponding attribute files.
-   * Meaningful only when there is compression.
+   * Meaningful only for variable-sized tiles.
    */
   std::vector<std::vector<off_t> > tile_var_offsets_;
-  /** The sizes of the variable tiles. */
+  /*
+   * The sizes of the uncompressed variable tiles. 
+   * Meaningful only when there is compression for variable tiles.
+   */
   std::vector<std::vector<size_t> > tile_var_sizes_;
 
 

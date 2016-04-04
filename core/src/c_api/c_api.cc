@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * Copyright (c) 2016 MIT and Intel Corp.
+ * @copyright Copyright (c) 2016 MIT and Intel Corp.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -162,23 +162,6 @@ int tiledb_workspace_create(
     return TILEDB_OK;
 }
 
-int tiledb_ls_workspaces(
-    const TileDB_CTX* tiledb_ctx,
-    char** workspaces,
-    int* workspace_num) {
-  // Sanity check
-  if(!sanity_check(tiledb_ctx))
-    return TILEDB_ERR;
-
-  // List workspaces
-  if(tiledb_ctx->storage_manager_->ls_workspaces(
-               workspaces,
-               *workspace_num) != TILEDB_SM_OK)
-    return TILEDB_ERR;
-  else 
-    return TILEDB_OK;
-}
-
 
 
 
@@ -217,19 +200,19 @@ int tiledb_array_set_schema(
     const char* array_name,
     const char** attributes,
     int attribute_num,
+    int64_t capacity,
+    int cell_order,
+    const int* cell_val_num,
+    const int* compression,
+    int dense,
     const char** dimensions, 
     int dim_num,
-    int dense,
     const void* domain,
     size_t domain_len,
     const void* tile_extents,
     size_t tile_extents_len,
-    const int* types,
-    const int* cell_val_num,
-    int cell_order,
     int tile_order,
-    int64_t capacity,
-    const int* compression) {
+    const int* types) {
   // Sanity check
   if(tiledb_array_schema == NULL) {
     PRINT_ERROR("Invalid array schema pointer");
@@ -722,10 +705,10 @@ int tiledb_metadata_set_schema(
     const char* metadata_name,
     const char** attributes,
     int attribute_num,
-    const int* types,
-    const int* cell_val_num,
     int64_t capacity,
-    const int* compression) {
+    const int* cell_val_num,
+    const int* compression,
+    const int* types) {
   // Sanity check
   if(tiledb_metadata_schema == NULL) {
     PRINT_ERROR("Invalid metadata schema pointer");
@@ -1131,7 +1114,7 @@ int tiledb_metadata_iterator_finalize(
 
 
 /* ****************************** */
-/*             MISC               */
+/*       DIRECTORY MANAGEMENT     */
 /* ****************************** */
 
 int tiledb_clear(
@@ -1174,6 +1157,23 @@ int tiledb_move(
   if(tiledb_ctx->storage_manager_->move(old_dir, new_dir) != TILEDB_SM_OK)
     return TILEDB_ERR;
   else
+    return TILEDB_OK;
+}
+
+int tiledb_ls_workspaces(
+    const TileDB_CTX* tiledb_ctx,
+    char** workspaces,
+    int* workspace_num) {
+  // Sanity check
+  if(!sanity_check(tiledb_ctx))
+    return TILEDB_ERR;
+
+  // List workspaces
+  if(tiledb_ctx->storage_manager_->ls_workspaces(
+               workspaces,
+               *workspace_num) != TILEDB_SM_OK)
+    return TILEDB_ERR;
+  else 
     return TILEDB_OK;
 }
 

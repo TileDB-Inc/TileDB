@@ -25,7 +25,7 @@
  * to/from the array storage
  */
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 #include <unistd.h>
 #include "c_api.h"
 
@@ -87,12 +87,20 @@ int ArraySchemaTest::create_dense_array() {
       attributes,
       // Number of attributes
       1,
+      // Capacity
+      1000,
+      // Cell order
+      TILEDB_COL_MAJOR,
+      // Number of cell values per attribute (NULL means 1 everywhere)
+      NULL,
+      // Compression
+      compression,
+      // Dense array
+      1,
       // Dimensions
       dimensions,
       // Number of dimensions
       2,
-      // Dense array
-      1,
       // Domain
       domain,
       // Domain length in bytes
@@ -101,18 +109,10 @@ int ArraySchemaTest::create_dense_array() {
       tile_extents,
       // Tile extents in bytes
       10*sizeof(int64_t),
-      // Types
-      types,
-      // Number of cell values per attribute (NULL means 1 everywhere)
-      NULL,
-      // Cell order
-      TILEDB_COL_MAJOR,
       // Tile order (0 means ignore in sparse arrays and default in dense)
       0,
-      // Capacity
-      1000,
-      // Compression
-      compression
+      // Types
+      types
   );
 
   /* Create the array. */

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corp.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -569,7 +569,11 @@ bool is_positive_integer(const char* s) {
 
 template<class T>
 bool is_unary_subarray(const T* subarray, int dim_num) {
-  return !memcmp(subarray, &subarray[dim_num], dim_num*sizeof(T));
+  for(int i=0; i<dim_num; ++i)
+    if(subarray[i*dim_num] != subarray[i*dim_num+1])
+      return false;
+
+  return true;
 }
 
 bool is_workspace(const std::string& dir) {

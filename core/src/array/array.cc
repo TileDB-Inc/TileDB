@@ -5,7 +5,7 @@
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2016 MIT and Intel Corp.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -185,6 +185,10 @@ int Array::consolidate() {
   finalize();
   init(array_schema_, TILEDB_ARRAY_READ, NULL, 0, NULL);
 
+  // Trivial case
+  if(fragments_.size() == 1)
+    return TILEDB_AS_OK;
+
   // Create new fragment
   Fragment* new_fragment = new Fragment(this);
   if(new_fragment->init(new_fragment_name(), TILEDB_ARRAY_WRITE, subarray_) != 
@@ -327,7 +331,9 @@ int Array::init(
   std::vector<std::string> attributes_vec;
   if(attributes == NULL) { // Default: all attributes
     attributes_vec = array_schema->attributes();
-    if(array_schema->dense()) // Remove coordinates attribute for dense arrays
+    if(array_schema->dense() && mode != TILEDB_ARRAY_WRITE_UNSORTED) 
+      // Remove coordinates attribute for dense arrays, 
+      // unless in TILEDB_WRITE_UNSORTED mode
       attributes_vec.pop_back(); 
   } else {                 // Custom attributes
     for(int i=0; i<attribute_num; ++i) {

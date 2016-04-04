@@ -1,11 +1,11 @@
 /*!
- * @mainpage notitle
+ * @mainpage TileDB
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corp.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,11 +24,21 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
-
  *
- * @section Introduction
+ * @section About
  *
- * TileDB is a new array database system. 
+ * TileDB is a new system for efficient management of scientific data, i.e., of
+ * massive quantities of data that are naturally represented by 
+ * multi-dimensional arrays. TileDB is written in C++ for Linux Ubuntu and Mac 
+ * OS X, and open-sourced under the MIT license. The current release includes 
+ * only the TileDB storage manager module exposed as a C API library, which
+ * makes it easy for programmers to write applications for diverse, complex,
+ * parallel, scientific data analytics.
  *
- * [... Documentation Under Construction ...]
+ *
+ * Visit the TileDB website (http://istc-bigdata.org/tiledb/) to learn more
+ * about TileDB, as well as to read the detailed documentation on the internal
+ * TileDB mechanics and the usage of the C API library. Also check the TileDB
+ * GitHub wiki (https://github.com/Intel-HLS/TileDB/wiki) for installation
+ * guidelines and information about the code organization. 
  */

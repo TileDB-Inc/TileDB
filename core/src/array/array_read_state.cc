@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corp.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -719,7 +719,6 @@ int ArrayReadState::get_next_fragment_cell_ranges_dense() {
          fragment_cell_pos_ranges) != TILEDB_ARS_OK) 
     return TILEDB_ARS_ERR;
 
-
   // Insert cell pos ranges in the state
   fragment_cell_pos_ranges_vec_.push_back(fragment_cell_pos_ranges);
 
@@ -865,12 +864,7 @@ void ArrayReadState::get_next_overlapping_tiles_sparse() {
     }
   } else { 
     // Get the next overlapping tile for the appropriate fragments
-    done_ = true;
     for(int i=0; i<fragment_num_; ++i) { 
-      // Not done
-      if(fragment_bounding_coords_[i] != NULL) 
-        done_ = false;
-
       // Get next overlappint tile
       T* fragment_bounding_coords = 
           static_cast<T*>(fragment_bounding_coords_[i]);
@@ -884,8 +878,19 @@ void ArrayReadState::get_next_overlapping_tiles_sparse() {
           fragment_read_states_[i]->get_bounding_coords(
               fragment_bounding_coords_[i]);
         } else {
+          if(fragment_bounding_coords_[i])
+            free(fragment_bounding_coords_[i]);
           fragment_bounding_coords_[i] = NULL;
         }
+      }
+    }
+
+    // Check if done
+    done_ = true;
+    for(int i=0; i<fragment_num_; ++i) { 
+      if(fragment_bounding_coords_[i] != NULL) { 
+        done_ = false;
+        break;
       }
     }
   }
@@ -1550,10 +1555,25 @@ int ArrayReadState::sort_fragment_cell_ranges(
           T* trimmed_top_range = static_cast<T*>(trimmed_top.second);
           memcpy(trimmed_top_range, &popped_range[dim_num], coords_size);
           memcpy(&trimmed_top_range[dim_num], &top_range[dim_num], coords_size);
-          array_schema->get_next_cell_coords<T>(
-              tile_domain, 
-              trimmed_top_range);
-          pq.push(trimmed_top);
+          if(fragment_read_states_[top_fragment_i]->dense()) {
+            array_schema->get_next_cell_coords<T>( // TOP IS DENSE
+                tile_domain, 
+                trimmed_top_range);
+            pq.push(trimmed_top);
+          } else {                                 // TOP IS SPARSE
+            bool coords_retrieved;
+            if(fragment_read_states_[top_fragment_i]->get_coords_after(
+                   &popped_range[dim_num], 
+                   trimmed_top_range,
+                   coords_retrieved)) {
+              free(trimmed_top_range);
+              return TILEDB_ARS_ERR;
+            }
+            if(coords_retrieved)
+              pq.push(trimmed_top);
+            else
+              free(trimmed_top_range);
+          }
         } else { // Simply discard top and get a new one
           free(top.second);
         }

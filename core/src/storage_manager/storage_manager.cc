@@ -5,7 +5,7 @@
  *
  * The MIT License
  * 
- * Copyright (c) 2016 MIT and Intel Corp.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -108,8 +108,10 @@ int StorageManager::init(const char* config_filename) {
   // Create the TileDB home directory if it does not exists, as well
   // as the master catalog.
   if(!is_dir(tiledb_home_)) { 
+
     if(create_dir(tiledb_home_) != TILEDB_UT_OK)
       return TILEDB_SM_ERR;
+
     if(master_catalog_create() != TILEDB_SM_OK)
       return TILEDB_SM_ERR;
   }
@@ -187,6 +189,11 @@ int StorageManager::ls_workspaces(
 
     // Copy workspace
     if(key_size != 1 || key[0] != TILEDB_EMPTY_CHAR) {
+      if(workspace_i == workspace_num) {
+        PRINT_ERROR("Cannot list workspaces; Workspaces buffer overflow");
+        return TILEDB_SM_ERR;
+      }
+
       strcpy(workspaces[workspace_i], key);
       ++workspace_i;
     }
@@ -747,9 +754,8 @@ int StorageManager::ls(
   DIR* dir = opendir(parent_dir_real.c_str());
   
   if(dir == NULL) {
-    PRINT_ERROR(std::string("Cannot open parent directory '") + 
-                parent_dir_real + "'; " + strerror(errno));
-    return TILEDB_SM_ERR;
+    dir_num = 0;
+    return TILEDB_SM_OK;
   }
 
   while((next_file = readdir(dir))) {
@@ -758,18 +764,34 @@ int StorageManager::ls(
       continue;
     filename = parent_dir_real + "/" +  next_file->d_name;
     if(is_group(filename)) {                  // Group
+      if(dir_i == dir_num) {
+        PRINT_ERROR("Cannot list TileDB directory; Directory buffer overflow");
+        return TILEDB_SM_ERR;
+      }
       strcpy(dirs[dir_i], next_file->d_name);
       dir_types[dir_i] = TILEDB_GROUP;
       ++dir_i;
     } else if(is_metadata(filename)) {        // Metadata
+      if(dir_i == dir_num) {
+        PRINT_ERROR("Cannot list TileDB directory; Directory buffer overflow");
+        return TILEDB_SM_ERR;
+      }
       strcpy(dirs[dir_i], next_file->d_name);
       dir_types[dir_i] = TILEDB_METADATA;
       ++dir_i;
     } else if(is_array(filename)){            // Array
+      if(dir_i == dir_num) {
+        PRINT_ERROR("Cannot list TileDB directory; Directory buffer overflow");
+        return TILEDB_SM_ERR;
+      }
       strcpy(dirs[dir_i], next_file->d_name);
       dir_types[dir_i] = TILEDB_ARRAY;
       ++dir_i;
     } else if(is_workspace(filename)){        // Workspace
+      if(dir_i == dir_num) {
+        PRINT_ERROR("Cannot list TileDB directory; Directory buffer overflow");
+        return TILEDB_SM_ERR;
+      }
       strcpy(dirs[dir_i], next_file->d_name);
       dir_types[dir_i] = TILEDB_WORKSPACE;
       ++dir_i;
@@ -1015,6 +1037,9 @@ int StorageManager::create_master_catalog_entry(
   if(metadata->finalize() != TILEDB_MT_OK)
     return TILEDB_SM_ERR;
 
+  // Clean up
+  delete metadata;
+
   // Success
   return TILEDB_SM_OK;
 }
@@ -1182,8 +1207,7 @@ int StorageManager::master_catalog_consolidate() const {
 int StorageManager::master_catalog_create() const {
   // Create a metadata schema
   MetadataSchemaC metadata_schema_c = {};
-  metadata_schema_c.metadata_name_ = 
-      (char*) (tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG).c_str();
+  metadata_schema_c.metadata_name_ = (char*) master_catalog_dir_.c_str(); 
 
  // Initialize array schema
   ArraySchema* array_schema = new ArraySchema();

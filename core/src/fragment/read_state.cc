@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corp.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -164,9 +164,9 @@ ReadState::~ReadState() {
       PRINT_WARNING("Problem in finalizing ReadState; Memory unmap error");
   }
 
-  for(int i=0; i<int(map_addr_.size()); ++i) {
+  for(int i=0; i<int(map_addr_var_.size()); ++i) {
     if(map_addr_var_[i] != NULL && 
-       munmap(map_addr_var_[i], map_addr_var_lengths_[i]))
+       munmap(map_addr_var_[i], map_addr_var_lengths_[i])) 
       PRINT_WARNING("Problem in finalizing ReadState; Memory unmap error");
   }
 
@@ -421,6 +421,13 @@ int ReadState::copy_cells_var(
   if(tiles_offsets_[attribute_id] != end_offset + 1) 
     overflow_[attribute_id] = true;
 
+  // Entering this if condition implies that the var data in this cell is so large
+  // that the allocated buffer cannot hold it
+  if(buffer_offset == 0u && bytes_to_copy == 0u) {
+    overflow_[attribute_id] = true; 
+    return TILEDB_RS_OK;
+  }
+
   // Success
   return TILEDB_RS_OK;
 }
@@ -589,18 +596,19 @@ int ReadState::get_fragment_cell_ranges_dense(
   int cell_order = array_schema->cell_order();
   size_t cell_range_size = 2*array_schema->coords_size();
   const T* search_tile_overlap_subarray = 
-      static_cast<const T*>(search_tile_overlap_subarray);
+      static_cast<const T*>(search_tile_overlap_subarray_);
   FragmentInfo fragment_info = FragmentInfo(fragment_i, search_tile_pos_);
 
   // Contiguous cells, single cell range
   if(search_tile_overlap_ == 1 || 
-     search_tile_overlap_ == 2) {
+     search_tile_overlap_ == 3) {
     void* cell_range = malloc(cell_range_size);
     T* cell_range_T = static_cast<T*>(cell_range);
     for(int i=0; i<dim_num; ++i) {
       cell_range_T[i] = search_tile_overlap_subarray[2*i];
       cell_range_T[dim_num + i] = search_tile_overlap_subarray[2*i+1];
     }
+
     fragment_cell_ranges.push_back(
         FragmentCellRange(fragment_info, cell_range));
   } else { // Non-contiguous cells, multiple ranges
@@ -668,6 +676,9 @@ int ReadState::get_fragment_cell_ranges_dense(
     // Clean up
     delete [] coords;
   }
+
+  // Success
+  return TILEDB_RS_OK;
 }
 
 template<class T>
@@ -831,8 +842,9 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
     // Find the search tile position
     T* tile_coords_norm = new T[dim_num];
     for(int i=0; i<dim_num; ++i)
-      tile_coords_norm[i] = (domain[2*i] - array_domain[2*i]) / tile_extents[i];
-    search_tile_pos_ = array_schema->get_tile_pos(domain, tile_coords);
+      tile_coords_norm[i] = 
+          tile_coords[i] - (domain[2*i]-array_domain[2*i]) / tile_extents[i]; 
+    search_tile_pos_ = array_schema->get_tile_pos(domain, tile_coords_norm);
     delete [] tile_coords_norm;
 
     // Compute overlap of the query subarray with tile
@@ -1044,10 +1056,13 @@ void ReadState::compute_bytes_to_copy(
   // If bytes do not fit in variable buffer, we need to adjust
   if(bytes_var_to_copy > buffer_var_free_space) {
     // Perform binary search
-    int64_t min = start_cell_pos;
+    int64_t min = start_cell_pos + 1;
     int64_t max = end_cell_pos;
     int64_t med;
-    while(min < max) {
+    // Invariants:
+    // (tile[min-1] - tile[start_cell_pos]) < buffer_var_free_space AND
+    // (tile[max+1] - tile[start_cell_pos]) > buffer_var_free_space
+    while(min <= max) {
       med = min + ((max - min) / 2);
 
       // Calculate variable bytes to copy
@@ -1063,10 +1078,13 @@ void ReadState::compute_bytes_to_copy(
     }
 
     // Determine the end position of the range
-    if(min == max)  
-      end_cell_pos = min - 1;     
-    else 
-      end_cell_pos = med - 1;  
+    int64_t tmp_end = -1;
+    if(min > max)
+      tmp_end = min - 2 ;
+    else
+      tmp_end = med - 1;
+
+    end_cell_pos = std::max(tmp_end, start_cell_pos-1);
 
     // Update variable bytes to copy
     bytes_var_to_copy = tile[end_cell_pos + 1] - tile[start_cell_pos];
@@ -1121,6 +1139,7 @@ void ReadState::compute_tile_search_range() {
   if(tile_search_range_[0] == -1 ||
      tile_search_range_[1] == -1) 
     done_ = true; 
+  
 }
 
 template<class T>
@@ -1133,12 +1152,12 @@ void ReadState::compute_tile_search_range_col_or_row() {
   const std::vector<void*>& bounding_coords = 
       book_keeping_->bounding_coords();
 
-  // Calculate range coordinates
+  // Calculate subarray coordinates
   T* subarray_min_coords = new T[dim_num];
   T* subarray_max_coords = new T[dim_num];
   for(int i=0; i<dim_num; ++i) {
     subarray_min_coords[i] = subarray[2*i]; 
-    subarray_max_coords[i] = subarray[2*i+1], sizeof(T); 
+    subarray_max_coords[i] = subarray[2*i+1]; 
   }
 
   // --- Find the start tile in search range
@@ -1414,7 +1433,6 @@ int ReadState::get_tile_from_disk_cmp_gzip(int attribute_id, int64_t tile_i) {
   size_t full_tile_size = fragment_->tile_size(attribute_id_real);
   int64_t cell_num = book_keeping_->cell_num(tile_i);  
   size_t tile_size = cell_num * cell_size; 
-
   const std::vector<std::vector<off_t> >& tile_offsets = 
       book_keeping_->tile_offsets(); 
   int64_t tile_num = book_keeping_->tile_num();
@@ -1601,36 +1619,40 @@ int ReadState::get_tile_from_disk_var_cmp_gzip(
   // Get size of decompressed tile
   size_t tile_var_size = book_keeping_->tile_var_sizes()[attribute_id][tile_i];
 
-  // Potentially allocate space for buffer
-  if(tiles_var_[attribute_id] == NULL) {
-    tiles_var_[attribute_id] = malloc(tile_var_size);
-    tiles_var_allocated_size_[attribute_id] = tile_var_size;
+  //Non-empty tile, decompress
+  if(tile_var_size > 0u) {
+    // Potentially allocate space for buffer
+    if(tiles_var_[attribute_id] == NULL) {
+      tiles_var_[attribute_id] = malloc(tile_var_size);
+      tiles_var_allocated_size_[attribute_id] = tile_var_size;
+    }
+
+    // Potentially expand buffer
+    if(tile_var_size > tiles_var_allocated_size_[attribute_id]) {
+      tiles_var_[attribute_id] = 
+          realloc(tiles_var_[attribute_id], tile_var_size);
+      tiles_var_allocated_size_[attribute_id] = tile_var_size;
+    }
+
+    // Read tile from file
+    if(READ_TILE_FROM_FILE_VAR_CMP_GZIP(
+          attribute_id, 
+          file_offset, 
+          tile_compressed_size) != TILEDB_RS_OK)
+      return TILEDB_RS_ERR;
+
+    // Decompress tile 
+    if(gunzip(
+          static_cast<unsigned char*>(tile_compressed_), 
+          tile_compressed_size, 
+          static_cast<unsigned char*>(tiles_var_[attribute_id]),
+          tile_var_size,
+          gunzip_out_size) != TILEDB_UT_OK)
+      return TILEDB_RS_ERR;
+
+    // Sanity check
+    assert(gunzip_out_size == tile_var_size);
   }
-
-  // Potentially expand buffer
-  if(tile_var_size > tiles_var_allocated_size_[attribute_id]) {
-    tiles_var_[attribute_id] = realloc(tiles_var_[attribute_id], tile_var_size);
-    tiles_var_allocated_size_[attribute_id] = tile_var_size;
-  }
-
-  // Read tile from file
-  if(READ_TILE_FROM_FILE_VAR_CMP_GZIP(
-         attribute_id, 
-         file_offset, 
-         tile_compressed_size) != TILEDB_RS_OK)
-    return TILEDB_RS_ERR;
-
-  // Decompress tile 
-  if(gunzip(
-         static_cast<unsigned char*>(tile_compressed_), 
-         tile_compressed_size, 
-         static_cast<unsigned char*>(tiles_var_[attribute_id]),
-         tile_var_size,
-         gunzip_out_size) != TILEDB_UT_OK)
-    return TILEDB_RS_ERR;
-
-  // Sanity check
-  assert(gunzip_out_size == tile_var_size);
 
   // Set the variable tile size
   tiles_var_sizes_[attribute_id] = tile_var_size; 
@@ -2066,19 +2088,25 @@ int ReadState::read_tile_from_file_with_mmap_var_cmp_gzip(
   }
 
   // Map
-  map_addr_compressed_ = mmap(
-                             map_addr_compressed_, 
-                             new_length, 
-                             PROT_READ, 
-                             MAP_SHARED, 
-                             fd, 
-                             start_offset);
-  if(map_addr_compressed_ == MAP_FAILED) {
-    map_addr_compressed_ = NULL;
-    map_addr_compressed_length_ = 0;
-    tile_compressed_ = NULL;
-    PRINT_ERROR("Cannot read tile from file; Memory map error");
-    return TILEDB_RS_ERR;
+  // new_length could be 0 for variable length fields, mmap will fail
+  // if new_length == 0
+  if(new_length > 0u) {
+    map_addr_compressed_ = mmap(
+        map_addr_compressed_, 
+        new_length, 
+        PROT_READ, 
+        MAP_SHARED, 
+        fd, 
+        start_offset);
+    if(map_addr_compressed_ == MAP_FAILED) {
+      map_addr_compressed_ = NULL;
+      map_addr_compressed_length_ = 0;
+      tile_compressed_ = NULL;
+      PRINT_ERROR("Cannot read tile from file; Memory map error");
+      return TILEDB_RS_ERR;
+    }
+  } else {
+    map_addr_var_[attribute_id] = 0;
   }
   map_addr_compressed_length_ = new_length;
 
@@ -2137,20 +2165,26 @@ int ReadState::read_tile_from_file_with_mmap_var_cmp_none(
   }
 
   // Map
-  map_addr_var_[attribute_id] = mmap(
-                                    map_addr_var_[attribute_id], 
-                                    new_length, 
-                                    PROT_READ, 
-                                    MAP_SHARED, 
-                                    fd, 
-                                    start_offset);
-  if(map_addr_var_[attribute_id] == MAP_FAILED) {
-    map_addr_var_[attribute_id] = NULL;
-    map_addr_var_lengths_[attribute_id] = 0;
-    tiles_var_[attribute_id] = NULL;
-    tiles_var_sizes_[attribute_id] = 0;
-    PRINT_ERROR("Cannot read tile from file; Memory map error");
-    return TILEDB_RS_ERR;
+  // new_length could be 0 for variable length fields, mmap will fail
+  // if new_length == 0
+  if(new_length > 0u) {
+    map_addr_var_[attribute_id] = mmap(
+        map_addr_var_[attribute_id], 
+        new_length, 
+        PROT_READ, 
+        MAP_SHARED, 
+        fd, 
+        start_offset);
+    if(map_addr_var_[attribute_id] == MAP_FAILED) {
+      map_addr_var_[attribute_id] = NULL;
+      map_addr_var_lengths_[attribute_id] = 0;
+      tiles_var_[attribute_id] = NULL;
+      tiles_var_sizes_[attribute_id] = 0;
+      PRINT_ERROR("Cannot read tile from file; Memory map error");
+      return TILEDB_RS_ERR;
+    }
+  } else {
+    map_addr_var_[attribute_id] = 0;
   }
   map_addr_var_lengths_[attribute_id] = new_length;
 
