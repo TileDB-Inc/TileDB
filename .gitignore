@@ -5,15 +5,6 @@ core/lib/*
 core/include/temp
 core/src/temp
 coverage.info
-tiledb_cmd/include/temp
-tiledb_cmd/src/temp
-tiledb_cmd/bin/*
-tiledb_cmd/obj/*
-la/bin/*
-la/obj/*
-la/include/*.tmp
-la/src/*.tmp
-gtest/obj/*
 test/obj/*
 test/bin/*
 Doxyfile.log
