@@ -375,7 +375,6 @@ bool check_buffer(
 
   return fail;
 }
-/*
 TEST_F(TileDBAPITest, DenseArrayRandomUpdates) {
 
   int64_t dim0 = 100;
@@ -454,4 +453,3 @@ TEST_F(TileDBAPITest, DenseArrayRandomUpdates) {
 
   ASSERT_EQ(fail, false);
 }
-*/
