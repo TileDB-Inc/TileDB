@@ -709,7 +709,7 @@ int WriteState::write_dense_attr_var(
     const void* buffer_var,
     size_t buffer_var_size) {
   // Trivial case
-  if(buffer_size == 0 || buffer_var_size == 0)
+  if(buffer_size == 0)
     return TILEDB_WS_OK;
 
   // For easy reference
@@ -1127,7 +1127,7 @@ int WriteState::write_sparse_attr_var(
     const void* buffer_var,
     size_t buffer_var_size) {
   // Trivial case
-  if(buffer_size == 0 || buffer_var_size == 0)
+  if(buffer_size == 0)
     return TILEDB_WS_OK;
 
   // For easy reference
