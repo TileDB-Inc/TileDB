@@ -113,6 +113,10 @@ EXAMPLES_INCLUDE_PATHS = -I$(EXAMPLES_INCLUDE_DIR)
 TEST_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
 LIBRARY_PATHS =
 
+ifdef TRAVIS
+    LIBRARY_PATHS+=--coverage
+endif
+
 # --- Libraries --- #
 ZLIB = -lz
 OPENSSLLIB = -lcrypto
