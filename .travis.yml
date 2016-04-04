@@ -14,12 +14,12 @@ install:
     - gem install coveralls-lcov
 
 before_script:
-#    - lcov --directory . --zerocounters
+    - lcov --directory . --zerocounters
 
 script:
     - make -j 4
     - make test
     - lcov --directory . --capture --output-file coverage.info
+    - lcov --list coverage.info # debug before upload
 
 after_success:
-    - lcov --list coverage.info # debug before upload
