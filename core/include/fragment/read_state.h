@@ -53,7 +53,7 @@
 
 
 
-class BookKeeping;
+class Fragment;
 
 /** Stores the state necessary when reading cells from a fragment. */
 class ReadState {

@@ -196,7 +196,6 @@ bool ReadState::done() const {
 void ReadState::get_bounding_coords(void* bounding_coords) const {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
   size_t coords_size = array_schema->coords_size();
   int64_t pos = search_tile_pos_;
   assert(pos != -1);
@@ -243,7 +242,6 @@ int ReadState::copy_cells(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
   size_t cell_size = array_schema->cell_size(attribute_id);
 
   // Fetch the attribute tile from disk if necessary
@@ -320,7 +318,6 @@ int ReadState::copy_cells_var(
     const CellPosRange& cell_pos_range) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
   size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
 
   // Calculate free space in buffer
@@ -489,7 +486,6 @@ int ReadState::get_enclosing_coords(
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
-  int64_t cell_num = book_keeping_->cell_num(tile_i);  
   size_t coords_size = array_schema->coords_size();
 
   // Fetch the coordinates search tile from disk if necessary
@@ -551,8 +547,6 @@ int ReadState::get_fragment_cell_pos_range_sparse(
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
   int64_t tile_i = fragment_info.second;
-  int64_t cell_num = book_keeping_->cell_num(tile_i);  
-  size_t coords_size = array_schema->coords_size();
 
   // Fetch the coordinates search tile from disk if necessary
   int compression = array_schema->compression(attribute_num);
@@ -563,9 +557,6 @@ int ReadState::get_fragment_cell_pos_range_sparse(
     rc = get_tile_from_disk_cmp_none(attribute_num+1, tile_i);
   if(rc != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
-
-  // For easy reference
-  const T* tile = static_cast<const T*>(tiles_[attribute_num+1]);
 
   // Compute the appropriate cell positions
   int64_t start_pos = get_cell_pos_at_or_after(cell_range);
@@ -816,7 +807,6 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
-  size_t coords_size = array_schema->coords_size();
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
   const T* array_domain = static_cast<const T*>(array_schema->domain());
   const T* subarray = static_cast<const T*>(fragment_->array()->subarray());
@@ -878,7 +868,6 @@ void ReadState::get_next_overlapping_tile_sparse() {
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int dim_num = array_schema->dim_num();
   const std::vector<void*>& mbrs = book_keeping_->mbrs();
   const T* subarray = static_cast<const T*>(fragment_->array()->subarray());
 
@@ -1043,7 +1032,6 @@ void ReadState::compute_bytes_to_copy(
   }
 
   // Calculate number of cells in the current tile for this attribute
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
   int64_t cell_num = book_keeping_->cell_num(fetched_tile_[attribute_id]);  
 
   // Calculate bytes to copy from the variable tile

@@ -65,7 +65,8 @@ public:
     // Remove the temporary workspace
     std::string command = "rm -rf ";
     command.append(WORKSPACE);
-    int ret = system(command.c_str());
+    int rc = system(command.c_str());
+    ASSERT_EQ(rc, 0);
   }
 };
 

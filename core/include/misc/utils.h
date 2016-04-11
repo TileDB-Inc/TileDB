@@ -33,6 +33,8 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
+#include <pthread.h>
+#include <omp.h>
 #include <string>
 #include <vector>
 
@@ -383,6 +385,70 @@ bool is_unary_subarray(const T* subarray, int dim_num);
  * @return *true* if the directory is a workspace, and *false* otherwise.
  */
 bool is_workspace(const std::string& dir);
+
+/**
+ * Destroys an OpenMP mutex.
+ *
+ * @param mtx The mutex to be destroyed.
+ * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ */
+int mutex_destroy(omp_lock_t* mtx);
+
+/**
+ * Destroys a pthread mutex.
+ *
+ * @param mtx The mutex to be destroyed.
+ * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ */
+int mutex_destroy(pthread_mutex_t* mtx);
+
+/**
+ * Initializes an OpenMP mutex.
+ *
+ * @param mtx The mutex to be initialized.
+ * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ */
+int mutex_init(omp_lock_t* mtx);
+
+/**
+ * Initializes a pthread mutex.
+ *
+ * @param mtx The mutex to be initialized.
+ * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ */
+int mutex_init(pthread_mutex_t* mtx);
+
+/**
+ * Locks an OpenMP mutex.
+ *
+ * @param mtx The mutex to be locked.
+ * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ */
+int mutex_lock(omp_lock_t* mtx);
+
+/**
+ * Locks a pthread mutex.
+ *
+ * @param mtx The mutex to be locked.
+ * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ */
+int mutex_lock(pthread_mutex_t* mtx);
+
+/**
+ * Unlocks an OpenMP mutex.
+ *
+ * @param mtx The mutex to be unlocked.
+ * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ */
+int mutex_unlock(omp_lock_t* mtx);
+
+/**
+ * Unlocks a pthread mutex.
+ *
+ * @param mtx The mutex to be unlocked.
+ * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ */
+int mutex_unlock(pthread_mutex_t* mtx);
 
 /** 
  * Returns the parent directory of the input directory. 

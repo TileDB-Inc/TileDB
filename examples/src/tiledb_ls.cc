@@ -41,12 +41,13 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  // Intialize context with the default configuration parameters
+  // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
   // Initialize variables
   char* dirs[10];
+  int allocated_dir_num = 10;
   int dir_num = 10;
   int dir_types[10];
   for(int i=0; i<dir_num; ++i)
@@ -74,7 +75,7 @@ int main(int argc, char** argv) {
   }
  
   // Clean up
-  for(int i=0; i<dir_num; ++i)
+  for(int i=0; i<allocated_dir_num; ++i)
     free(dirs[i]);
 
   // Finalize context

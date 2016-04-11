@@ -134,12 +134,14 @@ WriteState::WriteState(
 
 WriteState::~WriteState() { 
   // Free current tiles
-  for(int i=0; i<tiles_.size(); ++i) 
+  int64_t tile_num = tiles_.size();
+  for(int64_t i=0; i<tile_num; ++i) 
     if(tiles_[i] != NULL)
       free(tiles_[i]);
 
   // Free current tiles
-  for(int i=0; i<tiles_var_.size(); ++i) 
+  int64_t tile_var_num = tiles_var_.size();
+  for(int64_t i=0; i<tile_var_num; ++i) 
     if(tiles_var_[i] != NULL)
       free(tiles_var_[i]);
 
@@ -194,7 +196,8 @@ int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
     const std::string file_prefix = fragment_->fragment_name() + "/";
     std::string filename = "";
     // Go over var length attributes
-    for(int i=0; i<attribute_ids.size(); ++i) {
+    int attribute_id_num = attribute_ids.size();
+    for(int i=0; i<attribute_id_num; ++i) {
       if(array_schema->var_size(attribute_ids[i])) {
         filename = file_prefix + array_schema->attribute(attribute_ids[i]) + 
                    "_var" + TILEDB_FILE_SUFFIX;
@@ -540,7 +543,6 @@ int WriteState::write_last_tile() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
-  size_t tile_size;
 
   // Send last MBR, bounding coordinates and tile cell number to book-keeping
   book_keeping_->append_mbr(mbr_);
@@ -639,8 +641,6 @@ int WriteState::write_dense_attr_cmp_gzip(
     const void* buffer,
     size_t buffer_size) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t cell_size = array_schema->cell_size(attribute_id); 
   size_t tile_size = fragment_->tile_size(attribute_id); 
 
   // Initialize local tile buffer if needed
@@ -787,7 +787,6 @@ int WriteState::write_dense_attr_var_cmp_gzip(
     const void* buffer_var,
     size_t buffer_var_size) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
   size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE; 
   int64_t cell_num_per_tile = fragment_->cell_num_per_tile();
   size_t tile_size = cell_num_per_tile * cell_size; 
@@ -1029,8 +1028,6 @@ int WriteState::write_sparse_attr_cmp_none(
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
-  size_t cell_size = array_schema->cell_size(attribute_id);
-  int64_t buffer_cell_num = buffer_size / cell_size;
 
   // Update book-keeping
   if(attribute_id == attribute_num) 
@@ -1053,9 +1050,7 @@ int WriteState::write_sparse_attr_cmp_gzip(
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
-  size_t cell_size = array_schema->cell_size(attribute_id); 
   size_t tile_size = fragment_->tile_size(attribute_id); 
-  int64_t buffer_cell_num = buffer_size / cell_size;
 
   // Update book-keeping
   if(attribute_id == attribute_num) 
@@ -1491,7 +1486,7 @@ int WriteState::write_sparse_unsorted_attr_cmp_none(
 
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
-  if(buffer_cell_num != cell_pos.size()) {
+  if(buffer_cell_num != int64_t(cell_pos.size())) {
     PRINT_ERROR(std::string("Cannot write sparse unsorted; Invalid number of "
                 "cells in attribute '") + 
                 array_schema->attribute(attribute_id) + "'");
@@ -1555,7 +1550,7 @@ int WriteState::write_sparse_unsorted_attr_cmp_gzip(
 
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
-  if(buffer_cell_num != cell_pos.size()) {
+  if(buffer_cell_num != int64_t(cell_pos.size())) {
     PRINT_ERROR(std::string("Cannot write sparse unsorted; Invalid number of "
                 "cells in attribute '") + 
                 array_schema->attribute(attribute_id) + "'");
@@ -1648,13 +1643,12 @@ int WriteState::write_sparse_unsorted_attr_var_cmp_none(
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE; 
   size_t cell_var_size;
-  const char* buffer_c = static_cast<const char*>(buffer); 
   const size_t* buffer_s = static_cast<const size_t*>(buffer);
   const char* buffer_var_c = static_cast<const char*>(buffer_var); 
 
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
-  if(buffer_cell_num != cell_pos.size()) {
+  if(buffer_cell_num != int64_t(cell_pos.size())) {
     PRINT_ERROR(std::string("Cannot write sparse unsorted variable; "
                 "Invalid number of cells in attribute '") + 
                 array_schema->attribute(attribute_id) + "'");
@@ -1741,13 +1735,12 @@ int WriteState::write_sparse_unsorted_attr_var_cmp_gzip(
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE; 
   size_t cell_var_size;
-  const char* buffer_c = static_cast<const char*>(buffer); 
   const size_t* buffer_s = static_cast<const size_t*>(buffer);
   const char* buffer_var_c = static_cast<const char*>(buffer_var); 
 
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
-  if(buffer_cell_num != cell_pos.size()) {
+  if(buffer_cell_num != int64_t(cell_pos.size())) {
     PRINT_ERROR(std::string("Cannot write sparse unsorted variable; "
                 "Invalid number of cells in attribute '") + 
                 array_schema->attribute(attribute_id) + "'");

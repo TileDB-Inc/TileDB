@@ -71,6 +71,9 @@ class ArrayIterator {
   /*             ACCESSORS             */
   /* ********************************* */
 
+  /** Return the array name. */
+  const std::string& array_name() const;
+
   /**
    * Checks if the the iterator has reached its end.
    *

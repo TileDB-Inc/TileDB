@@ -462,10 +462,13 @@ TILEDB_EXPORT int tiledb_array_overflow(
 /**
  * Consolidates the fragments of an array into a single fragment. 
  * 
- * @param tiledb_array The TileDB array to be consolidated.
+ * @param tiledb_ctx The TileDB context.
+ * @param array The name of the TileDB array to be consolidated.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
-TILEDB_EXPORT int tiledb_array_consolidate(const TileDB_Array* tiledb_array);
+TILEDB_EXPORT int tiledb_array_consolidate(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array);
 
 /** 
  * Finalizes a TileDB array, properly freeing its memory space. 
@@ -819,11 +822,13 @@ TILEDB_EXPORT int tiledb_metadata_overflow(
 /**
  * Consolidates the fragments of a metadata object into a single fragment. 
  * 
- * @param tiledb_metadata The TileDB metadata to be consolidated.
+ * @param tiledb_ctx The TileDB context.
+ * @param metadata The name of the TileDB metadata to be consolidated.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_metadata_consolidate(
-    const TileDB_Metadata* tiledb_metadata);
+    const TileDB_CTX* tiledb_ctx,
+    const char* metadata);
 
 /** 
  * Finalizes a TileDB metadata object, properly freeing the memory space. 

@@ -78,6 +78,10 @@ ArrayIterator::~ArrayIterator() {
 /*           ACCESSORS            */
 /* ****************************** */
 
+const std::string& ArrayIterator::array_name() const {
+  return array_->array_schema()->array_name();
+}
+
 bool ArrayIterator::end() const {
   return end_;
 }
@@ -234,7 +238,8 @@ int ArrayIterator::next() {
       buffer_sizes_[i] = 0;
     }
     int buffer_i;
-    for(int i=0; i<needs_new_read.size(); ++i) {
+    int needs_new_read_num = needs_new_read.size();
+    for(int i=0; i<needs_new_read_num; ++i) {
       buffer_i = buffer_i_[needs_new_read[i]];
       buffer_sizes_[buffer_i] = buffer_allocated_sizes_[buffer_i]; 
       if(cell_sizes_[needs_new_read[i]] == TILEDB_VAR_SIZE) 
@@ -246,7 +251,7 @@ int ArrayIterator::next() {
       return TILEDB_AIT_ERR;
 
     // Check if read went well and update internal state
-    for(int i=0; i<needs_new_read.size(); ++i) {
+    for(int i=0; i<needs_new_read_num; ++i) {
       buffer_i = buffer_i_[needs_new_read[i]];
 
       // End

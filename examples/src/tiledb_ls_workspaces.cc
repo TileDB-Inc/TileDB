@@ -35,14 +35,14 @@
 #include <cstdlib>
 
 int main() {
-  // Intialize context with the default configuration parameters
+  // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
   // Initialize variables
   char* dirs[10];
+  int allocated_dir_num = 10;
   int dir_num = 10;
-  int dir_types[10];
   for(int i=0; i<dir_num; ++i)
     dirs[i] = (char*) malloc(TILEDB_NAME_MAX_LEN);
 
@@ -52,7 +52,7 @@ int main() {
     printf("%s\n", dirs[i]);
  
   // Clean up
-  for(int i=0; i<dir_num; ++i)
+  for(int i=0; i<allocated_dir_num; ++i)
     free(dirs[i]);
 
   // Finalize context

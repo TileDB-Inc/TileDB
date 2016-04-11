@@ -69,6 +69,9 @@ class MetadataIterator {
   /*             ACCESSORS             */
   /* ********************************* */
 
+  /** Return the metadata name. */
+  const std::string& metadata_name() const;
+
   /**
    * Checks if the the iterator has reached its end.
    *
@@ -134,8 +137,10 @@ class MetadataIterator {
  private:
   // PRIVATE ATTRIBUTES
 
-  // TODO
+  /** The array iterator that implements the metadata iterator. */
   ArrayIterator* array_it_;
+  /** The metadata this iterator belongs to. */
+  Metadata* metadata_;
 };
 
 #endif
