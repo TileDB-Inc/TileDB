@@ -530,7 +530,7 @@ void Array::sort_fragment_names(
       if(stripped_fragment_name[j] == '_') {
         t_str = stripped_fragment_name.substr(
                     j+1,stripped_fragment_name_size-j);
-        sscanf(t_str.c_str(), "%lld", &t); 
+        sscanf(t_str.c_str(), "%lld", (long long int*)&t); 
         t_pos_vec[i] = std::pair<int64_t, int>(t, i);
         break;
       }
