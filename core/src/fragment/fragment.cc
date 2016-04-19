@@ -30,6 +30,7 @@
  * This file implements the Fragment class.
  */
 
+#include "constants.h"
 #include "fragment.h"
 #include "utils.h"
 #include <cassert>
@@ -79,7 +80,7 @@ Fragment::~Fragment() {
   if(read_state_ != NULL)
     delete read_state_;
 
-  if(book_keeping_ != NULL)
+  if(book_keeping_ != NULL && mode_ != TILEDB_ARRAY_READ)
     delete book_keeping_;
 }
 
@@ -163,51 +164,59 @@ int Fragment::init(
     const std::string& fragment_name, 
     int mode,
     const void* subarray) {
+  // Sanity check
+  if(mode != TILEDB_ARRAY_WRITE &&
+     mode != TILEDB_ARRAY_WRITE_UNSORTED) {
+    PRINT_ERROR("Cannot initialize fragment;  Invalid mode");
+    return TILEDB_FG_ERR;
+  }
+
   // Set fragment name and mode
   fragment_name_ = fragment_name;
   mode_ = mode;
 
   // Check if the fragment is dense or not
-  if(mode == TILEDB_ARRAY_WRITE || 
-     mode == TILEDB_ARRAY_WRITE_UNSORTED) {
-    dense_ = true;
-    // Check the attributes given upon initialization
-    const std::vector<int>& attribute_ids = array_->attribute_ids();
-    int id_num = attribute_ids.size();
-    int attribute_num = array_->array_schema()->attribute_num();
-    for(int i=0; i<id_num; ++i) {
-      if(attribute_ids[i] == attribute_num) {
-        dense_ = false;
-        break;
-      }
+  dense_ = true;
+  const std::vector<int>& attribute_ids = array_->attribute_ids();
+  int id_num = attribute_ids.size();
+  int attribute_num = array_->array_schema()->attribute_num();
+  for(int i=0; i<id_num; ++i) {
+    if(attribute_ids[i] == attribute_num) {
+      dense_ = false;
+      break;
     }
-  } else { // The array mode is TILEDB_READ 
-    // The coordinates file should not exist
-    dense_ = !is_file(
-                fragment_name_ + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX);
   }
 
-  // Initialize book-keeping and write state
-  book_keeping_ = new BookKeeping(this);
-  if(mode == TILEDB_ARRAY_WRITE || 
-     mode == TILEDB_ARRAY_WRITE_UNSORTED) {
-    read_state_ = NULL;
-    if(book_keeping_->init(subarray) != TILEDB_BK_OK) {
-      delete book_keeping_;
-      book_keeping_ = NULL;
-      write_state_ = NULL;
-      return TILEDB_FG_ERR;
-    }
-    write_state_ = new WriteState(this, book_keeping_);
-  } else if(mode == TILEDB_ARRAY_READ) {
+  // Initialize book-keeping and read/write state
+  book_keeping_ = 
+      new BookKeeping(
+          array_->array_schema(),
+          dense_,
+          fragment_name,
+          mode_);
+  read_state_ = NULL;
+  if(book_keeping_->init(subarray) != TILEDB_BK_OK) {
+    delete book_keeping_;
+    book_keeping_ = NULL;
     write_state_ = NULL;
-    if(book_keeping_->load() != TILEDB_BK_OK) {
-      delete book_keeping_;
-      book_keeping_ = NULL;
-      return TILEDB_FG_ERR;
-    }
-    read_state_ = new ReadState(this, book_keeping_);
+    return TILEDB_FG_ERR;
   }
+  write_state_ = new WriteState(this, book_keeping_);
+
+  // Success
+  return TILEDB_FG_OK;
+}
+
+int Fragment::init(
+    const std::string& fragment_name, 
+    BookKeeping* book_keeping) {
+  // Set member attributes
+  fragment_name_ = fragment_name;
+  mode_ = TILEDB_ARRAY_READ;
+  book_keeping_ = book_keeping;
+  dense_ = book_keeping_->dense();
+  write_state_ = NULL;
+  read_state_ = new ReadState(this, book_keeping_);
 
   // Success
   return TILEDB_FG_OK;

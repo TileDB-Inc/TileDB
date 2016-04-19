@@ -59,6 +59,19 @@
 #  define PRINT_WARNING(x) do { } while(0) 
 #endif
 
+#ifdef GNU_PARALLEL
+  #include <parallel/algorithm>
+  #define SORT_LIB __gnu_parallel
+#else
+  #include <algorithm>
+  #define SORT_LIB std 
+#endif
+
+#define SORT_2(first, last) SORT_LIB::sort((first), (last))
+#define SORT_3(first, last, comp) SORT_LIB::sort((first), (last), (comp))
+#define GET_MACRO(_1, _2, _3, NAME, ...) NAME
+#define SORT(...) GET_MACRO(__VA_ARGS__, SORT_3, SORT_2)(__VA_ARGS__)
+
 
 
 
@@ -78,6 +91,10 @@ StorageManager::~StorageManager() {
 /* ****************************** */
 /*             MUTATORS           */
 /* ****************************** */
+
+int StorageManager::finalize() {
+  return mutex_destroy();
+}
 
 int StorageManager::init(const char* config_filename) {
   // Set configuration parameters
@@ -108,7 +125,6 @@ int StorageManager::init(const char* config_filename) {
   // Create the TileDB home directory if it does not exists, as well
   // as the master catalog.
   if(!is_dir(tiledb_home_)) { 
-
     if(create_dir(tiledb_home_) != TILEDB_UT_OK)
       return TILEDB_SM_ERR;
 
@@ -116,8 +132,8 @@ int StorageManager::init(const char* config_filename) {
       return TILEDB_SM_ERR;
   }
 
-  // Success
-  return TILEDB_SM_OK;
+  // Initialize mutexes and return
+  return mutex_init();
 }
 
 
@@ -127,7 +143,7 @@ int StorageManager::init(const char* config_filename) {
 /*            WORKSPACE           */
 /* ****************************** */
 
-int StorageManager::workspace_create(const std::string& workspace) const {
+int StorageManager::workspace_create(const std::string& workspace) {
   // Check if the workspace is inside a workspace or another group
   std::string parent_dir = ::parent_dir(workspace);
   if(is_workspace(parent_dir) || 
@@ -157,7 +173,7 @@ int StorageManager::workspace_create(const std::string& workspace) const {
 
 int StorageManager::ls_workspaces(
     char** workspaces,
-    int& workspace_num) const {
+    int& workspace_num) {
   // Initialize the master catalog iterator
   const char* attributes[] = { TILEDB_KEY };
   MetadataIterator* metadata_it;
@@ -252,6 +268,31 @@ int StorageManager::group_create(const std::string& group) const {
 /*             ARRAY              */
 /* ****************************** */
 
+int StorageManager::array_consolidate(const char* array_dir) {
+  // Create an array object
+  Array* array;
+  if(array_init(
+      array,
+      array_dir,
+      TILEDB_ARRAY_READ,
+      NULL,
+      NULL,
+      0) != TILEDB_SM_OK) 
+    return TILEDB_SM_ERR;
+
+  // Consolidate array
+  int rc_consolidate = array->consolidate();
+  
+  // Finalize array
+  int rc_finalize = array_finalize(array); 
+  
+  // Return 
+  if(rc_consolidate != TILEDB_AR_OK || rc_finalize != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
+}
+
 int StorageManager::array_create(const ArraySchemaC* array_schema_c) const {
   // Initialize array schema
   ArraySchema* array_schema = new ArraySchema();
@@ -314,7 +355,7 @@ int StorageManager::array_create(const ArraySchema* array_schema) const {
 
   // Store the array schema
   ssize_t bytes_written = ::write(fd, array_schema_bin, array_schema_bin_size);
-  if(bytes_written != array_schema_bin_size) {
+  if(bytes_written != ssize_t(array_schema_bin_size)) {
     PRINT_ERROR(std::string("Cannot create array; ") + strerror(errno));
     free(array_schema_bin);
     return TILEDB_SM_ERR;
@@ -325,6 +366,55 @@ int StorageManager::array_create(const ArraySchema* array_schema) const {
   if(::close(fd)) {
     PRINT_ERROR(std::string("Cannot create array; ") + strerror(errno));
     return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+void StorageManager::array_get_fragment_names(
+    const std::string& array,
+    std::vector<std::string>& fragment_names) {
+
+  // Get directory names in the array folder
+  fragment_names = get_fragment_dirs(real_dir(array)); 
+
+  // Sort the fragment names
+  sort_fragment_names(fragment_names);
+}
+
+int StorageManager::array_load_book_keeping(
+    const ArraySchema* array_schema,
+    const std::vector<std::string>& fragment_names,
+    std::vector<BookKeeping*>& book_keeping) {
+  // For easy reference
+  int fragment_num = fragment_names.size(); 
+
+  // Initialization
+  book_keeping.resize(fragment_num);
+
+  // Load the book-keeping for each fragment
+  for(int i=0; i<fragment_num; ++i) {
+    // For easy reference
+    int dense = 
+        !is_file(fragment_names[i] + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX);
+
+    // Create new book-keeping structure for the fragment
+    BookKeeping* f_book_keeping = 
+        new BookKeeping(
+            array_schema, 
+            dense, 
+            fragment_names[i], 
+            TILEDB_ARRAY_READ);
+
+    // Load book-keeping
+    if(f_book_keeping->load() != TILEDB_BK_OK) {
+      delete f_book_keeping;
+      return TILEDB_SM_ERR;
+    }
+
+    // Append to the open array entry
+    book_keeping[i] = f_book_keeping;
   }
 
   // Success
@@ -396,38 +486,60 @@ int StorageManager::array_init(
     int mode,
     const void* subarray,
     const char** attributes,
-    int attribute_num)  const {
+    int attribute_num)  {
+  // Check array name length
+  if(array_dir == NULL || strlen(array_dir) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid array name length");
+    return TILEDB_SM_ERR;
+  }
+
   // Load array schema
   ArraySchema* array_schema;
   if(array_load_schema(array_dir, array_schema) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
 
+  // Open the array
+  OpenArray* open_array;
+  if(array_open(array_schema, mode, open_array) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
   // Create Array object
   array = new Array();
-  if(array->init(array_schema, mode, attributes, attribute_num, subarray) !=
-     TILEDB_AR_OK) {
+  if(array->init(
+         array_schema, 
+         open_array->fragment_names_,
+         open_array->book_keeping_,
+         mode, 
+         attributes, 
+         attribute_num, 
+         subarray) != TILEDB_AR_OK) {
+    delete array_schema;
     delete array;
     array = NULL;
+    array_close(array_dir);
     return TILEDB_SM_ERR;
   } else {
     return TILEDB_SM_OK;
   }
 }
 
-int StorageManager::array_finalize(Array* array) const {
+int StorageManager::array_finalize(Array* array) {
   // If the array is NULL, do nothing
   if(array == NULL)
     return TILEDB_SM_OK;
 
-  // Finalize array
-  int rc = array->finalize();
+  // Finalize and close the array
+  int rc_finalize = array->finalize();
+  int rc_close = array_close(array->array_schema()->array_name());
+
+  // Clean up
   delete array;
 
   // Return
-  if(rc == TILEDB_AR_OK)
-    return TILEDB_SM_OK;
-  else
+  if(rc_close != TILEDB_SM_OK || rc_finalize != TILEDB_AR_OK)
     return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
 }
 
 int StorageManager::array_iterator_init(
@@ -437,29 +549,24 @@ int StorageManager::array_iterator_init(
     const char** attributes,
     int attribute_num,
     void** buffers,
-    size_t* buffer_sizes)  const {
-  // Load array schema
-  ArraySchema* array_schema;
-  if(array_load_schema(array_dir, array_schema) != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
-
-  // Create Array object
-  Array* array = new Array();
-  if(array->init(
-         array_schema, 
-         TILEDB_ARRAY_READ, 
-         attributes, 
-         attribute_num, 
-         subarray) != TILEDB_AR_OK) {
-    delete array;
+    size_t* buffer_sizes) {
+  // Create Array object. This also creates/updates an open array entry
+  Array* array;
+  if(array_init(
+      array, 
+      array_dir, 
+      TILEDB_ARRAY_READ, 
+      subarray, 
+      attributes, 
+      attribute_num) != TILEDB_SM_OK) {
     array_it = NULL;
     return TILEDB_SM_ERR;
-  } 
+  }
 
   // Create ArrayIterator object
   array_it = new ArrayIterator();
   if(array_it->init(array, buffers, buffer_sizes) != TILEDB_AIT_OK) {
-    delete array;
+    array_finalize(array);
     delete array_it;
     array_it = NULL;
     return TILEDB_SM_ERR;
@@ -470,17 +577,21 @@ int StorageManager::array_iterator_init(
 }
 
 int StorageManager::array_iterator_finalize(
-    ArrayIterator* array_it) const {
+    ArrayIterator* array_it) {
   // If the array iterator is NULL, do nothing
   if(array_it == NULL)
     return TILEDB_SM_OK;
 
-  // Finalize array
-  int rc = array_it->finalize();
+  // Finalize and close array
+  std::string array_name = array_it->array_name();
+  int rc_finalize = array_it->finalize();
+  int rc_close = array_close(array_name);
+
+  // Clean up
   delete array_it;
 
   // Return
-  if(rc == TILEDB_AIT_OK)
+  if(rc_finalize == TILEDB_AIT_OK && rc_close == TILEDB_SM_OK)
     return TILEDB_SM_OK;
   else
     return TILEDB_SM_ERR;
@@ -492,6 +603,54 @@ int StorageManager::array_iterator_finalize(
 /* ****************************** */
 /*            METADATA            */
 /* ****************************** */
+
+int StorageManager::metadata_consolidate(const char* metadata_dir) {
+  // Load metadata schema
+  ArraySchema* array_schema;
+  if(metadata_load_schema(metadata_dir, array_schema) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Set attributes
+  char** attributes;
+  int attribute_num = array_schema->attribute_num();
+    attributes = new char*[attribute_num+1];
+    for(int i=0; i<attribute_num+1; ++i) {
+      const char* attribute = array_schema->attribute(i).c_str();
+      size_t attribute_len = strlen(attribute);
+      attributes[i] = new char[attribute_len+1];
+      strcpy(attributes[i], attribute);
+    }
+
+  // Create a metadata object
+  Metadata* metadata;
+  int rc_init = metadata_init(
+                    metadata,
+                    metadata_dir,
+                    TILEDB_METADATA_READ,
+                    (const char**) attributes,
+                    attribute_num+1);
+
+  // Clean up
+  for(int i=0; i<attribute_num+1; ++i) 
+    delete [] attributes[i];
+  delete [] attributes;
+  delete array_schema;
+
+  if(rc_init != TILEDB_MT_OK)
+    return TILEDB_SM_ERR;
+
+  // Consolidate metadata
+  int rc_consolidate = metadata->consolidate();
+  
+  // Finalize metadata
+  int rc_finalize = metadata_finalize(metadata); 
+  
+  // Return 
+  if(rc_consolidate != TILEDB_MT_OK || rc_finalize != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
+}
 
 int StorageManager::metadata_create(
     const MetadataSchemaC* metadata_schema_c) const {
@@ -557,7 +716,7 @@ int StorageManager::metadata_create(const ArraySchema* array_schema) const {
 
   // Store the array schema
   ssize_t bytes_written = ::write(fd, array_schema_bin, array_schema_bin_size);
-  if(bytes_written != array_schema_bin_size) {
+  if(bytes_written != ssize_t(array_schema_bin_size)) {
     PRINT_ERROR(std::string("Cannot create metadata; ") + strerror(errno));
     free(array_schema_bin);
     return TILEDB_SM_ERR;
@@ -639,40 +798,63 @@ int StorageManager::metadata_init(
     const char* metadata_dir,
     int mode,
     const char** attributes,
-    int attribute_num)  const {
+    int attribute_num)  {
+  // Check metadata name length
+  if(metadata_dir == NULL || strlen(metadata_dir) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid metadata name length");
+    return TILEDB_SM_ERR;
+  }
+
   // Load metadata schema
   ArraySchema* array_schema;
   if(metadata_load_schema(metadata_dir, array_schema) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
 
+  // Open the array that implements the metadata
+  OpenArray* open_array;
+  if(array_open(array_schema, mode, open_array) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
   // Create metadata object
   metadata = new Metadata();
-  int rc = metadata->init(array_schema, mode, attributes, attribute_num);
+  int rc = metadata->init(
+               array_schema, 
+               open_array->fragment_names_,
+               open_array->book_keeping_,
+               mode, 
+               attributes, 
+               attribute_num);
 
   // Return
   if(rc != TILEDB_MT_OK) {
+    delete array_schema;
     delete metadata;
     metadata = NULL;
+    array_close(metadata_dir);
     return TILEDB_SM_ERR;
   } else {
     return TILEDB_SM_OK;
   }
 }
 
-int StorageManager::metadata_finalize(Metadata* metadata) const {
+int StorageManager::metadata_finalize(Metadata* metadata) {
   // If the metadata is NULL, do nothing
   if(metadata == NULL)
     return TILEDB_SM_OK;
 
-  // Finalize metadata
-  int rc = metadata->finalize();
+  // Finalize the metadata and close the underlying array
+  std::string array_name = metadata->array_schema()->array_name();
+  int rc_finalize = metadata->finalize();
+  int rc_close = array_close(array_name);
+
+  // Clean up
   delete metadata;
 
   // Return
-  if(rc == TILEDB_MT_OK)
-    return TILEDB_SM_OK;
-  else
+  if(rc_close != TILEDB_SM_OK || rc_finalize != TILEDB_MT_OK)
     return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
 }
 
 int StorageManager::metadata_iterator_init(
@@ -681,21 +863,15 @@ int StorageManager::metadata_iterator_init(
     const char** attributes,
     int attribute_num,
     void** buffers,
-    size_t* buffer_sizes)  const {
-  // Load metadata schema
-  ArraySchema* array_schema;
-  if(metadata_load_schema(metadata_dir, array_schema) != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
-
+    size_t* buffer_sizes) {
   // Create metadata object
-  Metadata* metadata = new Metadata();
-  if(metadata->init(
-         array_schema, 
+  Metadata* metadata;
+  if(metadata_init(
+         metadata, 
+         metadata_dir,
          TILEDB_METADATA_READ, 
          attributes, 
-         attribute_num) !=
-     TILEDB_MT_OK) {
-    delete metadata;
+         attribute_num) != TILEDB_SM_OK) {
     metadata_it = NULL;
     return TILEDB_SM_ERR;
   } 
@@ -703,7 +879,7 @@ int StorageManager::metadata_iterator_init(
   // Create MetadataIterator object
   metadata_it = new MetadataIterator();
   if(metadata_it->init(metadata, buffers, buffer_sizes) != TILEDB_MIT_OK) {
-    delete metadata;
+    metadata_finalize(metadata);
     delete metadata_it;
     metadata_it = NULL;
     return TILEDB_SM_ERR;
@@ -714,17 +890,21 @@ int StorageManager::metadata_iterator_init(
 }
 
 int StorageManager::metadata_iterator_finalize(
-    MetadataIterator* metadata_it) const {
+    MetadataIterator* metadata_it) {
   // If the metadata iterator is NULL, do nothing
   if(metadata_it == NULL)
     return TILEDB_SM_OK;
 
-  // Finalize metadata
-  int rc = metadata_it->finalize();
+  // Close array and finalize metadata
+  std::string metadata_name = metadata_it->metadata_name();
+  int rc_finalize = metadata_it->finalize();
+  int rc_close = array_close(metadata_name);
+
+  // Clean up
   delete metadata_it;
 
   // Return
-  if(rc == TILEDB_MIT_OK)
+  if(rc_finalize == TILEDB_MIT_OK && rc_close == TILEDB_SM_OK)
     return TILEDB_SM_OK;
   else
     return TILEDB_SM_ERR;
@@ -827,7 +1007,7 @@ int StorageManager::clear(const std::string& dir) const {
   }
 }
 
-int StorageManager::delete_entire(const std::string& dir) const {
+int StorageManager::delete_entire(const std::string& dir) {
   if(is_workspace(dir)) {
     return workspace_delete(dir);
   } else if(is_group(dir)) {
@@ -847,7 +1027,7 @@ int StorageManager::delete_entire(const std::string& dir) const {
 
 int StorageManager::move(
     const std::string& old_dir,
-    const std::string& new_dir) const {
+    const std::string& new_dir) {
   if(is_workspace(old_dir)) {
     return workspace_move(old_dir, new_dir);
   } else if(is_group(old_dir)) {
@@ -924,6 +1104,61 @@ int StorageManager::array_clear(
   return TILEDB_SM_OK;
 }
 
+int StorageManager::array_close(const std::string& array) {
+  // Lock mutexes
+  if(mutex_lock() != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Find the open array entry
+  std::map<std::string, OpenArray*>::iterator it = 
+      open_arrays_.find(real_dir(array));
+
+  // Sanity check
+  if(it == open_arrays_.end()) { 
+    PRINT_ERROR("Cannot close array; Open array entry not found");
+    return TILEDB_SM_ERR;
+  }
+
+  // Lock the mutex of the array
+  if(it->second->mutex_lock() != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Decrement counter
+  --(it->second->cnt_);
+
+  // Delete open array entry if necessary
+  int rc_mtx_destroy = TILEDB_SM_OK;
+  if(it->second != NULL && it->second->cnt_ == 0) {
+    // Clean up book-keeping
+    std::vector<BookKeeping*>::iterator bit = it->second->book_keeping_.begin();
+    for(; bit != it->second->book_keeping_.end(); ++bit) 
+      delete *bit;
+
+    // Unlock and destroy mutexes
+    it->second->mutex_unlock();
+    rc_mtx_destroy = it->second->mutex_destroy();
+
+    // Free open array
+    delete it->second;
+
+    // Delete open array entry
+    open_arrays_.erase(it);
+  } else { 
+    // Unlock the mutex of the array
+    if(it->second->mutex_unlock() != TILEDB_SM_OK)
+      return TILEDB_SM_ERR;
+  }
+
+  // Unlock mutexes
+  int rc_mtx_unlock = mutex_unlock();
+
+  // Return
+  if(rc_mtx_destroy != TILEDB_SM_OK || rc_mtx_unlock != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
+}
+
 int StorageManager::array_delete(
     const std::string& array) const {
   // Clear the array
@@ -936,6 +1171,33 @@ int StorageManager::array_delete(
 
   // Success
   return TILEDB_SM_OK;
+}
+
+int StorageManager::array_get_open_array_entry(
+    const std::string& array,
+    OpenArray*& open_array) {
+  // Lock mutexes
+  if(mutex_lock() != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Find the open array entry
+  std::map<std::string, OpenArray*>::iterator it = open_arrays_.find(array);
+  // Create and init entry if it does not exist
+  if(it == open_arrays_.end()) { 
+    open_array = new OpenArray();
+    open_array->cnt_ = 0;
+    open_array->book_keeping_ = std::vector<BookKeeping*>();
+    if(open_array->mutex_init() != TILEDB_SM_OK) {
+      open_array->mutex_unlock();
+      return TILEDB_SM_ERR;
+    }
+    open_arrays_[array] = open_array; 
+  } else {
+    open_array = it->second;
+  }
+
+  // Unlock mutexes and return
+  return mutex_unlock();
 }
 
 int StorageManager::array_move(
@@ -979,6 +1241,47 @@ int StorageManager::array_move(
   return TILEDB_SM_OK;
 }
 
+int StorageManager::array_open(
+    const ArraySchema* array_schema, 
+    int mode,
+    OpenArray*& open_array) {
+  // For easy reference
+  std::string array_name = array_schema->array_name();
+
+  // Get the open array entry
+  if(array_get_open_array_entry(array_name, open_array) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Lock the mutex of the array
+  if(open_array->mutex_lock() != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  if(mode == TILEDB_ARRAY_READ && 
+     open_array->fragment_names_.size() == 0) {
+    // Get the fragment names
+    array_get_fragment_names(array_name, open_array->fragment_names_);
+
+    // Load the book-keeping for each fragment
+    if(array_load_book_keeping(
+           array_schema, 
+           open_array->fragment_names_, 
+           open_array->book_keeping_) != TILEDB_SM_OK) {
+      open_array->mutex_unlock();
+      return TILEDB_SM_ERR;
+    }
+  }
+
+  // Increment counter
+  ++(open_array->cnt_);
+
+  // Unlock the mutex of the array
+  if(open_array->mutex_unlock() != TILEDB_UT_OK) 
+    return TILEDB_SM_ERR;
+
+  // Success 
+  return TILEDB_SM_OK;
+}
+
 int StorageManager::config_set(const char* config_filename) {
   // Success
   return TILEDB_SM_OK;
@@ -1003,7 +1306,7 @@ int StorageManager::create_group_file(const std::string& group) const {
 
 int StorageManager::create_master_catalog_entry(
     const std::string& workspace,
-    MasterCatalogOp op) const {
+    MasterCatalogOp op) {
   // Get real workspace path
   std::string real_workspace = ::real_dir(workspace);
 
@@ -1034,11 +1337,8 @@ int StorageManager::create_master_catalog_entry(
     return TILEDB_SM_ERR;
 
   // Finalize master catalog
-  if(metadata->finalize() != TILEDB_MT_OK)
+  if(metadata_finalize(metadata) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
-
-  // Clean up
-  delete metadata;
 
   // Success
   return TILEDB_SM_OK;
@@ -1181,27 +1481,12 @@ int StorageManager::group_move(
   return TILEDB_SM_OK;
 }
 
-int StorageManager::master_catalog_consolidate() const {
-  // Initialize master catalog
-  Metadata* metadata;
-  if(metadata_init(
-         metadata, 
-         master_catalog_dir_.c_str(), 
-         TILEDB_METADATA_READ, 
-         NULL, 
-         0) != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
-  
+int StorageManager::master_catalog_consolidate() {
   // Consolidate master catalog
-  if(metadata->consolidate() != TILEDB_MT_OK)
+  if(metadata_consolidate(master_catalog_dir_.c_str()) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
-
-  // Finalize master catalog
-  if(metadata->finalize() != TILEDB_MT_OK)
-    return TILEDB_SM_ERR;
-
-  // Success
-  return TILEDB_SM_OK;
+  else
+    return TILEDB_SM_OK;
 }
 
 int StorageManager::master_catalog_create() const {
@@ -1338,6 +1623,86 @@ int StorageManager::metadata_move(
   return TILEDB_SM_OK;
 }
 
+int StorageManager::mutex_destroy() {
+  int rc_omp_mtx = ::mutex_destroy(&open_array_omp_mtx_);
+  int rc_pthread_mtx = ::mutex_destroy(&open_array_pthread_mtx_);
+
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+    return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
+}
+
+int StorageManager::mutex_init() {
+  int rc_omp_mtx = ::mutex_init(&open_array_omp_mtx_);
+  int rc_pthread_mtx = ::mutex_init(&open_array_pthread_mtx_);
+
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+    return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
+}
+
+int StorageManager::mutex_lock() {
+  int rc_omp_mtx = ::mutex_lock(&open_array_omp_mtx_);
+  int rc_pthread_mtx = ::mutex_lock(&open_array_pthread_mtx_);
+
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+    return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
+}
+
+int StorageManager::mutex_unlock() {
+  int rc_omp_mtx = ::mutex_unlock(&open_array_omp_mtx_);
+  int rc_pthread_mtx = ::mutex_unlock(&open_array_pthread_mtx_);
+
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+    return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
+}
+
+void StorageManager::sort_fragment_names(
+    std::vector<std::string>& fragment_names) const {
+  // Initializations
+  int fragment_num = fragment_names.size();
+  std::string t_str;
+  int64_t stripped_fragment_name_size, t;
+  std::vector<std::pair<int64_t, int> > t_pos_vec;
+  t_pos_vec.resize(fragment_num);
+
+  // Get the timestamp for each fragment
+  for(int i=0; i<fragment_num; ++i) {
+    // Strip fragment name
+    std::string& fragment_name = fragment_names[i];
+    std::string parent_fragment_name = parent_dir(fragment_name);
+    std::string stripped_fragment_name = 
+        fragment_name.substr(parent_fragment_name.size() + 1);
+    assert(starts_with(stripped_fragment_name, "__"));
+    stripped_fragment_name_size = stripped_fragment_name.size();
+
+    // Search for the timestamp in the end of the name after '_'
+    for(int j=2; j<stripped_fragment_name_size; ++j) {
+      if(stripped_fragment_name[j] == '_') {
+        t_str = stripped_fragment_name.substr(
+                    j+1,stripped_fragment_name_size-j);
+        sscanf(t_str.c_str(), "%lld", (long long int*)&t); 
+        t_pos_vec[i] = std::pair<int64_t, int>(t, i);
+        break;
+      }
+   }
+  }
+
+  // Sort the names based on the timestamps
+  SORT(t_pos_vec.begin(), t_pos_vec.end()); 
+  std::vector<std::string> fragment_names_sorted; 
+  fragment_names_sorted.resize(fragment_num);
+  for(int i=0; i<fragment_num; ++i) 
+    fragment_names_sorted[i] = fragment_names[t_pos_vec[i].second];
+  fragment_names = fragment_names_sorted;
+}
+
 int StorageManager::workspace_clear(const std::string& workspace) const {
   // Get real workspace path
   std::string workspace_real = real_dir(workspace); 
@@ -1388,7 +1753,7 @@ int StorageManager::workspace_clear(const std::string& workspace) const {
 }
 
 int StorageManager::workspace_delete(
-    const std::string& workspace) const { 
+    const std::string& workspace) { 
   // Get real paths
   std::string workspace_real, master_catalog_real;
   workspace_real = real_dir(workspace);
@@ -1431,7 +1796,7 @@ int StorageManager::workspace_delete(
 
 int StorageManager::workspace_move(
     const std::string& old_workspace, 
-    const std::string& new_workspace) const {
+    const std::string& new_workspace) {
   // Get real paths
   std::string old_workspace_real = real_dir(old_workspace);
   std::string new_workspace_real = real_dir(new_workspace);
@@ -1500,3 +1865,42 @@ int StorageManager::workspace_move(
   return TILEDB_SM_OK;
 }
 
+int StorageManager::OpenArray::mutex_destroy() {
+  int rc_omp_mtx = ::mutex_destroy(&omp_mtx_);
+  int rc_pthread_mtx = ::mutex_destroy(&pthread_mtx_);
+
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+    return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
+}
+
+int StorageManager::OpenArray::mutex_init() {
+  int rc_omp_mtx = ::mutex_init(&omp_mtx_);
+  int rc_pthread_mtx =  ::mutex_init(&pthread_mtx_);
+
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+    return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
+}
+
+int StorageManager::OpenArray::mutex_lock() {
+  int rc_omp_mtx = ::mutex_lock(&omp_mtx_);
+  int rc_pthread_mtx = ::mutex_lock(&pthread_mtx_);
+
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+    return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
+}
+
+int StorageManager::OpenArray::mutex_unlock() {
+  int rc_omp_mtx = ::mutex_unlock(&omp_mtx_);
+  int rc_pthread_mtx = ::mutex_unlock(&pthread_mtx_);
+
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+    return TILEDB_SM_ERR;
+  else
+    return TILEDB_SM_OK;
+}

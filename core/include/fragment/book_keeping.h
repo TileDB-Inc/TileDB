@@ -33,7 +33,8 @@
 #ifndef __BOOK_KEEPING_H__
 #define __BOOK_KEEPING_H__
 
-#include "fragment.h"
+#include "array_schema.h"
+#include "constants.h"
 #include <vector>
 #include <zlib.h>
 
@@ -53,8 +54,6 @@
 
 
 
-class Fragment;
-
 /** Stores the book-keeping structures of a fragment. */
 class BookKeeping {
  public:
@@ -65,9 +64,16 @@ class BookKeeping {
   /** 
    * Constructor. 
    *
-   * @param fragment The fragment the book-keeping structure belongs to.
+   * @param array_schema The array schema.
+   * @param dense True if the fragment is dense, and false otherwise.
+   * @param fragment_name The name of the fragment this book-keeping belongs to.
+   * @param mode The mode in which the fragment was initialized in.
    */
-  BookKeeping(const Fragment* fragment);
+  BookKeeping(
+      const ArraySchema* array_schema, 
+      bool dense, 
+      const std::string& fragment_name,
+      int mode);
 
   /** Destructor. */
   ~BookKeeping();
@@ -84,6 +90,12 @@ class BookKeeping {
 
   /** Returns the number of cells in the tile at the input position. */
   int64_t cell_num(int64_t tile_pos) const;
+
+  /** 
+   * Returns ture if the corresponding fragment is dense, and false if it
+   * is sparse.
+   */
+  bool dense() const;
 
   /** Returns the (expanded) domain in which the fragment is constrained. */
   const void* domain() const;
@@ -202,8 +214,12 @@ class BookKeeping {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The array schema */
+  const ArraySchema* array_schema_;
   /** The first and last coordinates of each tile. */
   std::vector<void*> bounding_coords_;
+  /** True if the fragment is dense, and false if it is sparse. */
+  bool dense_;
   /**
    * The (expanded) domain in which the fragment is constrained. "Expanded"
    * means that the domain is enlarged minimally to coincide with tile 
@@ -211,12 +227,14 @@ class BookKeeping {
    * type of the domain must be the same as the type of the array coordinates.
    */
   void* domain_;
-  /** The fragment the book-keeping belongs to. */
-  const Fragment* fragment_;
+  /** The name of the fragment the book-keeping belongs to. */
+  std::string fragment_name_;
   /** Number of cells in the last tile (meaningful only in the sparse case). */
   int64_t last_tile_cell_num_;
   /** The MBRs (applicable only to the sparse case with irregular tiles). */
   std::vector<void*> mbrs_;
+  /** The mode in which the fragment was initialized. */
+  int mode_;
   /** The offsets of the next tile for each attribute. */
   std::vector<off_t> next_tile_offsets_;
   /** The offsets of the next variable tile for each attribute. */

@@ -44,7 +44,7 @@
 HilbertCurve::HilbertCurve(int bits, int dim_num) 
     : bits_(bits), dim_num_(dim_num) {
   assert(dim_num >=0 && dim_num < HC_MAX_DIM);
-  assert(bits * dim_num <= sizeof(int64_t)*8);
+  assert(bits * dim_num <= int(sizeof(int64_t)*8));
 }
 
 HilbertCurve::~HilbertCurve() {

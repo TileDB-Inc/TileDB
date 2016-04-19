@@ -40,6 +40,9 @@
 #include "metadata.h"
 #include "metadata_iterator.h"
 #include "metadata_schema_c.h"
+#include <map>
+#include <omp.h>
+#include <pthread.h>
 #include <string>
 
 /* ********************************* */
@@ -68,6 +71,9 @@ class StorageManager {
   /** The operation type on the master catalog (insertion or deletion). */
   enum MasterCatalogOp {TILEDB_SM_MC_INS, TILEDB_SM_MC_DEL};
 
+  /** Implements an open array entry. */
+  class OpenArray;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -81,6 +87,13 @@ class StorageManager {
   /* ********************************* */
   /*              MUTATORS             */
   /* ********************************* */
+
+  /**
+   * Finalizes the storage manager, properly freeing memory.
+   * 
+   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   */
+  int finalize();
 
   /** 
    * Initializes the storage manager. This function create the TileDB home
@@ -109,7 +122,7 @@ class StorageManager {
    *     or metadata directory.
    * @return TILEDB_SM_OK for succes, and TILEDB_SM_ERR for error.
    */
-  int workspace_create(const std::string& workspace) const; 
+  int workspace_create(const std::string& workspace); 
 
   /**
    * Lists all TileDB workspaces, copying their directory names in the input
@@ -129,7 +142,7 @@ class StorageManager {
    */
   int ls_workspaces(
       char** workspaces,
-      int& workspace_num) const;
+      int& workspace_num);
 
 
 
@@ -154,6 +167,14 @@ class StorageManager {
   /* ********************************* */
   /*              ARRAY                */
   /* ********************************* */
+
+  /**
+   * Consolidates the fragments of an array into a single fragment.
+   *
+   * @param array_dir The name of the array to be consolidated.
+   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   */
+  int array_consolidate(const char* array_dir);
 
   /**
    * Creates a new TileDB array.
@@ -212,7 +233,7 @@ class StorageManager {
       int mode, 
       const void* subarray,
       const char** attributes,
-      int attribute_num) const;
+      int attribute_num);
 
   /** 
    * Finalizes an array, properly freeing the memory space.
@@ -220,7 +241,7 @@ class StorageManager {
    * @param array The array to be finalized.
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
-  int array_finalize(Array* array) const;
+  int array_finalize(Array* array);
 
   /**
    * Initializes an array iterator for reading cells, potentially constraining 
@@ -258,7 +279,7 @@ class StorageManager {
       const char** attributes,
       int attribute_num,
       void** buffers,
-      size_t* buffer_sizes) const;
+      size_t* buffer_sizes);
 
   /**
    * Finalizes an array iterator, properly freeing the allocating memory space.
@@ -266,7 +287,7 @@ class StorageManager {
    * @param tiledb_array_it The TileDB array iterator to be finalized.
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
-  int array_iterator_finalize(ArrayIterator* array_it) const;
+  int array_iterator_finalize(ArrayIterator* array_it);
 
 
 
@@ -274,6 +295,14 @@ class StorageManager {
   /* ********************************* */
   /*              METADATA             */
   /* ********************************* */
+
+  /**
+   * Consolidates the fragments of a metadata object into a single fragment.
+   *
+   * @param metadata_dir The name of the metadata to be consolidated.
+   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   */
+  int metadata_consolidate(const char* metadata_dir);
 
   /**
    * Creates a new TileDB metadata object.
@@ -323,7 +352,7 @@ class StorageManager {
       const char* metadata_dir,
       int mode, 
       const char** attributes,
-      int attribute_num) const;
+      int attribute_num);
 
   /** 
    * Finalizes a TileDB metadata object, properly freeing the memory space. 
@@ -331,7 +360,7 @@ class StorageManager {
    * @param tiledb_metadata The metadata to be finalized.
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
-  int metadata_finalize(Metadata* metadata) const;
+  int metadata_finalize(Metadata* metadata);
 
   /**
    * Initializes a metadata iterator, potentially constraining it 
@@ -366,7 +395,7 @@ class StorageManager {
       const char** attributes,
       int attribute_num,
       void** buffers,
-      size_t* buffer_sizes) const;
+      size_t* buffer_sizes);
 
   /**
    * Finalizes the iterator, properly freeing the allocating memory space.
@@ -374,7 +403,7 @@ class StorageManager {
    * @param tiledb_metadata_it The TileDB metadata iterator.
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
-  int metadata_iterator_finalize(MetadataIterator* metadata_it) const;
+  int metadata_iterator_finalize(MetadataIterator* metadata_it);
 
 
 
@@ -425,7 +454,7 @@ class StorageManager {
    * @param dir The directory to be deleted.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int delete_entire(const std::string& dir) const;
+  int delete_entire(const std::string& dir);
 
   /**
    * Moves a TileDB directory (workspace, group, array or metadata).
@@ -434,7 +463,7 @@ class StorageManager {
    * @param new_dir The new directory.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int move(const std::string& old_dir, const std::string& new_dir) const;
+  int move(const std::string& old_dir, const std::string& new_dir);
 
  private:
   /* ********************************* */
@@ -443,6 +472,12 @@ class StorageManager {
 
   /** The directory of the master catalog. */
   std::string master_catalog_dir_;
+  /** OpneMP mutex for creating/deleting an OpenArray object. */
+  omp_lock_t open_array_omp_mtx_;
+  /** Pthread mutex for creating/deleting an OpenArray object. */
+  pthread_mutex_t open_array_pthread_mtx_;
+  /** Stores the currently open arrays. */
+  std::map<std::string, OpenArray*> open_arrays_;
   /** The TileDB home directory. */
   std::string tiledb_home_;
 
@@ -460,12 +495,60 @@ class StorageManager {
   int array_clear(const std::string& array) const;
 
   /**
+   * Decrements the number of times the input array is initialized. If this
+   * number reaches 0, the it deletes the open array entry (and hence clears
+   * the schema and fragment book-keeping of the array).
+   *
+   * @param array The array name.
+   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   */
+  int array_close(const std::string& array);
+
+  /**
    * Deletes a TileDB array entirely.
    *
    * @param array The array to be deleted.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int array_delete(const std::string& array) const;
+
+  /** 
+   * Gets the names of the existing fragments of an array.
+   *
+   * @param array The input array.
+   * @param fragment_names The fragment names to be returned.
+   * @return void
+   */
+  void array_get_fragment_names(
+      const std::string& array,
+      std::vector<std::string>& fragment_names);
+
+  /**
+   * Gets an open array entry for the array being initialized. If this
+   * is the first time the array is initialized, then the function creates
+   * a new open array entry for this array. 
+   *
+   * @param array The array name.
+   * @param open_array The open array entry to be returned.
+   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   */
+  int array_get_open_array_entry(
+      const std::string& array,
+      OpenArray*& open_array);
+
+  /**
+   * Loads the book-keeping structures of all the fragments of an array from the
+   * disk, allocating appropriate memory space for them.
+   *
+   * @param array_schema The array schema.
+   * @param fragment_names The names of the fragments of the array.
+   * @param book_keeping The book-keeping structures to be returned.
+   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
+   */
+  int array_load_book_keeping(
+      const ArraySchema* array_schema,
+      const std::vector<std::string>& fragment_names,
+      std::vector<BookKeeping*>& book_keeping);
 
   /**
    * Moves a TileDB array.
@@ -477,6 +560,22 @@ class StorageManager {
   int array_move(
        const std::string& old_array,
        const std::string& new_array) const;
+
+  /**
+   * Opens an array. This creates or updates an OpenArray entry for this array,
+   * and loads the array schema and book-keeping if it is the first time this
+   * array is being initialized. The book-keeping structures are loaded only
+   * if the input mode is TILEDB_ARRAY_READ.
+   *
+   * @param array_schema The array schema.
+   * @param mode The mode in which the array is being initialized.
+   * @param open_array The open array entry that is retrieved.
+   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   */
+  int array_open(
+      const ArraySchema* array_schema, 
+      int mode,
+      OpenArray*& open_array);
 
   /** 
    * It sets the TileDB configuration parameters from a file.
@@ -515,7 +614,7 @@ class StorageManager {
    */
   int create_master_catalog_entry(
       const std::string& workspace, 
-      MasterCatalogOp op) const;
+      MasterCatalogOp op);
 
   /**
    * Creates a special workspace file inside the workpace directory.
@@ -552,13 +651,13 @@ class StorageManager {
   int group_move(
        const std::string& old_group,
        const std::string& new_group) const;
-  
+
   /** 
    * Consolidates the fragments of the master catalog.
    *
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int master_catalog_consolidate() const;
+  int master_catalog_consolidate();
 
   /**
    * Create a master catalog, which keeps information about the TileDB
@@ -598,6 +697,44 @@ class StorageManager {
        const std::string& new_metadata) const;
 
   /**
+   * Destroys all the mutexes.
+   *
+   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   */
+  int mutex_destroy();
+
+  /**
+   * Initializes all the mutexes.
+   *
+   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   */
+  int mutex_init();
+
+  /**
+   * Locks all the mutexes.
+   *
+   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   */
+  int mutex_lock();
+
+  /**
+   * Unlocks all the mutexes.
+   *
+   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   */
+  int mutex_unlock();
+
+  /** 
+   * Appropriately sorts the fragment names based on their name timestamps.
+   * The result is stored in the input vector.
+   *
+   * @param fragment_names The fragment names to be sorted. This will also hold
+   *     the result of the function after termination.
+   * @return void
+   */
+  void sort_fragment_names(std::vector<std::string>& fragment_names) const;
+
+  /**
    * Clears a TileDB workspace. The workspace will still exist after the
    * execution of the function, but it will be empty (i.e., as if it was just
    * created).
@@ -613,7 +750,7 @@ class StorageManager {
    * @param workspace The workspace to be deleted.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int workspace_delete(const std::string& workspace) const;
+  int workspace_delete(const std::string& workspace);
 
   /**
    * Moves a TileDB workspace.
@@ -624,7 +761,71 @@ class StorageManager {
    */
   int workspace_move(
        const std::string& old_workspace,
-       const std::string& new_workspace) const;
+       const std::string& new_workspace);
 }; 
+
+/**  
+ * Stores information about an open array. An array is open if it has been
+ * initialized once (withour being finalized). The difference with array
+ * initialization is that an array can be initialized multiple times,
+ * but opened only once. This structure maintains the information that
+ * can be used by multiple array objects that initialize the same array,
+ * in order to avoid replication and speed-up performance (e.g., array
+ * schema and book-keeping).
+ */
+class StorageManager::OpenArray {
+ public:
+  // ATTRIBUTES
+
+  /** The book-keeping structures for all the fragments of the array. */
+  std::vector<BookKeeping*> book_keeping_;
+  /** 
+   * A counter for the number of times the array has been initialized after 
+   * it was opened.
+   */
+  int cnt_;
+  /** The names of the fragments of the open array. */
+  std::vector<std::string> fragment_names_;
+  /** 
+   * An OpenMP mutex used to lock the array when loading the array schema and
+   * the book-keeping structures from the disk.
+   */
+  omp_lock_t omp_mtx_;
+  /** 
+   * A pthread mutex used to lock the array when loading the array schema and
+   * the book-keeping structures from the disk.
+   */
+  pthread_mutex_t pthread_mtx_;
+
+  // FUNCTIONS
+
+  /**
+   * Destroys the mutexes.
+   *
+   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
+   */
+  int mutex_destroy();
+
+  /**
+   * Initializes the mutexes.
+   *
+   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
+   */
+  int mutex_init();
+
+  /**
+   * Locks the mutexes.
+   *
+   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
+   */
+  int mutex_lock();
+
+  /**
+   * Unlocks the mutexes.
+   *
+   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
+   */
+  int mutex_unlock();
+};
 
 #endif

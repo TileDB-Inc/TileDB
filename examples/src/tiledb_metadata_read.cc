@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  // Intialize context with the default configuration parameters
+  // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
@@ -72,36 +72,29 @@ int main(int argc, char** argv) {
       sizeof(buffer_a2), sizeof(buffer_var_a2)       // a2
   };
 
-
   // Read from metadata
   tiledb_metadata_read(tiledb_metadata, argv[1], buffers, buffer_sizes); 
  
   // Check existence
   if(buffer_sizes[0] == 0 && !tiledb_metadata_overflow(tiledb_metadata, 0)) {
     fprintf(stderr, "Key '%s' does not exist in the metadata!\n", argv[1]);
-    return -1;
-  }
-
-  // Check overflow for a2 
-  if(buffer_sizes[2] == 0 && tiledb_metadata_overflow(tiledb_metadata, 1)) {
+  }  else if(buffer_sizes[2] == 0 && 
+             tiledb_metadata_overflow(tiledb_metadata, 1)) {
+    // Check overflow for a2 
     fprintf(stderr, "Reading value on attribute 'a2' for key '%s' resulted in "
             "a buffer overflow!\n", argv[1]);
-    return -1;
-  }
-
-  // Check if deleted
-  if(static_cast<int*>(buffers[0])[0] == TILEDB_EMPTY_INT32) {
+  } else if(static_cast<int*>(buffers[0])[0] == TILEDB_EMPTY_INT32) {
+    // Check if deleted
     fprintf(stderr, "Key '%s' has been deleted!\n", argv[1]);
-    return -1;
+  } else {
+    // Print attribute values
+    printf(
+        "%s: a1=%d, a2=%.*s\n", 
+        argv[1], 
+        static_cast<int*>(buffers[0])[0],
+        int(buffer_sizes[2]),
+        static_cast<char*>(buffers[2]));
   }
-
-  // Print attribute values
-  printf(
-      "%s: a1=%d, a2=%.*s\n", 
-      argv[1], 
-      static_cast<int*>(buffers[0])[0],
-      buffer_sizes[2],
-      static_cast<char*>(buffers[2]));
 
   /* Finalize the array. */
   tiledb_metadata_finalize(tiledb_metadata);

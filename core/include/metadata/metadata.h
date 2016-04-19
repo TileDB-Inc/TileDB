@@ -134,6 +134,9 @@ class Metadata {
    * Initializes a TileDB metadata object.
    *
    * @param array_schema This essentially encapsulates the metadata schema.
+   * @param fragment_names The names of the fragments of the array.
+   * @param book_keeping The book-keeping structures of the fragments
+   *     of the array.
    * @param mode The mode of the metadata. It must be one of the following:
    *    - TILEDB_METADATA_WRITE 
    *    - TILEDB_METADATA_READ 
@@ -146,6 +149,8 @@ class Metadata {
    */
   int init(
       const ArraySchema* array_schema, 
+      const std::vector<std::string>& fragment_names,
+      const std::vector<BookKeeping*>& book_keeping,
       int mode,
       const char** attributes,
       int attribute_num);

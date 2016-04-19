@@ -56,11 +56,19 @@
 /*            CONTEXT             */
 /* ****************************** */
 
-typedef struct TileDB_CTX{
+typedef struct TileDB_CTX {
   StorageManager* storage_manager_;
 } TileDB_CTX;
 
 int tiledb_ctx_init(TileDB_CTX** tiledb_ctx, const char* config_filename) {
+  // Check config filename length
+  if(config_filename != NULL) {
+    if(strlen(config_filename) > TILEDB_NAME_MAX_LEN) {
+      PRINT_ERROR("Invalid filename length");
+      return TILEDB_ERR;
+    }
+  }
+
   // Initialize context
   *tiledb_ctx = (TileDB_CTX*) malloc(sizeof(struct TileDB_CTX));
   if(*tiledb_ctx == NULL) {
@@ -69,7 +77,7 @@ int tiledb_ctx_init(TileDB_CTX** tiledb_ctx, const char* config_filename) {
     return TILEDB_ERR;
   }
 
-  // Create TileDB storage manager
+  // Create storage manager
   (*tiledb_ctx)->storage_manager_ = new StorageManager();
   if((*tiledb_ctx)->storage_manager_->init(config_filename) != TILEDB_SM_OK)
     return TILEDB_ERR;
@@ -79,14 +87,23 @@ int tiledb_ctx_init(TileDB_CTX** tiledb_ctx, const char* config_filename) {
 
 int tiledb_ctx_finalize(TileDB_CTX* tiledb_ctx) {
   // Trivial case
-  if(tiledb_ctx == NULL || tiledb_ctx->storage_manager_ == NULL)
+  if(tiledb_ctx == NULL)
     return TILEDB_OK;
 
-  // Delete TileDB storage manager
-  delete tiledb_ctx->storage_manager_;
+  // Finalize storage manager
+  int rc = TILEDB_OK;
+  if(tiledb_ctx->storage_manager_ != NULL)
+    rc = tiledb_ctx->storage_manager_->finalize();
 
-  // Success
-  return TILEDB_OK;
+  // Clean up
+  delete tiledb_ctx->storage_manager_;
+  free(tiledb_ctx);
+
+  // Return
+  if(rc == TILEDB_SM_OK)
+    return TILEDB_OK;
+  else
+    return TILEDB_ERR;
 }
 
 
@@ -155,6 +172,12 @@ int tiledb_workspace_create(
   if(!sanity_check(tiledb_ctx))
     return TILEDB_ERR;
 
+  // Check workspace name length
+  if(workspace == NULL || strlen(workspace) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid workspace name length");
+    return TILEDB_ERR;
+  }
+
   // Create the workspace
   if(tiledb_ctx->storage_manager_->workspace_create(workspace) != TILEDB_SM_OK)
     return TILEDB_ERR;
@@ -175,6 +198,12 @@ int tiledb_group_create(
   // Sanity check
   if(!sanity_check(tiledb_ctx))
     return TILEDB_ERR;
+
+  // Check group name length
+  if(group == NULL || strlen(group) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid group name length");
+    return TILEDB_ERR;
+  }
 
   // Create the group
   if(tiledb_ctx->storage_manager_->group_create(group) != TILEDB_SM_OK)
@@ -221,6 +250,10 @@ int tiledb_array_set_schema(
 
   // Set array name
   size_t array_name_len = strlen(array_name); 
+  if(array_name == NULL || array_name_len > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid array name length");
+    return TILEDB_ERR;
+  }
   tiledb_array_schema->array_name_ = (char*) malloc(array_name_len+1);
   strcpy(tiledb_array_schema->array_name_, array_name);
 
@@ -230,6 +263,10 @@ int tiledb_array_set_schema(
       (char**) malloc(attribute_num*sizeof(char*));
   for(int i=0; i<attribute_num; ++i) { 
     size_t attribute_len = strlen(attributes[i]);
+    if(attributes[i] == NULL || attribute_len > TILEDB_NAME_MAX_LEN) {
+      PRINT_ERROR("Invalid attribute name length");
+      return TILEDB_ERR;
+    }
     tiledb_array_schema->attributes_[i] = (char*) malloc(attribute_len+1);
     strcpy(tiledb_array_schema->attributes_[i], attributes[i]);
   }
@@ -239,6 +276,10 @@ int tiledb_array_set_schema(
   tiledb_array_schema->dimensions_ = (char**) malloc(dim_num*sizeof(char*));
   for(int i=0; i<dim_num; ++i) { 
     size_t dimension_len = strlen(dimensions[i]);
+    if(dimensions[i] == NULL || dimension_len > TILEDB_NAME_MAX_LEN) {
+      PRINT_ERROR("Invalid attribute name length");
+      return TILEDB_ERR;
+    }
     tiledb_array_schema->dimensions_[i] = (char*) malloc(dimension_len+1);
     strcpy(tiledb_array_schema->dimensions_[i], dimensions[i]);
   }
@@ -290,6 +331,9 @@ int tiledb_array_set_schema(
     for(int i=0; i<attribute_num+1; ++i)
       tiledb_array_schema->compression_[i] = compression[i];
   }
+
+  // Success
+  return TILEDB_OK;
 }
 
 int tiledb_array_create(
@@ -335,6 +379,12 @@ int tiledb_array_init(
   // Sanity check
   if(!sanity_check(tiledb_ctx))
     return TILEDB_ERR;
+
+  // Check array name length
+  if(array == NULL || strlen(array) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid array name length");
+    return TILEDB_ERR;
+  }
 
   // Allocate memory for the array struct
   *tiledb_array = (TileDB_Array*) malloc(sizeof(struct TileDB_Array));
@@ -428,6 +478,12 @@ int tiledb_array_load_schema(
   // Sanity check
   if(!sanity_check(tiledb_ctx))
     return TILEDB_ERR;
+
+  // Check array name length
+  if(array == NULL || strlen(array) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid array name length");
+    return TILEDB_ERR;
+  }
 
   // Get the array schema
   ArraySchema* array_schema;
@@ -551,13 +607,17 @@ int tiledb_array_overflow(
   return (int) tiledb_array->array_->overflow(attribute_id);
 }
 
-int tiledb_array_consolidate(const TileDB_Array* tiledb_array) {
-  // Sanity check
-  if(!sanity_check(tiledb_array))
+int tiledb_array_consolidate(
+    const TileDB_CTX* tiledb_ctx,
+    const char* array) {
+  // Check array name length
+  if(array == NULL || strlen(array) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid array name length");
     return TILEDB_ERR;
+  }
 
   // Consolidate
-  if(tiledb_array->array_->consolidate() != TILEDB_AR_OK)
+  if(tiledb_ctx->storage_manager_->array_consolidate(array) != TILEDB_SM_OK)
     return TILEDB_ERR;
   else 
     return TILEDB_OK;
@@ -717,6 +777,10 @@ int tiledb_metadata_set_schema(
 
   // Set metadata name
   size_t metadata_name_len = strlen(metadata_name); 
+  if(metadata_name == NULL || metadata_name_len > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid metadata name length");
+    return TILEDB_ERR;
+  }
   tiledb_metadata_schema->metadata_name_ = (char*) malloc(metadata_name_len+1);
   strcpy(tiledb_metadata_schema->metadata_name_, metadata_name);
 
@@ -726,6 +790,10 @@ int tiledb_metadata_set_schema(
       (char**) malloc(attribute_num*sizeof(char*));
   for(int i=0; i<attribute_num; ++i) { 
     size_t attribute_len = strlen(attributes[i]);
+    if(attributes[i] == NULL || attribute_len > TILEDB_NAME_MAX_LEN) {
+      PRINT_ERROR("Invalid attribute name length");
+      return TILEDB_ERR;
+    }
     tiledb_metadata_schema->attributes_[i] = (char*) malloc(attribute_len+1);
     strcpy(tiledb_metadata_schema->attributes_[i], attributes[i]);
   }
@@ -869,6 +937,12 @@ int tiledb_metadata_load_schema(
   if(!sanity_check(tiledb_ctx))
     return TILEDB_ERR;
 
+  // Check metadata name length
+  if(metadata == NULL || strlen(metadata) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid metadata name length");
+    return TILEDB_ERR;
+  }
+
   // Get the array schema
   ArraySchema* array_schema;
   if(tiledb_ctx->storage_manager_->metadata_load_schema(
@@ -979,13 +1053,17 @@ int tiledb_metadata_overflow(
 }
 
 int tiledb_metadata_consolidate(
-    const TileDB_Metadata* tiledb_metadata) {
-  // Sanity check
-  if(!sanity_check(tiledb_metadata))
-    return TILEDB_ERR;
+    const TileDB_CTX* tiledb_ctx,
+    const char* metadata) {
+   // Check metadata name length
+   if(metadata == NULL || strlen(metadata) > TILEDB_NAME_MAX_LEN) {
+     PRINT_ERROR("Invalid metadata name length");
+     return TILEDB_ERR;
+   }
 
   // Consolidate
-  if(tiledb_metadata->metadata_->consolidate() != TILEDB_MT_OK)
+  if(tiledb_ctx->storage_manager_->metadata_consolidate(metadata) != 
+     TILEDB_SM_OK)
     return TILEDB_ERR;
   else 
     return TILEDB_OK;
@@ -1124,6 +1202,12 @@ int tiledb_clear(
   if(!sanity_check(tiledb_ctx))
     return TILEDB_ERR;
 
+  // Check directory name length
+  if(dir == NULL || strlen(dir) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid directory name length");
+    return TILEDB_ERR;
+  }
+
   // Clear
   if(tiledb_ctx->storage_manager_->clear(dir) != TILEDB_SM_OK)
     return TILEDB_ERR;
@@ -1137,6 +1221,12 @@ int tiledb_delete(
   // Sanity check
   if(!sanity_check(tiledb_ctx))
     return TILEDB_ERR;
+
+  // Check directory name length
+  if(dir == NULL || strlen(dir) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid directory name length");
+    return TILEDB_ERR;
+  }
 
   // Delete
   if(tiledb_ctx->storage_manager_->delete_entire(dir) != TILEDB_SM_OK)
@@ -1152,6 +1242,18 @@ int tiledb_move(
   // Sanity check
   if(!sanity_check(tiledb_ctx))
     return TILEDB_ERR;
+
+  // Check old directory name length
+  if(old_dir == NULL || strlen(old_dir) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid old directory name length");
+    return TILEDB_ERR;
+  }
+
+  // Check new directory name length
+  if(new_dir == NULL || strlen(new_dir) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid new directory name length");
+    return TILEDB_ERR;
+  }
 
   // Move
   if(tiledb_ctx->storage_manager_->move(old_dir, new_dir) != TILEDB_SM_OK)
@@ -1186,6 +1288,12 @@ int tiledb_ls(
   // Sanity check
   if(!sanity_check(tiledb_ctx))
     return TILEDB_ERR;
+
+  // Check parent directory name length
+  if(parent_dir == NULL || strlen(parent_dir) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid parent directory name length");
+    return TILEDB_ERR;
+  }
 
   // List TileDB objects
   if(tiledb_ctx->storage_manager_->ls(

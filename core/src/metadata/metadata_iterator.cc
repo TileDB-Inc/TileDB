@@ -65,8 +65,6 @@ MetadataIterator::MetadataIterator() {
 }
 
 MetadataIterator::~MetadataIterator() {
-  if(array_it_ != NULL)
-    delete array_it_;
 }
 
 
@@ -75,6 +73,10 @@ MetadataIterator::~MetadataIterator() {
 /* ****************************** */
 /*           ACCESSORS            */
 /* ****************************** */
+
+const std::string& MetadataIterator::metadata_name() const {
+  return array_it_->array_name();
+}
 
 bool MetadataIterator::end() const {
   return array_it_->end();
@@ -101,6 +103,8 @@ int MetadataIterator::finalize() {
   int rc = array_it_->finalize();
   delete array_it_;
   array_it_ = NULL;
+  delete metadata_;
+  metadata_ = NULL;
 
   if(rc != TILEDB_AIT_OK)
     return TILEDB_MIT_ERR;
@@ -113,6 +117,7 @@ int MetadataIterator::init(
     void** buffers,
     size_t* buffer_sizes) {
   // Initialize an array iterator
+  metadata_ = metadata;
   array_it_ = new ArrayIterator();
   if(array_it_->init(metadata->array(), buffers, buffer_sizes) != 
      TILEDB_AIT_OK) {

@@ -1386,6 +1386,10 @@ int ArraySchema::cell_order_cmp(const T* coords_a, const T* coords_b) const {
   } else {  // Invalid cell order
     assert(0);
   }
+
+  // The program should never reach this point
+  assert(0);
+  return 0;
 }
 
 void ArraySchema::expand_domain(void* domain) const {
@@ -1513,12 +1517,14 @@ int64_t ArraySchema::get_tile_pos(
   assert(tile_extents_);
 
   // Invoke the proper function based on the tile order
-  if(tile_order_ == TILEDB_ROW_MAJOR)
-    get_tile_pos_row(domain, tile_coords);
-  else if(tile_order_ == TILEDB_COL_MAJOR)
-    get_tile_pos_col(domain, tile_coords);
-  else  // Sanity check
+  if(tile_order_ == TILEDB_ROW_MAJOR) {
+    return get_tile_pos_row(domain, tile_coords);
+  } else if(tile_order_ == TILEDB_COL_MAJOR) {
+    return get_tile_pos_col(domain, tile_coords);
+  } else { // Sanity check 
     assert(0);
+    return TILEDB_AS_ERR;
+  }
 }
 
 template<class T>
@@ -1781,16 +1787,20 @@ size_t ArraySchema::compute_type_size(int i) const {
   // Sanity check
   assert(i>= 0 && i <= attribute_num_);
 
-  if(types_[i] == TILEDB_CHAR)
+  if(types_[i] == TILEDB_CHAR) {
     return sizeof(char);
-  else if(types_[i] == TILEDB_INT32)
+  } else if(types_[i] == TILEDB_INT32) {
     return sizeof(int);
-  else if(types_[i] == TILEDB_INT64)
+  } else if(types_[i] == TILEDB_INT64) {
     return sizeof(int64_t);
-  else if(types_[i] == TILEDB_FLOAT32)
+  } else if(types_[i] == TILEDB_FLOAT32) {
     return sizeof(float);
-  else if(types_[i] == TILEDB_FLOAT64)
+  } else if(types_[i] == TILEDB_FLOAT64) {
     return sizeof(double);
+  } else { // The program should never reach this point
+    assert(0);
+    return 0;
+  }
 }
 
 template<class T>

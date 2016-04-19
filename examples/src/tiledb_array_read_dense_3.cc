@@ -34,7 +34,7 @@
 #include <cstdio>
 
 int main() {
-  // Intialize context with the default configuration parameters
+  // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
@@ -74,7 +74,7 @@ int main() {
 
   // Read from array - #2
   tiledb_array_read(tiledb_array, buffers_2, buffer_sizes_2); 
-  printf("a2 for (4,3): %3.*s\n", buffer_sizes_2[1], buffer_var_a2);
+  printf("a2 for (4,3): %3.*s\n", int(buffer_sizes_2[1]), buffer_var_a2);
  
   // Finalize the array
   tiledb_array_finalize(tiledb_array);

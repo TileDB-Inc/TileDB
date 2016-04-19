@@ -511,7 +511,7 @@ class ArraySchema {
    *     may be a sub-domain of the array domain).
    * @param tile_coords The tile coordinates. 
    * @return The tile position of *tile_coords* along the tile order of the
-   *     array inside the input domain.
+   *     array inside the input domain, or TILEDB_AS_ERR on error.
    */
   template<class T> 
   int64_t get_tile_pos(
