@@ -51,12 +51,21 @@
 
 /**@{*/
 /** Return code. */
-#define TILEDB_SM_OK                                 0
-#define TILEDB_SM_ERR                               -1
+#define TILEDB_SM_OK                                                  0
+#define TILEDB_SM_ERR                                                -1
 /**@}*/
 
 /** Name of the master catalog. */
-#define TILEDB_SM_MASTER_CATALOG      "master_catalog"
+#define TILEDB_SM_MASTER_CATALOG                       "master_catalog"
+
+/** Name of the consolidation file lock. */
+#define TILEDB_SM_CONSOLIDATION_FILELOCK_NAME   ".__consolidation_lock"
+
+/**@{*/
+/** Lock types. */
+#define TILEDB_SM_SHARED_LOCK                                         0
+#define TILEDB_SM_EXCLUSIVE_LOCK                                      1
+/**@}*/
 
 /** 
  * The storage manager, which is repsonsible for creating, deleting, etc. of
@@ -567,14 +576,13 @@ class StorageManager {
    * array is being initialized. The book-keeping structures are loaded only
    * if the input mode is TILEDB_ARRAY_READ.
    *
-   * @param array_schema The array schema.
+   * @param array_name The array name (must be absolute path).
    * @param mode The mode in which the array is being initialized.
    * @param open_array The open array entry that is retrieved.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int array_open(
-      const ArraySchema* array_schema, 
-      int mode,
+      const std::string& array_name, 
       OpenArray*& open_array);
 
   /** 
@@ -593,6 +601,53 @@ class StorageManager {
    * @return void
    */
   void config_set_default();
+
+  /**
+   * Creates a special file that serves as lock needed for implementing
+   * thread- and process-safety during consolidation. The file is
+   * created inside an array or metadata directory.
+   *
+   * @param dir The array or metadata directory the filelock is created for.
+   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
+   */
+  int consolidation_filelock_create(const std::string& dir) const;
+
+  /**
+   * Locks the consolidation file lock.
+   *
+   * @param array_name The name of the array the lock is applied on.
+   * @param fd The file descriptor of the filelock.
+   * @param lock_type The lock type, which can be either TILEDB_SM_SHARED_LOCK
+   *     or TILEDB_SM_EXCLUSIVE_LOCK.
+   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
+   */
+  int consolidation_filelock_lock(
+      const std::string& array_name,
+      int& fd, 
+      int lock_type) const;
+
+  /**
+   * Unlocks the consolidation file lock.
+   *
+   * @param fd The file descriptor of the filelock.
+   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
+   */
+  int consolidation_filelock_unlock(int fd) const;
+
+  /**
+   * Finalizes the consolidation process, applying carefully the locks so that
+   * this can be done concurrently with other reads. The function finalizes the
+   * new consolidated fragment, and deletes the old fragments that created it.
+   *
+   * @param new_fragment The new consolidated fragment that the function will
+   *     finalize.
+   * @param old_fragment_names The names of the old fragments that need to be
+   *     deleted.
+   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
+   */
+  int consolidation_finalize(
+      Fragment* new_fragment, 
+      const std::vector<std::string>& old_fragment_names);
 
   /**
    * Creates a special group file inside the group directory.
@@ -697,32 +752,32 @@ class StorageManager {
        const std::string& new_metadata) const;
 
   /**
-   * Destroys all the mutexes.
+   * Destroys open array the mutexes.
    *
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int mutex_destroy();
+  int open_array_mtx_destroy();
 
   /**
-   * Initializes all the mutexes.
+   * Initializes open array mutexes.
    *
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int mutex_init();
+  int open_array_mtx_init();
 
   /**
-   * Locks all the mutexes.
+   * Locks open array mutexes.
    *
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int mutex_lock();
+  int open_array_mtx_lock();
 
   /**
-   * Unlocks all the mutexes.
+   * Unlocks open array mutexes.
    *
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int mutex_unlock();
+  int open_array_mtx_unlock();
 
   /** 
    * Appropriately sorts the fragment names based on their name timestamps.
@@ -777,6 +832,8 @@ class StorageManager::OpenArray {
  public:
   // ATTRIBUTES
 
+  /** The array schema. */
+  ArraySchema* array_schema_;
   /** The book-keeping structures for all the fragments of the array. */
   std::vector<BookKeeping*> book_keeping_;
   /** 
@@ -784,6 +841,8 @@ class StorageManager::OpenArray {
    * it was opened.
    */
   int cnt_;
+  /** Descriptor for the consolidation filelock. */
+  int consolidation_filelock_;
   /** The names of the fragments of the open array. */
   std::vector<std::string> fragment_names_;
   /** 

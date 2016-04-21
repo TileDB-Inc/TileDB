@@ -117,11 +117,18 @@ class Metadata {
   /* ********************************* */
 
   /**
-   * Consolidates the fragments of a metadata object into a single fragment. 
-   * 
-   * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
+   * Consolidates all fragments into a new single one, on a per-attribute basis.
+   * Returns the new fragment (which has to be finalized outside this functions),
+   * along with the names of the old (consolidated) fragments (which also have
+   * to be deleted outside this function).
+   *
+   * @param new_fragment The new fragment to be returned.
+   * @param old_fragment_names The names of the old fragments to be returned.
+   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int consolidate();
+  int consolidate(
+      Fragment*& new_fragment, 
+      std::vector<std::string>& old_fragment_names);
 
   /**
    * Finalizes the metadata, properly freeing up the memory space.
