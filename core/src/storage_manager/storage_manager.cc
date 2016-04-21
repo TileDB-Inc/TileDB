@@ -93,7 +93,7 @@ StorageManager::~StorageManager() {
 /* ****************************** */
 
 int StorageManager::finalize() {
-  return mutex_destroy();
+  return open_array_mtx_destroy();
 }
 
 int StorageManager::init(const char* config_filename) {
@@ -133,7 +133,7 @@ int StorageManager::init(const char* config_filename) {
   }
 
   // Initialize mutexes and return
-  return mutex_init();
+  return open_array_mtx_init();
 }
 
 
@@ -281,13 +281,27 @@ int StorageManager::array_consolidate(const char* array_dir) {
     return TILEDB_SM_ERR;
 
   // Consolidate array
-  int rc_consolidate = array->consolidate();
+  Fragment* new_fragment;
+  std::vector<std::string> old_fragment_names;
+  int rc_array_consolidate = 
+      array->consolidate(new_fragment, old_fragment_names);
   
+  // Close the array
+  int rc_array_close = array_close(array->array_schema()->array_name());
+
+  // Finalize consolidation
+  int rc_consolidation_finalize = 
+      consolidation_finalize(new_fragment, old_fragment_names);
+
   // Finalize array
-  int rc_finalize = array_finalize(array); 
+  int rc_array_finalize = array->finalize();
+  delete array;
   
   // Return 
-  if(rc_consolidate != TILEDB_AR_OK || rc_finalize != TILEDB_SM_OK)
+  if(rc_array_consolidate != TILEDB_AR_OK        || 
+     rc_array_close != TILEDB_SM_OK              ||
+     rc_array_finalize != TILEDB_SM_OK           ||
+     rc_consolidation_finalize != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
   else
     return TILEDB_SM_OK;
@@ -367,6 +381,10 @@ int StorageManager::array_create(const ArraySchema* array_schema) const {
     PRINT_ERROR(std::string("Cannot create array; ") + strerror(errno));
     return TILEDB_SM_ERR;
   }
+
+  // Create consolidation filelock
+  if(consolidation_filelock_create(dir) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
 
   // Success
   return TILEDB_SM_OK;
@@ -500,8 +518,10 @@ int StorageManager::array_init(
 
   // Open the array
   OpenArray* open_array;
-  if(array_open(array_schema, mode, open_array) != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
+  if(mode == TILEDB_ARRAY_READ) {
+    if(array_open(real_dir(array_dir), open_array) != TILEDB_SM_OK)
+      return TILEDB_SM_ERR;
+  }
 
   // Create Array object
   array = new Array();
@@ -529,8 +549,11 @@ int StorageManager::array_finalize(Array* array) {
     return TILEDB_SM_OK;
 
   // Finalize and close the array
+  int mode = array->mode();
   int rc_finalize = array->finalize();
-  int rc_close = array_close(array->array_schema()->array_name());
+  int rc_close = TILEDB_SM_OK;
+  if(mode == TILEDB_ARRAY_READ)
+    rc_close = array_close(array->array_schema()->array_name());
 
   // Clean up
   delete array;
@@ -640,13 +663,28 @@ int StorageManager::metadata_consolidate(const char* metadata_dir) {
     return TILEDB_SM_ERR;
 
   // Consolidate metadata
-  int rc_consolidate = metadata->consolidate();
+  Fragment* new_fragment;
+  std::vector<std::string> old_fragment_names;
+  int rc_metadata_consolidate = 
+      metadata->consolidate(new_fragment, old_fragment_names);
   
+  // Close the underlying array
+  std::string array_name = metadata->array_schema()->array_name();
+  int rc_array_close = array_close(array_name);
+
+  // Finalize consolidation
+  int rc_consolidation_finalize = 
+      consolidation_finalize(new_fragment, old_fragment_names);
+
   // Finalize metadata
-  int rc_finalize = metadata_finalize(metadata); 
+  int rc_metadata_finalize = metadata->finalize();
+  delete metadata;
   
   // Return 
-  if(rc_consolidate != TILEDB_MT_OK || rc_finalize != TILEDB_SM_OK)
+  if(rc_metadata_consolidate != TILEDB_MT_OK   || 
+     rc_array_close != TILEDB_SM_OK            ||
+     rc_metadata_finalize != TILEDB_SM_OK      ||
+     rc_consolidation_finalize != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
   else
     return TILEDB_SM_OK;
@@ -728,6 +766,10 @@ int StorageManager::metadata_create(const ArraySchema* array_schema) const {
     PRINT_ERROR(std::string("Cannot create metadata; ") + strerror(errno));
     return TILEDB_SM_ERR;
   }
+
+  // Create consolidation filelock
+  if(consolidation_filelock_create(dir) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
 
   // Success
   return TILEDB_SM_OK;
@@ -812,8 +854,10 @@ int StorageManager::metadata_init(
 
   // Open the array that implements the metadata
   OpenArray* open_array;
-  if(array_open(array_schema, mode, open_array) != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
+  if(mode == TILEDB_METADATA_READ) {
+    if(array_open(real_dir(metadata_dir), open_array) != TILEDB_SM_OK)
+      return TILEDB_SM_ERR;
+  }
 
   // Create metadata object
   metadata = new Metadata();
@@ -844,8 +888,11 @@ int StorageManager::metadata_finalize(Metadata* metadata) {
 
   // Finalize the metadata and close the underlying array
   std::string array_name = metadata->array_schema()->array_name();
+  int mode = metadata->array()->mode();
   int rc_finalize = metadata->finalize();
-  int rc_close = array_close(array_name);
+  int rc_close = TILEDB_SM_OK;
+  if(mode == TILEDB_METADATA_READ)
+    rc_close = array_close(array_name);
 
   // Clean up
   delete metadata;
@@ -1106,7 +1153,7 @@ int StorageManager::array_clear(
 
 int StorageManager::array_close(const std::string& array) {
   // Lock mutexes
-  if(mutex_lock() != TILEDB_SM_OK)
+  if(open_array_mtx_lock() != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
 
   // Find the open array entry
@@ -1128,7 +1175,8 @@ int StorageManager::array_close(const std::string& array) {
 
   // Delete open array entry if necessary
   int rc_mtx_destroy = TILEDB_SM_OK;
-  if(it->second != NULL && it->second->cnt_ == 0) {
+  int rc_filelock = TILEDB_SM_OK;
+  if(it->second->cnt_ == 0) {
     // Clean up book-keeping
     std::vector<BookKeeping*>::iterator bit = it->second->book_keeping_.begin();
     for(; bit != it->second->book_keeping_.end(); ++bit) 
@@ -1137,6 +1185,14 @@ int StorageManager::array_close(const std::string& array) {
     // Unlock and destroy mutexes
     it->second->mutex_unlock();
     rc_mtx_destroy = it->second->mutex_destroy();
+
+    // Unlock consolidation filelock
+    rc_filelock = consolidation_filelock_unlock(
+                      it->second->consolidation_filelock_);
+    
+    // Delete array schema
+    if(it->second->array_schema_ != NULL)
+      delete it->second->array_schema_;
 
     // Free open array
     delete it->second;
@@ -1150,10 +1206,12 @@ int StorageManager::array_close(const std::string& array) {
   }
 
   // Unlock mutexes
-  int rc_mtx_unlock = mutex_unlock();
+  int rc_mtx_unlock = open_array_mtx_unlock();
 
   // Return
-  if(rc_mtx_destroy != TILEDB_SM_OK || rc_mtx_unlock != TILEDB_SM_OK)
+  if(rc_mtx_destroy != TILEDB_SM_OK || 
+     rc_filelock != TILEDB_SM_OK    ||
+     rc_mtx_unlock != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
   else
     return TILEDB_SM_OK;
@@ -1177,7 +1235,7 @@ int StorageManager::array_get_open_array_entry(
     const std::string& array,
     OpenArray*& open_array) {
   // Lock mutexes
-  if(mutex_lock() != TILEDB_SM_OK)
+  if(open_array_mtx_lock() != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
 
   // Find the open array entry
@@ -1186,6 +1244,7 @@ int StorageManager::array_get_open_array_entry(
   if(it == open_arrays_.end()) { 
     open_array = new OpenArray();
     open_array->cnt_ = 0;
+    open_array->consolidation_filelock_ = -1;
     open_array->book_keeping_ = std::vector<BookKeeping*>();
     if(open_array->mutex_init() != TILEDB_SM_OK) {
       open_array->mutex_unlock();
@@ -1196,8 +1255,17 @@ int StorageManager::array_get_open_array_entry(
     open_array = it->second;
   }
 
-  // Unlock mutexes and return
-  return mutex_unlock();
+  // Increment counter
+  ++(open_array->cnt_);
+
+  // Unlock mutexes
+  if(open_array_mtx_unlock() != TILEDB_SM_OK) {
+    --open_array->cnt_;
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::array_move(
@@ -1242,12 +1310,8 @@ int StorageManager::array_move(
 }
 
 int StorageManager::array_open(
-    const ArraySchema* array_schema, 
-    int mode,
+    const std::string& array_name, 
     OpenArray*& open_array) {
-  // For easy reference
-  std::string array_name = array_schema->array_name();
-
   // Get the open array entry
   if(array_get_open_array_entry(array_name, open_array) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
@@ -1256,23 +1320,44 @@ int StorageManager::array_open(
   if(open_array->mutex_lock() != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
 
-  if(mode == TILEDB_ARRAY_READ && 
-     open_array->fragment_names_.size() == 0) {
-    // Get the fragment names
-    array_get_fragment_names(array_name, open_array->fragment_names_);
-
-    // Load the book-keeping for each fragment
-    if(array_load_book_keeping(
-           array_schema, 
-           open_array->fragment_names_, 
-           open_array->book_keeping_) != TILEDB_SM_OK) {
+  // First time the array is opened
+  if(open_array->fragment_names_.size() == 0) {
+    // Acquire shared lock on consolidation filelock
+    if(consolidation_filelock_lock(
+        array_name,
+        open_array->consolidation_filelock_, 
+        TILEDB_SM_SHARED_LOCK)) {
       open_array->mutex_unlock();
       return TILEDB_SM_ERR;
     }
-  }
 
-  // Increment counter
-  ++(open_array->cnt_);
+    // Get the fragment names
+    array_get_fragment_names(array_name, open_array->fragment_names_);
+
+    // Get array schema
+    if(is_array(array_name)) { // Array
+      if(array_load_schema(
+             array_name.c_str(), 
+             open_array->array_schema_) != TILEDB_SM_OK)
+        return TILEDB_SM_ERR;
+    } else {                  // Metadata
+      if(metadata_load_schema(
+             array_name.c_str(), 
+             open_array->array_schema_) != TILEDB_SM_OK)
+        return TILEDB_SM_ERR;
+    }
+
+    // Load the book-keeping for each fragment
+    if(array_load_book_keeping(
+           open_array->array_schema_, 
+           open_array->fragment_names_, 
+           open_array->book_keeping_) != TILEDB_SM_OK) {
+      delete open_array->array_schema_;
+      open_array->array_schema_ = NULL;
+      open_array->mutex_unlock();
+      return TILEDB_SM_ERR;
+    } 
+  }
 
   // Unlock the mutex of the array
   if(open_array->mutex_unlock() != TILEDB_UT_OK) 
@@ -1288,6 +1373,122 @@ int StorageManager::config_set(const char* config_filename) {
 } 
 
 void StorageManager::config_set_default() {
+}
+
+int StorageManager::consolidation_filelock_create(
+    const std::string& dir) const {
+  std::string filename = dir + "/" + TILEDB_SM_CONSOLIDATION_FILELOCK_NAME; 
+  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+  if(fd == -1) {
+    PRINT_ERROR(
+        std::string("Cannot create consolidation filelock; ") + 
+        strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::consolidation_filelock_lock(
+    const std::string& array_name,
+    int& fd, 
+    int lock_type) const {
+  // Prepare the flock struct
+  struct flock fl;
+  if(lock_type == TILEDB_SM_SHARED_LOCK) {
+    fl.l_type = F_RDLCK;
+  } else if(lock_type == TILEDB_SM_EXCLUSIVE_LOCK) {
+    fl.l_type = F_WRLCK;
+  } else {
+    PRINT_ERROR("Cannot lock consolidation filelock; Invalid lock type");
+    return TILEDB_SM_ERR;
+  }
+  fl.l_whence = SEEK_SET;
+  fl.l_start = 0;
+  fl.l_len = 0;
+  fl.l_pid = getpid();
+
+  // Prepare the filelock name
+  std::string array_name_real = real_dir(array_name);
+  std::string filename = 
+      array_name_real + "/" + 
+      TILEDB_SM_CONSOLIDATION_FILELOCK_NAME;
+
+  // Open the file
+  fd = ::open(filename.c_str(), O_RDWR);
+  if(fd == -1) {
+    PRINT_ERROR("Cannot lock consolidation filelock; Cannot open filelock");
+    return TILEDB_SM_ERR;
+  } 
+
+  // Acquire the lock
+  if(fcntl(fd, F_SETLKW, &fl) == -1) {
+    PRINT_ERROR("Cannot lock consolidation filelock; Cannot lock");
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::consolidation_filelock_unlock(int fd) const {
+  if(::close(fd) == -1) {
+    PRINT_ERROR("Cannot unlock consolidation filelock; Cannot close filelock");
+    return TILEDB_SM_ERR;
+  } else {
+    return TILEDB_SM_OK;
+  }
+}
+
+int StorageManager::consolidation_finalize(
+    Fragment* new_fragment,
+    const std::vector<std::string>& old_fragment_names) {
+  // Trivial case - there was no consolidation
+  if(old_fragment_names.size() == 0)
+    return TILEDB_SM_OK;
+
+  // Acquire exclusive lock on consolidation filelock
+  int fd;
+  if(consolidation_filelock_lock(
+      new_fragment->array()->array_schema()->array_name(),
+      fd,
+      TILEDB_SM_EXCLUSIVE_LOCK) != TILEDB_SM_OK) {
+    delete new_fragment;
+    return TILEDB_SM_ERR;
+  }
+
+  // Finalize new fragment - makes the new fragment visible to new reads
+  int rc = new_fragment->finalize(); 
+  delete new_fragment;
+  if(rc != TILEDB_FG_OK) 
+    return TILEDB_SM_ERR;
+
+  // Make old fragments invisible to new reads
+  int fragment_num = old_fragment_names.size();
+  for(int i=0; i<fragment_num; ++i) {
+    // Delete special fragment file inside the fragment directory
+    std::string old_fragment_filename = 
+        old_fragment_names[i] + "/" + TILEDB_FRAGMENT_FILENAME;
+    if(remove(old_fragment_filename.c_str())) {
+      PRINT_ERROR(std::string("Cannot remove fragment file during "
+                  "finalizing consolidation; ") + strerror(errno));
+      return TILEDB_SM_ERR;
+    }
+  }
+
+  // Unlock consolidation filelock       
+  if(consolidation_filelock_unlock(fd) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Delete old fragments
+  for(int i=0; i<fragment_num; ++i) {
+    if(delete_dir(old_fragment_names[i]) != TILEDB_UT_OK)
+      return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::create_group_file(const std::string& group) const {
@@ -1623,7 +1824,7 @@ int StorageManager::metadata_move(
   return TILEDB_SM_OK;
 }
 
-int StorageManager::mutex_destroy() {
+int StorageManager::open_array_mtx_destroy() {
   int rc_omp_mtx = ::mutex_destroy(&open_array_omp_mtx_);
   int rc_pthread_mtx = ::mutex_destroy(&open_array_pthread_mtx_);
 
@@ -1633,7 +1834,7 @@ int StorageManager::mutex_destroy() {
     return TILEDB_SM_OK;
 }
 
-int StorageManager::mutex_init() {
+int StorageManager::open_array_mtx_init() {
   int rc_omp_mtx = ::mutex_init(&open_array_omp_mtx_);
   int rc_pthread_mtx = ::mutex_init(&open_array_pthread_mtx_);
 
@@ -1643,7 +1844,7 @@ int StorageManager::mutex_init() {
     return TILEDB_SM_OK;
 }
 
-int StorageManager::mutex_lock() {
+int StorageManager::open_array_mtx_lock() {
   int rc_omp_mtx = ::mutex_lock(&open_array_omp_mtx_);
   int rc_pthread_mtx = ::mutex_lock(&open_array_pthread_mtx_);
 
@@ -1653,7 +1854,7 @@ int StorageManager::mutex_lock() {
     return TILEDB_SM_OK;
 }
 
-int StorageManager::mutex_unlock() {
+int StorageManager::open_array_mtx_unlock() {
   int rc_omp_mtx = ::mutex_unlock(&open_array_omp_mtx_);
   int rc_pthread_mtx = ::mutex_unlock(&open_array_pthread_mtx_);
 

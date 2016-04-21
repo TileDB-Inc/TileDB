@@ -169,7 +169,9 @@ const void* Array::subarray() const {
 /*            MUTATORS            */
 /* ****************************** */
 
-int Array::consolidate() {
+int Array::consolidate(
+    Fragment*& new_fragment,
+    std::vector<std::string>& old_fragment_names) {
   // Trivial case
   if(fragments_.size() == 1)
     return TILEDB_AS_OK;
@@ -180,7 +182,7 @@ int Array::consolidate() {
     return TILEDB_AS_ERR;
 
   // Create new fragment
-  Fragment* new_fragment = new Fragment(this);
+  new_fragment = new Fragment(this);
   if(new_fragment->init(new_fragment_name, TILEDB_ARRAY_WRITE, subarray_) != 
      TILEDB_FG_OK)
     return TILEDB_AR_ERR;
@@ -194,25 +196,10 @@ int Array::consolidate() {
     }
   }
 
-  // Finalize new fragment
-  int rc = new_fragment->finalize(); 
-  delete new_fragment;
-  if(rc != TILEDB_FG_OK)
-    return TILEDB_AR_ERR;
-
-  // Delete old fragments
+  // Get old fragment names
   int fragment_num = fragments_.size();
-  for(int i=0; i<fragment_num; ++i) {
-    if(fragments_[i]->finalize() != TILEDB_FG_OK)
-      return TILEDB_AR_ERR;
-
-    std::string fragment_name = fragments_[i]->fragment_name();
-    delete fragments_[i];
-
-    if(delete_dir(fragment_name) != TILEDB_UT_OK)
-      return TILEDB_AR_ERR;
-  }
-  fragments_.clear();
+  for(int i=0; i<fragment_num; ++i) 
+    old_fragment_names.push_back(fragments_[i]->fragment_name());
 
   // Success
   return TILEDB_AR_OK;

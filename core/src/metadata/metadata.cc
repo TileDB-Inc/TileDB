@@ -124,8 +124,10 @@ int Metadata::read(const char* key, void** buffers, size_t* buffer_sizes) {
 /*            MUTATORS            */
 /* ****************************** */
 
-int Metadata::consolidate() {
-  if(array_->consolidate() != TILEDB_AR_OK)
+int Metadata::consolidate(
+    Fragment*& new_fragment,
+    std::vector<std::string>& old_fragment_names) {
+  if(array_->consolidate(new_fragment, old_fragment_names) != TILEDB_AR_OK)
     return TILEDB_MT_ERR;
   else
     return TILEDB_MT_OK;
