@@ -106,7 +106,8 @@ int StorageManager::init(const char* config_filename) {
   // Set the TileDB home directory
   tiledb_home_ = TILEDB_HOME;
   if(tiledb_home_ == "") {
-    tiledb_home_ = getenv("HOME");
+    auto env_home_ptr = getenv("HOME");
+    tiledb_home_ = env_home_ptr ? env_home_ptr : "";
     if(tiledb_home_ == "") {
       char cwd[1024];
       if(getcwd(cwd, sizeof(cwd)) != NULL) {

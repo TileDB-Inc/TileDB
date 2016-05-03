@@ -801,7 +801,8 @@ int read_from_file_with_mmap(
 std::string real_dir(const std::string& dir) {
   // Initialize current, home and root
   std::string current = current_dir();
-  std::string home = getenv("HOME");
+  auto env_home_ptr = getenv("HOME");
+  std::string home = env_home_ptr ? env_home_ptr : current;
   std::string root = "/";
 
   // Easy cases
