@@ -1304,7 +1304,7 @@ int ArraySchema::set_types(const int* types) {
     if(types[i] != TILEDB_INT32 &&
        types[i] != TILEDB_INT64 &&
        types[i] != TILEDB_FLOAT32 &&
-       types[i] != TILEDB_INT64 &&
+       types[i] != TILEDB_FLOAT64 &&
        types[i] != TILEDB_CHAR) {
       PRINT_ERROR("Cannot set types; Invalid type");
       return TILEDB_AS_ERR;
@@ -1316,7 +1316,7 @@ int ArraySchema::set_types(const int* types) {
   if(types[attribute_num_] != TILEDB_INT32 &&
      types[attribute_num_] != TILEDB_INT64 &&
      types[attribute_num_] != TILEDB_FLOAT32 &&
-     types[attribute_num_] != TILEDB_INT64) {
+     types[attribute_num_] != TILEDB_FLOAT64) {
     PRINT_ERROR("Cannot set types; Invalid type");
     return TILEDB_AS_ERR;
   }
