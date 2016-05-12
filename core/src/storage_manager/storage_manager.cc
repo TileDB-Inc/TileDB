@@ -1126,7 +1126,8 @@ int StorageManager::array_clear(
   while((next_file = readdir(dir))) {
     if(!strcmp(next_file->d_name, ".") ||
        !strcmp(next_file->d_name, "..") ||
-       !strcmp(next_file->d_name, TILEDB_ARRAY_SCHEMA_FILENAME))
+       !strcmp(next_file->d_name, TILEDB_ARRAY_SCHEMA_FILENAME) ||
+       !strcmp(next_file->d_name, TILEDB_SM_CONSOLIDATION_FILELOCK_NAME))
       continue;
     filename = array_real + "/" + next_file->d_name;
     if(is_metadata(filename)) {         // Metadata
@@ -1742,7 +1743,8 @@ int StorageManager::metadata_clear(
   while((next_file = readdir(dir))) {
     if(!strcmp(next_file->d_name, ".") ||
        !strcmp(next_file->d_name, "..") ||
-       !strcmp(next_file->d_name, TILEDB_METADATA_SCHEMA_FILENAME))
+       !strcmp(next_file->d_name, TILEDB_METADATA_SCHEMA_FILENAME) ||
+       !strcmp(next_file->d_name, TILEDB_SM_CONSOLIDATION_FILELOCK_NAME))
       continue;
     filename = metadata_real + "/" + next_file->d_name;
     if(is_fragment(filename)) {  // Fragment
