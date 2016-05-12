@@ -36,7 +36,6 @@
 #include "array.h"
 #include "array_schema.h"
 #include "book_keeping.h"
-#include "constants.h"
 #include "read_state.h"
 #include "write_state.h"
 #include <vector>
@@ -125,11 +124,10 @@ class Fragment {
   int finalize();
 
   /**
-   * Initializes a fragment.
+   * Initializes a fragment in write mode.
    *
    * @param fragment_name The name that will be given to the fragment.
    * @param mode The fragment mode. It can be one of the following: 
-   *    - TILEDB_READ
    *    - TILEDB_WRITE 
    *    - TILEDB_WRITE_UNSORTED 
    * @param subarray The subarray the fragment is constrained on.
@@ -139,6 +137,17 @@ class Fragment {
       const std::string& fragment_name, 
       int mode,
       const void* subarray);
+
+  /**
+   * Initializes a fragment in read mode.
+   *
+   * @param fragment_name The name that will be given to the fragment.
+   * @param book_keeping The book-keeping of the fragment.
+   * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error. 
+   */
+  int init(
+      const std::string& fragment_name, 
+      BookKeeping* book_keeping);
 
   /** Resets the read state (typically to start a new read). */
   void reset_read_state();

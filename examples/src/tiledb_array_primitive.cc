@@ -37,7 +37,7 @@
 void print_some_array_schema_info(const TileDB_ArraySchema* array_schema);
 
 int main() {
-  /* Intialize context with the default configuration parameters. */
+  /* Initialize context with the default configuration parameters. */
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 

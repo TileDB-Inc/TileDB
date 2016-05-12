@@ -36,8 +36,9 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
-#include <sstream>
+#include <omp.h>
 #include <sys/time.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 /* ****************************** */
@@ -58,19 +59,6 @@
 #  define PRINT_WARNING(x) do { } while(0) 
 #endif
 
-#ifdef GNU_PARALLEL
-  #include <parallel/algorithm>
-  #define SORT_LIB __gnu_parallel
-#else
-  #include <algorithm>
-  #define SORT_LIB std 
-#endif
-
-#define SORT_2(first, last) SORT_LIB::sort((first), (last))
-#define SORT_3(first, last, comp) SORT_LIB::sort((first), (last), (comp))
-#define GET_MACRO(_1, _2, _3, NAME, ...) NAME
-#define SORT(...) GET_MACRO(__VA_ARGS__, SORT_3, SORT_2)(__VA_ARGS__)
-
 
 
 
@@ -85,9 +73,10 @@ Array::Array() {
 }
 
 Array::~Array() {
-  for(int i=0; i<fragments_.size(); ++i)
-    if(fragments_[i] != NULL)
-       delete fragments_[i];
+  std::vector<Fragment*>::iterator it = fragments_.begin();
+  for(; it != fragments_.end(); ++it)
+    if(*it != NULL)
+       delete *it;
 
   if(array_schema_ != NULL)
     delete array_schema_;
@@ -180,18 +169,21 @@ const void* Array::subarray() const {
 /*            MUTATORS            */
 /* ****************************** */
 
-int Array::consolidate() {
-  // Reinit with all attributes and whole domain
-  finalize();
-  init(array_schema_, TILEDB_ARRAY_READ, NULL, 0, NULL);
-
+int Array::consolidate(
+    Fragment*& new_fragment,
+    std::vector<std::string>& old_fragment_names) {
   // Trivial case
   if(fragments_.size() == 1)
     return TILEDB_AS_OK;
 
+  // Get new fragment name
+  std::string new_fragment_name = this->new_fragment_name();
+  if(new_fragment_name == "")
+    return TILEDB_AS_ERR;
+
   // Create new fragment
-  Fragment* new_fragment = new Fragment(this);
-  if(new_fragment->init(new_fragment_name(), TILEDB_ARRAY_WRITE, subarray_) != 
+  new_fragment = new Fragment(this);
+  if(new_fragment->init(new_fragment_name, TILEDB_ARRAY_WRITE, subarray_) != 
      TILEDB_FG_OK)
     return TILEDB_AR_ERR;
 
@@ -204,21 +196,10 @@ int Array::consolidate() {
     }
   }
 
-  // Finalize new fragment
-  new_fragment->finalize(); 
-  delete new_fragment;
-
-  // Delete old fragments
-  for(int i=0; i<fragments_.size(); ++i) {
-    if(fragments_[i]->finalize() != TILEDB_FG_OK)
-      return TILEDB_AR_ERR;
-
-    if(delete_dir(fragments_[i]->fragment_name()) != TILEDB_UT_OK)
-      return TILEDB_AR_ERR;
-
-    delete fragments_[i];
-  }
-  fragments_.clear();
+  // Get old fragment names
+  int fragment_num = fragments_.size();
+  for(int i=0; i<fragment_num; ++i) 
+    old_fragment_names.push_back(fragments_[i]->fragment_name());
 
   // Success
   return TILEDB_AR_OK;
@@ -269,24 +250,41 @@ int Array::consolidate(
   }
 
   // Read and write attribute until there is no overflow
+  int rc_write = TILEDB_FG_OK; 
+  int rc_read = TILEDB_FG_OK; 
   do {
     // Read
-    if(read(buffers, buffer_sizes) != TILEDB_AR_OK) 
-      return TILEDB_AR_ERR;
+    rc_read = read(buffers, buffer_sizes);
+    if(rc_read != TILEDB_FG_OK)
+      break;
+
     // Write
-    if(new_fragment->write(
-       (const void**) buffers, 
-       (const size_t*) buffer_sizes) != TILEDB_FG_OK)
-      return TILEDB_AR_ERR;
+    rc_write = new_fragment->write(
+                   (const void**) buffers, 
+                   (const size_t*) buffer_sizes);
+    if(rc_write != TILEDB_FG_OK)
+      break;
   } while(overflow(attribute_id));
 
-  // Success
-  return TILEDB_AR_OK;
+  // Clean up
+  for(int i=0; i<buffer_num; ++i) {
+    if(buffers[i] != NULL)
+      free(buffers[i]);
+  } 
+  free(buffers);
+  free(buffer_sizes);
+
+  // Return
+  if(rc_write == TILEDB_FG_OK && rc_read == TILEDB_FG_OK)
+    return TILEDB_AR_OK;
+  else
+    return TILEDB_AR_ERR;
 }
 
 int Array::finalize() {
   int rc = TILEDB_FG_OK;
-  for(int i=0; i<fragments_.size(); ++i) {
+  int fragment_num =  fragments_.size();
+  for(int i=0; i<fragment_num; ++i) {
     rc = fragments_[i]->finalize();
     if(rc != TILEDB_FG_OK)
       break;
@@ -307,6 +305,8 @@ int Array::finalize() {
 
 int Array::init(
     const ArraySchema* array_schema,
+    const std::vector<std::string>& fragment_names,
+    const std::vector<BookKeeping*>& book_keeping,
     int mode,
     const char** attributes,
     int attribute_num,
@@ -336,9 +336,16 @@ int Array::init(
       // unless in TILEDB_WRITE_UNSORTED mode
       attributes_vec.pop_back(); 
   } else {                 // Custom attributes
+    // Get attributes
     for(int i=0; i<attribute_num; ++i) {
+      // Check attribute name length
+      if(attributes[i] == NULL || strlen(attributes[i]) > TILEDB_NAME_MAX_LEN) {
+        PRINT_ERROR("Invalid attribute name length");
+        return TILEDB_AR_ERR;
+      }
       attributes_vec.push_back(attributes[i]);
     }
+
     // Sanity check on duplicates 
     if(has_duplicates(attributes_vec)) {
       PRINT_ERROR("Cannot initialize array; Duplicate attributes");
@@ -346,9 +353,6 @@ int Array::init(
     }
   }
   
-  // Set array schema
-  array_schema_ = array_schema;
-
   // Set attribute ids
   if(array_schema->get_attribute_ids(attributes_vec, attribute_ids_) 
          == TILEDB_AS_ERR)
@@ -357,17 +361,30 @@ int Array::init(
   // Set mode
   mode_ = mode;
 
+  // Set array schema
+  array_schema_ = array_schema;
+
   // Initialize new fragment if needed
   if(mode_ == TILEDB_ARRAY_WRITE || 
      mode_ == TILEDB_ARRAY_WRITE_UNSORTED) {
+    // Get new fragment name
+    std::string new_fragment_name = this->new_fragment_name();
+    if(new_fragment_name == "")
+      return TILEDB_AS_ERR;
+
+    // Create new fragment
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
-    if(fragment->init(new_fragment_name(), mode_, subarray) != TILEDB_FG_OK)
+    if(fragment->init(new_fragment_name, mode_, subarray) != TILEDB_FG_OK) {
+      array_schema_ = NULL;
       return TILEDB_AR_ERR;
+    }
   } else if(mode_ == TILEDB_ARRAY_READ) {
-    if(open_fragments() != TILEDB_AR_OK)
+    if(open_fragments(fragment_names, book_keeping) != TILEDB_AR_OK) {
+      array_schema_ = NULL;
       return TILEDB_AR_ERR;
-      array_read_state_ = new ArrayReadState(this);
+    }
+    array_read_state_ = new ArrayReadState(this);
   }
 
   // Return
@@ -384,9 +401,16 @@ int Array::reset_attributes(
     if(array_schema_->dense()) // Remove coordinates attribute for dense
       attributes_vec.pop_back(); 
   } else {                 //  Custom attributes
+    // Copy attribute names
     for(int i=0; i<attribute_num; ++i) {
+      // Check attribute name length
+      if(attributes[i] == NULL || strlen(attributes[i]) > TILEDB_NAME_MAX_LEN) {
+        PRINT_ERROR("Invalid attribute name length");
+        return TILEDB_AR_ERR;
+      }
       attributes_vec.push_back(attributes[i]);
     }
+
     // Sanity check on duplicates 
     if(has_duplicates(attributes_vec)) {
       PRINT_ERROR("Cannot reset attributes; Duplicate attributes");
@@ -420,7 +444,8 @@ int Array::reset_subarray(const void* subarray) {
     memcpy(subarray_, subarray, subarray_size);
 
   // Re-initialize the read state of the fragments
-  for(int i=0; i<fragments_.size(); ++i) 
+  int fragment_num =  fragments_.size();
+  for(int i=0; i<fragment_num; ++i) 
     fragments_[i]->reset_read_state();
 
   // Re-initialize array read state
@@ -444,9 +469,15 @@ int Array::write(const void** buffers, const size_t* buffer_sizes) {
 
   // Create and initialize a new fragment 
   if(fragments_.size() == 0) {
+    // Get new fragment name
+    std::string new_fragment_name = this->new_fragment_name();
+    if(new_fragment_name == "")
+      return TILEDB_AS_ERR;
+   
+    // Create new fragment 
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
-    if(fragment->init(new_fragment_name(), mode_, subarray_) != TILEDB_FG_OK)
+    if(fragment->init(new_fragment_name, mode_, subarray_) != TILEDB_FG_OK)
       return TILEDB_AR_ERR;
   }
  
@@ -474,75 +505,44 @@ int Array::write(const void** buffers, const size_t* buffer_sizes) {
 /* ****************************** */
 
 std::string Array::new_fragment_name() const {
-  std::stringstream fragment_name;
   struct timeval tp;
   gettimeofday(&tp, NULL);
   uint64_t ms = (uint64_t) tp.tv_sec * 1000L + tp.tv_usec / 1000;
-  fragment_name << array_schema_->array_name() << "/.__" 
-                << getpid() << "_" << ms;
+  pthread_t self = pthread_self();
+  uint64_t tid = 0;
+  memcpy(&tid, &self, std::min(sizeof(self), sizeof(tid)));
+  char fragment_name[TILEDB_NAME_MAX_LEN];
 
-  return fragment_name.str();
+  int n = sprintf(
+              fragment_name, 
+              "%s/.__%llu_%llu", 
+              array_schema_->array_name().c_str(), 
+              tid, 
+              ms);
+  if(n <0) 
+    return "";
+
+  return fragment_name;
 }
 
-int Array::open_fragments() {
-  // Get directory names in the array folder
-  std::vector<std::string> dirs = 
-      get_fragment_dirs(array_schema_->array_name()); 
+int Array::open_fragments(
+    const std::vector<std::string>& fragment_names,
+    const std::vector<BookKeeping*>& book_keeping) {
+  // Sanity check
+  assert(fragment_names.size() == book_keeping.size());
 
-  // Sort the fragment names
-  sort_fragment_names(dirs);
 
   // Create a fragment object for each fragment directory
-  for(int i=0; i<dirs.size(); ++i) {
-    if(is_fragment(dirs[i])) {
-      Fragment* fragment = new Fragment(this);
-      fragments_.push_back(fragment);
-      if(fragment->init(dirs[i], mode_, NULL) != TILEDB_FG_OK)
-        return TILEDB_AR_ERR;
-    }
+  int fragment_num = fragment_names.size();
+  for(int i=0; i<fragment_num; ++i) {
+    Fragment* fragment = new Fragment(this);
+    fragments_.push_back(fragment);
+
+    if(fragment->init(fragment_names[i], book_keeping[i]) != TILEDB_FG_OK)
+      return TILEDB_AR_ERR;
   } 
 
   // Success
   return TILEDB_AR_OK;
-}
-
-void Array::sort_fragment_names(
-    std::vector<std::string>& fragment_names) const {
-  // Initializations
-  int fragment_num = fragment_names.size();
-  std::string t_str;
-  int64_t stripped_fragment_name_size, t;
-  std::vector<std::pair<int64_t, int> > t_pos_vec;
-  t_pos_vec.resize(fragment_num);
-
-  // Get the timestamp for each fragment
-  for(int i=0; i<fragment_num; ++i) {
-    // Strip fragment name
-    std::string& fragment_name = fragment_names[i];
-    std::string parent_fragment_name = parent_dir(fragment_name);
-    std::string stripped_fragment_name = 
-        fragment_name.substr(parent_fragment_name.size() + 1);
-    assert(starts_with(stripped_fragment_name, "__"));
-    stripped_fragment_name_size = stripped_fragment_name.size();
-
-    // Search for the timestamp in the end of the name after '_'
-    for(int j=2; j<stripped_fragment_name_size; ++j) {
-      if(stripped_fragment_name[j] == '_') {
-        t_str = stripped_fragment_name.substr(
-                    j+1,stripped_fragment_name_size-j);
-        sscanf(t_str.c_str(), "%lld", &t); 
-        t_pos_vec[i] = std::pair<int64_t, int>(t, i);
-        break;
-      }
-    }
-  }
-
-  // Sort the names based on the timestamps
-  SORT(t_pos_vec.begin(), t_pos_vec.end()); 
-  std::vector<std::string> fragment_names_sorted; 
-  fragment_names_sorted.resize(fragment_num);
-  for(int i=0; i<fragment_num; ++i) 
-    fragment_names_sorted[i] = fragment_names[t_pos_vec[i].second];
-  fragment_names = fragment_names_sorted;
 }
 

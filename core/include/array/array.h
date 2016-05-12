@@ -35,6 +35,7 @@
 
 #include "array_read_state.h"
 #include "array_schema.h"
+#include "book_keeping.h"
 #include "constants.h"
 #include "fragment.h"
 
@@ -140,10 +141,17 @@ class Array {
 
   /**
    * Consolidates all fragments into a new single one, on a per-attribute basis.
+   * Returns the new fragment (which has to be finalized outside this functions),
+   * along with the names of the old (consolidated) fragments (which also have
+   * to be deleted outside this function).
    *
+   * @param new_fragment The new fragment to be returned.
+   * @param old_fragment_names The names of the old fragments to be returned.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int consolidate();
+  int consolidate(
+      Fragment*& new_fragment, 
+      std::vector<std::string>& old_fragment_names);
 
   /**
    * Consolidates all fragment into a new single one, focusing on a specific
@@ -167,6 +175,9 @@ class Array {
    * Initializes a TileDB array object.
    *
    * @param array_schema The array schema.
+   * @param fragment_names The names of the fragments of the array.
+   * @param book_keeping The book-keeping structures of the fragments
+   *     of the array.
    * @param mode The mode of the array. It must be one of the following:
    *    - TILEDB_ARRAY_WRITE 
    *    - TILEDB_ARRAY_WRITE_UNSORTED 
@@ -184,6 +195,8 @@ class Array {
    */
   int init(
       const ArraySchema* array_schema, 
+      const std::vector<std::string>& fragment_names,
+      const std::vector<BookKeeping*>& book_keeping,
       int mode,
       const char** attributes,
       int attribute_num,
@@ -299,21 +312,21 @@ class Array {
    * After the new fragmemt is finalized, the array will change its name
    * by removing the leading '.' character. 
    *
-   * @return A new special fragment name.
+   * @return A new special fragment name on success, or "" (empty string) on
+   *     error.
    */
   std::string new_fragment_name() const;
 
   /**
    * Opens the existing fragments in TILEDB_ARRAY_READ_MODE.
    *
+   * @param fragment_names The vector with the fragment names.
+   * @param book_keeping The book-keeping of the array fragments.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int open_fragments();
-
-  /** 
-   * Appropriately sorts the fragment names based on their name timestamps.
-   */
-  void sort_fragment_names(std::vector<std::string>& fragment_names) const;
+  int open_fragments(
+      const std::vector<std::string>& fragment_names,
+      const std::vector<BookKeeping*>& book_keeping);
 };
 
 #endif

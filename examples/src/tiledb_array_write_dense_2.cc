@@ -29,13 +29,13 @@
  *
  * It shows how to write to a dense array invoking the write function
  * multiple times. This will have the same effect as program
- * tiledb_array_write_1.cc.
+ * tiledb_array_write_dense_1.cc.
  */
 
 #include "c_api.h"
 
 int main() {
-  // Intialize context with the default configuration parameters
+  // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
@@ -54,7 +54,7 @@ int main() {
   int buffer_a1[] = { 0,  1,  2,  3, 4,  5 };
   size_t buffer_a2[] = { 0,  1,  3,  6, 10, 11, 13, 16 };
   const char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float* buffer_a3; 
+  float* buffer_a3 = NULL; 
   const void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
   size_t buffer_sizes[] = 
   { 

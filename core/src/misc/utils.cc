@@ -375,7 +375,8 @@ std::vector<std::string> get_fragment_dirs(const std::string& dir) {
 
   while((next_file = readdir(c_dir))) {
     new_dir = dir + "/" + next_file->d_name;
-    if(is_fragment(new_dir))
+
+    if(is_fragment(new_dir)) 
       dirs.push_back(new_dir);
   } 
 
@@ -393,7 +394,6 @@ ssize_t gzip(
     size_t out_size) {
 
   ssize_t ret;
-  unsigned have;
   z_stream strm;
  
   // Allocate deflate state
@@ -435,7 +435,6 @@ int gunzip(
     size_t avail_out, 
     size_t& out_size) {
   int ret;
-  unsigned have;
   z_stream strm;
   
   // Allocate deflate state
@@ -522,7 +521,7 @@ bool is_file(const std::string& file) {
 
 bool is_fragment(const std::string& dir) {
   // Check existence
-  if(is_dir(dir) && 
+  if(is_dir(dir) &&
      is_file(dir + "/" + TILEDB_FRAGMENT_FILENAME)) 
     return true;
   else
@@ -569,9 +568,10 @@ bool is_positive_integer(const char* s) {
 
 template<class T>
 bool is_unary_subarray(const T* subarray, int dim_num) {
-  for(int i=0; i<dim_num; ++i)
-    if(subarray[i*dim_num] != subarray[i*dim_num+1])
+  for(int i=0; i<dim_num; ++i) {
+    if(subarray[2*i] != subarray[2*i+1])
       return false;
+  }
 
   return true;
 }
@@ -583,6 +583,66 @@ bool is_workspace(const std::string& dir) {
     return true;
   else
     return false;
+}
+
+int mutex_destroy(omp_lock_t* mtx) {
+  omp_destroy_lock(mtx);
+
+  return TILEDB_UT_OK;
+}
+
+int mutex_destroy(pthread_mutex_t* mtx) {
+  if(pthread_mutex_destroy(mtx) != 0) {
+    PRINT_ERROR("Cannot destroy mutex");
+    return TILEDB_UT_ERR;
+  } else {
+    return TILEDB_UT_OK;
+  }
+}
+
+int mutex_init(omp_lock_t* mtx) {
+  omp_init_lock(mtx);
+
+  return TILEDB_UT_OK;
+}
+
+int mutex_init(pthread_mutex_t* mtx) {
+  if(pthread_mutex_init(mtx, NULL) != 0) {
+    PRINT_ERROR("Cannot initialize mutex");
+    return TILEDB_UT_ERR;
+  } else {
+    return TILEDB_UT_OK;
+  }
+}
+
+int mutex_lock(omp_lock_t* mtx) {
+  omp_set_lock(mtx);
+
+  return TILEDB_UT_OK;
+}
+
+int mutex_lock(pthread_mutex_t* mtx) {
+  if(pthread_mutex_lock(mtx) != 0) {
+    PRINT_ERROR("Cannot lock mutex");
+    return TILEDB_UT_ERR;
+  } else {
+    return TILEDB_UT_OK;
+  }
+}
+
+int mutex_unlock(omp_lock_t* mtx) {
+  omp_unset_lock(mtx);
+
+  return TILEDB_UT_OK;
+}
+
+int mutex_unlock(pthread_mutex_t* mtx) {
+  if(pthread_mutex_unlock(mtx) != 0) {
+    PRINT_ERROR("Cannot unlock mutex");
+    return TILEDB_UT_ERR;
+  } else {
+    return TILEDB_UT_OK;
+  }
 }
 
 std::string parent_dir(const std::string& dir) {
@@ -619,7 +679,7 @@ void purge_dots_from_path(std::string& path) {
   std::vector<std::string> tokens, final_tokens;
   std::string token;
 
-  for(int i=1; i<path_size; ++i) {
+  for(size_t i=1; i<path_size; ++i) {
     if(path[i] == '/') {
       path[i] = '\0';
       token = token_c_str;
@@ -633,7 +693,8 @@ void purge_dots_from_path(std::string& path) {
     tokens.push_back(token); 
 
   // Purge dots
-  for(int i=0; i<tokens.size(); ++i) {
+  int token_num = tokens.size();
+  for(int i=0; i<token_num; ++i) {
     if(tokens[i] == ".") { // Skip single dots
       continue;
     } else if(tokens[i] == "..") {
@@ -651,7 +712,8 @@ void purge_dots_from_path(std::string& path) {
 
   // Assemble final path
   path = "/";
-  for(int i=0; i<final_tokens.size(); ++i) 
+  int final_token_num = final_tokens.size();
+  for(int i=0; i<final_token_num; ++i) 
     path += ((i != 0) ? "/" : "") + final_tokens[i]; 
 }
 
@@ -670,7 +732,7 @@ int read_from_file(
   // Read
   lseek(fd, offset, SEEK_SET); 
   ssize_t bytes_read = ::read(fd, buffer, length);
-  if(bytes_read != length) {
+  if(bytes_read != ssize_t(length)) {
     PRINT_ERROR("Cannot read from file; File reading error");
     return TILEDB_UT_ERR;
   }
@@ -739,7 +801,8 @@ int read_from_file_with_mmap(
 std::string real_dir(const std::string& dir) {
   // Initialize current, home and root
   std::string current = current_dir();
-  std::string home = getenv("HOME");
+  auto env_home_ptr = getenv("HOME");
+  std::string home = env_home_ptr ? env_home_ptr : current;
   std::string root = "/";
 
   // Easy cases
@@ -790,7 +853,7 @@ int write_to_file(
 
   // Append attribute data to the file
   ssize_t bytes_written = ::write(fd, buffer, buffer_size);
-  if(bytes_written != buffer_size) {
+  if(bytes_written != ssize_t(buffer_size)) {
     PRINT_ERROR(std::string("Cannot write to file '") + filename + 
                 "'; File writing error");
     return TILEDB_UT_ERR;
@@ -821,7 +884,7 @@ int write_to_file_cmp_gzip(
 
   // Append attribute data to the file
   ssize_t bytes_written = gzwrite(fd, buffer, buffer_size);
-  if(bytes_written != buffer_size) {
+  if(bytes_written != ssize_t(buffer_size)) {
     PRINT_ERROR(std::string("Cannot write to file '") + filename + 
                 "'; File writing error");
     return TILEDB_UT_ERR;

@@ -117,11 +117,18 @@ class Metadata {
   /* ********************************* */
 
   /**
-   * Consolidates the fragments of a metadata object into a single fragment. 
-   * 
-   * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
+   * Consolidates all fragments into a new single one, on a per-attribute basis.
+   * Returns the new fragment (which has to be finalized outside this functions),
+   * along with the names of the old (consolidated) fragments (which also have
+   * to be deleted outside this function).
+   *
+   * @param new_fragment The new fragment to be returned.
+   * @param old_fragment_names The names of the old fragments to be returned.
+   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int consolidate();
+  int consolidate(
+      Fragment*& new_fragment, 
+      std::vector<std::string>& old_fragment_names);
 
   /**
    * Finalizes the metadata, properly freeing up the memory space.
@@ -134,6 +141,9 @@ class Metadata {
    * Initializes a TileDB metadata object.
    *
    * @param array_schema This essentially encapsulates the metadata schema.
+   * @param fragment_names The names of the fragments of the array.
+   * @param book_keeping The book-keeping structures of the fragments
+   *     of the array.
    * @param mode The mode of the metadata. It must be one of the following:
    *    - TILEDB_METADATA_WRITE 
    *    - TILEDB_METADATA_READ 
@@ -146,6 +156,8 @@ class Metadata {
    */
   int init(
       const ArraySchema* array_schema, 
+      const std::vector<std::string>& fragment_names,
+      const std::vector<BookKeeping*>& book_keeping,
       int mode,
       const char** attributes,
       int attribute_num);
