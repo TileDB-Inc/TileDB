@@ -244,14 +244,8 @@ int ReadState::copy_cells(
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   size_t cell_size = array_schema->cell_size(attribute_id);
 
-  // Fetch the attribute tile from disk if necessary
-  int compression = array_schema->compression(attribute_id);
-  int rc;
-  if(compression == TILEDB_GZIP)
-    rc = get_tile_from_disk_cmp_gzip(attribute_id, tile_i);
-  else
-    rc = get_tile_from_disk_cmp_none(attribute_id, tile_i);
-  if(rc != TILEDB_RS_OK)
+  // Prepare attribute tile
+  if(prepare_tile_for_reading(attribute_id, tile_i) != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
   // For easy reference
@@ -331,14 +325,8 @@ int ReadState::copy_cells_var(
     return TILEDB_RS_OK;
   }
 
-  // Fetch the attribute tile from disk if necessary
-  int compression = array_schema->compression(attribute_id);
-  int rc;
-  if(compression == TILEDB_GZIP)
-    rc = get_tile_from_disk_var_cmp_gzip(attribute_id, tile_i);
-  else
-    rc = get_tile_from_disk_var_cmp_none(attribute_id, tile_i);
-  if(rc != TILEDB_RS_OK)
+  // Prepare attribute tile
+  if(prepare_tile_for_reading_var(attribute_id, tile_i) != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
   // For easy reference
@@ -418,8 +406,8 @@ int ReadState::copy_cells_var(
   if(tiles_offsets_[attribute_id] != end_offset + 1) 
     overflow_[attribute_id] = true;
 
-  // Entering this if condition implies that the var data in this cell is so large
-  // that the allocated buffer cannot hold it
+  // Entering this if condition implies that the var data in this cell is so 
+  // large that the allocated buffer cannot hold it
   if(buffer_offset == 0u && bytes_to_copy == 0u) {
     overflow_[attribute_id] = true; 
     return TILEDB_RS_OK;
@@ -441,14 +429,9 @@ int ReadState::get_coords_after(
   int64_t cell_num = book_keeping_->cell_num(search_tile_pos_);  
   size_t coords_size = array_schema->coords_size();
 
-  // Fetch the coordinates search tile from disk if necessary
-  int compression = array_schema->compression(attribute_num);
-  int rc;
-  if(compression == TILEDB_GZIP)
-    rc = get_tile_from_disk_cmp_gzip(attribute_num+1, search_tile_pos_);
-  else
-    rc = get_tile_from_disk_cmp_none(attribute_num+1, search_tile_pos_);
-  if(rc != TILEDB_RS_OK)
+  // Prepare attribute tile
+  if(prepare_tile_for_reading(attribute_num+1, search_tile_pos_) != 
+     TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
   // For easy reference
@@ -488,14 +471,9 @@ int ReadState::get_enclosing_coords(
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
 
-  // Fetch the coordinates search tile from disk if necessary
-  int compression = array_schema->compression(attribute_num);
-  int rc;
-  if(compression == TILEDB_GZIP)
-    rc = get_tile_from_disk_cmp_gzip(attribute_num+1, tile_i);
-  else
-    rc = get_tile_from_disk_cmp_none(attribute_num+1, tile_i);
-  if(rc != TILEDB_RS_OK)
+  // Prepare attribute tile
+  if(prepare_tile_for_reading(attribute_num+1, tile_i) != 
+     TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
   // For easy reference
@@ -548,14 +526,9 @@ int ReadState::get_fragment_cell_pos_range_sparse(
   int dim_num = array_schema->dim_num();
   int64_t tile_i = fragment_info.second;
 
-  // Fetch the coordinates search tile from disk if necessary
-  int compression = array_schema->compression(attribute_num);
-  int rc;
-  if(compression == TILEDB_GZIP)
-    rc = get_tile_from_disk_cmp_gzip(attribute_num+1, tile_i);
-  else
-    rc = get_tile_from_disk_cmp_none(attribute_num+1, tile_i);
-  if(rc != TILEDB_RS_OK)
+  // Prepare attribute tile
+  if(prepare_tile_for_reading(attribute_num+1, tile_i) != 
+     TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
   // Compute the appropriate cell positions
@@ -739,14 +712,9 @@ int ReadState::get_fragment_cell_ranges_sparse(
     return TILEDB_RS_OK;
   }
 
-  // Fetch the coordinates search tile from disk if necessary
-  int compression = array_schema->compression(attribute_num);
-  int rc;
-  if(compression == TILEDB_GZIP)
-    rc = get_tile_from_disk_cmp_gzip(attribute_num+1, search_tile_pos_);
-  else
-    rc = get_tile_from_disk_cmp_none(attribute_num+1, search_tile_pos_);
-  if(rc != TILEDB_RS_OK)
+  // Prepare attribute tile
+  if(prepare_tile_for_reading(attribute_num+1, search_tile_pos_) != 
+     TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
   // Get cell positions for the cell range
@@ -1402,7 +1370,48 @@ int64_t ReadState::get_cell_pos_at_or_before(const T* coords) const {
     return med;   // At
 }
 
-int ReadState::get_tile_from_disk_cmp_gzip(int attribute_id, int64_t tile_i) {
+bool ReadState::is_empty_attribute(int attribute_id) const {
+  // Prepare attribute file name
+  std::string filename = 
+      fragment_->fragment_name() + "/" +
+      fragment_->array()->array_schema()->attribute(attribute_id) + 
+      TILEDB_FILE_SUFFIX;
+
+  // Check if the attribute file exists
+  return !is_file(filename);
+}
+
+int ReadState::prepare_tile_for_reading(
+    int attribute_id, 
+    int64_t tile_i) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int compression = array_schema->compression(attribute_id);
+
+  // Invoke the proper function based on the compression type
+  if(compression == TILEDB_GZIP)
+    return prepare_tile_for_reading_cmp_gzip(attribute_id, tile_i);
+  else
+    return prepare_tile_for_reading_cmp_none(attribute_id, tile_i);
+}
+
+int ReadState::prepare_tile_for_reading_var(
+    int attribute_id, 
+    int64_t tile_i) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int compression = array_schema->compression(attribute_id);
+
+  // Invoke the proper function based on the compression type
+  if(compression == TILEDB_GZIP)
+    return prepare_tile_for_reading_var_cmp_gzip(attribute_id, tile_i);
+  else
+    return prepare_tile_for_reading_var_cmp_none(attribute_id, tile_i);
+}
+
+int ReadState::prepare_tile_for_reading_cmp_gzip(
+    int attribute_id, 
+    int64_t tile_i) {
   // Return if the tile has already been fetched
   if(tile_i == fetched_tile_[attribute_id])
     return TILEDB_RS_OK;
@@ -1476,7 +1485,9 @@ int ReadState::get_tile_from_disk_cmp_gzip(int attribute_id, int64_t tile_i) {
   return TILEDB_RS_OK;
 }
 
-int ReadState::get_tile_from_disk_cmp_none(int attribute_id, int64_t tile_i) {
+int ReadState::prepare_tile_for_reading_cmp_none(
+    int attribute_id, 
+    int64_t tile_i) {
   // Return if the tile has already been fetched
   if(tile_i == fetched_tile_[attribute_id])
     return TILEDB_RS_OK;
@@ -1519,7 +1530,7 @@ int ReadState::get_tile_from_disk_cmp_none(int attribute_id, int64_t tile_i) {
   return TILEDB_RS_OK;
 }
 
-int ReadState::get_tile_from_disk_var_cmp_gzip(
+int ReadState::prepare_tile_for_reading_var_cmp_gzip(
     int attribute_id, 
     int64_t tile_i) {
   // Return if the tile has already been fetched
@@ -1658,7 +1669,7 @@ int ReadState::get_tile_from_disk_var_cmp_gzip(
   return TILEDB_RS_OK;
 }
 
-int ReadState::get_tile_from_disk_var_cmp_none(
+int ReadState::prepare_tile_for_reading_var_cmp_none(
     int attribute_id, 
     int64_t tile_i) {
   // Return if the tile has already been fetched
@@ -1740,16 +1751,6 @@ int ReadState::get_tile_from_disk_var_cmp_none(
   return TILEDB_RS_OK;
 }
 
-bool ReadState::is_empty_attribute(int attribute_id) const {
-  // Prepare attribute file name
-  std::string filename = 
-      fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id) + 
-      TILEDB_FILE_SUFFIX;
-
-  // Check if the attribute file exists
-  return !is_file(filename);
-}
 
 int ReadState::read_tile_from_file_cmp_gzip(
     int attribute_id,

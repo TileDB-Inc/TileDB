@@ -259,7 +259,12 @@ size_t ArraySchema::cell_size(int attribute_id) const {
 }
 
 int ArraySchema::compression(int attribute_id) const {
-  assert(attribute_id >= 0 && attribute_id <= attribute_num_);
+  assert(attribute_id >= 0 && attribute_id <= attribute_num_+1);
+
+  // Special case for the "search tile", which is essentially the 
+  // coordinates tile
+  if(attribute_id == attribute_num_+1)
+    attribute_id = attribute_num_;
 
   return compression_[attribute_id];
 }

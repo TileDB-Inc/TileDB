@@ -1065,7 +1065,7 @@ int StorageManager::delete_entire(const std::string& dir) {
   } else if(is_metadata(dir)) {
     return metadata_delete(dir);
   } else {
-    PRINT_ERROR("Clear failed; Invalid directory");
+    PRINT_ERROR("Delete failed; Invalid directory");
     return TILEDB_SM_ERR;
   }
 

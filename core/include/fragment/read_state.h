@@ -547,48 +547,68 @@ class ReadState {
   template<class T>
   int64_t get_cell_pos_at_or_before(const T* coords) const;
 
-  /**
-   * Reads/maps a tile from the disk into a local buffer for an attribute. This
-   * function focuses on the case there is GZIP compression.
-   *
-   * @param attribute_id The id of the attribute the tile is read for. 
-   * @param tile_i The position of the tile to be read from the disk.
-   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
-   */
-  int get_tile_from_disk_cmp_gzip(int attribute_id, int64_t tile_i);
-
-  /**
-   * Reads a tile from the disk into a local buffer for an attribute. This
-   * function focuses on the case there is no compression.
-   *
-   * @param attribute_id The id of the attribute the tile is read for. 
-   * @param tile_i The position of the tile to be read from the disk.
-   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
-   */
-  int get_tile_from_disk_cmp_none(int attribute_id, int64_t tile_i);
-
-  /**
-   * Reads a tile from the disk into a local buffer for an attribute. This
-   * function focuses on the case of variable-sized tiles with GZIP compression.
-   *
-   * @param attribute_id The id of the attribute the tile is read for. 
-   * @param tile_i The position of the tile to be read from the disk.
-   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
-   */
-  int get_tile_from_disk_var_cmp_gzip(int attribute_id, int64_t tile_i);
-
-  /**
-   * Reads a tile from the disk into a local buffer for an attribute. This
-   * function focuses on the case of variable-sized tiles with no compression.
-   *
-   * @param attribute_id The id of the attribute the tile is read for. 
-   * @param tile_i The position of the tile to be read from the disk.
-   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
-   */
-  int get_tile_from_disk_var_cmp_none(int attribute_id, int64_t tile_i);
-
   /** Returns *true* if the file of the input attribute is empty. */
   bool is_empty_attribute(int attribute_id) const;
+
+  /**
+   * Prepares a tile from the disk for reading for an attribute.    
+   *
+   * @param attribute_id The id of the attribute the tile is prepared for. 
+   * @param tile_i The tile position on the disk.
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int prepare_tile_for_reading(int attribute_id, int64_t tile_i);
+
+  /**
+   * Prepares a variable-sized tile from the disk for reading for an attribute.
+   *
+   * @param attribute_id The id of the attribute the tile is prepared for. 
+   * @param tile_i The tile position on the disk.
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int prepare_tile_for_reading_var(int attribute_id, int64_t tile_i);
+
+  /**
+   * Prepares a tile from the disk for reading for an attribute.    
+   * This function focuses on the case there is GZIP compression.
+   *
+   * @param attribute_id The id of the attribute the tile is prepared for. 
+   * @param tile_i The tile position on the disk.
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int prepare_tile_for_reading_cmp_gzip(int attribute_id, int64_t tile_i);
+
+  /**
+   * Prepares a tile from the disk for reading for an attribute.    
+   * This function focuses on the case there is no compression.
+   *
+   * @param attribute_id The id of the attribute the tile is prepared for. 
+   * @param tile_i The tile position on the disk.
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int prepare_tile_for_reading_cmp_none(int attribute_id, int64_t tile_i);
+
+  /**
+   * Prepares a tile from the disk for reading for an attribute.    
+   * This function focuses on the case of variable-sized tiles with GZIP
+   * compression.
+   *
+   * @param attribute_id The id of the attribute the tile is prepared for. 
+   * @param tile_i The tile position on the disk.
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int prepare_tile_for_reading_var_cmp_gzip(int attribute_id, int64_t tile_i);
+
+  /**
+   * Prepares a tile from the disk for reading for an attribute.    
+   * This function focuses on the case of variable-sized tiles with no 
+   * compression.
+   *
+   * @param attribute_id The id of the attribute the tile is prepared for. 
+   * @param tile_i The tile position on the disk.
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int prepare_tile_for_reading_var_cmp_none(int attribute_id, int64_t tile_i);
 
   /** 
    * Reads a tile from the disk for an attribute into a local buffer. This
