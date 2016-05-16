@@ -93,32 +93,16 @@ StorageManager::~StorageManager() {
 /* ****************************** */
 
 int StorageManager::finalize() {
+  if(config_ != NULL)
+    delete config_;
+
   return open_array_mtx_destroy();
 }
 
-int StorageManager::init(const char* config_filename) {
+int StorageManager::init(Config* config) {
   // Set configuration parameters
-  if(config_filename == NULL)
-    config_set_default();
-  else if(config_set(config_filename) != TILEDB_SM_OK)
+  if(config_set(config) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
-
-  // Set the TileDB home directory
-  tiledb_home_ = TILEDB_HOME;
-  if(tiledb_home_ == "") {
-    auto env_home_ptr = getenv("HOME");
-    tiledb_home_ = env_home_ptr ? env_home_ptr : "";
-    if(tiledb_home_ == "") {
-      char cwd[1024];
-      if(getcwd(cwd, sizeof(cwd)) != NULL) {
-        tiledb_home_ = cwd;
-      } else {
-        PRINT_ERROR("Cannot set TileDB home directory");
-        return TILEDB_SM_ERR;
-      }
-    }
-    tiledb_home_ += "/.tiledb";
-  }
 
   // Set the master catalog directory
   master_catalog_dir_ = tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG;
@@ -533,7 +517,8 @@ int StorageManager::array_init(
          mode, 
          attributes, 
          attribute_num, 
-         subarray) != TILEDB_AR_OK) {
+         subarray,
+         config_) != TILEDB_AR_OK) {
     delete array_schema;
     delete array;
     array = NULL;
@@ -868,7 +853,8 @@ int StorageManager::metadata_init(
                open_array->book_keeping_,
                mode, 
                attributes, 
-               attribute_num);
+               attribute_num,
+               config_);
 
   // Return
   if(rc != TILEDB_MT_OK) {
@@ -1369,13 +1355,30 @@ int StorageManager::array_open(
   return TILEDB_SM_OK;
 }
 
-int StorageManager::config_set(const char* config_filename) {
+int StorageManager::config_set(Config* config) {
+  // Store config locally
+  config_ = config;
+
+  // Set the TileDB home directory
+  tiledb_home_ = config->home();
+  if(tiledb_home_ == "") {
+    auto env_home_ptr = getenv("HOME");
+    tiledb_home_ = env_home_ptr ? env_home_ptr : "";
+    if(tiledb_home_ == "") {
+      char cwd[1024];
+      if(getcwd(cwd, sizeof(cwd)) != NULL) {
+        tiledb_home_ = cwd;
+      } else {
+        PRINT_ERROR("Cannot set TileDB home directory");
+        return TILEDB_SM_ERR;
+      }
+    }
+    tiledb_home_ += "/.tiledb";
+  }
+
   // Success
   return TILEDB_SM_OK;
 } 
-
-void StorageManager::config_set_default() {
-}
 
 int StorageManager::consolidation_filelock_create(
     const std::string& dir) const {

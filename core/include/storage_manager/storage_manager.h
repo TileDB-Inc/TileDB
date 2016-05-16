@@ -37,6 +37,7 @@
 #include "array_iterator.h"
 #include "array_schema.h"
 #include "array_schema_c.h"
+#include "config.h"
 #include "metadata.h"
 #include "metadata_iterator.h"
 #include "metadata_schema_c.h"
@@ -105,16 +106,16 @@ class StorageManager {
   int finalize();
 
   /** 
-   * Initializes the storage manager. This function create the TileDB home
+   * Initializes the storage manager. This function creates the TileDB home
    * directory, which by default is "~/.tiledb/". If the user home directory
    * cannot be retrieved, then the TileDB home directory is set to the current
    * working directory.
    *
-   * @param config_filename The input configuration file name. If it is NULL,
+   * @param config The configuration parameters. If it is NULL,
    *     then the default TileDB parameters are used. 
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int init(const char* config_filename);
+  int init(Config* config);
 
 
 
@@ -479,6 +480,8 @@ class StorageManager {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
+  /** The TileDB configuration parameters. */
+  Config* config_;
   /** The directory of the master catalog. */
   std::string master_catalog_dir_;
   /** OpneMP mutex for creating/deleting an OpenArray object. */
@@ -586,21 +589,12 @@ class StorageManager {
       OpenArray*& open_array);
 
   /** 
-   * It sets the TileDB configuration parameters from a file.
+   * It sets the TileDB configuration parameters.
    *
-   * @param config_filename The name of the configuration file.
-   *     Each line in the file correspond to a single parameter, and should
-   *     be in the form <parameter> <value> (i.e., space-separated).
+   * @param config The configuration parameters.
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
-  int config_set(const char* config_filename);
-
-  /** 
-   * Sets the TileDB configuration parameters to default values. 
-   *
-   * @return void
-   */
-  void config_set_default();
+  int config_set(Config* config);
 
   /**
    * Creates a special file that serves as lock needed for implementing

@@ -34,6 +34,7 @@
 #define __METADATA_H__
 
 #include "array.h"
+#include "config.h"
 
 /* ********************************* */
 /*             CONSTANTS             */
@@ -152,6 +153,7 @@ class Metadata {
    *     the key as an extra attribute in the end).
    * @param attribute_num The number of the input attributes. If *attributes* is
    *     NULL, then this should be set to 0.
+   * @param config Congiguration parameters.
    * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
    */
   int init(
@@ -160,7 +162,8 @@ class Metadata {
       const std::vector<BookKeeping*>& book_keeping,
       int mode,
       const char** attributes,
-      int attribute_num);
+      int attribute_num,
+      const Config* config);
 
   /**
    * Resets the attributes used upon initialization of the metadata. 

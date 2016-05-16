@@ -33,8 +33,9 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
-#include <pthread.h>
+#include <mpi.h>
 #include <omp.h>
+#include <pthread.h>
 #include <string>
 #include <vector>
 
@@ -387,6 +388,38 @@ bool is_unary_subarray(const T* subarray, int dim_num);
 bool is_workspace(const std::string& dir);
 
 /**
+ * Reads data from a file into a buffer using MPI-IO.
+ *
+ * @param mpi_comm The MPI communicator.
+ * @param filename The name of the file.
+ * @param offset The offset in the file from which the read will start.
+ * @param buffer The buffer into which the data will be written.
+ * @param length The size of the data to be read from the file.
+ * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
+ */
+int mpi_io_read_from_file(
+    const MPI_Comm* mpi_comm,
+    const std::string& filaname,
+    off_t offset,
+    void* buffer,
+    size_t length);
+
+/** 
+ * Writes the input buffer to a file using MPI-IO.
+ * 
+ * @param mpi_comm The MPI communicator.
+ * @param filename The name of the file.
+ * @param buffer The input buffer.
+ * @param buffer_size The size of the input buffer.
+ * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
+ */
+int mpi_io_write_to_file(
+    const MPI_Comm* mpi_comm,
+    const char* filename,
+    const void* buffer, 
+    size_t buffer_size);
+
+/**
  * Destroys an OpenMP mutex.
  *
  * @param mtx The mutex to be destroyed.
@@ -519,7 +552,7 @@ std::string real_dir(const std::string& dir);
 bool starts_with(const std::string& value, const std::string& prefix);
 
 /** 
- * Write the input buffer to a file.
+ * Writes the input buffer to a file.
  * 
  * @param filename The name of the file.
  * @param buffer The input buffer.

@@ -13,15 +13,6 @@ ifdef TRAVIS
   CPPFLAGS += --coverage
 endif
 
-# --- Use of mmap function for reading --- #
-USE_MMAP =
-ifeq ($(USE_MMAP),)
-  USE_MMAP = 1
-endif
-ifeq ($(USE_MMAP),1)
-  CPPFLAGS += -D_TILEDB_USE_MMAP
-endif 
-
 # --- Parallel sort --- #
 GNU_PARALLEL =
 ifeq ($(GNU_PARALLEL),)
@@ -107,7 +98,7 @@ DOXYGEN_DIR = doxygen
 DOXYGEN_MAINPAGE = $(DOXYGEN_DIR)/mainpage.dox
 
 # --- Paths --- #
-INCLUDE_PATHS =
+INCLUDE_PATHS = 
 CORE_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
 EXAMPLES_INCLUDE_PATHS = -I$(EXAMPLES_INCLUDE_DIR)
 TEST_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
@@ -121,6 +112,7 @@ endif
 ZLIB = -lz
 OPENSSLLIB = -lcrypto
 GTESTLIB = -lgtest -lgtest_main
+MPILIB =
 
 # --- For the TileDB dynamic library --- #
 ifeq ($(OS), Darwin)
@@ -214,8 +206,8 @@ endif
 $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT): $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
 	@echo "Creating dynamic library libtiledb.$(SHLIB_EXT)"
-	@$(CXX) $(SHLIB_FLAGS) $(SONAME) -o $@ $^ $(LIBRARY_PATHS) $(ZLIB) \
-		$(OPENSSLLIB) -fopenmp 
+	@$(CXX) $(SHLIB_FLAGS) $(SONAME) -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) \
+		$(ZLIB) $(OPENSSLLIB) -fopenmp 
 
 $(CORE_LIB_DIR)/libtiledb.a: $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
@@ -253,8 +245,8 @@ $(EXAMPLES_OBJ_DIR)/%.o: $(EXAMPLES_SRC_DIR)/%.cc
 $(EXAMPLES_BIN_DIR)/%: $(EXAMPLES_OBJ_DIR)/%.o $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(EXAMPLES_BIN_DIR)
 	@echo "Creating $@"
-	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(ZLIB) $(OPENSSLLIB) \
-		-fopenmp 
+	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) $(ZLIB) \
+		 $(OPENSSLLIB) -fopenmp 
 
 # --- Cleaning --- #
 
@@ -286,8 +278,8 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 $(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(TEST_BIN_DIR)
 	@echo "Creating test_cmd"
-	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(ZLIB) $(OPENSSLLIB) \
-		$(GTESTLIB) -fopenmp 
+	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) $(ZLIB) \
+		$(OPENSSLLIB) $(GTESTLIB) -fopenmp 
 
 # --- Cleaning --- #
 

@@ -585,6 +585,93 @@ bool is_workspace(const std::string& dir) {
     return false;
 }
 
+int mpi_io_read_from_file(
+    const MPI_Comm* mpi_comm,
+    const std::string& filename,
+    off_t offset,
+    void* buffer,
+    size_t length) {
+  // Sanity check
+  if(mpi_comm == NULL) {
+    PRINT_ERROR("Cannot read from file; Invalid MPI communicator");
+    return TILEDB_UT_ERR;
+  }
+
+  // Open file
+  MPI_File fh;
+  if(MPI_File_open(
+         *mpi_comm, 
+         filename.c_str(), 
+         MPI_MODE_RDONLY, 
+         MPI_INFO_NULL, 
+         &fh)) {
+    PRINT_ERROR("Cannot read from file; File opening error");
+    return TILEDB_UT_ERR;
+  }
+
+  // Read
+  MPI_File_seek(fh, offset, MPI_SEEK_SET); 
+  MPI_Status mpi_status;
+  if(MPI_File_read(fh, buffer, length, MPI_CHAR, &mpi_status)) {
+    PRINT_ERROR("Cannot read from file; File reading error");
+    return TILEDB_UT_ERR;
+  }
+  
+  // Close file
+  if(MPI_File_close(&fh)) {
+    PRINT_ERROR("Cannot read from file; File closing error");
+    return TILEDB_UT_ERR;
+  }
+
+  // Success
+  return TILEDB_UT_OK;
+}
+
+int mpi_io_write_to_file(
+    const MPI_Comm* mpi_comm,
+    const char* filename,
+    const void* buffer,
+    size_t buffer_size) {
+  // Open file
+  MPI_File fh;
+  if(MPI_File_open(
+         *mpi_comm, 
+         filename, 
+         MPI_MODE_WRONLY | MPI_MODE_APPEND | 
+             MPI_MODE_CREATE | MPI_MODE_SEQUENTIAL, 
+         MPI_INFO_NULL, 
+         &fh)) {
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                "'; File opening error");
+    return TILEDB_UT_ERR;
+  }
+
+  // Append attribute data to the file
+  MPI_Status mpi_status;
+  if(MPI_File_write(fh, buffer, buffer_size, MPI_CHAR, &mpi_status)) {
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                "'; File writing error");
+    return TILEDB_UT_ERR;
+  }
+
+  // Sync
+  if(MPI_File_sync(fh)) {
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                "'; File syncing error");
+    return TILEDB_UT_ERR;
+  }
+
+  // Close file
+  if(MPI_File_close(&fh)) {
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                "'; File closing error");
+    return TILEDB_UT_ERR;
+  }
+
+  // Success 
+  return TILEDB_UT_OK;
+}
+
 int mutex_destroy(omp_lock_t* mtx) {
   omp_destroy_lock(mtx);
 
@@ -843,7 +930,7 @@ int write_to_file(
   // Open file
   int fd = open(
       filename, 
-      O_WRONLY | O_APPEND | O_CREAT | O_SYNC, 
+      O_WRONLY | O_APPEND | O_CREAT, 
       S_IRWXU);
   if(fd == -1) {
     PRINT_ERROR(std::string("Cannot write to file '") + filename + 
@@ -856,6 +943,13 @@ int write_to_file(
   if(bytes_written != ssize_t(buffer_size)) {
     PRINT_ERROR(std::string("Cannot write to file '") + filename + 
                 "'; File writing error");
+    return TILEDB_UT_ERR;
+  }
+
+  // Sync
+  if(fsync(fd)) {
+    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                "'; File syncing error");
     return TILEDB_UT_ERR;
   }
 

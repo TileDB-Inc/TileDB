@@ -103,6 +103,10 @@ const std::vector<int>& Array::attribute_ids() const {
   return attribute_ids_;
 }
 
+const Config* Array::config() const {
+  return config_;
+}
+
 int Array::fragment_num() const {
   return fragments_.size();
 }
@@ -310,7 +314,8 @@ int Array::init(
     int mode,
     const char** attributes,
     int attribute_num,
-    const void* subarray) {
+    const void* subarray,
+    const Config* config) {
   // Sanity check on mode
   if(mode != TILEDB_ARRAY_READ &&
      mode != TILEDB_ARRAY_WRITE &&
@@ -318,6 +323,9 @@ int Array::init(
     PRINT_ERROR("Cannot initialize array; Invalid array mode");
     return TILEDB_AR_ERR;
   }
+
+  // Set config
+  config_ = config;
 
   // Set subarray
   size_t subarray_size = 2*array_schema->coords_size();

@@ -34,6 +34,7 @@
 #define __C_API_H__
 
 #include "constants.h"
+#include <mpi.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <unistd.h>
@@ -49,6 +50,41 @@ extern "C" {
 #endif
 
 /* ********************************* */
+/*              CONFIG               */
+/* ********************************* */
+
+/** Used to pass congiguration parameters to TileDB. */
+typedef struct TileDB_Config {
+  /** TileDB home directory. */
+  const char* home_;
+  /** The MPI communicator. */
+  MPI_Comm* mpi_comm_; 
+  /** 
+   * The method for reading data from a file. 
+   * It can be one of the following: 
+   *    - TILEDB_USE_READ
+   *      TileDB will use POSIX read.
+   *    - TILEDB_USE_MMAP
+   *      TileDB will use mmap.
+   *    - TILEDB_USE_MPI_IO
+   *      TileDB will use MPI-IO read. 
+   */
+  int read_method_;
+  /** 
+   * The method for writing data to a file. 
+   * It can be one of the following: 
+   *    - TILEDB_USE_WRITE
+   *      TileDB will use POSIX write.
+   *    - TILEDB_USE_MPI_IO
+   *      TileDB will use MPI-IO write. 
+   */
+  int write_method_;
+} TileDB_Config; 
+
+
+
+
+/* ********************************* */
 /*              CONTEXT              */
 /* ********************************* */
 
@@ -59,13 +95,13 @@ typedef struct TileDB_CTX TileDB_CTX;
  * Initializes the TileDB context.  
  *
  * @param tiledb_ctx The TileDB context to be initialized.
- * @param config_filename The name of the configuration file. If it is NULL or
- *     not found, TileDB will use its default configuration parameters.
+ * @param tiledb_config TileDB configuration parameters. If it is NULL, 
+ *     TileDB will use its default configuration parameters.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_ctx_init(
     TileDB_CTX** tiledb_ctx, 
-    const char* config_filename);
+    const TileDB_Config* tiledb_config);
 
 /** 
  * Finalizes the TileDB context, properly freeing-up memory. 

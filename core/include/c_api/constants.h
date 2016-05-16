@@ -58,6 +58,14 @@
 #define TILEDB_METADATA_WRITE                        1
 /**@}*/
 
+/**@{*/
+/** I/O method. */
+#define TILEDB_IO_MMAP                              0
+#define TILEDB_IO_READ                              1
+#define TILEDB_IO_MPI                               2
+#define TILEDB_IO_WRITE                             0
+/**@}*/
+
 /** 
  * The TileDB home directory, where TileDB-related system metadata structures
  * are kept. If it is set to "", then the home directory is set to "~/.tiledb"

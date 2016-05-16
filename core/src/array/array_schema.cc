@@ -255,6 +255,10 @@ int ArraySchema::cell_order() const {
 }
 
 size_t ArraySchema::cell_size(int attribute_id) const {
+  // Special case for the search tile
+  if(attribute_id == attribute_num_+1)
+    attribute_id = attribute_num_;
+
   return cell_sizes_[attribute_id];
 }
 

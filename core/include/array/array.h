@@ -36,6 +36,7 @@
 #include "array_read_state.h"
 #include "array_schema.h"
 #include "book_keeping.h"
+#include "config.h"
 #include "constants.h"
 #include "fragment.h"
 
@@ -83,6 +84,9 @@ class Array {
 
   /** Returns the ids of the attributes the array focuses on. */
   const std::vector<int>& attribute_ids() const;
+
+  /** Returns the configuration parameters. */
+  const Config* config() const;
 
   /** Returns the number of fragments in this array. */
   int fragment_num() const;
@@ -191,6 +195,7 @@ class Array {
    *     the coordinates in the case of sparse arrays).
    * @param attribute_num The number of the input attributes. If *attributes* is
    *     NULL, then this should be set to 0.
+   * @param config Configuration parameters.
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
   int init(
@@ -200,7 +205,8 @@ class Array {
       int mode,
       const char** attributes,
       int attribute_num,
-      const void* range);
+      const void* range,
+      const Config* config);
 
   /**
    * Resets the attributes used upon initialization of the array. 
@@ -282,6 +288,8 @@ class Array {
    * reading.
    */
   std::vector<int> attribute_ids_;
+  /** Configuration parameters. */
+  const Config* config_;
   /** The array fragments. */
   std::vector<Fragment*> fragments_;
   /** 

@@ -31,6 +31,7 @@
  */
 
 #include "c_api.h"
+#include "config.h"
 #include "array_schema_c.h"
 #include "storage_manager.h"
 #include <cassert>
@@ -60,15 +61,9 @@ typedef struct TileDB_CTX {
   StorageManager* storage_manager_;
 } TileDB_CTX;
 
-int tiledb_ctx_init(TileDB_CTX** tiledb_ctx, const char* config_filename) {
-  // Check config filename length
-  if(config_filename != NULL) {
-    if(strlen(config_filename) > TILEDB_NAME_MAX_LEN) {
-      PRINT_ERROR("Invalid filename length");
-      return TILEDB_ERR;
-    }
-  }
-
+int tiledb_ctx_init(
+    TileDB_CTX** tiledb_ctx, 
+    const TileDB_Config* tiledb_config) {
   // Initialize context
   *tiledb_ctx = (TileDB_CTX*) malloc(sizeof(struct TileDB_CTX));
   if(*tiledb_ctx == NULL) {
@@ -77,9 +72,18 @@ int tiledb_ctx_init(TileDB_CTX** tiledb_ctx, const char* config_filename) {
     return TILEDB_ERR;
   }
 
+  // Initialize a Config object
+  Config* config = new Config();
+  if(tiledb_config != NULL)
+    config->init(
+        tiledb_config->home_, 
+        tiledb_config->mpi_comm_, 
+        tiledb_config->read_method_, 
+        tiledb_config->write_method_);
+
   // Create storage manager
   (*tiledb_ctx)->storage_manager_ = new StorageManager();
-  if((*tiledb_ctx)->storage_manager_->init(config_filename) != TILEDB_SM_OK)
+  if((*tiledb_ctx)->storage_manager_->init(config) != TILEDB_SM_OK)
     return TILEDB_ERR;
   else
     return TILEDB_OK;
