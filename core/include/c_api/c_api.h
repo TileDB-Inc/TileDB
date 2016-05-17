@@ -62,20 +62,20 @@ typedef struct TileDB_Config {
   /** 
    * The method for reading data from a file. 
    * It can be one of the following: 
-   *    - TILEDB_USE_READ
-   *      TileDB will use POSIX read.
-   *    - TILEDB_USE_MMAP
+   *    - TILEDB_IO_MMAP
    *      TileDB will use mmap.
-   *    - TILEDB_USE_MPI_IO
+   *    - TILEDB_IO_READ
+   *      TileDB will use POSIX read.
+   *    - TILEDB_IO_MPI
    *      TileDB will use MPI-IO read. 
    */
   int read_method_;
   /** 
    * The method for writing data to a file. 
    * It can be one of the following: 
-   *    - TILEDB_USE_WRITE
+   *    - TILEDB_IO_WRITE
    *      TileDB will use POSIX write.
-   *    - TILEDB_USE_MPI_IO
+   *    - TILEDB_IO_MPI
    *      TileDB will use MPI-IO write. 
    */
   int write_method_;
