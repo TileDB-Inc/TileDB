@@ -208,6 +208,18 @@ bool ReadState::overflow(int attribute_id) const {
 /*           MUTATORS             */
 /* ****************************** */
 
+void ReadState::reset() {
+  if(last_tile_coords_ != NULL) {
+    free(last_tile_coords_);
+    last_tile_coords_ = NULL;
+  }
+
+  reset_overflow();
+  done_ = false;
+  search_tile_pos_ = -1;
+  compute_tile_search_range();
+}
+
 void ReadState::reset_overflow() {
   for(int i=0; i<int(overflow_.size()); ++i)
     overflow_[i] = false;

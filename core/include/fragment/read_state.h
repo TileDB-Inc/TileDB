@@ -144,6 +144,14 @@ class ReadState {
   /* ********************************* */
 
   /** 
+   * Resets the read state. Note that it does not flush any buffered tiles, so
+   * that they can be reused later if a subsequent request happens to overlap
+   * with them.
+   * 
+   */
+  void reset();
+
+  /** 
    * Resets the overflow flag of every attribute to *false*. 
    *
    * @return void.
