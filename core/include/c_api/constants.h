@@ -66,6 +66,14 @@
 #define TILEDB_IO_WRITE                             0
 /**@}*/
 
+/**@{*/
+/** Asynchronous I/O (AIO) code. */  
+#define TILEDB_AIO_ERR                                  -1
+#define TILEDB_AIO_COMPLETED                             0
+#define TILEDB_AIO_INPROGRESS                            1
+#define TILEDB_AIO_OVERFLOW                              2
+/**@}*/
+
 /** 
  * The TileDB home directory, where TileDB-related system metadata structures
  * are kept. If it is set to "", then the home directory is set to "~/.tiledb"

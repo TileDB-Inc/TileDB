@@ -70,6 +70,7 @@ Array::Array() {
   array_read_state_ = NULL;
   array_schema_ = NULL;
   subarray_ = NULL;
+  aio_thread_created_ = false;
 }
 
 Array::~Array() {
@@ -95,6 +96,99 @@ Array::~Array() {
 /*           ACCESSORS            */
 /* ****************************** */
 
+void Array::aio_handle_requests() {
+  // Holds the next AIO request
+  AIO_Request* aio_next_request;
+
+  // Initiate infinite loop
+  while(1) {
+    // Lock AIO mutext
+    if(pthread_mutex_lock(&aio_mtx_)) {
+      PRINT_ERROR("Cannot lock AIO mutex");
+      return;
+    }
+
+
+    // Wait for AIO requests
+    while(aio_queue_.size() == 0) {
+      // If the thread is canceled, unblock and exit
+      if(aio_thread_canceled_) {
+        if(pthread_mutex_unlock(&aio_mtx_)) 
+          PRINT_ERROR("Cannot unlock AIO mutex while canceling AIO thread");
+        else 
+          aio_thread_created_ = false;
+        return;
+      }
+
+      // Wait to be signaled
+      if(pthread_cond_wait(&aio_cond_, &aio_mtx_)) {
+        PRINT_ERROR("Cannot wait on AIO mutex condition");
+        return;
+      }
+    }
+
+    // Pop the next AIO request 
+    aio_next_request = aio_queue_.front(); 
+    aio_queue_.pop();
+
+    // Unlock AIO mutext
+    if(pthread_mutex_unlock(&aio_mtx_)) {
+      PRINT_ERROR("Cannot unlock AIO mutex");
+      return;
+    }
+
+    // Handle the next AIO request
+    aio_handle_next_request(aio_next_request);
+
+    // Set last handled AIO request
+    aio_last_handled_request_ = aio_next_request->id_;
+
+    // Clean request
+    free(aio_next_request);
+  }
+}
+
+int Array::aio_read(AIO_Request* aio_request) {
+  // Sanity checks
+  if(mode_ != TILEDB_ARRAY_READ) {
+    PRINT_ERROR("Cannot (async) read from array; Invalid mode");
+    return TILEDB_AR_ERR;
+  }
+
+  // Create the AIO thread if not already done
+  if(!aio_thread_created_)
+    if(aio_thread_create() != TILEDB_AR_OK) 
+      return TILEDB_ERR;
+
+  // Push the AIO request in the queue
+  if(aio_push_request(aio_request) != TILEDB_AR_OK)
+    return TILEDB_AR_ERR; 
+
+  // Success
+  return TILEDB_AR_OK;
+}
+
+int Array::aio_write(AIO_Request* aio_request) {
+  // Sanity checks
+  if(mode_ != TILEDB_ARRAY_WRITE &&
+     mode_ != TILEDB_ARRAY_WRITE_UNSORTED) {
+    PRINT_ERROR("Cannot (async) write to array; Invalid mode");
+    return TILEDB_AR_ERR;
+  }
+
+  // Create the AIO thread if not already done
+  if(!aio_thread_created_)
+    if(aio_thread_create() != TILEDB_AR_OK) 
+      return TILEDB_ERR;
+
+  // Push the AIO request in the queue
+  if(aio_push_request(aio_request) != TILEDB_AR_OK)
+    return TILEDB_AR_ERR; 
+
+  // Success
+  return TILEDB_AR_OK;
+}
+
 const ArraySchema* Array::array_schema() const {
   return array_schema_;
 }
@@ -117,6 +211,18 @@ std::vector<Fragment*> Array::fragments() const {
 
 int Array::mode() const {
   return mode_;
+}
+
+bool Array::overflow() const {
+  // Not applicable to writes
+  if(mode_ != TILEDB_ARRAY_READ) 
+    return false;
+
+  for(int i=0; i<int(attribute_ids_.size()); ++i) 
+    if(overflow(attribute_ids_[i]))
+      return true;
+
+  return false;
 }
 
 bool Array::overflow(int attribute_id) const {
@@ -286,6 +392,7 @@ int Array::consolidate(
 }
 
 int Array::finalize() {
+  // Clean the fragments
   int rc = TILEDB_FG_OK;
   int fragment_num =  fragments_.size();
   for(int i=0; i<fragment_num; ++i) {
@@ -296,12 +403,33 @@ int Array::finalize() {
   }
   fragments_.clear();
 
+  // Clean the array read state
   if(array_read_state_ != NULL) {
     delete array_read_state_;
     array_read_state_ = NULL;
   }
 
-  if(rc == TILEDB_FG_OK)
+  // Clean the AIO-related members
+  int rc_aio_thread = aio_thread_destroy(); 
+  int rc_aio_cond = TILEDB_AR_OK, rc_aio_mtx = TILEDB_AR_OK;
+  if(pthread_cond_destroy(&aio_cond_)) {
+    PRINT_ERROR("Cannot destroy AIO mutex condition");
+    rc_aio_cond = TILEDB_AR_ERR;
+  }
+  if(pthread_mutex_destroy(&aio_mtx_)) {
+    PRINT_ERROR("Cannot destroy AIO mutex");
+    rc_aio_mtx = TILEDB_AR_ERR;
+  }
+  while(aio_queue_.size() != 0) {
+    free(aio_queue_.front());
+    aio_queue_.pop();
+  }
+
+  // Return
+  if(rc == TILEDB_FG_OK && 
+     rc_aio_thread == TILEDB_AR_OK && 
+     rc_aio_cond == TILEDB_AR_OK &&
+     rc_aio_mtx == TILEDB_AR_OK)
     return TILEDB_AR_OK; 
   else
     return TILEDB_AR_ERR; 
@@ -394,6 +522,20 @@ int Array::init(
     }
     array_read_state_ = new ArrayReadState(this);
   }
+
+  // Initialize the AIO-related members
+  aio_cond_ = PTHREAD_COND_INITIALIZER; 
+  if(pthread_mutex_init(&aio_mtx_, NULL)) {
+    PRINT_ERROR("Cannot initialize AIO mutex");
+    return TILEDB_AR_ERR;
+  }
+  if(pthread_cond_init(&aio_cond_, NULL)) {
+    PRINT_ERROR("Cannot initialize AIO mutex condition");
+    return TILEDB_AR_ERR;
+  }
+  aio_thread_canceled_ = false;
+  aio_thread_created_ = false;
+  aio_last_handled_request_ = 0;
 
   // Return
   return TILEDB_AR_OK;
@@ -511,6 +653,131 @@ int Array::write(const void** buffers, const size_t* buffer_sizes) {
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
+
+void Array::aio_handle_next_request(AIO_Request* aio_request) {
+  int rc = TILEDB_AR_OK;
+  if(mode_ == TILEDB_ARRAY_READ) {   // READ
+    // Reset the subarray only if this request does not continue from the last
+    if(aio_last_handled_request_ != aio_request->id_)
+      rc = reset_subarray(aio_request->subarray_);
+
+    // Invoke the read
+    if(rc == TILEDB_AR_OK)
+      rc = read(aio_request->buffers_, aio_request->buffer_sizes_);
+  } else {                           // WRITE
+      rc = write(
+               (const void**) aio_request->buffers_, 
+               (const size_t*) aio_request->buffer_sizes_);
+  }
+
+  if(rc == TILEDB_AR_OK) {      // Success
+    // Invoke the callback
+    if(aio_request->completion_handle_ != NULL)
+      (*(aio_request->completion_handle_))(aio_request->completion_data_);
+
+    // Check for overflow
+    if(overflow())
+      *aio_request->status_= TILEDB_AIO_OVERFLOW;
+    else
+      *aio_request->status_= TILEDB_AIO_COMPLETED;
+  } else {                      // Error
+    *aio_request->status_= TILEDB_AIO_ERR;
+  }
+}
+
+void *Array::aio_handler(void* context) {
+  // This will enter an indefinite loop that will handle all incoming AIO 
+  // requests
+  ((Array*) context)->aio_handle_requests();
+
+  // Return
+  return NULL;
+}
+
+int Array::aio_push_request(AIO_Request* aio_request) {
+  // Set the request status
+  *aio_request->status_ = TILEDB_AIO_INPROGRESS;
+
+  // Lock AIO mutext
+  if(pthread_mutex_lock(&aio_mtx_)) {
+    PRINT_ERROR("Cannot lock AIO mutex");
+    return TILEDB_AR_ERR;
+  }
+
+  // Push request
+  aio_queue_.push(aio_request);
+
+  // Unlock AIO mutext
+  if(pthread_mutex_unlock(&aio_mtx_)) {
+    PRINT_ERROR("Cannot unlock AIO mutex");
+    return TILEDB_AR_ERR;
+  }
+
+  // Signal AIO thread
+  if(pthread_cond_signal(&aio_cond_)) { 
+    PRINT_ERROR("Cannot signal AIO thread");
+    return TILEDB_AR_ERR;
+  }
+
+  // Success
+  return TILEDB_AR_OK;
+}
+
+int Array::aio_thread_create() {
+  // Trivial case
+  if(aio_thread_created_)
+    return TILEDB_AR_OK;
+
+  // Create the thread that will be handling all AIO requests
+  if(pthread_create(&aio_thread_, NULL, Array::aio_handler, this)) {
+    PRINT_ERROR("Cannot create AIO thread");
+    return TILEDB_AR_ERR;
+  }
+
+  aio_thread_created_ = true;
+
+  // Success
+  return TILEDB_AR_OK;
+}
+
+int Array::aio_thread_destroy() {
+  // Trivial case
+  if(!aio_thread_created_)
+    return TILEDB_AR_OK;
+
+  // Lock AIO mutext
+  if(pthread_mutex_lock(&aio_mtx_)) {
+    PRINT_ERROR("Cannot lock AIO mutex while destroying AIO thread");
+    return TILEDB_AR_ERR;
+  }
+
+  // Signal the cancelation so that the thread unblocks
+  aio_thread_canceled_ = true;
+  if(pthread_cond_signal(&aio_cond_)) { 
+    PRINT_ERROR("Cannot signal AIO thread while destroying AIO thread");
+    return TILEDB_AR_ERR;
+  }
+
+  // Unlock AIO mutext
+  if(pthread_mutex_unlock(&aio_mtx_)) {
+    PRINT_ERROR("Cannot unlock AIO mutex while destroying AIO thread");
+    return TILEDB_AR_ERR;
+  }
+
+  // Wait for cancelation to take place
+  while(aio_thread_created_);
+
+  // Cancel thread
+  if(pthread_cancel(aio_thread_)) {
+    PRINT_ERROR("Cannot destroy AIO thread");
+    return TILEDB_AR_ERR;
+  } 
+
+  aio_thread_created_ = false;
+
+  // Success
+  return TILEDB_AR_OK;
+}
 
 std::string Array::new_fragment_name() const {
   struct timeval tp;

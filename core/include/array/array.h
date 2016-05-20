@@ -33,12 +33,15 @@
 #ifndef __ARRAY_H__
 #define __ARRAY_H__
 
+#include "aio_request.h"
 #include "array_read_state.h"
 #include "array_schema.h"
 #include "book_keeping.h"
 #include "config.h"
 #include "constants.h"
 #include "fragment.h"
+#include <pthread.h>
+#include <queue>
 
 
 
@@ -79,6 +82,34 @@ class Array {
   /*             ACCESSORS             */
   /* ********************************* */
 
+  /** 
+   * Enters an indefinite loop that handles all the AIO requests. This is
+   * executed in the background by the AIO thread.
+   *
+   * @return void.
+   */
+  void aio_handle_requests();
+
+  /**
+   * Submits an asynchronous (AIO) read request and immediately returns control
+   * to the caller. The request is queued up and executed in the background by
+   * another thread. 
+   *  
+   * @param aio_request The AIO read request. 
+   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   */
+  int aio_read(AIO_Request* aio_request);
+
+  /**
+   * Submits an asynchronous (AIO) write request and immediately returns control
+   * to the caller. The request is queued up and executed in the background by
+   * another thread. 
+   *  
+   * @param aio_request The AIO write request. 
+   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   */
+  int aio_write(AIO_Request* aio_request);
+
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
@@ -96,6 +127,15 @@ class Array {
 
   /** Returns the array mode. */
   int mode() const;
+
+  /**
+   * Checks if *at least one* attribute buffer has overflown during a read 
+   * operation.
+   *
+   * @return *true* if at least one attribute buffer has overflown and *false* 
+   * otherwise.
+   */
+  bool overflow() const;
 
   /**
    * Checks if an attribute buffer has overflown during a read operation.
@@ -278,6 +318,20 @@ class Array {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The AIO mutex condition. */
+  pthread_cond_t aio_cond_;
+  /** Stores the id of the last handled AIO request. */
+  size_t aio_last_handled_request_;
+  /** The AIO mutex. */
+  pthread_mutex_t aio_mtx_;
+  /** The queue that stores the pending AIO requests. */
+  std::queue<AIO_Request*> aio_queue_;
+  /** The thread tha handles all the AIO reads and writes in the background. */
+  pthread_t aio_thread_;
+  /** Indicates whether the AIO thread was canceled or not. */
+  bool aio_thread_canceled_;
+  /** Indicates whether the AIO thread was created or not. */
+  bool aio_thread_created_;
   /** The array schema. */
   const ArraySchema* array_schema_;
   /** The read state of the array. */
@@ -311,10 +365,49 @@ class Array {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** 
+   * Handles an AIO request.
+   *
+   * @param aio_request The AIO request. The function will resolve whether it is
+   *     a read or write request based on the array mode.
+   * @return void.
+   * 
+   */
+  void aio_handle_next_request(AIO_Request* aio_request);
+
+  /**
+   * Function called by the AIO thread. 
+   *
+   * @param context This is practically the Array object for which the function
+   *     is called (typically *this* is passed to ths argument by the caller).
+   */
+  static void *aio_handler(void* context);
+
+  /**
+   * Pusghes an AIO request into the AIO queue.
+   *
+   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   */ 
+  int aio_push_request(AIO_Request* aio_request);
+
+  /**
+   * Creates the AIO thread.
+   *
+   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   */ 
+  int aio_thread_create();
+
+  /**
+   * Destroys the AIO thread.
+   *
+   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   */ 
+  int aio_thread_destroy();
   
   /** 
    * Returns a new fragment name, which is in the form: <br>
-   * .__<process_id>_<timestamp>
+   * .__<thread_id>_<timestamp>
    *
    * Note that this is a temporary name, initiated by a new write process.
    * After the new fragmemt is finalized, the array will change its name

@@ -30,6 +30,7 @@
  * This file defines the C API of TileDB.
  */
 
+#include "aio_request.h"
 #include "c_api.h"
 #include "config.h"
 #include "array_schema_c.h"
@@ -1305,6 +1306,61 @@ int tiledb_ls(
          dirs,
          dir_types,
          *dir_num) != TILEDB_SM_OK)
+    return TILEDB_ERR;
+  else 
+    return TILEDB_OK;
+}
+
+
+
+
+/* ****************************** */
+/*     ASYNCHRONOUS I/O (AIO      */
+/* ****************************** */
+
+int tiledb_array_aio_read(
+    const TileDB_Array* tiledb_array,
+    TileDB_AIO_Request* tiledb_aio_request) {
+  // Sanity check
+  if(!sanity_check(tiledb_array))
+    return TILEDB_ERR;
+
+  // Copy the AIO request
+  AIO_Request* aio_request = (AIO_Request*) malloc(sizeof(struct AIO_Request));
+  aio_request->id_ = (size_t) tiledb_aio_request;
+  aio_request->buffers_ = tiledb_aio_request->buffers_;
+  aio_request->buffer_sizes_ = tiledb_aio_request->buffer_sizes_;
+  aio_request->status_ = &(tiledb_aio_request->status_);
+  aio_request->subarray_ = tiledb_aio_request->subarray_;
+  aio_request->completion_handle_ = tiledb_aio_request->completion_handle_;
+  aio_request->completion_data_ = tiledb_aio_request->completion_data_;
+
+  // Submit the AIO read request
+  if(tiledb_array->array_->aio_read(aio_request) != TILEDB_AR_OK)
+    return TILEDB_ERR;
+  else 
+    return TILEDB_OK;
+}
+
+int tiledb_array_aio_write(
+    const TileDB_Array* tiledb_array,
+    TileDB_AIO_Request* tiledb_aio_request) {
+  // Sanity check
+  if(!sanity_check(tiledb_array))
+    return TILEDB_ERR;
+
+  // Copy the AIO request
+  AIO_Request* aio_request = (AIO_Request*) malloc(sizeof(struct AIO_Request));
+  aio_request->id_ = (size_t) tiledb_aio_request;
+  aio_request->buffers_ = tiledb_aio_request->buffers_;
+  aio_request->buffer_sizes_ = tiledb_aio_request->buffer_sizes_;
+  aio_request->status_ = &(tiledb_aio_request->status_);
+  aio_request->subarray_ = tiledb_aio_request->subarray_;
+  aio_request->completion_handle_ = tiledb_aio_request->completion_handle_;
+  aio_request->completion_data_ = tiledb_aio_request->completion_data_;
+
+  // Submit the AIO write request
+  if(tiledb_array->array_->aio_write(aio_request) != TILEDB_AR_OK)
     return TILEDB_ERR;
   else 
     return TILEDB_OK;
