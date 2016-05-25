@@ -212,7 +212,11 @@ void ArraySchema::array_schema_export(
 }
 
 const std::string& ArraySchema::attribute(int attribute_id) const {
-  assert(attribute_id >= 0 && attribute_id <= attribute_num_);
+  assert(attribute_id >= 0 && attribute_id <= attribute_num_+1);
+
+  // Special case for the search attribute (same as coordinates)
+  if(attribute_id == attribute_num_+1)
+    attribute_id = attribute_num_;
 
   return attributes_[attribute_id];
 }
