@@ -671,15 +671,16 @@ void Array::aio_handle_next_request(AIO_Request* aio_request) {
   }
 
   if(rc == TILEDB_AR_OK) {      // Success
-    // Invoke the callback
-    if(aio_request->completion_handle_ != NULL)
-      (*(aio_request->completion_handle_))(aio_request->completion_data_);
-
     // Check for overflow
-    if(overflow())
+    if(overflow()) {
       *aio_request->status_= TILEDB_AIO_OVERFLOW;
-    else
+    } else { // Completion
       *aio_request->status_= TILEDB_AIO_COMPLETED;
+
+      // Invoke the callback
+      if(aio_request->completion_handle_ != NULL)
+        (*(aio_request->completion_handle_))(aio_request->completion_data_);
+    }
   } else {                      // Error
     *aio_request->status_= TILEDB_AIO_ERR;
   }
