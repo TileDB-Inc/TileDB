@@ -1715,7 +1715,7 @@ bool ArrayReadState::SmallerFragmentCellRange<T>::operator () (
   assert(array_schema_ != NULL);
 
   // Get cell ordering information for the first range endpoints
-  int cmp = array_schema_->cell_order_cmp<T>(
+  int cmp = array_schema_->tile_cell_order_cmp<T>(
       static_cast<const T*>(a.second), 
       static_cast<const T*>(b.second)); 
 
