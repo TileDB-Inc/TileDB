@@ -298,6 +298,8 @@ bool empty_value(T value) {
     return value == T(TILEDB_EMPTY_FLOAT32);
   else if(&typeid(T) == &typeid(double))
     return value == T(TILEDB_EMPTY_FLOAT64);
+  else
+    return false;
 }
 
 int expand_buffer(void*& buffer, size_t& buffer_allocated_size) {

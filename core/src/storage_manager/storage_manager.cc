@@ -502,7 +502,7 @@ int StorageManager::array_init(
     return TILEDB_SM_ERR;
 
   // Open the array
-  OpenArray* open_array;
+  OpenArray* open_array = NULL;
   if(mode == TILEDB_ARRAY_READ) {
     if(array_open(real_dir(array_dir), open_array) != TILEDB_SM_OK)
       return TILEDB_SM_ERR;
@@ -839,7 +839,7 @@ int StorageManager::metadata_init(
     return TILEDB_SM_ERR;
 
   // Open the array that implements the metadata
-  OpenArray* open_array;
+  OpenArray* open_array = NULL;
   if(mode == TILEDB_METADATA_READ) {
     if(array_open(real_dir(metadata_dir), open_array) != TILEDB_SM_OK)
       return TILEDB_SM_ERR;
