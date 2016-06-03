@@ -1044,7 +1044,7 @@ int ReadState::CMP_COORDS_TO_SEARCH_TILE(
   // We need to read from the disk
   std::string filename = 
       fragment_->fragment_name() + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX;
-  int rc;
+  int rc = TILEDB_UT_OK;
   int read_method = fragment_->array()->config()->read_method();
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
   if(read_method == TILEDB_IO_READ)
@@ -1507,7 +1507,7 @@ int ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
   // We need to read from the disk
   std::string filename = 
       fragment_->fragment_name() + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX;
-  int rc;
+  int rc = TILEDB_UT_OK;
   int read_method = fragment_->array()->config()->read_method();
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
   if(read_method == TILEDB_IO_READ)
@@ -1552,7 +1552,7 @@ int ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
       fragment_->fragment_name() + "/" + 
       fragment_->array()->array_schema()->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
-  int rc;
+  int rc = TILEDB_UT_OK;
   int read_method = fragment_->array()->config()->read_method();
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
   if(read_method == TILEDB_IO_READ)
@@ -1944,43 +1944,6 @@ int ReadState::mpi_io_read_tile_from_file_cmp_gzip(
     return TILEDB_RS_OK;
 }
 
-int ReadState::mpi_io_read_tile_from_file_cmp_none(
-    int attribute_id,
-    off_t offset,
-    size_t tile_size) {
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-  const MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
-
-  // To handle the special case of the search tile
-  // The real attribute id corresponds to an actual attribute or coordinates 
-  int attribute_id_real = 
-      (attribute_id == attribute_num+1) ? attribute_num : attribute_id;
-
-  // Potentially allocate compressed tile buffer
-  if(tiles_[attribute_id_real] == NULL) {
-    tiles_[attribute_id_real] = malloc(tile_size); 
-  }
-
-  // Prepare attribute file name
-  std::string filename = 
-      fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id_real) +
-      TILEDB_FILE_SUFFIX;
-
-  // Read from file
-  if(mpi_io_read_from_file(
-         mpi_comm, 
-         filename, 
-         offset, 
-         tiles_[attribute_id_real], 
-         tile_size) != TILEDB_UT_OK)
-    return TILEDB_RS_ERR;
-  else
-    return TILEDB_RS_OK;
-}
-
 int ReadState::mpi_io_read_tile_from_file_var_cmp_gzip(
     int attribute_id,
     off_t offset,
@@ -2090,7 +2053,7 @@ int ReadState::prepare_tile_for_reading_cmp_gzip(
             tile_offsets[attribute_id_real][tile_i];
 
   // Read tile from file
-  int rc;
+  int rc = TILEDB_RS_OK;
   int read_method = fragment_->array()->config()->read_method();
   if(read_method ==  TILEDB_IO_READ)
     rc = read_tile_from_file_cmp_gzip(
@@ -2162,7 +2125,7 @@ int ReadState::prepare_tile_for_reading_cmp_none(
   off_t file_offset = tile_i * full_tile_size;
 
   // Read tile from file
-  int rc;
+  int rc = TILEDB_RS_OK;
   int read_method = fragment_->array()->config()->read_method();
   if(read_method ==  TILEDB_IO_READ || 
      read_method == TILEDB_IO_MPI)
@@ -2235,7 +2198,7 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
     tiles_[attribute_id] = malloc(full_tile_size);
 
   // Read tile from file
-  int rc;
+  int rc = TILEDB_RS_OK;
   int read_method = fragment_->array()->config()->read_method();
   if(read_method ==  TILEDB_IO_READ)
     rc = read_tile_from_file_cmp_gzip(
@@ -2308,7 +2271,7 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
     }
 
   // Read tile from file
-  int rc;
+  int rc = TILEDB_RS_OK;
   int read_method = fragment_->array()->config()->read_method();
   if(read_method ==  TILEDB_IO_READ)
     rc = read_tile_from_file_var_cmp_gzip(
@@ -2379,20 +2342,15 @@ int ReadState::prepare_tile_for_reading_var_cmp_none(
   off_t file_offset = tile_i * full_tile_size;
 
   // Read tile from file
-  int rc;
+  int rc = TILEDB_RS_OK;
   int read_method = fragment_->array()->config()->read_method();
-  if(read_method ==  TILEDB_IO_READ)
-    rc = read_tile_from_file_cmp_none(
+  if(read_method ==  TILEDB_IO_READ || 
+     read_method == TILEDB_IO_MPI)
+    rc = set_tile_file_offset(
          attribute_id, 
-         file_offset, 
-         tile_size);
+         file_offset);
   else if(read_method == TILEDB_IO_MMAP)
     rc = map_tile_from_file_cmp_none(
-         attribute_id, 
-         file_offset, 
-         tile_size);
-  else if(read_method == TILEDB_IO_MPI)
-    rc = mpi_io_read_tile_from_file_cmp_none(
          attribute_id, 
          file_offset, 
          tile_size);
@@ -2411,7 +2369,7 @@ int ReadState::prepare_tile_for_reading_var_cmp_none(
       tile_s) != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
   off_t start_tile_var_offset = *tile_s; 
-  off_t end_tile_var_offset;
+  off_t end_tile_var_offset = 0;
   size_t tile_var_size;
   std::string filename = 
         fragment_->fragment_name() + "/" +
@@ -2494,7 +2452,7 @@ int ReadState::READ_FROM_TILE(
       fragment_->fragment_name() + "/" +
       fragment_->array()->array_schema()->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
-  int rc;
+  int rc = TILEDB_UT_OK;
   int read_method = fragment_->array()->config()->read_method();
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
   if(read_method == TILEDB_IO_READ)
@@ -2537,7 +2495,7 @@ int ReadState::READ_FROM_TILE_VAR(
       fragment_->fragment_name() + "/" +
       fragment_->array()->array_schema()->attribute(attribute_id) + "_var" +
       TILEDB_FILE_SUFFIX;
-  int rc;
+  int rc = TILEDB_UT_OK;
   int read_method = fragment_->array()->config()->read_method();
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
   if(read_method == TILEDB_IO_READ)
@@ -2591,37 +2549,6 @@ int ReadState::read_tile_from_file_cmp_gzip(
 
   // Read from file
   if(read_from_file(filename, offset, tile_compressed_, tile_size) !=
-     TILEDB_UT_OK)
-    return TILEDB_RS_ERR;
-  else
-    return TILEDB_RS_OK;
-}
-
-int ReadState::read_tile_from_file_cmp_none(
-    int attribute_id,
-    off_t offset,
-    size_t tile_size) {
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-
-  // To handle the special case of the search tile
-  // The real attribute id corresponds to an actual attribute or coordinates 
-  int attribute_id_real = 
-      (attribute_id == attribute_num+1) ? attribute_num : attribute_id;
-
-  // Potentially allocate compressed tile buffer
-  if(tiles_[attribute_id_real] == NULL) 
-    tiles_[attribute_id_real] = malloc(tile_size); 
-
-  // Prepare attribute file name
-  std::string filename = 
-      fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id_real) +
-      TILEDB_FILE_SUFFIX;
-
-  // Read from file
-  if(read_from_file(filename, offset, tiles_[attribute_id_real], tile_size) !=
      TILEDB_UT_OK)
     return TILEDB_RS_ERR;
   else

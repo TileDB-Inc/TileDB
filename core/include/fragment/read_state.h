@@ -678,20 +678,6 @@ class ReadState {
       size_t tile_size);
 
   /** 
-   * Reads a tile from the disk for an attribute into a local buffer, using 
-   * MPI-IO. This function focuses on the case of no compression.
-   *
-   * @param attribute_id The id of the attribute the read occurs for.
-   * @param offset The offset at which the tile starts in the file.
-   * @param tile_size The tile size. 
-   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
-   */
-  int mpi_io_read_tile_from_file_cmp_none(
-      int attribute_id,
-      off_t offset,
-      size_t tile_size);
-
-  /** 
    * Reads a variable-sized tile from the disk for an attribute into a local 
    * buffer, using MPI-IO. This function focuses on the case of GZIP
    * compression.
@@ -808,20 +794,6 @@ class ReadState {
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
   int read_tile_from_file_cmp_gzip(
-      int attribute_id,
-      off_t offset,
-      size_t tile_size);
-
-  /** 
-   * Reads a tile from the disk for an attribute into a local buffer. This
-   * function focuses on the case of no compression. 
-   *
-   * @param attribute_id The id of the attribute the read occurs for.
-   * @param offset The offset at which the tile starts in the file.
-   * @param tile_size The tile size. 
-   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
-   */
-  int read_tile_from_file_cmp_none(
       int attribute_id,
       off_t offset,
       size_t tile_size);

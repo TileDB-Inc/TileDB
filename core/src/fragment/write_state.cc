@@ -272,7 +272,7 @@ int WriteState::compress_and_write_tile(int attribute_id) {
       TILEDB_FILE_SUFFIX;
 
   // Write segment to file
-  int rc;
+  int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
   if(write_method == TILEDB_IO_WRITE)
       rc = write_to_file(
@@ -341,7 +341,7 @@ int WriteState::compress_and_write_tile_var(int attribute_id) {
       TILEDB_FILE_SUFFIX;
 
   // Write segment to file
-  int rc;
+  int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
   if(write_method == TILEDB_IO_WRITE)
       rc = write_to_file(
@@ -650,7 +650,7 @@ int WriteState::write_dense_attr_cmp_none(
   std::string filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
-  int rc;
+  int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
   if(write_method == TILEDB_IO_WRITE)
       rc = write_to_file(
@@ -779,7 +779,7 @@ int WriteState::write_dense_attr_var_cmp_none(
   std::string filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + "_var" + 
       TILEDB_FILE_SUFFIX;
-  int rc;
+  int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
   if(write_method == TILEDB_IO_WRITE)
@@ -1088,7 +1088,7 @@ int WriteState::write_sparse_attr_cmp_none(
   std::string filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
-  int rc;
+  int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
   if(write_method == TILEDB_IO_WRITE)
@@ -1227,7 +1227,7 @@ int WriteState::write_sparse_attr_var_cmp_none(
   std::string filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + "_var" + 
       TILEDB_FILE_SUFFIX;
-  int rc;
+  int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
   if(write_method == TILEDB_IO_WRITE)
