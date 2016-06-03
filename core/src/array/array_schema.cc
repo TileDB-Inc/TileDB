@@ -681,8 +681,9 @@ int64_t ArraySchema::tile_num() const {
     return tile_num<int>();
   else if(types_[attribute_num_] == TILEDB_INT64)
     return tile_num<int64_t>();
-  else
-    assert(0);
+
+  assert(0);
+  return TILEDB_AS_ERR;
 }
 
 template<class T>
