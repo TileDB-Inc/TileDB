@@ -36,7 +36,6 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
-#include <omp.h>
 #include <sys/time.h>
 #include <sys/syscall.h>
 #include <unistd.h>

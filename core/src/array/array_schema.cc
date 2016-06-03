@@ -1712,7 +1712,7 @@ size_t ArraySchema::compute_cell_size(int i) const {
     return TILEDB_VAR_SIZE;
 
   // Fixed-sized cell
-  size_t size;
+  size_t size = 0;
   
   // Attributes
   if(i < attribute_num_) {

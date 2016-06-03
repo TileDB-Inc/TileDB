@@ -564,7 +564,7 @@ int tiledb_array_free_schema(
     free(tiledb_array_schema->compression_);
 
   // Free cell val num
-  if(tiledb_array_schema->cell_val_num_ != NULL);
+  if(tiledb_array_schema->cell_val_num_ != NULL)
     free(tiledb_array_schema->cell_val_num_);
 
   // Success
