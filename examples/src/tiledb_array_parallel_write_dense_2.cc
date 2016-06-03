@@ -31,6 +31,8 @@
  */
 
 #include "c_api.h"
+
+#ifdef OPENMP
 #include <omp.h>
 
 
@@ -178,3 +180,14 @@ void parallel_write(
   tiledb_array_finalize(tiledb_array);
 }
 
+#else
+
+#include <stdio.h>
+
+int main() {
+  printf("OpenMP not supported.");
+
+  return 0;
+}
+
+#endif

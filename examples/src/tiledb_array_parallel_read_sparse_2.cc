@@ -31,10 +31,10 @@
  */
 
 #include "c_api.h"
-#include <omp.h>
 #include <stdio.h>
 
-
+#ifdef OPENMP
+#include <omp.h>
 
 
 // The function to be computed in parallel
@@ -144,3 +144,12 @@ void parallel_read(
   tiledb_array_finalize(tiledb_array);
 }
 
+#else
+
+int main() {
+  printf("OpenMP not supported.");
+
+  return 0;
+}
+
+#endif

@@ -61,7 +61,7 @@
 #  define PRINT_WARNING(x) do { } while(0) 
 #endif
 
-#ifdef GNU_PARALLEL
+#ifdef OPENMP
   #include <parallel/algorithm>
   #define SORT(first, last, comp) __gnu_parallel::sort((first), (last), (comp))
 #else

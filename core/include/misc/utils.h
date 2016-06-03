@@ -419,6 +419,7 @@ int mpi_io_write_to_file(
     const void* buffer, 
     size_t buffer_size);
 
+#ifdef OPENMP
 /**
  * Destroys an OpenMP mutex.
  *
@@ -426,14 +427,6 @@ int mpi_io_write_to_file(
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
 int mutex_destroy(omp_lock_t* mtx);
-
-/**
- * Destroys a pthread mutex.
- *
- * @param mtx The mutex to be destroyed.
- * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
- */
-int mutex_destroy(pthread_mutex_t* mtx);
 
 /**
  * Initializes an OpenMP mutex.
@@ -444,14 +437,6 @@ int mutex_destroy(pthread_mutex_t* mtx);
 int mutex_init(omp_lock_t* mtx);
 
 /**
- * Initializes a pthread mutex.
- *
- * @param mtx The mutex to be initialized.
- * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
- */
-int mutex_init(pthread_mutex_t* mtx);
-
-/**
  * Locks an OpenMP mutex.
  *
  * @param mtx The mutex to be locked.
@@ -460,20 +445,37 @@ int mutex_init(pthread_mutex_t* mtx);
 int mutex_lock(omp_lock_t* mtx);
 
 /**
- * Locks a pthread mutex.
- *
- * @param mtx The mutex to be locked.
- * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
- */
-int mutex_lock(pthread_mutex_t* mtx);
-
-/**
  * Unlocks an OpenMP mutex.
  *
  * @param mtx The mutex to be unlocked.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
 int mutex_unlock(omp_lock_t* mtx);
+#endif
+
+/**
+ * Destroys a pthread mutex.
+ *
+ * @param mtx The mutex to be destroyed.
+ * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ */
+int mutex_destroy(pthread_mutex_t* mtx);
+
+/**
+ * Initializes a pthread mutex.
+ *
+ * @param mtx The mutex to be initialized.
+ * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ */
+int mutex_init(pthread_mutex_t* mtx);
+
+/**
+ * Locks a pthread mutex.
+ *
+ * @param mtx The mutex to be locked.
+ * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ */
+int mutex_lock(pthread_mutex_t* mtx);
 
 /**
  * Unlocks a pthread mutex.
