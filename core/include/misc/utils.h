@@ -34,12 +34,14 @@
 #define __UTILS_H__
 
 #include <mpi.h>
-#include <omp.h>
 #include <pthread.h>
 #include <string>
 #include <vector>
 
 
+#ifdef OPENMP
+  #include <omp.h>
+#endif
 
 
 /* ********************************* */
