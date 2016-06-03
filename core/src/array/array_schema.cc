@@ -705,8 +705,10 @@ int64_t ArraySchema::tile_num(const void* domain) const {
     return tile_num<int>(static_cast<const int*>(domain));
   else if(types_[attribute_num_] == TILEDB_INT64)
     return tile_num<int64_t>(static_cast<const int64_t*>(domain));
-  else
-    assert(0);
+
+
+  assert(0);
+  return TILEDB_AS_ERR;
 }
 
 template<class T>
