@@ -174,7 +174,7 @@ $(CORE_OBJ_DIR)/%.o: $(CORE_SRC_DIR)/%.cc
 	@mkdir -p $(dir $@) 
 	@echo "Compiling $<"
 	@$(CXX) $(CPPFLAGS) $(INCLUDE_PATHS) $(CORE_INCLUDE_PATHS) -c $< -o $@ 
-	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
+	@$(CXX) -MM $(CORE_INCLUDE_PATHS) $(INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
 	@rm -f $(@:.o=.d.tmp)
@@ -238,7 +238,7 @@ $(EXAMPLES_OBJ_DIR)/%.o: $(EXAMPLES_SRC_DIR)/%.cc
                 $(EXAMPLES_INCLUDE_PATHS) \
 		$(CORE_INCLUDE_PATHS) -c $< -o $@
 	@$(CXX) -MM $(EXAMPLES_INCLUDE_PATHS) \
-                    $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
+                    $(CORE_INCLUDE_PATHS) $(INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
 	@rm -f $(@:.o=.d.tmp)
@@ -271,7 +271,7 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 	@echo "Compiling $<"
 	@$(CXX) $(CPPFLAGS) $(OPENMP_FLAG) $(TEST_INCLUDE_PATHS) -c $< -o $@
 	@$(CXX) -MM $(TEST_INCLUDE_PATHS) \
-                    $(CORE_INCLUDE_PATHS) $< > $(@:.o=.d)
+                    $(CORE_INCLUDE_PATHS) $(INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
 	@rm -f $(@:.o=.d.tmp)
