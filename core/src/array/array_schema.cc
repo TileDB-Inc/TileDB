@@ -74,6 +74,7 @@ ArraySchema::ArraySchema() {
   hilbert_curve_ = NULL;
   tile_extents_ = NULL;
   tile_domain_ = NULL;
+  tile_coords_aux_ = NULL;
 }
 
 ArraySchema::~ArraySchema() {
@@ -91,6 +92,9 @@ ArraySchema::~ArraySchema() {
 
   if(tile_domain_ != NULL)
     free(tile_domain_);
+
+  if(tile_coords_aux_ != NULL)
+    free(tile_coords_aux_);
 }
 
 
@@ -278,7 +282,7 @@ int ArraySchema::compression(int attribute_id) const {
 }
 
 size_t ArraySchema::coords_size() const {
-  return cell_sizes_[attribute_num_];
+  return coords_size_;
 }
 
 int ArraySchema::coords_type() const {
@@ -895,6 +899,8 @@ int ArraySchema::deserialize(
   cell_sizes_.resize(attribute_num_+1);
   for(int i=0; i<= attribute_num_; ++i) 
     cell_sizes_[i] = compute_cell_size(i);
+  // Set coordinates size
+  coords_size_ = cell_sizes_[attribute_num_];
 
   // Compute number of cells per tile
   compute_cell_num_per_tile();
@@ -902,8 +908,16 @@ int ArraySchema::deserialize(
   // Compute tile domain
   compute_tile_domain();
 
+  // Compute tile offsets
+  compute_tile_offsets();
+
   // Initialize Hilbert curve
   init_hilbert_curve();
+
+  // Initialize static auxiliary variables
+  if(tile_coords_aux_ != NULL)
+    free(tile_coords_aux_);
+  tile_coords_aux_ = malloc(coords_size_*dim_num_);
 
   // Success
   return TILEDB_AS_OK;
@@ -953,8 +967,16 @@ int ArraySchema::init(const ArraySchemaC* array_schema_c) {
   // Compute tile domain
   compute_tile_domain();
 
+  // Compute tile offsets
+  compute_tile_offsets();
+
   // Initialize Hilbert curve
   init_hilbert_curve();
+
+  // Initialize static auxiliary variables
+  if(tile_coords_aux_ != NULL)
+    free(tile_coords_aux_);
+  tile_coords_aux_ = malloc(coords_size_*dim_num_);
 
   // Success
   return TILEDB_AS_OK;
@@ -1348,6 +1370,9 @@ int ArraySchema::set_types(const int* types) {
   for(int i=0; i < attribute_num_+1; ++i) 
     cell_sizes_[i] = compute_cell_size(i);
 
+  // Set the coordinates size
+  coords_size_ = cell_sizes_[attribute_num_];
+
   return TILEDB_AS_OK;
 }
 
@@ -1360,11 +1385,8 @@ int ArraySchema::set_types(const int* types) {
 
 template<class T>
 int ArraySchema::cell_order_cmp(const T* coords_a, const T* coords_b) const {
-  // For easy reference
-  size_t coords_size = cell_sizes_[attribute_num_];
-
   // Check if they are equal
-  if(memcmp(coords_a, coords_b, coords_size) == 0)
+  if(memcmp(coords_a, coords_b, coords_size_) == 0)
     return 0;
 
   // Check for precedence
@@ -1452,15 +1474,16 @@ int64_t ArraySchema::get_cell_pos(const T* coords) const {
 template<class T>
 void ArraySchema::get_next_cell_coords(
     const T* domain,
-    T* cell_coords) const {
+    T* cell_coords,
+    bool& coords_retrieved) const {
   // Sanity check
   assert(dense_);
 
   // Invoke the proper function based on the tile order
   if(cell_order_ == TILEDB_ROW_MAJOR)
-    get_next_cell_coords_row(domain, cell_coords);
+    get_next_cell_coords_row(domain, cell_coords, coords_retrieved);
   else if(cell_order_ == TILEDB_COL_MAJOR)
-    get_next_cell_coords_col(domain, cell_coords);
+    get_next_cell_coords_col(domain, cell_coords, coords_retrieved);
   else  // Sanity check
     assert(0);
 }
@@ -1526,6 +1549,22 @@ void ArraySchema::get_subarray_tile_domain(
 }
 
 template<class T>
+int64_t ArraySchema::get_tile_pos(const T* tile_coords) const {
+  // Sanity check
+  assert(tile_extents_);
+
+  // Invoke the proper function based on the tile order
+  if(tile_order_ == TILEDB_ROW_MAJOR) {
+    return get_tile_pos_row(tile_coords);
+  } else if(tile_order_ == TILEDB_COL_MAJOR) {
+    return get_tile_pos_col(tile_coords);
+  } else { // Sanity check 
+    assert(0);
+    return TILEDB_AS_ERR;
+  }
+}
+
+template<class T>
 int64_t ArraySchema::get_tile_pos(
     const T* domain,
     const T* tile_coords) const {
@@ -1579,22 +1618,17 @@ template<class T>
 int ArraySchema::tile_cell_order_cmp(
     const T* coords_a, 
     const T* coords_b) const {
-  // If there are regular tiles, first check tile ids
-  if(tile_extents_ != NULL) {
-    int64_t tile_id_a = tile_id(coords_a);
-    int64_t tile_id_b = tile_id(coords_b);
+  // Check tile order
+  int tile_cmp = tile_order_cmp(coords_a, coords_b);
+  if(tile_cmp)
+    return tile_cmp;
 
-    if(tile_id_a < tile_id_b)
-      return -1;
-    else if(tile_id_a > tile_id_b)
-      return 1;
-  }
-
-  // Tile ids are non-existent or equal --> check coordinates
+  // Check cell order
   return cell_order_cmp(coords_a, coords_b);
 }
 
 template<typename T>
+inline
 int64_t ArraySchema::tile_id(const T* cell_coords) const {
   // For easy reference
   const T* domain = static_cast<const T*>(domain_);
@@ -1605,19 +1639,263 @@ int64_t ArraySchema::tile_id(const T* cell_coords) const {
     return 0;
 
   // Calculate tile coordinates
-  T* tile_coords = new T[dim_num_];   
+  T* tile_coords = static_cast<T*>(tile_coords_aux_);
   for(int i=0; i<dim_num_; ++i)
     tile_coords[i] = (cell_coords[i] - domain[2*i]) / tile_extents[i]; 
 
-  int tile_id = get_tile_pos(domain, tile_coords);
-
-  // Clean up
-  delete [] tile_coords;
+  int tile_id = get_tile_pos(tile_coords);
 
   // Return
   return tile_id;
 }
 
+template<>
+int ArraySchema::tile_order_cmp(
+    const int* coords_a, 
+    const int* coords_b) const {
+  // For easy reference
+  int diff; 
+  int norm;
+  const int* domain = static_cast<const int*>(domain_);
+  const int* tile_extents = static_cast<const int*>(tile_extents_);
+
+  // If there are regular tiles, first check tile order
+  if(tile_extents_ != NULL) {
+    // ROW-MAJOR
+    if(tile_order_ == TILEDB_ROW_MAJOR) {
+      // Check if the cells are definitely IN the same tile
+      for(int i=0; i<dim_num_; ++i) {
+        diff = coords_a[i] - coords_b[i];
+
+        if(diff < 0)
+          norm = (coords_a[i] - domain[2*i]) % tile_extents[i];
+        else if(diff > 0)
+          norm = (coords_b[i] - domain[2*i]) % tile_extents[i];
+
+        if(diff < 0 && (norm - diff) >= tile_extents[i])
+          return -1;
+        else if(diff > 0 && (norm + diff) >= tile_extents[i]) 
+          return 1;
+      }
+    } else { // COLUMN-MAJOR
+      // Check if the cells are definitely IN the same tile
+      for(int i=dim_num_-1; i>=0; --i) {
+        diff = coords_a[i] - coords_b[i];
+
+        if(diff < 0)
+          norm = (coords_a[i] - domain[2*i]) % tile_extents[i];
+        else if(diff > 0)
+          norm = (coords_b[i] - domain[2*i]) % tile_extents[i];
+
+        if(diff < 0 && (norm - diff) >= tile_extents[i])
+          return -1;
+        else if(diff > 0 && (norm + diff) >= tile_extents[i]) 
+          return 1;
+
+
+        if(diff < 0 && (norm - diff) >= tile_extents[i])
+          return -1;
+        else if(diff > 0 && (norm + diff) >= tile_extents[i]) 
+          return 1;
+      }
+    }
+  }
+
+  // Same tile order
+  return 0;
+}
+
+template<>
+int ArraySchema::tile_order_cmp(
+    const int64_t* coords_a, 
+    const int64_t* coords_b) const {
+  // For easy reference
+  int64_t diff; 
+  int64_t norm;
+  const int64_t* domain = static_cast<const int64_t*>(domain_);
+  const int64_t* tile_extents = static_cast<const int64_t*>(tile_extents_);
+
+  // If there are regular tiles, first check tile order
+  if(tile_extents_ != NULL) {
+    // ROW-MAJOR
+    if(tile_order_ == TILEDB_ROW_MAJOR) {
+      // Check if the cells are definitely IN the same tile
+      for(int i=0; i<dim_num_; ++i) {
+        diff = coords_a[i] - coords_b[i];
+       
+        if(diff < 0)
+          norm = (coords_a[i] - domain[2*i]) % tile_extents[i];
+        else if(diff > 0)
+          norm = (coords_b[i] - domain[2*i]) % tile_extents[i];
+
+        if(diff < 0 && (norm - diff) >= tile_extents[i])
+          return -1;
+        else if(diff > 0 && (norm + diff) >= tile_extents[i]) 
+          return 1;
+      }
+    } else { // COLUMN-MAJOR
+      // Check if the cells are definitely IN the same tile
+      for(int i=dim_num_-1; i>=0; --i) {
+        diff = coords_a[i] - coords_b[i];
+
+        if(diff < 0)
+          norm = (coords_a[i] - domain[2*i]) % tile_extents[i];
+        else if(diff > 0)
+          norm = (coords_b[i] - domain[2*i]) % tile_extents[i];
+
+        if(diff < 0 && (norm - diff) >= tile_extents[i])
+          return -1;
+        else if(diff > 0 && (norm + diff) >= tile_extents[i]) 
+          return 1;
+
+
+        if(diff < 0 && (norm - diff) >= tile_extents[i])
+          return -1;
+        else if(diff > 0 && (norm + diff) >= tile_extents[i]) 
+          return 1;
+      }
+    }
+  }
+
+  // Same tile order
+  return 0;
+}
+
+template<>
+int ArraySchema::tile_order_cmp(
+    const float* coords_a, 
+    const float* coords_b) const {
+  // For easy reference
+  float diff; 
+  float norm, norm_temp;
+  const float* domain = static_cast<const float*>(domain_);
+  const float* tile_extents = static_cast<const float*>(tile_extents_);
+
+  // If there are regular tiles, first check tile order
+  if(tile_extents_ != NULL) {
+    // ROW-MAJOR
+    if(tile_order_ == TILEDB_ROW_MAJOR) {
+      // Check if the cells are definitely IN the same tile
+      for(int i=0; i<dim_num_; ++i) {
+        diff = coords_a[i] - coords_b[i];
+
+        if(diff < 0) {
+          norm_temp = coords_a[i];
+          do {
+            norm = norm_temp;
+            norm_temp -= tile_extents[i];
+          } while(norm_temp >= domain[2*i]);
+        } else if(diff > 0) {
+          norm_temp = coords_b[i];
+          do {
+            norm = norm_temp;
+            norm_temp -= tile_extents[i];
+          } while(norm_temp >= domain[2*i]);
+        }
+
+        if(diff < 0 && (norm - diff) >= tile_extents[i])
+          return -1;
+        else if(diff > 0 && (norm + diff) >= tile_extents[i]) 
+          return 1;
+      }
+    } else { // COLUMN-MAJOR
+      // Check if the cells are definitely IN the same tile
+      for(int i=dim_num_-1; i>=0; --i) {
+        diff = coords_a[i] - coords_b[i];
+
+        if(diff < 0) {
+          norm_temp = coords_a[i];
+          do {
+            norm = norm_temp;
+            norm_temp -= tile_extents[i];
+          } while(norm_temp >= domain[2*i]);
+        } else if(diff > 0) {
+          norm_temp = coords_b[i];
+          do {
+            norm = norm_temp;
+            norm_temp -= tile_extents[i];
+          } while(norm_temp >= domain[2*i]);
+        }
+
+        if(diff < 0 && (norm - diff) >= tile_extents[i])
+          return -1;
+        else if(diff > 0 && (norm + diff) >= tile_extents[i]) 
+          return 1;
+      }
+    }
+  }
+
+  // Same tile order
+  return 0;
+}
+
+template<>
+int ArraySchema::tile_order_cmp(
+    const double* coords_a, 
+    const double* coords_b) const {
+  // For easy reference
+  double diff; 
+  double norm, norm_temp;
+  const double* domain = static_cast<const double*>(domain_);
+  const double* tile_extents = static_cast<const double*>(tile_extents_);
+
+  // If there are regular tiles, first check tile order
+  if(tile_extents_ != NULL) {
+    // ROW-MAJOR
+    if(tile_order_ == TILEDB_ROW_MAJOR) {
+      // Check if the cells are definitely IN the same tile
+      for(int i=0; i<dim_num_; ++i) {
+        diff = coords_a[i] - coords_b[i];
+
+        if(diff < 0) {
+          norm_temp = coords_a[i];
+          do {
+            norm = norm_temp;
+            norm_temp -= tile_extents[i];
+          } while(norm_temp >= domain[2*i]);
+        } else if(diff > 0) {
+          norm_temp = coords_b[i];
+          do {
+            norm = norm_temp;
+            norm_temp -= tile_extents[i];
+          } while(norm_temp >= domain[2*i]);
+        }
+
+        if(diff < 0 && (norm - diff) >= tile_extents[i])
+          return -1;
+        else if(diff > 0 && (norm + diff) >= tile_extents[i]) 
+          return 1;
+      }
+    } else { // COLUMN-MAJOR
+      // Check if the cells are definitely IN the same tile
+      for(int i=dim_num_-1; i>=0; --i) {
+        diff = coords_a[i] - coords_b[i];
+
+        if(diff < 0) {
+          norm_temp = coords_a[i];
+          do {
+            norm = norm_temp;
+            norm_temp -= tile_extents[i];
+          } while(norm_temp >= domain[2*i]);
+        } else if(diff > 0) {
+          norm_temp = coords_b[i];
+          do {
+            norm = norm_temp;
+            norm_temp -= tile_extents[i];
+          } while(norm_temp >= domain[2*i]);
+        }
+
+        if(diff < 0 && (norm - diff) >= tile_extents[i])
+          return -1;
+        else if(diff > 0 && (norm + diff) >= tile_extents[i]) 
+          return 1;
+      }
+    }
+  }
+
+  // Same tile order
+  return 0;
+}
 
 
 
@@ -1799,6 +2077,50 @@ void ArraySchema::compute_tile_domain() {
   }
 }
 
+void ArraySchema::compute_tile_offsets() {
+  // Invoke the proper templated function
+  if(types_[attribute_num_] == TILEDB_INT32) {
+    compute_tile_offsets<int>();
+  } else if(types_[attribute_num_] == TILEDB_INT64) {
+    compute_tile_offsets<int64_t>();
+  } else if(types_[attribute_num_] == TILEDB_FLOAT32) {
+    compute_tile_offsets<float>();
+  } else if(types_[attribute_num_] == TILEDB_FLOAT64) {
+    compute_tile_offsets<double>();
+  } else { // The program should never reach this point
+    assert(0);
+  }
+}
+
+template<class T>
+void ArraySchema::compute_tile_offsets() {
+  // Applicable only to non-NULL space tiles
+  if(tile_extents_ == NULL)
+    return;
+
+  // For easy reference
+  const T* domain = static_cast<const T*>(domain_);
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+  int64_t tile_num; // Per dimension
+
+  // Calculate tile offsets for column-major tile order
+  tile_offsets_col_.push_back(1);
+  for(int i=1; i<dim_num_; ++i) {
+    tile_num = (domain[2*(i-1)+1] - 
+                domain[2*(i-1)] + 1) / tile_extents[i-1];
+    tile_offsets_col_.push_back(tile_offsets_col_.back() * tile_num);
+  }
+  
+  // Calculate tile offsets for row-major tile order
+  tile_offsets_row_.push_back(1);
+  for(int i=dim_num_-2; i>=0; --i) {
+    tile_num = (domain[2*(i+1)+1] - 
+                domain[2*(i+1)] + 1) / tile_extents[i+1];
+    tile_offsets_row_.push_back(tile_offsets_row_.back() * tile_num);
+  }
+  std::reverse(tile_offsets_row_.begin(), tile_offsets_row_.end());
+}
+
 size_t ArraySchema::compute_type_size(int i) const {
   // Sanity check
   assert(i>= 0 && i <= attribute_num_);
@@ -1879,7 +2201,8 @@ int64_t ArraySchema::get_cell_pos_row(const T* coords) const {
 template<class T>
 void ArraySchema::get_next_cell_coords_col(
     const T* domain,
-    T* cell_coords) const {
+    T* cell_coords,
+    bool& coords_retrieved) const {
   int i = 0;
   ++cell_coords[i];
 
@@ -1887,12 +2210,18 @@ void ArraySchema::get_next_cell_coords_col(
     cell_coords[i] = domain[2*i];
     ++cell_coords[++i];
   } 
+
+  if(i == dim_num_-1 && cell_coords[i] > domain[2*i+1])
+    coords_retrieved = false;
+  else
+    coords_retrieved = true; 
 }
 
 template<class T>
 void ArraySchema::get_next_cell_coords_row(
     const T* domain,
-    T* cell_coords) const {
+    T* cell_coords,
+    bool& coords_retrieved) const {
   int i = dim_num_-1;
   ++cell_coords[i];
 
@@ -1900,6 +2229,11 @@ void ArraySchema::get_next_cell_coords_row(
     cell_coords[i] = domain[2*i];
     ++cell_coords[--i];
   } 
+
+  if(i == 0 && cell_coords[i] > domain[2*i+1])
+    coords_retrieved = false;
+  else
+    coords_retrieved = true; 
 }
 
 template<class T>
@@ -1955,6 +2289,17 @@ void ArraySchema::get_next_tile_coords_row(
 }
 
 template<class T>
+int64_t ArraySchema::get_tile_pos_col(const T* tile_coords) const {
+  // Calculate position
+  int64_t pos = 0;
+  for(int i=0; i<dim_num_; ++i) 
+    pos += tile_coords[i] * tile_offsets_col_[i];
+
+  // Return
+  return pos;
+}
+
+template<class T>
 int64_t ArraySchema::get_tile_pos_col(
     const T* domain,
     const T* tile_coords) const {
@@ -1975,6 +2320,17 @@ int64_t ArraySchema::get_tile_pos_col(
   int64_t pos = 0;
   for(int i=0; i<dim_num_; ++i) 
     pos += tile_coords[i] * tile_offsets[i];
+
+  // Return
+  return pos;
+}
+
+template<class T>
+int64_t ArraySchema::get_tile_pos_row(const T* tile_coords) const {
+  // Calculate position
+  int64_t pos = 0;
+  for(int i=0; i<dim_num_; ++i) 
+    pos += tile_coords[i] * tile_offsets_row_[i];
 
   // Return
   return pos;
@@ -2059,16 +2415,20 @@ template int64_t ArraySchema::get_cell_pos<double>(
 
 template void ArraySchema::get_next_cell_coords<int>(
     const int* domain,
-    int* cell_coords) const;
+    int* cell_coords,
+    bool& coords_retrieved) const;
 template void ArraySchema::get_next_cell_coords<int64_t>(
     const int64_t* domain,
-    int64_t* cell_coords) const;
+    int64_t* cell_coords,
+    bool& coords_retrieved) const;
 template void ArraySchema::get_next_cell_coords<float>(
     const float* domain,
-    float* cell_coords) const;
+    float* cell_coords,
+    bool& coords_retrieved) const;
 template void ArraySchema::get_next_cell_coords<double>(
     const double* domain,
-    double* cell_coords) const;
+    double* cell_coords,
+    bool& coords_retrieved) const;
 
 template void ArraySchema::get_next_tile_coords<int>(
     const int* domain,

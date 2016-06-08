@@ -50,16 +50,16 @@ int main() {
       0);                                        // Number of attributes
 
   // Prepare cell buffers
-  int buffer_a1[] = { 109, TILEDB_EMPTY_INT32, 108, 105 };
-  size_t buffer_a2[] = { 0, 1, 2, 6 };
+  int buffer_a1[] = { 107, TILEDB_EMPTY_INT32, 106, 105 };
+  size_t buffer_a2[] = { 0, 3, 4, 5 };
   const char buffer_var_a2[] = 
-  { 'u', TILEDB_EMPTY_CHAR, 'v', 'v', 'v', 'v', 'y', 'y', 'y' };
+  { 'y', 'y', 'y', TILEDB_EMPTY_CHAR, 'w', 'v', 'v', 'v', 'v' };
   float buffer_a3[] = 
   { 
-    109.1,  109.2,  TILEDB_EMPTY_FLOAT32,  TILEDB_EMPTY_FLOAT32,  
-    108.1,  108.2,  105.1,  105.2 
+    107.1,  107.2,  TILEDB_EMPTY_FLOAT32,  TILEDB_EMPTY_FLOAT32,  
+    106.1,  106.2,  105.1,  105.2 
   };
-  int64_t buffer_coords[] = { 3, 2, 3, 3, 4, 1, 3, 4 };
+  int64_t buffer_coords[] = { 3, 4, 3, 2, 3, 3, 4, 1 };
   const void* buffers[] = 
       { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
   size_t buffer_sizes[] = 

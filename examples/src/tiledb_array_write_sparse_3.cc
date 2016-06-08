@@ -57,7 +57,7 @@ int main() {
       7.1,  7.2,  5.1,  5.2,  0.1,  0.2,  6.1,  6.2,
       4.1,  4.2,  3.1,  3.2,  1.1,  1.2,  2.1,  2.2 
   };
-  int64_t buffer_coords[] = { 3, 1, 3, 4, 1, 1, 4, 2, 3, 3, 2, 3, 1, 2, 1, 4 };
+  int64_t buffer_coords[] = { 3, 4, 4, 2, 1, 1, 3, 3, 3, 1, 2, 3, 1, 2, 1, 4 };
   const void* buffers[] = 
       { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
   size_t buffer_sizes[] = 

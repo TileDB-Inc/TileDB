@@ -36,7 +36,7 @@ ifeq ($(BUILD),release)
 endif
 
 ifeq ($(BUILD),debug)
-  CPPFLAGS += -DDEBUG -gdwarf-3 -g3 -Wall
+  CPPFLAGS += -DDEBUG -gdwarf-3 -g3 -Wall 
 endif
 
 # --- Verbose mode handler --- #
@@ -269,9 +269,10 @@ clean_examples:
 $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 	@mkdir -p $(dir $@) 
 	@echo "Compiling $<"
-	@$(CXX) $(CPPFLAGS) $(OPENMP_FLAG) $(TEST_INCLUDE_PATHS) -c $< -o $@
+	@$(CXX) $(CPPFLAGS) $(OPENMP_FLAG) $(TEST_INCLUDE_PATHS) \
+		$(INCLUDE_PATHS) -c $< -o $@
 	@$(CXX) -MM $(TEST_INCLUDE_PATHS) \
-                    $(CORE_INCLUDE_PATHS) $(INCLUDE_PATHS) $< > $(@:.o=.d)
+                $(CORE_INCLUDE_PATHS) $(INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
 	@rm -f $(@:.o=.d.tmp)

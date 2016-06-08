@@ -112,7 +112,9 @@ int StorageManager::init(Config* config) {
   if(!is_dir(tiledb_home_)) { 
     if(create_dir(tiledb_home_) != TILEDB_UT_OK)
       return TILEDB_SM_ERR;
+  }
 
+  if(!is_metadata(master_catalog_dir_)) {
     if(master_catalog_create() != TILEDB_SM_OK)
       return TILEDB_SM_ERR;
   }
@@ -1375,6 +1377,9 @@ int StorageManager::config_set(Config* config) {
     }
     tiledb_home_ += "/.tiledb";
   }
+
+  // Get read path
+  tiledb_home_ = real_dir(tiledb_home_);
 
   // Success
   return TILEDB_SM_OK;

@@ -55,9 +55,12 @@ extern "C" {
 
 /** Used to pass congiguration parameters to TileDB. */
 typedef struct TileDB_Config {
-  /** TileDB home directory. */
+  /** 
+   * The TileDB home directory. If it is set to "" (empty string) or NULL, the 
+   * default home directory will be used, which is ~/.tiledb/. 
+   */
   const char* home_;
-  /** The MPI communicator. */
+  /** The MPI communicator. Use NULL if no MPI is used. */
   MPI_Comm* mpi_comm_; 
   /** 
    * The method for reading data from a file. 
@@ -65,7 +68,7 @@ typedef struct TileDB_Config {
    *    - TILEDB_IO_MMAP
    *      TileDB will use mmap.
    *    - TILEDB_IO_READ
-   *      TileDB will use POSIX read.
+   *      TileDB will use standard OS read.
    *    - TILEDB_IO_MPI
    *      TileDB will use MPI-IO read. 
    */
@@ -74,7 +77,7 @@ typedef struct TileDB_Config {
    * The method for writing data to a file. 
    * It can be one of the following: 
    *    - TILEDB_IO_WRITE
-   *      TileDB will use POSIX write.
+   *      TileDB will use standard OS write.
    *    - TILEDB_IO_MPI
    *      TileDB will use MPI-IO write. 
    */
@@ -1079,16 +1082,17 @@ typedef struct TileDB_AIO_Request {
    * tiledb_array_init() or tiledb_array_reset_attributes(). The case of
    * variable-sized attributes is special. Instead of providing a single
    * buffer for such an attribute, **two** must be provided: the second
-   * will hold the variable-sized cell values, whereas the first holds the
+   * holds the variable-sized cell values, whereas the first holds the
    * start offsets of each cell in the second buffer.
    */
   void** buffers_;
   /**
-   * The sizes (in bytes) allocated by the user for the input
-   * buffers (there is a one-to-one correspondence). The function will attempt
+   * The sizes (in bytes) allocated by the user for the 
+   * buffers (there is a one-to-one correspondence). In the case of reads,
+   * the function will attempt
    * to write as many results as can fit in the buffers, and potentially
-   * alter the buffer size to indicate the size of the *useful* data written
-   * in the buffer. 
+   * alter the buffer sizes to indicate the size of the *useful* data written
+   * in the corresponding buffers. 
    */
   size_t* buffer_sizes_;
   /** Function to be called upon completion of the request. */
@@ -1099,7 +1103,8 @@ typedef struct TileDB_AIO_Request {
    * Applicable only to read requests.
    * Indicates whether a buffer has overflowed during a read request.
    * If it is NULL, it will be ignored. Otherwise, it must be an array
-   * with as many elements as the number of buffers above. 
+   * with as many elements as the number of attributes specified in
+   * tiledb_array_init() or tiledb_array_reset_attributes(). 
    */
   bool* overflow_;
   /**
@@ -1127,10 +1132,10 @@ typedef struct TileDB_AIO_Request {
 } TileDB_AIO_Request; 
 
 /**
- * Issues an AIO read request. 
+ * Issues an asynchronous read request. 
  *
  * @param tiledb_array An initialized TileDB array.
- * @param tiledb_aio_request An array AIO read request.
+ * @param tiledb_aio_request An asynchronous read request.
  * @return TILEDB_OK upon success, and TILEDB_ERR upon error.
  *
  * @note If the same input request is in progress, the function will fail.
@@ -1145,10 +1150,10 @@ TILEDB_EXPORT int tiledb_array_aio_read(
     TileDB_AIO_Request* tiledb_aio_request);
 
 /**
- * Issues an AIO write request. 
+ * Issues an asynchronous write request. 
  *
  * @param tiledb_array An initialized TileDB array.
- * @param tiledb_aio_request An array write request.
+ * @param tiledb_aio_request An asynchronous write request.
  * @return TILEDB_OK upon success, and TILEDB_ERR upon error.
  */
 TILEDB_EXPORT int tiledb_array_aio_write( 

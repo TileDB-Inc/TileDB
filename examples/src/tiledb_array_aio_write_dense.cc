@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_aio_write_dense_1.cc
+ * @file   tiledb_array_aio_write_dense.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,8 @@
  * 
  * @section DESCRIPTION
  *
- * It shows how to write asynchronoulsy to a dense array.
+ * It shows how to write asynchronoulsy to a dense array. The case of sparse
+ * array is similar.
  */
 
 #include "c_api.h"
@@ -94,7 +95,8 @@ int main() {
 
   // Prepare AIO request
   TileDB_AIO_Request tiledb_aio_request;
-  memset(&tiledb_aio_request, 0, sizeof(struct TileDB_AIO_Request)); 
+  // ALWAYS zero out the struct before populating it
+  memset(&tiledb_aio_request, 0, sizeof(struct TileDB_AIO_Request));  
   tiledb_aio_request.buffers_ = buffers;
   tiledb_aio_request.buffer_sizes_ = buffer_sizes;
   tiledb_aio_request.completion_handle_ = print_upon_completion;

@@ -75,37 +75,37 @@ ReadState::ReadState(
     BookKeeping* book_keeping)
     : book_keeping_(book_keeping),
       fragment_(fragment) {
-  // For easy reference 
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-  size_t coords_size = array_schema->coords_size();
+  array_ = fragment_->array();
+  array_schema_ = array_->array_schema();
+  attribute_num_ = array_schema_->attribute_num();
+  coords_size_ = array_schema_->coords_size();
 
   done_ = false;
-  fetched_tile_.resize(attribute_num+2);
-  overflow_.resize(attribute_num+1);
+  fetched_tile_.resize(attribute_num_+2);
+  overflow_.resize(attribute_num_+1);
   last_tile_coords_ = NULL;
-  map_addr_.resize(attribute_num+2);
-  map_addr_lengths_.resize(attribute_num+2);
+  map_addr_.resize(attribute_num_+2);
+  map_addr_lengths_.resize(attribute_num_+2);
   map_addr_compressed_ = NULL;
   map_addr_compressed_length_ = 0;
-  map_addr_var_.resize(attribute_num);
-  map_addr_var_lengths_.resize(attribute_num);
-  search_tile_overlap_subarray_ = malloc(2*coords_size);
+  map_addr_var_.resize(attribute_num_);
+  map_addr_var_lengths_.resize(attribute_num_);
+  search_tile_overlap_subarray_ = malloc(2*coords_size_);
   search_tile_pos_ = -1;
   tile_compressed_ = NULL;
   tile_compressed_allocated_size_ = 0;
-  tiles_.resize(attribute_num+2);
-  tiles_offsets_.resize(attribute_num+2);
-  tiles_file_offsets_.resize(attribute_num+2);
-  tiles_sizes_.resize(attribute_num+2);
-  tiles_var_.resize(attribute_num);
-  tiles_var_offsets_.resize(attribute_num);
-  tiles_var_file_offsets_.resize(attribute_num);
-  tiles_var_sizes_.resize(attribute_num);
-  tiles_var_allocated_size_.resize(attribute_num);
-  tmp_coords_ = malloc(coords_size);
+  tiles_.resize(attribute_num_+2);
+  tiles_offsets_.resize(attribute_num_+2);
+  tiles_file_offsets_.resize(attribute_num_+2);
+  tiles_sizes_.resize(attribute_num_+2);
+  tiles_var_.resize(attribute_num_);
+  tiles_var_offsets_.resize(attribute_num_);
+  tiles_var_file_offsets_.resize(attribute_num_);
+  tiles_var_sizes_.resize(attribute_num_);
+  tiles_var_allocated_size_.resize(attribute_num_);
+  tmp_coords_ = malloc(coords_size_);
 
-  for(int i=0; i<attribute_num; ++i) {
+  for(int i=0; i<attribute_num_; ++i) {
     map_addr_var_[i] = NULL;
     map_addr_var_lengths_[i] = 0;
     tiles_var_[i] = NULL;
@@ -114,11 +114,11 @@ ReadState::ReadState(
     tiles_var_allocated_size_[i] = 0;
   }
 
-  for(int i=0; i<attribute_num+1; ++i) {
+  for(int i=0; i<attribute_num_+1; ++i) {
     overflow_[i] = false;
   }
 
-  for(int i=0; i<attribute_num+2; ++i) {
+  for(int i=0; i<attribute_num_+2; ++i) {
     fetched_tile_[i] = -1;
     map_addr_[i] = NULL;
     map_addr_lengths_[i] = 0;
@@ -129,6 +129,16 @@ ReadState::ReadState(
   }
 
   compute_tile_search_range();
+
+  // Check empty attributes
+  std::string fragment_name = fragment_->fragment_name();
+  std::string filename;
+  is_empty_attribute_.resize(attribute_num_+1);
+  for(int i=0; i<attribute_num_+1; ++i) {
+    filename = 
+        fragment_name + "/" + array_schema_->attribute(i) + TILEDB_FILE_SUFFIX;
+    is_empty_attribute_[i] = !is_file(filename);
+  }
 }
 
 ReadState::~ReadState() { 
@@ -186,11 +196,12 @@ bool ReadState::done() const {
 
 void ReadState::get_bounding_coords(void* bounding_coords) const {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t coords_size = array_schema->coords_size();
   int64_t pos = search_tile_pos_;
   assert(pos != -1);
-  memcpy(bounding_coords, book_keeping_->bounding_coords()[pos], 2*coords_size);
+  memcpy(
+      bounding_coords, 
+      book_keeping_->bounding_coords()[pos], 
+      2*coords_size_);
 }
 
 bool ReadState::mbr_overlaps_tile() const {
@@ -244,8 +255,7 @@ int ReadState::copy_cells(
     return TILEDB_RS_OK;
 
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t cell_size = array_schema->cell_size(attribute_id);
+  size_t cell_size = array_schema_->cell_size(attribute_id);
 
   // Prepare attribute tile
   if(prepare_tile_for_reading(attribute_id, tile_i) != TILEDB_RS_OK)
@@ -260,7 +270,7 @@ int ReadState::copy_cells(
   }
 
   // Sanity check
-  assert(!array_schema->var_size(attribute_id));
+  assert(!array_schema_->var_size(attribute_id));
 
   // For each cell position range, copy the respective cells to the buffer
   size_t start_offset, end_offset;
@@ -312,7 +322,6 @@ int ReadState::copy_cells_var(
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
   size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
 
   // Calculate free space in buffer
@@ -331,7 +340,7 @@ int ReadState::copy_cells_var(
     return TILEDB_RS_ERR;
 
   // Sanity check
-  assert(array_schema->var_size(attribute_id));
+  assert(array_schema_->var_size(attribute_id));
 
   // For each cell position range, copy the respective cells to the buffer
   size_t start_offset, end_offset;
@@ -429,13 +438,10 @@ int ReadState::get_coords_after(
     T* coords_after,
     bool& coords_retrieved) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
   int64_t cell_num = book_keeping_->cell_num(search_tile_pos_);  
-  size_t coords_size = array_schema->coords_size();
 
   // Prepare attribute tile
-  if(prepare_tile_for_reading(attribute_num+1, search_tile_pos_) != 
+  if(prepare_tile_for_reading(attribute_num_+1, search_tile_pos_) != 
      TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
@@ -450,10 +456,10 @@ int ReadState::get_coords_after(
 
   // Copy result
   if(READ_FROM_TILE(
-      attribute_num+1,
+      attribute_num_+1,
       coords_after,
-      coords_after_pos*coords_size,
-      coords_size) != TILEDB_RS_OK)
+      coords_after_pos*coords_size_,
+      coords_size_) != TILEDB_RS_OK)
     return TILEDB_RS_ERR; 
   coords_retrieved = true;
  
@@ -472,13 +478,8 @@ int ReadState::get_enclosing_coords(
     bool& left_retrieved,
     bool& right_retrieved,
     bool& target_exists) {
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-  size_t coords_size = array_schema->coords_size();
-
   // Prepare attribute tile
-  if(prepare_tile_for_reading(attribute_num+1, tile_i) != 
+  if(prepare_tile_for_reading(attribute_num_+1, tile_i) != 
      TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
@@ -491,7 +492,7 @@ int ReadState::get_enclosing_coords(
   if(target_pos >= start_pos && target_pos <= end_pos) {
     int cmp = CMP_COORDS_TO_SEARCH_TILE(
                   target_coords,
-                  target_pos*coords_size);
+                  target_pos*coords_size_);
     if(cmp == TILEDB_RS_ERR)
       return TILEDB_RS_ERR;
     if(cmp)
@@ -509,10 +510,10 @@ int ReadState::get_enclosing_coords(
   // Copy left if it exists
   if(left_pos >= start_pos && left_pos <= end_pos) {
     if(READ_FROM_TILE(
-           attribute_num+1,
+           attribute_num_+1,
            left_coords,
-           left_pos*coords_size, 
-           coords_size) != TILEDB_RS_OK)
+           left_pos*coords_size_, 
+           coords_size_) != TILEDB_RS_OK)
       return TILEDB_RS_ERR;
     left_retrieved = true;
   } else {
@@ -522,10 +523,10 @@ int ReadState::get_enclosing_coords(
   // Copy right if it exists
   if(right_pos >= start_pos && right_pos <= end_pos) {
     if(READ_FROM_TILE(
-           attribute_num+1,
+           attribute_num_+1,
            right_coords,
-           right_pos*coords_size, 
-           coords_size) != TILEDB_RS_OK)
+           right_pos*coords_size_, 
+           coords_size_) != TILEDB_RS_OK)
       return TILEDB_RS_ERR;
     right_retrieved = true;
   } else {
@@ -542,13 +543,11 @@ int ReadState::get_fragment_cell_pos_range_sparse(
     const T* cell_range, 
     FragmentCellPosRange& fragment_cell_pos_range) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-  int dim_num = array_schema->dim_num();
+  int dim_num = array_schema_->dim_num();
   int64_t tile_i = fragment_info.second;
 
   // Prepare attribute tile
-  if(prepare_tile_for_reading(attribute_num+1, tile_i) != 
+  if(prepare_tile_for_reading(attribute_num_+1, tile_i) != 
      TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
@@ -576,10 +575,9 @@ int ReadState::get_fragment_cell_ranges_dense(
     return TILEDB_RS_OK;
 
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int dim_num = array_schema->dim_num();
-  int cell_order = array_schema->cell_order();
-  size_t cell_range_size = 2*array_schema->coords_size();
+  int dim_num = array_schema_->dim_num();
+  int cell_order = array_schema_->cell_order();
+  size_t cell_range_size = 2*coords_size_;
   const T* search_tile_overlap_subarray = 
       static_cast<const T*>(search_tile_overlap_subarray_);
   FragmentInfo fragment_info = FragmentInfo(fragment_i, search_tile_pos_);
@@ -675,8 +673,7 @@ int ReadState::get_fragment_cell_ranges_sparse(
     return TILEDB_RS_OK;
 
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int dim_num = array_schema->dim_num();
+  int dim_num = array_schema_->dim_num();
   const T* search_tile_overlap_subarray = 
       static_cast<const T*>(search_tile_overlap_subarray_);
 
@@ -709,32 +706,30 @@ int ReadState::get_fragment_cell_ranges_sparse(
     const T* start_coords,
     const T* end_coords,
     FragmentCellRanges& fragment_cell_ranges) {
+
   // Sanity checks
   assert(search_tile_pos_ >= tile_search_range_[0] &&
          search_tile_pos_ <= tile_search_range_[1]);
   assert(search_tile_overlap_);
 
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-  int dim_num = array_schema->dim_num();
-  size_t coords_size = array_schema->coords_size();
-  const T* subarray = static_cast<const T*>(fragment_->array()->subarray());
+  int dim_num = array_schema_->dim_num();
+  const T* subarray = static_cast<const T*>(array_->subarray());
 
   // Handle full overlap
   if(search_tile_overlap_ == 1) {
     FragmentCellRange fragment_cell_range;
     fragment_cell_range.first = FragmentInfo(fragment_i, search_tile_pos_); 
-    fragment_cell_range.second = malloc(2*coords_size);
+    fragment_cell_range.second = malloc(2*coords_size_);
     T* cell_range = static_cast<T*>(fragment_cell_range.second);
-    memcpy(cell_range, start_coords, coords_size);
-    memcpy(&cell_range[dim_num], end_coords, coords_size);
+    memcpy(cell_range, start_coords, coords_size_);
+    memcpy(&cell_range[dim_num], end_coords, coords_size_);
     fragment_cell_ranges.push_back(fragment_cell_range); 
     return TILEDB_RS_OK;
   }
 
   // Prepare attribute tile
-  if(prepare_tile_for_reading(attribute_num+1, search_tile_pos_) != 
+  if(prepare_tile_for_reading(attribute_num_+1, search_tile_pos_) != 
      TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
@@ -760,20 +755,20 @@ int ReadState::get_fragment_cell_ranges_sparse(
       if(i-1 == current_end_pos) { // The range needs to be added to the list
         FragmentCellRange fragment_cell_range;
         fragment_cell_range.first = FragmentInfo(fragment_i, search_tile_pos_);
-        fragment_cell_range.second = malloc(2*coords_size);
+        fragment_cell_range.second = malloc(2*coords_size_);
         T* cell_range = static_cast<T*>(fragment_cell_range.second);
 
         if(READ_FROM_TILE(
-               attribute_num+1,
+               attribute_num_+1,
                cell_range,
-               current_start_pos*coords_size,
-               coords_size) != TILEDB_RS_OK)
+               current_start_pos*coords_size_,
+               coords_size_) != TILEDB_RS_OK)
           return TILEDB_RS_ERR;
         if(READ_FROM_TILE(
-               attribute_num+1,
+               attribute_num_+1,
                &cell_range[dim_num],
-               current_end_pos*coords_size,
-               coords_size) != TILEDB_RS_OK)
+               current_end_pos*coords_size_,
+               coords_size_) != TILEDB_RS_OK)
           return TILEDB_RS_ERR;
 
         fragment_cell_ranges.push_back(fragment_cell_range);
@@ -786,20 +781,20 @@ int ReadState::get_fragment_cell_ranges_sparse(
   if(current_end_pos != -2) {
     FragmentCellRange fragment_cell_range;
     fragment_cell_range.first = FragmentInfo(fragment_i, search_tile_pos_);
-    fragment_cell_range.second = malloc(2*coords_size);
+    fragment_cell_range.second = malloc(2*coords_size_);
     T* cell_range = static_cast<T*>(fragment_cell_range.second);
 
     if(READ_FROM_TILE(
-           attribute_num+1,
+           attribute_num_+1,
            cell_range,
-           current_start_pos*coords_size,
-           coords_size) != TILEDB_RS_OK)
+           current_start_pos*coords_size_,
+           coords_size_) != TILEDB_RS_OK)
       return TILEDB_RS_ERR;
     if(READ_FROM_TILE(
-           attribute_num+1,
+           attribute_num_+1,
            &cell_range[dim_num],
-           current_end_pos*coords_size,
-           coords_size) != TILEDB_RS_OK)
+           current_end_pos*coords_size_,
+           coords_size_) != TILEDB_RS_OK)
       return TILEDB_RS_ERR;
 
     fragment_cell_ranges.push_back(fragment_cell_range);
@@ -816,23 +811,22 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
     return;
 
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int dim_num = array_schema->dim_num();
-  const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
-  const T* array_domain = static_cast<const T*>(array_schema->domain());
-  const T* subarray = static_cast<const T*>(fragment_->array()->subarray());
+  int dim_num = array_schema_->dim_num();
+  const T* tile_extents = static_cast<const T*>(array_schema_->tile_extents());
+  const T* array_domain = static_cast<const T*>(array_schema_->domain());
+  const T* subarray = static_cast<const T*>(array_->subarray());
   const T* domain = static_cast<const T*>(book_keeping_->domain());
   const T* non_empty_domain = 
       static_cast<const T*>(book_keeping_->non_empty_domain());
   
   // Compute the tile subarray
   T* tile_subarray = new T[2*dim_num];
-  array_schema->get_tile_subarray(tile_coords, tile_subarray); 
+  array_schema_->get_tile_subarray(tile_coords, tile_subarray); 
 
   // Compute overlap of tile subarray with non-empty fragment domain 
   T* tile_domain_overlap_subarray = new T[2*dim_num];
   bool tile_domain_overlap = 
-        array_schema->subarray_overlap(
+        array_schema_->subarray_overlap(
             tile_subarray,
             non_empty_domain, 
             tile_domain_overlap_subarray);
@@ -845,19 +839,19 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
     for(int i=0; i<dim_num; ++i)
       tile_coords_norm[i] = 
           tile_coords[i] - (domain[2*i]-array_domain[2*i]) / tile_extents[i]; 
-    search_tile_pos_ = array_schema->get_tile_pos(domain, tile_coords_norm);
+    search_tile_pos_ = array_schema_->get_tile_pos(domain, tile_coords_norm);
     delete [] tile_coords_norm;
 
     // Compute overlap of the query subarray with tile
     T* query_tile_overlap_subarray = new T[2*dim_num];
-    array_schema->subarray_overlap(
+    array_schema_->subarray_overlap(
          subarray,
          tile_subarray, 
          query_tile_overlap_subarray);
 
     // Compute the overlap of the previous results with the non-empty domain 
     search_tile_overlap_ = 
-        array_schema->subarray_overlap(
+        array_schema_->subarray_overlap(
             query_tile_overlap_subarray,
             tile_domain_overlap_subarray, 
             static_cast<T*>(search_tile_overlap_subarray_));
@@ -878,9 +872,8 @@ void ReadState::get_next_overlapping_tile_sparse() {
     return;
 
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
   const std::vector<void*>& mbrs = book_keeping_->mbrs();
-  const T* subarray = static_cast<const T*>(fragment_->array()->subarray());
+  const T* subarray = static_cast<const T*>(array_->subarray());
 
   // Update the search tile position
   if(search_tile_pos_ == -1)
@@ -898,7 +891,7 @@ void ReadState::get_next_overlapping_tile_sparse() {
 
     const T* mbr = static_cast<const T*>(mbrs[search_tile_pos_]);
     search_tile_overlap_ = 
-        array_schema->subarray_overlap(
+        array_schema_->subarray_overlap(
             subarray,
             mbr, 
             static_cast<T*>(search_tile_overlap_subarray_));
@@ -918,17 +911,15 @@ void ReadState::get_next_overlapping_tile_sparse(
     return;
 
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int dim_num = array_schema->dim_num();
-  size_t coords_size = array_schema->coords_size();
+  int dim_num = array_schema_->dim_num();
   const std::vector<void*>& mbrs = book_keeping_->mbrs();
-  const T* subarray = static_cast<const T*>(fragment_->array()->subarray());
+  const T* subarray = static_cast<const T*>(array_->subarray());
 
   // Compute the tile subarray
   T* tile_subarray = new T[2*dim_num];
   T* mbr_tile_overlap_subarray = new T[2*dim_num];
   T* tile_subarray_end = new T[dim_num];
-  array_schema->get_tile_subarray(tile_coords, tile_subarray); 
+  array_schema_->get_tile_subarray(tile_coords, tile_subarray); 
   for(int i=0; i<dim_num; ++i)
     tile_subarray_end[i] = tile_subarray[2*i+1];
 
@@ -942,15 +933,15 @@ void ReadState::get_next_overlapping_tile_sparse(
 
   // Check against last coordinates
   if(last_tile_coords_ == NULL) {
-    last_tile_coords_ = malloc(coords_size);
-    memcpy(last_tile_coords_, tile_coords, coords_size); 
+    last_tile_coords_ = malloc(coords_size_);
+    memcpy(last_tile_coords_, tile_coords, coords_size_); 
   } else {
-    if(!memcmp(last_tile_coords_, tile_coords, coords_size)) {
+    if(!memcmp(last_tile_coords_, tile_coords, coords_size_)) {
       // Advance only if the MBR does not exceed the tile
       const T* bounding_coords = 
           static_cast<const T*>(
               book_keeping_->bounding_coords()[search_tile_pos_]);
-      if(array_schema->tile_cell_order_cmp(
+      if(array_schema_->tile_cell_order_cmp(
              &bounding_coords[dim_num], 
              tile_subarray_end) <= 0) {
         ++search_tile_pos_;
@@ -958,7 +949,7 @@ void ReadState::get_next_overlapping_tile_sparse(
         return;
       }
     } else { 
-      memcpy(last_tile_coords_, tile_coords, coords_size);
+      memcpy(last_tile_coords_, tile_coords, coords_size_);
     }
   }
 
@@ -973,7 +964,7 @@ void ReadState::get_next_overlapping_tile_sparse(
     // Get overlap between MBR and tile subarray
     const T* mbr = static_cast<const T*>(mbrs[search_tile_pos_]);
     mbr_tile_overlap_ = 
-        array_schema->subarray_overlap(
+        array_schema_->subarray_overlap(
             tile_subarray,
             mbr, 
             mbr_tile_overlap_subarray);
@@ -984,7 +975,7 @@ void ReadState::get_next_overlapping_tile_sparse(
       const T* bounding_coords = 
           static_cast<const T*>(
               book_keeping_->bounding_coords()[search_tile_pos_]);
-      if(array_schema->tile_cell_order_cmp(
+      if(array_schema_->tile_cell_order_cmp(
              &bounding_coords[dim_num], 
              tile_subarray_end) > 0) {
         break;
@@ -996,7 +987,7 @@ void ReadState::get_next_overlapping_tile_sparse(
   
     // Get overlap of MBR with the query inside the tile subarray
     search_tile_overlap_ = 
-        array_schema->subarray_overlap(
+        array_schema_->subarray_overlap(
             subarray,
             mbr_tile_overlap_subarray, 
             static_cast<T*>(search_tile_overlap_subarray_));
@@ -1031,40 +1022,37 @@ int ReadState::CMP_COORDS_TO_SEARCH_TILE(
     const void* buffer,
     size_t tile_offset) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-  size_t coords_size = array_schema->coords_size(); 
-  char* tile = static_cast<char*>(tiles_[attribute_num+1]);
+  char* tile = static_cast<char*>(tiles_[attribute_num_+1]);
 
   // The tile is in main memory
   if(tile != NULL) {
-    return !memcmp(buffer, tile + tile_offset, coords_size);
+    return !memcmp(buffer, tile + tile_offset, coords_size_);
   } 
 
   // We need to read from the disk
   std::string filename = 
       fragment_->fragment_name() + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
-  int read_method = fragment_->array()->config()->read_method();
-  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+  int read_method = array_->config()->read_method();
+  MPI_Comm* mpi_comm = array_->config()->mpi_comm();
   if(read_method == TILEDB_IO_READ)
     rc = read_from_file(
              filename, 
-             tiles_file_offsets_[attribute_num+1] + tile_offset, 
+             tiles_file_offsets_[attribute_num_+1] + tile_offset, 
              tmp_coords_, 
-             coords_size);
+             coords_size_);
   else if(read_method == TILEDB_IO_MPI) 
     rc = mpi_io_read_from_file(
              mpi_comm,
              filename, 
-             tiles_file_offsets_[attribute_num+1] + tile_offset, 
+             tiles_file_offsets_[attribute_num_+1] + tile_offset, 
              tmp_coords_, 
-             coords_size);
+             coords_size_);
   if(rc != TILEDB_UT_OK)
     return TILEDB_RS_ERR;
 
   // Return
-  return !memcmp(buffer, tmp_coords_, coords_size);
+  return !memcmp(buffer, tmp_coords_, coords_size_);
 }
 
 int ReadState::compute_bytes_to_copy(
@@ -1167,8 +1155,7 @@ int ReadState::compute_bytes_to_copy(
 
 void ReadState::compute_tile_search_range() {
    // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int coords_type = array_schema->coords_type();
+  int coords_type = array_schema_->coords_type();
 
   // Applicable only to sparse fragments
   if(fragment_->dense())
@@ -1192,8 +1179,7 @@ void ReadState::compute_tile_search_range() {
 template<class T>
 void ReadState::compute_tile_search_range() {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int cell_order = array_schema->cell_order();
+  int cell_order = array_schema_->cell_order();
 
   // Initialize the tile search range
   if(cell_order == TILEDB_HILBERT)  // HILBERT CELL ORDER
@@ -1211,9 +1197,8 @@ void ReadState::compute_tile_search_range() {
 template<class T>
 void ReadState::compute_tile_search_range_col_or_row() {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int dim_num = array_schema->dim_num();
-  const T* subarray = static_cast<const T*>(fragment_->array()->subarray());
+  int dim_num = array_schema_->dim_num();
+  const T* subarray = static_cast<const T*>(array_->subarray());
   int64_t tile_num = book_keeping_->tile_num();
   const std::vector<void*>& bounding_coords = 
       book_keeping_->bounding_coords();
@@ -1242,11 +1227,11 @@ void ReadState::compute_tile_search_range_col_or_row() {
     tile_end_coords = &(static_cast<const T*>(bounding_coords[med])[dim_num]);
 
     // Calculate precedence
-    if(array_schema->tile_cell_order_cmp(
+    if(array_schema_->tile_cell_order_cmp(
            subarray_min_coords,
            tile_start_coords) < 0) {   // Subarray min precedes MBR
       max = med-1;
-    } else if(array_schema->tile_cell_order_cmp(
+    } else if(array_schema_->tile_cell_order_cmp(
            subarray_min_coords,
            tile_end_coords) > 0) {     // Subarray min succeeds MBR
       min = med+1;
@@ -1280,11 +1265,11 @@ void ReadState::compute_tile_search_range_col_or_row() {
       tile_end_coords = &(static_cast<const T*>(bounding_coords[med])[dim_num]);
      
       // Calculate precedence
-      if(array_schema->tile_cell_order_cmp(
+      if(array_schema_->tile_cell_order_cmp(
              subarray_max_coords,
              tile_start_coords) < 0) {   // Subarray max precedes MBR
         max = med-1;
-      } else if(array_schema->tile_cell_order_cmp(
+      } else if(array_schema_->tile_cell_order_cmp(
              subarray_max_coords,
              tile_end_coords) > 0) {     // Subarray max succeeds MBR
         min = med+1;
@@ -1314,9 +1299,8 @@ void ReadState::compute_tile_search_range_col_or_row() {
 template<class T>
 void ReadState::compute_tile_search_range_hil() {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int dim_num = array_schema->dim_num();
-  const T* subarray = static_cast<const T*>(fragment_->array()->subarray());
+  int dim_num = array_schema_->dim_num();
+  const T* subarray = static_cast<const T*>(array_->subarray());
   int64_t tile_num = book_keeping_->tile_num();
 
   if(is_unary_subarray(subarray, dim_num)) {  // Unary range
@@ -1343,11 +1327,11 @@ void ReadState::compute_tile_search_range_hil() {
       tile_end_coords = &(static_cast<const T*>(bounding_coords[med])[dim_num]);
      
       // Calculate precedence
-      if(array_schema->tile_cell_order_cmp(
+      if(array_schema_->tile_cell_order_cmp(
              subarray_coords,
              tile_start_coords) < 0) {   // Unary subarray precedes MBR
         max = med-1;
-      } else if(array_schema->tile_cell_order_cmp(
+      } else if(array_schema_->tile_cell_order_cmp(
              subarray_coords,
              tile_end_coords) > 0) {     // Unary subarray succeeds MBR
         min = med+1;
@@ -1381,9 +1365,7 @@ void ReadState::compute_tile_search_range_hil() {
 template<class T>
 int64_t ReadState::get_cell_pos_after(const T* coords) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-  int64_t cell_num = book_keeping_->cell_num(fetched_tile_[attribute_num+1]);  
+  int64_t cell_num = book_keeping_->cell_num(fetched_tile_[attribute_num_+1]);  
 
   // Perform binary search to find the position of coords in the tile
   int64_t min = 0;
@@ -1397,7 +1379,9 @@ int64_t ReadState::get_cell_pos_after(const T* coords) {
     // Update search range
     if(GET_COORDS_PTR_FROM_SEARCH_TILE(med, coords_t) != TILEDB_RS_OK)
       return TILEDB_RS_ERR;
-    cmp = array_schema->tile_cell_order_cmp<T>(
+
+    // Compute order
+    cmp = array_schema_->tile_cell_order_cmp<T>(
               coords, 
               static_cast<const T*>(coords_t)); 
     if(cmp < 0) 
@@ -1405,7 +1389,7 @@ int64_t ReadState::get_cell_pos_after(const T* coords) {
     else if(cmp > 0)  
       min = med+1;
     else       
-      break; 
+      break;
   }
 
   // Return
@@ -1418,9 +1402,7 @@ int64_t ReadState::get_cell_pos_after(const T* coords) {
 template<class T>
 int64_t ReadState::get_cell_pos_at_or_after(const T* coords) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-  int64_t cell_num = book_keeping_->cell_num(fetched_tile_[attribute_num+1]);  
+  int64_t cell_num = book_keeping_->cell_num(fetched_tile_[attribute_num_+1]);  
 
   // Perform binary search to find the position of coords in the tile
   int64_t min = 0;
@@ -1434,15 +1416,18 @@ int64_t ReadState::get_cell_pos_at_or_after(const T* coords) {
     // Update search range
     if(GET_COORDS_PTR_FROM_SEARCH_TILE(med, coords_t) != TILEDB_RS_OK)
       return TILEDB_RS_ERR;
-    cmp = array_schema->tile_cell_order_cmp<T>(
+
+    // Compute order
+    cmp = array_schema_->tile_cell_order_cmp<T>(
               coords, 
               static_cast<const T*>(coords_t)); 
+
     if(cmp < 0) 
       max = med-1;
     else if(cmp > 0)  
       min = med+1;
     else       
-      break; 
+      break;
   }
 
   // Return
@@ -1455,9 +1440,7 @@ int64_t ReadState::get_cell_pos_at_or_after(const T* coords) {
 template<class T>
 int64_t ReadState::get_cell_pos_at_or_before(const T* coords) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-  int64_t cell_num = book_keeping_->cell_num(fetched_tile_[attribute_num+1]);  
+  int64_t cell_num = book_keeping_->cell_num(fetched_tile_[attribute_num_+1]);  
 
   // Perform binary search to find the position of coords in the tile
   int64_t min = 0;
@@ -1471,7 +1454,9 @@ int64_t ReadState::get_cell_pos_at_or_before(const T* coords) {
     // Update search range
     if(GET_COORDS_PTR_FROM_SEARCH_TILE(med, coords_t) != TILEDB_RS_OK)
       return TILEDB_RS_ERR;
-    cmp = array_schema->tile_cell_order_cmp<T>(
+
+    // Compute order
+    cmp = array_schema_->tile_cell_order_cmp<T>(
               coords, 
               static_cast<const T*>(coords_t)); 
     if(cmp < 0) 
@@ -1479,7 +1464,7 @@ int64_t ReadState::get_cell_pos_at_or_before(const T* coords) {
     else if(cmp > 0)  
       min = med+1;
     else       
-      break; 
+      break;
   }
 
   // Return
@@ -1489,18 +1474,16 @@ int64_t ReadState::get_cell_pos_at_or_before(const T* coords) {
     return med;   // At
 }
 
+inline
 int ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
     int64_t i,
     const void*& coords) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-  size_t coords_size = array_schema->coords_size();
-  char* tile = static_cast<char*>(tiles_[attribute_num+1]);
+  char* tile = static_cast<char*>(tiles_[attribute_num_+1]);
 
   // The tile is in main memory
   if(tile != NULL) {
-    coords = tile + i*coords_size;
+    coords = tile + i*coords_size_;
     return TILEDB_RS_OK;
   } 
 
@@ -1508,21 +1491,21 @@ int ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
   std::string filename = 
       fragment_->fragment_name() + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
-  int read_method = fragment_->array()->config()->read_method();
-  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+  int read_method = array_->config()->read_method();
+  MPI_Comm* mpi_comm = array_->config()->mpi_comm();
   if(read_method == TILEDB_IO_READ)
     rc = read_from_file(
              filename, 
-             tiles_file_offsets_[attribute_num+1] + i*coords_size, 
+             tiles_file_offsets_[attribute_num_+1] + i*coords_size_, 
              tmp_coords_, 
-             coords_size);
+             coords_size_);
   else if(read_method == TILEDB_IO_MPI) 
     rc = mpi_io_read_from_file(
              mpi_comm,
              filename, 
-             tiles_file_offsets_[attribute_num+1] + i*coords_size, 
+             tiles_file_offsets_[attribute_num_+1] + i*coords_size_, 
              tmp_coords_, 
-             coords_size);
+             coords_size_);
 
   // Get coordinates pointer
   coords = tmp_coords_;
@@ -1550,11 +1533,11 @@ int ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
   // We need to read from the disk
   std::string filename = 
       fragment_->fragment_name() + "/" + 
-      fragment_->array()->array_schema()->attribute(attribute_id) + 
+      array_schema_->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
-  int read_method = fragment_->array()->config()->read_method();
-  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+  int read_method = array_->config()->read_method();
+  MPI_Comm* mpi_comm = array_->config()->mpi_comm();
   if(read_method == TILEDB_IO_READ)
     rc = read_from_file(
              filename, 
@@ -1580,28 +1563,21 @@ int ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
 }
 
 bool ReadState::is_empty_attribute(int attribute_id) const {
-  // Prepare attribute file name
-  std::string filename = 
-      fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id) + 
-      TILEDB_FILE_SUFFIX;
+  // Special case for search coordinate tiles
+  if(attribute_id == attribute_num_ + 1) 
+    attribute_id = attribute_num_;
 
-  // Check if the attribute file exists
-  return !is_file(filename);
+  return is_empty_attribute_[attribute_id];
 }
 
 int ReadState::map_tile_from_file_cmp_gzip(
     int attribute_id,
     off_t offset,
     size_t tile_size) {
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-
   // To handle the special case of the search tile
   // The real attribute id corresponds to an actual attribute or coordinates 
   int attribute_id_real = 
-      (attribute_id == attribute_num+1) ? attribute_num : attribute_id;
+      (attribute_id == attribute_num_+1) ? attribute_num_ : attribute_id;
 
   // Unmap
   if(map_addr_compressed_ != NULL) {
@@ -1614,7 +1590,7 @@ int ReadState::map_tile_from_file_cmp_gzip(
   // Prepare attribute file name
   std::string filename = 
       fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id_real) +
+      array_schema_->attribute(attribute_id_real) +
       TILEDB_FILE_SUFFIX;
 
   // Calculate offset considering the page size
@@ -1683,7 +1659,7 @@ int ReadState::map_tile_from_file_var_cmp_gzip(
   // Prepare attribute file name
   std::string filename = 
       fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id) + "_var" +
+      array_schema_->attribute(attribute_id) + "_var" +
       TILEDB_FILE_SUFFIX;
 
   // Calculate offset considering the page size
@@ -1747,14 +1723,10 @@ int ReadState::map_tile_from_file_cmp_none(
     int attribute_id,
     off_t offset,
     size_t tile_size) {
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-
   // To handle the special case of the search tile
   // The real attribute id corresponds to an actual attribute or coordinates 
   int attribute_id_real = 
-      (attribute_id == attribute_num+1) ? attribute_num : attribute_id;
+      (attribute_id == attribute_num_+1) ? attribute_num_ : attribute_id;
 
   // Unmap
   if(map_addr_[attribute_id] != NULL) {
@@ -1767,7 +1739,7 @@ int ReadState::map_tile_from_file_cmp_none(
   // Prepare attribute file name
   std::string filename = 
       fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id_real) +
+      array_schema_->attribute(attribute_id_real) +
       TILEDB_FILE_SUFFIX;
 
   // Calculate offset considering the page size
@@ -1788,8 +1760,7 @@ int ReadState::map_tile_from_file_cmp_none(
   }
 
   // Map
-  bool var_size = 
-      fragment_->array()->array_schema()->var_size(attribute_id_real);
+  bool var_size = array_schema_->var_size(attribute_id_real);
   int prot = var_size ? (PROT_READ | PROT_WRITE) : PROT_READ;
   int flags = var_size ? MAP_PRIVATE : MAP_SHARED;
   map_addr_[attribute_id] = 
@@ -1839,7 +1810,7 @@ int ReadState::map_tile_from_file_var_cmp_none(
   // Prepare attribute file name
   std::string filename = 
       fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id) + "_var" +
+      array_schema_->attribute(attribute_id) + "_var" +
       TILEDB_FILE_SUFFIX;
 
   // Calculate offset considering the page size
@@ -1908,14 +1879,12 @@ int ReadState::mpi_io_read_tile_from_file_cmp_gzip(
     off_t offset,
     size_t tile_size) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-  const MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+  const MPI_Comm* mpi_comm = array_->config()->mpi_comm();
 
   // To handle the special case of the search tile
   // The real attribute id corresponds to an actual attribute or coordinates 
   int attribute_id_real = 
-      (attribute_id == attribute_num+1) ? attribute_num : attribute_id;
+      (attribute_id == attribute_num_+1) ? attribute_num_ : attribute_id;
 
   // Potentially allocate compressed tile buffer
   if(tile_compressed_ == NULL) {
@@ -1929,7 +1898,7 @@ int ReadState::mpi_io_read_tile_from_file_cmp_gzip(
   // Prepare attribute file name
   std::string filename = 
       fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id_real) +
+      array_schema_->attribute(attribute_id_real) +
       TILEDB_FILE_SUFFIX;
 
   // Read from file
@@ -1949,7 +1918,7 @@ int ReadState::mpi_io_read_tile_from_file_var_cmp_gzip(
     off_t offset,
     size_t tile_size) {
   // For easy reference
-  const MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+  const MPI_Comm* mpi_comm = array_->config()->mpi_comm();
 
   // Potentially allocate compressed tile buffer
   if(tile_compressed_ == NULL) {
@@ -1966,7 +1935,7 @@ int ReadState::mpi_io_read_tile_from_file_var_cmp_gzip(
   // Prepare attribute file name
   std::string filename = 
       fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id) + "_var" +
+      array_schema_->attribute(attribute_id) + "_var" +
       TILEDB_FILE_SUFFIX;
 
   // Read from file
@@ -1985,8 +1954,7 @@ int ReadState::prepare_tile_for_reading(
     int attribute_id, 
     int64_t tile_i) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int compression = array_schema->compression(attribute_id);
+  int compression = array_schema_->compression(attribute_id);
 
   // Invoke the proper function based on the compression type
   if(compression == TILEDB_GZIP)
@@ -1999,8 +1967,7 @@ int ReadState::prepare_tile_for_reading_var(
     int attribute_id, 
     int64_t tile_i) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int compression = array_schema->compression(attribute_id);
+  int compression = array_schema_->compression(attribute_id);
 
   // Invoke the proper function based on the compression type
   if(compression == TILEDB_GZIP)
@@ -2016,17 +1983,13 @@ int ReadState::prepare_tile_for_reading_cmp_gzip(
   if(tile_i == fetched_tile_[attribute_id])
     return TILEDB_RS_OK;
 
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-
   // To handle the special case of the search tile
   // The real attribute id corresponds to an actual attribute or coordinates 
   int attribute_id_real = 
-      (attribute_id == attribute_num+1) ? attribute_num : attribute_id;
+      (attribute_id == attribute_num_+1) ? attribute_num_ : attribute_id;
 
   // For easy reference
-  size_t cell_size = array_schema->cell_size(attribute_id_real);
+  size_t cell_size = array_schema_->cell_size(attribute_id_real);
   size_t full_tile_size = fragment_->tile_size(attribute_id_real);
   int64_t cell_num = book_keeping_->cell_num(tile_i);  
   size_t tile_size = cell_num * cell_size; 
@@ -2040,7 +2003,7 @@ int ReadState::prepare_tile_for_reading_cmp_gzip(
 
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema->attribute(attribute_id_real) +
+                         array_schema_->attribute(attribute_id_real) +
                          TILEDB_FILE_SUFFIX;
 
   // Find file offset where the tile begins
@@ -2054,7 +2017,7 @@ int ReadState::prepare_tile_for_reading_cmp_gzip(
 
   // Read tile from file
   int rc = TILEDB_RS_OK;
-  int read_method = fragment_->array()->config()->read_method();
+  int read_method = array_->config()->read_method();
   if(read_method ==  TILEDB_IO_READ)
     rc = read_tile_from_file_cmp_gzip(
          attribute_id, 
@@ -2106,17 +2069,13 @@ int ReadState::prepare_tile_for_reading_cmp_none(
   if(tile_i == fetched_tile_[attribute_id])
     return TILEDB_RS_OK;
 
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-
   // To handle the special case of the search tile
   // The real attribute id corresponds to an actual attribute or coordinates 
   int attribute_id_real = 
-      (attribute_id == attribute_num+1) ? attribute_num : attribute_id;
+      (attribute_id == attribute_num_+1) ? attribute_num_ : attribute_id;
 
   // For easy reference
-  size_t cell_size = array_schema->cell_size(attribute_id_real);
+  size_t cell_size = array_schema_->cell_size(attribute_id_real);
   size_t full_tile_size = fragment_->tile_size(attribute_id_real);
   int64_t cell_num = book_keeping_->cell_num(tile_i);  
   size_t tile_size = cell_num * cell_size; 
@@ -2126,7 +2085,7 @@ int ReadState::prepare_tile_for_reading_cmp_none(
 
   // Read tile from file
   int rc = TILEDB_RS_OK;
-  int read_method = fragment_->array()->config()->read_method();
+  int read_method = array_->config()->read_method();
   if(read_method ==  TILEDB_IO_READ || 
      read_method == TILEDB_IO_MPI)
     rc = set_tile_file_offset(
@@ -2160,12 +2119,10 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
   if(tile_i == fetched_tile_[attribute_id])
     return TILEDB_RS_OK;
 
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-
   // Sanity check
-  assert(attribute_id < attribute_num && array_schema->var_size(attribute_id));
+  assert(
+      attribute_id < attribute_num_ && 
+      array_schema_->var_size(attribute_id));
 
   // For easy reference
   size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
@@ -2182,7 +2139,7 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
 
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
-             array_schema->attribute(attribute_id) +
+             array_schema_->attribute(attribute_id) +
              TILEDB_FILE_SUFFIX;
 
   // Find file offset where the tile begins
@@ -2199,7 +2156,7 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
 
   // Read tile from file
   int rc = TILEDB_RS_OK;
-  int read_method = fragment_->array()->config()->read_method();
+  int read_method = array_->config()->read_method();
   if(read_method ==  TILEDB_IO_READ)
     rc = read_tile_from_file_cmp_gzip(
          attribute_id, 
@@ -2241,7 +2198,7 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
 
   // Prepare variable attribute file name
   filename = fragment_->fragment_name() + "/" +
-             array_schema->attribute(attribute_id) + "_var" +
+             array_schema_->attribute(attribute_id) + "_var" +
              TILEDB_FILE_SUFFIX;
 
   // Calculate offset and compressed tile size
@@ -2272,7 +2229,7 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
 
   // Read tile from file
   int rc = TILEDB_RS_OK;
-  int read_method = fragment_->array()->config()->read_method();
+  int read_method = array_->config()->read_method();
   if(read_method ==  TILEDB_IO_READ)
     rc = read_tile_from_file_var_cmp_gzip(
          attribute_id, 
@@ -2327,12 +2284,10 @@ int ReadState::prepare_tile_for_reading_var_cmp_none(
   if(tile_i == fetched_tile_[attribute_id])
     return TILEDB_RS_OK;
 
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-
   // Sanity check
-  assert(attribute_id < attribute_num && array_schema->var_size(attribute_id));
+  assert(
+      attribute_id < attribute_num_ && 
+      array_schema_->var_size(attribute_id));
 
   // For easy reference
   size_t full_tile_size = fragment_->tile_size(attribute_id);
@@ -2343,7 +2298,7 @@ int ReadState::prepare_tile_for_reading_var_cmp_none(
 
   // Read tile from file
   int rc = TILEDB_RS_OK;
-  int read_method = fragment_->array()->config()->read_method();
+  int read_method = array_->config()->read_method();
   if(read_method ==  TILEDB_IO_READ || 
      read_method == TILEDB_IO_MPI)
     rc = set_tile_file_offset(
@@ -2373,7 +2328,7 @@ int ReadState::prepare_tile_for_reading_var_cmp_none(
   size_t tile_var_size;
   std::string filename = 
         fragment_->fragment_name() + "/" +
-        array_schema->attribute(attribute_id) + 
+        array_schema_->attribute(attribute_id) + 
         TILEDB_FILE_SUFFIX;
 
   if(tile_i != tile_num - 1) { // Not the last tile
@@ -2386,7 +2341,7 @@ int ReadState::prepare_tile_for_reading_var_cmp_none(
         return TILEDB_RS_ERR;
     } else if(read_method == TILEDB_IO_MPI) {
        if(mpi_io_read_from_file(
-             fragment_->array()->config()->mpi_comm(),
+             array_->config()->mpi_comm(),
              filename, file_offset + full_tile_size, 
              &end_tile_var_offset, 
              TILEDB_CELL_VAR_OFFSET_SIZE) != TILEDB_UT_OK)
@@ -2397,7 +2352,7 @@ int ReadState::prepare_tile_for_reading_var_cmp_none(
     // Prepare variable attribute file name
     std::string filename = 
         fragment_->fragment_name() + "/" +
-        array_schema->attribute(attribute_id) + "_var" +
+        array_schema_->attribute(attribute_id) + "_var" +
         TILEDB_FILE_SUFFIX;
     tile_var_size = file_size(filename) - tile_s[0];
   }
@@ -2450,11 +2405,11 @@ int ReadState::READ_FROM_TILE(
   // We need to read from the disk
   std::string filename = 
       fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id) + 
+      array_schema_->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
-  int read_method = fragment_->array()->config()->read_method();
-  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+  int read_method = array_->config()->read_method();
+  MPI_Comm* mpi_comm = array_->config()->mpi_comm();
   if(read_method == TILEDB_IO_READ)
     rc = read_from_file(
              filename, 
@@ -2493,11 +2448,11 @@ int ReadState::READ_FROM_TILE_VAR(
   // We need to read from the disk
   std::string filename = 
       fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id) + "_var" +
+      array_schema_->attribute(attribute_id) + "_var" +
       TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
-  int read_method = fragment_->array()->config()->read_method();
-  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+  int read_method = array_->config()->read_method();
+  MPI_Comm* mpi_comm = array_->config()->mpi_comm();
   if(read_method == TILEDB_IO_READ)
     rc = read_from_file(
              filename, 
@@ -2523,14 +2478,10 @@ int ReadState::read_tile_from_file_cmp_gzip(
     int attribute_id,
     off_t offset,
     size_t tile_size) {
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-
   // To handle the special case of the search tile
   // The real attribute id corresponds to an actual attribute or coordinates 
   int attribute_id_real = 
-      (attribute_id == attribute_num+1) ? attribute_num : attribute_id;
+      (attribute_id == attribute_num_+1) ? attribute_num_ : attribute_id;
 
   // Potentially allocate compressed tile buffer
   if(tile_compressed_ == NULL) {
@@ -2544,7 +2495,7 @@ int ReadState::read_tile_from_file_cmp_gzip(
   // Prepare attribute file name
   std::string filename = 
       fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id_real) +
+      array_schema_->attribute(attribute_id_real) +
       TILEDB_FILE_SUFFIX;
 
   // Read from file
@@ -2574,7 +2525,7 @@ int ReadState::read_tile_from_file_var_cmp_gzip(
   // Prepare attribute file name
   std::string filename = 
       fragment_->fragment_name() + "/" +
-      fragment_->array()->array_schema()->attribute(attribute_id) + "_var" +
+      array_schema_->attribute(attribute_id) + "_var" +
       TILEDB_FILE_SUFFIX;
 
   // Read from file

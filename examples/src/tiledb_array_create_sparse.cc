@@ -59,6 +59,11 @@ int main() {
         TILEDB_NO_COMPRESSION,    // a3
         TILEDB_NO_COMPRESSION     // coordinates
   };
+  int64_t tile_extents[] = 
+  { 
+      2,                          // d1
+      2                           // d2
+  };               
   const int types[] = 
   { 
       TILEDB_INT32,               // a1 
@@ -75,7 +80,7 @@ int main() {
       attributes,                 // Attributes 
       3,                          // Number of attributes 
       2,                          // Capacity 
-      TILEDB_HILBERT,             // Cell order 
+      TILEDB_ROW_MAJOR,           // Cell order 
       cell_val_num,               // Number of cell values per attribute  
       compression,                // Compression
       0,                          // Sparse array
@@ -83,9 +88,9 @@ int main() {
       2,                          // Number of dimensions
       domain,                     // Domain
       4*sizeof(int64_t),          // Domain length in bytes
-      NULL,                       // Tile extents
-      0,                          // Tile extents length in bytes 
-      0,                          // Tile order (will be ingored)
+      tile_extents,               // Tile extents
+      2*sizeof(int64_t),          // Tile extents length in bytes 
+      TILEDB_ROW_MAJOR,           // Tile order 
       types                       // Types
   );
 
