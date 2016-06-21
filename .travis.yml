@@ -17,8 +17,8 @@ before_script:
     - lcov --directory . --zerocounters
 
 script:
-    - make -j 4
-    - make test
+    - make CXX=mpic++ INCLUDE_PATHS=-I/usr/include/mpich MPILIB=-lmpich -j 4
+    - make test CXX=mpic++ INCLUDE_PATHS=-I/usr/include/mpich MPILIB=-lmpich 
     - lcov --directory . --capture --output-file coverage.info
     - lcov --list coverage.info # debug before upload
 
