@@ -37,7 +37,7 @@
 #include <limits.h>
 
 /** Version. */
-#define TILEDB_VERSION                           "0.1"
+#define TILEDB_VERSION                          "0.3.0"
 
 /**@{*/
 /** Return code. */  
@@ -56,6 +56,22 @@
 /** Metadata mode. */
 #define TILEDB_METADATA_READ                         0
 #define TILEDB_METADATA_WRITE                        1
+/**@}*/
+
+/**@{*/
+/** I/O method. */
+#define TILEDB_IO_MMAP                              0
+#define TILEDB_IO_READ                              1
+#define TILEDB_IO_MPI                               2
+#define TILEDB_IO_WRITE                             0
+/**@}*/
+
+/**@{*/
+/** Asynchronous I/O (AIO) code. */  
+#define TILEDB_AIO_ERR                                  -1
+#define TILEDB_AIO_COMPLETED                             0
+#define TILEDB_AIO_INPROGRESS                            1
+#define TILEDB_AIO_OVERFLOW                              2
 /**@}*/
 
 /** 

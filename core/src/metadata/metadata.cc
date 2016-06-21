@@ -151,7 +151,8 @@ int Metadata::init(
     const std::vector<BookKeeping*>& book_keeping,
     int mode,
     const char** attributes,
-    int attribute_num) {
+    int attribute_num,
+    const Config* config) {
   // Sanity check on mode
   if(mode != TILEDB_METADATA_READ &&
      mode != TILEDB_METADATA_WRITE) {
@@ -209,7 +210,8 @@ int Metadata::init(
               array_mode, 
               (const char**) array_attributes, 
               array_attribute_num, 
-              NULL);
+              NULL,
+              config);
 
   // Clean up
   for(int i=0; i<array_attribute_num; ++i) 

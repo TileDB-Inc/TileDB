@@ -452,10 +452,15 @@ class ArraySchema {
    * @param domain The targeted domain.
    * @param cell_coords The input cell coordinates, which the function modifies
    *     to store the next coordinates at termination.
+   * @param coords_retrieved Will store true if the retrieved coordinates are
+   *     inside the domain, and false otherwise.
    * @return void
    */
   template<class T> 
-  void get_next_cell_coords(const T* domain, T* cell_coords) const;
+  void get_next_cell_coords(
+      const T* domain, 
+      T* cell_coords, 
+      bool& coords_retrieved) const;
 
   /**
    * Retrieves the next tile coordinates along the array tile order within a
@@ -500,6 +505,18 @@ class ArraySchema {
       const T* subarray,
       T* tile_domain,
       T* subarray_in_tile_domain) const;
+
+  /**
+   * Returns the tile position along the array tile order within the input
+   * domain. Applicable only to **dense** arrays.
+   * 
+   * @template T The domain type.
+   * @param tile_coords The tile coordinates. 
+   * @return The tile position of *tile_coords* along the tile order of the
+   *     array inside the array domain, or TILEDB_AS_ERR on error.
+   */
+  template<class T> 
+  int64_t get_tile_pos(const T* tile_coords) const;
 
   /**
    * Returns the tile position along the array tile order within the input
@@ -565,8 +582,31 @@ class ArraySchema {
   template<class T>
   int64_t tile_id(const T* cell_coords) const;
 
+  /**
+   * Checks the tile order of the input coordinates.  
+   *
+   * @template T The coordinates type.
+   * @param coords_a The first input coordinates.
+   * @param coords_b The second input coordinates.
+   * @return One of the following:
+   *    - -1 if the first coordinates precede the second on the tile order
+   *    -  0 if the two coordinates have the same tile order
+   *    - +1 if the first coordinates succeed the second on the tile order
+   */
+  template<class T>
+  int tile_order_cmp(const T* coords_a, const T* coords_b) const;
 
 
+
+  /* ********************************* */
+  /*        AUXILIARY ATTRIBUTES       */
+  /* ********************************* */
+
+  /** 
+   * Auxiliary attribute used in the computation of tile ids, in order to avoid
+   * repeated allocations and deallocations that impact performance.
+   */
+  void* tile_coords_aux_;
 
  private:
   /* ********************************* */
@@ -613,6 +653,8 @@ class ArraySchema {
   std::vector<int> compression_;
   /** Auxiliary variable used when calculating Hilbert ids. */
   int* coords_for_hilbert_;
+  /** The size (in bytes) of the coordinates. */
+  size_t coords_size_;
   /** 
    * Specifies if the array is dense or sparse. If the array is dense, 
    * then the user must specify tile extents (see below).
@@ -648,6 +690,16 @@ class ArraySchema {
    * array has irregular tiles (and, hence, it is sparse).
    */
   void* tile_extents_;
+  /**
+   * Offsets for calculating tile positions and ids for the column-major 
+   * tile order. 
+   */
+  std::vector<int64_t> tile_offsets_col_;
+  /**
+   * Offsets for calculating tile positions and ids for the row-major 
+   * tile order. 
+   */
+  std::vector<int64_t> tile_offsets_row_;
   /** 
    * The tile order. It can be one of the following:
    *    - TILEDB_ROW_MAJOR
@@ -723,6 +775,22 @@ class ArraySchema {
    */
   void compute_tile_domain();
 
+  /**
+   * Computes tile offsets neccessary when computing tile positions and ids.
+   *
+   * @return void 
+   */
+  void compute_tile_offsets();
+
+  /**
+   * Computes tile offsets neccessary when computing tile positions and ids.
+   *
+   * @template T The coordinates type.
+   * @return void 
+   */
+  template<class T>
+  void compute_tile_offsets();
+
   /** 
    * Computes the tile domain. Applicable only to arrays with regular tiles.
    *
@@ -775,10 +843,15 @@ class ArraySchema {
    * @param domain The targeted domain.
    * @param cell_coords The input cell coordinates, which the function modifies
    *     to store the next coordinates at termination.
+   * @param coords_retrieved Will store true if the retrieved coordinates are
+   *     inside the domain, and false otherwise.
    * @return void
    */
   template<class T> 
-  void get_next_cell_coords_col(const T* domain, T* cell_coords) const;
+  void get_next_cell_coords_col(
+      const T* domain, 
+      T* cell_coords, 
+      bool& coords_retrieved) const;
 
   /**
    * Retrieves the next coordinates along the array cell order within a given
@@ -790,10 +863,15 @@ class ArraySchema {
    * @param domain The targeted domain.
    * @param cell_coords The input cell coordinates, which the function modifies
    *     to store the next coordinates at termination.
+   * @param coords_retrieved Will store true if the retrieved coordinates are
+   *     inside the domain, and false otherwise.
    * @return void
    */
   template<class T> 
-  void get_next_cell_coords_row(const T* domain, T* cell_coords) const;
+  void get_next_cell_coords_row(
+      const T* domain, 
+      T* cell_coords, 
+      bool& coords_retrieved) const;
 
   /**
    * Retrieves the next tile coordinates along the array tile order within a
@@ -859,6 +937,19 @@ class ArraySchema {
    * **column-major** tile order.
    * 
    * @template T The domain type.
+   * @param tile_coords The tile coordinates. 
+   * @return The tile position of *tile_coords* along the tile order of the
+   *     array inside the array domain.
+   */
+  template<class T> 
+  int64_t get_tile_pos_col(const T* tile_coords) const;
+
+  /**
+   * Returns the tile position along the array tile order within the input
+   * domain. Applicable only to **dense** arrays, and focusing on the 
+   * **column-major** tile order.
+   * 
+   * @template T The domain type.
    * @param The input domain, which is a cell domain partitioned into regular
    *     tiles in the same manner as that of the array domain (however *domain*
    *     may be a sub-domain of the array domain).
@@ -870,6 +961,19 @@ class ArraySchema {
   int64_t get_tile_pos_col(
       const T* domain,
       const T* tile_coords) const;
+
+  /**
+   * Returns the tile position along the array tile order within the input
+   * domain. Applicable only to **dense** arrays, and focusing on the 
+   * **row-major** tile order.
+   * 
+   * @template T The domain type.
+   * @param tile_coords The tile coordinates. 
+   * @return The tile position of *tile_coords* along the tile order of the
+   *     array inside the array domain.
+   */
+  template<class T> 
+  int64_t get_tile_pos_row(const T* tile_coords) const;
 
   /**
    * Returns the tile position along the array tile order within the input

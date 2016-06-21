@@ -377,7 +377,6 @@ bool check_buffer(
   return fail;
 }
 TEST_F(TileDBAPITest, DenseArrayRandomUpdates) {
-
   int64_t dim0 = 100;
   int64_t dim1 = 100;
   int64_t chunkDim0 = 10;

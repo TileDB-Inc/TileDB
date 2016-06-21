@@ -59,7 +59,7 @@
 #  define PRINT_WARNING(x) do { } while(0) 
 #endif
 
-#ifdef GNU_PARALLEL
+#ifdef OPENMP
   #include <parallel/algorithm>
   #define SORT_LIB __gnu_parallel
 #else
@@ -93,32 +93,16 @@ StorageManager::~StorageManager() {
 /* ****************************** */
 
 int StorageManager::finalize() {
+  if(config_ != NULL)
+    delete config_;
+
   return open_array_mtx_destroy();
 }
 
-int StorageManager::init(const char* config_filename) {
+int StorageManager::init(Config* config) {
   // Set configuration parameters
-  if(config_filename == NULL)
-    config_set_default();
-  else if(config_set(config_filename) != TILEDB_SM_OK)
+  if(config_set(config) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
-
-  // Set the TileDB home directory
-  tiledb_home_ = TILEDB_HOME;
-  if(tiledb_home_ == "") {
-    auto env_home_ptr = getenv("HOME");
-    tiledb_home_ = env_home_ptr ? env_home_ptr : "";
-    if(tiledb_home_ == "") {
-      char cwd[1024];
-      if(getcwd(cwd, sizeof(cwd)) != NULL) {
-        tiledb_home_ = cwd;
-      } else {
-        PRINT_ERROR("Cannot set TileDB home directory");
-        return TILEDB_SM_ERR;
-      }
-    }
-    tiledb_home_ += "/.tiledb";
-  }
 
   // Set the master catalog directory
   master_catalog_dir_ = tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG;
@@ -128,7 +112,9 @@ int StorageManager::init(const char* config_filename) {
   if(!is_dir(tiledb_home_)) { 
     if(create_dir(tiledb_home_) != TILEDB_UT_OK)
       return TILEDB_SM_ERR;
+  }
 
+  if(!is_metadata(master_catalog_dir_)) {
     if(master_catalog_create() != TILEDB_SM_OK)
       return TILEDB_SM_ERR;
   }
@@ -518,7 +504,7 @@ int StorageManager::array_init(
     return TILEDB_SM_ERR;
 
   // Open the array
-  OpenArray* open_array;
+  OpenArray* open_array = NULL;
   if(mode == TILEDB_ARRAY_READ) {
     if(array_open(real_dir(array_dir), open_array) != TILEDB_SM_OK)
       return TILEDB_SM_ERR;
@@ -533,7 +519,8 @@ int StorageManager::array_init(
          mode, 
          attributes, 
          attribute_num, 
-         subarray) != TILEDB_AR_OK) {
+         subarray,
+         config_) != TILEDB_AR_OK) {
     delete array_schema;
     delete array;
     array = NULL;
@@ -854,7 +841,7 @@ int StorageManager::metadata_init(
     return TILEDB_SM_ERR;
 
   // Open the array that implements the metadata
-  OpenArray* open_array;
+  OpenArray* open_array = NULL;
   if(mode == TILEDB_METADATA_READ) {
     if(array_open(real_dir(metadata_dir), open_array) != TILEDB_SM_OK)
       return TILEDB_SM_ERR;
@@ -868,7 +855,8 @@ int StorageManager::metadata_init(
                open_array->book_keeping_,
                mode, 
                attributes, 
-               attribute_num);
+               attribute_num,
+               config_);
 
   // Return
   if(rc != TILEDB_MT_OK) {
@@ -1065,7 +1053,7 @@ int StorageManager::delete_entire(const std::string& dir) {
   } else if(is_metadata(dir)) {
     return metadata_delete(dir);
   } else {
-    PRINT_ERROR("Clear failed; Invalid directory");
+    PRINT_ERROR("Delete failed; Invalid directory");
     return TILEDB_SM_ERR;
   }
 
@@ -1369,13 +1357,33 @@ int StorageManager::array_open(
   return TILEDB_SM_OK;
 }
 
-int StorageManager::config_set(const char* config_filename) {
+int StorageManager::config_set(Config* config) {
+  // Store config locally
+  config_ = config;
+
+  // Set the TileDB home directory
+  tiledb_home_ = config->home();
+  if(tiledb_home_ == "") {
+    auto env_home_ptr = getenv("HOME");
+    tiledb_home_ = env_home_ptr ? env_home_ptr : "";
+    if(tiledb_home_ == "") {
+      char cwd[1024];
+      if(getcwd(cwd, sizeof(cwd)) != NULL) {
+        tiledb_home_ = cwd;
+      } else {
+        PRINT_ERROR("Cannot set TileDB home directory");
+        return TILEDB_SM_ERR;
+      }
+    }
+    tiledb_home_ += "/.tiledb";
+  }
+
+  // Get read path
+  tiledb_home_ = real_dir(tiledb_home_);
+
   // Success
   return TILEDB_SM_OK;
 } 
-
-void StorageManager::config_set_default() {
-}
 
 int StorageManager::consolidation_filelock_create(
     const std::string& dir) const {
@@ -1828,7 +1836,11 @@ int StorageManager::metadata_move(
 }
 
 int StorageManager::open_array_mtx_destroy() {
+#ifdef OPENMP
   int rc_omp_mtx = ::mutex_destroy(&open_array_omp_mtx_);
+#else
+  int rc_omp_mtx = TILEDB_UT_OK;
+#endif
   int rc_pthread_mtx = ::mutex_destroy(&open_array_pthread_mtx_);
 
   if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
@@ -1838,7 +1850,11 @@ int StorageManager::open_array_mtx_destroy() {
 }
 
 int StorageManager::open_array_mtx_init() {
+#ifdef OPENMP
   int rc_omp_mtx = ::mutex_init(&open_array_omp_mtx_);
+#else
+  int rc_omp_mtx = TILEDB_UT_OK;
+#endif
   int rc_pthread_mtx = ::mutex_init(&open_array_pthread_mtx_);
 
   if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
@@ -1848,7 +1864,11 @@ int StorageManager::open_array_mtx_init() {
 }
 
 int StorageManager::open_array_mtx_lock() {
+#ifdef OPENMP
   int rc_omp_mtx = ::mutex_lock(&open_array_omp_mtx_);
+#else
+  int rc_omp_mtx = TILEDB_UT_OK;
+#endif
   int rc_pthread_mtx = ::mutex_lock(&open_array_pthread_mtx_);
 
   if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
@@ -1858,7 +1878,11 @@ int StorageManager::open_array_mtx_lock() {
 }
 
 int StorageManager::open_array_mtx_unlock() {
+#ifdef OPENMP
   int rc_omp_mtx = ::mutex_unlock(&open_array_omp_mtx_);
+#else
+  int rc_omp_mtx = TILEDB_UT_OK;
+#endif
   int rc_pthread_mtx = ::mutex_unlock(&open_array_pthread_mtx_);
 
   if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
@@ -2070,7 +2094,11 @@ int StorageManager::workspace_move(
 }
 
 int StorageManager::OpenArray::mutex_destroy() {
+#ifdef OPENMP
   int rc_omp_mtx = ::mutex_destroy(&omp_mtx_);
+#else
+  int rc_omp_mtx = TILEDB_UT_OK;
+#endif
   int rc_pthread_mtx = ::mutex_destroy(&pthread_mtx_);
 
   if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
@@ -2080,7 +2108,11 @@ int StorageManager::OpenArray::mutex_destroy() {
 }
 
 int StorageManager::OpenArray::mutex_init() {
+#ifdef OPENMP
   int rc_omp_mtx = ::mutex_init(&omp_mtx_);
+#else
+  int rc_omp_mtx = TILEDB_UT_OK;
+#endif
   int rc_pthread_mtx =  ::mutex_init(&pthread_mtx_);
 
   if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
@@ -2090,7 +2122,11 @@ int StorageManager::OpenArray::mutex_init() {
 }
 
 int StorageManager::OpenArray::mutex_lock() {
+#ifdef OPENMP
   int rc_omp_mtx = ::mutex_lock(&omp_mtx_);
+#else
+  int rc_omp_mtx = TILEDB_UT_OK;
+#endif
   int rc_pthread_mtx = ::mutex_lock(&pthread_mtx_);
 
   if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
@@ -2100,7 +2136,11 @@ int StorageManager::OpenArray::mutex_lock() {
 }
 
 int StorageManager::OpenArray::mutex_unlock() {
+#ifdef OPENMP
   int rc_omp_mtx = ::mutex_unlock(&omp_mtx_);
+#else
+  int rc_omp_mtx = TILEDB_UT_OK;
+#endif
   int rc_pthread_mtx = ::mutex_unlock(&pthread_mtx_);
 
   if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)

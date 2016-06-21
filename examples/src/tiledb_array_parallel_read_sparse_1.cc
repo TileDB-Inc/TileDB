@@ -61,12 +61,12 @@ int main() {
   // Prepare cell buffers
   // --- First read ---
   const int64_t subarray_1[] = { 1, 2, 1, 4 }; 
-  int buffer_a1_1[4]; 
+  int buffer_a1_1[10]; 
   void* buffers_1[] = { buffer_a1_1 };
   size_t buffer_sizes_1[] = { sizeof(buffer_a1_1) };
   // --- Upper right tile ---
   const int64_t subarray_2[] = { 3, 4, 1, 4 }; 
-  int buffer_a1_2[4]; 
+  int buffer_a1_2[10]; 
   void* buffers_2[] = { buffer_a1_2 };
   size_t buffer_sizes_2[] = { sizeof(buffer_a1_2) };
 
@@ -134,8 +134,8 @@ void *parallel_read(void* args) {
   data->count = 0;
   int* a1 = (int*) data->buffers[0];
   int num = data->buffer_sizes[0] / sizeof(int);
-  for(int i=0; i<num; ++i)
-    if(a1[i] > 5)
+  for(int i=0; i<num; ++i) 
+    if(a1[i] > 5) 
       ++data->count;
 
   // Finalize array
