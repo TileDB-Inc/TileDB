@@ -30,7 +30,9 @@
  * This file defines the C API of TileDB.
  */
 
+#include "aio_request.h"
 #include "c_api.h"
+#include "config.h"
 #include "array_schema_c.h"
 #include "storage_manager.h"
 #include <cassert>
@@ -60,15 +62,9 @@ typedef struct TileDB_CTX {
   StorageManager* storage_manager_;
 } TileDB_CTX;
 
-int tiledb_ctx_init(TileDB_CTX** tiledb_ctx, const char* config_filename) {
-  // Check config filename length
-  if(config_filename != NULL) {
-    if(strlen(config_filename) > TILEDB_NAME_MAX_LEN) {
-      PRINT_ERROR("Invalid filename length");
-      return TILEDB_ERR;
-    }
-  }
-
+int tiledb_ctx_init(
+    TileDB_CTX** tiledb_ctx, 
+    const TileDB_Config* tiledb_config) {
   // Initialize context
   *tiledb_ctx = (TileDB_CTX*) malloc(sizeof(struct TileDB_CTX));
   if(*tiledb_ctx == NULL) {
@@ -77,9 +73,18 @@ int tiledb_ctx_init(TileDB_CTX** tiledb_ctx, const char* config_filename) {
     return TILEDB_ERR;
   }
 
+  // Initialize a Config object
+  Config* config = new Config();
+  if(tiledb_config != NULL)
+    config->init(
+        tiledb_config->home_, 
+        tiledb_config->mpi_comm_, 
+        tiledb_config->read_method_, 
+        tiledb_config->write_method_);
+
   // Create storage manager
   (*tiledb_ctx)->storage_manager_ = new StorageManager();
-  if((*tiledb_ctx)->storage_manager_->init(config_filename) != TILEDB_SM_OK)
+  if((*tiledb_ctx)->storage_manager_->init(config) != TILEDB_SM_OK)
     return TILEDB_ERR;
   else
     return TILEDB_OK;
@@ -559,7 +564,7 @@ int tiledb_array_free_schema(
     free(tiledb_array_schema->compression_);
 
   // Free cell val num
-  if(tiledb_array_schema->cell_val_num_ != NULL);
+  if(tiledb_array_schema->cell_val_num_ != NULL)
     free(tiledb_array_schema->cell_val_num_);
 
   // Success
@@ -1301,6 +1306,61 @@ int tiledb_ls(
          dirs,
          dir_types,
          *dir_num) != TILEDB_SM_OK)
+    return TILEDB_ERR;
+  else 
+    return TILEDB_OK;
+}
+
+
+
+
+/* ****************************** */
+/*     ASYNCHRONOUS I/O (AIO      */
+/* ****************************** */
+
+int tiledb_array_aio_read(
+    const TileDB_Array* tiledb_array,
+    TileDB_AIO_Request* tiledb_aio_request) {
+  // Sanity check
+  if(!sanity_check(tiledb_array))
+    return TILEDB_ERR;
+
+  // Copy the AIO request
+  AIO_Request* aio_request = (AIO_Request*) malloc(sizeof(struct AIO_Request));
+  aio_request->id_ = (size_t) tiledb_aio_request;
+  aio_request->buffers_ = tiledb_aio_request->buffers_;
+  aio_request->buffer_sizes_ = tiledb_aio_request->buffer_sizes_;
+  aio_request->status_ = &(tiledb_aio_request->status_);
+  aio_request->subarray_ = tiledb_aio_request->subarray_;
+  aio_request->completion_handle_ = tiledb_aio_request->completion_handle_;
+  aio_request->completion_data_ = tiledb_aio_request->completion_data_;
+
+  // Submit the AIO read request
+  if(tiledb_array->array_->aio_read(aio_request) != TILEDB_AR_OK)
+    return TILEDB_ERR;
+  else 
+    return TILEDB_OK;
+}
+
+int tiledb_array_aio_write(
+    const TileDB_Array* tiledb_array,
+    TileDB_AIO_Request* tiledb_aio_request) {
+  // Sanity check
+  if(!sanity_check(tiledb_array))
+    return TILEDB_ERR;
+
+  // Copy the AIO request
+  AIO_Request* aio_request = (AIO_Request*) malloc(sizeof(struct AIO_Request));
+  aio_request->id_ = (size_t) tiledb_aio_request;
+  aio_request->buffers_ = tiledb_aio_request->buffers_;
+  aio_request->buffer_sizes_ = tiledb_aio_request->buffer_sizes_;
+  aio_request->status_ = &(tiledb_aio_request->status_);
+  aio_request->subarray_ = tiledb_aio_request->subarray_;
+  aio_request->completion_handle_ = tiledb_aio_request->completion_handle_;
+  aio_request->completion_data_ = tiledb_aio_request->completion_data_;
+
+  // Submit the AIO write request
+  if(tiledb_array->array_->aio_write(aio_request) != TILEDB_AR_OK)
     return TILEDB_ERR;
   else 
     return TILEDB_OK;

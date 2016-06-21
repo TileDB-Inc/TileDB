@@ -31,7 +31,10 @@
  */
 
 #include "c_api.h"
+
+#ifdef OPENMP
 #include <omp.h>
+
 
 // The function to be computed in parallel
 void parallel_write(
@@ -55,7 +58,7 @@ int main() {
   size_t buffer_a2_1[] = { 0, 4, 6 };
   const char buffer_var_a2_1[] = "hhhhffa";
   float buffer_a3_1[] = { 7.1,  7.2,  5.1,  5.2,  0.1,  0.2 };
-  int64_t buffer_coords_1[] = { 3, 1, 3, 4, 1, 1 };
+  int64_t buffer_coords_1[] = { 3, 4, 4, 2, 1, 1 };
   const void* buffers_1[] = 
   { 
       buffer_a1_1,  
@@ -78,7 +81,7 @@ int main() {
   const char buffer_var_a2_2[] = "gggeddddbbccc";
   float buffer_a3_2[] = 
       { 6.1,  6.2, 4.1,  4.2,  3.1,  3.2,  1.1,  1.2,  2.1,  2.2 };
-  int64_t buffer_coords_2[] = { 4, 2, 3, 3, 2, 3, 1, 2, 1, 4 };
+  int64_t buffer_coords_2[] = { 3, 3, 3, 1, 2, 3, 1, 2, 1, 4 };
   const void* buffers_2[] = 
   { 
       buffer_a1_2,  
@@ -147,3 +150,15 @@ void parallel_write(
   // Finalize array
   tiledb_array_finalize(tiledb_array);
 }
+
+#else
+
+#include <stdio.h>
+
+int main() {
+  printf("OpenMP not supported.");
+
+  return 0;
+}
+
+#endif

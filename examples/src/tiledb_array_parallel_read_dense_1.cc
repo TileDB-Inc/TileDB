@@ -84,7 +84,7 @@ int main() {
   pthread_t threads[4];
   thread_data_t thread_data[4];
 
-  // Write in parallel
+  // Read in parallel
   for(int i=0; i<4; ++i) {
     // Populate the thread data 
     thread_data[i].tiledb_ctx = tiledb_ctx;

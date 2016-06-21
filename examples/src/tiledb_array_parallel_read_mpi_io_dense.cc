@@ -1,0 +1,126 @@
+/**
+ * @file   tiledb_array_read_mpi_io_dense.cc
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ * 
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ * 
+ * @section DESCRIPTION
+ *
+ * It shows how to read from a dense array in parallel with MPI, activating
+ * also the MPI-IO read mode (although the latter is optional - the user
+ * could alternatively use mmap or standard OS read). Note that the case
+ * of sparse arrays is similar.
+ */
+
+#include "c_api.h"
+#include <mpi.h>
+#include <stdio.h>
+#include <cstring>
+
+
+
+
+int main(int argc, char** argv) {
+  // Initialize MPI and get rank
+  MPI_Init(&argc, &argv);
+  int rank;
+  MPI_Comm mpi_comm = MPI_COMM_WORLD;
+  MPI_Comm_rank(mpi_comm, &rank);
+
+  // Properly set the configuration parameters
+  TileDB_Config tiledb_config;
+  memset(&tiledb_config, 0, sizeof(struct TileDB_Config));
+  tiledb_config.read_method_ = TILEDB_IO_MPI; // Activate MPI-IO
+  tiledb_config.mpi_comm_ = &mpi_comm;
+
+  // Initialize context with the default configuration parameters
+  TileDB_CTX* tiledb_ctx;
+  tiledb_ctx_init(&tiledb_ctx, &tiledb_config);
+
+  // Array name
+  const char* array_name = "my_workspace/dense_arrays/my_array_A";
+
+  // Prepare cell buffers
+  // --- Upper left tile ---
+  const int64_t subarray_0[] = { 1, 2, 1, 2 }; 
+  // --- Upper right tile ---
+  const int64_t subarray_1[] = { 1, 2, 3, 4 }; 
+  // --- Lower left tile ---
+  const int64_t subarray_2[] = { 3, 4, 1, 2 }; 
+  // --- Lower right tile ---
+  const int64_t subarray_3[] = { 3, 4, 3, 4 }; 
+
+  // Set buffers
+  int buffer[4]; 
+  void* buffers[] = { buffer };
+  size_t buffer_sizes[] = { sizeof(buffer) };
+
+  // Only attribute "a1" is needed
+  const char* attributes[] = { "a1" };
+
+  // Choose subarray based on rank
+  const int64_t* subarray;
+  if(rank == 0)
+    subarray = subarray_0;
+  else if(rank == 1)
+    subarray = subarray_1;
+  else if(rank == 2)
+    subarray = subarray_2;
+  else if(rank == 3)
+    subarray = subarray_3;
+  
+  // Initialize array
+  TileDB_Array* tiledb_array;
+  tiledb_array_init(
+      tiledb_ctx,                          // Context 
+      &tiledb_array,                       // Array object
+      array_name,                          // Array name
+      TILEDB_ARRAY_READ,                   // Mode
+      subarray,                            // Subarray
+      attributes,                          // Subset on attributes
+      1);                                  // Number of attributes
+
+  // Read from array
+  tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
+
+  // Finalize array
+  tiledb_array_finalize(tiledb_array); 
+
+  // Output result
+  int total_count = 0;
+  for(int i=0; i<4; ++i) 
+    if(buffer[i] > 10)
+      ++total_count;
+  printf("Process %d: Number of a1 values greater "
+         "than 10: %d \n", rank, total_count);
+
+  // Finalize context
+  tiledb_ctx_finalize(tiledb_ctx);
+
+  // Finalize MPI
+  MPI_Finalize();
+
+  return 0;
+}
+

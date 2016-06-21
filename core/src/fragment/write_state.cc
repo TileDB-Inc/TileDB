@@ -61,7 +61,7 @@
 #  define PRINT_WARNING(x) do { } while(0) 
 #endif
 
-#ifdef GNU_PARALLEL
+#ifdef OPENMP
   #include <parallel/algorithm>
   #define SORT(first, last, comp) __gnu_parallel::sort((first), (last), (comp))
 #else
@@ -272,10 +272,20 @@ int WriteState::compress_and_write_tile(int attribute_id) {
       TILEDB_FILE_SUFFIX;
 
   // Write segment to file
-  if(write_to_file(
-         filename.c_str(),
-         tile_compressed_,
-         tile_compressed_size) != TILEDB_UT_OK)
+  int rc = TILEDB_UT_OK;
+  int write_method = fragment_->array()->config()->write_method();
+  if(write_method == TILEDB_IO_WRITE)
+      rc = write_to_file(
+               filename.c_str(),
+               tile_compressed_,
+               tile_compressed_size);
+  else if(write_method == TILEDB_IO_MPI)
+      rc = mpi_io_write_to_file(
+               fragment_->array()->config()->mpi_comm(),
+               filename.c_str(),
+               tile_compressed_,
+               tile_compressed_size);
+  if(rc != TILEDB_UT_OK)
     return TILEDB_WS_ERR;
 
   // Append offset to book-keeping
@@ -331,10 +341,20 @@ int WriteState::compress_and_write_tile_var(int attribute_id) {
       TILEDB_FILE_SUFFIX;
 
   // Write segment to file
-  if(write_to_file(
-         filename.c_str(),
-         tile_compressed_,
-         tile_compressed_size) != TILEDB_UT_OK)
+  int rc = TILEDB_UT_OK;
+  int write_method = fragment_->array()->config()->write_method();
+  if(write_method == TILEDB_IO_WRITE)
+      rc = write_to_file(
+               filename.c_str(),
+               tile_compressed_,
+               tile_compressed_size);
+  else if(write_method == TILEDB_IO_MPI)
+      rc = mpi_io_write_to_file(
+               fragment_->array()->config()->mpi_comm(),
+               filename.c_str(),
+               tile_compressed_,
+               tile_compressed_size);
+  if(rc != TILEDB_UT_OK)
     return TILEDB_WS_ERR;
 
   // Append offset to book-keeping
@@ -630,7 +650,20 @@ int WriteState::write_dense_attr_cmp_none(
   std::string filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
-  if(write_to_file(filename.c_str(), buffer, buffer_size) != TILEDB_UT_OK)
+  int rc = TILEDB_UT_OK;
+  int write_method = fragment_->array()->config()->write_method();
+  if(write_method == TILEDB_IO_WRITE)
+      rc = write_to_file(
+               filename.c_str(),
+               buffer,
+               buffer_size);
+  else if(write_method == TILEDB_IO_MPI)
+      rc = mpi_io_write_to_file(
+               fragment_->array()->config()->mpi_comm(),
+               filename.c_str(),
+               buffer,
+               buffer_size);
+  if(rc != TILEDB_UT_OK)
     return TILEDB_WS_ERR;
   else
     return TILEDB_WS_OK;
@@ -746,10 +779,21 @@ int WriteState::write_dense_attr_var_cmp_none(
   std::string filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + "_var" + 
       TILEDB_FILE_SUFFIX;
-  if(write_to_file(
-         filename.c_str(), 
-         buffer_var, 
-         buffer_var_size) != TILEDB_UT_OK)
+  int rc = TILEDB_UT_OK;
+  int write_method = fragment_->array()->config()->write_method();
+  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+  if(write_method == TILEDB_IO_WRITE)
+      rc = write_to_file(
+               filename.c_str(),
+               buffer_var,
+               buffer_var_size);
+  else if(write_method == TILEDB_IO_MPI)
+      rc = mpi_io_write_to_file(
+               mpi_comm,
+               filename.c_str(),
+               buffer_var,
+               buffer_var_size);
+  if(rc != TILEDB_UT_OK)
     return TILEDB_WS_ERR;
 
   // Recalculate offsets
@@ -765,9 +809,16 @@ int WriteState::write_dense_attr_var_cmp_none(
   filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
-  int rc = write_to_file(
-               filename.c_str(), 
-               shifted_buffer, 
+  if(write_method == TILEDB_IO_WRITE)
+      rc = write_to_file(
+               filename.c_str(),
+               shifted_buffer,
+               buffer_size);
+  else if(write_method == TILEDB_IO_MPI)
+      rc = mpi_io_write_to_file(
+               mpi_comm,
+               filename.c_str(),
+               shifted_buffer,
                buffer_size);
 
   // Clean up
@@ -1037,9 +1088,23 @@ int WriteState::write_sparse_attr_cmp_none(
   std::string filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
-  if(write_to_file(filename.c_str(), buffer, buffer_size) != TILEDB_UT_OK)
+  int rc = TILEDB_UT_OK;
+  int write_method = fragment_->array()->config()->write_method();
+  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+  if(write_method == TILEDB_IO_WRITE)
+      rc = write_to_file(
+               filename.c_str(),
+               buffer,
+               buffer_size);
+  else if(write_method == TILEDB_IO_MPI)
+      rc = mpi_io_write_to_file(
+               mpi_comm,
+               filename.c_str(),
+               buffer,
+               buffer_size);
+  if(rc != TILEDB_UT_OK)
     return TILEDB_WS_ERR;
-  else
+  else 
     return TILEDB_WS_OK;
 }
 
@@ -1162,10 +1227,21 @@ int WriteState::write_sparse_attr_var_cmp_none(
   std::string filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + "_var" + 
       TILEDB_FILE_SUFFIX;
-  if(write_to_file(
-         filename.c_str(), 
-         buffer_var, 
-         buffer_var_size) != TILEDB_UT_OK)
+  int rc = TILEDB_UT_OK;
+  int write_method = fragment_->array()->config()->write_method();
+  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+  if(write_method == TILEDB_IO_WRITE)
+      rc = write_to_file(
+               filename.c_str(),
+               buffer_var,
+               buffer_var_size);
+  else if(write_method == TILEDB_IO_MPI)
+      rc = mpi_io_write_to_file(
+               mpi_comm,
+               filename.c_str(),
+               buffer_var,
+               buffer_var_size);
+  if(rc != TILEDB_UT_OK)
     return TILEDB_WS_ERR;
 
   // Recalculate offsets
@@ -1181,9 +1257,16 @@ int WriteState::write_sparse_attr_var_cmp_none(
   filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
-  int rc = write_to_file(
-               filename.c_str(), 
-               shifted_buffer, 
+  if(write_method == TILEDB_IO_WRITE)
+      rc = write_to_file(
+               filename.c_str(),
+               shifted_buffer,
+               buffer_size);
+  else if(write_method == TILEDB_IO_MPI)
+      rc = mpi_io_write_to_file(
+               mpi_comm,
+               filename.c_str(),
+               shifted_buffer,
                buffer_size);
 
   // Clean up

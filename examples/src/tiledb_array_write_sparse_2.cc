@@ -77,7 +77,7 @@ int main() {
   size_t* buffer_a2_2 = NULL;
   const char* buffer_var_a2_2 = NULL;
   float* buffer_a3_2 = NULL; 
-  int64_t buffer_coords_2[] = { 1, 4, 2, 3, 3, 3, 3, 4, 4, 2, 3, 1 };
+  int64_t buffer_coords_2[] = { 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4 };
   const void* buffers_2[] = 
   { 
        buffer_a1_2, 

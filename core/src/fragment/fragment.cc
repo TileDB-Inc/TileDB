@@ -223,9 +223,7 @@ int Fragment::init(
 }
 
 void Fragment::reset_read_state() {
-  if(read_state_ != NULL)
-    delete read_state_;
-  read_state_ = new ReadState(this, book_keeping_);
+  read_state_->reset();
 }
 
 int Fragment::write(const void** buffers, const size_t* buffer_sizes) {

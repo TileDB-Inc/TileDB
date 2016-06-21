@@ -52,6 +52,7 @@
 /**@}*/
 
 class BookKeeping;
+class Fragment;
 
 
 
