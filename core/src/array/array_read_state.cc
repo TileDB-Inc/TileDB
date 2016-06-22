@@ -1819,7 +1819,8 @@ void ArrayReadState::PQFragmentCellRange<T>::split_to_3(
 
   // Get enclosing coordinates
   bool left_retrieved, right_retrieved, target_exists;
-  int rc = (*fragment_read_states_)[fragment_id_]->get_enclosing_coords<T>(
+  int rc = 
+      (*fragment_read_states_)[fragment_id_]->template get_enclosing_coords<T>(
                 tile_pos_,                        // Tile
                 fcr->cell_range_,                 // Target coords
                 cell_range_,                      // Start coords
@@ -1943,12 +1944,14 @@ bool ArrayReadState::SmallerPQFragmentCellRange<T>::operator () (
   } else if(cmp > 0) { // b's range start preceded a's
     return true;
   } else {             // a's and b's range starts match - latest fragment wins
-    if(a->fragment_id_ < b->fragment_id_)
+    if(a->fragment_id_ < b->fragment_id_) {
       return true;
-    else if(a->fragment_id_ > b->fragment_id_)
+    } else if(a->fragment_id_ > b->fragment_id_) {
       return false;
-    else
+    } else {
       assert(0); // This should never happen (equal coordinates and fragment id)
+      return false;
+    }
   }
 }
 

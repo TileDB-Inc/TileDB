@@ -37,7 +37,7 @@
 #include <limits.h>
 
 /** Version. */
-#define TILEDB_VERSION                          "0.3.0"
+#define TILEDB_VERSION                          "0.3.1"
 
 /**@{*/
 /** Return code. */  
