@@ -1514,8 +1514,21 @@ int ArrayReadState::sort_fragment_cell_ranges(
     if(pq.empty()) {
       popped->export_to(result); 
       fragment_cell_ranges.push_back(result);
+      fid = popped->fragment_id_;
       delete popped;
-      break;
+
+      if(rid[fid] == rlen[fid]) {
+        break;
+      } else {
+        pq_fragment_cell_range = new PQFragmentCellRange<T>( 
+                                         array_schema_,
+                                         &fragment_read_states_);
+        pq_fragment_cell_range->import_from(
+            unsorted_fragment_cell_ranges[fid][rid[fid]]);
+        pq.push(pq_fragment_cell_range);
+        ++rid[fid];
+        continue;
+      }
     }
 
     // Mark the second entry (now top) as top
