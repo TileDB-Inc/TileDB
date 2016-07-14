@@ -229,6 +229,9 @@ void ReadState::reset() {
   done_ = false;
   search_tile_pos_ = -1;
   compute_tile_search_range();
+
+  for(int i=0; i<attribute_num_+2; ++i)
+    tiles_offsets_[i] = 0;
 }
 
 void ReadState::reset_overflow() {

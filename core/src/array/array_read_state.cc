@@ -1510,7 +1510,8 @@ int ArrayReadState::sort_fragment_cell_ranges(
     popped = pq.top();
     pq.pop();
 
-    // Last range - just insert it into the results and stop
+    // Last range - insert it into the results and get the next range
+    // for that fragment
     if(pq.empty()) {
       popped->export_to(result); 
       fragment_cell_ranges.push_back(result);
