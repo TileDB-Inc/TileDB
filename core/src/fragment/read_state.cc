@@ -232,6 +232,9 @@ void ReadState::reset() {
 
   for(int i=0; i<attribute_num_+2; ++i)
     tiles_offsets_[i] = 0;
+
+  for(int i=0; i<attribute_num_; ++i)
+    tiles_var_offsets_[i] = 0;
 }
 
 void ReadState::reset_overflow() {

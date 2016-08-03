@@ -1571,11 +1571,26 @@ int ArrayReadState::sort_fragment_cell_ranges(
             delete trimmed_top;
           }
         } else {
+          // Get the next range from the top fragment
+          fid = top->fragment_id_;
+          if(rid[fid] != rlen[fid]) {
+            pq_fragment_cell_range = new PQFragmentCellRange<T>(
+                                             array_schema_,
+                                             &fragment_read_states_);
+            pq_fragment_cell_range->import_from(
+                unsorted_fragment_cell_ranges[fid][rid[fid]]);
+          }
+
           // Discard top
           free(top->cell_range_);
           delete top;
           pq.pop();
-        } 
+
+          if(rid[fid] != rlen[fid]) {
+            pq.push(pq_fragment_cell_range);
+            ++rid[fid];
+          }
+        }
 
         // Get a new top
         if(!pq.empty())
