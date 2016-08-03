@@ -47,9 +47,11 @@
 
 /**@{*/
 /** Array mode. */
-#define TILEDB_ARRAY_READ                            0
-#define TILEDB_ARRAY_WRITE                           1
-#define TILEDB_ARRAY_WRITE_UNSORTED                  2
+#define TILEDB_ARRAY_READ                           0
+#define TILEDB_ARRAY_READ_SORTED_COL                1
+#define TILEDB_ARRAY_READ_SORTED_ROW                2
+#define TILEDB_ARRAY_WRITE                          3
+#define TILEDB_ARRAY_WRITE_UNSORTED                 4
 /**@}*/
 
 /**@{*/

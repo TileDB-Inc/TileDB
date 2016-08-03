@@ -160,8 +160,8 @@ class Array {
   bool overflow(int attribute_id) const;
 
   /**
-   * Performs a read operation in an array, which must be initialized with mode
-   * TILEDB_ARRAY_READ. The function retrieves the result cells that lie inside
+   * Performs a read operation in an array, which must be initialized in read 
+   * mode. The function retrieves the result cells that lie inside
    * the subarray specified in init() or reset_subarray(). The results are
    * written in input buffers provided by the user, which are also allocated by
    * the user. Note that the results are written in the buffers in the same
@@ -187,8 +187,14 @@ class Array {
    */
   int read(void** buffers, size_t* buffer_sizes); 
 
+  /** Returns true if the array is in read mode. */
+  bool read_mode() const;
+
   /** Returns the subarray in which the array is constrained. */
   const void* subarray() const;
+
+  /** Returns true if the array is in write mode. */
+  bool write_mode() const;
 
 
 
@@ -199,7 +205,7 @@ class Array {
 
   /**
    * Consolidates all fragments into a new single one, on a per-attribute basis.
-   * Returns the new fragment (which has to be finalized outside this functions),
+   * Returns the new fragment (which has to be finalized outside this function),
    * along with the names of the old (consolidated) fragments (which also have
    * to be deleted outside this function).
    *
@@ -240,6 +246,8 @@ class Array {
    *    - TILEDB_ARRAY_WRITE 
    *    - TILEDB_ARRAY_WRITE_UNSORTED 
    *    - TILEDB_ARRAY_READ 
+   *    - TILEDB_ARRAY_READ_SORTED_COL 
+   *    - TILEDB_ARRAY_READ_SORTED_ROW
    * @param subarray The subarray in which the array read/write will be
    *     constrained on. If it is NULL, then the subarray is set to the entire
    *     array domain. For the case of writes, this is meaningful only for
@@ -433,7 +441,7 @@ class Array {
   std::string new_fragment_name() const;
 
   /**
-   * Opens the existing fragments in TILEDB_ARRAY_READ_MODE.
+   * Opens the existing fragments.
    *
    * @param fragment_names The vector with the fragment names.
    * @param book_keeping The book-keeping of the array fragments.

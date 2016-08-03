@@ -142,6 +142,11 @@ const void* BookKeeping::non_empty_domain() const {
   return non_empty_domain_;
 }
 
+inline
+bool BookKeeping::read_mode() const {
+  return array_read_mode(mode_);
+}
+
 int64_t BookKeeping::tile_num() const {
   if(dense_) {
     return array_schema_->tile_num(domain_);
@@ -160,6 +165,11 @@ const std::vector<std::vector<off_t> >& BookKeeping::tile_var_offsets() const {
 
 const std::vector<std::vector<size_t> >& BookKeeping::tile_var_sizes() const {
   return tile_var_sizes_;
+}
+
+inline
+bool BookKeeping::write_mode() const {
+  return array_write_mode(mode_);
 }
 
 
@@ -240,7 +250,7 @@ void BookKeeping::append_tile_var_size(
  */
 int BookKeeping::finalize() {
   // Nothing to do in READ mode
-  if(mode_ == TILEDB_ARRAY_READ)
+  if(read_mode())
     return TILEDB_BK_OK;
 
   // Do nothing if the fragment directory does not exist (fragment empty) 

@@ -250,6 +250,8 @@ class StorageManager {
    *    - TILEDB_ARRAY_WRITE 
    *    - TILEDB_ARRAY_WRITE_UNSORTED 
    *    - TILEDB_ARRAY_READ 
+   *    - TILEDB_ARRAY_READ_SORTED_COL 
+   *    - TILEDB_ARRAY_READ_SORTED_ROW 
    * @param subarray The subarray in which the array read/write will be
    *     constrained on. If it is NULL, then the subarray is set to the entire
    *     array domain. For the case of writes, this is meaningful only for
@@ -591,12 +593,14 @@ class StorageManager {
    * @param array_schema The array schema.
    * @param fragment_names The names of the fragments of the array.
    * @param book_keeping The book-keeping structures to be returned.
+   * @param mode The array mode
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
   int array_load_book_keeping(
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
-      std::vector<BookKeeping*>& book_keeping);
+      std::vector<BookKeeping*>& book_keeping,
+      int mode);
 
   /**
    * Moves a TileDB array.
@@ -613,16 +617,18 @@ class StorageManager {
    * Opens an array. This creates or updates an OpenArray entry for this array,
    * and loads the array schema and book-keeping if it is the first time this
    * array is being initialized. The book-keeping structures are loaded only
-   * if the input mode is TILEDB_ARRAY_READ.
+   * if the input mode is a read mode.
    *
    * @param array_name The array name (must be absolute path).
    * @param mode The mode in which the array is being initialized.
    * @param open_array The open array entry that is retrieved.
+   * @param mode The array mode.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int array_open(
       const std::string& array_name, 
-      OpenArray*& open_array);
+      OpenArray*& open_array,
+      int mode);
 
   /**
    * Stores the input array schema into the input array directory (serializing

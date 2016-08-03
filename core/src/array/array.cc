@@ -160,7 +160,7 @@ void Array::aio_handle_requests() {
 
 int Array::aio_read(AIO_Request* aio_request) {
   // Sanity checks
-  if(mode_ != TILEDB_ARRAY_READ) {
+  if(!read_mode()) {
     std::string errmsg = "Cannot (async) read from array; Invalid mode";
     PRINT_ERROR(errmsg);
     tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
@@ -182,8 +182,7 @@ int Array::aio_read(AIO_Request* aio_request) {
 
 int Array::aio_write(AIO_Request* aio_request) {
   // Sanity checks
-  if(mode_ != TILEDB_ARRAY_WRITE &&
-     mode_ != TILEDB_ARRAY_WRITE_UNSORTED) {
+  if(!write_mode()) {
     std::string errmsg = "Cannot (async) write to array; Invalid mode";
     PRINT_ERROR(errmsg);
     tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
@@ -229,7 +228,7 @@ int Array::mode() const {
 
 bool Array::overflow() const {
   // Not applicable to writes
-  if(mode_ != TILEDB_ARRAY_READ) 
+  if(!read_mode()) 
     return false;
 
   for(int i=0; i<int(attribute_ids_.size()); ++i) 
@@ -240,7 +239,7 @@ bool Array::overflow() const {
 }
 
 bool Array::overflow(int attribute_id) const {
-  assert(mode_ == TILEDB_ARRAY_READ);
+  assert(read_mode());
 
   // Trivial case
   if(fragments_.size() == 0)
@@ -252,12 +251,14 @@ bool Array::overflow(int attribute_id) const {
 
 int Array::read(void** buffers, size_t* buffer_sizes) {
   // Sanity checks
-  if(mode_ != TILEDB_ARRAY_READ) {
+  if(!read_mode()) {
     std::string errmsg = "Cannot read from array; Invalid mode";
     PRINT_ERROR(errmsg);
     tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
+
+  // TODO: distinguish between the read modes
 
   int buffer_i = 0;
   int attribute_id_num = attribute_ids_.size();
@@ -287,10 +288,19 @@ int Array::read(void** buffers, size_t* buffer_sizes) {
   return TILEDB_AR_OK;
 }
 
+inline
+bool Array::read_mode() const {
+  return array_read_mode(mode_);
+}
+
 const void* Array::subarray() const {
   return subarray_;
 }
 
+inline
+bool Array::write_mode() const {
+  return array_write_mode(mode_);
+}
 
 
 
@@ -482,10 +492,11 @@ int Array::init(
     int attribute_num,
     const void* subarray,
     const Config* config) {
+  // Set mode
+  mode_ = mode;
+
   // Sanity check on mode
-  if(mode != TILEDB_ARRAY_READ &&
-     mode != TILEDB_ARRAY_WRITE &&
-     mode != TILEDB_ARRAY_WRITE_UNSORTED) {
+  if(!read_mode() && !write_mode()) {
     std::string errmsg = "Cannot initialize array; Invalid array mode";
     PRINT_ERROR(errmsg);
     tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
@@ -507,6 +518,7 @@ int Array::init(
   std::vector<std::string> attributes_vec;
   if(attributes == NULL) { // Default: all attributes
     attributes_vec = array_schema->attributes();
+    // TODO: revisit this for sorted writes
     if(array_schema->dense() && mode != TILEDB_ARRAY_WRITE_UNSORTED) 
       // Remove coordinates attribute for dense arrays, 
       // unless in TILEDB_WRITE_UNSORTED mode
@@ -540,15 +552,11 @@ int Array::init(
     return TILEDB_AR_ERR;
   }
 
-  // Set mode
-  mode_ = mode;
-
   // Set array schema
   array_schema_ = array_schema;
 
   // Initialize new fragment if needed
-  if(mode_ == TILEDB_ARRAY_WRITE || 
-     mode_ == TILEDB_ARRAY_WRITE_UNSORTED) {
+  if(write_mode()) { // WRITE MODE
     // Get new fragment name
     std::string new_fragment_name = this->new_fragment_name();
     if(new_fragment_name == "") {
@@ -566,13 +574,13 @@ int Array::init(
       tiledb_ar_errmsg = tiledb_fg_errmsg;
       return TILEDB_AR_ERR;
     }
-  } else if(mode_ == TILEDB_ARRAY_READ) {
+  } else {           // READ MODE
     if(open_fragments(fragment_names, book_keeping) != TILEDB_AR_OK) {
       array_schema_ = NULL;
       return TILEDB_AR_ERR;
     }
     array_read_state_ = new ArrayReadState(this);
-  }
+  } 
 
   // Initialize the AIO-related members
   aio_cond_ = PTHREAD_COND_INITIALIZER; 
@@ -639,11 +647,14 @@ int Array::reset_attributes(
 }
 
 int Array::reset_subarray(const void* subarray) {
+  // Sanity check
+  assert(read_mode() || write_mode());
+
   // For easy referencd
   int fragment_num =  fragments_.size();
 
   // Finalize fragments if in write mode
-  if(mode_ != TILEDB_ARRAY_READ) {  
+  if(write_mode()) {  
     // Finalize and delete fragments     
     for(int i=0; i<fragment_num; ++i) { 
       fragments_[i]->finalize();
@@ -662,7 +673,7 @@ int Array::reset_subarray(const void* subarray) {
     memcpy(subarray_, subarray, subarray_size);
 
   // Re-set of re-initialize fragments
-  if(mode_ != TILEDB_ARRAY_READ) {  // WRITE MODE 
+  if(write_mode()) {  // WRITE MODE 
     // Get new fragment name
     std::string new_fragment_name = this->new_fragment_name();
     if(new_fragment_name == "") {
@@ -679,7 +690,7 @@ int Array::reset_subarray(const void* subarray) {
       tiledb_ar_errmsg = tiledb_fg_errmsg;
       return TILEDB_AR_ERR;
     }
-  } else if(mode_ == TILEDB_ARRAY_READ) {  // READ MODE
+  } else {           // READ MODE
     // Re-initialize the read state of the fragments
     for(int i=0; i<fragment_num; ++i) 
       fragments_[i]->reset_read_state();
@@ -698,8 +709,7 @@ int Array::reset_subarray(const void* subarray) {
 
 int Array::write(const void** buffers, const size_t* buffer_sizes) {
   // Sanity checks
-  if(mode_ != TILEDB_ARRAY_WRITE && 
-     mode_ != TILEDB_ARRAY_WRITE_UNSORTED) {
+  if(!write_mode()) {
     std::string errmsg = "Cannot write to array; Invalid mode";
     PRINT_ERROR(errmsg);
     tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
@@ -733,6 +743,7 @@ int Array::write(const void** buffers, const size_t* buffer_sizes) {
   }
 
   // In WRITE_UNSORTED mode, the fragment must be finalized
+  // TODO: revisit this for sorted writes
   if(mode_ == TILEDB_ARRAY_WRITE_UNSORTED) {
     if(fragments_[0]->finalize() != TILEDB_FG_OK) {
       tiledb_ar_errmsg = tiledb_fg_errmsg;
@@ -755,7 +766,7 @@ int Array::write(const void** buffers, const size_t* buffer_sizes) {
 
 void Array::aio_handle_next_request(AIO_Request* aio_request) {
   int rc = TILEDB_AR_OK;
-  if(mode_ == TILEDB_ARRAY_READ) {   // READ
+  if(read_mode()) {   // READ MODE
     // Reset the subarray only if this request does not continue from the last
     if(aio_last_handled_request_ != aio_request->id_)
       rc = reset_subarray(aio_request->subarray_);
@@ -763,7 +774,7 @@ void Array::aio_handle_next_request(AIO_Request* aio_request) {
     // Invoke the read
     if(rc == TILEDB_AR_OK)
       rc = read(aio_request->buffers_, aio_request->buffer_sizes_);
-  } else {                           // WRITE
+  } else {            // WRITE MODE
       rc = write(
                (const void**) aio_request->buffers_, 
                (const size_t*) aio_request->buffer_sizes_);
@@ -925,7 +936,6 @@ int Array::open_fragments(
     const std::vector<BookKeeping*>& book_keeping) {
   // Sanity check
   assert(fragment_names.size() == book_keeping.size());
-
 
   // Create a fragment object for each fragment directory
   int fragment_num = fragment_names.size();

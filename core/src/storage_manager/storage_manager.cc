@@ -433,7 +433,8 @@ void StorageManager::array_get_fragment_names(
 int StorageManager::array_load_book_keeping(
     const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
-    std::vector<BookKeeping*>& book_keeping) {
+    std::vector<BookKeeping*>& book_keeping,
+    int mode) {
   // For easy reference
   int fragment_num = fragment_names.size(); 
 
@@ -452,7 +453,7 @@ int StorageManager::array_load_book_keeping(
             array_schema, 
             dense, 
             fragment_names[i], 
-            TILEDB_ARRAY_READ);
+            mode);
 
     // Load book-keeping
     if(f_book_keeping->load() != TILEDB_BK_OK) {
@@ -563,8 +564,8 @@ int StorageManager::array_init(
 
   // Open the array
   OpenArray* open_array = NULL;
-  if(mode == TILEDB_ARRAY_READ) {
-    if(array_open(real_dir(array_dir), open_array) != TILEDB_SM_OK)
+  if(array_read_mode(mode)) {
+    if(array_open(real_dir(array_dir), open_array, mode) != TILEDB_SM_OK)
       return TILEDB_SM_ERR;
   }
 
@@ -596,10 +597,9 @@ int StorageManager::array_finalize(Array* array) {
     return TILEDB_SM_OK;
 
   // Finalize and close the array
-  int mode = array->mode();
   int rc_finalize = array->finalize();
   int rc_close = TILEDB_SM_OK;
-  if(mode == TILEDB_ARRAY_READ)
+  if(array->read_mode())
     rc_close = array_close(array->array_schema()->array_name());
 
   // Clean up
@@ -630,6 +630,7 @@ int StorageManager::array_iterator_init(
   if(array_init(
       array, 
       array_dir, 
+      // TODO: revisit this and pass the mode as input - change also the website
       TILEDB_ARRAY_READ, 
       subarray, 
       attributes, 
@@ -950,7 +951,10 @@ int StorageManager::metadata_init(
   // Open the array that implements the metadata
   OpenArray* open_array = NULL;
   if(mode == TILEDB_METADATA_READ) {
-    if(array_open(real_dir(metadata_dir), open_array) != TILEDB_SM_OK)
+    if(array_open(
+           real_dir(metadata_dir), 
+           open_array, 
+           TILEDB_ARRAY_READ) != TILEDB_SM_OK)
       return TILEDB_SM_ERR;
   }
 
@@ -1367,8 +1371,9 @@ int StorageManager::array_close(const std::string& array) {
   if(it->second->cnt_ == 0) {
     // Clean up book-keeping
     std::vector<BookKeeping*>::iterator bit = it->second->book_keeping_.begin();
-    for(; bit != it->second->book_keeping_.end(); ++bit) 
+    for(; bit != it->second->book_keeping_.end(); ++bit) { 
       delete *bit;
+    }
 
     // Unlock and destroy mutexes
     it->second->mutex_unlock();
@@ -1377,7 +1382,7 @@ int StorageManager::array_close(const std::string& array) {
     // Unlock consolidation filelock
     rc_filelock = consolidation_filelock_unlock(
                       it->second->consolidation_filelock_);
-    
+
     // Delete array schema
     if(it->second->array_schema_ != NULL)
       delete it->second->array_schema_;
@@ -1525,7 +1530,8 @@ int StorageManager::array_move(
 
 int StorageManager::array_open(
     const std::string& array_name, 
-    OpenArray*& open_array) {
+    OpenArray*& open_array,
+    int mode) {
   // Get the open array entry
   if(array_get_open_array_entry(array_name, open_array) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
@@ -1565,7 +1571,8 @@ int StorageManager::array_open(
     if(array_load_book_keeping(
            open_array->array_schema_, 
            open_array->fragment_names_, 
-           open_array->book_keeping_) != TILEDB_SM_OK) {
+           open_array->book_keeping_,
+           mode) != TILEDB_SM_OK) {
       delete open_array->array_schema_;
       open_array->array_schema_ = NULL;
       open_array->mutex_unlock();
