@@ -651,8 +651,22 @@ int mpi_io_write_to_file(
     return TILEDB_UT_ERR;
   }
 
-  // Append attribute data to the file
+  // Append attribute data to the file in batches of 
+  // TILEDB_UT_MAX_WRITE_COUNT bytes at a time
   MPI_Status mpi_status;
+  while(buffer_size > TILEDB_UT_MAX_WRITE_COUNT) {
+    if(MPI_File_write(
+           fh, 
+           buffer, 
+           TILEDB_UT_MAX_WRITE_COUNT, 
+           MPI_CHAR, 
+           &mpi_status)) {
+      PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                  "'; File writing error");
+      return TILEDB_UT_ERR;
+    }
+    buffer_size -= TILEDB_UT_MAX_WRITE_COUNT;
+  }
   if(MPI_File_write(fh, buffer, buffer_size, MPI_CHAR, &mpi_status)) {
     PRINT_ERROR(std::string("Cannot write to file '") + filename + 
                 "'; File writing error");
@@ -945,8 +959,19 @@ int write_to_file(
     return TILEDB_UT_ERR;
   }
 
-  // Append attribute data to the file
-  ssize_t bytes_written = ::write(fd, buffer, buffer_size);
+  // Append data to the file in batches of TILEDB_UT_MAX_WRITE_COUNT
+  // bytes at a time
+  ssize_t bytes_written;
+  while(buffer_size > TILEDB_UT_MAX_WRITE_COUNT) {
+    bytes_written = ::write(fd, buffer, TILEDB_UT_MAX_WRITE_COUNT);
+    if(bytes_written != TILEDB_UT_MAX_WRITE_COUNT) {
+      PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                  "'; File writing error");
+      return TILEDB_UT_ERR;
+    }
+    buffer_size -= TILEDB_UT_MAX_WRITE_COUNT;
+  }
+  bytes_written = ::write(fd, buffer, buffer_size);
   if(bytes_written != ssize_t(buffer_size)) {
     PRINT_ERROR(std::string("Cannot write to file '") + filename + 
                 "'; File writing error");
@@ -983,8 +1008,20 @@ int write_to_file_cmp_gzip(
     return TILEDB_UT_ERR;
   }
 
-  // Append attribute data to the file
-  ssize_t bytes_written = gzwrite(fd, buffer, buffer_size);
+
+  // Append data to the file in batches of TILEDB_UT_MAX_WRITE_COUNT
+  // bytes at a time
+  ssize_t bytes_written;
+  while(buffer_size > TILEDB_UT_MAX_WRITE_COUNT) {
+    bytes_written = gzwrite(fd, buffer, TILEDB_UT_MAX_WRITE_COUNT);
+    if(bytes_written != TILEDB_UT_MAX_WRITE_COUNT) {
+      PRINT_ERROR(std::string("Cannot write to file '") + filename + 
+                  "'; File writing error");
+      return TILEDB_UT_ERR;
+    }
+    buffer_size -= TILEDB_UT_MAX_WRITE_COUNT;
+  }
+  bytes_written = gzwrite(fd, buffer, buffer_size);
   if(bytes_written != ssize_t(buffer_size)) {
     PRINT_ERROR(std::string("Cannot write to file '") + filename + 
                 "'; File writing error");

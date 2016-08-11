@@ -54,7 +54,8 @@
 #define TILEDB_UT_ERR       -1
 /**@}*/
 
-
+/** Maximum number of bytes written in a single I/O. */
+#define TILEDB_UT_MAX_WRITE_COUNT 1500000000    // ~ 1.5 GB
 
 
 /* ********************************* */

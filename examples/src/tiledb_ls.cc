@@ -45,11 +45,17 @@ int main(int argc, char** argv) {
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
+  // Retrieve number of directories
+  int dir_num;
+  tiledb_ls_c(tiledb_ctx, argv[1], &dir_num);
+
+  // Exit if there are not TileDB objects in the input directory_
+  if(dir_num == 0)
+    return 0;
+
   // Initialize variables
-  char* dirs[10];
-  int allocated_dir_num = 10;
-  int dir_num = 10;
-  int dir_types[10];
+  char** dirs = new char*[dir_num];
+  int* dir_types = new int[dir_num];
   for(int i=0; i<dir_num; ++i)
     dirs[i] = (char*) malloc(TILEDB_NAME_MAX_LEN);
 
@@ -57,7 +63,7 @@ int main(int argc, char** argv) {
   tiledb_ls(
       tiledb_ctx,                                    // Context
       argv[1],                                       // Parent directory
-      (char**) dirs,                                 // Directories
+      dirs,                                          // Directories
       dir_types,                                     // Directory types
       &dir_num);                                     // Directory number
 
@@ -75,8 +81,10 @@ int main(int argc, char** argv) {
   }
  
   // Clean up
-  for(int i=0; i<allocated_dir_num; ++i)
+  for(int i=0; i<dir_num; ++i)
     free(dirs[i]);
+  free(dirs);
+  free(dir_types);
 
   // Finalize context
   tiledb_ctx_finalize(tiledb_ctx);

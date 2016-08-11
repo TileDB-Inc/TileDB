@@ -1284,6 +1284,21 @@ int tiledb_ls_workspaces(
     return TILEDB_OK;
 }
 
+int tiledb_ls_workspaces_c(
+    const TileDB_CTX* tiledb_ctx,
+    int* workspace_num) {
+  // Sanity check
+  if(!sanity_check(tiledb_ctx))
+    return TILEDB_ERR;
+
+  // List workspaces
+  if(tiledb_ctx->storage_manager_->ls_workspaces_c(
+               *workspace_num) != TILEDB_SM_OK)
+    return TILEDB_ERR;
+  else 
+    return TILEDB_OK;
+}
+
 int tiledb_ls(
     const TileDB_CTX* tiledb_ctx,
     const char* parent_dir,
@@ -1311,6 +1326,28 @@ int tiledb_ls(
     return TILEDB_OK;
 }
 
+int tiledb_ls_c(
+    const TileDB_CTX* tiledb_ctx,
+    const char* parent_dir,
+    int* dir_num) {
+  // Sanity check
+  if(!sanity_check(tiledb_ctx))
+    return TILEDB_ERR;
+
+  // Check parent directory name length
+  if(parent_dir == NULL || strlen(parent_dir) > TILEDB_NAME_MAX_LEN) {
+    PRINT_ERROR("Invalid parent directory name length");
+    return TILEDB_ERR;
+  }
+
+  // List TileDB objects
+  if(tiledb_ctx->storage_manager_->ls_c(
+         parent_dir,
+         *dir_num) != TILEDB_SM_OK)
+    return TILEDB_ERR;
+  else 
+    return TILEDB_OK;
+}
 
 
 

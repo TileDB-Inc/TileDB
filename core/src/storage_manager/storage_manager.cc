@@ -165,7 +165,7 @@ int StorageManager::ls_workspaces(
   const char* attributes[] = { TILEDB_KEY };
   MetadataIterator* metadata_it;
   size_t buffer_key[100];
-  char buffer_key_var[1000];
+  char buffer_key_var[100*TILEDB_NAME_MAX_LEN];
   void* buffers[] = { buffer_key, buffer_key_var };
   size_t buffer_sizes[] = { sizeof(buffer_key), sizeof(buffer_key_var) };
   if(metadata_iterator_init(
@@ -204,7 +204,7 @@ int StorageManager::ls_workspaces(
     // Advance
     if(metadata_it->next() != TILEDB_MT_OK) {
       metadata_iterator_finalize(metadata_it);
-      return TILEDB_MT_ERR;
+      return TILEDB_SM_ERR;
     }
   }
 
@@ -219,7 +219,44 @@ int StorageManager::ls_workspaces(
   return TILEDB_SM_OK;
 }
 
+int StorageManager::ls_workspaces_c(int& workspace_num) {
+  // Initialize the master catalog iterator
+  const char* attributes[] = { TILEDB_KEY };
+  MetadataIterator* metadata_it;
+  size_t buffer_key[100];
+  char buffer_key_var[100*TILEDB_NAME_MAX_LEN];
+  void* buffers[] = { buffer_key, buffer_key_var };
+  size_t buffer_sizes[] = { sizeof(buffer_key), sizeof(buffer_key_var) };
+  if(metadata_iterator_init(
+       metadata_it,
+       (tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG).c_str(),
+       attributes,
+       1,
+       buffers,
+       buffer_sizes) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
 
+  // Initialize number of workspaces
+  workspace_num = 0;
+
+  while(!metadata_it->end()) {
+    // Increment number of workspaces
+    ++workspace_num;
+
+    // Advance
+    if(metadata_it->next() != TILEDB_MT_OK) {
+      metadata_iterator_finalize(metadata_it);
+      return TILEDB_SM_ERR;
+    }
+  }
+
+  // Finalize the master catalog iterator
+  if(metadata_iterator_finalize(metadata_it) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Success
+  return TILEDB_SM_OK;
+}
 
 
 
@@ -339,35 +376,9 @@ int StorageManager::array_create(const ArraySchema* array_schema) const {
   if(create_dir(dir) != TILEDB_UT_OK) 
     return TILEDB_SM_ERR;
 
-  // Open array schema file
-  std::string filename = dir + "/" + TILEDB_ARRAY_SCHEMA_FILENAME; 
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  if(fd == -1) {
-    PRINT_ERROR(std::string("Cannot create array; ") + strerror(errno));
+  // Store array schema
+  if(array_store_schema(dir, array_schema) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
-  }
-
-  // Serialize array schema
-  void* array_schema_bin;
-  size_t array_schema_bin_size;
-  if(array_schema->serialize(array_schema_bin, array_schema_bin_size) !=
-     TILEDB_AS_OK)
-    return TILEDB_SM_ERR;
-
-  // Store the array schema
-  ssize_t bytes_written = ::write(fd, array_schema_bin, array_schema_bin_size);
-  if(bytes_written != ssize_t(array_schema_bin_size)) {
-    PRINT_ERROR(std::string("Cannot create array; ") + strerror(errno));
-    free(array_schema_bin);
-    return TILEDB_SM_ERR;
-  }
-
-  // Clean up
-  free(array_schema_bin);
-  if(::close(fd)) {
-    PRINT_ERROR(std::string("Cannot create array; ") + strerror(errno));
-    return TILEDB_SM_ERR;
-  }
 
   // Create consolidation filelock
   if(consolidation_filelock_create(dir) != TILEDB_SM_OK)
@@ -451,6 +462,7 @@ int StorageManager::array_load_schema(
   struct stat st;
   fstat(fd, &st);
   ssize_t buffer_size = st.st_size;
+
   if(buffer_size == 0) {
     PRINT_ERROR("Cannot load array schema; Empty array schema file");
     return TILEDB_SM_ERR;
@@ -1028,6 +1040,46 @@ int StorageManager::ls(
   return TILEDB_SM_OK;
 }
 
+int StorageManager::ls_c(const char* parent_dir, int& dir_num) const {
+  // Get real parent directory
+  std::string parent_dir_real = ::real_dir(parent_dir); 
+
+  // Initialize directory number
+  dir_num =0;
+
+  // List all groups and arrays inside the parent directory
+  std::string filename; 
+  struct dirent *next_file;
+  DIR* dir = opendir(parent_dir_real.c_str());
+  
+  if(dir == NULL) {
+    dir_num = 0;
+    return TILEDB_SM_OK;
+  }
+
+  while((next_file = readdir(dir))) {
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, ".."))
+      continue;
+    filename = parent_dir_real + "/" +  next_file->d_name;
+    if(is_group(filename) ||
+       is_metadata(filename) ||
+       is_array(filename) ||
+       is_workspace(filename)) 
+      ++dir_num;
+  } 
+
+  // Close parent directory  
+  if(closedir(dir)) {
+    PRINT_ERROR(std::string("Cannot close parent directory; ") + 
+                strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
 int StorageManager::clear(const std::string& dir) const {
   if(is_workspace(dir)) {
     return workspace_clear(dir);
@@ -1295,6 +1347,19 @@ int StorageManager::array_move(
     return TILEDB_SM_ERR;
   }
 
+  // Incorporate new name in the array schema
+  ArraySchema* array_schema;
+  if(array_load_schema(new_array_real.c_str(), array_schema) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+  array_schema->set_array_name(new_array_real.c_str());
+
+  // Store the new schema
+  if(array_store_schema(new_array_real, array_schema) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Clean up
+  delete array_schema;
+
   // Success
   return TILEDB_SM_OK;
 }
@@ -1354,6 +1419,44 @@ int StorageManager::array_open(
     return TILEDB_SM_ERR;
 
   // Success 
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::array_store_schema(
+    const std::string& dir, 
+    const ArraySchema* array_schema) const {
+  // Open array schema file
+  std::string filename = dir + "/" + TILEDB_ARRAY_SCHEMA_FILENAME; 
+  remove(filename.c_str());
+  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+  if(fd == -1) {
+    PRINT_ERROR(std::string("Cannot store schema; ") + strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  // Serialize array schema
+  void* array_schema_bin;
+  size_t array_schema_bin_size;
+  if(array_schema->serialize(array_schema_bin, array_schema_bin_size) !=
+     TILEDB_AS_OK)
+    return TILEDB_SM_ERR;
+
+  // Store the array schema
+  ssize_t bytes_written = ::write(fd, array_schema_bin, array_schema_bin_size);
+  if(bytes_written != ssize_t(array_schema_bin_size)) {
+    PRINT_ERROR(std::string("Cannot store schema; ") + strerror(errno));
+    free(array_schema_bin);
+    return TILEDB_SM_ERR;
+  }
+
+  // Clean up
+  free(array_schema_bin);
+  if(::close(fd)) {
+    PRINT_ERROR(std::string("Cannot store schema; ") + strerror(errno));
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
   return TILEDB_SM_OK;
 }
 
@@ -1830,6 +1933,19 @@ int StorageManager::metadata_move(
                 strerror(errno));
     return TILEDB_SM_ERR;
   }
+
+  // Incorporate new name in the array schema
+  ArraySchema* array_schema;
+  if(array_load_schema(new_metadata_real.c_str(), array_schema) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+  array_schema->set_array_name(new_metadata_real.c_str());
+
+  // Store the new schema
+  if(array_store_schema(new_metadata_real, array_schema) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Clean up
+  delete array_schema;
 
   // Success
   return TILEDB_SM_OK;

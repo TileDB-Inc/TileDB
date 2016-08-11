@@ -1036,6 +1036,16 @@ TILEDB_EXPORT int tiledb_ls_workspaces(
     char** workspaces,
     int* workspace_num);
 
+/**
+ * Counts the number of TileDB workspaces.
+ *
+ * @param tiledb_ctx The TileDB context.
+ * @param workspace_num The number of TileDB workspaces to be returned.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_ls_workspaces_c(
+    const TileDB_CTX* tiledb_ctx,
+    int* workspace_num);
 
 /**
  * Lists all the TileDB objects in a directory, copying their names into the 
@@ -1065,6 +1075,19 @@ TILEDB_EXPORT int tiledb_ls(
     const char* parent_dir,
     char** dirs,
     int* dir_types,
+    int* dir_num);
+
+/**
+ * Counts the TileDB objects in a directory.
+ *
+ * @param tiledb_ctx The TileDB context.
+ * @param parent_dir The parent directory of the TileDB objects to be listed.
+ * @param dir_num The number of TileDB objects to be returned. 
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_ls_c(
+    const TileDB_CTX* tiledb_ctx,
+    const char* parent_dir,
     int* dir_num);
 
 
