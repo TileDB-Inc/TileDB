@@ -49,19 +49,20 @@
 /*             MACROS             */
 /* ****************************** */
 
-#if VERBOSE == 1
-#  define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB] Warning: " \
-                                     << x << ".\n"
-#elif VERBOSE == 2
-#  define PRINT_ERROR(x) std::cerr << "[TileDB::ReadState] Error: " \
-                                   << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB::ReadState] Warning: " \
-                                     << x << ".\n"
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << TILEDB_RS_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 
-#  define PRINT_WARNING(x) do { } while(0) 
 #endif
+
+
+
+
+/* ****************************** */
+/*        GLOBAL VARIABLES        */
+/* ****************************** */
+
+std::string tiledb_rs_errmsg = "";
 
 
 
@@ -159,19 +160,30 @@ ReadState::~ReadState() {
     free(tile_compressed_);
 
   for(int i=0; i<int(map_addr_.size()); ++i) {
-    if(map_addr_[i] != NULL && munmap(map_addr_[i], map_addr_lengths_[i]))
-      PRINT_WARNING("Problem in finalizing ReadState; Memory unmap error");
+    if(map_addr_[i] != NULL && munmap(map_addr_[i], map_addr_lengths_[i])) {
+      std::string errmsg = 
+          "Problem in finalizing ReadState; Memory unmap error";
+      PRINT_ERROR(errmsg);
+      tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    }
   }
 
   for(int i=0; i<int(map_addr_var_.size()); ++i) {
     if(map_addr_var_[i] != NULL && 
-       munmap(map_addr_var_[i], map_addr_var_lengths_[i])) 
-      PRINT_WARNING("Problem in finalizing ReadState; Memory unmap error");
+       munmap(map_addr_var_[i], map_addr_var_lengths_[i])) { 
+      std::string errmsg = 
+          "Problem in finalizing ReadState; Memory unmap error";
+      PRINT_ERROR(errmsg);
+      tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    }
   }
 
   if(map_addr_compressed_ != NULL &&  
-     munmap(map_addr_compressed_, map_addr_compressed_length_))
-    PRINT_WARNING("Problem in finalizing ReadState; Memory unmap error");
+     munmap(map_addr_compressed_, map_addr_compressed_length_)) {
+    std::string errmsg = "Problem in finalizing ReadState; Memory unmap error";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+  }
 
   if(search_tile_overlap_subarray_ != NULL)
     free(search_tile_overlap_subarray_);
@@ -1054,8 +1066,12 @@ int ReadState::CMP_COORDS_TO_SEARCH_TILE(
              tiles_file_offsets_[attribute_num_+1] + tile_offset, 
              tmp_coords_, 
              coords_size_);
-  if(rc != TILEDB_UT_OK)
+
+  // Error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
+  }
 
   // Return
   return !memcmp(buffer, tmp_coords_, coords_size_);
@@ -1516,11 +1532,14 @@ int ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
   // Get coordinates pointer
   coords = tmp_coords_;
 
-  // Return
-  if(rc == TILEDB_UT_OK)
-    return TILEDB_RS_OK;
-  else
+  // Error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
 }
 
 int ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
@@ -1561,11 +1580,14 @@ int ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
   // Get coordinates pointer
   offset = &tmp_offset_;
 
-  // Return
-  if(rc == TILEDB_UT_OK)
-    return TILEDB_RS_OK;
-  else
+  // Error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
 }
 
 bool ReadState::is_empty_attribute(int attribute_id) const {
@@ -1588,7 +1610,10 @@ int ReadState::map_tile_from_file_cmp_gzip(
   // Unmap
   if(map_addr_compressed_ != NULL) {
     if(munmap(map_addr_compressed_, map_addr_compressed_length_)) {
-      PRINT_ERROR("Cannot read tile from file with map; Memory unmap error");
+      std::string errmsg = 
+          "Cannot read tile from file with map; Memory unmap error";
+      PRINT_ERROR(errmsg);
+      tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
       return TILEDB_RS_ERR;
     }
   }
@@ -1612,7 +1637,9 @@ int ReadState::map_tile_from_file_cmp_gzip(
     map_addr_compressed_ = NULL;
     map_addr_compressed_length_ = 0;
     tile_compressed_ = NULL;
-    PRINT_ERROR("Cannot read tile from file; File opening error");
+    std::string errmsg = "Cannot read tile from file; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -1628,7 +1655,9 @@ int ReadState::map_tile_from_file_cmp_gzip(
     map_addr_compressed_ = NULL;
     map_addr_compressed_length_ = 0;
     tile_compressed_ = NULL;
-    PRINT_ERROR("Cannot read tile from file; Memory map error");
+    std::string errmsg = "Cannot read tile from file; Memory map error";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
     return TILEDB_RS_ERR;
   }
   map_addr_compressed_length_ = new_length;
@@ -1643,7 +1672,9 @@ int ReadState::map_tile_from_file_cmp_gzip(
     map_addr_compressed_ = NULL;
     map_addr_compressed_length_ = 0;
     tile_compressed_ = NULL;
-    PRINT_ERROR("Cannot read tile from file; File closing error");
+    std::string errmsg = "Cannot read tile from file; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -1657,7 +1688,10 @@ int ReadState::map_tile_from_file_var_cmp_gzip(
   // Unmap
   if(map_addr_compressed_ != NULL) {
     if(munmap(map_addr_compressed_, map_addr_compressed_length_)) {
-      PRINT_ERROR("Cannot read tile from file with map; Memory unmap error");
+      std::string errmsg = 
+          "Cannot read tile from file with map; Memory unmap error";
+      PRINT_ERROR(errmsg);
+      tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
       return TILEDB_RS_ERR;
     }
   }
@@ -1681,7 +1715,9 @@ int ReadState::map_tile_from_file_var_cmp_gzip(
     map_addr_compressed_ = NULL;
     map_addr_compressed_length_ = 0;
     tile_compressed_ = NULL;
-    PRINT_ERROR("Cannot read tile from file; File opening error");
+    std::string errmsg = "Cannot read tile from file; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -1700,7 +1736,9 @@ int ReadState::map_tile_from_file_var_cmp_gzip(
       map_addr_compressed_ = NULL;
       map_addr_compressed_length_ = 0;
       tile_compressed_ = NULL;
-      PRINT_ERROR("Cannot read tile from file; Memory map error");
+      std::string errmsg = "Cannot read tile from file; Memory map error";
+      PRINT_ERROR(errmsg);
+      tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
       return TILEDB_RS_ERR;
     }
   } else {
@@ -1718,7 +1756,9 @@ int ReadState::map_tile_from_file_var_cmp_gzip(
     map_addr_compressed_ = NULL;
     map_addr_compressed_length_ = 0;
     tile_compressed_ = NULL;
-    PRINT_ERROR("Cannot read tile from file; File closing error");
+    std::string errmsg = "Cannot read tile from file; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -1737,7 +1777,10 @@ int ReadState::map_tile_from_file_cmp_none(
   // Unmap
   if(map_addr_[attribute_id] != NULL) {
     if(munmap(map_addr_[attribute_id], map_addr_lengths_[attribute_id])) {
-      PRINT_ERROR("Cannot read tile from file with map; Memory unmap error");
+      std::string errmsg = 
+          "Cannot read tile from file with map; Memory unmap error";
+      PRINT_ERROR(errmsg);
+      tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
       return TILEDB_RS_ERR;
     }
   }
@@ -1761,7 +1804,9 @@ int ReadState::map_tile_from_file_cmp_none(
     map_addr_lengths_[attribute_id] = 0;
     tiles_[attribute_id] = NULL;
     tiles_sizes_[attribute_id] = 0;
-    PRINT_ERROR("Cannot read tile from file; File opening error");
+    std::string errmsg = "Cannot read tile from file; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -1776,7 +1821,9 @@ int ReadState::map_tile_from_file_cmp_none(
     map_addr_lengths_[attribute_id] = 0;
     tiles_[attribute_id] = NULL;
     tiles_sizes_[attribute_id] = 0;
-    PRINT_ERROR("Cannot read tile from file; Memory map error");
+    std::string errmsg = "Cannot read tile from file; Memory map error";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
     return TILEDB_RS_ERR;
   }
   map_addr_lengths_[attribute_id] = new_length;
@@ -1792,7 +1839,9 @@ int ReadState::map_tile_from_file_cmp_none(
     map_addr_lengths_[attribute_id] = 0;
     tiles_[attribute_id] = NULL;
     tiles_sizes_[attribute_id] = 0;
-    PRINT_ERROR("Cannot read tile from file; File closing error");
+    std::string errmsg = "Cannot read tile from file; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -1808,7 +1857,10 @@ int ReadState::map_tile_from_file_var_cmp_none(
     if(munmap(
            map_addr_var_[attribute_id], 
            map_addr_var_lengths_[attribute_id])) {
-      PRINT_ERROR("Cannot read tile from file with map; Memory unmap error");
+      std::string errmsg = 
+          "Cannot read tile from file with map; Memory unmap error";
+      PRINT_ERROR(errmsg);
+      tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
       return TILEDB_RS_ERR;
     }
   }
@@ -1832,7 +1884,9 @@ int ReadState::map_tile_from_file_var_cmp_none(
     map_addr_var_lengths_[attribute_id] = 0;
     tiles_var_[attribute_id] = NULL;
     tiles_var_sizes_[attribute_id] = 0;
-    PRINT_ERROR("Cannot read tile from file; File opening error");
+    std::string errmsg = "Cannot read tile from file; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -1852,7 +1906,9 @@ int ReadState::map_tile_from_file_var_cmp_none(
       map_addr_var_lengths_[attribute_id] = 0;
       tiles_var_[attribute_id] = NULL;
       tiles_var_sizes_[attribute_id] = 0;
-      PRINT_ERROR("Cannot read tile from file; Memory map error");
+      std::string errmsg = "Cannot read tile from file; Memory map error";
+      PRINT_ERROR(errmsg);
+      tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
       return TILEDB_RS_ERR;
     }
   } else {
@@ -1872,7 +1928,9 @@ int ReadState::map_tile_from_file_var_cmp_none(
     map_addr_var_lengths_[attribute_id] = 0;
     tiles_var_[attribute_id] = NULL;
     tiles_var_sizes_[attribute_id] = 0;
-    PRINT_ERROR("Cannot read tile from file; File closing error");
+    std::string errmsg = "Cannot read tile from file; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -1913,10 +1971,13 @@ int ReadState::mpi_io_read_tile_from_file_cmp_gzip(
          filename, 
          offset, 
          tile_compressed_, 
-         tile_size) != TILEDB_UT_OK)
+         tile_size) != TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
-  else
-    return TILEDB_RS_OK;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
 }
 
 int ReadState::mpi_io_read_tile_from_file_var_cmp_gzip(
@@ -1950,10 +2011,13 @@ int ReadState::mpi_io_read_tile_from_file_var_cmp_gzip(
          filename, 
          offset, 
          tile_compressed_, 
-         tile_size) != TILEDB_UT_OK)
+         tile_size) != TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
-  else
-    return TILEDB_RS_OK;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
 }
 
 int ReadState::prepare_tile_for_reading(
@@ -2039,6 +2103,8 @@ int ReadState::prepare_tile_for_reading_cmp_gzip(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
+
+  // Error
   if(rc != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
@@ -2049,8 +2115,10 @@ int ReadState::prepare_tile_for_reading_cmp_gzip(
          tile_compressed_size, 
          static_cast<unsigned char*>(tiles_[attribute_id]),
          full_tile_size,
-         gunzip_out_size) != TILEDB_UT_OK)
+         gunzip_out_size) != TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
+  }
 
   // Sanity check
   assert(gunzip_out_size == tile_size);
@@ -2102,6 +2170,8 @@ int ReadState::prepare_tile_for_reading_cmp_none(
          attribute_id, 
          file_offset, 
          tile_size);
+
+  // Error
   if(rc != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
@@ -2178,6 +2248,8 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
+
+  // Error
   if(rc != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
@@ -2188,8 +2260,10 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
          tile_compressed_size, 
          static_cast<unsigned char*>(tiles_[attribute_id]),
          tile_size,
-         gunzip_out_size) != TILEDB_UT_OK)
+         gunzip_out_size) != TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
+  }
 
   // Sanity check
   assert(gunzip_out_size == tile_size);
@@ -2251,6 +2325,8 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
+
+  // Error
   if(rc != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
@@ -2260,8 +2336,10 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
           tile_compressed_size, 
           static_cast<unsigned char*>(tiles_var_[attribute_id]),
           tile_var_size,
-          gunzip_out_size) != TILEDB_UT_OK)
+          gunzip_out_size) != TILEDB_UT_OK) {
+      tiledb_rs_errmsg = tiledb_ut_errmsg;
       return TILEDB_RS_ERR;
+    }
 
     // Sanity check
     assert(gunzip_out_size == tile_var_size);
@@ -2315,6 +2393,8 @@ int ReadState::prepare_tile_for_reading_var_cmp_none(
          attribute_id, 
          file_offset, 
          tile_size);
+
+  // Error
   if(rc != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
@@ -2343,15 +2423,19 @@ int ReadState::prepare_tile_for_reading_var_cmp_none(
       if(read_from_file(
              filename, file_offset + full_tile_size, 
              &end_tile_var_offset, 
-             TILEDB_CELL_VAR_OFFSET_SIZE) != TILEDB_UT_OK)
+             TILEDB_CELL_VAR_OFFSET_SIZE) != TILEDB_UT_OK) {
+        tiledb_rs_errmsg = tiledb_ut_errmsg;
         return TILEDB_RS_ERR;
+      }
     } else if(read_method == TILEDB_IO_MPI) {
        if(mpi_io_read_from_file(
              array_->config()->mpi_comm(),
              filename, file_offset + full_tile_size, 
              &end_tile_var_offset, 
-             TILEDB_CELL_VAR_OFFSET_SIZE) != TILEDB_UT_OK)
+             TILEDB_CELL_VAR_OFFSET_SIZE) != TILEDB_UT_OK) {
+        tiledb_rs_errmsg = tiledb_ut_errmsg;
         return TILEDB_RS_ERR;
+      }
     }
     tile_var_size = end_tile_var_offset - tile_s[0];
   } else {                  // Last tile
@@ -2430,11 +2514,14 @@ int ReadState::READ_FROM_TILE(
              buffer, 
              bytes_to_copy);
 
-  // Return
-  if(rc == TILEDB_UT_OK)
-    return TILEDB_RS_OK;
-  else
+  // Error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
 }
 
 int ReadState::READ_FROM_TILE_VAR(
@@ -2473,11 +2560,14 @@ int ReadState::READ_FROM_TILE_VAR(
              buffer, 
              bytes_to_copy);
 
-  // Return
-  if(rc == TILEDB_UT_OK)
-    return TILEDB_RS_OK;
-  else
+  // Error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
 }
 
 int ReadState::read_tile_from_file_cmp_gzip(
@@ -2506,10 +2596,13 @@ int ReadState::read_tile_from_file_cmp_gzip(
 
   // Read from file
   if(read_from_file(filename, offset, tile_compressed_, tile_size) !=
-     TILEDB_UT_OK)
+     TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
-  else
-    return TILEDB_RS_OK;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
 }
 
 int ReadState::read_tile_from_file_var_cmp_gzip(
@@ -2536,10 +2629,13 @@ int ReadState::read_tile_from_file_var_cmp_gzip(
 
   // Read from file
   if(read_from_file(filename, offset, tile_compressed_, tile_size) !=
-     TILEDB_UT_OK)
+     TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
-  else
-    return TILEDB_RS_OK;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
 }
 
 int ReadState::set_tile_file_offset(

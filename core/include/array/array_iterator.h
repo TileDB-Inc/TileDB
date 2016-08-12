@@ -49,6 +49,19 @@
 /**@}*/
 
 
+/** Default error message. */
+#define TILEDB_AIT_ERRMSG std::string("[TileDB::ArrayIterator] Error: ")
+
+
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern std::string tiledb_ait_errmsg;
+
+
 
 
 /** Enables iteration (read) over an array's cells. */

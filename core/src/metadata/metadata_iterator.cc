@@ -39,19 +39,20 @@
 /*             MACROS             */
 /* ****************************** */
 
-#if VERBOSE == 1
-#  define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB] Warning: " \
-                                     << x << ".\n"
-#elif VERBOSE == 2
-#  define PRINT_ERROR(x) std::cerr << "[TileDB::MetadataIterator] Error: " \
-                                   << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB::MetadataIterator] Warning: " \
-                                     << x << ".\n"
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << TILEDB_MIT_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 
-#  define PRINT_WARNING(x) do { } while(0) 
 #endif
+
+
+
+
+/* ****************************** */
+/*        GLOBAL VARIABLES        */
+/* ****************************** */
+
+std::string tiledb_mit_errmsg = "";
 
 
 
@@ -86,10 +87,13 @@ int MetadataIterator::get_value(
     int attribute_id,
     const void** value,
     size_t* value_size) const {
-  if(array_it_->get_value(attribute_id, value, value_size) != TILEDB_AIT_OK)
+  if(array_it_->get_value(attribute_id, value, value_size) != TILEDB_AIT_OK) {
+    tiledb_mit_errmsg = tiledb_ait_errmsg; 
     return TILEDB_MIT_ERR;
-  else
-    return TILEDB_MIT_OK; 
+  }
+
+  // Success
+  return TILEDB_MIT_OK; 
 }
 
 
@@ -106,10 +110,14 @@ int MetadataIterator::finalize() {
   delete metadata_;
   metadata_ = NULL;
 
-  if(rc != TILEDB_AIT_OK)
+  // Error
+  if(rc != TILEDB_AIT_OK) {
+    tiledb_mit_errmsg = tiledb_ait_errmsg; 
     return TILEDB_MIT_ERR;
-  else
-    return TILEDB_MIT_OK;
+  }
+
+  // Success
+  return TILEDB_MIT_OK;
 }
 
 int MetadataIterator::init(
@@ -123,6 +131,7 @@ int MetadataIterator::init(
      TILEDB_AIT_OK) {
     delete array_it_;
     array_it_ = NULL;
+    tiledb_mit_errmsg = tiledb_ait_errmsg; 
     return TILEDB_MIT_ERR;
   } 
   
@@ -131,8 +140,11 @@ int MetadataIterator::init(
 }
 
 int MetadataIterator::next() {
-  if(array_it_->next() != TILEDB_AIT_OK)
+  if(array_it_->next() != TILEDB_AIT_OK) {
+    tiledb_mit_errmsg = tiledb_ait_errmsg; 
     return TILEDB_MIT_ERR;
-  else
-    return TILEDB_MIT_OK;
+  }
+
+  // Success
+  return TILEDB_MIT_OK;
 }

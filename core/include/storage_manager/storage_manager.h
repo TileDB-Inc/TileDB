@@ -58,17 +58,32 @@
 #define TILEDB_SM_ERR                                                -1
 /**@}*/
 
+/**@{*/
+/** Lock types. */
+#define TILEDB_SM_SHARED_LOCK                                         0
+#define TILEDB_SM_EXCLUSIVE_LOCK                                      1
+/**@}*/
+
 /** Name of the master catalog. */
 #define TILEDB_SM_MASTER_CATALOG                       "master_catalog"
 
 /** Name of the consolidation file lock. */
 #define TILEDB_SM_CONSOLIDATION_FILELOCK_NAME   ".__consolidation_lock"
 
-/**@{*/
-/** Lock types. */
-#define TILEDB_SM_SHARED_LOCK                                         0
-#define TILEDB_SM_EXCLUSIVE_LOCK                                      1
-/**@}*/
+/** Default error message. */
+#define TILEDB_SM_ERRMSG std::string("[TileDB::StorageManager] Error: ")
+
+
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern std::string tiledb_sm_errmsg;
+
+
+
 
 /** 
  * The storage manager, which is repsonsible for creating, deleting, etc. of

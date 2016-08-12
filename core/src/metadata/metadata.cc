@@ -42,19 +42,20 @@
 /*             MACROS             */
 /* ****************************** */
 
-#if VERBOSE == 1
-#  define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB] Warning: " \
-                                     << x << ".\n"
-#elif VERBOSE == 2
-#  define PRINT_ERROR(x) std::cerr << "[TileDB::Metadata] Error: " \
-                                   << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB::Metadata] Warning: " \
-                                     << x << ".\n"
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << TILEDB_MT_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 
-#  define PRINT_WARNING(x) do { } while(0) 
 #endif
+
+
+
+/* ****************************** */
+/*        GLOBAL VARIABLES        */
+/* ****************************** */
+
+std::string tiledb_mt_errmsg = "";
+
 
 
 
@@ -92,7 +93,9 @@ bool Metadata::overflow(int attribute_id) const {
 int Metadata::read(const char* key, void** buffers, size_t* buffer_sizes) {
   // Sanity checks
   if(mode_ != TILEDB_METADATA_READ) {
-    PRINT_ERROR("Cannot read from metadata; Invalid mode");
+    std::string errmsg = "Cannot read from metadata; Invalid mode";
+    PRINT_ERROR(errmsg);
+    tiledb_mt_errmsg = TILEDB_MT_ERRMSG + errmsg; 
     return TILEDB_MT_ERR;
   }
 
@@ -107,14 +110,19 @@ int Metadata::read(const char* key, void** buffers, size_t* buffer_sizes) {
   } 
 
   // Re-init sub array
-  if(array_->reset_subarray(subarray) != TILEDB_AR_OK)
+  if(array_->reset_subarray(subarray) != TILEDB_AR_OK) {
+    tiledb_mt_errmsg = tiledb_ar_errmsg; 
     return TILEDB_MT_ERR;
+  }
 
   // Read from array
-  if(array_->read(buffers, buffer_sizes) != TILEDB_AR_OK)
+  if(array_->read(buffers, buffer_sizes) != TILEDB_AR_OK) {
+    tiledb_mt_errmsg = tiledb_ar_errmsg; 
     return TILEDB_MT_ERR;
-  else
-    return TILEDB_MT_OK;
+  } 
+
+  // Success
+  return TILEDB_MT_OK;
 }
 
 
@@ -127,10 +135,14 @@ int Metadata::read(const char* key, void** buffers, size_t* buffer_sizes) {
 int Metadata::consolidate(
     Fragment*& new_fragment,
     std::vector<std::string>& old_fragment_names) {
-  if(array_->consolidate(new_fragment, old_fragment_names) != TILEDB_AR_OK)
+  // Consolidate
+  if(array_->consolidate(new_fragment, old_fragment_names) != TILEDB_AR_OK) {
+    tiledb_mt_errmsg = tiledb_ar_errmsg; 
     return TILEDB_MT_ERR;
-  else
-    return TILEDB_MT_OK;
+  }
+
+  // Success
+  return TILEDB_MT_OK;
 }
 
 int Metadata::finalize() {
@@ -139,10 +151,13 @@ int Metadata::finalize() {
   delete array_;
   array_ = NULL;
 
-  if(rc == TILEDB_AR_OK)
-    return TILEDB_MT_OK; 
-  else
+  if(rc != TILEDB_AR_OK)  {
+    tiledb_mt_errmsg = tiledb_ar_errmsg; 
     return TILEDB_MT_ERR; 
+  }
+
+  // Success
+  return TILEDB_MT_OK; 
 }
 
 int Metadata::init(
@@ -156,7 +171,9 @@ int Metadata::init(
   // Sanity check on mode
   if(mode != TILEDB_METADATA_READ &&
      mode != TILEDB_METADATA_WRITE) {
-    PRINT_ERROR("Cannot initialize metadata; Invalid metadata mode");
+    std::string errmsg = "Cannot initialize metadata; Invalid metadata mode";
+    PRINT_ERROR(errmsg);
+    tiledb_mt_errmsg = TILEDB_MT_ERRMSG + errmsg; 
     return TILEDB_MT_ERR;
   }
 
@@ -188,7 +205,9 @@ int Metadata::init(
       size_t attribute_len = strlen(attributes[i]);
       // Check attribute name length
       if(attributes[i] == NULL || attribute_len > TILEDB_NAME_MAX_LEN) {
-        PRINT_ERROR("Invalid attribute name length");
+        std::string errmsg = "Invalid attribute name length";
+        PRINT_ERROR(errmsg);
+        tiledb_mt_errmsg = TILEDB_MT_ERRMSG + errmsg; 
         return TILEDB_MT_ERR;
       }
       array_attributes[i] = new char[attribute_len+1];
@@ -218,11 +237,14 @@ int Metadata::init(
     delete [] array_attributes[i];
   delete [] array_attributes;
 
-  // Success
-  if(rc != TILEDB_AR_OK)
+  // Error
+  if(rc != TILEDB_AR_OK) {
+    tiledb_mt_errmsg = tiledb_ar_errmsg; 
     return TILEDB_MT_ERR;
-  else
-    return TILEDB_MT_OK;
+  }
+
+  // Success
+  return TILEDB_MT_OK;
 }
 
 int Metadata::reset_attributes(
@@ -254,7 +276,9 @@ int Metadata::reset_attributes(
       size_t attribute_len = strlen(attributes[i]);
       // Check attribute name length
       if(attributes[i] == NULL || attribute_len > TILEDB_NAME_MAX_LEN) {
-        PRINT_ERROR("Invalid attribute name length");
+        std::string errmsg = "Invalid attribute name length";
+        PRINT_ERROR(errmsg);
+        tiledb_mt_errmsg = errmsg; 
         return TILEDB_MT_ERR;
       }
       array_attributes[i] = new char[attribute_len+1];
@@ -277,11 +301,14 @@ int Metadata::reset_attributes(
     delete [] array_attributes[i];
   delete [] array_attributes;
 
-  // Return
-  if(rc == TILEDB_AR_OK)
-    return TILEDB_MT_OK;
-  else
+  // Error
+  if(rc != TILEDB_AR_OK) {
+    tiledb_mt_errmsg = tiledb_ar_errmsg; 
     return TILEDB_MT_ERR;
+  }
+
+  // Success
+  return TILEDB_MT_OK;
 }
 
 int Metadata::write(
@@ -291,11 +318,15 @@ int Metadata::write(
     const size_t* buffer_sizes) {
   // Sanity checks
   if(mode_ != TILEDB_METADATA_WRITE) {
-    PRINT_ERROR("Cannot write to metadata; Invalid mode");
+    std::string errmsg = "Cannot write to metadata; Invalid mode";
+    PRINT_ERROR(errmsg);
+    tiledb_mt_errmsg = errmsg; 
     return TILEDB_MT_ERR;
   }
   if(keys == NULL) { 
-    PRINT_ERROR("Cannot write to metadata; No keys given");
+    std::string errmsg = "Cannot write to metadata; No keys given";
+    PRINT_ERROR(errmsg);
+    tiledb_mt_errmsg = errmsg; 
     return TILEDB_MT_ERR;
   }
 
@@ -327,11 +358,14 @@ int Metadata::write(
   free(array_buffers);
   free(array_buffer_sizes);
 
-  // Return
-  if(rc == TILEDB_AR_OK)
-    return TILEDB_MT_OK;
-  else
+  // Error
+  if(rc != TILEDB_AR_OK) {
+    tiledb_mt_errmsg = tiledb_ar_errmsg; 
     return TILEDB_MT_ERR;
+  }
+  
+  // Success
+  return TILEDB_MT_OK;
 }
 
 /* ****************************** */

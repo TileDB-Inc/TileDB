@@ -37,7 +37,26 @@
 #include <mpi.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <string>
 #include <unistd.h>
+
+
+/* ********************************* */
+/*             CONSTANTS             */
+/* ********************************* */
+
+/** Default error message. */
+#define TILEDB_ERRMSG std::string("[TileDB] Error: ")
+
+/** Maximum error message length. */
+#define TILEDB_ERRMSG_MAX_LEN 2000
+
+
+
+
+/* ********************************* */
+/*               MACROS              */
+/* ********************************* */
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,6 +67,18 @@ extern "C" {
 #else
 #  define TILEDB_EXPORT
 #endif
+
+
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern char tiledb_errmsg[TILEDB_ERRMSG_MAX_LEN];
+
+
+
 
 /* ********************************* */
 /*              CONFIG               */

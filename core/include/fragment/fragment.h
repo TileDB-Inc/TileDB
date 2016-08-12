@@ -53,6 +53,18 @@
 #define TILEDB_FG_ERR      -1
 /**@}*/
 
+/** Default error message. */
+#define TILEDB_FG_ERRMSG std::string("[TileDB::Fragment] Error: ")
+
+
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern std::string tiledb_fg_errmsg;
+
 
 
 

@@ -65,6 +65,18 @@
 // Default parameters.
 #define TILEDB_AS_CAPACITY             10000
 
+/** Default error message. */
+#define TILEDB_AS_ERRMSG std::string("[TileDB::ArraySchema] Error: ")
+
+
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern std::string tiledb_as_errmsg;
+
 
 
 

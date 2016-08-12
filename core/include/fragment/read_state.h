@@ -52,6 +52,18 @@
 #define TILEDB_RS_ERR       -1
 /**@}*/
 
+/** Default error message. */
+#define TILEDB_RS_ERRMSG std::string("[TileDB::ReadState] Error: ")
+
+
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern std::string tiledb_rs_errmsg;
+
 
 
 
