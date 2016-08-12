@@ -54,7 +54,18 @@
 #define TILEDB_UT_ERR       -1
 /**@}*/
 
+/** Default error message. */
+#define TILEDB_UT_ERRMSG std::string("[TileDB::utils] Error: ")
 
+/** Maximum number of bytes written in a single I/O. */
+#define TILEDB_UT_MAX_WRITE_COUNT 1500000000    // ~ 1.5 GB
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern std::string tiledb_ut_errmsg;
 
 
 /* ********************************* */

@@ -39,19 +39,20 @@
 /*             MACROS             */
 /* ****************************** */
 
-#if VERBOSE == 1
-#  define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB] Warning: " \
-                                     << x << ".\n"
-#elif VERBOSE == 2
-#  define PRINT_ERROR(x) std::cerr << "[TileDB::ArrayIterator] Error: " \
-                                   << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB::ArrayIterator] Warning: " \
-                                     << x << ".\n"
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << TILEDB_AIT_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 
-#  define PRINT_WARNING(x) do { } while(0) 
 #endif
+
+
+
+
+/* ****************************** */
+/*        GLOBAL VARIABLES        */
+/* ****************************** */
+
+std::string tiledb_ait_errmsg = "";
 
 
 
@@ -92,9 +93,11 @@ int ArrayIterator::get_value(
     size_t* value_size) const {
   // Trivial case
   if(end_) {
-    PRINT_ERROR("Cannot get value; Iterator end reached");
     *value = NULL;
     *value_size = 0;
+    std::string errmsg = "Cannot get value; Iterator end reached";
+    PRINT_ERROR(errmsg);
+    tiledb_ait_errmsg = TILEDB_AIT_ERRMSG + errmsg; 
     return TILEDB_AIT_ERR;
   }
 
@@ -161,8 +164,10 @@ int ArrayIterator::init(
   }
 
   // Perform first read
-  if(array_->read(buffers, buffer_sizes) != TILEDB_AR_OK)
+  if(array_->read(buffers, buffer_sizes) != TILEDB_AR_OK) {
+    tiledb_ait_errmsg = tiledb_ar_errmsg; 
     return TILEDB_AIT_ERR;
+  }
 
   // Check if initialization went well and update internal state
   for(int i=0; i<attribute_id_num; ++i) {
@@ -176,7 +181,10 @@ int ArrayIterator::init(
     // Error
     if(buffer_sizes_[buffer_i_[i]] == 0 && 
        array_->overflow(attribute_ids[i])) {
-      PRINT_ERROR("Array iterator initialization failed; Buffer overflow");
+      std::string errmsg = 
+          "Array iterator initialization failed; Buffer overflow";
+      PRINT_ERROR(errmsg);
+      tiledb_ait_errmsg = TILEDB_AIT_ERRMSG + errmsg; 
       return TILEDB_AIT_ERR;
     }
 
@@ -197,17 +205,22 @@ int ArrayIterator::finalize() {
   delete array_;
   array_ = NULL;
 
-  // Return
-  if(rc != TILEDB_AR_OK)
+  // Error
+  if(rc != TILEDB_AR_OK) {
+    tiledb_ait_errmsg = tiledb_ar_errmsg;
     return TILEDB_AIT_ERR;
-  else
-    return TILEDB_AIT_OK;
+  }
+
+  // Success
+  return TILEDB_AIT_OK;
 }
 
 int ArrayIterator::next() {
   // Trivial case
   if(end_) {
-    PRINT_ERROR("Cannot advance iterator; Iterator end reached");
+    std::string errmsg = "Cannot advance iterator; Iterator end reached";
+    PRINT_ERROR(errmsg);
+    tiledb_ait_errmsg = TILEDB_AIT_ERRMSG + errmsg; 
     return TILEDB_AIT_ERR;
   }
 
@@ -247,8 +260,10 @@ int ArrayIterator::next() {
     }
 
     // Perform first read
-    if(array_->read(buffers_, buffer_sizes_) != TILEDB_AR_OK)
+    if(array_->read(buffers_, buffer_sizes_) != TILEDB_AR_OK) {
+      tiledb_ait_errmsg = tiledb_ar_errmsg;
       return TILEDB_AIT_ERR;
+    }
 
     // Check if read went well and update internal state
     for(int i=0; i<needs_new_read_num; ++i) {
@@ -264,7 +279,9 @@ int ArrayIterator::next() {
       // Error
       if(buffer_sizes_[buffer_i] == 0 && 
          array_->overflow(attribute_ids[needs_new_read[i]])) {
-        PRINT_ERROR("Cannot advance iterator; Buffer overflow");
+        std::string errmsg = "Cannot advance iterator; Buffer overflow";
+        PRINT_ERROR(errmsg);
+        tiledb_ait_errmsg = TILEDB_AIT_ERRMSG + errmsg; 
         return TILEDB_AIT_ERR;
       }
 

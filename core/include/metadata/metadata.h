@@ -46,6 +46,20 @@
 #define TILEDB_MT_ERR         -1
 /**@}*/
 
+/** Default error message. */
+#define TILEDB_MT_ERRMSG std::string("[TileDB::Metadata] Error: ")
+
+
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern std::string tiledb_mt_errmsg;
+
+
+
 
 /** Manages a TileDB metadata object. */
 class Metadata {

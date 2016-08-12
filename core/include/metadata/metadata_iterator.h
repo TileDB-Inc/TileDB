@@ -49,6 +49,21 @@
 #define TILEDB_MIT_ERR        -1
 /**@}*/
 
+/** Default error message. */
+#define TILEDB_MIT_ERRMSG std::string("[TileDB::MetadataIterator] Error: ")
+
+
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern std::string tiledb_mit_errmsg;
+
+
+
+
 /** Enables iteration (read) over metadata values. */
 class MetadataIterator {
  public:

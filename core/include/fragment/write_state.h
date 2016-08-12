@@ -51,6 +51,21 @@
 #define TILEDB_WS_ERR      -1
 /**@}*/
 
+/** Default error message. */
+#define TILEDB_WS_ERRMSG std::string("[TileDB::WriteState] Error: ")
+
+
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern std::string tiledb_ws_errmsg;
+
+
+
+
 class BookKeeping;
 class Fragment;
 

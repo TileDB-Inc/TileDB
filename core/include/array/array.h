@@ -56,6 +56,20 @@
 #define TILEDB_AR_ERR        -1
 /**@}*/
 
+/** Default error message. */
+#define TILEDB_AR_ERRMSG std::string("[TileDB::Array] Error: ")
+
+
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern std::string tiledb_ar_errmsg;
+
+
+
 class ArrayReadState;
 class Fragment;
 

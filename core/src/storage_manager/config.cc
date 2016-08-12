@@ -39,27 +39,6 @@
 
 
 /* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#if VERBOSE == 1
-#  define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB] Warning: " \
-                                     << x << ".\n"
-#elif VERBOSE == 2
-#  define PRINT_ERROR(x) std::cerr << "[TileDB::StorageManager] Error: " \
-                                   << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB::StorageManager] Warning: " \
-                                     << x << ".\n"
-#else
-#  define PRINT_ERROR(x) do { } while(0) 
-#  define PRINT_WARNING(x) do { } while(0) 
-#endif
-
-
-
-
-/* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 

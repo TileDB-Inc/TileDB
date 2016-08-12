@@ -52,19 +52,20 @@
 /*             MACROS             */
 /* ****************************** */
 
-#if VERBOSE == 1
-#  define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB] Warning: " \
-                                     << x << ".\n"
-#elif VERBOSE == 2
-#  define PRINT_ERROR(x) std::cerr << "[TileDB::utils] Error: " \
-                                   << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB::utils] Warning: " \
-                                     << x << ".\n"
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << TILEDB_UT_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 
-#  define PRINT_WARNING(x) do { } while(0) 
 #endif
+
+
+
+
+/* ****************************** */
+/*        GLOBAL VARIABLES        */
+/* ****************************** */
+
+std::string tiledb_ut_errmsg = "";
 
 
 
@@ -206,15 +207,21 @@ int create_dir(const std::string& dir) {
   // If the directory does not exist, create it
   if(!is_dir(real_dir)) { 
     if(mkdir(real_dir.c_str(), S_IRWXU)) {
-      PRINT_ERROR(std::string("Cannot create directory '") + real_dir + "'; " + 
-                  strerror(errno));
+      std::string errmsg = 
+          std::string("Cannot create directory '") + real_dir + "'; " + 
+          strerror(errno);
+      PRINT_ERROR(errmsg);
+      tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
       return TILEDB_UT_ERR;
     } else {
       return TILEDB_UT_OK;
     }
   } else { // Error
-    PRINT_ERROR(std::string("Cannot create directory '") + real_dir +
-                "'; Directory already exists"); 
+    std::string errmsg = 
+        std::string("Cannot create directory '") + real_dir +
+        "'; Directory already exists";
+    PRINT_ERROR(errmsg); 
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 }
@@ -224,8 +231,11 @@ int create_fragment_file(const std::string& dir) {
   std::string filename = std::string(dir) + "/" + TILEDB_FRAGMENT_FILENAME;
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if(fd == -1 || ::close(fd)) {
-    PRINT_ERROR(std::string("Failed to create fragment file; ") +
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Failed to create fragment file; ") +
+        strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -256,8 +266,10 @@ int delete_dir(const std::string& dirname) {
   DIR* dir = opendir(dirname_real.c_str());
 
   if(dir == NULL) {
-    PRINT_ERROR(std::string("Cannot open directory: ") + 
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot open directory; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -267,23 +279,29 @@ int delete_dir(const std::string& dirname) {
       continue;
     filename = dirname_real + "/" + next_file->d_name;
     if(remove(filename.c_str())) {
-      PRINT_ERROR(std::string("Cannot delete file: ") +
-                  strerror(errno));
+      std::string errmsg = 
+          std::string("Cannot delete file; ") + strerror(errno);
+      PRINT_ERROR(errmsg);
+      tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
       return TILEDB_UT_ERR;
     }
   } 
  
   // Close directory 
   if(closedir(dir)) {
-    PRINT_ERROR(std::string("Cannot close directory; ") + 
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot close directory; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
   // Remove directory
   if(rmdir(dirname.c_str())) {
-    PRINT_ERROR(std::string("Cannot delete directory; ") + 
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot delete directory; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -309,10 +327,14 @@ int expand_buffer(void*& buffer, size_t& buffer_allocated_size) {
   buffer_allocated_size *= 2;
   buffer = realloc(buffer, buffer_allocated_size);
   
-  if(buffer == NULL)
+  if(buffer == NULL) {
+    std::string errmsg = "Cannot reallocate buffer";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
-  else
+  } else {
     return TILEDB_UT_OK;
+  }
 }
 
 template<class T>
@@ -331,7 +353,9 @@ void expand_mbr(T* mbr, const T* coords, int dim_num) {
 off_t file_size(const std::string& filename) {
   int fd = open(filename.c_str(), O_RDONLY);
   if(fd == -1) {
-    PRINT_ERROR("Cannot get file size; File opening error");
+    std::string errmsg = "Cannot get file size; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -408,7 +432,9 @@ ssize_t gzip(
   ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
 
   if(ret != Z_OK) {
-    PRINT_ERROR("Cannot compress with GZIP");
+    std::string errmsg = "Cannot compress with GZIP";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     (void)deflateEnd(&strm);
     return TILEDB_UT_ERR;
   }
@@ -425,7 +451,9 @@ ssize_t gzip(
 
   // Return 
   if(ret == Z_STREAM_ERROR || strm.avail_in != 0) {
-    PRINT_ERROR("Cannot compress with GZIP");
+    std::string errmsg = "Cannot compress with GZIP";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   } else {
     // Return size of compressed data
@@ -451,7 +479,9 @@ int gunzip(
   ret = inflateInit(&strm);
 
   if(ret != Z_OK) {
-    PRINT_ERROR("Cannot decompress with GZIP");
+    std::string errmsg = "Cannot decompress with GZIP";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -463,7 +493,9 @@ int gunzip(
   ret = inflate(&strm, Z_FINISH);
 
   if(ret == Z_STREAM_ERROR || ret != Z_STREAM_END) {
-    PRINT_ERROR("Cannot decompress with GZIP");
+    std::string errmsg = "Cannot decompress with GZIP";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -598,7 +630,9 @@ int mpi_io_read_from_file(
     size_t length) {
   // Sanity check
   if(mpi_comm == NULL) {
-    PRINT_ERROR("Cannot read from file; Invalid MPI communicator");
+    std::string errmsg = "Cannot read from file; Invalid MPI communicator";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -610,7 +644,9 @@ int mpi_io_read_from_file(
          MPI_MODE_RDONLY, 
          MPI_INFO_NULL, 
          &fh)) {
-    PRINT_ERROR("Cannot read from file; File opening error");
+    std::string errmsg = "Cannot read from file; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -618,13 +654,17 @@ int mpi_io_read_from_file(
   MPI_File_seek(fh, offset, MPI_SEEK_SET); 
   MPI_Status mpi_status;
   if(MPI_File_read(fh, buffer, length, MPI_CHAR, &mpi_status)) {
-    PRINT_ERROR("Cannot read from file; File reading error");
+    std::string errmsg = "Cannot read from file; File reading error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
   
   // Close file
   if(MPI_File_close(&fh)) {
-    PRINT_ERROR("Cannot read from file; File closing error");
+    std::string errmsg = "Cannot read from file; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -646,30 +686,59 @@ int mpi_io_write_to_file(
              MPI_MODE_CREATE | MPI_MODE_SEQUENTIAL, 
          MPI_INFO_NULL, 
          &fh)) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
-                "'; File opening error");
+    std::string errmsg = 
+        std::string("Cannot write to file '") + filename + 
+        "'; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
-  // Append attribute data to the file
+  // Append attribute data to the file in batches of 
+  // TILEDB_UT_MAX_WRITE_COUNT bytes at a time
   MPI_Status mpi_status;
+  while(buffer_size > TILEDB_UT_MAX_WRITE_COUNT) {
+    if(MPI_File_write(
+           fh, 
+           buffer, 
+           TILEDB_UT_MAX_WRITE_COUNT, 
+           MPI_CHAR, 
+           &mpi_status)) {
+      std::string errmsg = 
+          std::string("Cannot write to file '") + filename + 
+          "'; File writing error";
+      PRINT_ERROR(errmsg);
+      tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+      return TILEDB_UT_ERR;
+    }
+    buffer_size -= TILEDB_UT_MAX_WRITE_COUNT;
+  }
   if(MPI_File_write(fh, buffer, buffer_size, MPI_CHAR, &mpi_status)) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
-                "'; File writing error");
+    std::string errmsg = 
+        std::string("Cannot write to file '") + filename + 
+        "'; File writing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
   // Sync
   if(MPI_File_sync(fh)) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
-                "'; File syncing error");
+    std::string errmsg = 
+        std::string("Cannot write to file '") + filename + 
+        "'; File syncing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
   // Close file
   if(MPI_File_close(&fh)) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
-                "'; File closing error");
+    std::string errmsg = 
+        std::string("Cannot write to file '") + filename + 
+        "'; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -705,7 +774,9 @@ int mutex_unlock(omp_lock_t* mtx) {
 
 int mutex_destroy(pthread_mutex_t* mtx) {
   if(pthread_mutex_destroy(mtx) != 0) {
-    PRINT_ERROR("Cannot destroy mutex");
+    std::string errmsg = "Cannot destroy mutex";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   } else {
     return TILEDB_UT_OK;
@@ -714,7 +785,9 @@ int mutex_destroy(pthread_mutex_t* mtx) {
 
 int mutex_init(pthread_mutex_t* mtx) {
   if(pthread_mutex_init(mtx, NULL) != 0) {
-    PRINT_ERROR("Cannot initialize mutex");
+    std::string errmsg = "Cannot initialize mutex";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   } else {
     return TILEDB_UT_OK;
@@ -723,7 +796,9 @@ int mutex_init(pthread_mutex_t* mtx) {
 
 int mutex_lock(pthread_mutex_t* mtx) {
   if(pthread_mutex_lock(mtx) != 0) {
-    PRINT_ERROR("Cannot lock mutex");
+    std::string errmsg = "Cannot lock mutex";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   } else {
     return TILEDB_UT_OK;
@@ -732,7 +807,9 @@ int mutex_lock(pthread_mutex_t* mtx) {
 
 int mutex_unlock(pthread_mutex_t* mtx) {
   if(pthread_mutex_unlock(mtx) != 0) {
-    PRINT_ERROR("Cannot unlock mutex");
+    std::string errmsg = "Cannot unlock mutex";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   } else {
     return TILEDB_UT_OK;
@@ -819,7 +896,9 @@ int read_from_file(
   // Open file
   int fd = open(filename.c_str(), O_RDONLY);
   if(fd == -1) {
-    PRINT_ERROR("Cannot read from file; File opening error");
+    std::string errmsg = "Cannot read from file; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -827,13 +906,17 @@ int read_from_file(
   lseek(fd, offset, SEEK_SET); 
   ssize_t bytes_read = ::read(fd, buffer, length);
   if(bytes_read != ssize_t(length)) {
-    PRINT_ERROR("Cannot read from file; File reading error");
+    std::string errmsg = "Cannot read from file; File reading error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
   
   // Close file
   if(close(fd)) {
-    PRINT_ERROR("Cannot read from file; File closing error");
+    std::string errmsg = "Cannot read from file; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -855,7 +938,9 @@ int read_from_file_with_mmap(
   // Open file
   int fd = open(filename.c_str(), O_RDONLY);
   if(fd == -1) {
-    PRINT_ERROR("Cannot read from file; File opening error");
+    std::string errmsg = "Cannot read from file; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
  
@@ -863,13 +948,17 @@ int read_from_file_with_mmap(
   void* addr = 
       mmap(NULL, new_length, PROT_READ, MAP_SHARED, fd, start_offset);
   if(addr == MAP_FAILED) {
-    PRINT_ERROR("Cannot read from file; Memory map error");
+    std::string errmsg = "Cannot read from file; Memory map error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
   // Give advice for sequential access
   if(madvise(addr, new_length, MADV_SEQUENTIAL)) {
-    PRINT_ERROR("Cannot read from file; Memory advice error");
+    std::string errmsg = "Cannot read from file; Memory advice error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -878,13 +967,17 @@ int read_from_file_with_mmap(
 
   // Close file
   if(close(fd)) {
-    PRINT_ERROR("Cannot read from file; File closing error");
+    std::string errmsg = "Cannot read from file; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
   // Unmap
   if(munmap(addr, new_length)) {
-    PRINT_ERROR("Cannot read from file; Memory unmap error");
+    std::string errmsg = "Cannot read from file; Memory unmap error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -940,30 +1033,56 @@ int write_to_file(
       O_WRONLY | O_APPEND | O_CREAT, 
       S_IRWXU);
   if(fd == -1) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
-                "'; File opening error");
+    std::string errmsg = 
+        std::string("Cannot write to file '") + filename + 
+        "'; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
-  // Append attribute data to the file
-  ssize_t bytes_written = ::write(fd, buffer, buffer_size);
+  // Append data to the file in batches of TILEDB_UT_MAX_WRITE_COUNT
+  // bytes at a time
+  ssize_t bytes_written;
+  while(buffer_size > TILEDB_UT_MAX_WRITE_COUNT) {
+    bytes_written = ::write(fd, buffer, TILEDB_UT_MAX_WRITE_COUNT);
+    if(bytes_written != TILEDB_UT_MAX_WRITE_COUNT) {
+      std::string errmsg = 
+          std::string("Cannot write to file '") + filename + 
+          "'; File writing error";
+      PRINT_ERROR(errmsg);
+      tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+      return TILEDB_UT_ERR;
+    }
+    buffer_size -= TILEDB_UT_MAX_WRITE_COUNT;
+  }
+  bytes_written = ::write(fd, buffer, buffer_size);
   if(bytes_written != ssize_t(buffer_size)) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
-                "'; File writing error");
+    std::string errmsg = 
+        std::string("Cannot write to file '") + filename + 
+        "'; File writing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
   // Sync
   if(fsync(fd)) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
-                "'; File syncing error");
+    std::string errmsg = 
+        std::string("Cannot write to file '") + filename + 
+        "'; File syncing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
   // Close file
   if(close(fd)) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
-                "'; File closing error");
+    std::string errmsg = 
+        std::string("Cannot write to file '") + filename + 
+        "'; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
@@ -978,23 +1097,47 @@ int write_to_file_cmp_gzip(
   // Open file
   gzFile fd = gzopen(filename, "wb");
   if(fd == NULL) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
-                "'; File opening error");
+    std::string errmsg = 
+        std::string("Cannot write to file '") + filename + 
+        "'; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
-  // Append attribute data to the file
-  ssize_t bytes_written = gzwrite(fd, buffer, buffer_size);
+
+  // Append data to the file in batches of TILEDB_UT_MAX_WRITE_COUNT
+  // bytes at a time
+  ssize_t bytes_written;
+  while(buffer_size > TILEDB_UT_MAX_WRITE_COUNT) {
+    bytes_written = gzwrite(fd, buffer, TILEDB_UT_MAX_WRITE_COUNT);
+    if(bytes_written != TILEDB_UT_MAX_WRITE_COUNT) {
+      std::string errmsg = 
+          std::string("Cannot write to file '") + filename + 
+          "'; File writing error";
+      PRINT_ERROR(errmsg);
+      tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+      return TILEDB_UT_ERR;
+    }
+    buffer_size -= TILEDB_UT_MAX_WRITE_COUNT;
+  }
+  bytes_written = gzwrite(fd, buffer, buffer_size);
   if(bytes_written != ssize_t(buffer_size)) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
-                "'; File writing error");
+    std::string errmsg = 
+        std::string("Cannot write to file '") + filename + 
+        "'; File writing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 
   // Close file
   if(gzclose(fd)) {
-    PRINT_ERROR(std::string("Cannot write to file '") + filename + 
-                "'; File closing error");
+    std::string errmsg = 
+        std::string("Cannot write to file '") + filename + 
+        "'; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
   }
 

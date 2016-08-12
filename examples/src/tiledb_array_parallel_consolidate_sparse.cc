@@ -76,7 +76,7 @@ int main() {
 
   // Initialize 2 pthreads for reading, plus 1 for consolidation
   pthread_t threads[3];
-  thread_data_t thread_data[2];
+  thread_data_t thread_data[3];
 
   // Write in parallel
   for(int i=0; i<3; ++i) {
