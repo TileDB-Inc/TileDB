@@ -56,6 +56,18 @@
 /** Size of the starting offset of a variable cell value. */
 #define TILEDB_CELL_VAR_OFFSET_SIZE     sizeof(size_t)
 
+/** Default error message. */
+#define TILEDB_ARS_ERRMSG std::string("[TileDB::ArrayReadState] Error: ")
+
+
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern std::string tiledb_ars_errmsg;
+
 
 
 

@@ -39,21 +39,28 @@ int main() {
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
-  // Initialize variables
-  char* dirs[10];
-  int allocated_dir_num = 10;
-  int dir_num = 10;
-  for(int i=0; i<dir_num; ++i)
-    dirs[i] = (char*) malloc(TILEDB_NAME_MAX_LEN);
+  // Retrieve number of workspaces
+  int workspace_num;
+  tiledb_ls_workspaces_c(tiledb_ctx, &workspace_num);
+
+  // Exit if there are no workspaces
+  if(workspace_num == 0)
+    return 0;
+
+  // Allocate buffers
+  char** workspaces = new char*[workspace_num];
+  for(int i=0; i<workspace_num; ++i)
+    workspaces[i] = (char*) malloc(TILEDB_NAME_MAX_LEN);
 
   // List workspaces
-  tiledb_ls_workspaces(tiledb_ctx, (char**) dirs, &dir_num);
-  for(int i=0; i<dir_num; ++i)
-    printf("%s\n", dirs[i]);
+  tiledb_ls_workspaces(tiledb_ctx, workspaces, &workspace_num);
+  for(int i=0; i<workspace_num; ++i)
+    printf("%s\n", workspaces[i]);
  
   // Clean up
-  for(int i=0; i<allocated_dir_num; ++i)
-    free(dirs[i]);
+  for(int i=0; i<workspace_num; ++i)
+    free(workspaces[i]);
+  free(workspaces);
 
   // Finalize context
   tiledb_ctx_finalize(tiledb_ctx);

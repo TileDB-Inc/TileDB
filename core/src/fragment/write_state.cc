@@ -47,18 +47,10 @@
 /*             MACROS             */
 /* ****************************** */
 
-#if VERBOSE == 1
-#  define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB] Warning: " \
-                                     << x << ".\n"
-#elif VERBOSE == 2
-#  define PRINT_ERROR(x) std::cerr << "[TileDB::WriteState] Error: " \
-                                   << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB::WriteState] Warning: " \
-                                     << x << ".\n"
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << TILEDB_WS_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 
-#  define PRINT_WARNING(x) do { } while(0) 
 #endif
 
 #ifdef OPENMP
@@ -68,6 +60,15 @@
   #include <algorithm>
   #define SORT(first, last, comp) std::sort((first), (last), (comp))
 #endif
+
+
+
+
+/* ****************************** */
+/*        GLOBAL VARIABLES        */
+/* ****************************** */
+
+std::string tiledb_ws_errmsg = "";
 
 
 
@@ -185,8 +186,10 @@ int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   // Create fragment directory if it does not exist
   std::string fragment_name = fragment_->fragment_name();
   if(!is_dir(fragment_name)) {
-    if(create_dir(fragment_name) != TILEDB_UT_OK)
+    if(create_dir(fragment_name) != TILEDB_UT_OK) {
+      tiledb_ws_errmsg = tiledb_ut_errmsg;
       return TILEDB_WS_ERR;
+    }
     // For variable length attributes, ensure an empty file exists
     // This is because if the current fragment contains no valid values for this
     // attribute, then the file never gets created. This messes up querying
@@ -202,8 +205,12 @@ int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
         filename = file_prefix + array_schema->attribute(attribute_ids[i]) + 
                    "_var" + TILEDB_FILE_SUFFIX;
         FILE* fptr = fopen(filename.c_str(), "a");
-        if(fptr == 0)
+        if(fptr == 0) {
+          std::string errmsg = "Cannot write to file; Error opening file";
+          PRINT_ERROR(errmsg);
+          tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
           return TILEDB_WS_ERR;
+        }
         fclose(fptr);
       }
     }
@@ -218,7 +225,9 @@ int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   } else if (fragment_->mode() == TILEDB_ARRAY_WRITE_UNSORTED) { // UNSORTED
     return write_sparse_unsorted(buffers, buffer_sizes);
   } else {
-    PRINT_ERROR("Cannot write to fragment; Invalid mode");
+    std::string errmsg = "Cannot write to fragment; Invalid mode";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
     return TILEDB_WS_ERR;
   } 
 }
@@ -263,8 +272,10 @@ int WriteState::compress_and_write_tile(int attribute_id) {
   // Compress tile
   ssize_t tile_compressed_size = 
       gzip(tile, tile_size, tile_compressed, tile_compressed_allocated_size_);
-  if(tile_compressed_size == static_cast<ssize_t>(TILEDB_UT_ERR))
+  if(tile_compressed_size == static_cast<ssize_t>(TILEDB_UT_ERR)) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
+  }
 
   // Get the attribute file name
   std::string filename = fragment_->fragment_name() + "/" + 
@@ -285,8 +296,12 @@ int WriteState::compress_and_write_tile(int attribute_id) {
                filename.c_str(),
                tile_compressed_,
                tile_compressed_size);
-  if(rc != TILEDB_UT_OK)
+
+  // Error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
+  }
 
   // Append offset to book-keeping
   book_keeping_->append_tile_offset(attribute_id, tile_compressed_size);
@@ -332,8 +347,10 @@ int WriteState::compress_and_write_tile_var(int attribute_id) {
   // Compress tile
   ssize_t tile_compressed_size = 
       gzip(tile, tile_size, tile_compressed, tile_compressed_allocated_size_);
-  if(tile_compressed_size == TILEDB_UT_ERR) 
+  if(tile_compressed_size == TILEDB_UT_ERR) { 
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
+  }
 
   // Get the attribute file name
   std::string filename = fragment_->fragment_name() + "/" + 
@@ -354,8 +371,12 @@ int WriteState::compress_and_write_tile_var(int attribute_id) {
                filename.c_str(),
                tile_compressed_,
                tile_compressed_size);
-  if(rc != TILEDB_UT_OK)
+
+  // Error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
+  }
 
   // Append offset to book-keeping
   book_keeping_->append_tile_var_offset(attribute_id, tile_compressed_size);
@@ -663,10 +684,15 @@ int WriteState::write_dense_attr_cmp_none(
                filename.c_str(),
                buffer,
                buffer_size);
-  if(rc != TILEDB_UT_OK)
+
+  // Error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
-  else
-    return TILEDB_WS_OK;
+  }
+
+  // Success
+  return TILEDB_WS_OK;
 }
 
 int WriteState::write_dense_attr_cmp_gzip(
@@ -793,8 +819,12 @@ int WriteState::write_dense_attr_var_cmp_none(
                filename.c_str(),
                buffer_var,
                buffer_var_size);
-  if(rc != TILEDB_UT_OK)
+
+  // Error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
+  }
 
   // Recalculate offsets
   void* shifted_buffer = malloc(buffer_size);
@@ -824,11 +854,14 @@ int WriteState::write_dense_attr_var_cmp_none(
   // Clean up
   free(shifted_buffer);
 
-  // Return
-  if(rc != TILEDB_UT_OK)
+  // Error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
-  else
-    return TILEDB_WS_OK;
+  }
+
+  // Success
+  return TILEDB_WS_OK;
 }
 
 int WriteState::write_dense_attr_var_cmp_gzip(
@@ -1102,10 +1135,15 @@ int WriteState::write_sparse_attr_cmp_none(
                filename.c_str(),
                buffer,
                buffer_size);
-  if(rc != TILEDB_UT_OK)
+
+  // Error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
-  else 
-    return TILEDB_WS_OK;
+  }
+
+  // Success
+  return TILEDB_WS_OK;
 }
 
 int WriteState::write_sparse_attr_cmp_gzip(
@@ -1241,8 +1279,12 @@ int WriteState::write_sparse_attr_var_cmp_none(
                filename.c_str(),
                buffer_var,
                buffer_var_size);
-  if(rc != TILEDB_UT_OK)
+
+  // Error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
+  }
 
   // Recalculate offsets
   void* shifted_buffer = malloc(buffer_size);
@@ -1273,10 +1315,13 @@ int WriteState::write_sparse_attr_var_cmp_none(
   free(shifted_buffer);
 
   // Return
-  if(rc != TILEDB_UT_OK)
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
-  else
-    return TILEDB_WS_OK;
+  }
+
+  // Success
+  return TILEDB_WS_OK;
 }
 
 int WriteState::write_sparse_attr_var_cmp_gzip(
@@ -1494,7 +1539,9 @@ int WriteState::write_sparse_unsorted(
 
   // Coordinates are missing
   if(coords_buffer_i == -1) {
-    PRINT_ERROR("Cannot write sparse unsorted; Coordinates missing");
+    std::string errmsg = "Cannot write sparse unsorted; Coordinates missing";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -1570,9 +1617,12 @@ int WriteState::write_sparse_unsorted_attr_cmp_none(
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
   if(buffer_cell_num != int64_t(cell_pos.size())) {
-    PRINT_ERROR(std::string("Cannot write sparse unsorted; Invalid number of "
-                "cells in attribute '") + 
-                array_schema->attribute(attribute_id) + "'");
+    std::string errmsg = 
+        std::string("Cannot write sparse unsorted; Invalid number of "
+        "cells in attribute '") + 
+        array_schema->attribute(attribute_id) + "'";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -1634,9 +1684,12 @@ int WriteState::write_sparse_unsorted_attr_cmp_gzip(
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
   if(buffer_cell_num != int64_t(cell_pos.size())) {
-    PRINT_ERROR(std::string("Cannot write sparse unsorted; Invalid number of "
-                "cells in attribute '") + 
-                array_schema->attribute(attribute_id) + "'");
+    std::string errmsg = 
+        std::string("Cannot write sparse unsorted; Invalid number of "
+        "cells in attribute '") + 
+        array_schema->attribute(attribute_id) + "'";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -1732,9 +1785,12 @@ int WriteState::write_sparse_unsorted_attr_var_cmp_none(
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
   if(buffer_cell_num != int64_t(cell_pos.size())) {
-    PRINT_ERROR(std::string("Cannot write sparse unsorted variable; "
-                "Invalid number of cells in attribute '") + 
-                array_schema->attribute(attribute_id) + "'");
+    std::string errmsg = 
+        std::string("Cannot write sparse unsorted variable; "
+        "Invalid number of cells in attribute '") + 
+        array_schema->attribute(attribute_id) + "'";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -1824,9 +1880,12 @@ int WriteState::write_sparse_unsorted_attr_var_cmp_gzip(
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
   if(buffer_cell_num != int64_t(cell_pos.size())) {
-    PRINT_ERROR(std::string("Cannot write sparse unsorted variable; "
-                "Invalid number of cells in attribute '") + 
-                array_schema->attribute(attribute_id) + "'");
+    std::string errmsg = 
+        std::string("Cannot write sparse unsorted variable; "
+        "Invalid number of cells in attribute '") + 
+        array_schema->attribute(attribute_id) + "'";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
     return TILEDB_WS_ERR;
   }
 

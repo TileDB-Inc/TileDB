@@ -51,6 +51,18 @@
 #define TILEDB_BK_ERR        -1
 /**@}*/
 
+/** Default error message. */
+#define TILEDB_BK_ERRMSG std::string("[TileDB::BookKeeping] Error: ")
+
+
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern std::string tiledb_bk_errmsg;
+
 
 
 

@@ -58,17 +58,32 @@
 #define TILEDB_SM_ERR                                                -1
 /**@}*/
 
+/**@{*/
+/** Lock types. */
+#define TILEDB_SM_SHARED_LOCK                                         0
+#define TILEDB_SM_EXCLUSIVE_LOCK                                      1
+/**@}*/
+
 /** Name of the master catalog. */
 #define TILEDB_SM_MASTER_CATALOG                       "master_catalog"
 
 /** Name of the consolidation file lock. */
 #define TILEDB_SM_CONSOLIDATION_FILELOCK_NAME   ".__consolidation_lock"
 
-/**@{*/
-/** Lock types. */
-#define TILEDB_SM_SHARED_LOCK                                         0
-#define TILEDB_SM_EXCLUSIVE_LOCK                                      1
-/**@}*/
+/** Default error message. */
+#define TILEDB_SM_ERRMSG std::string("[TileDB::StorageManager] Error: ")
+
+
+
+
+/* ********************************* */
+/*          GLOBAL VARIABLES         */
+/* ********************************* */
+
+extern std::string tiledb_sm_errmsg;
+
+
+
 
 /** 
  * The storage manager, which is repsonsible for creating, deleting, etc. of
@@ -156,6 +171,13 @@ class StorageManager {
       char** workspaces,
       int& workspace_num);
 
+  /**
+   * Counts the number of TileDB workspaces.
+   *
+   * @param workspace_num The number of TileDB workspace to be returned.
+   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   */
+  int ls_workspaces_c(int& workspace_num);
 
 
 
@@ -451,6 +473,16 @@ class StorageManager {
       int& dir_num) const;
 
   /**
+   * Counts the TileDB objects in a directory.
+   *
+   * @param parent_dir The parent directory of the TileDB objects to be listed.
+   * @param dir_num The number of TileDB objects to be returned. 
+   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   */
+  int ls_c(const char* parent_dir, int& dir_num) const;
+
+
+  /**
    * Clears a TileDB directory. The corresponding TileDB object (workspace,
    * group, array, or metadata) will still exist after the execution of the
    * function, but it will be empty (i.e., as if it was just created).
@@ -591,6 +623,18 @@ class StorageManager {
   int array_open(
       const std::string& array_name, 
       OpenArray*& open_array);
+
+  /**
+   * Stores the input array schema into the input array directory (serializing
+   * it into a sequence of bytes and storing it in a binary file).
+   *
+   * @param dir The array directory where the array schema is stored.
+   * @param array_schema The array schema to be stored.
+   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   */
+  int array_store_schema(
+      const std::string& dir, 
+      const ArraySchema* array_schema) const;
 
   /** 
    * It sets the TileDB configuration parameters.

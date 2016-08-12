@@ -44,19 +44,20 @@
 /*             MACROS             */
 /* ****************************** */
 
-#if VERBOSE == 1
-#  define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB] Warning: " \
-                                     << x << ".\n"
-#elif VERBOSE == 2
-#  define PRINT_ERROR(x) std::cerr << "[TileDB::Array] Error: " \
-                                   << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB::Array] Warning: " \
-                                     << x << ".\n"
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << TILEDB_AR_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 
-#  define PRINT_WARNING(x) do { } while(0) 
 #endif
+
+
+
+
+/* ****************************** */
+/*        GLOBAL VARIABLES        */
+/* ****************************** */
+
+std::string tiledb_ar_errmsg = "";
 
 
 
@@ -103,7 +104,9 @@ void Array::aio_handle_requests() {
   while(1) {
     // Lock AIO mutext
     if(pthread_mutex_lock(&aio_mtx_)) {
-      PRINT_ERROR("Cannot lock AIO mutex");
+      std::string errmsg = "Cannot lock AIO mutex";
+      PRINT_ERROR(errmsg);
+      tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
       return;
     }
 
@@ -112,16 +115,22 @@ void Array::aio_handle_requests() {
     while(aio_queue_.size() == 0) {
       // If the thread is canceled, unblock and exit
       if(aio_thread_canceled_) {
-        if(pthread_mutex_unlock(&aio_mtx_)) 
-          PRINT_ERROR("Cannot unlock AIO mutex while canceling AIO thread");
-        else 
+        if(pthread_mutex_unlock(&aio_mtx_)) { 
+          std::string errmsg = 
+              "Cannot unlock AIO mutex while canceling AIO thread";
+          PRINT_ERROR(errmsg);
+          tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
+        } else { 
           aio_thread_created_ = false;
+        }
         return;
       }
 
       // Wait to be signaled
       if(pthread_cond_wait(&aio_cond_, &aio_mtx_)) {
-        PRINT_ERROR("Cannot wait on AIO mutex condition");
+        std::string errmsg = "Cannot wait on AIO mutex condition";
+        PRINT_ERROR(errmsg);
+        tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
         return;
       }
     }
@@ -132,7 +141,9 @@ void Array::aio_handle_requests() {
 
     // Unlock AIO mutext
     if(pthread_mutex_unlock(&aio_mtx_)) {
-      PRINT_ERROR("Cannot unlock AIO mutex");
+      std::string errmsg = "Cannot unlock AIO mutex";
+      PRINT_ERROR(errmsg);
+      tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
       return;
     }
 
@@ -150,7 +161,9 @@ void Array::aio_handle_requests() {
 int Array::aio_read(AIO_Request* aio_request) {
   // Sanity checks
   if(mode_ != TILEDB_ARRAY_READ) {
-    PRINT_ERROR("Cannot (async) read from array; Invalid mode");
+    std::string errmsg = "Cannot (async) read from array; Invalid mode";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
 
@@ -171,7 +184,9 @@ int Array::aio_write(AIO_Request* aio_request) {
   // Sanity checks
   if(mode_ != TILEDB_ARRAY_WRITE &&
      mode_ != TILEDB_ARRAY_WRITE_UNSORTED) {
-    PRINT_ERROR("Cannot (async) write to array; Invalid mode");
+    std::string errmsg = "Cannot (async) write to array; Invalid mode";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
 
@@ -238,33 +253,38 @@ bool Array::overflow(int attribute_id) const {
 int Array::read(void** buffers, size_t* buffer_sizes) {
   // Sanity checks
   if(mode_ != TILEDB_ARRAY_READ) {
-    PRINT_ERROR("Cannot read from array; Invalid mode");
+    std::string errmsg = "Cannot read from array; Invalid mode";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
 
   int buffer_i = 0;
   int attribute_id_num = attribute_ids_.size();
-  bool success = false;
-  if(fragments_.size() == 0) {             // No fragments - read nothing
+
+  // Check if there are no fragments 
+  if(fragments_.size() == 0) {             
     for(int i=0; i<attribute_id_num; ++i) {
+      // Update all sizes to 0
       buffer_sizes[buffer_i] = 0; 
       if(!array_schema_->var_size(attribute_ids_[i])) 
         ++buffer_i;
       else 
         buffer_i += 2;
     }
-    success = true;
-    } else {
-    if(array_read_state_->read(buffers, buffer_sizes) == 
-       TILEDB_ARS_OK)
-      success = true;
+
+    // Success
+    return TILEDB_AR_OK;
+  } 
+
+  // There are fragments - Read
+  if(array_read_state_->read(buffers, buffer_sizes) != TILEDB_ARS_OK) {
+     tiledb_ar_errmsg = tiledb_ars_errmsg;
+     return TILEDB_AR_ERR;
   }
 
-  // Return
-  if(success)
-    return TILEDB_AR_OK;
-  else
-    return TILEDB_AR_ERR;
+  // Success
+  return TILEDB_AR_OK;
 }
 
 const void* Array::subarray() const {
@@ -283,18 +303,24 @@ int Array::consolidate(
     std::vector<std::string>& old_fragment_names) {
   // Trivial case
   if(fragments_.size() == 1)
-    return TILEDB_AS_OK;
+    return TILEDB_AR_OK;
 
   // Get new fragment name
   std::string new_fragment_name = this->new_fragment_name();
-  if(new_fragment_name == "")
-    return TILEDB_AS_ERR;
+  if(new_fragment_name == "") {
+    std::string errmsg = "Cannot produce new fragment name";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
+    return TILEDB_AR_ERR;
+  }
 
   // Create new fragment
   new_fragment = new Fragment(this);
   if(new_fragment->init(new_fragment_name, TILEDB_ARRAY_WRITE, subarray_) != 
-     TILEDB_FG_OK)
+     TILEDB_FG_OK) {
+    tiledb_ar_errmsg = tiledb_fg_errmsg;
     return TILEDB_AR_ERR;
+  }
 
   // Consolidate on a per-attribute basis
   for(int i=0; i<array_schema_->attribute_num()+1; ++i) {
@@ -383,11 +409,14 @@ int Array::consolidate(
   free(buffers);
   free(buffer_sizes);
 
-  // Return
-  if(rc_write == TILEDB_FG_OK && rc_read == TILEDB_FG_OK)
-    return TILEDB_AR_OK;
-  else
+  // Error
+  if(rc_write != TILEDB_FG_OK || rc_read != TILEDB_FG_OK) {
+    tiledb_ar_errmsg = tiledb_fg_errmsg;
     return TILEDB_AR_ERR;
+  }
+
+  // Success
+    return TILEDB_AR_OK;
 }
 
 int Array::finalize() {
@@ -411,27 +440,37 @@ int Array::finalize() {
   // Clean the AIO-related members
   int rc_aio_thread = aio_thread_destroy(); 
   int rc_aio_cond = TILEDB_AR_OK, rc_aio_mtx = TILEDB_AR_OK;
-  if(pthread_cond_destroy(&aio_cond_)) {
-    PRINT_ERROR("Cannot destroy AIO mutex condition");
+  if(pthread_cond_destroy(&aio_cond_))
     rc_aio_cond = TILEDB_AR_ERR;
-  }
-  if(pthread_mutex_destroy(&aio_mtx_)) {
-    PRINT_ERROR("Cannot destroy AIO mutex");
+  if(pthread_mutex_destroy(&aio_mtx_))
     rc_aio_mtx = TILEDB_AR_ERR;
-  }
   while(aio_queue_.size() != 0) {
     free(aio_queue_.front());
     aio_queue_.pop();
   }
 
-  // Return
-  if(rc == TILEDB_FG_OK && 
-     rc_aio_thread == TILEDB_AR_OK && 
-     rc_aio_cond == TILEDB_AR_OK &&
-     rc_aio_mtx == TILEDB_AR_OK)
-    return TILEDB_AR_OK; 
-  else
-    return TILEDB_AR_ERR; 
+  // Errors
+  if(rc != TILEDB_FG_OK) {
+    tiledb_ar_errmsg = tiledb_fg_errmsg;
+    return TILEDB_AR_ERR;
+  }
+  if(rc_aio_thread != TILEDB_AR_OK) 
+    return TILEDB_AR_ERR;
+  if(rc_aio_cond != TILEDB_AR_OK) {
+    std::string errmsg = "Cannot destroy AIO mutex condition";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
+    return TILEDB_AR_ERR;
+  }
+  if(rc_aio_mtx != TILEDB_AR_OK) {
+    std::string errmsg = "Cannot destroy AIO mutex";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
+    return TILEDB_AR_ERR;
+  }
+
+  // Success
+  return TILEDB_AR_OK; 
 }
 
 int Array::init(
@@ -447,7 +486,9 @@ int Array::init(
   if(mode != TILEDB_ARRAY_READ &&
      mode != TILEDB_ARRAY_WRITE &&
      mode != TILEDB_ARRAY_WRITE_UNSORTED) {
-    PRINT_ERROR("Cannot initialize array; Invalid array mode");
+    std::string errmsg = "Cannot initialize array; Invalid array mode";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
 
@@ -475,7 +516,9 @@ int Array::init(
     for(int i=0; i<attribute_num; ++i) {
       // Check attribute name length
       if(attributes[i] == NULL || strlen(attributes[i]) > TILEDB_NAME_MAX_LEN) {
-        PRINT_ERROR("Invalid attribute name length");
+        std::string errmsg = "Invalid attribute name length";
+        PRINT_ERROR(errmsg);
+        tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
         return TILEDB_AR_ERR;
       }
       attributes_vec.push_back(attributes[i]);
@@ -483,15 +526,19 @@ int Array::init(
 
     // Sanity check on duplicates 
     if(has_duplicates(attributes_vec)) {
-      PRINT_ERROR("Cannot initialize array; Duplicate attributes");
+      std::string errmsg = "Cannot initialize array; Duplicate attributes";
+      PRINT_ERROR(errmsg);
+      tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
       return TILEDB_AR_ERR;
     }
   }
   
   // Set attribute ids
   if(array_schema->get_attribute_ids(attributes_vec, attribute_ids_) 
-         == TILEDB_AS_ERR)
+         == TILEDB_AS_ERR) {
+    tiledb_ar_errmsg = tiledb_as_errmsg;
     return TILEDB_AR_ERR;
+  }
 
   // Set mode
   mode_ = mode;
@@ -504,14 +551,19 @@ int Array::init(
      mode_ == TILEDB_ARRAY_WRITE_UNSORTED) {
     // Get new fragment name
     std::string new_fragment_name = this->new_fragment_name();
-    if(new_fragment_name == "")
-      return TILEDB_AS_ERR;
+    if(new_fragment_name == "") {
+      std::string errmsg = "Cannot produce new fragment name";
+      PRINT_ERROR(errmsg);
+      tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
+      return TILEDB_AR_ERR;
+    }
 
     // Create new fragment
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
     if(fragment->init(new_fragment_name, mode_, subarray) != TILEDB_FG_OK) {
       array_schema_ = NULL;
+      tiledb_ar_errmsg = tiledb_fg_errmsg;
       return TILEDB_AR_ERR;
     }
   } else if(mode_ == TILEDB_ARRAY_READ) {
@@ -525,11 +577,15 @@ int Array::init(
   // Initialize the AIO-related members
   aio_cond_ = PTHREAD_COND_INITIALIZER; 
   if(pthread_mutex_init(&aio_mtx_, NULL)) {
-    PRINT_ERROR("Cannot initialize AIO mutex");
+    std::string errmsg = "Cannot initialize AIO mutex";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
   if(pthread_cond_init(&aio_cond_, NULL)) {
-    PRINT_ERROR("Cannot initialize AIO mutex condition");
+    std::string errmsg = "Cannot initialize AIO mutex condition";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
   aio_thread_canceled_ = false;
@@ -554,7 +610,9 @@ int Array::reset_attributes(
     for(int i=0; i<attribute_num; ++i) {
       // Check attribute name length
       if(attributes[i] == NULL || strlen(attributes[i]) > TILEDB_NAME_MAX_LEN) {
-        PRINT_ERROR("Invalid attribute name length");
+        std::string errmsg = "Invalid attribute name length";
+        PRINT_ERROR(errmsg);
+        tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
         return TILEDB_AR_ERR;
       }
       attributes_vec.push_back(attributes[i]);
@@ -562,15 +620,19 @@ int Array::reset_attributes(
 
     // Sanity check on duplicates 
     if(has_duplicates(attributes_vec)) {
-      PRINT_ERROR("Cannot reset attributes; Duplicate attributes");
+      std::string errmsg = "Cannot reset attributes; Duplicate attributes";
+      PRINT_ERROR(errmsg);
+      tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
       return TILEDB_AR_ERR;
     }
   }
 
   // Set attribute ids
   if(array_schema_->get_attribute_ids(attributes_vec, attribute_ids_) 
-         == TILEDB_AS_ERR)
+         == TILEDB_AS_ERR) {
+    tiledb_ar_errmsg = tiledb_as_errmsg;
     return TILEDB_AR_ERR;
+  }
 
   // Success
   return TILEDB_AR_OK;
@@ -603,14 +665,20 @@ int Array::reset_subarray(const void* subarray) {
   if(mode_ != TILEDB_ARRAY_READ) {  // WRITE MODE 
     // Get new fragment name
     std::string new_fragment_name = this->new_fragment_name();
-    if(new_fragment_name == "")
-      return TILEDB_AS_ERR;
+    if(new_fragment_name == "") {
+      std::string errmsg = "Cannot generate new fragment name";
+      PRINT_ERROR(errmsg);
+      tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
+      return TILEDB_AR_ERR;
+    }
 
     // Create new fragment
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
-    if(fragment->init(new_fragment_name, mode_, subarray) != TILEDB_FG_OK) 
+    if(fragment->init(new_fragment_name, mode_, subarray) != TILEDB_FG_OK) { 
+      tiledb_ar_errmsg = tiledb_fg_errmsg;
       return TILEDB_AR_ERR;
+    }
   } else if(mode_ == TILEDB_ARRAY_READ) {  // READ MODE
     // Re-initialize the read state of the fragments
     for(int i=0; i<fragment_num; ++i) 
@@ -632,7 +700,9 @@ int Array::write(const void** buffers, const size_t* buffer_sizes) {
   // Sanity checks
   if(mode_ != TILEDB_ARRAY_WRITE && 
      mode_ != TILEDB_ARRAY_WRITE_UNSORTED) {
-    PRINT_ERROR("Cannot write to array; Invalid mode");
+    std::string errmsg = "Cannot write to array; Invalid mode";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
 
@@ -640,24 +710,34 @@ int Array::write(const void** buffers, const size_t* buffer_sizes) {
   if(fragments_.size() == 0) {
     // Get new fragment name
     std::string new_fragment_name = this->new_fragment_name();
-    if(new_fragment_name == "")
-      return TILEDB_AS_ERR;
+    if(new_fragment_name == "") {
+      std::string errmsg = "Cannot produce new fragment name";
+      PRINT_ERROR(errmsg);
+      tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
+      return TILEDB_AR_ERR;
+    }
    
     // Create new fragment 
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
-    if(fragment->init(new_fragment_name, mode_, subarray_) != TILEDB_FG_OK)
+    if(fragment->init(new_fragment_name, mode_, subarray_) != TILEDB_FG_OK) {
+      tiledb_ar_errmsg = tiledb_fg_errmsg;
       return TILEDB_AR_ERR;
+    }
   }
  
   // Dispatch the write command to the new fragment
-  if(fragments_[0]->write(buffers, buffer_sizes) != TILEDB_FG_OK)
+  if(fragments_[0]->write(buffers, buffer_sizes) != TILEDB_FG_OK) {
+    tiledb_ar_errmsg = tiledb_fg_errmsg;
     return TILEDB_AR_ERR;
+  }
 
   // In WRITE_UNSORTED mode, the fragment must be finalized
   if(mode_ == TILEDB_ARRAY_WRITE_UNSORTED) {
-    if(fragments_[0]->finalize() != TILEDB_FG_OK)
+    if(fragments_[0]->finalize() != TILEDB_FG_OK) {
+      tiledb_ar_errmsg = tiledb_fg_errmsg;
       return TILEDB_AR_ERR;
+    }
     delete fragments_[0];
     fragments_.clear();
   }
@@ -724,7 +804,9 @@ int Array::aio_push_request(AIO_Request* aio_request) {
 
   // Lock AIO mutext
   if(pthread_mutex_lock(&aio_mtx_)) {
-    PRINT_ERROR("Cannot lock AIO mutex");
+    std::string errmsg = "Cannot lock AIO mutex";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
 
@@ -733,13 +815,17 @@ int Array::aio_push_request(AIO_Request* aio_request) {
 
   // Unlock AIO mutext
   if(pthread_mutex_unlock(&aio_mtx_)) {
-    PRINT_ERROR("Cannot unlock AIO mutex");
+    std::string errmsg = "Cannot unlock AIO mutex";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
 
   // Signal AIO thread
   if(pthread_cond_signal(&aio_cond_)) { 
-    PRINT_ERROR("Cannot signal AIO thread");
+    std::string errmsg = "Cannot signal AIO thread";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
 
@@ -754,7 +840,9 @@ int Array::aio_thread_create() {
 
   // Create the thread that will be handling all AIO requests
   if(pthread_create(&aio_thread_, NULL, Array::aio_handler, this)) {
-    PRINT_ERROR("Cannot create AIO thread");
+    std::string errmsg = "Cannot create AIO thread";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
 
@@ -771,20 +859,26 @@ int Array::aio_thread_destroy() {
 
   // Lock AIO mutext
   if(pthread_mutex_lock(&aio_mtx_)) {
-    PRINT_ERROR("Cannot lock AIO mutex while destroying AIO thread");
+    std::string errmsg = "Cannot lock AIO mutex while destroying AIO thread";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
 
   // Signal the cancelation so that the thread unblocks
   aio_thread_canceled_ = true;
   if(pthread_cond_signal(&aio_cond_)) { 
-    PRINT_ERROR("Cannot signal AIO thread while destroying AIO thread");
+    std::string errmsg = "Cannot signal AIO thread while destroying AIO thread";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
 
   // Unlock AIO mutext
   if(pthread_mutex_unlock(&aio_mtx_)) {
-    PRINT_ERROR("Cannot unlock AIO mutex while destroying AIO thread");
+    std::string errmsg = "Cannot unlock AIO mutex while destroying AIO thread";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
 
@@ -793,7 +887,9 @@ int Array::aio_thread_destroy() {
 
   // Cancel thread
   if(pthread_cancel(aio_thread_)) {
-    PRINT_ERROR("Cannot destroy AIO thread");
+    std::string errmsg = "Cannot destroy AIO thread";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   } 
 
@@ -837,8 +933,10 @@ int Array::open_fragments(
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
 
-    if(fragment->init(fragment_names[i], book_keeping[i]) != TILEDB_FG_OK)
+    if(fragment->init(fragment_names[i], book_keeping[i]) != TILEDB_FG_OK) {
+      tiledb_ar_errmsg = tiledb_fg_errmsg;
       return TILEDB_AR_ERR;
+    }
   } 
 
   // Success

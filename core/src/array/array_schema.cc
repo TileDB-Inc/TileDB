@@ -46,19 +46,20 @@
 /*             MACROS             */
 /* ****************************** */
 
-#if VERBOSE == 1
-#  define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB] Warning: " \
-                                     << x << ".\n"
-#elif VERBOSE == 2
-#  define PRINT_ERROR(x) std::cerr << "[TileDB::ArraySchema] Error: " \
-                                   << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB::ArraySchema] Warning: " \
-                                     << x << ".\n"
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << TILEDB_AS_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 
-#  define PRINT_WARNING(x) do { } while(0) 
 #endif
+
+
+
+
+/* ****************************** */
+/*        GLOBAL VARIABLES        */
+/* ****************************** */
+
+std::string tiledb_as_errmsg = "";
 
 
 
@@ -236,6 +237,9 @@ int ArraySchema::attribute_id(const std::string& attribute) const {
   }
 
   // Attribute not found
+  std::string errmsg = "Attribute not found";
+  PRINT_ERROR(errmsg);
+  tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
   return TILEDB_AS_ERR;
 }
 
@@ -313,8 +317,11 @@ int ArraySchema::get_attribute_ids(
   for(int i=0; i<attribute_num; ++i) {
     id = attribute_id(attributes[i]);
     if(id == TILEDB_AS_ERR) {
-      PRINT_ERROR(std::string("Cannot get attribute id; Attribute '") + 
-                  attributes[i] + "' does not exist");
+      std::string errmsg = 
+          std::string("Cannot get attribute id; Attribute '") + 
+          attributes[i] + "' does not exist";
+      PRINT_ERROR(errmsg);
+      tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
       return TILEDB_AS_ERR;
     } else {
       attribute_ids.push_back(id);
@@ -687,6 +694,11 @@ int64_t ArraySchema::tile_num() const {
     return tile_num<int64_t>();
 
   assert(0);
+  std::string errmsg = 
+      "Unsupported dimensions type for retrieving the "
+      "number of tiles";
+  PRINT_ERROR(errmsg);
+  tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
   return TILEDB_AS_ERR;
 }
 
@@ -712,6 +724,11 @@ int64_t ArraySchema::tile_num(const void* domain) const {
 
 
   assert(0);
+  std::string errmsg = 
+      "Unsupported dimensions type for retrieving the "
+      "number of tiles";
+  PRINT_ERROR(errmsg);
+  tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
   return TILEDB_AS_ERR;
 }
 
@@ -728,10 +745,14 @@ int64_t ArraySchema::tile_num(const T* domain) const {
 }
 
 int ArraySchema::type(int i) const {
-  if(i<0 || i>attribute_num_)
+  if(i<0 || i>attribute_num_) {
+    std::string errmsg = "Cannot retrieve type; Invalid attribute id";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
-  else
+  } else {
     return types_[i];
+  }
 }
 
 int ArraySchema::var_attribute_num() const {
@@ -1101,14 +1122,19 @@ int ArraySchema::set_attributes(
     int attribute_num) {
   // Sanity check on attributes
   if(attributes == NULL) {
-    PRINT_ERROR("Cannot set attributes; No attributes given");
+    std::string errmsg = "Cannot set attributes; No attributes given";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
 
   // Sanity check on attribute number
   if(attribute_num <= 0) {
-    PRINT_ERROR("Cannot set attributes; "
-                "The number of attributes must be positive");
+    std::string errmsg = 
+        "Cannot set attributes; "
+        "The number of attributes must be positive";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
 
@@ -1122,13 +1148,18 @@ int ArraySchema::set_attributes(
 
   // Check for duplicate attribute names
   if(has_duplicates(attributes_)) {
-    PRINT_ERROR("Cannot set attributes; Duplicate attribute names");
+    std::string errmsg = "Cannot set attributes; Duplicate attribute names";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
 
   // Check if a dimension has the same name as an attribute 
   if(intersect(attributes_, dimensions_)) {
-    PRINT_ERROR("Cannot set attributes; Attribute name same as dimension name");
+    std::string errmsg =
+        "Cannot set attributes; Attribute name same as dimension name";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
 
@@ -1161,7 +1192,9 @@ int ArraySchema::set_cell_order(int cell_order) {
   if(cell_order != TILEDB_ROW_MAJOR &&
      cell_order != TILEDB_COL_MAJOR &&
      cell_order != TILEDB_HILBERT) {
-    PRINT_ERROR("Cannot set cell order; Invalid cell order."); 
+    std::string errmsg = "Cannot set cell order; Invalid cell order";
+    PRINT_ERROR(errmsg); 
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
   cell_order_ = cell_order;
@@ -1179,7 +1212,9 @@ int ArraySchema::set_compression(int* compression) {
     for(int i=0; i<attribute_num_+1; ++i) {
       if(compression[i] != TILEDB_NO_COMPRESSION &&
          compression[i] != TILEDB_GZIP) { 
-        PRINT_ERROR("Cannot set compression; Invalid compression type");
+        std::string errmsg = "Cannot set compression; Invalid compression type";
+        PRINT_ERROR(errmsg);
+        tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
         return TILEDB_AS_ERR;
       }
       compression_.push_back(compression[i]);
@@ -1199,14 +1234,19 @@ int ArraySchema::set_dimensions(
     int dim_num) {
   // Sanity check on dimensions
   if(dimensions == NULL) {
-    PRINT_ERROR("Cannot set dimensions; No dimensions given");
+    std::string errmsg = "Cannot set dimensions; No dimensions given";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
 
   // Sanity check on dimension number
   if(dim_num <= 0) {
-    PRINT_ERROR("Cannot set dimensions; "
-                "The number of dimensions must be positive");
+    std::string errmsg = 
+        "Cannot set dimensions; "
+        "The number of dimensions must be positive";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
 
@@ -1217,13 +1257,18 @@ int ArraySchema::set_dimensions(
 
   // Check for duplicate dimension names
   if(has_duplicates(dimensions_)) {
-    PRINT_ERROR("Cannot set dimensions; Duplicate dimension names");
+    std::string errmsg = "Cannot set dimensions; Duplicate dimension names";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
 
   // Check if a dimension has the same name as an attribute 
   if(intersect(attributes_, dimensions_)) {
-    PRINT_ERROR("Cannot set dimensions; Attribute name same as dimension name");
+    std::string errmsg = 
+        "Cannot set dimensions; Attribute name same as dimension name";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
 
@@ -1234,7 +1279,9 @@ int ArraySchema::set_dimensions(
 int ArraySchema::set_domain(const void* domain) {
   // Sanity check
   if(domain == NULL) {
-    PRINT_ERROR("Cannot set domain; Domain not provided");
+    std::string errmsg = "Cannot set domain; Domain not provided";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
 
@@ -1252,8 +1299,11 @@ int ArraySchema::set_domain(const void* domain) {
     int* domain_int = (int*) domain_;
     for(int i=0; i<dim_num_; ++i) {
       if(domain_int[2*i] > domain_int[2*i+1]) {
-        PRINT_ERROR("Cannot set domain; Lower domain bound larger than its "
-                    "corresponding upper");
+        std::string errmsg = 
+            "Cannot set domain; Lower domain bound larger than its "
+            "corresponding upper";
+        PRINT_ERROR(errmsg);
+        tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
         return TILEDB_AS_ERR;
       }
     }
@@ -1261,8 +1311,11 @@ int ArraySchema::set_domain(const void* domain) {
     int64_t* domain_int64 = (int64_t*) domain_;
     for(int i=0; i<dim_num_; ++i) {
       if(domain_int64[2*i] > domain_int64[2*i+1]) {
-        PRINT_ERROR("Cannot set domain; Lower domain bound larger than its "
-                    "corresponding upper");
+        std::string errmsg = 
+            "Cannot set domain; Lower domain bound larger than its "
+            "corresponding upper";
+        PRINT_ERROR(errmsg);
+        tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
         return TILEDB_AS_ERR;
       }
     }
@@ -1270,8 +1323,11 @@ int ArraySchema::set_domain(const void* domain) {
     float* domain_float = (float*) domain_;
     for(int i=0; i<dim_num_; ++i) {
       if(domain_float[2*i] > domain_float[2*i+1]) {
-        PRINT_ERROR("Cannot set domain; Lower domain bound larger than its "
-                    "corresponding upper");
+        std::string errmsg = 
+            "Cannot set domain; Lower domain bound larger than its "
+            "corresponding upper";
+        PRINT_ERROR(errmsg);
+        tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
         return TILEDB_AS_ERR;
       }
     }
@@ -1279,13 +1335,18 @@ int ArraySchema::set_domain(const void* domain) {
     double* domain_double = (double*) domain_;
     for(int i=0; i<dim_num_; ++i) {
       if(domain_double[2*i] > domain_double[2*i+1]) {
-        PRINT_ERROR("Cannot set domain; Lower domain bound larger than its "
-                    "corresponding upper");
+        std::string errmsg = 
+            "Cannot set domain; Lower domain bound larger than its "
+            "corresponding upper";
+        PRINT_ERROR(errmsg);
+        tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
         return TILEDB_AS_ERR;
       }
     }
   } else {
-    PRINT_ERROR("Cannot set domain; Invalid coordinates type");
+    std::string errmsg = "Cannot set domain; Invalid coordinates type";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
 
@@ -1296,7 +1357,10 @@ int ArraySchema::set_domain(const void* domain) {
 int ArraySchema::set_tile_extents(const void* tile_extents) {
   // Dense arrays must have tile extents
   if(tile_extents == NULL && dense_) {
-    PRINT_ERROR("Cannot set tile extents; Dense arrays must have tile extents");
+    std::string errmsg = 
+        "Cannot set tile extents; Dense arrays must have tile extents";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
 
@@ -1321,7 +1385,9 @@ int ArraySchema::set_tile_order(int tile_order) {
   // Set tile order
   if(tile_order != TILEDB_ROW_MAJOR &&
      tile_order != TILEDB_COL_MAJOR) {
-    PRINT_ERROR("Cannot set tile order; Invalid tile order"); 
+    std::string errmsg = "Cannot set tile order; Invalid tile order";
+    PRINT_ERROR(errmsg); 
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
   tile_order_ = tile_order;
@@ -1333,7 +1399,9 @@ int ArraySchema::set_tile_order(int tile_order) {
 int ArraySchema::set_types(const int* types) {
   // Sanity check
   if(types == NULL) {
-    PRINT_ERROR("Cannot set types; Types not provided");
+    std::string errmsg = "Cannot set types; Types not provided";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
   
@@ -1344,7 +1412,9 @@ int ArraySchema::set_types(const int* types) {
        types[i] != TILEDB_FLOAT32 &&
        types[i] != TILEDB_FLOAT64 &&
        types[i] != TILEDB_CHAR) {
-      PRINT_ERROR("Cannot set types; Invalid type");
+      std::string errmsg = "Cannot set types; Invalid type";
+      PRINT_ERROR(errmsg);
+      tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
       return TILEDB_AS_ERR;
     }
     types_.push_back(types[i]);
@@ -1355,7 +1425,9 @@ int ArraySchema::set_types(const int* types) {
      types[attribute_num_] != TILEDB_INT64 &&
      types[attribute_num_] != TILEDB_FLOAT32 &&
      types[attribute_num_] != TILEDB_FLOAT64) {
-    PRINT_ERROR("Cannot set types; Invalid type");
+    std::string errmsg = "Cannot set types; Invalid type";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
   types_.push_back(types[attribute_num_]);
@@ -1459,16 +1531,25 @@ void ArraySchema::expand_domain(T* domain) const {
 template<class T>
 int64_t ArraySchema::get_cell_pos(const T* coords) const {
   // Applicable only to dense arrays
-  if(!dense_)
+  if(!dense_) {
+    std::string errmsg = 
+        "Cannot get cell position; Invalid array type";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
+  }
 
   // Invoke the proper function based on the cell order
-  if(cell_order_ == TILEDB_ROW_MAJOR)
+  if(cell_order_ == TILEDB_ROW_MAJOR) {
     return get_cell_pos_row(coords);
-  else if(cell_order_ == TILEDB_COL_MAJOR)
+  } else if(cell_order_ == TILEDB_COL_MAJOR) {
     return get_cell_pos_col(coords);
-  else
+  } else {
+    std::string errmsg = "Cannot get cell position; Invalid cell order";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
+  }
 }
 
 template<class T>
@@ -1560,6 +1641,9 @@ int64_t ArraySchema::get_tile_pos(const T* tile_coords) const {
     return get_tile_pos_col(tile_coords);
   } else { // Sanity check 
     assert(0);
+    std::string errmsg = "Cannot get tile position; Invalid tile order";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
 }
@@ -1578,6 +1662,9 @@ int64_t ArraySchema::get_tile_pos(
     return get_tile_pos_col(domain, tile_coords);
   } else { // Sanity check 
     assert(0);
+    std::string errmsg = "Cannot get tile position; Invalid tile order";
+    PRINT_ERROR(errmsg);
+    tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
     return TILEDB_AS_ERR;
   }
 }

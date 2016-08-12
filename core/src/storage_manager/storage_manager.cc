@@ -31,6 +31,7 @@
  */
 
 #include "storage_manager.h"
+#include "utils.h"
 #include <cassert>
 #include <cstring>
 #include <dirent.h>
@@ -39,24 +40,15 @@
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <utils.h>
 
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
 
-#if VERBOSE == 1
-#  define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB] Warning: " \
-                                     << x << ".\n"
-#elif VERBOSE == 2
-#  define PRINT_ERROR(x) std::cerr << "[TileDB::StorageManager] Error: " \
-                                   << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB::StorageManager] Warning: " \
-                                     << x << ".\n"
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << TILEDB_SM_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 
-#  define PRINT_WARNING(x) do { } while(0) 
 #endif
 
 #ifdef OPENMP
@@ -71,6 +63,15 @@
 #define SORT_3(first, last, comp) SORT_LIB::sort((first), (last), (comp))
 #define GET_MACRO(_1, _2, _3, NAME, ...) NAME
 #define SORT(...) GET_MACRO(__VA_ARGS__, SORT_3, SORT_2)(__VA_ARGS__)
+
+
+
+
+/* ****************************** */
+/*        GLOBAL VARIABLES        */
+/* ****************************** */
+
+std::string tiledb_sm_errmsg = "";
 
 
 
@@ -110,8 +111,10 @@ int StorageManager::init(Config* config) {
   // Create the TileDB home directory if it does not exists, as well
   // as the master catalog.
   if(!is_dir(tiledb_home_)) { 
-    if(create_dir(tiledb_home_) != TILEDB_UT_OK)
+    if(create_dir(tiledb_home_) != TILEDB_UT_OK) {
+      tiledb_sm_errmsg = tiledb_ut_errmsg;
       return TILEDB_SM_ERR;
+    }
   }
 
   if(!is_metadata(master_catalog_dir_)) {
@@ -137,14 +140,19 @@ int StorageManager::workspace_create(const std::string& workspace) {
      is_group(parent_dir) ||
      is_array(parent_dir) ||
      is_metadata(parent_dir)) {
-    PRINT_ERROR("The workspace cannot be contained in another workspace, "
-                "group, array or metadata directory");
+    std::string errmsg =
+        "The workspace cannot be contained in another workspace, "
+        "group, array or metadata directory";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Create workspace directory
-  if(create_dir(workspace) != TILEDB_UT_OK)  
+  if(create_dir(workspace) != TILEDB_UT_OK) {  
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
+  }
 
   // Create workspace file
   if(create_workspace_file(workspace) != TILEDB_SM_OK)
@@ -165,7 +173,7 @@ int StorageManager::ls_workspaces(
   const char* attributes[] = { TILEDB_KEY };
   MetadataIterator* metadata_it;
   size_t buffer_key[100];
-  char buffer_key_var[1000];
+  char buffer_key_var[100*TILEDB_NAME_MAX_LEN];
   void* buffers[] = { buffer_key, buffer_key_var };
   size_t buffer_sizes[] = { sizeof(buffer_key), sizeof(buffer_key_var) };
   if(metadata_iterator_init(
@@ -187,13 +195,17 @@ int StorageManager::ls_workspaces(
     if(metadata_it->get_value(0, (const void**) &key, &key_size) != 
        TILEDB_MT_OK) {
       metadata_iterator_finalize(metadata_it);
+      tiledb_sm_errmsg = tiledb_mt_errmsg; 
       return TILEDB_MT_ERR;
     }
 
     // Copy workspace
     if(key_size != 1 || key[0] != TILEDB_EMPTY_CHAR) {
       if(workspace_i == workspace_num) {
-        PRINT_ERROR("Cannot list workspaces; Workspaces buffer overflow");
+        std::string errmsg = 
+            "Cannot list workspaces; Workspaces buffer overflow";
+        PRINT_ERROR(errmsg);
+        tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
         return TILEDB_SM_ERR;
       }
 
@@ -204,7 +216,8 @@ int StorageManager::ls_workspaces(
     // Advance
     if(metadata_it->next() != TILEDB_MT_OK) {
       metadata_iterator_finalize(metadata_it);
-      return TILEDB_MT_ERR;
+      tiledb_sm_errmsg = tiledb_mt_errmsg; 
+      return TILEDB_SM_ERR;
     }
   }
 
@@ -219,7 +232,45 @@ int StorageManager::ls_workspaces(
   return TILEDB_SM_OK;
 }
 
+int StorageManager::ls_workspaces_c(int& workspace_num) {
+  // Initialize the master catalog iterator
+  const char* attributes[] = { TILEDB_KEY };
+  MetadataIterator* metadata_it;
+  size_t buffer_key[100];
+  char buffer_key_var[100*TILEDB_NAME_MAX_LEN];
+  void* buffers[] = { buffer_key, buffer_key_var };
+  size_t buffer_sizes[] = { sizeof(buffer_key), sizeof(buffer_key_var) };
+  if(metadata_iterator_init(
+       metadata_it,
+       (tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG).c_str(),
+       attributes,
+       1,
+       buffers,
+       buffer_sizes) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
 
+  // Initialize number of workspaces
+  workspace_num = 0;
+
+  while(!metadata_it->end()) {
+    // Increment number of workspaces
+    ++workspace_num;
+
+    // Advance
+    if(metadata_it->next() != TILEDB_MT_OK) {
+      metadata_iterator_finalize(metadata_it);
+      tiledb_sm_errmsg = tiledb_mt_errmsg; 
+      return TILEDB_SM_ERR;
+    }
+  }
+
+  // Finalize the master catalog iterator
+  if(metadata_iterator_finalize(metadata_it) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Success
+  return TILEDB_SM_OK;
+}
 
 
 
@@ -231,14 +282,19 @@ int StorageManager::group_create(const std::string& group) const {
   // Check if the group is inside a workspace or another group
   std::string parent_dir = ::parent_dir(group);
   if(!is_workspace(parent_dir) && !is_group(parent_dir)) {
-    PRINT_ERROR("The group must be contained in a workspace "
-                "or another group");
+    std::string errmsg = 
+        "The group must be contained in a workspace "
+        "or another group";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Create group directory
-  if(create_dir(group) != TILEDB_UT_OK)  
+  if(create_dir(group) != TILEDB_UT_OK) { 
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
+  }
 
   // Create group file
   if(create_group_file(group) != TILEDB_SM_OK)
@@ -284,14 +340,18 @@ int StorageManager::array_consolidate(const char* array_dir) {
   int rc_array_finalize = array->finalize();
   delete array;
   
-  // Return 
-  if(rc_array_consolidate != TILEDB_AR_OK        || 
-     rc_array_close != TILEDB_SM_OK              ||
+  // Errors 
+  if(rc_array_consolidate != TILEDB_AR_OK) {
+    tiledb_sm_errmsg = tiledb_ar_errmsg;
+    return TILEDB_SM_ERR;
+  }
+  if(rc_array_close != TILEDB_SM_OK              ||
      rc_array_finalize != TILEDB_SM_OK           ||
      rc_consolidation_finalize != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::array_create(const ArraySchemaC* array_schema_c) const {
@@ -299,6 +359,7 @@ int StorageManager::array_create(const ArraySchemaC* array_schema_c) const {
   ArraySchema* array_schema = new ArraySchema();
   if(array_schema->init(array_schema_c) != TILEDB_AS_OK) {
     delete array_schema;
+    tiledb_sm_errmsg = tiledb_as_errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -309,8 +370,11 @@ int StorageManager::array_create(const ArraySchemaC* array_schema_c) const {
   // Check if the array directory is contained in a workspace, group or array
   if(!is_workspace(parent_dir) && 
      !is_group(parent_dir)) {
-    PRINT_ERROR(std::string("Cannot create array; Directory '") + parent_dir + 
-                "' must be a TileDB workspace or group");
+    std::string errmsg = 
+        std::string("Cannot create array; Directory '") + parent_dir + 
+        "' must be a TileDB workspace or group";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -330,44 +394,22 @@ int StorageManager::array_create(const ArraySchemaC* array_schema_c) const {
 int StorageManager::array_create(const ArraySchema* array_schema) const {
   // Check array schema
   if(array_schema == NULL) {
-    PRINT_ERROR("Cannot create array; Empty array schema");
+    std::string errmsg = "Cannot create array; Empty array schema";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Create array directory
   std::string dir = array_schema->array_name();
-  if(create_dir(dir) != TILEDB_UT_OK) 
-    return TILEDB_SM_ERR;
-
-  // Open array schema file
-  std::string filename = dir + "/" + TILEDB_ARRAY_SCHEMA_FILENAME; 
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  if(fd == -1) {
-    PRINT_ERROR(std::string("Cannot create array; ") + strerror(errno));
+  if(create_dir(dir) != TILEDB_UT_OK) { 
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
   }
 
-  // Serialize array schema
-  void* array_schema_bin;
-  size_t array_schema_bin_size;
-  if(array_schema->serialize(array_schema_bin, array_schema_bin_size) !=
-     TILEDB_AS_OK)
+  // Store array schema
+  if(array_store_schema(dir, array_schema) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
-
-  // Store the array schema
-  ssize_t bytes_written = ::write(fd, array_schema_bin, array_schema_bin_size);
-  if(bytes_written != ssize_t(array_schema_bin_size)) {
-    PRINT_ERROR(std::string("Cannot create array; ") + strerror(errno));
-    free(array_schema_bin);
-    return TILEDB_SM_ERR;
-  }
-
-  // Clean up
-  free(array_schema_bin);
-  if(::close(fd)) {
-    PRINT_ERROR(std::string("Cannot create array; ") + strerror(errno));
-    return TILEDB_SM_ERR;
-  }
 
   // Create consolidation filelock
   if(consolidation_filelock_create(dir) != TILEDB_SM_OK)
@@ -415,6 +457,7 @@ int StorageManager::array_load_book_keeping(
     // Load book-keeping
     if(f_book_keeping->load() != TILEDB_BK_OK) {
       delete f_book_keeping;
+      tiledb_sm_errmsg = tiledb_bk_errmsg;
       return TILEDB_SM_ERR;
     }
 
@@ -434,8 +477,11 @@ int StorageManager::array_load_schema(
 
   // Check if array exists
   if(!is_array(real_array_dir)) {
-    PRINT_ERROR(std::string("Cannot load array schema; Array '") + 
-                real_array_dir + "' does not exist");
+    std::string errmsg = 
+        std::string("Cannot load array schema; Array '") + 
+        real_array_dir + "' does not exist";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -443,7 +489,9 @@ int StorageManager::array_load_schema(
   std::string filename = real_array_dir + "/" + TILEDB_ARRAY_SCHEMA_FILENAME;
   int fd = ::open(filename.c_str(), O_RDONLY);
   if(fd == -1) {
-    PRINT_ERROR("Cannot load schema; File opening error");
+    std::string errmsg = "Cannot load schema; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -451,8 +499,11 @@ int StorageManager::array_load_schema(
   struct stat st;
   fstat(fd, &st);
   ssize_t buffer_size = st.st_size;
+
   if(buffer_size == 0) {
-    PRINT_ERROR("Cannot load array schema; Empty array schema file");
+    std::string errmsg = "Cannot load array schema; Empty array schema file";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
   void* buffer = malloc(buffer_size);
@@ -460,7 +511,9 @@ int StorageManager::array_load_schema(
   // Load array schema
   ssize_t bytes_read = ::read(fd, buffer, buffer_size);
   if(bytes_read != buffer_size) {
-    PRINT_ERROR("Cannot load array schema; File reading error");
+    std::string errmsg = "Cannot load array schema; File reading error";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     free(buffer);
     return TILEDB_SM_ERR;
   } 
@@ -470,6 +523,7 @@ int StorageManager::array_load_schema(
   if(array_schema->deserialize(buffer, buffer_size) != TILEDB_AS_OK) {
     free(buffer);
     delete array_schema;
+    tiledb_sm_errmsg = tiledb_as_errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -477,7 +531,9 @@ int StorageManager::array_load_schema(
   free(buffer);
   if(::close(fd)) {
     delete array_schema;
-    PRINT_ERROR("Cannot load array schema; File closing error");
+    std::string errmsg = "Cannot load array schema; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -494,7 +550,9 @@ int StorageManager::array_init(
     int attribute_num)  {
   // Check array name length
   if(array_dir == NULL || strlen(array_dir) > TILEDB_NAME_MAX_LEN) {
-    PRINT_ERROR("Invalid array name length");
+    std::string errmsg = "Invalid array name length";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -525,6 +583,7 @@ int StorageManager::array_init(
     delete array;
     array = NULL;
     array_close(array_dir);
+    tiledb_sm_errmsg = tiledb_as_errmsg;
     return TILEDB_SM_ERR;
   } else {
     return TILEDB_SM_OK;
@@ -546,11 +605,16 @@ int StorageManager::array_finalize(Array* array) {
   // Clean up
   delete array;
 
-  // Return
-  if(rc_close != TILEDB_SM_OK || rc_finalize != TILEDB_AR_OK)
+  // Errors
+  if(rc_close != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
+  if(rc_finalize != TILEDB_AR_OK) {
+    tiledb_sm_errmsg = tiledb_as_errmsg;
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::array_iterator_init(
@@ -580,6 +644,7 @@ int StorageManager::array_iterator_init(
     array_finalize(array);
     delete array_it;
     array_it = NULL;
+    tiledb_sm_errmsg = tiledb_ait_errmsg;
     return TILEDB_SM_ERR;
   } 
 
@@ -601,11 +666,16 @@ int StorageManager::array_iterator_finalize(
   // Clean up
   delete array_it;
 
-  // Return
-  if(rc_finalize == TILEDB_AIT_OK && rc_close == TILEDB_SM_OK)
-    return TILEDB_SM_OK;
-  else
+  // Errors
+  if(rc_finalize != TILEDB_AIT_OK) {
+    tiledb_sm_errmsg = tiledb_ait_errmsg;
     return TILEDB_SM_ERR;
+  }
+  if(rc_close != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 
@@ -647,8 +717,10 @@ int StorageManager::metadata_consolidate(const char* metadata_dir) {
   delete [] attributes;
   delete array_schema;
 
-  if(rc_init != TILEDB_MT_OK)
+  if(rc_init != TILEDB_MT_OK) {
+    tiledb_sm_errmsg = tiledb_mt_errmsg;
     return TILEDB_SM_ERR;
+  }
 
   // Consolidate metadata
   Fragment* new_fragment;
@@ -668,14 +740,18 @@ int StorageManager::metadata_consolidate(const char* metadata_dir) {
   int rc_metadata_finalize = metadata->finalize();
   delete metadata;
   
-  // Return 
-  if(rc_metadata_consolidate != TILEDB_MT_OK   || 
-     rc_array_close != TILEDB_SM_OK            ||
+  // Errors 
+  if(rc_metadata_consolidate != TILEDB_MT_OK) {
+    tiledb_sm_errmsg = tiledb_mt_errmsg;
+    return TILEDB_SM_ERR;
+  }
+  if(rc_array_close != TILEDB_SM_OK            ||
      rc_metadata_finalize != TILEDB_SM_OK      ||
      rc_consolidation_finalize != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::metadata_create(
@@ -684,6 +760,7 @@ int StorageManager::metadata_create(
   ArraySchema* array_schema = new ArraySchema();
   if(array_schema->init(metadata_schema_c) != TILEDB_AS_OK) {
     delete array_schema;
+    tiledb_sm_errmsg = tiledb_as_errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -695,8 +772,11 @@ int StorageManager::metadata_create(
   if(!is_workspace(parent_dir) && 
      !is_group(parent_dir) &&
      !is_array(parent_dir)) {
-    PRINT_ERROR(std::string("Cannot create metadata; Directory '") + 
-                parent_dir + "' must be a TileDB workspace, group, or array");
+    std::string errmsg = 
+        std::string("Cannot create metadata; Directory '") + 
+        parent_dir + "' must be a TileDB workspace, group, or array";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -716,20 +796,27 @@ int StorageManager::metadata_create(
 int StorageManager::metadata_create(const ArraySchema* array_schema) const {
   // Check metadata schema
   if(array_schema == NULL) {
-    PRINT_ERROR("Cannot create metadata; Empty metadata schema");
+    std::string errmsg = "Cannot create metadata; Empty metadata schema";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Create array directory
   std::string dir = array_schema->array_name();
-  if(create_dir(dir) != TILEDB_UT_OK) 
+  if(create_dir(dir) != TILEDB_UT_OK) { 
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
+  }
 
   // Open metadata schema file
   std::string filename = dir + "/" + TILEDB_METADATA_SCHEMA_FILENAME; 
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if(fd == -1) {
-    PRINT_ERROR(std::string("Cannot create metadata; ") + strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot create metadata; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -737,21 +824,29 @@ int StorageManager::metadata_create(const ArraySchema* array_schema) const {
   void* array_schema_bin;
   size_t array_schema_bin_size;
   if(array_schema->serialize(array_schema_bin, array_schema_bin_size) !=
-     TILEDB_AS_OK)
+     TILEDB_AS_OK) {
+    tiledb_sm_errmsg = tiledb_as_errmsg;
     return TILEDB_SM_ERR;
+  }
 
   // Store the array schema
   ssize_t bytes_written = ::write(fd, array_schema_bin, array_schema_bin_size);
   if(bytes_written != ssize_t(array_schema_bin_size)) {
-    PRINT_ERROR(std::string("Cannot create metadata; ") + strerror(errno));
     free(array_schema_bin);
+    std::string errmsg = 
+        std::string("Cannot create metadata; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Clean up
   free(array_schema_bin);
   if(::close(fd)) {
-    PRINT_ERROR(std::string("Cannot create metadata; ") + strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot create metadata; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -781,7 +876,9 @@ int StorageManager::metadata_load_schema(
       real_metadata_dir + "/" + TILEDB_METADATA_SCHEMA_FILENAME;
   int fd = ::open(filename.c_str(), O_RDONLY);
   if(fd == -1) {
-    PRINT_ERROR("Cannot load metadata schema; File opening error");
+    std::string errmsg = "Cannot load metadata schema; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -790,7 +887,10 @@ int StorageManager::metadata_load_schema(
   fstat(fd, &st);
   ssize_t buffer_size = st.st_size;
   if(buffer_size == 0) {
-    PRINT_ERROR("Cannot load metadata schema; Empty metadata schema file");
+    std::string errmsg = 
+        "Cannot load metadata schema; Empty metadata schema file";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
   void* buffer = malloc(buffer_size);
@@ -798,8 +898,10 @@ int StorageManager::metadata_load_schema(
   // Load array schema
   ssize_t bytes_read = ::read(fd, buffer, buffer_size);
   if(bytes_read != buffer_size) {
-    PRINT_ERROR("Cannot load metadata schema; File reading error");
     free(buffer);
+    std::string errmsg = "Cannot load metadata schema; File reading error";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   } 
 
@@ -808,6 +910,7 @@ int StorageManager::metadata_load_schema(
   if(array_schema->deserialize(buffer, buffer_size) == TILEDB_AS_ERR) {
     free(buffer);
     delete array_schema;
+    tiledb_sm_errmsg = tiledb_as_errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -815,7 +918,9 @@ int StorageManager::metadata_load_schema(
   free(buffer);
   if(::close(fd)) {
     delete array_schema;
-    PRINT_ERROR("Cannot load metadata schema; File closing error");
+    std::string errmsg = "Cannot load metadata schema; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -831,7 +936,9 @@ int StorageManager::metadata_init(
     int attribute_num)  {
   // Check metadata name length
   if(metadata_dir == NULL || strlen(metadata_dir) > TILEDB_NAME_MAX_LEN) {
-    PRINT_ERROR("Invalid metadata name length");
+    std::string errmsg = "Invalid metadata name length";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -864,6 +971,7 @@ int StorageManager::metadata_init(
     delete metadata;
     metadata = NULL;
     array_close(metadata_dir);
+    tiledb_sm_errmsg = tiledb_mt_errmsg;
     return TILEDB_SM_ERR;
   } else {
     return TILEDB_SM_OK;
@@ -886,11 +994,16 @@ int StorageManager::metadata_finalize(Metadata* metadata) {
   // Clean up
   delete metadata;
 
-  // Return
-  if(rc_close != TILEDB_SM_OK || rc_finalize != TILEDB_MT_OK)
+  // Errors
+  if(rc_close != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
+  if(rc_finalize != TILEDB_MT_OK) {
+    tiledb_sm_errmsg = tiledb_mt_errmsg;
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::metadata_iterator_init(
@@ -918,6 +1031,7 @@ int StorageManager::metadata_iterator_init(
     metadata_finalize(metadata);
     delete metadata_it;
     metadata_it = NULL;
+    tiledb_sm_errmsg = tiledb_mit_errmsg;
     return TILEDB_SM_ERR;
   } 
 
@@ -939,11 +1053,16 @@ int StorageManager::metadata_iterator_finalize(
   // Clean up
   delete metadata_it;
 
-  // Return
-  if(rc_finalize == TILEDB_MIT_OK && rc_close == TILEDB_SM_OK)
-    return TILEDB_SM_OK;
-  else
+  // Errors
+  if(rc_finalize != TILEDB_MIT_OK) {
+    tiledb_mit_errmsg = tiledb_mit_errmsg;
     return TILEDB_SM_ERR;
+  }
+  if(rc_close != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 
@@ -981,7 +1100,10 @@ int StorageManager::ls(
     filename = parent_dir_real + "/" +  next_file->d_name;
     if(is_group(filename)) {                  // Group
       if(dir_i == dir_num) {
-        PRINT_ERROR("Cannot list TileDB directory; Directory buffer overflow");
+        std::string errmsg = 
+            "Cannot list TileDB directory; Directory buffer overflow";
+        PRINT_ERROR(errmsg);
+        tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
         return TILEDB_SM_ERR;
       }
       strcpy(dirs[dir_i], next_file->d_name);
@@ -989,7 +1111,10 @@ int StorageManager::ls(
       ++dir_i;
     } else if(is_metadata(filename)) {        // Metadata
       if(dir_i == dir_num) {
-        PRINT_ERROR("Cannot list TileDB directory; Directory buffer overflow");
+        std::string errmsg =
+            "Cannot list TileDB directory; Directory buffer overflow";
+        PRINT_ERROR(errmsg);
+        tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
         return TILEDB_SM_ERR;
       }
       strcpy(dirs[dir_i], next_file->d_name);
@@ -997,7 +1122,10 @@ int StorageManager::ls(
       ++dir_i;
     } else if(is_array(filename)){            // Array
       if(dir_i == dir_num) {
-        PRINT_ERROR("Cannot list TileDB directory; Directory buffer overflow");
+        std::string errmsg = 
+            "Cannot list TileDB directory; Directory buffer overflow";
+        PRINT_ERROR(errmsg);
+        tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
         return TILEDB_SM_ERR;
       }
       strcpy(dirs[dir_i], next_file->d_name);
@@ -1005,7 +1133,10 @@ int StorageManager::ls(
       ++dir_i;
     } else if(is_workspace(filename)){        // Workspace
       if(dir_i == dir_num) {
-        PRINT_ERROR("Cannot list TileDB directory; Directory buffer overflow");
+        std::string errmsg = 
+            "Cannot list TileDB directory; Directory buffer overflow";
+        PRINT_ERROR(errmsg);
+        tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
         return TILEDB_SM_ERR;
       }
       strcpy(dirs[dir_i], next_file->d_name);
@@ -1016,13 +1147,59 @@ int StorageManager::ls(
 
   // Close parent directory  
   if(closedir(dir)) {
-    PRINT_ERROR(std::string("Cannot close parent directory; ") + 
-                strerror(errno));
+    std::string errmsg =
+        std::string("Cannot close parent directory; ") + 
+        strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Set the number of directories
   dir_num = dir_i;
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::ls_c(const char* parent_dir, int& dir_num) const {
+  // Get real parent directory
+  std::string parent_dir_real = ::real_dir(parent_dir); 
+
+  // Initialize directory number
+  dir_num =0;
+
+  // List all groups and arrays inside the parent directory
+  std::string filename; 
+  struct dirent *next_file;
+  DIR* dir = opendir(parent_dir_real.c_str());
+  
+  if(dir == NULL) {
+    dir_num = 0;
+    return TILEDB_SM_OK;
+  }
+
+  while((next_file = readdir(dir))) {
+    if(!strcmp(next_file->d_name, ".") ||
+       !strcmp(next_file->d_name, ".."))
+      continue;
+    filename = parent_dir_real + "/" +  next_file->d_name;
+    if(is_group(filename) ||
+       is_metadata(filename) ||
+       is_array(filename) ||
+       is_workspace(filename)) 
+      ++dir_num;
+  } 
+
+  // Close parent directory  
+  if(closedir(dir)) {
+    std::string errmsg = 
+        std::string("Cannot close parent directory; ") + 
+        strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
+    return TILEDB_SM_ERR;
+  }
 
   // Success
   return TILEDB_SM_OK;
@@ -1038,7 +1215,9 @@ int StorageManager::clear(const std::string& dir) const {
   } else if(is_metadata(dir)) {
     return metadata_clear(dir);
   } else {
-    PRINT_ERROR("Clear failed; Invalid directory");
+    std::string errmsg = "Clear failed; Invalid directory";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 }
@@ -1053,7 +1232,9 @@ int StorageManager::delete_entire(const std::string& dir) {
   } else if(is_metadata(dir)) {
     return metadata_delete(dir);
   } else {
-    PRINT_ERROR("Delete failed; Invalid directory");
+    std::string errmsg = "Delete failed; Invalid directory";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1073,7 +1254,9 @@ int StorageManager::move(
   } else if(is_metadata(old_dir)) {
     return metadata_move(old_dir, new_dir);
   } else {
-    PRINT_ERROR("Move failed; Invalid source directory");
+    std::string errmsg = "Move failed; Invalid source directory";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1095,8 +1278,11 @@ int StorageManager::array_clear(
 
   // Check if the array exists
   if(!is_array(array_real)) {
-    PRINT_ERROR(std::string("Array '") + array_real + 
-                "' does not exist");
+    std::string errmsg = 
+        std::string("Array '") + array_real + 
+        "' does not exist";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1106,8 +1292,11 @@ int StorageManager::array_clear(
   DIR* dir = opendir(array_real.c_str());
   
   if(dir == NULL) {
-    PRINT_ERROR(std::string("Cannot open array directory; ") + 
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot open array directory; ") + 
+        strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1122,18 +1311,25 @@ int StorageManager::array_clear(
       metadata_delete(filename);
     } else if(is_fragment(filename)){   // Fragment
       if(delete_dir(filename) != TILEDB_UT_OK)
+        tiledb_sm_errmsg = tiledb_ut_errmsg;
         return TILEDB_SM_ERR;
     } else {                            // Non TileDB related
-      PRINT_ERROR(std::string("Cannot delete non TileDB related element '") +
-                  filename + "'");
+      std::string errmsg =
+          std::string("Cannot delete non TileDB related element '") +
+          filename + "'";
+      PRINT_ERROR(errmsg);
+      tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
       return TILEDB_SM_ERR;
     }
   } 
 
   // Close array directory  
   if(closedir(dir)) {
-    PRINT_ERROR(std::string("Cannot close the array directory; ") + 
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot close the array directory; ") + 
+        strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1152,7 +1348,9 @@ int StorageManager::array_close(const std::string& array) {
 
   // Sanity check
   if(it == open_arrays_.end()) { 
-    PRINT_ERROR("Cannot close array; Open array entry not found");
+    std::string errmsg = "Cannot close array; Open array entry not found";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1214,8 +1412,10 @@ int StorageManager::array_delete(
     return TILEDB_SM_ERR;
 
   // Delete array directory
-  if(delete_dir(array) != TILEDB_UT_OK)
+  if(delete_dir(array) != TILEDB_UT_OK) {
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR; 
+  }
 
   // Success
   return TILEDB_SM_OK;
@@ -1267,15 +1467,21 @@ int StorageManager::array_move(
 
   // Check if the old array exists
   if(!is_array(old_array_real)) {
-    PRINT_ERROR(std::string("Array '") + old_array_real + 
-                "' does not exist");
+    std::string errmsg = 
+        std::string("Array '") + old_array_real + 
+        "' does not exist";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Make sure that the new array is not an existing directory
   if(is_dir(new_array_real)) {
-    PRINT_ERROR(std::string("Directory '") + 
-                new_array_real + "' already exists");
+    std::string errmsg = 
+        std::string("Directory '") + 
+        new_array_real + "' already exists";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1283,17 +1489,35 @@ int StorageManager::array_move(
   std::string new_array_parent_folder = parent_dir(new_array_real);
   if(!is_group(new_array_parent_folder) && 
      !is_workspace(new_array_parent_folder)) {
-    PRINT_ERROR(std::string("Folder '") + new_array_parent_folder + "' must "
-                "be either a workspace or a group");
+    std::string errmsg = 
+        std::string("Folder '") + new_array_parent_folder + "' must "
+        "be either a workspace or a group";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Rename array
   if(rename(old_array_real.c_str(), new_array_real.c_str())) {
-    PRINT_ERROR(std::string("Cannot move array; ") + 
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot move array; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
+
+  // Incorporate new name in the array schema
+  ArraySchema* array_schema;
+  if(array_load_schema(new_array_real.c_str(), array_schema) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+  array_schema->set_array_name(new_array_real.c_str());
+
+  // Store the new schema
+  if(array_store_schema(new_array_real, array_schema) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Clean up
+  delete array_schema;
 
   // Success
   return TILEDB_SM_OK;
@@ -1316,7 +1540,7 @@ int StorageManager::array_open(
     if(consolidation_filelock_lock(
         array_name,
         open_array->consolidation_filelock_, 
-        TILEDB_SM_SHARED_LOCK)) {
+        TILEDB_SM_SHARED_LOCK) != TILEDB_SM_OK) {
       open_array->mutex_unlock();
       return TILEDB_SM_ERR;
     }
@@ -1350,10 +1574,60 @@ int StorageManager::array_open(
   }
 
   // Unlock the mutex of the array
-  if(open_array->mutex_unlock() != TILEDB_UT_OK) 
+  if(open_array->mutex_unlock() != TILEDB_UT_OK) { 
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
+  }
 
   // Success 
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::array_store_schema(
+    const std::string& dir, 
+    const ArraySchema* array_schema) const {
+  // Open array schema file
+  std::string filename = dir + "/" + TILEDB_ARRAY_SCHEMA_FILENAME; 
+  remove(filename.c_str());
+  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+  if(fd == -1) {
+    std::string errmsg = 
+        std::string("Cannot store schema; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
+    return TILEDB_SM_ERR;
+  }
+
+  // Serialize array schema
+  void* array_schema_bin;
+  size_t array_schema_bin_size;
+  if(array_schema->serialize(array_schema_bin, array_schema_bin_size) !=
+     TILEDB_AS_OK) {
+    tiledb_sm_errmsg = tiledb_as_errmsg;
+    return TILEDB_SM_ERR;
+  }
+
+  // Store the array schema
+  ssize_t bytes_written = ::write(fd, array_schema_bin, array_schema_bin_size);
+  if(bytes_written != ssize_t(array_schema_bin_size)) {
+    free(array_schema_bin);
+    std::string errmsg = 
+        std::string("Cannot store schema; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
+    return TILEDB_SM_ERR;
+  }
+
+  // Clean up
+  free(array_schema_bin);
+  if(::close(fd)) {
+    std::string errmsg = std::string("Cannot store schema; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
   return TILEDB_SM_OK;
 }
 
@@ -1371,7 +1645,9 @@ int StorageManager::config_set(Config* config) {
       if(getcwd(cwd, sizeof(cwd)) != NULL) {
         tiledb_home_ = cwd;
       } else {
-        PRINT_ERROR("Cannot set TileDB home directory");
+        std::string errmsg = "Cannot set TileDB home directory";
+        PRINT_ERROR(errmsg);
+        tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
         return TILEDB_SM_ERR;
       }
     }
@@ -1390,9 +1666,10 @@ int StorageManager::consolidation_filelock_create(
   std::string filename = dir + "/" + TILEDB_SM_CONSOLIDATION_FILELOCK_NAME; 
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if(fd == -1) {
-    PRINT_ERROR(
-        std::string("Cannot create consolidation filelock; ") + 
-        strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot create consolidation filelock; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1411,7 +1688,10 @@ int StorageManager::consolidation_filelock_lock(
   } else if(lock_type == TILEDB_SM_EXCLUSIVE_LOCK) {
     fl.l_type = F_WRLCK;
   } else {
-    PRINT_ERROR("Cannot lock consolidation filelock; Invalid lock type");
+    std::string errmsg = 
+        "Cannot lock consolidation filelock; Invalid lock type";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
   fl.l_whence = SEEK_SET;
@@ -1428,13 +1708,18 @@ int StorageManager::consolidation_filelock_lock(
   // Open the file
   fd = ::open(filename.c_str(), O_RDWR);
   if(fd == -1) {
-    PRINT_ERROR("Cannot lock consolidation filelock; Cannot open filelock");
+    std::string errmsg = 
+        "Cannot lock consolidation filelock; Cannot open filelock";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   } 
 
   // Acquire the lock
   if(fcntl(fd, F_SETLKW, &fl) == -1) {
-    PRINT_ERROR("Cannot lock consolidation filelock; Cannot lock");
+    std::string errmsg = "Cannot lock consolidation filelock; Cannot lock";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1444,7 +1729,10 @@ int StorageManager::consolidation_filelock_lock(
 
 int StorageManager::consolidation_filelock_unlock(int fd) const {
   if(::close(fd) == -1) {
-    PRINT_ERROR("Cannot unlock consolidation filelock; Cannot close filelock");
+    std::string errmsg = 
+        "Cannot unlock consolidation filelock; Cannot close filelock";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   } else {
     return TILEDB_SM_OK;
@@ -1471,8 +1759,10 @@ int StorageManager::consolidation_finalize(
   // Finalize new fragment - makes the new fragment visible to new reads
   int rc = new_fragment->finalize(); 
   delete new_fragment;
-  if(rc != TILEDB_FG_OK) 
+  if(rc != TILEDB_FG_OK) { 
+    tiledb_sm_errmsg = tiledb_fg_errmsg;
     return TILEDB_SM_ERR;
+  }
 
   // Make old fragments invisible to new reads
   int fragment_num = old_fragment_names.size();
@@ -1481,8 +1771,11 @@ int StorageManager::consolidation_finalize(
     std::string old_fragment_filename = 
         old_fragment_names[i] + "/" + TILEDB_FRAGMENT_FILENAME;
     if(remove(old_fragment_filename.c_str())) {
-      PRINT_ERROR(std::string("Cannot remove fragment file during "
-                  "finalizing consolidation; ") + strerror(errno));
+      std::string errmsg = 
+          std::string("Cannot remove fragment file during "
+          "finalizing consolidation; ") + strerror(errno);
+      PRINT_ERROR(errmsg);
+      tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
       return TILEDB_SM_ERR;
     }
   }
@@ -1493,8 +1786,10 @@ int StorageManager::consolidation_finalize(
 
   // Delete old fragments
   for(int i=0; i<fragment_num; ++i) {
-    if(delete_dir(old_fragment_names[i]) != TILEDB_UT_OK)
+    if(delete_dir(old_fragment_names[i]) != TILEDB_UT_OK) {
+      tiledb_sm_errmsg = tiledb_ut_errmsg;
       return TILEDB_SM_ERR;
+    }
   }
 
   // Success
@@ -1506,8 +1801,10 @@ int StorageManager::create_group_file(const std::string& group) const {
   std::string filename = group + "/" + TILEDB_GROUP_FILENAME;
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if(fd == -1 || ::close(fd)) {
-    PRINT_ERROR(std::string("Failed to create group file; ") +
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Failed to create group file; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1544,8 +1841,10 @@ int StorageManager::create_master_catalog_entry(
          real_workspace.c_str(), 
          real_workspace.size()+1, 
          buffers, 
-         buffer_sizes) != TILEDB_MT_OK)
+         buffer_sizes) != TILEDB_MT_OK) {
+    tiledb_sm_errmsg = tiledb_mt_errmsg;
     return TILEDB_SM_ERR;
+  }
 
   // Finalize master catalog
   if(metadata_finalize(metadata) != TILEDB_SM_OK)
@@ -1560,8 +1859,10 @@ int StorageManager::create_workspace_file(const std::string& workspace) const {
   std::string filename = workspace + "/" + TILEDB_WORKSPACE_FILENAME;
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if(fd == -1 || ::close(fd)) {
-    PRINT_ERROR(std::string("Failed to create workspace file; ") +
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Failed to create workspace file; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1576,13 +1877,19 @@ int StorageManager::group_clear(
 
   // Check if group exists
   if(!is_group(group_real)) {
-    PRINT_ERROR(std::string("Group '") + group_real + "' does not exist");
+    std::string errmsg = 
+        std::string("Group '") + group_real + "' does not exist";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Do not delete if it is a workspace
   if(is_workspace(group_real)) {
-    PRINT_ERROR(std::string("Group '") + group_real + "' is also a workspace");
+    std::string errmsg = 
+        std::string("Group '") + group_real + "' is also a workspace";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1592,8 +1899,11 @@ int StorageManager::group_clear(
   DIR* dir = opendir(group_real.c_str());
   
   if(dir == NULL) {
-    PRINT_ERROR(std::string("Cannot open group directory '") + 
-                group_real + "'; " + strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot open group directory '") + 
+        group_real + "'; " + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1604,25 +1914,31 @@ int StorageManager::group_clear(
       continue;
     filename = group_real + "/" + next_file->d_name;
     if(is_group(filename)) {            // Group
-      if(group_delete(filename))
+      if(group_delete(filename) != TILEDB_SM_OK)
         return TILEDB_SM_ERR;
     } else if(is_metadata(filename)) {  // Metadata
-      if(metadata_delete(filename))
+      if(metadata_delete(filename) != TILEDB_SM_OK)
         return TILEDB_SM_ERR;
     } else if(is_array(filename)){      // Array
-      if(array_delete(filename))
+      if(array_delete(filename) != TILEDB_SM_OK)
         return TILEDB_SM_ERR;
     } else {                            // Non TileDB related
-      PRINT_ERROR(std::string("Cannot delete non TileDB related element '") +
-                  filename + "'");
+      std::string errmsg = 
+          std::string("Cannot delete non TileDB related element '") +
+          filename + "'";
+      PRINT_ERROR(errmsg);
+      tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
       return TILEDB_SM_ERR;
     }
   } 
 
   // Close group directory  
   if(closedir(dir)) {
-    PRINT_ERROR(std::string("Cannot close the group directory; ") + 
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot close the group directory; ") + 
+        strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1637,8 +1953,10 @@ int StorageManager::group_delete(
     return TILEDB_SM_ERR;
 
   // Delete group directory
-  if(delete_dir(group) != TILEDB_UT_OK)
+  if(delete_dir(group) != TILEDB_UT_OK) {
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR; 
+  }
 
   // Success
   return TILEDB_SM_OK;
@@ -1653,22 +1971,31 @@ int StorageManager::group_move(
 
   // Check if the old group is also a workspace
   if(is_workspace(old_group_real)) {
-    PRINT_ERROR(std::string("Group '") + old_group_real + 
-                "' is also a workspace");
+    std::string errmsg = 
+        std::string("Group '") + old_group_real + 
+        "' is also a workspace";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Check if the old group exists
   if(!is_group(old_group_real)) {
-    PRINT_ERROR(std::string("Group '") + old_group_real + 
-                "' does not exist");
+    std::string errmsg = 
+        std::string("Group '") + old_group_real + 
+        "' does not exist";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Make sure that the new group is not an existing directory
   if(is_dir(new_group_real)) {
-    PRINT_ERROR(std::string("Directory '") + 
-                new_group_real + "' already exists");
+    std::string errmsg = 
+        std::string("Directory '") + 
+        new_group_real + "' already exists";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1676,15 +2003,21 @@ int StorageManager::group_move(
   std::string new_group_parent_folder = parent_dir(new_group_real);
   if(!is_group(new_group_parent_folder) && 
      !is_workspace(new_group_parent_folder)) {
-    PRINT_ERROR(std::string("Folder '") + new_group_parent_folder + "' must "
-                "be either a workspace or a group");
+    std::string errmsg = 
+        std::string("Folder '") + new_group_parent_folder + "' must "
+        "be either a workspace or a group";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Rename
   if(rename(old_group_real.c_str(), new_group_real.c_str())) {
-    PRINT_ERROR(std::string("Cannot move group; ") + 
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot move group; ") + 
+        strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1709,6 +2042,7 @@ int StorageManager::master_catalog_create() const {
   ArraySchema* array_schema = new ArraySchema();
   if(array_schema->init(&metadata_schema_c) != TILEDB_AS_OK) {
     delete array_schema;
+    tiledb_sm_errmsg = tiledb_as_errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1732,8 +2066,10 @@ int StorageManager::metadata_clear(
 
   // Check if the metadata exists
   if(!is_metadata(metadata_real)) {
-    PRINT_ERROR(std::string("Metadata '") + metadata_real + 
-                "' do not exist");
+    std::string errmsg = 
+        std::string("Metadata '") + metadata_real + "' do not exist";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1743,8 +2079,10 @@ int StorageManager::metadata_clear(
   DIR* dir = opendir(metadata_real.c_str());
   
   if(dir == NULL) {
-    PRINT_ERROR(std::string("Cannot open metadata directory; ") + 
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot open metadata directory; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1756,19 +2094,27 @@ int StorageManager::metadata_clear(
       continue;
     filename = metadata_real + "/" + next_file->d_name;
     if(is_fragment(filename)) {  // Fragment
-      if(delete_dir(filename))
+      if(delete_dir(filename) != TILEDB_UT_OK) {
+        tiledb_sm_errmsg = tiledb_ut_errmsg;
         return TILEDB_SM_ERR;
+      }
     } else {                     // Non TileDB related
-      PRINT_ERROR(std::string("Cannot delete non TileDB related element '") +
-                  filename + "'");
+      std::string errmsg = 
+          std::string("Cannot delete non TileDB related element '") +
+          filename + "'";
+      PRINT_ERROR(errmsg);
+      tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
       return TILEDB_SM_ERR;
     }
   } 
 
   // Close metadata directory  
   if(closedir(dir)) {
-    PRINT_ERROR(std::string("Cannot close the metadata directory; ") + 
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot close the metadata directory; ") + 
+        strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1782,12 +2128,14 @@ int StorageManager::metadata_delete(
   std::string metadata_real = ::real_dir(metadata);
 
   // Clear the metadata
-  if(metadata_clear(metadata_real))
+  if(metadata_clear(metadata_real) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
 
   // Delete metadata directory
-  if(delete_dir(metadata_real))
+  if(delete_dir(metadata_real) != TILEDB_UT_OK) {
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR; 
+  }
 
   // Success
   return TILEDB_SM_OK;
@@ -1802,15 +2150,21 @@ int StorageManager::metadata_move(
 
   // Check if the old metadata exists
   if(!is_metadata(old_metadata_real)) {
-    PRINT_ERROR(std::string("Metadata '") + old_metadata_real + 
-                "' do not exist");
+    std::string errmsg = 
+        std::string("Metadata '") + old_metadata_real + 
+        "' do not exist";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Make sure that the new metadata is not an existing directory
   if(is_dir(new_metadata_real)) {
-    PRINT_ERROR(std::string("Directory '") + 
-                new_metadata_real + "' already exists");
+    std::string errmsg = 
+        std::string("Directory '") + 
+        new_metadata_real + "' already exists";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1819,17 +2173,35 @@ int StorageManager::metadata_move(
   if(!is_group(new_metadata_parent_folder) && 
      !is_workspace(new_metadata_parent_folder) &&
      !is_array(new_metadata_parent_folder)) {
-    PRINT_ERROR(std::string("Folder '") + new_metadata_parent_folder + "' must "
-                "be workspace, group or array");
+    std::string errmsg = 
+        std::string("Folder '") + new_metadata_parent_folder + "' must "
+        "be workspace, group or array";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Rename metadata
   if(rename(old_metadata_real.c_str(), new_metadata_real.c_str())) {
-    PRINT_ERROR(std::string("Cannot move metadata; ") + 
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot move metadata; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
+
+  // Incorporate new name in the array schema
+  ArraySchema* array_schema;
+  if(array_load_schema(new_metadata_real.c_str(), array_schema) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+  array_schema->set_array_name(new_metadata_real.c_str());
+
+  // Store the new schema
+  if(array_store_schema(new_metadata_real, array_schema) != TILEDB_SM_OK)
+    return TILEDB_SM_ERR;
+
+  // Clean up
+  delete array_schema;
 
   // Success
   return TILEDB_SM_OK;
@@ -1843,10 +2215,14 @@ int StorageManager::open_array_mtx_destroy() {
 #endif
   int rc_pthread_mtx = ::mutex_destroy(&open_array_pthread_mtx_);
 
-  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+  // Errors
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK) {
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::open_array_mtx_init() {
@@ -1857,10 +2233,14 @@ int StorageManager::open_array_mtx_init() {
 #endif
   int rc_pthread_mtx = ::mutex_init(&open_array_pthread_mtx_);
 
-  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+  // Errors
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK) {
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::open_array_mtx_lock() {
@@ -1871,10 +2251,14 @@ int StorageManager::open_array_mtx_lock() {
 #endif
   int rc_pthread_mtx = ::mutex_lock(&open_array_pthread_mtx_);
 
-  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+  // Errors
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK) {
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::open_array_mtx_unlock() {
@@ -1885,10 +2269,14 @@ int StorageManager::open_array_mtx_unlock() {
 #endif
   int rc_pthread_mtx = ::mutex_unlock(&open_array_pthread_mtx_);
 
-  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+  // Errors
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK) {
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 void StorageManager::sort_fragment_names(
@@ -1941,8 +2329,11 @@ int StorageManager::workspace_clear(const std::string& workspace) const {
   DIR* dir = opendir(workspace_real.c_str());
   
   if(dir == NULL) {
-    PRINT_ERROR(std::string("Cannot open workspace directory '") + 
-               workspace_real + "'; " + strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot open workspace directory '") + 
+        workspace_real + "'; " + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1954,25 +2345,31 @@ int StorageManager::workspace_clear(const std::string& workspace) const {
       continue;
     filename = workspace_real + "/" + next_file->d_name;
     if(is_group(filename)) {            // Group
-      if(group_delete(filename))
+      if(group_delete(filename) != TILEDB_SM_OK)
         return TILEDB_SM_ERR;
     } else if(is_metadata(filename)) {  // Metadata
-      if(metadata_delete(filename))
+      if(metadata_delete(filename) != TILEDB_SM_OK)
         return TILEDB_SM_ERR;
     } else if(is_array(filename)){      // Array
-      if(array_delete(filename))
+      if(array_delete(filename) != TILEDB_SM_OK)
         return TILEDB_SM_ERR;
     } else {                            // Non TileDB related
-      PRINT_ERROR(std::string("Cannot delete non TileDB related element '") +
-                  filename + "'");
+      std::string errmsg = 
+          std::string("Cannot delete non TileDB related element '") +
+          filename + "'";
+      PRINT_ERROR(errmsg);
+      tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
       return TILEDB_SM_ERR;
     }
   } 
 
   // Close workspace directory  
   if(closedir(dir)) {
-    PRINT_ERROR(std::string("Cannot close the workspace directory; ") + 
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot close the workspace directory; ") + 
+        strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -1989,15 +2386,20 @@ int StorageManager::workspace_delete(
 
   // Check if workspace exists
   if(!is_workspace(workspace_real)) {
-    PRINT_ERROR(std::string("Workspace '") + 
-                workspace_real + "' does not exist");
+    std::string errmsg = 
+        std::string("Workspace '") + workspace_real + "' does not exist";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }  
 
   // Master catalog should exist
   if(!is_metadata(master_catalog_real)) {
-    PRINT_ERROR(std::string("Master catalog '") + master_catalog_real + 
-                            "' does not exist'");
+    std::string errmsg = 
+        std::string("Master catalog '") + master_catalog_real + 
+        "' does not exist'";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }  
 
@@ -2006,8 +2408,10 @@ int StorageManager::workspace_delete(
     return TILEDB_SM_ERR;
 
   // Delete directory
-  if(delete_dir(workspace_real))
+  if(delete_dir(workspace_real) != TILEDB_UT_OK) {
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
+  }
 
   // Update master catalog by deleting workspace 
   if(create_master_catalog_entry(workspace_real, TILEDB_SM_MC_DEL) != 
@@ -2033,20 +2437,26 @@ int StorageManager::workspace_move(
 
   // Check if old workspace exists
   if(!is_workspace(old_workspace_real)) {
-    PRINT_ERROR(std::string("Workspace '") + 
-                old_workspace_real + "' does not exist");
+    std::string errmsg = 
+        std::string("Workspace '") + old_workspace_real + "' does not exist";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }  
 
   // Check new workspace
   if(new_workspace_real == "") {
-    PRINT_ERROR(std::string("Invalid workspace '") +
-                new_workspace_real + "'"); 
+    std::string errmsg = 
+        std::string("Invalid workspace '") + new_workspace_real + "'";
+    PRINT_ERROR(errmsg); 
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
   if(is_dir(new_workspace_real)) {
-    PRINT_ERROR(std::string("Directory '") + new_workspace_real + 
-                            "' already exists"); 
+    std::string errmsg = 
+        std::string("Directory '") + new_workspace_real + "' already exists";
+    PRINT_ERROR(errmsg); 
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -2057,23 +2467,30 @@ int StorageManager::workspace_move(
      is_group(new_workspace_real_parent) ||
      is_array(new_workspace_real_parent) ||
      is_metadata(new_workspace_real_parent)) {
-    PRINT_ERROR(std::string("Folder '") + new_workspace_real_parent + 
-                            "' should not be a workspace, group, "
-                            "array, or metadata");
+    std::string errmsg = 
+        std::string("Folder '") + new_workspace_real_parent + 
+        "' should not be a workspace, group, array, or metadata";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
   // Master catalog should exist
   if(!is_metadata(master_catalog_real)) {
-    PRINT_ERROR(std::string("Master catalog '") + master_catalog_real + 
-                            "' does not exist'");
+    std::string errmsg =
+        std::string("Master catalog '") + master_catalog_real + 
+        "' does not exist'";
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }  
 
   // Rename directory 
   if(rename(old_workspace_real.c_str(), new_workspace_real.c_str())) {
-    PRINT_ERROR(std::string("Cannot move group; ") + 
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot move group; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
 
@@ -2101,10 +2518,14 @@ int StorageManager::OpenArray::mutex_destroy() {
 #endif
   int rc_pthread_mtx = ::mutex_destroy(&pthread_mtx_);
 
-  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+  // Error
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK) {
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::OpenArray::mutex_init() {
@@ -2115,10 +2536,14 @@ int StorageManager::OpenArray::mutex_init() {
 #endif
   int rc_pthread_mtx =  ::mutex_init(&pthread_mtx_);
 
-  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+  // Error
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK) {
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::OpenArray::mutex_lock() {
@@ -2129,10 +2554,14 @@ int StorageManager::OpenArray::mutex_lock() {
 #endif
   int rc_pthread_mtx = ::mutex_lock(&pthread_mtx_);
 
-  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+  // Error
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK) {
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::OpenArray::mutex_unlock() {
@@ -2143,8 +2572,12 @@ int StorageManager::OpenArray::mutex_unlock() {
 #endif
   int rc_pthread_mtx = ::mutex_unlock(&pthread_mtx_);
 
-  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK)
+  // Error
+  if(rc_pthread_mtx != TILEDB_UT_OK || rc_omp_mtx != TILEDB_UT_OK) {
+    tiledb_sm_errmsg = tiledb_ut_errmsg;
     return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
 }

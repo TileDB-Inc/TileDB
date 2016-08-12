@@ -41,14 +41,8 @@ endif
 
 # --- Verbose mode handler --- #
 VERBOSE =
-ifeq ($(VERBOSE),)
-  VERBOSE = 2
-endif
-ifeq ($(VERBOSE),0)
+ifeq ($(VERBOSE),1)
   CPPFLAGS += -DNVERBOSE
-endif
-ifneq ($(VERBOSE),0)
-  CPPFLAGS += -DVERBOSE=$(VERBOSE)
 endif
 
 # --- Compilers --- #

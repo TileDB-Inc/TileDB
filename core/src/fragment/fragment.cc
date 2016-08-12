@@ -45,19 +45,21 @@
 /*             MACROS             */
 /* ****************************** */
 
-#if VERBOSE == 1
-#  define PRINT_ERROR(x) std::cerr << "[TileDB] Error: " << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB] Warning: " \
-                                     << x << ".\n"
-#elif VERBOSE == 2
-#  define PRINT_ERROR(x) std::cerr << "[TileDB::Fragment] Error: " \
-                                   << x << ".\n" 
-#  define PRINT_WARNING(x) std::cerr << "[TileDB::Fragment] Warning: " \
-                                     << x << ".\n"
+#ifdef VERBOSE
+#  define PRINT_ERROR(x) std::cerr << TILEDB_FG_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 
-#  define PRINT_WARNING(x) do { } while(0) 
 #endif
+
+
+
+
+
+/* ****************************** */
+/*        GLOBAL VARIABLES        */
+/* ****************************** */
+
+std::string tiledb_fg_errmsg = "";
 
 
 
@@ -149,11 +151,24 @@ int Fragment::finalize() {
       rc_rn = rename_fragment();
       rc_cf = create_fragment_file(fragment_name_);
     }
-    if(rc_ws != TILEDB_WS_OK || rc_bk != TILEDB_BK_OK || 
-       rc_rn != TILEDB_FG_OK || rc_cf != TILEDB_UT_OK)
+    // Errors
+    if(rc_ws != TILEDB_WS_OK) {
+      tiledb_fg_errmsg = tiledb_ws_errmsg;
       return TILEDB_FG_ERR;
-    else 
-      return TILEDB_FG_OK;
+    } 
+    if(rc_bk != TILEDB_BK_OK) {
+      tiledb_fg_errmsg = tiledb_bk_errmsg;
+      return TILEDB_FG_ERR;
+    } 
+    if(rc_cf != TILEDB_UT_OK) {
+      tiledb_fg_errmsg = tiledb_ut_errmsg;
+      return TILEDB_FG_ERR;
+    }
+    if(rc_rn != TILEDB_FG_OK)
+      return TILEDB_FG_ERR;
+
+    // Success
+    return TILEDB_FG_OK;
   } else { // The fragment was opened for reading
     // Nothing to be done
     return TILEDB_FG_OK;
@@ -167,7 +182,9 @@ int Fragment::init(
   // Sanity check
   if(mode != TILEDB_ARRAY_WRITE &&
      mode != TILEDB_ARRAY_WRITE_UNSORTED) {
-    PRINT_ERROR("Cannot initialize fragment;  Invalid mode");
+    std::string errmsg = "Cannot initialize fragment;  Invalid mode";
+    PRINT_ERROR(errmsg);
+    tiledb_fg_errmsg = TILEDB_FG_ERRMSG + errmsg;
     return TILEDB_FG_ERR;
   }
 
@@ -199,6 +216,7 @@ int Fragment::init(
     delete book_keeping_;
     book_keeping_ = NULL;
     write_state_ = NULL;
+    tiledb_fg_errmsg = tiledb_bk_errmsg;
     return TILEDB_FG_ERR;
   }
   write_state_ = new WriteState(this, book_keeping_);
@@ -230,10 +248,14 @@ int Fragment::write(const void** buffers, const size_t* buffer_sizes) {
   // Forward the write command to the write state
   int rc = write_state_->write(buffers, buffer_sizes);
 
-  if(rc == TILEDB_WS_OK)
-    return TILEDB_FG_OK;
-  else
+  // Error
+  if(rc != TILEDB_WS_OK) {
+    tiledb_fg_errmsg = tiledb_ws_errmsg;
     return TILEDB_FG_ERR;
+  }
+
+  // Success
+  return TILEDB_FG_OK;
 }
 
 
@@ -253,8 +275,10 @@ int Fragment::rename_fragment() {
                                   fragment_name_.substr(parent_dir.size() + 2);
 
   if(rename(fragment_name_.c_str(), new_fragment_name.c_str())) {
-    PRINT_ERROR(std::string("Cannot rename fragment directory; ") +
-                strerror(errno));
+    std::string errmsg = 
+        std::string("Cannot rename fragment directory; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_fg_errmsg = TILEDB_FG_ERRMSG + errmsg;
     return TILEDB_FG_ERR;
   } 
 
