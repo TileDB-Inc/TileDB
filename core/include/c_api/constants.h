@@ -165,4 +165,7 @@
 #define TILEDB_SORTED_BUFFER_VAR_SIZE         10000000  // ~10MB
 /**@}*/
 
+/** The alignment to assist vectorization. */
+#define ALIGNMENT 64
+
 #endif

@@ -35,6 +35,7 @@
 
 #include "aio_request.h"
 #include "array_read_state.h"
+#include "array_sorted_read_state.h"
 #include "array_schema.h"
 #include "book_keeping.h"
 #include "config.h"
@@ -71,6 +72,7 @@ extern std::string tiledb_ar_errmsg;
 
 
 class ArrayReadState;
+class ArraySortedReadState;
 class Fragment;
 
 
@@ -165,7 +167,7 @@ class Array {
    * the subarray specified in init() or reset_subarray(). The results are
    * written in input buffers provided by the user, which are also allocated by
    * the user. Note that the results are written in the buffers in the same
-   * order they appear on the disk, which leads to maximum performance. 
+   * order as that specified by the user in the init() function. 
    * 
    * @param buffers An array of buffers, one for each attribute. These must be
    *     provided in the same order as the attributes specified in
@@ -186,6 +188,34 @@ class Array {
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
   int read(void** buffers, size_t* buffer_sizes); 
+
+  /**
+   * Performs a read operation in an array, which must be initialized in read 
+   * mode. The function retrieves the result cells that lie inside
+   * the subarray specified in init() or reset_subarray(). The results are
+   * written in input buffers provided by the user, which are also allocated by
+   * the user. Note that the results are written in the buffers in the same
+   * order they appear on the disk, which leads to maximum performance. 
+   * 
+   * @param buffers An array of buffers, one for each attribute. These must be
+   *     provided in the same order as the attributes specified in
+   *     init() or reset_attributes(). The case of variable-sized attributes is
+   *     special. Instead of providing a single buffer for such an attribute,
+   *     **two** must be provided: the second will hold the variable-sized cell
+   *     values, whereas the first holds the start offsets of each cell in the
+   *     second buffer.
+   * @param buffer_sizes The sizes (in bytes) allocated by the user for the
+   *     input buffers (there is a one-to-one correspondence). The function will
+   *     attempt to write as many results as can fit in the buffers, and
+   *     potentially alter the buffer size to indicate the size of the *useful*
+   *     data written in the buffer. If a buffer cannot hold all results, the
+   *     function will still succeed, writing as much data as it can and turning
+   *     on an overflow flag which can be checked with function overflow(). The
+   *     next invocation will resume for the point the previous one stopped,
+   *     without inflicting a considerable performance penalty due to overflow.
+   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   */
+  int read_default(void** buffers, size_t* buffer_sizes); 
 
   /** Returns true if the array is in read mode. */
   bool read_mode() const;
@@ -348,7 +378,7 @@ class Array {
   pthread_mutex_t aio_mtx_;
   /** The queue that stores the pending AIO requests. */
   std::queue<AIO_Request*> aio_queue_;
-  /** The thread tha handles all the AIO reads and writes in the background. */
+  /** The thread that handles all the AIO reads and writes in the background. */
   pthread_t aio_thread_;
   /** Indicates whether the AIO thread was canceled or not. */
   bool aio_thread_canceled_;
@@ -358,6 +388,8 @@ class Array {
   const ArraySchema* array_schema_;
   /** The read state of the array. */
   ArrayReadState* array_read_state_;
+  /** The sorted read state of the array. */
+  ArraySortedReadState* array_sorted_read_state_;
   /** 
    * The ids of the attributes the array is initialized with. Note that the
    * array may be initialized with a subset of attributes when writing or
@@ -402,13 +434,14 @@ class Array {
    * Function called by the AIO thread. 
    *
    * @param context This is practically the Array object for which the function
-   *     is called (typically *this* is passed to ths argument by the caller).
+   *     is called (typically *this* is passed to this argument by the caller).
    */
   static void *aio_handler(void* context);
 
   /**
    * Pusghes an AIO request into the AIO queue.
    *
+   * @param aio_request The AIO request. 
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */ 
   int aio_push_request(AIO_Request* aio_request);

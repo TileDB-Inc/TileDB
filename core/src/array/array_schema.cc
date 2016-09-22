@@ -109,7 +109,6 @@ const std::string& ArraySchema::array_name() const {
   return array_name_;
 }
 
-
 void ArraySchema::array_schema_export(ArraySchemaC* array_schema_c) const {
   // Set array name
   size_t array_name_len = array_name_.size(); 
@@ -330,6 +329,32 @@ int ArraySchema::get_attribute_ids(
 
   // Success
   return TILEDB_AS_OK;
+}
+
+bool ArraySchema::is_contained_in_tile_slab_col(const void* range) const {
+  if(types_[attribute_num_] == TILEDB_INT32)
+    return is_contained_in_tile_slab_col(static_cast<const int*>(range));
+  else if(types_[attribute_num_] == TILEDB_INT64)
+    return is_contained_in_tile_slab_col(static_cast<const int64_t*>(range));
+  else if(types_[attribute_num_] == TILEDB_FLOAT32)
+    return is_contained_in_tile_slab_col(static_cast<const float*>(range));
+  else if(types_[attribute_num_] == TILEDB_FLOAT64)
+    return is_contained_in_tile_slab_col(static_cast<const double*>(range));
+  else
+    return false;
+}
+
+bool ArraySchema::is_contained_in_tile_slab_row(const void* range) const {
+  if(types_[attribute_num_] == TILEDB_INT32)
+    return is_contained_in_tile_slab_row(static_cast<const int*>(range));
+  else if(types_[attribute_num_] == TILEDB_INT64)
+    return is_contained_in_tile_slab_row(static_cast<const int64_t*>(range));
+  else if(types_[attribute_num_] == TILEDB_FLOAT32)
+    return is_contained_in_tile_slab_row(static_cast<const float*>(range));
+  else if(types_[attribute_num_] == TILEDB_FLOAT64)
+    return is_contained_in_tile_slab_row(static_cast<const double*>(range));
+  else
+    return false;
 }
 
 void ArraySchema::print() const {
@@ -677,7 +702,6 @@ int ArraySchema::subarray_overlap(
   return overlap;
 }
 
-
 const void* ArraySchema::tile_domain() const {
   return tile_domain_;
 }
@@ -742,6 +766,39 @@ int64_t ArraySchema::tile_num(const T* domain) const {
     ret *= (domain[2*i+1] - domain[2*i] + 1) / tile_extents[i];
 
   return ret; 
+}
+
+int ArraySchema::tile_order() const {
+  return tile_order_;
+}
+
+int64_t ArraySchema::tile_slab_col_cell_num(const void* subarray) const {
+  // Invoke the proper templated function
+  if(types_[attribute_num_] == TILEDB_INT32)
+    return tile_slab_col_cell_num(static_cast<const int*>(subarray));
+  else if(types_[attribute_num_] == TILEDB_INT64)
+    return tile_slab_col_cell_num(static_cast<const int64_t*>(subarray));
+  else if(types_[attribute_num_] == TILEDB_FLOAT32)
+    return tile_slab_col_cell_num(static_cast<const float*>(subarray));
+  else if(types_[attribute_num_] == TILEDB_FLOAT64)
+    return tile_slab_col_cell_num(static_cast<const double*>(subarray));
+  else
+    return TILEDB_AS_ERR;
+}
+
+int64_t ArraySchema::tile_slab_row_cell_num(const void* subarray) const {
+  // Invoke the proper templated function
+  if(types_[attribute_num_] == TILEDB_INT32)
+    return tile_slab_row_cell_num(static_cast<const int*>(subarray));
+  else if(types_[attribute_num_] == TILEDB_INT64)
+    return tile_slab_row_cell_num(static_cast<const int64_t*>(subarray));
+  else if(types_[attribute_num_] == TILEDB_FLOAT32)
+    return tile_slab_row_cell_num(static_cast<const float*>(subarray));
+  else if(types_[attribute_num_] == TILEDB_FLOAT64)
+    return tile_slab_row_cell_num(static_cast<const double*>(subarray));
+  else
+    return TILEDB_AS_ERR;
+
 }
 
 int ArraySchema::type(int i) const {
@@ -2471,6 +2528,81 @@ void ArraySchema::init_hilbert_curve() {
 
   // Create new Hilberrt curve
   hilbert_curve_ = new HilbertCurve(hilbert_bits_, dim_num_);
+}
+
+template<class T>
+bool ArraySchema::is_contained_in_tile_slab_col(const T* range) const {
+  // For easy reference
+  const T* domain = static_cast<const T*>(domain_);
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+  int64_t tile_l, tile_h;
+	
+  // Check if range is not contained in a column tile slab
+  for(int i=1; i<dim_num_; ++i) {
+    tile_l = floor((range[2*i] - domain[2*i]) / tile_extents[i]);
+    tile_h = floor((range[2*i+1] - domain[2*i]) / tile_extents[i]);
+    if(tile_l != tile_h)
+      return false;
+  }
+
+  // Range contained in the column tile slab
+  return true;
+}
+
+template<class T>
+bool ArraySchema::is_contained_in_tile_slab_row(const T* range) const {
+  // For easy reference
+  const T* domain = static_cast<const T*>(domain_);
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+  int64_t tile_l, tile_h;
+	
+  // Check if range is not contained in a row tile slab
+  for(int i=0; i<dim_num_-1; ++i) {
+    tile_l = floor((range[2*i] - domain[2*i]) / tile_extents[i]);
+    tile_h = floor((range[2*i+1] - domain[2*i]) / tile_extents[i]);
+    if(tile_l != tile_h)
+      return false;
+  }
+
+  // Range contained in the row tile slab
+  return true; 
+}
+
+template<class T>
+int64_t ArraySchema::tile_slab_col_cell_num(const T* subarray) const {
+  // For easy reference
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  // Initialize the cell num to be returned to the maximum number of rows 
+  // in the slab
+  int64_t cell_num = 
+          std::min(
+              tile_extents[dim_num_-1], 
+              subarray[2*(dim_num_-1)+1] - subarray[2*(dim_num_-1)] + 1);
+
+  // Calculate the number of cells in the slab
+  for(int i=0; i<dim_num_-1; ++i)
+    cell_num *= (subarray[2*i+1] - subarray[2*i] + 1);
+
+  // Return
+  return cell_num;
+}
+
+template<class T>
+int64_t ArraySchema::tile_slab_row_cell_num(const T* subarray) const {
+  // For easy reference
+  const T* tile_extents = static_cast<const T*>(tile_extents_);
+
+  // Initialize the cell num to be returned to the maximum number of rows 
+  // in the slab
+  int64_t cell_num = std::min(tile_extents[0], subarray[1] - subarray[0] + 1);
+
+  // Calculate the number of cells in the slab
+  for(int i=1; i<dim_num_; ++i)
+    cell_num *= (subarray[2*i+1] - subarray[2*i] + 1);
+
+  // Return
+  return cell_num;
 }
 
 
