@@ -739,12 +739,12 @@ int64_t ArraySchema::tile_num() const {
   return ret; 
 }
 
-int64_t ArraySchema::tile_num(const void* domain) const {
+int64_t ArraySchema::tile_num(const void* range) const {
   // Invoke the proper template function 
   if(types_[attribute_num_] == TILEDB_INT32)
-    return tile_num<int>(static_cast<const int*>(domain));
+    return tile_num<int>(static_cast<const int*>(range));
   else if(types_[attribute_num_] == TILEDB_INT64)
-    return tile_num<int64_t>(static_cast<const int64_t*>(domain));
+    return tile_num<int64_t>(static_cast<const int64_t*>(range));
 
 
   assert(0);
@@ -757,13 +757,18 @@ int64_t ArraySchema::tile_num(const void* domain) const {
 }
 
 template<class T>
-int64_t ArraySchema::tile_num(const T* domain) const {
+int64_t ArraySchema::tile_num(const T* range) const {
   // For easy reference
   const T* tile_extents = static_cast<const T*>(tile_extents_);
+  const T* domain = static_cast<const T*>(domain_);
 
   int64_t ret = 1;
-  for(int i=0; i<dim_num_; ++i) 
-    ret *= (domain[2*i+1] - domain[2*i] + 1) / tile_extents[i];
+  int64_t start, end;
+  for(int i=0; i<dim_num_; ++i) {
+    start = (range[2*i] - domain[2*i]) / tile_extents[i];
+    end = (range[2*i+1] - domain[2*i]) / tile_extents[i];
+    ret *= (end - start + 1);
+  }
 
   return ret; 
 }

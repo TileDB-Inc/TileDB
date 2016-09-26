@@ -75,6 +75,24 @@ class ArraySortedReadState {
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
+  /** Used in advance_cell_slab(). */
+  struct AdvanceCellSlabInfo {
+    /** The id of the targeted attribute id in attribute_ids_. */
+    int aid_;
+    /** The calling object. */
+    ArraySortedReadState* asrs_;
+  };
+
+  /** Stores state about the current read/copy request. */
+  struct CopyState {
+    /** Current offsets in user buffers. */
+    size_t* buffer_offsets_;
+    /** User buffer sizes. */
+    size_t* buffer_sizes_;
+    /** User buffers. */
+    void** buffers_;
+  };
+
   /** Simple struct used for an AIO or copy request. */
   struct ASRS_Request {
     /** The id of the targeted tile slab. */
@@ -99,20 +117,24 @@ class ArraySortedReadState {
      * per dimension.
      */
     size_t*** offsets_per_dim_;
+    /** Offset of first result cell slab per attribute per tile. */
+    size_t** start_offsets_;
     /** Number of tiles in the tile slab. */
     int64_t tile_num_;
-    /** Offset of each starting result cell per attribute per tile. */
-    size_t** tile_offsets_;
   }; 
 
   /** The state for a tile slab copy. */
   struct TileSlabState {
     /** The current tile per attribute. */
     int64_t* current_tile_;
+    /** The current coordinates in the slab range per attribute per tile. */
+    int64_t*** current_cell_slab_coords_;
     /** The cell slab in the current pass per attribute per tile. */
     int64_t** current_cell_slab_in_pass_;
     /** The offset of the next cell slab to be copied per attribute per tile. */
-    size_t** current_offset_;
+    size_t** current_offsets_;
+    /** Keeps track of whether a tile slab copy for an attribute id done. */
+    bool* copy_tile_slab_done_;
   };
 
  
@@ -136,6 +158,12 @@ class ArraySortedReadState {
   /* ********************************* */
   /*             ACCESSORS             */
   /* ********************************* */
+
+  /** Returns true if the current slab is finished being copied. */
+  bool copy_tile_slab_done() const;
+
+  /** True if read is done for all attributes. */
+  bool done() const;
 
   /** Returns true if copying into the user buffers resulted in overflow. */
   bool overflow() const;
@@ -187,6 +215,9 @@ class ArraySortedReadState {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** Function for advancing a cell slab during a copy operation. */
+  void *(*advance_cell_slab_) (void*);
+
   /** The AIO mutex conditions (one for each buffer). */
   pthread_cond_t aio_cond_[2];
 
@@ -217,14 +248,17 @@ class ArraySortedReadState {
   /** The current id of the buffers the next copy will occur from. */
   int copy_id_;
 
+  /** The copy state. */
+  CopyState copy_state_;
+
   /** The copy mutex. */
   pthread_mutex_t copy_mtx_;
 
   /** The thread tha handles all the copying in the background. */
   pthread_t copy_thread_;
 
-  /** True if the read is done. */
-  bool done_;
+  /** True if the copy thread is running. */
+  bool copy_thread_running_;
 
   /** The overflow mutex condition. */
   pthread_cond_t overflow_cond_;
@@ -234,6 +268,9 @@ class ArraySortedReadState {
 
   /** Overflow flag for each attribute. */
   std::vector<bool> overflow_;
+
+  /** True if no more tile slabs to read. */
+  bool read_tile_slabs_done_;
 
   /** True if a copy must be resumed. */
   bool resume_copy_;
@@ -250,11 +287,8 @@ class ArraySortedReadState {
   /** The info for each of the two tile slabs under investigation. */
   TileSlabInfo tile_slab_info_[2];
 
-  /** User buffer sizes. */
-  size_t* user_buffer_sizes_;
-
-  /** User buffers. */
-  void** user_buffers_;
+  /** The state for the current tile slab being copied. */
+  TileSlabState tile_slab_state_;
 
   /** Wait for copy flags, one for each local buffer. */
   bool wait_copy_[2];
@@ -265,6 +299,42 @@ class ArraySortedReadState {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** 
+   * Advances a cell slab focusing on column-major order, and updates
+   * the CopyState and TileSlabState. 
+   * Used in copy_tile_slab(). 
+   *
+   * @param data Essentially a pointer to a AdvanceCellSlabInfo object.
+   * @return void
+   */
+  static void *advance_cell_slab_col(void* data);
+
+  /** 
+   * Advances a cell slab focusing on row-major order, and updates
+   * the CopyState and TileSlabState. 
+   * Used in copy_tile_slab(). 
+   *
+   * @param data Essentially a pointer to a AdvanceCellSlabInfo object.
+   * @return void
+   */
+  static void *advance_cell_slab_row(void* data);
+
+  /** 
+   * Advances a cell slab when the requested order is column-major. 
+   * 
+   * @param aid The id of the attribute in attribute_ids_ to focus on.
+   * @return void
+   */
+  void advance_cell_slab_col(int aid);
+
+  /** 
+   * Advances a cell slab when the requested order is row-major. 
+   * 
+   * @param aid The id of the attribute in attribute_ids_ to focus on.
+   * @return void
+   */
+  void advance_cell_slab_row(int aid);
 
   /**
    * Called when an AIO completes.
@@ -322,6 +392,13 @@ class ArraySortedReadState {
   void calculate_tile_slab_info_row(int id);
 
   /**
+   * Kills the copy thread (if it is still running).
+   *
+   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
+   */
+  int cancel_copy_thread();
+
+  /**
    * Function called by the copy thread. 
    *
    * @param context This is practically the ArraySortedReadState object for 
@@ -339,11 +416,36 @@ class ArraySortedReadState {
   void copy_tile_slab();
 
   /** 
+   * Copies a tile slab from the local buffers into the user buffers, 
+   * properly re-organizing the cell order to fit the targeted order,
+   * focusing on a particular fixed-length attribute.
+   * 
+   * @param aid The index on attribute_ids_ to focus on.
+   * @param bid The index on the copy state buffers to focus on.
+   * @return void.
+   */
+  void copy_tile_slab(int aid, int bid);
+
+  /** 
+   * Copies a tile slab from the local buffers into the user buffers, 
+   * properly re-organizing the cell order to fit the targeted order,
+   * focusing on a particular variable-length attribute.
+   * 
+   * @param aid The index on attribute_ids_ to focus on.
+   * @param bid The index on the copy state buffers to focus on.
+   * @return void.
+   */
+  void copy_tile_slab_var(int aid, int bid);
+
+  /** 
    * Creates the buffers based on the calculated buffer sizes.
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int create_buffers();
+
+  /** Frees the copy state. */
+  void free_copy_state();
 
   /** Frees the tile slab info. */
   void free_tile_slab_info();
@@ -354,8 +456,17 @@ class ArraySortedReadState {
   /** Handles the copy requests. */
   void handle_copy_requests();
 
+  /** Initializes the copy state. */
+  void init_copy_state();
+
   /** Initializes the tile slab info. */
   void init_tile_slab_info();
+
+  /** 
+   * Initializes the tile slab info for a particular tile slab, using the
+   * input tile number.
+   */
+  void init_tile_slab_info(int id, int64_t tile_num);
 
   /** Initializes the tile slab state. */
   void init_tile_slab_state();
@@ -485,11 +596,14 @@ class ArraySortedReadState {
    */
   int release_overflow();
 
+  /** Resets the copy state using the input buffer info. */
+  void reset_copy_state(void** buffers, size_t* buffer_sizes);
+
   /** Resets the oveflow flags to **false**. */
   void reset_overflow();
   
-  /** Resets the state of the tile slab with the input id. */
-  void reset_tile_slab_state(int id);
+  /** Resets the tile slab state. */
+  void reset_tile_slab_state();
 
   /**  
    * Unlocks the AIO mutex. 

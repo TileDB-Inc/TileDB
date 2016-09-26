@@ -263,10 +263,10 @@ class ArraySchema {
   int64_t tile_num() const;
 
   /** 
-   * Returns the number of tiles in the input domain (applicable only to dense
-   * arrays). 
+   * Returns the number of tiles overlapping with the input range 
+   * (applicable only to dense arrays). 
    */
-  int64_t tile_num(const void* domain) const;
+  int64_t tile_num(const void* range) const;
 
   /** 
    * Returns the number of tiles in the input domain (applicable only to dense
