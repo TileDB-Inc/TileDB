@@ -103,15 +103,12 @@ class ArraySortedReadState {
 
   /** Info about a tile slab. It is used by the copy_tile_slab() function. */
   struct TileSlabInfo {
-    /** 
-     * Number of cell slabs to be copied in as tile pass, 
-     * per attribute per tile. 
-     */
-    int64_t** cell_slab_num_in_pass_;
     /** The multi-dimensional range of cell slabs per tile. */
     int64_t** cell_slab_range_;
     /** Cell slab size per attribute per tile. */
     size_t** cell_slab_size_;
+    /** first dimension to advance when advancing the cell slab coordinates. */
+    int first_dim_to_advance_;
     /** 
      * Bytes to jump after copying a cell slab, per attribute, per tile, 
      * per dimension.
@@ -119,8 +116,12 @@ class ArraySortedReadState {
     size_t*** offsets_per_dim_;
     /** Offset of first result cell slab per attribute per tile. */
     size_t** start_offsets_;
+    /** The normalized tile domain of the tile slab. */
+    void* tile_domain_;
     /** Number of tiles in the tile slab. */
     int64_t tile_num_;
+    /** Tiles to jump when a tile is done. */
+    int64_t tiles_to_advance_;
   }; 
 
   /** The state for a tile slab copy. */
@@ -129,8 +130,6 @@ class ArraySortedReadState {
     int64_t* current_tile_;
     /** The current coordinates in the slab range per attribute per tile. */
     int64_t*** current_cell_slab_coords_;
-    /** The cell slab in the current pass per attribute per tile. */
-    int64_t** current_cell_slab_in_pass_;
     /** The offset of the next cell slab to be copied per attribute per tile. */
     size_t** current_offsets_;
     /** Keeps track of whether a tile slab copy for an attribute id done. */
@@ -233,6 +232,12 @@ class ArraySortedReadState {
   /** The ids of the attributes the array was initialized with. */
   const std::vector<int>& attribute_ids_;
 
+  /**
+   * The sizes of the attributes. For variable-length attributes, sizeof(size_t)
+   * is stored.
+   */
+  std::vector<size_t> attribute_sizes_;
+
   /** Number of allocated buffers. */
   int buffer_num_;
 
@@ -283,6 +288,9 @@ class ArraySortedReadState {
 
   /** The tile slab to be read for the first and second buffers. */
   void* tile_slab_[2];
+
+  /** Normalized tile slab. */
+  void* tile_slab_norm_[2];
 
   /** The info for each of the two tile slabs under investigation. */
   TileSlabInfo tile_slab_info_[2];
@@ -382,6 +390,54 @@ class ArraySortedReadState {
 
   /** 
    * Calculates the info used in the copy_tile_slab() function for the case
+   * of column-major order, when the array tile order is column-major and
+   * the array cell order is column-major.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_tile_slab_info_col_cc(int id);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function for the case
+   * of column-major order, when the array tile order is column-major and
+   * the array cell order is row-major.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_tile_slab_info_col_cr(int id);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function for the case
+   * of column-major order, when the array tile order is row-major and
+   * the array cell order is column-major.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_tile_slab_info_col_rc(int id);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function for the case
+   * of column-major order, when the array tile order is row-major and
+   * the array cell order is row-major.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_tile_slab_info_col_rr(int id);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function for the case
    * of row-major order.
    *
    * @param T The domain type.
@@ -390,6 +446,54 @@ class ArraySortedReadState {
    */
   template<class T>
   void calculate_tile_slab_info_row(int id);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function for the case
+   * of row-major order, when the array tile order is column-major and
+   * the array cell order is column-major.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_tile_slab_info_row_cc(int id);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function for the case
+   * of row-major order, when the array tile order is column-major and
+   * the array cell order is row-major.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_tile_slab_info_row_cr(int id);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function for the case
+   * of row-major order, when the array tile order is row-major and
+   * the array cell order is column-major.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_tile_slab_info_row_rc(int id);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function for the case
+   * of row-major order, when the array tile order is row-major and
+   * the array cell order is row-major.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_tile_slab_info_row_rr(int id);
 
   /**
    * Kills the copy thread (if it is still running).
@@ -465,7 +569,13 @@ class ArraySortedReadState {
   /** 
    * Initializes the tile slab info for a particular tile slab, using the
    * input tile number.
+   *
+   * @template The domain type.
+   * @param id The slab id.
+   * @param tile_num The number of tiles overlapped by the tile slab.
+   * @return void.
    */
+  template<class T>
   void init_tile_slab_info(int id, int64_t tile_num);
 
   /** Initializes the tile slab state. */

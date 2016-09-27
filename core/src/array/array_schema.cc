@@ -2718,6 +2718,24 @@ template int64_t ArraySchema::hilbert_id<float>(
 template int64_t ArraySchema::hilbert_id<double>(
     const double* coords) const;
 
+template bool ArraySchema::is_contained_in_tile_slab_col<int>(
+    const int* range) const;
+template bool ArraySchema::is_contained_in_tile_slab_col<int64_t>(
+    const int64_t* range) const;
+template bool ArraySchema::is_contained_in_tile_slab_col<float>(
+    const float* range) const;
+template bool ArraySchema::is_contained_in_tile_slab_col<double>(
+    const double* range) const;
+
+template bool ArraySchema::is_contained_in_tile_slab_row<int>(
+    const int* range) const;
+template bool ArraySchema::is_contained_in_tile_slab_row<int64_t>(
+    const int64_t* range) const;
+template bool ArraySchema::is_contained_in_tile_slab_row<float>(
+    const float* range) const;
+template bool ArraySchema::is_contained_in_tile_slab_row<double>(
+    const double* range) const;
+
 template int ArraySchema::subarray_overlap<int>(
     const int* subarray_a, 
     const int* subarray_b, 
@@ -2756,4 +2774,5 @@ template int64_t ArraySchema::tile_id<float>(
     const float* cell_coords) const;
 template int64_t ArraySchema::tile_id<double>(
     const double* cell_coords) const;
+
 

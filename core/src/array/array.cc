@@ -306,7 +306,6 @@ int Array::read_default(void** buffers, size_t* buffer_sizes) {
   return TILEDB_AR_OK;
 }
 
-inline
 bool Array::read_mode() const {
   return array_read_mode(mode_);
 }
@@ -315,7 +314,6 @@ const void* Array::subarray() const {
   return subarray_;
 }
 
-inline
 bool Array::write_mode() const {
   return array_write_mode(mode_);
 }
