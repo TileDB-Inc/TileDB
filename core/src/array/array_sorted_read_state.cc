@@ -69,9 +69,12 @@ ArraySortedReadState::ArraySortedReadState(
       subarray_(array->subarray()) {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
+  int anum = (int) attribute_ids_.size();
 
   // Initializations
+  coords_size_ = array_schema->coords_size();
   copy_id_ = 0;
+  dim_num_ = array_schema->dim_num();
   aio_id_ = 0;
   copy_thread_running_ = false;
   read_tile_slabs_done_ = false;
@@ -85,8 +88,8 @@ ArraySortedReadState::ArraySortedReadState(
     wait_copy_[i] = false;
     wait_aio_[i] = true;
   }
-  overflow_.resize(attribute_ids_.size());
-  for(int i=0; (int) attribute_ids_.size(); ++i) {
+  overflow_.resize(anum);
+  for(int i=0; i<anum; ++i) {
     overflow_[i] = false;
     if(array_schema->var_size(attribute_ids_[i]))
       attribute_sizes_.push_back(sizeof(size_t));
@@ -297,12 +300,32 @@ int ArraySortedReadState::init() {
     return TILEDB_ASRS_ERR;
   }
 
-  // Determine the advance_cell_slab_ method
+  // Initialize functors
   int mode = array_->mode();
-  if(mode == TILEDB_ARRAY_READ_SORTED_ROW) 
-    advance_cell_slab_ = advance_cell_slab_row;
-  else // mode == TILEDB_ARRAY_READ_SORTED_COL 
-    advance_cell_slab_ = advance_cell_slab_col;
+  int coords_type = array_->array_schema()->coords_type();
+  if(mode == TILEDB_ARRAY_READ_SORTED_ROW) { 
+    if(coords_type == TILEDB_INT32) 
+      advance_cell_slab_ = advance_cell_slab_row<int>;
+    else if(coords_type == TILEDB_INT64) 
+      advance_cell_slab_ = advance_cell_slab_row<int64_t>;
+    else if(coords_type == TILEDB_FLOAT32) 
+      advance_cell_slab_ = advance_cell_slab_row<float>;
+    else if(coords_type == TILEDB_FLOAT64) 
+      advance_cell_slab_ = advance_cell_slab_row<double>;
+    else 
+      assert(0);
+  } else { // mode == TILEDB_ARRAY_READ_SORTED_COL 
+    if(coords_type == TILEDB_INT32) 
+      advance_cell_slab_ = advance_cell_slab_col<int>;
+    else if(coords_type == TILEDB_INT64) 
+      advance_cell_slab_ = advance_cell_slab_col<int64_t>;
+    else if(coords_type == TILEDB_FLOAT32) 
+      advance_cell_slab_ = advance_cell_slab_col<float>;
+    else if(coords_type == TILEDB_FLOAT64) 
+      advance_cell_slab_ = advance_cell_slab_col<double>;
+    else 
+      assert(0);
+  }
 
   // Success
   return TILEDB_ASRS_OK;
@@ -313,110 +336,77 @@ int ArraySortedReadState::init() {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
+template<class T>
 void *ArraySortedReadState::advance_cell_slab_col(void* data) {
-  ArraySortedReadState* asrs = ((AdvanceCellSlabInfo*) data)->asrs_;
-  int aid = ((AdvanceCellSlabInfo*) data)->aid_;
-  asrs->advance_cell_slab_col(aid);
+  ArraySortedReadState* asrs = ((ASRS_Data*) data)->asrs_;
+  int aid = ((ASRS_Data*) data)->id_;
+  asrs->advance_cell_slab_col<T>(aid);
   return NULL;
 }
 
+template<class T>
 void *ArraySortedReadState::advance_cell_slab_row(void* data) {
-  ArraySortedReadState* asrs = ((AdvanceCellSlabInfo*) data)->asrs_;
-  int aid = ((AdvanceCellSlabInfo*) data)->aid_;
-  asrs->advance_cell_slab_row(aid);
+  ArraySortedReadState* asrs = ((ASRS_Data*) data)->asrs_;
+  int aid = ((ASRS_Data*) data)->id_;
+  asrs->advance_cell_slab_row<T>(aid);
   return NULL;
 }
 
+template<class T>
 void ArraySortedReadState::advance_cell_slab_col(int aid) {
   // For easy reference
-  int64_t& tid = tile_slab_state_.current_tile_[aid];
-  int64_t tile_num = tile_slab_info_[copy_id_].tile_num_;
-  int dim_num = array_->array_schema()->dim_num();
-  int64_t tiles_to_advance = tile_slab_info_[copy_id_].tiles_to_advance_;
+  int64_t& tid = tile_slab_state_.current_tile_[aid];  // Tile id
+  int64_t cell_slab_num = tile_slab_info_[copy_id_].cell_slab_num_[tid];
+  T* current_coords = (T*) tile_slab_state_.current_coords_[aid]; 
+  const T* tile_slab = (const T*) tile_slab_norm_[copy_id_];
 
-  // Advance cell slab coordinates and offsets
-  int d = tile_slab_info_[copy_id_].first_dim_to_advance_;
-  ++(tile_slab_state_.current_cell_slab_coords_[aid][tid][d]);
-  tile_slab_state_.current_offsets_[aid][tid] +=
-      tile_slab_info_[copy_id_].offsets_per_dim_[aid][tid][d];
-  while(d < dim_num-1 && 
-        tile_slab_state_.current_cell_slab_coords_[aid][tid][d] >
-        tile_slab_info_[copy_id_].cell_slab_range_[tid][2*d+1]) {
-    tile_slab_state_.current_cell_slab_coords_[aid][tid][d] =
-        tile_slab_info_[copy_id_].cell_slab_range_[tid][2*d];
-    ++(tile_slab_state_.current_cell_slab_coords_[aid][tid][++d]);
-    tile_slab_state_.current_offsets_[aid][tid] +=
-      tile_slab_info_[copy_id_].offsets_per_dim_[aid][tid][d];
+  // Advance cell slab coordinates
+  int d = 0;
+  current_coords[d] += cell_slab_num;
+  while(d < dim_num_-1 && current_coords[d] > tile_slab[2*d+1]) {
+    current_coords[d] = tile_slab[2*d];
+    ++current_coords[++d];
   }
 
-  // Check if tile slab is done
-  if(tile_slab_state_.current_cell_slab_coords_[aid][tid][dim_num-1] >
-     tile_slab_info_[copy_id_].cell_slab_range_[tid][2*(dim_num-1)+1] &&
-     tid == tile_num -1) {
+  // Check if done
+  if(current_coords[dim_num_-1] > tile_slab[2*(dim_num_-1)+1]) {
     tile_slab_state_.copy_tile_slab_done_[aid] = true;
     return;
   }
 
-  // Advance tile id
-  if((tid+1) % tiles_to_advance == 0) {
-    // Go back
-    tid -= (tiles_to_advance-1);
-   
-    // Check if the tile is done
-    if(tile_slab_state_.current_cell_slab_coords_[aid][tid][dim_num-1] >
-       tile_slab_info_[copy_id_].cell_slab_range_[tid][2*(dim_num-1)+1])
-      tid += tiles_to_advance;
-  } else {
-    ++tid;
-  }
+  // Calculate new tile and offset for the current coords
+  update_current_tile_and_offset<T>(aid);  
 }
 
+template<class T>
 void ArraySortedReadState::advance_cell_slab_row(int aid) {
   // For easy reference
-  int64_t& tid = tile_slab_state_.current_tile_[aid];
-  int64_t tile_num = tile_slab_info_[copy_id_].tile_num_;
-  int64_t tiles_to_advance = tile_slab_info_[copy_id_].tiles_to_advance_;
+  int64_t& tid = tile_slab_state_.current_tile_[aid];  // Tile id
+  int64_t cell_slab_num = tile_slab_info_[copy_id_].cell_slab_num_[tid];
+  T* current_coords = (T*) tile_slab_state_.current_coords_[aid]; 
+  const T* tile_slab = (const T*) tile_slab_norm_[copy_id_];
 
-  // Advance cell slab coordinates and offsets
-  int d = tile_slab_info_[copy_id_].first_dim_to_advance_;
-  ++(tile_slab_state_.current_cell_slab_coords_[aid][tid][d]);
-  tile_slab_state_.current_offsets_[aid][tid] +=
-      tile_slab_info_[copy_id_].offsets_per_dim_[aid][tid][d];
-  while(d > 0 && 
-        tile_slab_state_.current_cell_slab_coords_[aid][tid][d] >
-        tile_slab_info_[copy_id_].cell_slab_range_[tid][2*d+1]) {
-    tile_slab_state_.current_cell_slab_coords_[aid][tid][d] =
-        tile_slab_info_[copy_id_].cell_slab_range_[tid][2*d];
-    ++(tile_slab_state_.current_cell_slab_coords_[aid][tid][--d]);
-    tile_slab_state_.current_offsets_[aid][tid] +=
-      tile_slab_info_[copy_id_].offsets_per_dim_[aid][tid][d];
+  // Advance cell slab coordinates
+  int d = dim_num_-1;
+  current_coords[d] += cell_slab_num;
+  while(d > 0 && current_coords[d] > tile_slab[2*d+1]) {
+    current_coords[d] = tile_slab[2*d];
+    ++current_coords[--d];
   }
 
-  // Check if tile slab is done
-  if(tile_slab_state_.current_cell_slab_coords_[aid][tid][0] >
-     tile_slab_info_[copy_id_].cell_slab_range_[tid][1] &&
-     tid == tile_num -1) {
+  // Check if done
+  if(current_coords[0] > tile_slab[1]) {
     tile_slab_state_.copy_tile_slab_done_[aid] = true;
     return;
   }
 
-  // Advance tile id
-  if((tid+1) % tiles_to_advance == 0) {
-    // Go back
-    tid -= (tiles_to_advance-1);
-   
-    // Check if the tile is done
-    if(tile_slab_state_.current_cell_slab_coords_[aid][tid][0] >
-       tile_slab_info_[copy_id_].cell_slab_range_[tid][1])
-      tid += tiles_to_advance;
-  } else {
-    ++tid;
-  }
+  // Calculate new tile and offset for the current coords
+  update_current_tile_and_offset<T>(aid);  
 }
 
 void *ArraySortedReadState::aio_done(void* data) {
-  ArraySortedReadState* asrs = ((ASRS_Request*) data)->asrs_;
-  int id = ((ASRS_Request*) data)->id_;
+  ArraySortedReadState* asrs = ((ASRS_Data*) data)->asrs_;
+  int id = ((ASRS_Data*) data)->id_;
   asrs->block_copy(id);
   asrs->release_aio(id);
  
@@ -495,45 +485,6 @@ void ArraySortedReadState::calculate_tile_slab_info_col(int id) {
   if(tile_slab_info_[id].tile_num_ == -1) 
     init_tile_slab_info<T>(id, tile_num); 
 
-  // Invoke the proper function based on the array tile and cell order
-  int cell_order = array_->array_schema()->cell_order();
-  int tile_order = array_->array_schema()->tile_order();
-  if(tile_order == TILEDB_ROW_MAJOR) {
-    if(cell_order == TILEDB_ROW_MAJOR)
-      calculate_tile_slab_info_col_rr<T>(id);
-    else if(cell_order == TILEDB_COL_MAJOR)
-      calculate_tile_slab_info_col_rc<T>(id);
-    else
-      assert(0);
-  } else if(tile_order == TILEDB_COL_MAJOR) {
-    if(cell_order == TILEDB_ROW_MAJOR)
-      calculate_tile_slab_info_col_cr<T>(id);
-    else if(cell_order == TILEDB_COL_MAJOR)
-      calculate_tile_slab_info_col_cc<T>(id);
-    else
-      assert(0);
-  } else {
-    assert(0);
-  }
-}
-
-template<class T>
-void ArraySortedReadState::calculate_tile_slab_info_col_cc(int id) {
-  // TODO
-}
-
-template<class T>
-void ArraySortedReadState::calculate_tile_slab_info_col_cr(int id) {
-  // TODO
-}
-
-template<class T>
-void ArraySortedReadState::calculate_tile_slab_info_col_rc(int id) {
-  // TODO
-}
-
-template<class T>
-void ArraySortedReadState::calculate_tile_slab_info_col_rr(int id) {
   // TODO
 }
 
@@ -544,83 +495,7 @@ void ArraySortedReadState::calculate_tile_slab_info_row(int id) {
   if(tile_slab_info_[id].tile_num_ == -1) 
     init_tile_slab_info<T>(id, tile_num); 
 
-  // Invoke the proper function based on the array tile and cell order
-  int cell_order = array_->array_schema()->cell_order();
-  int tile_order = array_->array_schema()->tile_order();
-  if(tile_order == TILEDB_ROW_MAJOR) {
-    if(cell_order == TILEDB_ROW_MAJOR)
-      calculate_tile_slab_info_row_rr<T>(id);
-    else if(cell_order == TILEDB_COL_MAJOR)
-      calculate_tile_slab_info_row_rc<T>(id);
-    else
-      assert(0);
-  } else if(tile_order == TILEDB_COL_MAJOR) {
-    if(cell_order == TILEDB_ROW_MAJOR)
-      calculate_tile_slab_info_row_cr<T>(id);
-    else if(cell_order == TILEDB_COL_MAJOR)
-      calculate_tile_slab_info_row_cc<T>(id);
-    else
-      assert(0);
-  } else {
-    assert(0);
-  }
-}
-
-template<class T>
-void ArraySortedReadState::calculate_tile_slab_info_row_cc(int id) {
   // TODO
-}
-
-template<class T>
-void ArraySortedReadState::calculate_tile_slab_info_row_cr(int id) {
-  // TODO
-}
-
-template<class T>
-void ArraySortedReadState::calculate_tile_slab_info_row_rc(int id) {
-  // TODO
-}
-
-template<class T>
-void ArraySortedReadState::calculate_tile_slab_info_row_rr(int id) {
-  // For easy reference
-  const ArraySchema* array_schema = array_->array_schema();
-  const T* domain = static_cast<const T*>(array_schema->domain());
-
-  // Initialize a running start offset
-  size_t start_offset = 0;
- 
-  // Calculate first dimension to advance
-  // TODO
-
-  // Calculate tiles to advance
-  // TODO
-
-  // Iterate over the tiles in tile domain in the array order
-  // TODO
- 
-    // Calculate mapping to tile slab state tiles
-    // TODO
-
-    // Calculate tile range
-    // TODO
- 
-    // Calculate cell slab range
-    // (i.e., the intersection between tile ranges and normalized tile slab)
-    // TODO
-
-    // Calculate cell slab size
-    // TODO
-
-    // Assign start offset
-    // TODO
-   
-    // Update start offset based on the cell slab range
-    // TODO
-
-    // Calculate offsets per dimension
-    // TODO
-
 }
 
 int ArraySortedReadState::cancel_copy_thread() {
@@ -642,9 +517,22 @@ int ArraySortedReadState::cancel_copy_thread() {
 }
 
 void *ArraySortedReadState::copy_handler(void* context) {
+  // For easy reference
+  ArraySortedReadState* asrs = (ArraySortedReadState*) context;
+
   // This will enter an indefinite loop that will handle all incoming copy 
   // requests
-  ((ArraySortedReadState*) context)->handle_copy_requests();
+  int coords_type = asrs->array_->array_schema()->coords_type();
+  if(coords_type == TILEDB_INT32)
+    asrs->handle_copy_requests<int>();
+  else if(coords_type == TILEDB_INT64)
+    asrs->handle_copy_requests<int64_t>();
+  else if(coords_type == TILEDB_FLOAT32)
+    asrs->handle_copy_requests<float>();
+  else if(coords_type == TILEDB_FLOAT64)
+    asrs->handle_copy_requests<double>();
+  else
+    assert(0);
 
   // Return
   return NULL;
@@ -674,17 +562,17 @@ void ArraySortedReadState::copy_tile_slab(int aid, int bid) {
   }
 
   // For easy reference
-  int64_t& tid = tile_slab_state_.current_tile_[aid];             // Tile
+  int64_t& tid = tile_slab_state_.current_tile_[aid]; 
   size_t& buffer_offset = copy_state_.buffer_offsets_[bid];
   size_t buffer_size = copy_state_.buffer_sizes_[bid];
   char* buffer = (char*) copy_state_.buffers_[bid];
   char* local_buffer = (char*) buffers_[copy_id_][bid];
 
-  // For all overlapping tiles, in a round-robin fashion
+  // Iterate over the tile slab cells
   for(;;) {
     // For easy reference
     size_t cell_slab_size = tile_slab_info_[copy_id_].cell_slab_size_[aid][tid];
-    size_t& local_buffer_offset = tile_slab_state_.current_offsets_[aid][tid]; 
+    size_t& local_buffer_offset = tile_slab_state_.current_offsets_[aid]; 
 
     // Handle overflow
     if(buffer_offset + cell_slab_size > buffer_size) {
@@ -702,8 +590,8 @@ void ArraySortedReadState::copy_tile_slab(int aid, int bid) {
     buffer_offset += cell_slab_size;
    
     // Prepare for new slab
-    AdvanceCellSlabInfo acsi = { aid, this };
-    (*advance_cell_slab_)(&acsi);
+    ASRS_Data asrs_data = { aid, this };
+    (*advance_cell_slab_)(&asrs_data);
 
     // Terminating condition 
     if(tile_slab_state_.copy_tile_slab_done_[aid])
@@ -723,7 +611,7 @@ void ArraySortedReadState::copy_tile_slab_var(int aid, int bid) {
   }
 
   // For easy reference
-  int64_t& tid = tile_slab_state_.current_tile_[aid];             // Tile
+  int64_t& tid = tile_slab_state_.current_tile_[aid]; 
   size_t cell_slab_size_var;
   size_t& buffer_offset = copy_state_.buffer_offsets_[bid];
   size_t& buffer_offset_var = copy_state_.buffer_offsets_[bid+1];
@@ -744,7 +632,7 @@ void ArraySortedReadState::copy_tile_slab_var(int aid, int bid) {
     size_t cell_slab_size = 
         tile_slab_info_[copy_id_].cell_slab_size_[aid][tid];
     int64_t cell_num_in_slab = cell_slab_size / sizeof(size_t);
-    size_t& local_buffer_offset = tile_slab_state_.current_offsets_[aid][tid]; 
+    size_t& local_buffer_offset = tile_slab_state_.current_offsets_[aid]; 
 
     // Handle overflow
     if(buffer_offset + cell_slab_size > buffer_size) {
@@ -781,8 +669,8 @@ void ArraySortedReadState::copy_tile_slab_var(int aid, int bid) {
     buffer_offset_var += cell_slab_size_var;
    
     // Prepare for new slab
-    AdvanceCellSlabInfo acsi = { aid, this };
-    (*advance_cell_slab_)(&acsi);
+    ASRS_Data asrs_data = { aid, this };
+    (*advance_cell_slab_)(&asrs_data);
 
     // Terminating condition 
     if(tile_slab_state_.copy_tile_slab_done_[aid])
@@ -828,83 +716,95 @@ void ArraySortedReadState::free_tile_slab_info() {
   // For easy reference
   int anum = (int) attribute_ids_.size();
 
-  // Initialize
+  // Free
   for(int i=0; i<2; ++i) {
     int64_t tile_num = tile_slab_info_[i].tile_num_;
 
-    if(tile_slab_info_[i].cell_slab_range_ != NULL) {
+    if(tile_slab_info_[i].cell_offset_per_dim_ != NULL) {
       for(int j=0; j<tile_num; ++j)
-        delete [] tile_slab_info_[i].cell_slab_range_[j];
-      delete []  tile_slab_info_[i].cell_slab_range_;
+        delete [] tile_slab_info_[i].cell_offset_per_dim_[j];
+      delete [] tile_slab_info_[i].cell_offset_per_dim_;
     }
 
-    if(tile_slab_info_[i].cell_slab_size_ != NULL) {
-      for(int j=0; j<anum; ++j) {  
-        if(tile_slab_info_[i].cell_slab_size_[j] != NULL)
-          delete [] tile_slab_info_[i].cell_slab_size_[j];
-      }
-      delete [] tile_slab_info_[i].cell_slab_size_;
+    for(int j=0; j<anum; ++j) {  
+      if(tile_slab_info_[i].cell_slab_size_[j] != NULL)
+        delete [] tile_slab_info_[i].cell_slab_size_[j];
+    }
+    delete [] tile_slab_info_[i].cell_slab_size_;
+
+    if(tile_slab_info_[i].cell_slab_num_ != NULL)
+      delete [] tile_slab_info_[i].cell_slab_num_;
+
+    if(tile_slab_info_[i].range_overlap_ != NULL) {
+      for(int j=0; j<tile_num; ++j)
+        free(tile_slab_info_[i].range_overlap_[j]);
+      delete [] tile_slab_info_[i].range_overlap_;
     }
 
-    if(tile_slab_info_[i].start_offsets_ != NULL) {
-      for(int j=0; j<anum; ++j) {  
-        if(tile_slab_info_[i].start_offsets_[j] != NULL)
-          delete [] tile_slab_info_[i].start_offsets_[j];
-      }
-      delete [] tile_slab_info_[i].start_offsets_;
+    for(int j=0; j<anum; ++j) {  
+      if(tile_slab_info_[i].start_offsets_[j] != NULL)
+        delete [] tile_slab_info_[i].start_offsets_[j];
     }
+    delete [] tile_slab_info_[i].start_offsets_;
 
-    if(tile_slab_info_[i].offsets_per_dim_ != NULL) {
-      for(int j=0; j<anum; ++j) {
-        if(tile_slab_info_[i].offsets_per_dim_[j] != NULL) {
-          for(int t=0; t<tile_num; ++t) {
-            if(tile_slab_info_[i].offsets_per_dim_[j][t] != NULL)
-              delete [] tile_slab_info_[i].offsets_per_dim_[j][t];
-          }
-        }
-        delete [] tile_slab_info_[i].offsets_per_dim_[j];
-      } 
-      delete [] tile_slab_info_[i].offsets_per_dim_;
-    }
+    if(tile_slab_info_[i].tile_mapping_ != NULL)
+      delete [] tile_slab_info_[i].tile_mapping_;
 
-    if(tile_slab_info_[i].tile_domain_ != NULL)
-      free(tile_slab_info_[i].tile_domain_);
+    delete [] tile_slab_info_[i].tile_offset_per_dim_; 
   }
 }
 
 void ArraySortedReadState::free_tile_slab_state() {
   // For easy reference
   int anum = (int) attribute_ids_.size();
-  int64_t tile_num = tile_slab_info_[0].tile_num_;
 
-  if(tile_slab_state_.current_tile_ != NULL)
-    delete [] tile_slab_state_.current_tile_;
+  // Clean up
+  for(int i=0; i<anum; ++i) 
+    free(tile_slab_state_.current_coords_[i]);
 
-  if(tile_slab_state_.current_cell_slab_coords_ != NULL) {
-    for(int i=0; i<anum; ++i) {
-      if(tile_slab_state_.current_cell_slab_coords_[i] != NULL) {
-        for(int64_t j=0; j<tile_num; ++j) { 
-          if(tile_slab_state_.current_cell_slab_coords_[i][j] != NULL)
-            delete [] tile_slab_state_.current_cell_slab_coords_[i][j];
-        }
-        delete [] tile_slab_state_.current_cell_slab_coords_[i];
-      }
-    }
-    delete [] tile_slab_state_.current_cell_slab_coords_;
-  }
-
-  if(tile_slab_state_.current_offsets_ != NULL) {
-    for(int i=0; i<anum; ++i) {
-      if(tile_slab_state_.current_offsets_[i] != NULL)
-        delete [] tile_slab_state_.current_offsets_[i];
-    }
-    delete [] tile_slab_state_.current_offsets_;
-  }
-
-  if(tile_slab_state_.copy_tile_slab_done_ != NULL)
-    delete [] tile_slab_state_.copy_tile_slab_done_;
+  delete [] tile_slab_state_.copy_tile_slab_done_;
+  delete [] tile_slab_state_.current_offsets_;
+  delete [] tile_slab_state_.current_coords_;
+  delete [] tile_slab_state_.current_tile_;
 }
 
+template<class T>
+int64_t ArraySortedReadState::get_cell_id(int aid) {
+  // For easy reference
+  const T* current_coords = (const T*) tile_slab_state_.current_coords_[aid];
+  int64_t tid = tile_slab_state_.current_tile_[aid];
+  const T* range_overlap = 
+      (const T*) tile_slab_info_[copy_id_].range_overlap_[tid];
+  int64_t* cell_offset_per_dim = 
+      tile_slab_info_[copy_id_].cell_offset_per_dim_[tid];
+
+  // Calculate cell id
+  int64_t cid = 0;
+  for(int i=0; i<dim_num_; ++i)
+    cid += (current_coords[i] - range_overlap[2*i]) * cell_offset_per_dim[i];
+
+  // Return tile id
+  return cid;
+
+}
+
+template<class T>
+int64_t ArraySortedReadState::get_tile_id(int aid) {
+  // For easy reference
+  const T* current_coords = (const T*) tile_slab_state_.current_coords_[aid];
+  const T* tile_extents = (const T*) array_->array_schema()->tile_extents();
+  int64_t* tile_offset_per_dim = tile_slab_info_[copy_id_].tile_offset_per_dim_;
+
+  // Calculate tile id
+  int64_t tid = 0;
+  for(int i=0; i<dim_num_; ++i)
+    tid += (current_coords[i] / tile_extents[i]) * tile_offset_per_dim[i];
+
+  // Return tile id
+  return tid;
+}
+
+template<class T>
 void ArraySortedReadState::handle_copy_requests() {
   // Handle copy requests indefinitely
   for(;;) {
@@ -913,7 +813,7 @@ void ArraySortedReadState::handle_copy_requests() {
 
     // Reset the tile slab state
     if(copy_tile_slab_done())
-      reset_tile_slab_state();
+      reset_tile_slab_state<T>();
 
     // Start the copy
     copy_tile_slab();
@@ -948,77 +848,61 @@ void ArraySortedReadState::init_tile_slab_info() {
 
   // Initialize
   for(int i=0; i<2; ++i) {
-    tile_slab_info_[i].cell_slab_range_ = new int64_t*[anum];
+    tile_slab_info_[i].cell_offset_per_dim_ = NULL;
     tile_slab_info_[i].cell_slab_size_ = new size_t*[anum];
-    tile_slab_info_[i].offsets_per_dim_ = new size_t**[anum];
+    tile_slab_info_[i].cell_slab_num_ = NULL;
+    tile_slab_info_[i].range_overlap_ = NULL;
     tile_slab_info_[i].start_offsets_ = new size_t*[anum];
-    tile_slab_info_[i].cell_slab_range_ = NULL;
-    tile_slab_info_[i].tile_domain_ = NULL;
+    tile_slab_info_[i].tile_mapping_ = NULL;
+    tile_slab_info_[i].tile_offset_per_dim_ = new int64_t[dim_num_];
 
     for(int j=0; j<anum; ++j) {
       tile_slab_info_[i].cell_slab_size_[j] = NULL;
-      tile_slab_info_[i].offsets_per_dim_[j] = NULL;
       tile_slab_info_[i].start_offsets_[j] = NULL;
     }
 
     tile_slab_info_[i].tile_num_ = -1;
-    tile_slab_info_[i].tiles_to_advance_ = -1;
   }
 }
 
 template<class T>
 void ArraySortedReadState::init_tile_slab_info(int id, int64_t tile_num) {
   // For easy reference
-  const ArraySchema* array_schema = array_->array_schema();
   int anum = (int) attribute_ids_.size();
-  int dim_num = array_schema->dim_num();
-  size_t coords_size = array_schema->coords_size();
-  const T* domain = static_cast<const T*>(array_schema->domain());
-  const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
-  const T* tile_slab = static_cast<const T*>(tile_slab_[id]);
 
-  tile_slab_info_[id].cell_slab_range_ = new int64_t*[tile_num];
-  for(int64_t i=0; i<tile_num; ++i)
-    tile_slab_info_[id].cell_slab_range_[i] = new int64_t[2*dim_num];
+  tile_slab_info_[id].cell_offset_per_dim_ = new int64_t*[tile_num];
+  tile_slab_info_[id].cell_slab_num_ = new int64_t[tile_num];
+  tile_slab_info_[id].range_overlap_ = new void*[tile_num];
+  for(int64_t i=0; i<tile_num; ++i) {
+    tile_slab_info_[id].range_overlap_[i] = malloc(coords_size_);
+    tile_slab_info_[id].cell_offset_per_dim_[i] = new int64_t[dim_num_];
+  }
+  tile_slab_info_[id].tile_mapping_ = new int64_t[tile_num];
 
   for(int i=0; i<anum; ++i) {
     tile_slab_info_[id].cell_slab_size_[i] = new size_t[tile_num];
-    tile_slab_info_[id].offsets_per_dim_[i] = new size_t*[tile_num];
-    for(int64_t j=0; j<tile_num; ++j)
-      tile_slab_info_[id].offsets_per_dim_[i][j] = new size_t[dim_num];
     tile_slab_info_[id].start_offsets_[i] = new size_t[tile_num];
   }
 
   tile_slab_info_[id].tile_num_ = tile_num;
-
-  // Calculate normalized tile domain
-  tile_slab_info_[id].tile_domain_ = malloc(2*coords_size);
-  T* tile_domain = static_cast<T*>(tile_slab_info_[id].tile_domain_);
-  for(int i=0; i<dim_num; ++i) {
-    tile_domain[2*i] = (tile_slab[2*i] - domain[2*i]) / tile_extents[i];
-    tile_domain[2*i+1] = (tile_slab[2*i+1] - domain[2*i]) / tile_extents[i];
-  } 
 }
 
 void ArraySortedReadState::init_tile_slab_state() {
   // For easy reference
   int anum = (int) attribute_ids_.size();
 
-  // Allocations
-  tile_slab_state_.current_tile_ = new int64_t[anum];
-  for(int i=0; i<anum; ++i)
-    tile_slab_state_.current_tile_[i] = 0;
-  tile_slab_state_.current_cell_slab_coords_ = new int64_t**[anum];
-  for(int i=0; i<anum; ++i)
-    tile_slab_state_.current_cell_slab_coords_[i] = NULL;
-  tile_slab_state_.current_offsets_ = new size_t*[anum];
-  for(int i=0; i<anum; ++i)
-    tile_slab_state_.current_offsets_[i] = NULL;
+  // Allocations and initializations
   tile_slab_state_.copy_tile_slab_done_ = new bool[anum];
+  tile_slab_state_.current_offsets_ = new size_t[anum];
+  tile_slab_state_.current_coords_ = new void*[anum];
+  tile_slab_state_.current_tile_ = new int64_t[anum];
 
-  // Important initialization 
-  for(int i=0; i<(int)attribute_ids_.size(); ++i)
-    tile_slab_state_.copy_tile_slab_done_[i] = true;
+  for(int i=0; i<anum; ++i) {
+    tile_slab_state_.copy_tile_slab_done_[i] = true; // Important!
+    tile_slab_state_.current_coords_[i] = malloc(coords_size_);
+    tile_slab_state_.current_offsets_[i] = 0;
+    tile_slab_state_.current_tile_[i] = 0;
+  }
 }
 
 int ArraySortedReadState::lock_aio_mtx() {
@@ -1069,19 +953,15 @@ bool ArraySortedReadState::next_tile_slab_col() {
     return true;
   }
 
-  // For easy reference
-  size_t coords_size = array_->array_schema()->coords_size();
-
   // Allocate space for the tile slab if necessary
   if(tile_slab_[aio_id_] == NULL) 
-    tile_slab_[aio_id_] = malloc(2*coords_size);
+    tile_slab_[aio_id_] = malloc(2*coords_size_);
   if(tile_slab_norm_[aio_id_] == NULL) 
-    tile_slab_norm_[aio_id_] = malloc(2*coords_size);
+    tile_slab_norm_[aio_id_] = malloc(2*coords_size_);
 
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   const T* subarray = static_cast<const T*>(subarray_);
-  int dim_num = array_schema->dim_num();
   const T* domain = static_cast<const T*>(array_schema->domain());
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
   T* tile_slab[2];
@@ -1092,7 +972,7 @@ bool ArraySortedReadState::next_tile_slab_col() {
 
   // Check again if done, this time based on the tile slab and subarray
   if(tile_slab[prev_id] != NULL && 
-     tile_slab[prev_id][2*(dim_num-1) + 1] == subarray[2*(dim_num-1) + 1]) {
+     tile_slab[prev_id][2*(dim_num_-1) + 1] == subarray[2*(dim_num_-1) + 1]) {
     read_tile_slabs_done_ = true;
     return false;
   }
@@ -1100,20 +980,20 @@ bool ArraySortedReadState::next_tile_slab_col() {
   // If this is the first time this function is called, initialize
   if(tile_slab[prev_id] == NULL) {
     // Crop the subarray extent along the first axis to fit in the first tile
-    tile_slab[aio_id_][2*(dim_num-1)] = subarray[2*(dim_num-1)]; 
-    T upper = subarray[2*(dim_num-1)] + tile_extents[dim_num-1];
+    tile_slab[aio_id_][2*(dim_num_-1)] = subarray[2*(dim_num_-1)]; 
+    T upper = subarray[2*(dim_num_-1)] + tile_extents[dim_num_-1];
     T cropped_upper = 
-        (upper - domain[2*(dim_num-1)]) / tile_extents[dim_num-1] * 
-        tile_extents[dim_num-1] + domain[2*(dim_num-1)];
-    tile_slab[aio_id_][2*(dim_num-1)+1] = 
-        std::min(cropped_upper - 1, subarray[2*(dim_num-1)+1]); 
-    tile_slab_norm[2*(dim_num-1)] = 
-        tile_slab[aio_id_][2*(dim_num-1)] - domain[2*(dim_num-1)];
-    tile_slab_norm[2*(dim_num-1)+1] = 
-        tile_slab[aio_id_][2*(dim_num-1)+1] - domain[2*(dim_num-1)];
+        (upper - domain[2*(dim_num_-1)]) / tile_extents[dim_num_-1] * 
+        tile_extents[dim_num_-1] + domain[2*(dim_num_-1)];
+    tile_slab[aio_id_][2*(dim_num_-1)+1] = 
+        std::min(cropped_upper - 1, subarray[2*(dim_num_-1)+1]); 
+    tile_slab_norm[2*(dim_num_-1)] = 
+        tile_slab[aio_id_][2*(dim_num_-1)] - domain[2*(dim_num_-1)];
+    tile_slab_norm[2*(dim_num_-1)+1] = 
+        tile_slab[aio_id_][2*(dim_num_-1)+1] - domain[2*(dim_num_-1)];
 
     // Leave the rest of the subarray extents intact
-    for(int i=0; i<dim_num-1; ++i) {
+    for(int i=0; i<dim_num_-1; ++i) {
       tile_slab[aio_id_][2*i] = subarray[2*i]; 
       tile_slab[aio_id_][2*i+1] = subarray[2*i+1]; 
       tile_slab_norm[2*i] = tile_slab[aio_id_][2*i] - domain[2*i];
@@ -1124,22 +1004,23 @@ bool ArraySortedReadState::next_tile_slab_col() {
     memcpy(
         tile_slab[aio_id_], 
         tile_slab[prev_id], 
-        2*coords_size);
+        2*coords_size_);
     memcpy(
         tile_slab_norm_[aio_id_], 
         tile_slab_norm_[prev_id], 
-        2*coords_size);
+        2*coords_size_);
 
     // Advance tile slab
-    tile_slab[aio_id_][2*(dim_num-1)] = tile_slab[aio_id_][2*(dim_num-1)+1] + 1;
-    tile_slab[aio_id_][2*(dim_num-1)+1] = 
+    tile_slab[aio_id_][2*(dim_num_-1)] = 
+        tile_slab[aio_id_][2*(dim_num_-1)+1] + 1;
+    tile_slab[aio_id_][2*(dim_num_-1)+1] = 
         std::min(
-            tile_slab[aio_id_][2*(dim_num-1)+1] + tile_extents[dim_num-1] - 1,
-            subarray[2*(dim_num-1)+1]);
-    tile_slab_norm[2*(dim_num-1)] = 
-        tile_slab[aio_id_][2*(dim_num-1)] - domain[2*(dim_num-1)];
-    tile_slab_norm[2*(dim_num-1)+1] = 
-        tile_slab[aio_id_][2*(dim_num-1)+1] - domain[2*(dim_num-1)];
+            tile_slab[aio_id_][2*(dim_num_-1)+1] + tile_extents[dim_num_-1] - 1,
+            subarray[2*(dim_num_-1)+1]);
+    tile_slab_norm[2*(dim_num_-1)] = 
+        tile_slab[aio_id_][2*(dim_num_-1)] - domain[2*(dim_num_-1)];
+    tile_slab_norm[2*(dim_num_-1)+1] = 
+        tile_slab[aio_id_][2*(dim_num_-1)+1] - domain[2*(dim_num_-1)];
   }
 
   // Calculate tile slab info and reset tile slab state
@@ -1161,19 +1042,15 @@ bool ArraySortedReadState::next_tile_slab_row() {
     return true;
   }
 
-  // For easy reference
-  size_t coords_size = array_->array_schema()->coords_size();
-
   // Allocate space for the tile slab if necessary
   if(tile_slab_[aio_id_] == NULL) 
-    tile_slab_[aio_id_] = malloc(2*coords_size);
+    tile_slab_[aio_id_] = malloc(2*coords_size_);
   if(tile_slab_norm_[aio_id_] == NULL) 
-    tile_slab_norm_[aio_id_] = malloc(2*coords_size);
+    tile_slab_norm_[aio_id_] = malloc(2*coords_size_);
 
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   const T* subarray = static_cast<const T*>(subarray_);
-  int dim_num = array_schema->dim_num();
   const T* domain = static_cast<const T*>(array_schema->domain());
   const T* tile_extents = static_cast<const T*>(array_schema->tile_extents());
   T* tile_slab[2];
@@ -1201,7 +1078,7 @@ bool ArraySortedReadState::next_tile_slab_row() {
     tile_slab_norm[1] = tile_slab[aio_id_][1] - domain[0];
 
     // Leave the rest of the subarray extents intact
-    for(int i=1; i<dim_num; ++i) {
+    for(int i=1; i<dim_num_; ++i) {
       tile_slab[aio_id_][2*i] = subarray[2*i]; 
       tile_slab[aio_id_][2*i+1] = subarray[2*i+1]; 
       tile_slab_norm[2*i] = tile_slab[aio_id_][2*i] - domain[2*i];
@@ -1212,11 +1089,11 @@ bool ArraySortedReadState::next_tile_slab_row() {
     memcpy(
         tile_slab[aio_id_], 
         tile_slab[prev_id], 
-        2*coords_size);
+        2*coords_size_);
     memcpy(
         tile_slab_norm_[aio_id_], 
         tile_slab_norm_[prev_id], 
-        2*coords_size);
+        2*coords_size_);
 
     // Advance tile slab
     tile_slab[aio_id_][0] = tile_slab[aio_id_][1] + 1; 
@@ -1358,13 +1235,13 @@ int ArraySortedReadState::read_tile_slab() {
   // TODO: attribute overflows 
 
   // Prepare AIO request
-  ASRS_Request asrs_request = { aio_id_, this };
+  ASRS_Data asrs_data = { aio_id_, this };
   AIO_Request aio_request = {};
   aio_request.buffers_ = buffers_[aio_id_];
   aio_request.buffer_sizes_ = buffer_sizes_[aio_id_];
   aio_request.subarray_ = tile_slab_[aio_id_];
   aio_request.completion_handle_ = aio_done;
-  aio_request.completion_data_ = &asrs_request; 
+  aio_request.completion_data_ = &asrs_data; 
 
   // Send the AIO request
   if(array_->aio_read(&aio_request) != TILEDB_AR_OK) {
@@ -1465,34 +1342,20 @@ void ArraySortedReadState::reset_overflow() {
     overflow_[i] = false;
 }
 
+template<class T>
 void ArraySortedReadState::reset_tile_slab_state() {
   // For easy reference
   int anum = (int) attribute_ids_.size();
-  int dim_num = array_->array_schema()->dim_num();
-  int64_t tile_num = tile_slab_info_[copy_id_].tile_num_;
-
-  // Perform proper allocations if it is the first time
-  if(tile_slab_state_.current_cell_slab_coords_[0] == NULL) {
-    for(int i=0; i<anum; ++i) {
-      tile_slab_state_.current_cell_slab_coords_[i] = new int64_t*[tile_num];
-      for(int64_t j=0; j<tile_num; ++j)
-        tile_slab_state_.current_cell_slab_coords_[i][j] = new int64_t[dim_num];
-      tile_slab_state_.current_offsets_[i] = new size_t[tile_num];
-    }
-  }
+  T** current_coords = (T**) tile_slab_state_.current_coords_;
+  const T* tile_slab = (const T*) tile_slab_norm_[copy_id_];
 
   // Reset values
   for(int i=0; i<anum; ++i) {
-    tile_slab_state_.current_tile_[i] = 0;
-    for(int64_t j=0; j<tile_num; ++j) { 
-      for(int d=0; d<dim_num; ++d) {
-        tile_slab_state_.current_cell_slab_coords_[i][j][d] = 
-            tile_slab_info_[copy_id_].cell_slab_range_[j][2*d];
-      }
-      tile_slab_state_.current_offsets_[i][j] = 
-          tile_slab_info_[copy_id_].start_offsets_[i][j];
-    }
     tile_slab_state_.copy_tile_slab_done_[i] = false;
+    tile_slab_state_.current_offsets_[i] = 0; 
+    tile_slab_state_.current_tile_[i] = 0;
+    for(int j=0; j<dim_num_; ++j)
+      current_coords[i][j] = tile_slab[2*j];
   }
 }
 
@@ -1531,6 +1394,25 @@ int ArraySortedReadState::unlock_overflow_mtx() {
   // Success
   return TILEDB_ASRS_OK;
 }
+
+template<class T>
+void ArraySortedReadState::update_current_tile_and_offset(int aid) {
+  // For easy reference
+  int64_t& tid = tile_slab_state_.current_tile_[aid];
+  size_t& current_offset = tile_slab_state_.current_offsets_[aid];
+  int64_t cid;
+
+  // Calculate the new tile id
+  tid = tile_slab_info_[copy_id_].tile_mapping_[get_tile_id<T>(aid)];
+
+  // Calculate the cell id
+  cid = get_cell_id<T>(aid); 
+
+  // Calculate new offset
+  current_offset = 
+      tile_slab_info_[copy_id_].start_offsets_[aid][tid] + 
+      cid * attribute_sizes_[aid];
+} 
 
 int ArraySortedReadState::wait_aio(int id) {
   // Lock AIO mutex
