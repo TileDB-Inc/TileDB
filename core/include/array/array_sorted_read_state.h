@@ -77,8 +77,10 @@ class ArraySortedReadState {
 
   /** Used in functors. */
   struct ASRS_Data {
-    /** An id. */
+    /** An id (typically an attribute id or a tile slab id. */
     int id_;
+    /** Another id (typically a tile id). */
+    int64_t id_2_;
     /** The calling object. */
     ArraySortedReadState* asrs_;
   };
@@ -110,8 +112,6 @@ class ArraySortedReadState {
      * Start offsets of each tile in the local buffer, per attribute per tile.
      */
     size_t** start_offsets_;
-    /** Tile mapping from the array order to the user order. */
-    int64_t* tile_mapping_;
     /** Number of tiles in the tile slab. */
     int64_t tile_num_;
     /** Used in calculations of tile ids. */
@@ -246,6 +246,12 @@ class ArraySortedReadState {
   /** Local buffers (similar to those used in Array::read). */
   void** buffers_[2];
 
+  /** Function for calculating cell slab info during a copy operation. */
+  void *(*calculate_cell_slab_info_) (void*);
+
+  /** Function for calculating tile slab info during a copy operation. */
+  void *(*calculate_tile_slab_info_) (void*);
+
   /** The coordinates size of the array. */
   size_t coords_size_;
 
@@ -291,6 +297,12 @@ class ArraySortedReadState {
   /** The query subarray. */
   const void* subarray_;
 
+  /** Auxiliary variable used in calculate_tile_slab_info(). */
+  void* tile_coords_;
+
+  /** Auxiliary variable used in calculate_tile_slab_info(). */
+  void* tile_domain_;
+
   /** The tile slab to be read for the first and second buffers. */
   void* tile_slab_[2];
 
@@ -319,11 +331,11 @@ class ArraySortedReadState {
    * Used in copy_tile_slab(). 
    *
    * @template T The domain type.
-   * @param data Essentially a pointer to a AdvanceCellSlabInfo object.
+   * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
   template<class T>
-  static void *advance_cell_slab_col(void* data);
+  static void *advance_cell_slab_col_s(void* data);
 
   /** 
    * Advances a cell slab focusing on row-major order, and updates
@@ -331,11 +343,11 @@ class ArraySortedReadState {
    * Used in copy_tile_slab(). 
    *
    * @template T The domain type.
-   * @param data Essentially a pointer to a AdvanceCellSlabInfo object.
+   * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
   template<class T>
-  static void *advance_cell_slab_row(void* data);
+  static void *advance_cell_slab_row_s(void* data);
 
   /** 
    * Advances a cell slab when the requested order is column-major. 
@@ -391,8 +403,152 @@ class ArraySortedReadState {
   void calculate_buffer_sizes();
 
   /** 
-   * Calculates the info used in the copy_tile_slab() function for the case
-   * of column-major order.
+   * Calculates the info used in the copy_tile_slab() function, for the case
+   * where the **user** cell order is column-major and the **array** cell 
+   * order is column-major.
+   *
+   * @template T The domain type.
+   * @param data Essentially a pointer to a ASRS_Data object.
+   * @return void
+   */
+  template<class T>
+  static void *calculate_cell_slab_info_col_col_s(void* data);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function, for the case
+   * where the **user** cell order is column-major and the **array** cell 
+   * order is row-major.
+   *
+   * @template T The domain type.
+   * @param data Essentially a pointer to a ASRS_Data object.
+   * @return void
+   */
+  template<class T>
+  static void *calculate_cell_slab_info_col_row_s(void* data);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function, for the case
+   * where the **user** cell order in row-major and the **array** cell 
+   * order is column-major.
+   *
+   * @template T The domain type.
+   * @param data Essentially a pointer to a ASRS_Data object.
+   * @return void
+   */
+  template<class T>
+  static void *calculate_cell_slab_info_row_col_s(void* data);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function, for the case
+   * where the **user** cell order is row-major and the **array** cell 
+   * order is row-major.
+   *
+   * @template T The domain type.
+   * @param data Essentially a pointer to a ASRS_Data object.
+   * @return void
+   */
+  template<class T>
+  static void *calculate_cell_slab_info_row_row_s(void* data);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function, for the case
+   * where the **user** cell order is column-major and the **array** cell 
+   * order is column-major.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @param tid The tile id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_cell_slab_info_col_col(int id, int64_t tid);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function, for the case
+   * where the **user** cell order is column-major and the **array** cell 
+   * order is row-major.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @param tid The tile id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_cell_slab_info_col_row(int id, int64_t tid);
+ 
+  /** 
+   * Calculates the info used in the copy_tile_slab() function, for the case
+   * where the **user** cell order is row-major and the **array** cell 
+   * order is row-major.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @param tid The tile id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_cell_slab_info_row_row(int id, int64_t tid);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function, for the case
+   * where the **user** cell order is row-major and the **array** cell 
+   * order is column-major.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @param tid The tile id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_cell_slab_info_row_col(int id, int64_t tid);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function, for the case
+   * where the **array** cell order is row-major.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @param tid The tile id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_cell_slab_info_row(int id, int64_t tid);
+
+  /** 
+   * Calculates the **normalized** tile domain overlapped by the input tile 
+   * slab. Note that this domain is the same for all tile slabs
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @return void.
+   */ 
+  template<class T>
+  void calculate_tile_domain(int id);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function.
+   *
+   * @param T The domain type.
+   * @param id The tile slab id.
+   * @return void.
+   */
+  template<class T>
+  void calculate_tile_slab_info(int id);
+
+  /** 
+   * Calculates tile slab info for the case where the **array** tile order is
+   * column-major
+   *
+   * @template T The domain type.
+   * @param data Essentially a pointer to a ASRS_Data object.
+   * @return void
+   */
+  template<class T>
+  static void *calculate_tile_slab_info_col(void* data);
+
+  /** 
+   * Calculates the info used in the copy_tile_slab() function, for the case
+   * where the **array** tile order is column-major.
    *
    * @param T The domain type.
    * @param id The tile slab id.
@@ -400,10 +556,21 @@ class ArraySortedReadState {
    */
   template<class T>
   void calculate_tile_slab_info_col(int id);
+ 
+  /** 
+   * Calculates tile slab info for the case where the **array** tile order is
+   * row-major
+   *
+   * @template T The domain type.
+   * @param data Essentially a pointer to a ASRS_Data object.
+   * @return void
+   */
+  template<class T>
+  static void *calculate_tile_slab_info_row(void* data);
 
   /** 
-   * Calculates the info used in the copy_tile_slab() function for the case
-   * of row-major order.
+   * Calculates the info used in the copy_tile_slab() function, for the case
+   * where the **array** tile order is row-major.
    *
    * @param T The domain type.
    * @param id The tile slab id.
@@ -517,11 +684,10 @@ class ArraySortedReadState {
    *
    * @template T The domain type.
    * @param id The slab id.
-   * @param tile_num The number of tiles overlapped by the tile slab.
    * @return void.
    */
   template<class T>
-  void init_tile_slab_info(int id, int64_t tile_num);
+  void init_tile_slab_info(int id);
 
   /** Initializes the tile slab state. */
   void init_tile_slab_state();
