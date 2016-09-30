@@ -68,6 +68,7 @@ std::string tiledb_ar_errmsg = "";
 
 Array::Array() {
   array_read_state_ = NULL;
+  array_sorted_read_state_ = NULL;
   array_schema_ = NULL;
   subarray_ = NULL;
   aio_thread_created_ = false;
@@ -230,10 +231,17 @@ bool Array::overflow() const {
   if(!read_mode()) 
     return false;
 
+  // Check the array sorted read state first
+  if(array_sorted_read_state_ != NULL &&
+     array_sorted_read_state_->overflow())
+    return true;
+
+  // Check the (non-sorted) array read state next
   for(int i=0; i<int(attribute_ids_.size()); ++i) 
     if(overflow(attribute_ids_[i]))
       return true;
 
+  // No overflow
   return false;
 }
 

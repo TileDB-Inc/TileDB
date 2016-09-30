@@ -31,6 +31,7 @@
  */
 
 #include "array_sorted_read_state.h"
+#include "utils.h"
 #include <cassert>
 
 
@@ -72,10 +73,11 @@ ArraySortedReadState::ArraySortedReadState(
   int anum = (int) attribute_ids_.size();
 
   // Initializations
+  aio_id_ = 0;
+  aio_cnt_ = 0;
   coords_size_ = array_schema->coords_size();
   copy_id_ = 0;
   dim_num_ = array_schema->dim_num();
-  aio_id_ = 0;
   copy_thread_running_ = false;
   read_tile_slabs_done_ = false;
   resume_copy_ = false;
@@ -83,7 +85,9 @@ ArraySortedReadState::ArraySortedReadState(
   tile_coords_ = NULL;
   tile_domain_ = NULL;
   for(int i=0; i<2; ++i) {
+    aio_overflow_[i] = new bool[anum];
     buffer_sizes_[i] = NULL;
+    buffer_sizes_tmp_[i] = NULL;
     buffers_[i] = NULL;
     tile_slab_[i] = NULL;
     tile_slab_norm_[i] = NULL;
@@ -117,8 +121,12 @@ ArraySortedReadState::~ArraySortedReadState() {
   free(tile_domain_);
 
   for(int i=0; i<2; ++i) {
+    delete [] aio_overflow_[i];
+
     if(buffer_sizes_[i] != NULL)
       delete [] buffer_sizes_[i];
+    if(buffer_sizes_tmp_[i] != NULL)
+      delete [] buffer_sizes_tmp_[i];
     if(buffers_[i] != NULL) {
       for(int b=0; b<buffer_num_; ++b)  
         free(buffers_[i][b]);
@@ -200,6 +208,15 @@ bool ArraySortedReadState::overflow() const {
   for(int i=0; (int) attribute_ids_.size(); ++i) {
     if(overflow_[i])
       return true;
+  }
+
+  return false;
+}
+
+bool ArraySortedReadState::overflow(int attribute_id) const {
+  for(int i=0; (int) attribute_ids_.size(); ++i) {
+    if(attribute_ids_[i] == attribute_id)
+      return overflow_[i];
   }
 
   return false;
@@ -470,12 +487,58 @@ void ArraySortedReadState::advance_cell_slab_row(int aid) {
 }
 
 void *ArraySortedReadState::aio_done(void* data) {
+  // Retrieve data
   ArraySortedReadState* asrs = ((ASRS_Data*) data)->asrs_;
   int id = ((ASRS_Data*) data)->id_;
-  asrs->block_copy(id);
-  asrs->release_aio(id);
+
+  // For easy reference
+  int anum = (int) asrs->attribute_ids_.size();
+  const ArraySchema* array_schema = asrs->array_->array_schema(); 
+  
+  // Check for overflow and update buffer sizes
+  bool overflow = false;
+  for(int i=0, b=0; i<anum; ++i) {
+    if(!array_schema->var_size(asrs->attribute_ids_[i])) { // FIXED 
+      asrs->buffer_sizes_tmp_[id][b] = 0;
+      ++b;
+    } else {                                               // VAR
+      asrs->buffer_sizes_tmp_[id][b] = 0;
+      ++b;
+      if(asrs->aio_overflow_[id][i]) { 
+        // Expand buffers
+        expand_buffer(asrs->buffers_[id][b], asrs->buffer_sizes_[id][b]);
+        asrs->buffer_sizes_tmp_[id][b] = asrs->buffer_sizes_[id][b];
+        overflow = true;
+      } else {
+        asrs->buffer_sizes_[id][b] = asrs->buffer_sizes_tmp_[id][b];
+        asrs->buffer_sizes_tmp_[id][b] = 0;
+      }
+      ++b;
+    }
+  }
+
+  if(overflow) {                // OVERFLOW
+    // Send the request again
+    asrs->send_aio_request(id);
+  } else {                      // NO OVERFLOW
+    // Manage the mutexes and conditions
+    asrs->block_copy(id);
+    asrs->release_aio(id);
+  }
  
   return NULL;
+}
+
+bool ArraySortedReadState::aio_overflow(int aio_id) {
+  // For easy reference
+  int anum = (int) attribute_ids_.size();
+
+  for(int i=0; i<anum; ++i) {
+    if(aio_overflow_[aio_id][i])
+      return true;
+  }
+
+  return false;
 }
 
 void ArraySortedReadState::block_aio(int id) {
@@ -527,6 +590,7 @@ void ArraySortedReadState::calculate_buffer_sizes() {
   int attribute_id_num = (int) attribute_ids_.size();
   for(int j=0; j<2; ++j) {
     buffer_sizes_[j] = new size_t[buffer_num_]; 
+    buffer_sizes_tmp_[j] = new size_t[buffer_num_]; 
     for(int i=0, b=0; i<attribute_id_num; ++i) {
       // Fix-sized attribute
       if(!array_schema->var_size(attribute_ids_[i])) { 
@@ -1064,7 +1128,7 @@ int ArraySortedReadState::create_buffers() {
     }
 
     for(int b=0; b < buffer_num_; ++b) { 
-      buffers_[j][b] = aligned_alloc(ALIGNMENT, buffer_sizes_[j][b]);
+      buffers_[j][b] = malloc(buffer_sizes_[j][b]);
       if(buffers_[j][b] == NULL) {
         std::string errmsg = "Cannot allocate local buffer";
         PRINT_ERROR(errmsg);
@@ -1600,24 +1664,16 @@ int ArraySortedReadState::read_tile_slab() {
     resume_aio_ = true;
     return TILEDB_ASRS_OK;
   }
- 
-  // TODO: This has to go in a loop to capture the case a variable-length
-  // TODO: attribute overflows 
 
-  // Prepare AIO request
-  ASRS_Data asrs_data = { aio_id_, 0, this };
-  AIO_Request aio_request = {};
-  aio_request.buffers_ = buffers_[aio_id_];
-  aio_request.buffer_sizes_ = buffer_sizes_[aio_id_];
-  aio_request.subarray_ = tile_slab_[aio_id_];
-  aio_request.completion_handle_ = aio_done;
-  aio_request.completion_data_ = &asrs_data; 
+  // Reset AIO overflow flags
+  reset_aio_overflow(aio_id_);
 
-  // Send the AIO request
-  if(array_->aio_read(&aio_request) != TILEDB_AR_OK) {
-    // TODO: get error message: tiledb_asrs_errmsg = tiledb_ar_msg;
+  // Reset temporary buffer sizes
+  reset_buffer_sizes_tmp(aio_id_);
+
+  // Send AIO request
+  if(send_aio_request(aio_id_) != TILEDB_ASRS_OK)
     return TILEDB_ASRS_ERR;
-  } 
 
   // Change aio_id_
   aio_id_ = (aio_id_ + 1) % 2;
@@ -1698,6 +1754,20 @@ int ArraySortedReadState::release_overflow() {
   return TILEDB_ASRS_OK;
 }
 
+void ArraySortedReadState::reset_aio_overflow(int aio_id) {
+  // For easy reference
+  int anum = (int) attribute_ids_.size();
+
+  // Reset aio_overflow_
+  for(int i=0; i<anum; ++i)
+    aio_overflow_[aio_id][i] = false;
+}
+
+void ArraySortedReadState::reset_buffer_sizes_tmp(int id) {
+  for(int i=0; i<buffer_num_; ++i)
+    buffer_sizes_tmp_[id][i] = buffer_sizes_[id][i];
+}
+
 void ArraySortedReadState::reset_copy_state(
     void** buffers,
     size_t* buffer_sizes) {
@@ -1727,6 +1797,27 @@ void ArraySortedReadState::reset_tile_slab_state() {
     for(int j=0; j<dim_num_; ++j)
       current_coords[i][j] = tile_slab[2*j];
   }
+}
+
+int ArraySortedReadState::send_aio_request(int aio_id) { 
+  ASRS_Data asrs_data = { aio_id, 0, this };
+  AIO_Request aio_request = {};
+  aio_request.buffer_sizes_ = buffer_sizes_tmp_[aio_id];
+  aio_request.buffers_ = buffers_[aio_id];
+  aio_request.id_ = aio_cnt_++;
+  aio_request.subarray_ = tile_slab_[aio_id];
+  aio_request.completion_handle_ = aio_done;
+  aio_request.completion_data_ = &asrs_data; 
+  aio_request.overflow_ = aio_overflow_[aio_id];
+
+  // Send the AIO request
+  if(array_->aio_read(&aio_request) != TILEDB_AR_OK) {
+    // TODO: get error message: tiledb_asrs_errmsg = tiledb_ar_msg;
+    return TILEDB_ASRS_ERR;
+  }
+
+  // Success
+  return TILEDB_ASRS_OK;
 }
 
 int ArraySortedReadState::unlock_aio_mtx() {

@@ -166,6 +166,12 @@ class ArraySortedReadState {
   /** Returns true if copying into the user buffers resulted in overflow. */
   bool overflow() const;
 
+  /** 
+   * Returns true if copying into the user buffers resulted in overflow, for
+   * the input attribute id. 
+   */
+  bool overflow(int attribute_id) const;
+
   /**
    * Same as Array::read(), but it sorts the cells in the buffers based on the
    * order the user specified in Array::init(). Note that this function will 
@@ -216,6 +222,9 @@ class ArraySortedReadState {
   /** Function for advancing a cell slab during a copy operation. */
   void *(*advance_cell_slab_) (void*);
 
+  /** AIO counter. */
+  int aio_cnt_;
+
   /** The AIO mutex conditions (one for each buffer). */
   pthread_cond_t aio_cond_[2];
 
@@ -225,6 +234,9 @@ class ArraySortedReadState {
   /** The AIO mutex. */
   pthread_mutex_t aio_mtx_;
   
+  /** Indicates overflow per tile slab per attribute upon an AIO operation. */
+  bool* aio_overflow_[2];
+
   /** The array this sorted read state belongs to. */
   Array* array_;
 
@@ -242,6 +254,9 @@ class ArraySortedReadState {
 
   /** Allocated sizes for buffers_ (similar to those used in Array::read). */
   size_t* buffer_sizes_[2];
+
+  /** Temporary buffer sizes used in AIO requests. */
+  size_t* buffer_sizes_tmp_[2];
 
   /** Local buffers (similar to those used in Array::read). */
   void** buffers_[2];
@@ -376,6 +391,9 @@ class ArraySortedReadState {
    * @return void 
    */
   static void *aio_done(void* data);
+
+  /** True if some attribute overflowed for the input tile slab upon an AIO. */
+  bool aio_overflow(int aio_id);
 
   /** Sets the flag of wait_aio_[id] to true. */
   void block_aio(int id);
@@ -817,6 +835,12 @@ class ArraySortedReadState {
    */
   int release_overflow();
 
+  /** Resets the AIO overflow flags for the input tile slab id. */
+  void reset_aio_overflow(int aio_id);
+  
+  /** Resets the temporary buffer sizes for the input tile slab id. */
+  void reset_buffer_sizes_tmp(int id);
+
   /** Resets the copy state using the input buffer info. */
   void reset_copy_state(void** buffers, size_t* buffer_sizes);
 
@@ -831,6 +855,14 @@ class ArraySortedReadState {
    */
   template<class T> 
   void reset_tile_slab_state();
+
+  /** 
+   * Sends an AIO request. 
+   *
+   * @param aio_id The id of the tile slab the AIO request focuses on.
+   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
+   */
+  int send_aio_request(int aio_id);
 
   /**  
    * Unlocks the AIO mutex. 
