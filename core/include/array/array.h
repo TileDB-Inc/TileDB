@@ -325,6 +325,16 @@ class Array {
   int reset_subarray(const void* subarray);
 
   /**
+   * Same as reset_subarray(), with the difference that the 
+   * ArraySortedReadState object of the array is not re-initialized.
+   *
+   * @param subarray The new subarray. Note that the type of the values in
+   *     *subarray* should match the coordinates type in the array schema.
+   * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
+   */
+  int reset_subarray_soft(const void* subarray);
+
+  /**
    * Performs a write operation in the array. The cell values are provided
    * in a set of buffers (one per attribute specified upon initialization).
    * Note that there must be a one-to-one correspondance between the cell

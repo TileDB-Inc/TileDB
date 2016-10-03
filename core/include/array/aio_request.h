@@ -62,6 +62,15 @@ struct AIO_Request {
   /** A unique request id. */
   size_t id_;
   /** 
+   * It can be one of the following:
+   *    - TILEDB_ARRAY_READ 
+   *    - TILEDB_ARRAY_READ_SORTED_COL
+   *    - TILEDB_ARRAY_READ_SORTED_ROW
+   *    - TILEDB_ARRAY_WRITE
+   *    - TILEDB_ARRAY_WRITE_UNSORTED
+   */
+  int mode_;
+  /** 
    * Applicable only to read requests.
    * Indicates whether a buffer has overflowed during a read request.
    * If it is NULL, it will be ignored. Otherwise, it must be an array

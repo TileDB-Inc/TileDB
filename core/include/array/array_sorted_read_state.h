@@ -228,6 +228,9 @@ class ArraySortedReadState {
   /** The AIO mutex conditions (one for each buffer). */
   pthread_cond_t aio_cond_[2];
 
+  /** Data for the AIO requests. */
+  ASRS_Data aio_data_[2];
+
   /** The current id of the buffers the next AIO will occur into. */
   int aio_id_;
 
@@ -236,6 +239,12 @@ class ArraySortedReadState {
   
   /** Indicates overflow per tile slab per attribute upon an AIO operation. */
   bool* aio_overflow_[2];
+
+  /** AIO requests. */
+  AIO_Request aio_request_[2];
+
+  /** The status of the AIO requests.*/
+  int aio_status_[2];
 
   /** The array this sorted read state belongs to. */
   Array* array_;
@@ -298,7 +307,7 @@ class ArraySortedReadState {
   pthread_mutex_t overflow_mtx_;
 
   /** Overflow flag for each attribute. */
-  std::vector<bool> overflow_;
+  bool* overflow_;
 
   /** True if no more tile slabs to read. */
   bool read_tile_slabs_done_;
@@ -310,7 +319,7 @@ class ArraySortedReadState {
   bool resume_aio_;
 
   /** The query subarray. */
-  const void* subarray_;
+  void* subarray_;
 
   /** Auxiliary variable used in calculate_tile_slab_info(). */
   void* tile_coords_;
@@ -320,6 +329,9 @@ class ArraySortedReadState {
 
   /** The tile slab to be read for the first and second buffers. */
   void* tile_slab_[2];
+
+  /** Indicates if the tile slab has been initialized. */
+  bool tile_slab_init_[2];
 
   /** Normalized tile slab. */
   void* tile_slab_norm_[2];
@@ -690,6 +702,9 @@ class ArraySortedReadState {
   template<class T>
   void handle_copy_requests();
 
+  /** Initializes the AIO requests. */
+  void init_aio_requests();
+
   /** Initializes the copy state. */
   void init_copy_state();
 
@@ -846,6 +861,15 @@ class ArraySortedReadState {
 
   /** Resets the oveflow flags to **false**. */
   void reset_overflow();
+
+  /** 
+   * Resets the tile_coords_ auxiliary variable. 
+   *
+   * @template T The domain type.
+   * @return void.
+   */
+  template<class T> 
+  void reset_tile_coords();
   
   /** 
    * Resets the tile slab state. 

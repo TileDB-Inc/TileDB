@@ -41,7 +41,7 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
   // Subarray and attributes
-  int64_t subarray[] = { 1, 4, 1, 2 }; 
+  int64_t subarray[] = { 1, 2, 1, 4 }; 
   const char* attributes[] = { "a1" };
 
   // Initialize array 
@@ -56,24 +56,25 @@ int main() {
       1);                                               // Number of attributes
 
   // Prepare cell buffers 
-  int buffer_a1[3];
+  int buffer_a1[9];
   void* buffers[] = { buffer_a1 };
   size_t buffer_sizes[] = { sizeof(buffer_a1) };
 
 
   // Loop until no overflow
   printf(" a1\n----\n");
-  do {
+//  do {
     printf("Reading cells...\n"); 
 
     // Read from array
     tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
 
     // Print cell values
+    printf("Printing cells...\n"); 
     int64_t result_num = buffer_sizes[0] / sizeof(int);
     for(int i=0; i<result_num; ++i) 
       printf("%3d\n", buffer_a1[i]);
-  } while(tiledb_array_overflow(tiledb_array, 0) == 1);
+//  } while(tiledb_array_overflow(tiledb_array, 0) == 1);
  
   // Finalize the array
   tiledb_array_finalize(tiledb_array);

@@ -152,9 +152,6 @@ void Array::aio_handle_requests() {
 
     // Set last handled AIO request
     aio_last_handled_request_ = aio_next_request->id_;
-
-    // Clean request
-    free(aio_next_request);
   }
 }
 
@@ -638,7 +635,7 @@ int Array::init(
   }
   aio_thread_canceled_ = false;
   aio_thread_created_ = false;
-  aio_last_handled_request_ = 0;
+  aio_last_handled_request_ = -1;
 
   // Return
   return TILEDB_AR_OK;
@@ -766,6 +763,61 @@ int Array::reset_subarray(const void* subarray) {
   return TILEDB_AR_OK;
 }
 
+int Array::reset_subarray_soft(const void* subarray) {
+  // Sanity check
+  assert(read_mode() || write_mode());
+
+  // For easy referencd
+  int fragment_num =  fragments_.size();
+
+  // Finalize fragments if in write mode
+  if(write_mode()) {  
+    // Finalize and delete fragments     
+    for(int i=0; i<fragment_num; ++i) { 
+      fragments_[i]->finalize();
+      delete fragments_[i];
+    }
+    fragments_.clear();
+  } 
+
+  // Set subarray
+  size_t subarray_size = 2*array_schema_->coords_size();
+  if(subarray_ == NULL) 
+    subarray_ = malloc(subarray_size);
+  if(subarray == NULL) 
+    memcpy(subarray_, array_schema_->domain(), subarray_size);
+  else 
+    memcpy(subarray_, subarray, subarray_size);
+
+  // Re-set of re-initialize fragments
+  if(write_mode()) {  // WRITE MODE 
+    // Get new fragment name
+    std::string new_fragment_name = this->new_fragment_name();
+    if(new_fragment_name == "")
+      return TILEDB_AS_ERR;
+
+    // Create new fragment
+    Fragment* fragment = new Fragment(this);
+    fragments_.push_back(fragment);
+    if(fragment->init(new_fragment_name, mode_, subarray) != TILEDB_FG_OK) 
+      return TILEDB_AR_ERR;
+  } else {           // READ MODE
+    // Re-initialize the read state of the fragments
+    for(int i=0; i<fragment_num; ++i) 
+      fragments_[i]->reset_read_state();
+
+    // Re-initialize array read state
+    if(array_read_state_ != NULL) {
+      delete array_read_state_;
+      array_read_state_ = NULL;
+    }
+    array_read_state_ = new ArrayReadState(this);
+  }
+
+  // Success
+  return TILEDB_AR_OK;
+}
+
 int Array::write(const void** buffers, const size_t* buffer_sizes) {
   // Sanity checks
   if(!write_mode()) {
@@ -828,20 +880,41 @@ void Array::aio_handle_next_request(AIO_Request* aio_request) {
   if(read_mode()) {   // READ MODE
     // Reset the subarray only if this request does not continue from the last
     if(aio_last_handled_request_ != aio_request->id_)
-      rc = reset_subarray(aio_request->subarray_);
+      rc = reset_subarray_soft(aio_request->subarray_);
 
     // Invoke the read
-    if(rc == TILEDB_AR_OK)
-      rc = read(aio_request->buffers_, aio_request->buffer_sizes_);
+    if(rc == TILEDB_AR_OK) {
+      if(aio_request->mode_ == TILEDB_ARRAY_READ) {
+
+
+const int64_t* s = (const int64_t*) subarray_;
+std::cout << "SUBARRAY: " << s[0] << " " << s[1] << " " << s[2] << " " << s[3] << "\n";
+
+        rc = read_default(aio_request->buffers_, aio_request->buffer_sizes_);
+
+std::cout << "=== buffer sizes: " << aio_request->buffer_sizes_[0] << " ===\n";
+
+      } else { 
+        rc = read(aio_request->buffers_, aio_request->buffer_sizes_);
+      }
+    }
   } else {            // WRITE MODE
+      // TODO: Fix according to read above
       rc = write(
                (const void**) aio_request->buffers_, 
                (const size_t*) aio_request->buffer_sizes_);
   }
 
   if(rc == TILEDB_AR_OK) {      // Success
+
+std::cout << "=== AIO done === \n";
+
     // Check for overflow
     if(overflow()) {
+
+
+std::cout << "=== OVERFLOW === \n";
+
       *aio_request->status_= TILEDB_AIO_OVERFLOW;
       if(aio_request->overflow_ != NULL) {
         for(int i=0; i<int(attribute_ids_.size()); ++i) 
@@ -849,10 +922,13 @@ void Array::aio_handle_next_request(AIO_Request* aio_request) {
       }
     } else { // Completion
       *aio_request->status_= TILEDB_AIO_COMPLETED;
-
       // Invoke the callback
-      if(aio_request->completion_handle_ != NULL)
+
+std::cout << "=== CALLBACK === \n";
+
+      if(aio_request->completion_handle_ != NULL) {
         (*(aio_request->completion_handle_))(aio_request->completion_data_);
+      }
     }
   } else {                      // Error
     *aio_request->status_= TILEDB_AIO_ERR;
