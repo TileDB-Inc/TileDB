@@ -140,9 +140,14 @@ ArraySortedReadState::~ArraySortedReadState() {
 
     free(tile_slab_[i]);
     free(tile_slab_norm_[i]);
-  }
+  } 
+  
+  // Free tile slab info and state, and copy state
+  free_copy_state();
+  free_tile_slab_state();
+  free_tile_slab_info();
 
-  // Destroy thread, conditions and mutexes
+  // Destroy conditions and mutexes
   for(int i=0; i<2; ++i) {
     if(pthread_cond_destroy(&(aio_cond_[i]))) {
       std::string errmsg = "Cannot destroy AIO mutex condition";
@@ -175,14 +180,7 @@ ArraySortedReadState::~ArraySortedReadState() {
     PRINT_ERROR(errmsg);
     tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
   }
-  
-  // Kill copy thread
-  cancel_copy_thread();
 
-  // Free tile slab info and state, and copy state
-  free_copy_state();
-  free_tile_slab_state();
-  free_tile_slab_info();
 }
 
 
@@ -977,24 +975,6 @@ std::cout << "Tile start offset: "
   }
 }
 
-int ArraySortedReadState::cancel_copy_thread() {
-  // If the thread is not running, exit with success
-  if(!copy_thread_running_)
-    return TILEDB_ASRS_OK;
-
-  // Kill copy thread
-  if(pthread_cancel(copy_thread_)) {
-    std::string errmsg = "Cannot destroy AIO thread";
-    PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
-  }
-  copy_thread_running_ = false;
-
-  // Success
-  return TILEDB_ASRS_OK;
-}
-
 void *ArraySortedReadState::copy_handler(void* context) {
   // For easy reference
   ArraySortedReadState* asrs = (ArraySortedReadState*) context;
@@ -1307,6 +1287,10 @@ std::cout << "--- Waiting on AIO... ---\n";
     // Wait for AIO
     wait_aio(copy_id_); 
 
+    // Kill thread
+    if(!copy_thread_running_)
+      return;
+
 std::cout << "--- Finished waiting on AIO... ---\n";
 
     // Reset the tile slab state
@@ -1392,7 +1376,7 @@ void ArraySortedReadState::init_tile_slab_info(int id) {
   tile_slab_info_[id].cell_slab_num_ = new int64_t[tile_num];
   tile_slab_info_[id].range_overlap_ = new void*[tile_num];
   for(int64_t i=0; i<tile_num; ++i) {
-    tile_slab_info_[id].range_overlap_[i] = malloc(coords_size_);
+    tile_slab_info_[id].range_overlap_[i] = malloc(2*coords_size_);
     tile_slab_info_[id].cell_offset_per_dim_[i] = new int64_t[dim_num_];
   }
 
@@ -1486,6 +1470,8 @@ bool ArraySortedReadState::next_tile_slab_col() {
   if(tile_slab_init_[prev_id] && 
      tile_slab[prev_id][2*(dim_num_-1) + 1] == subarray[2*(dim_num_-1) + 1]) {
     read_tile_slabs_done_ = true;
+
+std::cout << "--- DONE --- \n";
     return false;
   }
 
@@ -1671,16 +1657,24 @@ int ArraySortedReadState::read_dense_sorted_col() {
                copy_state_.buffers_, 
                copy_state_.buffer_sizes_);
 
+std::cout << "HEEEEEEEEEEEEEERE\n";
+
   // Iterate over each tile slab
   while(next_tile_slab_col<T>()) {
     // Read the next tile slab with the default cell order
-    if(read_tile_slab() != TILEDB_ASRS_OK)
+    if(read_tile_slab() != TILEDB_ASRS_OK) {
+
+std::cout << "ERROOOOOOOOOOR\n";
+
       return TILEDB_ASRS_ERR;
+    }
 
     // Handle overflow
     if(resume_aio_)
       break;
   }
+
+std::cout << "Resume AIO: " << resume_aio_ << "\n";
 
   // Wait for copy to finish
   int prev = (aio_id_ + 1) % 2;
@@ -1692,9 +1686,13 @@ std::cout << "--- Finished waiting for copy ---\n";
   for(int i=0; i<buffer_num_; ++i) 
     copy_state_.buffer_sizes_[i] = copy_state_.buffer_offsets_[i];
 
-  // If done, kill the copy thread
-  if(done() && cancel_copy_thread() != TILEDB_ASRS_OK) 
-    return TILEDB_ASRS_ERR;
+  // The following will make the copy thread terminate
+  if(done()) { 
+    copy_thread_running_ = false;
+    release_aio(aio_id_);
+  }
+
+std::cout << "******* SUCCESS *******\n";
 
   // Success
   return TILEDB_ASRS_OK;
@@ -1736,9 +1734,11 @@ std::cout << "--- Finished waiting for copy ---\n";
   for(int i=0; i<buffer_num_; ++i) 
     copy_state_.buffer_sizes_[i] = copy_state_.buffer_offsets_[i];
 
-  // If done, kill the copy thread
-  if(done() && cancel_copy_thread() != TILEDB_ASRS_OK) 
-    return TILEDB_ASRS_ERR;
+  // The following will make the copy thread terminate
+  if(done()) { 
+    copy_thread_running_ = false;
+    release_aio(aio_id_);
+  }
 
   // Success
   return TILEDB_ASRS_OK;

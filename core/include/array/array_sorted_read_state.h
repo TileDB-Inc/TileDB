@@ -610,13 +610,6 @@ class ArraySortedReadState {
   void calculate_tile_slab_info_row(int id);
 
   /**
-   * Kills the copy thread (if it is still running).
-   *
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  int cancel_copy_thread();
-
-  /**
    * Function called by the copy thread. 
    *
    * @param context This is practically the ArraySortedReadState object for 

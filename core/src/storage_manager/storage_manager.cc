@@ -1371,9 +1371,8 @@ int StorageManager::array_close(const std::string& array) {
   if(it->second->cnt_ == 0) {
     // Clean up book-keeping
     std::vector<BookKeeping*>::iterator bit = it->second->book_keeping_.begin();
-    for(; bit != it->second->book_keeping_.end(); ++bit) { 
+    for(; bit != it->second->book_keeping_.end(); ++bit) 
       delete *bit;
-    }
 
     // Unlock and destroy mutexes
     it->second->mutex_unlock();
