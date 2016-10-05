@@ -450,9 +450,11 @@ void ArraySortedReadState::advance_cell_slab_col(int aid) {
   // Advance cell slab coordinates
   int d = 0;
   current_coords[d] += cell_slab_num;
-  while(d < dim_num_-1 && current_coords[d] > tile_slab[2*d+1]) {
-    current_coords[d] = tile_slab[2*d];
-    ++current_coords[++d];
+  int64_t dim_overflow;
+  for(int i=0; i<dim_num_-1; ++i) {
+    dim_overflow = current_coords[i] / (tile_slab[2*i+1]-tile_slab[2*i]+1);
+    current_coords[i+1] += dim_overflow;
+    current_coords[i] -= dim_overflow * (tile_slab[2*i+1]-tile_slab[2*i]+1);
   }
 
   // Check if done
@@ -476,9 +478,11 @@ void ArraySortedReadState::advance_cell_slab_row(int aid) {
   // Advance cell slab coordinates
   int d = dim_num_-1;
   current_coords[d] += cell_slab_num;
-  while(d > 0 && current_coords[d] > tile_slab[2*d+1]) {
-    current_coords[d] = tile_slab[2*d];
-    ++current_coords[--d];
+  int64_t dim_overflow;
+  for(int i=d; i>0; --i) {
+    dim_overflow = current_coords[i] / (tile_slab[2*i+1]-tile_slab[2*i]+1);
+    current_coords[i-1] += dim_overflow;
+    current_coords[i] -= dim_overflow * (tile_slab[2*i+1]-tile_slab[2*i]+1);
   }
 
   // Check if done
