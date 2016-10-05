@@ -500,29 +500,38 @@ void *ArraySortedReadState::aio_done(void* data) {
   int anum = (int) asrs->attribute_ids_.size();
   const ArraySchema* array_schema = asrs->array_->array_schema(); 
   
-  // Check for overflow and update buffer sizes
+  // Check for overflow 
   bool overflow = false;
-  for(int i=0, b=0; i<anum; ++i) {
-    if(!array_schema->var_size(asrs->attribute_ids_[i])) { // FIXED 
-      asrs->buffer_sizes_tmp_[id][b] = 0;
-      ++b;
-    } else {                                               // VAR
-      asrs->buffer_sizes_tmp_[id][b] = 0;
-      ++b;
-      if(asrs->aio_overflow_[id][i]) { 
-        // Expand buffers
-        expand_buffer(asrs->buffers_[id][b], asrs->buffer_sizes_[id][b]);
-        asrs->buffer_sizes_tmp_[id][b] = asrs->buffer_sizes_[id][b];
-        overflow = true;
-      } else {
-        asrs->buffer_sizes_[id][b] = asrs->buffer_sizes_tmp_[id][b];
-        asrs->buffer_sizes_tmp_[id][b] = 0;
-      }
-      ++b;
+  for(int i=0; i<anum; ++i) {
+    if(asrs->aio_overflow_[id][i]) {
+      overflow = true;
+      break;
     }
   }
 
+
   if(overflow) {                // OVERFLOW
+    // Update buffer sizes
+    for(int i=0, b=0; i<anum; ++i) {
+      if(!array_schema->var_size(asrs->attribute_ids_[i])) { // FIXED 
+        asrs->buffer_sizes_tmp_[id][b] = 0;
+        ++b;
+      } else {                                               // VAR
+        asrs->buffer_sizes_tmp_[id][b] = 0;
+        ++b;
+        if(asrs->aio_overflow_[id][i]) { 
+          // Expand buffers
+          expand_buffer(asrs->buffers_[id][b], asrs->buffer_sizes_[id][b]);
+          asrs->buffer_sizes_tmp_[id][b] = asrs->buffer_sizes_[id][b];
+          overflow = true;
+        } else {
+          asrs->buffer_sizes_[id][b] = asrs->buffer_sizes_tmp_[id][b];
+          asrs->buffer_sizes_tmp_[id][b] = 0;
+        }
+        ++b;
+      }
+    }
+
     // Send the request again
     asrs->send_aio_request(id);
   } else {                      // NO OVERFLOW
@@ -1038,6 +1047,8 @@ std::cout << "--- Starting copying... " << copy_id_ << " ---\n";
     size_t cell_slab_size = tile_slab_info_[copy_id_].cell_slab_size_[aid][tid];
     size_t& local_buffer_offset = tile_slab_state_.current_offsets_[aid]; 
 
+std::cout << "CELL SLAB SIZE NON-VAR: " << cell_slab_size << "\n";
+
     // Handle overflow
     if(buffer_offset + cell_slab_size > buffer_size) {
 
@@ -1095,12 +1106,12 @@ void ArraySortedReadState::copy_tile_slab_var(int aid, int bid) {
   size_t buffer_size_var = copy_state_.buffer_sizes_[bid+1];
   char* buffer = (char*) copy_state_.buffers_[bid];
   char* buffer_var = (char*) copy_state_.buffers_[bid+1];
-  char* local_buffer = (char*) buffers_[copy_id_][bid];
   char* local_buffer_var = (char*) buffers_[copy_id_][bid+1];
-  size_t local_buffer_size = buffer_sizes_[copy_id_][bid];
-  size_t local_buffer_var_size = buffer_sizes_[copy_id_][bid+1];
+  size_t local_buffer_size = buffer_sizes_tmp_[copy_id_][bid];
+  size_t local_buffer_var_size = buffer_sizes_tmp_[copy_id_][bid+1];
   size_t* local_buffer_s = (size_t*) buffers_[copy_id_][bid];
   int64_t cell_num_in_buffer = local_buffer_size / sizeof(size_t);
+  size_t var_offset = buffer_offset_var;
 
   // For all overlapping tiles, in a round-robin fashion
   for(;;) {
@@ -1124,24 +1135,33 @@ void ArraySortedReadState::copy_tile_slab_var(int aid, int bid) {
          local_buffer_var_size - local_buffer_s[cell_start] :
          local_buffer_s[cell_end] - local_buffer_s[cell_start];
 
+std::cout << "CELL NUM IN BUFFER: " << cell_num_in_buffer << "\n";
+std::cout << "CELL START/END: " << cell_start << " " << cell_end << "\n";
+std::cout << "CELL SLAB SIZE VAR: " << cell_slab_size_var << "\n";
+
     // Handle overflow for the the variable-length buffer
     if(buffer_offset_var + cell_slab_size_var > buffer_size_var) {
       overflow_[aid] = true;
       break;
     }
       
-    // Copy cell slabs
-    memcpy(
-        buffer + buffer_offset, 
-        local_buffer + local_buffer_offset, 
-        cell_slab_size);
+    // Copy fixed-sized offsets
+    for(int64_t i=cell_start; i<cell_end; ++i) {
+      memcpy(
+          buffer + buffer_offset, 
+          &var_offset, 
+          sizeof(size_t));
+      buffer_offset += sizeof(size_t);
+      var_offset += (i == cell_num_in_buffer-1) ? 
+                 local_buffer_var_size - local_buffer_s[i] :
+                 local_buffer_s[i+1] - local_buffer_s[i];
+    }
+
+    // Copy variable-sized values
     memcpy(
         buffer_var + buffer_offset_var, 
         local_buffer_var + local_buffer_s[cell_start], 
         cell_slab_size_var);
-
-    // Update buffer offsets
-    buffer_offset += cell_slab_size;
     buffer_offset_var += cell_slab_size_var;
    
     // Prepare for new slab
@@ -1710,8 +1730,6 @@ int ArraySortedReadState::read_dense_sorted_row() {
     return array_->read_default(
                copy_state_.buffers_, 
                copy_state_.buffer_sizes_);
-
-std::cout << "NON-DEFAULT\n";
 
   // Iterate over each tile slab
   while(next_tile_slab_row<T>()) {
