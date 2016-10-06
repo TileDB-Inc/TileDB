@@ -112,10 +112,25 @@ void Array::aio_handle_requests() {
       PRINT_ERROR(errmsg);
       tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
       return;
+    } 
+
+    // If the thread is canceled, unblock and exit
+    if(aio_thread_canceled_) {
+      if(pthread_mutex_unlock(&aio_mtx_)) 
+        PRINT_ERROR("Cannot unlock AIO mutex while canceling AIO thread");
+      else 
+        aio_thread_created_ = false;
+      return;
     }
 
     // Wait for AIO requests
     while(aio_queue_.size() == 0) {
+      // Wait to be signaled
+      if(pthread_cond_wait(&aio_cond_, &aio_mtx_)) {
+        PRINT_ERROR("Cannot wait on AIO mutex condition");
+        return;
+      }
+
       // If the thread is canceled, unblock and exit
       if(aio_thread_canceled_) {
         if(pthread_mutex_unlock(&aio_mtx_)) { 
@@ -128,16 +143,8 @@ void Array::aio_handle_requests() {
         }
         return;
       }
-
-      // Wait to be signaled
-      if(pthread_cond_wait(&aio_cond_, &aio_mtx_)) {
-        std::string errmsg = "Cannot wait on AIO mutex condition";
-        PRINT_ERROR(errmsg);
-        tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
-        return;
-      }
     }
-
+    
     // Pop the next AIO request 
     aio_next_request = aio_queue_.front(); 
     aio_queue_.pop();
@@ -231,18 +238,11 @@ bool Array::overflow() const {
   if(!read_mode()) 
     return false;
 
-  // Check the array sorted read state first
-  if(array_sorted_read_state_ != NULL &&
-     array_sorted_read_state_->overflow())
-    return true;
-
-  // Check the (non-sorted) array read state next
-  for(int i=0; i<int(attribute_ids_.size()); ++i) 
-    if(overflow(attribute_ids_[i]))
-      return true;
-
-  // No overflow
-  return false;
+  // Check overflow
+  if(array_sorted_read_state_ != NULL)
+     return array_sorted_read_state_->overflow();
+  else
+    return array_read_state_->overflow();
 }
 
 bool Array::overflow(int attribute_id) const {
@@ -251,9 +251,12 @@ bool Array::overflow(int attribute_id) const {
   // Trivial case
   if(fragments_.size() == 0)
     return false;
- 
-  // Check the array read state
-  return array_read_state_->overflow(attribute_id);
+
+  // Check overflow
+  if(array_sorted_read_state_ != NULL)
+    return array_sorted_read_state_->overflow(attribute_id);
+  else
+    return array_read_state_->overflow(attribute_id);
 }
 
 int Array::read(void** buffers, size_t* buffer_sizes) {
@@ -893,19 +896,10 @@ void Array::aio_handle_next_request(AIO_Request* aio_request) {
 
     // Invoke the read
     if(rc == TILEDB_AR_OK) {
-      if(aio_request->mode_ == TILEDB_ARRAY_READ) {
-
-
-const int64_t* s = (const int64_t*) subarray_;
-std::cout << "SUBARRAY: " << s[0] << " " << s[1] << " " << s[2] << " " << s[3] << "\n";
-
+      if(aio_request->mode_ == TILEDB_ARRAY_READ) 
         rc = read_default(aio_request->buffers_, aio_request->buffer_sizes_);
-
-std::cout << "=== buffer sizes: " << aio_request->buffer_sizes_[0] << " ===\n";
-
-      } else { 
+      else 
         rc = read(aio_request->buffers_, aio_request->buffer_sizes_);
-      }
     }
   } else {            // WRITE MODE
       // TODO: Fix according to read above
@@ -915,30 +909,32 @@ std::cout << "=== buffer sizes: " << aio_request->buffer_sizes_[0] << " ===\n";
   }
 
   if(rc == TILEDB_AR_OK) {      // Success
-
-std::cout << "=== AIO done === \n";
-
     // Check for overflow
-    if(overflow()) {
+    if(aio_request->mode_ == TILEDB_ARRAY_READ && 
+       array_read_state_->overflow()) {
 
-
-std::cout << "=== OVERFLOW === \n";
 
       *aio_request->status_= TILEDB_AIO_OVERFLOW;
       if(aio_request->overflow_ != NULL) {
         for(int i=0; i<int(attribute_ids_.size()); ++i) 
-          aio_request->overflow_[i] = overflow(attribute_ids_[i]);
+          aio_request->overflow_[i] = 
+            array_read_state_->overflow(attribute_ids_[i]);
+      }
+    } else if(aio_request->mode_ != TILEDB_ARRAY_READ && 
+              array_sorted_read_state_->overflow()) {
+      *aio_request->status_= TILEDB_AIO_OVERFLOW;
+      if(aio_request->overflow_ != NULL) {
+        for(int i=0; i<int(attribute_ids_.size()); ++i) 
+          aio_request->overflow_[i] = 
+              array_sorted_read_state_->overflow(attribute_ids_[i]);
       }
     } else { // Completion
       *aio_request->status_= TILEDB_AIO_COMPLETED;
-      // Invoke the callback
-
-std::cout << "=== CALLBACK === \n";
-
-      if(aio_request->completion_handle_ != NULL) {
-        (*(aio_request->completion_handle_))(aio_request->completion_data_);
-      }
     }
+
+    // Invoke the callback
+    if(aio_request->completion_handle_ != NULL) 
+      (*(aio_request->completion_handle_))(aio_request->completion_data_);
   } else {                      // Error
     *aio_request->status_= TILEDB_AIO_ERR;
   }
@@ -1039,16 +1035,6 @@ int Array::aio_thread_destroy() {
 
   // Wait for cancelation to take place
   while(aio_thread_created_);
-
-  // Cancel thread
-  if(pthread_cancel(aio_thread_)) {
-    std::string errmsg = "Cannot destroy AIO thread";
-    PRINT_ERROR(errmsg);
-    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
-    return TILEDB_AR_ERR;
-  } 
-
-  aio_thread_created_ = false;
 
   // Success
   return TILEDB_AR_OK;

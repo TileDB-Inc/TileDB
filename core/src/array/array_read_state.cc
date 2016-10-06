@@ -123,6 +123,15 @@ ArrayReadState::~ArrayReadState() {
 /*           ACCESSORS            */
 /* ****************************** */
 
+bool ArrayReadState::overflow() const {
+  int attribute_num = (int) array_->attribute_ids().size();
+  for(int i=0; i<attribute_num; ++i)
+    if(overflow_[i])
+      return true;
+
+  return false;
+}
+
 bool ArrayReadState::overflow(int attribute_id) const {
   return overflow_[attribute_id];
 }

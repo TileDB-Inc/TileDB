@@ -267,6 +267,12 @@ class ArraySortedReadState {
   /** Temporary buffer sizes used in AIO requests. */
   size_t* buffer_sizes_tmp_[2];
 
+  /**
+   * Backup of temporary buffer sizes used in AIO requests (used when there is
+   * overflow).
+   */
+  size_t* buffer_sizes_tmp_bak_[2];
+
   /** Local buffers (similar to those used in Array::read). */
   void** buffers_[2];
 
@@ -308,6 +314,12 @@ class ArraySortedReadState {
 
   /** Overflow flag for each attribute. */
   bool* overflow_;
+
+  /** 
+   * Overflow flag for each attribute. It starts with *true* for all 
+   * attributes, and becomes false once an attribute does not overflow any more.
+   */
+  bool* overflow_still_;
 
   /** True if no more tile slabs to read. */
   bool read_tile_slabs_done_;
