@@ -569,26 +569,52 @@ int StorageManager::array_init(
       return TILEDB_SM_ERR;
   }
 
-  // Create Array object
+  // Create the clone Array object
+  Array* array_clone = new Array();
+  int rc_clone = array_clone->init(
+                     array_schema, 
+                     open_array->fragment_names_,
+                     open_array->book_keeping_,
+                     mode, 
+                     attributes, 
+                     attribute_num, 
+                     subarray,
+                     config_);
+
+  // Handle error
+  if(rc_clone != TILEDB_AR_OK) {
+    delete array_schema;
+    delete array_clone;
+    array = NULL;
+    array_close(array_dir);
+    return TILEDB_SM_ERR;
+  } 
+
+  // Create actual array
   array = new Array();
-  if(array->init(
-         array_schema, 
-         open_array->fragment_names_,
-         open_array->book_keeping_,
-         mode, 
-         attributes, 
-         attribute_num, 
-         subarray,
-         config_) != TILEDB_AR_OK) {
+  int rc = array->init(
+               array_schema, 
+               open_array->fragment_names_,
+               open_array->book_keeping_,
+               mode, 
+               attributes, 
+               attribute_num, 
+               subarray,
+               config_,
+               array_clone);
+
+  // Handle error
+  if(rc != TILEDB_AR_OK) {
     delete array_schema;
     delete array;
     array = NULL;
     array_close(array_dir);
     tiledb_sm_errmsg = tiledb_as_errmsg;
     return TILEDB_SM_ERR;
-  } else {
-    return TILEDB_SM_OK;
   }
+
+  // Success
+   return TILEDB_SM_OK;
 }
 
 int StorageManager::array_finalize(Array* array) {

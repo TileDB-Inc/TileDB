@@ -300,6 +300,9 @@ class ArraySortedReadState {
   /** The thread tha handles all the copying in the background. */
   pthread_t copy_thread_;
 
+  /** True if the copy thread is canceled. */
+  bool copy_thread_canceled_;
+
   /** True if the copy thread is running. */
   bool copy_thread_running_;
 

@@ -129,6 +129,9 @@ class Array {
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
+  /** Returns the array clone. */
+  Array* array_clone() const;
+
   /** Returns the ids of the attributes the array focuses on. */
   const std::vector<int>& attribute_ids() const;
 
@@ -278,16 +281,18 @@ class Array {
    *    - TILEDB_ARRAY_READ 
    *    - TILEDB_ARRAY_READ_SORTED_COL 
    *    - TILEDB_ARRAY_READ_SORTED_ROW
-   * @param subarray The subarray in which the array read/write will be
-   *     constrained on. If it is NULL, then the subarray is set to the entire
-   *     array domain. For the case of writes, this is meaningful only for
-   *     dense arrays, and specifically dense writes.
    * @param attributes A subset of the array attributes the read/write will be
    *     constrained on. A NULL value indicates **all** attributes (including
    *     the coordinates in the case of sparse arrays).
    * @param attribute_num The number of the input attributes. If *attributes* is
    *     NULL, then this should be set to 0.
+   * @param subarray The subarray in which the array read/write will be
+   *     constrained on. If it is NULL, then the subarray is set to the entire
+   *     array domain. For the case of writes, this is meaningful only for
+   *     dense arrays, and specifically dense writes.
    * @param config Configuration parameters.
+   * @param array_clone An clone of this array object. Used specifically in 
+   *     asynchronous IO (AIO) read/write operations.
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
   int init(
@@ -297,8 +302,9 @@ class Array {
       int mode,
       const char** attributes,
       int attribute_num,
-      const void* range,
-      const Config* config);
+      const void* subarray,
+      const Config* config,
+      Array* array_clone = NULL);
 
   /**
    * Resets the attributes used upon initialization of the array. 
@@ -394,6 +400,8 @@ class Array {
   bool aio_thread_canceled_;
   /** Indicates whether the AIO thread was created or not. */
   bool aio_thread_created_;
+  /** An array clone, used in AIO requests. */
+  Array* array_clone_;
   /** The array schema. */
   const ArraySchema* array_schema_;
   /** The read state of the array. */

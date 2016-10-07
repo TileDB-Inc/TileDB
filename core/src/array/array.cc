@@ -72,25 +72,30 @@ Array::Array() {
   array_schema_ = NULL;
   subarray_ = NULL;
   aio_thread_created_ = false;
+  array_clone_ = NULL;
 }
 
 Array::~Array() {
+  // Applicable to both arrays and array clones
   std::vector<Fragment*>::iterator it = fragments_.begin();
   for(; it != fragments_.end(); ++it)
     if(*it != NULL)
        delete *it;
-
-  if(array_schema_ != NULL)
-    delete array_schema_;
-
-  if(subarray_ != NULL)
-    free(subarray_);
-
   if(array_read_state_ != NULL)
     delete array_read_state_;
-
   if(array_sorted_read_state_ != NULL)
     delete array_sorted_read_state_;
+
+  // Applicable only to clones
+  if(array_clone_ != NULL) {
+    array_clone_->finalize();
+    delete array_clone_;
+  } else { // Applicable only to (non-clone) arrays
+    if(array_schema_ != NULL)
+      delete array_schema_;
+    if(subarray_ != NULL)
+      free(subarray_);
+  }
 }
 
 
@@ -207,6 +212,10 @@ int Array::aio_write(AIO_Request* aio_request) {
 
   // Success
   return TILEDB_AR_OK;
+}
+
+Array* Array::array_clone() const {
+  return array_clone_;
 }
 
 const ArraySchema* Array::array_schema() const {
@@ -524,9 +533,13 @@ int Array::init(
     const char** attributes,
     int attribute_num,
     const void* subarray,
-    const Config* config) {
+    const Config* config,
+    Array* array_clone) {
   // Set mode
   mode_ = mode;
+
+  // Set array clone
+  array_clone_ = array_clone;
 
   // Sanity check on mode
   if(!read_mode() && !write_mode()) {
@@ -890,16 +903,19 @@ int Array::write(const void** buffers, const size_t* buffer_sizes) {
 void Array::aio_handle_next_request(AIO_Request* aio_request) {
   int rc = TILEDB_AR_OK;
   if(read_mode()) {   // READ MODE
-    // Reset the subarray only if this request does not continue from the last
-    if(aio_last_handled_request_ != aio_request->id_)
-      rc = reset_subarray_soft(aio_request->subarray_);
-
     // Invoke the read
-    if(rc == TILEDB_AR_OK) {
-      if(aio_request->mode_ == TILEDB_ARRAY_READ) 
-        rc = read_default(aio_request->buffers_, aio_request->buffer_sizes_);
-      else 
-        rc = read(aio_request->buffers_, aio_request->buffer_sizes_);
+    if(aio_request->mode_ == TILEDB_ARRAY_READ) { 
+      // Reset the subarray only if this request does not continue from the last
+      if(aio_last_handled_request_ != aio_request->id_)
+        reset_subarray_soft(aio_request->subarray_);
+      rc = read_default(aio_request->buffers_, aio_request->buffer_sizes_);
+    } else {  
+      // This may initiate a series of new AIO requests
+      // Reset the subarray hard this time (updating also the subarray
+      // of the ArraySortedReadState object.
+      if(aio_last_handled_request_ != aio_request->id_)
+        reset_subarray(aio_request->subarray_);
+      rc = read(aio_request->buffers_, aio_request->buffer_sizes_);
     }
   } else {            // WRITE MODE
       // TODO: Fix according to read above
@@ -912,8 +928,6 @@ void Array::aio_handle_next_request(AIO_Request* aio_request) {
     // Check for overflow
     if(aio_request->mode_ == TILEDB_ARRAY_READ && 
        array_read_state_->overflow()) {
-
-
       *aio_request->status_= TILEDB_AIO_OVERFLOW;
       if(aio_request->overflow_ != NULL) {
         for(int i=0; i<int(attribute_ids_.size()); ++i) 

@@ -41,7 +41,7 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
   // Subarray and attributes
-  int64_t subarray[] = { 1, 3, 1, 4 }; 
+  int64_t subarray[] = { 3, 4, 2, 4 }; 
   const char* attributes[] = { "a1" };
 
   // Initialize array 
@@ -50,37 +50,29 @@ int main() {
       tiledb_ctx,                                       // Context
       &tiledb_array,                                    // Array object
       "my_workspace/dense_arrays/my_array_A",           // Array name
-      TILEDB_ARRAY_READ_SORTED_COL,                     // Mode
+      TILEDB_ARRAY_READ_SORTED_ROW,                     // Mode
       subarray,                                         // Constrain in subarray
       attributes,                                       // Subset on attributes
       1);                                               // Number of attributes
 
   // Prepare cell buffers 
-  int buffer_a1[16];
+  int buffer_a1[3];
   void* buffers[] = { buffer_a1 };
   size_t buffer_sizes[] = { sizeof(buffer_a1) };
 
 
   // Loop until no overflow
   printf(" a1\n----\n");
-//  do {
-    printf("Reading cells...\n"); 
-
+  do {
     // Read from array
-    int rc = tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
-
-if(rc != TILEDB_OK)
-  printf("ERROR!!!\n");
+    printf("Reading cells...\n"); 
+    tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
 
     // Print cell values
-    printf("Printing cells...\n"); 
     int64_t result_num = buffer_sizes[0] / sizeof(int);
-
-printf("Result num: %lld\n", result_num);
-
     for(int i=0; i<result_num; ++i) 
       printf("%3d\n", buffer_a1[i]);
-//  } while(tiledb_array_overflow(tiledb_array, 0) == 1);
+  } while(tiledb_array_overflow(tiledb_array, 0) == 1);
  
   // Finalize the array
   tiledb_array_finalize(tiledb_array);

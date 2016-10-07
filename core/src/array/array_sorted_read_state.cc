@@ -78,6 +78,7 @@ ArraySortedReadState::ArraySortedReadState(
   copy_id_ = 0;
   dim_num_ = array_schema->dim_num();
   copy_thread_running_ = false;
+  copy_thread_canceled_ = false;
   read_tile_slabs_done_ = false;
   resume_copy_ = false;
   resume_aio_ = false;
@@ -151,6 +152,13 @@ ArraySortedReadState::~ArraySortedReadState() {
   free_copy_state();
   free_tile_slab_state();
   free_tile_slab_info();
+
+  // Cancel copy thread
+  copy_thread_canceled_ = true;
+  for(int i=0; i<2; ++i)
+    release_aio(i);
+  // Wait for thread to be destroyed
+  while(copy_thread_running_);
 
   // Destroy conditions and mutexes
   for(int i=0; i<2; ++i) {
@@ -1281,9 +1289,11 @@ void ArraySortedReadState::handle_copy_requests() {
     // Wait for AIO
     wait_aio(copy_id_); 
 
-    // Kill thread
-    if(!copy_thread_running_)
+    // Kill thread, after releasing any blocked resources
+    if(copy_thread_canceled_) {
+      copy_thread_running_ = false;
       return;
+    }
 
     // Reset the tile slab state
     if(copy_tile_slab_done())
@@ -1647,7 +1657,7 @@ int ArraySortedReadState::read_dense_sorted_col() {
 
   // The following will make the copy thread terminate
   if(done()) { 
-    copy_thread_running_ = false;
+    copy_thread_canceled_ = true;
     release_aio(aio_id_);
   }
 
@@ -1689,7 +1699,7 @@ int ArraySortedReadState::read_dense_sorted_row() {
 
   // The following will make the copy thread terminate
   if(done()) { 
-    copy_thread_running_ = false;
+    copy_thread_canceled_ = true;
     release_aio(aio_id_);
   }
 
@@ -1872,8 +1882,14 @@ int ArraySortedReadState::send_aio_request(int aio_id) {
   // Important!!
   aio_request_[aio_id].id_ = aio_cnt_++;
 
-  // Send the AIO request
-  if(array_->aio_read(&(aio_request_[aio_id])) != TILEDB_AR_OK) {
+  // For easy reference
+  Array* array_clone = array_->array_clone();
+
+  // Sanity check
+  assert(array_clone != NULL);
+
+  // Send the AIO request to the clone array
+  if(array_clone->aio_read(&(aio_request_[aio_id])) != TILEDB_AR_OK) {
     // TODO: get error message: tiledb_asrs_errmsg = tiledb_ar_msg;
     return TILEDB_ASRS_ERR;
   }
