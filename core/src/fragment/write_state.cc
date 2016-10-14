@@ -30,6 +30,7 @@
  * This file implements the WriteState class.
  */
 
+#include "comparators.h"
 #include "constants.h"
 #include "utils.h"
 #include "write_state.h"
