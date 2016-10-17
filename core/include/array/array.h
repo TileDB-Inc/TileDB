@@ -36,6 +36,7 @@
 #include "aio_request.h"
 #include "array_read_state.h"
 #include "array_sorted_read_state.h"
+#include "array_sorted_write_state.h"
 #include "array_schema.h"
 #include "book_keeping.h"
 #include "config.h"
@@ -73,6 +74,7 @@ extern std::string tiledb_ar_errmsg;
 
 class ArrayReadState;
 class ArraySortedReadState;
+class ArraySortedWriteState;
 class Fragment;
 
 
@@ -277,6 +279,8 @@ class Array {
    *     of the array.
    * @param mode The mode of the array. It must be one of the following:
    *    - TILEDB_ARRAY_WRITE 
+   *    - TILEDB_ARRAY_WRITE_SORTED_COL 
+   *    - TILEDB_ARRAY_WRITE_SORTED_ROW
    *    - TILEDB_ARRAY_WRITE_UNSORTED 
    *    - TILEDB_ARRAY_READ 
    *    - TILEDB_ARRAY_READ_SORTED_COL 
@@ -357,6 +361,17 @@ class Array {
    *      of times, and all the writes will occur in the same fragment. 
    *      Moreover, the buffers need not be synchronized, i.e., some buffers
    *      may have more cells than others when the function is invoked.
+   *    - TILEDB_ARRAY_WRITE_SORTED_COL: \n
+   *      In this mode, the cell values are provided in the buffer in 
+   *      column-major
+   *      order with respect to the subarray used upon array initialization. 
+   *      TileDB will properly re-organize the cells so that they follow the 
+   *      array cell order for storage on the disk.
+   *    - TILEDB_ARRAY_WRITE_SORTED_ROW: \n
+   *      In this mode, the cell values are provided in the buffer in row-major
+   *      order with respect to the subarray used upon array initialization. 
+   *      TileDB will properly re-organize the cells so that they follow the 
+   *      array cell order for storage on the disk.
    *    - TILEDB_ARRAY_WRITE_UNSORTED: \n
    *      This mode is applicable to sparse arrays, or when writing sparse
    *      updates to a dense array. One of the buffers holds the coordinates.
@@ -379,7 +394,31 @@ class Array {
    *     a one-to-one correspondence).
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int write(const void** buffers, const size_t* buffer_sizes); 
+  int write(const void** buffers, const size_t* buffer_sizes);
+
+  /**
+   * Performs a write operation in the array. The cell values are provided
+   * in a set of buffers (one per attribute specified upon initialization).
+   * Note that there must be a one-to-one correspondance between the cell
+   * values across the attribute buffers.
+   *
+   * The array must be initialized in moder TILEDB_ARRAY_WRITE or 
+   * TILEDB_ARRAY_WRITE_UNSORTED. These modes are essentially the default modes.
+   * Modes TILEDB_ARRAY_WRITE_SORTED_COL and TILEDB_ARRAY_WRITE_SORTED_ROW are
+   * more complicated and, thus, handled by the ArraySortedWriteState class.
+   * 
+   * @param buffers An array of buffers, one for each attribute. These must be
+   *     provided in the same order as the attributes specified in
+   *     init() or reset_attributes(). The case of variable-sized attributes is
+   *     special. Instead of providing a single buffer for such an attribute,
+   *     **two** must be provided: the second holds the variable-sized cell
+   *     values, whereas the first holds the start offsets of each cell in the
+   *     second buffer.
+   * @param buffer_sizes The sizes (in bytes) of the input buffers (there is
+   *     a one-to-one correspondence).
+   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   */
+  int write_default(const void** buffers, const size_t* buffer_sizes); 
 
  private:
   /* ********************************* */
@@ -408,6 +447,8 @@ class Array {
   ArrayReadState* array_read_state_;
   /** The sorted read state of the array. */
   ArraySortedReadState* array_sorted_read_state_;
+  /** The sorted write state of the array. */
+  ArraySortedWriteState* array_sorted_write_state_;
   /** 
    * The ids of the attributes the array is initialized with. Note that the
    * array may be initialized with a subset of attributes when writing or
@@ -420,9 +461,13 @@ class Array {
   std::vector<Fragment*> fragments_;
   /** 
    * The array mode. It must be one of the following:
-   *    - TILEDB_WRITE 
-   *    - TILEDB_WRITE_UNSORTED 
-   *    - TILEDB_READ 
+   *    - TILEDB_ARRAY_WRITE 
+   *    - TILEDB_ARRAY_WRITE_SORTED_COL
+   *    - TILEDB_ARRAY_WRITE_SORTED_ROW
+   *    - TILEDB_ARRAY_WRITE_UNSORTED 
+   *    - TILEDB_ARRAY_READ 
+   *    - TILEDB_ARRAY_READ_SORTED_COL
+   *    - TILEDB_ARRAY_READ_SORTED_ROW
    */
   int mode_;
   /**

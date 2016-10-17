@@ -1,5 +1,5 @@
 /**
- * @file   array_sorted_read_state.cc
+ * @file   array_sorted_write_state.cc
  *
  * @section LICENSE
  *
@@ -27,11 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the ArraySortedReadState class.
+ * This file implements the ArraySortedWriteState class.
  */
 
-#include "array_sorted_read_state.h"
-#include "comparators.h"
+#include "array_sorted_write_state.h"
 #include "math.h"
 #include "utils.h"
 #include <cassert>
@@ -44,18 +43,11 @@
 /* ****************************** */
 
 #ifdef VERBOSE
-#  define PRINT_ERROR(x) std::cerr << TILEDB_ASRS_ERRMSG << x << ".\n" 
+#  define PRINT_ERROR(x) std::cerr << TILEDB_ASWS_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 
 #endif
 
-#ifdef OPENMP
-  #include <parallel/algorithm>
-  #define SORT(first, last, comp) __gnu_parallel::sort((first), (last), (comp))
-#else
-  #include <algorithm>
-  #define SORT(first, last, comp) std::sort((first), (last), (comp))
-#endif
 
 
 
@@ -63,7 +55,7 @@
 /*         GLOBAL VARIABLES       */
 /* ****************************** */
 
-std::string tiledb_asrs_errmsg = "";
+std::string tiledb_asws_errmsg = "";
 
 
 
@@ -72,9 +64,14 @@ std::string tiledb_asrs_errmsg = "";
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ArraySortedReadState::ArraySortedReadState(
+ArraySortedWriteState::ArraySortedWriteState(
     Array* array)
     : array_(array) {
+
+// TODO
+
+/*
+
   // Calculate the attribute ids
   calculate_attribute_ids();
 
@@ -131,9 +128,15 @@ ArraySortedReadState::ArraySortedReadState(
   init_tile_slab_info();
   init_tile_slab_state();
   init_copy_state();
+
+*/
 }
 
-ArraySortedReadState::~ArraySortedReadState() { 
+ArraySortedWriteState::~ArraySortedWriteState() { 
+// TODO
+
+/*
+
   // Clean up
   free(subarray_);
   free(tile_coords_);
@@ -204,6 +207,7 @@ ArraySortedReadState::~ArraySortedReadState() {
     PRINT_ERROR(errmsg);
     tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
   }
+*/
 }
 
 
@@ -213,13 +217,10 @@ ArraySortedReadState::~ArraySortedReadState() {
 /*           ACCESSORS            */
 /* ****************************** */
 
+/*
+
 bool ArraySortedReadState::copy_tile_slab_done() const {
   for(int i=0; i < (int) attribute_ids_.size(); ++i) {
-    // Special case for sparse arrays with extra coordinates attribute    
-    if(i == coords_attr_i_ && extra_coords_)
-      continue;
-
-    // Check
     if(!tile_slab_state_.copy_tile_slab_done_[i])
       return false;
   }
@@ -252,40 +253,7 @@ bool ArraySortedReadState::overflow(int attribute_id) const {
   return false;
 }
 
-int ArraySortedReadState::read(void** buffers, size_t* buffer_sizes) {
-  // Trivial case
-  if(done()) {
-    for(int i=0; i<buffer_num_; ++i)
-      buffer_sizes[i] = 0;
-    return TILEDB_ASRS_OK;
-  }
-
-  // Reset copy state
-  reset_copy_state(buffers, buffer_sizes);
-
-  // Reset overflow
-  reset_overflow();
-  
-  // Resume the copy request handling
-  if(resume_copy_) {
-    block_copy(copy_id_); 
-    release_aio(copy_id_);
-    release_overflow();
-  }
-
-  // Call the appropriate templated read
-  int type = array_->array_schema()->coords_type();
-  if(type == TILEDB_INT32)
-    return read<int>();
-  else if(type == TILEDB_INT64)
-    return read<int64_t>();
-  else if(type == TILEDB_FLOAT32)
-    return read<float>();
-  else if(type == TILEDB_FLOAT64)
-    return read<double>();
-  else 
-    assert(0);
-} 
+*/
 
 
 
@@ -294,7 +262,14 @@ int ArraySortedReadState::read(void** buffers, size_t* buffer_sizes) {
 /*            MUTATORS            */
 /* ****************************** */
 
-int ArraySortedReadState::init() {
+int ArraySortedWriteState::init() {
+
+std::cout << "HERE\n";
+exit(0);
+
+// TODO
+/*
+
   // Create buffers
   if(create_buffers() != TILEDB_ASRS_OK)
     return TILEDB_ASRS_ERR;
@@ -444,15 +419,63 @@ int ArraySortedReadState::init() {
     else 
       assert(0);
   }
+*/
 
   // Success
-  return TILEDB_ASRS_OK;
+  return TILEDB_ASWS_OK;
 }
+
+int ArraySortedWriteState::write(
+    const void** buffers, 
+    const size_t* buffer_sizes) {
+
+// TODO
+/*
+
+  // Trivial case
+  if(done()) {
+    for(int i=0; i<buffer_num_; ++i)
+      buffer_sizes[i] = 0;
+    return TILEDB_ASRS_OK;
+  }
+
+  // Reset copy state
+  reset_copy_state(buffers, buffer_sizes);
+
+  // Reset overflow
+  reset_overflow();
+  
+  // Resume the copy request handling
+  if(resume_copy_) {
+    block_copy(copy_id_); 
+    release_aio(copy_id_);
+    release_overflow();
+  }
+
+  // Call the appropriate templated read
+  int type = array_->array_schema()->coords_type();
+  if(type == TILEDB_INT32)
+    return read<int>();
+  else if(type == TILEDB_INT64)
+    return read<int64_t>();
+  else if(type == TILEDB_FLOAT32)
+    return read<float>();
+  else if(type == TILEDB_FLOAT64)
+    return read<double>();
+  else 
+    assert(0);
+*/
+
+  // Success
+  return TILEDB_ASWS_OK;
+} 
 
 
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
+
+/*
 
 template<class T>
 void *ArraySortedReadState::advance_cell_slab_col_s(void* data) {
@@ -640,7 +663,6 @@ void ArraySortedReadState::block_overflow() {
 void ArraySortedReadState::calculate_attribute_ids() {
   // Initialization
   attribute_ids_ = array_->attribute_ids();
-  coords_attr_i_ = -1;
 
   // For ease reference
   const ArraySchema* array_schema = array_->array_schema();
@@ -651,6 +673,7 @@ void ArraySortedReadState::calculate_attribute_ids() {
     return;
 
   // Find the coordinates index
+  coords_attr_i_ = -1;
   for(int i=0; i<(int)attribute_ids_.size(); ++i) {
     if(attribute_ids_[i] == attribute_num) {
       coords_attr_i_ = i;
@@ -1588,9 +1611,6 @@ void ArraySortedReadState::handle_copy_requests_sparse() {
 
     // Sort the cell positions
     if(copy_tile_slab_done()) {
-
-std::cout << "resetting...\n";
-
       reset_tile_slab_state<T>();
       sort_cell_pos<T>();
     }
@@ -2852,3 +2872,6 @@ template int ArraySortedReadState::read_dense_sorted_row<int>();
 template int ArraySortedReadState::read_dense_sorted_row<int64_t>();
 template int ArraySortedReadState::read_dense_sorted_row<float>();
 template int ArraySortedReadState::read_dense_sorted_row<double>();
+
+
+*/

@@ -87,6 +87,8 @@ bool array_read_mode(int mode) {
 
 bool array_write_mode(int mode) {
   return mode == TILEDB_ARRAY_WRITE || 
+         mode == TILEDB_ARRAY_WRITE_SORTED_COL || 
+         mode == TILEDB_ARRAY_WRITE_SORTED_ROW || 
          mode == TILEDB_ARRAY_WRITE_UNSORTED;
 }
 
