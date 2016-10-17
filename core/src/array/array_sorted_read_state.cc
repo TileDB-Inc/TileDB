@@ -204,7 +204,6 @@ ArraySortedReadState::~ArraySortedReadState() {
     PRINT_ERROR(errmsg);
     tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
   }
-
 }
 
 
@@ -1431,6 +1430,10 @@ void ArraySortedReadState::free_copy_state() {
 }
 
 void ArraySortedReadState::free_tile_slab_info() {
+  // Do nothing in the case of sparse arrays
+  if(!array_->array_schema()->dense())
+    return;
+
   // For easy reference
   int anum = (int) attribute_ids_.size();
 
@@ -1703,14 +1706,13 @@ void ArraySortedReadState::init_tile_slab_state() {
       tile_slab_state_.current_tile_[i] = 0;
     }
   } else {   // SPARSE
-    tile_slab_state_.copy_tile_slab_done_ = NULL;
     tile_slab_state_.current_offsets_ = NULL;
     tile_slab_state_.current_coords_ = NULL;
     tile_slab_state_.current_tile_ = NULL;
     tile_slab_state_.current_cell_pos_ = new int64_t[anum];
 
     for(int i=0; i<anum; ++i) 
-      tile_slab_state_.current_cell_pos_ = 0;
+      tile_slab_state_.current_cell_pos_[i] = 0;
   }
 }
 
