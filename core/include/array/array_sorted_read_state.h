@@ -912,7 +912,7 @@ class ArraySortedReadState {
    * Applicable only to dense arrays. 
    * 
    * @template T The domain type.
-   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template<class T>
   int read_dense_sorted_col(); 
@@ -923,7 +923,7 @@ class ArraySortedReadState {
    * Applicable only to dense arrays. 
    * 
    * @template T The domain type.
-   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template<class T>
   int read_dense_sorted_row(); 
@@ -934,7 +934,7 @@ class ArraySortedReadState {
    * Applicable only to sparse arrays. 
    * 
    * @template T The domain type.
-   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template<class T>
   int read_sparse_sorted_col(); 
@@ -945,7 +945,7 @@ class ArraySortedReadState {
    * Applicable only to sparse arrays. 
    * 
    * @template T The domain type.
-   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template<class T>
   int read_sparse_sorted_row(); 

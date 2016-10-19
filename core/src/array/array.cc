@@ -1007,12 +1007,12 @@ void Array::aio_handle_next_request(AIO_Request* aio_request) {
     } else {  
       // This may initiate a series of new AIO requests
       // Reset the subarray hard this time (updating also the subarray
-      // of the ArraySortedReadState object.
+      // of the ArraySortedWriteState object.
       if(aio_last_handled_request_ != aio_request->id_)
         reset_subarray(aio_request->subarray_);
      
       // Write
-      rc = write_default(
+      rc = write(
                (const void**) aio_request->buffers_, 
                (const size_t*) aio_request->buffer_sizes_);
     }
