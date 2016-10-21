@@ -89,6 +89,8 @@ class ArraySortedWriteState {
 
   /** Stores local state about the current write/copy request. */
   struct CopyState {
+    /** Local buffer offsets. */
+    size_t* buffer_offsets_[2];
     /** Local buffer sizes. */
     size_t* buffer_sizes_[2];
     /** Local buffers. */
@@ -245,6 +247,9 @@ class ArraySortedWriteState {
 
   /** Number of allocated buffers. */
   int buffer_num_;
+
+  /** The user buffer offsets. */
+  size_t* buffer_offsets_;
 
   /** The user buffer sizes. */
   const size_t* buffer_sizes_;
@@ -610,6 +615,63 @@ class ArraySortedWriteState {
    */
   int create_copy_state_buffers();
 
+  /** 
+   * Creates the user buffers.
+   *
+   * @param buffers The user buffers that hold the input cells to be written. 
+   * @param buffer_sizes The corresponding buffer sizes. 
+   * @return void
+   */
+  void create_user_buffers(const void** buffers, const size_t* buffer_sizes);
+
+  /**
+   * Fills the buffer of a fixed-sized attribute with special empty values,
+   * in a given byte range [offset_start, offset_end). The buffer to be
+   * filled is essentially copy_state_.buffers_[copy_id_][bid].
+   * Note that, after the invocation of the function, offset_start will
+   * be set to offset_end (it is passed by reference).
+   *
+   * @param aid The attribute id.
+   * @param bid The buffer id corresponding to the attribute id.
+   * @param offset_start The start of the byte range to be filled.
+   * @param offset_end The end of the byte range to be filled.
+   * @return void
+   */
+  void fill_with_empty(
+      int aid,
+      int bid,
+      size_t& offset_start,
+      size_t offset_end);
+
+  /**
+   * Fills the buffer of a variable-sized attribute with special empty values,
+   * in a given byte range [offset_start, offset_end) for the offsets buffer,
+   * and [offset_var_start, offset_var_start+empty_var_size) for the variable
+   * values buffer. The buffers to be filled are essentially 
+   * copy_state_.buffers_[copy_id_][bid] (offsets) and
+   * copy_state_.buffers_[copy_id_][bid+1] (values).
+   * Note that, after the invocation of the function, offset_start will
+   * be set to offset_end, and offset_var_start to
+   * offset_var_start+empty_var_size (they are passed by reference), where
+   * empty_var_size is the size in bytes of the empty values written in the
+   * variable-sized buffer.
+   *
+   * @param aid The attribute id.
+   * @param bid The buffer id corresponding to the attribute id.
+   * @param offset_start The start of the byte range to be filled for the
+   *     offset buffer.
+   * @param offset_end The end of the byte range to be filled.
+   * @param offset_var_start The start of the byte range to be filled for the
+   *     values buffer.
+   * @return void
+   */
+  void fill_with_empty(
+      int aid,
+      int bid,
+      size_t& offset_start,
+      size_t offset_end,
+      size_t& offset_var_start);
+
   /** Frees the copy state. */
   void free_copy_state();
 
@@ -753,8 +815,8 @@ class ArraySortedWriteState {
    */
   int release_copy(int id);
 
-  /** Resets the temporary buffer sizes for the input tile slab id. */
-//  void reset_buffer_sizes_tmp(int id);
+  /** Resets the copy state for the current copy id. */
+  void reset_copy_state();
 
   /** 
    * Resets the tile_coords_ auxiliary variable. 

@@ -273,6 +273,10 @@ size_t ArraySchema::cell_size(int attribute_id) const {
   return cell_sizes_[attribute_id];
 }
 
+int ArraySchema::cell_val_num(int attribute_id) const {
+  return cell_val_num_[attribute_id];
+}
+
 int ArraySchema::compression(int attribute_id) const {
   assert(attribute_id >= 0 && attribute_id <= attribute_num_+1);
 

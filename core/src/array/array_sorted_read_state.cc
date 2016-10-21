@@ -1150,6 +1150,7 @@ void ArraySortedReadState::copy_tile_slab_dense(int aid, int bid) {
   size_t buffer_size = copy_state_.buffer_sizes_[bid];
   char* buffer = (char*) copy_state_.buffers_[bid];
   char* local_buffer = (char*) buffers_[copy_id_][bid];
+  ASRS_Data asrs_data = { aid, 0, this };
 
   // Iterate over the tile slab cells
   for(;;) {
@@ -1172,8 +1173,7 @@ void ArraySortedReadState::copy_tile_slab_dense(int aid, int bid) {
     // Update buffer offset
     buffer_offset += cell_slab_size;
    
-    // Prepare for new slab
-    ASRS_Data asrs_data = { aid, 0, this };
+    // Prepare for new cell slab
     (*advance_cell_slab_)(&asrs_data);
 
     // Terminating condition 
@@ -1208,6 +1208,7 @@ void ArraySortedReadState::copy_tile_slab_dense_var(int aid, int bid) {
   size_t* local_buffer_s = (size_t*) buffers_[copy_id_][bid];
   int64_t cell_num_in_buffer = local_buffer_size / sizeof(size_t);
   size_t var_offset = buffer_offset_var;
+  ASRS_Data asrs_data = { aid, 0, this };
 
   // For all overlapping tiles, in a round-robin fashion
   for(;;) {
@@ -1256,8 +1257,7 @@ void ArraySortedReadState::copy_tile_slab_dense_var(int aid, int bid) {
         cell_slab_size_var);
     buffer_offset_var += cell_slab_size_var;
    
-    // Prepare for new slab
-    ASRS_Data asrs_data = { aid, 0, this };
+    // Prepare for new cell slab
     (*advance_cell_slab_)(&asrs_data);
 
     // Terminating condition 

@@ -141,6 +141,9 @@ class ArraySchema {
   /** Returns the size of cell on the input attribute. */
   size_t cell_size(int attribute_id) const;
 
+  /** Returns the number of values per cell of the input attribute. */
+  int cell_val_num(int attribute_id) const;
+
   /** Returns the compression type of the attribute with the input id. */
   int compression(int attribute_id) const;
 
