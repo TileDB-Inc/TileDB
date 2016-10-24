@@ -900,19 +900,36 @@ int Array::write(const void** buffers, const size_t* buffer_sizes) {
     return TILEDB_AR_ERR;
   }
 
-  // Handle sorted modes
+  // Write based on mode
+  int rc;
   if(mode_ == TILEDB_ARRAY_WRITE_SORTED_COL ||
      mode_ == TILEDB_ARRAY_WRITE_SORTED_ROW) { 
-      int rc = array_sorted_write_state_->write(buffers, buffer_sizes);
-      if(rc == TILEDB_ASWS_OK) {
-        return TILEDB_AR_OK;
-      } else {
-        tiledb_ar_errmsg = tiledb_asws_errmsg;
-        return TILEDB_AR_ERR;
-      }
-  } else { // mode_ == TILDB_ARRAY_WRITE or TILEDB_ARRAY_WRITE_UNSORTED 
-    return write_default(buffers, buffer_sizes);
+    rc = array_sorted_write_state_->write(buffers, buffer_sizes); 
+  } else if(mode_ == TILEDB_ARRAY_WRITE ||
+            mode_ == TILEDB_ARRAY_WRITE_UNSORTED) { 
+    rc = write_default(buffers, buffer_sizes);
+  } else {
+    assert(0);
   }
+
+  // Handle error
+  if(rc != TILEDB_ASWS_OK) {
+    tiledb_ar_errmsg = tiledb_asws_errmsg;
+    return TILEDB_AR_ERR;
+  }
+
+  // In all modes except TILEDB_ARRAY_WRITE, the fragment must be finalized
+  if(mode_ != TILEDB_ARRAY_WRITE) {
+    if(fragments_[0]->finalize() != TILEDB_FG_OK) {
+      tiledb_ar_errmsg = tiledb_fg_errmsg;
+      return TILEDB_AR_ERR;
+    }
+    delete fragments_[0];
+    fragments_.clear();
+  }
+
+  // Success
+  return TILEDB_AR_OK;
 }
 
 int Array::write_default(const void** buffers, const size_t* buffer_sizes) {
@@ -947,17 +964,7 @@ int Array::write_default(const void** buffers, const size_t* buffer_sizes) {
   // Dispatch the write command to the new fragment
   if(fragments_[0]->write(buffers, buffer_sizes) != TILEDB_FG_OK) {
     tiledb_ar_errmsg = tiledb_fg_errmsg;
-    return TILEDB_AR_ERR;
-  }
-
-  // In all modes except TILEDB_ARRAY_WRITE, the fragment must be finalized
-  if(mode_ != TILEDB_ARRAY_WRITE) {
-    if(fragments_[0]->finalize() != TILEDB_FG_OK) {
-      tiledb_ar_errmsg = tiledb_fg_errmsg;
-      return TILEDB_AR_ERR;
-    }
-    delete fragments_[0];
-    fragments_.clear();
+    return TILEDB_AR_ERR; 
   }
 
   // Success

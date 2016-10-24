@@ -27,9 +27,10 @@
  * 
  * @section DESCRIPTION
  *
- * It shows how to write to a subarray of a dense array. The cells are provided
- * in the user buffers in row-major order with respect to the specified subarray
- * (i.e., not following the array global cell order).
+ * It shows how to write to a dense array, providing the array cells sorted
+ * in row-major order within the specified subarray. TileDB will properly
+ * re-organize the cells into the global cell order, prior to writing them
+ * on the disk. 
  */
 
 #include "c_api.h"
@@ -39,7 +40,8 @@ int main() {
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
-  int64_t subarray[] = { 3, 4, 2, 4 };
+  // Set the subarray where the write will focus on
+  int64_t subarray[] = { 2, 4, 2, 4 };
 
   // Initialize array
   TileDB_Array* tiledb_array;
@@ -53,11 +55,14 @@ int main() {
       0);                                        // Number of attributes
 
   // Prepare cell buffers
-  int buffer_a1[] = { 9,  12,  13,  11, 14, 15 };
-  size_t buffer_a2[] = { 0, 2, 3, 5, 9, 12 };
-  const char buffer_var_a2[] = "jjmnnllllooopppp";
+  int buffer_a1[] = { 3, 6, 7, 9, 12, 13, 11, 14, 15 };
+  size_t buffer_a2[] = { 0,  4,  7,  11, 13, 14, 16, 20, 23 };
+  const char buffer_var_a2[] = "ddddggghhhhjjmnnllllooopppp";
   float buffer_a3[] = 
-      { 9.1, 9.2, 12.1, 12.2, 13.1, 13.2, 11.1, 11.2, 14.1, 14.2 };
+      { 
+        3.1, 3.2, 6.1, 6.2, 7.1, 7.2, 9.1, 9.2, 12.1, 12.2, 
+        13.1, 13.2, 11.1, 11.2, 14.1, 14.2, 15.1, 15.2
+      };
   const void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
   size_t buffer_sizes[] = 
   { 
