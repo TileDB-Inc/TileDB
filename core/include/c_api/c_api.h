@@ -576,6 +576,13 @@ typedef struct TileDB_ArrayIterator TileDB_ArrayIterator;
  * @param tiledb_array_it The TileDB array iterator to be created. The function
  *     will allocate the appropriate memory space for the iterator. 
  * @param array The directory of the array the iterator is initialized for.
+ * @param mode The read mode, which can be one of the following:
+ *    - TILEDB_ARRAY_READ\n
+ *      Reads the cells in the native order they are stored on the disk.
+ *    - TILEDB_ARRAY_READ_SORTED_COL\n
+ *      Reads the cells in column-major order within the specified subarray.
+ *    - TILEDB_ARRAY_READ_SORTED_ROW\n
+ *      Reads the cells in column-major order within the specified subarray.
  * @param subarray The subarray in which the array iterator will be
  *     constrained on. It should be a sequence of [low, high] pairs (one 
  *     pair per dimension), whose type should be the same as that of the
@@ -604,6 +611,7 @@ TILEDB_EXPORT int tiledb_array_iterator_init(
     const TileDB_CTX* tiledb_ctx,
     TileDB_ArrayIterator** tiledb_array_it,
     const char* array,
+    int mode,
     const void* subarray,
     const char** attributes,
     int attribute_num,

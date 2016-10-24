@@ -287,6 +287,13 @@ class StorageManager {
    * @param tiledb_array_it The TileDB array iterator to be created. The
    *    function will allocate the appropriate memory space for the iterator. 
    * @param array The directory of the array the iterator is initialized for.
+   * @param mode The read mode, which can be one of the following:
+   *    - TILEDB_ARRAY_READ\n
+   *      Reads the cells in the native order they are stored on the disk.
+   *    - TILEDB_ARRAY_READ_SORTED_COL\n
+   *      Reads the cells in column-major order within the specified subarray.
+   *    - TILEDB_ARRAY_READ_SORTED_ROW\n
+   *      Reads the cells in column-major order within the specified subarray.
    * @param subarray The subarray in which the array iterator will be
    *     constrained on. If it is NULL, then the subarray is set to the entire
    *     array domain. 
@@ -311,6 +318,7 @@ class StorageManager {
   int array_iterator_init(
       ArrayIterator*& array_it,
       const char* array,
+      int mode,
       const void* subarray,
       const char** attributes,
       int attribute_num,

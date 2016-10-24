@@ -646,6 +646,7 @@ int StorageManager::array_finalize(Array* array) {
 int StorageManager::array_iterator_init(
     ArrayIterator*& array_it,
     const char* array_dir,
+    int mode,
     const void* subarray,
     const char** attributes,
     int attribute_num,
@@ -656,8 +657,7 @@ int StorageManager::array_iterator_init(
   if(array_init(
       array, 
       array_dir, 
-      // TODO: revisit this and pass the mode as input - change also the website
-      TILEDB_ARRAY_READ, 
+      mode, 
       subarray, 
       attributes, 
       attribute_num) != TILEDB_SM_OK) {
