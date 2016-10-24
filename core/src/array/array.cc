@@ -287,7 +287,7 @@ int Array::read(void** buffers, size_t* buffer_sizes) {
       if(rc == TILEDB_ASRS_OK) {
         return TILEDB_AR_OK;
       } else {
-        // TODO: propagate error message
+        tiledb_ar_errmsg = tiledb_asrs_errmsg;
         return TILEDB_AR_ERR;
       }
   } else { // mode_ == TILDB_ARRAY_READ 
@@ -298,6 +298,7 @@ int Array::read(void** buffers, size_t* buffer_sizes) {
 int Array::read_default(void** buffers, size_t* buffer_sizes) {
   int buffer_i = 0;
   int attribute_id_num = attribute_ids_.size();
+  bool success = false;
 
   // Check if there are no fragments 
   if(fragments_.size() == 0) {             
@@ -315,18 +316,13 @@ int Array::read_default(void** buffers, size_t* buffer_sizes) {
       success = true;
   }
 
-    // Success
+  // Return
+  if(success) {
     return TILEDB_AR_OK;
-  } 
-
-  // There are fragments - Read
-  if(array_read_state_->read(buffers, buffer_sizes) != TILEDB_ARS_OK) {
-     tiledb_ar_errmsg = tiledb_ars_errmsg;
-     return TILEDB_AR_ERR;
+  } else {
+    tiledb_ar_errmsg = tiledb_ars_errmsg;
+    return TILEDB_AR_ERR;
   }
-
-  // Success
-  return TILEDB_AR_OK;
 }
 
 bool Array::read_mode() const {
@@ -610,7 +606,7 @@ int Array::init(
   
   // Set attribute ids
   if(array_schema->get_attribute_ids(attributes_vec, attribute_ids_) 
-         != TILEDB_AS_OK)
+         != TILEDB_AS_OK) {
     tiledb_ar_errmsg = tiledb_as_errmsg;
     return TILEDB_AR_ERR;
   }
@@ -643,7 +639,7 @@ int Array::init(
        mode_ == TILEDB_ARRAY_WRITE_SORTED_ROW) { 
       array_sorted_write_state_ = new ArraySortedWriteState(this);
       if(array_sorted_write_state_->init() != TILEDB_ASWS_OK) {
-        // TODO: carry the error message, tiledb_ar_errmsg = tiledb_asrs_errmsg
+        tiledb_ar_errmsg = tiledb_asws_errmsg;
         delete array_sorted_write_state_;
         array_sorted_write_state_ = NULL;
         return TILEDB_AR_ERR; 
@@ -665,7 +661,7 @@ int Array::init(
     if(mode_ != TILEDB_ARRAY_READ) { 
       array_sorted_read_state_ = new ArraySortedReadState(this);
       if(array_sorted_read_state_->init() != TILEDB_ASRS_OK) {
-        // TODO: carry the error message, tiledb_ar_errmsg = tiledb_asrs_errmsg
+        tiledb_ar_errmsg = tiledb_asrs_errmsg;
         delete array_sorted_read_state_;
         array_sorted_read_state_ = NULL;
         return TILEDB_AR_ERR; 
@@ -735,9 +731,8 @@ int Array::reset_attributes(
     return TILEDB_AR_ERR;
 
   // Reset subarray so that the read/write states are flushed
-  if(reset_subarray(subarray_) != TILEDB_AR_OK)
+  if(reset_subarray(subarray_) != TILEDB_AR_OK) 
     return TILEDB_AR_ERR;
-  }
 
   // Success
   return TILEDB_AR_OK;
@@ -775,7 +770,7 @@ int Array::reset_subarray(const void* subarray) {
     if(fragments_.size() != 0) {
       assert(fragments_.size() == 1);
       if(fragments_[0]->finalize() != TILEDB_FG_OK)
-        // TODO: propagate error message here
+        tiledb_ar_errmsg = tiledb_fg_errmsg;
         return TILEDB_AR_ERR;
       delete fragments_[0];
       fragments_.clear();
@@ -788,7 +783,7 @@ int Array::reset_subarray(const void* subarray) {
        mode_ == TILEDB_ARRAY_WRITE_SORTED_ROW) { 
       array_sorted_write_state_ = new ArraySortedWriteState(this);
       if(array_sorted_write_state_->init() != TILEDB_ASWS_OK) {
-        // TODO: carry the error message, tiledb_ar_errmsg = tiledb_asws_errmsg
+        tiledb_ar_errmsg = tiledb_asws_errmsg;
         delete array_sorted_write_state_;
         array_sorted_write_state_ = NULL;
         return TILEDB_AR_ERR; 
@@ -831,7 +826,7 @@ int Array::reset_subarray(const void* subarray) {
     if(mode_ != TILEDB_ARRAY_READ) { 
       array_sorted_read_state_ = new ArraySortedReadState(this);
       if(array_sorted_read_state_->init() != TILEDB_ASRS_OK) {
-        // TODO: carry the error message, tiledb_ar_errmsg = tiledb_asrs_errmsg
+      tiledb_ar_errmsg = tiledb_asrs_errmsg;
         delete array_sorted_read_state_;
         array_sorted_read_state_ = NULL;
         return TILEDB_AR_ERR; 
