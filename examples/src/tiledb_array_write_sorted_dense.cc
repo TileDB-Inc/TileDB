@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_read_dense_1.cc
+ * @file   tiledb_array_write_sorted_dense.cc
  *
  * @section LICENSE
  *
@@ -27,63 +27,58 @@
  * 
  * @section DESCRIPTION
  *
- * It shows how to read a complete dense array.
+ * It shows how to write to a dense array, providing the array cells sorted
+ * in row-major order within the specified subarray. TileDB will properly
+ * re-organize the cells into the global cell order, prior to writing them
+ * on the disk. 
  */
 
 #include "c_api.h"
-#include <cstdio>
 
 int main() {
   // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
-  // Initialize array 
+  // Set the subarray where the write will focus on
+  int64_t subarray[] = { 2, 4, 2, 4 };
+
+  // Initialize array
   TileDB_Array* tiledb_array;
   tiledb_array_init(
-      tiledb_ctx,                                       // Context
-      &tiledb_array,                                    // Array object
-      "my_workspace/dense_arrays/my_array_A",           // Array name
-      TILEDB_ARRAY_READ,                                // Mode
-      NULL,                                             // Whole domain
-      NULL,                                             // All attributes
-      0);                                               // Number of attributes
+      tiledb_ctx,                                // Context 
+      &tiledb_array,                             // Array object
+      "my_workspace/dense_arrays/my_array_A",    // Array name
+      TILEDB_ARRAY_WRITE_SORTED_ROW,             // Mode
+      subarray,                                  // Subarray
+      NULL,                                      // All attributes
+      0);                                        // Number of attributes
 
-  // Prepare cell buffers 
-  int buffer_a1[16];
-  size_t buffer_a2[16];
-  char buffer_var_a2[40];
-  float buffer_a3[32];
-  void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
+  // Prepare cell buffers
+  int buffer_a1[] = { 3, 6, 7, 9, 12, 13, 11, 14, 15 };
+  size_t buffer_a2[] = { 0,  4,  7,  11, 13, 14, 16, 20, 23 };
+  const char buffer_var_a2[] = "ddddggghhhhjjmnnllllooopppp";
+  float buffer_a3[] = 
+      { 
+        3.1, 3.2, 6.1, 6.2, 7.1, 7.2, 9.1, 9.2, 12.1, 12.2, 
+        13.1, 13.2, 11.1, 11.2, 14.1, 14.2, 15.1, 15.2
+      };
+  const void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
   size_t buffer_sizes[] = 
   { 
       sizeof(buffer_a1),  
       sizeof(buffer_a2),
-      sizeof(buffer_var_a2),
+      sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
       sizeof(buffer_a3)
   };
 
-  // Read from array
-  tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
+  // Write to array
+  tiledb_array_write(tiledb_array, buffers, buffer_sizes); 
 
-  // Print only non-empty cell values
-  int64_t result_num = buffer_sizes[0] / sizeof(int);
-  printf(" a1\t    a2\t   (a3.first, a3.second)\n");
-  printf("-----------------------------------------\n");
-  for(int i=0; i<result_num; ++i) { 
-    if(buffer_a1[i] != TILEDB_EMPTY_INT32) {    
-      printf("%3d", buffer_a1[i]);
-      size_t var_size = (i != result_num-1) ? buffer_a2[i+1] - buffer_a2[i] 
-                                            : buffer_sizes[2] - buffer_a2[i];
-      printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);
-      printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
-    }
-  }
-
-  // Finalize the array
+  // Finalize array
   tiledb_array_finalize(tiledb_array);
 
-  /* Finalize context. */
+  // Finalize context
   tiledb_ctx_finalize(tiledb_ctx);
 
   return 0;

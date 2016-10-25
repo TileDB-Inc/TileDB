@@ -30,6 +30,7 @@
  * This file implements the WriteState class.
  */
 
+#include "comparators.h"
 #include "constants.h"
 #include "utils.h"
 #include "write_state.h"
@@ -217,7 +218,9 @@ int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   }
 
   // Dispatch the proper write command
-  if(fragment_->mode() == TILEDB_ARRAY_WRITE) {                  // SORTED
+  if(fragment_->mode() == TILEDB_ARRAY_WRITE ||
+     fragment_->mode() == TILEDB_ARRAY_WRITE_SORTED_COL ||
+     fragment_->mode() == TILEDB_ARRAY_WRITE_SORTED_ROW) {       // SORTED
     if(fragment_->dense())           // DENSE FRAGMENT
       return write_dense(buffers, buffer_sizes);          
     else                             // SPARSE FRAGMENT

@@ -121,6 +121,9 @@ class BookKeeping {
   /** Returns the non-empty domain in which the fragment is constrained. */
   const void* non_empty_domain() const;
 
+  /** Returns true if the array is in read mode. */
+  bool read_mode() const;
+
   /** Returns the number of tiles in the fragment. */
   int64_t tile_num() const;
 
@@ -132,6 +135,9 @@ class BookKeeping {
 
   /** Returns the variable tile sizes. */
   const std::vector<std::vector<size_t> >& tile_var_sizes() const;
+
+  /** Returns true if the array is in write mode. */
+  bool write_mode() const;
 
 
 

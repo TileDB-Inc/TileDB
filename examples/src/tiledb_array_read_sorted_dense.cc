@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_read_dense_1.cc
+ * @file   tiledb_array_read_sorted_dense.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,9 @@
  * 
  * @section DESCRIPTION
  *
- * It shows how to read a complete dense array.
+ * It shows how to read from a dense array, constraining the read
+ * to a specific subarray and subset of attributes. The cells are copied to the
+ * input buffers sorted in row-major order within the selected subarray. 
  */
 
 #include "c_api.h"
@@ -38,48 +40,40 @@ int main() {
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
+  // Subarray and attributes
+  int64_t subarray[] = { 3, 4, 2, 4 }; 
+  const char* attributes[] = { "a1" };
+
   // Initialize array 
   TileDB_Array* tiledb_array;
   tiledb_array_init(
       tiledb_ctx,                                       // Context
       &tiledb_array,                                    // Array object
       "my_workspace/dense_arrays/my_array_A",           // Array name
-      TILEDB_ARRAY_READ,                                // Mode
-      NULL,                                             // Whole domain
-      NULL,                                             // All attributes
-      0);                                               // Number of attributes
+      TILEDB_ARRAY_READ_SORTED_ROW,                     // Mode
+      subarray,                                         // Constrain in subarray
+      attributes,                                       // Subset on attributes
+      1);                                               // Number of attributes
 
   // Prepare cell buffers 
-  int buffer_a1[16];
-  size_t buffer_a2[16];
-  char buffer_var_a2[40];
-  float buffer_a3[32];
-  void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
-  size_t buffer_sizes[] = 
-  { 
-      sizeof(buffer_a1),  
-      sizeof(buffer_a2),
-      sizeof(buffer_var_a2),
-      sizeof(buffer_a3)
-  };
+  int buffer_a1[3];
+  void* buffers[] = { buffer_a1 };
+  size_t buffer_sizes[] = { sizeof(buffer_a1) };
 
-  // Read from array
-  tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
 
-  // Print only non-empty cell values
-  int64_t result_num = buffer_sizes[0] / sizeof(int);
-  printf(" a1\t    a2\t   (a3.first, a3.second)\n");
-  printf("-----------------------------------------\n");
-  for(int i=0; i<result_num; ++i) { 
-    if(buffer_a1[i] != TILEDB_EMPTY_INT32) {    
-      printf("%3d", buffer_a1[i]);
-      size_t var_size = (i != result_num-1) ? buffer_a2[i+1] - buffer_a2[i] 
-                                            : buffer_sizes[2] - buffer_a2[i];
-      printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);
-      printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
-    }
-  }
+  // Loop until no overflow
+  printf(" a1\n----\n");
+  do {
+    // Read from array
+    printf("Reading cells...\n"); 
+    tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
 
+    // Print cell values
+    int64_t result_num = buffer_sizes[0] / sizeof(int);
+    for(int i=0; i<result_num; ++i) 
+      printf("%3d\n", buffer_a1[i]);
+  } while(tiledb_array_overflow(tiledb_array, 0) == 1);
+ 
   // Finalize the array
   tiledb_array_finalize(tiledb_array);
 

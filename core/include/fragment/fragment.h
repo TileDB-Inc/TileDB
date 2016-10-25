@@ -112,6 +112,9 @@ class Fragment {
   /** Returns the mode of the fragment. */
   int mode() const;
 
+  /** Returns true if the array is in read mode. */
+  bool read_mode() const;
+
   /** Returns the read state of the fragment. */
   ReadState* read_state() const;
 
@@ -120,6 +123,9 @@ class Fragment {
    * of a variable-sized attribute.
    */
   size_t tile_size(int attribute_id) const;
+
+  /** Returns true if the array is in write mode. */
+  bool write_mode() const;
 
 
 

@@ -53,6 +53,7 @@ int main() {
       tiledb_ctx,                                    // Context
       &tiledb_array_it,                              // Array iterator
       "my_workspace/sparse_arrays/my_array_B",       // Array name
+      TILEDB_ARRAY_READ,                             // Mode
       subarray,                                      // Constrain in subarray
       attributes,                                    // Subset on attributes
       1,                                             // Number of attributes

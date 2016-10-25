@@ -79,6 +79,19 @@ void adjacent_slashes_dedup(std::string& value) {
               value.end()); 
 }
 
+bool array_read_mode(int mode) {
+  return mode == TILEDB_ARRAY_READ || 
+         mode == TILEDB_ARRAY_READ_SORTED_COL ||
+         mode == TILEDB_ARRAY_READ_SORTED_ROW;
+}
+
+bool array_write_mode(int mode) {
+  return mode == TILEDB_ARRAY_WRITE || 
+         mode == TILEDB_ARRAY_WRITE_SORTED_COL || 
+         mode == TILEDB_ARRAY_WRITE_SORTED_ROW || 
+         mode == TILEDB_ARRAY_WRITE_UNSORTED;
+}
+
 bool both_slashes(char a, char b) {
   return a == '/' && b == '/';
 }

@@ -35,6 +35,8 @@
 
 #include "aio_request.h"
 #include "array_read_state.h"
+#include "array_sorted_read_state.h"
+#include "array_sorted_write_state.h"
 #include "array_schema.h"
 #include "book_keeping.h"
 #include "config.h"
@@ -71,6 +73,8 @@ extern std::string tiledb_ar_errmsg;
 
 
 class ArrayReadState;
+class ArraySortedReadState;
+class ArraySortedWriteState;
 class Fragment;
 
 
@@ -127,6 +131,9 @@ class Array {
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
+  /** Returns the array clone. */
+  Array* array_clone() const;
+
   /** Returns the ids of the attributes the array focuses on. */
   const std::vector<int>& attribute_ids() const;
 
@@ -160,8 +167,36 @@ class Array {
   bool overflow(int attribute_id) const;
 
   /**
-   * Performs a read operation in an array, which must be initialized with mode
-   * TILEDB_ARRAY_READ. The function retrieves the result cells that lie inside
+   * Performs a read operation in an array, which must be initialized in read 
+   * mode. The function retrieves the result cells that lie inside
+   * the subarray specified in init() or reset_subarray(). The results are
+   * written in input buffers provided by the user, which are also allocated by
+   * the user. Note that the results are written in the buffers in the same
+   * order as that specified by the user in the init() function. 
+   * 
+   * @param buffers An array of buffers, one for each attribute. These must be
+   *     provided in the same order as the attributes specified in
+   *     init() or reset_attributes(). The case of variable-sized attributes is
+   *     special. Instead of providing a single buffer for such an attribute,
+   *     **two** must be provided: the second will hold the variable-sized cell
+   *     values, whereas the first holds the start offsets of each cell in the
+   *     second buffer.
+   * @param buffer_sizes The sizes (in bytes) allocated by the user for the
+   *     input buffers (there is a one-to-one correspondence). The function will
+   *     attempt to write as many results as can fit in the buffers, and
+   *     potentially alter the buffer size to indicate the size of the *useful*
+   *     data written in the buffer. If a buffer cannot hold all results, the
+   *     function will still succeed, writing as much data as it can and turning
+   *     on an overflow flag which can be checked with function overflow(). The
+   *     next invocation will resume for the point the previous one stopped,
+   *     without inflicting a considerable performance penalty due to overflow.
+   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   */
+  int read(void** buffers, size_t* buffer_sizes); 
+
+  /**
+   * Performs a read operation in an array, which must be initialized in read 
+   * mode. The function retrieves the result cells that lie inside
    * the subarray specified in init() or reset_subarray(). The results are
    * written in input buffers provided by the user, which are also allocated by
    * the user. Note that the results are written in the buffers in the same
@@ -185,10 +220,16 @@ class Array {
    *     without inflicting a considerable performance penalty due to overflow.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int read(void** buffers, size_t* buffer_sizes); 
+  int read_default(void** buffers, size_t* buffer_sizes); 
+
+  /** Returns true if the array is in read mode. */
+  bool read_mode() const;
 
   /** Returns the subarray in which the array is constrained. */
   const void* subarray() const;
+
+  /** Returns true if the array is in write mode. */
+  bool write_mode() const;
 
 
 
@@ -199,7 +240,7 @@ class Array {
 
   /**
    * Consolidates all fragments into a new single one, on a per-attribute basis.
-   * Returns the new fragment (which has to be finalized outside this functions),
+   * Returns the new fragment (which has to be finalized outside this function),
    * along with the names of the old (consolidated) fragments (which also have
    * to be deleted outside this function).
    *
@@ -238,18 +279,24 @@ class Array {
    *     of the array.
    * @param mode The mode of the array. It must be one of the following:
    *    - TILEDB_ARRAY_WRITE 
+   *    - TILEDB_ARRAY_WRITE_SORTED_COL 
+   *    - TILEDB_ARRAY_WRITE_SORTED_ROW
    *    - TILEDB_ARRAY_WRITE_UNSORTED 
    *    - TILEDB_ARRAY_READ 
-   * @param subarray The subarray in which the array read/write will be
-   *     constrained on. If it is NULL, then the subarray is set to the entire
-   *     array domain. For the case of writes, this is meaningful only for
-   *     dense arrays, and specifically dense writes.
+   *    - TILEDB_ARRAY_READ_SORTED_COL 
+   *    - TILEDB_ARRAY_READ_SORTED_ROW
    * @param attributes A subset of the array attributes the read/write will be
    *     constrained on. A NULL value indicates **all** attributes (including
    *     the coordinates in the case of sparse arrays).
    * @param attribute_num The number of the input attributes. If *attributes* is
    *     NULL, then this should be set to 0.
+   * @param subarray The subarray in which the array read/write will be
+   *     constrained on. If it is NULL, then the subarray is set to the entire
+   *     array domain. For the case of writes, this is meaningful only for
+   *     dense arrays, and specifically dense writes.
    * @param config Configuration parameters.
+   * @param array_clone An clone of this array object. Used specifically in 
+   *     asynchronous IO (AIO) read/write operations.
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
   int init(
@@ -259,8 +306,9 @@ class Array {
       int mode,
       const char** attributes,
       int attribute_num,
-      const void* range,
-      const Config* config);
+      const void* subarray,
+      const Config* config,
+      Array* array_clone = NULL);
 
   /**
    * Resets the attributes used upon initialization of the array. 
@@ -287,6 +335,16 @@ class Array {
   int reset_subarray(const void* subarray);
 
   /**
+   * Same as reset_subarray(), with the difference that the 
+   * ArraySortedReadState object of the array is not re-initialized.
+   *
+   * @param subarray The new subarray. Note that the type of the values in
+   *     *subarray* should match the coordinates type in the array schema.
+   * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
+   */
+  int reset_subarray_soft(const void* subarray);
+
+  /**
    * Performs a write operation in the array. The cell values are provided
    * in a set of buffers (one per attribute specified upon initialization).
    * Note that there must be a one-to-one correspondance between the cell
@@ -303,6 +361,17 @@ class Array {
    *      of times, and all the writes will occur in the same fragment. 
    *      Moreover, the buffers need not be synchronized, i.e., some buffers
    *      may have more cells than others when the function is invoked.
+   *    - TILEDB_ARRAY_WRITE_SORTED_COL: \n
+   *      In this mode, the cell values are provided in the buffer in 
+   *      column-major
+   *      order with respect to the subarray used upon array initialization. 
+   *      TileDB will properly re-organize the cells so that they follow the 
+   *      array cell order for storage on the disk.
+   *    - TILEDB_ARRAY_WRITE_SORTED_ROW: \n
+   *      In this mode, the cell values are provided in the buffer in row-major
+   *      order with respect to the subarray used upon array initialization. 
+   *      TileDB will properly re-organize the cells so that they follow the 
+   *      array cell order for storage on the disk.
    *    - TILEDB_ARRAY_WRITE_UNSORTED: \n
    *      This mode is applicable to sparse arrays, or when writing sparse
    *      updates to a dense array. One of the buffers holds the coordinates.
@@ -325,7 +394,31 @@ class Array {
    *     a one-to-one correspondence).
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int write(const void** buffers, const size_t* buffer_sizes); 
+  int write(const void** buffers, const size_t* buffer_sizes);
+
+  /**
+   * Performs a write operation in the array. The cell values are provided
+   * in a set of buffers (one per attribute specified upon initialization).
+   * Note that there must be a one-to-one correspondance between the cell
+   * values across the attribute buffers.
+   *
+   * The array must be initialized in moder TILEDB_ARRAY_WRITE or 
+   * TILEDB_ARRAY_WRITE_UNSORTED. These modes are essentially the default modes.
+   * Modes TILEDB_ARRAY_WRITE_SORTED_COL and TILEDB_ARRAY_WRITE_SORTED_ROW are
+   * more complicated and, thus, handled by the ArraySortedWriteState class.
+   * 
+   * @param buffers An array of buffers, one for each attribute. These must be
+   *     provided in the same order as the attributes specified in
+   *     init() or reset_attributes(). The case of variable-sized attributes is
+   *     special. Instead of providing a single buffer for such an attribute,
+   *     **two** must be provided: the second holds the variable-sized cell
+   *     values, whereas the first holds the start offsets of each cell in the
+   *     second buffer.
+   * @param buffer_sizes The sizes (in bytes) of the input buffers (there is
+   *     a one-to-one correspondence).
+   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   */
+  int write_default(const void** buffers, const size_t* buffer_sizes); 
 
  private:
   /* ********************************* */
@@ -340,16 +433,22 @@ class Array {
   pthread_mutex_t aio_mtx_;
   /** The queue that stores the pending AIO requests. */
   std::queue<AIO_Request*> aio_queue_;
-  /** The thread tha handles all the AIO reads and writes in the background. */
+  /** The thread that handles all the AIO reads and writes in the background. */
   pthread_t aio_thread_;
   /** Indicates whether the AIO thread was canceled or not. */
   bool aio_thread_canceled_;
   /** Indicates whether the AIO thread was created or not. */
   bool aio_thread_created_;
+  /** An array clone, used in AIO requests. */
+  Array* array_clone_;
   /** The array schema. */
   const ArraySchema* array_schema_;
   /** The read state of the array. */
   ArrayReadState* array_read_state_;
+  /** The sorted read state of the array. */
+  ArraySortedReadState* array_sorted_read_state_;
+  /** The sorted write state of the array. */
+  ArraySortedWriteState* array_sorted_write_state_;
   /** 
    * The ids of the attributes the array is initialized with. Note that the
    * array may be initialized with a subset of attributes when writing or
@@ -362,9 +461,13 @@ class Array {
   std::vector<Fragment*> fragments_;
   /** 
    * The array mode. It must be one of the following:
-   *    - TILEDB_WRITE 
-   *    - TILEDB_WRITE_UNSORTED 
-   *    - TILEDB_READ 
+   *    - TILEDB_ARRAY_WRITE 
+   *    - TILEDB_ARRAY_WRITE_SORTED_COL
+   *    - TILEDB_ARRAY_WRITE_SORTED_ROW
+   *    - TILEDB_ARRAY_WRITE_UNSORTED 
+   *    - TILEDB_ARRAY_READ 
+   *    - TILEDB_ARRAY_READ_SORTED_COL
+   *    - TILEDB_ARRAY_READ_SORTED_ROW
    */
   int mode_;
   /**
@@ -394,13 +497,14 @@ class Array {
    * Function called by the AIO thread. 
    *
    * @param context This is practically the Array object for which the function
-   *     is called (typically *this* is passed to ths argument by the caller).
+   *     is called (typically *this* is passed to this argument by the caller).
    */
   static void *aio_handler(void* context);
 
   /**
    * Pusghes an AIO request into the AIO queue.
    *
+   * @param aio_request The AIO request. 
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */ 
   int aio_push_request(AIO_Request* aio_request);
@@ -433,7 +537,7 @@ class Array {
   std::string new_fragment_name() const;
 
   /**
-   * Opens the existing fragments in TILEDB_ARRAY_READ_MODE.
+   * Opens the existing fragments.
    *
    * @param fragment_names The vector with the fragment names.
    * @param book_keeping The book-keeping of the array fragments.

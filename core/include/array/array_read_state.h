@@ -142,6 +142,9 @@ class ArrayReadState {
   /*             ACCESSORS             */
   /* ********************************* */
 
+  /** Indicates whether the read on at least one attribute overflowed. */
+  bool overflow() const;
+
   /** Indicates whether the read on a particular attribute overflowed. */
   bool overflow(int attribute_id) const;
 
