@@ -104,6 +104,22 @@ class WriteState {
    * @return TILEDB_WS_OK for success and TILEDB_WS_ERR for error. 
    */
   int finalize();
+
+  /**
+   * Syncs all attribute files in the fragment.
+   * 
+   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   */
+  int sync();
+
+  /**
+   * Syncs the input attribute in the fragment.
+   * 
+   * @param attribute The attribute name.
+   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   */
+  int sync_attribute(const std::string& attribute);
+
   
   /**
    * Performs a write operation in the fragment. The cell values are provided

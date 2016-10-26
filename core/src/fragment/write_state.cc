@@ -34,6 +34,7 @@
 #include "constants.h"
 #include "utils.h"
 #include "write_state.h"
+#include "utils.h"
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -179,9 +180,143 @@ int WriteState::finalize() {
     tile_cell_num_[attribute_num] = 0;
   }
 
+  // Sync all attributes
+  sync();
+
   // Success
   return TILEDB_WS_OK;
 }
+
+int WriteState::sync() {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
+  int write_method = fragment_->array()->config()->write_method();
+  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+  std::string filename;
+  int rc;
+
+  // Sync all attributes
+  for(int i=0; i<(int)attribute_ids.size(); ++i) {
+    // For all attributes
+    filename = 
+        fragment_->fragment_name() + "/" + 
+        array_schema->attribute(attribute_ids[i]) + TILEDB_FILE_SUFFIX;
+    if(write_method == TILEDB_IO_WRITE)
+      rc = ::sync(filename.c_str());
+    else if(write_method == TILEDB_IO_MPI) 
+      rc = mpi_io_sync(mpi_comm, filename.c_str());
+    else
+      assert(0);
+
+    // Handle error
+    if(rc != TILEDB_UT_OK) {
+      tiledb_ws_errmsg = tiledb_ut_errmsg;
+      return TILEDB_WS_ERR;
+    }
+
+    // Only for variable-size attributes (they have an extra file)
+    if(array_schema->var_size(attribute_ids[i])) {
+      filename = 
+          fragment_->fragment_name() + "/" + 
+          array_schema->attribute(attribute_ids[i]) + "_var" + 
+          TILEDB_FILE_SUFFIX;
+      if(write_method == TILEDB_IO_WRITE)
+        rc = ::sync(filename.c_str());
+      else if(write_method == TILEDB_IO_MPI) 
+        rc = mpi_io_sync(mpi_comm, filename.c_str());
+      else
+        assert(0);
+    }
+
+    // Handle error
+    if(rc != TILEDB_UT_OK) {
+      tiledb_ws_errmsg = tiledb_ut_errmsg;
+      return TILEDB_WS_ERR;
+    }
+  }
+
+  // Sync fragment directory
+  filename = fragment_->fragment_name();
+  if(write_method == TILEDB_IO_WRITE)
+    rc = ::sync(filename.c_str());
+  else if(write_method == TILEDB_IO_MPI) 
+    rc = mpi_io_sync(mpi_comm, filename.c_str());
+  else
+    assert(0);
+
+  // Handle error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    return TILEDB_WS_ERR;
+  }
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
+int WriteState::sync_attribute(const std::string& attribute) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int write_method = fragment_->array()->config()->write_method();
+  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+  int attribute_id = array_schema->attribute_id(attribute); 
+  std::string filename;
+  int rc;
+
+  // Sync attribute
+  filename = fragment_->fragment_name() + "/" + attribute + TILEDB_FILE_SUFFIX;
+  if(write_method == TILEDB_IO_WRITE)
+    rc = ::sync(filename.c_str());
+  else if(write_method == TILEDB_IO_MPI) 
+    rc = mpi_io_sync(mpi_comm, filename.c_str());
+  else
+    assert(0);
+
+  // Handle error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    return TILEDB_WS_ERR;
+  }
+
+  // Only for variable-size attributes (they have an extra file)
+  if(array_schema->var_size(attribute_id)) {
+    filename = 
+        fragment_->fragment_name() + "/" + 
+        attribute + "_var" + TILEDB_FILE_SUFFIX;
+    if(write_method == TILEDB_IO_WRITE)
+      rc = ::sync(filename.c_str());
+    else if(write_method == TILEDB_IO_MPI) 
+      rc = mpi_io_sync(mpi_comm, filename.c_str());
+    else
+      assert(0);
+  }
+
+  // Handle error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    return TILEDB_WS_ERR;
+  }
+
+  // Sync fragment directory
+  filename = fragment_->fragment_name();
+  if(write_method == TILEDB_IO_WRITE)
+    rc = ::sync(filename.c_str());
+  else if(write_method == TILEDB_IO_MPI) 
+    rc = mpi_io_sync(mpi_comm, filename.c_str());
+  else
+    assert(0);
+
+  // Handle error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    return TILEDB_WS_ERR;
+  }
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
 
 int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   // Create fragment directory if it does not exist

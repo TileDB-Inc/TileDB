@@ -423,6 +423,17 @@ int mpi_io_read_from_file(
     void* buffer,
     size_t length);
 
+/**
+ * Syncs a file or directory using MPI-IO.
+ *
+ * @param mpi_comm The MPI communicator.
+ * @param filename The name of the file.
+ * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
+ */
+int mpi_io_sync(
+    const MPI_Comm* mpi_comm,
+    const char* filaname);
+
 /** 
  * Writes the input buffer to a file using MPI-IO.
  * 
@@ -571,6 +582,14 @@ std::string real_dir(const std::string& dir);
  * @return *true* if *value* starts with the *prefix*, and *false* otherwise. 
  */
 bool starts_with(const std::string& value, const std::string& prefix);
+
+/** 
+ * Syncs a file or directory.
+ * 
+ * @param filename The name of the file.
+ * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
+ */
+int sync(const char* filename);
 
 /** 
  * Writes the input buffer to a file.

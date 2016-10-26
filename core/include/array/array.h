@@ -345,6 +345,21 @@ class Array {
   int reset_subarray_soft(const void* subarray);
 
   /**
+   * Syncs all currently written files in the input array. 
+   *
+   * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
+   */
+  int sync();
+
+  /**
+   * Syncs the currently written files associated with the input attribute
+   * in the input array. 
+   *
+   * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
+   */
+  int sync_attribute(const std::string& attribute);
+
+  /**
    * Performs a write operation in the array. The cell values are provided
    * in a set of buffers (one per attribute specified upon initialization).
    * Note that there must be a one-to-one correspondance between the cell

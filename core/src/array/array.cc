@@ -886,6 +886,48 @@ int Array::reset_subarray_soft(const void* subarray) {
   return TILEDB_AR_OK;
 }
 
+int Array::sync() {
+  // Sanity check
+  if(!write_mode()) {
+    std::string errmsg = "Cannot sync array; Invalid mode";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
+    return TILEDB_AR_ERR;
+  }
+
+  // Sanity check
+  assert(fragments_.size() == 1);
+
+  // Sync fragment
+  if(fragments_[0]->sync() != TILEDB_FG_OK) {
+    tiledb_ar_errmsg = tiledb_fg_errmsg;
+    return TILEDB_AR_ERR;
+  } else {
+    return TILEDB_AR_OK;
+  }
+}
+
+int Array::sync_attribute(const std::string& attribute) {
+  // Sanity checks
+  if(!write_mode()) {
+    std::string errmsg = "Cannot sync attribute; Invalid mode";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
+    return TILEDB_AR_ERR;
+  }
+
+  // Sanity check
+  assert(fragments_.size() == 1);
+
+  // Sync fragment
+  if(fragments_[0]->sync_attribute(attribute) != TILEDB_FG_OK) {
+    tiledb_ar_errmsg = tiledb_fg_errmsg;
+    return TILEDB_AR_ERR;
+  } else {
+    return TILEDB_AR_OK;
+  }
+}
+
 int Array::write(const void** buffers, const size_t* buffer_sizes) {
   // Sanity checks
   if(!write_mode()) {

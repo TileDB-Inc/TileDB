@@ -150,8 +150,7 @@ bool Fragment::write_mode() const {
 /* ****************************** */
 
 int Fragment::finalize() {
-  // The fragment was opened for writing
-  if(write_state_ != NULL) {
+  if(write_state_ != NULL) {  // WRITE
     assert(book_keeping_ != NULL);  
     int rc_ws = write_state_->finalize();
     int rc_bk = book_keeping_->finalize();
@@ -179,7 +178,7 @@ int Fragment::finalize() {
 
     // Success
     return TILEDB_FG_OK;
-  } else { // The fragment was opened for reading
+  } else {                    // READ
     // Nothing to be done
     return TILEDB_FG_OK;
   } 
@@ -251,6 +250,32 @@ int Fragment::init(
 
 void Fragment::reset_read_state() {
   read_state_->reset();
+}
+
+int Fragment::sync() {
+  // Sanity check
+  assert(write_state_ != NULL);
+
+  // Sync
+  if(write_state_->sync() != TILEDB_WS_OK) {
+    tiledb_fg_errmsg = tiledb_ws_errmsg;
+    return TILEDB_FG_ERR;
+  } else {
+    return TILEDB_FG_OK;
+  }
+}
+
+int Fragment::sync_attribute(const std::string& attribute) {
+  // Sanity check
+  assert(write_state_ != NULL);
+
+  // Sync attribute
+  if(write_state_->sync_attribute(attribute) != TILEDB_WS_OK) {
+    tiledb_fg_errmsg = tiledb_ws_errmsg;
+    return TILEDB_FG_ERR;
+  } else {
+    return TILEDB_FG_OK;
+  }
 }
 
 int Fragment::write(const void** buffers, const size_t* buffer_sizes) {

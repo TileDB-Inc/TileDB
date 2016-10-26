@@ -724,6 +724,49 @@ int tiledb_array_finalize(TileDB_Array* tiledb_array) {
   return TILEDB_OK;
 }
 
+int tiledb_array_sync(TileDB_Array* tiledb_array) {
+  // Sanity check
+  if(!sanity_check(tiledb_array) ||
+     !sanity_check(tiledb_array->tiledb_ctx_))
+    return TILEDB_ERR;
+
+  // Sync
+  int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_sync(
+               tiledb_array->array_);
+
+  // Error
+  if(rc != TILEDB_SM_OK) {
+    strcpy(tiledb_errmsg, tiledb_sm_errmsg.c_str());
+    return TILEDB_ERR; 
+  }
+   
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_array_sync_attribute(
+    TileDB_Array* tiledb_array,
+    const char* attribute) {
+  // Sanity check
+  if(!sanity_check(tiledb_array) ||
+     !sanity_check(tiledb_array->tiledb_ctx_))
+    return TILEDB_ERR;
+
+  // Sync attribute
+  int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_sync_attribute(
+               tiledb_array->array_,
+               attribute);
+
+  // Error
+  if(rc != TILEDB_SM_OK) {
+    strcpy(tiledb_errmsg, tiledb_sm_errmsg.c_str());
+    return TILEDB_ERR; 
+  }
+   
+  // Success
+  return TILEDB_OK;
+}
+
 typedef struct TileDB_ArrayIterator {
   ArrayIterator* array_it_;
   const TileDB_CTX* tiledb_ctx_;
