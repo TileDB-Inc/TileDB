@@ -686,6 +686,7 @@ class ReadState {
       off_t offset,
       size_t tile_size);
 
+#ifdef HAVE_MPI
   /** 
    * Reads a tile from the disk for an attribute into a local buffer, using 
    * MPI-IO. This function focuses on the case of GZIP compression.
@@ -714,6 +715,7 @@ class ReadState {
       int attribute_id,
       off_t offset,
       size_t tile_size);
+#endif
 
   /**
    * Prepares a tile from the disk for reading for an attribute.    

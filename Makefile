@@ -54,6 +54,12 @@ ifeq ($(USE_PARALLEL_SORT),1)
   CPPFLAGS += -DUSE_PARALLEL_SORT 
 endif
 
+# --- Support for MPI --- #
+MPI =
+ifeq ($(MPI),1)
+  CPPFLAGS += -DHAVE_MPI
+endif
+
 # --- Compilers --- #
 CXX = g++   
 

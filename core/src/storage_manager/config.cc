@@ -47,7 +47,9 @@ Config::Config() {
   home_ = "";
   read_method_ = TILEDB_IO_MMAP;
   write_method_ = TILEDB_IO_WRITE;
+#ifdef HAVE_MPI
   mpi_comm_ = NULL;
+#endif
 }
 
 Config::~Config() {
@@ -62,7 +64,9 @@ Config::~Config() {
 
 void Config::init(
     const char* home,
+#ifdef HAVE_MPI
     MPI_Comm* mpi_comm,
+#endif
     int read_method,
     int write_method) {
   // Initialize home
@@ -71,8 +75,10 @@ void Config::init(
   else
     home_ = home;
 
+#ifdef HAVE_MPI
   // Initialize MPI communicator
   mpi_comm_ = mpi_comm;
+#endif
 
   // Initialize read method
   read_method_ = read_method;
@@ -99,9 +105,11 @@ const std::string& Config::home() const {
   return home_;
 }
 
+#ifdef HAVE_MPI
 MPI_Comm* Config::mpi_comm() const {
   return mpi_comm_;
 }
+#endif
 
 int Config::read_method() const {
   return read_method_;
