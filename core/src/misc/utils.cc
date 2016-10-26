@@ -635,6 +635,7 @@ bool is_workspace(const std::string& dir) {
     return false;
 }
 
+#ifdef HAVE_MPI
 int mpi_io_read_from_file(
     const MPI_Comm* mpi_comm,
     const std::string& filename,
@@ -804,6 +805,7 @@ int mpi_io_sync(
   // Success 
   return TILEDB_UT_OK;
 }
+#endif
 
 #ifdef HAVE_OPENMP
 int mutex_destroy(omp_lock_t* mtx) {

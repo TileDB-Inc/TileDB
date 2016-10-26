@@ -34,12 +34,13 @@
  */
 
 #include "c_api.h"
-#include <mpi.h>
 #include <stdio.h>
 #include <cstring>
 
 
 
+#ifdef HAVE_MPI
+#include <mpi.h>
 
 int main(int argc, char** argv) {
   // Initialize MPI and get rank
@@ -124,3 +125,12 @@ int main(int argc, char** argv) {
   return 0;
 }
 
+#else
+
+int main() {
+  printf("MPI not supported.\n");
+
+  return 0;
+}
+
+#endif

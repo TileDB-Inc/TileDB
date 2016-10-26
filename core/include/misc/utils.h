@@ -33,7 +33,9 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
-#include <mpi.h>
+#ifdef HAVE_MPI
+  #include <mpi.h>
+#endif
 #include <pthread.h>
 #include <string>
 #include <vector>
@@ -406,6 +408,7 @@ bool is_unary_subarray(const T* subarray, int dim_num);
  */
 bool is_workspace(const std::string& dir);
 
+#ifdef HAVE_MPI
 /**
  * Reads data from a file into a buffer using MPI-IO.
  *
@@ -448,6 +451,7 @@ int mpi_io_write_to_file(
     const char* filename,
     const void* buffer, 
     size_t buffer_size);
+#endif
 
 #ifdef HAVE_OPENMP
 /**

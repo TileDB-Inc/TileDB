@@ -91,7 +91,9 @@ int tiledb_ctx_init(
   if(tiledb_config != NULL)
     config->init(
         tiledb_config->home_, 
+#ifdef HAVE_MPI
         tiledb_config->mpi_comm_, 
+#endif
         tiledb_config->read_method_, 
         tiledb_config->write_method_);
 

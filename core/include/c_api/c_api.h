@@ -34,7 +34,9 @@
 #define __C_API_H__
 
 #include "constants.h"
-#include <mpi.h>
+#ifdef HAVE_MPI
+  #include <mpi.h>
+#endif
 #include <stdint.h>
 #include <stddef.h>
 #include <string>
@@ -91,8 +93,10 @@ typedef struct TileDB_Config {
    * default home directory will be used, which is ~/.tiledb/. 
    */
   const char* home_;
+#ifdef HAVE_MPI
   /** The MPI communicator. Use NULL if no MPI is used. */
   MPI_Comm* mpi_comm_; 
+#endif
   /** 
    * The method for reading data from a file. 
    * It can be one of the following: 
