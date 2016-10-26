@@ -643,6 +643,38 @@ int StorageManager::array_finalize(Array* array) {
   return TILEDB_SM_OK;
 }
 
+int StorageManager::array_sync(Array* array) {
+  // If the array is NULL, do nothing
+  if(array == NULL)
+    return TILEDB_SM_OK;
+
+  // Sync array
+  if(array->sync() != TILEDB_AR_OK) {
+    tiledb_sm_errmsg = tiledb_ar_errmsg;
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
+int StorageManager::array_sync_attribute(
+    Array* array,
+    const std::string& attribute) {
+  // If the array is NULL, do nothing
+  if(array == NULL)
+    return TILEDB_SM_OK;
+
+  // Sync array
+  if(array->sync_attribute(attribute) != TILEDB_AR_OK) {
+    tiledb_sm_errmsg = tiledb_ar_errmsg;
+    return TILEDB_SM_ERR;
+  }
+
+  // Success
+  return TILEDB_SM_OK;
+}
+
 int StorageManager::array_iterator_init(
     ArrayIterator*& array_it,
     const char* array_dir,

@@ -735,10 +735,43 @@ int mpi_io_write_to_file(
     return TILEDB_UT_ERR;
   }
 
+  // Close file
+  if(MPI_File_close(&fh)) {
+    std::string errmsg = 
+        std::string("Cannot write to file '") + filename + 
+        "'; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return TILEDB_UT_ERR;
+  }
+
+  // Success 
+  return TILEDB_UT_OK;
+}
+
+int mpi_io_sync(
+    const MPI_Comm* mpi_comm,
+    const char* filename) {
+  // Open file
+  MPI_File fh;
+  if(MPI_File_open(
+         *mpi_comm, 
+         filename, 
+         MPI_MODE_RDONLY, 
+         MPI_INFO_NULL, 
+         &fh)) {
+    std::string errmsg = 
+        std::string("Cannot sync file '") + filename + 
+        "'; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return TILEDB_UT_ERR;
+  }
+
   // Sync
   if(MPI_File_sync(fh)) {
     std::string errmsg = 
-        std::string("Cannot write to file '") + filename + 
+        std::string("Cannot sync file '") + filename + 
         "'; File syncing error";
     PRINT_ERROR(errmsg);
     tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
@@ -748,7 +781,7 @@ int mpi_io_write_to_file(
   // Close file
   if(MPI_File_close(&fh)) {
     std::string errmsg = 
-        std::string("Cannot write to file '") + filename + 
+        std::string("Cannot sync file '") + filename + 
         "'; File closing error";
     PRINT_ERROR(errmsg);
     tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
@@ -1036,6 +1069,42 @@ bool starts_with(const std::string& value, const std::string& prefix) {
   return std::equal(prefix.begin(), prefix.end(), value.begin());
 }
 
+int sync(const char* filename) {
+  // Open file
+  int fd = open(filename, O_RDONLY, S_IRWXU);
+  if(fd == -1) {
+    std::string errmsg = 
+        std::string("Cannot sync file '") + filename + 
+        "'; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return TILEDB_UT_ERR;
+  }
+
+  // Sync
+  if(fsync(fd)) {
+    std::string errmsg = 
+        std::string("Cannot sync file '") + filename + 
+        "'; File syncing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return TILEDB_UT_ERR;
+  }
+
+  // Close file
+  if(close(fd)) {
+    std::string errmsg = 
+        std::string("Cannot sync file '") + filename + 
+        "'; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return TILEDB_UT_ERR;
+  }
+
+  // Success 
+  return TILEDB_UT_OK;
+}
+
 int write_to_file(
     const char* filename,
     const void* buffer,
@@ -1074,16 +1143,6 @@ int write_to_file(
     std::string errmsg = 
         std::string("Cannot write to file '") + filename + 
         "'; File writing error";
-    PRINT_ERROR(errmsg);
-    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
-    return TILEDB_UT_ERR;
-  }
-
-  // Sync
-  if(fsync(fd)) {
-    std::string errmsg = 
-        std::string("Cannot write to file '") + filename + 
-        "'; File syncing error";
     PRINT_ERROR(errmsg);
     tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
