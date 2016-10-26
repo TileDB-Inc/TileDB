@@ -164,7 +164,7 @@ void parallel_read(
 #else
 
 int main() {
-  printf("OpenMP not supported.");
+  printf("OpenMP not supported.\n");
 
   return 0;
 }

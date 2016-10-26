@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
 #else
 
 int main() {
-  printf("MPI not supported.");
+  printf("MPI not supported.\n");
 
   return 0;
 }
