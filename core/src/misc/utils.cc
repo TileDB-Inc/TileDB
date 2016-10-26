@@ -754,19 +754,32 @@ int mpi_io_sync(
     const char* filename) {
   // Open file
   MPI_File fh;
-  if(MPI_File_open(
-         *mpi_comm, 
-         filename, 
-         MPI_MODE_RDONLY, 
-         MPI_INFO_NULL, 
-         &fh)) {
-    std::string errmsg = 
-        std::string("Cannot sync file '") + filename + 
-        "'; File opening error";
-    PRINT_ERROR(errmsg);
-    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
-    return TILEDB_UT_ERR;
-  }
+  int rc;
+  if(is_dir(filename))  // DIRECTORY
+    rc = MPI_File_open(
+             *mpi_comm, 
+              filename, 
+              MPI_MODE_RDONLY, 
+              MPI_INFO_NULL, 
+              &fh);
+  else                  // FILE
+    rc = MPI_File_open(
+             *mpi_comm, 
+              filename, 
+              MPI_MODE_WRONLY | MPI_MODE_APPEND | 
+                  MPI_MODE_CREATE | MPI_MODE_SEQUENTIAL, 
+              MPI_INFO_NULL, 
+              &fh);
+
+  // Handle error
+  if(rc) {
+      std::string errmsg = 
+          std::string("Cannot sync file '") + filename + 
+          "'; File opening error";
+      PRINT_ERROR(errmsg);
+      tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+      return TILEDB_UT_ERR;
+    }
 
   // Sync
   if(MPI_File_sync(fh)) {
@@ -1071,7 +1084,13 @@ bool starts_with(const std::string& value, const std::string& prefix) {
 
 int sync(const char* filename) {
   // Open file
-  int fd = open(filename, O_RDONLY, S_IRWXU);
+  int fd;
+  if(is_dir(filename)) // DIRECTORY 
+    fd = open(filename, O_RDONLY, S_IRWXU);
+  else                 // FILE
+    fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);
+
+  // Handle error
   if(fd == -1) {
     std::string errmsg = 
         std::string("Cannot sync file '") + filename + 
