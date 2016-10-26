@@ -39,7 +39,7 @@
 #include <vector>
 
 
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
   #include <omp.h>
 #endif
 
@@ -449,7 +449,7 @@ int mpi_io_write_to_file(
     const void* buffer, 
     size_t buffer_size);
 
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
 /**
  * Destroys an OpenMP mutex.
  *

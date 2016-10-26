@@ -805,7 +805,7 @@ int mpi_io_sync(
   return TILEDB_UT_OK;
 }
 
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
 int mutex_destroy(omp_lock_t* mtx) {
   omp_destroy_lock(mtx);
 

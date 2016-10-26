@@ -49,7 +49,7 @@
 #  define PRINT_ERROR(x) do { } while(0) 
 #endif
 
-#ifdef OPENMP
+#if defined HAVE_OPENMP && defined USE_PARALLEL_SORT
   #include <parallel/algorithm>
   #define SORT(first, last, comp) __gnu_parallel::sort((first), (last), (comp))
 #else

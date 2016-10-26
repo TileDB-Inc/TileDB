@@ -51,7 +51,7 @@
 #  define PRINT_ERROR(x) do { } while(0) 
 #endif
 
-#ifdef OPENMP
+#if defined HAVE_OPENMP && defined USE_PARALLEL_SORT
   #include <parallel/algorithm>
   #define SORT_LIB __gnu_parallel
 #else
@@ -2272,7 +2272,7 @@ int StorageManager::metadata_move(
 }
 
 int StorageManager::open_array_mtx_destroy() {
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
   int rc_omp_mtx = ::mutex_destroy(&open_array_omp_mtx_);
 #else
   int rc_omp_mtx = TILEDB_UT_OK;
@@ -2290,7 +2290,7 @@ int StorageManager::open_array_mtx_destroy() {
 }
 
 int StorageManager::open_array_mtx_init() {
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
   int rc_omp_mtx = ::mutex_init(&open_array_omp_mtx_);
 #else
   int rc_omp_mtx = TILEDB_UT_OK;
@@ -2308,7 +2308,7 @@ int StorageManager::open_array_mtx_init() {
 }
 
 int StorageManager::open_array_mtx_lock() {
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
   int rc_omp_mtx = ::mutex_lock(&open_array_omp_mtx_);
 #else
   int rc_omp_mtx = TILEDB_UT_OK;
@@ -2326,7 +2326,7 @@ int StorageManager::open_array_mtx_lock() {
 }
 
 int StorageManager::open_array_mtx_unlock() {
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
   int rc_omp_mtx = ::mutex_unlock(&open_array_omp_mtx_);
 #else
   int rc_omp_mtx = TILEDB_UT_OK;
@@ -2575,7 +2575,7 @@ int StorageManager::workspace_move(
 }
 
 int StorageManager::OpenArray::mutex_destroy() {
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
   int rc_omp_mtx = ::mutex_destroy(&omp_mtx_);
 #else
   int rc_omp_mtx = TILEDB_UT_OK;
@@ -2593,7 +2593,7 @@ int StorageManager::OpenArray::mutex_destroy() {
 }
 
 int StorageManager::OpenArray::mutex_init() {
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
   int rc_omp_mtx = ::mutex_init(&omp_mtx_);
 #else
   int rc_omp_mtx = TILEDB_UT_OK;
@@ -2611,7 +2611,7 @@ int StorageManager::OpenArray::mutex_init() {
 }
 
 int StorageManager::OpenArray::mutex_lock() {
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
   int rc_omp_mtx = ::mutex_lock(&omp_mtx_);
 #else
   int rc_omp_mtx = TILEDB_UT_OK;
@@ -2629,7 +2629,7 @@ int StorageManager::OpenArray::mutex_lock() {
 }
 
 int StorageManager::OpenArray::mutex_unlock() {
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
   int rc_omp_mtx = ::mutex_unlock(&omp_mtx_);
 #else
   int rc_omp_mtx = TILEDB_UT_OK;

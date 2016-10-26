@@ -19,10 +19,13 @@ ifdef TRAVIS
 endif
 
 # --- Support for OpenMP --- #
+OPENMP =
 OPENMP_FLAG =
-ifeq ($(COMPILER), gcc)
-  CPPFLAGS += -DOPENMP
-  OPENMP_FLAG = -fopenmp
+ifeq ($(COMPILER), gcc) 
+  ifeq ($(OPENMP), 1)
+    CPPFLAGS += -DHAVE_OPENMP
+    OPENMP_FLAG = -fopenmp
+  endif
 endif
 
 # --- Debug/Release mode handler --- #
@@ -43,6 +46,12 @@ endif
 VERBOSE =
 ifeq ($(VERBOSE),1)
   CPPFLAGS += -DNVERBOSE
+endif
+
+# --- Use parallel sort --- #
+USE_PARALLEL_SORT =
+ifeq ($(USE_PARALLEL_SORT),1)
+  CPPFLAGS += -DUSE_PARALLEL_SORT 
 endif
 
 # --- Compilers --- #
@@ -110,6 +119,7 @@ ZLIB = -lz
 OPENSSLLIB = -lcrypto
 GTESTLIB = -lgtest -lgtest_main
 MPILIB =
+PTHREADLIB = -pthread
 
 # --- For the TileDB dynamic library --- #
 ifeq ($(OS), Darwin)
@@ -204,7 +214,7 @@ $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT): $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
 	@echo "Creating dynamic library libtiledb.$(SHLIB_EXT)"
 	@$(CXX) $(SHLIB_FLAGS) $(SONAME) -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) \
-		$(ZLIB) $(OPENSSLLIB) $(OPENMP_FLAG)
+		$(PTHREADLIB) $(ZLIB) $(OPENSSLLIB) $(OPENMP_FLAG)
 
 $(CORE_LIB_DIR)/libtiledb.a: $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
@@ -243,7 +253,7 @@ $(EXAMPLES_BIN_DIR)/%: $(EXAMPLES_OBJ_DIR)/%.o $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(EXAMPLES_BIN_DIR)
 	@echo "Creating $@"
 	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) $(ZLIB) \
-		 $(OPENSSLLIB) $(OPENMP_FLAG) 
+		 $(PTHREADLIB) $(OPENSSLLIB) $(OPENMP_FLAG) 
 
 # --- Cleaning --- #
 
@@ -277,7 +287,7 @@ $(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(TEST_BIN_DIR)
 	@echo "Creating test_cmd"
 	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) $(ZLIB) \
-		$(OPENSSLLIB) $(GTESTLIB) $(OPENMP_FLAG) 
+		$(PTHREADLIB) $(OPENSSLLIB) $(GTESTLIB) $(OPENMP_FLAG) 
 
 # --- Cleaning --- #
 

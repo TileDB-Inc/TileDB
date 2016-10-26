@@ -42,7 +42,7 @@
 #include "metadata_iterator.h"
 #include "metadata_schema_c.h"
 #include <map>
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
   #include <omp.h>
 #endif
 #include <pthread.h>
@@ -549,7 +549,7 @@ class StorageManager {
   /** The directory of the master catalog. */
   std::string master_catalog_dir_;
   /** OpneMP mutex for creating/deleting an OpenArray object. */
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
   omp_lock_t open_array_omp_mtx_;
 #endif
   /** Pthread mutex for creating/deleting an OpenArray object. */
@@ -925,7 +925,7 @@ class StorageManager::OpenArray {
    * An OpenMP mutex used to lock the array when loading the array schema and
    * the book-keeping structures from the disk.
    */
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
   omp_lock_t omp_mtx_;
 #endif
   /** 
