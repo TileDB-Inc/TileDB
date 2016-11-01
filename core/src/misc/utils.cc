@@ -559,6 +559,18 @@ bool is_array(const std::string& dir) {
     return false;
 }
 
+template<class T>
+bool is_contained(
+    const T* range_A, 
+    const T* range_B, 
+    int dim_num) {
+  for(int i=0; i<dim_num; ++i) 
+    if(range_A[2*i] < range_B[2*i] || range_A[2*i+1] > range_B[2*i+1])
+      return false;
+
+  return true;
+}
+
 bool is_dir(const std::string& dir) {
   struct stat st;
   return stat(dir.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
@@ -1397,6 +1409,23 @@ template bool inside_subarray<double>(
 template bool intersect<std::string>(
     const std::vector<std::string>& v1,
     const std::vector<std::string>& v2);
+
+template bool is_contained<int>(
+    const int* range_A, 
+    const int* range_B, 
+    int dim_num);
+template bool is_contained<int64_t>(
+    const int64_t* range_A, 
+    const int64_t* range_B, 
+    int dim_num);
+template bool is_contained<float>(
+    const float* range_A, 
+    const float* range_B, 
+    int dim_num);
+template bool is_contained<double>(
+    const double* range_A, 
+    const double* range_B, 
+    int dim_num);
 
 template bool is_unary_subarray<int>(const int* subarray, int dim_num);
 template bool is_unary_subarray<int64_t>(const int64_t* subarray, int dim_num);

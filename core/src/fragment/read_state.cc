@@ -224,6 +224,10 @@ bool ReadState::overflow(int attribute_id) const {
   return overflow_[attribute_id];
 }
 
+bool ReadState::subarray_area_covered() const {
+  return subarray_area_covered_;
+}
+
 
 
 
@@ -610,6 +614,7 @@ int ReadState::get_fragment_cell_ranges_dense(
       cell_range_T[dim_num + i] = search_tile_overlap_subarray[2*i+1];
     }
 
+    // Insert the new range into the result vector
     fragment_cell_ranges.push_back(
         FragmentCellRange(fragment_info, cell_range));
   } else { // Non-contiguous cells, multiple ranges
@@ -836,7 +841,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
   const T* domain = static_cast<const T*>(book_keeping_->domain());
   const T* non_empty_domain = 
       static_cast<const T*>(book_keeping_->non_empty_domain());
-  
+
   // Compute the tile subarray
   T* tile_subarray = new T[2*dim_num];
   array_schema_->get_tile_subarray(tile_coords, tile_subarray); 
@@ -851,6 +856,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
 
   if(!tile_domain_overlap) {  // No overlap with the input tile
     search_tile_overlap_ = 0;
+    subarray_area_covered_ = false;
   } else {                    // Overlap with the input tile
     // Find the search tile position
     T* tile_coords_norm = new T[dim_num];
@@ -873,6 +879,13 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
             query_tile_overlap_subarray,
             tile_domain_overlap_subarray, 
             static_cast<T*>(search_tile_overlap_subarray_));
+
+    // Check if expanded fragment domain fully covers the tile
+    subarray_area_covered_ = 
+        is_contained<T>(
+            query_tile_overlap_subarray, 
+            tile_domain_overlap_subarray,
+            dim_num);
 
     // Clean up
     delete [] query_tile_overlap_subarray;

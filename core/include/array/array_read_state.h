@@ -292,7 +292,23 @@ class ArrayReadState {
    * Copies the cell ranges calculated in the current read round into the
    * targeted attribute buffer.
    *
-   * @template T The coordinates type.
+   * @param attribute_id The id of the targeted attribute.
+   * @param buffer The buffer where the read copy be performed into.
+   * @param buffer_size The size (in bytes) of *buffer*.
+   * @param buffer_offset The offset in *buffer* where the copy will start from.
+   * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
+   */
+  int copy_cells(
+      int attribute_id,
+      void* buffer,
+      size_t buffer_size,
+      size_t& buffer_offset);
+
+  /**
+   * Copies the cell ranges calculated in the current read round into the
+   * targeted attribute buffer.
+   *
+   * @template T The attribute type.
    * @param attribute_id The id of the targeted attribute.
    * @param buffer The buffer where the read copy be performed into.
    * @param buffer_size The size (in bytes) of *buffer*.
@@ -310,7 +326,32 @@ class ArrayReadState {
    * Copies the cell ranges calculated in the current read round into the
    * targeted attribute buffer, focusing on a **variable-sized** attribute.
    *
-   * @template T The coordinates type.
+   * @param attribute_id The id of the targeted attribute.
+   * @param buffer The buffer where the read will be performed into - offsets of
+   *     cells in *buffer_var*.
+   * @param buffer_size The size (in bytes) of *buffer*.
+   * @param buffer_offset The offset in *buffer* where the copy will start from.
+   * @param buffer_var The buffer where the copy will be performed into - actual
+   *     variable-sized cell values.
+   * @param buffer_var_size The size (in bytes) of *buffer_var*.
+   * @param buffer_var_offset The offset in *buffer_var* where the copy will
+   *     start from.
+   * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
+   */
+  int copy_cells_var(
+      int attribute_id,
+      void* buffer,
+      size_t buffer_size,
+      size_t& buffer_offset,
+      void* buffer_var,
+      size_t buffer_var_size,
+      size_t& buffer_var_offset);
+
+  /**
+   * Copies the cell ranges calculated in the current read round into the
+   * targeted attribute buffer, focusing on a **variable-sized** attribute.
+   *
+   * @template T The attribute type.
    * @param attribute_id The id of the targeted attribute.
    * @param buffer The buffer where the read will be performed into - offsets of
    *     cells in *buffer_var*.
@@ -337,7 +378,7 @@ class ArrayReadState {
    * Copies the cell ranges calculated in the current read round into the
    * targeted attribute buffer, filling with special empty values.
    *
-   * @template T The coordinates type.
+   * @template T The attribute type.
    * @param attribute_id The id of the targeted attribute.
    * @param buffer The buffer where the copy will be performed into.
    * @param buffer_size The size (in bytes) of *buffer*.
@@ -358,7 +399,7 @@ class ArrayReadState {
    * targeted attribute buffer, feeling with special empty values, and focusing
    * on a **variable-sized** attribute.
    *
-   * @template T The coordinates type.
+   * @template T The attribute type.
    * @param attribute_id The id of the targeted attribute.
    * @param buffer The buffer where the read will be performed into - offsets of
    *     cells in *buffer_var*.
@@ -384,13 +425,21 @@ class ArrayReadState {
       const CellPosRange& cell_pos_range);
 
   /**
+   * Returns a list of cell ranges accounting for the empty area in the overlap 
+   * between the subarray query and the current overlapping tile. 
+   *
+   * @return A list of cell ranges representing empty cells. 
+   */
+  template<class T>
+  FragmentCellRanges empty_fragment_cell_ranges() const; 
+
+  /**
    * Gets the next fragment cell ranges that are relevant in the current read
    * round, focusing on the dense case.
    *
    * @template T The coordinates type.
    * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
    */
-
   template<class T>
   int get_next_fragment_cell_ranges_dense();
 

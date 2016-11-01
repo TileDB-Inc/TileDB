@@ -77,6 +77,8 @@ int main() {
                                             : buffer_sizes[2] - buffer_a2[i];
       printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);
       printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
+    } else {
+      printf("\t\t Empty cell\n");
     }
   }
 

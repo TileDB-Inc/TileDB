@@ -136,6 +136,7 @@ ArraySortedWriteState::~ArraySortedWriteState() {
   aio_thread_canceled_ = true;
   for(int i=0; i<2; ++i)
     release_copy(i);
+
   // Wait for thread to be destroyed
   while(aio_thread_running_);
 
@@ -336,7 +337,9 @@ void ArraySortedWriteState::advance_cell_slab_col(int aid) {
   current_coords[d] += cell_slab_num;
   int64_t dim_overflow;
   for(int i=0; i<dim_num_-1; ++i) {
-    dim_overflow = current_coords[i] / (tile_slab[2*i+1]-tile_slab[2*i]+1);
+    dim_overflow = 
+        (current_coords[i] - tile_slab[2*i]) / 
+        (tile_slab[2*i+1]-tile_slab[2*i]+1);
     current_coords[i+1] += dim_overflow;
     current_coords[i] -= dim_overflow * (tile_slab[2*i+1]-tile_slab[2*i]+1);
   }
@@ -364,7 +367,9 @@ void ArraySortedWriteState::advance_cell_slab_row(int aid) {
   current_coords[d] += cell_slab_num;
   int64_t dim_overflow;
   for(int i=d; i>0; --i) {
-    dim_overflow = current_coords[i] / (tile_slab[2*i+1]-tile_slab[2*i]+1);
+    dim_overflow = 
+        (current_coords[i] - tile_slab[2*i]) / 
+        (tile_slab[2*i+1]-tile_slab[2*i]+1);
     current_coords[i-1] += dim_overflow;
     current_coords[i] -= dim_overflow * (tile_slab[2*i+1]-tile_slab[2*i]+1);
   }
@@ -1270,6 +1275,7 @@ void ArraySortedWriteState::init_aio_requests() {
   // For easy reference
   int mode = array_->mode();
   int tile_order = array_->array_schema()->tile_order();
+  const void* subarray = array_->subarray();
   bool separate_fragments = 
     (mode == TILEDB_ARRAY_WRITE_SORTED_COL && tile_order == TILEDB_ROW_MAJOR) ||
     (mode == TILEDB_ARRAY_WRITE_SORTED_ROW && tile_order == TILEDB_COL_MAJOR);
@@ -1282,7 +1288,7 @@ void ArraySortedWriteState::init_aio_requests() {
     aio_request_[i].buffer_sizes_ = copy_state_.buffer_offsets_[i];
     aio_request_[i].buffers_ = copy_state_.buffers_[i];
     aio_request_[i].mode_ = TILEDB_ARRAY_WRITE;
-    aio_request_[i].subarray_ = (separate_fragments) ? tile_slab_[i] : NULL;
+    aio_request_[i].subarray_ = (separate_fragments) ? tile_slab_[i] : subarray;
     aio_request_[i].completion_handle_ = aio_done;
     aio_request_[i].completion_data_ = &(aio_data_[i]); 
     aio_request_[i].overflow_ = NULL;

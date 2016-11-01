@@ -60,7 +60,6 @@ int main() {
   void* buffers[] = { buffer_a1 };
   size_t buffer_sizes[] = { sizeof(buffer_a1) };
 
-
   // Loop until no overflow
   printf(" a1\n----\n");
   do {
