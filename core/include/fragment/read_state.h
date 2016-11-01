@@ -149,6 +149,12 @@ class ReadState {
   /** Returns *true* if the read buffers overflowed for the input attribute. */
   bool overflow(int attribute_id) const;
 
+  /** 
+   * True if the fragment non-empty domain fully covers the subarray area of
+   * the current overlapping tile.
+   */
+  bool subarray_area_covered() const;
+
 
 
 
@@ -393,6 +399,7 @@ class ReadState {
   std::vector<int64_t> fetched_tile_;
   /** The fragment the read state belongs to. */
   const Fragment* fragment_;
+  /** Keeps track of whether each attribute is empty or not. */
   std::vector<bool> is_empty_attribute_;
   /** 
    * Last investigated tile coordinates. Applicable only to **sparse** fragments
@@ -439,6 +446,11 @@ class ReadState {
   void* search_tile_overlap_subarray_;
   /** The positions of the currently investigated tile. */
   int64_t search_tile_pos_;
+  /** 
+   * True if the fragment non-empty domain fully covers the subarray area
+   * in the current overlapping tile.
+   */
+  bool subarray_area_covered_;
   /** Internal buffer used in the case of compression. */
   void* tile_compressed_;
   /** Allocated size for internal buffer used in the case of compression. */

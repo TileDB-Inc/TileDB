@@ -353,6 +353,21 @@ bool intersect(const std::vector<T>& v1, const std::vector<T>& v2);
  */
 bool is_array(const std::string& dir);
 
+/**
+ * Checks if one range is fully contained in another.
+ *
+ * @template The domain type
+ * @param range_A The first range.
+ * @param range_B The second range.
+ * @param dim_num The number of dimensions.
+ * @return True if range_A is fully contained in range_B. 
+ */
+template<class T>
+bool is_contained(
+    const T* range_A, 
+    const T* range_B, 
+    int dim_num);
+
 /** 
  * Checks if the input is an existing directory. 
  *

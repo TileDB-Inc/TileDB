@@ -483,7 +483,9 @@ void ArraySortedReadState::advance_cell_slab_col(int aid) {
   current_coords[d] += cell_slab_num;
   int64_t dim_overflow;
   for(int i=0; i<dim_num_-1; ++i) {
-    dim_overflow = current_coords[i] / (tile_slab[2*i+1]-tile_slab[2*i]+1);
+    dim_overflow = 
+        (current_coords[i] - tile_slab[2*i]) / 
+        (tile_slab[2*i+1]-tile_slab[2*i]+1);
     current_coords[i+1] += dim_overflow;
     current_coords[i] -= dim_overflow * (tile_slab[2*i+1]-tile_slab[2*i]+1);
   }
@@ -511,7 +513,9 @@ void ArraySortedReadState::advance_cell_slab_row(int aid) {
   current_coords[d] += cell_slab_num;
   int64_t dim_overflow;
   for(int i=d; i>0; --i) {
-    dim_overflow = current_coords[i] / (tile_slab[2*i+1]-tile_slab[2*i]+1);
+    dim_overflow = 
+        (current_coords[i] - tile_slab[2*i]) / 
+        (tile_slab[2*i+1]-tile_slab[2*i]+1);
     current_coords[i-1] += dim_overflow;
     current_coords[i] -= dim_overflow * (tile_slab[2*i+1]-tile_slab[2*i]+1);
   }
@@ -603,7 +607,7 @@ void *ArraySortedReadState::aio_done(void* data) {
     // Manage the mutexes and conditions
     asrs->release_aio(id);
   }
- 
+
   return NULL;
 }
 
@@ -1588,9 +1592,6 @@ void ArraySortedReadState::handle_copy_requests_sparse() {
 
     // Sort the cell positions
     if(copy_tile_slab_done()) {
-
-std::cout << "resetting...\n";
-
       reset_tile_slab_state<T>();
       sort_cell_pos<T>();
     }
