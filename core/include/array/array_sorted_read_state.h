@@ -335,15 +335,6 @@ class ArraySortedReadState {
   /** The number of dimensions in the array. */
   int dim_num_;
 
-  /** Flag indicating whether the read is done or an overflow occurred. */
-  bool done_or_overflow_;
-
-  /** The done or overflow mutex condition. */
-  pthread_cond_t done_or_overflow_cond_;
-
-  /** The done or overflow mutex. */
-  pthread_mutex_t done_or_overflow_mtx_;
-
   /** 
    * Used only in the sparse case. It is true if the coordinates are not asked
    * by the user and, thus, TileDB had to append them as an extra attribute
@@ -470,9 +461,6 @@ class ArraySortedReadState {
 
   /** Sets the flag of wait_copy_[id] to true. */
   void block_copy(int id);
-
-  /** Sets the flag of done_or_overflow_ to true. */
-  void block_done_or_overflow();
 
   /** Sets the flag of resume_copy_ to true. */
   void block_overflow();
@@ -860,13 +848,6 @@ class ArraySortedReadState {
   int lock_copy_mtx();
 
   /**  
-   * Locks the done or overflow mutex. 
-   * 
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  int lock_done_or_overflow_mtx();
-
-  /**  
    * Locks the overflow mutex. 
    * 
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
@@ -993,13 +974,6 @@ class ArraySortedReadState {
   int release_copy(int id);
 
   /** 
-   * Signals the done or overflow condition. 
-   * 
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  int release_done_or_overflow();
-
-  /** 
    * Signals the overflow condition. 
    * 
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
@@ -1066,13 +1040,6 @@ class ArraySortedReadState {
   int unlock_copy_mtx();
 
   /**  
-   * Unlocks the done or overflow mutex. 
-   * 
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  int unlock_done_or_overflow_mtx();
-
-  /**  
    * Unlocks the overflow mutex. 
    * 
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
@@ -1105,13 +1072,6 @@ class ArraySortedReadState {
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int wait_aio(int id);
-
-  /**
-   * Waits until the read is done or there is a buffer overflow.
-   *
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  int wait_done_or_overflow();
 
   /**
    * Waits until there is no buffer overflow.
