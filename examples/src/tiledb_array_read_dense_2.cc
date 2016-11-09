@@ -78,7 +78,7 @@ int main() {
   // Finalize the array
   tiledb_array_finalize(tiledb_array);
 
-  /* Finalize context. */
+  // Finalize context
   tiledb_ctx_finalize(tiledb_ctx);
 
   return 0;
