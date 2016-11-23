@@ -1732,7 +1732,7 @@ int ArraySortedWriteState::send_aio_request(int aio_id) {
 
   // Send the AIO request to the clone array
   if(array_clone->aio_write(&(aio_request_[aio_id])) != TILEDB_AR_OK) {
-    // TODO: get error message: tiledb_asws_errmsg = tiledb_ar_msg;
+    tiledb_asws_errmsg = tiledb_ar_errmsg;
     return TILEDB_ASWS_ERR;
   }
 

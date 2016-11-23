@@ -1101,7 +1101,7 @@ int Array::aio_push_request(AIO_Request* aio_request) {
   // Set the request status
   *aio_request->status_ = TILEDB_AIO_INPROGRESS;
 
-  // Lock AIO mutext
+  // Lock AIO mutex
   if(pthread_mutex_lock(&aio_mtx_)) {
     std::string errmsg = "Cannot lock AIO mutex";
     PRINT_ERROR(errmsg);
