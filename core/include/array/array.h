@@ -453,7 +453,7 @@ class Array {
   /** Indicates whether the AIO thread was canceled or not. */
   bool aio_thread_canceled_;
   /** Indicates whether the AIO thread was created or not. */
-  bool aio_thread_created_;
+  volatile bool aio_thread_created_;
   /** An array clone, used in AIO requests. */
   Array* array_clone_;
   /** The array schema. */

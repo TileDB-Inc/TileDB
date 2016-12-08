@@ -224,14 +224,14 @@ class ArraySortedWriteState {
   /** The status of the AIO requests.*/
   int aio_status_[2];
 
-  /** The thread tha handles all the AIO in the background. */
+  /** The thread that handles all the AIO in the background. */
   pthread_t aio_thread_;
 
-  /** True if the copy thread is canceled. */
+  /** True if the AIO thread is canceled. */
   bool aio_thread_canceled_;
 
-  /** True if the copy thread is running. */
-  bool aio_thread_running_;
+  /** True if the AIO thread is running. */
+  volatile bool aio_thread_running_;
 
   /** The array this sorted read state belongs to. */
   Array* array_;

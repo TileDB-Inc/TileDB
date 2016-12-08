@@ -330,7 +330,7 @@ class ArraySortedReadState {
   bool copy_thread_canceled_;
 
   /** True if the copy thread is running. */
-  bool copy_thread_running_;
+  volatile bool copy_thread_running_;
 
   /** The number of dimensions in the array. */
   int dim_num_;

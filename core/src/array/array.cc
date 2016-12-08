@@ -113,7 +113,7 @@ void Array::aio_handle_requests() {
   AIO_Request* aio_next_request;
 
   // Initiate infinite loop
-  while(1) {
+  for(;;) {
     // Lock AIO mutext
     if(pthread_mutex_lock(&aio_mtx_)) {
       std::string errmsg = "Cannot lock AIO mutex";
