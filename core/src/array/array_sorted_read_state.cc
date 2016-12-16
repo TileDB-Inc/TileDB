@@ -134,6 +134,13 @@ ArraySortedReadState::ArraySortedReadState(
 }
 
 ArraySortedReadState::~ArraySortedReadState() { 
+  // Cancel copy thread
+  copy_thread_canceled_ = true;
+  for(int i=0; i<2; ++i)
+    release_aio(i);
+  // Wait for thread to be destroyed
+  while(copy_thread_running_);
+
   // Clean up
   free(subarray_);
   free(tile_coords_);
@@ -163,13 +170,6 @@ ArraySortedReadState::~ArraySortedReadState() {
   free_copy_state();
   free_tile_slab_state();
   free_tile_slab_info();
-
-  // Cancel copy thread
-  copy_thread_canceled_ = true;
-  for(int i=0; i<2; ++i)
-    release_aio(i);
-  // Wait for thread to be destroyed
-  while(copy_thread_running_);
 
   // Destroy conditions and mutexes
   for(int i=0; i<2; ++i) {

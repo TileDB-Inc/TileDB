@@ -869,18 +869,26 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
     // Compute overlap of the query subarray with tile
     T* query_tile_overlap_subarray = new T[2*dim_num];
     array_schema_->subarray_overlap(
-         subarray,
-         tile_subarray, 
-         query_tile_overlap_subarray);
+        subarray,
+        tile_subarray, 
+        query_tile_overlap_subarray);
 
     // Compute the overlap of the previous results with the non-empty domain 
+    T* search_tile_overlap_subarray = (T*) search_tile_overlap_subarray_;
+    array_schema_->subarray_overlap(
+        query_tile_overlap_subarray,
+        tile_domain_overlap_subarray, 
+        search_tile_overlap_subarray);
+
+    // Find the type of the search tile overlap
+    T* temp = new T[2*dim_num];
     search_tile_overlap_ = 
         array_schema_->subarray_overlap(
-            query_tile_overlap_subarray,
-            tile_domain_overlap_subarray, 
-            static_cast<T*>(search_tile_overlap_subarray_));
+            search_tile_overlap_subarray,
+            tile_subarray, 
+            temp);
 
-    // Check if expanded fragment domain fully covers the tile
+    // Check if fragment fully covers the tile
     subarray_area_covered_ = 
         is_contained<T>(
             query_tile_overlap_subarray, 
@@ -889,6 +897,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
 
     // Clean up
     delete [] query_tile_overlap_subarray;
+    delete [] temp;
   } 
 
   // Clean up
