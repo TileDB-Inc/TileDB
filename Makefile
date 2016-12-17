@@ -11,7 +11,7 @@ endif
 
 # --- Configuration flags --- #
 CPPFLAGS = -std=gnu++11 -fPIC -fvisibility=hidden \
-      -D_FILE_OFFSET_BITS=64 
+      -D_FILE_OFFSET_BITS=64
 
 # For the Travis integration
 ifdef TRAVIS
@@ -63,6 +63,9 @@ endif
 # --- Compilers --- #
 CXX = g++   
 
+# --- GTest Filters --- #
+GTEST_FILTER='*'
+
 # --- Directories --- #
 CORE_INCLUDE_DIR = core/include
 CORE_INCLUDE_SUBDIRS = $(wildcard core/include/*)
@@ -102,19 +105,32 @@ ifeq ($(BUILD),release)
   EXAMPLES_OBJ_DIR = $(EXAMPLES_OBJ_REL_DIR)
   EXAMPLES_BIN_DIR = $(EXAMPLES_BIN_REL_DIR)
 endif
-TEST_SRC_SUBDIRS = $(wildcard test/src/*)
+TEST_INCLUDE_DIR = test/include
+TEST_INCLUDE_SUBDIRS = $(wildcard test/include/*)
 TEST_SRC_DIR = test/src
-TEST_OBJ_DIR = test/obj
-TEST_BIN_DIR = test/bin
+TEST_SRC_SUBDIRS = $(wildcard test/src/*)
+TEST_OBJ_DEB_DIR = test/obj/debug
+TEST_BIN_DEB_DIR = test/bin/debug
+ifeq ($(BUILD),debug)
+  TEST_OBJ_DIR = $(TEST_OBJ_DEB_DIR)
+  TEST_BIN_DIR = $(TEST_BIN_DEB_DIR)
+endif
+TEST_OBJ_REL_DIR = test/obj/release
+TEST_BIN_REL_DIR = test/bin/release
+ifeq ($(BUILD),release)
+  TEST_OBJ_DIR = $(TEST_OBJ_REL_DIR)
+  TEST_BIN_DIR = $(TEST_BIN_REL_DIR)
+endif
 DOXYGEN_DIR = doxygen
 DOXYGEN_MAINPAGE = $(DOXYGEN_DIR)/mainpage.dox
 
 # --- Paths --- #
-INCLUDE_PATHS = 
+INCLUDE_PATHS = -I/home/kdatta1/workspace/googletest/googletest/include
 CORE_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
 EXAMPLES_INCLUDE_PATHS = -I$(EXAMPLES_INCLUDE_DIR)
 TEST_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
-LIBRARY_PATHS =
+TEST_INCLUDE_PATHS += $(addprefix -I, $(TEST_INCLUDE_SUBDIRS)) 
+LIBRARY_PATHS = -L/home/kdatta1/workspace/googletest/googletest
 
 ifdef TRAVIS
   LIBRARY_PATHS += --coverage
@@ -144,6 +160,7 @@ EXAMPLES_OBJ := $(patsubst $(EXAMPLES_SRC_DIR)/%.cc,\
                              $(EXAMPLES_OBJ_DIR)/%.o, $(EXAMPLES_SRC))
 EXAMPLES_BIN := $(patsubst $(EXAMPLES_SRC_DIR)/%.cc,\
                              $(EXAMPLES_BIN_DIR)/%, $(EXAMPLES_SRC)) 
+TEST_INCLUDE := $(foreach D,$(TEST_INCLUDE_SUBDIRS),$D/*.h)                             
 TEST_SRC := $(wildcard $(foreach D,$(TEST_SRC_SUBDIRS),$D/*.cc))
 TEST_OBJ := $(patsubst $(TEST_SRC_DIR)/%.cc, $(TEST_OBJ_DIR)/%.o, $(TEST_SRC))
 
@@ -167,7 +184,7 @@ doc: doxyfile.inc
 
 test: libtiledb $(TEST_BIN_DIR)/tiledb_test
 	@echo "Running TileDB tests"
-	@$(TEST_BIN_DIR)/tiledb_test
+	@$(TEST_BIN_DIR)/tiledb_test --gtest_filter=$(GTEST_FILTER)
 
 clean: clean_core clean_libtiledb \
        clean_test clean_doc clean_examples 
@@ -280,8 +297,8 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 	@mkdir -p $(dir $@) 
 	@echo "Compiling $<"
 	@$(CXX) $(CPPFLAGS) $(OPENMP_FLAG) $(TEST_INCLUDE_PATHS) \
-		$(INCLUDE_PATHS) -c $< -o $@
-	@$(CXX) -MM $(TEST_INCLUDE_PATHS) \
+		$(INCLUDE_PATHS) $(PTHREADLIB) -c $< -o $@
+	@$(CXX) -MM $(TEST_INCLUDE_PATHS) $(PTHREADLIB) \
                 $(CORE_INCLUDE_PATHS) $(INCLUDE_PATHS) $< > $(@:.o=.d)
 	@mv -f $(@:.o=.d) $(@:.o=.d.tmp)
 	@sed 's|.*:|$@:|' < $(@:.o=.d.tmp) > $(@:.o=.d)
@@ -292,7 +309,7 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 $(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(TEST_BIN_DIR)
 	@echo "Creating test_cmd"
-	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) $(ZLIB) \
+	@$(CXX) -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) $(ZLIB) \
 		$(PTHREADLIB) $(OPENSSLLIB) $(GTESTLIB) $(OPENMP_FLAG) 
 
 # --- Cleaning --- #
