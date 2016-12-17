@@ -125,12 +125,12 @@ DOXYGEN_DIR = doxygen
 DOXYGEN_MAINPAGE = $(DOXYGEN_DIR)/mainpage.dox
 
 # --- Paths --- #
-INCLUDE_PATHS = -I/home/kdatta1/workspace/googletest/googletest/include
+INCLUDE_PATHS = 
 CORE_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
 EXAMPLES_INCLUDE_PATHS = -I$(EXAMPLES_INCLUDE_DIR)
 TEST_INCLUDE_PATHS = $(addprefix -I, $(CORE_INCLUDE_SUBDIRS))
 TEST_INCLUDE_PATHS += $(addprefix -I, $(TEST_INCLUDE_SUBDIRS)) 
-LIBRARY_PATHS = -L/home/kdatta1/workspace/googletest/googletest
+LIBRARY_PATHS = 
 
 ifdef TRAVIS
   LIBRARY_PATHS += --coverage
