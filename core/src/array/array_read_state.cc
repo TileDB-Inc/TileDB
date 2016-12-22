@@ -293,8 +293,7 @@ int ArrayReadState::compute_unsorted_fragment_cell_ranges_dense(
           return TILEDB_ARS_ERR;
         }
         // Insert fragment cell ranges to the result
-        if(fragment_cell_ranges.size() != 0)
-          unsorted_fragment_cell_ranges.push_back(fragment_cell_ranges);
+        unsorted_fragment_cell_ranges.push_back(fragment_cell_ranges);
       } else {                                    // SPARSE
         FragmentCellRanges fragment_cell_ranges;
         FragmentCellRanges fragment_cell_ranges_tmp;
@@ -317,8 +316,7 @@ int ArrayReadState::compute_unsorted_fragment_cell_ranges_dense(
               fragment_cell_ranges_tmp.end());
         } while(!fragment_read_states_[i]->done() &&
                 fragment_read_states_[i]->mbr_overlaps_tile()); 
-        if(fragment_cell_ranges.size() != 0)
-          unsorted_fragment_cell_ranges.push_back(fragment_cell_ranges);
+        unsorted_fragment_cell_ranges.push_back(fragment_cell_ranges);
       }
     } else {
       // Append an empty list
@@ -2133,12 +2131,23 @@ int ArrayReadState::sort_fragment_cell_ranges(
   // For easy reference
   int fragment_num = (int) unsorted_fragment_cell_ranges.size();
 
+  // Calculate the number of non-empty unsorted fragment range lists
+  int non_empty = 0;
+  int first_non_empty = -1;
+  for(int i=0; i<fragment_num; ++i) {
+    if(unsorted_fragment_cell_ranges[i].size() != 0) {
+      ++non_empty;
+      if(first_non_empty == -1) 
+        first_non_empty = i;
+    }
+  }
+
   // Sanity check
-  assert(fragment_num > 0);
+  assert(non_empty > 0);
 
   // Trivial case - single fragment
   if(fragment_num == 1) {
-    fragment_cell_ranges = unsorted_fragment_cell_ranges[0];
+    fragment_cell_ranges = unsorted_fragment_cell_ranges[first_non_empty];
     unsorted_fragment_cell_ranges.clear();
     return TILEDB_ARS_OK;
   }
