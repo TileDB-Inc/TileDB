@@ -875,29 +875,37 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
 
     // Compute the overlap of the previous results with the non-empty domain 
     T* search_tile_overlap_subarray = (T*) search_tile_overlap_subarray_;
-    array_schema_->subarray_overlap(
-        query_tile_overlap_subarray,
-        tile_domain_overlap_subarray, 
-        search_tile_overlap_subarray);
-
-    // Find the type of the search tile overlap
-    T* temp = new T[2*dim_num];
-    search_tile_overlap_ = 
+    bool overlap = 
         array_schema_->subarray_overlap(
-            search_tile_overlap_subarray,
-            tile_subarray, 
-            temp);
+            query_tile_overlap_subarray,
+            tile_domain_overlap_subarray, 
+            search_tile_overlap_subarray);
 
-    // Check if fragment fully covers the tile
-    subarray_area_covered_ = 
-        is_contained<T>(
-            query_tile_overlap_subarray, 
-            tile_domain_overlap_subarray,
-            dim_num);
+    if(!overlap) {
+      search_tile_overlap_ = 0;
+      subarray_area_covered_ = false; 
+    } else {
+      // Find the type of the search tile overlap
+      T* temp = new T[2*dim_num];
+      search_tile_overlap_ = 
+          array_schema_->subarray_overlap(
+              search_tile_overlap_subarray,
+              tile_subarray, 
+              temp);
+
+      // Check if fragment fully covers the tile
+      subarray_area_covered_ = 
+          is_contained<T>(
+              query_tile_overlap_subarray, 
+              tile_domain_overlap_subarray,
+              dim_num);
+
+      // Clean up
+      delete [] temp;
+    }
 
     // Clean up
     delete [] query_tile_overlap_subarray;
-    delete [] temp;
   } 
 
   // Clean up
@@ -936,10 +944,10 @@ void ReadState::get_next_overlapping_tile_sparse() {
             mbr, 
             static_cast<T*>(search_tile_overlap_subarray_));
 
-  if(!search_tile_overlap_)
-    ++search_tile_pos_;
-  else
-    return;
+    if(!search_tile_overlap_)
+      ++search_tile_pos_;
+    else
+      return;
   }
 }
 

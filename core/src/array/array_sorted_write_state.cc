@@ -466,19 +466,11 @@ void ArraySortedWriteState::calculate_cell_slab_info_col_col(
   // For easy reference
   int anum = (int) attribute_ids_.size();
   const T* range_overlap = (const T*) tile_slab_info_[id].range_overlap_[tid];
-  const T* tile_domain = (const T*) tile_domain_;
   const T* tile_extents = (const T*) array_->array_schema()->tile_extents();
-  int64_t tile_num, cell_num; 
+  int64_t cell_num; 
   
   // Calculate number of cells in cell slab
   cell_num = range_overlap[1] - range_overlap[0] + 1;
-  for(int i=0; i<dim_num_-1; ++i) {
-    tile_num = tile_domain[2*i+1] - tile_domain[2*i] + 1;
-    if(tile_num == 1)
-      cell_num *= range_overlap[2*(i+1)+1] - range_overlap[2*(i+1)] + 1;
-    else
-      break;
-  }
   tile_slab_info_[id].cell_slab_num_[tid] = cell_num;
 
   // Calculate size of a cell slab per attribute
@@ -502,19 +494,11 @@ void ArraySortedWriteState::calculate_cell_slab_info_row_row(
   // For easy reference
   int anum = (int) attribute_ids_.size();
   const T* range_overlap = (const T*) tile_slab_info_[id].range_overlap_[tid];
-  const T* tile_domain = (const T*) tile_domain_;
   const T* tile_extents = (const T*) array_->array_schema()->tile_extents();
-  int64_t tile_num, cell_num; 
+  int64_t cell_num; 
 
   // Calculate number of cells in cell slab
   cell_num = range_overlap[2*(dim_num_-1)+1] - range_overlap[2*(dim_num_-1)] +1;
-  for(int i=dim_num_-1; i>0; --i) {
-    tile_num = tile_domain[2*i+1] - tile_domain[2*i] + 1;
-    if(tile_num == 1)
-      cell_num *= range_overlap[2*(i-1)+1] - range_overlap[2*(i-1)] + 1;
-    else
-      break;
-  }
   tile_slab_info_[id].cell_slab_num_[tid] = cell_num;
 
   // Calculate size of a cell slab per attribute

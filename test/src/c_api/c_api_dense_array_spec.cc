@@ -45,7 +45,7 @@ class DenseArrayTestFixture: public testing::Test {
   const std::string ARRAY_100x100_10x10 = "dense_test_100x100_10x10";
   const int ARRAY_RANK_2D = 2;
 
-public:
+ public:
   // Array schema object under test
   TileDB_ArraySchema schema;
   // TileDB context
@@ -834,6 +834,10 @@ TEST_F(DenseArrayTestFixture, test_random_sorted_reads) {
         index++;
       }
     }
+
+   // Clean up
+   delete [] buffer;
+
   }
 } // end of test_random_sorted_reads
 
@@ -875,16 +879,12 @@ TEST_F(DenseArrayTestFixture, test_random_sorted_writes) {
   int64_t d0[2], d1[2];
 
   for (int i = 0; i < iterations; ++i) {
-    std::cout << "iteration: " << i << "\n";
     d0[0] = rand() % dim[0];
     d1[0] = rand() % dim[1];
     d0[1] = d0[0] + rand() % (dim[0] - d0[0]);
     d1[1] = d1[0] + rand() % (dim[1] - d1[0]);
 
     int64_t subarray[] = { d0[0], d0[1], d1[0], d1[1] };
-    std::cout << "subarray: " << subarray[0] << ","
-        << subarray[1] << "," << subarray[2] << ","
-        << subarray[3] << "\n";
     size_t query_size[2] = { (size_t)(d0[1] - d0[0] + 1),
                               (size_t)(d1[1] - d1[0] + 1) };
     size_t buffer_size = query_size[0] * query_size[1];
@@ -909,7 +909,7 @@ TEST_F(DenseArrayTestFixture, test_random_sorted_writes) {
                           subarray[3],
                           TILEDB_ARRAY_READ_SORTED_ROW);
 
-    for (index = 0; index < buffer_size; ++index)
+    for (index = 0; index < buffer_size; ++index) 
       EXPECT_EQ(buffer[index], out_buffer[index]);
 
     delete [] buffer;

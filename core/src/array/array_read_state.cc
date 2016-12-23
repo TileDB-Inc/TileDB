@@ -210,6 +210,7 @@ int ArrayReadState::compute_fragment_cell_pos_ranges(
       T* cell_range = static_cast<T*>(fragment_cell_ranges[i].second);
       cell_pos_range.first = array_schema_->get_cell_pos(cell_range);
       cell_pos_range.second = array_schema_->get_cell_pos(&cell_range[dim_num]);
+
       // Insert into the result
       fragment_cell_pos_ranges.push_back(fragment_cell_pos_range); 
     } else {                                          // SPARSE
@@ -705,10 +706,11 @@ void ArrayReadState::copy_cells_with_empty<int>(
   empty_cells_written_[attribute_id] += cell_num_to_copy;
 
   // Handle buffer overflow
-  if(empty_cells_written_[attribute_id] != cell_num_in_range) 
+  if(empty_cells_written_[attribute_id] != cell_num_in_range) {
     overflow_[attribute_id] = true;
-  else // Done copying this range
+  } else { // Done copying this range
     empty_cells_written_[attribute_id] = 0;
+  }
 }
 
 template<>
@@ -753,10 +755,11 @@ void ArrayReadState::copy_cells_with_empty<int64_t>(
   empty_cells_written_[attribute_id] += cell_num_to_copy;
 
   // Handle buffer overflow
-  if(empty_cells_written_[attribute_id] != cell_num_in_range) 
+  if(empty_cells_written_[attribute_id] != cell_num_in_range) { 
     overflow_[attribute_id] = true;
-  else // Done copying this range
+  } else { // Done copying this range
     empty_cells_written_[attribute_id] = 0;
+  }
 }
 
 template<>
@@ -801,10 +804,11 @@ void ArrayReadState::copy_cells_with_empty<float>(
   empty_cells_written_[attribute_id] += cell_num_to_copy;
 
   // Handle buffer overflow
-  if(empty_cells_written_[attribute_id] != cell_num_in_range) 
+  if(empty_cells_written_[attribute_id] != cell_num_in_range) { 
     overflow_[attribute_id] = true;
-  else // Done copying this range
+  } else { // Done copying this range
     empty_cells_written_[attribute_id] = 0;
+  }
 }
 
 template<>
@@ -849,10 +853,11 @@ void ArrayReadState::copy_cells_with_empty<double>(
   empty_cells_written_[attribute_id] += cell_num_to_copy;
 
   // Handle buffer overflow
-  if(empty_cells_written_[attribute_id] != cell_num_in_range) 
+  if(empty_cells_written_[attribute_id] != cell_num_in_range) { 
     overflow_[attribute_id] = true;
-  else // Done copying this range
+  } else { // Done copying this range
     empty_cells_written_[attribute_id] = 0;
+  }
 }
 
 template<>
@@ -897,10 +902,11 @@ void ArrayReadState::copy_cells_with_empty<char>(
   empty_cells_written_[attribute_id] += cell_num_to_copy;
 
   // Handle buffer overflow
-  if(empty_cells_written_[attribute_id] != cell_num_in_range) 
+  if(empty_cells_written_[attribute_id] != cell_num_in_range) {
     overflow_[attribute_id] = true;
-  else // Done copying this range
+  } else { // Done copying this range
     empty_cells_written_[attribute_id] = 0;
+  }
 }
 
 template<>
@@ -964,10 +970,11 @@ void ArrayReadState::copy_cells_with_empty_var<int>(
   empty_cells_written_[attribute_id] += cell_num_to_copy;
 
   // Handle buffer overflow
-  if(empty_cells_written_[attribute_id] != cell_num_in_range) 
+  if(empty_cells_written_[attribute_id] != cell_num_in_range) {
     overflow_[attribute_id] = true;
-  else // Done copying this range
+  } else { // Done copying this range
     empty_cells_written_[attribute_id] = 0;
+  }
 }
 
 template<>
@@ -1031,10 +1038,11 @@ void ArrayReadState::copy_cells_with_empty_var<int64_t>(
   empty_cells_written_[attribute_id] += cell_num_to_copy;
 
   // Handle buffer overflow
-  if(empty_cells_written_[attribute_id] != cell_num_in_range) 
+  if(empty_cells_written_[attribute_id] != cell_num_in_range) { 
     overflow_[attribute_id] = true;
-  else // Done copying this range
+  } else { // Done copying this range
     empty_cells_written_[attribute_id] = 0;
+  }
 }
 
 template<>
@@ -1232,7 +1240,7 @@ void ArrayReadState::copy_cells_with_empty_var<char>(
   empty_cells_written_[attribute_id] += cell_num_to_copy;
 
   // Handle buffer overflow
-  if(empty_cells_written_[attribute_id] != cell_num_in_range) 
+  if(empty_cells_written_[attribute_id] != cell_num_in_range)  
     overflow_[attribute_id] = true;
   else // Done copying this range
     empty_cells_written_[attribute_id] = 0;
@@ -2306,31 +2314,29 @@ int ArrayReadState::sort_fragment_cell_ranges(
       }
 
       // Potentially split the popped range
-      if(!pq.empty()) {
-        if(popped->must_be_split(top)) {
-          // Split the popped range
-          extra_popped = new PQFragmentCellRange<T>( 
+      if(!pq.empty() && popped->must_be_split(top)) {
+        // Split the popped range
+        extra_popped = new PQFragmentCellRange<T>( 
+            array_schema_,
+            &fragment_read_states_);
+        popped->split(top, extra_popped, tile_domain);
+        // Re-instert the extra popped range into the queue
+        pq.push(extra_popped);
+      } else {
+        // Get the next range from popped fragment
+        fid = (popped->fragment_id_ != -1) ? 
+               popped->fragment_id_ :
+               fragment_num-1;
+        if(rid[fid] != rlen[fid]) {
+          pq_fragment_cell_range = new PQFragmentCellRange<T>( 
               array_schema_,
               &fragment_read_states_);
-          popped->split(top, extra_popped, tile_domain);
-          // Re-instert the extra popped range into the queue
-          pq.push(extra_popped);
-        } else {
-          // Get the next range from popped fragment
-          fid = (popped->fragment_id_ != -1) ? 
-                 popped->fragment_id_ :
-                 fragment_num-1;
-          if(rid[fid] != rlen[fid]) {
-            pq_fragment_cell_range = new PQFragmentCellRange<T>( 
-                array_schema_,
-                &fragment_read_states_);
-            pq_fragment_cell_range->import_from(
-                unsorted_fragment_cell_ranges[fid][rid[fid]]);
-            pq.push(pq_fragment_cell_range);
-            ++rid[fid];
-          }
+          pq_fragment_cell_range->import_from(
+              unsorted_fragment_cell_ranges[fid][rid[fid]]);
+          pq.push(pq_fragment_cell_range);
+          ++rid[fid];
         }
-      } 
+      }
      
       // Insert the final popped range into the results
       popped->export_to(result);
