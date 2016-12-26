@@ -278,6 +278,12 @@ std::vector<std::string> get_dirs(const std::string& dir);
 std::vector<std::string> get_fragment_dirs(const std::string& dir);
 
 /** 
+ * Returns the MAC address of the machine as a 12-char string, e.g.,
+ * 00332a0b8c64. Returns an empty string upon error.
+ */
+std::string get_mac_addr();
+
+/** 
  * GZIPs the input buffer and stores the result in the output buffer, returning
  * the size of compressed data. 
  *

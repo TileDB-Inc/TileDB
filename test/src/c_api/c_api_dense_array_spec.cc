@@ -21,8 +21,7 @@
  */
 
 /**
- * Tests of C API for read/write/update operations for
- * dense arrays
+ * Tests of C API for read/write/update operations for dense arrays.
  */
 
 #include <gtest/gtest.h>

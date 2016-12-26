@@ -1197,15 +1197,25 @@ std::string Array::new_fragment_name() const {
   memcpy(&tid, &self, std::min(sizeof(self), sizeof(tid)));
   char fragment_name[TILEDB_NAME_MAX_LEN];
 
-  int n = sprintf(
-              fragment_name, 
-              "%s/.__%llu_%llu", 
-              array_schema_->array_name().c_str(), 
-              tid, 
-              ms);
-  if(n <0) 
+  // Get MAC address
+  std::string mac = get_mac_addr();
+  if(mac == "")
     return "";
 
+  // Generate fragment name
+  int n = sprintf(
+              fragment_name, 
+              "%s/.__%s%llu_%llu", 
+              array_schema_->array_name().c_str(), 
+              mac.c_str(),
+              tid, 
+              ms);
+
+  // Handle error
+  if(n<0) 
+    return "";
+
+  // Return
   return fragment_name;
 }
 
