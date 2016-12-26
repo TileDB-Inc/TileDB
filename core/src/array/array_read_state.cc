@@ -442,6 +442,8 @@ int ArrayReadState::copy_cells(
              buffer, 
              buffer_size, 
              buffer_offset);
+  else 
+    rc = TILEDB_ARS_ERR;
 
   // Handle error
   if(rc != TILEDB_ARS_OK)
@@ -577,6 +579,8 @@ int ArrayReadState::copy_cells_var(
              buffer_var, 
              buffer_var_size,
              buffer_var_offset);
+  else
+    rc = TILEDB_ARS_ERR;
 
   // Handle error
   if(rc != TILEDB_ARS_OK)

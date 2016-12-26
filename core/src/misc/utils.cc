@@ -52,9 +52,10 @@
   #include <net/if_dl.h>
   #include <netinet/in.h>
   #include <arpa/inet.h>
+#else
+#include <linux/if.h>
 #endif
 
-#include <linux/if.h>
 #include <unistd.h>
 #include <zlib.h>
 #include <typeinfo>
@@ -458,7 +459,7 @@ std::string get_mac_addr() {
   mib[2] = 0;
   mib[3] = AF_LINK;
   mib[4] = NET_RT_IFLIST;
-  if((mib[5] = if_nametoindex("en0") == 0) ||
+  if(((mib[5] = if_nametoindex("en0")) == 0) ||
      (sysctl(mib, 6, NULL, &len, NULL, 0) < 0)) {
     std::string errmsg = "Cannot get MAC address";
     PRINT_ERROR(errmsg);
