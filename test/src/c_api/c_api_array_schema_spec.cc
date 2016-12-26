@@ -34,7 +34,10 @@
 #include "utils.h"
 #include <unistd.h>
 
+
+
 void ArraySchemaTestFixture::SetUp() {
+  // Error code
   int rc;
  
   // Initialize context
@@ -50,6 +53,7 @@ void ArraySchemaTestFixture::SetUp() {
 }
 
 void ArraySchemaTestFixture::TearDown() {
+  // Error code
   int rc;
 
   // Finalize TileDB context
@@ -127,21 +131,31 @@ int ArraySchemaTestFixture::create_dense_array() {
 /* ****************************** */
 /*             TESTS              */
 /* ****************************** */
+
+/**
+ * Tests the array schema creation and retrieval.
+ */
 TEST_F(ArraySchemaTestFixture, test_array_schema) {
-  // Auxiliary 
+  // Error code 
   int rc;
-  TileDB_ArraySchema array_schema_disk;
 
   // Create array
   rc = create_dense_array();
   ASSERT_EQ(rc, TILEDB_OK);
 
   // Load array schema from the disk
+  TileDB_ArraySchema array_schema_disk;
   rc = tiledb_array_load_schema(
            tiledb_ctx_, 
            array_name_.c_str(), 
            &array_schema_disk);
   ASSERT_EQ(rc, TILEDB_OK);
+
+  // For easy reference
+  int64_t* tile_extents_disk = 
+      static_cast<int64_t*>(array_schema_disk.tile_extents_);
+  int64_t* tile_extents = 
+      static_cast<int64_t*>(array_schema_.tile_extents_);
 
   // Get real array path
   std::string array_name_real = real_dir(array_name_);
@@ -160,10 +174,6 @@ TEST_F(ArraySchemaTestFixture, test_array_schema) {
   ASSERT_EQ(array_schema_disk.compression_[1], array_schema_.compression_[1]);
   ASSERT_EQ(array_schema_disk.types_[0], array_schema_.types_[0]);
   ASSERT_EQ(array_schema_disk.types_[1], array_schema_.types_[1]);
-
-  int* tile_extents_disk = static_cast<int*>(array_schema_disk.tile_extents_);
-  int* tile_extents = static_cast<int*>(array_schema_.tile_extents_);
-
   ASSERT_EQ(tile_extents_disk[0], tile_extents[0]);
   ASSERT_EQ(tile_extents_disk[1], tile_extents[1]);
 

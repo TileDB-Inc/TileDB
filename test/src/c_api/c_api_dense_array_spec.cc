@@ -26,6 +26,7 @@
 
 #include <gtest/gtest.h>
 #include "c_api.h"
+#include "progress_bar.h"
 #include <iostream>
 #include <time.h>
 #include <sys/time.h>
@@ -807,6 +808,8 @@ TEST_F(DenseArrayTestFixture, test_random_sorted_reads) {
   int64_t d1_hi = 0;
   int64_t height = 0, width = 0;
 
+  ProgressBar* progress_bar = new ProgressBar();
+
   for (int iter = 0; iter < 100; ++iter) {
     height = rand() % (dim0 - d0_lo);
     width = rand() % (dim1 - d1_lo);
@@ -837,7 +840,10 @@ TEST_F(DenseArrayTestFixture, test_random_sorted_reads) {
    // Clean up
    delete [] buffer;
 
+   progress_bar->load(1.0/100);
   }
+
+  delete progress_bar;
 } // end of test_random_sorted_reads
 
 
