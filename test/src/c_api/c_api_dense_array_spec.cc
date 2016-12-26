@@ -384,7 +384,7 @@ int DenseArrayTestFixture::write_dense_array_sorted_2D(
       1);              // Meaningless when "attributes" is NULL
 
   const void *buffers[] = { buffer };
-  const size_t buffer_sizes[] = { dim0*dim1*sizeof(int) };
+  const size_t buffer_sizes[] = { (size_t) (dim0*dim1*sizeof(int)) };
 
   ret = tiledb_array_write(
             tiledb_array,
