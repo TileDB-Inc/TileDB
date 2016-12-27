@@ -233,8 +233,13 @@ int* DenseArrayTestFixture::read_dense_array_2D(
   // Error code
   int rc;
 
-  // Initialize a range
-  const int64_t range[] = {domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
+  // Initialize a subarray
+  const int64_t subarray[] = {
+      domain_0_lo, 
+      domain_0_hi, 
+      domain_1_lo, 
+      domain_1_hi
+  };
 
   // Subset over a specific attribute
   const char* attributes[] = { "ATTR_INT32" };
@@ -246,7 +251,7 @@ int* DenseArrayTestFixture::read_dense_array_2D(
            &tiledb_array,
            array_name_.c_str(),
            read_mode,
-           range,
+           subarray,
            attributes,
            1);
   if(rc != TILEDB_OK)
@@ -475,7 +480,7 @@ int DenseArrayTestFixture::write_dense_subarray_2D(
  * Tests 100 random 2D subarrays and checks if the value of each cell is equal 
  * to row_id*dim1+col_id. Top left corner is always 4,4. 
  */
-TEST_F(DenseArrayTestFixture, test_random_sorted_reads) {
+TEST_F(DenseArrayTestFixture, test_random_dense_sorted_reads) {
   // Error code
   int rc;
 
@@ -575,7 +580,7 @@ TEST_F(DenseArrayTestFixture, test_random_sorted_reads) {
 /**
  * Tests random 2D subarray writes. 
  */
-TEST_F(DenseArrayTestFixture, test_random_sorted_writes) {
+TEST_F(DenseArrayTestFixture, test_random_dense_sorted_writes) {
   // Error code
   int rc;
 
@@ -671,7 +676,7 @@ TEST_F(DenseArrayTestFixture, test_random_sorted_writes) {
 /**
  * Test random updates in a 2D dense array.
  */
-TEST_F(DenseArrayTestFixture, test_random_updates) {
+TEST_F(DenseArrayTestFixture, test_random_dense_updates) {
   // Error code
   int rc;
 
