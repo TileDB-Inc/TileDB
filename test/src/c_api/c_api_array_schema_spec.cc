@@ -35,6 +35,9 @@
 #include <unistd.h>
 
 
+/* ****************************** */
+/*        GTEST FUNCTIONS         */
+/* ****************************** */
 
 void ArraySchemaTestFixture::SetUp() {
   // Error code
@@ -70,6 +73,13 @@ void ArraySchemaTestFixture::TearDown() {
   rc = tiledb_array_free_schema(&array_schema_);
   ASSERT_EQ(rc, TILEDB_OK);
 }
+
+
+
+
+/* ****************************** */
+/*         PUBLIC METHODS         */
+/* ****************************** */
 
 int ArraySchemaTestFixture::create_dense_array() {
   // Initialization s
