@@ -303,19 +303,6 @@ int ArraySortedReadState::init() {
   // Create AIO requests
   init_aio_requests();
 
-  // Create the thread that will be handling all the copying
-  if(pthread_create(
-         &copy_thread_, 
-         NULL, 
-         ArraySortedReadState::copy_handler, 
-         this)) {
-    std::string errmsg = "Cannot create AIO thread";
-    PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg; 
-    return TILEDB_ASRS_ERR;
-  }
-  copy_thread_running_ = true;
-
   // Initialize the mutexes and conditions
   if(pthread_mutex_init(&aio_mtx_, NULL)) {
        std::string errmsg = "Cannot initialize IO mutex";
@@ -445,6 +432,19 @@ int ArraySortedReadState::init() {
     else 
       assert(0);
   }
+
+  // Create the thread that will be handling all the copying
+  if(pthread_create(
+         &copy_thread_, 
+         NULL, 
+         ArraySortedReadState::copy_handler, 
+         this)) {
+    std::string errmsg = "Cannot create AIO thread";
+    PRINT_ERROR(errmsg);
+    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg; 
+    return TILEDB_ASRS_ERR;
+  }
+  copy_thread_running_ = true;
 
   // Success
   return TILEDB_ASRS_OK;

@@ -173,19 +173,6 @@ ArraySortedWriteState::~ArraySortedWriteState() {
 /* ****************************** */
 
 int ArraySortedWriteState::init() {
-  // Create the thread that will be handling all the copying
-  if(pthread_create(
-         &aio_thread_, 
-         NULL, 
-         ArraySortedWriteState::copy_handler, 
-         this)) {
-    std::string errmsg = "Cannot create AIO thread";
-    PRINT_ERROR(errmsg);
-    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg; 
-    return TILEDB_ASWS_ERR;
-  }
-  aio_thread_running_ = true;
-
   // Initialize the mutexes and conditions
   if(pthread_mutex_init(&aio_mtx_, NULL)) {
        std::string errmsg = "Cannot initialize IO mutex";
@@ -270,6 +257,19 @@ int ArraySortedWriteState::init() {
     else 
       assert(0);
   }
+
+  // Create the thread that will be handling all the asynchronous IOs
+  if(pthread_create(
+         &aio_thread_, 
+         NULL, 
+         ArraySortedWriteState::aio_handler, 
+         this)) {
+    std::string errmsg = "Cannot create AIO thread";
+    PRINT_ERROR(errmsg);
+    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg; 
+    return TILEDB_ASWS_ERR;
+  }
+  aio_thread_running_ = true;
 
   // Success
   return TILEDB_ASWS_OK;
@@ -741,7 +741,7 @@ void ArraySortedWriteState::calculate_tile_slab_info_row(int id) {
   }
 }
 
-void *ArraySortedWriteState::copy_handler(void* context) {
+void *ArraySortedWriteState::aio_handler(void* context) {
   // For easy reference
   ArraySortedWriteState* asws = (ArraySortedWriteState*) context;
 
