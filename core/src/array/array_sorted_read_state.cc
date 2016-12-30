@@ -141,6 +141,9 @@ ArraySortedReadState::~ArraySortedReadState() {
   // Wait for thread to be destroyed
   while(copy_thread_running_);
 
+  // Join with the terminated thread
+  pthread_join(copy_thread_, NULL);
+
   // Clean up
   free(subarray_);
   free(tile_coords_);
@@ -276,16 +279,18 @@ int ArraySortedReadState::read(void** buffers, size_t* buffer_sizes) {
 
   // Call the appropriate templated read
   int type = array_->array_schema()->coords_type();
-  if(type == TILEDB_INT32)
+  if(type == TILEDB_INT32) {
     return read<int>();
-  else if(type == TILEDB_INT64)
+  } else if(type == TILEDB_INT64) {
     return read<int64_t>();
-  else if(type == TILEDB_FLOAT32)
+  } else if(type == TILEDB_FLOAT32) {
     return read<float>();
-  else if(type == TILEDB_FLOAT64)
+  } else if(type == TILEDB_FLOAT64) {
     return read<double>();
-  else 
+  } else {
     assert(0);
+    return TILEDB_ASRS_ERR;
+  }
 } 
 
 
@@ -302,19 +307,6 @@ int ArraySortedReadState::init() {
 
   // Create AIO requests
   init_aio_requests();
-
-  // Create the thread that will be handling all the copying
-  if(pthread_create(
-         &copy_thread_, 
-         NULL, 
-         ArraySortedReadState::copy_handler, 
-         this)) {
-    std::string errmsg = "Cannot create AIO thread";
-    PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg; 
-    return TILEDB_ASRS_ERR;
-  }
-  copy_thread_running_ = true;
 
   // Initialize the mutexes and conditions
   if(pthread_mutex_init(&aio_mtx_, NULL)) {
@@ -445,6 +437,19 @@ int ArraySortedReadState::init() {
     else 
       assert(0);
   }
+
+  // Create the thread that will be handling all the copying
+  if(pthread_create(
+         &copy_thread_, 
+         NULL, 
+         ArraySortedReadState::copy_handler, 
+         this)) {
+    std::string errmsg = "Cannot create AIO thread";
+    PRINT_ERROR(errmsg);
+    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg; 
+    return TILEDB_ASRS_ERR;
+  }
+  copy_thread_running_ = true;
 
   // Success
   return TILEDB_ASRS_OK;
@@ -2391,6 +2396,7 @@ int ArraySortedReadState::read() {
       return read_sparse_sorted_row<T>();
   } else {
     assert(0); // The code should never reach here
+    return TILEDB_ASRS_ERR;
   }
 }
 

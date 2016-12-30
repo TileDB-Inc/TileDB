@@ -327,7 +327,7 @@ class ArraySortedReadState {
   pthread_t copy_thread_;
 
   /** True if the copy thread is canceled. */
-  bool copy_thread_canceled_;
+  volatile bool copy_thread_canceled_;
 
   /** True if the copy thread is running. */
   volatile bool copy_thread_running_;

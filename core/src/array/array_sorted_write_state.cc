@@ -140,6 +140,9 @@ ArraySortedWriteState::~ArraySortedWriteState() {
   // Wait for thread to be destroyed
   while(aio_thread_running_);
 
+  // Join with the terminated thread
+  pthread_join(aio_thread_, NULL);
+
   // Destroy conditions and mutexes
   for(int i=0; i<2; ++i) {
     if(pthread_cond_destroy(&(aio_cond_[i]))) {
@@ -173,19 +176,6 @@ ArraySortedWriteState::~ArraySortedWriteState() {
 /* ****************************** */
 
 int ArraySortedWriteState::init() {
-  // Create the thread that will be handling all the copying
-  if(pthread_create(
-         &aio_thread_, 
-         NULL, 
-         ArraySortedWriteState::copy_handler, 
-         this)) {
-    std::string errmsg = "Cannot create AIO thread";
-    PRINT_ERROR(errmsg);
-    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg; 
-    return TILEDB_ASWS_ERR;
-  }
-  aio_thread_running_ = true;
-
   // Initialize the mutexes and conditions
   if(pthread_mutex_init(&aio_mtx_, NULL)) {
        std::string errmsg = "Cannot initialize IO mutex";
@@ -271,6 +261,19 @@ int ArraySortedWriteState::init() {
       assert(0);
   }
 
+  // Create the thread that will be handling all the asynchronous IOs
+  if(pthread_create(
+         &aio_thread_, 
+         NULL, 
+         ArraySortedWriteState::aio_handler, 
+         this)) {
+    std::string errmsg = "Cannot create AIO thread";
+    PRINT_ERROR(errmsg);
+    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg; 
+    return TILEDB_ASWS_ERR;
+  }
+  aio_thread_running_ = true;
+
   // Success
   return TILEDB_ASWS_OK;
 }
@@ -290,12 +293,14 @@ int ArraySortedWriteState::write(
 
   // Call the appropriate templated read
   int type = array_->array_schema()->coords_type();
-  if(type == TILEDB_INT32)
+  if(type == TILEDB_INT32) {
     return write<int>();
-  else if(type == TILEDB_INT64)
+  } else if(type == TILEDB_INT64) {
     return write<int64_t>();
-  else 
+  } else {
     assert(0);
+    return TILEDB_ASWS_ERR;
+  }
 
   // Success
   return TILEDB_ASWS_OK;
@@ -466,19 +471,11 @@ void ArraySortedWriteState::calculate_cell_slab_info_col_col(
   // For easy reference
   int anum = (int) attribute_ids_.size();
   const T* range_overlap = (const T*) tile_slab_info_[id].range_overlap_[tid];
-  const T* tile_domain = (const T*) tile_domain_;
   const T* tile_extents = (const T*) array_->array_schema()->tile_extents();
-  int64_t tile_num, cell_num; 
+  int64_t cell_num; 
   
   // Calculate number of cells in cell slab
   cell_num = range_overlap[1] - range_overlap[0] + 1;
-  for(int i=0; i<dim_num_-1; ++i) {
-    tile_num = tile_domain[2*i+1] - tile_domain[2*i] + 1;
-    if(tile_num == 1)
-      cell_num *= range_overlap[2*(i+1)+1] - range_overlap[2*(i+1)] + 1;
-    else
-      break;
-  }
   tile_slab_info_[id].cell_slab_num_[tid] = cell_num;
 
   // Calculate size of a cell slab per attribute
@@ -502,19 +499,11 @@ void ArraySortedWriteState::calculate_cell_slab_info_row_row(
   // For easy reference
   int anum = (int) attribute_ids_.size();
   const T* range_overlap = (const T*) tile_slab_info_[id].range_overlap_[tid];
-  const T* tile_domain = (const T*) tile_domain_;
   const T* tile_extents = (const T*) array_->array_schema()->tile_extents();
-  int64_t tile_num, cell_num; 
+  int64_t cell_num; 
 
   // Calculate number of cells in cell slab
   cell_num = range_overlap[2*(dim_num_-1)+1] - range_overlap[2*(dim_num_-1)] +1;
-  for(int i=dim_num_-1; i>0; --i) {
-    tile_num = tile_domain[2*i+1] - tile_domain[2*i] + 1;
-    if(tile_num == 1)
-      cell_num *= range_overlap[2*(i-1)+1] - range_overlap[2*(i-1)] + 1;
-    else
-      break;
-  }
   tile_slab_info_[id].cell_slab_num_[tid] = cell_num;
 
   // Calculate size of a cell slab per attribute
@@ -757,7 +746,7 @@ void ArraySortedWriteState::calculate_tile_slab_info_row(int id) {
   }
 }
 
-void *ArraySortedWriteState::copy_handler(void* context) {
+void *ArraySortedWriteState::aio_handler(void* context) {
   // For easy reference
   ArraySortedWriteState* asws = (ArraySortedWriteState*) context;
 
@@ -1549,12 +1538,14 @@ int ArraySortedWriteState::write() {
   // For easy reference
   int mode = array_->mode(); 
 
-  if(mode == TILEDB_ARRAY_WRITE_SORTED_COL) 
+  if(mode == TILEDB_ARRAY_WRITE_SORTED_COL) { 
     return write_sorted_col<T>();
-  else if(mode == TILEDB_ARRAY_WRITE_SORTED_ROW)
+  } else if(mode == TILEDB_ARRAY_WRITE_SORTED_ROW) {
     return write_sorted_row<T>();
-  else
+  } else {
     assert(0); // The code should never reach here
+    return TILEDB_ASWS_ERR;
+  }
 }
 
 template<class T>

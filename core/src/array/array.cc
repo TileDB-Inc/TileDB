@@ -1138,10 +1138,24 @@ int Array::aio_thread_create() {
     return TILEDB_AR_OK;
 
   // Create the thread that will be handling all AIO requests
-  if(pthread_create(&aio_thread_, NULL, Array::aio_handler, this)) {
+  int rc;
+  if((rc=pthread_create(&aio_thread_, NULL, Array::aio_handler, this))) {
     std::string errmsg = "Cannot create AIO thread";
     PRINT_ERROR(errmsg);
     tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
+
+switch(rc) {
+  case EAGAIN: 
+    std::cout << "EAGAIN\n";
+    break;
+  case EINVAL: 
+    std::cout << "EINVAL\n";
+    break;
+  case EPERM: 
+    std::cout << "EPERM\n";
+    break;
+}
+
     return TILEDB_AR_ERR;
   }
 
@@ -1184,6 +1198,14 @@ int Array::aio_thread_destroy() {
   // Wait for cancelation to take place
   while(aio_thread_created_);
 
+  // Join with the terminated thread
+  if(pthread_join(aio_thread_, NULL)) {
+    std::string errmsg = "Cannot join AIO thread";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
+    return TILEDB_AR_ERR;
+  }
+
   // Success
   return TILEDB_AR_OK;
 }
@@ -1197,15 +1219,25 @@ std::string Array::new_fragment_name() const {
   memcpy(&tid, &self, std::min(sizeof(self), sizeof(tid)));
   char fragment_name[TILEDB_NAME_MAX_LEN];
 
-  int n = sprintf(
-              fragment_name, 
-              "%s/.__%llu_%llu", 
-              array_schema_->array_name().c_str(), 
-              tid, 
-              ms);
-  if(n <0) 
+  // Get MAC address
+  std::string mac = get_mac_addr();
+  if(mac == "")
     return "";
 
+  // Generate fragment name
+  int n = sprintf(
+              fragment_name, 
+              "%s/.__%s%llu_%llu", 
+              array_schema_->array_name().c_str(), 
+              mac.c_str(),
+              tid, 
+              ms);
+
+  // Handle error
+  if(n<0) 
+    return "";
+
+  // Return
   return fragment_name;
 }
 

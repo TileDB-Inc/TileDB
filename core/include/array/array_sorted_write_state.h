@@ -228,7 +228,7 @@ class ArraySortedWriteState {
   pthread_t aio_thread_;
 
   /** True if the AIO thread is canceled. */
-  bool aio_thread_canceled_;
+  volatile bool aio_thread_canceled_;
 
   /** True if the AIO thread is running. */
   volatile bool aio_thread_running_;
@@ -569,13 +569,13 @@ class ArraySortedWriteState {
   void calculate_tile_slab_info_row(int id);
 
   /**
-   * Function called by the copy thread. 
+   * Function called by the AIO thread. 
    *
    * @param context This is practically the ArraySortedWriteState object for 
    *     which the function is called (typically *this* is passed to this 
    *     argument by the caller).
    */
-  static void *copy_handler(void* context);
+  static void *aio_handler(void* context);
 
   /** 
    * Copies a tile slab from the user buffers into the local buffers, 

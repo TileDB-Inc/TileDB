@@ -38,9 +38,24 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <iostream>
+#include <netdb.h>
 #include <set>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
+
+#if defined(__APPLE__) && defined(__MACH__)
+  #include <sys/types.h>
+  #include <sys/sysctl.h>
+  #include <net/if.h>
+  #include <net/if_dl.h>
+  #include <netinet/in.h>
+  #include <arpa/inet.h>
+#else
+#include <linux/if.h>
+#endif
+
 #include <unistd.h>
 #include <zlib.h>
 #include <typeinfo>
@@ -428,6 +443,71 @@ std::vector<std::string> get_fragment_dirs(const std::string& dir) {
   // Return
   return dirs;
 }
+
+#if defined(__APPLE__) && defined(__MACH__)
+std::string get_mac_addr() {
+  int  mib[6];
+  char mac[13];
+  size_t len;
+  char *buf;
+  unsigned char *ptr;
+  struct if_msghdr *ifm;
+  struct sockaddr_dl *sdl;
+
+  mib[0] = CTL_NET;
+  mib[1] = AF_ROUTE;
+  mib[2] = 0;
+  mib[3] = AF_LINK;
+  mib[4] = NET_RT_IFLIST;
+  if(((mib[5] = if_nametoindex("en0")) == 0) ||
+     (sysctl(mib, 6, NULL, &len, NULL, 0) < 0)) {
+    std::string errmsg = "Cannot get MAC address";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return "";
+  }
+
+  buf = (char*) malloc(len);
+  if(sysctl(mib, 6, buf, &len, NULL, 0) < 0) {
+    std::string errmsg = "Cannot get MAC address";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return "";
+  }
+
+  ifm = (struct if_msghdr *)buf;
+  sdl = (struct sockaddr_dl *)(ifm + 1);
+  ptr = (unsigned char *)LLADDR(sdl);
+  for(int i=0; i<6; ++i)
+    sprintf(mac + 2*i, "%02x", *(ptr+i));
+  mac[12] ='\0';
+
+  free(buf);
+  return mac;
+}
+#else
+std::string get_mac_addr() {
+  struct ifreq s;
+  int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+  char mac[13];
+
+  strcpy(s.ifr_name, "eth0");
+  if (0 == ioctl(fd, SIOCGIFHWADDR, &s)) {
+    for (int i = 0; i < 6; ++i)
+      sprintf(mac + 2*i, "%02x", (unsigned char) s.ifr_addr.sa_data[i]);
+    mac[12] = '\0';
+    close(fd);
+
+    return mac;
+  } else { // Error
+    close(fd);
+    std::string errmsg = "Cannot get MAC address";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return "";
+  }
+}
+#endif
 
 ssize_t gzip(
     unsigned char* in, 
