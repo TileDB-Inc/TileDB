@@ -635,7 +635,7 @@ int StorageManager::array_finalize(Array* array) {
   if(rc_close != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
   if(rc_finalize != TILEDB_AR_OK) {
-    tiledb_sm_errmsg = tiledb_as_errmsg;
+    tiledb_sm_errmsg = tiledb_ar_errmsg;
     return TILEDB_SM_ERR;
   }
 

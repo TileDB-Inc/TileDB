@@ -848,14 +848,14 @@ int mpi_io_sync(
   // Open file
   MPI_File fh;
   int rc;
-  if(is_dir(filename))  // DIRECTORY
+  if(is_dir(filename))       // DIRECTORY
     rc = MPI_File_open(
              *mpi_comm, 
               filename, 
               MPI_MODE_RDONLY, 
               MPI_INFO_NULL, 
               &fh);
-  else                  // FILE
+  else if(is_file(filename)  // FILE
     rc = MPI_File_open(
              *mpi_comm, 
               filename, 
@@ -863,6 +863,8 @@ int mpi_io_sync(
                   MPI_MODE_CREATE | MPI_MODE_SEQUENTIAL, 
               MPI_INFO_NULL, 
               &fh);
+  else
+    return TILEDB_UT_OK;     // If file does not exist, exit
 
   // Handle error
   if(rc) {
@@ -1179,10 +1181,12 @@ bool starts_with(const std::string& value, const std::string& prefix) {
 int sync(const char* filename) {
   // Open file
   int fd;
-  if(is_dir(filename)) // DIRECTORY 
+  if(is_dir(filename))       // DIRECTORY 
     fd = open(filename, O_RDONLY, S_IRWXU);
-  else                 // FILE
+  else if(is_file(filename)) // FILE
     fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);
+  else
+    return TILEDB_UT_OK;     // If file does not exist, exit
 
   // Handle error
   if(fd == -1) {

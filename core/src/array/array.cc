@@ -91,7 +91,6 @@ Array::~Array() {
 
   // Applicable only to clones
   if(array_clone_ != NULL) {
-    array_clone_->finalize();
     delete array_clone_;
   } else { // Applicable only to (non-clone) arrays
     if(array_schema_ != NULL)
@@ -460,13 +459,14 @@ int Array::consolidate(
 }
 
 int Array::finalize() {
-  // Clean the fragments
+  // Initializations
   int rc = TILEDB_FG_OK;
   int fragment_num =  fragments_.size();
+  bool fg_error = false;
   for(int i=0; i<fragment_num; ++i) {
     rc = fragments_[i]->finalize();
-    if(rc != TILEDB_FG_OK)
-      break;
+    if(rc != TILEDB_FG_OK)  
+      fg_error = true;
     delete fragments_[i];
   }
   fragments_.clear();
@@ -501,6 +501,11 @@ int Array::finalize() {
     aio_queue_.pop();
   }
 
+  // Finalize the clone
+  int rc_clone = TILEDB_AR_OK; 
+  if(array_clone_ != NULL) 
+    rc_clone = array_clone_->finalize();
+
   // Errors
   if(rc != TILEDB_FG_OK) {
     tiledb_ar_errmsg = tiledb_fg_errmsg;
@@ -520,6 +525,10 @@ int Array::finalize() {
     tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
+  if(rc_clone != TILEDB_AR_OK)
+    return TILEDB_AR_ERR; 
+  if(fg_error) 
+    return TILEDB_AR_ERR; 
 
   // Success
   return TILEDB_AR_OK; 
@@ -1143,19 +1152,6 @@ int Array::aio_thread_create() {
     std::string errmsg = "Cannot create AIO thread";
     PRINT_ERROR(errmsg);
     tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
-
-switch(rc) {
-  case EAGAIN: 
-    std::cout << "EAGAIN\n";
-    break;
-  case EINVAL: 
-    std::cout << "EINVAL\n";
-    break;
-  case EPERM: 
-    std::cout << "EPERM\n";
-    break;
-}
-
     return TILEDB_AR_ERR;
   }
 

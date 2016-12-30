@@ -448,7 +448,8 @@ int mpi_io_read_from_file(
     size_t length);
 
 /**
- * Syncs a file or directory using MPI-IO.
+ * Syncs a file or directory using MPI-IO. If the file/directory does not exist,
+ * the function gracefully exits (i.e., it ignores the syncing).
  *
  * @param mpi_comm The MPI communicator.
  * @param filename The name of the file.
@@ -609,7 +610,8 @@ std::string real_dir(const std::string& dir);
 bool starts_with(const std::string& value, const std::string& prefix);
 
 /** 
- * Syncs a file or directory.
+ * Syncs a file or directory. If the file/directory does not exist,
+ * the function gracefully exits (i.e., it ignores the syncing).
  * 
  * @param filename The name of the file.
  * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.

@@ -180,8 +180,9 @@ int WriteState::finalize() {
     tile_cell_num_[attribute_num] = 0;
   }
 
-  // Sync all attributes
-  sync();
+  // Sync all attributes 
+  if(sync() != TILEDB_WS_OK) 
+    return TILEDB_WS_ERR;
 
   // Success
   return TILEDB_WS_OK;
@@ -206,9 +207,19 @@ int WriteState::sync() {
         array_schema->attribute(attribute_ids[i]) + TILEDB_FILE_SUFFIX;
     if(write_method == TILEDB_IO_WRITE) {
       rc = ::sync(filename.c_str());
+      // Handle error
+      if(rc != TILEDB_UT_OK) {
+        tiledb_ws_errmsg = tiledb_ut_errmsg;
+        return TILEDB_WS_ERR;
+      }
     } else if(write_method == TILEDB_IO_MPI) { 
 #ifdef HAVE_MPI
       rc = mpi_io_sync(mpi_comm, filename.c_str());
+      // Handle error
+      if(rc != TILEDB_UT_OK) {
+        tiledb_ws_errmsg = tiledb_ut_errmsg;
+        return TILEDB_WS_ERR;
+      }
 #else
     // Error: MPI not supported
     std::string errmsg = "Cannot sync; MPI not supported";
@@ -220,12 +231,6 @@ int WriteState::sync() {
       assert(0);
     }
 
-    // Handle error
-    if(rc != TILEDB_UT_OK) {
-      tiledb_ws_errmsg = tiledb_ut_errmsg;
-      return TILEDB_WS_ERR;
-    }
-
     // Only for variable-size attributes (they have an extra file)
     if(array_schema->var_size(attribute_ids[i])) {
       filename = 
@@ -234,15 +239,25 @@ int WriteState::sync() {
           TILEDB_FILE_SUFFIX;
       if(write_method == TILEDB_IO_WRITE) {
         rc = ::sync(filename.c_str());
+        // Handle error
+        if(rc != TILEDB_UT_OK) {
+          tiledb_ws_errmsg = tiledb_ut_errmsg;
+          return TILEDB_WS_ERR;
+        }
       } else if(write_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
         rc = mpi_io_sync(mpi_comm, filename.c_str());
+        // Handle error
+        if(rc != TILEDB_UT_OK) {
+          tiledb_ws_errmsg = tiledb_ut_errmsg;
+          return TILEDB_WS_ERR;
+        }
 #else
-    // Error: MPI not supported
-    std::string errmsg = "Cannot sync; MPI not supported";
-    PRINT_ERROR(errmsg);
-    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
-    return TILEDB_WS_ERR;
+        // Error: MPI not supported
+        std::string errmsg = "Cannot sync; MPI not supported";
+        PRINT_ERROR(errmsg);
+        tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+        return TILEDB_WS_ERR;
 #endif
       } else {
         assert(0);
