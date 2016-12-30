@@ -289,6 +289,7 @@ int ArraySortedReadState::read(void** buffers, size_t* buffer_sizes) {
     return read<double>();
   } else {
     assert(0);
+    return TILEDB_ASRS_ERR;
   }
 } 
 
