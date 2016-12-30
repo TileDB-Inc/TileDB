@@ -45,7 +45,7 @@ endif
 # --- Verbose mode handler --- #
 VERBOSE =
 ifeq ($(VERBOSE),1)
-  CPPFLAGS += -DNVERBOSE
+  CPPFLAGS += -DVERBOSE
 endif
 
 # --- Use parallel sort --- #
@@ -160,7 +160,7 @@ EXAMPLES_OBJ := $(patsubst $(EXAMPLES_SRC_DIR)/%.cc,\
                              $(EXAMPLES_OBJ_DIR)/%.o, $(EXAMPLES_SRC))
 EXAMPLES_BIN := $(patsubst $(EXAMPLES_SRC_DIR)/%.cc,\
                              $(EXAMPLES_BIN_DIR)/%, $(EXAMPLES_SRC)) 
-TEST_INCLUDE := $(foreach D,$(TEST_INCLUDE_SUBDIRS),$D/*.h)                             
+TEST_INCLUDE := $(foreach D,$(TEST_INCLUDE_SUBDIRS),$D/*.h)                    
 TEST_SRC := $(wildcard $(foreach D,$(TEST_SRC_SUBDIRS),$D/*.cc))
 TEST_OBJ := $(patsubst $(TEST_SRC_DIR)/%.cc, $(TEST_OBJ_DIR)/%.o, $(TEST_SRC))
 
