@@ -89,6 +89,8 @@ class ArraySchemaTestFixture: public testing::Test {
   std::string array_name_;
   /** Array schema object under test. */
   TileDB_ArraySchema array_schema_;
+  /** True if the array schema is set. */
+  bool array_schema_set_;
   /** TileDB context. */
   TileDB_CTX* tiledb_ctx_;
 };

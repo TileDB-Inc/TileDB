@@ -1138,10 +1138,24 @@ int Array::aio_thread_create() {
     return TILEDB_AR_OK;
 
   // Create the thread that will be handling all AIO requests
-  if(pthread_create(&aio_thread_, NULL, Array::aio_handler, this)) {
+  int rc;
+  if((rc=pthread_create(&aio_thread_, NULL, Array::aio_handler, this))) {
     std::string errmsg = "Cannot create AIO thread";
     PRINT_ERROR(errmsg);
     tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
+
+switch(rc) {
+  case EAGAIN: 
+    std::cout << "EAGAIN\n";
+    break;
+  case EINVAL: 
+    std::cout << "EINVAL\n";
+    break;
+  case EPERM: 
+    std::cout << "EPERM\n";
+    break;
+}
+
     return TILEDB_AR_ERR;
   }
 
@@ -1183,6 +1197,14 @@ int Array::aio_thread_destroy() {
 
   // Wait for cancelation to take place
   while(aio_thread_created_);
+
+  // Join with the terminated thread
+  if(pthread_join(aio_thread_, NULL)) {
+    std::string errmsg = "Cannot join AIO thread";
+    PRINT_ERROR(errmsg);
+    tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
+    return TILEDB_AR_ERR;
+  }
 
   // Success
   return TILEDB_AR_OK;

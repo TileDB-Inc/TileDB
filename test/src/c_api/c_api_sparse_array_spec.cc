@@ -179,7 +179,7 @@ int* SparseArrayTestFixture::read_sparse_array_2D(
            subarray,
            attributes,
            1);
-  if(rc != TILEDB_OK)
+  if(rc != TILEDB_OK) 
     return NULL;
 
   // Prepare the buffers that will store the result
@@ -187,18 +187,21 @@ int* SparseArrayTestFixture::read_sparse_array_2D(
   int64_t domain_size_1 = domain_1_hi - domain_1_lo + 1;
   int64_t cell_num = domain_size_0 * domain_size_1;
   int* buffer_a1 = new int[cell_num];
+  assert(buffer_a1);
   void* buffers[] = { buffer_a1 };
   size_t buffer_size_a1 = cell_num * sizeof(int);
   size_t buffer_sizes[] = { buffer_size_a1 };
 
   // Read from array
   rc = tiledb_array_read(tiledb_array, buffers, buffer_sizes);
-  if(rc != TILEDB_OK)
+  if(rc != TILEDB_OK) {
+    tiledb_array_finalize(tiledb_array);
     return NULL;
+  }
 
   // Finalize the array
   rc = tiledb_array_finalize(tiledb_array);
-  if(rc != TILEDB_OK)
+  if(rc != TILEDB_OK) 
     return NULL;
 
   // Success - return the created buffer
@@ -251,12 +254,17 @@ int SparseArrayTestFixture::write_sparse_array_unsorted_2D(
   if(rc != TILEDB_OK)
     return TILEDB_ERR;
 
+  // Finalize the array
+  rc = tiledb_array_finalize(tiledb_array);
+  if(rc != TILEDB_OK)
+    return TILEDB_ERR;
+
   // Clean up
   delete [] buffer_a1;
   delete [] buffer_coords;
 
-  // Finalize the array and return
-  return tiledb_array_finalize(tiledb_array);
+  // Success
+  return TILEDB_OK;
 } 
 
 
@@ -304,11 +312,12 @@ TEST_F(SparseArrayTestFixture, test_random_sparse_sorted_reads) {
            false,
            cell_order,
            tile_order);
-  EXPECT_EQ(rc, TILEDB_OK);
+  ASSERT_EQ(rc, TILEDB_OK);
 
   // Write array cells with value = row id * COLUMNS + col id
   // to disk
-  write_sparse_array_unsorted_2D(domain_size_0, domain_size_1);
+  rc = write_sparse_array_unsorted_2D(domain_size_0, domain_size_1);
+  ASSERT_EQ(rc, TILEDB_OK);
 
   // Test random subarrays and check with corresponding value set by
   // row_id*dim1+col_id. Top left corner is always 4,4.
@@ -332,12 +341,12 @@ TEST_F(SparseArrayTestFixture, test_random_sparse_sorted_reads) {
                       d1_lo,
                       d1_hi,
                       TILEDB_ARRAY_READ_SORTED_ROW);
-    EXPECT_TRUE(buffer != NULL);
+    ASSERT_TRUE(buffer != NULL);
 
     // Check
     for(int64_t i = d0_lo; i <= d0_hi; ++i) {
       for(int64_t j = d1_lo; j <= d1_hi; ++j) {
-        EXPECT_EQ(buffer[index], i*domain_size_1+j);
+        ASSERT_EQ(buffer[index], i*domain_size_1+j);
         if (buffer[index] !=  (i*domain_size_1+j)) {
           std::cout << "mismatch: " << i
               << "," << j << "=" << buffer[index] << "!="

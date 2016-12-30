@@ -140,6 +140,9 @@ ArraySortedWriteState::~ArraySortedWriteState() {
   // Wait for thread to be destroyed
   while(aio_thread_running_);
 
+  // Join with the terminated thread
+  pthread_join(aio_thread_, NULL);
+
   // Destroy conditions and mutexes
   for(int i=0; i<2; ++i) {
     if(pthread_cond_destroy(&(aio_cond_[i]))) {
@@ -290,12 +293,14 @@ int ArraySortedWriteState::write(
 
   // Call the appropriate templated read
   int type = array_->array_schema()->coords_type();
-  if(type == TILEDB_INT32)
+  if(type == TILEDB_INT32) {
     return write<int>();
-  else if(type == TILEDB_INT64)
+  } else if(type == TILEDB_INT64) {
     return write<int64_t>();
-  else 
+  } else {
     assert(0);
+    return TILEDB_ASWS_ERR;
+  }
 
   // Success
   return TILEDB_ASWS_OK;
@@ -1533,12 +1538,14 @@ int ArraySortedWriteState::write() {
   // For easy reference
   int mode = array_->mode(); 
 
-  if(mode == TILEDB_ARRAY_WRITE_SORTED_COL) 
+  if(mode == TILEDB_ARRAY_WRITE_SORTED_COL) { 
     return write_sorted_col<T>();
-  else if(mode == TILEDB_ARRAY_WRITE_SORTED_ROW)
+  } else if(mode == TILEDB_ARRAY_WRITE_SORTED_ROW) {
     return write_sorted_row<T>();
-  else
+  } else {
     assert(0); // The code should never reach here
+    return TILEDB_ASWS_ERR;
+  }
 }
 
 template<class T>

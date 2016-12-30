@@ -614,7 +614,7 @@ int StorageManager::array_init(
   }
 
   // Success
-   return TILEDB_SM_OK;
+  return TILEDB_SM_OK;
 }
 
 int StorageManager::array_finalize(Array* array) {

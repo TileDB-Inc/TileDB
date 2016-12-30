@@ -42,6 +42,9 @@
 void ArraySchemaTestFixture::SetUp() {
   // Error code
   int rc;
+
+  // Array schema not set yet
+  array_schema_set_ = false;
  
   // Initialize context
   rc = tiledb_ctx_init(&tiledb_ctx_, NULL);
@@ -70,8 +73,10 @@ void ArraySchemaTestFixture::TearDown() {
   ASSERT_EQ(rc, 0);
 
   // Free array schema
-  rc = tiledb_array_free_schema(&array_schema_);
-  ASSERT_EQ(rc, TILEDB_OK);
+  if(array_schema_set_) {
+    rc = tiledb_array_free_schema(&array_schema_);
+    ASSERT_EQ(rc, TILEDB_OK);
+  }
 }
 
 
@@ -131,7 +136,10 @@ int ArraySchemaTestFixture::create_dense_array() {
   if(rc != TILEDB_OK)
     return TILEDB_ERR;
 
-  /* Create the array. */
+  // Remember that the array schema is set
+  array_schema_set_ = true;
+
+  // Create the array
   return tiledb_array_create(tiledb_ctx_, &array_schema_);
 }
 

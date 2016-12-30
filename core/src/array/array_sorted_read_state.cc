@@ -141,6 +141,9 @@ ArraySortedReadState::~ArraySortedReadState() {
   // Wait for thread to be destroyed
   while(copy_thread_running_);
 
+  // Join with the terminated thread
+  pthread_join(copy_thread_, NULL);
+
   // Clean up
   free(subarray_);
   free(tile_coords_);
@@ -276,16 +279,17 @@ int ArraySortedReadState::read(void** buffers, size_t* buffer_sizes) {
 
   // Call the appropriate templated read
   int type = array_->array_schema()->coords_type();
-  if(type == TILEDB_INT32)
+  if(type == TILEDB_INT32) {
     return read<int>();
-  else if(type == TILEDB_INT64)
+  } else if(type == TILEDB_INT64) {
     return read<int64_t>();
-  else if(type == TILEDB_FLOAT32)
+  } else if(type == TILEDB_FLOAT32) {
     return read<float>();
-  else if(type == TILEDB_FLOAT64)
+  } else if(type == TILEDB_FLOAT64) {
     return read<double>();
-  else 
+  } else {
     assert(0);
+  }
 } 
 
 
@@ -2391,6 +2395,7 @@ int ArraySortedReadState::read() {
       return read_sparse_sorted_row<T>();
   } else {
     assert(0); // The code should never reach here
+    return TILEDB_ASRS_ERR;
   }
 }
 
