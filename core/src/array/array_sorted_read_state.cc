@@ -1325,7 +1325,7 @@ void ArraySortedReadState::copy_tile_slab_sparse(int aid, int bid) {
 
     // Calculate new local buffer offset
     local_buffer_offset = cell_pos_[current_cell_pos] * cell_size;
-      
+
     // Copy cell slab
     memcpy(
         buffer + buffer_offset,
@@ -1610,7 +1610,8 @@ void ArraySortedReadState::handle_copy_requests_sparse() {
     if(overflow()) {
       block_overflow();
       block_aio(copy_id_);
-      release_copy(copy_id_); 
+      release_copy(0); 
+      release_copy(1); 
       wait_overflow();
       continue;
     }
@@ -2513,7 +2514,8 @@ int ArraySortedReadState::read_sparse_sorted_col() {
   wait_copy(copy_id);
 
   // Assign the true buffer sizes
-  for(int i=0; i<buffer_num_; ++i) 
+  int buffer_num = buffer_num_ - (int) extra_coords_;
+  for(int i=0; i<buffer_num; ++i) 
     copy_state_.buffer_sizes_[i] = copy_state_.buffer_offsets_[i];
 
   // The following will make the copy thread terminate
@@ -2555,7 +2557,8 @@ int ArraySortedReadState::read_sparse_sorted_row() {
   wait_copy(copy_id);
 
   // Assign the true buffer sizes
-  for(int i=0; i<buffer_num_; ++i) 
+  int buffer_num = buffer_num_ - (int) extra_coords_;
+  for(int i=0; i<buffer_num; ++i) 
     copy_state_.buffer_sizes_[i] = copy_state_.buffer_offsets_[i];
 
   // The following will make the copy thread terminate
@@ -2757,7 +2760,7 @@ void ArraySortedReadState::sort_cell_pos() {
 
   // Populate cell_pos
   cell_pos_.resize(cell_num);
-  for(int i=0; i<cell_num; ++i)
+  for(int i=0; i<cell_num; ++i) 
     cell_pos_[i] = i;
 
   // Invoke the proper sort function, based on the mode
