@@ -1771,12 +1771,6 @@ int ArraySortedReadState::lock_overflow_mtx() {
 
 template<class T>
 bool ArraySortedReadState::next_tile_slab_dense_col() {
-  // Wait for the previous copy on aio_id_ buffer to be consumed
-  wait_copy(aio_id_);
-
-  // Block copy
-  block_copy(aio_id_);
-
   // Quick check if done
   if(read_tile_slabs_done_)
     return false;
@@ -1786,6 +1780,12 @@ bool ArraySortedReadState::next_tile_slab_dense_col() {
     resume_aio_ = false;
     return true;
   }
+
+  // Wait for the previous copy on aio_id_ buffer to be consumed
+  wait_copy(aio_id_);
+
+  // Block copy
+  block_copy(aio_id_);
 
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
@@ -1859,12 +1859,6 @@ bool ArraySortedReadState::next_tile_slab_dense_col() {
 
 template<class T>
 bool ArraySortedReadState::next_tile_slab_dense_row() {
-  // Wait for the previous copy on aio_id_ buffer to be consumed
-  wait_copy(aio_id_);
-
-  // Block copy
-  block_copy(aio_id_);
-
   // Quick check if done
   if(read_tile_slabs_done_)
     return false;
@@ -1874,6 +1868,12 @@ bool ArraySortedReadState::next_tile_slab_dense_row() {
     resume_aio_ = false;
     return true;
   }
+
+  // Wait for the previous copy on aio_id_ buffer to be consumed
+  wait_copy(aio_id_);
+
+  // Block copy
+  block_copy(aio_id_);
 
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
@@ -1943,12 +1943,6 @@ bool ArraySortedReadState::next_tile_slab_dense_row() {
 
 template<class T>
 bool ArraySortedReadState::next_tile_slab_sparse_col() {
-  // Wait for the previous copy on aio_id_ buffer to be consumed
-  wait_copy(aio_id_);
-
-  // Block copy
-  block_copy(aio_id_);
-
   // Quick check if done
   if(read_tile_slabs_done_)
     return false;
@@ -1958,6 +1952,12 @@ bool ArraySortedReadState::next_tile_slab_sparse_col() {
     resume_aio_ = false;
     return true;
   }
+
+  // Wait for the previous copy on aio_id_ buffer to be consumed
+  wait_copy(aio_id_);
+
+  // Block copy
+  block_copy(aio_id_);
 
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
@@ -2017,12 +2017,6 @@ bool ArraySortedReadState::next_tile_slab_sparse_col() {
 
 template<>
 bool ArraySortedReadState::next_tile_slab_sparse_col<float>() {
-  // Wait for the previous copy on aio_id_ buffer to be consumed
-  wait_copy(aio_id_);
-
-  // Block copy
-  block_copy(aio_id_);
-
   // Quick check if done
   if(read_tile_slabs_done_)
     return false;
@@ -2032,6 +2026,12 @@ bool ArraySortedReadState::next_tile_slab_sparse_col<float>() {
     resume_aio_ = false;
     return true;
   }
+
+  // Wait for the previous copy on aio_id_ buffer to be consumed
+  wait_copy(aio_id_);
+
+  // Block copy
+  block_copy(aio_id_);
 
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
@@ -2092,12 +2092,6 @@ bool ArraySortedReadState::next_tile_slab_sparse_col<float>() {
 
 template<>
 bool ArraySortedReadState::next_tile_slab_sparse_col<double>() {
-  // Wait for the previous copy on aio_id_ buffer to be consumed
-  wait_copy(aio_id_);
-
-  // Block copy
-  block_copy(aio_id_);
-
   // Quick check if done
   if(read_tile_slabs_done_)
     return false;
@@ -2107,6 +2101,12 @@ bool ArraySortedReadState::next_tile_slab_sparse_col<double>() {
     resume_aio_ = false;
     return true;
   }
+
+  // Wait for the previous copy on aio_id_ buffer to be consumed
+  wait_copy(aio_id_);
+
+  // Block copy
+  block_copy(aio_id_);
 
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
@@ -2167,12 +2167,6 @@ bool ArraySortedReadState::next_tile_slab_sparse_col<double>() {
 
 template<class T>
 bool ArraySortedReadState::next_tile_slab_sparse_row() {
-  // Wait for the previous copy on aio_id_ buffer to be consumed
-  wait_copy(aio_id_);
-
-  // Block copy
-  block_copy(aio_id_);
-
   // Quick check if done
   if(read_tile_slabs_done_)
     return false;
@@ -2182,6 +2176,12 @@ bool ArraySortedReadState::next_tile_slab_sparse_row() {
     resume_aio_ = false;
     return true;
   }
+
+  // Wait for the previous copy on aio_id_ buffer to be consumed
+  wait_copy(aio_id_);
+
+  // Block copy
+  block_copy(aio_id_);
 
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
@@ -2237,12 +2237,6 @@ bool ArraySortedReadState::next_tile_slab_sparse_row() {
 
 template<>
 bool ArraySortedReadState::next_tile_slab_sparse_row<float>() {
-  // Wait for the previous copy on aio_id_ buffer to be consumed
-  wait_copy(aio_id_);
-
-  // Block copy
-  block_copy(aio_id_);
-
   // Quick check if done
   if(read_tile_slabs_done_)
     return false;
@@ -2252,6 +2246,12 @@ bool ArraySortedReadState::next_tile_slab_sparse_row<float>() {
     resume_aio_ = false;
     return true;
   }
+
+  // Wait for the previous copy on aio_id_ buffer to be consumed
+  wait_copy(aio_id_);
+
+  // Block copy
+  block_copy(aio_id_);
 
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
@@ -2309,12 +2309,6 @@ bool ArraySortedReadState::next_tile_slab_sparse_row<float>() {
 
 template<>
 bool ArraySortedReadState::next_tile_slab_sparse_row<double>() {
-  // Wait for the previous copy on aio_id_ buffer to be consumed
-  wait_copy(aio_id_);
-
-  // Block copy
-  block_copy(aio_id_);
-
   // Quick check if done
   if(read_tile_slabs_done_)
     return false;
@@ -2324,6 +2318,12 @@ bool ArraySortedReadState::next_tile_slab_sparse_row<double>() {
     resume_aio_ = false;
     return true;
   }
+
+  // Wait for the previous copy on aio_id_ buffer to be consumed
+  wait_copy(aio_id_);
+
+  // Block copy
+  block_copy(aio_id_);
 
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
