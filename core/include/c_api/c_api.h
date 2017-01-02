@@ -494,14 +494,19 @@ TILEDB_EXPORT int tiledb_array_write(
     const size_t* buffer_sizes);
 
 /**
- * Performs a read operation on an array, which must be initialized with mode
- * TILEDB_ARRAY_READ, TILEDB_ARRAY_READ_SORTED_COL or 
- * TILEDB_ARRAY_READ_SORTED_ROW. The function retrieves the result cells that 
- * lie inside the subarray specified in tiledb_array_init() or 
- * tiledb_array_reset_subarray(). The results are written in input buffers 
- * provided by the user, which are also allocated by the user. Note that the
- * results are written in the buffers in the same order they appear on the
- * disk, which leads to maximum performance. 
+ * Performs a read operation on an array.
+ * The array must be initialized in one of the following read modes,
+ * each of which has a different behaviour:
+ *    - TILEDB_ARRAY_READ: \n
+ *      In this mode, the cell values are stored in the buffers respecting
+ *      the cell order on the disk (specified in the array schema). This mode 
+ *      leads to the best performance. 
+ *    - TILEDB_ARRAY_READ_SORTED_COL: \n
+ *      In this mode, the cell values are stored in the buffers in column-major
+ *      order with respect to the subarray used upon array initialization. 
+ *    - TILEDB_ARRAY_READ_SORTED_ROW: \n
+ *      In this mode, the cell values are stored in the buffer in row-major
+ *      order with respect to the subarray used upon array initialization. 
  * 
  * @param tiledb_array The TileDB array.
  * @param buffers An array of buffers, one for each attribute. These must be
