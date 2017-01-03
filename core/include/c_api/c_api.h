@@ -34,7 +34,9 @@
 #define __C_API_H__
 
 #include "constants.h"
-#include <mpi.h>
+#ifdef HAVE_MPI
+  #include <mpi.h>
+#endif
 #include <stdint.h>
 #include <stddef.h>
 #include <string>
@@ -91,8 +93,10 @@ typedef struct TileDB_Config {
    * default home directory will be used, which is ~/.tiledb/. 
    */
   const char* home_;
+#ifdef HAVE_MPI
   /** The MPI communicator. Use NULL if no MPI is used. */
   MPI_Comm* mpi_comm_; 
+#endif
   /** 
    * The method for reading data from a file. 
    * It can be one of the following: 
@@ -342,8 +346,12 @@ TILEDB_EXPORT int tiledb_array_create(
  * @param array The directory of the array to be initialized.
  * @param mode The mode of the array. It must be one of the following:
  *    - TILEDB_ARRAY_WRITE 
+ *    - TILEDB_ARRAY_WRITE_SORTED_COL 
+ *    - TILEDB_ARRAY_WRITE_SORTED_ROW 
  *    - TILEDB_ARRAY_WRITE_UNSORTED 
  *    - TILEDB_ARRAY_READ 
+ *    - TILEDB_ARRAY_READ_SORTED_COL 
+ *    - TILEDB_ARRAY_READ_SORTED_ROW
  * @param subarray The subarray in which the array read/write will be
  *     constrained on. It should be a sequence of [low, high] pairs (one 
  *     pair per dimension), whose type should be the same as that of the
@@ -447,6 +455,16 @@ TILEDB_EXPORT int tiledb_array_free_schema(
  *      of times, and all the writes will occur in the same fragment. 
  *      Moreover, the buffers need not be synchronized, i.e., some buffers
  *      may have more cells than others when the function is invoked.
+ *    - TILEDB_ARRAY_WRITE_SORTED_COL: \n
+ *      In this mode, the cell values are provided in the buffer in column-major
+ *      order with respect to the subarray used upon array initialization. 
+ *      TileDB will properly re-organize the cells so that they follow the 
+ *      array cell order for storage on the disk.
+ *    - TILEDB_ARRAY_WRITE_SORTED_ROW: \n
+ *      In this mode, the cell values are provided in the buffer in row-major
+ *      order with respect to the subarray used upon array initialization. 
+ *      TileDB will properly re-organize the cells so that they follow the 
+ *      array cell order for storage on the disk.
  *    - TILEDB_ARRAY_WRITE_UNSORTED: \n
  *      This mode is applicable to sparse arrays, or when writing sparse updates
  *      to a dense array. One of the buffers holds the coordinates. The cells
@@ -476,13 +494,19 @@ TILEDB_EXPORT int tiledb_array_write(
     const size_t* buffer_sizes);
 
 /**
- * Performs a read operation on an array, which must be initialized with mode
- * TILEDB_ARRAY_READ. The function retrieves the result cells that lie inside
- * the subarray specified in tiledb_array_init() or 
- * tiledb_array_reset_subarray(). The results are written in input buffers 
- * provided by the user, which are also allocated by the user. Note that the
- * results are written in the buffers in the same order they appear on the
- * disk, which leads to maximum performance. 
+ * Performs a read operation on an array.
+ * The array must be initialized in one of the following read modes,
+ * each of which has a different behaviour:
+ *    - TILEDB_ARRAY_READ: \n
+ *      In this mode, the cell values are stored in the buffers respecting
+ *      the cell order on the disk (specified in the array schema). This mode 
+ *      leads to the best performance. 
+ *    - TILEDB_ARRAY_READ_SORTED_COL: \n
+ *      In this mode, the cell values are stored in the buffers in column-major
+ *      order with respect to the subarray used upon array initialization. 
+ *    - TILEDB_ARRAY_READ_SORTED_ROW: \n
+ *      In this mode, the cell values are stored in the buffer in row-major
+ *      order with respect to the subarray used upon array initialization. 
  * 
  * @param tiledb_array The TileDB array.
  * @param buffers An array of buffers, one for each attribute. These must be
@@ -549,6 +573,28 @@ TILEDB_EXPORT int tiledb_array_consolidate(
 TILEDB_EXPORT int tiledb_array_finalize(
     TileDB_Array* tiledb_array);
 
+/** 
+ * Syncs all currently written files in the input array. 
+ *
+ * @param tiledb_array The array to be synced.
+ * @return TILEDB_OK on success, and TILEDB_ERR on error.
+ */
+TILEDB_EXPORT int tiledb_array_sync(
+    TileDB_Array* tiledb_array);
+
+/** 
+ * Syncs the currently written files associated with the input attribute
+ * in the input array. 
+ *
+ * @param tiledb_array The array to be synced.
+ * @param attribute The name of the attribute to be synced.
+ * @return TILEDB_OK on success, and TILEDB_ERR on error.
+ */
+TILEDB_EXPORT int tiledb_array_sync_attribute(
+    TileDB_Array* tiledb_array,
+    const char* attribute);
+
+
 /** A TileDB array iterator. */
 typedef struct TileDB_ArrayIterator TileDB_ArrayIterator;
 
@@ -561,6 +607,13 @@ typedef struct TileDB_ArrayIterator TileDB_ArrayIterator;
  * @param tiledb_array_it The TileDB array iterator to be created. The function
  *     will allocate the appropriate memory space for the iterator. 
  * @param array The directory of the array the iterator is initialized for.
+ * @param mode The read mode, which can be one of the following:
+ *    - TILEDB_ARRAY_READ\n
+ *      Reads the cells in the native order they are stored on the disk.
+ *    - TILEDB_ARRAY_READ_SORTED_COL\n
+ *      Reads the cells in column-major order within the specified subarray.
+ *    - TILEDB_ARRAY_READ_SORTED_ROW\n
+ *      Reads the cells in column-major order within the specified subarray.
  * @param subarray The subarray in which the array iterator will be
  *     constrained on. It should be a sequence of [low, high] pairs (one 
  *     pair per dimension), whose type should be the same as that of the
@@ -589,6 +642,7 @@ TILEDB_EXPORT int tiledb_array_iterator_init(
     const TileDB_CTX* tiledb_ctx,
     TileDB_ArrayIterator** tiledb_array_it,
     const char* array,
+    int mode,
     const void* subarray,
     const char** attributes,
     int attribute_num,

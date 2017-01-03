@@ -91,7 +91,9 @@ int tiledb_ctx_init(
   if(tiledb_config != NULL)
     config->init(
         tiledb_config->home_, 
+#ifdef HAVE_MPI
         tiledb_config->mpi_comm_, 
+#endif
         tiledb_config->read_method_, 
         tiledb_config->write_method_);
 
@@ -724,6 +726,49 @@ int tiledb_array_finalize(TileDB_Array* tiledb_array) {
   return TILEDB_OK;
 }
 
+int tiledb_array_sync(TileDB_Array* tiledb_array) {
+  // Sanity check
+  if(!sanity_check(tiledb_array) ||
+     !sanity_check(tiledb_array->tiledb_ctx_))
+    return TILEDB_ERR;
+
+  // Sync
+  int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_sync(
+               tiledb_array->array_);
+
+  // Error
+  if(rc != TILEDB_SM_OK) {
+    strcpy(tiledb_errmsg, tiledb_sm_errmsg.c_str());
+    return TILEDB_ERR; 
+  }
+   
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_array_sync_attribute(
+    TileDB_Array* tiledb_array,
+    const char* attribute) {
+  // Sanity check
+  if(!sanity_check(tiledb_array) ||
+     !sanity_check(tiledb_array->tiledb_ctx_))
+    return TILEDB_ERR;
+
+  // Sync attribute
+  int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_sync_attribute(
+               tiledb_array->array_,
+               attribute);
+
+  // Error
+  if(rc != TILEDB_SM_OK) {
+    strcpy(tiledb_errmsg, tiledb_sm_errmsg.c_str());
+    return TILEDB_ERR; 
+  }
+   
+  // Success
+  return TILEDB_OK;
+}
+
 typedef struct TileDB_ArrayIterator {
   ArrayIterator* array_it_;
   const TileDB_CTX* tiledb_ctx_;
@@ -733,6 +778,7 @@ int tiledb_array_iterator_init(
     const TileDB_CTX* tiledb_ctx,
     TileDB_ArrayIterator** tiledb_array_it,
     const char* array,
+    int mode,
     const void* subarray,
     const char** attributes,
     int attribute_num,
@@ -753,6 +799,7 @@ int tiledb_array_iterator_init(
   int rc = tiledb_ctx->storage_manager_->array_iterator_init(
                (*tiledb_array_it)->array_it_,
                array,
+               mode,
                subarray, 
                attributes,
                attribute_num,
@@ -1533,6 +1580,7 @@ int tiledb_array_aio_read(
   aio_request->id_ = (size_t) tiledb_aio_request;
   aio_request->buffers_ = tiledb_aio_request->buffers_;
   aio_request->buffer_sizes_ = tiledb_aio_request->buffer_sizes_;
+  aio_request->mode_ = tiledb_array->array_->mode();
   aio_request->status_ = &(tiledb_aio_request->status_);
   aio_request->subarray_ = tiledb_aio_request->subarray_;
   aio_request->completion_handle_ = tiledb_aio_request->completion_handle_;
@@ -1560,6 +1608,7 @@ int tiledb_array_aio_write(
   aio_request->id_ = (size_t) tiledb_aio_request;
   aio_request->buffers_ = tiledb_aio_request->buffers_;
   aio_request->buffer_sizes_ = tiledb_aio_request->buffer_sizes_;
+  aio_request->mode_ = tiledb_array->array_->mode();
   aio_request->status_ = &(tiledb_aio_request->status_);
   aio_request->subarray_ = tiledb_aio_request->subarray_;
   aio_request->completion_handle_ = tiledb_aio_request->completion_handle_;

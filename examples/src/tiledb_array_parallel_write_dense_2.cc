@@ -32,7 +32,7 @@
 
 #include "c_api.h"
 
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
 #include <omp.h>
 
 
@@ -185,7 +185,7 @@ void parallel_write(
 #include <stdio.h>
 
 int main() {
-  printf("OpenMP not supported.");
+  printf("OpenMP not supported.\n");
 
   return 0;
 }

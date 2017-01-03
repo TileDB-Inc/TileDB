@@ -33,7 +33,9 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#include <mpi.h>
+#ifdef HAVE_MPI
+  #include <mpi.h>
+#endif
 #include <string>
 
 
@@ -59,6 +61,7 @@ class Config {
   /*             MUTATORS              */
   /* ********************************* */
 
+#ifdef HAVE_MPI
   /**
    * Initializes the configuration parameters.
    *
@@ -66,17 +69,17 @@ class Config {
    * @param mpi_comm The MPI communicator.
    * @param read_method The method for reading data from a file. 
    *     It can be one of the following: 
-   *        - TILEDB_USE_READ
+   *        - TILEDB_IO_READ
    *          TileDB will use POSIX read.
-   *        - TILEDB_USE_MMAP
+   *        - TILEDB_IO_MMAP
    *          TileDB will use mmap.
-   *        - TILEDB_USE_MPIIO
+   *        - TILEDB_IO_MPI
    *          TileDB will use MPI-IO read. 
    * @param write_method The method for writing data to a file. 
    *     It can be one of the following: 
-   *        - TILEDB_USE_WRITE
+   *        - TILEDB_IO_WRITE
    *          TileDB will use POSIX write.
-   *        - TILEDB_USE_MPI_IO
+   *        - TILEDB_IO_MPI
    *          TileDB will use MPI-IO write.
    * @return void. 
    */
@@ -85,7 +88,32 @@ class Config {
       MPI_Comm* mpi_comm,
       int read_method,
       int write_methods); 
-
+#else
+  /**
+   * Initializes the configuration parameters.
+   *
+   * @param home The TileDB home directory.
+   * @param read_method The method for reading data from a file. 
+   *     It can be one of the following: 
+   *        - TILEDB_IO_READ
+   *          TileDB will use POSIX read.
+   *        - TILEDB_IO_MMAP
+   *          TileDB will use mmap.
+   *        - TILEDB_IO_MPI
+   *          TileDB will use MPI-IO read. 
+   * @param write_method The method for writing data to a file. 
+   *     It can be one of the following: 
+   *        - TILEDB_IO_WRITE
+   *          TileDB will use POSIX write.
+   *        - TILEDB_IO_MPI
+   *          TileDB will use MPI-IO write.
+   * @return void. 
+   */
+  void init(
+      const char* home,
+      int read_method,
+      int write_methods);
+#endif
  
   /* ********************************* */
   /*             ACCESSORS             */
@@ -94,8 +122,10 @@ class Config {
   /** Returns the TileDB home directory. */
   const std::string& home() const; 
 
+#ifdef HAVE_MPI
   /** Returns the MPI communicator. */
   MPI_Comm* mpi_comm() const;
+#endif
 
   /** Returns the read method. */
   int read_method() const;
@@ -110,25 +140,27 @@ class Config {
 
   /** TileDB home directory. */
   std::string home_;
+#ifdef HAVE_MPI
   /** The MPI communicator. */
   MPI_Comm* mpi_comm_;
+#endif
   /** 
    * The method for reading data from a file. 
    * It can be one of the following: 
-   *    - TILEDB_USE_READ
+   *    - TILEDB_IO_READ
    *      TileDB will use POSIX read.
-   *    - TILEDB_USE_MMAP
+   *    - TILEDB_IO_MMAP
    *      TileDB will use mmap.
-   *    - TILEDB_USE_MPI_IO
+   *    - TILEDB_IO_MPI
    *      TileDB will use MPI-IO read. 
    */
   int read_method_;
   /** 
    * The method for writing data to a file. 
    * It can be one of the following: 
-   *    - TILEDB_USE_WRITE
+   *    - TILEDB_IO_WRITE
    *      TileDB will use POSIX write.
-   *    - TILEDB_USE_MPI_IO
+   *    - TILEDB_IO_MPI
    *      TileDB will use MPI-IO write. 
    */
   int write_method_;

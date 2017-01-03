@@ -33,7 +33,7 @@
 #include "c_api.h"
 #include <stdio.h>
 
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
 #include <omp.h>
 
 // The function to be computed in parallel
@@ -164,7 +164,7 @@ void parallel_read(
 #else
 
 int main() {
-  printf("OpenMP not supported.");
+  printf("OpenMP not supported.\n");
 
   return 0;
 }
