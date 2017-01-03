@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_read_sorted_dense.cc
+ * @file   tiledb_array_read_dense_sorted.cc
  *
  * @section LICENSE
  *
