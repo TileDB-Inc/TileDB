@@ -855,7 +855,7 @@ int mpi_io_sync(
               MPI_MODE_RDONLY, 
               MPI_INFO_NULL, 
               &fh);
-  else if(is_file(filename)  // FILE
+  else if(is_file(filename))  // FILE
     rc = MPI_File_open(
              *mpi_comm, 
               filename, 
