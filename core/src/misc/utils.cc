@@ -38,9 +38,24 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <iostream>
+#include <netdb.h>
 #include <set>
+#include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
+
+#if defined(__APPLE__) && defined(__MACH__)
+  #include <sys/types.h>
+  #include <sys/sysctl.h>
+  #include <net/if.h>
+  #include <net/if_dl.h>
+  #include <netinet/in.h>
+  #include <arpa/inet.h>
+#else
+#include <linux/if.h>
+#endif
+
 #include <unistd.h>
 #include <zlib.h>
 #include <typeinfo>
@@ -77,6 +92,19 @@ std::string tiledb_ut_errmsg = "";
 void adjacent_slashes_dedup(std::string& value) {
   value.erase(std::unique(value.begin(), value.end(), both_slashes),
               value.end()); 
+}
+
+bool array_read_mode(int mode) {
+  return mode == TILEDB_ARRAY_READ || 
+         mode == TILEDB_ARRAY_READ_SORTED_COL ||
+         mode == TILEDB_ARRAY_READ_SORTED_ROW;
+}
+
+bool array_write_mode(int mode) {
+  return mode == TILEDB_ARRAY_WRITE || 
+         mode == TILEDB_ARRAY_WRITE_SORTED_COL || 
+         mode == TILEDB_ARRAY_WRITE_SORTED_ROW || 
+         mode == TILEDB_ARRAY_WRITE_UNSORTED;
 }
 
 bool both_slashes(char a, char b) {
@@ -416,6 +444,71 @@ std::vector<std::string> get_fragment_dirs(const std::string& dir) {
   return dirs;
 }
 
+#if defined(__APPLE__) && defined(__MACH__)
+std::string get_mac_addr() {
+  int  mib[6];
+  char mac[13];
+  size_t len;
+  char *buf;
+  unsigned char *ptr;
+  struct if_msghdr *ifm;
+  struct sockaddr_dl *sdl;
+
+  mib[0] = CTL_NET;
+  mib[1] = AF_ROUTE;
+  mib[2] = 0;
+  mib[3] = AF_LINK;
+  mib[4] = NET_RT_IFLIST;
+  if(((mib[5] = if_nametoindex("en0")) == 0) ||
+     (sysctl(mib, 6, NULL, &len, NULL, 0) < 0)) {
+    std::string errmsg = "Cannot get MAC address";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return "";
+  }
+
+  buf = (char*) malloc(len);
+  if(sysctl(mib, 6, buf, &len, NULL, 0) < 0) {
+    std::string errmsg = "Cannot get MAC address";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return "";
+  }
+
+  ifm = (struct if_msghdr *)buf;
+  sdl = (struct sockaddr_dl *)(ifm + 1);
+  ptr = (unsigned char *)LLADDR(sdl);
+  for(int i=0; i<6; ++i)
+    sprintf(mac + 2*i, "%02x", *(ptr+i));
+  mac[12] ='\0';
+
+  free(buf);
+  return mac;
+}
+#else
+std::string get_mac_addr() {
+  struct ifreq s;
+  int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
+  char mac[13];
+
+  strcpy(s.ifr_name, "eth0");
+  if (0 == ioctl(fd, SIOCGIFHWADDR, &s)) {
+    for (int i = 0; i < 6; ++i)
+      sprintf(mac + 2*i, "%02x", (unsigned char) s.ifr_addr.sa_data[i]);
+    mac[12] = '\0';
+    close(fd);
+
+    return mac;
+  } else { // Error
+    close(fd);
+    std::string errmsg = "Cannot get MAC address";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return "";
+  }
+}
+#endif
+
 ssize_t gzip(
     unsigned char* in, 
     size_t in_size,
@@ -546,6 +639,18 @@ bool is_array(const std::string& dir) {
     return false;
 }
 
+template<class T>
+bool is_contained(
+    const T* range_A, 
+    const T* range_B, 
+    int dim_num) {
+  for(int i=0; i<dim_num; ++i) 
+    if(range_A[2*i] < range_B[2*i] || range_A[2*i+1] > range_B[2*i+1])
+      return false;
+
+  return true;
+}
+
 bool is_dir(const std::string& dir) {
   struct stat st;
   return stat(dir.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
@@ -622,6 +727,7 @@ bool is_workspace(const std::string& dir) {
     return false;
 }
 
+#ifdef HAVE_MPI
 int mpi_io_read_from_file(
     const MPI_Comm* mpi_comm,
     const std::string& filename,
@@ -722,16 +828,6 @@ int mpi_io_write_to_file(
     return TILEDB_UT_ERR;
   }
 
-  // Sync
-  if(MPI_File_sync(fh)) {
-    std::string errmsg = 
-        std::string("Cannot write to file '") + filename + 
-        "'; File syncing error";
-    PRINT_ERROR(errmsg);
-    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
-    return TILEDB_UT_ERR;
-  }
-
   // Close file
   if(MPI_File_close(&fh)) {
     std::string errmsg = 
@@ -746,7 +842,66 @@ int mpi_io_write_to_file(
   return TILEDB_UT_OK;
 }
 
-#ifdef OPENMP
+int mpi_io_sync(
+    const MPI_Comm* mpi_comm,
+    const char* filename) {
+  // Open file
+  MPI_File fh;
+  int rc;
+  if(is_dir(filename))       // DIRECTORY
+    rc = MPI_File_open(
+             *mpi_comm, 
+              filename, 
+              MPI_MODE_RDONLY, 
+              MPI_INFO_NULL, 
+              &fh);
+  else if(is_file(filename))  // FILE
+    rc = MPI_File_open(
+             *mpi_comm, 
+              filename, 
+              MPI_MODE_WRONLY | MPI_MODE_APPEND | 
+                  MPI_MODE_CREATE | MPI_MODE_SEQUENTIAL, 
+              MPI_INFO_NULL, 
+              &fh);
+  else
+    return TILEDB_UT_OK;     // If file does not exist, exit
+
+  // Handle error
+  if(rc) {
+      std::string errmsg = 
+          std::string("Cannot sync file '") + filename + 
+          "'; File opening error";
+      PRINT_ERROR(errmsg);
+      tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+      return TILEDB_UT_ERR;
+    }
+
+  // Sync
+  if(MPI_File_sync(fh)) {
+    std::string errmsg = 
+        std::string("Cannot sync file '") + filename + 
+        "'; File syncing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return TILEDB_UT_ERR;
+  }
+
+  // Close file
+  if(MPI_File_close(&fh)) {
+    std::string errmsg = 
+        std::string("Cannot sync file '") + filename + 
+        "'; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return TILEDB_UT_ERR;
+  }
+
+  // Success 
+  return TILEDB_UT_OK;
+}
+#endif
+
+#ifdef HAVE_OPENMP
 int mutex_destroy(omp_lock_t* mtx) {
   omp_destroy_lock(mtx);
 
@@ -1023,6 +1178,50 @@ bool starts_with(const std::string& value, const std::string& prefix) {
   return std::equal(prefix.begin(), prefix.end(), value.begin());
 }
 
+int sync(const char* filename) {
+  // Open file
+  int fd;
+  if(is_dir(filename))       // DIRECTORY 
+    fd = open(filename, O_RDONLY, S_IRWXU);
+  else if(is_file(filename)) // FILE
+    fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);
+  else
+    return TILEDB_UT_OK;     // If file does not exist, exit
+
+  // Handle error
+  if(fd == -1) {
+    std::string errmsg = 
+        std::string("Cannot sync file '") + filename + 
+        "'; File opening error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return TILEDB_UT_ERR;
+  }
+
+  // Sync
+  if(fsync(fd)) {
+    std::string errmsg = 
+        std::string("Cannot sync file '") + filename + 
+        "'; File syncing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return TILEDB_UT_ERR;
+  }
+
+  // Close file
+  if(close(fd)) {
+    std::string errmsg = 
+        std::string("Cannot sync file '") + filename + 
+        "'; File closing error";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
+    return TILEDB_UT_ERR;
+  }
+
+  // Success 
+  return TILEDB_UT_OK;
+}
+
 int write_to_file(
     const char* filename,
     const void* buffer,
@@ -1061,16 +1260,6 @@ int write_to_file(
     std::string errmsg = 
         std::string("Cannot write to file '") + filename + 
         "'; File writing error";
-    PRINT_ERROR(errmsg);
-    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
-    return TILEDB_UT_ERR;
-  }
-
-  // Sync
-  if(fsync(fd)) {
-    std::string errmsg = 
-        std::string("Cannot write to file '") + filename + 
-        "'; File syncing error";
     PRINT_ERROR(errmsg);
     tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg; 
     return TILEDB_UT_ERR;
@@ -1304,6 +1493,23 @@ template bool inside_subarray<double>(
 template bool intersect<std::string>(
     const std::vector<std::string>& v1,
     const std::vector<std::string>& v2);
+
+template bool is_contained<int>(
+    const int* range_A, 
+    const int* range_B, 
+    int dim_num);
+template bool is_contained<int64_t>(
+    const int64_t* range_A, 
+    const int64_t* range_B, 
+    int dim_num);
+template bool is_contained<float>(
+    const float* range_A, 
+    const float* range_B, 
+    int dim_num);
+template bool is_contained<double>(
+    const double* range_A, 
+    const double* range_B, 
+    int dim_num);
 
 template bool is_unary_subarray<int>(const int* subarray, int dim_num);
 template bool is_unary_subarray<int64_t>(const int64_t* subarray, int dim_num);

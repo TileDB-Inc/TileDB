@@ -112,6 +112,9 @@ class Fragment {
   /** Returns the mode of the fragment. */
   int mode() const;
 
+  /** Returns true if the array is in read mode. */
+  bool read_mode() const;
+
   /** Returns the read state of the fragment. */
   ReadState* read_state() const;
 
@@ -120,6 +123,9 @@ class Fragment {
    * of a variable-sized attribute.
    */
   size_t tile_size(int attribute_id) const;
+
+  /** Returns true if the array is in write mode. */
+  bool write_mode() const;
 
 
 
@@ -164,7 +170,22 @@ class Fragment {
   /** Resets the read state (typically to start a new read). */
   void reset_read_state();
 
-   /**
+  /**
+   * Syncs all attribute files in the fragment.
+   * 
+   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   */
+  int sync();
+
+  /**
+   * Syncs the currently written files associated with the input attribute
+   * in the input array. 
+   *
+   * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
+   */
+  int sync_attribute(const std::string& attribute);
+
+  /**
    * Performs a write operation in the fragment. The cell values are provided
    * in a set of buffers (one per attribute specified upon initialization).
    * Note that there must be a one-to-one correspondance between the cell

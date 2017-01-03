@@ -30,9 +30,11 @@
  * This file implements the WriteState class.
  */
 
+#include "comparators.h"
 #include "constants.h"
 #include "utils.h"
 #include "write_state.h"
+#include "utils.h"
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -53,7 +55,7 @@
 #  define PRINT_ERROR(x) do { } while(0) 
 #endif
 
-#ifdef OPENMP
+#if defined HAVE_OPENMP && defined USE_PARALLEL_SORT
   #include <parallel/algorithm>
   #define SORT(first, last, comp) __gnu_parallel::sort((first), (last), (comp))
 #else
@@ -178,9 +180,216 @@ int WriteState::finalize() {
     tile_cell_num_[attribute_num] = 0;
   }
 
+  // Sync all attributes 
+  if(sync() != TILEDB_WS_OK) 
+    return TILEDB_WS_ERR;
+
   // Success
   return TILEDB_WS_OK;
 }
+
+int WriteState::sync() {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
+  int write_method = fragment_->array()->config()->write_method();
+#ifdef HAVE_MPI
+  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+#endif
+  std::string filename;
+  int rc;
+
+  // Sync all attributes
+  for(int i=0; i<(int)attribute_ids.size(); ++i) {
+    // For all attributes
+    filename = 
+        fragment_->fragment_name() + "/" + 
+        array_schema->attribute(attribute_ids[i]) + TILEDB_FILE_SUFFIX;
+    if(write_method == TILEDB_IO_WRITE) {
+      rc = ::sync(filename.c_str());
+      // Handle error
+      if(rc != TILEDB_UT_OK) {
+        tiledb_ws_errmsg = tiledb_ut_errmsg;
+        return TILEDB_WS_ERR;
+      }
+    } else if(write_method == TILEDB_IO_MPI) { 
+#ifdef HAVE_MPI
+      rc = mpi_io_sync(mpi_comm, filename.c_str());
+      // Handle error
+      if(rc != TILEDB_UT_OK) {
+        tiledb_ws_errmsg = tiledb_ut_errmsg;
+        return TILEDB_WS_ERR;
+      }
+#else
+    // Error: MPI not supported
+    std::string errmsg = "Cannot sync; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+#endif
+    } else {
+      assert(0);
+    }
+
+    // Only for variable-size attributes (they have an extra file)
+    if(array_schema->var_size(attribute_ids[i])) {
+      filename = 
+          fragment_->fragment_name() + "/" + 
+          array_schema->attribute(attribute_ids[i]) + "_var" + 
+          TILEDB_FILE_SUFFIX;
+      if(write_method == TILEDB_IO_WRITE) {
+        rc = ::sync(filename.c_str());
+        // Handle error
+        if(rc != TILEDB_UT_OK) {
+          tiledb_ws_errmsg = tiledb_ut_errmsg;
+          return TILEDB_WS_ERR;
+        }
+      } else if(write_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
+        rc = mpi_io_sync(mpi_comm, filename.c_str());
+        // Handle error
+        if(rc != TILEDB_UT_OK) {
+          tiledb_ws_errmsg = tiledb_ut_errmsg;
+          return TILEDB_WS_ERR;
+        }
+#else
+        // Error: MPI not supported
+        std::string errmsg = "Cannot sync; MPI not supported";
+        PRINT_ERROR(errmsg);
+        tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+        return TILEDB_WS_ERR;
+#endif
+      } else {
+        assert(0);
+      }
+    }
+
+    // Handle error
+    if(rc != TILEDB_UT_OK) {
+      tiledb_ws_errmsg = tiledb_ut_errmsg;
+      return TILEDB_WS_ERR;
+    }
+  }
+
+  // Sync fragment directory
+  filename = fragment_->fragment_name();
+  if(write_method == TILEDB_IO_WRITE) {
+    rc = ::sync(filename.c_str());
+  } else if(write_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
+    rc = mpi_io_sync(mpi_comm, filename.c_str());
+#else
+    // Error: MPI not supported
+    std::string errmsg = "Cannot sync; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+#endif
+  } else {
+    assert(0);
+  }
+
+  // Handle error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    return TILEDB_WS_ERR;
+  }
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
+int WriteState::sync_attribute(const std::string& attribute) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int write_method = fragment_->array()->config()->write_method();
+#ifdef HAVE_MPI
+  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
+#endif
+  int attribute_id = array_schema->attribute_id(attribute); 
+  std::string filename;
+  int rc;
+
+  // Sync attribute
+  filename = fragment_->fragment_name() + "/" + attribute + TILEDB_FILE_SUFFIX;
+  if(write_method == TILEDB_IO_WRITE) {
+    rc = ::sync(filename.c_str());
+  } else if(write_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
+    rc = mpi_io_sync(mpi_comm, filename.c_str());
+#else
+    // Error: MPI not supported
+    std::string errmsg = "Cannot sync attribute; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+#endif
+  } else {
+    assert(0);
+  }
+
+  // Handle error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    return TILEDB_WS_ERR;
+  }
+
+  // Only for variable-size attributes (they have an extra file)
+  if(array_schema->var_size(attribute_id)) {
+    filename = 
+        fragment_->fragment_name() + "/" + 
+        attribute + "_var" + TILEDB_FILE_SUFFIX;
+    if(write_method == TILEDB_IO_WRITE) {
+      rc = ::sync(filename.c_str());
+    } else if(write_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
+      rc = mpi_io_sync(mpi_comm, filename.c_str());
+#else
+    // Error: MPI not supported
+    std::string errmsg = "Cannot sync attribute; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+#endif
+    } else {
+      assert(0);
+    }
+  }
+
+  // Handle error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    return TILEDB_WS_ERR;
+  }
+
+  // Sync fragment directory
+  filename = fragment_->fragment_name();
+  if(write_method == TILEDB_IO_WRITE) {
+    rc = ::sync(filename.c_str());
+  } else if(write_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
+    rc = mpi_io_sync(mpi_comm, filename.c_str());
+#else
+    // Error: MPI not supported
+    std::string errmsg = "Cannot sync attribute; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+#endif
+  } else {
+    assert(0);
+  }
+
+  // Handle error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    return TILEDB_WS_ERR;
+  }
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
 
 int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   // Create fragment directory if it does not exist
@@ -217,7 +426,9 @@ int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   }
 
   // Dispatch the proper write command
-  if(fragment_->mode() == TILEDB_ARRAY_WRITE) {                  // SORTED
+  if(fragment_->mode() == TILEDB_ARRAY_WRITE ||
+     fragment_->mode() == TILEDB_ARRAY_WRITE_SORTED_COL ||
+     fragment_->mode() == TILEDB_ARRAY_WRITE_SORTED_ROW) {       // SORTED
     if(fragment_->dense())           // DENSE FRAGMENT
       return write_dense(buffers, buffer_sizes);          
     else                             // SPARSE FRAGMENT
@@ -285,17 +496,26 @@ int WriteState::compress_and_write_tile(int attribute_id) {
   // Write segment to file
   int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
-  if(write_method == TILEDB_IO_WRITE)
+  if(write_method == TILEDB_IO_WRITE) {
       rc = write_to_file(
                filename.c_str(),
                tile_compressed_,
                tile_compressed_size);
-  else if(write_method == TILEDB_IO_MPI)
+  } else if(write_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
       rc = mpi_io_write_to_file(
                fragment_->array()->config()->mpi_comm(),
                filename.c_str(),
                tile_compressed_,
                tile_compressed_size);
+#else
+    // Error: MPI not supported
+    std::string errmsg = "Cannot compress and write tile; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+#endif
+  }
 
   // Error
   if(rc != TILEDB_UT_OK) {
@@ -360,17 +580,27 @@ int WriteState::compress_and_write_tile_var(int attribute_id) {
   // Write segment to file
   int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
-  if(write_method == TILEDB_IO_WRITE)
+  if(write_method == TILEDB_IO_WRITE) {
       rc = write_to_file(
                filename.c_str(),
                tile_compressed_,
                tile_compressed_size);
-  else if(write_method == TILEDB_IO_MPI)
+  } else if(write_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
       rc = mpi_io_write_to_file(
                fragment_->array()->config()->mpi_comm(),
                filename.c_str(),
                tile_compressed_,
                tile_compressed_size);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot compress and write variable tile; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+#endif
+  }
 
   // Error
   if(rc != TILEDB_UT_OK) {
@@ -673,17 +903,27 @@ int WriteState::write_dense_attr_cmp_none(
       TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
-  if(write_method == TILEDB_IO_WRITE)
+  if(write_method == TILEDB_IO_WRITE) {
       rc = write_to_file(
                filename.c_str(),
                buffer,
                buffer_size);
-  else if(write_method == TILEDB_IO_MPI)
+  } else if(write_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
       rc = mpi_io_write_to_file(
                fragment_->array()->config()->mpi_comm(),
                filename.c_str(),
                buffer,
                buffer_size);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot write dense attribute; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+#endif
+  }
 
   // Error
   if(rc != TILEDB_UT_OK) {
@@ -807,18 +1047,30 @@ int WriteState::write_dense_attr_var_cmp_none(
       TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
+#ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
-  if(write_method == TILEDB_IO_WRITE)
+#endif
+  if(write_method == TILEDB_IO_WRITE) {
       rc = write_to_file(
                filename.c_str(),
                buffer_var,
                buffer_var_size);
-  else if(write_method == TILEDB_IO_MPI)
+  } else if(write_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
       rc = mpi_io_write_to_file(
                mpi_comm,
                filename.c_str(),
                buffer_var,
                buffer_var_size);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot write dense variable attribute; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+#endif
+  }
 
   // Error
   if(rc != TILEDB_UT_OK) {
@@ -839,17 +1091,27 @@ int WriteState::write_dense_attr_var_cmp_none(
   filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
-  if(write_method == TILEDB_IO_WRITE)
+  if(write_method == TILEDB_IO_WRITE) {
       rc = write_to_file(
                filename.c_str(),
                shifted_buffer,
                buffer_size);
-  else if(write_method == TILEDB_IO_MPI)
+  } else if(write_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
       rc = mpi_io_write_to_file(
                mpi_comm,
                filename.c_str(),
                shifted_buffer,
                buffer_size);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot write dense variable attribute; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+#endif
+  }
 
   // Clean up
   free(shifted_buffer);
@@ -1123,18 +1385,30 @@ int WriteState::write_sparse_attr_cmp_none(
       TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
+#ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
-  if(write_method == TILEDB_IO_WRITE)
+#endif
+  if(write_method == TILEDB_IO_WRITE) {
       rc = write_to_file(
                filename.c_str(),
                buffer,
                buffer_size);
-  else if(write_method == TILEDB_IO_MPI)
+  } else if(write_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
       rc = mpi_io_write_to_file(
                mpi_comm,
                filename.c_str(),
                buffer,
                buffer_size);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot write sparse attribute; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+#endif
+  }
 
   // Error
   if(rc != TILEDB_UT_OK) {
@@ -1267,18 +1541,30 @@ int WriteState::write_sparse_attr_var_cmp_none(
       TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
+#ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
-  if(write_method == TILEDB_IO_WRITE)
+#endif
+  if(write_method == TILEDB_IO_WRITE) {
       rc = write_to_file(
                filename.c_str(),
                buffer_var,
                buffer_var_size);
-  else if(write_method == TILEDB_IO_MPI)
+  } else if(write_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
       rc = mpi_io_write_to_file(
                mpi_comm,
                filename.c_str(),
                buffer_var,
                buffer_var_size);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot write sparse variable attribute; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+#endif
+  }
 
   // Error
   if(rc != TILEDB_UT_OK) {
@@ -1299,17 +1585,27 @@ int WriteState::write_sparse_attr_var_cmp_none(
   filename = fragment_->fragment_name() + "/" + 
       array_schema->attribute(attribute_id) + 
       TILEDB_FILE_SUFFIX;
-  if(write_method == TILEDB_IO_WRITE)
+  if(write_method == TILEDB_IO_WRITE) {
       rc = write_to_file(
                filename.c_str(),
                shifted_buffer,
                buffer_size);
-  else if(write_method == TILEDB_IO_MPI)
+  } else if(write_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
       rc = mpi_io_write_to_file(
                mpi_comm,
                filename.c_str(),
                shifted_buffer,
                buffer_size);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot write sparse variable attribute; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+#endif
+  }
 
   // Clean up
   free(shifted_buffer);

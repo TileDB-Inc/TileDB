@@ -37,7 +37,7 @@
 #include <limits.h>
 
 /** Version. */
-#define TILEDB_VERSION                          "0.3.4"
+#define TILEDB_VERSION                          "0.4.0"
 
 /**@{*/
 /** Return code. */  
@@ -47,9 +47,13 @@
 
 /**@{*/
 /** Array mode. */
-#define TILEDB_ARRAY_READ                            0
-#define TILEDB_ARRAY_WRITE                           1
-#define TILEDB_ARRAY_WRITE_UNSORTED                  2
+#define TILEDB_ARRAY_READ                           0
+#define TILEDB_ARRAY_READ_SORTED_COL                1
+#define TILEDB_ARRAY_READ_SORTED_ROW                2
+#define TILEDB_ARRAY_WRITE                          3
+#define TILEDB_ARRAY_WRITE_SORTED_COL               4
+#define TILEDB_ARRAY_WRITE_SORTED_ROW               5
+#define TILEDB_ARRAY_WRITE_UNSORTED                 6
 /**@}*/
 
 /**@{*/
@@ -162,5 +166,8 @@
 #define TILEDB_SORTED_BUFFER_SIZE             10000000  // ~10MB
 #define TILEDB_SORTED_BUFFER_VAR_SIZE         10000000  // ~10MB
 /**@}*/
+
+/** The alignment to assist vectorization. */
+#define ALIGNMENT 64
 
 #endif

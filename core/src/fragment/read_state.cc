@@ -224,6 +224,10 @@ bool ReadState::overflow(int attribute_id) const {
   return overflow_[attribute_id];
 }
 
+bool ReadState::subarray_area_covered() const {
+  return subarray_area_covered_;
+}
+
 
 
 
@@ -610,6 +614,7 @@ int ReadState::get_fragment_cell_ranges_dense(
       cell_range_T[dim_num + i] = search_tile_overlap_subarray[2*i+1];
     }
 
+    // Insert the new range into the result vector
     fragment_cell_ranges.push_back(
         FragmentCellRange(fragment_info, cell_range));
   } else { // Non-contiguous cells, multiple ranges
@@ -836,7 +841,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
   const T* domain = static_cast<const T*>(book_keeping_->domain());
   const T* non_empty_domain = 
       static_cast<const T*>(book_keeping_->non_empty_domain());
-  
+
   // Compute the tile subarray
   T* tile_subarray = new T[2*dim_num];
   array_schema_->get_tile_subarray(tile_coords, tile_subarray); 
@@ -851,6 +856,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
 
   if(!tile_domain_overlap) {  // No overlap with the input tile
     search_tile_overlap_ = 0;
+    subarray_area_covered_ = false;
   } else {                    // Overlap with the input tile
     // Find the search tile position
     T* tile_coords_norm = new T[dim_num];
@@ -863,16 +869,40 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
     // Compute overlap of the query subarray with tile
     T* query_tile_overlap_subarray = new T[2*dim_num];
     array_schema_->subarray_overlap(
-         subarray,
-         tile_subarray, 
-         query_tile_overlap_subarray);
+        subarray,
+        tile_subarray, 
+        query_tile_overlap_subarray);
 
     // Compute the overlap of the previous results with the non-empty domain 
-    search_tile_overlap_ = 
+    T* search_tile_overlap_subarray = (T*) search_tile_overlap_subarray_;
+    bool overlap = 
         array_schema_->subarray_overlap(
             query_tile_overlap_subarray,
             tile_domain_overlap_subarray, 
-            static_cast<T*>(search_tile_overlap_subarray_));
+            search_tile_overlap_subarray);
+
+    if(!overlap) {
+      search_tile_overlap_ = 0;
+      subarray_area_covered_ = false; 
+    } else {
+      // Find the type of the search tile overlap
+      T* temp = new T[2*dim_num];
+      search_tile_overlap_ = 
+          array_schema_->subarray_overlap(
+              search_tile_overlap_subarray,
+              tile_subarray, 
+              temp);
+
+      // Check if fragment fully covers the tile
+      subarray_area_covered_ = 
+          is_contained<T>(
+              query_tile_overlap_subarray, 
+              tile_domain_overlap_subarray,
+              dim_num);
+
+      // Clean up
+      delete [] temp;
+    }
 
     // Clean up
     delete [] query_tile_overlap_subarray;
@@ -914,10 +944,10 @@ void ReadState::get_next_overlapping_tile_sparse() {
             mbr, 
             static_cast<T*>(search_tile_overlap_subarray_));
 
-  if(!search_tile_overlap_)
-    ++search_tile_pos_;
-  else
-    return;
+    if(!search_tile_overlap_)
+      ++search_tile_pos_;
+    else
+      return;
   }
 }
 
@@ -1052,20 +1082,33 @@ int ReadState::CMP_COORDS_TO_SEARCH_TILE(
       fragment_->fragment_name() + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
   int read_method = array_->config()->read_method();
+#ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
-  if(read_method == TILEDB_IO_READ)
+#endif
+
+  if(read_method == TILEDB_IO_READ) {
     rc = read_from_file(
              filename, 
              tiles_file_offsets_[attribute_num_+1] + tile_offset, 
              tmp_coords_, 
              coords_size_);
-  else if(read_method == TILEDB_IO_MPI) 
+  } else if(read_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
     rc = mpi_io_read_from_file(
              mpi_comm,
              filename, 
              tiles_file_offsets_[attribute_num_+1] + tile_offset, 
              tmp_coords_, 
              coords_size_);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot compare coordinates to search tile; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+#endif
+  }
 
   // Error
   if(rc != TILEDB_UT_OK) {
@@ -1514,20 +1557,33 @@ int ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
       fragment_->fragment_name() + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
   int read_method = array_->config()->read_method();
+#ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
-  if(read_method == TILEDB_IO_READ)
+#endif
+
+  if(read_method == TILEDB_IO_READ) {
     rc = read_from_file(
              filename, 
              tiles_file_offsets_[attribute_num_+1] + i*coords_size_, 
              tmp_coords_, 
              coords_size_);
-  else if(read_method == TILEDB_IO_MPI) 
+  } else if(read_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
     rc = mpi_io_read_from_file(
              mpi_comm,
              filename, 
              tiles_file_offsets_[attribute_num_+1] + i*coords_size_, 
              tmp_coords_, 
              coords_size_);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot get coordinates from search tile; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+#endif
+  }
 
   // Get coordinates pointer
   coords = tmp_coords_;
@@ -1562,20 +1618,33 @@ int ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
       TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
   int read_method = array_->config()->read_method();
+#ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
-  if(read_method == TILEDB_IO_READ)
+#endif
+
+  if(read_method == TILEDB_IO_READ) {
     rc = read_from_file(
              filename, 
              tiles_file_offsets_[attribute_id] + i*sizeof(size_t), 
              &tmp_offset_, 
              sizeof(size_t));
-  else if(read_method == TILEDB_IO_MPI) 
+  } else if(read_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
     rc = mpi_io_read_from_file(
              mpi_comm,
              filename, 
              tiles_file_offsets_[attribute_id] + i*sizeof(size_t), 
              &tmp_offset_, 
              sizeof(size_t));
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot get cell pointer from offset tile; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+#endif
+  }
 
   // Get coordinates pointer
   offset = &tmp_offset_;
@@ -1938,6 +2007,7 @@ int ReadState::map_tile_from_file_var_cmp_none(
   return TILEDB_RS_OK;
 }
 
+#ifdef HAVE_MPI
 int ReadState::mpi_io_read_tile_from_file_cmp_gzip(
     int attribute_id,
     off_t offset,
@@ -2019,6 +2089,7 @@ int ReadState::mpi_io_read_tile_from_file_var_cmp_gzip(
   // Success
   return TILEDB_RS_OK;
 }
+#endif
 
 int ReadState::prepare_tile_for_reading(
     int attribute_id, 
@@ -2088,21 +2159,31 @@ int ReadState::prepare_tile_for_reading_cmp_gzip(
   // Read tile from file
   int rc = TILEDB_RS_OK;
   int read_method = array_->config()->read_method();
-  if(read_method ==  TILEDB_IO_READ)
+  if(read_method ==  TILEDB_IO_READ) {
     rc = read_tile_from_file_cmp_gzip(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
-  else if(read_method == TILEDB_IO_MMAP)
+  } else if(read_method == TILEDB_IO_MMAP) {
     rc = map_tile_from_file_cmp_gzip(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
-  else if(read_method == TILEDB_IO_MPI)
+  } else if(read_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
     rc = mpi_io_read_tile_from_file_cmp_gzip(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot prepare tile for reading (gzip); MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+#endif
+  }
 
   // Error
   if(rc != TILEDB_RS_OK)
@@ -2233,21 +2314,31 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
   // Read tile from file
   int rc = TILEDB_RS_OK;
   int read_method = array_->config()->read_method();
-  if(read_method ==  TILEDB_IO_READ)
+  if(read_method ==  TILEDB_IO_READ) {
     rc = read_tile_from_file_cmp_gzip(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
-  else if(read_method == TILEDB_IO_MMAP)
+  } else if(read_method == TILEDB_IO_MMAP) {
     rc = map_tile_from_file_cmp_gzip(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
-  else if(read_method == TILEDB_IO_MPI)
+  } else if(read_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
     rc = mpi_io_read_tile_from_file_cmp_gzip(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot prepare variable tile for reading (gzip); MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+#endif
+  }
 
   // Error
   if(rc != TILEDB_RS_OK)
@@ -2310,21 +2401,31 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
   // Read tile from file
   int rc = TILEDB_RS_OK;
   int read_method = array_->config()->read_method();
-  if(read_method ==  TILEDB_IO_READ)
+  if(read_method ==  TILEDB_IO_READ) {
     rc = read_tile_from_file_var_cmp_gzip(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
-  else if(read_method == TILEDB_IO_MMAP)
+  } else if(read_method == TILEDB_IO_MMAP) {
     rc = map_tile_from_file_var_cmp_gzip(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
-  else if(read_method == TILEDB_IO_MPI)
+  } else if(read_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
     rc = mpi_io_read_tile_from_file_var_cmp_gzip(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot prepare variable tile for reading (gzip); MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+#endif
+  }
 
   // Error
   if(rc != TILEDB_RS_OK)
@@ -2428,6 +2529,7 @@ int ReadState::prepare_tile_for_reading_var_cmp_none(
         return TILEDB_RS_ERR;
       }
     } else if(read_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
        if(mpi_io_read_from_file(
              array_->config()->mpi_comm(),
              filename, file_offset + full_tile_size, 
@@ -2436,6 +2538,14 @@ int ReadState::prepare_tile_for_reading_var_cmp_none(
         tiledb_rs_errmsg = tiledb_ut_errmsg;
         return TILEDB_RS_ERR;
       }
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot prepare variable tile for reading; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+#endif
     }
     tile_var_size = end_tile_var_offset - tile_s[0];
   } else {                  // Last tile
@@ -2499,20 +2609,34 @@ int ReadState::READ_FROM_TILE(
       TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
   int read_method = array_->config()->read_method();
+
+#ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
-  if(read_method == TILEDB_IO_READ)
+#endif
+
+  if(read_method == TILEDB_IO_READ) {
     rc = read_from_file(
              filename, 
              tiles_file_offsets_[attribute_id] + tile_offset, 
              buffer, 
              bytes_to_copy);
-  else if(read_method == TILEDB_IO_MPI) 
+  } else if(read_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
     rc = mpi_io_read_from_file(
              mpi_comm,
              filename, 
              tiles_file_offsets_[attribute_id] + tile_offset, 
              buffer, 
              bytes_to_copy);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot read from tile; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+#endif
+  }
 
   // Error
   if(rc != TILEDB_UT_OK) {
@@ -2545,20 +2669,33 @@ int ReadState::READ_FROM_TILE_VAR(
       TILEDB_FILE_SUFFIX;
   int rc = TILEDB_UT_OK;
   int read_method = array_->config()->read_method();
+#ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
-  if(read_method == TILEDB_IO_READ)
+#endif
+
+  if(read_method == TILEDB_IO_READ) {
     rc = read_from_file(
              filename, 
              tiles_var_file_offsets_[attribute_id] + tile_offset, 
              buffer, 
              bytes_to_copy);
-  else if(read_method == TILEDB_IO_MPI) 
+  } else if(read_method == TILEDB_IO_MPI) {
+#ifdef HAVE_MPI
     rc = mpi_io_read_from_file(
              mpi_comm,
              filename, 
              tiles_var_file_offsets_[attribute_id] + tile_offset, 
              buffer, 
              bytes_to_copy);
+#else
+    // Error: MPI not supported
+    std::string errmsg = 
+        "Cannot read from variable tile; MPI not supported";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+#endif
+  }
 
   // Error
   if(rc != TILEDB_UT_OK) {

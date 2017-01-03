@@ -32,7 +32,7 @@
 
 #include "c_api.h"
 
-#ifdef OPENMP
+#ifdef HAVE_OPENMP
 #include <omp.h>
 
 

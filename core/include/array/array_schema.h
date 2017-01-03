@@ -141,6 +141,9 @@ class ArraySchema {
   /** Returns the size of cell on the input attribute. */
   size_t cell_size(int attribute_id) const;
 
+  /** Returns the number of values per cell of the input attribute. */
+  int cell_val_num(int attribute_id) const;
+
   /** Returns the compression type of the attribute with the input id. */
   int compression(int attribute_id) const;
 
@@ -169,6 +172,42 @@ class ArraySchema {
   int get_attribute_ids(
       const std::vector<std::string>& attributes,
       std::vector<int>& attribute_ids) const;
+
+  /** 
+   * Returns true if the input range is contained fully in a single
+   * column of tiles. 
+   */
+  bool is_contained_in_tile_slab_col(const void* range) const;
+
+  /** 
+   * Returns true if the input range is contained fully in a single
+   * column of tiles. 
+   *
+   * @template T The coordinates type.
+   * @param range The input range.
+   * @return True if the input range is contained fully in a single
+   *     column of tiles. 
+   */
+  template<class T>
+  bool is_contained_in_tile_slab_col(const T* range) const;
+
+  /** 
+   * Returns true if the input range is contained fully in a single
+   * row of tiles. 
+   */
+  bool is_contained_in_tile_slab_row(const void* range) const;
+
+  /** 
+   * Returns true if the input range is contained fully in a single
+   * row of tiles. 
+   *
+   * @template T The coordinates type.
+   * @param range The input range.
+   * @return True if the input range is contained fully in a single
+   *     row of tiles. 
+   */
+  template<class T>
+  bool is_contained_in_tile_slab_row(const T* range) const;
 
   /** Prints information about the array schema to stdout. */
   void print() const;
@@ -227,10 +266,10 @@ class ArraySchema {
   int64_t tile_num() const;
 
   /** 
-   * Returns the number of tiles in the input domain (applicable only to dense
-   * arrays). 
+   * Returns the number of tiles overlapping with the input range 
+   * (applicable only to dense arrays). 
    */
-  int64_t tile_num(const void* domain) const;
+  int64_t tile_num(const void* range) const;
 
   /** 
    * Returns the number of tiles in the input domain (applicable only to dense
@@ -243,6 +282,14 @@ class ArraySchema {
   template<class T>
   int64_t tile_num(const T* domain) const;
 
+  /** Returns the tile order. */
+  int tile_order() const;
+
+  /** Return the number of cells in a column tile slab of an input subarray. */
+  int64_t tile_slab_col_cell_num(const void* subarray) const;
+
+  /** Return the number of cells in a row tile slab of an input subarray. */
+  int64_t tile_slab_row_cell_num(const void* subarray) const;
 
   /** Returns the type of the i-th attribute, or NULL if 'i' is invalid. */
   int type(int i) const;
@@ -1007,6 +1054,14 @@ class ArraySchema {
 
   /** Initializes a Hilbert curve. */
   void init_hilbert_curve();
+
+  /** Return the number of cells in a column tile slab of an input subarray. */
+  template<class T>
+  int64_t tile_slab_col_cell_num(const T* subarray) const;
+
+  /** Return the number of cells in a row tile slab of an input subarray. */
+  template<class T>
+  int64_t tile_slab_row_cell_num(const T* subarray) const;
 };
 
 #endif
