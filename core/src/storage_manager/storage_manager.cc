@@ -586,7 +586,8 @@ int StorageManager::array_init(
     delete array_schema;
     delete array_clone;
     array = NULL;
-    array_close(array_dir);
+    if(array_read_mode(mode)) 
+      array_close(array_dir);
     return TILEDB_SM_ERR;
   } 
 
@@ -608,7 +609,8 @@ int StorageManager::array_init(
     delete array_schema;
     delete array;
     array = NULL;
-    array_close(array_dir);
+    if(array_read_mode(mode)) 
+      array_close(array_dir);
     tiledb_sm_errmsg = tiledb_as_errmsg;
     return TILEDB_SM_ERR;
   }
@@ -1727,11 +1729,23 @@ int StorageManager::config_set(Config* config) {
 
 int StorageManager::consolidation_filelock_create(
     const std::string& dir) const {
+  // Create file
   std::string filename = dir + "/" + TILEDB_SM_CONSOLIDATION_FILELOCK_NAME; 
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+
+  // Handle error
   if(fd == -1) {
     std::string errmsg = 
         std::string("Cannot create consolidation filelock; ") + strerror(errno);
+    PRINT_ERROR(errmsg);
+    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
+    return TILEDB_SM_ERR;
+  }
+
+  // Close the file
+  if(::close(fd)) {
+    std::string errmsg = 
+        std::string("Cannot close consolidation filelock; ") + strerror(errno);
     PRINT_ERROR(errmsg);
     tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
