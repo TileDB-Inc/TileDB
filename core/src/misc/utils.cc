@@ -522,7 +522,7 @@ ssize_t gzip(
   strm.zalloc = Z_NULL;
   strm.zfree = Z_NULL;
   strm.opaque = Z_NULL;
-  ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
+  ret = deflateInit(&strm, TILEDB_COMPRESSION_LEVEL_GZIP);
 
   if(ret != Z_OK) {
     std::string errmsg = "Cannot compress with GZIP";

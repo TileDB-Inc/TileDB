@@ -233,6 +233,7 @@ typedef struct TileDB_ArraySchema {
    * coordinates). It can be one of the following: 
    *    - TILEDB_NO_COMPRESSION
    *    - TILEDB_GZIP 
+   *    - TILEDB_ZSTD 
    *
    * If it is *NULL*, then the default TILEDB_NO_COMPRESSION is used for all
    * attributes.
@@ -737,6 +738,7 @@ typedef struct TileDB_MetadataSchema {
    * key). It can be one of the following: 
    *    - TILEDB_NO_COMPRESSION
    *    - TILEDB_GZIP 
+   *    - TILEDB_ZSTD 
    *
    * If it is *NULL*, then the default TILEDB_NO_COMPRESSION is used for all
    * attributes.

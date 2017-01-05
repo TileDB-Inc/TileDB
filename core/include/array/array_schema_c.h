@@ -69,7 +69,8 @@ typedef struct ArraySchemaC {
    * The compression type for each attribute (plus one extra at the end for the
    * coordinates. It can be one of the following: 
    *    - TILEDB_NO_COMPRESSION
-   *    - TILEDB_GZIP. 
+   *    - TILEDB_GZIP 
+   *    - TILEDB_ZSTD 
    */
   int* compression_;
   /** 

@@ -134,6 +134,7 @@
 /** Compression type. */
 #define TILEDB_NO_COMPRESSION                        0
 #define TILEDB_GZIP                                  1
+#define TILEDB_ZSTD                                  2
 /**@}*/
 
 /**@{*/
@@ -167,7 +168,14 @@
 #define TILEDB_SORTED_BUFFER_VAR_SIZE         10000000  // ~10MB
 /**@}*/
 
-/** The alignment to assist vectorization. */
-#define ALIGNMENT 64
+/**@{*/
+/** Compression levels. */
+#ifndef TILEDB_COMPRESSION_LEVEL_GZIP
+#  define TILEDB_COMPRESSION_LEVEL_GZIP Z_DEFAULT_COMPRESSION
+#endif
+#ifndef TILEDB_COMPRESSION_LEVEL_ZSTD
+#  define TILEDB_COMPRESSION_LEVEL_ZSTD 1
+#endif
+/**@}*/
 
 #endif
