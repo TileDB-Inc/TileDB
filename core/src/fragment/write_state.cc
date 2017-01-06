@@ -561,7 +561,11 @@ int WriteState::compress_and_write_tile(int attribute_id) {
 
   // Compress tile
   size_t tile_compressed_size;
-  if(compress_tile(attribute_id, tile, tile_size, tile_compressed_size)) 
+  if(compress_tile(
+         attribute_id, 
+         tile, 
+         tile_size, 
+         tile_compressed_size) != TILEDB_WS_OK) 
     return TILEDB_WS_ERR;
 
   // Get the attribute file name
@@ -622,7 +626,11 @@ int WriteState::compress_and_write_tile_var(int attribute_id) {
 
   // Compress tile
   size_t tile_compressed_size;
-  if(compress_tile(attribute_id, tile, tile_size, tile_compressed_size)) 
+  if(compress_tile(
+         attribute_id, 
+         tile, 
+         tile_size, 
+         tile_compressed_size) != TILEDB_WS_OK) 
     return TILEDB_WS_ERR;
 
   // Get the attribute file name
@@ -876,7 +884,7 @@ int WriteState::write_last_tile() {
   // Flush the last tile for each compressed attribute (it is still in main
   // memory
   for(int i=0; i<attribute_num+1; ++i) {
-    if(array_schema->compression(i) == TILEDB_GZIP) {
+    if(array_schema->compression(i) != TILEDB_NO_COMPRESSION) {
       if(compress_and_write_tile(i) != TILEDB_WS_OK)
         return TILEDB_WS_ERR;
       if(array_schema->var_size(i)) {
@@ -1573,7 +1581,7 @@ int WriteState::write_sparse_attr_var(
                buffer_size,
                buffer_var,  
                buffer_var_size);
-  else if(compression == TILEDB_GZIP) //  All compressions
+  else //  All compressions
     return write_sparse_attr_var_cmp(
                attribute_id, 
                buffer,  
@@ -1951,7 +1959,7 @@ int WriteState::write_sparse_unsorted_attr(
                buffer, 
                buffer_size,
                cell_pos);
-  else if(compression == TILEDB_GZIP) // All compressions
+  else // All compressions
     return write_sparse_unsorted_attr_cmp(
                attribute_id,
                buffer, 
@@ -2113,7 +2121,7 @@ int WriteState::write_sparse_unsorted_attr_var(
                buffer_var, 
                buffer_var_size,
                cell_pos);
-  else if(compression == TILEDB_GZIP) // All compressions
+  else // All compressions
     return write_sparse_unsorted_attr_var_cmp(
                attribute_id, 
                buffer,
@@ -2121,12 +2129,6 @@ int WriteState::write_sparse_unsorted_attr_var(
                buffer_var, 
                buffer_var_size,
                cell_pos);
-
-  // Sanity check
-  assert(0);
-
-  // Error
-  return TILEDB_WS_ERR;
 }
 
 int WriteState::write_sparse_unsorted_attr_var_cmp_none(
