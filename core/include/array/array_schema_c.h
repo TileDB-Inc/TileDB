@@ -72,6 +72,12 @@ typedef struct ArraySchemaC {
    *    - TILEDB_GZIP 
    *    - TILEDB_ZSTD 
    *    - TILEDB_LZ4 
+   *    - TILEDB_BLOSC 
+   *    - TILEDB_BLOSC_LZ4 
+   *    - TILEDB_BLOSC_LZ4HC 
+   *    - TILEDB_BLOSC_SNAPPY 
+   *    - TILEDB_BLOSC_ZLIB 
+   *    - TILEDB_BLOSC_ZSTD 
    */
   int* compression_;
   /** 

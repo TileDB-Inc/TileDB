@@ -504,6 +504,18 @@ void ArraySchema::print() const {
       std::cout << "\t" << attributes_[i] << ": ZSTD\n";
     else if(compression_[i] == TILEDB_LZ4)
       std::cout << "\t" << attributes_[i] << ": LZ4\n";
+    else if(compression_[i] == TILEDB_BLOSC)
+      std::cout << "\t" << attributes_[i] << ": BLOSC\n";
+    else if(compression_[i] == TILEDB_BLOSC_LZ4)
+      std::cout << "\t" << attributes_[i] << ": BLOSC_LZ4\n";
+    else if(compression_[i] == TILEDB_BLOSC_LZ4HC)
+      std::cout << "\t" << attributes_[i] << ": BLOSC_LZ4HC\n";
+    else if(compression_[i] == TILEDB_BLOSC_SNAPPY)
+      std::cout << "\t" << attributes_[i] << ": BLOSC_SNAPPY\n";
+    else if(compression_[i] == TILEDB_BLOSC_ZLIB)
+      std::cout << "\t" << attributes_[i] << ": BLOSC_ZLIB\n";
+    else if(compression_[i] == TILEDB_BLOSC_ZSTD)
+      std::cout << "\t" << attributes_[i] << ": BLOSC_ZSTD\n";
     else if(compression_[i] == TILEDB_NO_COMPRESSION)
       std::cout << "\t" << attributes_[i] << ": NONE\n";
   if(compression_[attribute_num_] == TILEDB_GZIP)
@@ -512,6 +524,18 @@ void ArraySchema::print() const {
     std::cout << "\tCoordinates: ZSTD\n";
   else if(compression_[attribute_num_] == TILEDB_LZ4)
     std::cout << "\tCoordinates: LZ4\n";
+  else if(compression_[attribute_num_] == TILEDB_BLOSC)
+    std::cout << "\tCoordinates: BLOSC\n";
+  else if(compression_[attribute_num_] == TILEDB_BLOSC_LZ4)
+    std::cout << "\tCoordinates: BLOSC_LZ4\n";
+  else if(compression_[attribute_num_] == TILEDB_BLOSC_LZ4HC)
+    std::cout << "\tCoordinates: BLOSC_LZ4HC\n";
+  else if(compression_[attribute_num_] == TILEDB_BLOSC_SNAPPY)
+    std::cout << "\tCoordinates: BLOSC_SNAPPY\n";
+  else if(compression_[attribute_num_] == TILEDB_BLOSC_ZLIB)
+    std::cout << "\tCoordinates: ZLIB\n";
+  else if(compression_[attribute_num_] == TILEDB_BLOSC_ZSTD)
+    std::cout << "\tCoordinates: BLOSC_ZSTD\n";
   else if(compression_[attribute_num_] == TILEDB_NO_COMPRESSION)
     std::cout << "\tCoordinates: NONE\n";
 }
@@ -1285,9 +1309,15 @@ int ArraySchema::set_compression(int* compression) {
   } else {
     for(int i=0; i<attribute_num_+1; ++i) {
       if(compression[i] != TILEDB_NO_COMPRESSION &&
-         compression[i] != TILEDB_GZIP &&
-         compression[i] != TILEDB_ZSTD && 
-         compression[i] != TILEDB_LZ4) { 
+         compression[i] != TILEDB_GZIP         &&
+         compression[i] != TILEDB_ZSTD         && 
+         compression[i] != TILEDB_LZ4          && 
+         compression[i] != TILEDB_BLOSC        && 
+         compression[i] != TILEDB_BLOSC_LZ4    && 
+         compression[i] != TILEDB_BLOSC_LZ4HC  && 
+         compression[i] != TILEDB_BLOSC_SNAPPY && 
+         compression[i] != TILEDB_BLOSC_ZLIB   && 
+         compression[i] != TILEDB_BLOSC_ZSTD) {
         std::string errmsg = "Cannot set compression; Invalid compression type";
         PRINT_ERROR(errmsg);
         tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;

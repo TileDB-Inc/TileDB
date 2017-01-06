@@ -32,6 +32,7 @@
 
 #include "utils.h"
 #include "read_state.h"
+#include <blosc.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -42,7 +43,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <zstd/zstd.h>
+#include <zstd.h>
 
 
 
@@ -1456,6 +1457,48 @@ int ReadState::decompress_tile(
                tile_compressed_size, 
                tile, 
                tile_size);
+  else if(compression == TILEDB_BLOSC)
+    return decompress_tile_blosc(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size,
+               "blosclz");
+  else if(compression == TILEDB_BLOSC_LZ4)
+    return decompress_tile_blosc(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size,
+               "lz4");
+  else if(compression == TILEDB_BLOSC_LZ4HC)
+    return decompress_tile_blosc(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size,
+               "lz4hc");
+  else if(compression == TILEDB_BLOSC_SNAPPY)
+    return decompress_tile_blosc(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size,
+               "snappy");
+  else if(compression == TILEDB_BLOSC_ZLIB)
+    return decompress_tile_blosc(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size,
+               "zlib");
+  else if(compression == TILEDB_BLOSC_ZSTD)
+    return decompress_tile_blosc(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size,
+               "zstd");
 
   // Error
   assert(0);
@@ -1525,6 +1568,34 @@ int ReadState::decompress_tile_lz4(
     tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
     return TILEDB_RS_ERR;
   }
+
+  // Success
+  return TILEDB_RS_OK;
+}
+
+int ReadState::decompress_tile_blosc(
+    unsigned char* tile_compressed,
+    size_t tile_compressed_size,
+    unsigned char* tile,
+    size_t tile_size,
+    const char* compressor) {
+  // Initialization
+  blosc_init();
+
+  // Decompress tile 
+  if(blosc_decompress(
+         (const char*) tile_compressed, 
+         (char*) tile,
+         tile_size) < 0) { 
+    std::string errmsg = "Blosc decompression failed";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    blosc_destroy();
+    return TILEDB_RS_ERR;
+  }
+
+  // Clean up
+  blosc_destroy();
 
   // Success
   return TILEDB_RS_OK;

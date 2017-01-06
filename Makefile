@@ -140,6 +140,7 @@ endif
 ZLIB = -lz 
 ZSTD = -lzstd
 LZ4 = -llz4
+BLOSC = -lblosc
 OPENSSLLIB = -lcrypto
 GTESTLIB = -lgtest -lgtest_main
 MPILIB =
@@ -239,7 +240,7 @@ $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT): $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
 	@echo "Creating dynamic library libtiledb.$(SHLIB_EXT)"
 	@$(CXX) $(SHLIB_FLAGS) $(SONAME) -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) \
-		$(PTHREADLIB) $(ZLIB) $(ZSTD) $(LZ4) \
+		$(PTHREADLIB) $(ZLIB) $(ZSTD) $(LZ4) $(BLOSC) \
                 $(OPENSSLLIB) $(OPENMP_FLAG)
 
 $(CORE_LIB_DIR)/libtiledb.a: $(CORE_OBJ)
@@ -279,7 +280,7 @@ $(EXAMPLES_BIN_DIR)/%: $(EXAMPLES_OBJ_DIR)/%.o $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(EXAMPLES_BIN_DIR)
 	@echo "Creating $@"
 	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) \
-                 $(ZLIB) $(LZ4) $(ZSTD) \
+                 $(ZLIB) $(LZ4) $(ZSTD) $(BLOSC) \
                  $(PTHREADLIB) $(OPENSSLLIB) $(OPENMP_FLAG) 
 
 # --- Cleaning --- #
@@ -313,7 +314,8 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 $(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(TEST_BIN_DIR)
 	@echo "Creating test_cmd"
-	@$(CXX) -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) $(ZLIB) $(ZSTD) $(LZ4) \
+	@$(CXX) -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) \
+                $(ZLIB) $(ZSTD) $(LZ4) $(BLOSC) \
 		$(PTHREADLIB) $(OPENSSLLIB) $(GTESTLIB) $(OPENMP_FLAG) 
 
 # --- Cleaning --- #

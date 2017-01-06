@@ -35,6 +35,7 @@
 #include "utils.h"
 #include "write_state.h"
 #include "utils.h"
+#include <blosc.h>
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -42,7 +43,7 @@
 #include <lz4.h>
 #include <iostream>
 #include <unistd.h>
-#include <zstd/zstd.h>
+#include <zstd.h>
 
 
 
@@ -468,6 +469,42 @@ int WriteState::compress_tile(
     return compress_tile_zstd(tile, tile_size, tile_compressed_size);
   else if(compression == TILEDB_LZ4)
     return compress_tile_lz4(tile, tile_size, tile_compressed_size);
+  else if(compression == TILEDB_BLOSC)
+    return compress_tile_blosc(
+               tile, 
+               tile_size, 
+               tile_compressed_size, 
+               "blosclz");
+  else if(compression == TILEDB_BLOSC_LZ4)
+    return compress_tile_blosc(
+               tile, 
+               tile_size, 
+               tile_compressed_size, 
+               "lz4");
+  else if(compression == TILEDB_BLOSC_LZ4HC)
+    return compress_tile_blosc(
+               tile, 
+               tile_size, 
+               tile_compressed_size, 
+               "lz4hc");
+  else if(compression == TILEDB_BLOSC_SNAPPY)
+    return compress_tile_blosc(
+               tile, 
+               tile_size, 
+               tile_compressed_size, 
+               "snappy");
+  else if(compression == TILEDB_BLOSC_ZLIB)
+    return compress_tile_blosc(
+               tile, 
+               tile_size, 
+               tile_compressed_size, 
+               "zlib");
+  else if(compression == TILEDB_BLOSC_ZSTD)
+    return compress_tile_blosc(
+               tile, 
+               tile_size, 
+               tile_compressed_size, 
+               "zstd");
 
   // Error
   assert(0);
@@ -582,6 +619,66 @@ int WriteState::compress_tile_lz4(
     return TILEDB_WS_ERR;
   }
   tile_compressed_size = lz4_size;
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
+int WriteState::compress_tile_blosc(
+    unsigned char* tile, 
+    size_t tile_size,
+    size_t& tile_compressed_size,
+    const char* compressor) {
+  // Allocate space to store the compressed tile
+  size_t compress_bound = tile_size + BLOSC_MAX_OVERHEAD;
+  if(tile_compressed_ == NULL) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = malloc(compress_bound); 
+  }
+
+  // Expand comnpressed tile if necessary
+  if(compress_bound > tile_compressed_allocated_size_) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = realloc(tile_compressed_, compress_bound);
+  }
+
+  // Initialize Blosc
+  blosc_init();
+
+  // Set the appropriate compressor
+  if(blosc_set_compressor(compressor) < 0) {
+    std::string errmsg = "Failed to set Blosc compressor";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    blosc_destroy();
+    return TILEDB_WS_ERR;
+  } 
+
+  // For easy reference
+  unsigned char* tile_compressed = 
+      static_cast<unsigned char*>(tile_compressed_);
+
+  // Compress tile
+  int blosc_size = 
+      blosc_compress(
+          TILEDB_COMPRESSION_LEVEL_BLOSC,
+          1,
+          sizeof(char),
+          tile_size,
+          tile, 
+          tile_compressed, 
+          tile_compressed_allocated_size_);
+  if(blosc_size < 0) {
+    std::string errmsg = "Failed compressing with Blosc";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    blosc_destroy();
+    return TILEDB_WS_ERR;
+  }
+  tile_compressed_size = blosc_size;
+
+  // Clean up
+  blosc_destroy();
 
   // Success
   return TILEDB_WS_OK;

@@ -136,6 +136,12 @@
 #define TILEDB_GZIP                                  1
 #define TILEDB_ZSTD                                  2
 #define TILEDB_LZ4                                   3
+#define TILEDB_BLOSC                                 4
+#define TILEDB_BLOSC_LZ4                             5
+#define TILEDB_BLOSC_LZ4HC                           6
+#define TILEDB_BLOSC_SNAPPY                          7
+#define TILEDB_BLOSC_ZLIB                            8
+#define TILEDB_BLOSC_ZSTD                            9
 /**@}*/
 
 /**@{*/
@@ -176,6 +182,9 @@
 #endif
 #ifndef TILEDB_COMPRESSION_LEVEL_ZSTD
 #  define TILEDB_COMPRESSION_LEVEL_ZSTD 1
+#endif
+#ifndef TILEDB_COMPRESSION_LEVEL_BLOSC
+#  define TILEDB_COMPRESSION_LEVEL_BLOSC 5
 #endif
 /**@}*/
 
