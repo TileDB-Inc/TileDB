@@ -56,7 +56,7 @@ int main() {
   { 
         TILEDB_GZIP,              // a1 
         TILEDB_ZSTD,              // a2
-        TILEDB_ZSTD,              // a3
+        TILEDB_LZ4,               // a3
         TILEDB_NO_COMPRESSION     // coordinates
   };
   int64_t tile_extents[] = 

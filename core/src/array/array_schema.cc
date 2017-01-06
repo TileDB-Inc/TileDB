@@ -502,12 +502,16 @@ void ArraySchema::print() const {
       std::cout << "\t" << attributes_[i] << ": GZIP\n";
     else if(compression_[i] == TILEDB_ZSTD)
       std::cout << "\t" << attributes_[i] << ": ZSTD\n";
+    else if(compression_[i] == TILEDB_LZ4)
+      std::cout << "\t" << attributes_[i] << ": LZ4\n";
     else if(compression_[i] == TILEDB_NO_COMPRESSION)
       std::cout << "\t" << attributes_[i] << ": NONE\n";
   if(compression_[attribute_num_] == TILEDB_GZIP)
     std::cout << "\tCoordinates: GZIP\n";
   else if(compression_[attribute_num_] == TILEDB_ZSTD)
     std::cout << "\tCoordinates: ZSTD\n";
+  else if(compression_[attribute_num_] == TILEDB_LZ4)
+    std::cout << "\tCoordinates: LZ4\n";
   else if(compression_[attribute_num_] == TILEDB_NO_COMPRESSION)
     std::cout << "\tCoordinates: NONE\n";
 }
@@ -1282,7 +1286,8 @@ int ArraySchema::set_compression(int* compression) {
     for(int i=0; i<attribute_num_+1; ++i) {
       if(compression[i] != TILEDB_NO_COMPRESSION &&
          compression[i] != TILEDB_GZIP &&
-         compression[i] != TILEDB_ZSTD) { 
+         compression[i] != TILEDB_ZSTD && 
+         compression[i] != TILEDB_LZ4) { 
         std::string errmsg = "Cannot set compression; Invalid compression type";
         PRINT_ERROR(errmsg);
         tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;

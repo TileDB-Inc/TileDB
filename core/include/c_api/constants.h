@@ -135,6 +135,7 @@
 #define TILEDB_NO_COMPRESSION                        0
 #define TILEDB_GZIP                                  1
 #define TILEDB_ZSTD                                  2
+#define TILEDB_LZ4                                   3
 /**@}*/
 
 /**@{*/

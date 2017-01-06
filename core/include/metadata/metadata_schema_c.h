@@ -63,6 +63,7 @@ typedef struct MetadataSchemaC {
    *    - TILEDB_NO_COMPRESSION
    *    - TILEDB_GZIP
    *    - TILEDB_ZSTD 
+   *    - TILEDB_LZ4 
    */
   int* compression_;
   /** 

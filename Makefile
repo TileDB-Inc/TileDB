@@ -137,8 +137,9 @@ ifdef TRAVIS
 endif
 
 # --- Libraries --- #
-ZLIB = -lz
+ZLIB = -lz 
 ZSTD = -lzstd
+LZ4 = -llz4
 OPENSSLLIB = -lcrypto
 GTESTLIB = -lgtest -lgtest_main
 MPILIB =
@@ -238,7 +239,8 @@ $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT): $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
 	@echo "Creating dynamic library libtiledb.$(SHLIB_EXT)"
 	@$(CXX) $(SHLIB_FLAGS) $(SONAME) -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) \
-		$(PTHREADLIB) $(ZLIB) $(ZSTD) $(OPENSSLLIB) $(OPENMP_FLAG)
+		$(PTHREADLIB) $(ZLIB) $(ZSTD) $(LZ4) \
+                $(OPENSSLLIB) $(OPENMP_FLAG)
 
 $(CORE_LIB_DIR)/libtiledb.a: $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
@@ -277,7 +279,8 @@ $(EXAMPLES_BIN_DIR)/%: $(EXAMPLES_OBJ_DIR)/%.o $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(EXAMPLES_BIN_DIR)
 	@echo "Creating $@"
 	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) \
-                 $(ZLIB) $(ZSTD) $(PTHREADLIB) $(OPENSSLLIB) $(OPENMP_FLAG) 
+                 $(ZLIB) $(LZ4) $(ZSTD) \
+                 $(PTHREADLIB) $(OPENSSLLIB) $(OPENMP_FLAG) 
 
 # --- Cleaning --- #
 
@@ -310,7 +313,7 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 $(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(TEST_BIN_DIR)
 	@echo "Creating test_cmd"
-	@$(CXX) -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) $(ZLIB) $(ZSTD) \
+	@$(CXX) -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) $(ZLIB) $(ZSTD) $(LZ4) \
 		$(PTHREADLIB) $(OPENSSLLIB) $(GTESTLIB) $(OPENMP_FLAG) 
 
 # --- Cleaning --- #

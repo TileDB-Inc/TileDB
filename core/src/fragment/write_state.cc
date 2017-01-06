@@ -39,6 +39,7 @@
 #include <cmath>
 #include <cstring>
 #include <fcntl.h>
+#include <lz4.h>
 #include <iostream>
 #include <unistd.h>
 #include <zstd/zstd.h>
@@ -465,6 +466,8 @@ int WriteState::compress_tile(
     return compress_tile_gzip(tile, tile_size, tile_compressed_size);
   else if(compression == TILEDB_ZSTD)
     return compress_tile_zstd(tile, tile_size, tile_compressed_size);
+  else if(compression == TILEDB_LZ4)
+    return compress_tile_lz4(tile, tile_size, tile_compressed_size);
 
   // Error
   assert(0);
@@ -544,6 +547,41 @@ int WriteState::compress_tile_zstd(
     return TILEDB_WS_ERR;
   }
   tile_compressed_size = zstd_size;
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
+int WriteState::compress_tile_lz4(
+    unsigned char* tile, 
+    size_t tile_size,
+    size_t& tile_compressed_size) {
+  // Allocate space to store the compressed tile
+  size_t compress_bound = LZ4_compressBound(tile_size);
+  if(tile_compressed_ == NULL) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = malloc(compress_bound); 
+  }
+
+  // Expand comnpressed tile if necessary
+  if(compress_bound > tile_compressed_allocated_size_) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = realloc(tile_compressed_, compress_bound);
+  }
+
+  // Compress tile
+  int lz4_size = 
+      LZ4_compress(
+          (const char*) tile, 
+          (char*) tile_compressed_, 
+          tile_size);
+  if(lz4_size < 0) {
+    std::string errmsg = "Failed compressing with LZ4";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+  }
+  tile_compressed_size = lz4_size;
 
   // Success
   return TILEDB_WS_OK;

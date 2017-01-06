@@ -38,6 +38,7 @@
 #include <cstring>
 #include <fcntl.h>
 #include <iostream>
+#include <lz4.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -1449,6 +1450,12 @@ int ReadState::decompress_tile(
                tile_compressed_size, 
                tile, 
                tile_size);
+  else if(compression == TILEDB_LZ4)
+    return decompress_tile_lz4(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size);
 
   // Error
   assert(0);
@@ -1485,12 +1492,35 @@ int ReadState::decompress_tile_zstd(
     unsigned char* tile,
     size_t tile_size) {
   // Decompress tile 
-  if(ZSTD_decompress(
+  size_t zstd_size = 
+      ZSTD_decompress(
          tile,
          tile_size,
          tile_compressed, 
-         tile_compressed_size) != tile_size) { 
+         tile_compressed_size);
+  if(ZSTD_isError(zstd_size)) { 
     std::string errmsg = "Zstandard decompression failed";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
+}
+
+int ReadState::decompress_tile_lz4(
+    unsigned char* tile_compressed,
+    size_t tile_compressed_size,
+    unsigned char* tile,
+    size_t tile_size) {
+  // Decompress tile 
+  if(LZ4_decompress_safe(
+         (const char*) tile_compressed, 
+         (char*) tile,
+         tile_compressed_size,
+         tile_size) < 0) { 
+    std::string errmsg = "LZ4 decompression failed";
     PRINT_ERROR(errmsg);
     tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
     return TILEDB_RS_ERR;
