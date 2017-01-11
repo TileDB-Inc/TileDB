@@ -39,7 +39,7 @@
 #include "array_sorted_write_state.h"
 #include "array_schema.h"
 #include "book_keeping.h"
-#include "config.h"
+#include "storage_manager_config.h"
 #include "constants.h"
 #include "fragment.h"
 #include <pthread.h>
@@ -138,7 +138,7 @@ class Array {
   const std::vector<int>& attribute_ids() const;
 
   /** Returns the configuration parameters. */
-  const Config* config() const;
+  const StorageManagerConfig* config() const;
 
   /** Returns the number of fragments in this array. */
   int fragment_num() const;
@@ -307,7 +307,7 @@ class Array {
       const char** attributes,
       int attribute_num,
       const void* subarray,
-      const Config* config,
+      const StorageManagerConfig* config,
       Array* array_clone = NULL);
 
   /**
@@ -471,7 +471,7 @@ class Array {
    */
   std::vector<int> attribute_ids_;
   /** Configuration parameters. */
-  const Config* config_;
+  const StorageManagerConfig* config_;
   /** The array fragments. */
   std::vector<Fragment*> fragments_;
   /** 

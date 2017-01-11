@@ -100,7 +100,7 @@ int StorageManager::finalize() {
   return open_array_mtx_destroy();
 }
 
-int StorageManager::init(Config* config) {
+int StorageManager::init(StorageManagerConfig* config) {
   // Set configuration parameters
   if(config_set(config) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
@@ -1697,7 +1697,7 @@ int StorageManager::array_store_schema(
   return TILEDB_SM_OK;
 }
 
-int StorageManager::config_set(Config* config) {
+int StorageManager::config_set(StorageManagerConfig* config) {
   // Store config locally
   config_ = config;
 

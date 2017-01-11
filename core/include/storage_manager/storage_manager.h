@@ -37,10 +37,10 @@
 #include "array_iterator.h"
 #include "array_schema.h"
 #include "array_schema_c.h"
-#include "config.h"
 #include "metadata.h"
 #include "metadata_iterator.h"
 #include "metadata_schema_c.h"
+#include "storage_manager_config.h"
 #include <map>
 #ifdef HAVE_OPENMP
   #include <omp.h>
@@ -132,7 +132,7 @@ class StorageManager {
    *     then the default TileDB parameters are used. 
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int init(Config* config);
+  int init(StorageManagerConfig* config);
 
 
 
@@ -545,7 +545,7 @@ class StorageManager {
   /* ********************************* */
 
   /** The TileDB configuration parameters. */
-  Config* config_;
+  StorageManagerConfig* config_;
   /** The directory of the master catalog. */
   std::string master_catalog_dir_;
   /** OpneMP mutex for creating/deleting an OpenArray object. */
@@ -676,7 +676,7 @@ class StorageManager {
    * @param config The configuration parameters.
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
-  int config_set(Config* config);
+  int config_set(StorageManagerConfig* config);
 
   /**
    * Creates a special file that serves as lock needed for implementing

@@ -167,7 +167,7 @@ int Metadata::init(
     int mode,
     const char** attributes,
     int attribute_num,
-    const Config* config) {
+    const StorageManagerConfig* config) {
   // Sanity check on mode
   if(mode != TILEDB_METADATA_READ &&
      mode != TILEDB_METADATA_WRITE) {
