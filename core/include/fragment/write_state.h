@@ -267,6 +267,7 @@ class WriteState {
    * Compresses with Blosc the input tile buffer, and stores it inside 
    * tile_compressed_ member attribute. 
    * 
+   * @param attribute_id The id of the attribute the tile belongs to.
    * @param tile The tile buffer to be compressed.
    * @param tile_size The size of the tile buffer in bytes.
    * @param tile_compressed_size The size of the resulting compressed tile.
@@ -274,10 +275,27 @@ class WriteState {
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int compress_tile_blosc(
+      int attribute_id,
       unsigned char* tile,
       size_t tile_size,
       size_t& tile_compressed_size,
       const char* compressor);
+
+  /**
+   * Compresses with RLE the input tile buffer, and stores it inside 
+   * tile_compressed_ member attribute. 
+   * 
+   * @param attribute_id The id of the attribute the tile belongs to.
+   * @param tile The tile buffer to be compressed.
+   * @param tile_size The size of the tile buffer in bytes.
+   * @param tile_compressed_size The size of the resulting compressed tile.
+   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   */
+  int compress_tile_rle(
+      int attribute_id,
+      unsigned char* tile,
+      size_t tile_size,
+      size_t& tile_compressed_size);
 
   /**
    * Compresses the current tile for the input attribute, and writes (appends)

@@ -590,14 +590,13 @@ class ReadState {
   int decompress_tile(
       int attribute_id,
       unsigned char* tile_compressed,
-      size_t tile_compressed_sile,
+      size_t tile_compressed_size,
       unsigned char* tile,
       size_t tile_size);
 
   /**
    * Decompresses a tile with GZIP.
    * 
-   * @param attribute_id The id of the attribute the tile belongs to.
    * @param tile_compressed The compressed tile to be decompressed.
    * @param tile_compressed_size The size of the compressed tile.
    * @param tile The resulting decompressed tile.
@@ -607,14 +606,13 @@ class ReadState {
    */
   int decompress_tile_gzip(
       unsigned char* tile_compressed,
-      size_t tile_compressed_sile,
+      size_t tile_compressed_size,
       unsigned char* tile,
       size_t tile_size);
 
   /**
    * Decompresses a tile with Zstandard.
    * 
-   * @param attribute_id The id of the attribute the tile belongs to.
    * @param tile_compressed The compressed tile to be decompressed.
    * @param tile_compressed_size The size of the compressed tile.
    * @param tile The resulting decompressed tile.
@@ -624,14 +622,13 @@ class ReadState {
    */
   int decompress_tile_zstd(
       unsigned char* tile_compressed,
-      size_t tile_compressed_sile,
+      size_t tile_compressed_size,
       unsigned char* tile,
       size_t tile_size);
 
   /**
    * Decompresses a tile with LZ4.
    * 
-   * @param attribute_id The id of the attribute the tile belongs to.
    * @param tile_compressed The compressed tile to be decompressed.
    * @param tile_compressed_size The size of the compressed tile.
    * @param tile The resulting decompressed tile.
@@ -641,14 +638,13 @@ class ReadState {
    */
   int decompress_tile_lz4(
       unsigned char* tile_compressed,
-      size_t tile_compressed_sile,
+      size_t tile_compressed_size,
       unsigned char* tile,
       size_t tile_size);
 
   /**
    * Decompresses a tile with Blosc.
    * 
-   * @param attribute_id The id of the attribute the tile belongs to.
    * @param tile_compressed The compressed tile to be decompressed.
    * @param tile_compressed_size The size of the compressed tile.
    * @param tile The resulting decompressed tile.
@@ -659,10 +655,28 @@ class ReadState {
    */
   int decompress_tile_blosc(
       unsigned char* tile_compressed,
-      size_t tile_compressed_sile,
+      size_t tile_compressed_size,
       unsigned char* tile,
       size_t tile_size,
       const char* compressor);
+
+  /**
+   * Decompresses a tile with RLE.
+   * 
+   * @param attribute_id The id of the attribute the tile belongs to.
+   * @param tile_compressed The compressed tile to be decompressed.
+   * @param tile_compressed_size The size of the compressed tile.
+   * @param tile The resulting decompressed tile.
+   * @param tile_size The expected size of the decompressed tile (for checking 
+   *     for errors).
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int decompress_tile_rle(
+      int attribute_id,
+      unsigned char* tile_compressed,
+      size_t tile_compressed_size,
+      unsigned char* tile,
+      size_t tile_size);
 
   /** 
    * Returns the cell position in the search tile that is after the

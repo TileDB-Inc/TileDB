@@ -471,40 +471,52 @@ int WriteState::compress_tile(
     return compress_tile_lz4(tile, tile_size, tile_compressed_size);
   else if(compression == TILEDB_BLOSC)
     return compress_tile_blosc(
+               attribute_id,
                tile, 
                tile_size, 
                tile_compressed_size, 
                "blosclz");
   else if(compression == TILEDB_BLOSC_LZ4)
     return compress_tile_blosc(
+               attribute_id,
                tile, 
                tile_size, 
                tile_compressed_size, 
                "lz4");
   else if(compression == TILEDB_BLOSC_LZ4HC)
     return compress_tile_blosc(
+               attribute_id,
                tile, 
                tile_size, 
                tile_compressed_size, 
                "lz4hc");
   else if(compression == TILEDB_BLOSC_SNAPPY)
     return compress_tile_blosc(
+               attribute_id,
                tile, 
                tile_size, 
                tile_compressed_size, 
                "snappy");
   else if(compression == TILEDB_BLOSC_ZLIB)
     return compress_tile_blosc(
+               attribute_id,
                tile, 
                tile_size, 
                tile_compressed_size, 
                "zlib");
   else if(compression == TILEDB_BLOSC_ZSTD)
     return compress_tile_blosc(
+               attribute_id,
                tile, 
                tile_size, 
                tile_compressed_size, 
                "zstd");
+  else if(compression == TILEDB_RLE)
+    return compress_tile_rle(
+               attribute_id, 
+               tile, 
+               tile_size, 
+               tile_compressed_size);
 
   // Error
   assert(0);
@@ -625,10 +637,14 @@ int WriteState::compress_tile_lz4(
 }
 
 int WriteState::compress_tile_blosc(
+    int attribute_id,
     unsigned char* tile, 
     size_t tile_size,
     size_t& tile_compressed_size,
     const char* compressor) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+
   // Allocate space to store the compressed tile
   size_t compress_bound = tile_size + BLOSC_MAX_OVERHEAD;
   if(tile_compressed_ == NULL) {
@@ -663,7 +679,7 @@ int WriteState::compress_tile_blosc(
       blosc_compress(
           TILEDB_COMPRESSION_LEVEL_BLOSC,
           1,
-          sizeof(char),
+          array_schema->type_size(attribute_id),
           tile_size,
           tile, 
           tile_compressed, 
@@ -679,6 +695,88 @@ int WriteState::compress_tile_blosc(
 
   // Clean up
   blosc_destroy();
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
+int WriteState::compress_tile_rle(
+    int attribute_id,
+    unsigned char* tile, 
+    size_t tile_size,
+    size_t& tile_compressed_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  int dim_num = array_schema->dim_num();
+  int order = array_schema->cell_order();
+  bool is_coords = (attribute_id == attribute_num);
+  size_t value_size = 
+      (array_schema->var_size(attribute_id) || is_coords) ? 
+          array_schema->type_size(attribute_id) :
+          array_schema->cell_size(attribute_id);
+
+  // Allocate space to store the compressed tile
+  size_t compress_bound;
+  if(!is_coords)
+    compress_bound = RLE_compress_bound(tile_size, value_size);
+  else
+    compress_bound = RLE_compress_bound_coords(tile_size, value_size, dim_num);
+  if(tile_compressed_ == NULL) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = malloc(compress_bound); 
+  }
+
+  // Expand comnpressed tile if necessary
+  if(compress_bound > tile_compressed_allocated_size_) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = realloc(tile_compressed_, compress_bound);
+  }
+
+  // Compress tile
+  int64_t rle_size;
+  if(!is_coords) { 
+    rle_size = RLE_compress(
+                  tile, 
+                  tile_size,
+                  (unsigned char*) tile_compressed_, 
+                  tile_compressed_allocated_size_,
+                  value_size);
+  } else {
+    if(order == TILEDB_ROW_MAJOR) {
+        rle_size = RLE_compress_coords_row(
+                       tile, 
+                       tile_size,
+                       (unsigned char*) tile_compressed_, 
+                       tile_compressed_allocated_size_,
+                       value_size,
+                       dim_num);
+    } else if(order == TILEDB_COL_MAJOR) {
+        rle_size = RLE_compress_coords_col(
+                       tile, 
+                       tile_size,
+                       (unsigned char*) tile_compressed_, 
+                       tile_compressed_allocated_size_,
+                       value_size,
+                       dim_num);
+    } else { // Error
+      assert(0);
+      std::string errmsg = 
+          "Failed compressing with RLE; unsupported cell order";
+      PRINT_ERROR(errmsg);
+      tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+      return TILEDB_WS_ERR;
+    }
+  }
+
+  // Handle error
+  if(rle_size == TILEDB_UT_ERR) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    return TILEDB_WS_ERR;
+  }
+
+  // Set actual output size
+  tile_compressed_size = (size_t) rle_size;
 
   // Success
   return TILEDB_WS_OK;

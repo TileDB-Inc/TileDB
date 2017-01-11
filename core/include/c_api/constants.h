@@ -142,6 +142,7 @@
 #define TILEDB_BLOSC_SNAPPY                          7
 #define TILEDB_BLOSC_ZLIB                            8
 #define TILEDB_BLOSC_ZSTD                            9
+#define TILEDB_RLE                                  10
 /**@}*/
 
 /**@{*/

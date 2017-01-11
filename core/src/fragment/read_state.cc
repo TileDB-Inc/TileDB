@@ -1499,6 +1499,13 @@ int ReadState::decompress_tile(
                tile, 
                tile_size,
                "zstd");
+  else if(compression == TILEDB_RLE)
+    return decompress_tile_rle(
+               attribute_id,
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size);
 
   // Error
   assert(0);
@@ -1521,9 +1528,6 @@ int ReadState::decompress_tile_gzip(
     tiledb_rs_errmsg = tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
   }
-
-  // Sanity check
-  assert(gunzip_out_size == tile_size);
 
   // Success
   return TILEDB_RS_OK;
@@ -1596,6 +1600,72 @@ int ReadState::decompress_tile_blosc(
 
   // Clean up
   blosc_destroy();
+
+  // Success
+  return TILEDB_RS_OK;
+}
+
+int ReadState::decompress_tile_rle(
+    int attribute_id,
+    unsigned char* tile_compressed,
+    size_t tile_compressed_size,
+    unsigned char* tile,
+    size_t tile_size) {
+  // Special case for search coordinate tiles
+  if(attribute_id == attribute_num_ + 1) 
+    attribute_id = attribute_num_;
+
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int order = array_schema->cell_order();
+  bool is_coords = (attribute_id == attribute_num_);
+  size_t value_size = 
+      (array_schema->var_size(attribute_id) || is_coords) ? 
+          array_schema->type_size(attribute_id) :
+          array_schema->cell_size(attribute_id);
+
+  // Decompress tile
+  int rc;
+  if(!is_coords) { 
+    rc = RLE_decompress(
+             (unsigned char*) tile_compressed_, 
+             tile_compressed_size,
+             tile, 
+             tile_size,
+             value_size);
+  } else {
+    if(order == TILEDB_ROW_MAJOR) {
+      rc = RLE_decompress_coords_row(
+               (unsigned char*) tile_compressed_, 
+               tile_compressed_size,
+               tile, 
+               tile_size,
+               value_size,
+               dim_num);
+    } else if(order == TILEDB_COL_MAJOR) {
+      rc = RLE_compress_coords_col(
+               (unsigned char*) tile_compressed_, 
+               tile_compressed_size,
+               tile, 
+               tile_size,
+               value_size,
+               dim_num);
+    } else { // Error
+      assert(0);
+      std::string errmsg = 
+          "Failed decompressing with RLE; unsupported cell order";
+      PRINT_ERROR(errmsg);
+      tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+      return TILEDB_RS_ERR;
+    }
+  }
+
+  // Handle error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
+    return TILEDB_RS_ERR;
+  }
 
   // Success
   return TILEDB_RS_OK;

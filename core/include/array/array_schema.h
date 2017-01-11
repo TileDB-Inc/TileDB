@@ -294,6 +294,9 @@ class ArraySchema {
   /** Returns the type of the i-th attribute, or NULL if 'i' is invalid. */
   int type(int i) const;
 
+  /** Returns the type size of the i-th attribute. */
+  size_t type_size(int i) const;
+
   /** Returns the number of attributes with variable-sized values. */
   int var_attribute_num() const;
 
@@ -716,6 +719,7 @@ class ArraySchema {
    *    - TILEDB_BLOSC_SNAPPY 
    *    - TILEDB_BLOSC_ZLIB 
    *    - TILEDB_BLOSC_ZSTD 
+   *    - TILEDB_RLE 
    */
   std::vector<int> compression_;
   /** Auxiliary variable used when calculating Hilbert ids. */

@@ -100,7 +100,7 @@ typedef struct TileDB_Config {
   /** 
    * The method for reading data from a file. 
    * It can be one of the following: 
-   *    - TILEDB_IO_MMAP
+   *    - TILEDB_IO_MMAP (default)
    *      TileDB will use mmap.
    *    - TILEDB_IO_READ
    *      TileDB will use standard OS read.
@@ -111,7 +111,7 @@ typedef struct TileDB_Config {
   /** 
    * The method for writing data to a file. 
    * It can be one of the following: 
-   *    - TILEDB_IO_WRITE
+   *    - TILEDB_IO_WRITE (default)
    *      TileDB will use standard OS write.
    *    - TILEDB_IO_MPI
    *      TileDB will use MPI-IO write. 
@@ -241,6 +241,7 @@ typedef struct TileDB_ArraySchema {
    *    - TILEDB_BLOSC_SNAPPY 
    *    - TILEDB_BLOSC_ZLIB 
    *    - TILEDB_BLOSC_ZSTD 
+   *    - TILEDB_RLE
    *
    * If it is *NULL*, then the default TILEDB_NO_COMPRESSION is used for all
    * attributes.
@@ -753,6 +754,7 @@ typedef struct TileDB_MetadataSchema {
    *    - TILEDB_BLOSC_SNAPPY 
    *    - TILEDB_BLOSC_ZLIB 
    *    - TILEDB_BLOSC_ZSTD 
+   *    - TILEDB_RLE
    *
    * If it is *NULL*, then the default TILEDB_NO_COMPRESSION is used for all
    * attributes.
