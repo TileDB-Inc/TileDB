@@ -48,6 +48,12 @@ ifeq ($(VERBOSE),1)
   CPPFLAGS += -DVERBOSE
 endif
 
+# --- MAC address interface --- #
+MAC_ADDRESS_INTERFACE =
+ifneq ($(MAC_ADDRESS_INTERFACE),)
+  CPPFLAGS += -DMAC_ADDRESS_INTERFACE=$(MAC_ADDRESS_INTERFACE)
+endif
+
 # --- Use parallel sort --- #
 USE_PARALLEL_SORT =
 ifeq ($(USE_PARALLEL_SORT),1)

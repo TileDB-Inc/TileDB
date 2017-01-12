@@ -52,14 +52,22 @@
   #include <net/if_dl.h>
   #include <netinet/in.h>
   #include <arpa/inet.h>
+  #ifndef MAC_ADDRESS_INTERFACE
+    #define MAC_ADDRESS_INTERFACE en0
+  #endif
 #else
-#include <linux/if.h>
+  #include <linux/if.h>
+  #ifndef MAC_ADDRESS_INTERFACE
+    #define MAC_ADDRESS_INTERFACE eth0
+  #endif
 #endif
 
 #include <unistd.h>
 #include <zlib.h>
 #include <typeinfo>
 
+#define XSTR(s) STR(s)
+#define STR(s) #s
 
 
 
@@ -459,7 +467,7 @@ std::string get_mac_addr() {
   mib[2] = 0;
   mib[3] = AF_LINK;
   mib[4] = NET_RT_IFLIST;
-  if(((mib[5] = if_nametoindex("en0")) == 0) ||
+  if(((mib[5] = if_nametoindex(XSTR(MAC_ADDRESS_INTERFACE))) == 0) ||
      (sysctl(mib, 6, NULL, &len, NULL, 0) < 0)) {
     std::string errmsg = "Cannot get MAC address";
     PRINT_ERROR(errmsg);
@@ -491,7 +499,7 @@ std::string get_mac_addr() {
   int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
   char mac[13];
 
-  strcpy(s.ifr_name, "eth0");
+  strcpy(s.ifr_name, XSTR(MAC_ADDRESS_INTERFACE));
   if (0 == ioctl(fd, SIOCGIFHWADDR, &s)) {
     for (int i = 0; i < 6; ++i)
       sprintf(mac + 2*i, "%02x", (unsigned char) s.ifr_addr.sa_data[i]);
