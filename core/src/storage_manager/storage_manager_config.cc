@@ -1,5 +1,5 @@
 /**
- * @file   config.cc
+ * @file   storage_manager_config.cc
  *
  * @section LICENSE
  *
@@ -27,13 +27,13 @@
  * 
  * @section DESCRIPTION
  *
- * This file implements the Config class.
+ * This file implements the StorageManagerConfig class.
  */
 
 
 
-#include "config.h"
 #include "constants.h"
+#include "storage_manager_config.h"
 
 
 
@@ -42,7 +42,7 @@
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Config::Config() {
+StorageManagerConfig::StorageManagerConfig() {
   // Default values
   home_ = "";
   read_method_ = TILEDB_IO_MMAP;
@@ -52,7 +52,7 @@ Config::Config() {
 #endif
 }
 
-Config::~Config() {
+StorageManagerConfig::~StorageManagerConfig() {
 }
 
 
@@ -62,7 +62,7 @@ Config::~Config() {
 /*             MUTATORS           */
 /* ****************************** */
 
-void Config::init(
+void StorageManagerConfig::init(
     const char* home,
 #ifdef HAVE_MPI
     MPI_Comm* mpi_comm,
@@ -101,20 +101,20 @@ void Config::init(
 /*            ACCESSORS           */
 /* ****************************** */
 
-const std::string& Config::home() const {
+const std::string& StorageManagerConfig::home() const {
   return home_;
 }
 
 #ifdef HAVE_MPI
-MPI_Comm* Config::mpi_comm() const {
+MPI_Comm* StorageManagerConfig::mpi_comm() const {
   return mpi_comm_;
 }
 #endif
 
-int Config::read_method() const {
+int StorageManagerConfig::read_method() const {
   return read_method_;
 }
 
-int Config::write_method() const {
+int StorageManagerConfig::write_method() const {
   return write_method_;
 }

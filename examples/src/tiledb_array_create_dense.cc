@@ -55,8 +55,8 @@ int main() {
   const int compression[] = 
   { 
         TILEDB_GZIP,              // a1 
-        TILEDB_GZIP,              // a2
-        TILEDB_NO_COMPRESSION,    // a3
+        TILEDB_ZSTD,              // a2
+        TILEDB_LZ4,               // a3
         TILEDB_NO_COMPRESSION     // coordinates
   };
   int64_t tile_extents[] = 

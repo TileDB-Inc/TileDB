@@ -34,7 +34,7 @@
 #define __METADATA_H__
 
 #include "array.h"
-#include "config.h"
+#include "storage_manager_config.h"
 
 /* ********************************* */
 /*             CONSTANTS             */
@@ -177,7 +177,7 @@ class Metadata {
       int mode,
       const char** attributes,
       int attribute_num,
-      const Config* config);
+      const StorageManagerConfig* config);
 
   /**
    * Resets the attributes used upon initialization of the metadata. 

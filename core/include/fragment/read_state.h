@@ -576,6 +576,108 @@ class ReadState {
   template<class T>
   void compute_tile_search_range_hil();
 
+  /**
+   * Decompresses a tile.
+   * 
+   * @param attribute_id The id of the attribute the tile belongs to.
+   * @param tile_compressed The compressed tile to be decompressed.
+   * @param tile_compressed_size The size of the compressed tile.
+   * @param tile The resulting decompressed tile.
+   * @param tile_size The expected size of the decompressed tile (for checking 
+   *     for errors).
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int decompress_tile(
+      int attribute_id,
+      unsigned char* tile_compressed,
+      size_t tile_compressed_size,
+      unsigned char* tile,
+      size_t tile_size);
+
+  /**
+   * Decompresses a tile with GZIP.
+   * 
+   * @param tile_compressed The compressed tile to be decompressed.
+   * @param tile_compressed_size The size of the compressed tile.
+   * @param tile The resulting decompressed tile.
+   * @param tile_size The expected size of the decompressed tile (for checking 
+   *     for errors).
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int decompress_tile_gzip(
+      unsigned char* tile_compressed,
+      size_t tile_compressed_size,
+      unsigned char* tile,
+      size_t tile_size);
+
+  /**
+   * Decompresses a tile with Zstandard.
+   * 
+   * @param tile_compressed The compressed tile to be decompressed.
+   * @param tile_compressed_size The size of the compressed tile.
+   * @param tile The resulting decompressed tile.
+   * @param tile_size The expected size of the decompressed tile (for checking 
+   *     for errors).
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int decompress_tile_zstd(
+      unsigned char* tile_compressed,
+      size_t tile_compressed_size,
+      unsigned char* tile,
+      size_t tile_size);
+
+  /**
+   * Decompresses a tile with LZ4.
+   * 
+   * @param tile_compressed The compressed tile to be decompressed.
+   * @param tile_compressed_size The size of the compressed tile.
+   * @param tile The resulting decompressed tile.
+   * @param tile_size The expected size of the decompressed tile (for checking 
+   *     for errors).
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int decompress_tile_lz4(
+      unsigned char* tile_compressed,
+      size_t tile_compressed_size,
+      unsigned char* tile,
+      size_t tile_size);
+
+  /**
+   * Decompresses a tile with Blosc.
+   * 
+   * @param tile_compressed The compressed tile to be decompressed.
+   * @param tile_compressed_size The size of the compressed tile.
+   * @param tile The resulting decompressed tile.
+   * @param tile_size The expected size of the decompressed tile (for checking 
+   *     for errors).
+   * @param compressor The Blosc compressor to be used.
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int decompress_tile_blosc(
+      unsigned char* tile_compressed,
+      size_t tile_compressed_size,
+      unsigned char* tile,
+      size_t tile_size,
+      const char* compressor);
+
+  /**
+   * Decompresses a tile with RLE.
+   * 
+   * @param attribute_id The id of the attribute the tile belongs to.
+   * @param tile_compressed The compressed tile to be decompressed.
+   * @param tile_compressed_size The size of the compressed tile.
+   * @param tile The resulting decompressed tile.
+   * @param tile_size The expected size of the decompressed tile (for checking 
+   *     for errors).
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int decompress_tile_rle(
+      int attribute_id,
+      unsigned char* tile_compressed,
+      size_t tile_compressed_size,
+      unsigned char* tile,
+      size_t tile_size);
+
   /** 
    * Returns the cell position in the search tile that is after the
    * input coordinates.
@@ -642,29 +744,28 @@ class ReadState {
 
   /** 
    * Maps a tile from the disk for an attribute into a local buffer, using 
-   * memory map (mmap). This function focuses on the case of GZIP compression.
+   * memory map (mmap). This function works with any compression.
    *
    * @param attribute_id The id of the attribute the read occurs for.
    * @param offset The offset at which the tile starts in the file.
    * @param tile_size The tile size. 
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int map_tile_from_file_cmp_gzip(
+  int map_tile_from_file_cmp(
       int attribute_id,
       off_t offset,
       size_t tile_size);
 
   /** 
    * Maps a variable-sized tile from the disk for an attribute into a local 
-   * buffer, using memory map (mmap). This function focuses on the case of GZIP
-   * compression.
+   * buffer, using memory map (mmap). This function works with any compression.
    *
    * @param attribute_id The id of the attribute the read occurs for.
    * @param offset The offset at which the tile starts in the file.
    * @param tile_size The tile size. 
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int map_tile_from_file_var_cmp_gzip(
+  int map_tile_from_file_var_cmp(
       int attribute_id,
       off_t offset,
       size_t tile_size);
@@ -708,14 +809,14 @@ class ReadState {
    * @param tile_size The tile size. 
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int mpi_io_read_tile_from_file_cmp_gzip(
+  int mpi_io_read_tile_from_file_cmp(
       int attribute_id,
       off_t offset,
       size_t tile_size);
 
   /** 
    * Reads a variable-sized tile from the disk for an attribute into a local 
-   * buffer, using MPI-IO. This function focuses on the case of GZIP
+   * buffer, using MPI-IO. This function focuses on the case of any
    * compression.
    *
    * @param attribute_id The id of the attribute the read occurs for.
@@ -723,7 +824,7 @@ class ReadState {
    * @param tile_size The tile size. 
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int mpi_io_read_tile_from_file_var_cmp_gzip(
+  int mpi_io_read_tile_from_file_var_cmp(
       int attribute_id,
       off_t offset,
       size_t tile_size);
@@ -749,13 +850,13 @@ class ReadState {
 
   /**
    * Prepares a tile from the disk for reading for an attribute.    
-   * This function focuses on the case there is GZIP compression.
+   * This function focuses on the case there is any compression.
    *
    * @param attribute_id The id of the attribute the tile is prepared for. 
    * @param tile_i The tile position on the disk.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int prepare_tile_for_reading_cmp_gzip(int attribute_id, int64_t tile_i);
+  int prepare_tile_for_reading_cmp(int attribute_id, int64_t tile_i);
 
   /**
    * Prepares a tile from the disk for reading for an attribute.    
@@ -769,14 +870,14 @@ class ReadState {
 
   /**
    * Prepares a tile from the disk for reading for an attribute.    
-   * This function focuses on the case of variable-sized tiles with GZIP
+   * This function focuses on the case of variable-sized tiles with any
    * compression.
    *
    * @param attribute_id The id of the attribute the tile is prepared for. 
    * @param tile_i The tile position on the disk.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int prepare_tile_for_reading_var_cmp_gzip(int attribute_id, int64_t tile_i);
+  int prepare_tile_for_reading_var_cmp(int attribute_id, int64_t tile_i);
 
   /**
    * Prepares a tile from the disk for reading for an attribute.    
@@ -823,28 +924,28 @@ class ReadState {
 
   /** 
    * Reads a tile from the disk for an attribute into a local buffer. This
-   * function focuses on the case there is GZIP compression. 
+   * function focuses on the case there is any compression. 
    *
    * @param attribute_id The id of the attribute the read occurs for.
    * @param offset The offset at which the tile starts in the file.
    * @param tile_size The tile size. 
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int read_tile_from_file_cmp_gzip(
+  int read_tile_from_file_cmp(
       int attribute_id,
       off_t offset,
       size_t tile_size);
 
   /** 
    * Reads a tile from the disk for an attribute into a local buffer. This
-   * function focuses on the case of variable-sized tiles and GZIP compression. 
+   * function focuses on the case of variable-sized tiles and any compression. 
    *
    * @param attribute_id The id of the attribute the read occurs for.
    * @param offset The offset at which the tile starts in the file.
    * @param tile_size The tile size. 
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int read_tile_from_file_var_cmp_gzip(
+  int read_tile_from_file_var_cmp(
       int attribute_id,
       off_t offset,
       size_t tile_size);

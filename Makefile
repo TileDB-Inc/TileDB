@@ -48,6 +48,28 @@ ifeq ($(VERBOSE),1)
   CPPFLAGS += -DVERBOSE
 endif
 
+# --- MAC address interface --- #
+MAC_ADDRESS_INTERFACE =
+ifneq ($(MAC_ADDRESS_INTERFACE),)
+  CPPFLAGS += -DTILEDB_MAC_ADDRESS_INTERFACE=$(MAC_ADDRESS_INTERFACE)
+endif
+
+# --- Compression levels --- #
+COMPRESSION_LEVEL_GZIP =
+ifneq ($(COMPRESSION_LEVEL_GZIP),)
+  CPPFLAGS += -DTILEDB_COMPRESSION_LEVEL_GZIP=$(COMPRESSION_LEVEL_GZIP)
+endif
+
+COMPRESSION_LEVEL_ZSTD =
+ifneq ($(COMPRESSION_LEVEL_ZSTD),)
+  CPPFLAGS += -DTILEDB_COMPRESSION_LEVEL_ZSTD=$(COMPRESSION_LEVEL_ZSTD)
+endif
+
+COMPRESSION_LEVEL_BLOSC =
+ifneq ($(COMPRESSION_LEVEL_BLOSC),)
+  CPPFLAGS += -DTILEDB_COMPRESSION_LEVEL_BLOSC=$(COMPRESSION_LEVEL_BLOSC)
+endif
+
 # --- Use parallel sort --- #
 USE_PARALLEL_SORT =
 ifeq ($(USE_PARALLEL_SORT),1)
@@ -137,7 +159,10 @@ ifdef TRAVIS
 endif
 
 # --- Libraries --- #
-ZLIB = -lz
+ZLIB = -lz 
+ZSTD = -lzstd
+LZ4 = -llz4
+BLOSC = -lblosc
 OPENSSLLIB = -lcrypto
 GTESTLIB = -lgtest -lgtest_main
 MPILIB =
@@ -237,7 +262,8 @@ $(CORE_LIB_DIR)/libtiledb.$(SHLIB_EXT): $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
 	@echo "Creating dynamic library libtiledb.$(SHLIB_EXT)"
 	@$(CXX) $(SHLIB_FLAGS) $(SONAME) -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) \
-		$(PTHREADLIB) $(ZLIB) $(OPENSSLLIB) $(OPENMP_FLAG)
+		$(PTHREADLIB) $(ZLIB) $(ZSTD) $(LZ4) $(BLOSC) \
+                $(OPENSSLLIB) $(OPENMP_FLAG)
 
 $(CORE_LIB_DIR)/libtiledb.a: $(CORE_OBJ)
 	@mkdir -p $(CORE_LIB_DIR)
@@ -275,8 +301,9 @@ $(EXAMPLES_OBJ_DIR)/%.o: $(EXAMPLES_SRC_DIR)/%.cc
 $(EXAMPLES_BIN_DIR)/%: $(EXAMPLES_OBJ_DIR)/%.o $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(EXAMPLES_BIN_DIR)
 	@echo "Creating $@"
-	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) $(ZLIB) \
-		 $(PTHREADLIB) $(OPENSSLLIB) $(OPENMP_FLAG) 
+	@$(CXX) -std=gnu++11 -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) \
+                 $(ZLIB) $(LZ4) $(ZSTD) $(BLOSC) \
+                 $(PTHREADLIB) $(OPENSSLLIB) $(OPENMP_FLAG) 
 
 # --- Cleaning --- #
 
@@ -308,8 +335,9 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 
 $(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(TEST_BIN_DIR)
-	@echo "Creating test_cmd"
-	@$(CXX) -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) $(ZLIB) \
+	@echo "Creating tiledb_test"
+	@$(CXX) -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) \
+                $(ZLIB) $(ZSTD) $(LZ4) $(BLOSC) \
 		$(PTHREADLIB) $(OPENSSLLIB) $(GTESTLIB) $(OPENMP_FLAG) 
 
 # --- Cleaning --- #

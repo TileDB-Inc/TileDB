@@ -228,7 +228,7 @@ const std::vector<int>& Array::attribute_ids() const {
   return attribute_ids_;
 }
 
-const Config* Array::config() const {
+const StorageManagerConfig* Array::config() const {
   return config_;
 }
 
@@ -542,7 +542,7 @@ int Array::init(
     const char** attributes,
     int attribute_num,
     const void* subarray,
-    const Config* config,
+    const StorageManagerConfig* config,
     Array* array_clone) {
   // Set mode
   mode_ = mode;
