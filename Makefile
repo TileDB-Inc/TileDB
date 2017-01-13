@@ -335,7 +335,7 @@ $(TEST_OBJ_DIR)/%.o: $(TEST_SRC_DIR)/%.cc
 
 $(TEST_BIN_DIR)/tiledb_test: $(TEST_OBJ) $(CORE_LIB_DIR)/libtiledb.a
 	@mkdir -p $(TEST_BIN_DIR)
-	@echo "Creating test_cmd"
+	@echo "Creating tiledb_test"
 	@$(CXX) -o $@ $^ $(LIBRARY_PATHS) $(MPILIB) \
                 $(ZLIB) $(ZSTD) $(LZ4) $(BLOSC) \
 		$(PTHREADLIB) $(OPENSSLLIB) $(GTESTLIB) $(OPENMP_FLAG) 
