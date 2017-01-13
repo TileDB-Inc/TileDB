@@ -20,12 +20,6 @@ install:
     - cmake --build .
     - sudo cmake --build . --target install
     - cd $TRAVIS_BUILD_DIR
-    # Only for Gtest
-    - cd /usr/src/gtest
-    - sudo cmake .
-    - sudo make
-    - sudo mv libgtest* /usr/lib/
-    - cd $TRAVIS_BUILD_DIR
     # Install lcov to coveralls conversion + upload tool
     - gem install coveralls-lcov
 
