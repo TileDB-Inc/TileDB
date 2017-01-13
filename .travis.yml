@@ -4,7 +4,7 @@ dist: trusty
 
 install:
     # Install lcov, MPICH, zlib, OpenSSL, Gtest and LZ4
-    - sudo apt-get -y install lcov mpich zlib1g-dev libssl-dev libgtest-dev liblz4-dev
+    - sudo apt-get -y install lcov mpich zlib1g-dev libssl-dev liblz4-dev
     # Install Zstandard
     - wget https://github.com/facebook/zstd/archive/v1.0.0.tar.gz
     - tar xf v1.0.0.tar.gz
@@ -19,6 +19,12 @@ install:
     - cmake -DCMAKE_INSTALL_PREFIX='/usr' ..
     - cmake --build .
     - sudo cmake --build . --target install
+    - cd $TRAVIS_BUILD_DIR
+    # Install Google Test
+    - cd /usr/src/gtest
+    - sudo cmake .
+    - sudo make
+    - sudo mv libgtest* /usr/lib/
     - cd $TRAVIS_BUILD_DIR
     # Install lcov to coveralls conversion + upload tool
     - gem install coveralls-lcov
