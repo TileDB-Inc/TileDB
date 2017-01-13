@@ -32,15 +32,18 @@
 
 #include "utils.h"
 #include "read_state.h"
+#include <blosc.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstring>
 #include <fcntl.h>
 #include <iostream>
+#include <lz4.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <zstd.h>
 
 
 
@@ -1427,6 +1430,247 @@ void ReadState::compute_tile_search_range_hil() {
   }
 } 
 
+int ReadState::decompress_tile(
+    int attribute_id,
+    unsigned char* tile_compressed,
+    size_t tile_compressed_size,
+    unsigned char* tile,
+    size_t tile_size) {
+  // For easy reference
+  int compression = array_schema_->compression(attribute_id);
+
+  if(compression == TILEDB_GZIP)
+    return decompress_tile_gzip(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size);
+  else if(compression == TILEDB_ZSTD)
+    return decompress_tile_zstd(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size);
+  else if(compression == TILEDB_LZ4)
+    return decompress_tile_lz4(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size);
+  else if(compression == TILEDB_BLOSC)
+    return decompress_tile_blosc(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size,
+               "blosclz");
+  else if(compression == TILEDB_BLOSC_LZ4)
+    return decompress_tile_blosc(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size,
+               "lz4");
+  else if(compression == TILEDB_BLOSC_LZ4HC)
+    return decompress_tile_blosc(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size,
+               "lz4hc");
+  else if(compression == TILEDB_BLOSC_SNAPPY)
+    return decompress_tile_blosc(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size,
+               "snappy");
+  else if(compression == TILEDB_BLOSC_ZLIB)
+    return decompress_tile_blosc(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size,
+               "zlib");
+  else if(compression == TILEDB_BLOSC_ZSTD)
+    return decompress_tile_blosc(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size,
+               "zstd");
+  else if(compression == TILEDB_RLE)
+    return decompress_tile_rle(
+               attribute_id,
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size);
+
+  // Error
+  assert(0);
+  return TILEDB_RS_ERR;
+}
+
+int ReadState::decompress_tile_gzip(
+    unsigned char* tile_compressed,
+    size_t tile_compressed_size,
+    unsigned char* tile,
+    size_t tile_size) {
+  // Decompress tile 
+  size_t gunzip_out_size;
+  if(gunzip(
+         tile_compressed, 
+         tile_compressed_size, 
+         tile,
+         tile_size,
+         gunzip_out_size) != TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
+    return TILEDB_RS_ERR;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
+}    
+
+int ReadState::decompress_tile_zstd(
+    unsigned char* tile_compressed,
+    size_t tile_compressed_size,
+    unsigned char* tile,
+    size_t tile_size) {
+  // Decompress tile 
+  size_t zstd_size = 
+      ZSTD_decompress(
+         tile,
+         tile_size,
+         tile_compressed, 
+         tile_compressed_size);
+  if(ZSTD_isError(zstd_size)) { 
+    std::string errmsg = "Zstandard decompression failed";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
+}
+
+int ReadState::decompress_tile_lz4(
+    unsigned char* tile_compressed,
+    size_t tile_compressed_size,
+    unsigned char* tile,
+    size_t tile_size) {
+  // Decompress tile 
+  if(LZ4_decompress_safe(
+         (const char*) tile_compressed, 
+         (char*) tile,
+         tile_compressed_size,
+         tile_size) < 0) { 
+    std::string errmsg = "LZ4 decompression failed";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
+}
+
+int ReadState::decompress_tile_blosc(
+    unsigned char* tile_compressed,
+    size_t tile_compressed_size,
+    unsigned char* tile,
+    size_t tile_size,
+    const char* compressor) {
+  // Initialization
+  blosc_init();
+
+  // Decompress tile 
+  if(blosc_decompress(
+         (const char*) tile_compressed, 
+         (char*) tile,
+         tile_size) < 0) { 
+    std::string errmsg = "Blosc decompression failed";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    blosc_destroy();
+    return TILEDB_RS_ERR;
+  }
+
+  // Clean up
+  blosc_destroy();
+
+  // Success
+  return TILEDB_RS_OK;
+}
+
+int ReadState::decompress_tile_rle(
+    int attribute_id,
+    unsigned char* tile_compressed,
+    size_t tile_compressed_size,
+    unsigned char* tile,
+    size_t tile_size) {
+  // Special case for search coordinate tiles
+  if(attribute_id == attribute_num_ + 1) 
+    attribute_id = attribute_num_;
+
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int order = array_schema->cell_order();
+  bool is_coords = (attribute_id == attribute_num_);
+  size_t value_size = 
+      (array_schema->var_size(attribute_id) || is_coords) ? 
+          array_schema->type_size(attribute_id) :
+          array_schema->cell_size(attribute_id);
+
+  // Decompress tile
+  int rc;
+  if(!is_coords) { 
+    rc = RLE_decompress(
+             (unsigned char*) tile_compressed_, 
+             tile_compressed_size,
+             tile, 
+             tile_size,
+             value_size);
+  } else {
+    if(order == TILEDB_ROW_MAJOR) {
+      rc = RLE_decompress_coords_row(
+               (unsigned char*) tile_compressed_, 
+               tile_compressed_size,
+               tile, 
+               tile_size,
+               value_size,
+               dim_num);
+    } else if(order == TILEDB_COL_MAJOR) {
+      rc = RLE_compress_coords_col(
+               (unsigned char*) tile_compressed_, 
+               tile_compressed_size,
+               tile, 
+               tile_size,
+               value_size,
+               dim_num);
+    } else { // Error
+      assert(0);
+      std::string errmsg = 
+          "Failed decompressing with RLE; unsupported cell order";
+      PRINT_ERROR(errmsg);
+      tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+      return TILEDB_RS_ERR;
+    }
+  }
+
+  // Handle error
+  if(rc != TILEDB_UT_OK) {
+    tiledb_rs_errmsg = tiledb_ut_errmsg;
+    return TILEDB_RS_ERR;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
+}
+
 template<class T>
 int64_t ReadState::get_cell_pos_after(const T* coords) {
   // For easy reference
@@ -1667,7 +1911,7 @@ bool ReadState::is_empty_attribute(int attribute_id) const {
   return is_empty_attribute_[attribute_id];
 }
 
-int ReadState::map_tile_from_file_cmp_gzip(
+int ReadState::map_tile_from_file_cmp(
     int attribute_id,
     off_t offset,
     size_t tile_size) {
@@ -1750,7 +1994,7 @@ int ReadState::map_tile_from_file_cmp_gzip(
   return TILEDB_RS_OK;
 }
 
-int ReadState::map_tile_from_file_var_cmp_gzip(
+int ReadState::map_tile_from_file_var_cmp(
     int attribute_id,
     off_t offset,
     size_t tile_size) {
@@ -2008,7 +2252,7 @@ int ReadState::map_tile_from_file_var_cmp_none(
 }
 
 #ifdef HAVE_MPI
-int ReadState::mpi_io_read_tile_from_file_cmp_gzip(
+int ReadState::mpi_io_read_tile_from_file_cmp(
     int attribute_id,
     off_t offset,
     size_t tile_size) {
@@ -2050,7 +2294,7 @@ int ReadState::mpi_io_read_tile_from_file_cmp_gzip(
   return TILEDB_RS_OK;
 }
 
-int ReadState::mpi_io_read_tile_from_file_var_cmp_gzip(
+int ReadState::mpi_io_read_tile_from_file_var_cmp(
     int attribute_id,
     off_t offset,
     size_t tile_size) {
@@ -2098,10 +2342,10 @@ int ReadState::prepare_tile_for_reading(
   int compression = array_schema_->compression(attribute_id);
 
   // Invoke the proper function based on the compression type
-  if(compression == TILEDB_GZIP)
-    return prepare_tile_for_reading_cmp_gzip(attribute_id, tile_i);
-  else
+  if(compression == TILEDB_NO_COMPRESSION)
     return prepare_tile_for_reading_cmp_none(attribute_id, tile_i);
+  else // All compressions
+    return prepare_tile_for_reading_cmp(attribute_id, tile_i);
 }
 
 int ReadState::prepare_tile_for_reading_var(
@@ -2111,13 +2355,13 @@ int ReadState::prepare_tile_for_reading_var(
   int compression = array_schema_->compression(attribute_id);
 
   // Invoke the proper function based on the compression type
-  if(compression == TILEDB_GZIP)
-    return prepare_tile_for_reading_var_cmp_gzip(attribute_id, tile_i);
-  else
+  if(compression == TILEDB_NO_COMPRESSION)
     return prepare_tile_for_reading_var_cmp_none(attribute_id, tile_i);
+  else // All compressions
+    return prepare_tile_for_reading_var_cmp(attribute_id, tile_i);
 }
 
-int ReadState::prepare_tile_for_reading_cmp_gzip(
+int ReadState::prepare_tile_for_reading_cmp(
     int attribute_id, 
     int64_t tile_i) {
   // Return if the tile has already been fetched
@@ -2160,18 +2404,18 @@ int ReadState::prepare_tile_for_reading_cmp_gzip(
   int rc = TILEDB_RS_OK;
   int read_method = array_->config()->read_method();
   if(read_method ==  TILEDB_IO_READ) {
-    rc = read_tile_from_file_cmp_gzip(
+    rc = read_tile_from_file_cmp(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
   } else if(read_method == TILEDB_IO_MMAP) {
-    rc = map_tile_from_file_cmp_gzip(
+    rc = map_tile_from_file_cmp(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
   } else if(read_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
-    rc = mpi_io_read_tile_from_file_cmp_gzip(
+    rc = mpi_io_read_tile_from_file_cmp(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
@@ -2189,21 +2433,15 @@ int ReadState::prepare_tile_for_reading_cmp_gzip(
   if(rc != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
-  // Decompress tile 
-  size_t gunzip_out_size;
-  if(gunzip(
+  // Decompress tile
+  if(decompress_tile(
+         attribute_id, 
          static_cast<unsigned char*>(tile_compressed_), 
          tile_compressed_size, 
          static_cast<unsigned char*>(tiles_[attribute_id]),
-         full_tile_size,
-         gunzip_out_size) != TILEDB_UT_OK) {
-    tiledb_rs_errmsg = tiledb_ut_errmsg;
+         full_tile_size) != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
-  }
-
-  // Sanity check
-  assert(gunzip_out_size == tile_size);
-
+         
   // Set the tile size
   tiles_sizes_[attribute_id] = tile_size;
 
@@ -2269,7 +2507,7 @@ int ReadState::prepare_tile_for_reading_cmp_none(
   return TILEDB_RS_OK;
 }
 
-int ReadState::prepare_tile_for_reading_var_cmp_gzip(
+int ReadState::prepare_tile_for_reading_var_cmp(
     int attribute_id, 
     int64_t tile_i) {
   // Return if the tile has already been fetched
@@ -2315,18 +2553,18 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
   int rc = TILEDB_RS_OK;
   int read_method = array_->config()->read_method();
   if(read_method ==  TILEDB_IO_READ) {
-    rc = read_tile_from_file_cmp_gzip(
+    rc = read_tile_from_file_cmp(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
   } else if(read_method == TILEDB_IO_MMAP) {
-    rc = map_tile_from_file_cmp_gzip(
+    rc = map_tile_from_file_cmp(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
   } else if(read_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
-    rc = mpi_io_read_tile_from_file_cmp_gzip(
+    rc = mpi_io_read_tile_from_file_cmp(
          attribute_id, 
          file_offset, 
          tile_compressed_size);
@@ -2344,20 +2582,14 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
   if(rc != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
 
-  // Decompress tile 
-  size_t gunzip_out_size;
-  if(gunzip(
+  // Decompress tile
+  if(decompress_tile(
+         attribute_id, 
          static_cast<unsigned char*>(tile_compressed_), 
          tile_compressed_size, 
          static_cast<unsigned char*>(tiles_[attribute_id]),
-         tile_size,
-         gunzip_out_size) != TILEDB_UT_OK) {
-    tiledb_rs_errmsg = tiledb_ut_errmsg;
+         tile_size) != TILEDB_RS_OK)
     return TILEDB_RS_ERR;
-  }
-
-  // Sanity check
-  assert(gunzip_out_size == tile_size);
 
   // Set the tile size
   tiles_sizes_[attribute_id] = tile_size;
@@ -2398,52 +2630,47 @@ int ReadState::prepare_tile_for_reading_var_cmp_gzip(
       tiles_var_allocated_size_[attribute_id] = tile_var_size;
     }
 
-  // Read tile from file
-  int rc = TILEDB_RS_OK;
-  int read_method = array_->config()->read_method();
-  if(read_method ==  TILEDB_IO_READ) {
-    rc = read_tile_from_file_var_cmp_gzip(
-         attribute_id, 
-         file_offset, 
-         tile_compressed_size);
-  } else if(read_method == TILEDB_IO_MMAP) {
-    rc = map_tile_from_file_var_cmp_gzip(
-         attribute_id, 
-         file_offset, 
-         tile_compressed_size);
-  } else if(read_method == TILEDB_IO_MPI) {
+    // Read tile from file
+    int rc = TILEDB_RS_OK;
+    int read_method = array_->config()->read_method();
+    if(read_method ==  TILEDB_IO_READ) {
+      rc = read_tile_from_file_var_cmp(
+               attribute_id, 
+               file_offset, 
+               tile_compressed_size);
+    } else if(read_method == TILEDB_IO_MMAP) {
+      rc = map_tile_from_file_var_cmp(
+               attribute_id, 
+              file_offset, 
+              tile_compressed_size);
+    } else if(read_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
-    rc = mpi_io_read_tile_from_file_var_cmp_gzip(
-         attribute_id, 
-         file_offset, 
-         tile_compressed_size);
+      rc = mpi_io_read_tile_from_file_var_cmp(
+               attribute_id, 
+               file_offset, 
+              tile_compressed_size);
 #else
-    // Error: MPI not supported
-    std::string errmsg = 
-        "Cannot prepare variable tile for reading (gzip); MPI not supported";
-    PRINT_ERROR(errmsg);
-    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
-    return TILEDB_RS_ERR;
-#endif
-  }
-
-  // Error
-  if(rc != TILEDB_RS_OK)
-    return TILEDB_RS_ERR;
-
-    // Decompress tile 
-    if(gunzip(
-          static_cast<unsigned char*>(tile_compressed_), 
-          tile_compressed_size, 
-          static_cast<unsigned char*>(tiles_var_[attribute_id]),
-          tile_var_size,
-          gunzip_out_size) != TILEDB_UT_OK) {
-      tiledb_rs_errmsg = tiledb_ut_errmsg;
+      // Error: MPI not supported
+      std::string errmsg = 
+          "Cannot prepare variable tile for reading (gzip); MPI not supported";
+      PRINT_ERROR(errmsg);
+      tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
       return TILEDB_RS_ERR;
+#endif
     }
 
-    // Sanity check
-    assert(gunzip_out_size == tile_var_size);
+    // Error
+    if(rc != TILEDB_RS_OK)
+      return TILEDB_RS_ERR;
+
+    // Decompress tile
+    if(decompress_tile(
+           attribute_id, 
+           static_cast<unsigned char*>(tile_compressed_), 
+           tile_compressed_size, 
+           static_cast<unsigned char*>(tiles_var_[attribute_id]),
+           tile_var_size) != TILEDB_RS_OK)
+      return TILEDB_RS_ERR;
   }
 
   // Set the variable tile size
@@ -2707,7 +2934,7 @@ int ReadState::READ_FROM_TILE_VAR(
   return TILEDB_RS_OK;
 }
 
-int ReadState::read_tile_from_file_cmp_gzip(
+int ReadState::read_tile_from_file_cmp(
     int attribute_id,
     off_t offset,
     size_t tile_size) {
@@ -2718,11 +2945,14 @@ int ReadState::read_tile_from_file_cmp_gzip(
 
   // Potentially allocate compressed tile buffer
   if(tile_compressed_ == NULL) {
-    size_t full_tile_size = fragment_->tile_size(attribute_id_real);
-    size_t tile_max_size = 
-        full_tile_size + 6 + 5*(ceil(full_tile_size/16834.0));
-    tile_compressed_ = malloc(tile_max_size); 
-    tile_compressed_allocated_size_ = tile_max_size;
+    tile_compressed_ = malloc(tile_size); 
+    tile_compressed_allocated_size_ = tile_size;
+  }
+
+  // Potentially expand compressed tile buffer
+  if(tile_compressed_allocated_size_ < tile_size) {
+    tile_compressed_ = realloc(tile_compressed_, tile_size); 
+    tile_compressed_allocated_size_ = tile_size;
   }
 
   // Prepare attribute file name
@@ -2742,7 +2972,7 @@ int ReadState::read_tile_from_file_cmp_gzip(
   return TILEDB_RS_OK;
 }
 
-int ReadState::read_tile_from_file_var_cmp_gzip(
+int ReadState::read_tile_from_file_var_cmp(
     int attribute_id,
     off_t offset,
     size_t tile_size) {

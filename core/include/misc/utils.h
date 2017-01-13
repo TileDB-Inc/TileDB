@@ -600,6 +600,153 @@ int read_from_file_with_mmap(
  */
 std::string real_dir(const std::string& dir);
 
+/**
+ * Compresses with RLE. 
+ *
+ * @param input The input buffer to be compressed.
+ * @param input_size The size of the input buffer.
+ * @param output The output buffer that results from compression.
+ * @param output_allocated_size The allocated size of the output buffer.
+ * @param value_size The size of each single value in the input buffer. 
+ * @return The size of the result ouput buffer upon success, and TILEDB_UT_ERR
+ *     on error.
+ */
+int64_t RLE_compress(
+    const unsigned char* input,
+    size_t input_size,
+    unsigned char* output,
+    size_t output_allocated_size,
+    size_t value_size);
+
+/**
+ * Returns the maximum size of the output of RLE compression.
+ *
+ * @param buffer_size The input buffer size.
+ * @param value_size The size of a sinlge value in the input buffer.
+ * @return The maximum size of the output after RLE-compressing the input with
+ *     size input_size.
+ */
+size_t RLE_compress_bound(
+    size_t input_size,
+    size_t value_size);
+
+/**
+ * Returns the maximum size of the output of RLE compression on the coordinates.
+ *
+ * @param buffer_size The input buffer size.
+ * @param value_size The size of a sinlge value in the input buffer.
+ * @param dim_num The number of dimensions/coordinates in a single value.
+ * @return The maximum size of the output after RLE-compressing the input with
+ *     size input_size.
+ */
+size_t RLE_compress_bound_coords(
+    size_t input_size,
+    size_t value_size,
+    int dim_num);
+
+/**
+ * Compresses the coordinates of a buffer with RLE, assuming that the cells in 
+ * input buffer are sorted in column-major order. 
+ *
+ * @param input The input buffer to be compressed.
+ * @param input_size The size of the input buffer.
+ * @param output The output buffer that results from compression.
+ * @param output_allocated_size The allocated size of the output buffer.
+ * @param value_size The size of each single value in the input buffer. 
+ * @param dim_num The number of dimensions/coordinates of each cell in the
+ *     input buffer.
+ * @return The size of the result ouput buffer upon success, and TILEDB_UT_ERR
+ *     on error.
+ */
+int64_t RLE_compress_coords_col(
+    const unsigned char* input,
+    size_t input_size,
+    unsigned char* output,
+    size_t output_allocated_size,
+    size_t value_size,
+    int dim_num);
+
+/**
+ * Compresses the coordinates of a buffer with RLE, assuming that the cells in 
+ * input buffer are sorted in row-major order. 
+ *
+ * @param input The input buffer to be compressed.
+ * @param input_size The size of the input buffer.
+ * @param output The output buffer that results from compression.
+ * @param output_allocated_size The allocated size of the output buffer.
+ * @param value_size The size of each single value in the input buffer. 
+ * @param dim_num The number of dimensions/coordinates of each cell in the
+ *     input buffer.
+ * @return The size of the result ouput buffer upon success, and TILEDB_UT_ERR
+ *     on error.
+ */
+int64_t RLE_compress_coords_row(
+    const unsigned char* input,
+    size_t input_size,
+    unsigned char* output,
+    size_t output_allocated_size,
+    size_t value_size,
+    int dim_num);
+
+/**
+ * Decompresses with RLE. 
+ *
+ * @param input The input buffer to be decompressed.
+ * @param input_size The size of the input buffer.
+ * @param output The output buffer that results from decompression.
+ * @param output_allocated_size The allocated size of the output buffer.
+ * @param value_size The size of each single value in the input buffer. 
+ * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
+ */
+int RLE_decompress(
+    const unsigned char* input,
+    size_t input_size,
+    unsigned char* output,
+    size_t output_allocated_size,
+    size_t value_size);
+
+/**
+ * Decompresses the coordinates of a buffer with RLE, assuming that the cells in
+ * input buffer are sorted in column-major order. 
+ *
+ * @param input The input buffer to be decompressed.
+ * @param input_size The size of the input buffer.
+ * @param output The output buffer that results from decompression.
+ * @param output_allocated_size The allocated size of the output buffer.
+ * @param value_size The size of each single value in the output buffer. 
+ * @param dim_num The number of dimensions/coordinates of each cell in the
+ *     output buffer.
+ * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
+ */
+int RLE_decompress_coords_col(
+    const unsigned char* input,
+    size_t input_size,
+    unsigned char* output,
+    size_t output_allocated_size,
+    size_t value_size,
+    int dim_num);
+
+/**
+ * Decompresses the coordinates of a buffer with RLE, assuming that the cells in
+ * input buffer are sorted in row-major order. 
+ *
+ * @param input The input buffer to be decompressed.
+ * @param input_size The size of the input buffer.
+ * @param output The output buffer that results from decompression.
+ * @param output_allocated_size The allocated size of the output buffer.
+ * @param value_size The size of each single value in the output buffer. 
+ * @param dim_num The number of dimensions/coordinates of each cell in the
+ *     output buffer.
+ * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
+ */
+int RLE_decompress_coords_row(
+    const unsigned char* input,
+    size_t input_size,
+    unsigned char* output,
+    size_t output_allocated_size,
+    size_t value_size,
+    int dim_num);
+
 /** 
  * Checks if a string starts with a certain prefix.
  *

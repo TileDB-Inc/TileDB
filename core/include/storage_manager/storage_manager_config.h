@@ -1,5 +1,5 @@
 /**
- * @file   config.h
+ * @file  storage_manager_config.h
  *
  * @section LICENSE
  *
@@ -27,7 +27,7 @@
  * 
  * @section DESCRIPTION
  *
- * This file defines class Config.  
+ * This file defines class StorageManagerConfig.  
  */  
 
 #ifndef __CONFIG_H__
@@ -41,18 +41,21 @@
 
 
 
-/** This class is responsible for the TileDB configuration parameters. */
-class Config {
+/** 
+ * This class is responsible for the TileDB storage manager configuration 
+ * parameters. 
+ */
+class StorageManagerConfig {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Constructor. */
-  Config();
+  StorageManagerConfig();
 
   /** Destructor. */
-  ~Config();
+  ~StorageManagerConfig();
 
 
 

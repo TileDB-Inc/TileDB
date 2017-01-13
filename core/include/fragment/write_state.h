@@ -206,6 +206,98 @@ class WriteState {
   /* ********************************* */
 
   /**
+   * Compresses the input tile buffer, and stores it inside tile_compressed_
+   * member attribute. 
+   * 
+   * @param attribute_id The id of the attribute the tile belongs to.
+   * @param tile The tile buffer to be compressed.
+   * @param tile_size The size of the tile buffer in bytes.
+   * @param tile_compressed_size The size of the resulting compressed tile.
+   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   */
+  int compress_tile(
+      int attribute_id,
+      unsigned char* tile,
+      size_t tile_size,
+      size_t& tile_compressed_size);
+
+  /**
+   * Compresses with GZIP the input tile buffer, and stores it inside 
+   * tile_compressed_ member attribute. 
+   * 
+   * @param tile The tile buffer to be compressed.
+   * @param tile_size The size of the tile buffer in bytes.
+   * @param tile_compressed_size The size of the resulting compressed tile.
+   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   */
+  int compress_tile_gzip(
+      unsigned char* tile,
+      size_t tile_size,
+      size_t& tile_compressed_size);
+
+  /**
+   * Compresses with Zstandard the input tile buffer, and stores it inside 
+   * tile_compressed_ member attribute. 
+   * 
+   * @param tile The tile buffer to be compressed.
+   * @param tile_size The size of the tile buffer in bytes.
+   * @param tile_compressed_size The size of the resulting compressed tile.
+   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   */
+  int compress_tile_zstd(
+      unsigned char* tile,
+      size_t tile_size,
+      size_t& tile_compressed_size);
+
+  /**
+   * Compresses with LZ4 the input tile buffer, and stores it inside 
+   * tile_compressed_ member attribute. 
+   * 
+   * @param tile The tile buffer to be compressed.
+   * @param tile_size The size of the tile buffer in bytes.
+   * @param tile_compressed_size The size of the resulting compressed tile.
+   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   */
+  int compress_tile_lz4(
+      unsigned char* tile,
+      size_t tile_size,
+      size_t& tile_compressed_size);
+
+  /**
+   * Compresses with Blosc the input tile buffer, and stores it inside 
+   * tile_compressed_ member attribute. 
+   * 
+   * @param attribute_id The id of the attribute the tile belongs to.
+   * @param tile The tile buffer to be compressed.
+   * @param tile_size The size of the tile buffer in bytes.
+   * @param tile_compressed_size The size of the resulting compressed tile.
+   * @param compressor  The Blosc compressor.
+   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   */
+  int compress_tile_blosc(
+      int attribute_id,
+      unsigned char* tile,
+      size_t tile_size,
+      size_t& tile_compressed_size,
+      const char* compressor);
+
+  /**
+   * Compresses with RLE the input tile buffer, and stores it inside 
+   * tile_compressed_ member attribute. 
+   * 
+   * @param attribute_id The id of the attribute the tile belongs to.
+   * @param tile The tile buffer to be compressed.
+   * @param tile_size The size of the tile buffer in bytes.
+   * @param tile_compressed_size The size of the resulting compressed tile.
+   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   */
+  int compress_tile_rle(
+      int attribute_id,
+      unsigned char* tile,
+      size_t tile_size,
+      size_t& tile_compressed_size);
+
+  /**
    * Compresses the current tile for the input attribute, and writes (appends)
    * it to its corresponding file on the disk.
    *
@@ -359,14 +451,14 @@ class WriteState {
 
   /**
    * Performs the write operation for the case of a dense fragment, focusing
-   * on a single fixed-sized attribute and the case of GZIP compression.
+   * on a single fixed-sized attribute and the case of any compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
    * @param buffer See write().
    * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_dense_attr_cmp_gzip(
+  int write_dense_attr_cmp(
       int attribute_id,
       const void* buffer, 
       size_t buffer_size);
@@ -409,7 +501,7 @@ class WriteState {
 
   /**
    * Performs the write operation for the case of a dense fragment, focusing
-   * on a single variable-sized attribute and the case of GZIP compression.
+   * on a single variable-sized attribute and the case of any compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
    * @param buffer See write() - start offsets in *buffer_var*.
@@ -418,7 +510,7 @@ class WriteState {
    * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_dense_attr_var_cmp_gzip(
+  int write_dense_attr_var_cmp(
       int attribute_id,
       const void* buffer, 
       size_t buffer_size,
@@ -466,14 +558,14 @@ class WriteState {
 
   /**
    * Performs the write operation for the case of a sparse fragment, focusing
-   * on a single fixed-sized attribute and the case of GZIP compression.
+   * on a single fixed-sized attribute and the case of any compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
    * @param buffer See write().
    * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_attr_cmp_gzip(
+  int write_sparse_attr_cmp(
       int attribute_id,
       const void* buffer, 
       size_t buffer_size);
@@ -516,7 +608,7 @@ class WriteState {
 
   /**
    * Performs the write operation for the case of a sparse fragment, focusing
-   * on a single variable-sized attribute and the case of GZIP compression.
+   * on a single variable-sized attribute and the case of any compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
    * @param buffer See write() - start offsets in *buffer_var*.
@@ -525,7 +617,7 @@ class WriteState {
    * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_attr_var_cmp_gzip(
+  int write_sparse_attr_var_cmp(
       int attribute_id,
       const void* buffer, 
       size_t buffer_size,
@@ -580,7 +672,7 @@ class WriteState {
   /**
    * Performs the write operation for the case of a sparse fragment when the 
    * coordinates are unsorted, focusing on a single fixed-sized attribute and
-   * the case of GZIP compression.
+   * the case of any compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
    * @param buffer See write().
@@ -588,7 +680,7 @@ class WriteState {
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_unsorted_attr_cmp_gzip(
+  int write_sparse_unsorted_attr_cmp(
       int attribute_id,
       const void* buffer, 
       size_t buffer_size,
@@ -638,7 +730,7 @@ class WriteState {
   /**
    * Performs the write operation for the case of a sparse fragment when the 
    * coordinates are unsorted, focusing on a single variable-sized attribute and
-   * the case of GZIP compression.
+   * the case of any compression.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
    * @param buffer See write() - start offsets in *buffer_var*.
@@ -648,7 +740,7 @@ class WriteState {
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_unsorted_attr_var_cmp_gzip(
+  int write_sparse_unsorted_attr_var_cmp(
       int attribute_id,
       const void* buffer, 
       size_t buffer_size,

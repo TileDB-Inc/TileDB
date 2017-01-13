@@ -32,9 +32,9 @@
 
 #include "aio_request.h"
 #include "c_api.h"
-#include "config.h"
 #include "array_schema_c.h"
 #include "storage_manager.h"
+#include "storage_manager_config.h"
 #include <cassert>
 #include <cstring>
 #include <iostream>
@@ -87,7 +87,7 @@ int tiledb_ctx_init(
   }
 
   // Initialize a Config object
-  Config* config = new Config();
+  StorageManagerConfig* config = new StorageManagerConfig();
   if(tiledb_config != NULL)
     config->init(
         tiledb_config->home_, 

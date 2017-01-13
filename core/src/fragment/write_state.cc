@@ -35,12 +35,15 @@
 #include "utils.h"
 #include "write_state.h"
 #include "utils.h"
+#include <blosc.h>
 #include <cassert>
 #include <cmath>
 #include <cstring>
 #include <fcntl.h>
+#include <lz4.h>
 #include <iostream>
 #include <unistd.h>
+#include <zstd.h>
 
 
 
@@ -450,16 +453,80 @@ int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-int WriteState::compress_and_write_tile(int attribute_id) {
+int WriteState::compress_tile(
+    int attribute_id,
+    unsigned char* tile, 
+    size_t tile_size,
+    size_t& tile_compressed_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  unsigned char* tile = static_cast<unsigned char*>(tiles_[attribute_id]);
-  size_t tile_size = tile_offsets_[attribute_id];
+  int compression = array_schema->compression(attribute_id);
 
-  // Trivial case - No in-memory tile
-  if(tile_size == 0)
-    return TILEDB_WS_OK;
+  // Handle different compression
+  if(compression == TILEDB_GZIP)
+    return compress_tile_gzip(tile, tile_size, tile_compressed_size);
+  else if(compression == TILEDB_ZSTD)
+    return compress_tile_zstd(tile, tile_size, tile_compressed_size);
+  else if(compression == TILEDB_LZ4)
+    return compress_tile_lz4(tile, tile_size, tile_compressed_size);
+  else if(compression == TILEDB_BLOSC)
+    return compress_tile_blosc(
+               attribute_id,
+               tile, 
+               tile_size, 
+               tile_compressed_size, 
+               "blosclz");
+  else if(compression == TILEDB_BLOSC_LZ4)
+    return compress_tile_blosc(
+               attribute_id,
+               tile, 
+               tile_size, 
+               tile_compressed_size, 
+               "lz4");
+  else if(compression == TILEDB_BLOSC_LZ4HC)
+    return compress_tile_blosc(
+               attribute_id,
+               tile, 
+               tile_size, 
+               tile_compressed_size, 
+               "lz4hc");
+  else if(compression == TILEDB_BLOSC_SNAPPY)
+    return compress_tile_blosc(
+               attribute_id,
+               tile, 
+               tile_size, 
+               tile_compressed_size, 
+               "snappy");
+  else if(compression == TILEDB_BLOSC_ZLIB)
+    return compress_tile_blosc(
+               attribute_id,
+               tile, 
+               tile_size, 
+               tile_compressed_size, 
+               "zlib");
+  else if(compression == TILEDB_BLOSC_ZSTD)
+    return compress_tile_blosc(
+               attribute_id,
+               tile, 
+               tile_size, 
+               tile_compressed_size, 
+               "zstd");
+  else if(compression == TILEDB_RLE)
+    return compress_tile_rle(
+               attribute_id, 
+               tile, 
+               tile_size, 
+               tile_compressed_size);
 
+  // Error
+  assert(0);
+  return TILEDB_WS_ERR;
+}
+
+int WriteState::compress_tile_gzip(
+    unsigned char* tile, 
+    size_t tile_size,
+    size_t& tile_compressed_size) {
   // Allocate space to store the compressed tile
   if(tile_compressed_ == NULL) {
     tile_compressed_allocated_size_ = 
@@ -481,12 +548,258 @@ int WriteState::compress_and_write_tile(int attribute_id) {
       static_cast<unsigned char*>(tile_compressed_);
 
   // Compress tile
-  ssize_t tile_compressed_size = 
+  ssize_t gzip_size = 
       gzip(tile, tile_size, tile_compressed, tile_compressed_allocated_size_);
-  if(tile_compressed_size == static_cast<ssize_t>(TILEDB_UT_ERR)) {
+  if(gzip_size == static_cast<ssize_t>(TILEDB_UT_ERR)) {
     tiledb_ws_errmsg = tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
+  tile_compressed_size = (size_t) gzip_size;
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
+int WriteState::compress_tile_zstd(
+    unsigned char* tile, 
+    size_t tile_size,
+    size_t& tile_compressed_size) {
+  // Allocate space to store the compressed tile
+  size_t compress_bound = ZSTD_compressBound(tile_size);
+  if(tile_compressed_ == NULL) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = malloc(compress_bound); 
+  }
+
+  // Expand comnpressed tile if necessary
+  if(compress_bound > tile_compressed_allocated_size_) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = realloc(tile_compressed_, compress_bound);
+  }
+
+  // For easy reference
+  unsigned char* tile_compressed = 
+      static_cast<unsigned char*>(tile_compressed_);
+
+  // Compress tile
+  size_t zstd_size = 
+      ZSTD_compress(
+          tile_compressed, 
+          tile_compressed_allocated_size_,
+          tile, 
+          tile_size,
+          TILEDB_COMPRESSION_LEVEL_ZSTD);
+  if(ZSTD_isError(zstd_size)) {
+    std::string errmsg = "Failed compressing with Zstandard";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+  }
+  tile_compressed_size = zstd_size;
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
+int WriteState::compress_tile_lz4(
+    unsigned char* tile, 
+    size_t tile_size,
+    size_t& tile_compressed_size) {
+  // Allocate space to store the compressed tile
+  size_t compress_bound = LZ4_compressBound(tile_size);
+  if(tile_compressed_ == NULL) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = malloc(compress_bound); 
+  }
+
+  // Expand comnpressed tile if necessary
+  if(compress_bound > tile_compressed_allocated_size_) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = realloc(tile_compressed_, compress_bound);
+  }
+
+  // Compress tile
+  int lz4_size = 
+      LZ4_compress(
+          (const char*) tile, 
+          (char*) tile_compressed_, 
+          tile_size);
+  if(lz4_size < 0) {
+    std::string errmsg = "Failed compressing with LZ4";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+  }
+  tile_compressed_size = lz4_size;
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
+int WriteState::compress_tile_blosc(
+    int attribute_id,
+    unsigned char* tile, 
+    size_t tile_size,
+    size_t& tile_compressed_size,
+    const char* compressor) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+
+  // Allocate space to store the compressed tile
+  size_t compress_bound = tile_size + BLOSC_MAX_OVERHEAD;
+  if(tile_compressed_ == NULL) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = malloc(compress_bound); 
+  }
+
+  // Expand comnpressed tile if necessary
+  if(compress_bound > tile_compressed_allocated_size_) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = realloc(tile_compressed_, compress_bound);
+  }
+
+  // Initialize Blosc
+  blosc_init();
+
+  // Set the appropriate compressor
+  if(blosc_set_compressor(compressor) < 0) {
+    std::string errmsg = "Failed to set Blosc compressor";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    blosc_destroy();
+    return TILEDB_WS_ERR;
+  } 
+
+  // For easy reference
+  unsigned char* tile_compressed = 
+      static_cast<unsigned char*>(tile_compressed_);
+
+  // Compress tile
+  int blosc_size = 
+      blosc_compress(
+          TILEDB_COMPRESSION_LEVEL_BLOSC,
+          1,
+          array_schema->type_size(attribute_id),
+          tile_size,
+          tile, 
+          tile_compressed, 
+          tile_compressed_allocated_size_);
+  if(blosc_size < 0) {
+    std::string errmsg = "Failed compressing with Blosc";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    blosc_destroy();
+    return TILEDB_WS_ERR;
+  }
+  tile_compressed_size = blosc_size;
+
+  // Clean up
+  blosc_destroy();
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
+int WriteState::compress_tile_rle(
+    int attribute_id,
+    unsigned char* tile, 
+    size_t tile_size,
+    size_t& tile_compressed_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+  int dim_num = array_schema->dim_num();
+  int order = array_schema->cell_order();
+  bool is_coords = (attribute_id == attribute_num);
+  size_t value_size = 
+      (array_schema->var_size(attribute_id) || is_coords) ? 
+          array_schema->type_size(attribute_id) :
+          array_schema->cell_size(attribute_id);
+
+  // Allocate space to store the compressed tile
+  size_t compress_bound;
+  if(!is_coords)
+    compress_bound = RLE_compress_bound(tile_size, value_size);
+  else
+    compress_bound = RLE_compress_bound_coords(tile_size, value_size, dim_num);
+  if(tile_compressed_ == NULL) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = malloc(compress_bound); 
+  }
+
+  // Expand comnpressed tile if necessary
+  if(compress_bound > tile_compressed_allocated_size_) {
+    tile_compressed_allocated_size_ = compress_bound; 
+    tile_compressed_ = realloc(tile_compressed_, compress_bound);
+  }
+
+  // Compress tile
+  int64_t rle_size;
+  if(!is_coords) { 
+    rle_size = RLE_compress(
+                  tile, 
+                  tile_size,
+                  (unsigned char*) tile_compressed_, 
+                  tile_compressed_allocated_size_,
+                  value_size);
+  } else {
+    if(order == TILEDB_ROW_MAJOR) {
+        rle_size = RLE_compress_coords_row(
+                       tile, 
+                       tile_size,
+                       (unsigned char*) tile_compressed_, 
+                       tile_compressed_allocated_size_,
+                       value_size,
+                       dim_num);
+    } else if(order == TILEDB_COL_MAJOR) {
+        rle_size = RLE_compress_coords_col(
+                       tile, 
+                       tile_size,
+                       (unsigned char*) tile_compressed_, 
+                       tile_compressed_allocated_size_,
+                       value_size,
+                       dim_num);
+    } else { // Error
+      assert(0);
+      std::string errmsg = 
+          "Failed compressing with RLE; unsupported cell order";
+      PRINT_ERROR(errmsg);
+      tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+      return TILEDB_WS_ERR;
+    }
+  }
+
+  // Handle error
+  if(rle_size == TILEDB_UT_ERR) {
+    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    return TILEDB_WS_ERR;
+  }
+
+  // Set actual output size
+  tile_compressed_size = (size_t) rle_size;
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
+int WriteState::compress_and_write_tile(int attribute_id) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  unsigned char* tile = static_cast<unsigned char*>(tiles_[attribute_id]);
+  size_t tile_size = tile_offsets_[attribute_id];
+
+  // Trivial case - No in-memory tile
+  if(tile_size == 0)
+    return TILEDB_WS_OK;
+
+  // Compress tile
+  size_t tile_compressed_size;
+  if(compress_tile(
+         attribute_id, 
+         tile, 
+         tile_size, 
+         tile_compressed_size) != TILEDB_WS_OK) 
+    return TILEDB_WS_ERR;
 
   // Get the attribute file name
   std::string filename = fragment_->fragment_name() + "/" + 
@@ -544,33 +857,14 @@ int WriteState::compress_and_write_tile_var(int attribute_id) {
     return TILEDB_WS_OK;
   }
 
-  // Allocate space to store the compressed tile
-  if(tile_compressed_ == NULL) {
-    tile_compressed_allocated_size_ = 
-        tile_size + 6 + 5*(ceil(tile_size/16834.0));
-    tile_compressed_ = malloc(tile_compressed_allocated_size_); 
-  }
-
-  // Expand comnpressed tile if necessary
-  if(tile_size + 6 + 5*(ceil(tile_size/16834.0)) > 
-     tile_compressed_allocated_size_) {
-    tile_compressed_allocated_size_ = 
-        tile_size + 6 + 5*(ceil(tile_size/16834.0));
-    tile_compressed_ = 
-        realloc(tile_compressed_, tile_compressed_allocated_size_);
-  }
-
-  // For easy reference
-  unsigned char* tile_compressed = 
-      static_cast<unsigned char*>(tile_compressed_);
-
   // Compress tile
-  ssize_t tile_compressed_size = 
-      gzip(tile, tile_size, tile_compressed, tile_compressed_allocated_size_);
-  if(tile_compressed_size == TILEDB_UT_ERR) { 
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+  size_t tile_compressed_size;
+  if(compress_tile(
+         attribute_id, 
+         tile, 
+         tile_size, 
+         tile_compressed_size) != TILEDB_WS_OK) 
     return TILEDB_WS_ERR;
-  }
 
   // Get the attribute file name
   std::string filename = fragment_->fragment_name() + "/" + 
@@ -823,7 +1117,7 @@ int WriteState::write_last_tile() {
   // Flush the last tile for each compressed attribute (it is still in main
   // memory
   for(int i=0; i<attribute_num+1; ++i) {
-    if(array_schema->compression(i) == TILEDB_GZIP) {
+    if(array_schema->compression(i) != TILEDB_NO_COMPRESSION) {
       if(compress_and_write_tile(i) != TILEDB_WS_OK)
         return TILEDB_WS_ERR;
       if(array_schema->var_size(i)) {
@@ -886,8 +1180,8 @@ int WriteState::write_dense_attr(
   // No compression
   if(compression == TILEDB_NO_COMPRESSION)
     return write_dense_attr_cmp_none(attribute_id, buffer, buffer_size);
-  else // GZIP
-    return write_dense_attr_cmp_gzip(attribute_id, buffer, buffer_size);
+  else // All compressions 
+    return write_dense_attr_cmp(attribute_id, buffer, buffer_size);
 }
 
 int WriteState::write_dense_attr_cmp_none(
@@ -935,7 +1229,7 @@ int WriteState::write_dense_attr_cmp_none(
   return TILEDB_WS_OK;
 }
 
-int WriteState::write_dense_attr_cmp_gzip(
+int WriteState::write_dense_attr_cmp(
     int attribute_id,
     const void* buffer,
     size_t buffer_size) {
@@ -1023,13 +1317,19 @@ int WriteState::write_dense_attr_var(
                buffer_size,
                buffer_var,  
                buffer_var_size);
-  else // GZIP
-    return write_dense_attr_var_cmp_gzip(
+  else // All compressions 
+    return write_dense_attr_var_cmp(
                attribute_id, 
                buffer,  
                buffer_size,
                buffer_var,  
                buffer_var_size);
+
+  // Sanity check
+  assert(0);
+
+  // Error
+  return TILEDB_WS_ERR;
 }
 
 int WriteState::write_dense_attr_var_cmp_none(
@@ -1126,7 +1426,7 @@ int WriteState::write_dense_attr_var_cmp_none(
   return TILEDB_WS_OK;
 }
 
-int WriteState::write_dense_attr_var_cmp_gzip(
+int WriteState::write_dense_attr_var_cmp(
     int attribute_id,
     const void* buffer,
     size_t buffer_size,
@@ -1363,8 +1663,8 @@ int WriteState::write_sparse_attr(
   // No compression
   if(compression == TILEDB_NO_COMPRESSION)
     return write_sparse_attr_cmp_none(attribute_id, buffer, buffer_size);
-  else // GZIP
-    return write_sparse_attr_cmp_gzip(attribute_id, buffer, buffer_size);
+  else // All compressions
+    return write_sparse_attr_cmp(attribute_id, buffer, buffer_size);
 }
 
 int WriteState::write_sparse_attr_cmp_none(
@@ -1420,7 +1720,7 @@ int WriteState::write_sparse_attr_cmp_none(
   return TILEDB_WS_OK;
 }
 
-int WriteState::write_sparse_attr_cmp_gzip(
+int WriteState::write_sparse_attr_cmp(
     int attribute_id,
     const void* buffer,
     size_t buffer_size) {
@@ -1514,8 +1814,8 @@ int WriteState::write_sparse_attr_var(
                buffer_size,
                buffer_var,  
                buffer_var_size);
-  else // GZIP
-    return write_sparse_attr_var_cmp_gzip(
+  else //  All compressions
+    return write_sparse_attr_var_cmp(
                attribute_id, 
                buffer,  
                buffer_size,
@@ -1620,7 +1920,7 @@ int WriteState::write_sparse_attr_var_cmp_none(
   return TILEDB_WS_OK;
 }
 
-int WriteState::write_sparse_attr_var_cmp_gzip(
+int WriteState::write_sparse_attr_var_cmp(
     int attribute_id,
     const void* buffer,
     size_t buffer_size,
@@ -1892,8 +2192,8 @@ int WriteState::write_sparse_unsorted_attr(
                buffer, 
                buffer_size,
                cell_pos);
-  else // GZIP
-    return write_sparse_unsorted_attr_cmp_gzip(
+  else // All compressions
+    return write_sparse_unsorted_attr_cmp(
                attribute_id,
                buffer, 
                buffer_size,
@@ -1967,7 +2267,7 @@ int WriteState::write_sparse_unsorted_attr_cmp_none(
   return TILEDB_WS_OK;
 }
 
-int WriteState::write_sparse_unsorted_attr_cmp_gzip(
+int WriteState::write_sparse_unsorted_attr_cmp(
     int attribute_id,
     const void* buffer,
     size_t buffer_size,
@@ -1997,7 +2297,7 @@ int WriteState::write_sparse_unsorted_attr_cmp_gzip(
   for(int64_t i=0; i<buffer_cell_num; ++i) {
     // Write batch
     if(sorted_buffer_size + cell_size > TILEDB_SORTED_BUFFER_SIZE) {
-      if(write_sparse_attr_cmp_gzip(
+      if(write_sparse_attr_cmp(
              attribute_id,
              sorted_buffer, 
              sorted_buffer_size) != TILEDB_WS_OK) {
@@ -2018,7 +2318,7 @@ int WriteState::write_sparse_unsorted_attr_cmp_gzip(
 
   // Write final batch
   if(sorted_buffer_size != 0) {
-    if(write_sparse_attr_cmp_gzip(
+    if(write_sparse_attr_cmp(
            attribute_id, 
            sorted_buffer, 
            sorted_buffer_size) != TILEDB_WS_OK) {
@@ -2054,8 +2354,8 @@ int WriteState::write_sparse_unsorted_attr_var(
                buffer_var, 
                buffer_var_size,
                cell_pos);
-  else // GZIP
-    return write_sparse_unsorted_attr_var_cmp_gzip(
+  else // All compressions
+    return write_sparse_unsorted_attr_var_cmp(
                attribute_id, 
                buffer,
                buffer_size,
@@ -2158,7 +2458,7 @@ int WriteState::write_sparse_unsorted_attr_var_cmp_none(
   return TILEDB_WS_OK;
 }
 
-int WriteState::write_sparse_unsorted_attr_var_cmp_gzip(
+int WriteState::write_sparse_unsorted_attr_var_cmp(
     int attribute_id,
     const void* buffer,
     size_t buffer_size,
@@ -2201,7 +2501,7 @@ int WriteState::write_sparse_unsorted_attr_var_cmp_gzip(
     // Write batch
     if(sorted_buffer_size + cell_size > TILEDB_SORTED_BUFFER_SIZE ||
        sorted_buffer_var_size + cell_var_size > TILEDB_SORTED_BUFFER_VAR_SIZE) {
-      if(write_sparse_attr_var_cmp_gzip(
+      if(write_sparse_attr_var_cmp(
              attribute_id,
              sorted_buffer, 
              sorted_buffer_size,
@@ -2233,7 +2533,7 @@ int WriteState::write_sparse_unsorted_attr_var_cmp_gzip(
 
   // Write final batch
   if(sorted_buffer_size != 0) {
-    if(write_sparse_attr_var_cmp_gzip(
+    if(write_sparse_attr_var_cmp(
            attribute_id, 
            sorted_buffer, 
            sorted_buffer_size,

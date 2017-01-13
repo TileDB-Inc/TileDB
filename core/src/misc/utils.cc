@@ -53,13 +53,15 @@
   #include <netinet/in.h>
   #include <arpa/inet.h>
 #else
-#include <linux/if.h>
+  #include <linux/if.h>
 #endif
 
 #include <unistd.h>
 #include <zlib.h>
 #include <typeinfo>
 
+#define XSTR(s) STR(s)
+#define STR(s) #s
 
 
 
@@ -459,7 +461,7 @@ std::string get_mac_addr() {
   mib[2] = 0;
   mib[3] = AF_LINK;
   mib[4] = NET_RT_IFLIST;
-  if(((mib[5] = if_nametoindex("en0")) == 0) ||
+  if(((mib[5] = if_nametoindex(XSTR(TILEDB_MAC_ADDRESS_INTERFACE))) == 0) ||
      (sysctl(mib, 6, NULL, &len, NULL, 0) < 0)) {
     std::string errmsg = "Cannot get MAC address";
     PRINT_ERROR(errmsg);
@@ -491,7 +493,7 @@ std::string get_mac_addr() {
   int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
   char mac[13];
 
-  strcpy(s.ifr_name, "eth0");
+  strcpy(s.ifr_name, XSTR(TILEDB_MAC_ADDRESS_INTERFACE));
   if (0 == ioctl(fd, SIOCGIFHWADDR, &s)) {
     for (int i = 0; i < 6; ++i)
       sprintf(mac + 2*i, "%02x", (unsigned char) s.ifr_addr.sa_data[i]);
@@ -522,7 +524,7 @@ ssize_t gzip(
   strm.zalloc = Z_NULL;
   strm.zfree = Z_NULL;
   strm.opaque = Z_NULL;
-  ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
+  ret = deflateInit(&strm, TILEDB_COMPRESSION_LEVEL_GZIP);
 
   if(ret != Z_OK) {
     std::string errmsg = "Cannot compress with GZIP";
@@ -1170,6 +1172,641 @@ std::string real_dir(const std::string& dir) {
   purge_dots_from_path(ret_dir);
 
   return ret_dir;
+}
+
+int64_t RLE_compress(
+    const unsigned char* input,
+    size_t input_size,
+    unsigned char* output,
+    size_t output_allocated_size,
+    size_t value_size) {
+  // Initializations
+  int cur_run_len = 1;                           
+  int max_run_len = 65535;   
+  const unsigned char* input_cur = input + value_size; 
+  const unsigned char* input_prev = input;   
+  unsigned char* output_cur = output;  
+  int64_t value_num = input_size / value_size;
+  int64_t output_size = 0;
+  size_t run_size = value_size + 2*sizeof(char);
+  unsigned char byte;
+
+  // Trivial case
+  if(value_num == 0) 
+    return 0;
+
+  // Sanity check on input buffer
+  if(input_size % value_size) {
+    std::string errmsg = 
+        "Failed compressing with RLE; invalid input buffer format";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+    return TILEDB_UT_ERR;
+  }
+
+  // Make runs
+  for(int64_t i=1; i<value_num; ++i) {
+    if(!memcmp(input_cur, input_prev, value_size) && 
+       cur_run_len < max_run_len) {          // Expand the run
+      ++cur_run_len;
+    } else {                                 // Save the run
+      // Sanity check on output size
+      if(output_size + run_size > output_allocated_size) {
+        std::string errmsg = 
+            "Failed compressing with RLE; output buffer overflow";
+        PRINT_ERROR(errmsg);
+        tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+        return TILEDB_UT_ERR;
+      }
+
+      // Copy to output buffer
+      memcpy(output_cur, input_prev, value_size);
+      output_cur += value_size; 
+      byte = (unsigned char) (cur_run_len >> 8);
+      memcpy(output_cur, &byte, sizeof(char));
+      output_cur += sizeof(char);
+      byte = (unsigned char) (cur_run_len % 256);
+      memcpy(output_cur, &byte, sizeof(char));
+      output_cur += sizeof(char);
+      output_size += run_size;
+
+      // Reset current run length
+      cur_run_len = 1; 
+    } 
+
+    // Update run info
+    input_prev = input_cur;
+    input_cur = input_prev + value_size;
+  }
+
+  // Save final run
+  // --- Sanity check on size
+  if(output_size + run_size > output_allocated_size) {
+    std::string errmsg = 
+        "Failed compressing with RLE; output buffer overflow";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+    return TILEDB_UT_ERR;
+  }
+
+  // --- Copy to output buffer
+  memcpy(output_cur, input_prev, value_size);
+  output_cur += value_size; 
+  byte = (unsigned char) (cur_run_len >> 8);
+  memcpy(output_cur, &byte, sizeof(char));
+  output_cur += sizeof(char);
+  byte = (unsigned char) (cur_run_len % 256);
+  memcpy(output_cur, &byte, sizeof(char));
+  output_cur += sizeof(char);
+  output_size += run_size;
+
+  // Success
+  return output_size;
+} 
+
+size_t RLE_compress_bound(size_t input_size, size_t value_size) {
+  // In the worst case, RLE adds two bytes per every value in the buffer.
+  int64_t value_num = input_size / value_size;
+  return input_size + value_num * 2;
+}
+
+size_t RLE_compress_bound_coords(
+    size_t input_size, 
+    size_t value_size,
+    int dim_num) {
+  // In the worst case, RLE adds two bytes per every value in the buffer for 
+  // each of its dim_num-1 coordinates (one dimension is never compressed).
+  // The last sizeof(int64_t) is to record the number of cells compressed. 
+  int64_t cell_num = input_size / (dim_num*value_size); 
+  return input_size + cell_num * (dim_num-1) * 2 + sizeof(int64_t);
+}
+
+int64_t RLE_compress_coords_col(
+    const unsigned char* input,
+    size_t input_size,
+    unsigned char* output,
+    size_t output_allocated_size,
+    size_t value_size,
+    int dim_num) {
+  // Initializations
+  int cur_run_len;
+  int max_run_len = 65535; 
+  const unsigned char* input_cur;
+  const unsigned char* input_prev = input;
+  unsigned char* output_cur = output; 
+  size_t coords_size = value_size*dim_num;
+  size_t run_size = value_size + 2*sizeof(char);
+  int64_t coords_num = input_size / coords_size;
+  int64_t output_size = 0;
+  unsigned char byte;
+
+  // Sanity check on input buffer format
+  if(input_size % coords_size) {
+    std::string errmsg = 
+        "failed compressing coordinates with RLE; invalid input buffer format";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = tiledb_ut_errmsg + errmsg;
+    return TILEDB_UT_ERR;
+  }
+
+  // Trivial case
+  if(coords_num == 0) 
+    return 0;
+
+  // Copy the number of coordinates
+  if(output_size + sizeof(int64_t) > output_allocated_size) {
+    std::string errmsg = 
+        "failed compressing coordinates with RLE; output buffer overflow";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = tiledb_ut_errmsg + errmsg;
+    return TILEDB_UT_ERR;
+  }
+  memcpy(output_cur, &coords_num, sizeof(int64_t));  
+  output_cur += sizeof(int64_t); 
+  output_size += sizeof(int64_t);
+
+  // Copy the first dimension intact
+  // --- Sanity check on size
+  if(output_size + coords_num*value_size > output_allocated_size) {
+    std::string errmsg = 
+        "Failed compressing coordinates with RLE; output buffer overflow";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+    return TILEDB_UT_ERR;
+  }
+  // --- Copy to output buffer
+  for(int64_t i=0; i<coords_num; ++i) { 
+    memcpy(output_cur, input_prev, value_size);
+    input_prev += coords_size;
+    output_cur += value_size; 
+  }
+  output_size += coords_num * value_size;
+
+  // Make runs for each of the last (dim_num-1) dimensions
+  for(int d=1; d<dim_num; ++d) {
+    cur_run_len = 1;
+    input_prev = input + d*value_size; 
+    input_cur = input_prev + coords_size; 
+
+    // Make single dimension run
+    for(int64_t i=1; i<coords_num; ++i) {
+      if(!memcmp(input_cur, input_prev, value_size) && 
+         cur_run_len < max_run_len) {          // Expand the run
+        ++cur_run_len;
+      } else {                                       // Save the run
+        // Sanity check on output size
+        if(output_size + run_size > output_allocated_size) {
+          std::string errmsg = 
+              "Failed compressing coordinates with RLE; output buffer overflow";
+          PRINT_ERROR(errmsg);
+          tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+          return TILEDB_UT_ERR;
+        }
+  
+        // Copy to output buffer
+        memcpy(output_cur, input_prev, value_size);
+        output_cur += value_size; 
+        byte = (unsigned char) (cur_run_len >> 8);
+        memcpy(output_cur, &byte, sizeof(char));
+        output_cur += sizeof(char);
+        byte = (unsigned char) (cur_run_len % 256);
+        memcpy(output_cur, &byte, sizeof(char));
+        output_cur += sizeof(char);
+        output_size += value_size + 2*sizeof(char);
+
+        // Update current run length
+        cur_run_len = 1; 
+      } 
+
+      // Update run info
+      input_prev = input_cur;
+      input_cur = input_prev + coords_size;
+    }
+
+    // Save final run
+    //---  Sanity check on ouput size
+    if(output_size + run_size > output_allocated_size) {
+      std::string errmsg = 
+          "Failed compressing coordinates with RLE; output buffer overflow";
+      PRINT_ERROR(errmsg);
+      tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+      return TILEDB_UT_ERR;
+    }
+
+    // --- Copy to output buffer
+    memcpy(output_cur, input_prev, value_size);
+    output_cur += value_size; 
+    byte = (unsigned char) (cur_run_len >> 8);
+    memcpy(output_cur, &byte, sizeof(char));
+    output_cur += sizeof(char);
+    byte = (unsigned char) (cur_run_len % 256);
+    memcpy(output_cur, &byte, sizeof(char));
+    output_cur += sizeof(char);
+    output_size += value_size + 2*sizeof(char);
+  }
+
+  // Success
+  return output_size;
+}
+
+int64_t RLE_compress_coords_row(
+    const unsigned char* input,
+    size_t input_size,
+    unsigned char* output,
+    size_t output_allocated_size,
+    size_t value_size,
+    int dim_num) {
+  // Initializations
+  int cur_run_len;
+  int max_run_len = 65535;   
+  const unsigned char* input_cur;
+  const unsigned char* input_prev;
+  unsigned char* output_cur = output; 
+  size_t coords_size = value_size*dim_num;
+  int64_t coords_num = input_size / coords_size;
+  int64_t output_size = 0;
+  size_t run_size = value_size + 2*sizeof(char);
+  unsigned char byte;
+
+  // Sanity check on input buffer format
+  if(input_size % coords_size) {
+    std::string errmsg = 
+        "failed compressing coordinates with RLE; invalid input buffer format";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = tiledb_ut_errmsg + errmsg;
+    return TILEDB_UT_ERR;
+  }
+
+  // Trivial case
+  if(coords_num == 0) 
+    return 0;
+
+  // Copy the number of coordinates
+  if(output_size + sizeof(int64_t) > output_allocated_size) {
+    std::string errmsg = 
+        "failed compressing coordinates with RLE; output buffer overflow";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = tiledb_ut_errmsg + errmsg;
+    return TILEDB_UT_ERR;
+  }
+  memcpy(output_cur, &coords_num, sizeof(int64_t));  
+  output_cur += sizeof(int64_t); 
+  output_size += sizeof(int64_t);
+
+  // Make runs for each of the first (dim_num-1) dimensions
+  for(int d=0; d<dim_num-1; ++d) {
+    cur_run_len = 1;
+    input_prev = input + d*value_size; 
+    input_cur = input_prev + coords_size; 
+
+    // Make single dimension run
+    for(int64_t i=1; i<coords_num; ++i) {
+      if(!memcmp(input_cur, input_prev, value_size) && 
+         cur_run_len < max_run_len) {          // Expand the run
+        ++cur_run_len;
+      } else {                                 // Save the run
+        // Sanity check on size
+        if(output_size + run_size > output_allocated_size) {
+          std::string errmsg = 
+              "Failed compressing coordinates with RLE; output buffer overflow";
+          PRINT_ERROR(errmsg);
+          tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+          return TILEDB_UT_ERR;
+        }
+  
+        // Copy to output buffer
+        memcpy(output_cur, input_prev, value_size);
+        output_cur += value_size; 
+        byte = (unsigned char) (cur_run_len >> 8);
+        memcpy(output_cur, &byte, sizeof(char));
+        output_cur += sizeof(char);
+        byte = (unsigned char) (cur_run_len % 256);
+        memcpy(output_cur, &byte, sizeof(char));
+        output_cur += sizeof(char);
+        output_size += value_size + 2*sizeof(char);
+
+        // Update current run length
+        cur_run_len = 1; 
+      } 
+
+      // Update run info
+      input_prev = input_cur;
+      input_cur = input_prev + coords_size;
+    }
+
+    // Save final run
+    // --- Sanity check on size
+    if(output_size + run_size > output_allocated_size) {
+      std::string errmsg = 
+          "Failed compressing coordinates with RLE; output buffer overflow";
+      PRINT_ERROR(errmsg);
+      tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+      return TILEDB_UT_ERR;
+    }
+
+    // --- Copy to output buffer
+    memcpy(output_cur, input_prev, value_size);
+    output_cur += value_size; 
+    byte = (unsigned char) (cur_run_len >> 8);
+    memcpy(output_cur, &byte, sizeof(char));
+    output_cur += sizeof(char);
+    byte = (unsigned char) (cur_run_len % 256);
+    memcpy(output_cur, &byte, sizeof(char));
+    output_cur += sizeof(char);
+    output_size += run_size;
+  }
+
+  // Copy the final dimension intact
+  // --- Sanity check on size
+  if(output_size + coords_num*value_size > output_allocated_size) {
+    std::string errmsg = 
+        "Failed compressing coordinates with RLE; output buffer overflow";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+    return TILEDB_UT_ERR;
+  }
+  // --- Copy to output buffer
+  input_prev = input + (dim_num-1)*value_size;
+  for(int64_t i=0; i<coords_num; ++i) { 
+    memcpy(output_cur, input_prev, value_size);
+    input_prev += coords_size;
+    output_cur += value_size; 
+  }
+  output_size += coords_num*value_size;
+
+  // Success
+  return output_size;
+}
+
+int RLE_decompress(
+    const unsigned char* input,
+    size_t input_size,
+    unsigned char* output,
+    size_t output_allocated_size,
+    size_t value_size) {
+  // Initializations
+  const unsigned char* input_cur = input; 
+  unsigned char* output_cur = output;  
+  int64_t output_size = 0;
+  int64_t run_len;
+  size_t run_size = value_size + 2*sizeof(char);
+  int64_t run_num = input_size / run_size;
+  unsigned char byte;
+
+  // Trivial case
+  if(input_size == 0) 
+    return TILEDB_UT_OK;
+
+  // Sanity check on input buffer format
+  if(input_size % run_size) {
+    std::string errmsg = 
+        "Failed decompressing with RLE; invalid input buffer format";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+    return TILEDB_UT_ERR;
+  }
+
+  // Decompress runs
+  for(int64_t i=0; i<run_num; ++i) {
+    // Retrieve the current run length 
+    memcpy(&byte, input_cur + value_size, sizeof(char));
+    run_len = (((int64_t) byte) << 8);
+    memcpy(&byte, input_cur + value_size + sizeof(char), sizeof(char));
+    run_len += (int64_t) byte;
+
+    // Sanity check on size
+    if(output_size + value_size * run_len > output_allocated_size) {
+      std::string errmsg = 
+          "Failed decompressing with RLE; output buffer overflow";
+      PRINT_ERROR(errmsg);
+      tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+      return TILEDB_UT_ERR;
+    }
+
+    // Copy to output buffer
+    for(int64_t j=0; j<run_len; ++j) {
+      memcpy(output_cur, input_cur, value_size);
+      output_cur += value_size; 
+    } 
+
+    // Update input/output tracking info
+    output_size += value_size * run_len;
+    input_cur += run_size;
+  }
+
+  // Success
+  return TILEDB_UT_OK;
+}
+
+int RLE_decompress_coords_col(
+    const unsigned char* input,
+    size_t input_size,
+    unsigned char* output,
+    size_t output_allocated_size,
+    size_t value_size,
+    int dim_num) {
+  // Initializations
+  const unsigned char* input_cur = input; 
+  unsigned char* output_cur = output;  
+  int64_t input_offset = 0;
+  size_t run_size = value_size + 2*sizeof(char);
+  size_t coords_size = value_size * dim_num;
+  int64_t run_len, coords_num;
+  unsigned char byte;
+
+  // Get the number of coordinates
+  // --- Sanity check on input buffer size
+  if(input_offset + sizeof(int64_t) > input_size) {
+    std::string errmsg = 
+        "Failed decompressing coordinates with RLE; input buffer overflow";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = tiledb_ut_errmsg + errmsg;
+    return TILEDB_UT_ERR;
+  }
+  // --- Copy number of coordinates
+  memcpy(&coords_num, input_cur, sizeof(int64_t));  
+  input_cur += sizeof(int64_t); 
+  input_offset += sizeof(int64_t);
+
+  // Trivial case
+  if(coords_num == 0) 
+    return TILEDB_UT_OK;
+
+  // Copy the first dimension intact
+  // --- Sanity check on output buffer size
+  if(coords_num * coords_size > output_allocated_size) {
+    std::string errmsg = 
+        "Failed decompressing coordinates with RLE; output buffer overflow";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = tiledb_ut_errmsg + errmsg;
+    return TILEDB_UT_ERR;
+  }
+  // --- Sanity check on output buffer size
+  if(input_offset + coords_num * value_size > input_size) {
+    std::string errmsg = 
+        "Failed decompressing coordinates with RLE; input buffer overflow";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+    return TILEDB_UT_ERR;
+  }
+  // --- Copy first dimension to output
+  for(int64_t i=0; i<coords_num; ++i) { 
+    memcpy(output_cur, input_cur, value_size);
+    input_cur += value_size; 
+    output_cur += coords_size;
+  }
+  input_offset += coords_num * value_size;
+
+  // Get number of runs
+  int64_t run_num = (input_size - input_offset) / run_size;
+
+  // Sanity check on input buffer format
+  if((input_size - input_offset) % run_size) {
+    std::string errmsg = 
+        "Failed decompressing coordinates with RLE; "
+         "invalid input buffer format";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+    return TILEDB_UT_ERR;
+  }
+
+  // Decompress runs for each of the last (dim_num-1) dimensions
+  int64_t coords_i = 0;
+  int d = 1;
+  output_cur = output;
+  for(int64_t i=0; i<run_num; ++i) {
+    // Retrieve the current run length 
+    memcpy(&byte, input_cur + value_size, sizeof(char));
+    run_len = (((int64_t) byte) << 8);
+    memcpy(&byte, input_cur + value_size + sizeof(char), sizeof(char));
+    run_len += (int64_t) byte;
+
+    // Copy to output buffer
+    for(int64_t j=0; j<run_len; ++j) {
+      memcpy(
+          output_cur + d*value_size + coords_i*coords_size, 
+          input_cur, 
+          value_size);
+      ++coords_i;
+    } 
+
+    // Update input tracking info
+    input_cur += run_size;
+    if(coords_i == coords_num) { // Change dimension
+      coords_i = 0;
+      ++d;
+    }
+  }
+
+  // Success
+  return TILEDB_UT_OK;
+}
+
+int RLE_decompress_coords_row(
+    const unsigned char* input,
+    size_t input_size,
+    unsigned char* output,
+    size_t output_allocated_size,
+    size_t value_size,
+    int dim_num) {
+  // Initializations
+  const unsigned char* input_cur = input; 
+  unsigned char* output_cur = output;  
+  int64_t input_offset = 0;
+  size_t run_size = value_size + 2*sizeof(char);
+  size_t coords_size = value_size * dim_num;
+  int64_t run_len, coords_num;
+  unsigned char byte;
+
+  // Get the number of coordinates
+  // --- Sanity check on input buffer size
+  if(input_offset + sizeof(int64_t) > input_size) {
+    std::string errmsg = 
+        "Failed decompressing coordinates with RLE; input buffer overflow";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = tiledb_ut_errmsg + errmsg;
+    return TILEDB_UT_ERR;
+  }
+  // --- Copy number of coordinates
+  memcpy(&coords_num, input_cur, sizeof(int64_t));  
+  input_cur += sizeof(int64_t); 
+  input_offset += sizeof(int64_t);
+
+  // Trivial case
+  if(coords_num == 0) 
+    return TILEDB_UT_OK;
+
+  // Sanity check on output buffer size
+  if(coords_num * coords_size > output_allocated_size) {
+    std::string errmsg = 
+        "Failed decompressing coordinates with RLE; output buffer overflow";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = tiledb_ut_errmsg + errmsg;
+    return TILEDB_UT_ERR;
+  }
+
+  // Get number of runs
+  int64_t run_num = 
+      (input_size - input_offset - coords_num * value_size) / run_size;
+
+  // Sanity check on input buffer format
+  if((input_size - input_offset - coords_num * value_size) % run_size) {
+    std::string errmsg = 
+        "Failed decompressing coordinates with RLE; "
+         "invalid input buffer format";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+    return TILEDB_UT_ERR;
+  }
+
+  // Decompress runs for each of the first (dim_num-1) dimensions
+  int64_t coords_i = 0;
+  int d = 0;
+  for(int64_t i=0; i<run_num; ++i) {
+    // Retrieve the current run length 
+    memcpy(&byte, input_cur + value_size, sizeof(char));
+    run_len = (((int64_t) byte) << 8);
+    memcpy(&byte, input_cur + value_size + sizeof(char), sizeof(char));
+    run_len += (int64_t) byte;
+
+    // Copy to output buffer
+    for(int64_t j=0; j<run_len; ++j) {
+      memcpy(
+          output_cur + d*value_size + coords_i*coords_size, 
+          input_cur, 
+          value_size);
+      ++coords_i;
+    } 
+
+    // Update input/output tracking info
+    input_cur += run_size;
+    input_offset += run_size;
+    if(coords_i == coords_num) { // Change dimension
+      coords_i = 0;
+      ++d;
+    }
+  }
+
+  // Copy the last dimension intact
+  // --- Sanity check on input buffer size
+  if(input_offset + coords_num * value_size > input_size) {
+    std::string errmsg = 
+        "Failed decompressing coordinates with RLE; input buffer overflow";
+    PRINT_ERROR(errmsg);
+    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
+    return TILEDB_UT_ERR;
+  }
+  // --- Copy to output buffer
+  for(int64_t i=0; i<coords_num; ++i) { 
+    memcpy(
+        output_cur + (dim_num-1)*value_size + i*coords_size, 
+        input_cur, 
+        value_size);
+    input_cur += value_size; 
+  }
+
+  // Success
+  return TILEDB_UT_OK;
 }
 
 bool starts_with(const std::string& value, const std::string& prefix) {
