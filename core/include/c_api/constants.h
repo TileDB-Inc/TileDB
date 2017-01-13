@@ -37,7 +37,7 @@
 #include <limits.h>
 
 /** Version. */
-#define TILEDB_VERSION                          "0.4.0"
+#define TILEDB_VERSION                          "0.5.0"
 
 /**@{*/
 /** Return code. */  
@@ -179,24 +179,27 @@
 /**@{*/
 /** Compression levels. */
 #ifndef TILEDB_COMPRESSION_LEVEL_GZIP
-#  define TILEDB_COMPRESSION_LEVEL_GZIP Z_DEFAULT_COMPRESSION
+#  define TILEDB_COMPRESSION_LEVEL_GZIP      Z_DEFAULT_COMPRESSION
 #endif
 #ifndef TILEDB_COMPRESSION_LEVEL_ZSTD
-#  define TILEDB_COMPRESSION_LEVEL_ZSTD 1
+#  define TILEDB_COMPRESSION_LEVEL_ZSTD                          1
 #endif
 #ifndef TILEDB_COMPRESSION_LEVEL_BLOSC
-#  define TILEDB_COMPRESSION_LEVEL_BLOSC 5
+#  define TILEDB_COMPRESSION_LEVEL_BLOSC                         5
 #endif
 /**@}*/
 
+/**@{*/
+/** MAC address interface. */
 #if defined(__APPLE__) && defined(__MACH__)
   #ifndef TILEDB_MAC_ADDRESS_INTERFACE
-    #define TILEDB_MAC_ADDRESS_INTERFACE en0
+    #define TILEDB_MAC_ADDRESS_INTERFACE                       en0
   #endif
 #else
   #ifndef TILEDB_MAC_ADDRESS_INTERFACE
-    #define TILEDB_MAC_ADDRESS_INTERFACE eth0
+    #define TILEDB_MAC_ADDRESS_INTERFACE                      eth0
   #endif
 #endif
+/**@}*/
 
 #endif
