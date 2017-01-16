@@ -30,7 +30,7 @@
  * It shows how to use a metadata iterator.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstdio>
 
 int main() {

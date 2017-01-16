@@ -30,7 +30,7 @@
  * It shows how to initialize/finalize a metadata object and explore its schema.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstdio>
 
 // Prints some schema info (you can enhance this to print the entire schema)

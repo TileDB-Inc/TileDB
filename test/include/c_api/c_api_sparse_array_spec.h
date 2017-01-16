@@ -33,7 +33,7 @@
 #ifndef __C_API_SPARSE_ARRAY_SPEC_H__
 #define __C_API_SPARSE_ARRAY_SPEC_H__
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <gtest/gtest.h>
 
 class SparseArrayTestFixture: public testing::Test {

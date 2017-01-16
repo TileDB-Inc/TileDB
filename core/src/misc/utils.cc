@@ -30,7 +30,7 @@
  * This file implements useful (global) functions.
  */
 
-#include "constants.h"
+#include "tiledb_constants.h"
 #include "utils.h"
 #include <algorithm>
 #include <cassert>
@@ -69,7 +69,7 @@
 /*             MACROS             */
 /* ****************************** */
 
-#ifdef VERBOSE
+#ifdef TILEDB_VERBOSE
 #  define PRINT_ERROR(x) std::cerr << TILEDB_UT_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 

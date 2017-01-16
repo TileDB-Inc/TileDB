@@ -1,5 +1,5 @@
 /**
- * @file   c_api.h
+ * @file   tiledb.h
  *
  * @section LICENSE
  *
@@ -30,10 +30,10 @@
  * This file declares the C API for TileDB. 
  */
 
-#ifndef __C_API_H__
-#define __C_API_H__
+#ifndef __TILEDB_H__
+#define __TILEDB_H__
 
-#include "constants.h"
+#include "tiledb_constants.h"
 #ifdef HAVE_MPI
   #include <mpi.h>
 #endif

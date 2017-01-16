@@ -31,7 +31,7 @@
  * array is similar.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstring>
 
 // Simply prints the input string to stdout

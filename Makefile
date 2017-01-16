@@ -43,9 +43,9 @@ ifeq ($(BUILD),debug)
 endif
 
 # --- Verbose mode handler --- #
-VERBOSE =
-ifeq ($(VERBOSE),1)
-  CPPFLAGS += -DVERBOSE
+TILEDB_VERBOSE =
+ifeq ($(TILEDB_VERBOSE),1)
+  CPPFLAGS += -DTILEDB_VERBOSE
 endif
 
 # --- MAC address interface --- #

@@ -34,7 +34,7 @@
 #define __BOOK_KEEPING_H__
 
 #include "array_schema.h"
-#include "constants.h"
+#include "tiledb_constants.h"
 #include <vector>
 #include <zlib.h>
 

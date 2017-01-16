@@ -30,7 +30,7 @@
  * It shows how to set the TileDB configuration parameters.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstring>
 
 int main() {

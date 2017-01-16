@@ -39,9 +39,9 @@
 #include "array_sorted_write_state.h"
 #include "array_schema.h"
 #include "book_keeping.h"
-#include "storage_manager_config.h"
-#include "constants.h"
 #include "fragment.h"
+#include "storage_manager_config.h"
+#include "tiledb_constants.h"
 #include <pthread.h>
 #include <queue>
 

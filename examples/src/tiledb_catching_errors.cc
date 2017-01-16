@@ -30,7 +30,7 @@
  * This examples shows how to catch errors.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstdio>
 
 int main() {

@@ -30,7 +30,7 @@
  * It shows how to write to a sparse array in parallel with OpenMP.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 
 #ifdef HAVE_OPENMP
 #include <omp.h>

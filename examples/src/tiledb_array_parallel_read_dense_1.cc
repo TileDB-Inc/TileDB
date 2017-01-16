@@ -30,7 +30,7 @@
  * It shows how to read from a dense array in parallel with pthreads.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <pthread.h>
 #include <stdio.h>
 

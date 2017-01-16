@@ -30,8 +30,8 @@
  * This file implements the Fragment class.
  */
 
-#include "constants.h"
 #include "fragment.h"
+#include "tiledb_constants.h"
 #include "utils.h"
 #include <cassert>
 #include <cstdio>
@@ -45,7 +45,7 @@
 /*             MACROS             */
 /* ****************************** */
 
-#ifdef VERBOSE
+#ifdef TILEDB_VERBOSE
 #  define PRINT_ERROR(x) std::cerr << TILEDB_FG_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 

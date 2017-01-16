@@ -30,7 +30,7 @@
  * It creates a workspace and two groups.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 
 int main() {
   // Initialize context with the default configuration parameters
