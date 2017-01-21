@@ -32,7 +32,7 @@
 # Find header files  
 if(BLOSC_SEARCH_HEADER_PATHS)
   find_path( 
-      BLOSC_INCLUDE_DIR lz4.h 
+      BLOSC_INCLUDE_DIR blosc.h 
       PATHS ${BLOSC_SEARCH_HEADER_PATHS}   
       NO_DEFAULT_PATH
   )
@@ -43,12 +43,12 @@ endif()
 # Find library
 if(BLOSC_SEARCH_LIB_PATH)
   find_library(
-      BLOSC_LIBRARIES NAMES libblosc.so
+      BLOSC_LIBRARIES NAMES libblosc${SHARED_LIB_SUFFIX}
       PATHS ${BLOSC_SEARCH_LIB_PATH}$
       NO_DEFAULT_PATH
   )
 else()
-  find_library(BLOSC_LIBRARIES NAMES libblosc.so)
+  find_library(BLOSC_LIBRARIES NAMES libblosc${SHARED_LIB_SUFFIX})
 endif()
 
 if(BLOSC_INCLUDE_DIR AND BLOSC_LIBRARIES)

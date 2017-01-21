@@ -28,13 +28,13 @@
 # Include GTest headers
 include_directories(${GTEST_INCLUDE_DIRS})
 
-# Include core header directories
-file(GLOB TILEDB_CORE_INCLUDE_DIRS "../core/include/*")
-include_directories(${TILEDB_CORE_INCLUDE_DIRS})
-
 # Include test header directories
 file(GLOB TILEDB_TEST_INCLUDE_DIRS "include/*")
 include_directories(${TILEDB_TEST_INCLUDE_DIRS})
+
+# Include TileDB core header directories
+file(GLOB TILEDB_CORE_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/core/include/*")
+include_directories(${TILEDB_CORE_INCLUDE_DIRS})
 
 # Get test source files
 file(GLOB_RECURSE TILEDB_TEST_SOURCES "src/*.cc")

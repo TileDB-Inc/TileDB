@@ -34,6 +34,9 @@ endfunction()
 # Get the example sources
 file(GLOB TILEDB_EXAMPLE_SOURCES "src/*.cc")
 
+# Include TileDB C API headers
+include_directories("${CMAKE_SOURCE_DIR}/core/include/c_api/")
+
 # Initialize name for example binaries
 set(EXAMPLE_BINS)
 

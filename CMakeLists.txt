@@ -31,6 +31,18 @@ cmake_minimum_required(VERSION 2.8)
 # Set the cmake Module path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
+# Set shared library suffix
+if(APPLE)
+  set(SHARED_LIB_SUFFIX ".dylib")
+else()
+  set(SHARED_LIB_SUFFIX ".so")
+endif()
+
+# Only for Mac OS X warnings
+if(APPLE)
+  set(CMAKE_MACOSX_RPATH 1)
+endif()
+
 # Default user definitions
 set(USE_MPI False CACHE BOOL "Enables MPI")
 if(APPLE)
@@ -65,7 +77,7 @@ find_package(ZSTD REQUIRED)
 include_directories(${ZSTD_INCLUDE_DIR})
 set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${ZSTD_LIBRARIES})
 find_package(OpenSSL REQUIRED)
-include_directories(${OpenSSL_INCLUDE_DIR})
+include_directories(${OPENSSL_INCLUDE_DIR})
 set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${OPENSSL_LIBRARIES})
 
 # Find optional library dependencies
@@ -91,7 +103,9 @@ include(SetCXX2011Flag)
 set(CMAKE_CXX_FLAGS_DEBUG "-DDEBUG -g3 -gdwarf-3 -Wall -fvisibility=hidden")
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -fvisibility=hidden")
 set(CMAKE_CXX_FLAGS_COVERAGE "-DDEBUG -g3 -gdwarf-3 --coverage")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix")
+if(NOT APPLE)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix")
+endif()
 if(USE_MPI)
   set(CMAKE_CXX_COMPILER ${MPI_CXX_COMPILER})
 endif()
@@ -137,9 +151,13 @@ endif()
 # Enable testing
 enable_testing()
 
-# Add subdirectories
+# Build TileDB library
 add_subdirectory(core)
+
+# Build examples
 add_subdirectory(examples)
+
+# Build unit tests
 if(GTEST_FOUND)
   add_subdirectory(test)
 endif()
@@ -162,8 +180,6 @@ if(DOXYGEN_FOUND)
       DEPENDS ${CMAKE_BINARY_DIR}/doxyfile.in
   )
 endif(DOXYGEN_FOUND)
-
-
 
 # Uninstall
 set(CMD "xargs printf '-- Uninstalling: %s\\\\n' <install_manifest.txt") 

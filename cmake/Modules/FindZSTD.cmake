@@ -43,12 +43,12 @@ endif()
 # Find library
 if(ZSTD_SEARCH_LIB_PATH)
   find_library(
-      ZSTD_LIBRARIES NAMES libzstd.so
+      ZSTD_LIBRARIES NAMES libzstd${SHARED_LIB_SUFFIX}
       PATHS ${ZSTD_SEARCH_LIB_PATH}$
       NO_DEFAULT_PATH
   )
 else()
-  find_library(ZSTD_LIBRARIES NAMES libzstd.so)
+  find_library(ZSTD_LIBRARIES NAMES libzstd${SHARED_LIB_SUFFIX})
 endif()
 
 if(ZSTD_INCLUDE_DIR AND ZSTD_LIBRARIES)
