@@ -39,7 +39,8 @@ install:
     - rm -rf * $TILEDB_BUILD_DIR
     - mkdir -p $TILEDB_BUILD_DIR
     - cd $TILEDB_BUILD_DIR
-    - cmake ..
+    - ls ..
+    - cmake .. -DCMAKE_BUILD_TYPE=Coverage 
     - make -j 4
 
 before_script:
