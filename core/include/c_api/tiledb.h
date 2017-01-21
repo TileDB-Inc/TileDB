@@ -64,11 +64,14 @@
 extern "C" {
 #endif
 
+/**@{*/
+/** C Library export. */
 #if (defined __GNUC__ && __GNUC__ >= 4) || defined __INTEL_COMPILER
 #  define TILEDB_EXPORT __attribute__((visibility("default")))
 #else
 #  define TILEDB_EXPORT
 #endif
+/**@}*/
 
 
 
@@ -77,6 +80,7 @@ extern "C" {
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
+/** Stores potential error messages. */
 extern char tiledb_errmsg[TILEDB_ERRMSG_MAX_LEN];
 
 
@@ -295,7 +299,7 @@ typedef struct TileDB_ArraySchema {
 /**
  * Populates a TileDB array schema object.
  *
- * @oaram tiledb_array_schema The array schema to be populated.
+ * @param tiledb_array_schema The array schema to be populated.
  * @param array_name The array name.
  * @param attributes The attribute names.
  * @param attribute_num The number of attributes.
@@ -778,6 +782,7 @@ typedef struct TileDB_Metadata TileDB_Metadata;
 /**
  * Populates a TileDB metadata schema object.
  *
+ * @param tiledb_metadata_schema The metadata schema C API struct.
  * @param metadata_name The metadata name.
  * @param attributes The attribute names.
  * @param attribute_num The number of attributes.
@@ -854,7 +859,6 @@ TILEDB_EXPORT int tiledb_metadata_reset_attributes(
 /**
  * Retrieves the schema of an already initialized metadata object.
  *
- * @param tiledb_ctx The TileDB context.
  * @param tiledb_metadata The TileDB metadata object (must already be 
  *     initialized). 
  * @param tiledb_metadata_schema The metadata schema to be retrieved. 

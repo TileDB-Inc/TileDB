@@ -62,7 +62,7 @@
 #define TILEDB_AS_ERR                     -1
 /**@}*/
 
-// Default parameters.
+/** Default parameters. */
 #define TILEDB_AS_CAPACITY             10000
 
 /** Default error message. */
@@ -75,6 +75,7 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
+/** Stores potential error messages. */
 extern std::string tiledb_as_errmsg;
 
 
@@ -183,7 +184,7 @@ class ArraySchema {
    * Returns true if the input range is contained fully in a single
    * column of tiles. 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param range The input range.
    * @return True if the input range is contained fully in a single
    *     column of tiles. 
@@ -201,7 +202,7 @@ class ArraySchema {
    * Returns true if the input range is contained fully in a single
    * row of tiles. 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param range The input range.
    * @return True if the input range is contained fully in a single
    *     row of tiles. 
@@ -212,7 +213,7 @@ class ArraySchema {
   /** Prints information about the array schema to stdout. */
   void print() const;
 
-  /*
+  /**
    * Serializes the array schema object into a binary buffer.
    *
    * @param array_schema_bin The binary buffer to be created and populated
@@ -226,7 +227,7 @@ class ArraySchema {
   /**
    * Returns the type of overlap of the input subarrays.
    *
-   * @template T The types of the subarrays.
+   * @tparam T The types of the subarrays.
    * @param subarray_a The first input subarray.
    * @param subarray_b The second input subarray.
    * @param overlap_subarray The overlap area between *subarray_a* and
@@ -259,7 +260,7 @@ class ArraySchema {
    * Returns the number of tiles in the array domain (applicable only to dense
    * arrays). 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @return The number of tiles.
    */
   template<class T>
@@ -275,7 +276,7 @@ class ArraySchema {
    * Returns the number of tiles in the input domain (applicable only to dense
    * arrays). 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param domain The input domain.
    * @return The number of tiles.
    */
@@ -458,7 +459,7 @@ class ArraySchema {
    * of a regular tile grid, this function assumes that the cells are in the
    * same regular tile.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param coords_a The first input coordinates.
    * @param coords_b The second input coordinates.
    * @return One of the following:
@@ -484,7 +485,7 @@ class ArraySchema {
    * the array's regular tiles (i.e., it maps it on the regular tile grid).
    * If the array has no regular tile grid, the function does not do anything.
    *
-   * @template The domain type.
+   * @tparam The domain type.
    * @param domain The domain to be expanded.
    * @return void
    */
@@ -495,7 +496,7 @@ class ArraySchema {
    * Returns the position of the input coordinates inside its corresponding
    * tile, based on the array cell order. Applicable only to **dense** arrays. 
    * 
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param coords The input coordindates, which are expressed as global 
    *     coordinates in the array domain.
    * @return The position of the cell coordinates in the array cell order
@@ -510,7 +511,7 @@ class ArraySchema {
    * domain (desregarding whether the domain is split into tiles or not). 
    * Applicable only to **dense** arrays.  
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param domain The targeted domain.
    * @param cell_coords The input cell coordinates, which the function modifies
    *     to store the next coordinates at termination.
@@ -528,7 +529,7 @@ class ArraySchema {
    * Retrieves the next tile coordinates along the array tile order within a
    * given tile domain. Applicable only to **dense** arrays.  
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param domain The targeted domain.
    * @param tile_coords The input tile coordinates, which the function modifies
    *     to store the next tile coordinates at termination.
@@ -542,7 +543,7 @@ class ArraySchema {
    * given domain (desregarding whether the domain is split into tiles or not). 
    * Applicable only to **dense** arrays.  
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param domain The targeted domain.
    * @param cell_coords The input cell coordinates, which the function modifies
    *     to store the previous coordinates at termination.
@@ -556,7 +557,7 @@ class ArraySchema {
    * over the input array domain. Retrieves also the tile domain of
    * the array..
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param subarray The input (cell) subarray.
    * @param tile_domain The array tile domain to be retrieved. 
    * @param subarray_in_tile_domain The output (tile) subarray.
@@ -572,7 +573,7 @@ class ArraySchema {
    * Returns the tile position along the array tile order within the input
    * domain. Applicable only to **dense** arrays.
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param tile_coords The tile coordinates. 
    * @return The tile position of *tile_coords* along the tile order of the
    *     array inside the array domain, or TILEDB_AS_ERR on error.
@@ -584,10 +585,10 @@ class ArraySchema {
    * Returns the tile position along the array tile order within the input
    * domain. Applicable only to **dense** arrays.
    * 
-   * @template T The domain type.
-   * @param The input domain, which is a cell domain partitioned into regular
-   *     tiles in the same manner as that of the array domain (however *domain*
-   *     may be a sub-domain of the array domain).
+   * @tparam T The domain type.
+   * @param domain The input domain, which is a cell domain partitioned into 
+   *     regular tiles in the same manner as that of the array domain (however 
+   *     *domain* may be a sub-domain of the array domain).
    * @param tile_coords The tile coordinates. 
    * @return The tile position of *tile_coords* along the tile order of the
    *     array inside the input domain, or TILEDB_AS_ERR on error.
@@ -600,7 +601,7 @@ class ArraySchema {
   /**
    * Gets the tile subarray for the input tile coordinates.
    * 
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param tile_coords The input tile coordinates.
    * @param tile_subarray The output tile subarray.
    * @return void.
@@ -611,8 +612,8 @@ class ArraySchema {
   /** 
    * Returns the Hilbert id of the input coordinates. 
    *
-   * @template T The coordinates type.
-   * @param The coordinates for which the Hilbert id is computed.
+   * @tparam T The coordinates type.
+   * @param coords The coordinates for which the Hilbert id is computed.
    * @return The computed Hilbert id.
    */
   template<class T>
@@ -623,7 +624,7 @@ class ArraySchema {
    * (which, in case of non-regular tiles, is always the same), breaking the
    * tie by checking the cell order. 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param coords_a The first input coordinates.
    * @param coords_b The second input coordinates.
    * @return One of the following:
@@ -637,7 +638,7 @@ class ArraySchema {
   /** 
    * Returns the id of the tile the input coordinates fall into. 
    * 
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param cell_coords The input coordinates.
    * @return The computed tile id.
    */
@@ -647,7 +648,7 @@ class ArraySchema {
   /**
    * Checks the tile order of the input coordinates.  
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param coords_a The first input coordinates.
    * @param coords_b The second input coordinates.
    * @return One of the following:
@@ -821,7 +822,7 @@ class ArraySchema {
    * Compute the number of cells per tile. Meaningful only for the **dense**
    * case.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @return void
    */
   template<class T>
@@ -833,7 +834,7 @@ class ArraySchema {
   /** 
    * Computes the number of bits per dimension required by the Hilbert curve. 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return void
    */
   template<class T>
@@ -856,7 +857,7 @@ class ArraySchema {
   /**
    * Computes tile offsets neccessary when computing tile positions and ids.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @return void 
    */
   template<class T>
@@ -865,7 +866,7 @@ class ArraySchema {
   /** 
    * Computes the tile domain. Applicable only to arrays with regular tiles.
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return void
    */
   template<class T>
@@ -879,7 +880,7 @@ class ArraySchema {
    * tile, based on the array cell order. Applicable only to **dense** arrays,
    * and focusing on the **column-major** cell order. 
    * 
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param coords The input coordindates, which are expressed as global 
    *     coordinates in the array domain.
    * @return The position of the cell coordinates in the array cell order
@@ -887,14 +888,14 @@ class ArraySchema {
    *     TILEDB_AS_ERR.
    */
   template<class T>
-  int64_t get_cell_pos_col(const T* range) const;
+  int64_t get_cell_pos_col(const T* coords) const;
 
   /**
    * Returns the position of the input coordinates inside its corresponding
    * tile, based on the array cell order. Applicable only to **dense** arrays,
    * and focusing on the **row-major** cell order. 
    * 
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param coords The input coordindates, which are expressed as global 
    *     coordinates in the array domain.
    * @return The position of the cell coordinates in the array cell order
@@ -902,7 +903,7 @@ class ArraySchema {
    *     TILEDB_AS_ERR.
    */
   template<class T>
-  int64_t get_cell_pos_row(const T* range) const;
+  int64_t get_cell_pos_row(const T* coords) const;
 
   /**
    * Retrieves the next coordinates along the array cell order within a given
@@ -910,7 +911,7 @@ class ArraySchema {
    * Applicable only to **dense** arrays, and focusing on **column-major** 
    * cell order.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param domain The targeted domain.
    * @param cell_coords The input cell coordinates, which the function modifies
    *     to store the next coordinates at termination.
@@ -930,7 +931,7 @@ class ArraySchema {
    * Applicable only to **dense** arrays, and focusing on **row-major** 
    * cell order.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param domain The targeted domain.
    * @param cell_coords The input cell coordinates, which the function modifies
    *     to store the next coordinates at termination.
@@ -949,7 +950,7 @@ class ArraySchema {
    * given tile domain. Applicable only to **dense** arrays, and focusing on
    * the **column-major** tile order. 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param domain The targeted domain.
    * @param tile_coords The input tile coordinates, which the function modifies
    *     to store the next tile coordinates at termination.
@@ -963,7 +964,7 @@ class ArraySchema {
    * given tile domain. Applicable only to **dense** arrays, and focusing on
    * the **row-major** tile order. 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param domain The targeted domain.
    * @param tile_coords The input tile coordinates, which the function modifies
    *     to store the next tile coordinates at termination.
@@ -978,7 +979,7 @@ class ArraySchema {
    * Applicable only to **dense** arrays, and focusing on the **column-major**
    * cell order. 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param domain The targeted domain.
    * @param cell_coords The input cell coordinates, which the function modifies
    *     to store the previous coordinates at termination.
@@ -993,7 +994,7 @@ class ArraySchema {
    * Applicable only to **dense** arrays, and focusing on the **row-major**
    * cell order. 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param domain The targeted domain.
    * @param cell_coords The input cell coordinates, which the function modifies
    *     to store the previous coordinates at termination.
@@ -1007,7 +1008,7 @@ class ArraySchema {
    * domain. Applicable only to **dense** arrays, and focusing on the 
    * **column-major** tile order.
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param tile_coords The tile coordinates. 
    * @return The tile position of *tile_coords* along the tile order of the
    *     array inside the array domain.
@@ -1020,10 +1021,10 @@ class ArraySchema {
    * domain. Applicable only to **dense** arrays, and focusing on the 
    * **column-major** tile order.
    * 
-   * @template T The domain type.
-   * @param The input domain, which is a cell domain partitioned into regular
-   *     tiles in the same manner as that of the array domain (however *domain*
-   *     may be a sub-domain of the array domain).
+   * @tparam T The domain type.
+   * @param domain The input domain, which is a cell domain partitioned into 
+   *     regular tiles in the same manner as that of the array domain 
+   *     (however *domain* may be a sub-domain of the array domain).
    * @param tile_coords The tile coordinates. 
    * @return The tile position of *tile_coords* along the tile order of the
    *     array inside the input domain.
@@ -1038,7 +1039,7 @@ class ArraySchema {
    * domain. Applicable only to **dense** arrays, and focusing on the 
    * **row-major** tile order.
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param tile_coords The tile coordinates. 
    * @return The tile position of *tile_coords* along the tile order of the
    *     array inside the array domain.
@@ -1051,10 +1052,10 @@ class ArraySchema {
    * domain. Applicable only to **dense** arrays, and focusing on the 
    * **row-major** tile order.
    * 
-   * @template T The domain type.
-   * @param The input domain, which is a cell domain partitioned into regular
-   *     tiles in the same manner as that of the array domain (however *domain*
-   *     may be a sub-domain of the array domain).
+   * @tparam T The domain type.
+   * @param domain The input domain, which is a cell domain partitioned into 
+   *     regular tiles in the same manner as that of the array domain (however 
+   *     *domain* may be a sub-domain of the array domain).
    * @param tile_coords The tile coordinates. 
    * @return The tile position of *tile_coords* along the tile order of the
    *     array inside the input domain.

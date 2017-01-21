@@ -58,7 +58,7 @@ class ProgressBar {
    *
    * @param complete The amount at which the bar must reach its maximum length. 
    * @param max_length The visual length of the bar. 
-   * @param The character that fills the bar.
+   * @param filler The character that fills the bar.
    */
   ProgressBar(
       double complete = PB_COMPLETE, 

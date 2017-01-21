@@ -62,6 +62,7 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
+/** Stores potential error messages. */
 extern std::string tiledb_rs_errmsg;
 
 
@@ -189,7 +190,7 @@ class ReadState {
    * Copies the cells of the input attribute into the input buffers, as 
    * determined by the input cell position range.
    *
-   * @param attribute_it The id of the targeted attribute.
+   * @param attribute_id The id of the targeted attribute.
    * @param tile_i The tile to copy from.
    * @param buffer The buffer to copy into - see Array::read().
    * @param buffer_size The size (in bytes) of *buffer*.
@@ -209,7 +210,7 @@ class ReadState {
    * Copies the cells of the input **variable-sized** attribute into the input
    * buffers, as determined by the input cell position range.
    *
-   * @param attribute_it The id of the targeted attribute.
+   * @param attribute_id The id of the targeted attribute.
    * @param tile_i The tile to copy from.
    * @param buffer The offsets buffer to copy into - see Array::read().
    * @param buffer_size The size (in bytes) of *buffer*.
@@ -236,7 +237,7 @@ class ReadState {
   /** 
    * Retrieves the coordinates after the input coordinates in the search tile.
    * 
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param coords The target coordinates.
    * @param coords_after The coordinates to be retrieved.
    * @param coords_retrieved *true* if *coords_after* are indeed retrieved.
@@ -253,7 +254,7 @@ class ReadState {
    * succeeding it in a designated tile and inside an indicated coordinate
    * range. 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param tile_i The targeted tile position. 
    * @param target_coords The target coordinates.
    * @param start_coords The starting coordinates of the target cell range.
@@ -281,7 +282,7 @@ class ReadState {
    * Retrieves the cell position range corresponding to the input cell range,
    * for the case of **sparse** fragments.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param fragment_info The (fragment id, tile position) pair corresponding
    *     to the cell position range to be retrieved.
    * @param cell_range The targeted cell range.
@@ -298,7 +299,7 @@ class ReadState {
    * Computes the fragment cell ranges corresponding to the current search
    * tile. Applicable only to **dense**.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param fragment_i The fragment id. 
    * @param fragment_cell_ranges The output fragment cell ranges.
    * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
@@ -312,7 +313,7 @@ class ReadState {
    * Computes the fragment cell ranges corresponding to the current search
    * tile. Applicable only to **sparse** fragments for **dense** arrays.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param fragment_i The fragment id. 
    * @param fragment_cell_ranges The output fragment cell ranges.
    * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
@@ -327,7 +328,7 @@ class ReadState {
    * tile, which are contained within the input start and end coordinates.
    * Applicable only to **sparse** fragments for **sparse** arrays.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param fragment_i The fragment id. 
    * @param start_coords The start coordinates of the specified range.
    * @param end_coords The end coordinates of the specified range.
@@ -346,7 +347,7 @@ class ReadState {
    * with the tile specified by the input tile coordinates. This is applicable
    * only to **dense** fragments.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param tile_coords The input tile coordinates.
    * @return void
    */
@@ -357,7 +358,7 @@ class ReadState {
    * Gets the next overlapping tile from the fragment. This is applicable
    * only to **sparse** arrays.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @return void
    */
   template<class T>
@@ -368,7 +369,7 @@ class ReadState {
    * succeeds the tile with the input tile coordinates. This is applicable
    * only to **sparse** fragments for **dense** arrays.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param tile_coords The input tile coordinates.
    * @return void
    */
@@ -548,7 +549,7 @@ class ReadState {
    * Computes the ranges of tile positions that need to be searched for finding
    * overlapping tiles with the query subarray.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @return void
    */
   template<class T>
@@ -559,7 +560,7 @@ class ReadState {
    * overlapping tiles with the query subarray. This function focuses on the
    * case of column- or row-major cell orders.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @return void
    */
   template<class T>
@@ -570,7 +571,7 @@ class ReadState {
    * overlapping tiles with the query subarray. This function focuses on the
    * case of the Hilbert cell order.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @return void
    */
   template<class T>
@@ -682,7 +683,7 @@ class ReadState {
    * Returns the cell position in the search tile that is after the
    * input coordinates.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param coords The input coordinates.
    * @return The cell position in the search tile that is after the
    *     input coordinates.
@@ -694,7 +695,7 @@ class ReadState {
    * Returns the cell position in the search tile that is at or after the
    * input coordinates.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param coords The input coordinates.
    * @return The cell position in the search tile that is at or after the
    *     input coordinates.
@@ -706,7 +707,7 @@ class ReadState {
    * Returns the cell position in the search tile that is at or before the
    * input coordinates.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param coords The input coordinates.
    * @return The cell position in the search tile that is at or before the
    *     input coordinates.

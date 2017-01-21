@@ -748,7 +748,7 @@ int mpi_io_read_from_file(
   MPI_File fh;
   if(MPI_File_open(
          *mpi_comm, 
-         filename.c_str(), 
+         (char*) filename.c_str(), 
          MPI_MODE_RDONLY, 
          MPI_INFO_NULL, 
          &fh)) {
@@ -789,7 +789,7 @@ int mpi_io_write_to_file(
   MPI_File fh;
   if(MPI_File_open(
          *mpi_comm, 
-         filename, 
+         (char*) filename, 
          MPI_MODE_WRONLY | MPI_MODE_APPEND | 
              MPI_MODE_CREATE | MPI_MODE_SEQUENTIAL, 
          MPI_INFO_NULL, 
@@ -808,7 +808,7 @@ int mpi_io_write_to_file(
   while(buffer_size > TILEDB_UT_MAX_WRITE_COUNT) {
     if(MPI_File_write(
            fh, 
-           buffer, 
+           (void*) buffer, 
            TILEDB_UT_MAX_WRITE_COUNT, 
            MPI_CHAR, 
            &mpi_status)) {
@@ -821,7 +821,7 @@ int mpi_io_write_to_file(
     }
     buffer_size -= TILEDB_UT_MAX_WRITE_COUNT;
   }
-  if(MPI_File_write(fh, buffer, buffer_size, MPI_CHAR, &mpi_status)) {
+  if(MPI_File_write(fh, (void*) buffer, buffer_size, MPI_CHAR, &mpi_status)) {
     std::string errmsg = 
         std::string("Cannot write to file '") + filename + 
         "'; File writing error";
@@ -853,14 +853,14 @@ int mpi_io_sync(
   if(is_dir(filename))       // DIRECTORY
     rc = MPI_File_open(
              *mpi_comm, 
-              filename, 
+              (char*) filename, 
               MPI_MODE_RDONLY, 
               MPI_INFO_NULL, 
               &fh);
   else if(is_file(filename))  // FILE
     rc = MPI_File_open(
              *mpi_comm, 
-              filename, 
+              (char*) filename, 
               MPI_MODE_WRONLY | MPI_MODE_APPEND | 
                   MPI_MODE_CREATE | MPI_MODE_SEQUENTIAL, 
               MPI_INFO_NULL, 

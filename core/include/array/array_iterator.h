@@ -59,6 +59,7 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
+/** Stores potential error messages. */
 extern std::string tiledb_ait_errmsg;
 
 

@@ -61,6 +61,7 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
+/** Stores potential error messages. */
 extern std::string tiledb_bk_errmsg;
 
 
@@ -157,7 +158,7 @@ class BookKeeping {
   /** 
    * Appends the input MBR to the book-keeping structure. 
    * 
-   * @param The MBR to be appended.
+   * @param mbr The MBR to be appended.
    * @return void
    */
   void append_mbr(const void* mbr);
@@ -165,7 +166,7 @@ class BookKeeping {
   /** 
    * Appends a tile offset for the input attribute. 
    * 
-   * @param attribtue_id The id of the attribute for which the offset is
+   * @param attribute_id The id of the attribute for which the offset is
    *     appended.
    * @param step This is essentially the step by which the previous
    *     offset will be expanded. It is practically the last tile size.
@@ -176,7 +177,7 @@ class BookKeeping {
   /** 
    * Appends a variable tile offset for the input attribute. 
    *
-   * @param attribtue_id The id of the attribute for which the offset is
+   * @param attribute_id The id of the attribute for which the offset is
    *     appended.
    * @param step This is essentially the step by which the previous
    *     offset will be expanded. It is practically the last variable tile size.
@@ -187,7 +188,7 @@ class BookKeeping {
   /** 
    * Appends a variable tile size for the input attribute. 
    *
-   * @param attribtue_id The id of the attribute for which the size is appended.
+   * @param attribute_id The id of the attribute for which the size is appended.
    * @param size The size to be appended.
    * @return void
    */
@@ -200,7 +201,7 @@ class BookKeeping {
    */
   int finalize();
 
-  /*
+  /**
    * Initializes the book-keeping structures.
    * 
    * @param non_empty_domain The non-empty domain in which the array read/write
@@ -272,7 +273,7 @@ class BookKeeping {
    * Meaningful only for variable-sized tiles.
    */
   std::vector<std::vector<off_t> > tile_var_offsets_;
-  /*
+  /**
    * The sizes of the uncompressed variable tiles. 
    * Meaningful only when there is compression for variable tiles.
    */
