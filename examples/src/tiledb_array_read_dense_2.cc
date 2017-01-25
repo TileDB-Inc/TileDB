@@ -32,7 +32,7 @@
  * program shows how to detect buffer overflow.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstdio>
 
 int main() {

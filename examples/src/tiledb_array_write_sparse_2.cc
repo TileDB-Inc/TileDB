@@ -30,7 +30,7 @@
  * It shows how to write to a sparse array with two sorted batch writes.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 
 int main() {
   // Initialize context with the default configuration parameters

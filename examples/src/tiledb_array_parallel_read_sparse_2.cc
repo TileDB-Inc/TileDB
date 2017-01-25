@@ -30,7 +30,7 @@
  * It shows how to read from a sparse array in parallel with OpenMP.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <stdio.h>
 
 #ifdef HAVE_OPENMP

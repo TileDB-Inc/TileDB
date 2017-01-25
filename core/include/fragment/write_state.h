@@ -61,6 +61,7 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
+/** Stores potential error messages. */
 extern std::string tiledb_ws_errmsg;
 
 
@@ -320,7 +321,7 @@ class WriteState {
   /**
    * Expands the current MBR with the input coordinates.
    *
-   * @template T The type of the MBR and the input coordinates.
+   * @tparam T The type of the MBR and the input coordinates.
    * @param coords The input coordinates.
    * @return void
    */
@@ -356,6 +357,7 @@ class WriteState {
    * 
    * @param buffer The buffer holding the cell coordinates.
    * @param buffer_size The size (in bytes) of *buffer*.
+   * @param cell_pos The sorted cell positions.
    * @return void 
    */
   void sort_cell_pos(
@@ -368,9 +370,10 @@ class WriteState {
    * array schema. This is not done in place; the sorted positions are stored
    * in a separate vector.
    * 
-   * @template T The type of coordinates stored in *buffer*.
+   * @tparam T The type of coordinates stored in *buffer*.
    * @param buffer The buffer holding the cell coordinates.
    * @param buffer_size The size (in bytes) of *buffer*.
+   * @param cell_pos The sorted cell positions.
    * @return void 
    */
   template<class T>
@@ -393,7 +396,7 @@ class WriteState {
    * Updates the book-keeping structures as tiles are written. Specifically, it
    * updates the MBR and bounding coordinates of each tile.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param buffer The buffer storing the cell coordinates.
    * @param buffer_size The size (in bytes) of *buffer*.
    * @return void
@@ -413,8 +416,8 @@ class WriteState {
   /**
    * Performs the write operation for the case of a dense fragment.
    *
-   * @param buffer See write().
-   * @param buffer_size See write().
+   * @param buffers See write().
+   * @param buffer_sizes See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense(
@@ -471,7 +474,7 @@ class WriteState {
    * @param buffer See write() - start offsets in *buffer_var*.
    * @param buffer_size See write().
    * @param buffer_var See write() - actual variable-sized values.
-   * @param buffer_size See write().
+   * @param buffer_var_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense_attr_var(
@@ -489,7 +492,7 @@ class WriteState {
    * @param buffer See write() - start offsets in *buffer_var*.
    * @param buffer_size See write().
    * @param buffer_var See write() - actual variable-sized values.
-   * @param buffer_size See write().
+   * @param buffer_var_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense_attr_var_cmp_none(
@@ -507,7 +510,7 @@ class WriteState {
    * @param buffer See write() - start offsets in *buffer_var*.
    * @param buffer_size See write().
    * @param buffer_var See write() - actual variable-sized values.
-   * @param buffer_size See write().
+   * @param buffer_var_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense_attr_var_cmp(
@@ -578,7 +581,7 @@ class WriteState {
    * @param buffer See write() - start offsets in *buffer_var*.
    * @param buffer_size See write().
    * @param buffer_var See write() - actual variable-sized values.
-   * @param buffer_size See write().
+   * @param buffer_var_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse_attr_var(
@@ -596,7 +599,7 @@ class WriteState {
    * @param buffer See write() - start offsets in *buffer_var*.
    * @param buffer_size See write().
    * @param buffer_var See write() - actual variable-sized values.
-   * @param buffer_size See write().
+   * @param buffer_var_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse_attr_var_cmp_none(
@@ -614,7 +617,7 @@ class WriteState {
    * @param buffer See write() - start offsets in *buffer_var*.
    * @param buffer_size See write().
    * @param buffer_var See write() - actual variable-sized values.
-   * @param buffer_size See write().
+   * @param buffer_var_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse_attr_var_cmp(
@@ -694,7 +697,7 @@ class WriteState {
    * @param buffer See write() - start offsets in *buffer_var*.
    * @param buffer_size See write().
    * @param buffer_var See write() - actual variable-sized values.
-   * @param buffer_size See write().
+   * @param buffer_var_size See write().
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
@@ -715,7 +718,7 @@ class WriteState {
    * @param buffer See write() - start offsets in *buffer_var*.
    * @param buffer_size See write().
    * @param buffer_var See write() - actual variable-sized values.
-   * @param buffer_size See write().
+   * @param buffer_var_size See write().
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
@@ -736,7 +739,7 @@ class WriteState {
    * @param buffer See write() - start offsets in *buffer_var*.
    * @param buffer_size See in write().
    * @param buffer_var See write() - actual variable-sized values.
-   * @param buffer_size See write().
+   * @param buffer_var_size See write().
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */

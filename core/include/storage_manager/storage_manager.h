@@ -80,6 +80,7 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
+/** Stores potential error messages. */
 extern std::string tiledb_sm_errmsg;
 
 
@@ -213,7 +214,6 @@ class StorageManager {
   /**
    * Creates a new TileDB array.
    *
-   * @param tiledb_ctx The TileDB context.
    * @param array_schema_c The array schema. 
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
@@ -222,7 +222,6 @@ class StorageManager {
   /**
    * Creates a new TileDB array.
    *
-   * @param tiledb_ctx The TileDB context.
    * @param array_schema The array schema. 
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
@@ -304,7 +303,7 @@ class StorageManager {
    * it on a subset of attributes, as well as a subarray. The cells will be read
    * in the order they are stored on the disk, maximing performance. 
    *
-   * @param tiledb_array_it The TileDB array iterator to be created. The
+   * @param array_it The TileDB array iterator to be created. The
    *    function will allocate the appropriate memory space for the iterator. 
    * @param array The directory of the array the iterator is initialized for.
    * @param mode The read mode, which can be one of the following:
@@ -348,7 +347,6 @@ class StorageManager {
   /**
    * Finalizes an array iterator, properly freeing the allocating memory space.
    * 
-   * @param tiledb_array_it The TileDB array iterator to be finalized.
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
   int array_iterator_finalize(ArrayIterator* array_it);
@@ -379,7 +377,7 @@ class StorageManager {
   /**
    * Creates a new TileDB metadata object.
    *
-   * @param metadata_schema The metadata schema. 
+   * @param array_schema The metadata (array) schema. 
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int metadata_create(const ArraySchema* array_schema) const; 
@@ -401,6 +399,7 @@ class StorageManager {
    *
    * @param metadata The metadata object to be initialized. The function
    *     will allocate memory space for it.
+   * @param metadata_dir The directory of the metadata.
    * @param mode The mode of the metadata. It must be one of the following:
    *    - TILEDB_METADATA_WRITE 
    *    - TILEDB_METADATA_READ 
@@ -421,7 +420,7 @@ class StorageManager {
   /** 
    * Finalizes a TileDB metadata object, properly freeing the memory space. 
    *
-   * @param tiledb_metadata The metadata to be finalized.
+   * @param metadata The metadata to be finalized.
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
   int metadata_finalize(Metadata* metadata);
@@ -431,7 +430,7 @@ class StorageManager {
    * on a subset of attributes. The values will be read in the order they are
    * stored on the disk, maximing performance. 
    *
-   * @param tiledb_metadata_it The TileDB metadata iterator to be created. The
+   * @param metadata_it The TileDB metadata iterator to be created. The
    *     function will allocate the appropriate memory space for the iterator. 
    * @param metadata_dir The directory of the metadata the iterator is
    *     initialized for.
@@ -464,7 +463,7 @@ class StorageManager {
   /**
    * Finalizes the iterator, properly freeing the allocating memory space.
    * 
-   * @param tiledb_metadata_it The TileDB metadata iterator.
+   * @param metadata_it The TileDB metadata iterator.
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
   int metadata_iterator_finalize(MetadataIterator* metadata_it);
@@ -728,7 +727,7 @@ class StorageManager {
   /**
    * Creates a special group file inside the group directory.
    *
-   * @param group The group directory.
+   * @param dir The group directory.
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
   int create_group_file(const std::string& dir) const;

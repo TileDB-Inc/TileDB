@@ -115,7 +115,7 @@ class StorageManagerConfig {
   void init(
       const char* home,
       int read_method,
-      int write_methods);
+      int write_method);
 #endif
  
   /* ********************************* */

@@ -33,7 +33,7 @@
  * of sparse arrays is similar.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <stdio.h>
 #include <cstring>
 

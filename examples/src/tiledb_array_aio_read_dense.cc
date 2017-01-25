@@ -30,7 +30,7 @@
  * It shows how to read asynchronously from a dense array.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstdio>
 #include <cstring>
 

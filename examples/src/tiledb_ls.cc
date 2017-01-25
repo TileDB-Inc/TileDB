@@ -30,7 +30,7 @@
  * It shows how to explore the contents of a TileDB directory.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstdio>
 #include <cstdlib>
 

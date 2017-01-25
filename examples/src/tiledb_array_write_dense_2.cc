@@ -32,7 +32,7 @@
  * tiledb_array_write_dense_1.cc.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 
 int main() {
   // Initialize context with the default configuration parameters

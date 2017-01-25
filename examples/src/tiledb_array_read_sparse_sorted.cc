@@ -32,7 +32,7 @@
  * returned in row-major order within the specified subarray. 
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstdio>
 
 int main() {
