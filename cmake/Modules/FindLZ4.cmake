@@ -43,12 +43,12 @@ endif()
 # Find library
 if(LZ4_SEARCH_LIB_PATH)
   find_library(
-      LZ4_LIBRARIES NAMES liblaz4.a liblz4${SHARED_LIB_SUFFIX}
+      LZ4_LIBRARIES NAMES lz4
       PATHS ${LZ4_SEARCH_LIB_PATH}$
       NO_DEFAULT_PATH
   )
 else()
-  find_library(LZ4_LIBRARIES NAMES liblz4.a liblz4${SHARED_LIB_SUFFIX})
+  find_library(LZ4_LIBRARIES NAMES lz4)
 endif()
 
 if(LZ4_INCLUDE_DIR AND LZ4_LIBRARIES)

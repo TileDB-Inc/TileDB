@@ -43,12 +43,12 @@ endif()
 # Find library
 if(BLOSC_SEARCH_LIB_PATH)
   find_library(
-      BLOSC_LIBRARIES NAMES libblosc${SHARED_LIB_SUFFIX}
+      BLOSC_LIBRARIES NAMES blosc
       PATHS ${BLOSC_SEARCH_LIB_PATH}$
       NO_DEFAULT_PATH
   )
 else()
-  find_library(BLOSC_LIBRARIES NAMES libblosc${SHARED_LIB_SUFFIX})
+  find_library(BLOSC_LIBRARIES NAMES blosc)
 endif()
 
 if(BLOSC_INCLUDE_DIR AND BLOSC_LIBRARIES)
