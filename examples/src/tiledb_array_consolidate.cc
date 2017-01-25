@@ -30,7 +30,7 @@
  * It shows how to consolidate arrays.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 
 int main() {
   // Initialize context with the default configuration parameters

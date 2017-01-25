@@ -62,6 +62,7 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
+/** Stores potential error messages. */
 extern std::string tiledb_asrs_errmsg;
 
 
@@ -406,7 +407,7 @@ class ArraySortedReadState {
    * the CopyState and TileSlabState. 
    * Used in copy_tile_slab(). 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
@@ -418,7 +419,7 @@ class ArraySortedReadState {
    * the CopyState and TileSlabState. 
    * Used in copy_tile_slab(). 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
@@ -428,7 +429,7 @@ class ArraySortedReadState {
   /** 
    * Advances a cell slab when the requested order is column-major. 
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param aid The id of the attribute in attribute_ids_ to focus on.
    * @return void
    */
@@ -438,7 +439,7 @@ class ArraySortedReadState {
   /** 
    * Advances a cell slab when the requested order is row-major. 
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param aid The id of the attribute in attribute_ids_ to focus on.
    * @return void
    */
@@ -507,7 +508,7 @@ class ArraySortedReadState {
    * where the **user** cell order is column-major and the **array** cell 
    * order is column-major.
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
@@ -519,7 +520,7 @@ class ArraySortedReadState {
    * where the **user** cell order is column-major and the **array** cell 
    * order is row-major.
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
@@ -531,7 +532,7 @@ class ArraySortedReadState {
    * where the **user** cell order in row-major and the **array** cell 
    * order is column-major.
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
@@ -543,7 +544,7 @@ class ArraySortedReadState {
    * where the **user** cell order is row-major and the **array** cell 
    * order is row-major.
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
@@ -555,7 +556,7 @@ class ArraySortedReadState {
    * where the **user** cell order is column-major and the **array** cell 
    * order is column-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @param tid The tile id.
    * @return void.
@@ -568,7 +569,7 @@ class ArraySortedReadState {
    * where the **user** cell order is column-major and the **array** cell 
    * order is row-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @param tid The tile id.
    * @return void.
@@ -581,7 +582,7 @@ class ArraySortedReadState {
    * where the **user** cell order is row-major and the **array** cell 
    * order is row-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @param tid The tile id.
    * @return void.
@@ -594,7 +595,7 @@ class ArraySortedReadState {
    * where the **user** cell order is row-major and the **array** cell 
    * order is column-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @param tid The tile id.
    * @return void.
@@ -606,7 +607,7 @@ class ArraySortedReadState {
    * Calculates the info used in the copy_tile_slab() function, for the case
    * where the **array** cell order is row-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @param tid The tile id.
    * @return void.
@@ -618,7 +619,7 @@ class ArraySortedReadState {
    * Calculates the **normalized** tile domain overlapped by the input tile 
    * slab. Note that this domain is the same for all tile slabs
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @return void.
    */ 
@@ -628,7 +629,7 @@ class ArraySortedReadState {
   /** 
    * Calculates the info used in the copy_tile_slab() function.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @return void.
    */
@@ -639,7 +640,7 @@ class ArraySortedReadState {
    * Calculates tile slab info for the case where the **array** tile order is
    * column-major
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
@@ -650,7 +651,7 @@ class ArraySortedReadState {
    * Calculates the info used in the copy_tile_slab() function, for the case
    * where the **array** tile order is column-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @return void.
    */
@@ -661,7 +662,7 @@ class ArraySortedReadState {
    * Calculates tile slab info for the case where the **array** tile order is
    * row-major
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
@@ -672,7 +673,7 @@ class ArraySortedReadState {
    * Calculates the info used in the copy_tile_slab() function, for the case
    * where the **array** tile order is row-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @return void.
    */
@@ -774,7 +775,7 @@ class ArraySortedReadState {
    * Returns the cell id along the **array** order for the current coordinates
    * in the tile slab state for a particular attribute. 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param aid The targeted attribute.
    * @return The cell id. 
    */
@@ -785,7 +786,7 @@ class ArraySortedReadState {
    * Returns the tile id along the **array** order for the current coordinates
    * in the tile slab state for a particular attribute. 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param aid The targeted attribute.
    * @return The tile id. 
    */
@@ -795,7 +796,7 @@ class ArraySortedReadState {
   /** 
    * Handles the copy requests. Applicable to dense arrays. 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return void.
    */
   template<class T>
@@ -804,7 +805,7 @@ class ArraySortedReadState {
   /** 
    * Handles the copy requests. Applicable to sparse arrays. 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return void.
    */
   template<class T>
@@ -823,7 +824,7 @@ class ArraySortedReadState {
    * Initializes the tile slab info for a particular tile slab, using the
    * input tile number.
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param id The slab id.
    * @return void.
    */
@@ -858,7 +859,7 @@ class ArraySortedReadState {
    * Retrieves the next column tile slab to be processed. Applicable to dense
    * arrays.
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return True if the next tile slab was retrieved, and false otherwise.
    */
   template<class T>
@@ -868,7 +869,7 @@ class ArraySortedReadState {
    * Retrieves the next row tile slab to be processed. Applicable to dense 
    * arrays.
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return True if the next tile slab was retrieved, and false otherwise.
    */
   template<class T>
@@ -878,7 +879,7 @@ class ArraySortedReadState {
    * Retrieves the next column tile slab to be processed. Applicable to sparse
    * arrays.
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return True if the next tile slab was retrieved, and false otherwise.
    */
   template<class T>
@@ -888,7 +889,7 @@ class ArraySortedReadState {
    * Retrieves the next row tile slab to be processed. Applicable to sparse
    * arrays.
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return True if the next tile slab was retrieved, and false otherwise.
    */
   template<class T>
@@ -900,7 +901,7 @@ class ArraySortedReadState {
    * fail if there is not enough system memory to hold the cells of a 
    * 'tile slab' overlapping with the selected subarray.
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template<class T>
@@ -911,7 +912,7 @@ class ArraySortedReadState {
    * column-major order with respect to the selected subarray. 
    * Applicable only to dense arrays. 
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template<class T>
@@ -922,7 +923,7 @@ class ArraySortedReadState {
    * row-major order with respect to the selected subarray. 
    * Applicable only to dense arrays. 
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template<class T>
@@ -933,7 +934,7 @@ class ArraySortedReadState {
    * column-major order with respect to the selected subarray. 
    * Applicable only to sparse arrays. 
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template<class T>
@@ -944,7 +945,7 @@ class ArraySortedReadState {
    * row-major order with respect to the selected subarray. 
    * Applicable only to sparse arrays. 
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template<class T>
@@ -995,7 +996,7 @@ class ArraySortedReadState {
   /** 
    * Resets the tile_coords_ auxiliary variable. 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return void.
    */
   template<class T> 
@@ -1004,7 +1005,7 @@ class ArraySortedReadState {
   /** 
    * Resets the tile slab state. 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return void.
    */
   template<class T> 
@@ -1050,7 +1051,7 @@ class ArraySortedReadState {
    * Calculates the new tile and local buffer offset for the new (already 
    * computed) current cell coordinates in the tile slab. 
    *
-   * @template T The domain type
+   * @tparam T The domain type
    * @param aid The attribute id to focus on.
    * @return void.
    */

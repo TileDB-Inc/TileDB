@@ -31,7 +31,7 @@
  */
 
 #include "array_schema.h"
-#include "constants.h"
+#include "tiledb_constants.h"
 #include "utils.h"
 #include <algorithm>
 #include <cassert>
@@ -46,7 +46,7 @@
 /*             MACROS             */
 /* ****************************** */
 
-#ifdef VERBOSE
+#ifdef TILEDB_VERBOSE
 #  define PRINT_ERROR(x) std::cerr << TILEDB_AS_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 

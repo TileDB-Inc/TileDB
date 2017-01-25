@@ -67,6 +67,7 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
+/** Stores potential error messages. */
 extern std::string tiledb_ut_errmsg;
 
 
@@ -97,9 +98,9 @@ bool both_slashes(char a, char b);
 /** 
  * Checks if the input cell is inside the input subarray. 
  *
- * @template T The type of the cell and subarray.
+ * @tparam T The type of the cell and subarray.
  * @param cell The cell to be checked.
- * @param range The subarray to be checked, expresses as [low, high] pairs
+ * @param subarray The subarray to be checked, expresses as [low, high] pairs
  *     along each dimension.
  * @param dim_num The number of dimensions for the cell and subarray.
  * @return *true* if the input cell is inside the input range and
@@ -112,7 +113,7 @@ bool cell_in_subarray(const T* cell, const T* subarray, int dim_num);
  * Returns the number of cells in the input subarray (considering that the
  * subarray is dense). 
  *
- * @template T The type of the subarray.
+ * @tparam T The type of the subarray.
  * @param subarray The input subarray.
  * @param dim_num The number of dimensions of the subarray.
  * @return The number of cells in the input subarray.
@@ -123,7 +124,7 @@ int64_t cell_num_in_subarray(const T* subarray, int dim_num);
 /**
  * Compares the precedence of two coordinates based on the column-major order.
  *
- * @template T The type of the input coordinates.
+ * @tparam T The type of the input coordinates.
  * @param coords_a The first coordinates.
  * @param coords_b The second coordinates.
  * @param dim_num The number of dimensions of the coordinates.
@@ -141,7 +142,7 @@ int cmp_col_order(
  * first on their ids (the smaller preceeds the larger) and then based 
  * on the column-major order.
  *
- * @template T The type of the input coordinates.
+ * @tparam T The type of the input coordinates.
  * @param id_a The id of the first coordinates.
  * @param coords_a The first coordinates.
  * @param id_b The id of the second coordinates.
@@ -161,7 +162,7 @@ int cmp_col_order(
 /**
  * Compares the precedence of two coordinates based on the row-major order.
  *
- * @template T The type of the input coordinates.
+ * @tparam T The type of the input coordinates.
  * @param coords_a The first coordinates.
  * @param coords_b The second coordinates.
  * @param dim_num The number of dimensions of the coordinates.
@@ -179,7 +180,7 @@ int cmp_row_order(
  * first on their ids (the smaller preceeds the larger) and then based 
  * on the row-major order.
  *
- * @template T The type of the input coordinates.
+ * @tparam T The type of the input coordinates.
  * @param id_a The id of the first coordinates.
  * @param coords_a The first coordinates.
  * @param id_b The id of the second coordinates.
@@ -233,7 +234,7 @@ int delete_dir(const std::string& dirname);
 /**
  * Checks if the input is a special TileDB empty value.
  *
- * @template T The type of the input value.
+ * @tparam T The type of the input value.
  * @param value The value to be checked.
  * @return *true* if the input value is a special TileDB empty value, and 
  *     *false* otherwise.
@@ -247,14 +248,14 @@ bool empty_value(T value);
  * @param buffer The buffer to be expanded. 
  * @param buffer_allocated_size The original allocated size of the buffer.
  *     After the function call, this size doubles.
- * @param return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
 int expand_buffer(void*& buffer, size_t& buffer_allocated_size);
 
 /**
  * Expands the input MBR so that it encompasses the input coordinates.
  *
- * @template T The type of the MBR and coordinates.
+ * @tparam T The type of the MBR and coordinates.
  * @param mbr The input MBR to be expanded.
  * @param coords The input coordinates to expand the MBR.
  * @param dim_num The number of dimensions of the MBR and coordinates.
@@ -267,7 +268,7 @@ void expand_mbr(T* mbr, const T* coords, int dim_num);
  * Returns the size of the input file.
  *
  * @param filename The name of the file whose size is to be retrieved.
- * @param return The file size on success, and TILEDB_UT_ERR for error.
+ * @return The file size on success, and TILEDB_UT_ERR for error.
  */
 off_t file_size(const std::string& filename);
 
@@ -290,7 +291,7 @@ std::string get_mac_addr();
  * @param in The input buffer.
  * @param in_size The size of the input buffer.
  * @param out The output buffer.
- * @param avail_out_size The available size in the output buffer.
+ * @param out_size The available size in the output buffer.
  * @return The size of compressed data on success, and TILEDB_UT_ERR on error.
  */
 ssize_t gzip(
@@ -314,13 +315,13 @@ int gunzip(
     unsigned char* in, 
     size_t in_size, 
     unsigned char* out, 
-    size_t avail_out, 
+    size_t avail_out_size, 
     size_t& out_size);
 
 /** 
  * Checks if there are duplicates in the input vector. 
  * 
- * @template T The type of the values in the input vector.
+ * @tparam T The type of the values in the input vector.
  * @param v The input vector.
  * @return *true* if the vector has duplicates, and *false* otherwise.
  */
@@ -330,7 +331,7 @@ bool has_duplicates(const std::vector<T>& v);
 /**
  * Checks if the input coordinates lie inside the input subarray.
  *
- * @template T The coordinates and subarray type.
+ * @tparam T The coordinates and subarray type.
  * @param coords The input coordinates.
  * @param subarray The input subarray.
  * @param dim_num The number of dimensions of the subarray.
@@ -342,7 +343,7 @@ bool inside_subarray(const T* coords, const T* subarray, int dim_num);
 /** 
  * Checks if the input vectors have common elements. 
  *
- * @template T The type of the elements of the input vectors.
+ * @tparam T The type of the elements of the input vectors.
  * @param v1 The first input vector.
  * @param v2 The second input vector.
  * @return *true* if the input vectors have common elements, and *false*
@@ -362,7 +363,7 @@ bool is_array(const std::string& dir);
 /**
  * Checks if one range is fully contained in another.
  *
- * @template The domain type
+ * @tparam The domain type
  * @param range_A The first range.
  * @param range_B The second range.
  * @param dim_num The number of dimensions.
@@ -572,7 +573,7 @@ void purge_dots_from_path(std::string& path);
  * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
  */
 int read_from_file(
-    const std::string& filaname,
+    const std::string& filename,
     off_t offset,
     void* buffer,
     size_t length);
@@ -587,7 +588,7 @@ int read_from_file(
  * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
  */
 int read_from_file_with_mmap(
-    const std::string& filaname,
+    const std::string& filename,
     off_t offset,
     void* buffer,
     size_t length);
@@ -595,7 +596,7 @@ int read_from_file_with_mmap(
 /**
  * Returns the absolute canonicalized directory path of the input directory.
  *
- * @param The input directory to be canonicalized.
+ * @param dir The input directory to be canonicalized.
  * @return The absolute canonicalized directory path of the input directory.
  */
 std::string real_dir(const std::string& dir);
@@ -621,7 +622,7 @@ int64_t RLE_compress(
 /**
  * Returns the maximum size of the output of RLE compression.
  *
- * @param buffer_size The input buffer size.
+ * @param input_size The input buffer size.
  * @param value_size The size of a sinlge value in the input buffer.
  * @return The maximum size of the output after RLE-compressing the input with
  *     size input_size.
@@ -633,7 +634,7 @@ size_t RLE_compress_bound(
 /**
  * Returns the maximum size of the output of RLE compression on the coordinates.
  *
- * @param buffer_size The input buffer size.
+ * @param input_size The input buffer size.
  * @param value_size The size of a sinlge value in the input buffer.
  * @param dim_num The number of dimensions/coordinates in a single value.
  * @return The maximum size of the output after RLE-compressing the input with

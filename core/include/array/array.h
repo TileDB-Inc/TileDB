@@ -39,9 +39,9 @@
 #include "array_sorted_write_state.h"
 #include "array_schema.h"
 #include "book_keeping.h"
-#include "storage_manager_config.h"
-#include "constants.h"
 #include "fragment.h"
+#include "storage_manager_config.h"
+#include "tiledb_constants.h"
 #include <pthread.h>
 #include <queue>
 
@@ -68,6 +68,7 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
+/** Stores potential error messages. */
 extern std::string tiledb_ar_errmsg;
 
 
@@ -257,7 +258,7 @@ class Array {
    * attribute.
    *
    * @param new_fragment The new consolidated fragment object.
-   * @param attribute_i The id of the target attribute.
+   * @param attribute_id The id of the target attribute.
    */
   int consolidate(
       Fragment* new_fragment,
@@ -540,7 +541,7 @@ class Array {
   
   /** 
    * Returns a new fragment name, which is in the form: <br>
-   * .__<MAC_address><thread_id>_<timestamp>. For instance,
+   * .__MAC-address_thread-id_timestamp. For instance,
    *  __00332a0b8c6426153_1458759561320
    *
    * Note that this is a temporary name, initiated by a new write process.

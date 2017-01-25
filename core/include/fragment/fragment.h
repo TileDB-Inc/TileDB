@@ -63,6 +63,7 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
+/** Stores potential error messages. */
 extern std::string tiledb_fg_errmsg;
 
 
@@ -242,7 +243,7 @@ class Fragment {
   bool dense_;
   /** The fragment name. */
   std::string fragment_name_;
-  /*
+  /**
    * The fragment mode. It must be one of the following:
    *    - TILEDB_WRITE 
    *    - TILEDB_WRITE_UNSORTED 

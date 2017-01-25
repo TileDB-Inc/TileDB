@@ -66,6 +66,7 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
+/** Stores potential error messages. */
 extern std::string tiledb_ars_errmsg;
 
 
@@ -239,7 +240,7 @@ class ArrayReadState {
    * practically the relative positions of the cells in their tile on the
    * disk. The function properly cleans up the input fragment cell ranges. 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param fragment_cell_ranges The input fragment cell ranges.
    * @param fragment_cell_pos_ranges The output fragment cell position ranges. 
    * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
@@ -252,7 +253,7 @@ class ArrayReadState {
   /**
    * Computes the smallest end bounding coordinates for the current read round.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @return void
    */
   template<class T>
@@ -263,7 +264,7 @@ class ArrayReadState {
    * focusing on the **dense* array case. These cell ranges will be properly
    * cut and sorted later on. 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param unsorted_fragment_cell_ranges It will hold the result of this
    *     function.
    * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
@@ -279,7 +280,7 @@ class ArrayReadState {
    * bounding coordinates of the active tiles (to exceed the minimum bounding
    * coordinates end).
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param unsorted_fragment_cell_ranges It will hold the result of this
    *     function.
    * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
@@ -308,7 +309,7 @@ class ArrayReadState {
    * Copies the cell ranges calculated in the current read round into the
    * targeted attribute buffer.
    *
-   * @template T The attribute type.
+   * @tparam T The attribute type.
    * @param attribute_id The id of the targeted attribute.
    * @param buffer The buffer where the read copy be performed into.
    * @param buffer_size The size (in bytes) of *buffer*.
@@ -351,7 +352,7 @@ class ArrayReadState {
    * Copies the cell ranges calculated in the current read round into the
    * targeted attribute buffer, focusing on a **variable-sized** attribute.
    *
-   * @template T The attribute type.
+   * @tparam T The attribute type.
    * @param attribute_id The id of the targeted attribute.
    * @param buffer The buffer where the read will be performed into - offsets of
    *     cells in *buffer_var*.
@@ -378,7 +379,7 @@ class ArrayReadState {
    * Copies the cell ranges calculated in the current read round into the
    * targeted attribute buffer, filling with special empty values.
    *
-   * @template T The attribute type.
+   * @tparam T The attribute type.
    * @param attribute_id The id of the targeted attribute.
    * @param buffer The buffer where the copy will be performed into.
    * @param buffer_size The size (in bytes) of *buffer*.
@@ -399,7 +400,7 @@ class ArrayReadState {
    * targeted attribute buffer, feeling with special empty values, and focusing
    * on a **variable-sized** attribute.
    *
-   * @template T The attribute type.
+   * @tparam T The attribute type.
    * @param attribute_id The id of the targeted attribute.
    * @param buffer The buffer where the read will be performed into - offsets of
    *     cells in *buffer_var*.
@@ -437,7 +438,7 @@ class ArrayReadState {
    * Gets the next fragment cell ranges that are relevant in the current read
    * round, focusing on the dense case.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
    */
   template<class T>
@@ -447,7 +448,7 @@ class ArrayReadState {
    * Gets the next fragment cell ranges that are relevant in the current read
    * round, focusing on the sparse case.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
    */
   template<class T>
@@ -457,7 +458,7 @@ class ArrayReadState {
    * Gets the next overlapping tiles in the fragment read states, for the case
    * of **dense** arrays. 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @return void
    */
   template<class T>
@@ -467,7 +468,7 @@ class ArrayReadState {
    * Gets the next overlapping tiles in the fragment read states, for the case
    * of **sparse** arrays. 
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @return void
    */
   template<class T>
@@ -476,8 +477,8 @@ class ArrayReadState {
   /**
    * Gets the next subarray tile coordinates inside the subarray tile domain.
    *
-   * @template T The coordinates type.
-   * @param void
+   * @tparam T The coordinates type.
+   * @return void
    */
   template<class T>
   void get_next_subarray_tile_coords();
@@ -486,7 +487,7 @@ class ArrayReadState {
    * Initializes the tile coordinates falling in the query subarray. Applicable
    * only to the **dense** array case.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @return void
    */
   template<class T>
@@ -519,7 +520,7 @@ class ArrayReadState {
    * Performs a read operation in a **dense** array, focusing on a single
    * attribute.
    * 
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param attribute_id The attribute this read focuses on.
    * @param buffer See read().
    * @param buffer_size See read().
@@ -553,7 +554,7 @@ class ArrayReadState {
    * Performs a read operation in a **dense** array, focusing on a single
    * **variable-sized** attribute.
    * 
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param attribute_id The attribute this read focuses on.
    * @param buffer See read() - start offsets in *buffer_var*.
    * @param buffer_size See read().
@@ -596,7 +597,7 @@ class ArrayReadState {
    * Performs a read operation in a **sparse** array, focusing on a single
    * attribute.
    * 
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param attribute_id The attribute this read focuses on.
    * @param buffer See read().
    * @param buffer_size See read().
@@ -630,7 +631,7 @@ class ArrayReadState {
    * Performs a read operation in a **sparse** array, focusing on a single
    * **variable-sized** attribute.
    * 
-   * @template T Coordinates type.
+   * @tparam T Coordinates type.
    * @param attribute_id The attribute this read focuses on.
    * @param buffer See read() - start offsets in *buffer_var*.
    * @param buffer_size See read().
@@ -651,7 +652,7 @@ class ArrayReadState {
    * the current read run. The function properly cleans up the input
    * unsorted fragment cell ranges.
    *
-   * @template T The coordinates type.
+   * @tparam T The coordinates type.
    * @param unsorted_fragment_cell_ranges The unsorted fragment cell ranges.
    * @param fragment_cell_ranges The sorted fragment cell ranges output by
    *     the function as a result.

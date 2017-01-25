@@ -30,7 +30,7 @@
  * It shows how to read from a dense array, resetting attributes and subarray.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstdio>
 
 int main() {

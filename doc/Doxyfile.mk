@@ -755,7 +755,7 @@ WARN_LOGFILE           =
 
 #INPUT                  = ./headers
 # See Makefile, src file generated from Makefile
-@INCLUDE = doxyfile.inc
+@INCLUDE = doxyfile.in
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses

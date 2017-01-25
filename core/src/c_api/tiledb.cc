@@ -1,5 +1,5 @@
 /**
- * @file   c_api.cc
+ * @file   tiledb.cc
  *
  * @section LICENSE
  *
@@ -31,7 +31,7 @@
  */
 
 #include "aio_request.h"
-#include "c_api.h"
+#include "tiledb.h"
 #include "array_schema_c.h"
 #include "storage_manager.h"
 #include "storage_manager_config.h"
@@ -43,7 +43,7 @@
 /*             MACROS             */
 /* ****************************** */
 
-#ifdef VERBOSE
+#ifdef TILEDB_VERBOSE
 #  define PRINT_ERROR(x) std::cerr << TILEDB_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 

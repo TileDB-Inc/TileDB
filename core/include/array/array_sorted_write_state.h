@@ -60,6 +60,7 @@
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
 
+/** Stores potential error messages. */
 extern std::string tiledb_asws_errmsg;
 
 
@@ -323,7 +324,7 @@ class ArraySortedWriteState {
    * the CopyState and TileSlabState. 
    * Used in copy_tile_slab(). 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASWS_Data object.
    * @return void
    */
@@ -335,7 +336,7 @@ class ArraySortedWriteState {
    * the CopyState and TileSlabState. 
    * Used in copy_tile_slab(). 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASWS_Data object.
    * @return void
    */
@@ -345,7 +346,7 @@ class ArraySortedWriteState {
   /** 
    * Advances a cell slab when the requested order is column-major. 
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param aid The id of the attribute in attribute_ids_ to focus on.
    * @return void
    */
@@ -355,7 +356,7 @@ class ArraySortedWriteState {
   /** 
    * Advances a cell slab when the requested order is row-major. 
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param aid The id of the attribute in attribute_ids_ to focus on.
    * @return void
    */
@@ -396,7 +397,7 @@ class ArraySortedWriteState {
    * where the **user** cell order is column-major and the **array** cell 
    * order is column-major.
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASWS_Data object.
    * @return void
    */
@@ -408,7 +409,7 @@ class ArraySortedWriteState {
    * where the **user** cell order is column-major and the **array** cell 
    * order is row-major.
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASWS_Data object.
    * @return void
    */
@@ -420,7 +421,7 @@ class ArraySortedWriteState {
    * where the **user** cell order in row-major and the **array** cell 
    * order is column-major.
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a AWRS_Data object.
    * @return void
    */
@@ -432,7 +433,7 @@ class ArraySortedWriteState {
    * where the **user** cell order is row-major and the **array** cell 
    * order is row-major.
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a AWRS_Data object.
    * @return void
    */
@@ -444,7 +445,7 @@ class ArraySortedWriteState {
    * where the **user** cell order is column-major and the **array** cell 
    * order is column-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @param tid The tile id.
    * @return void.
@@ -457,7 +458,7 @@ class ArraySortedWriteState {
    * where the **user** cell order is column-major and the **array** cell 
    * order is row-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @param tid The tile id.
    * @return void.
@@ -470,7 +471,7 @@ class ArraySortedWriteState {
    * where the **user** cell order is row-major and the **array** cell 
    * order is row-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @param tid The tile id.
    * @return void.
@@ -483,7 +484,7 @@ class ArraySortedWriteState {
    * where the **user** cell order is row-major and the **array** cell 
    * order is column-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @param tid The tile id.
    * @return void.
@@ -495,7 +496,7 @@ class ArraySortedWriteState {
    * Calculates the info used in the copy_tile_slab() function, for the case
    * where the **array** cell order is row-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @param tid The tile id.
    * @return void.
@@ -507,7 +508,7 @@ class ArraySortedWriteState {
    * Calculates the **normalized** tile domain overlapped by the input tile 
    * slab. Note that this domain is the same for all tile slabs
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @return void.
    */ 
@@ -517,7 +518,7 @@ class ArraySortedWriteState {
   /** 
    * Calculates the info used in the copy_tile_slab() function.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @return void.
    */
@@ -528,7 +529,7 @@ class ArraySortedWriteState {
    * Calculates tile slab info for the case where the **array** tile order is
    * column-major
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASWS_Data object.
    * @return void
    */
@@ -539,7 +540,7 @@ class ArraySortedWriteState {
    * Calculates the info used in the copy_tile_slab() function, for the case
    * where the **array** tile order is column-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @return void.
    */
@@ -550,7 +551,7 @@ class ArraySortedWriteState {
    * Calculates tile slab info for the case where the **array** tile order is
    * row-major
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param data Essentially a pointer to a ASWS_Data object.
    * @return void
    */
@@ -561,7 +562,7 @@ class ArraySortedWriteState {
    * Calculates the info used in the copy_tile_slab() function, for the case
    * where the **array** tile order is row-major.
    *
-   * @param T The domain type.
+   * @tparam T The domain type.
    * @param id The tile slab id.
    * @return void.
    */
@@ -591,7 +592,7 @@ class ArraySortedWriteState {
    * properly re-organizing the cell order to fit the targeted order,
    * focusing on a particular fixed-length attribute.
    * 
-   * @template T The attribute type.
+   * @tparam T The attribute type.
    * @param aid The index on attribute_ids_ to focus on.
    * @param bid The index on the copy state buffers to focus on.
    * @return void.
@@ -604,7 +605,7 @@ class ArraySortedWriteState {
    * properly re-organizing the cell order to fit the targeted order,
    * focusing on a particular variable-length attribute.
    * 
-   * @template T The attribute type.
+   * @tparam T The attribute type.
    * @param aid The index on attribute_ids_ to focus on.
    * @param bid The index on the copy state buffers to focus on.
    * @return void.
@@ -633,7 +634,7 @@ class ArraySortedWriteState {
    * with empty values, based on the template type. Applicable only to
    * fixed-sized attributes.
    *
-   * @template T The attribute type.
+   * @tparam T The attribute type.
    * @param bid The buffer id corresponding to the targeted attribute.
    * @return void
    */
@@ -645,7 +646,7 @@ class ArraySortedWriteState {
    * tile slab with the input id with an empty value, based on the template t
    * ype. Applicable only to variable-sized attributes.
    *
-   * @template T The attribute type.
+   * @tparam T The attribute type.
    * @param bid The buffer id corresponding to the targeted attribute.
    * @return void
    */
@@ -665,7 +666,7 @@ class ArraySortedWriteState {
    * Returns the cell id along the **array** order for the current coordinates
    * in the tile slab state for a particular attribute. 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param aid The targeted attribute.
    * @return The cell id. 
    */
@@ -676,7 +677,7 @@ class ArraySortedWriteState {
    * Returns the tile id along the **array** order for the current coordinates
    * in the tile slab state for a particular attribute. 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param aid The targeted attribute.
    * @return The tile id. 
    */
@@ -686,7 +687,7 @@ class ArraySortedWriteState {
   /** 
    * Handles the AIO requests. 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return void.
    */
   template<class T>
@@ -705,7 +706,7 @@ class ArraySortedWriteState {
    * Initializes the tile slab info for a particular tile slab, using the
    * input tile number.
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @param id The slab id.
    * @return void.
    */
@@ -732,7 +733,7 @@ class ArraySortedWriteState {
   /** 
    * Retrieves the next column tile slab to be processed. 
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return True if the next tile slab was retrieved, and false otherwise.
    */
   template<class T>
@@ -741,7 +742,7 @@ class ArraySortedWriteState {
   /** 
    * Retrieves the next row tile slab to be processed. 
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return True if the next tile slab was retrieved, and false otherwise.
    */
   template<class T>
@@ -753,7 +754,7 @@ class ArraySortedWriteState {
    * will fail if there is not enough system memory to hold the cells of a 
    * 'tile slab' overlapping with the selected subarray.
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
   template<class T>
@@ -763,7 +764,7 @@ class ArraySortedWriteState {
    * Same as write(), but the cells are provided by the user sorted in 
    * column-major order with respect to the selected subarray. 
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
   template<class T>
@@ -773,7 +774,7 @@ class ArraySortedWriteState {
    * Same as write(), but the cells are provided by the user sorted in 
    * row-major order with respect to the selected subarray. 
    * 
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
   template<class T>
@@ -801,7 +802,7 @@ class ArraySortedWriteState {
   /** 
    * Resets the tile_coords_ auxiliary variable. 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return void.
    */
   template<class T> 
@@ -810,7 +811,7 @@ class ArraySortedWriteState {
   /** 
    * Resets the tile slab state. 
    *
-   * @template T The domain type.
+   * @tparam T The domain type.
    * @return void.
    */
   template<class T> 
@@ -851,7 +852,7 @@ class ArraySortedWriteState {
    * Calculates the new tile and local buffer offset for the new (already 
    * computed) current cell coordinates in the tile slab. 
    *
-   * @template T The domain type
+   * @tparam T The domain type
    * @param aid The attribute id to focus on.
    * @return void.
    */

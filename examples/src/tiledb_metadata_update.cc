@@ -30,7 +30,7 @@
  * It shows how to modify or delete a metadata item.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 
 int main() {
   // Initialize context with the default configuration parameters

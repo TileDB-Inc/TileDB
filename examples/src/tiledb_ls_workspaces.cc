@@ -30,7 +30,7 @@
  * It shows how to list the TileDB workspaces.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstdio>
 #include <cstdlib>
 

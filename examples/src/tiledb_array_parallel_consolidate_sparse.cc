@@ -32,7 +32,7 @@
  * program for OpenMP.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <pthread.h>
 #include <stdio.h>
 

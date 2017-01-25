@@ -30,7 +30,7 @@
  * It shows how to read from metadata.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstdio>
 
 int main(int argc, char** argv) {

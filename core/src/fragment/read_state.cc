@@ -52,7 +52,7 @@
 /*             MACROS             */
 /* ****************************** */
 
-#ifdef VERBOSE
+#ifdef TILEDB_VERBOSE
 #  define PRINT_ERROR(x) std::cerr << TILEDB_RS_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 

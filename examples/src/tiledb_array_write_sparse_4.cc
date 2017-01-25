@@ -30,7 +30,7 @@
  * It shows how to write unsorted cells to a sparse array with two batch writes.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 
 int main() {
   // Initialize context with the default configuration parameters

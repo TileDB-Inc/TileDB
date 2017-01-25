@@ -1,5 +1,5 @@
 /**
- * @file   constants.h
+ * @file   tiledb_constants.h
  *
  * @section LICENSE
  *
@@ -30,14 +30,14 @@
  * This file contains global constants. 
  */
 
-#ifndef __CONSTANTS_H__
-#define __CONSTANTS_H__
+#ifndef __TILEDB_CONSTANTS_H__
+#define __TILEDB_CONSTANTS_H__
 
 #include <float.h>
 #include <limits.h>
 
 /** Version. */
-#define TILEDB_VERSION                          "0.5.0"
+#define TILEDB_VERSION                          "0.5.1"
 
 /**@{*/
 /** Return code. */  

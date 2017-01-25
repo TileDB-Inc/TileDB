@@ -31,10 +31,9 @@
  */
 
 #include "comparators.h"
-#include "constants.h"
+#include "tiledb_constants.h"
 #include "utils.h"
 #include "write_state.h"
-#include "utils.h"
 #include <blosc.h>
 #include <cassert>
 #include <cmath>
@@ -52,7 +51,7 @@
 /*             MACROS             */
 /* ****************************** */
 
-#ifdef VERBOSE
+#ifdef TILEDB_VERBOSE
 #  define PRINT_ERROR(x) std::cerr << TILEDB_WS_ERRMSG << x << ".\n" 
 #else
 #  define PRINT_ERROR(x) do { } while(0) 

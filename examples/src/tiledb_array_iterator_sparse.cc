@@ -30,7 +30,7 @@
  * It shows how to use an iterator for sparse arrays.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstdio>
 
 int main() {

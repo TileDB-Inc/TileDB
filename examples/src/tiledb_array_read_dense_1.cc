@@ -30,7 +30,7 @@
  * It shows how to read a complete dense array.
  */
 
-#include "c_api.h"
+#include "tiledb.h"
 #include <cstdio>
 
 int main() {
