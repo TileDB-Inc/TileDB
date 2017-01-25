@@ -36,11 +36,9 @@ install:
     # Install lcov to coveralls conversion + upload tool
     - gem install coveralls-lcov
     # Build TileDB
-    - echo $TILEDB_BUILD_DIR
-    - rm -rf * $TILEDB_BUILD_DIR
+    - rm -rf $TILEDB_BUILD_DIR
     - mkdir -p $TILEDB_BUILD_DIR
     - cd $TILEDB_BUILD_DIR
-    - ls ..
     - cmake .. -DCMAKE_BUILD_TYPE=Coverage 
     - make -j 4
 
