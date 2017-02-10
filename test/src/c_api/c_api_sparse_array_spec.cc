@@ -273,7 +273,7 @@ int SparseArrayTestFixture::write_sparse_array_unsorted_2D(
  * Test is to randomly read subregions of the array and
  * check with corresponding value set by row_id*dim1+col_id
  * Top left corner is always 4,4
- * Test runs through 100 iterations to choose random
+ * Test runs through 10 iterations to choose random
  * width and height of the subregions
  */
 TEST_F(SparseArrayTestFixture, test_random_sparse_sorted_reads) {
@@ -292,7 +292,7 @@ TEST_F(SparseArrayTestFixture, test_random_sparse_sorted_reads) {
   int64_t capacity = 0; // 0 means use default capacity
   int cell_order = TILEDB_ROW_MAJOR;
   int tile_order = TILEDB_ROW_MAJOR;
-  int iter_num = 100;
+  int iter_num = 10;
 
   // Set array name
   set_array_name("sparse_test_5000x1000_100x100");

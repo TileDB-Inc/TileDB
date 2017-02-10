@@ -68,6 +68,8 @@ TEST_F(UtilsTestFixture, test_RLE) {
   value_size = sizeof(int);
 
   // Test empty bufffer
+
+
   rc = RLE_compress(input, input_size, compressed, compressed_size, value_size);
   ASSERT_EQ(rc, 0);
 
@@ -184,7 +186,6 @@ TEST_F(UtilsTestFixture, test_RLE) {
   run_size = value_size + 2;
 
   // Test a mix of short and long runs
-  double dv = 0.234;
   double j = 0.1, k = 0.2;
   for(int i=0; i<10; ++i) { 
     j+= 10000.12;
