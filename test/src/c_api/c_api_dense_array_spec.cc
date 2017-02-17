@@ -482,7 +482,7 @@ int DenseArrayTestFixture::write_dense_subarray_2D(
 
 
 /**
- * Tests 100 random 2D subarrays and checks if the value of each cell is equal 
+ * Tests 10 random 2D subarrays and checks if the value of each cell is equal 
  * to row_id*dim1+col_id. Top left corner is always 4,4. 
  */
 TEST_F(DenseArrayTestFixture, test_random_dense_sorted_reads) {
@@ -501,7 +501,7 @@ TEST_F(DenseArrayTestFixture, test_random_dense_sorted_reads) {
   int64_t capacity = 0; // 0 means use default capacity
   int cell_order = TILEDB_ROW_MAJOR;
   int tile_order = TILEDB_ROW_MAJOR;
-  int iter_num = 100;
+  int iter_num = 10;
 
   // Set array name
   set_array_name("dense_test_5000x10000_100x100");
@@ -601,7 +601,7 @@ TEST_F(DenseArrayTestFixture, test_random_dense_sorted_writes) {
   int64_t capacity = 0; // 0 means use default capacity
   int cell_order = TILEDB_ROW_MAJOR;
   int tile_order = TILEDB_ROW_MAJOR;
-  int iter_num = 100;
+  int iter_num = 10;
 
   // Set array name
   set_array_name("dense_test_100x100_10x10");
