@@ -89,10 +89,9 @@ Array::~Array() {
   if(array_sorted_write_state_ != NULL)
     delete array_sorted_write_state_;
 
-  // Applicable only to clones
+  // Applicable only to non-clones
   if(array_clone_ != NULL) {
     delete array_clone_;
-  } else { // Applicable only to (non-clone) arrays
     if(array_schema_ != NULL)
       delete array_schema_;
     if(subarray_ != NULL)
@@ -604,10 +603,13 @@ int Array::init(
 
     // For the case of the clone sparse array, append coordinates if they do
     // not exist already
-    if(sparse && array_clone == NULL && !coords_found)
+    if(sparse                   && 
+       array_clone == NULL      && 
+       !coords_found            && 
+       !is_metadata(array_schema->array_name()))
       attributes_vec.push_back(TILEDB_COORDS);
   }
-  
+
   // Set attribute ids
   if(array_schema->get_attribute_ids(attributes_vec, attribute_ids_) 
          != TILEDB_AS_OK) {
