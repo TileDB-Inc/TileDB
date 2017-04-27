@@ -1848,7 +1848,7 @@ int64_t ArraySchema::tile_id(const T* cell_coords) const {
   for(int i=0; i<dim_num_; ++i)
     tile_coords[i] = (cell_coords[i] - domain[2*i]) / tile_extents[i]; 
 
-  int tile_id = get_tile_pos(tile_coords);
+  int64_t tile_id = get_tile_pos(tile_coords);
 
   // Return
   return tile_id;
