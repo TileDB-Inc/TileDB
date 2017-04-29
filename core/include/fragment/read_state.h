@@ -679,6 +679,22 @@ class ReadState {
       unsigned char* tile,
       size_t tile_size);
 
+  /**
+   * Decompresses a tile with BZIP2.
+   * 
+   * @param tile_compressed The compressed tile to be decompressed.
+   * @param tile_compressed_size The size of the compressed tile.
+   * @param tile The resulting decompressed tile.
+   * @param tile_size The expected size of the decompressed tile (for checking 
+   *     for errors).
+   * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
+   */
+  int decompress_tile_bzip2(
+      unsigned char* tile_compressed,
+      size_t tile_compressed_size,
+      unsigned char* tile,
+      size_t tile_size);
+
   /** 
    * Returns the cell position in the search tile that is after the
    * input coordinates.

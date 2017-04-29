@@ -246,6 +246,7 @@ typedef struct TileDB_ArraySchema {
    *    - TILEDB_BLOSC_ZLIB 
    *    - TILEDB_BLOSC_ZSTD 
    *    - TILEDB_RLE
+   *    - TILEDB_BZIP2
    *
    * If it is *NULL*, then the default TILEDB_NO_COMPRESSION is used for all
    * attributes.
@@ -771,6 +772,7 @@ typedef struct TileDB_MetadataSchema {
    *    - TILEDB_BLOSC_ZLIB 
    *    - TILEDB_BLOSC_ZSTD 
    *    - TILEDB_RLE
+   *    - TILEDB_BZIP2
    *
    * If it is *NULL*, then the default TILEDB_NO_COMPRESSION is used for all
    * attributes.

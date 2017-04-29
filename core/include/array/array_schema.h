@@ -733,6 +733,7 @@ class ArraySchema {
    *    - TILEDB_BLOSC_ZLIB 
    *    - TILEDB_BLOSC_ZSTD 
    *    - TILEDB_RLE 
+   *    - TILEDB_BZIP2 
    */
   std::vector<int> compression_;
   /** Auxiliary variable used when calculating Hilbert ids. */

@@ -35,6 +35,7 @@
 #include "utils.h"
 #include "write_state.h"
 #include <blosc.h>
+#include <bzlib.h>
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -516,6 +517,11 @@ int WriteState::compress_tile(
                tile, 
                tile_size, 
                tile_compressed_size);
+  else if(compression == TILEDB_BZIP2)
+    return compress_tile_bzip2(
+               tile, 
+               tile_size, 
+               tile_compressed_size);
 
   // Error
   assert(0);
@@ -776,6 +782,46 @@ int WriteState::compress_tile_rle(
 
   // Set actual output size
   tile_compressed_size = (size_t) rle_size;
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
+int WriteState::compress_tile_bzip2(
+    unsigned char* tile, 
+    size_t tile_size,
+    size_t& tile_compressed_size) {
+  // Allocate space to store the compressed tile
+  if(tile_compressed_ == NULL) {
+    tile_compressed_allocated_size_ = tile_size; 
+    tile_compressed_ = malloc(tile_size); 
+  }
+
+  // Compress tile
+  unsigned int destLen = tile_compressed_allocated_size_;
+  int rc;
+  while((rc = BZ2_bzBuffToBuffCompress(
+            (char*) tile_compressed_,
+            &destLen,
+            (char*) tile,
+            tile_size,
+            9,
+            0,
+            0)) == BZ_OUTBUFF_FULL) {
+    expand_buffer(tile_compressed_, tile_compressed_allocated_size_);
+    destLen = tile_compressed_allocated_size_;
+  }
+
+  // Check for error
+  if(rc != BZ_OK) {
+    std::string errmsg = "Failed compressing with BZIP2";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+  }
+
+  // Set tile compressed size
+  tile_compressed_size = destLen;
 
   // Success
   return TILEDB_WS_OK;
