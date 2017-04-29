@@ -37,7 +37,7 @@
 #include <limits.h>
 
 /** Version. */
-#define TILEDB_VERSION                          "0.5.2"
+#define TILEDB_VERSION                          "0.6.0"
 
 /**@{*/
 /** Return code. */  
@@ -102,10 +102,16 @@
 /**@{*/
 /** Special empty cell value. */
 #define TILEDB_EMPTY_INT32                     INT_MAX
-#define TILEDB_EMPTY_INT64                   LLONG_MAX
+#define TILEDB_EMPTY_INT64                   INT64_MAX
 #define TILEDB_EMPTY_FLOAT32                   FLT_MAX
 #define TILEDB_EMPTY_FLOAT64                   DBL_MAX
 #define TILEDB_EMPTY_CHAR                     CHAR_MAX
+#define TILEDB_EMPTY_INT8                     INT8_MAX
+#define TILEDB_EMPTY_UINT8                   UINT8_MAX
+#define TILEDB_EMPTY_INT16                   INT16_MAX
+#define TILEDB_EMPTY_UINT16                 UINT16_MAX
+#define TILEDB_EMPTY_UINT32                 UINT32_MAX
+#define TILEDB_EMPTY_UINT64                 UINT64_MAX
 /**@}*/
 
 /**@{*/
@@ -121,6 +127,12 @@
 #define TILEDB_FLOAT32                               2
 #define TILEDB_FLOAT64                               3
 #define TILEDB_CHAR                                  4
+#define TILEDB_INT8                                  5
+#define TILEDB_UINT8                                 6
+#define TILEDB_INT16                                 7
+#define TILEDB_UINT16                                8
+#define TILEDB_UINT32                                9
+#define TILEDB_UINT64                               10
 /**@}*/
 
 /**@{*/
