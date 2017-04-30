@@ -33,6 +33,7 @@
 #include "utils.h"
 #include "read_state.h"
 #include <blosc.h>
+#include <bzlib.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -1506,6 +1507,12 @@ int ReadState::decompress_tile(
                tile_compressed_size, 
                tile, 
                tile_size);
+  else if(compression == TILEDB_BZIP2)
+    return decompress_tile_bzip2(
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size);
 
   // Error
   assert(0);
@@ -1670,6 +1677,33 @@ int ReadState::decompress_tile_rle(
   // Success
   return TILEDB_RS_OK;
 }
+
+int ReadState::decompress_tile_bzip2(
+    unsigned char* tile_compressed,
+    size_t tile_compressed_size,
+    unsigned char* tile,
+    size_t tile_size) {
+  // Decompress tile
+  unsigned int destLen = tile_size;
+  int rc = BZ2_bzBuffToBuffDecompress(
+              (char*) tile,
+              &destLen,
+              (char*) tile_compressed,
+              tile_compressed_size,
+              0,
+              0);
+
+  // Check for error
+  if(rc != BZ_OK) {
+    std::string errmsg = "Failed decompressing with BZIP2";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+  }
+
+  // Success
+  return TILEDB_RS_OK;
+} 
 
 template<class T>
 int64_t ReadState::get_cell_pos_after(const T* coords) {

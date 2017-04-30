@@ -10,8 +10,10 @@ env:
 install:
     # Install cmake, lcov, MPICH
     - sudo apt-get -y install cmake lcov mpich 
-    # Install zlib, OpenSSL, Gtest and LZ4
-    - sudo apt-get -y install zlib1g-dev libssl-dev libgtest-dev liblz4-dev
+    # Install zlib, bzip2 and LZ4
+    - sudo apt-get -y install zlib1g-dev libbz2-dev liblz4-dev
+    # Install OpenSSL and Gtest
+    - sudo apt-get -y install libssl-dev libgtest-dev
     # Install Zstandard
     - wget https://github.com/facebook/zstd/archive/v1.0.0.tar.gz
     - tar xf v1.0.0.tar.gz

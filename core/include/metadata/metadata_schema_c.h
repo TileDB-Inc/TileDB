@@ -71,6 +71,7 @@ typedef struct MetadataSchemaC {
    *    - TILEDB_BLOSC_ZLIB 
    *    - TILEDB_BLOSC_ZSTD 
    *    - TILEDB_RLE 
+   *    - TILEDB_BZIP2 
    */
   int* compression_;
   /** 

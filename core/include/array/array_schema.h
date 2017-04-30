@@ -416,7 +416,7 @@ class ArraySchema {
    * Sets the tile order. Supported tile orders. 
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR
-   *    - TILEDB_HILBSERT
+   *    - TILEDB_HILBERT
    *
    * @param tile_order The tile order.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
@@ -432,12 +432,24 @@ class ArraySchema {
    *     - TILEDB_INT64
    *     - TILEDB_FLOAT32
    *     - TILEDB_FLOAT64
+   *     - TILEDB_INT8
+   *     - TILEDB_UINT8
+   *     - TILEDB_INT16
+   *     - TILEDB_UINT16
+   *     - TILEDB_UINT32
+   *     - TILEDB_UINT64
    *
    * The supported types for the coordinates are:
    *     - TILEDB_INT32
    *     - TILEDB_INT64
    *     - TILEDB_FLOAT32
    *     - TILEDB_FLOAT64
+   *     - TILEDB_INT8
+   *     - TILEDB_UINT8
+   *     - TILEDB_INT16
+   *     - TILEDB_UINT16
+   *     - TILEDB_UINT32
+   *     - TILEDB_UINT64
    *
    * @param types The types.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
@@ -695,7 +707,7 @@ class ArraySchema {
    * The cell order. It can be one of the following:
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR
-   *    - TILEDB_HILBERT. 
+   *    - TILEDB_HILBERT 
    */
   int cell_order_;
   /** Stores the size of every attribute (plus coordinates in the end). */
@@ -721,6 +733,7 @@ class ArraySchema {
    *    - TILEDB_BLOSC_ZLIB 
    *    - TILEDB_BLOSC_ZSTD 
    *    - TILEDB_RLE 
+   *    - TILEDB_BZIP2 
    */
   std::vector<int> compression_;
   /** Auxiliary variable used when calculating Hilbert ids. */
@@ -775,7 +788,7 @@ class ArraySchema {
   /** 
    * The tile order. It can be one of the following:
    *    - TILEDB_ROW_MAJOR
-   *    - TILEDB_COL_MAJOR. 
+   *    - TILEDB_COL_MAJOR 
    */
   int tile_order_;
   /** 
@@ -786,12 +799,24 @@ class ArraySchema {
    *    - TILEDB_FLOAT32
    *    - TILEDB_FLOAT64
    *    - TILEDB_CHAR 
+   *    - TILEDB_INT8
+   *    - TILEDB_UINT8
+   *    - TILEDB_INT16
+   *    - TILEDB_UINT16
+   *    - TILEDB_UINT32
+   *    - TILEDB_UINT64
    *
    * The coordinate type can be one of the following: 
    *    - TILEDB_INT32
    *    - TILEDB_INT64
    *    - TILEDB_FLOAT32
    *    - TILEDB_FLOAT64
+   *    - TILEDB_INT8
+   *    - TILEDB_UINT8
+   *    - TILEDB_INT16
+   *    - TILEDB_UINT16
+   *    - TILEDB_UINT32
+   *    - TILEDB_UINT64
    */
   std::vector<int> types_;
   /** Stores the size of every attribute type (plus coordinates in the end). */

@@ -6,4 +6,4 @@ The installation guide for TileDB can be found at this [Github
 Wiki](https://github.com/TileDB-Inc/TileDB/wiki).
 
 The TileDB C API documentation and tutorials can be
-found at the [TileDB official website](http://istc-bigdata.org/tiledb).
+found at the [TileDB official website](http://www.tiledb.org).
