@@ -807,7 +807,7 @@ int WriteState::compress_tile_bzip2(
             tile_size,
             9,
             0,
-            0)) == BZ_OUTBUFF_FULL) {
+            30)) == BZ_OUTBUFF_FULL) {
     expand_buffer(tile_compressed_, tile_compressed_allocated_size_);
     destLen = tile_compressed_allocated_size_;
   }
