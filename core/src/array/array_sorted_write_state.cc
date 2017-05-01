@@ -48,7 +48,8 @@
 #  define PRINT_ERROR(x) do { } while(0) 
 #endif
 
-
+#define MIN(a,b) ((a) < (b) ? (a) : (b))
+#define MAX(a,b) ((a) > (b) ? (a) : (b))
 
 
 /* ****************************** */
@@ -225,6 +226,42 @@ int ArraySortedWriteState::init() {
           (cell_order == TILEDB_ROW_MAJOR) ?
            calculate_cell_slab_info_row_row_s<int64_t> :
            calculate_cell_slab_info_row_col_s<int64_t>;
+    } else if(coords_type == TILEDB_INT8) {
+      advance_cell_slab_ = advance_cell_slab_row_s<int8_t>;
+      calculate_cell_slab_info_ = 
+          (cell_order == TILEDB_ROW_MAJOR) ?
+           calculate_cell_slab_info_row_row_s<int8_t> :
+           calculate_cell_slab_info_row_col_s<int8_t>;
+    } else if(coords_type == TILEDB_UINT8) {
+      advance_cell_slab_ = advance_cell_slab_row_s<uint8_t>;
+      calculate_cell_slab_info_ = 
+          (cell_order == TILEDB_ROW_MAJOR) ?
+           calculate_cell_slab_info_row_row_s<uint8_t> :
+           calculate_cell_slab_info_row_col_s<uint8_t>;
+    } else if(coords_type == TILEDB_INT16) {
+      advance_cell_slab_ = advance_cell_slab_row_s<int16_t>;
+      calculate_cell_slab_info_ = 
+          (cell_order == TILEDB_ROW_MAJOR) ?
+           calculate_cell_slab_info_row_row_s<int16_t> :
+           calculate_cell_slab_info_row_col_s<int16_t>;
+    } else if(coords_type == TILEDB_UINT16) {
+      advance_cell_slab_ = advance_cell_slab_row_s<uint16_t>;
+      calculate_cell_slab_info_ = 
+          (cell_order == TILEDB_ROW_MAJOR) ?
+           calculate_cell_slab_info_row_row_s<uint16_t> :
+           calculate_cell_slab_info_row_col_s<uint16_t>;
+    } else if(coords_type == TILEDB_UINT32) {
+      advance_cell_slab_ = advance_cell_slab_row_s<uint32_t>;
+      calculate_cell_slab_info_ = 
+          (cell_order == TILEDB_ROW_MAJOR) ?
+           calculate_cell_slab_info_row_row_s<uint32_t> :
+           calculate_cell_slab_info_row_col_s<uint32_t>;
+    } else if(coords_type == TILEDB_UINT64) {
+      advance_cell_slab_ = advance_cell_slab_row_s<uint64_t>;
+      calculate_cell_slab_info_ = 
+          (cell_order == TILEDB_ROW_MAJOR) ?
+           calculate_cell_slab_info_row_row_s<uint64_t> :
+           calculate_cell_slab_info_row_col_s<uint64_t>;
     } else {
       assert(0);
     }
@@ -241,6 +278,42 @@ int ArraySortedWriteState::init() {
           (cell_order == TILEDB_ROW_MAJOR) ?
            calculate_cell_slab_info_col_row_s<int64_t> :
            calculate_cell_slab_info_col_col_s<int64_t>;
+    } else if(coords_type == TILEDB_INT8) {
+      advance_cell_slab_ = advance_cell_slab_col_s<int8_t>;
+      calculate_cell_slab_info_ = 
+          (cell_order == TILEDB_ROW_MAJOR) ?
+           calculate_cell_slab_info_col_row_s<int8_t> :
+           calculate_cell_slab_info_col_col_s<int8_t>;
+    } else if(coords_type == TILEDB_UINT8) {
+      advance_cell_slab_ = advance_cell_slab_col_s<uint8_t>;
+      calculate_cell_slab_info_ = 
+          (cell_order == TILEDB_ROW_MAJOR) ?
+           calculate_cell_slab_info_col_row_s<uint8_t> :
+           calculate_cell_slab_info_col_col_s<uint8_t>;
+    } else if(coords_type == TILEDB_INT16) {
+      advance_cell_slab_ = advance_cell_slab_col_s<int16_t>;
+      calculate_cell_slab_info_ = 
+          (cell_order == TILEDB_ROW_MAJOR) ?
+           calculate_cell_slab_info_col_row_s<int16_t> :
+           calculate_cell_slab_info_col_col_s<int16_t>;
+    } else if(coords_type == TILEDB_UINT16) {
+      advance_cell_slab_ = advance_cell_slab_col_s<uint16_t>;
+      calculate_cell_slab_info_ = 
+          (cell_order == TILEDB_ROW_MAJOR) ?
+           calculate_cell_slab_info_col_row_s<uint16_t> :
+           calculate_cell_slab_info_col_col_s<uint16_t>;
+    } else if(coords_type == TILEDB_UINT32) {
+      advance_cell_slab_ = advance_cell_slab_col_s<uint32_t>;
+      calculate_cell_slab_info_ = 
+          (cell_order == TILEDB_ROW_MAJOR) ?
+           calculate_cell_slab_info_col_row_s<uint32_t> :
+           calculate_cell_slab_info_col_col_s<uint32_t>;
+    } else if(coords_type == TILEDB_UINT64) {
+      advance_cell_slab_ = advance_cell_slab_col_s<uint64_t>;
+      calculate_cell_slab_info_ = 
+          (cell_order == TILEDB_ROW_MAJOR) ?
+           calculate_cell_slab_info_col_row_s<uint64_t> :
+           calculate_cell_slab_info_col_col_s<uint64_t>;
     } else {
       assert(0);
     }
@@ -250,6 +323,18 @@ int ArraySortedWriteState::init() {
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<int>;
     else if(coords_type == TILEDB_INT64) 
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<int64_t>;
+    else if(coords_type == TILEDB_INT8) 
+      calculate_tile_slab_info_ = calculate_tile_slab_info_row<int8_t>;
+    else if(coords_type == TILEDB_UINT8) 
+      calculate_tile_slab_info_ = calculate_tile_slab_info_row<uint8_t>;
+    else if(coords_type == TILEDB_INT16) 
+      calculate_tile_slab_info_ = calculate_tile_slab_info_row<int16_t>;
+    else if(coords_type == TILEDB_UINT16) 
+      calculate_tile_slab_info_ = calculate_tile_slab_info_row<uint16_t>;
+    else if(coords_type == TILEDB_UINT32) 
+      calculate_tile_slab_info_ = calculate_tile_slab_info_row<uint32_t>;
+    else if(coords_type == TILEDB_UINT64) 
+      calculate_tile_slab_info_ = calculate_tile_slab_info_row<uint64_t>;
     else 
       assert(0);
   } else { // tile_order == TILEDB_COL_MAJOR
@@ -257,6 +342,18 @@ int ArraySortedWriteState::init() {
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<int>;
     else if(coords_type == TILEDB_INT64) 
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<int64_t>;
+    else if(coords_type == TILEDB_INT8) 
+      calculate_tile_slab_info_ = calculate_tile_slab_info_col<int8_t>;
+    else if(coords_type == TILEDB_UINT8) 
+      calculate_tile_slab_info_ = calculate_tile_slab_info_col<uint8_t>;
+    else if(coords_type == TILEDB_INT16) 
+      calculate_tile_slab_info_ = calculate_tile_slab_info_col<int16_t>;
+    else if(coords_type == TILEDB_UINT16) 
+      calculate_tile_slab_info_ = calculate_tile_slab_info_col<uint16_t>;
+    else if(coords_type == TILEDB_UINT32) 
+      calculate_tile_slab_info_ = calculate_tile_slab_info_col<uint32_t>;
+    else if(coords_type == TILEDB_UINT64) 
+      calculate_tile_slab_info_ = calculate_tile_slab_info_col<uint64_t>;
     else 
       assert(0);
   }
@@ -297,6 +394,18 @@ int ArraySortedWriteState::write(
     return write<int>();
   } else if(type == TILEDB_INT64) {
     return write<int64_t>();
+  } else if(type == TILEDB_INT8) {
+    return write<int8_t>();
+  } else if(type == TILEDB_UINT8) {
+    return write<uint8_t>();
+  } else if(type == TILEDB_INT16) {
+    return write<int16_t>();
+  } else if(type == TILEDB_UINT16) {
+    return write<uint16_t>();
+  } else if(type == TILEDB_UINT32) {
+    return write<uint32_t>();
+  } else if(type == TILEDB_UINT64) {
+    return write<uint64_t>();
   } else {
     assert(0);
     return TILEDB_ASWS_ERR;
@@ -637,9 +746,9 @@ void ArraySortedWriteState::calculate_tile_slab_info_col(int id) {
     for(int i=0; i<dim_num_; ++i) {
       // Range overlap
       range_overlap[tid][2*i] = 
-          std::max(tile_coords[i] * tile_extents[i], tile_slab[2*i]);
+          MAX(tile_coords[i] * tile_extents[i], tile_slab[2*i]);
       range_overlap[tid][2*i+1] = 
-          std::min((tile_coords[i]+1) * tile_extents[i] - 1, tile_slab[2*i+1]);
+          MIN((tile_coords[i]+1) * tile_extents[i] - 1, tile_slab[2*i+1]);
 
       // Number of cells in this tile
       tile_cell_num *= tile_extents[i];
@@ -706,9 +815,9 @@ void ArraySortedWriteState::calculate_tile_slab_info_row(int id) {
     for(int i=0; i<dim_num_; ++i) {
       // Range overlap
       range_overlap[tid][2*i] = 
-          std::max(tile_coords[i] * tile_extents[i], tile_slab[2*i]);
+          MAX(tile_coords[i] * tile_extents[i], tile_slab[2*i]);
       range_overlap[tid][2*i+1] = 
-          std::min((tile_coords[i]+1) * tile_extents[i] - 1, tile_slab[2*i+1]);
+          MIN((tile_coords[i]+1) * tile_extents[i] - 1, tile_slab[2*i+1]);
 
       // Number of cells in this tile
       tile_cell_num *= tile_extents[i];
@@ -757,6 +866,18 @@ void *ArraySortedWriteState::aio_handler(void* context) {
     asws->handle_aio_requests<int>();
   else if(coords_type == TILEDB_INT64)
     asws->handle_aio_requests<int64_t>();
+  else if(coords_type == TILEDB_INT8)
+    asws->handle_aio_requests<int8_t>();
+  else if(coords_type == TILEDB_UINT8)
+    asws->handle_aio_requests<uint8_t>();
+  else if(coords_type == TILEDB_INT16)
+    asws->handle_aio_requests<int16_t>();
+  else if(coords_type == TILEDB_UINT16)
+    asws->handle_aio_requests<uint16_t>();
+  else if(coords_type == TILEDB_UINT32)
+    asws->handle_aio_requests<uint32_t>();
+  else if(coords_type == TILEDB_UINT64)
+    asws->handle_aio_requests<uint64_t>();
   else
     assert(0);
 
@@ -782,6 +903,20 @@ void ArraySortedWriteState::copy_tile_slab() {
         copy_tile_slab<double>(i, b); 
       else if(type == TILEDB_CHAR)
         copy_tile_slab<char>(i, b); 
+      else if(type == TILEDB_INT8)
+        copy_tile_slab<int8_t>(i, b); 
+      else if(type == TILEDB_INT8)
+        copy_tile_slab<int8_t>(i, b); 
+      else if(type == TILEDB_UINT8)
+        copy_tile_slab<uint8_t>(i, b); 
+      else if(type == TILEDB_INT16)
+        copy_tile_slab<int16_t>(i, b); 
+      else if(type == TILEDB_UINT16)
+        copy_tile_slab<uint16_t>(i, b); 
+      else if(type == TILEDB_UINT32)
+        copy_tile_slab<uint32_t>(i, b); 
+      else if(type == TILEDB_UINT64)
+        copy_tile_slab<uint64_t>(i, b); 
       ++b;
     } else {
       if(type == TILEDB_INT32)
@@ -794,6 +929,18 @@ void ArraySortedWriteState::copy_tile_slab() {
         copy_tile_slab_var<double>(i, b); 
       else if(type == TILEDB_CHAR)
         copy_tile_slab_var<char>(i, b); 
+      else if(type == TILEDB_INT8)
+        copy_tile_slab_var<int8_t>(i, b); 
+      else if(type == TILEDB_UINT8)
+        copy_tile_slab_var<uint8_t>(i, b); 
+      else if(type == TILEDB_INT16)
+        copy_tile_slab_var<int16_t>(i, b); 
+      else if(type == TILEDB_UINT16)
+        copy_tile_slab_var<uint16_t>(i, b); 
+      else if(type == TILEDB_UINT32)
+        copy_tile_slab_var<uint32_t>(i, b); 
+      else if(type == TILEDB_UINT64)
+        copy_tile_slab_var<uint64_t>(i, b); 
       b += 2;
     }
   }
@@ -1073,6 +1220,84 @@ void ArraySortedWriteState::fill_with_empty<char>(int bid) {
 }
 
 template<>
+void ArraySortedWriteState::fill_with_empty<int8_t>(int bid) {
+  // For easy reference
+  int8_t* local_buffer = (int8_t*) copy_state_.buffers_[copy_id_][bid];
+  size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
+  int8_t empty = TILEDB_EMPTY_INT8;
+
+  // Fill with empty values
+  size_t offset = 0;
+  for(int64_t i=0; offset < local_buffer_size; offset += sizeof(int8_t), ++i) 
+    local_buffer[i] = empty;
+}
+
+template<>
+void ArraySortedWriteState::fill_with_empty<uint8_t>(int bid) {
+  // For easy reference
+  uint8_t* local_buffer = (uint8_t*) copy_state_.buffers_[copy_id_][bid];
+  size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
+  uint8_t empty = TILEDB_EMPTY_UINT8;
+
+  // Fill with empty values
+  size_t offset = 0;
+  for(int64_t i=0; offset < local_buffer_size; offset += sizeof(uint8_t), ++i) 
+    local_buffer[i] = empty;
+}
+
+template<>
+void ArraySortedWriteState::fill_with_empty<int16_t>(int bid) {
+  // For easy reference
+  int16_t* local_buffer = (int16_t*) copy_state_.buffers_[copy_id_][bid];
+  size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
+  int16_t empty = TILEDB_EMPTY_INT16;
+
+  // Fill with empty values
+  size_t offset = 0;
+  for(int64_t i=0; offset < local_buffer_size; offset += sizeof(int16_t), ++i) 
+    local_buffer[i] = empty;
+}
+
+template<>
+void ArraySortedWriteState::fill_with_empty<uint16_t>(int bid) {
+  // For easy reference
+  uint16_t* local_buffer = (uint16_t*) copy_state_.buffers_[copy_id_][bid];
+  size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
+  uint16_t empty = TILEDB_EMPTY_UINT16;
+
+  // Fill with empty values
+  size_t offset = 0;
+  for(int64_t i=0; offset < local_buffer_size; offset += sizeof(uint16_t), ++i) 
+    local_buffer[i] = empty;
+}
+
+template<>
+void ArraySortedWriteState::fill_with_empty<uint32_t>(int bid) {
+  // For easy reference
+  uint32_t* local_buffer = (uint32_t*) copy_state_.buffers_[copy_id_][bid];
+  size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
+  uint32_t empty = TILEDB_EMPTY_UINT32;
+
+  // Fill with empty values
+  size_t offset = 0;
+  for(int64_t i=0; offset < local_buffer_size; offset += sizeof(uint32_t), ++i) 
+    local_buffer[i] = empty;
+}
+
+template<>
+void ArraySortedWriteState::fill_with_empty<uint64_t>(int bid) {
+  // For easy reference
+  uint64_t* local_buffer = (uint64_t*) copy_state_.buffers_[copy_id_][bid];
+  size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
+  uint64_t empty = TILEDB_EMPTY_UINT64;
+
+  // Fill with empty values
+  size_t offset = 0;
+  for(int64_t i=0; offset < local_buffer_size; offset += sizeof(uint64_t), ++i) 
+    local_buffer[i] = empty;
+}
+
+template<>
 void ArraySortedWriteState::fill_with_empty_var<int>(int bid) {
   // For easy reference
   char* local_buffer_var = (char*) copy_state_.buffers_[copy_id_][bid+1];
@@ -1125,6 +1350,72 @@ void ArraySortedWriteState::fill_with_empty_var<char>(int bid) {
 
   // Fill an empty value
   memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(char));
+}
+
+template<>
+void ArraySortedWriteState::fill_with_empty_var<int8_t>(int bid) {
+  // For easy reference
+  char* local_buffer_var = (char*) copy_state_.buffers_[copy_id_][bid+1];
+  size_t local_buffer_offset_var = copy_state_.buffer_offsets_[copy_id_][bid+1];
+  int8_t empty = TILEDB_EMPTY_INT8;
+
+  // Fill an empty value
+  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(int8_t));
+}
+
+template<>
+void ArraySortedWriteState::fill_with_empty_var<uint8_t>(int bid) {
+  // For easy reference
+  char* local_buffer_var = (char*) copy_state_.buffers_[copy_id_][bid+1];
+  size_t local_buffer_offset_var = copy_state_.buffer_offsets_[copy_id_][bid+1];
+  uint8_t empty = TILEDB_EMPTY_UINT8;
+
+  // Fill an empty value
+  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint8_t));
+}
+
+template<>
+void ArraySortedWriteState::fill_with_empty_var<int16_t>(int bid) {
+  // For easy reference
+  char* local_buffer_var = (char*) copy_state_.buffers_[copy_id_][bid+1];
+  size_t local_buffer_offset_var = copy_state_.buffer_offsets_[copy_id_][bid+1];
+  int16_t empty = TILEDB_EMPTY_INT16;
+
+  // Fill an empty value
+  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(int16_t));
+}
+
+template<>
+void ArraySortedWriteState::fill_with_empty_var<uint16_t>(int bid) {
+  // For easy reference
+  char* local_buffer_var = (char*) copy_state_.buffers_[copy_id_][bid+1];
+  size_t local_buffer_offset_var = copy_state_.buffer_offsets_[copy_id_][bid+1];
+  uint16_t empty = TILEDB_EMPTY_UINT16;
+
+  // Fill an empty value
+  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint16_t));
+}
+
+template<>
+void ArraySortedWriteState::fill_with_empty_var<uint32_t>(int bid) {
+  // For easy reference
+  char* local_buffer_var = (char*) copy_state_.buffers_[copy_id_][bid+1];
+  size_t local_buffer_offset_var = copy_state_.buffer_offsets_[copy_id_][bid+1];
+  uint32_t empty = TILEDB_EMPTY_UINT32;
+
+  // Fill an empty value
+  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint32_t));
+}
+
+template<>
+void ArraySortedWriteState::fill_with_empty_var<uint64_t>(int bid) {
+  // For easy reference
+  char* local_buffer_var = (char*) copy_state_.buffers_[copy_id_][bid+1];
+  size_t local_buffer_offset_var = copy_state_.buffer_offsets_[copy_id_][bid+1];
+  uint64_t empty = TILEDB_EMPTY_UINT64;
+
+  // Fill an empty value
+  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint64_t));
 }
 
 void ArraySortedWriteState::free_copy_state() {
@@ -1424,7 +1715,7 @@ bool ArraySortedWriteState::next_tile_slab_col() {
         (upper - domain[2*(dim_num_-1)]) / tile_extents[dim_num_-1] * 
         tile_extents[dim_num_-1] + domain[2*(dim_num_-1)];
     tile_slab[copy_id_][2*(dim_num_-1)+1] = 
-        std::min(cropped_upper - 1, subarray[2*(dim_num_-1)+1]); 
+        MIN(cropped_upper - 1, subarray[2*(dim_num_-1)+1]); 
 
     // Leave the rest of the subarray extents intact
     for(int i=0; i<dim_num_-1; ++i) {
@@ -1442,7 +1733,7 @@ bool ArraySortedWriteState::next_tile_slab_col() {
     tile_slab[copy_id_][2*(dim_num_-1)] = 
         tile_slab[copy_id_][2*(dim_num_-1)+1] + 1;
     tile_slab[copy_id_][2*(dim_num_-1)+1] = 
-        std::min(
+        MIN(
             tile_slab[copy_id_][2*(dim_num_-1)] + tile_extents[dim_num_-1] - 1,
             subarray[2*(dim_num_-1)+1]);
   }
@@ -1493,7 +1784,7 @@ bool ArraySortedWriteState::next_tile_slab_row() {
     T upper = subarray[0] + tile_extents[0];
     T cropped_upper = 
         (upper - domain[0]) / tile_extents[0] * tile_extents[0] + domain[0];
-    tile_slab[copy_id_][1] = std::min(cropped_upper - 1, subarray[1]); 
+    tile_slab[copy_id_][1] = MIN(cropped_upper - 1, subarray[1]); 
 
     // Leave the rest of the subarray extents intact
     for(int i=1; i<dim_num_; ++i) {
@@ -1509,7 +1800,7 @@ bool ArraySortedWriteState::next_tile_slab_row() {
 
     // Advance tile slab
     tile_slab[copy_id_][0] = tile_slab[copy_id_][1] + 1; 
-    tile_slab[copy_id_][1] = std::min(
+    tile_slab[copy_id_][1] = MIN(
                                 tile_slab[copy_id_][0] + tile_extents[0] - 1,
                                 subarray[1]);
   }
@@ -1768,6 +2059,18 @@ void ArraySortedWriteState::update_current_tile_and_offset(int aid) {
     update_current_tile_and_offset<float>(aid);
   else if(coords_type == TILEDB_FLOAT64)
     update_current_tile_and_offset<double>(aid);
+  else if(coords_type == TILEDB_INT8)
+    update_current_tile_and_offset<int8_t>(aid);
+  else if(coords_type == TILEDB_UINT8)
+    update_current_tile_and_offset<uint8_t>(aid);
+  else if(coords_type == TILEDB_INT16)
+    update_current_tile_and_offset<int16_t>(aid);
+  else if(coords_type == TILEDB_UINT16)
+    update_current_tile_and_offset<uint16_t>(aid);
+  else if(coords_type == TILEDB_UINT32)
+    update_current_tile_and_offset<uint32_t>(aid);
+  else if(coords_type == TILEDB_UINT64)
+    update_current_tile_and_offset<uint64_t>(aid);
   else
     assert(0);
 }
@@ -1842,7 +2145,19 @@ int ArraySortedWriteState::wait_copy(int id) {
 
 template int ArraySortedWriteState::write_sorted_col<int>();
 template int ArraySortedWriteState::write_sorted_col<int64_t>();
+template int ArraySortedWriteState::write_sorted_col<int8_t>();
+template int ArraySortedWriteState::write_sorted_col<uint8_t>();
+template int ArraySortedWriteState::write_sorted_col<int16_t>();
+template int ArraySortedWriteState::write_sorted_col<uint16_t>();
+template int ArraySortedWriteState::write_sorted_col<uint32_t>();
+template int ArraySortedWriteState::write_sorted_col<uint64_t>();
 
 template int ArraySortedWriteState::write_sorted_row<int>();
 template int ArraySortedWriteState::write_sorted_row<int64_t>();
+template int ArraySortedWriteState::write_sorted_row<int8_t>();
+template int ArraySortedWriteState::write_sorted_row<uint8_t>();
+template int ArraySortedWriteState::write_sorted_row<int16_t>();
+template int ArraySortedWriteState::write_sorted_row<uint16_t>();
+template int ArraySortedWriteState::write_sorted_row<uint32_t>();
+template int ArraySortedWriteState::write_sorted_row<uint64_t>();
 
