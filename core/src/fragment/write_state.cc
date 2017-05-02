@@ -1013,6 +1013,18 @@ void WriteState::sort_cell_pos(
     sort_cell_pos<float>(buffer, buffer_size, cell_pos);
   else if(coords_type == TILEDB_FLOAT64)
     sort_cell_pos<double>(buffer, buffer_size, cell_pos);
+  else if(coords_type == TILEDB_INT8)
+    sort_cell_pos<int8_t>(buffer, buffer_size, cell_pos);
+  else if(coords_type == TILEDB_UINT8)
+    sort_cell_pos<uint8_t>(buffer, buffer_size, cell_pos);
+  else if(coords_type == TILEDB_INT16)
+    sort_cell_pos<int16_t>(buffer, buffer_size, cell_pos);
+  else if(coords_type == TILEDB_UINT16)
+    sort_cell_pos<uint16_t>(buffer, buffer_size, cell_pos);
+  else if(coords_type == TILEDB_UINT32)
+    sort_cell_pos<uint32_t>(buffer, buffer_size, cell_pos);
+  else if(coords_type == TILEDB_UINT64)
+    sort_cell_pos<uint64_t>(buffer, buffer_size, cell_pos);
 }
 
 template<class T>
@@ -1102,6 +1114,18 @@ void WriteState::update_book_keeping(
     update_book_keeping<float>(buffer, buffer_size);
   else if(coords_type == TILEDB_FLOAT64)
     update_book_keeping<double>(buffer, buffer_size);
+  else if(coords_type == TILEDB_INT8)
+    update_book_keeping<int8_t>(buffer, buffer_size);
+  else if(coords_type == TILEDB_UINT8)
+    update_book_keeping<uint8_t>(buffer, buffer_size);
+  else if(coords_type == TILEDB_INT16)
+    update_book_keeping<int16_t>(buffer, buffer_size);
+  else if(coords_type == TILEDB_UINT16)
+    update_book_keeping<uint16_t>(buffer, buffer_size);
+  else if(coords_type == TILEDB_UINT32)
+    update_book_keeping<uint32_t>(buffer, buffer_size);
+  else if(coords_type == TILEDB_UINT64)
+    update_book_keeping<uint64_t>(buffer, buffer_size);
 }
 
 template<class T>

@@ -643,8 +643,8 @@ class ArraySortedWriteState {
 
   /**
    * Fills the **a single** cell in a variable-sized buffer of the current copy 
-   * tile slab with the input id with an empty value, based on the template t
-   * ype. Applicable only to variable-sized attributes.
+   * tile slab with the input id with an empty value, based on the template 
+   * type. Applicable only to variable-sized attributes.
    *
    * @tparam T The attribute type.
    * @param bid The buffer id corresponding to the targeted attribute.

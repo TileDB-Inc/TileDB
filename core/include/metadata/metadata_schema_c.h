@@ -81,7 +81,13 @@ typedef struct MetadataSchemaC {
    *    - TILEDB_INT64
    *    - TILEDB_FLOAT32
    *    - TILEDB_FLOAT64
-   *    - TILEDB_CHAR. 
+   *    - TILEDB_CHAR 
+   *    - TILEDB_INT8 
+   *    - TILEDB_UINT8 
+   *    - TILEDB_INT16 
+   *    - TILEDB_UINT16 
+   *    - TILEDB_UINT32 
+   *    - TILEDB_UINT64
    */
   int* types_;
 } MetadataSchemaC;

@@ -1239,6 +1239,18 @@ void ReadState::compute_tile_search_range() {
     compute_tile_search_range<float>();
   } else if(coords_type == TILEDB_FLOAT64) {
     compute_tile_search_range<double>();
+  } else if(coords_type == TILEDB_INT8) {
+    compute_tile_search_range<int8_t>();
+  } else if(coords_type == TILEDB_UINT8) {
+    compute_tile_search_range<uint8_t>();
+  } else if(coords_type == TILEDB_INT16) {
+    compute_tile_search_range<int16_t>();
+  } else if(coords_type == TILEDB_UINT16) {
+    compute_tile_search_range<uint16_t>();
+  } else if(coords_type == TILEDB_UINT32) {
+    compute_tile_search_range<uint32_t>();
+  } else if(coords_type == TILEDB_UINT64) {
+    compute_tile_search_range<uint64_t>();
   } else {
     // The code should never reach here
     assert(0);
@@ -3104,6 +3116,30 @@ template int ReadState::get_coords_after<double>(
     const double* coords,
     double* coords_after,
     bool& coords_retrieved);
+template int ReadState::get_coords_after<int8_t>(
+    const int8_t* coords,
+    int8_t* coords_after,
+    bool& coords_retrieved);
+template int ReadState::get_coords_after<uint8_t>(
+    const uint8_t* coords,
+    uint8_t* coords_after,
+    bool& coords_retrieved);
+template int ReadState::get_coords_after<int16_t>(
+    const int16_t* coords,
+    int16_t* coords_after,
+    bool& coords_retrieved);
+template int ReadState::get_coords_after<uint16_t>(
+    const uint16_t* coords,
+    uint16_t* coords_after,
+    bool& coords_retrieved);
+template int ReadState::get_coords_after<uint32_t>(
+    const uint32_t* coords,
+    uint32_t* coords_after,
+    bool& coords_retrieved);
+template int ReadState::get_coords_after<uint64_t>(
+    const uint64_t* coords,
+    uint64_t* coords_after,
+    bool& coords_retrieved);
 
 template int ReadState::get_enclosing_coords<int>(
     int tile_i,
@@ -3145,6 +3181,66 @@ template int ReadState::get_enclosing_coords<double>(
     bool& left_retrieved,
     bool& right_retrieved,
     bool& target_exists);
+template int ReadState::get_enclosing_coords<int8_t>(
+    int tile_i,
+    const int8_t* target_coords,
+    const int8_t* start_coords,
+    const int8_t* end_coords,
+    int8_t* left_coords,
+    int8_t* right_coords,
+    bool& left_retrieved,
+    bool& right_retrieved,
+    bool& target_exists);
+template int ReadState::get_enclosing_coords<uint8_t>(
+    int tile_i,
+    const uint8_t* target_coords,
+    const uint8_t* start_coords,
+    const uint8_t* end_coords,
+    uint8_t* left_coords,
+    uint8_t* right_coords,
+    bool& left_retrieved,
+    bool& right_retrieved,
+    bool& target_exists);
+template int ReadState::get_enclosing_coords<int16_t>(
+    int tile_i,
+    const int16_t* target_coords,
+    const int16_t* start_coords,
+    const int16_t* end_coords,
+    int16_t* left_coords,
+    int16_t* right_coords,
+    bool& left_retrieved,
+    bool& right_retrieved,
+    bool& target_exists);
+template int ReadState::get_enclosing_coords<uint16_t>(
+    int tile_i,
+    const uint16_t* target_coords,
+    const uint16_t* start_coords,
+    const uint16_t* end_coords,
+    uint16_t* left_coords,
+    uint16_t* right_coords,
+    bool& left_retrieved,
+    bool& right_retrieved,
+    bool& target_exists);
+template int ReadState::get_enclosing_coords<uint32_t>(
+    int tile_i,
+    const uint32_t* target_coords,
+    const uint32_t* start_coords,
+    const uint32_t* end_coords,
+    uint32_t* left_coords,
+    uint32_t* right_coords,
+    bool& left_retrieved,
+    bool& right_retrieved,
+    bool& target_exists);
+template int ReadState::get_enclosing_coords<uint64_t>(
+    int tile_i,
+    const uint64_t* target_coords,
+    const uint64_t* start_coords,
+    const uint64_t* end_coords,
+    uint64_t* left_coords,
+    uint64_t* right_coords,
+    bool& left_retrieved,
+    bool& right_retrieved,
+    bool& target_exists);
 
 template int ReadState::get_fragment_cell_pos_range_sparse<int>(
     const FragmentInfo& fragment_info,
@@ -3161,6 +3257,30 @@ template int ReadState::get_fragment_cell_pos_range_sparse<float>(
 template int ReadState::get_fragment_cell_pos_range_sparse<double>(
     const FragmentInfo& fragment_info,
     const double* cell_range,
+    FragmentCellPosRange& fragment_cell_pos_range);
+template int ReadState::get_fragment_cell_pos_range_sparse<int8_t>(
+    const FragmentInfo& fragment_info,
+    const int8_t* cell_range,
+    FragmentCellPosRange& fragment_cell_pos_range);
+template int ReadState::get_fragment_cell_pos_range_sparse<uint8_t>(
+    const FragmentInfo& fragment_info,
+    const uint8_t* cell_range,
+    FragmentCellPosRange& fragment_cell_pos_range);
+template int ReadState::get_fragment_cell_pos_range_sparse<int16_t>(
+    const FragmentInfo& fragment_info,
+    const int16_t* cell_range,
+    FragmentCellPosRange& fragment_cell_pos_range);
+template int ReadState::get_fragment_cell_pos_range_sparse<uint16_t>(
+    const FragmentInfo& fragment_info,
+    const uint16_t* cell_range,
+    FragmentCellPosRange& fragment_cell_pos_range);
+template int ReadState::get_fragment_cell_pos_range_sparse<uint32_t>(
+    const FragmentInfo& fragment_info,
+    const uint32_t* cell_range,
+    FragmentCellPosRange& fragment_cell_pos_range);
+template int ReadState::get_fragment_cell_pos_range_sparse<uint64_t>(
+    const FragmentInfo& fragment_info,
+    const uint64_t* cell_range,
     FragmentCellPosRange& fragment_cell_pos_range);
 
 template int ReadState::get_fragment_cell_ranges_sparse<int>(
@@ -3183,11 +3303,59 @@ template int ReadState::get_fragment_cell_ranges_sparse<double>(
     const double* start_coords,
     const double* end_coords,
     FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<int8_t>(
+    int fragment_i,
+    const int8_t* start_coords,
+    const int8_t* end_coords,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint8_t>(
+    int fragment_i,
+    const uint8_t* start_coords,
+    const uint8_t* end_coords,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<int16_t>(
+    int fragment_i,
+    const int16_t* start_coords,
+    const int16_t* end_coords,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint16_t>(
+    int fragment_i,
+    const uint16_t* start_coords,
+    const uint16_t* end_coords,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint32_t>(
+    int fragment_i,
+    const uint32_t* start_coords,
+    const uint32_t* end_coords,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint64_t>(
+    int fragment_i,
+    const uint64_t* start_coords,
+    const uint64_t* end_coords,
+    FragmentCellRanges& fragment_cell_ranges);
 
 template int ReadState::get_fragment_cell_ranges_sparse<int>(
     int fragment_i,
     FragmentCellRanges& fragment_cell_ranges);
 template int ReadState::get_fragment_cell_ranges_sparse<int64_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<int8_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint8_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<int16_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint16_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint32_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint64_t>(
     int fragment_i,
     FragmentCellRanges& fragment_cell_ranges);
 
@@ -3197,19 +3365,66 @@ template int ReadState::get_fragment_cell_ranges_dense<int>(
 template int ReadState::get_fragment_cell_ranges_dense<int64_t>(
     int fragment_i,
     FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_dense<int8_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_dense<uint8_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_dense<int16_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_dense<uint16_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_dense<uint32_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_dense<uint64_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
 
 template void ReadState::get_next_overlapping_tile_dense<int>(
     const int* tile_coords);
 template void ReadState::get_next_overlapping_tile_dense<int64_t>(
     const int64_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_dense<int8_t>(
+    const int8_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_dense<uint8_t>(
+    const uint8_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_dense<int16_t>(
+    const int16_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_dense<uint16_t>(
+    const uint16_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_dense<uint32_t>(
+    const uint32_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_dense<uint64_t>(
+    const uint64_t* tile_coords);
 
 template void ReadState::get_next_overlapping_tile_sparse<int>(
     const int* tile_coords);
 template void ReadState::get_next_overlapping_tile_sparse<int64_t>(
     const int64_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_sparse<int8_t>(
+    const int8_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_sparse<uint8_t>(
+    const uint8_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_sparse<int16_t>(
+    const int16_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_sparse<uint16_t>(
+    const uint16_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_sparse<uint32_t>(
+    const uint32_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_sparse<uint64_t>(
+    const uint64_t* tile_coords);
 
 template void ReadState::get_next_overlapping_tile_sparse<int>();
 template void ReadState::get_next_overlapping_tile_sparse<int64_t>();
 template void ReadState::get_next_overlapping_tile_sparse<float>();
 template void ReadState::get_next_overlapping_tile_sparse<double>();
-
+template void ReadState::get_next_overlapping_tile_sparse<int8_t>();
+template void ReadState::get_next_overlapping_tile_sparse<uint8_t>();
+template void ReadState::get_next_overlapping_tile_sparse<int16_t>();
+template void ReadState::get_next_overlapping_tile_sparse<uint16_t>();
+template void ReadState::get_next_overlapping_tile_sparse<uint32_t>();
+template void ReadState::get_next_overlapping_tile_sparse<uint64_t>();
