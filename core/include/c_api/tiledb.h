@@ -1104,6 +1104,22 @@ TILEDB_EXPORT int tiledb_metadata_iterator_finalize(
 /* ********************************* */
 
 /**
+ * Returns the type of the input directory. 
+ *
+ * @param tiledb_ctx The TileDB context.
+ * @param dir The input directory.
+ * @return It can be one of the following:
+ *    - TILEDB_WORKSPACE
+ *    - TILEDB_GROUP
+ *    - TILEDB_ARRAY
+ *    - TILEDB_METADATA
+ *    - -1 (none of the above) 
+ */
+TILEDB_EXPORT int tiledb_dir_type(
+    const TileDB_CTX* tiledb_ctx,
+    const char* dir);
+
+/**
  * Clears a TileDB directory. The corresponding TileDB object (workspace,
  * group, array, or metadata) will still exist after the execution of the
  * function, but it will be empty (i.e., as if it was just created).
