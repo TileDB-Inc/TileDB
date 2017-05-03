@@ -1378,6 +1378,13 @@ int tiledb_metadata_iterator_finalize(
 /*       DIRECTORY MANAGEMENT     */
 /* ****************************** */
 
+int tiledb_dir_type(
+    const TileDB_CTX* tiledb_ctx,
+    const char* dir) {
+  // Return the directory type
+  return tiledb_ctx->storage_manager_->dir_type(dir); 
+}
+
 int tiledb_clear(
     const TileDB_CTX* tiledb_ctx,
     const char* dir) {

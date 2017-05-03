@@ -476,6 +476,19 @@ class StorageManager {
   /* ********************************* */
 
   /**
+   * Returns the type of the input directory. 
+   *
+   * @param dir The input directory.
+   * @return It can be one of the following:
+   *    - TILEDB_WORKSPACE
+   *    - TILEDB_GROUP
+   *    - TILEDB_ARRAY
+   *    - TILEDB_METADATA
+   *    - -1 (not a TileDB directory) 
+   */
+  int dir_type(const char* dir);
+
+  /**
    * Lists all the TileDB objects in a directory, copying them into the input
    * buffers.
    *
