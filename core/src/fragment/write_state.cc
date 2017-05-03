@@ -1059,18 +1059,6 @@ void WriteState::sort_cell_pos(
           cell_pos.begin(), 
           cell_pos.end(), 
           SmallerCol<T>(buffer_T, dim_num)); 
-    } else if(cell_order == TILEDB_HILBERT) {
-      // Get hilbert ids
-      std::vector<int64_t> ids;
-      ids.resize(buffer_cell_num);
-      for(int i=0; i<buffer_cell_num; ++i) 
-        ids[i] = array_schema->hilbert_id<T>(&buffer_T[i * dim_num]); 
- 
-      // Sort cell positions
-      SORT(
-          cell_pos.begin(), 
-          cell_pos.end(), 
-          SmallerIdRow<T>(buffer_T, dim_num, ids)); 
     } else {
       assert(0); // The code should never reach here
     }

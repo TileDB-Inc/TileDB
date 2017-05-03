@@ -139,7 +139,6 @@
 /** Tile or cell order. */
 #define TILEDB_ROW_MAJOR                             0
 #define TILEDB_COL_MAJOR                             1
-#define TILEDB_HILBERT                               2
 /**@}*/
 
 /**@{*/
