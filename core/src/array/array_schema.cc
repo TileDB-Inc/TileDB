@@ -72,23 +72,15 @@ std::string tiledb_as_errmsg = "";
 
 ArraySchema::ArraySchema() {
   cell_num_per_tile_ = -1;
-  coords_for_hilbert_ = NULL;
   domain_ = NULL;
-  hilbert_curve_ = NULL;
   tile_extents_ = NULL;
   tile_domain_ = NULL;
   tile_coords_aux_ = NULL;
 }
 
 ArraySchema::~ArraySchema() {
-  if(coords_for_hilbert_ != NULL)
-    delete [] coords_for_hilbert_;
-
   if(domain_ != NULL)
     free(domain_);
-
-  if(hilbert_curve_ != NULL)
-    delete hilbert_curve_;
 
   if(tile_extents_ != NULL)
     free(tile_extents_);
@@ -535,8 +527,6 @@ void ArraySchema::print() const {
   } else {
     if(tile_order_ == TILEDB_COL_MAJOR)
       std::cout << "column-major\n";
-    else if(tile_order_ == TILEDB_HILBERT)
-      std::cout << "hilbert\n";
     else if(tile_order_ == TILEDB_ROW_MAJOR)
       std::cout << "row-major\n";
   }
@@ -544,8 +534,6 @@ void ArraySchema::print() const {
   std::cout << "Cell order:\n\t";
   if(cell_order_ == TILEDB_COL_MAJOR)
     std::cout << "column-major\n";
-  else if(cell_order_ == TILEDB_HILBERT)
-    std::cout << "hilbert\n";
   else if(cell_order_ == TILEDB_ROW_MAJOR)
     std::cout << "row-major\n";
   // Capacity
@@ -836,8 +824,8 @@ int ArraySchema::subarray_overlap(
     }
   }
 
-  // Check contig overlap (not applicable to Hilbert order)
-  if(overlap == 2 && cell_order_ != TILEDB_HILBERT) {
+  // Check contig overlap
+  if(overlap == 2) {
     overlap = 3;
     if(cell_order_ == TILEDB_ROW_MAJOR) {           // Row major
       for(int i=1; i<dim_num_; ++i) {
@@ -1208,9 +1196,6 @@ int ArraySchema::deserialize(
   // Compute tile offsets
   compute_tile_offsets();
 
-  // Initialize Hilbert curve
-  init_hilbert_curve();
-
   // Initialize static auxiliary variables
   if(tile_coords_aux_ != NULL)
     free(tile_coords_aux_);
@@ -1266,9 +1251,6 @@ int ArraySchema::init(const ArraySchemaC* array_schema_c) {
 
   // Compute tile offsets
   compute_tile_offsets();
-
-  // Initialize Hilbert curve
-  init_hilbert_curve();
 
   // Initialize static auxiliary variables
   if(tile_coords_aux_ != NULL)
@@ -1466,8 +1448,7 @@ void ArraySchema::set_cell_val_num(const int* cell_val_num) {
 int ArraySchema::set_cell_order(int cell_order) {
   // Set cell order
   if(cell_order != TILEDB_ROW_MAJOR &&
-     cell_order != TILEDB_COL_MAJOR &&
-     cell_order != TILEDB_HILBERT) {
+     cell_order != TILEDB_COL_MAJOR) {
     std::string errmsg = "Cannot set cell order; Invalid cell order";
     PRINT_ERROR(errmsg); 
     tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
@@ -1846,23 +1827,6 @@ int ArraySchema::cell_order_cmp(const T* coords_a, const T* coords_b) const {
       else if(coords_a[i] > coords_b[i])
         return 1;
     }
-  } else if(cell_order_ == TILEDB_HILBERT) {   // HILBERT
-    // Check hilbert ids
-    int64_t id_a = hilbert_id(coords_a);
-    int64_t id_b = hilbert_id(coords_b);
-
-    if(id_a < id_b)
-      return -1;
-    else if(id_a > id_b)
-      return 1;
-
-    // Hilbert ids match - check coordinates in row-major order
-    for(int i=0; i<dim_num_; ++i) {
-      if(coords_a[i] < coords_b[i])
-        return -1;
-      else if(coords_a[i] > coords_b[i])
-        return 1;
-    }
   } else {  // Invalid cell order
     assert(0);
   }
@@ -2064,23 +2028,6 @@ void ArraySchema::get_tile_subarray(
     tile_subarray[2*i+1] = 
         (tile_coords[i] + 1) * tile_extents[i] - 1 + domain[2*i];
   }
-}
-
-template<typename T>
-int64_t ArraySchema::hilbert_id(const T* coords) const {
-  // For easy reference
-  const T* domain = static_cast<const T*>(domain_);
-
-  // Normalize coordinates
-  for(int i = 0; i < dim_num_; ++i) 
-    coords_for_hilbert_[i] = static_cast<int>(coords[i] - domain[2*i]);
-
-  // Compute Hilber id
-  int64_t id;
-  hilbert_curve_->coords_to_hilbert(coords_for_hilbert_, id);
-
-  // Return
-  return id;
 }
 
 template<class T>
@@ -2292,22 +2239,6 @@ size_t ArraySchema::compute_cell_size(int i) const {
   }
 
   return size; 
-}
-
-template<class T>
-void ArraySchema::compute_hilbert_bits() {
-  // For easy reference
-  const T* domain = static_cast<const T*>(domain_);
-  T max_domain_range = 0;
-  T domain_range;
-
-  for(int i = 0; i < dim_num_; ++i) { 
-    domain_range = domain[2*i+1] - domain[2*i] + 1;
-    if(max_domain_range < domain_range)
-      max_domain_range = domain_range;
-  }
-
-  hilbert_bits_ = ceil(log2(int64_t(max_domain_range+0.5)));
 }
 
 void ArraySchema::compute_tile_domain() {
@@ -2672,41 +2603,6 @@ int64_t ArraySchema::get_tile_pos_row(
   return pos;
 }
 
-void ArraySchema::init_hilbert_curve() {
-  // Applicable only to Hilbert cell order
-  if(cell_order_ != TILEDB_HILBERT) 
-    return;
-
-  // Allocate some space for the Hilbert coordinates
-  if(coords_for_hilbert_ == NULL)
-    coords_for_hilbert_ = new int[dim_num_];
-
-  // Compute Hilbert bits, invoking the proper templated function
-  if(types_[attribute_num_] == TILEDB_INT32)
-    compute_hilbert_bits<int>();
-  else if(types_[attribute_num_] == TILEDB_INT64)
-    compute_hilbert_bits<int64_t>();
-  else if(types_[attribute_num_] == TILEDB_FLOAT32)
-    compute_hilbert_bits<float>();
-  else if(types_[attribute_num_] == TILEDB_FLOAT64)
-    compute_hilbert_bits<double>();
-  else if(types_[attribute_num_] == TILEDB_INT8)
-    compute_hilbert_bits<int8_t>();
-  else if(types_[attribute_num_] == TILEDB_UINT8)
-    compute_hilbert_bits<uint8_t>();
-  else if(types_[attribute_num_] == TILEDB_INT16)
-    compute_hilbert_bits<int16_t>();
-  else if(types_[attribute_num_] == TILEDB_UINT16)
-    compute_hilbert_bits<uint16_t>();
-  else if(types_[attribute_num_] == TILEDB_UINT32)
-    compute_hilbert_bits<uint32_t>();
-  else if(types_[attribute_num_] == TILEDB_UINT64)
-    compute_hilbert_bits<uint64_t>();
-
-  // Create new Hilberrt curve
-  hilbert_curve_ = new HilbertCurve(hilbert_bits_, dim_num_);
-}
-
 template<class T>
 bool ArraySchema::is_contained_in_tile_slab_col(const T* range) const {
   // For easy reference
@@ -3031,27 +2927,6 @@ template void ArraySchema::get_tile_subarray<uint32_t>(
 template void ArraySchema::get_tile_subarray<uint64_t>(
     const uint64_t* tile_coords,
     uint64_t* tile_subarray) const;
-
-template int64_t ArraySchema::hilbert_id<int>(
-    const int* coords) const;
-template int64_t ArraySchema::hilbert_id<int64_t>(
-    const int64_t* coords) const;
-template int64_t ArraySchema::hilbert_id<float>(
-    const float* coords) const;
-template int64_t ArraySchema::hilbert_id<double>(
-    const double* coords) const;
-template int64_t ArraySchema::hilbert_id<int8_t>(
-    const int8_t* coords) const;
-template int64_t ArraySchema::hilbert_id<uint8_t>(
-    const uint8_t* coords) const;
-template int64_t ArraySchema::hilbert_id<int16_t>(
-    const int16_t* coords) const;
-template int64_t ArraySchema::hilbert_id<uint16_t>(
-    const uint16_t* coords) const;
-template int64_t ArraySchema::hilbert_id<uint32_t>(
-    const uint32_t* coords) const;
-template int64_t ArraySchema::hilbert_id<uint64_t>(
-    const uint64_t* coords) const;
 
 template bool ArraySchema::is_contained_in_tile_slab_col<int>(
     const int* range) const;

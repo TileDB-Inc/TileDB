@@ -55,7 +55,6 @@ typedef struct ArraySchemaC {
    * The cell order. It can be one of the following:
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR
-   *    - TILEDB_HILBERT 
    */
   int cell_order_;
   /**

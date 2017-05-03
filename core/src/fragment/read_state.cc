@@ -1259,14 +1259,8 @@ void ReadState::compute_tile_search_range() {
 
 template<class T>
 void ReadState::compute_tile_search_range() {
-  // For easy reference
-  int cell_order = array_schema_->cell_order();
-
   // Initialize the tile search range
-  if(cell_order == TILEDB_HILBERT)  // HILBERT CELL ORDER
-    compute_tile_search_range_hil<T>();
-  else                              // COLUMN-  OR ROW-MAJOR 
-    compute_tile_search_range_col_or_row<T>();
+  compute_tile_search_range_col_or_row<T>();
 
   // Handle no overlap
   if(tile_search_range_[0] == -1 ||
