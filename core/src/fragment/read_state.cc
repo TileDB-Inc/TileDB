@@ -1446,26 +1446,34 @@ int ReadState::decompress_tile(
   // For easy reference
   int compression = array_schema_->compression(attribute_id);
 
+  // Special case for search coordinate tiles
+  if(attribute_id == attribute_num_ + 1) 
+    attribute_id = attribute_num_;
+
   if(compression == TILEDB_GZIP)
     return decompress_tile_gzip(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
                tile_size);
   else if(compression == TILEDB_ZSTD)
     return decompress_tile_zstd(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
                tile_size);
   else if(compression == TILEDB_LZ4)
     return decompress_tile_lz4(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
                tile_size);
   else if(compression == TILEDB_BLOSC)
     return decompress_tile_blosc(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
@@ -1473,6 +1481,7 @@ int ReadState::decompress_tile(
                "blosclz");
   else if(compression == TILEDB_BLOSC_LZ4)
     return decompress_tile_blosc(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
@@ -1480,6 +1489,7 @@ int ReadState::decompress_tile(
                "lz4");
   else if(compression == TILEDB_BLOSC_LZ4HC)
     return decompress_tile_blosc(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
@@ -1487,6 +1497,7 @@ int ReadState::decompress_tile(
                "lz4hc");
   else if(compression == TILEDB_BLOSC_SNAPPY)
     return decompress_tile_blosc(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
@@ -1494,6 +1505,7 @@ int ReadState::decompress_tile(
                "snappy");
   else if(compression == TILEDB_BLOSC_ZLIB)
     return decompress_tile_blosc(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
@@ -1501,6 +1513,7 @@ int ReadState::decompress_tile(
                "zlib");
   else if(compression == TILEDB_BLOSC_ZSTD)
     return decompress_tile_blosc(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
@@ -1515,6 +1528,7 @@ int ReadState::decompress_tile(
                tile_size);
   else if(compression == TILEDB_BZIP2)
     return decompress_tile_bzip2(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
@@ -1526,10 +1540,18 @@ int ReadState::decompress_tile(
 }
 
 int ReadState::decompress_tile_gzip(
+    int attribute_id,
     unsigned char* tile_compressed,
     size_t tile_compressed_size,
     unsigned char* tile,
     size_t tile_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Decompress tile 
   size_t gunzip_out_size;
   if(gunzip(
@@ -1542,15 +1564,27 @@ int ReadState::decompress_tile_gzip(
     return TILEDB_RS_ERR;
   }
 
+  // Zip coordinates
+  if(coords) 
+    zip_coordinates(tile, tile_size, dim_num, coords_size);
+
   // Success
   return TILEDB_RS_OK;
 }    
 
 int ReadState::decompress_tile_zstd(
+    int attribute_id,
     unsigned char* tile_compressed,
     size_t tile_compressed_size,
     unsigned char* tile,
     size_t tile_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Decompress tile 
   size_t zstd_size = 
       ZSTD_decompress(
@@ -1565,15 +1599,27 @@ int ReadState::decompress_tile_zstd(
     return TILEDB_RS_ERR;
   }
 
+  // Zip coordinates
+  if(coords) 
+    zip_coordinates(tile, tile_size, dim_num, coords_size);
+
   // Success
   return TILEDB_RS_OK;
 }
 
 int ReadState::decompress_tile_lz4(
+    int attribute_id,
     unsigned char* tile_compressed,
     size_t tile_compressed_size,
     unsigned char* tile,
     size_t tile_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Decompress tile 
   if(LZ4_decompress_safe(
          (const char*) tile_compressed, 
@@ -1586,16 +1632,28 @@ int ReadState::decompress_tile_lz4(
     return TILEDB_RS_ERR;
   }
 
+  // Zip coordinates
+  if(coords) 
+    zip_coordinates(tile, tile_size, dim_num, coords_size);
+
   // Success
   return TILEDB_RS_OK;
 }
 
 int ReadState::decompress_tile_blosc(
+    int attribute_id,
     unsigned char* tile_compressed,
     size_t tile_compressed_size,
     unsigned char* tile,
     size_t tile_size,
     const char* compressor) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Initialization
   blosc_init();
 
@@ -1614,6 +1672,10 @@ int ReadState::decompress_tile_blosc(
   // Clean up
   blosc_destroy();
 
+  // Zip coordinates
+  if(coords) 
+    zip_coordinates(tile, tile_size, dim_num, coords_size);
+
   // Success
   return TILEDB_RS_OK;
 }
@@ -1624,10 +1686,6 @@ int ReadState::decompress_tile_rle(
     size_t tile_compressed_size,
     unsigned char* tile,
     size_t tile_size) {
-  // Special case for search coordinate tiles
-  if(attribute_id == attribute_num_ + 1) 
-    attribute_id = attribute_num_;
-
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
@@ -1685,10 +1743,18 @@ int ReadState::decompress_tile_rle(
 }
 
 int ReadState::decompress_tile_bzip2(
+    int attribute_id,
     unsigned char* tile_compressed,
     size_t tile_compressed_size,
     unsigned char* tile,
     size_t tile_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Decompress tile
   unsigned int destLen = tile_size;
   int rc = BZ2_bzBuffToBuffDecompress(
@@ -1706,6 +1772,10 @@ int ReadState::decompress_tile_bzip2(
     tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
     return TILEDB_RS_ERR;
   }
+
+  // Zip coordinates
+  if(coords) 
+    zip_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Success
   return TILEDB_RS_OK;

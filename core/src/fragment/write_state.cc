@@ -464,11 +464,23 @@ int WriteState::compress_tile(
 
   // Handle different compression
   if(compression == TILEDB_GZIP)
-    return compress_tile_gzip(tile, tile_size, tile_compressed_size);
+    return compress_tile_gzip(
+               attribute_id,
+               tile, 
+               tile_size, 
+               tile_compressed_size);
   else if(compression == TILEDB_ZSTD)
-    return compress_tile_zstd(tile, tile_size, tile_compressed_size);
+    return compress_tile_zstd(
+               attribute_id,
+               tile, 
+               tile_size, 
+               tile_compressed_size);
   else if(compression == TILEDB_LZ4)
-    return compress_tile_lz4(tile, tile_size, tile_compressed_size);
+    return compress_tile_lz4(
+               attribute_id,
+               tile, 
+               tile_size, 
+               tile_compressed_size);
   else if(compression == TILEDB_BLOSC)
     return compress_tile_blosc(
                attribute_id,
@@ -519,6 +531,7 @@ int WriteState::compress_tile(
                tile_compressed_size);
   else if(compression == TILEDB_BZIP2)
     return compress_tile_bzip2(
+               attribute_id,
                tile, 
                tile_size, 
                tile_compressed_size);
@@ -529,9 +542,17 @@ int WriteState::compress_tile(
 }
 
 int WriteState::compress_tile_gzip(
+    int attribute_id,
     unsigned char* tile, 
     size_t tile_size,
     size_t& tile_compressed_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Allocate space to store the compressed tile
   if(tile_compressed_ == NULL) {
     tile_compressed_allocated_size_ = 
@@ -552,6 +573,10 @@ int WriteState::compress_tile_gzip(
   unsigned char* tile_compressed = 
       static_cast<unsigned char*>(tile_compressed_);
 
+  // Split dimensions
+  if(coords) 
+    split_coordinates(tile, tile_size, dim_num, coords_size);
+
   // Compress tile
   ssize_t gzip_size = 
       gzip(tile, tile_size, tile_compressed, tile_compressed_allocated_size_);
@@ -566,9 +591,17 @@ int WriteState::compress_tile_gzip(
 }
 
 int WriteState::compress_tile_zstd(
+    int attribute_id,
     unsigned char* tile, 
     size_t tile_size,
     size_t& tile_compressed_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Allocate space to store the compressed tile
   size_t compress_bound = ZSTD_compressBound(tile_size);
   if(tile_compressed_ == NULL) {
@@ -585,6 +618,10 @@ int WriteState::compress_tile_zstd(
   // For easy reference
   unsigned char* tile_compressed = 
       static_cast<unsigned char*>(tile_compressed_);
+
+  // Split dimensions
+  if(coords) 
+    split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
   size_t zstd_size = 
@@ -607,9 +644,17 @@ int WriteState::compress_tile_zstd(
 }
 
 int WriteState::compress_tile_lz4(
+    int attribute_id,
     unsigned char* tile, 
     size_t tile_size,
     size_t& tile_compressed_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Allocate space to store the compressed tile
   size_t compress_bound = LZ4_compressBound(tile_size);
   if(tile_compressed_ == NULL) {
@@ -622,6 +667,10 @@ int WriteState::compress_tile_lz4(
     tile_compressed_allocated_size_ = compress_bound; 
     tile_compressed_ = realloc(tile_compressed_, compress_bound);
   }
+
+  // Split dimensions
+  if(coords) 
+    split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
   int lz4_size = 
@@ -649,6 +698,10 @@ int WriteState::compress_tile_blosc(
     const char* compressor) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
 
   // Allocate space to store the compressed tile
   size_t compress_bound = tile_size + BLOSC_MAX_OVERHEAD;
@@ -678,6 +731,10 @@ int WriteState::compress_tile_blosc(
   // For easy reference
   unsigned char* tile_compressed = 
       static_cast<unsigned char*>(tile_compressed_);
+
+  // Split dimensions
+  if(coords) 
+    split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
   int blosc_size = 
@@ -788,14 +845,26 @@ int WriteState::compress_tile_rle(
 }
 
 int WriteState::compress_tile_bzip2(
+    int attribute_id,
     unsigned char* tile, 
     size_t tile_size,
     size_t& tile_compressed_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Allocate space to store the compressed tile
   if(tile_compressed_ == NULL) {
     tile_compressed_allocated_size_ = tile_size; 
     tile_compressed_ = malloc(tile_size); 
   }
+
+  // Split dimensions
+  if(coords) 
+    split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
   unsigned int destLen = tile_compressed_allocated_size_;
