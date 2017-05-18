@@ -677,7 +677,8 @@ int WriteState::compress_tile_lz4(
       LZ4_compress_default(
           (const char*) tile, 
           (char*) tile_compressed_, 
-          tile_size);
+          tile_size,
+          tile_compressed_allocated_size_);
   if(lz4_size < 0) {
     std::string errmsg = "Failed compressing with LZ4";
     PRINT_ERROR(errmsg);
