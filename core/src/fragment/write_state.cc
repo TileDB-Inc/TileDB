@@ -674,7 +674,7 @@ int WriteState::compress_tile_lz4(
 
   // Compress tile
   int lz4_size = 
-      LZ4_compress_default(
+      LZ4_compress(
           (const char*) tile, 
           (char*) tile_compressed_, 
           tile_size,
