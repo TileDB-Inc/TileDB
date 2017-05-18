@@ -35,6 +35,7 @@
 #include "utils.h"
 #include "write_state.h"
 #include <blosc.h>
+#include <bzlib.h>
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -463,11 +464,23 @@ int WriteState::compress_tile(
 
   // Handle different compression
   if(compression == TILEDB_GZIP)
-    return compress_tile_gzip(tile, tile_size, tile_compressed_size);
+    return compress_tile_gzip(
+               attribute_id,
+               tile, 
+               tile_size, 
+               tile_compressed_size);
   else if(compression == TILEDB_ZSTD)
-    return compress_tile_zstd(tile, tile_size, tile_compressed_size);
+    return compress_tile_zstd(
+               attribute_id,
+               tile, 
+               tile_size, 
+               tile_compressed_size);
   else if(compression == TILEDB_LZ4)
-    return compress_tile_lz4(tile, tile_size, tile_compressed_size);
+    return compress_tile_lz4(
+               attribute_id,
+               tile, 
+               tile_size, 
+               tile_compressed_size);
   else if(compression == TILEDB_BLOSC)
     return compress_tile_blosc(
                attribute_id,
@@ -516,6 +529,12 @@ int WriteState::compress_tile(
                tile, 
                tile_size, 
                tile_compressed_size);
+  else if(compression == TILEDB_BZIP2)
+    return compress_tile_bzip2(
+               attribute_id,
+               tile, 
+               tile_size, 
+               tile_compressed_size);
 
   // Error
   assert(0);
@@ -523,9 +542,17 @@ int WriteState::compress_tile(
 }
 
 int WriteState::compress_tile_gzip(
+    int attribute_id,
     unsigned char* tile, 
     size_t tile_size,
     size_t& tile_compressed_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Allocate space to store the compressed tile
   if(tile_compressed_ == NULL) {
     tile_compressed_allocated_size_ = 
@@ -546,6 +573,10 @@ int WriteState::compress_tile_gzip(
   unsigned char* tile_compressed = 
       static_cast<unsigned char*>(tile_compressed_);
 
+  // Split dimensions
+  if(coords) 
+    split_coordinates(tile, tile_size, dim_num, coords_size);
+
   // Compress tile
   ssize_t gzip_size = 
       gzip(tile, tile_size, tile_compressed, tile_compressed_allocated_size_);
@@ -560,9 +591,17 @@ int WriteState::compress_tile_gzip(
 }
 
 int WriteState::compress_tile_zstd(
+    int attribute_id,
     unsigned char* tile, 
     size_t tile_size,
     size_t& tile_compressed_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Allocate space to store the compressed tile
   size_t compress_bound = ZSTD_compressBound(tile_size);
   if(tile_compressed_ == NULL) {
@@ -579,6 +618,10 @@ int WriteState::compress_tile_zstd(
   // For easy reference
   unsigned char* tile_compressed = 
       static_cast<unsigned char*>(tile_compressed_);
+
+  // Split dimensions
+  if(coords) 
+    split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
   size_t zstd_size = 
@@ -601,9 +644,17 @@ int WriteState::compress_tile_zstd(
 }
 
 int WriteState::compress_tile_lz4(
+    int attribute_id,
     unsigned char* tile, 
     size_t tile_size,
     size_t& tile_compressed_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Allocate space to store the compressed tile
   size_t compress_bound = LZ4_compressBound(tile_size);
   if(tile_compressed_ == NULL) {
@@ -616,6 +667,10 @@ int WriteState::compress_tile_lz4(
     tile_compressed_allocated_size_ = compress_bound; 
     tile_compressed_ = realloc(tile_compressed_, compress_bound);
   }
+
+  // Split dimensions
+  if(coords) 
+    split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
   int lz4_size = 
@@ -643,6 +698,10 @@ int WriteState::compress_tile_blosc(
     const char* compressor) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
 
   // Allocate space to store the compressed tile
   size_t compress_bound = tile_size + BLOSC_MAX_OVERHEAD;
@@ -672,6 +731,10 @@ int WriteState::compress_tile_blosc(
   // For easy reference
   unsigned char* tile_compressed = 
       static_cast<unsigned char*>(tile_compressed_);
+
+  // Split dimensions
+  if(coords) 
+    split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
   int blosc_size = 
@@ -776,6 +839,58 @@ int WriteState::compress_tile_rle(
 
   // Set actual output size
   tile_compressed_size = (size_t) rle_size;
+
+  // Success
+  return TILEDB_WS_OK;
+}
+
+int WriteState::compress_tile_bzip2(
+    int attribute_id,
+    unsigned char* tile, 
+    size_t tile_size,
+    size_t& tile_compressed_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
+  // Allocate space to store the compressed tile
+  if(tile_compressed_ == NULL) {
+    tile_compressed_allocated_size_ = tile_size; 
+    tile_compressed_ = malloc(tile_size); 
+  }
+
+  // Split dimensions
+  if(coords) 
+    split_coordinates(tile, tile_size, dim_num, coords_size);
+
+  // Compress tile
+  unsigned int destLen = tile_compressed_allocated_size_;
+  int rc;
+  while((rc = BZ2_bzBuffToBuffCompress(
+            (char*) tile_compressed_,
+            &destLen,
+            (char*) tile,
+            tile_size,
+            9,
+            0,
+            30)) == BZ_OUTBUFF_FULL) {
+    expand_buffer(tile_compressed_, tile_compressed_allocated_size_);
+    destLen = tile_compressed_allocated_size_;
+  }
+
+  // Check for error
+  if(rc != BZ_OK) {
+    std::string errmsg = "Failed compressing with BZIP2";
+    PRINT_ERROR(errmsg);
+    tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
+    return TILEDB_WS_ERR;
+  }
+
+  // Set tile compressed size
+  tile_compressed_size = destLen;
 
   // Success
   return TILEDB_WS_OK;
@@ -967,6 +1082,18 @@ void WriteState::sort_cell_pos(
     sort_cell_pos<float>(buffer, buffer_size, cell_pos);
   else if(coords_type == TILEDB_FLOAT64)
     sort_cell_pos<double>(buffer, buffer_size, cell_pos);
+  else if(coords_type == TILEDB_INT8)
+    sort_cell_pos<int8_t>(buffer, buffer_size, cell_pos);
+  else if(coords_type == TILEDB_UINT8)
+    sort_cell_pos<uint8_t>(buffer, buffer_size, cell_pos);
+  else if(coords_type == TILEDB_INT16)
+    sort_cell_pos<int16_t>(buffer, buffer_size, cell_pos);
+  else if(coords_type == TILEDB_UINT16)
+    sort_cell_pos<uint16_t>(buffer, buffer_size, cell_pos);
+  else if(coords_type == TILEDB_UINT32)
+    sort_cell_pos<uint32_t>(buffer, buffer_size, cell_pos);
+  else if(coords_type == TILEDB_UINT64)
+    sort_cell_pos<uint64_t>(buffer, buffer_size, cell_pos);
 }
 
 template<class T>
@@ -1001,18 +1128,6 @@ void WriteState::sort_cell_pos(
           cell_pos.begin(), 
           cell_pos.end(), 
           SmallerCol<T>(buffer_T, dim_num)); 
-    } else if(cell_order == TILEDB_HILBERT) {
-      // Get hilbert ids
-      std::vector<int64_t> ids;
-      ids.resize(buffer_cell_num);
-      for(int i=0; i<buffer_cell_num; ++i) 
-        ids[i] = array_schema->hilbert_id<T>(&buffer_T[i * dim_num]); 
- 
-      // Sort cell positions
-      SORT(
-          cell_pos.begin(), 
-          cell_pos.end(), 
-          SmallerIdRow<T>(buffer_T, dim_num, ids)); 
     } else {
       assert(0); // The code should never reach here
     }
@@ -1056,6 +1171,18 @@ void WriteState::update_book_keeping(
     update_book_keeping<float>(buffer, buffer_size);
   else if(coords_type == TILEDB_FLOAT64)
     update_book_keeping<double>(buffer, buffer_size);
+  else if(coords_type == TILEDB_INT8)
+    update_book_keeping<int8_t>(buffer, buffer_size);
+  else if(coords_type == TILEDB_UINT8)
+    update_book_keeping<uint8_t>(buffer, buffer_size);
+  else if(coords_type == TILEDB_INT16)
+    update_book_keeping<int16_t>(buffer, buffer_size);
+  else if(coords_type == TILEDB_UINT16)
+    update_book_keeping<uint16_t>(buffer, buffer_size);
+  else if(coords_type == TILEDB_UINT32)
+    update_book_keeping<uint32_t>(buffer, buffer_size);
+  else if(coords_type == TILEDB_UINT64)
+    update_book_keeping<uint64_t>(buffer, buffer_size);
 }
 
 template<class T>

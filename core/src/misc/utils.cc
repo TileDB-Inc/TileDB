@@ -349,6 +349,18 @@ bool empty_value(T value) {
     return value == T(TILEDB_EMPTY_FLOAT32);
   else if(&typeid(T) == &typeid(double))
     return value == T(TILEDB_EMPTY_FLOAT64);
+  else if(&typeid(T) == &typeid(int8_t))
+    return value == T(TILEDB_EMPTY_INT8);
+  else if(&typeid(T) == &typeid(uint8_t))
+    return value == T(TILEDB_EMPTY_UINT8);
+  else if(&typeid(T) == &typeid(int16_t))
+    return value == T(TILEDB_EMPTY_INT16);
+  else if(&typeid(T) == &typeid(uint16_t))
+    return value == T(TILEDB_EMPTY_UINT16);
+  else if(&typeid(T) == &typeid(uint32_t))
+    return value == T(TILEDB_EMPTY_UINT32);
+  else if(&typeid(T) == &typeid(uint64_t))
+    return value == T(TILEDB_EMPTY_UINT64);
   else
     return false;
 }
@@ -1809,6 +1821,35 @@ int RLE_decompress_coords_row(
   return TILEDB_UT_OK;
 }
 
+void split_coordinates(
+    void* tile,
+    size_t tile_size,
+    int dim_num,
+    size_t coords_size) {
+  // For easy reference
+  size_t coord_size =  coords_size / dim_num;
+  int64_t cell_num = tile_size / coords_size;
+  char* tile_c = (char*) tile;
+  size_t ptr = 0, ptr_tmp = 0;
+
+  // Create a tile clone
+  char* tile_tmp = (char*) malloc(tile_size);
+  memcpy(tile_tmp, tile, tile_size);
+  
+  // Split coordinates
+  for(int j=0; j<dim_num; ++j) {
+    ptr_tmp = j*coord_size;
+    for(int64_t i=0; i<cell_num; ++i) {
+      memcpy(tile_c + ptr, tile_tmp + ptr_tmp, coord_size); 
+      ptr += coord_size;
+      ptr_tmp += coords_size;
+    }
+  }
+
+  // Clean up
+  free((void*) tile_tmp);
+}
+
 bool starts_with(const std::string& value, const std::string& prefix) {
   if (prefix.size() > value.size())
     return false;
@@ -1971,6 +2012,36 @@ int write_to_file_cmp_gzip(
   return TILEDB_UT_OK;
 }
 
+void zip_coordinates(
+    void* tile,
+    size_t tile_size,
+    int dim_num,
+    size_t coords_size) {
+  // For easy reference
+  size_t coord_size =  coords_size / dim_num;
+  int64_t cell_num = tile_size / coords_size;
+  char* tile_c = (char*) tile;
+  size_t ptr = 0, ptr_tmp = 0;
+
+  // Create a tile clone
+  char* tile_tmp = (char*) malloc(tile_size);
+  memcpy(tile_tmp, tile, tile_size);
+  
+  // Zip coordinates
+  for(int j=0; j<dim_num; ++j) {
+    ptr = j*coord_size;
+    for(int64_t i=0; i<cell_num; ++i) {
+      memcpy(tile_c + ptr, tile_tmp + ptr_tmp, coord_size); 
+      ptr += coords_size;
+      ptr_tmp += coord_size;
+    }
+  }
+
+  // Clean up
+  free((void*) tile_tmp);
+}
+
+
 // Explicit template instantiations
 template int64_t cell_num_in_subarray<int>(
     const int* subarray, 
@@ -1983,6 +2054,24 @@ template int64_t cell_num_in_subarray<float>(
     int dim_num);
 template int64_t cell_num_in_subarray<double>(
     const double* subarray, 
+    int dim_num);
+template int64_t cell_num_in_subarray<int8_t>(
+    const int8_t* subarray, 
+    int dim_num);
+template int64_t cell_num_in_subarray<uint8_t>(
+    const uint8_t* subarray, 
+    int dim_num);
+template int64_t cell_num_in_subarray<int16_t>(
+    const int16_t* subarray, 
+    int dim_num);
+template int64_t cell_num_in_subarray<uint16_t>(
+    const uint16_t* subarray, 
+    int dim_num);
+template int64_t cell_num_in_subarray<uint32_t>(
+    const uint32_t* subarray, 
+    int dim_num);
+template int64_t cell_num_in_subarray<uint64_t>(
+    const uint64_t* subarray, 
     int dim_num);
 
 template bool cell_in_subarray<int>(
@@ -2001,6 +2090,30 @@ template bool cell_in_subarray<double>(
     const double* cell,
     const double* subarray,
     int dim_num);
+template bool cell_in_subarray<int8_t>(
+    const int8_t* cell,
+    const int8_t* subarray,
+    int dim_num);
+template bool cell_in_subarray<uint8_t>(
+    const uint8_t* cell,
+    const uint8_t* subarray,
+    int dim_num);
+template bool cell_in_subarray<int16_t>(
+    const int16_t* cell,
+    const int16_t* subarray,
+    int dim_num);
+template bool cell_in_subarray<uint16_t>(
+    const uint16_t* cell,
+    const uint16_t* subarray,
+    int dim_num);
+template bool cell_in_subarray<uint32_t>(
+    const uint32_t* cell,
+    const uint32_t* subarray,
+    int dim_num);
+template bool cell_in_subarray<uint64_t>(
+    const uint64_t* cell,
+    const uint64_t* subarray,
+    int dim_num);
 
 template int cmp_col_order<int>(
     const int* coords_a,
@@ -2018,6 +2131,30 @@ template int cmp_col_order<double>(
     const double* coords_a,
     const double* coords_b,
     int dim_num);
+template int cmp_col_order<int8_t>(
+    const int8_t* coords_a,
+    const int8_t* coords_b,
+    int dim_num);
+template int cmp_col_order<uint8_t>(
+    const uint8_t* coords_a,
+    const uint8_t* coords_b,
+    int dim_num);
+template int cmp_col_order<int16_t>(
+    const int16_t* coords_a,
+    const int16_t* coords_b,
+    int dim_num);
+template int cmp_col_order<uint16_t>(
+    const uint16_t* coords_a,
+    const uint16_t* coords_b,
+    int dim_num);
+template int cmp_col_order<uint32_t>(
+    const uint32_t* coords_a,
+    const uint32_t* coords_b,
+    int dim_num);
+template int cmp_col_order<uint64_t>(
+    const uint64_t* coords_a,
+    const uint64_t* coords_b,
+    int dim_num);
 
 template int cmp_col_order<int>(
     int64_t id_a,
@@ -2043,6 +2180,45 @@ template int cmp_col_order<double>(
     int64_t id_b,
     const double* coords_b,
     int dim_num);
+template int cmp_col_order<int8_t>(
+    int64_t id_a,
+    const int8_t* coords_a,
+    int64_t id_b,
+    const int8_t* coords_b,
+    int dim_num);
+template int cmp_col_order<uint8_t>(
+    int64_t id_a,
+    const uint8_t* coords_a,
+    int64_t id_b,
+    const uint8_t* coords_b,
+    int dim_num);
+template int cmp_col_order<int16_t>(
+    int64_t id_a,
+    const int16_t* coords_a,
+    int64_t id_b,
+    const int16_t* coords_b,
+    int dim_num);
+template int cmp_col_order<uint16_t>(
+    int64_t id_a,
+    const uint16_t* coords_a,
+    int64_t id_b,
+    const uint16_t* coords_b,
+    int dim_num);
+template int cmp_col_order<uint32_t>(
+    int64_t id_a,
+    const uint32_t* coords_a,
+    int64_t id_b,
+    const uint32_t* coords_b,
+    int dim_num);
+template int cmp_col_order<uint64_t>(
+    int64_t id_a,
+    const uint64_t* coords_a,
+    int64_t id_b,
+    const uint64_t* coords_b,
+    int dim_num);
+
+
+
 
 template int cmp_row_order<int>(
     const int* coords_a,
@@ -2060,6 +2236,30 @@ template int cmp_row_order<double>(
     const double* coords_a,
     const double* coords_b,
     int dim_num);
+template int cmp_row_order<int8_t>(
+    const int8_t* coords_a,
+    const int8_t* coords_b,
+    int dim_num);
+template int cmp_row_order<uint8_t>(
+    const uint8_t* coords_a,
+    const uint8_t* coords_b,
+    int dim_num);
+template int cmp_row_order<int16_t>(
+    const int16_t* coords_a,
+    const int16_t* coords_b,
+    int dim_num);
+template int cmp_row_order<uint16_t>(
+    const uint16_t* coords_a,
+    const uint16_t* coords_b,
+    int dim_num);
+template int cmp_row_order<uint32_t>(
+    const uint32_t* coords_a,
+    const uint32_t* coords_b,
+    int dim_num);
+template int cmp_row_order<uint64_t>(
+    const uint64_t* coords_a,
+    const uint64_t* coords_b,
+    int dim_num);
 
 template int cmp_row_order<int>(
     int64_t id_a,
@@ -2084,12 +2284,54 @@ template int cmp_row_order<double>(
     const double* coords_a,
     int64_t id_b,
     const double* coords_b,
+    int dim_num);
+template int cmp_row_order<int8_t>(
+    int64_t id_a,
+    const int8_t* coords_a,
+    int64_t id_b,
+    const int8_t* coords_b,
+    int dim_num);
+template int cmp_row_order<uint8_t>(
+    int64_t id_a,
+    const uint8_t* coords_a,
+    int64_t id_b,
+    const uint8_t* coords_b,
+    int dim_num);
+template int cmp_row_order<int16_t>(
+    int64_t id_a,
+    const int16_t* coords_a,
+    int64_t id_b,
+    const int16_t* coords_b,
+    int dim_num);
+template int cmp_row_order<uint16_t>(
+    int64_t id_a,
+    const uint16_t* coords_a,
+    int64_t id_b,
+    const uint16_t* coords_b,
+    int dim_num);
+template int cmp_row_order<uint32_t>(
+    int64_t id_a,
+    const uint32_t* coords_a,
+    int64_t id_b,
+    const uint32_t* coords_b,
+    int dim_num);
+template int cmp_row_order<uint64_t>(
+    int64_t id_a,
+    const uint64_t* coords_a,
+    int64_t id_b,
+    const uint64_t* coords_b,
     int dim_num);
 
 template bool empty_value<int>(int value);
 template bool empty_value<int64_t>(int64_t value);
 template bool empty_value<float>(float value);
 template bool empty_value<double>(double value);
+template bool empty_value<int8_t>(int8_t value);
+template bool empty_value<uint8_t>(uint8_t value);
+template bool empty_value<int16_t>(int16_t value);
+template bool empty_value<uint16_t>(uint16_t value);
+template bool empty_value<uint32_t>(uint32_t value);
+template bool empty_value<uint64_t>(uint64_t value);
 
 template void expand_mbr<int>(
     int* mbr, 
@@ -2106,6 +2348,30 @@ template void expand_mbr<float>(
 template void expand_mbr<double>(
     double* mbr, 
     const double* coords, 
+    int dim_num);
+template void expand_mbr<int8_t>(
+    int8_t* mbr, 
+    const int8_t* coords, 
+    int dim_num);
+template void expand_mbr<uint8_t>(
+    uint8_t* mbr, 
+    const uint8_t* coords, 
+    int dim_num);
+template void expand_mbr<int16_t>(
+    int16_t* mbr, 
+    const int16_t* coords, 
+    int dim_num);
+template void expand_mbr<uint16_t>(
+    uint16_t* mbr, 
+    const uint16_t* coords, 
+    int dim_num);
+template void expand_mbr<uint32_t>(
+    uint32_t* mbr, 
+    const uint32_t* coords, 
+    int dim_num);
+template void expand_mbr<uint64_t>(
+    uint64_t* mbr, 
+    const uint64_t* coords, 
     int dim_num);
 
 template bool has_duplicates<std::string>(const std::vector<std::string>& v);
@@ -2125,6 +2391,30 @@ template bool inside_subarray<float>(
 template bool inside_subarray<double>(
     const double* coords, 
     const double* subarray, 
+    int dim_num);
+template bool inside_subarray<int8_t>(
+    const int8_t* coords, 
+    const int8_t* subarray, 
+    int dim_num);
+template bool inside_subarray<uint8_t>(
+    const uint8_t* coords, 
+    const uint8_t* subarray, 
+    int dim_num);
+template bool inside_subarray<int16_t>(
+    const int16_t* coords, 
+    const int16_t* subarray, 
+    int dim_num);
+template bool inside_subarray<uint16_t>(
+    const uint16_t* coords, 
+    const uint16_t* subarray, 
+    int dim_num);
+template bool inside_subarray<uint32_t>(
+    const uint32_t* coords, 
+    const uint32_t* subarray, 
+    int dim_num);
+template bool inside_subarray<uint64_t>(
+    const uint64_t* coords, 
+    const uint64_t* subarray, 
     int dim_num);
 
 template bool intersect<std::string>(
@@ -2147,9 +2437,39 @@ template bool is_contained<double>(
     const double* range_A, 
     const double* range_B, 
     int dim_num);
+template bool is_contained<int8_t>(
+    const int8_t* range_A, 
+    const int8_t* range_B, 
+    int dim_num);
+template bool is_contained<uint8_t>(
+    const uint8_t* range_A, 
+    const uint8_t* range_B, 
+    int dim_num);
+template bool is_contained<int16_t>(
+    const int16_t* range_A, 
+    const int16_t* range_B, 
+    int dim_num);
+template bool is_contained<uint16_t>(
+    const uint16_t* range_A, 
+    const uint16_t* range_B, 
+    int dim_num);
+template bool is_contained<uint32_t>(
+    const uint32_t* range_A, 
+    const uint32_t* range_B, 
+    int dim_num);
+template bool is_contained<uint64_t>(
+    const uint64_t* range_A, 
+    const uint64_t* range_B, 
+    int dim_num);
 
 template bool is_unary_subarray<int>(const int* subarray, int dim_num);
 template bool is_unary_subarray<int64_t>(const int64_t* subarray, int dim_num);
 template bool is_unary_subarray<float>(const float* subarray, int dim_num);
 template bool is_unary_subarray<double>(const double* subarray, int dim_num);
+template bool is_unary_subarray<int8_t>(const int8_t* subarray, int dim_num);
+template bool is_unary_subarray<uint8_t>(const uint8_t* subarray, int dim_num);
+template bool is_unary_subarray<int16_t>(const int16_t* subarray, int dim_num);
+template bool is_unary_subarray<uint16_t>(const uint16_t* subarray, int dim_num);
+template bool is_unary_subarray<uint32_t>(const uint32_t* subarray, int dim_num);
+template bool is_unary_subarray<uint64_t>(const uint64_t* subarray, int dim_num);
 

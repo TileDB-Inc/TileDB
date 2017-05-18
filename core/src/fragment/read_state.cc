@@ -33,6 +33,7 @@
 #include "utils.h"
 #include "read_state.h"
 #include <blosc.h>
+#include <bzlib.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -1238,6 +1239,18 @@ void ReadState::compute_tile_search_range() {
     compute_tile_search_range<float>();
   } else if(coords_type == TILEDB_FLOAT64) {
     compute_tile_search_range<double>();
+  } else if(coords_type == TILEDB_INT8) {
+    compute_tile_search_range<int8_t>();
+  } else if(coords_type == TILEDB_UINT8) {
+    compute_tile_search_range<uint8_t>();
+  } else if(coords_type == TILEDB_INT16) {
+    compute_tile_search_range<int16_t>();
+  } else if(coords_type == TILEDB_UINT16) {
+    compute_tile_search_range<uint16_t>();
+  } else if(coords_type == TILEDB_UINT32) {
+    compute_tile_search_range<uint32_t>();
+  } else if(coords_type == TILEDB_UINT64) {
+    compute_tile_search_range<uint64_t>();
   } else {
     // The code should never reach here
     assert(0);
@@ -1246,14 +1259,8 @@ void ReadState::compute_tile_search_range() {
 
 template<class T>
 void ReadState::compute_tile_search_range() {
-  // For easy reference
-  int cell_order = array_schema_->cell_order();
-
   // Initialize the tile search range
-  if(cell_order == TILEDB_HILBERT)  // HILBERT CELL ORDER
-    compute_tile_search_range_hil<T>();
-  else                              // COLUMN-  OR ROW-MAJOR 
-    compute_tile_search_range_col_or_row<T>();
+  compute_tile_search_range_col_or_row<T>();
 
   // Handle no overlap
   if(tile_search_range_[0] == -1 ||
@@ -1439,26 +1446,34 @@ int ReadState::decompress_tile(
   // For easy reference
   int compression = array_schema_->compression(attribute_id);
 
+  // Special case for search coordinate tiles
+  if(attribute_id == attribute_num_ + 1) 
+    attribute_id = attribute_num_;
+
   if(compression == TILEDB_GZIP)
     return decompress_tile_gzip(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
                tile_size);
   else if(compression == TILEDB_ZSTD)
     return decompress_tile_zstd(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
                tile_size);
   else if(compression == TILEDB_LZ4)
     return decompress_tile_lz4(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
                tile_size);
   else if(compression == TILEDB_BLOSC)
     return decompress_tile_blosc(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
@@ -1466,6 +1481,7 @@ int ReadState::decompress_tile(
                "blosclz");
   else if(compression == TILEDB_BLOSC_LZ4)
     return decompress_tile_blosc(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
@@ -1473,6 +1489,7 @@ int ReadState::decompress_tile(
                "lz4");
   else if(compression == TILEDB_BLOSC_LZ4HC)
     return decompress_tile_blosc(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
@@ -1480,6 +1497,7 @@ int ReadState::decompress_tile(
                "lz4hc");
   else if(compression == TILEDB_BLOSC_SNAPPY)
     return decompress_tile_blosc(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
@@ -1487,6 +1505,7 @@ int ReadState::decompress_tile(
                "snappy");
   else if(compression == TILEDB_BLOSC_ZLIB)
     return decompress_tile_blosc(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
@@ -1494,6 +1513,7 @@ int ReadState::decompress_tile(
                "zlib");
   else if(compression == TILEDB_BLOSC_ZSTD)
     return decompress_tile_blosc(
+               attribute_id,
                tile_compressed, 
                tile_compressed_size, 
                tile, 
@@ -1506,6 +1526,13 @@ int ReadState::decompress_tile(
                tile_compressed_size, 
                tile, 
                tile_size);
+  else if(compression == TILEDB_BZIP2)
+    return decompress_tile_bzip2(
+               attribute_id,
+               tile_compressed, 
+               tile_compressed_size, 
+               tile, 
+               tile_size);
 
   // Error
   assert(0);
@@ -1513,10 +1540,18 @@ int ReadState::decompress_tile(
 }
 
 int ReadState::decompress_tile_gzip(
+    int attribute_id,
     unsigned char* tile_compressed,
     size_t tile_compressed_size,
     unsigned char* tile,
     size_t tile_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Decompress tile 
   size_t gunzip_out_size;
   if(gunzip(
@@ -1529,15 +1564,27 @@ int ReadState::decompress_tile_gzip(
     return TILEDB_RS_ERR;
   }
 
+  // Zip coordinates
+  if(coords) 
+    zip_coordinates(tile, tile_size, dim_num, coords_size);
+
   // Success
   return TILEDB_RS_OK;
 }    
 
 int ReadState::decompress_tile_zstd(
+    int attribute_id,
     unsigned char* tile_compressed,
     size_t tile_compressed_size,
     unsigned char* tile,
     size_t tile_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Decompress tile 
   size_t zstd_size = 
       ZSTD_decompress(
@@ -1552,15 +1599,27 @@ int ReadState::decompress_tile_zstd(
     return TILEDB_RS_ERR;
   }
 
+  // Zip coordinates
+  if(coords) 
+    zip_coordinates(tile, tile_size, dim_num, coords_size);
+
   // Success
   return TILEDB_RS_OK;
 }
 
 int ReadState::decompress_tile_lz4(
+    int attribute_id,
     unsigned char* tile_compressed,
     size_t tile_compressed_size,
     unsigned char* tile,
     size_t tile_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Decompress tile 
   if(LZ4_decompress_safe(
          (const char*) tile_compressed, 
@@ -1573,16 +1632,28 @@ int ReadState::decompress_tile_lz4(
     return TILEDB_RS_ERR;
   }
 
+  // Zip coordinates
+  if(coords) 
+    zip_coordinates(tile, tile_size, dim_num, coords_size);
+
   // Success
   return TILEDB_RS_OK;
 }
 
 int ReadState::decompress_tile_blosc(
+    int attribute_id,
     unsigned char* tile_compressed,
     size_t tile_compressed_size,
     unsigned char* tile,
     size_t tile_size,
     const char* compressor) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
   // Initialization
   blosc_init();
 
@@ -1601,6 +1672,10 @@ int ReadState::decompress_tile_blosc(
   // Clean up
   blosc_destroy();
 
+  // Zip coordinates
+  if(coords) 
+    zip_coordinates(tile, tile_size, dim_num, coords_size);
+
   // Success
   return TILEDB_RS_OK;
 }
@@ -1611,10 +1686,6 @@ int ReadState::decompress_tile_rle(
     size_t tile_compressed_size,
     unsigned char* tile,
     size_t tile_size) {
-  // Special case for search coordinate tiles
-  if(attribute_id == attribute_num_ + 1) 
-    attribute_id = attribute_num_;
-
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
@@ -1670,6 +1741,45 @@ int ReadState::decompress_tile_rle(
   // Success
   return TILEDB_RS_OK;
 }
+
+int ReadState::decompress_tile_bzip2(
+    int attribute_id,
+    unsigned char* tile_compressed,
+    size_t tile_compressed_size,
+    unsigned char* tile,
+    size_t tile_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num); 
+  size_t coords_size = array_schema->coords_size();
+
+  // Decompress tile
+  unsigned int destLen = tile_size;
+  int rc = BZ2_bzBuffToBuffDecompress(
+              (char*) tile,
+              &destLen,
+              (char*) tile_compressed,
+              tile_compressed_size,
+              0,
+              0);
+
+  // Check for error
+  if(rc != BZ_OK) {
+    std::string errmsg = "Failed decompressing with BZIP2";
+    PRINT_ERROR(errmsg);
+    tiledb_rs_errmsg = TILEDB_RS_ERRMSG + errmsg;
+    return TILEDB_RS_ERR;
+  }
+
+  // Zip coordinates
+  if(coords) 
+    zip_coordinates(tile, tile_size, dim_num, coords_size);
+
+  // Success
+  return TILEDB_RS_OK;
+} 
 
 template<class T>
 int64_t ReadState::get_cell_pos_after(const T* coords) {
@@ -3070,6 +3180,30 @@ template int ReadState::get_coords_after<double>(
     const double* coords,
     double* coords_after,
     bool& coords_retrieved);
+template int ReadState::get_coords_after<int8_t>(
+    const int8_t* coords,
+    int8_t* coords_after,
+    bool& coords_retrieved);
+template int ReadState::get_coords_after<uint8_t>(
+    const uint8_t* coords,
+    uint8_t* coords_after,
+    bool& coords_retrieved);
+template int ReadState::get_coords_after<int16_t>(
+    const int16_t* coords,
+    int16_t* coords_after,
+    bool& coords_retrieved);
+template int ReadState::get_coords_after<uint16_t>(
+    const uint16_t* coords,
+    uint16_t* coords_after,
+    bool& coords_retrieved);
+template int ReadState::get_coords_after<uint32_t>(
+    const uint32_t* coords,
+    uint32_t* coords_after,
+    bool& coords_retrieved);
+template int ReadState::get_coords_after<uint64_t>(
+    const uint64_t* coords,
+    uint64_t* coords_after,
+    bool& coords_retrieved);
 
 template int ReadState::get_enclosing_coords<int>(
     int tile_i,
@@ -3111,6 +3245,66 @@ template int ReadState::get_enclosing_coords<double>(
     bool& left_retrieved,
     bool& right_retrieved,
     bool& target_exists);
+template int ReadState::get_enclosing_coords<int8_t>(
+    int tile_i,
+    const int8_t* target_coords,
+    const int8_t* start_coords,
+    const int8_t* end_coords,
+    int8_t* left_coords,
+    int8_t* right_coords,
+    bool& left_retrieved,
+    bool& right_retrieved,
+    bool& target_exists);
+template int ReadState::get_enclosing_coords<uint8_t>(
+    int tile_i,
+    const uint8_t* target_coords,
+    const uint8_t* start_coords,
+    const uint8_t* end_coords,
+    uint8_t* left_coords,
+    uint8_t* right_coords,
+    bool& left_retrieved,
+    bool& right_retrieved,
+    bool& target_exists);
+template int ReadState::get_enclosing_coords<int16_t>(
+    int tile_i,
+    const int16_t* target_coords,
+    const int16_t* start_coords,
+    const int16_t* end_coords,
+    int16_t* left_coords,
+    int16_t* right_coords,
+    bool& left_retrieved,
+    bool& right_retrieved,
+    bool& target_exists);
+template int ReadState::get_enclosing_coords<uint16_t>(
+    int tile_i,
+    const uint16_t* target_coords,
+    const uint16_t* start_coords,
+    const uint16_t* end_coords,
+    uint16_t* left_coords,
+    uint16_t* right_coords,
+    bool& left_retrieved,
+    bool& right_retrieved,
+    bool& target_exists);
+template int ReadState::get_enclosing_coords<uint32_t>(
+    int tile_i,
+    const uint32_t* target_coords,
+    const uint32_t* start_coords,
+    const uint32_t* end_coords,
+    uint32_t* left_coords,
+    uint32_t* right_coords,
+    bool& left_retrieved,
+    bool& right_retrieved,
+    bool& target_exists);
+template int ReadState::get_enclosing_coords<uint64_t>(
+    int tile_i,
+    const uint64_t* target_coords,
+    const uint64_t* start_coords,
+    const uint64_t* end_coords,
+    uint64_t* left_coords,
+    uint64_t* right_coords,
+    bool& left_retrieved,
+    bool& right_retrieved,
+    bool& target_exists);
 
 template int ReadState::get_fragment_cell_pos_range_sparse<int>(
     const FragmentInfo& fragment_info,
@@ -3127,6 +3321,30 @@ template int ReadState::get_fragment_cell_pos_range_sparse<float>(
 template int ReadState::get_fragment_cell_pos_range_sparse<double>(
     const FragmentInfo& fragment_info,
     const double* cell_range,
+    FragmentCellPosRange& fragment_cell_pos_range);
+template int ReadState::get_fragment_cell_pos_range_sparse<int8_t>(
+    const FragmentInfo& fragment_info,
+    const int8_t* cell_range,
+    FragmentCellPosRange& fragment_cell_pos_range);
+template int ReadState::get_fragment_cell_pos_range_sparse<uint8_t>(
+    const FragmentInfo& fragment_info,
+    const uint8_t* cell_range,
+    FragmentCellPosRange& fragment_cell_pos_range);
+template int ReadState::get_fragment_cell_pos_range_sparse<int16_t>(
+    const FragmentInfo& fragment_info,
+    const int16_t* cell_range,
+    FragmentCellPosRange& fragment_cell_pos_range);
+template int ReadState::get_fragment_cell_pos_range_sparse<uint16_t>(
+    const FragmentInfo& fragment_info,
+    const uint16_t* cell_range,
+    FragmentCellPosRange& fragment_cell_pos_range);
+template int ReadState::get_fragment_cell_pos_range_sparse<uint32_t>(
+    const FragmentInfo& fragment_info,
+    const uint32_t* cell_range,
+    FragmentCellPosRange& fragment_cell_pos_range);
+template int ReadState::get_fragment_cell_pos_range_sparse<uint64_t>(
+    const FragmentInfo& fragment_info,
+    const uint64_t* cell_range,
     FragmentCellPosRange& fragment_cell_pos_range);
 
 template int ReadState::get_fragment_cell_ranges_sparse<int>(
@@ -3149,11 +3367,59 @@ template int ReadState::get_fragment_cell_ranges_sparse<double>(
     const double* start_coords,
     const double* end_coords,
     FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<int8_t>(
+    int fragment_i,
+    const int8_t* start_coords,
+    const int8_t* end_coords,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint8_t>(
+    int fragment_i,
+    const uint8_t* start_coords,
+    const uint8_t* end_coords,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<int16_t>(
+    int fragment_i,
+    const int16_t* start_coords,
+    const int16_t* end_coords,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint16_t>(
+    int fragment_i,
+    const uint16_t* start_coords,
+    const uint16_t* end_coords,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint32_t>(
+    int fragment_i,
+    const uint32_t* start_coords,
+    const uint32_t* end_coords,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint64_t>(
+    int fragment_i,
+    const uint64_t* start_coords,
+    const uint64_t* end_coords,
+    FragmentCellRanges& fragment_cell_ranges);
 
 template int ReadState::get_fragment_cell_ranges_sparse<int>(
     int fragment_i,
     FragmentCellRanges& fragment_cell_ranges);
 template int ReadState::get_fragment_cell_ranges_sparse<int64_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<int8_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint8_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<int16_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint16_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint32_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_sparse<uint64_t>(
     int fragment_i,
     FragmentCellRanges& fragment_cell_ranges);
 
@@ -3163,19 +3429,66 @@ template int ReadState::get_fragment_cell_ranges_dense<int>(
 template int ReadState::get_fragment_cell_ranges_dense<int64_t>(
     int fragment_i,
     FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_dense<int8_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_dense<uint8_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_dense<int16_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_dense<uint16_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_dense<uint32_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
+template int ReadState::get_fragment_cell_ranges_dense<uint64_t>(
+    int fragment_i,
+    FragmentCellRanges& fragment_cell_ranges);
 
 template void ReadState::get_next_overlapping_tile_dense<int>(
     const int* tile_coords);
 template void ReadState::get_next_overlapping_tile_dense<int64_t>(
     const int64_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_dense<int8_t>(
+    const int8_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_dense<uint8_t>(
+    const uint8_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_dense<int16_t>(
+    const int16_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_dense<uint16_t>(
+    const uint16_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_dense<uint32_t>(
+    const uint32_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_dense<uint64_t>(
+    const uint64_t* tile_coords);
 
 template void ReadState::get_next_overlapping_tile_sparse<int>(
     const int* tile_coords);
 template void ReadState::get_next_overlapping_tile_sparse<int64_t>(
     const int64_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_sparse<int8_t>(
+    const int8_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_sparse<uint8_t>(
+    const uint8_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_sparse<int16_t>(
+    const int16_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_sparse<uint16_t>(
+    const uint16_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_sparse<uint32_t>(
+    const uint32_t* tile_coords);
+template void ReadState::get_next_overlapping_tile_sparse<uint64_t>(
+    const uint64_t* tile_coords);
 
 template void ReadState::get_next_overlapping_tile_sparse<int>();
 template void ReadState::get_next_overlapping_tile_sparse<int64_t>();
 template void ReadState::get_next_overlapping_tile_sparse<float>();
 template void ReadState::get_next_overlapping_tile_sparse<double>();
-
+template void ReadState::get_next_overlapping_tile_sparse<int8_t>();
+template void ReadState::get_next_overlapping_tile_sparse<uint8_t>();
+template void ReadState::get_next_overlapping_tile_sparse<int16_t>();
+template void ReadState::get_next_overlapping_tile_sparse<uint16_t>();
+template void ReadState::get_next_overlapping_tile_sparse<uint32_t>();
+template void ReadState::get_next_overlapping_tile_sparse<uint64_t>();

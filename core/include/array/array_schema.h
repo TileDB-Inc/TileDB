@@ -35,7 +35,6 @@
 
 #include "array_schema_c.h"
 #include "metadata_schema_c.h"
-#include "hilbert_curve.h"
 #include <limits>
 #include <string>
 #include <typeinfo>
@@ -416,7 +415,6 @@ class ArraySchema {
    * Sets the tile order. Supported tile orders. 
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR
-   *    - TILEDB_HILBSERT
    *
    * @param tile_order The tile order.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
@@ -432,12 +430,24 @@ class ArraySchema {
    *     - TILEDB_INT64
    *     - TILEDB_FLOAT32
    *     - TILEDB_FLOAT64
+   *     - TILEDB_INT8
+   *     - TILEDB_UINT8
+   *     - TILEDB_INT16
+   *     - TILEDB_UINT16
+   *     - TILEDB_UINT32
+   *     - TILEDB_UINT64
    *
    * The supported types for the coordinates are:
    *     - TILEDB_INT32
    *     - TILEDB_INT64
    *     - TILEDB_FLOAT32
    *     - TILEDB_FLOAT64
+   *     - TILEDB_INT8
+   *     - TILEDB_UINT8
+   *     - TILEDB_INT16
+   *     - TILEDB_UINT16
+   *     - TILEDB_UINT32
+   *     - TILEDB_UINT64
    *
    * @param types The types.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
@@ -609,16 +619,6 @@ class ArraySchema {
   template<class T>
   void get_tile_subarray(const T* tile_coords, T* tile_subarray) const;
 
-  /** 
-   * Returns the Hilbert id of the input coordinates. 
-   *
-   * @tparam T The coordinates type.
-   * @param coords The coordinates for which the Hilbert id is computed.
-   * @return The computed Hilbert id.
-   */
-  template<class T>
-  int64_t hilbert_id(const T* coords) const;
-
   /**
    * Checks the order of the input coordinates. First the tile order is checked
    * (which, in case of non-regular tiles, is always the same), breaking the
@@ -695,7 +695,6 @@ class ArraySchema {
    * The cell order. It can be one of the following:
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR
-   *    - TILEDB_HILBERT. 
    */
   int cell_order_;
   /** Stores the size of every attribute (plus coordinates in the end). */
@@ -721,10 +720,9 @@ class ArraySchema {
    *    - TILEDB_BLOSC_ZLIB 
    *    - TILEDB_BLOSC_ZSTD 
    *    - TILEDB_RLE 
+   *    - TILEDB_BZIP2 
    */
   std::vector<int> compression_;
-  /** Auxiliary variable used when calculating Hilbert ids. */
-  int* coords_for_hilbert_;
   /** The size (in bytes) of the coordinates. */
   size_t coords_size_;
   /** 
@@ -742,13 +740,6 @@ class ArraySchema {
    * type.
    */
   void* domain_;
-  /** 
-   * Number of bits used for the calculation of cell ids with the 
-   * Hilbert curve. 
-   */
-  int hilbert_bits_;
-  /** A Hilbert curve object for finding cell ids. */
-  HilbertCurve* hilbert_curve_;
   /**  
    * The array domain. It should contain one [lower, upper] pair per dimension. 
    * The type of the values stored in this buffer should match the coordinates
@@ -775,7 +766,7 @@ class ArraySchema {
   /** 
    * The tile order. It can be one of the following:
    *    - TILEDB_ROW_MAJOR
-   *    - TILEDB_COL_MAJOR. 
+   *    - TILEDB_COL_MAJOR 
    */
   int tile_order_;
   /** 
@@ -786,12 +777,24 @@ class ArraySchema {
    *    - TILEDB_FLOAT32
    *    - TILEDB_FLOAT64
    *    - TILEDB_CHAR 
+   *    - TILEDB_INT8
+   *    - TILEDB_UINT8
+   *    - TILEDB_INT16
+   *    - TILEDB_UINT16
+   *    - TILEDB_UINT32
+   *    - TILEDB_UINT64
    *
    * The coordinate type can be one of the following: 
    *    - TILEDB_INT32
    *    - TILEDB_INT64
    *    - TILEDB_FLOAT32
    *    - TILEDB_FLOAT64
+   *    - TILEDB_INT8
+   *    - TILEDB_UINT8
+   *    - TILEDB_INT16
+   *    - TILEDB_UINT16
+   *    - TILEDB_UINT32
+   *    - TILEDB_UINT64
    */
   std::vector<int> types_;
   /** Stores the size of every attribute type (plus coordinates in the end). */
@@ -830,15 +833,6 @@ class ArraySchema {
 
   /** Computes and returns the size of an attribute (or coordinates). */
   size_t compute_cell_size(int attribute_id) const;
-
-  /** 
-   * Computes the number of bits per dimension required by the Hilbert curve. 
-   *
-   * @tparam T The domain type.
-   * @return void
-   */
-  template<class T>
-  void compute_hilbert_bits();
 
   /**
    * Computes the tile domain. Applicable only to arrays with regular tiles. 

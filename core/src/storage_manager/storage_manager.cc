@@ -166,6 +166,23 @@ int StorageManager::workspace_create(const std::string& workspace) {
   return TILEDB_SM_OK;
 }
 
+int StorageManager::dir_type(const char* dir) {
+  // Get real path
+  std::string dir_real = real_dir(dir);
+
+  // Return type
+  if(is_workspace(dir_real))
+    return TILEDB_WORKSPACE;
+  else if(is_group(dir_real))
+    return TILEDB_GROUP;
+  else if(is_array(dir_real))
+    return TILEDB_ARRAY;
+  else if(is_metadata(dir_real))
+    return TILEDB_METADATA;
+  else
+    return -1;
+}
+
 int StorageManager::ls_workspaces(
     char** workspaces,
     int& workspace_num) {

@@ -222,7 +222,6 @@ typedef struct TileDB_ArraySchema {
    * The cell order. It can be one of the following:
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR
-   *    - TILEDB_HILBERT. 
    */
   int cell_order_;
   /**
@@ -246,6 +245,7 @@ typedef struct TileDB_ArraySchema {
    *    - TILEDB_BLOSC_ZLIB 
    *    - TILEDB_BLOSC_ZSTD 
    *    - TILEDB_RLE
+   *    - TILEDB_BZIP2
    *
    * If it is *NULL*, then the default TILEDB_NO_COMPRESSION is used for all
    * attributes.
@@ -286,12 +286,24 @@ typedef struct TileDB_ArraySchema {
    *    - TILEDB_FLOAT32
    *    - TILEDB_FLOAT64
    *    - TILEDB_CHAR 
+   *    - TILEDB_INT8
+   *    - TILEDB_UINT8
+   *    - TILEDB_INT16
+   *    - TILEDB_UINT16
+   *    - TILEDB_UINT32
+   *    - TILEDB_UINT64
    *
    * The coordinate type can be one of the following: 
    *    - TILEDB_INT32
    *    - TILEDB_INT64
    *    - TILEDB_FLOAT32
    *    - TILEDB_FLOAT64
+   *    - TILEDB_INT8
+   *    - TILEDB_UINT8
+   *    - TILEDB_INT16
+   *    - TILEDB_UINT16
+   *    - TILEDB_UINT32
+   *    - TILEDB_UINT64
    */
   int* types_;
 } TileDB_ArraySchema;
@@ -759,6 +771,7 @@ typedef struct TileDB_MetadataSchema {
    *    - TILEDB_BLOSC_ZLIB 
    *    - TILEDB_BLOSC_ZSTD 
    *    - TILEDB_RLE
+   *    - TILEDB_BZIP2
    *
    * If it is *NULL*, then the default TILEDB_NO_COMPRESSION is used for all
    * attributes.
@@ -771,7 +784,13 @@ typedef struct TileDB_MetadataSchema {
    *    - TILEDB_INT64
    *    - TILEDB_FLOAT32
    *    - TILEDB_FLOAT64
-   *    - TILEDB_CHAR. 
+   *    - TILEDB_CHAR 
+   *    - TILEDB_INT8
+   *    - TILEDB_UINT8
+   *    - TILEDB_INT16
+   *    - TILEDB_UINT16
+   *    - TILEDB_UINT32
+   *    - TILEDB_UINT64
    */
   int* types_;
 } TileDB_MetadataSchema;
@@ -1083,6 +1102,22 @@ TILEDB_EXPORT int tiledb_metadata_iterator_finalize(
 /* ********************************* */
 /*       DIRECTORY MANAGEMENT        */
 /* ********************************* */
+
+/**
+ * Returns the type of the input directory. 
+ *
+ * @param tiledb_ctx The TileDB context.
+ * @param dir The input directory.
+ * @return It can be one of the following:
+ *    - TILEDB_WORKSPACE
+ *    - TILEDB_GROUP
+ *    - TILEDB_ARRAY
+ *    - TILEDB_METADATA
+ *    - -1 (none of the above) 
+ */
+TILEDB_EXPORT int tiledb_dir_type(
+    const TileDB_CTX* tiledb_ctx,
+    const char* dir);
 
 /**
  * Clears a TileDB directory. The corresponding TileDB object (workspace,
