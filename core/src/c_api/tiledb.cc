@@ -57,7 +57,15 @@
 char tiledb_errmsg[TILEDB_ERRMSG_MAX_LEN];
 
 
+/* ****************************** */
+/*            TILEDB              */
+/* ****************************** */
 
+void tiledb_version(int* major, int* minor, int* rev) {
+  *major = TILEDB_VERSION_MAJOR;
+  *minor = TILEDB_VERSION_MINOR;
+  *rev   = TILEDB_VERSION_REVISION;
+}
 
 /* ****************************** */
 /*            CONTEXT             */
