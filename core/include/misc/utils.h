@@ -748,6 +748,21 @@ int RLE_decompress_coords_row(
     size_t value_size,
     int dim_num);
 
+/**
+ * Receives a tile of coordinate tuples and splits it across the dimensions.
+ *
+ * @param tile The input tile.
+ * @param tile_size The tile size.
+ * @param dim_num The number of dimensions.
+ * @param coords_size The size in bytes of a tuple of coordinates.
+ * @return void 
+ */
+void split_coordinates(
+    void* tile, 
+    size_t tile_size, 
+    int dim_num,
+    size_t coords_size);
+
 /** 
  * Checks if a string starts with a certain prefix.
  *
@@ -791,5 +806,21 @@ int write_to_file_cmp_gzip(
     const char* filename,
     const void* buffer, 
     size_t buffer_size);
+
+/**
+ * Creates tuples of coordinates from vertically partitioned dimensions.
+ *
+ * @param tile The input tile.
+ * @param tile_size The tile size.
+ * @param dim_num The number of dimensions.
+ * @param coords_size The size in bytes of a tuple of coordinates.
+ * @return void 
+ */
+void zip_coordinates(
+    void* tile, 
+    size_t tile_size, 
+    int dim_num,
+    size_t coords_size);
+
 
 #endif

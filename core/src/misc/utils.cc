@@ -1821,6 +1821,35 @@ int RLE_decompress_coords_row(
   return TILEDB_UT_OK;
 }
 
+void split_coordinates(
+    void* tile,
+    size_t tile_size,
+    int dim_num,
+    size_t coords_size) {
+  // For easy reference
+  size_t coord_size =  coords_size / dim_num;
+  int64_t cell_num = tile_size / coords_size;
+  char* tile_c = (char*) tile;
+  size_t ptr = 0, ptr_tmp = 0;
+
+  // Create a tile clone
+  char* tile_tmp = (char*) malloc(tile_size);
+  memcpy(tile_tmp, tile, tile_size);
+  
+  // Split coordinates
+  for(int j=0; j<dim_num; ++j) {
+    ptr_tmp = j*coord_size;
+    for(int64_t i=0; i<cell_num; ++i) {
+      memcpy(tile_c + ptr, tile_tmp + ptr_tmp, coord_size); 
+      ptr += coord_size;
+      ptr_tmp += coords_size;
+    }
+  }
+
+  // Clean up
+  free((void*) tile_tmp);
+}
+
 bool starts_with(const std::string& value, const std::string& prefix) {
   if (prefix.size() > value.size())
     return false;
@@ -1982,6 +2011,36 @@ int write_to_file_cmp_gzip(
   // Success 
   return TILEDB_UT_OK;
 }
+
+void zip_coordinates(
+    void* tile,
+    size_t tile_size,
+    int dim_num,
+    size_t coords_size) {
+  // For easy reference
+  size_t coord_size =  coords_size / dim_num;
+  int64_t cell_num = tile_size / coords_size;
+  char* tile_c = (char*) tile;
+  size_t ptr = 0, ptr_tmp = 0;
+
+  // Create a tile clone
+  char* tile_tmp = (char*) malloc(tile_size);
+  memcpy(tile_tmp, tile, tile_size);
+  
+  // Zip coordinates
+  for(int j=0; j<dim_num; ++j) {
+    ptr = j*coord_size;
+    for(int64_t i=0; i<cell_num; ++i) {
+      memcpy(tile_c + ptr, tile_tmp + ptr_tmp, coord_size); 
+      ptr += coords_size;
+      ptr_tmp += coord_size;
+    }
+  }
+
+  // Clean up
+  free((void*) tile_tmp);
+}
+
 
 // Explicit template instantiations
 template int64_t cell_num_in_subarray<int>(
