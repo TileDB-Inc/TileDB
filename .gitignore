@@ -1,4 +1,5 @@
 *.swp
+build/*
 core/bin/*
 core/obj/*
 core/lib/*
