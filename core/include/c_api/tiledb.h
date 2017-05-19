@@ -54,8 +54,6 @@
 #define TILEDB_ERRMSG_MAX_LEN 2000
 
 
-
-
 /* ********************************* */
 /*               MACROS              */
 /* ********************************* */
@@ -74,7 +72,22 @@ extern "C" {
 /**@}*/
 
 
+/* ****************************** */
+/*            TILEDB              */
+/* ****************************** */
 
+/**
+ *  Return the version of the tiledb library
+ *  being currently used.
+ *
+ *  @param major Store the major version number
+ *  @param minor Store the minor version number
+ *  @param rev Store the revision (patch) number
+ */
+void tiledb_version(
+    int* major,
+    int* minor,
+    int* rev);
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */

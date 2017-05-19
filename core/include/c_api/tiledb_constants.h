@@ -37,7 +37,10 @@
 #include <limits.h>
 
 /** Version. */
-#define TILEDB_VERSION                          "0.6.0"
+#define TILEDB_VERSION             "0.6.0"
+#define TILEDB_VERSION_MAJOR       0
+#define TILEDB_VERSION_MINOR       6
+#define TILEDB_VERSION_REVISION    0
 
 /**@{*/
 /** Return code. */  
