@@ -42,8 +42,9 @@ install:
     - mkdir -p $TILEDB_BUILD_DIR
     - cd $TILEDB_BUILD_DIR
     - cmake .. -DCMAKE_BUILD_TYPE=Coverage 
-    - make -j 4
-
+    - make -j4
+    - make examples -j4
+    
 before_script:
     - lcov --directory $TILEDB_BUILD_DIR --zerocounters
 
