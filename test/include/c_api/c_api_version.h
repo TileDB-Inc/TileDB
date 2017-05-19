@@ -30,8 +30,8 @@
  * Declarations for testing the C API sparse array spec.
  */
 
-#ifndef __C_API_SPARSE_ARRAY_SPEC_H__
-#define __C_API_SPARSE_ARRAY_SPEC_H__
+#ifndef __C_API_VERSION_H__
+#define __C_API_VERSION_H__
 
 #include "tiledb.h"
 #include <gtest/gtest.h>
