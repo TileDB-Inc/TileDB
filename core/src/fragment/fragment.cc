@@ -33,6 +33,7 @@
 #include "fragment.h"
 #include "tiledb_constants.h"
 #include "utils.h"
+#include <cerrno>
 #include <cassert>
 #include <cstdio>
 #include <cstring>
