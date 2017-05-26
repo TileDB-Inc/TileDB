@@ -34,6 +34,7 @@
 #include "utils.h"
 #include <algorithm>
 #include <cassert>
+#include <cerrno>
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
