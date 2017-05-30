@@ -84,7 +84,7 @@ extern "C" {
  *  @param minor Store the minor version number
  *  @param rev Store the revision (patch) number
  */
-void tiledb_version(
+TILEDB_EXPORT void tiledb_version(
     int* major,
     int* minor,
     int* rev);
