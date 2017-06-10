@@ -33,6 +33,7 @@
 #include "storage_manager.h"
 #include "utils.h"
 #include <cassert>
+#include <cerrno>
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>

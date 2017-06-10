@@ -1309,8 +1309,8 @@ int ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
   // Set domain
   int* domain = (int*) malloc(8*sizeof(int));
   for(int i=0; i<4; ++i) {
-    domain[2*i] = INT_MIN;
-    domain[2*i+1] = INT_MAX;
+    domain[2*i] = 0;
+    domain[2*i+1] = UINT_MAX;
   }
   array_schema_c.domain_ = domain;
 
