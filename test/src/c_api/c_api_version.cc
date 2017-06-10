@@ -63,5 +63,5 @@ TEST_F(LibraryVersionFixture, test_library_version) {
 
     ASSERT_EQ(major, 0);
     ASSERT_EQ(minor, 6);
-    ASSERT_EQ(rev,   0);
+    ASSERT_EQ(rev,   1);
 }
