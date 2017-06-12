@@ -1,10 +1,11 @@
 /**
- * @file   utils_spec.h
+ * @file   unit-capi-version.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -27,30 +28,21 @@
  * 
  * @section DESCRIPTION
  *
- * Declarations for testing various utility function specs.
+ * Tests for the C API library version
  */
 
-#ifndef __C_UTILS_SPEC_H__
-#define __C_UTILS_SPEC_H__
+#include "tiledb.h"
 
-#include "utils.h"
-#include <gtest/gtest.h>
+#include "catch.hpp" 
 
+TEST_CASE("C API Version") {
+    int major = -1;
+    int minor = -1;
+    int rev   = -1;
 
-/** Test fixture for the utility functions. */
-class UtilsTestFixture: public testing::Test {
+    tiledb_version(&major, &minor, &rev);
 
- public:
-
-  /* ********************************* */
-  /*          GTEST FUNCTIONS          */
-  /* ********************************* */
-
-  /** Test initialization. */
-  virtual void SetUp(); 
-
-  /** Test finalization. */
-  virtual void TearDown();
-};
-
-#endif
+    CHECK(major == 0);
+    CHECK(minor == 6);
+    CHECK(rev == 1);
+}

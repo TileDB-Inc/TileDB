@@ -55,7 +55,6 @@ set(MAC_ADDRESS_INTERFACE ""
     CACHE STRING "The interface carrying the MAC address of the machine."
 )
 set(USE_PARALLEL_SORT False CACHE BOOL "Enables parallel sorting.")
-set(GTEST_FILTER "*" CACHE STRING "Filters for the Google unit tests.")
 set(COMPRESSION_LEVEL_GZIP "" CACHE STRING "Compression level for GZIP.")
 set(COMPRESSION_LEVEL_ZSTD "" CACHE STRING "Compression level for Zstandard.")
 set(COMPRESSION_LEVEL_BLOSC "" CACHE STRING "Compression level for Blosc.")
