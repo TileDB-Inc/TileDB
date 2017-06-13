@@ -31,7 +31,7 @@ include(CheckCXXCompilerFlag)
 
 # Set support for C++ 2011
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
-CHECK_CXX_COMPILER_FLAG(-std=gnu++11 CXX_2011_FOUND)
+CHECK_CXX_COMPILER_FLAG(-std=c++11 CXX_2011_FOUND)
 if(NOT CXX_2011_FOUND)
   message(FATAL_ERROR "Your compiler does not support C++ 2011.") 
 else()
