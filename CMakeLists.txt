@@ -83,7 +83,6 @@ include_directories(${BZIP2_INCLUDE_DIR})
 set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${BZIP2_LIBRARIES})
 
 # Find optional library dependencies
-find_package(GTest)
 find_package(Doxygen)
 if(USE_MPI)
   find_package(MPI REQUIRED)
@@ -96,7 +95,6 @@ endif()
 
 # Add pthread library to dependencies
 set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} pthread)
-
 
 # Set C++ 2011 flag
 include(SetCXX2011Flag)
@@ -160,9 +158,7 @@ add_subdirectory(core)
 add_subdirectory(examples)
 
 # Build unit tests
-if(GTEST_FOUND)
-  add_subdirectory(test)
-endif()
+add_subdirectory(test)
 
 # Doxygen documentation
 if(DOXYGEN_FOUND)
