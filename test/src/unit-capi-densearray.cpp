@@ -31,8 +31,8 @@
  * Tests of C API for dense array operations.
  */
 
+// #include "progress_bar.h"
 #include "tiledb.h"
-#include "progress_bar.h"
 #include <iostream>
 #include <time.h>
 #include <sys/time.h>
@@ -608,7 +608,7 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted reads") {
   set_array_name("dense_test_5000x10000_100x100");
 
   // Create a progress bar
-  ProgressBar* progress_bar = new ProgressBar();
+  // ProgressBar* progress_bar = new ProgressBar();
 
   // Create a dense integer array
   rc = create_dense_array_2D(
@@ -680,11 +680,11 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted reads") {
     delete [] buffer;
 
     // Update progress bar
-    progress_bar->load(1.0/iter_num);
+    // progress_bar->load(1.0/iter_num);
   }
 
   // Delete progress bar
-  delete progress_bar;
+  // delete progress_bar;
 }
 
 
@@ -713,7 +713,7 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted writes") {
   set_array_name("dense_test_100x100_10x10");
 
   // Create a progress bar
-  ProgressBar* progress_bar = new ProgressBar();
+  // ProgressBar* progress_bar = new ProgressBar();
 
   // Create a dense integer array
   rc = create_dense_array_2D(
@@ -784,11 +784,11 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted writes") {
     delete [] read_buffer;
 
     // Update progress bar
-    progress_bar->load(1.0/iter_num);
+    // progress_bar->load(1.0/iter_num);
   }
 
   // Delete progress bar
-  delete progress_bar;
+  // delete progress_bar;
 }
 
 /**

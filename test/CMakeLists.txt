@@ -29,8 +29,9 @@
 file(GLOB TILEDB_CORE_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/core/include/*")
 
 # catch unit-test library
-add_library(catch_main OBJECT
-    "src/unit.cpp"
+add_library(
+    catch_main EXCLUDE_FROM_ALL
+    OBJECT "src/unit.cpp"
 )
 
 set_target_properties(catch_main PROPERTIES
@@ -38,38 +39,47 @@ set_target_properties(catch_main PROPERTIES
     CXX_STANDARD_REQUIRED ON
 )
 
-target_include_directories(catch_main PRIVATE 
+target_include_directories(
+    catch_main PRIVATE 
     ${CMAKE_SOURCE_DIR}/external/catch
 )
 
 # unit test executable
 set(TILEDB_UNITTEST_TARGET_NAME "tiledb_unit")
-add_executable(${TILEDB_UNITTEST_TARGET_NAME}
-	$<TARGET_OBJECTS:catch_main>
-	"src/unit-capi-version.cpp"
-	"src/unit-capi-arrayschema.cpp"
-	"src/unit-capi-sparsearray.cpp"
-	"src/unit-capi-densearray.cpp"
-	"src/unit-compression-rle.cpp"
+add_executable(
+    ${TILEDB_UNITTEST_TARGET_NAME} EXCLUDE_FROM_ALL
+    $<TARGET_OBJECTS:catch_main>
+    "src/unit-capi-version.cpp"
+    "src/unit-capi-arrayschema.cpp"
+    "src/unit-capi-sparsearray.cpp"
+    "src/unit-capi-densearray.cpp"
+    "src/unit-compression-rle.cpp"
 )
 
-set_target_properties(${TILEDB_UNITTEST_TARGET_NAME} PROPERTIES
+set_target_properties(
+    ${TILEDB_UNITTEST_TARGET_NAME} PROPERTIES
     CXX_STANDARD 11
     CXX_STANDARD_REQUIRED ON
 )
 
-target_link_libraries(${TILEDB_UNITTEST_TARGET_NAME}
+target_link_libraries(
+    ${TILEDB_UNITTEST_TARGET_NAME}
     tiledb_static ${TILEDB_LIB_DEPENDENCIES}
 )
 
-target_include_directories(${TILEDB_UNITTEST_TARGET_NAME} PRIVATE
+target_include_directories(
+    ${TILEDB_UNITTEST_TARGET_NAME} PRIVATE
     ${TILEDB_CORE_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/external/catch
 )
 
-add_test(NAME ${TILEDB_UNITTEST_TARGET_NAME}
-	 COMMAND ${TILEDB_UNITTEST_TARGET_NAME} --durations=yes
-	 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test)
+add_test(
+    NAME ${TILEDB_UNITTEST_TARGET_NAME}
+    COMMAND ${TILEDB_UNITTEST_TARGET_NAME} --durations=yes
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/test)
 
 # Add custom target 'check'
-add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -V DEPENDS ${TILEDB_UNITTEST_TARGET_NAME})
+add_custom_target(
+    check COMMAND ${CMAKE_CTEST_COMMAND} -V 
+    DEPENDS ${TILEDB_UNITTEST_TARGET_NAME}
+)

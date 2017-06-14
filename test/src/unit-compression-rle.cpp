@@ -209,7 +209,7 @@ TEST_CASE("Test RLE Attribute Compression") {
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 }
 
-TEST_CASE("Test RLE compression (coordinates, row-major cell order") {
+TEST_CASE("Test RLE compression (coordinates, row-major cell order)") {
   // Initializations
   unsigned char input[1000000];
   unsigned char compressed[1000000];
@@ -365,7 +365,7 @@ TEST_CASE("Test RLE compression (coordinates, row-major cell order") {
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 }
 
-TEST_CASE("Test RLE compression (coordinates, column-major cell order") {
+TEST_CASE("Test RLE compression (coordinates, column-major cell order)") {
   // Initializations
   unsigned char input[1000000];
   unsigned char compressed[1000000];
