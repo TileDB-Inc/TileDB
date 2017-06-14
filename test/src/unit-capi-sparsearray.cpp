@@ -30,9 +30,10 @@
  *
  * Tests of C API for sparse array operations.
  */
-#include "tiledb.h"
-#include "progress_bar.h"
 
+#include "catch.hpp"
+// #include "progress_bar.h"
+#include "tiledb.h"
 #include <cstring>
 #include <iostream>
 #include <map>
@@ -41,7 +42,8 @@
 #include <sys/time.h>
 #include <sstream>
 
-#include "catch.hpp"
+
+
 
 struct SparseArrayFx {
   
@@ -343,7 +345,7 @@ TEST_CASE_METHOD(SparseArrayFx, "Test random sparse sorted reads") {
   set_array_name("sparse_test_5000x1000_100x100");
 
   // create a progress bar
-  ProgressBar* progress_bar = new ProgressBar();
+  // ProgressBar* progress_bar = new ProgressBar();
 
   // create a dense integer array
   rc = create_sparse_array_2D(
@@ -411,8 +413,8 @@ TEST_CASE_METHOD(SparseArrayFx, "Test random sparse sorted reads") {
     delete [] buffer;
     
     // update progress bar
-    progress_bar->load(1.0/iter_num);
+    // progress_bar->load(1.0/iter_num);
   } 
 
-  delete progress_bar;
+  // delete progress_bar;
 } 
