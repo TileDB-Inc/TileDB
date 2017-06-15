@@ -83,7 +83,6 @@ include_directories(${BZIP2_INCLUDE_DIR})
 set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${BZIP2_LIBRARIES})
 
 # Find optional library dependencies
-find_package(Doxygen)
 if(USE_MPI)
   find_package(MPI REQUIRED)
   include_directories(${MPI_CXX_INCLUDE_PATH})
@@ -160,7 +159,26 @@ add_subdirectory(examples)
 # Build unit tests
 add_subdirectory(test)
 
+############################################################
+# "make format" and "make check-format" targets
+############################################################
+set(SCRIPTS_DIR "${CMAKE_SOURCE_DIR}/scripts")
+
+find_package(ClangTools)
+if (${CLANG_FORMAT_FOUND})
+  # runs clang format and updates files in place.
+  add_custom_target(format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 1
+    `find ${CMAKE_CURRENT_SOURCE_DIR}/core/include ${CMAKE_CURRENT_SOURCE_DIR}/core/src -name \\*.cc -or -name \\*.h | sed -e '/tiledb.h/g'`)
+
+  # runs clang format and exits with a non-zero exit code if any files need to be reformatted
+  add_custom_target(check-format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 0
+    `find ${CMAKE_CURRENT_SOURCE_DIR}/core/include ${CMAKE_CURRENT_SOURCE_DIR}/core/src  -name \\*.cc -or -name \\*.h`)
+endif()
+
+###########################################################
 # Doxygen documentation
+###########################################################
+find_package(Doxygen)
 if(DOXYGEN_FOUND)
   file(GLOB_RECURSE TILEDB_CORE_HEADERS "core/include/*.h")
   add_custom_command(
@@ -179,7 +197,9 @@ if(DOXYGEN_FOUND)
   )
 endif(DOXYGEN_FOUND)
 
+###########################################################
 # Uninstall
+###########################################################
 set(CMD "xargs printf '-- Uninstalling: %s\\\\n' <install_manifest.txt") 
 add_custom_target(
    uninstall 
