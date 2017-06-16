@@ -94,7 +94,7 @@ TILEDB_EXPORT void tiledb_version(
 /* ********************************* */
 
 /** Stores potential error messages. */
-extern char tiledb_errmsg[TILEDB_ERRMSG_MAX_LEN];
+TILEDB_EXPORT extern char tiledb_errmsg[TILEDB_ERRMSG_MAX_LEN];
 
 
 
