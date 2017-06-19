@@ -1,5 +1,6 @@
 *.swp
 build/*
+cmake-build-debug/*
 core/bin/*
 core/obj/*
 core/lib/*
@@ -14,5 +15,6 @@ doxygen/html/
 doxygen/latex/
 examples/bin/*
 examples/obj/*
+.idea
 *temp*
 *.DS_Store
