@@ -49,6 +49,7 @@ before_script:
     - lcov --directory $TILEDB_BUILD_DIR --zerocounters
 
 script:
+    - make check-format
     - make check
 
 after_success:
