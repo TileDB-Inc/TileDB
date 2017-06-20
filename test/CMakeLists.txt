@@ -31,7 +31,7 @@ file(GLOB TILEDB_CORE_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/core/include/*")
 # catch unit-test library
 add_library(
     catch_main EXCLUDE_FROM_ALL
-    OBJECT "src/unit.cpp"
+    OBJECT "src/unit.cc"
 )
 
 set_target_properties(catch_main PROPERTIES
@@ -49,11 +49,11 @@ set(TILEDB_UNITTEST_TARGET_NAME "tiledb_unit")
 add_executable(
     ${TILEDB_UNITTEST_TARGET_NAME} EXCLUDE_FROM_ALL
     $<TARGET_OBJECTS:catch_main>
-    "src/unit-capi-version.cpp"
-    "src/unit-capi-arrayschema.cpp"
-    "src/unit-capi-sparsearray.cpp"
-    "src/unit-capi-densearray.cpp"
-    "src/unit-compression-rle.cpp"
+    "src/unit-capi-version.cc"
+    "src/unit-capi-arrayschema.cc"
+    "src/unit-capi-sparsearray.cc"
+    "src/unit-capi-densearray.cc"
+    "src/unit-compression-rle.cc"
 )
 
 set_target_properties(
