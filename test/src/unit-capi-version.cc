@@ -25,7 +25,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * Tests for the C API library version
@@ -33,16 +33,16 @@
 
 #include "tiledb.h"
 
-#include "catch.hpp" 
+#include "catch.hpp"
 
 TEST_CASE("C API Version") {
-    int major = -1;
-    int minor = -1;
-    int rev   = -1;
+  int major = -1;
+  int minor = -1;
+  int rev = -1;
 
-    tiledb_version(&major, &minor, &rev);
+  tiledb_version(&major, &minor, &rev);
 
-    CHECK(major == 0);
-    CHECK(minor == 6);
-    CHECK(rev == 1);
+  CHECK(major == 0);
+  CHECK(minor == 6);
+  CHECK(rev == 1);
 }
