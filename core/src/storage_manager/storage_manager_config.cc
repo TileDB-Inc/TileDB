@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,19 +24,14 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * This file implements the StorageManagerConfig class.
  */
 
-
-
 #include "storage_manager_config.h"
 #include "tiledb_constants.h"
-
-
-
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -55,9 +50,6 @@ StorageManagerConfig::StorageManagerConfig() {
 StorageManagerConfig::~StorageManagerConfig() {
 }
 
-
-
-
 /* ****************************** */
 /*             MUTATORS           */
 /* ****************************** */
@@ -70,7 +62,7 @@ void StorageManagerConfig::init(
     int read_method,
     int write_method) {
   // Initialize home
-  if(home == NULL)
+  if (home == NULL)
     home_ = "";
   else
     home_ = home;
@@ -82,20 +74,15 @@ void StorageManagerConfig::init(
 
   // Initialize read method
   read_method_ = read_method;
-  if(read_method_ != TILEDB_IO_READ &&
-     read_method_ != TILEDB_IO_MMAP &&
-     read_method_ != TILEDB_IO_MPI)
-    read_method_ = TILEDB_IO_MMAP;  // Use default 
+  if (read_method_ != TILEDB_IO_READ && read_method_ != TILEDB_IO_MMAP &&
+      read_method_ != TILEDB_IO_MPI)
+    read_method_ = TILEDB_IO_MMAP;  // Use default
 
   // Initialize write method
   write_method_ = write_method;
-  if(write_method_ != TILEDB_IO_WRITE &&
-     write_method_ != TILEDB_IO_MPI)
-    write_method_ = TILEDB_IO_WRITE;  // Use default 
+  if (write_method_ != TILEDB_IO_WRITE && write_method_ != TILEDB_IO_MPI)
+    write_method_ = TILEDB_IO_WRITE;  // Use default
 }
-
-
-
 
 /* ****************************** */
 /*            ACCESSORS           */

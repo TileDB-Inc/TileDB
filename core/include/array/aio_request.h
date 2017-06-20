@@ -24,10 +24,10 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * This file declares the AIO_Request struct. 
+ * This file declares the AIO_Request struct.
  */
 
 #ifndef __AIO_REQUEST_H__
@@ -52,29 +52,29 @@ struct AIO_Request {
    * buffers (there is a one-to-one correspondence). The function will attempt
    * to write as many results as can fit in the buffers, and potentially
    * alter the buffer size to indicate the size of the *useful* data written
-   * in the buffer. 
+   * in the buffer.
    */
   size_t* buffer_sizes_;
   /** Function to be called upon completion of the request. */
-  void *(*completion_handle_) (void*);
+  void* (*completion_handle_)(void*);
   /** Data to be passed to the completion handle. */
   void* completion_data_;
   /** A unique request id. */
   size_t id_;
-  /** 
+  /**
    * It can be one of the following:
-   *    - TILEDB_ARRAY_READ 
+   *    - TILEDB_ARRAY_READ
    *    - TILEDB_ARRAY_READ_SORTED_COL
    *    - TILEDB_ARRAY_READ_SORTED_ROW
    *    - TILEDB_ARRAY_WRITE
    *    - TILEDB_ARRAY_WRITE_UNSORTED
    */
   int mode_;
-  /** 
+  /**
    * Applicable only to read requests.
    * Indicates whether a buffer has overflowed during a read request.
    * If it is NULL, it will be ignored. Otherwise, it must be an array
-   * with as many elements as the number of buffers above. 
+   * with as many elements as the number of buffers above.
    */
   bool* overflow_;
   /**
@@ -84,15 +84,15 @@ struct AIO_Request {
    *    - TILEDB_AIO_INPROGRESS
    *      The request is still in progress.
    *    - TILEDB_AIO_OVERFLOW
-   *      At least one of the input buffers overflowed (applicable only to AIO 
+   *      At least one of the input buffers overflowed (applicable only to AIO
    *      read requests)
-   *    - TILEDB_AIO_ERR 
-   *      The request caused an error (and thus was canceled). 
+   *    - TILEDB_AIO_ERR
+   *      The request caused an error (and thus was canceled).
    */
   int* status_;
-  /** 
+  /**
    * The subarray in which the array read/write will be
-   * constrained on. It should be a sequence of [low, high] pairs (one 
+   * constrained on. It should be a sequence of [low, high] pairs (one
    * pair per dimension), whose type should be the same as that of the
    * coordinates. If it is NULL, then the subarray is set to the entire
    * array domain. For the case of writes, this is meaningful only for
@@ -102,4 +102,3 @@ struct AIO_Request {
 };
 
 #endif
-

@@ -24,26 +24,23 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * This file defines class StorageManagerConfig.  
- */  
+ * This file defines class StorageManagerConfig.
+ */
 
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
 #ifdef HAVE_MPI
-  #include <mpi.h>
+#include <mpi.h>
 #endif
 #include <string>
 
-
-
-
-/** 
- * This class is responsible for the TileDB storage manager configuration 
- * parameters. 
+/**
+ * This class is responsible for the TileDB storage manager configuration
+ * parameters.
  */
 class StorageManagerConfig {
  public:
@@ -57,12 +54,9 @@ class StorageManagerConfig {
   /** Destructor. */
   ~StorageManagerConfig();
 
-
-
- 
-  /* ********************************* */
-  /*             MUTATORS              */
-  /* ********************************* */
+/* ********************************* */
+/*             MUTATORS              */
+/* ********************************* */
 
 #ifdef HAVE_MPI
   /**
@@ -70,60 +64,54 @@ class StorageManagerConfig {
    *
    * @param home The TileDB home directory.
    * @param mpi_comm The MPI communicator.
-   * @param read_method The method for reading data from a file. 
-   *     It can be one of the following: 
+   * @param read_method The method for reading data from a file.
+   *     It can be one of the following:
    *        - TILEDB_IO_READ
    *          TileDB will use POSIX read.
    *        - TILEDB_IO_MMAP
    *          TileDB will use mmap.
    *        - TILEDB_IO_MPI
-   *          TileDB will use MPI-IO read. 
-   * @param write_method The method for writing data to a file. 
-   *     It can be one of the following: 
+   *          TileDB will use MPI-IO read.
+   * @param write_method The method for writing data to a file.
+   *     It can be one of the following:
    *        - TILEDB_IO_WRITE
    *          TileDB will use POSIX write.
    *        - TILEDB_IO_MPI
    *          TileDB will use MPI-IO write.
-   * @return void. 
+   * @return void.
    */
   void init(
-      const char* home,
-      MPI_Comm* mpi_comm,
-      int read_method,
-      int write_methods); 
+      const char* home, MPI_Comm* mpi_comm, int read_method, int write_methods);
 #else
   /**
    * Initializes the configuration parameters.
    *
    * @param home The TileDB home directory.
-   * @param read_method The method for reading data from a file. 
-   *     It can be one of the following: 
+   * @param read_method The method for reading data from a file.
+   *     It can be one of the following:
    *        - TILEDB_IO_READ
    *          TileDB will use POSIX read.
    *        - TILEDB_IO_MMAP
    *          TileDB will use mmap.
    *        - TILEDB_IO_MPI
-   *          TileDB will use MPI-IO read. 
-   * @param write_method The method for writing data to a file. 
-   *     It can be one of the following: 
+   *          TileDB will use MPI-IO read.
+   * @param write_method The method for writing data to a file.
+   *     It can be one of the following:
    *        - TILEDB_IO_WRITE
    *          TileDB will use POSIX write.
    *        - TILEDB_IO_MPI
    *          TileDB will use MPI-IO write.
-   * @return void. 
+   * @return void.
    */
-  void init(
-      const char* home,
-      int read_method,
-      int write_method);
+  void init(const char* home, int read_method, int write_method);
 #endif
- 
+
   /* ********************************* */
   /*             ACCESSORS             */
   /* ********************************* */
 
   /** Returns the TileDB home directory. */
-  const std::string& home() const; 
+  const std::string& home() const;
 
 #ifdef HAVE_MPI
   /** Returns the MPI communicator. */
@@ -147,24 +135,24 @@ class StorageManagerConfig {
   /** The MPI communicator. */
   MPI_Comm* mpi_comm_;
 #endif
-  /** 
-   * The method for reading data from a file. 
-   * It can be one of the following: 
+  /**
+   * The method for reading data from a file.
+   * It can be one of the following:
    *    - TILEDB_IO_READ
    *      TileDB will use POSIX read.
    *    - TILEDB_IO_MMAP
    *      TileDB will use mmap.
    *    - TILEDB_IO_MPI
-   *      TileDB will use MPI-IO read. 
+   *      TileDB will use MPI-IO read.
    */
   int read_method_;
-  /** 
-   * The method for writing data to a file. 
-   * It can be one of the following: 
+  /**
+   * The method for writing data to a file.
+   * It can be one of the following:
    *    - TILEDB_IO_WRITE
    *      TileDB will use POSIX write.
    *    - TILEDB_IO_MPI
-   *      TileDB will use MPI-IO write. 
+   *      TileDB will use MPI-IO write.
    */
   int write_method_;
 };

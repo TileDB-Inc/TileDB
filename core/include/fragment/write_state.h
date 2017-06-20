@@ -24,22 +24,19 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * This file defines class WriteState. 
+ * This file defines class WriteState.
  */
 
 #ifndef __WRITE_STATE_H__
 #define __WRITE_STATE_H__
 
+#include <iostream>
+#include <vector>
 #include "book_keeping.h"
 #include "fragment.h"
-#include <vector>
-#include <iostream>
-
-
-
 
 /* ********************************* */
 /*             CONSTANTS             */
@@ -47,15 +44,12 @@
 
 /**@{*/
 /** Return code. */
-#define TILEDB_WS_OK        0
-#define TILEDB_WS_ERR      -1
+#define TILEDB_WS_OK 0
+#define TILEDB_WS_ERR -1
 /**@}*/
 
 /** Default error message. */
 #define TILEDB_WS_ERRMSG std::string("[TileDB::WriteState] Error: ")
-
-
-
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
@@ -64,25 +58,18 @@
 /** Stores potential error messages. */
 extern std::string tiledb_ws_errmsg;
 
-
-
-
 class BookKeeping;
 class Fragment;
-
-
-
 
 /** Stores the state necessary when writing cells to a fragment. */
 class WriteState {
  public:
-
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** 
-   * Constructor. 
+  /**
+   * Constructor.
    *
    * @param fragment The fragment the write state belongs to.
    * @param book_keeping The book-keeping *fragment*.
@@ -92,9 +79,6 @@ class WriteState {
   /** Destructor. */
   ~WriteState();
 
-
-
-
   /* ********************************* */
   /*              MUTATORS             */
   /* ********************************* */
@@ -102,29 +86,28 @@ class WriteState {
   /**
    * Finalizes the fragment.
    *
-   * @return TILEDB_WS_OK for success and TILEDB_WS_ERR for error. 
+   * @return TILEDB_WS_OK for success and TILEDB_WS_ERR for error.
    */
   int finalize();
 
   /**
    * Syncs all attribute files in the fragment.
-   * 
+   *
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int sync();
 
   /**
    * Syncs the input attribute in the fragment.
-   * 
+   *
    * @param attribute The attribute name.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int sync_attribute(const std::string& attribute);
 
-  
   /**
    * Performs a write operation in the fragment. The cell values are provided
-   * in a set of buffers (one per attribute specified upon the array 
+   * in a set of buffers (one per attribute specified upon the array
    * initialization). Note that there must be a one-to-one correspondance
    * between the cell values across the attribute buffers.
    *
@@ -134,14 +117,14 @@ class WriteState {
    *      In this mode, the cell values are provided in the buffers respecting
    *      the cell order on the disk. It is practically an **append** operation,
    *      where the provided cell values are simply written at the end of
-   *      their corresponding attribute files.  
+   *      their corresponding attribute files.
    *    - TILEDB_ARRAY_WRITE_UNSORTED: \n
    *      This mode is applicable to sparse arrays, or when writing sparse
    *      updates to a dense array. One of the buffers holds the coordinates.
    *      The cells in this mode are given in an arbitrary, unsorted order
    *      (i.e., without respecting how the cells must be stored on the disk
-   *      according to the array schema definition). 
-   * 
+   *      according to the array schema definition).
+   *
    * @param buffers An array of buffers, one for each attribute. These must be
    *     provided in the same order as the attributes specified in
    *     Array::init() or Array::reset_attributes(). The case of variable-sized
@@ -153,12 +136,7 @@ class WriteState {
    *     a one-to-one correspondence).
    * @return TILEDB_WS_OK for success and TILEDB_WS_ERR for error.
    */
-  int write(
-      const void** buffers, 
-      const size_t* buffer_sizes);
-
-
-
+  int write(const void** buffers, const size_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -169,8 +147,8 @@ class WriteState {
   BookKeeping* book_keeping_;
   /** The first and last coordinates of the tile currently being populated. */
   void* bounding_coords_;
-  /**  
-   * The current offsets of the variable-sized attributes in their 
+  /**
+   * The current offsets of the variable-sized attributes in their
    * respective files, or alternatively, the current file size of each
    * variable-sized attribute.
    */
@@ -187,9 +165,9 @@ class WriteState {
   std::vector<size_t> tiles_var_offsets_;
   /** Internal buffers used in the case of compression for variable tiles. */
   std::vector<void*> tiles_var_;
-  /** 
-   * Sizes of internal buffers used in the case of compression for variable 
-   * tiles. 
+  /**
+   * Sizes of internal buffers used in the case of compression for variable
+   * tiles.
    */
   std::vector<size_t> tiles_var_sizes_;
   /** Internal buffer used in the case of compression. */
@@ -199,17 +177,14 @@ class WriteState {
   /** Offsets to the internal tile buffers used in compression. */
   std::vector<size_t> tile_offsets_;
 
-
-
-
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
   /**
    * Compresses the input tile buffer, and stores it inside tile_compressed_
-   * member attribute. 
-   * 
+   * member attribute.
+   *
    * @param attribute_id The id of the attribute the tile belongs to.
    * @param tile The tile buffer to be compressed.
    * @param tile_size The size of the tile buffer in bytes.
@@ -223,9 +198,9 @@ class WriteState {
       size_t& tile_compressed_size);
 
   /**
-   * Compresses with GZIP the input tile buffer, and stores it inside 
-   * tile_compressed_ member attribute. 
-   * 
+   * Compresses with GZIP the input tile buffer, and stores it inside
+   * tile_compressed_ member attribute.
+   *
    * @param attribute_id The attribute id.
    * @param tile The tile buffer to be compressed.
    * @param tile_size The size of the tile buffer in bytes.
@@ -239,9 +214,9 @@ class WriteState {
       size_t& tile_compressed_size);
 
   /**
-   * Compresses with Zstandard the input tile buffer, and stores it inside 
-   * tile_compressed_ member attribute. 
-   * 
+   * Compresses with Zstandard the input tile buffer, and stores it inside
+   * tile_compressed_ member attribute.
+   *
    * @param attribute_id The attribute id.
    * @param tile The tile buffer to be compressed.
    * @param tile_size The size of the tile buffer in bytes.
@@ -255,9 +230,9 @@ class WriteState {
       size_t& tile_compressed_size);
 
   /**
-   * Compresses with LZ4 the input tile buffer, and stores it inside 
-   * tile_compressed_ member attribute. 
-   * 
+   * Compresses with LZ4 the input tile buffer, and stores it inside
+   * tile_compressed_ member attribute.
+   *
    * @param attribute_id The attribute id.
    * @param tile The tile buffer to be compressed.
    * @param tile_size The size of the tile buffer in bytes.
@@ -271,9 +246,9 @@ class WriteState {
       size_t& tile_compressed_size);
 
   /**
-   * Compresses with Blosc the input tile buffer, and stores it inside 
-   * tile_compressed_ member attribute. 
-   * 
+   * Compresses with Blosc the input tile buffer, and stores it inside
+   * tile_compressed_ member attribute.
+   *
    * @param attribute_id The id of the attribute the tile belongs to.
    * @param tile The tile buffer to be compressed.
    * @param tile_size The size of the tile buffer in bytes.
@@ -289,9 +264,9 @@ class WriteState {
       const char* compressor);
 
   /**
-   * Compresses with RLE the input tile buffer, and stores it inside 
-   * tile_compressed_ member attribute. 
-   * 
+   * Compresses with RLE the input tile buffer, and stores it inside
+   * tile_compressed_ member attribute.
+   *
    * @param attribute_id The id of the attribute the tile belongs to.
    * @param tile The tile buffer to be compressed.
    * @param tile_size The size of the tile buffer in bytes.
@@ -305,9 +280,9 @@ class WriteState {
       size_t& tile_compressed_size);
 
   /**
-   * Compresses with BZIP2 the input tile buffer, and stores it inside 
-   * tile_compressed_ member attribute. 
-   * 
+   * Compresses with BZIP2 the input tile buffer, and stores it inside
+   * tile_compressed_ member attribute.
+   *
    * @param attribute_id The attribute id.
    * @param tile The tile buffer to be compressed.
    * @param tile_size The size of the tile buffer in bytes.
@@ -347,7 +322,7 @@ class WriteState {
    * @param coords The input coordinates.
    * @return void
    */
-  template<class T>
+  template <class T>
   void expand_mbr(const T* coords);
 
   /**
@@ -376,14 +351,14 @@ class WriteState {
    * Sorts the input cell coordinates according to the order specified in the
    * array schema. This is not done in place; the sorted positions are stored
    * in a separate vector.
-   * 
+   *
    * @param buffer The buffer holding the cell coordinates.
    * @param buffer_size The size (in bytes) of *buffer*.
    * @param cell_pos The sorted cell positions.
-   * @return void 
+   * @return void
    */
   void sort_cell_pos(
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
       std::vector<int64_t>& cell_pos) const;
 
@@ -391,16 +366,16 @@ class WriteState {
    * Sorts the input cell coordinates according to the order specified in the
    * array schema. This is not done in place; the sorted positions are stored
    * in a separate vector.
-   * 
+   *
    * @tparam T The type of coordinates stored in *buffer*.
    * @param buffer The buffer holding the cell coordinates.
    * @param buffer_size The size (in bytes) of *buffer*.
    * @param cell_pos The sorted cell positions.
-   * @return void 
+   * @return void
    */
-  template<class T>
+  template <class T>
   void sort_cell_pos(
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
       std::vector<int64_t>& cell_pos) const;
 
@@ -423,7 +398,7 @@ class WriteState {
    * @param buffer_size The size (in bytes) of *buffer*.
    * @return void
    */
-  template<class T>
+  template <class T>
   void update_book_keeping(const void* buffer, size_t buffer_size);
 
   /**
@@ -442,9 +417,7 @@ class WriteState {
    * @param buffer_sizes See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_dense(
-      const void** buffers, 
-      const size_t* buffer_sizes);
+  int write_dense(const void** buffers, const size_t* buffer_sizes);
 
   /**
    * Performs the write operation for the case of a dense fragment, focusing
@@ -456,9 +429,7 @@ class WriteState {
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense_attr(
-      int attribute_id,
-      const void* buffer, 
-      size_t buffer_size);
+      int attribute_id, const void* buffer, size_t buffer_size);
 
   /**
    * Performs the write operation for the case of a dense fragment, focusing
@@ -470,9 +441,7 @@ class WriteState {
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense_attr_cmp_none(
-      int attribute_id,
-      const void* buffer, 
-      size_t buffer_size);
+      int attribute_id, const void* buffer, size_t buffer_size);
 
   /**
    * Performs the write operation for the case of a dense fragment, focusing
@@ -484,9 +453,7 @@ class WriteState {
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_dense_attr_cmp(
-      int attribute_id,
-      const void* buffer, 
-      size_t buffer_size);
+      int attribute_id, const void* buffer, size_t buffer_size);
 
   /**
    * Performs the write operation for the case of a dense fragment, focusing
@@ -501,9 +468,9 @@ class WriteState {
    */
   int write_dense_attr_var(
       int attribute_id,
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
-      const void* buffer_var, 
+      const void* buffer_var,
       size_t buffer_var_size);
 
   /**
@@ -519,9 +486,9 @@ class WriteState {
    */
   int write_dense_attr_var_cmp_none(
       int attribute_id,
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
-      const void* buffer_var, 
+      const void* buffer_var,
       size_t buffer_var_size);
 
   /**
@@ -537,9 +504,9 @@ class WriteState {
    */
   int write_dense_attr_var_cmp(
       int attribute_id,
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
-      const void* buffer_var, 
+      const void* buffer_var,
       size_t buffer_var_size);
 
   /**
@@ -549,9 +516,7 @@ class WriteState {
    * @param buffer_sizes See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse(
-      const void** buffers, 
-      const size_t* buffer_sizes);
+  int write_sparse(const void** buffers, const size_t* buffer_sizes);
 
   /**
    * Performs the write operation for the case of a sparse fragment, focusing
@@ -563,9 +528,7 @@ class WriteState {
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse_attr(
-      int attribute_id,
-      const void* buffer, 
-      size_t buffer_size);
+      int attribute_id, const void* buffer, size_t buffer_size);
 
   /**
    * Performs the write operation for the case of a sparse fragment, focusing
@@ -577,9 +540,7 @@ class WriteState {
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse_attr_cmp_none(
-      int attribute_id,
-      const void* buffer, 
-      size_t buffer_size);
+      int attribute_id, const void* buffer, size_t buffer_size);
 
   /**
    * Performs the write operation for the case of a sparse fragment, focusing
@@ -591,9 +552,7 @@ class WriteState {
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int write_sparse_attr_cmp(
-      int attribute_id,
-      const void* buffer, 
-      size_t buffer_size);
+      int attribute_id, const void* buffer, size_t buffer_size);
 
   /**
    * Performs the write operation for the case of a sparse fragment, focusing
@@ -608,9 +567,9 @@ class WriteState {
    */
   int write_sparse_attr_var(
       int attribute_id,
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
-      const void* buffer_var, 
+      const void* buffer_var,
       size_t buffer_var_size);
 
   /**
@@ -626,9 +585,9 @@ class WriteState {
    */
   int write_sparse_attr_var_cmp_none(
       int attribute_id,
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
-      const void* buffer_var, 
+      const void* buffer_var,
       size_t buffer_var_size);
 
   /**
@@ -644,25 +603,23 @@ class WriteState {
    */
   int write_sparse_attr_var_cmp(
       int attribute_id,
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
-      const void* buffer_var, 
+      const void* buffer_var,
       size_t buffer_var_size);
 
   /**
-   * Performs the write operation for the case of a sparse fragment when the 
+   * Performs the write operation for the case of a sparse fragment when the
    * coordinates are unsorted.
    *
    * @param buffers See write().
    * @param buffer_sizes See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_unsorted(
-      const void** buffers, 
-      const size_t* buffer_sizes);
+  int write_sparse_unsorted(const void** buffers, const size_t* buffer_sizes);
 
   /**
-   * Performs the write operation for the case of a sparse fragment when the 
+   * Performs the write operation for the case of a sparse fragment when the
    * coordinates are unsorted, focusing on a single fixed-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
@@ -673,12 +630,12 @@ class WriteState {
    */
   int write_sparse_unsorted_attr(
       int attribute_id,
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
       const std::vector<int64_t>& cell_pos);
 
   /**
-   * Performs the write operation for the case of a sparse fragment when the 
+   * Performs the write operation for the case of a sparse fragment when the
    * coordinates are unsorted, focusing on a single fixed-sized attribute and
    * the case of no compression.
    *
@@ -690,12 +647,12 @@ class WriteState {
    */
   int write_sparse_unsorted_attr_cmp_none(
       int attribute_id,
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
       const std::vector<int64_t>& cell_pos);
 
   /**
-   * Performs the write operation for the case of a sparse fragment when the 
+   * Performs the write operation for the case of a sparse fragment when the
    * coordinates are unsorted, focusing on a single fixed-sized attribute and
    * the case of any compression.
    *
@@ -707,12 +664,12 @@ class WriteState {
    */
   int write_sparse_unsorted_attr_cmp(
       int attribute_id,
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
       const std::vector<int64_t>& cell_pos);
 
   /**
-   * Performs the write operation for the case of a sparse fragment when the 
+   * Performs the write operation for the case of a sparse fragment when the
    * coordinates are unsorted, focusing on a single variable-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
@@ -725,14 +682,14 @@ class WriteState {
    */
   int write_sparse_unsorted_attr_var(
       int attribute_id,
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
-      const void* buffer_var, 
+      const void* buffer_var,
       size_t buffer_var_size,
       const std::vector<int64_t>& cell_pos);
 
   /**
-   * Performs the write operation for the case of a sparse fragment when the 
+   * Performs the write operation for the case of a sparse fragment when the
    * coordinates are unsorted, focusing on a single variable-sized attribute and
    * the case of no compression.
    *
@@ -746,14 +703,14 @@ class WriteState {
    */
   int write_sparse_unsorted_attr_var_cmp_none(
       int attribute_id,
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
-      const void* buffer_var, 
+      const void* buffer_var,
       size_t buffer_var_size,
       const std::vector<int64_t>& cell_pos);
 
   /**
-   * Performs the write operation for the case of a sparse fragment when the 
+   * Performs the write operation for the case of a sparse fragment when the
    * coordinates are unsorted, focusing on a single variable-sized attribute and
    * the case of any compression.
    *
@@ -767,9 +724,9 @@ class WriteState {
    */
   int write_sparse_unsorted_attr_var_cmp(
       int attribute_id,
-      const void* buffer, 
+      const void* buffer,
       size_t buffer_size,
-      const void* buffer_var, 
+      const void* buffer_var,
       size_t buffer_var_size,
       const std::vector<int64_t>& cell_pos);
 };

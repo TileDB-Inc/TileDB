@@ -24,24 +24,21 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * This file defines class Fragment. 
+ * This file defines class Fragment.
  */
 
 #ifndef __FRAGMENT_H__
 #define __FRAGMENT_H__
 
+#include <vector>
 #include "array.h"
 #include "array_schema.h"
 #include "book_keeping.h"
 #include "read_state.h"
 #include "write_state.h"
-#include <vector>
-
-
-
 
 /* ********************************* */
 /*             CONSTANTS             */
@@ -49,15 +46,12 @@
 
 /**@{*/
 /** Return code. */
-#define TILEDB_FG_OK        0
-#define TILEDB_FG_ERR      -1
+#define TILEDB_FG_OK 0
+#define TILEDB_FG_ERR -1
 /**@}*/
 
 /** Default error message. */
 #define TILEDB_FG_ERRMSG std::string("[TileDB::Fragment] Error: ")
-
-
-
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
@@ -65,9 +59,6 @@
 
 /** Stores potential error messages. */
 extern std::string tiledb_fg_errmsg;
-
-
-
 
 class Array;
 class BookKeeping;
@@ -80,9 +71,9 @@ class Fragment {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
-  
-  /** 
-   * Constructor. 
+
+  /**
+   * Constructor.
    *
    * @param array The array the fragment belongs to.
    */
@@ -91,13 +82,10 @@ class Fragment {
   /** Destructor. */
   ~Fragment();
 
-
-
-
   /* ********************************* */
   /*              ACCESSORS            */
   /* ********************************* */
-  
+
   /** Returns the array the fragment belongs to. */
   const Array* array() const;
 
@@ -119,7 +107,7 @@ class Fragment {
   /** Returns the read state of the fragment. */
   ReadState* read_state() const;
 
-  /** 
+  /**
    * Returns the tile size for a given attribute (TILEDB_VAR_SIZE in case
    * of a variable-sized attribute.
    */
@@ -128,9 +116,6 @@ class Fragment {
   /** Returns true if the array is in write mode. */
   bool write_mode() const;
 
-
-
-
   /* ********************************* */
   /*              MUTATORS             */
   /* ********************************* */
@@ -138,7 +123,7 @@ class Fragment {
   /**
    * Finalizes the fragment, properly freeing up memory space.
    *
-   * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error. 
+   * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
    */
   int finalize();
 
@@ -146,41 +131,36 @@ class Fragment {
    * Initializes a fragment in write mode.
    *
    * @param fragment_name The name that will be given to the fragment.
-   * @param mode The fragment mode. It can be one of the following: 
-   *    - TILEDB_WRITE 
-   *    - TILEDB_WRITE_UNSORTED 
+   * @param mode The fragment mode. It can be one of the following:
+   *    - TILEDB_WRITE
+   *    - TILEDB_WRITE_UNSORTED
    * @param subarray The subarray the fragment is constrained on.
-   * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error. 
+   * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
    */
-  int init(
-      const std::string& fragment_name, 
-      int mode,
-      const void* subarray);
+  int init(const std::string& fragment_name, int mode, const void* subarray);
 
   /**
    * Initializes a fragment in read mode.
    *
    * @param fragment_name The name that will be given to the fragment.
    * @param book_keeping The book-keeping of the fragment.
-   * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error. 
+   * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
    */
-  int init(
-      const std::string& fragment_name, 
-      BookKeeping* book_keeping);
+  int init(const std::string& fragment_name, BookKeeping* book_keeping);
 
   /** Resets the read state (typically to start a new read). */
   void reset_read_state();
 
   /**
    * Syncs all attribute files in the fragment.
-   * 
+   *
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   int sync();
 
   /**
    * Syncs the currently written files associated with the input attribute
-   * in the input array. 
+   * in the input array.
    *
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
@@ -200,7 +180,7 @@ class Fragment {
    *      where the provided cell values are simply written at the end of
    *      their corresponding attribute files. This mode leads to the best
    *      performance. The user may invoke this function an arbitrary number
-   *      of times, and all the writes will occur in the same fragment. 
+   *      of times, and all the writes will occur in the same fragment.
    *      Moreover, the buffers need not be synchronized, i.e., some buffers
    *      may have more cells than others when the function is invoked.
    *    - TILEDB_ARRAY_WRITE_UNSORTED: \n
@@ -213,7 +193,7 @@ class Fragment {
    *      proper order. In addition, each invocation creates a **new** fragment.
    *      Finally, the buffers in each invocation must be synced, i.e., they
    *      must have the same number of cell values across all attributes.
-   * 
+   *
    * @param buffers An array of buffers, one for each attribute. These must be
    *     provided in the same order as the attributes specified in Array::init()
    *     or Array::reset_attributes(). The case of variable-sized attributes is
@@ -227,9 +207,6 @@ class Fragment {
    */
   int write(const void** buffers, const size_t* buffer_sizes);
 
-
-
-   
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
@@ -245,9 +222,9 @@ class Fragment {
   std::string fragment_name_;
   /**
    * The fragment mode. It must be one of the following:
-   *    - TILEDB_WRITE 
-   *    - TILEDB_WRITE_UNSORTED 
-   *    - TILEDB_READ 
+   *    - TILEDB_WRITE
+   *    - TILEDB_WRITE_UNSORTED
+   *    - TILEDB_READ
    */
   int mode_;
   /** The fragment read state. */
@@ -255,14 +232,11 @@ class Fragment {
   /** The fragment write state. */
   WriteState* write_state_;
 
-
-
-
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  /** 
+  /**
    * Changes the temporary fragment name into a stable one.
    *
    * @return TILEDB_FG_OK for success, and TILEDB_FG_ERR for error.

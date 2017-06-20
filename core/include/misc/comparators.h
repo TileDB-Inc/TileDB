@@ -24,11 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * Defines custom comparators to be used in cell position sorting in the case
- * of sparse arrays. 
+ * of sparse arrays.
  */
 
 #ifndef __COMPARATORS_H__
@@ -37,48 +37,49 @@
 #include <inttypes.h>
 #include <vector>
 
-/** 
+/**
  * Wrapper of comparison function for sorting cells; first by the smallest id,
- * and then by column-major order of coordinates. 
+ * and then by column-major order of coordinates.
  */
-template<class T>
+template <class T>
 class SmallerIdCol {
  public:
-  /** 
-   * Constructor. 
-   * 
+  /**
+   * Constructor.
+   *
    * @param buffer The buffer containing the cells to be sorted.
    * @param dim_num The number of dimensions of the cells.
    * @param ids The ids of the cells in the buffer.
    */
-  SmallerIdCol(const T* buffer, int dim_num, const std::vector<int64_t>& ids) 
-      : buffer_(buffer),
-        dim_num_(dim_num),
-        ids_(ids) { }
+  SmallerIdCol(const T* buffer, int dim_num, const std::vector<int64_t>& ids)
+      : buffer_(buffer)
+      , dim_num_(dim_num)
+      , ids_(ids) {
+  }
 
   /**
-   * Comparison operator. 
+   * Comparison operator.
    *
    * @param a The first cell position in the cell buffer.
    * @param b The second cell position in the cell buffer.
    */
-  bool operator () (int64_t a, int64_t b) {
-    if(ids_[a] < ids_[b])
+  bool operator()(int64_t a, int64_t b) {
+    if (ids_[a] < ids_[b])
       return true;
 
-    if(ids_[a] > ids_[b])
+    if (ids_[a] > ids_[b])
       return false;
 
     // a.id_ == b.id_ --> check coordinates
     const T* coords_a = &buffer_[a * dim_num_];
     const T* coords_b = &buffer_[b * dim_num_];
 
-    for(int i=dim_num_-1; i>=0; --i) 
-      if(coords_a[i] < coords_b[i]) 
+    for (int i = dim_num_ - 1; i >= 0; --i)
+      if (coords_a[i] < coords_b[i])
         return true;
-      else if(coords_a[i] > coords_b[i]) 
+      else if (coords_a[i] > coords_b[i])
         return false;
-      // else coords_a[i] == coords_b[i] --> continue
+    // else coords_a[i] == coords_b[i] --> continue
 
     return false;
   }
@@ -92,46 +93,47 @@ class SmallerIdCol {
   const std::vector<int64_t>& ids_;
 };
 
-/** 
+/**
  * Wrapper of comparison function for sorting cells; first by the smallest id,
- * and then by row-major order of coordinates. 
+ * and then by row-major order of coordinates.
  */
-template<class T>
+template <class T>
 class SmallerIdRow {
  public:
-  /** 
-   * Constructor. 
-   * 
+  /**
+   * Constructor.
+   *
    * @param buffer The buffer containing the cells to be sorted.
    * @param dim_num The number of dimensions of the cells.
    * @param ids The ids of the cells in the buffer.
    */
-  SmallerIdRow(const T* buffer, int dim_num, const std::vector<int64_t>& ids) 
-      : buffer_(buffer),
-        dim_num_(dim_num),
-        ids_(ids) { }
+  SmallerIdRow(const T* buffer, int dim_num, const std::vector<int64_t>& ids)
+      : buffer_(buffer)
+      , dim_num_(dim_num)
+      , ids_(ids) {
+  }
 
   /**
-   * Comparison operator. 
+   * Comparison operator.
    *
    * @param a The first cell position in the cell buffer.
    * @param b The second cell position in the cell buffer.
    */
-  bool operator () (int64_t a, int64_t b) {
-    if(ids_[a] < ids_[b])
+  bool operator()(int64_t a, int64_t b) {
+    if (ids_[a] < ids_[b])
       return true;
 
-    if(ids_[a] > ids_[b])
+    if (ids_[a] > ids_[b])
       return false;
 
     // a.id_ == b.id_ --> check coordinates
     const T* coords_a = &buffer_[a * dim_num_];
     const T* coords_b = &buffer_[b * dim_num_];
 
-    for(int i=0; i<dim_num_; ++i) { 
-      if(coords_a[i] < coords_b[i]) 
+    for (int i = 0; i < dim_num_; ++i) {
+      if (coords_a[i] < coords_b[i])
         return true;
-      else if(coords_a[i] > coords_b[i]) 
+      else if (coords_a[i] > coords_b[i])
         return false;
       // else coords_a[i] == coords_b[i] --> continue
     }
@@ -149,35 +151,36 @@ class SmallerIdRow {
 };
 
 /** Wrapper of comparison function for sorting cells on column-major order. */
-template<class T>
+template <class T>
 class SmallerCol {
  public:
-  /** 
-   * Constructor. 
-   * 
+  /**
+   * Constructor.
+   *
    * @param buffer The buffer containing the cells to be sorted.
    * @param dim_num The number of dimensions of the cells.
    */
-  SmallerCol(const T* buffer, int dim_num) 
-      : buffer_(buffer),
-        dim_num_(dim_num) { }
+  SmallerCol(const T* buffer, int dim_num)
+      : buffer_(buffer)
+      , dim_num_(dim_num) {
+  }
 
   /**
-   * Comparison operator. 
+   * Comparison operator.
    *
    * @param a The first cell position in the cell buffer.
    * @param b The second cell position in the cell buffer.
    */
-  bool operator () (int64_t a, int64_t b) {
+  bool operator()(int64_t a, int64_t b) {
     const T* coords_a = &buffer_[a * dim_num_];
     const T* coords_b = &buffer_[b * dim_num_];
 
-    for(int i=dim_num_-1; i>=0; --i) 
-      if(coords_a[i] < coords_b[i]) 
+    for (int i = dim_num_ - 1; i >= 0; --i)
+      if (coords_a[i] < coords_b[i])
         return true;
-      else if(coords_a[i] > coords_b[i]) 
+      else if (coords_a[i] > coords_b[i])
         return false;
-      // else coords_a[i] == coords_b[i] --> continue
+    // else coords_a[i] == coords_b[i] --> continue
 
     return false;
   }
@@ -190,35 +193,36 @@ class SmallerCol {
 };
 
 /** Wrapper of comparison function for sorting cells on row-major order. */
-template<class T>
+template <class T>
 class SmallerRow {
  public:
-  /** 
-   * Constructor. 
-   * 
+  /**
+   * Constructor.
+   *
    * @param buffer The buffer containing the cells to be sorted.
    * @param dim_num The number of dimensions of the cells.
    */
-  SmallerRow(const T* buffer, int dim_num) 
-      : buffer_(buffer),
-        dim_num_(dim_num) { }
+  SmallerRow(const T* buffer, int dim_num)
+      : buffer_(buffer)
+      , dim_num_(dim_num) {
+  }
 
   /**
-   * Comparison operator. 
+   * Comparison operator.
    *
    * @param a The first cell position in the cell buffer.
    * @param b The second cell position in the cell buffer.
    */
-  bool operator () (int64_t a, int64_t b) {
+  bool operator()(int64_t a, int64_t b) {
     const T* coords_a = &buffer_[a * dim_num_];
     const T* coords_b = &buffer_[b * dim_num_];
 
-    for(int i=0; i<dim_num_; ++i) 
-      if(coords_a[i] < coords_b[i]) 
+    for (int i = 0; i < dim_num_; ++i)
+      if (coords_a[i] < coords_b[i])
         return true;
-      else if(coords_a[i] > coords_b[i]) 
+      else if (coords_a[i] > coords_b[i])
         return false;
-      // else coords_a[i] == coords_b[i] --> continue
+    // else coords_a[i] == coords_b[i] --> continue
 
     return false;
   }

@@ -33,9 +33,6 @@
 #include "progress_bar.h"
 #include <stdio.h>
 
-
-
-
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -53,30 +50,24 @@ ProgressBar::ProgressBar(double complete, int max_length, char filler) {
 ProgressBar::~ProgressBar() {
 }
 
-
-
-
 /* ****************************** */
 /*             METHODS            */
 /* ****************************** */
 
 void ProgressBar::load(double amount) {
   incomplete_ += amount;
-  if(incomplete_ > complete_)
+  if (incomplete_ > complete_)
     incomplete_ = complete_;
 
   ratio_ = (incomplete_ / complete_);
   length_ = ratio_ * max_length_;
 
   // Print bar
-  if(ratio_ - last_ratio_ > PB_RATIO_STEP) { 
+  if (ratio_ - last_ratio_ > PB_RATIO_STEP) {
     print();
     last_ratio_ = ratio_;
   }
 }
-
-
-
 
 /* ****************************** */
 /*        PRIVATE METHODS         */
@@ -85,10 +76,10 @@ void ProgressBar::load(double amount) {
 void ProgressBar::print() {
   fprintf(stdout, "%3d%% [", (int)(ratio_ * 100));
 
-  for(int i=0; i<length_; ++i)
+  for (int i = 0; i < length_; ++i)
     fprintf(stdout, "%c", filler_);
 
-  for(int i=length_; i<max_length_; ++i)
+  for (int i = length_; i < max_length_; ++i)
     fprintf(stdout, " ");
 
   fprintf(stdout, "]\r");

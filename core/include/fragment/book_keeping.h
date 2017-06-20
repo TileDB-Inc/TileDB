@@ -24,22 +24,19 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * This file defines class BookKeeping. 
+ * This file defines class BookKeeping.
  */
 
 #ifndef __BOOK_KEEPING_H__
 #define __BOOK_KEEPING_H__
 
+#include <zlib.h>
+#include <vector>
 #include "array_schema.h"
 #include "tiledb_constants.h"
-#include <vector>
-#include <zlib.h>
-
-
-
 
 /* ********************************* */
 /*             CONSTANTS             */
@@ -47,15 +44,12 @@
 
 /**@{*/
 /** Return code. */
-#define TILEDB_BK_OK          0
-#define TILEDB_BK_ERR        -1
+#define TILEDB_BK_OK 0
+#define TILEDB_BK_ERR -1
 /**@}*/
 
 /** Default error message. */
 #define TILEDB_BK_ERRMSG std::string("[TileDB::BookKeeping] Error: ")
-
-
-
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
@@ -64,9 +58,6 @@
 /** Stores potential error messages. */
 extern std::string tiledb_bk_errmsg;
 
-
-
-
 /** Stores the book-keeping structures of a fragment. */
 class BookKeeping {
  public:
@@ -74,8 +65,8 @@ class BookKeeping {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** 
-   * Constructor. 
+  /**
+   * Constructor.
    *
    * @param array_schema The array schema.
    * @param dense True if the fragment is dense, and false otherwise.
@@ -83,28 +74,25 @@ class BookKeeping {
    * @param mode The mode in which the fragment was initialized in.
    */
   BookKeeping(
-      const ArraySchema* array_schema, 
-      bool dense, 
+      const ArraySchema* array_schema,
+      bool dense,
       const std::string& fragment_name,
       int mode);
 
   /** Destructor. */
   ~BookKeeping();
 
-
-
-
   /* ********************************* */
   /*             ACCESSORS             */
   /* ********************************* */
 
   /** Returns the bounding coordinates. */
-  const std::vector<void*>& bounding_coords() const; 
+  const std::vector<void*>& bounding_coords() const;
 
   /** Returns the number of cells in the tile at the input position. */
   int64_t cell_num(int64_t tile_pos) const;
 
-  /** 
+  /**
    * Returns ture if the corresponding fragment is dense, and false if it
    * is sparse.
    */
@@ -117,7 +105,7 @@ class BookKeeping {
   int64_t last_tile_cell_num() const;
 
   /** Returns the MBRs. */
-  const std::vector<void*>& mbrs() const; 
+  const std::vector<void*>& mbrs() const;
 
   /** Returns the non-empty domain in which the fragment is constrained. */
   const void* non_empty_domain() const;
@@ -129,43 +117,40 @@ class BookKeeping {
   int64_t tile_num() const;
 
   /** Returns the tile offsets. */
-  const std::vector<std::vector<off_t> >& tile_offsets() const;
+  const std::vector<std::vector<off_t>>& tile_offsets() const;
 
   /** Returns the variable tile offsets. */
-  const std::vector<std::vector<off_t> >& tile_var_offsets() const;
+  const std::vector<std::vector<off_t>>& tile_var_offsets() const;
 
   /** Returns the variable tile sizes. */
-  const std::vector<std::vector<size_t> >& tile_var_sizes() const;
+  const std::vector<std::vector<size_t>>& tile_var_sizes() const;
 
   /** Returns true if the array is in write mode. */
   bool write_mode() const;
-
-
-
 
   /* ********************************* */
   /*             MUTATORS              */
   /* ********************************* */
 
-  /** 
-   * Appends the tile bounding coordinates to the book-keeping structure. 
+  /**
+   * Appends the tile bounding coordinates to the book-keeping structure.
    *
    * @param bounding_coords The bounding coordinates to be appended.
    * @return void
    */
   void append_bounding_coords(const void* bounding_coords);
 
-  /** 
-   * Appends the input MBR to the book-keeping structure. 
-   * 
+  /**
+   * Appends the input MBR to the book-keeping structure.
+   *
    * @param mbr The MBR to be appended.
    * @return void
    */
   void append_mbr(const void* mbr);
- 
-  /** 
-   * Appends a tile offset for the input attribute. 
-   * 
+
+  /**
+   * Appends a tile offset for the input attribute.
+   *
    * @param attribute_id The id of the attribute for which the offset is
    *     appended.
    * @param step This is essentially the step by which the previous
@@ -174,8 +159,8 @@ class BookKeeping {
    */
   void append_tile_offset(int attribute_id, size_t step);
 
-  /** 
-   * Appends a variable tile offset for the input attribute. 
+  /**
+   * Appends a variable tile offset for the input attribute.
    *
    * @param attribute_id The id of the attribute for which the offset is
    *     appended.
@@ -185,8 +170,8 @@ class BookKeeping {
    */
   void append_tile_var_offset(int attribute_id, size_t step);
 
-  /** 
-   * Appends a variable tile size for the input attribute. 
+  /**
+   * Appends a variable tile size for the input attribute.
    *
    * @param attribute_id The id of the attribute for which the size is appended.
    * @param size The size to be appended.
@@ -203,7 +188,7 @@ class BookKeeping {
 
   /**
    * Initializes the book-keeping structures.
-   * 
+   *
    * @param non_empty_domain The non-empty domain in which the array read/write
    *     will be constrained.
    * @return TILEDB_BK_OK for success, and TILEDB_OK_ERR for error.
@@ -225,9 +210,6 @@ class BookKeeping {
    */
   void set_last_tile_cell_num(int64_t cell_num);
 
-
-
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -241,7 +223,7 @@ class BookKeeping {
   bool dense_;
   /**
    * The (expanded) domain in which the fragment is constrained. "Expanded"
-   * means that the domain is enlarged minimally to coincide with tile 
+   * means that the domain is enlarged minimally to coincide with tile
    * boundaries (if there is a tile grid imposed by tile extents). Note that the
    * type of the domain must be the same as the type of the array coordinates.
    */
@@ -263,24 +245,21 @@ class BookKeeping {
    * type of the domain must be the same as the type of the array coordinates.
    */
   void* non_empty_domain_;
-  /** 
+  /**
    * The tile offsets in their corresponding attribute files. Meaningful only
    * when there is compression.
    */
-  std::vector<std::vector<off_t> > tile_offsets_;
+  std::vector<std::vector<off_t>> tile_offsets_;
   /**
    * The variable tile offsets in their corresponding attribute files.
    * Meaningful only for variable-sized tiles.
    */
-  std::vector<std::vector<off_t> > tile_var_offsets_;
+  std::vector<std::vector<off_t>> tile_var_offsets_;
   /**
-   * The sizes of the uncompressed variable tiles. 
+   * The sizes of the uncompressed variable tiles.
    * Meaningful only when there is compression for variable tiles.
    */
-  std::vector<std::vector<size_t> > tile_var_sizes_;
-
-
-
+  std::vector<std::vector<size_t>> tile_var_sizes_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -294,7 +273,7 @@ class BookKeeping {
    */
   int flush_bounding_coords(gzFile fd) const;
 
- /**
+  /**
    * Writes the cell number of the last tile in the book-keeping file on disk.
    *
    * @param fd The descriptor of the book-keeping file.
@@ -302,7 +281,7 @@ class BookKeeping {
    */
   int flush_last_tile_cell_num(gzFile fd) const;
 
- /**
+  /**
    * Writes the MBRs in the book-keeping file on disk.
    *
    * @param fd The descriptor of the book-keeping file.
@@ -310,7 +289,7 @@ class BookKeeping {
    */
   int flush_mbrs(gzFile fd) const;
 
- /**
+  /**
    * Writes the non-empty domain in the book-keeping file on disk.
    *
    * @param fd The descriptor of the book-keeping file.
@@ -318,7 +297,7 @@ class BookKeeping {
    */
   int flush_non_empty_domain(gzFile fd) const;
 
- /**
+  /**
    * Writes the tile offsets in the book-keeping file on disk.
    *
    * @param fd The descriptor of the book-keeping file.
@@ -326,7 +305,7 @@ class BookKeeping {
    */
   int flush_tile_offsets(gzFile fd) const;
 
- /**
+  /**
    * Writes the variable tile offsets in the book-keeping file on disk.
    *
    * @param fd The descriptor of the book-keeping file.
@@ -334,7 +313,7 @@ class BookKeeping {
    */
   int flush_tile_var_offsets(gzFile fd) const;
 
- /**
+  /**
    * Writes the variable tile sizes in the book-keeping file on disk.
    *
    * @param fd The descriptor of the book-keeping file.
