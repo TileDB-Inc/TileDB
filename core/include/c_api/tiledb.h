@@ -1170,39 +1170,6 @@ TILEDB_EXPORT int tiledb_move(
     const char* new_dir);
 
 /**
- * Lists all TileDB workspaces, copying their directory names in the input
- * string buffers.
- *
- * @param tiledb_ctx The TileDB context.
- * @param workspaces An array of strings that will store the listed workspaces.
- *     Note that this should be pre-allocated by the user. If the size of
- *     each string is smaller than the corresponding workspace path name, the
- *     function will probably segfault. It is a good idea to allocate to each
- *     workspace string TILEDB_NAME_MAX_LEN characters. 
- * @param workspace_num The number of allocated elements of the *workspaces*
- *     string array. After the function execution, this will hold the actual
- *     number of workspaces written in the *workspaces* string array. If the
- *     number of allocated elements is smaller than the number of existing
- *     TileDB workspaces, the function will return an error.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_ls_workspaces(
-    const TileDB_CTX* tiledb_ctx,
-    char** workspaces,
-    int* workspace_num);
-
-/**
- * Counts the number of TileDB workspaces.
- *
- * @param tiledb_ctx The TileDB context.
- * @param workspace_num The number of TileDB workspaces to be returned.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_ls_workspaces_c(
-    const TileDB_CTX* tiledb_ctx,
-    int* workspace_num);
-
-/**
  * Lists all the TileDB objects in a directory, copying their names into the 
  * input string buffers.
  *

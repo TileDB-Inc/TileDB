@@ -106,23 +106,6 @@ int StorageManager::init(StorageManagerConfig* config) {
   if(config_set(config) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
 
-  // Set the master catalog directory
-  master_catalog_dir_ = tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG;
-
-  // Create the TileDB home directory if it does not exists, as well
-  // as the master catalog.
-  if(!is_dir(tiledb_home_)) { 
-    if(create_dir(tiledb_home_) != TILEDB_UT_OK) {
-      tiledb_sm_errmsg = tiledb_ut_errmsg;
-      return TILEDB_SM_ERR;
-    }
-  }
-
-  if(!is_metadata(master_catalog_dir_)) {
-    if(master_catalog_create() != TILEDB_SM_OK)
-      return TILEDB_SM_ERR;
-  }
-
   // Initialize mutexes and return
   return open_array_mtx_init();
 }
@@ -159,10 +142,6 @@ int StorageManager::workspace_create(const std::string& workspace) {
   if(create_workspace_file(workspace) != TILEDB_SM_OK)
     return TILEDB_SM_ERR;
 
-  // Create master catalog entry
-  if(create_master_catalog_entry(workspace, TILEDB_SM_MC_INS) != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
-
   // Success
   return TILEDB_SM_OK;
 }
@@ -184,111 +163,6 @@ int StorageManager::dir_type(const char* dir) {
     return -1;
 }
 
-int StorageManager::ls_workspaces(
-    char** workspaces,
-    int& workspace_num) {
-  // Initialize the master catalog iterator
-  const char* attributes[] = { TILEDB_KEY };
-  MetadataIterator* metadata_it;
-  size_t buffer_key[100];
-  char buffer_key_var[100*TILEDB_NAME_MAX_LEN];
-  void* buffers[] = { buffer_key, buffer_key_var };
-  size_t buffer_sizes[] = { sizeof(buffer_key), sizeof(buffer_key_var) };
-  if(metadata_iterator_init(
-       metadata_it,
-       (tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG).c_str(),
-       attributes,
-       1,
-       buffers,
-       buffer_sizes) != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
-
-  // Copy workspaces
-  int workspace_i = 0;
-  const char* key;
-  size_t key_size;
-
-  while(!metadata_it->end()) {
-    // Get workspace
-    if(metadata_it->get_value(0, (const void**) &key, &key_size) != 
-       TILEDB_MT_OK) {
-      metadata_iterator_finalize(metadata_it);
-      tiledb_sm_errmsg = tiledb_mt_errmsg; 
-      return TILEDB_MT_ERR;
-    }
-
-    // Copy workspace
-    if(key_size != 1 || key[0] != TILEDB_EMPTY_CHAR) {
-      if(workspace_i == workspace_num) {
-        std::string errmsg = 
-            "Cannot list workspaces; Workspaces buffer overflow";
-        PRINT_ERROR(errmsg);
-        tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
-        return TILEDB_SM_ERR;
-      }
-
-      strcpy(workspaces[workspace_i], key);
-      ++workspace_i;
-    }
-
-    // Advance
-    if(metadata_it->next() != TILEDB_MT_OK) {
-      metadata_iterator_finalize(metadata_it);
-      tiledb_sm_errmsg = tiledb_mt_errmsg; 
-      return TILEDB_SM_ERR;
-    }
-  }
-
-  // Set the workspace number
-  workspace_num = workspace_i;
-
-  // Finalize the master catalog iterator
-  if(metadata_iterator_finalize(metadata_it) != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
-
-  // Success
-  return TILEDB_SM_OK;
-}
-
-int StorageManager::ls_workspaces_c(int& workspace_num) {
-  // Initialize the master catalog iterator
-  const char* attributes[] = { TILEDB_KEY };
-  MetadataIterator* metadata_it;
-  size_t buffer_key[100];
-  char buffer_key_var[100*TILEDB_NAME_MAX_LEN];
-  void* buffers[] = { buffer_key, buffer_key_var };
-  size_t buffer_sizes[] = { sizeof(buffer_key), sizeof(buffer_key_var) };
-  if(metadata_iterator_init(
-       metadata_it,
-       (tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG).c_str(),
-       attributes,
-       1,
-       buffers,
-       buffer_sizes) != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
-
-  // Initialize number of workspaces
-  workspace_num = 0;
-
-  while(!metadata_it->end()) {
-    // Increment number of workspaces
-    ++workspace_num;
-
-    // Advance
-    if(metadata_it->next() != TILEDB_MT_OK) {
-      metadata_iterator_finalize(metadata_it);
-      tiledb_sm_errmsg = tiledb_mt_errmsg; 
-      return TILEDB_SM_ERR;
-    }
-  }
-
-  // Finalize the master catalog iterator
-  if(metadata_iterator_finalize(metadata_it) != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
-
-  // Success
-  return TILEDB_SM_OK;
-}
 
 
 
@@ -1719,28 +1593,6 @@ int StorageManager::config_set(StorageManagerConfig* config) {
   // Store config locally
   config_ = config;
 
-  // Set the TileDB home directory
-  tiledb_home_ = config->home();
-  if(tiledb_home_ == "") {
-    auto env_home_ptr = getenv("HOME");
-    tiledb_home_ = env_home_ptr ? env_home_ptr : "";
-    if(tiledb_home_ == "") {
-      char cwd[1024];
-      if(getcwd(cwd, sizeof(cwd)) != NULL) {
-        tiledb_home_ = cwd;
-      } else {
-        std::string errmsg = "Cannot set TileDB home directory";
-        PRINT_ERROR(errmsg);
-        tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
-        return TILEDB_SM_ERR;
-      }
-    }
-    tiledb_home_ += "/.tiledb";
-  }
-
-  // Get read path
-  tiledb_home_ = real_dir(tiledb_home_);
-
   // Success
   return TILEDB_SM_OK;
 } 
@@ -1903,48 +1755,6 @@ int StorageManager::create_group_file(const std::string& group) const {
     tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
-
-  // Success
-  return TILEDB_SM_OK;
-}
-
-int StorageManager::create_master_catalog_entry(
-    const std::string& workspace,
-    MasterCatalogOp op) {
-  // Get real workspace path
-  std::string real_workspace = ::real_dir(workspace);
-
-  // Initialize master catalog
-  Metadata* metadata;
-  if(metadata_init(
-         metadata, 
-         master_catalog_dir_.c_str(), 
-         TILEDB_METADATA_WRITE, 
-         NULL, 
-         0) != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
-
-  // Write entry
-  const char empty_char = TILEDB_EMPTY_CHAR;
-  const char* entry_var = 
-      (op == TILEDB_SM_MC_INS) ? real_workspace.c_str() : &empty_char;
-  const size_t entry[] = { 0 };
-  const void* buffers[] = { entry, entry_var };
-  size_t entry_var_size = (op == TILEDB_SM_MC_INS) ? strlen(entry_var)+1 : 1;
-  const size_t buffer_sizes[] = { sizeof(entry), entry_var_size };
-
-  if(metadata->write(
-         real_workspace.c_str(), 
-         real_workspace.size()+1, 
-         buffers, 
-         buffer_sizes) != TILEDB_MT_OK) {
-    tiledb_sm_errmsg = tiledb_mt_errmsg;
-    return TILEDB_SM_ERR;
-  }
-
-  // Finalize master catalog
-  if(metadata_finalize(metadata) != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
 
   // Success
   return TILEDB_SM_OK;
@@ -2119,40 +1929,6 @@ int StorageManager::group_move(
 
   // Success
   return TILEDB_SM_OK;
-}
-
-int StorageManager::master_catalog_consolidate() {
-  // Consolidate master catalog
-  if(metadata_consolidate(master_catalog_dir_.c_str()) != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
-  else
-    return TILEDB_SM_OK;
-}
-
-int StorageManager::master_catalog_create() const {
-  // Create a metadata schema
-  MetadataSchemaC metadata_schema_c = {};
-  metadata_schema_c.metadata_name_ = (char*) master_catalog_dir_.c_str(); 
-
- // Initialize array schema
-  ArraySchema* array_schema = new ArraySchema();
-  if(array_schema->init(&metadata_schema_c) != TILEDB_AS_OK) {
-    delete array_schema;
-    tiledb_sm_errmsg = tiledb_as_errmsg;
-    return TILEDB_SM_ERR;
-  }
-
-  // Create metadata with the new schema
-  int rc = metadata_create(array_schema);
-
-  // Clean up
-  delete array_schema;
-
-  // Return
-  if(rc == TILEDB_SM_OK)
-    return TILEDB_SM_OK;
-  else
-    return TILEDB_SM_ERR;
 }
 
 int StorageManager::metadata_clear(
@@ -2476,24 +2252,13 @@ int StorageManager::workspace_clear(const std::string& workspace) const {
 int StorageManager::workspace_delete(
     const std::string& workspace) { 
   // Get real paths
-  std::string workspace_real, master_catalog_real;
+  std::string workspace_real;
   workspace_real = real_dir(workspace);
-  master_catalog_real = real_dir(master_catalog_dir_);
 
   // Check if workspace exists
   if(!is_workspace(workspace_real)) {
     std::string errmsg = 
         std::string("Workspace '") + workspace_real + "' does not exist";
-    PRINT_ERROR(errmsg);
-    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
-    return TILEDB_SM_ERR;
-  }  
-
-  // Master catalog should exist
-  if(!is_metadata(master_catalog_real)) {
-    std::string errmsg = 
-        std::string("Master catalog '") + master_catalog_real + 
-        "' does not exist'";
     PRINT_ERROR(errmsg);
     tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
@@ -2509,15 +2274,6 @@ int StorageManager::workspace_delete(
     return TILEDB_SM_ERR;
   }
 
-  // Update master catalog by deleting workspace 
-  if(create_master_catalog_entry(workspace_real, TILEDB_SM_MC_DEL) != 
-      TILEDB_SM_OK)
-    return TILEDB_SM_ERR; 
-
-  // Consolidate master catalog
-  if(master_catalog_consolidate() != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
-
   // Success
   return TILEDB_SM_OK;
 }
@@ -2528,8 +2284,6 @@ int StorageManager::workspace_move(
   // Get real paths
   std::string old_workspace_real = real_dir(old_workspace);
   std::string new_workspace_real = real_dir(new_workspace);
-  std::string master_catalog_real = 
-      real_dir(tiledb_home_ + "/" + TILEDB_SM_MASTER_CATALOG);
 
   // Check if old workspace exists
   if(!is_workspace(old_workspace_real)) {
@@ -2571,16 +2325,6 @@ int StorageManager::workspace_move(
     return TILEDB_SM_ERR;
   }
 
-  // Master catalog should exist
-  if(!is_metadata(master_catalog_real)) {
-    std::string errmsg =
-        std::string("Master catalog '") + master_catalog_real + 
-        "' does not exist'";
-    PRINT_ERROR(errmsg);
-    tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
-    return TILEDB_SM_ERR;
-  }  
-
   // Rename directory 
   if(rename(old_workspace_real.c_str(), new_workspace_real.c_str())) {
     std::string errmsg = 
@@ -2589,18 +2333,6 @@ int StorageManager::workspace_move(
     tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
     return TILEDB_SM_ERR;
   }
-
-  // Update master catalog by adding new workspace 
-  if(create_master_catalog_entry(old_workspace_real, TILEDB_SM_MC_DEL) !=
-     TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
-  if(create_master_catalog_entry(new_workspace_real, TILEDB_SM_MC_INS) !=
-     TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
-
-  // Consolidate master catalog
-  if(master_catalog_consolidate() != TILEDB_SM_OK)
-    return TILEDB_SM_ERR;
 
   // Success
   return TILEDB_SM_OK;

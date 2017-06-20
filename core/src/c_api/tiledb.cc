@@ -1474,44 +1474,6 @@ int tiledb_move(
   return TILEDB_OK;
 }
 
-int tiledb_ls_workspaces(
-    const TileDB_CTX* tiledb_ctx,
-    char** workspaces,
-    int* workspace_num) {
-  // Sanity check
-  if(!sanity_check(tiledb_ctx))
-    return TILEDB_ERR;
-
-  // List workspaces
-  if(tiledb_ctx->storage_manager_->ls_workspaces(
-               workspaces,
-               *workspace_num) != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb_sm_errmsg.c_str());
-    return TILEDB_ERR;
-  }
-
-  // Success
-  return TILEDB_OK;
-}
-
-int tiledb_ls_workspaces_c(
-    const TileDB_CTX* tiledb_ctx,
-    int* workspace_num) {
-  // Sanity check
-  if(!sanity_check(tiledb_ctx))
-    return TILEDB_ERR;
-
-  // List workspaces
-  if(tiledb_ctx->storage_manager_->ls_workspaces_c(
-               *workspace_num) != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb_sm_errmsg.c_str());
-    return TILEDB_ERR;
-  }
-
-  // Success
-  return TILEDB_OK;
-}
-
 int tiledb_ls(
     const TileDB_CTX* tiledb_ctx,
     const char* parent_dir,
