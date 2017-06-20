@@ -9,11 +9,11 @@ env:
 
 install:
     # Install cmake, lcov, MPICH
-    - sudo apt-get -y install cmake lcov mpich 
+    - sudo apt-get -y install cmake lcov mpich
     # Install zlib, bzip2 and LZ4
     - sudo apt-get -y install zlib1g-dev libbz2-dev liblz4-dev
-    # Install OpenSSL and Gtest
-    - sudo apt-get -y install libssl-dev libgtest-dev
+    # Install OpenSSL
+    - sudo apt-get -y install libssl-dev
     # Install Zstandard
     - wget https://github.com/facebook/zstd/archive/v1.0.0.tar.gz
     - tar xf v1.0.0.tar.gz
@@ -29,14 +29,13 @@ install:
     - cmake --build .
     - sudo cmake --build . --target install
     - cd $TRAVIS_BUILD_DIR
-    # Install Google Test
-    - cd /usr/src/gtest
-    - sudo cmake .
-    - sudo make
-    - sudo mv libgtest* /usr/lib/
-    - cd $TRAVIS_BUILD_DIR
     # Install lcov to coveralls conversion + upload tool
     - gem install coveralls-lcov
+    # Install clang-format
+    - sudo add-apt-repository 'deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main'
+    - wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+    - sudo apt-get update -qq 
+    - sudo apt-get install -qq -y clang-format-5.0
     # Build TileDB
     - rm -rf $TILEDB_BUILD_DIR
     - mkdir -p $TILEDB_BUILD_DIR
