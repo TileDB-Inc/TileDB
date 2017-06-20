@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * This file implements the MetadataIterator class.
@@ -32,30 +32,23 @@
 
 #include "metadata_iterator.h"
 
-
-
-
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
 
 #ifdef TILEDB_VERBOSE
-#  define PRINT_ERROR(x) std::cerr << TILEDB_MIT_ERRMSG << x << ".\n" 
+#define PRINT_ERROR(x) std::cerr << TILEDB_MIT_ERRMSG << x << ".\n"
 #else
-#  define PRINT_ERROR(x) do { } while(0) 
+#define PRINT_ERROR(x) \
+  do {                 \
+  } while (0)
 #endif
-
-
-
 
 /* ****************************** */
 /*        GLOBAL VARIABLES        */
 /* ****************************** */
 
 std::string tiledb_mit_errmsg = "";
-
-
-
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -67,9 +60,6 @@ MetadataIterator::MetadataIterator() {
 
 MetadataIterator::~MetadataIterator() {
 }
-
-
-
 
 /* ****************************** */
 /*           ACCESSORS            */
@@ -84,20 +74,15 @@ bool MetadataIterator::end() const {
 }
 
 int MetadataIterator::get_value(
-    int attribute_id,
-    const void** value,
-    size_t* value_size) const {
-  if(array_it_->get_value(attribute_id, value, value_size) != TILEDB_AIT_OK) {
-    tiledb_mit_errmsg = tiledb_ait_errmsg; 
+    int attribute_id, const void** value, size_t* value_size) const {
+  if (array_it_->get_value(attribute_id, value, value_size) != TILEDB_AIT_OK) {
+    tiledb_mit_errmsg = tiledb_ait_errmsg;
     return TILEDB_MIT_ERR;
   }
 
   // Success
-  return TILEDB_MIT_OK; 
+  return TILEDB_MIT_OK;
 }
-
-
-
 
 /* ****************************** */
 /*            MUTATORS            */
@@ -111,8 +96,8 @@ int MetadataIterator::finalize() {
   metadata_ = NULL;
 
   // Error
-  if(rc != TILEDB_AIT_OK) {
-    tiledb_mit_errmsg = tiledb_ait_errmsg; 
+  if (rc != TILEDB_AIT_OK) {
+    tiledb_mit_errmsg = tiledb_ait_errmsg;
     return TILEDB_MIT_ERR;
   }
 
@@ -121,27 +106,25 @@ int MetadataIterator::finalize() {
 }
 
 int MetadataIterator::init(
-    Metadata* metadata,
-    void** buffers,
-    size_t* buffer_sizes) {
+    Metadata* metadata, void** buffers, size_t* buffer_sizes) {
   // Initialize an array iterator
   metadata_ = metadata;
   array_it_ = new ArrayIterator();
-  if(array_it_->init(metadata->array(), buffers, buffer_sizes) != 
-     TILEDB_AIT_OK) {
+  if (array_it_->init(metadata->array(), buffers, buffer_sizes) !=
+      TILEDB_AIT_OK) {
     delete array_it_;
     array_it_ = NULL;
-    tiledb_mit_errmsg = tiledb_ait_errmsg; 
+    tiledb_mit_errmsg = tiledb_ait_errmsg;
     return TILEDB_MIT_ERR;
-  } 
-  
+  }
+
   // Return
   return TILEDB_MIT_OK;
 }
 
 int MetadataIterator::next() {
-  if(array_it_->next() != TILEDB_AIT_OK) {
-    tiledb_mit_errmsg = tiledb_ait_errmsg; 
+  if (array_it_->next() != TILEDB_AIT_OK) {
+    tiledb_mit_errmsg = tiledb_ait_errmsg;
     return TILEDB_MIT_ERR;
   }
 

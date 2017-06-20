@@ -24,11 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * A C-style struct that specifies the metadata schema.  
- */  
+ * A C-style struct that specifies the metadata schema.
+ */
 
 #ifndef __METADATA_SCHEMA_C_H__
 #define __METADATA_SCHEMA_C_H__
@@ -37,7 +37,7 @@
 
 /** Specifies the metadata schema. */
 typedef struct MetadataSchemaC {
-  /** 
+  /**
    * The metadata name. It is a directory, whose parent must be a TileDB
    * workspace, group, or array.
    */
@@ -46,7 +46,7 @@ typedef struct MetadataSchemaC {
   char** attributes_;
   /** The number of attributes. */
   int attribute_num_;
-  /** 
+  /**
    * The tile capacity. If it is <=0, TileDB will use its default.
    */
   int64_t capacity_;
@@ -57,36 +57,36 @@ typedef struct MetadataSchemaC {
    * TILEDB_VAR_NUM must be used.
    */
   int* cell_val_num_;
-  /** 
+  /**
    * The compression type for each attribute (plus one extra at the end for the
-   * key. It can be one of the following: 
+   * key. It can be one of the following:
    *    - TILEDB_NO_COMPRESSION
    *    - TILEDB_GZIP
-   *    - TILEDB_ZSTD 
-   *    - TILEDB_LZ4 
-   *    - TILEDB_BLOSC 
-   *    - TILEDB_BLOSC_LZ4 
-   *    - TILEDB_BLOSC_LZ4HC 
-   *    - TILEDB_BLOSC_SNAPPY 
-   *    - TILEDB_BLOSC_ZLIB 
-   *    - TILEDB_BLOSC_ZSTD 
-   *    - TILEDB_RLE 
-   *    - TILEDB_BZIP2 
+   *    - TILEDB_ZSTD
+   *    - TILEDB_LZ4
+   *    - TILEDB_BLOSC
+   *    - TILEDB_BLOSC_LZ4
+   *    - TILEDB_BLOSC_LZ4HC
+   *    - TILEDB_BLOSC_SNAPPY
+   *    - TILEDB_BLOSC_ZLIB
+   *    - TILEDB_BLOSC_ZSTD
+   *    - TILEDB_RLE
+   *    - TILEDB_BZIP2
    */
   int* compression_;
-  /** 
+  /**
    * The attribute types.
-   * The attribute type can be one of the following: 
+   * The attribute type can be one of the following:
    *    - TILEDB_INT32
    *    - TILEDB_INT64
    *    - TILEDB_FLOAT32
    *    - TILEDB_FLOAT64
-   *    - TILEDB_CHAR 
-   *    - TILEDB_INT8 
-   *    - TILEDB_UINT8 
-   *    - TILEDB_INT16 
-   *    - TILEDB_UINT16 
-   *    - TILEDB_UINT32 
+   *    - TILEDB_CHAR
+   *    - TILEDB_INT8
+   *    - TILEDB_UINT8
+   *    - TILEDB_INT16
+   *    - TILEDB_UINT16
+   *    - TILEDB_UINT32
    *    - TILEDB_UINT64
    */
   int* types_;

@@ -24,20 +24,19 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * This file defines class ArraySortedReadState. 
+ * This file defines class ArraySortedReadState.
  */
 
 #ifndef __ARRAY_SORTED_READ_STATE_H__
 #define __ARRAY_SORTED_READ_STATE_H__
 
-#include "array.h"
 #include <pthread.h>
 #include <string>
 #include <vector>
-
+#include "array.h"
 
 /* ********************************* */
 /*             CONSTANTS             */
@@ -45,18 +44,15 @@
 
 /**@{*/
 /** Return code. */
-#define TILEDB_ASRS_OK                                0
-#define TILEDB_ASRS_ERR                              -1
+#define TILEDB_ASRS_OK 0
+#define TILEDB_ASRS_ERR -1
 /**@}*/
 
 /** Default error message. */
 #define TILEDB_ASRS_ERRMSG std::string("[TileDB::ArraySortedReadState] Error: ")
 
 /** Initial internal buffer size for the case of sparse arrays. */
-#define TILEDB_ASRS_INIT_BUFFER_SIZE 10000000 // ~ 10MB
-
-
-
+#define TILEDB_ASRS_INIT_BUFFER_SIZE 10000000  // ~ 10MB
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
@@ -65,16 +61,14 @@
 /** Stores potential error messages. */
 extern std::string tiledb_asrs_errmsg;
 
-
 class Array;
 
-/** 
+/**
  * Stores the state necessary when reading cells from the array fragments,
  * sorted in a way different to the global cell order.
  */
 class ArraySortedReadState {
  public:
-
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
@@ -97,7 +91,7 @@ class ArraySortedReadState {
     size_t* buffer_sizes_;
     /** User buffers. */
     void** buffers_;
-  }; 
+  };
 
   /** Info about a tile slab. */
   struct TileSlabInfo {
@@ -107,12 +101,12 @@ class ArraySortedReadState {
     size_t** cell_slab_size_;
     /** Number of cells in a cell slab per tile. */
     int64_t* cell_slab_num_;
-    /** 
-     * The range overlap of the **normalized** tile slab with each 
-     *  **normalized** tile range. 
+    /**
+     * The range overlap of the **normalized** tile slab with each
+     *  **normalized** tile range.
      */
     void** range_overlap_;
-    /** 
+    /**
      * Start offsets of each tile in the local buffer, per attribute per tile.
      */
     size_t** start_offsets_;
@@ -120,21 +114,21 @@ class ArraySortedReadState {
     int64_t tile_num_;
     /** Used in calculations of tile ids. */
     int64_t* tile_offset_per_dim_;
-  }; 
+  };
 
   /** The state for a tile slab copy. */
   struct TileSlabState {
     /** Keeps track of whether a tile slab copy for an attribute id done. */
     bool* copy_tile_slab_done_;
-    /** 
+    /**
      * Applicable only to the sparse case. It holds the current cell position
      * to be considered, per attribute.
      */
     int64_t* current_cell_pos_;
     /** Current coordinates in tile slab per attribute. */
     void** current_coords_;
-    /** 
-     * The offset in the local buffers of the next cell slab to be copied per 
+    /**
+     * The offset in the local buffers of the next cell slab to be copied per
      * attribute. Note that this applies only to fixed-sized attributes
      * because the offsets of the variable-sized attributes can be derived from
      * the buffers that hold the fixed-sized offsets.
@@ -144,12 +138,11 @@ class ArraySortedReadState {
     int64_t* current_tile_;
   };
 
- 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** 
+  /**
    * Constructor.
    *
    * @param array The array this array sorted read state belongs to.
@@ -158,9 +151,6 @@ class ArraySortedReadState {
 
   /** Destructor. */
   ~ArraySortedReadState();
-
-
-
 
   /* ********************************* */
   /*             ACCESSORS             */
@@ -175,24 +165,24 @@ class ArraySortedReadState {
   /** Returns true if copying into the user buffers resulted in overflow. */
   bool overflow() const;
 
-  /** 
+  /**
    * Returns true if copying into the user buffers resulted in overflow, for
-   * the input attribute id. 
+   * the input attribute id.
    */
   bool overflow(int attribute_id) const;
 
   /**
    * Same as Array::read(), but it sorts the cells in the buffers based on the
-   * order the user specified in Array::init(). Note that this function will 
-   * fail if there is not enough system memory to hold the cells of a 
+   * order the user specified in Array::init(). Note that this function will
+   * fail if there is not enough system memory to hold the cells of a
    * 'tile slab' overlapping with the selected subarray.
    *
    * @param buffers An array of buffers, one for each attribute. These must be
    *     provided in the same order as the attributes specified in
-   *     Array::init() or Array::reset_attributes(). The case of variable-sized 
-   *     attributes is special. Instead of providing a single buffer for such 
-   *     an attribute, **two** must be provided: the second will hold the 
-   *     variable-sized cell values, whereas the first holds the start offsets 
+   *     Array::init() or Array::reset_attributes(). The case of variable-sized
+   *     attributes is special. Instead of providing a single buffer for such
+   *     an attribute, **two** must be provided: the second will hold the
+   *     variable-sized cell values, whereas the first holds the start offsets
    *     of each cell in the second buffer.
    * @param buffer_sizes The sizes (in bytes) allocated by the user for the
    *     input buffers (there is a one-to-one correspondence). The function will
@@ -205,23 +195,18 @@ class ArraySortedReadState {
    *     without inflicting a considerable performance penalty due to overflow.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int read(void** buffers, size_t* buffer_sizes); 
-
-
-
+  int read(void** buffers, size_t* buffer_sizes);
 
   /* ********************************* */
   /*             MUTATORS              */
   /* ********************************* */
 
-
-  /** 
-   * Initializes the array sorted read state. 
+  /**
+   * Initializes the array sorted read state.
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int init();
-
 
  private:
   /* ********************************* */
@@ -229,7 +214,7 @@ class ArraySortedReadState {
   /* ********************************* */
 
   /** Function for advancing a cell slab during a copy operation. */
-  void *(*advance_cell_slab_) (void*);
+  void* (*advance_cell_slab_)(void*);
 
   /** AIO counter. */
   int aio_cnt_;
@@ -245,7 +230,7 @@ class ArraySortedReadState {
 
   /** The AIO mutex. */
   pthread_mutex_t aio_mtx_;
-  
+
   /** Indicates overflow per tile slab per attribute upon an AIO operation. */
   bool* aio_overflow_[2];
 
@@ -286,24 +271,24 @@ class ArraySortedReadState {
   void** buffers_[2];
 
   /** Function for calculating cell slab info during a copy operation. */
-  void *(*calculate_cell_slab_info_) (void*);
+  void* (*calculate_cell_slab_info_)(void*);
 
   /** Function for calculating tile slab info during a copy operation. */
-  void *(*calculate_tile_slab_info_) (void*);
+  void* (*calculate_tile_slab_info_)(void*);
 
-  /** 
+  /**
    * Used only in the sparse case. Holds the sorted positions of the cells
-   * for the current tile slab to be copied. 
+   * for the current tile slab to be copied.
    */
   std::vector<int64_t> cell_pos_;
 
-  /** 
+  /**
    * Used only in the sparse case. It is the element index in attribute_ids_
    * that represents the coordinates attribute.
    */
   int coords_attr_i_;
 
-  /** 
+  /**
    * Used only in the sparse case. It is the element index in buffers_
    * that represents the coordinates attribute.
    */
@@ -336,7 +321,7 @@ class ArraySortedReadState {
   /** The number of dimensions in the array. */
   int dim_num_;
 
-  /** 
+  /**
    * Used only in the sparse case. It is true if the coordinates are not asked
    * by the user and, thus, TileDB had to append them as an extra attribute
    * to facilitate sorting the cell positions.
@@ -353,8 +338,8 @@ class ArraySortedReadState {
   /** Overflow flag for each attribute. */
   bool* overflow_;
 
-  /** 
-   * Overflow flag for each attribute. It starts with *true* for all 
+  /**
+   * Overflow flag for each attribute. It starts with *true* for all
    * attributes, and becomes false once an attribute does not overflow any more.
    */
   bool* overflow_still_;
@@ -402,57 +387,57 @@ class ArraySortedReadState {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /** 
+  /**
    * Advances a cell slab focusing on column-major order, and updates
-   * the CopyState and TileSlabState. 
-   * Used in copy_tile_slab(). 
+   * the CopyState and TileSlabState.
+   * Used in copy_tile_slab().
    *
    * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
-  template<class T>
-  static void *advance_cell_slab_col_s(void* data);
+  template <class T>
+  static void* advance_cell_slab_col_s(void* data);
 
-  /** 
+  /**
    * Advances a cell slab focusing on row-major order, and updates
-   * the CopyState and TileSlabState. 
-   * Used in copy_tile_slab(). 
+   * the CopyState and TileSlabState.
+   * Used in copy_tile_slab().
    *
    * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
-  template<class T>
-  static void *advance_cell_slab_row_s(void* data);
+  template <class T>
+  static void* advance_cell_slab_row_s(void* data);
 
-  /** 
-   * Advances a cell slab when the requested order is column-major. 
-   * 
+  /**
+   * Advances a cell slab when the requested order is column-major.
+   *
    * @tparam T The domain type.
    * @param aid The id of the attribute in attribute_ids_ to focus on.
    * @return void
    */
-  template<class T>
+  template <class T>
   void advance_cell_slab_col(int aid);
 
-  /** 
-   * Advances a cell slab when the requested order is row-major. 
-   * 
+  /**
+   * Advances a cell slab when the requested order is row-major.
+   *
    * @tparam T The domain type.
    * @param aid The id of the attribute in attribute_ids_ to focus on.
    * @return void
    */
-  template<class T>
+  template <class T>
   void advance_cell_slab_row(int aid);
 
   /**
    * Called when an AIO completes.
    *
    * @param data A ASRS_Request object.
-   * @return void 
+   * @return void
    */
-  static void *aio_done(void* data);
+  static void* aio_done(void* data);
 
   /** True if some attribute overflowed for the input tile slab upon an AIO. */
   bool aio_overflow(int aio_id);
@@ -466,13 +451,13 @@ class ArraySortedReadState {
   /** Sets the flag of resume_copy_ to true. */
   void block_overflow();
 
-  /** 
-   * Calculate the attribute ids specified by the user upon array 
-   * initialization. 
+  /**
+   * Calculate the attribute ids specified by the user upon array
+   * initialization.
    */
   void calculate_attribute_ids();
 
-  /** 
+  /**
    * Calculates the number of buffers to be allocated, based on the number
    * of attributes initialized for the array.
    *
@@ -480,14 +465,14 @@ class ArraySortedReadState {
    */
   void calculate_buffer_num();
 
-  /** 
+  /**
    * Calculates the buffer sizes based on the array type.
    *
    * @return void
    */
   void calculate_buffer_sizes();
 
-  /** 
+  /**
    * Calculates the buffer sizes based on the subarray and the number of cells
    * in a (full) tile slab. Applicable to dense arrays.
    *
@@ -495,7 +480,7 @@ class ArraySortedReadState {
    */
   void calculate_buffer_sizes_dense();
 
-  /** 
+  /**
    * Calculates the buffer sizes based on configurable parameters. Applicable to
    * sparse arrays.
    *
@@ -503,57 +488,57 @@ class ArraySortedReadState {
    */
   void calculate_buffer_sizes_sparse();
 
-  /** 
+  /**
    * Calculates the info used in the copy_tile_slab() function, for the case
-   * where the **user** cell order is column-major and the **array** cell 
+   * where the **user** cell order is column-major and the **array** cell
    * order is column-major.
    *
    * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
-  template<class T>
-  static void *calculate_cell_slab_info_col_col_s(void* data);
+  template <class T>
+  static void* calculate_cell_slab_info_col_col_s(void* data);
 
-  /** 
+  /**
    * Calculates the info used in the copy_tile_slab() function, for the case
-   * where the **user** cell order is column-major and the **array** cell 
+   * where the **user** cell order is column-major and the **array** cell
    * order is row-major.
    *
    * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
-  template<class T>
-  static void *calculate_cell_slab_info_col_row_s(void* data);
+  template <class T>
+  static void* calculate_cell_slab_info_col_row_s(void* data);
 
-  /** 
+  /**
    * Calculates the info used in the copy_tile_slab() function, for the case
-   * where the **user** cell order in row-major and the **array** cell 
+   * where the **user** cell order in row-major and the **array** cell
    * order is column-major.
    *
    * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
-  template<class T>
-  static void *calculate_cell_slab_info_row_col_s(void* data);
+  template <class T>
+  static void* calculate_cell_slab_info_row_col_s(void* data);
 
-  /** 
+  /**
    * Calculates the info used in the copy_tile_slab() function, for the case
-   * where the **user** cell order is row-major and the **array** cell 
+   * where the **user** cell order is row-major and the **array** cell
    * order is row-major.
    *
    * @tparam T The domain type.
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
-  template<class T>
-  static void *calculate_cell_slab_info_row_row_s(void* data);
+  template <class T>
+  static void* calculate_cell_slab_info_row_row_s(void* data);
 
-  /** 
+  /**
    * Calculates the info used in the copy_tile_slab() function, for the case
-   * where the **user** cell order is column-major and the **array** cell 
+   * where the **user** cell order is column-major and the **array** cell
    * order is column-major.
    *
    * @tparam T The domain type.
@@ -561,12 +546,12 @@ class ArraySortedReadState {
    * @param tid The tile id.
    * @return void.
    */
-  template<class T>
+  template <class T>
   void calculate_cell_slab_info_col_col(int id, int64_t tid);
 
-  /** 
+  /**
    * Calculates the info used in the copy_tile_slab() function, for the case
-   * where the **user** cell order is column-major and the **array** cell 
+   * where the **user** cell order is column-major and the **array** cell
    * order is row-major.
    *
    * @tparam T The domain type.
@@ -574,12 +559,12 @@ class ArraySortedReadState {
    * @param tid The tile id.
    * @return void.
    */
-  template<class T>
+  template <class T>
   void calculate_cell_slab_info_col_row(int id, int64_t tid);
- 
-  /** 
+
+  /**
    * Calculates the info used in the copy_tile_slab() function, for the case
-   * where the **user** cell order is row-major and the **array** cell 
+   * where the **user** cell order is row-major and the **array** cell
    * order is row-major.
    *
    * @tparam T The domain type.
@@ -587,12 +572,12 @@ class ArraySortedReadState {
    * @param tid The tile id.
    * @return void.
    */
-  template<class T>
+  template <class T>
   void calculate_cell_slab_info_row_row(int id, int64_t tid);
 
-  /** 
+  /**
    * Calculates the info used in the copy_tile_slab() function, for the case
-   * where the **user** cell order is row-major and the **array** cell 
+   * where the **user** cell order is row-major and the **array** cell
    * order is column-major.
    *
    * @tparam T The domain type.
@@ -600,10 +585,10 @@ class ArraySortedReadState {
    * @param tid The tile id.
    * @return void.
    */
-  template<class T>
+  template <class T>
   void calculate_cell_slab_info_row_col(int id, int64_t tid);
 
-  /** 
+  /**
    * Calculates the info used in the copy_tile_slab() function, for the case
    * where the **array** cell order is row-major.
    *
@@ -612,31 +597,31 @@ class ArraySortedReadState {
    * @param tid The tile id.
    * @return void.
    */
-  template<class T>
+  template <class T>
   void calculate_cell_slab_info_row(int id, int64_t tid);
 
-  /** 
-   * Calculates the **normalized** tile domain overlapped by the input tile 
+  /**
+   * Calculates the **normalized** tile domain overlapped by the input tile
    * slab. Note that this domain is the same for all tile slabs
    *
    * @tparam T The domain type.
    * @param id The tile slab id.
    * @return void.
-   */ 
-  template<class T>
+   */
+  template <class T>
   void calculate_tile_domain(int id);
 
-  /** 
+  /**
    * Calculates the info used in the copy_tile_slab() function.
    *
    * @tparam T The domain type.
    * @param id The tile slab id.
    * @return void.
    */
-  template<class T>
+  template <class T>
   void calculate_tile_slab_info(int id);
 
-  /** 
+  /**
    * Calculates tile slab info for the case where the **array** tile order is
    * column-major
    *
@@ -644,10 +629,10 @@ class ArraySortedReadState {
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
-  template<class T>
-  static void *calculate_tile_slab_info_col(void* data);
+  template <class T>
+  static void* calculate_tile_slab_info_col(void* data);
 
-  /** 
+  /**
    * Calculates the info used in the copy_tile_slab() function, for the case
    * where the **array** tile order is column-major.
    *
@@ -655,10 +640,10 @@ class ArraySortedReadState {
    * @param id The tile slab id.
    * @return void.
    */
-  template<class T>
+  template <class T>
   void calculate_tile_slab_info_col(int id);
- 
-  /** 
+
+  /**
    * Calculates tile slab info for the case where the **array** tile order is
    * row-major
    *
@@ -666,10 +651,10 @@ class ArraySortedReadState {
    * @param data Essentially a pointer to a ASRS_Data object.
    * @return void
    */
-  template<class T>
-  static void *calculate_tile_slab_info_row(void* data);
+  template <class T>
+  static void* calculate_tile_slab_info_row(void* data);
 
-  /** 
+  /**
    * Calculates the info used in the copy_tile_slab() function, for the case
    * where the **array** tile order is row-major.
    *
@@ -677,85 +662,85 @@ class ArraySortedReadState {
    * @param id The tile slab id.
    * @return void.
    */
-  template<class T>
+  template <class T>
   void calculate_tile_slab_info_row(int id);
 
   /**
-   * Function called by the copy thread. 
+   * Function called by the copy thread.
    *
-   * @param context This is practically the ArraySortedReadState object for 
-   *     which the function is called (typically *this* is passed to this 
+   * @param context This is practically the ArraySortedReadState object for
+   *     which the function is called (typically *this* is passed to this
    *     argument by the caller).
    */
-  static void *copy_handler(void* context);
+  static void* copy_handler(void* context);
 
-  /** 
-   * Copies a tile slab from the local buffers into the user buffers, 
-   * properly re-organizing the cell order to fit the targeted order.  
+  /**
+   * Copies a tile slab from the local buffers into the user buffers,
+   * properly re-organizing the cell order to fit the targeted order.
    * Applicable to dense arrays.
-   * 
+   *
    * @return void.
    */
   void copy_tile_slab_dense();
 
-  /** 
-   * Copies a tile slab from the local buffers into the user buffers, 
-   * properly re-organizing the cell order to fit the targeted order.  
+  /**
+   * Copies a tile slab from the local buffers into the user buffers,
+   * properly re-organizing the cell order to fit the targeted order.
    * Applicable to sparse arrays.
-   * 
+   *
    * @return void.
    */
   void copy_tile_slab_sparse();
 
-  /** 
-   * Copies a tile slab from the local buffers into the user buffers, 
+  /**
+   * Copies a tile slab from the local buffers into the user buffers,
    * properly re-organizing the cell order to fit the targeted order,
    * focusing on a particular fixed-length attribute.
    * Applicable to dense arrays.
-   * 
+   *
    * @param aid The index on attribute_ids_ to focus on.
    * @param bid The index on the copy state buffers to focus on.
    * @return void.
    */
   void copy_tile_slab_dense(int aid, int bid);
 
-  /** 
-   * Copies a tile slab from the local buffers into the user buffers, 
+  /**
+   * Copies a tile slab from the local buffers into the user buffers,
    * properly re-organizing the cell order to fit the targeted order,
    * focusing on a particular fixed-length attribute.
    * Applicable to sparse arrays.
-   * 
+   *
    * @param aid The index on attribute_ids_ to focus on.
    * @param bid The index on the copy state buffers to focus on.
    * @return void.
    */
   void copy_tile_slab_sparse(int aid, int bid);
 
-  /** 
-   * Copies a tile slab from the local buffers into the user buffers, 
+  /**
+   * Copies a tile slab from the local buffers into the user buffers,
    * properly re-organizing the cell order to fit the targeted order,
    * focusing on a particular variable-length attribute.
    * Applicable to dense arrays.
-   * 
+   *
    * @param aid The index on attribute_ids_ to focus on.
    * @param bid The index on the copy state buffers to focus on.
    * @return void.
    */
   void copy_tile_slab_dense_var(int aid, int bid);
 
-  /** 
-   * Copies a tile slab from the local buffers into the user buffers, 
+  /**
+   * Copies a tile slab from the local buffers into the user buffers,
    * properly re-organizing the cell order to fit the targeted order,
    * focusing on a particular variable-length attribute.
    * Applicable to sparse arrays.
-   * 
+   *
    * @param aid The index on attribute_ids_ to focus on.
    * @param bid The index on the copy state buffers to focus on.
    * @return void.
    */
   void copy_tile_slab_sparse_var(int aid, int bid);
 
-  /** 
+  /**
    * Creates the buffers based on the calculated buffer sizes.
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
@@ -771,44 +756,44 @@ class ArraySortedReadState {
   /** Frees the tile slab state. */
   void free_tile_slab_state();
 
-  /** 
+  /**
    * Returns the cell id along the **array** order for the current coordinates
-   * in the tile slab state for a particular attribute. 
+   * in the tile slab state for a particular attribute.
    *
    * @tparam T The domain type.
    * @param aid The targeted attribute.
-   * @return The cell id. 
+   * @return The cell id.
    */
-  template<class T>
+  template <class T>
   int64_t get_cell_id(int aid);
 
-  /** 
+  /**
    * Returns the tile id along the **array** order for the current coordinates
-   * in the tile slab state for a particular attribute. 
+   * in the tile slab state for a particular attribute.
    *
    * @tparam T The domain type.
    * @param aid The targeted attribute.
-   * @return The tile id. 
+   * @return The tile id.
    */
-  template<class T>
+  template <class T>
   int64_t get_tile_id(int aid);
 
-  /** 
-   * Handles the copy requests. Applicable to dense arrays. 
+  /**
+   * Handles the copy requests. Applicable to dense arrays.
    *
    * @tparam T The domain type.
    * @return void.
    */
-  template<class T>
+  template <class T>
   void handle_copy_requests_dense();
 
-  /** 
-   * Handles the copy requests. Applicable to sparse arrays. 
+  /**
+   * Handles the copy requests. Applicable to sparse arrays.
    *
    * @tparam T The domain type.
    * @return void.
    */
-  template<class T>
+  template <class T>
   void handle_copy_requests_sparse();
 
   /** Initializes the AIO requests. */
@@ -820,7 +805,7 @@ class ArraySortedReadState {
   /** Initializes the tile slab info. */
   void init_tile_slab_info();
 
-  /** 
+  /**
    * Initializes the tile slab info for a particular tile slab, using the
    * input tile number.
    *
@@ -828,162 +813,162 @@ class ArraySortedReadState {
    * @param id The slab id.
    * @return void.
    */
-  template<class T>
+  template <class T>
   void init_tile_slab_info(int id);
 
   /** Initializes the tile slab state. */
   void init_tile_slab_state();
 
-  /**  
-   * Locks the AIO mutex. 
-   * 
+  /**
+   * Locks the AIO mutex.
+   *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int lock_aio_mtx();
 
-  /**  
-   * Locks the copy mutex. 
-   * 
+  /**
+   * Locks the copy mutex.
+   *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int lock_copy_mtx();
 
-  /**  
-   * Locks the overflow mutex. 
-   * 
+  /**
+   * Locks the overflow mutex.
+   *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int lock_overflow_mtx();
 
-  /** 
+  /**
    * Retrieves the next column tile slab to be processed. Applicable to dense
    * arrays.
-   * 
+   *
    * @tparam T The domain type.
    * @return True if the next tile slab was retrieved, and false otherwise.
    */
-  template<class T>
+  template <class T>
   bool next_tile_slab_dense_col();
 
-  /** 
-   * Retrieves the next row tile slab to be processed. Applicable to dense 
+  /**
+   * Retrieves the next row tile slab to be processed. Applicable to dense
    * arrays.
-   * 
+   *
    * @tparam T The domain type.
    * @return True if the next tile slab was retrieved, and false otherwise.
    */
-  template<class T>
+  template <class T>
   bool next_tile_slab_dense_row();
 
-  /** 
+  /**
    * Retrieves the next column tile slab to be processed. Applicable to sparse
    * arrays.
-   * 
+   *
    * @tparam T The domain type.
    * @return True if the next tile slab was retrieved, and false otherwise.
    */
-  template<class T>
+  template <class T>
   bool next_tile_slab_sparse_col();
 
-  /** 
+  /**
    * Retrieves the next row tile slab to be processed. Applicable to sparse
    * arrays.
-   * 
+   *
    * @tparam T The domain type.
    * @return True if the next tile slab was retrieved, and false otherwise.
    */
-  template<class T>
+  template <class T>
   bool next_tile_slab_sparse_row();
 
   /**
    * Same as Array::read(), but it sorts the cells in the buffers based on the
-   * order the user specified in Array::init(). Note that this function will 
-   * fail if there is not enough system memory to hold the cells of a 
+   * order the user specified in Array::init(). Note that this function will
+   * fail if there is not enough system memory to hold the cells of a
    * 'tile slab' overlapping with the selected subarray.
    *
    * @tparam T The domain type.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  template<class T>
-  int read(); 
+  template <class T>
+  int read();
 
   /**
-   * Same as read(), but the cells are placed in 'buffers' sorted in 
-   * column-major order with respect to the selected subarray. 
-   * Applicable only to dense arrays. 
-   * 
+   * Same as read(), but the cells are placed in 'buffers' sorted in
+   * column-major order with respect to the selected subarray.
+   * Applicable only to dense arrays.
+   *
    * @tparam T The domain type.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  template<class T>
-  int read_dense_sorted_col(); 
+  template <class T>
+  int read_dense_sorted_col();
 
   /**
-   * Same as read(), but the cells are placed in 'buffers' sorted in 
-   * row-major order with respect to the selected subarray. 
-   * Applicable only to dense arrays. 
-   * 
+   * Same as read(), but the cells are placed in 'buffers' sorted in
+   * row-major order with respect to the selected subarray.
+   * Applicable only to dense arrays.
+   *
    * @tparam T The domain type.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  template<class T>
-  int read_dense_sorted_row(); 
+  template <class T>
+  int read_dense_sorted_row();
 
   /**
-   * Same as read(), but the cells are placed in 'buffers' sorted in 
-   * column-major order with respect to the selected subarray. 
-   * Applicable only to sparse arrays. 
-   * 
+   * Same as read(), but the cells are placed in 'buffers' sorted in
+   * column-major order with respect to the selected subarray.
+   * Applicable only to sparse arrays.
+   *
    * @tparam T The domain type.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  template<class T>
-  int read_sparse_sorted_col(); 
+  template <class T>
+  int read_sparse_sorted_col();
 
   /**
-   * Same as read(), but the cells are placed in 'buffers' sorted in 
-   * row-major order with respect to the selected subarray. 
-   * Applicable only to sparse arrays. 
-   * 
+   * Same as read(), but the cells are placed in 'buffers' sorted in
+   * row-major order with respect to the selected subarray.
+   * Applicable only to sparse arrays.
+   *
    * @tparam T The domain type.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  template<class T>
-  int read_sparse_sorted_row(); 
+  template <class T>
+  int read_sparse_sorted_row();
 
-  /** 
+  /**
    * Reads the current tile slab into the input buffers.
-   * 
+   *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int read_tile_slab();
 
-  /** 
-   * Signals an AIO condition. 
-   * 
+  /**
+   * Signals an AIO condition.
+   *
    * @param id The id of the AIO condition to be signaled.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int release_aio(int id);
 
-  /** 
-   * Signals a copy condition. 
-   * 
+  /**
+   * Signals a copy condition.
+   *
    * @param id The id of the copy condition to be signaled.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int release_copy(int id);
 
-  /** 
-   * Signals the overflow condition. 
-   * 
+  /**
+   * Signals the overflow condition.
+   *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int release_overflow();
 
   /** Resets the AIO overflow flags for the input tile slab id. */
   void reset_aio_overflow(int aio_id);
-  
+
   /** Resets the temporary buffer sizes for the input tile slab id. */
   void reset_buffer_sizes_tmp(int id);
 
@@ -993,69 +978,69 @@ class ArraySortedReadState {
   /** Resets the oveflow flags to **false**. */
   void reset_overflow();
 
-  /** 
-   * Resets the tile_coords_ auxiliary variable. 
+  /**
+   * Resets the tile_coords_ auxiliary variable.
    *
    * @tparam T The domain type.
    * @return void.
    */
-  template<class T> 
+  template <class T>
   void reset_tile_coords();
-  
-  /** 
-   * Resets the tile slab state. 
+
+  /**
+   * Resets the tile slab state.
    *
    * @tparam T The domain type.
    * @return void.
    */
-  template<class T> 
+  template <class T>
   void reset_tile_slab_state();
 
-  /** 
-   * Sends an AIO request. 
+  /**
+   * Sends an AIO request.
    *
    * @param aio_id The id of the tile slab the AIO request focuses on.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int send_aio_request(int aio_id);
 
-  /** 
+  /**
    * It sorts the positions of the cells based on the coordinates
    * of the current tile slab to be copied.
    */
-  template<class T>
+  template <class T>
   void sort_cell_pos();
 
-  /**  
-   * Unlocks the AIO mutex. 
-   * 
+  /**
+   * Unlocks the AIO mutex.
+   *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int unlock_aio_mtx();
 
-  /**  
-   * Unlocks the copy mutex. 
-   * 
+  /**
+   * Unlocks the copy mutex.
+   *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int unlock_copy_mtx();
 
-  /**  
-   * Unlocks the overflow mutex. 
-   * 
+  /**
+   * Unlocks the overflow mutex.
+   *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   int unlock_overflow_mtx();
 
   /**
-   * Calculates the new tile and local buffer offset for the new (already 
-   * computed) current cell coordinates in the tile slab. 
+   * Calculates the new tile and local buffer offset for the new (already
+   * computed) current cell coordinates in the tile slab.
    *
    * @tparam T The domain type
    * @param aid The attribute id to focus on.
    * @return void.
    */
-  template<class T> 
+  template <class T>
   void update_current_tile_and_offset(int aid);
 
   /**

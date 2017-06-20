@@ -24,11 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * A C-style struct that specifies the array schema.  
- */  
+ * A C-style struct that specifies the array schema.
+ */
 
 #ifndef __ARRAY_SCHEMA_C_H__
 #define __ARRAY_SCHEMA_C_H__
@@ -37,7 +37,7 @@
 
 /** Specifies the array schema. */
 typedef struct ArraySchemaC {
-  /** 
+  /**
    * The array name. It is a directory, whose parent must be a TileDB workspace,
    * or group.
    */
@@ -46,12 +46,12 @@ typedef struct ArraySchemaC {
   char** attributes_;
   /** The number of attributes. */
   int attribute_num_;
-  /** 
+  /**
    * The tile capacity for the case of sparse fragments. If it is <=0,
    * TileDB will use its default.
    */
   int64_t capacity_;
-  /** 
+  /**
    * The cell order. It can be one of the following:
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR
@@ -64,25 +64,25 @@ typedef struct ArraySchemaC {
    * TILEDB_VAR_NUM must be used.
    */
   int* cell_val_num_;
-  /** 
+  /**
    * The compression type for each attribute (plus one extra at the end for the
-   * coordinates. It can be one of the following: 
+   * coordinates. It can be one of the following:
    *    - TILEDB_NO_COMPRESSION
-   *    - TILEDB_GZIP 
-   *    - TILEDB_ZSTD 
-   *    - TILEDB_LZ4 
-   *    - TILEDB_BLOSC 
-   *    - TILEDB_BLOSC_LZ4 
-   *    - TILEDB_BLOSC_LZ4HC 
-   *    - TILEDB_BLOSC_SNAPPY 
-   *    - TILEDB_BLOSC_ZLIB 
-   *    - TILEDB_BLOSC_ZSTD 
-   *    - TILEDB_RLE 
-   *    - TILEDB_BZIP2 
+   *    - TILEDB_GZIP
+   *    - TILEDB_ZSTD
+   *    - TILEDB_LZ4
+   *    - TILEDB_BLOSC
+   *    - TILEDB_BLOSC_LZ4
+   *    - TILEDB_BLOSC_LZ4HC
+   *    - TILEDB_BLOSC_SNAPPY
+   *    - TILEDB_BLOSC_ZLIB
+   *    - TILEDB_BLOSC_ZSTD
+   *    - TILEDB_RLE
+   *    - TILEDB_BZIP2
    */
   int* compression_;
-  /** 
-   * Specifies if the array is dense (1) or sparse (0). If the array is dense, 
+  /**
+   * Specifies if the array is dense (1) or sparse (0). If the array is dense,
    * then the user must specify tile extents (see below).
    */
   int dense_;
@@ -90,33 +90,33 @@ typedef struct ArraySchemaC {
   char** dimensions_;
   /** The number of dimensions. */
   int dim_num_;
-  /**  
-   * The array domain. It should contain one [lower, upper] pair per dimension. 
+  /**
+   * The array domain. It should contain one [lower, upper] pair per dimension.
    * The type of the values stored in this buffer should match the coordinates
    * type.
    */
   void* domain_;
-  /** 
+  /**
    * The tile extents. There should be one value for each dimension. The type of
    * the values stored in this buffer should match the coordinates type. If it
    * is NULL (applicable only to sparse arrays), then it means that the
    * array has irregular tiles.
    */
   void* tile_extents_;
-  /** 
+  /**
    * The tile order. It can be one of the following:
    *    - TILEDB_ROW_MAJOR
-   *    - TILEDB_COL_MAJOR. 
+   *    - TILEDB_COL_MAJOR.
    */
   int tile_order_;
-  /** 
+  /**
    * The attribute types, plus an extra one in the end for the coordinates.
-   * The attribute type can be one of the following: 
+   * The attribute type can be one of the following:
    *    - TILEDB_INT32
    *    - TILEDB_INT64
    *    - TILEDB_FLOAT32
    *    - TILEDB_FLOAT64
-   *    - TILEDB_CHAR 
+   *    - TILEDB_CHAR
    *    - TILEDB_INT8
    *    - TILEDB_UINT8
    *    - TILEDB_INT16
@@ -124,7 +124,7 @@ typedef struct ArraySchemaC {
    *    - TILEDB_UINT32
    *    - TILEDB_UINT64
    *
-   * The coordinate type can be one of the following: 
+   * The coordinate type can be one of the following:
    *    - TILEDB_INT32
    *    - TILEDB_INT64
    *    - TILEDB_FLOAT32

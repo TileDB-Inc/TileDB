@@ -24,10 +24,10 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * This file defines class Metadata. 
+ * This file defines class Metadata.
  */
 
 #ifndef __METADATA_H__
@@ -42,15 +42,12 @@
 
 /**@{*/
 /** Return code. */
-#define TILEDB_MT_OK           0
-#define TILEDB_MT_ERR         -1
+#define TILEDB_MT_OK 0
+#define TILEDB_MT_ERR -1
 /**@}*/
 
 /** Default error message. */
 #define TILEDB_MT_ERRMSG std::string("[TileDB::Metadata] Error: ")
-
-
-
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
@@ -59,24 +56,18 @@
 /** Stores potential error messages. */
 extern std::string tiledb_mt_errmsg;
 
-
-
-
 /** Manages a TileDB metadata object. */
 class Metadata {
  public:
   /* ********************************* */
   /*    CONSTRUCTORS & DESTRUCTORS     */
   /* ********************************* */
-  
+
   /** Constructor. */
   Metadata();
 
   /** Destructor. */
   ~Metadata();
-
-
-
 
   /* ********************************* */
   /*             ACCESSORS             */
@@ -91,7 +82,7 @@ class Metadata {
   /**
    * Checks if a read operation for a particular attribute resulted in a
    * buffer overflow.
-   * 
+   *
    * @param attribute_id The id of the attribute for which the overflow is
    *     checked. This id corresponds to the position of the attribute name
    *     placed in the *attributes* input of init(), or reset_attributes(). If
@@ -99,18 +90,18 @@ class Metadata {
    *     corresponds to the order in which the attributes were defined in the
    *     array schema upon the array creation. Note that, in that case, the
    *     extra key attribute corresponds to the last extra attribute, i.e., its
-   *     id is *attribute_num*. 
+   *     id is *attribute_num*.
    * @return *true* for overflow and *false* otherwise.
    */
   bool overflow(int attribute_id) const;
 
   /**
    * Performs a read operation in a metadata object, which must be initialized
-   * with mode TILEDB_METADATA_READ. The read is performed on a single key. 
-   * 
+   * with mode TILEDB_METADATA_READ. The read is performed on a single key.
+   *
    * @param key This is the query key, which must be a string.
    * @param buffers An array of buffers, one for each attribute. These must be
-   *     provided in the same order as the attributes specified in init() or 
+   *     provided in the same order as the attributes specified in init() or
    *     reset_attributes(). The case of variable-sized attributes is special.
    *     Instead of providing a single buffer for such an attribute, **two**
    *     must be provided: the second will hold the variable-sized values,
@@ -120,13 +111,10 @@ class Metadata {
    *     input buffers (there is a one-to-one correspondence). The function will
    *     attempt to write value corresponding to the key. If a buffer cannot
    *     hold the result, the function will still succeed, turning on an
-   *     overflow flag which can be checked with function overflow(). 
+   *     overflow flag which can be checked with function overflow().
    * @return TILEDB_MT_OK for success and TILEDB_MT_ERR for error.
    */
-  int read(const char* key, void** buffers, size_t* buffer_sizes); 
-
-
-
+  int read(const char* key, void** buffers, size_t* buffer_sizes);
 
   /* ********************************* */
   /*             MUTATORS              */
@@ -134,17 +122,16 @@ class Metadata {
 
   /**
    * Consolidates all fragments into a new single one, on a per-attribute basis.
-   * Returns the new fragment (which has to be finalized outside this functions),
-   * along with the names of the old (consolidated) fragments (which also have
-   * to be deleted outside this function).
+   * Returns the new fragment (which has to be finalized outside this
+   * functions), along with the names of the old (consolidated) fragments (which
+   * also have to be deleted outside this function).
    *
    * @param new_fragment The new fragment to be returned.
    * @param old_fragment_names The names of the old fragments to be returned.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
   int consolidate(
-      Fragment*& new_fragment, 
-      std::vector<std::string>& old_fragment_names);
+      Fragment*& new_fragment, std::vector<std::string>& old_fragment_names);
 
   /**
    * Finalizes the metadata, properly freeing up the memory space.
@@ -152,7 +139,7 @@ class Metadata {
    * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
    */
   int finalize();
- 
+
   /**
    * Initializes a TileDB metadata object.
    *
@@ -161,8 +148,8 @@ class Metadata {
    * @param book_keeping The book-keeping structures of the fragments
    *     of the array.
    * @param mode The mode of the metadata. It must be one of the following:
-   *    - TILEDB_METADATA_WRITE 
-   *    - TILEDB_METADATA_READ 
+   *    - TILEDB_METADATA_WRITE
+   *    - TILEDB_METADATA_READ
    * @param attributes A subset of the metadata attributes the read/write will
    *     be constrained on. A NULL value indicates **all** attributes (including
    *     the key as an extra attribute in the end).
@@ -172,7 +159,7 @@ class Metadata {
    * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
    */
   int init(
-      const ArraySchema* array_schema, 
+      const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
       const std::vector<BookKeeping*>& book_keeping,
       int mode,
@@ -181,7 +168,7 @@ class Metadata {
       const StorageManagerConfig* config);
 
   /**
-   * Resets the attributes used upon initialization of the metadata. 
+   * Resets the attributes used upon initialization of the metadata.
    *
    * @param attributes The new attributes to focus on. If it is NULL, then
    *     all the attributes are used (including the key as an extra attribute
@@ -195,11 +182,11 @@ class Metadata {
   /**
    * Performs a write operation in metadata object. The values are provided
    * in a set of buffers (one per attribute specified upon initialization).
-   * Note that there must be a one-to-one correspondance between the 
+   * Note that there must be a one-to-one correspondance between the
    * values across the attribute buffers.
    *
    * The metadata must be initialized with mode TILEDB_METADATA_WRITE.
-   * 
+   *
    * @param keys The buffer holding the metadata keys. These keys must be
    *     strings, serialized one after the other in the *keys* buffer.
    * @param keys_size The size (in bytes) of buffer *keys*.
@@ -217,11 +204,8 @@ class Metadata {
   int write(
       const char* keys,
       size_t keys_size,
-      const void** buffers, 
-      const size_t* buffer_sizes); 
-
-
-
+      const void** buffers,
+      const size_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -230,15 +214,12 @@ class Metadata {
 
   /** The underlying array that implements the metadata. */
   Array* array_;
-  /** 
+  /**
    * The metadata mode. It must be one of the following:
-   *    - TILEDB_METADATA_WRITE 
-   *    - TILEDB_METADATA_READ 
+   *    - TILEDB_METADATA_WRITE
+   *    - TILEDB_METADATA_READ
    */
   int mode_;
-
-
-
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -262,7 +243,7 @@ class Metadata {
       size_t& coords_size) const;
 
   /**
-   * Prepares the buffers that will be passed to the underlying array when 
+   * Prepares the buffers that will be passed to the underlying array when
    * writing metadata.
    *
    * @param coords A buffer holding the computed coordinates for the keys to be

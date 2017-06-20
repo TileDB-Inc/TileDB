@@ -24,15 +24,16 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * This file defines class StorageManager.  
- */  
+ * This file defines class StorageManager.
+ */
 
 #ifndef __STORAGE_MANAGER_H__
 #define __STORAGE_MANAGER_H__
 
+#include <map>
 #include "array.h"
 #include "array_iterator.h"
 #include "array_schema.h"
@@ -41,9 +42,8 @@
 #include "metadata_iterator.h"
 #include "metadata_schema_c.h"
 #include "storage_manager_config.h"
-#include <map>
 #ifdef HAVE_OPENMP
-  #include <omp.h>
+#include <omp.h>
 #endif
 #include <pthread.h>
 #include <string>
@@ -54,24 +54,21 @@
 
 /**@{*/
 /** Return code. */
-#define TILEDB_SM_OK                                                  0
-#define TILEDB_SM_ERR                                                -1
+#define TILEDB_SM_OK 0
+#define TILEDB_SM_ERR -1
 /**@}*/
 
 /**@{*/
 /** Lock types. */
-#define TILEDB_SM_SHARED_LOCK                                         0
-#define TILEDB_SM_EXCLUSIVE_LOCK                                      1
+#define TILEDB_SM_SHARED_LOCK 0
+#define TILEDB_SM_EXCLUSIVE_LOCK 1
 /**@}*/
 
 /** Name of the consolidation file lock. */
-#define TILEDB_SM_CONSOLIDATION_FILELOCK_NAME   ".__consolidation_lock"
+#define TILEDB_SM_CONSOLIDATION_FILELOCK_NAME ".__consolidation_lock"
 
 /** Default error message. */
 #define TILEDB_SM_ERRMSG std::string("[TileDB::StorageManager] Error: ")
-
-
-
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
@@ -80,15 +77,12 @@
 /** Stores potential error messages. */
 extern std::string tiledb_sm_errmsg;
 
-
-
-
-/** 
+/**
  * The storage manager, which is repsonsible for creating, deleting, etc. of
  * TileDB objects (i.e., workspaces, groups, arrays and metadata).
  */
 class StorageManager {
- public: 
+ public:
   /* ********************************* */
   /*         TYPE DEFINITIONS          */
   /* ********************************* */
@@ -112,25 +106,22 @@ class StorageManager {
 
   /**
    * Finalizes the storage manager, properly freeing memory.
-   * 
+   *
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int finalize();
 
-  /** 
+  /**
    * Initializes the storage manager. This function creates the TileDB home
    * directory, which by default is "~/.tiledb/". If the user home directory
    * cannot be retrieved, then the TileDB home directory is set to the current
    * working directory.
    *
    * @param config The configuration parameters. If it is NULL,
-   *     then the default TileDB parameters are used. 
+   *     then the default TileDB parameters are used.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int init(StorageManagerConfig* config);
-
-
-
 
   /* ********************************* */
   /*            WORKSPACE              */
@@ -144,10 +135,7 @@ class StorageManager {
    *     or metadata directory.
    * @return TILEDB_SM_OK for succes, and TILEDB_SM_ERR for error.
    */
-  int workspace_create(const std::string& workspace); 
-
-
-
+  int workspace_create(const std::string& workspace);
 
   /* ********************************* */
   /*              GROUP                */
@@ -156,15 +144,12 @@ class StorageManager {
   /**
    * Creates a new TileDB group.
    *
-   * @param group The directory of the group to be created in the file system. 
+   * @param group The directory of the group to be created in the file system.
    *     This should be a directory whose parent is a TileDB workspace or
    *     another TileDB group.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
- */
-  int group_create(const std::string& group) const; 
-
-
-
+   */
+  int group_create(const std::string& group) const;
 
   /* ********************************* */
   /*              ARRAY                */
@@ -181,18 +166,18 @@ class StorageManager {
   /**
    * Creates a new TileDB array.
    *
-   * @param array_schema_c The array schema. 
+   * @param array_schema_c The array schema.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int array_create(const ArraySchemaC* array_schema_c) const; 
+  int array_create(const ArraySchemaC* array_schema_c) const;
 
   /**
    * Creates a new TileDB array.
    *
-   * @param array_schema The array schema. 
+   * @param array_schema The array schema.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int array_create(const ArraySchema* array_schema) const; 
+  int array_create(const ArraySchema* array_schema) const;
 
   /**
    * Loads the schema of an array from the disk, allocating appropriate memory
@@ -203,8 +188,7 @@ class StorageManager {
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
   int array_load_schema(
-      const char* array_dir, 
-      ArraySchema*& array_schema) const;
+      const char* array_dir, ArraySchema*& array_schema) const;
 
   /**
    * Initializes a TileDB array.
@@ -213,11 +197,11 @@ class StorageManager {
    *     will allocate memory space for it.
    * @param array_dir The directory of the array to be initialized.
    * @param mode The mode of the array. It must be one of the following:
-   *    - TILEDB_ARRAY_WRITE 
-   *    - TILEDB_ARRAY_WRITE_UNSORTED 
-   *    - TILEDB_ARRAY_READ 
-   *    - TILEDB_ARRAY_READ_SORTED_COL 
-   *    - TILEDB_ARRAY_READ_SORTED_ROW 
+   *    - TILEDB_ARRAY_WRITE
+   *    - TILEDB_ARRAY_WRITE_UNSORTED
+   *    - TILEDB_ARRAY_READ
+   *    - TILEDB_ARRAY_READ_SORTED_COL
+   *    - TILEDB_ARRAY_READ_SORTED_ROW
    * @param subarray The subarray in which the array read/write will be
    *     constrained on. If it is NULL, then the subarray is set to the entire
    *     array domain. For the case of writes, this is meaningful only for
@@ -232,12 +216,12 @@ class StorageManager {
   int array_init(
       Array*& array,
       const char* array_dir,
-      int mode, 
+      int mode,
       const void* subarray,
       const char** attributes,
       int attribute_num);
 
-  /** 
+  /**
    * Finalizes an array, properly freeing the memory space.
    *
    * @param array The array to be finalized.
@@ -245,33 +229,31 @@ class StorageManager {
    */
   int array_finalize(Array* array);
 
-  /** 
-   * Syncs all currently written files in the input array. 
+  /**
+   * Syncs all currently written files in the input array.
    *
    * @param array The array to be synced.
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
   int array_sync(Array* array);
 
-  /** 
+  /**
    * Syncs the currently written files associated with the input attribute
-   * in the input array. 
+   * in the input array.
    *
    * @param array The array to be synced.
    * @param attribute The name of the attribute to be synced.
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
-  int array_sync_attribute(
-      Array* array,
-      const std::string& attribute);
+  int array_sync_attribute(Array* array, const std::string& attribute);
 
   /**
-   * Initializes an array iterator for reading cells, potentially constraining 
+   * Initializes an array iterator for reading cells, potentially constraining
    * it on a subset of attributes, as well as a subarray. The cells will be read
-   * in the order they are stored on the disk, maximing performance. 
+   * in the order they are stored on the disk, maximing performance.
    *
    * @param array_it The TileDB array iterator to be created. The
-   *    function will allocate the appropriate memory space for the iterator. 
+   *    function will allocate the appropriate memory space for the iterator.
    * @param array The directory of the array the iterator is initialized for.
    * @param mode The read mode, which can be one of the following:
    *    - TILEDB_ARRAY_READ\n
@@ -282,7 +264,7 @@ class StorageManager {
    *      Reads the cells in column-major order within the specified subarray.
    * @param subarray The subarray in which the array iterator will be
    *     constrained on. If it is NULL, then the subarray is set to the entire
-   *     array domain. 
+   *     array domain.
    * @param attributes A subset of the array attributes the iterator will be
    *     constrained on. A NULL value indicates **all** attributes (including
    *     the coordinates in the case of sparse arrays).
@@ -293,9 +275,9 @@ class StorageManager {
    *     will use for internal buffering of the read cells. The iterator will
    *     read from the disk the relevant cells in batches, by fitting as many
    *     cell values as possible in the user buffers. This gives the user the
-   *     flexibility to control the prefetching for optimizing performance 
-   *     depending on the application. 
-   * @param buffer_sizes The corresponding sizes (in bytes) of the allocated 
+   *     flexibility to control the prefetching for optimizing performance
+   *     depending on the application.
+   * @param buffer_sizes The corresponding sizes (in bytes) of the allocated
    *     memory space for *buffers*. The function will prefetch from the
    *     disk as many cells as can fit in the buffers, whenever it finishes
    *     iterating over the previously prefetched data.
@@ -313,13 +295,10 @@ class StorageManager {
 
   /**
    * Finalizes an array iterator, properly freeing the allocating memory space.
-   * 
+   *
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
   int array_iterator_finalize(ArrayIterator* array_it);
-
-
-
 
   /* ********************************* */
   /*              METADATA             */
@@ -336,18 +315,18 @@ class StorageManager {
   /**
    * Creates a new TileDB metadata object.
    *
-   * @param metadata_schema_c The metadata schema. 
+   * @param metadata_schema_c The metadata schema.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int metadata_create(const MetadataSchemaC* metadata_schema_c) const; 
+  int metadata_create(const MetadataSchemaC* metadata_schema_c) const;
 
   /**
    * Creates a new TileDB metadata object.
    *
-   * @param array_schema The metadata (array) schema. 
+   * @param array_schema The metadata (array) schema.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  int metadata_create(const ArraySchema* array_schema) const; 
+  int metadata_create(const ArraySchema* array_schema) const;
 
   /**
    * Loads the schema of a metadata object from the disk, allocating appropriate
@@ -358,8 +337,7 @@ class StorageManager {
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
   int metadata_load_schema(
-      const char* metadata_dir, 
-      ArraySchema*& array_schema) const;
+      const char* metadata_dir, ArraySchema*& array_schema) const;
 
   /**
    * Initializes a TileDB metadata object.
@@ -368,8 +346,8 @@ class StorageManager {
    *     will allocate memory space for it.
    * @param metadata_dir The directory of the metadata.
    * @param mode The mode of the metadata. It must be one of the following:
-   *    - TILEDB_METADATA_WRITE 
-   *    - TILEDB_METADATA_READ 
+   *    - TILEDB_METADATA_WRITE
+   *    - TILEDB_METADATA_READ
    * @param attributes A subset of the metadata attributes the read/write will
    *     be constrained on. A NULL value indicates **all** attributes (including
    *     the key as an extra attribute in the end).
@@ -380,12 +358,12 @@ class StorageManager {
   int metadata_init(
       Metadata*& metadata,
       const char* metadata_dir,
-      int mode, 
+      int mode,
       const char** attributes,
       int attribute_num);
 
-  /** 
-   * Finalizes a TileDB metadata object, properly freeing the memory space. 
+  /**
+   * Finalizes a TileDB metadata object, properly freeing the memory space.
    *
    * @param metadata The metadata to be finalized.
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
@@ -393,12 +371,12 @@ class StorageManager {
   int metadata_finalize(Metadata* metadata);
 
   /**
-   * Initializes a metadata iterator, potentially constraining it 
+   * Initializes a metadata iterator, potentially constraining it
    * on a subset of attributes. The values will be read in the order they are
-   * stored on the disk, maximing performance. 
+   * stored on the disk, maximing performance.
    *
    * @param metadata_it The TileDB metadata iterator to be created. The
-   *     function will allocate the appropriate memory space for the iterator. 
+   *     function will allocate the appropriate memory space for the iterator.
    * @param metadata_dir The directory of the metadata the iterator is
    *     initialized for.
    * @param attributes A subset of the metadata attributes the iterator will be
@@ -411,9 +389,9 @@ class StorageManager {
    *     will use for internal buffering of the read values. The iterator will
    *     read from the disk the values in batches, by fitting as many
    *     values as possible in the user buffers. This gives the user the
-   *     flexibility to control the prefetching for optimizing performance 
-   *     depending on the application. 
-   * @param buffer_sizes The corresponding sizes (in bytes) of the allocated 
+   *     flexibility to control the prefetching for optimizing performance
+   *     depending on the application.
+   * @param buffer_sizes The corresponding sizes (in bytes) of the allocated
    *     memory space for *buffers*. The function will prefetch from the
    *     disk as many cells as can fit in the buffers, whenever it finishes
    *     iterating over the previously prefetched data.
@@ -429,21 +407,18 @@ class StorageManager {
 
   /**
    * Finalizes the iterator, properly freeing the allocating memory space.
-   * 
+   *
    * @param metadata_it The TileDB metadata iterator.
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
   int metadata_iterator_finalize(MetadataIterator* metadata_it);
-
-
-
 
   /* ********************************* */
   /*               MISC                */
   /* ********************************* */
 
   /**
-   * Returns the type of the input directory. 
+   * Returns the type of the input directory.
    *
    * @param dir The input directory.
    * @return It can be one of the following:
@@ -451,7 +426,7 @@ class StorageManager {
    *    - TILEDB_GROUP
    *    - TILEDB_ARRAY
    *    - TILEDB_METADATA
-   *    - -1 (not a TileDB directory) 
+   *    - -1 (not a TileDB directory)
    */
   int dir_type(const char* dir);
 
@@ -476,20 +451,16 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int ls(
-      const char* parent_dir,
-      char** dirs,
-      int* dir_types,
-      int& dir_num) const;
+      const char* parent_dir, char** dirs, int* dir_types, int& dir_num) const;
 
   /**
    * Counts the TileDB objects in a directory.
    *
    * @param parent_dir The parent directory of the TileDB objects to be listed.
-   * @param dir_num The number of TileDB objects to be returned. 
+   * @param dir_num The number of TileDB objects to be returned.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int ls_c(const char* parent_dir, int& dir_num) const;
-
 
   /**
    * Clears a TileDB directory. The corresponding TileDB object (workspace,
@@ -525,7 +496,7 @@ class StorageManager {
 
   /** The TileDB configuration parameters. */
   StorageManagerConfig* config_;
-  /** OpneMP mutex for creating/deleting an OpenArray object. */
+/** OpneMP mutex for creating/deleting an OpenArray object. */
 #ifdef HAVE_OPENMP
   omp_lock_t open_array_omp_mtx_;
 #endif
@@ -565,7 +536,7 @@ class StorageManager {
    */
   int array_delete(const std::string& array) const;
 
-  /** 
+  /**
    * Gets the names of the existing fragments of an array.
    *
    * @param array The input array.
@@ -573,21 +544,19 @@ class StorageManager {
    * @return void
    */
   void array_get_fragment_names(
-      const std::string& array,
-      std::vector<std::string>& fragment_names);
+      const std::string& array, std::vector<std::string>& fragment_names);
 
   /**
    * Gets an open array entry for the array being initialized. If this
    * is the first time the array is initialized, then the function creates
-   * a new open array entry for this array. 
+   * a new open array entry for this array.
    *
    * @param array The array name.
    * @param open_array The open array entry to be returned.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int array_get_open_array_entry(
-      const std::string& array,
-      OpenArray*& open_array);
+      const std::string& array, OpenArray*& open_array);
 
   /**
    * Loads the book-keeping structures of all the fragments of an array from the
@@ -613,8 +582,7 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int array_move(
-       const std::string& old_array,
-       const std::string& new_array) const;
+      const std::string& old_array, const std::string& new_array) const;
 
   /**
    * Opens an array. This creates or updates an OpenArray entry for this array,
@@ -629,9 +597,7 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int array_open(
-      const std::string& array_name, 
-      OpenArray*& open_array,
-      int mode);
+      const std::string& array_name, OpenArray*& open_array, int mode);
 
   /**
    * Stores the input array schema into the input array directory (serializing
@@ -642,10 +608,9 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int array_store_schema(
-      const std::string& dir, 
-      const ArraySchema* array_schema) const;
+      const std::string& dir, const ArraySchema* array_schema) const;
 
-  /** 
+  /**
    * It sets the TileDB configuration parameters.
    *
    * @param config The configuration parameters.
@@ -673,9 +638,7 @@ class StorageManager {
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
   int consolidation_filelock_lock(
-      const std::string& array_name,
-      int& fd, 
-      int lock_type) const;
+      const std::string& array_name, int& fd, int lock_type) const;
 
   /**
    * Unlocks the consolidation file lock.
@@ -697,7 +660,7 @@ class StorageManager {
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
   int consolidation_finalize(
-      Fragment* new_fragment, 
+      Fragment* new_fragment,
       const std::vector<std::string>& old_fragment_names);
 
   /**
@@ -741,8 +704,7 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int group_move(
-       const std::string& old_group,
-       const std::string& new_group) const;
+      const std::string& old_group, const std::string& new_group) const;
 
   /**
    * Clears a TileDB metadata object. The metadata will still exist after the
@@ -770,8 +732,7 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int metadata_move(
-       const std::string& old_metadata,
-       const std::string& new_metadata) const;
+      const std::string& old_metadata, const std::string& new_metadata) const;
 
   /**
    * Destroys open array the mutexes.
@@ -801,7 +762,7 @@ class StorageManager {
    */
   int open_array_mtx_unlock();
 
-  /** 
+  /**
    * Appropriately sorts the fragment names based on their name timestamps.
    * The result is stored in the input vector.
    *
@@ -837,11 +798,10 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   int workspace_move(
-       const std::string& old_workspace,
-       const std::string& new_workspace);
-}; 
+      const std::string& old_workspace, const std::string& new_workspace);
+};
 
-/**  
+/**
  * Stores information about an open array. An array is open if it has been
  * initialized once (withour being finalized). The difference with array
  * initialization is that an array can be initialized multiple times,
@@ -858,8 +818,8 @@ class StorageManager::OpenArray {
   ArraySchema* array_schema_;
   /** The book-keeping structures for all the fragments of the array. */
   std::vector<BookKeeping*> book_keeping_;
-  /** 
-   * A counter for the number of times the array has been initialized after 
+  /**
+   * A counter for the number of times the array has been initialized after
    * it was opened.
    */
   int cnt_;
@@ -867,14 +827,14 @@ class StorageManager::OpenArray {
   int consolidation_filelock_;
   /** The names of the fragments of the open array. */
   std::vector<std::string> fragment_names_;
-  /** 
-   * An OpenMP mutex used to lock the array when loading the array schema and
-   * the book-keeping structures from the disk.
-   */
+/**
+ * An OpenMP mutex used to lock the array when loading the array schema and
+ * the book-keeping structures from the disk.
+ */
 #ifdef HAVE_OPENMP
   omp_lock_t omp_mtx_;
 #endif
-  /** 
+  /**
    * A pthread mutex used to lock the array when loading the array schema and
    * the book-keeping structures from the disk.
    */
