@@ -64,9 +64,6 @@
 #define TILEDB_SM_EXCLUSIVE_LOCK                                      1
 /**@}*/
 
-/** Name of the master catalog. */
-#define TILEDB_SM_MASTER_CATALOG                       "master_catalog"
-
 /** Name of the consolidation file lock. */
 #define TILEDB_SM_CONSOLIDATION_FILELOCK_NAME   ".__consolidation_lock"
 
@@ -95,9 +92,6 @@ class StorageManager {
   /* ********************************* */
   /*         TYPE DEFINITIONS          */
   /* ********************************* */
-
-  /** The operation type on the master catalog (insertion or deletion). */
-  enum MasterCatalogOp {TILEDB_SM_MC_INS, TILEDB_SM_MC_DEL};
 
   /** Implements an open array entry. */
   class OpenArray;
@@ -152,33 +146,6 @@ class StorageManager {
    */
   int workspace_create(const std::string& workspace); 
 
-  /**
-   * Lists all TileDB workspaces, copying their directory names in the input
-   * string buffers.
-   *
-   * @param workspaces An array of strings that will store the listed
-   *     workspaces. Note that this should be pre-allocated by the user. If the
-   *     size of each string is smaller than the corresponding workspace path
-   *     name, the function will probably segfault. It is a good idea to
-   *     allocate to each workspace string TILEDB_NAME_MAX_LEN characters. 
-   * @param workspace_num The number of allocated elements of the *workspaces*
-   *     string array. After the function execution, this will hold the actual
-   *     number of workspaces written in the *workspaces* string array. If the
-   *     number of allocated elements is smaller than the number of existing
-   *     TileDB workspaces, the function will return an error.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  int ls_workspaces(
-      char** workspaces,
-      int& workspace_num);
-
-  /**
-   * Counts the number of TileDB workspaces.
-   *
-   * @param workspace_num The number of TileDB workspace to be returned.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  int ls_workspaces_c(int& workspace_num);
 
 
 
@@ -558,8 +525,6 @@ class StorageManager {
 
   /** The TileDB configuration parameters. */
   StorageManagerConfig* config_;
-  /** The directory of the master catalog. */
-  std::string master_catalog_dir_;
   /** OpneMP mutex for creating/deleting an OpenArray object. */
 #ifdef HAVE_OPENMP
   omp_lock_t open_array_omp_mtx_;
@@ -568,8 +533,6 @@ class StorageManager {
   pthread_mutex_t open_array_pthread_mtx_;
   /** Stores the currently open arrays. */
   std::map<std::string, OpenArray*> open_arrays_;
-  /** The TileDB home directory. */
-  std::string tiledb_home_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
@@ -746,20 +709,6 @@ class StorageManager {
   int create_group_file(const std::string& dir) const;
 
   /**
-   * Creates a new master catalog entry for a new workspace, or a deleted
-   * workspace, or a moved workspace.
-   *
-   * @param workspace The workspace the entry is created for.
-   * @param op The operation performed on the master catalog, which can be
-   *     - TILEDB_SM_MC_INS (insertion)
-   *     - TILEDB_SM_MC_DEL (deletion)
-   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
-   */
-  int create_master_catalog_entry(
-      const std::string& workspace, 
-      MasterCatalogOp op);
-
-  /**
    * Creates a special workspace file inside the workpace directory.
    *
    * @param workspace The workspace directory.
@@ -794,21 +743,6 @@ class StorageManager {
   int group_move(
        const std::string& old_group,
        const std::string& new_group) const;
-
-  /** 
-   * Consolidates the fragments of the master catalog.
-   *
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  int master_catalog_consolidate();
-
-  /**
-   * Create a master catalog, which keeps information about the TileDB
-   * workspaces. 
-   *
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  int master_catalog_create() const;
 
   /**
    * Clears a TileDB metadata object. The metadata will still exist after the
