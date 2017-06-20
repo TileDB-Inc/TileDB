@@ -168,11 +168,15 @@ find_package(ClangTools)
 if (${CLANG_FORMAT_FOUND})
   # runs clang format and updates files in place.
   add_custom_target(format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 1
-    `find ${CMAKE_CURRENT_SOURCE_DIR}/core/include ${CMAKE_CURRENT_SOURCE_DIR}/core/src -name \\*.cc -or -name \\*.h`)
+    `find ${CMAKE_CURRENT_SOURCE_DIR}/core/include
+          ${CMAKE_CURRENT_SOURCE_DIR}/core/src
+          ${CMAKE_CURRENT_SOURCE_DIR}/test/src -name \\*.cc -or -name \\*.h`)
 
   # runs clang format and exits with a non-zero exit code if any files need to be reformatted
   add_custom_target(check-format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 0
-    `find ${CMAKE_CURRENT_SOURCE_DIR}/core/include ${CMAKE_CURRENT_SOURCE_DIR}/core/src  -name \\*.cc -or -name \\*.h`)
+    `find ${CMAKE_CURRENT_SOURCE_DIR}/core/include
+          ${CMAKE_CURRENT_SOURCE_DIR}/core/src
+          ${CMAKE_CURRENT_SOURCE_DIR}/test/src -name \\*.cc -or -name \\*.h`)
 endif()
 
 ###########################################################
