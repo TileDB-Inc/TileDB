@@ -33,6 +33,8 @@
 #include "storage_manager_config.h"
 #include "tiledb_constants.h"
 
+namespace tiledb {
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -105,3 +107,5 @@ int StorageManagerConfig::read_method() const {
 int StorageManagerConfig::write_method() const {
   return write_method_;
 }
+
+};  // namespace tiledb

@@ -47,6 +47,8 @@
   } while (0)
 #endif
 
+namespace tiledb {
+
 /* ****************************** */
 /*        GLOBAL VARIABLES        */
 /* ****************************** */
@@ -442,3 +444,5 @@ void Metadata::prepare_array_buffers(
     }
   }
 }
+
+};  // namespace tiledb

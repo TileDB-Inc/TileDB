@@ -64,6 +64,8 @@
 /** Default error message. */
 #define TILEDB_AS_ERRMSG std::string("[TileDB::ArraySchema] Error: ")
 
+namespace tiledb {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -1032,4 +1034,5 @@ class ArraySchema {
   int64_t tile_slab_row_cell_num(const T* subarray) const;
 };
 
+};  // namespace tiledb
 #endif

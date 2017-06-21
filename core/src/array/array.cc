@@ -52,6 +52,8 @@
   } while (0)
 #endif
 
+namespace tiledb {
+
 /* ****************************** */
 /*        GLOBAL VARIABLES        */
 /* ****************************** */
@@ -312,7 +314,7 @@ int Array::read_default(void** buffers, size_t* buffer_sizes) {
 }
 
 bool Array::read_mode() const {
-  return array_read_mode(mode_);
+  return utils::array_read_mode(mode_);
 }
 
 const void* Array::subarray() const {
@@ -320,7 +322,7 @@ const void* Array::subarray() const {
 }
 
 bool Array::write_mode() const {
-  return array_write_mode(mode_);
+  return utils::array_write_mode(mode_);
 }
 
 /* ****************************** */
@@ -353,7 +355,7 @@ int Array::consolidate(
   // Consolidate on a per-attribute basis
   for (int i = 0; i < array_schema_->attribute_num() + 1; ++i) {
     if (consolidate(new_fragment, i) != TILEDB_AR_OK) {
-      delete_dir(new_fragment->fragment_name());
+      utils::delete_dir(new_fragment->fragment_name());
       delete new_fragment;
       return TILEDB_AR_ERR;
     }
@@ -582,7 +584,7 @@ int Array::init(
     }
 
     // Sanity check on duplicates
-    if (has_duplicates(attributes_vec)) {
+    if (utils::has_duplicates(attributes_vec)) {
       std::string errmsg = "Cannot initialize array; Duplicate attributes";
       PRINT_ERROR(errmsg);
       tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
@@ -592,7 +594,7 @@ int Array::init(
     // For the case of the clone sparse array, append coordinates if they do
     // not exist already
     if (sparse && array_clone == NULL && !coords_found &&
-        !is_metadata(array_schema->array_name()))
+        !utils::is_metadata(array_schema->array_name()))
       attributes_vec.push_back(TILEDB_COORDS);
   }
 
@@ -707,7 +709,7 @@ int Array::reset_attributes(const char** attributes, int attribute_num) {
     }
 
     // Sanity check on duplicates
-    if (has_duplicates(attributes_vec)) {
+    if (utils::has_duplicates(attributes_vec)) {
       std::string errmsg = "Cannot reset attributes; Duplicate attributes";
       PRINT_ERROR(errmsg);
       tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
@@ -1202,7 +1204,7 @@ std::string Array::new_fragment_name() const {
   char fragment_name[TILEDB_NAME_MAX_LEN];
 
   // Get MAC address
-  std::string mac = get_mac_addr();
+  std::string mac = utils::get_mac_addr();
   if (mac == "")
     return "";
 
@@ -1244,3 +1246,5 @@ int Array::open_fragments(
   // Success
   return TILEDB_AR_OK;
 }
+
+};  // namespace tiledb

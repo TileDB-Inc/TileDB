@@ -60,6 +60,10 @@
 /** Maximum number of bytes written in a single I/O. */
 #define TILEDB_UT_MAX_WRITE_COUNT 1500000000  // ~ 1.5 GB
 
+namespace tiledb {
+
+namespace utils {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -783,4 +787,7 @@ int write_to_file_cmp_gzip(
 void zip_coordinates(
     void* tile, size_t tile_size, int dim_num, size_t coords_size);
 
+};  // namespace utils
+
+};  // namespace tiledb
 #endif

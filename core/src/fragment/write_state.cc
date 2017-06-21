@@ -65,6 +65,8 @@
 #define SORT(first, last, comp) std::sort((first), (last), (comp))
 #endif
 
+namespace tiledb {
+
 /* ****************************** */
 /*        GLOBAL VARIABLES        */
 /* ****************************** */
@@ -196,10 +198,10 @@ int WriteState::sync() {
     filename = fragment_->fragment_name() + "/" +
                array_schema->attribute(attribute_ids[i]) + TILEDB_FILE_SUFFIX;
     if (write_method == TILEDB_IO_WRITE) {
-      rc = ::sync(filename.c_str());
+      rc = utils::sync(filename.c_str());
       // Handle error
       if (rc != TILEDB_UT_OK) {
-        tiledb_ws_errmsg = tiledb_ut_errmsg;
+        tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
         return TILEDB_WS_ERR;
       }
     } else if (write_method == TILEDB_IO_MPI) {
@@ -227,10 +229,10 @@ int WriteState::sync() {
                  array_schema->attribute(attribute_ids[i]) + "_var" +
                  TILEDB_FILE_SUFFIX;
       if (write_method == TILEDB_IO_WRITE) {
-        rc = ::sync(filename.c_str());
+        rc = utils::sync(filename.c_str());
         // Handle error
         if (rc != TILEDB_UT_OK) {
-          tiledb_ws_errmsg = tiledb_ut_errmsg;
+          tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
           return TILEDB_WS_ERR;
         }
       } else if (write_method == TILEDB_IO_MPI) {
@@ -255,7 +257,7 @@ int WriteState::sync() {
 
     // Handle error
     if (rc != TILEDB_UT_OK) {
-      tiledb_ws_errmsg = tiledb_ut_errmsg;
+      tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
       return TILEDB_WS_ERR;
     }
   }
@@ -263,7 +265,7 @@ int WriteState::sync() {
   // Sync fragment directory
   filename = fragment_->fragment_name();
   if (write_method == TILEDB_IO_WRITE) {
-    rc = ::sync(filename.c_str());
+    rc = utils::sync(filename.c_str());
   } else if (write_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
     rc = mpi_io_sync(mpi_comm, filename.c_str());
@@ -280,7 +282,7 @@ int WriteState::sync() {
 
   // Handle error
   if (rc != TILEDB_UT_OK) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -302,7 +304,7 @@ int WriteState::sync_attribute(const std::string& attribute) {
   // Sync attribute
   filename = fragment_->fragment_name() + "/" + attribute + TILEDB_FILE_SUFFIX;
   if (write_method == TILEDB_IO_WRITE) {
-    rc = ::sync(filename.c_str());
+    rc = utils::sync(filename.c_str());
   } else if (write_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
     rc = mpi_io_sync(mpi_comm, filename.c_str());
@@ -319,7 +321,7 @@ int WriteState::sync_attribute(const std::string& attribute) {
 
   // Handle error
   if (rc != TILEDB_UT_OK) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -328,7 +330,7 @@ int WriteState::sync_attribute(const std::string& attribute) {
     filename = fragment_->fragment_name() + "/" + attribute + "_var" +
                TILEDB_FILE_SUFFIX;
     if (write_method == TILEDB_IO_WRITE) {
-      rc = ::sync(filename.c_str());
+      rc = utils::sync(filename.c_str());
     } else if (write_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
       rc = mpi_io_sync(mpi_comm, filename.c_str());
@@ -346,14 +348,14 @@ int WriteState::sync_attribute(const std::string& attribute) {
 
   // Handle error
   if (rc != TILEDB_UT_OK) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
 
   // Sync fragment directory
   filename = fragment_->fragment_name();
   if (write_method == TILEDB_IO_WRITE) {
-    rc = ::sync(filename.c_str());
+    rc = utils::sync(filename.c_str());
   } else if (write_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
     rc = mpi_io_sync(mpi_comm, filename.c_str());
@@ -370,7 +372,7 @@ int WriteState::sync_attribute(const std::string& attribute) {
 
   // Handle error
   if (rc != TILEDB_UT_OK) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -381,9 +383,9 @@ int WriteState::sync_attribute(const std::string& attribute) {
 int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   // Create fragment directory if it does not exist
   std::string fragment_name = fragment_->fragment_name();
-  if (!is_dir(fragment_name)) {
-    if (create_dir(fragment_name) != TILEDB_UT_OK) {
-      tiledb_ws_errmsg = tiledb_ut_errmsg;
+  if (!utils::is_dir(fragment_name)) {
+    if (utils::create_dir(fragment_name) != TILEDB_UT_OK) {
+      tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
       return TILEDB_WS_ERR;
     }
     // For variable length attributes, ensure an empty file exists
@@ -517,13 +519,13 @@ int WriteState::compress_tile_gzip(
 
   // Split dimensions
   if (coords)
-    split_coordinates(tile, tile_size, dim_num, coords_size);
+    utils::split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
-  ssize_t gzip_size =
-      gzip(tile, tile_size, tile_compressed, tile_compressed_allocated_size_);
+  ssize_t gzip_size = utils::gzip(
+      tile, tile_size, tile_compressed, tile_compressed_allocated_size_);
   if (gzip_size == static_cast<ssize_t>(TILEDB_UT_ERR)) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
   tile_compressed_size = (size_t)gzip_size;
@@ -563,7 +565,7 @@ int WriteState::compress_tile_zstd(
 
   // Split dimensions
   if (coords)
-    split_coordinates(tile, tile_size, dim_num, coords_size);
+    utils::split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
   size_t zstd_size = ZSTD_compress(
@@ -611,7 +613,7 @@ int WriteState::compress_tile_lz4(
 
   // Split dimensions
   if (coords)
-    split_coordinates(tile, tile_size, dim_num, coords_size);
+    utils::split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
   int lz4_size =
@@ -672,7 +674,7 @@ int WriteState::compress_tile_blosc(
 
   // Split dimensions
   if (coords)
-    split_coordinates(tile, tile_size, dim_num, coords_size);
+    utils::split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
   int blosc_size = blosc_compress(
@@ -717,9 +719,10 @@ int WriteState::compress_tile_rle(
   // Allocate space to store the compressed tile
   size_t compress_bound;
   if (!is_coords)
-    compress_bound = RLE_compress_bound(tile_size, value_size);
+    compress_bound = utils::RLE_compress_bound(tile_size, value_size);
   else
-    compress_bound = RLE_compress_bound_coords(tile_size, value_size, dim_num);
+    compress_bound =
+        utils::RLE_compress_bound_coords(tile_size, value_size, dim_num);
   if (tile_compressed_ == NULL) {
     tile_compressed_allocated_size_ = compress_bound;
     tile_compressed_ = malloc(compress_bound);
@@ -734,7 +737,7 @@ int WriteState::compress_tile_rle(
   // Compress tile
   int64_t rle_size;
   if (!is_coords) {
-    rle_size = RLE_compress(
+    rle_size = utils::RLE_compress(
         tile,
         tile_size,
         (unsigned char*)tile_compressed_,
@@ -742,7 +745,7 @@ int WriteState::compress_tile_rle(
         value_size);
   } else {
     if (order == TILEDB_ROW_MAJOR) {
-      rle_size = RLE_compress_coords_row(
+      rle_size = utils::RLE_compress_coords_row(
           tile,
           tile_size,
           (unsigned char*)tile_compressed_,
@@ -750,7 +753,7 @@ int WriteState::compress_tile_rle(
           value_size,
           dim_num);
     } else if (order == TILEDB_COL_MAJOR) {
-      rle_size = RLE_compress_coords_col(
+      rle_size = utils::RLE_compress_coords_col(
           tile,
           tile_size,
           (unsigned char*)tile_compressed_,
@@ -769,7 +772,7 @@ int WriteState::compress_tile_rle(
 
   // Handle error
   if (rle_size == TILEDB_UT_ERR) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -800,7 +803,7 @@ int WriteState::compress_tile_bzip2(
 
   // Split dimensions
   if (coords)
-    split_coordinates(tile, tile_size, dim_num, coords_size);
+    utils::split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
   unsigned int destLen = tile_compressed_allocated_size_;
@@ -813,7 +816,7 @@ int WriteState::compress_tile_bzip2(
               9,
               0,
               30)) == BZ_OUTBUFF_FULL) {
-    expand_buffer(tile_compressed_, tile_compressed_allocated_size_);
+    utils::expand_buffer(tile_compressed_, tile_compressed_allocated_size_);
     destLen = tile_compressed_allocated_size_;
   }
 
@@ -857,8 +860,8 @@ int WriteState::compress_and_write_tile(int attribute_id) {
   int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
   if (write_method == TILEDB_IO_WRITE) {
-    rc =
-        write_to_file(filename.c_str(), tile_compressed_, tile_compressed_size);
+    rc = utils::write_to_file(
+        filename.c_str(), tile_compressed_, tile_compressed_size);
   } else if (write_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
     rc = mpi_io_write_to_file(
@@ -877,7 +880,7 @@ int WriteState::compress_and_write_tile(int attribute_id) {
 
   // Error
   if (rc != TILEDB_UT_OK) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -917,8 +920,8 @@ int WriteState::compress_and_write_tile_var(int attribute_id) {
   int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
   if (write_method == TILEDB_IO_WRITE) {
-    rc =
-        write_to_file(filename.c_str(), tile_compressed_, tile_compressed_size);
+    rc = utils::write_to_file(
+        filename.c_str(), tile_compressed_, tile_compressed_size);
   } else if (write_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
     rc = mpi_io_write_to_file(
@@ -938,7 +941,7 @@ int WriteState::compress_and_write_tile_var(int attribute_id) {
 
   // Error
   if (rc != TILEDB_UT_OK) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -965,7 +968,7 @@ void WriteState::expand_mbr(const T* coords) {
       mbr[2 * i + 1] = coords[i];
     }
   } else {  // Expand MBR
-    ::expand_mbr(mbr, coords, dim_num);
+    utils::expand_mbr(mbr, coords, dim_num);
   }
 }
 
@@ -1231,7 +1234,7 @@ int WriteState::write_dense_attr_cmp_none(
   int rc = TILEDB_UT_OK;
   int write_method = fragment_->array()->config()->write_method();
   if (write_method == TILEDB_IO_WRITE) {
-    rc = write_to_file(filename.c_str(), buffer, buffer_size);
+    rc = utils::write_to_file(filename.c_str(), buffer, buffer_size);
   } else if (write_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
     rc = mpi_io_write_to_file(
@@ -1250,7 +1253,7 @@ int WriteState::write_dense_attr_cmp_none(
 
   // Error
   if (rc != TILEDB_UT_OK) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -1367,7 +1370,7 @@ int WriteState::write_dense_attr_var_cmp_none(
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
   if (write_method == TILEDB_IO_WRITE) {
-    rc = write_to_file(filename.c_str(), buffer_var, buffer_var_size);
+    rc = utils::write_to_file(filename.c_str(), buffer_var, buffer_var_size);
   } else if (write_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
     rc = mpi_io_write_to_file(
@@ -1384,7 +1387,7 @@ int WriteState::write_dense_attr_var_cmp_none(
 
   // Error
   if (rc != TILEDB_UT_OK) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -1397,7 +1400,7 @@ int WriteState::write_dense_attr_var_cmp_none(
   filename = fragment_->fragment_name() + "/" +
              array_schema->attribute(attribute_id) + TILEDB_FILE_SUFFIX;
   if (write_method == TILEDB_IO_WRITE) {
-    rc = write_to_file(filename.c_str(), shifted_buffer, buffer_size);
+    rc = utils::write_to_file(filename.c_str(), shifted_buffer, buffer_size);
   } else if (write_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
     rc = mpi_io_write_to_file(
@@ -1417,7 +1420,7 @@ int WriteState::write_dense_attr_var_cmp_none(
 
   // Error
   if (rc != TILEDB_UT_OK) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -1670,7 +1673,7 @@ int WriteState::write_sparse_attr_cmp_none(
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
   if (write_method == TILEDB_IO_WRITE) {
-    rc = write_to_file(filename.c_str(), buffer, buffer_size);
+    rc = utils::write_to_file(filename.c_str(), buffer, buffer_size);
   } else if (write_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
     rc = mpi_io_write_to_file(mpi_comm, filename.c_str(), buffer, buffer_size);
@@ -1685,7 +1688,7 @@ int WriteState::write_sparse_attr_cmp_none(
 
   // Error
   if (rc != TILEDB_UT_OK) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -1805,7 +1808,7 @@ int WriteState::write_sparse_attr_var_cmp_none(
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
   if (write_method == TILEDB_IO_WRITE) {
-    rc = write_to_file(filename.c_str(), buffer_var, buffer_var_size);
+    rc = utils::write_to_file(filename.c_str(), buffer_var, buffer_var_size);
   } else if (write_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
     rc = mpi_io_write_to_file(
@@ -1822,7 +1825,7 @@ int WriteState::write_sparse_attr_var_cmp_none(
 
   // Error
   if (rc != TILEDB_UT_OK) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -1835,7 +1838,7 @@ int WriteState::write_sparse_attr_var_cmp_none(
   filename = fragment_->fragment_name() + "/" +
              array_schema->attribute(attribute_id) + TILEDB_FILE_SUFFIX;
   if (write_method == TILEDB_IO_WRITE) {
-    rc = write_to_file(filename.c_str(), shifted_buffer, buffer_size);
+    rc = utils::write_to_file(filename.c_str(), shifted_buffer, buffer_size);
   } else if (write_method == TILEDB_IO_MPI) {
 #ifdef HAVE_MPI
     rc = mpi_io_write_to_file(
@@ -1855,7 +1858,7 @@ int WriteState::write_sparse_attr_var_cmp_none(
 
   // Return
   if (rc != TILEDB_UT_OK) {
-    tiledb_ws_errmsg = tiledb_ut_errmsg;
+    tiledb_ws_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_WS_ERR;
   }
 
@@ -1933,7 +1936,8 @@ int WriteState::write_sparse_attr_var_cmp(
 
     // Potentially expand the variable tile buffer
     while (tile_var_offset + bytes_to_fill_var > tiles_var_sizes_[attribute_id])
-      expand_buffer(tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
+      utils::expand_buffer(
+          tiles_var_[attribute_id], tiles_var_sizes_[attribute_id]);
     // Re-allocation may assign tiles_var_ to a different region of memory
     tile_var = static_cast<char*>(tiles_var_[attribute_id]);
 
@@ -2466,3 +2470,5 @@ int WriteState::write_sparse_unsorted_attr_var_cmp(
   // Success
   return TILEDB_WS_OK;
 }
+
+};  // namespace tiledb

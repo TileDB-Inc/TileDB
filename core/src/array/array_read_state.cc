@@ -50,6 +50,8 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+namespace tiledb {
+
 /* ****************************** */
 /*        GLOBAL VARIABLES        */
 /* ****************************** */
@@ -3319,3 +3321,5 @@ template class ArrayReadState::SmallerPQFragmentCellRange<int16_t>;
 template class ArrayReadState::SmallerPQFragmentCellRange<uint16_t>;
 template class ArrayReadState::SmallerPQFragmentCellRange<uint32_t>;
 template class ArrayReadState::SmallerPQFragmentCellRange<uint64_t>;
+
+};  // namespace tiledb

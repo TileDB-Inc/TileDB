@@ -38,6 +38,8 @@
 #endif
 #include <string>
 
+namespace tiledb {
+
 /**
  * This class is responsible for the TileDB storage manager configuration
  * parameters.
@@ -157,4 +159,5 @@ class StorageManagerConfig {
   int write_method_;
 };
 
+};  // namespace tiledb
 #endif

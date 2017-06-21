@@ -52,6 +52,8 @@
 #define TILEDB_ASWS_ERRMSG \
   std::string("[TileDB::ArraySortedWriteState] Error: ")
 
+namespace tiledb {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -859,4 +861,5 @@ class ArraySortedWriteState {
   int wait_aio(int id);
 };
 
+};  // namespace tiledb
 #endif

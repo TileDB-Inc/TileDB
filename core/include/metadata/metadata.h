@@ -49,6 +49,8 @@
 /** Default error message. */
 #define TILEDB_MT_ERRMSG std::string("[TileDB::Metadata] Error: ")
 
+namespace tiledb {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -273,4 +275,5 @@ class Metadata {
       size_t*& array_buffer_sizes) const;
 };
 
+};  // namespace tiledb
 #endif

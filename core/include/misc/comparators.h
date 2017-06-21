@@ -37,6 +37,8 @@
 #include <inttypes.h>
 #include <vector>
 
+namespace tiledb {
+
 /**
  * Wrapper of comparison function for sorting cells; first by the smallest id,
  * and then by column-major order of coordinates.
@@ -234,4 +236,5 @@ class SmallerRow {
   int dim_num_;
 };
 
+};  // namespace tiledb
 #endif

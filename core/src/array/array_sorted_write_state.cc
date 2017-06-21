@@ -50,6 +50,8 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+namespace tiledb {
+
 /* ****************************** */
 /*         GLOBAL VARIABLES       */
 /* ****************************** */
@@ -1049,7 +1051,7 @@ void ArraySortedWriteState::copy_tile_slab_var(int aid, int bid) {
 
     // Expand the variable-sized buffer if necessary
     while (local_buffer_offset_var + cell_size_var > local_buffer_var_size) {
-      expand_buffer(
+      utils::expand_buffer(
           copy_state_.buffers_[copy_id_][bid + 1],
           copy_state_.buffer_sizes_[copy_id_][bid + 1]);
       local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
@@ -2146,3 +2148,5 @@ template int ArraySortedWriteState::write_sorted_row<int16_t>();
 template int ArraySortedWriteState::write_sorted_row<uint16_t>();
 template int ArraySortedWriteState::write_sorted_row<uint32_t>();
 template int ArraySortedWriteState::write_sorted_row<uint64_t>();
+
+};  // namespace tiledb

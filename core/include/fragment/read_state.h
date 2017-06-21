@@ -51,6 +51,8 @@
 /** Default error message. */
 #define TILEDB_RS_ERRMSG std::string("[TileDB::ReadState] Error: ")
 
+namespace tiledb {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -958,4 +960,5 @@ class ReadState {
       void* buffer, int64_t offset_num, size_t new_start_offset);
 };
 
+};  // namespace tiledb
 #endif

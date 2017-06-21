@@ -53,6 +53,8 @@
 /** Default error message. */
 #define TILEDB_FG_ERRMSG std::string("[TileDB::Fragment] Error: ")
 
+namespace tiledb {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -244,4 +246,5 @@ class Fragment {
   int rename_fragment();
 };
 
+};  // namespace tiledb
 #endif

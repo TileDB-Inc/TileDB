@@ -49,6 +49,8 @@
 /** Default error message. */
 #define TILEDB_MIT_ERRMSG std::string("[TileDB::MetadataIterator] Error: ")
 
+namespace tiledb {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -144,4 +146,5 @@ class MetadataIterator {
   Metadata* metadata_;
 };
 
+};  // namespace tiledb
 #endif
