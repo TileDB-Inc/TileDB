@@ -71,7 +71,10 @@ void tiledb_version(int* major, int* minor, int* rev) {
 /*            CONTEXT             */
 /* ****************************** */
 
-typedef struct TileDB_CTX { StorageManager* storage_manager_; } TileDB_CTX;
+typedef struct TileDB_CTX {
+  // storage manager instance
+  StorageManager* storage_manager_;
+} TileDB_CTX;
 
 bool sanity_check(const TileDB_CTX* tiledb_ctx) {
   if (tiledb_ctx == nullptr || tiledb_ctx->storage_manager_ == nullptr) {
