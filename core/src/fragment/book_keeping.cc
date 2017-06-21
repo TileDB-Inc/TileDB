@@ -51,6 +51,8 @@
   } while (0)
 #endif
 
+namespace tiledb {
+
 /* ****************************** */
 /*        GLOBAL VARIABLES        */
 /* ****************************** */
@@ -133,7 +135,7 @@ const void* BookKeeping::non_empty_domain() const {
 }
 
 inline bool BookKeeping::read_mode() const {
-  return array_read_mode(mode_);
+  return utils::array_read_mode(mode_);
 }
 
 int64_t BookKeeping::tile_num() const {
@@ -157,7 +159,7 @@ const std::vector<std::vector<size_t>>& BookKeeping::tile_var_sizes() const {
 }
 
 inline bool BookKeeping::write_mode() const {
-  return array_write_mode(mode_);
+  return utils::array_write_mode(mode_);
 }
 
 /* ****************************** */
@@ -233,7 +235,7 @@ int BookKeeping::finalize() {
     return TILEDB_BK_OK;
 
   // Do nothing if the fragment directory does not exist (fragment empty)
-  if (!is_dir(fragment_name_))
+  if (!utils::is_dir(fragment_name_))
     return TILEDB_BK_OK;
 
   // Prepare file name
@@ -954,3 +956,5 @@ int BookKeeping::load_tile_var_sizes(gzFile fd) {
   // Success
   return TILEDB_BK_OK;
 }
+
+};  // namespace tiledb

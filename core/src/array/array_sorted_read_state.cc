@@ -59,6 +59,8 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+namespace tiledb {
+
 /* ****************************** */
 /*         GLOBAL VARIABLES       */
 /* ****************************** */
@@ -655,7 +657,8 @@ void* ArraySortedReadState::aio_done(void* data) {
       if (!array_schema->var_size(asrs->attribute_ids_[i])) {  // FIXED
         if (asrs->aio_overflow_[id][i]) {
           // Expand buffer
-          expand_buffer(asrs->buffers_[id][b], asrs->buffer_sizes_[id][b]);
+          utils::expand_buffer(
+              asrs->buffers_[id][b], asrs->buffer_sizes_[id][b]);
           // Re-assign the buffer size for the fixed-sized offsets
           asrs->buffer_sizes_tmp_[id][b] = asrs->buffer_sizes_[id][b];
         } else {
@@ -670,12 +673,14 @@ void* ArraySortedReadState::aio_done(void* data) {
         if (asrs->aio_overflow_[id][i]) {
           // Expand offset buffer only in the case of sparse arrays
           if (sparse)
-            expand_buffer(asrs->buffers_[id][b], asrs->buffer_sizes_[id][b]);
+            utils::expand_buffer(
+                asrs->buffers_[id][b], asrs->buffer_sizes_[id][b]);
           // Re-assign the buffer size for the fixed-sized offsets
           asrs->buffer_sizes_tmp_[id][b] = asrs->buffer_sizes_[id][b];
           ++b;
           // Expand variable-length cell buffers for both dense and sparse
-          expand_buffer(asrs->buffers_[id][b], asrs->buffer_sizes_[id][b]);
+          utils::expand_buffer(
+              asrs->buffers_[id][b], asrs->buffer_sizes_[id][b]);
           // Assign the new buffer size for the variable-sized values
           asrs->buffer_sizes_tmp_[id][b] = asrs->buffer_sizes_[id][b];
           ++b;
@@ -2996,3 +3001,5 @@ template int ArraySortedReadState::read_dense_sorted_row<int16_t>();
 template int ArraySortedReadState::read_dense_sorted_row<uint16_t>();
 template int ArraySortedReadState::read_dense_sorted_row<uint32_t>();
 template int ArraySortedReadState::read_dense_sorted_row<uint64_t>();
+
+};  // namespace tiledb

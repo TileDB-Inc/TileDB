@@ -44,6 +44,8 @@
   } while (0)
 #endif
 
+namespace tiledb {
+
 /* ****************************** */
 /*        GLOBAL VARIABLES        */
 /* ****************************** */
@@ -283,9 +285,9 @@ int ArrayIterator::next() {
     for (int i = 0, needs_new_read_idx = 0; i < attribute_id_num; ++i) {
       if (static_cast<size_t>(needs_new_read_idx) < needs_new_read.size() &&
           i == needs_new_read[needs_new_read_idx])  // buffer_size would have
-                                                    // been
-        ++needs_new_read_idx;                       // set by array->read()
-      else {  // restore buffer size from copy
+        // been
+        ++needs_new_read_idx;  // set by array->read()
+      else {                   // restore buffer size from copy
         buffer_i = buffer_i_[i];
         buffer_sizes_[buffer_i] = copy_buffer_sizes[buffer_i];
         if (cell_sizes_[i] == TILEDB_VAR_SIZE)
@@ -297,3 +299,5 @@ int ArrayIterator::next() {
   // Success
   return TILEDB_AIT_OK;
 }
+
+};  // namespace tiledb

@@ -44,6 +44,8 @@
   } while (0)
 #endif
 
+namespace tiledb {
+
 /* ****************************** */
 /*        GLOBAL VARIABLES        */
 /* ****************************** */
@@ -131,3 +133,5 @@ int MetadataIterator::next() {
   // Success
   return TILEDB_MIT_OK;
 }
+
+};  // namespace tiledb

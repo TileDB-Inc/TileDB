@@ -56,6 +56,8 @@
 /** Default error message. */
 #define TILEDB_ARS_ERRMSG std::string("[TileDB::ArrayReadState] Error: ")
 
+namespace tiledb {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -761,4 +763,5 @@ class ArrayReadState::SmallerPQFragmentCellRange {
   const ArraySchema* array_schema_;
 };
 
+};  // namespace tiledb
 #endif

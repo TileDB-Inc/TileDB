@@ -36,6 +36,8 @@
 #include "tiledb.h"
 #include "utils.h"
 
+using namespace tiledb::utils;
+
 TEST_CASE("Test RLE Attribute Compression") {
   // Initializations
   unsigned char input[1000000];

@@ -58,6 +58,8 @@
 /** Default error message. */
 #define TILEDB_AR_ERRMSG std::string("[TileDB::Array] Error: ")
 
+namespace tiledb {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -542,4 +544,5 @@ class Array {
       const std::vector<BookKeeping*>& book_keeping);
 };
 
+};  // namespace tiledb
 #endif

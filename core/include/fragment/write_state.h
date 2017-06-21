@@ -51,6 +51,8 @@
 /** Default error message. */
 #define TILEDB_WS_ERRMSG std::string("[TileDB::WriteState] Error: ")
 
+namespace tiledb {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -731,4 +733,5 @@ class WriteState {
       const std::vector<int64_t>& cell_pos);
 };
 
+};  // namespace tiledb
 #endif

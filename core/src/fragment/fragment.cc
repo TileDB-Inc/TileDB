@@ -51,6 +51,8 @@
   } while (0)
 #endif
 
+namespace tiledb {
+
 /* ****************************** */
 /*        GLOBAL VARIABLES        */
 /* ****************************** */
@@ -105,7 +107,7 @@ int Fragment::mode() const {
 }
 
 inline bool Fragment::read_mode() const {
-  return array_read_mode(mode_);
+  return utils::array_read_mode(mode_);
 }
 
 ReadState* Fragment::read_state() const {
@@ -125,7 +127,7 @@ size_t Fragment::tile_size(int attribute_id) const {
 }
 
 inline bool Fragment::write_mode() const {
-  return array_write_mode(mode_);
+  return utils::array_write_mode(mode_);
 }
 
 /* ****************************** */
@@ -139,9 +141,9 @@ int Fragment::finalize() {
     int rc_bk = book_keeping_->finalize();
     int rc_rn = TILEDB_FG_OK;
     int rc_cf = TILEDB_UT_OK;
-    if (is_dir(fragment_name_)) {
+    if (utils::is_dir(fragment_name_)) {
       rc_rn = rename_fragment();
-      rc_cf = create_fragment_file(fragment_name_);
+      rc_cf = utils::create_fragment_file(fragment_name_);
     }
     // Errors
     if (rc_ws != TILEDB_WS_OK) {
@@ -153,7 +155,7 @@ int Fragment::finalize() {
       return TILEDB_FG_ERR;
     }
     if (rc_cf != TILEDB_UT_OK) {
-      tiledb_fg_errmsg = tiledb_ut_errmsg;
+      tiledb_fg_errmsg = utils::tiledb_ut_errmsg;
       return TILEDB_FG_ERR;
     }
     if (rc_rn != TILEDB_FG_OK)
@@ -277,7 +279,7 @@ int Fragment::rename_fragment() {
   if (read_mode())
     return TILEDB_FG_OK;
 
-  std::string parent_dir = ::parent_dir(fragment_name_);
+  std::string parent_dir = utils::parent_dir(fragment_name_);
   std::string new_fragment_name =
       parent_dir + "/" + fragment_name_.substr(parent_dir.size() + 2);
 
@@ -293,3 +295,5 @@ int Fragment::rename_fragment() {
 
   return TILEDB_FG_OK;
 }
+
+};  // namespace tiledb

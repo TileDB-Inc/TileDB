@@ -58,6 +58,8 @@
   } while (0)
 #endif
 
+namespace tiledb {
+
 /* ****************************** */
 /*        GLOBAL VARIABLES        */
 /* ****************************** */
@@ -133,7 +135,7 @@ ReadState::ReadState(const Fragment* fragment, BookKeeping* book_keeping)
   for (int i = 0; i < attribute_num_ + 1; ++i) {
     filename =
         fragment_name + "/" + array_schema_->attribute(i) + TILEDB_FILE_SUFFIX;
-    is_empty_attribute_[i] = !is_file(filename);
+    is_empty_attribute_[i] = !utils::is_file(filename);
   }
 }
 
@@ -738,7 +740,8 @@ int ReadState::get_fragment_cell_ranges_sparse(
     if (GET_COORDS_PTR_FROM_SEARCH_TILE(i, cell) != TILEDB_RS_OK)
       return TILEDB_RS_ERR;
 
-    if (cell_in_subarray<T>(static_cast<const T*>(cell), subarray, dim_num)) {
+    if (utils::cell_in_subarray<T>(
+            static_cast<const T*>(cell), subarray, dim_num)) {
       if (i - 1 == current_end_pos) {  // The range is expanded
         ++current_end_pos;
       } else {  // A new range starts
@@ -858,7 +861,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
           search_tile_overlap_subarray, tile_subarray, temp);
 
       // Check if fragment fully covers the tile
-      subarray_area_covered_ = is_contained<T>(
+      subarray_area_covered_ = utils::is_contained<T>(
           query_tile_overlap_subarray, tile_domain_overlap_subarray, dim_num);
 
       // Clean up
@@ -1032,7 +1035,7 @@ int ReadState::CMP_COORDS_TO_SEARCH_TILE(
 #endif
 
   if (read_method == TILEDB_IO_READ) {
-    rc = read_from_file(
+    rc = utils::read_from_file(
         filename,
         tiles_file_offsets_[attribute_num_ + 1] + tile_offset,
         tmp_coords_,
@@ -1057,7 +1060,7 @@ int ReadState::CMP_COORDS_TO_SEARCH_TILE(
 
   // Error
   if (rc != TILEDB_UT_OK) {
-    tiledb_rs_errmsg = tiledb_ut_errmsg;
+    tiledb_rs_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -1246,7 +1249,7 @@ void ReadState::compute_tile_search_range_col_or_row() {
     }
   }
 
-  bool is_unary = is_unary_subarray(subarray, dim_num);
+  bool is_unary = utils::is_unary_subarray(subarray, dim_num);
 
   // Determine the start position of the range
   if (max < min)  // Subarray min precedes the tile at position min
@@ -1310,7 +1313,7 @@ void ReadState::compute_tile_search_range_hil() {
   const T* subarray = static_cast<const T*>(array_->subarray());
   int64_t tile_num = book_keeping_->tile_num();
 
-  if (is_unary_subarray(subarray, dim_num)) {  // Unary range
+  if (utils::is_unary_subarray(subarray, dim_num)) {  // Unary range
     // For easy reference
     const std::vector<void*>& bounding_coords =
         book_keeping_->bounding_coords();
@@ -1467,19 +1470,19 @@ int ReadState::decompress_tile_gzip(
 
   // Decompress tile
   size_t gunzip_out_size;
-  if (gunzip(
+  if (utils::gunzip(
           tile_compressed,
           tile_compressed_size,
           tile,
           tile_size,
           gunzip_out_size) != TILEDB_UT_OK) {
-    tiledb_rs_errmsg = tiledb_ut_errmsg;
+    tiledb_rs_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
   }
 
   // Zip coordinates
   if (coords)
-    zip_coordinates(tile, tile_size, dim_num, coords_size);
+    utils::zip_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Success
   return TILEDB_RS_OK;
@@ -1510,7 +1513,7 @@ int ReadState::decompress_tile_zstd(
 
   // Zip coordinates
   if (coords)
-    zip_coordinates(tile, tile_size, dim_num, coords_size);
+    utils::zip_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Success
   return TILEDB_RS_OK;
@@ -1543,7 +1546,7 @@ int ReadState::decompress_tile_lz4(
 
   // Zip coordinates
   if (coords)
-    zip_coordinates(tile, tile_size, dim_num, coords_size);
+    utils::zip_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Success
   return TILEDB_RS_OK;
@@ -1581,7 +1584,7 @@ int ReadState::decompress_tile_blosc(
 
   // Zip coordinates
   if (coords)
-    zip_coordinates(tile, tile_size, dim_num, coords_size);
+    utils::zip_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Success
   return TILEDB_RS_OK;
@@ -1605,7 +1608,7 @@ int ReadState::decompress_tile_rle(
   // Decompress tile
   int rc;
   if (!is_coords) {
-    rc = RLE_decompress(
+    rc = utils::RLE_decompress(
         (unsigned char*)tile_compressed_,
         tile_compressed_size,
         tile,
@@ -1613,7 +1616,7 @@ int ReadState::decompress_tile_rle(
         value_size);
   } else {
     if (order == TILEDB_ROW_MAJOR) {
-      rc = RLE_decompress_coords_row(
+      rc = utils::RLE_decompress_coords_row(
           (unsigned char*)tile_compressed_,
           tile_compressed_size,
           tile,
@@ -1621,7 +1624,7 @@ int ReadState::decompress_tile_rle(
           value_size,
           dim_num);
     } else if (order == TILEDB_COL_MAJOR) {
-      rc = RLE_compress_coords_col(
+      rc = utils::RLE_compress_coords_col(
           (unsigned char*)tile_compressed_,
           tile_compressed_size,
           tile,
@@ -1640,7 +1643,7 @@ int ReadState::decompress_tile_rle(
 
   // Handle error
   if (rc != TILEDB_UT_OK) {
-    tiledb_rs_errmsg = tiledb_ut_errmsg;
+    tiledb_rs_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -1681,7 +1684,7 @@ int ReadState::decompress_tile_bzip2(
 
   // Zip coordinates
   if (coords)
-    zip_coordinates(tile, tile_size, dim_num, coords_size);
+    utils::zip_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Success
   return TILEDB_RS_OK;
@@ -1817,7 +1820,7 @@ inline int ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
 #endif
 
   if (read_method == TILEDB_IO_READ) {
-    rc = read_from_file(
+    rc = utils::read_from_file(
         filename,
         tiles_file_offsets_[attribute_num_ + 1] + i * coords_size_,
         tmp_coords_,
@@ -1845,7 +1848,7 @@ inline int ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
 
   // Error
   if (rc != TILEDB_UT_OK) {
-    tiledb_rs_errmsg = tiledb_ut_errmsg;
+    tiledb_rs_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -1875,7 +1878,7 @@ int ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
 #endif
 
   if (read_method == TILEDB_IO_READ) {
-    rc = read_from_file(
+    rc = utils::read_from_file(
         filename,
         tiles_file_offsets_[attribute_id] + i * sizeof(size_t),
         &tmp_offset_,
@@ -1903,7 +1906,7 @@ int ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
 
   // Error
   if (rc != TILEDB_UT_OK) {
-    tiledb_rs_errmsg = tiledb_ut_errmsg;
+    tiledb_rs_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -2368,7 +2371,7 @@ int ReadState::prepare_tile_for_reading_cmp(int attribute_id, int64_t tile_i) {
 
   // Find file offset where the tile begins
   off_t file_offset = tile_offsets[attribute_id_real][tile_i];
-  off_t file_size = ::file_size(filename);
+  off_t file_size = utils::file_size(filename);
   size_t tile_compressed_size =
       (tile_i == tile_num - 1) ?
           file_size - tile_offsets[attribute_id_real][tile_i] :
@@ -2499,7 +2502,7 @@ int ReadState::prepare_tile_for_reading_var_cmp(
 
   // Find file offset where the tile begins
   off_t file_offset = tile_offsets[attribute_id][tile_i];
-  off_t file_size = ::file_size(filename);
+  off_t file_size = utils::file_size(filename);
   size_t tile_compressed_size =
       (tile_i == tile_num - 1) ?
           file_size - tile_offsets[attribute_id][tile_i] :
@@ -2561,7 +2564,7 @@ int ReadState::prepare_tile_for_reading_var_cmp(
 
   // Calculate offset and compressed tile size
   file_offset = tile_var_offsets[attribute_id][tile_i];
-  file_size = ::file_size(filename);
+  file_size = utils::file_size(filename);
   tile_compressed_size =
       (tile_i == tile_num - 1) ?
           file_size - tile_var_offsets[attribute_id][tile_i] :
@@ -2685,12 +2688,12 @@ int ReadState::prepare_tile_for_reading_var_cmp_none(
 
   if (tile_i != tile_num - 1) {  // Not the last tile
     if (read_method == TILEDB_IO_READ || read_method == TILEDB_IO_MMAP) {
-      if (read_from_file(
+      if (utils::read_from_file(
               filename,
               file_offset + full_tile_size,
               &end_tile_var_offset,
               TILEDB_CELL_VAR_OFFSET_SIZE) != TILEDB_UT_OK) {
-        tiledb_rs_errmsg = tiledb_ut_errmsg;
+        tiledb_rs_errmsg = utils::tiledb_ut_errmsg;
         return TILEDB_RS_ERR;
       }
     } else if (read_method == TILEDB_IO_MPI) {
@@ -2719,7 +2722,7 @@ int ReadState::prepare_tile_for_reading_var_cmp_none(
     std::string filename = fragment_->fragment_name() + "/" +
                            array_schema_->attribute(attribute_id) + "_var" +
                            TILEDB_FILE_SUFFIX;
-    tile_var_size = file_size(filename) - tile_s[0];
+    tile_var_size = utils::file_size(filename) - tile_s[0];
   }
 
   // Read tile from file
@@ -2771,7 +2774,7 @@ int ReadState::READ_FROM_TILE(
 #endif
 
   if (read_method == TILEDB_IO_READ) {
-    rc = read_from_file(
+    rc = utils::read_from_file(
         filename,
         tiles_file_offsets_[attribute_id] + tile_offset,
         buffer,
@@ -2795,7 +2798,7 @@ int ReadState::READ_FROM_TILE(
 
   // Error
   if (rc != TILEDB_UT_OK) {
-    tiledb_rs_errmsg = tiledb_ut_errmsg;
+    tiledb_rs_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -2825,7 +2828,7 @@ int ReadState::READ_FROM_TILE_VAR(
 #endif
 
   if (read_method == TILEDB_IO_READ) {
-    rc = read_from_file(
+    rc = utils::read_from_file(
         filename,
         tiles_var_file_offsets_[attribute_id] + tile_offset,
         buffer,
@@ -2849,7 +2852,7 @@ int ReadState::READ_FROM_TILE_VAR(
 
   // Error
   if (rc != TILEDB_UT_OK) {
-    tiledb_rs_errmsg = tiledb_ut_errmsg;
+    tiledb_rs_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -2882,9 +2885,9 @@ int ReadState::read_tile_from_file_cmp(
                          TILEDB_FILE_SUFFIX;
 
   // Read from file
-  if (read_from_file(filename, offset, tile_compressed_, tile_size) !=
+  if (utils::read_from_file(filename, offset, tile_compressed_, tile_size) !=
       TILEDB_UT_OK) {
-    tiledb_rs_errmsg = tiledb_ut_errmsg;
+    tiledb_rs_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -2912,9 +2915,9 @@ int ReadState::read_tile_from_file_var_cmp(
                          TILEDB_FILE_SUFFIX;
 
   // Read from file
-  if (read_from_file(filename, offset, tile_compressed_, tile_size) !=
+  if (utils::read_from_file(filename, offset, tile_compressed_, tile_size) !=
       TILEDB_UT_OK) {
-    tiledb_rs_errmsg = tiledb_ut_errmsg;
+    tiledb_rs_errmsg = utils::tiledb_ut_errmsg;
     return TILEDB_RS_ERR;
   }
 
@@ -3254,3 +3257,5 @@ template void ReadState::get_next_overlapping_tile_sparse<int16_t>();
 template void ReadState::get_next_overlapping_tile_sparse<uint16_t>();
 template void ReadState::get_next_overlapping_tile_sparse<uint32_t>();
 template void ReadState::get_next_overlapping_tile_sparse<uint64_t>();
+
+};  // namespace tiledb

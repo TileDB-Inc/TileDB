@@ -76,6 +76,10 @@
   } while (0)
 #endif
 
+namespace tiledb {
+
+namespace utils {
+
 /* ****************************** */
 /*        GLOBAL VARIABLES        */
 /* ****************************** */
@@ -218,7 +222,7 @@ int cmp_row_order(
 
 int create_dir(const std::string& dir) {
   // Get real directory path
-  std::string real_dir = ::real_dir(dir);
+  std::string real_dir = utils::real_dir(dir);
 
   // If the directory does not exist, create it
   if (!is_dir(real_dir)) {
@@ -270,7 +274,7 @@ std::string current_dir() {
 
 int delete_dir(const std::string& dirname) {
   // Get real path
-  std::string dirname_real = ::real_dir(dirname);
+  std::string dirname_real = utils::real_dir(dirname);
 
   // Delete the contents of the directory
   std::string filename;
@@ -946,7 +950,7 @@ int mutex_unlock(pthread_mutex_t* mtx) {
 
 std::string parent_dir(const std::string& dir) {
   // Get real dir
-  std::string real_dir = ::real_dir(dir);
+  std::string real_dir = utils::real_dir(dir);
 
   // Start from the end of the string
   int pos = real_dir.size() - 1;
@@ -2261,3 +2265,7 @@ template bool is_unary_subarray<uint32_t>(
     const uint32_t* subarray, int dim_num);
 template bool is_unary_subarray<uint64_t>(
     const uint64_t* subarray, int dim_num);
+
+};  // namespace utils
+
+};  // namespace tiledb

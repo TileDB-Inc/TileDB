@@ -70,6 +70,8 @@
 /** Default error message. */
 #define TILEDB_SM_ERRMSG std::string("[TileDB::StorageManager] Error: ")
 
+namespace tiledb {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -870,5 +872,7 @@ class StorageManager::OpenArray {
    */
   int mutex_unlock();
 };
+
+};  // namespace tiledb
 
 #endif

@@ -54,6 +54,8 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+namespace tiledb {
+
 /* ****************************** */
 /*        GLOBAL VARIABLES        */
 /* ****************************** */
@@ -1347,7 +1349,7 @@ int ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
 
 void ArraySchema::set_array_name(const char* array_name) {
   // Get real array name
-  std::string array_name_real = real_dir(array_name);
+  std::string array_name_real = utils::real_dir(array_name);
 
   // Set array name
   array_name_ = array_name_real;
@@ -1381,7 +1383,7 @@ int ArraySchema::set_attributes(char** attributes, int attribute_num) {
   attributes_.push_back(TILEDB_COORDS);
 
   // Check for duplicate attribute names
-  if (has_duplicates(attributes_)) {
+  if (utils::has_duplicates(attributes_)) {
     std::string errmsg = "Cannot set attributes; Duplicate attribute names";
     PRINT_ERROR(errmsg);
     tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
@@ -1389,7 +1391,7 @@ int ArraySchema::set_attributes(char** attributes, int attribute_num) {
   }
 
   // Check if a dimension has the same name as an attribute
-  if (intersect(attributes_, dimensions_)) {
+  if (utils::intersect(attributes_, dimensions_)) {
     std::string errmsg =
         "Cannot set attributes; Attribute name same as dimension name";
     PRINT_ERROR(errmsg);
@@ -1493,7 +1495,7 @@ int ArraySchema::set_dimensions(char** dimensions, int dim_num) {
   dim_num_ = dim_num;
 
   // Check for duplicate dimension names
-  if (has_duplicates(dimensions_)) {
+  if (utils::has_duplicates(dimensions_)) {
     std::string errmsg = "Cannot set dimensions; Duplicate dimension names";
     PRINT_ERROR(errmsg);
     tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
@@ -1501,7 +1503,7 @@ int ArraySchema::set_dimensions(char** dimensions, int dim_num) {
   }
 
   // Check if a dimension has the same name as an attribute
-  if (intersect(attributes_, dimensions_)) {
+  if (utils::intersect(attributes_, dimensions_)) {
     std::string errmsg =
         "Cannot set dimensions; Attribute name same as dimension name";
     PRINT_ERROR(errmsg);
@@ -2912,3 +2914,5 @@ template int64_t ArraySchema::tile_id<uint32_t>(
     const uint32_t* cell_coords) const;
 template int64_t ArraySchema::tile_id<uint64_t>(
     const uint64_t* cell_coords) const;
+
+};  // namespace tiledb

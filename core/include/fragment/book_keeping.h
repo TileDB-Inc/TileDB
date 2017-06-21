@@ -51,6 +51,8 @@
 /** Default error message. */
 #define TILEDB_BK_ERRMSG std::string("[TileDB::BookKeeping] Error: ")
 
+namespace tiledb {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -378,4 +380,5 @@ class BookKeeping {
   int load_tile_var_sizes(gzFile fd);
 };
 
+};  // namespace tiledb
 #endif

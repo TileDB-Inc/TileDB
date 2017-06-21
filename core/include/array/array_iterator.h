@@ -48,6 +48,8 @@
 /** Default error message. */
 #define TILEDB_AIT_ERRMSG std::string("[TileDB::ArrayIterator] Error: ")
 
+namespace tiledb {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -183,4 +185,5 @@ class ArrayIterator {
   int var_attribute_num_;
 };
 
+};  // namespace tiledb
 #endif

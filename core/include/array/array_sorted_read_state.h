@@ -54,6 +54,8 @@
 /** Initial internal buffer size for the case of sparse arrays. */
 #define TILEDB_ASRS_INIT_BUFFER_SIZE 10000000  // ~ 10MB
 
+namespace tiledb {
+
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
@@ -1067,4 +1069,5 @@ class ArraySortedReadState {
   int wait_overflow();
 };
 
+};  // namespace tiledb
 #endif
