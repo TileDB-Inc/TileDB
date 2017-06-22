@@ -49,8 +49,7 @@ StorageManagerConfig::StorageManagerConfig() {
 #endif
 }
 
-StorageManagerConfig::~StorageManagerConfig() {
-}
+StorageManagerConfig::~StorageManagerConfig() = default;
 
 /* ****************************** */
 /*             MUTATORS           */

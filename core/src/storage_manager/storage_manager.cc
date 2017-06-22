@@ -79,11 +79,9 @@ std::string tiledb_sm_errmsg = "";
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-StorageManager::StorageManager() {
-}
+StorageManager::StorageManager() = default;
 
-StorageManager::~StorageManager() {
-}
+StorageManager::~StorageManager() = default;
 
 /* ****************************** */
 /*             MUTATORS           */

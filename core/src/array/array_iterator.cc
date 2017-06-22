@@ -64,8 +64,7 @@ ArrayIterator::ArrayIterator() {
   var_attribute_num_ = 0;
 }
 
-ArrayIterator::~ArrayIterator() {
-}
+ArrayIterator::~ArrayIterator() = default;
 
 /* ****************************** */
 /*           ACCESSORS            */

@@ -63,8 +63,7 @@ Metadata::Metadata() {
   array_ = nullptr;
 }
 
-Metadata::~Metadata() {
-}
+Metadata::~Metadata() = default;
 
 /* ****************************** */
 /*           ACCESSORS            */
