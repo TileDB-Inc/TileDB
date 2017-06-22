@@ -94,7 +94,7 @@ int tiledb_ctx_init(
 
   // Initialize context
   *tiledb_ctx = (TileDB_CTX*)malloc(sizeof(struct TileDB_CTX));
-  if (*tiledb_ctx == NULL) {
+  if (*tiledb_ctx == nullptr) {
     std::string errmsg =
         "Cannot initialize TileDB context; Failed to allocate memory "
         "space for the context";
@@ -105,7 +105,7 @@ int tiledb_ctx_init(
 
   // Initialize a Config object
   tiledb::StorageManagerConfig* config = new tiledb::StorageManagerConfig();
-  if (tiledb_config != NULL)
+  if (tiledb_config != nullptr)
     config->init(
         tiledb_config->home_,
 #ifdef HAVE_MPI
@@ -127,12 +127,12 @@ int tiledb_ctx_init(
 
 int tiledb_ctx_finalize(TileDB_CTX* tiledb_ctx) {
   // Trivial case
-  if (tiledb_ctx == NULL)
+  if (tiledb_ctx == nullptr)
     return TILEDB_OK;
 
   // Finalize storage manager
   int rc = TILEDB_OK;
-  if (tiledb_ctx->storage_manager_ != NULL)
+  if (tiledb_ctx->storage_manager_ != nullptr)
     rc = tiledb_ctx->storage_manager_->finalize();
 
   // Clean up
@@ -160,7 +160,7 @@ int tiledb_workspace_create(
     return TILEDB_ERR;
 
   // Check workspace name length
-  if (workspace == NULL || strlen(workspace) > TILEDB_NAME_MAX_LEN) {
+  if (workspace == nullptr || strlen(workspace) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid workspace name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -188,7 +188,7 @@ int tiledb_group_create(const TileDB_CTX* tiledb_ctx, const char* group) {
     return TILEDB_ERR;
 
   // Check group name length
-  if (group == NULL || strlen(group) > TILEDB_NAME_MAX_LEN) {
+  if (group == nullptr || strlen(group) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid group name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -245,7 +245,7 @@ int tiledb_array_set_schema(
     int tile_order,
     const int* types) {
   // Sanity check
-  if (tiledb_array_schema == NULL) {
+  if (tiledb_array_schema == nullptr) {
     std::string errmsg = "Invalid array schema pointer";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -254,7 +254,7 @@ int tiledb_array_set_schema(
 
   // Set array name
   size_t array_name_len = strlen(array_name);
-  if (array_name == NULL || array_name_len > TILEDB_NAME_MAX_LEN) {
+  if (array_name == nullptr || array_name_len > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid array name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -269,7 +269,7 @@ int tiledb_array_set_schema(
       (char**)malloc(attribute_num * sizeof(char*));
   for (int i = 0; i < attribute_num; ++i) {
     size_t attribute_len = strlen(attributes[i]);
-    if (attributes[i] == NULL || attribute_len > TILEDB_NAME_MAX_LEN) {
+    if (attributes[i] == nullptr || attribute_len > TILEDB_NAME_MAX_LEN) {
       std::string errmsg = "Invalid attribute name length";
       PRINT_ERROR(errmsg);
       strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -284,7 +284,7 @@ int tiledb_array_set_schema(
   tiledb_array_schema->dimensions_ = (char**)malloc(dim_num * sizeof(char*));
   for (int i = 0; i < dim_num; ++i) {
     size_t dimension_len = strlen(dimensions[i]);
-    if (dimensions[i] == NULL || dimension_len > TILEDB_NAME_MAX_LEN) {
+    if (dimensions[i] == nullptr || dimension_len > TILEDB_NAME_MAX_LEN) {
       std::string errmsg = "Invalid attribute name length";
       PRINT_ERROR(errmsg);
       strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -302,8 +302,8 @@ int tiledb_array_set_schema(
   memcpy(tiledb_array_schema->domain_, domain, domain_len);
 
   // Set tile extents
-  if (tile_extents == NULL) {
-    tiledb_array_schema->tile_extents_ = NULL;
+  if (tile_extents == nullptr) {
+    tiledb_array_schema->tile_extents_ = nullptr;
   } else {
     tiledb_array_schema->tile_extents_ = malloc(tile_extents_len);
     memcpy(tiledb_array_schema->tile_extents_, tile_extents, tile_extents_len);
@@ -315,8 +315,8 @@ int tiledb_array_set_schema(
     tiledb_array_schema->types_[i] = types[i];
 
   // Set cell val num
-  if (cell_val_num == NULL) {
-    tiledb_array_schema->cell_val_num_ = NULL;
+  if (cell_val_num == nullptr) {
+    tiledb_array_schema->cell_val_num_ = nullptr;
   } else {
     tiledb_array_schema->cell_val_num_ =
         (int*)malloc((attribute_num) * sizeof(int));
@@ -333,8 +333,8 @@ int tiledb_array_set_schema(
   tiledb_array_schema->capacity_ = capacity;
 
   // Set compression
-  if (compression == NULL) {
-    tiledb_array_schema->compression_ = NULL;
+  if (compression == nullptr) {
+    tiledb_array_schema->compression_ = nullptr;
   } else {
     tiledb_array_schema->compression_ =
         (int*)malloc((attribute_num + 1) * sizeof(int));
@@ -393,7 +393,7 @@ int tiledb_array_init(
     return TILEDB_ERR;
 
   // Check array name length
-  if (array == NULL || strlen(array) > TILEDB_NAME_MAX_LEN) {
+  if (array == nullptr || strlen(array) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid array name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -499,7 +499,7 @@ int tiledb_array_load_schema(
     return TILEDB_ERR;
 
   // Check array name length
-  if (array == NULL || strlen(array) > TILEDB_NAME_MAX_LEN) {
+  if (array == nullptr || strlen(array) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid array name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -541,47 +541,47 @@ int tiledb_array_load_schema(
 
 int tiledb_array_free_schema(TileDB_ArraySchema* tiledb_array_schema) {
   // Trivial case
-  if (tiledb_array_schema == NULL)
+  if (tiledb_array_schema == nullptr)
     return TILEDB_OK;
 
   // Free array name
-  if (tiledb_array_schema->array_name_ != NULL)
+  if (tiledb_array_schema->array_name_ != nullptr)
     free(tiledb_array_schema->array_name_);
 
   // Free attributes
-  if (tiledb_array_schema->attributes_ != NULL) {
+  if (tiledb_array_schema->attributes_ != nullptr) {
     for (int i = 0; i < tiledb_array_schema->attribute_num_; ++i)
-      if (tiledb_array_schema->attributes_[i] != NULL)
+      if (tiledb_array_schema->attributes_[i] != nullptr)
         free(tiledb_array_schema->attributes_[i]);
     free(tiledb_array_schema->attributes_);
   }
 
   // Free dimensions
-  if (tiledb_array_schema->dimensions_ != NULL) {
+  if (tiledb_array_schema->dimensions_ != nullptr) {
     for (int i = 0; i < tiledb_array_schema->dim_num_; ++i)
-      if (tiledb_array_schema->dimensions_[i] != NULL)
+      if (tiledb_array_schema->dimensions_[i] != nullptr)
         free(tiledb_array_schema->dimensions_[i]);
     free(tiledb_array_schema->dimensions_);
   }
 
   // Free domain
-  if (tiledb_array_schema->domain_ != NULL)
+  if (tiledb_array_schema->domain_ != nullptr)
     free(tiledb_array_schema->domain_);
 
   // Free tile extents
-  if (tiledb_array_schema->tile_extents_ != NULL)
+  if (tiledb_array_schema->tile_extents_ != nullptr)
     free(tiledb_array_schema->tile_extents_);
 
   // Free types
-  if (tiledb_array_schema->types_ != NULL)
+  if (tiledb_array_schema->types_ != nullptr)
     free(tiledb_array_schema->types_);
 
   // Free compression
-  if (tiledb_array_schema->compression_ != NULL)
+  if (tiledb_array_schema->compression_ != nullptr)
     free(tiledb_array_schema->compression_);
 
   // Free cell val num
-  if (tiledb_array_schema->cell_val_num_ != NULL)
+  if (tiledb_array_schema->cell_val_num_ != nullptr)
     free(tiledb_array_schema->cell_val_num_);
 
   // Success
@@ -633,7 +633,7 @@ int tiledb_array_overflow(const TileDB_Array* tiledb_array, int attribute_id) {
 
 int tiledb_array_consolidate(const TileDB_CTX* tiledb_ctx, const char* array) {
   // Check array name length
-  if (array == NULL || strlen(array) > TILEDB_NAME_MAX_LEN) {
+  if (array == nullptr || strlen(array) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid array name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -865,7 +865,7 @@ int tiledb_metadata_set_schema(
     const int* compression,
     const int* types) {
   // Sanity check
-  if (tiledb_metadata_schema == NULL) {
+  if (tiledb_metadata_schema == nullptr) {
     std::string errmsg = "Invalid metadata schema pointer";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -874,7 +874,7 @@ int tiledb_metadata_set_schema(
 
   // Set metadata name
   size_t metadata_name_len = strlen(metadata_name);
-  if (metadata_name == NULL || metadata_name_len > TILEDB_NAME_MAX_LEN) {
+  if (metadata_name == nullptr || metadata_name_len > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid metadata name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -889,7 +889,7 @@ int tiledb_metadata_set_schema(
       (char**)malloc(attribute_num * sizeof(char*));
   for (int i = 0; i < attribute_num; ++i) {
     size_t attribute_len = strlen(attributes[i]);
-    if (attributes[i] == NULL || attribute_len > TILEDB_NAME_MAX_LEN) {
+    if (attributes[i] == nullptr || attribute_len > TILEDB_NAME_MAX_LEN) {
       std::string errmsg = "Invalid attribute name length";
       PRINT_ERROR(errmsg);
       strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -906,8 +906,8 @@ int tiledb_metadata_set_schema(
     tiledb_metadata_schema->types_[i] = types[i];
 
   // Set cell val num
-  if (cell_val_num == NULL) {
-    tiledb_metadata_schema->cell_val_num_ = NULL;
+  if (cell_val_num == nullptr) {
+    tiledb_metadata_schema->cell_val_num_ = nullptr;
   } else {
     tiledb_metadata_schema->cell_val_num_ =
         (int*)malloc((attribute_num) * sizeof(int));
@@ -920,8 +920,8 @@ int tiledb_metadata_set_schema(
   tiledb_metadata_schema->capacity_ = capacity;
 
   // Set compression
-  if (compression == NULL) {
-    tiledb_metadata_schema->compression_ = NULL;
+  if (compression == nullptr) {
+    tiledb_metadata_schema->compression_ = nullptr;
   } else {
     tiledb_metadata_schema->compression_ =
         (int*)malloc((attribute_num + 1) * sizeof(int));
@@ -1047,7 +1047,7 @@ int tiledb_metadata_load_schema(
     return TILEDB_ERR;
 
   // Check metadata name length
-  if (metadata == NULL || strlen(metadata) > TILEDB_NAME_MAX_LEN) {
+  if (metadata == nullptr || strlen(metadata) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid metadata name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -1082,31 +1082,31 @@ int tiledb_metadata_load_schema(
 
 int tiledb_metadata_free_schema(TileDB_MetadataSchema* tiledb_metadata_schema) {
   // Trivial case
-  if (tiledb_metadata_schema == NULL)
+  if (tiledb_metadata_schema == nullptr)
     return TILEDB_OK;
 
   // Free name
-  if (tiledb_metadata_schema->metadata_name_ != NULL)
+  if (tiledb_metadata_schema->metadata_name_ != nullptr)
     free(tiledb_metadata_schema->metadata_name_);
 
   // Free attributes
-  if (tiledb_metadata_schema->attributes_ != NULL) {
+  if (tiledb_metadata_schema->attributes_ != nullptr) {
     for (int i = 0; i < tiledb_metadata_schema->attribute_num_; ++i)
-      if (tiledb_metadata_schema->attributes_[i] != NULL)
+      if (tiledb_metadata_schema->attributes_[i] != nullptr)
         free(tiledb_metadata_schema->attributes_[i]);
     free(tiledb_metadata_schema->attributes_);
   }
 
   // Free types
-  if (tiledb_metadata_schema->types_ != NULL)
+  if (tiledb_metadata_schema->types_ != nullptr)
     free(tiledb_metadata_schema->types_);
 
   // Free compression
-  if (tiledb_metadata_schema->compression_ != NULL)
+  if (tiledb_metadata_schema->compression_ != nullptr)
     free(tiledb_metadata_schema->compression_);
 
   // Free cell val num
-  if (tiledb_metadata_schema->cell_val_num_ != NULL)
+  if (tiledb_metadata_schema->cell_val_num_ != nullptr)
     free(tiledb_metadata_schema->cell_val_num_);
 
   // Success
@@ -1166,7 +1166,7 @@ int tiledb_metadata_overflow(
 int tiledb_metadata_consolidate(
     const TileDB_CTX* tiledb_ctx, const char* metadata) {
   // Check metadata name length
-  if (metadata == NULL || strlen(metadata) > TILEDB_NAME_MAX_LEN) {
+  if (metadata == nullptr || strlen(metadata) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid metadata name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -1342,7 +1342,7 @@ int tiledb_clear(const TileDB_CTX* tiledb_ctx, const char* dir) {
     return TILEDB_ERR;
 
   // Check directory name length
-  if (dir == NULL || strlen(dir) > TILEDB_NAME_MAX_LEN) {
+  if (dir == nullptr || strlen(dir) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid directory name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -1365,7 +1365,7 @@ int tiledb_delete(const TileDB_CTX* tiledb_ctx, const char* dir) {
     return TILEDB_ERR;
 
   // Check directory name length
-  if (dir == NULL || strlen(dir) > TILEDB_NAME_MAX_LEN) {
+  if (dir == nullptr || strlen(dir) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid directory name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -1389,7 +1389,7 @@ int tiledb_move(
     return TILEDB_ERR;
 
   // Check old directory name length
-  if (old_dir == NULL || strlen(old_dir) > TILEDB_NAME_MAX_LEN) {
+  if (old_dir == nullptr || strlen(old_dir) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid old directory name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -1397,7 +1397,7 @@ int tiledb_move(
   }
 
   // Check new directory name length
-  if (new_dir == NULL || strlen(new_dir) > TILEDB_NAME_MAX_LEN) {
+  if (new_dir == nullptr || strlen(new_dir) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid new directory name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -1425,7 +1425,7 @@ int tiledb_ls(
     return TILEDB_ERR;
 
   // Check parent directory name length
-  if (parent_dir == NULL || strlen(parent_dir) > TILEDB_NAME_MAX_LEN) {
+  if (parent_dir == nullptr || strlen(parent_dir) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid parent directory name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());
@@ -1450,7 +1450,7 @@ int tiledb_ls_c(
     return TILEDB_ERR;
 
   // Check parent directory name length
-  if (parent_dir == NULL || strlen(parent_dir) > TILEDB_NAME_MAX_LEN) {
+  if (parent_dir == nullptr || strlen(parent_dir) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid parent directory name length";
     PRINT_ERROR(errmsg);
     strcpy(tiledb_errmsg, (TILEDB_ERRMSG + errmsg).c_str());

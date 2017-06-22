@@ -57,7 +57,7 @@ typedef struct _thread_data_t {
 int main() {
   // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Array name
   const char* array_name = "my_workspace/sparse_arrays/my_array_B";
@@ -95,14 +95,14 @@ int main() {
 
     // Create thread
     if(i>=0 && i<2)
-      pthread_create(&threads[i], NULL, parallel_read, &thread_data[i]);
+      pthread_create(&threads[i], nullptr, parallel_read, &thread_data[i]);
     else // i == 2
-      pthread_create(&threads[i], NULL, parallel_consolidate, &thread_data[i]);
+      pthread_create(&threads[i], nullptr, parallel_consolidate, &thread_data[i]);
   }
 
   // Wait till all threads finish
   for(int i=0; i<3; ++i)
-    pthread_join(threads[i], NULL);
+    pthread_join(threads[i], nullptr);
 
   // Output result
   int total_count = 0;
@@ -125,7 +125,7 @@ void *parallel_consolidate(void* args) {
   tiledb_array_consolidate(data->tiledb_ctx, data->array_name);
   printf("Finished consolidation\n");
 
-  return 0;
+  return nullptr;
 }
 
 void *parallel_read(void* args) {
@@ -162,6 +162,6 @@ void *parallel_read(void* args) {
   // Finalize array
   tiledb_array_finalize(tiledb_array);
 
-  return 0;
+  return nullptr;
 }
 

@@ -35,7 +35,7 @@
 int main() {
   // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Initialize array
   TileDB_Array* tiledb_array;
@@ -44,8 +44,8 @@ int main() {
       &tiledb_array,                             // Array object
       "my_workspace/dense_arrays/my_array_A",    // Array name
       TILEDB_ARRAY_WRITE,                        // Mode
-      NULL,                                      // Entire domain
-      NULL,                                      // All attributes
+      nullptr,                                      // Entire domain
+      nullptr,                                      // All attributes
       0);                                        // Number of attributes
 
   // Prepare cell buffers

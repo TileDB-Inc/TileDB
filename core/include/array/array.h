@@ -291,7 +291,7 @@ class Array {
       int attribute_num,
       const void* subarray,
       const StorageManagerConfig* config,
-      Array* array_clone = NULL);
+      Array* array_clone = nullptr);
 
   /**
    * Resets the attributes used upon initialization of the array.

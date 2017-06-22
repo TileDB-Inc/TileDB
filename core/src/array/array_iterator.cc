@@ -57,9 +57,9 @@ std::string tiledb_ait_errmsg = "";
 /* ****************************** */
 
 ArrayIterator::ArrayIterator() {
-  array_ = NULL;
-  buffers_ = NULL;
-  buffer_sizes_ = NULL;
+  array_ = nullptr;
+  buffers_ = nullptr;
+  buffer_sizes_ = nullptr;
   end_ = false;
   var_attribute_num_ = 0;
 }
@@ -83,7 +83,7 @@ int ArrayIterator::get_value(
     int attribute_id, const void** value, size_t* value_size) const {
   // Trivial case
   if (end_) {
-    *value = NULL;
+    *value = nullptr;
     *value_size = 0;
     std::string errmsg = "Cannot get value; Iterator end reached";
     PRINT_ERROR(errmsg);
@@ -187,7 +187,7 @@ int ArrayIterator::finalize() {
   // Finalize
   int rc = array_->finalize();
   delete array_;
-  array_ = NULL;
+  array_ = nullptr;
 
   // Error
   if (rc != TILEDB_AR_OK) {

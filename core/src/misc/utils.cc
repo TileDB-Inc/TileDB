@@ -262,9 +262,9 @@ int create_fragment_file(const std::string& dir) {
 
 std::string current_dir() {
   std::string dir = "";
-  char* path = getcwd(NULL, 0);
+  char* path = getcwd(nullptr, 0);
 
-  if (path != NULL) {
+  if (path != nullptr) {
     dir = path;
     free(path);
   }
@@ -281,7 +281,7 @@ int delete_dir(const std::string& dirname) {
   struct dirent* next_file;
   DIR* dir = opendir(dirname_real.c_str());
 
-  if (dir == NULL) {
+  if (dir == nullptr) {
     std::string errmsg =
         std::string("Cannot open directory; ") + strerror(errno);
     PRINT_ERROR(errmsg);
@@ -354,7 +354,7 @@ int expand_buffer(void*& buffer, size_t& buffer_allocated_size) {
   buffer_allocated_size *= 2;
   buffer = realloc(buffer, buffer_allocated_size);
 
-  if (buffer == NULL) {
+  if (buffer == nullptr) {
     std::string errmsg = "Cannot reallocate buffer";
     PRINT_ERROR(errmsg);
     tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
@@ -401,7 +401,7 @@ std::vector<std::string> get_dirs(const std::string& dir) {
   struct dirent* next_file;
   DIR* c_dir = opendir(dir.c_str());
 
-  if (c_dir == NULL)
+  if (c_dir == nullptr)
     return std::vector<std::string>();
 
   while ((next_file = readdir(c_dir))) {
@@ -425,7 +425,7 @@ std::vector<std::string> get_fragment_dirs(const std::string& dir) {
   struct dirent* next_file;
   DIR* c_dir = opendir(dir.c_str());
 
-  if (c_dir == NULL)
+  if (c_dir == nullptr)
     return std::vector<std::string>();
 
   while ((next_file = readdir(c_dir))) {
@@ -458,7 +458,7 @@ std::string get_mac_addr() {
   mib[3] = AF_LINK;
   mib[4] = NET_RT_IFLIST;
   if (((mib[5] = if_nametoindex(XSTR(TILEDB_MAC_ADDRESS_INTERFACE))) == 0) ||
-      (sysctl(mib, 6, NULL, &len, NULL, 0) < 0)) {
+      (sysctl(mib, 6, nullptr, &len, nullptr, 0) < 0)) {
     std::string errmsg = "Cannot get MAC address";
     PRINT_ERROR(errmsg);
     tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
@@ -466,7 +466,7 @@ std::string get_mac_addr() {
   }
 
   buf = (char*)malloc(len);
-  if (sysctl(mib, 6, buf, &len, NULL, 0) < 0) {
+  if (sysctl(mib, 6, buf, &len, nullptr, 0) < 0) {
     std::string errmsg = "Cannot get MAC address";
     PRINT_ERROR(errmsg);
     tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
@@ -916,7 +916,7 @@ int mutex_destroy(pthread_mutex_t* mtx) {
 }
 
 int mutex_init(pthread_mutex_t* mtx) {
-  if (pthread_mutex_init(mtx, NULL) != 0) {
+  if (pthread_mutex_init(mtx, nullptr) != 0) {
     std::string errmsg = "Cannot initialize mutex";
     PRINT_ERROR(errmsg);
     tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
@@ -1071,7 +1071,8 @@ int read_from_file_with_mmap(
   }
 
   // Map
-  void* addr = mmap(NULL, new_length, PROT_READ, MAP_SHARED, fd, start_offset);
+  void* addr =
+      mmap(nullptr, new_length, PROT_READ, MAP_SHARED, fd, start_offset);
   if (addr == MAP_FAILED) {
     std::string errmsg = "Cannot read from file; Memory map error";
     PRINT_ERROR(errmsg);
@@ -1899,7 +1900,7 @@ int write_to_file_cmp_gzip(
     const char* filename, const void* buffer, size_t buffer_size) {
   // Open file
   gzFile fd = gzopen(filename, "wb");
-  if (fd == NULL) {
+  if (fd == nullptr) {
     std::string errmsg = std::string("Cannot write to file '") + filename +
                          "'; File opening error";
     PRINT_ERROR(errmsg);

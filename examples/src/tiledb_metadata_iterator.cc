@@ -36,7 +36,7 @@
 int main() {
   /* Initialize context with the default configuration parameters. */
   TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Subset over the attributes
   const char* attributes[] = { TILEDB_KEY };

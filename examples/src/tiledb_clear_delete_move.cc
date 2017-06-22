@@ -35,7 +35,7 @@
 int main() {
   // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Clear an array
   tiledb_clear(tiledb_ctx, "my_workspace/sparse_arrays/my_array_B");

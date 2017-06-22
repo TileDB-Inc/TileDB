@@ -36,7 +36,7 @@
 int main() {
   // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Initialize array 
   TileDB_Array* tiledb_array;
@@ -45,8 +45,8 @@ int main() {
       &tiledb_array,                                    // Array object
       "my_workspace/sparse_arrays/my_array_B",          // Array name
       TILEDB_ARRAY_READ,                                // Mode
-      NULL,                                             // Whole domain
-      NULL,                                             // All attributes
+      nullptr,                                             // Whole domain
+      nullptr,                                             // All attributes
       0);                                               // Number of attributes
 
   // Prepare cell buffers 

@@ -65,34 +65,34 @@ std::string tiledb_ar_errmsg = "";
 /* ****************************** */
 
 Array::Array() {
-  array_read_state_ = NULL;
-  array_sorted_read_state_ = NULL;
-  array_sorted_write_state_ = NULL;
-  array_schema_ = NULL;
-  subarray_ = NULL;
+  array_read_state_ = nullptr;
+  array_sorted_read_state_ = nullptr;
+  array_sorted_write_state_ = nullptr;
+  array_schema_ = nullptr;
+  subarray_ = nullptr;
   aio_thread_created_ = false;
-  array_clone_ = NULL;
+  array_clone_ = nullptr;
 }
 
 Array::~Array() {
   // Applicable to both arrays and array clones
   std::vector<Fragment*>::iterator it = fragments_.begin();
   for (; it != fragments_.end(); ++it)
-    if (*it != NULL)
+    if (*it != nullptr)
       delete *it;
-  if (array_read_state_ != NULL)
+  if (array_read_state_ != nullptr)
     delete array_read_state_;
-  if (array_sorted_read_state_ != NULL)
+  if (array_sorted_read_state_ != nullptr)
     delete array_sorted_read_state_;
-  if (array_sorted_write_state_ != NULL)
+  if (array_sorted_write_state_ != nullptr)
     delete array_sorted_write_state_;
 
   // Applicable only to non-clones
-  if (array_clone_ != NULL) {
+  if (array_clone_ != nullptr) {
     delete array_clone_;
-    if (array_schema_ != NULL)
+    if (array_schema_ != nullptr)
       delete array_schema_;
-    if (subarray_ != NULL)
+    if (subarray_ != nullptr)
       free(subarray_);
   }
 }
@@ -244,7 +244,7 @@ bool Array::overflow() const {
     return false;
 
   // Check overflow
-  if (array_sorted_read_state_ != NULL)
+  if (array_sorted_read_state_ != nullptr)
     return array_sorted_read_state_->overflow();
   else
     return array_read_state_->overflow();
@@ -258,7 +258,7 @@ bool Array::overflow(int attribute_id) const {
     return false;
 
   // Check overflow
-  if (array_sorted_read_state_ != NULL)
+  if (array_sorted_read_state_ != nullptr)
     return array_sorted_read_state_->overflow(attribute_id);
   else
     return array_read_state_->overflow(attribute_id);
@@ -401,11 +401,11 @@ int Array::consolidate(Fragment* new_fragment, int attribute_id) {
         ++buffer_i;
       }
     } else {
-      buffers[buffer_i] = NULL;
+      buffers[buffer_i] = nullptr;
       buffer_sizes[buffer_i] = 0;
       ++buffer_i;
       if (array_schema_->var_size(i)) {
-        buffers[buffer_i] = NULL;
+        buffers[buffer_i] = nullptr;
         buffer_sizes[buffer_i] = 0;
         ++buffer_i;
       }
@@ -430,7 +430,7 @@ int Array::consolidate(Fragment* new_fragment, int attribute_id) {
 
   // Clean up
   for (int i = 0; i < buffer_num; ++i) {
-    if (buffers[i] != NULL)
+    if (buffers[i] != nullptr)
       free(buffers[i]);
   }
   free(buffers);
@@ -460,21 +460,21 @@ int Array::finalize() {
   fragments_.clear();
 
   // Clean the array read state
-  if (array_read_state_ != NULL) {
+  if (array_read_state_ != nullptr) {
     delete array_read_state_;
-    array_read_state_ = NULL;
+    array_read_state_ = nullptr;
   }
 
   // Clean the array sorted read state
-  if (array_sorted_read_state_ != NULL) {
+  if (array_sorted_read_state_ != nullptr) {
     delete array_sorted_read_state_;
-    array_sorted_read_state_ = NULL;
+    array_sorted_read_state_ = nullptr;
   }
 
   // Clean the array sorted write state
-  if (array_sorted_write_state_ != NULL) {
+  if (array_sorted_write_state_ != nullptr) {
     delete array_sorted_write_state_;
-    array_sorted_write_state_ = NULL;
+    array_sorted_write_state_ = nullptr;
   }
 
   // Clean the AIO-related members
@@ -491,7 +491,7 @@ int Array::finalize() {
 
   // Finalize the clone
   int rc_clone = TILEDB_AR_OK;
-  if (array_clone_ != NULL)
+  if (array_clone_ != nullptr)
     rc_clone = array_clone_->finalize();
 
   // Errors
@@ -552,14 +552,14 @@ int Array::init(
   // Set subarray
   size_t subarray_size = 2 * array_schema->coords_size();
   subarray_ = malloc(subarray_size);
-  if (subarray == NULL)
+  if (subarray == nullptr)
     memcpy(subarray_, array_schema->domain(), subarray_size);
   else
     memcpy(subarray_, subarray, subarray_size);
 
   // Get attributes
   std::vector<std::string> attributes_vec;
-  if (attributes == NULL) {  // Default: all attributes
+  if (attributes == nullptr) {  // Default: all attributes
     attributes_vec = array_schema->attributes();
     if (array_schema->dense() && mode != TILEDB_ARRAY_WRITE_UNSORTED)
       // Remove coordinates attribute for dense arrays,
@@ -571,7 +571,7 @@ int Array::init(
     bool sparse = !array_schema->dense();
     for (int i = 0; i < attribute_num; ++i) {
       // Check attribute name length
-      if (attributes[i] == NULL ||
+      if (attributes[i] == nullptr ||
           strlen(attributes[i]) > TILEDB_NAME_MAX_LEN) {
         std::string errmsg = "Invalid attribute name length";
         PRINT_ERROR(errmsg);
@@ -593,7 +593,7 @@ int Array::init(
 
     // For the case of the clone sparse array, append coordinates if they do
     // not exist already
-    if (sparse && array_clone == NULL && !coords_found &&
+    if (sparse && array_clone == nullptr && !coords_found &&
         !utils::is_metadata(array_schema->array_name()))
       attributes_vec.push_back(TILEDB_COORDS);
   }
@@ -623,7 +623,7 @@ int Array::init(
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
     if (fragment->init(new_fragment_name, mode_, subarray) != TILEDB_FG_OK) {
-      array_schema_ = NULL;
+      array_schema_ = nullptr;
       tiledb_ar_errmsg = tiledb_fg_errmsg;
       return TILEDB_AR_ERR;
     }
@@ -635,16 +635,16 @@ int Array::init(
       if (array_sorted_write_state_->init() != TILEDB_ASWS_OK) {
         tiledb_ar_errmsg = tiledb_asws_errmsg;
         delete array_sorted_write_state_;
-        array_sorted_write_state_ = NULL;
+        array_sorted_write_state_ = nullptr;
         return TILEDB_AR_ERR;
       }
     } else {
-      array_sorted_write_state_ = NULL;
+      array_sorted_write_state_ = nullptr;
     }
   } else {  // READ MODE
     // Open fragments
     if (open_fragments(fragment_names, book_keeping) != TILEDB_AR_OK) {
-      array_schema_ = NULL;
+      array_schema_ = nullptr;
       return TILEDB_AR_ERR;
     }
 
@@ -657,23 +657,23 @@ int Array::init(
       if (array_sorted_read_state_->init() != TILEDB_ASRS_OK) {
         tiledb_ar_errmsg = tiledb_asrs_errmsg;
         delete array_sorted_read_state_;
-        array_sorted_read_state_ = NULL;
+        array_sorted_read_state_ = nullptr;
         return TILEDB_AR_ERR;
       }
     } else {
-      array_sorted_read_state_ = NULL;
+      array_sorted_read_state_ = nullptr;
     }
   }
 
   // Initialize the AIO-related members
   aio_cond_ = PTHREAD_COND_INITIALIZER;
-  if (pthread_mutex_init(&aio_mtx_, NULL)) {
+  if (pthread_mutex_init(&aio_mtx_, nullptr)) {
     std::string errmsg = "Cannot initialize AIO mutex";
     PRINT_ERROR(errmsg);
     tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
     return TILEDB_AR_ERR;
   }
-  if (pthread_cond_init(&aio_cond_, NULL)) {
+  if (pthread_cond_init(&aio_cond_, nullptr)) {
     std::string errmsg = "Cannot initialize AIO mutex condition";
     PRINT_ERROR(errmsg);
     tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
@@ -690,7 +690,7 @@ int Array::init(
 int Array::reset_attributes(const char** attributes, int attribute_num) {
   // Get attributes
   std::vector<std::string> attributes_vec;
-  if (attributes == NULL) {  // Default: all attributes
+  if (attributes == nullptr) {  // Default: all attributes
     attributes_vec = array_schema_->attributes();
     if (array_schema_->dense())  // Remove coordinates attribute for dense
       attributes_vec.pop_back();
@@ -698,7 +698,7 @@ int Array::reset_attributes(const char** attributes, int attribute_num) {
     // Copy attribute names
     for (int i = 0; i < attribute_num; ++i) {
       // Check attribute name length
-      if (attributes[i] == NULL ||
+      if (attributes[i] == nullptr ||
           strlen(attributes[i]) > TILEDB_NAME_MAX_LEN) {
         std::string errmsg = "Invalid attribute name length";
         PRINT_ERROR(errmsg);
@@ -750,9 +750,9 @@ int Array::reset_subarray(const void* subarray) {
 
   // Set subarray
   size_t subarray_size = 2 * array_schema_->coords_size();
-  if (subarray_ == NULL)
+  if (subarray_ == nullptr)
     subarray_ = malloc(subarray_size);
-  if (subarray == NULL)
+  if (subarray == nullptr)
     memcpy(subarray_, array_schema_->domain(), subarray_size);
   else
     memcpy(subarray_, subarray, subarray_size);
@@ -770,7 +770,7 @@ int Array::reset_subarray(const void* subarray) {
     }
 
     // Re-initialize ArraySortedWriteState
-    if (array_sorted_write_state_ != NULL)
+    if (array_sorted_write_state_ != nullptr)
       delete array_sorted_write_state_;
     if (mode_ == TILEDB_ARRAY_WRITE_SORTED_COL ||
         mode_ == TILEDB_ARRAY_WRITE_SORTED_ROW) {
@@ -778,11 +778,11 @@ int Array::reset_subarray(const void* subarray) {
       if (array_sorted_write_state_->init() != TILEDB_ASWS_OK) {
         tiledb_ar_errmsg = tiledb_asws_errmsg;
         delete array_sorted_write_state_;
-        array_sorted_write_state_ = NULL;
+        array_sorted_write_state_ = nullptr;
         return TILEDB_AR_ERR;
       }
     } else {
-      array_sorted_write_state_ = NULL;
+      array_sorted_write_state_ = nullptr;
     }
 
     // Get new fragment name
@@ -807,25 +807,25 @@ int Array::reset_subarray(const void* subarray) {
       fragments_[i]->reset_read_state();
 
     // Re-initialize array read state
-    if (array_read_state_ != NULL) {
+    if (array_read_state_ != nullptr) {
       delete array_read_state_;
-      array_read_state_ = NULL;
+      array_read_state_ = nullptr;
     }
     array_read_state_ = new ArrayReadState(this);
 
     // Re-initialize ArraySortedReadState
-    if (array_sorted_read_state_ != NULL)
+    if (array_sorted_read_state_ != nullptr)
       delete array_sorted_read_state_;
     if (mode_ != TILEDB_ARRAY_READ) {
       array_sorted_read_state_ = new ArraySortedReadState(this);
       if (array_sorted_read_state_->init() != TILEDB_ASRS_OK) {
         tiledb_ar_errmsg = tiledb_asrs_errmsg;
         delete array_sorted_read_state_;
-        array_sorted_read_state_ = NULL;
+        array_sorted_read_state_ = nullptr;
         return TILEDB_AR_ERR;
       }
     } else {
-      array_sorted_read_state_ = NULL;
+      array_sorted_read_state_ = nullptr;
     }
   }
 
@@ -852,9 +852,9 @@ int Array::reset_subarray_soft(const void* subarray) {
 
   // Set subarray
   size_t subarray_size = 2 * array_schema_->coords_size();
-  if (subarray_ == NULL)
+  if (subarray_ == nullptr)
     subarray_ = malloc(subarray_size);
-  if (subarray == NULL)
+  if (subarray == nullptr)
     memcpy(subarray_, array_schema_->domain(), subarray_size);
   else
     memcpy(subarray_, subarray, subarray_size);
@@ -868,9 +868,9 @@ int Array::reset_subarray_soft(const void* subarray) {
       fragments_[i]->reset_read_state();
 
     // Re-initialize array read state
-    if (array_read_state_ != NULL) {
+    if (array_read_state_ != nullptr) {
       delete array_read_state_;
-      array_read_state_ = NULL;
+      array_read_state_ = nullptr;
     }
     array_read_state_ = new ArrayReadState(this);
   }
@@ -1057,7 +1057,7 @@ void Array::aio_handle_next_request(AIO_Request* aio_request) {
     if (aio_request->mode_ == TILEDB_ARRAY_READ &&
         array_read_state_->overflow()) {
       *aio_request->status_ = TILEDB_AIO_OVERFLOW;
-      if (aio_request->overflow_ != NULL) {
+      if (aio_request->overflow_ != nullptr) {
         for (int i = 0; i < int(attribute_ids_.size()); ++i)
           aio_request->overflow_[i] =
               array_read_state_->overflow(attribute_ids_[i]);
@@ -1067,7 +1067,7 @@ void Array::aio_handle_next_request(AIO_Request* aio_request) {
          aio_request->mode_ == TILEDB_ARRAY_READ_SORTED_ROW) &&
         array_sorted_read_state_->overflow()) {
       *aio_request->status_ = TILEDB_AIO_OVERFLOW;
-      if (aio_request->overflow_ != NULL) {
+      if (aio_request->overflow_ != nullptr) {
         for (int i = 0; i < int(attribute_ids_.size()); ++i)
           aio_request->overflow_[i] =
               array_sorted_read_state_->overflow(attribute_ids_[i]);
@@ -1077,7 +1077,7 @@ void Array::aio_handle_next_request(AIO_Request* aio_request) {
     }
 
     // Invoke the callback
-    if (aio_request->completion_handle_ != NULL)
+    if (aio_request->completion_handle_ != nullptr)
       (*(aio_request->completion_handle_))(aio_request->completion_data_);
   } else {  // Error
     *aio_request->status_ = TILEDB_AIO_ERR;
@@ -1090,7 +1090,7 @@ void* Array::aio_handler(void* context) {
   ((Array*)context)->aio_handle_requests();
 
   // Return
-  return NULL;
+  return nullptr;
 }
 
 int Array::aio_push_request(AIO_Request* aio_request) {
@@ -1135,7 +1135,7 @@ int Array::aio_thread_create() {
 
   // Create the thread that will be handling all AIO requests
   int rc;
-  if ((rc = pthread_create(&aio_thread_, NULL, Array::aio_handler, this))) {
+  if ((rc = pthread_create(&aio_thread_, nullptr, Array::aio_handler, this))) {
     std::string errmsg = "Cannot create AIO thread";
     PRINT_ERROR(errmsg);
     tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
@@ -1183,7 +1183,7 @@ int Array::aio_thread_destroy() {
     ;
 
   // Join with the terminated thread
-  if (pthread_join(aio_thread_, NULL)) {
+  if (pthread_join(aio_thread_, nullptr)) {
     std::string errmsg = "Cannot join AIO thread";
     PRINT_ERROR(errmsg);
     tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
@@ -1196,7 +1196,7 @@ int Array::aio_thread_destroy() {
 
 std::string Array::new_fragment_name() const {
   struct timeval tp;
-  gettimeofday(&tp, NULL);
+  gettimeofday(&tp, nullptr);
   uint64_t ms = (uint64_t)tp.tv_sec * 1000L + tp.tv_usec / 1000;
   pthread_t self = pthread_self();
   uint64_t tid = 0;

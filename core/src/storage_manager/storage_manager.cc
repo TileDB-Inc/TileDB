@@ -90,7 +90,7 @@ StorageManager::~StorageManager() {
 /* ****************************** */
 
 int StorageManager::finalize() {
-  if (config_ != NULL)
+  if (config_ != nullptr)
     delete config_;
 
   return open_array_mtx_destroy();
@@ -190,7 +190,7 @@ int StorageManager::group_create(const std::string& group) const {
 int StorageManager::array_consolidate(const char* array_dir) {
   // Create an array object
   Array* array;
-  if (array_init(array, array_dir, TILEDB_ARRAY_READ, NULL, NULL, 0) !=
+  if (array_init(array, array_dir, TILEDB_ARRAY_READ, nullptr, nullptr, 0) !=
       TILEDB_SM_OK)
     return TILEDB_SM_ERR;
 
@@ -261,7 +261,7 @@ int StorageManager::array_create(const ArraySchemaC* array_schema_c) const {
 
 int StorageManager::array_create(const ArraySchema* array_schema) const {
   // Check array schema
-  if (array_schema == NULL) {
+  if (array_schema == nullptr) {
     std::string errmsg = "Cannot create array; Empty array schema";
     PRINT_ERROR(errmsg);
     tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
@@ -410,7 +410,7 @@ int StorageManager::array_init(
     const char** attributes,
     int attribute_num) {
   // Check array name length
-  if (array_dir == NULL || strlen(array_dir) > TILEDB_NAME_MAX_LEN) {
+  if (array_dir == nullptr || strlen(array_dir) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid array name length";
     PRINT_ERROR(errmsg);
     tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
@@ -423,7 +423,7 @@ int StorageManager::array_init(
     return TILEDB_SM_ERR;
 
   // Open the array
-  OpenArray* open_array = NULL;
+  OpenArray* open_array = nullptr;
   if (utils::array_read_mode(mode)) {
     if (array_open(utils::real_dir(array_dir), open_array, mode) !=
         TILEDB_SM_OK)
@@ -446,7 +446,7 @@ int StorageManager::array_init(
   if (rc_clone != TILEDB_AR_OK) {
     delete array_schema;
     delete array_clone;
-    array = NULL;
+    array = nullptr;
     if (utils::array_read_mode(mode))
       array_close(array_dir);
     return TILEDB_SM_ERR;
@@ -469,7 +469,7 @@ int StorageManager::array_init(
   if (rc != TILEDB_AR_OK) {
     delete array_schema;
     delete array;
-    array = NULL;
+    array = nullptr;
     if (utils::array_read_mode(mode))
       array_close(array_dir);
     tiledb_sm_errmsg = tiledb_as_errmsg;
@@ -482,7 +482,7 @@ int StorageManager::array_init(
 
 int StorageManager::array_finalize(Array* array) {
   // If the array is NULL, do nothing
-  if (array == NULL)
+  if (array == nullptr)
     return TILEDB_SM_OK;
 
   // Finalize and close the array
@@ -508,7 +508,7 @@ int StorageManager::array_finalize(Array* array) {
 
 int StorageManager::array_sync(Array* array) {
   // If the array is NULL, do nothing
-  if (array == NULL)
+  if (array == nullptr)
     return TILEDB_SM_OK;
 
   // Sync array
@@ -524,7 +524,7 @@ int StorageManager::array_sync(Array* array) {
 int StorageManager::array_sync_attribute(
     Array* array, const std::string& attribute) {
   // If the array is NULL, do nothing
-  if (array == NULL)
+  if (array == nullptr)
     return TILEDB_SM_OK;
 
   // Sync array
@@ -550,7 +550,7 @@ int StorageManager::array_iterator_init(
   Array* array;
   if (array_init(array, array_dir, mode, subarray, attributes, attribute_num) !=
       TILEDB_SM_OK) {
-    array_it = NULL;
+    array_it = nullptr;
     return TILEDB_SM_ERR;
   }
 
@@ -559,7 +559,7 @@ int StorageManager::array_iterator_init(
   if (array_it->init(array, buffers, buffer_sizes) != TILEDB_AIT_OK) {
     array_finalize(array);
     delete array_it;
-    array_it = NULL;
+    array_it = nullptr;
     tiledb_sm_errmsg = tiledb_ait_errmsg;
     return TILEDB_SM_ERR;
   }
@@ -570,7 +570,7 @@ int StorageManager::array_iterator_init(
 
 int StorageManager::array_iterator_finalize(ArrayIterator* array_it) {
   // If the array iterator is NULL, do nothing
-  if (array_it == NULL)
+  if (array_it == nullptr)
     return TILEDB_SM_OK;
 
   // Finalize and close array
@@ -705,7 +705,7 @@ int StorageManager::metadata_create(
 
 int StorageManager::metadata_create(const ArraySchema* array_schema) const {
   // Check metadata schema
-  if (array_schema == NULL) {
+  if (array_schema == nullptr) {
     std::string errmsg = "Cannot create metadata; Empty metadata schema";
     PRINT_ERROR(errmsg);
     tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
@@ -845,7 +845,7 @@ int StorageManager::metadata_init(
     const char** attributes,
     int attribute_num) {
   // Check metadata name length
-  if (metadata_dir == NULL || strlen(metadata_dir) > TILEDB_NAME_MAX_LEN) {
+  if (metadata_dir == nullptr || strlen(metadata_dir) > TILEDB_NAME_MAX_LEN) {
     std::string errmsg = "Invalid metadata name length";
     PRINT_ERROR(errmsg);
     tiledb_sm_errmsg = TILEDB_SM_ERRMSG + errmsg;
@@ -858,7 +858,7 @@ int StorageManager::metadata_init(
     return TILEDB_SM_ERR;
 
   // Open the array that implements the metadata
-  OpenArray* open_array = NULL;
+  OpenArray* open_array = nullptr;
   if (mode == TILEDB_METADATA_READ) {
     if (array_open(
             utils::real_dir(metadata_dir), open_array, TILEDB_ARRAY_READ) !=
@@ -881,7 +881,7 @@ int StorageManager::metadata_init(
   if (rc != TILEDB_MT_OK) {
     delete array_schema;
     delete metadata;
-    metadata = NULL;
+    metadata = nullptr;
     array_close(metadata_dir);
     tiledb_sm_errmsg = tiledb_mt_errmsg;
     return TILEDB_SM_ERR;
@@ -892,7 +892,7 @@ int StorageManager::metadata_init(
 
 int StorageManager::metadata_finalize(Metadata* metadata) {
   // If the metadata is NULL, do nothing
-  if (metadata == NULL)
+  if (metadata == nullptr)
     return TILEDB_SM_OK;
 
   // Finalize the metadata and close the underlying array
@@ -933,7 +933,7 @@ int StorageManager::metadata_iterator_init(
           TILEDB_METADATA_READ,
           attributes,
           attribute_num) != TILEDB_SM_OK) {
-    metadata_it = NULL;
+    metadata_it = nullptr;
     return TILEDB_SM_ERR;
   }
 
@@ -942,7 +942,7 @@ int StorageManager::metadata_iterator_init(
   if (metadata_it->init(metadata, buffers, buffer_sizes) != TILEDB_MIT_OK) {
     metadata_finalize(metadata);
     delete metadata_it;
-    metadata_it = NULL;
+    metadata_it = nullptr;
     tiledb_sm_errmsg = tiledb_mit_errmsg;
     return TILEDB_SM_ERR;
   }
@@ -953,7 +953,7 @@ int StorageManager::metadata_iterator_init(
 
 int StorageManager::metadata_iterator_finalize(MetadataIterator* metadata_it) {
   // If the metadata iterator is NULL, do nothing
-  if (metadata_it == NULL)
+  if (metadata_it == nullptr)
     return TILEDB_SM_OK;
 
   // Close array and finalize metadata
@@ -993,7 +993,7 @@ int StorageManager::ls(
   struct dirent* next_file;
   DIR* dir = opendir(parent_dir_real.c_str());
 
-  if (dir == NULL) {
+  if (dir == nullptr) {
     dir_num = 0;
     return TILEDB_SM_OK;
   }
@@ -1077,7 +1077,7 @@ int StorageManager::ls_c(const char* parent_dir, int& dir_num) const {
   struct dirent* next_file;
   DIR* dir = opendir(parent_dir_real.c_str());
 
-  if (dir == NULL) {
+  if (dir == nullptr) {
     dir_num = 0;
     return TILEDB_SM_OK;
   }
@@ -1184,7 +1184,7 @@ int StorageManager::array_clear(const std::string& array) const {
   struct dirent* next_file;
   DIR* dir = opendir(array_real.c_str());
 
-  if (dir == NULL) {
+  if (dir == nullptr) {
     std::string errmsg =
         std::string("Cannot open array directory; ") + strerror(errno);
     PRINT_ERROR(errmsg);
@@ -1269,7 +1269,7 @@ int StorageManager::array_close(const std::string& array) {
         consolidation_filelock_unlock(it->second->consolidation_filelock_);
 
     // Delete array schema
-    if (it->second->array_schema_ != NULL)
+    if (it->second->array_schema_ != nullptr)
       delete it->second->array_schema_;
 
     // Free open array
@@ -1448,7 +1448,7 @@ int StorageManager::array_open(
             open_array->book_keeping_,
             mode) != TILEDB_SM_OK) {
       delete open_array->array_schema_;
-      open_array->array_schema_ = NULL;
+      open_array->array_schema_ = nullptr;
       open_array->mutex_unlock();
       return TILEDB_SM_ERR;
     }
@@ -1721,7 +1721,7 @@ int StorageManager::group_clear(const std::string& group) const {
   struct dirent* next_file;
   DIR* dir = opendir(group_real.c_str());
 
-  if (dir == NULL) {
+  if (dir == nullptr) {
     std::string errmsg = std::string("Cannot open group directory '") +
                          group_real + "'; " + strerror(errno);
     PRINT_ERROR(errmsg);
@@ -1856,7 +1856,7 @@ int StorageManager::metadata_clear(const std::string& metadata) const {
   struct dirent* next_file;
   DIR* dir = opendir(metadata_real.c_str());
 
-  if (dir == NULL) {
+  if (dir == nullptr) {
     std::string errmsg =
         std::string("Cannot open metadata directory; ") + strerror(errno);
     PRINT_ERROR(errmsg);
@@ -2101,7 +2101,7 @@ int StorageManager::workspace_clear(const std::string& workspace) const {
   struct dirent* next_file;
   DIR* dir = opendir(workspace_real.c_str());
 
-  if (dir == NULL) {
+  if (dir == nullptr) {
     std::string errmsg = std::string("Cannot open workspace directory '") +
                          workspace_real + "'; " + strerror(errno);
     PRINT_ERROR(errmsg);

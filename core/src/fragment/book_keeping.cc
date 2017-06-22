@@ -72,25 +72,25 @@ BookKeeping::BookKeeping(
     , dense_(dense)
     , fragment_name_(fragment_name)
     , mode_(mode) {
-  domain_ = NULL;
-  non_empty_domain_ = NULL;
+  domain_ = nullptr;
+  non_empty_domain_ = nullptr;
 }
 
 BookKeeping::~BookKeeping() {
-  if (domain_ != NULL)
+  if (domain_ != nullptr)
     free(domain_);
 
-  if (non_empty_domain_ != NULL)
+  if (non_empty_domain_ != nullptr)
     free(non_empty_domain_);
 
   int64_t mbr_num = mbrs_.size();
   for (int64_t i = 0; i < mbr_num; ++i)
-    if (mbrs_[i] != NULL)
+    if (mbrs_[i] != nullptr)
       free(mbrs_[i]);
 
   int64_t bounding_coords_num = bounding_coords_.size();
   for (int64_t i = 0; i < bounding_coords_num; ++i)
-    if (bounding_coords_[i] != NULL)
+    if (bounding_coords_[i] != nullptr)
       free(bounding_coords_[i]);
 }
 
@@ -244,7 +244,7 @@ int BookKeeping::finalize() {
 
   // Open book-keeping file
   gzFile fd = gzopen(filename.c_str(), "wb");
-  if (fd == NULL) {
+  if (fd == nullptr) {
     std::string errmsg = "Cannot finalize book-keeping; Cannot open file";
     PRINT_ERROR(errmsg);
     tiledb_bk_errmsg = TILEDB_BK_ERRMSG + errmsg;
@@ -302,7 +302,7 @@ int BookKeeping::init(const void* non_empty_domain) {
   // Set non-empty domain
   size_t domain_size = 2 * array_schema_->coords_size();
   non_empty_domain_ = malloc(domain_size);
-  if (non_empty_domain == NULL)
+  if (non_empty_domain == nullptr)
     memcpy(non_empty_domain_, array_schema_->domain(), domain_size);
   else
     memcpy(non_empty_domain_, non_empty_domain, domain_size);
@@ -367,7 +367,7 @@ int BookKeeping::load() {
 
   // Open book-keeping file
   gzFile fd = gzopen(filename.c_str(), "rb");
-  if (fd == NULL) {
+  if (fd == nullptr) {
     std::string errmsg = "Cannot load book-keeping; Cannot open file";
     PRINT_ERROR(errmsg);
     tiledb_bk_errmsg = TILEDB_BK_ERRMSG + errmsg;
@@ -518,7 +518,7 @@ int BookKeeping::flush_mbrs(gzFile fd) const {
  */
 int BookKeeping::flush_non_empty_domain(gzFile fd) const {
   size_t domain_size =
-      (non_empty_domain_ == NULL) ? 0 : array_schema_->coords_size() * 2;
+      (non_empty_domain_ == nullptr) ? 0 : array_schema_->coords_size() * 2;
 
   // Write non-empty domain size
   if (gzwrite(fd, &domain_size, sizeof(size_t)) != sizeof(size_t)) {
@@ -530,7 +530,7 @@ int BookKeeping::flush_non_empty_domain(gzFile fd) const {
   }
 
   // Write non-empty domain
-  if (non_empty_domain_ != NULL) {
+  if (non_empty_domain_ != nullptr) {
     if (gzwrite(fd, non_empty_domain_, domain_size) != int(domain_size)) {
       std::string errmsg =
           "Cannot finalize book-keeping; Writing domain failed";
@@ -789,7 +789,7 @@ int BookKeeping::load_non_empty_domain(gzFile fd) {
 
   // Get non-empty domain
   if (domain_size == 0) {
-    non_empty_domain_ = NULL;
+    non_empty_domain_ = nullptr;
   } else {
     non_empty_domain_ = malloc(domain_size);
     if (gzread(fd, non_empty_domain_, domain_size) != int(domain_size)) {
@@ -801,8 +801,8 @@ int BookKeeping::load_non_empty_domain(gzFile fd) {
   }
 
   // Get expanded domain
-  if (non_empty_domain_ == NULL) {
-    domain_ = NULL;
+  if (non_empty_domain_ == nullptr) {
+    domain_ = nullptr;
   } else {
     domain_ = malloc(domain_size);
     memcpy(domain_, non_empty_domain_, domain_size);

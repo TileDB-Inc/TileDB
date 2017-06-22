@@ -35,7 +35,7 @@
 int main() {
   // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Prepare parameters for array schema
   const char* array_name = "my_workspace/sparse_arrays/my_array_B";

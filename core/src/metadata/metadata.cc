@@ -60,7 +60,7 @@ std::string tiledb_mt_errmsg = "";
 /* ****************************** */
 
 Metadata::Metadata() {
-  array_ = NULL;
+  array_ = nullptr;
 }
 
 Metadata::~Metadata() {
@@ -137,7 +137,7 @@ int Metadata::finalize() {
   int rc = array_->finalize();
 
   delete array_;
-  array_ = NULL;
+  array_ = nullptr;
 
   if (rc != TILEDB_AR_OK) {
     tiledb_mt_errmsg = tiledb_ar_errmsg;
@@ -172,7 +172,7 @@ int Metadata::init(
   // Set attributes
   char** array_attributes;
   int array_attribute_num;
-  if (attributes == NULL) {
+  if (attributes == nullptr) {
     array_attribute_num = (mode == TILEDB_METADATA_WRITE) ?
                               array_schema->attribute_num() + 1 :
                               array_schema->attribute_num();
@@ -190,7 +190,7 @@ int Metadata::init(
     for (int i = 0; i < attribute_num; ++i) {
       size_t attribute_len = strlen(attributes[i]);
       // Check attribute name length
-      if (attributes[i] == NULL || attribute_len > TILEDB_NAME_MAX_LEN) {
+      if (attributes[i] == nullptr || attribute_len > TILEDB_NAME_MAX_LEN) {
         std::string errmsg = "Invalid attribute name length";
         PRINT_ERROR(errmsg);
         tiledb_mt_errmsg = TILEDB_MT_ERRMSG + errmsg;
@@ -215,7 +215,7 @@ int Metadata::init(
       array_mode,
       (const char**)array_attributes,
       array_attribute_num,
-      NULL,
+      nullptr,
       config);
 
   // Clean up
@@ -240,7 +240,7 @@ int Metadata::reset_attributes(const char** attributes, int attribute_num) {
   // Set attributes
   char** array_attributes;
   int array_attribute_num;
-  if (attributes == NULL) {
+  if (attributes == nullptr) {
     array_attribute_num = (mode_ == TILEDB_METADATA_WRITE) ?
                               array_schema->attribute_num() + 1 :
                               array_schema->attribute_num();
@@ -258,7 +258,7 @@ int Metadata::reset_attributes(const char** attributes, int attribute_num) {
     for (int i = 0; i < attribute_num; ++i) {
       size_t attribute_len = strlen(attributes[i]);
       // Check attribute name length
-      if (attributes[i] == NULL || attribute_len > TILEDB_NAME_MAX_LEN) {
+      if (attributes[i] == nullptr || attribute_len > TILEDB_NAME_MAX_LEN) {
         std::string errmsg = "Invalid attribute name length";
         PRINT_ERROR(errmsg);
         tiledb_mt_errmsg = errmsg;
@@ -305,7 +305,7 @@ int Metadata::write(
     tiledb_mt_errmsg = errmsg;
     return TILEDB_MT_ERR;
   }
-  if (keys == NULL) {
+  if (keys == nullptr) {
     std::string errmsg = "Cannot write to metadata; No keys given";
     PRINT_ERROR(errmsg);
     tiledb_mt_errmsg = errmsg;

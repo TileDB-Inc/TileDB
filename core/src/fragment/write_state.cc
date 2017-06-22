@@ -93,15 +93,15 @@ WriteState::WriteState(const Fragment* fragment, BookKeeping* book_keeping)
   // Initialize current tiles
   tiles_.resize(attribute_num + 1);
   for (int i = 0; i < attribute_num + 1; ++i)
-    tiles_[i] = NULL;
+    tiles_[i] = nullptr;
 
   // Initialize current variable tiles
   tiles_var_.resize(attribute_num);
   for (int i = 0; i < attribute_num; ++i)
-    tiles_var_[i] = NULL;
+    tiles_var_[i] = nullptr;
 
   // Initialize tile buffer used in compression
-  tile_compressed_ = NULL;
+  tile_compressed_ = nullptr;
   tile_compressed_allocated_size_ = 0;
 
   // Initialize current tile offsets
@@ -135,25 +135,25 @@ WriteState::~WriteState() {
   // Free current tiles
   int64_t tile_num = tiles_.size();
   for (int64_t i = 0; i < tile_num; ++i)
-    if (tiles_[i] != NULL)
+    if (tiles_[i] != nullptr)
       free(tiles_[i]);
 
   // Free current tiles
   int64_t tile_var_num = tiles_var_.size();
   for (int64_t i = 0; i < tile_var_num; ++i)
-    if (tiles_var_[i] != NULL)
+    if (tiles_var_[i] != nullptr)
       free(tiles_var_[i]);
 
   // Free current compressed tile buffer
-  if (tile_compressed_ != NULL)
+  if (tile_compressed_ != nullptr)
     free(tile_compressed_);
 
   // Free current MBR
-  if (mbr_ != NULL)
+  if (mbr_ != nullptr)
     free(mbr_);
 
   // Free current bounding coordinates
-  if (bounding_coords_ != NULL)
+  if (bounding_coords_ != nullptr)
     free(bounding_coords_);
 }
 
@@ -403,7 +403,7 @@ int WriteState::write(const void** buffers, const size_t* buffer_sizes) {
         filename = file_prefix + array_schema->attribute(attribute_ids[i]) +
                    "_var" + TILEDB_FILE_SUFFIX;
         FILE* fptr = fopen(filename.c_str(), "a");
-        if (fptr == 0) {
+        if (fptr == nullptr) {
           std::string errmsg = "Cannot write to file; Error opening file";
           PRINT_ERROR(errmsg);
           tiledb_ws_errmsg = TILEDB_WS_ERRMSG + errmsg;
@@ -498,7 +498,7 @@ int WriteState::compress_tile_gzip(
   size_t coords_size = array_schema->coords_size();
 
   // Allocate space to store the compressed tile
-  if (tile_compressed_ == NULL) {
+  if (tile_compressed_ == nullptr) {
     tile_compressed_allocated_size_ =
         tile_size + 6 + 5 * (ceil(tile_size / 16834.0));
     tile_compressed_ = malloc(tile_compressed_allocated_size_);
@@ -548,7 +548,7 @@ int WriteState::compress_tile_zstd(
 
   // Allocate space to store the compressed tile
   size_t compress_bound = ZSTD_compressBound(tile_size);
-  if (tile_compressed_ == NULL) {
+  if (tile_compressed_ == nullptr) {
     tile_compressed_allocated_size_ = compress_bound;
     tile_compressed_ = malloc(compress_bound);
   }
@@ -600,7 +600,7 @@ int WriteState::compress_tile_lz4(
 
   // Allocate space to store the compressed tile
   size_t compress_bound = LZ4_compressBound(tile_size);
-  if (tile_compressed_ == NULL) {
+  if (tile_compressed_ == nullptr) {
     tile_compressed_allocated_size_ = compress_bound;
     tile_compressed_ = malloc(compress_bound);
   }
@@ -645,7 +645,7 @@ int WriteState::compress_tile_blosc(
 
   // Allocate space to store the compressed tile
   size_t compress_bound = tile_size + BLOSC_MAX_OVERHEAD;
-  if (tile_compressed_ == NULL) {
+  if (tile_compressed_ == nullptr) {
     tile_compressed_allocated_size_ = compress_bound;
     tile_compressed_ = malloc(compress_bound);
   }
@@ -723,7 +723,7 @@ int WriteState::compress_tile_rle(
   else
     compress_bound =
         utils::RLE_compress_bound_coords(tile_size, value_size, dim_num);
-  if (tile_compressed_ == NULL) {
+  if (tile_compressed_ == nullptr) {
     tile_compressed_allocated_size_ = compress_bound;
     tile_compressed_ = malloc(compress_bound);
   }
@@ -796,7 +796,7 @@ int WriteState::compress_tile_bzip2(
   size_t coords_size = array_schema->coords_size();
 
   // Allocate space to store the compressed tile
-  if (tile_compressed_ == NULL) {
+  if (tile_compressed_ == nullptr) {
     tile_compressed_allocated_size_ = tile_size;
     tile_compressed_ = malloc(tile_size);
   }
@@ -1042,7 +1042,7 @@ void WriteState::sort_cell_pos(
     cell_pos[i] = i;
 
   // Invoke the proper sort function, based on the cell order
-  if (array_schema->tile_extents() == NULL) {  // NO TILE GRID
+  if (array_schema->tile_extents() == nullptr) {  // NO TILE GRID
     if (cell_order == TILEDB_ROW_MAJOR) {
       // Sort cell positions
       SORT(cell_pos.begin(), cell_pos.end(), SmallerRow<T>(buffer_T, dim_num));
@@ -1267,7 +1267,7 @@ int WriteState::write_dense_attr_cmp(
   size_t tile_size = fragment_->tile_size(attribute_id);
 
   // Initialize local tile buffer if needed
-  if (tiles_[attribute_id] == NULL)
+  if (tiles_[attribute_id] == nullptr)
     tiles_[attribute_id] = malloc(tile_size);
 
   // For easy reference
@@ -1440,11 +1440,11 @@ int WriteState::write_dense_attr_var_cmp(
   size_t tile_size = cell_num_per_tile * cell_size;
 
   // Initialize local tile buffer if needed
-  if (tiles_[attribute_id] == NULL)
+  if (tiles_[attribute_id] == nullptr)
     tiles_[attribute_id] = malloc(tile_size);
 
   // Initialize local variable tile buffer if needed
-  if (tiles_var_[attribute_id] == NULL) {
+  if (tiles_var_[attribute_id] == nullptr) {
     tiles_var_[attribute_id] = malloc(tile_size);
     tiles_var_sizes_[attribute_id] = tile_size;
   }
@@ -1708,7 +1708,7 @@ int WriteState::write_sparse_attr_cmp(
     update_book_keeping(buffer, buffer_size);
 
   // Initialize local tile buffer if needed
-  if (tiles_[attribute_id] == NULL)
+  if (tiles_[attribute_id] == nullptr)
     tiles_[attribute_id] = malloc(tile_size);
 
   // For easy reference
@@ -1882,11 +1882,11 @@ int WriteState::write_sparse_attr_var_cmp(
   assert(attribute_id != array_schema->attribute_num());
 
   // Initialize local tile buffer if needed
-  if (tiles_[attribute_id] == NULL)
+  if (tiles_[attribute_id] == nullptr)
     tiles_[attribute_id] = malloc(tile_size);
 
   // Initialize local variable tile buffer if needed
-  if (tiles_var_[attribute_id] == NULL) {
+  if (tiles_var_[attribute_id] == nullptr) {
     tiles_var_[attribute_id] = malloc(tile_size);
     tiles_var_sizes_[attribute_id] = tile_size;
   }

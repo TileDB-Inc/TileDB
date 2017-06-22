@@ -35,7 +35,7 @@
 int main() {
   // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Create a workspace
   tiledb_workspace_create(tiledb_ctx, "my_workspace");

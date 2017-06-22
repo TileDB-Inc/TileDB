@@ -68,23 +68,23 @@ std::string tiledb_as_errmsg = "";
 
 ArraySchema::ArraySchema() {
   cell_num_per_tile_ = -1;
-  domain_ = NULL;
-  tile_extents_ = NULL;
-  tile_domain_ = NULL;
-  tile_coords_aux_ = NULL;
+  domain_ = nullptr;
+  tile_extents_ = nullptr;
+  tile_domain_ = nullptr;
+  tile_coords_aux_ = nullptr;
 }
 
 ArraySchema::~ArraySchema() {
-  if (domain_ != NULL)
+  if (domain_ != nullptr)
     free(domain_);
 
-  if (tile_extents_ != NULL)
+  if (tile_extents_ != nullptr)
     free(tile_extents_);
 
-  if (tile_domain_ != NULL)
+  if (tile_domain_ != nullptr)
     free(tile_domain_);
 
-  if (tile_coords_aux_ != NULL)
+  if (tile_coords_aux_ != nullptr)
     free(tile_coords_aux_);
 }
 
@@ -129,8 +129,8 @@ void ArraySchema::array_schema_export(ArraySchemaC* array_schema_c) const {
   memcpy(array_schema_c->domain_, domain_, 2 * coords_size);
 
   // Set tile extents
-  if (tile_extents_ == NULL) {
-    array_schema_c->tile_extents_ = NULL;
+  if (tile_extents_ == nullptr) {
+    array_schema_c->tile_extents_ = nullptr;
   } else {
     array_schema_c->tile_extents_ = malloc(coords_size);
     memcpy(array_schema_c->tile_extents_, tile_extents_, coords_size);
@@ -508,10 +508,10 @@ void ArraySchema::print() const {
   std::cout << "Dense:\n\t" << (dense_ ? "true" : "false") << "\n";
   // Tile type
   std::cout << "Tile types:\n\t"
-            << (tile_extents_ == NULL ? "irregular" : "regular") << "\n";
+            << (tile_extents_ == nullptr ? "irregular" : "regular") << "\n";
   // Tile order
   std::cout << "Tile order:\n\t";
-  if (tile_extents_ == NULL) {
+  if (tile_extents_ == nullptr) {
     std::cout << "-\n";
   } else {
     if (tile_order_ == TILEDB_COL_MAJOR)
@@ -527,13 +527,13 @@ void ArraySchema::print() const {
     std::cout << "row-major\n";
   // Capacity
   std::cout << "Capacity:\n\t";
-  if (tile_extents_ != NULL)
+  if (tile_extents_ != nullptr)
     std::cout << "-\n";
   else
     std::cout << capacity_ << "\n";
   // Tile extents
   std::cout << "Tile extents:\n";
-  if (tile_extents_ == NULL) {
+  if (tile_extents_ == nullptr) {
     std::cout << "-\n";
   } else {
     if (types_[attribute_num_] == TILEDB_INT32) {
@@ -741,11 +741,11 @@ int ArraySchema::serialize(
   memcpy(buffer + offset, domain_, domain_size);
   offset += 2 * coords_size();
   // Copy tile_extents_
-  int tile_extents_size = ((tile_extents_ == NULL) ? 0 : coords_size());
+  int tile_extents_size = ((tile_extents_ == nullptr) ? 0 : coords_size());
   assert(offset + sizeof(int) < buffer_size);
   memcpy(buffer + offset, &tile_extents_size, sizeof(int));
   offset += sizeof(int);
-  if (tile_extents_ != NULL) {
+  if (tile_extents_ != nullptr) {
     assert(offset + tile_extents_size < buffer_size);
     memcpy(buffer + offset, tile_extents_, tile_extents_size);
     offset += tile_extents_size;
@@ -1124,7 +1124,7 @@ int ArraySchema::deserialize(
   memcpy(&tile_extents_size, buffer + offset, sizeof(int));
   offset += sizeof(int);
   if (tile_extents_size == 0) {
-    tile_extents_ = NULL;
+    tile_extents_ = nullptr;
   } else {
     assert(offset + tile_extents_size < buffer_size);
     tile_extents_ = malloc(tile_extents_size);
@@ -1177,7 +1177,7 @@ int ArraySchema::deserialize(
   compute_tile_offsets();
 
   // Initialize static auxiliary variables
-  if (tile_coords_aux_ != NULL)
+  if (tile_coords_aux_ != nullptr)
     free(tile_coords_aux_);
   tile_coords_aux_ = malloc(coords_size_ * dim_num_);
 
@@ -1232,7 +1232,7 @@ int ArraySchema::init(const ArraySchemaC* array_schema_c) {
   compute_tile_offsets();
 
   // Initialize static auxiliary variables
-  if (tile_coords_aux_ != NULL)
+  if (tile_coords_aux_ != nullptr)
     free(tile_coords_aux_);
   tile_coords_aux_ = malloc(coords_size_ * dim_num_);
 
@@ -1247,7 +1247,7 @@ int ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
   array_schema_c.capacity_ = metadata_schema_c->capacity_;
   array_schema_c.cell_order_ = TILEDB_ROW_MAJOR;
   array_schema_c.tile_order_ = TILEDB_ROW_MAJOR;
-  array_schema_c.tile_extents_ = NULL;
+  array_schema_c.tile_extents_ = nullptr;
   array_schema_c.dense_ = 0;
 
   // Set attributes
@@ -1305,7 +1305,7 @@ int ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
   // Set cell num val
   int* cell_val_num =
       (int*)malloc((metadata_schema_c->attribute_num_ + 1) * sizeof(int));
-  if (metadata_schema_c->cell_val_num_ == NULL) {
+  if (metadata_schema_c->cell_val_num_ == nullptr) {
     for (int i = 0; i < metadata_schema_c->attribute_num_; ++i)
       cell_val_num[i] = 1;
   } else {
@@ -1318,7 +1318,7 @@ int ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
   // Set compression
   int* compression =
       (int*)malloc((metadata_schema_c->attribute_num_ + 2) * sizeof(int));
-  if (metadata_schema_c->compression_ == NULL) {
+  if (metadata_schema_c->compression_ == nullptr) {
     for (int i = 0; i < metadata_schema_c->attribute_num_ + 1; ++i)
       compression[i] = TILEDB_NO_COMPRESSION;
   } else {
@@ -1357,7 +1357,7 @@ void ArraySchema::set_array_name(const char* array_name) {
 
 int ArraySchema::set_attributes(char** attributes, int attribute_num) {
   // Sanity check on attributes
-  if (attributes == NULL) {
+  if (attributes == nullptr) {
     std::string errmsg = "Cannot set attributes; No attributes given";
     PRINT_ERROR(errmsg);
     tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
@@ -1414,7 +1414,7 @@ void ArraySchema::set_capacity(int64_t capacity) {
 }
 
 void ArraySchema::set_cell_val_num(const int* cell_val_num) {
-  if (cell_val_num == NULL) {
+  if (cell_val_num == nullptr) {
     for (int i = 0; i < attribute_num_; ++i)
       cell_val_num_.push_back(1);
   } else {
@@ -1439,7 +1439,7 @@ int ArraySchema::set_cell_order(int cell_order) {
 
 int ArraySchema::set_compression(int* compression) {
   // Set compression
-  if (compression == NULL) {
+  if (compression == nullptr) {
     for (int i = 0; i < attribute_num_ + 1; ++i)
       compression_.push_back(TILEDB_NO_COMPRESSION);
   } else {
@@ -1472,7 +1472,7 @@ void ArraySchema::set_dense(int dense) {
 
 int ArraySchema::set_dimensions(char** dimensions, int dim_num) {
   // Sanity check on dimensions
-  if (dimensions == NULL) {
+  if (dimensions == nullptr) {
     std::string errmsg = "Cannot set dimensions; No dimensions given";
     PRINT_ERROR(errmsg);
     tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
@@ -1517,7 +1517,7 @@ int ArraySchema::set_dimensions(char** dimensions, int dim_num) {
 
 int ArraySchema::set_domain(const void* domain) {
   // Sanity check
-  if (domain == NULL) {
+  if (domain == nullptr) {
     std::string errmsg = "Cannot set domain; Domain not provided";
     PRINT_ERROR(errmsg);
     tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
@@ -1525,7 +1525,7 @@ int ArraySchema::set_domain(const void* domain) {
   }
 
   // Clear domain
-  if (domain_ != NULL)
+  if (domain_ != nullptr)
     free(domain_);
 
   // Set domain
@@ -1667,7 +1667,7 @@ int ArraySchema::set_domain(const void* domain) {
 
 int ArraySchema::set_tile_extents(const void* tile_extents) {
   // Dense arrays must have tile extents
-  if (tile_extents == NULL && dense_) {
+  if (tile_extents == nullptr && dense_) {
     std::string errmsg =
         "Cannot set tile extents; Dense arrays must have tile extents";
     PRINT_ERROR(errmsg);
@@ -1676,12 +1676,12 @@ int ArraySchema::set_tile_extents(const void* tile_extents) {
   }
 
   // Free existing tile extends
-  if (tile_extents_ != NULL)
+  if (tile_extents_ != nullptr)
     free(tile_extents_);
 
   // Set tile extents
-  if (tile_extents == NULL) {
-    tile_extents_ = NULL;
+  if (tile_extents == nullptr) {
+    tile_extents_ = nullptr;
   } else {
     size_t tile_extents_size = coords_size();
     tile_extents_ = malloc(tile_extents_size);
@@ -1708,7 +1708,7 @@ int ArraySchema::set_tile_order(int tile_order) {
 
 int ArraySchema::set_types(const int* types) {
   // Sanity check
-  if (types == NULL) {
+  if (types == nullptr) {
     std::string errmsg = "Cannot set types; Types not provided";
     PRINT_ERROR(errmsg);
     tiledb_as_errmsg = TILEDB_AS_ERRMSG + errmsg;
@@ -1821,7 +1821,7 @@ void ArraySchema::expand_domain(void* domain) const {
 template <class T>
 void ArraySchema::expand_domain(T* domain) const {
   // Applicable only to regular tiles
-  if (tile_extents_ == NULL)
+  if (tile_extents_ == nullptr)
     return;
 
   const T* tile_extents = static_cast<const T*>(tile_extents_);
@@ -2003,7 +2003,7 @@ inline int64_t ArraySchema::tile_id(const T* cell_coords) const {
   const T* tile_extents = static_cast<const T*>(tile_extents_);
 
   // Trivial case
-  if (tile_extents == NULL)
+  if (tile_extents == nullptr)
     return 0;
 
   // Calculate tile coordinates
@@ -2083,7 +2083,7 @@ size_t ArraySchema::compute_bin_size() const {
   // Size for domain_
   bin_size += sizeof(int) + 2 * coords_size();
   // Size for tile_extents_
-  bin_size += sizeof(int) + ((tile_extents_ == NULL) ? 0 : coords_size());
+  bin_size += sizeof(int) + ((tile_extents_ == nullptr) ? 0 : coords_size());
   // Size for types_
   bin_size += (attribute_num_ + 1) * sizeof(char);
   // Size for cell_val_num_
@@ -2219,7 +2219,7 @@ void ArraySchema::compute_tile_domain() {
 
 template <class T>
 void ArraySchema::compute_tile_domain() {
-  if (tile_extents_ == NULL)
+  if (tile_extents_ == nullptr)
     return;
 
   // For easy reference
@@ -2273,7 +2273,7 @@ void ArraySchema::compute_tile_offsets() {
 template <class T>
 void ArraySchema::compute_tile_offsets() {
   // Applicable only to non-NULL space tiles
-  if (tile_extents_ == NULL)
+  if (tile_extents_ == nullptr)
     return;
 
   // For easy reference
