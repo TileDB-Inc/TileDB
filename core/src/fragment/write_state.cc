@@ -193,10 +193,10 @@ int WriteState::sync() {
   int rc;
 
   // Sync all attributes
-  for (int i = 0; i < (int)attribute_ids.size(); ++i) {
+  for (int attribute_id : attribute_ids) {
     // For all attributes
     filename = fragment_->fragment_name() + "/" +
-               array_schema->attribute(attribute_ids[i]) + TILEDB_FILE_SUFFIX;
+               array_schema->attribute(attribute_id) + TILEDB_FILE_SUFFIX;
     if (write_method == TILEDB_IO_WRITE) {
       rc = utils::sync(filename.c_str());
       // Handle error
@@ -224,9 +224,9 @@ int WriteState::sync() {
     }
 
     // Only for variable-size attributes (they have an extra file)
-    if (array_schema->var_size(attribute_ids[i])) {
+    if (array_schema->var_size(attribute_id)) {
       filename = fragment_->fragment_name() + "/" +
-                 array_schema->attribute(attribute_ids[i]) + "_var" +
+                 array_schema->attribute(attribute_id) + "_var" +
                  TILEDB_FILE_SUFFIX;
       if (write_method == TILEDB_IO_WRITE) {
         rc = utils::sync(filename.c_str());
