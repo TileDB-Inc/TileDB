@@ -309,7 +309,7 @@ int ArrayReadState::compute_unsorted_fragment_cell_ranges_dense(
       }
     } else {
       // Append an empty list
-      unsorted_fragment_cell_ranges.push_back(FragmentCellRanges());
+      unsorted_fragment_cell_ranges.emplace_back();
     }
   }
 
@@ -381,7 +381,7 @@ int ArrayReadState::compute_unsorted_fragment_cell_ranges_sparse(
       }
     } else {
       // Append an empty list
-      unsorted_fragment_cell_ranges.push_back(FragmentCellRanges());
+      unsorted_fragment_cell_ranges.emplace_back();
     }
   }
 
@@ -1935,8 +1935,7 @@ ArrayReadState::FragmentCellRanges ArrayReadState::empty_fragment_cell_ranges()
     }
 
     // Insert the new range into the result vector
-    fragment_cell_ranges.push_back(
-        FragmentCellRange(fragment_info, cell_range));
+    fragment_cell_ranges.emplace_back(fragment_info, cell_range);
   } else {  // Non-contiguous cells, multiple ranges
     // Initialize the coordinates at the beginning of the global range
     T* coords = new T[dim_num];
@@ -1960,8 +1959,7 @@ ArrayReadState::FragmentCellRanges ArrayReadState::empty_fragment_cell_ranges()
             query_tile_overlap_subarray[2 * (dim_num - 1) + 1];
 
         // Insert the new range into the result vector
-        fragment_cell_ranges.push_back(
-            FragmentCellRange(fragment_info, cell_range));
+        fragment_cell_ranges.emplace_back(fragment_info, cell_range);
 
         // Advance coordinates
         i = dim_num - 2;
@@ -1985,8 +1983,7 @@ ArrayReadState::FragmentCellRanges ArrayReadState::empty_fragment_cell_ranges()
         cell_range_T[dim_num] = query_tile_overlap_subarray[1];
 
         // Insert the new range into the result vector
-        fragment_cell_ranges.push_back(
-            FragmentCellRange(fragment_info, cell_range));
+        fragment_cell_ranges.emplace_back(fragment_info, cell_range);
 
         // Advance coordinates
         i = 1;
