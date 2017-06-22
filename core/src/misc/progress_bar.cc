@@ -31,7 +31,7 @@
  */
 
 #include "progress_bar.h"
-#include <stdio.h>
+#include <cstdio>
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */

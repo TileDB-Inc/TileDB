@@ -33,7 +33,7 @@
 #ifndef __ARRAY_READ_STATE_H__
 #define __ARRAY_READ_STATE_H__
 
-#include <inttypes.h>
+#include <cinttypes>
 #include <cstring>
 #include <queue>
 #include <vector>

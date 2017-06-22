@@ -32,7 +32,7 @@
 
 #include "array_sorted_write_state.h"
 #include <cassert>
-#include "math.h"
+#include <cmath>
 #include "utils.h"
 
 /* ****************************** */

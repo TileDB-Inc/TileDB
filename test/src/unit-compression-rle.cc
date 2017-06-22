@@ -31,8 +31,8 @@
  * Tests for the RLE compression
  */
 
+#include <cstring>
 #include "catch.hpp"
-#include "string.h"
 #include "tiledb.h"
 #include "utils.h"
 

@@ -34,9 +34,9 @@
 #include "catch.hpp"
 // #include "progress_bar.h"
 #include <sys/time.h>
-#include <time.h>
 #include <cassert>
 #include <cstring>
+#include <ctime>
 #include <iostream>
 #include <map>
 #include <sstream>

@@ -32,8 +32,8 @@
 
 #include "array_sorted_read_state.h"
 #include <cassert>
+#include <cmath>
 #include "comparators.h"
-#include "math.h"
 #include "utils.h"
 
 /* ****************************** */
