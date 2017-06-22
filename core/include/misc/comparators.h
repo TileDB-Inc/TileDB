@@ -34,7 +34,7 @@
 #ifndef __COMPARATORS_H__
 #define __COMPARATORS_H__
 
-#include <inttypes.h>
+#include <cinttypes>
 #include <vector>
 
 namespace tiledb {

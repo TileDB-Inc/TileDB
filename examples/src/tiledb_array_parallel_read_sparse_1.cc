@@ -32,7 +32,7 @@
 
 #include "tiledb.h"
 #include <pthread.h>
-#include <stdio.h>
+#include <cstdio>
 
 
 

@@ -153,7 +153,7 @@ void parallel_write(
 
 #else
 
-#include <stdio.h>
+#include <cstdio>
 
 int main() {
   printf("OpenMP not supported.");

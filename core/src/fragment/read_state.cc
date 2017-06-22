@@ -243,7 +243,7 @@ void ReadState::reset() {
 }
 
 void ReadState::reset_overflow() {
-  for (int i = 0; i < int(overflow_.size()); ++i)
+  for (int i = 0; i < overflow_.size(); ++i)
     overflow_[i] = false;
 }
 

@@ -37,9 +37,9 @@
 #ifdef HAVE_MPI
 #include <mpi.h>
 #endif
-#include <stddef.h>
-#include <stdint.h>
 #include <unistd.h>
+#include <cstddef>
+#include <cstdint>
 #include <string>
 
 /* ********************************* */

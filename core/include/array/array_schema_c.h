@@ -33,7 +33,7 @@
 #ifndef __ARRAY_SCHEMA_C_H__
 #define __ARRAY_SCHEMA_C_H__
 
-#include <stdint.h>
+#include <cstdint>
 
 /** Specifies the array schema. */
 typedef struct ArraySchemaC {

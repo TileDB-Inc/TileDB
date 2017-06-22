@@ -31,7 +31,7 @@
  */
 
 #include "tiledb.h"
-#include <stdio.h>
+#include <cstdio>
 
 #ifdef HAVE_OPENMP
 #include <omp.h>

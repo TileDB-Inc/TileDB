@@ -33,8 +33,8 @@
 #include "tiledb.h"
 #include "utils.h"
 
-#include <assert.h>
 #include <unistd.h>
+#include <cassert>
 
 #include "catch.hpp"
 

@@ -32,8 +32,8 @@
 
 #include "array_sorted_read_state.h"
 #include <cassert>
+#include <cmath>
 #include "comparators.h"
-#include "math.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -1571,37 +1571,37 @@ void ArraySortedReadState::free_tile_slab_info() {
   int anum = (int)attribute_ids_.size();
 
   // Free
-  for (int i = 0; i < 2; ++i) {
-    int64_t tile_num = tile_slab_info_[i].tile_num_;
+  for (auto& info : tile_slab_info_) {
+    int64_t tile_num = info.tile_num_;
 
-    if (tile_slab_info_[i].cell_offset_per_dim_ != nullptr) {
-      for (int j = 0; j < tile_num; ++j)
-        delete[] tile_slab_info_[i].cell_offset_per_dim_[j];
-      delete[] tile_slab_info_[i].cell_offset_per_dim_;
+    if (info.cell_offset_per_dim_ != nullptr) {
+      for (int tile = 0; tile < tile_num; ++tile)
+        delete[] info.cell_offset_per_dim_[tile];
+      delete[] info.cell_offset_per_dim_;
     }
 
-    for (int j = 0; j < anum; ++j) {
-      if (tile_slab_info_[i].cell_slab_size_[j] != nullptr)
-        delete[] tile_slab_info_[i].cell_slab_size_[j];
+    for (int attr = 0; attr < anum; ++attr) {
+      if (info.cell_slab_size_[attr] != nullptr)
+        delete[] info.cell_slab_size_[attr];
     }
-    delete[] tile_slab_info_[i].cell_slab_size_;
+    delete[] info.cell_slab_size_;
 
-    if (tile_slab_info_[i].cell_slab_num_ != nullptr)
-      delete[] tile_slab_info_[i].cell_slab_num_;
+    if (info.cell_slab_num_ != nullptr)
+      delete[] info.cell_slab_num_;
 
-    if (tile_slab_info_[i].range_overlap_ != nullptr) {
-      for (int j = 0; j < tile_num; ++j)
-        free(tile_slab_info_[i].range_overlap_[j]);
-      delete[] tile_slab_info_[i].range_overlap_;
+    if (info.range_overlap_ != nullptr) {
+      for (int tile = 0; tile < tile_num; ++tile)
+        free(info.range_overlap_[tile]);
+      delete[] info.range_overlap_;
     }
 
-    for (int j = 0; j < anum; ++j) {
-      if (tile_slab_info_[i].start_offsets_[j] != nullptr)
-        delete[] tile_slab_info_[i].start_offsets_[j];
+    for (int attr = 0; attr < anum; ++attr) {
+      if (info.start_offsets_[attr] != nullptr)
+        delete[] info.start_offsets_[attr];
     }
-    delete[] tile_slab_info_[i].start_offsets_;
+    delete[] info.start_offsets_;
 
-    delete[] tile_slab_info_[i].tile_offset_per_dim_;
+    delete[] info.tile_offset_per_dim_;
   }
 }
 
@@ -1772,20 +1772,20 @@ void ArraySortedReadState::init_tile_slab_info() {
   int anum = (int)attribute_ids_.size();
 
   // Initialize
-  for (int i = 0; i < 2; ++i) {
-    tile_slab_info_[i].cell_offset_per_dim_ = nullptr;
-    tile_slab_info_[i].cell_slab_size_ = new size_t*[anum];
-    tile_slab_info_[i].cell_slab_num_ = nullptr;
-    tile_slab_info_[i].range_overlap_ = nullptr;
-    tile_slab_info_[i].start_offsets_ = new size_t*[anum];
-    tile_slab_info_[i].tile_offset_per_dim_ = new int64_t[dim_num_];
+  for (auto& info : tile_slab_info_) {
+    info.cell_offset_per_dim_ = nullptr;
+    info.cell_slab_size_ = new size_t*[anum];
+    info.cell_slab_num_ = nullptr;
+    info.range_overlap_ = nullptr;
+    info.start_offsets_ = new size_t*[anum];
+    info.tile_offset_per_dim_ = new int64_t[dim_num_];
 
-    for (int j = 0; j < anum; ++j) {
-      tile_slab_info_[i].cell_slab_size_[j] = nullptr;
-      tile_slab_info_[i].start_offsets_[j] = nullptr;
+    for (int attr = 0; attr < anum; ++attr) {
+      info.cell_slab_size_[attr] = nullptr;
+      info.start_offsets_[attr] = nullptr;
     }
 
-    tile_slab_info_[i].tile_num_ = -1;
+    info.tile_num_ = -1;
   }
 }
 

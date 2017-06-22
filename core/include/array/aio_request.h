@@ -33,7 +33,7 @@
 #ifndef __AIO_REQUEST_H__
 #define __AIO_REQUEST_H__
 
-#include <stdio.h>
+#include <cstdio>
 
 /** Describes an AIO (read or write) request. */
 struct AIO_Request {

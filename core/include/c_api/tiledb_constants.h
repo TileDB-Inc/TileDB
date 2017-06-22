@@ -33,8 +33,8 @@
 #ifndef __TILEDB_CONSTANTS_H__
 #define __TILEDB_CONSTANTS_H__
 
-#include <float.h>
-#include <limits.h>
+#include <cfloat>
+#include <climits>
 
 /** Version. */
 #define TILEDB_VERSION "0.6.1"

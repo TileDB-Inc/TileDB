@@ -3035,8 +3035,8 @@ int ArrayReadState::sort_fragment_cell_ranges(
       delete pq.top();
       pq.pop();
     }
-    for (int64_t i = 0; i < int64_t(fragment_cell_ranges.size()); ++i)
-      free(fragment_cell_ranges[i].second);
+    for (auto& fragment_cell_range : fragment_cell_ranges)
+      free(fragment_cell_range.second);
     fragment_cell_ranges.clear();
   } else {
     assert(pq.empty());  // Sanity check

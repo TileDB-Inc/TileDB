@@ -33,7 +33,7 @@
 #ifndef __METADATA_SCHEMA_C_H__
 #define __METADATA_SCHEMA_C_H__
 
-#include <stdint.h>
+#include <cstdint>
 
 /** Specifies the metadata schema. */
 typedef struct MetadataSchemaC {
