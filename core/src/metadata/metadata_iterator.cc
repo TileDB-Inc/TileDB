@@ -57,7 +57,7 @@ std::string tiledb_mit_errmsg = "";
 /* ****************************** */
 
 MetadataIterator::MetadataIterator() {
-  array_it_ = NULL;
+  array_it_ = nullptr;
 }
 
 MetadataIterator::~MetadataIterator() {
@@ -93,9 +93,9 @@ int MetadataIterator::get_value(
 int MetadataIterator::finalize() {
   int rc = array_it_->finalize();
   delete array_it_;
-  array_it_ = NULL;
+  array_it_ = nullptr;
   delete metadata_;
-  metadata_ = NULL;
+  metadata_ = nullptr;
 
   // Error
   if (rc != TILEDB_AIT_OK) {
@@ -115,7 +115,7 @@ int MetadataIterator::init(
   if (array_it_->init(metadata->array(), buffers, buffer_sizes) !=
       TILEDB_AIT_OK) {
     delete array_it_;
-    array_it_ = NULL;
+    array_it_ = nullptr;
     tiledb_mit_errmsg = tiledb_ait_errmsg;
     return TILEDB_MIT_ERR;
   }

@@ -35,7 +35,7 @@
 int main() {
   // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Initialize array
   TileDB_Array* tiledb_array;
@@ -44,8 +44,8 @@ int main() {
       &tiledb_array,                             // Array object
       "my_workspace/sparse_arrays/my_array_B",   // Array name
       TILEDB_ARRAY_WRITE,                        // Mode
-      NULL,                                      // Entire domain
-      NULL,                                      // All attributes
+      nullptr,                                      // Entire domain
+      nullptr,                                      // All attributes
       0);                                        // Number of attributes
 
   // Prepare cell buffers - #1
@@ -74,9 +74,9 @@ int main() {
 
   // Prepare cell buffers - #2
   int buffer_a1_2[] = { 3, 4, 5, 6, 7 };
-  size_t* buffer_a2_2 = NULL;
-  const char* buffer_var_a2_2 = NULL;
-  float* buffer_a3_2 = NULL; 
+  size_t* buffer_a2_2 = nullptr;
+  const char* buffer_var_a2_2 = nullptr;
+  float* buffer_a3_2 = nullptr; 
   int64_t buffer_coords_2[] = { 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4 };
   const void* buffers_2[] = 
   { 

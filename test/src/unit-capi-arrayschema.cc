@@ -66,7 +66,7 @@ struct ArraySchemaFx {
     array_schema_set_ = false;
 
     // Initialize context
-    rc = tiledb_ctx_init(&tiledb_ctx_, NULL);
+    rc = tiledb_ctx_init(&tiledb_ctx_, nullptr);
     assert(rc == TILEDB_OK);
 
     // Create workspace
@@ -123,7 +123,7 @@ struct ArraySchemaFx {
         // Cell order
         TILEDB_COL_MAJOR,
         // Number of cell values per attribute (NULL means 1 everywhere)
-        NULL,
+        nullptr,
         // Compression
         compression,
         // Dense array

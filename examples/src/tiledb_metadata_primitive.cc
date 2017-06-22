@@ -40,7 +40,7 @@ void print_some_metadata_schema_info(
 int main() {
   /* Initialize context with the default configuration parameters. */
   TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // ----- Get schema without metadata initialization ----- //
 
@@ -66,7 +66,7 @@ int main() {
       &tiledb_metadata,                               // Array object
       "my_workspace/sparse_arrays/my_array_B/meta",   // Array name
       TILEDB_METADATA_READ,                           // Mode
-      NULL,                                           // Attributes (all)
+      nullptr,                                           // Attributes (all)
       0);                                             // Number of attributes
 
   // Get metadata schema when the metadata object is initialized

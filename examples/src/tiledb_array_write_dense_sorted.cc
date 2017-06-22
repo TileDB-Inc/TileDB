@@ -38,7 +38,7 @@
 int main() {
   // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Set the subarray where the write will focus on
   int64_t subarray[] = { 3, 4, 2, 4 };
@@ -51,7 +51,7 @@ int main() {
       "my_workspace/dense_arrays/my_array_A",    // Array name
       TILEDB_ARRAY_WRITE_SORTED_ROW,             // Mode
       subarray,                                  // Subarray
-      NULL,                                      // All attributes
+      nullptr,                                      // All attributes
       0);                                        // Number of attributes
 
   // Prepare cell buffers

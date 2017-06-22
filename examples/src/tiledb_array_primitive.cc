@@ -39,7 +39,7 @@ void print_some_array_schema_info(const TileDB_ArraySchema* array_schema);
 int main() {
   /* Initialize context with the default configuration parameters. */
   TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // ----- Dense array ----- //
 
@@ -65,8 +65,8 @@ int main() {
       &tiledb_array,                             // Array object
       "my_workspace/sparse_arrays/my_array_B",   // Array name
       TILEDB_ARRAY_READ,                         // Mode
-      NULL,                                      // Subarray (whole domain)
-      NULL,                                      // Attributes (all attributes)
+      nullptr,                                      // Subarray (whole domain)
+      nullptr,                                      // Attributes (all attributes)
       0);                                        // Number of attributes
 
   // Get array schema when the array is initialized

@@ -35,7 +35,7 @@
 int main() {
   // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Initialize metadata
   TileDB_Metadata* tiledb_metadata;
@@ -44,7 +44,7 @@ int main() {
       &tiledb_metadata,                              // Metadata object
       "my_workspace/sparse_arrays/my_array_B/meta",  // Metadata name
       TILEDB_METADATA_WRITE,                         // Mode
-      NULL,                                          // All attributes
+      nullptr,                                          // All attributes
       0);                                            // Number of attributes 
 
   // Prepare cell buffers

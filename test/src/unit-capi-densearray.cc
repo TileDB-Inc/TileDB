@@ -64,7 +64,7 @@ struct DenseArrayFx {
     int rc;
 
     // Initialize context
-    rc = tiledb_ctx_init(&tiledb_ctx_, NULL);
+    rc = tiledb_ctx_init(&tiledb_ctx_, nullptr);
     assert(rc == TILEDB_OK);
 
     // Create workspace
@@ -195,7 +195,7 @@ struct DenseArrayFx {
         attribute_num,
         capacity,
         cell_order,
-        NULL,
+        nullptr,
         compression,
         dense,
         dimensions,
@@ -317,7 +317,7 @@ struct DenseArrayFx {
         attributes,
         1);
     if (rc != TILEDB_OK)
-      return NULL;
+      return nullptr;
 
     // Prepare the buffers that will store the result
     int64_t domain_size_0 = domain_0_hi - domain_0_lo + 1;
@@ -332,14 +332,14 @@ struct DenseArrayFx {
     rc = tiledb_array_read(tiledb_array, buffers, buffer_sizes);
     if (rc != TILEDB_OK) {
       delete[] buffer_a1;
-      return NULL;
+      return nullptr;
     }
 
     // Finalize the array
     rc = tiledb_array_finalize(tiledb_array);
     if (rc != TILEDB_OK) {
       delete[] buffer_a1;
-      return NULL;
+      return nullptr;
     }
 
     // Success - return the created buffer
@@ -386,7 +386,7 @@ struct DenseArrayFx {
         &tiledb_array,
         array_name_.c_str(),
         TILEDB_ARRAY_WRITE_UNSORTED,
-        NULL,
+        nullptr,
         attributes,
         2);
     if (rc != TILEDB_OK)
@@ -455,8 +455,8 @@ struct DenseArrayFx {
         &tiledb_array,
         array_name_.c_str(),
         TILEDB_ARRAY_WRITE,
-        NULL,
-        NULL,
+        nullptr,
+        nullptr,
         0);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;

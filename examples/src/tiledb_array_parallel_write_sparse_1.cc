@@ -48,7 +48,7 @@ typedef struct _thread_data_t {
 int main() {
   // Initialize context with the default configuration parameters
   TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Array name
   const char* array_name = "my_workspace/sparse_arrays/my_array_B";
@@ -118,12 +118,12 @@ int main() {
     }
 
     // Create thread
-    pthread_create(&threads[i], NULL, parallel_write, &thread_data[i]);
+    pthread_create(&threads[i], nullptr, parallel_write, &thread_data[i]);
   }
 
   // Wait till all threads finish
   for(int i=0; i<2; ++i)
-    pthread_join(threads[i], NULL);
+    pthread_join(threads[i], nullptr);
 
   // Finalize context
   tiledb_ctx_finalize(tiledb_ctx);
@@ -142,8 +142,8 @@ void *parallel_write(void* args) {
       &tiledb_array,                             // Array object
       data->array_name,                          // Array name
       TILEDB_ARRAY_WRITE_UNSORTED,               // Mode
-      NULL,                                      // Inapplicable
-      NULL,                                      // All attributes
+      nullptr,                                      // Inapplicable
+      nullptr,                                      // All attributes
       0);                                        // Number of attributes
 
   // Write to array
@@ -152,5 +152,5 @@ void *parallel_write(void* args) {
   // Finalize array
   tiledb_array_finalize(tiledb_array);
 
-  return 0;
+  return nullptr;
 }

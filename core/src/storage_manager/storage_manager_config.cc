@@ -64,7 +64,7 @@ void StorageManagerConfig::init(
     int read_method,
     int write_method) {
   // Initialize home
-  if (home == NULL)
+  if (home == nullptr)
     home_ = "";
   else
     home_ = home;

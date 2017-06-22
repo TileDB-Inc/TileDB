@@ -91,14 +91,14 @@ ArraySortedReadState::ArraySortedReadState(Array* array)
   read_tile_slabs_done_ = false;
   resume_copy_ = false;
   resume_aio_ = false;
-  tile_coords_ = NULL;
-  tile_domain_ = NULL;
+  tile_coords_ = nullptr;
+  tile_domain_ = nullptr;
   for (int i = 0; i < 2; ++i) {
     aio_overflow_[i] = new bool[anum];
-    buffer_sizes_[i] = NULL;
-    buffer_sizes_tmp_[i] = NULL;
-    buffer_sizes_tmp_bak_[i] = NULL;
-    buffers_[i] = NULL;
+    buffer_sizes_[i] = nullptr;
+    buffer_sizes_tmp_[i] = nullptr;
+    buffer_sizes_tmp_bak_[i] = nullptr;
+    buffers_[i] = nullptr;
     tile_slab_[i] = malloc(2 * coords_size_);
     tile_slab_norm_[i] = malloc(2 * coords_size_);
     tile_slab_init_[i] = false;
@@ -141,7 +141,7 @@ ArraySortedReadState::~ArraySortedReadState() {
     ;
 
   // Join with the terminated thread
-  pthread_join(copy_thread_, NULL);
+  pthread_join(copy_thread_, nullptr);
 
   // Clean up
   free(subarray_);
@@ -152,13 +152,13 @@ ArraySortedReadState::~ArraySortedReadState() {
   for (int i = 0; i < 2; ++i) {
     delete[] aio_overflow_[i];
 
-    if (buffer_sizes_[i] != NULL)
+    if (buffer_sizes_[i] != nullptr)
       delete[] buffer_sizes_[i];
-    if (buffer_sizes_tmp_[i] != NULL)
+    if (buffer_sizes_tmp_[i] != nullptr)
       delete[] buffer_sizes_tmp_[i];
-    if (buffer_sizes_tmp_bak_[i] != NULL)
+    if (buffer_sizes_tmp_bak_[i] != nullptr)
       delete[] buffer_sizes_tmp_bak_[i];
-    if (buffers_[i] != NULL) {
+    if (buffers_[i] != nullptr) {
       for (int b = 0; b < buffer_num_; ++b)
         free(buffers_[i][b]);
       free(buffers_[i]);
@@ -314,19 +314,19 @@ int ArraySortedReadState::init() {
   init_aio_requests();
 
   // Initialize the mutexes and conditions
-  if (pthread_mutex_init(&aio_mtx_, NULL)) {
+  if (pthread_mutex_init(&aio_mtx_, nullptr)) {
     std::string errmsg = "Cannot initialize IO mutex";
     PRINT_ERROR(errmsg);
     tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
     return TILEDB_ASRS_ERR;
   }
-  if (pthread_mutex_init(&copy_mtx_, NULL)) {
+  if (pthread_mutex_init(&copy_mtx_, nullptr)) {
     std::string errmsg = "Cannot initialize copy mutex";
     PRINT_ERROR(errmsg);
     tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
     return TILEDB_ASRS_ERR;
   }
-  if (pthread_mutex_init(&overflow_mtx_, NULL)) {
+  if (pthread_mutex_init(&overflow_mtx_, nullptr)) {
     std::string errmsg = "Cannot initialize overflow mutex";
     PRINT_ERROR(errmsg);
     tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
@@ -334,14 +334,14 @@ int ArraySortedReadState::init() {
   }
   for (int i = 0; i < 2; ++i) {
     aio_cond_[i] = PTHREAD_COND_INITIALIZER;
-    if (pthread_cond_init(&(aio_cond_[i]), NULL)) {
+    if (pthread_cond_init(&(aio_cond_[i]), nullptr)) {
       std::string errmsg = "Cannot initialize IO mutex condition";
       PRINT_ERROR(errmsg);
       tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
       return TILEDB_ASRS_ERR;
     }
     copy_cond_[i] = PTHREAD_COND_INITIALIZER;
-    if (pthread_cond_init(&(copy_cond_[i]), NULL)) {
+    if (pthread_cond_init(&(copy_cond_[i]), nullptr)) {
       std::string errmsg = "Cannot initialize copy mutex condition";
       PRINT_ERROR(errmsg);
       tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
@@ -349,7 +349,7 @@ int ArraySortedReadState::init() {
     }
   }
   overflow_cond_ = PTHREAD_COND_INITIALIZER;
-  if (pthread_cond_init(&overflow_cond_, NULL)) {
+  if (pthread_cond_init(&overflow_cond_, nullptr)) {
     std::string errmsg = "Cannot initialize overflow mutex condition";
     PRINT_ERROR(errmsg);
     tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
@@ -539,7 +539,7 @@ int ArraySortedReadState::init() {
 
   // Create the thread that will be handling all the copying
   if (pthread_create(
-          &copy_thread_, NULL, ArraySortedReadState::copy_handler, this)) {
+          &copy_thread_, nullptr, ArraySortedReadState::copy_handler, this)) {
     std::string errmsg = "Cannot create AIO thread";
     PRINT_ERROR(errmsg);
     tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
@@ -560,7 +560,7 @@ void* ArraySortedReadState::advance_cell_slab_col_s(void* data) {
   ArraySortedReadState* asrs = ((ASRS_Data*)data)->asrs_;
   int aid = ((ASRS_Data*)data)->id_;
   asrs->advance_cell_slab_col<T>(aid);
-  return NULL;
+  return nullptr;
 }
 
 template <class T>
@@ -568,7 +568,7 @@ void* ArraySortedReadState::advance_cell_slab_row_s(void* data) {
   ArraySortedReadState* asrs = ((ASRS_Data*)data)->asrs_;
   int aid = ((ASRS_Data*)data)->id_;
   asrs->advance_cell_slab_row<T>(aid);
-  return NULL;
+  return nullptr;
 }
 
 template <class T>
@@ -712,7 +712,7 @@ void* ArraySortedReadState::aio_done(void* data) {
     asrs->release_aio(id);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 bool ArraySortedReadState::aio_overflow(int aio_id) {
@@ -870,7 +870,7 @@ void* ArraySortedReadState::calculate_cell_slab_info_col_col_s(void* data) {
   int id = ((ASRS_Data*)data)->id_;
   int tid = ((ASRS_Data*)data)->id_2_;
   asrs->calculate_cell_slab_info_col_col<T>(id, tid);
-  return NULL;
+  return nullptr;
 }
 
 template <class T>
@@ -879,7 +879,7 @@ void* ArraySortedReadState::calculate_cell_slab_info_col_row_s(void* data) {
   int id = ((ASRS_Data*)data)->id_;
   int tid = ((ASRS_Data*)data)->id_2_;
   asrs->calculate_cell_slab_info_col_row<T>(id, tid);
-  return NULL;
+  return nullptr;
 }
 
 template <class T>
@@ -888,7 +888,7 @@ void* ArraySortedReadState::calculate_cell_slab_info_row_col_s(void* data) {
   int id = ((ASRS_Data*)data)->id_;
   int tid = ((ASRS_Data*)data)->id_2_;
   asrs->calculate_cell_slab_info_row_col<T>(id, tid);
-  return NULL;
+  return nullptr;
 }
 
 template <class T>
@@ -897,7 +897,7 @@ void* ArraySortedReadState::calculate_cell_slab_info_row_row_s(void* data) {
   int id = ((ASRS_Data*)data)->id_;
   int tid = ((ASRS_Data*)data)->id_2_;
   asrs->calculate_cell_slab_info_row_row<T>(id, tid);
-  return NULL;
+  return nullptr;
 }
 
 template <class T>
@@ -1050,7 +1050,7 @@ void ArraySortedReadState::calculate_tile_slab_info(int id) {
     init_tile_slab_info<T>(id);
 
   // Calculate tile domain, if not calculated yet
-  if (tile_domain_ == NULL)
+  if (tile_domain_ == nullptr)
     calculate_tile_domain<T>(id);
 
   // Reset tile coordinates
@@ -1066,7 +1066,7 @@ void* ArraySortedReadState::calculate_tile_slab_info_col(void* data) {
   ArraySortedReadState* asrs = ((ASRS_Data*)data)->asrs_;
   int id = ((ASRS_Data*)data)->id_;
   asrs->calculate_tile_slab_info_col<T>(id);
-  return NULL;
+  return nullptr;
 }
 
 template <class T>
@@ -1136,7 +1136,7 @@ void* ArraySortedReadState::calculate_tile_slab_info_row(void* data) {
   ArraySortedReadState* asrs = ((ASRS_Data*)data)->asrs_;
   int id = ((ASRS_Data*)data)->id_;
   asrs->calculate_tile_slab_info_row<T>(id);
-  return NULL;
+  return nullptr;
 }
 
 template <class T>
@@ -1257,7 +1257,7 @@ void* ArraySortedReadState::copy_handler(void* context) {
   }
 
   // Return
-  return NULL;
+  return nullptr;
 }
 
 void ArraySortedReadState::copy_tile_slab_dense() {
@@ -1535,7 +1535,7 @@ void ArraySortedReadState::copy_tile_slab_sparse_var(int aid, int bid) {
 int ArraySortedReadState::create_buffers() {
   for (int j = 0; j < 2; ++j) {
     buffers_[j] = (void**)malloc(buffer_num_ * sizeof(void*));
-    if (buffers_[j] == NULL) {
+    if (buffers_[j] == nullptr) {
       std::string errmsg = "Cannot create local buffers";
       PRINT_ERROR(errmsg);
       tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
@@ -1544,7 +1544,7 @@ int ArraySortedReadState::create_buffers() {
 
     for (int b = 0; b < buffer_num_; ++b) {
       buffers_[j][b] = malloc(buffer_sizes_[j][b]);
-      if (buffers_[j][b] == NULL) {
+      if (buffers_[j][b] == nullptr) {
         std::string errmsg = "Cannot allocate local buffer";
         PRINT_ERROR(errmsg);
         tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
@@ -1558,7 +1558,7 @@ int ArraySortedReadState::create_buffers() {
 }
 
 void ArraySortedReadState::free_copy_state() {
-  if (copy_state_.buffer_offsets_ != NULL)
+  if (copy_state_.buffer_offsets_ != nullptr)
     delete[] copy_state_.buffer_offsets_;
 }
 
@@ -1574,29 +1574,29 @@ void ArraySortedReadState::free_tile_slab_info() {
   for (int i = 0; i < 2; ++i) {
     int64_t tile_num = tile_slab_info_[i].tile_num_;
 
-    if (tile_slab_info_[i].cell_offset_per_dim_ != NULL) {
+    if (tile_slab_info_[i].cell_offset_per_dim_ != nullptr) {
       for (int j = 0; j < tile_num; ++j)
         delete[] tile_slab_info_[i].cell_offset_per_dim_[j];
       delete[] tile_slab_info_[i].cell_offset_per_dim_;
     }
 
     for (int j = 0; j < anum; ++j) {
-      if (tile_slab_info_[i].cell_slab_size_[j] != NULL)
+      if (tile_slab_info_[i].cell_slab_size_[j] != nullptr)
         delete[] tile_slab_info_[i].cell_slab_size_[j];
     }
     delete[] tile_slab_info_[i].cell_slab_size_;
 
-    if (tile_slab_info_[i].cell_slab_num_ != NULL)
+    if (tile_slab_info_[i].cell_slab_num_ != nullptr)
       delete[] tile_slab_info_[i].cell_slab_num_;
 
-    if (tile_slab_info_[i].range_overlap_ != NULL) {
+    if (tile_slab_info_[i].range_overlap_ != nullptr) {
       for (int j = 0; j < tile_num; ++j)
         free(tile_slab_info_[i].range_overlap_[j]);
       delete[] tile_slab_info_[i].range_overlap_;
     }
 
     for (int j = 0; j < anum; ++j) {
-      if (tile_slab_info_[i].start_offsets_[j] != NULL)
+      if (tile_slab_info_[i].start_offsets_[j] != nullptr)
         delete[] tile_slab_info_[i].start_offsets_[j];
     }
     delete[] tile_slab_info_[i].start_offsets_;
@@ -1610,22 +1610,22 @@ void ArraySortedReadState::free_tile_slab_state() {
   int anum = (int)attribute_ids_.size();
 
   // Clean up
-  if (tile_slab_state_.current_coords_ != NULL) {
+  if (tile_slab_state_.current_coords_ != nullptr) {
     for (int i = 0; i < anum; ++i)
       free(tile_slab_state_.current_coords_[i]);
     delete[] tile_slab_state_.current_coords_;
   }
 
-  if (tile_slab_state_.copy_tile_slab_done_ != NULL)
+  if (tile_slab_state_.copy_tile_slab_done_ != nullptr)
     delete[] tile_slab_state_.copy_tile_slab_done_;
 
-  if (tile_slab_state_.current_offsets_ != NULL)
+  if (tile_slab_state_.current_offsets_ != nullptr)
     delete[] tile_slab_state_.current_offsets_;
 
-  if (tile_slab_state_.current_tile_ != NULL)
+  if (tile_slab_state_.current_tile_ != nullptr)
     delete[] tile_slab_state_.current_tile_;
 
-  if (tile_slab_state_.current_cell_pos_ != NULL)
+  if (tile_slab_state_.current_cell_pos_ != nullptr)
     delete[] tile_slab_state_.current_cell_pos_;
 }
 
@@ -1756,8 +1756,8 @@ void ArraySortedReadState::init_aio_requests() {
 }
 
 void ArraySortedReadState::init_copy_state() {
-  copy_state_.buffer_sizes_ = NULL;
-  copy_state_.buffers_ = NULL;
+  copy_state_.buffer_sizes_ = nullptr;
+  copy_state_.buffers_ = nullptr;
   copy_state_.buffer_offsets_ = new size_t[buffer_num_];
   for (int i = 0; i < buffer_num_; ++i)
     copy_state_.buffer_offsets_[i] = 0;
@@ -1773,16 +1773,16 @@ void ArraySortedReadState::init_tile_slab_info() {
 
   // Initialize
   for (int i = 0; i < 2; ++i) {
-    tile_slab_info_[i].cell_offset_per_dim_ = NULL;
+    tile_slab_info_[i].cell_offset_per_dim_ = nullptr;
     tile_slab_info_[i].cell_slab_size_ = new size_t*[anum];
-    tile_slab_info_[i].cell_slab_num_ = NULL;
-    tile_slab_info_[i].range_overlap_ = NULL;
+    tile_slab_info_[i].cell_slab_num_ = nullptr;
+    tile_slab_info_[i].range_overlap_ = nullptr;
     tile_slab_info_[i].start_offsets_ = new size_t*[anum];
     tile_slab_info_[i].tile_offset_per_dim_ = new int64_t[dim_num_];
 
     for (int j = 0; j < anum; ++j) {
-      tile_slab_info_[i].cell_slab_size_[j] = NULL;
-      tile_slab_info_[i].start_offsets_[j] = NULL;
+      tile_slab_info_[i].cell_slab_size_[j] = nullptr;
+      tile_slab_info_[i].start_offsets_[j] = nullptr;
     }
 
     tile_slab_info_[i].tile_num_ = -1;
@@ -1832,7 +1832,7 @@ void ArraySortedReadState::init_tile_slab_state() {
     tile_slab_state_.current_offsets_ = new size_t[anum];
     tile_slab_state_.current_coords_ = new void*[anum];
     tile_slab_state_.current_tile_ = new int64_t[anum];
-    tile_slab_state_.current_cell_pos_ = NULL;
+    tile_slab_state_.current_cell_pos_ = nullptr;
 
     for (int i = 0; i < anum; ++i) {
       tile_slab_state_.current_coords_[i] = malloc(coords_size_);
@@ -1840,9 +1840,9 @@ void ArraySortedReadState::init_tile_slab_state() {
       tile_slab_state_.current_tile_[i] = 0;
     }
   } else {  // SPARSE
-    tile_slab_state_.current_offsets_ = NULL;
-    tile_slab_state_.current_coords_ = NULL;
-    tile_slab_state_.current_tile_ = NULL;
+    tile_slab_state_.current_offsets_ = nullptr;
+    tile_slab_state_.current_coords_ = nullptr;
+    tile_slab_state_.current_tile_ = nullptr;
     tile_slab_state_.current_cell_pos_ = new int64_t[anum];
 
     for (int i = 0; i < anum; ++i)

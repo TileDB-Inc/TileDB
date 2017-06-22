@@ -60,7 +60,7 @@ struct SparseArrayFx {
     int rc;
 
     // Initialize context
-    rc = tiledb_ctx_init(&tiledb_ctx_, NULL);
+    rc = tiledb_ctx_init(&tiledb_ctx_, nullptr);
     assert(rc == TILEDB_OK);
 
     // Create workspace
@@ -138,7 +138,7 @@ struct SparseArrayFx {
         attribute_num,
         capacity,
         cell_order,
-        NULL,
+        nullptr,
         compression,
         dense,
         dimensions,
@@ -210,7 +210,7 @@ struct SparseArrayFx {
         attributes,
         1);
     if (rc != TILEDB_OK)
-      return NULL;
+      return nullptr;
 
     // Prepare the buffers that will store the result
     int64_t domain_size_0 = domain_0_hi - domain_0_lo + 1;
@@ -226,13 +226,13 @@ struct SparseArrayFx {
     rc = tiledb_array_read(tiledb_array, buffers, buffer_sizes);
     if (rc != TILEDB_OK) {
       tiledb_array_finalize(tiledb_array);
-      return NULL;
+      return nullptr;
     }
 
     // Finalize the array
     rc = tiledb_array_finalize(tiledb_array);
     if (rc != TILEDB_OK)
-      return NULL;
+      return nullptr;
 
     // Success - return the created buffer
     return buffer_a1;
@@ -277,8 +277,8 @@ struct SparseArrayFx {
         &tiledb_array,
         array_name_.c_str(),
         TILEDB_ARRAY_WRITE_UNSORTED,
-        NULL,
-        NULL,
+        nullptr,
+        nullptr,
         0);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;

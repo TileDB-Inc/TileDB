@@ -65,19 +65,19 @@ std::string tiledb_fg_errmsg = "";
 
 Fragment::Fragment(const Array* array)
     : array_(array) {
-  read_state_ = NULL;
-  write_state_ = NULL;
-  book_keeping_ = NULL;
+  read_state_ = nullptr;
+  write_state_ = nullptr;
+  book_keeping_ = nullptr;
 }
 
 Fragment::~Fragment() {
-  if (write_state_ != NULL)
+  if (write_state_ != nullptr)
     delete write_state_;
 
-  if (read_state_ != NULL)
+  if (read_state_ != nullptr)
     delete read_state_;
 
-  if (book_keeping_ != NULL && !read_mode())
+  if (book_keeping_ != nullptr && !read_mode())
     delete book_keeping_;
 }
 
@@ -135,7 +135,7 @@ inline bool Fragment::write_mode() const {
 /* ****************************** */
 
 int Fragment::finalize() {
-  if (write_state_ != NULL) {  // WRITE
+  if (write_state_ != nullptr) {  // WRITE
     assert(book_keeping_ != NULL);
     int rc_ws = write_state_->finalize();
     int rc_bk = book_keeping_->finalize();
@@ -198,11 +198,11 @@ int Fragment::init(
   // Initialize book-keeping and read/write state
   book_keeping_ =
       new BookKeeping(array_->array_schema(), dense_, fragment_name, mode_);
-  read_state_ = NULL;
+  read_state_ = nullptr;
   if (book_keeping_->init(subarray) != TILEDB_BK_OK) {
     delete book_keeping_;
-    book_keeping_ = NULL;
-    write_state_ = NULL;
+    book_keeping_ = nullptr;
+    write_state_ = nullptr;
     tiledb_fg_errmsg = tiledb_bk_errmsg;
     return TILEDB_FG_ERR;
   }
@@ -219,7 +219,7 @@ int Fragment::init(
   mode_ = array_->mode();
   book_keeping_ = book_keeping;
   dense_ = book_keeping_->dense();
-  write_state_ = NULL;
+  write_state_ = nullptr;
   read_state_ = new ReadState(this, book_keeping_);
 
   // Success
