@@ -60,8 +60,7 @@ MetadataIterator::MetadataIterator() {
   array_it_ = nullptr;
 }
 
-MetadataIterator::~MetadataIterator() {
-}
+MetadataIterator::~MetadataIterator() = default;
 
 /* ****************************** */
 /*           ACCESSORS            */

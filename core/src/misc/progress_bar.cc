@@ -47,8 +47,7 @@ ProgressBar::ProgressBar(double complete, int max_length, char filler) {
   ratio_ = 0;
 }
 
-ProgressBar::~ProgressBar() {
-}
+ProgressBar::~ProgressBar() = default;
 
 /* ****************************** */
 /*             METHODS            */
