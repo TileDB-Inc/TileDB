@@ -1159,7 +1159,7 @@ int ArraySchema::deserialize(
   }
   assert(offset == buffer_size);
   // Add extra coordinate attribute
-  attributes_.push_back(TILEDB_COORDS);
+  attributes_.emplace_back(TILEDB_COORDS);
   // Set cell sizes
   cell_sizes_.resize(attribute_num_ + 1);
   for (int i = 0; i <= attribute_num_; ++i)
@@ -1376,11 +1376,11 @@ int ArraySchema::set_attributes(char** attributes, int attribute_num) {
 
   // Set attributes and attribute number
   for (int i = 0; i < attribute_num; ++i)
-    attributes_.push_back(attributes[i]);
+    attributes_.emplace_back(attributes[i]);
   attribute_num_ = attribute_num;
 
   // Append extra coordinates name
-  attributes_.push_back(TILEDB_COORDS);
+  attributes_.emplace_back(TILEDB_COORDS);
 
   // Check for duplicate attribute names
   if (utils::has_duplicates(attributes_)) {
@@ -1491,7 +1491,7 @@ int ArraySchema::set_dimensions(char** dimensions, int dim_num) {
 
   // Set dimensions and dimension number
   for (int i = 0; i < dim_num; ++i)
-    dimensions_.push_back(dimensions[i]);
+    dimensions_.emplace_back(dimensions[i]);
   dim_num_ = dim_num;
 
   // Check for duplicate dimension names

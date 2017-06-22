@@ -590,8 +590,7 @@ int ReadState::get_fragment_cell_ranges_dense(
     }
 
     // Insert the new range into the result vector
-    fragment_cell_ranges.push_back(
-        FragmentCellRange(fragment_info, cell_range));
+    fragment_cell_ranges.emplace_back(fragment_info, cell_range);
   } else {  // Non-contiguous cells, multiple ranges
     // Initialize the coordinates at the beginning of the global range
     T* coords = new T[dim_num];
@@ -615,8 +614,7 @@ int ReadState::get_fragment_cell_ranges_dense(
             search_tile_overlap_subarray[2 * (dim_num - 1) + 1];
 
         // Insert the new range into the result vector
-        fragment_cell_ranges.push_back(
-            FragmentCellRange(fragment_info, cell_range));
+        fragment_cell_ranges.emplace_back(fragment_info, cell_range);
 
         // Advance coordinates
         i = dim_num - 2;
@@ -640,8 +638,7 @@ int ReadState::get_fragment_cell_ranges_dense(
         cell_range_T[dim_num] = search_tile_overlap_subarray[1];
 
         // Insert the new range into the result vector
-        fragment_cell_ranges.push_back(
-            FragmentCellRange(fragment_info, cell_range));
+        fragment_cell_ranges.emplace_back(fragment_info, cell_range);
 
         // Advance coordinates
         i = 1;

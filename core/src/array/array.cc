@@ -578,7 +578,7 @@ int Array::init(
         tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
         return TILEDB_AR_ERR;
       }
-      attributes_vec.push_back(attributes[i]);
+      attributes_vec.emplace_back(attributes[i]);
       if (!strcmp(attributes[i], TILEDB_COORDS))
         coords_found = true;
     }
@@ -595,7 +595,7 @@ int Array::init(
     // not exist already
     if (sparse && array_clone == nullptr && !coords_found &&
         !utils::is_metadata(array_schema->array_name()))
-      attributes_vec.push_back(TILEDB_COORDS);
+      attributes_vec.emplace_back(TILEDB_COORDS);
   }
 
   // Set attribute ids
@@ -705,7 +705,7 @@ int Array::reset_attributes(const char** attributes, int attribute_num) {
         tiledb_ar_errmsg = TILEDB_AR_ERRMSG + errmsg;
         return TILEDB_AR_ERR;
       }
-      attributes_vec.push_back(attributes[i]);
+      attributes_vec.emplace_back(attributes[i]);
     }
 
     // Sanity check on duplicates
