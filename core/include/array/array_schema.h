@@ -39,6 +39,7 @@
 #include <vector>
 #include "array_schema_c.h"
 #include "metadata_schema_c.h"
+#include "status.h"
 
 /* ********************************* */
 /*             CONSTANTS             */
@@ -52,26 +53,10 @@
 #define TILEDB_AS_KEY_DIM4_NAME "__key_dim_4"
 /**@}*/
 
-/**@{*/
-/** Return code. */
-#define TILEDB_AS_OK 0
-#define TILEDB_AS_ERR -1
-/**@}*/
-
 /** Default parameters. */
 #define TILEDB_AS_CAPACITY 10000
 
-/** Default error message. */
-#define TILEDB_AS_ERRMSG std::string("[TileDB::ArraySchema] Error: ")
-
 namespace tiledb {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
-
-/** Stores potential error messages. */
-extern std::string tiledb_as_errmsg;
 
 /** Specifies the array schema. */
 class ArraySchema {
@@ -106,10 +91,11 @@ class ArraySchema {
    * Returns the id of the input attribute.
    *
    * @param attribute The attribute name whose id will be retrieved.
-   * @return The attribute id if the input attribute exists, and TILEDB_AS_ERR
-   *     otherwise.
+   * @param The attribute id if the input attribute exists.
+   * @return Status
+   *
    */
-  int attribute_id(const std::string& attribute) const;
+  Status attribute_id(const std::string& attribute, int* id) const;
 
   /** Returns the number of attributes. */
   int attribute_num() const;
@@ -159,7 +145,7 @@ class ArraySchema {
    * @param attribute_ids The ids that are retrieved by the function.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  int get_attribute_ids(
+  Status get_attribute_ids(
       const std::vector<std::string>& attributes,
       std::vector<int>& attribute_ids) const;
 
@@ -211,7 +197,8 @@ class ArraySchema {
    * @param array_schema_bin_size The size of the created binary buffer.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  int serialize(void*& array_schema_bin, size_t& array_schema_bin_size) const;
+  Status serialize(
+      void*& array_schema_bin, size_t& array_schema_bin_size) const;
 
   /**
    * Returns the type of overlap of the input subarrays.
@@ -302,7 +289,8 @@ class ArraySchema {
    * @param array_schema_bin_size The size of the input binary buffer.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  int deserialize(const void* array_schema_bin, size_t array_schema_bin_size);
+  Status deserialize(
+      const void* array_schema_bin, size_t array_schema_bin_size);
 
   /**
    * Initializes the ArraySchema object using the information provided in the
@@ -311,7 +299,7 @@ class ArraySchema {
    * @param array_schema_c The array schema in a C-style struct.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  int init(const ArraySchemaC* array_schema_c);
+  Status init(const ArraySchemaC* array_schema_c);
 
   /**
    * Initializes the ArraySchema object using the information provided in the
@@ -320,7 +308,7 @@ class ArraySchema {
    * @param metadata_schema_c The metadata schema in a C-style struct.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  int init(const MetadataSchemaC* metadata_schema_c);
+  Status init(const MetadataSchemaC* metadata_schema_c);
 
   /** Sets the array name. */
   void set_array_name(const char* array_name);
@@ -333,7 +321,7 @@ class ArraySchema {
    * @param attribute_num The number of attributes.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  int set_attributes(char** attributes, int attribute_num);
+  Status set_attributes(char** attributes, int attribute_num);
 
   /** Sets the tile capacity. */
   void set_capacity(int64_t capacity);
@@ -350,10 +338,10 @@ class ArraySchema {
    * @param cell_order The cell order.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  int set_cell_order(int cell_order);
+  Status set_cell_order(int cell_order);
 
   /** Sets the compression types. */
-  int set_compression(int* compression);
+  Status set_compression(int* compression);
 
   /** Sets the proper flag to indicate if the array is dense. */
   void set_dense(int dense);
@@ -366,7 +354,7 @@ class ArraySchema {
    * @param dim_num The number of dimensions.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  int set_dimensions(char** dimensions, int dim_num);
+  Status set_dimensions(char** dimensions, int dim_num);
 
   /**
    * Sets the domain.
@@ -379,7 +367,7 @@ class ArraySchema {
    * @note The dimensions and types must already have been set before calling
    *     this function.
    */
-  int set_domain(const void* domain);
+  Status set_domain(const void* domain);
 
   /**
    * Sets the tile extents.
@@ -394,7 +382,7 @@ class ArraySchema {
    *     this function. Moreover, dense arrays must always have tile extents,
    *     whereas arrays defined as key-value stores must not have tile extents.
    */
-  int set_tile_extents(const void* tile_extents);
+  Status set_tile_extents(const void* tile_extents);
 
   /**
    * Sets the tile order. Supported tile orders.
@@ -404,7 +392,7 @@ class ArraySchema {
    * @param tile_order The tile order.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  int set_tile_order(int tile_order);
+  Status set_tile_order(int tile_order);
 
   /**
    * Sets the types. There should be one type per attribute plus one (the last
@@ -440,7 +428,7 @@ class ArraySchema {
    * @note The attributes, dimensions and the dense flag must have already been
    *     set before calling this function.
    */
-  int set_types(const int* types);
+  Status set_types(const int* types);
 
   /* ********************************* */
   /*               MISC                */
@@ -491,12 +479,13 @@ class ArraySchema {
    * @tparam T The coordinates type.
    * @param coords The input coordindates, which are expressed as global
    *     coordinates in the array domain.
-   * @return The position of the cell coordinates in the array cell order
-   *     within its corresponding tile. In case of error, the function returns
-   *     TILEDB_AS_ERR.
+   * @pos The position of the cell coordinates in the array cell order
+   *     within its corresponding tile.
+   * @return Status
+   *
    */
   template <class T>
-  int64_t get_cell_pos(const T* coords) const;
+  Status get_cell_pos(const T* coords, int64_t* pos) const;
 
   /**
    * Retrieves the next coordinates along the array cell order within a given

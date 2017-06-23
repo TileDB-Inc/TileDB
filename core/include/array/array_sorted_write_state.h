@@ -38,28 +38,11 @@
 #include <vector>
 #include "array.h"
 
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/**@{*/
-/** Return code. */
-#define TILEDB_ASWS_OK 0
-#define TILEDB_ASWS_ERR -1
-/**@}*/
-
-/** Default error message. */
-#define TILEDB_ASWS_ERRMSG \
-  std::string("[TileDB::ArraySortedWriteState] Error: ")
-
 namespace tiledb {
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
-
-/** Stores potential error messages. */
-extern std::string tiledb_asws_errmsg;
 
 class Array;
 
@@ -167,7 +150,7 @@ class ArraySortedWriteState {
    *
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  int init();
+  Status init();
 
   /**
    * Same as Array::write(), but it sorts the cells in the buffers based on the
@@ -179,7 +162,7 @@ class ArraySortedWriteState {
    * @param buffer_sizes The corresponding buffer sizes.
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  int write(const void** buffers, const size_t* buffer_sizes);
+  Status write(const void** buffers, const size_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -603,7 +586,7 @@ class ArraySortedWriteState {
    *
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  int create_copy_state_buffers();
+  Status create_copy_state_buffers();
 
   /**
    * Creates the user buffers.
@@ -706,14 +689,14 @@ class ArraySortedWriteState {
    *
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  int lock_aio_mtx();
+  Status lock_aio_mtx();
 
   /**
    * Locks the copy mutex.
    *
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  int lock_copy_mtx();
+  Status lock_copy_mtx();
 
   /**
    * Retrieves the next column tile slab to be processed.
@@ -743,7 +726,7 @@ class ArraySortedWriteState {
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
   template <class T>
-  int write();
+  Status write();
 
   /**
    * Same as write(), but the cells are provided by the user sorted in
@@ -753,7 +736,7 @@ class ArraySortedWriteState {
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
   template <class T>
-  int write_sorted_col();
+  Status write_sorted_col();
 
   /**
    * Same as write(), but the cells are provided by the user sorted in
@@ -763,7 +746,7 @@ class ArraySortedWriteState {
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
   template <class T>
-  int write_sorted_row();
+  Status write_sorted_row();
 
   /**
    * Signals an AIO condition.
@@ -771,7 +754,7 @@ class ArraySortedWriteState {
    * @param id The id of the AIO condition to be signaled.
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  int release_aio(int id);
+  Status release_aio(int id);
 
   /**
    * Signals a copy condition.
@@ -779,7 +762,7 @@ class ArraySortedWriteState {
    * @param id The id of the copy condition to be signaled.
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  int release_copy(int id);
+  Status release_copy(int id);
 
   /** Resets the copy state for the current copy id. */
   void reset_copy_state();
@@ -808,21 +791,21 @@ class ArraySortedWriteState {
    * @param aio_id The id of the tile slab the AIO request focuses on.
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  int send_aio_request(int aio_id);
+  Status send_aio_request(int aio_id);
 
   /**
    * Unlocks the AIO mutex.
    *
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  int unlock_aio_mtx();
+  Status unlock_aio_mtx();
 
   /**
    * Unlocks the copy mutex.
    *
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  int unlock_copy_mtx();
+  Status unlock_copy_mtx();
 
   /**
    * Calculates the new tile and local buffer offset for the new (already
@@ -850,7 +833,7 @@ class ArraySortedWriteState {
    * @param id The id of the buffer the copy operation must be completed.
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  int wait_copy(int id);
+  Status wait_copy(int id);
 
   /**
    * Waits on a AIO operation for the buffer with input id to finish.
@@ -858,7 +841,7 @@ class ArraySortedWriteState {
    * @param id The id of the buffer the AIO operation must be completed.
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  int wait_aio(int id);
+  Status wait_aio(int id);
 };
 
 };  // namespace tiledb

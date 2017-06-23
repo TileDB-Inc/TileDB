@@ -36,6 +36,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+#include "status.h"
 #include "tiledb_constants.h"
 #include "utils.h"
 
@@ -52,12 +53,6 @@
 #endif
 
 namespace tiledb {
-
-/* ****************************** */
-/*        GLOBAL VARIABLES        */
-/* ****************************** */
-
-std::string tiledb_fg_errmsg = "";
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -134,42 +129,36 @@ inline bool Fragment::write_mode() const {
 /*            MUTATORS            */
 /* ****************************** */
 
-int Fragment::finalize() {
+Status Fragment::finalize() {
   if (write_state_ != nullptr) {  // WRITE
     assert(book_keeping_ != NULL);
-    int rc_ws = write_state_->finalize();
-    int rc_bk = book_keeping_->finalize();
-    int rc_rn = TILEDB_FG_OK;
-    int rc_cf = TILEDB_UT_OK;
+    Status st_ws = write_state_->finalize();
+    Status st_bk = book_keeping_->finalize();
+    Status st_rn;
+    Status st_cf;
     if (utils::is_dir(fragment_name_)) {
-      rc_rn = rename_fragment();
-      rc_cf = utils::create_fragment_file(fragment_name_);
+      st_rn = rename_fragment();
+      st_cf = utils::create_fragment_file(fragment_name_);
     }
     // Errors
-    if (rc_ws != TILEDB_WS_OK) {
-      tiledb_fg_errmsg = tiledb_ws_errmsg;
-      return TILEDB_FG_ERR;
+    if (!st_ws.ok()) {
+      return st_ws;
     }
-    if (rc_bk != TILEDB_BK_OK) {
-      tiledb_fg_errmsg = tiledb_bk_errmsg;
-      return TILEDB_FG_ERR;
+    if (!st_bk.ok()) {
+      return st_bk;
     }
-    if (rc_cf != TILEDB_UT_OK) {
-      tiledb_fg_errmsg = utils::tiledb_ut_errmsg;
-      return TILEDB_FG_ERR;
+    if (!st_cf.ok()) {
+      return st_cf;
     }
-    if (rc_rn != TILEDB_FG_OK)
-      return TILEDB_FG_ERR;
-
-    // Success
-    return TILEDB_FG_OK;
-  } else {  // READ
-    // Nothing to be done
-    return TILEDB_FG_OK;
+    if (!st_rn.ok()) {
+      return st_rn;
+    }
   }
+  // READ - nothing to be done
+  return Status::Ok();
 }
 
-int Fragment::init(
+Status Fragment::init(
     const std::string& fragment_name, int mode, const void* subarray) {
   // Set fragment name and mode
   fragment_name_ = fragment_name;
@@ -179,8 +168,7 @@ int Fragment::init(
   if (!write_mode()) {
     std::string errmsg = "Cannot initialize fragment;  Invalid mode";
     PRINT_ERROR(errmsg);
-    tiledb_fg_errmsg = TILEDB_FG_ERRMSG + errmsg;
-    return TILEDB_FG_ERR;
+    return Status::FragmentError(errmsg);
   }
 
   // Check if the fragment is dense or not
@@ -199,20 +187,20 @@ int Fragment::init(
   book_keeping_ =
       new BookKeeping(array_->array_schema(), dense_, fragment_name, mode_);
   read_state_ = nullptr;
-  if (book_keeping_->init(subarray) != TILEDB_BK_OK) {
+  Status st = book_keeping_->init(subarray);
+  if (!st.ok()) {
     delete book_keeping_;
     book_keeping_ = nullptr;
     write_state_ = nullptr;
-    tiledb_fg_errmsg = tiledb_bk_errmsg;
-    return TILEDB_FG_ERR;
+    return st;
   }
   write_state_ = new WriteState(this, book_keeping_);
 
   // Success
-  return TILEDB_FG_OK;
+  return Status::Ok();
 }
 
-int Fragment::init(
+Status Fragment::init(
     const std::string& fragment_name, BookKeeping* book_keeping) {
   // Set member attributes
   fragment_name_ = fragment_name;
@@ -223,77 +211,58 @@ int Fragment::init(
   read_state_ = new ReadState(this, book_keeping_);
 
   // Success
-  return TILEDB_FG_OK;
+  return Status::Ok();
 }
 
 void Fragment::reset_read_state() {
   read_state_->reset();
 }
 
-int Fragment::sync() {
+Status Fragment::sync() {
   // Sanity check
   assert(write_state_ != NULL);
 
   // Sync
-  if (write_state_->sync() != TILEDB_WS_OK) {
-    tiledb_fg_errmsg = tiledb_ws_errmsg;
-    return TILEDB_FG_ERR;
-  } else {
-    return TILEDB_FG_OK;
-  }
+  RETURN_NOT_OK(write_state_->sync());
+  return Status::Ok();
 }
 
-int Fragment::sync_attribute(const std::string& attribute) {
+Status Fragment::sync_attribute(const std::string& attribute) {
   // Sanity check
   assert(write_state_ != NULL);
 
   // Sync attribute
-  if (write_state_->sync_attribute(attribute) != TILEDB_WS_OK) {
-    tiledb_fg_errmsg = tiledb_ws_errmsg;
-    return TILEDB_FG_ERR;
-  } else {
-    return TILEDB_FG_OK;
-  }
+  RETURN_NOT_OK(write_state_->sync_attribute(attribute));
+  return Status::Ok();
 }
 
-int Fragment::write(const void** buffers, const size_t* buffer_sizes) {
+Status Fragment::write(const void** buffers, const size_t* buffer_sizes) {
   // Forward the write command to the write state
-  int rc = write_state_->write(buffers, buffer_sizes);
-
-  // Error
-  if (rc != TILEDB_WS_OK) {
-    tiledb_fg_errmsg = tiledb_ws_errmsg;
-    return TILEDB_FG_ERR;
-  }
-
-  // Success
-  return TILEDB_FG_OK;
+  RETURN_NOT_OK(write_state_->write(buffers, buffer_sizes));
+  return Status::Ok();
 }
 
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-int Fragment::rename_fragment() {
+Status Fragment::rename_fragment() {
   // Do nothing in READ mode
-  if (read_mode())
-    return TILEDB_FG_OK;
+  if (write_mode()) {
+    std::string parent_dir = utils::parent_dir(fragment_name_);
+    std::string new_fragment_name =
+        parent_dir + "/" + fragment_name_.substr(parent_dir.size() + 2);
 
-  std::string parent_dir = utils::parent_dir(fragment_name_);
-  std::string new_fragment_name =
-      parent_dir + "/" + fragment_name_.substr(parent_dir.size() + 2);
+    if (rename(fragment_name_.c_str(), new_fragment_name.c_str())) {
+      std::string errmsg =
+          std::string("Cannot rename fragment directory; ") + strerror(errno);
+      PRINT_ERROR(errmsg);
+      return Status::OSError(errmsg);
+    }
 
-  if (rename(fragment_name_.c_str(), new_fragment_name.c_str())) {
-    std::string errmsg =
-        std::string("Cannot rename fragment directory; ") + strerror(errno);
-    PRINT_ERROR(errmsg);
-    tiledb_fg_errmsg = TILEDB_FG_ERRMSG + errmsg;
-    return TILEDB_FG_ERR;
+    fragment_name_ = new_fragment_name;
   }
-
-  fragment_name_ = new_fragment_name;
-
-  return TILEDB_FG_OK;
+  return Status::Ok();
 }
 
 };  // namespace tiledb

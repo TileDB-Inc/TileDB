@@ -54,6 +54,7 @@ add_executable(
     "src/unit-capi-sparsearray.cc"
     "src/unit-capi-densearray.cc"
     "src/unit-compression-rle.cc"
+    "src/unit-status.cc"
 )
 
 set_target_properties(

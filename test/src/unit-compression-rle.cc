@@ -49,24 +49,29 @@ TEST_CASE("Test RLE Attribute Compression") {
   size_t value_size;
   size_t run_size = 6;
   size_t compress_bound;
-  int64_t rc;
+  int64_t output_size;
 
   // === Attribute compression (value_size = sizeof(int)) === //
   value_size = sizeof(int);
 
   // Test empty bufffer
-  rc = RLE_compress(input, input_size, compressed, compressed_size, value_size);
-  CHECK(rc == 0);
+  tiledb::Status st;
+  st = RLE_compress(
+      input, input_size, compressed, compressed_size, value_size, &output_size);
+  CHECK(st.ok());
+  CHECK(output_size == 0);
 
   // Test input buffer invalid format
   input_size = 5;
-  rc = RLE_compress(input, input_size, compressed, compressed_size, value_size);
-  CHECK(rc == TILEDB_UT_ERR);
+  st = RLE_compress(
+      input, input_size, compressed, compressed_size, value_size, &output_size);
+  CHECK(!st.ok());
 
   // Test output buffer overflow
   input_size = 16;
-  rc = RLE_compress(input, input_size, compressed, compressed_size, value_size);
-  CHECK(rc == TILEDB_UT_ERR);
+  st = RLE_compress(
+      input, input_size, compressed, compressed_size, value_size, &output_size);
+  CHECK(!st.ok());
 
   // Test compress bound
   compress_bound = RLE_compress_bound(input_size, value_size);
@@ -77,12 +82,14 @@ TEST_CASE("Test RLE Attribute Compression") {
     memcpy(input + i * value_size, &i, value_size);
   input_size = 100 * value_size;
   compressed_size = RLE_compress_bound(input_size, value_size);
-  rc = RLE_compress(input, input_size, compressed, compressed_size, value_size);
-  CHECK(rc == compressed_size);
+  st = RLE_compress(
+      input, input_size, compressed, compressed_size, value_size, &output_size);
+  CHECK(st.ok());
+  CHECK(output_size == compressed_size);
   decompressed_size = input_size;
-  rc = RLE_decompress(
+  st = RLE_decompress(
       compressed, compressed_size, decompressed, decompressed_size, value_size);
-  CHECK(rc == TILEDB_UT_OK);
+  CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 
   // Test all values the same (a single long run)
@@ -90,13 +97,14 @@ TEST_CASE("Test RLE Attribute Compression") {
   for (int i = 0; i < 100; ++i)
     memcpy(input + i * value_size, &v, value_size);
   input_size = 100 * value_size;
-  compressed_size =
-      RLE_compress(input, input_size, compressed, compressed_size, value_size);
-  CHECK(compressed_size == run_size);
+  st = RLE_compress(
+      input, input_size, compressed, compressed_size, value_size, &output_size);
+  CHECK(st.ok());
+  CHECK(output_size == run_size);
   decompressed_size = input_size;
-  rc = RLE_decompress(
-      compressed, compressed_size, decompressed, decompressed_size, value_size);
-  CHECK(rc == TILEDB_UT_OK);
+  st = RLE_decompress(
+      compressed, output_size, decompressed, decompressed_size, value_size);
+  CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 
   // Test a mix of short and long runs
@@ -108,13 +116,14 @@ TEST_CASE("Test RLE Attribute Compression") {
     memcpy(input + i * value_size, &i, value_size);
   input_size = 110 * value_size;
   compressed_size = RLE_compress_bound(input_size, value_size);
-  compressed_size =
-      RLE_compress(input, input_size, compressed, compressed_size, value_size);
-  CHECK(compressed_size == 21 * run_size);
+  st = RLE_compress(
+      input, input_size, compressed, compressed_size, value_size, &output_size);
+  CHECK(st.ok());
+  CHECK(output_size == 21 * run_size);
   decompressed_size = input_size;
-  rc = RLE_decompress(
-      compressed, compressed_size, decompressed, decompressed_size, value_size);
-  CHECK(rc == TILEDB_UT_OK);
+  st = RLE_decompress(
+      compressed, output_size, decompressed, decompressed_size, value_size);
+  CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 
   // Test when a run exceeds max run length
@@ -126,13 +135,14 @@ TEST_CASE("Test RLE Attribute Compression") {
     memcpy(input + i * value_size, &i, value_size);
   input_size = 70030 * value_size;
   compressed_size = RLE_compress_bound(input_size, value_size);
-  compressed_size =
-      RLE_compress(input, input_size, compressed, compressed_size, value_size);
-  CHECK(compressed_size == 32 * run_size);
+  st = RLE_compress(
+      input, input_size, compressed, compressed_size, value_size, &output_size);
+  CHECK(st.ok());
+  CHECK(output_size == 32 * run_size);
   decompressed_size = input_size;
-  rc = RLE_decompress(
-      compressed, compressed_size, decompressed, decompressed_size, value_size);
-  CHECK(rc == TILEDB_UT_OK);
+  st = RLE_decompress(
+      compressed, output_size, decompressed, decompressed_size, value_size);
+  CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 
   // === Attribute compression (value_size = 2*sizeof(double)) === //
@@ -161,13 +171,14 @@ TEST_CASE("Test RLE Attribute Compression") {
   }
   input_size = 110 * value_size;
   compressed_size = RLE_compress_bound(input_size, value_size);
-  compressed_size =
-      RLE_compress(input, input_size, compressed, compressed_size, value_size);
-  CHECK(compressed_size == 21 * run_size);
+  st = RLE_compress(
+      input, input_size, compressed, compressed_size, value_size, &output_size);
+  CHECK(st.ok());
+  CHECK(output_size == 21 * run_size);
   decompressed_size = input_size;
-  rc = RLE_decompress(
-      compressed, compressed_size, decompressed, decompressed_size, value_size);
-  CHECK(rc == TILEDB_UT_OK);
+  st = RLE_decompress(
+      compressed, output_size, decompressed, decompressed_size, value_size);
+  CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 }
 
@@ -184,7 +195,8 @@ TEST_CASE("Test RLE compression (coordinates, row-major cell order)") {
   size_t run_size;
   size_t compress_bound;
   int dim_num = 2;
-  int rc;
+  int64_t output_size;
+  tiledb::Status st;
 
   // === Coordinates compression (row-major) === //
   value_size = sizeof(int);
@@ -192,22 +204,40 @@ TEST_CASE("Test RLE compression (coordinates, row-major cell order)") {
   run_size = sizeof(int) + 2 * sizeof(char);
 
   // Test empty bufffer
-  rc = RLE_compress_coords_row(
-      input, input_size, compressed, compressed_size, value_size, dim_num);
-  CHECK(rc == 0);
+  st = RLE_compress_coords_row(
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      value_size,
+      dim_num,
+      &output_size);
+  CHECK(st.ok());
 
   // Test input buffer invalid format
   input_size = 5;
-  rc = RLE_compress_coords_row(
-      input, input_size, compressed, compressed_size, value_size, dim_num);
-  CHECK(rc == TILEDB_UT_ERR);
+  st = RLE_compress_coords_row(
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      value_size,
+      dim_num,
+      &output_size);
+  CHECK(!st.ok());
 
   // Test output buffer overflow
   input_size = 16;
   compressed_size = 0;
-  rc = RLE_compress_coords_row(
-      input, input_size, compressed, compressed_size, value_size, dim_num);
-  CHECK(rc == TILEDB_UT_ERR);
+  st = RLE_compress_coords_row(
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      value_size,
+      dim_num,
+      &output_size);
+  CHECK(!st.ok());
 
   // Test compress bound
   input_size = 64;
@@ -226,18 +256,25 @@ TEST_CASE("Test RLE compression (coordinates, row-major cell order)") {
   }
   input_size = 100 * value_size * dim_num;
   compressed_size = RLE_compress_bound_coords(input_size, value_size, dim_num);
-  rc = RLE_compress_coords_row(
-      input, input_size, compressed, compressed_size, value_size, dim_num);
-  CHECK(rc == compressed_size);
+  st = RLE_compress_coords_row(
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      value_size,
+      dim_num,
+      &output_size);
+  CHECK(st.ok());
+  CHECK(output_size == compressed_size);
   decompressed_size = input_size;
-  rc = RLE_decompress_coords_row(
+  st = RLE_decompress_coords_row(
       compressed,
       compressed_size,
       decompressed,
       decompressed_size,
       value_size,
       dim_num);
-  CHECK(rc == TILEDB_UT_OK);
+  CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 
   // Test all values the same (a single long run)
@@ -248,18 +285,25 @@ TEST_CASE("Test RLE compression (coordinates, row-major cell order)") {
   }
   input_size = 100 * value_size * dim_num;
   compressed_size = RLE_compress_bound_coords(input_size, value_size, dim_num);
-  compressed_size = RLE_compress_coords_row(
-      input, input_size, compressed, compressed_size, value_size, dim_num);
-  CHECK(compressed_size == 100 * value_size + run_size + sizeof(int64_t));
-  decompressed_size = input_size;
-  rc = RLE_decompress_coords_row(
+  st = RLE_compress_coords_row(
+      input,
+      input_size,
       compressed,
       compressed_size,
+      value_size,
+      dim_num,
+      &output_size);
+  CHECK(st.ok());
+  CHECK(output_size == 100 * value_size + run_size + sizeof(int64_t));
+  decompressed_size = input_size;
+  st = RLE_decompress_coords_row(
+      compressed,
+      output_size,
       decompressed,
       decompressed_size,
       value_size,
       dim_num);
-  CHECK(rc == TILEDB_UT_OK);
+  CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 
   // Test a mix of short and long runs
@@ -280,18 +324,25 @@ TEST_CASE("Test RLE compression (coordinates, row-major cell order)") {
   }
   input_size = 100 * value_size * dim_num;
   compressed_size = RLE_compress_bound_coords(input_size, value_size, dim_num);
-  compressed_size = RLE_compress_coords_row(
-      input, input_size, compressed, compressed_size, value_size, dim_num);
-  CHECK(compressed_size == 100 * value_size + 21 * run_size + sizeof(int64_t));
-  decompressed_size = input_size;
-  rc = RLE_decompress_coords_row(
+  st = RLE_compress_coords_row(
+      input,
+      input_size,
       compressed,
       compressed_size,
+      value_size,
+      dim_num,
+      &output_size);
+  CHECK(st.ok());
+  CHECK(output_size == 100 * value_size + 21 * run_size + sizeof(int64_t));
+  decompressed_size = input_size;
+  st = RLE_decompress_coords_row(
+      compressed,
+      output_size,
       decompressed,
       decompressed_size,
       value_size,
       dim_num);
-  CHECK(rc == TILEDB_UT_OK);
+  CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 }
 
@@ -307,8 +358,9 @@ TEST_CASE("Test RLE compression (coordinates, column-major cell order)") {
   size_t coords_size;
   size_t run_size;
   size_t compress_bound;
+  int64_t output_size;
   int dim_num = 2;
-  int rc;
+  tiledb::Status st;
 
   // === Coordinates compression (row-major) === //
   value_size = sizeof(int);
@@ -316,22 +368,40 @@ TEST_CASE("Test RLE compression (coordinates, column-major cell order)") {
   run_size = sizeof(int) + 2 * sizeof(char);
 
   // Test empty bufffer
-  rc = RLE_compress_coords_col(
-      input, input_size, compressed, compressed_size, value_size, dim_num);
-  CHECK(rc == 0);
+  st = RLE_compress_coords_col(
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      value_size,
+      dim_num,
+      &output_size);
+  CHECK(st.ok());
 
   // Test input buffer invalid format
   input_size = 5;
-  rc = RLE_compress_coords_col(
-      input, input_size, compressed, compressed_size, value_size, dim_num);
-  CHECK(rc == TILEDB_UT_ERR);
+  st = RLE_compress_coords_col(
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      value_size,
+      dim_num,
+      &output_size);
+  CHECK(!st.ok());
 
   // Test output buffer overflow
   input_size = 16;
   compressed_size = 0;
-  rc = RLE_compress_coords_col(
-      input, input_size, compressed, compressed_size, value_size, dim_num);
-  CHECK(rc == TILEDB_UT_ERR);
+  st = RLE_compress_coords_col(
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      value_size,
+      dim_num,
+      &output_size);
+  CHECK(!st.ok());
 
   // Test compress bound
   input_size = 64;
@@ -350,18 +420,25 @@ TEST_CASE("Test RLE compression (coordinates, column-major cell order)") {
   }
   input_size = 100 * value_size * dim_num;
   compressed_size = RLE_compress_bound_coords(input_size, value_size, dim_num);
-  rc = RLE_compress_coords_col(
-      input, input_size, compressed, compressed_size, value_size, dim_num);
-  CHECK(rc == compressed_size);
+  st = RLE_compress_coords_col(
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      value_size,
+      dim_num,
+      &output_size);
+  CHECK(st.ok());
+  CHECK(output_size == compressed_size);
   decompressed_size = input_size;
-  rc = RLE_decompress_coords_col(
+  st = RLE_decompress_coords_col(
       compressed,
       compressed_size,
       decompressed,
       decompressed_size,
       value_size,
       dim_num);
-  CHECK(rc == TILEDB_UT_OK);
+  CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 
   // Test all values the same (a single long run)
@@ -372,18 +449,24 @@ TEST_CASE("Test RLE compression (coordinates, column-major cell order)") {
   }
   input_size = 100 * value_size * dim_num;
   compressed_size = RLE_compress_bound_coords(input_size, value_size, dim_num);
-  compressed_size = RLE_compress_coords_col(
-      input, input_size, compressed, compressed_size, value_size, dim_num);
-  CHECK(compressed_size == 100 * value_size + run_size + sizeof(int64_t));
+  st = RLE_compress_coords_col(
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      value_size,
+      dim_num,
+      &output_size);
+  CHECK(output_size == 100 * value_size + run_size + sizeof(int64_t));
   decompressed_size = input_size;
-  rc = RLE_decompress_coords_col(
+  st = RLE_decompress_coords_col(
       compressed,
       compressed_size,
       decompressed,
       decompressed_size,
       value_size,
       dim_num);
-  CHECK(rc == TILEDB_UT_OK);
+  CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 
   // Test a mix of short and long runs
@@ -404,17 +487,23 @@ TEST_CASE("Test RLE compression (coordinates, column-major cell order)") {
   }
   input_size = 100 * value_size * dim_num;
   compressed_size = RLE_compress_bound_coords(input_size, value_size, dim_num);
-  compressed_size = RLE_compress_coords_col(
-      input, input_size, compressed, compressed_size, value_size, dim_num);
-  CHECK(compressed_size == 100 * value_size + 21 * run_size + sizeof(int64_t));
-  decompressed_size = input_size;
-  rc = RLE_decompress_coords_col(
+  st = RLE_compress_coords_col(
+      input,
+      input_size,
       compressed,
       compressed_size,
+      value_size,
+      dim_num,
+      &output_size);
+  CHECK(output_size == 100 * value_size + 21 * run_size + sizeof(int64_t));
+  decompressed_size = input_size;
+  st = RLE_decompress_coords_col(
+      compressed,
+      output_size,
       decompressed,
       decompressed_size,
       value_size,
       dim_num);
-  CHECK(rc == TILEDB_UT_OK);
+  CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 }

@@ -39,23 +39,10 @@
 #include <pthread.h>
 #include <string>
 #include <vector>
-
+#include "status.h"
 #ifdef HAVE_OPENMP
 #include <omp.h>
 #endif
-
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/**@{*/
-/** Return code. */
-#define TILEDB_UT_OK 0
-#define TILEDB_UT_ERR -1
-/**@}*/
-
-/** Default error message. */
-#define TILEDB_UT_ERRMSG std::string("[TileDB::utils] Error: ")
 
 /** Maximum number of bytes written in a single I/O. */
 #define TILEDB_UT_MAX_WRITE_COUNT 1500000000  // ~ 1.5 GB
@@ -63,13 +50,6 @@
 namespace tiledb {
 
 namespace utils {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
-
-/** Stores potential error messages. */
-extern std::string tiledb_ut_errmsg;
 
 /* ********************************* */
 /*             FUNCTIONS             */
@@ -197,7 +177,7 @@ int cmp_row_order(
  * @param dir The name of the directory to be created.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
-int create_dir(const std::string& dir);
+Status create_dir(const std::string& dir);
 
 /**
  * Creates a special file to indicate that the input directory is a
@@ -206,7 +186,7 @@ int create_dir(const std::string& dir);
  * @param dir The name of the fragment directory where the file is created.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
-int create_fragment_file(const std::string& dir);
+Status create_fragment_file(const std::string& dir);
 
 /**
  * Returns the directory where the program is executed.
@@ -223,7 +203,7 @@ std::string current_dir();
  * @param dirname The name of the directory to be deleted.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
-int delete_dir(const std::string& dirname);
+Status delete_dir(const std::string& dirname);
 
 /**
  * Checks if the input is a special TileDB empty value.
@@ -244,7 +224,7 @@ bool empty_value(T value);
  *     After the function call, this size doubles.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
-int expand_buffer(void*& buffer, size_t& buffer_allocated_size);
+Status expand_buffer(void*& buffer, size_t& buffer_allocated_size);
 
 /**
  * Expands the input MBR so that it encompasses the input coordinates.
@@ -264,7 +244,7 @@ void expand_mbr(T* mbr, const T* coords, int dim_num);
  * @param filename The name of the file whose size is to be retrieved.
  * @return The file size on success, and TILEDB_UT_ERR for error.
  */
-off_t file_size(const std::string& filename);
+Status file_size(const std::string& filename, off_t* file_size);
 
 /** Returns the names of the directories inside the input directory. */
 std::vector<std::string> get_dirs(const std::string& dir);
@@ -288,8 +268,12 @@ std::string get_mac_addr();
  * @param out_size The available size in the output buffer.
  * @return The size of compressed data on success, and TILEDB_UT_ERR on error.
  */
-ssize_t gzip(
-    unsigned char* in, size_t in_size, unsigned char* out, size_t out_size);
+Status gzip(
+    unsigned char* in,
+    size_t in_size,
+    unsigned char* out,
+    size_t out_size,
+    ssize_t* gzip_size);
 
 /**
  * Decompresses the GZIPed input buffer and stores the result in the output
@@ -302,7 +286,7 @@ ssize_t gzip(
  * @param out_size The size of the decompressed data.
  * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
  */
-int gunzip(
+Status gunzip(
     unsigned char* in,
     size_t in_size,
     unsigned char* out,
@@ -469,7 +453,7 @@ int mpi_io_write_to_file(
  * @param mtx The mutex to be destroyed.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
-int mutex_destroy(omp_lock_t* mtx);
+Status mutex_destroy(omp_lock_t* mtx);
 
 /**
  * Initializes an OpenMP mutex.
@@ -477,7 +461,7 @@ int mutex_destroy(omp_lock_t* mtx);
  * @param mtx The mutex to be initialized.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
-int mutex_init(omp_lock_t* mtx);
+Status mutex_init(omp_lock_t* mtx);
 
 /**
  * Locks an OpenMP mutex.
@@ -485,7 +469,7 @@ int mutex_init(omp_lock_t* mtx);
  * @param mtx The mutex to be locked.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
-int mutex_lock(omp_lock_t* mtx);
+Status mutex_lock(omp_lock_t* mtx);
 
 /**
  * Unlocks an OpenMP mutex.
@@ -493,7 +477,7 @@ int mutex_lock(omp_lock_t* mtx);
  * @param mtx The mutex to be unlocked.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
-int mutex_unlock(omp_lock_t* mtx);
+Status mutex_unlock(omp_lock_t* mtx);
 #endif
 
 /**
@@ -502,7 +486,7 @@ int mutex_unlock(omp_lock_t* mtx);
  * @param mtx The mutex to be destroyed.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
-int mutex_destroy(pthread_mutex_t* mtx);
+Status mutex_destroy(pthread_mutex_t* mtx);
 
 /**
  * Initializes a pthread mutex.
@@ -510,7 +494,7 @@ int mutex_destroy(pthread_mutex_t* mtx);
  * @param mtx The mutex to be initialized.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
-int mutex_init(pthread_mutex_t* mtx);
+Status mutex_init(pthread_mutex_t* mtx);
 
 /**
  * Locks a pthread mutex.
@@ -518,7 +502,7 @@ int mutex_init(pthread_mutex_t* mtx);
  * @param mtx The mutex to be locked.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
-int mutex_lock(pthread_mutex_t* mtx);
+Status mutex_lock(pthread_mutex_t* mtx);
 
 /**
  * Unlocks a pthread mutex.
@@ -526,7 +510,7 @@ int mutex_lock(pthread_mutex_t* mtx);
  * @param mtx The mutex to be unlocked.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
-int mutex_unlock(pthread_mutex_t* mtx);
+Status mutex_unlock(pthread_mutex_t* mtx);
 
 /**
  * Returns the parent directory of the input directory.
@@ -558,7 +542,7 @@ void purge_dots_from_path(std::string& path);
  * @param length The size of the data to be read from the file.
  * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
  */
-int read_from_file(
+Status read_from_file(
     const std::string& filename, off_t offset, void* buffer, size_t length);
 
 /**
@@ -570,7 +554,7 @@ int read_from_file(
  * @param length The size of the data to be read from the file.
  * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
  */
-int read_from_file_with_mmap(
+Status read_from_file_with_mmap(
     const std::string& filename, off_t offset, void* buffer, size_t length);
 
 /**
@@ -589,15 +573,17 @@ std::string real_dir(const std::string& dir);
  * @param output The output buffer that results from compression.
  * @param output_allocated_size The allocated size of the output buffer.
  * @param value_size The size of each single value in the input buffer.
- * @return The size of the result ouput buffer upon success, and TILEDB_UT_ERR
+ * @param The size of the result ouput buffer upon success, and TILEDB_UT_ERR
  *     on error.
+ * @return Status
  */
-int64_t RLE_compress(
+Status RLE_compress(
     const unsigned char* input,
     size_t input_size,
     unsigned char* output,
     size_t output_allocated_size,
-    size_t value_size);
+    size_t value_size,
+    int64_t* output_size);
 
 /**
  * Returns the maximum size of the output of RLE compression.
@@ -632,16 +618,18 @@ size_t RLE_compress_bound_coords(
  * @param value_size The size of each single value in the input buffer.
  * @param dim_num The number of dimensions/coordinates of each cell in the
  *     input buffer.
- * @return The size of the result ouput buffer upon success, and TILEDB_UT_ERR
- *     on error.
+ * @param The size of the result ouput buffer upon success, -1 on error
+ * @return Status
+ *
  */
-int64_t RLE_compress_coords_col(
+Status RLE_compress_coords_col(
     const unsigned char* input,
     size_t input_size,
     unsigned char* output,
     size_t output_allocated_size,
     size_t value_size,
-    int dim_num);
+    int dim_num,
+    int64_t* output_size);
 
 /**
  * Compresses the coordinates of a buffer with RLE, assuming that the cells in
@@ -654,16 +642,18 @@ int64_t RLE_compress_coords_col(
  * @param value_size The size of each single value in the input buffer.
  * @param dim_num The number of dimensions/coordinates of each cell in the
  *     input buffer.
- * @return The size of the result ouput buffer upon success, and TILEDB_UT_ERR
- *     on error.
+ * @param The size of the result ouput buffer upon success, -1 on error
+ * @return Status
+ *
  */
-int64_t RLE_compress_coords_row(
+Status RLE_compress_coords_row(
     const unsigned char* input,
     size_t input_size,
     unsigned char* output,
     size_t output_allocated_size,
     size_t value_size,
-    int dim_num);
+    int dim_num,
+    int64_t* output_size);
 
 /**
  * Decompresses with RLE.
@@ -675,7 +665,7 @@ int64_t RLE_compress_coords_row(
  * @param value_size The size of each single value in the input buffer.
  * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
  */
-int RLE_decompress(
+Status RLE_decompress(
     const unsigned char* input,
     size_t input_size,
     unsigned char* output,
@@ -695,7 +685,7 @@ int RLE_decompress(
  *     output buffer.
  * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
  */
-int RLE_decompress_coords_col(
+Status RLE_decompress_coords_col(
     const unsigned char* input,
     size_t input_size,
     unsigned char* output,
@@ -716,7 +706,7 @@ int RLE_decompress_coords_col(
  *     output buffer.
  * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
  */
-int RLE_decompress_coords_row(
+Status RLE_decompress_coords_row(
     const unsigned char* input,
     size_t input_size,
     unsigned char* output,
@@ -752,7 +742,7 @@ bool starts_with(const std::string& value, const std::string& prefix);
  * @param filename The name of the file.
  * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
  */
-int sync(const char* filename);
+Status sync(const char* filename);
 
 /**
  * Writes the input buffer to a file.
@@ -762,7 +752,8 @@ int sync(const char* filename);
  * @param buffer_size The size of the input buffer.
  * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
  */
-int write_to_file(const char* filename, const void* buffer, size_t buffer_size);
+Status write_to_file(
+    const char* filename, const void* buffer, size_t buffer_size);
 
 /**
  * Write the input buffer to a file, compressed with GZIP.
@@ -772,7 +763,7 @@ int write_to_file(const char* filename, const void* buffer, size_t buffer_size);
  * @param buffer_size The size of the input buffer.
  * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
  */
-int write_to_file_cmp_gzip(
+Status write_to_file_cmp_gzip(
     const char* filename, const void* buffer, size_t buffer_size);
 
 /**

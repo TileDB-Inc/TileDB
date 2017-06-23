@@ -35,7 +35,9 @@
 #include <cstring>
 #include <iostream>
 #include "aio_request.h"
+#include "array_schema.h"
 #include "array_schema_c.h"
+#include "status.h"
 #include "storage_manager.h"
 #include "storage_manager_config.h"
 
@@ -116,8 +118,9 @@ int tiledb_ctx_init(
 
   // Create storage manager
   (*tiledb_ctx)->storage_manager_ = new tiledb::StorageManager();
-  if ((*tiledb_ctx)->storage_manager_->init(config) != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st = (*tiledb_ctx)->storage_manager_->init(config);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -131,17 +134,17 @@ int tiledb_ctx_finalize(TileDB_CTX* tiledb_ctx) {
     return TILEDB_OK;
 
   // Finalize storage manager
-  int rc = TILEDB_OK;
+  tiledb::Status st;
   if (tiledb_ctx->storage_manager_ != nullptr)
-    rc = tiledb_ctx->storage_manager_->finalize();
+    st = tiledb_ctx->storage_manager_->finalize();
 
   // Clean up
   delete tiledb_ctx->storage_manager_;
   free(tiledb_ctx);
 
   // Error
-  if (rc != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -168,9 +171,9 @@ int tiledb_workspace_create(
   }
 
   // Create the workspace
-  if (tiledb_ctx->storage_manager_->workspace_create(workspace) !=
-      TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st = tiledb_ctx->storage_manager_->workspace_create(workspace);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -196,8 +199,9 @@ int tiledb_group_create(const TileDB_CTX* tiledb_ctx, const char* group) {
   }
 
   // Create the group
-  if (tiledb_ctx->storage_manager_->group_create(group) != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st = tiledb_ctx->storage_manager_->group_create(group);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -370,9 +374,10 @@ int tiledb_array_create(
   array_schema_c.types_ = array_schema->types_;
 
   // Create the array
-  if (tiledb_ctx->storage_manager_->array_create(&array_schema_c) !=
-      TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st =
+      tiledb_ctx->storage_manager_->array_create(&array_schema_c);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -407,7 +412,7 @@ int tiledb_array_init(
   (*tiledb_array)->tiledb_ctx_ = tiledb_ctx;
 
   // Init the array
-  int rc = tiledb_ctx->storage_manager_->array_init(
+  tiledb::Status st = tiledb_ctx->storage_manager_->array_init(
       (*tiledb_array)->array_,
       array,
       mode,
@@ -416,9 +421,9 @@ int tiledb_array_init(
       attribute_num);
 
   // Return
-  if (rc != TILEDB_SM_OK) {
+  if (!st.ok()) {
     free(*tiledb_array);
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   } else {
     return TILEDB_OK;
@@ -432,8 +437,9 @@ int tiledb_array_reset_subarray(
     return TILEDB_ERR;
 
   // Reset subarray
-  if (tiledb_array->array_->reset_subarray(subarray) != TILEDB_AR_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_ar_errmsg.c_str());
+  tiledb::Status st = tiledb_array->array_->reset_subarray(subarray);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -450,9 +456,10 @@ int tiledb_array_reset_attributes(
     return TILEDB_ERR;
 
   // Re-Init the array
-  if (tiledb_array->array_->reset_attributes(attributes, attribute_num) !=
-      TILEDB_AR_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_ar_errmsg.c_str());
+  tiledb::Status st =
+      tiledb_array->array_->reset_attributes(attributes, attribute_num);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -508,9 +515,10 @@ int tiledb_array_load_schema(
 
   // Get the array schema
   tiledb::ArraySchema* array_schema;
-  if (tiledb_ctx->storage_manager_->array_load_schema(array, array_schema) !=
-      TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st =
+      tiledb_ctx->storage_manager_->array_load_schema(array, array_schema);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
   ArraySchemaC array_schema_c;
@@ -597,8 +605,9 @@ int tiledb_array_write(
     return TILEDB_ERR;
 
   // Write
-  if (tiledb_array->array_->write(buffers, buffer_sizes) != TILEDB_AR_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_ar_errmsg.c_str());
+  tiledb::Status st = tiledb_array->array_->write(buffers, buffer_sizes);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -613,8 +622,9 @@ int tiledb_array_read(
     return TILEDB_ERR;
 
   // Read
-  if (tiledb_array->array_->read(buffers, buffer_sizes) != TILEDB_AR_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_ar_errmsg.c_str());
+  tiledb::Status st = tiledb_array->array_->read(buffers, buffer_sizes);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -641,11 +651,12 @@ int tiledb_array_consolidate(const TileDB_CTX* tiledb_ctx, const char* array) {
   }
 
   // Consolidate
-  if (tiledb_ctx->storage_manager_->array_consolidate(array) != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st = tiledb_ctx->storage_manager_->array_consolidate(array);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
-  } else
-    return TILEDB_OK;
+  }
+  return TILEDB_OK;
 }
 
 int tiledb_array_finalize(TileDB_Array* tiledb_array) {
@@ -654,14 +665,15 @@ int tiledb_array_finalize(TileDB_Array* tiledb_array) {
     return TILEDB_ERR;
 
   // Finalize array
-  int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_finalize(
-      tiledb_array->array_);
+  tiledb::Status st =
+      tiledb_array->tiledb_ctx_->storage_manager_->array_finalize(
+          tiledb_array->array_);
 
   free(tiledb_array);
 
   // Error
-  if (rc != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -675,12 +687,12 @@ int tiledb_array_sync(TileDB_Array* tiledb_array) {
     return TILEDB_ERR;
 
   // Sync
-  int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_sync(
+  tiledb::Status st = tiledb_array->tiledb_ctx_->storage_manager_->array_sync(
       tiledb_array->array_);
 
   // Error
-  if (rc != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -695,12 +707,13 @@ int tiledb_array_sync_attribute(
     return TILEDB_ERR;
 
   // Sync attribute
-  int rc = tiledb_array->tiledb_ctx_->storage_manager_->array_sync_attribute(
-      tiledb_array->array_, attribute);
+  tiledb::Status st =
+      tiledb_array->tiledb_ctx_->storage_manager_->array_sync_attribute(
+          tiledb_array->array_, attribute);
 
   // Error
-  if (rc != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -747,7 +760,7 @@ int tiledb_array_iterator_init(
   (*tiledb_array_it)->tiledb_ctx_ = tiledb_ctx;
 
   // Initialize the array iterator
-  int rc = tiledb_ctx->storage_manager_->array_iterator_init(
+  tiledb::Status st = tiledb_ctx->storage_manager_->array_iterator_init(
       (*tiledb_array_it)->array_it_,
       array,
       mode,
@@ -758,9 +771,9 @@ int tiledb_array_iterator_init(
       buffer_sizes);
 
   // Error
-  if (rc != TILEDB_SM_OK) {
+  if (!st.ok()) {
     free(*tiledb_array_it);
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -778,9 +791,10 @@ int tiledb_array_iterator_get_value(
     return TILEDB_ERR;
 
   // Get value
-  if (tiledb_array_it->array_it_->get_value(attribute_id, value, value_size) !=
-      TILEDB_AIT_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_ait_errmsg.c_str());
+  tiledb::Status st =
+      tiledb_array_it->array_it_->get_value(attribute_id, value, value_size);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -794,10 +808,9 @@ int tiledb_array_iterator_next(TileDB_ArrayIterator* tiledb_array_it) {
     return TILEDB_ERR;
 
   // Advance iterator
-  if (tiledb_array_it->array_it_->next() != TILEDB_AIT_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_ait_errmsg.c_str());
-    return TILEDB_ERR;
-  }
+  tiledb::Status st = tiledb_array_it->array_it_->next();
+  strcpy(tiledb_errmsg, st.to_string().c_str());
+  return TILEDB_ERR;
 
   // Success
   return TILEDB_OK;
@@ -818,15 +831,15 @@ int tiledb_array_iterator_finalize(TileDB_ArrayIterator* tiledb_array_it) {
     return TILEDB_ERR;
 
   // Finalize array
-  int rc =
+  tiledb::Status st =
       tiledb_array_it->tiledb_ctx_->storage_manager_->array_iterator_finalize(
           tiledb_array_it->array_it_);
 
   free(tiledb_array_it);
 
   // Error
-  if (rc != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_OK;
   }
 
@@ -951,9 +964,10 @@ int tiledb_metadata_create(
   metadata_schema_c.types_ = metadata_schema->types_;
 
   // Create the metadata
-  if (tiledb_ctx->storage_manager_->metadata_create(&metadata_schema_c) !=
-      TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st =
+      tiledb_ctx->storage_manager_->metadata_create(&metadata_schema_c);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -979,14 +993,11 @@ int tiledb_metadata_init(
   (*tiledb_metadata)->tiledb_ctx_ = tiledb_ctx;
 
   // Init the metadata
-  if (tiledb_ctx->storage_manager_->metadata_init(
-          (*tiledb_metadata)->metadata_,
-          metadata,
-          mode,
-          attributes,
-          attribute_num) != TILEDB_SM_OK) {
+  tiledb::Status st = tiledb_ctx->storage_manager_->metadata_init(
+      (*tiledb_metadata)->metadata_, metadata, mode, attributes, attribute_num);
+  if (!st.ok()) {
     free(*tiledb_metadata);
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1003,9 +1014,10 @@ int tiledb_metadata_reset_attributes(
     return TILEDB_ERR;
 
   // Reset attributes
-  if (tiledb_metadata->metadata_->reset_attributes(attributes, attribute_num) !=
-      TILEDB_MT_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_mt_errmsg.c_str());
+  tiledb::Status st =
+      tiledb_metadata->metadata_->reset_attributes(attributes, attribute_num);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1056,9 +1068,10 @@ int tiledb_metadata_load_schema(
 
   // Get the array schema
   tiledb::ArraySchema* array_schema;
-  if (tiledb_ctx->storage_manager_->metadata_load_schema(
-          metadata, array_schema) != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st = tiledb_ctx->storage_manager_->metadata_load_schema(
+      metadata, array_schema);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
   MetadataSchemaC metadata_schema_c;
@@ -1124,9 +1137,10 @@ int tiledb_metadata_write(
     return TILEDB_ERR;
 
   // Write
-  if (tiledb_metadata->metadata_->write(
-          keys, keys_size, buffers, buffer_sizes) != TILEDB_MT_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_mt_errmsg.c_str());
+  tiledb::Status st =
+      tiledb_metadata->metadata_->write(keys, keys_size, buffers, buffer_sizes);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1144,9 +1158,10 @@ int tiledb_metadata_read(
     return TILEDB_ERR;
 
   // Read
-  if (tiledb_metadata->metadata_->read(key, buffers, buffer_sizes) !=
-      TILEDB_MT_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_mt_errmsg.c_str());
+  tiledb::Status st =
+      tiledb_metadata->metadata_->read(key, buffers, buffer_sizes);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1174,9 +1189,10 @@ int tiledb_metadata_consolidate(
   }
 
   // Consolidate
-  if (tiledb_ctx->storage_manager_->metadata_consolidate(metadata) !=
-      TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st =
+      tiledb_ctx->storage_manager_->metadata_consolidate(metadata);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1190,15 +1206,16 @@ int tiledb_metadata_finalize(TileDB_Metadata* tiledb_metadata) {
     return TILEDB_ERR;
 
   // Finalize metadata
-  int rc = tiledb_metadata->tiledb_ctx_->storage_manager_->metadata_finalize(
-      tiledb_metadata->metadata_);
+  tiledb::Status st =
+      tiledb_metadata->tiledb_ctx_->storage_manager_->metadata_finalize(
+          tiledb_metadata->metadata_);
 
   // Clean up
   free(tiledb_metadata);
 
   // Error
-  if (rc != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1244,15 +1261,16 @@ int tiledb_metadata_iterator_init(
   (*tiledb_metadata_it)->tiledb_ctx_ = tiledb_ctx;
 
   // Initialize the metadata iterator
-  if (tiledb_ctx->storage_manager_->metadata_iterator_init(
-          (*tiledb_metadata_it)->metadata_it_,
-          metadata,
-          attributes,
-          attribute_num,
-          buffers,
-          buffer_sizes) != TILEDB_SM_OK) {
+  tiledb::Status st = tiledb_ctx->storage_manager_->metadata_iterator_init(
+      (*tiledb_metadata_it)->metadata_it_,
+      metadata,
+      attributes,
+      attribute_num,
+      buffers,
+      buffer_sizes);
+  if (!st.ok()) {
     free(*tiledb_metadata_it);
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1270,9 +1288,10 @@ int tiledb_metadata_iterator_get_value(
     return TILEDB_ERR;
 
   // Get value
-  if (tiledb_metadata_it->metadata_it_->get_value(
-          attribute_id, value, value_size) != TILEDB_MIT_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_mit_errmsg.c_str());
+  tiledb::Status st = tiledb_metadata_it->metadata_it_->get_value(
+      attribute_id, value, value_size);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1286,8 +1305,9 @@ int tiledb_metadata_iterator_next(TileDB_MetadataIterator* tiledb_metadata_it) {
     return TILEDB_ERR;
 
   // Advance metadata iterator
-  if (tiledb_metadata_it->metadata_it_->next() != TILEDB_MIT_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_mit_errmsg.c_str());
+  tiledb::Status st = tiledb_metadata_it->metadata_it_->next();
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1311,15 +1331,16 @@ int tiledb_metadata_iterator_finalize(
     return TILEDB_ERR;
 
   // Finalize metadata iterator
-  int rc = tiledb_metadata_it->tiledb_ctx_->storage_manager_
-               ->metadata_iterator_finalize(tiledb_metadata_it->metadata_it_);
+  tiledb::Status st =
+      tiledb_metadata_it->tiledb_ctx_->storage_manager_
+          ->metadata_iterator_finalize(tiledb_metadata_it->metadata_it_);
 
   // Clean up
   free(tiledb_metadata_it);
 
   // Error
-  if (rc != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1350,8 +1371,9 @@ int tiledb_clear(const TileDB_CTX* tiledb_ctx, const char* dir) {
   }
 
   // Clear
-  if (tiledb_ctx->storage_manager_->clear(dir) != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st = tiledb_ctx->storage_manager_->clear(dir);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1373,8 +1395,9 @@ int tiledb_delete(const TileDB_CTX* tiledb_ctx, const char* dir) {
   }
 
   // Delete
-  if (tiledb_ctx->storage_manager_->delete_entire(dir) != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st = tiledb_ctx->storage_manager_->delete_entire(dir);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1405,8 +1428,9 @@ int tiledb_move(
   }
 
   // Move
-  if (tiledb_ctx->storage_manager_->move(old_dir, new_dir) != TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st = tiledb_ctx->storage_manager_->move(old_dir, new_dir);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1433,9 +1457,10 @@ int tiledb_ls(
   }
 
   // List TileDB objects
-  if (tiledb_ctx->storage_manager_->ls(parent_dir, dirs, dir_types, *dir_num) !=
-      TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st =
+      tiledb_ctx->storage_manager_->ls(parent_dir, dirs, dir_types, *dir_num);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1458,9 +1483,9 @@ int tiledb_ls_c(
   }
 
   // List TileDB objects
-  if (tiledb_ctx->storage_manager_->ls_c(parent_dir, *dir_num) !=
-      TILEDB_SM_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_sm_errmsg.c_str());
+  tiledb::Status st = tiledb_ctx->storage_manager_->ls_c(parent_dir, *dir_num);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 
@@ -1490,9 +1515,9 @@ int tiledb_array_aio_read(
   aio_request->completion_data_ = tiledb_aio_request->completion_data_;
 
   // Submit the AIO read request
-  if (tiledb_array->array_->aio_read(aio_request) != TILEDB_AR_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_ar_errmsg.c_str());
-    return TILEDB_ERR;
+  tiledb::Status st = tiledb_array->array_->aio_read(aio_request);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
   }
 
   // Success
@@ -1517,8 +1542,9 @@ int tiledb_array_aio_write(
   aio_request->completion_data_ = tiledb_aio_request->completion_data_;
 
   // Submit the AIO write request
-  if (tiledb_array->array_->aio_write(aio_request) != TILEDB_AR_OK) {
-    strcpy(tiledb_errmsg, tiledb::tiledb_ar_errmsg.c_str());
+  tiledb::Status st = tiledb_array->array_->aio_write(aio_request);
+  if (!st.ok()) {
+    strcpy(tiledb_errmsg, st.to_string().c_str());
     return TILEDB_ERR;
   }
 

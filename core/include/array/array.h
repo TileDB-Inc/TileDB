@@ -45,27 +45,11 @@
 #include "storage_manager_config.h"
 #include "tiledb_constants.h"
 
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/**@{*/
-/** Return code. */
-#define TILEDB_AR_OK 0
-#define TILEDB_AR_ERR -1
-/**@}*/
-
-/** Default error message. */
-#define TILEDB_AR_ERRMSG std::string("[TileDB::Array] Error: ")
-
 namespace tiledb {
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
-
-/** Stores potential error messages. */
-extern std::string tiledb_ar_errmsg;
 
 class ArrayReadState;
 class ArraySortedReadState;
@@ -105,7 +89,7 @@ class Array {
    * @param aio_request The AIO read request.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int aio_read(AIO_Request* aio_request);
+  Status aio_read(AIO_Request* aio_request);
 
   /**
    * Submits an asynchronous (AIO) write request and immediately returns control
@@ -115,7 +99,7 @@ class Array {
    * @param aio_request The AIO write request.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int aio_write(AIO_Request* aio_request);
+  Status aio_write(AIO_Request* aio_request);
 
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
@@ -181,7 +165,7 @@ class Array {
    *     without inflicting a considerable performance penalty due to overflow.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int read(void** buffers, size_t* buffer_sizes);
+  Status read(void** buffers, size_t* buffer_sizes);
 
   /**
    * Performs a read operation in an array, which must be initialized in read
@@ -209,7 +193,7 @@ class Array {
    *     without inflicting a considerable performance penalty due to overflow.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int read_default(void** buffers, size_t* buffer_sizes);
+  Status read_default(void** buffers, size_t* buffer_sizes);
 
   /** Returns true if the array is in read mode. */
   bool read_mode() const;
@@ -234,7 +218,7 @@ class Array {
    * @param old_fragment_names The names of the old fragments to be returned.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int consolidate(
+  Status consolidate(
       Fragment*& new_fragment, std::vector<std::string>& old_fragment_names);
 
   /**
@@ -244,14 +228,14 @@ class Array {
    * @param new_fragment The new consolidated fragment object.
    * @param attribute_id The id of the target attribute.
    */
-  int consolidate(Fragment* new_fragment, int attribute_id);
+  Status consolidate(Fragment* new_fragment, int attribute_id);
 
   /**
    * Finalizes the array, properly freeing up memory space.
    *
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
-  int finalize();
+  Status finalize();
 
   /**
    * Initializes a TileDB array object.
@@ -282,7 +266,7 @@ class Array {
    *     asynchronous IO (AIO) read/write operations.
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
-  int init(
+  Status init(
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
       const std::vector<BookKeeping*>& book_keeping,
@@ -303,7 +287,7 @@ class Array {
    *     then this should be 0.
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
-  int reset_attributes(const char** attributes, int attribute_num);
+  Status reset_attributes(const char** attributes, int attribute_num);
 
   /**
    * Resets the subarray used upon initialization of the array. This is useful
@@ -315,7 +299,7 @@ class Array {
    *     *subarray* should match the coordinates type in the array schema.
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
-  int reset_subarray(const void* subarray);
+  Status reset_subarray(const void* subarray);
 
   /**
    * Same as reset_subarray(), with the difference that the
@@ -325,14 +309,14 @@ class Array {
    *     *subarray* should match the coordinates type in the array schema.
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
-  int reset_subarray_soft(const void* subarray);
+  Status reset_subarray_soft(const void* subarray);
 
   /**
    * Syncs all currently written files in the input array.
    *
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
-  int sync();
+  Status sync();
 
   /**
    * Syncs the currently written files associated with the input attribute
@@ -340,7 +324,7 @@ class Array {
    *
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
-  int sync_attribute(const std::string& attribute);
+  Status sync_attribute(const std::string& attribute);
 
   /**
    * Performs a write operation in the array. The cell values are provided
@@ -392,7 +376,7 @@ class Array {
    *     a one-to-one correspondence).
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int write(const void** buffers, const size_t* buffer_sizes);
+  Status write(const void** buffers, const size_t* buffer_sizes);
 
   /**
    * Performs a write operation in the array. The cell values are provided
@@ -416,7 +400,7 @@ class Array {
    *     a one-to-one correspondence).
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int write_default(const void** buffers, const size_t* buffer_sizes);
+  Status write_default(const void** buffers, const size_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -502,21 +486,21 @@ class Array {
    * @param aio_request The AIO request.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int aio_push_request(AIO_Request* aio_request);
+  Status aio_push_request(AIO_Request* aio_request);
 
   /**
    * Creates the AIO thread.
    *
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int aio_thread_create();
+  Status aio_thread_create();
 
   /**
    * Destroys the AIO thread.
    *
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int aio_thread_destroy();
+  Status aio_thread_destroy();
 
   /**
    * Returns a new fragment name, which is in the form: <br>
@@ -539,7 +523,7 @@ class Array {
    * @param book_keeping The book-keeping of the array fragments.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int open_fragments(
+  Status open_fragments(
       const std::vector<std::string>& fragment_names,
       const std::vector<BookKeeping*>& book_keeping);
 };

@@ -36,19 +36,6 @@
 #include "array_iterator.h"
 #include "metadata.h"
 
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/**@{*/
-/** Return code. */
-#define TILEDB_MIT_OK 0
-#define TILEDB_MIT_ERR -1
-/**@}*/
-
-/** Default error message. */
-#define TILEDB_MIT_ERRMSG std::string("[TileDB::MetadataIterator] Error: ")
-
 namespace tiledb {
 
 /* ********************************* */
@@ -100,7 +87,8 @@ class MetadataIterator {
    * @param value_size The size (in bytes) of the retrieved value.
    * @return TILEDB_MIT_OK on success, and TILEDB_MIT_ERR on error.
    */
-  int get_value(int attribute_id, const void** value, size_t* value_size) const;
+  Status get_value(
+      int attribute_id, const void** value, size_t* value_size) const;
 
   // MUTATORS
 
@@ -109,7 +97,7 @@ class MetadataIterator {
    *
    * @return TILEDB_MIT_OK on success, and TILEDB_MIT_ERR on error.
    */
-  int finalize();
+  Status finalize();
 
   /**
    * Initializes a metadata iterator on an already initialized metadata object.
@@ -128,14 +116,14 @@ class MetadataIterator {
    *     iterating over the previously prefetched data.
    * @return TILEDB_MIT_OK on success, and TILEDB_MIT_ERR on error.
    */
-  int init(Metadata* metadata, void** buffers, size_t* buffer_sizes);
+  Status init(Metadata* metadata, void** buffers, size_t* buffer_sizes);
 
   /**
    * Advances the iterator by one position.
    *
    * @return TILEDB_MIT_OK on success, and TILEDB_MIT_ERR on error.
    */
-  int next();
+  Status next();
 
  private:
   // PRIVATE ATTRIBUTES

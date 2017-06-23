@@ -53,12 +53,6 @@
 namespace tiledb {
 
 /* ****************************** */
-/*         GLOBAL VARIABLES       */
-/* ****************************** */
-
-std::string tiledb_asws_errmsg = "";
-
-/* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
@@ -146,23 +140,19 @@ ArraySortedWriteState::~ArraySortedWriteState() {
     if (pthread_cond_destroy(&(aio_cond_[i]))) {
       std::string errmsg = "Cannot destroy AIO mutex condition";
       PRINT_ERROR(errmsg);
-      tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
     }
     if (pthread_cond_destroy(&(copy_cond_[i]))) {
       std::string errmsg = "Cannot destroy copy mutex condition";
       PRINT_ERROR(errmsg);
-      tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
     }
   }
   if (pthread_mutex_destroy(&aio_mtx_)) {
     std::string errmsg = "Cannot destroy AIO mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
   }
   if (pthread_mutex_destroy(&copy_mtx_)) {
     std::string errmsg = "Cannot destroy copy mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
   }
 }
 
@@ -170,34 +160,30 @@ ArraySortedWriteState::~ArraySortedWriteState() {
 /*            MUTATORS            */
 /* ****************************** */
 
-int ArraySortedWriteState::init() {
+Status ArraySortedWriteState::init() {
   // Initialize the mutexes and conditions
   if (pthread_mutex_init(&aio_mtx_, nullptr)) {
     std::string errmsg = "Cannot initialize IO mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-    return TILEDB_ASWS_ERR;
+    return Status::ASWSError(errmsg);
   }
   if (pthread_mutex_init(&copy_mtx_, nullptr)) {
     std::string errmsg = "Cannot initialize copy mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-    return TILEDB_ASWS_ERR;
+    return Status::ASWSError(errmsg);
   }
   for (int i = 0; i < 2; ++i) {
     aio_cond_[i] = PTHREAD_COND_INITIALIZER;
     if (pthread_cond_init(&(aio_cond_[i]), nullptr)) {
       std::string errmsg = "Cannot initialize IO mutex condition";
       PRINT_ERROR(errmsg);
-      tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-      return TILEDB_ASWS_ERR;
+      return Status::ASWSError(errmsg);
     }
     copy_cond_[i] = PTHREAD_COND_INITIALIZER;
     if (pthread_cond_init(&(copy_cond_[i]), nullptr)) {
       std::string errmsg = "Cannot initialize copy mutex condition";
       PRINT_ERROR(errmsg);
-      tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-      return TILEDB_ASWS_ERR;
+      return Status::ASWSError(errmsg);
     }
   }
 
@@ -355,23 +341,21 @@ int ArraySortedWriteState::init() {
           &aio_thread_, nullptr, ArraySortedWriteState::aio_handler, this)) {
     std::string errmsg = "Cannot create AIO thread";
     PRINT_ERROR(errmsg);
-    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-    return TILEDB_ASWS_ERR;
+    return Status::ASWSError(errmsg);
   }
   aio_thread_running_ = true;
 
   // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedWriteState::write(
+Status ArraySortedWriteState::write(
     const void** buffers, const size_t* buffer_sizes) {
   // Locally store user buffer information
   create_user_buffers(buffers, buffer_sizes);
 
   // Create buffers
-  if (create_copy_state_buffers() != TILEDB_ASWS_OK)
-    return TILEDB_ASWS_ERR;
+  RETURN_NOT_OK(create_copy_state_buffers());
 
   // Create AIO requests
   init_aio_requests();
@@ -396,11 +380,10 @@ int ArraySortedWriteState::write(
     return write<uint64_t>();
   } else {
     assert(0);
-    return TILEDB_ASWS_ERR;
   }
 
   // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
 /* ****************************** */
@@ -864,9 +847,6 @@ void* ArraySortedWriteState::aio_handler(void* context) {
     asws->handle_aio_requests<uint64_t>();
   else
     assert(0);
-
-  // Return
-  return nullptr;
 }
 
 void ArraySortedWriteState::copy_tile_slab() {
@@ -1069,7 +1049,7 @@ void ArraySortedWriteState::copy_tile_slab_var(int aid, int bid) {
   local_buffer_offset = local_buffer_size;
 }
 
-int ArraySortedWriteState::create_copy_state_buffers() {
+Status ArraySortedWriteState::create_copy_state_buffers() {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
 
@@ -1104,8 +1084,7 @@ int ArraySortedWriteState::create_copy_state_buffers() {
     if (copy_state_.buffers_[j] == nullptr) {
       std::string errmsg = "Cannot create local buffers";
       PRINT_ERROR(errmsg);
-      tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-      return TILEDB_ASWS_ERR;
+      return Status::ASWSError(errmsg);
     }
 
     for (int b = 0; b < buffer_num_; ++b) {
@@ -1113,14 +1092,13 @@ int ArraySortedWriteState::create_copy_state_buffers() {
       if (copy_state_.buffers_[j][b] == nullptr) {
         std::string errmsg = "Cannot allocate local buffer";
         PRINT_ERROR(errmsg);
-        tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-        return TILEDB_ASWS_ERR;
+        return Status::ASWSError(errmsg);
       }
     }
   }
 
   // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
 void ArraySortedWriteState::create_user_buffers(
@@ -1655,28 +1633,22 @@ void ArraySortedWriteState::init_tile_slab_state() {
   }
 }
 
-int ArraySortedWriteState::lock_aio_mtx() {
+Status ArraySortedWriteState::lock_aio_mtx() {
   if (pthread_mutex_lock(&aio_mtx_)) {
     std::string errmsg = "Cannot lock AIO mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-    return TILEDB_ASWS_ERR;
+    return Status::AIOError(errmsg);
   }
-
-  // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedWriteState::lock_copy_mtx() {
+Status ArraySortedWriteState::lock_copy_mtx() {
   if (pthread_mutex_lock(&copy_mtx_)) {
     std::string errmsg = "Cannot lock copy mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-    return TILEDB_ASWS_ERR;
+    return Status::AIOError(errmsg);
   }
-
-  // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
 template <class T>
@@ -1813,7 +1785,7 @@ bool ArraySortedWriteState::next_tile_slab_row() {
 }
 
 template <class T>
-int ArraySortedWriteState::write() {
+Status ArraySortedWriteState::write() {
   // For easy reference
   int mode = array_->mode();
 
@@ -1823,12 +1795,11 @@ int ArraySortedWriteState::write() {
     return write_sorted_row<T>();
   } else {
     assert(0);  // The code should never reach here
-    return TILEDB_ASWS_ERR;
   }
 }
 
 template <class T>
-int ArraySortedWriteState::write_sorted_col() {
+Status ArraySortedWriteState::write_sorted_col() {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   const T* subarray = static_cast<const T*>(subarray_);
@@ -1869,11 +1840,11 @@ int ArraySortedWriteState::write_sorted_col() {
   release_copy(copy_id_);
 
   // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
 template <class T>
-int ArraySortedWriteState::write_sorted_row() {
+Status ArraySortedWriteState::write_sorted_row() {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   const T* subarray = static_cast<const T*>(subarray_);
@@ -1914,13 +1885,12 @@ int ArraySortedWriteState::write_sorted_row() {
   release_copy(copy_id_);
 
   // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedWriteState::release_aio(int id) {
+Status ArraySortedWriteState::release_aio(int id) {
   // Lock the AIO mutex
-  if (lock_aio_mtx() != TILEDB_ASWS_OK)
-    return TILEDB_ASWS_ERR;
+  RETURN_NOT_OK(lock_aio_mtx());
 
   // Set AIO flag
   wait_aio_[id] = false;
@@ -1929,22 +1899,19 @@ int ArraySortedWriteState::release_aio(int id) {
   if (pthread_cond_signal(&(aio_cond_[id]))) {
     std::string errmsg = "Cannot signal AIO condition";
     PRINT_ERROR(errmsg);
-    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-    return TILEDB_ASWS_ERR;
+    return Status::ASWSError(errmsg);
   }
 
   // Unlock the AIO mutex
-  if (unlock_aio_mtx() != TILEDB_ASWS_OK)
-    return TILEDB_ASWS_ERR;
+  RETURN_NOT_OK(unlock_aio_mtx());
 
   // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedWriteState::release_copy(int id) {
+Status ArraySortedWriteState::release_copy(int id) {
   // Lock the copy mutex
-  if (lock_copy_mtx() != TILEDB_ASWS_OK)
-    return TILEDB_ASWS_ERR;
+  RETURN_NOT_OK(lock_copy_mtx());
 
   // Set copy flag
   wait_copy_[id] = false;
@@ -1953,16 +1920,14 @@ int ArraySortedWriteState::release_copy(int id) {
   if (pthread_cond_signal(&copy_cond_[id])) {
     std::string errmsg = "Cannot signal copy condition";
     PRINT_ERROR(errmsg);
-    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-    return TILEDB_ASWS_ERR;
+    return Status::ASWSError(errmsg);
   }
 
   // Unlock the copy mutex
-  if (unlock_copy_mtx() != TILEDB_ASWS_OK)
-    return TILEDB_ASWS_ERR;
+  RETURN_NOT_OK(unlock_copy_mtx());
 
   // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
 void ArraySortedWriteState::reset_copy_state() {
@@ -1993,7 +1958,7 @@ void ArraySortedWriteState::reset_tile_slab_state() {
   }
 }
 
-int ArraySortedWriteState::send_aio_request(int aio_id) {
+Status ArraySortedWriteState::send_aio_request(int aio_id) {
   // For easy reference
   Array* array_clone = array_->array_clone();
 
@@ -2001,37 +1966,28 @@ int ArraySortedWriteState::send_aio_request(int aio_id) {
   assert(array_clone != NULL);
 
   // Send the AIO request to the clone array
-  if (array_clone->aio_write(&(aio_request_[aio_id])) != TILEDB_AR_OK) {
-    tiledb_asws_errmsg = tiledb_ar_errmsg;
-    return TILEDB_ASWS_ERR;
-  }
+  RETURN_NOT_OK(array_clone->aio_write(&(aio_request_[aio_id])));
 
   // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedWriteState::unlock_aio_mtx() {
+Status ArraySortedWriteState::unlock_aio_mtx() {
   if (pthread_mutex_unlock(&aio_mtx_)) {
     std::string errmsg = "Cannot unlock AIO mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-    return TILEDB_ASWS_ERR;
+    return Status::AIOError(errmsg);
   }
-
-  // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedWriteState::unlock_copy_mtx() {
+Status ArraySortedWriteState::unlock_copy_mtx() {
   if (pthread_mutex_unlock(&copy_mtx_)) {
     std::string errmsg = "Cannot unlock copy mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-    return TILEDB_ASWS_ERR;
+    return Status::AIOError(errmsg);
   }
-
-  // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
 void ArraySortedWriteState::update_current_tile_and_offset(int aid) {
@@ -2081,70 +2037,63 @@ void ArraySortedWriteState::update_current_tile_and_offset(int aid) {
                    cid * attribute_sizes_[aid];
 }
 
-int ArraySortedWriteState::wait_aio(int id) {
+Status ArraySortedWriteState::wait_aio(int id) {
   // Lock AIO mutex
-  if (lock_aio_mtx() != TILEDB_ASWS_OK)
-    return TILEDB_ASWS_ERR;
+  RETURN_NOT_OK(lock_aio_mtx());
 
   // Wait to be signaled
   while (wait_aio_[id]) {
     if (pthread_cond_wait(&(aio_cond_[id]), &aio_mtx_)) {
       std::string errmsg = "Cannot wait on IO mutex condition";
       PRINT_ERROR(errmsg);
-      tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-      return TILEDB_ASWS_ERR;
+      return Status::AIOError(errmsg);
     }
   }
 
   // Unlock AIO mutex
-  if (unlock_aio_mtx() != TILEDB_ASWS_OK)
-    return TILEDB_ASWS_ERR;
+  RETURN_NOT_OK(unlock_aio_mtx());
 
-  // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedWriteState::wait_copy(int id) {
+Status ArraySortedWriteState::wait_copy(int id) {
   // Lock copy mutex
-  if (lock_copy_mtx() != TILEDB_ASWS_OK)
-    return TILEDB_ASWS_ERR;
+  RETURN_NOT_OK(lock_copy_mtx());
 
   // Wait to be signaled
   while (wait_copy_[id]) {
     if (pthread_cond_wait(&(copy_cond_[id]), &copy_mtx_)) {
       std::string errmsg = "Cannot wait on copy mutex condition";
       PRINT_ERROR(errmsg);
-      tiledb_asws_errmsg = TILEDB_ASWS_ERRMSG + errmsg;
-      return TILEDB_ASWS_ERR;
+      return Status::AIOError(errmsg);
     }
   }
 
   // Unlock copy mutex
-  if (unlock_copy_mtx() != TILEDB_ASWS_OK)
-    return TILEDB_ASWS_ERR;
+  RETURN_NOT_OK(unlock_copy_mtx());
 
   // Success
-  return TILEDB_ASWS_OK;
+  return Status::Ok();
 }
 
 // Explicit template instantiations
 
-template int ArraySortedWriteState::write_sorted_col<int>();
-template int ArraySortedWriteState::write_sorted_col<int64_t>();
-template int ArraySortedWriteState::write_sorted_col<int8_t>();
-template int ArraySortedWriteState::write_sorted_col<uint8_t>();
-template int ArraySortedWriteState::write_sorted_col<int16_t>();
-template int ArraySortedWriteState::write_sorted_col<uint16_t>();
-template int ArraySortedWriteState::write_sorted_col<uint32_t>();
-template int ArraySortedWriteState::write_sorted_col<uint64_t>();
+template Status ArraySortedWriteState::write_sorted_col<int>();
+template Status ArraySortedWriteState::write_sorted_col<int64_t>();
+template Status ArraySortedWriteState::write_sorted_col<int8_t>();
+template Status ArraySortedWriteState::write_sorted_col<uint8_t>();
+template Status ArraySortedWriteState::write_sorted_col<int16_t>();
+template Status ArraySortedWriteState::write_sorted_col<uint16_t>();
+template Status ArraySortedWriteState::write_sorted_col<uint32_t>();
+template Status ArraySortedWriteState::write_sorted_col<uint64_t>();
 
-template int ArraySortedWriteState::write_sorted_row<int>();
-template int ArraySortedWriteState::write_sorted_row<int64_t>();
-template int ArraySortedWriteState::write_sorted_row<int8_t>();
-template int ArraySortedWriteState::write_sorted_row<uint8_t>();
-template int ArraySortedWriteState::write_sorted_row<int16_t>();
-template int ArraySortedWriteState::write_sorted_row<uint16_t>();
-template int ArraySortedWriteState::write_sorted_row<uint32_t>();
-template int ArraySortedWriteState::write_sorted_row<uint64_t>();
+template Status ArraySortedWriteState::write_sorted_row<int>();
+template Status ArraySortedWriteState::write_sorted_row<int64_t>();
+template Status ArraySortedWriteState::write_sorted_row<int8_t>();
+template Status ArraySortedWriteState::write_sorted_row<uint8_t>();
+template Status ArraySortedWriteState::write_sorted_row<int16_t>();
+template Status ArraySortedWriteState::write_sorted_row<uint16_t>();
+template Status ArraySortedWriteState::write_sorted_row<uint32_t>();
+template Status ArraySortedWriteState::write_sorted_row<uint64_t>();
 
 };  // namespace tiledb

@@ -47,12 +47,6 @@
 namespace tiledb {
 
 /* ****************************** */
-/*        GLOBAL VARIABLES        */
-/* ****************************** */
-
-std::string tiledb_ait_errmsg = "";
-
-/* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
@@ -78,7 +72,7 @@ bool ArrayIterator::end() const {
   return end_;
 }
 
-int ArrayIterator::get_value(
+Status ArrayIterator::get_value(
     int attribute_id, const void** value, size_t* value_size) const {
   // Trivial case
   if (end_) {
@@ -86,8 +80,7 @@ int ArrayIterator::get_value(
     *value_size = 0;
     std::string errmsg = "Cannot get value; Iterator end reached";
     PRINT_ERROR(errmsg);
-    tiledb_ait_errmsg = TILEDB_AIT_ERRMSG + errmsg;
-    return TILEDB_AIT_ERR;
+    return Status::ArrayItError(errmsg);
   }
 
   // Get the value
@@ -105,16 +98,14 @@ int ArrayIterator::get_value(
     else
       *value_size = buffer_sizes_[buffer_i + 1] - offset;
   }
-
-  // Success
-  return TILEDB_AIT_OK;
+  return Status::Ok();
 }
 
 /* ****************************** */
 /*            MUTATORS            */
 /* ****************************** */
 
-int ArrayIterator::init(Array* array, void** buffers, size_t* buffer_sizes) {
+Status ArrayIterator::init(Array* array, void** buffers, size_t* buffer_sizes) {
   // Initial assignments
   array_ = array;
   buffers_ = buffers;
@@ -147,10 +138,7 @@ int ArrayIterator::init(Array* array, void** buffers, size_t* buffer_sizes) {
   }
 
   // Perform first read
-  if (array_->read(buffers, buffer_sizes) != TILEDB_AR_OK) {
-    tiledb_ait_errmsg = tiledb_ar_errmsg;
-    return TILEDB_AIT_ERR;
-  }
+  RETURN_NOT_OK(array_->read(buffers, buffer_sizes));
 
   // Check if initialization went well and update internal state
   for (int i = 0; i < attribute_id_num; ++i) {
@@ -158,7 +146,7 @@ int ArrayIterator::init(Array* array, void** buffers, size_t* buffer_sizes) {
     if (buffer_sizes_[buffer_i_[i]] == 0 &&
         !array_->overflow(attribute_ids[i])) {
       end_ = true;
-      return TILEDB_AIT_OK;
+      return Status::Ok();
     }
 
     // Error
@@ -167,8 +155,7 @@ int ArrayIterator::init(Array* array, void** buffers, size_t* buffer_sizes) {
       std::string errmsg =
           "Array iterator initialization failed; Buffer overflow";
       PRINT_ERROR(errmsg);
-      tiledb_ait_errmsg = TILEDB_AIT_ERRMSG + errmsg;
-      return TILEDB_AIT_ERR;
+      return Status::ArrayItError(errmsg);
     }
 
     // Update cell num
@@ -179,32 +166,23 @@ int ArrayIterator::init(Array* array, void** buffers, size_t* buffer_sizes) {
   }
 
   // Return
-  return TILEDB_AIT_OK;
+  return Status::Ok();
 }
 
-int ArrayIterator::finalize() {
+Status ArrayIterator::finalize() {
   // Finalize
-  int rc = array_->finalize();
+  Status st = array_->finalize();
   delete array_;
   array_ = nullptr;
-
-  // Error
-  if (rc != TILEDB_AR_OK) {
-    tiledb_ait_errmsg = tiledb_ar_errmsg;
-    return TILEDB_AIT_ERR;
-  }
-
-  // Success
-  return TILEDB_AIT_OK;
+  return st;
 }
 
-int ArrayIterator::next() {
+Status ArrayIterator::next() {
   // Trivial case
   if (end_) {
     std::string errmsg = "Cannot advance iterator; Iterator end reached";
     PRINT_ERROR(errmsg);
-    tiledb_ait_errmsg = TILEDB_AIT_ERRMSG + errmsg;
-    return TILEDB_AIT_ERR;
+    return Status::ArrayItError(errmsg);
   }
 
   // Advance iterator
@@ -244,10 +222,7 @@ int ArrayIterator::next() {
     }
 
     // Perform first read
-    if (array_->read(buffers_, buffer_sizes_) != TILEDB_AR_OK) {
-      tiledb_ait_errmsg = tiledb_ar_errmsg;
-      return TILEDB_AIT_ERR;
-    }
+    RETURN_NOT_OK(array_->read(buffers_, buffer_sizes_));
 
     // Check if read went well and update internal state
     for (int i = 0; i < needs_new_read_num; ++i) {
@@ -257,7 +232,7 @@ int ArrayIterator::next() {
       if (buffer_sizes_[buffer_i] == 0 &&
           !array_->overflow(attribute_ids[needs_new_read[i]])) {
         end_ = true;
-        return TILEDB_AIT_OK;
+        return Status::Ok();
       }
 
       // Error
@@ -265,8 +240,7 @@ int ArrayIterator::next() {
           array_->overflow(attribute_ids[needs_new_read[i]])) {
         std::string errmsg = "Cannot advance iterator; Buffer overflow";
         PRINT_ERROR(errmsg);
-        tiledb_ait_errmsg = TILEDB_AIT_ERRMSG + errmsg;
-        return TILEDB_AIT_ERR;
+        return Status::ArrayItError(errmsg);
       }
 
       // Update cell num
@@ -296,7 +270,7 @@ int ArrayIterator::next() {
   }
 
   // Success
-  return TILEDB_AIT_OK;
+  return Status::Ok();
 }
 
 };  // namespace tiledb

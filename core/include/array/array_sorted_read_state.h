@@ -42,15 +42,6 @@
 /*             CONSTANTS             */
 /* ********************************* */
 
-/**@{*/
-/** Return code. */
-#define TILEDB_ASRS_OK 0
-#define TILEDB_ASRS_ERR -1
-/**@}*/
-
-/** Default error message. */
-#define TILEDB_ASRS_ERRMSG std::string("[TileDB::ArraySortedReadState] Error: ")
-
 /** Initial internal buffer size for the case of sparse arrays. */
 #define TILEDB_ASRS_INIT_BUFFER_SIZE 10000000  // ~ 10MB
 
@@ -59,9 +50,6 @@ namespace tiledb {
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
-
-/** Stores potential error messages. */
-extern std::string tiledb_asrs_errmsg;
 
 class Array;
 
@@ -197,7 +185,7 @@ class ArraySortedReadState {
    *     without inflicting a considerable performance penalty due to overflow.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int read(void** buffers, size_t* buffer_sizes);
+  Status read(void** buffers, size_t* buffer_sizes);
 
   /* ********************************* */
   /*             MUTATORS              */
@@ -208,7 +196,7 @@ class ArraySortedReadState {
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int init();
+  Status init();
 
  private:
   /* ********************************* */
@@ -747,7 +735,7 @@ class ArraySortedReadState {
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int create_buffers();
+  Status create_buffers();
 
   /** Frees the copy state. */
   void free_copy_state();
@@ -826,21 +814,21 @@ class ArraySortedReadState {
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int lock_aio_mtx();
+  Status lock_aio_mtx();
 
   /**
    * Locks the copy mutex.
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int lock_copy_mtx();
+  Status lock_copy_mtx();
 
   /**
    * Locks the overflow mutex.
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int lock_overflow_mtx();
+  Status lock_overflow_mtx();
 
   /**
    * Retrieves the next column tile slab to be processed. Applicable to dense
@@ -892,7 +880,7 @@ class ArraySortedReadState {
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template <class T>
-  int read();
+  Status read();
 
   /**
    * Same as read(), but the cells are placed in 'buffers' sorted in
@@ -903,7 +891,7 @@ class ArraySortedReadState {
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template <class T>
-  int read_dense_sorted_col();
+  Status read_dense_sorted_col();
 
   /**
    * Same as read(), but the cells are placed in 'buffers' sorted in
@@ -914,18 +902,18 @@ class ArraySortedReadState {
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template <class T>
-  int read_dense_sorted_row();
+  Status read_dense_sorted_row();
 
   /**
    * Same as read(), but the cells are placed in 'buffers' sorted in
    * column-major order with respect to the selected subarray.
-   * Applicable only to sparse arrays.
+   * Ap
    *
    * @tparam T The domain type.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template <class T>
-  int read_sparse_sorted_col();
+  Status read_sparse_sorted_col();
 
   /**
    * Same as read(), but the cells are placed in 'buffers' sorted in
@@ -936,14 +924,14 @@ class ArraySortedReadState {
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
   template <class T>
-  int read_sparse_sorted_row();
+  Status read_sparse_sorted_row();
 
   /**
    * Reads the current tile slab into the input buffers.
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int read_tile_slab();
+  Status read_tile_slab();
 
   /**
    * Signals an AIO condition.
@@ -951,7 +939,7 @@ class ArraySortedReadState {
    * @param id The id of the AIO condition to be signaled.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int release_aio(int id);
+  Status release_aio(int id);
 
   /**
    * Signals a copy condition.
@@ -959,14 +947,14 @@ class ArraySortedReadState {
    * @param id The id of the copy condition to be signaled.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int release_copy(int id);
+  Status release_copy(int id);
 
   /**
    * Signals the overflow condition.
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int release_overflow();
+  Status release_overflow();
 
   /** Resets the AIO overflow flags for the input tile slab id. */
   void reset_aio_overflow(int aio_id);
@@ -1004,7 +992,7 @@ class ArraySortedReadState {
    * @param aio_id The id of the tile slab the AIO request focuses on.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int send_aio_request(int aio_id);
+  Status send_aio_request(int aio_id);
 
   /**
    * It sorts the positions of the cells based on the coordinates
@@ -1018,21 +1006,21 @@ class ArraySortedReadState {
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int unlock_aio_mtx();
+  Status unlock_aio_mtx();
 
   /**
    * Unlocks the copy mutex.
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int unlock_copy_mtx();
+  Status unlock_copy_mtx();
 
   /**
    * Unlocks the overflow mutex.
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int unlock_overflow_mtx();
+  Status unlock_overflow_mtx();
 
   /**
    * Calculates the new tile and local buffer offset for the new (already
@@ -1051,7 +1039,7 @@ class ArraySortedReadState {
    * @param id The id of the buffer the copy operation must be completed.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int wait_copy(int id);
+  Status wait_copy(int id);
 
   /**
    * Waits on a AIO operation for the buffer with input id to finish.
@@ -1059,14 +1047,14 @@ class ArraySortedReadState {
    * @param id The id of the buffer the AIO operation must be completed.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int wait_aio(int id);
+  Status wait_aio(int id);
 
   /**
    * Waits until there is no buffer overflow.
    *
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  int wait_overflow();
+  Status wait_overflow();
 };
 
 };  // namespace tiledb
