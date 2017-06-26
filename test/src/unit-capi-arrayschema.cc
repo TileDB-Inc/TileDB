@@ -70,6 +70,14 @@ struct ArraySchemaFx {
     assert(rc == TILEDB_OK);
 
     // Create workspace
+    // Create workspace, delete it if it already exists
+    std::string cmd = "test -d " + WORKSPACE;
+    rc = system(cmd.c_str());
+    if (rc == 0) {
+      cmd = "rm -rf " + WORKSPACE;
+      rc = system(cmd.c_str());
+      assert(rc == 0);
+    }
     rc = tiledb_workspace_create(tiledb_ctx_, WORKSPACE.c_str());
     assert(rc == TILEDB_OK);
 
@@ -86,9 +94,8 @@ struct ArraySchemaFx {
     assert(rc == TILEDB_OK);
 
     // Remove the temporary workspace
-    std::string command = "rm -rf ";
-    command.append(WORKSPACE);
-    rc = system(command.c_str());
+    std::string cmd = "rm -rf ";
+    rc = system(cmd.c_str());
     assert(rc == 0);
 
     // Free array schema
