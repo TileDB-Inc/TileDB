@@ -40,27 +40,11 @@
 #include "read_state.h"
 #include "write_state.h"
 
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/**@{*/
-/** Return code. */
-#define TILEDB_FG_OK 0
-#define TILEDB_FG_ERR -1
-/**@}*/
-
-/** Default error message. */
-#define TILEDB_FG_ERRMSG std::string("[TileDB::Fragment] Error: ")
-
 namespace tiledb {
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
-
-/** Stores potential error messages. */
-extern std::string tiledb_fg_errmsg;
 
 class Array;
 class BookKeeping;
@@ -127,7 +111,7 @@ class Fragment {
    *
    * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
    */
-  int finalize();
+  Status finalize();
 
   /**
    * Initializes a fragment in write mode.
@@ -139,7 +123,7 @@ class Fragment {
    * @param subarray The subarray the fragment is constrained on.
    * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
    */
-  int init(const std::string& fragment_name, int mode, const void* subarray);
+  Status init(const std::string& fragment_name, int mode, const void* subarray);
 
   /**
    * Initializes a fragment in read mode.
@@ -148,7 +132,7 @@ class Fragment {
    * @param book_keeping The book-keeping of the fragment.
    * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
    */
-  int init(const std::string& fragment_name, BookKeeping* book_keeping);
+  Status init(const std::string& fragment_name, BookKeeping* book_keeping);
 
   /** Resets the read state (typically to start a new read). */
   void reset_read_state();
@@ -158,7 +142,7 @@ class Fragment {
    *
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int sync();
+  Status sync();
 
   /**
    * Syncs the currently written files associated with the input attribute
@@ -166,7 +150,7 @@ class Fragment {
    *
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
-  int sync_attribute(const std::string& attribute);
+  Status sync_attribute(const std::string& attribute);
 
   /**
    * Performs a write operation in the fragment. The cell values are provided
@@ -207,7 +191,7 @@ class Fragment {
    *     a one-to-one correspondence).
    * @return TILEDB_FG_OK for success and TILEDB_FG_ERR for error.
    */
-  int write(const void** buffers, const size_t* buffer_sizes);
+  Status write(const void** buffers, const size_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -243,7 +227,7 @@ class Fragment {
    *
    * @return TILEDB_FG_OK for success, and TILEDB_FG_ERR for error.
    */
-  int rename_fragment();
+  Status rename_fragment();
 };
 
 };  // namespace tiledb

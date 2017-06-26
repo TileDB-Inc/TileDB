@@ -36,27 +36,7 @@
 #include "array.h"
 #include "storage_manager_config.h"
 
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/**@{*/
-/** Return code. */
-#define TILEDB_MT_OK 0
-#define TILEDB_MT_ERR -1
-/**@}*/
-
-/** Default error message. */
-#define TILEDB_MT_ERRMSG std::string("[TileDB::Metadata] Error: ")
-
 namespace tiledb {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
-
-/** Stores potential error messages. */
-extern std::string tiledb_mt_errmsg;
 
 /** Manages a TileDB metadata object. */
 class Metadata {
@@ -116,7 +96,7 @@ class Metadata {
    *     overflow flag which can be checked with function overflow().
    * @return TILEDB_MT_OK for success and TILEDB_MT_ERR for error.
    */
-  int read(const char* key, void** buffers, size_t* buffer_sizes);
+  Status read(const char* key, void** buffers, size_t* buffer_sizes);
 
   /* ********************************* */
   /*             MUTATORS              */
@@ -132,7 +112,7 @@ class Metadata {
    * @param old_fragment_names The names of the old fragments to be returned.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  int consolidate(
+  Status consolidate(
       Fragment*& new_fragment, std::vector<std::string>& old_fragment_names);
 
   /**
@@ -140,7 +120,7 @@ class Metadata {
    *
    * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
    */
-  int finalize();
+  Status finalize();
 
   /**
    * Initializes a TileDB metadata object.
@@ -160,7 +140,7 @@ class Metadata {
    * @param config Congiguration parameters.
    * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
    */
-  int init(
+  Status init(
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
       const std::vector<BookKeeping*>& book_keeping,
@@ -179,7 +159,7 @@ class Metadata {
    *     then this should be 0.
    * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
    */
-  int reset_attributes(const char** attributes, int attribute_num);
+  Status reset_attributes(const char** attributes, int attribute_num);
 
   /**
    * Performs a write operation in metadata object. The values are provided
@@ -203,7 +183,7 @@ class Metadata {
    *     a one-to-one correspondence).
    * @return TILEDB_MT_OK for success and TILEDB_MT_ERR for error.
    */
-  int write(
+  Status write(
       const char* keys,
       size_t keys_size,
       const void** buffers,

@@ -44,26 +44,14 @@
 /*             CONSTANTS             */
 /* ********************************* */
 
-/**@{*/
-/** Return code. */
-#define TILEDB_ARS_OK 0
-#define TILEDB_ARS_ERR -1
-/**@}*/
-
 /** Size of the starting offset of a variable cell value. */
 #define TILEDB_CELL_VAR_OFFSET_SIZE sizeof(size_t)
-
-/** Default error message. */
-#define TILEDB_ARS_ERRMSG std::string("[TileDB::ArrayReadState] Error: ")
 
 namespace tiledb {
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
-
-/** Stores potential error messages. */
-extern std::string tiledb_ars_errmsg;
 
 class Array;
 class ReadState;
@@ -162,7 +150,7 @@ class ArrayReadState {
    *     without inflicting a considerable performance penalty due to overflow.
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
-  int read(void** buffers, size_t* buffer_sizes);
+  Status read(void** buffers, size_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -227,7 +215,7 @@ class ArrayReadState {
    * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
    */
   template <class T>
-  int compute_fragment_cell_pos_ranges(
+  Status compute_fragment_cell_pos_ranges(
       FragmentCellRanges& fragment_cell_ranges,
       FragmentCellPosRanges& fragment_cell_pos_ranges) const;
 
@@ -251,7 +239,7 @@ class ArrayReadState {
    * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
    */
   template <class T>
-  int compute_unsorted_fragment_cell_ranges_dense(
+  Status compute_unsorted_fragment_cell_ranges_dense(
       std::vector<FragmentCellRanges>& unsorted_fragment_cell_ranges);
 
   /**
@@ -267,7 +255,7 @@ class ArrayReadState {
    * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
    */
   template <class T>
-  int compute_unsorted_fragment_cell_ranges_sparse(
+  Status compute_unsorted_fragment_cell_ranges_sparse(
       std::vector<FragmentCellRanges>& unsorted_fragment_cell_ranges);
 
   /**
@@ -280,7 +268,7 @@ class ArrayReadState {
    * @param buffer_offset The offset in *buffer* where the copy will start from.
    * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
    */
-  int copy_cells(
+  Status copy_cells(
       int attribute_id,
       void* buffer,
       size_t buffer_size,
@@ -298,7 +286,7 @@ class ArrayReadState {
    * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
    */
   template <class T>
-  int copy_cells(
+  Status copy_cells(
       int attribute_id,
       void* buffer,
       size_t buffer_size,
@@ -320,7 +308,7 @@ class ArrayReadState {
    *     start from.
    * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
    */
-  int copy_cells_var(
+  Status copy_cells_var(
       int attribute_id,
       void* buffer,
       size_t buffer_size,
@@ -347,7 +335,7 @@ class ArrayReadState {
    * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
    */
   template <class T>
-  int copy_cells_var(
+  Status copy_cells_var(
       int attribute_id,
       void* buffer,
       size_t buffer_size,
@@ -423,7 +411,7 @@ class ArrayReadState {
    * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
    */
   template <class T>
-  int get_next_fragment_cell_ranges_dense();
+  Status get_next_fragment_cell_ranges_dense();
 
   /**
    * Gets the next fragment cell ranges that are relevant in the current read
@@ -433,7 +421,7 @@ class ArrayReadState {
    * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
    */
   template <class T>
-  int get_next_fragment_cell_ranges_sparse();
+  Status get_next_fragment_cell_ranges_sparse();
 
   /**
    * Gets the next overlapping tiles in the fragment read states, for the case
@@ -481,7 +469,7 @@ class ArrayReadState {
    * @param buffer_sizes See read().
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
-  int read_dense(void** buffers, size_t* buffer_sizes);
+  Status read_dense(void** buffers, size_t* buffer_sizes);
 
   /**
    * Performs a read operation in a **dense** array, focusing on a single
@@ -492,7 +480,7 @@ class ArrayReadState {
    * @param buffer_size See read().
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
-  int read_dense_attr(int attribute_id, void* buffer, size_t& buffer_size);
+  Status read_dense_attr(int attribute_id, void* buffer, size_t& buffer_size);
 
   /**
    * Performs a read operation in a **dense** array, focusing on a single
@@ -505,7 +493,7 @@ class ArrayReadState {
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
   template <class T>
-  int read_dense_attr(int attribute_id, void* buffer, size_t& buffer_size);
+  Status read_dense_attr(int attribute_id, void* buffer, size_t& buffer_size);
 
   /**
    * Performs a read operation in a **dense** array, focusing on a single
@@ -518,7 +506,7 @@ class ArrayReadState {
    * @param buffer_var_size See read().
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
-  int read_dense_attr_var(
+  Status read_dense_attr_var(
       int attribute_id,
       void* buffer,
       size_t& buffer_size,
@@ -538,7 +526,7 @@ class ArrayReadState {
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
   template <class T>
-  int read_dense_attr_var(
+  Status read_dense_attr_var(
       int attribute_id,
       void* buffer,
       size_t& buffer_size,
@@ -552,7 +540,7 @@ class ArrayReadState {
    * @param buffer_sizes See read().
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
-  int read_sparse(void** buffers, size_t* buffer_sizes);
+  Status read_sparse(void** buffers, size_t* buffer_sizes);
 
   /**
    * Performs a read operation in a **sparse** array, focusing on a single
@@ -563,7 +551,7 @@ class ArrayReadState {
    * @param buffer_size See read().
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
-  int read_sparse_attr(int attribute_id, void* buffer, size_t& buffer_size);
+  Status read_sparse_attr(int attribute_id, void* buffer, size_t& buffer_size);
 
   /**
    * Performs a read operation in a **sparse** array, focusing on a single
@@ -576,7 +564,7 @@ class ArrayReadState {
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
   template <class T>
-  int read_sparse_attr(int attribute_id, void* buffer, size_t& buffer_size);
+  Status read_sparse_attr(int attribute_id, void* buffer, size_t& buffer_size);
 
   /**
    * Performs a read operation in a **sparse** array, focusing on a single
@@ -589,7 +577,7 @@ class ArrayReadState {
    * @param buffer_var_size See read().
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
-  int read_sparse_attr_var(
+  Status read_sparse_attr_var(
       int attribute_id,
       void* buffer,
       size_t& buffer_size,
@@ -609,7 +597,7 @@ class ArrayReadState {
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
   template <class T>
-  int read_sparse_attr_var(
+  Status read_sparse_attr_var(
       int attribute_id,
       void* buffer,
       size_t& buffer_size,
@@ -628,7 +616,7 @@ class ArrayReadState {
    * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
    */
   template <class T>
-  int sort_fragment_cell_ranges(
+  Status sort_fragment_cell_ranges(
       std::vector<FragmentCellRanges>& unsorted_fragment_cell_ranges,
       FragmentCellRanges& fragment_cell_ranges) const;
 };

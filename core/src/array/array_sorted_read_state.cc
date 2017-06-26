@@ -62,12 +62,6 @@
 namespace tiledb {
 
 /* ****************************** */
-/*         GLOBAL VARIABLES       */
-/* ****************************** */
-
-std::string tiledb_asrs_errmsg = "";
-
-/* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
@@ -178,33 +172,27 @@ ArraySortedReadState::~ArraySortedReadState() {
     if (pthread_cond_destroy(&(aio_cond_[i]))) {
       std::string errmsg = "Cannot destroy AIO mutex condition";
       PRINT_ERROR(errmsg);
-      tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
     }
     if (pthread_cond_destroy(&(copy_cond_[i]))) {
       std::string errmsg = "Cannot destroy copy mutex condition";
       PRINT_ERROR(errmsg);
-      tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
     }
   }
   if (pthread_cond_destroy(&overflow_cond_)) {
     std::string errmsg = "Cannot destroy overflow mutex condition";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
   }
   if (pthread_mutex_destroy(&aio_mtx_)) {
     std::string errmsg = "Cannot destroy AIO mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
   }
   if (pthread_mutex_destroy(&copy_mtx_)) {
     std::string errmsg = "Cannot destroy copy mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
   }
   if (pthread_mutex_destroy(&overflow_mtx_)) {
     std::string errmsg = "Cannot destroy overflow mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
   }
 }
 
@@ -251,12 +239,12 @@ bool ArraySortedReadState::overflow(int attribute_id) const {
   return false;
 }
 
-int ArraySortedReadState::read(void** buffers, size_t* buffer_sizes) {
+Status ArraySortedReadState::read(void** buffers, size_t* buffer_sizes) {
   // Trivial case
   if (done()) {
     for (int i = 0; i < buffer_num_; ++i)
       buffer_sizes[i] = 0;
-    return TILEDB_ASRS_OK;
+    return Status::Ok();
   }
 
   // Reset copy state
@@ -297,7 +285,6 @@ int ArraySortedReadState::read(void** buffers, size_t* buffer_sizes) {
     return read<uint64_t>();
   } else {
     assert(0);
-    return TILEDB_ASRS_ERR;
   }
 }
 
@@ -305,10 +292,9 @@ int ArraySortedReadState::read(void** buffers, size_t* buffer_sizes) {
 /*            MUTATORS            */
 /* ****************************** */
 
-int ArraySortedReadState::init() {
+Status ArraySortedReadState::init() {
   // Create buffers
-  if (create_buffers() != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(create_buffers());
 
   // Create AIO requests
   init_aio_requests();
@@ -317,43 +303,37 @@ int ArraySortedReadState::init() {
   if (pthread_mutex_init(&aio_mtx_, nullptr)) {
     std::string errmsg = "Cannot initialize IO mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::ASRSError(errmsg);
   }
   if (pthread_mutex_init(&copy_mtx_, nullptr)) {
     std::string errmsg = "Cannot initialize copy mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::ASRSError(errmsg);
   }
   if (pthread_mutex_init(&overflow_mtx_, nullptr)) {
     std::string errmsg = "Cannot initialize overflow mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::ASRSError(errmsg);
   }
   for (int i = 0; i < 2; ++i) {
     aio_cond_[i] = PTHREAD_COND_INITIALIZER;
     if (pthread_cond_init(&(aio_cond_[i]), nullptr)) {
       std::string errmsg = "Cannot initialize IO mutex condition";
       PRINT_ERROR(errmsg);
-      tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-      return TILEDB_ASRS_ERR;
+      return Status::ASRSError(errmsg);
     }
     copy_cond_[i] = PTHREAD_COND_INITIALIZER;
     if (pthread_cond_init(&(copy_cond_[i]), nullptr)) {
       std::string errmsg = "Cannot initialize copy mutex condition";
       PRINT_ERROR(errmsg);
-      tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-      return TILEDB_ASRS_ERR;
+      return Status::ASRSError(errmsg);
     }
   }
   overflow_cond_ = PTHREAD_COND_INITIALIZER;
   if (pthread_cond_init(&overflow_cond_, nullptr)) {
     std::string errmsg = "Cannot initialize overflow mutex condition";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::ASRSError(errmsg);
   }
 
   // Initialize functors
@@ -542,13 +522,11 @@ int ArraySortedReadState::init() {
           &copy_thread_, nullptr, ArraySortedReadState::copy_handler, this)) {
     std::string errmsg = "Cannot create AIO thread";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::ASRSError(errmsg);
   }
   copy_thread_running_ = true;
 
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
 /* ****************************** */
@@ -1532,14 +1510,13 @@ void ArraySortedReadState::copy_tile_slab_sparse_var(int aid, int bid) {
   buffer_size_var = buffer_offset_var;
 }
 
-int ArraySortedReadState::create_buffers() {
+Status ArraySortedReadState::create_buffers() {
   for (int j = 0; j < 2; ++j) {
     buffers_[j] = (void**)malloc(buffer_num_ * sizeof(void*));
     if (buffers_[j] == nullptr) {
       std::string errmsg = "Cannot create local buffers";
       PRINT_ERROR(errmsg);
-      tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-      return TILEDB_ASRS_ERR;
+      return Status::ASRSError(errmsg);
     }
 
     for (int b = 0; b < buffer_num_; ++b) {
@@ -1547,14 +1524,11 @@ int ArraySortedReadState::create_buffers() {
       if (buffers_[j][b] == nullptr) {
         std::string errmsg = "Cannot allocate local buffer";
         PRINT_ERROR(errmsg);
-        tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-        return TILEDB_ASRS_ERR;
+        return Status::ASRSError(errmsg);
       }
     }
   }
-
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
 void ArraySortedReadState::free_copy_state() {
@@ -1850,40 +1824,31 @@ void ArraySortedReadState::init_tile_slab_state() {
   }
 }
 
-int ArraySortedReadState::lock_aio_mtx() {
+Status ArraySortedReadState::lock_aio_mtx() {
   if (pthread_mutex_lock(&aio_mtx_)) {
     std::string errmsg = "Cannot lock AIO mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::AIOError(errmsg);
   }
-
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedReadState::lock_copy_mtx() {
+Status ArraySortedReadState::lock_copy_mtx() {
   if (pthread_mutex_lock(&copy_mtx_)) {
     std::string errmsg = "Cannot lock copy mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::Ok();
   }
-
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedReadState::lock_overflow_mtx() {
+Status ArraySortedReadState::lock_overflow_mtx() {
   if (pthread_mutex_lock(&overflow_mtx_)) {
     std::string errmsg = "Cannot lock overflow mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::Ok();
   }
-
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
 template <class T>
@@ -2467,7 +2432,7 @@ bool ArraySortedReadState::next_tile_slab_sparse_row<double>() {
 }
 
 template <class T>
-int ArraySortedReadState::read() {
+Status ArraySortedReadState::read() {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   int mode = array_->mode();
@@ -2484,12 +2449,11 @@ int ArraySortedReadState::read() {
       return read_sparse_sorted_row<T>();
   } else {
     assert(0);  // The code should never reach here
-    return TILEDB_ASRS_ERR;
   }
 }
 
 template <class T>
-int ArraySortedReadState::read_dense_sorted_col() {
+Status ArraySortedReadState::read_dense_sorted_col() {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   const T* subarray = static_cast<const T*>(subarray_);
@@ -2503,8 +2467,7 @@ int ArraySortedReadState::read_dense_sorted_col() {
   // Iterate over each tile slab
   while (next_tile_slab_dense_col<T>()) {
     // Read the next tile slab with the default cell order
-    if (read_tile_slab() != TILEDB_ASRS_OK)
-      return TILEDB_ASRS_ERR;
+    RETURN_NOT_OK(read_tile_slab());
 
     // Handle overflow
     if (resume_aio_)
@@ -2525,12 +2488,11 @@ int ArraySortedReadState::read_dense_sorted_col() {
     release_aio(aio_id_);
   }
 
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
 template <class T>
-int ArraySortedReadState::read_dense_sorted_row() {
+Status ArraySortedReadState::read_dense_sorted_row() {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   const T* subarray = static_cast<const T*>(subarray_);
@@ -2544,8 +2506,7 @@ int ArraySortedReadState::read_dense_sorted_row() {
   // Iterate over each tile slab
   while (next_tile_slab_dense_row<T>()) {
     // Read the next tile slab with the default cell order
-    if (read_tile_slab() != TILEDB_ASRS_OK)
-      return TILEDB_ASRS_ERR;
+    RETURN_NOT_OK(read_tile_slab());
 
     // Handle overflow
     if (resume_aio_)
@@ -2565,13 +2526,11 @@ int ArraySortedReadState::read_dense_sorted_row() {
     copy_thread_canceled_ = true;
     release_aio(aio_id_);
   }
-
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
 template <class T>
-int ArraySortedReadState::read_sparse_sorted_col() {
+Status ArraySortedReadState::read_sparse_sorted_col() {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   const T* subarray = static_cast<const T*>(subarray_);
@@ -2585,8 +2544,7 @@ int ArraySortedReadState::read_sparse_sorted_col() {
   // Iterate over each tile slab
   while (next_tile_slab_sparse_col<T>()) {
     // Read the next tile slab with the default cell order
-    if (read_tile_slab() != TILEDB_ASRS_OK)
-      return TILEDB_ASRS_ERR;
+    RETURN_NOT_OK(read_tile_slab());
 
     // Handle overflow
     if (resume_aio_)
@@ -2608,12 +2566,11 @@ int ArraySortedReadState::read_sparse_sorted_col() {
     release_aio(aio_id_);
   }
 
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
 template <class T>
-int ArraySortedReadState::read_sparse_sorted_row() {
+Status ArraySortedReadState::read_sparse_sorted_row() {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   const T* subarray = static_cast<const T*>(subarray_);
@@ -2627,8 +2584,7 @@ int ArraySortedReadState::read_sparse_sorted_row() {
   // Iterate over each tile slab
   while (next_tile_slab_sparse_row<T>()) {
     // Read the next tile slab with the default cell order
-    if (read_tile_slab() != TILEDB_ASRS_OK)
-      return TILEDB_ASRS_ERR;
+    RETURN_NOT_OK(read_tile_slab());
 
     // Handle overflow
     if (resume_aio_)
@@ -2650,15 +2606,14 @@ int ArraySortedReadState::read_sparse_sorted_row() {
     release_aio(aio_id_);
   }
 
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedReadState::read_tile_slab() {
+Status ArraySortedReadState::read_tile_slab() {
   // We need to exit if the copy did no complete (due to overflow)
   if (resume_copy_) {
     resume_aio_ = true;
-    return TILEDB_ASRS_OK;
+    return Status::Ok();
   }
 
   // Reset AIO overflow flags
@@ -2668,20 +2623,17 @@ int ArraySortedReadState::read_tile_slab() {
   reset_buffer_sizes_tmp(aio_id_);
 
   // Send AIO request
-  if (send_aio_request(aio_id_) != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(send_aio_request(aio_id_));
 
   // Change aio_id_
   aio_id_ = (aio_id_ + 1) % 2;
 
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedReadState::release_aio(int id) {
+Status ArraySortedReadState::release_aio(int id) {
   // Lock the AIO mutex
-  if (lock_aio_mtx() != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(lock_aio_mtx());
 
   // Set AIO flag
   wait_aio_[id] = false;
@@ -2690,22 +2642,18 @@ int ArraySortedReadState::release_aio(int id) {
   if (pthread_cond_signal(&(aio_cond_[id]))) {
     std::string errmsg = "Cannot signal AIO condition";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::ASRSError(errmsg);
   }
 
   // Unlock the AIO mutex
-  if (unlock_aio_mtx() != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(unlock_aio_mtx());
 
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedReadState::release_copy(int id) {
+Status ArraySortedReadState::release_copy(int id) {
   // Lock the copy mutex
-  if (lock_copy_mtx() != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(lock_copy_mtx());
 
   // Set copy flag
   wait_copy_[id] = false;
@@ -2714,22 +2662,18 @@ int ArraySortedReadState::release_copy(int id) {
   if (pthread_cond_signal(&copy_cond_[id])) {
     std::string errmsg = "Cannot signal copy condition";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::ASRSError(errmsg);
   }
 
   // Unlock the copy mutex
-  if (unlock_copy_mtx() != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(unlock_copy_mtx());
 
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedReadState::release_overflow() {
+Status ArraySortedReadState::release_overflow() {
   // Lock the overflow mutex
-  if (lock_overflow_mtx() != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(lock_overflow_mtx());
 
   // Set copy flag
   resume_copy_ = false;
@@ -2738,16 +2682,13 @@ int ArraySortedReadState::release_overflow() {
   if (pthread_cond_signal(&overflow_cond_)) {
     std::string errmsg = "Cannot signal overflow condition";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::ASRSError(errmsg);
   }
 
   // Unlock the overflow mutex
-  if (unlock_overflow_mtx() != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(unlock_overflow_mtx());
 
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
 void ArraySortedReadState::reset_aio_overflow(int aio_id) {
@@ -2811,7 +2752,7 @@ void ArraySortedReadState::reset_tile_slab_state() {
   }
 }
 
-int ArraySortedReadState::send_aio_request(int aio_id) {
+Status ArraySortedReadState::send_aio_request(int aio_id) {
   // Important!!
   aio_request_[aio_id].id_ = aio_cnt_++;
 
@@ -2822,13 +2763,10 @@ int ArraySortedReadState::send_aio_request(int aio_id) {
   assert(array_clone != NULL);
 
   // Send the AIO request to the clone array
-  if (array_clone->aio_read(&(aio_request_[aio_id])) != TILEDB_AR_OK) {
-    tiledb_asrs_errmsg = tiledb_ar_errmsg;
-    return TILEDB_ASRS_ERR;
-  }
+  RETURN_NOT_OK(array_clone->aio_read(&(aio_request_[aio_id])));
 
   // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
 template <class T>
@@ -2855,40 +2793,32 @@ void ArraySortedReadState::sort_cell_pos() {
   }
 }
 
-int ArraySortedReadState::unlock_aio_mtx() {
+Status ArraySortedReadState::unlock_aio_mtx() {
   if (pthread_mutex_unlock(&aio_mtx_)) {
     std::string errmsg = "Cannot unlock AIO mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::AIOError(errmsg);
   }
 
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedReadState::unlock_copy_mtx() {
+Status ArraySortedReadState::unlock_copy_mtx() {
   if (pthread_mutex_unlock(&copy_mtx_)) {
     std::string errmsg = "Cannot unlock copy mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::AIOError(errmsg);
   }
-
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedReadState::unlock_overflow_mtx() {
+Status ArraySortedReadState::unlock_overflow_mtx() {
   if (pthread_mutex_unlock(&overflow_mtx_)) {
     std::string errmsg = "Cannot unlock overflow mutex";
     PRINT_ERROR(errmsg);
-    tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-    return TILEDB_ASRS_ERR;
+    return Status::AIOError(errmsg);
   }
-
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
 template <class T>
@@ -2909,97 +2839,85 @@ void ArraySortedReadState::update_current_tile_and_offset(int aid) {
                    cid * attribute_sizes_[aid];
 }
 
-int ArraySortedReadState::wait_aio(int id) {
+Status ArraySortedReadState::wait_aio(int id) {
   // Lock AIO mutex
-  if (lock_aio_mtx() != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(lock_aio_mtx());
 
   // Wait to be signaled
   while (wait_aio_[id]) {
     if (pthread_cond_wait(&(aio_cond_[id]), &aio_mtx_)) {
       std::string errmsg = "Cannot wait on IO mutex condition";
       PRINT_ERROR(errmsg);
-      tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-      return TILEDB_ASRS_ERR;
+      return Status::AIOError(errmsg);
     }
   }
 
   // Unlock AIO mutex
-  if (unlock_aio_mtx() != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(unlock_aio_mtx());
 
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedReadState::wait_copy(int id) {
+Status ArraySortedReadState::wait_copy(int id) {
   // Lock copy mutex
-  if (lock_copy_mtx() != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(lock_copy_mtx());
 
   // Wait to be signaled
   while (wait_copy_[id]) {
     if (pthread_cond_wait(&(copy_cond_[id]), &copy_mtx_)) {
       std::string errmsg = "Cannot wait on copy mutex condition";
       PRINT_ERROR(errmsg);
-      tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-      return TILEDB_ASRS_ERR;
+      return Status::AIOError(errmsg);
     }
   }
 
   // Unlock copy mutex
-  if (unlock_copy_mtx() != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(unlock_copy_mtx());
 
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
-int ArraySortedReadState::wait_overflow() {
+Status ArraySortedReadState::wait_overflow() {
   // Lock overflow mutex
-  if (lock_overflow_mtx() != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(lock_overflow_mtx());
 
   // Wait to be signaled
   while (overflow()) {
     if (pthread_cond_wait(&overflow_cond_, &overflow_mtx_)) {
       std::string errmsg = "Cannot wait on IO mutex condition";
       PRINT_ERROR(errmsg);
-      tiledb_asrs_errmsg = TILEDB_ASRS_ERRMSG + errmsg;
-      return TILEDB_ASRS_ERR;
+      return Status::AIOError(errmsg);
     }
   }
 
   // Unlock overflow mutex
-  if (unlock_overflow_mtx() != TILEDB_ASRS_OK)
-    return TILEDB_ASRS_ERR;
+  RETURN_NOT_OK(unlock_overflow_mtx());
 
-  // Success
-  return TILEDB_ASRS_OK;
+  return Status::Ok();
 }
 
 // Explicit template instantiations
 
-template int ArraySortedReadState::read_dense_sorted_col<int>();
-template int ArraySortedReadState::read_dense_sorted_col<int64_t>();
-template int ArraySortedReadState::read_dense_sorted_col<float>();
-template int ArraySortedReadState::read_dense_sorted_col<double>();
-template int ArraySortedReadState::read_dense_sorted_col<int8_t>();
-template int ArraySortedReadState::read_dense_sorted_col<uint8_t>();
-template int ArraySortedReadState::read_dense_sorted_col<int16_t>();
-template int ArraySortedReadState::read_dense_sorted_col<uint16_t>();
-template int ArraySortedReadState::read_dense_sorted_col<uint32_t>();
-template int ArraySortedReadState::read_dense_sorted_col<uint64_t>();
+template Status ArraySortedReadState::read_dense_sorted_col<int>();
+template Status ArraySortedReadState::read_dense_sorted_col<int64_t>();
+template Status ArraySortedReadState::read_dense_sorted_col<float>();
+template Status ArraySortedReadState::read_dense_sorted_col<double>();
+template Status ArraySortedReadState::read_dense_sorted_col<int8_t>();
+template Status ArraySortedReadState::read_dense_sorted_col<uint8_t>();
+template Status ArraySortedReadState::read_dense_sorted_col<int16_t>();
+template Status ArraySortedReadState::read_dense_sorted_col<uint16_t>();
+template Status ArraySortedReadState::read_dense_sorted_col<uint32_t>();
+template Status ArraySortedReadState::read_dense_sorted_col<uint64_t>();
 
-template int ArraySortedReadState::read_dense_sorted_row<int>();
-template int ArraySortedReadState::read_dense_sorted_row<int64_t>();
-template int ArraySortedReadState::read_dense_sorted_row<float>();
-template int ArraySortedReadState::read_dense_sorted_row<double>();
-template int ArraySortedReadState::read_dense_sorted_row<int8_t>();
-template int ArraySortedReadState::read_dense_sorted_row<uint8_t>();
-template int ArraySortedReadState::read_dense_sorted_row<int16_t>();
-template int ArraySortedReadState::read_dense_sorted_row<uint16_t>();
-template int ArraySortedReadState::read_dense_sorted_row<uint32_t>();
-template int ArraySortedReadState::read_dense_sorted_row<uint64_t>();
+template Status ArraySortedReadState::read_dense_sorted_row<int>();
+template Status ArraySortedReadState::read_dense_sorted_row<int64_t>();
+template Status ArraySortedReadState::read_dense_sorted_row<float>();
+template Status ArraySortedReadState::read_dense_sorted_row<double>();
+template Status ArraySortedReadState::read_dense_sorted_row<int8_t>();
+template Status ArraySortedReadState::read_dense_sorted_row<uint8_t>();
+template Status ArraySortedReadState::read_dense_sorted_row<int16_t>();
+template Status ArraySortedReadState::read_dense_sorted_row<uint16_t>();
+template Status ArraySortedReadState::read_dense_sorted_row<uint32_t>();
+template Status ArraySortedReadState::read_dense_sorted_row<uint64_t>();
 
 };  // namespace tiledb

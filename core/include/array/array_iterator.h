@@ -35,27 +35,7 @@
 
 #include "array.h"
 
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/**@{*/
-/** Return code. */
-#define TILEDB_AIT_OK 0
-#define TILEDB_AIT_ERR -1
-/**@}*/
-
-/** Default error message. */
-#define TILEDB_AIT_ERRMSG std::string("[TileDB::ArrayIterator] Error: ")
-
 namespace tiledb {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
-
-/** Stores potential error messages. */
-extern std::string tiledb_ait_errmsg;
 
 /** Enables iteration (read) over an array's cells. */
 class ArrayIterator {
@@ -100,7 +80,8 @@ class ArrayIterator {
    * @param value_size The size (in bytes) of the retrieved value.
    * @return TILEDB_AIT_OK on success, and TILEDB_AIT_ERR on error.
    */
-  int get_value(int attribute_id, const void** value, size_t* value_size) const;
+  Status get_value(
+      int attribute_id, const void** value, size_t* value_size) const;
 
   /* ********************************* */
   /*             MUTATORS              */
@@ -123,21 +104,21 @@ class ArrayIterator {
    *     iterating over the previously prefetched data.
    * @return TILEDB_AIT_OK on success, and TILEDB_AIT_ERR on error.
    */
-  int init(Array* array, void** buffers, size_t* buffer_sizes);
+  Status init(Array* array, void** buffers, size_t* buffer_sizes);
 
   /**
    * Finalizes the array iterator, properly freeing the allocating memory space.
    *
    * @return TILEDB_AIT_OK on success, and TILEDB_AIT_ERR on error.
    */
-  int finalize();
+  Status finalize();
 
   /**
    * Advances the iterator by one cell.
    *
    * @return TILEDB_AIT_OK on success, and TILEDB_AIT_ERR on error.
    */
-  int next();
+  Status next();
 
  private:
   /* ********************************* */

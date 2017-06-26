@@ -38,19 +38,6 @@
 #include "book_keeping.h"
 #include "fragment.h"
 
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/**@{*/
-/** Return code. */
-#define TILEDB_WS_OK 0
-#define TILEDB_WS_ERR -1
-/**@}*/
-
-/** Default error message. */
-#define TILEDB_WS_ERRMSG std::string("[TileDB::WriteState] Error: ")
-
 namespace tiledb {
 
 /* ********************************* */
@@ -90,14 +77,14 @@ class WriteState {
    *
    * @return TILEDB_WS_OK for success and TILEDB_WS_ERR for error.
    */
-  int finalize();
+  Status finalize();
 
   /**
    * Syncs all attribute files in the fragment.
    *
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int sync();
+  Status sync();
 
   /**
    * Syncs the input attribute in the fragment.
@@ -105,7 +92,7 @@ class WriteState {
    * @param attribute The attribute name.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int sync_attribute(const std::string& attribute);
+  Status sync_attribute(const std::string& attribute);
 
   /**
    * Performs a write operation in the fragment. The cell values are provided
@@ -138,7 +125,7 @@ class WriteState {
    *     a one-to-one correspondence).
    * @return TILEDB_WS_OK for success and TILEDB_WS_ERR for error.
    */
-  int write(const void** buffers, const size_t* buffer_sizes);
+  Status write(const void** buffers, const size_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -193,7 +180,7 @@ class WriteState {
    * @param tile_compressed_size The size of the resulting compressed tile.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int compress_tile(
+  Status compress_tile(
       int attribute_id,
       unsigned char* tile,
       size_t tile_size,
@@ -209,7 +196,7 @@ class WriteState {
    * @param tile_compressed_size The size of the resulting compressed tile.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int compress_tile_gzip(
+  Status compress_tile_gzip(
       int attribute_id,
       unsigned char* tile,
       size_t tile_size,
@@ -225,7 +212,7 @@ class WriteState {
    * @param tile_compressed_size The size of the resulting compressed tile.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int compress_tile_zstd(
+  Status compress_tile_zstd(
       int attribute_id,
       unsigned char* tile,
       size_t tile_size,
@@ -241,7 +228,7 @@ class WriteState {
    * @param tile_compressed_size The size of the resulting compressed tile.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int compress_tile_lz4(
+  Status compress_tile_lz4(
       int attribute_id,
       unsigned char* tile,
       size_t tile_size,
@@ -258,7 +245,7 @@ class WriteState {
    * @param compressor  The Blosc compressor.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int compress_tile_blosc(
+  Status compress_tile_blosc(
       int attribute_id,
       unsigned char* tile,
       size_t tile_size,
@@ -275,7 +262,7 @@ class WriteState {
    * @param tile_compressed_size The size of the resulting compressed tile.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int compress_tile_rle(
+  Status compress_tile_rle(
       int attribute_id,
       unsigned char* tile,
       size_t tile_size,
@@ -291,7 +278,7 @@ class WriteState {
    * @param tile_compressed_size The size of the resulting compressed tile.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int compress_tile_bzip2(
+  Status compress_tile_bzip2(
       int attribute_id,
       unsigned char* tile,
       size_t tile_size,
@@ -305,7 +292,7 @@ class WriteState {
    *     written.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int compress_and_write_tile(int attribute_id);
+  Status compress_and_write_tile(int attribute_id);
 
   /**
    * Compresses the current variable-sized tile for the input attribute, and
@@ -315,7 +302,7 @@ class WriteState {
    *     written.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int compress_and_write_tile_var(int attribute_id);
+  Status compress_and_write_tile_var(int attribute_id);
 
   /**
    * Expands the current MBR with the input coordinates.
@@ -410,7 +397,7 @@ class WriteState {
    *
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_last_tile();
+  Status write_last_tile();
 
   /**
    * Performs the write operation for the case of a dense fragment.
@@ -419,7 +406,7 @@ class WriteState {
    * @param buffer_sizes See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_dense(const void** buffers, const size_t* buffer_sizes);
+  Status write_dense(const void** buffers, const size_t* buffer_sizes);
 
   /**
    * Performs the write operation for the case of a dense fragment, focusing
@@ -430,7 +417,7 @@ class WriteState {
    * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_dense_attr(
+  Status write_dense_attr(
       int attribute_id, const void* buffer, size_t buffer_size);
 
   /**
@@ -442,7 +429,7 @@ class WriteState {
    * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_dense_attr_cmp_none(
+  Status write_dense_attr_cmp_none(
       int attribute_id, const void* buffer, size_t buffer_size);
 
   /**
@@ -454,7 +441,7 @@ class WriteState {
    * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_dense_attr_cmp(
+  Status write_dense_attr_cmp(
       int attribute_id, const void* buffer, size_t buffer_size);
 
   /**
@@ -468,7 +455,7 @@ class WriteState {
    * @param buffer_var_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_dense_attr_var(
+  Status write_dense_attr_var(
       int attribute_id,
       const void* buffer,
       size_t buffer_size,
@@ -486,7 +473,7 @@ class WriteState {
    * @param buffer_var_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_dense_attr_var_cmp_none(
+  Status write_dense_attr_var_cmp_none(
       int attribute_id,
       const void* buffer,
       size_t buffer_size,
@@ -504,7 +491,7 @@ class WriteState {
    * @param buffer_var_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_dense_attr_var_cmp(
+  Status write_dense_attr_var_cmp(
       int attribute_id,
       const void* buffer,
       size_t buffer_size,
@@ -518,7 +505,7 @@ class WriteState {
    * @param buffer_sizes See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse(const void** buffers, const size_t* buffer_sizes);
+  Status write_sparse(const void** buffers, const size_t* buffer_sizes);
 
   /**
    * Performs the write operation for the case of a sparse fragment, focusing
@@ -529,7 +516,7 @@ class WriteState {
    * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_attr(
+  Status write_sparse_attr(
       int attribute_id, const void* buffer, size_t buffer_size);
 
   /**
@@ -541,7 +528,7 @@ class WriteState {
    * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_attr_cmp_none(
+  Status write_sparse_attr_cmp_none(
       int attribute_id, const void* buffer, size_t buffer_size);
 
   /**
@@ -553,7 +540,7 @@ class WriteState {
    * @param buffer_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_attr_cmp(
+  Status write_sparse_attr_cmp(
       int attribute_id, const void* buffer, size_t buffer_size);
 
   /**
@@ -567,7 +554,7 @@ class WriteState {
    * @param buffer_var_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_attr_var(
+  Status write_sparse_attr_var(
       int attribute_id,
       const void* buffer,
       size_t buffer_size,
@@ -585,7 +572,7 @@ class WriteState {
    * @param buffer_var_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_attr_var_cmp_none(
+  Status write_sparse_attr_var_cmp_none(
       int attribute_id,
       const void* buffer,
       size_t buffer_size,
@@ -603,7 +590,7 @@ class WriteState {
    * @param buffer_var_size See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_attr_var_cmp(
+  Status write_sparse_attr_var_cmp(
       int attribute_id,
       const void* buffer,
       size_t buffer_size,
@@ -618,7 +605,8 @@ class WriteState {
    * @param buffer_sizes See write().
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_unsorted(const void** buffers, const size_t* buffer_sizes);
+  Status write_sparse_unsorted(
+      const void** buffers, const size_t* buffer_sizes);
 
   /**
    * Performs the write operation for the case of a sparse fragment when the
@@ -630,7 +618,7 @@ class WriteState {
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_unsorted_attr(
+  Status write_sparse_unsorted_attr(
       int attribute_id,
       const void* buffer,
       size_t buffer_size,
@@ -647,7 +635,7 @@ class WriteState {
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_unsorted_attr_cmp_none(
+  Status write_sparse_unsorted_attr_cmp_none(
       int attribute_id,
       const void* buffer,
       size_t buffer_size,
@@ -664,7 +652,7 @@ class WriteState {
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_unsorted_attr_cmp(
+  Status write_sparse_unsorted_attr_cmp(
       int attribute_id,
       const void* buffer,
       size_t buffer_size,
@@ -682,7 +670,7 @@ class WriteState {
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_unsorted_attr_var(
+  Status write_sparse_unsorted_attr_var(
       int attribute_id,
       const void* buffer,
       size_t buffer_size,
@@ -703,7 +691,7 @@ class WriteState {
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_unsorted_attr_var_cmp_none(
+  Status write_sparse_unsorted_attr_var_cmp_none(
       int attribute_id,
       const void* buffer,
       size_t buffer_size,
@@ -724,7 +712,7 @@ class WriteState {
    * @param cell_pos The sorted positions of the cells.
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
-  int write_sparse_unsorted_attr_var_cmp(
+  Status write_sparse_unsorted_attr_var_cmp(
       int attribute_id,
       const void* buffer,
       size_t buffer_size,

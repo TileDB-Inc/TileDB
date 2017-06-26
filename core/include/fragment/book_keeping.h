@@ -36,29 +36,14 @@
 #include <zlib.h>
 #include <vector>
 #include "array_schema.h"
+#include "status.h"
 #include "tiledb_constants.h"
-
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/**@{*/
-/** Return code. */
-#define TILEDB_BK_OK 0
-#define TILEDB_BK_ERR -1
-/**@}*/
-
-/** Default error message. */
-#define TILEDB_BK_ERRMSG std::string("[TileDB::BookKeeping] Error: ")
 
 namespace tiledb {
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
 /* ********************************* */
-
-/** Stores potential error messages. */
-extern std::string tiledb_bk_errmsg;
 
 /** Stores the book-keeping structures of a fragment. */
 class BookKeeping {
@@ -186,7 +171,7 @@ class BookKeeping {
    *
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int finalize();
+  Status finalize();
 
   /**
    * Initializes the book-keeping structures.
@@ -195,14 +180,14 @@ class BookKeeping {
    *     will be constrained.
    * @return TILEDB_BK_OK for success, and TILEDB_OK_ERR for error.
    */
-  int init(const void* non_empty_domain);
+  Status init(const void* non_empty_domain);
 
   /**
    * Loads the book-keeping structures from the disk.
    *
    * @return TILEDB_BK_OK for success, and TILEDB_OK_ERR for error.
    */
-  int load();
+  Status load();
 
   /**
    * Simply sets the number of cells for the last tile.
@@ -273,7 +258,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int flush_bounding_coords(gzFile fd) const;
+  Status flush_bounding_coords(gzFile fd) const;
 
   /**
    * Writes the cell number of the last tile in the book-keeping file on disk.
@@ -281,7 +266,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int flush_last_tile_cell_num(gzFile fd) const;
+  Status flush_last_tile_cell_num(gzFile fd) const;
 
   /**
    * Writes the MBRs in the book-keeping file on disk.
@@ -289,7 +274,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int flush_mbrs(gzFile fd) const;
+  Status flush_mbrs(gzFile fd) const;
 
   /**
    * Writes the non-empty domain in the book-keeping file on disk.
@@ -297,7 +282,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int flush_non_empty_domain(gzFile fd) const;
+  Status flush_non_empty_domain(gzFile fd) const;
 
   /**
    * Writes the tile offsets in the book-keeping file on disk.
@@ -305,7 +290,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int flush_tile_offsets(gzFile fd) const;
+  Status flush_tile_offsets(gzFile fd) const;
 
   /**
    * Writes the variable tile offsets in the book-keeping file on disk.
@@ -313,7 +298,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int flush_tile_var_offsets(gzFile fd) const;
+  Status flush_tile_var_offsets(gzFile fd) const;
 
   /**
    * Writes the variable tile sizes in the book-keeping file on disk.
@@ -321,7 +306,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int flush_tile_var_sizes(gzFile fd) const;
+  Status flush_tile_var_sizes(gzFile fd) const;
 
   /**
    * Loads the bounding coordinates from the book-keeping file on disk.
@@ -329,7 +314,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int load_bounding_coords(gzFile fd);
+  Status load_bounding_coords(gzFile fd);
 
   /**
    * Loads the cell number of the last tile from the book-keeping file on disk.
@@ -337,7 +322,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int load_last_tile_cell_num(gzFile fd);
+  Status load_last_tile_cell_num(gzFile fd);
 
   /**
    * Loads the MBRs from the book-keeping file on disk.
@@ -345,7 +330,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int load_mbrs(gzFile fd);
+  Status load_mbrs(gzFile fd);
 
   /**
    * Loads the non-empty domain from the book-keeping file on disk.
@@ -353,7 +338,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int load_non_empty_domain(gzFile fd);
+  Status load_non_empty_domain(gzFile fd);
 
   /**
    * Loads the tile offsets from the book-keeping file on disk.
@@ -361,7 +346,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int load_tile_offsets(gzFile fd);
+  Status load_tile_offsets(gzFile fd);
 
   /**
    * Loads the variable tile offsets from the book-keeping file on disk.
@@ -369,7 +354,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int load_tile_var_offsets(gzFile fd);
+  Status load_tile_var_offsets(gzFile fd);
 
   /**
    * Loads the variable tile sizes from the book-keeping file on disk.
@@ -377,7 +362,7 @@ class BookKeeping {
    * @param fd The descriptor of the book-keeping file.
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  int load_tile_var_sizes(gzFile fd);
+  Status load_tile_var_sizes(gzFile fd);
 };
 
 };  // namespace tiledb

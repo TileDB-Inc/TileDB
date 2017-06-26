@@ -38,27 +38,7 @@
 #include "book_keeping.h"
 #include "fragment.h"
 
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/**@{*/
-/** Return code. */
-#define TILEDB_RS_OK 0
-#define TILEDB_RS_ERR -1
-/**@}*/
-
-/** Default error message. */
-#define TILEDB_RS_ERRMSG std::string("[TileDB::ReadState] Error: ")
-
 namespace tiledb {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
-
-/** Stores potential error messages. */
-extern std::string tiledb_rs_errmsg;
 
 class Array;
 class Fragment;
@@ -177,7 +157,7 @@ class ReadState {
    * @param cell_pos_range The cell position range to be copied.
    * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
    */
-  int copy_cells(
+  Status copy_cells(
       int attribute_id,
       int tile_i,
       void* buffer,
@@ -202,7 +182,7 @@ class ReadState {
    * @param cell_pos_range The cell position range to be copied.
    * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
    */
-  int copy_cells_var(
+  Status copy_cells_var(
       int attribute_id,
       int tile_i,
       void* buffer,
@@ -223,7 +203,7 @@ class ReadState {
    * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
    */
   template <class T>
-  int get_coords_after(
+  Status get_coords_after(
       const T* coords, T* coords_after, bool& coords_retrieved);
 
   /**
@@ -244,7 +224,7 @@ class ReadState {
    * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
    */
   template <class T>
-  int get_enclosing_coords(
+  Status get_enclosing_coords(
       int tile_i,
       const T* target_coords,
       const T* start_coords,
@@ -267,7 +247,7 @@ class ReadState {
    * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
    */
   template <class T>
-  int get_fragment_cell_pos_range_sparse(
+  Status get_fragment_cell_pos_range_sparse(
       const FragmentInfo& fragment_info,
       const T* cell_range,
       FragmentCellPosRange& fragment_cell_pos_range);
@@ -282,7 +262,7 @@ class ReadState {
    * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
    */
   template <class T>
-  int get_fragment_cell_ranges_dense(
+  Status get_fragment_cell_ranges_dense(
       int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 
   /**
@@ -295,7 +275,7 @@ class ReadState {
    * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
    */
   template <class T>
-  int get_fragment_cell_ranges_sparse(
+  Status get_fragment_cell_ranges_sparse(
       int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 
   /**
@@ -311,7 +291,7 @@ class ReadState {
    * @return TILEDB_RS_OK on success and TILEDB_RS_ERR on error.
    */
   template <class T>
-  int get_fragment_cell_ranges_sparse(
+  Status get_fragment_cell_ranges_sparse(
       int fragment_i,
       const T* start_coords,
       const T* end_coords,
@@ -472,7 +452,8 @@ class ReadState {
    * @return 1 if the compared data are equal, 0 if they are not equal and
    *     TILEDB_RS_ERR for error.
    */
-  int CMP_COORDS_TO_SEARCH_TILE(const void* buffer, size_t tile_offset);
+  Status CMP_COORDS_TO_SEARCH_TILE(
+      const void* buffer, size_t tile_offset, bool& isequal);
 
   /**
    * Computes the number of bytes to copy from the local tile buffers of a given
@@ -495,7 +476,7 @@ class ReadState {
    *     that will store the actual variable-sized cells.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int compute_bytes_to_copy(
+  Status compute_bytes_to_copy(
       int attribute_id,
       int64_t start_cell_pos,
       int64_t& end_cell_pos,
@@ -555,7 +536,7 @@ class ReadState {
    *     for errors).
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int decompress_tile(
+  Status decompress_tile(
       int attribute_id,
       unsigned char* tile_compressed,
       size_t tile_compressed_size,
@@ -573,7 +554,7 @@ class ReadState {
    *     for errors).
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int decompress_tile_gzip(
+  Status decompress_tile_gzip(
       int attribute_id,
       unsigned char* tile_compressed,
       size_t tile_compressed_size,
@@ -591,7 +572,7 @@ class ReadState {
    *     for errors).
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int decompress_tile_zstd(
+  Status decompress_tile_zstd(
       int attribute_id,
       unsigned char* tile_compressed,
       size_t tile_compressed_size,
@@ -609,7 +590,7 @@ class ReadState {
    *     for errors).
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int decompress_tile_lz4(
+  Status decompress_tile_lz4(
       int attribute_id,
       unsigned char* tile_compressed,
       size_t tile_compressed_size,
@@ -628,7 +609,7 @@ class ReadState {
    * @param compressor The Blosc compressor to be used.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int decompress_tile_blosc(
+  Status decompress_tile_blosc(
       int attribute_id,
       unsigned char* tile_compressed,
       size_t tile_compressed_size,
@@ -647,7 +628,7 @@ class ReadState {
    *     for errors).
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int decompress_tile_rle(
+  Status decompress_tile_rle(
       int attribute_id,
       unsigned char* tile_compressed,
       size_t tile_compressed_size,
@@ -665,7 +646,7 @@ class ReadState {
    *     for errors).
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int decompress_tile_bzip2(
+  Status decompress_tile_bzip2(
       int attribute_id,
       unsigned char* tile_compressed,
       size_t tile_compressed_size,
@@ -678,11 +659,12 @@ class ReadState {
    *
    * @tparam T The coordinates type.
    * @param coords The input coordinates.
-   * @return The cell position in the search tile that is after the
+   * @param The cell position in the search tile that is after the
    *     input coordinates.
+   * @return Status
    */
   template <class T>
-  int64_t get_cell_pos_after(const T* coords);
+  Status get_cell_pos_after(const T* coords, int64_t* start_pos);
 
   /**
    * Returns the cell position in the search tile that is at or after the
@@ -690,11 +672,12 @@ class ReadState {
    *
    * @tparam T The coordinates type.
    * @param coords The input coordinates.
-   * @return The cell position in the search tile that is at or after the
+   * @param The cell position in the search tile that is at or after the
    *     input coordinates.
+   * @return Status
    */
   template <class T>
-  int64_t get_cell_pos_at_or_after(const T* coords);
+  Status get_cell_pos_at_or_after(const T* coords, int64_t* end_pos);
 
   /**
    * Returns the cell position in the search tile that is at or before the
@@ -706,7 +689,7 @@ class ReadState {
    *     input coordinates.
    */
   template <class T>
-  int64_t get_cell_pos_at_or_before(const T* coords);
+  Status get_cell_pos_at_or_before(const T* coords, int64_t* end_pos);
 
   /**
    * Retrieves the pointer of the i-th coordinates in the search tile.
@@ -715,7 +698,7 @@ class ReadState {
    * @param coords The destination pointer.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int GET_COORDS_PTR_FROM_SEARCH_TILE(int64_t i, const void*& coords);
+  Status GET_COORDS_PTR_FROM_SEARCH_TILE(int64_t i, const void*& coords);
 
   /**
    * Retrieves the pointer of the i-th cell in the offset tile of a
@@ -726,7 +709,7 @@ class ReadState {
    * @param offset The destination pointer.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int GET_CELL_PTR_FROM_OFFSET_TILE(
+  Status GET_CELL_PTR_FROM_OFFSET_TILE(
       int attribute_id, int64_t i, const size_t*& offset);
 
   /** Returns *true* if the file of the input attribute is empty. */
@@ -741,7 +724,8 @@ class ReadState {
    * @param tile_size The tile size.
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int map_tile_from_file_cmp(int attribute_id, off_t offset, size_t tile_size);
+  Status map_tile_from_file_cmp(
+      int attribute_id, off_t offset, size_t tile_size);
 
   /**
    * Maps a variable-sized tile from the disk for an attribute into a local
@@ -752,7 +736,7 @@ class ReadState {
    * @param tile_size The tile size.
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int map_tile_from_file_var_cmp(
+  Status map_tile_from_file_var_cmp(
       int attribute_id, off_t offset, size_t tile_size);
 
   /**
@@ -764,7 +748,7 @@ class ReadState {
    * @param tile_size The tile size.
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int map_tile_from_file_cmp_none(
+  Status map_tile_from_file_cmp_none(
       int attribute_id, off_t offset, size_t tile_size);
 
   /**
@@ -777,7 +761,7 @@ class ReadState {
    * @param tile_size The tile size.
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int map_tile_from_file_var_cmp_none(
+  Status map_tile_from_file_var_cmp_none(
       int attribute_id, off_t offset, size_t tile_size);
 
 #ifdef HAVE_MPI
@@ -790,7 +774,7 @@ class ReadState {
    * @param tile_size The tile size.
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int mpi_io_read_tile_from_file_cmp(
+  Status mpi_io_read_tile_from_file_cmp(
       int attribute_id, off_t offset, size_t tile_size);
 
   /**
@@ -803,7 +787,7 @@ class ReadState {
    * @param tile_size The tile size.
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int mpi_io_read_tile_from_file_var_cmp(
+  Status mpi_io_read_tile_from_file_var_cmp(
       int attribute_id, off_t offset, size_t tile_size);
 #endif
 
@@ -814,7 +798,7 @@ class ReadState {
    * @param tile_i The tile position on the disk.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int prepare_tile_for_reading(int attribute_id, int64_t tile_i);
+  Status prepare_tile_for_reading(int attribute_id, int64_t tile_i);
 
   /**
    * Prepares a variable-sized tile from the disk for reading for an attribute.
@@ -823,7 +807,7 @@ class ReadState {
    * @param tile_i The tile position on the disk.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int prepare_tile_for_reading_var(int attribute_id, int64_t tile_i);
+  Status prepare_tile_for_reading_var(int attribute_id, int64_t tile_i);
 
   /**
    * Prepares a tile from the disk for reading for an attribute.
@@ -833,7 +817,7 @@ class ReadState {
    * @param tile_i The tile position on the disk.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int prepare_tile_for_reading_cmp(int attribute_id, int64_t tile_i);
+  Status prepare_tile_for_reading_cmp(int attribute_id, int64_t tile_i);
 
   /**
    * Prepares a tile from the disk for reading for an attribute.
@@ -843,7 +827,7 @@ class ReadState {
    * @param tile_i The tile position on the disk.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int prepare_tile_for_reading_cmp_none(int attribute_id, int64_t tile_i);
+  Status prepare_tile_for_reading_cmp_none(int attribute_id, int64_t tile_i);
 
   /**
    * Prepares a tile from the disk for reading for an attribute.
@@ -854,7 +838,7 @@ class ReadState {
    * @param tile_i The tile position on the disk.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int prepare_tile_for_reading_var_cmp(int attribute_id, int64_t tile_i);
+  Status prepare_tile_for_reading_var_cmp(int attribute_id, int64_t tile_i);
 
   /**
    * Prepares a tile from the disk for reading for an attribute.
@@ -865,7 +849,8 @@ class ReadState {
    * @param tile_i The tile position on the disk.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int prepare_tile_for_reading_var_cmp_none(int attribute_id, int64_t tile_i);
+  Status prepare_tile_for_reading_var_cmp_none(
+      int attribute_id, int64_t tile_i);
 
   /**
    * Reads data from an attribute tile into an input buffer.
@@ -877,7 +862,7 @@ class ReadState {
    *     buffer.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int READ_FROM_TILE(
+  Status READ_FROM_TILE(
       int attribute_id, void* buffer, size_t tile_offset, size_t bytes_to_copy);
 
   /**
@@ -890,7 +875,7 @@ class ReadState {
    *     buffer.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
-  int READ_FROM_TILE_VAR(
+  Status READ_FROM_TILE_VAR(
       int attribute_id, void* buffer, size_t tile_offset, size_t bytes_to_copy);
 
   /**
@@ -902,7 +887,8 @@ class ReadState {
    * @param tile_size The tile size.
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int read_tile_from_file_cmp(int attribute_id, off_t offset, size_t tile_size);
+  Status read_tile_from_file_cmp(
+      int attribute_id, off_t offset, size_t tile_size);
 
   /**
    * Reads a tile from the disk for an attribute into a local buffer. This
@@ -913,7 +899,7 @@ class ReadState {
    * @param tile_size The tile size.
    * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
    */
-  int read_tile_from_file_var_cmp(
+  Status read_tile_from_file_var_cmp(
       int attribute_id, off_t offset, size_t tile_size);
 
   /**
@@ -922,9 +908,9 @@ class ReadState {
    *
    * @param attribute_id The id of the attribute the read occurs for.
    * @param offset The offset at which the tile starts in the file.
-   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   * @return void
    */
-  int set_tile_file_offset(int attribute_id, off_t offset);
+  void set_tile_file_offset(int attribute_id, off_t offset);
 
   /**
    * Saves in the read state the file offset for a variable-sized attribute
@@ -932,9 +918,9 @@ class ReadState {
    *
    * @param attribute_id The id of the attribute the read occurs for.
    * @param offset The offset at which the tile starts in the file.
-   * @return TILEDB_RS_OK for success, and TILEDB_RS_ERR for error.
+   * @return void
    */
-  int set_tile_var_file_offset(int attribute_id, off_t offset);
+  void set_tile_var_file_offset(int attribute_id, off_t offset);
 
   /**
    * Shifts the offsets stored in the tile buffer of the input attribute, such

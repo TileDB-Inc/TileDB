@@ -50,12 +50,6 @@
 namespace tiledb {
 
 /* ****************************** */
-/*        GLOBAL VARIABLES        */
-/* ****************************** */
-
-std::string tiledb_mt_errmsg = "";
-
-/* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
@@ -81,13 +75,12 @@ bool Metadata::overflow(int attribute_id) const {
   return array_->overflow(attribute_id);
 }
 
-int Metadata::read(const char* key, void** buffers, size_t* buffer_sizes) {
+Status Metadata::read(const char* key, void** buffers, size_t* buffer_sizes) {
   // Sanity checks
   if (mode_ != TILEDB_METADATA_READ) {
     std::string errmsg = "Cannot read from metadata; Invalid mode";
     PRINT_ERROR(errmsg);
-    tiledb_mt_errmsg = TILEDB_MT_ERRMSG + errmsg;
-    return TILEDB_MT_ERR;
+    return Status::MetadataError(errmsg);
   }
 
   // Compute subarray for the read
@@ -101,53 +94,33 @@ int Metadata::read(const char* key, void** buffers, size_t* buffer_sizes) {
   }
 
   // Re-init sub array
-  if (array_->reset_subarray(subarray) != TILEDB_AR_OK) {
-    tiledb_mt_errmsg = tiledb_ar_errmsg;
-    return TILEDB_MT_ERR;
-  }
+  RETURN_NOT_OK(array_->reset_subarray(subarray));
 
   // Read from array
-  if (array_->read(buffers, buffer_sizes) != TILEDB_AR_OK) {
-    tiledb_mt_errmsg = tiledb_ar_errmsg;
-    return TILEDB_MT_ERR;
-  }
+  RETURN_NOT_OK(array_->read(buffers, buffer_sizes));
 
-  // Success
-  return TILEDB_MT_OK;
+  return Status::Ok();
 }
 
 /* ****************************** */
 /*            MUTATORS            */
 /* ****************************** */
 
-int Metadata::consolidate(
+Status Metadata::consolidate(
     Fragment*& new_fragment, std::vector<std::string>& old_fragment_names) {
   // Consolidate
-  if (array_->consolidate(new_fragment, old_fragment_names) != TILEDB_AR_OK) {
-    tiledb_mt_errmsg = tiledb_ar_errmsg;
-    return TILEDB_MT_ERR;
-  }
-
-  // Success
-  return TILEDB_MT_OK;
+  RETURN_NOT_OK(array_->consolidate(new_fragment, old_fragment_names));
+  return Status::Ok();
 }
 
-int Metadata::finalize() {
-  int rc = array_->finalize();
-
+Status Metadata::finalize() {
+  Status st = array_->finalize();
   delete array_;
   array_ = nullptr;
-
-  if (rc != TILEDB_AR_OK) {
-    tiledb_mt_errmsg = tiledb_ar_errmsg;
-    return TILEDB_MT_ERR;
-  }
-
-  // Success
-  return TILEDB_MT_OK;
+  return st;
 }
 
-int Metadata::init(
+Status Metadata::init(
     const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
     const std::vector<BookKeeping*>& book_keeping,
@@ -159,8 +132,7 @@ int Metadata::init(
   if (mode != TILEDB_METADATA_READ && mode != TILEDB_METADATA_WRITE) {
     std::string errmsg = "Cannot initialize metadata; Invalid metadata mode";
     PRINT_ERROR(errmsg);
-    tiledb_mt_errmsg = TILEDB_MT_ERRMSG + errmsg;
-    return TILEDB_MT_ERR;
+    return Status::MetadataError(errmsg);
   }
 
   // Set mode
@@ -192,8 +164,7 @@ int Metadata::init(
       if (attributes[i] == nullptr || attribute_len > TILEDB_NAME_MAX_LEN) {
         std::string errmsg = "Invalid attribute name length";
         PRINT_ERROR(errmsg);
-        tiledb_mt_errmsg = TILEDB_MT_ERRMSG + errmsg;
-        return TILEDB_MT_ERR;
+        return Status::MetadataError(errmsg);
       }
       array_attributes[i] = new char[attribute_len + 1];
       strcpy(array_attributes[i], attributes[i]);
@@ -207,7 +178,7 @@ int Metadata::init(
 
   // Initialize array
   array_ = new Array();
-  int rc = array_->init(
+  Status st = array_->init(
       array_schema,
       fragment_names,
       book_keeping,
@@ -222,17 +193,10 @@ int Metadata::init(
     delete[] array_attributes[i];
   delete[] array_attributes;
 
-  // Error
-  if (rc != TILEDB_AR_OK) {
-    tiledb_mt_errmsg = tiledb_ar_errmsg;
-    return TILEDB_MT_ERR;
-  }
-
-  // Success
-  return TILEDB_MT_OK;
+  return st;
 }
 
-int Metadata::reset_attributes(const char** attributes, int attribute_num) {
+Status Metadata::reset_attributes(const char** attributes, int attribute_num) {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
 
@@ -260,8 +224,7 @@ int Metadata::reset_attributes(const char** attributes, int attribute_num) {
       if (attributes[i] == nullptr || attribute_len > TILEDB_NAME_MAX_LEN) {
         std::string errmsg = "Invalid attribute name length";
         PRINT_ERROR(errmsg);
-        tiledb_mt_errmsg = errmsg;
-        return TILEDB_MT_ERR;
+        return Status::MetadataError(errmsg);
       }
       array_attributes[i] = new char[attribute_len + 1];
       strcpy(array_attributes[i], attributes[i]);
@@ -274,7 +237,7 @@ int Metadata::reset_attributes(const char** attributes, int attribute_num) {
   }
 
   // Reset attributes
-  int rc = array_->reset_attributes(
+  Status st = array_->reset_attributes(
       (const char**)array_attributes, array_attribute_num);
 
   // Clean up
@@ -282,17 +245,10 @@ int Metadata::reset_attributes(const char** attributes, int attribute_num) {
     delete[] array_attributes[i];
   delete[] array_attributes;
 
-  // Error
-  if (rc != TILEDB_AR_OK) {
-    tiledb_mt_errmsg = tiledb_ar_errmsg;
-    return TILEDB_MT_ERR;
-  }
-
-  // Success
-  return TILEDB_MT_OK;
+  return st;
 }
 
-int Metadata::write(
+Status Metadata::write(
     const char* keys,
     size_t keys_size,
     const void** buffers,
@@ -301,14 +257,12 @@ int Metadata::write(
   if (mode_ != TILEDB_METADATA_WRITE) {
     std::string errmsg = "Cannot write to metadata; Invalid mode";
     PRINT_ERROR(errmsg);
-    tiledb_mt_errmsg = errmsg;
-    return TILEDB_MT_ERR;
+    return Status::MetadataError(errmsg);
   }
   if (keys == nullptr) {
     std::string errmsg = "Cannot write to metadata; No keys given";
     PRINT_ERROR(errmsg);
-    tiledb_mt_errmsg = errmsg;
-    return TILEDB_MT_ERR;
+    return Status::MetadataError(errmsg);
   }
 
   // Compute array coordinates
@@ -328,21 +282,14 @@ int Metadata::write(
       array_buffer_sizes);
 
   // Write the metadata
-  int rc = array_->write(array_buffers, array_buffer_sizes);
+  Status st = array_->write(array_buffers, array_buffer_sizes);
 
   // Clean up
   free(coords);
   free(array_buffers);
   free(array_buffer_sizes);
 
-  // Error
-  if (rc != TILEDB_AR_OK) {
-    tiledb_mt_errmsg = tiledb_ar_errmsg;
-    return TILEDB_MT_ERR;
-  }
-
-  // Success
-  return TILEDB_MT_OK;
+  return st;
 }
 
 /* ****************************** */
