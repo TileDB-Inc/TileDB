@@ -44,8 +44,9 @@
 
 /**@{*/
 /** Return code. */
-#define TILEDB_ERR -1
 #define TILEDB_OK 0
+#define TILEDB_ERR -1
+#define TILEDB_OOM -2
 /**@}*/
 
 /**@{*/

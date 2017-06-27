@@ -74,7 +74,8 @@ int main() {
 
   // Set array schema
   TileDB_ArraySchema array_schema;
-  tiledb_array_set_schema( 
+  tiledb_array_set_schema(
+      tiledb_ctx,
       &array_schema,              // Array schema struct 
       array_name,                 // Array name 
       attributes,                 // Attributes 

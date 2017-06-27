@@ -39,7 +39,7 @@
 
 // The function to be computed in parallel
 void parallel_read(
-    const TileDB_CTX* tiledb_ctx,
+    TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const void* subarray,
     void** buffers,
@@ -109,7 +109,7 @@ int main() {
 }
 
 void parallel_read(
-    const TileDB_CTX* tiledb_ctx,
+    TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const void* subarray,
     void** buffers,
