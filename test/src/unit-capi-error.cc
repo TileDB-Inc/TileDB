@@ -1,10 +1,12 @@
+
 /**
- * @file   tiledb_catching_errors.cc
+ * @file   unit-capi-error.cc
  *
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
+ * @copyright Copyright (c) 2017 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,41 +26,29 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * This examples shows how to catch errors.
+ * Tests for the C API error return code
  */
 
 #include "tiledb.h"
-#include <cstdio>
 
-int main() {
-  // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+#include "catch.hpp"
 
-  // Create a workspace
-  int rc = tiledb_workspace_create(tiledb_ctx, "my_workspace");
-  if(rc == TILEDB_OK)
-    printf("Workspace created successfully!\n");
-  else if(rc == TILEDB_ERR) {
-    tiledb_error_t* err = tiledb_error_last(tiledb_ctx);
-    printf("%s\n", tiledb_error_message(err)); // prints empty string ""
-    tiledb_error_free(err);
-  }
+TEST_CASE("C API Error") {
+  TileDB_CTX* ctx;
+  int rc;
+  rc = tiledb_ctx_init(&ctx, nullptr);
+  CHECK(rc == TILEDB_OK);
 
-  // Create the same workspace again - ERROR
-  rc = tiledb_workspace_create(tiledb_ctx, "my_workspace");
-  if(rc == TILEDB_OK)
-    printf("Workspace created successfully!\n");
-  else if(rc == TILEDB_ERR) {
-    tiledb_error_t* err = tiledb_error_last(tiledb_ctx);
-    printf("%s\n", tiledb_error_message(err)); // Print the TileDB error message
-    tiledb_error_free(err);
-  }
-  // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  const char* bad_path = nullptr;
+  rc = tiledb_clear(ctx, bad_path);
+  CHECK(rc == TILEDB_ERR);
 
-  return 0;
+  tiledb_error_t* err = tiledb_error_last(ctx);
+  CHECK_THAT(
+      tiledb_error_message(err),
+      Catch::Equals("Error: Invalid directory argument is NULL"));
+  tiledb_error_free(err);
 }

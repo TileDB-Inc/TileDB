@@ -117,6 +117,8 @@ struct ArraySchemaFx {
 
     // Set array schema
     rc = tiledb_array_set_schema(
+        // The TileDB_CTX
+        tiledb_ctx_,
         // The array schema structure
         &array_schema_,
         // Array name

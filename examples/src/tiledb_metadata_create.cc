@@ -60,6 +60,7 @@ int main() {
   // Set metadata schema
   TileDB_MetadataSchema metadata_schema;
   tiledb_metadata_set_schema(
+      tiledb_ctx,
       &metadata_schema,            // Metadata schema struct
       metadata_name,               // Metadata name
       attributes,                  // Attributes

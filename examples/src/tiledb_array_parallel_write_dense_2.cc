@@ -40,7 +40,7 @@
 
 // The function to be computed in parallel
 void parallel_write(
-    const TileDB_CTX* tiledb_ctx,
+    TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const void* subarray,
     const void** buffers,
@@ -157,7 +157,7 @@ int main() {
 }
 
 void parallel_write(
-    const TileDB_CTX* tiledb_ctx,
+    TileDB_CTX* tiledb_ctx,
     const char* array_name,
     const void* subarray,
     const void** buffers,

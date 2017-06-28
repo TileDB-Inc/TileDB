@@ -43,16 +43,6 @@
 #include <string>
 
 /* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/** Default error message. */
-#define TILEDB_ERRMSG std::string("[TileDB] Error: ")
-
-/** Maximum error message length. */
-#define TILEDB_ERRMSG_MAX_LEN 2000
-
-/* ********************************* */
 /*               MACROS              */
 /* ********************************* */
 
@@ -82,13 +72,6 @@ extern "C" {
  *  @param rev Store the revision (patch) number
  */
 TILEDB_EXPORT void tiledb_version(int* major, int* minor, int* rev);
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
-
-/** Stores potential error messages. */
-TILEDB_EXPORT extern char tiledb_errmsg[TILEDB_ERRMSG_MAX_LEN];
 
 /* ********************************* */
 /*              CONFIG               */
@@ -137,21 +120,52 @@ typedef struct TileDB_CTX TileDB_CTX;
 /**
  * Initializes the TileDB context.
  *
- * @param tiledb_ctx The TileDB context to be initialized.
+ * @param ctx The TileDB context to be initialized.
  * @param tiledb_config TileDB configuration parameters. If it is NULL,
  *     TileDB will use its default configuration parameters.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_ctx_init(
-    TileDB_CTX** tiledb_ctx, const TileDB_Config* tiledb_config);
+    TileDB_CTX** ctx, const TileDB_Config* tiledb_config);
 
 /**
  * Finalizes the TileDB context, properly freeing-up memory.
  *
- * @param tiledb_ctx The TileDB context to be finalized.
+ * @param ctx The TileDB context to be finalized.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_ctx_finalize(TileDB_CTX* tiledb_ctx);
+TILEDB_EXPORT int tiledb_ctx_finalize(TileDB_CTX* ctx);
+
+/* ********************************* */
+/*              ERROR                */
+/* ********************************* */
+
+/** Opaque struct describing a TileDB error **/
+typedef struct tiledb_error_t tiledb_error_t;
+
+/**
+ * Retrieves the last tiledb error associated with a TileDB context
+ *
+ * @param ctx The TIleDB context
+ * @return tiledb_error_t struct, NULL if no error has been raised
+ */
+TILEDB_EXPORT tiledb_error_t* tiledb_error_last(TileDB_CTX* ctx);
+
+/**
+ * Return the error message associated with a tiledb_error_t struct
+ *
+ * @param A TileDB error_t struct
+ * @return A constant pointer to the error message
+ */
+TILEDB_EXPORT const char* tiledb_error_message(tiledb_error_t* err);
+
+/**
+ * Free's the resources associated with a TileDB eror object
+ *
+ * @param err The TileDB error_t struct
+ * @return TILEDB_OK on success, TILEDB_ERR on failure
+ */
+TILEDB_EXPORT int tiledb_error_free(tiledb_error_t* err);
 
 /* ********************************* */
 /*              WORKSPACE            */
@@ -160,14 +174,14 @@ TILEDB_EXPORT int tiledb_ctx_finalize(TileDB_CTX* tiledb_ctx);
 /**
  * Creates a new TileDB workspace.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param workspace The directory of the workspace to be created in the file
  *     system. This directory should not be inside another TileDB workspace,
  *     group, array or metadata directory.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_workspace_create(
-    const TileDB_CTX* tiledb_ctx, const char* workspace);
+    TileDB_CTX* ctx, const char* workspace);
 
 /* ********************************* */
 /*                GROUP              */
@@ -176,14 +190,13 @@ TILEDB_EXPORT int tiledb_workspace_create(
 /**
  * Creates a new TileDB group.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param group The directory of the group to be created in the file system.
  *     This should be a directory whose parent is a TileDB workspace or another
  *     TileDB group.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_group_create(
-    const TileDB_CTX* tiledb_ctx, const char* group);
+TILEDB_EXPORT int tiledb_group_create(TileDB_CTX* ctx, const char* group);
 
 /* ********************************* */
 /*               ARRAY               */
@@ -301,6 +314,7 @@ typedef struct TileDB_ArraySchema {
 /**
  * Populates a TileDB array schema object.
  *
+ * @param ctx The TileDB context.
  * @param tiledb_array_schema The array schema to be populated.
  * @param array_name The array name.
  * @param attributes The attribute names.
@@ -323,6 +337,7 @@ typedef struct TileDB_ArraySchema {
  * @see TileDB_ArraySchema
  */
 TILEDB_EXPORT int tiledb_array_set_schema(
+    TileDB_CTX* ctx,
     TileDB_ArraySchema* tiledb_array_schema,
     const char* array_name,
     const char** attributes,
@@ -344,18 +359,17 @@ TILEDB_EXPORT int tiledb_array_set_schema(
 /**
  * Creates a new TileDB array.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param tiledb_array_schema The array schema.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_create(
-    const TileDB_CTX* tiledb_ctx,
-    const TileDB_ArraySchema* tiledb_array_schema);
+    TileDB_CTX* ctx, const TileDB_ArraySchema* tiledb_array_schema);
 
 /**
  * Initializes a TileDB array.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param tiledb_array The array object to be initialized. The function
  *     will allocate memory space for it.
  * @param array The directory of the array to be initialized.
@@ -382,7 +396,7 @@ TILEDB_EXPORT int tiledb_array_create(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_init(
-    const TileDB_CTX* tiledb_ctx,
+    TileDB_CTX* ctx,
     TileDB_Array** tiledb_array,
     const char* array,
     int mode,
@@ -435,13 +449,13 @@ TILEDB_EXPORT int tiledb_array_get_schema(
 /**
  * Retrieves the schema of an array from disk.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param array The directory of the array whose schema will be retrieved.
  * @param tiledb_array_schema The array schema to be retrieved.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_load_schema(
-    const TileDB_CTX* tiledb_ctx,
+    TileDB_CTX* ctx,
     const char* array,
     TileDB_ArraySchema* tiledb_array_schema);
 
@@ -566,12 +580,11 @@ TILEDB_EXPORT int tiledb_array_overflow(
 /**
  * Consolidates the fragments of an array into a single fragment.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param array The name of the TileDB array to be consolidated.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
-TILEDB_EXPORT int tiledb_array_consolidate(
-    const TileDB_CTX* tiledb_ctx, const char* array);
+TILEDB_EXPORT int tiledb_array_consolidate(TileDB_CTX* ctx, const char* array);
 
 /**
  * Finalizes a TileDB array, properly freeing its memory space.
@@ -608,7 +621,7 @@ typedef struct TileDB_ArrayIterator TileDB_ArrayIterator;
  * on a subset of attributes, as well as a subarray. The cells will be read
  * in the order they are stored on the disk, maximing performance.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param tiledb_array_it The TileDB array iterator to be created. The function
  *     will allocate the appropriate memory space for the iterator.
  * @param array The directory of the array the iterator is initialized for.
@@ -644,7 +657,7 @@ typedef struct TileDB_ArrayIterator TileDB_ArrayIterator;
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_iterator_init(
-    const TileDB_CTX* tiledb_ctx,
+    TileDB_CTX* ctx,
     TileDB_ArrayIterator** tiledb_array_it,
     const char* array,
     int mode,
@@ -791,6 +804,7 @@ typedef struct TileDB_Metadata TileDB_Metadata;
  * @see TileDB_MetadataSchema
  */
 TILEDB_EXPORT int tiledb_metadata_set_schema(
+    TileDB_CTX* ctx,
     TileDB_MetadataSchema* tiledb_metadata_schema,
     const char* metadata_name,
     const char** attributes,
@@ -803,17 +817,17 @@ TILEDB_EXPORT int tiledb_metadata_set_schema(
 /**
  * Creates a new TileDB metadata object.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param metadata_schema The metadata schema.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_metadata_create(
-    const TileDB_CTX* tiledb_ctx, const TileDB_MetadataSchema* metadata_schema);
+    TileDB_CTX* ctx, const TileDB_MetadataSchema* metadata_schema);
 
 /**
  * Initializes a TileDB metadata object.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param tiledb_metadata The metadata object to be initialized. The function
  *     will allocate memory space for it.
  * @param metadata The directory of the metadata to be initialized.
@@ -829,7 +843,7 @@ TILEDB_EXPORT int tiledb_metadata_create(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_metadata_init(
-    const TileDB_CTX* tiledb_ctx,
+    TileDB_CTX* ctx,
     TileDB_Metadata** tiledb_metadata,
     const char* metadata,
     int mode,
@@ -866,13 +880,13 @@ TILEDB_EXPORT int tiledb_metadata_get_schema(
 /**
  * Retrieves the schema of a metadata object from disk.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param metadata The directory of the metadata whose schema will be retrieved.
  * @param tiledb_metadata_schema The metadata schema to be retrieved.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_metadata_load_schema(
-    const TileDB_CTX* tiledb_ctx,
+    TileDB_CTX* ctx,
     const char* metadata,
     TileDB_MetadataSchema* tiledb_metadata_schema);
 
@@ -962,12 +976,12 @@ TILEDB_EXPORT int tiledb_metadata_overflow(
 /**
  * Consolidates the fragments of a metadata object into a single fragment.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param metadata The name of the TileDB metadata to be consolidated.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_metadata_consolidate(
-    const TileDB_CTX* tiledb_ctx, const char* metadata);
+    TileDB_CTX* ctx, const char* metadata);
 
 /**
  * Finalizes a TileDB metadata object, properly freeing the memory space.
@@ -985,7 +999,7 @@ typedef struct TileDB_MetadataIterator TileDB_MetadataIterator;
  * on a subset of attributes. The values will be read in the order they are
  * stored on the disk (which is random), maximing performance.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param tiledb_metadata_it The TileDB metadata iterator to be created. The
  *     function will allocate the appropriate memory space for the iterator.
  * @param metadata The directory of the metadata the iterator is initialized
@@ -1009,7 +1023,7 @@ typedef struct TileDB_MetadataIterator TileDB_MetadataIterator;
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_metadata_iterator_init(
-    const TileDB_CTX* tiledb_ctx,
+    TileDB_CTX* ctx,
     TileDB_MetadataIterator** tiledb_metadata_it,
     const char* metadata,
     const char** attributes,
@@ -1075,7 +1089,7 @@ TILEDB_EXPORT int tiledb_metadata_iterator_finalize(
 /**
  * Returns the type of the input directory.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param dir The input directory.
  * @return It can be one of the following:
  *    - TILEDB_WORKSPACE
@@ -1084,45 +1098,44 @@ TILEDB_EXPORT int tiledb_metadata_iterator_finalize(
  *    - TILEDB_METADATA
  *    - -1 (none of the above)
  */
-TILEDB_EXPORT int tiledb_dir_type(
-    const TileDB_CTX* tiledb_ctx, const char* dir);
+TILEDB_EXPORT int tiledb_dir_type(TileDB_CTX* ctx, const char* dir);
 
 /**
  * Clears a TileDB directory. The corresponding TileDB object (workspace,
  * group, array, or metadata) will still exist after the execution of the
  * function, but it will be empty (i.e., as if it was just created).
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param dir The TileDB directory to be cleared.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_clear(const TileDB_CTX* tiledb_ctx, const char* dir);
+TILEDB_EXPORT int tiledb_clear(TileDB_CTX* ctx, const char* dir);
 
 /**
  * Deletes a TileDB directory (workspace, group, array, or metadata) entirely.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param dir The TileDB directory to be deleted.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_delete(const TileDB_CTX* tiledb_ctx, const char* dir);
+TILEDB_EXPORT int tiledb_delete(TileDB_CTX* ctx, const char* dir);
 
 /**
  * Moves a TileDB directory (workspace, group, array or metadata).
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param old_dir The old TileDB directory.
  * @param new_dir The new TileDB directory.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_move(
-    const TileDB_CTX* tiledb_ctx, const char* old_dir, const char* new_dir);
+    TileDB_CTX* ctx, const char* old_dir, const char* new_dir);
 
 /**
  * Lists all the TileDB objects in a directory, copying their names into the
  * input string buffers.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param parent_dir The parent directory of the TileDB objects to be listed.
  * @param dirs An array of strings that will store the listed TileDB objects.
  *     Note that the user is responsible for allocating the appropriate memory
@@ -1142,7 +1155,7 @@ TILEDB_EXPORT int tiledb_move(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_ls(
-    const TileDB_CTX* tiledb_ctx,
+    TileDB_CTX* ctx,
     const char* parent_dir,
     char** dirs,
     int* dir_types,
@@ -1151,13 +1164,13 @@ TILEDB_EXPORT int tiledb_ls(
 /**
  * Counts the TileDB objects in a directory.
  *
- * @param tiledb_ctx The TileDB context.
+ * @param ctx The TileDB context.
  * @param parent_dir The parent directory of the TileDB objects to be listed.
  * @param dir_num The number of TileDB objects to be returned.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_ls_c(
-    const TileDB_CTX* tiledb_ctx, const char* parent_dir, int* dir_num);
+    TileDB_CTX* ctx, const char* parent_dir, int* dir_num);
 
 /* ********************************* */
 /*      ASYNCHRONOUS I/O (AIO)       */

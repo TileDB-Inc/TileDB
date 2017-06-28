@@ -46,7 +46,7 @@ void *parallel_read(void* args);
 
 // The arguments for each invocation of parallel_write
 typedef struct _thread_data_t {
-    const TileDB_CTX* tiledb_ctx;
+    TileDB_CTX* tiledb_ctx;
     const char* array_name;
     const void* subarray;
     void** buffers;

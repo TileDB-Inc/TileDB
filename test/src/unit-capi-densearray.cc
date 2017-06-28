@@ -195,6 +195,7 @@ struct DenseArrayFx {
 
     // Set the array schema
     rc = tiledb_array_set_schema(
+        tiledb_ctx_,
         &array_schema_,
         array_name_.c_str(),
         attributes,

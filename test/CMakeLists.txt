@@ -55,7 +55,7 @@ add_executable(
     "src/unit-capi-densearray.cc"
     "src/unit-compression-rle.cc"
     "src/unit-status.cc"
-)
+        src/unit-capi-error.cc)
 
 set_target_properties(
     ${TILEDB_UNITTEST_TARGET_NAME} PROPERTIES
