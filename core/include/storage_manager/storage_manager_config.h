@@ -37,6 +37,7 @@
 #include <mpi.h>
 #endif
 #include <string>
+#include "io_mode.h"
 
 namespace tiledb {
 
@@ -105,7 +106,7 @@ class StorageManagerConfig {
    *          TileDB will use MPI-IO write.
    * @return void.
    */
-  void init(const char* home, int read_method, int write_method);
+  void init(const char* home, IO read_method, IO write_method);
 #endif
 
   /* ********************************* */
@@ -121,10 +122,10 @@ class StorageManagerConfig {
 #endif
 
   /** Returns the read method. */
-  int read_method() const;
+  IO read_method() const;
 
   /** Returns the write method. */
-  int write_method() const;
+  IO write_method() const;
 
  private:
   /* ********************************* */
@@ -147,7 +148,7 @@ class StorageManagerConfig {
    *    - TILEDB_IO_MPI
    *      TileDB will use MPI-IO read.
    */
-  int read_method_;
+  IO read_method_;
   /**
    * The method for writing data to a file.
    * It can be one of the following:
@@ -156,7 +157,7 @@ class StorageManagerConfig {
    *    - TILEDB_IO_MPI
    *      TileDB will use MPI-IO write.
    */
-  int write_method_;
+  IO write_method_;
 };
 
 };  // namespace tiledb

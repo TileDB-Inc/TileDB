@@ -49,53 +49,12 @@
 #define TILEDB_OOM -2
 /**@}*/
 
-/**@{*/
-/** Array mode. */
-#define TILEDB_ARRAY_READ 0
-#define TILEDB_ARRAY_READ_SORTED_COL 1
-#define TILEDB_ARRAY_READ_SORTED_ROW 2
-#define TILEDB_ARRAY_WRITE 3
-#define TILEDB_ARRAY_WRITE_SORTED_COL 4
-#define TILEDB_ARRAY_WRITE_SORTED_ROW 5
-#define TILEDB_ARRAY_WRITE_UNSORTED 6
-/**@}*/
-
-/**@{*/
-/** Metadata mode. */
-#define TILEDB_METADATA_READ 0
-#define TILEDB_METADATA_WRITE 1
-/**@}*/
-
-/**@{*/
-/** I/O method. */
-#define TILEDB_IO_MMAP 0
-#define TILEDB_IO_READ 1
-#define TILEDB_IO_MPI 2
-#define TILEDB_IO_WRITE 0
-/**@}*/
-
-/**@{*/
-/** Asynchronous I/O (AIO) code. */
-#define TILEDB_AIO_ERR -1
-#define TILEDB_AIO_COMPLETED 0
-#define TILEDB_AIO_INPROGRESS 1
-#define TILEDB_AIO_OVERFLOW 2
-/**@}*/
-
 /**
  * The TileDB home directory, where TileDB-related system metadata structures
  * are kept. If it is set to "", then the home directory is set to "~/.tiledb"
  * by default.
  */
 #define TILEDB_HOME ""
-
-/**@{*/
-/** TileDB object type. */
-#define TILEDB_WORKSPACE 0
-#define TILEDB_GROUP 1
-#define TILEDB_ARRAY 2
-#define TILEDB_METADATA 3
-/**@}*/
 
 /** The maximum length for the names of TileDB objects. */
 #define TILEDB_NAME_MAX_LEN 256
@@ -122,43 +81,6 @@
 /** Special value indicating a variable number or size. */
 #define TILEDB_VAR_NUM INT_MAX
 #define TILEDB_VAR_SIZE (size_t) - 1
-/**@}*/
-
-/**@{*/
-/** Data type. */
-#define TILEDB_INT32 0
-#define TILEDB_INT64 1
-#define TILEDB_FLOAT32 2
-#define TILEDB_FLOAT64 3
-#define TILEDB_CHAR 4
-#define TILEDB_INT8 5
-#define TILEDB_UINT8 6
-#define TILEDB_INT16 7
-#define TILEDB_UINT16 8
-#define TILEDB_UINT32 9
-#define TILEDB_UINT64 10
-/**@}*/
-
-/**@{*/
-/** Tile or cell order. */
-#define TILEDB_ROW_MAJOR 0
-#define TILEDB_COL_MAJOR 1
-/**@}*/
-
-/**@{*/
-/** Compression type. */
-#define TILEDB_NO_COMPRESSION 0
-#define TILEDB_GZIP 1
-#define TILEDB_ZSTD 2
-#define TILEDB_LZ4 3
-#define TILEDB_BLOSC 4
-#define TILEDB_BLOSC_LZ4 5
-#define TILEDB_BLOSC_LZ4HC 6
-#define TILEDB_BLOSC_SNAPPY 7
-#define TILEDB_BLOSC_ZLIB 8
-#define TILEDB_BLOSC_ZSTD 9
-#define TILEDB_RLE 10
-#define TILEDB_BZIP2 11
 /**@}*/
 
 /**@{*/

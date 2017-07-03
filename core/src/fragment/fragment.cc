@@ -97,12 +97,12 @@ const std::string& Fragment::fragment_name() const {
   return fragment_name_;
 }
 
-int Fragment::mode() const {
+ArrayMode Fragment::mode() const {
   return mode_;
 }
 
 inline bool Fragment::read_mode() const {
-  return utils::array_read_mode(mode_);
+  return is_read_mode(mode_);
 }
 
 ReadState* Fragment::read_state() const {
@@ -122,7 +122,7 @@ size_t Fragment::tile_size(int attribute_id) const {
 }
 
 inline bool Fragment::write_mode() const {
-  return utils::array_write_mode(mode_);
+  return is_write_mode(mode_);
 }
 
 /* ****************************** */
@@ -159,7 +159,7 @@ Status Fragment::finalize() {
 }
 
 Status Fragment::init(
-    const std::string& fragment_name, int mode, const void* subarray) {
+    const std::string& fragment_name, ArrayMode mode, const void* subarray) {
   // Set fragment name and mode
   fragment_name_ = fragment_name;
   mode_ = mode;

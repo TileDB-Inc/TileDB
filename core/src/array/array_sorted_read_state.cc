@@ -262,26 +262,26 @@ Status ArraySortedReadState::read(void** buffers, size_t* buffer_sizes) {
   }
 
   // Call the appropriate templated read
-  int type = array_->array_schema()->coords_type();
-  if (type == TILEDB_INT32) {
+  Datatype type = array_->array_schema()->coords_type();
+  if (type == Datatype::INT32) {
     return read<int>();
-  } else if (type == TILEDB_INT64) {
+  } else if (type == Datatype::INT64) {
     return read<int64_t>();
-  } else if (type == TILEDB_FLOAT32) {
+  } else if (type == Datatype::FLOAT32) {
     return read<float>();
-  } else if (type == TILEDB_FLOAT64) {
+  } else if (type == Datatype::FLOAT64) {
     return read<double>();
-  } else if (type == TILEDB_INT8) {
+  } else if (type == Datatype::INT8) {
     return read<int8_t>();
-  } else if (type == TILEDB_UINT8) {
+  } else if (type == Datatype::UINT8) {
     return read<uint8_t>();
-  } else if (type == TILEDB_INT16) {
+  } else if (type == Datatype::INT16) {
     return read<int16_t>();
-  } else if (type == TILEDB_UINT16) {
+  } else if (type == Datatype::UINT16) {
     return read<uint16_t>();
-  } else if (type == TILEDB_UINT32) {
+  } else if (type == Datatype::UINT32) {
     return read<uint32_t>();
-  } else if (type == TILEDB_UINT64) {
+  } else if (type == Datatype::UINT64) {
     return read<uint64_t>();
   } else {
     assert(0);
@@ -338,180 +338,180 @@ Status ArraySortedReadState::init() {
 
   // Initialize functors
   const ArraySchema* array_schema = array_->array_schema();
-  int mode = array_->mode();
-  int cell_order = array_schema->cell_order();
-  int tile_order = array_schema->tile_order();
-  int coords_type = array_schema->coords_type();
-  if (mode == TILEDB_ARRAY_READ_SORTED_ROW) {
-    if (coords_type == TILEDB_INT32) {
+  ArrayMode mode = array_->mode();
+  Layout cell_order = array_schema->cell_order();
+  Layout tile_order = array_schema->tile_order();
+  Datatype coords_type = array_schema->coords_type();
+  if (mode == ArrayMode::READ_SORTED_ROW) {
+    if (coords_type == Datatype::INT32) {
       advance_cell_slab_ = advance_cell_slab_row_s<int>;
-      calculate_cell_slab_info_ = (cell_order == TILEDB_ROW_MAJOR) ?
+      calculate_cell_slab_info_ = (cell_order == Layout::ROW_MAJOR) ?
                                       calculate_cell_slab_info_row_row_s<int> :
                                       calculate_cell_slab_info_row_col_s<int>;
-    } else if (coords_type == TILEDB_INT64) {
+    } else if (coords_type == Datatype::INT64) {
       advance_cell_slab_ = advance_cell_slab_row_s<int64_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<int64_t> :
               calculate_cell_slab_info_row_col_s<int64_t>;
-    } else if (coords_type == TILEDB_FLOAT32) {
+    } else if (coords_type == Datatype::FLOAT32) {
       advance_cell_slab_ = advance_cell_slab_row_s<float>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<float> :
               calculate_cell_slab_info_row_col_s<float>;
-    } else if (coords_type == TILEDB_FLOAT64) {
+    } else if (coords_type == Datatype::FLOAT64) {
       advance_cell_slab_ = advance_cell_slab_row_s<double>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<double> :
               calculate_cell_slab_info_row_col_s<double>;
-    } else if (coords_type == TILEDB_INT8) {
+    } else if (coords_type == Datatype::INT8) {
       advance_cell_slab_ = advance_cell_slab_row_s<int8_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<int8_t> :
               calculate_cell_slab_info_row_col_s<int8_t>;
-    } else if (coords_type == TILEDB_UINT8) {
+    } else if (coords_type == Datatype::UINT8) {
       advance_cell_slab_ = advance_cell_slab_row_s<uint8_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<uint8_t> :
               calculate_cell_slab_info_row_col_s<uint8_t>;
-    } else if (coords_type == TILEDB_INT16) {
+    } else if (coords_type == Datatype::INT16) {
       advance_cell_slab_ = advance_cell_slab_row_s<int16_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<int16_t> :
               calculate_cell_slab_info_row_col_s<int16_t>;
-    } else if (coords_type == TILEDB_UINT16) {
+    } else if (coords_type == Datatype::UINT16) {
       advance_cell_slab_ = advance_cell_slab_row_s<uint16_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<uint16_t> :
               calculate_cell_slab_info_row_col_s<uint16_t>;
-    } else if (coords_type == TILEDB_UINT32) {
+    } else if (coords_type == Datatype::UINT32) {
       advance_cell_slab_ = advance_cell_slab_row_s<uint32_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<uint32_t> :
               calculate_cell_slab_info_row_col_s<uint32_t>;
-    } else if (coords_type == TILEDB_UINT64) {
+    } else if (coords_type == Datatype::UINT64) {
       advance_cell_slab_ = advance_cell_slab_row_s<uint64_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<uint64_t> :
               calculate_cell_slab_info_row_col_s<uint64_t>;
     } else {
       assert(0);
     }
   } else {  // mode == TILEDB_ARRAY_READ_SORTED_COL
-    if (coords_type == TILEDB_INT32) {
+    if (coords_type == Datatype::INT32) {
       advance_cell_slab_ = advance_cell_slab_col_s<int>;
-      calculate_cell_slab_info_ = (cell_order == TILEDB_ROW_MAJOR) ?
+      calculate_cell_slab_info_ = (cell_order == Layout::ROW_MAJOR) ?
                                       calculate_cell_slab_info_col_row_s<int> :
                                       calculate_cell_slab_info_col_col_s<int>;
-    } else if (coords_type == TILEDB_INT64) {
+    } else if (coords_type == Datatype::INT64) {
       advance_cell_slab_ = advance_cell_slab_col_s<int64_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<int64_t> :
               calculate_cell_slab_info_col_col_s<int64_t>;
-    } else if (coords_type == TILEDB_FLOAT32) {
+    } else if (coords_type == Datatype::FLOAT32) {
       advance_cell_slab_ = advance_cell_slab_col_s<float>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<float> :
               calculate_cell_slab_info_col_col_s<float>;
-    } else if (coords_type == TILEDB_FLOAT64) {
+    } else if (coords_type == Datatype::FLOAT64) {
       advance_cell_slab_ = advance_cell_slab_col_s<double>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<double> :
               calculate_cell_slab_info_col_col_s<double>;
-    } else if (coords_type == TILEDB_INT8) {
+    } else if (coords_type == Datatype::INT8) {
       advance_cell_slab_ = advance_cell_slab_col_s<int8_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<int8_t> :
               calculate_cell_slab_info_col_col_s<int8_t>;
-    } else if (coords_type == TILEDB_UINT8) {
+    } else if (coords_type == Datatype::UINT8) {
       advance_cell_slab_ = advance_cell_slab_col_s<uint8_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<uint8_t> :
               calculate_cell_slab_info_col_col_s<uint8_t>;
-    } else if (coords_type == TILEDB_INT16) {
+    } else if (coords_type == Datatype::INT16) {
       advance_cell_slab_ = advance_cell_slab_col_s<int16_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<int16_t> :
               calculate_cell_slab_info_col_col_s<int16_t>;
-    } else if (coords_type == TILEDB_UINT16) {
+    } else if (coords_type == Datatype::UINT16) {
       advance_cell_slab_ = advance_cell_slab_col_s<uint16_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<uint16_t> :
               calculate_cell_slab_info_col_col_s<uint16_t>;
-    } else if (coords_type == TILEDB_UINT32) {
+    } else if (coords_type == Datatype::UINT32) {
       advance_cell_slab_ = advance_cell_slab_col_s<uint32_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<uint32_t> :
               calculate_cell_slab_info_col_col_s<uint32_t>;
-    } else if (coords_type == TILEDB_UINT64) {
+    } else if (coords_type == Datatype::UINT64) {
       advance_cell_slab_ = advance_cell_slab_col_s<uint64_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<uint64_t> :
               calculate_cell_slab_info_col_col_s<uint64_t>;
     } else {
       assert(0);
     }
   }
-  if (tile_order == TILEDB_ROW_MAJOR) {
-    if (coords_type == TILEDB_INT32)
+  if (tile_order == Layout::ROW_MAJOR) {
+    if (coords_type == Datatype::INT32)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<int>;
-    else if (coords_type == TILEDB_INT64)
+    else if (coords_type == Datatype::INT64)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<int64_t>;
-    else if (coords_type == TILEDB_FLOAT32)
+    else if (coords_type == Datatype::FLOAT32)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<float>;
-    else if (coords_type == TILEDB_FLOAT64)
+    else if (coords_type == Datatype::FLOAT64)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<double>;
-    else if (coords_type == TILEDB_INT8)
+    else if (coords_type == Datatype::INT8)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<int8_t>;
-    else if (coords_type == TILEDB_UINT8)
+    else if (coords_type == Datatype::UINT8)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<uint8_t>;
-    else if (coords_type == TILEDB_INT16)
+    else if (coords_type == Datatype::INT16)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<int16_t>;
-    else if (coords_type == TILEDB_UINT16)
+    else if (coords_type == Datatype::UINT16)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<uint16_t>;
-    else if (coords_type == TILEDB_UINT32)
+    else if (coords_type == Datatype::UINT32)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<uint32_t>;
-    else if (coords_type == TILEDB_UINT64)
+    else if (coords_type == Datatype::UINT64)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<uint64_t>;
     else
       assert(0);
-  } else {  // tile_order == TILEDB_COL_MAJOR
-    if (coords_type == TILEDB_INT32)
+  } else {  // tile_order == Layout::COL_MAJOR
+    if (coords_type == Datatype::INT32)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<int>;
-    else if (coords_type == TILEDB_INT64)
+    else if (coords_type == Datatype::INT64)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<int64_t>;
-    else if (coords_type == TILEDB_FLOAT32)
+    else if (coords_type == Datatype::FLOAT32)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<float>;
-    else if (coords_type == TILEDB_FLOAT64)
+    else if (coords_type == Datatype::FLOAT64)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<double>;
-    else if (coords_type == TILEDB_INT8)
+    else if (coords_type == Datatype::INT8)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<int8_t>;
-    else if (coords_type == TILEDB_UINT8)
+    else if (coords_type == Datatype::UINT8)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<uint8_t>;
-    else if (coords_type == TILEDB_INT16)
+    else if (coords_type == Datatype::INT16)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<int16_t>;
-    else if (coords_type == TILEDB_UINT16)
+    else if (coords_type == Datatype::UINT16)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<uint16_t>;
-    else if (coords_type == TILEDB_UINT32)
+    else if (coords_type == Datatype::UINT32)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<uint32_t>;
-    else if (coords_type == TILEDB_UINT64)
+    else if (coords_type == Datatype::UINT64)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<uint64_t>;
     else
       assert(0);
@@ -788,7 +788,7 @@ void ArraySortedReadState::calculate_buffer_sizes_dense() {
 
   // Get cell number in a (full) tile slab
   int64_t tile_slab_cell_num;
-  if (array_->mode() == TILEDB_ARRAY_READ_SORTED_ROW)
+  if (array_->mode() == ArrayMode::READ_SORTED_ROW)
     tile_slab_cell_num = array_schema->tile_slab_row_cell_num(subarray_);
   else  // TILEDB_ARRAY_READ_SORTED_COL
     tile_slab_cell_num = array_schema->tile_slab_col_cell_num(subarray_);
@@ -1185,50 +1185,50 @@ void* ArraySortedReadState::copy_handler(void* context) {
 
   // This will enter an indefinite loop that will handle all incoming copy
   // requests
-  int coords_type = asrs->array_->array_schema()->coords_type();
+  Datatype coords_type = asrs->array_->array_schema()->coords_type();
   if (asrs->array_->array_schema()->dense()) {  // DENSE
-    if (coords_type == TILEDB_INT32)
+    if (coords_type == Datatype::INT32)
       asrs->handle_copy_requests_dense<int>();
-    else if (coords_type == TILEDB_INT64)
+    else if (coords_type == Datatype::INT64)
       asrs->handle_copy_requests_dense<int64_t>();
-    else if (coords_type == TILEDB_FLOAT32)
+    else if (coords_type == Datatype::FLOAT32)
       asrs->handle_copy_requests_dense<float>();
-    else if (coords_type == TILEDB_FLOAT64)
+    else if (coords_type == Datatype::FLOAT64)
       asrs->handle_copy_requests_dense<double>();
-    else if (coords_type == TILEDB_INT8)
+    else if (coords_type == Datatype::INT8)
       asrs->handle_copy_requests_dense<int8_t>();
-    else if (coords_type == TILEDB_UINT8)
+    else if (coords_type == Datatype::UINT8)
       asrs->handle_copy_requests_dense<uint8_t>();
-    else if (coords_type == TILEDB_INT16)
+    else if (coords_type == Datatype::INT16)
       asrs->handle_copy_requests_dense<int16_t>();
-    else if (coords_type == TILEDB_UINT16)
+    else if (coords_type == Datatype::UINT16)
       asrs->handle_copy_requests_dense<uint16_t>();
-    else if (coords_type == TILEDB_UINT32)
+    else if (coords_type == Datatype::UINT32)
       asrs->handle_copy_requests_dense<uint32_t>();
-    else if (coords_type == TILEDB_UINT64)
+    else if (coords_type == Datatype::UINT64)
       asrs->handle_copy_requests_dense<uint64_t>();
     else
       assert(0);
   } else {  // SPARSE
-    if (coords_type == TILEDB_INT32)
+    if (coords_type == Datatype::INT32)
       asrs->handle_copy_requests_sparse<int>();
-    else if (coords_type == TILEDB_INT64)
+    else if (coords_type == Datatype::INT64)
       asrs->handle_copy_requests_sparse<int64_t>();
-    else if (coords_type == TILEDB_FLOAT32)
+    else if (coords_type == Datatype::FLOAT32)
       asrs->handle_copy_requests_sparse<float>();
-    else if (coords_type == TILEDB_FLOAT64)
+    else if (coords_type == Datatype::FLOAT64)
       asrs->handle_copy_requests_sparse<double>();
-    else if (coords_type == TILEDB_INT8)
+    else if (coords_type == Datatype::INT8)
       asrs->handle_copy_requests_sparse<int8_t>();
-    else if (coords_type == TILEDB_UINT8)
+    else if (coords_type == Datatype::UINT8)
       asrs->handle_copy_requests_sparse<uint8_t>();
-    else if (coords_type == TILEDB_INT16)
+    else if (coords_type == Datatype::INT16)
       asrs->handle_copy_requests_sparse<int16_t>();
-    else if (coords_type == TILEDB_UINT16)
+    else if (coords_type == Datatype::UINT16)
       asrs->handle_copy_requests_sparse<uint16_t>();
-    else if (coords_type == TILEDB_UINT32)
+    else if (coords_type == Datatype::UINT32)
       asrs->handle_copy_requests_sparse<uint32_t>();
-    else if (coords_type == TILEDB_UINT64)
+    else if (coords_type == Datatype::UINT64)
       asrs->handle_copy_requests_sparse<uint64_t>();
     else
       assert(0);
@@ -2435,14 +2435,14 @@ template <class T>
 Status ArraySortedReadState::read() {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
-  int mode = array_->mode();
+  ArrayMode mode = array_->mode();
 
-  if (mode == TILEDB_ARRAY_READ_SORTED_COL) {
+  if (mode == ArrayMode::READ_SORTED_COL) {
     if (array_schema->dense())
       return read_dense_sorted_col<T>();
     else
       return read_sparse_sorted_col<T>();
-  } else if (mode == TILEDB_ARRAY_READ_SORTED_ROW) {
+  } else if (mode == ArrayMode::READ_SORTED_ROW) {
     if (array_schema->dense())
       return read_dense_sorted_row<T>();
     else
@@ -2459,7 +2459,7 @@ Status ArraySortedReadState::read_dense_sorted_col() {
   const T* subarray = static_cast<const T*>(subarray_);
 
   // Check if this can be satisfied with a default read
-  if (array_schema->cell_order() == TILEDB_COL_MAJOR &&
+  if (array_schema->cell_order() == Layout::COL_MAJOR &&
       array_schema->is_contained_in_tile_slab_row<T>(subarray))
     return array_->read_default(
         copy_state_.buffers_, copy_state_.buffer_sizes_);
@@ -2498,7 +2498,7 @@ Status ArraySortedReadState::read_dense_sorted_row() {
   const T* subarray = static_cast<const T*>(subarray_);
 
   // Check if this can be satisfied with a default read
-  if (array_schema->cell_order() == TILEDB_ROW_MAJOR &&
+  if (array_schema->cell_order() == Layout::ROW_MAJOR &&
       array_schema->is_contained_in_tile_slab_col<T>(subarray))
     return array_->read_default(
         copy_state_.buffers_, copy_state_.buffer_sizes_);
@@ -2536,7 +2536,7 @@ Status ArraySortedReadState::read_sparse_sorted_col() {
   const T* subarray = static_cast<const T*>(subarray_);
 
   // Check if this can be satisfied with a default read
-  if (array_schema->cell_order() == TILEDB_COL_MAJOR &&
+  if (array_schema->cell_order() == Layout::COL_MAJOR &&
       array_schema->is_contained_in_tile_slab_row<T>(subarray))
     return array_->read_default(
         copy_state_.buffers_, copy_state_.buffer_sizes_);
@@ -2576,7 +2576,7 @@ Status ArraySortedReadState::read_sparse_sorted_row() {
   const T* subarray = static_cast<const T*>(subarray_);
 
   // Check if this can be satisfied with a default read
-  if (array_schema->cell_order() == TILEDB_ROW_MAJOR &&
+  if (array_schema->cell_order() == Layout::ROW_MAJOR &&
       array_schema->is_contained_in_tile_slab_col<T>(subarray))
     return array_->read_default(
         copy_state_.buffers_, copy_state_.buffer_sizes_);
@@ -2775,7 +2775,7 @@ void ArraySortedReadState::sort_cell_pos() {
   const ArraySchema* array_schema = array_->array_schema();
   int dim_num = array_schema->dim_num();
   int64_t cell_num = buffer_sizes_tmp_[copy_id_][coords_buf_i_] / coords_size_;
-  int mode = array_->mode();
+  ArrayMode mode = array_->mode();
   const T* buffer = static_cast<const T*>(buffers_[copy_id_][coords_buf_i_]);
 
   // Populate cell_pos
@@ -2784,7 +2784,7 @@ void ArraySortedReadState::sort_cell_pos() {
     cell_pos_[i] = i;
 
   // Invoke the proper sort function, based on the mode
-  if (mode == TILEDB_ARRAY_READ_SORTED_ROW) {
+  if (mode == ArrayMode::READ_SORTED_ROW) {
     // Sort cell positions
     SORT(cell_pos_.begin(), cell_pos_.end(), SmallerRow<T>(buffer, dim_num));
   } else {  // mode == TILEDB_ARRAY_READ_SORTED_COL

@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
 
   // Initialize variables
   char** dirs = new char*[dir_num];
-  int* dir_types = new int[dir_num];
+  tiledb_object_t* dir_types = new tiledb_object_t[dir_num];
   for(int i=0; i<dir_num; ++i)
     dirs[i] = (char*) malloc(TILEDB_NAME_MAX_LEN);
 

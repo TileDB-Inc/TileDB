@@ -37,7 +37,6 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
-#include "status.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -62,7 +61,7 @@ BookKeeping::BookKeeping(
     const ArraySchema* array_schema,
     bool dense,
     const std::string& fragment_name,
-    int mode)
+    ArrayMode mode)
     : array_schema_(array_schema)
     , dense_(dense)
     , fragment_name_(fragment_name)
@@ -130,7 +129,7 @@ const void* BookKeeping::non_empty_domain() const {
 }
 
 inline bool BookKeeping::read_mode() const {
-  return utils::array_read_mode(mode_);
+  return is_read_mode(mode_);
 }
 
 int64_t BookKeeping::tile_num() const {
@@ -154,7 +153,7 @@ const std::vector<std::vector<size_t>>& BookKeeping::tile_var_sizes() const {
 }
 
 inline bool BookKeeping::write_mode() const {
-  return utils::array_write_mode(mode_);
+  return is_write_mode(mode_);
 }
 
 /* ****************************** */

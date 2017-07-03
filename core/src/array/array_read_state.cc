@@ -384,35 +384,35 @@ Status ArrayReadState::compute_unsorted_fragment_cell_ranges_sparse(
 Status ArrayReadState::copy_cells(
     int attribute_id, void* buffer, size_t buffer_size, size_t& buffer_offset) {
   // For easy reference
-  int type = array_schema_->type(attribute_id);
+  Datatype type = array_schema_->type(attribute_id);
 
   // Invoke the proper templated function
-  if (type == TILEDB_INT32)
+  if (type == Datatype::INT32)
     return copy_cells<int>(attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == TILEDB_INT64)
+  else if (type == Datatype::INT64)
     return copy_cells<int64_t>(
         attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == TILEDB_FLOAT32)
+  else if (type == Datatype::FLOAT32)
     return copy_cells<float>(attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == TILEDB_FLOAT64)
+  else if (type == Datatype::FLOAT64)
     return copy_cells<double>(attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == TILEDB_CHAR)
+  else if (type == Datatype::CHAR)
     return copy_cells<char>(attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == TILEDB_INT8)
+  else if (type == Datatype::INT8)
     return copy_cells<int8_t>(attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == TILEDB_UINT8)
+  else if (type == Datatype::UINT8)
     return copy_cells<uint8_t>(
         attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == TILEDB_INT16)
+  else if (type == Datatype::INT16)
     return copy_cells<int16_t>(
         attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == TILEDB_UINT16)
+  else if (type == Datatype::UINT16)
     return copy_cells<uint16_t>(
         attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == TILEDB_UINT32)
+  else if (type == Datatype::UINT32)
     return copy_cells<uint32_t>(
         attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == TILEDB_UINT64)
+  else if (type == Datatype::UINT64)
     return copy_cells<uint64_t>(
         attribute_id, buffer, buffer_size, buffer_offset);
   else
@@ -486,10 +486,10 @@ Status ArrayReadState::copy_cells_var(
     size_t buffer_var_size,
     size_t& buffer_var_offset) {
   // For easy reference
-  int type = array_schema_->type(attribute_id);
+  Datatype type = array_schema_->type(attribute_id);
 
   // Invoke the proper templated function
-  if (type == TILEDB_INT32)
+  if (type == Datatype::INT32)
     return copy_cells_var<int>(
         attribute_id,
         buffer,
@@ -498,7 +498,7 @@ Status ArrayReadState::copy_cells_var(
         buffer_var,
         buffer_var_size,
         buffer_var_offset);
-  else if (type == TILEDB_INT64)
+  else if (type == Datatype::INT64)
     return copy_cells_var<int64_t>(
         attribute_id,
         buffer,
@@ -507,7 +507,7 @@ Status ArrayReadState::copy_cells_var(
         buffer_var,
         buffer_var_size,
         buffer_var_offset);
-  else if (type == TILEDB_FLOAT32)
+  else if (type == Datatype::FLOAT32)
     return copy_cells_var<float>(
         attribute_id,
         buffer,
@@ -516,7 +516,7 @@ Status ArrayReadState::copy_cells_var(
         buffer_var,
         buffer_var_size,
         buffer_var_offset);
-  else if (type == TILEDB_FLOAT64)
+  else if (type == Datatype::FLOAT64)
     return copy_cells_var<double>(
         attribute_id,
         buffer,
@@ -525,7 +525,7 @@ Status ArrayReadState::copy_cells_var(
         buffer_var,
         buffer_var_size,
         buffer_var_offset);
-  else if (type == TILEDB_CHAR)
+  else if (type == Datatype::CHAR)
     return copy_cells_var<char>(
         attribute_id,
         buffer,
@@ -534,7 +534,7 @@ Status ArrayReadState::copy_cells_var(
         buffer_var,
         buffer_var_size,
         buffer_var_offset);
-  else if (type == TILEDB_INT8)
+  else if (type == Datatype::INT8)
     return copy_cells_var<int8_t>(
         attribute_id,
         buffer,
@@ -543,7 +543,7 @@ Status ArrayReadState::copy_cells_var(
         buffer_var,
         buffer_var_size,
         buffer_var_offset);
-  else if (type == TILEDB_UINT8)
+  else if (type == Datatype::UINT8)
     return copy_cells_var<uint8_t>(
         attribute_id,
         buffer,
@@ -552,7 +552,7 @@ Status ArrayReadState::copy_cells_var(
         buffer_var,
         buffer_var_size,
         buffer_var_offset);
-  else if (type == TILEDB_INT16)
+  else if (type == Datatype::INT16)
     return copy_cells_var<int16_t>(
         attribute_id,
         buffer,
@@ -561,7 +561,7 @@ Status ArrayReadState::copy_cells_var(
         buffer_var,
         buffer_var_size,
         buffer_var_offset);
-  else if (type == TILEDB_UINT16)
+  else if (type == Datatype::UINT16)
     return copy_cells_var<uint16_t>(
         attribute_id,
         buffer,
@@ -570,7 +570,7 @@ Status ArrayReadState::copy_cells_var(
         buffer_var,
         buffer_var_size,
         buffer_var_offset);
-  else if (type == TILEDB_UINT32)
+  else if (type == Datatype::UINT32)
     return copy_cells_var<uint32_t>(
         attribute_id,
         buffer,
@@ -579,7 +579,7 @@ Status ArrayReadState::copy_cells_var(
         buffer_var,
         buffer_var_size,
         buffer_var_offset);
-  else if (type == TILEDB_UINT64)
+  else if (type == Datatype::UINT64)
     return copy_cells_var<uint64_t>(
         attribute_id,
         buffer,
@@ -1883,7 +1883,7 @@ ArrayReadState::FragmentCellRanges ArrayReadState::empty_fragment_cell_ranges()
     const {
   // For easy reference
   int dim_num = array_schema_->dim_num();
-  int cell_order = array_schema_->cell_order();
+  Layout cell_order = array_schema_->cell_order();
   size_t cell_range_size = 2 * coords_size_;
   const T* subarray = static_cast<const T*>(array_->subarray());
   const T* tile_coords = (const T*)subarray_tile_coords_;
@@ -1920,7 +1920,7 @@ ArrayReadState::FragmentCellRanges ArrayReadState::empty_fragment_cell_ranges()
 
     // Handle the different cell orders
     int i;
-    if (cell_order == TILEDB_ROW_MAJOR) {  // ROW
+    if (cell_order == Layout::ROW_MAJOR) {  // ROW
       while (coords[0] <= query_tile_overlap_subarray[1]) {
         // Make a cell range representing a slab
         void* cell_range = malloc(cell_range_size);
@@ -1945,7 +1945,7 @@ ArrayReadState::FragmentCellRanges ArrayReadState::empty_fragment_cell_ranges()
           ++coords[--i];
         }
       }
-    } else if (cell_order == TILEDB_COL_MAJOR) {  // COLUMN
+    } else if (cell_order == Layout::COL_MAJOR) {  // COLUMN
       while (coords[dim_num - 1] <=
              query_tile_overlap_subarray[2 * (dim_num - 1) + 1]) {
         // Make a cell range representing a slab
@@ -2280,25 +2280,25 @@ Status ArrayReadState::read_dense(void** buffers, size_t* buffer_sizes) {
 
 Status ArrayReadState::read_dense_attr(
     int attribute_id, void* buffer, size_t& buffer_size) {
-  // For easy reference
-  int coords_type = array_schema_->coords_type();
+  // For easy referenceD
+  Datatype coords_type = array_schema_->coords_type();
 
   // Invoke the proper templated function
-  if (coords_type == TILEDB_INT32) {
+  if (coords_type == Datatype::INT32) {
     return read_dense_attr<int>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_INT64) {
+  } else if (coords_type == Datatype::INT64) {
     return read_dense_attr<int64_t>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_INT8) {
+  } else if (coords_type == Datatype::INT8) {
     return read_dense_attr<int8_t>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_UINT8) {
+  } else if (coords_type == Datatype::UINT8) {
     return read_dense_attr<uint8_t>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_INT16) {
+  } else if (coords_type == Datatype::INT16) {
     return read_dense_attr<int16_t>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_UINT16) {
+  } else if (coords_type == Datatype::UINT16) {
     return read_dense_attr<uint16_t>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_UINT32) {
+  } else if (coords_type == Datatype::UINT32) {
     return read_dense_attr<uint32_t>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_UINT64) {
+  } else if (coords_type == Datatype::UINT64) {
     return read_dense_attr<uint64_t>(attribute_id, buffer, buffer_size);
   } else {
     assert(0);
@@ -2357,31 +2357,31 @@ Status ArrayReadState::read_dense_attr_var(
     void* buffer_var,
     size_t& buffer_var_size) {
   // For easy reference
-  int coords_type = array_schema_->coords_type();
+  Datatype coords_type = array_schema_->coords_type();
 
   // Invoke the proper templated function
-  if (coords_type == TILEDB_INT32) {
+  if (coords_type == Datatype::INT32) {
     return read_dense_attr_var<int>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_INT64) {
+  } else if (coords_type == Datatype::INT64) {
     return read_dense_attr_var<int64_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_INT8) {
+  } else if (coords_type == Datatype::INT8) {
     return read_dense_attr_var<int8_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_UINT8) {
+  } else if (coords_type == Datatype::UINT8) {
     return read_dense_attr_var<uint8_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_INT16) {
+  } else if (coords_type == Datatype::INT16) {
     return read_dense_attr_var<int16_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_UINT16) {
+  } else if (coords_type == Datatype::UINT16) {
     return read_dense_attr_var<uint16_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_UINT32) {
+  } else if (coords_type == Datatype::UINT32) {
     return read_dense_attr_var<uint32_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_UINT64) {
+  } else if (coords_type == Datatype::UINT64) {
     return read_dense_attr_var<uint64_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
   } else {
@@ -2511,28 +2511,28 @@ Status ArrayReadState::read_sparse(void** buffers, size_t* buffer_sizes) {
 Status ArrayReadState::read_sparse_attr(
     int attribute_id, void* buffer, size_t& buffer_size) {
   // For easy reference
-  int coords_type = array_schema_->coords_type();
+  Datatype coords_type = array_schema_->coords_type();
 
   // Invoke the proper templated function
-  if (coords_type == TILEDB_INT32) {
+  if (coords_type == Datatype::INT32) {
     return read_sparse_attr<int>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_INT64) {
+  } else if (coords_type == Datatype::INT64) {
     return read_sparse_attr<int64_t>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_FLOAT32) {
+  } else if (coords_type == Datatype::FLOAT32) {
     return read_sparse_attr<float>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_FLOAT64) {
+  } else if (coords_type == Datatype::FLOAT64) {
     return read_sparse_attr<double>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_INT8) {
+  } else if (coords_type == Datatype::INT8) {
     return read_sparse_attr<int8_t>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_UINT8) {
+  } else if (coords_type == Datatype::UINT8) {
     return read_sparse_attr<uint8_t>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_INT16) {
+  } else if (coords_type == Datatype::INT16) {
     return read_sparse_attr<int16_t>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_UINT16) {
+  } else if (coords_type == Datatype::UINT16) {
     return read_sparse_attr<uint16_t>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_UINT32) {
+  } else if (coords_type == Datatype::UINT32) {
     return read_sparse_attr<uint32_t>(attribute_id, buffer, buffer_size);
-  } else if (coords_type == TILEDB_UINT64) {
+  } else if (coords_type == Datatype::UINT64) {
     return read_sparse_attr<uint64_t>(attribute_id, buffer, buffer_size);
   } else {
     assert(0);
@@ -2590,37 +2590,37 @@ Status ArrayReadState::read_sparse_attr_var(
     void* buffer_var,
     size_t& buffer_var_size) {
   // For easy reference
-  int coords_type = array_schema_->coords_type();
+  Datatype coords_type = array_schema_->coords_type();
 
   // Invoke the proper templated function
-  if (coords_type == TILEDB_INT32) {
+  if (coords_type == Datatype::INT32) {
     return read_sparse_attr_var<int>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_INT64) {
+  } else if (coords_type == Datatype::INT64) {
     return read_sparse_attr_var<int64_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_FLOAT32) {
+  } else if (coords_type == Datatype::FLOAT32) {
     return read_sparse_attr_var<float>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_FLOAT64) {
+  } else if (coords_type == Datatype::FLOAT64) {
     return read_sparse_attr_var<double>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_INT8) {
+  } else if (coords_type == Datatype::INT8) {
     return read_sparse_attr_var<int8_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_UINT8) {
+  } else if (coords_type == Datatype::UINT8) {
     return read_sparse_attr_var<uint8_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_INT16) {
+  } else if (coords_type == Datatype::INT16) {
     return read_sparse_attr_var<int16_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_UINT16) {
+  } else if (coords_type == Datatype::UINT16) {
     return read_sparse_attr_var<uint16_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_UINT32) {
+  } else if (coords_type == Datatype::UINT32) {
     return read_sparse_attr_var<uint32_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
-  } else if (coords_type == TILEDB_UINT64) {
+  } else if (coords_type == Datatype::UINT64) {
     return read_sparse_attr_var<uint64_t>(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
   } else {

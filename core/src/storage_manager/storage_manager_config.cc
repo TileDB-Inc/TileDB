@@ -42,8 +42,8 @@ namespace tiledb {
 StorageManagerConfig::StorageManagerConfig() {
   // Default values
   home_ = "";
-  read_method_ = TILEDB_IO_MMAP;
-  write_method_ = TILEDB_IO_WRITE;
+  read_method_ = IO::MMAP;
+  write_method_ = IO::WRITE;
 #ifdef HAVE_MPI
   mpi_comm_ = NULL;
 #endif
@@ -60,8 +60,8 @@ void StorageManagerConfig::init(
 #ifdef HAVE_MPI
     MPI_Comm* mpi_comm,
 #endif
-    int read_method,
-    int write_method) {
+    IO read_method,
+    IO write_method) {
   // Initialize home
   if (home == nullptr)
     home_ = "";
@@ -75,14 +75,14 @@ void StorageManagerConfig::init(
 
   // Initialize read method
   read_method_ = read_method;
-  if (read_method_ != TILEDB_IO_READ && read_method_ != TILEDB_IO_MMAP &&
-      read_method_ != TILEDB_IO_MPI)
-    read_method_ = TILEDB_IO_MMAP;  // Use default
+  if (read_method_ != IO::READ && read_method_ != IO::MMAP &&
+      read_method_ != IO::MPI)
+    read_method_ = IO::MMAP;  // Use default
 
   // Initialize write method
   write_method_ = write_method;
-  if (write_method_ != TILEDB_IO_WRITE && write_method_ != TILEDB_IO_MPI)
-    write_method_ = TILEDB_IO_WRITE;  // Use default
+  if (write_method_ != IO::WRITE && write_method_ != IO::MPI)
+    write_method_ = IO::WRITE;  // Use default
 }
 
 /* ****************************** */
@@ -99,11 +99,11 @@ MPI_Comm* StorageManagerConfig::mpi_comm() const {
 }
 #endif
 
-int StorageManagerConfig::read_method() const {
+IO StorageManagerConfig::read_method() const {
   return read_method_;
 }
 
-int StorageManagerConfig::write_method() const {
+IO StorageManagerConfig::write_method() const {
   return write_method_;
 }
 

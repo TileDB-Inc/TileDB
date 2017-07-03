@@ -37,6 +37,9 @@
 #include <string>
 #include <typeinfo>
 #include <vector>
+#include "array_compressor.h"
+#include "array_datatype.h"
+#include "array_layout.h"
 #include "array_schema_c.h"
 #include "metadata_schema_c.h"
 #include "status.h"
@@ -112,7 +115,7 @@ class ArraySchema {
   int64_t cell_num_per_tile() const;
 
   /** Returns the cell order. */
-  int cell_order() const;
+  Layout cell_order() const;
 
   /** Returns the size of cell on the input attribute. */
   size_t cell_size(int attribute_id) const;
@@ -121,13 +124,13 @@ class ArraySchema {
   int cell_val_num(int attribute_id) const;
 
   /** Returns the compression type of the attribute with the input id. */
-  int compression(int attribute_id) const;
+  Compressor compression(int attribute_id) const;
 
   /** Returns the coordinates size. */
   size_t coords_size() const;
 
   /** Returns the type of the coordinates. */
-  int coords_type() const;
+  Datatype coords_type() const;
 
   /** True if the array is dense. */
   bool dense() const;
@@ -258,7 +261,7 @@ class ArraySchema {
   int64_t tile_num(const T* domain) const;
 
   /** Returns the tile order. */
-  int tile_order() const;
+  Layout tile_order() const;
 
   /** Return the number of cells in a column tile slab of an input subarray. */
   int64_t tile_slab_col_cell_num(const void* subarray) const;
@@ -267,7 +270,7 @@ class ArraySchema {
   int64_t tile_slab_row_cell_num(const void* subarray) const;
 
   /** Returns the type of the i-th attribute, or NULL if 'i' is invalid. */
-  int type(int i) const;
+  Datatype type(int i) const;
 
   /** Returns the type size of the i-th attribute. */
   size_t type_size(int i) const;
@@ -338,10 +341,10 @@ class ArraySchema {
    * @param cell_order The cell order.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  Status set_cell_order(int cell_order);
+  Status set_cell_order(tiledb_layout_t cell_order);
 
   /** Sets the compression types. */
-  Status set_compression(int* compression);
+  Status set_compression(tiledb_compressor_t* compression);
 
   /** Sets the proper flag to indicate if the array is dense. */
   void set_dense(int dense);
@@ -392,7 +395,7 @@ class ArraySchema {
    * @param tile_order The tile order.
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
-  Status set_tile_order(int tile_order);
+  Status set_tile_order(tiledb_layout_t tile_order);
 
   /**
    * Sets the types. There should be one type per attribute plus one (the last
@@ -428,7 +431,7 @@ class ArraySchema {
    * @note The attributes, dimensions and the dense flag must have already been
    *     set before calling this function.
    */
-  Status set_types(const int* types);
+  Status set_types(const tiledb_datatype_t* types);
 
   /* ********************************* */
   /*               MISC                */
@@ -659,7 +662,7 @@ class ArraySchema {
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR
    */
-  int cell_order_;
+  Layout cell_order_;
   /** Stores the size of every attribute (plus coordinates in the end). */
   std::vector<size_t> cell_sizes_;
   /**
@@ -685,7 +688,7 @@ class ArraySchema {
    *    - TILEDB_RLE
    *    - TILEDB_BZIP2
    */
-  std::vector<int> compression_;
+  std::vector<Compressor> compressor_;
   /** The size (in bytes) of the coordinates. */
   size_t coords_size_;
   /**
@@ -731,7 +734,7 @@ class ArraySchema {
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR
    */
-  int tile_order_;
+  Layout tile_order_;
   /**
    * The attribute types, plus an extra one in the end for the coordinates.
    * The attribute type can be one of the following:
@@ -759,7 +762,7 @@ class ArraySchema {
    *    - TILEDB_UINT32
    *    - TILEDB_UINT64
    */
-  std::vector<int> types_;
+  std::vector<Datatype> types_;
   /** Stores the size of every attribute type (plus coordinates in the end). */
   std::vector<size_t> type_sizes_;
 

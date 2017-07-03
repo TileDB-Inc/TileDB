@@ -52,7 +52,7 @@ int main() {
       TILEDB_VAR_NUM,             // a2 
       2                           // a3
   };
-  const int compression[] = 
+  const tiledb_compressor_t compression[] =
   { 
         TILEDB_GZIP,              // a1 
         TILEDB_GZIP,              // a2
@@ -64,7 +64,7 @@ int main() {
       2,                          // d1
       2                           // d2
   };               
-  const int types[] = 
+  const tiledb_datatype_t types[] =
   { 
       TILEDB_INT32,               // a1 
       TILEDB_CHAR,                // a2

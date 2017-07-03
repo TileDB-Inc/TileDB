@@ -228,7 +228,7 @@ class ArraySortedReadState {
   AIO_Request aio_request_[2];
 
   /** The status of the AIO requests.*/
-  int aio_status_[2];
+  tiledb_aio_status_t aio_status_[2];
 
   /** The array this sorted read state belongs to. */
   Array* array_;

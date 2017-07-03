@@ -34,6 +34,7 @@
 #define __ARRAY_SCHEMA_C_H__
 
 #include <cstdint>
+#include "tiledb.h"
 
 /** Specifies the array schema. */
 typedef struct ArraySchemaC {
@@ -56,7 +57,7 @@ typedef struct ArraySchemaC {
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR
    */
-  int cell_order_;
+  tiledb_layout_t cell_order_;
   /**
    * Specifies the number of values per attribute for a cell. If it is NULL,
    * then each attribute has a single value per cell. If for some attribute
@@ -65,7 +66,7 @@ typedef struct ArraySchemaC {
    */
   int* cell_val_num_;
   /**
-   * The compression type for each attribute (plus one extra at the end for the
+   * The compressor type for each attribute (plus one extra at the end for the
    * coordinates. It can be one of the following:
    *    - TILEDB_NO_COMPRESSION
    *    - TILEDB_GZIP
@@ -80,7 +81,7 @@ typedef struct ArraySchemaC {
    *    - TILEDB_RLE
    *    - TILEDB_BZIP2
    */
-  int* compression_;
+  tiledb_compressor_t* compressor_;
   /**
    * Specifies if the array is dense (1) or sparse (0). If the array is dense,
    * then the user must specify tile extents (see below).
@@ -108,7 +109,7 @@ typedef struct ArraySchemaC {
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR.
    */
-  int tile_order_;
+  tiledb_layout_t tile_order_;
   /**
    * The attribute types, plus an extra one in the end for the coordinates.
    * The attribute type can be one of the following:
@@ -136,7 +137,7 @@ typedef struct ArraySchemaC {
    *    - TILEDB_UINT32
    *    - TILEDB_UINT64
    */
-  int* types_;
+  tiledb_datatype_t* types_;
 } ArraySchemaC;
 
 #endif

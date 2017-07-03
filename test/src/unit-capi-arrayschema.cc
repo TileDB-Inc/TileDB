@@ -112,8 +112,9 @@ struct ArraySchemaFx {
     const char* dimensions[] = {"X", "Y"};
     int64_t domain[] = {0, 99, 0, 99};
     int64_t tile_extents[] = {10, 10};
-    const int types[] = {TILEDB_INT32, TILEDB_INT64};
-    const int compression[] = {TILEDB_NO_COMPRESSION, TILEDB_NO_COMPRESSION};
+    const tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_INT64};
+    const tiledb_compressor_t compression[] = {TILEDB_NO_COMPRESSION,
+                                               TILEDB_NO_COMPRESSION};
 
     // Set array schema
     rc = tiledb_array_set_schema(
@@ -149,8 +150,8 @@ struct ArraySchemaFx {
         tile_extents,
         // Tile extents in bytes
         2 * sizeof(int64_t),
-        // Tile order (0 means ignore in sparse arrays and default in dense)
-        0,
+        // Tile order
+        TILEDB_ROW_MAJOR,
         // Types
         types);
     if (rc != TILEDB_OK)
@@ -195,8 +196,8 @@ TEST_CASE_METHOD(ArraySchemaFx, "Test array schema creation and retrieval") {
   CHECK_THAT(
       array_schema_disk.attributes_[0],
       Catch::Equals(array_schema_.attributes_[0]));
-  CHECK(array_schema_disk.compression_[0] == array_schema_.compression_[0]);
-  CHECK(array_schema_disk.compression_[1] == array_schema_.compression_[1]);
+  CHECK(array_schema_disk.compressor_[0] == array_schema_.compressor_[0]);
+  CHECK(array_schema_disk.compressor_[1] == array_schema_.compressor_[1]);
   CHECK(array_schema_disk.types_[0] == array_schema_.types_[0]);
   CHECK(array_schema_disk.types_[1] == array_schema_.types_[1]);
   CHECK(tile_extents_disk[0] == tile_extents[0]);

@@ -60,6 +60,66 @@ extern "C" {
 /**@}*/
 
 /* ****************************** */
+/*         TileDB Types           */
+/* ****************************** */
+
+/** TileDB object type. */
+typedef enum {
+#define TILEDB_OBJECT_ENUM(id) TILEDB_##id
+#include "tiledb_enum.inc"
+#undef TILEDB_OBJECT_ENUM
+} tiledb_object_t;
+
+/** Array mode. */
+typedef enum {
+#define TILEDB_ARRAY_MODE_ENUM(id) TILEDB_ARRAY_##id
+#include "tiledb_enum.inc"
+#undef TILEDB_ARRAY_MODE_ENUM
+} tiledb_array_mode_t;
+
+/** Metadata mode. */
+typedef enum {
+#define TILEDB_METADATA_ENUM(id) TILEDB_METADATA_##id
+#include "tiledb_enum.inc"
+#undef TILEDB_METADATA_ENUM
+} tiledb_metadata_mode_t;
+
+/** I/O method. */
+typedef enum {
+#define TILEDB_IO_ENUM(id) TILEDB_IO_##id
+#include "tiledb_enum.inc"
+#undef TILEDB_IO_ENUM
+} tiledb_io_t;
+
+/** Asynchronous I/O (AIO) code. */
+typedef enum {
+#define TILEDB_AIO_ENUM(id) TILEDB_AIO_##id
+#include "tiledb_enum.inc"
+#undef TILEDB_AIO_ENUM
+} tiledb_aio_status_t;
+
+/** Data type. */
+typedef enum {
+#define TILEDB_DATATYPE_ENUM(id) TILEDB_##id
+#include "tiledb_enum.inc"
+#undef TILEDB_DATATYPE_ENUM
+} tiledb_datatype_t;
+
+/** Tile or cell layout. */
+typedef enum {
+#define TILEDB_LAYOUT_ENUM(id) TILEDB_##id
+#include "tiledb_enum.inc"
+#undef TILEDB_LAYOUT_ENUM
+} tiledb_layout_t;
+
+/** Compression type. */
+typedef enum {
+#define TILEDB_COMPRESSOR_ENUM(id) TILEDB_##id
+#include "tiledb_enum.inc"
+#undef TILEDB_COMPRESSOR_ENUM
+} tiledb_compressor_t;
+
+/* ****************************** */
 /*            TILEDB              */
 /* ****************************** */
 
@@ -98,7 +158,7 @@ typedef struct TileDB_Config {
    *    - TILEDB_IO_MPI
    *      TileDB will use MPI-IO read.
    */
-  int read_method_;
+  tiledb_io_t read_method_;
   /**
    * The method for writing data to a file.
    * It can be one of the following:
@@ -107,7 +167,7 @@ typedef struct TileDB_Config {
    *    - TILEDB_IO_MPI
    *      TileDB will use MPI-IO write.
    */
-  int write_method_;
+  tiledb_io_t write_method_;
 } TileDB_Config;
 
 /* ********************************* */
@@ -226,7 +286,7 @@ typedef struct TileDB_ArraySchema {
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR
    */
-  int cell_order_;
+  tiledb_layout_t cell_order_;
   /**
    * Specifies the number of values per attribute for a cell. If it is NULL,
    * then each attribute has a single value per cell. If for some attribute
@@ -235,7 +295,7 @@ typedef struct TileDB_ArraySchema {
    */
   int* cell_val_num_;
   /**
-   * The compression type for each attribute (plus one extra at the end for the
+   * The compressor type for each attribute (plus one extra at the end for the
    * coordinates). It can be one of the following:
    *    - TILEDB_NO_COMPRESSION
    *    - TILEDB_GZIP
@@ -253,7 +313,7 @@ typedef struct TileDB_ArraySchema {
    * If it is *NULL*, then the default TILEDB_NO_COMPRESSION is used for all
    * attributes.
    */
-  int* compression_;
+  tiledb_compressor_t* compressor_;
   /**
    * Specifies if the array is dense (1) or sparse (0). If the array is dense,
    * then the user must specify tile extents (see below).
@@ -280,7 +340,7 @@ typedef struct TileDB_ArraySchema {
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR.
    */
-  int tile_order_;
+  tiledb_layout_t tile_order_;
   /**
    * The attribute types, plus an extra one in the end for the coordinates.
    * The attribute type can be one of the following:
@@ -308,7 +368,7 @@ typedef struct TileDB_ArraySchema {
    *    - TILEDB_UINT32
    *    - TILEDB_UINT64
    */
-  int* types_;
+  tiledb_datatype_t* types_;
 } TileDB_ArraySchema;
 
 /**
@@ -343,9 +403,9 @@ TILEDB_EXPORT int tiledb_array_set_schema(
     const char** attributes,
     int attribute_num,
     int64_t capacity,
-    int cell_order,
+    tiledb_layout_t cell_order,
     const int* cell_val_num,
-    const int* compression,
+    const tiledb_compressor_t* compression,
     int dense,
     const char** dimensions,
     int dim_num,
@@ -353,8 +413,8 @@ TILEDB_EXPORT int tiledb_array_set_schema(
     size_t domain_len,
     const void* tile_extents,
     size_t tile_extents_len,
-    int tile_order,
-    const int* types);
+    tiledb_layout_t tile_order,
+    const tiledb_datatype_t* types);
 
 /**
  * Creates a new TileDB array.
@@ -399,7 +459,7 @@ TILEDB_EXPORT int tiledb_array_init(
     TileDB_CTX* ctx,
     TileDB_Array** tiledb_array,
     const char* array,
-    int mode,
+    tiledb_array_mode_t mode,
     const void* subarray,
     const char** attributes,
     int attribute_num);
@@ -660,7 +720,7 @@ TILEDB_EXPORT int tiledb_array_iterator_init(
     TileDB_CTX* ctx,
     TileDB_ArrayIterator** tiledb_array_it,
     const char* array,
-    int mode,
+    tiledb_array_mode_t mode,
     const void* subarray,
     const char** attributes,
     int attribute_num,
@@ -748,7 +808,7 @@ typedef struct TileDB_MetadataSchema {
    */
   int* cell_val_num_;
   /**
-   * The compression type for each attribute (plus one extra at the end for the
+   * The compressor type for each attribute (plus one extra at the end for the
    * key). It can be one of the following:
    *    - TILEDB_NO_COMPRESSION
    *    - TILEDB_GZIP
@@ -766,7 +826,7 @@ typedef struct TileDB_MetadataSchema {
    * If it is *NULL*, then the default TILEDB_NO_COMPRESSION is used for all
    * attributes.
    */
-  int* compression_;
+  tiledb_compressor_t* compressor_;
   /**
    * The attribute types.
    * The attribute type can be one of the following:
@@ -782,7 +842,7 @@ typedef struct TileDB_MetadataSchema {
    *    - TILEDB_UINT32
    *    - TILEDB_UINT64
    */
-  int* types_;
+  tiledb_datatype_t* types_;
 } TileDB_MetadataSchema;
 
 /** A TileDB metadata object. */
@@ -811,8 +871,8 @@ TILEDB_EXPORT int tiledb_metadata_set_schema(
     int attribute_num,
     int64_t capacity,
     const int* cell_val_num,
-    const int* compression,
-    const int* types);
+    const tiledb_compressor_t* compression,
+    const tiledb_datatype_t* types);
 
 /**
  * Creates a new TileDB metadata object.
@@ -846,7 +906,7 @@ TILEDB_EXPORT int tiledb_metadata_init(
     TileDB_CTX* ctx,
     TileDB_Metadata** tiledb_metadata,
     const char* metadata,
-    int mode,
+    tiledb_metadata_mode_t mode,
     const char** attributes,
     int attribute_num);
 
@@ -1158,7 +1218,7 @@ TILEDB_EXPORT int tiledb_ls(
     TileDB_CTX* ctx,
     const char* parent_dir,
     char** dirs,
-    int* dir_types,
+    tiledb_object_t* dir_types,
     int* dir_num);
 
 /**
@@ -1218,10 +1278,10 @@ typedef struct TileDB_AIO_Request {
    *    - TILEDB_AIO_OVERFLOW
    *      At least one of the input buffers overflowed (applicable only to AIO
    *      read requests)
-   *    - TILEDB_AIO_ERR
+   *    - TILEDB_AIO_ERROR
    *      The request caused an error (and thus was canceled).
    */
-  int status_;
+  tiledb_aio_status_t status_;
   /**
    * The subarray in which the array read/write will be
    * constrained on. It should be a sequence of [low, high] pairs (one

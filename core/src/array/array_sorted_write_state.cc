@@ -189,148 +189,148 @@ Status ArraySortedWriteState::init() {
 
   // Initialize functors
   const ArraySchema* array_schema = array_->array_schema();
-  int mode = array_->mode();
-  int cell_order = array_schema->cell_order();
-  int tile_order = array_schema->tile_order();
-  int coords_type = array_schema->coords_type();
-  if (mode == TILEDB_ARRAY_WRITE_SORTED_ROW) {
-    if (coords_type == TILEDB_INT32) {
+  ArrayMode mode = array_->mode();
+  Layout cell_order = array_schema->cell_order();
+  Layout tile_order = array_schema->tile_order();
+  Datatype coords_type = array_schema->coords_type();
+  if (mode == ArrayMode::WRITE_SORTED_ROW) {
+    if (coords_type == Datatype::INT32) {
       advance_cell_slab_ = advance_cell_slab_row_s<int>;
-      calculate_cell_slab_info_ = (cell_order == TILEDB_ROW_MAJOR) ?
+      calculate_cell_slab_info_ = (cell_order == Layout::ROW_MAJOR) ?
                                       calculate_cell_slab_info_row_row_s<int> :
                                       calculate_cell_slab_info_row_col_s<int>;
-    } else if (coords_type == TILEDB_INT64) {
+    } else if (coords_type == Datatype::INT64) {
       advance_cell_slab_ = advance_cell_slab_row_s<int64_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<int64_t> :
               calculate_cell_slab_info_row_col_s<int64_t>;
-    } else if (coords_type == TILEDB_INT8) {
+    } else if (coords_type == Datatype::INT8) {
       advance_cell_slab_ = advance_cell_slab_row_s<int8_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<int8_t> :
               calculate_cell_slab_info_row_col_s<int8_t>;
-    } else if (coords_type == TILEDB_UINT8) {
+    } else if (coords_type == Datatype::UINT8) {
       advance_cell_slab_ = advance_cell_slab_row_s<uint8_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<uint8_t> :
               calculate_cell_slab_info_row_col_s<uint8_t>;
-    } else if (coords_type == TILEDB_INT16) {
+    } else if (coords_type == Datatype::INT16) {
       advance_cell_slab_ = advance_cell_slab_row_s<int16_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<int16_t> :
               calculate_cell_slab_info_row_col_s<int16_t>;
-    } else if (coords_type == TILEDB_UINT16) {
+    } else if (coords_type == Datatype::UINT16) {
       advance_cell_slab_ = advance_cell_slab_row_s<uint16_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<uint16_t> :
               calculate_cell_slab_info_row_col_s<uint16_t>;
-    } else if (coords_type == TILEDB_UINT32) {
+    } else if (coords_type == Datatype::UINT32) {
       advance_cell_slab_ = advance_cell_slab_row_s<uint32_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<uint32_t> :
               calculate_cell_slab_info_row_col_s<uint32_t>;
-    } else if (coords_type == TILEDB_UINT64) {
+    } else if (coords_type == Datatype::UINT64) {
       advance_cell_slab_ = advance_cell_slab_row_s<uint64_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_row_row_s<uint64_t> :
               calculate_cell_slab_info_row_col_s<uint64_t>;
     } else {
       assert(0);
     }
   } else {  // mode == TILEDB_ARRAY_WRITE_SORTED_COL
-    if (coords_type == TILEDB_INT32) {
+    if (coords_type == Datatype::INT32) {
       advance_cell_slab_ = advance_cell_slab_col_s<int>;
-      calculate_cell_slab_info_ = (cell_order == TILEDB_ROW_MAJOR) ?
+      calculate_cell_slab_info_ = (cell_order == Layout::ROW_MAJOR) ?
                                       calculate_cell_slab_info_col_row_s<int> :
                                       calculate_cell_slab_info_col_col_s<int>;
-    } else if (coords_type == TILEDB_INT64) {
+    } else if (coords_type == Datatype::INT64) {
       advance_cell_slab_ = advance_cell_slab_col_s<int64_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<int64_t> :
               calculate_cell_slab_info_col_col_s<int64_t>;
-    } else if (coords_type == TILEDB_INT8) {
+    } else if (coords_type == Datatype::INT8) {
       advance_cell_slab_ = advance_cell_slab_col_s<int8_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<int8_t> :
               calculate_cell_slab_info_col_col_s<int8_t>;
-    } else if (coords_type == TILEDB_UINT8) {
+    } else if (coords_type == Datatype::UINT8) {
       advance_cell_slab_ = advance_cell_slab_col_s<uint8_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<uint8_t> :
               calculate_cell_slab_info_col_col_s<uint8_t>;
-    } else if (coords_type == TILEDB_INT16) {
+    } else if (coords_type == Datatype::INT16) {
       advance_cell_slab_ = advance_cell_slab_col_s<int16_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<int16_t> :
               calculate_cell_slab_info_col_col_s<int16_t>;
-    } else if (coords_type == TILEDB_UINT16) {
+    } else if (coords_type == Datatype::UINT16) {
       advance_cell_slab_ = advance_cell_slab_col_s<uint16_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<uint16_t> :
               calculate_cell_slab_info_col_col_s<uint16_t>;
-    } else if (coords_type == TILEDB_UINT32) {
+    } else if (coords_type == Datatype::UINT32) {
       advance_cell_slab_ = advance_cell_slab_col_s<uint32_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<uint32_t> :
               calculate_cell_slab_info_col_col_s<uint32_t>;
-    } else if (coords_type == TILEDB_UINT64) {
+    } else if (coords_type == Datatype::UINT64) {
       advance_cell_slab_ = advance_cell_slab_col_s<uint64_t>;
       calculate_cell_slab_info_ =
-          (cell_order == TILEDB_ROW_MAJOR) ?
+          (cell_order == Layout::ROW_MAJOR) ?
               calculate_cell_slab_info_col_row_s<uint64_t> :
               calculate_cell_slab_info_col_col_s<uint64_t>;
     } else {
       assert(0);
     }
   }
-  if (tile_order == TILEDB_ROW_MAJOR) {
-    if (coords_type == TILEDB_INT32)
+  if (tile_order == Layout::ROW_MAJOR) {
+    if (coords_type == Datatype::INT32)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<int>;
-    else if (coords_type == TILEDB_INT64)
+    else if (coords_type == Datatype::INT64)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<int64_t>;
-    else if (coords_type == TILEDB_INT8)
+    else if (coords_type == Datatype::INT8)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<int8_t>;
-    else if (coords_type == TILEDB_UINT8)
+    else if (coords_type == Datatype::UINT8)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<uint8_t>;
-    else if (coords_type == TILEDB_INT16)
+    else if (coords_type == Datatype::INT16)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<int16_t>;
-    else if (coords_type == TILEDB_UINT16)
+    else if (coords_type == Datatype::UINT16)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<uint16_t>;
-    else if (coords_type == TILEDB_UINT32)
+    else if (coords_type == Datatype::UINT32)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<uint32_t>;
-    else if (coords_type == TILEDB_UINT64)
+    else if (coords_type == Datatype::UINT64)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<uint64_t>;
     else
       assert(0);
   } else {  // tile_order == TILEDB_COL_MAJOR
-    if (coords_type == TILEDB_INT32)
+    if (coords_type == Datatype::INT32)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<int>;
-    else if (coords_type == TILEDB_INT64)
+    else if (coords_type == Datatype::INT64)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<int64_t>;
-    else if (coords_type == TILEDB_INT8)
+    else if (coords_type == Datatype::INT8)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<int8_t>;
-    else if (coords_type == TILEDB_UINT8)
+    else if (coords_type == Datatype::UINT8)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<uint8_t>;
-    else if (coords_type == TILEDB_INT16)
+    else if (coords_type == Datatype::INT16)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<int16_t>;
-    else if (coords_type == TILEDB_UINT16)
+    else if (coords_type == Datatype::UINT16)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<uint16_t>;
-    else if (coords_type == TILEDB_UINT32)
+    else if (coords_type == Datatype::UINT32)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<uint32_t>;
-    else if (coords_type == TILEDB_UINT64)
+    else if (coords_type == Datatype::UINT64)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<uint64_t>;
     else
       assert(0);
@@ -361,22 +361,22 @@ Status ArraySortedWriteState::write(
   init_aio_requests();
 
   // Call the appropriate templated read
-  int type = array_->array_schema()->coords_type();
-  if (type == TILEDB_INT32) {
+  Datatype type = array_->array_schema()->coords_type();
+  if (type == Datatype::INT32) {
     return write<int>();
-  } else if (type == TILEDB_INT64) {
+  } else if (type == Datatype::INT64) {
     return write<int64_t>();
-  } else if (type == TILEDB_INT8) {
+  } else if (type == Datatype::INT8) {
     return write<int8_t>();
-  } else if (type == TILEDB_UINT8) {
+  } else if (type == Datatype::UINT8) {
     return write<uint8_t>();
-  } else if (type == TILEDB_INT16) {
+  } else if (type == Datatype::INT16) {
     return write<int16_t>();
-  } else if (type == TILEDB_UINT16) {
+  } else if (type == Datatype::UINT16) {
     return write<uint16_t>();
-  } else if (type == TILEDB_UINT32) {
+  } else if (type == Datatype::UINT32) {
     return write<uint32_t>();
-  } else if (type == TILEDB_UINT64) {
+  } else if (type == Datatype::UINT64) {
     return write<uint64_t>();
   } else {
     assert(0);
@@ -828,22 +828,22 @@ void* ArraySortedWriteState::aio_handler(void* context) {
 
   // This will enter an indefinite loop that will handle all incoming copy
   // requests
-  int coords_type = asws->array_->array_schema()->coords_type();
-  if (coords_type == TILEDB_INT32)
+  Datatype coords_type = asws->array_->array_schema()->coords_type();
+  if (coords_type == Datatype::INT32)
     asws->handle_aio_requests<int>();
-  else if (coords_type == TILEDB_INT64)
+  else if (coords_type == Datatype::INT64)
     asws->handle_aio_requests<int64_t>();
-  else if (coords_type == TILEDB_INT8)
+  else if (coords_type == Datatype::INT8)
     asws->handle_aio_requests<int8_t>();
-  else if (coords_type == TILEDB_UINT8)
+  else if (coords_type == Datatype::UINT8)
     asws->handle_aio_requests<uint8_t>();
-  else if (coords_type == TILEDB_INT16)
+  else if (coords_type == Datatype::INT16)
     asws->handle_aio_requests<int16_t>();
-  else if (coords_type == TILEDB_UINT16)
+  else if (coords_type == Datatype::UINT16)
     asws->handle_aio_requests<uint16_t>();
-  else if (coords_type == TILEDB_UINT32)
+  else if (coords_type == Datatype::UINT32)
     asws->handle_aio_requests<uint32_t>();
-  else if (coords_type == TILEDB_UINT64)
+  else if (coords_type == Datatype::UINT64)
     asws->handle_aio_requests<uint64_t>();
   else
     assert(0);
@@ -855,55 +855,55 @@ void ArraySortedWriteState::copy_tile_slab() {
 
   // Copy tile slab for each attribute separately
   for (int i = 0, b = 0; i < (int)attribute_ids_.size(); ++i) {
-    int type = array_schema->type(attribute_ids_[i]);
+    Datatype type = array_schema->type(attribute_ids_.at(i));
     if (!array_schema->var_size(attribute_ids_[i])) {
-      if (type == TILEDB_INT32)
+      if (type == Datatype::INT32)
         copy_tile_slab<int>(i, b);
-      else if (type == TILEDB_INT64)
+      else if (type == Datatype::INT64)
         copy_tile_slab<int64_t>(i, b);
-      else if (type == TILEDB_FLOAT32)
+      else if (type == Datatype::FLOAT32)
         copy_tile_slab<float>(i, b);
-      else if (type == TILEDB_FLOAT64)
+      else if (type == Datatype::FLOAT64)
         copy_tile_slab<double>(i, b);
-      else if (type == TILEDB_CHAR)
+      else if (type == Datatype::CHAR)
         copy_tile_slab<char>(i, b);
-      else if (type == TILEDB_INT8)
+      else if (type == Datatype::INT8)
         copy_tile_slab<int8_t>(i, b);
-      else if (type == TILEDB_INT8)
+      else if (type == Datatype::INT8)
         copy_tile_slab<int8_t>(i, b);
-      else if (type == TILEDB_UINT8)
+      else if (type == Datatype::UINT8)
         copy_tile_slab<uint8_t>(i, b);
-      else if (type == TILEDB_INT16)
+      else if (type == Datatype::INT16)
         copy_tile_slab<int16_t>(i, b);
-      else if (type == TILEDB_UINT16)
+      else if (type == Datatype::UINT16)
         copy_tile_slab<uint16_t>(i, b);
-      else if (type == TILEDB_UINT32)
+      else if (type == Datatype::UINT32)
         copy_tile_slab<uint32_t>(i, b);
-      else if (type == TILEDB_UINT64)
+      else if (type == Datatype::UINT64)
         copy_tile_slab<uint64_t>(i, b);
       ++b;
     } else {
-      if (type == TILEDB_INT32)
+      if (type == Datatype::INT32)
         copy_tile_slab_var<int>(i, b);
-      else if (type == TILEDB_INT64)
+      else if (type == Datatype::INT64)
         copy_tile_slab_var<int64_t>(i, b);
-      else if (type == TILEDB_FLOAT32)
+      else if (type == Datatype::FLOAT32)
         copy_tile_slab_var<float>(i, b);
-      else if (type == TILEDB_FLOAT64)
+      else if (type == Datatype::FLOAT64)
         copy_tile_slab_var<double>(i, b);
-      else if (type == TILEDB_CHAR)
+      else if (type == Datatype::CHAR)
         copy_tile_slab_var<char>(i, b);
-      else if (type == TILEDB_INT8)
+      else if (type == Datatype::INT8)
         copy_tile_slab_var<int8_t>(i, b);
-      else if (type == TILEDB_UINT8)
+      else if (type == Datatype::UINT8)
         copy_tile_slab_var<uint8_t>(i, b);
-      else if (type == TILEDB_INT16)
+      else if (type == Datatype::INT16)
         copy_tile_slab_var<int16_t>(i, b);
-      else if (type == TILEDB_UINT16)
+      else if (type == Datatype::UINT16)
         copy_tile_slab_var<uint16_t>(i, b);
-      else if (type == TILEDB_UINT32)
+      else if (type == Datatype::UINT32)
         copy_tile_slab_var<uint32_t>(i, b);
-      else if (type == TILEDB_UINT64)
+      else if (type == Datatype::UINT64)
         copy_tile_slab_var<uint64_t>(i, b);
       b += 2;
     }
@@ -1055,7 +1055,7 @@ Status ArraySortedWriteState::create_copy_state_buffers() {
 
   // Get cell number in a (full) tile slab
   int64_t tile_slab_cell_num;
-  if (array_->mode() == TILEDB_ARRAY_WRITE_SORTED_ROW)
+  if (array_->mode() == ArrayMode::WRITE_SORTED_ROW)
     tile_slab_cell_num =
         array_schema->tile_slab_row_cell_num(expanded_subarray_);
   else  // TILEDB_ARRAY_WRITE_SORTED_COL
@@ -1525,13 +1525,13 @@ void ArraySortedWriteState::handle_aio_requests() {
 
 void ArraySortedWriteState::init_aio_requests() {
   // For easy reference
-  int mode = array_->mode();
-  int tile_order = array_->array_schema()->tile_order();
+  ArrayMode mode = array_->mode();
+  Layout tile_order = array_->array_schema()->tile_order();
   const void* subarray = array_->subarray();
   bool separate_fragments =
-      (mode == TILEDB_ARRAY_WRITE_SORTED_COL &&
-       tile_order == TILEDB_ROW_MAJOR) ||
-      (mode == TILEDB_ARRAY_WRITE_SORTED_ROW && tile_order == TILEDB_COL_MAJOR);
+      (mode == ArrayMode::WRITE_SORTED_COL &&
+       tile_order == Layout::ROW_MAJOR) ||
+      (mode == ArrayMode::WRITE_SORTED_ROW && tile_order == Layout::COL_MAJOR);
 
   // Initialize AIO requests
   for (int i = 0; i < 2; ++i) {
@@ -1787,14 +1787,14 @@ bool ArraySortedWriteState::next_tile_slab_row() {
 template <class T>
 Status ArraySortedWriteState::write() {
   // For easy reference
-  int mode = array_->mode();
-
-  if (mode == TILEDB_ARRAY_WRITE_SORTED_COL) {
-    return write_sorted_col<T>();
-  } else if (mode == TILEDB_ARRAY_WRITE_SORTED_ROW) {
-    return write_sorted_row<T>();
-  } else {
-    assert(0);  // The code should never reach here
+  switch (array_->mode()) {
+    case ArrayMode::WRITE_SORTED_COL:
+      return write_sorted_col<T>();
+    case ArrayMode::WRITE_SORTED_ROW:
+      return write_sorted_row<T>();
+    default:
+      assert(0);
+      return Status::Error("this should not happen");
   }
 }
 
@@ -1805,7 +1805,7 @@ Status ArraySortedWriteState::write_sorted_col() {
   const T* subarray = static_cast<const T*>(subarray_);
 
   // Check if this can be satisfied with a default write
-  if (array_schema->cell_order() == TILEDB_COL_MAJOR &&
+  if (array_schema->cell_order() == Layout::COL_MAJOR &&
       !memcmp(subarray_, expanded_subarray_, 2 * coords_size_) &&
       array_schema->is_contained_in_tile_slab_row<T>(subarray))
     return array_->write_default(buffers_, buffer_sizes_);
@@ -1850,7 +1850,7 @@ Status ArraySortedWriteState::write_sorted_row() {
   const T* subarray = static_cast<const T*>(subarray_);
 
   // Check if this can be satisfied with a default write
-  if (array_schema->cell_order() == TILEDB_ROW_MAJOR &&
+  if (array_schema->cell_order() == Layout::ROW_MAJOR &&
       !memcmp(subarray_, expanded_subarray_, 2 * coords_size_) &&
       array_schema->is_contained_in_tile_slab_col<T>(subarray))
     return array_->write_default(buffers_, buffer_sizes_);
@@ -1992,28 +1992,28 @@ Status ArraySortedWriteState::unlock_copy_mtx() {
 
 void ArraySortedWriteState::update_current_tile_and_offset(int aid) {
   // For easy reference
-  int coords_type = array_->array_schema()->coords_type();
+  Datatype coords_type = array_->array_schema()->coords_type();
 
   // Invoke the proper templated function
-  if (coords_type == TILEDB_INT32)
+  if (coords_type == Datatype::INT32)
     update_current_tile_and_offset<int>(aid);
-  else if (coords_type == TILEDB_INT64)
+  else if (coords_type == Datatype::INT64)
     update_current_tile_and_offset<int64_t>(aid);
-  else if (coords_type == TILEDB_FLOAT32)
+  else if (coords_type == Datatype::FLOAT32)
     update_current_tile_and_offset<float>(aid);
-  else if (coords_type == TILEDB_FLOAT64)
+  else if (coords_type == Datatype::FLOAT64)
     update_current_tile_and_offset<double>(aid);
-  else if (coords_type == TILEDB_INT8)
+  else if (coords_type == Datatype::INT8)
     update_current_tile_and_offset<int8_t>(aid);
-  else if (coords_type == TILEDB_UINT8)
+  else if (coords_type == Datatype::UINT8)
     update_current_tile_and_offset<uint8_t>(aid);
-  else if (coords_type == TILEDB_INT16)
+  else if (coords_type == Datatype::INT16)
     update_current_tile_and_offset<int16_t>(aid);
-  else if (coords_type == TILEDB_UINT16)
+  else if (coords_type == Datatype::UINT16)
     update_current_tile_and_offset<uint16_t>(aid);
-  else if (coords_type == TILEDB_UINT32)
+  else if (coords_type == Datatype::UINT32)
     update_current_tile_and_offset<uint32_t>(aid);
-  else if (coords_type == TILEDB_UINT64)
+  else if (coords_type == Datatype::UINT64)
     update_current_tile_and_offset<uint64_t>(aid);
   else
     assert(0);

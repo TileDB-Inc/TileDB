@@ -113,8 +113,8 @@ struct SparseArrayFx {
       const int64_t domain_1_hi,
       const int64_t capacity,
       const bool enable_compression,
-      const int cell_order,
-      const int tile_order) {
+      const tiledb_layout_t cell_order,
+      const tiledb_layout_t tile_order) {
     // Error code
     int rc;
 
@@ -124,8 +124,8 @@ struct SparseArrayFx {
     const char* dimensions[] = {"X", "Y"};
     int64_t domain[] = {domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
     int64_t tile_extents[] = {tile_extent_0, tile_extent_1};
-    const int types[] = {TILEDB_INT32, TILEDB_INT64};
-    int compression[2];
+    const tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_INT64};
+    tiledb_compressor_t compression[2];
     const int dense = 0;
 
     if (!enable_compression) {
@@ -195,7 +195,7 @@ struct SparseArrayFx {
       const int64_t domain_0_hi,
       const int64_t domain_1_lo,
       const int64_t domain_1_hi,
-      const int read_mode) {
+      const tiledb_array_mode_t read_mode) {
     // Error code
     int rc;
 
@@ -334,8 +334,8 @@ TEST_CASE_METHOD(SparseArrayFx, "Test random sparse sorted reads") {
   int64_t domain_1_lo = 0;
   int64_t domain_1_hi = domain_size_1 - 1;
   int64_t capacity = 0;  // 0 means use default capacity
-  int cell_order = TILEDB_ROW_MAJOR;
-  int tile_order = TILEDB_ROW_MAJOR;
+  tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
+  tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
   int iter_num = 10;
 
   // set array name

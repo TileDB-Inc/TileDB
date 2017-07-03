@@ -85,7 +85,7 @@ class Fragment {
   const std::string& fragment_name() const;
 
   /** Returns the mode of the fragment. */
-  int mode() const;
+  ArrayMode mode() const;
 
   /** Returns true if the array is in read mode. */
   bool read_mode() const;
@@ -118,12 +118,13 @@ class Fragment {
    *
    * @param fragment_name The name that will be given to the fragment.
    * @param mode The fragment mode. It can be one of the following:
-   *    - TILEDB_WRITE
-   *    - TILEDB_WRITE_UNSORTED
+   *    - ArrayMode::WRITE
+   *    - ArrayMode::WRITE_UNSORTED
    * @param subarray The subarray the fragment is constrained on.
    * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
    */
-  Status init(const std::string& fragment_name, int mode, const void* subarray);
+  Status init(
+      const std::string& fragment_name, ArrayMode mode, const void* subarray);
 
   /**
    * Initializes a fragment in read mode.
@@ -212,7 +213,7 @@ class Fragment {
    *    - TILEDB_WRITE_UNSORTED
    *    - TILEDB_READ
    */
-  int mode_;
+  ArrayMode mode_;
   /** The fragment read state. */
   ReadState* read_state_;
   /** The fragment write state. */

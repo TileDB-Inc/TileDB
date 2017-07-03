@@ -144,7 +144,7 @@ class Metadata {
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
       const std::vector<BookKeeping*>& book_keeping,
-      int mode,
+      tiledb_metadata_mode_t mode,
       const char** attributes,
       int attribute_num,
       const StorageManagerConfig* config);

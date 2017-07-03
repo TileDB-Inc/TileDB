@@ -37,10 +37,7 @@
 #include <stack>
 #include "aio_request.h"
 #include "array_schema.h"
-#include "array_schema_c.h"
-#include "status.h"
 #include "storage_manager.h"
-#include "storage_manager_config.h"
 
 /* ****************************** */
 /*             MACROS             */
@@ -112,8 +109,8 @@ int tiledb_ctx_init(TileDB_CTX** ctx, const TileDB_Config* tiledb_config) {
 #ifdef HAVE_MPI
         tiledb_config->mpi_comm_,
 #endif
-        tiledb_config->read_method_,
-        tiledb_config->write_method_);
+        static_cast<tiledb::IO>(tiledb_config->read_method_),
+        static_cast<tiledb::IO>(tiledb_config->write_method_));
 
   // Create storage manager
   (*ctx)->storage_manager_ = new tiledb::StorageManager();
@@ -255,9 +252,9 @@ int tiledb_array_set_schema(
     const char** attributes,
     int attribute_num,
     int64_t capacity,
-    int cell_order,
+    tiledb_layout_t cell_order,
     const int* cell_val_num,
-    const int* compression,
+    const tiledb_compressor_t* compression,
     int dense,
     const char** dimensions,
     int dim_num,
@@ -265,8 +262,8 @@ int tiledb_array_set_schema(
     size_t domain_len,
     const void* tile_extents,
     size_t tile_extents_len,
-    int tile_order,
-    const int* types) {
+    tiledb_layout_t tile_order,
+    const tiledb_datatype_t* types) {
   if (!sanity_check(ctx).ok())
     return TILEDB_ERR;
 
@@ -333,7 +330,8 @@ int tiledb_array_set_schema(
   }
 
   // Set types
-  tiledb_array_schema->types_ = (int*)malloc((attribute_num + 1) * sizeof(int));
+  tiledb_array_schema->types_ =
+      (tiledb_datatype_t*)malloc((attribute_num + 1) * sizeof(int));
   if (tiledb_array_schema->types_ == nullptr)
     return TILEDB_OOM;
   for (int i = 0; i < attribute_num + 1; ++i)
@@ -361,14 +359,14 @@ int tiledb_array_set_schema(
 
   // Set compression
   if (compression == nullptr) {
-    tiledb_array_schema->compression_ = nullptr;
+    tiledb_array_schema->compressor_ = nullptr;
   } else {
-    tiledb_array_schema->compression_ =
-        (int*)malloc((attribute_num + 1) * sizeof(int));
-    if (tiledb_array_schema->compression_ == nullptr)
+    tiledb_array_schema->compressor_ =
+        (tiledb_compressor_t*)malloc((attribute_num + 1) * sizeof(int));
+    if (tiledb_array_schema->compressor_ == nullptr)
       return TILEDB_OOM;
     for (int i = 0; i < attribute_num + 1; ++i)
-      tiledb_array_schema->compression_[i] = compression[i];
+      tiledb_array_schema->compressor_[i] = compression[i];
   }
 
   return TILEDB_OK;
@@ -387,7 +385,7 @@ int tiledb_array_create(
   array_schema_c.capacity_ = array_schema->capacity_;
   array_schema_c.cell_order_ = array_schema->cell_order_;
   array_schema_c.cell_val_num_ = array_schema->cell_val_num_;
-  array_schema_c.compression_ = array_schema->compression_;
+  array_schema_c.compressor_ = array_schema->compressor_;
   array_schema_c.dense_ = array_schema->dense_;
   array_schema_c.dimensions_ = array_schema->dimensions_;
   array_schema_c.dim_num_ = array_schema->dim_num_;
@@ -407,7 +405,7 @@ int tiledb_array_init(
     TileDB_CTX* ctx,
     TileDB_Array** tiledb_array,
     const char* array,
-    int mode,
+    tiledb_array_mode_t mode,
     const void* subarray,
     const char** attributes,
     int attribute_num) {
@@ -431,7 +429,7 @@ int tiledb_array_init(
           ctx->storage_manager_->array_init(
               (*tiledb_array)->array_,
               array,
-              mode,
+              static_cast<tiledb::ArrayMode>(mode),
               subarray,
               attributes,
               attribute_num))) {
@@ -478,8 +476,6 @@ int tiledb_array_get_schema(
   if (!sanity_check(tiledb_array).ok())
     return TILEDB_ERR;
 
-  TileDB_CTX* ctx = tiledb_array->ctx_;
-
   // Get the array schema
   ArraySchemaC array_schema_c;
   tiledb_array->array_->array_schema()->array_schema_export(&array_schema_c);
@@ -491,7 +487,7 @@ int tiledb_array_get_schema(
   tiledb_array_schema->capacity_ = array_schema_c.capacity_;
   tiledb_array_schema->cell_order_ = array_schema_c.cell_order_;
   tiledb_array_schema->cell_val_num_ = array_schema_c.cell_val_num_;
-  tiledb_array_schema->compression_ = array_schema_c.compression_;
+  tiledb_array_schema->compressor_ = array_schema_c.compressor_;
   tiledb_array_schema->dense_ = array_schema_c.dense_;
   tiledb_array_schema->dimensions_ = array_schema_c.dimensions_;
   tiledb_array_schema->dim_num_ = array_schema_c.dim_num_;
@@ -530,7 +526,7 @@ int tiledb_array_load_schema(
   tiledb_array_schema->capacity_ = array_schema_c.capacity_;
   tiledb_array_schema->cell_order_ = array_schema_c.cell_order_;
   tiledb_array_schema->cell_val_num_ = array_schema_c.cell_val_num_;
-  tiledb_array_schema->compression_ = array_schema_c.compression_;
+  tiledb_array_schema->compressor_ = array_schema_c.compressor_;
   tiledb_array_schema->dense_ = array_schema_c.dense_;
   tiledb_array_schema->dimensions_ = array_schema_c.dimensions_;
   tiledb_array_schema->dim_num_ = array_schema_c.dim_num_;
@@ -582,8 +578,8 @@ int tiledb_array_free_schema(TileDB_ArraySchema* tiledb_array_schema) {
     free(tiledb_array_schema->types_);
 
   // Free compression
-  if (tiledb_array_schema->compression_ != nullptr)
-    free(tiledb_array_schema->compression_);
+  if (tiledb_array_schema->compressor_ != nullptr)
+    free(tiledb_array_schema->compressor_);
 
   // Free cell val num
   if (tiledb_array_schema->cell_val_num_ != nullptr)
@@ -727,7 +723,7 @@ int tiledb_array_iterator_init(
     TileDB_CTX* ctx,
     TileDB_ArrayIterator** tiledb_array_it,
     const char* array,
-    int mode,
+    tiledb_array_mode_t mode,
     const void* subarray,
     const char** attributes,
     int attribute_num,
@@ -748,7 +744,7 @@ int tiledb_array_iterator_init(
           ctx->storage_manager_->array_iterator_init(
               (*tiledb_array_it)->array_it_,
               array,
-              mode,
+              static_cast<tiledb::ArrayMode>(mode),
               subarray,
               attributes,
               attribute_num,
@@ -863,8 +859,8 @@ int tiledb_metadata_set_schema(
     int attribute_num,
     int64_t capacity,
     const int* cell_val_num,
-    const int* compression,
-    const int* types) {
+    const tiledb_compressor_t* compression,
+    const tiledb_datatype_t* types) {
   if (!sanity_check(ctx).ok())
     return TILEDB_ERR;
 
@@ -901,7 +897,7 @@ int tiledb_metadata_set_schema(
 
   // Set types
   tiledb_metadata_schema->types_ =
-      (int*)malloc((attribute_num + 1) * sizeof(int));
+      (tiledb_datatype_t*)malloc((attribute_num + 1) * sizeof(int));
   if (tiledb_metadata_schema->types_ == nullptr)
     return TILEDB_OOM;
   for (int i = 0; i < attribute_num + 1; ++i)
@@ -925,14 +921,14 @@ int tiledb_metadata_set_schema(
 
   // Set compression
   if (compression == nullptr) {
-    tiledb_metadata_schema->compression_ = nullptr;
+    tiledb_metadata_schema->compressor_ = nullptr;
   } else {
-    tiledb_metadata_schema->compression_ =
-        (int*)malloc((attribute_num + 1) * sizeof(int));
-    if (tiledb_metadata_schema->compression_ == nullptr)
+    tiledb_metadata_schema->compressor_ =
+        (tiledb_compressor_t*)malloc((attribute_num + 1) * sizeof(int));
+    if (tiledb_metadata_schema->compressor_ == nullptr)
       return TILEDB_OOM;
     for (int i = 0; i < attribute_num + 1; ++i)
-      tiledb_metadata_schema->compression_[i] = compression[i];
+      tiledb_metadata_schema->compressor_[i] = compression[i];
   }
   return TILEDB_OK;
 }
@@ -952,7 +948,7 @@ int tiledb_metadata_create(
   metadata_schema_c.attribute_num_ = metadata_schema->attribute_num_;
   metadata_schema_c.capacity_ = metadata_schema->capacity_;
   metadata_schema_c.cell_val_num_ = metadata_schema->cell_val_num_;
-  metadata_schema_c.compression_ = metadata_schema->compression_;
+  metadata_schema_c.compressor_ = metadata_schema->compressor_;
   metadata_schema_c.types_ = metadata_schema->types_;
 
   if (save_error(
@@ -966,7 +962,7 @@ int tiledb_metadata_init(
     TileDB_CTX* ctx,
     TileDB_Metadata** tiledb_metadata,
     const char* metadata,
-    int mode,
+    tiledb_metadata_mode_t mode,
     const char** attributes,
     int attribute_num) {
   if (!sanity_check(ctx).ok())
@@ -1037,7 +1033,7 @@ int tiledb_metadata_get_schema(
   tiledb_metadata_schema->attribute_num_ = metadata_schema_c.attribute_num_;
   tiledb_metadata_schema->capacity_ = metadata_schema_c.capacity_;
   tiledb_metadata_schema->cell_val_num_ = metadata_schema_c.cell_val_num_;
-  tiledb_metadata_schema->compression_ = metadata_schema_c.compression_;
+  tiledb_metadata_schema->compressor_ = metadata_schema_c.compressor_;
   tiledb_metadata_schema->types_ = metadata_schema_c.types_;
 
   return TILEDB_OK;
@@ -1070,7 +1066,7 @@ int tiledb_metadata_load_schema(
   tiledb_metadata_schema->attribute_num_ = metadata_schema_c.attribute_num_;
   tiledb_metadata_schema->capacity_ = metadata_schema_c.capacity_;
   tiledb_metadata_schema->cell_val_num_ = metadata_schema_c.cell_val_num_;
-  tiledb_metadata_schema->compression_ = metadata_schema_c.compression_;
+  tiledb_metadata_schema->compressor_ = metadata_schema_c.compressor_;
   tiledb_metadata_schema->types_ = metadata_schema_c.types_;
 
   delete array_schema;
@@ -1099,8 +1095,8 @@ int tiledb_metadata_free_schema(TileDB_MetadataSchema* tiledb_metadata_schema) {
     free(tiledb_metadata_schema->types_);
 
   // Free compression
-  if (tiledb_metadata_schema->compression_ != nullptr)
-    free(tiledb_metadata_schema->compression_);
+  if (tiledb_metadata_schema->compressor_ != nullptr)
+    free(tiledb_metadata_schema->compressor_);
 
   // Free cell val num
   if (tiledb_metadata_schema->cell_val_num_ != nullptr)
@@ -1150,8 +1146,6 @@ int tiledb_metadata_overflow(
     const TileDB_Metadata* tiledb_metadata, int attribute_id) {
   if (!sanity_check(tiledb_metadata).ok())
     return TILEDB_ERR;
-
-  TileDB_CTX* ctx = tiledb_metadata->ctx_;
 
   return (int)tiledb_metadata->metadata_->overflow(attribute_id);
 }
@@ -1274,8 +1268,6 @@ int tiledb_metadata_iterator_end(TileDB_MetadataIterator* tiledb_metadata_it) {
   if (!sanity_check(tiledb_metadata_it).ok())
     return TILEDB_ERR;
 
-  TileDB_CTX* ctx = tiledb_metadata_it->ctx_;
-
   // Check if the metadata iterator reached its end
   return (int)tiledb_metadata_it->metadata_it_->end();
 }
@@ -1357,7 +1349,7 @@ int tiledb_ls(
     TileDB_CTX* ctx,
     const char* parent_dir,
     char** dirs,
-    int* dir_types,
+    tiledb_object_t* dir_types,
     int* dir_num) {
   if (!sanity_check(ctx).ok())
     return TILEDB_ERR;
@@ -1404,7 +1396,8 @@ int tiledb_array_aio_read(
   aio_request->id_ = (size_t)tiledb_aio_request;
   aio_request->buffers_ = tiledb_aio_request->buffers_;
   aio_request->buffer_sizes_ = tiledb_aio_request->buffer_sizes_;
-  aio_request->mode_ = tiledb_array->array_->mode();
+  aio_request->mode_ =
+      static_cast<tiledb_array_mode_t>(tiledb_array->array_->mode());
   aio_request->status_ = &(tiledb_aio_request->status_);
   aio_request->subarray_ = tiledb_aio_request->subarray_;
   aio_request->completion_handle_ = tiledb_aio_request->completion_handle_;
@@ -1429,7 +1422,8 @@ int tiledb_array_aio_write(
   aio_request->id_ = (size_t)tiledb_aio_request;
   aio_request->buffers_ = tiledb_aio_request->buffers_;
   aio_request->buffer_sizes_ = tiledb_aio_request->buffer_sizes_;
-  aio_request->mode_ = tiledb_array->array_->mode();
+  aio_request->mode_ =
+      static_cast<tiledb_array_mode_t>(tiledb_array->array_->mode());
   aio_request->status_ = &(tiledb_aio_request->status_);
   aio_request->subarray_ = tiledb_aio_request->subarray_;
   aio_request->completion_handle_ = tiledb_aio_request->completion_handle_;

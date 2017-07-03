@@ -60,6 +60,7 @@
 #define SORT_LIB __gnu_parallel
 #else
 #include <algorithm>
+#include <array>
 #define SORT_LIB std
 #endif
 
@@ -171,7 +172,7 @@ Status StorageManager::array_consolidate(const char* array_dir) {
   // Create an array object
   Array* array;
   RETURN_NOT_OK(
-      array_init(array, array_dir, TILEDB_ARRAY_READ, nullptr, nullptr, 0));
+      array_init(array, array_dir, ArrayMode::READ, nullptr, nullptr, 0));
 
   // Consolidate array (TODO: unhandled error handling here)
   Fragment* new_fragment;
@@ -262,7 +263,7 @@ Status StorageManager::array_load_book_keeping(
     const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
     std::vector<BookKeeping*>& book_keeping,
-    int mode) {
+    ArrayMode mode) {
   // TODO (jcb): is this assumed to be always > 0?
   // For easy reference
   int fragment_num = fragment_names.size();
@@ -357,7 +358,7 @@ Status StorageManager::array_load_schema(
 Status StorageManager::array_init(
     Array*& array,
     const char* array_dir,
-    int mode,
+    ArrayMode mode,
     const void* subarray,
     const char** attributes,
     int attribute_num) {
@@ -375,7 +376,7 @@ Status StorageManager::array_init(
 
   // Open the array
   OpenArray* open_array = nullptr;
-  if (utils::array_read_mode(mode)) {
+  if (is_read_mode(mode)) {
     RETURN_NOT_OK(array_open(utils::real_dir(array_dir), open_array, mode));
   }
 
@@ -397,7 +398,7 @@ Status StorageManager::array_init(
     delete array_schema;
     delete array_clone;
     array = nullptr;
-    if (utils::array_read_mode(mode))
+    if (is_read_mode(mode))
       array_close(array_dir);
     return st;
   }
@@ -420,7 +421,7 @@ Status StorageManager::array_init(
     delete array_schema;
     delete array;
     array = nullptr;
-    if (utils::array_read_mode(mode))
+    if (is_read_mode(mode))
       array_close(array_dir);
   }
   return st;
@@ -467,7 +468,7 @@ Status StorageManager::array_sync_attribute(
 Status StorageManager::array_iterator_init(
     ArrayIterator*& array_it,
     const char* array_dir,
-    int mode,
+    ArrayMode mode,
     const void* subarray,
     const char** attributes,
     int attribute_num,
@@ -732,7 +733,7 @@ Status StorageManager::metadata_load_schema(
 Status StorageManager::metadata_init(
     Metadata*& metadata,
     const char* metadata_dir,
-    int mode,
+    tiledb_metadata_mode_t mode,
     const char** attributes,
     int attribute_num) {
   // Check metadata name length
@@ -749,8 +750,8 @@ Status StorageManager::metadata_init(
   // Open the array that implements the metadata
   OpenArray* open_array = nullptr;
   if (mode == TILEDB_METADATA_READ)
-    RETURN_NOT_OK(array_open(
-        utils::real_dir(metadata_dir), open_array, TILEDB_ARRAY_READ))
+    RETURN_NOT_OK(
+        array_open(utils::real_dir(metadata_dir), open_array, ArrayMode::READ))
 
   // Create metadata object
   metadata = new Metadata();
@@ -780,9 +781,9 @@ Status StorageManager::metadata_finalize(Metadata* metadata) {
 
   // Finalize the metadata and close the underlying array
   std::string array_name = metadata->array_schema()->array_name();
-  int mode = metadata->array()->mode();
+  ArrayMode mode = metadata->array()->mode();
   RETURN_NOT_OK_ELSE(metadata->finalize(), delete metadata);
-  if (mode == TILEDB_METADATA_READ)
+  if (mode == ArrayMode::READ)
     RETURN_NOT_OK_ELSE(array_close(array_name), delete metadata);
 
   // Clean up
@@ -842,7 +843,10 @@ Status StorageManager::metadata_iterator_finalize(
 /* ****************************** */
 
 Status StorageManager::ls(
-    const char* parent_dir, char** dirs, int* dir_types, int& dir_num) const {
+    const char* parent_dir,
+    char** dirs,
+    tiledb_object_t* dir_types,
+    int& dir_num) const {
   // Get real parent directory
   std::string parent_dir_real = utils::real_dir(parent_dir);
 
@@ -1215,7 +1219,7 @@ Status StorageManager::array_move(
 }
 
 Status StorageManager::array_open(
-    const std::string& array_name, OpenArray*& open_array, int mode) {
+    const std::string& array_name, OpenArray*& open_array, ArrayMode mode) {
   // Get the open array entry
   RETURN_NOT_OK(array_get_open_array_entry(array_name, open_array));
 
