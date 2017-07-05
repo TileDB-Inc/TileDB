@@ -42,10 +42,10 @@ int main() {
   tiledb_array_init(
       tiledb_ctx,                                // Context 
       &tiledb_array,                             // Array object
-      "my_workspace/dense_arrays/my_array_A",    // Array name
+      "my_group/dense_arrays/my_array_A",        // Array name
       TILEDB_ARRAY_WRITE_UNSORTED,               // Mode
-      nullptr,                                      // Whole domain (ignored)
-      nullptr,                                      // All attributes
+      nullptr,                                   // Whole domain (ignored)
+      nullptr,                                   // All attributes
       0);                                        // Number of attributes
 
   // Prepare cell buffers

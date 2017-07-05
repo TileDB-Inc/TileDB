@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -97,40 +97,13 @@ Status StorageManager::init(StorageManagerConfig* config) {
   return open_array_mtx_init();
 }
 
-/* ****************************** */
-/*            WORKSPACE           */
-/* ****************************** */
-
-Status StorageManager::workspace_create(const std::string& workspace) {
-  // Check if the workspace is inside a workspace or another group
-  std::string parent_dir = utils::parent_dir(workspace);
-  if (utils::is_workspace(parent_dir) || utils::is_group(parent_dir) ||
-      utils::is_array(parent_dir) || utils::is_metadata(parent_dir)) {
-    return Status::StorageManagerError(
-        "The workspace cannot be contained in another workspace, "
-        "group, array or metadata directory");
-  }
-  // Create workspace directory
-  RETURN_NOT_OK(utils::create_dir(workspace));
-
-  // Create workspace file
-  if (!create_workspace_file(workspace).ok())
-    return Status::StorageManagerError(
-        std::string("Cannot create workspace file for workspace: ")
-            .append(workspace));
-
-  return Status::Ok();
-}
-
 // TODO: Object types should be Enums
 int StorageManager::dir_type(const char* dir) {
   // Get real path
   std::string dir_real = utils::real_dir(dir);
 
   // Return type
-  if (utils::is_workspace(dir_real))
-    return TILEDB_WORKSPACE;
-  else if (utils::is_group(dir_real))
+  if (utils::is_group(dir_real))
     return TILEDB_GROUP;
   else if (utils::is_array(dir_real))
     return TILEDB_ARRAY;
@@ -145,14 +118,6 @@ int StorageManager::dir_type(const char* dir) {
 /* ****************************** */
 
 Status StorageManager::group_create(const std::string& group) const {
-  // Check if the group is inside a workspace or another group
-  std::string parent_dir = utils::parent_dir(group);
-  if (!utils::is_workspace(parent_dir) && !utils::is_group(parent_dir)) {
-    return Status::StorageManagerError(
-        "The group must be contained in a workspace "
-        "or another group");
-  }
-
   // Create group directory
   RETURN_NOT_OK(utils::create_dir(group));
 
@@ -211,14 +176,6 @@ Status StorageManager::array_create(const ArraySchemaC* array_schema_c) const {
   // Get real array directory name
   std::string dir = array_schema->array_name();
   std::string parent_dir = utils::parent_dir(dir);
-
-  // Check if the array directory is contained in a workspace, group or array
-  if (!utils::is_workspace(parent_dir) && !utils::is_group(parent_dir)) {
-    std::string errmsg = std::string("Cannot create array; Directory '") +
-                         parent_dir + "' must be a TileDB workspace or group";
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
 
   // Create array with the new schema
   Status st = array_create(array_schema);
@@ -596,16 +553,6 @@ Status StorageManager::metadata_create(
   std::string dir = array_schema->array_name();
   std::string parent_dir = utils::parent_dir(dir);
 
-  // Check if the array directory is contained in a workspace, group or array
-  if (!utils::is_workspace(parent_dir) && !utils::is_group(parent_dir) &&
-      !utils::is_array(parent_dir)) {
-    std::string errmsg = std::string("Cannot create metadata; Directory '") +
-                         parent_dir +
-                         "' must be a TileDB workspace, group, or array";
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-
   // Create array with the new schema
   Status st = metadata_create(array_schema);
 
@@ -897,16 +844,6 @@ Status StorageManager::ls(
       strcpy(dirs[dir_i], next_file->d_name);
       dir_types[dir_i] = TILEDB_ARRAY;
       ++dir_i;
-    } else if (utils::is_workspace(filename)) {  // Workspace
-      if (dir_i == dir_num) {
-        std::string errmsg =
-            "Cannot list TileDB directory; Directory buffer overflow";
-        PRINT_ERROR(errmsg);
-        return Status::StorageManagerError(errmsg);
-      }
-      strcpy(dirs[dir_i], next_file->d_name);
-      dir_types[dir_i] = TILEDB_WORKSPACE;
-      ++dir_i;
     }
   }
 
@@ -947,7 +884,7 @@ Status StorageManager::ls_c(const char* parent_dir, int& dir_num) const {
       continue;
     filename = parent_dir_real + "/" + next_file->d_name;
     if (utils::is_group(filename) || utils::is_metadata(filename) ||
-        utils::is_array(filename) || utils::is_workspace(filename))
+        utils::is_array(filename))
       ++dir_num;
   }
 
@@ -962,9 +899,7 @@ Status StorageManager::ls_c(const char* parent_dir, int& dir_num) const {
 }
 
 Status StorageManager::clear(const std::string& dir) const {
-  if (utils::is_workspace(dir)) {
-    return workspace_clear(dir);
-  } else if (utils::is_group(dir)) {
+  if (utils::is_group(dir)) {
     return group_clear(dir);
   } else if (utils::is_array(dir)) {
     return array_clear(dir);
@@ -978,9 +913,7 @@ Status StorageManager::clear(const std::string& dir) const {
 }
 
 Status StorageManager::delete_entire(const std::string& dir) {
-  if (utils::is_workspace(dir)) {
-    return workspace_delete(dir);
-  } else if (utils::is_group(dir)) {
+  if (utils::is_group(dir)) {
     return group_delete(dir);
   } else if (utils::is_array(dir)) {
     return array_delete(dir);
@@ -995,9 +928,7 @@ Status StorageManager::delete_entire(const std::string& dir) {
 
 Status StorageManager::move(
     const std::string& old_dir, const std::string& new_dir) {
-  if (utils::is_workspace(old_dir)) {
-    return workspace_move(old_dir, new_dir);
-  } else if (utils::is_group(old_dir)) {
+  if (utils::is_group(old_dir)) {
     return group_move(old_dir, new_dir);
   } else if (utils::is_array(old_dir)) {
     return array_move(old_dir, new_dir);
@@ -1181,17 +1112,6 @@ Status StorageManager::array_move(
   if (utils::is_dir(new_array_real)) {
     std::string errmsg =
         std::string("Directory '") + new_array_real + "' already exists";
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-
-  // Check if the new array are inside a workspace or group
-  std::string new_array_parent_folder = utils::parent_dir(new_array_real);
-  if (!utils::is_group(new_array_parent_folder) &&
-      !utils::is_workspace(new_array_parent_folder)) {
-    std::string errmsg = std::string("Folder '") + new_array_parent_folder +
-                         "' must "
-                         "be either a workspace or a group";
     PRINT_ERROR(errmsg);
     return Status::StorageManagerError(errmsg);
   }
@@ -1448,20 +1368,6 @@ Status StorageManager::create_group_file(const std::string& group) const {
   return Status::Ok();
 }
 
-Status StorageManager::create_workspace_file(
-    const std::string& workspace) const {
-  // Create file
-  std::string filename = workspace + "/" + TILEDB_WORKSPACE_FILENAME;
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  if (fd == -1 || ::close(fd)) {
-    std::string errmsg =
-        std::string("Failed to create workspace file; ") + strerror(errno);
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-  return Status::Ok();
-}
-
 Status StorageManager::group_clear(const std::string& group) const {
   // Get real group path
   std::string group_real = utils::real_dir(group);
@@ -1470,14 +1376,6 @@ Status StorageManager::group_clear(const std::string& group) const {
   if (!utils::is_group(group_real)) {
     std::string errmsg =
         std::string("Group '") + group_real + "' does not exist";
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-
-  // Do not delete if it is a workspace
-  if (utils::is_workspace(group_real)) {
-    std::string errmsg =
-        std::string("Group '") + group_real + "' is also a workspace";
     PRINT_ERROR(errmsg);
     return Status::StorageManagerError(errmsg);
   }
@@ -1540,14 +1438,6 @@ Status StorageManager::group_move(
   std::string old_group_real = utils::real_dir(old_group);
   std::string new_group_real = utils::real_dir(new_group);
 
-  // Check if the old group is also a workspace
-  if (utils::is_workspace(old_group_real)) {
-    std::string errmsg =
-        std::string("Group '") + old_group_real + "' is also a workspace";
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-
   // Check if the old group exists
   if (!utils::is_group(old_group_real)) {
     std::string errmsg =
@@ -1560,17 +1450,6 @@ Status StorageManager::group_move(
   if (utils::is_dir(new_group_real)) {
     std::string errmsg =
         std::string("Directory '") + new_group_real + "' already exists";
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-
-  // Check if the new group is inside a workspace or group
-  std::string new_group_parent_folder = utils::parent_dir(new_group_real);
-  if (!utils::is_group(new_group_parent_folder) &&
-      !utils::is_workspace(new_group_parent_folder)) {
-    std::string errmsg = std::string("Folder '") + new_group_parent_folder +
-                         "' must "
-                         "be either a workspace or a group";
     PRINT_ERROR(errmsg);
     return Status::StorageManagerError(errmsg);
   }
@@ -1665,18 +1544,6 @@ Status StorageManager::metadata_move(
   if (utils::is_dir(new_metadata_real)) {
     std::string errmsg =
         std::string("Directory '") + new_metadata_real + "' already exists";
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-
-  // Check if the new metadata are inside a workspace, group or array
-  std::string new_metadata_parent_folder = utils::parent_dir(new_metadata_real);
-  if (!utils::is_group(new_metadata_parent_folder) &&
-      !utils::is_workspace(new_metadata_parent_folder) &&
-      !utils::is_array(new_metadata_parent_folder)) {
-    std::string errmsg = std::string("Folder '") + new_metadata_parent_folder +
-                         "' must "
-                         "be workspace, group or array";
     PRINT_ERROR(errmsg);
     return Status::StorageManagerError(errmsg);
   }
@@ -1812,126 +1679,6 @@ void StorageManager::sort_fragment_names(
   for (int i = 0; i < fragment_num; ++i)
     fragment_names_sorted[i] = fragment_names[t_pos_vec[i].second];
   fragment_names = fragment_names_sorted;
-}
-
-Status StorageManager::workspace_clear(const std::string& workspace) const {
-  // Get real workspace path
-  std::string workspace_real = utils::real_dir(workspace);
-
-  // Delete all groups, arrays and metadata inside the workspace directory
-  std::string filename;
-  struct dirent* next_file;
-  DIR* dir = opendir(workspace_real.c_str());
-
-  if (dir == nullptr) {
-    std::string errmsg = std::string("Cannot open workspace directory '") +
-                         workspace_real + "'; " + strerror(errno);
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-
-  while ((next_file = readdir(dir))) {
-    if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, "..") ||
-        !strcmp(next_file->d_name, TILEDB_WORKSPACE_FILENAME) ||
-        !strcmp(next_file->d_name, TILEDB_GROUP_FILENAME))
-      continue;
-    filename = workspace_real + "/" + next_file->d_name;
-    if (utils::is_group(filename)) {  // Group
-      RETURN_NOT_OK(group_delete(filename));
-    } else if (utils::is_metadata(filename)) {  // Metadata
-      RETURN_NOT_OK(metadata_delete(filename))
-    } else if (utils::is_array(filename)) {  // Array
-      RETURN_NOT_OK(array_delete(filename))
-    } else {  // Non TileDB related
-      std::string errmsg =
-          std::string("Cannot delete non TileDB related element '") + filename +
-          "'";
-      PRINT_ERROR(errmsg);
-      return Status::StorageManagerError(errmsg);
-    }
-  }
-
-  // Close workspace directory
-  if (closedir(dir)) {
-    std::string errmsg =
-        std::string("Cannot close the workspace directory; ") + strerror(errno);
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-  return Status::Ok();
-}
-
-Status StorageManager::workspace_delete(const std::string& workspace) {
-  // Get real paths
-  std::string workspace_real;
-  workspace_real = utils::real_dir(workspace);
-
-  // Check if workspace exists
-  if (!utils::is_workspace(workspace_real)) {
-    std::string errmsg =
-        std::string("Workspace '") + workspace_real + "' does not exist";
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-
-  // Clear workspace
-  RETURN_NOT_OK(workspace_clear(workspace_real));
-
-  // Delete directory
-  RETURN_NOT_OK(utils::delete_dir(workspace_real));
-
-  return Status::Ok();
-}
-
-Status StorageManager::workspace_move(
-    const std::string& old_workspace, const std::string& new_workspace) {
-  // Get real paths
-  std::string old_workspace_real = utils::real_dir(old_workspace);
-  std::string new_workspace_real = utils::real_dir(new_workspace);
-
-  // Check if old workspace exists
-  if (!utils::is_workspace(old_workspace_real)) {
-    std::string errmsg =
-        std::string("Workspace '") + old_workspace_real + "' does not exist";
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-
-  // Check new workspace
-  if (new_workspace_real == "") {
-    std::string errmsg =
-        std::string("Invalid workspace '") + new_workspace_real + "'";
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-  if (utils::is_dir(new_workspace_real)) {
-    std::string errmsg =
-        std::string("Directory '") + new_workspace_real + "' already exists";
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-
-  // New workspace should not be inside another workspace, group array or
-  // metadata
-  std::string new_workspace_real_parent = utils::parent_dir(new_workspace_real);
-  if (utils::is_workspace(new_workspace_real_parent) ||
-      utils::is_group(new_workspace_real_parent) ||
-      utils::is_array(new_workspace_real_parent) ||
-      utils::is_metadata(new_workspace_real_parent)) {
-    std::string errmsg =
-        std::string("Folder '") + new_workspace_real_parent +
-        "' should not be a workspace, group, array, or metadata";
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-
-  // Rename directory
-  if (rename(old_workspace_real.c_str(), new_workspace_real.c_str())) {
-    std::string errmsg = std::string("Cannot move group; ") + strerror(errno);
-    PRINT_ERROR(errmsg);
-    return Status::StorageManagerError(errmsg);
-  }
-  return Status::Ok();
 }
 
 Status StorageManager::OpenArray::mutex_destroy() {

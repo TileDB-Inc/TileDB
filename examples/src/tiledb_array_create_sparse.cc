@@ -38,7 +38,7 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Prepare parameters for array schema
-  const char* array_name = "my_workspace/sparse_arrays/my_array_B";
+  const char* array_name = "my_group/sparse_arrays/my_array_B";
   const char* attributes[] = { "a1", "a2", "a3" };  // Three attributes
   const char* dimensions[] = { "d1", "d2" };        // Two dimensions
   int64_t domain[] = 

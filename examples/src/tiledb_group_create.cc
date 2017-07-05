@@ -1,11 +1,11 @@
 /**
- * @file   tiledb_workspace_group_create.cc
+ * @file   tiledb_group_create.cc
  *
  * @section LICENSE
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@
  * 
  * @section DESCRIPTION
  *
- * It creates a workspace and two groups.
+ * It creates three groups.
  */
 
 #include "tiledb.h"
@@ -37,14 +37,14 @@ int main() {
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, nullptr);
 
-  // Create a workspace
-  tiledb_workspace_create(tiledb_ctx, "my_workspace");
+  // Create a group
+  tiledb_group_create(tiledb_ctx, "my_group");
 
   // Create a group in the worskpace
-  tiledb_group_create(tiledb_ctx, "my_workspace/dense_arrays");
+  tiledb_group_create(tiledb_ctx, "my_group/dense_arrays");
 
   // Create two groups in the worskpace
-  tiledb_group_create(tiledb_ctx, "my_workspace/sparse_arrays");
+  tiledb_group_create(tiledb_ctx, "my_group/sparse_arrays");
 
   // Finalize context
   tiledb_ctx_finalize(tiledb_ctx);

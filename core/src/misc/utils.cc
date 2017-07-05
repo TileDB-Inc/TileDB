@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -672,14 +672,6 @@ bool is_unary_subarray(const T* subarray, int dim_num) {
   }
 
   return true;
-}
-
-bool is_workspace(const std::string& dir) {
-  // Check existence
-  if (is_dir(dir) && is_file(dir + "/" + TILEDB_WORKSPACE_FILENAME))
-    return true;
-  else
-    return false;
 }
 
 #ifdef HAVE_MPI

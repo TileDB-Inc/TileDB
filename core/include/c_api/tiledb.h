@@ -271,22 +271,6 @@ TILEDB_EXPORT const char* tiledb_error_message(tiledb_error_t* err);
 TILEDB_EXPORT int tiledb_error_free(tiledb_error_t* err);
 
 /* ********************************* */
-/*              WORKSPACE            */
-/* ********************************* */
-
-/**
- * Creates a new TileDB workspace.
- *
- * @param ctx The TileDB context.
- * @param workspace The directory of the workspace to be created in the file
- *     system. This directory should not be inside another TileDB workspace,
- *     group, array or metadata directory.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_workspace_create(
-    TileDB_CTX* ctx, const char* workspace);
-
-/* ********************************* */
 /*                GROUP              */
 /* ********************************* */
 
@@ -295,8 +279,6 @@ TILEDB_EXPORT int tiledb_workspace_create(
  *
  * @param ctx The TileDB context.
  * @param group The directory of the group to be created in the file system.
- *     This should be a directory whose parent is a TileDB workspace or another
- *     TileDB group.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_group_create(TileDB_CTX* ctx, const char* group);
@@ -310,10 +292,7 @@ typedef struct TileDB_Array TileDB_Array;
 
 /** The array schema. */
 typedef struct TileDB_ArraySchema {
-  /**
-   * The array name. It is a directory, whose parent must be a TileDB workspace,
-   * or group.
-   */
+  /** The array name. */
   char* array_name_;
   /** The attribute names. */
   char** attributes_;
@@ -830,10 +809,7 @@ TILEDB_EXPORT int tiledb_array_iterator_finalize(
 
 /** Specifies the metadata schema. */
 typedef struct TileDB_MetadataSchema {
-  /**
-   * The metadata name. It is a directory, whose parent must be a TileDB
-   * workspace, group, or array.
-   */
+  /** The metadata name. */
   char* metadata_name_;
   /** The attribute names. */
   char** attributes_;
@@ -1195,7 +1171,6 @@ TILEDB_EXPORT int tiledb_metadata_iterator_finalize(
  * @param ctx The TileDB context.
  * @param dir The input directory.
  * @return It can be one of the following:
- *    - TILEDB_WORKSPACE
  *    - TILEDB_GROUP
  *    - TILEDB_ARRAY
  *    - TILEDB_METADATA
@@ -1204,8 +1179,8 @@ TILEDB_EXPORT int tiledb_metadata_iterator_finalize(
 TILEDB_EXPORT int tiledb_dir_type(TileDB_CTX* ctx, const char* dir);
 
 /**
- * Clears a TileDB directory. The corresponding TileDB object (workspace,
- * group, array, or metadata) will still exist after the execution of the
+ * Clears a TileDB directory. The corresponding TileDB object
+ * (group, array, or metadata) will still exist after the execution of the
  * function, but it will be empty (i.e., as if it was just created).
  *
  * @param ctx The TileDB context.
@@ -1215,7 +1190,7 @@ TILEDB_EXPORT int tiledb_dir_type(TileDB_CTX* ctx, const char* dir);
 TILEDB_EXPORT int tiledb_clear(TileDB_CTX* ctx, const char* dir);
 
 /**
- * Deletes a TileDB directory (workspace, group, array, or metadata) entirely.
+ * Deletes a TileDB directory (group, array, or metadata) entirely.
  *
  * @param ctx The TileDB context.
  * @param dir The TileDB directory to be deleted.
@@ -1224,7 +1199,7 @@ TILEDB_EXPORT int tiledb_clear(TileDB_CTX* ctx, const char* dir);
 TILEDB_EXPORT int tiledb_delete(TileDB_CTX* ctx, const char* dir);
 
 /**
- * Moves a TileDB directory (workspace, group, array or metadata).
+ * Moves a TileDB directory (group, array or metadata).
  *
  * @param ctx The TileDB context.
  * @param old_dir The old TileDB directory.
@@ -1246,7 +1221,6 @@ TILEDB_EXPORT int tiledb_move(
  *     string TILEDB_NAME_MAX_LEN characters.
  * @param dir_types The types of the corresponding TileDB objects in *dirs*,
  *    which can be the following:
- *    - TILEDB_WORKSPACE
  *    - TILEDB_GROUP
  *    - TILEDB_ARRAY
  *    - TILEDB_METADATA

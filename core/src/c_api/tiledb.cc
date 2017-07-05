@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corp.
+ * @copyright Copyright (c) 2016 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -168,9 +168,6 @@ int tiledb_error_free(tiledb_error_t* err) {
   }
   return TILEDB_OK;
 }
-/* ****************************** */
-/*            WORKSPACE           */
-/* ****************************** */
 
 tiledb::Status check_name_length(
     const char* obj_name, const char* path, size_t* length) {
@@ -185,21 +182,6 @@ tiledb::Status check_name_length(
   if (length != nullptr)
     *length = len;
   return tiledb::Status::Ok();
-}
-
-int tiledb_workspace_create(TileDB_CTX* ctx, const char* workspace) {
-  if (!sanity_check(ctx).ok())
-    return TILEDB_ERR;
-
-  // Check workspace name length
-  if (save_error(ctx, check_name_length("workspace", workspace, nullptr)))
-    return TILEDB_ERR;
-
-  // Create the workspace
-  if (save_error(ctx, ctx->storage_manager_->workspace_create(workspace)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
 }
 
 /* ****************************** */

@@ -42,9 +42,9 @@ int main() {
   tiledb_metadata_init(
       tiledb_ctx,                                    // Context
       &tiledb_metadata,                              // Metadata object
-      "my_workspace/sparse_arrays/my_array_B/meta",  // Metadata name
+      "my_group/sparse_arrays/my_array_B/meta",      // Metadata name
       TILEDB_METADATA_WRITE,                         // Mode
-      nullptr,                                          // All attributes
+      nullptr,                                       // All attributes
       0);                                            // Number of attributes 
 
   // Prepare cell buffers

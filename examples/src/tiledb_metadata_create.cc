@@ -38,7 +38,7 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Prepare parameters for metadata schema
-  const char* metadata_name = "my_workspace/sparse_arrays/my_array_B/meta";
+  const char* metadata_name = "my_group/sparse_arrays/my_array_B/meta";
   const char* attributes[] = { "a1", "a2" }; // Two attributes
   const int cell_val_num[] = 
   {

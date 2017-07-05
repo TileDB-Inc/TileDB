@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -70,7 +70,6 @@
 #define TILEDB_BOOK_KEEPING_FILENAME "__book_keeping"
 #define TILEDB_FRAGMENT_FILENAME "__tiledb_fragment.tdb"
 #define TILEDB_GROUP_FILENAME "__tiledb_group.tdb"
-#define TILEDB_WORKSPACE_FILENAME "__tiledb_workspace.tdb"
 /**@}*/
 
 namespace tiledb {
@@ -84,7 +83,7 @@ namespace tiledb {
 
 /**
  * The storage manager, which is repsonsible for creating, deleting, etc. of
- * TileDB objects (i.e., workspaces, groups, arrays and metadata).
+ * TileDB objects (i.e., groups, arrays and metadata).
  */
 class StorageManager {
  public:
@@ -129,20 +128,6 @@ class StorageManager {
   Status init(StorageManagerConfig* config);
 
   /* ********************************* */
-  /*            WORKSPACE              */
-  /* ********************************* */
-
-  /**
-   * Creates a TileDB workspace.
-   *
-   * @param workspace The directory of the workspace to be created. This
-   *     directory should not be inside another TileDB workspace, group, array
-   *     or metadata directory.
-   * @return TILEDB_SM_OK for succes, and TILEDB_SM_ERR for error.
-   */
-  Status workspace_create(const std::string& workspace);
-
-  /* ********************************* */
   /*              GROUP                */
   /* ********************************* */
 
@@ -150,8 +135,6 @@ class StorageManager {
    * Creates a new TileDB group.
    *
    * @param group The directory of the group to be created in the file system.
-   *     This should be a directory whose parent is a TileDB workspace or
-   *     another TileDB group.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   Status group_create(const std::string& group) const;
@@ -427,7 +410,6 @@ class StorageManager {
    *
    * @param dir The input directory.
    * @return It can be one of the following:
-   *    - TILEDB_WORKSPACE
    *    - TILEDB_GROUP
    *    - TILEDB_ARRAY
    *    - TILEDB_METADATA
@@ -446,7 +428,6 @@ class StorageManager {
    *     to set is to TILEDB_NAME_MAX_LEN.
    * @param dir_types The types of the corresponding TileDB objects, which can
    *     be the following (they are self-explanatory):
-   *    - TILEDB_WORKSPACE
    *    - TILEDB_GROUP
    *    - TILEDB_ARRAY
    *    - TILEDB_METADATA
@@ -471,8 +452,8 @@ class StorageManager {
   Status ls_c(const char* parent_dir, int& dir_num) const;
 
   /**
-   * Clears a TileDB directory. The corresponding TileDB object (workspace,
-   * group, array, or metadata) will still exist after the execution of the
+   * Clears a TileDB directory. The corresponding TileDB object
+   * (group, array, or metadata) will still exist after the execution of the
    * function, but it will be empty (i.e., as if it was just created).
    *
    * @param dir The directory to be cleared.
@@ -481,7 +462,7 @@ class StorageManager {
   Status clear(const std::string& dir) const;
 
   /**
-   * Deletes a TileDB directory (workspace, group, array, or metadata) entirely.
+   * Deletes a TileDB directory (group, array, or metadata) entirely.
    *
    * @param dir The directory to be deleted.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
@@ -489,7 +470,7 @@ class StorageManager {
   Status delete_entire(const std::string& dir);
 
   /**
-   * Moves a TileDB directory (workspace, group, array or metadata).
+   * Moves a TileDB directory (group, array or metadata).
    *
    * @param old_dir The old directory.
    * @param new_dir The new directory.
@@ -680,14 +661,6 @@ class StorageManager {
   Status create_group_file(const std::string& dir) const;
 
   /**
-   * Creates a special workspace file inside the workpace directory.
-   *
-   * @param workspace The workspace directory.
-   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
-   */
-  Status create_workspace_file(const std::string& workspace) const;
-
-  /**
    * Clears a TileDB group. The group will still exist after the execution of
    * the function, but it will be empty (i.e., as if it was just created).
    *
@@ -779,34 +752,6 @@ class StorageManager {
    * @return void
    */
   void sort_fragment_names(std::vector<std::string>& fragment_names) const;
-
-  /**
-   * Clears a TileDB workspace. The workspace will still exist after the
-   * execution of the function, but it will be empty (i.e., as if it was just
-   * created).
-   *
-   * @param workspace The workspace to be cleared.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  Status workspace_clear(const std::string& workspace) const;
-
-  /**
-   * Deletes a TileDB workspace entirely.
-   *
-   * @param workspace The workspace to be deleted.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  Status workspace_delete(const std::string& workspace);
-
-  /**
-   * Moves a TileDB workspace.
-   *
-   * @param old_workspace The old workspace directory.
-   * @param new_workspace The new workspace directory.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  Status workspace_move(
-      const std::string& old_workspace, const std::string& new_workspace);
 };
 
 /**

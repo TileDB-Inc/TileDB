@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,6 @@
 #define TILEDB_BOOK_KEEPING_FILENAME "__book_keeping"
 #define TILEDB_FRAGMENT_FILENAME "__tiledb_fragment.tdb"
 #define TILEDB_GROUP_FILENAME "__tiledb_group.tdb"
-#define TILEDB_WORKSPACE_FILENAME "__tiledb_workspace.tdb"
 /**@}*/
 
 namespace tiledb {
@@ -412,14 +411,6 @@ bool is_positive_integer(const char* s);
 /** Returns *true* if the subarray contains a single element. */
 template <class T>
 bool is_unary_subarray(const T* subarray, int dim_num);
-
-/**
- * Checks if the input directory is a workspace.
- *
- * @param dir The directory to be checked.
- * @return *true* if the directory is a workspace, and *false* otherwise.
- */
-bool is_workspace(const std::string& dir);
 
 #ifdef HAVE_MPI
 /**

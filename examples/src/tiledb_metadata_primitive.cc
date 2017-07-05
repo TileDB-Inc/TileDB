@@ -48,7 +48,7 @@ int main() {
   TileDB_MetadataSchema metadata_schema;
   tiledb_metadata_load_schema(
       tiledb_ctx,                                     // Context 
-      "my_workspace/sparse_arrays/my_array_B/meta",   // Metadata name
+      "my_group/sparse_arrays/my_array_B/meta",       // Metadata name
       &metadata_schema);                              // Metadata schema struct
 
   // Print some metadata schema info
@@ -64,9 +64,9 @@ int main() {
   tiledb_metadata_init(
       tiledb_ctx,                                     // Context 
       &tiledb_metadata,                               // Array object
-      "my_workspace/sparse_arrays/my_array_B/meta",   // Array name
+      "my_group/sparse_arrays/my_array_B/meta",       // Array name
       TILEDB_METADATA_READ,                           // Mode
-      nullptr,                                           // Attributes (all)
+      nullptr,                                        // Attributes (all)
       0);                                             // Number of attributes
 
   // Get metadata schema when the metadata object is initialized

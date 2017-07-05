@@ -642,10 +642,7 @@ class ArraySchema {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /**
-   * The array name. It is a directory, whose parent must be a TileDB workspace,
-   * or group.
-   */
+  /** The array name. */
   std::string array_name_;
   /** The attribute names. */
   std::vector<std::string> attributes_;

@@ -5,7 +5,7 @@
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,20 +38,20 @@ int main() {
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, nullptr);
 
-  // Create a workspace
-  int rc = tiledb_workspace_create(tiledb_ctx, "my_workspace");
+  // Create a group
+  int rc = tiledb_group_create(tiledb_ctx, "my_group");
   if(rc == TILEDB_OK)
-    printf("Workspace created successfully!\n");
+    printf("Group created successfully!\n");
   else if(rc == TILEDB_ERR) {
     tiledb_error_t* err = tiledb_error_last(tiledb_ctx);
     printf("%s\n", tiledb_error_message(err)); // prints empty string ""
     tiledb_error_free(err);
   }
 
-  // Create the same workspace again - ERROR
-  rc = tiledb_workspace_create(tiledb_ctx, "my_workspace");
+  // Create the same group again - ERROR
+  rc = tiledb_group_create(tiledb_ctx, "my_group");
   if(rc == TILEDB_OK)
-    printf("Workspace created successfully!\n");
+    printf("Group created successfully!\n");
   else if(rc == TILEDB_ERR) {
     tiledb_error_t* err = tiledb_error_last(tiledb_ctx);
     printf("%s\n", tiledb_error_message(err)); // Print the TileDB error message

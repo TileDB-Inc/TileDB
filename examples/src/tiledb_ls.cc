@@ -78,8 +78,6 @@ int main(int argc, char** argv) {
       printf("METADATA\n");
     else if(dir_types[i] == TILEDB_GROUP)
       printf("GROUP\n");
-    else if(dir_types[i] == TILEDB_WORKSPACE)
-      printf("WORKSPACE\n");
   }
  
   // Clean up
