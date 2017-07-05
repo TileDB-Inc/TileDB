@@ -163,6 +163,9 @@ Status Metadata::init(
       size_t attribute_len = strlen(attributes[i]);
       // Check attribute name length
       if (attributes[i] == nullptr || attribute_len > TILEDB_NAME_MAX_LEN) {
+        for (int attr = 0; attr < i; ++i)
+          delete array_attributes[i];
+        delete[] array_attributes;
         std::string errmsg = "Invalid attribute name length";
         PRINT_ERROR(errmsg);
         return Status::MetadataError(errmsg);
@@ -223,6 +226,9 @@ Status Metadata::reset_attributes(const char** attributes, int attribute_num) {
       size_t attribute_len = strlen(attributes[i]);
       // Check attribute name length
       if (attributes[i] == nullptr || attribute_len > TILEDB_NAME_MAX_LEN) {
+        for (int attr = 0; attr < i; ++i)
+          delete array_attributes[i];
+        delete[] array_attributes;
         std::string errmsg = "Invalid attribute name length";
         PRINT_ERROR(errmsg);
         return Status::MetadataError(errmsg);
@@ -312,6 +318,7 @@ void Metadata::compute_array_coords(
     if (null_char_found) {
       if (keys_num == keys_num_allocated) {
         keys_num_allocated *= 2;
+        // TODO: this can leak if realloc fails
         keys_offsets =
             (size_t*)realloc(keys_offsets, keys_num_allocated * sizeof(size_t));
       }
