@@ -417,7 +417,7 @@ int tiledb_array_init(
 
   // Allocate memory for the array struct
   *tiledb_array = (TileDB_Array*)malloc(sizeof(struct TileDB_Array));
-  if (tiledb_array == nullptr)
+  if (*tiledb_array == nullptr)
     return TILEDB_OOM;
 
   // Set TileDB context
@@ -1392,19 +1392,19 @@ int tiledb_array_aio_read(
   TileDB_CTX* ctx = tiledb_array->ctx_;
 
   // Copy the AIO request
-  AIO_Request* aio_request = (AIO_Request*)malloc(sizeof(struct AIO_Request));
-  aio_request->id_ = (size_t)tiledb_aio_request;
-  aio_request->buffers_ = tiledb_aio_request->buffers_;
-  aio_request->buffer_sizes_ = tiledb_aio_request->buffer_sizes_;
-  aio_request->mode_ =
+  AIO_Request aio_request;
+  aio_request.id_ = (size_t)tiledb_aio_request;
+  aio_request.buffers_ = tiledb_aio_request->buffers_;
+  aio_request.buffer_sizes_ = tiledb_aio_request->buffer_sizes_;
+  aio_request.mode_ =
       static_cast<tiledb_array_mode_t>(tiledb_array->array_->mode());
-  aio_request->status_ = &(tiledb_aio_request->status_);
-  aio_request->subarray_ = tiledb_aio_request->subarray_;
-  aio_request->completion_handle_ = tiledb_aio_request->completion_handle_;
-  aio_request->completion_data_ = tiledb_aio_request->completion_data_;
+  aio_request.status_ = &(tiledb_aio_request->status_);
+  aio_request.subarray_ = tiledb_aio_request->subarray_;
+  aio_request.completion_handle_ = tiledb_aio_request->completion_handle_;
+  aio_request.completion_data_ = tiledb_aio_request->completion_data_;
 
   // Submit the AIO read request
-  if (save_error(ctx, tiledb_array->array_->aio_read(aio_request)))
+  if (save_error(ctx, tiledb_array->array_->aio_read(&aio_request)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1418,19 +1418,19 @@ int tiledb_array_aio_write(
   TileDB_CTX* ctx = tiledb_array->ctx_;
 
   // Copy the AIO request
-  AIO_Request* aio_request = (AIO_Request*)malloc(sizeof(struct AIO_Request));
-  aio_request->id_ = (size_t)tiledb_aio_request;
-  aio_request->buffers_ = tiledb_aio_request->buffers_;
-  aio_request->buffer_sizes_ = tiledb_aio_request->buffer_sizes_;
-  aio_request->mode_ =
+  AIO_Request aio_request;
+  aio_request.id_ = (size_t)tiledb_aio_request;
+  aio_request.buffers_ = tiledb_aio_request->buffers_;
+  aio_request.buffer_sizes_ = tiledb_aio_request->buffer_sizes_;
+  aio_request.mode_ =
       static_cast<tiledb_array_mode_t>(tiledb_array->array_->mode());
-  aio_request->status_ = &(tiledb_aio_request->status_);
-  aio_request->subarray_ = tiledb_aio_request->subarray_;
-  aio_request->completion_handle_ = tiledb_aio_request->completion_handle_;
-  aio_request->completion_data_ = tiledb_aio_request->completion_data_;
+  aio_request.status_ = &(tiledb_aio_request->status_);
+  aio_request.subarray_ = tiledb_aio_request->subarray_;
+  aio_request.completion_handle_ = tiledb_aio_request->completion_handle_;
+  aio_request.completion_data_ = tiledb_aio_request->completion_data_;
 
   // Submit the AIO write request
-  if (save_error(ctx, tiledb_array->array_->aio_write(aio_request)))
+  if (save_error(ctx, tiledb_array->array_->aio_write(&aio_request)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
