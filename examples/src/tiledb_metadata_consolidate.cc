@@ -40,7 +40,7 @@ int main() {
   // Consolidate metadata
   tiledb_metadata_consolidate(
       tiledb_ctx, 
-      "my_workspace/sparse_arrays/my_array_B/meta"); 
+      "my_group/sparse_arrays/my_array_B/meta");
 
   // Finalize context
   tiledb_ctx_finalize(tiledb_ctx);

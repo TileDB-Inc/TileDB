@@ -47,7 +47,7 @@ int main() {
   TileDB_ArraySchema array_schema;
   tiledb_array_load_schema(
       tiledb_ctx,                               // Context 
-      "my_workspace/dense_arrays/my_array_A",   // Array name
+      "my_group/dense_arrays/my_array_A",       // Array name
       &array_schema);                           // Array schema struct
 
   // Print some array schema info
@@ -63,7 +63,7 @@ int main() {
   tiledb_array_init(
       tiledb_ctx,                                // Context 
       &tiledb_array,                             // Array object
-      "my_workspace/sparse_arrays/my_array_B",   // Array name
+      "my_group/sparse_arrays/my_array_B",       // Array name
       TILEDB_ARRAY_READ,                         // Mode
       nullptr,                                      // Subarray (whole domain)
       nullptr,                                      // Attributes (all attributes)

@@ -52,7 +52,7 @@ int main() {
   tiledb_metadata_iterator_init(
       tiledb_ctx,                                    // Context
       &tiledb_metadata_iterator,                     // Metadata iterator
-      "my_workspace/sparse_arrays/my_array_B/meta",  // Metadata name
+      "my_group/sparse_arrays/my_array_B/meta",      // Metadata name
       attributes,                                    // Attributes
       1,                                             // Number of attributes
       buffers,                                       // Buffers for internal use

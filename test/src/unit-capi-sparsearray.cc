@@ -44,7 +44,7 @@
 
 struct SparseArrayFx {
   // Workspace folder name
-  const std::string WORKSPACE = ".__workspace/";
+  const std::string GROUP = ".__group/";
 
   // Array name
   std::string array_name_;
@@ -63,15 +63,15 @@ struct SparseArrayFx {
     rc = tiledb_ctx_init(&tiledb_ctx_, nullptr);
     assert(rc == TILEDB_OK);
 
-    // Create workspace, delete it if it already exists
-    std::string cmd = "test -d " + WORKSPACE;
+    // Create group, delete it if it already exists
+    std::string cmd = "test -d " + GROUP;
     rc = system(cmd.c_str());
     if (rc == 0) {
-      cmd = "rm -rf " + WORKSPACE;
+      cmd = "rm -rf " + GROUP;
       rc = system(cmd.c_str());
       assert(rc == 0);
     }
-    rc = tiledb_workspace_create(tiledb_ctx_, WORKSPACE.c_str());
+    rc = tiledb_group_create(tiledb_ctx_, GROUP.c_str());
     assert(rc == TILEDB_OK);
   }
 
@@ -83,8 +83,8 @@ struct SparseArrayFx {
     rc = tiledb_ctx_finalize(tiledb_ctx_);
     assert(rc == TILEDB_OK);
 
-    // Remove the temporary workspace
-    std::string cmd = "rm -rf " + WORKSPACE;
+    // Remove the temporary group
+    std::string cmd = "rm -rf " + GROUP;
     rc = system(cmd.c_str());
     assert(rc == 0);
   }
@@ -247,7 +247,7 @@ struct SparseArrayFx {
 
   /** Sets the array name for the current test. */
   void set_array_name(const char* name) {
-    array_name_ = WORKSPACE + name;
+    array_name_ = GROUP + name;
   }
 
   /**

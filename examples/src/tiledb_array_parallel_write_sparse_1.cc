@@ -51,7 +51,7 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, nullptr);
 
   // Array name
-  const char* array_name = "my_workspace/sparse_arrays/my_array_B";
+  const char* array_name = "my_group/sparse_arrays/my_array_B";
 
   // Prepare cell buffers
   // --- First write ---

@@ -34,9 +34,7 @@
 #include <iostream>
 
 void print_dir_type(int type) {
-  if(type == TILEDB_WORKSPACE) 
-    std::cout << "Workspace\n";
-  else if(type == TILEDB_GROUP) 
+ if(type == TILEDB_GROUP)
     std::cout << "Group\n";
   else if(type == TILEDB_ARRAY) 
     std::cout << "Array\n";
@@ -53,19 +51,15 @@ int main() {
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, nullptr);
 
-  // Create a workspace
-  tiledb_workspace_create(tiledb_ctx, "my_workspace");
-
-  // Create a group in the worskpace
-  tiledb_group_create(tiledb_ctx, "my_workspace/dense_arrays");
-
-  // Create two groups in the worskpace
-  tiledb_group_create(tiledb_ctx, "my_workspace/sparse_arrays");
+  // Create groups
+  tiledb_group_create(tiledb_ctx, "my_group");
+  tiledb_group_create(tiledb_ctx, "my_group/dense_arrays");
+  tiledb_group_create(tiledb_ctx, "my_group/sparse_arrays");
 
   // Check types
-  print_dir_type(tiledb_dir_type(tiledb_ctx, "my_workspace"));
-  print_dir_type(tiledb_dir_type(tiledb_ctx, "my_workspace/dense_arrays"));
-  print_dir_type(tiledb_dir_type(tiledb_ctx, "my_workspace/array"));
+  print_dir_type(tiledb_dir_type(tiledb_ctx, "my_group"));
+  print_dir_type(tiledb_dir_type(tiledb_ctx, "my_group/dense_arrays"));
+  print_dir_type(tiledb_dir_type(tiledb_ctx, "my_group/array"));
 
   // Finalize context
   tiledb_ctx_finalize(tiledb_ctx);

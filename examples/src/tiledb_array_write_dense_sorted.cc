@@ -48,10 +48,10 @@ int main() {
   tiledb_array_init(
       tiledb_ctx,                                // Context 
       &tiledb_array,                             // Array object
-      "my_workspace/dense_arrays/my_array_A",    // Array name
+      "my_group/dense_arrays/my_array_A",        // Array name
       TILEDB_ARRAY_WRITE_SORTED_ROW,             // Mode
       subarray,                                  // Subarray
-      nullptr,                                      // All attributes
+      nullptr,                                   // All attributes
       0);                                        // Number of attributes
 
   // Prepare cell buffers

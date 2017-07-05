@@ -38,10 +38,7 @@
 
 /** Specifies the array schema. */
 typedef struct ArraySchemaC {
-  /**
-   * The array name. It is a directory, whose parent must be a TileDB workspace,
-   * or group.
-   */
+  /** The array name. */
   char* array_name_;
   /** The attribute names. */
   char** attributes_;

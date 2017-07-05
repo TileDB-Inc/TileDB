@@ -51,7 +51,7 @@ int main() {
   tiledb_ctx_init(&tiledb_ctx, NULL);
 
   // Array name
-  const char* array_name = "my_workspace/dense_arrays/my_array_A";
+  const char* array_name = "my_group/dense_arrays/my_array_A";
 
   // Prepare cell buffers
   // --- Upper left tile ---
