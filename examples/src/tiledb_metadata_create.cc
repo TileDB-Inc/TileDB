@@ -45,13 +45,13 @@ int main() {
       1,                           // a1
       TILEDB_VAR_NUM               // a2
   };
-  const int compression[] = 
+  const tiledb_compressor_t compression[] =
   { 
         TILEDB_GZIP,              // a1 
         TILEDB_GZIP,              // a2
         TILEDB_NO_COMPRESSION     // TILEDB_KEY
   };
-  const int types[] = 
+  const tiledb_datatype_t types[] =
   { 
       TILEDB_INT32,                // a1
       TILEDB_CHAR                  // a2

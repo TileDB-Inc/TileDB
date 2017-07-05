@@ -31,7 +31,6 @@
  */
 
 #include "write_state.h"
-#include <blosc.h>
 #include <bzlib.h>
 #include <fcntl.h>
 #include <lz4.h>
@@ -41,6 +40,7 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include "blosc.h"
 #include "comparators.h"
 #include "status.h"
 #include "tiledb_constants.h"
@@ -184,7 +184,7 @@ Status WriteState::sync() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
-  int write_method = fragment_->array()->config()->write_method();
+  IO write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
@@ -195,9 +195,9 @@ Status WriteState::sync() {
     // For all attributes
     filename = fragment_->fragment_name() + "/" +
                array_schema->attribute(attribute_id) + TILEDB_FILE_SUFFIX;
-    if (write_method == TILEDB_IO_WRITE) {
+    if (write_method == IO::WRITE) {
       RETURN_NOT_OK(utils::sync(filename.c_str()));
-    } else if (write_method == TILEDB_IO_MPI) {
+    } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
       RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
@@ -215,9 +215,9 @@ Status WriteState::sync() {
       filename = fragment_->fragment_name() + "/" +
                  array_schema->attribute(attribute_id) + "_var" +
                  TILEDB_FILE_SUFFIX;
-      if (write_method == TILEDB_IO_WRITE) {
+      if (write_method == IO::WRITE) {
         RETURN_NOT_OK(utils::sync(filename.c_str()));
-      } else if (write_method == TILEDB_IO_MPI) {
+      } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
         RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
@@ -234,9 +234,9 @@ Status WriteState::sync() {
 
   // Sync fragment directory
   filename = fragment_->fragment_name();
-  if (write_method == TILEDB_IO_WRITE) {
+  if (write_method == IO::WRITE) {
     RETURN_NOT_OK(utils::sync(filename.c_str()));
-  } else if (write_method == TILEDB_IO_MPI) {
+  } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
@@ -255,7 +255,7 @@ Status WriteState::sync() {
 Status WriteState::sync_attribute(const std::string& attribute) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int write_method = fragment_->array()->config()->write_method();
+  IO write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
@@ -265,9 +265,9 @@ Status WriteState::sync_attribute(const std::string& attribute) {
 
   // Sync attribute
   filename = fragment_->fragment_name() + "/" + attribute + TILEDB_FILE_SUFFIX;
-  if (write_method == TILEDB_IO_WRITE) {
+  if (write_method == IO::WRITE) {
     RETURN_NOT_OK(utils::sync(filename.c_str()));
-  } else if (write_method == TILEDB_IO_MPI) {
+  } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
@@ -283,9 +283,9 @@ Status WriteState::sync_attribute(const std::string& attribute) {
   if (array_schema->var_size(attribute_id)) {
     filename = fragment_->fragment_name() + "/" + attribute + "_var" +
                TILEDB_FILE_SUFFIX;
-    if (write_method == TILEDB_IO_WRITE) {
+    if (write_method == IO::WRITE) {
       RETURN_NOT_OK(utils::sync(filename.c_str()));
-    } else if (write_method == TILEDB_IO_MPI) {
+    } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
       RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
@@ -300,9 +300,9 @@ Status WriteState::sync_attribute(const std::string& attribute) {
   }
   // Sync fragment directory
   filename = fragment_->fragment_name();
-  if (write_method == TILEDB_IO_WRITE) {
+  if (write_method == IO::WRITE) {
     RETURN_NOT_OK(utils::sync(filename.c_str()));
-  } else if (write_method == TILEDB_IO_MPI) {
+  } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
@@ -349,14 +349,14 @@ Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   }
 
   // Dispatch the proper write command
-  if (fragment_->mode() == TILEDB_ARRAY_WRITE ||
-      fragment_->mode() == TILEDB_ARRAY_WRITE_SORTED_COL ||
-      fragment_->mode() == TILEDB_ARRAY_WRITE_SORTED_ROW) {  // SORTED
-    if (fragment_->dense())                                  // DENSE FRAGMENT
+  if (fragment_->mode() == ArrayMode::WRITE ||
+      fragment_->mode() == ArrayMode::WRITE_SORTED_COL ||
+      fragment_->mode() == ArrayMode::WRITE_SORTED_ROW) {  // SORTED
+    if (fragment_->dense())                                // DENSE FRAGMENT
       return write_dense(buffers, buffer_sizes);
     else  // SPARSE FRAGMENT
       return write_sparse(buffers, buffer_sizes);
-  } else if (fragment_->mode() == TILEDB_ARRAY_WRITE_UNSORTED) {  // UNSORTED
+  } else if (fragment_->mode() == ArrayMode::WRITE_UNSORTED) {  // UNSORTED
     return write_sparse_unsorted(buffers, buffer_sizes);
   } else {
     std::string errmsg = "Cannot write to fragment; Invalid mode";
@@ -376,46 +376,51 @@ Status WriteState::compress_tile(
     size_t& tile_compressed_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int compression = array_schema->compression(attribute_id);
+  Compressor compression = array_schema->compression(attribute_id);
 
   // Handle different compression
-  if (compression == TILEDB_GZIP)
-    return compress_tile_gzip(
-        attribute_id, tile, tile_size, tile_compressed_size);
-  else if (compression == TILEDB_ZSTD)
-    return compress_tile_zstd(
-        attribute_id, tile, tile_size, tile_compressed_size);
-  else if (compression == TILEDB_LZ4)
-    return compress_tile_lz4(
-        attribute_id, tile, tile_size, tile_compressed_size);
-  else if (compression == TILEDB_BLOSC)
-    return compress_tile_blosc(
-        attribute_id, tile, tile_size, tile_compressed_size, "blosclz");
-  else if (compression == TILEDB_BLOSC_LZ4)
-    return compress_tile_blosc(
-        attribute_id, tile, tile_size, tile_compressed_size, "lz4");
-  else if (compression == TILEDB_BLOSC_LZ4HC)
-    return compress_tile_blosc(
-        attribute_id, tile, tile_size, tile_compressed_size, "lz4hc");
-  else if (compression == TILEDB_BLOSC_SNAPPY)
-    return compress_tile_blosc(
-        attribute_id, tile, tile_size, tile_compressed_size, "snappy");
-  else if (compression == TILEDB_BLOSC_ZLIB)
-    return compress_tile_blosc(
-        attribute_id, tile, tile_size, tile_compressed_size, "zlib");
-  else if (compression == TILEDB_BLOSC_ZSTD)
-    return compress_tile_blosc(
-        attribute_id, tile, tile_size, tile_compressed_size, "zstd");
-  else if (compression == TILEDB_RLE)
-    return compress_tile_rle(
-        attribute_id, tile, tile_size, tile_compressed_size);
-  else if (compression == TILEDB_BZIP2)
-    return compress_tile_bzip2(
-        attribute_id, tile, tile_size, tile_compressed_size);
-
-  // Error
-  assert(0);
-  return Status::Error("should not happen");
+  switch (compression) {
+    case Compressor::GZIP:
+      return compress_tile_gzip(
+          attribute_id, tile, tile_size, tile_compressed_size);
+    case Compressor::ZSTD:
+      return compress_tile_zstd(
+          attribute_id, tile, tile_size, tile_compressed_size);
+    case Compressor::LZ4:
+      return compress_tile_lz4(
+          attribute_id, tile, tile_size, tile_compressed_size);
+    case Compressor::BLOSC:
+      return compress_tile_blosc(
+          attribute_id, tile, tile_size, tile_compressed_size, "blosclz");
+#undef BLOSC_LZ4
+    case Compressor::BLOSC_LZ4:
+      return compress_tile_blosc(
+          attribute_id, tile, tile_size, tile_compressed_size, "lz4");
+#undef BLOSC_LZ4HC
+    case Compressor::BLOSC_LZ4HC:
+      return compress_tile_blosc(
+          attribute_id, tile, tile_size, tile_compressed_size, "lz4hc");
+#undef BLOSC_SNAPPY
+    case Compressor::BLOSC_SNAPPY:
+      return compress_tile_blosc(
+          attribute_id, tile, tile_size, tile_compressed_size, "snappy");
+#undef BLOSC_ZLIB
+    case Compressor::BLOSC_ZLIB:
+      return compress_tile_blosc(
+          attribute_id, tile, tile_size, tile_compressed_size, "zlib");
+#undef BLOSC_ZSTD
+    case Compressor::BLOSC_ZSTD:
+      return compress_tile_blosc(
+          attribute_id, tile, tile_size, tile_compressed_size, "zstd");
+    case Compressor::RLE:
+      return compress_tile_rle(
+          attribute_id, tile, tile_size, tile_compressed_size);
+    case Compressor::BZIP2:
+      return compress_tile_bzip2(
+          attribute_id, tile, tile_size, tile_compressed_size);
+    case Compressor::NO_COMPRESSION:
+      return Status::Ok();
+  }
 }
 
 Status WriteState::compress_tile_gzip(
@@ -639,7 +644,7 @@ Status WriteState::compress_tile_rle(
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
-  int order = array_schema->cell_order();
+  Layout order = array_schema->cell_order();
   bool is_coords = (attribute_id == attribute_num);
   size_t value_size = (array_schema->var_size(attribute_id) || is_coords) ?
                           array_schema->type_size(attribute_id) :
@@ -674,7 +679,7 @@ Status WriteState::compress_tile_rle(
         value_size,
         &rle_size));
   } else {
-    if (order == TILEDB_ROW_MAJOR) {
+    if (order == Layout::ROW_MAJOR) {
       RETURN_NOT_OK(utils::RLE_compress_coords_row(
           tile,
           tile_size,
@@ -683,7 +688,7 @@ Status WriteState::compress_tile_rle(
           value_size,
           dim_num,
           &rle_size));
-    } else if (order == TILEDB_COL_MAJOR) {
+    } else if (order == Layout::COL_MAJOR) {
       RETURN_NOT_OK(utils::RLE_compress_coords_col(
           tile,
           tile_size,
@@ -781,11 +786,11 @@ Status WriteState::compress_and_write_tile(int attribute_id) {
 
   // Write segment to file
   Status st;
-  int write_method = fragment_->array()->config()->write_method();
-  if (write_method == TILEDB_IO_WRITE) {
+  IO write_method = fragment_->array()->config()->write_method();
+  if (write_method == IO::WRITE) {
     st = utils::write_to_file(
         filename.c_str(), tile_compressed_, tile_compressed_size);
-  } else if (write_method == TILEDB_IO_MPI) {
+  } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
         fragment_->array()->config()->mpi_comm(),
@@ -838,11 +843,11 @@ Status WriteState::compress_and_write_tile_var(int attribute_id) {
 
   // Write segment to file
   Status st;
-  int write_method = fragment_->array()->config()->write_method();
-  if (write_method == TILEDB_IO_WRITE) {
+  IO write_method = fragment_->array()->config()->write_method();
+  if (write_method == IO::WRITE) {
     st = utils::write_to_file(
         filename.c_str(), tile_compressed_, tile_compressed_size);
-  } else if (write_method == TILEDB_IO_MPI) {
+  } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
         fragment_->array()->config()->mpi_comm(),
@@ -916,28 +921,28 @@ void WriteState::sort_cell_pos(
     std::vector<int64_t>& cell_pos) const {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int coords_type = array_schema->coords_type();
+  Datatype coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if (coords_type == TILEDB_INT32)
+  if (coords_type == Datatype::INT32)
     sort_cell_pos<int>(buffer, buffer_size, cell_pos);
-  else if (coords_type == TILEDB_INT64)
+  else if (coords_type == Datatype::INT64)
     sort_cell_pos<int64_t>(buffer, buffer_size, cell_pos);
-  else if (coords_type == TILEDB_FLOAT32)
+  else if (coords_type == Datatype::FLOAT32)
     sort_cell_pos<float>(buffer, buffer_size, cell_pos);
-  else if (coords_type == TILEDB_FLOAT64)
+  else if (coords_type == Datatype::FLOAT64)
     sort_cell_pos<double>(buffer, buffer_size, cell_pos);
-  else if (coords_type == TILEDB_INT8)
+  else if (coords_type == Datatype::INT8)
     sort_cell_pos<int8_t>(buffer, buffer_size, cell_pos);
-  else if (coords_type == TILEDB_UINT8)
+  else if (coords_type == Datatype::UINT8)
     sort_cell_pos<uint8_t>(buffer, buffer_size, cell_pos);
-  else if (coords_type == TILEDB_INT16)
+  else if (coords_type == Datatype::INT16)
     sort_cell_pos<int16_t>(buffer, buffer_size, cell_pos);
-  else if (coords_type == TILEDB_UINT16)
+  else if (coords_type == Datatype::UINT16)
     sort_cell_pos<uint16_t>(buffer, buffer_size, cell_pos);
-  else if (coords_type == TILEDB_UINT32)
+  else if (coords_type == Datatype::UINT32)
     sort_cell_pos<uint32_t>(buffer, buffer_size, cell_pos);
-  else if (coords_type == TILEDB_UINT64)
+  else if (coords_type == Datatype::UINT64)
     sort_cell_pos<uint64_t>(buffer, buffer_size, cell_pos);
 }
 
@@ -951,7 +956,7 @@ void WriteState::sort_cell_pos(
   int dim_num = array_schema->dim_num();
   size_t coords_size = array_schema->coords_size();
   int64_t buffer_cell_num = buffer_size / coords_size;
-  int cell_order = array_schema->cell_order();
+  Layout cell_order = array_schema->cell_order();
   const T* buffer_T = static_cast<const T*>(buffer);
 
   // Populate cell_pos
@@ -961,10 +966,10 @@ void WriteState::sort_cell_pos(
 
   // Invoke the proper sort function, based on the cell order
   if (array_schema->tile_extents() == nullptr) {  // NO TILE GRID
-    if (cell_order == TILEDB_ROW_MAJOR) {
+    if (cell_order == Layout::ROW_MAJOR) {
       // Sort cell positions
       SORT(cell_pos.begin(), cell_pos.end(), SmallerRow<T>(buffer_T, dim_num));
-    } else if (cell_order == TILEDB_COL_MAJOR) {
+    } else if (cell_order == Layout::COL_MAJOR) {
       // Sort cell positions
       SORT(cell_pos.begin(), cell_pos.end(), SmallerCol<T>(buffer_T, dim_num));
     } else {
@@ -978,12 +983,12 @@ void WriteState::sort_cell_pos(
       ids[i] = array_schema->tile_id<T>(&buffer_T[i * dim_num]);
 
     // Sort cell positions
-    if (cell_order == TILEDB_ROW_MAJOR) {
+    if (cell_order == Layout::ROW_MAJOR) {
       SORT(
           cell_pos.begin(),
           cell_pos.end(),
           SmallerIdRow<T>(buffer_T, dim_num, ids));
-    } else if (cell_order == TILEDB_COL_MAJOR) {
+    } else if (cell_order == Layout::COL_MAJOR) {
       SORT(
           cell_pos.begin(),
           cell_pos.end(),
@@ -997,28 +1002,28 @@ void WriteState::sort_cell_pos(
 void WriteState::update_book_keeping(const void* buffer, size_t buffer_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int coords_type = array_schema->coords_type();
+  Datatype coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
-  if (coords_type == TILEDB_INT32)
+  if (coords_type == Datatype::INT32)
     update_book_keeping<int>(buffer, buffer_size);
-  else if (coords_type == TILEDB_INT64)
+  else if (coords_type == Datatype::INT64)
     update_book_keeping<int64_t>(buffer, buffer_size);
-  else if (coords_type == TILEDB_FLOAT32)
+  else if (coords_type == Datatype::FLOAT32)
     update_book_keeping<float>(buffer, buffer_size);
-  else if (coords_type == TILEDB_FLOAT64)
+  else if (coords_type == Datatype::FLOAT64)
     update_book_keeping<double>(buffer, buffer_size);
-  else if (coords_type == TILEDB_INT8)
+  else if (coords_type == Datatype::INT8)
     update_book_keeping<int8_t>(buffer, buffer_size);
-  else if (coords_type == TILEDB_UINT8)
+  else if (coords_type == Datatype::UINT8)
     update_book_keeping<uint8_t>(buffer, buffer_size);
-  else if (coords_type == TILEDB_INT16)
+  else if (coords_type == Datatype::INT16)
     update_book_keeping<int16_t>(buffer, buffer_size);
-  else if (coords_type == TILEDB_UINT16)
+  else if (coords_type == Datatype::UINT16)
     update_book_keeping<uint16_t>(buffer, buffer_size);
-  else if (coords_type == TILEDB_UINT32)
+  else if (coords_type == Datatype::UINT32)
     update_book_keeping<uint32_t>(buffer, buffer_size);
-  else if (coords_type == TILEDB_UINT64)
+  else if (coords_type == Datatype::UINT64)
     update_book_keeping<uint64_t>(buffer, buffer_size);
 }
 
@@ -1078,7 +1083,7 @@ Status WriteState::write_last_tile() {
   // Flush the last tile for each compressed attribute (it is still in main
   // memory
   for (int i = 0; i < attribute_num + 1; ++i) {
-    if (array_schema->compression(i) != TILEDB_NO_COMPRESSION) {
+    if (array_schema->compression(i) != Compressor::NO_COMPRESSION) {
       RETURN_NOT_OK(compress_and_write_tile(i));
       if (array_schema->var_size(i)) {
         RETURN_NOT_OK(compress_and_write_tile_var(i));
@@ -1126,10 +1131,10 @@ Status WriteState::write_dense_attr(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int compression = array_schema->compression(attribute_id);
+  Compressor compression = array_schema->compression(attribute_id);
 
   // No compression
-  if (compression == TILEDB_NO_COMPRESSION)
+  if (compression == Compressor::NO_COMPRESSION)
     return write_dense_attr_cmp_none(attribute_id, buffer, buffer_size);
   else  // All compressions
     return write_dense_attr_cmp(attribute_id, buffer, buffer_size);
@@ -1145,10 +1150,10 @@ Status WriteState::write_dense_attr_cmp_none(
                          array_schema->attribute(attribute_id) +
                          TILEDB_FILE_SUFFIX;
   Status st;
-  int write_method = fragment_->array()->config()->write_method();
-  if (write_method == TILEDB_IO_WRITE) {
+  IO write_method = fragment_->array()->config()->write_method();
+  if (write_method == IO::WRITE) {
     st = utils::write_to_file(filename.c_str(), buffer, buffer_size);
-  } else if (write_method == TILEDB_IO_MPI) {
+  } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
         fragment_->array()->config()->mpi_comm(),
@@ -1240,10 +1245,10 @@ Status WriteState::write_dense_attr_var(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int compression = array_schema->compression(attribute_id);
+  Compressor compression = array_schema->compression(attribute_id);
 
   // No compression
-  if (compression == TILEDB_NO_COMPRESSION)
+  if (compression == Compressor::NO_COMPRESSION)
     return write_dense_attr_var_cmp_none(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
   else  // All compressions
@@ -1270,14 +1275,14 @@ Status WriteState::write_dense_attr_var_cmp_none(
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema->attribute(attribute_id) + "_var" +
                          TILEDB_FILE_SUFFIX;
-  int write_method = fragment_->array()->config()->write_method();
+  IO write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
-  if (write_method == TILEDB_IO_WRITE) {
+  if (write_method == IO::WRITE) {
     RETURN_NOT_OK(
         utils::write_to_file(filename.c_str(), buffer_var, buffer_var_size));
-  } else if (write_method == TILEDB_IO_MPI) {
+  } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_write_to_file(
         mpi_comm, filename.c_str(), buffer_var, buffer_var_size));
@@ -1298,9 +1303,9 @@ Status WriteState::write_dense_attr_var_cmp_none(
   filename = fragment_->fragment_name() + "/" +
              array_schema->attribute(attribute_id) + TILEDB_FILE_SUFFIX;
   Status st;
-  if (write_method == TILEDB_IO_WRITE) {
+  if (write_method == IO::WRITE) {
     st = utils::write_to_file(filename.c_str(), shifted_buffer, buffer_size);
-  } else if (write_method == TILEDB_IO_MPI) {
+  } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
         mpi_comm, filename.c_str(), shifted_buffer, buffer_size);
@@ -1534,10 +1539,10 @@ Status WriteState::write_sparse_attr(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int compression = array_schema->compression(attribute_id);
+  Compressor compression = array_schema->compression(attribute_id);
 
   // No compression
-  if (compression == TILEDB_NO_COMPRESSION)
+  if (compression == Compressor::NO_COMPRESSION)
     return write_sparse_attr_cmp_none(attribute_id, buffer, buffer_size);
   else  // All compressions
     return write_sparse_attr_cmp(attribute_id, buffer, buffer_size);
@@ -1558,13 +1563,13 @@ Status WriteState::write_sparse_attr_cmp_none(
                          array_schema->attribute(attribute_id) +
                          TILEDB_FILE_SUFFIX;
   Status st;
-  int write_method = fragment_->array()->config()->write_method();
+  IO write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
-  if (write_method == TILEDB_IO_WRITE) {
+  if (write_method == IO::WRITE) {
     st = utils::write_to_file(filename.c_str(), buffer, buffer_size);
-  } else if (write_method == TILEDB_IO_MPI) {
+  } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(mpi_comm, filename.c_str(), buffer, buffer_size);
 #else
@@ -1654,10 +1659,10 @@ Status WriteState::write_sparse_attr_var(
 
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int compression = array_schema->compression(attribute_id);
+  Compressor compression = array_schema->compression(attribute_id);
 
   // No compression
-  if (compression == TILEDB_NO_COMPRESSION)
+  if (compression == Compressor::NO_COMPRESSION)
     return write_sparse_attr_var_cmp_none(
         attribute_id, buffer, buffer_size, buffer_var, buffer_var_size);
   else  //  All compressions
@@ -1682,13 +1687,13 @@ Status WriteState::write_sparse_attr_var_cmp_none(
                          array_schema->attribute(attribute_id) + "_var" +
                          TILEDB_FILE_SUFFIX;
   Status st;
-  int write_method = fragment_->array()->config()->write_method();
+  IO write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
-  if (write_method == TILEDB_IO_WRITE) {
+  if (write_method == IO::WRITE) {
     st = utils::write_to_file(filename.c_str(), buffer_var, buffer_var_size);
-  } else if (write_method == TILEDB_IO_MPI) {
+  } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
         mpi_comm, filename.c_str(), buffer_var, buffer_var_size);
@@ -1711,9 +1716,9 @@ Status WriteState::write_sparse_attr_var_cmp_none(
   // Write buffer offsets to file
   filename = fragment_->fragment_name() + "/" +
              array_schema->attribute(attribute_id) + TILEDB_FILE_SUFFIX;
-  if (write_method == TILEDB_IO_WRITE) {
+  if (write_method == IO::WRITE) {
     st = utils::write_to_file(filename.c_str(), shifted_buffer, buffer_size);
-  } else if (write_method == TILEDB_IO_MPI) {
+  } else if (write_method == IO::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
         mpi_comm, filename.c_str(), shifted_buffer, buffer_size);
@@ -1971,10 +1976,10 @@ Status WriteState::write_sparse_unsorted_attr(
     const std::vector<int64_t>& cell_pos) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int compression = array_schema->compression(attribute_id);
+  Compressor compression = array_schema->compression(attribute_id);
 
   // No compression
-  if (compression == TILEDB_NO_COMPRESSION)
+  if (compression == Compressor::NO_COMPRESSION)
     return write_sparse_unsorted_attr_cmp_none(
         attribute_id, buffer, buffer_size, cell_pos);
   else  // All compressions
@@ -2106,10 +2111,10 @@ Status WriteState::write_sparse_unsorted_attr_var(
     const std::vector<int64_t>& cell_pos) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int compression = array_schema->compression(attribute_id);
+  Compressor compression = array_schema->compression(attribute_id);
 
   // No compression
-  if (compression == TILEDB_NO_COMPRESSION)
+  if (compression == Compressor::NO_COMPRESSION)
     return write_sparse_unsorted_attr_var_cmp_none(
         attribute_id,
         buffer,

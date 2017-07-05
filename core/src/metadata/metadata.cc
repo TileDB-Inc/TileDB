@@ -124,7 +124,7 @@ Status Metadata::init(
     const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
     const std::vector<BookKeeping*>& book_keeping,
-    int mode,
+    tiledb_metadata_mode_t mode,
     const char** attributes,
     int attribute_num,
     const StorageManagerConfig* config) {
@@ -137,8 +137,9 @@ Status Metadata::init(
 
   // Set mode
   mode_ = mode;
-  int array_mode = (mode == TILEDB_METADATA_READ) ? TILEDB_ARRAY_READ :
-                                                    TILEDB_ARRAY_WRITE_UNSORTED;
+  ArrayMode array_mode = (mode == TILEDB_METADATA_READ) ?
+                             ArrayMode::READ :
+                             ArrayMode::WRITE_UNSORTED;
 
   // Set attributes
   char** array_attributes;

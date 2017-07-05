@@ -36,6 +36,7 @@
 #include <pthread.h>
 #include <queue>
 #include "aio_request.h"
+#include "array_mode.h"
 #include "array_read_state.h"
 #include "array_schema.h"
 #include "array_sorted_read_state.h"
@@ -120,7 +121,7 @@ class Array {
   std::vector<Fragment*> fragments() const;
 
   /** Returns the array mode. */
-  int mode() const;
+  ArrayMode mode() const;
 
   /**
    * Checks if *at least one* attribute buffer has overflown during a read
@@ -270,7 +271,7 @@ class Array {
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
       const std::vector<BookKeeping*>& book_keeping,
-      int mode,
+      ArrayMode mode,
       const char** attributes,
       int attribute_num,
       const void* subarray,
@@ -451,7 +452,7 @@ class Array {
    *    - TILEDB_ARRAY_READ_SORTED_COL
    *    - TILEDB_ARRAY_READ_SORTED_ROW
    */
-  int mode_;
+  ArrayMode mode_;
   /**
    * The subarray in which the array is constrained. Note that the type of the
    * range must be the same as the type of the array coordinates.

@@ -211,7 +211,7 @@ class StorageManager {
   Status array_init(
       Array*& array,
       const char* array_dir,
-      int mode,
+      ArrayMode mode,
       const void* subarray,
       const char** attributes,
       int attribute_num);
@@ -281,7 +281,7 @@ class StorageManager {
   Status array_iterator_init(
       ArrayIterator*& array_it,
       const char* array,
-      int mode,
+      ArrayMode mode,
       const void* subarray,
       const char** attributes,
       int attribute_num,
@@ -353,7 +353,7 @@ class StorageManager {
   Status metadata_init(
       Metadata*& metadata,
       const char* metadata_dir,
-      int mode,
+      tiledb_metadata_mode_t mode,
       const char** attributes,
       int attribute_num);
 
@@ -446,7 +446,10 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   Status ls(
-      const char* parent_dir, char** dirs, int* dir_types, int& dir_num) const;
+      const char* parent_dir,
+      char** dirs,
+      tiledb_object_t* dir_types,
+      int& dir_num) const;
 
   /**
    * Counts the TileDB objects in a directory.
@@ -567,7 +570,7 @@ class StorageManager {
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
       std::vector<BookKeeping*>& book_keeping,
-      int mode);
+      ArrayMode mode);
 
   /**
    * Moves a TileDB array.
@@ -592,7 +595,7 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   Status array_open(
-      const std::string& array_name, OpenArray*& open_array, int mode);
+      const std::string& array_name, OpenArray*& open_array, ArrayMode mode);
 
   /**
    * Stores the input array schema into the input array directory (serializing

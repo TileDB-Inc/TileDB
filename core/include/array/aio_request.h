@@ -34,6 +34,7 @@
 #define __AIO_REQUEST_H__
 
 #include <cstdio>
+#include "tiledb.h"
 
 /** Describes an AIO (read or write) request. */
 struct AIO_Request {
@@ -86,10 +87,10 @@ struct AIO_Request {
    *    - TILEDB_AIO_OVERFLOW
    *      At least one of the input buffers overflowed (applicable only to AIO
    *      read requests)
-   *    - TILEDB_AIO_ERR
+   *    - TILEDB_AIO_ERROR
    *      The request caused an error (and thus was canceled).
    */
-  int* status_;
+  tiledb_aio_status_t* status_;
   /**
    * The subarray in which the array read/write will be
    * constrained on. It should be a sequence of [low, high] pairs (one

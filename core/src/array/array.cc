@@ -217,7 +217,7 @@ std::vector<Fragment*> Array::fragments() const {
   return fragments_;
 }
 
-int Array::mode() const {
+ArrayMode Array::mode() const {
   return mode_;
 }
 
@@ -271,8 +271,8 @@ Status Array::read(void** buffers, size_t* buffer_sizes) {
   }
 
   // Handle sorted modes
-  if (mode_ == TILEDB_ARRAY_READ_SORTED_COL ||
-      mode_ == TILEDB_ARRAY_READ_SORTED_ROW) {
+  if (mode_ == ArrayMode::READ_SORTED_COL ||
+      mode_ == ArrayMode::READ_SORTED_ROW) {
     return array_sorted_read_state_->read(buffers, buffer_sizes);
   } else {  // mode_ == TILDB_ARRAY_READ
     return read_default(buffers, buffer_sizes);
@@ -284,7 +284,7 @@ Status Array::read_default(void** buffers, size_t* buffer_sizes) {
 }
 
 bool Array::read_mode() const {
-  return utils::array_read_mode(mode_);
+  return is_read_mode(mode_);
 }
 
 const void* Array::subarray() const {
@@ -292,7 +292,7 @@ const void* Array::subarray() const {
 }
 
 bool Array::write_mode() const {
-  return utils::array_write_mode(mode_);
+  return is_write_mode(mode_);
 }
 
 /* ****************************** */
@@ -316,7 +316,7 @@ Status Array::consolidate(
   // Create new fragment
   new_fragment = new Fragment(this);
   RETURN_NOT_OK(
-      new_fragment->init(new_fragment_name, TILEDB_ARRAY_WRITE, subarray_));
+      new_fragment->init(new_fragment_name, ArrayMode::WRITE, subarray_));
 
   // Consolidate on a per-attribute basis
   Status st;
@@ -492,7 +492,7 @@ Status Array::init(
     const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
     const std::vector<BookKeeping*>& book_keeping,
-    int mode,
+    ArrayMode mode,
     const char** attributes,
     int attribute_num,
     const void* subarray,
@@ -526,7 +526,7 @@ Status Array::init(
   std::vector<std::string> attributes_vec;
   if (attributes == nullptr) {  // Default: all attributes
     attributes_vec = array_schema->attributes();
-    if (array_schema->dense() && mode != TILEDB_ARRAY_WRITE_UNSORTED)
+    if (array_schema->dense() && mode != ArrayMode::WRITE_UNSORTED)
       // Remove coordinates attribute for dense arrays,
       // unless in TILEDB_WRITE_UNSORTED mode
       attributes_vec.pop_back();
@@ -588,8 +588,8 @@ Status Array::init(
     }
 
     // Create ArraySortedWriteState
-    if (mode_ == TILEDB_ARRAY_WRITE_SORTED_COL ||
-        mode_ == TILEDB_ARRAY_WRITE_SORTED_ROW) {
+    if (mode_ == ArrayMode::WRITE_SORTED_COL ||
+        mode_ == ArrayMode::WRITE_SORTED_ROW) {
       array_sorted_write_state_ = new ArraySortedWriteState(this);
       Status st = array_sorted_write_state_->init();
       if (!st.ok()) {
@@ -612,7 +612,7 @@ Status Array::init(
     array_read_state_ = new ArrayReadState(this);
 
     // Create ArraySortedReadState
-    if (mode_ != TILEDB_ARRAY_READ) {
+    if (mode_ != ArrayMode::READ) {
       array_sorted_read_state_ = new ArraySortedReadState(this);
       Status st = array_sorted_read_state_->init();
       if (!st.ok()) {
@@ -722,8 +722,8 @@ Status Array::reset_subarray(const void* subarray) {
     // Re-initialize ArraySortedWriteState
     if (array_sorted_write_state_ != nullptr)
       delete array_sorted_write_state_;
-    if (mode_ == TILEDB_ARRAY_WRITE_SORTED_COL ||
-        mode_ == TILEDB_ARRAY_WRITE_SORTED_ROW) {
+    if (mode_ == ArrayMode::WRITE_SORTED_COL ||
+        mode_ == ArrayMode::WRITE_SORTED_ROW) {
       array_sorted_write_state_ = new ArraySortedWriteState(this);
       Status st = array_sorted_write_state_->init();
       if (!st.ok()) {
@@ -763,7 +763,7 @@ Status Array::reset_subarray(const void* subarray) {
     // Re-initialize ArraySortedReadState
     if (array_sorted_read_state_ != nullptr)
       delete array_sorted_read_state_;
-    if (mode_ != TILEDB_ARRAY_READ) {
+    if (mode_ != ArrayMode::READ) {
       array_sorted_read_state_ = new ArraySortedReadState(this);
       Status st = array_sorted_read_state_->init();
       if (!st.ok()) {
@@ -868,17 +868,16 @@ Status Array::write(const void** buffers, const size_t* buffer_sizes) {
   }
 
   // Write based on mode
-  if (mode_ == TILEDB_ARRAY_WRITE_SORTED_COL ||
-      mode_ == TILEDB_ARRAY_WRITE_SORTED_ROW) {
+  if (mode_ == ArrayMode::WRITE_SORTED_COL ||
+      mode_ == ArrayMode::WRITE_SORTED_ROW) {
     RETURN_NOT_OK(array_sorted_write_state_->write(buffers, buffer_sizes));
-  } else if (
-      mode_ == TILEDB_ARRAY_WRITE || mode_ == TILEDB_ARRAY_WRITE_UNSORTED) {
+  } else if (mode_ == ArrayMode::WRITE || mode_ == ArrayMode::WRITE_UNSORTED) {
     RETURN_NOT_OK(write_default(buffers, buffer_sizes));
   } else {
     assert(0);
   }
   // In all modes except TILEDB_ARRAY_WRITE, the fragment must be finalized
-  if (mode_ != TILEDB_ARRAY_WRITE) {
+  if (mode_ != ArrayMode::WRITE) {
     RETURN_NOT_OK(fragments_[0]->finalize());
     delete fragments_[0];
     fragments_.clear();
@@ -997,7 +996,7 @@ void Array::aio_handle_next_request(AIO_Request* aio_request) {
     if (aio_request->completion_handle_ != nullptr)
       (*(aio_request->completion_handle_))(aio_request->completion_data_);
   } else {  // Error
-    *aio_request->status_ = TILEDB_AIO_ERR;
+    *aio_request->status_ = TILEDB_AIO_ERROR;
   }
 }
 

@@ -131,9 +131,10 @@ void ArraySchema::array_schema_export(ArraySchemaC* array_schema_c) const {
   }
 
   // Set types
-  array_schema_c->types_ = (int*)malloc((attribute_num_ + 1) * sizeof(int));
+  array_schema_c->types_ =
+      (tiledb_datatype_t*)malloc((attribute_num_ + 1) * sizeof(int));
   for (int i = 0; i < attribute_num_ + 1; ++i)
-    array_schema_c->types_[i] = types_[i];
+    array_schema_c->types_[i] = static_cast<tiledb_datatype_t>(types_[i]);
 
   // Set cell val num
   array_schema_c->cell_val_num_ = (int*)malloc((attribute_num_) * sizeof(int));
@@ -141,19 +142,20 @@ void ArraySchema::array_schema_export(ArraySchemaC* array_schema_c) const {
     array_schema_c->cell_val_num_[i] = cell_val_num_[i];
 
   // Set cell order
-  array_schema_c->cell_order_ = cell_order_;
+  array_schema_c->cell_order_ = static_cast<tiledb_layout_t>(cell_order_);
 
   // Set tile order
-  array_schema_c->tile_order_ = tile_order_;
+  array_schema_c->tile_order_ = static_cast<tiledb_layout_t>(tile_order_);
 
   // Set capacity
   array_schema_c->capacity_ = capacity_;
 
   // Set compression
-  array_schema_c->compression_ =
-      (int*)malloc((attribute_num_ + 1) * sizeof(int));
+  array_schema_c->compressor_ =
+      (tiledb_compressor_t*)malloc((attribute_num_ + 1) * sizeof(int));
   for (int i = 0; i < attribute_num_ + 1; ++i)
-    array_schema_c->compression_[i] = compression_[i];
+    array_schema_c->compressor_[i] =
+        static_cast<tiledb_compressor_t>(compressor_[i]);
 }
 
 void ArraySchema::array_schema_export(
@@ -174,9 +176,10 @@ void ArraySchema::array_schema_export(
   }
 
   // Set types
-  metadata_schema_c->types_ = (int*)malloc((attribute_num_ - 1) * sizeof(int));
+  metadata_schema_c->types_ =
+      (tiledb_datatype_t*)malloc((attribute_num_ - 1) * sizeof(int));
   for (int i = 0; i < attribute_num_ - 1; ++i)
-    metadata_schema_c->types_[i] = types_[i];
+    metadata_schema_c->types_[i] = static_cast<tiledb_datatype_t>(types_[i]);
 
   // Set cell val num
   metadata_schema_c->cell_val_num_ =
@@ -188,9 +191,11 @@ void ArraySchema::array_schema_export(
   metadata_schema_c->capacity_ = capacity_;
 
   // Set compression
-  metadata_schema_c->compression_ = (int*)malloc(attribute_num_ * sizeof(int));
+  metadata_schema_c->compressor_ =
+      (tiledb_compressor_t*)malloc(attribute_num_ * sizeof(int));
   for (int i = 0; i < attribute_num_; ++i)
-    metadata_schema_c->compression_[i] = compression_[i];
+    metadata_schema_c->compressor_[i] =
+        static_cast<tiledb_compressor_t>(compressor_[i]);
 }
 
 const std::string& ArraySchema::attribute(int attribute_id) const {
@@ -242,7 +247,7 @@ int64_t ArraySchema::cell_num_per_tile() const {
   return cell_num_per_tile_;
 }
 
-int ArraySchema::cell_order() const {
+Layout ArraySchema::cell_order() const {
   return cell_order_;
 }
 
@@ -258,22 +263,20 @@ int ArraySchema::cell_val_num(int attribute_id) const {
   return cell_val_num_[attribute_id];
 }
 
-int ArraySchema::compression(int attribute_id) const {
-  assert(attribute_id >= 0 && attribute_id <= attribute_num_ + 1);
-
+Compressor ArraySchema::compression(int attr_id) const {
+  assert(attr_id >= 0 && attr_id <= attribute_num_ + 1);
   // Special case for the "search tile", which is essentially the
   // coordinates tile
-  if (attribute_id == attribute_num_ + 1)
-    attribute_id = attribute_num_;
-
-  return compression_[attribute_id];
+  if (attr_id == attribute_num_ + 1)
+    attr_id = attribute_num_;
+  return compressor_.at(attr_id);
 }
 
 size_t ArraySchema::coords_size() const {
   return coords_size_;
 }
 
-int ArraySchema::coords_type() const {
+Datatype ArraySchema::coords_type() const {
   return types_[attribute_num_];
 }
 
@@ -306,53 +309,59 @@ Status ArraySchema::get_attribute_ids(
 }
 
 bool ArraySchema::is_contained_in_tile_slab_col(const void* range) const {
-  if (types_[attribute_num_] == TILEDB_INT32)
-    return is_contained_in_tile_slab_col(static_cast<const int*>(range));
-  else if (types_[attribute_num_] == TILEDB_INT64)
-    return is_contained_in_tile_slab_col(static_cast<const int64_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_FLOAT32)
-    return is_contained_in_tile_slab_col(static_cast<const float*>(range));
-  else if (types_[attribute_num_] == TILEDB_FLOAT64)
-    return is_contained_in_tile_slab_col(static_cast<const double*>(range));
-  else if (types_[attribute_num_] == TILEDB_INT8)
-    return is_contained_in_tile_slab_col(static_cast<const int8_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_UINT8)
-    return is_contained_in_tile_slab_col(static_cast<const uint8_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_INT16)
-    return is_contained_in_tile_slab_col(static_cast<const int16_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_UINT16)
-    return is_contained_in_tile_slab_col(static_cast<const uint16_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_UINT32)
-    return is_contained_in_tile_slab_col(static_cast<const uint32_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_UINT64)
-    return is_contained_in_tile_slab_col(static_cast<const uint64_t*>(range));
-  else
-    return false;
+  Datatype typ = types_.at(attribute_num_);
+  switch (typ) {
+    case Datatype::INT32:
+      return is_contained_in_tile_slab_col(static_cast<const int*>(range));
+    case Datatype::INT64:
+      return is_contained_in_tile_slab_col(static_cast<const int64_t*>(range));
+    case Datatype::FLOAT32:
+      return is_contained_in_tile_slab_col(static_cast<const float*>(range));
+    case Datatype::FLOAT64:
+      return is_contained_in_tile_slab_col(static_cast<const double*>(range));
+    case Datatype::INT8:
+      return is_contained_in_tile_slab_col(static_cast<const int8_t*>(range));
+    case Datatype::UINT8:
+      return is_contained_in_tile_slab_col(static_cast<const uint8_t*>(range));
+    case Datatype::INT16:
+      return is_contained_in_tile_slab_col(static_cast<const int16_t*>(range));
+    case Datatype::UINT16:
+      return is_contained_in_tile_slab_col(static_cast<const uint16_t*>(range));
+    case Datatype::UINT32:
+      return is_contained_in_tile_slab_col(static_cast<const uint32_t*>(range));
+    case Datatype::UINT64:
+      return is_contained_in_tile_slab_col(static_cast<const uint64_t*>(range));
+    default:
+      return false;
+  }
 }
 
 bool ArraySchema::is_contained_in_tile_slab_row(const void* range) const {
-  if (types_[attribute_num_] == TILEDB_INT32)
-    return is_contained_in_tile_slab_row(static_cast<const int*>(range));
-  else if (types_[attribute_num_] == TILEDB_INT64)
-    return is_contained_in_tile_slab_row(static_cast<const int64_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_FLOAT32)
-    return is_contained_in_tile_slab_row(static_cast<const float*>(range));
-  else if (types_[attribute_num_] == TILEDB_FLOAT64)
-    return is_contained_in_tile_slab_row(static_cast<const double*>(range));
-  else if (types_[attribute_num_] == TILEDB_INT8)
-    return is_contained_in_tile_slab_row(static_cast<const int8_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_UINT8)
-    return is_contained_in_tile_slab_row(static_cast<const uint8_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_INT16)
-    return is_contained_in_tile_slab_row(static_cast<const int16_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_UINT16)
-    return is_contained_in_tile_slab_row(static_cast<const uint16_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_UINT32)
-    return is_contained_in_tile_slab_row(static_cast<const uint32_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_UINT64)
-    return is_contained_in_tile_slab_row(static_cast<const uint64_t*>(range));
-  else
-    return false;
+  Datatype typ = types_.at(attribute_num_);
+  switch (typ) {
+    case Datatype::INT32:
+      return is_contained_in_tile_slab_row(static_cast<const int*>(range));
+    case Datatype::INT64:
+      return is_contained_in_tile_slab_row(static_cast<const int64_t*>(range));
+    case Datatype::FLOAT32:
+      return is_contained_in_tile_slab_row(static_cast<const float*>(range));
+    case Datatype::FLOAT64:
+      return is_contained_in_tile_slab_row(static_cast<const double*>(range));
+    case Datatype::INT8:
+      return is_contained_in_tile_slab_row(static_cast<const int8_t*>(range));
+    case Datatype::UINT8:
+      return is_contained_in_tile_slab_row(static_cast<const uint8_t*>(range));
+    case Datatype::INT16:
+      return is_contained_in_tile_slab_row(static_cast<const int16_t*>(range));
+    case Datatype::UINT16:
+      return is_contained_in_tile_slab_row(static_cast<const uint16_t*>(range));
+    case Datatype::UINT32:
+      return is_contained_in_tile_slab_row(static_cast<const uint32_t*>(range));
+    case Datatype::UINT64:
+      return is_contained_in_tile_slab_row(static_cast<const uint64_t*>(range));
+    default:
+      return false;
+  }
 }
 
 void ArraySchema::print() const {
@@ -368,61 +377,62 @@ void ArraySchema::print() const {
     std::cout << "\t" << attributes_[i] << "\n";
   // Domain
   std::cout << "Domain:\n";
-  if (types_[attribute_num_] == TILEDB_INT32) {
+  Datatype typ = types_.at(attribute_num_);
+  if (typ == Datatype::INT32) {
     int* domain_int = (int*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       std::cout << "\t" << dimensions_[i] << ": [" << domain_int[2 * i] << ","
                 << domain_int[2 * i + 1] << "]\n";
     }
-  } else if (types_[attribute_num_] == TILEDB_INT64) {
+  } else if (typ == Datatype::INT64) {
     int64_t* domain_int64 = (int64_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       std::cout << "\t" << dimensions_[i] << ": [" << domain_int64[2 * i] << ","
                 << domain_int64[2 * i + 1] << "]\n";
     }
-  } else if (types_[attribute_num_] == TILEDB_FLOAT32) {
+  } else if (typ == Datatype::FLOAT32) {
     float* domain_float = (float*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       std::cout << "\t" << dimensions_[i] << ": [" << domain_float[2 * i] << ","
                 << domain_float[2 * i + 1] << "]\n";
     }
-  } else if (types_[attribute_num_] == TILEDB_FLOAT64) {
+  } else if (typ == Datatype::FLOAT64) {
     double* domain_double = (double*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       std::cout << "\t" << dimensions_[i] << ": [" << domain_double[2 * i]
                 << "," << domain_double[2 * i + 1] << "]\n";
     }
-  } else if (types_[attribute_num_] == TILEDB_INT8) {
+  } else if (typ == Datatype::INT8) {
     int8_t* domain_int8 = (int8_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       std::cout << "\t" << dimensions_[i] << ": [" << domain_int8[2 * i] << ","
                 << domain_int8[2 * i + 1] << "]\n";
     }
-  } else if (types_[attribute_num_] == TILEDB_UINT8) {
+  } else if (typ == Datatype::UINT8) {
     uint8_t* domain_uint8 = (uint8_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       std::cout << "\t" << dimensions_[i] << ": [" << domain_uint8[2 * i] << ","
                 << domain_uint8[2 * i + 1] << "]\n";
     }
-  } else if (types_[attribute_num_] == TILEDB_INT16) {
+  } else if (typ == Datatype::INT16) {
     int16_t* domain_int16 = (int16_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       std::cout << "\t" << dimensions_[i] << ": [" << domain_int16[2 * i] << ","
                 << domain_int16[2 * i + 1] << "]\n";
     }
-  } else if (types_[attribute_num_] == TILEDB_UINT16) {
+  } else if (typ == Datatype::UINT16) {
     uint16_t* domain_uint16 = (uint16_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       std::cout << "\t" << dimensions_[i] << ": [" << domain_uint16[2 * i]
                 << "," << domain_uint16[2 * i + 1] << "]\n";
     }
-  } else if (types_[attribute_num_] == TILEDB_UINT32) {
+  } else if (typ == Datatype::UINT32) {
     uint32_t* domain_uint32 = (uint32_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       std::cout << "\t" << dimensions_[i] << ": [" << domain_uint32[2 * i]
                 << "," << domain_uint32[2 * i + 1] << "]\n";
     }
-  } else if (types_[attribute_num_] == TILEDB_UINT64) {
+  } else if (typ == Datatype::UINT64) {
     uint64_t* domain_uint64 = (uint64_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       std::cout << "\t" << dimensions_[i] << ": [" << domain_uint64[2 * i]
@@ -432,27 +442,28 @@ void ArraySchema::print() const {
   // Types
   std::cout << "Types:\n";
   for (int i = 0; i < attribute_num_; ++i) {
-    if (types_[i] == TILEDB_CHAR) {
+    typ = types_.at(i);
+    if (typ == Datatype::CHAR) {
       std::cout << "\t" << attributes_[i] << ": char[";
-    } else if (types_[i] == TILEDB_INT32) {
+    } else if (typ == Datatype::INT32) {
       std::cout << "\t" << attributes_[i] << ": int32[";
-    } else if (types_[i] == TILEDB_INT64) {
+    } else if (typ == Datatype::INT64) {
       std::cout << "\t" << attributes_[i] << ": int64[";
-    } else if (types_[i] == TILEDB_FLOAT32) {
+    } else if (typ == Datatype::FLOAT32) {
       std::cout << "\t" << attributes_[i] << ": float32[";
-    } else if (types_[i] == TILEDB_FLOAT64) {
+    } else if (typ == Datatype::FLOAT64) {
       std::cout << "\t" << attributes_[i] << ": float64[";
-    } else if (types_[i] == TILEDB_INT8) {
+    } else if (typ == Datatype::INT8) {
       std::cout << "\t" << attributes_[i] << ": int8[";
-    } else if (types_[i] == TILEDB_UINT8) {
+    } else if (typ == Datatype::UINT8) {
       std::cout << "\t" << attributes_[i] << ": uint8[";
-    } else if (types_[i] == TILEDB_INT16) {
+    } else if (typ == Datatype::INT16) {
       std::cout << "\t" << attributes_[i] << ": int16[";
-    } else if (types_[i] == TILEDB_UINT16) {
+    } else if (typ == Datatype::UINT16) {
       std::cout << "\t" << attributes_[i] << ": uint16[";
-    } else if (types_[i] == TILEDB_UINT32) {
+    } else if (typ == Datatype::UINT32) {
       std::cout << "\t" << attributes_[i] << ": uint32[";
-    } else if (types_[i] == TILEDB_UINT64) {
+    } else if (typ == Datatype::UINT64) {
       std::cout << "\t" << attributes_[i] << ": uint64[";
     }
     if (cell_val_num_[i] == TILEDB_VAR_NUM)
@@ -460,25 +471,26 @@ void ArraySchema::print() const {
     else
       std::cout << cell_val_num_[i] << "]\n";
   }
-  if (types_[attribute_num_] == TILEDB_INT32)
+  typ = types_.at(attribute_num_);
+  if (typ == Datatype::INT32)
     std::cout << "\tCoordinates: int32\n";
-  else if (types_[attribute_num_] == TILEDB_INT64)
+  else if (typ == Datatype::INT64)
     std::cout << "\tCoordinates: int64\n";
-  else if (types_[attribute_num_] == TILEDB_FLOAT32)
+  else if (typ == Datatype::FLOAT32)
     std::cout << "\tCoordinates: float32\n";
-  else if (types_[attribute_num_] == TILEDB_FLOAT64)
+  else if (typ == Datatype::FLOAT64)
     std::cout << "\tCoordinates: float64\n";
-  else if (types_[attribute_num_] == TILEDB_INT8)
+  else if (typ == Datatype::INT8)
     std::cout << "\tCoordinates: int8\n";
-  else if (types_[attribute_num_] == TILEDB_UINT8)
+  else if (typ == Datatype::UINT8)
     std::cout << "\tCoordinates: uint8\n";
-  else if (types_[attribute_num_] == TILEDB_INT16)
+  else if (typ == Datatype::INT16)
     std::cout << "\tCoordinates: int16\n";
-  else if (types_[attribute_num_] == TILEDB_UINT16)
+  else if (typ == Datatype::UINT16)
     std::cout << "\tCoordinates: uint16\n";
-  else if (types_[attribute_num_] == TILEDB_UINT32)
+  else if (typ == Datatype::UINT32)
     std::cout << "\tCoordinates: uint32\n";
-  else if (types_[attribute_num_] == TILEDB_UINT64)
+  else if (typ == Datatype::UINT64)
     std::cout << "\tCoordinates: uint64\n";
   // Cell sizes
   std::cout << "Cell sizes (in bytes):\n";
@@ -501,16 +513,16 @@ void ArraySchema::print() const {
   if (tile_extents_ == nullptr) {
     std::cout << "-\n";
   } else {
-    if (tile_order_ == TILEDB_COL_MAJOR)
+    if (tile_order_ == Layout::COL_MAJOR)
       std::cout << "column-major\n";
-    else if (tile_order_ == TILEDB_ROW_MAJOR)
+    else if (tile_order_ == Layout::ROW_MAJOR)
       std::cout << "row-major\n";
   }
   // Cell order
   std::cout << "Cell order:\n\t";
-  if (cell_order_ == TILEDB_COL_MAJOR)
+  if (cell_order_ == Layout::COL_MAJOR)
     std::cout << "column-major\n";
-  else if (cell_order_ == TILEDB_ROW_MAJOR)
+  else if (cell_order_ == Layout::ROW_MAJOR)
     std::cout << "row-major\n";
   // Capacity
   std::cout << "Capacity:\n\t";
@@ -523,52 +535,53 @@ void ArraySchema::print() const {
   if (tile_extents_ == nullptr) {
     std::cout << "-\n";
   } else {
-    if (types_[attribute_num_] == TILEDB_INT32) {
+    typ = types_.at(attribute_num_);
+    if (typ == Datatype::INT32) {
       int* tile_extents_int = (int*)tile_extents_;
       for (int i = 0; i < dim_num_; ++i)
         std::cout << "\t" << dimensions_[i] << ": " << tile_extents_int[i]
                   << "\n";
-    } else if (types_[attribute_num_] == TILEDB_INT64) {
+    } else if (typ == Datatype::INT64) {
       int64_t* tile_extents_int64 = (int64_t*)tile_extents_;
       for (int i = 0; i < dim_num_; ++i)
         std::cout << "\t" << dimensions_[i] << ": " << tile_extents_int64[i]
                   << "\n";
-    } else if (types_[attribute_num_] == TILEDB_FLOAT32) {
+    } else if (typ == Datatype::FLOAT32) {
       float* tile_extents_float = (float*)tile_extents_;
       for (int i = 0; i < dim_num_; ++i)
         std::cout << "\t" << dimensions_[i] << ": " << tile_extents_float[i]
                   << "\n";
-    } else if (types_[attribute_num_] == TILEDB_FLOAT64) {
+    } else if (typ == Datatype::FLOAT64) {
       double* tile_extents_double = (double*)tile_extents_;
       for (int i = 0; i < dim_num_; ++i)
         std::cout << "\t" << dimensions_[i] << ": " << tile_extents_double[i]
                   << "\n";
-    } else if (types_[attribute_num_] == TILEDB_INT8) {
+    } else if (typ == Datatype::INT8) {
       int8_t* tile_extents_int8 = (int8_t*)tile_extents_;
       for (int i = 0; i < dim_num_; ++i)
         std::cout << "\t" << dimensions_[i] << ": " << tile_extents_int8[i]
                   << "\n";
-    } else if (types_[attribute_num_] == TILEDB_UINT8) {
+    } else if (typ == Datatype::UINT8) {
       uint8_t* tile_extents_uint8 = (uint8_t*)tile_extents_;
       for (int i = 0; i < dim_num_; ++i)
         std::cout << "\t" << dimensions_[i] << ": " << tile_extents_uint8[i]
                   << "\n";
-    } else if (types_[attribute_num_] == TILEDB_INT16) {
+    } else if (typ == Datatype::INT16) {
       int16_t* tile_extents_int16 = (int16_t*)tile_extents_;
       for (int i = 0; i < dim_num_; ++i)
         std::cout << "\t" << dimensions_[i] << ": " << tile_extents_int16[i]
                   << "\n";
-    } else if (types_[attribute_num_] == TILEDB_UINT16) {
+    } else if (typ == Datatype::UINT16) {
       uint16_t* tile_extents_uint16 = (uint16_t*)tile_extents_;
       for (int i = 0; i < dim_num_; ++i)
         std::cout << "\t" << dimensions_[i] << ": " << tile_extents_uint16[i]
                   << "\n";
-    } else if (types_[attribute_num_] == TILEDB_UINT32) {
+    } else if (typ == Datatype::UINT32) {
       uint32_t* tile_extents_uint32 = (uint32_t*)tile_extents_;
       for (int i = 0; i < dim_num_; ++i)
         std::cout << "\t" << dimensions_[i] << ": " << tile_extents_uint32[i]
                   << "\n";
-    } else if (types_[attribute_num_] == TILEDB_UINT64) {
+    } else if (typ == Datatype::UINT64) {
       uint64_t* tile_extents_uint64 = (uint64_t*)tile_extents_;
       for (int i = 0; i < dim_num_; ++i)
         std::cout << "\t" << dimensions_[i] << ": " << tile_extents_uint64[i]
@@ -578,53 +591,53 @@ void ArraySchema::print() const {
   // Compression type
   std::cout << "Compression type:\n";
   for (int i = 0; i < attribute_num_; ++i)
-    if (compression_[i] == TILEDB_GZIP)
+    if (compressor_[i] == Compressor::GZIP)
       std::cout << "\t" << attributes_[i] << ": GZIP\n";
-    else if (compression_[i] == TILEDB_ZSTD)
+    else if (compressor_[i] == Compressor::ZSTD)
       std::cout << "\t" << attributes_[i] << ": ZSTD\n";
-    else if (compression_[i] == TILEDB_LZ4)
+    else if (compressor_[i] == Compressor::LZ4)
       std::cout << "\t" << attributes_[i] << ": LZ4\n";
-    else if (compression_[i] == TILEDB_BLOSC)
+    else if (compressor_[i] == Compressor::BLOSC)
       std::cout << "\t" << attributes_[i] << ": BLOSC\n";
-    else if (compression_[i] == TILEDB_BLOSC_LZ4)
+    else if (compressor_[i] == Compressor::BLOSC_LZ4)
       std::cout << "\t" << attributes_[i] << ": BLOSC_LZ4\n";
-    else if (compression_[i] == TILEDB_BLOSC_LZ4HC)
+    else if (compressor_[i] == Compressor::BLOSC_LZ4HC)
       std::cout << "\t" << attributes_[i] << ": BLOSC_LZ4HC\n";
-    else if (compression_[i] == TILEDB_BLOSC_SNAPPY)
+    else if (compressor_[i] == Compressor::BLOSC_SNAPPY)
       std::cout << "\t" << attributes_[i] << ": BLOSC_SNAPPY\n";
-    else if (compression_[i] == TILEDB_BLOSC_ZLIB)
+    else if (compressor_[i] == Compressor::BLOSC_ZLIB)
       std::cout << "\t" << attributes_[i] << ": BLOSC_ZLIB\n";
-    else if (compression_[i] == TILEDB_BLOSC_ZSTD)
+    else if (compressor_[i] == Compressor::BLOSC_ZSTD)
       std::cout << "\t" << attributes_[i] << ": BLOSC_ZSTD\n";
-    else if (compression_[i] == TILEDB_RLE)
+    else if (compressor_[i] == Compressor::RLE)
       std::cout << "\t" << attributes_[i] << ": RLE\n";
-    else if (compression_[i] == TILEDB_BZIP2)
+    else if (compressor_[i] == Compressor::BZIP2)
       std::cout << "\t" << attributes_[i] << ": BZIP2\n";
-    else if (compression_[i] == TILEDB_NO_COMPRESSION)
+    else if (compressor_[i] == Compressor::NO_COMPRESSION)
       std::cout << "\t" << attributes_[i] << ": NONE\n";
-  if (compression_[attribute_num_] == TILEDB_GZIP)
+  if (compressor_[attribute_num_] == Compressor::GZIP)
     std::cout << "\tCoordinates: GZIP\n";
-  else if (compression_[attribute_num_] == TILEDB_ZSTD)
+  else if (compressor_[attribute_num_] == Compressor::ZSTD)
     std::cout << "\tCoordinates: ZSTD\n";
-  else if (compression_[attribute_num_] == TILEDB_LZ4)
+  else if (compressor_[attribute_num_] == Compressor::LZ4)
     std::cout << "\tCoordinates: LZ4\n";
-  else if (compression_[attribute_num_] == TILEDB_BLOSC)
+  else if (compressor_[attribute_num_] == Compressor::BLOSC)
     std::cout << "\tCoordinates: BLOSC\n";
-  else if (compression_[attribute_num_] == TILEDB_BLOSC_LZ4)
+  else if (compressor_[attribute_num_] == Compressor::BLOSC_LZ4)
     std::cout << "\tCoordinates: BLOSC_LZ4\n";
-  else if (compression_[attribute_num_] == TILEDB_BLOSC_LZ4HC)
+  else if (compressor_[attribute_num_] == Compressor::BLOSC_LZ4HC)
     std::cout << "\tCoordinates: BLOSC_LZ4HC\n";
-  else if (compression_[attribute_num_] == TILEDB_BLOSC_SNAPPY)
+  else if (compressor_[attribute_num_] == Compressor::BLOSC_SNAPPY)
     std::cout << "\tCoordinates: BLOSC_SNAPPY\n";
-  else if (compression_[attribute_num_] == TILEDB_BLOSC_ZLIB)
+  else if (compressor_[attribute_num_] == Compressor::BLOSC_ZLIB)
     std::cout << "\tCoordinates: BLOSC_ZLIB\n";
-  else if (compression_[attribute_num_] == TILEDB_BLOSC_ZSTD)
+  else if (compressor_[attribute_num_] == Compressor::BLOSC_ZSTD)
     std::cout << "\tCoordinates: BLOSC_ZSTD\n";
-  else if (compression_[attribute_num_] == TILEDB_RLE)
+  else if (compressor_[attribute_num_] == Compressor::RLE)
     std::cout << "\tCoordinates: RLE\n";
-  else if (compression_[attribute_num_] == TILEDB_BZIP2)
+  else if (compressor_[attribute_num_] == Compressor::BZIP2)
     std::cout << "\tCoordinates: BZIP2\n";
-  else if (compression_[attribute_num_] == TILEDB_NO_COMPRESSION)
+  else if (compressor_[attribute_num_] == Compressor::NO_COMPRESSION)
     std::cout << "\tCoordinates: NONE\n";
 }
 
@@ -678,12 +691,12 @@ Status ArraySchema::serialize(
   memcpy(buffer + offset, &dense_, sizeof(bool));
   offset += sizeof(bool);
   // Copy tile_order_
-  char tile_order = tile_order_;
+  char tile_order = static_cast<char>(tile_order_);
   assert(offset + sizeof(char) < buffer_size);
   memcpy(buffer + offset, &tile_order, sizeof(char));
   offset += sizeof(char);
   // Copy cell_order_
-  char cell_order = cell_order_;
+  char cell_order = static_cast<char>(cell_order_);
   assert(offset + sizeof(char) < buffer_size);
   memcpy(buffer + offset, &cell_order, sizeof(char));
   offset += sizeof(char);
@@ -751,10 +764,10 @@ Status ArraySchema::serialize(
     memcpy(buffer + offset, &cell_val_num_[i], sizeof(int));
     offset += sizeof(int);
   }
-  // Copy compression_
+  // Copy compressor_
   char compression;
   for (int i = 0; i <= attribute_num_; ++i) {
-    compression = compression_[i];
+    compression = static_cast<char>(compressor_[i]);
     assert(offset + sizeof(char) <= buffer_size);
     memcpy(buffer + offset, &compression, sizeof(char));
     offset += sizeof(char);
@@ -798,7 +811,7 @@ int ArraySchema::subarray_overlap(
   // Check contig overlap
   if (overlap == 2) {
     overlap = 3;
-    if (cell_order_ == TILEDB_ROW_MAJOR) {  // Row major
+    if (cell_order_ == Layout::ROW_MAJOR) {  // Row major
       for (int i = 1; i < dim_num_; ++i) {
         if (overlap_subarray[2 * i] != subarray_b[2 * i] ||
             overlap_subarray[2 * i + 1] != subarray_b[2 * i + 1]) {
@@ -806,7 +819,7 @@ int ArraySchema::subarray_overlap(
           break;
         }
       }
-    } else if (cell_order_ == TILEDB_COL_MAJOR) {  // Column major
+    } else if (cell_order_ == Layout::COL_MAJOR) {  // Column major
       for (int i = dim_num_ - 2; i >= 0; --i) {
         if (overlap_subarray[2 * i] != subarray_b[2 * i] ||
             overlap_subarray[2 * i + 1] != subarray_b[2 * i + 1]) {
@@ -831,24 +844,28 @@ const void* ArraySchema::tile_extents() const {
 
 int64_t ArraySchema::tile_num() const {
   // Invoke the proper template function
-  if (types_[attribute_num_] == TILEDB_INT32)
-    return tile_num<int>();
-  else if (types_[attribute_num_] == TILEDB_INT64)
-    return tile_num<int64_t>();
-  else if (types_[attribute_num_] == TILEDB_INT8)
-    return tile_num<int8_t>();
-  else if (types_[attribute_num_] == TILEDB_UINT8)
-    return tile_num<uint8_t>();
-  else if (types_[attribute_num_] == TILEDB_INT16)
-    return tile_num<int16_t>();
-  else if (types_[attribute_num_] == TILEDB_UINT16)
-    return tile_num<uint16_t>();
-  else if (types_[attribute_num_] == TILEDB_UINT32)
-    return tile_num<uint32_t>();
-  else if (types_[attribute_num_] == TILEDB_UINT64)
-    return tile_num<uint64_t>();
-  assert(0);
-  return -1;
+  Datatype typ = types_.at(attribute_num_);
+  switch (typ) {
+    case Datatype::INT32:
+      return tile_num<int>();
+    case Datatype::INT64:
+      return tile_num<int64_t>();
+    case Datatype::INT8:
+      return tile_num<int8_t>();
+    case Datatype::UINT8:
+      return tile_num<uint8_t>();
+    case Datatype::INT16:
+      return tile_num<int16_t>();
+    case Datatype::UINT16:
+      return tile_num<uint16_t>();
+    case Datatype::UINT32:
+      return tile_num<uint32_t>();
+    case Datatype::UINT64:
+      return tile_num<uint64_t>();
+    default:
+      assert(0);
+      return -1;
+  }
 }
 
 template <class T>
@@ -866,24 +883,28 @@ int64_t ArraySchema::tile_num() const {
 
 int64_t ArraySchema::tile_num(const void* range) const {
   // Invoke the proper template function
-  if (types_[attribute_num_] == TILEDB_INT32)
-    return tile_num<int>(static_cast<const int*>(range));
-  else if (types_[attribute_num_] == TILEDB_INT64)
-    return tile_num<int64_t>(static_cast<const int64_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_INT8)
-    return tile_num<int8_t>(static_cast<const int8_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_UINT8)
-    return tile_num<uint8_t>(static_cast<const uint8_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_INT16)
-    return tile_num<int16_t>(static_cast<const int16_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_UINT16)
-    return tile_num<uint16_t>(static_cast<const uint16_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_UINT32)
-    return tile_num<uint32_t>(static_cast<const uint32_t*>(range));
-  else if (types_[attribute_num_] == TILEDB_UINT64)
-    return tile_num<uint64_t>(static_cast<const uint64_t*>(range));
-  assert(0);
-  return -1;
+  Datatype typ = types_.at(attribute_num_);
+  switch (typ) {
+    case Datatype::INT32:
+      return tile_num<int>(static_cast<const int*>(range));
+    case Datatype::INT64:
+      return tile_num<int64_t>(static_cast<const int64_t*>(range));
+    case Datatype::INT8:
+      return tile_num<int8_t>(static_cast<const int8_t*>(range));
+    case Datatype::UINT8:
+      return tile_num<uint8_t>(static_cast<const uint8_t*>(range));
+    case Datatype::INT16:
+      return tile_num<int16_t>(static_cast<const int16_t*>(range));
+    case Datatype::UINT16:
+      return tile_num<uint16_t>(static_cast<const uint16_t*>(range));
+    case Datatype::UINT32:
+      return tile_num<uint32_t>(static_cast<const uint32_t*>(range));
+    case Datatype::UINT64:
+      return tile_num<uint64_t>(static_cast<const uint64_t*>(range));
+    default:
+      assert(0);
+      return -1;
+  }
 }
 
 template <class T>
@@ -903,67 +924,75 @@ int64_t ArraySchema::tile_num(const T* range) const {
   return ret;
 }
 
-int ArraySchema::tile_order() const {
+Layout ArraySchema::tile_order() const {
   return tile_order_;
 }
 
 int64_t ArraySchema::tile_slab_col_cell_num(const void* subarray) const {
   // Invoke the proper templated function
-  if (types_[attribute_num_] == TILEDB_INT32)
-    return tile_slab_col_cell_num(static_cast<const int*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_INT64)
-    return tile_slab_col_cell_num(static_cast<const int64_t*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_FLOAT32)
-    return tile_slab_col_cell_num(static_cast<const float*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_FLOAT64)
-    return tile_slab_col_cell_num(static_cast<const double*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_INT8)
-    return tile_slab_col_cell_num(static_cast<const int8_t*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_UINT8)
-    return tile_slab_col_cell_num(static_cast<const uint8_t*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_INT16)
-    return tile_slab_col_cell_num(static_cast<const int16_t*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_UINT16)
-    return tile_slab_col_cell_num(static_cast<const uint16_t*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_UINT32)
-    return tile_slab_col_cell_num(static_cast<const uint32_t*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_UINT64)
-    return tile_slab_col_cell_num(static_cast<const uint64_t*>(subarray));
-  assert(0);
-  return -1;
+  Datatype typ = types_.at(attribute_num_);
+  switch (typ) {
+    case Datatype::INT32:
+      return tile_slab_col_cell_num(static_cast<const int*>(subarray));
+    case Datatype::INT64:
+      return tile_slab_col_cell_num(static_cast<const int64_t*>(subarray));
+    case Datatype::FLOAT32:
+      return tile_slab_col_cell_num(static_cast<const float*>(subarray));
+    case Datatype::FLOAT64:
+      return tile_slab_col_cell_num(static_cast<const double*>(subarray));
+    case Datatype::INT8:
+      return tile_slab_col_cell_num(static_cast<const int8_t*>(subarray));
+    case Datatype::UINT8:
+      return tile_slab_col_cell_num(static_cast<const uint8_t*>(subarray));
+    case Datatype::INT16:
+      return tile_slab_col_cell_num(static_cast<const int16_t*>(subarray));
+    case Datatype::UINT16:
+      return tile_slab_col_cell_num(static_cast<const uint16_t*>(subarray));
+    case Datatype::UINT32:
+      return tile_slab_col_cell_num(static_cast<const uint32_t*>(subarray));
+    case Datatype::UINT64:
+      return tile_slab_col_cell_num(static_cast<const uint64_t*>(subarray));
+    default:
+      assert(0);
+      return -1;
+  }
 }
 
 int64_t ArraySchema::tile_slab_row_cell_num(const void* subarray) const {
   // Invoke the proper templated function
-  if (types_[attribute_num_] == TILEDB_INT32)
-    return tile_slab_row_cell_num(static_cast<const int*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_INT64)
-    return tile_slab_row_cell_num(static_cast<const int64_t*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_FLOAT32)
-    return tile_slab_row_cell_num(static_cast<const float*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_FLOAT64)
-    return tile_slab_row_cell_num(static_cast<const double*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_INT8)
-    return tile_slab_row_cell_num(static_cast<const int8_t*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_UINT8)
-    return tile_slab_row_cell_num(static_cast<const uint8_t*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_INT16)
-    return tile_slab_row_cell_num(static_cast<const int16_t*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_UINT16)
-    return tile_slab_row_cell_num(static_cast<const uint16_t*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_UINT32)
-    return tile_slab_row_cell_num(static_cast<const uint32_t*>(subarray));
-  else if (types_[attribute_num_] == TILEDB_UINT64)
-    return tile_slab_row_cell_num(static_cast<const uint64_t*>(subarray));
-  assert(0);
-  return -1;
+  Datatype typ = types_.at(attribute_num_);
+  switch (typ) {
+    case Datatype::INT32:
+      return tile_slab_row_cell_num(static_cast<const int*>(subarray));
+    case Datatype::INT64:
+      return tile_slab_row_cell_num(static_cast<const int64_t*>(subarray));
+    case Datatype::FLOAT32:
+      return tile_slab_row_cell_num(static_cast<const float*>(subarray));
+    case Datatype::FLOAT64:
+      return tile_slab_row_cell_num(static_cast<const double*>(subarray));
+    case Datatype::INT8:
+      return tile_slab_row_cell_num(static_cast<const int8_t*>(subarray));
+    case Datatype::UINT8:
+      return tile_slab_row_cell_num(static_cast<const uint8_t*>(subarray));
+    case Datatype::INT16:
+      return tile_slab_row_cell_num(static_cast<const int16_t*>(subarray));
+    case Datatype::UINT16:
+      return tile_slab_row_cell_num(static_cast<const uint16_t*>(subarray));
+    case Datatype::UINT32:
+      return tile_slab_row_cell_num(static_cast<const uint32_t*>(subarray));
+    case Datatype::UINT64:
+      return tile_slab_row_cell_num(static_cast<const uint64_t*>(subarray));
+    default:
+      assert(0);
+      return -1;
+  }
 }
 
-int ArraySchema::type(int i) const {
+Datatype ArraySchema::type(int i) const {
   if (i < 0 || i > attribute_num_) {
     std::string errmsg = "Cannot retrieve type; Invalid attribute id";
     PRINT_ERROR(errmsg);
-    return -1;
+    assert(0);
   }
   return types_[i];
 }
@@ -1039,13 +1068,13 @@ Status ArraySchema::deserialize(
   char tile_order;
   assert(offset + sizeof(char) < buffer_size);
   memcpy(&tile_order, buffer + offset, sizeof(char));
-  tile_order_ = static_cast<int>(tile_order);
+  tile_order_ = static_cast<Layout>(tile_order);
   offset += sizeof(char);
   // Load cell_order_
   char cell_order;
   assert(offset + sizeof(char) < buffer_size);
   memcpy(&cell_order, buffer + offset, sizeof(char));
-  cell_order_ = static_cast<int>(cell_order);
+  cell_order_ = static_cast<Layout>(cell_order);
   offset += sizeof(char);
   // Load capacity_
   assert(offset + sizeof(int64_t) < buffer_size);
@@ -1111,7 +1140,7 @@ Status ArraySchema::deserialize(
     assert(offset + sizeof(char) < buffer_size);
     memcpy(&type, buffer + offset, sizeof(char));
     offset += sizeof(char);
-    types_[i] = static_cast<int>(type);
+    types_[i] = static_cast<Datatype>(type);
     type_sizes_[i] = compute_type_size(i);
   }
   // Load cell_val_num_
@@ -1121,13 +1150,13 @@ Status ArraySchema::deserialize(
     memcpy(&cell_val_num_[i], buffer + offset, sizeof(int));
     offset += sizeof(int);
   }
-  // Load compression_
+  // Load compressor
   char compression;
   for (int i = 0; i <= attribute_num_; ++i) {
     assert(offset + sizeof(char) <= buffer_size);
     memcpy(&compression, buffer + offset, sizeof(char));
     offset += sizeof(char);
-    compression_.push_back(static_cast<int>(compression));
+    compressor_.push_back(static_cast<Compressor>(compression));
   }
   assert(offset == buffer_size);
   // Add extra coordinate attribute
@@ -1169,7 +1198,7 @@ Status ArraySchema::init(const ArraySchemaC* array_schema_c) {
   RETURN_NOT_OK(
       set_dimensions(array_schema_c->dimensions_, array_schema_c->dim_num_));
   // Set compression
-  RETURN_NOT_OK(set_compression(array_schema_c->compression_));
+  RETURN_NOT_OK(set_compression(array_schema_c->compressor_));
   // Set dense
   set_dense(array_schema_c->dense_);
   // Set number of values per cell
@@ -1256,8 +1285,8 @@ Status ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
   array_schema_c.domain_ = domain;
 
   // Set types
-  int* types =
-      (int*)malloc((metadata_schema_c->attribute_num_ + 2) * sizeof(int));
+  tiledb_datatype_t* types = (tiledb_datatype_t*)malloc(
+      (metadata_schema_c->attribute_num_ + 2) * sizeof(int));
   for (int i = 0; i < metadata_schema_c->attribute_num_; ++i)
     types[i] = metadata_schema_c->types_[i];
   types[metadata_schema_c->attribute_num_] = TILEDB_CHAR;
@@ -1278,17 +1307,17 @@ Status ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
   array_schema_c.cell_val_num_ = cell_val_num;
 
   // Set compression
-  int* compression =
-      (int*)malloc((metadata_schema_c->attribute_num_ + 2) * sizeof(int));
-  if (metadata_schema_c->compression_ == nullptr) {
+  tiledb_compressor_t* compression = (tiledb_compressor_t*)malloc(
+      (metadata_schema_c->attribute_num_ + 2) * sizeof(int));
+  if (metadata_schema_c->compressor_ == nullptr) {
     for (int i = 0; i < metadata_schema_c->attribute_num_ + 1; ++i)
       compression[i] = TILEDB_NO_COMPRESSION;
   } else {
     for (int i = 0; i < metadata_schema_c->attribute_num_ + 1; ++i)
-      compression[i] = metadata_schema_c->compression_[i];
+      compression[i] = metadata_schema_c->compressor_[i];
   }
   compression[metadata_schema_c->attribute_num_ + 1] = TILEDB_NO_COMPRESSION;
-  array_schema_c.compression_ = compression;
+  array_schema_c.compressor_ = compression;
 
   // Initialize schema through the array schema C struct
   init(&array_schema_c);
@@ -1380,44 +1409,38 @@ void ArraySchema::set_cell_val_num(const int* cell_val_num) {
   }
 }
 
-Status ArraySchema::set_cell_order(int cell_order) {
+Status ArraySchema::set_cell_order(tiledb_layout_t cell_order) {
   // Set cell order
   if (cell_order != TILEDB_ROW_MAJOR && cell_order != TILEDB_COL_MAJOR) {
     std::string errmsg = "Cannot set cell order; Invalid cell order";
     PRINT_ERROR(errmsg);
     return Status::ArraySchemaError(errmsg);
   }
-  cell_order_ = cell_order;
+  cell_order_ = static_cast<Layout>(cell_order);
 
   // Success
   return Status::Ok();
 }
 
-Status ArraySchema::set_compression(int* compression) {
-  // Set compression
+Status ArraySchema::set_compression(tiledb_compressor_t* compression) {
   if (compression == nullptr) {
     for (int i = 0; i < attribute_num_ + 1; ++i)
-      compression_.push_back(TILEDB_NO_COMPRESSION);
+      compressor_.push_back(Compressor::NO_COMPRESSION);
   } else {
     for (int i = 0; i < attribute_num_ + 1; ++i) {
-      if (compression[i] != TILEDB_NO_COMPRESSION &&
-          compression[i] != TILEDB_GZIP && compression[i] != TILEDB_ZSTD &&
-          compression[i] != TILEDB_LZ4 && compression[i] != TILEDB_BLOSC &&
-          compression[i] != TILEDB_BLOSC_LZ4 &&
-          compression[i] != TILEDB_BLOSC_LZ4HC &&
-          compression[i] != TILEDB_BLOSC_SNAPPY &&
-          compression[i] != TILEDB_BLOSC_ZLIB &&
-          compression[i] != TILEDB_BLOSC_ZSTD && compression[i] != TILEDB_RLE &&
-          compression[i] != TILEDB_BZIP2) {
+      tiledb_compressor_t c = compression[i];
+      if (c != TILEDB_NO_COMPRESSION && c != TILEDB_GZIP && c != TILEDB_ZSTD &&
+          c != TILEDB_LZ4 && c != TILEDB_BLOSC && c != TILEDB_BLOSC_LZ4 &&
+          c != TILEDB_BLOSC_LZ4HC && c != TILEDB_BLOSC_SNAPPY &&
+          c != TILEDB_BLOSC_ZLIB && c != TILEDB_BLOSC_ZSTD && c != TILEDB_RLE &&
+          c != TILEDB_BZIP2) {
         std::string errmsg = "Cannot set compression; Invalid compression type";
         PRINT_ERROR(errmsg);
         return Status::ArraySchemaError(errmsg);
       }
-      compression_.push_back(compression[i]);
+      compressor_.push_back(static_cast<Compressor>(c));
     }
   }
-
-  // Success
   return Status::Ok();
 }
 
@@ -1483,7 +1506,8 @@ Status ArraySchema::set_domain(const void* domain) {
   memcpy(domain_, domain, domain_size);
 
   // Sanity check
-  if (types_[attribute_num_] == TILEDB_INT32) {
+  Datatype typ = types_.at(attribute_num_);
+  if (typ == Datatype::INT32) {
     int* domain_int = (int*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_int[2 * i] > domain_int[2 * i + 1]) {
@@ -1494,7 +1518,7 @@ Status ArraySchema::set_domain(const void* domain) {
         return Status::ArraySchemaError(errmsg);
       }
     }
-  } else if (types_[attribute_num_] == TILEDB_INT64) {
+  } else if (typ == Datatype::INT64) {
     int64_t* domain_int64 = (int64_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_int64[2 * i] > domain_int64[2 * i + 1]) {
@@ -1505,7 +1529,7 @@ Status ArraySchema::set_domain(const void* domain) {
         return Status::ArraySchemaError(errmsg);
       }
     }
-  } else if (types_[attribute_num_] == TILEDB_FLOAT32) {
+  } else if (typ == Datatype::FLOAT32) {
     float* domain_float = (float*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_float[2 * i] > domain_float[2 * i + 1]) {
@@ -1516,7 +1540,7 @@ Status ArraySchema::set_domain(const void* domain) {
         return Status::ArraySchemaError(errmsg);
       }
     }
-  } else if (types_[attribute_num_] == TILEDB_FLOAT64) {
+  } else if (typ == Datatype::FLOAT64) {
     double* domain_double = (double*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_double[2 * i] > domain_double[2 * i + 1]) {
@@ -1527,7 +1551,7 @@ Status ArraySchema::set_domain(const void* domain) {
         return Status::ArraySchemaError(errmsg);
       }
     }
-  } else if (types_[attribute_num_] == TILEDB_INT8) {
+  } else if (typ == Datatype::INT8) {
     int8_t* domain_int8 = (int8_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_int8[2 * i] > domain_int8[2 * i + 1]) {
@@ -1538,7 +1562,7 @@ Status ArraySchema::set_domain(const void* domain) {
         return Status::ArraySchemaError(errmsg);
       }
     }
-  } else if (types_[attribute_num_] == TILEDB_UINT8) {
+  } else if (typ == Datatype::UINT8) {
     uint8_t* domain_uint8 = (uint8_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_uint8[2 * i] > domain_uint8[2 * i + 1]) {
@@ -1549,7 +1573,7 @@ Status ArraySchema::set_domain(const void* domain) {
         return Status::ArraySchemaError(errmsg);
       }
     }
-  } else if (types_[attribute_num_] == TILEDB_INT16) {
+  } else if (typ == Datatype::INT16) {
     int16_t* domain_int16 = (int16_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_int16[2 * i] > domain_int16[2 * i + 1]) {
@@ -1560,7 +1584,7 @@ Status ArraySchema::set_domain(const void* domain) {
         return Status::ArraySchemaError(errmsg);
       }
     }
-  } else if (types_[attribute_num_] == TILEDB_UINT16) {
+  } else if (typ == Datatype::UINT16) {
     uint16_t* domain_uint16 = (uint16_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_uint16[2 * i] > domain_uint16[2 * i + 1]) {
@@ -1571,7 +1595,7 @@ Status ArraySchema::set_domain(const void* domain) {
         return Status::ArraySchemaError(errmsg);
       }
     }
-  } else if (types_[attribute_num_] == TILEDB_UINT32) {
+  } else if (typ == Datatype::UINT32) {
     uint32_t* domain_uint32 = (uint32_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_uint32[2 * i] > domain_uint32[2 * i + 1]) {
@@ -1582,7 +1606,7 @@ Status ArraySchema::set_domain(const void* domain) {
         return Status::ArraySchemaError(errmsg);
       }
     }
-  } else if (types_[attribute_num_] == TILEDB_UINT64) {
+  } else if (typ == Datatype::UINT64) {
     uint64_t* domain_uint64 = (uint64_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_uint64[2 * i] > domain_uint64[2 * i + 1]) {
@@ -1626,20 +1650,20 @@ Status ArraySchema::set_tile_extents(const void* tile_extents) {
   return Status::Ok();
 }
 
-Status ArraySchema::set_tile_order(int tile_order) {
+Status ArraySchema::set_tile_order(tiledb_layout_t tile_order) {
   // Set tile order
   if (tile_order != TILEDB_ROW_MAJOR && tile_order != TILEDB_COL_MAJOR) {
     std::string errmsg = "Cannot set tile order; Invalid tile order";
     PRINT_ERROR(errmsg);
     return Status::ArraySchemaError(errmsg);
   }
-  tile_order_ = tile_order;
+  tile_order_ = static_cast<Layout>(tile_order);
 
   // Success
   return Status::Ok();
 }
 
-Status ArraySchema::set_types(const int* types) {
+Status ArraySchema::set_types(const tiledb_datatype_t* types) {
   // Sanity check
   if (types == nullptr) {
     std::string errmsg = "Cannot set types; Types not provided";
@@ -1648,36 +1672,32 @@ Status ArraySchema::set_types(const int* types) {
   }
 
   // Set attribute types
+  tiledb_datatype_t typ;
   for (int i = 0; i < attribute_num_; ++i) {
-    if (types[i] != TILEDB_INT32 && types[i] != TILEDB_INT64 &&
-        types[i] != TILEDB_FLOAT32 && types[i] != TILEDB_FLOAT64 &&
-        types[i] != TILEDB_INT8 && types[i] != TILEDB_UINT8 &&
-        types[i] != TILEDB_INT16 && types[i] != TILEDB_UINT16 &&
-        types[i] != TILEDB_UINT32 && types[i] != TILEDB_UINT64 &&
-        types[i] != TILEDB_CHAR) {
+    typ = types[i];
+    if (typ != TILEDB_INT32 && typ != TILEDB_INT64 && typ != TILEDB_FLOAT32 &&
+        typ != TILEDB_FLOAT64 && typ != TILEDB_INT8 && typ != TILEDB_UINT8 &&
+        typ != TILEDB_INT16 && types[i] != TILEDB_UINT16 &&
+        typ != TILEDB_UINT32 && types[i] != TILEDB_UINT64 &&
+        typ != TILEDB_CHAR) {
       std::string errmsg = "Cannot set types; Invalid type";
       PRINT_ERROR(errmsg);
       return Status::ArraySchemaError(errmsg);
     }
-    types_.push_back(types[i]);
+    types_.push_back(static_cast<Datatype>(typ));
   }
 
   // Set coordinate type
-  if (types[attribute_num_] != TILEDB_INT32 &&
-      types[attribute_num_] != TILEDB_INT64 &&
-      types[attribute_num_] != TILEDB_FLOAT32 &&
-      types[attribute_num_] != TILEDB_FLOAT64 &&
-      types[attribute_num_] != TILEDB_INT8 &&
-      types[attribute_num_] != TILEDB_UINT8 &&
-      types[attribute_num_] != TILEDB_INT16 &&
-      types[attribute_num_] != TILEDB_UINT16 &&
-      types[attribute_num_] != TILEDB_UINT32 &&
-      types[attribute_num_] != TILEDB_UINT64) {
+  typ = types[attribute_num_];
+  if (typ != TILEDB_INT32 && typ != TILEDB_INT64 && typ != TILEDB_FLOAT32 &&
+      typ != TILEDB_FLOAT64 && typ != TILEDB_INT8 && typ != TILEDB_UINT8 &&
+      typ != TILEDB_INT16 && typ != TILEDB_UINT16 && typ != TILEDB_UINT32 &&
+      typ != TILEDB_UINT64) {
     std::string errmsg = "Cannot set types; Invalid type";
     PRINT_ERROR(errmsg);
     return Status::ArraySchemaError(errmsg);
   }
-  types_.push_back(types[attribute_num_]);
+  types_.push_back(static_cast<Datatype>(typ));
 
   // Set type sizes
   type_sizes_.resize(attribute_num_ + 1);
@@ -1706,14 +1726,14 @@ int ArraySchema::cell_order_cmp(const T* coords_a, const T* coords_b) const {
     return 0;
 
   // Check for precedence
-  if (cell_order_ == TILEDB_COL_MAJOR) {  // COLUMN-MAJOR
+  if (cell_order_ == Layout::COL_MAJOR) {  // COLUMN-MAJOR
     for (int i = dim_num_ - 1; i >= 0; --i) {
       if (coords_a[i] < coords_b[i])
         return -1;
       else if (coords_a[i] > coords_b[i])
         return 1;
     }
-  } else if (cell_order_ == TILEDB_ROW_MAJOR) {  // ROW-MAJOR
+  } else if (cell_order_ == Layout::ROW_MAJOR) {  // ROW-MAJOR
     for (int i = 0; i < dim_num_; ++i) {
       if (coords_a[i] < coords_b[i])
         return -1;
@@ -1730,22 +1750,35 @@ int ArraySchema::cell_order_cmp(const T* coords_a, const T* coords_b) const {
 }
 
 void ArraySchema::expand_domain(void* domain) const {
-  if (types_[attribute_num_] == TILEDB_INT32)
-    expand_domain<int>(static_cast<int*>(domain));
-  else if (types_[attribute_num_] == TILEDB_INT64)
-    expand_domain<int64_t>(static_cast<int64_t*>(domain));
-  else if (types_[attribute_num_] == TILEDB_INT8)
-    expand_domain<int8_t>(static_cast<int8_t*>(domain));
-  else if (types_[attribute_num_] == TILEDB_UINT8)
-    expand_domain<uint8_t>(static_cast<uint8_t*>(domain));
-  else if (types_[attribute_num_] == TILEDB_INT16)
-    expand_domain<int16_t>(static_cast<int16_t*>(domain));
-  else if (types_[attribute_num_] == TILEDB_UINT16)
-    expand_domain<uint16_t>(static_cast<uint16_t*>(domain));
-  else if (types_[attribute_num_] == TILEDB_UINT32)
-    expand_domain<uint32_t>(static_cast<uint32_t*>(domain));
-  else if (types_[attribute_num_] == TILEDB_UINT64)
-    expand_domain<uint64_t>(static_cast<uint64_t*>(domain));
+  Datatype typ = types_.at(attribute_num_);
+  switch (typ) {
+    case Datatype::INT32:
+      expand_domain<int>(static_cast<int*>(domain));
+      break;
+    case Datatype::INT64:
+      expand_domain<int64_t>(static_cast<int64_t*>(domain));
+      break;
+    case Datatype::INT8:
+      expand_domain<int8_t>(static_cast<int8_t*>(domain));
+      break;
+    case Datatype::UINT8:
+      expand_domain<uint8_t>(static_cast<uint8_t*>(domain));
+      break;
+    case Datatype::INT16:
+      expand_domain<int16_t>(static_cast<int16_t*>(domain));
+      break;
+    case Datatype::UINT16:
+      expand_domain<uint16_t>(static_cast<uint16_t*>(domain));
+      break;
+    case Datatype::UINT32:
+      expand_domain<uint32_t>(static_cast<uint32_t*>(domain));
+      break;
+    case Datatype::UINT64:
+      expand_domain<uint64_t>(static_cast<uint64_t*>(domain));
+      break;
+    default:
+      assert(0);
+  }
 }
 
 template <class T>
@@ -1778,10 +1811,10 @@ Status ArraySchema::get_cell_pos(const T* coords, int64_t* pos) const {
   }
 
   // Invoke the proper function based on the cell order
-  if (cell_order_ == TILEDB_ROW_MAJOR) {
+  if (cell_order_ == Layout::ROW_MAJOR) {
     *pos = get_cell_pos_row(coords);
     return Status::Ok();
-  } else if (cell_order_ == TILEDB_COL_MAJOR) {
+  } else if (cell_order_ == Layout::COL_MAJOR) {
     *pos = get_cell_pos_col(coords);
     return Status::Ok();
   }
@@ -1797,9 +1830,9 @@ void ArraySchema::get_next_cell_coords(
   assert(dense_);
 
   // Invoke the proper function based on the tile order
-  if (cell_order_ == TILEDB_ROW_MAJOR)
+  if (cell_order_ == Layout::ROW_MAJOR)
     get_next_cell_coords_row(domain, cell_coords, coords_retrieved);
-  else if (cell_order_ == TILEDB_COL_MAJOR)
+  else if (cell_order_ == Layout::COL_MAJOR)
     get_next_cell_coords_col(domain, cell_coords, coords_retrieved);
   else  // Sanity check
     assert(0);
@@ -1811,9 +1844,9 @@ void ArraySchema::get_next_tile_coords(const T* domain, T* tile_coords) const {
   assert(dense_);
 
   // Invoke the proper function based on the tile order
-  if (tile_order_ == TILEDB_ROW_MAJOR)
+  if (tile_order_ == Layout::ROW_MAJOR)
     get_next_tile_coords_row(domain, tile_coords);
-  else if (tile_order_ == TILEDB_COL_MAJOR)
+  else if (tile_order_ == Layout::COL_MAJOR)
     get_next_tile_coords_col(domain, tile_coords);
   else  // Sanity check
     assert(0);
@@ -1826,9 +1859,9 @@ void ArraySchema::get_previous_cell_coords(
   assert(dense_);
 
   // Invoke the proper function based on the tile order
-  if (cell_order_ == TILEDB_ROW_MAJOR)
+  if (cell_order_ == Layout::ROW_MAJOR)
     get_previous_cell_coords_row(domain, cell_coords);
-  else if (cell_order_ == TILEDB_COL_MAJOR)
+  else if (cell_order_ == Layout::COL_MAJOR)
     get_previous_cell_coords_col(domain, cell_coords);
   else  // Sanity check
     assert(0);
@@ -1867,9 +1900,9 @@ int64_t ArraySchema::get_tile_pos(const T* tile_coords) const {
   assert(tile_extents_);
 
   // Invoke the proper function based on the tile order
-  if (tile_order_ == TILEDB_ROW_MAJOR) {
+  if (tile_order_ == Layout::ROW_MAJOR) {
     return get_tile_pos_row(tile_coords);
-  } else if (tile_order_ == TILEDB_COL_MAJOR) {
+  } else if (tile_order_ == Layout::COL_MAJOR) {
     return get_tile_pos_col(tile_coords);
   } else {  // Sanity check
     assert(0);
@@ -1882,9 +1915,9 @@ int64_t ArraySchema::get_tile_pos(const T* domain, const T* tile_coords) const {
   assert(tile_extents_);
 
   // Invoke the proper function based on the tile order
-  if (tile_order_ == TILEDB_ROW_MAJOR) {
+  if (tile_order_ == Layout::ROW_MAJOR) {
     return get_tile_pos_row(domain, tile_coords);
-  } else if (tile_order_ == TILEDB_COL_MAJOR) {
+  } else if (tile_order_ == Layout::COL_MAJOR) {
     return get_tile_pos_col(domain, tile_coords);
   } else {  // Sanity check
     assert(0);
@@ -2009,7 +2042,7 @@ size_t ArraySchema::compute_bin_size() const {
   bin_size += (attribute_num_ + 1) * sizeof(char);
   // Size for cell_val_num_
   bin_size += attribute_num_ * sizeof(int);
-  // Size for compression_
+  // Size for compressor_
   bin_size += (attribute_num_ + 1) * sizeof(char);
 
   return bin_size;
@@ -2021,22 +2054,22 @@ void ArraySchema::compute_cell_num_per_tile() {
     return;
 
   // Invoke the proper templated function
-  int coords_type = types_[attribute_num_];
-  if (coords_type == TILEDB_INT32)
+  Datatype coords_type = types_.at(attribute_num_);
+  if (coords_type == Datatype::INT32)
     compute_cell_num_per_tile<int>();
-  else if (coords_type == TILEDB_INT64)
+  else if (coords_type == Datatype::INT64)
     compute_cell_num_per_tile<int64_t>();
-  else if (coords_type == TILEDB_INT8)
+  else if (coords_type == Datatype::INT8)
     compute_cell_num_per_tile<int8_t>();
-  else if (coords_type == TILEDB_UINT8)
+  else if (coords_type == Datatype::UINT8)
     compute_cell_num_per_tile<uint8_t>();
-  else if (coords_type == TILEDB_INT16)
+  else if (coords_type == Datatype::INT16)
     compute_cell_num_per_tile<int16_t>();
-  else if (coords_type == TILEDB_UINT16)
+  else if (coords_type == Datatype::UINT16)
     compute_cell_num_per_tile<uint16_t>();
-  else if (coords_type == TILEDB_UINT32)
+  else if (coords_type == Datatype::UINT32)
     compute_cell_num_per_tile<uint32_t>();
-  else if (coords_type == TILEDB_UINT64)
+  else if (coords_type == Datatype::UINT64)
     compute_cell_num_per_tile<uint64_t>();
   else  // Sanity check
     assert(0);
@@ -2063,48 +2096,48 @@ size_t ArraySchema::compute_cell_size(int i) const {
 
   // Attributes
   if (i < attribute_num_) {
-    if (types_[i] == TILEDB_CHAR)
+    if (types_[i] == Datatype::CHAR)
       size = cell_val_num_[i] * sizeof(char);
-    else if (types_[i] == TILEDB_INT32)
+    else if (types_[i] == Datatype::INT32)
       size = cell_val_num_[i] * sizeof(int);
-    else if (types_[i] == TILEDB_INT64)
+    else if (types_[i] == Datatype::INT64)
       size = cell_val_num_[i] * sizeof(int64_t);
-    else if (types_[i] == TILEDB_FLOAT32)
+    else if (types_[i] == Datatype::FLOAT32)
       size = cell_val_num_[i] * sizeof(float);
-    else if (types_[i] == TILEDB_FLOAT64)
+    else if (types_[i] == Datatype::FLOAT64)
       size = cell_val_num_[i] * sizeof(double);
-    else if (types_[i] == TILEDB_INT8)
+    else if (types_[i] == Datatype::INT8)
       size = cell_val_num_[i] * sizeof(int8_t);
-    else if (types_[i] == TILEDB_UINT8)
+    else if (types_[i] == Datatype::UINT8)
       size = cell_val_num_[i] * sizeof(uint8_t);
-    else if (types_[i] == TILEDB_INT16)
+    else if (types_[i] == Datatype::INT16)
       size = cell_val_num_[i] * sizeof(int16_t);
-    else if (types_[i] == TILEDB_UINT16)
+    else if (types_[i] == Datatype::UINT16)
       size = cell_val_num_[i] * sizeof(uint16_t);
-    else if (types_[i] == TILEDB_UINT32)
+    else if (types_[i] == Datatype::UINT32)
       size = cell_val_num_[i] * sizeof(uint32_t);
-    else if (types_[i] == TILEDB_UINT64)
+    else if (types_[i] == Datatype::UINT64)
       size = cell_val_num_[i] * sizeof(uint64_t);
   } else {  // Coordinates
-    if (types_[i] == TILEDB_INT32)
+    if (types_[i] == Datatype::INT32)
       size = dim_num_ * sizeof(int);
-    else if (types_[i] == TILEDB_INT64)
+    else if (types_[i] == Datatype::INT64)
       size = dim_num_ * sizeof(int64_t);
-    else if (types_[i] == TILEDB_FLOAT32)
+    else if (types_[i] == Datatype::FLOAT32)
       size = dim_num_ * sizeof(float);
-    else if (types_[i] == TILEDB_FLOAT64)
+    else if (types_[i] == Datatype::FLOAT64)
       size = dim_num_ * sizeof(double);
-    else if (types_[i] == TILEDB_INT8)
+    else if (types_[i] == Datatype::INT8)
       size = dim_num_ * sizeof(int8_t);
-    else if (types_[i] == TILEDB_UINT8)
+    else if (types_[i] == Datatype::UINT8)
       size = dim_num_ * sizeof(uint8_t);
-    else if (types_[i] == TILEDB_INT16)
+    else if (types_[i] == Datatype::INT16)
       size = dim_num_ * sizeof(int16_t);
-    else if (types_[i] == TILEDB_UINT16)
+    else if (types_[i] == Datatype::UINT16)
       size = dim_num_ * sizeof(uint16_t);
-    else if (types_[i] == TILEDB_UINT32)
+    else if (types_[i] == Datatype::UINT32)
       size = dim_num_ * sizeof(uint32_t);
-    else if (types_[i] == TILEDB_UINT64)
+    else if (types_[i] == Datatype::UINT64)
       size = dim_num_ * sizeof(uint64_t);
   }
 
@@ -2113,29 +2146,31 @@ size_t ArraySchema::compute_cell_size(int i) const {
 
 void ArraySchema::compute_tile_domain() {
   // For easy reference
-  int coords_type = types_[attribute_num_];
+  Datatype coords_type = types_[attribute_num_];
 
   // Invoke the proper templated function
-  if (coords_type == TILEDB_INT32)
+  if (coords_type == Datatype::INT32)
     compute_tile_domain<int>();
-  else if (coords_type == TILEDB_INT64)
+  else if (coords_type == Datatype::INT64)
     compute_tile_domain<int64_t>();
-  else if (coords_type == TILEDB_FLOAT32)
+  else if (coords_type == Datatype::FLOAT32)
     compute_tile_domain<float>();
-  else if (coords_type == TILEDB_FLOAT64)
+  else if (coords_type == Datatype::FLOAT64)
     compute_tile_domain<double>();
-  else if (coords_type == TILEDB_INT8)
+  else if (coords_type == Datatype::INT8)
     compute_tile_domain<int8_t>();
-  else if (coords_type == TILEDB_UINT8)
+  else if (coords_type == Datatype::UINT8)
     compute_tile_domain<uint8_t>();
-  else if (coords_type == TILEDB_INT16)
+  else if (coords_type == Datatype::INT16)
     compute_tile_domain<int16_t>();
-  else if (coords_type == TILEDB_UINT16)
+  else if (coords_type == Datatype::UINT16)
     compute_tile_domain<uint16_t>();
-  else if (coords_type == TILEDB_UINT32)
+  else if (coords_type == Datatype::UINT32)
     compute_tile_domain<uint32_t>();
-  else if (coords_type == TILEDB_UINT64)
+  else if (coords_type == Datatype::UINT64)
     compute_tile_domain<uint64_t>();
+  else
+    assert(0);
 }
 
 template <class T>
@@ -2166,25 +2201,25 @@ void ArraySchema::compute_tile_domain() {
 
 void ArraySchema::compute_tile_offsets() {
   // Invoke the proper templated function
-  if (types_[attribute_num_] == TILEDB_INT32) {
+  if (types_[attribute_num_] == Datatype::INT32) {
     compute_tile_offsets<int>();
-  } else if (types_[attribute_num_] == TILEDB_INT64) {
+  } else if (types_[attribute_num_] == Datatype::INT64) {
     compute_tile_offsets<int64_t>();
-  } else if (types_[attribute_num_] == TILEDB_FLOAT32) {
+  } else if (types_[attribute_num_] == Datatype::FLOAT32) {
     compute_tile_offsets<float>();
-  } else if (types_[attribute_num_] == TILEDB_FLOAT64) {
+  } else if (types_[attribute_num_] == Datatype::FLOAT64) {
     compute_tile_offsets<double>();
-  } else if (types_[attribute_num_] == TILEDB_INT8) {
+  } else if (types_[attribute_num_] == Datatype::INT8) {
     compute_tile_offsets<int8_t>();
-  } else if (types_[attribute_num_] == TILEDB_UINT8) {
+  } else if (types_[attribute_num_] == Datatype::UINT8) {
     compute_tile_offsets<uint8_t>();
-  } else if (types_[attribute_num_] == TILEDB_INT16) {
+  } else if (types_[attribute_num_] == Datatype::INT16) {
     compute_tile_offsets<int16_t>();
-  } else if (types_[attribute_num_] == TILEDB_UINT16) {
+  } else if (types_[attribute_num_] == Datatype::UINT16) {
     compute_tile_offsets<uint16_t>();
-  } else if (types_[attribute_num_] == TILEDB_UINT32) {
+  } else if (types_[attribute_num_] == Datatype::UINT32) {
     compute_tile_offsets<uint32_t>();
-  } else if (types_[attribute_num_] == TILEDB_UINT64) {
+  } else if (types_[attribute_num_] == Datatype::UINT64) {
     compute_tile_offsets<uint64_t>();
   } else {  // The program should never reach this point
     assert(0);
@@ -2224,27 +2259,27 @@ size_t ArraySchema::compute_type_size(int i) const {
   // Sanity check
   assert(i >= 0 && i <= attribute_num_);
 
-  if (types_[i] == TILEDB_CHAR) {
+  if (types_[i] == Datatype::CHAR) {
     return sizeof(char);
-  } else if (types_[i] == TILEDB_INT32) {
+  } else if (types_[i] == Datatype::INT32) {
     return sizeof(int);
-  } else if (types_[i] == TILEDB_INT64) {
+  } else if (types_[i] == Datatype::INT64) {
     return sizeof(int64_t);
-  } else if (types_[i] == TILEDB_FLOAT32) {
+  } else if (types_[i] == Datatype::FLOAT32) {
     return sizeof(float);
-  } else if (types_[i] == TILEDB_FLOAT64) {
+  } else if (types_[i] == Datatype::FLOAT64) {
     return sizeof(double);
-  } else if (types_[i] == TILEDB_INT8) {
+  } else if (types_[i] == Datatype::INT8) {
     return sizeof(int8_t);
-  } else if (types_[i] == TILEDB_UINT8) {
+  } else if (types_[i] == Datatype::UINT8) {
     return sizeof(uint8_t);
-  } else if (types_[i] == TILEDB_INT16) {
+  } else if (types_[i] == Datatype::INT16) {
     return sizeof(int16_t);
-  } else if (types_[i] == TILEDB_UINT16) {
+  } else if (types_[i] == Datatype::UINT16) {
     return sizeof(uint16_t);
-  } else if (types_[i] == TILEDB_UINT32) {
+  } else if (types_[i] == Datatype::UINT32) {
     return sizeof(uint32_t);
-  } else if (types_[i] == TILEDB_UINT64) {
+  } else if (types_[i] == Datatype::UINT64) {
     return sizeof(uint64_t);
   } else {  // The program should never reach this point
     assert(0);

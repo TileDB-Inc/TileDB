@@ -35,9 +35,9 @@
 
 #include <zlib.h>
 #include <vector>
+#include "array_mode.h"
 #include "array_schema.h"
 #include "status.h"
-#include "tiledb_constants.h"
 
 namespace tiledb {
 
@@ -64,7 +64,7 @@ class BookKeeping {
       const ArraySchema* array_schema,
       bool dense,
       const std::string& fragment_name,
-      int mode);
+      ArrayMode mode);
 
   /** Destructor. */
   ~BookKeeping();
@@ -222,7 +222,7 @@ class BookKeeping {
   /** The MBRs (applicable only to the sparse case with irregular tiles). */
   std::vector<void*> mbrs_;
   /** The mode in which the fragment was initialized. */
-  int mode_;
+  ArrayMode mode_;
   /** The offsets of the next tile for each attribute. */
   std::vector<off_t> next_tile_offsets_;
   /** The offsets of the next variable tile for each attribute. */

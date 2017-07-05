@@ -556,7 +556,7 @@ Status ReadState::get_fragment_cell_ranges_dense(
 
   // For easy reference
   int dim_num = array_schema_->dim_num();
-  int cell_order = array_schema_->cell_order();
+  Layout cell_order = array_schema_->cell_order();
   size_t cell_range_size = 2 * coords_size_;
   const T* search_tile_overlap_subarray =
       static_cast<const T*>(search_tile_overlap_subarray_);
@@ -581,7 +581,7 @@ Status ReadState::get_fragment_cell_ranges_dense(
 
     // Handle the different cell orders
     int i;
-    if (cell_order == TILEDB_ROW_MAJOR) {  // ROW
+    if (cell_order == Layout::ROW_MAJOR) {  // ROW
       while (coords[0] <= search_tile_overlap_subarray[1]) {
         // Make a cell range representing a slab
         void* cell_range = malloc(cell_range_size);
@@ -606,7 +606,7 @@ Status ReadState::get_fragment_cell_ranges_dense(
           ++coords[--i];
         }
       }
-    } else if (cell_order == TILEDB_COL_MAJOR) {  // COLUMN
+    } else if (cell_order == Layout::COL_MAJOR) {  // COLUMN
       while (coords[dim_num - 1] <=
              search_tile_overlap_subarray[2 * (dim_num - 1) + 1]) {
         // Make a cell range representing a slab
@@ -1004,18 +1004,18 @@ Status ReadState::CMP_COORDS_TO_SEARCH_TILE(
   std::string filename =
       fragment_->fragment_name() + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX;
   Status st;
-  int read_method = array_->config()->read_method();
+  IO read_method = array_->config()->read_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
 #endif
 
-  if (read_method == TILEDB_IO_READ) {
+  if (read_method == IO::READ) {
     st = utils::read_from_file(
         filename,
         tiles_file_offsets_[attribute_num_ + 1] + tile_offset,
         tmp_coords_,
         coords_size_);
-  } else if (read_method == TILEDB_IO_MPI) {
+  } else if (read_method == IO::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_read_from_file(
         mpi_comm,
@@ -1124,32 +1124,32 @@ Status ReadState::compute_bytes_to_copy(
 
 void ReadState::compute_tile_search_range() {
   // For easy reference
-  int coords_type = array_schema_->coords_type();
+  Datatype coords_type = array_schema_->coords_type();
 
   // Applicable only to sparse fragments
   if (fragment_->dense())
     return;
 
   // Invoke the proper templated function
-  if (coords_type == TILEDB_INT32) {
+  if (coords_type == Datatype::INT32) {
     compute_tile_search_range<int>();
-  } else if (coords_type == TILEDB_INT64) {
+  } else if (coords_type == Datatype::INT64) {
     compute_tile_search_range<int64_t>();
-  } else if (coords_type == TILEDB_FLOAT32) {
+  } else if (coords_type == Datatype::FLOAT32) {
     compute_tile_search_range<float>();
-  } else if (coords_type == TILEDB_FLOAT64) {
+  } else if (coords_type == Datatype::FLOAT64) {
     compute_tile_search_range<double>();
-  } else if (coords_type == TILEDB_INT8) {
+  } else if (coords_type == Datatype::INT8) {
     compute_tile_search_range<int8_t>();
-  } else if (coords_type == TILEDB_UINT8) {
+  } else if (coords_type == Datatype::UINT8) {
     compute_tile_search_range<uint8_t>();
-  } else if (coords_type == TILEDB_INT16) {
+  } else if (coords_type == Datatype::INT16) {
     compute_tile_search_range<int16_t>();
-  } else if (coords_type == TILEDB_UINT16) {
+  } else if (coords_type == Datatype::UINT16) {
     compute_tile_search_range<uint16_t>();
-  } else if (coords_type == TILEDB_UINT32) {
+  } else if (coords_type == Datatype::UINT32) {
     compute_tile_search_range<uint32_t>();
-  } else if (coords_type == TILEDB_UINT64) {
+  } else if (coords_type == Datatype::UINT64) {
     compute_tile_search_range<uint64_t>();
   } else {
     // The code should never reach here
@@ -1344,79 +1344,84 @@ Status ReadState::decompress_tile(
     unsigned char* tile,
     size_t tile_size) {
   // For easy reference
-  int compression = array_schema_->compression(attribute_id);
+  Compressor compression = array_schema_->compression(attribute_id);
 
   // Special case for search coordinate tiles
   if (attribute_id == attribute_num_ + 1)
     attribute_id = attribute_num_;
 
-  if (compression == TILEDB_GZIP)
-    return decompress_tile_gzip(
-        attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
-  else if (compression == TILEDB_ZSTD)
-    return decompress_tile_zstd(
-        attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
-  else if (compression == TILEDB_LZ4)
-    return decompress_tile_lz4(
-        attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
-  else if (compression == TILEDB_BLOSC)
-    return decompress_tile_blosc(
-        attribute_id,
-        tile_compressed,
-        tile_compressed_size,
-        tile,
-        tile_size,
-        "blosclz");
-  else if (compression == TILEDB_BLOSC_LZ4)
-    return decompress_tile_blosc(
-        attribute_id,
-        tile_compressed,
-        tile_compressed_size,
-        tile,
-        tile_size,
-        "lz4");
-  else if (compression == TILEDB_BLOSC_LZ4HC)
-    return decompress_tile_blosc(
-        attribute_id,
-        tile_compressed,
-        tile_compressed_size,
-        tile,
-        tile_size,
-        "lz4hc");
-  else if (compression == TILEDB_BLOSC_SNAPPY)
-    return decompress_tile_blosc(
-        attribute_id,
-        tile_compressed,
-        tile_compressed_size,
-        tile,
-        tile_size,
-        "snappy");
-  else if (compression == TILEDB_BLOSC_ZLIB)
-    return decompress_tile_blosc(
-        attribute_id,
-        tile_compressed,
-        tile_compressed_size,
-        tile,
-        tile_size,
-        "zlib");
-  else if (compression == TILEDB_BLOSC_ZSTD)
-    return decompress_tile_blosc(
-        attribute_id,
-        tile_compressed,
-        tile_compressed_size,
-        tile,
-        tile_size,
-        "zstd");
-  else if (compression == TILEDB_RLE)
-    return decompress_tile_rle(
-        attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
-  else if (compression == TILEDB_BZIP2)
-    return decompress_tile_bzip2(
-        attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
-
-  // TODO: get rid of this, enums allow exhaustive switch case testing
-  assert(0);
-  return Status::Error("");
+  switch (compression) {
+    case Compressor::GZIP:
+      return decompress_tile_gzip(
+          attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
+    case Compressor::ZSTD:
+      return decompress_tile_zstd(
+          attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
+    case Compressor::LZ4:
+      return decompress_tile_lz4(
+          attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
+    case Compressor::BLOSC:
+      return decompress_tile_blosc(
+          attribute_id,
+          tile_compressed,
+          tile_compressed_size,
+          tile,
+          tile_size,
+          "blosclz");
+#undef BLOSC_LZ4
+    case Compressor::BLOSC_LZ4:
+      return decompress_tile_blosc(
+          attribute_id,
+          tile_compressed,
+          tile_compressed_size,
+          tile,
+          tile_size,
+          "lz4");
+#undef BLOSC_LZ4HC
+    case Compressor::BLOSC_LZ4HC:
+      return decompress_tile_blosc(
+          attribute_id,
+          tile_compressed,
+          tile_compressed_size,
+          tile,
+          tile_size,
+          "lz4hc");
+#undef BLOSC_SNAPPY
+    case Compressor::BLOSC_SNAPPY:
+      return decompress_tile_blosc(
+          attribute_id,
+          tile_compressed,
+          tile_compressed_size,
+          tile,
+          tile_size,
+          "snappy");
+#undef BLOSC_ZLIB
+    case Compressor::BLOSC_ZLIB:
+      return decompress_tile_blosc(
+          attribute_id,
+          tile_compressed,
+          tile_compressed_size,
+          tile,
+          tile_size,
+          "zlib");
+#undef BLOSC_ZSTD
+    case Compressor::BLOSC_ZSTD:
+      return decompress_tile_blosc(
+          attribute_id,
+          tile_compressed,
+          tile_compressed_size,
+          tile,
+          tile_size,
+          "zstd");
+    case Compressor::RLE:
+      return decompress_tile_rle(
+          attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
+    case Compressor::BZIP2:
+      return decompress_tile_bzip2(
+          attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
+    case Compressor::NO_COMPRESSION:
+      return Status::Ok();
+  }
 }
 
 Status ReadState::decompress_tile_gzip(
@@ -1552,7 +1557,7 @@ Status ReadState::decompress_tile_rle(
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
-  int order = array_schema->cell_order();
+  Layout order = array_schema->cell_order();
   bool is_coords = (attribute_id == attribute_num_);
   size_t value_size = (array_schema->var_size(attribute_id) || is_coords) ?
                           array_schema->type_size(attribute_id) :
@@ -1568,7 +1573,7 @@ Status ReadState::decompress_tile_rle(
         tile_size,
         value_size);
   } else {
-    if (order == TILEDB_ROW_MAJOR) {
+    if (order == Layout::ROW_MAJOR) {
       st = utils::RLE_decompress_coords_row(
           (unsigned char*)tile_compressed_,
           tile_compressed_size,
@@ -1576,7 +1581,7 @@ Status ReadState::decompress_tile_rle(
           tile_size,
           value_size,
           dim_num);
-    } else if (order == TILEDB_COL_MAJOR) {
+    } else if (order == Layout::COL_MAJOR) {
       st = utils::RLE_decompress_coords_col(
           (unsigned char*)tile_compressed_,
           tile_compressed_size,
@@ -1756,18 +1761,18 @@ Status ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
   std::string filename =
       fragment_->fragment_name() + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX;
   Status st;
-  int read_method = array_->config()->read_method();
+  IO read_method = array_->config()->read_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
 #endif
 
-  if (read_method == TILEDB_IO_READ) {
+  if (read_method == IO::READ) {
     st = utils::read_from_file(
         filename,
         tiles_file_offsets_[attribute_num_ + 1] + i * coords_size_,
         tmp_coords_,
         coords_size_);
-  } else if (read_method == TILEDB_IO_MPI) {
+  } else if (read_method == IO::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_read_from_file(
         mpi_comm,
@@ -1806,18 +1811,18 @@ Status ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
                          array_schema_->attribute(attribute_id) +
                          TILEDB_FILE_SUFFIX;
   Status st;
-  int read_method = array_->config()->read_method();
+  IO read_method = array_->config()->read_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
 #endif
 
-  if (read_method == TILEDB_IO_READ) {
+  if (read_method == IO::READ) {
     st = utils::read_from_file(
         filename,
         tiles_file_offsets_[attribute_id] + i * sizeof(size_t),
         &tmp_offset_,
         sizeof(size_t));
-  } else if (read_method == TILEDB_IO_MPI) {
+  } else if (read_method == IO::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_read_from_file(
         mpi_comm,
@@ -2210,10 +2215,10 @@ Status ReadState::mpi_io_read_tile_from_file_var_cmp(
 
 Status ReadState::prepare_tile_for_reading(int attribute_id, int64_t tile_i) {
   // For easy reference
-  int compression = array_schema_->compression(attribute_id);
+  Compressor compression = array_schema_->compression(attribute_id);
 
   // Invoke the proper function based on the compression type
-  if (compression == TILEDB_NO_COMPRESSION)
+  if (compression == Compressor::NO_COMPRESSION)
     return prepare_tile_for_reading_cmp_none(attribute_id, tile_i);
   else  // All compressions
     return prepare_tile_for_reading_cmp(attribute_id, tile_i);
@@ -2222,10 +2227,10 @@ Status ReadState::prepare_tile_for_reading(int attribute_id, int64_t tile_i) {
 Status ReadState::prepare_tile_for_reading_var(
     int attribute_id, int64_t tile_i) {
   // For easy reference
-  int compression = array_schema_->compression(attribute_id);
+  Compressor compression = array_schema_->compression(attribute_id);
 
   // Invoke the proper function based on the compression type
-  if (compression == TILEDB_NO_COMPRESSION)
+  if (compression == Compressor::NO_COMPRESSION)
     return prepare_tile_for_reading_var_cmp_none(attribute_id, tile_i);
   else  // All compressions
     return prepare_tile_for_reading_var_cmp(attribute_id, tile_i);
@@ -2272,14 +2277,14 @@ Status ReadState::prepare_tile_for_reading_cmp(
 
   // Read tile from file
   Status st;
-  int read_method = array_->config()->read_method();
-  if (read_method == TILEDB_IO_READ) {
+  IO read_method = array_->config()->read_method();
+  if (read_method == IO::READ) {
     st = read_tile_from_file_cmp(
         attribute_id, file_offset, tile_compressed_size);
-  } else if (read_method == TILEDB_IO_MMAP) {
+  } else if (read_method == IO::MMAP) {
     st =
         map_tile_from_file_cmp(attribute_id, file_offset, tile_compressed_size);
-  } else if (read_method == TILEDB_IO_MPI) {
+  } else if (read_method == IO::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_read_tile_from_file_cmp(
         attribute_id, file_offset, tile_compressed_size);
@@ -2338,10 +2343,10 @@ Status ReadState::prepare_tile_for_reading_cmp_none(
   off_t file_offset = tile_i * full_tile_size;
 
   // Read tile from file
-  int read_method = array_->config()->read_method();
-  if (read_method == TILEDB_IO_READ || read_method == TILEDB_IO_MPI)
+  IO read_method = array_->config()->read_method();
+  if (read_method == IO::READ || read_method == IO::MPI)
     set_tile_file_offset(attribute_id, file_offset);
-  else if (read_method == TILEDB_IO_MMAP)
+  else if (read_method == IO::MMAP)
     RETURN_NOT_OK(
         map_tile_from_file_cmp_none(attribute_id, file_offset, tile_size));
 
@@ -2400,14 +2405,14 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
     tiles_[attribute_id] = malloc(full_tile_size);
 
   // Read tile from file
-  int read_method = array_->config()->read_method();
-  if (read_method == TILEDB_IO_READ) {
+  IO read_method = array_->config()->read_method();
+  if (read_method == IO::READ) {
     RETURN_NOT_OK(read_tile_from_file_cmp(
         attribute_id, file_offset, tile_compressed_size))
-  } else if (read_method == TILEDB_IO_MMAP) {
+  } else if (read_method == IO::MMAP) {
     RETURN_NOT_OK(map_tile_from_file_cmp(
         attribute_id, file_offset, tile_compressed_size));
-  } else if (read_method == TILEDB_IO_MPI) {
+  } else if (read_method == IO::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_read_tile_from_file_cmp(
         attribute_id, file_offset, tile_compressed_size));
@@ -2470,14 +2475,14 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
     }
 
     // Read tile from file
-    int read_method = array_->config()->read_method();
-    if (read_method == TILEDB_IO_READ) {
+    IO read_method = array_->config()->read_method();
+    if (read_method == IO::READ) {
       RETURN_NOT_OK(read_tile_from_file_var_cmp(
           attribute_id, file_offset, tile_compressed_size));
-    } else if (read_method == TILEDB_IO_MMAP) {
+    } else if (read_method == IO::MMAP) {
       RETURN_NOT_OK(map_tile_from_file_var_cmp(
           attribute_id, file_offset, tile_compressed_size));
-    } else if (read_method == TILEDB_IO_MPI) {
+    } else if (read_method == IO::MPI) {
 #ifdef HAVE_MPI
       RETURN_NOT_OK(mpi_io_read_tile_from_file_var_cmp(
           attribute_id, file_offset, tile_compressed_size));
@@ -2532,10 +2537,10 @@ Status ReadState::prepare_tile_for_reading_var_cmp_none(
   off_t file_offset = tile_i * full_tile_size;
 
   // Read tile from file
-  int read_method = array_->config()->read_method();
-  if (read_method == TILEDB_IO_READ || read_method == TILEDB_IO_MPI)
+  IO read_method = array_->config()->read_method();
+  if (read_method == IO::READ || read_method == IO::MPI)
     set_tile_file_offset(attribute_id, file_offset);
-  else if (read_method == TILEDB_IO_MMAP)
+  else if (read_method == IO::MMAP)
     RETURN_NOT_OK(
         map_tile_from_file_cmp_none(attribute_id, file_offset, tile_size));
 
@@ -2554,13 +2559,13 @@ Status ReadState::prepare_tile_for_reading_var_cmp_none(
                          TILEDB_FILE_SUFFIX;
 
   if (tile_i != tile_num - 1) {  // Not the last tile
-    if (read_method == TILEDB_IO_READ || read_method == TILEDB_IO_MMAP) {
+    if (read_method == IO::READ || read_method == IO::MMAP) {
       RETURN_NOT_OK(utils::read_from_file(
           filename,
           file_offset + full_tile_size,
           &end_tile_var_offset,
           TILEDB_CELL_VAR_OFFSET_SIZE));
-    } else if (read_method == TILEDB_IO_MPI) {
+    } else if (read_method == IO::MPI) {
 #ifdef HAVE_MPI
       RETURN_NOT_OK(mpi_io_read_from_file(
           array_->config()->mpi_comm(),
@@ -2590,9 +2595,9 @@ else {  // Last tile
 }
 
 // Read tile from file
-if (read_method == TILEDB_IO_READ || read_method == TILEDB_IO_MPI)
+if (read_method == IO::READ || read_method == IO::MPI)
   set_tile_var_file_offset(attribute_id, start_tile_var_offset);
-else if (read_method == TILEDB_IO_MMAP)
+else if (read_method == IO::MMAP)
   RETURN_NOT_OK(map_tile_from_file_var_cmp_none(
       attribute_id, start_tile_var_offset, tile_var_size));
 
@@ -2628,19 +2633,19 @@ Status ReadState::READ_FROM_TILE(
                          array_schema_->attribute(attribute_id) +
                          TILEDB_FILE_SUFFIX;
   Status st;
-  int read_method = array_->config()->read_method();
+  IO read_method = array_->config()->read_method();
 
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
 #endif
 
-  if (read_method == TILEDB_IO_READ) {
+  if (read_method == IO::READ) {
     st = utils::read_from_file(
         filename,
         tiles_file_offsets_[attribute_id] + tile_offset,
         buffer,
         bytes_to_copy);
-  } else if (read_method == TILEDB_IO_MPI) {
+  } else if (read_method == IO::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_read_from_file(
         mpi_comm,
@@ -2674,18 +2679,18 @@ Status ReadState::READ_FROM_TILE_VAR(
                          array_schema_->attribute(attribute_id) + "_var" +
                          TILEDB_FILE_SUFFIX;
   Status st;
-  int read_method = array_->config()->read_method();
+  IO read_method = array_->config()->read_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
 #endif
 
-  if (read_method == TILEDB_IO_READ) {
+  if (read_method == IO::READ) {
     st = utils::read_from_file(
         filename,
         tiles_var_file_offsets_[attribute_id] + tile_offset,
         buffer,
         bytes_to_copy);
-  } else if (read_method == TILEDB_IO_MPI) {
+  } else if (read_method == IO::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_read_from_file(
         mpi_comm,
