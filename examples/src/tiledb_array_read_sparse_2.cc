@@ -60,6 +60,8 @@ int main() {
   void* buffers[] = { buffer_a1 };
   size_t buffer_sizes[] = { sizeof(buffer_a1) };
 
+  /* TODO: handle deletions through an API
+
 
   // Loop until no overflow
   printf(" a1\n----\n");
@@ -76,6 +78,7 @@ int main() {
         printf("%3d\n", buffer_a1[i]);
     }
   } while(tiledb_array_overflow(tiledb_array, 0) == 1);
+   */
  
   // Finalize the array
   tiledb_array_finalize(tiledb_array);

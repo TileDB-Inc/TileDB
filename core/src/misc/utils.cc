@@ -44,8 +44,8 @@
 #include <cstring>
 #include <iostream>
 #include <set>
+#include "constants.h"
 #include "status.h"
-#include "tiledb_constants.h"
 
 #if defined(__APPLE__) && defined(__MACH__)
 #include <arpa/inet.h>

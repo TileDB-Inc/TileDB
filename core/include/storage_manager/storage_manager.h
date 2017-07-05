@@ -63,6 +63,16 @@
 /** Name of the consolidation file lock. */
 #define TILEDB_SM_CONSOLIDATION_FILELOCK_NAME ".__consolidation_lock"
 
+/**@{*/  // TODO: these may have to be moved from here
+/** Special TileDB file name. */
+#define TILEDB_ARRAY_SCHEMA_FILENAME "__array_schema.tdb"
+#define TILEDB_METADATA_SCHEMA_FILENAME "__metadata_schema.tdb"
+#define TILEDB_BOOK_KEEPING_FILENAME "__book_keeping"
+#define TILEDB_FRAGMENT_FILENAME "__tiledb_fragment.tdb"
+#define TILEDB_GROUP_FILENAME "__tiledb_group.tdb"
+#define TILEDB_WORKSPACE_FILENAME "__tiledb_workspace.tdb"
+/**@}*/
+
 namespace tiledb {
 
 /* ********************************* */

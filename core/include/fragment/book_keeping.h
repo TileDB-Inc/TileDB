@@ -39,11 +39,22 @@
 #include "array_schema.h"
 #include "status.h"
 
-namespace tiledb {
+/* ********************************* */
+/*              CONSTANTS            */
+/* ********************************* */
 
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
+/**@{*/  // TODO: this has to moved from here
+/** Special TileDB file name suffix. */
+#define TILEDB_FILE_SUFFIX ".tdb"
+#define TILEDB_GZIP_SUFFIX ".gz"
+/**@}*/
+
+/**@{*/
+/** Special TileDB file name. */
+#define TILEDB_BOOK_KEEPING_FILENAME "__book_keeping"
+/**@}*/
+
+namespace tiledb {
 
 /** Stores the book-keeping structures of a fragment. */
 class BookKeeping {

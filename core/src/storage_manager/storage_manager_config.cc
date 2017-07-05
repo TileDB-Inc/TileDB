@@ -31,7 +31,7 @@
  */
 
 #include "storage_manager_config.h"
-#include "tiledb_constants.h"
+#include "constants.h"
 
 namespace tiledb {
 

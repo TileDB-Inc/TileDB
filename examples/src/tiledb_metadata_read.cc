@@ -83,9 +83,11 @@ int main(int argc, char** argv) {
     // Check overflow for a2 
     fprintf(stderr, "Reading value on attribute 'a2' for key '%s' resulted in "
             "a buffer overflow!\n", argv[1]);
+      /* TODO: revisit this
   } else if(static_cast<int*>(buffers[0])[0] == TILEDB_EMPTY_INT32) {
     // Check if deleted
     fprintf(stderr, "Key '%s' has been deleted!\n", argv[1]);
+       */
   } else {
     // Print attribute values
     printf(

@@ -44,7 +44,17 @@
 #include "book_keeping.h"
 #include "fragment.h"
 #include "storage_manager_config.h"
-#include "tiledb_constants.h"
+
+/* ********************************* */
+/*             CONSTANTS             */
+/* ********************************* */
+
+/** Size of the buffer used during consolidation. */
+#define TILEDB_CONSOLIDATION_BUFFER_SIZE 10000000  // ~10 MB
+
+// TODO: could be moved to another place
+/** The maximum length for the names of TileDB objects. */
+#define TILEDB_NAME_MAX_LEN 256
 
 namespace tiledb {
 

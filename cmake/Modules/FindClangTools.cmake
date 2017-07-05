@@ -44,10 +44,10 @@ find_program(CLANG_TIDY_BIN
 
 if ( "${CLANG_TIDY_BIN}" STREQUAL "CLANG_TIDY_BIN-NOTFOUND" )
   set(CLANG_TIDY_FOUND 0)
-  message("clang-tidy not found")
+  message(STATUS "Not found clang-tidy")
 else()
   set(CLANG_TIDY_FOUND 1)
-  message(STATUS "clang-tidy found at ${CLANG_TIDY_BIN}")
+  message(STATUS "Found clang-tidy: ${CLANG_TIDY_BIN}")
 endif()
 
 find_program(CLANG_FORMAT_BIN
@@ -64,8 +64,8 @@ find_program(CLANG_FORMAT_BIN
 
 if ( "${CLANG_FORMAT_BIN}" STREQUAL "CLANG_FORMAT_BIN-NOTFOUND" )
   set(CLANG_FORMAT_FOUND 0)
-  message("clang-format not found")
+  message(STATUS "Not found clang-format")
 else()
   set(CLANG_FORMAT_FOUND 1)
-  message(STATUS "clang-format found at ${CLANG_FORMAT_BIN}")
+  message(STATUS "Found clang-format: ${CLANG_FORMAT_BIN}")
 endif()

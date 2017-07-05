@@ -49,6 +49,8 @@ int main() {
       nullptr,                                      // All attributes
       0);                                        // Number of attributes
 
+  /* TODO: Handle deletions better
+
   // Prepare cell buffers
   int buffer_a1[] = { 107, TILEDB_EMPTY_INT32, 106, 105 };
   size_t buffer_a2[] = { 0, 3, 4, 5 };
@@ -71,8 +73,11 @@ int main() {
       sizeof(buffer_coords)
   };
 
+
   // Write to array
-  tiledb_array_write(tiledb_array, buffers, buffer_sizes); 
+  tiledb_array_write(tiledb_array, buffers, buffer_sizes);
+
+   */
 
   // Finalize array
   tiledb_array_finalize(tiledb_array);

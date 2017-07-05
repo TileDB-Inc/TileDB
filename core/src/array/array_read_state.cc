@@ -33,6 +33,7 @@
 #include "array_read_state.h"
 #include <cassert>
 #include <cmath>
+#include "constants.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -417,6 +418,9 @@ Status ArrayReadState::copy_cells(
         attribute_id, buffer, buffer_size, buffer_offset);
   else
     assert(0);
+
+  // Code should never reach here
+  return Status::ARSError("Invalid datatype when copying cells");
 }
 
 template <class T>
@@ -590,6 +594,9 @@ Status ArrayReadState::copy_cells_var(
         buffer_var_offset);
   else
     assert(0);
+
+  // Code should never reach here
+  return Status::ARSError("Invalid datatype when copying variable cells");
 }
 
 template <class T>
@@ -2303,6 +2310,9 @@ Status ArrayReadState::read_dense_attr(
   } else {
     assert(0);
   }
+
+  // Code should never reach here
+  return Status::ARSError("Invalid datatype when reading dense attribute");
 }
 
 template <class T>
@@ -2387,6 +2397,10 @@ Status ArrayReadState::read_dense_attr_var(
   } else {
     assert(0);
   }
+
+  // Code should never reach here
+  return Status::ARSError(
+      "Invalid datatype when reading dense variable attribute");
 }
 
 template <class T>
@@ -2537,6 +2551,9 @@ Status ArrayReadState::read_sparse_attr(
   } else {
     assert(0);
   }
+
+  // Code should never reach here
+  return Status::ARSError("Invalid datatype when reading sparse attribute");
 }
 
 template <class T>
@@ -2626,6 +2643,10 @@ Status ArrayReadState::read_sparse_attr_var(
   } else {
     assert(0);
   }
+
+  // Code should never reach here
+  return Status::ARSError(
+      "Invalid datatype when reading sparse variable attribute");
 }
 
 template <class T>
