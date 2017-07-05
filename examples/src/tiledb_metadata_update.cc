@@ -37,6 +37,8 @@ int main() {
   TileDB_CTX* tiledb_ctx;
   tiledb_ctx_init(&tiledb_ctx, nullptr);
 
+  /* TODO: Handle deletions better through an API
+
   // Initialize metadata
   TileDB_Metadata* tiledb_metadata;
   tiledb_metadata_init(
@@ -81,6 +83,8 @@ int main() {
 
   // Finalize the metadata
   tiledb_metadata_finalize(tiledb_metadata);
+
+   */
 
   // Finalize context
   tiledb_ctx_finalize(tiledb_ctx);

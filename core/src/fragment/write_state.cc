@@ -31,6 +31,7 @@
  */
 
 #include "write_state.h"
+#include <blosc.h>
 #include <bzlib.h>
 #include <fcntl.h>
 #include <lz4.h>
@@ -40,10 +41,9 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
-#include "blosc.h"
 #include "comparators.h"
+#include "constants.h"
 #include "status.h"
-#include "tiledb_constants.h"
 #include "utils.h"
 
 /* ****************************** */

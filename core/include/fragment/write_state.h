@@ -38,6 +38,30 @@
 #include "book_keeping.h"
 #include "fragment.h"
 
+/* ********************************* */
+/*             CONSTANTS             */
+/* ********************************* */
+
+/**@{*/
+/** Compression levels. */
+#ifndef TILEDB_COMPRESSION_LEVEL_ZSTD
+#define TILEDB_COMPRESSION_LEVEL_ZSTD 1
+#endif
+#ifndef TILEDB_COMPRESSION_LEVEL_BLOSC
+#define TILEDB_COMPRESSION_LEVEL_BLOSC 5
+#endif
+/**@}*/ /**@{*/
+/** Size of buffer used for sorting. */
+#define TILEDB_SORTED_BUFFER_SIZE 10000000      // ~10MB
+#define TILEDB_SORTED_BUFFER_VAR_SIZE 10000000  // ~10MB
+/**@}*/
+
+/**@{*/
+/** Size of buffer used for sorting. */
+#define TILEDB_SORTED_BUFFER_SIZE 10000000      // ~10MB
+#define TILEDB_SORTED_BUFFER_VAR_SIZE 10000000  // ~10MB
+/**@}*/
+
 namespace tiledb {
 
 /* ********************************* */

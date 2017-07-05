@@ -44,8 +44,27 @@
 #include <omp.h>
 #endif
 
+/* ********************************* */
+/*             CONSTANTS             */
+/* ********************************* */
+
 /** Maximum number of bytes written in a single I/O. */
 #define TILEDB_UT_MAX_WRITE_COUNT 1500000000  // ~ 1.5 GB
+
+// TODO: This should be moved from here
+#ifndef TILEDB_COMPRESSION_LEVEL_GZIP
+#define TILEDB_COMPRESSION_LEVEL_GZIP Z_DEFAULT_COMPRESSION
+#endif
+
+/**@{*/  // TODO: these may have to be moved from here
+/** Special TileDB file name. */
+#define TILEDB_ARRAY_SCHEMA_FILENAME "__array_schema.tdb"
+#define TILEDB_METADATA_SCHEMA_FILENAME "__metadata_schema.tdb"
+#define TILEDB_BOOK_KEEPING_FILENAME "__book_keeping"
+#define TILEDB_FRAGMENT_FILENAME "__tiledb_fragment.tdb"
+#define TILEDB_GROUP_FILENAME "__tiledb_group.tdb"
+#define TILEDB_WORKSPACE_FILENAME "__tiledb_workspace.tdb"
+/**@}*/
 
 namespace tiledb {
 

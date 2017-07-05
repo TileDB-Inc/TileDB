@@ -35,6 +35,8 @@
 #include <cstdlib>
 
 int main(int argc, char** argv) {
+  /* TODO: this will be refactored
+
   // Sanity check
   if(argc != 2) {
     fprintf(stderr, "Usage: ./tiledb_list parent_dir\n");
@@ -88,6 +90,8 @@ int main(int argc, char** argv) {
 
   // Finalize context
   tiledb_ctx_finalize(tiledb_ctx);
+
+   */
 
   return 0;
 }

@@ -33,6 +33,7 @@
 #include "array_sorted_write_state.h"
 #include <cassert>
 #include <cmath>
+#include "constants.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -847,6 +848,9 @@ void* ArraySortedWriteState::aio_handler(void* context) {
     asws->handle_aio_requests<uint64_t>();
   else
     assert(0);
+
+  // Code should never reach here
+  return NULL;
 }
 
 void ArraySortedWriteState::copy_tile_slab() {

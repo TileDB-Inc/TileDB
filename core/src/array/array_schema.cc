@@ -36,7 +36,7 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
-#include "tiledb_constants.h"
+#include "constants.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -1907,6 +1907,9 @@ int64_t ArraySchema::get_tile_pos(const T* tile_coords) const {
   } else {  // Sanity check
     assert(0);
   }
+
+  // Code should never reach here
+  return -1;
 }
 
 template <class T>
@@ -1922,6 +1925,9 @@ int64_t ArraySchema::get_tile_pos(const T* domain, const T* tile_coords) const {
   } else {  // Sanity check
     assert(0);
   }
+
+  // Code should never reach here
+  return -1;
 }
 
 template <class T>

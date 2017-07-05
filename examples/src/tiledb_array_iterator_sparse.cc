@@ -72,9 +72,11 @@ int main() {
         (const void**) &a1_v,// Value
         &a1_size);           // Value size (useful in variable-sized attributes)
 
+    /* TODO: Handle empty values better
     // Print value (if not a deletion)
     if(*a1_v != TILEDB_EMPTY_INT32)
       printf("%3d\n", *a1_v);
+      */
 
     // Advance iterator
     tiledb_array_iterator_next(tiledb_array_it);

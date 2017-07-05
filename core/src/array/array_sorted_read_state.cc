@@ -34,6 +34,7 @@
 #include <cassert>
 #include <cmath>
 #include "comparators.h"
+#include "constants.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -286,6 +287,9 @@ Status ArraySortedReadState::read(void** buffers, size_t* buffer_sizes) {
   } else {
     assert(0);
   }
+
+  // Code should never reach here
+  return Status::ASRSError("Invalid datatype when reading");
 }
 
 /* ****************************** */
@@ -2450,6 +2454,9 @@ Status ArraySortedReadState::read() {
   } else {
     assert(0);  // The code should never reach here
   }
+
+  // Code should never reach here
+  return Status::ASRSError("Invalid array mode when reading");
 }
 
 template <class T>

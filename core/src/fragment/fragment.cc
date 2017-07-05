@@ -36,8 +36,8 @@
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+#include "constants.h"
 #include "status.h"
-#include "tiledb_constants.h"
 #include "utils.h"
 
 /* ****************************** */

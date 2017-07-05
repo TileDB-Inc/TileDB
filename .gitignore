@@ -1,6 +1,7 @@
 *.swp
 build/*
 cmake-build-debug/*
+cmake-build-release/*
 core/bin/*
 core/obj/*
 core/lib/*

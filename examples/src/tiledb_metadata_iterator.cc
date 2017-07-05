@@ -70,7 +70,7 @@ int main() {
         &key_size);                                  // Key size
 
     // Print only if it is not empty
-    if(key[0] != TILEDB_EMPTY_CHAR)
+// TODO    if(key[0] != TILEDB_EMPTY_CHAR)
       printf("%s\n", key);
 
     // Advance iterator

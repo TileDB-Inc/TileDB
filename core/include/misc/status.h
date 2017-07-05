@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+
 namespace tiledb {
 
 #define RETURN_NOT_OK(s) \
@@ -54,8 +55,9 @@ enum class StatusCode : char {
   Array,
   ArraySchema,
   ArrayIt,
-  ASRS,
-  ASWS,
+  ARS,   // Array Read State
+  ASRS,  // Array Sorted Read State
+  ASWS,  // Array Sorted Write State
   Metadata,
   OS,
   IO,
@@ -120,6 +122,11 @@ class Status {
   static Status ArrayItError(const std::string& msg) {
     return Status(StatusCode::ArrayIt, msg, -1);
   }
+
+  static Status ARSError(const std::string& msg) {
+    return Status(StatusCode::ARS, msg, -1);
+  }
+
   static Status ASRSError(const std::string& msg) {
     return Status(StatusCode::ASRS, msg, -1);
   }

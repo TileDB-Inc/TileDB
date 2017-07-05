@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2016 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,11 +33,12 @@
 #ifndef __TILEDB_H__
 #define __TILEDB_H__
 
-#include "tiledb_constants.h"
 #ifdef HAVE_MPI
 #include <mpi.h>
 #endif
 #include <unistd.h>
+#include <cfloat>
+#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -56,6 +57,48 @@ extern "C" {
 #define TILEDB_EXPORT __attribute__((visibility("default")))
 #else
 #define TILEDB_EXPORT
+#endif
+/**@}*/
+
+/* ****************************** */
+/*        TileDB Constants        */
+/* ****************************** */
+
+/** Version. */
+#define TILEDB_VERSION "0.6.1"
+#define TILEDB_VERSION_MAJOR 0
+#define TILEDB_VERSION_MINOR 6
+#define TILEDB_VERSION_REVISION 1
+
+/**@{*/
+/** Return code. */
+#define TILEDB_OK 0
+#define TILEDB_ERR -1
+#define TILEDB_OOM -2
+/**@}*/
+
+/**@{*/
+/** Special value indicating a variable number or size. */
+#define TILEDB_VAR_NUM INT_MAX
+#define TILEDB_VAR_SIZE (size_t) - 1
+/**@}*/
+
+/**@{*/
+/** Special attribute name. */
+#define TILEDB_COORDS "__coords"
+#define TILEDB_KEY "__key"
+/**@}*/
+
+/**@{*/
+/** MAC address interface. */
+#if defined(__APPLE__) && defined(__MACH__)
+#ifndef TILEDB_MAC_ADDRESS_INTERFACE
+#define TILEDB_MAC_ADDRESS_INTERFACE en0
+#endif
+#else
+#ifndef TILEDB_MAC_ADDRESS_INTERFACE
+#define TILEDB_MAC_ADDRESS_INTERFACE eth0
+#endif
 #endif
 /**@}*/
 
