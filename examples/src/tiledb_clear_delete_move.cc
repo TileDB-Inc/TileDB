@@ -34,20 +34,20 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, nullptr);
 
   // Clear an array
-  tiledb_clear(tiledb_ctx, "my_group/sparse_arrays/my_array_B");
+  tiledb_clear(ctx, "my_group/sparse_arrays/my_array_B");
 
   // Delete a group
-  tiledb_delete(tiledb_ctx, "my_group/dense_arrays");
+  tiledb_delete(ctx, "my_group/dense_arrays");
 
   // Move a group
-  tiledb_move(tiledb_ctx, "my_group", "my_group_2");
+  tiledb_move(ctx, "my_group", "my_group_2");
 
   // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }

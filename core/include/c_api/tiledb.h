@@ -218,7 +218,7 @@ typedef struct TileDB_Config {
 /* ********************************* */
 
 /** The TileDB context, which maintains state for the TileDB modules. */
-typedef struct TileDB_CTX TileDB_CTX;
+typedef struct tiledb_ctx_t tiledb_ctx_t;
 
 /**
  * Initializes the TileDB context.
@@ -229,7 +229,7 @@ typedef struct TileDB_CTX TileDB_CTX;
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_ctx_init(
-    TileDB_CTX** ctx, const TileDB_Config* tiledb_config);
+    tiledb_ctx_t** ctx, const TileDB_Config* tiledb_config);
 
 /**
  * Finalizes the TileDB context, properly freeing-up memory.
@@ -237,7 +237,7 @@ TILEDB_EXPORT int tiledb_ctx_init(
  * @param ctx The TileDB context to be finalized.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_ctx_finalize(TileDB_CTX* ctx);
+TILEDB_EXPORT int tiledb_ctx_finalize(tiledb_ctx_t* ctx);
 
 /* ********************************* */
 /*              ERROR                */
@@ -252,7 +252,7 @@ typedef struct tiledb_error_t tiledb_error_t;
  * @param ctx The TIleDB context
  * @return tiledb_error_t struct, NULL if no error has been raised
  */
-TILEDB_EXPORT tiledb_error_t* tiledb_error_last(TileDB_CTX* ctx);
+TILEDB_EXPORT tiledb_error_t* tiledb_error_last(tiledb_ctx_t* ctx);
 
 /**
  * Return the error message associated with a tiledb_error_t struct
@@ -281,17 +281,17 @@ TILEDB_EXPORT int tiledb_error_free(tiledb_error_t* err);
  * @param group The directory of the group to be created in the file system.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_group_create(TileDB_CTX* ctx, const char* group);
+TILEDB_EXPORT int tiledb_group_create(tiledb_ctx_t* ctx, const char* group);
 
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */
 
 /** A TileDB array object. */
-typedef struct TileDB_Array TileDB_Array;
+typedef struct tiledb_array_t tiledb_array_t;
 
 /** The array schema. */
-typedef struct TileDB_ArraySchema {
+typedef struct tiledb_array_schema_t {
   /** The array name. */
   char* array_name_;
   /** The attribute names. */
@@ -391,7 +391,7 @@ typedef struct TileDB_ArraySchema {
    *    - TILEDB_UINT64
    */
   tiledb_datatype_t* types_;
-} TileDB_ArraySchema;
+} tiledb_array_schema_t;
 
 /**
  * Populates a TileDB array schema object.
@@ -416,11 +416,11 @@ typedef struct TileDB_ArraySchema {
  * @param tile_order The tile order.
  * @param types The attribute types (plus one in the end for the coordinates).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
- * @see TileDB_ArraySchema
+ * @see tiledb_array_schema_t
  */
 TILEDB_EXPORT int tiledb_array_set_schema(
-    TileDB_CTX* ctx,
-    TileDB_ArraySchema* tiledb_array_schema,
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* tiledb_array_schema,
     const char* array_name,
     const char** attributes,
     int attribute_num,
@@ -446,7 +446,7 @@ TILEDB_EXPORT int tiledb_array_set_schema(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_create(
-    TileDB_CTX* ctx, const TileDB_ArraySchema* tiledb_array_schema);
+    tiledb_ctx_t* ctx, const tiledb_array_schema_t* tiledb_array_schema);
 
 /**
  * Initializes a TileDB array.
@@ -478,8 +478,8 @@ TILEDB_EXPORT int tiledb_array_create(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_init(
-    TileDB_CTX* ctx,
-    TileDB_Array** tiledb_array,
+    tiledb_ctx_t* ctx,
+    tiledb_array_t** tiledb_array,
     const char* array,
     tiledb_array_mode_t mode,
     const void* subarray,
@@ -500,7 +500,7 @@ TILEDB_EXPORT int tiledb_array_init(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_reset_subarray(
-    const TileDB_Array* tiledb_array, const void* subarray);
+    const tiledb_array_t* tiledb_array, const void* subarray);
 
 /**
  * Resets the attributes used upon initialization of the array.
@@ -514,7 +514,7 @@ TILEDB_EXPORT int tiledb_array_reset_subarray(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_reset_attributes(
-    const TileDB_Array* tiledb_array,
+    const tiledb_array_t* tiledb_array,
     const char** attributes,
     int attribute_num);
 
@@ -526,7 +526,8 @@ TILEDB_EXPORT int tiledb_array_reset_attributes(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_get_schema(
-    const TileDB_Array* tiledb_array, TileDB_ArraySchema* tiledb_array_schema);
+    const tiledb_array_t* tiledb_array,
+    tiledb_array_schema_t* tiledb_array_schema);
 
 /**
  * Retrieves the schema of an array from disk.
@@ -537,9 +538,9 @@ TILEDB_EXPORT int tiledb_array_get_schema(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_load_schema(
-    TileDB_CTX* ctx,
+    tiledb_ctx_t* ctx,
     const char* array,
-    TileDB_ArraySchema* tiledb_array_schema);
+    tiledb_array_schema_t* tiledb_array_schema);
 
 /**
  * Frees the input array schema struct, properly deallocating memory space.
@@ -548,7 +549,7 @@ TILEDB_EXPORT int tiledb_array_load_schema(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_free_schema(
-    TileDB_ArraySchema* tiledb_array_schema);
+    tiledb_array_schema_t* tiledb_array_schema);
 
 /**
  * Performs a write operation to an array.
@@ -598,7 +599,7 @@ TILEDB_EXPORT int tiledb_array_free_schema(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_write(
-    const TileDB_Array* tiledb_array,
+    const tiledb_array_t* tiledb_array,
     const void** buffers,
     const size_t* buffer_sizes);
 
@@ -637,7 +638,7 @@ TILEDB_EXPORT int tiledb_array_write(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_array_read(
-    const TileDB_Array* tiledb_array, void** buffers, size_t* buffer_sizes);
+    const tiledb_array_t* tiledb_array, void** buffers, size_t* buffer_sizes);
 
 /**
  * Checks if a read operation for a particular attribute resulted in a
@@ -657,7 +658,7 @@ TILEDB_EXPORT int tiledb_array_read(
  * @return TILEDB_ERR for error, 1 for overflow, and 0 otherwise.
  */
 TILEDB_EXPORT int tiledb_array_overflow(
-    const TileDB_Array* tiledb_array, int attribute_id);
+    const tiledb_array_t* tiledb_array, int attribute_id);
 
 /**
  * Consolidates the fragments of an array into a single fragment.
@@ -666,7 +667,8 @@ TILEDB_EXPORT int tiledb_array_overflow(
  * @param array The name of the TileDB array to be consolidated.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
-TILEDB_EXPORT int tiledb_array_consolidate(TileDB_CTX* ctx, const char* array);
+TILEDB_EXPORT int tiledb_array_consolidate(
+    tiledb_ctx_t* ctx, const char* array);
 
 /**
  * Finalizes a TileDB array, properly freeing its memory space.
@@ -674,7 +676,7 @@ TILEDB_EXPORT int tiledb_array_consolidate(TileDB_CTX* ctx, const char* array);
  * @param tiledb_array The array to be finalized.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
-TILEDB_EXPORT int tiledb_array_finalize(TileDB_Array* tiledb_array);
+TILEDB_EXPORT int tiledb_array_finalize(tiledb_array_t* tiledb_array);
 
 /**
  * Syncs all currently written files in the input array.
@@ -682,7 +684,7 @@ TILEDB_EXPORT int tiledb_array_finalize(TileDB_Array* tiledb_array);
  * @param tiledb_array The array to be synced.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
-TILEDB_EXPORT int tiledb_array_sync(TileDB_Array* tiledb_array);
+TILEDB_EXPORT int tiledb_array_sync(tiledb_array_t* tiledb_array);
 
 /**
  * Syncs the currently written files associated with the input attribute
@@ -693,10 +695,10 @@ TILEDB_EXPORT int tiledb_array_sync(TileDB_Array* tiledb_array);
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_sync_attribute(
-    TileDB_Array* tiledb_array, const char* attribute);
+    tiledb_array_t* tiledb_array, const char* attribute);
 
 /** A TileDB array iterator. */
-typedef struct TileDB_ArrayIterator TileDB_ArrayIterator;
+typedef struct tiledb_array_iterator_t tiledb_array_iterator_t;
 
 /**
  * Initializes an array iterator for reading cells, potentially constraining it
@@ -739,8 +741,8 @@ typedef struct TileDB_ArrayIterator TileDB_ArrayIterator;
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_iterator_init(
-    TileDB_CTX* ctx,
-    TileDB_ArrayIterator** tiledb_array_it,
+    tiledb_ctx_t* ctx,
+    tiledb_array_iterator_t** tiledb_array_it,
     const char* array,
     tiledb_array_mode_t mode,
     const void* subarray,
@@ -771,7 +773,7 @@ TILEDB_EXPORT int tiledb_array_iterator_init(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_iterator_get_value(
-    TileDB_ArrayIterator* tiledb_array_it,
+    tiledb_array_iterator_t* tiledb_array_it,
     int attribute_id,
     const void** value,
     size_t* value_size);
@@ -783,7 +785,7 @@ TILEDB_EXPORT int tiledb_array_iterator_get_value(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_iterator_next(
-    TileDB_ArrayIterator* tiledb_array_it);
+    tiledb_array_iterator_t* tiledb_array_it);
 
 /**
  * Checks if the the iterator has reached its end.
@@ -792,7 +794,7 @@ TILEDB_EXPORT int tiledb_array_iterator_next(
  * @return TILEDB_ERR for error, 1 for having reached the end, and 0 otherwise.
  */
 TILEDB_EXPORT int tiledb_array_iterator_end(
-    TileDB_ArrayIterator* tiledb_array_it);
+    tiledb_array_iterator_t* tiledb_array_it);
 
 /**
  * Finalizes an array iterator, properly freeing the allocating memory space.
@@ -801,14 +803,14 @@ TILEDB_EXPORT int tiledb_array_iterator_end(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_iterator_finalize(
-    TileDB_ArrayIterator* tiledb_array_it);
+    tiledb_array_iterator_t* tiledb_array_it);
 
 /* ********************************* */
 /*             METADATA              */
 /* ********************************* */
 
 /** Specifies the metadata schema. */
-typedef struct TileDB_MetadataSchema {
+typedef struct tiledb_metadata_schema_t {
   /** The metadata name. */
   char* metadata_name_;
   /** The attribute names. */
@@ -862,10 +864,10 @@ typedef struct TileDB_MetadataSchema {
    *    - TILEDB_UINT64
    */
   tiledb_datatype_t* types_;
-} TileDB_MetadataSchema;
+} tiledb_metadata_schema_t;
 
 /** A TileDB metadata object. */
-typedef struct TileDB_Metadata TileDB_Metadata;
+typedef struct tiledb_metadata_t tiledb_metadata_t;
 
 /**
  * Populates a TileDB metadata schema object.
@@ -880,11 +882,11 @@ typedef struct TileDB_Metadata TileDB_Metadata;
  *     in the end for the key).
  * @param types The attribute types.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
- * @see TileDB_MetadataSchema
+ * @see tiledb_metadata_schema_t
  */
 TILEDB_EXPORT int tiledb_metadata_set_schema(
-    TileDB_CTX* ctx,
-    TileDB_MetadataSchema* tiledb_metadata_schema,
+    tiledb_ctx_t* ctx,
+    tiledb_metadata_schema_t* tiledb_metadata_schema,
     const char* metadata_name,
     const char** attributes,
     int attribute_num,
@@ -901,7 +903,7 @@ TILEDB_EXPORT int tiledb_metadata_set_schema(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_metadata_create(
-    TileDB_CTX* ctx, const TileDB_MetadataSchema* metadata_schema);
+    tiledb_ctx_t* ctx, const tiledb_metadata_schema_t* metadata_schema);
 
 /**
  * Initializes a TileDB metadata object.
@@ -922,8 +924,8 @@ TILEDB_EXPORT int tiledb_metadata_create(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_metadata_init(
-    TileDB_CTX* ctx,
-    TileDB_Metadata** tiledb_metadata,
+    tiledb_ctx_t* ctx,
+    tiledb_metadata_t** tiledb_metadata,
     const char* metadata,
     tiledb_metadata_mode_t mode,
     const char** attributes,
@@ -940,7 +942,7 @@ TILEDB_EXPORT int tiledb_metadata_init(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_metadata_reset_attributes(
-    const TileDB_Metadata* tiledb_metadata,
+    const tiledb_metadata_t* tiledb_metadata,
     const char** attributes,
     int attribute_num);
 
@@ -953,8 +955,8 @@ TILEDB_EXPORT int tiledb_metadata_reset_attributes(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_metadata_get_schema(
-    const TileDB_Metadata* tiledb_metadata,
-    TileDB_MetadataSchema* tiledb_metadata_schema);
+    const tiledb_metadata_t* tiledb_metadata,
+    tiledb_metadata_schema_t* tiledb_metadata_schema);
 
 /**
  * Retrieves the schema of a metadata object from disk.
@@ -965,9 +967,9 @@ TILEDB_EXPORT int tiledb_metadata_get_schema(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_metadata_load_schema(
-    TileDB_CTX* ctx,
+    tiledb_ctx_t* ctx,
     const char* metadata,
-    TileDB_MetadataSchema* tiledb_metadata_schema);
+    tiledb_metadata_schema_t* tiledb_metadata_schema);
 
 /**
  * Frees the input metadata schema struct, properly deallocating memory space.
@@ -976,7 +978,7 @@ TILEDB_EXPORT int tiledb_metadata_load_schema(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_metadata_free_schema(
-    TileDB_MetadataSchema* tiledb_metadata_schema);
+    tiledb_metadata_schema_t* tiledb_metadata_schema);
 
 /**
  * Performs a write operation to a metadata object. The metadata must be
@@ -1000,7 +1002,7 @@ TILEDB_EXPORT int tiledb_metadata_free_schema(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_metadata_write(
-    const TileDB_Metadata* tiledb_metadata,
+    const tiledb_metadata_t* tiledb_metadata,
     const char* keys,
     size_t keys_size,
     const void** buffers,
@@ -1029,7 +1031,7 @@ TILEDB_EXPORT int tiledb_metadata_write(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_metadata_read(
-    const TileDB_Metadata* tiledb_metadata,
+    const tiledb_metadata_t* tiledb_metadata,
     const char* key,
     void** buffers,
     size_t* buffer_sizes);
@@ -1050,7 +1052,7 @@ TILEDB_EXPORT int tiledb_metadata_read(
  * @return TILEDB_ERR for error, 1 for overflow, and 0 otherwise.
  */
 TILEDB_EXPORT int tiledb_metadata_overflow(
-    const TileDB_Metadata* tiledb_metadata, int attribute_id);
+    const tiledb_metadata_t* tiledb_metadata, int attribute_id);
 
 /**
  * Consolidates the fragments of a metadata object into a single fragment.
@@ -1060,7 +1062,7 @@ TILEDB_EXPORT int tiledb_metadata_overflow(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_metadata_consolidate(
-    TileDB_CTX* ctx, const char* metadata);
+    tiledb_ctx_t* ctx, const char* metadata);
 
 /**
  * Finalizes a TileDB metadata object, properly freeing the memory space.
@@ -1068,10 +1070,10 @@ TILEDB_EXPORT int tiledb_metadata_consolidate(
  * @param tiledb_metadata The metadata to be finalized.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
-TILEDB_EXPORT int tiledb_metadata_finalize(TileDB_Metadata* tiledb_metadata);
+TILEDB_EXPORT int tiledb_metadata_finalize(tiledb_metadata_t* tiledb_metadata);
 
 /** A TileDB metadata iterator. */
-typedef struct TileDB_MetadataIterator TileDB_MetadataIterator;
+typedef struct tiledb_metadata_iterator_t tiledb_metadata_iterator_t;
 
 /**
  * Initializes a metadata iterator, potentially constraining it
@@ -1102,8 +1104,8 @@ typedef struct TileDB_MetadataIterator TileDB_MetadataIterator;
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_metadata_iterator_init(
-    TileDB_CTX* ctx,
-    TileDB_MetadataIterator** tiledb_metadata_it,
+    tiledb_ctx_t* ctx,
+    tiledb_metadata_iterator_t** tiledb_metadata_it,
     const char* metadata,
     const char** attributes,
     int attribute_num,
@@ -1129,7 +1131,7 @@ TILEDB_EXPORT int tiledb_metadata_iterator_init(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_metadata_iterator_get_value(
-    TileDB_MetadataIterator* tiledb_metadata_it,
+    tiledb_metadata_iterator_t* tiledb_metadata_it,
     int attribute_id,
     const void** value,
     size_t* value_size);
@@ -1141,7 +1143,7 @@ TILEDB_EXPORT int tiledb_metadata_iterator_get_value(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_metadata_iterator_next(
-    TileDB_MetadataIterator* tiledb_metadata_it);
+    tiledb_metadata_iterator_t* tiledb_metadata_it);
 
 /**
  * Checks if the the iterator has reached its end.
@@ -1150,7 +1152,7 @@ TILEDB_EXPORT int tiledb_metadata_iterator_next(
  * @return TILEDB_ERR for error, 1 for having reached the end, and 0 otherwise.
  */
 TILEDB_EXPORT int tiledb_metadata_iterator_end(
-    TileDB_MetadataIterator* tiledb_metadata_it);
+    tiledb_metadata_iterator_t* tiledb_metadata_it);
 
 /**
  * Finalizes the iterator, properly freeing the allocating memory space.
@@ -1159,7 +1161,7 @@ TILEDB_EXPORT int tiledb_metadata_iterator_end(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_metadata_iterator_finalize(
-    TileDB_MetadataIterator* tiledb_metadata_it);
+    tiledb_metadata_iterator_t* tiledb_metadata_it);
 
 /* ********************************* */
 /*       DIRECTORY MANAGEMENT        */
@@ -1176,7 +1178,7 @@ TILEDB_EXPORT int tiledb_metadata_iterator_finalize(
  *    - TILEDB_METADATA
  *    - -1 (none of the above)
  */
-TILEDB_EXPORT int tiledb_dir_type(TileDB_CTX* ctx, const char* dir);
+TILEDB_EXPORT int tiledb_dir_type(tiledb_ctx_t* ctx, const char* dir);
 
 /**
  * Clears a TileDB directory. The corresponding TileDB object
@@ -1187,7 +1189,7 @@ TILEDB_EXPORT int tiledb_dir_type(TileDB_CTX* ctx, const char* dir);
  * @param dir The TileDB directory to be cleared.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_clear(TileDB_CTX* ctx, const char* dir);
+TILEDB_EXPORT int tiledb_clear(tiledb_ctx_t* ctx, const char* dir);
 
 /**
  * Deletes a TileDB directory (group, array, or metadata) entirely.
@@ -1196,7 +1198,7 @@ TILEDB_EXPORT int tiledb_clear(TileDB_CTX* ctx, const char* dir);
  * @param dir The TileDB directory to be deleted.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_delete(TileDB_CTX* ctx, const char* dir);
+TILEDB_EXPORT int tiledb_delete(tiledb_ctx_t* ctx, const char* dir);
 
 /**
  * Moves a TileDB directory (group, array or metadata).
@@ -1207,7 +1209,7 @@ TILEDB_EXPORT int tiledb_delete(TileDB_CTX* ctx, const char* dir);
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_move(
-    TileDB_CTX* ctx, const char* old_dir, const char* new_dir);
+    tiledb_ctx_t* ctx, const char* old_dir, const char* new_dir);
 
 /**
  * Lists all the TileDB objects in a directory, copying their names into the
@@ -1232,7 +1234,7 @@ TILEDB_EXPORT int tiledb_move(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_ls(
-    TileDB_CTX* ctx,
+    tiledb_ctx_t* ctx,
     const char* parent_dir,
     char** dirs,
     tiledb_object_t* dir_types,
@@ -1247,7 +1249,7 @@ TILEDB_EXPORT int tiledb_ls(
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_ls_c(
-    TileDB_CTX* ctx, const char* parent_dir, int* dir_num);
+    tiledb_ctx_t* ctx, const char* parent_dir, int* dir_num);
 
 /* ********************************* */
 /*      ASYNCHRONOUS I/O (AIO)       */
@@ -1325,7 +1327,7 @@ typedef struct TileDB_AIO_Request {
  *     one resets the internal read state.
  */
 TILEDB_EXPORT int tiledb_array_aio_read(
-    const TileDB_Array* tiledb_array, TileDB_AIO_Request* tiledb_aio_request);
+    const tiledb_array_t* tiledb_array, TileDB_AIO_Request* tiledb_aio_request);
 
 /**
  * Issues an asynchronous write request.
@@ -1335,7 +1337,7 @@ TILEDB_EXPORT int tiledb_array_aio_read(
  * @return TILEDB_OK upon success, and TILEDB_ERR upon error.
  */
 TILEDB_EXPORT int tiledb_array_aio_write(
-    const TileDB_Array* tiledb_array, TileDB_AIO_Request* tiledb_aio_request);
+    const tiledb_array_t* tiledb_array, TileDB_AIO_Request* tiledb_aio_request);
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus

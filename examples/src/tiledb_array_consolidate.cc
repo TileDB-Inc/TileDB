@@ -34,17 +34,17 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, nullptr);
 
   // Consolidate the dense array
-  tiledb_array_consolidate(tiledb_ctx, "my_group/dense_arrays/my_array_A");
+  tiledb_array_consolidate(ctx, "my_group/dense_arrays/my_array_A");
 
   // Consolidate the sparse array
-  tiledb_array_consolidate(tiledb_ctx, "my_group/sparse_arrays/my_array_B");
+  tiledb_array_consolidate(ctx, "my_group/sparse_arrays/my_array_B");
 
   // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }

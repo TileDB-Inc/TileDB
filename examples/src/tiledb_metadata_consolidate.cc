@@ -34,16 +34,16 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, nullptr);
 
   // Consolidate metadata
   tiledb_metadata_consolidate(
-      tiledb_ctx, 
+      ctx,
       "my_group/sparse_arrays/my_array_B/meta");
 
   // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }

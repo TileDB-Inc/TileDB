@@ -50,13 +50,13 @@ struct ArraySchemaFx {
   std::string array_name_;
 
   // Array schema object under test
-  TileDB_ArraySchema array_schema_;
+  tiledb_array_schema_t array_schema_;
 
   // True if the array schema is set
   bool array_schema_set_;
 
   // TileDB context
-  TileDB_CTX* tiledb_ctx_;
+  tiledb_ctx_t* tiledb_ctx_;
 
   ArraySchemaFx() {
     // Error code
@@ -117,7 +117,7 @@ struct ArraySchemaFx {
 
     // Set array schema
     rc = tiledb_array_set_schema(
-        // The TileDB_CTX
+        // The tiledb_ctx_t
         tiledb_ctx_,
         // The array schema structure
         &array_schema_,
@@ -169,7 +169,7 @@ TEST_CASE_METHOD(ArraySchemaFx, "Test array schema creation and retrieval") {
   REQUIRE(rc == TILEDB_OK);
 
   // Load array schema from the disk
-  TileDB_ArraySchema array_schema_disk;
+  tiledb_array_schema_t array_schema_disk;
   rc = tiledb_array_load_schema(
       tiledb_ctx_, array_name_.c_str(), &array_schema_disk);
   REQUIRE(rc == TILEDB_OK);

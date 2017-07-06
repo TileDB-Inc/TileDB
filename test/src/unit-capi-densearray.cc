@@ -51,10 +51,10 @@ struct DenseArrayFx {
   std::string array_name_;
 
   // Array schema object under test
-  TileDB_ArraySchema array_schema_;
+  tiledb_array_schema_t array_schema_;
 
   // TileDB context
-  TileDB_CTX* tiledb_ctx_;
+  tiledb_ctx_t* tiledb_ctx_;
 
   DenseArrayFx() {
     // Reset the random number generator
@@ -314,7 +314,7 @@ struct DenseArrayFx {
     const char* attributes[] = {"ATTR_INT32"};
 
     // Initialize the array in the input mode
-    TileDB_Array* tiledb_array;
+    tiledb_array_t* tiledb_array;
     rc = tiledb_array_init(
         tiledb_ctx_,
         &tiledb_array,
@@ -387,7 +387,7 @@ struct DenseArrayFx {
     const char* attributes[] = {"ATTR_INT32", TILEDB_COORDS};
 
     // Initialize the array
-    TileDB_Array* tiledb_array;
+    tiledb_array_t* tiledb_array;
     rc = tiledb_array_init(
         tiledb_ctx_,
         &tiledb_array,
@@ -456,7 +456,7 @@ struct DenseArrayFx {
     int rc;
 
     // Initialize the array
-    TileDB_Array* tiledb_array;
+    tiledb_array_t* tiledb_array;
     rc = tiledb_array_init(
         tiledb_ctx_,
         &tiledb_array,
@@ -545,7 +545,7 @@ struct DenseArrayFx {
     const char* attributes[] = {"ATTR_INT32"};
 
     // Initialize the array
-    TileDB_Array* tiledb_array;
+    tiledb_array_t* tiledb_array;
     rc = tiledb_array_init(
         tiledb_ctx_,
         &tiledb_array,

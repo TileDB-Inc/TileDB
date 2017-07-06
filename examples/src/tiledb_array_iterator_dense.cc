@@ -35,8 +35,8 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, nullptr);
 
   // Prepare cell buffers 
   int buffer_a1[3];
@@ -48,9 +48,9 @@ int main() {
   const char* attributes[] = { "a1" };
 
   // Initialize array 
-  TileDB_ArrayIterator* tiledb_array_it;
+  tiledb_array_iterator_t* tiledb_array_it;
   tiledb_array_iterator_init(
-      tiledb_ctx,                                    // Context
+      ctx,                                    // Context
       &tiledb_array_it,                              // Array iterator
       "my_group/dense_arrays/my_array_A",            // Array name
       TILEDB_ARRAY_READ,                             // Mode
@@ -81,7 +81,7 @@ int main() {
   tiledb_array_iterator_finalize(tiledb_array_it);
 
   // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }

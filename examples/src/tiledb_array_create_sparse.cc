@@ -34,8 +34,8 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, nullptr);
 
   // Prepare parameters for array schema
   const char* array_name = "my_group/sparse_arrays/my_array_B";
@@ -73,9 +73,9 @@ int main() {
   };
 
   // Set array schema
-  TileDB_ArraySchema array_schema;
+  tiledb_array_schema_t array_schema;
   tiledb_array_set_schema(
-      tiledb_ctx,
+      ctx,
       &array_schema,              // Array schema struct 
       array_name,                 // Array name 
       attributes,                 // Attributes 
@@ -96,13 +96,13 @@ int main() {
   );
 
   // Create array
-  tiledb_array_create(tiledb_ctx, &array_schema); 
+  tiledb_array_create(ctx, &array_schema);
 
   // Free array schema
   tiledb_array_free_schema(&array_schema);
 
   /* Finalize context. */
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }

@@ -41,7 +41,7 @@ void *parallel_write(void* args);
 
 // The arguments for each invocation of parallel_write
 typedef struct _thread_data_t {
-    TileDB_CTX* tiledb_ctx;
+    tiledb_ctx_t* ctx;
     const char* array_name;
     const void* subarray;
     const void** buffers;
@@ -50,8 +50,8 @@ typedef struct _thread_data_t {
 
 int main() {
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, nullptr);
 
   // Array name
   const char* array_name = "my_group/dense_arrays/my_array_A";
@@ -125,7 +125,7 @@ int main() {
   // Write in parallel
   for(int i=0; i<4; ++i) {
     // Populate the thread data 
-    thread_data[i].tiledb_ctx = tiledb_ctx;
+    thread_data[i].ctx = ctx;
     thread_data[i].array_name = array_name;
     if(i==0) {         // First tile
       thread_data[i].buffers = buffers_1;
@@ -154,7 +154,7 @@ int main() {
     pthread_join(threads[i], nullptr);
 
   // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }
@@ -164,9 +164,9 @@ void *parallel_write(void* args) {
   thread_data_t* data = (thread_data_t*) args;
 
   // Initialize array
-  TileDB_Array* tiledb_array;
+  tiledb_array_t* tiledb_array;
   tiledb_array_init(
-      data->tiledb_ctx,                          // Context 
+      data->ctx,                          // Context
       &tiledb_array,                             // Array object
       data->array_name,                          // Array name
       TILEDB_ARRAY_WRITE,                        // Mode

@@ -35,19 +35,19 @@
 
 // Prints some schema info (you can enhance this to print the entire schema)
 void print_some_metadata_schema_info(
-    const TileDB_MetadataSchema* metadata_schema);
+    const tiledb_metadata_schema_t* metadata_schema);
 
 int main() {
   /* Initialize context with the default configuration parameters. */
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, nullptr);
 
   // ----- Get schema without metadata initialization ----- //
 
   // Load metadata schema when the metadata object is not initialized
-  TileDB_MetadataSchema metadata_schema;
+  tiledb_metadata_schema_t metadata_schema;
   tiledb_metadata_load_schema(
-      tiledb_ctx,                                     // Context 
+      ctx,                                     // Context
       "my_group/sparse_arrays/my_array_B/meta",       // Metadata name
       &metadata_schema);                              // Metadata schema struct
 
@@ -60,9 +60,9 @@ int main() {
   // ----- Get schema after metadata initialization ----- //
 
   // Initialize metadata
-  TileDB_Metadata* tiledb_metadata;
+  tiledb_metadata_t* tiledb_metadata;
   tiledb_metadata_init(
-      tiledb_ctx,                                     // Context 
+      ctx,                                     // Context
       &tiledb_metadata,                               // Array object
       "my_group/sparse_arrays/my_array_B/meta",       // Array name
       TILEDB_METADATA_READ,                           // Mode
@@ -82,13 +82,13 @@ int main() {
   tiledb_metadata_finalize(tiledb_metadata);
 
   // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }
 
 void print_some_metadata_schema_info(
-    const TileDB_MetadataSchema* metadata_schema) {
+    const tiledb_metadata_schema_t* metadata_schema) {
   printf("Metadata name: %s\n",  metadata_schema->metadata_name_);
   printf("Attributes: ");
   for(int i=0; i<metadata_schema->attribute_num_; ++i)

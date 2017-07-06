@@ -44,12 +44,12 @@ int main(int argc, char** argv) {
   }
 
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, nullptr);
 
   // Retrieve number of directories
   int dir_num;
-  tiledb_ls_c(tiledb_ctx, argv[1], &dir_num);
+  tiledb_ls_c(ctx, argv[1], &dir_num);
 
   // Exit if there are not TileDB objects in the input directory_
   if(dir_num == 0)
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
 
   // List TileDB objects
   tiledb_ls(
-      tiledb_ctx,                                    // Context
+      ctx,                                    // Context
       argv[1],                                       // Parent directory
       dirs,                                          // Directories
       dir_types,                                     // Directory types
@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
   free(dir_types);
 
   // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
    */
 
