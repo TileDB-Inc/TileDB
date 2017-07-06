@@ -1,12 +1,11 @@
 /**
- * @file array_mode.h
+ * @file compressor.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- *            Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,31 +27,21 @@
  *
  * @section DESCRIPTION
  *
- * This defines the tiledb ArrayMode enum that maps to tiledb_array_mode_t C-api
- * enum.
+ * This defines the tiledb CompressorType enum that maps to tiledb_compressor_t
+ * C-api enum.
  */
 
-#ifndef TILEDB_ARRAY_MODE_H
-#define TILEDB_ARRAY_MODE_H
+#ifndef __TILEDB_COMPRESSOR_H__
+#define __TILEDB_COMPRESSOR_H__
 
 namespace tiledb {
 
-enum class ArrayMode : char {
-#define TILEDB_ARRAY_MODE_ENUM(id) id
+enum class Compressor : char {
+#define TILEDB_COMPRESSOR_ENUM(id) id
 #include "tiledb_enum.inc"
-#undef TILEDB_ARRAY_MODE_ENUM
+#undef TILEDB_COMPRESSOR_ENUM
 };
 
-inline bool is_read_mode(const ArrayMode mode) {
-  return mode == ArrayMode::READ || mode == ArrayMode::READ_SORTED_COL ||
-         mode == ArrayMode::READ_SORTED_ROW;
-}
-
-inline bool is_write_mode(const ArrayMode mode) {
-  return mode == ArrayMode::WRITE || mode == ArrayMode::WRITE_SORTED_COL ||
-         mode == ArrayMode::WRITE_SORTED_ROW ||
-         mode == ArrayMode::WRITE_UNSORTED;
-}
 }  // namespace tiledb
 
-#endif  // TILEDB_ARRAY_MODE_H
+#endif  // __TILEDB_COMPRESSOR_H__

@@ -34,24 +34,20 @@
 #include <cstring>
 
 int main() {
-  /* Create a TileDB configuration. */
-  TileDB_Config tiledb_config;
-  /* 
-   * IMPORTANT: You need to zero out the members of the config structure if you
-   * are setting only a subset of them, so that the rest can take default 
-   * values.
-   */
-  memset(&tiledb_config, 0, sizeof(struct TileDB_Config));
-  tiledb_config.home_ = "."; // TileDB home will be the current directory
-  tiledb_config.read_method_ = TILEDB_IO_READ; // OS read instead of mmap
+  // Create a TileDB configuration
+  tiledb_config_t* config = tiledb_config_create();
+  tiledb_config_set_read_method(config, TILEDB_IO_METHOD_READ);
 
   // Initialize context with the default configuration parameters
   tiledb_ctx_t* ctx;
-  tiledb_ctx_init(&ctx, &tiledb_config);
+  tiledb_ctx_init(&ctx, config);
 
   /* --- Your code here --- */
 
-  /* Finalize context. */
+  // Free config
+  tiledb_config_free(config);
+
+  // Free context
   tiledb_ctx_finalize(ctx);
 
   return 0;

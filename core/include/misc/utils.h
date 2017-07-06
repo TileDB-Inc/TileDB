@@ -5,7 +5,8 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,40 +31,22 @@
  * This file contains useful (global) functions.
  */
 
-#ifndef __UTILS_H__
-#define __UTILS_H__
+#ifndef __TILEDB_UTILS_H__
+#define __TILEDB_UTILS_H__
 
 #ifdef HAVE_MPI
 #include <mpi.h>
 #endif
+
 #include <pthread.h>
 #include <string>
 #include <vector>
+#include "configurator.h"
 #include "status.h"
+
 #ifdef HAVE_OPENMP
 #include <omp.h>
 #endif
-
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/** Maximum number of bytes written in a single I/O. */
-#define TILEDB_UT_MAX_WRITE_COUNT 1500000000  // ~ 1.5 GB
-
-// TODO: This should be moved from here
-#ifndef TILEDB_COMPRESSION_LEVEL_GZIP
-#define TILEDB_COMPRESSION_LEVEL_GZIP Z_DEFAULT_COMPRESSION
-#endif
-
-/**@{*/  // TODO: these may have to be moved from here
-/** Special TileDB file name. */
-#define TILEDB_ARRAY_SCHEMA_FILENAME "__array_schema.tdb"
-#define TILEDB_METADATA_SCHEMA_FILENAME "__metadata_schema.tdb"
-#define TILEDB_BOOK_KEEPING_FILENAME "__book_keeping"
-#define TILEDB_FRAGMENT_FILENAME "__tiledb_fragment.tdb"
-#define TILEDB_GROUP_FILENAME "__tiledb_group.tdb"
-/**@}*/
 
 namespace tiledb {
 
@@ -791,4 +774,5 @@ void zip_coordinates(
 };  // namespace utils
 
 };  // namespace tiledb
-#endif
+
+#endif  // __TILEDB_UTILS_H__

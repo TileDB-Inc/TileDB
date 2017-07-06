@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -44,6 +45,7 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include "configurator.h"
 #include "logger.h"
 #include "status.h"
 #include "utils.h"
@@ -121,8 +123,8 @@ ReadState::ReadState(const Fragment* fragment, BookKeeping* book_keeping)
   std::string filename;
   is_empty_attribute_.resize(attribute_num_ + 1);
   for (int i = 0; i < attribute_num_ + 1; ++i) {
-    filename =
-        fragment_name + "/" + array_schema_->attribute(i) + TILEDB_FILE_SUFFIX;
+    filename = fragment_name + "/" + array_schema_->attribute(i) +
+               Configurator::file_suffix();
     is_empty_attribute_[i] = !utils::is_file(filename);
   }
 }
@@ -308,7 +310,7 @@ Status ReadState::copy_cells_var(
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
 
   // Calculate free space in buffer
   size_t buffer_free_space = buffer_size - buffer_offset;
@@ -983,21 +985,21 @@ Status ReadState::CMP_COORDS_TO_SEARCH_TILE(
   }
 
   // We need to read from the disk
-  std::string filename =
-      fragment_->fragment_name() + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX;
+  std::string filename = fragment_->fragment_name() + "/" + TILEDB_COORDS +
+                         Configurator::file_suffix();
   Status st;
-  IO read_method = array_->config()->read_method();
+  IOMethod read_method = array_->config()->read_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
 #endif
 
-  if (read_method == IO::READ) {
+  if (read_method == IOMethod::READ) {
     st = utils::read_from_file(
         filename,
         tiles_file_offsets_[attribute_num_ + 1] + tile_offset,
         tmp_coords_,
         coords_size_);
-  } else if (read_method == IO::MPI) {
+  } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_read_from_file(
         mpi_comm,
@@ -1092,8 +1094,8 @@ Status ReadState::compute_bytes_to_copy(
   }
 
   // Update bytes to copy
-  bytes_to_copy =
-      (end_cell_pos - start_cell_pos + 1) * TILEDB_CELL_VAR_OFFSET_SIZE;
+  bytes_to_copy = (end_cell_pos - start_cell_pos + 1) *
+                  Configurator::cell_var_offset_size();
 
   // Sanity checks
   assert(bytes_to_copy <= buffer_free_space);
@@ -1730,21 +1732,21 @@ Status ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
   }
 
   // We need to read from the disk
-  std::string filename =
-      fragment_->fragment_name() + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX;
+  std::string filename = fragment_->fragment_name() + "/" + TILEDB_COORDS +
+                         Configurator::file_suffix();
   Status st;
-  IO read_method = array_->config()->read_method();
+  IOMethod read_method = array_->config()->read_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
 #endif
 
-  if (read_method == IO::READ) {
+  if (read_method == IOMethod::READ) {
     st = utils::read_from_file(
         filename,
         tiles_file_offsets_[attribute_num_ + 1] + i * coords_size_,
         tmp_coords_,
         coords_size_);
-  } else if (read_method == IO::MPI) {
+  } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_read_from_file(
         mpi_comm,
@@ -1779,20 +1781,20 @@ Status ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
   // We need to read from the disk
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id) +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
   Status st;
-  IO read_method = array_->config()->read_method();
+  IOMethod read_method = array_->config()->read_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
 #endif
 
-  if (read_method == IO::READ) {
+  if (read_method == IOMethod::READ) {
     st = utils::read_from_file(
         filename,
         tiles_file_offsets_[attribute_id] + i * sizeof(size_t),
         &tmp_offset_,
         sizeof(size_t));
-  } else if (read_method == IO::MPI) {
+  } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_read_from_file(
         mpi_comm,
@@ -1837,7 +1839,7 @@ Status ReadState::map_tile_from_file_cmp(
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id_real) +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
 
   // Calculate offset considering the page size
   size_t page_size = sysconf(_SC_PAGE_SIZE);
@@ -1902,7 +1904,7 @@ Status ReadState::map_tile_from_file_var_cmp(
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id) + "_var" +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
 
   // Calculate offset considering the page size
   size_t page_size = sysconf(_SC_PAGE_SIZE);
@@ -1977,7 +1979,7 @@ Status ReadState::map_tile_from_file_cmp_none(
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id_real) +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
 
   // Calculate offset considering the page size
   size_t page_size = sysconf(_SC_PAGE_SIZE);
@@ -2043,7 +2045,7 @@ Status ReadState::map_tile_from_file_var_cmp_none(
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id) + "_var" +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
 
   // Calculate offset considering the page size
   size_t page_size = sysconf(_SC_PAGE_SIZE);
@@ -2126,7 +2128,7 @@ Status ReadState::mpi_io_read_tile_from_file_cmp(
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id_real) +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
   // Read from file
   RETURN_NOT_OK(mpi_io_read_from_file(
       mpi_comm, filename, offset, tile_compressed_, tile_size));
@@ -2153,7 +2155,7 @@ Status ReadState::mpi_io_read_tile_from_file_var_cmp(
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id) + "_var" +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix;
   // Read from file
   RETURN_NOT_OK(mpi_io_read_from_file(
       mpi_comm, filename, offset, tile_compressed_, tile_size));
@@ -2211,7 +2213,7 @@ Status ReadState::prepare_tile_for_reading_cmp(
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id_real) +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
 
   // Find file offset where the tile begins
   off_t file_offset = tile_offsets[attribute_id_real][tile_i];
@@ -2225,14 +2227,14 @@ Status ReadState::prepare_tile_for_reading_cmp(
 
   // Read tile from file
   Status st;
-  IO read_method = array_->config()->read_method();
-  if (read_method == IO::READ) {
+  IOMethod read_method = array_->config()->read_method();
+  if (read_method == IOMethod::READ) {
     st = read_tile_from_file_cmp(
         attribute_id, file_offset, tile_compressed_size);
-  } else if (read_method == IO::MMAP) {
+  } else if (read_method == IOMethod::MMAP) {
     st =
         map_tile_from_file_cmp(attribute_id, file_offset, tile_compressed_size);
-  } else if (read_method == IO::MPI) {
+  } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_read_tile_from_file_cmp(
         attribute_id, file_offset, tile_compressed_size);
@@ -2289,10 +2291,10 @@ Status ReadState::prepare_tile_for_reading_cmp_none(
   off_t file_offset = tile_i * full_tile_size;
 
   // Read tile from file
-  IO read_method = array_->config()->read_method();
-  if (read_method == IO::READ || read_method == IO::MPI)
+  IOMethod read_method = array_->config()->read_method();
+  if (read_method == IOMethod::READ || read_method == IOMethod::MPI)
     set_tile_file_offset(attribute_id, file_offset);
-  else if (read_method == IO::MMAP)
+  else if (read_method == IOMethod::MMAP)
     RETURN_NOT_OK(
         map_tile_from_file_cmp_none(attribute_id, file_offset, tile_size));
 
@@ -2319,7 +2321,7 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
       attribute_id < attribute_num_ && array_schema_->var_size(attribute_id));
 
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t full_tile_size = fragment_->tile_size(attribute_id);
   int64_t cell_num = book_keeping_->cell_num(tile_i);
   size_t tile_size = cell_num * cell_size;
@@ -2334,7 +2336,7 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id) +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
 
   // Find file offset where the tile begins
   off_t file_offset = tile_offsets[attribute_id][tile_i];
@@ -2351,14 +2353,14 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
     tiles_[attribute_id] = malloc(full_tile_size);
 
   // Read tile from file
-  IO read_method = array_->config()->read_method();
-  if (read_method == IO::READ) {
+  IOMethod read_method = array_->config()->read_method();
+  if (read_method == IOMethod::READ) {
     RETURN_NOT_OK(read_tile_from_file_cmp(
         attribute_id, file_offset, tile_compressed_size))
-  } else if (read_method == IO::MMAP) {
+  } else if (read_method == IOMethod::MMAP) {
     RETURN_NOT_OK(map_tile_from_file_cmp(
         attribute_id, file_offset, tile_compressed_size));
-  } else if (read_method == IO::MPI) {
+  } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_read_tile_from_file_cmp(
         attribute_id, file_offset, tile_compressed_size));
@@ -2387,7 +2389,7 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
   // Prepare variable attribute file name
   filename = fragment_->fragment_name() + "/" +
              array_schema_->attribute(attribute_id) + "_var" +
-             TILEDB_FILE_SUFFIX;
+             Configurator::file_suffix();
 
   // Calculate offset and compressed tile size
   file_offset = tile_var_offsets[attribute_id][tile_i];
@@ -2419,14 +2421,14 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
     }
 
     // Read tile from file
-    IO read_method = array_->config()->read_method();
-    if (read_method == IO::READ) {
+    IOMethod read_method = array_->config()->read_method();
+    if (read_method == IOMethod::READ) {
       RETURN_NOT_OK(read_tile_from_file_var_cmp(
           attribute_id, file_offset, tile_compressed_size));
-    } else if (read_method == IO::MMAP) {
+    } else if (read_method == IOMethod::MMAP) {
       RETURN_NOT_OK(map_tile_from_file_var_cmp(
           attribute_id, file_offset, tile_compressed_size));
-    } else if (read_method == IO::MPI) {
+    } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
       RETURN_NOT_OK(mpi_io_read_tile_from_file_var_cmp(
           attribute_id, file_offset, tile_compressed_size));
@@ -2475,15 +2477,15 @@ Status ReadState::prepare_tile_for_reading_var_cmp_none(
   // For easy reference
   size_t full_tile_size = fragment_->tile_size(attribute_id);
   int64_t cell_num = book_keeping_->cell_num(tile_i);
-  size_t tile_size = cell_num * TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t tile_size = cell_num * Configurator::cell_var_offset_size();
   int64_t tile_num = book_keeping_->tile_num();
   off_t file_offset = tile_i * full_tile_size;
 
   // Read tile from file
-  IO read_method = array_->config()->read_method();
-  if (read_method == IO::READ || read_method == IO::MPI)
+  IOMethod read_method = array_->config()->read_method();
+  if (read_method == IOMethod::READ || read_method == IOMethod::MPI)
     set_tile_file_offset(attribute_id, file_offset);
-  else if (read_method == IO::MMAP)
+  else if (read_method == IOMethod::MMAP)
     RETURN_NOT_OK(
         map_tile_from_file_cmp_none(attribute_id, file_offset, tile_size));
 
@@ -2499,23 +2501,23 @@ Status ReadState::prepare_tile_for_reading_var_cmp_none(
   size_t tile_var_size;
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id) +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
 
   if (tile_i != tile_num - 1) {  // Not the last tile
-    if (read_method == IO::READ || read_method == IO::MMAP) {
+    if (read_method == IOMethod::READ || read_method == IOMethod::MMAP) {
       RETURN_NOT_OK(utils::read_from_file(
           filename,
           file_offset + full_tile_size,
           &end_tile_var_offset,
-          TILEDB_CELL_VAR_OFFSET_SIZE));
-    } else if (read_method == IO::MPI) {
+          Configurator::cell_var_offset_size()));
+    } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
       RETURN_NOT_OK(mpi_io_read_from_file(
           array_->config()->mpi_comm(),
           filename,
           file_offset + full_tile_size,
           &end_tile_var_offset,
-          TILEDB_CELL_VAR_OFFSET_SIZE));
+          Configurator::cell_var_offset_size()));
     }
 #else
       return LOG_STATUS(Status::Error(
@@ -2528,16 +2530,16 @@ else {  // Last tile
   // Prepare variable attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id) + "_var" +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
   off_t file_size = 0;
   RETURN_NOT_OK(utils::file_size(filename, &file_size));
   tile_var_size = file_size - tile_s[0];
 }
 
 // Read tile from file
-if (read_method == IO::READ || read_method == IO::MPI)
+if (read_method == IOMethod::READ || read_method == IOMethod::MPI)
   set_tile_var_file_offset(attribute_id, start_tile_var_offset);
-else if (read_method == IO::MMAP)
+else if (read_method == IOMethod::MMAP)
   RETURN_NOT_OK(map_tile_from_file_var_cmp_none(
       attribute_id, start_tile_var_offset, tile_var_size));
 
@@ -2571,21 +2573,21 @@ Status ReadState::READ_FROM_TILE(
   // We need to read from the disk
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id) +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
   Status st;
-  IO read_method = array_->config()->read_method();
+  IOMethod read_method = array_->config()->read_method();
 
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
 #endif
 
-  if (read_method == IO::READ) {
+  if (read_method == IOMethod::READ) {
     st = utils::read_from_file(
         filename,
         tiles_file_offsets_[attribute_id] + tile_offset,
         buffer,
         bytes_to_copy);
-  } else if (read_method == IO::MPI) {
+  } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_read_from_file(
         mpi_comm,
@@ -2616,20 +2618,20 @@ Status ReadState::READ_FROM_TILE_VAR(
   // We need to read from the disk
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id) + "_var" +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
   Status st;
-  IO read_method = array_->config()->read_method();
+  IOMethod read_method = array_->config()->read_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = array_->config()->mpi_comm();
 #endif
 
-  if (read_method == IO::READ) {
+  if (read_method == IOMethod::READ) {
     st = utils::read_from_file(
         filename,
         tiles_var_file_offsets_[attribute_id] + tile_offset,
         buffer,
         bytes_to_copy);
-  } else if (read_method == IO::MPI) {
+  } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_read_from_file(
         mpi_comm,
@@ -2668,7 +2670,7 @@ Status ReadState::read_tile_from_file_cmp(
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id_real) +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
 
   // Read from file
   return utils::read_from_file(filename, offset, tile_compressed_, tile_size);
@@ -2691,7 +2693,7 @@ Status ReadState::read_tile_from_file_var_cmp(
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id) + "_var" +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
 
   // Read from file
   return utils::read_from_file(filename, offset, tile_compressed_, tile_size);
@@ -2709,7 +2711,8 @@ void ReadState::set_tile_var_file_offset(int attribute_id, off_t offset) {
 
 void ReadState::shift_var_offsets(int attribute_id) {
   // For easy reference
-  int64_t cell_num = tiles_sizes_[attribute_id] / TILEDB_CELL_VAR_OFFSET_SIZE;
+  int64_t cell_num =
+      tiles_sizes_[attribute_id] / Configurator::cell_var_offset_size();
   size_t* tile_s = static_cast<size_t*>(tiles_[attribute_id]);
   size_t first_offset = tile_s[0];
 
@@ -3023,5 +3026,4 @@ template void ReadState::get_next_overlapping_tile_sparse<int16_t>();
 template void ReadState::get_next_overlapping_tile_sparse<uint16_t>();
 template void ReadState::get_next_overlapping_tile_sparse<uint32_t>();
 template void ReadState::get_next_overlapping_tile_sparse<uint64_t>();
-}
-;  // namespace tiledb
+}  // namespace tiledb

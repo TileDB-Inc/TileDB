@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,46 +31,15 @@
  * This file defines class WriteState.
  */
 
-#ifndef __WRITE_STATE_H__
-#define __WRITE_STATE_H__
+#ifndef __TILEDB_WRITE_STATE_H__
+#define __TILEDB_WRITE_STATE_H__
 
 #include <iostream>
 #include <vector>
 #include "book_keeping.h"
 #include "fragment.h"
 
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/**@{*/
-/** Compression levels. */
-#ifndef TILEDB_COMPRESSION_LEVEL_ZSTD
-#define TILEDB_COMPRESSION_LEVEL_ZSTD 1
-#endif
-#ifndef TILEDB_COMPRESSION_LEVEL_BLOSC
-#define TILEDB_COMPRESSION_LEVEL_BLOSC 5
-#endif
-/**@}*/ /**@{*/
-/** Size of buffer used for sorting. */
-#define TILEDB_SORTED_BUFFER_SIZE 10000000      // ~10MB
-#define TILEDB_SORTED_BUFFER_VAR_SIZE 10000000  // ~10MB
-/**@}*/
-
-/**@{*/
-/** Size of buffer used for sorting. */
-#define TILEDB_SORTED_BUFFER_SIZE 10000000      // ~10MB
-#define TILEDB_SORTED_BUFFER_VAR_SIZE 10000000  // ~10MB
-/**@}*/
-
 namespace tiledb {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
-
-/** Stores potential error messages. */
-extern std::string tiledb_ws_errmsg;
 
 class BookKeeping;
 class Fragment;
@@ -745,5 +715,6 @@ class WriteState {
       const std::vector<int64_t>& cell_pos);
 };
 
-};  // namespace tiledb
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_WRITE_STATE_H__

@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,8 +31,8 @@
  * This file defines class ArraySortedWriteState.
  */
 
-#ifndef __ARRAY_SORTED_WRITE_STATE_H__
-#define __ARRAY_SORTED_WRITE_STATE_H__
+#ifndef __TILEDB_ARRAY_SORTED_WRITE_STATE_H__
+#define __TILEDB_ARRAY_SORTED_WRITE_STATE_H__
 
 #include <pthread.h>
 #include <string>
@@ -39,10 +40,6 @@
 #include "array.h"
 
 namespace tiledb {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
 
 class Array;
 
@@ -844,5 +841,5 @@ class ArraySortedWriteState {
   Status wait_aio(int id);
 };
 
-};  // namespace tiledb
-#endif
+};      // namespace tiledb
+#endif  // __TILEDB_ARRAY_SORTED_WRITE_STATE_H__

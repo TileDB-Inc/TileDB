@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -42,7 +43,7 @@
 #include <cstring>
 #include <iostream>
 #include "comparators.h"
-#include "constants.h"
+#include "configurator.h"
 #include "logger.h"
 #include "status.h"
 #include "utils.h"
@@ -171,7 +172,7 @@ Status WriteState::sync() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
-  IO write_method = fragment_->array()->config()->write_method();
+  IOMethod write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
@@ -181,10 +182,11 @@ Status WriteState::sync() {
   for (int attribute_id : attribute_ids) {
     // For all attributes
     filename = fragment_->fragment_name() + "/" +
-               array_schema->attribute(attribute_id) + TILEDB_FILE_SUFFIX;
-    if (write_method == IO::WRITE) {
+               array_schema->attribute(attribute_id) +
+               Configurator::file_suffix();
+    if (write_method == IOMethod::WRITE) {
       RETURN_NOT_OK(utils::sync(filename.c_str()));
-    } else if (write_method == IO::MPI) {
+    } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
       RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
@@ -199,10 +201,10 @@ Status WriteState::sync() {
     if (array_schema->var_size(attribute_id)) {
       filename = fragment_->fragment_name() + "/" +
                  array_schema->attribute(attribute_id) + "_var" +
-                 TILEDB_FILE_SUFFIX;
-      if (write_method == IO::WRITE) {
+                 Configurator::file_suffix();
+      if (write_method == IOMethod::WRITE) {
         RETURN_NOT_OK(utils::sync(filename.c_str()));
-      } else if (write_method == IO::MPI) {
+      } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
         RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
@@ -217,9 +219,9 @@ Status WriteState::sync() {
 
   // Sync fragment directory
   filename = fragment_->fragment_name();
-  if (write_method == IO::WRITE) {
+  if (write_method == IOMethod::WRITE) {
     RETURN_NOT_OK(utils::sync(filename.c_str()));
-  } else if (write_method == IO::MPI) {
+  } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
@@ -236,7 +238,7 @@ Status WriteState::sync() {
 Status WriteState::sync_attribute(const std::string& attribute) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  IO write_method = fragment_->array()->config()->write_method();
+  IOMethod write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
@@ -245,10 +247,11 @@ Status WriteState::sync_attribute(const std::string& attribute) {
   std::string filename;
 
   // Sync attribute
-  filename = fragment_->fragment_name() + "/" + attribute + TILEDB_FILE_SUFFIX;
-  if (write_method == IO::WRITE) {
+  filename = fragment_->fragment_name() + "/" + attribute +
+             Configurator::file_suffix();
+  if (write_method == IOMethod::WRITE) {
     RETURN_NOT_OK(utils::sync(filename.c_str()));
-  } else if (write_method == IO::MPI) {
+  } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
@@ -262,10 +265,10 @@ Status WriteState::sync_attribute(const std::string& attribute) {
   // Only for variable-size attributes (they have an extra file)
   if (array_schema->var_size(attribute_id)) {
     filename = fragment_->fragment_name() + "/" + attribute + "_var" +
-               TILEDB_FILE_SUFFIX;
-    if (write_method == IO::WRITE) {
+               Configurator::file_suffix();
+    if (write_method == IOMethod::WRITE) {
       RETURN_NOT_OK(utils::sync(filename.c_str()));
-    } else if (write_method == IO::MPI) {
+    } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
       RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
@@ -279,9 +282,9 @@ Status WriteState::sync_attribute(const std::string& attribute) {
   }
   // Sync fragment directory
   filename = fragment_->fragment_name();
-  if (write_method == IO::WRITE) {
+  if (write_method == IOMethod::WRITE) {
     RETURN_NOT_OK(utils::sync(filename.c_str()));
-  } else if (write_method == IO::MPI) {
+  } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
@@ -314,7 +317,7 @@ Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
     for (int i = 0; i < attribute_id_num; ++i) {
       if (array_schema->var_size(attribute_ids[i])) {
         filename = file_prefix + array_schema->attribute(attribute_ids[i]) +
-                   "_var" + TILEDB_FILE_SUFFIX;
+                   "_var" + Configurator::file_suffix();
         FILE* fptr = fopen(filename.c_str(), "a");
         if (fptr == nullptr) {
           return LOG_STATUS(
@@ -486,7 +489,7 @@ Status WriteState::compress_tile_zstd(
       tile_compressed_allocated_size_,
       tile,
       tile_size,
-      TILEDB_COMPRESSION_LEVEL_ZSTD);
+      1);  // TODO: this should be in the array schema
   if (ZSTD_isError(zstd_size)) {
     return LOG_STATUS(
         Status::CompressionError("Failed compressing with Zstandard"));
@@ -584,7 +587,7 @@ Status WriteState::compress_tile_blosc(
 
   // Compress tile
   int blosc_size = blosc_compress(
-      TILEDB_COMPRESSION_LEVEL_BLOSC,
+      5,  // TODO: this should be in the array schema
       1,
       array_schema->type_size(attribute_id),
       tile_size,
@@ -749,15 +752,15 @@ Status WriteState::compress_and_write_tile(int attribute_id) {
   // Get the attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema->attribute(attribute_id) +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
 
   // Write segment to file
   Status st;
-  IO write_method = fragment_->array()->config()->write_method();
-  if (write_method == IO::WRITE) {
+  IOMethod write_method = fragment_->array()->config()->write_method();
+  if (write_method == IOMethod::WRITE) {
     st = utils::write_to_file(
         filename.c_str(), tile_compressed_, tile_compressed_size);
-  } else if (write_method == IO::MPI) {
+  } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
         fragment_->array()->config()->mpi_comm(),
@@ -805,15 +808,15 @@ Status WriteState::compress_and_write_tile_var(int attribute_id) {
   // Get the attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema->attribute(attribute_id) + "_var" +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
 
   // Write segment to file
   Status st;
-  IO write_method = fragment_->array()->config()->write_method();
-  if (write_method == IO::WRITE) {
+  IOMethod write_method = fragment_->array()->config()->write_method();
+  if (write_method == IOMethod::WRITE) {
     st = utils::write_to_file(
         filename.c_str(), tile_compressed_, tile_compressed_size);
-  } else if (write_method == IO::MPI) {
+  } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
         fragment_->array()->config()->mpi_comm(),
@@ -1112,12 +1115,12 @@ Status WriteState::write_dense_attr_cmp_none(
   // Write buffer to file
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema->attribute(attribute_id) +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
   Status st;
-  IO write_method = fragment_->array()->config()->write_method();
-  if (write_method == IO::WRITE) {
+  IOMethod write_method = fragment_->array()->config()->write_method();
+  if (write_method == IOMethod::WRITE) {
     st = utils::write_to_file(filename.c_str(), buffer, buffer_size);
-  } else if (write_method == IO::MPI) {
+  } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
         fragment_->array()->config()->mpi_comm(),
@@ -1237,15 +1240,15 @@ Status WriteState::write_dense_attr_var_cmp_none(
   // Write buffer with variable-sized cells to disk
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema->attribute(attribute_id) + "_var" +
-                         TILEDB_FILE_SUFFIX;
-  IO write_method = fragment_->array()->config()->write_method();
+                         Configurator::file_suffix();
+  IOMethod write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
-  if (write_method == IO::WRITE) {
+  if (write_method == IOMethod::WRITE) {
     RETURN_NOT_OK(
         utils::write_to_file(filename.c_str(), buffer_var, buffer_var_size));
-  } else if (write_method == IO::MPI) {
+  } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_write_to_file(
         mpi_comm, filename.c_str(), buffer_var, buffer_var_size));
@@ -1262,11 +1265,12 @@ Status WriteState::write_dense_attr_var_cmp_none(
 
   // Write buffer offsets to file
   filename = fragment_->fragment_name() + "/" +
-             array_schema->attribute(attribute_id) + TILEDB_FILE_SUFFIX;
+             array_schema->attribute(attribute_id) +
+             Configurator::file_suffix();
   Status st;
-  if (write_method == IO::WRITE) {
+  if (write_method == IOMethod::WRITE) {
     st = utils::write_to_file(filename.c_str(), shifted_buffer, buffer_size);
-  } else if (write_method == IO::MPI) {
+  } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
         mpi_comm, filename.c_str(), shifted_buffer, buffer_size);
@@ -1287,7 +1291,7 @@ Status WriteState::write_dense_attr_var_cmp(
     const void* buffer_var,
     size_t buffer_var_size) {
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   int64_t cell_num_per_tile = fragment_->cell_num_per_tile();
   size_t tile_size = cell_num_per_tile * cell_size;
 
@@ -1520,15 +1524,15 @@ Status WriteState::write_sparse_attr_cmp_none(
   // Write buffer to file
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema->attribute(attribute_id) +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
   Status st;
-  IO write_method = fragment_->array()->config()->write_method();
+  IOMethod write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
-  if (write_method == IO::WRITE) {
+  if (write_method == IOMethod::WRITE) {
     st = utils::write_to_file(filename.c_str(), buffer, buffer_size);
-  } else if (write_method == IO::MPI) {
+  } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(mpi_comm, filename.c_str(), buffer, buffer_size);
 #else
@@ -1643,15 +1647,15 @@ Status WriteState::write_sparse_attr_var_cmp_none(
   // Write buffer with variable-sized cells to disk
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema->attribute(attribute_id) + "_var" +
-                         TILEDB_FILE_SUFFIX;
+                         Configurator::file_suffix();
   Status st;
-  IO write_method = fragment_->array()->config()->write_method();
+  IOMethod write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
-  if (write_method == IO::WRITE) {
+  if (write_method == IOMethod::WRITE) {
     st = utils::write_to_file(filename.c_str(), buffer_var, buffer_var_size);
-  } else if (write_method == IO::MPI) {
+  } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
         mpi_comm, filename.c_str(), buffer_var, buffer_var_size);
@@ -1671,10 +1675,11 @@ Status WriteState::write_sparse_attr_var_cmp_none(
 
   // Write buffer offsets to file
   filename = fragment_->fragment_name() + "/" +
-             array_schema->attribute(attribute_id) + TILEDB_FILE_SUFFIX;
-  if (write_method == IO::WRITE) {
+             array_schema->attribute(attribute_id) +
+             Configurator::file_suffix();
+  if (write_method == IOMethod::WRITE) {
     st = utils::write_to_file(filename.c_str(), shifted_buffer, buffer_size);
-  } else if (write_method == IO::MPI) {
+  } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
         mpi_comm, filename.c_str(), shifted_buffer, buffer_size);
@@ -1698,7 +1703,7 @@ Status WriteState::write_sparse_attr_var_cmp(
     size_t buffer_var_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   int64_t cell_num_per_tile = array_schema->capacity();
   size_t tile_size = fragment_->tile_size(attribute_id);
 
@@ -1959,14 +1964,14 @@ Status WriteState::write_sparse_unsorted_attr_cmp_none(
   }
 
   // Allocate a local buffer to hold the sorted cells
-  char* sorted_buffer = new char[TILEDB_SORTED_BUFFER_SIZE];
+  char* sorted_buffer = new char[Configurator::sorted_buffer_size()];
   size_t sorted_buffer_size = 0;
 
   // Sort and write attribute values in batches
   Status st;
   for (int64_t i = 0; i < buffer_cell_num; ++i) {
     // Write batch
-    if (sorted_buffer_size + cell_size > TILEDB_SORTED_BUFFER_SIZE) {
+    if (sorted_buffer_size + cell_size > Configurator::sorted_buffer_size()) {
       st = write_sparse_attr_cmp_none(
           attribute_id, sorted_buffer, sorted_buffer_size);
       if (!st.ok()) {
@@ -2015,14 +2020,14 @@ Status WriteState::write_sparse_unsorted_attr_cmp(
   }
 
   // Allocate a local buffer to hold the sorted cells
-  char* sorted_buffer = new char[TILEDB_SORTED_BUFFER_SIZE];
+  char* sorted_buffer = new char[Configurator::sorted_buffer_size()];
   size_t sorted_buffer_size = 0;
 
   // Sort and write attribute values in batches
   Status st;
   for (int64_t i = 0; i < buffer_cell_num; ++i) {
     // Write batch
-    if (sorted_buffer_size + cell_size > TILEDB_SORTED_BUFFER_SIZE) {
+    if (sorted_buffer_size + cell_size > Configurator::sorted_buffer_size()) {
       st = write_sparse_attr_cmp(
           attribute_id, sorted_buffer, sorted_buffer_size);
       if (!st.ok()) {
@@ -2089,7 +2094,7 @@ Status WriteState::write_sparse_unsorted_attr_var_cmp_none(
     const std::vector<int64_t>& cell_pos) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_var_size;
   const size_t* buffer_s = static_cast<const size_t*>(buffer);
   const char* buffer_var_c = static_cast<const char*>(buffer_var);
@@ -2104,9 +2109,9 @@ Status WriteState::write_sparse_unsorted_attr_var_cmp_none(
   }
 
   // Allocate a local buffer to hold the sorted cells
-  char* sorted_buffer = new char[TILEDB_SORTED_BUFFER_SIZE];
+  char* sorted_buffer = new char[Configurator::sorted_buffer_size()];
   size_t sorted_buffer_size = 0;
-  char* sorted_buffer_var = new char[TILEDB_SORTED_BUFFER_VAR_SIZE];
+  char* sorted_buffer_var = new char[Configurator::sorted_buffer_var_size()];
   size_t sorted_buffer_var_size = 0;
 
   // Sort and write attribute values in batches
@@ -2118,9 +2123,9 @@ Status WriteState::write_sparse_unsorted_attr_var_cmp_none(
                         buffer_s[cell_pos[i] + 1] - buffer_s[cell_pos[i]];
 
     // Write batch
-    if (sorted_buffer_size + cell_size > TILEDB_SORTED_BUFFER_SIZE ||
+    if (sorted_buffer_size + cell_size > Configurator::sorted_buffer_size() ||
         sorted_buffer_var_size + cell_var_size >
-            TILEDB_SORTED_BUFFER_VAR_SIZE) {
+            Configurator::sorted_buffer_var_size()) {
       st = write_sparse_attr_var_cmp_none(
           attribute_id,
           sorted_buffer,
@@ -2176,7 +2181,7 @@ Status WriteState::write_sparse_unsorted_attr_var_cmp(
     const std::vector<int64_t>& cell_pos) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_var_size;
   const size_t* buffer_s = static_cast<const size_t*>(buffer);
   const char* buffer_var_c = static_cast<const char*>(buffer_var);
@@ -2191,9 +2196,9 @@ Status WriteState::write_sparse_unsorted_attr_var_cmp(
   }
 
   // Allocate a local buffer to hold the sorted cells
-  char* sorted_buffer = new char[TILEDB_SORTED_BUFFER_SIZE];
+  char* sorted_buffer = new char[Configurator::sorted_buffer_size()];
   size_t sorted_buffer_size = 0;
-  char* sorted_buffer_var = new char[TILEDB_SORTED_BUFFER_VAR_SIZE];
+  char* sorted_buffer_var = new char[Configurator::sorted_buffer_var_size()];
   size_t sorted_buffer_var_size = 0;
 
   // Sort and write attribute values in batches
@@ -2205,9 +2210,9 @@ Status WriteState::write_sparse_unsorted_attr_var_cmp(
                         buffer_s[cell_pos[i] + 1] - buffer_s[cell_pos[i]];
 
     // Write batch
-    if (sorted_buffer_size + cell_size > TILEDB_SORTED_BUFFER_SIZE ||
+    if (sorted_buffer_size + cell_size > Configurator::sorted_buffer_size() ||
         sorted_buffer_var_size + cell_var_size >
-            TILEDB_SORTED_BUFFER_VAR_SIZE) {
+            Configurator::sorted_buffer_var_size()) {
       st = write_sparse_attr_var_cmp(
           attribute_id,
           sorted_buffer,
@@ -2255,4 +2260,4 @@ Status WriteState::write_sparse_unsorted_attr_var_cmp(
   return st;
 }
 
-};  // namespace tiledb
+}  // namespace tiledb

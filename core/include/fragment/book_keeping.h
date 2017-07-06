@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,29 +31,14 @@
  * This file defines class BookKeeping.
  */
 
-#ifndef __BOOK_KEEPING_H__
-#define __BOOK_KEEPING_H__
+#ifndef __TILEDB_BOOKKEEPING_H__
+#define __TILEDB_BOOKKEEPING_H__
 
 #include <zlib.h>
 #include <vector>
 #include "array_mode.h"
 #include "array_schema.h"
 #include "status.h"
-
-/* ********************************* */
-/*              CONSTANTS            */
-/* ********************************* */
-
-/**@{*/  // TODO: this has to moved from here
-/** Special TileDB file name suffix. */
-#define TILEDB_FILE_SUFFIX ".tdb"
-#define TILEDB_GZIP_SUFFIX ".gz"
-/**@}*/
-
-/**@{*/
-/** Special TileDB file name. */
-#define TILEDB_BOOK_KEEPING_FILENAME "__book_keeping"
-/**@}*/
 
 namespace tiledb {
 
@@ -376,5 +362,6 @@ class BookKeeping {
   Status load_tile_var_sizes(gzFile fd);
 };
 
-};  // namespace tiledb
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_BOOKKEEPING_H__

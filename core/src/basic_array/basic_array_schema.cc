@@ -1,12 +1,11 @@
 /**
- * @file array_layout.h
+ * @file   basic_array_schema.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- *            Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,20 +27,33 @@
  *
  * @section DESCRIPTION
  *
- * This defines the tiledb Layout enum that maps to tiledb_layout_t C-api
- * enum.
+ * This file implements the BasicArraySchema class.
  */
 
-#ifndef TILEDB_ARRAY_LAYOUT_H
-#define TILEDB_ARRAY_LAYOUT_H
+#include "basic_array_schema.h"
 
 namespace tiledb {
 
-enum class Layout : char {
-#define TILEDB_LAYOUT_ENUM(id) id
-#include "tiledb_enum.inc"
-#undef TILEDB_LAYOUT_ENUM
-};
+/* ********************************* */
+/*     CONSTRUCTORS & DESTRUCTORS    */
+/* ********************************* */
+
+BasicArraySchema::BasicArraySchema(const char* name) {
+  array_schema_ = new ArraySchema();
+  array_schema_->set_array_name(name);
+}
+
+BasicArraySchema::~BasicArraySchema() {
+  delete array_schema_;
+}
+
+/* ********************************* */
+/*                API                */
+/* ********************************* */
+
+ArraySchema* BasicArraySchema::array_schema() {
+  // Return array schema
+  return array_schema_;
+}
 
 }  // namespace tiledb
-#endif  // TILEDB_ARRAY_LAYOUT_H

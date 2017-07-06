@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,8 +31,8 @@
  * This file defines class ReadState.
  */
 
-#ifndef __READ_STATE_H__
-#define __READ_STATE_H__
+#ifndef __TILEDB_READ_STATE_H__
+#define __TILEDB_READ_STATE_H__
 
 #include <vector>
 #include "array.h"
@@ -946,5 +947,6 @@ class ReadState {
       void* buffer, int64_t offset_num, size_t new_start_offset);
 };
 
-};  // namespace tiledb
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_READ_STATE_H__

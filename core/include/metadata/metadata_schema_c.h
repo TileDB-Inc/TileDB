@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,10 +31,12 @@
  * A C-style struct that specifies the metadata schema.
  */
 
-#ifndef __METADATA_SCHEMA_C_H__
-#define __METADATA_SCHEMA_C_H__
+#ifndef __TILEDB_METADATA_SCHEMA_C_H__
+#define __TILEDB_METADATA_SCHEMA_C_H__
 
 #include <cstdint>
+
+namespace tiledb {
 
 /** Specifies the metadata schema. */
 typedef struct MetadataSchemaC {
@@ -89,4 +92,6 @@ typedef struct MetadataSchemaC {
   tiledb_datatype_t* types_;
 } MetadataSchemaC;
 
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_METADATA_SCHEMA_C_H__

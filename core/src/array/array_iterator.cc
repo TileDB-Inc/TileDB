@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,6 +32,7 @@
  */
 
 #include "array_iterator.h"
+#include "configurator.h"
 #include "logger.h"
 
 namespace tiledb {
@@ -146,7 +148,8 @@ Status ArrayIterator::init(Array* array, void** buffers, size_t* buffer_sizes) {
 
     // Update cell num
     if (cell_sizes_[i] == TILEDB_VAR_SIZE)  // VARIABLE
-      cell_num_[i] = buffer_sizes[buffer_i_[i]] / TILEDB_CELL_VAR_OFFSET_SIZE;
+      cell_num_[i] =
+          buffer_sizes[buffer_i_[i]] / Configurator::cell_var_offset_size();
     else  // FIXED
       cell_num_[i] = buffer_sizes[buffer_i_[i]] / cell_sizes_[i];
   }

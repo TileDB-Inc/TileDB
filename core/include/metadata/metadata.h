@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,11 +31,11 @@
  * This file defines class Metadata.
  */
 
-#ifndef __METADATA_H__
-#define __METADATA_H__
+#ifndef __TILEDB_METADATA_H__
+#define __TILEDB_METADATA_H__
 
 #include "array.h"
-#include "storage_manager_config.h"
+#include "configurator.h"
 
 namespace tiledb {
 
@@ -147,7 +148,7 @@ class Metadata {
       tiledb_metadata_mode_t mode,
       const char** attributes,
       int attribute_num,
-      const StorageManagerConfig* config);
+      const Configurator* config);
 
   /**
    * Resets the attributes used upon initialization of the metadata.
@@ -255,5 +256,6 @@ class Metadata {
       size_t*& array_buffer_sizes) const;
 };
 
-};  // namespace tiledb
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_METADATA_H__

@@ -1,12 +1,11 @@
 /**
- * @file array_compressor.h
+ * @file   basic_array.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- *            Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,20 +27,25 @@
  *
  * @section DESCRIPTION
  *
- * This defines the tiledb Compressor enum that maps to tiledb_compressor_t
- * C-api enum.
+ * This file implements the BasicArray class.
  */
 
-#ifndef TILEDB_ARRAY_COMPRESSOR_H
-#define TILEDB_ARRAY_COMPRESSOR_H
+#include "basic_array.h"
 
 namespace tiledb {
 
-enum class Compressor : char {
-#define TILEDB_COMPRESSOR_ENUM(id) id
-#include "tiledb_enum.inc"
-#undef TILEDB_COMPRESSOR_ENUM
-};
+/* ********************************* */
+/*     CONSTRUCTORS & DESTRUCTORS    */
+/* ********************************* */
+
+BasicArray::BasicArray() {
+}
+
+BasicArray::~BasicArray() {
+}
+
+/* ********************************* */
+/*                API                */
+/* ********************************* */
 
 }  // namespace tiledb
-#endif  // TILEDB_ARRAY_COMPRESSOR_H

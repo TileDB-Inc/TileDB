@@ -1,13 +1,11 @@
-
 /**
- * @file   unit-capi-error.cc
+ * @file datatype.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,27 +27,21 @@
  *
  * @section DESCRIPTION
  *
- * Tests for the C API error return code
+ * This defines the tiledb Datatype enum that maps to tiledb_datatype_t C-api
+ * enum.
  */
 
-#include "catch.hpp"
-#include "tiledb.h"
+#ifndef __TILEDB_DATATYPE_H__
+#define __TILEDB_DATATYPE_H__
 
-TEST_CASE("C API Error") {
-  tiledb_ctx_t* ctx;
-  int rc;
-  rc = tiledb_ctx_init(&ctx, nullptr);
-  CHECK(rc == TILEDB_OK);
+namespace tiledb {
 
-  const char* bad_path = nullptr;
-  rc = tiledb_clear(ctx, bad_path);
-  CHECK(rc == TILEDB_ERR);
+enum class Datatype : char {
+#define TILEDB_DATATYPE_ENUM(id) id
+#include "tiledb_enum.inc"
+#undef TILEDB_DATATYPE_ENUM
+};
 
-  tiledb_error_t* err = tiledb_error_last(ctx);
+}  // namespace tiledb
 
-  CHECK_THAT(
-      tiledb_error_message(err),
-      Catch::Equals("Error: Invalid directory argument is NULL"));
-
-  tiledb_error_free(err);
-}
+#endif  // __TILEDB_DATATYPE_H__

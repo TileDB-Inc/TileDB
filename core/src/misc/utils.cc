@@ -5,7 +5,8 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,7 +45,7 @@
 #include <cstring>
 #include <iostream>
 #include <set>
-#include "constants.h"
+#include "configurator.h"
 #include "logger.h"
 #include "status.h"
 
@@ -215,7 +216,8 @@ Status create_dir(const std::string& dir) {
 
 Status create_fragment_file(const std::string& dir) {
   // Create the special fragment file
-  std::string filename = std::string(dir) + "/" + TILEDB_FRAGMENT_FILENAME;
+  std::string filename =
+      std::string(dir) + "/" + Configurator::fragment_filename();
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if (fd == -1 || ::close(fd)) {
     return LOG_STATUS(Status::OSError(
@@ -275,25 +277,25 @@ Status delete_dir(const std::string& dirname) {
 template <class T>
 bool empty_value(T value) {
   if (&typeid(T) == &typeid(int))
-    return value == T(TILEDB_EMPTY_INT32);
+    return value == Configurator::empty_int32();
   else if (&typeid(T) == &typeid(int64_t))
-    return value == T(TILEDB_EMPTY_INT64);
+    return value == Configurator::empty_int64();
   else if (&typeid(T) == &typeid(float))
-    return value == T(TILEDB_EMPTY_FLOAT32);
+    return value == Configurator::empty_float32();
   else if (&typeid(T) == &typeid(double))
-    return value == T(TILEDB_EMPTY_FLOAT64);
+    return value == Configurator::empty_float64();
   else if (&typeid(T) == &typeid(int8_t))
-    return value == T(TILEDB_EMPTY_INT8);
+    return value == Configurator::empty_int8();
   else if (&typeid(T) == &typeid(uint8_t))
-    return value == T(TILEDB_EMPTY_UINT8);
+    return value == Configurator::empty_uint8();
   else if (&typeid(T) == &typeid(int16_t))
-    return value == T(TILEDB_EMPTY_INT16);
+    return value == Configurator::empty_int16();
   else if (&typeid(T) == &typeid(uint16_t))
-    return value == T(TILEDB_EMPTY_UINT16);
+    return value == Configurator::empty_uint16();
   else if (&typeid(T) == &typeid(uint32_t))
-    return value == T(TILEDB_EMPTY_UINT32);
+    return value == Configurator::empty_uint32();
   else if (&typeid(T) == &typeid(uint64_t))
-    return value == T(TILEDB_EMPTY_UINT64);
+    return value == Configurator::empty_uint64();
   else
     return false;
 }
@@ -456,7 +458,8 @@ Status gzip(
   strm.zalloc = Z_NULL;
   strm.zfree = Z_NULL;
   strm.opaque = Z_NULL;
-  ret = deflateInit(&strm, TILEDB_COMPRESSION_LEVEL_GZIP);
+  ret = deflateInit(
+      &strm, Z_DEFAULT_COMPRESSION);  // TODO: this should be part of the schema
 
   if (ret != Z_OK) {
     (void)deflateEnd(&strm);
@@ -558,7 +561,7 @@ bool intersect(const std::vector<T>& v1, const std::vector<T>& v2) {
 
 bool is_array(const std::string& dir) {
   // Check existence
-  if (is_dir(dir) && is_file(dir + "/" + TILEDB_ARRAY_SCHEMA_FILENAME))
+  if (is_dir(dir) && is_file(dir + "/" + Configurator::array_schema_filename()))
     return true;
   else
     return false;
@@ -586,7 +589,7 @@ bool is_file(const std::string& file) {
 
 bool is_fragment(const std::string& dir) {
   // Check existence
-  if (is_dir(dir) && is_file(dir + "/" + TILEDB_FRAGMENT_FILENAME))
+  if (is_dir(dir) && is_file(dir + "/" + Configurator::fragment_filename()))
     return true;
   else
     return false;
@@ -594,7 +597,7 @@ bool is_fragment(const std::string& dir) {
 
 bool is_group(const std::string& dir) {
   // Check existence
-  if (is_dir(dir) && is_file(dir + "/" + TILEDB_GROUP_FILENAME))
+  if (is_dir(dir) && is_file(dir + "/" + Configurator::group_filename()))
     return true;
   else
     return false;
@@ -602,7 +605,8 @@ bool is_group(const std::string& dir) {
 
 bool is_metadata(const std::string& dir) {
   // Check existence
-  if (is_dir(dir) && is_file(dir + "/" + TILEDB_METADATA_SCHEMA_FILENAME))
+  if (is_dir(dir) &&
+      is_file(dir + "/" + Configurator::metadata_schema_filename()))
     return true;
   else
     return false;
@@ -700,20 +704,20 @@ Status mpi_io_write_to_file(
   }
 
   // Append attribute data to the file in batches of
-  // TILEDB_UT_MAX_WRITE_COUNT bytes at a time
+  // Configurator::max_write_bytes() bytes at a time
   MPI_Status mpi_status;
-  while (buffer_size > TILEDB_UT_MAX_WRITE_COUNT) {
+  while (buffer_size > Configurator::max_write_bytes()) {
     if (MPI_File_write(
             fh,
             (void*)buffer,
-            TILEDB_UT_MAX_WRITE_COUNT,
+            Configurator::max_write_bytes(),
             MPI_CHAR,
             &mpi_status)) {
       return LOG_STATUS(Status::IOError(
           std::string("Cannot write to file '") + filename +
           "'; File writing error");
     }
-    buffer_size -= TILEDB_UT_MAX_WRITE_COUNT;
+    buffer_size -= Configurator::max_write_bytes();
   }
   if (MPI_File_write(fh, (void*)buffer, buffer_size, MPI_CHAR, &mpi_status)) {
     return LOG_STATUS(Status::IOError(
@@ -1662,17 +1666,17 @@ Status write_to_file(
         "'; File opening error"));
   }
 
-  // Append data to the file in batches of TILEDB_UT_MAX_WRITE_COUNT
+  // Append data to the file in batches of Configurator::max_write_bytes()
   // bytes at a time
   ssize_t bytes_written;
-  while (buffer_size > TILEDB_UT_MAX_WRITE_COUNT) {
-    bytes_written = ::write(fd, buffer, TILEDB_UT_MAX_WRITE_COUNT);
-    if (bytes_written != TILEDB_UT_MAX_WRITE_COUNT) {
+  while (buffer_size > Configurator::max_write_bytes()) {
+    bytes_written = ::write(fd, buffer, Configurator::max_write_bytes());
+    if (bytes_written != Configurator::max_write_bytes()) {
       return LOG_STATUS(Status::IOError(
           std::string("Cannot write to file '") + filename +
           "'; File writing error"));
     }
-    buffer_size -= TILEDB_UT_MAX_WRITE_COUNT;
+    buffer_size -= Configurator::max_write_bytes();
   }
   bytes_written = ::write(fd, buffer, buffer_size);
   if (bytes_written != ssize_t(buffer_size)) {
@@ -1702,17 +1706,17 @@ Status write_to_file_cmp_gzip(
         "'; File opening error"));
   }
 
-  // Append data to the file in batches of TILEDB_UT_MAX_WRITE_COUNT
+  // Append data to the file in batches of Configurator::max_write_bytes()
   // bytes at a time
   ssize_t bytes_written;
-  while (buffer_size > TILEDB_UT_MAX_WRITE_COUNT) {
-    bytes_written = gzwrite(fd, buffer, TILEDB_UT_MAX_WRITE_COUNT);
-    if (bytes_written != TILEDB_UT_MAX_WRITE_COUNT) {
+  while (buffer_size > Configurator::max_write_bytes()) {
+    bytes_written = gzwrite(fd, buffer, Configurator::max_write_bytes());
+    if (bytes_written != Configurator::max_write_bytes()) {
       return LOG_STATUS(Status::IOError(
           std::string("Cannot write to file '") + filename +
           "'; File writing error"));
     }
-    buffer_size -= TILEDB_UT_MAX_WRITE_COUNT;
+    buffer_size -= Configurator::max_write_bytes();
   }
   bytes_written = gzwrite(fd, buffer, buffer_size);
   if (bytes_written != ssize_t(buffer_size)) {
@@ -2054,6 +2058,6 @@ template bool is_unary_subarray<uint32_t>(
 template bool is_unary_subarray<uint64_t>(
     const uint64_t* subarray, int dim_num);
 
-};  // namespace utils
+}  // namespace utils
 
-};  // namespace tiledb
+}  // namespace tiledb

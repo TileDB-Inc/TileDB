@@ -5,7 +5,8 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,57 +31,28 @@
  * This file defines class StorageManager.
  */
 
-#ifndef __STORAGE_MANAGER_H__
-#define __STORAGE_MANAGER_H__
+#ifndef __TILEDB_STORAGE_MANAGER_H__
+#define __TILEDB_STORAGE_MANAGER_H__
 
+#include <pthread.h>
 #include <map>
+#include <string>
 #include "array.h"
 #include "array_iterator.h"
 #include "array_schema.h"
 #include "array_schema_c.h"
+#include "configurator.h"
 #include "logger.h"
 #include "metadata.h"
 #include "metadata_iterator.h"
 #include "metadata_schema_c.h"
 #include "status.h"
-#include "storage_manager_config.h"
 
 #ifdef HAVE_OPENMP
 #include <omp.h>
 #endif
-#include <pthread.h>
-#include <string>
-
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/**@{*/
-/** Lock types. */
-#define TILEDB_SM_SHARED_LOCK 0
-#define TILEDB_SM_EXCLUSIVE_LOCK 1
-/**@}*/
-
-/** Name of the consolidation file lock. */
-#define TILEDB_SM_CONSOLIDATION_FILELOCK_NAME ".__consolidation_lock"
-
-/**@{*/  // TODO: these may have to be moved from here
-/** Special TileDB file name. */
-#define TILEDB_ARRAY_SCHEMA_FILENAME "__array_schema.tdb"
-#define TILEDB_METADATA_SCHEMA_FILENAME "__metadata_schema.tdb"
-#define TILEDB_BOOK_KEEPING_FILENAME "__book_keeping"
-#define TILEDB_FRAGMENT_FILENAME "__tiledb_fragment.tdb"
-#define TILEDB_GROUP_FILENAME "__tiledb_group.tdb"
-/**@}*/
 
 namespace tiledb {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
-
-/** Stores potential error messages. */
-// extern std::string tiledb_sm_errmsg;
 
 /**
  * The storage manager, which is repsonsible for creating, deleting, etc. of
@@ -126,7 +98,7 @@ class StorageManager {
    *     then the default TileDB parameters are used.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  Status init(StorageManagerConfig* config);
+  Status init(Configurator* config);
 
   /* ********************************* */
   /*              GROUP                */
@@ -139,6 +111,18 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   Status group_create(const std::string& group) const;
+
+  /* ********************************* */
+  /*           BASIC ARRAY             */
+  /* ********************************* */
+
+  /**
+   * Creates a new TileDB basic array.
+   *
+   * @param name The basic array name.
+   * @return Status
+   */
+  Status basic_array_create(const char* name) const;
 
   /* ********************************* */
   /*              ARRAY                */
@@ -167,17 +151,6 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   Status array_create(const ArraySchema* array_schema) const;
-
-  /**
-   * Loads the schema of an array from the disk, allocating appropriate memory
-   * space for it.
-   *
-   * @param array_dir The directory of the array.
-   * @param array_schema The schema to be loaded.
-   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
-   */
-  Status array_load_schema(
-      const char* array_dir, ArraySchema*& array_schema) const;
 
   /**
    * Initializes a TileDB array.
@@ -485,7 +458,7 @@ class StorageManager {
   /* ********************************* */
 
   /** The TileDB configuration parameters. */
-  StorageManagerConfig* config_;
+  Configurator* config_;
 
   /** The logger for this storage manager.*/
   Logger* logger_;
@@ -498,6 +471,16 @@ class StorageManager {
   pthread_mutex_t open_array_pthread_mtx_;
   /** Stores the currently open arrays. */
   std::map<std::string, OpenArray*> open_arrays_;
+
+  /* ********************************* */
+  /*         PRIVATE CONSTANTS         */
+  /* ********************************* */
+
+  /**@{*/
+  /** Lock types. */
+  static const int SHARED_LOCK = 0;
+  static const int EXCLUSIVE_LOCK = 1;
+  /**@}*/
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
@@ -592,25 +575,6 @@ class StorageManager {
    */
   Status array_open(
       const std::string& array_name, OpenArray*& open_array, ArrayMode mode);
-
-  /**
-   * Stores the input array schema into the input array directory (serializing
-   * it into a sequence of bytes and storing it in a binary file).
-   *
-   * @param dir The array directory where the array schema is stored.
-   * @param array_schema The array schema to be stored.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  Status array_store_schema(
-      const std::string& dir, const ArraySchema* array_schema) const;
-
-  /**
-   * It sets the TileDB configuration parameters.
-   *
-   * @param config The configuration parameters.
-   * @return
-   */
-  void config_set(StorageManagerConfig* config);
 
   /**
    * Creates a special file that serves as lock needed for implementing
@@ -829,6 +793,6 @@ class StorageManager::OpenArray {
   Status mutex_unlock();
 };
 
-};  // namespace tiledb
+}  // namespace tiledb
 
-#endif
+#endif  // __TILEDB_STORAGE_MANAGER_H__

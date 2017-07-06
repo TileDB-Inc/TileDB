@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -114,7 +115,10 @@ Status Metadata::init(
     tiledb_metadata_mode_t mode,
     const char** attributes,
     int attribute_num,
-    const StorageManagerConfig* config) {
+    const Configurator* config) {
+  // For easy reference
+  unsigned name_max_len = Configurator::name_max_len();
+
   // Sanity check on mode
   if (mode != TILEDB_METADATA_READ && mode != TILEDB_METADATA_WRITE) {
     return LOG_STATUS(Status::MetadataError(
@@ -148,7 +152,7 @@ Status Metadata::init(
     for (int i = 0; i < attribute_num; ++i) {
       size_t attribute_len = strlen(attributes[i]);
       // Check attribute name length
-      if (attributes[i] == nullptr || attribute_len > TILEDB_NAME_MAX_LEN) {
+      if (attributes[i] == nullptr || attribute_len > name_max_len) {
         for (int attr = 0; attr < i; ++i)
           delete array_attributes[i];
         delete[] array_attributes;
@@ -188,6 +192,7 @@ Status Metadata::init(
 Status Metadata::reset_attributes(const char** attributes, int attribute_num) {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
+  unsigned name_max_len = Configurator::name_max_len();
 
   // Set attributes
   char** array_attributes;
@@ -210,7 +215,7 @@ Status Metadata::reset_attributes(const char** attributes, int attribute_num) {
     for (int i = 0; i < attribute_num; ++i) {
       size_t attribute_len = strlen(attributes[i]);
       // Check attribute name length
-      if (attributes[i] == nullptr || attribute_len > TILEDB_NAME_MAX_LEN) {
+      if (attributes[i] == nullptr || attribute_len > name_max_len) {
         for (int attr = 0; attr < i; ++i)
           delete array_attributes[i];
         delete[] array_attributes;

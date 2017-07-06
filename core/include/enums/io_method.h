@@ -1,12 +1,11 @@
 /**
- * @file io_mode.h
+ * @file io_method.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- *            Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,16 +31,16 @@
  * enum.
  */
 
-#ifndef TILEDB_IO_MODE_H
-#define TILEDB_IO_MODE_H
+#ifndef __TILEDB_IO_METHOD_H__
+#define __TILEDB_IO_METHOD_H__
 
 namespace tiledb {
 
-enum class IO {
-#define TILEDB_IO_ENUM(id) id
+enum class IOMethod {
+#define TILEDB_IO_METHOD_ENUM(id) id
 #include "tiledb_enum.inc"
-#undef TILEDB_IO_ENUM
+#undef TILEDB_IO_METHOD_ENUM
 };
 
 }  // namespace tiledb
-#endif  // TILEDB_IO_MODE_H
+#endif  // __TILEDB_IO_METHOD_H__

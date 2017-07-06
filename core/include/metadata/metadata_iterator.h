@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,20 +31,13 @@
  * This file defines class MetadataIterator.
  */
 
-#ifndef __METADATA_ITERATOR_H__
-#define __METADATA_ITERATOR_H__
+#ifndef __TILEDB_METADATA_ITERATOR_H__
+#define __TILEDB_METADATA_ITERATOR_H__
 
 #include "array_iterator.h"
 #include "metadata.h"
 
 namespace tiledb {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
-
-/** Stores potential error messages. */
-extern std::string tiledb_mit_errmsg;
 
 /** Enables iteration (read) over metadata values. */
 class MetadataIterator {
@@ -134,5 +128,6 @@ class MetadataIterator {
   Metadata* metadata_;
 };
 
-};  // namespace tiledb
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_METADATA_ITERATOR_H__

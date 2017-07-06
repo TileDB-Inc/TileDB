@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,6 +33,17 @@
 
 #include "progress_bar.h"
 #include <cstdio>
+
+namespace tiledb {
+
+/* ****************************** */
+/*         STATIC CONSTANTS       */
+/* ****************************** */
+
+const float ProgressBar::COMPLETE = 1.0;
+const char ProgressBar::FILLER = '=';
+const int ProgressBar::MAX_LENGTH = 30;
+const float ProgressBar::RATIO_STEP = 0.01;
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -62,7 +74,7 @@ void ProgressBar::load(double amount) {
   length_ = ratio_ * max_length_;
 
   // Print bar
-  if (ratio_ - last_ratio_ > PB_RATIO_STEP) {
+  if (ratio_ - last_ratio_ > RATIO_STEP) {
     print();
     last_ratio_ = ratio_;
   }
@@ -84,3 +96,5 @@ void ProgressBar::print() {
   fprintf(stdout, "]\r");
   fflush(stdout);
 }
+
+}  // namespace tiledb
