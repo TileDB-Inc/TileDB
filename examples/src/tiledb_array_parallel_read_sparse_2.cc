@@ -39,7 +39,7 @@
 
 // The function to be computed in parallel
 void parallel_read(
-    TileDB_CTX* tiledb_ctx,
+    tiledb_ctx_t* ctx,
     const char* array_name,
     const void* subarray,
     void** buffers,
@@ -48,8 +48,8 @@ void parallel_read(
 
 int main() {
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, NULL);
 
   // Array name
   const char* array_name = "my_group/sparse_arrays/my_array_B";
@@ -88,7 +88,7 @@ int main() {
 
     // Parallel read
     parallel_read(
-        tiledb_ctx, 
+        ctx,
         array_name,
         subarray, 
         buffers, 
@@ -103,13 +103,13 @@ int main() {
   printf("Number of a1 values greater than 5: %d \n", total_count);
 
   // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }
 
 void parallel_read(
-    TileDB_CTX* tiledb_ctx,
+    tiledb_ctx_t* ctx,
     const char* array_name,
     const void* subarray,
     void** buffers,
@@ -119,9 +119,9 @@ void parallel_read(
   const char* attributes[] = { "a1" };
 
   // Initialize array
-  TileDB_Array* tiledb_array;
+  tiledb_array_t* tiledb_array;
   tiledb_array_init(
-      tiledb_ctx,                                // Context 
+      ctx,                                // Context
       &tiledb_array,                             // Array object
       array_name,                                // Array name
       TILEDB_ARRAY_READ,                         // Mode

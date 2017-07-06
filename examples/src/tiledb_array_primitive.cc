@@ -34,19 +34,19 @@
 #include <cstdio>
 
 // Prints some schema info (you can enhance this to print the entire schema)
-void print_some_array_schema_info(const TileDB_ArraySchema* array_schema);
+void print_some_array_schema_info(const tiledb_array_schema_t* array_schema);
 
 int main() {
   /* Initialize context with the default configuration parameters. */
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, nullptr);
 
   // ----- Dense array ----- //
 
   // Load array schema when the array is not initialized
-  TileDB_ArraySchema array_schema;
+  tiledb_array_schema_t array_schema;
   tiledb_array_load_schema(
-      tiledb_ctx,                               // Context 
+      ctx,                               // Context
       "my_group/dense_arrays/my_array_A",       // Array name
       &array_schema);                           // Array schema struct
 
@@ -59,9 +59,9 @@ int main() {
   // ----- Sparse array ----- //
 
   // Initialize array
-  TileDB_Array* tiledb_array;
+  tiledb_array_t* tiledb_array;
   tiledb_array_init(
-      tiledb_ctx,                                // Context 
+      ctx,                                // Context
       &tiledb_array,                             // Array object
       "my_group/sparse_arrays/my_array_B",       // Array name
       TILEDB_ARRAY_READ,                         // Mode
@@ -82,12 +82,12 @@ int main() {
   tiledb_array_finalize(tiledb_array);
 
   // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }
 
-void print_some_array_schema_info(const TileDB_ArraySchema* array_schema) {
+void print_some_array_schema_info(const tiledb_array_schema_t* array_schema) {
   printf("Array name: %s\n",  array_schema->array_name_);
   printf("Attributes: ");
   for(int i=0; i<array_schema->attribute_num_; ++i)

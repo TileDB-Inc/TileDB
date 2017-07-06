@@ -34,15 +34,15 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, nullptr);
 
   /* TODO: Handle deletions better through an API
 
   // Initialize metadata
-  TileDB_Metadata* tiledb_metadata;
+  tiledb_metadata_t* tiledb_metadata;
   tiledb_metadata_init(
-      tiledb_ctx,                                    // Context
+      ctx,                                    // Context
       &tiledb_metadata,                              // Metadata object
       "my_group/sparse_arrays/my_array_B/meta",      // Metadata name
       TILEDB_METADATA_WRITE,                         // Mode
@@ -87,7 +87,7 @@ int main() {
    */
 
   // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }

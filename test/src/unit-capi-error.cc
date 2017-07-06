@@ -37,7 +37,7 @@
 #include "catch.hpp"
 
 TEST_CASE("C API Error") {
-  TileDB_CTX* ctx;
+  tiledb_ctx_t* ctx;
   int rc;
   rc = tiledb_ctx_init(&ctx, nullptr);
   CHECK(rc == TILEDB_OK);

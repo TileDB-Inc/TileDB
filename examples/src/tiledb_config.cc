@@ -46,13 +46,13 @@ int main() {
   tiledb_config.read_method_ = TILEDB_IO_READ; // OS read instead of mmap
 
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, &tiledb_config);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, &tiledb_config);
 
   /* --- Your code here --- */
 
   /* Finalize context. */
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }

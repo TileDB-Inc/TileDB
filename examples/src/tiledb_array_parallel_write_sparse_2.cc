@@ -38,7 +38,7 @@
 
 // The function to be computed in parallel
 void parallel_write(
-    TileDB_CTX* tiledb_ctx,
+    tiledb_ctx_t* ctx,
     const char* array_name,
     const void** buffers,
     const size_t* buffer_sizes);
@@ -46,8 +46,8 @@ void parallel_write(
 
 int main() {
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, NULL);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, NULL);
 
   // Array name
   const char* array_name = "my_group/sparse_arrays/my_array_B";
@@ -116,27 +116,27 @@ int main() {
 
     // Write
     parallel_write(
-        tiledb_ctx,
+        ctx,
         array_name,
         buffers,
         buffer_sizes);
   }
 
   // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }
 
 void parallel_write(
-    TileDB_CTX* tiledb_ctx,
+    tiledb_ctx_t* ctx,
     const char* array_name,
     const void** buffers,
     const size_t* buffer_sizes) {
   // Initialize array
-  TileDB_Array* tiledb_array;
+  tiledb_array_t* tiledb_array;
   tiledb_array_init(
-      tiledb_ctx,                                // Context 
+      ctx,                                // Context
       &tiledb_array,                             // Array object
       array_name,                                // Array name
       TILEDB_ARRAY_WRITE_UNSORTED,               // Mode

@@ -41,16 +41,16 @@ int main(int argc, char** argv) {
   }
 
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, nullptr);
 
   // Subset over attributes
   const char* attributes[] = { "a1", "a2" };
 
   // Initialize metadata
-  TileDB_Metadata* tiledb_metadata;
+  tiledb_metadata_t* tiledb_metadata;
   tiledb_metadata_init(
-      tiledb_ctx,                                    // Context
+      ctx,                                    // Context
       &tiledb_metadata,                              // Metadata object
       "my_group/sparse_arrays/my_array_B/meta",      // Metadata name
       TILEDB_METADATA_READ,                          // Mode
@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
   tiledb_metadata_finalize(tiledb_metadata);
 
   /* Finalize context. */
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }

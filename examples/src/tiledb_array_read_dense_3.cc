@@ -35,8 +35,8 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, nullptr);
 
   // Subarray and attributes
   int64_t subarray[] = { 3, 3, 2, 2 }; 
@@ -45,9 +45,9 @@ int main() {
   const char* attributes_2[] = { "a2" };
 
   // Initialize array 
-  TileDB_Array* tiledb_array;
+  tiledb_array_t* tiledb_array;
   tiledb_array_init(
-      tiledb_ctx,                                       // Context
+      ctx,                                       // Context
       &tiledb_array,                                    // Array object
       "my_group/dense_arrays/my_array_A",               // Array name
       TILEDB_ARRAY_READ,                                // Mode
@@ -80,7 +80,7 @@ int main() {
   tiledb_array_finalize(tiledb_array);
 
   /* Finalize context. */
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }

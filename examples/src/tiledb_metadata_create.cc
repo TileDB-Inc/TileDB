@@ -34,8 +34,8 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, nullptr);
 
   // Prepare parameters for metadata schema
   const char* metadata_name = "my_group/sparse_arrays/my_array_B/meta";
@@ -58,9 +58,9 @@ int main() {
   };
 
   // Set metadata schema
-  TileDB_MetadataSchema metadata_schema;
+  tiledb_metadata_schema_t metadata_schema;
   tiledb_metadata_set_schema(
-      tiledb_ctx,
+      ctx,
       &metadata_schema,            // Metadata schema struct
       metadata_name,               // Metadata name
       attributes,                  // Attributes
@@ -72,13 +72,13 @@ int main() {
   );
 
   // Create metadata
-  tiledb_metadata_create(tiledb_ctx, &metadata_schema); 
+  tiledb_metadata_create(ctx, &metadata_schema);
 
   // Free metadata schema
   tiledb_metadata_free_schema(&metadata_schema);
 
   // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   return 0;
 }

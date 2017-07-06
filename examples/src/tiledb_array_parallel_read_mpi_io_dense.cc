@@ -56,8 +56,8 @@ int main(int argc, char** argv) {
   tiledb_config.mpi_comm_ = &mpi_comm;
 
   // Initialize context with the default configuration parameters
-  TileDB_CTX* tiledb_ctx;
-  tiledb_ctx_init(&tiledb_ctx, &tiledb_config);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_init(&ctx, &tiledb_config);
 
   // Array name
   const char* array_name = "my_group/dense_arrays/my_array_A";
@@ -92,9 +92,9 @@ int main(int argc, char** argv) {
     subarray = subarray_3;
   
   // Initialize array
-  TileDB_Array* tiledb_array;
+  tiledb_array_t* tiledb_array;
   tiledb_array_init(
-      tiledb_ctx,                          // Context 
+      ctx,                          // Context
       &tiledb_array,                       // Array object
       array_name,                          // Array name
       TILEDB_ARRAY_READ,                   // Mode
@@ -117,7 +117,7 @@ int main(int argc, char** argv) {
          "than 10: %d \n", rank, total_count);
 
   // Finalize context
-  tiledb_ctx_finalize(tiledb_ctx);
+  tiledb_ctx_finalize(ctx);
 
   // Finalize MPI
   MPI_Finalize();
