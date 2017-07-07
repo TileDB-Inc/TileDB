@@ -43,20 +43,13 @@
 #include <iostream>
 #include "comparators.h"
 #include "constants.h"
+#include "logger.h"
 #include "status.h"
 #include "utils.h"
 
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
-
-#ifdef TILEDB_VERBOSE
-#define PRINT_ERROR(x) std::cerr << TILEDB_WS_ERRMSG << x << ".\n"
-#else
-#define PRINT_ERROR(x) \
-  do {                 \
-  } while (0)
-#endif
 
 #if defined HAVE_OPENMP && defined USE_PARALLEL_SORT
 #include <parallel/algorithm>
@@ -67,12 +60,6 @@
 #endif
 
 namespace tiledb {
-
-/* ****************************** */
-/*        GLOBAL VARIABLES        */
-/* ****************************** */
-
-std::string tiledb_ws_errmsg = "";
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -202,9 +189,7 @@ Status WriteState::sync() {
       RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
       // Error: MPI not supported
-      std::string errmsg = "Cannot sync; MPI not supported";
-      PRINT_ERROR(errmsg);
-      return Status::Error(errmsg);
+      return LOG_STATUS(Status::Error("Cannot sync; MPI not supported"));
 #endif
     } else {
       assert(0);
@@ -222,9 +207,7 @@ Status WriteState::sync() {
         RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
         // Error: MPI not supported
-        std::string errmsg = "Cannot sync; MPI not supported";
-        PRINT_ERROR(errmsg);
-        return Status::Error(errmsg);
+        return LOG_STATUS(Status::Error("Cannot sync; MPI not supported"));
 #endif
       } else {
         assert(0);
@@ -241,9 +224,7 @@ Status WriteState::sync() {
     RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
     // Error: MPI not supported
-    std::string errmsg = "Cannot sync; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error("Cannot sync; MPI not supported"));
 #endif
   } else {
     assert(0);
@@ -272,9 +253,8 @@ Status WriteState::sync_attribute(const std::string& attribute) {
     RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
     // Error: MPI not supported
-    std::string errmsg = "Cannot sync attribute; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(
+        Status::Error("Cannot sync attribute; MPI not supported"));
 #endif
   } else {
     assert(0);
@@ -290,9 +270,8 @@ Status WriteState::sync_attribute(const std::string& attribute) {
       RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
       // Error: MPI not supported
-      std::string errmsg = "Cannot sync attribute; MPI not supported";
-      PRINT_ERROR(errmsg);
-      return Status::Error(errmsg);
+      return LOG_STATUS(
+          Status::Error("Cannot sync attribute; MPI not supported"));
 #endif
     } else {
       assert(0);
@@ -307,9 +286,8 @@ Status WriteState::sync_attribute(const std::string& attribute) {
     RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
 #else
     // Error: MPI not supported
-    std::string errmsg = "Cannot sync attribute; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(
+        Status::Error("Cannot sync attribute; MPI not supported"));
 #endif
   } else {
     assert(0);
@@ -339,9 +317,8 @@ Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
                    "_var" + TILEDB_FILE_SUFFIX;
         FILE* fptr = fopen(filename.c_str(), "a");
         if (fptr == nullptr) {
-          std::string errmsg = "Cannot write to file; Error opening file";
-          PRINT_ERROR(errmsg);
-          return Status::OSError(errmsg);
+          return LOG_STATUS(
+              Status::OSError("Cannot write to file; Error opening file"));
         }
         fclose(fptr);
       }
@@ -359,9 +336,7 @@ Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   } else if (fragment_->mode() == ArrayMode::WRITE_UNSORTED) {  // UNSORTED
     return write_sparse_unsorted(buffers, buffer_sizes);
   } else {
-    std::string errmsg = "Cannot write to fragment; Invalid mode";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error("Cannot write to fragment; Invalid mode"));
   }
 }
 
@@ -513,9 +488,8 @@ Status WriteState::compress_tile_zstd(
       tile_size,
       TILEDB_COMPRESSION_LEVEL_ZSTD);
   if (ZSTD_isError(zstd_size)) {
-    std::string errmsg = "Failed compressing with Zstandard";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(
+        Status::CompressionError("Failed compressing with Zstandard"));
   }
   tile_compressed_size = zstd_size;
 
@@ -556,9 +530,7 @@ Status WriteState::compress_tile_lz4(
   int lz4_size =
       LZ4_compress((const char*)tile, (char*)tile_compressed_, tile_size);
   if (lz4_size < 0) {
-    std::string errmsg = "Failed compressing with LZ4";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError("Failed compressing with LZ4"));
   }
   tile_compressed_size = lz4_size;
 
@@ -598,9 +570,8 @@ Status WriteState::compress_tile_blosc(
   // Set the appropriate compressor
   if (blosc_set_compressor(compressor) < 0) {
     blosc_destroy();
-    std::string errmsg = "Failed to set Blosc compressor";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(
+        Status::CompressionError("Failed to set Blosc compressor"));
   }
 
   // For easy reference
@@ -622,9 +593,8 @@ Status WriteState::compress_tile_blosc(
       tile_compressed_allocated_size_);
   if (blosc_size < 0) {
     blosc_destroy();
-    std::string errmsg = "Failed compressing with Blosc";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(
+        Status::CompressionError("Failed compressing with Blosc"));
   }
   tile_compressed_size = blosc_size;
 
@@ -699,10 +669,8 @@ Status WriteState::compress_tile_rle(
           &rle_size));
     } else {  // Error
       assert(0);
-      std::string errmsg =
-          "Failed compressing with RLE; unsupported cell order";
-      PRINT_ERROR(errmsg);
-      return Status::Error(errmsg);
+      return LOG_STATUS(
+          Status::Error("Failed compressing with RLE; unsupported cell order"));
     }
   }
 
@@ -752,9 +720,8 @@ Status WriteState::compress_tile_bzip2(
 
   // Check for error
   if (rc != BZ_OK) {
-    std::string errmsg = "Failed compressing with BZIP2";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(
+        Status::CompressionError("Failed compressing with BZIP2"));
   }
 
   // Set tile compressed size
@@ -799,9 +766,8 @@ Status WriteState::compress_and_write_tile(int attribute_id) {
         tile_compressed_size);
 #else
     // Error: MPI not supported
-    std::string errmsg = "Cannot compress and write tile; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(
+        Status::Error("Cannot compress and write tile; MPI not supported"));
 #endif
   }
 
@@ -856,10 +822,8 @@ Status WriteState::compress_and_write_tile_var(int attribute_id) {
         tile_compressed_size);
 #else
     // Error: MPI not supported
-    std::string errmsg =
-        "Cannot compress and write variable tile; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error(
+        "Cannot compress and write variable tile; MPI not supported"));
 #endif
   }
 
@@ -1162,9 +1126,8 @@ Status WriteState::write_dense_attr_cmp_none(
         buffer_size);
 #else
     // Error: MPI not supported
-    std::string errmsg = "Cannot write dense attribute; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(
+        Status::Error("Cannot write dense attribute; MPI not supported"));
 #endif
   }
   if (!st.ok()) {
@@ -1259,7 +1222,7 @@ Status WriteState::write_dense_attr_var(
   assert(0);
 
   // Error
-  return Status::Error("should not happen");
+  return LOG_STATUS(Status::Error("should not happen"));
 }
 
 Status WriteState::write_dense_attr_var_cmp_none(
@@ -1288,10 +1251,8 @@ Status WriteState::write_dense_attr_var_cmp_none(
         mpi_comm, filename.c_str(), buffer_var, buffer_var_size));
 #else
     // Error: MPI not supported
-    std::string errmsg =
-        "Cannot write dense variable attribute; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error(
+        "Cannot write dense variable attribute; MPI not supported"));
 #endif
   }
   // Recalculate offsets
@@ -1311,10 +1272,8 @@ Status WriteState::write_dense_attr_var_cmp_none(
         mpi_comm, filename.c_str(), shifted_buffer, buffer_size);
 #else
     // Error: MPI not supported
-    std::string errmsg =
-        "Cannot write dense variable attribute; MPI not supported";
-    PRINT_ERROR(errmsg);
-    st = Status::Error(errmsg);
+    st = Status::Error(
+        "Cannot write dense variable attribute; MPI not supported");
 #endif
   }
   free(shifted_buffer);
@@ -1574,9 +1533,8 @@ Status WriteState::write_sparse_attr_cmp_none(
     st = mpi_io_write_to_file(mpi_comm, filename.c_str(), buffer, buffer_size);
 #else
     // Error: MPI not supported
-    std::string errmsg = "Cannot write sparse attribute; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(
+        Status::Error("Cannot write sparse attribute; MPI not supported"));
 #endif
   }
   return st;
@@ -1699,10 +1657,8 @@ Status WriteState::write_sparse_attr_var_cmp_none(
         mpi_comm, filename.c_str(), buffer_var, buffer_var_size);
 #else
     // Error: MPI not supported
-    std::string errmsg =
-        "Cannot write sparse variable attribute; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error(
+        "Cannot write sparse variable attribute; MPI not supported"));
 #endif
   }
   if (!st.ok()) {
@@ -1723,11 +1679,8 @@ Status WriteState::write_sparse_attr_var_cmp_none(
     st = mpi_io_write_to_file(
         mpi_comm, filename.c_str(), shifted_buffer, buffer_size);
 #else
-    // Error: MPI not supported
-    std::string errmsg =
-        "Cannot write sparse variable attribute; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error(
+        "Cannot write sparse variable attribute; MPI not supported"));
 #endif
   }
 
@@ -1933,9 +1886,8 @@ Status WriteState::write_sparse_unsorted(
 
   // Coordinates are missing
   if (coords_buffer_i == -1) {
-    std::string errmsg = "Cannot write sparse unsorted; Coordinates missing";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(
+        Status::Error("Cannot write sparse unsorted; Coordinates missing"));
   }
 
   // Sort cell positions
@@ -2000,12 +1952,10 @@ Status WriteState::write_sparse_unsorted_attr_cmp_none(
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
   if (buffer_cell_num != int64_t(cell_pos.size())) {
-    std::string errmsg = std::string(
-                             "Cannot write sparse unsorted; Invalid number of "
-                             "cells in attribute '") +
-                         array_schema->attribute(attribute_id) + "'";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error(
+        std::string("Cannot write sparse unsorted; Invalid number of "
+                    "cells in attribute '") +
+        array_schema->attribute(attribute_id) + "'"));
   }
 
   // Allocate a local buffer to hold the sorted cells
@@ -2058,12 +2008,10 @@ Status WriteState::write_sparse_unsorted_attr_cmp(
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
   if (buffer_cell_num != int64_t(cell_pos.size())) {
-    std::string errmsg = std::string(
-                             "Cannot write sparse unsorted; Invalid number of "
-                             "cells in attribute '") +
-                         array_schema->attribute(attribute_id) + "'";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error(
+        std::string("Cannot write sparse unsorted; Invalid number of "
+                    "cells in attribute '") +
+        array_schema->attribute(attribute_id) + "'"));
   }
 
   // Allocate a local buffer to hold the sorted cells
@@ -2149,12 +2097,10 @@ Status WriteState::write_sparse_unsorted_attr_var_cmp_none(
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
   if (buffer_cell_num != int64_t(cell_pos.size())) {
-    std::string errmsg = std::string(
-                             "Cannot write sparse unsorted variable; "
-                             "Invalid number of cells in attribute '") +
-                         array_schema->attribute(attribute_id) + "'";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error(
+        std::string("Cannot write sparse unsorted variable; "
+                    "Invalid number of cells in attribute '") +
+        array_schema->attribute(attribute_id) + "'"));
   }
 
   // Allocate a local buffer to hold the sorted cells
@@ -2238,12 +2184,10 @@ Status WriteState::write_sparse_unsorted_attr_var_cmp(
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
   if (buffer_cell_num != int64_t(cell_pos.size())) {
-    std::string errmsg = std::string(
-                             "Cannot write sparse unsorted variable; "
-                             "Invalid number of cells in attribute '") +
-                         array_schema->attribute(attribute_id) + "'";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error(
+        std::string("Cannot write sparse unsorted variable; "
+                    "Invalid number of cells in attribute '") +
+        array_schema->attribute(attribute_id) + "'"));
   }
 
   // Allocate a local buffer to hold the sorted cells

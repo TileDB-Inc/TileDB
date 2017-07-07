@@ -38,19 +38,8 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
+#include "logger.h"
 #include "utils.h"
-
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#ifdef TILEDB_VERBOSE
-#define PRINT_ERROR(x) std::cerr << TILEDB_AR_ERRMSG << x << ".\n"
-#else
-#define PRINT_ERROR(x) \
-  do {                 \
-  } while (0)
-#endif
 
 namespace tiledb {
 
@@ -103,15 +92,14 @@ void Array::aio_handle_requests() {
   for (;;) {
     // Lock AIO mutext
     if (pthread_mutex_lock(&aio_mtx_)) {
-      std::string errmsg = "Cannot lock AIO mutex";
-      PRINT_ERROR(errmsg);
+      LOG_ERROR("Cannot lock AIO mutex");
       return;
     }
 
     // If the thread is canceled, unblock and exit
     if (aio_thread_canceled_) {
       if (pthread_mutex_unlock(&aio_mtx_))
-        PRINT_ERROR("Cannot unlock AIO mutex while canceling AIO thread");
+        LOG_ERROR("Cannot unlock AIO mutex while canceling AIO thread");
       else
         aio_thread_created_ = false;
       return;
@@ -121,16 +109,14 @@ void Array::aio_handle_requests() {
     while (aio_queue_.size() == 0) {
       // Wait to be signaled
       if (pthread_cond_wait(&aio_cond_, &aio_mtx_)) {
-        PRINT_ERROR("Cannot wait on AIO mutex condition");
+        LOG_ERROR("Cannot wait on AIO mutex condition");
         return;
       }
 
       // If the thread is canceled, unblock and exit
       if (aio_thread_canceled_) {
         if (pthread_mutex_unlock(&aio_mtx_)) {
-          std::string errmsg =
-              "Cannot unlock AIO mutex while canceling AIO thread";
-          PRINT_ERROR(errmsg);
+          LOG_ERROR("Cannot unlock AIO mutex while canceling AIO thread");
         } else {
           aio_thread_created_ = false;
         }
@@ -144,8 +130,7 @@ void Array::aio_handle_requests() {
 
     // Unlock AIO mutext
     if (pthread_mutex_unlock(&aio_mtx_)) {
-      std::string errmsg = "Cannot unlock AIO mutex";
-      PRINT_ERROR(errmsg);
+      LOG_ERROR("Cannot unlock AIO mutex");
       return;
     }
 
@@ -160,9 +145,8 @@ void Array::aio_handle_requests() {
 Status Array::aio_read(AIO_Request* aio_request) {
   // Sanity checks
   if (!read_mode()) {
-    std::string errmsg = "Cannot (async) read from array; Invalid mode";
-    PRINT_ERROR(errmsg);
-    return Status::ArrayError(errmsg);
+    return LOG_STATUS(
+        Status::ArrayError("Cannot (async) read from array; Invalid mode"));
   }
 
   // Create the AIO thread if not already done
@@ -178,9 +162,8 @@ Status Array::aio_read(AIO_Request* aio_request) {
 Status Array::aio_write(AIO_Request* aio_request) {
   // Sanity checks
   if (!write_mode()) {
-    std::string errmsg = "Cannot (async) write to array; Invalid mode";
-    PRINT_ERROR(errmsg);
-    return Status::ArrayError(errmsg);
+    return LOG_STATUS(
+        Status::ArrayError("Cannot (async) write to array; Invalid mode"));
   }
 
   // Create the AIO thread if not already done
@@ -250,9 +233,8 @@ bool Array::overflow(int attribute_id) const {
 Status Array::read(void** buffers, size_t* buffer_sizes) {
   // Sanity checks
   if (!read_mode()) {
-    std::string errmsg = "Cannot read from array; Invalid mode";
-    PRINT_ERROR(errmsg);
-    return Status::ArrayError(errmsg);
+    return LOG_STATUS(
+        Status::ArrayError("Cannot read from array; Invalid mode"));
   }
 
   // Check if there are no fragments
@@ -308,9 +290,7 @@ Status Array::consolidate(
   // Get new fragment name
   std::string new_fragment_name = this->new_fragment_name();
   if (new_fragment_name == "") {
-    std::string errmsg = "Cannot produce new fragment name";
-    PRINT_ERROR(errmsg);
-    return Status::ArrayError(errmsg);
+    return LOG_STATUS(Status::ArrayError("Cannot produce new fragment name"));
   }
 
   // Create new fragment
@@ -470,20 +450,16 @@ Status Array::finalize() {
   if (!st_aio_thread.ok())
     return st_aio_thread;
   if (!cond_destroy_ok) {
-    std::string errmsg = "Cannot destroy AIO mutex condition";
-    PRINT_ERROR(errmsg);
-    return Status::ArrayError(errmsg);
+    return LOG_STATUS(Status::ArrayError("Cannot destroy AIO mutex condition"));
   }
   if (!mutex_destroy_ok) {
-    std::string errmsg = "Cannot destroy AIO mutex";
-    PRINT_ERROR(errmsg);
-    return Status::ArrayError(errmsg);
+    return LOG_STATUS(Status::ArrayError("Cannot destroy AIO mutex"));
   }
   if (!st_clone.ok()) {
     return st_clone;
   }
   if (fg_error) {
-    return Status::ArrayError("error finalizing fragment");
+    return LOG_STATUS(Status::ArrayError("error finalizing fragment"));
   }
   return Status::Ok();
 }
@@ -506,9 +482,8 @@ Status Array::init(
 
   // Sanity check on mode
   if (!read_mode() && !write_mode()) {
-    std::string errmsg = "Cannot initialize array; Invalid array mode";
-    PRINT_ERROR(errmsg);
-    return Status::ArrayError(errmsg);
+    return LOG_STATUS(
+        Status::ArrayError("Cannot initialize array; Invalid array mode"));
   }
 
   // Set config
@@ -538,9 +513,7 @@ Status Array::init(
       // Check attribute name length
       if (attributes[i] == nullptr ||
           strlen(attributes[i]) > TILEDB_NAME_MAX_LEN) {
-        std::string errmsg = "Invalid attribute name length";
-        PRINT_ERROR(errmsg);
-        return Status::ArrayError(errmsg);
+        return LOG_STATUS(Status::ArrayError("Invalid attribute name length"));
       }
       attributes_vec.emplace_back(attributes[i]);
       if (!strcmp(attributes[i], TILEDB_COORDS))
@@ -549,9 +522,8 @@ Status Array::init(
 
     // Sanity check on duplicates
     if (utils::has_duplicates(attributes_vec)) {
-      std::string errmsg = "Cannot initialize array; Duplicate attributes";
-      PRINT_ERROR(errmsg);
-      return Status::ArrayError(errmsg);
+      return LOG_STATUS(
+          Status::ArrayError("Cannot initialize array; Duplicate attributes"));
     }
 
     // For the case of the clone sparse array, append coordinates if they do
@@ -573,9 +545,7 @@ Status Array::init(
     // Get new fragment name
     std::string new_fragment_name = this->new_fragment_name();
     if (new_fragment_name == "") {
-      std::string errmsg = "Cannot produce new fragment name";
-      PRINT_ERROR(errmsg);
-      return Status::ArrayError(errmsg);
+      return LOG_STATUS(Status::ArrayError("Cannot produce new fragment name"));
     }
 
     // Create new fragment
@@ -628,14 +598,11 @@ Status Array::init(
   // Initialize the AIO-related members
   aio_cond_ = PTHREAD_COND_INITIALIZER;
   if (pthread_mutex_init(&aio_mtx_, nullptr)) {
-    std::string errmsg = "Cannot initialize AIO mutex";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(Status::AIOError("Cannot initialize AIO mutex"));
   }
   if (pthread_cond_init(&aio_cond_, nullptr)) {
-    std::string errmsg = "Cannot initialize AIO mutex condition";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(
+        Status::AIOError("Cannot initialize AIO mutex condition"));
   }
   aio_thread_canceled_ = false;
   aio_thread_created_ = false;
@@ -658,18 +625,15 @@ Status Array::reset_attributes(const char** attributes, int attribute_num) {
       // Check attribute name length
       if (attributes[i] == nullptr ||
           strlen(attributes[i]) > TILEDB_NAME_MAX_LEN) {
-        std::string errmsg = "Invalid attribute name length";
-        PRINT_ERROR(errmsg);
-        return Status::ArrayError(errmsg);
+        return LOG_STATUS(Status::ArrayError("Invalid attribute name length"));
       }
       attributes_vec.emplace_back(attributes[i]);
     }
 
     // Sanity check on duplicates
     if (utils::has_duplicates(attributes_vec)) {
-      std::string errmsg = "Cannot reset attributes; Duplicate attributes";
-      PRINT_ERROR(errmsg);
-      return Status::ArrayError(errmsg);
+      return LOG_STATUS(
+          Status::ArrayError("Cannot reset attributes; Duplicate attributes"));
     }
   }
 
@@ -738,9 +702,8 @@ Status Array::reset_subarray(const void* subarray) {
     // Get new fragment name
     std::string new_fragment_name = this->new_fragment_name();
     if (new_fragment_name == "") {
-      std::string errmsg = "Cannot generate new fragment name";
-      PRINT_ERROR(errmsg);
-      return Status::ArrayError(errmsg);
+      return LOG_STATUS(
+          Status::ArrayError("Cannot generate new fragment name"));
     }
 
     // Create new fragment
@@ -828,9 +791,7 @@ Status Array::reset_subarray_soft(const void* subarray) {
 Status Array::sync() {
   // Sanity check
   if (!write_mode()) {
-    std::string errmsg = "Cannot sync array; Invalid mode";
-    PRINT_ERROR(errmsg);
-    return Status::ArrayError(errmsg);
+    return LOG_STATUS(Status::ArrayError("Cannot sync array; Invalid mode"));
   }
 
   // Sanity check
@@ -845,9 +806,8 @@ Status Array::sync() {
 Status Array::sync_attribute(const std::string& attribute) {
   // Sanity checks
   if (!write_mode()) {
-    std::string errmsg = "Cannot sync attribute; Invalid mode";
-    PRINT_ERROR(errmsg);
-    return Status::ArrayError(errmsg);
+    return LOG_STATUS(
+        Status::ArrayError("Cannot sync attribute; Invalid mode"));
   }
 
   // Sanity check
@@ -862,9 +822,8 @@ Status Array::sync_attribute(const std::string& attribute) {
 Status Array::write(const void** buffers, const size_t* buffer_sizes) {
   // Sanity checks
   if (!write_mode()) {
-    std::string errmsg = "Cannot write to array; Invalid mode";
-    PRINT_ERROR(errmsg);
-    return Status::ArrayError(errmsg);
+    return LOG_STATUS(
+        Status::ArrayError("Cannot write to array; Invalid mode"));
   }
 
   // Write based on mode
@@ -889,9 +848,8 @@ Status Array::write(const void** buffers, const size_t* buffer_sizes) {
 Status Array::write_default(const void** buffers, const size_t* buffer_sizes) {
   // Sanity checks
   if (!write_mode()) {
-    std::string errmsg = "Cannot write to array; Invalid mode";
-    PRINT_ERROR(errmsg);
-    return Status::ArrayError(errmsg);
+    return LOG_STATUS(
+        Status::ArrayError("Cannot write to array; Invalid mode"));
   }
 
   // Create and initialize a new fragment
@@ -899,9 +857,7 @@ Status Array::write_default(const void** buffers, const size_t* buffer_sizes) {
     // Get new fragment name
     std::string new_fragment_name = this->new_fragment_name();
     if (new_fragment_name == "") {
-      std::string errmsg = "Cannot produce new fragment name";
-      PRINT_ERROR(errmsg);
-      return Status::ArrayError(errmsg);
+      return LOG_STATUS(Status::ArrayError("Cannot produce new fragment name"));
     }
 
     // Create new fragment
@@ -1015,9 +971,7 @@ Status Array::aio_push_request(AIO_Request* aio_request) {
 
   // Lock AIO mutex
   if (pthread_mutex_lock(&aio_mtx_)) {
-    std::string errmsg = "Cannot lock AIO mutex";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(Status::AIOError("Cannot lock AIO mutex"));
   }
 
   // Push request
@@ -1025,16 +979,12 @@ Status Array::aio_push_request(AIO_Request* aio_request) {
 
   // Signal AIO thread
   if (pthread_cond_signal(&aio_cond_)) {
-    std::string errmsg = "Cannot signal AIO thread";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(Status::AIOError("Cannot signal AIO thread"));
   }
 
   // Unlock AIO mutext
   if (pthread_mutex_unlock(&aio_mtx_)) {
-    std::string errmsg = "Cannot unlock AIO mutex";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(Status::AIOError("Cannot unlock AIO mutex"));
   }
 
   return Status::Ok();
@@ -1047,9 +997,7 @@ Status Array::aio_thread_create() {
   // Create the thread that will be handling all AIO requests
   int rc;
   if ((rc = pthread_create(&aio_thread_, nullptr, Array::aio_handler, this))) {
-    std::string errmsg = "Cannot create AIO thread";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(Status::AIOError("Cannot create AIO thread"));
   }
   aio_thread_created_ = true;
 
@@ -1063,24 +1011,21 @@ Status Array::aio_thread_destroy() {
 
   // Lock AIO mutext
   if (pthread_mutex_lock(&aio_mtx_)) {
-    std::string errmsg = "Cannot lock AIO mutex while destroying AIO thread";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(
+        Status::AIOError("Cannot lock AIO mutex while destroying AIO thread"));
   }
 
   // Signal the cancelation so that the thread unblocks
   aio_thread_canceled_ = true;
   if (pthread_cond_signal(&aio_cond_)) {
-    std::string errmsg = "Cannot signal AIO thread while destroying AIO thread";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(Status::AIOError(
+        "Cannot signal AIO thread while destroying AIO thread"));
   }
 
   // Unlock AIO mutext
   if (pthread_mutex_unlock(&aio_mtx_)) {
-    std::string errmsg = "Cannot unlock AIO mutex while destroying AIO thread";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(Status::AIOError(
+        "Cannot unlock AIO mutex while destroying AIO thread"));
   }
 
   // Wait for cancelation to take place
@@ -1089,11 +1034,8 @@ Status Array::aio_thread_destroy() {
 
   // Join with the terminated thread
   if (pthread_join(aio_thread_, nullptr)) {
-    std::string errmsg = "Cannot join AIO thread";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(Status::AIOError("Cannot join AIO thread"));
   }
-
   return Status::Ok();
 }
 

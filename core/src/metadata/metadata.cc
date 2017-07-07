@@ -33,19 +33,7 @@
 #include "metadata.h"
 #include <openssl/md5.h>
 #include <cassert>
-#include <cstring>
-
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#ifdef TILEDB_VERBOSE
-#define PRINT_ERROR(x) std::cerr << TILEDB_MT_ERRMSG << x << ".\n"
-#else
-#define PRINT_ERROR(x) \
-  do {                 \
-  } while (0)
-#endif
+#include "logger.h"
 
 namespace tiledb {
 
@@ -78,9 +66,8 @@ bool Metadata::overflow(int attribute_id) const {
 Status Metadata::read(const char* key, void** buffers, size_t* buffer_sizes) {
   // Sanity checks
   if (mode_ != TILEDB_METADATA_READ) {
-    std::string errmsg = "Cannot read from metadata; Invalid mode";
-    PRINT_ERROR(errmsg);
-    return Status::MetadataError(errmsg);
+    return LOG_STATUS(
+        Status::MetadataError("Cannot read from metadata; Invalid mode"));
   }
 
   // Compute subarray for the read
@@ -130,9 +117,8 @@ Status Metadata::init(
     const StorageManagerConfig* config) {
   // Sanity check on mode
   if (mode != TILEDB_METADATA_READ && mode != TILEDB_METADATA_WRITE) {
-    std::string errmsg = "Cannot initialize metadata; Invalid metadata mode";
-    PRINT_ERROR(errmsg);
-    return Status::MetadataError(errmsg);
+    return LOG_STATUS(Status::MetadataError(
+        "Cannot initialize metadata; Invalid metadata mode"));
   }
 
   // Set mode
@@ -166,9 +152,8 @@ Status Metadata::init(
         for (int attr = 0; attr < i; ++i)
           delete array_attributes[i];
         delete[] array_attributes;
-        std::string errmsg = "Invalid attribute name length";
-        PRINT_ERROR(errmsg);
-        return Status::MetadataError(errmsg);
+        return LOG_STATUS(
+            Status::MetadataError("Invalid attribute name length"));
       }
       array_attributes[i] = new char[attribute_len + 1];
       strcpy(array_attributes[i], attributes[i]);
@@ -229,9 +214,8 @@ Status Metadata::reset_attributes(const char** attributes, int attribute_num) {
         for (int attr = 0; attr < i; ++i)
           delete array_attributes[i];
         delete[] array_attributes;
-        std::string errmsg = "Invalid attribute name length";
-        PRINT_ERROR(errmsg);
-        return Status::MetadataError(errmsg);
+        return LOG_STATUS(
+            Status::MetadataError("Invalid attribute name length"));
       }
       array_attributes[i] = new char[attribute_len + 1];
       strcpy(array_attributes[i], attributes[i]);
@@ -262,14 +246,12 @@ Status Metadata::write(
     const size_t* buffer_sizes) {
   // Sanity checks
   if (mode_ != TILEDB_METADATA_WRITE) {
-    std::string errmsg = "Cannot write to metadata; Invalid mode";
-    PRINT_ERROR(errmsg);
-    return Status::MetadataError(errmsg);
+    return LOG_STATUS(
+        Status::MetadataError("Cannot write to metadata; Invalid mode"));
   }
   if (keys == nullptr) {
-    std::string errmsg = "Cannot write to metadata; No keys given";
-    PRINT_ERROR(errmsg);
-    return Status::MetadataError(errmsg);
+    return LOG_STATUS(
+        Status::MetadataError("Cannot write to metadata; No keys given"));
   }
 
   // Compute array coordinates

@@ -45,6 +45,7 @@
 #include <iostream>
 #include <set>
 #include "constants.h"
+#include "logger.h"
 #include "status.h"
 
 #if defined(__APPLE__) && defined(__MACH__)
@@ -65,18 +66,6 @@
 
 #define XSTR(s) STR(s)
 #define STR(s) #s
-
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#ifdef TILEDB_VERBOSE
-#define PRINT_ERROR(x) std::cerr << TILEDB_UT_ERRMSG << x << ".\n"
-#else
-#define PRINT_ERROR(x) \
-  do {                 \
-  } while (0)
-#endif
 
 namespace tiledb {
 
@@ -212,17 +201,15 @@ Status create_dir(const std::string& dir) {
   // If the directory does not exist, create it
   if (!is_dir(real_dir)) {
     if (mkdir(real_dir.c_str(), S_IRWXU)) {
-      std::string errmsg = std::string("Cannot create directory '") + real_dir +
-                           "'; " + strerror(errno);
-      PRINT_ERROR(errmsg);
-      return Status::IOError(errmsg);
+      return LOG_STATUS(Status::IOError(
+          std::string("Cannot create directory '") + real_dir + "'; " +
+          strerror(errno)));
     };
     return Status::Ok();
   } else {  // Error
-    std::string errmsg = std::string("Cannot create directory '") + real_dir +
-                         "'; Directory already exists";
-    PRINT_ERROR(errmsg);
-    return Status::IOError(errmsg);
+    return LOG_STATUS(Status::IOError(
+        std::string("Cannot create directory '") + real_dir +
+        "'; Directory already exists"));
   }
 }
 
@@ -231,10 +218,8 @@ Status create_fragment_file(const std::string& dir) {
   std::string filename = std::string(dir) + "/" + TILEDB_FRAGMENT_FILENAME;
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if (fd == -1 || ::close(fd)) {
-    std::string errmsg =
-        std::string("Failed to create fragment file; ") + strerror(errno);
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Failed to create fragment file; ") + strerror(errno)));
   }
   return Status::Ok();
 }
@@ -259,10 +244,8 @@ Status delete_dir(const std::string& dirname) {
   DIR* dir = opendir(dirname_real.c_str());
 
   if (dir == nullptr) {
-    std::string errmsg =
-        std::string("Cannot open directory; ") + strerror(errno);
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot open directory; ") + strerror(errno)));
   }
 
   while ((next_file = readdir(dir))) {
@@ -270,27 +253,21 @@ Status delete_dir(const std::string& dirname) {
       continue;
     filename = dirname_real + "/" + next_file->d_name;
     if (remove(filename.c_str())) {
-      std::string errmsg =
-          std::string("Cannot delete file; ") + strerror(errno);
-      PRINT_ERROR(errmsg);
-      return Status::OSError(errmsg);
+      return LOG_STATUS(Status::OSError(
+          std::string("Cannot delete file; ") + strerror(errno)));
     }
   }
 
   // Close directory
   if (closedir(dir)) {
-    std::string errmsg =
-        std::string("Cannot close directory; ") + strerror(errno);
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot close directory; ") + strerror(errno)));
   }
 
   // Remove directory
   if (rmdir(dirname.c_str())) {
-    std::string errmsg =
-        std::string("Cannot delete directory; ") + strerror(errno);
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot delete directory; ") + strerror(errno)));
   }
   return Status::Ok();
 }
@@ -326,9 +303,7 @@ Status expand_buffer(void*& buffer, size_t& buffer_allocated_size) {
   buffer = realloc(buffer, buffer_allocated_size);
 
   if (buffer == nullptr) {
-    std::string errmsg = "Cannot reallocate buffer";
-    PRINT_ERROR(errmsg);
-    return Status::MemError(errmsg);
+    return LOG_STATUS(Status::MemError("Cannot reallocate buffer"));
   }
   return Status::Ok();
 }
@@ -349,9 +324,8 @@ void expand_mbr(T* mbr, const T* coords, int dim_num) {
 Status file_size(const std::string& filename, off_t* size) {
   int fd = open(filename.c_str(), O_RDONLY);
   if (fd == -1) {
-    std::string errmsg = "Cannot get file size; File opening error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::OSError("Cannot get file size; File opening error"));
   }
 
   struct stat st;
@@ -427,15 +401,13 @@ std::string get_mac_addr() {
   mib[4] = NET_RT_IFLIST;
   if (((mib[5] = if_nametoindex(XSTR(TILEDB_MAC_ADDRESS_INTERFACE))) == 0) ||
       (sysctl(mib, 6, nullptr, &len, nullptr, 0) < 0)) {
-    std::string errmsg = "Cannot get MAC address";
-    PRINT_ERROR(errmsg);
+    LOG_ERROR("Cannot get MAC address");
     return "";
   }
 
   buf = (char*)malloc(len);
   if (sysctl(mib, 6, buf, &len, nullptr, 0) < 0) {
-    std::string errmsg = "Cannot get MAC address";
-    PRINT_ERROR(errmsg);
+    LOG_ERROR("Cannot get MAC address");
     return "";
   }
 
@@ -465,8 +437,7 @@ std::string get_mac_addr() {
     return mac;
   } else {  // Error
     close(fd);
-    std::string errmsg = "Cannot get MAC address";
-    PRINT_ERROR(errmsg);
+    LOG_ERROR("Cannot get MAC address");
     return "";
   }
 }
@@ -488,10 +459,8 @@ Status gzip(
   ret = deflateInit(&strm, TILEDB_COMPRESSION_LEVEL_GZIP);
 
   if (ret != Z_OK) {
-    std::string errmsg = "Cannot compress with GZIP";
-    PRINT_ERROR(errmsg);
     (void)deflateEnd(&strm);
-    return Status::GZipError(errmsg);
+    return LOG_STATUS(Status::GZipError("Cannot compress with GZIP"));
   }
 
   // Compress
@@ -506,9 +475,7 @@ Status gzip(
 
   // Return
   if (ret == Z_STREAM_ERROR || strm.avail_in != 0) {
-    std::string errmsg = "Cannot compress with GZIP";
-    PRINT_ERROR(errmsg);
-    return Status::GZipError(errmsg);
+    return LOG_STATUS(Status::GZipError("Cannot compress with GZIP"));
   };
   // Return size of compressed data
   *gzip_size = out_size - strm.avail_out;
@@ -533,9 +500,7 @@ Status gunzip(
   ret = inflateInit(&strm);
 
   if (ret != Z_OK) {
-    std::string errmsg = "Cannot decompress with GZIP";
-    PRINT_ERROR(errmsg);
-    return Status::GZipError(errmsg);
+    return LOG_STATUS(Status::GZipError("Cannot decompress with GZIP"));
   }
 
   // Decompress
@@ -546,9 +511,8 @@ Status gunzip(
   ret = inflate(&strm, Z_FINISH);
 
   if (ret == Z_STREAM_ERROR || ret != Z_STREAM_END) {
-    std::string errmsg = "Cannot decompress with GZIP, Stream Error";
-    PRINT_ERROR(errmsg);
-    return Status::GZipError(errmsg);
+    return LOG_STATUS(
+        Status::GZipError("Cannot decompress with GZIP, Stream Error"));
   }
 
   // Clean up
@@ -683,9 +647,8 @@ Status mpi_io_read_from_file(
     size_t length) {
   // Sanity check
   if (mpi_comm == NULL) {
-    std::string errmsg = "Cannot read from file; Invalid MPI communicator";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(
+        Status::Error("Cannot read from file; Invalid MPI communicator"));
   }
 
   // Open file
@@ -696,25 +659,21 @@ Status mpi_io_read_from_file(
           MPI_MODE_RDONLY,
           MPI_INFO_NULL,
           &fh)) {
-    std::string errmsg = "Cannot read from file; File opening error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::Error("Cannot read from file; File opening error"));
   }
 
   // Read
   MPI_File_seek(fh, offset, MPI_SEEK_SET);
   MPI_Status mpi_status;
   if (MPI_File_read(fh, buffer, length, MPI_CHAR, &mpi_status)) {
-    std::string errmsg = "Cannot read from file; File reading error";
-    PRINT_ERROR(errmsg);
-    return Status::IOError(errmsg);
+    return LOG_STATUS(Status::IOError("Cannot read from file; File reading error");
   }
 
   // Close file
   if (MPI_File_close(&fh)) {
-    std::string errmsg = "Cannot read from file; File closing error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::OSError("Cannot read from file; File closing error"));
   }
 
   // Success
@@ -735,10 +694,9 @@ Status mpi_io_write_to_file(
               MPI_MODE_SEQUENTIAL,
           MPI_INFO_NULL,
           &fh)) {
-    std::string errmsg = std::string("Cannot write to file '") + filename +
-                         "'; File opening error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot write to file '") + filename +
+        "'; File opening error");
   }
 
   // Append attribute data to the file in batches of
@@ -751,27 +709,23 @@ Status mpi_io_write_to_file(
             TILEDB_UT_MAX_WRITE_COUNT,
             MPI_CHAR,
             &mpi_status)) {
-      std::string errmsg = std::string("Cannot write to file '") + filename +
-                           "'; File writing error";
-      PRINT_ERROR(errmsg);
-      return Status::IOError(errmsg);
+      return LOG_STATUS(Status::IOError(
+          std::string("Cannot write to file '") + filename +
+          "'; File writing error");
     }
     buffer_size -= TILEDB_UT_MAX_WRITE_COUNT;
   }
   if (MPI_File_write(fh, (void*)buffer, buffer_size, MPI_CHAR, &mpi_status)) {
-    std::string errmsg = std::string("Cannot write to file '") + filename +
-                         "'; File writing error";
-    PRINT_ERROR(errmsg);
-    return Status::IOError(errmsg);
+    return LOG_STATUS(Status::IOError(
+        std::string("Cannot write to file '") + filename +
+        "'; File writing error");
   }
 
   // Close file
   if (MPI_File_close(&fh)) {
-    std::string errmsg = std::string("Cannot write to file '") + filename +
-                         "'; File closing error";
-    PRINT_ERROR(errmsg);
-    tiledb_ut_errmsg = TILEDB_UT_ERRMSG + errmsg;
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot write to file '") + filename +
+        "'; File closing error");
   }
 
   // Success
@@ -798,26 +752,21 @@ STATUS mpi_io_sync(const MPI_Comm* mpi_comm, const char* filename) {
 
   // Handle error
   if (rc) {
-    std::string errmsg =
-        std::string("Cannot open file '") + filename + "'; File opening error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot open file '") + filename + "'; File opening error");
   }
 
   // Sync
   if (MPI_File_sync(fh)) {
-    std::string errmsg =
-        std::string("Cannot sync file '") + filename + "'; File syncing error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot sync file '") + filename +
+        "'; File syncing error"));
   }
 
   // Close file
   if (MPI_File_close(&fh)) {
-    std::string errmsg =
-        std::string("Cannot sync file '") + filename + "'; File closing error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot sync file '") + filename + "'; File closing error")));
   }
 
   // Success
@@ -853,36 +802,28 @@ Status mutex_unlock(omp_lock_t* mtx) {
 
 Status mutex_destroy(pthread_mutex_t* mtx) {
   if (pthread_mutex_destroy(mtx) != 0) {
-    std::string errmsg = "Cannot destroy mutex";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error("Cannot destroy mutex"));
   };
   return Status::Ok();
 }
 
 Status mutex_init(pthread_mutex_t* mtx) {
   if (pthread_mutex_init(mtx, nullptr) != 0) {
-    std::string errmsg = "Cannot initialize mutex";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error("Cannot initialize mutex"));
   };
   return Status::Ok();
 }
 
 Status mutex_lock(pthread_mutex_t* mtx) {
   if (pthread_mutex_lock(mtx) != 0) {
-    std::string errmsg = "Cannot lock mutex";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error("Cannot lock mutex"));
   }
   return Status::Ok();
 }
 
 Status mutex_unlock(pthread_mutex_t* mtx) {
   if (pthread_mutex_unlock(mtx) != 0) {
-    std::string errmsg = "Cannot unlock mutex";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error("Cannot unlock mutex"));
   };
   return Status::Ok();
 }
@@ -964,23 +905,20 @@ Status read_from_file(
   // Open file
   int fd = open(filename.c_str(), O_RDONLY);
   if (fd == -1) {
-    std::string errmsg = "Cannot read from file; File opening error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::OSError("Cannot read from file; File opening error"));
   }
   // Read
   lseek(fd, offset, SEEK_SET);
   ssize_t bytes_read = ::read(fd, buffer, length);
   if (bytes_read != ssize_t(length)) {
-    std::string errmsg = "Cannot read from file; File reading error";
-    PRINT_ERROR(errmsg);
-    return Status::IOError(errmsg);
+    return LOG_STATUS(
+        Status::IOError("Cannot read from file; File reading error"));
   }
   // Close file
   if (close(fd)) {
-    std::string errmsg = "Cannot read from file; File closing error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::OSError("Cannot read from file; File closing error"));
   }
   return Status::Ok();
 }
@@ -996,25 +934,22 @@ Status read_from_file_with_mmap(
   // Open file
   int fd = open(filename.c_str(), O_RDONLY);
   if (fd == -1) {
-    std::string errmsg = "Cannot read from file; File opening error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::OSError("Cannot read from file; File opening error"));
   }
 
   // Map
   void* addr =
       mmap(nullptr, new_length, PROT_READ, MAP_SHARED, fd, start_offset);
   if (addr == MAP_FAILED) {
-    std::string errmsg = "Cannot read from file; Memory map error";
-    PRINT_ERROR(errmsg);
-    return Status::MMapError(errmsg);
+    return LOG_STATUS(
+        Status::MMapError("Cannot read from file; Memory map error"));
   }
 
   // Give advice for sequential access
   if (madvise(addr, new_length, MADV_SEQUENTIAL)) {
-    std::string errmsg = "Cannot read from file; Memory advice error";
-    PRINT_ERROR(errmsg);
-    return Status::MMapError(errmsg);
+    return LOG_STATUS(
+        Status::MMapError("Cannot read from file; Memory advice error"));
   }
 
   // Copy bytes
@@ -1022,16 +957,14 @@ Status read_from_file_with_mmap(
 
   // Close file
   if (close(fd)) {
-    std::string errmsg = "Cannot read from file; File closing error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::OSError("Cannot read from file; File closing error"));
   }
 
   // Unmap
   if (munmap(addr, new_length)) {
-    std::string errmsg = "Cannot read from file; Memory unmap error";
-    PRINT_ERROR(errmsg);
-    return Status::MMapError(errmsg);
+    return LOG_STATUS(
+        Status::MMapError("Cannot read from file; Memory unmap error"));
   }
 
   return Status::Ok();
@@ -1095,10 +1028,8 @@ Status RLE_compress(
 
   // Sanity check on input buffer
   if (input_size % value_size) {
-    std::string errmsg =
-        "Failed compressing with RLE; invalid input buffer format";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError(
+        "Failed compressing with RLE; invalid input buffer format"));
   }
 
   // Make runs
@@ -1109,10 +1040,8 @@ Status RLE_compress(
     } else {  // Save the run
       // Sanity check on output size
       if (_output_size + run_size > output_allocated_size) {
-        std::string errmsg =
-            "Failed compressing with RLE; output buffer overflow";
-        PRINT_ERROR(errmsg);
-        return Status::CompressionError(errmsg);
+        return LOG_STATUS(Status::CompressionError(
+            "Failed compressing with RLE; output buffer overflow"));
       }
 
       // Copy to output buffer
@@ -1138,9 +1067,8 @@ Status RLE_compress(
   // Save final run
   // --- Sanity check on size
   if (_output_size + run_size > output_allocated_size) {
-    std::string errmsg = "Failed compressing with RLE; output buffer overflow";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError(
+        "Failed compressing with RLE; output buffer overflow"));
   }
 
   // --- Copy to output buffer
@@ -1198,10 +1126,9 @@ Status RLE_compress_coords_col(
 
   // Sanity check on input buffer format
   if (input_size % coords_size) {
-    std::string errmsg =
-        "failed compressing coordinates with RLE; invalid input buffer format";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(
+        Status::CompressionError("failed compressing coordinates with RLE; "
+                                 "invalid input buffer format"));
   }
 
   // Trivial case
@@ -1212,10 +1139,8 @@ Status RLE_compress_coords_col(
 
   // Copy the number of coordinates
   if (_output_size + sizeof(int64_t) > output_allocated_size) {
-    std::string errmsg =
-        "failed compressing coordinates with RLE; output buffer overflow";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError(
+        "failed compressing coordinates with RLE; output buffer overflow"));
   }
   memcpy(output_cur, &coords_num, sizeof(int64_t));
   output_cur += sizeof(int64_t);
@@ -1224,10 +1149,8 @@ Status RLE_compress_coords_col(
   // Copy the first dimension intact
   // --- Sanity check on size
   if (_output_size + coords_num * value_size > output_allocated_size) {
-    std::string errmsg =
-        "Failed compressing coordinates with RLE; output buffer overflow";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError(
+        "Failed compressing coordinates with RLE; output buffer overflow"));
   }
   // --- Copy to output buffer
   for (int64_t i = 0; i < coords_num; ++i) {
@@ -1251,10 +1174,9 @@ Status RLE_compress_coords_col(
       } else {  // Save the run
         // Sanity check on output size
         if (_output_size + run_size > output_allocated_size) {
-          std::string errmsg =
-              "Failed compressing coordinates with RLE; output buffer overflow";
-          PRINT_ERROR(errmsg);
-          return Status::CompressionError(errmsg);
+          return LOG_STATUS(Status::CompressionError(
+              "Failed compressing coordinates with RLE; output buffer "
+              "overflow"));
         }
 
         // Copy to output buffer
@@ -1280,10 +1202,8 @@ Status RLE_compress_coords_col(
     // Save final run
     //---  Sanity check on ouput size
     if (_output_size + run_size > output_allocated_size) {
-      std::string errmsg =
-          "Failed compressing coordinates with RLE; output buffer overflow";
-      PRINT_ERROR(errmsg);
-      return Status::CompressionError(errmsg);
+      return LOG_STATUS(Status::CompressionError(
+          "Failed compressing coordinates with RLE; output buffer overflow"));
     }
 
     // --- Copy to output buffer
@@ -1327,10 +1247,9 @@ Status RLE_compress_coords_row(
 
   // Sanity check on input buffer format
   if (input_size % coords_size) {
-    std::string errmsg =
-        "failed compressing coordinates with RLE; invalid input buffer format";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(
+        Status::CompressionError("failed compressing coordinates with RLE; "
+                                 "invalid input buffer format"));
   }
 
   // Trivial case
@@ -1340,10 +1259,8 @@ Status RLE_compress_coords_row(
   }
   // Copy the number of coordinates
   if (_output_size + sizeof(int64_t) > output_allocated_size) {
-    std::string errmsg =
-        "failed compressing coordinates with RLE; output buffer overflow";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError(
+        "failed compressing coordinates with RLE; output buffer overflow"));
   }
   memcpy(output_cur, &coords_num, sizeof(int64_t));
   output_cur += sizeof(int64_t);
@@ -1363,10 +1280,9 @@ Status RLE_compress_coords_row(
       } else {  // Save the run
         // Sanity check on size
         if (_output_size + run_size > output_allocated_size) {
-          std::string errmsg =
-              "Failed compressing coordinates with RLE; output buffer overflow";
-          PRINT_ERROR(errmsg);
-          return Status::CompressionError(errmsg);
+          return LOG_STATUS(Status::CompressionError(
+              "Failed compressing coordinates with RLE; output buffer "
+              "overflow"));
         }
 
         // Copy to output buffer
@@ -1392,10 +1308,8 @@ Status RLE_compress_coords_row(
     // Save final run
     // --- Sanity check on size
     if (_output_size + run_size > output_allocated_size) {
-      std::string errmsg =
-          "Failed compressing coordinates with RLE; output buffer overflow";
-      PRINT_ERROR(errmsg);
-      return Status::CompressionError(errmsg);
+      return LOG_STATUS(Status::CompressionError(
+          "Failed compressing coordinates with RLE; output buffer overflow"));
     }
 
     // --- Copy to output buffer
@@ -1413,10 +1327,8 @@ Status RLE_compress_coords_row(
   // Copy the final dimension intact
   // --- Sanity check on size
   if (_output_size + coords_num * value_size > output_allocated_size) {
-    std::string errmsg =
-        "Failed compressing coordinates with RLE; output buffer overflow";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError(
+        "Failed compressing coordinates with RLE; output buffer overflow"));
   }
   // --- Copy to output buffer
   input_prev = input + (dim_num - 1) * value_size;
@@ -1453,10 +1365,8 @@ Status RLE_decompress(
 
   // Sanity check on input buffer format
   if (input_size % run_size) {
-    std::string errmsg =
-        "Failed decompressing with RLE; invalid input buffer format";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError(
+        "Failed decompressing with RLE; invalid input buffer format"));
   }
 
   // Decompress runs
@@ -1469,10 +1379,8 @@ Status RLE_decompress(
 
     // Sanity check on size
     if (output_size + value_size * run_len > output_allocated_size) {
-      std::string errmsg =
-          "Failed decompressing with RLE; output buffer overflow";
-      PRINT_ERROR(errmsg);
-      return Status::CompressionError(errmsg);
+      return LOG_STATUS(Status::CompressionError(
+          "Failed decompressing with RLE; output buffer overflow"));
     }
 
     // Copy to output buffer
@@ -1509,10 +1417,8 @@ Status RLE_decompress_coords_col(
   // Get the number of coordinates
   // --- Sanity check on input buffer size
   if (input_offset + sizeof(int64_t) > input_size) {
-    std::string errmsg =
-        "Failed decompressing coordinates with RLE; input buffer overflow";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError(
+        "Failed decompressing coordinates with RLE; input buffer overflow"));
   }
   // --- Copy number of coordinates
   memcpy(&coords_num, input_cur, sizeof(int64_t));
@@ -1526,17 +1432,13 @@ Status RLE_decompress_coords_col(
   // Copy the first dimension intact
   // --- Sanity check on output buffer size
   if (coords_num * coords_size > output_allocated_size) {
-    std::string errmsg =
-        "Failed decompressing coordinates with RLE; output buffer overflow";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError(
+        "Failed decompressing coordinates with RLE; output buffer overflow"));
   }
   // --- Sanity check on output buffer size
   if (input_offset + coords_num * value_size > input_size) {
-    std::string errmsg =
-        "Failed decompressing coordinates with RLE; input buffer overflow";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError(
+        "Failed decompressing coordinates with RLE; input buffer overflow"));
   }
   // --- Copy first dimension to output
   for (int64_t i = 0; i < coords_num; ++i) {
@@ -1551,11 +1453,9 @@ Status RLE_decompress_coords_col(
 
   // Sanity check on input buffer format
   if ((input_size - input_offset) % run_size) {
-    std::string errmsg =
-        "Failed decompressing coordinates with RLE; "
-        "invalid input buffer format";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(
+        Status::CompressionError("Failed decompressing coordinates with RLE; "
+                                 "invalid input buffer format"));
   }
 
   // Decompress runs for each of the last (dim_num-1) dimensions
@@ -1609,10 +1509,8 @@ Status RLE_decompress_coords_row(
   // Get the number of coordinates
   // --- Sanity check on input buffer size
   if (input_offset + sizeof(int64_t) > input_size) {
-    std::string errmsg =
-        "Failed decompressing coordinates with RLE; input buffer overflow";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError(
+        "Failed decompressing coordinates with RLE; input buffer overflow"));
   }
   // --- Copy number of coordinates
   memcpy(&coords_num, input_cur, sizeof(int64_t));
@@ -1625,10 +1523,8 @@ Status RLE_decompress_coords_row(
 
   // Sanity check on output buffer size
   if (coords_num * coords_size > output_allocated_size) {
-    std::string errmsg =
-        "Failed decompressing coordinates with RLE; output buffer overflow";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError(
+        "Failed decompressing coordinates with RLE; output buffer overflow"));
   }
 
   // Get number of runs
@@ -1637,11 +1533,9 @@ Status RLE_decompress_coords_row(
 
   // Sanity check on input buffer format
   if ((input_size - input_offset - coords_num * value_size) % run_size) {
-    std::string errmsg =
-        "Failed decompressing coordinates with RLE; "
-        "invalid input buffer format";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(
+        Status::CompressionError("Failed decompressing coordinates with RLE; "
+                                 "invalid input buffer format"));
   }
 
   // Decompress runs for each of the first (dim_num-1) dimensions
@@ -1675,10 +1569,8 @@ Status RLE_decompress_coords_row(
   // Copy the last dimension intact
   // --- Sanity check on input buffer size
   if (input_offset + coords_num * value_size > input_size) {
-    std::string errmsg =
-        "Failed decompressing coordinates with RLE; input buffer overflow";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError(
+        "Failed decompressing coordinates with RLE; input buffer overflow"));
   }
   // --- Copy to output buffer
   for (int64_t i = 0; i < coords_num; ++i) {
@@ -1737,26 +1629,23 @@ Status sync(const char* filename) {
 
   // Handle error
   if (fd == -1) {
-    std::string errmsg =
-        std::string("Cannot sync file '") + filename + "'; File opening error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot sync file '") + filename +
+        "'; File opening error"));
   }
 
   // Sync
   if (fsync(fd)) {
-    std::string errmsg =
-        std::string("Cannot sync file '") + filename + "'; File syncing error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot sync file '") + filename +
+        "'; File syncing error"));
   }
 
   // Close file
   if (close(fd)) {
-    std::string errmsg =
-        std::string("Cannot sync file '") + filename + "'; File closing error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot sync file '") + filename +
+        "'; File closing error"));
   }
 
   // Success
@@ -1768,10 +1657,9 @@ Status write_to_file(
   // Open file
   int fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);
   if (fd == -1) {
-    std::string errmsg = std::string("Cannot write to file '") + filename +
-                         "'; File opening error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot write to file '") + filename +
+        "'; File opening error"));
   }
 
   // Append data to the file in batches of TILEDB_UT_MAX_WRITE_COUNT
@@ -1780,27 +1668,24 @@ Status write_to_file(
   while (buffer_size > TILEDB_UT_MAX_WRITE_COUNT) {
     bytes_written = ::write(fd, buffer, TILEDB_UT_MAX_WRITE_COUNT);
     if (bytes_written != TILEDB_UT_MAX_WRITE_COUNT) {
-      std::string errmsg = std::string("Cannot write to file '") + filename +
-                           "'; File writing error";
-      PRINT_ERROR(errmsg);
-      return Status::IOError(errmsg);
+      return LOG_STATUS(Status::IOError(
+          std::string("Cannot write to file '") + filename +
+          "'; File writing error"));
     }
     buffer_size -= TILEDB_UT_MAX_WRITE_COUNT;
   }
   bytes_written = ::write(fd, buffer, buffer_size);
   if (bytes_written != ssize_t(buffer_size)) {
-    std::string errmsg = std::string("Cannot write to file '") + filename +
-                         "'; File writing error";
-    PRINT_ERROR(errmsg);
-    return Status::IOError(errmsg);
+    return LOG_STATUS(Status::IOError(
+        std::string("Cannot write to file '") + filename +
+        "'; File writing error"));
   }
 
   // Close file
   if (close(fd)) {
-    std::string errmsg = std::string("Cannot write to file '") + filename +
-                         "'; File closing error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot write to file '") + filename +
+        "'; File closing error"));
   }
 
   // Success
@@ -1812,10 +1697,9 @@ Status write_to_file_cmp_gzip(
   // Open file
   gzFile fd = gzopen(filename, "wb");
   if (fd == nullptr) {
-    std::string errmsg = std::string("Cannot write to file '") + filename +
-                         "'; File opening error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot write to file '") + filename +
+        "'; File opening error"));
   }
 
   // Append data to the file in batches of TILEDB_UT_MAX_WRITE_COUNT
@@ -1824,27 +1708,24 @@ Status write_to_file_cmp_gzip(
   while (buffer_size > TILEDB_UT_MAX_WRITE_COUNT) {
     bytes_written = gzwrite(fd, buffer, TILEDB_UT_MAX_WRITE_COUNT);
     if (bytes_written != TILEDB_UT_MAX_WRITE_COUNT) {
-      std::string errmsg = std::string("Cannot write to file '") + filename +
-                           "'; File writing error";
-      PRINT_ERROR(errmsg);
-      return Status::IOError(errmsg);
+      return LOG_STATUS(Status::IOError(
+          std::string("Cannot write to file '") + filename +
+          "'; File writing error"));
     }
     buffer_size -= TILEDB_UT_MAX_WRITE_COUNT;
   }
   bytes_written = gzwrite(fd, buffer, buffer_size);
   if (bytes_written != ssize_t(buffer_size)) {
-    std::string errmsg = std::string("Cannot write to file '") + filename +
-                         "'; File writing error";
-    PRINT_ERROR(errmsg);
-    return Status::IOError(errmsg);
+    return LOG_STATUS(Status::IOError(
+        std::string("Cannot write to file '") + filename +
+        "'; File writing error"));
   }
 
   // Close file
   if (gzclose(fd)) {
-    std::string errmsg = std::string("Cannot write to file '") + filename +
-                         "'; File closing error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot write to file '") + filename +
+        "'; File closing error"));
   }
 
   // Success
