@@ -44,6 +44,7 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include "logger.h"
 #include "status.h"
 #include "utils.h"
 
@@ -51,21 +52,7 @@
 /*             MACROS             */
 /* ****************************** */
 
-#ifdef TILEDB_VERBOSE
-#define PRINT_ERROR(x) std::cerr << TILEDB_RS_ERRMSG << x << ".\n"
-#else
-#define PRINT_ERROR(x) \
-  do {                 \
-  } while (0)
-#endif
-
 namespace tiledb {
-
-/* ****************************** */
-/*        GLOBAL VARIABLES        */
-/* ****************************** */
-
-std::string tiledb_rs_errmsg = "";
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -159,25 +146,20 @@ ReadState::~ReadState() {
 
   for (int i = 0; i < int(map_addr_.size()); ++i) {
     if (map_addr_[i] != nullptr && munmap(map_addr_[i], map_addr_lengths_[i])) {
-      std::string errmsg =
-          "Problem in finalizing ReadState; Memory unmap error";
-      PRINT_ERROR(errmsg);
+      LOG_ERROR("Problem in finalizing ReadState; Memory unmap error");
     }
   }
 
   for (int i = 0; i < int(map_addr_var_.size()); ++i) {
     if (map_addr_var_[i] != nullptr &&
         munmap(map_addr_var_[i], map_addr_var_lengths_[i])) {
-      std::string errmsg =
-          "Problem in finalizing ReadState; Memory unmap error";
-      PRINT_ERROR(errmsg);
+      LOG_ERROR("Problem in finalizing ReadState; Memory unmap error");
     }
   }
 
   if (map_addr_compressed_ != nullptr &&
       munmap(map_addr_compressed_, map_addr_compressed_length_)) {
-    std::string errmsg = "Problem in finalizing ReadState; Memory unmap error";
-    PRINT_ERROR(errmsg);
+    LOG_ERROR("Problem in finalizing ReadState; Memory unmap error");
   }
 
   if (search_tile_overlap_subarray_ != nullptr)
@@ -1025,10 +1007,8 @@ Status ReadState::CMP_COORDS_TO_SEARCH_TILE(
         coords_size_);
 #else
     // Error: MPI not supported
-    std::string errmsg =
-        "Cannot compare coordinates to search tile; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error(
+        "Cannot compare coordinates to search tile; MPI not supported"));
 #endif
   }
   if (st.ok()) {
@@ -1466,9 +1446,8 @@ Status ReadState::decompress_tile_zstd(
   size_t zstd_size =
       ZSTD_decompress(tile, tile_size, tile_compressed, tile_compressed_size);
   if (ZSTD_isError(zstd_size)) {
-    std::string errmsg = "Zstandard decompression failed";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(
+        Status::CompressionError("Zstandard decompression failed"));
   }
 
   // Zip coordinates
@@ -1498,9 +1477,7 @@ Status ReadState::decompress_tile_lz4(
           (char*)tile,
           tile_compressed_size,
           tile_size) < 0) {
-    std::string errmsg = "LZ4 decompression failed";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError("LZ4 decompression failed"));
   }
 
   // Zip coordinates
@@ -1532,9 +1509,7 @@ Status ReadState::decompress_tile_blosc(
   if (blosc_decompress((const char*)tile_compressed, (char*)tile, tile_size) <
       0) {
     blosc_destroy();
-    std::string errmsg = "Blosc decompression failed";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(Status::CompressionError("Blosc decompression failed"));
   }
 
   // Clean up
@@ -1591,10 +1566,8 @@ Status ReadState::decompress_tile_rle(
           dim_num);
     } else {  // Error
       assert(0);
-      std::string errmsg =
-          "Failed decompressing with RLE; unsupported cell order";
-      PRINT_ERROR(errmsg);
-      return Status::Error(errmsg);
+      return LOG_STATUS(Status::Error(
+          "Failed decompressing with RLE; unsupported cell order"));
     }
   }
   return st;
@@ -1625,9 +1598,8 @@ Status ReadState::decompress_tile_bzip2(
 
   // Check for error
   if (rc != BZ_OK) {
-    std::string errmsg = "Failed decompressing with BZIP2";
-    PRINT_ERROR(errmsg);
-    return Status::CompressionError(errmsg);
+    return LOG_STATUS(
+        Status::CompressionError("Failed decompressing with BZIP2"));
   }
 
   // Zip coordinates
@@ -1782,10 +1754,8 @@ Status ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
         coords_size_);
 #else
     // Error: MPI not supported
-    std::string errmsg =
-        "Cannot get coordinates from search tile; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error(
+        "Cannot get coordinates from search tile; MPI not supported"));
 #endif
   }
 
@@ -1832,10 +1802,8 @@ Status ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
         sizeof(size_t));
 #else
     // Error: MPI not supported
-    std::string errmsg =
-        "Cannot get cell pointer from offset tile; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error(
+        "Cannot get cell pointer from offset tile; MPI not supported"));
 #endif
   }
 
@@ -1861,10 +1829,8 @@ Status ReadState::map_tile_from_file_cmp(
   // Unmap
   if (map_addr_compressed_ != nullptr) {
     if (munmap(map_addr_compressed_, map_addr_compressed_length_)) {
-      std::string errmsg =
-          "Cannot read tile from file with map; Memory unmap error";
-      PRINT_ERROR(errmsg);
-      return Status::MMapError(errmsg);
+      return LOG_STATUS(Status::MMapError(
+          "Cannot read tile from file with map; Memory unmap error"));
     }
   }
 
@@ -1886,9 +1852,8 @@ Status ReadState::map_tile_from_file_cmp(
     map_addr_compressed_ = nullptr;
     map_addr_compressed_length_ = 0;
     tile_compressed_ = nullptr;
-    std::string errmsg = "Cannot read tile from file; File opening error";
-    PRINT_ERROR(errmsg);
-    return Status::MMapError(errmsg);
+    return LOG_STATUS(
+        Status::MMapError("Cannot read tile from file; File opening error"));
   }
 
   // Map
@@ -1903,9 +1868,8 @@ Status ReadState::map_tile_from_file_cmp(
     map_addr_compressed_ = nullptr;
     map_addr_compressed_length_ = 0;
     tile_compressed_ = nullptr;
-    std::string errmsg = "Cannot read tile from file; Memory map error";
-    PRINT_ERROR(errmsg);
-    return Status::MMapError(errmsg);
+    return LOG_STATUS(
+        Status::MMapError("Cannot read tile from file; Memory map error"));
   }
   map_addr_compressed_length_ = new_length;
 
@@ -1918,9 +1882,8 @@ Status ReadState::map_tile_from_file_cmp(
     map_addr_compressed_ = nullptr;
     map_addr_compressed_length_ = 0;
     tile_compressed_ = nullptr;
-    std::string errmsg = "Cannot read tile from file; File closing error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::OSError("Cannot read tile from file; File closing error"));
   }
 
   return Status::Ok();
@@ -1931,10 +1894,8 @@ Status ReadState::map_tile_from_file_var_cmp(
   // Unmap
   if (map_addr_compressed_ != nullptr) {
     if (munmap(map_addr_compressed_, map_addr_compressed_length_)) {
-      std::string errmsg =
-          "Cannot read tile from file with map; Memory unmap error";
-      PRINT_ERROR(errmsg);
-      return Status::MMapError(errmsg);
+      return LOG_STATUS(Status::MMapError(
+          "Cannot read tile from file with map; Memory unmap error"));
     }
   }
 
@@ -1956,9 +1917,8 @@ Status ReadState::map_tile_from_file_var_cmp(
     map_addr_compressed_ = nullptr;
     map_addr_compressed_length_ = 0;
     tile_compressed_ = nullptr;
-    std::string errmsg = "Cannot read tile from file; File opening error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::OSError("Cannot read tile from file; File opening error"));
   }
 
   // Map
@@ -1976,9 +1936,8 @@ Status ReadState::map_tile_from_file_var_cmp(
       map_addr_compressed_ = nullptr;
       map_addr_compressed_length_ = 0;
       tile_compressed_ = nullptr;
-      std::string errmsg = "Cannot read tile from file; Memory map error";
-      PRINT_ERROR(errmsg);
-      return Status::MMapError(errmsg);
+      return LOG_STATUS(
+          Status::MMapError("Cannot read tile from file; Memory map error"));
     }
   } else {
     map_addr_var_[attribute_id] = nullptr;
@@ -1994,9 +1953,8 @@ Status ReadState::map_tile_from_file_var_cmp(
     map_addr_compressed_ = nullptr;
     map_addr_compressed_length_ = 0;
     tile_compressed_ = nullptr;
-    std::string errmsg = "Cannot read tile from file; File closing error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::OSError("Cannot read tile from file; File closing error"));
   }
   return Status::Ok();
 }
@@ -2011,10 +1969,8 @@ Status ReadState::map_tile_from_file_cmp_none(
   // Unmap
   if (map_addr_[attribute_id] != nullptr) {
     if (munmap(map_addr_[attribute_id], map_addr_lengths_[attribute_id])) {
-      std::string errmsg =
-          "Cannot read tile from file with map; Memory unmap error";
-      PRINT_ERROR(errmsg);
-      return Status::MMapError(errmsg);
+      return LOG_STATUS(Status::MMapError(
+          "Cannot read tile from file with map; Memory unmap error"));
     }
   }
 
@@ -2036,9 +1992,8 @@ Status ReadState::map_tile_from_file_cmp_none(
     map_addr_lengths_[attribute_id] = 0;
     tiles_[attribute_id] = nullptr;
     tiles_sizes_[attribute_id] = 0;
-    std::string errmsg = "Cannot read tile from file; File opening error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::OSError("Cannot read tile from file; File opening error"));
   }
 
   // Map
@@ -2052,9 +2007,8 @@ Status ReadState::map_tile_from_file_cmp_none(
     map_addr_lengths_[attribute_id] = 0;
     tiles_[attribute_id] = nullptr;
     tiles_sizes_[attribute_id] = 0;
-    std::string errmsg = "Cannot read tile from file; Memory map error";
-    PRINT_ERROR(errmsg);
-    return Status::MMapError(errmsg);
+    return LOG_STATUS(
+        Status::MMapError("Cannot read tile from file; Memory map error"));
   }
   map_addr_lengths_[attribute_id] = new_length;
 
@@ -2069,9 +2023,8 @@ Status ReadState::map_tile_from_file_cmp_none(
     map_addr_lengths_[attribute_id] = 0;
     tiles_[attribute_id] = nullptr;
     tiles_sizes_[attribute_id] = 0;
-    std::string errmsg = "Cannot read tile from file; File closing error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::OSError("Cannot read tile from file; File closing error"));
   }
   return Status::Ok();
 }
@@ -2082,10 +2035,8 @@ Status ReadState::map_tile_from_file_var_cmp_none(
   if (map_addr_var_[attribute_id] != nullptr) {
     if (munmap(
             map_addr_var_[attribute_id], map_addr_var_lengths_[attribute_id])) {
-      std::string errmsg =
-          "Cannot read tile from file with map; Memory unmap error";
-      PRINT_ERROR(errmsg);
-      return Status::MMapError(errmsg);
+      return LOG_STATUS(Status::MMapError(
+          "Cannot read tile from file with map; Memory unmap error"));
     }
   }
 
@@ -2107,9 +2058,8 @@ Status ReadState::map_tile_from_file_var_cmp_none(
     map_addr_var_lengths_[attribute_id] = 0;
     tiles_var_[attribute_id] = nullptr;
     tiles_var_sizes_[attribute_id] = 0;
-    std::string errmsg = "Cannot read tile from file; File opening error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::OSError("Cannot read tile from file; File opening error"));
   }
 
   // Map
@@ -2128,9 +2078,8 @@ Status ReadState::map_tile_from_file_var_cmp_none(
       map_addr_var_lengths_[attribute_id] = 0;
       tiles_var_[attribute_id] = nullptr;
       tiles_var_sizes_[attribute_id] = 0;
-      std::string errmsg = "Cannot read tile from file; Memory map error";
-      PRINT_ERROR(errmsg);
-      return Status::MMapError(errmsg);
+      return LOG_STATUS(
+          Status::MMapError("Cannot read tile from file; Memory map error"));
     }
   } else {
     map_addr_var_[attribute_id] = nullptr;
@@ -2149,9 +2098,8 @@ Status ReadState::map_tile_from_file_var_cmp_none(
     map_addr_var_lengths_[attribute_id] = 0;
     tiles_var_[attribute_id] = nullptr;
     tiles_var_sizes_[attribute_id] = 0;
-    std::string errmsg = "Cannot read tile from file; File closing error";
-    PRINT_ERROR(errmsg);
-    return Status::OSError(errmsg);
+    return LOG_STATUS(
+        Status::OSError("Cannot read tile from file; File closing error"));
   }
   return Status::Ok();
 }
@@ -2290,10 +2238,8 @@ Status ReadState::prepare_tile_for_reading_cmp(
         attribute_id, file_offset, tile_compressed_size);
 #else
     // Error: MPI not supported
-    std::string errmsg =
-        "Cannot prepare tile for reading (gzip); MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error(
+        "Cannot prepare tile for reading (gzip); MPI not supported"));
 #endif
   }
 
@@ -2418,10 +2364,8 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
         attribute_id, file_offset, tile_compressed_size));
 #else
     // Error: MPI not supported
-    std::string errmsg =
-        "Cannot prepare variable tile for reading (gzip); MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(Status::Error(
+        "Cannot prepare variable tile for reading (gzip); MPI not supported"));
 #endif
   }
   // Decompress tile
@@ -2488,10 +2432,9 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
           attribute_id, file_offset, tile_compressed_size));
 #else
       // Error: MPI not supported
-      std::string errmsg =
-          "Cannot prepare variable tile for reading (gzip); MPI not supported";
-      PRINT_ERROR(errmsg);
-      return Status::Error(errmsg);
+      return LOG_STATUS(
+          Status::Error("Cannot prepare variable tile for reading (gzip); MPI "
+                        "not supported"));
 #endif
     }
     // Decompress tile
@@ -2575,11 +2518,8 @@ Status ReadState::prepare_tile_for_reading_var_cmp_none(
           TILEDB_CELL_VAR_OFFSET_SIZE));
     }
 #else
-      // Error: MPI not supported
-      std::string errmsg =
-          "Cannot prepare variable tile for reading; MPI not supported";
-      PRINT_ERROR(errmsg);
-      return Status::Error(errmsg);
+      return LOG_STATUS(Status::Error(
+          "Cannot prepare variable tile for reading; MPI not supported"));
 #endif
   }
   tile_var_size = end_tile_var_offset - tile_s[0];
@@ -2655,9 +2595,8 @@ Status ReadState::READ_FROM_TILE(
         bytes_to_copy);
 #else
     // Error: MPI not supported
-    std::string errmsg = "Cannot read from tile; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(
+        Status::Error("Cannot read from tile; MPI not supported"));
 #endif
   }
   return st;
@@ -2700,9 +2639,8 @@ Status ReadState::READ_FROM_TILE_VAR(
         bytes_to_copy);
 #else
     // Error: MPI not supported
-    std::string errmsg = "Cannot read from variable tile; MPI not supported";
-    PRINT_ERROR(errmsg);
-    return Status::Error(errmsg);
+    return LOG_STATUS(
+        Status::Error("Cannot read from variable tile; MPI not supported"));
 #endif
   }
   return st;

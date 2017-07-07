@@ -86,6 +86,8 @@ class Status {
   Status(const Status& s);
   void operator=(const Status& s);
 
+  friend std::ostream& operator<<(std::ostream& os, const Status& st);
+
   // Return a success status
   static Status Ok() {
     return Status();
@@ -221,6 +223,7 @@ inline void Status::operator=(const Status& s) {
     state_ = (s.state_ == nullptr) ? nullptr : copy_state(s.state_);
   }
 }
+
 };  // namespace tiledb
 
 #endif  // TILEDB_STATUS_H

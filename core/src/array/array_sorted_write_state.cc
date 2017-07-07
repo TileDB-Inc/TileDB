@@ -34,19 +34,12 @@
 #include <cassert>
 #include <cmath>
 #include "constants.h"
+#include "logger.h"
 #include "utils.h"
 
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
-
-#ifdef TILEDB_VERBOSE
-#define PRINT_ERROR(x) std::cerr << TILEDB_ASWS_ERRMSG << x << ".\n"
-#else
-#define PRINT_ERROR(x) \
-  do {                 \
-  } while (0)
-#endif
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -139,21 +132,17 @@ ArraySortedWriteState::~ArraySortedWriteState() {
   // Destroy conditions and mutexes
   for (int i = 0; i < 2; ++i) {
     if (pthread_cond_destroy(&(aio_cond_[i]))) {
-      std::string errmsg = "Cannot destroy AIO mutex condition";
-      PRINT_ERROR(errmsg);
+      LOG_ERROR("Cannot destroy AIO mutex condition");
     }
     if (pthread_cond_destroy(&(copy_cond_[i]))) {
-      std::string errmsg = "Cannot destroy copy mutex condition";
-      PRINT_ERROR(errmsg);
+      LOG_ERROR("Cannot destroy copy mutex condition");
     }
   }
   if (pthread_mutex_destroy(&aio_mtx_)) {
-    std::string errmsg = "Cannot destroy AIO mutex";
-    PRINT_ERROR(errmsg);
+    LOG_ERROR("Cannot destroy AIO mutex");
   }
   if (pthread_mutex_destroy(&copy_mtx_)) {
-    std::string errmsg = "Cannot destroy copy mutex";
-    PRINT_ERROR(errmsg);
+    LOG_ERROR("Cannot destroy copy mutex");
   }
 }
 
@@ -164,27 +153,21 @@ ArraySortedWriteState::~ArraySortedWriteState() {
 Status ArraySortedWriteState::init() {
   // Initialize the mutexes and conditions
   if (pthread_mutex_init(&aio_mtx_, nullptr)) {
-    std::string errmsg = "Cannot initialize IO mutex";
-    PRINT_ERROR(errmsg);
-    return Status::ASWSError(errmsg);
+    return LOG_STATUS(Status::ASWSError("Cannot initialize IO mutex"));
   }
   if (pthread_mutex_init(&copy_mtx_, nullptr)) {
-    std::string errmsg = "Cannot initialize copy mutex";
-    PRINT_ERROR(errmsg);
-    return Status::ASWSError(errmsg);
+    return LOG_STATUS(Status::ASWSError("Cannot initialize copy mutex"));
   }
   for (int i = 0; i < 2; ++i) {
     aio_cond_[i] = PTHREAD_COND_INITIALIZER;
     if (pthread_cond_init(&(aio_cond_[i]), nullptr)) {
-      std::string errmsg = "Cannot initialize IO mutex condition";
-      PRINT_ERROR(errmsg);
-      return Status::ASWSError(errmsg);
+      return LOG_STATUS(
+          Status::ASWSError("Cannot initialize IO mutex condition"));
     }
     copy_cond_[i] = PTHREAD_COND_INITIALIZER;
     if (pthread_cond_init(&(copy_cond_[i]), nullptr)) {
-      std::string errmsg = "Cannot initialize copy mutex condition";
-      PRINT_ERROR(errmsg);
-      return Status::ASWSError(errmsg);
+      return LOG_STATUS(
+          Status::ASWSError("Cannot initialize copy mutex condition"));
     }
   }
 
@@ -340,9 +323,7 @@ Status ArraySortedWriteState::init() {
   // Create the thread that will be handling all the asynchronous IOs
   if (pthread_create(
           &aio_thread_, nullptr, ArraySortedWriteState::aio_handler, this)) {
-    std::string errmsg = "Cannot create AIO thread";
-    PRINT_ERROR(errmsg);
-    return Status::ASWSError(errmsg);
+    return LOG_STATUS(Status::ASWSError("Cannot create AIO thread"));
   }
   aio_thread_running_ = true;
 
@@ -1086,17 +1067,13 @@ Status ArraySortedWriteState::create_copy_state_buffers() {
   for (int j = 0; j < 2; ++j) {
     copy_state_.buffers_[j] = (void**)malloc(buffer_num_ * sizeof(void*));
     if (copy_state_.buffers_[j] == nullptr) {
-      std::string errmsg = "Cannot create local buffers";
-      PRINT_ERROR(errmsg);
-      return Status::ASWSError(errmsg);
+      return LOG_STATUS(Status::ASWSError("Cannot create local buffers"));
     }
 
     for (int b = 0; b < buffer_num_; ++b) {
       copy_state_.buffers_[j][b] = malloc(copy_state_.buffer_sizes_[j][b]);
       if (copy_state_.buffers_[j][b] == nullptr) {
-        std::string errmsg = "Cannot allocate local buffer";
-        PRINT_ERROR(errmsg);
-        return Status::ASWSError(errmsg);
+        return LOG_STATUS(Status::ASWSError("Cannot allocate local buffer"));
       }
     }
   }
@@ -1639,18 +1616,14 @@ void ArraySortedWriteState::init_tile_slab_state() {
 
 Status ArraySortedWriteState::lock_aio_mtx() {
   if (pthread_mutex_lock(&aio_mtx_)) {
-    std::string errmsg = "Cannot lock AIO mutex";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(Status::AIOError("Cannot lock AIO mutex"));
   }
   return Status::Ok();
 }
 
 Status ArraySortedWriteState::lock_copy_mtx() {
   if (pthread_mutex_lock(&copy_mtx_)) {
-    std::string errmsg = "Cannot lock copy mutex";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(Status::AIOError("Cannot lock copy mutex"));
   }
   return Status::Ok();
 }
@@ -1798,7 +1771,7 @@ Status ArraySortedWriteState::write() {
       return write_sorted_row<T>();
     default:
       assert(0);
-      return Status::Error("this should not happen");
+      return LOG_STATUS(Status::Error("this should not happen"));
   }
 }
 
@@ -1901,9 +1874,7 @@ Status ArraySortedWriteState::release_aio(int id) {
 
   // Signal condition
   if (pthread_cond_signal(&(aio_cond_[id]))) {
-    std::string errmsg = "Cannot signal AIO condition";
-    PRINT_ERROR(errmsg);
-    return Status::ASWSError(errmsg);
+    return LOG_STATUS(Status::ASWSError("Cannot signal AIO condition"));
   }
 
   // Unlock the AIO mutex
@@ -1922,9 +1893,7 @@ Status ArraySortedWriteState::release_copy(int id) {
 
   // Signal condition
   if (pthread_cond_signal(&copy_cond_[id])) {
-    std::string errmsg = "Cannot signal copy condition";
-    PRINT_ERROR(errmsg);
-    return Status::ASWSError(errmsg);
+    return LOG_STATUS(Status::ASWSError("Cannot signal copy condition"));
   }
 
   // Unlock the copy mutex
@@ -1978,18 +1947,15 @@ Status ArraySortedWriteState::send_aio_request(int aio_id) {
 
 Status ArraySortedWriteState::unlock_aio_mtx() {
   if (pthread_mutex_unlock(&aio_mtx_)) {
-    std::string errmsg = "Cannot unlock AIO mutex";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(Status::AIOError("Cannot unlock AIO mutex"));
   }
   return Status::Ok();
 }
 
 Status ArraySortedWriteState::unlock_copy_mtx() {
   if (pthread_mutex_unlock(&copy_mtx_)) {
-    std::string errmsg = "Cannot unlock copy mutex";
-    PRINT_ERROR(errmsg);
-    return Status::AIOError(errmsg);
+    return LOG_STATUS(Status::AIOError("Cannot unlock copy mutex"));
+    ;
   }
   return Status::Ok();
 }
@@ -2048,9 +2014,7 @@ Status ArraySortedWriteState::wait_aio(int id) {
   // Wait to be signaled
   while (wait_aio_[id]) {
     if (pthread_cond_wait(&(aio_cond_[id]), &aio_mtx_)) {
-      std::string errmsg = "Cannot wait on IO mutex condition";
-      PRINT_ERROR(errmsg);
-      return Status::AIOError(errmsg);
+      return LOG_STATUS(Status::AIOError("Cannot wait on IO mutex condition"));
     }
   }
 
@@ -2067,9 +2031,8 @@ Status ArraySortedWriteState::wait_copy(int id) {
   // Wait to be signaled
   while (wait_copy_[id]) {
     if (pthread_cond_wait(&(copy_cond_[id]), &copy_mtx_)) {
-      std::string errmsg = "Cannot wait on copy mutex condition";
-      PRINT_ERROR(errmsg);
-      return Status::AIOError(errmsg);
+      return LOG_STATUS(
+          Status::AIOError("Cannot wait on copy mutex condition"));
     }
   }
 

@@ -31,18 +31,7 @@
  */
 
 #include "array_iterator.h"
-
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#ifdef TILEDB_VERBOSE
-#define PRINT_ERROR(x) std::cerr << TILEDB_AIT_ERRMSG << x << ".\n"
-#else
-#define PRINT_ERROR(x) \
-  do {                 \
-  } while (0)
-#endif
+#include "logger.h"
 
 namespace tiledb {
 
@@ -78,9 +67,8 @@ Status ArrayIterator::get_value(
   if (end_) {
     *value = nullptr;
     *value_size = 0;
-    std::string errmsg = "Cannot get value; Iterator end reached";
-    PRINT_ERROR(errmsg);
-    return Status::ArrayItError(errmsg);
+    return LOG_STATUS(
+        Status::ArrayItError("Cannot get value; Iterator end reached"));
   }
 
   // Get the value
@@ -152,10 +140,8 @@ Status ArrayIterator::init(Array* array, void** buffers, size_t* buffer_sizes) {
     // Error
     if (buffer_sizes_[buffer_i_[i]] == 0 &&
         array_->overflow(attribute_ids[i])) {
-      std::string errmsg =
-          "Array iterator initialization failed; Buffer overflow";
-      PRINT_ERROR(errmsg);
-      return Status::ArrayItError(errmsg);
+      return LOG_STATUS(Status::ArrayItError(
+          "Array iterator initialization failed; Buffer overflow"));
     }
 
     // Update cell num
@@ -180,9 +166,8 @@ Status ArrayIterator::finalize() {
 Status ArrayIterator::next() {
   // Trivial case
   if (end_) {
-    std::string errmsg = "Cannot advance iterator; Iterator end reached";
-    PRINT_ERROR(errmsg);
-    return Status::ArrayItError(errmsg);
+    return LOG_STATUS(
+        Status::ArrayItError("Cannot advance iterator; Iterator end reached"));
   }
 
   // Advance iterator
@@ -238,9 +223,8 @@ Status ArrayIterator::next() {
       // Error
       if (buffer_sizes_[buffer_i] == 0 &&
           array_->overflow(attribute_ids[needs_new_read[i]])) {
-        std::string errmsg = "Cannot advance iterator; Buffer overflow";
-        PRINT_ERROR(errmsg);
-        return Status::ArrayItError(errmsg);
+        return LOG_STATUS(
+            Status::ArrayItError("Cannot advance iterator; Buffer overflow"));
       }
 
       // Update cell num

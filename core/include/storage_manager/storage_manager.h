@@ -38,6 +38,7 @@
 #include "array_iterator.h"
 #include "array_schema.h"
 #include "array_schema_c.h"
+#include "logger.h"
 #include "metadata.h"
 #include "metadata_iterator.h"
 #include "metadata_schema_c.h"
@@ -485,6 +486,10 @@ class StorageManager {
 
   /** The TileDB configuration parameters. */
   StorageManagerConfig* config_;
+
+  /** The logger for this storage manager.*/
+  Logger* logger_;
+
 /** OpneMP mutex for creating/deleting an OpenArray object. */
 #ifdef HAVE_OPENMP
   omp_lock_t open_array_omp_mtx_;

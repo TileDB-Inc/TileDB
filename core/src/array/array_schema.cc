@@ -37,19 +37,13 @@
 #include <cstring>
 #include <iostream>
 #include "constants.h"
+#include "logger.h"
 #include "utils.h"
 
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
-
-#ifdef TILEDB_VERBOSE
-#define PRINT_ERROR(x) std::cerr << TILEDB_AS_ERRMSG << x << ".\n"
-#else
-#define PRINT_ERROR(x) \
-  do {                 \
-  } while (0)
-#endif
+#define LOG_ERROR(x)
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -221,11 +215,8 @@ Status ArraySchema::attribute_id(const std::string& attribute, int* id) const {
       return Status::Ok();
     }
   }
-
-  // Attribute not found
-  std::string errmsg = "Attribute not found: " + attribute;
-  PRINT_ERROR(errmsg);
-  return Status::ArraySchemaError(errmsg);
+  return LOG_STATUS(
+      Status::ArraySchemaError("Attribute not found: " + attribute));
 }
 
 int ArraySchema::attribute_num() const {
@@ -990,8 +981,7 @@ int64_t ArraySchema::tile_slab_row_cell_num(const void* subarray) const {
 
 Datatype ArraySchema::type(int i) const {
   if (i < 0 || i > attribute_num_) {
-    std::string errmsg = "Cannot retrieve type; Invalid attribute id";
-    PRINT_ERROR(errmsg);
+    LOG_ERROR("Cannot retrieve type; Invalid attribute id");
     assert(0);
   }
   return types_[i];
@@ -1349,18 +1339,15 @@ void ArraySchema::set_array_name(const char* array_name) {
 Status ArraySchema::set_attributes(char** attributes, int attribute_num) {
   // Sanity check on attributes
   if (attributes == nullptr) {
-    std::string errmsg = "Cannot set attributes; No attributes given";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot set attributes; No attributes given"));
   }
 
   // Sanity check on attribute number
   if (attribute_num <= 0) {
-    std::string errmsg =
-        "Cannot set attributes; "
-        "The number of attributes must be positive";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot set attributes; "
+                                 "The number of attributes must be positive"));
   }
 
   // Set attributes and attribute number
@@ -1373,17 +1360,14 @@ Status ArraySchema::set_attributes(char** attributes, int attribute_num) {
 
   // Check for duplicate attribute names
   if (utils::has_duplicates(attributes_)) {
-    std::string errmsg = "Cannot set attributes; Duplicate attribute names";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot set attributes; Duplicate attribute names"));
   }
 
   // Check if a dimension has the same name as an attribute
   if (utils::intersect(attributes_, dimensions_)) {
-    std::string errmsg =
-        "Cannot set attributes; Attribute name same as dimension name";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot set attributes; Attribute name same as dimension name"));
   }
 
   return Status::Ok();
@@ -1412,9 +1396,8 @@ void ArraySchema::set_cell_val_num(const int* cell_val_num) {
 Status ArraySchema::set_cell_order(tiledb_layout_t cell_order) {
   // Set cell order
   if (cell_order != TILEDB_ROW_MAJOR && cell_order != TILEDB_COL_MAJOR) {
-    std::string errmsg = "Cannot set cell order; Invalid cell order";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot set cell order; Invalid cell order"));
   }
   cell_order_ = static_cast<Layout>(cell_order);
 
@@ -1434,9 +1417,8 @@ Status ArraySchema::set_compression(tiledb_compressor_t* compression) {
           c != TILEDB_BLOSC_LZ4HC && c != TILEDB_BLOSC_SNAPPY &&
           c != TILEDB_BLOSC_ZLIB && c != TILEDB_BLOSC_ZSTD && c != TILEDB_RLE &&
           c != TILEDB_BZIP2) {
-        std::string errmsg = "Cannot set compression; Invalid compression type";
-        PRINT_ERROR(errmsg);
-        return Status::ArraySchemaError(errmsg);
+        return LOG_STATUS(Status::ArraySchemaError(
+            "Cannot set compression; Invalid compression type"));
       }
       compressor_.push_back(static_cast<Compressor>(c));
     }
@@ -1451,18 +1433,15 @@ void ArraySchema::set_dense(int dense) {
 Status ArraySchema::set_dimensions(char** dimensions, int dim_num) {
   // Sanity check on dimensions
   if (dimensions == nullptr) {
-    std::string errmsg = "Cannot set dimensions; No dimensions given";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot set dimensions; No dimensions given"));
   }
 
   // Sanity check on dimension number
   if (dim_num <= 0) {
-    std::string errmsg =
-        "Cannot set dimensions; "
-        "The number of dimensions must be positive";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot set dimensions; "
+                                 "The number of dimensions must be positive"));
   }
 
   // Set dimensions and dimension number
@@ -1472,17 +1451,14 @@ Status ArraySchema::set_dimensions(char** dimensions, int dim_num) {
 
   // Check for duplicate dimension names
   if (utils::has_duplicates(dimensions_)) {
-    std::string errmsg = "Cannot set dimensions; Duplicate dimension names";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot set dimensions; Duplicate dimension names"));
   }
 
   // Check if a dimension has the same name as an attribute
   if (utils::intersect(attributes_, dimensions_)) {
-    std::string errmsg =
-        "Cannot set dimensions; Attribute name same as dimension name";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot set dimensions; Attribute name same as dimension name"));
   }
 
   return Status::Ok();
@@ -1491,9 +1467,8 @@ Status ArraySchema::set_dimensions(char** dimensions, int dim_num) {
 Status ArraySchema::set_domain(const void* domain) {
   // Sanity check
   if (domain == nullptr) {
-    std::string errmsg = "Cannot set domain; Domain not provided";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot set domain; Domain not provided"));
   }
 
   // Clear domain
@@ -1511,116 +1486,95 @@ Status ArraySchema::set_domain(const void* domain) {
     int* domain_int = (int*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_int[2 * i] > domain_int[2 * i + 1]) {
-        std::string errmsg =
+        return LOG_STATUS(Status::ArraySchemaError(
             "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper";
-        PRINT_ERROR(errmsg);
-        return Status::ArraySchemaError(errmsg);
+            "corresponding upper"));
       }
     }
   } else if (typ == Datatype::INT64) {
     int64_t* domain_int64 = (int64_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_int64[2 * i] > domain_int64[2 * i + 1]) {
-        std::string errmsg =
+        return LOG_STATUS(Status::ArraySchemaError(
             "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper";
-        PRINT_ERROR(errmsg);
-        return Status::ArraySchemaError(errmsg);
+            "corresponding upper"));
       }
     }
   } else if (typ == Datatype::FLOAT32) {
     float* domain_float = (float*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_float[2 * i] > domain_float[2 * i + 1]) {
-        std::string errmsg =
+        return LOG_STATUS(Status::ArraySchemaError(
             "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper";
-        PRINT_ERROR(errmsg);
-        return Status::ArraySchemaError(errmsg);
+            "corresponding upper"));
       }
     }
   } else if (typ == Datatype::FLOAT64) {
     double* domain_double = (double*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_double[2 * i] > domain_double[2 * i + 1]) {
-        std::string errmsg =
+        return LOG_STATUS(Status::ArraySchemaError(
             "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper";
-        PRINT_ERROR(errmsg);
-        return Status::ArraySchemaError(errmsg);
+            "corresponding upper"));
       }
     }
   } else if (typ == Datatype::INT8) {
     int8_t* domain_int8 = (int8_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_int8[2 * i] > domain_int8[2 * i + 1]) {
-        std::string errmsg =
+        return LOG_STATUS(Status::ArraySchemaError(
             "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper";
-        PRINT_ERROR(errmsg);
-        return Status::ArraySchemaError(errmsg);
+            "corresponding upper"));
       }
     }
   } else if (typ == Datatype::UINT8) {
     uint8_t* domain_uint8 = (uint8_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_uint8[2 * i] > domain_uint8[2 * i + 1]) {
-        std::string errmsg =
+        return LOG_STATUS(Status::ArraySchemaError(
             "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper";
-        PRINT_ERROR(errmsg);
-        return Status::ArraySchemaError(errmsg);
+            "corresponding upper"));
       }
     }
   } else if (typ == Datatype::INT16) {
     int16_t* domain_int16 = (int16_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_int16[2 * i] > domain_int16[2 * i + 1]) {
-        std::string errmsg =
+        return LOG_STATUS(Status::ArraySchemaError(
             "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper";
-        PRINT_ERROR(errmsg);
-        return Status::ArraySchemaError(errmsg);
+            "corresponding upper"));
       }
     }
   } else if (typ == Datatype::UINT16) {
     uint16_t* domain_uint16 = (uint16_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_uint16[2 * i] > domain_uint16[2 * i + 1]) {
-        std::string errmsg =
+        return LOG_STATUS(Status::ArraySchemaError(
             "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper";
-        PRINT_ERROR(errmsg);
-        return Status::ArraySchemaError(errmsg);
+            "corresponding upper"));
       }
     }
   } else if (typ == Datatype::UINT32) {
     uint32_t* domain_uint32 = (uint32_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_uint32[2 * i] > domain_uint32[2 * i + 1]) {
-        std::string errmsg =
+        return LOG_STATUS(Status::ArraySchemaError(
             "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper";
-        PRINT_ERROR(errmsg);
-        return Status::ArraySchemaError(errmsg);
+            "corresponding upper"));
       }
     }
   } else if (typ == Datatype::UINT64) {
     uint64_t* domain_uint64 = (uint64_t*)domain_;
     for (int i = 0; i < dim_num_; ++i) {
       if (domain_uint64[2 * i] > domain_uint64[2 * i + 1]) {
-        std::string errmsg =
+        return LOG_STATUS(Status::ArraySchemaError(
             "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper";
-        PRINT_ERROR(errmsg);
-        return Status::ArraySchemaError(errmsg);
+            "corresponding upper"));
       }
     }
   } else {
-    std::string errmsg = "Cannot set domain; Invalid coordinates type";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot set domain; Invalid coordinates type"));
   }
 
   return Status::Ok();
@@ -1629,10 +1583,8 @@ Status ArraySchema::set_domain(const void* domain) {
 Status ArraySchema::set_tile_extents(const void* tile_extents) {
   // Dense arrays must have tile extents
   if (tile_extents == nullptr && dense_) {
-    std::string errmsg =
-        "Cannot set tile extents; Dense arrays must have tile extents";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot set tile extents; Dense arrays must have tile extents"));
   }
 
   // Free existing tile extends
@@ -1653,9 +1605,8 @@ Status ArraySchema::set_tile_extents(const void* tile_extents) {
 Status ArraySchema::set_tile_order(tiledb_layout_t tile_order) {
   // Set tile order
   if (tile_order != TILEDB_ROW_MAJOR && tile_order != TILEDB_COL_MAJOR) {
-    std::string errmsg = "Cannot set tile order; Invalid tile order";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot set tile order; Invalid tile order"));
   }
   tile_order_ = static_cast<Layout>(tile_order);
 
@@ -1666,9 +1617,8 @@ Status ArraySchema::set_tile_order(tiledb_layout_t tile_order) {
 Status ArraySchema::set_types(const tiledb_datatype_t* types) {
   // Sanity check
   if (types == nullptr) {
-    std::string errmsg = "Cannot set types; Types not provided";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot set types; Types not provided"));
   }
 
   // Set attribute types
@@ -1680,9 +1630,8 @@ Status ArraySchema::set_types(const tiledb_datatype_t* types) {
         typ != TILEDB_INT16 && types[i] != TILEDB_UINT16 &&
         typ != TILEDB_UINT32 && types[i] != TILEDB_UINT64 &&
         typ != TILEDB_CHAR) {
-      std::string errmsg = "Cannot set types; Invalid type";
-      PRINT_ERROR(errmsg);
-      return Status::ArraySchemaError(errmsg);
+      return LOG_STATUS(
+          Status::ArraySchemaError("Cannot set types; Invalid type"));
     }
     types_.push_back(static_cast<Datatype>(typ));
   }
@@ -1693,9 +1642,8 @@ Status ArraySchema::set_types(const tiledb_datatype_t* types) {
       typ != TILEDB_FLOAT64 && typ != TILEDB_INT8 && typ != TILEDB_UINT8 &&
       typ != TILEDB_INT16 && typ != TILEDB_UINT16 && typ != TILEDB_UINT32 &&
       typ != TILEDB_UINT64) {
-    std::string errmsg = "Cannot set types; Invalid type";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot set types; Invalid type"));
   }
   types_.push_back(static_cast<Datatype>(typ));
 
@@ -1805,9 +1753,8 @@ template <class T>
 Status ArraySchema::get_cell_pos(const T* coords, int64_t* pos) const {
   // Applicable only to dense arrays
   if (!dense_) {
-    std::string errmsg = "Cannot get cell position; Invalid array type";
-    PRINT_ERROR(errmsg);
-    return Status::ArraySchemaError(errmsg);
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot get cell position; Invalid array type"));
   }
 
   // Invoke the proper function based on the cell order
@@ -1818,9 +1765,8 @@ Status ArraySchema::get_cell_pos(const T* coords, int64_t* pos) const {
     *pos = get_cell_pos_col(coords);
     return Status::Ok();
   }
-  std::string errmsg = "Cannot get cell position; Invalid cell order";
-  PRINT_ERROR(errmsg);
-  return Status::ArraySchemaError(errmsg);
+  return LOG_STATUS(
+      Status::ArraySchemaError("Cannot get cell position; Invalid cell order"));
 }
 
 template <class T>

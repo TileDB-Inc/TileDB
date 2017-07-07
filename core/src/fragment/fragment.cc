@@ -37,20 +37,13 @@
 #include <cstring>
 #include <iostream>
 #include "constants.h"
+#include "logger.h"
 #include "status.h"
 #include "utils.h"
 
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
-
-#ifdef TILEDB_VERBOSE
-#define PRINT_ERROR(x) std::cerr << TILEDB_FG_ERRMSG << x << ".\n"
-#else
-#define PRINT_ERROR(x) \
-  do {                 \
-  } while (0)
-#endif
 
 namespace tiledb {
 
@@ -166,9 +159,8 @@ Status Fragment::init(
 
   // Sanity check
   if (!write_mode()) {
-    std::string errmsg = "Cannot initialize fragment;  Invalid mode";
-    PRINT_ERROR(errmsg);
-    return Status::FragmentError(errmsg);
+    return LOG_STATUS(
+        Status::FragmentError("Cannot initialize fragment;  Invalid mode"));
   }
 
   // Check if the fragment is dense or not
@@ -254,10 +246,8 @@ Status Fragment::rename_fragment() {
         parent_dir + "/" + fragment_name_.substr(parent_dir.size() + 2);
 
     if (rename(fragment_name_.c_str(), new_fragment_name.c_str())) {
-      std::string errmsg =
-          std::string("Cannot rename fragment directory; ") + strerror(errno);
-      PRINT_ERROR(errmsg);
-      return Status::OSError(errmsg);
+      return LOG_STATUS(Status::OSError(
+          std::string("Cannot rename fragment directory; ") + strerror(errno)));
     }
 
     fragment_name_ = new_fragment_name;

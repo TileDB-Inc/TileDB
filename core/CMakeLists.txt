@@ -35,6 +35,10 @@ file(GLOB_RECURSE TILEDB_CORE_SOURCES "src/*.cc")
 # Compile sources with PIC
 add_library(TILEDB_CORE_OBJECTS OBJECT ${TILEDB_CORE_SOURCES})
 set_property(TARGET TILEDB_CORE_OBJECTS PROPERTY POSITION_INDEPENDENT_CODE ON)
+target_include_directories(
+    TILEDB_CORE_OBJECTS PRIVATE
+    "${CMAKE_SOURCE_DIR}/external"
+)
 
 # Create static library
 add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)

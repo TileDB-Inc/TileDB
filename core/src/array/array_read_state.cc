@@ -34,19 +34,12 @@
 #include <cassert>
 #include <cmath>
 #include "constants.h"
+#include "logger.h"
 #include "utils.h"
 
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
-
-#ifdef TILEDB_VERBOSE
-#define PRINT_ERROR(x) std::cerr << TILEDB_ARS_ERRMSG << x << ".\n"
-#else
-#define PRINT_ERROR(x) \
-  do {                 \
-  } while (0)
-#endif
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -420,7 +413,7 @@ Status ArrayReadState::copy_cells(
     assert(0);
 
   // Code should never reach here
-  return Status::ARSError("Invalid datatype when copying cells");
+  return LOG_STATUS(Status::ARSError("Invalid datatype when copying cells"));
 }
 
 template <class T>
@@ -596,7 +589,8 @@ Status ArrayReadState::copy_cells_var(
     assert(0);
 
   // Code should never reach here
-  return Status::ARSError("Invalid datatype when copying variable cells");
+  return LOG_STATUS(
+      Status::ARSError("Invalid datatype when copying variable cells"));
 }
 
 template <class T>
@@ -2312,7 +2306,8 @@ Status ArrayReadState::read_dense_attr(
   }
 
   // Code should never reach here
-  return Status::ARSError("Invalid datatype when reading dense attribute");
+  return LOG_STATUS(
+      Status::ARSError("Invalid datatype when reading dense attribute"));
 }
 
 template <class T>
@@ -2399,8 +2394,8 @@ Status ArrayReadState::read_dense_attr_var(
   }
 
   // Code should never reach here
-  return Status::ARSError(
-      "Invalid datatype when reading dense variable attribute");
+  return LOG_STATUS(Status::ARSError(
+      "Invalid datatype when reading dense variable attribute"));
 }
 
 template <class T>
@@ -2553,7 +2548,8 @@ Status ArrayReadState::read_sparse_attr(
   }
 
   // Code should never reach here
-  return Status::ARSError("Invalid datatype when reading sparse attribute");
+  return LOG_STATUS(
+      Status::ARSError("Invalid datatype when reading sparse attribute"));
 }
 
 template <class T>
@@ -2645,8 +2641,8 @@ Status ArrayReadState::read_sparse_attr_var(
   }
 
   // Code should never reach here
-  return Status::ARSError(
-      "Invalid datatype when reading sparse variable attribute");
+  return LOG_STATUS(Status::ARSError(
+      "Invalid datatype when reading sparse variable attribute"));
 }
 
 template <class T>
