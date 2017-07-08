@@ -79,18 +79,6 @@ extern "C" {
 /**@}*/
 
 /**@{*/
-/** Special value indicating a variable number or size. */
-#define TILEDB_VAR_NUM INT_MAX
-#define TILEDB_VAR_SIZE (size_t) - 1
-/**@}*/
-
-/**@{*/
-/** Special attribute name. */
-#define TILEDB_COORDS "__coords"
-#define TILEDB_KEY "__key"
-/**@}*/
-
-/**@{*/
 /** MAC address interface. */
 #if defined(__APPLE__) && defined(__MACH__)
 #ifndef TILEDB_MAC_ADDRESS_INTERFACE
@@ -102,6 +90,18 @@ extern "C" {
 #endif
 #endif
 /**@}*/
+
+/** Returns a special name indicating the coordinates attribute. */
+TILEDB_EXPORT const char* tiledb_coords();
+
+/** Returns a special name indicating the metadata key attribute. */
+TILEDB_EXPORT const char* tiledb_key();
+
+/** Returns a special value indicating a variable number of elements. */
+TILEDB_EXPORT int tiledb_var_num();
+
+/** Returns a special value indicating a variable size. */
+TILEDB_EXPORT uint64_t tiledb_var_size();
 
 /* ****************************** */
 /*             TYPES              */

@@ -985,8 +985,8 @@ Status ReadState::CMP_COORDS_TO_SEARCH_TILE(
   }
 
   // We need to read from the disk
-  std::string filename = fragment_->fragment_name() + "/" + TILEDB_COORDS +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_name() + "/" +
+                         Configurator::coords() + Configurator::file_suffix();
   Status st;
   IOMethod read_method = array_->config()->read_method();
 #ifdef HAVE_MPI
@@ -1732,8 +1732,8 @@ Status ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
   }
 
   // We need to read from the disk
-  std::string filename = fragment_->fragment_name() + "/" + TILEDB_COORDS +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_name() + "/" +
+                         Configurator::coords() + Configurator::file_suffix();
   Status st;
   IOMethod read_method = array_->config()->read_method();
 #ifdef HAVE_MPI

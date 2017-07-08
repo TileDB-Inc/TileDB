@@ -153,6 +153,9 @@ class Configurator {
   /** Returns the size of a variable cell offset. */
   static uint64_t cell_var_offset_size();
 
+  /** Returns a special name reserved for the coordinates attribute. */
+  static const char* coords();
+
   /** Returns the consolidation buffer size. */
   static uint64_t consolidation_buffer_size();
 
@@ -207,6 +210,9 @@ class Configurator {
   /** Returns the initial internal buffer size for the case of sparse arrays. */
   static uint64_t internal_buffer_size();
 
+  /** Returns a special name reserved for the metadata key attribute. */
+  static const char* key();
+
   /** Returns the name of the first key dimension (used in metadata). */
   static const char* key_dim1_name();
 
@@ -241,6 +247,12 @@ class Configurator {
 
   /** Returns the size of the buffer that holds the sorted variable cells. */
   static uint64_t sorted_buffer_var_size();
+
+  /** Returns a special value indicating a variable number of elements. */
+  static int var_num();
+
+  /** Returns a special value indicating a variable size. */
+  static uint64_t var_size();
 
   /** Returns the write method. */
   IOMethod write_method() const;
@@ -348,6 +360,18 @@ class Configurator {
 
   /** Maximum number of bytes written in a single I/O. */
   static const uint64_t MAX_WRITE_BYTES;
+
+  /**@{*/
+  /** Special value indicating a variable number or size. */
+  static const int VAR_NUM;
+  static const uint64_t VAR_SIZE;
+  /**@}*/
+
+  /**@{*/
+  /** Special attribute name. */
+  static const char* COORDS;
+  static const char* KEY;
+  /**@}*/
 };
 
 }  // namespace tiledb

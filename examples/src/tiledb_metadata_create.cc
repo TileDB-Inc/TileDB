@@ -43,7 +43,7 @@ int main() {
   const int cell_val_num[] = 
   {
       1,                           // a1
-      TILEDB_VAR_NUM               // a2
+      tiledb_var_num()             // a2
   };
   const tiledb_compressor_t compression[] =
   { 

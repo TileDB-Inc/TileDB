@@ -204,7 +204,7 @@ const std::string& ArraySchema::attribute(int attribute_id) const {
 
 Status ArraySchema::attribute_id(const std::string& attribute, int* id) const {
   // Special case - coordinates
-  if (attribute == TILEDB_COORDS) {
+  if (attribute == Configurator::coords()) {
     *id = attribute_num_;
     return Status::Ok();
   }
@@ -457,7 +457,7 @@ void ArraySchema::print() const {
     } else if (typ == Datatype::UINT64) {
       std::cout << "\t" << attributes_[i] << ": uint64[";
     }
-    if (cell_val_num_[i] == TILEDB_VAR_NUM)
+    if (cell_val_num_[i] == Configurator::var_num())
       std::cout << "var]\n";
     else
       std::cout << cell_val_num_[i] << "]\n";
@@ -489,7 +489,7 @@ void ArraySchema::print() const {
     std::cout << "\t"
               << ((i == attribute_num_) ? "Coordinates" : attributes_[i])
               << ": ";
-    if (cell_sizes_[i] == TILEDB_VAR_SIZE)
+    if (cell_sizes_[i] == Configurator::var_size())
       std::cout << "var\n";
     else
       std::cout << cell_sizes_[i] << "\n";
@@ -1035,7 +1035,7 @@ int ArraySchema::var_attribute_num() const {
 }
 
 bool ArraySchema::var_size(int attribute_id) const {
-  return cell_sizes_[attribute_id] == TILEDB_VAR_SIZE;
+  return cell_sizes_[attribute_id] == Configurator::var_size();
 }
 
 /* ****************************** */
@@ -1186,7 +1186,7 @@ Status ArraySchema::deserialize(
   }
   assert(offset == buffer_size);
   // Add extra coordinate attribute
-  attributes_.emplace_back(TILEDB_COORDS);
+  attributes_.emplace_back(Configurator::coords());
   // Set cell sizes
   cell_sizes_.resize(attribute_num_ + 1);
   for (int i = 0; i <= attribute_num_; ++i)
@@ -1276,10 +1276,10 @@ Status ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
     attributes[i] = (char*)malloc(attribute_len + 1);
     strcpy(attributes[i], metadata_schema_c->attributes_[i]);
   }
-  attribute_len = strlen(TILEDB_KEY);
+  attribute_len = strlen(Configurator::key());
   attributes[metadata_schema_c->attribute_num_] =
       (char*)malloc(attribute_len + 1);
-  strcpy(attributes[metadata_schema_c->attribute_num_], TILEDB_KEY);
+  strcpy(attributes[metadata_schema_c->attribute_num_], Configurator::key());
   array_schema_c.attributes_ = attributes;
   array_schema_c.attribute_num_ = metadata_schema_c->attribute_num_ + 1;
 
@@ -1329,7 +1329,7 @@ Status ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
     for (int i = 0; i < metadata_schema_c->attribute_num_; ++i)
       cell_val_num[i] = metadata_schema_c->cell_val_num_[i];
   }
-  cell_val_num[metadata_schema_c->attribute_num_] = TILEDB_VAR_NUM;
+  cell_val_num[metadata_schema_c->attribute_num_] = Configurator::var_num();
   array_schema_c.cell_val_num_ = cell_val_num;
 
   // Set compression
@@ -1442,7 +1442,7 @@ Status ArraySchema::set_attributes(char** attributes, int attribute_num) {
   attribute_num_ = attribute_num;
 
   // Append extra coordinates name
-  attributes_.emplace_back(TILEDB_COORDS);
+  attributes_.emplace_back(Configurator::coords());
 
   // Check for duplicate attribute names
   if (utils::has_duplicates(attributes_)) {
@@ -2126,8 +2126,8 @@ size_t ArraySchema::compute_cell_size(int i) const {
   assert(i >= 0 && i <= attribute_num_);
 
   // Variable-sized cell
-  if (i < attribute_num_ && cell_val_num_[i] == TILEDB_VAR_NUM)
-    return TILEDB_VAR_SIZE;
+  if (i < attribute_num_ && cell_val_num_[i] == Configurator::var_num())
+    return Configurator::var_size();
 
   // Fixed-sized cell
   size_t size = 0;
