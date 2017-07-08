@@ -56,4 +56,9 @@ ArraySchema* BasicArraySchema::array_schema() {
   return array_schema_;
 }
 
+Status BasicArraySchema::init() {
+  // Initialize array schema
+  return array_schema_->init();
+}
+
 }  // namespace tiledb

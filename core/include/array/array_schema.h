@@ -132,7 +132,7 @@ class ArraySchema {
    *
    * @param attributes The name of the attributes whose ids will be retrieved.
    * @param attribute_ids The ids that are retrieved by the function.
-   * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
+   * @return Status
    */
   Status get_attribute_ids(
       const std::vector<std::string>& attributes,
@@ -184,7 +184,7 @@ class ArraySchema {
    *     by the function with the object data. Note that the caller is
    *     responsible for releasing this buffer afterwards.
    * @param array_schema_bin_size The size of the created binary buffer.
-   * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
+   * @return Status
    */
   Status serialize(
       void*& array_schema_bin, size_t& array_schema_bin_size) const;
@@ -284,17 +284,25 @@ class ArraySchema {
    *
    * @param array_schema_bin The input binary buffer with the object data.
    * @param array_schema_bin_size The size of the input binary buffer.
-   * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
+   * @return Status
    */
   Status deserialize(
       const void* array_schema_bin, size_t array_schema_bin_size);
+
+  /**
+   * Initializes the ArraySchema object. It also performs a check to see if
+   * all the member attributes have been properly set.
+   *
+   * @return Status
+   */
+  Status init();
 
   /**
    * Initializes the ArraySchema object using the information provided in the
    * input C-style ArraySchemaC struct.
    *
    * @param array_schema_c The array schema in a C-style struct.
-   * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
+   * @return Status.
    */
   Status init(const ArraySchemaC* array_schema_c);
 
@@ -303,7 +311,7 @@ class ArraySchema {
    * inpur C-style MetadataSchemaC struct.
    *
    * @param metadata_schema_c The metadata schema in a C-style struct.
-   * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
+   * @return Status
    */
   Status init(const MetadataSchemaC* metadata_schema_c);
 
@@ -324,7 +332,7 @@ class ArraySchema {
    *
    * @param attributes The attribute names.
    * @param attribute_num The number of attributes.
-   * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
+   * @return Status
    */
   Status set_attributes(char** attributes, int attribute_num);
 
@@ -341,7 +349,7 @@ class ArraySchema {
    *    - TILEDB_HILBSERT
    *
    * @param cell_order The cell order.
-   * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
+   * @return Status
    */
   Status set_cell_order(tiledb_layout_t cell_order);
 
@@ -357,7 +365,7 @@ class ArraySchema {
    *
    * @param dimensions The dimension names.
    * @param dim_num The number of dimensions.
-   * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
+   * @return Status
    */
   Status set_dimensions(char** dimensions, int dim_num);
 
@@ -367,7 +375,7 @@ class ArraySchema {
    * @param domain The domain. It should contain one [lower, upper] pair per
    *     dimension. Thie type  of the values stored in this buffer should match
    *     the coordinates type.
-   * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
+   * @return Status
    *
    * @note The dimensions and types must already have been set before calling
    *     this function.
@@ -395,7 +403,7 @@ class ArraySchema {
    *    - TILEDB_COL_MAJOR
    *
    * @param tile_order The tile order.
-   * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
+   * @return Status
    */
   Status set_tile_order(tiledb_layout_t tile_order);
 
@@ -428,7 +436,7 @@ class ArraySchema {
    *     - TILEDB_UINT64
    *
    * @param types The types.
-   * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
+   * @return Status
    *
    * @note The attributes, dimensions and the dense flag must have already been
    *     set before calling this function.
@@ -650,6 +658,8 @@ class ArraySchema {
   std::vector<std::string> attributes_;
   /** The number of attributes. */
   int attribute_num_;
+  /** True if the array is a basic array. */
+  bool basic_array_;
   /**
    * The tile capacity for the case of sparse fragments.
    */
@@ -688,6 +698,8 @@ class ArraySchema {
    *    - TILEDB_BZIP2
    */
   std::vector<Compressor> compressor_;
+  /** The compression level for each compressor. */
+  std::vector<int> compression_level_;
   /** The size (in bytes) of the coordinates. */
   size_t coords_size_;
   /**
@@ -768,6 +780,9 @@ class ArraySchema {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Clears all members. Use with caution! */
+  void clear();
 
   /**
    * Computes and returns the size of the binary representation of the
@@ -1013,8 +1028,11 @@ class ArraySchema {
   template <class T>
   int64_t get_tile_pos_row(const T* domain, const T* tile_coords) const;
 
-  /** Initializes a Hilbert curve. */
-  void init_hilbert_curve();
+  /**
+   * Sets default values to all members, effectively making the array schema
+   * equivalent to the schema of a basic array.
+   */
+  void set_default();
 
   /** Return the number of cells in a column tile slab of an input subarray. */
   template <class T>

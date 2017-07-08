@@ -65,6 +65,13 @@ class BasicArraySchema {
    */
   ArraySchema* array_schema();
 
+  /**
+   * Initializes the array schema.
+   *
+   * @return Status
+   */
+  Status init();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

@@ -371,6 +371,7 @@ typedef struct tiledb_array_schema_t {
    * attributes.
    */
   tiledb_compressor_t* compressor_;
+  // TODO: add compression_level_
   /**
    * Specifies if the array is dense (1) or sparse (0). If the array is dense,
    * then the user must specify tile extents (see below).
