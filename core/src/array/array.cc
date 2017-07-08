@@ -515,7 +515,7 @@ Status Array::init(
       if (attributes[i] == nullptr || strlen(attributes[i]) > name_max_len)
         return LOG_STATUS(Status::ArrayError("Invalid attribute name length"));
       attributes_vec.emplace_back(attributes[i]);
-      if (!strcmp(attributes[i], TILEDB_COORDS))
+      if (!strcmp(attributes[i], Configurator::coords()))
         coords_found = true;
     }
 
@@ -529,7 +529,7 @@ Status Array::init(
     // not exist already
     if (sparse && array_clone == nullptr && !coords_found &&
         !utils::is_metadata(array_schema->array_name()))
-      attributes_vec.emplace_back(TILEDB_COORDS);
+      attributes_vec.emplace_back(Configurator::coords());
   }
 
   // Set attribute ids

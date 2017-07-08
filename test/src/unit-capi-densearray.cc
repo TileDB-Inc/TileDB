@@ -384,7 +384,7 @@ struct DenseArrayFx {
     int64_t* buffer_coords = (int64_t*)buffers[1];
 
     // Specify attributes to be written
-    const char* attributes[] = {"ATTR_INT32", TILEDB_COORDS};
+    const char* attributes[] = {"ATTR_INT32", tiledb_coords()};
 
     // Initialize the array
     tiledb_array_t* tiledb_array;

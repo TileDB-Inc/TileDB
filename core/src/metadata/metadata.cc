@@ -163,9 +163,9 @@ Status Metadata::init(
       strcpy(array_attributes[i], attributes[i]);
     }
     if (mode == TILEDB_METADATA_WRITE) {
-      size_t attribute_len = strlen(TILEDB_COORDS);
+      size_t attribute_len = strlen(Configurator::coords());
       array_attributes[array_attribute_num] = new char[attribute_len + 1];
-      strcpy(array_attributes[array_attribute_num], TILEDB_COORDS);
+      strcpy(array_attributes[array_attribute_num], Configurator::coords());
     }
   }
 
@@ -226,9 +226,9 @@ Status Metadata::reset_attributes(const char** attributes, int attribute_num) {
       strcpy(array_attributes[i], attributes[i]);
     }
     if (mode_ == TILEDB_METADATA_WRITE) {
-      size_t attribute_len = strlen(TILEDB_COORDS);
+      size_t attribute_len = strlen(Configurator::coords());
       array_attributes[array_attribute_num] = new char[attribute_len + 1];
-      strcpy(array_attributes[array_attribute_num], TILEDB_COORDS);
+      strcpy(array_attributes[array_attribute_num], Configurator::coords());
     }
   }
 

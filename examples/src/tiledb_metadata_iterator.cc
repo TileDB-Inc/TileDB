@@ -39,7 +39,7 @@ int main() {
   tiledb_ctx_init(&ctx, nullptr);
 
   // Subset over the attributes
-  const char* attributes[] = { TILEDB_KEY };
+  const char* attributes[] = { tiledb_key() };
 
   // Prepare cell buffers
   size_t buffer_key[8];

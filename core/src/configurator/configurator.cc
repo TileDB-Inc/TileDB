@@ -70,6 +70,10 @@ const uint16_t Configurator::EMPTY_UINT16 = UINT16_MAX;
 const uint32_t Configurator::EMPTY_UINT32 = UINT32_MAX;
 const uint64_t Configurator::EMPTY_UINT64 = UINT64_MAX;
 const uint64_t Configurator::MAX_WRITE_BYTES(1500000000);
+const int Configurator::VAR_NUM = INT_MAX;
+const uint64_t Configurator::VAR_SIZE = (size_t)-1;
+const char* Configurator::COORDS = "__coords";
+const char* Configurator::KEY = "__key";
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -163,6 +167,10 @@ uint64_t Configurator::cell_var_offset_size() {
   return CELL_VAR_OFFSET_SIZE;
 }
 
+const char* Configurator::coords() {
+  return COORDS;
+}
+
 uint64_t Configurator::consolidation_buffer_size() {
   return CONSOLIDATION_BUFFER_SIZE;
 }
@@ -235,6 +243,10 @@ uint64_t Configurator::internal_buffer_size() {
   return INTERNAL_BUFFER_SIZE;
 }
 
+const char* Configurator::key() {
+  return KEY;
+}
+
 const char* Configurator::key_dim1_name() {
   return KEY_DIM1_NAME;
 }
@@ -279,6 +291,14 @@ uint64_t Configurator::sorted_buffer_size() {
 
 uint64_t Configurator::sorted_buffer_var_size() {
   return SORTED_BUFFER_VAR_SIZE;
+}
+
+int Configurator::var_num() {
+  return VAR_NUM;
+}
+
+uint64_t Configurator::var_size() {
+  return VAR_SIZE;
 }
 
 IOMethod Configurator::write_method() const {

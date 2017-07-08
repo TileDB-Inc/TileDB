@@ -77,7 +77,7 @@ Status ArrayIterator::get_value(
   int buffer_i = buffer_i_[attribute_id];
   int64_t pos = pos_[attribute_id];
   size_t cell_size = cell_sizes_[attribute_id];
-  if (cell_size != TILEDB_VAR_SIZE) {  // FIXED
+  if (cell_size != Configurator::var_size()) {  // FIXED
     *value = static_cast<const char*>(buffers_[buffer_i]) + pos * cell_size;
     *value_size = cell_size;
   } else {  // VARIABLE
@@ -118,7 +118,7 @@ Status ArrayIterator::init(Array* array, void** buffers, size_t* buffer_sizes) {
     cell_sizes_[i] = array_schema->cell_size(attribute_ids[i]);
     buffer_i_[i] = buffer_i;
     buffer_allocated_sizes_.push_back(buffer_sizes[buffer_i]);
-    if (cell_sizes_[i] != TILEDB_VAR_SIZE) {
+    if (cell_sizes_[i] != Configurator::var_size()) {
       ++buffer_i;
     } else {
       buffer_allocated_sizes_.push_back(buffer_sizes[buffer_i + 1]);
@@ -147,7 +147,7 @@ Status ArrayIterator::init(Array* array, void** buffers, size_t* buffer_sizes) {
     }
 
     // Update cell num
-    if (cell_sizes_[i] == TILEDB_VAR_SIZE)  // VARIABLE
+    if (cell_sizes_[i] == Configurator::var_size())  // VARIABLE
       cell_num_[i] =
           buffer_sizes[buffer_i_[i]] / Configurator::cell_var_offset_size();
     else  // FIXED
@@ -205,7 +205,7 @@ Status ArrayIterator::next() {
     for (int i = 0; i < needs_new_read_num; ++i) {
       buffer_i = buffer_i_[needs_new_read[i]];
       buffer_sizes_[buffer_i] = buffer_allocated_sizes_[buffer_i];
-      if (cell_sizes_[needs_new_read[i]] == TILEDB_VAR_SIZE)
+      if (cell_sizes_[needs_new_read[i]] == Configurator::var_size())
         buffer_sizes_[buffer_i + 1] = buffer_allocated_sizes_[buffer_i + 1];
     }
 
@@ -231,7 +231,8 @@ Status ArrayIterator::next() {
       }
 
       // Update cell num
-      if (cell_sizes_[needs_new_read[i]] == TILEDB_VAR_SIZE)  // VARIABLE
+      if (cell_sizes_[needs_new_read[i]] ==
+          Configurator::var_size())  // VARIABLE
         cell_num_[needs_new_read[i]] = buffer_sizes_[buffer_i] / sizeof(size_t);
       else  // FIXED
         cell_num_[needs_new_read[i]] =
@@ -250,7 +251,7 @@ Status ArrayIterator::next() {
       else {                   // restore buffer size from copy
         buffer_i = buffer_i_[i];
         buffer_sizes_[buffer_i] = copy_buffer_sizes[buffer_i];
-        if (cell_sizes_[i] == TILEDB_VAR_SIZE)
+        if (cell_sizes_[i] == Configurator::var_size())
           buffer_sizes_[buffer_i + 1] = copy_buffer_sizes[buffer_i + 1];
       }
     }

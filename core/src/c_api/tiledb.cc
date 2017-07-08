@@ -34,7 +34,28 @@
 #include "aio_request.h"
 #include "array_schema.h"
 #include "basic_array.h"
+#include "configurator.h"
 #include "storage_manager.h"
+
+/* ****************************** */
+/*            CONSTANTS           */
+/* ****************************** */
+
+const char* tiledb_coords() {
+  return tiledb::Configurator::coords();
+}
+
+const char* tiledb_key() {
+  return tiledb::Configurator::key();
+}
+
+int tiledb_var_num() {
+  return tiledb::Configurator::var_num();
+}
+
+uint64_t tiledb_var_size() {
+  return tiledb::Configurator::var_size();
+}
 
 /* ****************************** */
 /*            VERSION             */

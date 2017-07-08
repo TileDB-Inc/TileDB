@@ -260,7 +260,8 @@ Status StorageManager::array_load_book_keeping(
   for (int i = 0; i < fragment_num; ++i) {
     // For easy reference
     int dense = !utils::is_file(
-        fragment_names[i] + "/" + TILEDB_COORDS + Configurator::file_suffix());
+        fragment_names[i] + "/" + Configurator::coords() +
+        Configurator::file_suffix());
 
     // Create new book-keeping structure for the fragment
     BookKeeping* f_book_keeping =
