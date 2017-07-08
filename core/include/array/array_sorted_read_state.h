@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,26 +31,15 @@
  * This file defines class ArraySortedReadState.
  */
 
-#ifndef __ARRAY_SORTED_READ_STATE_H__
-#define __ARRAY_SORTED_READ_STATE_H__
+#ifndef __TILEDB_ARRAY_SORTED_READ_STATE_H__
+#define __TILEDB_ARRAY_SORTED_READ_STATE_H__
 
 #include <pthread.h>
 #include <string>
 #include <vector>
 #include "array.h"
 
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/** Initial internal buffer size for the case of sparse arrays. */
-#define TILEDB_ASRS_INIT_BUFFER_SIZE 10000000  // ~ 10MB
-
 namespace tiledb {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
 
 class Array;
 
@@ -1057,5 +1047,6 @@ class ArraySortedReadState {
   Status wait_overflow();
 };
 
-};  // namespace tiledb
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_ARRAY_SORTED_READ_STATE_H__

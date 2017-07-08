@@ -5,7 +5,8 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,18 +36,20 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <cassert>
+#include "array.h"
+#include "basic_array_schema.h"
 #include "logger.h"
 #include "utils.h"
 
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
+
 #if defined HAVE_OPENMP && defined USE_PARALLEL_SORT
 #include <parallel/algorithm>
 #define SORT_LIB __gnu_parallel
 #else
 #include <algorithm>
-#include <array>
 #define SORT_LIB std
 #endif
 
@@ -61,30 +64,51 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-StorageManager::StorageManager() = default;
+StorageManager::StorageManager() {
+  config_ = nullptr;
+  logger_ = nullptr;
+}
 
-StorageManager::~StorageManager() = default;
+StorageManager::~StorageManager() {
+  if (config_ != nullptr) {
+    delete config_;
+    config_ = nullptr;
+  }
+
+  if (logger_ != nullptr) {
+    delete logger_;
+    logger_ = nullptr;
+  }
+}
 
 /* ****************************** */
 /*             MUTATORS           */
 /* ****************************** */
 
 Status StorageManager::finalize() {
-  if (config_ != nullptr)
+  if (config_ != nullptr) {
     delete config_;
+    config_ = nullptr;
+  }
 
-  if (logger_ != nullptr)
+  if (logger_ != nullptr) {
     delete logger_;
+    logger_ = nullptr;
+  }
 
   return open_array_mtx_destroy();
 }
 
-Status StorageManager::init(StorageManagerConfig* config) {
-  // attach logger
+Status StorageManager::init(Configurator* config) {
+  // Attach logger
   logger_ = new Logger();
 
-  // Set configuration parameters
-  config_set(config);
+  // Clear previous configurator
+  if (config_ != nullptr)
+    delete config_;
+
+  // Create new configurator and clone the input
+  config_ = new Configurator(config);
 
   // Initialize mutexes and return
   return open_array_mtx_init();
@@ -120,6 +144,18 @@ Status StorageManager::group_create(const std::string& group) const {
         std::string("Cannot create group file for group:  ").append(group)));
 
   return Status::Ok();
+}
+
+/* ****************************** */
+/*          BASIC ARRAY           */
+/* ****************************** */
+
+Status StorageManager::basic_array_create(const char* name) const {
+  // Initialize basic array schema
+  BasicArraySchema* schema = new BasicArraySchema(name);
+
+  // Create basic array
+  return array_create(schema->array_schema());
 }
 
 /* ****************************** */
@@ -190,7 +226,7 @@ Status StorageManager::array_create(const ArraySchema* array_schema) const {
   RETURN_NOT_OK(utils::create_dir(dir));
 
   // Store array schema
-  RETURN_NOT_OK(array_store_schema(dir, array_schema));
+  RETURN_NOT_OK(array_schema->store(dir));
 
   // Create consolidation filelock
   RETURN_NOT_OK(consolidation_filelock_create(dir));
@@ -224,7 +260,7 @@ Status StorageManager::array_load_book_keeping(
   for (int i = 0; i < fragment_num; ++i) {
     // For easy reference
     int dense = !utils::is_file(
-        fragment_names[i] + "/" + TILEDB_COORDS + TILEDB_FILE_SUFFIX);
+        fragment_names[i] + "/" + TILEDB_COORDS + Configurator::file_suffix());
 
     // Create new book-keeping structure for the fragment
     BookKeeping* f_book_keeping =
@@ -240,63 +276,6 @@ Status StorageManager::array_load_book_keeping(
   return Status::Ok();
 }
 
-Status StorageManager::array_load_schema(
-    const char* array_dir, ArraySchema*& array_schema) const {
-  // Get real array path
-  std::string real_array_dir = utils::real_dir(array_dir);
-
-  // Check if array exists
-  if (!utils::is_array(real_array_dir)) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot load array schema; Array '") + real_array_dir +
-        "' does not exist"));
-  }
-
-  // Open array schema file
-  std::string filename = real_array_dir + "/" + TILEDB_ARRAY_SCHEMA_FILENAME;
-  int fd = ::open(filename.c_str(), O_RDONLY);
-  if (fd == -1) {
-    return LOG_STATUS(
-        Status::StorageManagerError("Cannot load schema; File opening error"));
-  }
-
-  // Initialize buffer
-  struct stat _stat;
-  fstat(fd, &_stat);
-  ssize_t buffer_size = _stat.st_size;
-
-  if (buffer_size == 0) {
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot load array schema; Empty array schema file"));
-  }
-  void* buffer = malloc(buffer_size);
-
-  // Load array schema
-  ssize_t bytes_read = ::read(fd, buffer, buffer_size);
-  if (bytes_read != buffer_size) {
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot load array schema; File reading error"));
-  }
-
-  // Initialize array schema
-  array_schema = new ArraySchema();
-  Status st = array_schema->deserialize(buffer, buffer_size);
-  if (!st.ok()) {
-    free(buffer);
-    delete array_schema;
-    return st;
-  }
-
-  // Clean up
-  free(buffer);
-  if (::close(fd)) {
-    delete array_schema;
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot load array schema; File closing error"));
-  }
-  return Status::Ok();
-}
-
 Status StorageManager::array_init(
     Array*& array,
     const char* array_dir,
@@ -304,15 +283,18 @@ Status StorageManager::array_init(
     const void* subarray,
     const char** attributes,
     int attribute_num) {
+  // For easy reference
+  unsigned name_max_len = Configurator::name_max_len();
+
   // TODO: (jcb) this should be handled by the array object
   // Check array name length
-  if (array_dir == nullptr || strlen(array_dir) > TILEDB_NAME_MAX_LEN) {
+  if (array_dir == nullptr || strlen(array_dir) > name_max_len) {
     return LOG_STATUS(Status::StorageManagerError("Invalid array name length"));
   }
 
   // Load array schema
-  ArraySchema* array_schema;
-  RETURN_NOT_OK(array_load_schema(array_dir, array_schema));
+  ArraySchema* array_schema = new ArraySchema();
+  RETURN_NOT_OK_ELSE(array_schema->load(array_dir), delete array_schema);
 
   // Open the array
   OpenArray* open_array = nullptr;
@@ -364,6 +346,8 @@ Status StorageManager::array_init(
     if (is_read_mode(mode))
       array_close(array_dir);
   }
+
+  // Return
   return st;
 }
 
@@ -459,7 +443,8 @@ Status StorageManager::array_iterator_finalize(ArrayIterator* array_it) {
 Status StorageManager::metadata_consolidate(const char* metadata_dir) {
   // Load metadata schema
   ArraySchema* array_schema;
-  RETURN_NOT_OK(metadata_load_schema(metadata_dir, array_schema));
+  RETURN_NOT_OK_ELSE(
+      metadata_load_schema(metadata_dir, array_schema), delete array_schema);
 
   // Set attributes
   char** attributes;
@@ -557,7 +542,7 @@ Status StorageManager::metadata_create(const ArraySchema* array_schema) const {
   RETURN_NOT_OK(utils::create_dir(dir));
 
   // Open metadata schema file
-  std::string filename = dir + "/" + TILEDB_METADATA_SCHEMA_FILENAME;
+  std::string filename = dir + "/" + Configurator::metadata_schema_filename();
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if (fd == -1) {
     return LOG_STATUS(Status::StorageManagerError(
@@ -604,7 +589,8 @@ Status StorageManager::metadata_load_schema(
   }
 
   // Open array schema file
-  auto filename = real_metadata_dir + "/" + TILEDB_METADATA_SCHEMA_FILENAME;
+  auto filename =
+      real_metadata_dir + "/" + Configurator::metadata_schema_filename();
   int fd = ::open(filename.c_str(), O_RDONLY);
   if (fd == -1) {
     return LOG_STATUS(Status::StorageManagerError(
@@ -652,15 +638,19 @@ Status StorageManager::metadata_init(
     tiledb_metadata_mode_t mode,
     const char** attributes,
     int attribute_num) {
+  // For easy reference
+  unsigned name_max_len = Configurator::name_max_len();
+
   // Check metadata name length
-  if (metadata_dir == nullptr || strlen(metadata_dir) > TILEDB_NAME_MAX_LEN) {
+  if (metadata_dir == nullptr || strlen(metadata_dir) > name_max_len) {
     return LOG_STATUS(
         Status::StorageManagerError("Invalid metadata name length"));
   }
 
   // Load metadata schema
   ArraySchema* array_schema;
-  RETURN_NOT_OK(metadata_load_schema(metadata_dir, array_schema));
+  RETURN_NOT_OK_ELSE(
+      metadata_load_schema(metadata_dir, array_schema), delete array_schema);
 
   // Open the array that implements the metadata
   OpenArray* open_array = nullptr;
@@ -922,8 +912,8 @@ Status StorageManager::array_clear(const std::string& array) const {
 
   while ((next_file = readdir(dir))) {
     if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, "..") ||
-        !strcmp(next_file->d_name, TILEDB_ARRAY_SCHEMA_FILENAME) ||
-        !strcmp(next_file->d_name, TILEDB_SM_CONSOLIDATION_FILELOCK_NAME))
+        !strcmp(next_file->d_name, Configurator::array_schema_filename()) ||
+        !strcmp(next_file->d_name, Configurator::consolidation_filelock_name()))
       continue;
     filename = array_real + "/" + next_file->d_name;
     if (utils::is_metadata(filename)) {  // Metadata
@@ -1065,12 +1055,12 @@ Status StorageManager::array_move(
   }
 
   // Incorporate new name in the array schema
-  ArraySchema* array_schema;
-  RETURN_NOT_OK(array_load_schema(new_array_real.c_str(), array_schema));
+  ArraySchema* array_schema = new ArraySchema();
+  RETURN_NOT_OK_ELSE(array_schema->load(new_array_real), delete array_schema);
   array_schema->set_array_name(new_array_real.c_str());
 
   // Store the new schema
-  RETURN_NOT_OK(array_store_schema(new_array_real, array_schema));
+  RETURN_NOT_OK_ELSE(array_schema->store(new_array_real), delete array_schema);
 
   // Clean up
   delete array_schema;
@@ -1092,21 +1082,21 @@ Status StorageManager::array_open(
     // Acquire shared lock on consolidation filelock
     RETURN_NOT_OK_ELSE(
         consolidation_filelock_lock(
-            array_name,
-            open_array->consolidation_filelock_,
-            TILEDB_SM_SHARED_LOCK),
+            array_name, open_array->consolidation_filelock_, SHARED_LOCK),
         open_array->mutex_unlock());
 
     // Get the fragment names
     array_get_fragment_names(array_name, open_array->fragment_names_);
 
     // Get array schema
+    open_array->array_schema_ = new ArraySchema();
+    ArraySchema* array_schema = open_array->array_schema_;
     if (utils::is_array(array_name)) {  // Array
-      RETURN_NOT_OK(
-          array_load_schema(array_name.c_str(), open_array->array_schema_));
+      RETURN_NOT_OK_ELSE(array_schema->load(array_name), delete array_schema);
     } else {  // Metadata
-      RETURN_NOT_OK(
-          metadata_load_schema(array_name.c_str(), open_array->array_schema_));
+      RETURN_NOT_OK_ELSE(
+          metadata_load_schema(array_name.c_str(), array_schema),
+          delete array_schema);
     }
     // Load the book-keeping for each fragment
     Status st = array_load_book_keeping(
@@ -1126,49 +1116,11 @@ Status StorageManager::array_open(
   return Status::Ok();
 }
 
-Status StorageManager::array_store_schema(
-    const std::string& dir, const ArraySchema* array_schema) const {
-  // Open array schema file
-  std::string filename = dir + "/" + TILEDB_ARRAY_SCHEMA_FILENAME;
-  remove(filename.c_str());
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  if (fd == -1) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot store schema; ") + strerror(errno)));
-  }
-
-  // Serialize array schema
-  void* array_schema_bin;
-  size_t array_schema_bin_size;
-  RETURN_NOT_OK(
-      array_schema->serialize(array_schema_bin, array_schema_bin_size));
-
-  // Store the array schema
-  ssize_t bytes_written = ::write(fd, array_schema_bin, array_schema_bin_size);
-  if (bytes_written != ssize_t(array_schema_bin_size)) {
-    free(array_schema_bin);
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot store schema; ") + strerror(errno)));
-  }
-
-  // Clean up
-  free(array_schema_bin);
-  if (::close(fd)) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot store schema; ") + strerror(errno)));
-  }
-  return Status::Ok();
-}
-
-void StorageManager::config_set(StorageManagerConfig* config) {
-  // Store config locally
-  config_ = config;
-}
-
 Status StorageManager::consolidation_filelock_create(
     const std::string& dir) const {
   // Create file
-  std::string filename = dir + "/" + TILEDB_SM_CONSOLIDATION_FILELOCK_NAME;
+  std::string filename =
+      dir + "/" + Configurator::consolidation_filelock_name();
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
 
   // Handle error
@@ -1191,9 +1143,9 @@ Status StorageManager::consolidation_filelock_lock(
     const std::string& array_name, int& fd, int lock_type) const {
   // Prepare the flock struct
   struct flock fl;
-  if (lock_type == TILEDB_SM_SHARED_LOCK) {
+  if (lock_type == SHARED_LOCK) {
     fl.l_type = F_RDLCK;
-  } else if (lock_type == TILEDB_SM_EXCLUSIVE_LOCK) {
+  } else if (lock_type == EXCLUSIVE_LOCK) {
     fl.l_type = F_WRLCK;
   } else {
     return LOG_STATUS(Status::StorageManagerError(
@@ -1207,7 +1159,7 @@ Status StorageManager::consolidation_filelock_lock(
   // Prepare the filelock name
   std::string array_name_real = utils::real_dir(array_name);
   std::string filename =
-      array_name_real + "/" + TILEDB_SM_CONSOLIDATION_FILELOCK_NAME;
+      array_name_real + "/" + Configurator::consolidation_filelock_name();
 
   // Open the file
   fd = ::open(filename.c_str(), O_RDWR);
@@ -1243,9 +1195,7 @@ Status StorageManager::consolidation_finalize(
   int fd;
   Status st;
   st = consolidation_filelock_lock(
-      new_fragment->array()->array_schema()->array_name(),
-      fd,
-      TILEDB_SM_EXCLUSIVE_LOCK);
+      new_fragment->array()->array_schema()->array_name(), fd, EXCLUSIVE_LOCK);
   if (!st.ok()) {
     delete new_fragment;
     return st;
@@ -1263,7 +1213,7 @@ Status StorageManager::consolidation_finalize(
   for (int i = 0; i < fragment_num; ++i) {
     // Delete special fragment file inside the fragment directory
     std::string old_fragment_filename =
-        old_fragment_names[i] + "/" + TILEDB_FRAGMENT_FILENAME;
+        old_fragment_names[i] + "/" + Configurator::fragment_filename();
     if (remove(old_fragment_filename.c_str())) {
       return LOG_STATUS(Status::StorageManagerError(
           std::string("Cannot remove fragment file during "
@@ -1284,7 +1234,7 @@ Status StorageManager::consolidation_finalize(
 
 Status StorageManager::create_group_file(const std::string& group) const {
   // Create file
-  std::string filename = group + "/" + TILEDB_GROUP_FILENAME;
+  std::string filename = group + "/" + Configurator::group_filename();
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if (fd == -1 || ::close(fd)) {
     return LOG_STATUS(Status::StorageManagerError(
@@ -1316,7 +1266,7 @@ Status StorageManager::group_clear(const std::string& group) const {
 
   while ((next_file = readdir(dir))) {
     if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, "..") ||
-        !strcmp(next_file->d_name, TILEDB_GROUP_FILENAME))
+        !strcmp(next_file->d_name, Configurator::group_filename()))
       continue;
     filename = group_real + "/" + next_file->d_name;
     if (utils::is_group(filename)) {  // Group
@@ -1398,8 +1348,8 @@ Status StorageManager::metadata_clear(const std::string& metadata) const {
 
   while ((next_file = readdir(dir))) {
     if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, "..") ||
-        !strcmp(next_file->d_name, TILEDB_METADATA_SCHEMA_FILENAME) ||
-        !strcmp(next_file->d_name, TILEDB_SM_CONSOLIDATION_FILELOCK_NAME))
+        !strcmp(next_file->d_name, Configurator::metadata_schema_filename()) ||
+        !strcmp(next_file->d_name, Configurator::consolidation_filelock_name()))
       continue;
     filename = metadata_real + "/" + next_file->d_name;
     if (utils::is_fragment(filename)) {  // Fragment
@@ -1455,17 +1405,21 @@ Status StorageManager::metadata_move(
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Cannot move metadata; ") + strerror(errno)));
   }
+
   // Incorporate new name in the array schema
-  ArraySchema* array_schema;
-  RETURN_NOT_OK(array_load_schema(new_metadata_real.c_str(), array_schema));
+  ArraySchema* array_schema = new ArraySchema();
+  RETURN_NOT_OK_ELSE(
+      array_schema->load(new_metadata_real), delete array_schema);
   array_schema->set_array_name(new_metadata_real.c_str());
 
   // Store the new schema
-  RETURN_NOT_OK(array_store_schema(new_metadata_real, array_schema));
+  RETURN_NOT_OK_ELSE(
+      array_schema->store(new_metadata_real), delete array_schema);
 
   // Clean up
   delete array_schema;
 
+  // Success
   return Status::Ok();
 }
 
@@ -1651,6 +1605,6 @@ Status StorageManager::OpenArray::mutex_unlock() {
     return st_pthread_mtx;
   }
   return Status::Ok();
-};
+}
 
 }  // namespace tiledb

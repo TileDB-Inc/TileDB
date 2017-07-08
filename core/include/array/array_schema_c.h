@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,11 +31,13 @@
  * A C-style struct that specifies the array schema.
  */
 
-#ifndef __ARRAY_SCHEMA_C_H__
-#define __ARRAY_SCHEMA_C_H__
+#ifndef __TILEDB_ARRAY_SCHEMA_C_H__
+#define __TILEDB_ARRAY_SCHEMA_C_H__
 
 #include <cstdint>
 #include "tiledb.h"
+
+namespace tiledb {
 
 /** Specifies the array schema. */
 typedef struct ArraySchemaC {
@@ -137,4 +140,6 @@ typedef struct ArraySchemaC {
   tiledb_datatype_t* types_;
 } ArraySchemaC;
 
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_ARRAY_SCHEMA_C_H__

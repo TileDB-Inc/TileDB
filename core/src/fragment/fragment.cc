@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -36,7 +37,6 @@
 #include <cstdio>
 #include <cstring>
 #include <iostream>
-#include "constants.h"
 #include "logger.h"
 #include "status.h"
 #include "utils.h"
@@ -106,11 +106,12 @@ size_t Fragment::tile_size(int attribute_id) const {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   bool var_size = array_schema->var_size(attribute_id);
+  uint64_t cell_var_offset_size = Configurator::cell_var_offset_size();
 
   int64_t cell_num_per_tile =
       (dense_) ? array_schema->cell_num_per_tile() : array_schema->capacity();
 
-  return (var_size) ? cell_num_per_tile * TILEDB_CELL_VAR_OFFSET_SIZE :
+  return (var_size) ? cell_num_per_tile * cell_var_offset_size :
                       cell_num_per_tile * array_schema->cell_size(attribute_id);
 }
 
@@ -255,4 +256,4 @@ Status Fragment::rename_fragment() {
   return Status::Ok();
 }
 
-};  // namespace tiledb
+}  // namespace tiledb

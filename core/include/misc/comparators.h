@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,8 +32,8 @@
  * of sparse arrays.
  */
 
-#ifndef __COMPARATORS_H__
-#define __COMPARATORS_H__
+#ifndef __TILEDB_COMPARATORS_H__
+#define __TILEDB_COMPARATORS_H__
 
 #include <cinttypes>
 #include <vector>
@@ -236,5 +237,6 @@ class SmallerRow {
   int dim_num_;
 };
 
-};  // namespace tiledb
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_COMPARATORS_H__

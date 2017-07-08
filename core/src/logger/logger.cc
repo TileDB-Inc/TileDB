@@ -1,12 +1,11 @@
 /**
- * @file array_datatype.h
+ * @file   logger.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- *            Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,20 +27,42 @@
  *
  * @section DESCRIPTION
  *
- * This defines the tiledb Datatype enum that maps to tiledb_datatype_t C-api
- * enum.
+ * This file implements class Logger.
  */
 
-#ifndef TILEDB_ARRAY_DATATYPE_H
-#define TILEDB_ARRAY_DATATYPE_H
+#include "logger.h"
 
 namespace tiledb {
 
-enum class Datatype : char {
-#define TILEDB_DATATYPE_ENUM(id) id
-#include "tiledb_enum.inc"
-#undef TILEDB_DATATYPE_ENUM
+Logger::Logger() {
+  logger_ = spdlog::get("tiledb");
+  if (logger_ == nullptr) {
+    logger_ = spdlog::stdout_color_mt("tiledb");
+  }
+  // Set the default logging format
+  // [Year-month-day 24hr-min-second.microsecond]
+  // [logger]
+  // [Process: id]
+  // [Thread: id]
+  // [log level]
+  // text to log...
+  logger_->set_pattern(
+      "[%Y-%m-%d %H:%M:%S.%e] [%n] [Process: %P] [Thread: %t] [%l] %v");
+
+#ifdef TILEDB_VERBOSE
+  logger_->set_level(spdlog::level::err);
+#else
+  logger_->set_level(spdlog::level::critical);
+#endif
 };
 
+Logger::~Logger() {
+  spdlog::drop("tiledb");
+}
+
+// definition for logging status objects
+std::ostream& operator<<(std::ostream& os, const Status& st) {
+  return os << st.to_string();
+}
+
 }  // namespace tiledb
-#endif  // TILEDB_ARRAY_DATATYPE_H

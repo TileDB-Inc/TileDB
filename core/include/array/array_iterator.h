@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,8 +31,8 @@
  * This file defines class ArrayIterator.
  */
 
-#ifndef __ARRAY_ITERATOR_H__
-#define __ARRAY_ITERATOR_H__
+#ifndef __TILEDB_ARRAY_ITERATOR_H__
+#define __TILEDB_ARRAY_ITERATOR_H__
 
 #include "array.h"
 
@@ -166,5 +167,6 @@ class ArrayIterator {
   int var_attribute_num_;
 };
 
-};  // namespace tiledb
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_ARRAY_ITERATOR_H__

@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -37,6 +38,7 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
+#include "configurator.h"
 #include "logger.h"
 #include "utils.h"
 
@@ -222,8 +224,9 @@ Status BookKeeping::finalize() {
     return Status::Ok();
 
   // Prepare file name
-  std::string filename = fragment_name_ + "/" + TILEDB_BOOK_KEEPING_FILENAME +
-                         TILEDB_FILE_SUFFIX + TILEDB_GZIP_SUFFIX;
+  std::string filename =
+      fragment_name_ + "/" + Configurator::bookkeeping_filename() +
+      Configurator::file_suffix() + Configurator::gzip_suffix();
 
   // Open book-keeping file
   gzFile fd = gzopen(filename.c_str(), "wb");
@@ -332,8 +335,9 @@ Status BookKeeping::init(const void* non_empty_domain) {
  */
 Status BookKeeping::load() {
   // Prepare file name
-  std::string filename = fragment_name_ + "/" + TILEDB_BOOK_KEEPING_FILENAME +
-                         TILEDB_FILE_SUFFIX + TILEDB_GZIP_SUFFIX;
+  std::string filename =
+      fragment_name_ + "/" + Configurator::bookkeeping_filename() +
+      Configurator::file_suffix() + Configurator::gzip_suffix();
 
   // Open book-keeping file
   gzFile fd = gzopen(filename.c_str(), "rb");
@@ -827,4 +831,4 @@ Status BookKeeping::load_tile_var_sizes(gzFile fd) {
   return Status::Ok();
 }
 
-};  // namespace tiledb
+}  // namespace tiledb

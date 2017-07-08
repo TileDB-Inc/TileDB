@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -34,7 +35,6 @@
 #include <cassert>
 #include <cmath>
 #include "comparators.h"
-#include "constants.h"
 #include "logger.h"
 #include "utils.h"
 
@@ -810,11 +810,11 @@ void ArraySortedReadState::calculate_buffer_sizes_sparse() {
     buffer_sizes_tmp_bak_[j] = new size_t[buffer_num_];
     for (int i = 0, b = 0; i < attribute_id_num; ++i) {
       // Fix-sized buffer
-      buffer_sizes_[j][b] = TILEDB_ASRS_INIT_BUFFER_SIZE;
+      buffer_sizes_[j][b] = Configurator::internal_buffer_size();
       buffer_sizes_tmp_bak_[j][b] = 0;
       ++b;
       if (array_schema->var_size(attribute_ids_[i])) {  // Variable-sized buffer
-        buffer_sizes_[j][b] = 2 * TILEDB_ASRS_INIT_BUFFER_SIZE;
+        buffer_sizes_[j][b] = 2 * Configurator::internal_buffer_size();
         buffer_sizes_tmp_bak_[j][b] = 0;
         ++b;
       }

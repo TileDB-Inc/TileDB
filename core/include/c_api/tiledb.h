@@ -5,7 +5,8 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -61,7 +62,7 @@ extern "C" {
 /**@}*/
 
 /* ****************************** */
-/*        TileDB Constants        */
+/*            CONSTANTS           */
 /* ****************************** */
 
 /** Version. */
@@ -103,7 +104,7 @@ extern "C" {
 /**@}*/
 
 /* ****************************** */
-/*         TileDB Types           */
+/*             TYPES              */
 /* ****************************** */
 
 /** TileDB object type. */
@@ -129,9 +130,9 @@ typedef enum {
 
 /** I/O method. */
 typedef enum {
-#define TILEDB_IO_ENUM(id) TILEDB_IO_##id
+#define TILEDB_IO_METHOD_ENUM(id) TILEDB_IO_METHOD_##id
 #include "tiledb_enum.inc"
-#undef TILEDB_IO_ENUM
+#undef TILEDB_IO_METHOD_ENUM
 } tiledb_io_t;
 
 /** Asynchronous I/O (AIO) code. */
@@ -163,7 +164,7 @@ typedef enum {
 } tiledb_compressor_t;
 
 /* ****************************** */
-/*            TILEDB              */
+/*            VERSION             */
 /* ****************************** */
 
 /**
@@ -181,37 +182,54 @@ TILEDB_EXPORT void tiledb_version(int* major, int* minor, int* rev);
 /* ********************************* */
 
 /** Used to pass congiguration parameters to TileDB. */
-typedef struct TileDB_Config {
-  /**
-   * The TileDB home directory. If it is set to "" (empty string) or NULL, the
-   * default home directory will be used, which is ~/.tiledb/.
-   */
-  const char* home_;
+typedef struct tiledb_config_t tiledb_config_t;
+
+/**
+ * Creates a TileDB configuration object, allocating memory.
+ *
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT tiledb_config_t* tiledb_config_create();
+
+/**
+ * Destroys a TileDB configuration object, delallocating memory.
+ *
+ * @param config The configurator to be destroyed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_free(tiledb_config_t* config);
+
+/**
+ * Sets the MPI communicator.
+ *
+ * @param config The configurator.
+ * @param mpi_comm The MPI communicator to be set.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
 #ifdef HAVE_MPI
-  /** The MPI communicator. Use NULL if no MPI is used. */
-  MPI_Comm* mpi_comm_;
+TILEDB_EXPORT int tiledb_config_set_mpi_comm(
+    tiledb_config_t* config, MPI_Comm* mpi_comm);
 #endif
-  /**
-   * The method for reading data from a file.
-   * It can be one of the following:
-   *    - TILEDB_IO_MMAP (default)
-   *      TileDB will use mmap.
-   *    - TILEDB_IO_READ
-   *      TileDB will use standard OS read.
-   *    - TILEDB_IO_MPI
-   *      TileDB will use MPI-IO read.
-   */
-  tiledb_io_t read_method_;
-  /**
-   * The method for writing data to a file.
-   * It can be one of the following:
-   *    - TILEDB_IO_WRITE (default)
-   *      TileDB will use standard OS write.
-   *    - TILEDB_IO_MPI
-   *      TileDB will use MPI-IO write.
-   */
-  tiledb_io_t write_method_;
-} TileDB_Config;
+
+/**
+ * Sets the read method.
+ *
+ * @param config The configurator.
+ * @param read_method The read method to be set.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_set_read_method(
+    tiledb_config_t* config, tiledb_io_t read_method);
+
+/**
+ * Sets the write method.
+ *
+ * @param config The configurator.
+ * @param write_method The write method to be set.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_config_set_write_method(
+    tiledb_config_t* config, tiledb_io_t write_method);
 
 /* ********************************* */
 /*              CONTEXT              */
@@ -224,12 +242,12 @@ typedef struct tiledb_ctx_t tiledb_ctx_t;
  * Initializes the TileDB context.
  *
  * @param ctx The TileDB context to be initialized.
- * @param tiledb_config TileDB configuration parameters. If it is NULL,
+ * @param config TileDB configuration parameters. If it is NULL,
  *     TileDB will use its default configuration parameters.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_ctx_init(
-    tiledb_ctx_t** ctx, const TileDB_Config* tiledb_config);
+    tiledb_ctx_t** ctx, const tiledb_config_t* config);
 
 /**
  * Finalizes the TileDB context, properly freeing-up memory.
@@ -282,6 +300,23 @@ TILEDB_EXPORT int tiledb_error_free(tiledb_error_t* err);
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_group_create(tiledb_ctx_t* ctx, const char* group);
+
+/* ********************************* */
+/*            BASIC ARRAY            */
+/* ********************************* */
+
+/** A TileDB basic array object. */
+typedef struct tiledb_basic_array_t tiledb_basic_array_t;
+
+/**
+ * Creates a basic array
+ *
+ * @param ctx The TileDB context.
+ * @param name The name of the basic array to be created.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_basic_array_create(
+    tiledb_ctx_t* ctx, const char* name);
 
 /* ********************************* */
 /*               ARRAY               */
@@ -1344,4 +1379,4 @@ TILEDB_EXPORT int tiledb_array_aio_write(
 }
 #endif
 
-#endif
+#endif  // __TILEDB_H__

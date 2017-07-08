@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,8 +31,8 @@
  * This file defines class ArrayReadState.
  */
 
-#ifndef __ARRAY_READ_STATE_H__
-#define __ARRAY_READ_STATE_H__
+#ifndef __TILEDB_ARRAY_READ_STATE_H__
+#define __TILEDB_ARRAY_READ_STATE_H__
 
 #include <cinttypes>
 #include <cstring>
@@ -40,18 +41,7 @@
 #include "array.h"
 #include "array_schema.h"
 
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/** Size of the starting offset of a variable cell value. */
-#define TILEDB_CELL_VAR_OFFSET_SIZE sizeof(size_t)
-
 namespace tiledb {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
 
 class Array;
 class ReadState;
@@ -751,5 +741,6 @@ class ArrayReadState::SmallerPQFragmentCellRange {
   const ArraySchema* array_schema_;
 };
 
-};  // namespace tiledb
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_ARRAY_READ_STATE_H__

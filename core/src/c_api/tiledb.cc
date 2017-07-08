@@ -5,7 +5,8 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2017 TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,29 +31,102 @@
  * This file defines the C API of TileDB.
  */
 
-#include "tiledb.h"
-#include <cassert>
-#include <cstring>
-#include <iostream>
-#include <stack>
 #include "aio_request.h"
 #include "array_schema.h"
+#include "basic_array.h"
 #include "storage_manager.h"
 
 /* ****************************** */
-/*        GLOBAL VARIABLES        */
-/* ****************************** */
-
-// char tiledb_errmsg[TILEDB_ERRMSG_MAX_LEN];
-
-/* ****************************** */
-/*            TILEDB              */
+/*            VERSION             */
 /* ****************************** */
 
 void tiledb_version(int* major, int* minor, int* rev) {
   *major = TILEDB_VERSION_MAJOR;
   *minor = TILEDB_VERSION_MINOR;
   *rev = TILEDB_VERSION_REVISION;
+}
+
+/* ********************************* */
+/*              CONFIG               */
+/* ********************************* */
+
+struct tiledb_config_t {
+  // The configurator instance
+  tiledb::Configurator* config_;
+};
+
+tiledb_config_t* tiledb_config_create() {
+  // Create struct
+  tiledb_config_t* config = (tiledb_config_t*)malloc(sizeof(tiledb_config_t));
+  if (config == nullptr)
+    return nullptr;
+
+  // Create configurator
+  config->config_ = new tiledb::Configurator();
+  if (config->config_ == nullptr) {  // Allocation error
+    free(config);
+    return nullptr;
+  }
+
+  // Return the new object
+  return config;
+}
+
+int tiledb_config_free(tiledb_config_t* config) {
+  // Trivial case
+  if (config == nullptr)
+    return TILEDB_OK;
+
+  // Free configurator
+  if (config->config_ != nullptr)
+    delete config->config_;
+
+  // Free struct
+  free(config);
+
+  // Success
+  return TILEDB_OK;
+}
+
+#ifdef HAVE_MPI
+int tiledb_config_set_mpi_comm(tiledb_config_t* config, MPI_Comm* mpi_comm) {
+  // Sanity check
+  if (config == nullptr || config->config_ == nullptr)
+    return TILEDB_ERR;
+
+  // Set MPI communicator
+  config->config_->set_mpi_comm(mpi_comm);
+
+  // Success
+  return TILEDB_OK;
+}
+#endif
+
+int tiledb_config_set_read_method(
+    tiledb_config_t* config, tiledb_io_t read_method) {
+  // Sanity check
+  if (config == nullptr || config->config_ == nullptr)
+    return TILEDB_ERR;
+
+  // Set read method
+  config->config_->set_read_method(static_cast<tiledb::IOMethod>(read_method));
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_config_set_write_method(
+    tiledb_config_t* config, tiledb_io_t write_method) {
+  // Sanity check
+  if (config == nullptr || config->config_ == nullptr)
+    return TILEDB_ERR;
+
+  // Set write method
+  config->config_->set_write_method(
+      static_cast<tiledb::IOMethod>(write_method));
+
+  // Success
+  return TILEDB_OK;
 }
 
 /* ****************************** */
@@ -62,14 +136,21 @@ void tiledb_version(int* major, int* minor, int* rev) {
 struct tiledb_ctx_t {
   // storage manager instance
   tiledb::StorageManager* storage_manager_;
-  // last error assocated with this context
+  // last error associated with this context
   tiledb::Status* last_error_;
 };
 
 static bool save_error(tiledb_ctx_t* ctx, const tiledb::Status& st) {
+  // No error
   if (st.ok()) {
     return false;
   }
+
+  // Delete previous error
+  if (ctx->last_error_ != nullptr)
+    delete ctx->last_error_;
+
+  // Store new error and return
   ctx->last_error_ = new tiledb::Status(st);
   return true;
 }
@@ -81,7 +162,7 @@ tiledb::Status sanity_check(tiledb_ctx_t* ctx) {
   return tiledb::Status::Ok();
 }
 
-int tiledb_ctx_init(tiledb_ctx_t** ctx, const TileDB_Config* tiledb_config) {
+int tiledb_ctx_init(tiledb_ctx_t** ctx, const tiledb_config_t* tiledb_config) {
   // Initialize context
   tiledb::Status st;
   *ctx = (tiledb_ctx_t*)malloc(sizeof(struct tiledb_ctx_t));
@@ -89,23 +170,15 @@ int tiledb_ctx_init(tiledb_ctx_t** ctx, const TileDB_Config* tiledb_config) {
     return TILEDB_OOM;
   }
 
-  // Initialize a Config object
-  tiledb::StorageManagerConfig* config = new tiledb::StorageManagerConfig();
-  if (tiledb_config != nullptr)
-    config->init(
-        tiledb_config->home_,
-#ifdef HAVE_MPI
-        tiledb_config->mpi_comm_,
-#endif
-        static_cast<tiledb::IO>(tiledb_config->read_method_),
-        static_cast<tiledb::IO>(tiledb_config->write_method_));
-
-  // Create storage manager
+  // Create storage manager and initialize with the config object
   (*ctx)->storage_manager_ = new tiledb::StorageManager();
   (*ctx)->last_error_ = nullptr;
+  tiledb::Configurator* config =
+      (tiledb_config == nullptr) ? nullptr : tiledb_config->config_;
   if (save_error(*ctx, (*ctx)->storage_manager_->init(config)))
     return TILEDB_ERR;
 
+  // Success
   return TILEDB_OK;
 }
 
@@ -128,7 +201,7 @@ int tiledb_ctx_finalize(tiledb_ctx_t* ctx) {
 }
 
 typedef struct tiledb_error_t {
-  // pointer to a copy of the last TileDB error assciated with a given ctx
+  // pointer to a copy of the last TileDB error associated with a given ctx
   const tiledb::Status* status_;
 } tiledb_error_t;
 
@@ -157,21 +230,6 @@ int tiledb_error_free(tiledb_error_t* err) {
   return TILEDB_OK;
 }
 
-tiledb::Status check_name_length(
-    const char* obj_name, const char* path, size_t* length) {
-  if (path == nullptr)
-    return tiledb::Status::Error(
-        std::string("Invalid ") + obj_name + " argument is NULL");
-  size_t len = strlen(path);
-  if (len > TILEDB_NAME_MAX_LEN) {
-    return tiledb::Status::Error(
-        std::string("Invalid ") + obj_name + " name length");
-  }
-  if (length != nullptr)
-    *length = len;
-  return tiledb::Status::Ok();
-}
-
 /* ****************************** */
 /*              GROUP             */
 /* ****************************** */
@@ -180,12 +238,30 @@ int tiledb_group_create(tiledb_ctx_t* ctx, const char* group) {
   if (!sanity_check(ctx).ok())
     return TILEDB_ERR;
 
-  // Check group name length
-  if (save_error(ctx, check_name_length("group", group, nullptr)))
-    return TILEDB_ERR;
-
   // Create the group
   if (save_error(ctx, ctx->storage_manager_->group_create(group)))
+    return TILEDB_ERR;
+
+  // Success
+  return TILEDB_OK;
+}
+
+/* ********************************* */
+/*            BASIC ARRAY            */
+/* ********************************* */
+
+typedef struct tiledb_basic_array_t {
+  tiledb::BasicArray* basic_array_;
+  tiledb_ctx_t* ctx_;
+} tiledb_basic_array_t;
+
+int tiledb_basic_array_create(tiledb_ctx_t* ctx, const char* name) {
+  // Sanity check
+  if (!sanity_check(ctx).ok())
+    return TILEDB_ERR;
+
+  // Create the basic array
+  if (save_error(ctx, ctx->storage_manager_->basic_array_create(name)))
     return TILEDB_ERR;
 
   // Success
@@ -240,10 +316,7 @@ int tiledb_array_set_schema(
   if (save_error(ctx, sanity_check(tiledb_array_schema)))
     return TILEDB_ERR;
 
-  size_t array_name_len = 0;
-  if (save_error(ctx, check_name_length("array", array_name, &array_name_len)))
-    return TILEDB_ERR;
-
+  size_t array_name_len = strlen(array_name);
   tiledb_array_schema->array_name_ = (char*)malloc(array_name_len + 1);
   if (tiledb_array_schema->array_name_ == nullptr)
     return TILEDB_OOM;
@@ -256,10 +329,7 @@ int tiledb_array_set_schema(
   if (tiledb_array_schema->attributes_ == nullptr)
     return TILEDB_OOM;
   for (int i = 0; i < attribute_num; ++i) {
-    size_t attribute_len = 0;
-    if (save_error(
-            ctx, check_name_length("attribute", attributes[i], &attribute_len)))
-      return TILEDB_ERR;
+    size_t attribute_len = strlen(attributes[i]);
     tiledb_array_schema->attributes_[i] = (char*)malloc(attribute_len + 1);
     if (tiledb_array_schema->attributes_[i] == nullptr)
       return TILEDB_OOM;
@@ -272,10 +342,7 @@ int tiledb_array_set_schema(
   if (tiledb_array_schema->dimensions_ == nullptr)
     return TILEDB_OOM;
   for (int i = 0; i < dim_num; ++i) {
-    size_t dimension_len = 0;
-    if (save_error(
-            ctx, check_name_length("dimension", dimensions[i], &dimension_len)))
-      return TILEDB_ERR;
+    size_t dimension_len = strlen(dimensions[i]);
     tiledb_array_schema->dimensions_[i] = (char*)malloc(dimension_len + 1);
     if (tiledb_array_schema->dimensions_[i] == nullptr)
       return TILEDB_OOM;
@@ -348,7 +415,7 @@ int tiledb_array_create(
     return TILEDB_ERR;
 
   // Copy array schema to a C struct
-  ArraySchemaC array_schema_c;
+  tiledb::ArraySchemaC array_schema_c;
   array_schema_c.array_name_ = array_schema->array_name_;
   array_schema_c.attributes_ = array_schema->attributes_;
   array_schema_c.attribute_num_ = array_schema->attribute_num_;
@@ -380,9 +447,6 @@ int tiledb_array_init(
     const char** attributes,
     int attribute_num) {
   if (!sanity_check(ctx).ok())
-    return TILEDB_ERR;
-
-  if (save_error(ctx, check_name_length("array", array, nullptr)))
     return TILEDB_ERR;
 
   // Allocate memory for the array struct
@@ -448,7 +512,7 @@ int tiledb_array_get_schema(
     return TILEDB_ERR;
 
   // Get the array schema
-  ArraySchemaC array_schema_c;
+  tiledb::ArraySchemaC array_schema_c;
   tiledb_array->array_->array_schema()->array_schema_export(&array_schema_c);
 
   // Copy the array schema C struct to the output
@@ -477,17 +541,15 @@ int tiledb_array_load_schema(
   if (!sanity_check(ctx).ok())
     return TILEDB_ERR;
 
-  // Check array name length
-  if (save_error(ctx, check_name_length("array", array, nullptr)))
-    return TILEDB_ERR;
-
   // Get the array schema
-  tiledb::ArraySchema* array_schema;
-  if (save_error(
-          ctx, ctx->storage_manager_->array_load_schema(array, array_schema)))
+  tiledb::ArraySchema* array_schema = new tiledb::ArraySchema();
+  if (save_error(ctx, array_schema->load(array))) {
+    delete array_schema;
     return TILEDB_ERR;
+  }
 
-  ArraySchemaC array_schema_c;
+  // Export array schema
+  tiledb::ArraySchemaC array_schema_c;
   array_schema->array_schema_export(&array_schema_c);
 
   // Copy the array schema C struct to the output
@@ -506,8 +568,10 @@ int tiledb_array_load_schema(
   tiledb_array_schema->tile_order_ = array_schema_c.tile_order_;
   tiledb_array_schema->types_ = array_schema_c.types_;
 
+  // Clean up
   delete array_schema;
 
+  // Success
   return TILEDB_OK;
 }
 
@@ -608,9 +672,6 @@ int tiledb_array_overflow(
 
 int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array) {
   if (!sanity_check(ctx).ok())
-    return TILEDB_ERR;
-
-  if (save_error(ctx, check_name_length("array", array, nullptr)))
     return TILEDB_ERR;
 
   if (save_error(ctx, ctx->storage_manager_->array_consolidate(array)))
@@ -839,12 +900,7 @@ int tiledb_metadata_set_schema(
   if (save_error(ctx, sanity_check(tiledb_metadata_schema)))
     return TILEDB_ERR;
 
-  size_t metadata_name_len = 0;
-  if (save_error(
-          ctx,
-          check_name_length("metadata", metadata_name, &metadata_name_len)))
-    return TILEDB_ERR;
-
+  size_t metadata_name_len = strlen(metadata_name);
   tiledb_metadata_schema->metadata_name_ = (char*)malloc(metadata_name_len + 1);
   if (tiledb_metadata_schema->metadata_name_ == nullptr)
     return TILEDB_OOM;
@@ -857,10 +913,7 @@ int tiledb_metadata_set_schema(
   if (tiledb_metadata_schema->attributes_ == nullptr)
     return TILEDB_OOM;
   for (int i = 0; i < attribute_num; ++i) {
-    size_t attribute_len = 0;
-    if (save_error(
-            ctx, check_name_length("attribute", attributes[i], &attribute_len)))
-      return TILEDB_ERR;
+    size_t attribute_len = strlen(attributes[i]);
     tiledb_metadata_schema->attributes_[i] = (char*)malloc(attribute_len + 1);
     if (tiledb_metadata_schema->attributes_[i] == nullptr)
       return TILEDB_OOM;
@@ -914,7 +967,7 @@ int tiledb_metadata_create(
     return TILEDB_ERR;
 
   // Copy metadata schema to the proper struct
-  MetadataSchemaC metadata_schema_c;
+  tiledb::MetadataSchemaC metadata_schema_c;
   metadata_schema_c.metadata_name_ = metadata_schema->metadata_name_;
   metadata_schema_c.attributes_ = metadata_schema->attributes_;
   metadata_schema_c.attribute_num_ = metadata_schema->attribute_num_;
@@ -996,7 +1049,7 @@ int tiledb_metadata_get_schema(
     return TILEDB_ERR;
 
   // Get the metadata schema
-  MetadataSchemaC metadata_schema_c;
+  tiledb::MetadataSchemaC metadata_schema_c;
   tiledb_metadata->metadata_->array_schema()->array_schema_export(
       &metadata_schema_c);
 
@@ -1019,9 +1072,6 @@ int tiledb_metadata_load_schema(
   if (!sanity_check(ctx).ok())
     return TILEDB_ERR;
 
-  if (save_error(ctx, check_name_length("metadata", metadata, nullptr)))
-    return TILEDB_ERR;
-
   // Get the array schema
   tiledb::ArraySchema* array_schema;
 
@@ -1030,7 +1080,7 @@ int tiledb_metadata_load_schema(
           ctx->storage_manager_->metadata_load_schema(metadata, array_schema)))
     return TILEDB_ERR;
 
-  MetadataSchemaC metadata_schema_c;
+  tiledb::MetadataSchemaC metadata_schema_c;
   array_schema->array_schema_export(&metadata_schema_c);
 
   // Copy the metadata schema C struct to the output
@@ -1126,9 +1176,6 @@ int tiledb_metadata_overflow(
 
 int tiledb_metadata_consolidate(tiledb_ctx_t* ctx, const char* metadata) {
   if (!sanity_check(ctx).ok())
-    return TILEDB_ERR;
-
-  if (save_error(ctx, check_name_length("metadata", metadata, nullptr)))
     return TILEDB_ERR;
 
   if (save_error(ctx, ctx->storage_manager_->metadata_consolidate(metadata)))
@@ -1284,8 +1331,12 @@ int tiledb_clear(tiledb_ctx_t* ctx, const char* dir) {
   if (!sanity_check(ctx).ok())
     return TILEDB_ERR;
 
-  if (save_error(ctx, check_name_length("directory", dir, nullptr)))
+  // TODO: do this everywhere
+  if (dir == nullptr) {
+    save_error(
+        ctx, tiledb::Status::Error("Invalid directory argument is NULL"));
     return TILEDB_ERR;
+  }
 
   if (save_error(ctx, ctx->storage_manager_->clear(dir)))
     return TILEDB_ERR;
@@ -1297,9 +1348,6 @@ int tiledb_delete(tiledb_ctx_t* ctx, const char* dir) {
   if (!sanity_check(ctx).ok())
     return TILEDB_ERR;
 
-  if (save_error(ctx, check_name_length("directory", dir, nullptr)))
-    return TILEDB_ERR;
-
   if (save_error(ctx, ctx->storage_manager_->delete_entire(dir)))
     return TILEDB_ERR;
 
@@ -1308,12 +1356,6 @@ int tiledb_delete(tiledb_ctx_t* ctx, const char* dir) {
 
 int tiledb_move(tiledb_ctx_t* ctx, const char* old_dir, const char* new_dir) {
   if (!sanity_check(ctx).ok())
-    return TILEDB_ERR;
-
-  if (save_error(ctx, check_name_length("old directory ", old_dir, nullptr)))
-    return TILEDB_ERR;
-
-  if (save_error(ctx, check_name_length("new directory", new_dir, nullptr)))
     return TILEDB_ERR;
 
   if (save_error(ctx, ctx->storage_manager_->move(old_dir, new_dir)))
@@ -1332,10 +1374,6 @@ int tiledb_ls(
     return TILEDB_ERR;
 
   if (save_error(
-          ctx, check_name_length("parent directory", parent_dir, nullptr)))
-    return TILEDB_ERR;
-
-  if (save_error(
           ctx,
           ctx->storage_manager_->ls(parent_dir, dirs, dir_types, *dir_num)))
     return TILEDB_ERR;
@@ -1347,10 +1385,6 @@ int tiledb_ls_c(tiledb_ctx_t* ctx, const char* parent_dir, int* dir_num) {
   if (!sanity_check(ctx).ok())
     return TILEDB_ERR;
 
-  if (save_error(
-          ctx, check_name_length("parent directory", parent_dir, nullptr)))
-    return TILEDB_ERR;
-
   if (save_error(ctx, ctx->storage_manager_->ls_c(parent_dir, *dir_num)))
     return TILEDB_ERR;
 
@@ -1358,7 +1392,7 @@ int tiledb_ls_c(tiledb_ctx_t* ctx, const char* parent_dir, int* dir_num) {
 }
 
 /* ****************************** */
-/*     ASYNCHRONOUS I/O (AIO      */
+/*     ASYNCHRONOUS I/O (AIO)     */
 /* ****************************** */
 
 int tiledb_array_aio_read(
@@ -1370,7 +1404,8 @@ int tiledb_array_aio_read(
   tiledb_ctx_t* ctx = tiledb_array->ctx_;
 
   // Copy the AIO request
-  AIO_Request* aio_request = (AIO_Request*)malloc(sizeof(struct AIO_Request));
+  tiledb::AIO_Request* aio_request =
+      (tiledb::AIO_Request*)malloc(sizeof(struct tiledb::AIO_Request));
   aio_request->id_ = (size_t)tiledb_aio_request;
   aio_request->buffers_ = tiledb_aio_request->buffers_;
   aio_request->buffer_sizes_ = tiledb_aio_request->buffer_sizes_;
@@ -1397,7 +1432,8 @@ int tiledb_array_aio_write(
   tiledb_ctx_t* ctx = tiledb_array->ctx_;
 
   // Copy the AIO request
-  AIO_Request* aio_request = (AIO_Request*)malloc(sizeof(struct AIO_Request));
+  tiledb::AIO_Request* aio_request =
+      (tiledb::AIO_Request*)malloc(sizeof(struct tiledb::AIO_Request));
   aio_request->id_ = (size_t)tiledb_aio_request;
   aio_request->buffers_ = tiledb_aio_request->buffers_;
   aio_request->buffer_sizes_ = tiledb_aio_request->buffer_sizes_;

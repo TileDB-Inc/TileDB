@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,8 +31,8 @@
  * This file defines class Array.
  */
 
-#ifndef __ARRAY_H__
-#define __ARRAY_H__
+#ifndef __TILEDB_ARRAY_H__
+#define __TILEDB_ARRAY_H__
 
 #include <pthread.h>
 #include <queue>
@@ -42,25 +43,10 @@
 #include "array_sorted_read_state.h"
 #include "array_sorted_write_state.h"
 #include "book_keeping.h"
+#include "configurator.h"
 #include "fragment.h"
-#include "storage_manager_config.h"
-
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/** Size of the buffer used during consolidation. */
-#define TILEDB_CONSOLIDATION_BUFFER_SIZE 10000000  // ~10 MB
-
-// TODO: could be moved to another place
-/** The maximum length for the names of TileDB objects. */
-#define TILEDB_NAME_MAX_LEN 256
 
 namespace tiledb {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
 
 class ArrayReadState;
 class ArraySortedReadState;
@@ -122,7 +108,7 @@ class Array {
   const std::vector<int>& attribute_ids() const;
 
   /** Returns the configuration parameters. */
-  const StorageManagerConfig* config() const;
+  const Configurator* config() const;
 
   /** Returns the number of fragments in this array. */
   int fragment_num() const;
@@ -285,7 +271,7 @@ class Array {
       const char** attributes,
       int attribute_num,
       const void* subarray,
-      const StorageManagerConfig* config,
+      const Configurator* config,
       Array* array_clone = nullptr);
 
   /**
@@ -449,7 +435,7 @@ class Array {
    */
   std::vector<int> attribute_ids_;
   /** Configuration parameters. */
-  const StorageManagerConfig* config_;
+  const Configurator* config_;
   /** The array fragments. */
   std::vector<Fragment*> fragments_;
   /**
@@ -539,5 +525,6 @@ class Array {
       const std::vector<BookKeeping*>& book_keeping);
 };
 
-};  // namespace tiledb
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_ARRAY_H__

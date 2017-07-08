@@ -1,11 +1,11 @@
 /**
- * @file   constants.h
+ * @file   basic_array_schema.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2016 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,32 +27,53 @@
  *
  * @section DESCRIPTION
  *
- * This file contains global TileDB constants.
+ * This file defines class BasicArraySchema.
  */
 
-#ifndef __CONSTANTS_H__
-#define __CONSTANTS_H__
+#ifndef __TILEDB_BASIC_ARRAY_SCHEMA_H__
+#define __TILEDB_BASIC_ARRAY_SCHEMA_H__
 
-#include <cfloat>
-#include <climits>
+#include "array_schema.h"
 
 namespace tiledb {
 
-/**@{*/
-/** Special empty cell value. */
-#define TILEDB_EMPTY_INT32 INT_MAX
-#define TILEDB_EMPTY_INT64 INT64_MAX
-#define TILEDB_EMPTY_FLOAT32 FLT_MAX
-#define TILEDB_EMPTY_FLOAT64 DBL_MAX
-#define TILEDB_EMPTY_CHAR CHAR_MAX
-#define TILEDB_EMPTY_INT8 INT8_MAX
-#define TILEDB_EMPTY_UINT8 UINT8_MAX
-#define TILEDB_EMPTY_INT16 INT16_MAX
-#define TILEDB_EMPTY_UINT16 UINT16_MAX
-#define TILEDB_EMPTY_UINT32 UINT32_MAX
-#define TILEDB_EMPTY_UINT64 UINT64_MAX
-/**@}*/
+/** Defines the BasicArraySchema. */
+class BasicArraySchema {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
 
-};  // tiledb namespace
+  /**
+   * Consturctor.
+   *
+   * @param name The name of the basic array.
+   */
+  BasicArraySchema(const char* name);
 
-#endif  // __CONSTANTS_H__
+  /** Destructor. */
+  ~BasicArraySchema();
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /**
+   * Returns the underlying array schema.
+   *
+   * @return The array schema.
+   */
+  ArraySchema* array_schema();
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /** The array schema object that implements BasicArraySchema. */
+  ArraySchema* array_schema_;
+};
+
+}  // namespace tiledb
+
+#endif  // __TILEDB_BASIC_ARRAY_SCHEMA_H__

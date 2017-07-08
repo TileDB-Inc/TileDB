@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,8 +31,8 @@
  * This file defines class Fragment.
  */
 
-#ifndef __FRAGMENT_H__
-#define __FRAGMENT_H__
+#ifndef __TILEDB_FRAGMENT_H__
+#define __TILEDB_FRAGMENT_H__
 
 #include <vector>
 #include "array.h"
@@ -41,10 +42,6 @@
 #include "write_state.h"
 
 namespace tiledb {
-
-/* ********************************* */
-/*          GLOBAL VARIABLES         */
-/* ********************************* */
 
 class Array;
 class BookKeeping;
@@ -231,5 +228,6 @@ class Fragment {
   Status rename_fragment();
 };
 
-};  // namespace tiledb
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_FRAGMENT_H__

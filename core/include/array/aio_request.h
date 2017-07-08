@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,11 +31,13 @@
  * This file declares the AIO_Request struct.
  */
 
-#ifndef __AIO_REQUEST_H__
-#define __AIO_REQUEST_H__
+#ifndef __TILEDB_AIO_REQUEST_H__
+#define __TILEDB_AIO_REQUEST_H__
 
 #include <cstdio>
 #include "tiledb.h"
+
+namespace tiledb {
 
 /** Describes an AIO (read or write) request. */
 struct AIO_Request {
@@ -102,4 +105,6 @@ struct AIO_Request {
   const void* subarray_;
 };
 
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_AIO_REQUEST_H__

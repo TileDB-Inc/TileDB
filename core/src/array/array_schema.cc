@@ -1,10 +1,11 @@
-/*
+/**
  * @file   array_schema.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,19 +32,18 @@
  */
 
 #include "array_schema.h"
-#include <algorithm>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include <cassert>
 #include <cmath>
-#include <cstring>
 #include <iostream>
-#include "constants.h"
+#include "configurator.h"
 #include "logger.h"
 #include "utils.h"
 
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
-#define LOG_ERROR(x)
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -768,6 +768,38 @@ Status ArraySchema::serialize(
   return Status::Ok();
 }
 
+Status ArraySchema::store(const std::string& dir) const {
+  // Open array schema file
+  std::string filename = dir + "/" + Configurator::array_schema_filename();
+  remove(filename.c_str());
+  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+  if (fd == -1)
+    return LOG_STATUS(Status::ArraySchemaError(
+        std::string("Cannot store schema; ") + strerror(errno)));
+
+  // Serialize array schema
+  void* array_schema_bin;
+  size_t array_schema_bin_size;
+  RETURN_NOT_OK(serialize(array_schema_bin, array_schema_bin_size));
+
+  // Store the array schema
+  ssize_t bytes_written = ::write(fd, array_schema_bin, array_schema_bin_size);
+  if (bytes_written != ssize_t(array_schema_bin_size)) {
+    free(array_schema_bin);
+    return LOG_STATUS(Status::ArraySchemaError(
+        std::string("Cannot store schema; ") + strerror(errno)));
+  }
+
+  // Clean up
+  free(array_schema_bin);
+  if (::close(fd))
+    return LOG_STATUS(Status::ArraySchemaError(
+        std::string("Cannot store schema; ") + strerror(errno)));
+
+  // Success
+  return Status::Ok();
+}
+
 template <class T>
 int ArraySchema::subarray_overlap(
     const T* subarray_a, const T* subarray_b, T* overlap_subarray) const {
@@ -1050,10 +1082,12 @@ Status ArraySchema::deserialize(
   assert(offset + array_name_size < buffer_size);
   memcpy(&array_name_[0], buffer + offset, array_name_size);
   offset += array_name_size;
+
   // Load dense_
   assert(offset + sizeof(bool) < buffer_size);
   memcpy(&dense_, buffer + offset, sizeof(bool));
   offset += sizeof(bool);
+
   // Load tile_order_
   char tile_order;
   assert(offset + sizeof(char) < buffer_size);
@@ -1085,6 +1119,7 @@ Status ArraySchema::deserialize(
     memcpy(&attributes_[i][0], buffer + offset, attribute_size);
     offset += attribute_size;
   }
+
   // Load dimensions_
   assert(offset + sizeof(int) < buffer_size);
   memcpy(&dim_num_, buffer + offset, sizeof(int));
@@ -1122,6 +1157,7 @@ Status ArraySchema::deserialize(
     memcpy(tile_extents_, buffer + offset, tile_extents_size);
     offset += tile_extents_size;
   }
+
   // Load types_ and set type sizes
   char type;
   types_.resize(attribute_num_ + 1);
@@ -1250,19 +1286,19 @@ Status ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
   // Set dimensions
   char** dimensions = (char**)malloc(4 * sizeof(char*));
   size_t dimension_len;
-  dimension_len = strlen(TILEDB_AS_KEY_DIM1_NAME);
+  dimension_len = strlen(Configurator::key_dim1_name());
   dimensions[0] = (char*)malloc(dimension_len + 1);
-  strcpy(dimensions[0], TILEDB_AS_KEY_DIM1_NAME);
-  dimension_len = strlen(TILEDB_AS_KEY_DIM2_NAME);
+  strcpy(dimensions[0], Configurator::key_dim1_name());
+  dimension_len = strlen(Configurator::key_dim2_name());
   dimensions[1] = (char*)malloc(dimension_len + 1);
-  strcpy(dimensions[1], TILEDB_AS_KEY_DIM2_NAME);
-  dimension_len = strlen(TILEDB_AS_KEY_DIM3_NAME);
+  strcpy(dimensions[1], Configurator::key_dim2_name());
+  dimension_len = strlen(Configurator::key_dim3_name());
   dimensions[2] = (char*)malloc(dimension_len + 1);
-  strcpy(dimensions[2], TILEDB_AS_KEY_DIM3_NAME);
+  strcpy(dimensions[2], Configurator::key_dim3_name());
   array_schema_c.dimensions_ = dimensions;
-  dimension_len = strlen(TILEDB_AS_KEY_DIM4_NAME);
+  dimension_len = strlen(Configurator::key_dim4_name());
   dimensions[3] = (char*)malloc(dimension_len + 1);
-  strcpy(dimensions[3], TILEDB_AS_KEY_DIM4_NAME);
+  strcpy(dimensions[3], Configurator::key_dim4_name());
   array_schema_c.dimensions_ = dimensions;
   array_schema_c.dim_num_ = 4;
 
@@ -1328,6 +1364,58 @@ Status ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
   return Status::Ok();
 }
 
+Status ArraySchema::load(const std::string& dir) {
+  // Get real array path
+  std::string real_dir = utils::real_dir(dir);
+
+  // Check if array exists
+  if (!utils::is_array(real_dir))
+    return LOG_STATUS(Status::ArraySchemaError(
+        std::string("Cannot load array schema; Array '") + real_dir +
+        "' does not exist"));
+
+  // Open array schema file
+  std::string filename = real_dir + "/" + Configurator::array_schema_filename();
+  int fd = ::open(filename.c_str(), O_RDONLY);
+  if (fd == -1)
+    return LOG_STATUS(
+        Status::ArraySchemaError("Cannot load schema; File opening error"));
+
+  // Initialize buffer
+  struct stat _stat;
+  fstat(fd, &_stat);
+  ssize_t buffer_size = _stat.st_size;
+
+  if (buffer_size == 0)
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot load array schema; Empty array schema file"));
+  void* buffer = malloc(buffer_size);
+
+  // Load array schema
+  ssize_t bytes_read = ::read(fd, buffer, buffer_size);
+  if (bytes_read != buffer_size) {
+    free(buffer);
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot load array schema; File reading error"));
+  }
+
+  // Initialize array schema
+  Status st = deserialize(buffer, buffer_size);
+  if (!st.ok()) {
+    free(buffer);
+    return st;
+  }
+
+  // Clean up
+  free(buffer);
+  if (::close(fd))
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Cannot load array schema; File closing error"));
+
+  // Success
+  return Status::Ok();
+}
+
 void ArraySchema::set_array_name(const char* array_name) {
   // Get real array name
   std::string array_name_real = utils::real_dir(array_name);
@@ -1338,17 +1426,15 @@ void ArraySchema::set_array_name(const char* array_name) {
 
 Status ArraySchema::set_attributes(char** attributes, int attribute_num) {
   // Sanity check on attributes
-  if (attributes == nullptr) {
+  if (attributes == nullptr)
     return LOG_STATUS(
         Status::ArraySchemaError("Cannot set attributes; No attributes given"));
-  }
 
   // Sanity check on attribute number
-  if (attribute_num <= 0) {
+  if (attribute_num <= 0)
     return LOG_STATUS(
         Status::ArraySchemaError("Cannot set attributes; "
                                  "The number of attributes must be positive"));
-  }
 
   // Set attributes and attribute number
   for (int i = 0; i < attribute_num; ++i)
@@ -1380,7 +1466,7 @@ void ArraySchema::set_capacity(int64_t capacity) {
   if (capacity > 0)
     capacity_ = capacity;
   else
-    capacity_ = TILEDB_AS_CAPACITY;
+    capacity_ = Configurator::capacity();
 }
 
 void ArraySchema::set_cell_val_num(const int* cell_val_num) {
@@ -2827,4 +2913,4 @@ template int64_t ArraySchema::tile_id<uint32_t>(
 template int64_t ArraySchema::tile_id<uint64_t>(
     const uint64_t* cell_coords) const;
 
-};  // namespace tiledb
+}  // namespace tiledb

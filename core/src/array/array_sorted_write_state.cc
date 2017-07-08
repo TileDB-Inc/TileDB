@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -33,7 +34,6 @@
 #include "array_sorted_write_state.h"
 #include <cassert>
 #include <cmath>
-#include "constants.h"
 #include "logger.h"
 #include "utils.h"
 
@@ -1096,7 +1096,7 @@ void ArraySortedWriteState::fill_with_empty<int>(int bid) {
   // For easy reference
   int* local_buffer = (int*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  int empty = TILEDB_EMPTY_INT32;
+  int empty = Configurator::empty_int32();
 
   // Fill with empty values
   size_t offset = 0;
@@ -1109,7 +1109,7 @@ void ArraySortedWriteState::fill_with_empty<int64_t>(int bid) {
   // For easy reference
   int64_t* local_buffer = (int64_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  int64_t empty = TILEDB_EMPTY_INT64;
+  int64_t empty = Configurator::empty_int64();
 
   // Fill with empty values
   size_t offset = 0;
@@ -1123,7 +1123,7 @@ void ArraySortedWriteState::fill_with_empty<float>(int bid) {
   // For easy reference
   float* local_buffer = (float*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  float empty = TILEDB_EMPTY_FLOAT32;
+  float empty = Configurator::empty_float32();
 
   // Fill with empty values
   size_t offset = 0;
@@ -1136,7 +1136,7 @@ void ArraySortedWriteState::fill_with_empty<double>(int bid) {
   // For easy reference
   double* local_buffer = (double*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  double empty = TILEDB_EMPTY_FLOAT64;
+  double empty = Configurator::empty_float64();
 
   // Fill with empty values
   size_t offset = 0;
@@ -1149,7 +1149,7 @@ void ArraySortedWriteState::fill_with_empty<char>(int bid) {
   // For easy reference
   char* local_buffer = (char*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  char empty = TILEDB_EMPTY_CHAR;
+  char empty = Configurator::empty_char();
 
   // Fill with empty values
   size_t offset = 0;
@@ -1162,7 +1162,7 @@ void ArraySortedWriteState::fill_with_empty<int8_t>(int bid) {
   // For easy reference
   int8_t* local_buffer = (int8_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  int8_t empty = TILEDB_EMPTY_INT8;
+  int8_t empty = Configurator::empty_int8();
 
   // Fill with empty values
   size_t offset = 0;
@@ -1175,7 +1175,7 @@ void ArraySortedWriteState::fill_with_empty<uint8_t>(int bid) {
   // For easy reference
   uint8_t* local_buffer = (uint8_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  uint8_t empty = TILEDB_EMPTY_UINT8;
+  uint8_t empty = Configurator::empty_uint8();
 
   // Fill with empty values
   size_t offset = 0;
@@ -1189,7 +1189,7 @@ void ArraySortedWriteState::fill_with_empty<int16_t>(int bid) {
   // For easy reference
   int16_t* local_buffer = (int16_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  int16_t empty = TILEDB_EMPTY_INT16;
+  int16_t empty = Configurator::empty_int16();
 
   // Fill with empty values
   size_t offset = 0;
@@ -1203,7 +1203,7 @@ void ArraySortedWriteState::fill_with_empty<uint16_t>(int bid) {
   // For easy reference
   uint16_t* local_buffer = (uint16_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  uint16_t empty = TILEDB_EMPTY_UINT16;
+  uint16_t empty = Configurator::empty_uint16();
 
   // Fill with empty values
   size_t offset = 0;
@@ -1217,7 +1217,7 @@ void ArraySortedWriteState::fill_with_empty<uint32_t>(int bid) {
   // For easy reference
   uint32_t* local_buffer = (uint32_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  uint32_t empty = TILEDB_EMPTY_UINT32;
+  uint32_t empty = Configurator::empty_uint32();
 
   // Fill with empty values
   size_t offset = 0;
@@ -1231,7 +1231,7 @@ void ArraySortedWriteState::fill_with_empty<uint64_t>(int bid) {
   // For easy reference
   uint64_t* local_buffer = (uint64_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  uint64_t empty = TILEDB_EMPTY_UINT64;
+  uint64_t empty = Configurator::empty_uint64();
 
   // Fill with empty values
   size_t offset = 0;
@@ -1246,7 +1246,7 @@ void ArraySortedWriteState::fill_with_empty_var<int>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  int empty = TILEDB_EMPTY_INT32;
+  int empty = Configurator::empty_int32();
 
   // Fill an empty value
   memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(int));
@@ -1258,7 +1258,7 @@ void ArraySortedWriteState::fill_with_empty_var<int64_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  int64_t empty = TILEDB_EMPTY_INT64;
+  int64_t empty = Configurator::empty_int64();
 
   // Fill an empty value
   memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(int64_t));
@@ -1270,7 +1270,7 @@ void ArraySortedWriteState::fill_with_empty_var<float>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  float empty = TILEDB_EMPTY_FLOAT32;
+  float empty = Configurator::empty_float32();
 
   // Fill an empty value
   memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(float));
@@ -1282,7 +1282,7 @@ void ArraySortedWriteState::fill_with_empty_var<double>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  double empty = TILEDB_EMPTY_FLOAT64;
+  double empty = Configurator::empty_float64();
 
   // Fill an empty value
   memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(double));
@@ -1294,7 +1294,7 @@ void ArraySortedWriteState::fill_with_empty_var<char>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  char empty = TILEDB_EMPTY_CHAR;
+  char empty = Configurator::empty_char();
 
   // Fill an empty value
   memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(char));
@@ -1306,7 +1306,7 @@ void ArraySortedWriteState::fill_with_empty_var<int8_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  int8_t empty = TILEDB_EMPTY_INT8;
+  int8_t empty = Configurator::empty_int8();
 
   // Fill an empty value
   memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(int8_t));
@@ -1318,7 +1318,7 @@ void ArraySortedWriteState::fill_with_empty_var<uint8_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  uint8_t empty = TILEDB_EMPTY_UINT8;
+  uint8_t empty = Configurator::empty_uint8();
 
   // Fill an empty value
   memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint8_t));
@@ -1330,7 +1330,7 @@ void ArraySortedWriteState::fill_with_empty_var<int16_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  int16_t empty = TILEDB_EMPTY_INT16;
+  int16_t empty = Configurator::empty_int16();
 
   // Fill an empty value
   memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(int16_t));
@@ -1342,7 +1342,7 @@ void ArraySortedWriteState::fill_with_empty_var<uint16_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  uint16_t empty = TILEDB_EMPTY_UINT16;
+  uint16_t empty = Configurator::empty_uint16();
 
   // Fill an empty value
   memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint16_t));
@@ -1354,7 +1354,7 @@ void ArraySortedWriteState::fill_with_empty_var<uint32_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  uint32_t empty = TILEDB_EMPTY_UINT32;
+  uint32_t empty = Configurator::empty_uint32();
 
   // Fill an empty value
   memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint32_t));
@@ -1366,7 +1366,7 @@ void ArraySortedWriteState::fill_with_empty_var<uint64_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  uint64_t empty = TILEDB_EMPTY_UINT64;
+  uint64_t empty = Configurator::empty_uint64();
 
   // Fill an empty value
   memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint64_t));
@@ -2063,4 +2063,4 @@ template Status ArraySortedWriteState::write_sorted_row<uint16_t>();
 template Status ArraySortedWriteState::write_sorted_row<uint32_t>();
 template Status ArraySortedWriteState::write_sorted_row<uint64_t>();
 
-};  // namespace tiledb
+}  // namespace tiledb

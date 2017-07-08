@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -31,13 +32,8 @@
  */
 
 #include "array.h"
-#include <sys/syscall.h>
 #include <sys/time.h>
-#include <unistd.h>
-#include <algorithm>
 #include <cassert>
-#include <cstring>
-#include <iostream>
 #include "logger.h"
 #include "utils.h"
 
@@ -188,7 +184,7 @@ const std::vector<int>& Array::attribute_ids() const {
   return attribute_ids_;
 }
 
-const StorageManagerConfig* Array::config() const {
+const Configurator* Array::config() const {
   return config_;
 }
 
@@ -320,6 +316,8 @@ Status Array::consolidate(
 Status Array::consolidate(Fragment* new_fragment, int attribute_id) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
+  uint64_t consolidation_buffer_size =
+      Configurator::consolidation_buffer_size();
 
   // Do nothing if the array is dense for the coordinates attribute
   if (array_schema_->dense() && attribute_id == attribute_num)
@@ -339,12 +337,12 @@ Status Array::consolidate(Fragment* new_fragment, int attribute_id) {
   int buffer_i = 0;
   for (int i = 0; i < attribute_num + 1; ++i) {
     if (i == attribute_id) {
-      buffers[buffer_i] = malloc(TILEDB_CONSOLIDATION_BUFFER_SIZE);
-      buffer_sizes[buffer_i] = TILEDB_CONSOLIDATION_BUFFER_SIZE;
+      buffers[buffer_i] = malloc(consolidation_buffer_size);
+      buffer_sizes[buffer_i] = consolidation_buffer_size;
       ++buffer_i;
       if (array_schema_->var_size(i)) {
-        buffers[buffer_i] = malloc(TILEDB_CONSOLIDATION_BUFFER_SIZE);
-        buffer_sizes[buffer_i] = TILEDB_CONSOLIDATION_BUFFER_SIZE;
+        buffers[buffer_i] = malloc(consolidation_buffer_size);
+        buffer_sizes[buffer_i] = consolidation_buffer_size;
         ++buffer_i;
       }
     } else {
@@ -472,8 +470,11 @@ Status Array::init(
     const char** attributes,
     int attribute_num,
     const void* subarray,
-    const StorageManagerConfig* config,
+    const Configurator* config,
     Array* array_clone) {
+  // For easy reference
+  unsigned name_max_len = Configurator::name_max_len();
+
   // Set mode
   mode_ = mode;
 
@@ -511,10 +512,8 @@ Status Array::init(
     bool sparse = !array_schema->dense();
     for (int i = 0; i < attribute_num; ++i) {
       // Check attribute name length
-      if (attributes[i] == nullptr ||
-          strlen(attributes[i]) > TILEDB_NAME_MAX_LEN) {
+      if (attributes[i] == nullptr || strlen(attributes[i]) > name_max_len)
         return LOG_STATUS(Status::ArrayError("Invalid attribute name length"));
-      }
       attributes_vec.emplace_back(attributes[i]);
       if (!strcmp(attributes[i], TILEDB_COORDS))
         coords_found = true;
@@ -613,6 +612,9 @@ Status Array::init(
 }
 
 Status Array::reset_attributes(const char** attributes, int attribute_num) {
+  // For easy reference
+  unsigned name_max_len = Configurator::name_max_len();
+
   // Get attributes
   std::vector<std::string> attributes_vec;
   if (attributes == nullptr) {  // Default: all attributes
@@ -623,10 +625,8 @@ Status Array::reset_attributes(const char** attributes, int attribute_num) {
     // Copy attribute names
     for (int i = 0; i < attribute_num; ++i) {
       // Check attribute name length
-      if (attributes[i] == nullptr ||
-          strlen(attributes[i]) > TILEDB_NAME_MAX_LEN) {
+      if (attributes[i] == nullptr || strlen(attributes[i]) > name_max_len)
         return LOG_STATUS(Status::ArrayError("Invalid attribute name length"));
-      }
       attributes_vec.emplace_back(attributes[i]);
     }
 
@@ -1040,13 +1040,16 @@ Status Array::aio_thread_destroy() {
 }
 
 std::string Array::new_fragment_name() const {
+  // For easy reference
+  unsigned name_max_len = Configurator::name_max_len();
+
   struct timeval tp;
   gettimeofday(&tp, nullptr);
   uint64_t ms = (uint64_t)tp.tv_sec * 1000L + tp.tv_usec / 1000;
   pthread_t self = pthread_self();
   uint64_t tid = 0;
   memcpy(&tid, &self, std::min(sizeof(self), sizeof(tid)));
-  char fragment_name[TILEDB_NAME_MAX_LEN];
+  char fragment_name[name_max_len];
 
   // Get MAC address
   std::string mac = utils::get_mac_addr();

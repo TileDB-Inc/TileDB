@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,34 +31,19 @@
  * This file defines class ArraySchema.
  */
 
-#ifndef __ARRAY_SCHEMA_H__
-#define __ARRAY_SCHEMA_H__
+#ifndef __TILEDB_ARRAY_SCHEMA_H__
+#define __TILEDB_ARRAY_SCHEMA_H__
 
 #include <limits>
 #include <string>
 #include <typeinfo>
 #include <vector>
-#include "array_compressor.h"
-#include "array_datatype.h"
-#include "array_layout.h"
 #include "array_schema_c.h"
+#include "compressor.h"
+#include "datatype.h"
+#include "layout.h"
 #include "metadata_schema_c.h"
 #include "status.h"
-
-/* ********************************* */
-/*             CONSTANTS             */
-/* ********************************* */
-
-/**@{*/
-/** Special key dimension name. */
-#define TILEDB_AS_KEY_DIM1_NAME "__key_dim_1"
-#define TILEDB_AS_KEY_DIM2_NAME "__key_dim_2"
-#define TILEDB_AS_KEY_DIM3_NAME "__key_dim_3"
-#define TILEDB_AS_KEY_DIM4_NAME "__key_dim_4"
-/**@}*/
-
-/** Default parameters. */
-#define TILEDB_AS_CAPACITY 10000
 
 namespace tiledb {
 
@@ -204,6 +190,14 @@ class ArraySchema {
       void*& array_schema_bin, size_t& array_schema_bin_size) const;
 
   /**
+   * Stores the array schema in a file inside directory *dir*.
+   *
+   * @param dir The directory where the array schema file will be stored.
+   * @return Status
+   */
+  Status store(const std::string& dir) const;
+
+  /**
    * Returns the type of overlap of the input subarrays.
    *
    * @tparam T The types of the subarrays.
@@ -282,7 +276,7 @@ class ArraySchema {
   bool var_size(int attribute_id) const;
 
   /* ********************************* */
-  /*             ACCESSORS             */
+  /*              MUTATORS             */
   /* ********************************* */
 
   /**
@@ -312,6 +306,14 @@ class ArraySchema {
    * @return TILEDB_AS_OK for success, and TILEDB_AS_ERR for error.
    */
   Status init(const MetadataSchemaC* metadata_schema_c);
+
+  /**
+   * Loads the schema of an array from the disk.
+   *
+   * @param dir The directory of the array.
+   * @return Status.
+   */
+  Status load(const std::string& dir);
 
   /** Sets the array name. */
   void set_array_name(const char* array_name);
@@ -1023,5 +1025,6 @@ class ArraySchema {
   int64_t tile_slab_row_cell_num(const T* subarray) const;
 };
 
-};  // namespace tiledb
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_ARRAY_SCHEMA_H__

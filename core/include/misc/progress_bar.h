@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -30,19 +31,12 @@
  * This file defines class ProgressBar.
  */
 
-#ifndef __PROGRESS_BAR_H__
-#define __PROGRESS_BAR_H__
+#ifndef __TILEDB_PROGRESS_BAR_H__
+#define __TILEDB_PROGRESS_BAR_H__
 
 #include <cstring>
 
-/** The default complete amount of the bar. */
-#define PB_COMPLETE 1.0
-/** The default filler character of the bar. */
-#define PB_FILLER '='
-/** The default maximum length of the bar. */
-#define PB_MAX_LENGTH 30
-/** The increase in the incomplete/complete ratio before the next print. */
-#define PB_RATIO_STEP 0.01
+namespace tiledb {
 
 /** Implements a simple progress bar printed in standard output. */
 class ProgressBar {
@@ -59,9 +53,9 @@ class ProgressBar {
    * @param filler The character that fills the bar.
    */
   ProgressBar(
-      double complete = PB_COMPLETE,
-      int max_length = PB_MAX_LENGTH,
-      char filler = PB_FILLER);
+      double complete = COMPLETE,
+      int max_length = MAX_LENGTH,
+      char filler = FILLER);
 
   /** Destructor. */
   ~ProgressBar();
@@ -102,6 +96,21 @@ class ProgressBar {
 
   /** Prints the bar with its current status. */
   void print();
+
+  /* ********************************* */
+  /*          PRIVATE CONSTANTS        */
+  /* ********************************* */
+
+  /** The default complete amount of the bar. */
+  static const float COMPLETE;
+  /** The default filler character of the bar. */
+  static const char FILLER;
+  /** The default maximum length of the bar. */
+  static const int MAX_LENGTH;
+  /** The increase in the incomplete/complete ratio before the next print. */
+  static const float RATIO_STEP;
 };
 
-#endif
+}  // namespace tiledb
+
+#endif  // __TILEDB_PROGRESS_BAR__

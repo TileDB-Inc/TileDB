@@ -5,6 +5,7 @@
  *
  * The MIT License
  *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -33,7 +34,7 @@
 #include "array_read_state.h"
 #include <cassert>
 #include <cmath>
-#include "constants.h"
+#include "configurator.h"
 #include "logger.h"
 #include "utils.h"
 
@@ -45,12 +46,6 @@
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 namespace tiledb {
-
-/* ****************************** */
-/*        GLOBAL VARIABLES        */
-/* ****************************** */
-
-std::string tiledb_ars_errmsg = "";
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -699,7 +694,7 @@ void ArrayReadState::copy_cells_with_empty<int>(
   int64_t cell_num_to_copy = bytes_to_copy / cell_size;
 
   // Copy empty cells to buffer
-  int empty = TILEDB_EMPTY_INT32;
+  int empty = Configurator::empty_int32();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     for (int j = 0; j < cell_val_num; ++j) {
       memcpy(buffer_c + buffer_offset, &empty, sizeof(int));
@@ -748,7 +743,7 @@ void ArrayReadState::copy_cells_with_empty<int64_t>(
   int64_t cell_num_to_copy = bytes_to_copy / cell_size;
 
   // Copy empty cells to buffer
-  int64_t empty = TILEDB_EMPTY_INT64;
+  int64_t empty = Configurator::empty_int64();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     for (int j = 0; j < cell_val_num; ++j) {
       memcpy(buffer_c + buffer_offset, &empty, sizeof(int64_t));
@@ -797,7 +792,7 @@ void ArrayReadState::copy_cells_with_empty<float>(
   int64_t cell_num_to_copy = bytes_to_copy / cell_size;
 
   // Copy empty cells to buffer
-  float empty = TILEDB_EMPTY_FLOAT32;
+  float empty = Configurator::empty_float32();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     for (int j = 0; j < cell_val_num; ++j) {
       memcpy(buffer_c + buffer_offset, &empty, sizeof(float));
@@ -846,7 +841,7 @@ void ArrayReadState::copy_cells_with_empty<double>(
   int64_t cell_num_to_copy = bytes_to_copy / cell_size;
 
   // Copy empty cells to buffer
-  double empty = TILEDB_EMPTY_FLOAT64;
+  double empty = Configurator::empty_float64();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     for (int j = 0; j < cell_val_num; ++j) {
       memcpy(buffer_c + buffer_offset, &empty, sizeof(double));
@@ -895,7 +890,7 @@ void ArrayReadState::copy_cells_with_empty<char>(
   int64_t cell_num_to_copy = bytes_to_copy / cell_size;
 
   // Copy empty cells to buffer
-  char empty = TILEDB_EMPTY_CHAR;
+  char empty = Configurator::empty_char();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     for (int j = 0; j < cell_val_num; ++j) {
       memcpy(buffer_c + buffer_offset, &empty, sizeof(char));
@@ -944,7 +939,7 @@ void ArrayReadState::copy_cells_with_empty<int8_t>(
   int64_t cell_num_to_copy = bytes_to_copy / cell_size;
 
   // Copy empty cells to buffer
-  int8_t empty = TILEDB_EMPTY_INT8;
+  int8_t empty = Configurator::empty_int8();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     for (int j = 0; j < cell_val_num; ++j) {
       memcpy(buffer_c + buffer_offset, &empty, sizeof(int8_t));
@@ -993,7 +988,7 @@ void ArrayReadState::copy_cells_with_empty<uint8_t>(
   int64_t cell_num_to_copy = bytes_to_copy / cell_size;
 
   // Copy empty cells to buffer
-  uint8_t empty = TILEDB_EMPTY_UINT8;
+  uint8_t empty = Configurator::empty_uint8();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     for (int j = 0; j < cell_val_num; ++j) {
       memcpy(buffer_c + buffer_offset, &empty, sizeof(uint8_t));
@@ -1042,7 +1037,7 @@ void ArrayReadState::copy_cells_with_empty<int16_t>(
   int64_t cell_num_to_copy = bytes_to_copy / cell_size;
 
   // Copy empty cells to buffer
-  int16_t empty = TILEDB_EMPTY_INT16;
+  int16_t empty = Configurator::empty_int16();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     for (int j = 0; j < cell_val_num; ++j) {
       memcpy(buffer_c + buffer_offset, &empty, sizeof(int16_t));
@@ -1091,7 +1086,7 @@ void ArrayReadState::copy_cells_with_empty<uint16_t>(
   int64_t cell_num_to_copy = bytes_to_copy / cell_size;
 
   // Copy empty cells to buffer
-  uint16_t empty = TILEDB_EMPTY_UINT16;
+  uint16_t empty = Configurator::empty_uint16();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     for (int j = 0; j < cell_val_num; ++j) {
       memcpy(buffer_c + buffer_offset, &empty, sizeof(uint16_t));
@@ -1140,7 +1135,7 @@ void ArrayReadState::copy_cells_with_empty<uint32_t>(
   int64_t cell_num_to_copy = bytes_to_copy / cell_size;
 
   // Copy empty cells to buffer
-  uint32_t empty = TILEDB_EMPTY_UINT32;
+  uint32_t empty = Configurator::empty_uint32();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     for (int j = 0; j < cell_val_num; ++j) {
       memcpy(buffer_c + buffer_offset, &empty, sizeof(uint32_t));
@@ -1189,7 +1184,7 @@ void ArrayReadState::copy_cells_with_empty<uint64_t>(
   int64_t cell_num_to_copy = bytes_to_copy / cell_size;
 
   // Copy empty cells to buffer
-  uint64_t empty = TILEDB_EMPTY_UINT64;
+  uint64_t empty = Configurator::empty_uint64();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     for (int j = 0; j < cell_val_num; ++j) {
       memcpy(buffer_c + buffer_offset, &empty, sizeof(uint64_t));
@@ -1217,7 +1212,7 @@ void ArrayReadState::copy_cells_with_empty_var<int>(
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_size_var = sizeof(int);
   char* buffer_c = static_cast<char*>(buffer);
   char* buffer_var_c = static_cast<char*>(buffer_var);
@@ -1251,7 +1246,7 @@ void ArrayReadState::copy_cells_with_empty_var<int>(
   cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
 
   // Copy empty cells to buffers
-  int empty = TILEDB_EMPTY_INT32;
+  int empty = Configurator::empty_int32();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
     buffer_offset += cell_size;
@@ -1279,7 +1274,7 @@ void ArrayReadState::copy_cells_with_empty_var<int64_t>(
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_size_var = sizeof(int64_t);
   char* buffer_c = static_cast<char*>(buffer);
   char* buffer_var_c = static_cast<char*>(buffer_var);
@@ -1313,7 +1308,7 @@ void ArrayReadState::copy_cells_with_empty_var<int64_t>(
   cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
 
   // Copy empty cells to buffers
-  int64_t empty = TILEDB_EMPTY_INT64;
+  int64_t empty = Configurator::empty_int64();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
     buffer_offset += cell_size;
@@ -1341,7 +1336,7 @@ void ArrayReadState::copy_cells_with_empty_var<float>(
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_size_var = sizeof(float);
   char* buffer_c = static_cast<char*>(buffer);
   char* buffer_var_c = static_cast<char*>(buffer_var);
@@ -1375,7 +1370,7 @@ void ArrayReadState::copy_cells_with_empty_var<float>(
   cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
 
   // Copy empty cells to buffers
-  float empty = TILEDB_EMPTY_FLOAT32;
+  float empty = Configurator::empty_float32();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
     buffer_offset += cell_size;
@@ -1402,7 +1397,7 @@ void ArrayReadState::copy_cells_with_empty_var<double>(
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_size_var = sizeof(double);
   char* buffer_c = static_cast<char*>(buffer);
   char* buffer_var_c = static_cast<char*>(buffer_var);
@@ -1436,7 +1431,7 @@ void ArrayReadState::copy_cells_with_empty_var<double>(
   cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
 
   // Copy empty cells to buffers
-  double empty = TILEDB_EMPTY_FLOAT64;
+  double empty = Configurator::empty_float64();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
     buffer_offset += cell_size;
@@ -1463,7 +1458,7 @@ void ArrayReadState::copy_cells_with_empty_var<char>(
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_size_var = sizeof(char);
   char* buffer_c = static_cast<char*>(buffer);
   char* buffer_var_c = static_cast<char*>(buffer_var);
@@ -1497,7 +1492,7 @@ void ArrayReadState::copy_cells_with_empty_var<char>(
   cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
 
   // Copy empty cells to buffers
-  char empty = TILEDB_EMPTY_CHAR;
+  char empty = Configurator::empty_char();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
     buffer_offset += cell_size;
@@ -1524,7 +1519,7 @@ void ArrayReadState::copy_cells_with_empty_var<int8_t>(
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_size_var = sizeof(int8_t);
   char* buffer_c = static_cast<char*>(buffer);
   char* buffer_var_c = static_cast<char*>(buffer_var);
@@ -1558,7 +1553,7 @@ void ArrayReadState::copy_cells_with_empty_var<int8_t>(
   cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
 
   // Copy empty cells to buffers
-  int8_t empty = TILEDB_EMPTY_INT8;
+  int8_t empty = Configurator::empty_int8();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
     buffer_offset += cell_size;
@@ -1585,7 +1580,7 @@ void ArrayReadState::copy_cells_with_empty_var<uint8_t>(
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_size_var = sizeof(uint8_t);
   char* buffer_c = static_cast<char*>(buffer);
   char* buffer_var_c = static_cast<char*>(buffer_var);
@@ -1619,7 +1614,7 @@ void ArrayReadState::copy_cells_with_empty_var<uint8_t>(
   cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
 
   // Copy empty cells to buffers
-  uint8_t empty = TILEDB_EMPTY_UINT8;
+  uint8_t empty = Configurator::empty_uint8();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
     buffer_offset += cell_size;
@@ -1646,7 +1641,7 @@ void ArrayReadState::copy_cells_with_empty_var<int16_t>(
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_size_var = sizeof(int16_t);
   char* buffer_c = static_cast<char*>(buffer);
   char* buffer_var_c = static_cast<char*>(buffer_var);
@@ -1680,7 +1675,7 @@ void ArrayReadState::copy_cells_with_empty_var<int16_t>(
   cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
 
   // Copy empty cells to buffers
-  int16_t empty = TILEDB_EMPTY_INT16;
+  int16_t empty = Configurator::empty_int16();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
     buffer_offset += cell_size;
@@ -1707,7 +1702,7 @@ void ArrayReadState::copy_cells_with_empty_var<uint16_t>(
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_size_var = sizeof(uint16_t);
   char* buffer_c = static_cast<char*>(buffer);
   char* buffer_var_c = static_cast<char*>(buffer_var);
@@ -1741,7 +1736,7 @@ void ArrayReadState::copy_cells_with_empty_var<uint16_t>(
   cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
 
   // Copy empty cells to buffers
-  uint16_t empty = TILEDB_EMPTY_UINT16;
+  uint16_t empty = Configurator::empty_uint16();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
     buffer_offset += cell_size;
@@ -1768,7 +1763,7 @@ void ArrayReadState::copy_cells_with_empty_var<uint32_t>(
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_size_var = sizeof(uint32_t);
   char* buffer_c = static_cast<char*>(buffer);
   char* buffer_var_c = static_cast<char*>(buffer_var);
@@ -1802,7 +1797,7 @@ void ArrayReadState::copy_cells_with_empty_var<uint32_t>(
   cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
 
   // Copy empty cells to buffers
-  uint32_t empty = TILEDB_EMPTY_UINT32;
+  uint32_t empty = Configurator::empty_uint32();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
     buffer_offset += cell_size;
@@ -1829,7 +1824,7 @@ void ArrayReadState::copy_cells_with_empty_var<uint64_t>(
     size_t& buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // For easy reference
-  size_t cell_size = TILEDB_CELL_VAR_OFFSET_SIZE;
+  size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_size_var = sizeof(uint64_t);
   char* buffer_c = static_cast<char*>(buffer);
   char* buffer_var_c = static_cast<char*>(buffer_var);
@@ -1863,7 +1858,7 @@ void ArrayReadState::copy_cells_with_empty_var<uint64_t>(
   cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
 
   // Copy empty cells to buffers
-  uint64_t empty = TILEDB_EMPTY_UINT64;
+  uint64_t empty = Configurator::empty_uint64();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
     buffer_offset += cell_size;
