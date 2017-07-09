@@ -372,8 +372,60 @@ TILEDB_EXPORT int tiledb_attribute_set_cell_val_num(
     tiledb_attribute_t* attr, int cell_val_num);
 
 /* ********************************* */
+/*            DIMENSION              */
+/* ********************************* */
+
+/** A TileDB dimension. */
+typedef struct tiledb_dimension_t tiledb_dimension_t;
+
+/**
+ * Creates a TileDB dimension.
+ *
+ * @param name The dimension name.
+ * @param type The dimension type.
+ * @param domain The dimension domain (low, high).
+ * @param tile_extent The tile extent along this dimension.
+ * @return The created TileDB dimension.
+ */
+TILEDB_EXPORT tiledb_dimension_t* tiledb_dimension_create(
+    const char* name,
+    tiledb_datatype_t type,
+    const void* domain,
+    const void* tile_extent);
+
+/**
+ * Destroys a TileDB dimension, freeing-up memory.
+ *
+ * @param attr The dimension to be destroyed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_free(tiledb_dimension_t* attr);
+
+/**
+ * Sets a compressor for a dimension.
+ *
+ * @param dim The target dimension.
+ * @param compressor The compressor to be set.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_set_compressor(
+    tiledb_dimension_t* dim, tiledb_compressor_t compressor);
+
+/**
+ * Sets the compression level for a dimension.
+ *
+ * @param dim The target dimension.
+ * @param compression_level The compression level.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_set_compression_level(
+    tiledb_dimension_t* attr, int compression_level);
+
+/* ********************************* */
 /*           ARRAY SCHEMA            */
 /* ********************************* */
+
+// TODO: make a correctness check function
 
 /** The array schema. */
 typedef struct tiledb_array_schema_t {

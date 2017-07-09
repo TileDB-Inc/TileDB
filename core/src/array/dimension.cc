@@ -1,5 +1,5 @@
 /**
- * @file   attribute.cc
+ * @file   dimension.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class Attribute.
+ * This file implements class Dimension.
  */
 
-#include "attribute.h"
+#include "dimension.h"
+#include <cstdlib>
+#include "utils.h"
 
 namespace tiledb {
 
@@ -38,7 +40,11 @@ namespace tiledb {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Attribute::Attribute(const char* name, Datatype type) {
+Dimension::Dimension(
+    const char* name,
+    Datatype type,
+    const void* domain,
+    const void* tile_extent) {
   // Set name
   if (name != nullptr)
     name_ = name;
@@ -46,26 +52,48 @@ Attribute::Attribute(const char* name, Datatype type) {
   // Set type
   type_ = type;
 
+  // Get type size
+  uint64_t type_size = utils::datatype_size(type);
+
+  // Set domain
+  if (domain == nullptr) {
+    domain_ = nullptr;
+  } else {
+    uint64_t domain_size = 2 * type_size;
+    domain_ = malloc(domain_size);
+    memcpy(domain_, domain, domain_size);
+  }
+
+  // Set tile extent
+  if (tile_extent == nullptr) {
+    tile_extent_ = nullptr;
+  } else {
+    tile_extent_ = malloc(type_size);
+    memcpy(tile_extent_, tile_extent, type_size);
+  }
+
   // Set default compressor and compression level
   compressor_ = Compressor::NO_COMPRESSION;
   compression_level_ = -1;
 }
 
-Attribute::~Attribute() = default;
+Dimension::~Dimension() {
+  // Clean up
+  if (domain_ != nullptr)
+    free(domain_);
+  if (tile_extent_ != nullptr)
+    free(tile_extent_);
+}
 
 /* ********************************* */
 /*              SETTERS              */
 /* ********************************* */
 
-void Attribute::set_cell_val_num(int cell_val_num) {
-  cell_val_num_ = cell_val_num;
-}
-
-void Attribute::set_compressor(Compressor compressor) {
+void Dimension::set_compressor(Compressor compressor) {
   compressor_ = compressor;
 }
 
-void Attribute::set_compression_level(int compression_level) {
+void Dimension::set_compression_level(int compression_level) {
   compression_level_ = compression_level;
 }
 

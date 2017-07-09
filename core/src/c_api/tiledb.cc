@@ -37,6 +37,7 @@
 #include "basic_array.h"
 #include "configurator.h"
 #include "datatype.h"
+#include "dimension.h"
 #include "storage_manager.h"
 
 /* ****************************** */
@@ -358,6 +359,64 @@ int tiledb_attribute_set_cell_val_num(
     return TILEDB_ERR;
 
   attr->attr_->set_cell_val_num(cell_val_num);
+
+  return TILEDB_OK;
+}
+
+/* ********************************* */
+/*            DIMENSION              */
+/* ********************************* */
+
+typedef struct tiledb_dimension_t {
+  tiledb::Dimension* dim_;
+} tiledb_dimension_t;
+
+tiledb_dimension_t* tiledb_dimension_create(
+    const char* name,
+    tiledb_datatype_t type,
+    const void* domain,
+    const void* tile_extent) {
+  tiledb_dimension_t* dim =
+      (tiledb_dimension_t*)malloc(sizeof(tiledb_dimension_t));
+  if (dim == nullptr)
+    return nullptr;
+
+  // Create a new Dimension
+  dim->dim_ = new tiledb::Dimension(
+      name, static_cast<tiledb::Datatype>(type), domain, tile_extent);
+
+  // Return
+  return dim;
+}
+
+int tiledb_dimension_free(tiledb_dimension_t* dim) {
+  if (dim == nullptr)
+    return TILEDB_OK;
+
+  if (dim->dim_ != nullptr)
+    delete dim->dim_;
+
+  free(dim);
+
+  return TILEDB_OK;
+}
+
+int tiledb_dimension_set_compressor(
+    tiledb_dimension_t* dim, tiledb_compressor_t compressor) {
+  if (dim == nullptr || dim->dim_ == nullptr)
+    return TILEDB_ERR;
+
+  dim->dim_->set_compressor(static_cast<tiledb::Compressor>(compressor));
+
+  return TILEDB_OK;
+}
+
+int tiledb_dimension_set_compression_level(
+    tiledb_dimension_t* dim, int compression_level) {
+  if (dim == nullptr || dim->dim_ == nullptr)
+    return TILEDB_ERR;
+
+  dim->dim_->set_compression_level(compression_level);
 
   return TILEDB_OK;
 }

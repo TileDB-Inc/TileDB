@@ -1,5 +1,5 @@
 /**
- * @file   attribute.h
+ * @file   dimension.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class Attribute.
+ * This file defines class Dimension.
  */
 
-#ifndef __TILEDB_ATTRIBUTE_H__
-#define __TILEDB_ATTRIBUTE_H__
+#ifndef __TILEDB_DIMENSION_H__
+#define __TILEDB_DIMENSION_H__
 
 #include <string>
 #include "compressor.h"
@@ -39,8 +39,8 @@
 
 namespace tiledb {
 
-/** The Attribute class. */
-class Attribute {
+/** The Dimension class. */
+class Dimension {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -49,25 +49,28 @@ class Attribute {
   /**
    * Constructor.
    *
-   * @param name The name of the attribute.
-   * @param type The type of the attribute.
+   * @param name The name of the dimension.
+   * @param type The type of the dimension.
+   * @param domain The domain of the dimension.
+   * @param tile_extent The tile extent of the dimension.
    */
-  Attribute(const char* name, Datatype type);
+  Dimension(
+      const char* name,
+      Datatype type,
+      const void* domain,
+      const void* tile_extent);
 
   /** Destructor. */
-  ~Attribute();
+  ~Dimension();
 
   /* ********************************* */
   /*              SETTERS              */
   /* ********************************* */
 
-  /** Sets the attribute number of values per cell. */
-  void set_cell_val_num(int cell_val_num);
-
-  /** Sets the attribute compressor. */
+  /** Sets the dimension compressor. */
   void set_compressor(Compressor compressor);
 
-  /** Sets the attribute compression level. */
+  /** Sets the dimension compression level. */
   void set_compression_level(int compression_level);
 
  private:
@@ -75,18 +78,20 @@ class Attribute {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The attribute number of values per cell. */
-  int cell_val_num_;
   /** The attribute compressor. */
   Compressor compressor_;
   /** The attribute compression level. */
   int compression_level_;
+  /** The dimension domain. */
+  void* domain_;
   /** The attribute name. */
   std::string name_;
+  /** The tile extent of the dimension. */
+  void* tile_extent_;
   /** The attribute type. */
   Datatype type_;
 };
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_ATTRIBUTE_H__
+#endif  // __TILEDB_DIMENSION_H__
