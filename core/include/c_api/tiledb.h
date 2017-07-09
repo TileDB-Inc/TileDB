@@ -239,23 +239,21 @@ TILEDB_EXPORT int tiledb_config_set_write_method(
 typedef struct tiledb_ctx_t tiledb_ctx_t;
 
 /**
- * Initializes the TileDB context.
+ * Creates a TileDB context.
  *
- * @param ctx The TileDB context to be initialized.
  * @param config TileDB configuration parameters. If it is NULL,
  *     TileDB will use its default configuration parameters.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
+ * @return A TileDB context, or NULL in case of error.
  */
-TILEDB_EXPORT int tiledb_ctx_init(
-    tiledb_ctx_t** ctx, const tiledb_config_t* config);
+TILEDB_EXPORT tiledb_ctx_t* tiledb_ctx_create(const tiledb_config_t* config);
 
 /**
- * Finalizes the TileDB context, properly freeing-up memory.
+ * Destroys the TileDB context, properly freeing-up memory.
  *
  * @param ctx The TileDB context to be finalized.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_ctx_finalize(tiledb_ctx_t* ctx);
+TILEDB_EXPORT int tiledb_ctx_free(tiledb_ctx_t* ctx);
 
 /* ********************************* */
 /*              ERROR                */

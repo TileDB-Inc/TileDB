@@ -34,8 +34,7 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_init(&ctx, nullptr);
+  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
 
   // Prepare parameters for metadata schema
   const char* metadata_name = "my_group/sparse_arrays/my_array_B/meta";
@@ -78,7 +77,7 @@ int main() {
   tiledb_metadata_free_schema(&metadata_schema);
 
   // Finalize context
-  tiledb_ctx_finalize(ctx);
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

@@ -34,8 +34,7 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_init(&ctx, nullptr);
+  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
 
   /* TODO: Handle deletions better through an API
 
@@ -87,7 +86,7 @@ int main() {
    */
 
   // Finalize context
-  tiledb_ctx_finalize(ctx);
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

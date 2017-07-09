@@ -183,27 +183,29 @@ tiledb::Status sanity_check(tiledb_ctx_t* ctx) {
   return tiledb::Status::Ok();
 }
 
-int tiledb_ctx_init(tiledb_ctx_t** ctx, const tiledb_config_t* tiledb_config) {
+tiledb_ctx_t* tiledb_ctx_create(const tiledb_config_t* tiledb_config) {
   // Initialize context
   tiledb::Status st;
-  *ctx = (tiledb_ctx_t*)malloc(sizeof(struct tiledb_ctx_t));
-  if (*ctx == nullptr) {
-    return TILEDB_OOM;
-  }
+  tiledb_ctx_t* ctx = (tiledb_ctx_t*)malloc(sizeof(struct tiledb_ctx_t));
+  if (ctx == nullptr)
+    return nullptr;
 
   // Create storage manager and initialize with the config object
-  (*ctx)->storage_manager_ = new tiledb::StorageManager();
-  (*ctx)->last_error_ = nullptr;
+  ctx->storage_manager_ = new tiledb::StorageManager();
+  ctx->last_error_ = nullptr;
   tiledb::Configurator* config =
       (tiledb_config == nullptr) ? nullptr : tiledb_config->config_;
-  if (save_error(*ctx, (*ctx)->storage_manager_->init(config)))
-    return TILEDB_ERR;
+  if (!((ctx->storage_manager_->init(config))).ok()) {
+    delete ctx->storage_manager_;
+    free(ctx);
+    return nullptr;
+  }
 
   // Success
-  return TILEDB_OK;
+  return ctx;
 }
 
-int tiledb_ctx_finalize(tiledb_ctx_t* ctx) {
+int tiledb_ctx_free(tiledb_ctx_t* ctx) {
   if (ctx == nullptr)
     return TILEDB_OK;
 
@@ -220,6 +222,10 @@ int tiledb_ctx_finalize(tiledb_ctx_t* ctx) {
 
   return st.ok() ? TILEDB_OK : TILEDB_ERR;
 }
+
+/* ********************************* */
+/*              ERROR                */
+/* ********************************* */
 
 typedef struct tiledb_error_t {
   // pointer to a copy of the last TileDB error associated with a given ctx

@@ -34,8 +34,7 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_init(&ctx, nullptr);
+  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
 
   // Initialize metadata
   tiledb_metadata_t* tiledb_metadata;
@@ -78,7 +77,7 @@ int main() {
   tiledb_metadata_finalize(tiledb_metadata);
 
   // Finalize context
-  tiledb_ctx_finalize(ctx);
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

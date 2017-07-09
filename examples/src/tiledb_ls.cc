@@ -44,8 +44,7 @@ int main(int argc, char** argv) {
   }
 
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_init(&ctx, nullptr);
+  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
 
   // Retrieve number of directories
   int dir_num;
@@ -87,7 +86,7 @@ int main(int argc, char** argv) {
   free(dir_types);
 
   // Finalize context
-  tiledb_ctx_finalize(ctx);
+  tiledb_ctx_free(ctx);
 
    */
 

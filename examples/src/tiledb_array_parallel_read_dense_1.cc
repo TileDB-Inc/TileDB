@@ -52,8 +52,7 @@ typedef struct _thread_data_t {
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_init(&ctx, nullptr);
+  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
 
   // Array name
   const char* array_name = "my_group/dense_arrays/my_array_A";
@@ -122,7 +121,7 @@ int main() {
   printf("Number of a1 values greater than 10: %d \n", total_count);
 
   // Finalize context
-  tiledb_ctx_finalize(ctx);
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

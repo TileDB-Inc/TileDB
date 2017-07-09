@@ -38,8 +38,9 @@
 TEST_CASE("C API Error") {
   tiledb_ctx_t* ctx;
   int rc;
-  rc = tiledb_ctx_init(&ctx, nullptr);
-  CHECK(rc == TILEDB_OK);
+
+  ctx = tiledb_ctx_create(nullptr);
+  CHECK(ctx != nullptr);
 
   const char* bad_path = nullptr;
   rc = tiledb_clear(ctx, bad_path);
@@ -52,4 +53,7 @@ TEST_CASE("C API Error") {
       Catch::Equals("Error: Invalid directory argument is NULL"));
 
   tiledb_error_free(err);
+
+  rc = tiledb_ctx_free(ctx);
+  CHECK(rc == TILEDB_OK);
 }

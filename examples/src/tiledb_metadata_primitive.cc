@@ -39,8 +39,7 @@ void print_some_metadata_schema_info(
 
 int main() {
   /* Initialize context with the default configuration parameters. */
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_init(&ctx, nullptr);
+  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
 
   // ----- Get schema without metadata initialization ----- //
 
@@ -82,7 +81,7 @@ int main() {
   tiledb_metadata_finalize(tiledb_metadata);
 
   // Finalize context
-  tiledb_ctx_finalize(ctx);
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

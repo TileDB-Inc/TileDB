@@ -34,8 +34,7 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_init(&ctx, nullptr);
+  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
 
   // Clear an array
   tiledb_clear(ctx, "my_group/sparse_arrays/my_array_B");
@@ -47,7 +46,7 @@ int main() {
   tiledb_move(ctx, "my_group", "my_group_2");
 
   // Finalize context
-  tiledb_ctx_finalize(ctx);
+  tiledb_ctx_free(ctx);
 
   return 0;
 }
