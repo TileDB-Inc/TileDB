@@ -33,8 +33,10 @@
 
 #include "aio_request.h"
 #include "array_schema.h"
+#include "attribute.h"
 #include "basic_array.h"
 #include "configurator.h"
+#include "datatype.h"
 #include "storage_manager.h"
 
 /* ****************************** */
@@ -292,6 +294,71 @@ int tiledb_basic_array_create(tiledb_ctx_t* ctx, const char* name) {
     return TILEDB_ERR;
 
   // Success
+  return TILEDB_OK;
+}
+
+/* ********************************* */
+/*            ATTRIBUTE              */
+/* ********************************* */
+
+typedef struct tiledb_attribute_t {
+  tiledb::Attribute* attr_;
+} tiledb_attribute_t;
+
+tiledb_attribute_t* tiledb_attribute_create(
+    const char* name, tiledb_datatype_t type) {
+  tiledb_attribute_t* attr =
+      (tiledb_attribute_t*)malloc(sizeof(tiledb_attribute_t));
+  if (attr == nullptr)
+    return nullptr;
+
+  // Create a new Attribute
+  attr->attr_ =
+      new tiledb::Attribute(name, static_cast<tiledb::Datatype>(type));
+
+  // Return
+  return attr;
+}
+
+int tiledb_attribute_free(tiledb_attribute_t* attr) {
+  if (attr == nullptr)
+    return TILEDB_OK;
+
+  if (attr->attr_ != nullptr)
+    delete attr->attr_;
+
+  free(attr);
+
+  return TILEDB_OK;
+}
+
+int tiledb_attribute_set_compressor(
+    tiledb_attribute_t* attr, tiledb_compressor_t compressor) {
+  if (attr == nullptr || attr->attr_ == nullptr)
+    return TILEDB_ERR;
+
+  attr->attr_->set_compressor(static_cast<tiledb::Compressor>(compressor));
+
+  return TILEDB_OK;
+}
+
+int tiledb_attribute_set_compression_level(
+    tiledb_attribute_t* attr, int compression_level) {
+  if (attr == nullptr || attr->attr_ == nullptr)
+    return TILEDB_ERR;
+
+  attr->attr_->set_compression_level(compression_level);
+
+  return TILEDB_OK;
+}
+
+int tiledb_attribute_set_cell_val_num(
+    tiledb_attribute_t* attr, int cell_val_num) {
+  if (attr == nullptr || attr->attr_ == nullptr)
+    return TILEDB_ERR;
+
+  attr->attr_->set_cell_val_num(cell_val_num);
+
   return TILEDB_OK;
 }
 
