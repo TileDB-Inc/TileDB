@@ -48,8 +48,7 @@ void parallel_read(
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_init(&ctx, NULL);
+  tiledb_ctx_t* ctx = tiledb_ctx_create(NULL);
 
   // Array name
   const char* array_name = "my_group/sparse_arrays/my_array_B";
@@ -103,7 +102,7 @@ int main() {
   printf("Number of a1 values greater than 5: %d \n", total_count);
 
   // Finalize context
-  tiledb_ctx_finalize(ctx);
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

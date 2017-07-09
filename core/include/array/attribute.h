@@ -1,5 +1,5 @@
 /**
- * @file   basic_array_schema.h
+ * @file   attribute.h
  *
  * @section LICENSE
  *
@@ -27,60 +27,66 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class BasicArraySchema.
+ * This file defines class Attribute.
  */
 
-#ifndef __TILEDB_BASIC_ARRAY_SCHEMA_H__
-#define __TILEDB_BASIC_ARRAY_SCHEMA_H__
+#ifndef __TILEDB_ATTRIBUTE_H__
+#define __TILEDB_ATTRIBUTE_H__
 
-#include "array_schema.h"
+#include <string>
+#include "compressor.h"
+#include "datatype.h"
 
 namespace tiledb {
 
-/** Defines the BasicArraySchema. */
-class BasicArraySchema {
+/** The Attribute class. */
+class Attribute {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /**
-   * Consturctor.
+   * Constructor.
    *
-   * @param name The name of the basic array.
+   * @param name The name of the attribute.
+   * @param type The type of the attribute.
    */
-  BasicArraySchema(const char* name);
+  Attribute(const char* name, Datatype type);
 
   /** Destructor. */
-  ~BasicArraySchema();
+  ~Attribute();
 
   /* ********************************* */
-  /*                API                */
+  /*              SETTERS              */
   /* ********************************* */
 
-  /**
-   * Returns the underlying array schema.
-   *
-   * @return The array schema.
-   */
-  ArraySchema* array_schema();
+  /** Sets the attribute number of values per cell. */
+  void set_cell_val_num(int cell_val_num);
 
-  /**
-   * Initializes the array schema.
-   *
-   * @return Status
-   */
-  Status init();
+  /** Sets the attribute compressor. */
+  void set_compressor(Compressor compressor);
+
+  /** Sets the attribute compression level. */
+  void set_compression_level(int compression_level);
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array schema object that implements BasicArraySchema. */
-  ArraySchema* array_schema_;
+  /** The attribute number of values per cell. */
+  int cell_val_num_;
+  /** The attribute compressor. */
+  Compressor compressor_;
+  /** The attribute compression level. */
+  int compression_level_;
+  /** The attribute name. */
+  std::string name_;
+  /** The attribute type. */
+  Datatype type_;
 };
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_BASIC_ARRAY_SCHEMA_H__
+#endif  // __TILEDB_ATTRIBUTE_H__

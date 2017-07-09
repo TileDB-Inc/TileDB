@@ -47,8 +47,7 @@ typedef struct _thread_data_t {
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_init(&ctx, nullptr);
+  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
 
   // Array name
   const char* array_name = "my_group/sparse_arrays/my_array_B";
@@ -126,7 +125,7 @@ int main() {
     pthread_join(threads[i], nullptr);
 
   // Finalize context
-  tiledb_ctx_finalize(ctx);
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

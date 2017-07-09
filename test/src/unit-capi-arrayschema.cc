@@ -64,8 +64,8 @@ struct ArraySchemaFx {
     array_schema_set_ = false;
 
     // Initialize context
-    rc = tiledb_ctx_init(&tiledb_ctx_, nullptr);
-    assert(rc == TILEDB_OK);
+    tiledb_ctx_ = tiledb_ctx_create(nullptr);
+    assert(tiledb_ctx_ != nullptr);
 
     // Create group, delete it if it already exists
     std::string cmd = "test -d " + GROUP;
@@ -87,7 +87,7 @@ struct ArraySchemaFx {
     int rc;
 
     // Finalize TileDB context
-    rc = tiledb_ctx_finalize(tiledb_ctx_);
+    rc = tiledb_ctx_free(tiledb_ctx_);
     assert(rc == TILEDB_OK);
 
     // Remove the temporary group

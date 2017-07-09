@@ -35,8 +35,7 @@
 
 int main() {
   /* Initialize context with the default configuration parameters. */
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_init(&ctx, nullptr);
+  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
 
   // Subset over the attributes
   const char* attributes[] = { tiledb_key() };
@@ -81,7 +80,7 @@ int main() {
   tiledb_metadata_iterator_finalize(tiledb_metadata_iterator);
 
   // Finalize context
-  tiledb_ctx_finalize(ctx);
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

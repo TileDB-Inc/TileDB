@@ -38,8 +38,7 @@ void print_some_array_schema_info(const tiledb_array_schema_t* array_schema);
 
 int main() {
   /* Initialize context with the default configuration parameters. */
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_init(&ctx, nullptr);
+  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
 
   // ----- Dense array ----- //
 
@@ -82,7 +81,7 @@ int main() {
   tiledb_array_finalize(tiledb_array);
 
   // Finalize context
-  tiledb_ctx_finalize(ctx);
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

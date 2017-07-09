@@ -37,6 +37,7 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include "compressor.h"
 #include "configurator.h"
 #include "logger.h"
 #include "utils.h"
@@ -60,6 +61,8 @@ ArraySchema::ArraySchema() {
   tile_extents_ = nullptr;
   tile_domain_ = nullptr;
   tile_coords_aux_ = nullptr;
+
+  set_default();
 }
 
 ArraySchema::~ArraySchema() {
@@ -1212,7 +1215,32 @@ Status ArraySchema::deserialize(
   return Status::Ok();
 }
 
+Status ArraySchema::init() {
+  // Perform check of all members
+  // TODO
+
+  // Compute number of cells per tile
+  compute_cell_num_per_tile();
+
+  // Compute tile domain
+  compute_tile_domain();
+
+  // Compute tile offsets
+  compute_tile_offsets();
+
+  // Initialize static auxiliary variables
+  if (tile_coords_aux_ != nullptr)
+    free(tile_coords_aux_);
+  tile_coords_aux_ = malloc(coords_size_ * dim_num_);
+
+  // Success
+  return Status::Ok();
+}
+
 Status ArraySchema::init(const ArraySchemaC* array_schema_c) {
+  // Clear all members
+  clear();
+
   // Set array name
   set_array_name(array_schema_c->array_name_);
   // Set attributes
@@ -1258,6 +1286,9 @@ Status ArraySchema::init(const ArraySchemaC* array_schema_c) {
 }
 
 Status ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
+  // Clear all members
+  clear();
+
   // Create an array schema C struct and populate it
   ArraySchemaC array_schema_c;
   array_schema_c.array_name_ = metadata_schema_c->metadata_name_;
@@ -2028,6 +2059,26 @@ int ArraySchema::tile_order_cmp(const T* coords_a, const T* coords_b) const {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
+void ArraySchema::clear() {
+  array_name_ = "";
+  attributes_.clear();
+  capacity_ = -1;
+  dimensions_.clear();
+  compressor_.clear();
+  compression_level_.clear();
+  dense_ = -1;
+  cell_val_num_.clear();
+  types_.clear();
+  if (tile_extents_ != nullptr) {
+    free(tile_extents_);
+    tile_extents_ = nullptr;
+  }
+  if (domain_ != nullptr) {
+    free(domain_);
+    domain_ = nullptr;
+  }
+}
+
 // ===== FORMAT =====
 // array_name_size(int)
 //     array_name(string)
@@ -2573,6 +2624,48 @@ bool ArraySchema::is_contained_in_tile_slab_row(const T* range) const {
 
   // Range contained in the row tile slab
   return true;
+}
+
+void ArraySchema::set_default() {
+  // Clear all members
+  clear();
+
+  // Set array name
+  array_name_ = "";
+  // Set attribute
+  attributes_.emplace_back("a");
+  attribute_num_ = 1;
+  // Set capacity
+  capacity_ = INT_MAX;
+  // Set dimension
+  dimensions_.emplace_back("d");
+  dim_num_ = 1;
+  // Set compression
+  compressor_.emplace_back(Compressor::NO_COMPRESSION);
+  compressor_.emplace_back(Compressor::NO_COMPRESSION);
+  // Set compression level
+  compression_level_.emplace_back(0);
+  compression_level_.emplace_back(0);
+  // Set dense
+  dense_ = 0;
+  // Set number of values per cell
+  cell_val_num_.emplace_back(Configurator::var_num());
+  // Set types
+  types_.emplace_back(Datatype::CHAR);
+  types_.emplace_back(Datatype::INT32);
+  // Set tile extents
+  tile_extents_ = malloc(sizeof(int));
+  int* tile_extents = (int*)tile_extents_;
+  *tile_extents = INT_MAX;
+  // Set cell order
+  cell_order_ = Layout::ROW_MAJOR;
+  // Set tile order
+  tile_order_ = Layout::ROW_MAJOR;
+  // Set domain
+  domain_ = malloc(2 * sizeof(int));
+  int* domain = (int*)domain_;
+  domain[0] = 0;
+  domain[1] = INT_MAX;
 }
 
 template <class T>

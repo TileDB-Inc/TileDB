@@ -39,8 +39,7 @@ int main() {
   tiledb_config_set_read_method(config, TILEDB_IO_METHOD_READ);
 
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_init(&ctx, config);
+  tiledb_ctx_t* ctx = tiledb_ctx_create(config);
 
   /* --- Your code here --- */
 
@@ -48,7 +47,7 @@ int main() {
   tiledb_config_free(config);
 
   // Free context
-  tiledb_ctx_finalize(ctx);
+  tiledb_ctx_free(ctx);
 
   return 0;
 }

@@ -1,5 +1,5 @@
 /**
- * @file   basic_array_schema.h
+ * @file   dimension.h
  *
  * @section LICENSE
  *
@@ -27,60 +27,71 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class BasicArraySchema.
+ * This file defines class Dimension.
  */
 
-#ifndef __TILEDB_BASIC_ARRAY_SCHEMA_H__
-#define __TILEDB_BASIC_ARRAY_SCHEMA_H__
+#ifndef __TILEDB_DIMENSION_H__
+#define __TILEDB_DIMENSION_H__
 
-#include "array_schema.h"
+#include <string>
+#include "compressor.h"
+#include "datatype.h"
 
 namespace tiledb {
 
-/** Defines the BasicArraySchema. */
-class BasicArraySchema {
+/** The Dimension class. */
+class Dimension {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /**
-   * Consturctor.
+   * Constructor.
    *
-   * @param name The name of the basic array.
+   * @param name The name of the dimension.
+   * @param type The type of the dimension.
+   * @param domain The domain of the dimension.
+   * @param tile_extent The tile extent of the dimension.
    */
-  BasicArraySchema(const char* name);
+  Dimension(
+      const char* name,
+      Datatype type,
+      const void* domain,
+      const void* tile_extent);
 
   /** Destructor. */
-  ~BasicArraySchema();
+  ~Dimension();
 
   /* ********************************* */
-  /*                API                */
+  /*              SETTERS              */
   /* ********************************* */
 
-  /**
-   * Returns the underlying array schema.
-   *
-   * @return The array schema.
-   */
-  ArraySchema* array_schema();
+  /** Sets the dimension compressor. */
+  void set_compressor(Compressor compressor);
 
-  /**
-   * Initializes the array schema.
-   *
-   * @return Status
-   */
-  Status init();
+  /** Sets the dimension compression level. */
+  void set_compression_level(int compression_level);
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array schema object that implements BasicArraySchema. */
-  ArraySchema* array_schema_;
+  /** The attribute compressor. */
+  Compressor compressor_;
+  /** The attribute compression level. */
+  int compression_level_;
+  /** The dimension domain. */
+  void* domain_;
+  /** The attribute name. */
+  std::string name_;
+  /** The tile extent of the dimension. */
+  void* tile_extent_;
+  /** The attribute type. */
+  Datatype type_;
 };
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_BASIC_ARRAY_SCHEMA_H__
+#endif  // __TILEDB_DIMENSION_H__

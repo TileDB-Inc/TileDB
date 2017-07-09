@@ -1,11 +1,11 @@
 /**
- * @file   tiledb_directory_type.cc
+ * @file   attribute.cc
  *
  * @section LICENSE
  *
  * The MIT License
- * 
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,44 +24,49 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * Checks the type of a given directory.
+ * This file implements class Attribute.
  */
 
-#include "tiledb.h"
-#include <iostream>
+#include "attribute.h"
 
-void print_dir_type(int type) {
- if(type == TILEDB_GROUP)
-    std::cout << "Group\n";
-  else if(type == TILEDB_ARRAY) 
-    std::cout << "Array\n";
-  else if(type == TILEDB_METADATA) 
-    std::cout << "Metadata\n";
-  else if(type == -1) 
-    std::cout << "Not a TileDB object\n";
-  else 
-    std::cout << "Unknown directory type\n";
+namespace tiledb {
+
+/* ********************************* */
+/*     CONSTRUCTORS & DESTRUCTORS    */
+/* ********************************* */
+
+Attribute::Attribute(const char* name, Datatype type) {
+  // Set name
+  if (name != nullptr)
+    name_ = name;
+
+  // Set type
+  type_ = type;
+
+  // Set default compressor and compression level
+  compressor_ = Compressor::NO_COMPRESSION;
+  compression_level_ = -1;
 }
 
-int main() {
-  // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
+Attribute::~Attribute() = default;
 
-  // Create groups
-  tiledb_group_create(ctx, "my_group");
-  tiledb_group_create(ctx, "my_group/dense_arrays");
-  tiledb_group_create(ctx, "my_group/sparse_arrays");
+/* ********************************* */
+/*              SETTERS              */
+/* ********************************* */
 
-  // Check types
-  print_dir_type(tiledb_dir_type(ctx, "my_group"));
-  print_dir_type(tiledb_dir_type(ctx, "my_group/dense_arrays"));
-  print_dir_type(tiledb_dir_type(ctx, "my_group/array"));
-
-  // Finalize context
-  tiledb_ctx_free(ctx);
-
-  return 0;
+void Attribute::set_cell_val_num(int cell_val_num) {
+  cell_val_num_ = cell_val_num;
 }
+
+void Attribute::set_compressor(Compressor compressor) {
+  compressor_ = compressor;
+}
+
+void Attribute::set_compression_level(int compression_level) {
+  compression_level_ = compression_level;
+}
+
+}  // namespace tiledb

@@ -236,6 +236,50 @@ std::string current_dir() {
   return dir;
 }
 
+uint64_t datatype_size(Datatype type) {
+  uint64_t size;
+
+  switch (type) {
+    case Datatype::INT32:
+      size = sizeof(int);
+      break;
+    case Datatype::INT64:
+      size = sizeof(int64_t);
+      break;
+    case Datatype::FLOAT32:
+      size = sizeof(float);
+      break;
+    case Datatype::FLOAT64:
+      size = sizeof(double);
+      break;
+    case Datatype::CHAR:
+      size = sizeof(char);
+      break;
+    case Datatype::INT8:
+      size = sizeof(int8_t);
+      break;
+    case Datatype::UINT8:
+      size = sizeof(uint8_t);
+      break;
+    case Datatype::INT16:
+      size = sizeof(int16_t);
+      break;
+    case Datatype::UINT16:
+      size = sizeof(uint16_t);
+      break;
+    case Datatype::UINT32:
+      size = sizeof(uint32_t);
+      break;
+    case Datatype::UINT64:
+      size = sizeof(uint64_t);
+      break;
+    default:
+      break;
+  }
+
+  return size;
+}
+
 Status delete_dir(const std::string& dirname) {
   // Get real path
   std::string dirname_real = utils::real_dir(dirname);

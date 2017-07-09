@@ -1,5 +1,5 @@
 /**
- * @file   basic_array_schema.cc
+ * @file   dimension.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the BasicArraySchema class.
+ * This file implements class Dimension.
  */
 
-#include "basic_array_schema.h"
+#include "dimension.h"
+#include <cstdlib>
+#include "utils.h"
 
 namespace tiledb {
 
@@ -38,27 +40,61 @@ namespace tiledb {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-BasicArraySchema::BasicArraySchema(const char* name) {
-  array_schema_ = new ArraySchema();
-  array_schema_->set_array_name(name);
+Dimension::Dimension(
+    const char* name,
+    Datatype type,
+    const void* domain,
+    const void* tile_extent) {
+  // Set name
+  if (name != nullptr)
+    name_ = name;
+
+  // Set type
+  type_ = type;
+
+  // Get type size
+  uint64_t type_size = utils::datatype_size(type);
+
+  // Set domain
+  if (domain == nullptr) {
+    domain_ = nullptr;
+  } else {
+    uint64_t domain_size = 2 * type_size;
+    domain_ = malloc(domain_size);
+    memcpy(domain_, domain, domain_size);
+  }
+
+  // Set tile extent
+  if (tile_extent == nullptr) {
+    tile_extent_ = nullptr;
+  } else {
+    tile_extent_ = malloc(type_size);
+    memcpy(tile_extent_, tile_extent, type_size);
+  }
+
+  // Set default compressor and compression level
+  compressor_ = Compressor::NO_COMPRESSION;
+  compression_level_ = -1;
 }
 
-BasicArraySchema::~BasicArraySchema() {
-  delete array_schema_;
+Dimension::~Dimension() {
+  // Clean up
+  if (domain_ != nullptr)
+    free(domain_);
+  if (tile_extent_ != nullptr)
+    free(tile_extent_);
 }
 
 /* ********************************* */
-/*                API                */
+/*              SETTERS              */
 /* ********************************* */
 
-ArraySchema* BasicArraySchema::array_schema() {
-  // Return array schema
-  return array_schema_;
+void Dimension::set_compressor(Compressor compressor) {
+  compressor_ = compressor;
 }
 
-Status BasicArraySchema::init() {
-  // Initialize array schema
-  return array_schema_->init();
+void Dimension::set_compression_level(int compression_level) {
+  compression_level_ = compression_level;
 }
 
 }  // namespace tiledb

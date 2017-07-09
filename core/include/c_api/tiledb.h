@@ -187,7 +187,7 @@ typedef struct tiledb_config_t tiledb_config_t;
 /**
  * Creates a TileDB configuration object, allocating memory.
  *
- * @return TILEDB_OK for success and TILEDB_ERR for error.
+ * @return A TileDB configuration object upon success, NULL upon error.
  */
 TILEDB_EXPORT tiledb_config_t* tiledb_config_create();
 
@@ -239,23 +239,21 @@ TILEDB_EXPORT int tiledb_config_set_write_method(
 typedef struct tiledb_ctx_t tiledb_ctx_t;
 
 /**
- * Initializes the TileDB context.
+ * Creates a TileDB context.
  *
- * @param ctx The TileDB context to be initialized.
  * @param config TileDB configuration parameters. If it is NULL,
  *     TileDB will use its default configuration parameters.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
+ * @return A TileDB context, or NULL in case of error.
  */
-TILEDB_EXPORT int tiledb_ctx_init(
-    tiledb_ctx_t** ctx, const tiledb_config_t* config);
+TILEDB_EXPORT tiledb_ctx_t* tiledb_ctx_create(const tiledb_config_t* config);
 
 /**
- * Finalizes the TileDB context, properly freeing-up memory.
+ * Destroys the TileDB context, properly freeing-up memory.
  *
  * @param ctx The TileDB context to be finalized.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_ctx_finalize(tiledb_ctx_t* ctx);
+TILEDB_EXPORT int tiledb_ctx_free(tiledb_ctx_t* ctx);
 
 /* ********************************* */
 /*              ERROR                */
@@ -319,11 +317,115 @@ TILEDB_EXPORT int tiledb_basic_array_create(
     tiledb_ctx_t* ctx, const char* name);
 
 /* ********************************* */
-/*               ARRAY               */
+/*            ATTRIBUTE              */
 /* ********************************* */
 
-/** A TileDB array object. */
-typedef struct tiledb_array_t tiledb_array_t;
+/** A TileDB attribute. */
+typedef struct tiledb_attribute_t tiledb_attribute_t;
+
+/**
+ * Creates a TileDB attribute.
+ *
+ * @param name The attribute name.
+ * @param type The attribute type.
+ * @return The created TileDB attribute.
+ */
+TILEDB_EXPORT tiledb_attribute_t* tiledb_attribute_create(
+    const char* name, tiledb_datatype_t type);
+
+/**
+ * Destroys a TileDB attribute, freeing-up memory.
+ *
+ * @param attr The attribute to be destroyed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_free(tiledb_attribute_t* attr);
+
+/**
+ * Sets a compressor to an attribute.
+ *
+ * @param attr The target attribute.
+ * @param compressor The compressor to be set.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_set_compressor(
+    tiledb_attribute_t* attr, tiledb_compressor_t compressor);
+
+/**
+ * Sets the compression level to an attribute.
+ *
+ * @param attr The target attribute.
+ * @param compression_level The compression level.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_set_compression_level(
+    tiledb_attribute_t* attr, int compression_level);
+
+/**
+ * Sets the number of values per cell for an attribute.
+ *
+ * @param attr The target attribute.
+ * @param int cell_val_num The number of values per cell.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_attribute_set_cell_val_num(
+    tiledb_attribute_t* attr, int cell_val_num);
+
+/* ********************************* */
+/*            DIMENSION              */
+/* ********************************* */
+
+/** A TileDB dimension. */
+typedef struct tiledb_dimension_t tiledb_dimension_t;
+
+/**
+ * Creates a TileDB dimension.
+ *
+ * @param name The dimension name.
+ * @param type The dimension type.
+ * @param domain The dimension domain (low, high).
+ * @param tile_extent The tile extent along this dimension.
+ * @return The created TileDB dimension.
+ */
+TILEDB_EXPORT tiledb_dimension_t* tiledb_dimension_create(
+    const char* name,
+    tiledb_datatype_t type,
+    const void* domain,
+    const void* tile_extent);
+
+/**
+ * Destroys a TileDB dimension, freeing-up memory.
+ *
+ * @param attr The dimension to be destroyed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_free(tiledb_dimension_t* attr);
+
+/**
+ * Sets a compressor for a dimension.
+ *
+ * @param dim The target dimension.
+ * @param compressor The compressor to be set.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_set_compressor(
+    tiledb_dimension_t* dim, tiledb_compressor_t compressor);
+
+/**
+ * Sets the compression level for a dimension.
+ *
+ * @param dim The target dimension.
+ * @param compression_level The compression level.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_set_compression_level(
+    tiledb_dimension_t* attr, int compression_level);
+
+/* ********************************* */
+/*           ARRAY SCHEMA            */
+/* ********************************* */
+
+// TODO: make a correctness check function
 
 /** The array schema. */
 typedef struct tiledb_array_schema_t {
@@ -474,6 +576,35 @@ TILEDB_EXPORT int tiledb_array_set_schema(
     const tiledb_datatype_t* types);
 
 /**
+ * Retrieves the schema of an array from disk.
+ *
+ * @param ctx The TileDB context.
+ * @param array The directory of the array whose schema will be retrieved.
+ * @param tiledb_array_schema The array schema to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_load_schema(
+    tiledb_ctx_t* ctx,
+    const char* array,
+    tiledb_array_schema_t* tiledb_array_schema);
+
+/**
+ * Frees the input array schema struct, properly deallocating memory space.
+ *
+ * @param tiledb_array_schema The array schema to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_free_schema(
+    tiledb_array_schema_t* tiledb_array_schema);
+
+/* ********************************* */
+/*               ARRAY               */
+/* ********************************* */
+
+/** A TileDB array object. */
+typedef struct tiledb_array_t tiledb_array_t;
+
+/**
  * Creates a new TileDB array.
  *
  * @param ctx The TileDB context.
@@ -522,6 +653,17 @@ TILEDB_EXPORT int tiledb_array_init(
     int attribute_num);
 
 /**
+ * Retrieves the schema of an already initialized array.
+ *
+ * @param tiledb_array The TileDB array object (must already be initialized).
+ * @param tiledb_array_schema The array schema to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_get_schema(
+    const tiledb_array_t* tiledb_array,
+    tiledb_array_schema_t* tiledb_array_schema);
+
+/**
  * Resets the subarray used upon initialization of the array. This is useful
  * when the array is used for reading, and the user wishes to change the
  * query subarray without having to finalize and re-initialize the array.
@@ -552,39 +694,6 @@ TILEDB_EXPORT int tiledb_array_reset_attributes(
     const tiledb_array_t* tiledb_array,
     const char** attributes,
     int attribute_num);
-
-/**
- * Retrieves the schema of an already initialized array.
- *
- * @param tiledb_array The TileDB array object (must already be initialized).
- * @param tiledb_array_schema The array schema to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_array_get_schema(
-    const tiledb_array_t* tiledb_array,
-    tiledb_array_schema_t* tiledb_array_schema);
-
-/**
- * Retrieves the schema of an array from disk.
- *
- * @param ctx The TileDB context.
- * @param array The directory of the array whose schema will be retrieved.
- * @param tiledb_array_schema The array schema to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_array_load_schema(
-    tiledb_ctx_t* ctx,
-    const char* array,
-    tiledb_array_schema_t* tiledb_array_schema);
-
-/**
- * Frees the input array schema struct, properly deallocating memory space.
- *
- * @param tiledb_array_schema The array schema to be freed.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_array_free_schema(
-    tiledb_array_schema_t* tiledb_array_schema);
 
 /**
  * Performs a write operation to an array.

@@ -42,6 +42,7 @@
 #include <string>
 #include <vector>
 #include "configurator.h"
+#include "datatype.h"
 #include "status.h"
 
 #ifdef HAVE_OPENMP
@@ -196,6 +197,14 @@ Status create_fragment_file(const std::string& dir);
  *     retrieve the current working directory, the empty string is returned.
  */
 std::string current_dir();
+
+/**
+ * Returns the size in bytes of the input datatype
+ *
+ * @param type The input datatype.
+ * @return The size in bytes of the input datatype.
+ */
+uint64_t datatype_size(Datatype type);
 
 /**
  * Deletes a directory. Note that the directory must not contain other
