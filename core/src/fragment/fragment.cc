@@ -32,13 +32,8 @@
  */
 
 #include "fragment.h"
-#include <cassert>
-#include <cerrno>
-#include <cstdio>
-#include <cstring>
-#include <iostream>
+#include "filesystem.h"
 #include "logger.h"
-#include "status.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -130,9 +125,9 @@ Status Fragment::finalize() {
     Status st_bk = book_keeping_->finalize();
     Status st_rn;
     Status st_cf;
-    if (utils::is_dir(fragment_name_)) {
+    if (utils::fragment_exists(fragment_name_)) {
       st_rn = rename_fragment();
-      st_cf = utils::create_fragment_file(fragment_name_);
+      st_cf = filesystem::create_fragment_file(fragment_name_);
     }
     // Errors
     if (!st_ws.ok()) {
@@ -242,7 +237,7 @@ Status Fragment::write(const void** buffers, const size_t* buffer_sizes) {
 Status Fragment::rename_fragment() {
   // Do nothing in READ mode
   if (write_mode()) {
-    std::string parent_dir = utils::parent_dir(fragment_name_);
+    std::string parent_dir = utils::parent_path(fragment_name_);
     std::string new_fragment_name =
         parent_dir + "/" + fragment_name_.substr(parent_dir.size() + 2);
 

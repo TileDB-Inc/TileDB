@@ -31,23 +31,18 @@
  * This file implements useful (global) functions.
  */
 
-#include "utils.h"
 #include <dirent.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <cstring>
+#include <iostream>
+#include <set>
+#include "logger.h"
+
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <algorithm>
-#include <cassert>
-#include <cerrno>
-#include <cstring>
-#include <iostream>
-#include <set>
-#include "configurator.h"
-#include "logger.h"
-#include "status.h"
 
 #if defined(__APPLE__) && defined(__MACH__)
 #include <arpa/inet.h>
@@ -59,14 +54,14 @@
 #else
 #include <linux/if.h>
 #endif
-
-#include <unistd.h>
 #include <zlib.h>
-#include <typeinfo>
-#include "tiledb.h"
 
-#define XSTR(s) STR(s)
+#include "filesystem.h"
+#include "tiledb.h"
+#include "utils.h"
+
 #define STR(s) #s
+#define XSTR(s) STR(s)
 
 namespace tiledb {
 
@@ -76,13 +71,10 @@ namespace utils {
 /*           FUNCTIONS            */
 /* ****************************** */
 
-void adjacent_slashes_dedup(std::string& value) {
-  value.erase(
-      std::unique(value.begin(), value.end(), both_slashes), value.end());
-}
-
-bool both_slashes(char a, char b) {
-  return a == '/' && b == '/';
+bool starts_with(const std::string& value, const std::string& prefix) {
+  if (prefix.size() > value.size())
+    return false;
+  return std::equal(prefix.begin(), prefix.end(), value.begin());
 }
 
 template <class T>
@@ -195,47 +187,6 @@ int cmp_row_order(
   return 0;
 }
 
-Status create_dir(const std::string& dir) {
-  // Get real directory path
-  std::string real_dir = utils::real_dir(dir);
-
-  // If the directory does not exist, create it
-  if (!is_dir(real_dir)) {
-    if (mkdir(real_dir.c_str(), S_IRWXU)) {
-      return LOG_STATUS(Status::IOError(
-          std::string("Cannot create directory '") + real_dir + "'; " +
-          strerror(errno)));
-    };
-    return Status::Ok();
-  } else {  // Error
-    return LOG_STATUS(Status::IOError(
-        std::string("Cannot create directory '") + real_dir +
-        "'; Directory already exists"));
-  }
-}
-
-Status create_fragment_file(const std::string& dir) {
-  // Create the special fragment file
-  std::string filename =
-      std::string(dir) + "/" + Configurator::fragment_filename();
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  if (fd == -1 || ::close(fd)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Failed to create fragment file; ") + strerror(errno)));
-  }
-  return Status::Ok();
-}
-
-std::string current_dir() {
-  std::string dir = "";
-  char* path = getcwd(nullptr, 0);
-  if (path != nullptr) {
-    dir = path;
-    free(path);
-  }
-  return dir;
-}
-
 uint64_t datatype_size(Datatype type) {
   uint64_t size;
 
@@ -278,44 +229,6 @@ uint64_t datatype_size(Datatype type) {
   }
 
   return size;
-}
-
-Status delete_dir(const std::string& dirname) {
-  // Get real path
-  std::string dirname_real = utils::real_dir(dirname);
-
-  // Delete the contents of the directory
-  std::string filename;
-  struct dirent* next_file;
-  DIR* dir = opendir(dirname_real.c_str());
-
-  if (dir == nullptr) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot open directory; ") + strerror(errno)));
-  }
-
-  while ((next_file = readdir(dir))) {
-    if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, ".."))
-      continue;
-    filename = dirname_real + "/" + next_file->d_name;
-    if (remove(filename.c_str())) {
-      return LOG_STATUS(Status::OSError(
-          std::string("Cannot delete file; ") + strerror(errno)));
-    }
-  }
-
-  // Close directory
-  if (closedir(dir)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot close directory; ") + strerror(errno)));
-  }
-
-  // Remove directory
-  if (rmdir(dirname.c_str())) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot delete directory; ") + strerror(errno)));
-  }
-  return Status::Ok();
 }
 
 template <class T>
@@ -367,70 +280,35 @@ void expand_mbr(T* mbr, const T* coords, int dim_num) {
   }
 }
 
-Status file_size(const std::string& filename, off_t* size) {
-  int fd = open(filename.c_str(), O_RDONLY);
-  if (fd == -1) {
-    return LOG_STATUS(
-        Status::OSError("Cannot get file size; File opening error"));
-  }
-
-  struct stat st;
-  fstat(fd, &st);
-  *size = st.st_size;
-
-  close(fd);
-  return Status::Ok();
+Status delete_fragment(const std::string& frag) {
+  return filesystem::delete_dir(frag);
 }
 
-std::vector<std::string> get_dirs(const std::string& dir) {
-  std::vector<std::string> dirs;
-  std::string new_dir;
-  struct dirent* next_file;
-  DIR* c_dir = opendir(dir.c_str());
-
-  if (c_dir == nullptr)
-    return std::vector<std::string>();
-
-  while ((next_file = readdir(c_dir))) {
-    if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, "..") ||
-        !is_dir(dir + "/" + next_file->d_name))
-      continue;
-    new_dir = dir + "/" + next_file->d_name;
-    dirs.push_back(new_dir);
-  }
-
-  // Close array directory
-  closedir(c_dir);
-
-  // Return
-  return dirs;
+bool fragment_exists(const std::string& frag) {
+  return filesystem::is_dir(frag);
 }
 
-std::vector<std::string> get_fragment_dirs(const std::string& dir) {
-  std::vector<std::string> dirs;
-  std::string new_dir;
-  struct dirent* next_file;
-  DIR* c_dir = opendir(dir.c_str());
+std::string parent_path(const std::string& dir) {
+  // Get real dir
+  std::string real_dir = filesystem::real_dir(dir);
 
-  if (c_dir == nullptr)
-    return std::vector<std::string>();
+  // Start from the end of the string
+  int pos = real_dir.size() - 1;
 
-  while ((next_file = readdir(c_dir))) {
-    new_dir = dir + "/" + next_file->d_name;
+  // Skip the potential last '/'
+  if (real_dir[pos] == '/')
+    --pos;
 
-    if (is_fragment(new_dir))
-      dirs.push_back(new_dir);
-  }
+  // Scan backwords until you find the next '/'
+  while (pos > 0 && real_dir[pos] != '/')
+    --pos;
 
-  // Close array directory
-  closedir(c_dir);
-
-  // Return
-  return dirs;
+  return real_dir.substr(0, pos);
 }
 
 #if defined(__APPLE__) && defined(__MACH__)
-// TODO: Errors are ignored
+// TODO: Errors are ignored, this is kind of a mess with the preprocessor order
+// we need to include tiledb.h just to get the mac address!
 std::string get_mac_addr() {
   int mib[6];
   char mac[13];
@@ -439,20 +317,21 @@ std::string get_mac_addr() {
   unsigned char* ptr;
   struct if_msghdr* ifm;
   struct sockaddr_dl* sdl;
-
   mib[0] = CTL_NET;
   mib[1] = AF_ROUTE;
   mib[2] = 0;
   mib[3] = AF_LINK;
   mib[4] = NET_RT_IFLIST;
-  if (((mib[5] = if_nametoindex(XSTR(TILEDB_MAC_ADDRESS_INTERFACE))) == 0) ||
-      (sysctl(mib, 6, nullptr, &len, nullptr, 0) < 0)) {
+  const char* ifname = XSTR(TILEDB_MAC_ADDRESS_INTERFACE);
+  mib[5] = if_nametoindex(ifname);
+  if (mib[5] == 0 || sysctl(mib, 6, nullptr, &len, nullptr, 0) < 0) {
+    assert(0);
     LOG_ERROR("Cannot get MAC address");
     return "";
   }
-
   buf = (char*)malloc(len);
   if (sysctl(mib, 6, buf, &len, nullptr, 0) < 0) {
+    assert(0);
     LOG_ERROR("Cannot get MAC address");
     return "";
   }
@@ -605,7 +484,8 @@ bool intersect(const std::vector<T>& v1, const std::vector<T>& v2) {
 
 bool is_array(const std::string& dir) {
   // Check existence
-  if (is_dir(dir) && is_file(dir + "/" + Configurator::array_schema_filename()))
+  if (filesystem::is_dir(dir) &&
+      filesystem::is_file(dir + "/" + Configurator::array_schema_filename()))
     return true;
   else
     return false;
@@ -621,19 +501,10 @@ bool is_contained(const T* range_A, const T* range_B, int dim_num) {
   return true;
 }
 
-bool is_dir(const std::string& dir) {
-  struct stat st;
-  return stat(dir.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
-}
-
-bool is_file(const std::string& file) {
-  struct stat st;
-  return (stat(file.c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
-}
-
 bool is_fragment(const std::string& dir) {
   // Check existence
-  if (is_dir(dir) && is_file(dir + "/" + Configurator::fragment_filename()))
+  if (filesystem::is_dir(dir) &&
+      filesystem::is_file(dir + "/" + Configurator::fragment_filename()))
     return true;
   else
     return false;
@@ -641,7 +512,8 @@ bool is_fragment(const std::string& dir) {
 
 bool is_group(const std::string& dir) {
   // Check existence
-  if (is_dir(dir) && is_file(dir + "/" + Configurator::group_filename()))
+  if (filesystem::is_dir(dir) &&
+      filesystem::is_file(dir + "/" + Configurator::group_filename()))
     return true;
   else
     return false;
@@ -649,8 +521,8 @@ bool is_group(const std::string& dir) {
 
 bool is_metadata(const std::string& dir) {
   // Check existence
-  if (is_dir(dir) &&
-      is_file(dir + "/" + Configurator::metadata_schema_filename()))
+  if (filesystem::is_dir(dir) &&
+      filesystem::is_file(dir + "/" + Configurator::metadata_schema_filename()))
     return true;
   else
     return false;
@@ -685,142 +557,6 @@ bool is_unary_subarray(const T* subarray, int dim_num) {
 
   return true;
 }
-
-#ifdef HAVE_MPI
-Status mpi_io_read_from_file(
-    const MPI_Comm* mpi_comm,
-    const std::string& filename,
-    off_t offset,
-    void* buffer,
-    size_t length) {
-  // Sanity check
-  if (mpi_comm == NULL) {
-    return LOG_STATUS(
-        Status::Error("Cannot read from file; Invalid MPI communicator"));
-  }
-
-  // Open file
-  MPI_File fh;
-  if (MPI_File_open(
-          *mpi_comm,
-          (char*)filename.c_str(),
-          MPI_MODE_RDONLY,
-          MPI_INFO_NULL,
-          &fh)) {
-    return LOG_STATUS(
-        Status::Error("Cannot read from file; File opening error"));
-  }
-
-  // Read
-  MPI_File_seek(fh, offset, MPI_SEEK_SET);
-  MPI_Status mpi_status;
-  if (MPI_File_read(fh, buffer, length, MPI_CHAR, &mpi_status)) {
-    return LOG_STATUS(Status::IOError("Cannot read from file; File reading error");
-  }
-
-  // Close file
-  if (MPI_File_close(&fh)) {
-    return LOG_STATUS(
-        Status::OSError("Cannot read from file; File closing error"));
-  }
-
-  // Success
-  return Status::Ok();
-}
-
-Status mpi_io_write_to_file(
-    const MPI_Comm* mpi_comm,
-    const char* filename,
-    const void* buffer,
-    size_t buffer_size) {
-  // Open file
-  MPI_File fh;
-  if (MPI_File_open(
-          *mpi_comm,
-          (char*)filename,
-          MPI_MODE_WRONLY | MPI_MODE_APPEND | MPI_MODE_CREATE |
-              MPI_MODE_SEQUENTIAL,
-          MPI_INFO_NULL,
-          &fh)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot write to file '") + filename +
-        "'; File opening error");
-  }
-
-  // Append attribute data to the file in batches of
-  // Configurator::max_write_bytes() bytes at a time
-  MPI_Status mpi_status;
-  while (buffer_size > Configurator::max_write_bytes()) {
-    if (MPI_File_write(
-            fh,
-            (void*)buffer,
-            Configurator::max_write_bytes(),
-            MPI_CHAR,
-            &mpi_status)) {
-      return LOG_STATUS(Status::IOError(
-          std::string("Cannot write to file '") + filename +
-          "'; File writing error");
-    }
-    buffer_size -= Configurator::max_write_bytes();
-  }
-  if (MPI_File_write(fh, (void*)buffer, buffer_size, MPI_CHAR, &mpi_status)) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Cannot write to file '") + filename +
-        "'; File writing error");
-  }
-
-  // Close file
-  if (MPI_File_close(&fh)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot write to file '") + filename +
-        "'; File closing error");
-  }
-
-  // Success
-  return Status::Ok()
-}
-
-STATUS mpi_io_sync(const MPI_Comm* mpi_comm, const char* filename) {
-  // Open file
-  MPI_File fh;
-  int rc;
-  if (is_dir(filename))  // DIRECTORY
-    rc = MPI_File_open(
-        *mpi_comm, (char*)filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);
-  else if (is_file(filename))  // FILE
-    rc = MPI_File_open(
-        *mpi_comm,
-        (char*)filename,
-        MPI_MODE_WRONLY | MPI_MODE_APPEND | MPI_MODE_CREATE |
-            MPI_MODE_SEQUENTIAL,
-        MPI_INFO_NULL,
-        &fh);
-  else
-    return Status::Ok();  // If file does not exist, exit
-
-  // Handle error
-  if (rc) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot open file '") + filename + "'; File opening error");
-  }
-
-  // Sync
-  if (MPI_File_sync(fh)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot sync file '") + filename +
-        "'; File syncing error"));
-  }
-
-  // Close file
-  if (MPI_File_close(&fh)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot sync file '") + filename + "'; File closing error")));
-  }
-
-  // Success
-  return Status::Ok();
-}
-#endif
 
 #ifdef HAVE_OPENMP
 Status mutex_destroy(omp_lock_t* mtx) {
@@ -874,180 +610,6 @@ Status mutex_unlock(pthread_mutex_t* mtx) {
     return LOG_STATUS(Status::Error("Cannot unlock mutex"));
   };
   return Status::Ok();
-}
-
-std::string parent_dir(const std::string& dir) {
-  // Get real dir
-  std::string real_dir = utils::real_dir(dir);
-
-  // Start from the end of the string
-  int pos = real_dir.size() - 1;
-
-  // Skip the potential last '/'
-  if (real_dir[pos] == '/')
-    --pos;
-
-  // Scan backwords until you find the next '/'
-  while (pos > 0 && real_dir[pos] != '/')
-    --pos;
-
-  return real_dir.substr(0, pos);
-}
-
-void purge_dots_from_path(std::string& path) {
-  // For easy reference
-  size_t path_size = path.size();
-
-  // Trivial case
-  if (path_size == 0 || path == "/")
-    return;
-
-  // It expects an absolute path
-  assert(path[0] == '/');
-
-  // Tokenize
-  const char* token_c_str = path.c_str() + 1;
-  std::vector<std::string> tokens, final_tokens;
-  std::string token;
-
-  for (size_t i = 1; i < path_size; ++i) {
-    if (path[i] == '/') {
-      path[i] = '\0';
-      token = token_c_str;
-      if (token != "")
-        tokens.push_back(token);
-      token_c_str = path.c_str() + i + 1;
-    }
-  }
-  token = token_c_str;
-  if (token != "")
-    tokens.push_back(token);
-
-  // Purge dots
-  int token_num = tokens.size();
-  for (int i = 0; i < token_num; ++i) {
-    if (tokens[i] == ".") {  // Skip single dots
-      continue;
-    } else if (tokens[i] == "..") {
-      if (final_tokens.size() == 0) {
-        // Invalid path
-        path = "";
-        return;
-      } else {
-        final_tokens.pop_back();
-      }
-    } else {
-      final_tokens.push_back(tokens[i]);
-    }
-  }
-
-  // Assemble final path
-  path = "/";
-  int final_token_num = final_tokens.size();
-  for (int i = 0; i < final_token_num; ++i)
-    path += ((i != 0) ? "/" : "") + final_tokens[i];
-}
-
-Status read_from_file(
-    const std::string& filename, off_t offset, void* buffer, size_t length) {
-  // Open file
-  int fd = open(filename.c_str(), O_RDONLY);
-  if (fd == -1) {
-    return LOG_STATUS(
-        Status::OSError("Cannot read from file; File opening error"));
-  }
-  // Read
-  lseek(fd, offset, SEEK_SET);
-  ssize_t bytes_read = ::read(fd, buffer, length);
-  if (bytes_read != ssize_t(length)) {
-    return LOG_STATUS(
-        Status::IOError("Cannot read from file; File reading error"));
-  }
-  // Close file
-  if (close(fd)) {
-    return LOG_STATUS(
-        Status::OSError("Cannot read from file; File closing error"));
-  }
-  return Status::Ok();
-}
-
-Status read_from_file_with_mmap(
-    const std::string& filename, off_t offset, void* buffer, size_t length) {
-  // Calculate offset considering the page size
-  size_t page_size = sysconf(_SC_PAGE_SIZE);
-  off_t start_offset = (offset / page_size) * page_size;
-  size_t extra_offset = offset - start_offset;
-  size_t new_length = length + extra_offset;
-
-  // Open file
-  int fd = open(filename.c_str(), O_RDONLY);
-  if (fd == -1) {
-    return LOG_STATUS(
-        Status::OSError("Cannot read from file; File opening error"));
-  }
-
-  // Map
-  void* addr =
-      mmap(nullptr, new_length, PROT_READ, MAP_SHARED, fd, start_offset);
-  if (addr == MAP_FAILED) {
-    return LOG_STATUS(
-        Status::MMapError("Cannot read from file; Memory map error"));
-  }
-
-  // Give advice for sequential access
-  if (madvise(addr, new_length, MADV_SEQUENTIAL)) {
-    return LOG_STATUS(
-        Status::MMapError("Cannot read from file; Memory advice error"));
-  }
-
-  // Copy bytes
-  memcpy(buffer, static_cast<char*>(addr) + extra_offset, length);
-
-  // Close file
-  if (close(fd)) {
-    return LOG_STATUS(
-        Status::OSError("Cannot read from file; File closing error"));
-  }
-
-  // Unmap
-  if (munmap(addr, new_length)) {
-    return LOG_STATUS(
-        Status::MMapError("Cannot read from file; Memory unmap error"));
-  }
-
-  return Status::Ok();
-}
-
-std::string real_dir(const std::string& dir) {
-  // Initialize current, home and root
-  std::string current = current_dir();
-  auto env_home_ptr = getenv("HOME");
-  std::string home = env_home_ptr ? env_home_ptr : current;
-  std::string root = "/";
-
-  // Easy cases
-  if (dir == "" || dir == "." || dir == "./")
-    return current;
-  else if (dir == "~")
-    return home;
-  else if (dir == "/")
-    return root;
-
-  // Other cases
-  std::string ret_dir;
-  if (starts_with(dir, "/"))
-    ret_dir = root + dir;
-  else if (starts_with(dir, "~/"))
-    ret_dir = home + dir.substr(1, dir.size() - 1);
-  else if (starts_with(dir, "./"))
-    ret_dir = current + dir.substr(1, dir.size() - 1);
-  else
-    ret_dir = current + "/" + dir;
-
-  adjacent_slashes_dedup(ret_dir);
-  purge_dots_from_path(ret_dir);
-
-  return ret_dir;
 }
 
 Status RLE_compress(
@@ -1657,127 +1219,6 @@ void split_coordinates(
 
   // Clean up
   free((void*)tile_tmp);
-}
-
-bool starts_with(const std::string& value, const std::string& prefix) {
-  if (prefix.size() > value.size())
-    return false;
-  return std::equal(prefix.begin(), prefix.end(), value.begin());
-}
-
-Status sync(const char* filename) {
-  // Open file
-  int fd;
-  if (is_dir(filename))  // DIRECTORY
-    fd = open(filename, O_RDONLY, S_IRWXU);
-  else if (is_file(filename))  // FILE
-    fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);
-  else
-    return Status::Ok();  // If file does not exist, exit
-
-  // Handle error
-  if (fd == -1) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot sync file '") + filename +
-        "'; File opening error"));
-  }
-
-  // Sync
-  if (fsync(fd)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot sync file '") + filename +
-        "'; File syncing error"));
-  }
-
-  // Close file
-  if (close(fd)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot sync file '") + filename +
-        "'; File closing error"));
-  }
-
-  // Success
-  return Status::Ok();
-}
-
-Status write_to_file(
-    const char* filename, const void* buffer, size_t buffer_size) {
-  // Open file
-  int fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);
-  if (fd == -1) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot write to file '") + filename +
-        "'; File opening error"));
-  }
-
-  // Append data to the file in batches of Configurator::max_write_bytes()
-  // bytes at a time
-  ssize_t bytes_written;
-  while (buffer_size > Configurator::max_write_bytes()) {
-    bytes_written = ::write(fd, buffer, Configurator::max_write_bytes());
-    if (bytes_written != Configurator::max_write_bytes()) {
-      return LOG_STATUS(Status::IOError(
-          std::string("Cannot write to file '") + filename +
-          "'; File writing error"));
-    }
-    buffer_size -= Configurator::max_write_bytes();
-  }
-  bytes_written = ::write(fd, buffer, buffer_size);
-  if (bytes_written != ssize_t(buffer_size)) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Cannot write to file '") + filename +
-        "'; File writing error"));
-  }
-
-  // Close file
-  if (close(fd)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot write to file '") + filename +
-        "'; File closing error"));
-  }
-
-  // Success
-  return Status::Ok();
-}
-
-Status write_to_file_cmp_gzip(
-    const char* filename, const void* buffer, size_t buffer_size) {
-  // Open file
-  gzFile fd = gzopen(filename, "wb");
-  if (fd == nullptr) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot write to file '") + filename +
-        "'; File opening error"));
-  }
-
-  // Append data to the file in batches of Configurator::max_write_bytes()
-  // bytes at a time
-  ssize_t bytes_written;
-  while (buffer_size > Configurator::max_write_bytes()) {
-    bytes_written = gzwrite(fd, buffer, Configurator::max_write_bytes());
-    if (bytes_written != Configurator::max_write_bytes()) {
-      return LOG_STATUS(Status::IOError(
-          std::string("Cannot write to file '") + filename +
-          "'; File writing error"));
-    }
-    buffer_size -= Configurator::max_write_bytes();
-  }
-  bytes_written = gzwrite(fd, buffer, buffer_size);
-  if (bytes_written != ssize_t(buffer_size)) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Cannot write to file '") + filename +
-        "'; File writing error"));
-  }
-
-  // Close file
-  if (gzclose(fd)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot write to file '") + filename +
-        "'; File closing error"));
-  }
-
-  // Success
-  return Status::Ok();
 }
 
 void zip_coordinates(
