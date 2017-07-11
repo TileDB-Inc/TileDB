@@ -54,7 +54,6 @@
 #else
 #include <linux/if.h>
 #endif
-#include <zlib.h>
 
 #include "filesystem.h"
 #include "tiledb.h"
@@ -368,89 +367,6 @@ std::string get_mac_addr() {
 }
 #endif
 
-Status gzip(
-    unsigned char* in,
-    size_t in_size,
-    unsigned char* out,
-    size_t out_size,
-    ssize_t* gzip_size) {
-  ssize_t ret;
-  z_stream strm;
-
-  // Allocate deflate state
-  strm.zalloc = Z_NULL;
-  strm.zfree = Z_NULL;
-  strm.opaque = Z_NULL;
-  ret = deflateInit(
-      &strm, Z_DEFAULT_COMPRESSION);  // TODO: this should be part of the schema
-
-  if (ret != Z_OK) {
-    (void)deflateEnd(&strm);
-    return LOG_STATUS(Status::GZipError("Cannot compress with GZIP"));
-  }
-
-  // Compress
-  strm.next_in = in;
-  strm.next_out = out;
-  strm.avail_in = in_size;
-  strm.avail_out = out_size;
-  ret = deflate(&strm, Z_FINISH);
-
-  // Clean up
-  (void)deflateEnd(&strm);
-
-  // Return
-  if (ret == Z_STREAM_ERROR || strm.avail_in != 0) {
-    return LOG_STATUS(Status::GZipError("Cannot compress with GZIP"));
-  };
-  // Return size of compressed data
-  *gzip_size = out_size - strm.avail_out;
-  return Status::Ok();
-}
-
-Status gunzip(
-    unsigned char* in,
-    size_t in_size,
-    unsigned char* out,
-    size_t avail_out,
-    size_t& out_size) {
-  int ret;
-  z_stream strm;
-
-  // Allocate deflate state
-  strm.zalloc = Z_NULL;
-  strm.zfree = Z_NULL;
-  strm.opaque = Z_NULL;
-  strm.avail_in = 0;
-  strm.next_in = Z_NULL;
-  ret = inflateInit(&strm);
-
-  if (ret != Z_OK) {
-    return LOG_STATUS(Status::GZipError("Cannot decompress with GZIP"));
-  }
-
-  // Decompress
-  strm.next_in = in;
-  strm.next_out = out;
-  strm.avail_in = in_size;
-  strm.avail_out = avail_out;
-  ret = inflate(&strm, Z_FINISH);
-
-  if (ret == Z_STREAM_ERROR || ret != Z_STREAM_END) {
-    return LOG_STATUS(
-        Status::GZipError("Cannot decompress with GZIP, Stream Error"));
-  }
-
-  // Clean up
-  (void)inflateEnd(&strm);
-
-  // Calculate size of compressed data
-  out_size = avail_out - strm.avail_out;
-
-  // Success
-  return Status::Ok();
-}
-
 template <class T>
 bool has_duplicates(const std::vector<T>& v) {
   std::set<T> s(v.begin(), v.end());
@@ -610,97 +526,6 @@ Status mutex_unlock(pthread_mutex_t* mtx) {
     return LOG_STATUS(Status::Error("Cannot unlock mutex"));
   };
   return Status::Ok();
-}
-
-Status RLE_compress(
-    const unsigned char* input,
-    size_t input_size,
-    unsigned char* output,
-    size_t output_allocated_size,
-    size_t value_size,
-    int64_t* output_size) {
-  // Initializations
-  int cur_run_len = 1;
-  int max_run_len = 65535;
-  const unsigned char* input_cur = input + value_size;
-  const unsigned char* input_prev = input;
-  unsigned char* output_cur = output;
-  int64_t value_num = input_size / value_size;
-  int64_t _output_size = 0;
-  size_t run_size = value_size + 2 * sizeof(char);
-  unsigned char byte;
-
-  // Trivial case
-  if (value_num == 0) {
-    *output_size = 0;
-    return Status::Ok();
-  }
-
-  // Sanity check on input buffer
-  if (input_size % value_size) {
-    return LOG_STATUS(Status::CompressionError(
-        "Failed compressing with RLE; invalid input buffer format"));
-  }
-
-  // Make runs
-  for (int64_t i = 1; i < value_num; ++i) {
-    if (!memcmp(input_cur, input_prev, value_size) &&
-        cur_run_len < max_run_len) {  // Expand the run
-      ++cur_run_len;
-    } else {  // Save the run
-      // Sanity check on output size
-      if (_output_size + run_size > output_allocated_size) {
-        return LOG_STATUS(Status::CompressionError(
-            "Failed compressing with RLE; output buffer overflow"));
-      }
-
-      // Copy to output buffer
-      memcpy(output_cur, input_prev, value_size);
-      output_cur += value_size;
-      byte = (unsigned char)(cur_run_len >> 8);
-      memcpy(output_cur, &byte, sizeof(char));
-      output_cur += sizeof(char);
-      byte = (unsigned char)(cur_run_len % 256);
-      memcpy(output_cur, &byte, sizeof(char));
-      output_cur += sizeof(char);
-      _output_size += run_size;
-
-      // Reset current run length
-      cur_run_len = 1;
-    }
-
-    // Update run info
-    input_prev = input_cur;
-    input_cur = input_prev + value_size;
-  }
-
-  // Save final run
-  // --- Sanity check on size
-  if (_output_size + run_size > output_allocated_size) {
-    return LOG_STATUS(Status::CompressionError(
-        "Failed compressing with RLE; output buffer overflow"));
-  }
-
-  // --- Copy to output buffer
-  memcpy(output_cur, input_prev, value_size);
-  output_cur += value_size;
-  byte = (unsigned char)(cur_run_len >> 8);
-  memcpy(output_cur, &byte, sizeof(char));
-  output_cur += sizeof(char);
-  byte = (unsigned char)(cur_run_len % 256);
-  memcpy(output_cur, &byte, sizeof(char));
-  output_cur += sizeof(char);
-  _output_size += run_size;
-
-  // Success
-  *output_size = _output_size;
-  return Status::Ok();
-}
-
-size_t RLE_compress_bound(size_t input_size, size_t value_size) {
-  // In the worst case, RLE adds two bytes per every value in the buffer.
-  int64_t value_num = input_size / value_size;
-  return input_size + value_num * 2;
 }
 
 size_t RLE_compress_bound_coords(
@@ -951,60 +776,6 @@ Status RLE_compress_coords_row(
 
   // Success
   *output_size = _output_size;
-  return Status::Ok();
-}
-
-Status RLE_decompress(
-    const unsigned char* input,
-    size_t input_size,
-    unsigned char* output,
-    size_t output_allocated_size,
-    size_t value_size) {
-  // Initializations
-  const unsigned char* input_cur = input;
-  unsigned char* output_cur = output;
-  int64_t output_size = 0;
-  int64_t run_len;
-  size_t run_size = value_size + 2 * sizeof(char);
-  int64_t run_num = input_size / run_size;
-  unsigned char byte;
-
-  // Trivial case
-  if (input_size == 0)
-    return Status::Ok();
-
-  // Sanity check on input buffer format
-  if (input_size % run_size) {
-    return LOG_STATUS(Status::CompressionError(
-        "Failed decompressing with RLE; invalid input buffer format"));
-  }
-
-  // Decompress runs
-  for (int64_t i = 0; i < run_num; ++i) {
-    // Retrieve the current run length
-    memcpy(&byte, input_cur + value_size, sizeof(char));
-    run_len = (((int64_t)byte) << 8);
-    memcpy(&byte, input_cur + value_size + sizeof(char), sizeof(char));
-    run_len += (int64_t)byte;
-
-    // Sanity check on size
-    if (output_size + value_size * run_len > output_allocated_size) {
-      return LOG_STATUS(Status::CompressionError(
-          "Failed decompressing with RLE; output buffer overflow"));
-    }
-
-    // Copy to output buffer
-    for (int64_t j = 0; j < run_len; ++j) {
-      memcpy(output_cur, input_cur, value_size);
-      output_cur += value_size;
-    }
-
-    // Update input/output tracking info
-    output_size += value_size * run_len;
-    input_cur += run_size;
-  }
-
-  // Succes
   return Status::Ok();
 }
 

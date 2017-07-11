@@ -231,41 +231,6 @@ void expand_mbr(T* mbr, const T* coords, int dim_num);
 std::string get_mac_addr();
 
 /**
- * GZIPs the input buffer and stores the result in the output buffer, returning
- * the size of compressed data.
- *
- * @param in The input buffer.
- * @param in_size The size of the input buffer.
- * @param out The output buffer.
- * @param out_size The available size in the output buffer.
- * @return The size of compressed data on success, and TILEDB_UT_ERR on error.
- */
-Status gzip(
-    unsigned char* in,
-    size_t in_size,
-    unsigned char* out,
-    size_t out_size,
-    ssize_t* gzip_size);
-
-/**
- * Decompresses the GZIPed input buffer and stores the result in the output
- * buffer, of maximum size avail_out.
- *
- * @param in The input buffer.
- * @param in_size The size of the input buffer.
- * @param out The output buffer.
- * @param avail_out_size The available size in the output buffer.
- * @param out_size The size of the decompressed data.
- * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
- */
-Status gunzip(
-    unsigned char* in,
-    size_t in_size,
-    unsigned char* out,
-    size_t avail_out_size,
-    size_t& out_size);
-
-/**
  * Checks if there are duplicates in the input vector.
  *
  * @tparam T The type of the values in the input vector.
@@ -415,36 +380,6 @@ Status mutex_lock(pthread_mutex_t* mtx);
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
 Status mutex_unlock(pthread_mutex_t* mtx);
-
-/**
- * Compresses with RLE.
- *
- * @param input The input buffer to be compressed.
- * @param input_size The size of the input buffer.
- * @param output The output buffer that results from compression.
- * @param output_allocated_size The allocated size of the output buffer.
- * @param value_size The size of each single value in the input buffer.
- * @param The size of the result ouput buffer upon success, and TILEDB_UT_ERR
- *     on error.
- * @return Status
- */
-Status RLE_compress(
-    const unsigned char* input,
-    size_t input_size,
-    unsigned char* output,
-    size_t output_allocated_size,
-    size_t value_size,
-    int64_t* output_size);
-
-/**
- * Returns the maximum size of the output of RLE compression.
- *
- * @param input_size The input buffer size.
- * @param value_size The size of a sinlge value in the input buffer.
- * @return The maximum size of the output after RLE-compressing the input with
- *     size input_size.
- */
-size_t RLE_compress_bound(size_t input_size, size_t value_size);
 
 /**
  * Returns the maximum size of the output of RLE compression on the coordinates.

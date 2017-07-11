@@ -32,14 +32,10 @@
  */
 
 #include "read_state.h"
-#include <blosc.h>
-#include <bzlib.h>
 #include <fcntl.h>
-#include <lz4.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <zstd.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -50,6 +46,13 @@
 #include "logger.h"
 #include "status.h"
 #include "utils.h"
+
+#include "blosc_compressor.h"
+#include "bzip_compressor.h"
+#include "gzip_compressor.h"
+#include "lz4_compressor.h"
+#include "rle_compressor.h"
+#include "zstd_compressor.h"
 
 /* ****************************** */
 /*             MACROS             */
@@ -1348,58 +1351,18 @@ Status ReadState::decompress_tile(
       return decompress_tile_lz4(
           attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
     case Compressor::BLOSC:
-      return decompress_tile_blosc(
-          attribute_id,
-          tile_compressed,
-          tile_compressed_size,
-          tile,
-          tile_size,
-          "blosclz");
 #undef BLOSC_LZ4
     case Compressor::BLOSC_LZ4:
-      return decompress_tile_blosc(
-          attribute_id,
-          tile_compressed,
-          tile_compressed_size,
-          tile,
-          tile_size,
-          "lz4");
 #undef BLOSC_LZ4HC
     case Compressor::BLOSC_LZ4HC:
-      return decompress_tile_blosc(
-          attribute_id,
-          tile_compressed,
-          tile_compressed_size,
-          tile,
-          tile_size,
-          "lz4hc");
 #undef BLOSC_SNAPPY
     case Compressor::BLOSC_SNAPPY:
-      return decompress_tile_blosc(
-          attribute_id,
-          tile_compressed,
-          tile_compressed_size,
-          tile,
-          tile_size,
-          "snappy");
 #undef BLOSC_ZLIB
     case Compressor::BLOSC_ZLIB:
-      return decompress_tile_blosc(
-          attribute_id,
-          tile_compressed,
-          tile_compressed_size,
-          tile,
-          tile_size,
-          "zlib");
 #undef BLOSC_ZSTD
     case Compressor::BLOSC_ZSTD:
       return decompress_tile_blosc(
-          attribute_id,
-          tile_compressed,
-          tile_compressed_size,
-          tile,
-          tile_size,
-          "zstd");
+          attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
     case Compressor::RLE:
       return decompress_tile_rle(
           attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
@@ -1425,9 +1388,14 @@ Status ReadState::decompress_tile_gzip(
   size_t coords_size = array_schema->coords_size();
 
   // Decompress tile
-  size_t gunzip_out_size;
-  RETURN_NOT_OK(utils::gunzip(
-      tile_compressed, tile_compressed_size, tile, tile_size, gunzip_out_size));
+  size_t out_size = 0;
+  RETURN_NOT_OK(GZip::decompress(
+      array_schema->type_size(attribute_id),
+      tile_compressed,
+      tile_compressed_size,
+      tile,
+      tile_size,
+      &out_size));
 
   // Zip coordinates
   if (coords)
@@ -1450,12 +1418,14 @@ Status ReadState::decompress_tile_zstd(
   size_t coords_size = array_schema->coords_size();
 
   // Decompress tile
-  size_t zstd_size =
-      ZSTD_decompress(tile, tile_size, tile_compressed, tile_compressed_size);
-  if (ZSTD_isError(zstd_size)) {
-    return LOG_STATUS(
-        Status::CompressionError("Zstandard decompression failed"));
-  }
+  size_t out_size = 0;
+  RETURN_NOT_OK(ZStd::decompress(
+      array_schema->type_size(attribute_id),
+      tile_compressed,
+      tile_compressed_size,
+      tile,
+      tile_size,
+      &out_size));
 
   // Zip coordinates
   if (coords)
@@ -1478,14 +1448,14 @@ Status ReadState::decompress_tile_lz4(
   bool coords = (attribute_id == attribute_num);
   size_t coords_size = array_schema->coords_size();
 
-  // Decompress tile
-  if (LZ4_decompress_safe(
-          (const char*)tile_compressed,
-          (char*)tile,
-          tile_compressed_size,
-          tile_size) < 0) {
-    return LOG_STATUS(Status::CompressionError("LZ4 decompression failed"));
-  }
+  size_t out_size = 0;
+  RETURN_NOT_OK(LZ4::decompress(
+      array_schema->type_size(attribute_id),
+      tile_compressed,
+      tile_compressed_size,
+      tile,
+      tile_size,
+      &out_size));
 
   // Zip coordinates
   if (coords)
@@ -1500,8 +1470,7 @@ Status ReadState::decompress_tile_blosc(
     unsigned char* tile_compressed,
     size_t tile_compressed_size,
     unsigned char* tile,
-    size_t tile_size,
-    const char* compressor) {
+    size_t tile_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
@@ -1509,18 +1478,14 @@ Status ReadState::decompress_tile_blosc(
   bool coords = (attribute_id == attribute_num);
   size_t coords_size = array_schema->coords_size();
 
-  // Initialization
-  blosc_init();
-
-  // Decompress tile
-  if (blosc_decompress((const char*)tile_compressed, (char*)tile, tile_size) <
-      0) {
-    blosc_destroy();
-    return LOG_STATUS(Status::CompressionError("Blosc decompression failed"));
-  }
-
-  // Clean up
-  blosc_destroy();
+  size_t out_size = 0;
+  RETURN_NOT_OK(Blosc::decompress(
+      array_schema->type_size(attribute_id),
+      tile_compressed,
+      tile_compressed_size,
+      tile,
+      tile_size,
+      &out_size));
 
   // Zip coordinates
   if (coords)
@@ -1548,12 +1513,14 @@ Status ReadState::decompress_tile_rle(
   // Decompress tile
   Status st;
   if (!is_coords) {
-    st = utils::RLE_decompress(
-        (unsigned char*)tile_compressed_,
+    size_t out_size;
+    st = RLE::decompress(
+        value_size,
+        tile_compressed_,
         tile_compressed_size,
         tile,
         tile_size,
-        value_size);
+        &out_size);
   } else {
     if (order == Layout::ROW_MAJOR) {
       st = utils::RLE_decompress_coords_row(
@@ -1594,20 +1561,14 @@ Status ReadState::decompress_tile_bzip2(
   size_t coords_size = array_schema->coords_size();
 
   // Decompress tile
-  unsigned int destLen = tile_size;
-  int rc = BZ2_bzBuffToBuffDecompress(
-      (char*)tile,
-      &destLen,
-      (char*)tile_compressed,
+  size_t out_size = 0;
+  RETURN_NOT_OK(BZip::decompress(
+      array_schema->type_size(attribute_id),
+      tile_compressed,
       tile_compressed_size,
-      0,
-      0);
-
-  // Check for error
-  if (rc != BZ_OK) {
-    return LOG_STATUS(
-        Status::CompressionError("Failed decompressing with BZIP2"));
-  }
+      tile,
+      tile_size,
+      &out_size));
 
   // Zip coordinates
   if (coords)
