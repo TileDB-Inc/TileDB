@@ -299,7 +299,7 @@ Status Array::consolidate(
   for (int i = 0; i < array_schema_->attribute_num() + 1; ++i) {
     st = consolidate(new_fragment, i);
     if (!st.ok()) {
-      utils::delete_dir(new_fragment->fragment_name());
+      utils::delete_fragment(new_fragment->fragment_name());
       delete new_fragment;
       return st;
     }

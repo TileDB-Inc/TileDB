@@ -33,8 +33,8 @@
 #include <unistd.h>
 #include <cassert>
 #include "catch.hpp"
+#include "filesystem.h"
 #include "tiledb.h"
-#include "utils.h"
 
 struct ArraySchemaFx {
   // Workspace folder name. */
@@ -178,7 +178,7 @@ TEST_CASE_METHOD(ArraySchemaFx, "Test array schema creation and retrieval") {
   int64_t* tile_extents = static_cast<int64_t*>(array_schema_.tile_extents_);
 
   // Get real array path
-  std::string array_name_real = tiledb::utils::real_dir(array_name_);
+  std::string array_name_real = tiledb::filesystem::real_dir(array_name_);
   CHECK(array_name_real.c_str() != "");
 
   // Tests

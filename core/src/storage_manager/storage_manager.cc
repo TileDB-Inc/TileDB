@@ -38,6 +38,7 @@
 #include <cassert>
 #include "array.h"
 #include "basic_array_schema.h"
+#include "filesystem.h"
 #include "logger.h"
 #include "utils.h"
 
@@ -117,7 +118,7 @@ Status StorageManager::init(Configurator* config) {
 // TODO: Object types should be Enums
 int StorageManager::dir_type(const char* dir) {
   // Get real path
-  std::string dir_real = utils::real_dir(dir);
+  std::string dir_real = filesystem::real_dir(dir);
 
   // Return type
   if (utils::is_group(dir_real))
@@ -136,7 +137,7 @@ int StorageManager::dir_type(const char* dir) {
 
 Status StorageManager::group_create(const std::string& group) const {
   // Create group directory
-  RETURN_NOT_OK(utils::create_dir(group));
+  RETURN_NOT_OK(filesystem::create_dir(group));
 
   // Create group file
   if (!create_group_file(group).ok())
@@ -204,7 +205,7 @@ Status StorageManager::array_create(const ArraySchemaC* array_schema_c) const {
 
   // Get real array directory name
   std::string dir = array_schema->array_name();
-  std::string parent_dir = utils::parent_dir(dir);
+  std::string parent_dir = utils::parent_path(dir);
 
   // Create array with the new schema
   Status st = array_create(array_schema);
@@ -223,7 +224,7 @@ Status StorageManager::array_create(const ArraySchema* array_schema) const {
 
   // Create array directory
   std::string dir = array_schema->array_name();
-  RETURN_NOT_OK(utils::create_dir(dir));
+  RETURN_NOT_OK(filesystem::create_dir(dir));
 
   // Store array schema
   RETURN_NOT_OK(array_schema->store(dir));
@@ -239,7 +240,7 @@ Status StorageManager::array_create(const ArraySchema* array_schema) const {
 void StorageManager::array_get_fragment_names(
     const std::string& array, std::vector<std::string>& fragment_names) {
   // Get directory names in the array folder
-  fragment_names = utils::get_fragment_dirs(utils::real_dir(array));
+  fragment_names = filesystem::get_fragment_dirs(filesystem::real_dir(array));
   // Sort the fragment names
   sort_fragment_names(fragment_names);
 }
@@ -259,7 +260,7 @@ Status StorageManager::array_load_book_keeping(
   // Load the book-keeping for each fragment
   for (int i = 0; i < fragment_num; ++i) {
     // For easy reference
-    int dense = !utils::is_file(
+    int dense = !filesystem::is_file(
         fragment_names[i] + "/" + Configurator::coords() +
         Configurator::file_suffix());
 
@@ -300,7 +301,8 @@ Status StorageManager::array_init(
   // Open the array
   OpenArray* open_array = nullptr;
   if (is_read_mode(mode)) {
-    RETURN_NOT_OK(array_open(utils::real_dir(array_dir), open_array, mode));
+    RETURN_NOT_OK(
+        array_open(filesystem::real_dir(array_dir), open_array, mode));
   }
 
   Status st;
@@ -520,7 +522,7 @@ Status StorageManager::metadata_create(
 
   // Get real array directory name
   std::string dir = array_schema->array_name();
-  std::string parent_dir = utils::parent_dir(dir);
+  std::string parent_dir = utils::parent_path(dir);
 
   // Create array with the new schema
   Status st = metadata_create(array_schema);
@@ -540,7 +542,7 @@ Status StorageManager::metadata_create(const ArraySchema* array_schema) const {
 
   // Create array directory
   std::string dir = array_schema->array_name();
-  RETURN_NOT_OK(utils::create_dir(dir));
+  RETURN_NOT_OK(filesystem::create_dir(dir));
 
   // Open metadata schema file
   std::string filename = dir + "/" + Configurator::metadata_schema_filename();
@@ -580,7 +582,7 @@ Status StorageManager::metadata_create(const ArraySchema* array_schema) const {
 Status StorageManager::metadata_load_schema(
     const char* metadata_dir, ArraySchema*& array_schema) const {
   // Get real array path
-  std::string real_metadata_dir = utils::real_dir(metadata_dir);
+  std::string real_metadata_dir = filesystem::real_dir(metadata_dir);
 
   // Check if metadata exists
   if (!utils::is_metadata(real_metadata_dir)) {
@@ -656,8 +658,8 @@ Status StorageManager::metadata_init(
   // Open the array that implements the metadata
   OpenArray* open_array = nullptr;
   if (mode == TILEDB_METADATA_READ)
-    RETURN_NOT_OK(
-        array_open(utils::real_dir(metadata_dir), open_array, ArrayMode::READ))
+    RETURN_NOT_OK(array_open(
+        filesystem::real_dir(metadata_dir), open_array, ArrayMode::READ))
 
   // Create metadata object
   metadata = new Metadata();
@@ -754,7 +756,7 @@ Status StorageManager::ls(
     tiledb_object_t* dir_types,
     int& dir_num) const {
   // Get real parent directory
-  std::string parent_dir_real = utils::real_dir(parent_dir);
+  std::string parent_dir_real = filesystem::real_dir(parent_dir);
 
   // Initialize directory counter
   int dir_i = 0;
@@ -815,7 +817,7 @@ Status StorageManager::ls(
 
 Status StorageManager::ls_c(const char* parent_dir, int& dir_num) const {
   // Get real parent directory
-  std::string parent_dir_real = utils::real_dir(parent_dir);
+  std::string parent_dir_real = filesystem::real_dir(parent_dir);
 
   // Initialize directory number
   dir_num = 0;
@@ -893,7 +895,7 @@ Status StorageManager::move(
 
 Status StorageManager::array_clear(const std::string& array) const {
   // Get real array directory name
-  std::string array_real = utils::real_dir(array);
+  std::string array_real = filesystem::real_dir(array);
 
   // Check if the array exists
   if (!utils::is_array(array_real)) {
@@ -920,7 +922,7 @@ Status StorageManager::array_clear(const std::string& array) const {
     if (utils::is_metadata(filename)) {  // Metadata
       metadata_delete(filename);
     } else if (utils::is_fragment(filename)) {  // Fragment
-      RETURN_NOT_OK(utils::delete_dir(filename));
+      RETURN_NOT_OK(filesystem::delete_dir(filename));
     } else {  // Non TileDB related
       return LOG_STATUS(Status::StorageManagerError(
           std::string("Cannot delete non TileDB related element '") + filename +
@@ -942,7 +944,7 @@ Status StorageManager::array_close(const std::string& array) {
 
   // Find the open array entry
   std::map<std::string, OpenArray*>::iterator it =
-      open_arrays_.find(utils::real_dir(array));
+      open_arrays_.find(filesystem::real_dir(array));
 
   // Sanity check
   if (it == open_arrays_.end()) {
@@ -1000,7 +1002,7 @@ Status StorageManager::array_close(const std::string& array) {
 Status StorageManager::array_delete(const std::string& array) const {
   RETURN_NOT_OK(array_clear(array));
   // Delete array directory
-  RETURN_NOT_OK(utils::delete_dir(array));
+  RETURN_NOT_OK(filesystem::delete_dir(array));
   return Status::Ok();
 }
 
@@ -1034,8 +1036,8 @@ Status StorageManager::array_get_open_array_entry(
 Status StorageManager::array_move(
     const std::string& old_array, const std::string& new_array) const {
   // Get real array directory name
-  std::string old_array_real = utils::real_dir(old_array);
-  std::string new_array_real = utils::real_dir(new_array);
+  std::string old_array_real = filesystem::real_dir(old_array);
+  std::string new_array_real = filesystem::real_dir(new_array);
 
   // Check if the old array exists
   if (!utils::is_array(old_array_real)) {
@@ -1044,7 +1046,7 @@ Status StorageManager::array_move(
   }
 
   // Make sure that the new array is not an existing directory
-  if (utils::is_dir(new_array_real)) {
+  if (filesystem::is_dir(new_array_real)) {
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Directory '") + new_array_real + "' already exists"));
   }
@@ -1158,7 +1160,7 @@ Status StorageManager::consolidation_filelock_lock(
   fl.l_pid = getpid();
 
   // Prepare the filelock name
-  std::string array_name_real = utils::real_dir(array_name);
+  std::string array_name_real = filesystem::real_dir(array_name);
   std::string filename =
       array_name_real + "/" + Configurator::consolidation_filelock_name();
 
@@ -1228,7 +1230,7 @@ Status StorageManager::consolidation_finalize(
 
   // Delete old fragments
   for (int i = 0; i < fragment_num; ++i) {
-    RETURN_NOT_OK(utils::delete_dir(old_fragment_names[i]));
+    RETURN_NOT_OK(filesystem::delete_dir(old_fragment_names[i]));
   }
   return Status::Ok();
 }
@@ -1246,7 +1248,7 @@ Status StorageManager::create_group_file(const std::string& group) const {
 
 Status StorageManager::group_clear(const std::string& group) const {
   // Get real group path
-  std::string group_real = utils::real_dir(group);
+  std::string group_real = filesystem::real_dir(group);
 
   // Check if group exists
   if (!utils::is_group(group_real)) {
@@ -1296,7 +1298,7 @@ Status StorageManager::group_delete(const std::string& group) const {
   RETURN_NOT_OK(group_clear(group));
 
   // Delete group directory
-  RETURN_NOT_OK(utils::delete_dir(group));
+  RETURN_NOT_OK(filesystem::delete_dir(group));
 
   return Status::Ok();
 }
@@ -1304,8 +1306,8 @@ Status StorageManager::group_delete(const std::string& group) const {
 Status StorageManager::group_move(
     const std::string& old_group, const std::string& new_group) const {
   // Get real group directory names
-  std::string old_group_real = utils::real_dir(old_group);
-  std::string new_group_real = utils::real_dir(new_group);
+  std::string old_group_real = filesystem::real_dir(old_group);
+  std::string new_group_real = filesystem::real_dir(new_group);
 
   // Check if the old group exists
   if (!utils::is_group(old_group_real)) {
@@ -1314,7 +1316,7 @@ Status StorageManager::group_move(
   }
 
   // Make sure that the new group is not an existing directory
-  if (utils::is_dir(new_group_real)) {
+  if (filesystem::is_dir(new_group_real)) {
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Directory '") + new_group_real + "' already exists"));
   }
@@ -1329,7 +1331,7 @@ Status StorageManager::group_move(
 
 Status StorageManager::metadata_clear(const std::string& metadata) const {
   // Get real metadata directory name
-  std::string metadata_real = utils::real_dir(metadata);
+  std::string metadata_real = filesystem::real_dir(metadata);
 
   // Check if the metadata exists
   if (!utils::is_metadata(metadata_real)) {
@@ -1354,7 +1356,7 @@ Status StorageManager::metadata_clear(const std::string& metadata) const {
       continue;
     filename = metadata_real + "/" + next_file->d_name;
     if (utils::is_fragment(filename)) {  // Fragment
-      RETURN_NOT_OK(utils::delete_dir(filename));
+      RETURN_NOT_OK(filesystem::delete_dir(filename));
     } else {  // Non TileDB related
       return LOG_STATUS(Status::StorageManagerError(
           std::string("Cannot delete non TileDB related element '") + filename +
@@ -1373,21 +1375,21 @@ Status StorageManager::metadata_clear(const std::string& metadata) const {
 
 Status StorageManager::metadata_delete(const std::string& metadata) const {
   // Get real metadata directory name
-  std::string metadata_real = utils::real_dir(metadata);
+  std::string metadata_real = filesystem::real_dir(metadata);
 
   // Clear the metadata
   RETURN_NOT_OK(metadata_clear(metadata_real));
 
   // Delete metadata directory
-  RETURN_NOT_OK(utils::delete_dir(metadata_real));
+  RETURN_NOT_OK(filesystem::delete_dir(metadata_real));
   return Status::Ok();
 }
 
 Status StorageManager::metadata_move(
     const std::string& old_metadata, const std::string& new_metadata) const {
   // Get real metadata directory name
-  std::string old_metadata_real = utils::real_dir(old_metadata);
-  std::string new_metadata_real = utils::real_dir(new_metadata);
+  std::string old_metadata_real = filesystem::real_dir(old_metadata);
+  std::string new_metadata_real = filesystem::real_dir(new_metadata);
 
   // Check if the old metadata exists
   if (!utils::is_metadata(old_metadata_real)) {
@@ -1396,7 +1398,7 @@ Status StorageManager::metadata_move(
   }
 
   // Make sure that the new metadata is not an existing directory
-  if (utils::is_dir(new_metadata_real)) {
+  if (filesystem::is_dir(new_metadata_real)) {
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Directory '") + new_metadata_real + "' already exists"));
   }
@@ -1509,7 +1511,7 @@ void StorageManager::sort_fragment_names(
   for (int i = 0; i < fragment_num; ++i) {
     // Strip fragment name
     std::string& fragment_name = fragment_names[i];
-    std::string parent_fragment_name = utils::parent_dir(fragment_name);
+    std::string parent_fragment_name = utils::parent_path(fragment_name);
     std::string stripped_fragment_name =
         fragment_name.substr(parent_fragment_name.size() + 1);
     assert(utils::starts_with(stripped_fragment_name, "__"));

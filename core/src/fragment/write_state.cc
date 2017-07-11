@@ -44,6 +44,7 @@
 #include <iostream>
 #include "comparators.h"
 #include "configurator.h"
+#include "filesystem.h"
 #include "logger.h"
 #include "status.h"
 #include "utils.h"
@@ -185,7 +186,7 @@ Status WriteState::sync() {
                array_schema->attribute(attribute_id) +
                Configurator::file_suffix();
     if (write_method == IOMethod::WRITE) {
-      RETURN_NOT_OK(utils::sync(filename.c_str()));
+      RETURN_NOT_OK(filesystem::sync(filename.c_str()));
     } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
       RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
@@ -203,7 +204,7 @@ Status WriteState::sync() {
                  array_schema->attribute(attribute_id) + "_var" +
                  Configurator::file_suffix();
       if (write_method == IOMethod::WRITE) {
-        RETURN_NOT_OK(utils::sync(filename.c_str()));
+        RETURN_NOT_OK(filesystem::sync(filename.c_str()));
       } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
         RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
@@ -220,7 +221,7 @@ Status WriteState::sync() {
   // Sync fragment directory
   filename = fragment_->fragment_name();
   if (write_method == IOMethod::WRITE) {
-    RETURN_NOT_OK(utils::sync(filename.c_str()));
+    RETURN_NOT_OK(filesystem::sync(filename.c_str()));
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
@@ -250,7 +251,7 @@ Status WriteState::sync_attribute(const std::string& attribute) {
   filename = fragment_->fragment_name() + "/" + attribute +
              Configurator::file_suffix();
   if (write_method == IOMethod::WRITE) {
-    RETURN_NOT_OK(utils::sync(filename.c_str()));
+    RETURN_NOT_OK(filesystem::sync(filename.c_str()));
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
@@ -267,7 +268,7 @@ Status WriteState::sync_attribute(const std::string& attribute) {
     filename = fragment_->fragment_name() + "/" + attribute + "_var" +
                Configurator::file_suffix();
     if (write_method == IOMethod::WRITE) {
-      RETURN_NOT_OK(utils::sync(filename.c_str()));
+      RETURN_NOT_OK(filesystem::sync(filename.c_str()));
     } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
       RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
@@ -283,7 +284,7 @@ Status WriteState::sync_attribute(const std::string& attribute) {
   // Sync fragment directory
   filename = fragment_->fragment_name();
   if (write_method == IOMethod::WRITE) {
-    RETURN_NOT_OK(utils::sync(filename.c_str()));
+    RETURN_NOT_OK(filesystem::sync(filename.c_str()));
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
@@ -302,8 +303,8 @@ Status WriteState::sync_attribute(const std::string& attribute) {
 Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   // Create fragment directory if it does not exist
   std::string fragment_name = fragment_->fragment_name();
-  if (!utils::is_dir(fragment_name)) {
-    RETURN_NOT_OK(utils::create_dir(fragment_name));
+  if (!filesystem::is_dir(fragment_name)) {
+    RETURN_NOT_OK(filesystem::create_dir(fragment_name));
     // For variable length attributes, ensure an empty file exists
     // This is because if the current fragment contains no valid values for this
     // attribute, then the file never gets created. This messes up querying
@@ -758,7 +759,7 @@ Status WriteState::compress_and_write_tile(int attribute_id) {
   Status st;
   IOMethod write_method = fragment_->array()->config()->write_method();
   if (write_method == IOMethod::WRITE) {
-    st = utils::write_to_file(
+    st = filesystem::write_to_file(
         filename.c_str(), tile_compressed_, tile_compressed_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
@@ -814,7 +815,7 @@ Status WriteState::compress_and_write_tile_var(int attribute_id) {
   Status st;
   IOMethod write_method = fragment_->array()->config()->write_method();
   if (write_method == IOMethod::WRITE) {
-    st = utils::write_to_file(
+    st = filesystem::write_to_file(
         filename.c_str(), tile_compressed_, tile_compressed_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
@@ -1119,7 +1120,7 @@ Status WriteState::write_dense_attr_cmp_none(
   Status st;
   IOMethod write_method = fragment_->array()->config()->write_method();
   if (write_method == IOMethod::WRITE) {
-    st = utils::write_to_file(filename.c_str(), buffer, buffer_size);
+    st = filesystem::write_to_file(filename.c_str(), buffer, buffer_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
@@ -1246,8 +1247,8 @@ Status WriteState::write_dense_attr_var_cmp_none(
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
   if (write_method == IOMethod::WRITE) {
-    RETURN_NOT_OK(
-        utils::write_to_file(filename.c_str(), buffer_var, buffer_var_size));
+    RETURN_NOT_OK(filesystem::write_to_file(
+        filename.c_str(), buffer_var, buffer_var_size));
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     RETURN_NOT_OK(mpi_io_write_to_file(
@@ -1269,7 +1270,8 @@ Status WriteState::write_dense_attr_var_cmp_none(
              Configurator::file_suffix();
   Status st;
   if (write_method == IOMethod::WRITE) {
-    st = utils::write_to_file(filename.c_str(), shifted_buffer, buffer_size);
+    st = filesystem::write_to_file(
+        filename.c_str(), shifted_buffer, buffer_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
@@ -1531,7 +1533,7 @@ Status WriteState::write_sparse_attr_cmp_none(
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
   if (write_method == IOMethod::WRITE) {
-    st = utils::write_to_file(filename.c_str(), buffer, buffer_size);
+    st = filesystem::write_to_file(filename.c_str(), buffer, buffer_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(mpi_comm, filename.c_str(), buffer, buffer_size);
@@ -1654,7 +1656,8 @@ Status WriteState::write_sparse_attr_var_cmp_none(
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
   if (write_method == IOMethod::WRITE) {
-    st = utils::write_to_file(filename.c_str(), buffer_var, buffer_var_size);
+    st = filesystem::write_to_file(
+        filename.c_str(), buffer_var, buffer_var_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(
@@ -1678,7 +1681,8 @@ Status WriteState::write_sparse_attr_var_cmp_none(
              array_schema->attribute(attribute_id) +
              Configurator::file_suffix();
   if (write_method == IOMethod::WRITE) {
-    st = utils::write_to_file(filename.c_str(), shifted_buffer, buffer_size);
+    st = filesystem::write_to_file(
+        filename.c_str(), shifted_buffer, buffer_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = mpi_io_write_to_file(

@@ -220,7 +220,7 @@ Status BookKeeping::finalize() {
     return Status::Ok();
 
   // Do nothing if the fragment directory does not exist (fragment empty)
-  if (!utils::is_dir(fragment_name_))
+  if (!utils::fragment_exists(fragment_name_))
     return Status::Ok();
 
   // Prepare file name

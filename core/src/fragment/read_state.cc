@@ -46,6 +46,7 @@
 #include <cstring>
 #include <iostream>
 #include "configurator.h"
+#include "filesystem.h"
 #include "logger.h"
 #include "status.h"
 #include "utils.h"
@@ -125,7 +126,7 @@ ReadState::ReadState(const Fragment* fragment, BookKeeping* book_keeping)
   for (int i = 0; i < attribute_num_ + 1; ++i) {
     filename = fragment_name + "/" + array_schema_->attribute(i) +
                Configurator::file_suffix();
-    is_empty_attribute_[i] = !utils::is_file(filename);
+    is_empty_attribute_[i] = !filesystem::is_file(filename);
   }
 }
 
@@ -994,7 +995,7 @@ Status ReadState::CMP_COORDS_TO_SEARCH_TILE(
 #endif
 
   if (read_method == IOMethod::READ) {
-    st = utils::read_from_file(
+    st = filesystem::read_from_file(
         filename,
         tiles_file_offsets_[attribute_num_ + 1] + tile_offset,
         tmp_coords_,
@@ -1741,7 +1742,7 @@ Status ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
 #endif
 
   if (read_method == IOMethod::READ) {
-    st = utils::read_from_file(
+    st = filesystem::read_from_file(
         filename,
         tiles_file_offsets_[attribute_num_ + 1] + i * coords_size_,
         tmp_coords_,
@@ -1789,7 +1790,7 @@ Status ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
 #endif
 
   if (read_method == IOMethod::READ) {
-    st = utils::read_from_file(
+    st = filesystem::read_from_file(
         filename,
         tiles_file_offsets_[attribute_id] + i * sizeof(size_t),
         &tmp_offset_,
@@ -2218,7 +2219,7 @@ Status ReadState::prepare_tile_for_reading_cmp(
   // Find file offset where the tile begins
   off_t file_offset = tile_offsets[attribute_id_real][tile_i];
   off_t file_size = 0;
-  RETURN_NOT_OK(utils::file_size(filename, &file_size));
+  RETURN_NOT_OK(filesystem::file_size(filename, &file_size));
   size_t tile_compressed_size =
       (tile_i == tile_num - 1) ?
           file_size - tile_offsets[attribute_id_real][tile_i] :
@@ -2341,7 +2342,7 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
   // Find file offset where the tile begins
   off_t file_offset = tile_offsets[attribute_id][tile_i];
   off_t file_size = 0;
-  RETURN_NOT_OK(utils::file_size(filename, &file_size));
+  RETURN_NOT_OK(filesystem::file_size(filename, &file_size));
   size_t tile_compressed_size =
       (tile_i == tile_num - 1) ?
           file_size - tile_offsets[attribute_id][tile_i] :
@@ -2394,7 +2395,7 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
   // Calculate offset and compressed tile size
   file_offset = tile_var_offsets[attribute_id][tile_i];
   file_size = 0;
-  RETURN_NOT_OK(utils::file_size(filename, &file_size));
+  RETURN_NOT_OK(filesystem::file_size(filename, &file_size));
   tile_compressed_size =
       (tile_i == tile_num - 1) ?
           file_size - tile_var_offsets[attribute_id][tile_i] :
@@ -2505,7 +2506,7 @@ Status ReadState::prepare_tile_for_reading_var_cmp_none(
 
   if (tile_i != tile_num - 1) {  // Not the last tile
     if (read_method == IOMethod::READ || read_method == IOMethod::MMAP) {
-      RETURN_NOT_OK(utils::read_from_file(
+      RETURN_NOT_OK(filesystem::read_from_file(
           filename,
           file_offset + full_tile_size,
           &end_tile_var_offset,
@@ -2532,7 +2533,7 @@ else {  // Last tile
                          array_schema_->attribute(attribute_id) + "_var" +
                          Configurator::file_suffix();
   off_t file_size = 0;
-  RETURN_NOT_OK(utils::file_size(filename, &file_size));
+  RETURN_NOT_OK(filesystem::file_size(filename, &file_size));
   tile_var_size = file_size - tile_s[0];
 }
 
@@ -2582,7 +2583,7 @@ Status ReadState::READ_FROM_TILE(
 #endif
 
   if (read_method == IOMethod::READ) {
-    st = utils::read_from_file(
+    st = filesystem::read_from_file(
         filename,
         tiles_file_offsets_[attribute_id] + tile_offset,
         buffer,
@@ -2626,7 +2627,7 @@ Status ReadState::READ_FROM_TILE_VAR(
 #endif
 
   if (read_method == IOMethod::READ) {
-    st = utils::read_from_file(
+    st = filesystem::read_from_file(
         filename,
         tiles_var_file_offsets_[attribute_id] + tile_offset,
         buffer,
@@ -2673,7 +2674,8 @@ Status ReadState::read_tile_from_file_cmp(
                          Configurator::file_suffix();
 
   // Read from file
-  return utils::read_from_file(filename, offset, tile_compressed_, tile_size);
+  return filesystem::read_from_file(
+      filename, offset, tile_compressed_, tile_size);
 }
 
 Status ReadState::read_tile_from_file_var_cmp(
@@ -2696,7 +2698,8 @@ Status ReadState::read_tile_from_file_var_cmp(
                          Configurator::file_suffix();
 
   // Read from file
-  return utils::read_from_file(filename, offset, tile_compressed_, tile_size);
+  return filesystem::read_from_file(
+      filename, offset, tile_compressed_, tile_size);
 }
 
 void ReadState::set_tile_file_offset(int attribute_id, off_t offset) {

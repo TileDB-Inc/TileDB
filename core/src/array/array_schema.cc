@@ -39,6 +39,7 @@
 #include <iostream>
 #include "compressor.h"
 #include "configurator.h"
+#include "filesystem.h"
 #include "logger.h"
 #include "utils.h"
 
@@ -1397,7 +1398,7 @@ Status ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
 
 Status ArraySchema::load(const std::string& dir) {
   // Get real array path
-  std::string real_dir = utils::real_dir(dir);
+  std::string real_dir = filesystem::real_dir(dir);
 
   // Check if array exists
   if (!utils::is_array(real_dir))
@@ -1449,7 +1450,7 @@ Status ArraySchema::load(const std::string& dir) {
 
 void ArraySchema::set_array_name(const char* array_name) {
   // Get real array name
-  std::string array_name_real = utils::real_dir(array_name);
+  std::string array_name_real = filesystem::real_dir(array_name);
 
   // Set array name
   array_name_ = array_name_real;
