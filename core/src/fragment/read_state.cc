@@ -911,6 +911,9 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
               &bounding_coords[dim_num], tile_subarray_end) <= 0) {
         ++search_tile_pos_;
       } else {
+        delete[] tile_subarray;
+        delete[] tile_subarray_end;
+        delete[] mbr_tile_overlap_subarray;
         return;
       }
     } else {
@@ -968,6 +971,7 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
   delete[] tile_subarray;
   delete[] tile_subarray_end;
   delete[] mbr_tile_overlap_subarray;
+  return;
 }
 
 /* ****************************** */
