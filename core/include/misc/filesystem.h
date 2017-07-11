@@ -41,10 +41,10 @@ Status delete_dir(const std::string& path);
 /**
  * Returns the size of the input file.
  *
- * @param filename The name of the file whose size is to be retrieved.
+ * @param path The name of the file whose size is to be retrieved.
  * @return The file size on success, and TILEDB_UT_ERR for error.
  */
-Status file_size(const std::string& filename, off_t* path);
+Status file_size(const std::string& path, off_t* size);
 
 /** Returns the names of the directories inside the input directory.
  *
@@ -85,14 +85,14 @@ void purge_dots_from_path(std::string& path);
 /**
  * Reads data from a file into a buffer.
  *
- * @param filename The name of the file.
+ * @param path The name of the file.
  * @param offset The offset in the file from which the read will start.
  * @param buffer The buffer into which the data will be written.
  * @param length The size of the data to be read from the file.
  * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
  */
 Status read_from_file(
-    const std::string& filename, off_t offset, void* buffer, size_t length);
+    const std::string& path, off_t offset, void* buffer, size_t length);
 
 // TODO: this should go away
 /** Returns the names of the fragments inside the input directory. */
@@ -110,7 +110,7 @@ Status create_fragment_file(const std::string& dir);
 /**
  * Reads data from a file into a buffer, using memory map (mmap).
  *
- * @param filename The name of the file
+ * @param path The name of the file
  * @param offset The offset in the file from which the read will start.
  * @param buffer The buffer into which the data will be written.
  * @param length The size of the data to be read from the file.
@@ -131,7 +131,7 @@ std::string real_dir(const std::string& path);
  * Syncs a file or directory. If the file/directory does not exist,
  * the function gracefully exits (i.e., it ignores the syncing).
  *
- * @param filename The name of the file.
+ * @param path The name of the file.
  * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
  */
 Status sync(const std::string& path);
@@ -139,7 +139,7 @@ Status sync(const std::string& path);
 /**
  * Writes the input buffer to a file.
  *
- * @param filename The name of the file.
+ * @param path The name of the file.
  * @param buffer The input buffer.
  * @param buffer_size The size of the input buffer.
  * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
@@ -148,14 +148,28 @@ Status write_to_file(
     const std::string& path, const void* buffer, size_t buffer_size);
 
 /**
- * Write the input buffer to a file, compressed with GZIP.
- *
- * @param filename The name of the file.
- * @param buffer The input buffer.
- * @param buffer_size The size of the input buffer.
- * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
+ * Read from a GZIP compressed file.
+ * @param path The path of the gzip file.
+ * @param buffer The input buffer
+ * @param size The maximum amount of decompressed data to be written into the
+ * buffer
+ * @param decompressed_size The number of bytes decompressed into the buffer
+ * @return Status
  */
-Status write_to_file_cmp_gzip(
+Status read_from_gzipfile(
+    const std::string& path,
+    void* buffer,
+    unsigned int size,
+    int* decompressed_size);
+
+/**
+ * Write the input buffer to a file, compressed with GZIP
+ * @param path The path of the file.
+ * @param buffer The buffer to write
+ * @param buffer_size The size of the buffer in bytes
+ * @return  Status
+ */
+Status write_to_gzipfile(
     const std::string& path, const void* buffer, size_t buffer_size);
 
 #ifdef HAVE_MPI
@@ -163,7 +177,7 @@ Status write_to_file_cmp_gzip(
  * Reads data from a file into a buffer using MPI-IO.
  *
  * @param mpi_comm The MPI communicator.
- * @param filename The name of the file.
+ * @param path The name of the file.
  * @param offset The offset in the file from which the read will start.
  * @param buffer The buffer into which the data will be written.
  * @param length The size of the data to be read from the file.
@@ -181,7 +195,7 @@ int mpi_io_read_from_file(
  * the function gracefully exits (i.e., it ignores the syncing).
  *
  * @param mpi_comm The MPI communicator.
- * @param filename The name of the file.
+ * @param path The name of the file.
  * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
  */
 int mpi_io_sync(const MPI_Comm* mpi_comm, const char* path);
@@ -190,7 +204,7 @@ int mpi_io_sync(const MPI_Comm* mpi_comm, const char* path);
  * Writes the input buffer to a file using MPI-IO.
  *
  * @param mpi_comm The MPI communicator.
- * @param filename The name of the file.
+ * @param path The name of the file.
  * @param buffer The input buffer.
  * @param buffer_size The size of the input buffer.
  * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.

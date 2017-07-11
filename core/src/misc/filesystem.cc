@@ -402,43 +402,57 @@ Status write_to_file(
   return Status::Ok();
 }
 
-Status write_to_file_cmp_gzip(
+Status read_from_gzipfile(
+    const std::string& path,
+    void* buffer,
+    unsigned int size,
+    int* decompressed_size) {
+  // Open file
+  gzFile fd = gzopen(path.c_str(), "r");
+  if (fd == nullptr) {
+    return LOG_STATUS(Status::OSError(
+        std::string("Could not read file '") + path + "'; file open error"));
+  }
+  int nbytes = gzread(fd, buffer, size);
+  if (nbytes < 0) {
+    return LOG_STATUS(Status::GZipError(gzerror(fd, NULL)));
+  }
+  *decompressed_size = nbytes;
+  if (gzclose(fd)) {
+    return Status::OSError(std::string("Could not close file '") + path + "'");
+  }
+  return Status::Ok();
+}
+
+Status write_to_gzipfile(
     const std::string& path, const void* buffer, size_t buffer_size) {
   // Open file
   gzFile fd = gzopen(path.c_str(), "wb");
   if (fd == nullptr) {
     return LOG_STATUS(Status::OSError(
-        std::string("Cannot write to file '") + path +
+        std::string("Could not write to file '") + path +
         "'; File opening error"));
   }
-
   // Append data to the file in batches of Configurator::max_write_bytes()
   // bytes at a time
   ssize_t bytes_written;
   while (buffer_size > Configurator::max_write_bytes()) {
     bytes_written = gzwrite(fd, buffer, Configurator::max_write_bytes());
     if (bytes_written != Configurator::max_write_bytes()) {
-      return LOG_STATUS(Status::IOError(
-          std::string("Cannot write to file '") + path +
-          "'; File writing error"));
+      return LOG_STATUS(Status::GZipError(gzerror(fd, NULL)));
     }
     buffer_size -= Configurator::max_write_bytes();
   }
   bytes_written = gzwrite(fd, buffer, buffer_size);
   if (bytes_written != ssize_t(buffer_size)) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Cannot write to file '") + path +
-        "'; File writing error"));
+    return LOG_STATUS(Status::GZipError(gzerror(fd, NULL)));
   }
-
   // Close file
   if (gzclose(fd)) {
     return LOG_STATUS(Status::OSError(
-        std::string("Cannot write to file '") + path +
+        std::string("Could not write to file '") + path +
         "'; File closing error"));
   }
-
-  // Success
   return Status::Ok();
 }
 
