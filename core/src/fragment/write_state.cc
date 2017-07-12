@@ -33,11 +33,8 @@
 
 #include "write_state.h"
 #include <blosc.h>
-#include <bzlib.h>
 #include <fcntl.h>
-#include <lz4.h>
 #include <unistd.h>
-#include <zstd.h>
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -48,6 +45,13 @@
 #include "logger.h"
 #include "status.h"
 #include "utils.h"
+
+#include "blosc_compressor.h"
+#include "bzip_compressor.h"
+#include "gzip_compressor.h"
+#include "lz4_compressor.h"
+#include "rle_compressor.h"
+#include "zstd_compressor.h"
 
 /* ****************************** */
 /*             MACROS             */
@@ -439,14 +443,13 @@ Status WriteState::compress_tile_gzip(
     utils::split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
-  ssize_t gzip_size = 0;
-  RETURN_NOT_OK(utils::gzip(
+  RETURN_NOT_OK(GZip::compress(
+      array_schema->type_size(attribute_id),
       tile,
       tile_size,
       tile_compressed,
       tile_compressed_allocated_size_,
-      &gzip_size));
-  tile_compressed_size = (size_t)gzip_size;
+      &tile_compressed_size));
 
   return Status::Ok();
 }
@@ -464,7 +467,7 @@ Status WriteState::compress_tile_zstd(
   size_t coords_size = array_schema->coords_size();
 
   // Allocate space to store the compressed tile
-  size_t compress_bound = ZSTD_compressBound(tile_size);
+  size_t compress_bound = ZStd::compress_bound(tile_size);
   if (tile_compressed_ == nullptr) {
     tile_compressed_allocated_size_ = compress_bound;
     tile_compressed_ = malloc(compress_bound);
@@ -476,28 +479,19 @@ Status WriteState::compress_tile_zstd(
     tile_compressed_ = realloc(tile_compressed_, compress_bound);
   }
 
-  // For easy reference
-  unsigned char* tile_compressed =
-      static_cast<unsigned char*>(tile_compressed_);
-
   // Split dimensions
   if (coords)
     utils::split_coordinates(tile, tile_size, dim_num, coords_size);
 
-  // Compress tile
-  size_t zstd_size = ZSTD_compress(
-      tile_compressed,
-      tile_compressed_allocated_size_,
+  // TODO: don't pass by reference arguments that are modified
+  RETURN_NOT_OK(ZStd::compress(
+      array_schema->type_size(attribute_id),
       tile,
       tile_size,
-      1);  // TODO: this should be in the array schema
-  if (ZSTD_isError(zstd_size)) {
-    return LOG_STATUS(
-        Status::CompressionError("Failed compressing with Zstandard"));
-  }
-  tile_compressed_size = zstd_size;
+      tile_compressed_,
+      tile_compressed_allocated_size_,
+      &tile_compressed_size))
 
-  // Success
   return Status::Ok();
 }
 
@@ -514,7 +508,7 @@ Status WriteState::compress_tile_lz4(
   size_t coords_size = array_schema->coords_size();
 
   // Allocate space to store the compressed tile
-  size_t compress_bound = LZ4_compressBound(tile_size);
+  size_t compress_bound = LZ4::compress_bound(tile_size);
   if (tile_compressed_ == nullptr) {
     tile_compressed_allocated_size_ = compress_bound;
     tile_compressed_ = malloc(compress_bound);
@@ -531,12 +525,13 @@ Status WriteState::compress_tile_lz4(
     utils::split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
-  int lz4_size =
-      LZ4_compress((const char*)tile, (char*)tile_compressed_, tile_size);
-  if (lz4_size < 0) {
-    return LOG_STATUS(Status::CompressionError("Failed compressing with LZ4"));
-  }
-  tile_compressed_size = lz4_size;
+  RETURN_NOT_OK(LZ4::compress(
+      array_schema->type_size(attribute_id),
+      tile,
+      tile_size,
+      tile_compressed_,
+      tile_compressed_allocated_size_,
+      &tile_compressed_size));
 
   // Success
   return Status::Ok();
@@ -556,7 +551,47 @@ Status WriteState::compress_tile_blosc(
   size_t coords_size = array_schema->coords_size();
 
   // Allocate space to store the compressed tile
-  size_t compress_bound = tile_size + BLOSC_MAX_OVERHEAD;
+  size_t compress_bound = Blosc::compress_bound(tile_size);
+  if (tile_compressed_ == nullptr) {
+    tile_compressed_allocated_size_ = compress_bound;
+    tile_compressed_ = malloc(compress_bound);
+  }
+  // Expand comnpressed tile if necessary
+  if (compress_bound > tile_compressed_allocated_size_) {
+    tile_compressed_allocated_size_ = compress_bound;
+    tile_compressed_ = realloc(tile_compressed_, compress_bound);
+  }
+
+  // Split dimensions
+  if (coords)
+    utils::split_coordinates(tile, tile_size, dim_num, coords_size);
+
+  // Compress tile
+  RETURN_NOT_OK(Blosc::compress(
+      compressor,
+      array_schema->type_size(attribute_id),
+      tile,
+      tile_size,
+      tile_compressed_,
+      tile_compressed_allocated_size_,
+      &tile_compressed_size));
+  return Status::Ok();
+}
+
+Status WriteState::compress_tile_bzip2(
+    int attribute_id,
+    unsigned char* tile,
+    size_t tile_size,
+    size_t& tile_compressed_size) {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int dim_num = array_schema->dim_num();
+  int attribute_num = array_schema->attribute_num();
+  bool coords = (attribute_id == attribute_num);
+  size_t coords_size = array_schema->coords_size();
+
+  // Allocate space to store the compressed tile
+  size_t compress_bound = BZip::compress_bound(tile_size);
   if (tile_compressed_ == nullptr) {
     tile_compressed_allocated_size_ = compress_bound;
     tile_compressed_ = malloc(compress_bound);
@@ -568,42 +603,18 @@ Status WriteState::compress_tile_blosc(
     tile_compressed_ = realloc(tile_compressed_, compress_bound);
   }
 
-  // Initialize Blosc
-  blosc_init();
-
-  // Set the appropriate compressor
-  if (blosc_set_compressor(compressor) < 0) {
-    blosc_destroy();
-    return LOG_STATUS(
-        Status::CompressionError("Failed to set Blosc compressor"));
-  }
-
-  // For easy reference
-  unsigned char* tile_compressed =
-      static_cast<unsigned char*>(tile_compressed_);
-
   // Split dimensions
   if (coords)
     utils::split_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Compress tile
-  int blosc_size = blosc_compress(
-      5,  // TODO: this should be in the array schema
-      1,
+  RETURN_NOT_OK(BZip::compress(
       array_schema->type_size(attribute_id),
-      tile_size,
       tile,
-      tile_compressed,
-      tile_compressed_allocated_size_);
-  if (blosc_size < 0) {
-    blosc_destroy();
-    return LOG_STATUS(
-        Status::CompressionError("Failed compressing with Blosc"));
-  }
-  tile_compressed_size = blosc_size;
-
-  // Clean up
-  blosc_destroy();
+      tile_size,
+      tile_compressed_,
+      tile_compressed_allocated_size_,
+      &tile_compressed_size));
 
   // Success
   return Status::Ok();
@@ -627,7 +638,7 @@ Status WriteState::compress_tile_rle(
   // Allocate space to store the compressed tile
   size_t compress_bound;
   if (!is_coords)
-    compress_bound = utils::RLE_compress_bound(tile_size, value_size);
+    compress_bound = RLE::compress_bound(tile_size, value_size);
   else
     compress_bound =
         utils::RLE_compress_bound_coords(tile_size, value_size, dim_num);
@@ -643,14 +654,15 @@ Status WriteState::compress_tile_rle(
   }
 
   // Compress tile
-  int64_t rle_size = -1;
+  size_t rle_size = 0;
+  int64_t rle_coords_size = -1;
   if (!is_coords) {
-    RETURN_NOT_OK(utils::RLE_compress(
+    RETURN_NOT_OK(RLE::compress(
+        value_size,
         tile,
         tile_size,
-        (unsigned char*)tile_compressed_,
+        static_cast<unsigned char*>(tile_compressed_),
         tile_compressed_allocated_size_,
-        value_size,
         &rle_size));
   } else {
     if (order == Layout::ROW_MAJOR) {
@@ -661,7 +673,7 @@ Status WriteState::compress_tile_rle(
           tile_compressed_allocated_size_,
           value_size,
           dim_num,
-          &rle_size));
+          &rle_coords_size));
     } else if (order == Layout::COL_MAJOR) {
       RETURN_NOT_OK(utils::RLE_compress_coords_col(
           tile,
@@ -670,7 +682,7 @@ Status WriteState::compress_tile_rle(
           tile_compressed_allocated_size_,
           value_size,
           dim_num,
-          &rle_size));
+          &rle_coords_size));
     } else {  // Error
       assert(0);
       return LOG_STATUS(
@@ -679,57 +691,11 @@ Status WriteState::compress_tile_rle(
   }
 
   // Set actual output size
-  tile_compressed_size = (size_t)rle_size;
-
-  // Success
-  return Status::Ok();
-}
-
-Status WriteState::compress_tile_bzip2(
-    int attribute_id,
-    unsigned char* tile,
-    size_t tile_size,
-    size_t& tile_compressed_size) {
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int dim_num = array_schema->dim_num();
-  int attribute_num = array_schema->attribute_num();
-  bool coords = (attribute_id == attribute_num);
-  size_t coords_size = array_schema->coords_size();
-
-  // Allocate space to store the compressed tile
-  if (tile_compressed_ == nullptr) {
-    tile_compressed_allocated_size_ = tile_size;
-    tile_compressed_ = malloc(tile_size);
-  }
-
-  // Split dimensions
-  if (coords)
-    utils::split_coordinates(tile, tile_size, dim_num, coords_size);
-
-  // Compress tile
-  unsigned int destLen = tile_compressed_allocated_size_;
-  int rc;
-  while ((rc = BZ2_bzBuffToBuffCompress(
-              (char*)tile_compressed_,
-              &destLen,
-              (char*)tile,
-              tile_size,
-              9,
-              0,
-              30)) == BZ_OUTBUFF_FULL) {
-    utils::expand_buffer(tile_compressed_, tile_compressed_allocated_size_);
-    destLen = tile_compressed_allocated_size_;
-  }
-
-  // Check for error
-  if (rc != BZ_OK) {
-    return LOG_STATUS(
-        Status::CompressionError("Failed compressing with BZIP2"));
-  }
-
-  // Set tile compressed size
-  tile_compressed_size = destLen;
+  // TODO: this can overflow for 32 bit, no checking
+  if (!is_coords)
+    tile_compressed_size = rle_size;
+  else
+    tile_compressed_size = static_cast<size_t>(rle_coords_size);
 
   // Success
   return Status::Ok();

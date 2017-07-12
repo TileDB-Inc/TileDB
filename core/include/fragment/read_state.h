@@ -607,7 +607,6 @@ class ReadState {
    * @param tile The resulting decompressed tile.
    * @param tile_size The expected size of the decompressed tile (for checking
    *     for errors).
-   * @param compressor The Blosc compressor to be used.
    * @return TILEDB_RS_OK for success and TILEDB_RS_ERR for error.
    */
   Status decompress_tile_blosc(
@@ -615,8 +614,7 @@ class ReadState {
       unsigned char* tile_compressed,
       size_t tile_compressed_size,
       unsigned char* tile,
-      size_t tile_size,
-      const char* compressor);
+      size_t tile_size);
 
   /**
    * Decompresses a tile with RLE.

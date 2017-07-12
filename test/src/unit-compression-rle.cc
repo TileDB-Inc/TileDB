@@ -33,6 +33,7 @@
 
 #include <cstring>
 #include "catch.hpp"
+#include "rle_compressor.h"
 #include "tiledb.h"
 #include "utils.h"
 
@@ -49,46 +50,52 @@ TEST_CASE("Test RLE Attribute Compression") {
   size_t value_size;
   size_t run_size = 6;
   size_t compress_bound;
-  int64_t output_size;
+  size_t output_size;
 
   // === Attribute compression (value_size = sizeof(int)) === //
   value_size = sizeof(int);
 
   // Test empty bufffer
   tiledb::Status st;
-  st = RLE_compress(
-      input, input_size, compressed, compressed_size, value_size, &output_size);
+  st = tiledb::RLE::compress(
+      value_size, input, input_size, compressed, compressed_size, &output_size);
   CHECK(st.ok());
   CHECK(output_size == 0);
 
   // Test input buffer invalid format
   input_size = 5;
-  st = RLE_compress(
-      input, input_size, compressed, compressed_size, value_size, &output_size);
+  st = tiledb::RLE::compress(
+      value_size, input, input_size, compressed, compressed_size, &output_size);
   CHECK(!st.ok());
 
   // Test output buffer overflow
   input_size = 16;
-  st = RLE_compress(
-      input, input_size, compressed, compressed_size, value_size, &output_size);
+  st = tiledb::RLE::compress(
+      value_size, input, input_size, compressed, compressed_size, &output_size);
   CHECK(!st.ok());
 
   // Test compress bound
-  compress_bound = RLE_compress_bound(input_size, value_size);
+  compress_bound = tiledb::RLE::compress_bound(input_size, value_size);
   CHECK(compress_bound == input_size + ((input_size / value_size) * 2));
 
   // Test all values unique (many unitary runs)
   for (int i = 0; i < 100; ++i)
     memcpy(input + i * value_size, &i, value_size);
+  size_t decompr_size = 0;
   input_size = 100 * value_size;
-  compressed_size = RLE_compress_bound(input_size, value_size);
-  st = RLE_compress(
-      input, input_size, compressed, compressed_size, value_size, &output_size);
+  compressed_size = tiledb::RLE::compress_bound(input_size, value_size);
+  st = tiledb::RLE::compress(
+      value_size, input, input_size, compressed, compressed_size, &output_size);
   CHECK(st.ok());
   CHECK(output_size == compressed_size);
   decompressed_size = input_size;
-  st = RLE_decompress(
-      compressed, compressed_size, decompressed, decompressed_size, value_size);
+  st = tiledb::RLE::decompress(
+      value_size,
+      compressed,
+      compressed_size,
+      decompressed,
+      decompressed_size,
+      &decompr_size);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 
@@ -96,14 +103,20 @@ TEST_CASE("Test RLE Attribute Compression") {
   int v = 111;
   for (int i = 0; i < 100; ++i)
     memcpy(input + i * value_size, &v, value_size);
+  decompr_size = 0;
   input_size = 100 * value_size;
-  st = RLE_compress(
-      input, input_size, compressed, compressed_size, value_size, &output_size);
+  st = tiledb::RLE::compress(
+      value_size, input, input_size, compressed, compressed_size, &output_size);
   CHECK(st.ok());
   CHECK(output_size == run_size);
   decompressed_size = input_size;
-  st = RLE_decompress(
-      compressed, output_size, decompressed, decompressed_size, value_size);
+  st = tiledb::RLE::decompress(
+      value_size,
+      compressed,
+      output_size,
+      decompressed,
+      decompressed_size,
+      &decompr_size);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 
@@ -114,15 +127,21 @@ TEST_CASE("Test RLE Attribute Compression") {
     memcpy(input + i * value_size, &v, value_size);
   for (int i = 100; i < 110; ++i)
     memcpy(input + i * value_size, &i, value_size);
+  decompr_size = 0;
   input_size = 110 * value_size;
-  compressed_size = RLE_compress_bound(input_size, value_size);
-  st = RLE_compress(
-      input, input_size, compressed, compressed_size, value_size, &output_size);
+  compressed_size = tiledb::RLE::compress_bound(input_size, value_size);
+  st = tiledb::RLE::compress(
+      value_size, input, input_size, compressed, compressed_size, &output_size);
   CHECK(st.ok());
   CHECK(output_size == 21 * run_size);
   decompressed_size = input_size;
-  st = RLE_decompress(
-      compressed, output_size, decompressed, decompressed_size, value_size);
+  st = tiledb::RLE::decompress(
+      value_size,
+      compressed,
+      output_size,
+      decompressed,
+      decompressed_size,
+      &decompr_size);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 
@@ -133,15 +152,21 @@ TEST_CASE("Test RLE Attribute Compression") {
     memcpy(input + i * value_size, &v, value_size);
   for (int i = 70010; i < 70030; ++i)
     memcpy(input + i * value_size, &i, value_size);
+  decompr_size = 0;
   input_size = 70030 * value_size;
-  compressed_size = RLE_compress_bound(input_size, value_size);
-  st = RLE_compress(
-      input, input_size, compressed, compressed_size, value_size, &output_size);
+  compressed_size = tiledb::RLE::compress_bound(input_size, value_size);
+  st = tiledb::RLE::compress(
+      value_size, input, input_size, compressed, compressed_size, &output_size);
   CHECK(st.ok());
   CHECK(output_size == 32 * run_size);
   decompressed_size = input_size;
-  st = RLE_decompress(
-      compressed, output_size, decompressed, decompressed_size, value_size);
+  st = tiledb::RLE::decompress(
+      value_size,
+      compressed,
+      output_size,
+      decompressed,
+      decompressed_size,
+      &decompr_size);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 
@@ -169,15 +194,21 @@ TEST_CASE("Test RLE Attribute Compression") {
     k += 1000.12;
     memcpy(input + (2 * i + 1) * sizeof(double), &k, value_size);
   }
+  decompr_size = 0;
   input_size = 110 * value_size;
-  compressed_size = RLE_compress_bound(input_size, value_size);
-  st = RLE_compress(
-      input, input_size, compressed, compressed_size, value_size, &output_size);
+  compressed_size = tiledb::RLE::compress_bound(input_size, value_size);
+  st = tiledb::RLE::compress(
+      value_size, input, input_size, compressed, compressed_size, &output_size);
   CHECK(st.ok());
   CHECK(output_size == 21 * run_size);
   decompressed_size = input_size;
-  st = RLE_decompress(
-      compressed, output_size, decompressed, decompressed_size, value_size);
+  st = tiledb::RLE::decompress(
+      value_size,
+      compressed,
+      output_size,
+      decompressed,
+      decompressed_size,
+      &decompr_size);
   CHECK(st.ok());
   CHECK_FALSE(memcmp(input, decompressed, input_size));
 }
