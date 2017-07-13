@@ -112,7 +112,7 @@ struct SparseArrayFx {
       const int64_t domain_1_lo,
       const int64_t domain_1_hi,
       const int64_t capacity,
-      const bool enable_compression,
+      const tiledb_compressor_t compressor,
       const tiledb_layout_t cell_order,
       const tiledb_layout_t tile_order) {
     // Error code
@@ -128,13 +128,8 @@ struct SparseArrayFx {
     tiledb_compressor_t compression[2];
     const int dense = 0;
 
-    if (!enable_compression) {
-      compression[0] = TILEDB_NO_COMPRESSION;
-      compression[1] = TILEDB_NO_COMPRESSION;
-    } else {
-      compression[0] = TILEDB_GZIP;
-      compression[1] = TILEDB_GZIP;
-    }
+    compression[0] = compressor;
+    compression[1] = compressor;
 
     // Set the array schema
     rc = tiledb_array_set_schema(
@@ -311,6 +306,57 @@ struct SparseArrayFx {
     // Success
     return TILEDB_OK;
   }
+
+  bool test_random_subarrays(
+      int64_t domain_size_0, int64_t domain_size_1, int ntests) {
+    // write array cells with value = row id * columns + col id to disk
+    int rc = write_sparse_array_unsorted_2D(domain_size_0, domain_size_1);
+    assert(rc == TILEDB_OK);
+
+    // test random subarrays and check with corresponding value set by
+    // row_id*dim1+col_id. top left corner is always 4,4.
+    int64_t d0_lo = 4;
+    int64_t d0_hi = 0;
+    int64_t d1_lo = 4;
+    int64_t d1_hi = 0;
+    int64_t height = 0, width = 0;
+
+    for (int iter = 0; iter < ntests; ++iter) {
+      height = rand() % (domain_size_0 - d0_lo);
+      width = rand() % (domain_size_1 - d1_lo);
+      d0_hi = d0_lo + height;
+      d1_hi = d1_lo + width;
+      int64_t index = 0;
+
+      // read subarray
+      int* buffer = read_sparse_array_2D(
+          d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_ARRAY_READ_SORTED_ROW);
+      assert(buffer != NULL);
+
+      // check
+      bool allok = true;
+      for (int64_t i = d0_lo; i <= d0_hi; ++i) {
+        for (int64_t j = d1_lo; j <= d1_hi; ++j) {
+          bool match = buffer[index] == i * domain_size_1 + j;
+          if (!match) {
+            allok = false;
+            std::cout << "mismatch: " << i << "," << j << "=" << buffer[index]
+                      << "!=" << ((i * domain_size_1 + j)) << "\n";
+            break;
+          }
+          ++index;
+        }
+        if (!allok)
+          break;
+      }
+      // clean up
+      delete[] buffer;
+      if (!allok) {
+        return false;
+      }
+    }
+    return true;
+  }
 };
 
 /**
@@ -321,9 +367,6 @@ struct SparseArrayFx {
  * width and height of the subregions
  */
 TEST_CASE_METHOD(SparseArrayFx, "Test random sparse sorted reads") {
-  // error code
-  int rc;
-
   // parameters used in this test
   int64_t domain_size_0 = 5000;
   int64_t domain_size_1 = 1000;
@@ -336,77 +379,195 @@ TEST_CASE_METHOD(SparseArrayFx, "Test random sparse sorted reads") {
   int64_t capacity = 0;  // 0 means use default capacity
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  int iter_num = 10;
+  int ntests = 5;
 
   // set array name
   set_array_name("sparse_test_5000x1000_100x100");
 
-  // create a progress bar
-  // ProgressBar* progress_bar = new ProgressBar();
+  SECTION("no compression row major") {
+    int rc = create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_NO_COMPRESSION,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
 
-  // create a dense integer array
-  rc = create_sparse_array_2D(
-      tile_extent_0,
-      tile_extent_1,
-      domain_0_lo,
-      domain_0_hi,
-      domain_1_lo,
-      domain_1_hi,
-      capacity,
-      false,
-      cell_order,
-      tile_order);
-  REQUIRE(rc == TILEDB_OK);
-
-  // write array cells with value = row id * columns + col id
-  // to disk
-  rc = write_sparse_array_unsorted_2D(domain_size_0, domain_size_1);
-  REQUIRE(rc == TILEDB_OK);
-
-  // test random subarrays and check with corresponding value set by
-  // row_id*dim1+col_id. top left corner is always 4,4.
-  int64_t d0_lo = 4;
-  int64_t d0_hi = 0;
-  int64_t d1_lo = 4;
-  int64_t d1_hi = 0;
-  int64_t height = 0, width = 0;
-
-  for (int iter = 0; iter < iter_num; ++iter) {
-    height = rand() % (domain_size_0 - d0_lo);
-    width = rand() % (domain_size_1 - d1_lo);
-    d0_hi = d0_lo + height;
-    d1_hi = d1_lo + width;
-    int64_t index = 0;
-
-    // read subarray
-    int* buffer = read_sparse_array_2D(
-        d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_ARRAY_READ_SORTED_ROW);
-    REQUIRE(buffer != NULL);
-
-    // check
-    bool allok = true;
-    for (int64_t i = d0_lo; i <= d0_hi; ++i) {
-      for (int64_t j = d1_lo; j <= d1_hi; ++j) {
-        bool match = buffer[index] == i * domain_size_1 + j;
-        if (!match) {
-          allok = false;
-          std::cout << "mismatch: " << i << "," << j << "=" << buffer[index]
-                    << "!=" << ((i * domain_size_1 + j)) << "\n";
-          break;
-        }
-        ++index;
-      }
-      if (!allok)
-        break;
-    }
-    CHECK(allok);
-
-    // clean up
-    delete[] buffer;
-
-    // update progress bar
-    // progress_bar->load(1.0/iter_num);
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
   }
 
-  // delete progress_bar;
+  SECTION("no compression col major") {
+    int rc = create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_NO_COMPRESSION,
+        TILEDB_COL_MAJOR,
+        TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("no compression row/col major") {
+    int rc = create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_NO_COMPRESSION,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("gzip compression row major") {
+    int rc = create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_GZIP,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("gzip compression col major") {
+    int rc = create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_GZIP,
+        TILEDB_COL_MAJOR,
+        TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("gzip compression row/col major") {
+    int rc = create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_GZIP,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("blosc compression row major") {
+    int rc = create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_BLOSC,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("bzip compression row major") {
+    int rc = create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_BZIP2,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("lz4 compression row major") {
+    int rc = create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_LZ4,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("rle compression row major") {
+    int rc = create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_RLE,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
+
+  SECTION("zstd compression row major") {
+    int rc = create_sparse_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_ZSTD,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+  }
 }
