@@ -273,14 +273,17 @@ class ArrayReadState {
    * @param buffer The buffer where the read copy be performed into.
    * @param buffer_size The size (in bytes) of *buffer*.
    * @param buffer_offset The offset in *buffer* where the copy will start from.
-   * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
+   * @param empty_type_value a reference to the empty type value
+   * @param empty_type_size the size (in bytes) of the empty type value
+   * @return Status
    */
-  template <class T>
-  Status copy_cells(
+  Status copy_cells_generic(
       int attribute_id,
       void* buffer,
       size_t buffer_size,
-      size_t& buffer_offset);
+      size_t& buffer_offset,
+      const void* empty_type_value,
+      size_t empty_type_size);
 
   /**
    * Copies the cell ranges calculated in the current read round into the
@@ -322,37 +325,41 @@ class ArrayReadState {
    * @param buffer_var_size The size (in bytes) of *buffer_var*.
    * @param buffer_var_offset The offset in *buffer_var* where the copy will
    *     start from.
-   * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
+   * @param empty_type_value a reference to the empty type value
+   * @param empty_type_size the size (in bytes) of the empty type value
+   * @return Status
    */
-  template <class T>
-  Status copy_cells_var(
+  Status copy_cells_var_generic(
       int attribute_id,
       void* buffer,
       size_t buffer_size,
       size_t& buffer_offset,
       void* buffer_var,
       size_t buffer_var_size,
-      size_t& buffer_var_offset);
+      size_t& buffer_var_offset,
+      const void* empty_type_value,
+      size_t empty_type_size);
 
   /**
    * Copies the cell ranges calculated in the current read round into the
    * targeted attribute buffer, filling with special empty values.
    *
-   * @tparam T The attribute type.
    * @param attribute_id The id of the targeted attribute.
    * @param buffer The buffer where the copy will be performed into.
    * @param buffer_size The size (in bytes) of *buffer*.
    * @param buffer_offset The offset in *buffer* where the copy will start from.
    * @param cell_pos_range The cell range to be copied.
-   * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
+   * @param empty_type_value a reference to the empty type value
+   * @param empty_type_size the size (in bytes) of the empty type value
    */
-  template <class T>
-  void copy_cells_with_empty(
+  void copy_cells_with_empty_generic(
       int attribute_id,
       void* buffer,
       size_t buffer_size,
       size_t& buffer_offset,
-      const CellPosRange& cell_pos_range);
+      const CellPosRange& cell_pos_range,
+      const void* empty_type_val,
+      size_t emtpy_type_size);
 
   /**
    * Copies the cell ranges calculated in the current read round into the
@@ -371,10 +378,10 @@ class ArrayReadState {
    * @param buffer_var_offset The offset in *buffer_var* where the copy will
    *     start from.
    * @param cell_pos_range The cell range to be copied.
-   * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
+   * @param empty_type_val a reference to the empty type value
+   * @param emtpy_type_size the size (in bytes) of the empty type value
    */
-  template <class T>
-  void copy_cells_with_empty_var(
+  void copy_cells_with_empty_var_generic(
       int attribute_id,
       void* buffer,
       size_t buffer_size,
@@ -382,7 +389,9 @@ class ArrayReadState {
       void* buffer_var,
       size_t buffer_var_size,
       size_t& buffer_var_offset,
-      const CellPosRange& cell_pos_range);
+      const CellPosRange& cell_pos_range,
+      const void* empty_type_val,
+      size_t empty_type_size);
 
   /**
    * Returns a list of cell ranges accounting for the empty area in the overlap

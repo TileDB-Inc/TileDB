@@ -375,45 +375,106 @@ Status ArrayReadState::copy_cells(
   // For easy reference
   Datatype type = array_schema_->type(attribute_id);
 
-  // Invoke the proper templated function
-  if (type == Datatype::INT32)
-    return copy_cells<int>(attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == Datatype::INT64)
-    return copy_cells<int64_t>(
-        attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == Datatype::FLOAT32)
-    return copy_cells<float>(attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == Datatype::FLOAT64)
-    return copy_cells<double>(attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == Datatype::CHAR)
-    return copy_cells<char>(attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == Datatype::INT8)
-    return copy_cells<int8_t>(attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == Datatype::UINT8)
-    return copy_cells<uint8_t>(
-        attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == Datatype::INT16)
-    return copy_cells<int16_t>(
-        attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == Datatype::UINT16)
-    return copy_cells<uint16_t>(
-        attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == Datatype::UINT32)
-    return copy_cells<uint32_t>(
-        attribute_id, buffer, buffer_size, buffer_offset);
-  else if (type == Datatype::UINT64)
-    return copy_cells<uint64_t>(
-        attribute_id, buffer, buffer_size, buffer_offset);
-  else
-    assert(0);
-
-  // Code should never reach here
+  if (type == Datatype::INT32) {
+    int32_t val = Configurator::empty_int32();
+    return copy_cells_generic(
+        attribute_id,
+        buffer,
+        buffer_size,
+        buffer_offset,
+        &val,
+        sizeof(int32_t));
+  } else if (type == Datatype::INT64) {
+    int64_t val = Configurator::empty_int64();
+    return copy_cells_generic(
+        attribute_id,
+        buffer,
+        buffer_size,
+        buffer_offset,
+        &val,
+        sizeof(int64_t));
+  } else if (type == Datatype::FLOAT32) {
+    float_t val = Configurator::empty_float32();
+    return copy_cells_generic(
+        attribute_id,
+        buffer,
+        buffer_size,
+        buffer_offset,
+        &val,
+        sizeof(float_t));
+  } else if (type == Datatype::FLOAT64) {
+    double_t val = Configurator::empty_float64();
+    return copy_cells_generic(
+        attribute_id,
+        buffer,
+        buffer_size,
+        buffer_offset,
+        &val,
+        sizeof(double_t));
+  } else if (type == Datatype::CHAR) {
+    char val = Configurator::empty_char();
+    return copy_cells_generic(
+        attribute_id, buffer, buffer_size, buffer_offset, &val, sizeof(char));
+  } else if (type == Datatype::INT8) {
+    int8_t val = Configurator::empty_int8();
+    return copy_cells_generic(
+        attribute_id, buffer, buffer_size, buffer_offset, &val, sizeof(int8_t));
+  } else if (type == Datatype::UINT8) {
+    uint8_t val = Configurator::empty_uint8();
+    return copy_cells_generic(
+        attribute_id,
+        buffer,
+        buffer_size,
+        buffer_offset,
+        &val,
+        sizeof(uint8_t));
+  } else if (type == Datatype::INT16) {
+    int16_t val = Configurator::empty_int16();
+    return copy_cells_generic(
+        attribute_id,
+        buffer,
+        buffer_size,
+        buffer_offset,
+        &val,
+        sizeof(int16_t));
+  } else if (type == Datatype::UINT16) {
+    uint16_t val = Configurator::empty_uint16();
+    return copy_cells_generic(
+        attribute_id,
+        buffer,
+        buffer_size,
+        buffer_offset,
+        &val,
+        sizeof(uint16_t));
+  } else if (type == Datatype::UINT32) {
+    uint32_t val = Configurator::empty_uint32();
+    return copy_cells_generic(
+        attribute_id,
+        buffer,
+        buffer_size,
+        buffer_offset,
+        &val,
+        sizeof(uint32_t));
+  } else if (type == Datatype::UINT64) {
+    uint64_t val = Configurator::empty_uint64();
+    return copy_cells_generic(
+        attribute_id,
+        buffer,
+        buffer_size,
+        buffer_offset,
+        &val,
+        sizeof(uint64_t));
+  }
   return LOG_STATUS(Status::ARSError("Invalid datatype when copying cells"));
 }
 
-template <class T>
-Status ArrayReadState::copy_cells(
-    int attribute_id, void* buffer, size_t buffer_size, size_t& buffer_offset) {
+Status ArrayReadState::copy_cells_generic(
+    int attribute_id,
+    void* buffer,
+    size_t buffer_size,
+    size_t& buffer_offset,
+    const void* empty_type_value,
+    const size_t empty_type_size) {
   // For easy reference
   int64_t pos = fragment_cell_pos_ranges_vec_pos_[attribute_id];
   FragmentCellPosRanges& fragment_cell_pos_ranges =
@@ -433,8 +494,14 @@ Status ArrayReadState::copy_cells(
 
     // Handle empty fragment
     if (fragment_id == -1) {
-      copy_cells_with_empty<T>(
-          attribute_id, buffer, buffer_size, buffer_offset, cell_pos_range);
+      copy_cells_with_empty_generic(
+          attribute_id,
+          buffer,
+          buffer_size,
+          buffer_offset,
+          cell_pos_range,
+          empty_type_value,
+          empty_type_size);
       if (overflow_[attribute_id])
         break;
       else
@@ -480,123 +547,152 @@ Status ArrayReadState::copy_cells_var(
   // For easy reference
   Datatype type = array_schema_->type(attribute_id);
 
-  // Invoke the proper templated function
-  if (type == Datatype::INT32)
-    return copy_cells_var<int>(
+  if (type == Datatype::INT32) {
+    int32_t val = Configurator::empty_int32();
+    return copy_cells_var_generic(
         attribute_id,
         buffer,
         buffer_size,
         buffer_offset,
         buffer_var,
         buffer_var_size,
-        buffer_var_offset);
-  else if (type == Datatype::INT64)
-    return copy_cells_var<int64_t>(
+        buffer_var_offset,
+        &val,
+        sizeof(int32_t));
+  } else if (type == Datatype::INT64) {
+    int64_t val = Configurator::empty_int64();
+    return copy_cells_var_generic(
         attribute_id,
         buffer,
         buffer_size,
         buffer_offset,
         buffer_var,
         buffer_var_size,
-        buffer_var_offset);
-  else if (type == Datatype::FLOAT32)
-    return copy_cells_var<float>(
+        buffer_var_offset,
+        &val,
+        sizeof(int64_t));
+  } else if (type == Datatype::FLOAT32) {
+    float_t val = Configurator::empty_float32();
+    return copy_cells_var_generic(
         attribute_id,
         buffer,
         buffer_size,
         buffer_offset,
         buffer_var,
         buffer_var_size,
-        buffer_var_offset);
-  else if (type == Datatype::FLOAT64)
-    return copy_cells_var<double>(
+        buffer_var_offset,
+        &val,
+        sizeof(float_t));
+  } else if (type == Datatype::FLOAT64) {
+    double_t val = Configurator::empty_float64();
+    return copy_cells_var_generic(
         attribute_id,
         buffer,
         buffer_size,
         buffer_offset,
         buffer_var,
         buffer_var_size,
-        buffer_var_offset);
-  else if (type == Datatype::CHAR)
-    return copy_cells_var<char>(
+        buffer_var_offset,
+        &val,
+        sizeof(double_t));
+  } else if (type == Datatype::CHAR) {
+    char val = Configurator::empty_char();
+    return copy_cells_var_generic(
         attribute_id,
         buffer,
         buffer_size,
         buffer_offset,
         buffer_var,
         buffer_var_size,
-        buffer_var_offset);
-  else if (type == Datatype::INT8)
-    return copy_cells_var<int8_t>(
+        buffer_var_offset,
+        &val,
+        sizeof(char));
+  } else if (type == Datatype::INT8) {
+    int8_t val = Configurator::empty_int8();
+    return copy_cells_var_generic(
         attribute_id,
         buffer,
         buffer_size,
         buffer_offset,
         buffer_var,
         buffer_var_size,
-        buffer_var_offset);
-  else if (type == Datatype::UINT8)
-    return copy_cells_var<uint8_t>(
+        buffer_var_offset,
+        &val,
+        sizeof(int8_t));
+  } else if (type == Datatype::UINT8) {
+    uint8_t val = Configurator::empty_uint8();
+    return copy_cells_var_generic(
         attribute_id,
         buffer,
         buffer_size,
         buffer_offset,
         buffer_var,
         buffer_var_size,
-        buffer_var_offset);
-  else if (type == Datatype::INT16)
-    return copy_cells_var<int16_t>(
+        buffer_var_offset,
+        &val,
+        sizeof(uint8_t));
+  } else if (type == Datatype::INT16) {
+    int16_t val = Configurator::empty_int16();
+    return copy_cells_var_generic(
         attribute_id,
         buffer,
         buffer_size,
         buffer_offset,
         buffer_var,
         buffer_var_size,
-        buffer_var_offset);
-  else if (type == Datatype::UINT16)
-    return copy_cells_var<uint16_t>(
+        buffer_var_offset,
+        &val,
+        sizeof(int16_t));
+  } else if (type == Datatype::UINT16) {
+    uint16_t val = Configurator::empty_uint16();
+    return copy_cells_var_generic(
         attribute_id,
         buffer,
         buffer_size,
         buffer_offset,
         buffer_var,
         buffer_var_size,
-        buffer_var_offset);
-  else if (type == Datatype::UINT32)
-    return copy_cells_var<uint32_t>(
+        buffer_var_offset,
+        &val,
+        sizeof(uint16_t));
+  } else if (type == Datatype::UINT32) {
+    uint32_t val = Configurator::empty_uint32();
+    return copy_cells_var_generic(
         attribute_id,
         buffer,
         buffer_size,
         buffer_offset,
         buffer_var,
         buffer_var_size,
-        buffer_var_offset);
-  else if (type == Datatype::UINT64)
-    return copy_cells_var<uint64_t>(
+        buffer_var_offset,
+        &val,
+        sizeof(uint32_t));
+  } else if (type == Datatype::UINT64) {
+    uint64_t val = Configurator::empty_uint64();
+    return copy_cells_var_generic(
         attribute_id,
         buffer,
         buffer_size,
         buffer_offset,
         buffer_var,
         buffer_var_size,
-        buffer_var_offset);
-  else
-    assert(0);
-
-  // Code should never reach here
-  return LOG_STATUS(
-      Status::ARSError("Invalid datatype when copying variable cells"));
+        buffer_var_offset,
+        &val,
+        sizeof(uint64_t));
+  }
+  return LOG_STATUS(Status::ARSError("Invalid datatype when copying cells"));
 }
 
-template <class T>
-Status ArrayReadState::copy_cells_var(
+Status ArrayReadState::copy_cells_var_generic(
     int attribute_id,
     void* buffer,
     size_t buffer_size,
     size_t& buffer_offset,
     void* buffer_var,
     size_t buffer_var_size,
-    size_t& buffer_var_offset) {
+    size_t& buffer_var_offset,
+    const void* empty_type_value,
+    size_t empty_type_size) {
   // For easy reference
   int64_t pos = fragment_cell_pos_ranges_vec_pos_[attribute_id];
   FragmentCellPosRanges& fragment_cell_pos_ranges =
@@ -616,7 +712,7 @@ Status ArrayReadState::copy_cells_var(
 
     // Handle empty fragment
     if (fragment_id == -1) {
-      copy_cells_with_empty_var<T>(
+      copy_cells_with_empty_var_generic(
           attribute_id,
           buffer,
           buffer_size,
@@ -624,7 +720,9 @@ Status ArrayReadState::copy_cells_var(
           buffer_var,
           buffer_var_size,
           buffer_var_offset,
-          cell_pos_range);
+          cell_pos_range,
+          empty_type_value,
+          empty_type_size);
       if (overflow_[attribute_id])
         break;
       else
@@ -662,13 +760,14 @@ Status ArrayReadState::copy_cells_var(
   return Status::Ok();
 }
 
-template <>
-void ArrayReadState::copy_cells_with_empty<int>(
+void ArrayReadState::copy_cells_with_empty_generic(
     int attribute_id,
     void* buffer,
     size_t buffer_size,
     size_t& buffer_offset,
-    const CellPosRange& cell_pos_range) {
+    const CellPosRange& cell_pos_range,
+    const void* empty_type_value,
+    const size_t empty_type_size) {
   // For easy reference
   size_t cell_size = array_schema_->cell_size(attribute_id);
   char* buffer_c = static_cast<char*>(buffer);
@@ -694,11 +793,10 @@ void ArrayReadState::copy_cells_with_empty<int>(
   int64_t cell_num_to_copy = bytes_to_copy / cell_size;
 
   // Copy empty cells to buffer
-  int empty = Configurator::empty_int32();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     for (int j = 0; j < cell_val_num; ++j) {
-      memcpy(buffer_c + buffer_offset, &empty, sizeof(int));
-      buffer_offset += sizeof(int);
+      memcpy(buffer_c + buffer_offset, empty_type_value, empty_type_size);
+      buffer_offset += empty_type_size;
     }
   }
   empty_cells_written_[attribute_id] += cell_num_to_copy;
@@ -711,498 +809,7 @@ void ArrayReadState::copy_cells_with_empty<int>(
   }
 }
 
-template <>
-void ArrayReadState::copy_cells_with_empty<int64_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size(attribute_id);
-  char* buffer_c = static_cast<char*>(buffer);
-  int cell_val_num = array_schema_->cell_val_num(attribute_id);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  if (buffer_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(!array_schema_->var_size(attribute_id));
-
-  // Calculate number of empty cells to write
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-
-  // Copy empty cells to buffer
-  int64_t empty = Configurator::empty_int64();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    for (int j = 0; j < cell_val_num; ++j) {
-      memcpy(buffer_c + buffer_offset, &empty, sizeof(int64_t));
-      buffer_offset += sizeof(int64_t);
-    }
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range) {
-    overflow_[attribute_id] = true;
-  } else {  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-  }
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty<float>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size(attribute_id);
-  char* buffer_c = static_cast<char*>(buffer);
-  int cell_val_num = array_schema_->cell_val_num(attribute_id);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  if (buffer_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(!array_schema_->var_size(attribute_id));
-
-  // Calculate number of empty cells to write
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-
-  // Copy empty cells to buffer
-  float empty = Configurator::empty_float32();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    for (int j = 0; j < cell_val_num; ++j) {
-      memcpy(buffer_c + buffer_offset, &empty, sizeof(float));
-      buffer_offset += sizeof(float);
-    }
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range) {
-    overflow_[attribute_id] = true;
-  } else {  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-  }
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty<double>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size(attribute_id);
-  char* buffer_c = static_cast<char*>(buffer);
-  int cell_val_num = array_schema_->cell_val_num(attribute_id);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  if (buffer_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(!array_schema_->var_size(attribute_id));
-
-  // Calculate number of empty cells to write
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-
-  // Copy empty cells to buffer
-  double empty = Configurator::empty_float64();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    for (int j = 0; j < cell_val_num; ++j) {
-      memcpy(buffer_c + buffer_offset, &empty, sizeof(double));
-      buffer_offset += sizeof(double);
-    }
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range) {
-    overflow_[attribute_id] = true;
-  } else {  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-  }
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty<char>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size(attribute_id);
-  char* buffer_c = static_cast<char*>(buffer);
-  int cell_val_num = array_schema_->cell_val_num(attribute_id);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  if (buffer_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(!array_schema_->var_size(attribute_id));
-
-  // Calculate number of empty cells to write
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-
-  // Copy empty cells to buffer
-  char empty = Configurator::empty_char();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    for (int j = 0; j < cell_val_num; ++j) {
-      memcpy(buffer_c + buffer_offset, &empty, sizeof(char));
-      buffer_offset += sizeof(char);
-    }
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range) {
-    overflow_[attribute_id] = true;
-  } else {  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-  }
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty<int8_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size(attribute_id);
-  char* buffer_c = static_cast<char*>(buffer);
-  int cell_val_num = array_schema_->cell_val_num(attribute_id);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  if (buffer_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(!array_schema_->var_size(attribute_id));
-
-  // Calculate number of empty cells to write
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-
-  // Copy empty cells to buffer
-  int8_t empty = Configurator::empty_int8();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    for (int j = 0; j < cell_val_num; ++j) {
-      memcpy(buffer_c + buffer_offset, &empty, sizeof(int8_t));
-      buffer_offset += sizeof(int8_t);
-    }
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range) {
-    overflow_[attribute_id] = true;
-  } else {  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-  }
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty<uint8_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size(attribute_id);
-  char* buffer_c = static_cast<char*>(buffer);
-  int cell_val_num = array_schema_->cell_val_num(attribute_id);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  if (buffer_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(!array_schema_->var_size(attribute_id));
-
-  // Calculate number of empty cells to write
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-
-  // Copy empty cells to buffer
-  uint8_t empty = Configurator::empty_uint8();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    for (int j = 0; j < cell_val_num; ++j) {
-      memcpy(buffer_c + buffer_offset, &empty, sizeof(uint8_t));
-      buffer_offset += sizeof(uint8_t);
-    }
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range) {
-    overflow_[attribute_id] = true;
-  } else {  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-  }
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty<int16_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size(attribute_id);
-  char* buffer_c = static_cast<char*>(buffer);
-  int cell_val_num = array_schema_->cell_val_num(attribute_id);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  if (buffer_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(!array_schema_->var_size(attribute_id));
-
-  // Calculate number of empty cells to write
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-
-  // Copy empty cells to buffer
-  int16_t empty = Configurator::empty_int16();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    for (int j = 0; j < cell_val_num; ++j) {
-      memcpy(buffer_c + buffer_offset, &empty, sizeof(int16_t));
-      buffer_offset += sizeof(int16_t);
-    }
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range) {
-    overflow_[attribute_id] = true;
-  } else {  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-  }
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty<uint16_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size(attribute_id);
-  char* buffer_c = static_cast<char*>(buffer);
-  int cell_val_num = array_schema_->cell_val_num(attribute_id);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  if (buffer_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(!array_schema_->var_size(attribute_id));
-
-  // Calculate number of empty cells to write
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-
-  // Copy empty cells to buffer
-  uint16_t empty = Configurator::empty_uint16();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    for (int j = 0; j < cell_val_num; ++j) {
-      memcpy(buffer_c + buffer_offset, &empty, sizeof(uint16_t));
-      buffer_offset += sizeof(uint16_t);
-    }
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range) {
-    overflow_[attribute_id] = true;
-  } else {  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-  }
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty<uint32_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size(attribute_id);
-  char* buffer_c = static_cast<char*>(buffer);
-  int cell_val_num = array_schema_->cell_val_num(attribute_id);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  if (buffer_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(!array_schema_->var_size(attribute_id));
-
-  // Calculate number of empty cells to write
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-
-  // Copy empty cells to buffer
-  uint32_t empty = Configurator::empty_uint32();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    for (int j = 0; j < cell_val_num; ++j) {
-      memcpy(buffer_c + buffer_offset, &empty, sizeof(uint32_t));
-      buffer_offset += sizeof(uint32_t);
-    }
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range) {
-    overflow_[attribute_id] = true;
-  } else {  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-  }
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty<uint64_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = array_schema_->cell_size(attribute_id);
-  char* buffer_c = static_cast<char*>(buffer);
-  int cell_val_num = array_schema_->cell_val_num(attribute_id);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  if (buffer_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(!array_schema_->var_size(attribute_id));
-
-  // Calculate number of empty cells to write
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-
-  // Copy empty cells to buffer
-  uint64_t empty = Configurator::empty_uint64();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    for (int j = 0; j < cell_val_num; ++j) {
-      memcpy(buffer_c + buffer_offset, &empty, sizeof(uint64_t));
-      buffer_offset += sizeof(uint64_t);
-    }
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range) {
-    overflow_[attribute_id] = true;
-  } else {  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-  }
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty_var<int>(
+void ArrayReadState::copy_cells_with_empty_var_generic(
     int attribute_id,
     void* buffer,
     size_t buffer_size,
@@ -1210,7 +817,9 @@ void ArrayReadState::copy_cells_with_empty_var<int>(
     void* buffer_var,
     size_t buffer_var_size,
     size_t& buffer_var_offset,
-    const CellPosRange& cell_pos_range) {
+    const CellPosRange& cell_pos_range,
+    const void* empty_type_value,
+    size_t empty_type_size) {
   // For easy reference
   size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_size_var = sizeof(int);
@@ -1246,11 +855,10 @@ void ArrayReadState::copy_cells_with_empty_var<int>(
   cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
 
   // Copy empty cells to buffers
-  int empty = Configurator::empty_int32();
   for (int64_t i = 0; i < cell_num_to_copy; ++i) {
     memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
     buffer_offset += cell_size;
-    memcpy(buffer_var_c + buffer_var_offset, &empty, cell_size_var);
+    memcpy(buffer_var_c + buffer_var_offset, empty_type_value, empty_type_size);
     buffer_var_offset += cell_size_var;
   }
   empty_cells_written_[attribute_id] += cell_num_to_copy;
@@ -1261,617 +869,6 @@ void ArrayReadState::copy_cells_with_empty_var<int>(
   } else {  // Done copying this range
     empty_cells_written_[attribute_id] = 0;
   }
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty_var<int64_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    void* buffer_var,
-    size_t buffer_var_size,
-    size_t& buffer_var_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = Configurator::cell_var_offset_size();
-  size_t cell_size_var = sizeof(int64_t);
-  char* buffer_c = static_cast<char*>(buffer);
-  char* buffer_var_c = static_cast<char*>(buffer_var);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  size_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
-  buffer_var_free_space =
-      (buffer_var_free_space / cell_size_var) * cell_size_var;
-
-  // Handle overflow
-  if (buffer_free_space == 0 || buffer_var_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(array_schema_->var_size(attribute_id));
-
-  // Calculate cell number to copy
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_left_to_copy_var = cell_num_left_to_copy * cell_size_var;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  size_t bytes_to_copy_var = MIN(bytes_left_to_copy_var, buffer_var_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-  int64_t cell_num_to_copy_var = bytes_to_copy_var / cell_size_var;
-  cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
-
-  // Copy empty cells to buffers
-  int64_t empty = Configurator::empty_int64();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
-    buffer_offset += cell_size;
-    memcpy(buffer_var_c + buffer_var_offset, &empty, cell_size_var);
-    buffer_var_offset += cell_size_var;
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range) {
-    overflow_[attribute_id] = true;
-  } else {  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-  }
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty_var<float>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    void* buffer_var,
-    size_t buffer_var_size,
-    size_t& buffer_var_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = Configurator::cell_var_offset_size();
-  size_t cell_size_var = sizeof(float);
-  char* buffer_c = static_cast<char*>(buffer);
-  char* buffer_var_c = static_cast<char*>(buffer_var);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  size_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
-  buffer_var_free_space =
-      (buffer_var_free_space / cell_size_var) * cell_size_var;
-
-  // Handle overflow
-  if (buffer_free_space == 0 || buffer_var_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(array_schema_->var_size(attribute_id));
-
-  // Calculate cell number to copy
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_left_to_copy_var = cell_num_left_to_copy * cell_size_var;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  size_t bytes_to_copy_var = MIN(bytes_left_to_copy_var, buffer_var_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-  int64_t cell_num_to_copy_var = bytes_to_copy_var / cell_size_var;
-  cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
-
-  // Copy empty cells to buffers
-  float empty = Configurator::empty_float32();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
-    buffer_offset += cell_size;
-    memcpy(buffer_var_c + buffer_var_offset, &empty, cell_size_var);
-    buffer_var_offset += cell_size_var;
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range)
-    overflow_[attribute_id] = true;
-  else  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty_var<double>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    void* buffer_var,
-    size_t buffer_var_size,
-    size_t& buffer_var_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = Configurator::cell_var_offset_size();
-  size_t cell_size_var = sizeof(double);
-  char* buffer_c = static_cast<char*>(buffer);
-  char* buffer_var_c = static_cast<char*>(buffer_var);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  size_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
-  buffer_var_free_space =
-      (buffer_var_free_space / cell_size_var) * cell_size_var;
-
-  // Handle overflow
-  if (buffer_free_space == 0 || buffer_var_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(array_schema_->var_size(attribute_id));
-
-  // Calculate cell number to copy
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_left_to_copy_var = cell_num_left_to_copy * cell_size_var;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  size_t bytes_to_copy_var = MIN(bytes_left_to_copy_var, buffer_var_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-  int64_t cell_num_to_copy_var = bytes_to_copy_var / cell_size_var;
-  cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
-
-  // Copy empty cells to buffers
-  double empty = Configurator::empty_float64();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
-    buffer_offset += cell_size;
-    memcpy(buffer_var_c + buffer_var_offset, &empty, cell_size_var);
-    buffer_var_offset += cell_size_var;
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range)
-    overflow_[attribute_id] = true;
-  else  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty_var<char>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    void* buffer_var,
-    size_t buffer_var_size,
-    size_t& buffer_var_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = Configurator::cell_var_offset_size();
-  size_t cell_size_var = sizeof(char);
-  char* buffer_c = static_cast<char*>(buffer);
-  char* buffer_var_c = static_cast<char*>(buffer_var);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  size_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
-  buffer_var_free_space =
-      (buffer_var_free_space / cell_size_var) * cell_size_var;
-
-  // Handle overflow
-  if (buffer_free_space == 0 || buffer_var_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(array_schema_->var_size(attribute_id));
-
-  // Calculate cell number to copy
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_left_to_copy_var = cell_num_left_to_copy * cell_size_var;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  size_t bytes_to_copy_var = MIN(bytes_left_to_copy_var, buffer_var_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-  int64_t cell_num_to_copy_var = bytes_to_copy_var / cell_size_var;
-  cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
-
-  // Copy empty cells to buffers
-  char empty = Configurator::empty_char();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
-    buffer_offset += cell_size;
-    memcpy(buffer_var_c + buffer_var_offset, &empty, cell_size_var);
-    buffer_var_offset += cell_size_var;
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range)
-    overflow_[attribute_id] = true;
-  else  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty_var<int8_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    void* buffer_var,
-    size_t buffer_var_size,
-    size_t& buffer_var_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = Configurator::cell_var_offset_size();
-  size_t cell_size_var = sizeof(int8_t);
-  char* buffer_c = static_cast<char*>(buffer);
-  char* buffer_var_c = static_cast<char*>(buffer_var);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  size_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
-  buffer_var_free_space =
-      (buffer_var_free_space / cell_size_var) * cell_size_var;
-
-  // Handle overflow
-  if (buffer_free_space == 0 || buffer_var_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(array_schema_->var_size(attribute_id));
-
-  // Calculate cell number to copy
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_left_to_copy_var = cell_num_left_to_copy * cell_size_var;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  size_t bytes_to_copy_var = MIN(bytes_left_to_copy_var, buffer_var_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-  int64_t cell_num_to_copy_var = bytes_to_copy_var / cell_size_var;
-  cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
-
-  // Copy empty cells to buffers
-  int8_t empty = Configurator::empty_int8();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
-    buffer_offset += cell_size;
-    memcpy(buffer_var_c + buffer_var_offset, &empty, cell_size_var);
-    buffer_var_offset += cell_size_var;
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range)
-    overflow_[attribute_id] = true;
-  else  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty_var<uint8_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    void* buffer_var,
-    size_t buffer_var_size,
-    size_t& buffer_var_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = Configurator::cell_var_offset_size();
-  size_t cell_size_var = sizeof(uint8_t);
-  char* buffer_c = static_cast<char*>(buffer);
-  char* buffer_var_c = static_cast<char*>(buffer_var);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  size_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
-  buffer_var_free_space =
-      (buffer_var_free_space / cell_size_var) * cell_size_var;
-
-  // Handle overflow
-  if (buffer_free_space == 0 || buffer_var_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(array_schema_->var_size(attribute_id));
-
-  // Calculate cell number to copy
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_left_to_copy_var = cell_num_left_to_copy * cell_size_var;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  size_t bytes_to_copy_var = MIN(bytes_left_to_copy_var, buffer_var_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-  int64_t cell_num_to_copy_var = bytes_to_copy_var / cell_size_var;
-  cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
-
-  // Copy empty cells to buffers
-  uint8_t empty = Configurator::empty_uint8();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
-    buffer_offset += cell_size;
-    memcpy(buffer_var_c + buffer_var_offset, &empty, cell_size_var);
-    buffer_var_offset += cell_size_var;
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range)
-    overflow_[attribute_id] = true;
-  else  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty_var<int16_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    void* buffer_var,
-    size_t buffer_var_size,
-    size_t& buffer_var_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = Configurator::cell_var_offset_size();
-  size_t cell_size_var = sizeof(int16_t);
-  char* buffer_c = static_cast<char*>(buffer);
-  char* buffer_var_c = static_cast<char*>(buffer_var);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  size_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
-  buffer_var_free_space =
-      (buffer_var_free_space / cell_size_var) * cell_size_var;
-
-  // Handle overflow
-  if (buffer_free_space == 0 || buffer_var_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(array_schema_->var_size(attribute_id));
-
-  // Calculate cell number to copy
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_left_to_copy_var = cell_num_left_to_copy * cell_size_var;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  size_t bytes_to_copy_var = MIN(bytes_left_to_copy_var, buffer_var_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-  int64_t cell_num_to_copy_var = bytes_to_copy_var / cell_size_var;
-  cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
-
-  // Copy empty cells to buffers
-  int16_t empty = Configurator::empty_int16();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
-    buffer_offset += cell_size;
-    memcpy(buffer_var_c + buffer_var_offset, &empty, cell_size_var);
-    buffer_var_offset += cell_size_var;
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range)
-    overflow_[attribute_id] = true;
-  else  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty_var<uint16_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    void* buffer_var,
-    size_t buffer_var_size,
-    size_t& buffer_var_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = Configurator::cell_var_offset_size();
-  size_t cell_size_var = sizeof(uint16_t);
-  char* buffer_c = static_cast<char*>(buffer);
-  char* buffer_var_c = static_cast<char*>(buffer_var);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  size_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
-  buffer_var_free_space =
-      (buffer_var_free_space / cell_size_var) * cell_size_var;
-
-  // Handle overflow
-  if (buffer_free_space == 0 || buffer_var_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(array_schema_->var_size(attribute_id));
-
-  // Calculate cell number to copy
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_left_to_copy_var = cell_num_left_to_copy * cell_size_var;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  size_t bytes_to_copy_var = MIN(bytes_left_to_copy_var, buffer_var_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-  int64_t cell_num_to_copy_var = bytes_to_copy_var / cell_size_var;
-  cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
-
-  // Copy empty cells to buffers
-  uint16_t empty = Configurator::empty_uint16();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
-    buffer_offset += cell_size;
-    memcpy(buffer_var_c + buffer_var_offset, &empty, cell_size_var);
-    buffer_var_offset += cell_size_var;
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range)
-    overflow_[attribute_id] = true;
-  else  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty_var<uint32_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    void* buffer_var,
-    size_t buffer_var_size,
-    size_t& buffer_var_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = Configurator::cell_var_offset_size();
-  size_t cell_size_var = sizeof(uint32_t);
-  char* buffer_c = static_cast<char*>(buffer);
-  char* buffer_var_c = static_cast<char*>(buffer_var);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  size_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
-  buffer_var_free_space =
-      (buffer_var_free_space / cell_size_var) * cell_size_var;
-
-  // Handle overflow
-  if (buffer_free_space == 0 || buffer_var_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(array_schema_->var_size(attribute_id));
-
-  // Calculate cell number to copy
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_left_to_copy_var = cell_num_left_to_copy * cell_size_var;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  size_t bytes_to_copy_var = MIN(bytes_left_to_copy_var, buffer_var_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-  int64_t cell_num_to_copy_var = bytes_to_copy_var / cell_size_var;
-  cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
-
-  // Copy empty cells to buffers
-  uint32_t empty = Configurator::empty_uint32();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
-    buffer_offset += cell_size;
-    memcpy(buffer_var_c + buffer_var_offset, &empty, cell_size_var);
-    buffer_var_offset += cell_size_var;
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range)
-    overflow_[attribute_id] = true;
-  else  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
-}
-
-template <>
-void ArrayReadState::copy_cells_with_empty_var<uint64_t>(
-    int attribute_id,
-    void* buffer,
-    size_t buffer_size,
-    size_t& buffer_offset,
-    void* buffer_var,
-    size_t buffer_var_size,
-    size_t& buffer_var_offset,
-    const CellPosRange& cell_pos_range) {
-  // For easy reference
-  size_t cell_size = Configurator::cell_var_offset_size();
-  size_t cell_size_var = sizeof(uint64_t);
-  char* buffer_c = static_cast<char*>(buffer);
-  char* buffer_var_c = static_cast<char*>(buffer_var);
-
-  // Calculate free space in buffer
-  size_t buffer_free_space = buffer_size - buffer_offset;
-  buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  size_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
-  buffer_var_free_space =
-      (buffer_var_free_space / cell_size_var) * cell_size_var;
-
-  // Handle overflow
-  if (buffer_free_space == 0 || buffer_var_free_space == 0) {  // Overflow
-    overflow_[attribute_id] = true;
-    return;
-  }
-
-  // Sanity check
-  assert(array_schema_->var_size(attribute_id));
-
-  // Calculate cell number to copy
-  int64_t cell_num_in_range = cell_pos_range.second - cell_pos_range.first + 1;
-  int64_t cell_num_left_to_copy =
-      cell_num_in_range - empty_cells_written_[attribute_id];
-  size_t bytes_left_to_copy = cell_num_left_to_copy * cell_size;
-  size_t bytes_left_to_copy_var = cell_num_left_to_copy * cell_size_var;
-  size_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
-  size_t bytes_to_copy_var = MIN(bytes_left_to_copy_var, buffer_var_free_space);
-  int64_t cell_num_to_copy = bytes_to_copy / cell_size;
-  int64_t cell_num_to_copy_var = bytes_to_copy_var / cell_size_var;
-  cell_num_to_copy = MIN(cell_num_to_copy, cell_num_to_copy_var);
-
-  // Copy empty cells to buffers
-  uint64_t empty = Configurator::empty_uint64();
-  for (int64_t i = 0; i < cell_num_to_copy; ++i) {
-    memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
-    buffer_offset += cell_size;
-    memcpy(buffer_var_c + buffer_var_offset, &empty, cell_size_var);
-    buffer_var_offset += cell_size_var;
-  }
-  empty_cells_written_[attribute_id] += cell_num_to_copy;
-
-  // Handle buffer overflow
-  if (empty_cells_written_[attribute_id] != cell_num_in_range)
-    overflow_[attribute_id] = true;
-  else  // Done copying this range
-    empty_cells_written_[attribute_id] = 0;
 }
 
 template <class T>
