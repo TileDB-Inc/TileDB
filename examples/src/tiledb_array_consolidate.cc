@@ -34,7 +34,8 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx);
 
   // Consolidate the dense array
   tiledb_array_consolidate(ctx, "my_group/dense_arrays/my_array_A");

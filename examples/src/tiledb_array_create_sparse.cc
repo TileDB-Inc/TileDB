@@ -34,73 +34,51 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx);
 
   // Prepare parameters for array schema
   const char* array_name = "my_group/sparse_arrays/my_array_B";
-  const char* attributes[] = { "a1", "a2", "a3" };  // Three attributes
-  const char* dimensions[] = { "d1", "d2" };        // Two dimensions
-  int64_t domain[] = 
-  { 
-      1, 4,                       // d1
-      1, 4                        // d2 
-  };                
-  const int cell_val_num[] = 
-  { 
-      1,                          // a1
-      tiledb_var_num(),           // a2
-      2                           // a3
-  };
-  const tiledb_compressor_t compression[] =
-  { 
-        TILEDB_GZIP,              // a1 
-        TILEDB_GZIP,              // a2
-        TILEDB_NO_COMPRESSION,    // a3
-        TILEDB_NO_COMPRESSION     // coordinates
-  };
-  int64_t tile_extents[] = 
-  { 
-      2,                          // d1
-      2                           // d2
-  };               
-  const tiledb_datatype_t types[] =
-  { 
-      TILEDB_INT32,               // a1 
-      TILEDB_CHAR,                // a2
-      TILEDB_FLOAT32,             // a3
-      TILEDB_INT64                // coordinates
-  };
 
-  // Set array schema
-  tiledb_array_schema_t array_schema;
-  tiledb_array_set_schema(
-      ctx,
-      &array_schema,              // Array schema struct 
-      array_name,                 // Array name 
-      attributes,                 // Attributes 
-      3,                          // Number of attributes 
-      2,                          // Capacity 
-      TILEDB_ROW_MAJOR,           // Cell order 
-      cell_val_num,               // Number of cell values per attribute  
-      compression,                // Compression
-      0,                          // Sparse array
-      dimensions,                 // Dimensions
-      2,                          // Number of dimensions
-      domain,                     // Domain
-      4*sizeof(int64_t),          // Domain length in bytes
-      tile_extents,               // Tile extents
-      2*sizeof(int64_t),          // Tile extents length in bytes 
-      TILEDB_ROW_MAJOR,           // Tile order 
-      types                       // Types
-  );
+  // Attributes
+  tiledb_attribute_t* a1;
+  tiledb_attribute_create(ctx, &a1, "a1", TILEDB_INT32);
+  tiledb_attribute_set_compressor(ctx, a1, TILEDB_GZIP, -1);
+  tiledb_attribute_set_cell_val_num(ctx, a1, 1);
+  tiledb_attribute_t* a2;
+  tiledb_attribute_create(ctx, &a2, "a2", TILEDB_CHAR);
+  tiledb_attribute_set_compressor(ctx, a2, TILEDB_GZIP, -1);
+  tiledb_attribute_set_cell_val_num(ctx, a2, tiledb_var_num());
+  tiledb_attribute_t* a3;
+  tiledb_attribute_create(ctx, &a3, "a3", TILEDB_FLOAT32);
+  tiledb_attribute_set_compressor(ctx, a3, TILEDB_NO_COMPRESSION, -1);
+  tiledb_attribute_set_cell_val_num(ctx, a3, 2);
+
+  // Domain and tile extents
+  int64_t domain[] = { 1, 4, 1, 4 };
+  int64_t tile_extents[] = { 2, 2 };
+
+  // Dimensions
+  tiledb_dimension_t* d1;
+  tiledb_dimension_create(ctx, &d1, "d1", TILEDB_INT64, &domain[0], &tile_extents[0]);
+  tiledb_dimension_t* d2;
+  tiledb_dimension_create(ctx, &d2, "d2", TILEDB_INT64, &domain[2], &tile_extents[1]);
+
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  tiledb_array_schema_create(ctx, &array_schema, array_name);
+  tiledb_array_schema_set_array_type(ctx, array_schema, TILEDB_SPARSE);
 
   // Create array
-  tiledb_array_create(ctx, &array_schema);
+  tiledb_array_create(ctx, array_schema);
 
-  // Free array schema
-  tiledb_array_free_schema(&array_schema);
-
-  /* Finalize context. */
+  // Clean up
+  tiledb_attribute_free(a1);
+  tiledb_attribute_free(a2);
+  tiledb_attribute_free(a3);
+  tiledb_dimension_free(d1);
+  tiledb_dimension_free(d2);
+  tiledb_array_schema_free(array_schema);
   tiledb_ctx_free(ctx);
 
   return 0;

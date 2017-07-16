@@ -48,8 +48,8 @@
  * (https://github.com/google/leveldb).
  */
 
-#ifndef __TILEDB_STATUS_H__
-#define __TILEDB_STATUS_H__
+#ifndef TILEDB_STATUS_H
+#define TILEDB_STATUS_H
 
 #include <cstdint>
 #include <cstring>
@@ -279,4 +279,4 @@ inline void Status::operator=(const Status& s) {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_STATUS_H__
+#endif  // TILEDB_STATUS_H

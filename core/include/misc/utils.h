@@ -31,8 +31,8 @@
  * This file contains useful (global) functions.
  */
 
-#ifndef __TILEDB_UTILS_H__
-#define __TILEDB_UTILS_H__
+#ifndef TILEDB_UTILS_H
+#define TILEDB_UTILS_H
 
 #ifdef HAVE_MPI
 #include <mpi.h>
@@ -41,8 +41,11 @@
 #include <pthread.h>
 #include <string>
 #include <vector>
+#include "array_type.h"
+#include "compressor.h"
 #include "configurator.h"
 #include "datatype.h"
+#include "layout.h"
 #include "status.h"
 
 #ifdef HAVE_OPENMP
@@ -59,6 +62,9 @@ namespace utils {
 
 /** Returns true if the input is an array read mode. */
 bool array_read_mode(int mode);
+
+/** Returns the string representation of the input array type. */
+const char* array_type_str(ArrayType array_type);
 
 /** Returns true if the input is an array write mode. */
 bool array_write_mode(int mode);
@@ -159,6 +165,9 @@ int cmp_row_order(
     const T* coords_b,
     int dim_num);
 
+/** Returns the string representation of the input compressor. */
+const char* compressor_str(Compressor compressor);
+
 /**
  * Checks if a fragment exists
  *
@@ -190,6 +199,18 @@ std::string parent_path(const std::string& dir);
  * @return The size in bytes of the input datatype.
  */
 uint64_t datatype_size(Datatype type);
+
+/** Returns the string representation of the input data type. */
+const char* datatype_str(Datatype type);
+
+/**
+ * Returns the input domain as a string of the form "[low, high]".
+ *
+ * @param domain A single dimension's domain.
+ * @param type The type of the dimension.
+ * @return A string of the form "[low, high]".
+ */
+std::string domain_str(const void* domain, Datatype type);
 
 /**
  * Checks if the input is a special TileDB empty value.
@@ -314,6 +335,9 @@ bool is_positive_integer(const char* s);
 /** Returns *true* if the subarray contains a single element. */
 template <class T>
 bool is_unary_subarray(const T* subarray, int dim_num);
+
+/** Returns the string representation of the input layout. */
+const char* layout_str(Layout layout);
 
 #ifdef HAVE_OPENMP
 /**
@@ -522,6 +546,15 @@ void split_coordinates(
 bool starts_with(const std::string& value, const std::string& prefix);
 
 /**
+ * Returns a dimension's tile extent in string form.
+ *
+ * @param tile_extent The tile extent of a single dimension.
+ * @param type The type of the dimension.
+ * @return The tile extent in string form.
+ */
+std::string tile_extent_str(const void* tile_extent, Datatype type);
+
+/**
  * Creates tuples of coordinates from vertically partitioned dimensions.
  *
  * @param tile The input tile.
@@ -537,4 +570,4 @@ void zip_coordinates(
 
 };  // namespace tiledb
 
-#endif  // __TILEDB_UTILS_H__
+#endif  // TILEDB_UTILS_H

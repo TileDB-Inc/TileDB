@@ -31,8 +31,8 @@
  * C-api enum.
  */
 
-#ifndef __TILEDB_COMPRESSOR_H__
-#define __TILEDB_COMPRESSOR_H__
+#ifndef TILEDB_COMPRESSOR_H
+#define TILEDB_COMPRESSOR_H
 
 namespace tiledb {
 
@@ -44,4 +44,4 @@ enum class Compressor : char {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_COMPRESSOR_H__
+#endif  // TILEDB_COMPRESSOR_H

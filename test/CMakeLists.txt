@@ -44,18 +44,15 @@ target_include_directories(
     ${CMAKE_SOURCE_DIR}/external/catch
 )
 
+# Gather the test source files
+file(GLOB_RECURSE TILEDB_TEST_SOURCES "src/unit-*.cc")
+
 # unit test executable
 set(TILEDB_UNITTEST_TARGET_NAME "tiledb_unit")
 add_executable(
     ${TILEDB_UNITTEST_TARGET_NAME} EXCLUDE_FROM_ALL
     $<TARGET_OBJECTS:catch_main>
-    "src/unit-capi-version.cc"
-    "src/unit-capi-arrayschema.cc"
-    "src/unit-capi-sparsearray.cc"
-    "src/unit-capi-densearray.cc"
-    "src/unit-compression-rle.cc"
-    "src/unit-status.cc"
-        src/unit-capi-error.cc)
+    ${TILEDB_TEST_SOURCES})
 
 set_target_properties(
     ${TILEDB_UNITTEST_TARGET_NAME} PROPERTIES

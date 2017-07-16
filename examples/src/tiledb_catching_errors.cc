@@ -35,15 +35,19 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx);
 
   // Create a group
   int rc = tiledb_group_create(ctx, "my_group");
   if(rc == TILEDB_OK)
     printf("Group created successfully!\n");
   else if(rc == TILEDB_ERR) {
-    tiledb_error_t* err = tiledb_error_last(ctx);
-    printf("%s\n", tiledb_error_message(err)); // prints empty string ""
+    tiledb_error_t* err;
+    tiledb_error_last(ctx, &err);
+    const char* msg;
+    tiledb_error_message(ctx, err, &msg);
+    printf("%s\n", msg); // prints empty string ""
     tiledb_error_free(err);
   }
 
@@ -52,8 +56,11 @@ int main() {
   if(rc == TILEDB_OK)
     printf("Group created successfully!\n");
   else if(rc == TILEDB_ERR) {
-    tiledb_error_t* err = tiledb_error_last(ctx);
-    printf("%s\n", tiledb_error_message(err)); // Print the TileDB error message
+    tiledb_error_t* err;
+    tiledb_error_last(ctx, &err);
+    const char* msg;
+    tiledb_error_message(ctx, err, &msg);
+    printf("%s\n", msg); // prints empty string ""
     tiledb_error_free(err);
   }
   // Finalize context

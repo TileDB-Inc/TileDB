@@ -31,8 +31,8 @@
  * This file defines class ArrayIterator.
  */
 
-#ifndef __TILEDB_ARRAY_ITERATOR_H__
-#define __TILEDB_ARRAY_ITERATOR_H__
+#ifndef TILEDB_ARRAY_ITERATOR_H
+#define TILEDB_ARRAY_ITERATOR_H
 
 #include "array.h"
 
@@ -169,4 +169,4 @@ class ArrayIterator {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_ARRAY_ITERATOR_H__
+#endif  // TILEDB_ARRAY_ITERATOR_H

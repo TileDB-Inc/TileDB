@@ -29,31 +29,32 @@
  *
  * @section DESCRIPTION
  *
- * Tests for the C API error return code
+ * Tests for the C API error return code.
  */
 
 #include "catch.hpp"
 #include "tiledb.h"
 
-TEST_CASE("C API Error") {
+TEST_CASE("C API: Test error and error message") {
   tiledb_ctx_t* ctx;
-  int rc;
-
-  ctx = tiledb_ctx_create(nullptr);
-  CHECK(ctx != nullptr);
+  int rc = tiledb_ctx_create(&ctx);
+  CHECK(rc == TILEDB_OK);
 
   const char* bad_path = nullptr;
   rc = tiledb_clear(ctx, bad_path);
   CHECK(rc == TILEDB_ERR);
 
-  tiledb_error_t* err = tiledb_error_last(ctx);
-
-  CHECK_THAT(
-      tiledb_error_message(err),
-      Catch::Equals("Error: Invalid directory argument is NULL"));
-
-  tiledb_error_free(err);
-
-  rc = tiledb_ctx_free(ctx);
+  tiledb_error_t* err;
+  rc = tiledb_error_last(ctx, &err);
   CHECK(rc == TILEDB_OK);
+
+  const char* errmsg;
+  rc = tiledb_error_message(ctx, err, &errmsg);
+  CHECK(rc == TILEDB_OK);
+  CHECK_THAT(
+      errmsg, Catch::Equals("Error: Invalid directory argument is NULL"));
+
+  // Clena up
+  tiledb_error_free(err);
+  tiledb_ctx_free(ctx);
 }

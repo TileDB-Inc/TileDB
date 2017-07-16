@@ -34,47 +34,30 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx);
 
-  // Prepare parameters for metadata schema
+  // Metadata name
   const char* metadata_name = "my_group/sparse_arrays/my_array_B/meta";
-  const char* attributes[] = { "a1", "a2" }; // Two attributes
-  const int cell_val_num[] = 
-  {
-      1,                           // a1
-      tiledb_var_num()             // a2
-  };
-  const tiledb_compressor_t compression[] =
-  { 
-        TILEDB_GZIP,              // a1 
-        TILEDB_GZIP,              // a2
-        TILEDB_NO_COMPRESSION     // TILEDB_KEY
-  };
-  const tiledb_datatype_t types[] =
-  { 
-      TILEDB_INT32,                // a1
-      TILEDB_CHAR                  // a2
-  };
 
-  // Set metadata schema
-  tiledb_metadata_schema_t metadata_schema;
-  tiledb_metadata_set_schema(
-      ctx,
-      &metadata_schema,            // Metadata schema struct
-      metadata_name,               // Metadata name
-      attributes,                  // Attributes
-      2,                           // Number of attributes
-      4,                           // Capacity
-      cell_val_num,                // Number of cell values per attribute  
-      compression,                 // Compression
-      types                        // Types
-  );
+  // Attributes
+  tiledb_attribute_t* a1;
+  tiledb_attribute_create(ctx, &a1, "a1", TILEDB_INT32);
+  tiledb_attribute_set_compressor(ctx, a1, TILEDB_GZIP, -1);
+  tiledb_attribute_set_cell_val_num(ctx, a1, 1);
+  tiledb_attribute_t* a2;
+  tiledb_attribute_create(ctx, &a2, "a2", TILEDB_CHAR);
+  tiledb_attribute_set_compressor(ctx, a2, TILEDB_GZIP, -1);
+  tiledb_attribute_set_cell_val_num(ctx, a2, tiledb_var_num());
 
   // Create metadata
-  tiledb_metadata_create(ctx, &metadata_schema);
+  tiledb_metadata_schema_t* metadata_schema;
+  tiledb_metadata_schema_create(ctx, &metadata_schema, metadata_name);
 
-  // Free metadata schema
-  tiledb_metadata_free_schema(&metadata_schema);
+  // Clean-up
+  tiledb_attribute_free(a1);
+  tiledb_attribute_free(a2);
+  tiledb_metadata_schema_free(metadata_schema);
 
   // Finalize context
   tiledb_ctx_free(ctx);

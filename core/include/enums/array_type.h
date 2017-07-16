@@ -1,12 +1,11 @@
 /**
- * @file   unit-capi-version.cc
+ * @file array_type.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017 TileDB Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,21 +27,21 @@
  *
  * @section DESCRIPTION
  *
- * Tests for the C API library version
+ * This defines the tiledb ArrayType enum that maps to tiledb_array_type_t C-api
+ * enum.
  */
 
-#include "tiledb.h"
+#ifndef TILEDB_ARRAY_TYPE_H
+#define TILEDB_ARRAY_TYPE_H
 
-#include "catch.hpp"
+namespace tiledb {
 
-TEST_CASE("C API: Test version") {
-  int major = -1;
-  int minor = -1;
-  int rev = -1;
+enum class ArrayType : char {
+#define TILEDB_ARRAY_TYPE_ENUM(id) id
+#include "tiledb_enum.inc"
+#undef TILEDB_ARRAY_TYPE_ENUM
+};
 
-  tiledb_version(&major, &minor, &rev);
+}  // namespace tiledb
 
-  CHECK(major == 0);
-  CHECK(minor == 6);
-  CHECK(rev == 1);
-}
+#endif  // TILEDB_ARRAY_TYPE_H

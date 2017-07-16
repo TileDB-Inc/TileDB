@@ -31,8 +31,8 @@
  * This file defines class ProgressBar.
  */
 
-#ifndef __TILEDB_PROGRESS_BAR_H__
-#define __TILEDB_PROGRESS_BAR_H__
+#ifndef TILEDB_PROGRESS_BAR_H
+#define TILEDB_PROGRESS_BAR_H
 
 #include <cstring>
 
@@ -113,4 +113,4 @@ class ProgressBar {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_PROGRESS_BAR__
+#endif  // TILEDB_PROGRESS_BAR

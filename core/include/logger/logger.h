@@ -32,8 +32,8 @@
 
 #pragma once
 
-#ifndef __TILEDB_LOGGER_H__
-#define __TILEDB_LOGGER_H__
+#ifndef TILEDB_LOGGER_H
+#define TILEDB_LOGGER_H
 
 #include "spdlog/fmt/ostr.h"
 #include "spdlog/spdlog.h"
@@ -164,4 +164,4 @@ inline Status LOG_STATUS(const Status& st) {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_LOGGER_H__
+#endif  // TILEDB_LOGGER_H

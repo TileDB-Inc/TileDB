@@ -56,8 +56,8 @@ Array* Metadata::array() const {
   return array_;
 }
 
-const ArraySchema* Metadata::array_schema() const {
-  return array_->array_schema();
+const MetadataSchema* Metadata::metadata_schema() const {
+  return metadata_schema_;
 }
 
 bool Metadata::overflow(int attribute_id) const {
@@ -118,6 +118,11 @@ Status Metadata::init(
     const Configurator* config) {
   // For easy reference
   unsigned name_max_len = Configurator::name_max_len();
+
+  if (metadata_schema_ != nullptr)
+    delete metadata_schema_;
+
+  metadata_schema_ = new MetadataSchema(array_schema);
 
   // Sanity check on mode
   if (mode != TILEDB_METADATA_READ && mode != TILEDB_METADATA_WRITE) {

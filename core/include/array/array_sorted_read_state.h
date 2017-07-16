@@ -31,8 +31,8 @@
  * This file defines class ArraySortedReadState.
  */
 
-#ifndef __TILEDB_ARRAY_SORTED_READ_STATE_H__
-#define __TILEDB_ARRAY_SORTED_READ_STATE_H__
+#ifndef TILEDB_ARRAY_SORTED_READ_STATE_H
+#define TILEDB_ARRAY_SORTED_READ_STATE_H
 
 #include <pthread.h>
 #include <string>
@@ -1049,4 +1049,4 @@ class ArraySortedReadState {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_ARRAY_SORTED_READ_STATE_H__
+#endif  // TILEDB_ARRAY_SORTED_READ_STATE_H

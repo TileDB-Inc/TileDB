@@ -31,8 +31,8 @@
  * enum.
  */
 
-#ifndef __TILEDB_DATATYPE_H__
-#define __TILEDB_DATATYPE_H__
+#ifndef TILEDB_DATATYPE_H
+#define TILEDB_DATATYPE_H
 
 namespace tiledb {
 
@@ -44,4 +44,4 @@ enum class Datatype : char {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_DATATYPE_H__
+#endif  // TILEDB_DATATYPE_H

@@ -31,8 +31,8 @@
  * This file defines class BookKeeping.
  */
 
-#ifndef __TILEDB_BOOKKEEPING_H__
-#define __TILEDB_BOOKKEEPING_H__
+#ifndef TILEDB_BOOKKEEPING_H
+#define TILEDB_BOOKKEEPING_H
 
 #include <zlib.h>
 #include <vector>
@@ -364,4 +364,4 @@ class BookKeeping {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_BOOKKEEPING_H__
+#endif  // TILEDB_BOOKKEEPING_H

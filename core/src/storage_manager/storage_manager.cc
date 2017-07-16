@@ -80,25 +80,13 @@ StorageManager::~StorageManager() {
     delete logger_;
     logger_ = nullptr;
   }
+
+  open_array_mtx_destroy();
 }
 
 /* ****************************** */
 /*             MUTATORS           */
 /* ****************************** */
-
-Status StorageManager::finalize() {
-  if (config_ != nullptr) {
-    delete config_;
-    config_ = nullptr;
-  }
-
-  if (logger_ != nullptr) {
-    delete logger_;
-    logger_ = nullptr;
-  }
-
-  return open_array_mtx_destroy();
-}
 
 Status StorageManager::init(Configurator* config) {
   // Attach logger
@@ -129,6 +117,12 @@ int StorageManager::dir_type(const char* dir) {
     return TILEDB_METADATA;
   else
     return -1;
+}
+
+void StorageManager::set_config(Configurator* config) {
+  // TODO: make thread-safe?
+
+  config_ = config;
 }
 
 /* ****************************** */
@@ -198,24 +192,7 @@ Status StorageManager::array_consolidate(const char* array_dir) {
   return Status::Ok();
 }
 
-Status StorageManager::array_create(const ArraySchemaC* array_schema_c) const {
-  // Initialize array schema
-  ArraySchema* array_schema = new ArraySchema();
-  RETURN_NOT_OK_ELSE(array_schema->init(array_schema_c), delete array_schema);
-
-  // Get real array directory name
-  std::string dir = array_schema->array_name();
-  std::string parent_dir = utils::parent_path(dir);
-
-  // Create array with the new schema
-  Status st = array_create(array_schema);
-
-  delete array_schema;
-
-  return st;
-}
-
-Status StorageManager::array_create(const ArraySchema* array_schema) const {
+Status StorageManager::array_create(ArraySchema* array_schema) const {
   // Check array schema
   if (array_schema == nullptr) {
     return LOG_STATUS(
@@ -486,7 +463,8 @@ Status StorageManager::metadata_consolidate(const char* metadata_dir) {
       metadata->consolidate(new_fragment, old_fragment_names);
 
   // Close the underlying array
-  std::string array_name = metadata->array_schema()->array_name();
+  std::string array_name =
+      metadata->metadata_schema()->array_schema()->array_name();
   Status st_array_close = array_close(array_name);
 
   // Finalize consolidation
@@ -513,69 +491,24 @@ Status StorageManager::metadata_consolidate(const char* metadata_dir) {
   return Status::Ok();
 }
 
-Status StorageManager::metadata_create(
-    const MetadataSchemaC* metadata_schema_c) const {
-  // Initialize array schema
-  ArraySchema* array_schema = new ArraySchema();
-  RETURN_NOT_OK_ELSE(
-      array_schema->init(metadata_schema_c), delete array_schema);
-
-  // Get real array directory name
-  std::string dir = array_schema->array_name();
-  std::string parent_dir = utils::parent_path(dir);
-
-  // Create array with the new schema
-  Status st = metadata_create(array_schema);
-
-  // Clean up
-  delete array_schema;
-
-  return st;
-}
-
-Status StorageManager::metadata_create(const ArraySchema* array_schema) const {
-  // Check metadata schema
-  if (array_schema == nullptr) {
+Status StorageManager::metadata_create(MetadataSchema* metadata_schema) const {
+  // Check array schema
+  if (metadata_schema == nullptr) {
     return LOG_STATUS(Status::StorageManagerError(
         "Cannot create metadata; Empty metadata schema"));
   }
 
-  // Create array directory
-  std::string dir = array_schema->array_name();
+  // Create metadata directory
+  std::string dir = metadata_schema->metadata_name();
   RETURN_NOT_OK(filesystem::create_dir(dir));
 
-  // Open metadata schema file
-  std::string filename = dir + "/" + Configurator::metadata_schema_filename();
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  if (fd == -1) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot create metadata; ") + strerror(errno)));
-  }
-
-  // Serialize metadata schema
-  void* array_schema_bin;
-  size_t array_schema_bin_size;
-  RETURN_NOT_OK(
-      array_schema->serialize(array_schema_bin, array_schema_bin_size));
-
-  // Store the array schema
-  ssize_t bytes_written = ::write(fd, array_schema_bin, array_schema_bin_size);
-  if (bytes_written != ssize_t(array_schema_bin_size)) {
-    free(array_schema_bin);
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot create metadata; ") + strerror(errno)));
-  }
-
-  // Clean up
-  free(array_schema_bin);
-  if (::close(fd)) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot create metadata; ") + strerror(errno)));
-  }
+  // Store array schema
+  RETURN_NOT_OK(metadata_schema->store(dir));
 
   // Create consolidation filelock
-  RETURN_NOT_OK(consolidation_filelock_create(dir))
+  RETURN_NOT_OK(consolidation_filelock_create(dir));
 
+  // Success
   return Status::Ok();
 }
 
@@ -688,7 +621,8 @@ Status StorageManager::metadata_finalize(Metadata* metadata) {
     return Status::Ok();
 
   // Finalize the metadata and close the underlying array
-  std::string array_name = metadata->array_schema()->array_name();
+  std::string array_name =
+      metadata->metadata_schema()->array_schema()->array_name();
   ArrayMode mode = metadata->array()->mode();
   RETURN_NOT_OK_ELSE(metadata->finalize(), delete metadata);
   if (mode == ArrayMode::READ)

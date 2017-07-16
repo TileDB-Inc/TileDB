@@ -31,8 +31,8 @@
  * This file defines class ReadState.
  */
 
-#ifndef __TILEDB_READ_STATE_H__
-#define __TILEDB_READ_STATE_H__
+#ifndef TILEDB_READ_STATE_H
+#define TILEDB_READ_STATE_H
 
 #include <vector>
 #include "array.h"
@@ -947,4 +947,4 @@ class ReadState {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_READ_STATE_H__
+#endif  // TILEDB_READ_STATE_H

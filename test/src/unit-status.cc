@@ -3,14 +3,14 @@
 
 using namespace tiledb;
 
-TEST_CASE("Test Status ok") {
+TEST_CASE("Status: Test ok") {
   Status st = Status::Ok();
   CHECK(st.ok());
   st = Status::Error("err msg");
   CHECK(!st.ok());
 }
 
-TEST_CASE("Test Status Code and Message") {
+TEST_CASE("Status: Test code and message") {
   Status ok = Status::Ok();
   CHECK(StatusCode::Ok == ok.code());
 
@@ -19,7 +19,7 @@ TEST_CASE("Test Status Code and Message") {
   CHECK_THAT(err.message(), Catch::Equals("err msg"));
 }
 
-TEST_CASE("Test Status to_string") {
+TEST_CASE("Status: Test to_string") {
   Status ok = Status::Ok();
   CHECK_THAT(ok.to_string(), Catch::Equals("Ok"));
 
@@ -27,7 +27,7 @@ TEST_CASE("Test Status to_string") {
   CHECK_THAT(err.to_string(), Catch::Equals("Error: err msg"));
 }
 
-TEST_CASE("Test Status code_to_string") {
+TEST_CASE("Status: Test code_to_string") {
   Status ok = Status::Ok();
   CHECK_THAT(ok.code_to_string(), Catch::Equals("Ok"));
 
@@ -35,7 +35,7 @@ TEST_CASE("Test Status code_to_string") {
   CHECK_THAT(err.code_to_string(), Catch::Equals("Error"));
 }
 
-TEST_CASE("Test Status posix_code") {
+TEST_CASE("Status: Test posix_code") {
   Status st = Status::Ok();
   // check that posix code is < 0 by default
   CHECK(st.posix_code() == -1);

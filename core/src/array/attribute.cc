@@ -31,6 +31,8 @@
  */
 
 #include "attribute.h"
+#include <cassert>
+#include "utils.h"
 
 namespace tiledb {
 
@@ -47,17 +49,66 @@ Attribute::Attribute(const char* name, Datatype type) {
   type_ = type;
 
   // Set default compressor and compression level
+  cell_val_num_ = 1;
   compressor_ = Compressor::NO_COMPRESSION;
   compression_level_ = -1;
+}
+
+Attribute::Attribute(const Attribute* attr) {
+  assert(attr != nullptr);
+
+  name_ = attr->name();
+  type_ = attr->type();
+  cell_val_num_ = attr->cell_val_num();
+  compressor_ = attr->compressor();
+  compression_level_ = attr->compression_level();
 }
 
 Attribute::~Attribute() = default;
 
 /* ********************************* */
+/*              GETTERS              */
+/* ********************************* */
+
+unsigned int Attribute::cell_val_num() const {
+  return cell_val_num_;
+}
+
+Compressor Attribute::compressor() const {
+  return compressor_;
+}
+
+int Attribute::compression_level() const {
+  return compression_level_;
+}
+
+void Attribute::dump(FILE* out) const {
+  // Retrieve type and compressor strings
+  const char* type_s = utils::datatype_str(type_);
+  const char* compressor_s = utils::compressor_str(compressor_);
+
+  // Dump
+  fprintf(out, "### Attribute ###\n");
+  fprintf(out, "- Name: %s\n", name_.c_str());
+  fprintf(out, "- Type: %s\n", type_s);
+  fprintf(out, "- Compressor: %s\n", compressor_s);
+  fprintf(out, "- Compression level: %d\n", compression_level_);
+  fprintf(out, "- Cell val num: %u\n", cell_val_num_);
+}
+
+const std::string& Attribute::name() const {
+  return name_;
+}
+
+Datatype Attribute::type() const {
+  return type_;
+}
+
+/* ********************************* */
 /*              SETTERS              */
 /* ********************************* */
 
-void Attribute::set_cell_val_num(int cell_val_num) {
+void Attribute::set_cell_val_num(unsigned int cell_val_num) {
   cell_val_num_ = cell_val_num;
 }
 

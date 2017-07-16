@@ -30,8 +30,8 @@
  * This file defines class BasicArray.
  */
 
-#ifndef __TILEDB_BASIC_ARRAY_H__
-#define __TILEDB_BASIC_ARRAY_H__
+#ifndef TILEDB_BASIC_ARRAY_H
+#define TILEDB_BASIC_ARRAY_H
 
 #include "array.h"
 #include "status.h"
@@ -74,4 +74,4 @@ class BasicArray {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_BASIC_ARRAY_H__
+#endif  // TILEDB_BASIC_ARRAY_H

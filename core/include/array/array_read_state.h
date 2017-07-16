@@ -31,8 +31,8 @@
  * This file defines class ArrayReadState.
  */
 
-#ifndef __TILEDB_ARRAY_READ_STATE_H__
-#define __TILEDB_ARRAY_READ_STATE_H__
+#ifndef TILEDB_ARRAY_READ_STATE_H
+#define TILEDB_ARRAY_READ_STATE_H
 
 #include <cinttypes>
 #include <cstring>
@@ -752,4 +752,4 @@ class ArrayReadState::SmallerPQFragmentCellRange {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_ARRAY_READ_STATE_H__
+#endif  // TILEDB_ARRAY_READ_STATE_H

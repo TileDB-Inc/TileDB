@@ -31,11 +31,12 @@
  * This file defines class Metadata.
  */
 
-#ifndef __TILEDB_METADATA_H__
-#define __TILEDB_METADATA_H__
+#ifndef TILEDB_METADATA_H
+#define TILEDB_METADATA_H
 
 #include "array.h"
 #include "configurator.h"
+#include "metadata_schema.h"
 
 namespace tiledb {
 
@@ -59,8 +60,8 @@ class Metadata {
   /** Returns the array that implements the metadata. */
   Array* array() const;
 
-  /** Returns the array schema. */
-  const ArraySchema* array_schema() const;
+  /** Returns the metadata schema. */
+  const MetadataSchema* metadata_schema() const;
 
   /**
    * Checks if a read operation for a particular attribute resulted in a
@@ -197,6 +198,10 @@ class Metadata {
 
   /** The underlying array that implements the metadata. */
   Array* array_;
+
+  /** The metadata schema. */
+  MetadataSchema* metadata_schema_;
+
   /**
    * The metadata mode. It must be one of the following:
    *    - TILEDB_METADATA_WRITE
@@ -258,4 +263,4 @@ class Metadata {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_METADATA_H__
+#endif  // TILEDB_METADATA_H

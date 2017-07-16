@@ -38,49 +38,19 @@ void print_some_metadata_schema_info(
     const tiledb_metadata_schema_t* metadata_schema);
 
 int main() {
-  /* Initialize context with the default configuration parameters. */
-  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
+  // Initialize context with the default configuration parameters.
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx);
 
-  // ----- Get schema without metadata initialization ----- //
-
-  // Load metadata schema when the metadata object is not initialized
-  tiledb_metadata_schema_t metadata_schema;
-  tiledb_metadata_load_schema(
-      ctx,                                     // Context
-      "my_group/sparse_arrays/my_array_B/meta",       // Metadata name
-      &metadata_schema);                              // Metadata schema struct
+  // Load metadata schema
+  tiledb_metadata_schema_t* metadata_schema;
+  tiledb_metadata_schema_load(ctx, &metadata_schema, "my_group/sparse_arrays/my_array_B/meta");
 
   // Print some metadata schema info
-  print_some_metadata_schema_info(&metadata_schema);
+  print_some_metadata_schema_info(metadata_schema);
 
-  // Free metadata schema
-  tiledb_metadata_free_schema(&metadata_schema);
-
-  // ----- Get schema after metadata initialization ----- //
-
-  // Initialize metadata
-  tiledb_metadata_t* tiledb_metadata;
-  tiledb_metadata_init(
-      ctx,                                     // Context
-      &tiledb_metadata,                               // Array object
-      "my_group/sparse_arrays/my_array_B/meta",       // Array name
-      TILEDB_METADATA_READ,                           // Mode
-      nullptr,                                        // Attributes (all)
-      0);                                             // Number of attributes
-
-  // Get metadata schema when the metadata object is initialized
-  tiledb_metadata_get_schema(tiledb_metadata, &metadata_schema); 
-
-  // Print some schema info
-  print_some_metadata_schema_info(&metadata_schema);
-
-  // Free metadata schema
-  tiledb_metadata_free_schema(&metadata_schema);
-
-  // Finalize metadata
-  tiledb_metadata_finalize(tiledb_metadata);
-
-  // Finalize context
+  // Clean up
+  tiledb_metadata_schema_free(metadata_schema);
   tiledb_ctx_free(ctx);
 
   return 0;
@@ -88,9 +58,5 @@ int main() {
 
 void print_some_metadata_schema_info(
     const tiledb_metadata_schema_t* metadata_schema) {
-  printf("Metadata name: %s\n",  metadata_schema->metadata_name_);
-  printf("Attributes: ");
-  for(int i=0; i<metadata_schema->attribute_num_; ++i)
-    printf("%s ", metadata_schema->attributes_[i]); 
-  printf("\n");
+    // TODO: create a C API function for this
 }

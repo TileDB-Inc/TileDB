@@ -31,18 +31,19 @@
  * This file defines class ArraySchema.
  */
 
-#ifndef __TILEDB_ARRAY_SCHEMA_H__
-#define __TILEDB_ARRAY_SCHEMA_H__
+#ifndef TILEDB_ARRAY_SCHEMA_H
+#define TILEDB_ARRAY_SCHEMA_H
 
-#include <limits>
 #include <string>
 #include <typeinfo>
 #include <vector>
-#include "array_schema_c.h"
+#include "array_type.h"
+#include "attribute.h"
 #include "compressor.h"
+#include "configurator.h"
 #include "datatype.h"
+#include "dimension.h"
 #include "layout.h"
-#include "metadata_schema_c.h"
 #include "status.h"
 
 namespace tiledb {
@@ -57,6 +58,20 @@ class ArraySchema {
   /** Constructor. */
   ArraySchema();
 
+  /**
+   * Constructor. Clones the input.
+   *
+   * @param array_schema The array schema to copy.
+   */
+  ArraySchema(const ArraySchema* array_schema);
+
+  /**
+   * Constructor.
+   *
+   * @param array_name The array name.
+   */
+  ArraySchema(const char* array_name);
+
   /** Destructor. */
   ~ArraySchema();
 
@@ -67,11 +82,14 @@ class ArraySchema {
   /** Returns the array name. */
   const std::string& array_name() const;
 
-  /** Exports the array schema into the input array schema struct. */
-  void array_schema_export(ArraySchemaC* array_schema_c) const;
+  /** Returns the array type. */
+  ArrayType array_type() const;
 
-  /** Exports the array schema into the input metadata schema struct. */
-  void array_schema_export(MetadataSchemaC* metadata_schema_c) const;
+  /** Returns a constant pointer to the selected attribute (NULL if error). */
+  const Attribute* attr(int id) const;
+
+  /** Returns the number of attributes. */
+  unsigned int attr_num() const;
 
   /** Returns the name of the attribute with the input id. */
   const std::string& attribute(int attribute_id) const;
@@ -92,6 +110,9 @@ class ArraySchema {
   /** Returns the attributes. */
   const std::vector<std::string>& attributes() const;
 
+  /** Returns the attributes. */
+  const std::vector<Attribute*>& Attributes() const;
+
   /** Returns the capacity. */
   int64_t capacity() const;
 
@@ -107,7 +128,14 @@ class ArraySchema {
   size_t cell_size(int attribute_id) const;
 
   /** Returns the number of values per cell of the input attribute. */
-  int cell_val_num(int attribute_id) const;
+  unsigned int cell_val_num(int attribute_id) const;
+
+  /**
+   * Checks the correctness of the array schema.
+   *
+   * @return Status
+   */
+  Status check() const;
 
   /** Returns the compression type of the attribute with the input id. */
   Compressor compression(int attribute_id) const;
@@ -121,11 +149,17 @@ class ArraySchema {
   /** True if the array is dense. */
   bool dense() const;
 
+  /** Returns a constant pointer to the selected dimension. */
+  const Dimension* dim(int id) const;
+
   /** Returns the number of dimensions. */
   int dim_num() const;
 
   /** Returns the domain. */
   const void* domain() const;
+
+  /** Dumps the array schema in ASCII format in the selected output. */
+  void dump(FILE* out) const;
 
   /**
    * Gets the ids of the input attributes.
@@ -188,14 +222,6 @@ class ArraySchema {
    */
   Status serialize(
       void*& array_schema_bin, size_t& array_schema_bin_size) const;
-
-  /**
-   * Stores the array schema in a file inside directory *dir*.
-   *
-   * @param dir The directory where the array schema file will be stored.
-   * @return Status
-   */
-  Status store(const std::string& dir) const;
 
   /**
    * Returns the type of overlap of the input subarrays.
@@ -279,6 +305,12 @@ class ArraySchema {
   /*              MUTATORS             */
   /* ********************************* */
 
+  /** Adds an attribute, cloning the input. */
+  void add_attribute(const Attribute* attr);
+
+  /** Adds a dimension, cloning the input. */
+  void add_dimension(const Dimension* dim);
+
   /**
    * It assigns values to the members of the object from the input buffer.
    *
@@ -298,76 +330,30 @@ class ArraySchema {
   Status init();
 
   /**
-   * Initializes the ArraySchema object using the information provided in the
-   * input C-style ArraySchemaC struct.
-   *
-   * @param array_schema_c The array schema in a C-style struct.
-   * @return Status.
-   */
-  Status init(const ArraySchemaC* array_schema_c);
-
-  /**
-   * Initializes the ArraySchema object using the information provided in the
-   * inpur C-style MetadataSchemaC struct.
-   *
-   * @param metadata_schema_c The metadata schema in a C-style struct.
-   * @return Status
-   */
-  Status init(const MetadataSchemaC* metadata_schema_c);
-
-  /**
    * Loads the schema of an array from the disk.
    *
    * @param dir The directory of the array.
-   * @return Status.
+   * @param schema_filename The schema file name.
+   * @return Status
    */
-  Status load(const std::string& dir);
+  Status load(
+      const std::string& dir,
+      const char* schema_filename = Configurator::array_schema_filename());
 
   /** Sets the array name. */
   void set_array_name(const char* array_name);
 
-  /**
-   * Sets attribute names. There should not be any duplicate names. Moreover,
-   * there should not be an attribute with the same name as a dimension.
-   *
-   * @param attributes The attribute names.
-   * @param attribute_num The number of attributes.
-   * @return Status
-   */
-  Status set_attributes(char** attributes, int attribute_num);
+  /** Sets the array type (dense or sparse). */
+  void set_array_type(ArrayType array_type);
 
   /** Sets the tile capacity. */
-  void set_capacity(int64_t capacity);
+  void set_capacity(uint64_t capacity);
 
   /** Sets the number of cell values per attribute. */
-  void set_cell_val_num(const int* cell_val_num);
+  void set_cell_val_num(const unsigned int* cell_val_num);
 
-  /**
-   * Sets the cell order. Supported cell orders:
-   *    - TILEDB_ROW_MAJOR
-   *    - TILEDB_COL_MAJOR
-   *    - TILEDB_HILBSERT
-   *
-   * @param cell_order The cell order.
-   * @return Status
-   */
-  Status set_cell_order(tiledb_layout_t cell_order);
-
-  /** Sets the compression types. */
-  Status set_compression(tiledb_compressor_t* compression);
-
-  /** Sets the proper flag to indicate if the array is dense. */
-  void set_dense(int dense);
-
-  /**
-   * Sets dimension names. There should not be any duplicate names. Moreover,
-   * there should not be a dimension with the same name as an attribute.
-   *
-   * @param dimensions The dimension names.
-   * @param dim_num The number of dimensions.
-   * @return Status
-   */
-  Status set_dimensions(char** dimensions, int dim_num);
+  /** Sets the cell order. */
+  void set_cell_order(Layout cell_order);
 
   /**
    * Sets the domain.
@@ -382,66 +368,20 @@ class ArraySchema {
    */
   Status set_domain(const void* domain);
 
-  /**
-   * Sets the tile extents.
-   *
-   * @param tile_extents The tile extents (only applicable to regular tiles).
-   *     There should be one value for each dimension. The type of the values
-   *     stored in this buffer should match the coordinates type. If it is NULL,
-   *     then it means that the array has irregular tiles (and, hence, it is
-   *     sparse).
-   *
-   * @note The dimensions and types must already have been set prior to calling
-   *     this function. Moreover, dense arrays must always have tile extents,
-   *     whereas arrays defined as key-value stores must not have tile extents.
-   */
-  Status set_tile_extents(const void* tile_extents);
+  /** Sets the tile order. */
+  void set_tile_order(Layout tile_order);
 
   /**
-   * Sets the tile order. Supported tile orders.
-   *    - TILEDB_ROW_MAJOR
-   *    - TILEDB_COL_MAJOR
+   * Stores the array schema in a file inside directory *dir*.
    *
-   * @param tile_order The tile order.
+   * @param dir The directory where the array schema file will be stored.
+   * @param schema_filename The name of the file where the array schema should
+   * be stored.
    * @return Status
    */
-  Status set_tile_order(tiledb_layout_t tile_order);
-
-  /**
-   * Sets the types. There should be one type per attribute plus one (the last
-   * one) for the coordinates.
-   * The supported types for the attributes are:
-   *     - TILEDB_CHAR
-   *     - TILEDB_INT32
-   *     - TILEDB_INT64
-   *     - TILEDB_FLOAT32
-   *     - TILEDB_FLOAT64
-   *     - TILEDB_INT8
-   *     - TILEDB_UINT8
-   *     - TILEDB_INT16
-   *     - TILEDB_UINT16
-   *     - TILEDB_UINT32
-   *     - TILEDB_UINT64
-   *
-   * The supported types for the coordinates are:
-   *     - TILEDB_INT32
-   *     - TILEDB_INT64
-   *     - TILEDB_FLOAT32
-   *     - TILEDB_FLOAT64
-   *     - TILEDB_INT8
-   *     - TILEDB_UINT8
-   *     - TILEDB_INT16
-   *     - TILEDB_UINT16
-   *     - TILEDB_UINT32
-   *     - TILEDB_UINT64
-   *
-   * @param types The types.
-   * @return Status
-   *
-   * @note The attributes, dimensions and the dense flag must have already been
-   *     set before calling this function.
-   */
-  Status set_types(const tiledb_datatype_t* types);
+  Status store(
+      const std::string& dir,
+      const char* schema_filename = Configurator::array_schema_filename());
 
   /* ********************************* */
   /*               MISC                */
@@ -654,6 +594,10 @@ class ArraySchema {
 
   /** The array name. */
   std::string array_name_;
+  /** The array type. */
+  ArrayType array_type_;        // TODO: replace dense_
+  /** The array attributes. */  // TODO: replace attributes_
+  std::vector<Attribute*> Attributes_;
   /** The attribute names. */
   std::vector<std::string> attributes_;
   /** The number of attributes. */
@@ -663,7 +607,7 @@ class ArraySchema {
   /**
    * The tile capacity for the case of sparse fragments.
    */
-  int64_t capacity_;
+  uint64_t capacity_;
   /** The number of cells per tile. Meaningful only for the **dense** case. */
   int64_t cell_num_per_tile_;
   /**
@@ -680,7 +624,7 @@ class ArraySchema {
    * the number of values is variable (e.g., in the case off strings), then
    * TILEDB_VAR_NUM must be used.
    */
-  std::vector<int> cell_val_num_;
+  std::vector<unsigned int> cell_val_num_;
   /**
    * The compression type for each attribute (plus one extra at the end for the
    * coordinates. It can be one of the following:
@@ -707,6 +651,8 @@ class ArraySchema {
    * then the user must specify tile extents (see below).
    */
   bool dense_;
+  /** The array dimensions. */  // TODO: replace dimensions_
+  std::vector<Dimension*> Dimensions_;
   /** The dimension names. */
   std::vector<std::string> dimensions_;
   /** The number of dimensions. */
@@ -1028,12 +974,6 @@ class ArraySchema {
   template <class T>
   int64_t get_tile_pos_row(const T* domain, const T* tile_coords) const;
 
-  /**
-   * Sets default values to all members, effectively making the array schema
-   * equivalent to the schema of a basic array.
-   */
-  void set_default();
-
   /** Return the number of cells in a column tile slab of an input subarray. */
   template <class T>
   int64_t tile_slab_col_cell_num(const T* subarray) const;
@@ -1045,4 +985,4 @@ class ArraySchema {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_ARRAY_SCHEMA_H__
+#endif  // TILEDB_ARRAY_SCHEMA_H

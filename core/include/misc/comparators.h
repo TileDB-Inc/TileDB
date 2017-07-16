@@ -32,8 +32,8 @@
  * of sparse arrays.
  */
 
-#ifndef __TILEDB_COMPARATORS_H__
-#define __TILEDB_COMPARATORS_H__
+#ifndef TILEDB_COMPARATORS_H
+#define TILEDB_COMPARATORS_H
 
 #include <cinttypes>
 #include <vector>
@@ -239,4 +239,4 @@ class SmallerRow {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_COMPARATORS_H__
+#endif  // TILEDB_COMPARATORS_H
