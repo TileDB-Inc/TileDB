@@ -30,8 +30,8 @@
  * This file defines class Dimension.
  */
 
-#ifndef __TILEDB_DIMENSION_H__
-#define __TILEDB_DIMENSION_H__
+#ifndef TILEDB_DIMENSION_H
+#define TILEDB_DIMENSION_H
 
 #include <string>
 #include "compressor.h"
@@ -60,8 +60,40 @@ class Dimension {
       const void* domain,
       const void* tile_extent);
 
+  /**
+   * Constructor. It clones the input.
+   *
+   * @param dim The attribute to copy.
+   */
+  Dimension(const Dimension* dim);
+
   /** Destructor. */
   ~Dimension();
+
+  /* ********************************* */
+  /*              GETTERS              */
+  /* ********************************* */
+
+  /** Returns the compressor. */
+  Compressor compressor() const;
+
+  /** Returns the compression level. */
+  int compression_level() const;
+
+  /** Returns the domain. */
+  void* domain() const;
+
+  /** Dumps the dimension contents in ASCII form in the selected output. */
+  void dump(FILE* out) const;
+
+  /** Returns the attribute name. */
+  const std::string& name() const;
+
+  /** Returns the tile extent. */
+  void* tile_extent() const;
+
+  /** Returns the attribute type. */
+  Datatype type() const;
 
   /* ********************************* */
   /*              SETTERS              */
@@ -94,4 +126,4 @@ class Dimension {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_DIMENSION_H__
+#endif  // TILEDB_DIMENSION_H

@@ -31,8 +31,8 @@
  * This file defines class Array.
  */
 
-#ifndef __TILEDB_ARRAY_H__
-#define __TILEDB_ARRAY_H__
+#ifndef TILEDB_ARRAY_H
+#define TILEDB_ARRAY_H
 
 #include <pthread.h>
 #include <queue>
@@ -527,4 +527,4 @@ class Array {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_ARRAY_H__
+#endif  // TILEDB_ARRAY_H

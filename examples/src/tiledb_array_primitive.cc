@@ -38,47 +38,20 @@ void print_some_array_schema_info(const tiledb_array_schema_t* array_schema);
 
 int main() {
   /* Initialize context with the default configuration parameters. */
-  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx);
 
   // ----- Dense array ----- //
 
   // Load array schema when the array is not initialized
-  tiledb_array_schema_t array_schema;
-  tiledb_array_load_schema(
-      ctx,                               // Context
-      "my_group/dense_arrays/my_array_A",       // Array name
-      &array_schema);                           // Array schema struct
+  tiledb_array_schema_t* array_schema;
+  tiledb_array_schema_load(ctx, &array_schema, "my_group/dense_arrays/my_array_A");
 
   // Print some array schema info
-  print_some_array_schema_info(&array_schema);
+  print_some_array_schema_info(array_schema);
 
   // Free array schema
-  tiledb_array_free_schema(&array_schema);
-
-  // ----- Sparse array ----- //
-
-  // Initialize array
-  tiledb_array_t* tiledb_array;
-  tiledb_array_init(
-      ctx,                                // Context
-      &tiledb_array,                             // Array object
-      "my_group/sparse_arrays/my_array_B",       // Array name
-      TILEDB_ARRAY_READ,                         // Mode
-      nullptr,                                      // Subarray (whole domain)
-      nullptr,                                      // Attributes (all attributes)
-      0);                                        // Number of attributes
-
-  // Get array schema when the array is initialized
-  tiledb_array_get_schema(tiledb_array, &array_schema); 
-
-  // Print some schema info
-  print_some_array_schema_info(&array_schema);
-
-  // Free array schema
-  tiledb_array_free_schema(&array_schema);
-
-  // Finalize array
-  tiledb_array_finalize(tiledb_array);
+  tiledb_array_schema_free(array_schema);
 
   // Finalize context
   tiledb_ctx_free(ctx);
@@ -87,13 +60,5 @@ int main() {
 }
 
 void print_some_array_schema_info(const tiledb_array_schema_t* array_schema) {
-  printf("Array name: %s\n",  array_schema->array_name_);
-  printf("Attributes: ");
-  for(int i=0; i<array_schema->attribute_num_; ++i)
-    printf("%s ", array_schema->attributes_[i]); 
-  printf("\n");
-  if(array_schema->dense_)
-    printf("The array is dense\n");
-  else
-    printf("The array is sparse\n");
+  // TODO: Create a C API for dumping the array schema
 }

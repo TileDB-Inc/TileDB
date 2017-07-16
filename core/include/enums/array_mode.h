@@ -31,8 +31,8 @@
  * enum.
  */
 
-#ifndef __TILEDB_ARRAY_MODE_H__
-#define __TILEDB_ARRAY_MODE_H__
+#ifndef TILEDB_ARRAY_MODE_H
+#define TILEDB_ARRAY_MODE_H
 
 namespace tiledb {
 
@@ -52,6 +52,7 @@ inline bool is_write_mode(const ArrayMode mode) {
          mode == ArrayMode::WRITE_SORTED_ROW ||
          mode == ArrayMode::WRITE_UNSORTED;
 }
+
 }  // namespace tiledb
 
-#endif  // __TILEDB_ARRAY_MODE_H__
+#endif  // TILEDB_ARRAY_MODE_H

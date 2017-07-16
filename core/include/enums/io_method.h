@@ -31,8 +31,8 @@
  * enum.
  */
 
-#ifndef __TILEDB_IO_METHOD_H__
-#define __TILEDB_IO_METHOD_H__
+#ifndef TILEDB_IO_METHOD_H
+#define TILEDB_IO_METHOD_H
 
 namespace tiledb {
 
@@ -43,4 +43,4 @@ enum class IOMethod {
 };
 
 }  // namespace tiledb
-#endif  // __TILEDB_IO_METHOD_H__
+#endif  // TILEDB_IO_METHOD_H

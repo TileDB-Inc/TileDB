@@ -30,8 +30,8 @@
  * This file defines class BasicArraySchema.
  */
 
-#ifndef __TILEDB_BASIC_ARRAY_SCHEMA_H__
-#define __TILEDB_BASIC_ARRAY_SCHEMA_H__
+#ifndef TILEDB_BASIC_ARRAY_SCHEMA_H
+#define TILEDB_BASIC_ARRAY_SCHEMA_H
 
 #include "array_schema.h"
 
@@ -83,4 +83,4 @@ class BasicArraySchema {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_BASIC_ARRAY_SCHEMA_H__
+#endif  // TILEDB_BASIC_ARRAY_SCHEMA_H

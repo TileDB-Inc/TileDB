@@ -33,12 +33,12 @@
 
 #include "array_schema.h"
 #include <fcntl.h>
+#include <inttypes.h>
 #include <sys/stat.h>
 #include <cassert>
 #include <cmath>
 #include <iostream>
 #include "compressor.h"
-#include "configurator.h"
 #include "filesystem.h"
 #include "logger.h"
 #include "utils.h"
@@ -57,13 +57,80 @@ namespace tiledb {
 /* ****************************** */
 
 ArraySchema::ArraySchema() {
+  attribute_num_ = 0;
+  basic_array_ = false;
+  cell_num_per_tile_ = -1;
+  dim_num_ = 0;
+  domain_ = nullptr;
+  tile_extents_ = nullptr;
+  tile_domain_ = nullptr;
+  tile_coords_aux_ = nullptr;
+  array_name_ = "";
+  array_type_ = ArrayType::DENSE;
+  capacity_ = Configurator::capacity();
+  cell_order_ = Layout::ROW_MAJOR;
+  tile_order_ = Layout::ROW_MAJOR;
+}
+
+ArraySchema::ArraySchema(const ArraySchema* array_schema) {
+  array_name_ = array_schema->array_name_;
+  array_type_ = array_schema->array_type_;
+  Attributes_ = array_schema->Attributes_;
+  attributes_ = array_schema->attributes_;
+  attribute_num_ = array_schema->attribute_num_;
+  basic_array_ = array_schema->basic_array_;
+  capacity_ = array_schema->capacity_;
+  cell_num_per_tile_ = array_schema->cell_num_per_tile_;
+  cell_order_ = array_schema->cell_order_;
+  cell_sizes_ = array_schema->cell_sizes_;
+  cell_val_num_ = array_schema->cell_val_num_;
+  compressor_ = array_schema->compressor_;
+  compression_level_ = array_schema->compression_level_;
+  coords_size_ = array_schema->coords_size_;
+  dense_ = array_schema->dense_;
+  Dimensions_ = array_schema->Dimensions_;
+  dimensions_ = array_schema->dimensions_;
+  dim_num_ = array_schema->dim_num_;
+  tile_offsets_col_ = array_schema->tile_offsets_col_;
+  tile_offsets_row_ = array_schema->tile_offsets_row_;
+  tile_order_ = array_schema->tile_order_;
+  types_ = array_schema->types_;
+  type_sizes_ = array_schema->type_sizes_;
+
+  if (array_schema->domain_ == nullptr) {
+    domain_ = nullptr;
+  } else {
+    domain_ = malloc(2 * coords_size_);
+    memcpy(domain_, array_schema->domain_, 2 * coords_size_);
+  }
+
+  if (array_schema->tile_domain_ == nullptr) {
+    tile_domain_ = nullptr;
+  } else {
+    tile_domain_ = malloc(2 * coords_size_);
+    memcpy(tile_domain_, array_schema->tile_domain_, 2 * coords_size_);
+  }
+
+  if (array_schema->tile_extents_ == nullptr) {
+    tile_extents_ = nullptr;
+  } else {
+    tile_extents_ = malloc(coords_size_);
+    memcpy(tile_extents_, array_schema->tile_extents_, coords_size_);
+  }
+}
+
+ArraySchema::ArraySchema(const char* array_name) {
+  basic_array_ = false;
   cell_num_per_tile_ = -1;
   domain_ = nullptr;
   tile_extents_ = nullptr;
   tile_domain_ = nullptr;
   tile_coords_aux_ = nullptr;
-
-  set_default();
+  array_name_ = filesystem::real_dir(array_name);
+  array_type_ = ArrayType::DENSE;
+  capacity_ = Configurator::capacity();
+  cell_order_ = Layout::ROW_MAJOR;
+  tile_order_ = Layout::ROW_MAJOR;
 }
 
 ArraySchema::~ArraySchema() {
@@ -78,6 +145,12 @@ ArraySchema::~ArraySchema() {
 
   if (tile_coords_aux_ != nullptr)
     free(tile_coords_aux_);
+
+  for (int i = 0; i < Attributes_.size(); ++i)
+    delete Attributes_[i];
+
+  for (int i = 0; i < Dimensions_.size(); ++i)
+    delete Dimensions_[i];
 }
 
 /* ****************************** */
@@ -88,112 +161,19 @@ const std::string& ArraySchema::array_name() const {
   return array_name_;
 }
 
-void ArraySchema::array_schema_export(ArraySchemaC* array_schema_c) const {
-  // Set array name
-  size_t array_name_len = array_name_.size();
-  array_schema_c->array_name_ = (char*)malloc(array_name_len + 1);
-  strcpy(array_schema_c->array_name_, array_name_.c_str());
-
-  // Set attributes and number of attributes.
-  array_schema_c->attribute_num_ = attribute_num_;
-  array_schema_c->attributes_ = (char**)malloc(attribute_num_ * sizeof(char*));
-  for (int i = 0; i < attribute_num_; ++i) {
-    size_t attribute_len = attributes_[i].size();
-    array_schema_c->attributes_[i] = (char*)malloc(attribute_len + 1);
-    strcpy(array_schema_c->attributes_[i], attributes_[i].c_str());
-  }
-
-  // Set dimensions
-  array_schema_c->dim_num_ = dim_num_;
-  array_schema_c->dimensions_ = (char**)malloc(dim_num_ * sizeof(char*));
-  for (int i = 0; i < dim_num_; ++i) {
-    size_t dimension_len = dimensions_[i].size();
-    array_schema_c->dimensions_[i] = (char*)malloc(dimension_len + 1);
-    strcpy(array_schema_c->dimensions_[i], dimensions_[i].c_str());
-  }
-
-  // Set dense
-  array_schema_c->dense_ = dense_;
-
-  // Set domain
-  size_t coords_size = this->coords_size();
-  array_schema_c->domain_ = malloc(2 * coords_size);
-  memcpy(array_schema_c->domain_, domain_, 2 * coords_size);
-
-  // Set tile extents
-  if (tile_extents_ == nullptr) {
-    array_schema_c->tile_extents_ = nullptr;
-  } else {
-    array_schema_c->tile_extents_ = malloc(coords_size);
-    memcpy(array_schema_c->tile_extents_, tile_extents_, coords_size);
-  }
-
-  // Set types
-  array_schema_c->types_ =
-      (tiledb_datatype_t*)malloc((attribute_num_ + 1) * sizeof(int));
-  for (int i = 0; i < attribute_num_ + 1; ++i)
-    array_schema_c->types_[i] = static_cast<tiledb_datatype_t>(types_[i]);
-
-  // Set cell val num
-  array_schema_c->cell_val_num_ = (int*)malloc((attribute_num_) * sizeof(int));
-  for (int i = 0; i < attribute_num_; ++i)
-    array_schema_c->cell_val_num_[i] = cell_val_num_[i];
-
-  // Set cell order
-  array_schema_c->cell_order_ = static_cast<tiledb_layout_t>(cell_order_);
-
-  // Set tile order
-  array_schema_c->tile_order_ = static_cast<tiledb_layout_t>(tile_order_);
-
-  // Set capacity
-  array_schema_c->capacity_ = capacity_;
-
-  // Set compression
-  array_schema_c->compressor_ =
-      (tiledb_compressor_t*)malloc((attribute_num_ + 1) * sizeof(int));
-  for (int i = 0; i < attribute_num_ + 1; ++i)
-    array_schema_c->compressor_[i] =
-        static_cast<tiledb_compressor_t>(compressor_[i]);
+ArrayType ArraySchema::array_type() const {
+  return array_type_;
 }
 
-void ArraySchema::array_schema_export(
-    MetadataSchemaC* metadata_schema_c) const {
-  // Set metadata name
-  size_t array_name_len = array_name_.size();
-  metadata_schema_c->metadata_name_ = (char*)malloc(array_name_len + 1);
-  strcpy(metadata_schema_c->metadata_name_, array_name_.c_str());
+const Attribute* ArraySchema::attr(int id) const {
+  if (id >= 0 && id < attribute_num_)
+    return Attributes_[id];
+  else
+    return nullptr;
+}
 
-  // Set attributes and number of attributes
-  metadata_schema_c->attribute_num_ = attribute_num_ - 1;
-  metadata_schema_c->attributes_ =
-      (char**)malloc((attribute_num_ - 1) * sizeof(char*));
-  for (int i = 0; i < attribute_num_ - 1; ++i) {
-    size_t attribute_len = attributes_[i].size();
-    metadata_schema_c->attributes_[i] = (char*)malloc(attribute_len + 1);
-    strcpy(metadata_schema_c->attributes_[i], attributes_[i].c_str());
-  }
-
-  // Set types
-  metadata_schema_c->types_ =
-      (tiledb_datatype_t*)malloc((attribute_num_ - 1) * sizeof(int));
-  for (int i = 0; i < attribute_num_ - 1; ++i)
-    metadata_schema_c->types_[i] = static_cast<tiledb_datatype_t>(types_[i]);
-
-  // Set cell val num
-  metadata_schema_c->cell_val_num_ =
-      (int*)malloc((attribute_num_ - 1) * sizeof(int));
-  for (int i = 0; i < attribute_num_ - 1; ++i)
-    metadata_schema_c->cell_val_num_[i] = cell_val_num_[i];
-
-  // Set capacity
-  metadata_schema_c->capacity_ = capacity_;
-
-  // Set compression
-  metadata_schema_c->compressor_ =
-      (tiledb_compressor_t*)malloc(attribute_num_ * sizeof(int));
-  for (int i = 0; i < attribute_num_; ++i)
-    metadata_schema_c->compressor_[i] =
-        static_cast<tiledb_compressor_t>(compressor_[i]);
+unsigned int ArraySchema::attr_num() const {
+  return (unsigned int)Attributes_.size();
 }
 
 const std::string& ArraySchema::attribute(int attribute_id) const {
@@ -231,6 +211,10 @@ const std::vector<std::string>& ArraySchema::attributes() const {
   return attributes_;
 }
 
+const std::vector<Attribute*>& ArraySchema::Attributes() const {
+  return Attributes_;
+}
+
 int64_t ArraySchema::capacity() const {
   return capacity_;
 }
@@ -254,8 +238,15 @@ size_t ArraySchema::cell_size(int attribute_id) const {
   return cell_sizes_[attribute_id];
 }
 
-int ArraySchema::cell_val_num(int attribute_id) const {
+unsigned int ArraySchema::cell_val_num(int attribute_id) const {
   return cell_val_num_[attribute_id];
+}
+
+Status ArraySchema::check() const {
+  // TODO: check if the array schema has been properly set
+
+  // Success
+  return Status::Ok();
 }
 
 Compressor ArraySchema::compression(int attr_id) const {
@@ -279,12 +270,41 @@ bool ArraySchema::dense() const {
   return dense_;
 }
 
+const Dimension* ArraySchema::dim(int id) const {
+  if (id >= 0 && id < dim_num_)
+    return Dimensions_[id];
+  else
+    return nullptr;
+}
+
 int ArraySchema::dim_num() const {
   return dim_num_;
 }
 
 const void* ArraySchema::domain() const {
   return domain_;
+}
+
+void ArraySchema::dump(FILE* out) const {
+  const char* array_type_s = utils::array_type_str(array_type_);
+  const char* cell_order_s = utils::layout_str(cell_order_);
+  const char* tile_order_s = utils::layout_str(tile_order_);
+
+  fprintf(out, "- Array name: %s\n", array_name_.c_str());
+  fprintf(out, "- Array type: %s\n", array_type_s);
+  fprintf(out, "- Cell order: %s\n", cell_order_s);
+  fprintf(out, "- Tile order: %s\n", tile_order_s);
+  fprintf(out, "- Capacity: %" PRIu64 "\n", capacity_);
+
+  for (int i = 0; i < Dimensions_.size(); ++i) {
+    fprintf(out, "\n");
+    Dimensions_[i]->dump(out);
+  }
+
+  for (int i = 0; i < Attributes_.size(); ++i) {
+    fprintf(out, "\n");
+    Attributes_[i]->dump(out);
+  }
 }
 
 Status ArraySchema::get_attribute_ids(
@@ -658,7 +678,7 @@ void ArraySchema::print() const {
 // tile_extents_size(int)
 //     tile_extent#1(double) tile_extent#2(double) ...
 // type#1(char) type#2(char) ...
-// cell_val_num#1(int) cell_val_num#2(int) ...
+// cell_val_num#1(unsigned int) cell_val_num#2(unsigned int) ...
 // compression#1(char) compression#2(char) ...
 Status ArraySchema::serialize(
     void*& array_schema_bin, size_t& array_schema_bin_size) const {
@@ -756,8 +776,8 @@ Status ArraySchema::serialize(
   // Copy cell_val_num_
   for (int i = 0; i < attribute_num_; i++) {
     assert(offset + sizeof(int) < buffer_size);
-    memcpy(buffer + offset, &cell_val_num_[i], sizeof(int));
-    offset += sizeof(int);
+    memcpy(buffer + offset, &cell_val_num_[i], sizeof(unsigned int));
+    offset += sizeof(unsigned int);
   }
   // Copy compressor_
   char compression;
@@ -767,14 +787,23 @@ Status ArraySchema::serialize(
     memcpy(buffer + offset, &compression, sizeof(char));
     offset += sizeof(char);
   }
+  // Copy compression_level_
+  for (int i = 0; i <= attribute_num_; ++i) {
+    assert(offset + sizeof(int) <= buffer_size);
+    memcpy(buffer + offset, &compression_level_[i], sizeof(int));
+    offset += sizeof(int);
+  }
   assert(offset == buffer_size);
 
   return Status::Ok();
 }
 
-Status ArraySchema::store(const std::string& dir) const {
+Status ArraySchema::store(const std::string& dir, const char* schema_filename) {
+  // Initialize array schema
+  RETURN_NOT_OK(init());
+
   // Open array schema file
-  std::string filename = dir + "/" + Configurator::array_schema_filename();
+  std::string filename = dir + "/" + schema_filename;
   remove(filename.c_str());
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if (fd == -1)
@@ -1046,6 +1075,14 @@ bool ArraySchema::var_size(int attribute_id) const {
 /*             MUTATORS           */
 /* ****************************** */
 
+void ArraySchema::add_attribute(const Attribute* attr) {
+  Attributes_.emplace_back(new Attribute(attr));
+}
+
+void ArraySchema::add_dimension(const Dimension* dim) {
+  Dimensions_.emplace_back(new Dimension(dim));
+}
+
 // ===== FORMAT =====
 // array_name_size(int)
 //     array_name(string)
@@ -1068,7 +1105,7 @@ bool ArraySchema::var_size(int attribute_id) const {
 // tile_extents_size(int)
 //     tile_extent#1(double) tile_extent#2(double) ...
 // type#1(char) type#2(char) ...
-// cell_val_num#1(int) cell_val_num#2(int) ...
+// cell_val_num#1(unsigned int) cell_val_num#2(unsigned int) ...
 // compression#1(char) compression#2(char) ...
 Status ArraySchema::deserialize(
     const void* array_schema_bin, size_t array_schema_bin_size) {
@@ -1177,8 +1214,8 @@ Status ArraySchema::deserialize(
   cell_val_num_.resize(attribute_num_);
   for (int i = 0; i < attribute_num_; ++i) {
     assert(offset + sizeof(int) < buffer_size);
-    memcpy(&cell_val_num_[i], buffer + offset, sizeof(int));
-    offset += sizeof(int);
+    memcpy(&cell_val_num_[i], buffer + offset, sizeof(unsigned int));
+    offset += sizeof(unsigned int);
   }
   // Load compressor
   char compression;
@@ -1187,6 +1224,14 @@ Status ArraySchema::deserialize(
     memcpy(&compression, buffer + offset, sizeof(char));
     offset += sizeof(char);
     compressor_.push_back(static_cast<Compressor>(compression));
+  }
+  // Load compression level
+  int compression_level;
+  for (int i = 0; i <= attribute_num_; ++i) {
+    assert(offset + sizeof(int) <= buffer_size);
+    memcpy(&compression_level, buffer + offset, sizeof(int));
+    offset += sizeof(int);
+    compression_level_.push_back(compression_level);
   }
   assert(offset == buffer_size);
   // Add extra coordinate attribute
@@ -1197,6 +1242,35 @@ Status ArraySchema::deserialize(
     cell_sizes_[i] = compute_cell_size(i);
   // Set coordinates size
   coords_size_ = cell_sizes_[attribute_num_];
+
+  // Set array type
+  array_type_ = (dense_) ? ArrayType::DENSE : ArrayType::SPARSE;
+
+  // Set Attributes
+  for (int i = 0; i < attribute_num_; ++i) {
+    Attributes_.emplace_back(new Attribute(attributes_[i].c_str(), types_[i]));
+    Attributes_[i]->set_cell_val_num(cell_val_num_[i]);
+    Attributes_[i]->set_compressor(compressor_[i]);
+    Attributes_[i]->set_compression_level(compression_level_[i]);
+  }
+
+  // Set Dimensions
+  uint64_t coord_size = type_sizes_[attribute_num_];
+  char* domain;
+  char* tile_extent;
+  for (int i = 0; i < dim_num_; ++i) {
+    domain = (char*)domain_ + i * 2 * coord_size;
+    if (tile_extents_ != nullptr)
+      tile_extent = (char*)tile_extents_ + i * coord_size;
+    else
+      tile_extent = nullptr;
+    Dimensions_.emplace_back(new Dimension(
+        dimensions_[i].c_str(), types_[attribute_num_], domain, tile_extent));
+    Dimensions_[i]->set_compressor(compressor_[attribute_num_]);
+    Dimensions_[i]->set_compression_level(compression_level_[attribute_num_]);
+  }
+
+  // TODO: encryption + integrity
 
   // Compute number of cells per tile
   compute_cell_num_per_tile();
@@ -1218,56 +1292,60 @@ Status ArraySchema::deserialize(
 
 Status ArraySchema::init() {
   // Perform check of all members
-  // TODO
+  RETURN_NOT_OK(check());
 
-  // Compute number of cells per tile
-  compute_cell_num_per_tile();
+  // Array type
+  if (array_type_ == ArrayType::DENSE)
+    dense_ = 1;
+  else
+    dense_ = 0;
 
-  // Compute tile domain
-  compute_tile_domain();
+  // Attributes
+  attribute_num_ = Attributes_.size();
+  for (int i = 0; i < attribute_num_; ++i) {
+    attributes_.emplace_back(Attributes_[i]->name());
+    cell_val_num_.push_back(Attributes_[i]->cell_val_num());
+    compressor_.push_back(Attributes_[i]->compressor());
+    compression_level_.push_back(Attributes_[i]->compression_level());
+    types_.push_back(Attributes_[i]->type());
+  }
 
-  // Compute tile offsets
-  compute_tile_offsets();
+  // Dimensions
+  dim_num_ = Dimensions_.size();
+  for (int i = 0; i < dim_num_; ++i)
+    dimensions_.emplace_back(Dimensions_[i]->name());
+  compressor_.push_back(Dimensions_[0]->compressor());
+  compression_level_.push_back(Dimensions_[0]->compression_level());
+  types_.push_back(Dimensions_[0]->type());
 
-  // Initialize static auxiliary variables
-  if (tile_coords_aux_ != nullptr)
-    free(tile_coords_aux_);
-  tile_coords_aux_ = malloc(coords_size_ * dim_num_);
+  // Set domain
+  uint64_t coord_size = utils::datatype_size(types_[attribute_num_]);
+  coords_size_ = dim_num_ * coord_size;
+  if (domain_ != nullptr)
+    free(domain_);
+  domain_ = malloc(dim_num_ * 2 * coord_size);
+  char* domain = (char*)domain_;
+  for (int i = 0; i < dim_num_; ++i) {
+    memcpy(
+        domain + i * 2 * coord_size, Dimensions_[i]->domain(), 2 * coord_size);
+  }
 
-  // Success
-  return Status::Ok();
-}
-
-Status ArraySchema::init(const ArraySchemaC* array_schema_c) {
-  // Clear all members
-  clear();
-
-  // Set array name
-  set_array_name(array_schema_c->array_name_);
-  // Set attributes
-  RETURN_NOT_OK(set_attributes(
-      array_schema_c->attributes_, array_schema_c->attribute_num_));
-  // Set capacity
-  set_capacity(array_schema_c->capacity_);
-  // Set dimensions
-  RETURN_NOT_OK(
-      set_dimensions(array_schema_c->dimensions_, array_schema_c->dim_num_));
-  // Set compression
-  RETURN_NOT_OK(set_compression(array_schema_c->compressor_));
-  // Set dense
-  set_dense(array_schema_c->dense_);
-  // Set number of values per cell
-  set_cell_val_num(array_schema_c->cell_val_num_);
-  // Set types
-  RETURN_NOT_OK(set_types(array_schema_c->types_));
   // Set tile extents
-  RETURN_NOT_OK(set_tile_extents(array_schema_c->tile_extents_));
-  // Set cell order
-  RETURN_NOT_OK(set_cell_order(array_schema_c->cell_order_));
-  // Set tile order
-  RETURN_NOT_OK(set_tile_order(array_schema_c->tile_order_));
-  // Set domain
-  RETURN_NOT_OK(set_domain(array_schema_c->domain_));
+  if (tile_extents_ != nullptr)
+    free(tile_extents_);
+  if (Dimensions_[0]->tile_extent() == nullptr) {
+    tile_extents_ = nullptr;
+  } else {
+    tile_extents_ = malloc(dim_num_ * coord_size);
+    char* tile_extents = (char*)tile_extents_;
+    for (int i = 0; i < dim_num_; ++i) {
+      // TODO: fix this - always set a tile extent
+      memcpy(
+          tile_extents + i * coord_size,
+          Dimensions_[i]->tile_extent(),
+          coord_size);
+    }
+  }
 
   // Compute number of cells per tile
   compute_cell_num_per_tile();
@@ -1283,131 +1361,16 @@ Status ArraySchema::init(const ArraySchemaC* array_schema_c) {
     free(tile_coords_aux_);
   tile_coords_aux_ = malloc(coords_size_ * dim_num_);
 
-  return Status::Ok();
-}
-
-Status ArraySchema::init(const MetadataSchemaC* metadata_schema_c) {
-  // Clear all members
-  clear();
-
-  // Create an array schema C struct and populate it
-  ArraySchemaC array_schema_c;
-  array_schema_c.array_name_ = metadata_schema_c->metadata_name_;
-  array_schema_c.capacity_ = metadata_schema_c->capacity_;
-  array_schema_c.cell_order_ = TILEDB_ROW_MAJOR;
-  array_schema_c.tile_order_ = TILEDB_ROW_MAJOR;
-  array_schema_c.tile_extents_ = nullptr;
-  array_schema_c.dense_ = 0;
-
-  // Set attributes
-  char** attributes =
-      (char**)malloc((metadata_schema_c->attribute_num_ + 1) * sizeof(char*));
-  size_t attribute_len;
-  for (int i = 0; i < metadata_schema_c->attribute_num_; ++i) {
-    attribute_len = strlen(metadata_schema_c->attributes_[i]);
-    attributes[i] = (char*)malloc(attribute_len + 1);
-    strcpy(attributes[i], metadata_schema_c->attributes_[i]);
-  }
-  attribute_len = strlen(Configurator::key());
-  attributes[metadata_schema_c->attribute_num_] =
-      (char*)malloc(attribute_len + 1);
-  strcpy(attributes[metadata_schema_c->attribute_num_], Configurator::key());
-  array_schema_c.attributes_ = attributes;
-  array_schema_c.attribute_num_ = metadata_schema_c->attribute_num_ + 1;
-
-  // Set dimensions
-  char** dimensions = (char**)malloc(4 * sizeof(char*));
-  size_t dimension_len;
-  dimension_len = strlen(Configurator::key_dim1_name());
-  dimensions[0] = (char*)malloc(dimension_len + 1);
-  strcpy(dimensions[0], Configurator::key_dim1_name());
-  dimension_len = strlen(Configurator::key_dim2_name());
-  dimensions[1] = (char*)malloc(dimension_len + 1);
-  strcpy(dimensions[1], Configurator::key_dim2_name());
-  dimension_len = strlen(Configurator::key_dim3_name());
-  dimensions[2] = (char*)malloc(dimension_len + 1);
-  strcpy(dimensions[2], Configurator::key_dim3_name());
-  array_schema_c.dimensions_ = dimensions;
-  dimension_len = strlen(Configurator::key_dim4_name());
-  dimensions[3] = (char*)malloc(dimension_len + 1);
-  strcpy(dimensions[3], Configurator::key_dim4_name());
-  array_schema_c.dimensions_ = dimensions;
-  array_schema_c.dim_num_ = 4;
-
-  // Set domain
-  int* domain = (int*)malloc(8 * sizeof(int));
-  for (int i = 0; i < 4; ++i) {
-    domain[2 * i] = 0;
-    domain[2 * i + 1] = UINT_MAX;
-  }
-  array_schema_c.domain_ = domain;
-
-  // Set types
-  tiledb_datatype_t* types = (tiledb_datatype_t*)malloc(
-      (metadata_schema_c->attribute_num_ + 2) * sizeof(int));
-  for (int i = 0; i < metadata_schema_c->attribute_num_; ++i)
-    types[i] = metadata_schema_c->types_[i];
-  types[metadata_schema_c->attribute_num_] = TILEDB_CHAR;
-  types[metadata_schema_c->attribute_num_ + 1] = TILEDB_UINT32;
-  array_schema_c.types_ = types;
-
-  // Set cell num val
-  int* cell_val_num =
-      (int*)malloc((metadata_schema_c->attribute_num_ + 1) * sizeof(int));
-  if (metadata_schema_c->cell_val_num_ == nullptr) {
-    for (int i = 0; i < metadata_schema_c->attribute_num_; ++i)
-      cell_val_num[i] = 1;
-  } else {
-    for (int i = 0; i < metadata_schema_c->attribute_num_; ++i)
-      cell_val_num[i] = metadata_schema_c->cell_val_num_[i];
-  }
-  cell_val_num[metadata_schema_c->attribute_num_] = Configurator::var_num();
-  array_schema_c.cell_val_num_ = cell_val_num;
-
-  // Set compression
-  tiledb_compressor_t* compression = (tiledb_compressor_t*)malloc(
-      (metadata_schema_c->attribute_num_ + 2) * sizeof(int));
-  if (metadata_schema_c->compressor_ == nullptr) {
-    for (int i = 0; i < metadata_schema_c->attribute_num_ + 1; ++i)
-      compression[i] = TILEDB_NO_COMPRESSION;
-  } else {
-    for (int i = 0; i < metadata_schema_c->attribute_num_ + 1; ++i)
-      compression[i] = metadata_schema_c->compressor_[i];
-  }
-  compression[metadata_schema_c->attribute_num_ + 1] = TILEDB_NO_COMPRESSION;
-  array_schema_c.compressor_ = compression;
-
-  // Initialize schema through the array schema C struct
-  init(&array_schema_c);
-
-  // Clean up
-  for (int i = 0; i < array_schema_c.attribute_num_; ++i)
-    free(attributes[i]);
-  free(attributes);
-  for (int i = 0; i < 4; ++i)
-    free(dimensions[i]);
-  free(dimensions);
-  free(domain);
-  free(types);
-  free(compression);
-  free(cell_val_num);
-
   // Success
   return Status::Ok();
 }
 
-Status ArraySchema::load(const std::string& dir) {
+Status ArraySchema::load(const std::string& dir, const char* schema_filename) {
   // Get real array path
   std::string real_dir = filesystem::real_dir(dir);
 
-  // Check if array exists
-  if (!utils::is_array(real_dir))
-    return LOG_STATUS(Status::ArraySchemaError(
-        std::string("Cannot load array schema; Array '") + real_dir +
-        "' does not exist"));
-
   // Open array schema file
-  std::string filename = real_dir + "/" + Configurator::array_schema_filename();
+  std::string filename = real_dir + "/" + schema_filename;
   int fd = ::open(filename.c_str(), O_RDONLY);
   if (fd == -1)
     return LOG_STATUS(
@@ -1456,52 +1419,21 @@ void ArraySchema::set_array_name(const char* array_name) {
   array_name_ = array_name_real;
 }
 
-Status ArraySchema::set_attributes(char** attributes, int attribute_num) {
-  // Sanity check on attributes
-  if (attributes == nullptr)
-    return LOG_STATUS(
-        Status::ArraySchemaError("Cannot set attributes; No attributes given"));
+void ArraySchema::set_array_type(ArrayType array_type) {
+  array_type_ = array_type;
 
-  // Sanity check on attribute number
-  if (attribute_num <= 0)
-    return LOG_STATUS(
-        Status::ArraySchemaError("Cannot set attributes; "
-                                 "The number of attributes must be positive"));
-
-  // Set attributes and attribute number
-  for (int i = 0; i < attribute_num; ++i)
-    attributes_.emplace_back(attributes[i]);
-  attribute_num_ = attribute_num;
-
-  // Append extra coordinates name
-  attributes_.emplace_back(Configurator::coords());
-
-  // Check for duplicate attribute names
-  if (utils::has_duplicates(attributes_)) {
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Cannot set attributes; Duplicate attribute names"));
-  }
-
-  // Check if a dimension has the same name as an attribute
-  if (utils::intersect(attributes_, dimensions_)) {
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Cannot set attributes; Attribute name same as dimension name"));
-  }
-
-  return Status::Ok();
-}
-
-void ArraySchema::set_capacity(int64_t capacity) {
-  assert(capacity >= 0);
-
-  // Set capacity
-  if (capacity > 0)
-    capacity_ = capacity;
+  // TODO: remove
+  if (array_type == ArrayType::DENSE)
+    dense_ = 1;
   else
-    capacity_ = Configurator::capacity();
+    dense_ = 0;
 }
 
-void ArraySchema::set_cell_val_num(const int* cell_val_num) {
+void ArraySchema::set_capacity(uint64_t capacity) {
+  capacity_ = capacity;
+}
+
+void ArraySchema::set_cell_val_num(const unsigned int* cell_val_num) {
   if (cell_val_num == nullptr) {
     for (int i = 0; i < attribute_num_; ++i)
       cell_val_num_.push_back(1);
@@ -1511,274 +1443,12 @@ void ArraySchema::set_cell_val_num(const int* cell_val_num) {
   }
 }
 
-Status ArraySchema::set_cell_order(tiledb_layout_t cell_order) {
-  // Set cell order
-  if (cell_order != TILEDB_ROW_MAJOR && cell_order != TILEDB_COL_MAJOR) {
-    return LOG_STATUS(
-        Status::ArraySchemaError("Cannot set cell order; Invalid cell order"));
-  }
-  cell_order_ = static_cast<Layout>(cell_order);
-
-  // Success
-  return Status::Ok();
+void ArraySchema::set_cell_order(Layout cell_order) {
+  cell_order_ = cell_order;
 }
 
-Status ArraySchema::set_compression(tiledb_compressor_t* compression) {
-  if (compression == nullptr) {
-    for (int i = 0; i < attribute_num_ + 1; ++i)
-      compressor_.push_back(Compressor::NO_COMPRESSION);
-  } else {
-    for (int i = 0; i < attribute_num_ + 1; ++i) {
-      tiledb_compressor_t c = compression[i];
-      if (c != TILEDB_NO_COMPRESSION && c != TILEDB_GZIP && c != TILEDB_ZSTD &&
-          c != TILEDB_LZ4 && c != TILEDB_BLOSC && c != TILEDB_BLOSC_LZ4 &&
-          c != TILEDB_BLOSC_LZ4HC && c != TILEDB_BLOSC_SNAPPY &&
-          c != TILEDB_BLOSC_ZLIB && c != TILEDB_BLOSC_ZSTD && c != TILEDB_RLE &&
-          c != TILEDB_BZIP2) {
-        return LOG_STATUS(Status::ArraySchemaError(
-            "Cannot set compression; Invalid compression type"));
-      }
-      compressor_.push_back(static_cast<Compressor>(c));
-    }
-  }
-  return Status::Ok();
-}
-
-void ArraySchema::set_dense(int dense) {
-  dense_ = dense;
-}
-
-Status ArraySchema::set_dimensions(char** dimensions, int dim_num) {
-  // Sanity check on dimensions
-  if (dimensions == nullptr) {
-    return LOG_STATUS(
-        Status::ArraySchemaError("Cannot set dimensions; No dimensions given"));
-  }
-
-  // Sanity check on dimension number
-  if (dim_num <= 0) {
-    return LOG_STATUS(
-        Status::ArraySchemaError("Cannot set dimensions; "
-                                 "The number of dimensions must be positive"));
-  }
-
-  // Set dimensions and dimension number
-  for (int i = 0; i < dim_num; ++i)
-    dimensions_.emplace_back(dimensions[i]);
-  dim_num_ = dim_num;
-
-  // Check for duplicate dimension names
-  if (utils::has_duplicates(dimensions_)) {
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Cannot set dimensions; Duplicate dimension names"));
-  }
-
-  // Check if a dimension has the same name as an attribute
-  if (utils::intersect(attributes_, dimensions_)) {
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Cannot set dimensions; Attribute name same as dimension name"));
-  }
-
-  return Status::Ok();
-}
-
-Status ArraySchema::set_domain(const void* domain) {
-  // Sanity check
-  if (domain == nullptr) {
-    return LOG_STATUS(
-        Status::ArraySchemaError("Cannot set domain; Domain not provided"));
-  }
-
-  // Clear domain
-  if (domain_ != nullptr)
-    free(domain_);
-
-  // Set domain
-  size_t domain_size = 2 * coords_size();
-  domain_ = malloc(domain_size);
-  memcpy(domain_, domain, domain_size);
-
-  // Sanity check
-  Datatype typ = types_.at(attribute_num_);
-  if (typ == Datatype::INT32) {
-    int* domain_int = (int*)domain_;
-    for (int i = 0; i < dim_num_; ++i) {
-      if (domain_int[2 * i] > domain_int[2 * i + 1]) {
-        return LOG_STATUS(Status::ArraySchemaError(
-            "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper"));
-      }
-    }
-  } else if (typ == Datatype::INT64) {
-    int64_t* domain_int64 = (int64_t*)domain_;
-    for (int i = 0; i < dim_num_; ++i) {
-      if (domain_int64[2 * i] > domain_int64[2 * i + 1]) {
-        return LOG_STATUS(Status::ArraySchemaError(
-            "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper"));
-      }
-    }
-  } else if (typ == Datatype::FLOAT32) {
-    float* domain_float = (float*)domain_;
-    for (int i = 0; i < dim_num_; ++i) {
-      if (domain_float[2 * i] > domain_float[2 * i + 1]) {
-        return LOG_STATUS(Status::ArraySchemaError(
-            "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper"));
-      }
-    }
-  } else if (typ == Datatype::FLOAT64) {
-    double* domain_double = (double*)domain_;
-    for (int i = 0; i < dim_num_; ++i) {
-      if (domain_double[2 * i] > domain_double[2 * i + 1]) {
-        return LOG_STATUS(Status::ArraySchemaError(
-            "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper"));
-      }
-    }
-  } else if (typ == Datatype::INT8) {
-    int8_t* domain_int8 = (int8_t*)domain_;
-    for (int i = 0; i < dim_num_; ++i) {
-      if (domain_int8[2 * i] > domain_int8[2 * i + 1]) {
-        return LOG_STATUS(Status::ArraySchemaError(
-            "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper"));
-      }
-    }
-  } else if (typ == Datatype::UINT8) {
-    uint8_t* domain_uint8 = (uint8_t*)domain_;
-    for (int i = 0; i < dim_num_; ++i) {
-      if (domain_uint8[2 * i] > domain_uint8[2 * i + 1]) {
-        return LOG_STATUS(Status::ArraySchemaError(
-            "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper"));
-      }
-    }
-  } else if (typ == Datatype::INT16) {
-    int16_t* domain_int16 = (int16_t*)domain_;
-    for (int i = 0; i < dim_num_; ++i) {
-      if (domain_int16[2 * i] > domain_int16[2 * i + 1]) {
-        return LOG_STATUS(Status::ArraySchemaError(
-            "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper"));
-      }
-    }
-  } else if (typ == Datatype::UINT16) {
-    uint16_t* domain_uint16 = (uint16_t*)domain_;
-    for (int i = 0; i < dim_num_; ++i) {
-      if (domain_uint16[2 * i] > domain_uint16[2 * i + 1]) {
-        return LOG_STATUS(Status::ArraySchemaError(
-            "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper"));
-      }
-    }
-  } else if (typ == Datatype::UINT32) {
-    uint32_t* domain_uint32 = (uint32_t*)domain_;
-    for (int i = 0; i < dim_num_; ++i) {
-      if (domain_uint32[2 * i] > domain_uint32[2 * i + 1]) {
-        return LOG_STATUS(Status::ArraySchemaError(
-            "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper"));
-      }
-    }
-  } else if (typ == Datatype::UINT64) {
-    uint64_t* domain_uint64 = (uint64_t*)domain_;
-    for (int i = 0; i < dim_num_; ++i) {
-      if (domain_uint64[2 * i] > domain_uint64[2 * i + 1]) {
-        return LOG_STATUS(Status::ArraySchemaError(
-            "Cannot set domain; Lower domain bound larger than its "
-            "corresponding upper"));
-      }
-    }
-  } else {
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Cannot set domain; Invalid coordinates type"));
-  }
-
-  return Status::Ok();
-}
-
-Status ArraySchema::set_tile_extents(const void* tile_extents) {
-  // Dense arrays must have tile extents
-  if (tile_extents == nullptr && dense_) {
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Cannot set tile extents; Dense arrays must have tile extents"));
-  }
-
-  // Free existing tile extends
-  if (tile_extents_ != nullptr)
-    free(tile_extents_);
-
-  // Set tile extents
-  if (tile_extents == nullptr) {
-    tile_extents_ = nullptr;
-  } else {
-    size_t tile_extents_size = coords_size();
-    tile_extents_ = malloc(tile_extents_size);
-    memcpy(tile_extents_, tile_extents, tile_extents_size);
-  }
-  return Status::Ok();
-}
-
-Status ArraySchema::set_tile_order(tiledb_layout_t tile_order) {
-  // Set tile order
-  if (tile_order != TILEDB_ROW_MAJOR && tile_order != TILEDB_COL_MAJOR) {
-    return LOG_STATUS(
-        Status::ArraySchemaError("Cannot set tile order; Invalid tile order"));
-  }
-  tile_order_ = static_cast<Layout>(tile_order);
-
-  // Success
-  return Status::Ok();
-}
-
-Status ArraySchema::set_types(const tiledb_datatype_t* types) {
-  // Sanity check
-  if (types == nullptr) {
-    return LOG_STATUS(
-        Status::ArraySchemaError("Cannot set types; Types not provided"));
-  }
-
-  // Set attribute types
-  tiledb_datatype_t typ;
-  for (int i = 0; i < attribute_num_; ++i) {
-    typ = types[i];
-    if (typ != TILEDB_INT32 && typ != TILEDB_INT64 && typ != TILEDB_FLOAT32 &&
-        typ != TILEDB_FLOAT64 && typ != TILEDB_INT8 && typ != TILEDB_UINT8 &&
-        typ != TILEDB_INT16 && types[i] != TILEDB_UINT16 &&
-        typ != TILEDB_UINT32 && types[i] != TILEDB_UINT64 &&
-        typ != TILEDB_CHAR) {
-      return LOG_STATUS(
-          Status::ArraySchemaError("Cannot set types; Invalid type"));
-    }
-    types_.push_back(static_cast<Datatype>(typ));
-  }
-
-  // Set coordinate type
-  typ = types[attribute_num_];
-  if (typ != TILEDB_INT32 && typ != TILEDB_INT64 && typ != TILEDB_FLOAT32 &&
-      typ != TILEDB_FLOAT64 && typ != TILEDB_INT8 && typ != TILEDB_UINT8 &&
-      typ != TILEDB_INT16 && typ != TILEDB_UINT16 && typ != TILEDB_UINT32 &&
-      typ != TILEDB_UINT64) {
-    return LOG_STATUS(
-        Status::ArraySchemaError("Cannot set types; Invalid type"));
-  }
-  types_.push_back(static_cast<Datatype>(typ));
-
-  // Set type sizes
-  type_sizes_.resize(attribute_num_ + 1);
-  for (int i = 0; i < attribute_num_ + 1; ++i)
-    type_sizes_[i] = compute_type_size(i);
-
-  // Set cell sizes
-  cell_sizes_.resize(attribute_num_ + 1);
-  for (int i = 0; i < attribute_num_ + 1; ++i)
-    cell_sizes_[i] = compute_cell_size(i);
-
-  // Set the coordinates size
-  coords_size_ = cell_sizes_[attribute_num_];
-
-  return Status::Ok();
+void ArraySchema::set_tile_order(Layout tile_order) {
+  tile_order_ = tile_order;
 }
 
 /* ****************************** */
@@ -2131,9 +1801,11 @@ size_t ArraySchema::compute_bin_size() const {
   // Size for types_
   bin_size += (attribute_num_ + 1) * sizeof(char);
   // Size for cell_val_num_
-  bin_size += attribute_num_ * sizeof(int);
+  bin_size += attribute_num_ * sizeof(unsigned int);
   // Size for compressor_
   bin_size += (attribute_num_ + 1) * sizeof(char);
+  // Size for compression_level_
+  bin_size += (attribute_num_ + 1) * sizeof(int);
 
   return bin_size;
 }
@@ -2625,48 +2297,6 @@ bool ArraySchema::is_contained_in_tile_slab_row(const T* range) const {
 
   // Range contained in the row tile slab
   return true;
-}
-
-void ArraySchema::set_default() {
-  // Clear all members
-  clear();
-
-  // Set array name
-  array_name_ = "";
-  // Set attribute
-  attributes_.emplace_back("a");
-  attribute_num_ = 1;
-  // Set capacity
-  capacity_ = INT_MAX;
-  // Set dimension
-  dimensions_.emplace_back("d");
-  dim_num_ = 1;
-  // Set compression
-  compressor_.emplace_back(Compressor::NO_COMPRESSION);
-  compressor_.emplace_back(Compressor::NO_COMPRESSION);
-  // Set compression level
-  compression_level_.emplace_back(0);
-  compression_level_.emplace_back(0);
-  // Set dense
-  dense_ = 0;
-  // Set number of values per cell
-  cell_val_num_.emplace_back(Configurator::var_num());
-  // Set types
-  types_.emplace_back(Datatype::CHAR);
-  types_.emplace_back(Datatype::INT32);
-  // Set tile extents
-  tile_extents_ = malloc(sizeof(int));
-  int* tile_extents = (int*)tile_extents_;
-  *tile_extents = INT_MAX;
-  // Set cell order
-  cell_order_ = Layout::ROW_MAJOR;
-  // Set tile order
-  tile_order_ = Layout::ROW_MAJOR;
-  // Set domain
-  domain_ = malloc(2 * sizeof(int));
-  int* domain = (int*)domain_;
-  domain[0] = 0;
-  domain[1] = INT_MAX;
 }
 
 template <class T>

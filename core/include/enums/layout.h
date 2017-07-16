@@ -31,8 +31,8 @@
  * enum.
  */
 
-#ifndef __TILEDB_LAYOUT_H__
-#define __TILEDB_LAYOUT_H__
+#ifndef TILEDB_LAYOUT_H
+#define TILEDB_LAYOUT_H
 
 namespace tiledb {
 
@@ -44,4 +44,4 @@ enum class Layout : char {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_LAYOUT_H__
+#endif  // TILEDB_LAYOUT_H

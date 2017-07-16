@@ -31,8 +31,8 @@
  * This file defines class StorageManager.
  */
 
-#ifndef __TILEDB_STORAGE_MANAGER_H__
-#define __TILEDB_STORAGE_MANAGER_H__
+#ifndef TILEDB_STORAGE_MANAGER_H
+#define TILEDB_STORAGE_MANAGER_H
 
 #include <pthread.h>
 #include <map>
@@ -40,12 +40,10 @@
 #include "array.h"
 #include "array_iterator.h"
 #include "array_schema.h"
-#include "array_schema_c.h"
 #include "configurator.h"
 #include "logger.h"
 #include "metadata.h"
 #include "metadata_iterator.h"
-#include "metadata_schema_c.h"
 #include "status.h"
 
 #ifdef HAVE_OPENMP
@@ -82,13 +80,6 @@ class StorageManager {
   /* ********************************* */
 
   /**
-   * Finalizes the storage manager, properly freeing memory.
-   *
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  Status finalize();
-
-  /**
    * Initializes the storage manager. This function creates the TileDB home
    * directory, which by default is "~/.tiledb/". If the user home directory
    * cannot be retrieved, then the TileDB home directory is set to the current
@@ -99,6 +90,9 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   Status init(Configurator* config);
+
+  /** Sets a new configurator. */
+  void set_config(Configurator* config);
 
   /* ********************************* */
   /*              GROUP                */
@@ -139,18 +133,10 @@ class StorageManager {
   /**
    * Creates a new TileDB array.
    *
-   * @param array_schema_c The array schema.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  Status array_create(const ArraySchemaC* array_schema_c) const;
-
-  /**
-   * Creates a new TileDB array.
-   *
    * @param array_schema The array schema.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  Status array_create(const ArraySchema* array_schema) const;
+  Status array_create(ArraySchema* array_schema) const;
 
   /**
    * Initializes a TileDB array.
@@ -277,18 +263,10 @@ class StorageManager {
   /**
    * Creates a new TileDB metadata object.
    *
-   * @param metadata_schema_c The metadata schema.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   * @param metadata_schema The metadata schema.
+   * @return Status.
    */
-  Status metadata_create(const MetadataSchemaC* metadata_schema_c) const;
-
-  /**
-   * Creates a new TileDB metadata object.
-   *
-   * @param array_schema The metadata (array) schema.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  Status metadata_create(const ArraySchema* array_schema) const;
+  Status metadata_create(MetadataSchema* metadata_schema) const;
 
   /**
    * Loads the schema of a metadata object from the disk, allocating appropriate
@@ -795,4 +773,4 @@ class StorageManager::OpenArray {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_STORAGE_MANAGER_H__
+#endif  // TILEDB_STORAGE_MANAGER_H

@@ -55,7 +55,7 @@ const char* Configurator::CONSOLIDATION_FILELOCK_NAME(".__consolidation_lock");
 const char* Configurator::BOOK_KEEPING_FILENAME("__book_keeping");
 const char* Configurator::FRAGMENT_FILENAME("__tiledb_fragment.tdb");
 const char* Configurator::GROUP_FILENAME("__tiledb_group.tdb");
-const int Configurator::CAPACITY(10000);
+const uint64_t Configurator::CAPACITY(10000);
 const uint64_t Configurator::SORTED_BUFFER_SIZE(10000000);
 const uint64_t Configurator::SORTED_BUFFER_VAR_SIZE(10000000);
 const int Configurator::EMPTY_INT32 = INT_MAX;
@@ -70,10 +70,38 @@ const uint16_t Configurator::EMPTY_UINT16 = UINT16_MAX;
 const uint32_t Configurator::EMPTY_UINT32 = UINT32_MAX;
 const uint64_t Configurator::EMPTY_UINT64 = UINT64_MAX;
 const uint64_t Configurator::MAX_WRITE_BYTES(1500000000);
-const int Configurator::VAR_NUM = INT_MAX;
+const unsigned int Configurator::VAR_NUM = UINT_MAX;
 const uint64_t Configurator::VAR_SIZE = (size_t)-1;
 const char* Configurator::COORDS = "__coords";
 const char* Configurator::KEY = "__key";
+const char* Configurator::NO_COMPRESSION_STR("NO_COMPRESSION");
+const char* Configurator::GZIP_STR("GZIP");
+const char* Configurator::ZSTD_STR("ZSTD");
+const char* Configurator::LZ4_STR("LZ4");
+const char* Configurator::BLOSC_STR("BLOSC");
+const char* Configurator::BLOSC_LZ4_STR("BLOSC_LZ4");
+const char* Configurator::BLOSC_LZ4HC_STR("BLOSC_LZ4HC");
+const char* Configurator::BLOSC_SNAPPY_STR("BLOSC_SNAPPY");
+const char* Configurator::BLOSC_ZLIB_STR("BLOSC_ZLIB");
+const char* Configurator::BLOSC_ZSTD_STR("BLOSC_ZSTD");
+const char* Configurator::RLE_STR("RLE");
+const char* Configurator::BZIP2_STR("BZIP2");
+const char* Configurator::INT32_STR("INT32");
+const char* Configurator::INT64_STR("INT64");
+const char* Configurator::FLOAT32_STR("FLOAT32");
+const char* Configurator::FLOAT64_STR("FLOAT64");
+const char* Configurator::CHAR_STR("CHAR");
+const char* Configurator::INT8_STR("INT8");
+const char* Configurator::UINT8_STR("UINT8");
+const char* Configurator::INT16_STR("INT16");
+const char* Configurator::UINT16_STR("UINT16");
+const char* Configurator::UINT32_STR("UINT32");
+const char* Configurator::UINT64_STR("UINT64");
+const char* Configurator::DENSE_STR("dense");
+const char* Configurator::SPARSE_STR("sparse");
+const char* Configurator::COL_MAJOR_STR("col-major");
+const char* Configurator::ROW_MAJOR_STR("row-major");
+const char* Configurator::NULL_STR("null");
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -155,7 +183,7 @@ const char* Configurator::array_schema_filename() {
   return ARRAY_SCHEMA_FILENAME;
 }
 
-int Configurator::capacity() {
+uint64_t Configurator::capacity() {
   return CAPACITY;
 }
 
@@ -303,6 +331,117 @@ uint64_t Configurator::var_size() {
 
 IOMethod Configurator::write_method() const {
   return write_method_;
+}
+
+const char* Configurator::no_compression_str() {
+  return NO_COMPRESSION_STR;
+}
+
+const char* Configurator::gzip_str() {
+  return GZIP_STR;
+}
+
+const char* Configurator::zstd_str() {
+  return ZSTD_STR;
+}
+
+const char* Configurator::lz4_str() {
+  return LZ4_STR;
+}
+
+const char* Configurator::blosc_str() {
+  return BLOSC_STR;
+}
+
+const char* Configurator::blosc_lz4_str() {
+  return BLOSC_LZ4_STR;
+}
+
+const char* Configurator::blosc_lz4hc_str() {
+  return BLOSC_LZ4HC_STR;
+}
+
+const char* Configurator::blosc_snappy_str() {
+  return BLOSC_SNAPPY_STR;
+}
+
+const char* Configurator::blosc_zlib_str() {
+  return BLOSC_ZLIB_STR;
+}
+
+const char* Configurator::blosc_zstd_str() {
+  return BLOSC_ZSTD_STR;
+}
+
+const char* Configurator::rle_str() {
+  return RLE_STR;
+}
+
+const char* Configurator::bzip2_str() {
+  return BZIP2_STR;
+}
+
+const char* Configurator::int32_str() {
+  return INT32_STR;
+}
+
+const char* Configurator::int64_str() {
+  return INT64_STR;
+}
+
+const char* Configurator::float32_str() {
+  return FLOAT32_STR;
+}
+
+const char* Configurator::float64_str() {
+  return FLOAT64_STR;
+}
+
+const char* Configurator::char_str() {
+  return CHAR_STR;
+}
+
+const char* Configurator::int8_str() {
+  return INT8_STR;
+}
+
+const char* Configurator::uint8_str() {
+  return UINT8_STR;
+}
+
+const char* Configurator::int16_str() {
+  return INT16_STR;
+}
+
+const char* Configurator::uint16_str() {
+  return UINT16_STR;
+}
+
+const char* Configurator::uint32_str() {
+  return UINT32_STR;
+}
+
+const char* Configurator::uint64_str() {
+  return UINT64_STR;
+}
+const char* Configurator::dense_str() {
+  return DENSE_STR;
+}
+
+const char* Configurator::sparse_str() {
+  return SPARSE_STR;
+}
+
+const char* Configurator::col_major_str() {
+  return COL_MAJOR_STR;
+}
+
+const char* Configurator::row_major_str() {
+  return ROW_MAJOR_STR;
+}
+
+const char* Configurator::null_str() {
+  return NULL_STR;
 }
 
 };  // namespace tiledb

@@ -31,8 +31,8 @@
  * This file defines class MetadataIterator.
  */
 
-#ifndef __TILEDB_METADATA_ITERATOR_H__
-#define __TILEDB_METADATA_ITERATOR_H__
+#ifndef TILEDB_METADATA_ITERATOR_H
+#define TILEDB_METADATA_ITERATOR_H
 
 #include "array_iterator.h"
 #include "metadata.h"
@@ -130,4 +130,4 @@ class MetadataIterator {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_METADATA_ITERATOR_H__
+#endif  // TILEDB_METADATA_ITERATOR_H

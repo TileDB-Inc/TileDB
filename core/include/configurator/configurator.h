@@ -30,8 +30,8 @@
  * This file defines class Configurator.
  */
 
-#ifndef __TILEDB_CONFIGURATOR_H__
-#define __TILEDB_CONFIGURATOR_H__
+#ifndef TILEDB_CONFIGURATOR_H
+#define TILEDB_CONFIGURATOR_H
 
 #include <cfloat>
 #include <climits>
@@ -148,7 +148,7 @@ class Configurator {
   static const char* bookkeeping_filename();
 
   /** Returns the default tile capacity. */
-  static int capacity();
+  static uint64_t capacity();
 
   /** Returns the size of a variable cell offset. */
   static uint64_t cell_var_offset_size();
@@ -257,6 +257,90 @@ class Configurator {
   /** Returns the write method. */
   IOMethod write_method() const;
 
+  /** Returns a string describing no compression. */
+  static const char* no_compression_str();
+
+  /** Returns a string describing GZIP. */
+  static const char* gzip_str();
+
+  /** Returns a string describing ZSTD. */
+  static const char* zstd_str();
+
+  /** Returns a string describing LZ4. */
+  static const char* lz4_str();
+
+  /** Returns a string describing BLOSC. */
+  static const char* blosc_str();
+
+  /** Returns a string describing BLOSC_LZ4. */
+  static const char* blosc_lz4_str();
+
+  /** Returns a string describing BLOSC_LZ4HC. */
+  static const char* blosc_lz4hc_str();
+
+  /** Returns a string describing BLOSC_SNAPPY. */
+  static const char* blosc_snappy_str();
+
+  /** Returns a string describing BLOSC_ZLIB. */
+  static const char* blosc_zlib_str();
+
+  /** Returns a string describing BLOSC_ZSTD. */
+  static const char* blosc_zstd_str();
+
+  /** Returns a string describing RLE. */
+  static const char* rle_str();
+
+  /** Returns a string describing BZIP2. */
+  static const char* bzip2_str();
+
+  /** Returns the string representation for type int32. */
+  static const char* int32_str();
+
+  /** Returns the string representation for type int64. */
+  static const char* int64_str();
+
+  /** Returns the string representation for type float32. */
+  static const char* float32_str();
+
+  /** Returns the string representation for type float64. */
+  static const char* float64_str();
+
+  /** Returns the string representation for type char. */
+  static const char* char_str();
+
+  /** Returns the string representation for type int8. */
+  static const char* int8_str();
+
+  /** Returns the string representation for type uint8. */
+  static const char* uint8_str();
+
+  /** Returns the string representation for type int16. */
+  static const char* int16_str();
+
+  /** Returns the string representation for type uint16. */
+  static const char* uint16_str();
+
+  /** Returns the string representation for type uint32. */
+  static const char* uint32_str();
+
+  /** Returns the string representation for type uint64. */
+  static const char* uint64_str();
+
+  /** Returns the string representation for the dense array type. */
+  static const char* dense_str();
+
+  /** Returns the string representation for the sparse array type. */
+  static const char* sparse_str();
+
+  /** Returns the string representation for the column-major layout. */
+  static const char* col_major_str();
+
+  /** Returns the string representation for the row-major layout. */
+  static const char* row_major_str();
+
+  /** Returns the string representation of null. */
+  static const char* null_str();
+
  private:
 /* ********************************* */
 /*        PRIVATE ATTRIBUTES         */
@@ -325,7 +409,7 @@ class Configurator {
   /**@}*/
 
   /** Default tile capacity. */
-  static const int CAPACITY;
+  static const uint64_t CAPACITY;
 
   /**@{*/
   /** Size of buffer used for sorting. */
@@ -363,7 +447,7 @@ class Configurator {
 
   /**@{*/
   /** Special value indicating a variable number or size. */
-  static const int VAR_NUM;
+  static const unsigned int VAR_NUM;
   static const uint64_t VAR_SIZE;
   /**@}*/
 
@@ -372,8 +456,54 @@ class Configurator {
   static const char* COORDS;
   static const char* KEY;
   /**@}*/
+
+  /**@{*/
+  /** String describing the compressor. */
+  static const char* NO_COMPRESSION_STR;
+  static const char* GZIP_STR;
+  static const char* ZSTD_STR;
+  static const char* LZ4_STR;
+  static const char* BLOSC_STR;
+  static const char* BLOSC_LZ4_STR;
+  static const char* BLOSC_LZ4HC_STR;
+  static const char* BLOSC_SNAPPY_STR;
+  static const char* BLOSC_ZLIB_STR;
+  static const char* BLOSC_ZSTD_STR;
+  static const char* RLE_STR;
+  static const char* BZIP2_STR;
+  /**@}*/
+
+  /**@{*/
+  /** String describing the type. */
+  static const char* INT32_STR;
+  static const char* INT64_STR;
+  static const char* FLOAT32_STR;
+  static const char* FLOAT64_STR;
+  static const char* CHAR_STR;
+  static const char* INT8_STR;
+  static const char* UINT8_STR;
+  static const char* INT16_STR;
+  static const char* UINT16_STR;
+  static const char* UINT32_STR;
+  static const char* UINT64_STR;
+  /**@}*/
+
+  /**@{*/
+  /** String describing the array type. */
+  static const char* DENSE_STR;
+  static const char* SPARSE_STR;
+  /**@}*/
+
+  /**@{*/
+  /** String describing the layout. */
+  static const char* COL_MAJOR_STR;
+  static const char* ROW_MAJOR_STR;
+  /**@}*/
+
+  /** String representation for null. */
+  static const char* NULL_STR;
 };
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_CONFIGURATOR_H__
+#endif  // TILEDB_CONFIGURATOR_H

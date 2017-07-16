@@ -34,7 +34,8 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx);
 
   // Clear an array
   tiledb_clear(ctx, "my_group/sparse_arrays/my_array_B");

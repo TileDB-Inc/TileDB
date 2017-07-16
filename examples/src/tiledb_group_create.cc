@@ -34,7 +34,8 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx);
 
   // Create a group
   tiledb_group_create(ctx, "my_group");

@@ -31,8 +31,8 @@
  * This file declares the AIO_Request struct.
  */
 
-#ifndef __TILEDB_AIO_REQUEST_H__
-#define __TILEDB_AIO_REQUEST_H__
+#ifndef TILEDB_AIO_REQUEST_H
+#define TILEDB_AIO_REQUEST_H
 
 #include <cstdio>
 #include "tiledb.h"
@@ -107,4 +107,4 @@ struct AIO_Request {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_AIO_REQUEST_H__
+#endif  // TILEDB_AIO_REQUEST_H

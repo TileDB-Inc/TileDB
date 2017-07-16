@@ -31,8 +31,8 @@
  * This file defines class Fragment.
  */
 
-#ifndef __TILEDB_FRAGMENT_H__
-#define __TILEDB_FRAGMENT_H__
+#ifndef TILEDB_FRAGMENT_H
+#define TILEDB_FRAGMENT_H
 
 #include <vector>
 #include "array.h"
@@ -230,4 +230,4 @@ class Fragment {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_FRAGMENT_H__
+#endif  // TILEDB_FRAGMENT_H

@@ -129,20 +129,6 @@ if(USE_PARALLEL_SORT)
   add_definitions(-DUSE_PARALLEL_SORT)
   message(STATUS "Will use parallel sort.")
 endif()
-if(COMPRESSION_LEVEL_GZIP)
-  add_definitions(-DTILEDB_COMPRESSION_LEVEL_GZIP=${COMPRESSION_LEVEL_GZIP})
-  message(STATUS "Set GZIP compression level to ${COMPRESSION_LEVEL_GZIP}.")
-endif()
-if(COMPRESSION_LEVEL_ZSTD)
-  add_definitions(-DTILEDB_COMPRESSION_LEVEL_ZSTD=${COMPRESSION_LEVEL_ZSTD})
-  message(STATUS 
-          "Set Zstandard compression level to ${COMPRESSION_LEVEL_ZSTD}."
-)
-endif()
-if(COMPRESSION_LEVEL_BLOSC)
-  add_definitions(-DTILEDB_COMPRESSION_LEVEL_BLOSC=${COMPRESSION_LEVEL_BLOSC})
-  message(STATUS "Set Blosc compression level to ${COMPRESSION_LEVEL_BLOSC}.")
-endif()
 
 # Enable testing
 enable_testing()

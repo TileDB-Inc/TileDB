@@ -34,16 +34,16 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <netdb.h>
-#include <cstring>
-#include <iostream>
-#include <set>
-#include "logger.h"
-
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-
+#include <cstring>
+#include <iostream>
+#include <set>
+#include <sstream>
+#include "configurator.h"
+#include "logger.h"
 #if defined(__APPLE__) && defined(__MACH__)
 #include <arpa/inet.h>
 #include <net/if.h>
@@ -70,10 +70,13 @@ namespace utils {
 /*           FUNCTIONS            */
 /* ****************************** */
 
-bool starts_with(const std::string& value, const std::string& prefix) {
-  if (prefix.size() > value.size())
-    return false;
-  return std::equal(prefix.begin(), prefix.end(), value.begin());
+const char* array_type_str(ArrayType array_type) {
+  if (array_type == ArrayType::DENSE)
+    return Configurator::dense_str();
+  else if (array_type == ArrayType::SPARSE)
+    return Configurator::sparse_str();
+  else
+    return nullptr;
 }
 
 template <class T>
@@ -186,6 +189,37 @@ int cmp_row_order(
   return 0;
 }
 
+const char* compressor_str(Compressor type) {
+  switch (type) {
+    case Compressor::NO_COMPRESSION:
+      return Configurator::no_compression_str();
+    case Compressor::GZIP:
+      return Configurator::gzip_str();
+    case Compressor::ZSTD:
+      return Configurator::zstd_str();
+    case Compressor::LZ4:
+      return Configurator::lz4_str();
+    case Compressor::BLOSC:
+      return Configurator::blosc_str();
+    case Compressor::BLOSC_LZ4:
+      return Configurator::blosc_lz4_str();
+    case Compressor::BLOSC_LZ4HC:
+      return Configurator::blosc_lz4hc_str();
+    case Compressor::BLOSC_SNAPPY:
+      return Configurator::blosc_snappy_str();
+    case Compressor::BLOSC_ZLIB:
+      return Configurator::blosc_zlib_str();
+    case Compressor::BLOSC_ZSTD:
+      return Configurator::blosc_zstd_str();
+    case Compressor::RLE:
+      return Configurator::rle_str();
+    case Compressor::BZIP2:
+      return Configurator::bzip2_str();
+    default:
+      return nullptr;
+  }
+}
+
 uint64_t datatype_size(Datatype type) {
   uint64_t size;
 
@@ -228,6 +262,87 @@ uint64_t datatype_size(Datatype type) {
   }
 
   return size;
+}
+
+const char* datatype_str(Datatype type) {
+  switch (type) {
+    case Datatype::INT32:
+      return Configurator::int32_str();
+    case Datatype::INT64:
+      return Configurator::int64_str();
+    case Datatype::FLOAT32:
+      return Configurator::float32_str();
+    case Datatype::FLOAT64:
+      return Configurator::float64_str();
+    case Datatype::CHAR:
+      return Configurator::char_str();
+    case Datatype::INT8:
+      return Configurator::int8_str();
+    case Datatype::UINT8:
+      return Configurator::uint8_str();
+    case Datatype::INT16:
+      return Configurator::int16_str();
+    case Datatype::UINT16:
+      return Configurator::uint16_str();
+    case Datatype::UINT32:
+      return Configurator::uint32_str();
+    case Datatype::UINT64:
+      return Configurator::uint64_str();
+    default:
+      return nullptr;
+  }
+}
+
+std::string domain_str(const void* domain, Datatype type) {
+  std::stringstream ss;
+
+  if (type == Datatype::INT32) {
+    const int* domain_ = static_cast<const int*>(domain);
+    ss << "[" << domain_[0] << "," << domain_[1] << "]";
+    return ss.str();
+  } else if (type == Datatype::INT64) {
+    const int64_t* domain_ = static_cast<const int64_t*>(domain);
+    ss << "[" << domain_[0] << "," << domain_[1] << "]";
+    return ss.str();
+  } else if (type == Datatype::FLOAT32) {
+    const float* domain_ = static_cast<const float*>(domain);
+    ss << "[" << domain_[0] << "," << domain_[1] << "]";
+    return ss.str();
+  } else if (type == Datatype::FLOAT64) {
+    const double* domain_ = static_cast<const double*>(domain);
+    ss << "[" << domain_[0] << "," << domain_[1] << "]";
+    return ss.str();
+  } else if (type == Datatype::CHAR) {
+    const char* domain_ = static_cast<const char*>(domain);
+    ss << "[" << int(domain_[0]) << "," << int(domain_[1]) << "]";
+    return ss.str();
+  } else if (type == Datatype::INT8) {
+    const int8_t* domain_ = static_cast<const int8_t*>(domain);
+    ss << "[" << int(domain_[0]) << "," << int(domain_[1]) << "]";
+    return ss.str();
+  } else if (type == Datatype::UINT8) {
+    const uint8_t* domain_ = static_cast<const uint8_t*>(domain);
+    ss << "[" << int(domain_[0]) << "," << int(domain_[1]) << "]";
+    return ss.str();
+  } else if (type == Datatype::INT16) {
+    const int16_t* domain_ = static_cast<const int16_t*>(domain);
+    ss << "[" << domain_[0] << "," << domain_[1] << "]";
+    return ss.str();
+  } else if (type == Datatype::UINT16) {
+    const uint16_t* domain_ = static_cast<const uint16_t*>(domain);
+    ss << "[" << domain_[0] << "," << domain_[1] << "]";
+    return ss.str();
+  } else if (type == Datatype::UINT32) {
+    const uint32_t* domain_ = static_cast<const uint32_t*>(domain);
+    ss << "[" << domain_[0] << "," << domain_[1] << "]";
+    return ss.str();
+  } else if (type == Datatype::UINT64) {
+    const uint64_t* domain_ = static_cast<const uint64_t*>(domain);
+    ss << "[" << domain_[0] << "," << domain_[1] << "]";
+    return ss.str();
+  } else {
+    return "";
+  }
 }
 
 template <class T>
@@ -472,6 +587,15 @@ bool is_unary_subarray(const T* subarray, int dim_num) {
   }
 
   return true;
+}
+
+const char* layout_str(Layout layout) {
+  if (layout == Layout::COL_MAJOR)
+    return Configurator::col_major_str();
+  else if (layout == Layout::ROW_MAJOR)
+    return Configurator::row_major_str();
+  else
+    return nullptr;
 }
 
 #ifdef HAVE_OPENMP
@@ -990,6 +1114,68 @@ void split_coordinates(
 
   // Clean up
   free((void*)tile_tmp);
+}
+
+bool starts_with(const std::string& value, const std::string& prefix) {
+  if (prefix.size() > value.size())
+    return false;
+  return std::equal(prefix.begin(), prefix.end(), value.begin());
+}
+
+std::string tile_extent_str(const void* tile_extent, Datatype type) {
+  std::stringstream ss;
+
+  if (tile_extent == nullptr) {
+    return Configurator::null_str();
+  }
+
+  if (type == Datatype::INT32) {
+    const int* tile_extent_ = static_cast<const int*>(tile_extent);
+    ss << *tile_extent_;
+    return ss.str();
+  } else if (type == Datatype::INT64) {
+    const int64_t* tile_extent_ = static_cast<const int64_t*>(tile_extent);
+    ss << *tile_extent_;
+    return ss.str();
+  } else if (type == Datatype::FLOAT32) {
+    const float* tile_extent_ = static_cast<const float*>(tile_extent);
+    ss << *tile_extent_;
+    return ss.str();
+  } else if (type == Datatype::FLOAT64) {
+    const double* tile_extent_ = static_cast<const double*>(tile_extent);
+    ss << *tile_extent_;
+    return ss.str();
+  } else if (type == Datatype::CHAR) {
+    const char* tile_extent_ = static_cast<const char*>(tile_extent);
+    ss << int(*tile_extent_);
+    return ss.str();
+  } else if (type == Datatype::INT8) {
+    const int8_t* tile_extent_ = static_cast<const int8_t*>(tile_extent);
+    ss << int(*tile_extent_);
+    return ss.str();
+  } else if (type == Datatype::UINT8) {
+    const uint8_t* tile_extent_ = static_cast<const uint8_t*>(tile_extent);
+    ss << int(*tile_extent_);
+    return ss.str();
+  } else if (type == Datatype::INT16) {
+    const int16_t* tile_extent_ = static_cast<const int16_t*>(tile_extent);
+    ss << *tile_extent_;
+    return ss.str();
+  } else if (type == Datatype::UINT16) {
+    const uint16_t* tile_extent_ = static_cast<const uint16_t*>(tile_extent);
+    ss << *tile_extent_;
+    return ss.str();
+  } else if (type == Datatype::UINT32) {
+    const uint32_t* tile_extent_ = static_cast<const uint32_t*>(tile_extent);
+    ss << *tile_extent_;
+    return ss.str();
+  } else if (type == Datatype::UINT64) {
+    const uint64_t* tile_extent_ = static_cast<const uint64_t*>(tile_extent);
+    ss << *tile_extent_;
+    return ss.str();
+  } else {
+    return "";
+  }
 }
 
 void zip_coordinates(

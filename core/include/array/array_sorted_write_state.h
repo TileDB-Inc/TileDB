@@ -31,8 +31,8 @@
  * This file defines class ArraySortedWriteState.
  */
 
-#ifndef __TILEDB_ARRAY_SORTED_WRITE_STATE_H__
-#define __TILEDB_ARRAY_SORTED_WRITE_STATE_H__
+#ifndef TILEDB_ARRAY_SORTED_WRITE_STATE_H
+#define TILEDB_ARRAY_SORTED_WRITE_STATE_H
 
 #include <pthread.h>
 #include <string>
@@ -841,5 +841,6 @@ class ArraySortedWriteState {
   Status wait_aio(int id);
 };
 
-};      // namespace tiledb
-#endif  // __TILEDB_ARRAY_SORTED_WRITE_STATE_H__
+};  // namespace tiledb
+
+#endif  // TILEDB_ARRAY_SORTED_WRITE_STATE_H

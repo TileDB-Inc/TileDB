@@ -30,8 +30,8 @@
  * This file defines class Attribute.
  */
 
-#ifndef __TILEDB_ATTRIBUTE_H__
-#define __TILEDB_ATTRIBUTE_H__
+#ifndef TILEDB_ATTRIBUTE_H
+#define TILEDB_ATTRIBUTE_H
 
 #include <string>
 #include "compressor.h"
@@ -54,15 +54,44 @@ class Attribute {
    */
   Attribute(const char* name, Datatype type);
 
+  /**
+   * Constructor. It clones the input.
+   *
+   * @param attr The attribute to copy.
+   */
+  Attribute(const Attribute* attr);
+
   /** Destructor. */
   ~Attribute();
+
+  /* ********************************* */
+  /*              GETTERS              */
+  /* ********************************* */
+
+  /** Returns the number of values per cell. */
+  unsigned int cell_val_num() const;
+
+  /** Returns the compressor. */
+  Compressor compressor() const;
+
+  /** Returns the compression level. */
+  int compression_level() const;
+
+  /** Dumps the attribute contents in ASCII form in the selected output. */
+  void dump(FILE* out) const;
+
+  /** Returns the attribute name. */
+  const std::string& name() const;
+
+  /** Returns the attribute type. */
+  Datatype type() const;
 
   /* ********************************* */
   /*              SETTERS              */
   /* ********************************* */
 
   /** Sets the attribute number of values per cell. */
-  void set_cell_val_num(int cell_val_num);
+  void set_cell_val_num(unsigned int cell_val_num);
 
   /** Sets the attribute compressor. */
   void set_compressor(Compressor compressor);
@@ -76,7 +105,7 @@ class Attribute {
   /* ********************************* */
 
   /** The attribute number of values per cell. */
-  int cell_val_num_;
+  unsigned int cell_val_num_;
   /** The attribute compressor. */
   Compressor compressor_;
   /** The attribute compression level. */
@@ -89,4 +118,4 @@ class Attribute {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_ATTRIBUTE_H__
+#endif  // TILEDB_ATTRIBUTE_H

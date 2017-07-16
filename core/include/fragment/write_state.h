@@ -31,8 +31,8 @@
  * This file defines class WriteState.
  */
 
-#ifndef __TILEDB_WRITE_STATE_H__
-#define __TILEDB_WRITE_STATE_H__
+#ifndef TILEDB_WRITE_STATE_H
+#define TILEDB_WRITE_STATE_H
 
 #include <iostream>
 #include <vector>
@@ -717,4 +717,4 @@ class WriteState {
 
 }  // namespace tiledb
 
-#endif  // __TILEDB_WRITE_STATE_H__
+#endif  // TILEDB_WRITE_STATE_H

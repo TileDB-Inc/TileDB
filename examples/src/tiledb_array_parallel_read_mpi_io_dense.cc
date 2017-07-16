@@ -57,7 +57,8 @@ int main(int argc, char** argv) {
   tiledb_config.mpi_comm_ = &mpi_comm;
 
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx = tiledb_ctx_create(&tiledb_config);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx);
 
   // Array name
   const char* array_name = "my_group/dense_arrays/my_array_A";

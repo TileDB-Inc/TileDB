@@ -37,7 +37,8 @@
 
 int main() {
   // Initialize context with the default configuration parameters
-  tiledb_ctx_t* ctx = tiledb_ctx_create(nullptr);
+  tiledb_ctx_t* ctx;
+  tiledb_ctx_create(&ctx);
 
   // Subarray and attributes
   int64_t subarray[] = { 3, 4, 2, 4 }; 

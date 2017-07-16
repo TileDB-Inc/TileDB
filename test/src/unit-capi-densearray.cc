@@ -31,7 +31,6 @@
  * Tests of C API for dense array operations.
  */
 
-// #include "progress_bar.h"
 #include <sys/time.h>
 #include <cassert>
 #include <cstring>
@@ -44,28 +43,33 @@
 #include "catch.hpp"
 
 struct DenseArrayFx {
-  // Workspace folder name
-  const std::string GROUP = ".__group/";
+  // Constant parameters
+  const char* ATTR_NAME = "a";
+  const tiledb_datatype_t ATTR_TYPE = TILEDB_INT32;
+  const char* DIM1_NAME = "x";
+  const char* DIM2_NAME = "y";
+  const tiledb_datatype_t DIM1_TYPE = TILEDB_INT64;
+  const tiledb_datatype_t DIM2_TYPE = TILEDB_INT64;
+
+  // Group folder name
+  const std::string GROUP = "my_group/";
 
   // Array name
   std::string array_name_;
 
   // Array schema object under test
-  tiledb_array_schema_t array_schema_;
+  tiledb_array_schema_t* array_schema_;
 
   // TileDB context
-  tiledb_ctx_t* tiledb_ctx_;
+  tiledb_ctx_t* ctx_;
 
   DenseArrayFx() {
     // Reset the random number generator
     srand(0);
 
-    // Error code
-    int rc;
-
     // Initialize context
-    tiledb_ctx_ = tiledb_ctx_create(nullptr);
-    assert(tiledb_ctx_ != nullptr);
+    int rc = tiledb_ctx_create(&ctx_);
+    assert(rc == TILEDB_OK);
 
     // Create group, delete it if it already exists
     std::string cmd = "test -d " + GROUP;
@@ -75,21 +79,17 @@ struct DenseArrayFx {
       rc = system(cmd.c_str());
       assert(rc == 0);
     }
-    rc = tiledb_group_create(tiledb_ctx_, GROUP.c_str());
+    rc = tiledb_group_create(ctx_, GROUP.c_str());
     assert(rc == TILEDB_OK);
   }
 
   ~DenseArrayFx() {
-    // Error code
-    int rc;
-
     // Finalize TileDB context
-    rc = tiledb_ctx_free(tiledb_ctx_);
-    assert(rc == TILEDB_OK);
+    tiledb_ctx_free(ctx_);
 
     // Remove the temporary group
     std::string cmd = "rm -rf " + GROUP;
-    rc = system(cmd.c_str());
+    int rc = system(cmd.c_str());
     assert(rc == 0);
   }
 
@@ -156,78 +156,65 @@ struct DenseArrayFx {
    * @param domain_1_lo The smallest value of the second dimension domain.
    * @param domain_1_hi The largest value of the second dimension domain.
    * @param capacity The tile capacity.
-   * @param enable_compression If true, then GZIP compression is used.
    * @param cell_order The cell order.
    * @param tile_order The tile order.
-   * @return TILEDB_OK on success and TILEDB_ERR on error.
    */
-  int create_dense_array_2D(
+  void create_dense_array_2D(
       const int64_t tile_extent_0,
       const int64_t tile_extent_1,
       const int64_t domain_0_lo,
       const int64_t domain_0_hi,
       const int64_t domain_1_lo,
       const int64_t domain_1_hi,
-      const int64_t capacity,
-      const bool enable_compression,
+      const uint64_t capacity,
       const tiledb_layout_t cell_order,
       const tiledb_layout_t tile_order) {
     // Error code
     int rc;
 
     // Prepare and set the array schema object and data structures
-    const int attribute_num = 1;
-    const char* attributes[] = {"ATTR_INT32"};
-    const char* dimensions[] = {"X", "Y"};
     int64_t domain[] = {domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
-    int64_t tile_extents[] = {tile_extent_0, tile_extent_1};
-    const tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_INT64};
-    tiledb_compressor_t compression[2];
-    const int dense = 1;
 
-    if (!enable_compression) {
-      compression[0] = TILEDB_NO_COMPRESSION;
-      compression[1] = TILEDB_NO_COMPRESSION;
-    } else {
-      compression[0] = TILEDB_GZIP;
-      compression[1] = TILEDB_GZIP;
-    }
+    // Create attribute
+    tiledb_attribute_t* a;
+    rc = tiledb_attribute_create(ctx_, &a, ATTR_NAME, ATTR_TYPE);
+    REQUIRE(rc == TILEDB_OK);
 
-    // Set the array schema
-    rc = tiledb_array_set_schema(
-        tiledb_ctx_,
-        &array_schema_,
-        array_name_.c_str(),
-        attributes,
-        attribute_num,
-        capacity,
-        cell_order,
-        nullptr,
-        compression,
-        dense,
-        dimensions,
-        2,
-        domain,
-        4 * sizeof(int64_t),
-        tile_extents,
-        2 * sizeof(int64_t),
-        tile_order,
-        types);
-    if (rc != TILEDB_OK)
-      return TILEDB_ERR;
+    // Create dimensions
+    tiledb_dimension_t* d1;
+    rc = tiledb_dimension_create(
+        ctx_, &d1, DIM1_NAME, DIM1_TYPE, &domain[0], &tile_extent_0);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_dimension_t* d2;
+    rc = tiledb_dimension_create(
+        ctx_, &d2, DIM2_NAME, DIM2_TYPE, &domain[2], &tile_extent_1);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Create array schema
+    rc = tiledb_array_schema_create(ctx_, &array_schema_, array_name_.c_str());
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_schema_set_capacity(ctx_, array_schema_, capacity);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_schema_set_cell_order(ctx_, array_schema_, cell_order);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_schema_set_tile_order(ctx_, array_schema_, tile_order);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_schema_add_attribute(ctx_, array_schema_, a);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_schema_add_dimension(ctx_, array_schema_, d1);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_schema_add_dimension(ctx_, array_schema_, d2);
+    REQUIRE(rc == TILEDB_OK);
 
     // Create the array
-    rc = tiledb_array_create(tiledb_ctx_, &array_schema_);
-    if (rc != TILEDB_OK)
-      return TILEDB_ERR;
+    rc = tiledb_array_create(ctx_, array_schema_);
+    REQUIRE(rc == TILEDB_OK);
 
-    // Free array schema
-    rc = tiledb_array_free_schema(&array_schema_);
-    if (rc != TILEDB_OK)
-      return TILEDB_ERR;
-
-    // Success
-    return TILEDB_OK;
+    // Clean up
+    tiledb_attribute_free(a);
+    tiledb_dimension_free(d1);
+    tiledb_dimension_free(d2);
+    tiledb_array_schema_free(array_schema_);
   }
 
   /**
@@ -310,13 +297,12 @@ struct DenseArrayFx {
     const int64_t subarray[] = {
         domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
 
-    // Subset over a specific attribute
-    const char* attributes[] = {"ATTR_INT32"};
+    const char* attributes[] = {ATTR_NAME};
 
     // Initialize the array in the input mode
     tiledb_array_t* tiledb_array;
     rc = tiledb_array_init(
-        tiledb_ctx_,
+        ctx_,
         &tiledb_array,
         array_name_.c_str(),
         read_mode,
@@ -384,12 +370,12 @@ struct DenseArrayFx {
     int64_t* buffer_coords = (int64_t*)buffers[1];
 
     // Specify attributes to be written
-    const char* attributes[] = {"ATTR_INT32", tiledb_coords()};
+    const char* attributes[] = {ATTR_NAME, tiledb_coords()};
 
     // Initialize the array
     tiledb_array_t* tiledb_array;
     rc = tiledb_array_init(
-        tiledb_ctx_,
+        ctx_,
         &tiledb_array,
         array_name_.c_str(),
         TILEDB_ARRAY_WRITE_UNSORTED,
@@ -458,7 +444,7 @@ struct DenseArrayFx {
     // Initialize the array
     tiledb_array_t* tiledb_array;
     rc = tiledb_array_init(
-        tiledb_ctx_,
+        ctx_,
         &tiledb_array,
         array_name_.c_str(),
         TILEDB_ARRAY_WRITE,
@@ -542,12 +528,12 @@ struct DenseArrayFx {
     int rc;
 
     // Attribute to focus on
-    const char* attributes[] = {"ATTR_INT32"};
+    const char* attributes[] = {ATTR_NAME};
 
     // Initialize the array
     tiledb_array_t* tiledb_array;
     rc = tiledb_array_init(
-        tiledb_ctx_,
+        ctx_,
         &tiledb_array,
         array_name_.c_str(),
         write_mode,
@@ -575,7 +561,7 @@ struct DenseArrayFx {
  * Tests 10 random 2D subarrays and checks if the value of each cell is equal
  * to row_id*dim1+col_id. Top left corner is always 4,4.
  */
-TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted reads") {
+TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted reads") {
   // Error code
   int rc;
 
@@ -588,7 +574,7 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted reads") {
   int64_t domain_0_hi = domain_size_0 - 1;
   int64_t domain_1_lo = 0;
   int64_t domain_1_hi = domain_size_1 - 1;
-  int64_t capacity = 0;  // 0 means use default capacity
+  uint64_t capacity = 1000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
   int iter_num = 10;
@@ -596,11 +582,8 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted reads") {
   // Set array name
   set_array_name("dense_test_5000x10000_100x100");
 
-  // Create a progress bar
-  // ProgressBar* progress_bar = new ProgressBar();
-
   // Create a dense integer array
-  rc = create_dense_array_2D(
+  create_dense_array_2D(
       tile_extent_0,
       tile_extent_1,
       domain_0_lo,
@@ -608,10 +591,8 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted reads") {
       domain_1_lo,
       domain_1_hi,
       capacity,
-      false,
       cell_order,
       tile_order);
-  REQUIRE(rc == TILEDB_OK);
 
   // Write array cells with value = row id * COLUMNS + col id
   // to disk tile by tile
@@ -671,7 +652,7 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted reads") {
 /**
  * Tests random 2D subarray writes.
  */
-TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted writes") {
+TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted writes") {
   // Error code
   int rc;
 
@@ -684,7 +665,7 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted writes") {
   int64_t domain_0_hi = domain_size_0 - 1;
   int64_t domain_1_lo = 0;
   int64_t domain_1_hi = domain_size_1 - 1;
-  int64_t capacity = 0;  // 0 means use default capacity
+  uint64_t capacity = 1000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
   int iter_num = 10;
@@ -696,7 +677,7 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted writes") {
   // ProgressBar* progress_bar = new ProgressBar();
 
   // Create a dense integer array
-  rc = create_dense_array_2D(
+  create_dense_array_2D(
       tile_extent_0,
       tile_extent_1,
       domain_0_lo,
@@ -704,10 +685,8 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted writes") {
       domain_1_lo,
       domain_1_hi,
       capacity,
-      false,
       cell_order,
       tile_order);
-  REQUIRE(rc == TILEDB_OK);
 
   // Write random subarray, then read it back and check
   int64_t d0[2], d1[2];
@@ -757,19 +736,13 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense sorted writes") {
     // Clean up
     delete[] buffer;
     delete[] read_buffer;
-
-    // Update progress bar
-    // progress_bar->load(1.0/iter_num);
   }
-
-  // Delete progress bar
-  // delete progress_bar;
 }
 
 /**
  * Test random updates in a 2D dense array.
  */
-TEST_CASE_METHOD(DenseArrayFx, "test random dense updates") {
+TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates") {
   // Error code
   int rc;
 
@@ -782,7 +755,7 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense updates") {
   int64_t domain_0_hi = domain_size_0 - 1;
   int64_t domain_1_lo = 0;
   int64_t domain_1_hi = domain_size_1 - 1;
-  int64_t capacity = 0;  // 0 means use default capacity
+  uint64_t capacity = 1000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
   int64_t update_num = 100;
@@ -792,7 +765,7 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense updates") {
   set_array_name("dense_test_100x100_10x10");
 
   // Create a dense integer array
-  rc = create_dense_array_2D(
+  create_dense_array_2D(
       tile_extent_0,
       tile_extent_1,
       domain_0_lo,
@@ -800,10 +773,8 @@ TEST_CASE_METHOD(DenseArrayFx, "test random dense updates") {
       domain_1_lo,
       domain_1_hi,
       capacity,
-      false,
       cell_order,
       tile_order);
-  REQUIRE(rc == TILEDB_OK);
 
   // Write array cells with value = row id * COLUMNS + col id
   // to disk tile by tile
