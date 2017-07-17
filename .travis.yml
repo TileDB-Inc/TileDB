@@ -40,7 +40,7 @@ install:
     - rm -rf $TILEDB_BUILD_DIR
     - mkdir -p $TILEDB_BUILD_DIR
     - cd $TILEDB_BUILD_DIR
-    - cmake .. -DCMAKE_BUILD_TYPE=Coverage 
+    - cmake -DCMAKE_BUILD_TYPE=Coverage  -DTILEDB_VERBOSE=1 ..
     - make -j4
     - make examples -j4
     
