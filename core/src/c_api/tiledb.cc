@@ -182,7 +182,7 @@ struct tiledb_config_t {
 struct tiledb_error_t {
   // Pointer to a copy of the last TileDB error associated with a given ctx
   const tiledb::Status* status_;
-  std::string errmsg_;
+  std::string* errmsg_;
 };
 
 struct tiledb_basic_array_t {
@@ -419,7 +419,7 @@ int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
   }
 
   // Set error message
-  (*err)->errmsg_ = (*err)->status_->to_string();
+  (*err)->errmsg_ = new std::string((*err)->status_->to_string());
 
   // Success
   return TILEDB_OK;
@@ -434,7 +434,7 @@ int tiledb_error_message(
   if (err->status_->ok())
     *errmsg = nullptr;
   else
-    *errmsg = err->errmsg_.c_str();
+    *errmsg = err->errmsg_->c_str();
 
   return TILEDB_OK;
 }
@@ -444,6 +444,7 @@ void tiledb_error_free(tiledb_error_t* err) {
     if (err->status_ != nullptr) {
       delete err->status_;
     }
+    delete err->errmsg_;
     free(err);
   }
 }
