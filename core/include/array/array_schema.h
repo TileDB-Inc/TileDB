@@ -140,6 +140,9 @@ class ArraySchema {
   /** Returns the compression type of the attribute with the input id. */
   Compressor compression(int attribute_id) const;
 
+  /** Return the compression level of the attribute with the input id. */
+  int compression_level(int attribute_id) const;
+
   /** Returns the coordinates size. */
   size_t coords_size() const;
 

@@ -46,6 +46,7 @@ size_t RLE::compress_bound(size_t nbytes, size_t type_size) {
 
 Status RLE::compress(
     size_t type_size,
+    int level,
     void* input_buffer,
     size_t input_buffer_size,
     void* output_buffer,

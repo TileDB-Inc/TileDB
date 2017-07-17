@@ -42,15 +42,19 @@ size_t ZStd::compress_bound(size_t nbytes) {
 
 Status ZStd::compress(
     size_t type_size,
+    int level,
     void* input_buffer,
     size_t input_buffer_size,
     void* output_buffer,
     size_t output_buffer_size,
     size_t* compressed_size) {
   *compressed_size = 0;
-  // TODO: level
   size_t zstd_code = ZSTD_compress(
-      output_buffer, output_buffer_size, input_buffer, input_buffer_size, 1);
+      output_buffer,
+      output_buffer_size,
+      input_buffer,
+      input_buffer_size,
+      level < 0 ? ZStd::default_level() : level);
   if (ZSTD_isError(zstd_code)) {
     const char* msg = ZSTD_getErrorName(zstd_code);
     return LOG_STATUS(Status::CompressionError(

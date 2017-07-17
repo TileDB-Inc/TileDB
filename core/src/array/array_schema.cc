@@ -258,6 +258,15 @@ Compressor ArraySchema::compression(int attr_id) const {
   return compressor_.at(attr_id);
 }
 
+int ArraySchema::compression_level(int attr_id) const {
+  assert(attr_id >= 0 && attr_id <= attribute_num_ + 1);
+  // Special case for the "search tile", which is essentially the
+  // coordinates tile
+  if (attr_id == attribute_num_ + 1)
+    attr_id = attribute_num_;
+  return compression_level_.at(attr_id);
+}
+
 size_t ArraySchema::coords_size() const {
   return coords_size_;
 }

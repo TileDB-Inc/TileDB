@@ -44,6 +44,7 @@ class LZ4 : public BaseCompressor {
 
   static Status compress(
       size_t type_size,
+      int level,
       void* input_buffer,
       size_t input_buffer_size,
       void* output_buffer,
@@ -57,6 +58,10 @@ class LZ4 : public BaseCompressor {
       void* output_buffer,
       size_t output_buffer_size,
       size_t* decompressed_size);
+
+  static int default_level() {
+    return -1;
+  }
 };
 
 }  // namespace tiledb

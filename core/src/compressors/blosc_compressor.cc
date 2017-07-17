@@ -46,6 +46,7 @@ size_t Blosc::compress_bound(size_t nbytes) {
 Status Blosc::compress(
     const char* compressor,
     size_t type_size,
+    int level,
     void* input_buffer,
     size_t input_buffer_size,
     void* output_buffer,
@@ -62,7 +63,7 @@ Status Blosc::compress(
         compressor);
   }
   int rc = blosc_compress(
-      5,  // level
+      level < 0 ? Blosc::default_level() : level,
       1,  // shuffle
       type_size,
       input_buffer_size,
