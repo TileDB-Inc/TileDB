@@ -39,7 +39,6 @@
 #include "array.h"
 #include "basic_array_schema.h"
 #include "filesystem.h"
-#include "logger.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -67,7 +66,6 @@ namespace tiledb {
 
 StorageManager::StorageManager() {
   config_ = nullptr;
-  logger_ = nullptr;
 }
 
 StorageManager::~StorageManager() {
@@ -75,12 +73,6 @@ StorageManager::~StorageManager() {
     delete config_;
     config_ = nullptr;
   }
-
-  if (logger_ != nullptr) {
-    delete logger_;
-    logger_ = nullptr;
-  }
-
   open_array_mtx_destroy();
 }
 
@@ -89,9 +81,6 @@ StorageManager::~StorageManager() {
 /* ****************************** */
 
 Status StorageManager::init(Configurator* config) {
-  // Attach logger
-  logger_ = new Logger();
-
   // Clear previous configurator
   if (config_ != nullptr)
     delete config_;

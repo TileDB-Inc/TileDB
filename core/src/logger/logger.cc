@@ -60,6 +60,11 @@ Logger::~Logger() {
   spdlog::drop("tiledb");
 }
 
+Logger& global_logger() {
+  static Logger l;
+  return l;
+}
+
 // definition for logging status objects
 std::ostream& operator<<(std::ostream& os, const Status& st) {
   return os << st.to_string();
