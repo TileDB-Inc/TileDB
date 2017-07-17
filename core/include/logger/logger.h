@@ -144,14 +144,16 @@ class Logger {
   std::shared_ptr<spdlog::logger> logger_;
 };
 
+Logger& global_logger();
+
 // TODO: these should go away eventually
 #ifdef TILEDB_VERBOSE
 inline void LOG_ERROR(const std::string& msg) {
-  spdlog::get("tiledb")->error(msg);
+  global_logger().error(msg.c_str());
 }
 
 inline Status LOG_STATUS(const Status& st) {
-  spdlog::get("tiledb")->error(st.to_string());
+  global_logger().error(st.to_string().c_str());
   return st;
 }
 #else
