@@ -1,5 +1,5 @@
 /**
- * @file   unit-capi-sparsearray.cc
+ * @file   unit-capi-sparse_array.cc
  *
  * @section LICENSE
  *

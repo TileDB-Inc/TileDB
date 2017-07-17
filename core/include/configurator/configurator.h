@@ -65,9 +65,9 @@ class Configurator {
   /** Destructor. */
   ~Configurator();
 
-  /* ********************************* */
-  /*             MUTATORS              */
-  /* ********************************* */
+/* ********************************* */
+/*             MUTATORS              */
+/* ********************************* */
 
 #ifdef HAVE_MPI
   /**
@@ -342,9 +342,9 @@ class Configurator {
   static const char* null_str();
 
  private:
-  /* ********************************* */
-  /*        PRIVATE ATTRIBUTES         */
-  /* ********************************* */
+/* ********************************* */
+/*        PRIVATE ATTRIBUTES         */
+/* ********************************* */
 
 #ifdef HAVE_MPI
   /** The MPI communicator. */

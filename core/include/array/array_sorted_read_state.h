@@ -37,6 +37,8 @@
 #include <pthread.h>
 #include <string>
 #include <vector>
+
+#include "aio_request.h"
 #include "array.h"
 
 namespace tiledb {
@@ -215,10 +217,10 @@ class ArraySortedReadState {
   bool* aio_overflow_[2];
 
   /** AIO requests. */
-  AIO_Request aio_request_[2];
+  AIORequest aio_request_[2];
 
   /** The status of the AIO requests.*/
-  tiledb_aio_status_t aio_status_[2];
+  AIOStatus aio_status_[2];
 
   /** The array this sorted read state belongs to. */
   Array* array_;

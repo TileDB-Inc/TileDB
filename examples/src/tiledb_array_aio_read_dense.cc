@@ -47,10 +47,10 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Initialize array 
-  tiledb_array_t* tiledb_array;
+  tiledb_array_t* array;
   tiledb_array_init(
       ctx,                                       // Context
-      &tiledb_array,                                    // Array object
+      &array,                                    // Array object
       "my_group/dense_arrays/my_array_A",               // Array name
       TILEDB_ARRAY_READ,                                // Mode
       nullptr,                                          // Whole domain
@@ -75,21 +75,23 @@ int main() {
   };
 
   // Prepare AIO request
-  TileDB_AIO_Request tiledb_aio_request;
-  memset(&tiledb_aio_request, 0, sizeof(struct TileDB_AIO_Request)); 
-  tiledb_aio_request.buffers_ = buffers;
-  tiledb_aio_request.buffer_sizes_ = buffer_sizes;
-  tiledb_aio_request.subarray_ = subarray;
-  tiledb_aio_request.completion_handle_ = print_upon_completion;
   char s[100] = "AIO request completed";
-  tiledb_aio_request.completion_data_ = s; 
+  tiledb_aio_request_t* aio_request;
+  tiledb_aio_request_create(ctx, &aio_request);
+  tiledb_aio_request_set_array(ctx, aio_request, array);
+  tiledb_aio_request_set_buffers(ctx, aio_request, buffers, buffer_sizes);
+  tiledb_aio_request_set_callback(ctx, aio_request, print_upon_completion, s);
+  tiledb_aio_request_set_subarray(ctx, aio_request, subarray);
 
-  // Read from array
-  tiledb_array_aio_read(tiledb_array, &tiledb_aio_request); 
+  // Submit request
+  tiledb_array_aio_submit(ctx, aio_request);
 
   // Wait for AIO to complete
   printf("AIO in progress\n");
-  while(tiledb_aio_request.status_ != TILEDB_AIO_COMPLETED); 
+  tiledb_aio_status_t aio_status;
+  do {
+    tiledb_aio_request_get_status(ctx, aio_request, &aio_status);
+  } while(aio_status != TILEDB_AIO_COMPLETED);
 
   // Print cell values
   int64_t result_num = buffer_sizes[0] / sizeof(int);
@@ -103,11 +105,10 @@ int main() {
     printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
   }
 
-  // Finalize the array
-  tiledb_array_finalize(tiledb_array);
-
-  /* Finalize context. */
+  // Clean up
+  tiledb_array_finalize(array);
   tiledb_ctx_free(ctx);
+  tiledb_aio_request_free(aio_request);
 
   return 0;
 }

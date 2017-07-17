@@ -136,7 +136,7 @@ typedef enum {
 #undef TILEDB_IO_METHOD_ENUM
 } tiledb_io_t;
 
-/** Asynchronous I/O (AIO) code. */
+/** Asynchronous I/O (AIO) request status. */
 typedef enum {
 #define TILEDB_AIO_ENUM(id) TILEDB_AIO_##id
 #include "tiledb_enum.inc"
@@ -225,6 +225,9 @@ typedef struct tiledb_metadata_schema_t tiledb_metadata_schema_t;
 /** A TileDB metadata object. */
 typedef struct tiledb_metadata_t tiledb_metadata_t;
 
+/** An asynchronous I/O request. */
+typedef struct tiledb_aio_request_t tiledb_aio_request_t;
+
 /* ********************************* */
 /*              CONTEXT              */
 /* ********************************* */
@@ -244,6 +247,20 @@ TILEDB_EXPORT int tiledb_ctx_create(tiledb_ctx_t** ctx);
  * @return void
  */
 TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t* ctx);
+
+/**
+ * Sets a configuration to a TileDB context.
+ *
+ * @param ctx The TileDB context.
+ * @param config The configurator to be set.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note It is strongly recommended that this function is used before starting
+ *    to use any arrays/metadata/groups, as messing with the configuration
+ * during TileDB operations may lead to unexpected errors.
+ */
+TILEDB_EXPORT int tiledb_ctx_set_config(
+    tiledb_ctx_t* ctx, tiledb_config_t* config);
 
 /* ********************************* */
 /*              CONFIG               */
@@ -301,20 +318,6 @@ TILEDB_EXPORT int tiledb_config_set_read_method(
  */
 TILEDB_EXPORT int tiledb_config_set_write_method(
     tiledb_ctx_t* ctx, tiledb_config_t* config, tiledb_io_t write_method);
-
-/**
- * Sets a configuration to a TileDB context.
- *
- * @param ctx The TileDB context.
- * @param config The configurator to be set.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- *
- * @note It is strongly recommended that this function is used before starting
- *    to use any arrays/metadata/groups, as messing with the configuration
- * during TileDB operations may lead to unexpected errors.
- */
-TILEDB_EXPORT int tiledb_ctx_set_config(
-    tiledb_ctx_t* ctx, tiledb_config_t* config);
 
 /* ********************************* */
 /*              ERROR                */
@@ -1801,89 +1804,100 @@ TILEDB_EXPORT int tiledb_ls_c(
 /*      ASYNCHRONOUS I/O (AIO)       */
 /* ********************************* */
 
-/** Describes an AIO (read or write) request. */
-typedef struct TileDB_AIO_Request {
-  /**
-   * An array of buffers, one for each attribute. These must be
-   * provided in the same order as the attributes specified in
-   * tiledb_array_init() or tiledb_array_reset_attributes(). The case of
-   * variable-sized attributes is special. Instead of providing a single
-   * buffer for such an attribute, **two** must be provided: the second
-   * holds the variable-sized cell values, whereas the first holds the
-   * start offsets of each cell in the second buffer.
-   */
-  void** buffers_;
-  /**
-   * The sizes (in bytes) allocated by the user for the
-   * buffers (there is a one-to-one correspondence). In the case of reads,
-   * the function will attempt
-   * to write as many results as can fit in the buffers, and potentially
-   * alter the buffer sizes to indicate the size of the *useful* data written
-   * in the corresponding buffers.
-   */
-  size_t* buffer_sizes_;
-  /** Function to be called upon completion of the request. */
-  void* (*completion_handle_)(void*);
-  /** Data to be passed to the completion handle. */
-  void* completion_data_;
-  /**
-   * Applicable only to read requests.
-   * Indicates whether a buffer has overflowed during a read request.
-   * If it is NULL, it will be ignored. Otherwise, it must be an array
-   * with as many elements as the number of attributes specified in
-   * tiledb_array_init() or tiledb_array_reset_attributes().
-   */
-  bool* overflow_;
-  /**
-   * The status of the AIO request. It can be one of the following:
-   *    - TILEDB_AIO_COMPLETED
-   *      The request is completed.
-   *    - TILEDB_AIO_INPROGRESS
-   *      The request is still in progress.
-   *    - TILEDB_AIO_OVERFLOW
-   *      At least one of the input buffers overflowed (applicable only to AIO
-   *      read requests)
-   *    - TILEDB_AIO_ERROR
-   *      The request caused an error (and thus was canceled).
-   */
-  tiledb_aio_status_t status_;
-  /**
-   * The subarray in which the array read/write will be
-   * constrained on. It should be a sequence of [low, high] pairs (one
-   * pair per dimension), whose type should be the same as that of the
-   * coordinates. If it is NULL, then the subarray is set to the entire
-   * array domain. For the case of writes, this is meaningful only for
-   * dense arrays, and specifically dense writes.
-   */
-  const void* subarray_;
-} TileDB_AIO_Request;
+/**
+ * Creates an AIO request.
+ *
+ * @param ctx The TileDB context
+ * @param aio_request  The AIO request to be created.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_aio_request_create(
+    tiledb_ctx_t* ctx, tiledb_aio_request_t** aio_request);
 
 /**
- * Issues an asynchronous read request.
+ * Frees an AIO request.
  *
- * @param tiledb_array An initialized TileDB array.
- * @param tiledb_aio_request An asynchronous read request.
- * @return TILEDB_OK upon success, and TILEDB_ERR upon error.
- *
- * @note If the same input request is in progress, the function will fail.
- *     Moreover, if the input request was issued in the past and caused an
- *     overflow, the new call will resume it IF there was no other request
- *     in between the two separate calls for the same input request.
- *     In other words, a new request that is different than the previous
- *     one resets the internal read state.
+ * @param aio_request The AIO request to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_array_aio_read(
-    const tiledb_array_t* tiledb_array, TileDB_AIO_Request* tiledb_aio_request);
+TILEDB_EXPORT void tiledb_aio_request_free(tiledb_aio_request_t* aio_request);
 
 /**
- * Issues an asynchronous write request.
+ * Binds an array with the AIO request.
  *
- * @param tiledb_array An initialized TileDB array.
- * @param tiledb_aio_request An asynchronous write request.
+ * @param ctx The TileDB context.
+ * @param aio_request The AIO request to be set.
+ * @param array The array to be set to the request.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_aio_request_set_array(
+    tiledb_ctx_t* ctx,
+    tiledb_aio_request_t* aio_request,
+    tiledb_array_t* array);
+
+/**
+ * Sets buffers to the AIO request.
+ *
+ * @param ctx The TileDB context.
+ * @param aio_request The AIO request to be set.
+ * @param buffers The buffers to be set.
+ * @param buffer_sizes The corresponding buffer sizes.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_aio_request_set_buffers(
+    tiledb_ctx_t* ctx,
+    tiledb_aio_request_t* aio_request,
+    void** buffers,
+    size_t* buffer_sizes);
+
+/**
+ * Sets a subarray to the AIO request.
+ *
+ * @param ctx The TileDB context.
+ * @param aio_request The AIO request to be set.
+ * @param subarray The subarray to be set.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_aio_request_set_subarray(
+    tiledb_ctx_t* ctx, tiledb_aio_request_t* aio_request, const void* subarray);
+
+/**
+ * Sets a callback handlde to the AIO request.
+ *
+ * @param ctx The TileDB context.
+ * @param aio_request The AIO request to be set.
+ * @param completion_handle The completion handle to be set.
+ * @param completion_data The data to be passed to the completion handle.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_aio_request_set_callback(
+    tiledb_ctx_t* ctx,
+    tiledb_aio_request_t* aio_request,
+    void* (*completion_handle)(void*),
+    void* completion_data);
+
+/**
+ * Submits an asynchronous I/O request.
+ *
+ * @param ctx The TileDB context.
+ * @param aio_request An asynchronous I/O request.
  * @return TILEDB_OK upon success, and TILEDB_ERR upon error.
  */
-TILEDB_EXPORT int tiledb_array_aio_write(
-    const tiledb_array_t* tiledb_array, TileDB_AIO_Request* tiledb_aio_request);
+TILEDB_EXPORT int tiledb_array_aio_submit(
+    tiledb_ctx_t* ctx, tiledb_aio_request_t* aio_request);
+
+/**
+ * Retrieves the status of the AIO request.
+ *
+ * @param ctx The TileDB context.
+ * @param aio_request The AIO request.
+ * @param aio_status The AIO status to be retrieved.
+ * @return TILEDB_OK upon success, and TILEDB_ERR upon error.
+ */
+TILEDB_EXPORT int tiledb_aio_request_get_status(
+    tiledb_ctx_t* ctx,
+    tiledb_aio_request_t* aio_request,
+    tiledb_aio_status_t* aio_status);
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus

@@ -47,10 +47,10 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Initialize array
-  tiledb_array_t* tiledb_array;
+  tiledb_array_t* array;
   tiledb_array_init(
       ctx,                                // Context
-      &tiledb_array,                             // Array object
+      &array,                             // Array object
       "my_group/dense_arrays/my_array_A",        // Array name
       TILEDB_ARRAY_WRITE,                        // Mode
       nullptr,                                   // Entire domain
@@ -94,27 +94,27 @@ int main() {
   };
 
   // Prepare AIO request
-  TileDB_AIO_Request tiledb_aio_request;
-  // ALWAYS zero out the struct before populating it
-  memset(&tiledb_aio_request, 0, sizeof(struct TileDB_AIO_Request));  
-  tiledb_aio_request.buffers_ = buffers;
-  tiledb_aio_request.buffer_sizes_ = buffer_sizes;
-  tiledb_aio_request.completion_handle_ = print_upon_completion;
   char s[100] = "AIO request completed";
-  tiledb_aio_request.completion_data_ = s; 
+  tiledb_aio_request_t* aio_request;
+  tiledb_aio_request_create(ctx, &aio_request);
+  tiledb_aio_request_set_array(ctx, aio_request, array);
+  tiledb_aio_request_set_buffers(ctx, aio_request, buffers, buffer_sizes);
+  tiledb_aio_request_set_callback(ctx, aio_request, print_upon_completion, s);
 
-  // Write to array
-  tiledb_array_aio_write(tiledb_array, &tiledb_aio_request); 
+  // Submit request
+  tiledb_array_aio_submit(ctx, aio_request);
 
   // Wait for AIO to complete
   printf("AIO in progress\n");
-  while(tiledb_aio_request.status_ != TILEDB_AIO_COMPLETED); 
+  tiledb_aio_status_t aio_status;
+  do {
+    tiledb_aio_request_get_status(ctx, aio_request, &aio_status);
+  } while(aio_status != TILEDB_AIO_COMPLETED);
 
-  // Finalize array
-  tiledb_array_finalize(tiledb_array);
-
-  // Finalize context
+  // Clean up
+  tiledb_array_finalize(array);
   tiledb_ctx_free(ctx);
+  tiledb_aio_request_free(aio_request);
 
   return 0;
 }

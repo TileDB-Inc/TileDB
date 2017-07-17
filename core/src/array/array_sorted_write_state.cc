@@ -1517,16 +1517,16 @@ void ArraySortedWriteState::init_aio_requests() {
   // Initialize AIO requests
   for (int i = 0; i < 2; ++i) {
     aio_data_[i] = {i, 0, this};
-    aio_request_[i] = {};
-    aio_request_[i].id_ = (separate_fragments) ? aio_cnt_++ : 0;
-    aio_request_[i].buffer_sizes_ = copy_state_.buffer_offsets_[i];
-    aio_request_[i].buffers_ = copy_state_.buffers_[i];
-    aio_request_[i].mode_ = TILEDB_ARRAY_WRITE;
-    aio_request_[i].subarray_ = (separate_fragments) ? tile_slab_[i] : subarray;
-    aio_request_[i].completion_handle_ = aio_done;
-    aio_request_[i].completion_data_ = &(aio_data_[i]);
-    aio_request_[i].overflow_ = nullptr;
-    aio_request_[i].status_ = &(aio_status_[i]);
+    aio_request_[i].set_array(array_);
+    aio_request_[i].set_id((separate_fragments) ? aio_cnt_++ : 0);
+    aio_request_[i].set_buffer_sizes(copy_state_.buffer_offsets_[i]);
+    aio_request_[i].set_buffers(copy_state_.buffers_[i]);
+    aio_request_[i].set_mode(ArrayMode::WRITE);
+    aio_request_[i].set_subarray(
+        (separate_fragments) ? tile_slab_[i] : subarray);
+    aio_request_[i].set_callback(aio_done, &(aio_data_[i]));
+    aio_request_[i].set_overflow(nullptr);
+    aio_request_[i].set_status(&(aio_status_[i]));
   }
 }
 

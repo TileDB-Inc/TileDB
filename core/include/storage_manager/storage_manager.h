@@ -35,13 +35,17 @@
 #define TILEDB_STORAGE_MANAGER_H
 
 #include <pthread.h>
+#include <condition_variable>
 #include <map>
+#include <mutex>
+#include <queue>
 #include <string>
+#include <thread>
+
 #include "array.h"
 #include "array_iterator.h"
 #include "array_schema.h"
 #include "configurator.h"
-#include "logger.h"
 #include "metadata.h"
 #include "metadata_iterator.h"
 #include "status.h"
@@ -121,6 +125,12 @@ class StorageManager {
   /* ********************************* */
   /*              ARRAY                */
   /* ********************************* */
+
+  /**
+   * Submits an asynchronous I/O. The second argument is 0 for user AIO, and 1
+   * for internal AIO.
+   */
+  Status aio_submit(AIORequest* aio_request, int i = 0);
 
   /**
    * Consolidates the fragments of an array into a single fragment.
@@ -433,6 +443,33 @@ class StorageManager {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
+  /**
+   * AIO condition variable. The first is for user AIO, the second for
+   * internal IO.
+   * */
+  std::condition_variable aio_cv_[2];
+
+  /** If true, the AIO thread will be eventually terminated. */
+  bool aio_done_;
+
+  /**
+   * AIO request queue. The first is for user AIO, the second for
+   * internal IO.
+   */
+  std::queue<AIORequest*> aio_queue_[2];
+
+  /**
+   * AIO mutex. The first is for user AIO, the second for
+   * internal IO.
+   */
+  std::mutex aio_mutex_[2];
+
+  /**
+   * Thread tha handles all user asynchronous I/O. The first is for user AIO,
+   * the second for internal IO.
+   */
+  std::thread* aio_thread_[2];
+
   /** The TileDB configuration parameters. */
   Configurator* config_;
 
@@ -458,6 +495,45 @@ class StorageManager {
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
+
+  /** Handles a single AIO request. */
+  void aio_handle_request(AIORequest* aio_request);
+
+  /**
+   * Starts handling AIO requests.
+   *
+   * @param i The index of the thread that executes the function. If it is
+   * equal to 0, it means a user AIO, whereas if it is 1 it means an
+   * internal AIO.
+   */
+  void aio_handle_requests(int i);
+
+  /**
+   * Pushes an AIO request to the queue.
+   *
+   * @param aio_request The AIO request.
+   * @param i The index of the thread that executes the function. If it is
+   * equal to 0, it means a user AIO, whereas if it is 1 it means an
+   * internal AIO.
+   * @return Status
+   */
+  Status aio_push_request(AIORequest* aio_request, int i);
+
+  /**
+   * Starts listening to asynchronous I/O.
+   *
+   * @param storage_manager The storage manager object that handles the
+   * asynchronous I/O.
+   * @param i The index of the thread to execute the function. If it is
+   * equal to 0, it means a user AIO, whereas if it is 1 it means an
+   * internal AIO.
+   */
+  static void aio_start(StorageManager* storage_manager, int i = 0);
+
+  /**
+   * Stops the asynchronous I/O.
+   */
+  void aio_stop();
 
   /**
    * Clears a TileDB array. The array will still exist after the execution of
@@ -752,7 +828,7 @@ class StorageManager::OpenArray {
   /**
    * Unlocks the mutexes.
    *
-   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
+   * @return Status.
    */
   Status mutex_unlock();
 };
