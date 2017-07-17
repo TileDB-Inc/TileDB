@@ -50,6 +50,7 @@ size_t BZip::compress_bound(size_t nbytes) {
 
 Status BZip::compress(
     size_t type_size,
+    int level,
     void* input_buffer,
     size_t input_buffer_size,
     void* output_buffer,
@@ -66,9 +67,9 @@ Status BZip::compress(
       &out_size,
       static_cast<char*>(input_buffer),
       in_size,
-      1,   // block size 100k
-      0,   // verbosity
-      0);  // work factor
+      level < 1 ? BZip::default_level() : level,  // block size 100k
+      0,                                          // verbosity
+      0);                                         // work factor
 
   if (rc != BZ_OK) {
     switch (rc) {

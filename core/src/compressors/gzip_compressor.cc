@@ -39,6 +39,7 @@ namespace tiledb {
 
 Status GZip::compress(
     size_t type_size,
+    int level,
     void* input_buffer,
     size_t input_buffer_size,
     void* output_buffer,
@@ -51,8 +52,7 @@ Status GZip::compress(
   strm.zalloc = Z_NULL;
   strm.zfree = Z_NULL;
   strm.opaque = Z_NULL;
-  ret = deflateInit(
-      &strm, Z_DEFAULT_COMPRESSION);  // TODO: this should be part of the schema
+  ret = deflateInit(&strm, level < 0 ? GZip::default_level() : level);
 
   if (ret != Z_OK) {
     (void)deflateEnd(&strm);

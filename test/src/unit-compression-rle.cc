@@ -58,20 +58,38 @@ TEST_CASE("Compression: Test RLE attribute compression") {
   // Test empty bufffer
   tiledb::Status st;
   st = tiledb::RLE::compress(
-      value_size, input, input_size, compressed, compressed_size, &output_size);
+      value_size,
+      -1,
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      &output_size);
   CHECK(st.ok());
   CHECK(output_size == 0);
 
   // Test input buffer invalid format
   input_size = 5;
   st = tiledb::RLE::compress(
-      value_size, input, input_size, compressed, compressed_size, &output_size);
+      value_size,
+      -1,
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      &output_size);
   CHECK(!st.ok());
 
   // Test output buffer overflow
   input_size = 16;
   st = tiledb::RLE::compress(
-      value_size, input, input_size, compressed, compressed_size, &output_size);
+      value_size,
+      -1,
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      &output_size);
   CHECK(!st.ok());
 
   // Test compress bound
@@ -85,7 +103,13 @@ TEST_CASE("Compression: Test RLE attribute compression") {
   input_size = 100 * value_size;
   compressed_size = tiledb::RLE::compress_bound(input_size, value_size);
   st = tiledb::RLE::compress(
-      value_size, input, input_size, compressed, compressed_size, &output_size);
+      value_size,
+      -1,
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      &output_size);
   CHECK(st.ok());
   CHECK(output_size == compressed_size);
   decompressed_size = input_size;
@@ -106,7 +130,13 @@ TEST_CASE("Compression: Test RLE attribute compression") {
   decompr_size = 0;
   input_size = 100 * value_size;
   st = tiledb::RLE::compress(
-      value_size, input, input_size, compressed, compressed_size, &output_size);
+      value_size,
+      -1,
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      &output_size);
   CHECK(st.ok());
   CHECK(output_size == run_size);
   decompressed_size = input_size;
@@ -131,7 +161,13 @@ TEST_CASE("Compression: Test RLE attribute compression") {
   input_size = 110 * value_size;
   compressed_size = tiledb::RLE::compress_bound(input_size, value_size);
   st = tiledb::RLE::compress(
-      value_size, input, input_size, compressed, compressed_size, &output_size);
+      value_size,
+      -1,
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      &output_size);
   CHECK(st.ok());
   CHECK(output_size == 21 * run_size);
   decompressed_size = input_size;
@@ -156,7 +192,13 @@ TEST_CASE("Compression: Test RLE attribute compression") {
   input_size = 70030 * value_size;
   compressed_size = tiledb::RLE::compress_bound(input_size, value_size);
   st = tiledb::RLE::compress(
-      value_size, input, input_size, compressed, compressed_size, &output_size);
+      value_size,
+      -1,
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      &output_size);
   CHECK(st.ok());
   CHECK(output_size == 32 * run_size);
   decompressed_size = input_size;
@@ -198,7 +240,13 @@ TEST_CASE("Compression: Test RLE attribute compression") {
   input_size = 110 * value_size;
   compressed_size = tiledb::RLE::compress_bound(input_size, value_size);
   st = tiledb::RLE::compress(
-      value_size, input, input_size, compressed, compressed_size, &output_size);
+      value_size,
+      -1,
+      input,
+      input_size,
+      compressed,
+      compressed_size,
+      &output_size);
   CHECK(st.ok());
   CHECK(output_size == 21 * run_size);
   decompressed_size = input_size;

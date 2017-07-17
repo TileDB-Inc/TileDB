@@ -356,51 +356,57 @@ Status WriteState::compress_tile(
     int attribute_id,
     unsigned char* tile,
     size_t tile_size,
-    size_t& tile_compressed_size) {
+    size_t* tile_compressed_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   Compressor compression = array_schema->compression(attribute_id);
+  int level = array_schema->compression_level(attribute_id);
 
   // Handle different compression
   switch (compression) {
     case Compressor::GZIP:
       return compress_tile_gzip(
-          attribute_id, tile, tile_size, tile_compressed_size);
+          attribute_id, tile, tile_size, level, tile_compressed_size);
     case Compressor::ZSTD:
       return compress_tile_zstd(
-          attribute_id, tile, tile_size, tile_compressed_size);
+          attribute_id, tile, tile_size, level, tile_compressed_size);
     case Compressor::LZ4:
       return compress_tile_lz4(
-          attribute_id, tile, tile_size, tile_compressed_size);
+          attribute_id, tile, tile_size, level, tile_compressed_size);
     case Compressor::BLOSC:
       return compress_tile_blosc(
-          attribute_id, tile, tile_size, tile_compressed_size, "blosclz");
+          attribute_id,
+          tile,
+          tile_size,
+          "blosclz",
+          level,
+          tile_compressed_size);
 #undef BLOSC_LZ4
     case Compressor::BLOSC_LZ4:
       return compress_tile_blosc(
-          attribute_id, tile, tile_size, tile_compressed_size, "lz4");
+          attribute_id, tile, tile_size, "lz4", level, tile_compressed_size);
 #undef BLOSC_LZ4HC
     case Compressor::BLOSC_LZ4HC:
       return compress_tile_blosc(
-          attribute_id, tile, tile_size, tile_compressed_size, "lz4hc");
+          attribute_id, tile, tile_size, "lz4hc", level, tile_compressed_size);
 #undef BLOSC_SNAPPY
     case Compressor::BLOSC_SNAPPY:
       return compress_tile_blosc(
-          attribute_id, tile, tile_size, tile_compressed_size, "snappy");
+          attribute_id, tile, tile_size, "snappy", level, tile_compressed_size);
 #undef BLOSC_ZLIB
     case Compressor::BLOSC_ZLIB:
       return compress_tile_blosc(
-          attribute_id, tile, tile_size, tile_compressed_size, "zlib");
+          attribute_id, tile, tile_size, "zlib", level, tile_compressed_size);
 #undef BLOSC_ZSTD
     case Compressor::BLOSC_ZSTD:
       return compress_tile_blosc(
-          attribute_id, tile, tile_size, tile_compressed_size, "zstd");
+          attribute_id, tile, tile_size, "zstd", level, tile_compressed_size);
     case Compressor::RLE:
       return compress_tile_rle(
-          attribute_id, tile, tile_size, tile_compressed_size);
+          attribute_id, tile, tile_size, level, tile_compressed_size);
     case Compressor::BZIP2:
       return compress_tile_bzip2(
-          attribute_id, tile, tile_size, tile_compressed_size);
+          attribute_id, tile, tile_size, level, tile_compressed_size);
     case Compressor::NO_COMPRESSION:
       return Status::Ok();
   }
@@ -410,7 +416,8 @@ Status WriteState::compress_tile_gzip(
     int attribute_id,
     unsigned char* tile,
     size_t tile_size,
-    size_t& tile_compressed_size) {
+    int level,
+    size_t* tile_compressed_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
@@ -445,11 +452,12 @@ Status WriteState::compress_tile_gzip(
   // Compress tile
   RETURN_NOT_OK(GZip::compress(
       array_schema->type_size(attribute_id),
+      level,
       tile,
       tile_size,
       tile_compressed,
       tile_compressed_allocated_size_,
-      &tile_compressed_size));
+      tile_compressed_size));
 
   return Status::Ok();
 }
@@ -458,7 +466,8 @@ Status WriteState::compress_tile_zstd(
     int attribute_id,
     unsigned char* tile,
     size_t tile_size,
-    size_t& tile_compressed_size) {
+    int level,
+    size_t* tile_compressed_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
@@ -486,11 +495,12 @@ Status WriteState::compress_tile_zstd(
   // TODO: don't pass by reference arguments that are modified
   RETURN_NOT_OK(ZStd::compress(
       array_schema->type_size(attribute_id),
+      level,
       tile,
       tile_size,
       tile_compressed_,
       tile_compressed_allocated_size_,
-      &tile_compressed_size))
+      tile_compressed_size))
 
   return Status::Ok();
 }
@@ -499,7 +509,8 @@ Status WriteState::compress_tile_lz4(
     int attribute_id,
     unsigned char* tile,
     size_t tile_size,
-    size_t& tile_compressed_size) {
+    int level,
+    size_t* tile_compressed_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
@@ -527,11 +538,12 @@ Status WriteState::compress_tile_lz4(
   // Compress tile
   RETURN_NOT_OK(LZ4::compress(
       array_schema->type_size(attribute_id),
+      level,
       tile,
       tile_size,
       tile_compressed_,
       tile_compressed_allocated_size_,
-      &tile_compressed_size));
+      tile_compressed_size));
 
   // Success
   return Status::Ok();
@@ -541,8 +553,9 @@ Status WriteState::compress_tile_blosc(
     int attribute_id,
     unsigned char* tile,
     size_t tile_size,
-    size_t& tile_compressed_size,
-    const char* compressor) {
+    const char* compressor,
+    int level,
+    size_t* tile_compressed_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
@@ -570,11 +583,12 @@ Status WriteState::compress_tile_blosc(
   RETURN_NOT_OK(Blosc::compress(
       compressor,
       array_schema->type_size(attribute_id),
+      level,
       tile,
       tile_size,
       tile_compressed_,
       tile_compressed_allocated_size_,
-      &tile_compressed_size));
+      tile_compressed_size));
   return Status::Ok();
 }
 
@@ -582,7 +596,8 @@ Status WriteState::compress_tile_bzip2(
     int attribute_id,
     unsigned char* tile,
     size_t tile_size,
-    size_t& tile_compressed_size) {
+    int level,
+    size_t* tile_compressed_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
@@ -610,11 +625,12 @@ Status WriteState::compress_tile_bzip2(
   // Compress tile
   RETURN_NOT_OK(BZip::compress(
       array_schema->type_size(attribute_id),
+      level,
       tile,
       tile_size,
       tile_compressed_,
       tile_compressed_allocated_size_,
-      &tile_compressed_size));
+      tile_compressed_size));
 
   // Success
   return Status::Ok();
@@ -624,7 +640,8 @@ Status WriteState::compress_tile_rle(
     int attribute_id,
     unsigned char* tile,
     size_t tile_size,
-    size_t& tile_compressed_size) {
+    int level,
+    size_t* tile_compressed_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
@@ -659,6 +676,7 @@ Status WriteState::compress_tile_rle(
   if (!is_coords) {
     RETURN_NOT_OK(RLE::compress(
         value_size,
+        level,
         tile,
         tile_size,
         static_cast<unsigned char*>(tile_compressed_),
@@ -693,9 +711,9 @@ Status WriteState::compress_tile_rle(
   // Set actual output size
   // TODO: this can overflow for 32 bit, no checking
   if (!is_coords)
-    tile_compressed_size = rle_size;
+    *tile_compressed_size = rle_size;
   else
-    tile_compressed_size = static_cast<size_t>(rle_coords_size);
+    *tile_compressed_size = static_cast<size_t>(rle_coords_size);
 
   // Success
   return Status::Ok();
@@ -714,7 +732,7 @@ Status WriteState::compress_and_write_tile(int attribute_id) {
   // Compress tile
   size_t tile_compressed_size;
   RETURN_NOT_OK(
-      compress_tile(attribute_id, tile, tile_size, tile_compressed_size));
+      compress_tile(attribute_id, tile, tile_size, &tile_compressed_size));
 
   // Get the attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
@@ -770,7 +788,7 @@ Status WriteState::compress_and_write_tile_var(int attribute_id) {
   // Compress tile
   size_t tile_compressed_size;
   RETURN_NOT_OK(
-      compress_tile(attribute_id, tile, tile_size, tile_compressed_size));
+      compress_tile(attribute_id, tile, tile_size, &tile_compressed_size));
 
   // Get the attribute file name
   std::string filename = fragment_->fragment_name() + "/" +

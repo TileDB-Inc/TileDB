@@ -46,12 +46,14 @@ size_t LZ4::compress_bound(size_t nbytes) {
 
 Status LZ4::compress(
     size_t type_size,
+    int level,
     void* input_buffer,
     size_t input_buffer_size,
     void* output_buffer,
     size_t output_buffer_size,
     size_t* compressed_size) {
   *compressed_size = 0;
+  // TODO: level is ignored using the simple api interface
   // TODO: these parameters are int and can overflow with size_t, need to check
   // input. need something better than an assertion here
   assert(input_buffer_size <= std::numeric_limits<int>::max());
