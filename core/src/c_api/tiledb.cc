@@ -1977,8 +1977,7 @@ int tiledb_ls(
   // TODO: sanity checks here
 
   if (save_error(
-          ctx,
-          ctx->storage_manager_->ls(parent_dir, dirs, dir_types, *dir_num)))
+          ctx, ctx->storage_manager_->ls(parent_dir, dirs, dir_types, dir_num)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1987,7 +1986,7 @@ int tiledb_ls(
 int tiledb_ls_c(tiledb_ctx_t* ctx, const char* parent_dir, int* dir_num) {
   // TODO: sanity checks here
 
-  if (save_error(ctx, ctx->storage_manager_->ls_c(parent_dir, *dir_num)))
+  if (save_error(ctx, ctx->storage_manager_->ls_c(parent_dir, dir_num)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

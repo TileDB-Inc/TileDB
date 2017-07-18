@@ -370,38 +370,36 @@ class StorageManager {
   int dir_type(const char* dir);
 
   /**
-   * Lists all the TileDB objects in a directory, copying them into the input
+   * Lists all the TileDB objects in a path, copying them into the input
    * buffers.
    *
-   * @param parent_dir The parent directory of the TileDB objects to be listed.
-   * @param dirs An array of strings that will store the listed TileDB objects.
-   *     Note that the user is responsible for allocating the appropriate memory
-   *     space for this array of strings. A good idea for each string length is
-   *     to set is to TILEDB_NAME_MAX_LEN.
-   * @param dir_types The types of the corresponding TileDB objects, which can
-   *     be the following (they are self-explanatory):
-   *    - TILEDB_GROUP
-   *    - TILEDB_ARRAY
-   *    - TILEDB_METADATA
-   * @param dir_num The number of elements allocated by the user for *dirs*.
-   *     After the function terminates, this will hold the actual number of
-   *     TileDB objects that were stored in *dirs*.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   * @param parent_path The parent path of the TileDB objects to be listed.
+   * @param object_paths An array of strings that will store the listed TileDB
+   * objects. Note that the user is responsible for allocating the appropriate
+   * memory space for this array of strings. A good idea for each string
+   * length is to set is to TILEDB_NAME_MAX_LEN.
+   * @param object_types The types of the corresponding TileDB objects, which
+   * can be the following (they are self-explanatory): - TILEDB_GROUP -
+   * TILEDB_ARRAY - TILEDB_METADATA
+   * @param object_num The number of elements allocated by the user for
+   * *object_paths*. After the function terminates, this will hold the actual
+   * number of TileDB objects that were stored in *object_paths*.
+   * @return Status
    */
   Status ls(
       const char* parent_dir,
-      char** dirs,
-      tiledb_object_t* dir_types,
-      int& dir_num) const;
+      char** object_paths,
+      tiledb_object_t* object_types,
+      int* num_objects) const;
 
   /**
-   * Counts the TileDB objects in a directory.
+   * Counts the TileDB objects in path
    *
-   * @param parent_dir The parent directory of the TileDB objects to be listed.
-   * @param dir_num The number of TileDB objects to be returned.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   * @param parent_path The parent path of the TileDB objects to be listed.
+   * @param object_num The number of TileDB objects to be returned.
+   * @return Status
    */
-  Status ls_c(const char* parent_dir, int& dir_num) const;
+  Status ls_c(const char* parent_path, int* object_num) const;
 
   /**
    * Clears a TileDB directory. The corresponding TileDB object
@@ -437,9 +435,6 @@ class StorageManager {
 
   /** The TileDB configuration parameters. */
   Configurator* config_;
-
-  /** The logger for this storage manager.*/
-  Logger* logger_;
 
 /** OpneMP mutex for creating/deleting an OpenArray object. */
 #ifdef HAVE_OPENMP
@@ -562,19 +557,18 @@ class StorageManager {
    * @param dir The array or metadata directory the filelock is created for.
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
-  Status consolidation_filelock_create(const std::string& dir) const;
+  Status consolidation_lock_create(const std::string& dir) const;
 
   /**
    * Locks the consolidation file lock.
    *
    * @param array_name The name of the array the lock is applied on.
    * @param fd The file descriptor of the filelock.
-   * @param lock_type The lock type, which can be either TILEDB_SM_SHARED_LOCK
-   *     or TILEDB_SM_EXCLUSIVE_LOCK.
+   * @param shared The lock type true is shared or false if exclusive
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
-  Status consolidation_filelock_lock(
-      const std::string& array_name, int& fd, int lock_type) const;
+  Status consolidation_lock(
+      const std::string& array_name, int* fd, bool shared) const;
 
   /**
    * Unlocks the consolidation file lock.
@@ -582,7 +576,7 @@ class StorageManager {
    * @param fd The file descriptor of the filelock.
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
-  Status consolidation_filelock_unlock(int fd) const;
+  Status consolidation_unlock(int fd) const;
 
   /**
    * Finalizes the consolidation process, applying carefully the locks so that
@@ -598,14 +592,6 @@ class StorageManager {
   Status consolidation_finalize(
       Fragment* new_fragment,
       const std::vector<std::string>& old_fragment_names);
-
-  /**
-   * Creates a special group file inside the group directory.
-   *
-   * @param dir The group directory.
-   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
-   */
-  Status create_group_file(const std::string& dir) const;
 
   /**
    * Clears a TileDB group. The group will still exist after the execution of

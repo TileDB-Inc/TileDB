@@ -46,6 +46,49 @@ namespace tiledb {
 namespace filesystem {
 
 /**
+ * Create a process lockfile
+ *
+ * @param  path filepath to where to create lockfile
+ * @return Status
+ */
+Status filelock_create(const std::string& path);
+
+/**
+ * Lock a given filename and return open file descriptor handle
+ *
+ * @param filename the lockfile to lock
+ * @param fd a pointer to a file descriptor
+ * @param shared true if a shared filelock, false if exclusive
+ * @return Status
+ */
+Status filelock_lock(const std::string& filename, int* fd, bool shared);
+
+/**
+ * Unlock an opened file descriptor
+ *
+ * @param fd the open file descriptor to unlock
+ * @return Status
+ */
+Status filelock_unlock(int fd);
+
+/**
+ * Move a given filesystem path
+ *
+ * @param old_path the current path
+ * @param new_path the new path
+ * @return Status
+ */
+Status move(const std::string& old_path, const std::string& new_path);
+
+/**
+ *
+ *
+ * @param path  The parent path to list sub-paths
+ * @param paths Pointer to a vector of strings to store absolute paths
+ * @return
+ */
+Status ls(const std::string& path, std::vector<std::string>* paths);
+/**
  * Creates a new directory.
  *
  * @param dir The name of the directory to be created.
@@ -126,6 +169,17 @@ void purge_dots_from_path(std::string& path);
 Status read_from_file(
     const std::string& path, off_t offset, void* buffer, size_t length);
 
+/**
+ * Read contents of a file into a (growable) byte buffer.
+ *
+ * @param path  The name of a file.
+ * @param buffer A pointer to the allocated buffer
+ * @param buffer_size The number of bytes allocated to hold the buffer
+ * @return Status
+ */
+Status read_from_file(
+    const std::string& path, char* buffer, size_t* buffer_size);
+
 // TODO: this should go away
 /** Returns the names of the fragments inside the input directory. */
 std::vector<std::string> get_fragment_dirs(const std::string& dir);
@@ -134,10 +188,19 @@ std::vector<std::string> get_fragment_dirs(const std::string& dir);
  * Creates a special file to indicate that the input directory is a
  * TileDB fragment.
  *
- * @param dir The name of the fragment directory where the file is created.
+ * @param dir The path of the fragment directory where the file is created.
  * @return Status
  */
 Status create_fragment_file(const std::string& dir);
+
+// TODO: this should go away
+/**
+ * Create a special file to indicate that the input directory is a TileDB group.
+ *
+ * @param dir The path of the group directory where the file is created
+ * @return Status
+ */
+Status create_group_file(const std::string& dir);
 
 /**
  * Reads data from a file into a buffer, using memory map (mmap).

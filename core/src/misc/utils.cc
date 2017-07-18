@@ -549,7 +549,6 @@ bool is_group(const std::string& dir) {
   else
     return false;
 }
-
 bool is_metadata(const std::string& dir) {
   // Check existence
   if (filesystem::is_dir(dir) &&
@@ -557,6 +556,24 @@ bool is_metadata(const std::string& dir) {
     return true;
   else
     return false;
+}
+
+inline bool ends_with(std::string const& value, std::string const& ending) {
+  if (ending.size() > value.size())
+    return false;
+  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
+bool is_array_schema(const std::string& path) {
+  return ends_with(path, Configurator::array_schema_filename());
+}
+
+bool is_metadata_schema(const std::string& path) {
+  return ends_with(path, Configurator::metadata_schema_filename());
+}
+
+bool is_consolidation_lock(const std::string& path) {
+  return ends_with(path, Configurator::consolidation_filelock_name());
 }
 
 bool is_positive_integer(const char* s) {
