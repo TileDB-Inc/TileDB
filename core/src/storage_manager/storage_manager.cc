@@ -31,14 +31,12 @@
  * This file implements the StorageManager class.
  */
 
-#include "storage_manager.h"
-#include <dirent.h>
-#include <fcntl.h>
-#include <sys/stat.h>
 #include <cassert>
+
 #include "array.h"
 #include "basic_array_schema.h"
 #include "filesystem.h"
+#include "storage_manager.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -121,12 +119,8 @@ void StorageManager::set_config(Configurator* config) {
 Status StorageManager::group_create(const std::string& group) const {
   // Create group directory
   RETURN_NOT_OK(filesystem::create_dir(group));
-
   // Create group file
-  if (!create_group_file(group).ok())
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot create group file for group:  ").append(group)));
-
+  RETURN_NOT_OK(filesystem::create_group_file(group));
   return Status::Ok();
 }
 
@@ -196,7 +190,7 @@ Status StorageManager::array_create(ArraySchema* array_schema) const {
   RETURN_NOT_OK(array_schema->store(dir));
 
   // Create consolidation filelock
-  RETURN_NOT_OK(consolidation_filelock_create(dir));
+  RETURN_NOT_OK(consolidation_lock_create(dir));
 
   // Success
   return Status::Ok();
@@ -495,7 +489,7 @@ Status StorageManager::metadata_create(MetadataSchema* metadata_schema) const {
   RETURN_NOT_OK(metadata_schema->store(dir));
 
   // Create consolidation filelock
-  RETURN_NOT_OK(consolidation_filelock_create(dir));
+  RETURN_NOT_OK(consolidation_lock_create(dir));
 
   // Success
   return Status::Ok();
@@ -504,57 +498,32 @@ Status StorageManager::metadata_create(MetadataSchema* metadata_schema) const {
 Status StorageManager::metadata_load_schema(
     const char* metadata_dir, ArraySchema*& array_schema) const {
   // Get real array path
-  std::string real_metadata_dir = filesystem::real_dir(metadata_dir);
+  std::string metadata_abspath = filesystem::real_dir(metadata_dir);
 
   // Check if metadata exists
-  if (!utils::is_metadata(real_metadata_dir)) {
+  if (!utils::is_metadata(metadata_abspath)) {
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Cannot load metadata schema; Metadata '") +
-        real_metadata_dir + "' does not exist"));
+        metadata_abspath + "' does not exist"));
   }
-
-  // Open array schema file
   auto filename =
-      real_metadata_dir + "/" + Configurator::metadata_schema_filename();
-  int fd = ::open(filename.c_str(), O_RDONLY);
-  if (fd == -1) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot load metadata schema; File opening error")));
-  }
+      metadata_abspath + "/" + Configurator::metadata_schema_filename();
 
-  // Initialize buffer
-  struct stat _stat;
-  fstat(fd, &_stat);
-  ssize_t buffer_size = _stat.st_size;
-  if (buffer_size == 0) {
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot load metadata schema; Empty metadata schema file"));
-  }
-  void* buffer = malloc(buffer_size);
-
-  // Load array schema
-  ssize_t bytes_read = ::read(fd, buffer, buffer_size);
-  if (bytes_read != buffer_size) {
-    free(buffer);
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot load metadata schema; File reading error"));
-  }
+  char* buffer = nullptr;
+  size_t buffer_size = 0;
+  RETURN_NOT_OK(filesystem::read_from_file(filename, buffer, &buffer_size));
 
   // Initialize array schema
   array_schema = new ArraySchema();
   Status st = array_schema->deserialize(buffer, buffer_size);
-  // Clean up
-  free(buffer);
+
+  // cleanup
+  delete buffer;
   if (!st.ok()) {
     delete array_schema;
-    return st;
   }
-  if (::close(fd)) {
-    delete array_schema;
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot load metadata schema; File closing error"));
-  }
-  return Status::Ok();
+
+  return st;
 }
 
 Status StorageManager::metadata_init(
@@ -674,101 +643,61 @@ Status StorageManager::metadata_iterator_finalize(
 /* ****************************** */
 
 Status StorageManager::ls(
-    const char* parent_dir,
-    char** dirs,
-    tiledb_object_t* dir_types,
-    int& dir_num) const {
-  // Get real parent directory
-  std::string parent_dir_real = filesystem::real_dir(parent_dir);
+    const char* parent_path,
+    char** object_paths,
+    tiledb_object_t* object_types,
+    int* object_num) const {
+  // Initialize object counter
+  int obj_idx = 0;
 
-  // Initialize directory counter
-  int dir_i = 0;
+  std::vector<std::string> paths;
+  RETURN_NOT_OK(filesystem::ls(parent_path, &paths));
 
-  // List all groups and arrays inside the parent directory
-  std::string filename;
-  struct dirent* next_file;
-  DIR* dir = opendir(parent_dir_real.c_str());
-
-  if (dir == nullptr) {
-    dir_num = 0;
-    return Status::Ok();
-  }
-
-  while ((next_file = readdir(dir))) {
-    if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, ".."))
-      continue;
-    filename = parent_dir_real + "/" + next_file->d_name;
-    if (utils::is_group(filename)) {  // Group
-      if (dir_i == dir_num) {
+  for (auto& path : paths) {
+    if (utils::is_group(path)) {  // Group
+      if (obj_idx == *object_num) {
         return LOG_STATUS(Status::StorageManagerError(
-            "Cannot list TileDB directory; Directory buffer overflow"));
+            "Cannot list TileDB path; object buffer overflow"));
       }
-      strcpy(dirs[dir_i], next_file->d_name);
-      dir_types[dir_i] = TILEDB_GROUP;
-      ++dir_i;
-    } else if (utils::is_metadata(filename)) {  // Metadata
-      if (dir_i == dir_num) {
+      strcpy(object_paths[obj_idx], path.c_str());
+      object_types[obj_idx] = TILEDB_GROUP;
+      ++obj_idx;
+    } else if (utils::is_metadata(path)) {  // Metadata
+      if (obj_idx == *object_num) {
         return LOG_STATUS(Status::StorageManagerError(
-            "Cannot list TileDB directory; Directory buffer overflow"));
+            "Cannot list TileDB path; object buffer overflow"));
       }
-      strcpy(dirs[dir_i], next_file->d_name);
-      dir_types[dir_i] = TILEDB_METADATA;
-      ++dir_i;
-    } else if (utils::is_array(filename)) {  // Array
-      if (dir_i == dir_num) {
+      strcpy(object_paths[obj_idx], path.c_str());
+      object_types[obj_idx] = TILEDB_METADATA;
+      ++obj_idx;
+    } else if (utils::is_array(path)) {  // Array
+      if (obj_idx == *object_num) {
         return LOG_STATUS(Status::StorageManagerError(
-            "Cannot list TileDB directory; Directory buffer overflow"));
+            "Cannot list TileDB path; object buffer overflow"));
       }
-      strcpy(dirs[dir_i], next_file->d_name);
-      dir_types[dir_i] = TILEDB_ARRAY;
-      ++dir_i;
+      strcpy(object_paths[obj_idx], path.c_str());
+      object_types[obj_idx] = TILEDB_ARRAY;
+      ++obj_idx;
     }
   }
+  // Set the number of objects
+  *object_num = obj_idx;
 
-  // Close parent directory
-  if (closedir(dir)) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot close parent directory; ") + strerror(errno)));
-  }
-
-  // Set the number of directories
-  dir_num = dir_i;
-
-  // Success
   return Status::Ok();
 }
 
-Status StorageManager::ls_c(const char* parent_dir, int& dir_num) const {
-  // Get real parent directory
-  std::string parent_dir_real = filesystem::real_dir(parent_dir);
-
+Status StorageManager::ls_c(const char* parent_path, int* object_num) const {
   // Initialize directory number
-  dir_num = 0;
+  object_num = 0;
 
-  // List all groups and arrays inside the parent directory
-  std::string filename;
-  struct dirent* next_file;
-  DIR* dir = opendir(parent_dir_real.c_str());
+  std::vector<std::string> paths;
+  RETURN_NOT_OK(filesystem::ls(parent_path, &paths));
 
-  if (dir == nullptr) {
-    dir_num = 0;
-    return Status::Ok();
-  }
-
-  while ((next_file = readdir(dir))) {
-    if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, ".."))
-      continue;
-    filename = parent_dir_real + "/" + next_file->d_name;
-    if (utils::is_group(filename) || utils::is_metadata(filename) ||
-        utils::is_array(filename))
-      ++dir_num;
-  }
-
-  // Close parent directory
-  if (closedir(dir)) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot close parent directory; ") + strerror(errno)));
-  }
+  *object_num =
+      std::count_if(paths.begin(), paths.end(), [](std::string& path) {
+        return utils::is_group(path) || utils::is_metadata(path) ||
+               utils::is_array(path);
+      });
   return Status::Ok();
 }
 
@@ -818,45 +747,28 @@ Status StorageManager::move(
 
 Status StorageManager::array_clear(const std::string& array) const {
   // Get real array directory name
-  std::string array_real = filesystem::real_dir(array);
+  std::string array_abspath = filesystem::real_dir(array);
 
   // Check if the array exists
-  if (!utils::is_array(array_real)) {
+  if (!utils::is_array(array_abspath)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Array '") + array_real + "' does not exist"));
+        std::string("Array '") + array_abspath + "' does not exist"));
   }
 
   // Delete the entire array directory except for the array schema file
-  std::string filename;
-  struct dirent* next_file;
-  DIR* dir = opendir(array_real.c_str());
-
-  if (dir == nullptr) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot open array directory; ") + strerror(errno)));
-  }
-
-  while ((next_file = readdir(dir))) {
-    if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, "..") ||
-        !strcmp(next_file->d_name, Configurator::array_schema_filename()) ||
-        !strcmp(next_file->d_name, Configurator::consolidation_filelock_name()))
+  std::vector<std::string> paths;
+  RETURN_NOT_OK(filesystem::ls(array_abspath, &paths));
+  for (auto& path : paths) {
+    if (utils::is_array_schema(path) || utils::is_consolidation_lock(path))
       continue;
-    filename = array_real + "/" + next_file->d_name;
-    if (utils::is_metadata(filename)) {  // Metadata
-      metadata_delete(filename);
-    } else if (utils::is_fragment(filename)) {  // Fragment
-      RETURN_NOT_OK(filesystem::delete_dir(filename));
+    if (utils::is_metadata(path)) {  // Metadata
+      RETURN_NOT_OK(metadata_delete(path));
+    } else if (utils::is_fragment(path)) {  // Fragment
+      RETURN_NOT_OK(filesystem::delete_dir(path));
     } else {  // Non TileDB related
       return LOG_STATUS(Status::StorageManagerError(
-          std::string("Cannot delete non TileDB related element '") + filename +
-          "'"));
+          std::string("Cannot delete non TileDB related path '") + path + "'"));
     }
-  }
-
-  // Close array directory
-  if (closedir(dir)) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot close the array directory; ") + strerror(errno)));
   }
   return Status::Ok();
 }
@@ -895,8 +807,7 @@ Status StorageManager::array_close(const std::string& array) {
     st_mtx_destroy = it->second->mutex_destroy();
 
     // Unlock consolidation filelock
-    st_filelock =
-        consolidation_filelock_unlock(it->second->consolidation_filelock_);
+    st_filelock = consolidation_unlock(it->second->consolidation_filelock_);
 
     // Delete array schema
     if (it->second->array_schema_ != nullptr)
@@ -971,14 +882,11 @@ Status StorageManager::array_move(
   // Make sure that the new array is not an existing directory
   if (filesystem::is_dir(new_array_real)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Directory '") + new_array_real + "' already exists"));
+        std::string("Array '") + new_array_real + "' already exists"));
   }
 
   // Rename array
-  if (rename(old_array_real.c_str(), new_array_real.c_str())) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot move array; ") + strerror(errno)));
-  }
+  RETURN_NOT_OK(filesystem::move(old_array_real, new_array_real));
 
   // Incorporate new name in the array schema
   ArraySchema* array_schema = new ArraySchema();
@@ -1007,8 +915,8 @@ Status StorageManager::array_open(
   if (open_array->fragment_names_.size() == 0) {
     // Acquire shared lock on consolidation filelock
     RETURN_NOT_OK_ELSE(
-        consolidation_filelock_lock(
-            array_name, open_array->consolidation_filelock_, SHARED_LOCK),
+        consolidation_lock(
+            array_name, &(open_array->consolidation_filelock_), true),
         open_array->mutex_unlock());
 
     // Get the fragment names
@@ -1042,72 +950,24 @@ Status StorageManager::array_open(
   return Status::Ok();
 }
 
-Status StorageManager::consolidation_filelock_create(
-    const std::string& dir) const {
+Status StorageManager::consolidation_lock_create(const std::string& dir) const {
   // Create file
   std::string filename =
       dir + "/" + Configurator::consolidation_filelock_name();
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-
-  // Handle error
-  if (fd == -1) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot create consolidation filelock; ") +
-        strerror(errno)));
-  }
-
-  // Close the file
-  if (::close(fd)) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot close consolidation filelock; ") +
-        strerror(errno)));
-  }
-  return Status::Ok();
+  return filesystem::filelock_create(filename);
 }
 
-Status StorageManager::consolidation_filelock_lock(
-    const std::string& array_name, int& fd, int lock_type) const {
-  // Prepare the flock struct
-  struct flock fl;
-  if (lock_type == SHARED_LOCK) {
-    fl.l_type = F_RDLCK;
-  } else if (lock_type == EXCLUSIVE_LOCK) {
-    fl.l_type = F_WRLCK;
-  } else {
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot lock consolidation filelock; Invalid lock type"));
-  }
-  fl.l_whence = SEEK_SET;
-  fl.l_start = 0;
-  fl.l_len = 0;
-  fl.l_pid = getpid();
-
+Status StorageManager::consolidation_lock(
+    const std::string& array_name, int* fd, bool shared) const {
   // Prepare the filelock name
   std::string array_name_real = filesystem::real_dir(array_name);
   std::string filename =
       array_name_real + "/" + Configurator::consolidation_filelock_name();
-
-  // Open the file
-  fd = ::open(filename.c_str(), O_RDWR);
-  if (fd == -1) {
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot lock consolidation filelock; Cannot open filelock"));
-  }
-
-  // Acquire the lock
-  if (fcntl(fd, F_SETLKW, &fl) == -1) {
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot lock consolidation filelock; Cannot lock"));
-  }
-  return Status::Ok();
+  return filesystem::filelock_lock(filename, fd, shared);
 }
 
-Status StorageManager::consolidation_filelock_unlock(int fd) const {
-  if (::close(fd) == -1) {
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot unlock consolidation filelock; Cannot close filelock"));
-  }
-  return Status::Ok();
+Status StorageManager::consolidation_unlock(int fd) const {
+  return filesystem::filelock_unlock(fd);
 }
 
 Status StorageManager::consolidation_finalize(
@@ -1120,8 +980,8 @@ Status StorageManager::consolidation_finalize(
   // Acquire exclusive lock on consolidation filelock
   int fd;
   Status st;
-  st = consolidation_filelock_lock(
-      new_fragment->array()->array_schema()->array_name(), fd, EXCLUSIVE_LOCK);
+  st = consolidation_lock(
+      new_fragment->array()->array_schema()->array_name(), &fd, false);
   if (!st.ok()) {
     delete new_fragment;
     return st;
@@ -1149,7 +1009,7 @@ Status StorageManager::consolidation_finalize(
   }
 
   // Unlock consolidation filelock
-  RETURN_NOT_OK(consolidation_filelock_unlock(fd));
+  RETURN_NOT_OK(consolidation_unlock(fd));
 
   // Delete old fragments
   for (int i = 0; i < fragment_num; ++i) {
@@ -1158,60 +1018,30 @@ Status StorageManager::consolidation_finalize(
   return Status::Ok();
 }
 
-Status StorageManager::create_group_file(const std::string& group) const {
-  // Create file
-  std::string filename = group + "/" + Configurator::group_filename();
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  if (fd == -1 || ::close(fd)) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Failed to create group file; ") + strerror(errno)));
-  }
-  return Status::Ok();
-}
-
 Status StorageManager::group_clear(const std::string& group) const {
   // Get real group path
-  std::string group_real = filesystem::real_dir(group);
+  std::string group_abspath = filesystem::real_dir(group);
 
   // Check if group exists
-  if (!utils::is_group(group_real)) {
+  if (!utils::is_group(group_abspath)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Group '") + group_real + "' does not exist"));
+        std::string("Group '") + group_abspath + "' does not exist"));
   }
-
   // Delete all groups, arrays and metadata inside the group directory
-  std::string filename;
-  struct dirent* next_file;
-  DIR* dir = opendir(group_real.c_str());
-
-  if (dir == nullptr) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot open group directory '") + group_real + "'; " +
-        strerror(errno)));
-  }
-
-  while ((next_file = readdir(dir))) {
-    if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, "..") ||
-        !strcmp(next_file->d_name, Configurator::group_filename()))
-      continue;
-    filename = group_real + "/" + next_file->d_name;
-    if (utils::is_group(filename)) {  // Group
-      RETURN_NOT_OK(group_delete(filename))
-    } else if (utils::is_metadata(filename)) {  // Metadata
-      RETURN_NOT_OK(metadata_delete(filename));
-    } else if (utils::is_array(filename)) {  // Array
-      RETURN_NOT_OK(array_delete(filename))
+  std::vector<std::string> paths;
+  RETURN_NOT_OK(filesystem::ls(group_abspath, &paths));
+  for (auto& path : paths) {
+    if (utils::is_group(path)) {  // Group
+      RETURN_NOT_OK(group_delete(path))
+    } else if (utils::is_metadata(path)) {  // Metadata
+      RETURN_NOT_OK(metadata_delete(path));
+    } else if (utils::is_array(path)) {  // Array
+      RETURN_NOT_OK(array_delete(path))
     } else {  // Non TileDB related
       return LOG_STATUS(Status::StorageManagerError(
-          std::string("Cannot delete non TileDB related element '") + filename +
+          std::string("Cannot delete non TileDB related element '") + path +
           "'"));
     }
-  }
-
-  // Close group directory
-  if (closedir(dir)) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot close the group directory; ") + strerror(errno)));
   }
   return Status::Ok();
 }
@@ -1241,57 +1071,35 @@ Status StorageManager::group_move(
   // Make sure that the new group is not an existing directory
   if (filesystem::is_dir(new_group_real)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Directory '") + new_group_real + "' already exists"));
+        std::string("Group '") + new_group_real + "' already exists"));
   }
 
-  // Rename
-  if (rename(old_group_real.c_str(), new_group_real.c_str())) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot move group; ") + strerror(errno)));
-  }
-  return Status::Ok();
+  return filesystem::move(old_group_real, new_group_real);
 }
 
 Status StorageManager::metadata_clear(const std::string& metadata) const {
   // Get real metadata directory name
-  std::string metadata_real = filesystem::real_dir(metadata);
+  std::string metadata_abspath = filesystem::real_dir(metadata);
 
   // Check if the metadata exists
-  if (!utils::is_metadata(metadata_real)) {
+  if (!utils::is_metadata(metadata_abspath)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Metadata '") + metadata_real + "' do not exist"));
+        std::string("Metadata '") + metadata_abspath + "' do not exist"));
   }
 
   // Delete the entire metadata directory except for the array schema file
-  std::string filename;
-  struct dirent* next_file;
-  DIR* dir = opendir(metadata_real.c_str());
-
-  if (dir == nullptr) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot open metadata directory; ") + strerror(errno)));
-  }
-
-  while ((next_file = readdir(dir))) {
-    if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, "..") ||
-        !strcmp(next_file->d_name, Configurator::metadata_schema_filename()) ||
-        !strcmp(next_file->d_name, Configurator::consolidation_filelock_name()))
+  std::vector<std::string> paths;
+  RETURN_NOT_OK(filesystem::ls(metadata_abspath, &paths));
+  for (auto& path : paths) {
+    if (utils::is_metadata_schema(path) || utils::is_consolidation_lock(path))
       continue;
-    filename = metadata_real + "/" + next_file->d_name;
-    if (utils::is_fragment(filename)) {  // Fragment
-      RETURN_NOT_OK(filesystem::delete_dir(filename));
-    } else {  // Non TileDB related
+    if (utils::is_fragment(path)) {
+      RETURN_NOT_OK(filesystem::delete_dir(path));
+    } else {
       return LOG_STATUS(Status::StorageManagerError(
-          std::string("Cannot delete non TileDB related element '") + filename +
+          std::string("Cannot delete non TileDB related element '") + path +
           "'"));
     }
-  }
-
-  // Close metadata directory
-  if (closedir(dir)) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot close the metadata directory; ") +
-        strerror(errno)));
   }
   return Status::Ok();
 }
@@ -1323,14 +1131,11 @@ Status StorageManager::metadata_move(
   // Make sure that the new metadata is not an existing directory
   if (filesystem::is_dir(new_metadata_real)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Directory '") + new_metadata_real + "' already exists"));
+        std::string("Metadata'") + new_metadata_real + "' already exists"));
   }
 
   // Rename metadata
-  if (rename(old_metadata_real.c_str(), new_metadata_real.c_str())) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Cannot move metadata; ") + strerror(errno)));
-  }
+  RETURN_NOT_OK(filesystem::move(old_metadata_real, new_metadata_real));
 
   // Incorporate new name in the array schema
   ArraySchema* array_schema = new ArraySchema();

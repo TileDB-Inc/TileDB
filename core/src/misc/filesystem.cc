@@ -36,11 +36,10 @@
 #include "utils.h"
 
 #include <dirent.h>
-#include <fcntl.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <zlib.h>
+#include <fstream>
+#include <iostream>
 
 namespace tiledb {
 
@@ -216,6 +215,85 @@ void purge_dots_from_path(std::string& path) {
     path += ((i != 0) ? "/" : "") + final_tokens[i];
 }
 
+Status filelock_create(const std::string& filename) {
+  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+  // Handle error
+  if (fd == -1) {
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot create consolidation filelock '") + filename +
+        "' " + strerror(errno)));
+  }
+  // Close the file
+  if (::close(fd)) {
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot close consolidation filelock '") + filename +
+        "'; " + strerror(errno)));
+  }
+  return Status::Ok();
+}
+
+Status filelock_lock(const std::string& filename, int* fd, bool shared) {
+  // Prepare the flock struct
+  struct flock fl;
+  if (shared) {
+    fl.l_type = F_RDLCK;
+  } else {  // exclusive
+    fl.l_type = F_WRLCK;
+  }
+  fl.l_whence = SEEK_SET;
+  fl.l_start = 0;
+  fl.l_len = 0;
+  fl.l_pid = getpid();
+
+  // Open the file
+  *fd = ::open(filename.c_str(), O_RDWR);
+  if (*fd == -1) {
+    return LOG_STATUS(Status::StorageManagerError(
+        std::string("Cannot open filelock '") + filename));
+  }
+  // Acquire the lock
+  if (fcntl(*fd, F_SETLKW, &fl) == -1) {
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot lock consolidation filelock '") + filename));
+  }
+  return Status::Ok();
+}
+
+Status filelock_unlock(int fd) {
+  if (::close(fd) == -1)
+    return LOG_STATUS(Status::OSError(
+        "Cannot unlock consolidation filelock: Cannot close filelock"));
+  return Status::Ok();
+}
+
+Status move(const std::string& old_path, const std::string& new_path) {
+  if (rename(old_path.c_str(), new_path.c_str())) {
+    return LOG_STATUS(
+        Status::OSError(std::string("Cannot move path: ") + strerror(errno)));
+  }
+  return Status::Ok();
+}
+
+Status ls(const std::string& path, std::vector<std::string>* paths) {
+  std::string parent = filesystem::real_dir(path);
+
+  struct dirent* next_path;
+  DIR* dir = opendir(parent.c_str());
+  if (dir == nullptr) {
+    return Status::Ok();
+  }
+  while ((next_path = readdir(dir))) {
+    auto abspath = parent + "/" + next_path->d_name;
+    paths->push_back(abspath);
+  }
+  // close parent directory
+  if (closedir(dir)) {
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot close parent directory; ") + strerror(errno)));
+  }
+  return Status::Ok();
+}
+
 // TODO: this should be generic
 std::vector<std::string> get_fragment_dirs(const std::string& path) {
   std::vector<std::string> dirs;
@@ -251,6 +329,17 @@ Status create_fragment_file(const std::string& path) {
   return Status::Ok();
 };
 
+Status create_group_file(const std::string& path) {
+  // Create group file
+  std::string filename = path + "/" + Configurator::group_filename();
+  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
+  if (fd == -1 || ::close(fd)) {
+    return LOG_STATUS(Status::StorageManagerError(
+        std::string("Failed to create group file; ") + strerror(errno)));
+  }
+  return Status::Ok();
+}
+
 Status read_from_file(
     const std::string& path, off_t offset, void* buffer, size_t length) {
   // Open file
@@ -271,6 +360,23 @@ Status read_from_file(
     return LOG_STATUS(
         Status::OSError("Cannot read from file; File closing error"));
   }
+  return Status::Ok();
+}
+
+Status read_from_file(
+    const std::string& path, char* buffer, size_t* buffer_size) {
+  *buffer_size = 0;
+  std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
+  if (!file.is_open()) {
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot read file '") + path + "': file open error"));
+  }
+  std::streampos nbytes = file.tellg();
+  buffer = new char[nbytes];
+  file.seekg(0, std::ios::beg);
+  file.read(buffer, nbytes);
+  file.close();
+  *buffer_size = nbytes;
   return Status::Ok();
 }
 

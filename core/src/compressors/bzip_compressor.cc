@@ -32,8 +32,8 @@
 
 #include "bzip_compressor.h"
 #include <bzlib.h>
-#include <math.h>
 #include <cassert>
+#include <cmath>
 #include <limits>
 
 namespace tiledb {
