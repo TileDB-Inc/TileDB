@@ -36,6 +36,7 @@
 #include "array.h"
 #include "basic_array_schema.h"
 #include "filesystem.h"
+#include "logger.h"
 #include "storage_manager.h"
 #include "utils.h"
 
@@ -63,6 +64,7 @@ namespace tiledb {
 /* ****************************** */
 
 StorageManager::StorageManager() {
+  aio_done_ = false;
   config_ = nullptr;
 }
 
@@ -72,6 +74,10 @@ StorageManager::~StorageManager() {
     config_ = nullptr;
   }
   open_array_mtx_destroy();
+
+  aio_stop();
+  delete aio_thread_[0];
+  delete aio_thread_[1];
 }
 
 /* ****************************** */
@@ -85,6 +91,12 @@ Status StorageManager::init(Configurator* config) {
 
   // Create new configurator and clone the input
   config_ = new Configurator(config);
+
+  // Create a thread to handle the user asynchronous I/O
+  aio_thread_[0] = new std::thread(aio_start, this, 0);
+
+  // Create a thread to handle the internal asynchronous I/O
+  aio_thread_[1] = new std::thread(aio_start, this, 1);
 
   // Initialize mutexes and return
   return open_array_mtx_init();
@@ -139,6 +151,12 @@ Status StorageManager::basic_array_create(const char* name) const {
 /* ****************************** */
 /*             ARRAY              */
 /* ****************************** */
+
+Status StorageManager::aio_submit(AIORequest* aio_request, int i) {
+  aio_push_request(aio_request, i);
+
+  return Status::Ok();
+}
 
 Status StorageManager::array_consolidate(const char* array_dir) {
   // Create an array object
@@ -744,6 +762,109 @@ Status StorageManager::move(
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
+
+void StorageManager::aio_handle_request(AIORequest* aio_request) {
+  // For easy reference
+  Array* array = aio_request->array();
+  void** buffers = aio_request->buffers();
+  size_t* buffer_sizes = aio_request->buffer_sizes();
+  const ArraySchema* array_schema = array->array_schema();
+  const char* array_name = array_schema->array_name().c_str();
+  ArrayMode mode = aio_request->mode();
+  const void* subarray = aio_request->subarray();
+  Status st;
+
+  // Get attributes
+  const std::vector<int>& attribute_ids = array->attribute_ids();
+  int attribute_num = attribute_ids.size();
+  const char** attributes = new const char*[attribute_num];
+  for (int i = 0; i < attribute_num; ++i) {
+    attributes[i] = array_schema->attribute(attribute_ids[i]).c_str();
+  }
+
+  // Initialize array
+  Array* new_array;
+  st = array_init(
+      new_array, array_name, mode, subarray, attributes, attribute_num);
+  if (!st.ok()) {
+    LOG_STATUS(st);
+    return;
+  }
+
+  // Read
+  if (is_read_mode(mode))
+    st = new_array->read(buffers, buffer_sizes);
+  else if (is_write_mode(mode))
+    st = new_array->write((const void**)buffers, buffer_sizes);
+  if (!st.ok()) {
+    delete new_array;
+    LOG_STATUS(st);
+    return;
+  }
+
+  // Check for overflow (applicable only to reads)
+  if (is_read_mode(mode) && new_array->overflow()) {
+    aio_request->set_status(AIOStatus::OFLOW);
+    if (aio_request->overflow() != nullptr) {
+      for (int i = 0; i < int(attribute_ids.size()); ++i)
+        aio_request->set_overflow(i, new_array->overflow(attribute_ids[i]));
+    }
+  }
+
+  // Invoke the callback
+  if (aio_request->has_callback())
+    aio_request->exec_callback();
+
+  // Completion
+  aio_request->set_status(AIOStatus::COMPLETED);
+
+  // Clean up
+  st = array_finalize(new_array);
+  if (!st.ok())
+    LOG_STATUS(st);
+}
+
+void StorageManager::aio_handle_requests(int i) {
+  while (!aio_done_) {
+    std::unique_lock<std::mutex> lock(aio_mutex_[i]);
+    aio_cv_[i].wait(
+        lock, [this, i] { return (aio_queue_[i].size() > 0) || aio_done_; });
+    if (aio_done_)
+      break;
+    AIORequest* aio_request = aio_queue_[i].front();
+    aio_queue_[i].pop();
+    lock.unlock();
+    aio_handle_request(aio_request);
+  }
+}
+
+Status StorageManager::aio_push_request(AIORequest* aio_request, int i) {
+  // Set the request status
+  aio_request->set_status(AIOStatus::INPROGRESS);
+
+  // Push request
+  {
+    std::lock_guard<std::mutex> lock(aio_mutex_[i]);
+    aio_queue_[i].push(aio_request);
+  }
+
+  // Signal AIO thread
+  aio_cv_[i].notify_one();
+
+  return Status::Ok();
+}
+
+void StorageManager::aio_start(StorageManager* storage_manager, int i) {
+  storage_manager->aio_handle_requests(i);
+}
+
+void StorageManager::aio_stop() {
+  aio_done_ = true;
+  aio_cv_[0].notify_one();
+  aio_cv_[1].notify_one();
+  aio_thread_[0]->join();
+  aio_thread_[1]->join();
+}
 
 Status StorageManager::array_clear(const std::string& array) const {
   // Get real array directory name

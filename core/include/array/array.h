@@ -36,7 +36,6 @@
 
 #include <pthread.h>
 #include <queue>
-#include "aio_request.h"
 #include "array_mode.h"
 #include "array_read_state.h"
 #include "array_schema.h"
@@ -48,6 +47,7 @@
 
 namespace tiledb {
 
+class AIORequest;
 class ArrayReadState;
 class ArraySortedReadState;
 class ArraySortedWriteState;
@@ -86,7 +86,7 @@ class Array {
    * @param aio_request The AIO read request.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  Status aio_read(AIO_Request* aio_request);
+  Status aio_read(AIORequest* aio_request);
 
   /**
    * Submits an asynchronous (AIO) write request and immediately returns control
@@ -96,7 +96,7 @@ class Array {
    * @param aio_request The AIO write request.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  Status aio_write(AIO_Request* aio_request);
+  Status aio_write(AIORequest* aio_request);
 
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
@@ -411,7 +411,7 @@ class Array {
   /** The AIO mutex. */
   pthread_mutex_t aio_mtx_;
   /** The queue that stores the pending AIO requests. */
-  std::queue<AIO_Request*> aio_queue_;
+  std::queue<AIORequest*> aio_queue_;
   /** The thread that handles all the AIO reads and writes in the background. */
   pthread_t aio_thread_;
   /** Indicates whether the AIO thread was canceled or not. */
@@ -467,7 +467,7 @@ class Array {
    * @return void.
    *
    */
-  void aio_handle_next_request(AIO_Request* aio_request);
+  void aio_handle_next_request(AIORequest* aio_request);
 
   /**
    * Function called by the AIO thread.
@@ -483,7 +483,7 @@ class Array {
    * @param aio_request The AIO request.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  Status aio_push_request(AIO_Request* aio_request);
+  Status aio_push_request(AIORequest* aio_request);
 
   /**
    * Creates the AIO thread.

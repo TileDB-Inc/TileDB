@@ -37,6 +37,8 @@
 #include <pthread.h>
 #include <string>
 #include <vector>
+
+#include "aio_request.h"
 #include "array.h"
 
 namespace tiledb {
@@ -185,10 +187,10 @@ class ArraySortedWriteState {
   pthread_mutex_t aio_mtx_;
 
   /** AIO requests. */
-  AIO_Request aio_request_[2];
+  AIORequest aio_request_[2];
 
   /** The status of the AIO requests.*/
-  tiledb_aio_status_t aio_status_[2];
+  AIOStatus aio_status_[2];
 
   /** The thread that handles all the AIO in the background. */
   pthread_t aio_thread_;

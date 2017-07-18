@@ -1,5 +1,5 @@
 /**
- * @file unit-capi-arrayschema.cc
+ * @file unit-capi-array_schema.cc
  *
  * @section LICENSE
  *

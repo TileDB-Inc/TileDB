@@ -1,5 +1,5 @@
 /**
- * @file   unit-capi-densearray.cc
+ * @file   unit-capi-dense_array.cc
  *
  * @section LICENSE
  *
@@ -636,7 +636,7 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted reads") {
       if (!allok)
         break;
     }
-    CHECK(allok);
+    REQUIRE(allok);
 
     // Clean up
     delete[] buffer;
@@ -731,7 +731,7 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted writes") {
         break;
       }
     }
-    CHECK(allok);
+    REQUIRE(allok);
 
     // Clean up
     delete[] buffer;

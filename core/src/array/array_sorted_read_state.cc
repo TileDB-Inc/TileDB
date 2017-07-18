@@ -1693,15 +1693,14 @@ void ArraySortedReadState::handle_copy_requests_sparse() {
 void ArraySortedReadState::init_aio_requests() {
   for (int i = 0; i < 2; ++i) {
     aio_data_[i] = {i, 0, this};
-    aio_request_[i] = {};
-    aio_request_[i].buffer_sizes_ = buffer_sizes_tmp_[i];
-    aio_request_[i].buffers_ = buffers_[i];
-    aio_request_[i].mode_ = TILEDB_ARRAY_READ;
-    aio_request_[i].subarray_ = tile_slab_[i];
-    aio_request_[i].completion_handle_ = aio_done;
-    aio_request_[i].completion_data_ = &(aio_data_[i]);
-    aio_request_[i].overflow_ = aio_overflow_[i];
-    aio_request_[i].status_ = &(aio_status_[i]);
+    aio_request_[i].set_array(array_);
+    aio_request_[i].set_buffer_sizes(buffer_sizes_tmp_[i]);
+    aio_request_[i].set_buffers(buffers_[i]);
+    aio_request_[i].set_mode(ArrayMode::READ);
+    aio_request_[i].set_subarray(tile_slab_[i]);
+    aio_request_[i].set_callback(aio_done, &(aio_data_[i]));
+    aio_request_[i].set_overflow(aio_overflow_[i]);
+    aio_request_[i].set_status(&(aio_status_[i]));
   }
 }
 
@@ -2721,7 +2720,7 @@ void ArraySortedReadState::reset_tile_slab_state() {
 
 Status ArraySortedReadState::send_aio_request(int aio_id) {
   // Important!!
-  aio_request_[aio_id].id_ = aio_cnt_++;
+  aio_request_[aio_id].set_id(aio_cnt_++);
 
   // For easy reference
   Array* array_clone = array_->array_clone();

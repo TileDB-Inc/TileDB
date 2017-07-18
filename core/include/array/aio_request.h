@@ -28,19 +28,99 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the AIO_Request struct.
+ * This file declares the AIORequest class.
  */
 
 #ifndef TILEDB_AIO_REQUEST_H
 #define TILEDB_AIO_REQUEST_H
 
 #include <cstdio>
+
+#include "aio_status.h"
+#include "array_mode.h"
+#include "status.h"
 #include "tiledb.h"
 
 namespace tiledb {
 
+class Array;
+
 /** Describes an AIO (read or write) request. */
-struct AIO_Request {
+class AIORequest {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /** Constructor. */
+  AIORequest();
+
+  /** Destructor. */
+  ~AIORequest();
+
+  /* ********************************* */
+  /*             ACCESSORS             */
+  /* ********************************* */
+
+  Array* array() const;
+
+  void** buffers() const;
+
+  size_t* buffer_sizes() const;
+
+  size_t id() const;
+
+  void exec_callback() const;
+
+  bool has_callback() const;
+
+  ArrayMode mode() const;
+
+  bool* overflow() const;
+
+  AIOStatus status() const;
+
+  const void* subarray() const;
+
+  /* ********************************* */
+  /*             MUTATORS              */
+  /* ********************************* */
+
+  void set_array(Array* array);
+
+  void set_buffers(void** buffers);
+
+  void set_buffer_sizes(size_t* buffer_sizes);
+
+  void set_callback(void* (*completion_handle)(void*), void* completion_data);
+
+  void set_id(size_t id);
+
+  void set_mode(ArrayMode mode);
+
+  void set_status(AIOStatus status);
+
+  void set_status(AIOStatus* status);
+
+  void set_subarray(const void* subarray);
+
+  void set_overflow(bool* overflow);
+
+  /**
+   * Sets the i-th overflow value.
+   *
+   * @param i Index of the overflow value.
+   * @param overflow Overflow value.
+   */
+  void set_overflow(int i, bool overflow);
+
+ private:
+  /* ********************************* */
+  /*        PRIVATE ATTRIBUTES         */
+  /* ********************************* */
+
+  /** The array to be queried. */
+  Array* array_;
   /**
    * An array of buffers, one for each attribute. These must be
    * provided in the same order as the attributes specified in
@@ -67,13 +147,13 @@ struct AIO_Request {
   size_t id_;
   /**
    * It can be one of the following:
-   *    - TILEDB_ARRAY_READ
-   *    - TILEDB_ARRAY_READ_SORTED_COL
-   *    - TILEDB_ARRAY_READ_SORTED_ROW
-   *    - TILEDB_ARRAY_WRITE
-   *    - TILEDB_ARRAY_WRITE_UNSORTED
+   *    - READ
+   *    - READ_SORTED_COL
+   *    - READ_SORTED_ROW
+   *    - WRITE
+   *    - WRITE_UNSORTED
    */
-  int mode_;
+  ArrayMode mode_;
   /**
    * Applicable only to read requests.
    * Indicates whether a buffer has overflowed during a read request.
@@ -93,7 +173,7 @@ struct AIO_Request {
    *    - TILEDB_AIO_ERROR
    *      The request caused an error (and thus was canceled).
    */
-  tiledb_aio_status_t* status_;
+  AIOStatus* status_;
   /**
    * The subarray in which the array read/write will be
    * constrained on. It should be a sequence of [low, high] pairs (one

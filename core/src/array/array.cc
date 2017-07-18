@@ -82,7 +82,7 @@ Array::~Array() {
 
 void Array::aio_handle_requests() {
   // Holds the next AIO request
-  AIO_Request* aio_next_request;
+  AIORequest* aio_next_request;
 
   // Initiate infinite loop
   for (;;) {
@@ -134,11 +134,11 @@ void Array::aio_handle_requests() {
     aio_handle_next_request(aio_next_request);
 
     // Set last handled AIO request
-    aio_last_handled_request_ = aio_next_request->id_;
+    aio_last_handled_request_ = aio_next_request->id();
   }
 }
 
-Status Array::aio_read(AIO_Request* aio_request) {
+Status Array::aio_read(AIORequest* aio_request) {
   // Sanity checks
   if (!read_mode()) {
     return LOG_STATUS(
@@ -155,7 +155,7 @@ Status Array::aio_read(AIO_Request* aio_request) {
   return Status::Ok();
 }
 
-Status Array::aio_write(AIO_Request* aio_request) {
+Status Array::aio_write(AIORequest* aio_request) {
   // Sanity checks
   if (!write_mode()) {
     return LOG_STATUS(
@@ -252,7 +252,7 @@ Status Array::read(void** buffers, size_t* buffer_sizes) {
   if (mode_ == ArrayMode::READ_SORTED_COL ||
       mode_ == ArrayMode::READ_SORTED_ROW) {
     return array_sorted_read_state_->read(buffers, buffer_sizes);
-  } else {  // mode_ == TILDB_ARRAY_READ
+  } else {  // mode_ == TILEDB_ARRAY_READ
     return read_default(buffers, buffer_sizes);
   }
 }
@@ -877,82 +877,82 @@ Status Array::write_default(const void** buffers, const size_t* buffer_sizes) {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-void Array::aio_handle_next_request(AIO_Request* aio_request) {
+void Array::aio_handle_next_request(AIORequest* aio_request) {
   Status st;
   if (read_mode()) {  // READ MODE
     // Invoke the read
-    if (aio_request->mode_ == TILEDB_ARRAY_READ) {
+    if (aio_request->mode() == ArrayMode::READ) {
       // Reset the subarray only if this request does not continue from the last
-      if (aio_last_handled_request_ != aio_request->id_)
-        reset_subarray_soft(aio_request->subarray_);
+      if (aio_last_handled_request_ != aio_request->id())
+        reset_subarray_soft(aio_request->subarray());
 
       // Read
-      st = read_default(aio_request->buffers_, aio_request->buffer_sizes_);
+      st = read_default(aio_request->buffers(), aio_request->buffer_sizes());
     } else {
       // This may initiate a series of new AIO requests
       // Reset the subarray hard this time (updating also the subarray
       // of the ArraySortedReadState object.
-      if (aio_last_handled_request_ != aio_request->id_)
-        reset_subarray(aio_request->subarray_);
+      if (aio_last_handled_request_ != aio_request->id())
+        reset_subarray(aio_request->subarray());
 
       // Read
-      st = read(aio_request->buffers_, aio_request->buffer_sizes_);
+      st = read(aio_request->buffers(), aio_request->buffer_sizes());
     }
   } else {  // WRITE MODE
     // Invoke the write
-    if (aio_request->mode_ == TILEDB_ARRAY_WRITE ||
-        aio_request->mode_ == TILEDB_ARRAY_WRITE_UNSORTED) {
+    if (aio_request->mode() == ArrayMode::WRITE ||
+        aio_request->mode() == ArrayMode::WRITE_UNSORTED) {
       // Reset the subarray only if this request does not continue from the last
-      if (aio_last_handled_request_ != aio_request->id_)
-        reset_subarray_soft(aio_request->subarray_);
+      if (aio_last_handled_request_ != aio_request->id())
+        reset_subarray_soft(aio_request->subarray());
 
       // Write
       st = write_default(
-          (const void**)aio_request->buffers_,
-          (const size_t*)aio_request->buffer_sizes_);
+          (const void**)aio_request->buffers(),
+          (const size_t*)aio_request->buffer_sizes());
     } else {
       // This may initiate a series of new AIO requests
       // Reset the subarray hard this time (updating also the subarray
       // of the ArraySortedWriteState object.
-      if (aio_last_handled_request_ != aio_request->id_)
-        reset_subarray(aio_request->subarray_);
+      if (aio_last_handled_request_ != aio_request->id())
+        reset_subarray(aio_request->subarray());
 
       // Write
       st = write(
-          (const void**)aio_request->buffers_,
-          (const size_t*)aio_request->buffer_sizes_);
+          (const void**)aio_request->buffers(),
+          (const size_t*)aio_request->buffer_sizes());
     }
   }
 
   if (st.ok()) {  // Success
     // Check for overflow (applicable only to reads)
-    if (aio_request->mode_ == TILEDB_ARRAY_READ &&
+    if (aio_request->mode() == ArrayMode::READ &&
         array_read_state_->overflow()) {
-      *aio_request->status_ = TILEDB_AIO_OVERFLOW;
-      if (aio_request->overflow_ != nullptr) {
+      aio_request->set_status(AIOStatus::OFLOW);
+      if (aio_request->overflow() != nullptr) {
         for (int i = 0; i < int(attribute_ids_.size()); ++i)
-          aio_request->overflow_[i] =
-              array_read_state_->overflow(attribute_ids_[i]);
+          aio_request->set_overflow(
+              i, array_read_state_->overflow(attribute_ids_[i]));
       }
     } else if (
-        (aio_request->mode_ == TILEDB_ARRAY_READ_SORTED_COL ||
-         aio_request->mode_ == TILEDB_ARRAY_READ_SORTED_ROW) &&
+        (aio_request->mode() == ArrayMode::READ_SORTED_COL ||
+         aio_request->mode() == ArrayMode::READ_SORTED_ROW) &&
         array_sorted_read_state_->overflow()) {
-      *aio_request->status_ = TILEDB_AIO_OVERFLOW;
-      if (aio_request->overflow_ != nullptr) {
+      aio_request->set_status(AIOStatus::OFLOW);
+      if (aio_request->overflow() != nullptr) {
         for (int i = 0; i < int(attribute_ids_.size()); ++i)
-          aio_request->overflow_[i] =
-              array_sorted_read_state_->overflow(attribute_ids_[i]);
+          aio_request->set_overflow(
+              i, array_sorted_read_state_->overflow(attribute_ids_[i]));
       }
     } else {  // Completion
-      *aio_request->status_ = TILEDB_AIO_COMPLETED;
+      aio_request->set_status(AIOStatus::COMPLETED);
     }
 
     // Invoke the callback
-    if (aio_request->completion_handle_ != nullptr)
-      (*(aio_request->completion_handle_))(aio_request->completion_data_);
+    if (aio_request->has_callback())
+      aio_request->exec_callback();
   } else {  // Error
-    *aio_request->status_ = TILEDB_AIO_ERROR;
+    aio_request->set_status(AIOStatus::ERROR);
   }
 }
 
@@ -965,9 +965,9 @@ void* Array::aio_handler(void* context) {
   return nullptr;
 }
 
-Status Array::aio_push_request(AIO_Request* aio_request) {
+Status Array::aio_push_request(AIORequest* aio_request) {
   // Set the request status
-  *aio_request->status_ = TILEDB_AIO_INPROGRESS;
+  aio_request->set_status(AIOStatus::INPROGRESS);
 
   // Lock AIO mutex
   if (pthread_mutex_lock(&aio_mtx_)) {
@@ -982,7 +982,7 @@ Status Array::aio_push_request(AIO_Request* aio_request) {
     return LOG_STATUS(Status::AIOError("Cannot signal AIO thread"));
   }
 
-  // Unlock AIO mutext
+  // Unlock AIO mutex
   if (pthread_mutex_unlock(&aio_mtx_)) {
     return LOG_STATUS(Status::AIOError("Cannot unlock AIO mutex"));
   }

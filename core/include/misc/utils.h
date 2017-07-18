@@ -60,14 +60,8 @@ namespace utils {
 /*             FUNCTIONS             */
 /* ********************************* */
 
-/** Returns true if the input is an array read mode. */
-bool array_read_mode(int mode);
-
 /** Returns the string representation of the input array type. */
 const char* array_type_str(ArrayType array_type);
-
-/** Returns true if the input is an array write mode. */
-bool array_write_mode(int mode);
 
 /**
  * Checks if the input cell is inside the input subarray.
