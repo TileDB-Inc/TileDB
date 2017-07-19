@@ -33,7 +33,6 @@
 
 #include "array.h"
 #include <sys/time.h>
-#include <cassert>
 #include "logger.h"
 #include "utils.h"
 
@@ -49,7 +48,6 @@ Array::Array() {
   array_sorted_write_state_ = nullptr;
   array_schema_ = nullptr;
   subarray_ = nullptr;
-  aio_thread_created_ = false;
   array_clone_ = nullptr;
   storage_manager_ = nullptr;
 }
@@ -166,102 +164,6 @@ Status Array::aio_handle_request(AIORequest* aio_request) {
   aio_last_handled_request_ = aio_request->id();
 
   return st;
-}
-
-void Array::aio_handle_next_request(AIORequest* aio_request) {
-  // TODO: remove completely
-}
-
-void Array::aio_handle_requests() {
-  // Holds the next AIO request
-  AIORequest* aio_next_request;
-
-  // Initiate infinite loop
-  for (;;) {
-    // Lock AIO mutext
-    if (pthread_mutex_lock(&aio_mtx_)) {
-      LOG_ERROR("Cannot lock AIO mutex");
-      return;
-    }
-
-    // If the thread is canceled, unblock and exit
-    if (aio_thread_canceled_) {
-      if (pthread_mutex_unlock(&aio_mtx_))
-        LOG_ERROR("Cannot unlock AIO mutex while canceling AIO thread");
-      else
-        aio_thread_created_ = false;
-      return;
-    }
-
-    // Wait for AIO requests
-    while (aio_queue_.size() == 0) {
-      // Wait to be signaled
-      if (pthread_cond_wait(&aio_cond_, &aio_mtx_)) {
-        LOG_ERROR("Cannot wait on AIO mutex condition");
-        return;
-      }
-
-      // If the thread is canceled, unblock and exit
-      if (aio_thread_canceled_) {
-        if (pthread_mutex_unlock(&aio_mtx_)) {
-          LOG_ERROR("Cannot unlock AIO mutex while canceling AIO thread");
-        } else {
-          aio_thread_created_ = false;
-        }
-        return;
-      }
-    }
-
-    // Pop the next AIO request
-    aio_next_request = aio_queue_.front();
-    aio_queue_.pop();
-
-    // Unlock AIO mutext
-    if (pthread_mutex_unlock(&aio_mtx_)) {
-      LOG_ERROR("Cannot unlock AIO mutex");
-      return;
-    }
-
-    // Handle the next AIO request
-    aio_handle_next_request(aio_next_request);
-
-    // Set last handled AIO request
-    aio_last_handled_request_ = aio_next_request->id();
-  }
-}
-
-Status Array::aio_read(AIORequest* aio_request) {
-  // Sanity checks
-  if (!read_mode()) {
-    return LOG_STATUS(
-        Status::ArrayError("Cannot (async) read from array; Invalid mode"));
-  }
-
-  // Create the AIO thread if not already done
-  if (!aio_thread_created_)
-    RETURN_NOT_OK(aio_thread_create());
-
-  // Push the AIO request in the queue
-  RETURN_NOT_OK(aio_push_request(aio_request));
-
-  return Status::Ok();
-}
-
-Status Array::aio_write(AIORequest* aio_request) {
-  // Sanity checks
-  if (!write_mode()) {
-    return LOG_STATUS(
-        Status::ArrayError("Cannot (async) write to array; Invalid mode"));
-  }
-
-  // Create the AIO thread if not already done
-  if (!aio_thread_created_)
-    RETURN_NOT_OK(aio_thread_create());
-
-  // Push the AIO request in the queue
-  RETURN_NOT_OK(aio_push_request(aio_request));
-
-  return Status::Ok();
 }
 
 Array* Array::array_clone() const {
@@ -514,20 +416,6 @@ Status Array::finalize() {
     array_sorted_write_state_ = nullptr;
   }
 
-  // Clean the AIO-related members
-  Status st_aio_thread = aio_thread_destroy();
-
-  bool mutex_destroy_ok = true;
-  bool cond_destroy_ok = true;
-  if (pthread_cond_destroy(&aio_cond_))
-    cond_destroy_ok = false;
-  if (pthread_mutex_destroy(&aio_mtx_))
-    mutex_destroy_ok = false;
-  while (aio_queue_.size() != 0) {
-    free(aio_queue_.front());
-    aio_queue_.pop();
-  }
-
   // Finalize the clone
   Status st_clone;
   if (array_clone_ != nullptr)
@@ -536,14 +424,6 @@ Status Array::finalize() {
   // Errors
   if (!st.ok()) {
     return st;
-  }
-  if (!st_aio_thread.ok())
-    return st_aio_thread;
-  if (!cond_destroy_ok) {
-    return LOG_STATUS(Status::ArrayError("Cannot destroy AIO mutex condition"));
-  }
-  if (!mutex_destroy_ok) {
-    return LOG_STATUS(Status::ArrayError("Cannot destroy AIO mutex"));
   }
   if (!st_clone.ok()) {
     return st_clone;
@@ -689,16 +569,6 @@ Status Array::init(
   }
 
   // Initialize the AIO-related members
-  aio_cond_ = PTHREAD_COND_INITIALIZER;
-  if (pthread_mutex_init(&aio_mtx_, nullptr)) {
-    return LOG_STATUS(Status::AIOError("Cannot initialize AIO mutex"));
-  }
-  if (pthread_cond_init(&aio_cond_, nullptr)) {
-    return LOG_STATUS(
-        Status::AIOError("Cannot initialize AIO mutex condition"));
-  }
-  aio_thread_canceled_ = false;
-  aio_thread_created_ = false;
   aio_last_handled_request_ = -1;
 
   // Return
@@ -970,89 +840,6 @@ Status Array::write_default(const void** buffers, const size_t* buffer_sizes) {
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
-
-void* Array::aio_handler(void* context) {
-  // This will enter an indefinite loop that will handle all incoming AIO
-  // requests
-  ((Array*)context)->aio_handle_requests();
-
-  // Return
-  return nullptr;
-}
-
-Status Array::aio_push_request(AIORequest* aio_request) {
-  // Set the request status
-  aio_request->set_status(AIOStatus::INPROGRESS);
-
-  // Lock AIO mutex
-  if (pthread_mutex_lock(&aio_mtx_)) {
-    return LOG_STATUS(Status::AIOError("Cannot lock AIO mutex"));
-  }
-
-  // Push request
-  aio_queue_.push(aio_request);
-
-  // Signal AIO thread
-  if (pthread_cond_signal(&aio_cond_)) {
-    return LOG_STATUS(Status::AIOError("Cannot signal AIO thread"));
-  }
-
-  // Unlock AIO mutex
-  if (pthread_mutex_unlock(&aio_mtx_)) {
-    return LOG_STATUS(Status::AIOError("Cannot unlock AIO mutex"));
-  }
-
-  return Status::Ok();
-}
-
-Status Array::aio_thread_create() {
-  // Trivial case
-  if (aio_thread_created_)
-    return Status::Ok();
-  // Create the thread that will be handling all AIO requests
-  int rc;
-  if ((rc = pthread_create(&aio_thread_, nullptr, Array::aio_handler, this))) {
-    return LOG_STATUS(Status::AIOError("Cannot create AIO thread"));
-  }
-  aio_thread_created_ = true;
-
-  return Status::Ok();
-}
-
-Status Array::aio_thread_destroy() {
-  // Trivial case
-  if (!aio_thread_created_)
-    return Status::Ok();
-
-  // Lock AIO mutext
-  if (pthread_mutex_lock(&aio_mtx_)) {
-    return LOG_STATUS(
-        Status::AIOError("Cannot lock AIO mutex while destroying AIO thread"));
-  }
-
-  // Signal the cancelation so that the thread unblocks
-  aio_thread_canceled_ = true;
-  if (pthread_cond_signal(&aio_cond_)) {
-    return LOG_STATUS(Status::AIOError(
-        "Cannot signal AIO thread while destroying AIO thread"));
-  }
-
-  // Unlock AIO mutext
-  if (pthread_mutex_unlock(&aio_mtx_)) {
-    return LOG_STATUS(Status::AIOError(
-        "Cannot unlock AIO mutex while destroying AIO thread"));
-  }
-
-  // Wait for cancelation to take place
-  while (aio_thread_created_) {
-  };
-
-  // Join with the terminated thread
-  if (pthread_join(aio_thread_, nullptr)) {
-    return LOG_STATUS(Status::AIOError("Cannot join AIO thread"));
-  }
-  return Status::Ok();
-}
 
 std::string Array::new_fragment_name() const {
   // For easy reference
