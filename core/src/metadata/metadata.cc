@@ -109,6 +109,7 @@ Status Metadata::finalize() {
 }
 
 Status Metadata::init(
+    StorageManager* storage_manager,
     const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
     const std::vector<BookKeeping*>& book_keeping,
@@ -177,6 +178,7 @@ Status Metadata::init(
   // Initialize array
   array_ = new Array();
   Status st = array_->init(
+      storage_manager,
       array_schema,
       fragment_names,
       book_keeping,

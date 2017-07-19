@@ -673,9 +673,6 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted writes") {
   // Set array name
   set_array_name("dense_test_100x100_10x10");
 
-  // Create a progress bar
-  // ProgressBar* progress_bar = new ProgressBar();
-
   // Create a dense integer array
   create_dense_array_2D(
       tile_extent_0,
@@ -813,7 +810,7 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates") {
       domain_size_0,
       domain_size_1,
       update_num);
-  CHECK(success);
+  REQUIRE(success);
 
   // Clean up
   delete[] before_update;

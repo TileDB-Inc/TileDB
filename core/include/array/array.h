@@ -52,6 +52,7 @@ class ArrayReadState;
 class ArraySortedReadState;
 class ArraySortedWriteState;
 class Fragment;
+class StorageManager;
 
 /** Manages a TileDB array object. */
 class Array {
@@ -69,6 +70,10 @@ class Array {
   /* ********************************* */
   /*             ACCESSORS             */
   /* ********************************* */
+
+  Status aio_handle_request(AIORequest* aio_request);
+
+  StorageManager* storage_manager() const;
 
   /**
    * Enters an indefinite loop that handles all the AIO requests. This is
@@ -264,6 +269,7 @@ class Array {
    * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
    */
   Status init(
+      StorageManager* storage_manager,
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
       const std::vector<BookKeeping*>& book_keeping,
@@ -404,6 +410,7 @@ class Array {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  StorageManager* storage_manager_;
   /** The AIO mutex condition. */
   pthread_cond_t aio_cond_;
   /** Stores the id of the last handled AIO request. */

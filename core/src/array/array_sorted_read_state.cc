@@ -36,6 +36,7 @@
 #include <cmath>
 #include "comparators.h"
 #include "logger.h"
+#include "storage_manager.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -1693,7 +1694,7 @@ void ArraySortedReadState::handle_copy_requests_sparse() {
 void ArraySortedReadState::init_aio_requests() {
   for (int i = 0; i < 2; ++i) {
     aio_data_[i] = {i, 0, this};
-    aio_request_[i].set_array(array_);
+    aio_request_[i].set_array(array_->array_clone());
     aio_request_[i].set_buffer_sizes(buffer_sizes_tmp_[i]);
     aio_request_[i].set_buffers(buffers_[i]);
     aio_request_[i].set_mode(ArrayMode::READ);
@@ -2723,13 +2724,13 @@ Status ArraySortedReadState::send_aio_request(int aio_id) {
   aio_request_[aio_id].set_id(aio_cnt_++);
 
   // For easy reference
-  Array* array_clone = array_->array_clone();
+  StorageManager* storage_manager = array_->storage_manager();
 
   // Sanity check
-  assert(array_clone != NULL);
+  assert(storage_manager != NULL);
 
   // Send the AIO request to the clone array
-  RETURN_NOT_OK(array_clone->aio_read(&(aio_request_[aio_id])));
+  RETURN_NOT_OK(storage_manager->aio_submit(&(aio_request_[aio_id]), 1));
 
   // Success
   return Status::Ok();

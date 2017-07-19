@@ -51,6 +51,7 @@ Array::Array() {
   subarray_ = nullptr;
   aio_thread_created_ = false;
   array_clone_ = nullptr;
+  storage_manager_ = nullptr;
 }
 
 Array::~Array() {
@@ -79,6 +80,97 @@ Array::~Array() {
 /* ****************************** */
 /*           ACCESSORS            */
 /* ****************************** */
+
+StorageManager* Array::storage_manager() const {
+  return storage_manager_;
+}
+
+Status Array::aio_handle_request(AIORequest* aio_request) {
+  Status st;
+  if (read_mode()) {  // READ MODE
+    // Invoke the read
+    if (aio_request->mode() == ArrayMode::READ) {
+      // Reset the subarray only if this request does not continue from the last
+      if (aio_last_handled_request_ != aio_request->id())
+        reset_subarray_soft(aio_request->subarray());
+
+      // Read
+      st = read_default(aio_request->buffers(), aio_request->buffer_sizes());
+    } else {
+      // This may initiate a series of new AIO requests
+      // Reset the subarray hard this time (updating also the subarray
+      // of the ArraySortedReadState object.
+      if (aio_last_handled_request_ != aio_request->id())
+        reset_subarray(aio_request->subarray());
+
+      // Read
+      st = read(aio_request->buffers(), aio_request->buffer_sizes());
+    }
+  } else {  // WRITE MODE
+    // Invoke the write
+    if (aio_request->mode() == ArrayMode::WRITE ||
+        aio_request->mode() == ArrayMode::WRITE_UNSORTED) {
+      // Reset the subarray only if this request does not continue from the last
+      if (aio_last_handled_request_ != aio_request->id())
+        reset_subarray_soft(aio_request->subarray());
+
+      // Write
+      st = write_default(
+          (const void**)aio_request->buffers(),
+          (const size_t*)aio_request->buffer_sizes());
+    } else {
+      // This may initiate a series of new AIO requests
+      // Reset the subarray hard this time (updating also the subarray
+      // of the ArraySortedWriteState object.
+      if (aio_last_handled_request_ != aio_request->id())
+        reset_subarray(aio_request->subarray());
+
+      // Write
+      st = write(
+          (const void**)aio_request->buffers(),
+          (const size_t*)aio_request->buffer_sizes());
+    }
+  }
+
+  if (st.ok()) {  // Success
+    // Check for overflow (applicable only to reads)
+    if (aio_request->mode() == ArrayMode::READ &&
+        array_read_state_->overflow()) {
+      aio_request->set_status(AIOStatus::OFLOW);
+      if (aio_request->overflow() != nullptr) {
+        for (int i = 0; i < int(attribute_ids_.size()); ++i)
+          aio_request->set_overflow(
+              i, array_read_state_->overflow(attribute_ids_[i]));
+      }
+    } else if (
+        (aio_request->mode() == ArrayMode::READ_SORTED_COL ||
+         aio_request->mode() == ArrayMode::READ_SORTED_ROW) &&
+        array_sorted_read_state_->overflow()) {
+      aio_request->set_status(AIOStatus::OFLOW);
+      if (aio_request->overflow() != nullptr) {
+        for (int i = 0; i < int(attribute_ids_.size()); ++i)
+          aio_request->set_overflow(
+              i, array_sorted_read_state_->overflow(attribute_ids_[i]));
+      }
+    } else {  // Completion
+      aio_request->set_status(AIOStatus::COMPLETED);
+    }
+
+    // Invoke the callback
+    if (aio_request->has_callback())
+      aio_request->exec_callback();
+  } else {  // Error
+    aio_request->set_status(AIOStatus::ERROR);
+  }
+
+  aio_last_handled_request_ = aio_request->id();
+
+  return st;
+}
+
+void Array::aio_handle_next_request(AIORequest* aio_request) {
+  // TODO: remove completely
+}
 
 void Array::aio_handle_requests() {
   // Holds the next AIO request
@@ -463,6 +555,7 @@ Status Array::finalize() {
 }
 
 Status Array::init(
+    StorageManager* storage_manager,
     const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
     const std::vector<BookKeeping*>& book_keeping,
@@ -480,6 +573,7 @@ Status Array::init(
 
   // Set array clone
   array_clone_ = array_clone;
+  storage_manager_ = storage_manager;
 
   // Sanity check on mode
   if (!read_mode() && !write_mode()) {
@@ -876,85 +970,6 @@ Status Array::write_default(const void** buffers, const size_t* buffer_sizes) {
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
-
-void Array::aio_handle_next_request(AIORequest* aio_request) {
-  Status st;
-  if (read_mode()) {  // READ MODE
-    // Invoke the read
-    if (aio_request->mode() == ArrayMode::READ) {
-      // Reset the subarray only if this request does not continue from the last
-      if (aio_last_handled_request_ != aio_request->id())
-        reset_subarray_soft(aio_request->subarray());
-
-      // Read
-      st = read_default(aio_request->buffers(), aio_request->buffer_sizes());
-    } else {
-      // This may initiate a series of new AIO requests
-      // Reset the subarray hard this time (updating also the subarray
-      // of the ArraySortedReadState object.
-      if (aio_last_handled_request_ != aio_request->id())
-        reset_subarray(aio_request->subarray());
-
-      // Read
-      st = read(aio_request->buffers(), aio_request->buffer_sizes());
-    }
-  } else {  // WRITE MODE
-    // Invoke the write
-    if (aio_request->mode() == ArrayMode::WRITE ||
-        aio_request->mode() == ArrayMode::WRITE_UNSORTED) {
-      // Reset the subarray only if this request does not continue from the last
-      if (aio_last_handled_request_ != aio_request->id())
-        reset_subarray_soft(aio_request->subarray());
-
-      // Write
-      st = write_default(
-          (const void**)aio_request->buffers(),
-          (const size_t*)aio_request->buffer_sizes());
-    } else {
-      // This may initiate a series of new AIO requests
-      // Reset the subarray hard this time (updating also the subarray
-      // of the ArraySortedWriteState object.
-      if (aio_last_handled_request_ != aio_request->id())
-        reset_subarray(aio_request->subarray());
-
-      // Write
-      st = write(
-          (const void**)aio_request->buffers(),
-          (const size_t*)aio_request->buffer_sizes());
-    }
-  }
-
-  if (st.ok()) {  // Success
-    // Check for overflow (applicable only to reads)
-    if (aio_request->mode() == ArrayMode::READ &&
-        array_read_state_->overflow()) {
-      aio_request->set_status(AIOStatus::OFLOW);
-      if (aio_request->overflow() != nullptr) {
-        for (int i = 0; i < int(attribute_ids_.size()); ++i)
-          aio_request->set_overflow(
-              i, array_read_state_->overflow(attribute_ids_[i]));
-      }
-    } else if (
-        (aio_request->mode() == ArrayMode::READ_SORTED_COL ||
-         aio_request->mode() == ArrayMode::READ_SORTED_ROW) &&
-        array_sorted_read_state_->overflow()) {
-      aio_request->set_status(AIOStatus::OFLOW);
-      if (aio_request->overflow() != nullptr) {
-        for (int i = 0; i < int(attribute_ids_.size()); ++i)
-          aio_request->set_overflow(
-              i, array_sorted_read_state_->overflow(attribute_ids_[i]));
-      }
-    } else {  // Completion
-      aio_request->set_status(AIOStatus::COMPLETED);
-    }
-
-    // Invoke the callback
-    if (aio_request->has_callback())
-      aio_request->exec_callback();
-  } else {  // Error
-    aio_request->set_status(AIOStatus::ERROR);
-  }
-}
 
 void* Array::aio_handler(void* context) {
   // This will enter an indefinite loop that will handle all incoming AIO

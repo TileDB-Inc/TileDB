@@ -47,6 +47,7 @@ AIORequest::AIORequest() {
   overflow_ = nullptr;
   status_ = nullptr;
   subarray_ = nullptr;
+  id_ = 0;
 }
 
 AIORequest::~AIORequest() = default;

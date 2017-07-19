@@ -143,6 +143,7 @@ class Metadata {
    * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
    */
   Status init(
+      StorageManager* storage_manager,
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
       const std::vector<BookKeeping*>& book_keeping,
