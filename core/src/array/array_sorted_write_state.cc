@@ -35,6 +35,7 @@
 #include <cassert>
 #include <cmath>
 #include "logger.h"
+#include "storage_manager.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -1517,7 +1518,7 @@ void ArraySortedWriteState::init_aio_requests() {
   // Initialize AIO requests
   for (int i = 0; i < 2; ++i) {
     aio_data_[i] = {i, 0, this};
-    aio_request_[i].set_array(array_);
+    aio_request_[i].set_array(array_->array_clone());
     aio_request_[i].set_id((separate_fragments) ? aio_cnt_++ : 0);
     aio_request_[i].set_buffer_sizes(copy_state_.buffer_offsets_[i]);
     aio_request_[i].set_buffers(copy_state_.buffers_[i]);
@@ -1933,13 +1934,13 @@ void ArraySortedWriteState::reset_tile_slab_state() {
 
 Status ArraySortedWriteState::send_aio_request(int aio_id) {
   // For easy reference
-  Array* array_clone = array_->array_clone();
+  StorageManager* storage_manager = array_->storage_manager();
 
   // Sanity check
-  assert(array_clone != NULL);
+  assert(storage_manager != NULL);
 
   // Send the AIO request to the clone array
-  RETURN_NOT_OK(array_clone->aio_write(&(aio_request_[aio_id])));
+  RETURN_NOT_OK(storage_manager->aio_submit(&(aio_request_[aio_id]), 1));
 
   // Success
   return Status::Ok();
