@@ -33,7 +33,6 @@
 
 #include "metadata.h"
 #include <openssl/md5.h>
-#include <cassert>
 #include "logger.h"
 
 namespace tiledb {

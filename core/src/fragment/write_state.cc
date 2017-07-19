@@ -30,21 +30,16 @@
  *
  * This file implements the WriteState class.
  */
-
-#include "write_state.h"
-#include <blosc.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <cassert>
 #include <cmath>
 #include <cstring>
 #include <iostream>
+
 #include "comparators.h"
-#include "configurator.h"
 #include "filesystem.h"
 #include "logger.h"
-#include "status.h"
 #include "utils.h"
+#include "write_state.h"
 
 #include "blosc_compressor.h"
 #include "bzip_compressor.h"
@@ -316,19 +311,14 @@ Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
     const ArraySchema* array_schema = fragment_->array()->array_schema();
     const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
     const std::string file_prefix = fragment_->fragment_name() + "/";
-    std::string filename = "";
     // Go over var length attributes
     int attribute_id_num = attribute_ids.size();
     for (int i = 0; i < attribute_id_num; ++i) {
       if (array_schema->var_size(attribute_ids[i])) {
-        filename = file_prefix + array_schema->attribute(attribute_ids[i]) +
-                   "_var" + Configurator::file_suffix();
-        FILE* fptr = fopen(filename.c_str(), "a");
-        if (fptr == nullptr) {
-          return LOG_STATUS(
-              Status::OSError("Cannot write to file; Error opening file"));
-        }
-        fclose(fptr);
+        std::string path = file_prefix +
+                           array_schema->attribute(attribute_ids[i]) + "_var" +
+                           Configurator::file_suffix();
+        RETURN_NOT_OK(filesystem::create_empty_file(path));
       }
     }
   }

@@ -202,6 +202,14 @@ Status create_fragment_file(const std::string& dir);
  */
 Status create_group_file(const std::string& dir);
 
+// TODO: this should go away
+/**
+ * Create an empty file for a given path
+ *
+ * @param path the full path to create the empty file
+ * @return  Status
+ */
+Status create_empty_file(const std::string& path);
 /**
  * Reads data from a file into a buffer, using memory map (mmap).
  *

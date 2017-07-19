@@ -380,6 +380,18 @@ Status read_from_file(
   return Status::Ok();
 }
 
+Status create_empty_file(const std::string& path) {
+  std::ofstream outfile;
+  outfile.open(path, std::ios::app);
+  if (outfile.fail()) {
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot create empty file '") + path +
+        "': file open error"));
+  }
+  outfile.close();
+  return Status::Ok();
+}
+
 Status read_from_file_with_mmap(
     const std::string& path, off_t offset, void* buffer, size_t length) {
   // Calculate offset considering the page size
