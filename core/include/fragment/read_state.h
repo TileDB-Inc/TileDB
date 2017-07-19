@@ -516,17 +516,6 @@ class ReadState {
   void compute_tile_search_range_col_or_row();
 
   /**
-   * Computes the ranges of tile positions that need to be searched for finding
-   * overlapping tiles with the query subarray. This function focuses on the
-   * case of the Hilbert cell order.
-   *
-   * @tparam T The coordinates type.
-   * @return void
-   */
-  template <class T>
-  void compute_tile_search_range_hil();
-
-  /**
    * Decompresses a tile.
    *
    * @param attribute_id The id of the attribute the tile belongs to.
