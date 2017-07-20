@@ -188,7 +188,7 @@ Status WriteState::sync() {
       RETURN_NOT_OK(filesystem::sync(filename.c_str()));
     } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-      RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
+      RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
       // Error: MPI not supported
       return LOG_STATUS(Status::Error("Cannot sync; MPI not supported"));
@@ -206,7 +206,7 @@ Status WriteState::sync() {
         RETURN_NOT_OK(filesystem::sync(filename.c_str()));
       } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-        RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
+        RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
         // Error: MPI not supported
         return LOG_STATUS(Status::Error("Cannot sync; MPI not supported"));
@@ -223,7 +223,7 @@ Status WriteState::sync() {
     RETURN_NOT_OK(filesystem::sync(filename.c_str()));
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
+    RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
     // Error: MPI not supported
     return LOG_STATUS(Status::Error("Cannot sync; MPI not supported"));
@@ -253,7 +253,7 @@ Status WriteState::sync_attribute(const std::string& attribute) {
     RETURN_NOT_OK(filesystem::sync(filename.c_str()));
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
+    RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
     // Error: MPI not supported
     return LOG_STATUS(
@@ -270,7 +270,7 @@ Status WriteState::sync_attribute(const std::string& attribute) {
       RETURN_NOT_OK(filesystem::sync(filename.c_str()));
     } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-      RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
+      RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
       // Error: MPI not supported
       return LOG_STATUS(
@@ -286,7 +286,7 @@ Status WriteState::sync_attribute(const std::string& attribute) {
     RETURN_NOT_OK(filesystem::sync(filename.c_str()));
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    RETURN_NOT_OK(mpi_io_sync(mpi_comm, filename.c_str()));
+    RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
     // Error: MPI not supported
     return LOG_STATUS(
@@ -737,7 +737,7 @@ Status WriteState::compress_and_write_tile(int attribute_id) {
         filename.c_str(), tile_compressed_, tile_compressed_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    st = mpi_io_write_to_file(
+    st = filesystem::mpi_io_write_to_file(
         fragment_->array()->config()->mpi_comm(),
         filename.c_str(),
         tile_compressed_,
@@ -793,7 +793,7 @@ Status WriteState::compress_and_write_tile_var(int attribute_id) {
         filename.c_str(), tile_compressed_, tile_compressed_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    st = mpi_io_write_to_file(
+    st = filesystem::mpi_io_write_to_file(
         fragment_->array()->config()->mpi_comm(),
         filename.c_str(),
         tile_compressed_,
@@ -1097,7 +1097,7 @@ Status WriteState::write_dense_attr_cmp_none(
     st = filesystem::write_to_file(filename.c_str(), buffer, buffer_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    st = mpi_io_write_to_file(
+    st = filesystem::mpi_io_write_to_file(
         fragment_->array()->config()->mpi_comm(),
         filename.c_str(),
         buffer,
@@ -1225,7 +1225,7 @@ Status WriteState::write_dense_attr_var_cmp_none(
         filename.c_str(), buffer_var, buffer_var_size));
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    RETURN_NOT_OK(mpi_io_write_to_file(
+    RETURN_NOT_OK(filesystem::mpi_io_write_to_file(
         mpi_comm, filename.c_str(), buffer_var, buffer_var_size));
 #else
     // Error: MPI not supported
@@ -1248,7 +1248,7 @@ Status WriteState::write_dense_attr_var_cmp_none(
         filename.c_str(), shifted_buffer, buffer_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    st = mpi_io_write_to_file(
+    st = filesystem::mpi_io_write_to_file(
         mpi_comm, filename.c_str(), shifted_buffer, buffer_size);
 #else
     // Error: MPI not supported
@@ -1510,7 +1510,8 @@ Status WriteState::write_sparse_attr_cmp_none(
     st = filesystem::write_to_file(filename.c_str(), buffer, buffer_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    st = mpi_io_write_to_file(mpi_comm, filename.c_str(), buffer, buffer_size);
+    st = filesystem::mpi_io_write_to_file(
+        mpi_comm, filename.c_str(), buffer, buffer_size);
 #else
     // Error: MPI not supported
     return LOG_STATUS(
@@ -1634,7 +1635,7 @@ Status WriteState::write_sparse_attr_var_cmp_none(
         filename.c_str(), buffer_var, buffer_var_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    st = mpi_io_write_to_file(
+    st = filesystem::mpi_io_write_to_file(
         mpi_comm, filename.c_str(), buffer_var, buffer_var_size);
 #else
     // Error: MPI not supported
@@ -1659,7 +1660,7 @@ Status WriteState::write_sparse_attr_var_cmp_none(
         filename.c_str(), shifted_buffer, buffer_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    st = mpi_io_write_to_file(
+    st = filesystem::mpi_io_write_to_file(
         mpi_comm, filename.c_str(), shifted_buffer, buffer_size);
 #else
     return LOG_STATUS(Status::Error(

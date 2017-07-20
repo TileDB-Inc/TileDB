@@ -1,23 +1,16 @@
 #!/bin/sh
 
-# Install cmake, lcov, MPICH
-sudo apt-get -y install cmake lcov mpich
-
-# Install zlib, bzip2 and LZ4
-sudo apt-get -y install zlib1g-dev libbz2-dev liblz4-dev
-
-# Install OpenSSL
-sudo apt-get -y install libssl-dev
+sudo apt-get -y install cmake lcov mpich zlib1g-dev libbz2-dev liblz4-dev libssl-dev
 
 # Install Zstandard
-cd $TRAVIS_BUILD_DIR
+cd $TRAVIS_BUILD_DIR/build
 wget https://github.com/facebook/zstd/archive/v1.0.0.tar.gz
 tar xf v1.0.0.tar.gz
 cd zstd-1.0.0
 sudo make install PREFIX='/usr'
 
 #Install Blosc
-cd $TRAVIS_BUILD_DIR
+cd $TRAVIS_BUILD_DIR/build
 git clone https://github.com/Blosc/c-blosc 
 cd c-blosc
 mkdir build

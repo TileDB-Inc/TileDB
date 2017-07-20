@@ -48,17 +48,15 @@ int main(int argc, char** argv) {
   int rank;
   MPI_Comm mpi_comm = MPI_COMM_WORLD;
   MPI_Comm_rank(mpi_comm, &rank);
-
-  // Properly set the configuration parameters
-  // TODO: fix configurator
-  TileDB_Config tiledb_config;
-  memset(&tiledb_config, 0, sizeof(struct TileDB_Config));
-  tiledb_config.read_method_ = TILEDB_IO_MPI; // Activate MPI-IO
-  tiledb_config.mpi_comm_ = &mpi_comm;
-
+ 
   // Initialize context with the default configuration parameters
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
+ 
+  tiledb_config_t* config;
+  tiledb_config_create(ctx, &config);
+  tiledb_config_set_read_method(ctx, config, TILEDB_IO_METHOD_MPI);
+  tiledb_config_set_mpi_comm(ctx, config, &mpi_comm);
 
   // Array name
   const char* array_name = "my_group/dense_arrays/my_array_A";
@@ -116,6 +114,8 @@ int main(int argc, char** argv) {
       ++total_count;
   printf("Process %d: Number of a1 values greater "
          "than 10: %d \n", rank, total_count);
+  
+  tiledb_config_free(config); 
 
   // Finalize context
   tiledb_ctx_free(ctx);

@@ -1002,7 +1002,7 @@ Status ReadState::CMP_COORDS_TO_SEARCH_TILE(
         coords_size_);
   } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    st = mpi_io_read_from_file(
+    st = filesystem::mpi_io_read_from_file(
         mpi_comm,
         filename,
         tiles_file_offsets_[attribute_num_ + 1] + tile_offset,
@@ -1640,7 +1640,7 @@ Status ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
         coords_size_);
   } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    st = mpi_io_read_from_file(
+    st = filesystem::mpi_io_read_from_file(
         mpi_comm,
         filename,
         tiles_file_offsets_[attribute_num_ + 1] + i * coords_size_,
@@ -1688,7 +1688,7 @@ Status ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
         sizeof(size_t));
   } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    st = mpi_io_read_from_file(
+    st = filesystem::mpi_io_read_from_file(
         mpi_comm,
         filename,
         tiles_file_offsets_[attribute_id] + i * sizeof(size_t),
@@ -2022,7 +2022,7 @@ Status ReadState::mpi_io_read_tile_from_file_cmp(
                          array_schema_->attribute(attribute_id_real) +
                          Configurator::file_suffix();
   // Read from file
-  RETURN_NOT_OK(mpi_io_read_from_file(
+  RETURN_NOT_OK(filesystem::mpi_io_read_from_file(
       mpi_comm, filename, offset, tile_compressed_, tile_size));
   return Status::Ok();
 }
@@ -2047,9 +2047,9 @@ Status ReadState::mpi_io_read_tile_from_file_var_cmp(
   // Prepare attribute file name
   std::string filename = fragment_->fragment_name() + "/" +
                          array_schema_->attribute(attribute_id) + "_var" +
-                         Configurator::file_suffix;
+                         Configurator::file_suffix();
   // Read from file
-  RETURN_NOT_OK(mpi_io_read_from_file(
+  RETURN_NOT_OK(filesystem::mpi_io_read_from_file(
       mpi_comm, filename, offset, tile_compressed_, tile_size));
   return Status::Ok();
 }
@@ -2404,51 +2404,49 @@ Status ReadState::prepare_tile_for_reading_var_cmp_none(
           Configurator::cell_var_offset_size()));
     } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-      RETURN_NOT_OK(mpi_io_read_from_file(
+      RETURN_NOT_OK(filesystem::mpi_io_read_from_file(
           array_->config()->mpi_comm(),
           filename,
           file_offset + full_tile_size,
           &end_tile_var_offset,
           Configurator::cell_var_offset_size()));
-    }
 #else
       return LOG_STATUS(Status::Error(
           "Cannot prepare variable tile for reading; MPI not supported"));
 #endif
+    }
+    tile_var_size = end_tile_var_offset - tile_s[0];
+  } else {  // Last tile
+    // Prepare variable attribute file name
+    std::string filename = fragment_->fragment_name() + "/" +
+                           array_schema_->attribute(attribute_id) + "_var" +
+                           Configurator::file_suffix();
+    off_t file_size = 0;
+    RETURN_NOT_OK(filesystem::file_size(filename, &file_size));
+    tile_var_size = file_size - tile_s[0];
   }
-  tile_var_size = end_tile_var_offset - tile_s[0];
-}
-else {  // Last tile
-  // Prepare variable attribute file name
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id) + "_var" +
-                         Configurator::file_suffix();
-  off_t file_size = 0;
-  RETURN_NOT_OK(filesystem::file_size(filename, &file_size));
-  tile_var_size = file_size - tile_s[0];
-}
 
-// Read tile from file
-if (read_method == IOMethod::READ || read_method == IOMethod::MPI)
-  set_tile_var_file_offset(attribute_id, start_tile_var_offset);
-else if (read_method == IOMethod::MMAP)
-  RETURN_NOT_OK(map_tile_from_file_var_cmp_none(
-      attribute_id, start_tile_var_offset, tile_var_size));
+  // Read tile from file
+  if (read_method == IOMethod::READ || read_method == IOMethod::MPI)
+    set_tile_var_file_offset(attribute_id, start_tile_var_offset);
+  else if (read_method == IOMethod::MMAP)
+    RETURN_NOT_OK(map_tile_from_file_var_cmp_none(
+        attribute_id, start_tile_var_offset, tile_var_size));
 
-// Set offsets
-tiles_offsets_[attribute_id] = 0;
-tiles_var_offsets_[attribute_id] = 0;
+  // Set offsets
+  tiles_offsets_[attribute_id] = 0;
+  tiles_var_offsets_[attribute_id] = 0;
 
-// Set variable tile size
-tiles_var_sizes_[attribute_id] = tile_var_size;
+  // Set variable tile size
+  tiles_var_sizes_[attribute_id] = tile_var_size;
 
-// Shift starting offsets of variable-sized cells
-shift_var_offsets(attribute_id);
+  // Shift starting offsets of variable-sized cells
+  shift_var_offsets(attribute_id);
 
-// Mark as fetched
-fetched_tile_[attribute_id] = tile_i;
+  // Mark as fetched
+  fetched_tile_[attribute_id] = tile_i;
 
-return Status::Ok();
+  return Status::Ok();
 }  // namespace tiledb
 
 Status ReadState::READ_FROM_TILE(
@@ -2481,7 +2479,7 @@ Status ReadState::READ_FROM_TILE(
         bytes_to_copy);
   } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    st = mpi_io_read_from_file(
+    st = filesystem::mpi_io_read_from_file(
         mpi_comm,
         filename,
         tiles_file_offsets_[attribute_id] + tile_offset,
@@ -2525,7 +2523,7 @@ Status ReadState::READ_FROM_TILE_VAR(
         bytes_to_copy);
   } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    st = mpi_io_read_from_file(
+    st = filesystem::mpi_io_read_from_file(
         mpi_comm,
         filename,
         tiles_var_file_offsets_[attribute_id] + tile_offset,
