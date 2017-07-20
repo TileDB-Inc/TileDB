@@ -284,9 +284,9 @@ Status write_to_gzipfile(
  * @param offset The offset in the file from which the read will start.
  * @param buffer The buffer into which the data will be written.
  * @param length The size of the data to be read from the file.
- * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
+ * @return Status
  */
-int mpi_io_read_from_file(
+Status mpi_io_read_from_file(
     const MPI_Comm* mpi_comm,
     const std::string& path,
     off_t offset,
@@ -299,9 +299,9 @@ int mpi_io_read_from_file(
  *
  * @param mpi_comm The MPI communicator.
  * @param path The name of the file.
- * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
+ * @return Status
  */
-int mpi_io_sync(const MPI_Comm* mpi_comm, const char* path);
+Status mpi_io_sync(const MPI_Comm* mpi_comm, const char* path);
 
 /**
  * Writes the input buffer to a file using MPI-IO.
@@ -310,9 +310,9 @@ int mpi_io_sync(const MPI_Comm* mpi_comm, const char* path);
  * @param path The name of the file.
  * @param buffer The input buffer.
  * @param buffer_size The size of the input buffer.
- * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
+ * @return Status
  */
-int mpi_io_write_to_file(
+Status mpi_io_write_to_file(
     const MPI_Comm* mpi_comm,
     const char* path,
     const void* buffer,

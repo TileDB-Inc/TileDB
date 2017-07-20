@@ -687,21 +687,21 @@ Status mpi_io_write_to_file(
   if (MPI_File_write(fh, (void*)buffer, buffer_size, MPI_CHAR, &mpi_status)) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot write to file '") + filename +
-        "'; File writing error");
+        "'; File writing error"));
   }
 
   // Close file
   if (MPI_File_close(&fh)) {
     return LOG_STATUS(Status::OSError(
         std::string("Cannot write to file '") + filename +
-        "'; File closing error");
+        "'; File closing error"));
   }
 
   // Success
-  return Status::Ok()
+  return Status::Ok();
 }
 
-STATUS mpi_io_sync(const MPI_Comm* mpi_comm, const char* filename) {
+Status mpi_io_sync(const MPI_Comm* mpi_comm, const char* filename) {
   // Open file
   MPI_File fh;
   int rc;
@@ -722,7 +722,8 @@ STATUS mpi_io_sync(const MPI_Comm* mpi_comm, const char* filename) {
   // Handle error
   if (rc) {
     return LOG_STATUS(Status::OSError(
-        std::string("Cannot open file '") + filename + "'; File opening error");
+        std::string("Cannot open file '") + filename +
+        "'; File opening error"));
   }
 
   // Sync
@@ -735,7 +736,8 @@ STATUS mpi_io_sync(const MPI_Comm* mpi_comm, const char* filename) {
   // Close file
   if (MPI_File_close(&fh)) {
     return LOG_STATUS(Status::OSError(
-        std::string("Cannot sync file '") + filename + "'; File closing error")));
+        std::string("Cannot sync file '") + filename +
+        "'; File closing error"));
   }
 
   // Success
