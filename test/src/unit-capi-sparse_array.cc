@@ -508,7 +508,9 @@ TEST_CASE_METHOD(SparseArrayFx, "C API: Test random sparse sorted reads") {
         TILEDB_BZIP2,
         TILEDB_ROW_MAJOR,
         TILEDB_COL_MAJOR);
-    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
+    // Only run 1 randomized trial here as Bzip is ~10x slower than other
+    // compressors
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, 1));
   }
 
   SECTION("- lz4 compression row/col-major") {
