@@ -181,9 +181,11 @@ Status WriteState::sync() {
   // Sync all attributes
   for (int attribute_id : attribute_ids) {
     // For all attributes
-    filename = fragment_->fragment_name() + "/" +
-               array_schema->attribute(attribute_id) +
-               Configurator::file_suffix();
+    filename = fragment_->fragment_uri()
+                   .join_path(
+                       array_schema->attribute(attribute_id) +
+                       Configurator::file_suffix())
+                   .to_posix_path();
     if (write_method == IOMethod::WRITE) {
       RETURN_NOT_OK(filesystem::sync(filename.c_str()));
     } else if (write_method == IOMethod::MPI) {
@@ -199,9 +201,11 @@ Status WriteState::sync() {
 
     // Only for variable-size attributes (they have an extra file)
     if (array_schema->var_size(attribute_id)) {
-      filename = fragment_->fragment_name() + "/" +
-                 array_schema->attribute(attribute_id) + "_var" +
-                 Configurator::file_suffix();
+      filename = fragment_->fragment_uri()
+                     .join_path(
+                         array_schema->attribute(attribute_id) + "_var" +
+                         Configurator::file_suffix())
+                     .to_posix_path();
       if (write_method == IOMethod::WRITE) {
         RETURN_NOT_OK(filesystem::sync(filename.c_str()));
       } else if (write_method == IOMethod::MPI) {
@@ -218,7 +222,7 @@ Status WriteState::sync() {
   }
 
   // Sync fragment directory
-  filename = fragment_->fragment_name();
+  filename = fragment_->fragment_uri().to_posix_path();
   if (write_method == IOMethod::WRITE) {
     RETURN_NOT_OK(filesystem::sync(filename.c_str()));
   } else if (write_method == IOMethod::MPI) {
@@ -247,8 +251,9 @@ Status WriteState::sync_attribute(const std::string& attribute) {
   std::string filename;
 
   // Sync attribute
-  filename = fragment_->fragment_name() + "/" + attribute +
-             Configurator::file_suffix();
+  filename = fragment_->fragment_uri()
+                 .join_path(attribute + Configurator::file_suffix())
+                 .to_posix_path();
   if (write_method == IOMethod::WRITE) {
     RETURN_NOT_OK(filesystem::sync(filename.c_str()));
   } else if (write_method == IOMethod::MPI) {
@@ -264,8 +269,9 @@ Status WriteState::sync_attribute(const std::string& attribute) {
   }
   // Only for variable-size attributes (they have an extra file)
   if (array_schema->var_size(attribute_id)) {
-    filename = fragment_->fragment_name() + "/" + attribute + "_var" +
-               Configurator::file_suffix();
+    filename = fragment_->fragment_uri()
+                   .join_path(attribute + "_var" + Configurator::file_suffix())
+                   .to_posix_path();
     if (write_method == IOMethod::WRITE) {
       RETURN_NOT_OK(filesystem::sync(filename.c_str()));
     } else if (write_method == IOMethod::MPI) {
@@ -281,7 +287,7 @@ Status WriteState::sync_attribute(const std::string& attribute) {
     }
   }
   // Sync fragment directory
-  filename = fragment_->fragment_name();
+  filename = fragment_->fragment_uri().to_posix_path();
   if (write_method == IOMethod::WRITE) {
     RETURN_NOT_OK(filesystem::sync(filename.c_str()));
   } else if (write_method == IOMethod::MPI) {
@@ -301,7 +307,7 @@ Status WriteState::sync_attribute(const std::string& attribute) {
 
 Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   // Create fragment directory if it does not exist
-  std::string fragment_name = fragment_->fragment_name();
+  std::string fragment_name = fragment_->fragment_uri().to_posix_path();
   if (!filesystem::is_dir(fragment_name)) {
     RETURN_NOT_OK(filesystem::create_dir(fragment_name));
     // For variable length attributes, ensure an empty file exists
@@ -310,7 +316,8 @@ Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
     // functions
     const ArraySchema* array_schema = fragment_->array()->array_schema();
     const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
-    const std::string file_prefix = fragment_->fragment_name() + "/";
+    const std::string file_prefix =
+        fragment_->fragment_uri().to_posix_path() + "/";
     // Go over var length attributes
     int attribute_id_num = attribute_ids.size();
     for (int i = 0; i < attribute_id_num; ++i) {
@@ -725,9 +732,11 @@ Status WriteState::compress_and_write_tile(int attribute_id) {
       compress_tile(attribute_id, tile, tile_size, &tile_compressed_size));
 
   // Get the attribute file name
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema->attribute(attribute_id) +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema->attribute(attribute_id) +
+                                 Configurator::file_suffix())
+                             .to_posix_path();
 
   // Write segment to file
   Status st;
@@ -781,9 +790,11 @@ Status WriteState::compress_and_write_tile_var(int attribute_id) {
       compress_tile(attribute_id, tile, tile_size, &tile_compressed_size));
 
   // Get the attribute file name
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema->attribute(attribute_id) + "_var" +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema->attribute(attribute_id) +
+                                 "_var" + Configurator::file_suffix())
+                             .to_posix_path();
 
   // Write segment to file
   Status st;
@@ -1088,9 +1099,11 @@ Status WriteState::write_dense_attr_cmp_none(
   const ArraySchema* array_schema = fragment_->array()->array_schema();
 
   // Write buffer to file
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema->attribute(attribute_id) +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema->attribute(attribute_id) +
+                                 Configurator::file_suffix())
+                             .to_posix_path();
   Status st;
   IOMethod write_method = fragment_->array()->config()->write_method();
   if (write_method == IOMethod::WRITE) {
@@ -1213,9 +1226,11 @@ Status WriteState::write_dense_attr_var_cmp_none(
   const ArraySchema* array_schema = fragment_->array()->array_schema();
 
   // Write buffer with variable-sized cells to disk
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema->attribute(attribute_id) + "_var" +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema->attribute(attribute_id) +
+                                 "_var" + Configurator::file_suffix())
+                             .to_posix_path();
   IOMethod write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
@@ -1239,7 +1254,7 @@ Status WriteState::write_dense_attr_var_cmp_none(
       attribute_id, buffer_var_size, buffer, buffer_size, shifted_buffer);
 
   // Write buffer offsets to file
-  filename = fragment_->fragment_name() + "/" +
+  filename = fragment_->fragment_uri().to_posix_path() + "/" +
              array_schema->attribute(attribute_id) +
              Configurator::file_suffix();
   Status st;
@@ -1498,9 +1513,11 @@ Status WriteState::write_sparse_attr_cmp_none(
     update_book_keeping(buffer, buffer_size);
 
   // Write buffer to file
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema->attribute(attribute_id) +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema->attribute(attribute_id) +
+                                 Configurator::file_suffix())
+                             .to_posix_path();
   Status st;
   IOMethod write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
@@ -1622,9 +1639,11 @@ Status WriteState::write_sparse_attr_var_cmp_none(
   assert(attribute_id != array_schema->attribute_num());
 
   // Write buffer with variable-sized cells to disk
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema->attribute(attribute_id) + "_var" +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema->attribute(attribute_id) +
+                                 "_var" + Configurator::file_suffix())
+                             .to_posix_path();
   Status st;
   IOMethod write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
@@ -1652,9 +1671,11 @@ Status WriteState::write_sparse_attr_var_cmp_none(
       attribute_id, buffer_var_size, buffer, buffer_size, shifted_buffer);
 
   // Write buffer offsets to file
-  filename = fragment_->fragment_name() + "/" +
-             array_schema->attribute(attribute_id) +
-             Configurator::file_suffix();
+  filename = fragment_->fragment_uri()
+                 .join_path(
+                     array_schema->attribute(attribute_id) +
+                     Configurator::file_suffix())
+                 .to_posix_path();
   if (write_method == IOMethod::WRITE) {
     st = filesystem::write_to_file(
         filename.c_str(), shifted_buffer, buffer_size);

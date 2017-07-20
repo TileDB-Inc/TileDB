@@ -46,6 +46,7 @@
 #include "datatype.h"
 #include "layout.h"
 #include "status.h"
+#include "uri.h"
 
 #ifdef HAVE_OPENMP
 #include <omp.h>
@@ -164,10 +165,10 @@ const char* compressor_str(Compressor compressor);
 /**
  * Checks if a fragment exists
  *
- * @param frag fragment path string
+ * @param frag fragment uri
  * @return bool true if the fragment exists, false otherwise
  */
-bool fragment_exists(const std::string& frag);
+bool fragment_exists(const uri::URI& frag);
 
 /**
  * Deletes a fragment represenation
@@ -175,7 +176,7 @@ bool fragment_exists(const std::string& frag);
  * @param frag fragment path string
  * @return Status
  */
-Status delete_fragment(const std::string& frag);
+Status delete_fragment(const uri::URI& frag);
 
 /**
  * Returns the parent path of the input path.
@@ -286,6 +287,9 @@ bool intersect(const std::vector<T>& v1, const std::vector<T>& v2);
  */
 bool is_array(const std::string& dir);
 
+// TODO: uri
+bool is_array(const uri::URI& uri);
+
 /**
  * Checks if one range is fully contained in another.
  *
@@ -314,6 +318,9 @@ bool is_fragment(const std::string& dir);
  */
 bool is_group(const std::string& dir);
 
+// TODO: uri
+bool is_group(const uri::URI& uri);
+
 /**
  * Checks if the input directory is a metadata object.
  *
@@ -321,6 +328,9 @@ bool is_group(const std::string& dir);
  * @return *true* if the directory is a metadata object, and *false* otherwise.
  */
 bool is_metadata(const std::string& dir);
+
+// TODO: uri
+bool is_metadata(const uri::URI& uri);
 
 /**
  * Determine if a given path is a array schema

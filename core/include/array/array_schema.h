@@ -45,6 +45,7 @@
 #include "dimension.h"
 #include "layout.h"
 #include "status.h"
+#include "uri.h"
 
 namespace tiledb {
 
@@ -68,9 +69,9 @@ class ArraySchema {
   /**
    * Constructor.
    *
-   * @param array_name The array name.
+   * @param uri The array uri.
    */
-  ArraySchema(const char* array_name);
+  ArraySchema(const uri::URI& uri);
 
   /** Destructor. */
   ~ArraySchema();
@@ -79,8 +80,8 @@ class ArraySchema {
   /*             ACCESSORS             */
   /* ********************************* */
 
-  /** Returns the array name. */
-  const std::string& array_name() const;
+  /** Returns the array uri. */
+  const uri::URI& array_uri() const;
 
   /** Returns the array type. */
   ArrayType array_type() const;
@@ -340,8 +341,13 @@ class ArraySchema {
       const std::string& dir,
       const char* schema_filename = Configurator::array_schema_filename());
 
-  /** Sets the array name. */
-  void set_array_name(const char* array_name);
+  // TODO: uri
+  Status load(
+      const uri::URI& uri,
+      const char* schema_filename = Configurator::array_schema_filename());
+
+  /** Sets the array uri. */
+  void set_array_uri(const uri::URI& uri);
 
   /** Sets the array type (dense or sparse). */
   void set_array_type(ArrayType array_type);
@@ -381,6 +387,11 @@ class ArraySchema {
    */
   Status store(
       const std::string& dir,
+      const char* schema_filename = Configurator::array_schema_filename());
+
+  // TODO: uri
+  Status store(
+      const uri::URI& parent,
       const char* schema_filename = Configurator::array_schema_filename());
 
   /* ********************************* */
@@ -593,7 +604,7 @@ class ArraySchema {
   /* ********************************* */
 
   /** The array name. */
-  std::string array_name_;
+  uri::URI array_uri_;
   /** The array type. */
   ArrayType array_type_;        // TODO: replace dense_
   /** The array attributes. */  // TODO: replace attributes_

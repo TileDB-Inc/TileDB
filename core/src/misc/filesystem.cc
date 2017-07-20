@@ -73,6 +73,10 @@ std::string current_dir() {
   return dir;
 }
 
+Status delete_dir(const uri::URI& uri) {
+  return delete_dir(uri.to_posix_path());
+}
+
 Status delete_dir(const std::string& path) {
   // Get real path
   std::string dirname_real = filesystem::real_dir(path);
@@ -107,6 +111,14 @@ Status delete_dir(const std::string& path) {
   if (rmdir(dirname_real.c_str())) {
     return LOG_STATUS(Status::OSError(
         std::string("Cannot delete directory; ") + strerror(errno)));
+  }
+  return Status::Ok();
+}
+
+Status delete_file(const std::string& path) {
+  if (remove(path.c_str())) {
+    return LOG_STATUS(
+        Status::OSError(std::string("Cannot delete file; ") + strerror(errno)));
   }
   return Status::Ok();
 }
@@ -150,14 +162,14 @@ std::vector<std::string> get_dirs(const std::string& path) {
   return dirs;
 }
 
-bool is_dir(const std::string& path) {
+bool is_dir(const uri::URI& path) {
   struct stat st;
-  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+  return stat(path.to_string().c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
-bool is_file(const std::string& path) {
+bool is_file(const uri::URI& path) {
   struct stat st;
-  return (stat(path.c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
+  return (stat(path.to_string().c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
 }
 
 // TODO: path is getting modified here, don't pass by reference
@@ -266,8 +278,8 @@ Status filelock_unlock(int fd) {
   return Status::Ok();
 }
 
-Status move(const std::string& old_path, const std::string& new_path) {
-  if (rename(old_path.c_str(), new_path.c_str())) {
+Status move(const uri::URI& old_path, const uri::URI& new_path) {
+  if (rename(old_path.to_string().c_str(), new_path.to_string().c_str())) {
     return LOG_STATUS(
         Status::OSError(std::string("Cannot move path: ") + strerror(errno)));
   }
@@ -318,9 +330,11 @@ std::vector<std::string> get_fragment_dirs(const std::string& path) {
   return dirs;
 }
 
-Status create_fragment_file(const std::string& path) {
+Status create_fragment_file(const uri::URI& uri) {
+  uri::URI path = filesystem::abs_path(uri);
   // Create the special fragment file
-  std::string filename = path + "/" + Configurator::fragment_filename();
+  std::string filename =
+      path.to_posix_path() + "/" + Configurator::fragment_filename();
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if (fd == -1 || ::close(fd)) {
     return LOG_STATUS(Status::OSError(
@@ -446,6 +460,39 @@ bool both_slashes(char a, char b) {
 void adjacent_slashes_dedup(std::string& value) {
   value.erase(
       std::unique(value.begin(), value.end(), both_slashes), value.end());
+}
+
+uri::URI abs_path(const uri::URI& upath) {
+  // Initialize current, home and root
+  std::string current = filesystem::current_dir();
+  auto env_home_ptr = getenv("HOME");
+  std::string home = env_home_ptr ? env_home_ptr : current;
+  std::string root = "/";
+
+  std::string path = upath.to_string();
+  // Easy cases
+  if (path == "" || path == "." || path == "./")
+    return uri::URI(current);
+  else if (path == "~")
+    return uri::URI(home);
+  else if (path == "/")
+    return uri::URI(root);
+
+  // Other cases
+  std::string ret_dir;
+  if (utils::starts_with(path, "/"))
+    ret_dir = root + path;
+  else if (utils::starts_with(path, "~/"))
+    ret_dir = home + path.substr(1, path.size() - 1);
+  else if (utils::starts_with(path, "./"))
+    ret_dir = current + path.substr(1, path.size() - 1);
+  else
+    ret_dir = current + "/" + path;
+
+  adjacent_slashes_dedup(ret_dir);
+  purge_dots_from_path(ret_dir);
+
+  return uri::URI(ret_dir);
 }
 
 std::string real_dir(const std::string& path) {
@@ -651,14 +698,14 @@ Status mpi_io_read_from_file(
 
 Status mpi_io_write_to_file(
     const MPI_Comm* mpi_comm,
-    const char* filename,
+    const std::string& filename,
     const void* buffer,
     size_t buffer_size) {
   // Open file
   MPI_File fh;
   if (MPI_File_open(
           *mpi_comm,
-          (char*)filename,
+          filename.c_str(),
           MPI_MODE_WRONLY | MPI_MODE_APPEND | MPI_MODE_CREATE |
               MPI_MODE_SEQUENTIAL,
           MPI_INFO_NULL,
@@ -701,17 +748,17 @@ Status mpi_io_write_to_file(
   return Status::Ok();
 }
 
-Status mpi_io_sync(const MPI_Comm* mpi_comm, const char* filename) {
+Status mpi_io_sync(const MPI_Comm* mpi_comm, const std::string& filename) {
   // Open file
   MPI_File fh;
   int rc;
   if (filesystem::is_dir(filename))  // DIRECTORY
     rc = MPI_File_open(
-        *mpi_comm, (char*)filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);
+        *mpi_comm, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);
   else if (filesystem::is_file(filename))  // FILE
     rc = MPI_File_open(
         *mpi_comm,
-        (char*)filename,
+        filename.c_str(),
         MPI_MODE_WRONLY | MPI_MODE_APPEND | MPI_MODE_CREATE |
             MPI_MODE_SEQUENTIAL,
         MPI_INFO_NULL,

@@ -48,6 +48,7 @@
 #include "metadata.h"
 #include "metadata_iterator.h"
 #include "status.h"
+#include "uri.h"
 
 #ifdef HAVE_OPENMP
 #include <omp.h>
@@ -107,7 +108,7 @@ class StorageManager {
    * @param group The directory of the group to be created in the file system.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  Status group_create(const std::string& group) const;
+  Status group_create(const uri::URI& group) const;
 
   /* ********************************* */
   /*           BASIC ARRAY             */
@@ -134,10 +135,10 @@ class StorageManager {
   /**
    * Consolidates the fragments of an array into a single fragment.
    *
-   * @param array_dir The name of the array to be consolidated.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   * @param array_uri The identifier of the array to be consolidated.
+   * @return Status
    */
-  Status array_consolidate(const char* array_dir);
+  Status array_consolidate(const uri::URI& array);
 
   /**
    * Creates a new TileDB array.
@@ -172,7 +173,7 @@ class StorageManager {
    */
   Status array_init(
       Array*& array,
-      const char* array_dir,
+      const uri::URI& array_uri,
       ArrayMode mode,
       const void* subarray,
       const char** attributes,
@@ -242,7 +243,7 @@ class StorageManager {
    */
   Status array_iterator_init(
       ArrayIterator*& array_it,
-      const char* array,
+      const uri::URI& array_uri,
       ArrayMode mode,
       const void* subarray,
       const char** attributes,
@@ -267,7 +268,7 @@ class StorageManager {
    * @param metadata_dir The name of the metadata to be consolidated.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  Status metadata_consolidate(const char* metadata_dir);
+  Status metadata_consolidate(const uri::URI& metadata_uri);
 
   /**
    * Creates a new TileDB metadata object.
@@ -286,7 +287,7 @@ class StorageManager {
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
   Status metadata_load_schema(
-      const char* metadata_dir, ArraySchema*& array_schema) const;
+      const uri::URI& metadata_uri, ArraySchema*& array_schema) const;
 
   /**
    * Initializes a TileDB metadata object.
@@ -306,7 +307,7 @@ class StorageManager {
    */
   Status metadata_init(
       Metadata*& metadata,
-      const char* metadata_dir,
+      const uri::URI& metadata_uri,
       tiledb_metadata_mode_t mode,
       const char** attributes,
       int attribute_num);
@@ -348,7 +349,7 @@ class StorageManager {
    */
   Status metadata_iterator_init(
       MetadataIterator*& metadata_it,
-      const char* metadata_dir,
+      const uri::URI& metadata_uri,
       const char** attributes,
       int attribute_num,
       void** buffers,
@@ -367,7 +368,7 @@ class StorageManager {
   /* ********************************* */
 
   /**
-   * Returns the type of the input directory.
+   * Returns the type of the input direc
    *
    * @param dir The input directory.
    * @return It can be one of the following:
@@ -396,7 +397,7 @@ class StorageManager {
    * @return Status
    */
   Status ls(
-      const char* parent_dir,
+      const uri::URI& parent_uri,
       char** object_paths,
       tiledb_object_t* object_types,
       int* num_objects) const;
@@ -408,7 +409,7 @@ class StorageManager {
    * @param object_num The number of TileDB objects to be returned.
    * @return Status
    */
-  Status ls_c(const char* parent_path, int* object_num) const;
+  Status ls_c(const uri::URI& parent_uri, int* object_num) const;
 
   /**
    * Clears a TileDB directory. The corresponding TileDB object
@@ -418,7 +419,7 @@ class StorageManager {
    * @param dir The directory to be cleared.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  Status clear(const std::string& dir) const;
+  Status clear(const uri::URI& uri) const;
 
   /**
    * Deletes a TileDB directory (group, array, or metadata) entirely.
@@ -426,7 +427,7 @@ class StorageManager {
    * @param dir The directory to be deleted.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  Status delete_entire(const std::string& dir);
+  Status delete_entire(const uri::URI& uri);
 
   /**
    * Moves a TileDB directory (group, array or metadata).
@@ -435,7 +436,7 @@ class StorageManager {
    * @param new_dir The new directory.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  Status move(const std::string& old_dir, const std::string& new_dir);
+  Status move(const uri::URI& old_uri, const uri::URI& new_uri);
 
  private:
   /* ********************************* */
@@ -537,7 +538,7 @@ class StorageManager {
    * @param array The array to be cleared.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  Status array_clear(const std::string& array) const;
+  Status array_clear(const uri::URI& array) const;
 
   /**
    * Decrements the number of times the input array is initialized. If this
@@ -547,7 +548,7 @@ class StorageManager {
    * @param array The array name.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  Status array_close(const std::string& array);
+  Status array_close(const uri::URI& array);
 
   /**
    * Deletes a TileDB array entirely.
@@ -555,7 +556,7 @@ class StorageManager {
    * @param array The array to be deleted.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  Status array_delete(const std::string& array) const;
+  Status array_delete(const uri::URI& array) const;
 
   /**
    * Gets the names of the existing fragments of an array.
@@ -565,7 +566,7 @@ class StorageManager {
    * @return void
    */
   void array_get_fragment_names(
-      const std::string& array, std::vector<std::string>& fragment_names);
+      const uri::URI& array_uri, std::vector<std::string>& fragment_names);
 
   /**
    * Gets an open array entry for the array being initialized. If this
@@ -577,7 +578,7 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   Status array_get_open_array_entry(
-      const std::string& array, OpenArray*& open_array);
+      const uri::URI& array_uri, OpenArray*& open_array);
 
   /**
    * Loads the book-keeping structures of all the fragments of an array from the
@@ -602,8 +603,7 @@ class StorageManager {
    * @param new_array The new array directory.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  Status array_move(
-      const std::string& old_array, const std::string& new_array) const;
+  Status array_move(const uri::URI& old_array, const uri::URI& new_array) const;
 
   /**
    * Opens an array. This creates or updates an OpenArray entry for this array,
@@ -618,7 +618,7 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   Status array_open(
-      const std::string& array_name, OpenArray*& open_array, ArrayMode mode);
+      const uri::URI& array_name, OpenArray*& open_array, ArrayMode mode);
 
   /**
    * Creates a special file that serves as lock needed for implementing
@@ -661,35 +661,33 @@ class StorageManager {
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
   Status consolidation_finalize(
-      Fragment* new_fragment,
-      const std::vector<std::string>& old_fragment_names);
+      Fragment* new_fragment, const std::vector<uri::URI>& old_fragment_names);
 
   /**
    * Clears a TileDB group. The group will still exist after the execution of
    * the function, but it will be empty (i.e., as if it was just created).
    *
    * @param group The group to be cleared.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   * @return Status
    */
-  Status group_clear(const std::string& group) const;
+  Status group_clear(const uri::URI& group) const;
 
   /**
    * Deletes a TileDB group entirely.
    *
    * @param group The group to be deleted.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   * @return Status
    */
-  Status group_delete(const std::string& group) const;
+  Status group_delete(const uri::URI& group) const;
 
   /**
    * Moves a TileDB group.
    *
    * @param old_group The old group directory.
    * @param new_group The new group directory.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   * @return Status
    */
-  Status group_move(
-      const std::string& old_group, const std::string& new_group) const;
+  Status group_move(const uri::URI& old_group, const uri::URI& new_group) const;
 
   /**
    * Clears a TileDB metadata object. The metadata will still exist after the
@@ -697,27 +695,27 @@ class StorageManager {
    * created).
    *
    * @param metadata The metadata to be cleared.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   * @return Status
    */
-  Status metadata_clear(const std::string& metadata) const;
+  Status metadata_clear(const uri::URI& metadata) const;
 
   /**
    * Deletes a TileDB metadata object entirely.
    *
    * @param metadata The metadata to be deleted.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   * @return Status
    */
-  Status metadata_delete(const std::string& metadata) const;
+  Status metadata_delete(const uri::URI& metadata) const;
 
   /**
    * Moves a TileDB metadata object.
    *
    * @param old_metadata The old metadata directory.
    * @param new_metadata The new metadata directory.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
+   * @return Status
    */
   Status metadata_move(
-      const std::string& old_metadata, const std::string& new_metadata) const;
+      const uri::URI& old_metadata, const uri::URI& new_metadata) const;
 
   /**
    * Appropriately sorts the fragment names based on their name timestamps.

@@ -39,7 +39,9 @@
 #include <sys/types.h>
 #include <string>
 #include <vector>
+
 #include "status.h"
+#include "uri.h"
 
 namespace tiledb {
 
@@ -78,7 +80,7 @@ Status filelock_unlock(int fd);
  * @param new_path the new path
  * @return Status
  */
-Status move(const std::string& old_path, const std::string& new_path);
+Status move(const uri::URI& old_path, const uri::URI& new_path);
 
 /**
  *
@@ -113,6 +115,9 @@ std::string current_dir();
  */
 Status delete_dir(const std::string& path);
 
+// TOOO: uri
+Status delete_dir(const uri::URI& path);
+
 /**
  * Returns the size of the input file.
  *
@@ -120,6 +125,8 @@ Status delete_dir(const std::string& path);
  * @return The file size on success, and TILEDB_UT_ERR for error.
  */
 Status file_size(const std::string& path, off_t* size);
+
+Status delete_file(const std::string& path);
 
 /** Returns the names of the directories inside the input directory.
  *
@@ -134,15 +141,14 @@ std::vector<std::string> get_dirs(const std::string& path);
  * @param dir The directory to be checked.
  * @return *true* if *dir* is an existing directory, and *false* otherwise.
  */
-bool is_dir(const std::string& path);
-
+bool is_dir(const uri::URI& path);
 /**
  * Checks if the input is an existing file.
  *
  * @param file The file to be checked.
  * @return tTrue* if *file* is an existing file, and *false* otherwise.
  */
-bool is_file(const std::string& path);
+bool is_file(const uri::URI& path);
 
 /**
  * It takes as input an **absolute** path, and returns it in its canonicalized
@@ -188,10 +194,10 @@ std::vector<std::string> get_fragment_dirs(const std::string& dir);
  * Creates a special file to indicate that the input directory is a
  * TileDB fragment.
  *
- * @param dir The path of the fragment directory where the file is created.
+ * @param uri The identifier of the framgment to be created
  * @return Status
  */
-Status create_fragment_file(const std::string& dir);
+Status create_fragment_file(const uri::URI& uri);
 
 // TODO: this should go away
 /**
@@ -229,6 +235,9 @@ Status read_from_file_with_mmap(
  * @return The absolute canonicalized directory path of the input directory.
  */
 std::string real_dir(const std::string& path);
+
+// TODO: (jcb) uri
+uri::URI abs_path(const uri::URI& upath);
 
 /**
  * Syncs a file or directory. If the file/directory does not exist,
@@ -301,7 +310,7 @@ Status mpi_io_read_from_file(
  * @param path The name of the file.
  * @return Status
  */
-Status mpi_io_sync(const MPI_Comm* mpi_comm, const char* path);
+Status mpi_io_sync(const MPI_Comm* mpi_comm, const std::string& path);
 
 /**
  * Writes the input buffer to a file using MPI-IO.
@@ -314,7 +323,7 @@ Status mpi_io_sync(const MPI_Comm* mpi_comm, const char* path);
  */
 Status mpi_io_write_to_file(
     const MPI_Comm* mpi_comm,
-    const char* path,
+    const std::string& path,
     const void* buffer,
     size_t buffer_size);
 #endif

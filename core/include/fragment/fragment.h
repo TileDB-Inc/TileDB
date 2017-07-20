@@ -78,8 +78,8 @@ class Fragment {
   /** Returns true if the fragment is dense, and false if it is sparse. */
   bool dense() const;
 
-  /** Returns the fragment name. */
-  const std::string& fragment_name() const;
+  /** Returns the fragment uri. */
+  const uri::URI& fragment_uri() const;
 
   /** Returns the mode of the fragment. */
   ArrayMode mode() const;
@@ -113,15 +113,14 @@ class Fragment {
   /**
    * Initializes a fragment in write mode.
    *
-   * @param fragment_name The name that will be given to the fragment.
+   * @param fragment_uri fragment uri identifier.
    * @param mode The fragment mode. It can be one of the following:
    *    - ArrayMode::WRITE
    *    - ArrayMode::WRITE_UNSORTED
    * @param subarray The subarray the fragment is constrained on.
    * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
    */
-  Status init(
-      const std::string& fragment_name, ArrayMode mode, const void* subarray);
+  Status init(const uri::URI& uri, ArrayMode mode, const void* subarray);
 
   /**
    * Initializes a fragment in read mode.
@@ -130,7 +129,7 @@ class Fragment {
    * @param book_keeping The book-keeping of the fragment.
    * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
    */
-  Status init(const std::string& fragment_name, BookKeeping* book_keeping);
+  Status init(const uri::URI& uri, BookKeeping* book_keeping);
 
   /** Resets the read state (typically to start a new read). */
   void reset_read_state();
@@ -203,7 +202,7 @@ class Fragment {
   /** Indicates whether the fragment is dense or sparse. */
   bool dense_;
   /** The fragment name. */
-  std::string fragment_name_;
+  uri::URI fragment_uri_;
   /**
    * The fragment mode. It must be one of the following:
    *    - TILEDB_WRITE

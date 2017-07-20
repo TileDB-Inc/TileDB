@@ -65,9 +65,9 @@ class MetadataSchema {
   /**
    * Constructor.
    *
-   * @param metadata_name The metadata name.
+   * @param metadata_name The metadata uri.
    */
-  MetadataSchema(const char* metadata_name);
+  MetadataSchema(const uri::URI& uri);
 
   /** Destructor. */
   ~MetadataSchema();
@@ -76,8 +76,8 @@ class MetadataSchema {
   /*             ACCESSORS             */
   /* ********************************* */
 
-  /** Returns the metadata name. */
-  const std::string& metadata_name() const;
+  /** Returns the metadata uri. */
+  const uri::URI& metadata_uri() const;
 
   /** Returns the underlying array schema. */
   const ArraySchema* array_schema() const;

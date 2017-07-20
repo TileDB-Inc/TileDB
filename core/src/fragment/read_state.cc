@@ -116,13 +116,13 @@ ReadState::ReadState(const Fragment* fragment, BookKeeping* book_keeping)
   compute_tile_search_range();
 
   // Check empty attributes
-  std::string fragment_name = fragment_->fragment_name();
-  std::string filename;
+  uri::URI fragment_uri = fragment_->fragment_uri();
+  uri::URI uri;
   is_empty_attribute_.resize(attribute_num_ + 1);
   for (int i = 0; i < attribute_num_ + 1; ++i) {
-    filename = fragment_name + "/" + array_schema_->attribute(i) +
-               Configurator::file_suffix();
-    is_empty_attribute_[i] = !filesystem::is_file(filename);
+    uri = fragment_uri.join_path(
+        array_schema_->attribute(i) + Configurator::file_suffix());
+    is_empty_attribute_[i] = !filesystem::is_file(uri);
   }
 }
 
@@ -986,7 +986,7 @@ Status ReadState::CMP_COORDS_TO_SEARCH_TILE(
   }
 
   // We need to read from the disk
-  std::string filename = fragment_->fragment_name() + "/" +
+  std::string filename = fragment_->fragment_uri().to_posix_path() + "/" +
                          Configurator::coords() + Configurator::file_suffix();
   Status st;
   IOMethod read_method = array_->config()->read_method();
@@ -1624,7 +1624,7 @@ Status ReadState::GET_COORDS_PTR_FROM_SEARCH_TILE(
   }
 
   // We need to read from the disk
-  std::string filename = fragment_->fragment_name() + "/" +
+  std::string filename = fragment_->fragment_uri().to_posix_path() + "/" +
                          Configurator::coords() + Configurator::file_suffix();
   Status st;
   IOMethod read_method = array_->config()->read_method();
@@ -1671,9 +1671,11 @@ Status ReadState::GET_CELL_PTR_FROM_OFFSET_TILE(
   }
 
   // We need to read from the disk
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id) +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema_->attribute(attribute_id) +
+                                 Configurator::file_suffix())
+                             .to_posix_path();
   Status st;
   IOMethod read_method = array_->config()->read_method();
 #ifdef HAVE_MPI
@@ -1729,7 +1731,7 @@ Status ReadState::map_tile_from_file_cmp(
   }
 
   // Prepare attribute file name
-  std::string filename = fragment_->fragment_name() + "/" +
+  std::string filename = fragment_->fragment_uri().to_posix_path() + "/" +
                          array_schema_->attribute(attribute_id_real) +
                          Configurator::file_suffix();
 
@@ -1794,9 +1796,11 @@ Status ReadState::map_tile_from_file_var_cmp(
   }
 
   // Prepare attribute file name
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id) + "_var" +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema_->attribute(attribute_id) +
+                                 "_var" + Configurator::file_suffix())
+                             .to_posix_path();
 
   // Calculate offset considering the page size
   size_t page_size = sysconf(_SC_PAGE_SIZE);
@@ -1869,9 +1873,11 @@ Status ReadState::map_tile_from_file_cmp_none(
   }
 
   // Prepare attribute file name
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id_real) +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema_->attribute(attribute_id_real) +
+                                 Configurator::file_suffix())
+                             .to_posix_path();
 
   // Calculate offset considering the page size
   size_t page_size = sysconf(_SC_PAGE_SIZE);
@@ -1935,9 +1941,11 @@ Status ReadState::map_tile_from_file_var_cmp_none(
   }
 
   // Prepare attribute file name
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id) + "_var" +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema_->attribute(attribute_id) +
+                                 "_var" + Configurator::file_suffix())
+                             .to_posix_path();
 
   // Calculate offset considering the page size
   size_t page_size = sysconf(_SC_PAGE_SIZE);
@@ -2018,9 +2026,11 @@ Status ReadState::mpi_io_read_tile_from_file_cmp(
     tile_compressed_allocated_size_ = tile_max_size;
   }
   // Prepare attribute file name
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id_real) +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema_->attribute(attribute_id_real) +
+                                 Configurator::file_suffix())
+                             .to_posix_path();
   // Read from file
   RETURN_NOT_OK(filesystem::mpi_io_read_from_file(
       mpi_comm, filename, offset, tile_compressed_, tile_size));
@@ -2045,9 +2055,11 @@ Status ReadState::mpi_io_read_tile_from_file_var_cmp(
   }
 
   // Prepare attribute file name
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id) + "_var" +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema_->attribute(attribute_id) +
+                                 "_var" + Configurator::file_suffix())
+                             .to_posix_path();
   // Read from file
   RETURN_NOT_OK(filesystem::mpi_io_read_from_file(
       mpi_comm, filename, offset, tile_compressed_, tile_size));
@@ -2103,9 +2115,11 @@ Status ReadState::prepare_tile_for_reading_cmp(
     tiles_[attribute_id] = malloc(full_tile_size);
 
   // Prepare attribute file name
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id_real) +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema_->attribute(attribute_id_real) +
+                                 Configurator::file_suffix())
+                             .to_posix_path();
 
   // Find file offset where the tile begins
   off_t file_offset = tile_offsets[attribute_id_real][tile_i];
@@ -2226,9 +2240,11 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
   // ========== Get tile with variable cell offsets ========== //
 
   // Prepare attribute file name
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id) +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema_->attribute(attribute_id) +
+                                 Configurator::file_suffix())
+                             .to_posix_path();
 
   // Find file offset where the tile begins
   off_t file_offset = tile_offsets[attribute_id][tile_i];
@@ -2279,9 +2295,11 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
   // ========== Get variable tile ========== //
 
   // Prepare variable attribute file name
-  filename = fragment_->fragment_name() + "/" +
-             array_schema_->attribute(attribute_id) + "_var" +
-             Configurator::file_suffix();
+  filename = fragment_->fragment_uri()
+                 .join_path(
+                     array_schema_->attribute(attribute_id) + "_var" +
+                     Configurator::file_suffix())
+                 .to_posix_path();
 
   // Calculate offset and compressed tile size
   file_offset = tile_var_offsets[attribute_id][tile_i];
@@ -2391,9 +2409,11 @@ Status ReadState::prepare_tile_for_reading_var_cmp_none(
   off_t start_tile_var_offset = *tile_s;
   off_t end_tile_var_offset = 0;
   size_t tile_var_size;
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id) +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema_->attribute(attribute_id) +
+                                 Configurator::file_suffix())
+                             .to_posix_path();
 
   if (tile_i != tile_num - 1) {  // Not the last tile
     if (read_method == IOMethod::READ || read_method == IOMethod::MMAP) {
@@ -2418,9 +2438,11 @@ Status ReadState::prepare_tile_for_reading_var_cmp_none(
     tile_var_size = end_tile_var_offset - tile_s[0];
   } else {  // Last tile
     // Prepare variable attribute file name
-    std::string filename = fragment_->fragment_name() + "/" +
-                           array_schema_->attribute(attribute_id) + "_var" +
-                           Configurator::file_suffix();
+    std::string filename = fragment_->fragment_uri()
+                               .join_path(
+                                   array_schema_->attribute(attribute_id) +
+                                   "_var" + Configurator::file_suffix())
+                               .to_posix_path();
     off_t file_size = 0;
     RETURN_NOT_OK(filesystem::file_size(filename, &file_size));
     tile_var_size = file_size - tile_s[0];
@@ -2461,9 +2483,11 @@ Status ReadState::READ_FROM_TILE(
   }
 
   // We need to read from the disk
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id) +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema_->attribute(attribute_id) +
+                                 Configurator::file_suffix())
+                             .to_posix_path();
   Status st;
   IOMethod read_method = array_->config()->read_method();
 
@@ -2506,9 +2530,11 @@ Status ReadState::READ_FROM_TILE_VAR(
   }
 
   // We need to read from the disk
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id) + "_var" +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema_->attribute(attribute_id) +
+                                 "_var" + Configurator::file_suffix())
+                             .to_posix_path();
   Status st;
   IOMethod read_method = array_->config()->read_method();
 #ifdef HAVE_MPI
@@ -2558,9 +2584,11 @@ Status ReadState::read_tile_from_file_cmp(
   }
 
   // Prepare attribute file name
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id_real) +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema_->attribute(attribute_id_real) +
+                                 Configurator::file_suffix())
+                             .to_posix_path();
 
   // Read from file
   return filesystem::read_from_file(
@@ -2582,9 +2610,11 @@ Status ReadState::read_tile_from_file_var_cmp(
   }
 
   // Prepare attribute file name
-  std::string filename = fragment_->fragment_name() + "/" +
-                         array_schema_->attribute(attribute_id) + "_var" +
-                         Configurator::file_suffix();
+  std::string filename = fragment_->fragment_uri()
+                             .join_path(
+                                 array_schema_->attribute(attribute_id) +
+                                 "_var" + Configurator::file_suffix())
+                             .to_posix_path();
 
   // Read from file
   return filesystem::read_from_file(

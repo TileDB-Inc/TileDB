@@ -49,8 +49,8 @@ MetadataIterator::~MetadataIterator() = default;
 /*           ACCESSORS            */
 /* ****************************** */
 
-const std::string& MetadataIterator::metadata_name() const {
-  return array_it_->array_name();
+const uri::URI& MetadataIterator::metadata_uri() const {
+  return array_it_->array_uri();
 }
 
 bool MetadataIterator::end() const {

@@ -55,8 +55,8 @@ ArrayIterator::~ArrayIterator() = default;
 /*           ACCESSORS            */
 /* ****************************** */
 
-const std::string& ArrayIterator::array_name() const {
-  return array_->array_schema()->array_name();
+const uri::URI& ArrayIterator::array_uri() const {
+  return array_->array_schema()->array_uri();
 }
 
 bool ArrayIterator::end() const {

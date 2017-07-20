@@ -115,7 +115,7 @@ class Metadata {
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
   Status consolidate(
-      Fragment*& new_fragment, std::vector<std::string>& old_fragment_names);
+      Fragment*& new_fragment, std::vector<uri::URI>* old_fragments);
 
   /**
    * Finalizes the metadata, properly freeing up the memory space.
