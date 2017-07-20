@@ -32,19 +32,12 @@
  */
 
 #include "read_state.h"
-#include <fcntl.h>
+// TODO: read state should not depend of mman
 #include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <algorithm>
-#include <cassert>
 #include <cmath>
-#include <cstring>
-#include <iostream>
-#include "configurator.h"
+
 #include "filesystem.h"
 #include "logger.h"
-#include "status.h"
 #include "utils.h"
 
 #include "blosc_compressor.h"
