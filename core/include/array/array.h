@@ -34,7 +34,6 @@
 #ifndef TILEDB_ARRAY_H
 #define TILEDB_ARRAY_H
 
-#include <pthread.h>
 #include <queue>
 #include "array_mode.h"
 #include "array_read_state.h"
@@ -71,37 +70,11 @@ class Array {
   /*             ACCESSORS             */
   /* ********************************* */
 
+  /** Handles an AIO request. */
   Status aio_handle_request(AIORequest* aio_request);
 
+  /** Returns the storage manager object. */
   StorageManager* storage_manager() const;
-
-  /**
-   * Enters an indefinite loop that handles all the AIO requests. This is
-   * executed in the background by the AIO thread.
-   *
-   * @return void.
-   */
-  void aio_handle_requests();
-
-  /**
-   * Submits an asynchronous (AIO) read request and immediately returns control
-   * to the caller. The request is queued up and executed in the background by
-   * another thread.
-   *
-   * @param aio_request The AIO read request.
-   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
-   */
-  Status aio_read(AIORequest* aio_request);
-
-  /**
-   * Submits an asynchronous (AIO) write request and immediately returns control
-   * to the caller. The request is queued up and executed in the background by
-   * another thread.
-   *
-   * @param aio_request The AIO write request.
-   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
-   */
-  Status aio_write(AIORequest* aio_request);
 
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
@@ -411,20 +384,8 @@ class Array {
   /* ********************************* */
 
   StorageManager* storage_manager_;
-  /** The AIO mutex condition. */
-  pthread_cond_t aio_cond_;
   /** Stores the id of the last handled AIO request. */
   size_t aio_last_handled_request_;
-  /** The AIO mutex. */
-  pthread_mutex_t aio_mtx_;
-  /** The queue that stores the pending AIO requests. */
-  std::queue<AIORequest*> aio_queue_;
-  /** The thread that handles all the AIO reads and writes in the background. */
-  pthread_t aio_thread_;
-  /** Indicates whether the AIO thread was canceled or not. */
-  bool aio_thread_canceled_;
-  /** Indicates whether the AIO thread was created or not. */
-  volatile bool aio_thread_created_;
   /** An array clone, used in AIO requests. */
   Array* array_clone_;
   /** The array schema. */
@@ -465,46 +426,6 @@ class Array {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
-
-  /**
-   * Handles an AIO request.
-   *
-   * @param aio_request The AIO request. The function will resolve whether it is
-   *     a read or write request based on the array mode.
-   * @return void.
-   *
-   */
-  void aio_handle_next_request(AIORequest* aio_request);
-
-  /**
-   * Function called by the AIO thread.
-   *
-   * @param context This is practically the Array object for which the function
-   *     is called (typically *this* is passed to this argument by the caller).
-   */
-  static void* aio_handler(void* context);
-
-  /**
-   * Pusghes an AIO request into the AIO queue.
-   *
-   * @param aio_request The AIO request.
-   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
-   */
-  Status aio_push_request(AIORequest* aio_request);
-
-  /**
-   * Creates the AIO thread.
-   *
-   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
-   */
-  Status aio_thread_create();
-
-  /**
-   * Destroys the AIO thread.
-   *
-   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
-   */
-  Status aio_thread_destroy();
 
   /**
    * Returns a new fragment name, which is in the form: <br>

@@ -34,7 +34,8 @@
 #ifndef TILEDB_ARRAY_SORTED_READ_STATE_H
 #define TILEDB_ARRAY_SORTED_READ_STATE_H
 
-#include <pthread.h>
+#include <condition_variable>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -201,17 +202,14 @@ class ArraySortedReadState {
   /** AIO counter. */
   int aio_cnt_;
 
-  /** The AIO mutex conditions (one for each buffer). */
-  pthread_cond_t aio_cond_[2];
+  /** Condition variables used in AIO. */
+  std::condition_variable aio_cv_[2];
 
   /** Data for the AIO requests. */
   ASRS_Data aio_data_[2];
 
-  /** The current id of the buffers the next AIO will occur into. */
-  int aio_id_;
-
-  /** The AIO mutex. */
-  pthread_mutex_t aio_mtx_;
+  /** Mutexes used in AIO. */
+  std::mutex aio_mtx_[2];
 
   /** Indicates overflow per tile slab per attribute upon an AIO operation. */
   bool* aio_overflow_[2];
@@ -279,26 +277,11 @@ class ArraySortedReadState {
   /** The coordinates size of the array. */
   size_t coords_size_;
 
-  /** The copy mutex conditions (one for each buffer). */
-  pthread_cond_t copy_cond_[2];
-
   /** The current id of the buffers the next copy will occur from. */
   int copy_id_;
 
   /** The copy state. */
   CopyState copy_state_;
-
-  /** The copy mutex. */
-  pthread_mutex_t copy_mtx_;
-
-  /** The thread tha handles all the copying in the background. */
-  pthread_t copy_thread_;
-
-  /** True if the copy thread is canceled. */
-  volatile bool copy_thread_canceled_;
-
-  /** True if the copy thread is running. */
-  volatile bool copy_thread_running_;
 
   /** The number of dimensions in the array. */
   int dim_num_;
@@ -310,12 +293,6 @@ class ArraySortedReadState {
    *
    */
   bool extra_coords_;
-
-  /** The overflow mutex condition. */
-  pthread_cond_t overflow_cond_;
-
-  /** The overflow mutex. */
-  pthread_mutex_t overflow_mtx_;
 
   /** Overflow flag for each attribute. */
   bool* overflow_;
@@ -329,11 +306,8 @@ class ArraySortedReadState {
   /** True if no more tile slabs to read. */
   bool read_tile_slabs_done_;
 
-  /** True if a copy must be resumed. */
+  /** Used to handle overflow. */
   bool resume_copy_;
-
-  /** True if an AIO must be resumed. */
-  bool resume_aio_;
 
   /** The query subarray. */
   void* subarray_;
@@ -358,9 +332,6 @@ class ArraySortedReadState {
 
   /** The state for the current tile slab being copied. */
   TileSlabState tile_slab_state_;
-
-  /** Wait for copy flags, one for each local buffer. */
-  bool wait_copy_[2];
 
   /** Wait for AIO flags, one for each local buffer. */
   bool wait_aio_[2];
@@ -421,17 +392,11 @@ class ArraySortedReadState {
    */
   static void* aio_done(void* data);
 
-  /** True if some attribute overflowed for the input tile slab upon an AIO. */
-  bool aio_overflow(int aio_id);
+  /** Notifies AIO on the input tile slab id. */
+  void aio_notify(int id);
 
-  /** Sets the flag of wait_aio_[id] to true. */
-  void block_aio(int id);
-
-  /** Sets the flag of wait_copy_[id] to true. */
-  void block_copy(int id);
-
-  /** Sets the flag of resume_copy_ to true. */
-  void block_overflow();
+  /** Waits on for AIO on the input tile slab id. */
+  void aio_wait(int id);
 
   /**
    * Calculate the attribute ids specified by the user upon array
@@ -648,15 +613,6 @@ class ArraySortedReadState {
   void calculate_tile_slab_info_row(int id);
 
   /**
-   * Function called by the copy thread.
-   *
-   * @param context This is practically the ArraySortedReadState object for
-   *     which the function is called (typically *this* is passed to this
-   *     argument by the caller).
-   */
-  static void* copy_handler(void* context);
-
-  /**
    * Copies a tile slab from the local buffers into the user buffers,
    * properly re-organizing the cell order to fit the targeted order.
    * Applicable to dense arrays.
@@ -760,24 +716,6 @@ class ArraySortedReadState {
   template <class T>
   int64_t get_tile_id(int aid);
 
-  /**
-   * Handles the copy requests. Applicable to dense arrays.
-   *
-   * @tparam T The domain type.
-   * @return void.
-   */
-  template <class T>
-  void handle_copy_requests_dense();
-
-  /**
-   * Handles the copy requests. Applicable to sparse arrays.
-   *
-   * @tparam T The domain type.
-   * @return void.
-   */
-  template <class T>
-  void handle_copy_requests_sparse();
-
   /** Initializes the AIO requests. */
   void init_aio_requests();
 
@@ -800,27 +738,6 @@ class ArraySortedReadState {
 
   /** Initializes the tile slab state. */
   void init_tile_slab_state();
-
-  /**
-   * Locks the AIO mutex.
-   *
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  Status lock_aio_mtx();
-
-  /**
-   * Locks the copy mutex.
-   *
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  Status lock_copy_mtx();
-
-  /**
-   * Locks the overflow mutex.
-   *
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  Status lock_overflow_mtx();
 
   /**
    * Retrieves the next column tile slab to be processed. Applicable to dense
@@ -918,38 +835,7 @@ class ArraySortedReadState {
   template <class T>
   Status read_sparse_sorted_row();
 
-  /**
-   * Reads the current tile slab into the input buffers.
-   *
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  Status read_tile_slab();
-
-  /**
-   * Signals an AIO condition.
-   *
-   * @param id The id of the AIO condition to be signaled.
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  Status release_aio(int id);
-
-  /**
-   * Signals a copy condition.
-   *
-   * @param id The id of the copy condition to be signaled.
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  Status release_copy(int id);
-
-  /**
-   * Signals the overflow condition.
-   *
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  Status release_overflow();
-
-  /** Resets the AIO overflow flags for the input tile slab id. */
-  void reset_aio_overflow(int aio_id);
+  void reset_aio_overflow(int id);
 
   /** Resets the temporary buffer sizes for the input tile slab id. */
   void reset_buffer_sizes_tmp(int id);
@@ -981,10 +867,10 @@ class ArraySortedReadState {
   /**
    * Sends an AIO request.
    *
-   * @param aio_id The id of the tile slab the AIO request focuses on.
+   * @param id The id of the tile slab the AIO request focuses on.
    * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
    */
-  Status send_aio_request(int aio_id);
+  Status send_aio_request(int id);
 
   /**
    * It sorts the positions of the cells based on the coordinates
@@ -992,27 +878,6 @@ class ArraySortedReadState {
    */
   template <class T>
   void sort_cell_pos();
-
-  /**
-   * Unlocks the AIO mutex.
-   *
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  Status unlock_aio_mtx();
-
-  /**
-   * Unlocks the copy mutex.
-   *
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  Status unlock_copy_mtx();
-
-  /**
-   * Unlocks the overflow mutex.
-   *
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  Status unlock_overflow_mtx();
 
   /**
    * Calculates the new tile and local buffer offset for the new (already
@@ -1024,29 +889,6 @@ class ArraySortedReadState {
    */
   template <class T>
   void update_current_tile_and_offset(int aid);
-
-  /**
-   * Waits on a copy operation for the buffer with input id to finish.
-   *
-   * @param id The id of the buffer the copy operation must be completed.
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  Status wait_copy(int id);
-
-  /**
-   * Waits on a AIO operation for the buffer with input id to finish.
-   *
-   * @param id The id of the buffer the AIO operation must be completed.
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  Status wait_aio(int id);
-
-  /**
-   * Waits until there is no buffer overflow.
-   *
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
-  Status wait_overflow();
 };
 
 }  // namespace tiledb

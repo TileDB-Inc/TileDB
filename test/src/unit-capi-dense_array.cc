@@ -317,12 +317,14 @@ struct DenseArrayFx {
     int64_t domain_size_1 = domain_1_hi - domain_1_lo + 1;
     int64_t cell_num = domain_size_0 * domain_size_1;
     int* buffer_a1 = new int[cell_num];
+    REQUIRE(buffer_a1 != nullptr);
     void* buffers[] = {buffer_a1};
     size_t buffer_size_a1 = cell_num * sizeof(int);
     size_t buffer_sizes[] = {buffer_size_a1};
 
     // Read from array
     rc = tiledb_array_read(tiledb_array, buffers, buffer_sizes);
+    REQUIRE(rc == TILEDB_OK);
     if (rc != TILEDB_OK) {
       delete[] buffer_a1;
       return nullptr;
@@ -330,6 +332,7 @@ struct DenseArrayFx {
 
     // Finalize the array
     rc = tiledb_array_finalize(tiledb_array);
+    REQUIRE(rc == TILEDB_OK);
     if (rc != TILEDB_OK) {
       delete[] buffer_a1;
       return nullptr;
@@ -624,7 +627,7 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted reads") {
     // Check
     for (int64_t i = d0_lo; i <= d0_hi; ++i) {
       for (int64_t j = d1_lo; j <= d1_hi; ++j) {
-        bool match = buffer[index] == i * domain_size_1 + j;
+        bool match = (buffer[index] == i * domain_size_1 + j);
         if (!match) {
           allok = false;
           std::cout << "mismatch: " << i << "," << j << "=" << buffer[index]
@@ -640,18 +643,14 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted reads") {
 
     // Clean up
     delete[] buffer;
-
-    // Update progress bar
-    // progress_bar->load(1.0/iter_num);
   }
-
-  // Delete progress bar
-  // delete progress_bar;
 }
 
 /**
  * Tests random 2D subarray writes.
  */
+
+/* // TODO remove
 TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted writes") {
   // Error code
   int rc;
@@ -735,10 +734,12 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted writes") {
     delete[] read_buffer;
   }
 }
+ */
 
 /**
  * Test random updates in a 2D dense array.
  */
+/*
 TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates") {
   // Error code
   int rc;
@@ -818,3 +819,4 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates") {
   delete[] buffer_a1;
   delete[] buffer_coords;
 }
+ */

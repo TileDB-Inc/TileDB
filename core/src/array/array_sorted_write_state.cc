@@ -60,9 +60,6 @@ ArraySortedWriteState::ArraySortedWriteState(Array* array)
 
   // Initializations
   aio_cnt_ = 0;
-  aio_id_ = 0;
-  aio_thread_running_ = false;
-  aio_thread_canceled_ = false;
   coords_size_ = array_schema->coords_size();
   copy_id_ = 0;
   dim_num_ = array_schema->dim_num();
@@ -74,7 +71,6 @@ ArraySortedWriteState::ArraySortedWriteState(Array* array)
     tile_slab_[i] = malloc(2 * coords_size_);
     tile_slab_norm_[i] = malloc(2 * coords_size_);
     tile_slab_init_[i] = false;
-    wait_copy_[i] = true;
     wait_aio_[i] = false;
   }
   for (int i = 0; i < anum; ++i) {
@@ -117,34 +113,6 @@ ArraySortedWriteState::~ArraySortedWriteState() {
   free_copy_state();
   free_tile_slab_state();
   free_tile_slab_info();
-
-  // Cancel AIO thread
-  aio_thread_canceled_ = true;
-  for (int i = 0; i < 2; ++i)
-    release_copy(i);
-
-  // Wait for thread to be destroyed
-  while (aio_thread_running_)
-    ;
-
-  // Join with the terminated thread
-  pthread_join(aio_thread_, nullptr);
-
-  // Destroy conditions and mutexes
-  for (int i = 0; i < 2; ++i) {
-    if (pthread_cond_destroy(&(aio_cond_[i]))) {
-      LOG_ERROR("Cannot destroy AIO mutex condition");
-    }
-    if (pthread_cond_destroy(&(copy_cond_[i]))) {
-      LOG_ERROR("Cannot destroy copy mutex condition");
-    }
-  }
-  if (pthread_mutex_destroy(&aio_mtx_)) {
-    LOG_ERROR("Cannot destroy AIO mutex");
-  }
-  if (pthread_mutex_destroy(&copy_mtx_)) {
-    LOG_ERROR("Cannot destroy copy mutex");
-  }
 }
 
 /* ****************************** */
@@ -152,26 +120,6 @@ ArraySortedWriteState::~ArraySortedWriteState() {
 /* ****************************** */
 
 Status ArraySortedWriteState::init() {
-  // Initialize the mutexes and conditions
-  if (pthread_mutex_init(&aio_mtx_, nullptr)) {
-    return LOG_STATUS(Status::ASWSError("Cannot initialize IO mutex"));
-  }
-  if (pthread_mutex_init(&copy_mtx_, nullptr)) {
-    return LOG_STATUS(Status::ASWSError("Cannot initialize copy mutex"));
-  }
-  for (int i = 0; i < 2; ++i) {
-    aio_cond_[i] = PTHREAD_COND_INITIALIZER;
-    if (pthread_cond_init(&(aio_cond_[i]), nullptr)) {
-      return LOG_STATUS(
-          Status::ASWSError("Cannot initialize IO mutex condition"));
-    }
-    copy_cond_[i] = PTHREAD_COND_INITIALIZER;
-    if (pthread_cond_init(&(copy_cond_[i]), nullptr)) {
-      return LOG_STATUS(
-          Status::ASWSError("Cannot initialize copy mutex condition"));
-    }
-  }
-
   // Initialize functors
   const ArraySchema* array_schema = array_->array_schema();
   ArrayMode mode = array_->mode();
@@ -321,13 +269,6 @@ Status ArraySortedWriteState::init() {
       assert(0);
   }
 
-  // Create the thread that will be handling all the asynchronous IOs
-  if (pthread_create(
-          &aio_thread_, nullptr, ArraySortedWriteState::aio_handler, this)) {
-    return LOG_STATUS(Status::ASWSError("Cannot create AIO thread"));
-  }
-  aio_thread_running_ = true;
-
   // Success
   return Status::Ok();
 }
@@ -454,22 +395,23 @@ void* ArraySortedWriteState::aio_done(void* data) {
   ArraySortedWriteState* asws = ((ASWS_Data*)data)->asws_;
   int id = ((ASWS_Data*)data)->id_;
 
-  // Manage the mutexes and conditions
-  asws->release_aio(id);
+  asws->aio_notify(id);
 
   return nullptr;
 }
 
-void ArraySortedWriteState::block_aio(int id) {
-  lock_aio_mtx();
-  wait_aio_[id] = true;
-  unlock_aio_mtx();
+void ArraySortedWriteState::aio_notify(int id) {
+  {
+    std::lock_guard<std::mutex> lk(aio_mtx_[id]);
+    wait_aio_[id] = false;
+  }
+  aio_cv_[id].notify_one();
 }
 
-void ArraySortedWriteState::block_copy(int id) {
-  lock_copy_mtx();
-  wait_copy_[id] = true;
-  unlock_copy_mtx();
+void ArraySortedWriteState::aio_wait(int id) {
+  std::unique_lock<std::mutex> lk(aio_mtx_[id]);
+  aio_cv_[id].wait(lk, [id, this] { return !wait_aio_[id]; });
+  lk.unlock();
 }
 
 void ArraySortedWriteState::calculate_buffer_num() {
@@ -492,7 +434,7 @@ template <class T>
 void* ArraySortedWriteState::calculate_cell_slab_info_col_col_s(void* data) {
   ArraySortedWriteState* asws = ((ASWS_Data*)data)->asws_;
   int id = ((ASWS_Data*)data)->id_;
-  int tid = ((ASWS_Data*)data)->id_2_;
+  int64_t tid = ((ASWS_Data*)data)->id_2_;
   asws->calculate_cell_slab_info_col_col<T>(id, tid);
   return nullptr;
 }
@@ -501,7 +443,7 @@ template <class T>
 void* ArraySortedWriteState::calculate_cell_slab_info_col_row_s(void* data) {
   ArraySortedWriteState* asws = ((ASWS_Data*)data)->asws_;
   int id = ((ASWS_Data*)data)->id_;
-  int tid = ((ASWS_Data*)data)->id_2_;
+  int64_t tid = ((ASWS_Data*)data)->id_2_;
   asws->calculate_cell_slab_info_col_row<T>(id, tid);
   return nullptr;
 }
@@ -510,7 +452,7 @@ template <class T>
 void* ArraySortedWriteState::calculate_cell_slab_info_row_col_s(void* data) {
   ArraySortedWriteState* asws = ((ASWS_Data*)data)->asws_;
   int id = ((ASWS_Data*)data)->id_;
-  int tid = ((ASWS_Data*)data)->id_2_;
+  int64_t tid = ((ASWS_Data*)data)->id_2_;
   asws->calculate_cell_slab_info_row_col<T>(id, tid);
   return nullptr;
 }
@@ -519,7 +461,7 @@ template <class T>
 void* ArraySortedWriteState::calculate_cell_slab_info_row_row_s(void* data) {
   ArraySortedWriteState* asws = ((ASWS_Data*)data)->asws_;
   int id = ((ASWS_Data*)data)->id_;
-  int tid = ((ASWS_Data*)data)->id_2_;
+  int64_t tid = ((ASWS_Data*)data)->id_2_;
   asws->calculate_cell_slab_info_row_row<T>(id, tid);
   return nullptr;
 }
@@ -803,36 +745,6 @@ void ArraySortedWriteState::calculate_tile_slab_info_row(int id) {
     // Advance tile id
     ++tid;
   }
-}
-
-void* ArraySortedWriteState::aio_handler(void* context) {
-  // For easy reference
-  ArraySortedWriteState* asws = (ArraySortedWriteState*)context;
-
-  // This will enter an indefinite loop that will handle all incoming copy
-  // requests
-  Datatype coords_type = asws->array_->array_schema()->coords_type();
-  if (coords_type == Datatype::INT32)
-    asws->handle_aio_requests<int>();
-  else if (coords_type == Datatype::INT64)
-    asws->handle_aio_requests<int64_t>();
-  else if (coords_type == Datatype::INT8)
-    asws->handle_aio_requests<int8_t>();
-  else if (coords_type == Datatype::UINT8)
-    asws->handle_aio_requests<uint8_t>();
-  else if (coords_type == Datatype::INT16)
-    asws->handle_aio_requests<int16_t>();
-  else if (coords_type == Datatype::UINT16)
-    asws->handle_aio_requests<uint16_t>();
-  else if (coords_type == Datatype::UINT32)
-    asws->handle_aio_requests<uint32_t>();
-  else if (coords_type == Datatype::UINT64)
-    asws->handle_aio_requests<uint64_t>();
-  else
-    assert(0);
-
-  // Code should never reach here
-  return NULL;
 }
 
 void ArraySortedWriteState::copy_tile_slab() {
@@ -1481,30 +1393,6 @@ int64_t ArraySortedWriteState::get_tile_id(int aid) {
   return tid;
 }
 
-template <class T>
-void ArraySortedWriteState::handle_aio_requests() {
-  // Handle AIO requests indefinitely
-  for (;;) {
-    // Wait for AIO
-    wait_copy(aio_id_);
-
-    // Kill thread
-    if (aio_thread_canceled_) {
-      aio_thread_running_ = false;
-      return;
-    }
-
-    // Block copy
-    block_copy(aio_id_);
-
-    // Send AIO request
-    send_aio_request(aio_id_);
-
-    // Advance AIO id
-    aio_id_ = (aio_id_ + 1) % 2;
-  }
-}
-
 void ArraySortedWriteState::init_aio_requests() {
   // For easy reference
   ArrayMode mode = array_->mode();
@@ -1613,20 +1501,6 @@ void ArraySortedWriteState::init_tile_slab_state() {
     tile_slab_state_.current_offsets_[i] = 0;
     tile_slab_state_.current_tile_[i] = 0;
   }
-}
-
-Status ArraySortedWriteState::lock_aio_mtx() {
-  if (pthread_mutex_lock(&aio_mtx_)) {
-    return LOG_STATUS(Status::AIOError("Cannot lock AIO mutex"));
-  }
-  return Status::Ok();
-}
-
-Status ArraySortedWriteState::lock_copy_mtx() {
-  if (pthread_mutex_lock(&copy_mtx_)) {
-    return LOG_STATUS(Status::AIOError("Cannot lock copy mutex"));
-  }
-  return Status::Ok();
 }
 
 template <class T>
@@ -1790,32 +1664,17 @@ Status ArraySortedWriteState::write_sorted_col() {
 
   // Iterate over each tile slab
   while (next_tile_slab_col<T>()) {
-    // Wait for AIO
-    wait_aio(copy_id_);
-
-    // Block AIO
-    block_aio(copy_id_);
-
-    // Reset the tile slab state and copy state
+    aio_wait(copy_id_);
     reset_tile_slab_state<T>();
     reset_copy_state();
-
-    // Copy tile slab
     copy_tile_slab();
-
-    // Release copy
-    release_copy(copy_id_);
-
-    // Advance copy id
+    wait_aio_[copy_id_] = true;
+    send_aio_request(copy_id_);
     copy_id_ = (copy_id_ + 1) % 2;
   }
 
   // Wait for last AIO to finish
-  wait_aio((copy_id_ + 1) % 2);
-
-  // The following will make the AIO thread terminate
-  aio_thread_canceled_ = true;
-  release_copy(copy_id_);
+  aio_wait((copy_id_ + 1) % 2);
 
   // Success
   return Status::Ok();
@@ -1835,70 +1694,17 @@ Status ArraySortedWriteState::write_sorted_row() {
 
   // Iterate over each tile slab
   while (next_tile_slab_row<T>()) {
-    // Wait for AIO
-    wait_aio(copy_id_);
-
-    // Block AIO
-    block_aio(copy_id_);
-
-    // Reset the tile slab state
+    aio_wait(copy_id_);
     reset_tile_slab_state<T>();
     reset_copy_state();
-
-    // Copy tile slab
     copy_tile_slab();
-
-    // Release copy
-    release_copy(copy_id_);
-
-    // Advance copy id
+    wait_aio_[copy_id_] = true;
+    send_aio_request(copy_id_);
     copy_id_ = (copy_id_ + 1) % 2;
   }
 
   // Wait for last AIO to finish
-  wait_aio((copy_id_ + 1) % 2);
-
-  // The following will make the AIO thread terminate
-  aio_thread_canceled_ = true;
-  release_copy(copy_id_);
-
-  // Success
-  return Status::Ok();
-}
-
-Status ArraySortedWriteState::release_aio(int id) {
-  // Lock the AIO mutex
-  RETURN_NOT_OK(lock_aio_mtx());
-
-  // Set AIO flag
-  wait_aio_[id] = false;
-
-  // Signal condition
-  if (pthread_cond_signal(&(aio_cond_[id]))) {
-    return LOG_STATUS(Status::ASWSError("Cannot signal AIO condition"));
-  }
-
-  // Unlock the AIO mutex
-  RETURN_NOT_OK(unlock_aio_mtx());
-
-  // Success
-  return Status::Ok();
-}
-
-Status ArraySortedWriteState::release_copy(int id) {
-  // Lock the copy mutex
-  RETURN_NOT_OK(lock_copy_mtx());
-
-  // Set copy flag
-  wait_copy_[id] = false;
-
-  // Signal condition
-  if (pthread_cond_signal(&copy_cond_[id])) {
-    return LOG_STATUS(Status::ASWSError("Cannot signal copy condition"));
-  }
-
-  // Unlock the copy mutex
-  RETURN_NOT_OK(unlock_copy_mtx());
+  aio_wait((copy_id_ + 1) % 2);
 
   // Success
   return Status::Ok();
@@ -1932,7 +1738,7 @@ void ArraySortedWriteState::reset_tile_slab_state() {
   }
 }
 
-Status ArraySortedWriteState::send_aio_request(int aio_id) {
+Status ArraySortedWriteState::send_aio_request(int id) {
   // For easy reference
   StorageManager* storage_manager = array_->storage_manager();
 
@@ -1940,24 +1746,9 @@ Status ArraySortedWriteState::send_aio_request(int aio_id) {
   assert(storage_manager != NULL);
 
   // Send the AIO request to the clone array
-  RETURN_NOT_OK(storage_manager->aio_submit(&(aio_request_[aio_id]), 1));
+  RETURN_NOT_OK(storage_manager->aio_submit(&(aio_request_[id]), 1));
 
   // Success
-  return Status::Ok();
-}
-
-Status ArraySortedWriteState::unlock_aio_mtx() {
-  if (pthread_mutex_unlock(&aio_mtx_)) {
-    return LOG_STATUS(Status::AIOError("Cannot unlock AIO mutex"));
-  }
-  return Status::Ok();
-}
-
-Status ArraySortedWriteState::unlock_copy_mtx() {
-  if (pthread_mutex_unlock(&copy_mtx_)) {
-    return LOG_STATUS(Status::AIOError("Cannot unlock copy mutex"));
-    ;
-  }
   return Status::Ok();
 }
 
@@ -2006,42 +1797,6 @@ void ArraySortedWriteState::update_current_tile_and_offset(int aid) {
   // Calculate new offset
   current_offset = tile_slab_info_[copy_id_].start_offsets_[aid][tid] +
                    cid * attribute_sizes_[aid];
-}
-
-Status ArraySortedWriteState::wait_aio(int id) {
-  // Lock AIO mutex
-  RETURN_NOT_OK(lock_aio_mtx());
-
-  // Wait to be signaled
-  while (wait_aio_[id]) {
-    if (pthread_cond_wait(&(aio_cond_[id]), &aio_mtx_)) {
-      return LOG_STATUS(Status::AIOError("Cannot wait on IO mutex condition"));
-    }
-  }
-
-  // Unlock AIO mutex
-  RETURN_NOT_OK(unlock_aio_mtx());
-
-  return Status::Ok();
-}
-
-Status ArraySortedWriteState::wait_copy(int id) {
-  // Lock copy mutex
-  RETURN_NOT_OK(lock_copy_mtx());
-
-  // Wait to be signaled
-  while (wait_copy_[id]) {
-    if (pthread_cond_wait(&(copy_cond_[id]), &copy_mtx_)) {
-      return LOG_STATUS(
-          Status::AIOError("Cannot wait on copy mutex condition"));
-    }
-  }
-
-  // Unlock copy mutex
-  RETURN_NOT_OK(unlock_copy_mtx());
-
-  // Success
-  return Status::Ok();
 }
 
 // Explicit template instantiations

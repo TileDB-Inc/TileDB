@@ -34,7 +34,8 @@
 #ifndef TILEDB_ARRAY_SORTED_WRITE_STATE_H
 #define TILEDB_ARRAY_SORTED_WRITE_STATE_H
 
-#include <pthread.h>
+#include <condition_variable>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -171,35 +172,23 @@ class ArraySortedWriteState {
   /** Function for advancing a cell slab during a copy operation. */
   void* (*advance_cell_slab_)(void*);
 
+  /** Condition variables used in AIO. */
+  std::condition_variable aio_cv_[2];
+
   /** Counter for the AIO requests. */
   size_t aio_cnt_;
-
-  /** The AIO mutex conditions (one for each buffer). */
-  pthread_cond_t aio_cond_[2];
 
   /** Data for the AIO requests. */
   ASWS_Data aio_data_[2];
 
-  /** The current id of the buffers the next AIO will occur into. */
-  int aio_id_;
-
-  /** The AIO mutex. */
-  pthread_mutex_t aio_mtx_;
+  /** Mutexes used in AIO. */
+  std::mutex aio_mtx_[2];
 
   /** AIO requests. */
   AIORequest aio_request_[2];
 
   /** The status of the AIO requests.*/
   AIOStatus aio_status_[2];
-
-  /** The thread that handles all the AIO in the background. */
-  pthread_t aio_thread_;
-
-  /** True if the AIO thread is canceled. */
-  volatile bool aio_thread_canceled_;
-
-  /** True if the AIO thread is running. */
-  volatile bool aio_thread_running_;
 
   /** The array this sorted read state belongs to. */
   Array* array_;
@@ -234,17 +223,11 @@ class ArraySortedWriteState {
   /** The coordinates size of the array. */
   size_t coords_size_;
 
-  /** The copy mutex conditions (one for each buffer). */
-  pthread_cond_t copy_cond_[2];
-
   /** The current id of the buffers the next copy will occur from. */
   int copy_id_;
 
   /** The copy state, one per tile slab. */
   CopyState copy_state_;
-
-  /** The copy mutex. */
-  pthread_mutex_t copy_mtx_;
 
   /** The number of dimensions in the array. */
   int dim_num_;
@@ -275,9 +258,6 @@ class ArraySortedWriteState {
 
   /** The state for the current tile slab being copied. */
   TileSlabState tile_slab_state_;
-
-  /** Wait for copy flags, one for each local buffer. */
-  bool wait_copy_[2];
 
   /** Wait for AIO flags, one for each local buffer. */
   bool wait_aio_[2];
@@ -337,6 +317,12 @@ class ArraySortedWriteState {
    * @return void
    */
   static void* aio_done(void* data);
+
+  /** Notifies AIO on the input tile slab id. */
+  void aio_notify(int id);
+
+  /** Waits on for AIO on the input tile slab id. */
+  void aio_wait(int id);
 
   /** Sets the flag of wait_aio_[id] to true. */
   void block_aio(int id);
@@ -537,15 +523,6 @@ class ArraySortedWriteState {
   void calculate_tile_slab_info_row(int id);
 
   /**
-   * Function called by the AIO thread.
-   *
-   * @param context This is practically the ArraySortedWriteState object for
-   *     which the function is called (typically *this* is passed to this
-   *     argument by the caller).
-   */
-  static void* aio_handler(void* context);
-
-  /**
    * Copies a tile slab from the user buffers into the local buffers,
    * properly re-organizing the cell order to follow the array global
    * cell order.
@@ -651,15 +628,6 @@ class ArraySortedWriteState {
   template <class T>
   int64_t get_tile_id(int aid);
 
-  /**
-   * Handles the AIO requests.
-   *
-   * @tparam T The domain type.
-   * @return void.
-   */
-  template <class T>
-  void handle_aio_requests();
-
   /** Initializes the AIO requests. */
   void init_aio_requests();
 
@@ -682,20 +650,6 @@ class ArraySortedWriteState {
 
   /** Initializes the tile slab state. */
   void init_tile_slab_state();
-
-  /**
-   * Locks the AIO mutex.
-   *
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
-   */
-  Status lock_aio_mtx();
-
-  /**
-   * Locks the copy mutex.
-   *
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
-   */
-  Status lock_copy_mtx();
 
   /**
    * Retrieves the next column tile slab to be processed.
@@ -791,20 +745,6 @@ class ArraySortedWriteState {
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
   Status send_aio_request(int aio_id);
-
-  /**
-   * Unlocks the AIO mutex.
-   *
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
-   */
-  Status unlock_aio_mtx();
-
-  /**
-   * Unlocks the copy mutex.
-   *
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
-   */
-  Status unlock_copy_mtx();
 
   /**
    * Calculates the new tile and local buffer offset for the new (already
