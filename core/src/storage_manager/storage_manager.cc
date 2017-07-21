@@ -44,13 +44,8 @@
 /*             MACROS             */
 /* ****************************** */
 
-#if defined HAVE_OPENMP && defined USE_PARALLEL_SORT
-#include <parallel/algorithm>
-#define SORT_LIB __gnu_parallel
-#else
 #include <algorithm>
 #define SORT_LIB std
-#endif
 
 #define SORT_2(first, last) SORT_LIB::sort((first), (last))
 #define SORT_3(first, last, comp) SORT_LIB::sort((first), (last), (comp))
