@@ -89,9 +89,6 @@ if(USE_OPENMP AND NOT APPLE)
   find_package(OpenMP REQUIRED)
 endif()
 
-# Add pthread library to dependencies
-set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} pthread)
-
 # Set C++ 2011 flag
 include(SetCXX2011Flag)
 

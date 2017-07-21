@@ -34,7 +34,6 @@
 #ifndef TILEDB_STORAGE_MANAGER_H
 #define TILEDB_STORAGE_MANAGER_H
 
-#include <pthread.h>
 #include <condition_variable>
 #include <map>
 #include <mutex>
@@ -473,12 +472,8 @@ class StorageManager {
   /** The TileDB configuration parameters. */
   Configurator* config_;
 
-/** OpneMP mutex for creating/deleting an OpenArray object. */
-#ifdef HAVE_OPENMP
-  omp_lock_t open_array_omp_mtx_;
-#endif
-  /** Pthread mutex for creating/deleting an OpenArray object. */
-  pthread_mutex_t open_array_pthread_mtx_;
+  /** Mutex for creating/deleting an OpenArray object. */
+  std::mutex open_array_mtx_;
   /** Stores the currently open arrays. */
   std::map<std::string, OpenArray*> open_arrays_;
 
@@ -725,34 +720,6 @@ class StorageManager {
       const std::string& old_metadata, const std::string& new_metadata) const;
 
   /**
-   * Destroys open array the mutexes.
-   *
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  Status open_array_mtx_destroy();
-
-  /**
-   * Initializes open array mutexes.
-   *
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  Status open_array_mtx_init();
-
-  /**
-   * Locks open array mutexes.
-   *
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  Status open_array_mtx_lock();
-
-  /**
-   * Unlocks open array mutexes.
-   *
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  Status open_array_mtx_unlock();
-
-  /**
    * Appropriately sorts the fragment names based on their name timestamps.
    * The result is stored in the input vector.
    *
@@ -789,48 +756,19 @@ class StorageManager::OpenArray {
   int consolidation_filelock_;
   /** The names of the fragments of the open array. */
   std::vector<std::string> fragment_names_;
-/**
- * An OpenMP mutex used to lock the array when loading the array schema and
- * the book-keeping structures from the disk.
- */
-#ifdef HAVE_OPENMP
-  omp_lock_t omp_mtx_;
-#endif
   /**
-   * A pthread mutex used to lock the array when loading the array schema and
+   * A mutex used to lock the array when loading the array schema and
    * the book-keeping structures from the disk.
    */
-  pthread_mutex_t pthread_mtx_;
+  std::mutex mtx_;
 
   // FUNCTIONS
 
-  /**
-   * Destroys the mutexes.
-   *
-   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
-   */
-  Status mutex_destroy();
+  /** Locks the mutex. */
+  void mtx_lock();
 
-  /**
-   * Initializes the mutexes.
-   *
-   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
-   */
-  Status mutex_init();
-
-  /**
-   * Locks the mutexes.
-   *
-   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
-   */
-  Status mutex_lock();
-
-  /**
-   * Unlocks the mutexes.
-   *
-   * @return Status.
-   */
-  Status mutex_unlock();
+  /** Unlocks the mutex. */
+  void mtx_unlock();
 };
 
 }  // namespace tiledb

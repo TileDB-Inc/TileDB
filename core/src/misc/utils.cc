@@ -615,60 +615,6 @@ const char* layout_str(Layout layout) {
     return nullptr;
 }
 
-#ifdef HAVE_OPENMP
-Status mutex_destroy(omp_lock_t* mtx) {
-  omp_destroy_lock(mtx);
-
-  return Status::Ok();
-}
-
-Status mutex_init(omp_lock_t* mtx) {
-  omp_init_lock(mtx);
-
-  return Status::Ok();
-}
-
-Status mutex_lock(omp_lock_t* mtx) {
-  omp_set_lock(mtx);
-
-  return Status::Ok();
-}
-
-Status mutex_unlock(omp_lock_t* mtx) {
-  omp_unset_lock(mtx);
-
-  return Status::Ok();
-}
-#endif
-
-Status mutex_destroy(pthread_mutex_t* mtx) {
-  if (pthread_mutex_destroy(mtx) != 0) {
-    return LOG_STATUS(Status::Error("Cannot destroy mutex"));
-  };
-  return Status::Ok();
-}
-
-Status mutex_init(pthread_mutex_t* mtx) {
-  if (pthread_mutex_init(mtx, nullptr) != 0) {
-    return LOG_STATUS(Status::Error("Cannot initialize mutex"));
-  };
-  return Status::Ok();
-}
-
-Status mutex_lock(pthread_mutex_t* mtx) {
-  if (pthread_mutex_lock(mtx) != 0) {
-    return LOG_STATUS(Status::Error("Cannot lock mutex"));
-  }
-  return Status::Ok();
-}
-
-Status mutex_unlock(pthread_mutex_t* mtx) {
-  if (pthread_mutex_unlock(mtx) != 0) {
-    return LOG_STATUS(Status::Error("Cannot unlock mutex"));
-  };
-  return Status::Ok();
-}
-
 size_t RLE_compress_bound_coords(
     size_t input_size, size_t value_size, int dim_num) {
   // In the worst case, RLE adds two bytes per every value in the buffer for

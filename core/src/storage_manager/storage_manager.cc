@@ -73,7 +73,6 @@ StorageManager::~StorageManager() {
     delete config_;
     config_ = nullptr;
   }
-  open_array_mtx_destroy();
 
   aio_stop();
   delete aio_thread_[0];
@@ -98,8 +97,7 @@ Status StorageManager::init(Configurator* config) {
   // Create a thread to handle the internal asynchronous I/O
   aio_thread_[1] = new std::thread(aio_start, this, 1);
 
-  // Initialize mutexes and return
-  return open_array_mtx_init();
+  return Status::Ok();
 }
 
 // TODO: Object types should be Enums
@@ -845,8 +843,7 @@ Status StorageManager::array_clear(const std::string& array) const {
 }
 
 Status StorageManager::array_close(const std::string& array) {
-  // Lock mutexes
-  RETURN_NOT_OK(open_array_mtx_lock());
+  open_array_mtx_.lock();
 
   // Find the open array entry
   std::map<std::string, OpenArray*>::iterator it =
@@ -859,7 +856,7 @@ Status StorageManager::array_close(const std::string& array) {
   }
 
   // Lock the mutex of the array
-  RETURN_NOT_OK(it->second->mutex_lock());
+  it->second->mtx_lock();
 
   // Decrement counter
   --(it->second->cnt_);
@@ -873,9 +870,8 @@ Status StorageManager::array_close(const std::string& array) {
     for (; bit != it->second->book_keeping_.end(); ++bit)
       delete *bit;
 
-    // Unlock and destroy mutexes
-    it->second->mutex_unlock();
-    st_mtx_destroy = it->second->mutex_destroy();
+    // Unlock mutex of the array
+    it->second->mtx_unlock();
 
     // Unlock consolidation filelock
     st_filelock = consolidation_unlock(it->second->consolidation_filelock_);
@@ -891,16 +887,12 @@ Status StorageManager::array_close(const std::string& array) {
     open_arrays_.erase(it);
   } else {
     // Unlock the mutex of the array
-    RETURN_NOT_OK(it->second->mutex_unlock());
+    it->second->mtx_unlock();
   }
-  // Unlock mutexes
-  Status st_mtx_unlock = open_array_mtx_unlock();
-  if (!st_mtx_destroy.ok())
-    return st_mtx_destroy;
-  if (!st_filelock.ok())
-    return st_filelock;
-  if (!st_mtx_unlock.ok())
-    return st_mtx_unlock;
+
+  // Unlock mutex
+  open_array_mtx_.unlock();
+
   return Status::Ok();
 }
 
@@ -913,8 +905,8 @@ Status StorageManager::array_delete(const std::string& array) const {
 
 Status StorageManager::array_get_open_array_entry(
     const std::string& array, OpenArray*& open_array) {
-  // Lock mutexes
-  RETURN_NOT_OK(open_array_mtx_lock());
+  // Lock mutex
+  open_array_mtx_.lock();
 
   // Find the open array entry
   std::map<std::string, OpenArray*>::iterator it = open_arrays_.find(array);
@@ -924,7 +916,6 @@ Status StorageManager::array_get_open_array_entry(
     open_array->cnt_ = 0;
     open_array->consolidation_filelock_ = -1;
     open_array->book_keeping_ = std::vector<BookKeeping*>();
-    RETURN_NOT_OK_ELSE(open_array->mutex_init(), open_array->mutex_unlock());
     open_arrays_[array] = open_array;
   } else {
     open_array = it->second;
@@ -933,8 +924,9 @@ Status StorageManager::array_get_open_array_entry(
   // Increment counter
   ++(open_array->cnt_);
 
-  // Unlock mutexes
-  RETURN_NOT_OK_ELSE(open_array_mtx_unlock(), --open_array->cnt_);
+  // Unlock mutex
+  open_array_mtx_.unlock();
+
   return Status::Ok();
 }
 
@@ -980,7 +972,7 @@ Status StorageManager::array_open(
   RETURN_NOT_OK(array_get_open_array_entry(array_name, open_array));
 
   // Lock the mutex of the array
-  RETURN_NOT_OK(open_array->mutex_lock());
+  open_array->mtx_lock();
 
   // First time the array is opened
   if (open_array->fragment_names_.size() == 0) {
@@ -988,7 +980,7 @@ Status StorageManager::array_open(
     RETURN_NOT_OK_ELSE(
         consolidation_lock(
             array_name, &(open_array->consolidation_filelock_), true),
-        open_array->mutex_unlock());
+        open_array->mtx_unlock());
 
     // Get the fragment names
     array_get_fragment_names(array_name, open_array->fragment_names_);
@@ -1012,12 +1004,14 @@ Status StorageManager::array_open(
     if (!st.ok()) {
       delete open_array->array_schema_;
       open_array->array_schema_ = nullptr;
-      open_array->mutex_unlock();
+      open_array->mtx_unlock();
       return st;
     }
   }
+
   // Unlock the mutex of the array
-  RETURN_NOT_OK(open_array->mutex_unlock());
+  open_array->mtx_unlock();
+
   return Status::Ok();
 }
 
@@ -1225,78 +1219,6 @@ Status StorageManager::metadata_move(
   return Status::Ok();
 }
 
-Status StorageManager::open_array_mtx_destroy() {
-#ifdef HAVE_OPENMP
-  Status st_omp_mtx = utils::mutex_destroy(&open_array_omp_mtx_);
-#else
-  Status st_omp_mtx = Status::Ok();
-#endif
-  Status st_pthread_mtx = utils::mutex_destroy(&open_array_pthread_mtx_);
-
-  // Errors
-  if (!st_omp_mtx.ok()) {
-    return st_omp_mtx;
-  }
-  if (!st_pthread_mtx.ok()) {
-    return st_pthread_mtx;
-  }
-  return Status::Ok();
-}
-
-Status StorageManager::open_array_mtx_init() {
-#ifdef HAVE_OPENMP
-  Status st_omp_mtx = utils::mutex_init(&open_array_omp_mtx_);
-#else
-  Status st_omp_mtx = Status::Ok();
-#endif
-  Status st_pthread_mtx = utils::mutex_init(&open_array_pthread_mtx_);
-
-  // Errors
-  if (!st_omp_mtx.ok()) {
-    return st_omp_mtx;
-  }
-  if (!st_pthread_mtx.ok()) {
-    return st_pthread_mtx;
-  }
-  return Status::Ok();
-}
-
-Status StorageManager::open_array_mtx_lock() {
-#ifdef HAVE_OPENMP
-  Status st_omp_mtx = utils::mutex_lock(&open_array_omp_mtx_);
-#else
-  Status st_omp_mtx = Status::Ok();
-#endif
-  Status st_pthread_mtx = utils::mutex_lock(&open_array_pthread_mtx_);
-
-  // Errors
-  if (!st_omp_mtx.ok()) {
-    return st_omp_mtx;
-  }
-  if (!st_pthread_mtx.ok()) {
-    return st_pthread_mtx;
-  }
-  return Status::Ok();
-}
-
-Status StorageManager::open_array_mtx_unlock() {
-#ifdef HAVE_OPENMP
-  Status st_omp_mtx = utils::mutex_unlock(&open_array_omp_mtx_);
-#else
-  Status st_omp_mtx = Status::Ok();
-#endif
-  Status st_pthread_mtx = utils::mutex_unlock(&open_array_pthread_mtx_);
-
-  // Errors
-  if (!st_omp_mtx.ok()) {
-    return st_omp_mtx;
-  }
-  if (!st_pthread_mtx.ok()) {
-    return st_pthread_mtx;
-  }
-  return Status::Ok();
-}
-
 void StorageManager::sort_fragment_names(
     std::vector<std::string>& fragment_names) const {
   // Initializations
@@ -1337,76 +1259,12 @@ void StorageManager::sort_fragment_names(
   fragment_names = fragment_names_sorted;
 }
 
-Status StorageManager::OpenArray::mutex_destroy() {
-#ifdef HAVE_OPENMP
-  Status st_omp_mtx = utils::mutex_destroy(&omp_mtx_);
-#else
-  Status st_omp_mtx = Status::Ok();
-#endif
-  Status st_pthread_mtx = utils::mutex_destroy(&pthread_mtx_);
-
-  // Error
-  if (!st_omp_mtx.ok()) {
-    return st_omp_mtx;
-  }
-  if (!st_pthread_mtx.ok()) {
-    return st_pthread_mtx;
-  }
-  return Status::Ok();
+void StorageManager::OpenArray::mtx_lock() {
+  mtx_.lock();
 }
 
-Status StorageManager::OpenArray::mutex_init() {
-#ifdef HAVE_OPENMP
-  Status st_omp_mtx = utils::mutex_init(&omp_mtx_);
-#else
-  Status st_omp_mtx = Status::Ok();
-#endif
-  Status st_pthread_mtx = utils::mutex_init(&pthread_mtx_);
-
-  // Error
-  if (!st_omp_mtx.ok()) {
-    return st_omp_mtx;
-  }
-  if (!st_pthread_mtx.ok()) {
-    return st_pthread_mtx;
-  }
-  return Status::Ok();
-}
-
-Status StorageManager::OpenArray::mutex_lock() {
-#ifdef HAVE_OPENMP
-  Status st_omp_mtx = utils::mutex_lock(&omp_mtx_);
-#else
-  Status st_omp_mtx = Status::Ok();
-#endif
-  Status st_pthread_mtx = utils::mutex_lock(&pthread_mtx_);
-
-  // Error
-  if (!st_omp_mtx.ok()) {
-    return st_omp_mtx;
-  }
-  if (!st_pthread_mtx.ok()) {
-    return st_pthread_mtx;
-  }
-  return Status::Ok();
-}
-
-Status StorageManager::OpenArray::mutex_unlock() {
-#ifdef HAVE_OPENMP
-  Status st_omp_mtx = utils::mutex_unlock(&omp_mtx_);
-#else
-  Status st_omp_mtx = Status::Ok();
-#endif
-  Status st_pthread_mtx = utils::mutex_unlock(&pthread_mtx_);
-
-  // Error
-  if (!st_omp_mtx.ok()) {
-    return st_omp_mtx;
-  }
-  if (!st_pthread_mtx.ok()) {
-    return st_pthread_mtx;
-  }
-  return Status::Ok();
+void StorageManager::OpenArray::mtx_unlock() {
+  mtx_.unlock();
 }
 
 }  // namespace tiledb
