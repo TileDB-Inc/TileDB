@@ -2099,6 +2099,7 @@ Status ArraySortedReadState::read_dense_sorted_col() {
   if (next_tile_slab_dense_col<T>()) {
     reset_buffer_sizes_tmp(copy_id_);
     wait_aio_[copy_id_] = true;
+    reset_aio_overflow(copy_id_);
     RETURN_NOT_OK(send_aio_request(copy_id_));
     copy_id_ = (copy_id_ + 1) % 2;
   }
@@ -2108,6 +2109,7 @@ Status ArraySortedReadState::read_dense_sorted_col() {
     // Submit AIO
     reset_buffer_sizes_tmp(copy_id_);
     wait_aio_[copy_id_] = true;
+    reset_aio_overflow(copy_id_);
     RETURN_NOT_OK(send_aio_request(copy_id_));
     copy_id_ = (copy_id_ + 1) % 2;
 
@@ -2165,6 +2167,7 @@ Status ArraySortedReadState::read_dense_sorted_row() {
   if (next_tile_slab_dense_row<T>()) {
     reset_buffer_sizes_tmp(copy_id_);
     wait_aio_[copy_id_] = true;
+    reset_aio_overflow(copy_id_);
     RETURN_NOT_OK(send_aio_request(copy_id_));
     copy_id_ = (copy_id_ + 1) % 2;
   }
@@ -2174,6 +2177,7 @@ Status ArraySortedReadState::read_dense_sorted_row() {
     // Submit AIO
     reset_buffer_sizes_tmp(copy_id_);
     wait_aio_[copy_id_] = true;
+    reset_aio_overflow(copy_id_);
     RETURN_NOT_OK(send_aio_request(copy_id_));
     copy_id_ = (copy_id_ + 1) % 2;
 
@@ -2231,6 +2235,7 @@ Status ArraySortedReadState::read_sparse_sorted_col() {
   if (next_tile_slab_sparse_col<T>()) {
     reset_buffer_sizes_tmp(copy_id_);
     wait_aio_[copy_id_] = true;
+    reset_aio_overflow(copy_id_);
     RETURN_NOT_OK(send_aio_request(copy_id_));
     copy_id_ = (copy_id_ + 1) % 2;
   }
@@ -2240,6 +2245,7 @@ Status ArraySortedReadState::read_sparse_sorted_col() {
     // Submit AIO
     reset_buffer_sizes_tmp(copy_id_);
     wait_aio_[copy_id_] = true;
+    reset_aio_overflow(copy_id_);
     RETURN_NOT_OK(send_aio_request(copy_id_));
     copy_id_ = (copy_id_ + 1) % 2;
 
@@ -2301,6 +2307,7 @@ Status ArraySortedReadState::read_sparse_sorted_row() {
   if (next_tile_slab_sparse_row<T>()) {
     reset_buffer_sizes_tmp(copy_id_);
     wait_aio_[copy_id_] = true;
+    reset_aio_overflow(copy_id_);
     RETURN_NOT_OK(send_aio_request(copy_id_));
     copy_id_ = (copy_id_ + 1) % 2;
   }
@@ -2310,6 +2317,7 @@ Status ArraySortedReadState::read_sparse_sorted_row() {
     // Submit AIO
     reset_buffer_sizes_tmp(copy_id_);
     wait_aio_[copy_id_] = true;
+    reset_aio_overflow(copy_id_);
     RETURN_NOT_OK(send_aio_request(copy_id_));
     copy_id_ = (copy_id_ + 1) % 2;
 
@@ -2346,6 +2354,15 @@ Status ArraySortedReadState::read_sparse_sorted_row() {
     copy_state_.buffer_sizes_[i] = copy_state_.buffer_offsets_[i];
 
   return Status::Ok();
+}
+
+void ArraySortedReadState::reset_aio_overflow(int id) {
+  // For easy reference
+  int anum = (int)attribute_ids_.size();
+
+  // Reset aio_overflow_
+  for (int i = 0; i < anum; ++i)
+    aio_overflow_[id][i] = false;
 }
 
 void ArraySortedReadState::reset_buffer_sizes_tmp(int id) {

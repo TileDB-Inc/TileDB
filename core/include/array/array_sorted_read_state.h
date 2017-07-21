@@ -835,6 +835,8 @@ class ArraySortedReadState {
   template <class T>
   Status read_sparse_sorted_row();
 
+  void reset_aio_overflow(int id);
+
   /** Resets the temporary buffer sizes for the input tile slab id. */
   void reset_buffer_sizes_tmp(int id);
 
