@@ -211,9 +211,6 @@ class ArraySchema {
   template <class T>
   bool is_contained_in_tile_slab_row(const T* range) const;
 
-  /** Prints information about the array schema to stdout. */
-  void print() const;
-
   /**
    * Serializes the array schema object into a binary buffer.
    *
