@@ -434,7 +434,7 @@ template <class T>
 void* ArraySortedWriteState::calculate_cell_slab_info_col_col_s(void* data) {
   ArraySortedWriteState* asws = ((ASWS_Data*)data)->asws_;
   int id = ((ASWS_Data*)data)->id_;
-  int tid = ((ASWS_Data*)data)->id_2_;
+  int64_t tid = ((ASWS_Data*)data)->id_2_;
   asws->calculate_cell_slab_info_col_col<T>(id, tid);
   return nullptr;
 }
@@ -443,7 +443,7 @@ template <class T>
 void* ArraySortedWriteState::calculate_cell_slab_info_col_row_s(void* data) {
   ArraySortedWriteState* asws = ((ASWS_Data*)data)->asws_;
   int id = ((ASWS_Data*)data)->id_;
-  int tid = ((ASWS_Data*)data)->id_2_;
+  int64_t tid = ((ASWS_Data*)data)->id_2_;
   asws->calculate_cell_slab_info_col_row<T>(id, tid);
   return nullptr;
 }
@@ -452,7 +452,7 @@ template <class T>
 void* ArraySortedWriteState::calculate_cell_slab_info_row_col_s(void* data) {
   ArraySortedWriteState* asws = ((ASWS_Data*)data)->asws_;
   int id = ((ASWS_Data*)data)->id_;
-  int tid = ((ASWS_Data*)data)->id_2_;
+  int64_t tid = ((ASWS_Data*)data)->id_2_;
   asws->calculate_cell_slab_info_row_col<T>(id, tid);
   return nullptr;
 }
@@ -461,7 +461,7 @@ template <class T>
 void* ArraySortedWriteState::calculate_cell_slab_info_row_row_s(void* data) {
   ArraySortedWriteState* asws = ((ASWS_Data*)data)->asws_;
   int id = ((ASWS_Data*)data)->id_;
-  int tid = ((ASWS_Data*)data)->id_2_;
+  int64_t tid = ((ASWS_Data*)data)->id_2_;
   asws->calculate_cell_slab_info_row_row<T>(id, tid);
   return nullptr;
 }

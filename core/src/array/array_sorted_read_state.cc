@@ -728,7 +728,7 @@ template <class T>
 void* ArraySortedReadState::calculate_cell_slab_info_col_col_s(void* data) {
   ArraySortedReadState* asrs = ((ASRS_Data*)data)->asrs_;
   int id = ((ASRS_Data*)data)->id_;
-  int tid = ((ASRS_Data*)data)->id_2_;
+  int64_t tid = ((ASRS_Data*)data)->id_2_;
   asrs->calculate_cell_slab_info_col_col<T>(id, tid);
   return nullptr;
 }
@@ -737,7 +737,7 @@ template <class T>
 void* ArraySortedReadState::calculate_cell_slab_info_col_row_s(void* data) {
   ArraySortedReadState* asrs = ((ASRS_Data*)data)->asrs_;
   int id = ((ASRS_Data*)data)->id_;
-  int tid = ((ASRS_Data*)data)->id_2_;
+  int64_t tid = ((ASRS_Data*)data)->id_2_;
   asrs->calculate_cell_slab_info_col_row<T>(id, tid);
   return nullptr;
 }
@@ -746,7 +746,7 @@ template <class T>
 void* ArraySortedReadState::calculate_cell_slab_info_row_col_s(void* data) {
   ArraySortedReadState* asrs = ((ASRS_Data*)data)->asrs_;
   int id = ((ASRS_Data*)data)->id_;
-  int tid = ((ASRS_Data*)data)->id_2_;
+  int64_t tid = ((ASRS_Data*)data)->id_2_;
   asrs->calculate_cell_slab_info_row_col<T>(id, tid);
   return nullptr;
 }
@@ -755,7 +755,7 @@ template <class T>
 void* ArraySortedReadState::calculate_cell_slab_info_row_row_s(void* data) {
   ArraySortedReadState* asrs = ((ASRS_Data*)data)->asrs_;
   int id = ((ASRS_Data*)data)->id_;
-  int tid = ((ASRS_Data*)data)->id_2_;
+  int64_t tid = ((ASRS_Data*)data)->id_2_;
   asrs->calculate_cell_slab_info_row_row<T>(id, tid);
   return nullptr;
 }
