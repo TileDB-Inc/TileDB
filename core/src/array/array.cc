@@ -47,7 +47,6 @@ Array::Array() {
   array_sorted_read_state_ = nullptr;
   array_sorted_write_state_ = nullptr;
   array_schema_ = nullptr;
-  subarray_ = nullptr;
   array_clone_ = nullptr;
   storage_manager_ = nullptr;
 }
@@ -70,8 +69,6 @@ Array::~Array() {
     delete array_clone_;
     if (array_schema_ != nullptr)
       delete array_schema_;
-    if (subarray_ != nullptr)
-      free(subarray_);
   }
 }
 
@@ -259,10 +256,6 @@ bool Array::read_mode() const {
   return is_read_mode(mode_);
 }
 
-const void* Array::subarray() const {
-  return subarray_;
-}
-
 bool Array::write_mode() const {
   return is_write_mode(mode_);
 }
@@ -286,7 +279,7 @@ Status Array::consolidate(
   // Create new fragment
   new_fragment = new Fragment(this);
   RETURN_NOT_OK(
-      new_fragment->init(new_fragment_name, ArrayMode::WRITE, subarray_));
+      new_fragment->init(new_fragment_name, ArrayMode::WRITE));
 
   // Consolidate on a per-attribute basis
   Status st;
@@ -442,7 +435,6 @@ Status Array::init(
     ArrayMode mode,
     const char** attributes,
     int attribute_num,
-    const void* subarray,
     const Configurator* config,
     Array* array_clone) {
   // For easy reference
@@ -463,14 +455,6 @@ Status Array::init(
 
   // Set config
   config_ = config;
-
-  // Set subarray
-  size_t subarray_size = 2 * array_schema->coords_size();
-  subarray_ = malloc(subarray_size);
-  if (subarray == nullptr)
-    memcpy(subarray_, array_schema->domain(), subarray_size);
-  else
-    memcpy(subarray_, subarray, subarray_size);
 
   // Get attributes
   std::vector<std::string> attributes_vec;
@@ -524,7 +508,7 @@ Status Array::init(
     // Create new fragment
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
-    Status st = fragment->init(new_fragment_name, mode_, subarray);
+    Status st = fragment->init(new_fragment_name, mode_);
     if (!st.ok()) {
       array_schema_ = nullptr;
       return st;
@@ -605,9 +589,6 @@ Status Array::reset_attributes(const char** attributes, int attribute_num) {
   RETURN_NOT_OK(
       array_schema_->get_attribute_ids(attributes_vec, attribute_ids_));
 
-  // Reset subarray so that the read/write states are flushed
-  RETURN_NOT_OK(reset_subarray(subarray_));
-
   return Status::Ok();
 }
 
@@ -627,15 +608,6 @@ Status Array::reset_subarray(const void* subarray) {
     }
     fragments_.clear();
   }
-
-  // Set subarray
-  size_t subarray_size = 2 * array_schema_->coords_size();
-  if (subarray_ == nullptr)
-    subarray_ = malloc(subarray_size);
-  if (subarray == nullptr)
-    memcpy(subarray_, array_schema_->domain(), subarray_size);
-  else
-    memcpy(subarray_, subarray, subarray_size);
 
   // Re-set or re-initialize fragments
   if (write_mode()) {  // WRITE MODE
@@ -673,7 +645,7 @@ Status Array::reset_subarray(const void* subarray) {
     // Create new fragment
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
-    RETURN_NOT_OK(fragment->init(new_fragment_name, mode_, subarray));
+    RETURN_NOT_OK(fragment->init(new_fragment_name, mode_));
 
   } else {  // READ MODE
     // Re-initialize the read state of the fragments
@@ -723,15 +695,6 @@ Status Array::reset_subarray_soft(const void* subarray) {
     }
     fragments_.clear();
   }
-
-  // Set subarray
-  size_t subarray_size = 2 * array_schema_->coords_size();
-  if (subarray_ == nullptr)
-    subarray_ = malloc(subarray_size);
-  if (subarray == nullptr)
-    memcpy(subarray_, array_schema_->domain(), subarray_size);
-  else
-    memcpy(subarray_, subarray, subarray_size);
 
   // Re-set or re-initialize fragments
   if (write_mode()) {  // WRITE MODE

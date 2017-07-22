@@ -173,9 +173,6 @@ class Array {
   /** Returns true if the array is in read mode. */
   bool read_mode() const;
 
-  /** Returns the subarray in which the array is constrained. */
-  const void* subarray() const;
-
   /** Returns true if the array is in write mode. */
   bool write_mode() const;
 
@@ -232,10 +229,6 @@ class Array {
    *     the coordinates in the case of sparse arrays).
    * @param attribute_num The number of the input attributes. If *attributes* is
    *     NULL, then this should be set to 0.
-   * @param subarray The subarray in which the array read/write will be
-   *     constrained on. If it is NULL, then the subarray is set to the entire
-   *     array domain. For the case of writes, this is meaningful only for
-   *     dense arrays, and specifically dense writes.
    * @param config Configuration parameters.
    * @param array_clone An clone of this array object. Used specifically in
    *     asynchronous IO (AIO) read/write operations.
@@ -249,7 +242,6 @@ class Array {
       ArrayMode mode,
       const char** attributes,
       int attribute_num,
-      const void* subarray,
       const Configurator* config,
       Array* array_clone = nullptr);
 
@@ -417,11 +409,6 @@ class Array {
    *    - TILEDB_ARRAY_READ_SORTED_ROW
    */
   ArrayMode mode_;
-  /**
-   * The subarray in which the array is constrained. Note that the type of the
-   * range must be the same as the type of the array coordinates.
-   */
-  void* subarray_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

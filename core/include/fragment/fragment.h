@@ -117,11 +117,10 @@ class Fragment {
    * @param mode The fragment mode. It can be one of the following:
    *    - ArrayMode::WRITE
    *    - ArrayMode::WRITE_UNSORTED
-   * @param subarray The subarray the fragment is constrained on.
    * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
    */
   Status init(
-      const std::string& fragment_name, ArrayMode mode, const void* subarray);
+      const std::string& fragment_name, ArrayMode mode);
 
   /**
    * Initializes a fragment in read mode.

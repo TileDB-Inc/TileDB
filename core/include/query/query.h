@@ -1,5 +1,5 @@
 /**
- * @file array_mode.h
+ * @file   query.h
  *
  * @section LICENSE
  *
@@ -27,32 +27,44 @@
  *
  * @section DESCRIPTION
  *
- * This defines the tiledb ArrayMode enum that maps to tiledb_array_mode_t C-api
- * enum.
+ * This file defines class Query.
  */
 
-#ifndef TILEDB_ARRAY_MODE_H
-#define TILEDB_ARRAY_MODE_H
+#ifndef TILEDB_QUERY_H
+#define TILEDB_QUERY_H
 
 namespace tiledb {
 
-enum class ArrayMode : char {
-#define TILEDB_ARRAY_MODE_ENUM(id) id
-#include "tiledb_enum.inc"
-#undef TILEDB_ARRAY_MODE_ENUM
+/** Manages a TileDB query object. */
+class Query {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /** Constructor. */
+  Query();
+
+  /** Destructor. */
+  ~Query();
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+
+  /* ********************************* */
+  /*           PRIVATE METHODS         */
+  /* ********************************* */
+
 };
-
-inline bool is_read_mode(const ArrayMode mode) {
-  return mode == ArrayMode::READ || mode == ArrayMode::READ_SORTED_COL ||
-         mode == ArrayMode::READ_SORTED_ROW;
-}
-
-inline bool is_write_mode(const ArrayMode mode) {
-  return mode == ArrayMode::WRITE || mode == ArrayMode::WRITE_SORTED_COL ||
-         mode == ArrayMode::WRITE_SORTED_ROW ||
-         mode == ArrayMode::WRITE_UNSORTED;
-}
 
 }  // namespace tiledb
 
-#endif  // TILEDB_ARRAY_MODE_H
+#endif  // TILEDB_QUERY_H
