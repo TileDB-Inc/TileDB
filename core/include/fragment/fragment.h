@@ -119,8 +119,7 @@ class Fragment {
    *    - ArrayMode::WRITE_UNSORTED
    * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
    */
-  Status init(
-      const std::string& fragment_name, ArrayMode mode);
+  Status init(const std::string& fragment_name, ArrayMode mode);
 
   /**
    * Initializes a fragment in read mode.

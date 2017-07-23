@@ -1,5 +1,5 @@
 /**
- * @file aio_status.h
+ * @file   buffer.cc
  *
  * @section LICENSE
  *
@@ -27,21 +27,36 @@
  *
  * @section DESCRIPTION
  *
- * This defines the tiledb AIOStatus enum that maps to tiledb_aio_status_t
- * C-api enum.
+ * This file implements class Buffer.
  */
 
-#ifndef TILEDB_AIO_STATUS_H
-#define TILEDB_AIO_STATUS_H
+#include "buffer.h"
 
 namespace tiledb {
 
-enum class AIOStatus : char {
-#define TILEDB_AIO_ENUM(id) id
-#include "tiledb_enum.inc"
-#undef TILEDB_AIO_ENUM
-};
+/* ****************************** */
+/*   CONSTRUCTORS & DESTRUCTORS   */
+/* ****************************** */
+
+Buffer::Buffer(void* buffer, uint64_t buffer_size) {
+  buffer_ = buffer;
+  buffer_size_ = buffer_size;
+  overflow_ = false;
+}
+
+Buffer::~Buffer() {
+}
+
+/* ****************************** */
+/*               API              */
+/* ****************************** */
+
+bool Buffer::overflow() const {
+      return overflow_;
+    }
+
+/* ****************************** */
+/*          PRIVATE METHODS       */
+/* ****************************** */
 
 }  // namespace tiledb
-
-#endif  // TILEDB_AIO_STATUS_H

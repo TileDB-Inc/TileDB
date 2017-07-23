@@ -104,6 +104,10 @@ Datatype Attribute::type() const {
   return type_;
 }
 
+bool Attribute::var_size() const {
+  return cell_val_num_ == Configurator::var_num();
+}
+
 /* ********************************* */
 /*              SETTERS              */
 /* ********************************* */

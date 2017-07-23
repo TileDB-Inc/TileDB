@@ -36,8 +36,8 @@
 
 #include <cstdio>
 
-#include "aio_status.h"
 #include "array_mode.h"
+#include "query_status.h"
 #include "status.h"
 #include "tiledb.h"
 

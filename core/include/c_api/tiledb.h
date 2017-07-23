@@ -126,7 +126,7 @@ typedef enum {
 #undef TILEDB_METADATA_ENUM
 } tiledb_metadata_mode_t;
 
-/** I/O method. */ // TODO: find another name
+/** I/O method. */  // TODO: find another name
 typedef enum {
 #define TILEDB_IO_METHOD_ENUM(id) TILEDB_IO_METHOD_##id
 #include "tiledb_enum.inc"
@@ -160,6 +160,13 @@ typedef enum {
 #include "tiledb_enum.inc"
 #undef TILEDB_COMPRESSOR_ENUM
 } tiledb_compressor_t;
+
+/** Query status. */
+typedef enum {
+#define TILEDB_QUERY_STATUS_ENUM(id) TILEDB_##id
+#include "tiledb_enum.inc"
+#undef TILEDB_QUERY_STATUS_ENUM
+} tiledb_query_status_t;
 
 /* ****************************** */
 /*            VERSION             */
@@ -205,8 +212,6 @@ typedef struct tiledb_dimension_iter_t tiledb_dimension_iter_t;
 
 /** A TileDB array schema. */
 typedef struct tiledb_array_schema_t tiledb_array_schema_t;
-
-typedef struct tiledb_query_status_t tiledb_query_status_t;
 
 /** A TileDB array query. */
 typedef struct tiledb_query_t tiledb_query_t;
@@ -947,65 +952,55 @@ TILEDB_EXPORT int tiledb_dimension_iter_first(
 /* ********************************* */
 
 TILEDB_EXPORT int tiledb_query_create(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t** query,
-        void* object,
-        tiledb_object_type_t object_type,
-        tiledb_query_type_t* query_type);
+    tiledb_ctx_t* ctx,
+    tiledb_query_t** query,
+    void* object,
+    tiledb_object_type_t object_type,
+    tiledb_query_type_t* query_type);
 
 TILEDB_EXPORT void tiledb_query_free(tiledb_array_t* query);
 
 TILEDB_EXPORT int tiledb_query_set_async(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query,
-        void* (*callback)(void*),
-        void* data);
-
-TILEDB_EXPORT int tiledb_array_set_subarray(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query,
-        const void* subarray);
-
-TILEDB_EXPORT int tiledb_query_set_attribute(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query,
-        const char* attr,
-        void* buffer,
-        size_t buffer_size);
-
-TILEDB_EXPORT int tiledb_query_set_var_attribute(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query,
-        const char* attr,
-        void* buffer,
-        size_t buffer_size,
-        void* buffer_var,
-        size_t buffer_var_size);
-
-TILEDB_EXPORT int tiledb_query_set_dimension(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query,
-        const char* dim,
-        void* buffer,
-        size_t buffer_size);
-
-TILEDB_EXPORT int tiledb_query_get_status(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_query_status_t* status);
+    void* (*callback)(void*),
+    void* callback_data);
+
+TILEDB_EXPORT int tiledb_array_set_subarray(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
+
+TILEDB_EXPORT int tiledb_query_set_attribute(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* attr,
+    void* buffer,
+    uint64_t buffer_size);
+
+TILEDB_EXPORT int tiledb_query_set_var_attribute(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* attr,
+    void* buffer,
+    uint64_t buffer_size,
+    void* buffer_var,
+    uint64_t buffer_var_size);
+
+TILEDB_EXPORT int tiledb_query_set_dimension(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* dim,
+    void* buffer,
+    uint64_t buffer_size);
+
+TILEDB_EXPORT int tiledb_query_get_status(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status);
 
 TILEDB_EXPORT int tiledb_query_get_overflow(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char** attr);
+    tiledb_ctx_t* ctx, const tiledb_query_t* query, const char* name, bool* overflow);
 
-TILEDB_EXPORT int tiledb_query_check(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query);
+TILEDB_EXPORT int tiledb_query_check(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
-TILEDB_EXPORT int tiledb_query_submit(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query);
+TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
 /* ********************************* */
 /*               ARRAY               */
@@ -1015,26 +1010,19 @@ TILEDB_EXPORT int tiledb_array_create(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema);
 
 TILEDB_EXPORT int tiledb_array_open(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t** tiledb_array,
-    const char* array);
+    tiledb_ctx_t* ctx, tiledb_array_t** tiledb_array, const char* array);
 
 TILEDB_EXPORT int tiledb_array_close(
-        tiledb_ctx_t* ctx,
-        tiledb_array_t* tiledb_array);
+    tiledb_ctx_t* ctx, tiledb_array_t* tiledb_array);
 
 TILEDB_EXPORT int tiledb_array_consolidate(
-    tiledb_ctx_t* ctx,
-    const char* array);
+    tiledb_ctx_t* ctx, const char* array);
 
 TILEDB_EXPORT int tiledb_array_sync(
-        tiledb_ctx_t* ctx,
-        tiledb_array_t* tiledb_array);
+    tiledb_ctx_t* ctx, tiledb_array_t* tiledb_array);
 
 TILEDB_EXPORT int tiledb_array_sync_attribute(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* tiledb_array,
-    const char* attr);
+    tiledb_ctx_t* ctx, tiledb_array_t* tiledb_array, const char* attr);
 
 /* ********************************* */
 /*           ARRAY ITERATOR          */
@@ -1362,7 +1350,6 @@ TILEDB_EXPORT int tiledb_ls(
 TILEDB_EXPORT int tiledb_ls_c(
     tiledb_ctx_t* ctx, const char* parent_dir, int* dir_num);
 */
-
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus

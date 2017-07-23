@@ -278,8 +278,7 @@ Status Array::consolidate(
 
   // Create new fragment
   new_fragment = new Fragment(this);
-  RETURN_NOT_OK(
-      new_fragment->init(new_fragment_name, ArrayMode::WRITE));
+  RETURN_NOT_OK(new_fragment->init(new_fragment_name, ArrayMode::WRITE));
 
   // Consolidate on a per-attribute basis
   Status st;
@@ -288,7 +287,7 @@ Status Array::consolidate(
     if (!st.ok()) {
       utils::delete_fragment(new_fragment->fragment_name());
       delete new_fragment;
-      return st;
+      return LOG_STATUS(st);
     }
   }
 

@@ -32,10 +32,10 @@
  */
 
 #include "array_schema.h"
-#include "query.h"
-#include "query_type.h"
 #include "basic_array.h"
 #include "metadata_schema.h"
+#include "query.h"
+#include "query_type.h"
 #include "storage_manager.h"
 #include "utils.h"
 
@@ -119,7 +119,7 @@ struct tiledb_dimension_iter_t {
 };
 
 struct tiledb_query_t {
-    tiledb::Query* query_;
+  tiledb::Query* query_;
 };
 
 struct tiledb_array_t {
@@ -1237,23 +1237,28 @@ int tiledb_dimension_iter_first(
 /* ****************************** */
 
 int tiledb_query_create(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t** query,
-        void* object,
-        tiledb_object_type_t object_type,
-        tiledb_query_type_t* query_type) {
+    tiledb_ctx_t* ctx,
+    tiledb_query_t** query,
+    void* object,
+    tiledb_object_type_t object_type,
+    tiledb_query_type_t* query_type) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Get object and sanity check
-  tiledb::Array* array = (object_type == TILEDB_ARRAY) ? static_cast<tiledb::Array*>(object) : nullptr;
-  tiledb::Metadata* metadata = (object_type == TILEDB_METADATA) ? static_cast<tiledb::Metadata*>(object) : nullptr;
-  if(array == nullptr && metadata == nullptr) {
+  tiledb::Array* array = (object_type == TILEDB_ARRAY) ?
+                             static_cast<tiledb::Array*>(object) :
+                             nullptr;
+  tiledb::Metadata* metadata = (object_type == TILEDB_METADATA) ?
+                                   static_cast<tiledb::Metadata*>(object) :
+                                   nullptr;
+  if (array == nullptr && metadata == nullptr) {
     save_error(
         ctx,
-        tiledb::Status::Error(
-            "Failed to create TileDB query; Invalid input object (it should be either array or metadata)"));
+        tiledb::Status::Error("Failed to create TileDB query; Invalid input "
+                              "object (it should be either array or "
+                              "metadata)"));
     return TILEDB_ERR;
   }
 
@@ -1261,15 +1266,14 @@ int tiledb_query_create(
   *query = (tiledb_query_t*)malloc(sizeof(tiledb_query_t));
   if (*query == nullptr) {
     save_error(
-        ctx,
-        tiledb::Status::Error("Failed to allocate TileDB query struct"));
+        ctx, tiledb::Status::Error("Failed to allocate TileDB query struct"));
     return TILEDB_OOM;
   }
 
   // Create a new Query object
-  if(object_type == TILEDB_ARRAY)
+  if (object_type == TILEDB_ARRAY)
     (*query)->query_ = new tiledb::Query(array->array_schema());
-  else if(object_type == TILEDB_METADATA)
+  else if (object_type == TILEDB_METADATA)
     (*query)->query_ = new tiledb::Query(metadata->metadata_schema());
   if ((*query)->query_ == nullptr) {
     free(*query);
@@ -1295,10 +1299,10 @@ void tiledb_query_free(tiledb_query_t* query) {
 }
 
 int tiledb_query_set_async(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query,
-        void* (*callback)(void*),
-        void* data) {
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    void* (*callback)(void*),
+    void* data) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1311,9 +1315,7 @@ int tiledb_query_set_async(
 }
 
 int tiledb_array_set_subarray(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query,
-        const void* subarray) {
+    tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1327,17 +1329,18 @@ int tiledb_array_set_subarray(
 }
 
 int tiledb_query_set_attribute(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query,
-        const char* attr,
-        void* buffer,
-        size_t buffer_size) {
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* attr,
+    void* buffer,
+    uint64_t buffer_size) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Set attribute buffer
-  if(save_error(ctx, query->query_->set_attribute_buffer(attr, buffer, buffer_size)))
+  if (save_error(
+          ctx, query->query_->set_attribute_buffer(attr, buffer, buffer_size)))
     return TILEDB_ERR;
 
   // Success
@@ -1345,19 +1348,22 @@ int tiledb_query_set_attribute(
 }
 
 int tiledb_query_set_var_attribute(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query,
-        const char* attr,
-        void* buffer,
-        size_t buffer_size,
-        void* buffer_var,
-        size_t buffer_var_size) {
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* attr,
+    void* buffer,
+    uint64_t buffer_size,
+    void* buffer_var,
+    uint64_t buffer_var_size) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Set attribute buffer
-  if(save_error(ctx, query->query_->set_attribute_buffer(attr, buffer, buffer_size, buffer_var, buffer_var_size)))
+  if (save_error(
+          ctx,
+          query->query_->set_attribute_buffer(
+              attr, buffer, buffer_size, buffer_var, buffer_var_size)))
     return TILEDB_ERR;
 
   // Success
@@ -1365,17 +1371,18 @@ int tiledb_query_set_var_attribute(
 }
 
 int tiledb_query_set_dimension(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query,
-        const char* dim,
-        void* buffer,
-        size_t buffer_size) {
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* dim,
+    void* buffer,
+    uint64_t buffer_size) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Set dimension buffer
-  if(save_error(ctx, query->query_->set_dimension_buffer(dim, buffer, buffer_size)))
+  if (save_error(
+          ctx, query->query_->set_dimension_buffer(dim, buffer, buffer_size)))
     return TILEDB_ERR;
 
   // Success
@@ -1383,57 +1390,50 @@ int tiledb_query_set_dimension(
 }
 
 int tiledb_query_get_status(
-    tiledb_ctx_t* ctx,
-    tiledb_query_t* query,
-    tiledb_query_status_t* status) {
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *status = query->query_->status();
+  *status = static_cast<tiledb_query_status_t>(query->query_->status());
 
   // Success
   return TILEDB_OK;
 }
 
 int tiledb_query_get_overflow(
-    tiledb_ctx_t* ctx,
-    const tiledb_query_t* query,
-    const char** attr) {
+    tiledb_ctx_t* ctx, const tiledb_query_t* query, const char* name, bool* overflow) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  *attr = query->query_->overflow();
-
-  // Success
-  return TILEDB_OK;
-}
-
-int tiledb_query_check(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Check query correcteness
-  if(save_error(ctx, query->query_->check()))
+  if(save_error(ctx, query->query_->overflow(name, overflow)))
     return TILEDB_ERR;
 
   // Success
   return TILEDB_OK;
 }
 
-int tiledb_query_submit(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query) {
+int tiledb_query_check(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Check query correcteness
-  if(save_error(ctx, ctx->storage_manager_->query_submit(query)))
+  if (save_error(ctx, query->query_->check()))
+    return TILEDB_ERR;
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Check query correcteness
+  if (save_error(ctx, ctx->storage_manager_->query_submit(query)))
     return TILEDB_ERR;
 
   // Success
@@ -1462,9 +1462,7 @@ int tiledb_array_create(
 }
 
 int tiledb_array_open(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t** array,
-    const char* array_name) {
+    tiledb_ctx_t* ctx, tiledb_array_t** array, const char* array_name) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -1473,8 +1471,7 @@ int tiledb_array_open(
   *array = (tiledb_array_t*)malloc(sizeof(tiledb_array_t));
   if (*array == nullptr) {
     save_error(
-        ctx,
-        tiledb::Status::Error("Failed to allocate TileDB array struct"));
+        ctx, tiledb::Status::Error("Failed to allocate TileDB array struct"));
     return TILEDB_OOM;
   }
 
@@ -1504,59 +1501,45 @@ int tiledb_array_open(
   return TILEDB_OK;
 }
 
-int tiledb_array_close(
-        tiledb_ctx_t* ctx,
-        tiledb_array_t* array) {
+int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Create the array
-  bool err = save_error(
-          ctx,
-          ctx->storage_manager_->array_close(array->array_));
+  bool err = save_error(ctx, ctx->storage_manager_->array_close(array->array_));
 
   // Clean up
   delete array->array_;
   free(array);
 
   // Return
-  if(err)
+  if (err)
     return TILEDB_ERR;
   else
     return TILEDB_OK;
 }
 
-int tiledb_array_consolidate(
-    tiledb_ctx_t* ctx,
-    const char* array) {
+int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Create the array
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_consolidate(array)))
+  if (save_error(ctx, ctx->storage_manager_->array_consolidate(array)))
     return TILEDB_ERR;
 
   // Success
   return TILEDB_OK;
 }
 
-int tiledb_array_sync(
-        tiledb_ctx_t* ctx,
-        tiledb_array_t* array) {
+int tiledb_array_sync(tiledb_ctx_t* ctx, tiledb_array_t* array) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Create the array
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_sync(array->array_)))
+  if (save_error(ctx, ctx->storage_manager_->array_sync(array->array_)))
     return TILEDB_ERR;
 
   // Success
@@ -1564,12 +1547,9 @@ int tiledb_array_sync(
 }
 
 int tiledb_array_sync_attribute(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t* array,
-    const char* attr) {
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* attr) {
   // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Create the array
@@ -1581,8 +1561,6 @@ int tiledb_array_sync_attribute(
   // Success
   return TILEDB_OK;
 }
-
-
 
 /* TODO:
 
@@ -2494,4 +2472,3 @@ int tiledb_aio_request_get_status(
 }
 
  */
-

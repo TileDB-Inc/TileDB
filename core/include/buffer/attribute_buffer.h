@@ -1,5 +1,5 @@
 /**
- * @file   query.h
+ * @file   attribute_buffer.h
  *
  * @section LICENSE
  *
@@ -27,102 +27,64 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class Query.
+ * This file defines class AttributeBuffer.
  */
 
-#ifndef TILEDB_QUERY_H
-#define TILEDB_QUERY_H
+#ifndef TILEDB_ATTRIBUTE_BUFFER_H
+#define TILEDB_ATTRIBUTE_BUFFER_H
 
-#include "array_schema.h"
-#include "attribute_buffer.h"
-#include "dimension_buffer.h"
-#include "metadata_schema.h"
-#include "query_status.h"
+#include "attribute.h"
+#include "buffer.h"
 #include "status.h"
-
-#include <map>
-#include <vector>
 
 namespace tiledb {
 
-/** Manages a TileDB query object. */
-class Query {
+class AttributeBuffer {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Query(const ArraySchema* array_schema);
+  AttributeBuffer();
 
-  Query(const MetadataSchema* metadata_schema);
-
-  ~Query();
+  ~AttributeBuffer();
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
-  Status check() const;
+  bool overflow() const;
 
-  Status overflow(const char* attr, bool* overflow);
+  Status set(void* buffer, uint64_t buffer_size);
 
-  void set_async(void* (*callback)(void*), void* callback_data);
+  Status set(const Attribute* attr, void* buffer, uint64_t buffer_size);
 
-  Status set_attribute_buffer(
-      const char* name, void* buffer, uint64_t buffer_size);
-
-  Status set_dimension_buffer(
-      const char* name, void* buffer, uint64_t buffer_size);
-
-  Status set_attribute_buffer(
-      const char* name,
+  Status set(
       void* buffer,
       uint64_t buffer_size,
       void* buffer_var,
       uint64_t buffer_var_size);
 
-  Status set_subarray(const void* subarray);
+  Status set(
+      const Attribute* attr,
+      void* buffer,
+      uint64_t buffer_size,
+      void* buffer_var,
+      uint64_t buffer_var_size);
 
-  QueryStatus status() const;
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  const ArraySchema* array_schema_;
+  const Attribute* attr_;
 
-  bool async_;
+  Buffer* buf_;
 
-  std::vector<AttributeBuffer*> attribute_buffers_;
-
-  std::map<std::string, AttributeBuffer*> attribute_buffers_map_;
-
-  void* (*callback_)(void*);
-
-  void* callback_data_;
-
-  std::vector<DimensionBuffer*> dimension_buffers_;
-
-  std::map<std::string, DimensionBuffer*> dimension_buffers_map_;
-
-  const MetadataSchema* metadata_schema_;
-
-  QueryStatus status_;
-
-  void* subarray_;
-
-  /* ********************************* */
-  /*           PRIVATE METHODS         */
-  /* ********************************* */
-
-  AttributeBuffer* attribute_buffer(const std::string& name);
-
-  DimensionBuffer* dimension_buffer(const std::string& name);
-
-  void set_default();
+  Buffer* buf_var_;
 };
 
 }  // namespace tiledb
 
-#endif  // TILEDB_QUERY_H
+#endif  // TILEDB_ATTRIBUTE_BUFFER_H

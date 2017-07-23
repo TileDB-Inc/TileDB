@@ -76,6 +76,8 @@ class MetadataSchema {
   /*             ACCESSORS             */
   /* ********************************* */
 
+  const Attribute* attribute(const std::string& name) const;
+
   /** Returns the metadata name. */
   const std::string& metadata_name() const;
 

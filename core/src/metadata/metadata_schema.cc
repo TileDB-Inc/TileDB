@@ -72,6 +72,10 @@ MetadataSchema::~MetadataSchema() {
 /*              ACCESSORS            */
 /* ********************************* */
 
+const Attribute* MetadataSchema::attribute(const std::string* name) const {
+  return array_schema_->attribute(name);
+}
+
 const std::string& MetadataSchema::metadata_name() const {
   return array_schema_->array_name();
 }

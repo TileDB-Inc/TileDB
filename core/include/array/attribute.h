@@ -86,6 +86,8 @@ class Attribute {
   /** Returns the attribute type. */
   Datatype type() const;
 
+  bool var_size() const;
+
   /* ********************************* */
   /*              SETTERS              */
   /* ********************************* */

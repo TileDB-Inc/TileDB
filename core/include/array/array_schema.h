@@ -79,6 +79,12 @@ class ArraySchema {
   /*             ACCESSORS             */
   /* ********************************* */
 
+  const Attribute* attribute(const std::string& name) const;
+
+  const Dimension* dimension(const std::string& name) const;
+
+  uint64_t subarray_size() const;
+
   /** Returns the array name. */
   const std::string& array_name() const;
 
