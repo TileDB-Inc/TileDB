@@ -179,6 +179,10 @@ void Configurator::set_write_method(IOMethod write_method) {
 /*            ACCESSORS           */
 /* ****************************** */
 
+const char* Configurator::array_filelock_name() {
+  return ARRAY_FILELOCK_NAME;
+}
+
 const char* Configurator::array_schema_filename() {
   return ARRAY_SCHEMA_FILENAME;
 }
@@ -201,10 +205,6 @@ const char* Configurator::coords() {
 
 uint64_t Configurator::consolidation_buffer_size() {
   return CONSOLIDATION_BUFFER_SIZE;
-}
-
-const char* Configurator::consolidation_filelock_name() {
-  return CONSOLIDATION_FILELOCK_NAME;
 }
 
 int Configurator::empty_int32() {

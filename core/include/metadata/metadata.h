@@ -58,7 +58,7 @@ class Metadata {
   /* ********************************* */
 
   /** Returns the array that implements the metadata. */
-  Array* array() const;
+  //  Array* array() const;
 
   /** Returns the metadata schema. */
   const MetadataSchema* metadata_schema() const;
@@ -77,7 +77,7 @@ class Metadata {
    *     id is *attribute_num*.
    * @return *true* for overflow and *false* otherwise.
    */
-  bool overflow(int attribute_id) const;
+  //  bool overflow(int attribute_id) const;
 
   /**
    * Performs a read operation in a metadata object, which must be initialized
@@ -98,7 +98,7 @@ class Metadata {
    *     overflow flag which can be checked with function overflow().
    * @return TILEDB_MT_OK for success and TILEDB_MT_ERR for error.
    */
-  Status read(const char* key, void** buffers, size_t* buffer_sizes);
+  //  Status read(const char* key, void** buffers, size_t* buffer_sizes);
 
   /* ********************************* */
   /*             MUTATORS              */
@@ -114,15 +114,16 @@ class Metadata {
    * @param old_fragment_names The names of the old fragments to be returned.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
-  Status consolidate(
-      Fragment*& new_fragment, std::vector<std::string>& old_fragment_names);
+  //  Status consolidate(
+  //      Fragment*& new_fragment, std::vector<std::string>&
+  //      old_fragment_names);
 
   /**
    * Finalizes the metadata, properly freeing up the memory space.
    *
    * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
    */
-  Status finalize();
+  //  Status finalize();
 
   /**
    * Initializes a TileDB metadata object.
@@ -142,6 +143,7 @@ class Metadata {
    * @param config Congiguration parameters.
    * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
    */
+  /*
   Status init(
       StorageManager* storage_manager,
       const ArraySchema* array_schema,
@@ -151,18 +153,7 @@ class Metadata {
       const char** attributes,
       int attribute_num,
       const Configurator* config);
-
-  /**
-   * Resets the attributes used upon initialization of the metadata.
-   *
-   * @param attributes The new attributes to focus on. If it is NULL, then
-   *     all the attributes are used (including the key as an extra attribute
-   *     in the end).
-   * @param attribute_num The number of the attributes. If *attributes* is NULL,
-   *     then this should be 0.
-   * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
-   */
-  Status reset_attributes(const char** attributes, int attribute_num);
+*/
 
   /**
    * Performs a write operation in metadata object. The values are provided
@@ -186,11 +177,13 @@ class Metadata {
    *     a one-to-one correspondence).
    * @return TILEDB_MT_OK for success and TILEDB_MT_ERR for error.
    */
+  /*
   Status write(
       const char* keys,
       size_t keys_size,
       const void** buffers,
       const size_t* buffer_sizes);
+      */
 
  private:
   /* ********************************* */
@@ -198,17 +191,10 @@ class Metadata {
   /* ********************************* */
 
   /** The underlying array that implements the metadata. */
-  Array* array_;
+  //  Array* array_;
 
   /** The metadata schema. */
   MetadataSchema* metadata_schema_;
-
-  /**
-   * The metadata mode. It must be one of the following:
-   *    - TILEDB_METADATA_WRITE
-   *    - TILEDB_METADATA_READ
-   */
-  int mode_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -225,11 +211,13 @@ class Metadata {
    * @param coords_size The size (in bytes) of the input *coords* buffer.
    * @return void
    */
+  /*
   void compute_array_coords(
       const char* keys,
       size_t keys_size,
       void*& coords,
       size_t& coords_size) const;
+      */
 
   /**
    * Prepares the buffers that will be passed to the underlying array when
@@ -253,13 +241,15 @@ class Metadata {
    *     in the *buffers* parameter.
    * @return void
    */
-  void prepare_array_buffers(
-      const void* coords,
-      size_t coords_size,
-      const void** buffers,
-      const size_t* buffer_sizes,
-      const void**& array_buffers,
-      size_t*& array_buffer_sizes) const;
+  /*
+    void prepare_array_buffers(
+        const void* coords,
+        size_t coords_size,
+        const void** buffers,
+        const size_t* buffer_sizes,
+        const void**& array_buffers,
+        size_t*& array_buffer_sizes) const;
+        */
 };
 
 }  // namespace tiledb

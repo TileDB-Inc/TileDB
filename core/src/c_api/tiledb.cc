@@ -31,12 +31,15 @@
  * This file defines the C API of TileDB.
  */
 
+#include <cstdlib>
+
 #include "array_schema.h"
 #include "basic_array.h"
 #include "metadata_schema.h"
 #include "query.h"
 #include "query_type.h"
 #include "storage_manager.h"
+#include "tiledb.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -465,9 +468,10 @@ int tiledb_basic_array_create(tiledb_ctx_t* ctx, const char* name) {
   if (save_error(ctx, ctx->storage_manager_->basic_array_create(name)))
     return TILEDB_ERR;
 
+   */
+
   // Success
   return TILEDB_OK;
-   */
 }
 
 /* ********************************* */
@@ -1316,7 +1320,19 @@ int tiledb_query_set_async(
   return TILEDB_OK;
 }
 
-int tiledb_array_set_subarray(
+int tiledb_query_set_type(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb::QueryType query_type) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  query->query_->set_query_type(query_type);
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
@@ -1445,6 +1461,19 @@ int tiledb_query_process(tiledb_ctx_t* ctx, tiledb_query_t* query) {
   return TILEDB_OK;
 }
 
+int tiledb_query_sync(tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Create the array
+  if (save_error(ctx, ctx->storage_manager_->query_sync(query->query_)))
+    return TILEDB_ERR;
+
+  // Success
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*              ARRAY             */
 /* ****************************** */
@@ -1480,23 +1509,10 @@ int tiledb_array_open(
     return TILEDB_OOM;
   }
 
-  // Create a new Array object
-  (*array)->array_ = new tiledb::Array();
-  if ((*array)->array_ == nullptr) {
-    free(*array);
-    *array = nullptr;
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to allocate TileDB array object in struct"));
-    return TILEDB_OOM;
-  }
-
   // Open array
   if (save_error(
           ctx,
-          ctx->storage_manager_->array_open(array_name, (*array)->array_))) {
-    delete (*array)->array_;
+          ctx->storage_manager_->array_open(array_name, &((*array)->array_)))) {
     free(*array);
     *array = nullptr;
     return TILEDB_ERR;
@@ -1532,35 +1548,6 @@ int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array) {
 
   // Create the array
   if (save_error(ctx, ctx->storage_manager_->array_consolidate(array)))
-    return TILEDB_ERR;
-
-  // Success
-  return TILEDB_OK;
-}
-
-int tiledb_array_sync(tiledb_ctx_t* ctx, tiledb_array_t* array) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Create the array
-  if (save_error(ctx, ctx->storage_manager_->array_sync(array->array_)))
-    return TILEDB_ERR;
-
-  // Success
-  return TILEDB_OK;
-}
-
-int tiledb_array_sync_attribute(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* attr) {
-  // Sanity check
-  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, array) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  // Create the array
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_sync_attribute(array->array_, attr)))
     return TILEDB_ERR;
 
   // Success

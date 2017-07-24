@@ -53,21 +53,21 @@ class MetadataSchema {
    *
    * @param array_schema The array schema to copy.
    */
-  MetadataSchema(const ArraySchema* array_schema);
+  explicit MetadataSchema(const ArraySchema* array_schema);
 
   /**
    * Constructor. Clones the input.
    *
    * @param metadata_schema The metadata schema to copy.
    */
-  MetadataSchema(const MetadataSchema* metadata_schema);
+  explicit MetadataSchema(const MetadataSchema* metadata_schema);
 
   /**
    * Constructor.
    *
    * @param metadata_name The metadata name.
    */
-  MetadataSchema(const char* metadata_name);
+  explicit MetadataSchema(const char* metadata_name);
 
   /** Destructor. */
   ~MetadataSchema();

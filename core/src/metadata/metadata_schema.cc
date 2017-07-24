@@ -69,10 +69,10 @@ MetadataSchema::~MetadataSchema() {
 }
 
 /* ********************************* */
-/*              ACCESSORS            */
+/*                API                */
 /* ********************************* */
 
-const Attribute* MetadataSchema::attribute(const std::string* name) const {
+const Attribute* MetadataSchema::attribute(const std::string& name) const {
   return array_schema_->attribute(name);
 }
 
@@ -111,10 +111,6 @@ void MetadataSchema::dump(FILE* out) const {
 Layout MetadataSchema::tile_order() const {
   return array_schema_->tile_order();
 }
-
-/* ********************************* */
-/*              MUTATORS             */
-/* ********************************* */
 
 void MetadataSchema::add_attribute(const Attribute* attr) {
   array_schema_->add_attribute(attr);

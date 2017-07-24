@@ -68,26 +68,26 @@ class StorageManager {
   /* ********************************* */
 
   /** Implements an open array entry. */
-  class OpenArray{
+  class OpenArray {
    public:
-      OpenArray() {
-        array_schema_ = nullptr;
-        array_filelock_ = -1;
-      }
-      ~OpenArray() {
-              if(array_schema_ != nullptr)
-                delete array_schema_;
-              for(auto& bk : bookkeeping_)
-                if(bk != nullptr)
-                  delete bk;
-      }
+    OpenArray() {
+      array_schema_ = nullptr;
+      array_filelock_ = -1;
+    }
+    ~OpenArray() {
+      if (array_schema_ != nullptr)
+        delete array_schema_;
+      for (auto& bk : bookkeeping_)
+        if (bk != nullptr)
+          delete bk;
+    }
 
     /** Descriptor for the array filelock. */
     int array_filelock_;
     /** The array schema. */
     ArraySchema* array_schema_;
     /** The bookkeeping structures for all the fragments of the array. */
-    std::vector<BookKeeping*> bookkeeping_;
+    std::vector<Bookkeeping*> bookkeeping_;
     /**
      * A counter for the number of times the array has been initialized after
      * it was opened.
@@ -121,7 +121,9 @@ class StorageManager {
 
   Status array_close(Array* array);
 
-  Status array_open(const std::string& name, Array* array);
+  Status array_consolidate(const char* array);
+
+  Status array_open(const std::string& name, Array** array);
 
   /** Sets a new configurator. */
   void config_set(Configurator* config);
@@ -136,23 +138,9 @@ class StorageManager {
 
   Status query_process(Query* query);
 
+  Status query_sync(Query* query);
+
   Status init();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   /* ********************************* */
   /*              GROUP                */
@@ -520,7 +508,7 @@ class StorageManager {
   Status array_filelock_create(const std::string& dir) const;
 
   Status array_lock(
-            const std::string& array_name, int* fd, LockType lock_type) const;
+      const std::string& array_name, int* fd, LockType lock_type) const;
 
   Status array_unlock(int fd) const;
 
@@ -544,26 +532,17 @@ class StorageManager {
   /** Stops listening to asynchronous queries. */
   void async_stop();
 
-    Status load_bookkeeping(
-            const ArraySchema* array_schema,
-            const std::vector<std::string>& fragment_names,
-            std::vector<BookKeeping*>& bookkeeping) const;
+  Status load_bookkeeping(
+      const ArraySchema* array_schema,
+      const std::vector<std::string>& fragment_names,
+      std::vector<Bookkeeping*>& bookkeeping) const;
 
-  void load_fragment_names(
-            const std::string& array, std::vector<std::string>& fragment_names) const;
+  Status load_fragment_names(
+      const std::string& array, std::vector<std::string>& fragment_names) const;
 
   Status open_array_get(const std::string& array, OpenArray** open_array);
 
   Status open_array_new(const std::string& array, OpenArray** open_array);
-
-
-
-
-
-
-
-
-
 
   /** Handles a single AIO request. */
   //  void aio_handle_request(AIORequest* aio_request);

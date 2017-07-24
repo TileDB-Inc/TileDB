@@ -966,7 +966,7 @@ TILEDB_EXPORT int tiledb_query_set_async(
     void* (*callback)(void*),
     void* callback_data);
 
-TILEDB_EXPORT int tiledb_array_set_subarray(
+TILEDB_EXPORT int tiledb_query_set_subarray(
     tiledb_ctx_t* ctx, tiledb_query_t* query, const void* subarray);
 
 TILEDB_EXPORT int tiledb_query_set_attribute(
@@ -992,6 +992,9 @@ TILEDB_EXPORT int tiledb_query_set_dimension(
     void* buffer,
     uint64_t buffer_size);
 
+TILEDB_EXPORT int tiledb_query_set_type(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_type_t query_type);
+
 TILEDB_EXPORT int tiledb_query_get_status(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status);
 
@@ -1006,6 +1009,8 @@ TILEDB_EXPORT int tiledb_query_check(tiledb_ctx_t* ctx, tiledb_query_t* query);
 TILEDB_EXPORT int tiledb_query_process(
     tiledb_ctx_t* ctx, tiledb_query_t* query);
 
+TILEDB_EXPORT int tiledb_query_sync(tiledb_ctx_t* ctx, tiledb_query_t* query);
+
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */
@@ -1014,19 +1019,12 @@ TILEDB_EXPORT int tiledb_array_create(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema);
 
 TILEDB_EXPORT int tiledb_array_open(
-    tiledb_ctx_t* ctx, tiledb_array_t** tiledb_array, const char* array);
+    tiledb_ctx_t* ctx, tiledb_array_t** array, const char* array_name);
 
-TILEDB_EXPORT int tiledb_array_close(
-    tiledb_ctx_t* ctx, tiledb_array_t* tiledb_array);
+TILEDB_EXPORT int tiledb_array_close(tiledb_ctx_t* ctx, tiledb_array_t* array);
 
 TILEDB_EXPORT int tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array);
-
-TILEDB_EXPORT int tiledb_array_sync(
-    tiledb_ctx_t* ctx, tiledb_array_t* tiledb_array);
-
-TILEDB_EXPORT int tiledb_array_sync_attribute(
-    tiledb_ctx_t* ctx, tiledb_array_t* tiledb_array, const char* attr);
 
 /* ********************************* */
 /*           ARRAY ITERATOR          */

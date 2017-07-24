@@ -35,10 +35,7 @@
 
 namespace tiledb {
 
-enum class LockType : char {
-  SHARED,
-  EXCLUSIVE
-};
+enum class LockType : char { SHARED, EXCLUSIVE };
 
 }  // namespace tiledb
 

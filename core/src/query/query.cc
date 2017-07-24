@@ -42,6 +42,7 @@ namespace tiledb {
 Query::Query(Array* array) {
   set_default();
   array_ = array;
+  query_type_ = QueryType::READ;
 }
 
 Query::Query(Metadata* metadata) {
@@ -62,8 +63,12 @@ Query::~Query() {
 /*               API              */
 /* ****************************** */
 
-Array* Query::array() const {
+const Array* Query::array() const {
   return array_;
+}
+
+ArrayType Query::array_type() const {
+  return array_->array_schema()->array_type();
 }
 
 bool Query::async() const {
@@ -75,7 +80,7 @@ Status Query::check() const {
     return LOG_STATUS(
         Status::QueryError("Invalid query; unspecified subarray"));
 
-  if (attribute_buffers_.size() == 0 && dimension_buffers_.size() == 0)
+  if (attribute_buffers_.empty() && dimension_buffers_.empty())
     return LOG_STATUS(Status::QueryError(
         "Invalid query; unspecified attribute/dimension buffers"));
 
@@ -99,6 +104,10 @@ Status Query::overflow(const char* name, bool* overflow) {
 
   // Error
   return LOG_STATUS(Status::QueryError("Invalid attribute or dimension name"));
+}
+
+QueryType Query::query_type() const {
+  return query_type_;
 }
 
 void Query::set_async(void* (*callback)(void*), void* callback_data) {
@@ -240,6 +249,10 @@ Status Query::set_subarray(const void* subarray) {
 
 QueryStatus Query::status() const {
   return status_;
+}
+
+void Query::set_query_type(QueryType query_type) {
+  query_type_ = query_type;
 }
 
 /* ****************************** */

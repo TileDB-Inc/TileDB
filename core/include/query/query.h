@@ -38,6 +38,7 @@
 #include "dimension_buffer.h"
 #include "metadata.h"
 #include "query_status.h"
+#include "query_type.h"
 #include "status.h"
 
 #include <map>
@@ -52,9 +53,11 @@ class Query {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Query(Array* array);
+  Query() = default;
 
-  Query(Metadata* metadata);
+  explicit Query(Array* array);
+
+  explicit Query(Metadata* metadata);
 
   ~Query();
 
@@ -62,7 +65,9 @@ class Query {
   /*                API                */
   /* ********************************* */
 
-  Array* array() const;
+  const Array* array() const;
+
+  ArrayType array_type() const;
 
   bool async() const;
 
@@ -89,7 +94,11 @@ class Query {
 
   Status set_subarray(const void* subarray);
 
+  void set_query_type(QueryType query_type);
+
   QueryStatus status() const;
+
+  QueryType query_type() const;
 
  private:
   /* ********************************* */
@@ -117,6 +126,8 @@ class Query {
   QueryStatus status_;
 
   void* subarray_;
+
+  QueryType query_type_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

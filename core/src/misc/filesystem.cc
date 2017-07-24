@@ -235,7 +235,7 @@ Status filelock_create(const std::string& filename) {
 Status filelock_lock(const std::string& filename, int* fd, LockType lock_type) {
   // Prepare the flock struct
   struct flock fl;
-  if (lock_type) {
+  if (lock_type == LockType::SHARED) {
     fl.l_type = F_RDLCK;
   } else {  // exclusive
     fl.l_type = F_WRLCK;
@@ -300,7 +300,8 @@ Status get_dirs(const std::string& path, std::vector<std::string>& dirs) {
   DIR* c_dir = opendir(path.c_str());
 
   if (c_dir == nullptr)
-    LOG_STATUS(Status::OSError("Cannot get directories; Failed to open parent directory"));
+    LOG_STATUS(Status::OSError(
+        "Cannot get directories; Failed to open parent directory"));
 
   while ((next_file = readdir(c_dir))) {
     new_dir = path + "/" + next_file->d_name;

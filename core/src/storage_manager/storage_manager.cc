@@ -44,8 +44,6 @@
 /*             MACROS             */
 /* ****************************** */
 
-#include <algorithm>
-
 namespace tiledb {
 
 /* ****************************** */
@@ -99,14 +97,10 @@ Status StorageManager::array_close(Array* array) {
   // Get array name
   const std::string& array_name = array->array_schema()->array_name();
 
-  // Finalize array
-  RETURN_NOT_OK(array->finalize());
-
   open_array_mtx_.lock();
 
   // Find the open array entry
-  std::map<std::string, OpenArray*>::iterator it =
-      open_arrays_.find(filesystem::real_dir(array_name));
+  auto it = open_arrays_.find(filesystem::real_dir(array_name));
 
   // Sanity check
   if (it == open_arrays_.end()) {
@@ -121,7 +115,7 @@ Status StorageManager::array_close(Array* array) {
   Status st = Status::Ok();
   if (it->second->cnt_ == 0) {
     // Clean up book-keeping
-    for(auto& bk : it->second->bookkeeping_)
+    for (auto& bk : it->second->bookkeeping_)
       delete bk;
 
     // Release array filelock
@@ -144,17 +138,20 @@ Status StorageManager::array_close(Array* array) {
   return st;
 }
 
-Status StorageManager::array_open(const std::string& name, Array* array) {
+Status StorageManager::array_consolidate(const char* array) {
+  // TODO
+
+  return Status::Ok();
+}
+
+Status StorageManager::array_open(const std::string& name, Array** array) {
   // Get the open array object
   OpenArray* open_array;
   RETURN_NOT_OK(open_array_get(name, &open_array));
 
-  // Initialize array
-  array->init(
-      this,
-      open_array->array_schema_,
-      open_array->fragment_names_,
-      open_array->bookkeeping_);
+  // Create array
+  (*array) =
+      new Array(this, open_array->array_schema_, open_array->bookkeeping_);
 
   // Return
   return Status::Ok();
@@ -194,8 +191,14 @@ Status StorageManager::query_process(Query* query) {
     return async_enqueue_query(query);
 
   // The query is sync
-  Array* array = query->array();
+  const Array* array = query->array();
   return array->query_process(query);
+}
+
+Status StorageManager::query_sync(Query* query) {
+  // TODO
+
+  return Status::Ok();
 }
 
 /* ****************************** */
@@ -253,7 +256,7 @@ Status StorageManager::async_enqueue_query(Query* query, int i) {
 }
 
 void StorageManager::async_query_process(Query* query) {
-  Array* array = query->array();
+  const Array* array = query->array();
   Status st = array->query_process(query);
   if (!st.ok())
     LOG_STATUS(st);
@@ -274,17 +277,16 @@ void StorageManager::async_stop() {
 Status StorageManager::load_bookkeeping(
     const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
-    std::vector<BookKeeping*>& bookkeeping) const {
+    std::vector<Bookkeeping*>& bookkeeping) const {
   // Get number of fragments
   int fragment_num = fragment_names.size();
-  if(fragment_num == 0)
+  if (fragment_num == 0)
     return Status::Ok();
 
   // Load the book-keeping for each fragment
   for (int i = 0; i < fragment_num; ++i) {
     // Create new book-keeping structure for the fragment
-    BookKeeping* bk =
-        new BookKeeping(array_schema, fragment_names[i]);
+    Bookkeeping* bk = new Bookkeeping(array_schema, fragment_names[i]);
 
     // Load book-keeping
     RETURN_NOT_OK(bk->load());
@@ -296,10 +298,11 @@ Status StorageManager::load_bookkeeping(
   return Status::Ok();
 }
 
-void StorageManager::load_fragment_names(
+Status StorageManager::load_fragment_names(
     const std::string& array, std::vector<std::string>& fragment_names) const {
   // Get directory names in the array folder
-  RETURN_NOT_OK(filesystem::get_dirs(filesystem::real_dir(array), fragment_names));
+  RETURN_NOT_OK(
+      filesystem::get_dirs(filesystem::real_dir(array), fragment_names));
 
   // Sort the fragment names
   int fragment_num = (int)fragment_names.size();
@@ -337,14 +340,18 @@ void StorageManager::load_fragment_names(
   for (int i = 0; i < fragment_num; ++i)
     fragment_names_sorted[i] = fragment_names[t_pos_vec[i].second];
   fragment_names = fragment_names_sorted;
+
+  // Success
+  return Status::Ok();
 }
 
-Status StorageManager::open_array_get(const std::string& name, OpenArray** open_array) {
+Status StorageManager::open_array_get(
+    const std::string& name, OpenArray** open_array) {
   // Lock mutex
   open_array_mtx_.lock();
 
   // Find the open array entry
-  std::map<std::string, OpenArray*>::iterator it = open_arrays_.find(name);
+  auto it = open_arrays_.find(name);
 
   // Get the entry or create new
   Status st = Status::Ok();
@@ -354,7 +361,7 @@ Status StorageManager::open_array_get(const std::string& name, OpenArray** open_
     *open_array = it->second;
 
   // Increment counter
-  if(st.ok())
+  if (st.ok())
     ++((*open_array)->cnt_);
 
   // Unlock mutex
@@ -363,26 +370,34 @@ Status StorageManager::open_array_get(const std::string& name, OpenArray** open_
   return st;
 }
 
-Status StorageManager::open_array_new(const std::string& name, OpenArray** open_array) {
+Status StorageManager::open_array_new(
+    const std::string& name, OpenArray** open_array) {
   // Create open array
   *open_array = new OpenArray();
   (*open_array)->cnt_ = 0;
 
   // Get shared lock
-  RETURN_NOT_OK_ELSE(array_lock(name, &((*open_array)->array_filelock_), LockType::SHARED), delete *open_array);
+  RETURN_NOT_OK_ELSE(
+      array_lock(name, &((*open_array)->array_filelock_), LockType::SHARED),
+      delete *open_array);
 
   // Get the fragment names of the array
-  RETURN_NOT_OK_ELSE(load_fragment_names(name, &((*open_array)->fragment_names_)), delete *open_array);
+  RETURN_NOT_OK_ELSE(
+      load_fragment_names(name, (*open_array)->fragment_names_),
+      delete *open_array);
 
   // Load array schema
   (*open_array)->array_schema_ = new ArraySchema();
-  RETURN_NOT_OK_ELSE(((*open_array)->array_schema_)->load(name), delete *open_array);
+  RETURN_NOT_OK_ELSE(
+      ((*open_array)->array_schema_)->load(name), delete *open_array);
 
   // Load the bookkeeping for each fragment
-  RETURN_NOT_OK_ELSE(load_bookkeeping(
-                (*open_array)->array_schema_,
-                (*open_array)->fragment_names_,
-                (*open_array)->bookkeeping_), delete *open_array);
+  RETURN_NOT_OK_ELSE(
+      load_bookkeeping(
+          (*open_array)->array_schema_,
+          (*open_array)->fragment_names_,
+          (*open_array)->bookkeeping_),
+      delete *open_array);
 
   // Insert open array in map
   open_arrays_[name] = *open_array;
@@ -390,16 +405,6 @@ Status StorageManager::open_array_new(const std::string& name, OpenArray** open_
   // Success
   return Status::Ok();
 }
-
-
-
-
-
-
-
-
-
-
 
 /*
 

@@ -46,51 +46,51 @@ MetadataIterator::MetadataIterator() {
 MetadataIterator::~MetadataIterator() = default;
 
 /* ****************************** */
-/*           ACCESSORS            */
+/*              API               */
 /* ****************************** */
 
+/*
+
 const std::string& MetadataIterator::metadata_name() const {
-  return array_it_->array_name();
+return array_it_->array_name();
 }
 
 bool MetadataIterator::end() const {
-  return array_it_->end();
+return array_it_->end();
 }
 
 Status MetadataIterator::get_value(
-    int attribute_id, const void** value, size_t* value_size) const {
-  RETURN_NOT_OK(array_it_->get_value(attribute_id, value, value_size));
-  return Status::Ok();
+int attribute_id, const void** value, size_t* value_size) const {
+RETURN_NOT_OK(array_it_->get_value(attribute_id, value, value_size));
+return Status::Ok();
 }
 
-/* ****************************** */
-/*            MUTATORS            */
-/* ****************************** */
-
 Status MetadataIterator::finalize() {
-  Status st = array_it_->finalize();
-  delete array_it_;
-  array_it_ = nullptr;
-  delete metadata_;
-  metadata_ = nullptr;
-  return st;
+Status st = array_it_->finalize();
+delete array_it_;
+array_it_ = nullptr;
+delete metadata_;
+metadata_ = nullptr;
+return st;
 }
 
 Status MetadataIterator::init(
-    Metadata* metadata, void** buffers, size_t* buffer_sizes) {
-  // Initialize an array iterator
-  metadata_ = metadata;
-  array_it_ = new ArrayIterator();
-  Status st = array_it_->init(metadata->array(), buffers, buffer_sizes);
-  if (!st.ok()) {
-    delete array_it_;
-    array_it_ = nullptr;
-  }
-  return st;
+Metadata* metadata, void** buffers, size_t* buffer_sizes) {
+// Initialize an array iterator
+metadata_ = metadata;
+array_it_ = new ArrayIterator();
+Status st = array_it_->init(metadata->array(), buffers, buffer_sizes);
+if (!st.ok()) {
+delete array_it_;
+array_it_ = nullptr;
+}
+return st;
 }
 
 Status MetadataIterator::next() {
-  return array_it_->next();
+return array_it_->next();
 }
+
+ */
 
 };  // namespace tiledb
