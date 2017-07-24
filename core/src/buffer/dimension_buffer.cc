@@ -53,9 +53,9 @@ DimensionBuffer::~DimensionBuffer() {
 /*               API              */
 /* ****************************** */
 
- bool DimensionBuffer::overflow() const {
-        return buf_->overflow();
-    }
+bool DimensionBuffer::overflow() const {
+  return buf_->overflow();
+}
 
 Status DimensionBuffer::set(void* buffer, uint64_t buffer_size) {
   if (dim_ == nullptr)

@@ -232,10 +232,10 @@ Status filelock_create(const std::string& filename) {
   return Status::Ok();
 }
 
-Status filelock_lock(const std::string& filename, int* fd, bool shared) {
+Status filelock_lock(const std::string& filename, int* fd, LockType lock_type) {
   // Prepare the flock struct
   struct flock fl;
-  if (shared) {
+  if (lock_type) {
     fl.l_type = F_RDLCK;
   } else {  // exclusive
     fl.l_type = F_WRLCK;
@@ -294,15 +294,13 @@ Status ls(const std::string& path, std::vector<std::string>* paths) {
   return Status::Ok();
 }
 
-// TODO: this should be generic
-std::vector<std::string> get_fragment_dirs(const std::string& path) {
-  std::vector<std::string> dirs;
+Status get_dirs(const std::string& path, std::vector<std::string>& dirs) {
   std::string new_dir;
   struct dirent* next_file;
   DIR* c_dir = opendir(path.c_str());
 
   if (c_dir == nullptr)
-    return std::vector<std::string>();
+    LOG_STATUS(Status::OSError("Cannot get directories; Failed to open parent directory"));
 
   while ((next_file = readdir(c_dir))) {
     new_dir = path + "/" + next_file->d_name;
@@ -315,7 +313,7 @@ std::vector<std::string> get_fragment_dirs(const std::string& path) {
   closedir(c_dir);
 
   // Return
-  return dirs;
+  return Status::Ok();
 }
 
 Status create_fragment_file(const std::string& path) {

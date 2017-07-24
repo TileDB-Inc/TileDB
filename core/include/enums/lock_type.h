@@ -1,5 +1,5 @@
 /**
- * @file   buffer.cc
+ * @file lock_type.h
  *
  * @section LICENSE
  *
@@ -27,36 +27,19 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class Buffer.
+ * This defines the tiledb LockType enum.
  */
 
-#include "buffer.h"
+#ifndef TILEDB_LOCK_TYPE_H
+#define TILEDB_LOCK_TYPE_H
 
 namespace tiledb {
 
-/* ****************************** */
-/*   CONSTRUCTORS & DESTRUCTORS   */
-/* ****************************** */
-
-Buffer::Buffer(void* buffer, uint64_t buffer_size) {
-  buffer_ = buffer;
-  buffer_size_ = buffer_size;
-  overflow_ = false;
-}
-
-Buffer::~Buffer() {
-}
-
-/* ****************************** */
-/*               API              */
-/* ****************************** */
-
-bool Buffer::overflow() const {
-  return overflow_;
-}
-
-/* ****************************** */
-/*          PRIVATE METHODS       */
-/* ****************************** */
+enum class LockType : char {
+  SHARED,
+  EXCLUSIVE
+};
 
 }  // namespace tiledb
+
+#endif  // TILEDB_LOCK_TYPE_H

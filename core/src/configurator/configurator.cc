@@ -51,7 +51,7 @@ const char* Configurator::KEY_DIM3_NAME("__key_dim_3");
 const char* Configurator::KEY_DIM4_NAME("__key_dim_4");
 const char* Configurator::ARRAY_SCHEMA_FILENAME("__array_schema.tdb");
 const char* Configurator::METADATA_SCHEMA_FILENAME("__metadata_schema.tdb");
-const char* Configurator::CONSOLIDATION_FILELOCK_NAME(".__consolidation_lock");
+const char* Configurator::ARRAY_FILELOCK_NAME(".__consolidation_lock");
 const char* Configurator::BOOK_KEEPING_FILENAME("__book_keeping");
 const char* Configurator::FRAGMENT_FILENAME("__tiledb_fragment.tdb");
 const char* Configurator::GROUP_FILENAME("__tiledb_group.tdb");

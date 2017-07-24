@@ -72,7 +72,6 @@ class AttributeBuffer {
       void* buffer_var,
       uint64_t buffer_var_size);
 
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

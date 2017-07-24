@@ -40,7 +40,7 @@
 #include "array_schema.h"
 #include "array_sorted_read_state.h"
 #include "array_sorted_write_state.h"
-#include "book_keeping.h"
+#include "bookkeeping.h"
 #include "configurator.h"
 #include "fragment.h"
 

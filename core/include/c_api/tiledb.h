@@ -996,11 +996,15 @@ TILEDB_EXPORT int tiledb_query_get_status(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status);
 
 TILEDB_EXPORT int tiledb_query_get_overflow(
-    tiledb_ctx_t* ctx, const tiledb_query_t* query, const char* name, bool* overflow);
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* name,
+    bool* overflow);
 
 TILEDB_EXPORT int tiledb_query_check(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
-TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
+TILEDB_EXPORT int tiledb_query_process(
+    tiledb_ctx_t* ctx, tiledb_query_t* query);
 
 /* ********************************* */
 /*               ARRAY               */

@@ -33,10 +33,10 @@
 #ifndef TILEDB_QUERY_H
 #define TILEDB_QUERY_H
 
-#include "array_schema.h"
+#include "array.h"
 #include "attribute_buffer.h"
 #include "dimension_buffer.h"
-#include "metadata_schema.h"
+#include "metadata.h"
 #include "query_status.h"
 #include "status.h"
 
@@ -52,15 +52,19 @@ class Query {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Query(const ArraySchema* array_schema);
+  Query(Array* array);
 
-  Query(const MetadataSchema* metadata_schema);
+  Query(Metadata* metadata);
 
   ~Query();
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  Array* array() const;
+
+  bool async() const;
 
   Status check() const;
 
@@ -71,15 +75,17 @@ class Query {
   Status set_attribute_buffer(
       const char* name, void* buffer, uint64_t buffer_size);
 
-  Status set_dimension_buffer(
-      const char* name, void* buffer, uint64_t buffer_size);
-
   Status set_attribute_buffer(
       const char* name,
       void* buffer,
       uint64_t buffer_size,
       void* buffer_var,
       uint64_t buffer_var_size);
+
+  Status set_dimension_buffer(
+      const char* name, void* buffer, uint64_t buffer_size);
+
+  void set_status(QueryStatus status);
 
   Status set_subarray(const void* subarray);
 
@@ -90,7 +96,7 @@ class Query {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  const ArraySchema* array_schema_;
+  const Array* array_;
 
   bool async_;
 
@@ -106,7 +112,7 @@ class Query {
 
   std::map<std::string, DimensionBuffer*> dimension_buffers_map_;
 
-  const MetadataSchema* metadata_schema_;
+  const Metadata* metadata_;
 
   QueryStatus status_;
 

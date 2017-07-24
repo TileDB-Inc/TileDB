@@ -37,7 +37,7 @@
 #include <vector>
 #include "array.h"
 #include "array_schema.h"
-#include "book_keeping.h"
+#include "bookkeeping.h"
 #include "read_state.h"
 #include "write_state.h"
 

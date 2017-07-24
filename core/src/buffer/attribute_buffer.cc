@@ -57,8 +57,8 @@ AttributeBuffer::~AttributeBuffer() {
 /* ****************************** */
 
 bool AttributeBuffer::overflow() const {
-        return buf_->overflow() || buf_var_->overflow();
-    }
+  return buf_->overflow() || buf_var_->overflow();
+}
 
 Status AttributeBuffer::set(void* buffer, uint64_t buffer_size) {
   if (attr_ == nullptr)

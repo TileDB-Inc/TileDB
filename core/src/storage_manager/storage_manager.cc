@@ -45,12 +45,6 @@
 /* ****************************** */
 
 #include <algorithm>
-#define SORT_LIB std
-
-#define SORT_2(first, last) SORT_LIB::sort((first), (last))
-#define SORT_3(first, last, comp) SORT_LIB::sort((first), (last), (comp))
-#define GET_MACRO(_1, _2, _3, NAME, ...) NAME
-#define SORT(...) GET_MACRO(__VA_ARGS__, SORT_3, SORT_2)(__VA_ARGS__)
 
 namespace tiledb {
 
@@ -59,41 +53,356 @@ namespace tiledb {
 /* ****************************** */
 
 StorageManager::StorageManager() {
-  aio_done_ = false;
+  async_done_ = false;
   config_ = nullptr;
 }
 
 StorageManager::~StorageManager() {
-  if (config_ != nullptr) {
+  if (config_ != nullptr)
     delete config_;
-    config_ = nullptr;
-  }
-
-  aio_stop();
-  delete aio_thread_[0];
-  delete aio_thread_[1];
+  async_stop();
+  delete async_thread_[0];
+  delete async_thread_[1];
 }
 
 /* ****************************** */
-/*             MUTATORS           */
+/*               API              */
 /* ****************************** */
 
-Status StorageManager::init(Configurator* config) {
-  // Clear previous configurator
-  if (config_ != nullptr)
-    delete config_;
+Status StorageManager::array_create(ArraySchema* array_schema) const {
+  // Check array schema
+  if (array_schema == nullptr) {
+    return LOG_STATUS(
+        Status::StorageManagerError("Cannot create array; Empty array schema"));
+  }
 
-  // Create new configurator and clone the input
+  // Create array directory
+  std::string dir = array_schema->array_name();
+  RETURN_NOT_OK(filesystem::create_dir(dir));
+
+  // Store array schema
+  // TODO: ArraySchema should not be doing I/O
+  RETURN_NOT_OK(array_schema->store(dir));
+
+  // Create array filelock
+  RETURN_NOT_OK(array_filelock_create(dir));
+
+  // Success
+  return Status::Ok();
+}
+
+Status StorageManager::array_close(Array* array) {
+  // If the array is NULL, do nothing
+  if (array == nullptr)
+    return Status::Ok();
+
+  // Get array name
+  const std::string& array_name = array->array_schema()->array_name();
+
+  // Finalize array
+  RETURN_NOT_OK(array->finalize());
+
+  open_array_mtx_.lock();
+
+  // Find the open array entry
+  std::map<std::string, OpenArray*>::iterator it =
+      open_arrays_.find(filesystem::real_dir(array_name));
+
+  // Sanity check
+  if (it == open_arrays_.end()) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot close array; Open array entry not found"));
+  }
+
+  // Decrement counter
+  --(it->second->cnt_);
+
+  // Delete open array entry if necessary
+  Status st = Status::Ok();
+  if (it->second->cnt_ == 0) {
+    // Clean up book-keeping
+    for(auto& bk : it->second->bookkeeping_)
+      delete bk;
+
+    // Release array filelock
+    st = array_unlock(it->second->array_filelock_);
+
+    // Delete array schema
+    if (it->second->array_schema_ != nullptr)
+      delete it->second->array_schema_;
+
+    // Free open array
+    delete it->second;
+
+    // Delete open array entry
+    open_arrays_.erase(it);
+  }
+
+  // Unlock mutex
+  open_array_mtx_.unlock();
+
+  return st;
+}
+
+Status StorageManager::array_open(const std::string& name, Array* array) {
+  // Get the open array object
+  OpenArray* open_array;
+  RETURN_NOT_OK(open_array_get(name, &open_array));
+
+  // Initialize array
+  array->init(
+      this,
+      open_array->array_schema_,
+      open_array->fragment_names_,
+      open_array->bookkeeping_);
+
+  // Return
+  return Status::Ok();
+}
+
+void StorageManager::config_set(Configurator* config) {
+  // TODO: make thread-safe?
   config_ = new Configurator(config);
+}
 
-  // Create a thread to handle the user asynchronous I/O
-  aio_thread_[0] = new std::thread(aio_start, this, 0);
+Status StorageManager::group_create(const std::string& group) const {
+  // Create group directory
+  RETURN_NOT_OK(filesystem::create_dir(group));
 
-  // Create a thread to handle the internal asynchronous I/O
-  aio_thread_[1] = new std::thread(aio_start, this, 1);
+  // Create group file
+  RETURN_NOT_OK(filesystem::create_group_file(group));
 
   return Status::Ok();
 }
+
+Status StorageManager::init() {
+  // Create a thread to handle the user asynchronous queries
+  async_thread_[0] = new std::thread(async_start, this, 0);
+
+  // Create a thread to handle the internal asynchronous I/O
+  async_thread_[1] = new std::thread(async_start, this, 1);
+
+  return Status::Ok();
+}
+
+Status StorageManager::query_process(Query* query) {
+  // Check the query correctness
+  RETURN_NOT_OK(query->check());
+
+  // Check if it is async
+  if (query->async())
+    return async_enqueue_query(query);
+
+  // The query is sync
+  Array* array = query->array();
+  return array->query_process(query);
+}
+
+/* ****************************** */
+/*         PRIVATE METHODS        */
+/* ****************************** */
+
+Status StorageManager::array_filelock_create(const std::string& dir) const {
+  // Create file
+  std::string filename = dir + "/" + Configurator::array_filelock_name();
+  return filesystem::filelock_create(filename);
+}
+
+Status StorageManager::array_lock(
+    const std::string& array_name, int* fd, LockType lock_type) const {
+  // Prepare the filelock name
+  std::string array_name_real = filesystem::real_dir(array_name);
+  std::string filename =
+      array_name_real + "/" + Configurator::array_filelock_name();
+  return filesystem::filelock_lock(filename, fd, lock_type);
+}
+
+Status StorageManager::array_unlock(int fd) const {
+  return filesystem::filelock_unlock(fd);
+}
+
+void StorageManager::async_process_queries(int i) {
+  while (!async_done_) {
+    std::unique_lock<std::mutex> lock(async_mtx_[i]);
+    async_cv_[i].wait(lock, [this, i] {
+      return (async_queue_[i].size() > 0) || async_done_;
+    });
+    if (async_done_)
+      break;
+    Query* query = async_queue_[i].front();
+    async_queue_[i].pop();
+    lock.unlock();
+    async_query_process(query);
+  }
+}
+
+Status StorageManager::async_enqueue_query(Query* query, int i) {
+  // Set the query status
+  query->set_status(QueryStatus::INPROGRESS);
+
+  // Push query
+  {
+    std::lock_guard<std::mutex> lock(async_mtx_[i]);
+    async_queue_[i].emplace(query);
+  }
+
+  // Signal async thread
+  async_cv_[i].notify_one();
+
+  return Status::Ok();
+}
+
+void StorageManager::async_query_process(Query* query) {
+  Array* array = query->array();
+  Status st = array->query_process(query);
+  if (!st.ok())
+    LOG_STATUS(st);
+}
+
+void StorageManager::async_start(StorageManager* storage_manager, int i) {
+  storage_manager->async_process_queries(i);
+}
+
+void StorageManager::async_stop() {
+  async_done_ = true;
+  async_cv_[0].notify_one();
+  async_cv_[1].notify_one();
+  async_thread_[0]->join();
+  async_thread_[1]->join();
+}
+
+Status StorageManager::load_bookkeeping(
+    const ArraySchema* array_schema,
+    const std::vector<std::string>& fragment_names,
+    std::vector<BookKeeping*>& bookkeeping) const {
+  // Get number of fragments
+  int fragment_num = fragment_names.size();
+  if(fragment_num == 0)
+    return Status::Ok();
+
+  // Load the book-keeping for each fragment
+  for (int i = 0; i < fragment_num; ++i) {
+    // Create new book-keeping structure for the fragment
+    BookKeeping* bk =
+        new BookKeeping(array_schema, fragment_names[i]);
+
+    // Load book-keeping
+    RETURN_NOT_OK(bk->load());
+
+    // Append to the open array entry
+    bookkeeping.push_back(bk);
+  }
+
+  return Status::Ok();
+}
+
+void StorageManager::load_fragment_names(
+    const std::string& array, std::vector<std::string>& fragment_names) const {
+  // Get directory names in the array folder
+  RETURN_NOT_OK(filesystem::get_dirs(filesystem::real_dir(array), fragment_names));
+
+  // Sort the fragment names
+  int fragment_num = (int)fragment_names.size();
+  std::string t_str;
+  int64_t stripped_fragment_name_size, t;
+  std::vector<std::pair<int64_t, int>> t_pos_vec;
+  t_pos_vec.resize(fragment_num);
+
+  // Get the timestamp for each fragment
+  for (int i = 0; i < fragment_num; ++i) {
+    // Strip fragment name
+    std::string& fragment_name = fragment_names[i];
+    std::string parent_fragment_name = utils::parent_path(fragment_name);
+    std::string stripped_fragment_name =
+        fragment_name.substr(parent_fragment_name.size() + 1);
+    assert(utils::starts_with(stripped_fragment_name, "__"));
+    stripped_fragment_name_size = stripped_fragment_name.size();
+
+    // Search for the timestamp in the end of the name after '_'
+    for (int j = 2; j < stripped_fragment_name_size; ++j) {
+      if (stripped_fragment_name[j] == '_') {
+        t_str = stripped_fragment_name.substr(
+            j + 1, stripped_fragment_name_size - j);
+        sscanf(t_str.c_str(), "%lld", (long long int*)&t);
+        t_pos_vec[i] = std::pair<int64_t, int>(t, i);
+        break;
+      }
+    }
+  }
+
+  // Sort the names based on the timestamps
+  std::sort(t_pos_vec.begin(), t_pos_vec.end());
+  std::vector<std::string> fragment_names_sorted;
+  fragment_names_sorted.resize(fragment_num);
+  for (int i = 0; i < fragment_num; ++i)
+    fragment_names_sorted[i] = fragment_names[t_pos_vec[i].second];
+  fragment_names = fragment_names_sorted;
+}
+
+Status StorageManager::open_array_get(const std::string& name, OpenArray** open_array) {
+  // Lock mutex
+  open_array_mtx_.lock();
+
+  // Find the open array entry
+  std::map<std::string, OpenArray*>::iterator it = open_arrays_.find(name);
+
+  // Get the entry or create new
+  Status st = Status::Ok();
+  if (it == open_arrays_.end())
+    st = open_array_new(name, open_array);
+  else
+    *open_array = it->second;
+
+  // Increment counter
+  if(st.ok())
+    ++((*open_array)->cnt_);
+
+  // Unlock mutex
+  open_array_mtx_.unlock();
+
+  return st;
+}
+
+Status StorageManager::open_array_new(const std::string& name, OpenArray** open_array) {
+  // Create open array
+  *open_array = new OpenArray();
+  (*open_array)->cnt_ = 0;
+
+  // Get shared lock
+  RETURN_NOT_OK_ELSE(array_lock(name, &((*open_array)->array_filelock_), LockType::SHARED), delete *open_array);
+
+  // Get the fragment names of the array
+  RETURN_NOT_OK_ELSE(load_fragment_names(name, &((*open_array)->fragment_names_)), delete *open_array);
+
+  // Load array schema
+  (*open_array)->array_schema_ = new ArraySchema();
+  RETURN_NOT_OK_ELSE(((*open_array)->array_schema_)->load(name), delete *open_array);
+
+  // Load the bookkeeping for each fragment
+  RETURN_NOT_OK_ELSE(load_bookkeeping(
+                (*open_array)->array_schema_,
+                (*open_array)->fragment_names_,
+                (*open_array)->bookkeeping_), delete *open_array);
+
+  // Insert open array in map
+  open_arrays_[name] = *open_array;
+
+  // Success
+  return Status::Ok();
+}
+
+
+
+
+
+
+
+
+
+
+
+/*
+
 
 // TODO: Object types should be Enums
 int StorageManager::dir_type(const char* dir) {
@@ -111,27 +420,11 @@ int StorageManager::dir_type(const char* dir) {
     return -1;
 }
 
-void StorageManager::set_config(Configurator* config) {
-  // TODO: make thread-safe?
 
-  config_ = config;
-}
 
-/* ****************************** */
-/*             GROUP              */
-/* ****************************** */
 
-Status StorageManager::group_create(const std::string& group) const {
-  // Create group directory
-  RETURN_NOT_OK(filesystem::create_dir(group));
-  // Create group file
-  RETURN_NOT_OK(filesystem::create_group_file(group));
-  return Status::Ok();
-}
 
-/* ****************************** */
-/*          BASIC ARRAY           */
-/* ****************************** */
+
 
 Status StorageManager::basic_array_create(const char* name) const {
   // Initialize basic array schema
@@ -141,15 +434,8 @@ Status StorageManager::basic_array_create(const char* name) const {
   return array_create(schema->array_schema());
 }
 
-/* ****************************** */
-/*             ARRAY              */
-/* ****************************** */
 
-Status StorageManager::aio_submit(AIORequest* aio_request, int i) {
-  aio_push_request(aio_request, i);
 
-  return Status::Ok();
-}
 
 Status StorageManager::array_consolidate(const char* array_dir) {
   // Create an array object
@@ -186,163 +472,8 @@ Status StorageManager::array_consolidate(const char* array_dir) {
   return Status::Ok();
 }
 
-Status StorageManager::array_create(ArraySchema* array_schema) const {
-  // Check array schema
-  if (array_schema == nullptr) {
-    return LOG_STATUS(
-        Status::StorageManagerError("Cannot create array; Empty array schema"));
-  }
 
-  // Create array directory
-  std::string dir = array_schema->array_name();
-  RETURN_NOT_OK(filesystem::create_dir(dir));
 
-  // Store array schema
-  RETURN_NOT_OK(array_schema->store(dir));
-
-  // Create consolidation filelock
-  RETURN_NOT_OK(consolidation_lock_create(dir));
-
-  // Success
-  return Status::Ok();
-}
-
-// TODO (jcb): is it true that this cannot fail?
-void StorageManager::array_get_fragment_names(
-    const std::string& array, std::vector<std::string>& fragment_names) {
-  // Get directory names in the array folder
-  fragment_names = filesystem::get_fragment_dirs(filesystem::real_dir(array));
-  // Sort the fragment names
-  sort_fragment_names(fragment_names);
-}
-
-Status StorageManager::array_load_book_keeping(
-    const ArraySchema* array_schema,
-    const std::vector<std::string>& fragment_names,
-    std::vector<BookKeeping*>& book_keeping,
-    ArrayMode mode) {
-  // TODO (jcb): is this assumed to be always > 0?
-  // For easy reference
-  int fragment_num = fragment_names.size();
-
-  // Initialization
-  book_keeping.resize(fragment_num);
-
-  // Load the book-keeping for each fragment
-  for (int i = 0; i < fragment_num; ++i) {
-    // For easy reference
-    int dense = !filesystem::is_file(
-        fragment_names[i] + "/" + Configurator::coords() +
-        Configurator::file_suffix());
-
-    // Create new book-keeping structure for the fragment
-    BookKeeping* f_book_keeping =
-        new BookKeeping(array_schema, dense, fragment_names[i], mode);
-
-    // Load book-keeping
-    RETURN_NOT_OK(f_book_keeping->load());
-
-    // Append to the open array entry
-    book_keeping[i] = f_book_keeping;
-  }
-
-  return Status::Ok();
-}
-
-Status StorageManager::array_init(
-    Array*& array,
-    const char* array_dir,
-    ArrayMode mode,
-    const void* subarray,
-    const char** attributes,
-    int attribute_num) {
-  // For easy reference
-  unsigned name_max_len = Configurator::name_max_len();
-
-  // TODO: (jcb) this should be handled by the array object
-  // Check array name length
-  if (array_dir == nullptr || strlen(array_dir) > name_max_len) {
-    return LOG_STATUS(Status::StorageManagerError("Invalid array name length"));
-  }
-
-  // Load array schema
-  ArraySchema* array_schema = new ArraySchema();
-  RETURN_NOT_OK_ELSE(array_schema->load(array_dir), delete array_schema);
-
-  // Open the array
-  OpenArray* open_array = nullptr;
-  if (is_read_mode(mode)) {
-    RETURN_NOT_OK(
-        array_open(filesystem::real_dir(array_dir), open_array, mode));
-  }
-
-  Status st;
-  // Create the clone Array object
-  Array* array_clone = new Array();
-  st = array_clone->init(
-      this,
-      array_schema,
-      open_array->fragment_names_,
-      open_array->book_keeping_,
-      mode,
-      attributes,
-      attribute_num,
-      subarray,
-      config_);
-
-  // Handle error
-  if (!st.ok()) {
-    delete array_schema;
-    delete array_clone;
-    array = nullptr;
-    if (is_read_mode(mode))
-      array_close(array_dir);
-    return st;
-  }
-
-  // Create actual array
-  array = new Array();
-  st = array->init(
-      this,
-      array_schema,
-      open_array->fragment_names_,
-      open_array->book_keeping_,
-      mode,
-      attributes,
-      attribute_num,
-      subarray,
-      config_,
-      array_clone);
-
-  // Handle error
-  if (!st.ok()) {
-    delete array_schema;
-    delete array;
-    array = nullptr;
-    if (is_read_mode(mode))
-      array_close(array_dir);
-  }
-
-  // Return
-  return st;
-}
-
-Status StorageManager::array_finalize(Array* array) {
-  // If the array is NULL, do nothing
-  if (array == nullptr)
-    return Status::Ok();
-
-  // Finalize and close the array
-  RETURN_NOT_OK_ELSE(array->finalize(), delete array);
-  if (array->read_mode())
-    RETURN_NOT_OK_ELSE(
-        array_close(array->array_schema()->array_name()), delete array)
-
-  // Clean up
-  delete array;
-
-  return Status::Ok();
-}
 
 Status StorageManager::array_sync(Array* array) {
   // If the array is NULL, do nothing
@@ -411,10 +542,6 @@ Status StorageManager::array_iterator_finalize(ArrayIterator* array_it) {
 
   return Status::Ok();
 }
-
-/* ****************************** */
-/*            METADATA            */
-/* ****************************** */
 
 Status StorageManager::metadata_consolidate(const char* metadata_dir) {
   // Load metadata schema
@@ -652,10 +779,6 @@ Status StorageManager::metadata_iterator_finalize(
   return Status::Ok();
 }
 
-/* ****************************** */
-/*               MISC             */
-/* ****************************** */
-
 Status StorageManager::ls(
     const char* parent_path,
     char** object_paths,
@@ -755,59 +878,15 @@ Status StorageManager::move(
   }
 }
 
-/* ****************************** */
-/*         PRIVATE METHODS        */
-/* ****************************** */
+*/
 
-void StorageManager::aio_handle_request(AIORequest* aio_request) {
-  // For easy reference
-  Array* array = aio_request->array();
-  Status st = array->aio_handle_request(aio_request);
-  if (!st.ok())
-    LOG_STATUS(st);
-}
+/*
 
-void StorageManager::aio_handle_requests(int i) {
-  while (!aio_done_) {
-    std::unique_lock<std::mutex> lock(aio_mutex_[i]);
-    aio_cv_[i].wait(
-        lock, [this, i] { return (aio_queue_[i].size() > 0) || aio_done_; });
-    if (aio_done_)
-      break;
-    AIORequest* aio_request = aio_queue_[i].front();
-    aio_queue_[i].pop();
-    lock.unlock();
-    aio_handle_request(aio_request);
-  }
-}
 
-Status StorageManager::aio_push_request(AIORequest* aio_request, int i) {
-  // Set the request status
-  aio_request->set_status(AIOStatus::INPROGRESS);
 
-  // Push request
-  {
-    std::lock_guard<std::mutex> lock(aio_mutex_[i]);
-    aio_queue_[i].emplace(aio_request);
-  }
 
-  // Signal AIO thread
-  aio_cv_[i].notify_one();
 
-  return Status::Ok();
-}
 
-void StorageManager::aio_start(StorageManager* storage_manager, int i) {
-  storage_manager->aio_handle_requests(i);
-}
-
-void StorageManager::aio_stop() {
-  aio_done_ = true;
-  aio_cv_[0].notify_one();
-  aio_cv_[1].notify_one();
-  aio_thread_[0]->join();
-  aio_thread_[1]->join();
-}
 
 Status StorageManager::array_clear(const std::string& array) const {
   // Get real array directory name
@@ -837,91 +916,12 @@ Status StorageManager::array_clear(const std::string& array) const {
   return Status::Ok();
 }
 
-Status StorageManager::array_close(const std::string& array) {
-  open_array_mtx_.lock();
 
-  // Find the open array entry
-  std::map<std::string, OpenArray*>::iterator it =
-      open_arrays_.find(filesystem::real_dir(array));
-
-  // Sanity check
-  if (it == open_arrays_.end()) {
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot close array; Open array entry not found"));
-  }
-
-  // Lock the mutex of the array
-  it->second->mtx_lock();
-
-  // Decrement counter
-  --(it->second->cnt_);
-
-  // Delete open array entry if necessary
-  Status st_mtx_destroy = Status::Ok();
-  Status st_filelock = Status::Ok();
-  if (it->second->cnt_ == 0) {
-    // Clean up book-keeping
-    std::vector<BookKeeping*>::iterator bit = it->second->book_keeping_.begin();
-    for (; bit != it->second->book_keeping_.end(); ++bit)
-      delete *bit;
-
-    // Unlock mutex of the array
-    it->second->mtx_unlock();
-
-    // Unlock consolidation filelock
-    st_filelock = consolidation_unlock(it->second->consolidation_filelock_);
-
-    // Delete array schema
-    if (it->second->array_schema_ != nullptr)
-      delete it->second->array_schema_;
-
-    // Free open array
-    delete it->second;
-
-    // Delete open array entry
-    open_arrays_.erase(it);
-  } else {
-    // Unlock the mutex of the array
-    it->second->mtx_unlock();
-  }
-
-  // Unlock mutex
-  open_array_mtx_.unlock();
-
-  return Status::Ok();
-}
 
 Status StorageManager::array_delete(const std::string& array) const {
   RETURN_NOT_OK(array_clear(array));
   // Delete array directory
   RETURN_NOT_OK(filesystem::delete_dir(array));
-  return Status::Ok();
-}
-
-Status StorageManager::array_get_open_array_entry(
-    const std::string& array, OpenArray*& open_array) {
-  // Lock mutex
-  open_array_mtx_.lock();
-
-  // Find the open array entry
-  std::map<std::string, OpenArray*>::iterator it = open_arrays_.find(array);
-  // Create and init entry if it does not exist
-  if (it == open_arrays_.end()) {
-    open_array = new OpenArray();
-    open_array->cnt_ = 0;
-    open_array->consolidation_filelock_ = -1;
-    open_array->book_keeping_ = std::vector<BookKeeping*>();
-    open_arrays_[array] = open_array;
-  } else {
-    open_array = it->second;
-  }
-
-  // Increment counter
-  ++(open_array->cnt_);
-
-  // Unlock mutex
-  open_array_mtx_.unlock();
-
   return Status::Ok();
 }
 
@@ -1010,25 +1010,7 @@ Status StorageManager::array_open(
   return Status::Ok();
 }
 
-Status StorageManager::consolidation_lock_create(const std::string& dir) const {
-  // Create file
-  std::string filename =
-      dir + "/" + Configurator::consolidation_filelock_name();
-  return filesystem::filelock_create(filename);
-}
 
-Status StorageManager::consolidation_lock(
-    const std::string& array_name, int* fd, bool shared) const {
-  // Prepare the filelock name
-  std::string array_name_real = filesystem::real_dir(array_name);
-  std::string filename =
-      array_name_real + "/" + Configurator::consolidation_filelock_name();
-  return filesystem::filelock_lock(filename, fd, shared);
-}
-
-Status StorageManager::consolidation_unlock(int fd) const {
-  return filesystem::filelock_unlock(fd);
-}
 
 Status StorageManager::consolidation_finalize(
     Fragment* new_fragment,
@@ -1254,12 +1236,6 @@ void StorageManager::sort_fragment_names(
   fragment_names = fragment_names_sorted;
 }
 
-void StorageManager::OpenArray::mtx_lock() {
-  mtx_.lock();
-}
-
-void StorageManager::OpenArray::mtx_unlock() {
-  mtx_.unlock();
-}
+*/
 
 }  // namespace tiledb

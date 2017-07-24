@@ -39,14 +39,14 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Query::Query(const ArraySchema* array_schema) {
+Query::Query(Array* array) {
   set_default();
-  array_schema_ = array_schema;
+  array_ = array;
 }
 
-Query::Query(const MetadataSchema* metadata_schema) {
+Query::Query(Metadata* metadata) {
   set_default();
-  metadata_schema_ = metadata_schema;
+  metadata_ = metadata;
 }
 
 Query::~Query() {
@@ -62,12 +62,22 @@ Query::~Query() {
 /*               API              */
 /* ****************************** */
 
-Status Query::check() const {
-  if(subarray_ == nullptr)
-    return LOG_STATUS(Status::QueryError("Invalid query; unspecified subarray"));
+Array* Query::array() const {
+  return array_;
+}
 
-  if(attribute_buffers_.size() == 0 && dimension_buffers_.size() == 0)
-    return LOG_STATUS(Status::QueryError("Invalid query; unspecified attribute/dimension buffers"));
+bool Query::async() const {
+  return async_;
+}
+
+Status Query::check() const {
+  if (subarray_ == nullptr)
+    return LOG_STATUS(
+        Status::QueryError("Invalid query; unspecified subarray"));
+
+  if (attribute_buffers_.size() == 0 && dimension_buffers_.size() == 0)
+    return LOG_STATUS(Status::QueryError(
+        "Invalid query; unspecified attribute/dimension buffers"));
 
   return Status::Ok();
 }
@@ -108,10 +118,10 @@ Status Query::set_attribute_buffer(
 
   // Find attribute
   const Attribute* attr = nullptr;
-  if (array_schema_ != nullptr)
-    attr = array_schema_->attribute(name);
+  if (array_ != nullptr)
+    attr = array_->array_schema()->attribute(name);
   else  // Metadata
-    attr = metadata_schema_->attribute(name);
+    attr = metadata_->metadata_schema()->attribute(name);
   if (attr == nullptr)
     return LOG_STATUS(Status::QueryError("Invalid attribute; unknown name"));
 
@@ -144,10 +154,10 @@ Status Query::set_attribute_buffer(
 
   // Find attribute
   const Attribute* attr = nullptr;
-  if (array_schema_ != nullptr)
-    attr = array_schema_->attribute(name);
+  if (array_ != nullptr)
+    attr = array_->array_schema()->attribute(name);
   else  // Metadata
-    attr = metadata_schema_->attribute(name);
+    attr = metadata_->metadata_schema()->attribute(name);
   if (attr == nullptr)
     return LOG_STATUS(Status::QueryError("Invalid attribute; unknown name"));
 
@@ -168,7 +178,7 @@ Status Query::set_attribute_buffer(
 Status Query::set_dimension_buffer(
     const char* name, void* buffer, uint64_t buffer_size) {
   // Sanity check
-  if (metadata_schema_ != nullptr)
+  if (metadata_ != nullptr)
     return LOG_STATUS(
         Status::QueryError("Cannot set dimension in a metadata query"));
 
@@ -180,7 +190,8 @@ Status Query::set_dimension_buffer(
   }
 
   // Find dimension
-  const Dimension* dim = array_schema_->dimension(name);
+  assert(array_ != nullptr);
+  const Dimension* dim = array_->array_schema()->dimension(name);
   if (dim == nullptr)
     return LOG_STATUS(Status::QueryError("Invalid dimension; unknown name"));
 
@@ -198,18 +209,23 @@ Status Query::set_dimension_buffer(
   return Status::Ok();
 }
 
+void Query::set_status(QueryStatus status) {
+  status_ = status;
+}
+
 Status Query::set_subarray(const void* subarray) {
   // Sanity check
-  if (metadata_schema_ != nullptr)
+  if (metadata_ != nullptr)
     return LOG_STATUS(
         Status::QueryError("Cannot set subarray to a metadata query"));
 
   // Delete previous subarray
-  if(subarray_ != nullptr)
+  if (subarray_ != nullptr)
     free(subarray_);
 
   // Allocate memory
-  uint64_t subarray_size = array_schema_->subarray_size();
+  assert(array_ != nullptr);
+  uint64_t subarray_size = array_->array_schema()->subarray_size();
   subarray_ = malloc(subarray_size);
   if (subarray_ == nullptr)
     return LOG_STATUS(
@@ -249,11 +265,11 @@ DimensionBuffer* Query::dimension_buffer(const std::string& name) {
 }
 
 void Query::set_default() {
-  array_schema_ = nullptr;
+  array_ = nullptr;
   async_ = false;
   callback_ = nullptr;
   callback_data_ = nullptr;
-  metadata_schema_ = nullptr;
+  metadata_ = nullptr;
   status_ = QueryStatus::UNSUBMITTED;
   subarray_ = nullptr;
 }
