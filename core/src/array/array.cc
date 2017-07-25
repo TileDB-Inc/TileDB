@@ -34,8 +34,11 @@
 #include <sys/time.h>
 
 #include "array.h"
+#include "bookkeeping.h"
+#include "filesystem.h"
 #include "logger.h"
 #include "query.h"
+#include "utils.h"
 
 namespace tiledb {
 
@@ -53,7 +56,6 @@ Array::Array(
 }
 
 Array::~Array() {
-  // TODO: close open fragments
 }
 
 /* ****************************** */
@@ -66,13 +68,8 @@ const ArraySchema* Array::array_schema() const {
 
 Status Array::query_process(Query* query) const {
   // TODO: Load bookkeeping here and only if it is
-  // TODO: a read query
-
-  // TODO: If query type changes (e.g., from write to read),
-  // TODO: take action (e.g., close a fragment)
-
-  // TODO: If a new bookkeeping is created after a successful
-  // TODO: write, send it to the storage manager
+  // TODO: a read query. Load only whatever has not
+  // TODO: been loaded yet
 
   switch (query->query_type()) {
     case QueryType::READ:
@@ -95,6 +92,53 @@ Status Array::query_process(Query* query) const {
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
+
+Status Array::new_temp_fragment(Query* query, const std::string& dir) const {
+  // Create temporary folder
+  std::string temp_fragment_name = new_temp_fragment_name();
+  RETURN_NOT_OK(filesystem::create_dir(temp_fragment_name));
+
+  // Create bookkeping
+  Bookkeeping* bk = new Bookkeeping(array_schema_, temp_fragment_name);
+  query->set_bookkeeping(bk);
+
+  // Success
+  return Status::Ok();
+}
+
+std::string Array::new_temp_fragment_name() const {
+  // For easy reference
+  unsigned name_max_len = Configurator::name_max_len();
+
+  struct timeval tp;
+  gettimeofday(&tp, nullptr);
+  uint64_t ms = (uint64_t)tp.tv_sec * 1000L + tp.tv_usec / 1000;
+  pthread_t self = pthread_self();
+  uint64_t tid = 0;
+  memcpy(&tid, &self, std::min(sizeof(self), sizeof(tid)));
+  char fragment_name[name_max_len];
+
+  // Get MAC address
+  std::string mac = utils::get_mac_addr();
+  if (mac == "")
+    return "";
+
+  // Generate fragment name
+  int n = sprintf(
+      fragment_name,
+      "%s/.__%s%llu_%llu",
+      array_schema_->array_name().c_str(),
+      mac.c_str(),
+      tid,
+      ms);
+
+  // Handle error
+  if (n < 0)
+    return "";
+
+  // Return
+  return fragment_name;
+}
 
 Status Array::read(Query* query) const {
   switch (query->array_type()) {
@@ -159,15 +203,45 @@ Status Array::read_sorted_row_sparse(Query* query) const {
   return Status::Ok();
 }
 
-Status Array::write(Query* query) const {
-  // TODO: Create a temp fragment
+Status Array::rename_fragment(const std::string& temp_fragment_name) const {
+  std::string parent_dir = utils::parent_path(temp_fragment_name);
+  std::string new_fragment_name =
+      parent_dir + "/" + temp_fragment_name.substr(parent_dir.size() + 2);
 
+  return filesystem::rename_dir(temp_fragment_name, new_fragment_name);
+}
+
+Status Array::write(Query* query) const {
+  // Create a new temporary fragment folder if this is the first write
+  if (query->status() == QueryStatus::UNSUBMITTED)
+    RETURN_NOT_OK(new_temp_fragment(query, array_schema_->array_name()));
+
+  // Handle write
+  Status st = Status::Ok();
   switch (query->array_type()) {
     case ArrayType::DENSE:
-      return write_dense(query);
+      st = write_dense(query);
+      break;
     case ArrayType::SPARSE:
-      return write_sparse(query);
+      st = write_sparse(query);
+      break;
   }
+
+  // Get temp fragment name
+  const std::string& temp_fragment_name = query->bookkeeping()->fragment_name();
+
+  // Upon error, delete fragment
+  if(!st.ok()) {
+    filesystem::delete_dir(temp_fragment_name);
+    return st;
+  }
+
+  // Upon successful completion, rename temporary fragment folder
+  st = rename_fragment(temp_fragment_name);
+  if(!st.ok())
+    filesystem::delete_dir(temp_fragment_name);
+
+  return st;
 }
 
 Status Array::write_dense(Query* query) const {
@@ -588,294 +662,6 @@ return LOG_STATUS(Status::ArrayError("error finalizing fragment"));
 return Status::Ok();
 }
 
-Status Array::init(
-StorageManager* storage_manager,
-const ArraySchema* array_schema,
-const std::vector<std::string>& fragment_names,
-const std::vector<BookKeeping*>& book_keeping,
-ArrayMode mode,
-const char** attributes,
-int attribute_num,
-const Configurator* config,
-Array* array_clone) {
-// For easy reference
-unsigned name_max_len = Configurator::name_max_len();
-
-// Set mode
-mode_ = mode;
-
-// Set array clone
-array_clone_ = array_clone;
-storage_manager_ = storage_manager;
-
-// Sanity check on mode
-if (!read_mode() && !write_mode()) {
-return LOG_STATUS(
-    Status::ArrayError("Cannot initialize array; Invalid array mode"));
-}
-
-// Set config
-config_ = config;
-
-// Get attributes
-std::vector<std::string> attributes_vec;
-if (attributes == nullptr) {  // Default: all attributes
-attributes_vec = array_schema->attributes();
-if (array_schema->dense() && mode != ArrayMode::WRITE_UNSORTED)
-  // Remove coordinates attribute for dense arrays,
-  // unless in TILEDB_WRITE_UNSORTED mode
-  attributes_vec.pop_back();
-} else {  // Custom attributes
-// Get attributes
-bool coords_found = false;
-bool sparse = !array_schema->dense();
-for (int i = 0; i < attribute_num; ++i) {
-  // Check attribute name length
-  if (attributes[i] == nullptr || strlen(attributes[i]) > name_max_len)
-    return LOG_STATUS(Status::ArrayError("Invalid attribute name length"));
-  attributes_vec.emplace_back(attributes[i]);
-  if (!strcmp(attributes[i], Configurator::coords()))
-    coords_found = true;
-}
-
-// Sanity check on duplicates
-if (utils::has_duplicates(attributes_vec)) {
-  return LOG_STATUS(
-      Status::ArrayError("Cannot initialize array; Duplicate attributes"));
-}
-
-// For the case of the clone sparse array, append coordinates if they do
-// not exist already
-if (sparse && array_clone == nullptr && !coords_found &&
-    !utils::is_metadata(array_schema->array_name()))
-  attributes_vec.emplace_back(Configurator::coords());
-}
-
-// Set attribute ids
-RETURN_NOT_OK(
-  array_schema->get_attribute_ids(attributes_vec, attribute_ids_));
-
-// Set array schema
-array_schema_ = array_schema;
-
-// Initialize new fragment if needed
-if (write_mode()) {  // WRITE MODE
-// Get new fragment name
-std::string new_fragment_name = this->new_fragment_name();
-if (new_fragment_name == "") {
-  return LOG_STATUS(Status::ArrayError("Cannot produce new fragment name"));
-}
-
-// Create new fragment
-Fragment* fragment = new Fragment(this);
-fragments_.push_back(fragment);
-Status st = fragment->init(new_fragment_name, mode_);
-if (!st.ok()) {
-  array_schema_ = nullptr;
-  return st;
-}
-
-// Create ArraySortedWriteState
-if (mode_ == ArrayMode::WRITE_SORTED_COL ||
-    mode_ == ArrayMode::WRITE_SORTED_ROW) {
-  array_sorted_write_state_ = new ArraySortedWriteState(this);
-  Status st = array_sorted_write_state_->init();
-  if (!st.ok()) {
-    delete array_sorted_write_state_;
-    array_sorted_write_state_ = nullptr;
-    return st;
-  }
-} else {
-  array_sorted_write_state_ = nullptr;
-}
-} else {  // READ MODE
-// Open fragments
-Status st = open_fragments(fragment_names, book_keeping);
-if (!st.ok()) {
-  array_schema_ = nullptr;
-  return st;
-}
-
-// Create ArrayReadState
-array_read_state_ = new ArrayReadState(this);
-
-// Create ArraySortedReadState
-if (mode_ != ArrayMode::READ) {
-  array_sorted_read_state_ = new ArraySortedReadState(this);
-  Status st = array_sorted_read_state_->init();
-  if (!st.ok()) {
-    delete array_sorted_read_state_;
-    array_sorted_read_state_ = nullptr;
-    return st;
-  }
-} else {
-  array_sorted_read_state_ = nullptr;
-}
-}
-
-// Initialize the AIO-related members
-aio_last_handled_request_ = -1;
-
-// Return
-return Status::Ok();
-}
-
-Status Array::reset_attributes(const char** attributes, int attribute_num) {
-// For easy reference
-unsigned name_max_len = Configurator::name_max_len();
-
-// Get attributes
-std::vector<std::string> attributes_vec;
-if (attributes == nullptr) {  // Default: all attributes
-attributes_vec = array_schema_->attributes();
-if (array_schema_->dense())  // Remove coordinates attribute for dense
-  attributes_vec.pop_back();
-} else {  //  Custom attributes
-// Copy attribute names
-for (int i = 0; i < attribute_num; ++i) {
-  // Check attribute name length
-  if (attributes[i] == nullptr || strlen(attributes[i]) > name_max_len)
-    return LOG_STATUS(Status::ArrayError("Invalid attribute name length"));
-  attributes_vec.emplace_back(attributes[i]);
-}
-
-// Sanity check on duplicates
-if (utils::has_duplicates(attributes_vec)) {
-  return LOG_STATUS(
-      Status::ArrayError("Cannot reset attributes; Duplicate attributes"));
-}
-}
-
-// Set attribute ids
-RETURN_NOT_OK(
-  array_schema_->get_attribute_ids(attributes_vec, attribute_ids_));
-
-return Status::Ok();
-}
-
-Status Array::reset_subarray(const void* subarray) {
-// Sanity check
-assert(read_mode() || write_mode());
-
-// For easy referencd
-int fragment_num = fragments_.size();
-
-// Finalize fragments if in write mode
-if (write_mode()) {
-// Finalize and delete fragments
-for (int i = 0; i < fragment_num; ++i) {
-  fragments_[i]->finalize();
-  delete fragments_[i];
-}
-fragments_.clear();
-}
-
-// Re-set or re-initialize fragments
-if (write_mode()) {  // WRITE MODE
-// Finalize last fragment
-if (fragments_.size() != 0) {
-  assert(fragments_.size() == 1);
-  RETURN_NOT_OK(fragments_[0]->finalize());
-  delete fragments_[0];
-  fragments_.clear();
-}
-
-// Re-initialize ArraySortedWriteState
-if (array_sorted_write_state_ != nullptr)
-  delete array_sorted_write_state_;
-if (mode_ == ArrayMode::WRITE_SORTED_COL ||
-    mode_ == ArrayMode::WRITE_SORTED_ROW) {
-  array_sorted_write_state_ = new ArraySortedWriteState(this);
-  Status st = array_sorted_write_state_->init();
-  if (!st.ok()) {
-    delete array_sorted_write_state_;
-    array_sorted_write_state_ = nullptr;
-    return st;
-  }
-} else {
-  array_sorted_write_state_ = nullptr;
-}
-
-// Get new fragment name
-std::string new_fragment_name = this->new_fragment_name();
-if (new_fragment_name == "") {
-  return LOG_STATUS(
-      Status::ArrayError("Cannot generate new fragment name"));
-}
-
-// Create new fragment
-Fragment* fragment = new Fragment(this);
-fragments_.push_back(fragment);
-RETURN_NOT_OK(fragment->init(new_fragment_name, mode_));
-
-} else {  // READ MODE
-// Re-initialize the read state of the fragments
-for (int i = 0; i < fragment_num; ++i)
-  fragments_[i]->reset_read_state();
-
-// Re-initialize array read state
-if (array_read_state_ != nullptr) {
-  delete array_read_state_;
-  array_read_state_ = nullptr;
-}
-array_read_state_ = new ArrayReadState(this);
-
-// Re-initialize ArraySortedReadState
-if (array_sorted_read_state_ != nullptr)
-  delete array_sorted_read_state_;
-if (mode_ != ArrayMode::READ) {
-  array_sorted_read_state_ = new ArraySortedReadState(this);
-  Status st = array_sorted_read_state_->init();
-  if (!st.ok()) {
-    delete array_sorted_read_state_;
-    array_sorted_read_state_ = nullptr;
-    return st;
-  }
-} else {
-  array_sorted_read_state_ = nullptr;
-}
-}
-
-// Success
-return Status::Ok();
-}
-
-Status Array::reset_subarray_soft(const void* subarray) {
-// Sanity check
-assert(read_mode() || write_mode());
-
-// For easy referencd
-int fragment_num = fragments_.size();
-
-// Finalize fragments if in write mode
-if (write_mode()) {
-// Finalize and delete fragments
-for (int i = 0; i < fragment_num; ++i) {
-  fragments_[i]->finalize();
-  delete fragments_[i];
-}
-fragments_.clear();
-}
-
-// Re-set or re-initialize fragments
-if (write_mode()) {  // WRITE MODE
-// Do nothing
-} else {  // READ MODE
-// Re-initialize the read state of the fragments
-for (int i = 0; i < fragment_num; ++i)
-  fragments_[i]->reset_read_state();
-
-// Re-initialize array read state
-if (array_read_state_ != nullptr) {
-  delete array_read_state_;
-  array_read_state_ = nullptr;
-}
-array_read_state_ = new ArrayReadState(this);
-}
-
-return Status::Ok();
-}
-
 Status Array::sync() {
 // Sanity check
 if (!write_mode()) {
@@ -960,60 +746,10 @@ RETURN_NOT_OK(fragments_[0]->write(buffers, buffer_sizes));
 // Success
 return Status::Ok();
 }
- */
 
-/*
 
-std::string Array::new_fragment_name() const {
-// For easy reference
-unsigned name_max_len = Configurator::name_max_len();
 
-struct timeval tp;
-gettimeofday(&tp, nullptr);
-uint64_t ms = (uint64_t)tp.tv_sec * 1000L + tp.tv_usec / 1000;
-pthread_t self = pthread_self();
-uint64_t tid = 0;
-memcpy(&tid, &self, std::min(sizeof(self), sizeof(tid)));
-char fragment_name[name_max_len];
 
-// Get MAC address
-std::string mac = utils::get_mac_addr();
-if (mac == "")
-return "";
-
-// Generate fragment name
-int n = sprintf(
-  fragment_name,
-  "%s/.__%s%llu_%llu",
-  array_schema_->array_name().c_str(),
-  mac.c_str(),
-  tid,
-  ms);
-
-// Handle error
-if (n < 0)
-return "";
-
-// Return
-return fragment_name;
-}
-
-Status Fragment::rename_fragment() {
-  // Do nothing in READ mode
-  if (write_mode()) {
-    std::string parent_dir = utils::parent_path(fragment_name_);
-    std::string new_fragment_name =
-        parent_dir + "/" + fragment_name_.substr(parent_dir.size() + 2);
-
-    if (rename(fragment_name_.c_str(), new_fragment_name.c_str())) {
-      return LOG_STATUS(Status::OSError(
-          std::string("Cannot rename fragment directory; ") + strerror(errno)));
-    }
-
-    fragment_name_ = new_fragment_name;
-  }
-  return Status::Ok();
-}
 
 Status Array::open_fragments(
 const std::vector<std::string>& fragment_names,

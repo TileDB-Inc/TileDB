@@ -35,6 +35,7 @@
 
 #include "array.h"
 #include "attribute_buffer.h"
+#include "bookkeeping.h"
 #include "dimension_buffer.h"
 #include "metadata.h"
 #include "query_status.h"
@@ -71,6 +72,8 @@ class Query {
 
   bool async() const;
 
+  Bookkeeping* bookkeeping() const;
+
   Status check() const;
 
   Status overflow(const char* attr, bool* overflow);
@@ -86,6 +89,8 @@ class Query {
       uint64_t buffer_size,
       void* buffer_var,
       uint64_t buffer_var_size);
+
+  void set_bookkeeping(Bookkeeping* bookkeeping);
 
   Status set_dimension_buffer(
       const char* name, void* buffer, uint64_t buffer_size);
@@ -112,6 +117,8 @@ class Query {
   std::vector<AttributeBuffer*> attribute_buffers_;
 
   std::map<std::string, AttributeBuffer*> attribute_buffers_map_;
+
+  Bookkeeping* bookkeeping_;
 
   void* (*callback_)(void*);
 

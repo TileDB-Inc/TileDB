@@ -75,6 +75,10 @@ bool Query::async() const {
   return async_;
 }
 
+Bookkeeping* Query::bookkeeping() const {
+  return bookkeeping_;
+}
+
 Status Query::check() const {
   if (subarray_ == nullptr)
     return LOG_STATUS(
@@ -184,6 +188,12 @@ Status Query::set_attribute_buffer(
   return Status::Ok();
 }
 
+void Query::set_bookkeeping(Bookkeeping *bookkeeping) {
+  if(bookkeeping_ != nullptr)
+    delete bookkeeping_;
+  bookkeeping_ = bookkeeping;
+}
+
 Status Query::set_dimension_buffer(
     const char* name, void* buffer, uint64_t buffer_size) {
   // Sanity check
@@ -280,6 +290,7 @@ DimensionBuffer* Query::dimension_buffer(const std::string& name) {
 void Query::set_default() {
   array_ = nullptr;
   async_ = false;
+  bookkeeping_ = nullptr;
   callback_ = nullptr;
   callback_data_ = nullptr;
   metadata_ = nullptr;

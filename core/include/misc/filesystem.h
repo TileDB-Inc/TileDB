@@ -47,6 +47,8 @@ namespace tiledb {
 
 namespace filesystem {
 
+Status rename_dir(const std::string& old_dir, const std::string& new_dir);
+
 /**
  * Create a process lockfile
  *

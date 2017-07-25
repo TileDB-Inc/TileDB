@@ -58,6 +58,10 @@ class Bookkeeping {
   /*             ACCESSORS             */
   /* ********************************* */
 
+  const std::string& fragment_name() const;
+
+
+
   /** Returns the bounding coordinates. */
   //  const std::vector<void*>& bounding_coords() const;
 

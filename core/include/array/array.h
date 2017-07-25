@@ -175,6 +175,10 @@ class Array {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
+  Status new_temp_fragment(Query* query, const std::string& dir) const;
+
+  std::string new_temp_fragment_name() const;
+
   Status read(Query* query) const;
 
   Status read_dense(Query* query) const;
@@ -192,6 +196,8 @@ class Array {
   Status read_sorted_row_dense(Query* query) const;
 
   Status read_sorted_row_sparse(Query* query) const;
+
+  Status rename_fragment(const std::string& temp_fragment_name) const;
 
   Status write(Query* query) const;
 

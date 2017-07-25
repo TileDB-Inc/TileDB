@@ -79,6 +79,13 @@ Bookkeeping::~Bookkeeping() {
 /*               API              */
 /* ****************************** */
 
+const std::string& Bookkeeping::fragment_name() const {
+      return fragment_name_;
+    }
+
+
+
+
 /*
 
 const std::vector<void*>& BookKeeping::bounding_coords() const {
