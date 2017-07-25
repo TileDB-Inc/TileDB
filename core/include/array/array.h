@@ -36,8 +36,10 @@
 
 #include <queue>
 #include "array_schema.h"
+#include "attribute_buffer.h"
 #include "bookkeeping.h"
 #include "configurator.h"
+#include "dimension_buffer.h"
 
 namespace tiledb {
 
@@ -175,8 +177,6 @@ class Array {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  Status new_temp_fragment(Query* query, const std::string& dir) const;
-
   std::string new_temp_fragment_name() const;
 
   Status read(Query* query) const;
@@ -203,7 +203,13 @@ class Array {
 
   Status write_dense(Query* query) const;
 
+  Status write_dense(Query* query, const AttributeBuffer* abuf) const;
+
   Status write_sparse(Query* query) const;
+
+  Status write_sparse(Query* query, const AttributeBuffer* abuf) const;
+
+  Status write_sparse(Query* query, const DimensionBuffer* dbuf) const;
 
   Status write_sorted_col(Query* query) const;
 

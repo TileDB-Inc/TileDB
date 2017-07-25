@@ -75,6 +75,10 @@ bool Query::async() const {
   return async_;
 }
 
+const std::vector<AttributeBuffer*>& Query::attribute_buffers() const {
+  return attribute_buffers_;
+}
+
 Bookkeeping* Query::bookkeeping() const {
   return bookkeeping_;
 }
@@ -90,6 +94,10 @@ Status Query::check() const {
 
   return Status::Ok();
 }
+
+    const std::vector<DimensionBuffer*>& Query::dimension_buffers() const {
+      return dimension_buffers_;
+    }
 
 Status Query::overflow(const char* name, bool* overflow) {
   // Check if the attribute buffer exists

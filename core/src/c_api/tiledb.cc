@@ -37,6 +37,7 @@
 #include "basic_array.h"
 #include "metadata_schema.h"
 #include "query.h"
+#include "query_status.h"
 #include "query_type.h"
 #include "storage_manager.h"
 #include "tiledb.h"
@@ -1315,6 +1316,20 @@ int tiledb_query_set_async(
 
   // Set async
   query->query_->set_async(callback, data);
+
+  // Success
+  return TILEDB_OK;
+}
+
+int tiledb_query_set_completed(
+        tiledb_ctx_t* ctx,
+        tiledb_query_t* query) {
+   // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Set async
+  query->query_->set_status(tiledb::QueryStatus::COMPLETED);
 
   // Success
   return TILEDB_OK;

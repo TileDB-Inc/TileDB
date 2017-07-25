@@ -93,19 +93,6 @@ Status Array::query_process(Query* query) const {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-Status Array::new_temp_fragment(Query* query, const std::string& dir) const {
-  // Create temporary folder
-  std::string temp_fragment_name = new_temp_fragment_name();
-  RETURN_NOT_OK(filesystem::create_dir(temp_fragment_name));
-
-  // Create bookkeping
-  Bookkeeping* bk = new Bookkeeping(array_schema_, temp_fragment_name);
-  query->set_bookkeeping(bk);
-
-  // Success
-  return Status::Ok();
-}
-
 std::string Array::new_temp_fragment_name() const {
   // For easy reference
   unsigned name_max_len = Configurator::name_max_len();
@@ -212,46 +199,91 @@ Status Array::rename_fragment(const std::string& temp_fragment_name) const {
 }
 
 Status Array::write(Query* query) const {
-  // Create a new temporary fragment folder if this is the first write
-  if (query->status() == QueryStatus::UNSUBMITTED)
-    RETURN_NOT_OK(new_temp_fragment(query, array_schema_->array_name()));
+  if (query->status() == QueryStatus::UNSUBMITTED) {
+    // Create temporary fragment directory and bookkeeping
+    std::string temp_fragment_name = new_temp_fragment_name();
+    RETURN_NOT_OK(filesystem::create_dir(temp_fragment_name));
+    query->set_bookkeeping(new Bookkeeping(array_schema_, temp_fragment_name));
+    return Status::Ok();
+  } else if(query->status() == QueryStatus::COMPLETED) {
+    // Rename temporary fragment folder
+    // TODO: perhaps flush some query state and bookkeeping
+    // TODO: sanity checks?
+    const std::string &temp_fragment_name = query->bookkeeping()->fragment_name();
+    Status st = rename_fragment(temp_fragment_name);
+    if (!st.ok())
+      filesystem::delete_dir(temp_fragment_name);
+    return st;
+  } else {
+    // Handle write
+    Status st = Status::Ok();
+    switch (query->array_type()) {
+      case ArrayType::DENSE:
+        st = write_dense(query);
+            break;
+      case ArrayType::SPARSE:
+        st = write_sparse(query);
+            break;
+    }
 
-  // Handle write
-  Status st = Status::Ok();
-  switch (query->array_type()) {
-    case ArrayType::DENSE:
-      st = write_dense(query);
-      break;
-    case ArrayType::SPARSE:
-      st = write_sparse(query);
-      break;
-  }
+    // Upon error, delete fragment
+    if (!st.ok())
+      filesystem::delete_dir(query->bookkeeping()->fragment_name());
 
-  // Get temp fragment name
-  const std::string& temp_fragment_name = query->bookkeeping()->fragment_name();
-
-  // Upon error, delete fragment
-  if(!st.ok()) {
-    filesystem::delete_dir(temp_fragment_name);
     return st;
   }
-
-  // Upon successful completion, rename temporary fragment folder
-  st = rename_fragment(temp_fragment_name);
-  if(!st.ok())
-    filesystem::delete_dir(temp_fragment_name);
-
-  return st;
 }
 
 Status Array::write_dense(Query* query) const {
-  // TODO
+  // For easy reference
+  auto& abufs = query->attribute_buffers();
+  auto& dbufs = query->dimension_buffers();
+
+  // Write for every attribute
+  for(auto& abuf : abufs)
+    RETURN_NOT_OK(write_dense(query, abuf));
+
+  // Write for every dimension
+  for(auto& dbuf : dbufs)
+    RETURN_NOT_OK(write_dense(query, dbuf));
+
+  return Status::Ok();
+}
+
+Status Array::write_dense(Query* query, const AttributeBuffer* abuf) const {
+  while(tile_domain >> tile)
+    while(tile << abuf)
+      RETURN_NOT_OK(writer << tile);
 
   return Status::Ok();
 }
 
 Status Array::write_sparse(Query* query) const {
-  // TODO
+  // For easy reference
+  auto& abufs = query->attribute_buffers();
+  auto& dbufs = query->dimension_buffers();
+
+  // Write for every attribute
+  for(auto& abuf : abufs)
+    RETURN_NOT_OK(write_sparse(query, abuf));
+
+  // Write for every dimension
+  for(auto& dbuf : dbufs)
+    RETURN_NOT_OK(write_sparse(query, dbuf));
+
+  return Status::Ok();
+}
+
+Status Array::write_sparse(Query* query, const AttributeBuffer* abuf) const {
+  while(tile << abuf)
+    RETURN_NOT_OK(writer << tile);
+
+  return Status::Ok();
+}
+
+Status Array::write_sparse(Query* query, const DimensionBuffer* dbuf) const {
+  while(tile << dbuf)
+    RETURN_NOT_OK(writer << tile);
 
   return Status::Ok();
 }

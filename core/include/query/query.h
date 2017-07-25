@@ -72,11 +72,15 @@ class Query {
 
   bool async() const;
 
+  const std::vector<AttributeBuffer*>& attribute_buffers() const;
+
   Bookkeeping* bookkeeping() const;
 
   Status check() const;
 
-  Status overflow(const char* attr, bool* overflow);
+  const std::vector<DimensionBuffer*>& dimension_buffers() const;
+
+    Status overflow(const char* attr, bool* overflow);
 
   void set_async(void* (*callback)(void*), void* callback_data);
 
