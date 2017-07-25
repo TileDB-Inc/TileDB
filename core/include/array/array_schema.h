@@ -79,6 +79,12 @@ class ArraySchema {
   /*             ACCESSORS             */
   /* ********************************* */
 
+  const Attribute* attribute(const std::string& name) const;
+
+  const Dimension* dimension(const std::string& name) const;
+
+  uint64_t subarray_size() const;
+
   /** Returns the array name. */
   const std::string& array_name() const;
 
@@ -117,9 +123,9 @@ class ArraySchema {
   int64_t capacity() const;
 
   /**
-   * Returns the number of cells per tile. Meaningful only for the dense case.
+   * Returns the number of cells per tile.
    */
-  int64_t cell_num_per_tile() const;
+  uint64_t cell_num_per_tile() const;
 
   /** Returns the cell order. */
   Layout cell_order() const;

@@ -39,11 +39,15 @@
 #include <sys/types.h>
 #include <string>
 #include <vector>
+
+#include "lock_type.h"
 #include "status.h"
 
 namespace tiledb {
 
 namespace filesystem {
+
+Status rename_dir(const std::string& old_dir, const std::string& new_dir);
 
 /**
  * Create a process lockfile
@@ -58,10 +62,10 @@ Status filelock_create(const std::string& path);
  *
  * @param filename the lockfile to lock
  * @param fd a pointer to a file descriptor
- * @param shared true if a shared filelock, false if exclusive
+ * @param lock_type The lock type
  * @return Status
  */
-Status filelock_lock(const std::string& filename, int* fd, bool shared);
+Status filelock_lock(const std::string& filename, int* fd, LockType lock_type);
 
 /**
  * Unlock an opened file descriptor
@@ -180,9 +184,8 @@ Status read_from_file(
 Status read_from_file(
     const std::string& path, char* buffer, size_t* buffer_size);
 
-// TODO: this should go away
 /** Returns the names of the fragments inside the input directory. */
-std::vector<std::string> get_fragment_dirs(const std::string& dir);
+Status get_dirs(const std::string& dir, std::vector<std::string>& dirs);
 
 /**
  * Creates a special file to indicate that the input directory is a

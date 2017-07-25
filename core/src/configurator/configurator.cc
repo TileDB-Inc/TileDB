@@ -44,15 +44,14 @@ const unsigned Configurator::NAME_MAX_LEN(256);
 const char* Configurator::FILE_SUFFIX(".tdb");
 const char* Configurator::GZIP_SUFFIX(".gz");
 const uint64_t Configurator::INTERNAL_BUFFER_SIZE(10000000);
-const char* Configurator::BOOKKEEPING_FILENAME("__book_keeping");
 const char* Configurator::KEY_DIM1_NAME("__key_dim_1");
 const char* Configurator::KEY_DIM2_NAME("__key_dim_2");
 const char* Configurator::KEY_DIM3_NAME("__key_dim_3");
 const char* Configurator::KEY_DIM4_NAME("__key_dim_4");
 const char* Configurator::ARRAY_SCHEMA_FILENAME("__array_schema.tdb");
 const char* Configurator::METADATA_SCHEMA_FILENAME("__metadata_schema.tdb");
-const char* Configurator::CONSOLIDATION_FILELOCK_NAME(".__consolidation_lock");
-const char* Configurator::BOOK_KEEPING_FILENAME("__book_keeping");
+const char* Configurator::ARRAY_FILELOCK_NAME(".__consolidation_lock");
+const char* Configurator::FRAGMENT_METADATA_FILENAME("__fragment_metadata");
 const char* Configurator::FRAGMENT_FILENAME("__tiledb_fragment.tdb");
 const char* Configurator::GROUP_FILENAME("__tiledb_group.tdb");
 const uint64_t Configurator::CAPACITY(10000);
@@ -179,6 +178,10 @@ void Configurator::set_write_method(IOMethod write_method) {
 /*            ACCESSORS           */
 /* ****************************** */
 
+const char* Configurator::array_filelock_name() {
+  return ARRAY_FILELOCK_NAME;
+}
+
 const char* Configurator::array_schema_filename() {
   return ARRAY_SCHEMA_FILENAME;
 }
@@ -187,8 +190,8 @@ uint64_t Configurator::capacity() {
   return CAPACITY;
 }
 
-const char* Configurator::bookkeeping_filename() {
-  return BOOKKEEPING_FILENAME;
+const char* Configurator::fragment_metadata_filename() {
+  return FRAGMENT_METADATA_FILENAME;
 }
 
 uint64_t Configurator::cell_var_offset_size() {
@@ -201,10 +204,6 @@ const char* Configurator::coords() {
 
 uint64_t Configurator::consolidation_buffer_size() {
   return CONSOLIDATION_BUFFER_SIZE;
-}
-
-const char* Configurator::consolidation_filelock_name() {
-  return CONSOLIDATION_FILELOCK_NAME;
 }
 
 int Configurator::empty_int32() {

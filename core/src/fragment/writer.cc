@@ -1,12 +1,11 @@
 /**
- * @file   metadata_iterator.cc
+ * @file   writer.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,10 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the MetadataIterator class.
+ * This file implements class Writer.
  */
 
-#include "metadata_iterator.h"
+#include "writer.h"
 
 namespace tiledb {
 
@@ -39,58 +38,19 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-MetadataIterator::MetadataIterator() {
-  array_it_ = nullptr;
+Writer::Writer() {
 }
 
-MetadataIterator::~MetadataIterator() = default;
+Writer::~Writer() {
+}
 
 /* ****************************** */
-/*              API               */
+/*               API              */
 /* ****************************** */
 
-/*
+/* ****************************** */
+/*          PRIVATE METHODS       */
+/* ****************************** */
 
-const std::string& MetadataIterator::metadata_name() const {
-return array_it_->array_name();
-}
+}  // namespace tiledb
 
-bool MetadataIterator::end() const {
-return array_it_->end();
-}
-
-Status MetadataIterator::get_value(
-int attribute_id, const void** value, size_t* value_size) const {
-RETURN_NOT_OK(array_it_->get_value(attribute_id, value, value_size));
-return Status::Ok();
-}
-
-Status MetadataIterator::finalize() {
-Status st = array_it_->finalize();
-delete array_it_;
-array_it_ = nullptr;
-delete metadata_;
-metadata_ = nullptr;
-return st;
-}
-
-Status MetadataIterator::init(
-Metadata* metadata, void** buffers, size_t* buffer_sizes) {
-// Initialize an array iterator
-metadata_ = metadata;
-array_it_ = new ArrayIterator();
-Status st = array_it_->init(metadata->array(), buffers, buffer_sizes);
-if (!st.ok()) {
-delete array_it_;
-array_it_ = nullptr;
-}
-return st;
-}
-
-Status MetadataIterator::next() {
-return array_it_->next();
-}
-
- */
-
-};  // namespace tiledb

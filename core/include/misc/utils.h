@@ -338,12 +338,12 @@ bool is_array_schema(const std::string& path);
 bool is_metadata_schema(const std::string& path);
 
 /**
- * Determine if a given path is a consolidation lock file
+ * Determine if a given path is a array lock file
  *
  * @param path  filesystem path
  * @return bool
  */
-bool is_consolidation_lock(const std::string& path);
+bool is_array_lock(const std::string& path);
 
 /** Returns *true* if the input string is a positive (>0) integer number. */
 bool is_positive_integer(const char* s);

@@ -157,6 +157,26 @@ ArraySchema::~ArraySchema() {
 /*            ACCESSORS           */
 /* ****************************** */
 
+const Attribute* ArraySchema::attribute(const std::string& name) const {
+  for (auto& attr : Attributes_)
+    if (attr->name() == name)
+      return attr;
+
+  return nullptr;
+}
+
+const Dimension* ArraySchema::dimension(const std::string& name) const {
+  for (auto& dim : Dimensions_)
+    if (dim->name() == name)
+      return dim;
+
+  return nullptr;
+}
+
+uint64_t ArraySchema::subarray_size() const {
+  return 2 * coords_size_;
+}
+
 const std::string& ArraySchema::array_name() const {
   return array_name_;
 }
@@ -219,11 +239,11 @@ int64_t ArraySchema::capacity() const {
   return capacity_;
 }
 
-int64_t ArraySchema::cell_num_per_tile() const {
-  // Sanity check
-  assert(dense_);
-
-  return cell_num_per_tile_;
+uint64_t ArraySchema::cell_num_per_tile() const {
+  if (array_type_ == ArrayType::SPARSE)
+    return capacity_;
+  else
+    return cell_num_per_tile_;
 }
 
 Layout ArraySchema::cell_order() const {
@@ -244,6 +264,7 @@ unsigned int ArraySchema::cell_val_num(int attribute_id) const {
 
 Status ArraySchema::check() const {
   // TODO: check if the array schema has been properly set
+  // check if attributes and dimensions have valid names
 
   // Success
   return Status::Ok();

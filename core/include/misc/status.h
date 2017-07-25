@@ -94,7 +94,10 @@ enum class StatusCode : char {
   MMap,
   GZip,
   Compression,
-  AIO
+  AIO,
+  Query,
+  AttributeBuffer,
+  DimensionBuffer
 };
 
 class Status {
@@ -218,6 +221,21 @@ class Status {
   /** Return a ArrayError error class Status with a given message **/
   static Status AIOError(const std::string& msg) {
     return Status(StatusCode::AIO, msg, -1);
+  }
+
+  /** Return a QueryError error class Status with a given message **/
+  static Status QueryError(const std::string& msg) {
+    return Status(StatusCode::Query, msg, -1);
+  }
+
+  /** Return a AttributeBufferError error class Status with a given message **/
+  static Status AttributeBufferError(const std::string& msg) {
+    return Status(StatusCode::AttributeBuffer, msg, -1);
+  }
+
+  /** Return a DimensionBufferError error class Status with a given message **/
+  static Status DimensionBufferError(const std::string& msg) {
+    return Status(StatusCode::DimensionBuffer, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

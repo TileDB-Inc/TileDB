@@ -215,8 +215,6 @@ const char* compressor_str(Compressor type) {
       return Configurator::rle_str();
     case Compressor::BZIP2:
       return Configurator::bzip2_str();
-    default:
-      return nullptr;
   }
 }
 
@@ -572,8 +570,8 @@ bool is_metadata_schema(const std::string& path) {
   return ends_with(path, Configurator::metadata_schema_filename());
 }
 
-bool is_consolidation_lock(const std::string& path) {
-  return ends_with(path, Configurator::consolidation_filelock_name());
+bool is_array_lock(const std::string& path) {
+  return ends_with(path, Configurator::array_filelock_name());
 }
 
 bool is_positive_integer(const char* s) {

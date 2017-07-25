@@ -1,12 +1,11 @@
 /**
- * @file   metadata_iterator.cc
+ * @file   attribute_buffer.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
  * @copyright Copyright (c) 2017 TileDB, Inc.
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,10 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the MetadataIterator class.
+ * This file implements class AttributeBuffer.
  */
 
-#include "metadata_iterator.h"
+#include "dimension_buffer.h"
+#include "logger.h"
 
 namespace tiledb {
 
@@ -39,58 +39,55 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-MetadataIterator::MetadataIterator() {
-  array_it_ = nullptr;
+DimensionBuffer::DimensionBuffer() {
+  dim_ = nullptr;
+  buf_ = nullptr;
 }
 
-MetadataIterator::~MetadataIterator() = default;
+DimensionBuffer::~DimensionBuffer() {
+  if (buf_ != nullptr)
+    delete buf_;
+}
 
 /* ****************************** */
-/*              API               */
+/*               API              */
 /* ****************************** */
 
-/*
-
-const std::string& MetadataIterator::metadata_name() const {
-return array_it_->array_name();
+bool DimensionBuffer::overflow() const {
+  return buf_->overflow();
 }
 
-bool MetadataIterator::end() const {
-return array_it_->end();
+Status DimensionBuffer::set(void* buffer, uint64_t buffer_size) {
+  if (dim_ == nullptr)
+    return LOG_STATUS(Status::DimensionBufferError(
+        "Cannot set buffers; dimension has not been set"));
+
+  if (buf_ != nullptr)
+    delete buf_;
+  buf_ = new Buffer(buffer, buffer_size);
+
+  // Success
+  return Status::Ok();
 }
 
-Status MetadataIterator::get_value(
-int attribute_id, const void** value, size_t* value_size) const {
-RETURN_NOT_OK(array_it_->get_value(attribute_id, value, value_size));
-return Status::Ok();
+Status DimensionBuffer::set(
+    const Dimension* dim, void* buffer, uint64_t buffer_size) {
+  if (dim == nullptr)
+    return LOG_STATUS(
+        Status::DimensionBufferError("Cannot set buffers; dimension is null"));
+
+  dim_ = dim;
+
+  if (buf_ != nullptr)
+    delete buf_;
+  buf_ = new Buffer(buffer, buffer_size);
+
+  // Success
+  return Status::Ok();
 }
 
-Status MetadataIterator::finalize() {
-Status st = array_it_->finalize();
-delete array_it_;
-array_it_ = nullptr;
-delete metadata_;
-metadata_ = nullptr;
-return st;
-}
+/* ****************************** */
+/*          PRIVATE METHODS       */
+/* ****************************** */
 
-Status MetadataIterator::init(
-Metadata* metadata, void** buffers, size_t* buffer_sizes) {
-// Initialize an array iterator
-metadata_ = metadata;
-array_it_ = new ArrayIterator();
-Status st = array_it_->init(metadata->array(), buffers, buffer_sizes);
-if (!st.ok()) {
-delete array_it_;
-array_it_ = nullptr;
-}
-return st;
-}
-
-Status MetadataIterator::next() {
-return array_it_->next();
-}
-
- */
-
-};  // namespace tiledb
+}  // namespace tiledb

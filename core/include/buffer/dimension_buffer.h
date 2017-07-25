@@ -1,5 +1,5 @@
 /**
- * @file array_mode.h
+ * @file   dimension_buffer.h
  *
  * @section LICENSE
  *
@@ -27,32 +27,48 @@
  *
  * @section DESCRIPTION
  *
- * This defines the tiledb ArrayMode enum that maps to tiledb_array_mode_t C-api
- * enum.
+ * This file defines class DimensionBuffer.
  */
 
-#ifndef TILEDB_ARRAY_MODE_H
-#define TILEDB_ARRAY_MODE_H
+#ifndef TILEDB_DIMENSION_BUFFER_H
+#define TILEDB_DIMENSION_BUFFER_H
+
+#include "buffer.h"
+#include "dimension.h"
+#include "status.h"
 
 namespace tiledb {
 
-enum class ArrayMode : char {
-#define TILEDB_ARRAY_MODE_ENUM(id) id
-#include "tiledb_enum.inc"
-#undef TILEDB_ARRAY_MODE_ENUM
+class DimensionBuffer {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  DimensionBuffer();
+
+  ~DimensionBuffer();
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  bool overflow() const;
+
+  Status set(void* buffer, uint64_t buffer_size);
+
+  Status set(const Dimension* dim, void* buffer, uint64_t buffer_size);
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  const Dimension* dim_;
+
+  Buffer* buf_;
 };
-
-inline bool is_read_mode(const ArrayMode mode) {
-  return mode == ArrayMode::READ || mode == ArrayMode::READ_SORTED_COL ||
-         mode == ArrayMode::READ_SORTED_ROW;
-}
-
-inline bool is_write_mode(const ArrayMode mode) {
-  return mode == ArrayMode::WRITE || mode == ArrayMode::WRITE_SORTED_COL ||
-         mode == ArrayMode::WRITE_SORTED_ROW ||
-         mode == ArrayMode::WRITE_UNSORTED;
-}
 
 }  // namespace tiledb
 
-#endif  // TILEDB_ARRAY_MODE_H
+#endif  // TILEDB_ATTRIBUTE_BUFFER_H

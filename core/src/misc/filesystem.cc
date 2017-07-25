@@ -45,6 +45,14 @@ namespace tiledb {
 
 namespace filesystem {
 
+Status rename_dir(const std::string& old_dir, const std::string& new_dir) {
+  if (rename(old_dir.c_str(), new_dir.c_str()))
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot rename fragment directory; ") + strerror(errno)));
+  else
+    return Status::Ok();
+}
+
 Status create_dir(const std::string& path) {
   // Get real directory path
   std::string real_dir = filesystem::real_dir(path);
@@ -232,10 +240,10 @@ Status filelock_create(const std::string& filename) {
   return Status::Ok();
 }
 
-Status filelock_lock(const std::string& filename, int* fd, bool shared) {
+Status filelock_lock(const std::string& filename, int* fd, LockType lock_type) {
   // Prepare the flock struct
   struct flock fl;
-  if (shared) {
+  if (lock_type == LockType::SHARED) {
     fl.l_type = F_RDLCK;
   } else {  // exclusive
     fl.l_type = F_WRLCK;
@@ -294,15 +302,14 @@ Status ls(const std::string& path, std::vector<std::string>* paths) {
   return Status::Ok();
 }
 
-// TODO: this should be generic
-std::vector<std::string> get_fragment_dirs(const std::string& path) {
-  std::vector<std::string> dirs;
+Status get_dirs(const std::string& path, std::vector<std::string>& dirs) {
   std::string new_dir;
   struct dirent* next_file;
   DIR* c_dir = opendir(path.c_str());
 
   if (c_dir == nullptr)
-    return std::vector<std::string>();
+    LOG_STATUS(Status::OSError(
+        "Cannot get directories; Failed to open parent directory"));
 
   while ((next_file = readdir(c_dir))) {
     new_dir = path + "/" + next_file->d_name;
@@ -315,7 +322,7 @@ std::vector<std::string> get_fragment_dirs(const std::string& path) {
   closedir(c_dir);
 
   // Return
-  return dirs;
+  return Status::Ok();
 }
 
 Status create_fragment_file(const std::string& path) {

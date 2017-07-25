@@ -104,7 +104,7 @@ std::string Status::code_to_string() const {
       type = "[TileDB::Fragment] Error";
       break;
     case StatusCode::Bookkeeping:
-      type = "[TileDB::Bookkeeping] Error";
+      type = "[TileDB::FragmentMetadata] Error";
       break;
     case StatusCode::Array:
       type = "[TileDB::Array] Error";
@@ -144,6 +144,15 @@ std::string Status::code_to_string() const {
       break;
     case StatusCode::AIO:
       type = "[TileDB::AIO] Error";
+      break;
+    case StatusCode::Query:
+      type = "[TileDB::Query] Error";
+      break;
+    case StatusCode::AttributeBuffer:
+      type = "[TileDB::AttributeBuffer] Error";
+      break;
+    case StatusCode::DimensionBuffer:
+      type = "[TileDB::DimensionBuffer] Error";
       break;
     default:
       type = "[TileDB::?] Error:";

@@ -48,11 +48,10 @@ Dimension::Dimension(
     const void* domain,
     const void* tile_extent) {
   // Set name
-  if (name != nullptr)
-    name_ = name;
-
-  // Set type
+  name_ = name;
   type_ = type;
+  compressor_ = Compressor::NO_COMPRESSION;
+  compression_level_ = -1;
 
   // Get type size
   uint64_t type_size = utils::datatype_size(type);
@@ -74,9 +73,9 @@ Dimension::Dimension(
     memcpy(tile_extent_, tile_extent, type_size);
   }
 
+  // TODO: expand domain to multiples of extents for the case of integers
+
   // Set default compressor and compression level
-  compressor_ = Compressor::NO_COMPRESSION;
-  compression_level_ = -1;
 }
 
 Dimension::Dimension(const Dimension* dim) {
@@ -99,6 +98,8 @@ Dimension::Dimension(const Dimension* dim) {
     tile_extent_ = malloc(type_size);
     memcpy(tile_extent_, tile_extent, type_size);
   }
+
+  // TODO: expand domain to multiples of extents for the case of integers
 }
 
 Dimension::~Dimension() {

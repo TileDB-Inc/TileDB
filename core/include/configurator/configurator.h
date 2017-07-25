@@ -141,11 +141,11 @@ class Configurator {
   /*             ACCESSORS             */
   /* ********************************* */
 
+  /** Returns the array filelock name. */
+  static const char* array_filelock_name();
+
   /** Returns the array schema file name. */
   static const char* array_schema_filename();
-
-  /** Returns the bookkeeping file name. */
-  static const char* bookkeeping_filename();
 
   /** Returns the default tile capacity. */
   static uint64_t capacity();
@@ -158,9 +158,6 @@ class Configurator {
 
   /** Returns the consolidation buffer size. */
   static uint64_t consolidation_buffer_size();
-
-  /** Returns the consolidation filelock name. */
-  static const char* consolidation_filelock_name();
 
   /** Returns the special value for an empty int32. */
   static int empty_int32();
@@ -200,6 +197,9 @@ class Configurator {
 
   /** Returns the fragment file name. */
   static const char* fragment_filename();
+
+  /** Returns the fragment metadata file name. */
+  static const char* fragment_metadata_filename();
 
   /** Returns the group file name. */
   static const char* group_filename();
@@ -421,8 +421,8 @@ class Configurator {
   /** Special TileDB file name. */
   static const char* ARRAY_SCHEMA_FILENAME;
   static const char* METADATA_SCHEMA_FILENAME;
-  static const char* CONSOLIDATION_FILELOCK_NAME;
-  static const char* BOOK_KEEPING_FILENAME;
+  static const char* ARRAY_FILELOCK_NAME;
+  static const char* FRAGMENT_METADATA_FILENAME;
   static const char* FRAGMENT_FILENAME;
   static const char* GROUP_FILENAME;
   /**@}*/
