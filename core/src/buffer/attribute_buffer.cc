@@ -56,6 +56,10 @@ AttributeBuffer::~AttributeBuffer() {
 /*               API              */
 /* ****************************** */
 
+const Attribute* AttributeBuffer::attribute() const {
+  return attr_;
+}
+
 bool AttributeBuffer::overflow() const {
   return buf_->overflow() || buf_var_->overflow();
 }

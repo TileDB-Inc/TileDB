@@ -34,11 +34,14 @@
 #include <sys/time.h>
 
 #include "array.h"
-#include "bookkeeping.h"
+#include "domain.h"
 #include "filesystem.h"
+#include "fragment_metadata.h"
 #include "logger.h"
 #include "query.h"
+#include "tile.h"
 #include "utils.h"
+#include "writer.h"
 
 namespace tiledb {
 
@@ -49,8 +52,8 @@ namespace tiledb {
 Array::Array(
     StorageManager* storage_manager,
     const ArraySchema* array_schema,
-    const std::vector<Bookkeeping*>& bookkeeping)
-    : bookkeeping_(bookkeeping) {
+    const std::vector<FragmentMetadata*>& fragment_metadata)
+    : fragment_metadata_(fragment_metadata) {
   array_schema_ = array_schema;
   storage_manager_ = storage_manager;
 }
@@ -66,27 +69,91 @@ const ArraySchema* Array::array_schema() const {
   return array_schema_;
 }
 
-Status Array::query_process(Query* query) const {
-  // TODO: Load bookkeeping here and only if it is
-  // TODO: a read query. Load only whatever has not
-  // TODO: been loaded yet
+Status Array::query_finalize(Query* query) const {
+  // Sanity check on query
+  // TODO: RETURN_NOT_OK(query->check_completed());
 
+  // Flush fragment metadata
+  // TODO:    query->fragment_metadata()->store();
+
+  // TODO: this can be wrapped in a finalize function
+  // Rename temporary fragment folder
+  const std::string& temp_fragment_name =
+      query->fragment_metadata()->fragment_name();
+  return rename_fragment(temp_fragment_name);
+}
+
+Status Array::query_init(Query* query) const {
+  if (query->status() == QueryStatus::INPROGRESS)
+    return Status::Ok();
+
+  if (query->status() == QueryStatus::UNSUBMITTED) {
+    if (is_write_mode(query->query_type())) {
+      // Create temporary fragment directory and bookkeeping
+      std::string temp_fragment_name = new_temp_fragment_name();
+      RETURN_NOT_OK(filesystem::create_dir(temp_fragment_name));
+      query->set_fragment_metadata(
+          new FragmentMetadata(array_schema_, temp_fragment_name));
+    } else {  // read mode
+      // TODO: Load fragment metadata here and only if it is
+      // TODO: a read query. Load only whatever has not
+      // TODO: been loaded yet, and only the relevant fragments
+    }
+
+    query->set_status(QueryStatus::INPROGRESS);
+
+    return Status::Ok();
+  }
+
+  return LOG_STATUS(
+      Status::ArrayError("Cannot initialize query; Invalid status"));
+}
+
+Status Array::query_process(Query* query) const {
+  // Check if it is completed
+  if (query->status() == QueryStatus::COMPLETED)
+    return query_finalize(query);
+
+  RETURN_NOT_OK(query_init(query));
+
+  Status st;
   switch (query->query_type()) {
     case QueryType::READ:
-      return read(query);
+      st = read(query);
+      break;
     case QueryType::READ_SORTED_COL:
-      return read_sorted_col(query);
+      st = read_sorted(query);
+      break;
     case QueryType::READ_SORTED_ROW:
-      return read_sorted_row(query);
+      st = read_sorted(query);
+      break;
     case QueryType::WRITE:
-      return write(query);
+      st = write(query);
+      break;
     case QueryType::WRITE_SORTED_COL:
-      return write_sorted_col(query);
+      st = write_sorted(query);
+      break;
     case QueryType::WRITE_SORTED_ROW:
-      return write_sorted_row(query);
+      st = write_sorted(query);
+      break;
     case QueryType::WRITE_UNSORTED:
-      return write_unsorted(query);
+      st = write_unsorted(query);
+      break;
   }
+
+  if (!st.ok()) {
+    query->set_status(QueryStatus::ERROR);
+    return st;
+  }
+
+  if (query->status() == QueryStatus::COMPLETED)
+    return query_finalize(query);
+
+  return Status::Ok();
+}
+
+void Array::set_array_schema(const ArraySchema* array_schema) {
+  array_schema_ = array_schema;
 }
 
 /* ****************************** */
@@ -148,43 +215,22 @@ Status Array::read_sparse(Query* query) const {
   return Status::Ok();
 }
 
-Status Array::read_sorted_col(Query* query) const {
+Status Array::read_sorted(Query* query) const {
   switch (query->array_type()) {
     case ArrayType::DENSE:
-      return read_sorted_col_dense(query);
+      return read_sorted_dense(query);
     case ArrayType::SPARSE:
-      return read_sorted_col_sparse(query);
+      return read_sorted_sparse(query);
   }
 }
 
-Status Array::read_sorted_col_dense(Query* query) const {
+Status Array::read_sorted_dense(Query* query) const {
   // TODO
 
   return Status::Ok();
 }
 
-Status Array::read_sorted_col_sparse(Query* query) const {
-  // TODO
-
-  return Status::Ok();
-}
-
-Status Array::read_sorted_row(Query* query) const {
-  switch (query->array_type()) {
-    case ArrayType::DENSE:
-      return read_sorted_row_dense(query);
-    case ArrayType::SPARSE:
-      return read_sorted_row_sparse(query);
-  }
-}
-
-Status Array::read_sorted_row_dense(Query* query) const {
-  // TODO
-
-  return Status::Ok();
-}
-
-Status Array::read_sorted_row_sparse(Query* query) const {
+Status Array::read_sorted_sparse(Query* query) const {
   // TODO
 
   return Status::Ok();
@@ -199,61 +245,43 @@ Status Array::rename_fragment(const std::string& temp_fragment_name) const {
 }
 
 Status Array::write(Query* query) const {
-  if (query->status() == QueryStatus::UNSUBMITTED) {
-    // Create temporary fragment directory and bookkeeping
-    std::string temp_fragment_name = new_temp_fragment_name();
-    RETURN_NOT_OK(filesystem::create_dir(temp_fragment_name));
-    query->set_bookkeeping(new Bookkeeping(array_schema_, temp_fragment_name));
-    return Status::Ok();
-  } else if(query->status() == QueryStatus::COMPLETED) {
-    // Rename temporary fragment folder
-    // TODO: perhaps flush some query state and bookkeeping
-    // TODO: sanity checks?
-    const std::string &temp_fragment_name = query->bookkeeping()->fragment_name();
-    Status st = rename_fragment(temp_fragment_name);
-    if (!st.ok())
-      filesystem::delete_dir(temp_fragment_name);
-    return st;
-  } else {
-    // Handle write
-    Status st = Status::Ok();
-    switch (query->array_type()) {
-      case ArrayType::DENSE:
-        st = write_dense(query);
-            break;
-      case ArrayType::SPARSE:
-        st = write_sparse(query);
-            break;
-    }
-
-    // Upon error, delete fragment
-    if (!st.ok())
-      filesystem::delete_dir(query->bookkeeping()->fragment_name());
-
-    return st;
+  // Handle write
+  switch (query->array_type()) {
+    case ArrayType::DENSE:
+      return write_dense(query);
+    case ArrayType::SPARSE:
+      return write_sparse(query);
   }
 }
 
 Status Array::write_dense(Query* query) const {
   // For easy reference
   auto& abufs = query->attribute_buffers();
-  auto& dbufs = query->dimension_buffers();
 
   // Write for every attribute
-  for(auto& abuf : abufs)
+  for (auto& abuf : abufs)
     RETURN_NOT_OK(write_dense(query, abuf));
-
-  // Write for every dimension
-  for(auto& dbuf : dbufs)
-    RETURN_NOT_OK(write_dense(query, dbuf));
 
   return Status::Ok();
 }
 
 Status Array::write_dense(Query* query, const AttributeBuffer* abuf) const {
-  while(tile_domain >> tile)
-    while(tile << abuf)
+  const Attribute* attr = abuf->attribute();
+  Writer writer; // TODO: pass mode or config
+  Domain* domain = query->state_domain(attr);
+  Tile* tile = query->state_tile(attr);
+
+  while (tile << domain) {
+    if (tile << abuf) {
       RETURN_NOT_OK(writer << tile);
+      *(query->fragment_metadata()) << tile;
+    }
+  }
+
+  if (domain.tile_end())
+    query->set_completed(attr);
+  else
+    query->set_state(attr, domain, tile);
 
   return Status::Ok();
 }
@@ -264,67 +292,91 @@ Status Array::write_sparse(Query* query) const {
   auto& dbufs = query->dimension_buffers();
 
   // Write for every attribute
-  for(auto& abuf : abufs)
+  for (auto& abuf : abufs)
     RETURN_NOT_OK(write_sparse(query, abuf));
 
   // Write for every dimension
-  for(auto& dbuf : dbufs)
+  for (auto& dbuf : dbufs)
     RETURN_NOT_OK(write_sparse(query, dbuf));
 
   return Status::Ok();
 }
 
 Status Array::write_sparse(Query* query, const AttributeBuffer* abuf) const {
-  while(tile << abuf)
-    RETURN_NOT_OK(writer << tile);
+  // TODO
 
+  /*
+
+  while (tile << abuf) {
+    RETURN_NOT_OK(writer << tile);
+    // TODO: record tile info in bookkeeping
+  }
+
+   */
   return Status::Ok();
 }
 
 Status Array::write_sparse(Query* query, const DimensionBuffer* dbuf) const {
-  while(tile << dbuf)
+  // TODO
+
+  /*
+
+  while (tile << dbuf) {
     RETURN_NOT_OK(writer << tile);
+    // TODO: record tile info in bookkeeping
+  }
+*/
 
   return Status::Ok();
 }
 
-Status Array::write_sorted_col(Query* query) const {
+Status Array::write_sorted(Query* query) const {
   switch (query->array_type()) {
     case ArrayType::DENSE:
-      return write_sorted_col_dense(query);
+      return write_sorted_dense(query);
     case ArrayType::SPARSE:
-      return write_sorted_col_sparse(query);
+      return write_sorted_sparse(query);
   }
 }
 
-Status Array::write_sorted_col_dense(Query* query) const {
-  // TODO
+Status Array::write_sorted_dense(Query* query) const {
+  // For easy reference
+  auto& abufs = query->attribute_buffers();
 
-  return Status::Ok();
+  // Write for every attribute
+  for (auto& abuf : abufs)
+    RETURN_NOT_OK(write_sorted_dense(query, abuf));
 }
 
-Status Array::write_sorted_col_sparse(Query* query) const {
+Status Array::write_sorted_dense(
+    Query* query, const AttributeBuffer* abuf) const {
   // TODO
 
-  return Status::Ok();
-}
-
-Status Array::write_sorted_row(Query* query) const {
-  switch (query->array_type()) {
-    case ArrayType::DENSE:
-      return write_sorted_row_dense(query);
-    case ArrayType::SPARSE:
-      return write_sorted_row_sparse(query);
+  /*
+// Iterate over each tile slab
+   tile_slab(abuf); // Map abuf to tile_slab
+while (tile_slab << tile_domain) {
+  aio_wait(copy_id_);
+  if(tile << tile_slab) {
+    wait_aio_[copy_id_] = true;
+    send_aio_request(copy_id_);
+    copy_id_ = (copy_id_ + 1) % 2;
+  } else {
+    // TODO: return;
   }
 }
 
-Status Array::write_sorted_row_dense(Query* query) const {
-  // TODO
+// TODO: issue async query for tile_slab;
+
+// Wait for last AIO to finish
+// TODO  aio_wait((copy_id_ + 1) % 2);
+
+   */
 
   return Status::Ok();
 }
 
-Status Array::write_sorted_row_sparse(Query* query) const {
+Status Array::write_sorted_sparse(Query* query) const {
   // TODO
 
   return Status::Ok();

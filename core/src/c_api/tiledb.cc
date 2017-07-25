@@ -1321,10 +1321,8 @@ int tiledb_query_set_async(
   return TILEDB_OK;
 }
 
-int tiledb_query_set_completed(
-        tiledb_ctx_t* ctx,
-        tiledb_query_t* query) {
-   // Sanity check
+int tiledb_query_set_completed(tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
@@ -1524,10 +1522,14 @@ int tiledb_array_open(
     return TILEDB_OOM;
   }
 
+  // Create array object
+  (*array)->array_ = new tiledb::Array();
+
   // Open array
   if (save_error(
           ctx,
-          ctx->storage_manager_->array_open(array_name, &((*array)->array_)))) {
+          ctx->storage_manager_->array_open(array_name, (*array)->array_))) {
+    delete (*array)->array_;
     free(*array);
     *array = nullptr;
     return TILEDB_ERR;

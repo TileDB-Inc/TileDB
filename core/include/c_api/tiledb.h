@@ -986,8 +986,7 @@ TILEDB_EXPORT int tiledb_query_set_var_attribute(
     uint64_t buffer_var_size);
 
 TILEDB_EXPORT int tiledb_query_set_completed(
-     tiledb_ctx_t* ctx,
-        tiledb_query_t* query);
+    tiledb_ctx_t* ctx, tiledb_query_t* query);
 
 TILEDB_EXPORT int tiledb_query_set_dimension(
     tiledb_ctx_t* ctx,

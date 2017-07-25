@@ -1,5 +1,5 @@
 /**
- * @file   book_keeping.h
+ * @file   fragment_metadata.h
  *
  * @section LICENSE
  *
@@ -28,11 +28,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class BookKeeping.
+ * This file defines class FragmentMetadata.
  */
 
-#ifndef TILEDB_BOOKKEEPING_H
-#define TILEDB_BOOKKEEPING_H
+#ifndef TILEDB_FRAGMENT_METADATA_H
+#define TILEDB_FRAGMENT_METADATA_H
 
 #include <zlib.h>
 #include <vector>
@@ -42,25 +42,23 @@
 namespace tiledb {
 
 /** Stores the book-keeping structures of a fragment. */
-class Bookkeeping {
+class FragmentMetadata {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Bookkeeping(
+  FragmentMetadata(
       const ArraySchema* array_schema, const std::string& fragment_name);
 
   /** Destructor. */
-  ~Bookkeeping();
+  ~FragmentMetadata();
 
   /* ********************************* */
   /*             ACCESSORS             */
   /* ********************************* */
 
   const std::string& fragment_name() const;
-
-
 
   /** Returns the bounding coordinates. */
   //  const std::vector<void*>& bounding_coords() const;
@@ -366,4 +364,4 @@ class Bookkeeping {
 
 }  // namespace tiledb
 
-#endif  // TILEDB_BOOKKEEPING_H
+#endif  // TILEDB_FRAGMENT_METADATA_H

@@ -147,9 +147,6 @@ class Configurator {
   /** Returns the array schema file name. */
   static const char* array_schema_filename();
 
-  /** Returns the bookkeeping file name. */
-  static const char* bookkeeping_filename();
-
   /** Returns the default tile capacity. */
   static uint64_t capacity();
 
@@ -200,6 +197,9 @@ class Configurator {
 
   /** Returns the fragment file name. */
   static const char* fragment_filename();
+
+  /** Returns the fragment metadata file name. */
+  static const char* fragment_metadata_filename();
 
   /** Returns the group file name. */
   static const char* group_filename();
@@ -422,7 +422,7 @@ class Configurator {
   static const char* ARRAY_SCHEMA_FILENAME;
   static const char* METADATA_SCHEMA_FILENAME;
   static const char* ARRAY_FILELOCK_NAME;
-  static const char* BOOK_KEEPING_FILENAME;
+  static const char* FRAGMENT_METADATA_FILENAME;
   static const char* FRAGMENT_FILENAME;
   static const char* GROUP_FILENAME;
   /**@}*/

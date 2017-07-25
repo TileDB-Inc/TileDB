@@ -239,11 +239,11 @@ int64_t ArraySchema::capacity() const {
   return capacity_;
 }
 
-int64_t ArraySchema::cell_num_per_tile() const {
-  // Sanity check
-  assert(dense_);
-
-  return cell_num_per_tile_;
+uint64_t ArraySchema::cell_num_per_tile() const {
+  if (array_type_ == ArrayType::SPARSE)
+    return capacity_;
+  else
+    return cell_num_per_tile_;
 }
 
 Layout ArraySchema::cell_order() const {
@@ -264,6 +264,7 @@ unsigned int ArraySchema::cell_val_num(int attribute_id) const {
 
 Status ArraySchema::check() const {
   // TODO: check if the array schema has been properly set
+  // check if attributes and dimensions have valid names
 
   // Success
   return Status::Ok();

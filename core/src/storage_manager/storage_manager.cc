@@ -115,8 +115,8 @@ Status StorageManager::array_close(Array* array) {
   Status st = Status::Ok();
   if (it->second->cnt_ == 0) {
     // Clean up book-keeping
-    for (auto& bk : it->second->bookkeeping_)
-      delete bk;
+    for (auto& fm : it->second->fragment_metadata_)
+      delete fm;
 
     // Release array filelock
     st = array_unlock(it->second->array_filelock_);
@@ -144,14 +144,12 @@ Status StorageManager::array_consolidate(const char* array) {
   return Status::Ok();
 }
 
-Status StorageManager::array_open(const std::string& name, Array** array) {
+Status StorageManager::array_open(const std::string& name, Array* array) {
   // Get the open array object
   OpenArray* open_array;
   RETURN_NOT_OK(open_array_get(name, &open_array));
 
-  // Create array
-  (*array) =
-      new Array(this, open_array->array_schema_, open_array->bookkeeping_);
+  array->set_array_schema(open_array->array_schema_);
 
   // Return
   return Status::Ok();
@@ -277,7 +275,7 @@ void StorageManager::async_stop() {
 Status StorageManager::load_bookkeeping(
     const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
-    std::vector<Bookkeeping*>& bookkeeping) const {
+    std::vector<FragmentMetadata*>& bookkeeping) const {
   // Get number of fragments
   int fragment_num = fragment_names.size();
   if (fragment_num == 0)
@@ -286,7 +284,7 @@ Status StorageManager::load_bookkeeping(
   // Load the book-keeping for each fragment
   for (int i = 0; i < fragment_num; ++i) {
     // Create new book-keeping structure for the fragment
-    Bookkeeping* bk = new Bookkeeping(array_schema, fragment_names[i]);
+    Bookkeeping* bk = new FragmentMetadata(array_schema, fragment_names[i]);
 
     // Load book-keeping
     RETURN_NOT_OK(bk->load());
@@ -381,23 +379,27 @@ Status StorageManager::open_array_new(
       array_lock(name, &((*open_array)->array_filelock_), LockType::SHARED),
       delete *open_array);
 
+  /* TODO: these should be requested upon query time
+
   // Get the fragment names of the array
   RETURN_NOT_OK_ELSE(
       load_fragment_names(name, (*open_array)->fragment_names_),
       delete *open_array);
 
-  // Load array schema
-  (*open_array)->array_schema_ = new ArraySchema();
-  RETURN_NOT_OK_ELSE(
-      ((*open_array)->array_schema_)->load(name), delete *open_array);
-
-  // Load the bookkeeping for each fragment
+    // Load the bookkeeping for each fragment
   RETURN_NOT_OK_ELSE(
       load_bookkeeping(
           (*open_array)->array_schema_,
           (*open_array)->fragment_names_,
           (*open_array)->bookkeeping_),
       delete *open_array);
+
+      */
+
+  // Load array schema
+  (*open_array)->array_schema_ = new ArraySchema();
+  RETURN_NOT_OK_ELSE(
+      ((*open_array)->array_schema_)->load(name), delete *open_array);
 
   // Insert open array in map
   open_arrays_[name] = *open_array;

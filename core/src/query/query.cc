@@ -79,8 +79,8 @@ const std::vector<AttributeBuffer*>& Query::attribute_buffers() const {
   return attribute_buffers_;
 }
 
-Bookkeeping* Query::bookkeeping() const {
-  return bookkeeping_;
+FragmentMetadata* Query::fragment_metadata() const {
+  return fragment_metadata_;
 }
 
 Status Query::check() const {
@@ -92,12 +92,19 @@ Status Query::check() const {
     return LOG_STATUS(Status::QueryError(
         "Invalid query; unspecified attribute/dimension buffers"));
 
+  // Check subarray against query type
+  // TODO
+
   return Status::Ok();
 }
 
-    const std::vector<DimensionBuffer*>& Query::dimension_buffers() const {
-      return dimension_buffers_;
-    }
+bool Query::completed() const {
+  return completed_;
+}
+
+const std::vector<DimensionBuffer*>& Query::dimension_buffers() const {
+  return dimension_buffers_;
+}
 
 Status Query::overflow(const char* name, bool* overflow) {
   // Check if the attribute buffer exists
@@ -155,6 +162,7 @@ Status Query::set_attribute_buffer(
   }
   attribute_buffers_.push_back(abuf);
   attribute_buffers_map_[name] = abuf;
+  completed_map_[attr] = false;
 
   // Success
   return Status::Ok();
@@ -191,15 +199,16 @@ Status Query::set_attribute_buffer(
   }
   attribute_buffers_.push_back(abuf);
   attribute_buffers_map_[name] = abuf;
+  completed_map_[attr] = false;
 
   // Success
   return Status::Ok();
 }
 
-void Query::set_bookkeeping(Bookkeeping *bookkeeping) {
-  if(bookkeeping_ != nullptr)
-    delete bookkeeping_;
-  bookkeeping_ = bookkeeping;
+void Query::set_fragment_metadata(FragmentMetadata* fragment_metadata) {
+  if (fragment_metadata_ != nullptr)
+    delete fragment_metadata_;
+  fragment_metadata_ = fragment_metadata;
 }
 
 Status Query::set_dimension_buffer(
@@ -240,6 +249,25 @@ void Query::set_status(QueryStatus status) {
   status_ = status;
 }
 
+void Query::set_completed(const Attribute* attr) {
+  // TODO: this should apply only to WRITE_UNSORTED
+
+  // Mark attribute as completed
+  completed_map_[attr] = true;
+
+  // Check if every attribute is completed
+  completed_ = true;
+  for (auto& c : completed_map_) {
+    if (!c.second) {
+      completed_ = false;
+      break;
+    }
+  }
+
+  if (completed_)
+    set_status(QueryStatus::COMPLETED);
+}
+
 Status Query::set_subarray(const void* subarray) {
   // Sanity check
   if (metadata_ != nullptr)
@@ -273,6 +301,10 @@ void Query::set_query_type(QueryType query_type) {
   query_type_ = query_type;
 }
 
+const void* Query::subarray() const {
+  return subarray_;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
@@ -298,9 +330,10 @@ DimensionBuffer* Query::dimension_buffer(const std::string& name) {
 void Query::set_default() {
   array_ = nullptr;
   async_ = false;
-  bookkeeping_ = nullptr;
+  tile_metadata_ = nullptr;
   callback_ = nullptr;
   callback_data_ = nullptr;
+  completed_ = false;
   metadata_ = nullptr;
   status_ = QueryStatus::UNSUBMITTED;
   subarray_ = nullptr;

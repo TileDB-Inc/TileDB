@@ -37,9 +37,9 @@
 #include <queue>
 #include "array_schema.h"
 #include "attribute_buffer.h"
-#include "bookkeeping.h"
 #include "configurator.h"
 #include "dimension_buffer.h"
+#include "fragment_metadata.h"
 
 namespace tiledb {
 
@@ -57,7 +57,7 @@ class Array {
   Array(
       StorageManager* storage_manager,
       const ArraySchema* array_schema,
-      const std::vector<Bookkeeping*>& bookkeeping);
+      const std::vector<FragmentMetadata*>& fragment_metadata);
 
   /** Destructor. */
   ~Array();
@@ -69,7 +69,13 @@ class Array {
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
+  Status query_finalize(Query* query) const;
+
+  Status query_init(Query* query) const;
+
   Status query_process(Query* query) const;
+
+  void set_array_schema(const ArraySchema* array_schema);
 
   /** Handles an AIO request. */
   //  Status aio_handle_request(AIORequest* aio_request);
@@ -169,7 +175,7 @@ class Array {
   /** The array schema. */
   const ArraySchema* array_schema_;
 
-  const std::vector<Bookkeeping*>& bookkeeping_;
+  const std::vector<FragmentMetadata*>& fragment_metadata_;
 
   StorageManager* storage_manager_;
 
@@ -185,17 +191,11 @@ class Array {
 
   Status read_sparse(Query* query) const;
 
-  Status read_sorted_col(Query* query) const;
+  Status read_sorted(Query* query) const;
 
-  Status read_sorted_col_dense(Query* query) const;
+  Status read_sorted_dense(Query* query) const;
 
-  Status read_sorted_col_sparse(Query* query) const;
-
-  Status read_sorted_row(Query* query) const;
-
-  Status read_sorted_row_dense(Query* query) const;
-
-  Status read_sorted_row_sparse(Query* query) const;
+  Status read_sorted_sparse(Query* query) const;
 
   Status rename_fragment(const std::string& temp_fragment_name) const;
 
@@ -211,17 +211,13 @@ class Array {
 
   Status write_sparse(Query* query, const DimensionBuffer* dbuf) const;
 
-  Status write_sorted_col(Query* query) const;
+  Status write_sorted(Query* query) const;
 
-  Status write_sorted_col_dense(Query* query) const;
+  Status write_sorted_dense(Query* query) const;
 
-  Status write_sorted_col_sparse(Query* query) const;
+  Status write_sorted_dense(Query* query, const AttributeBuffer* abuf) const;
 
-  Status write_sorted_row(Query* query) const;
-
-  Status write_sorted_row_dense(Query* query) const;
-
-  Status write_sorted_row_sparse(Query* query) const;
+  Status write_sorted_sparse(Query* query) const;
 
   Status write_unsorted(Query* query) const;
 

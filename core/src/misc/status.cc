@@ -104,7 +104,7 @@ std::string Status::code_to_string() const {
       type = "[TileDB::Fragment] Error";
       break;
     case StatusCode::Bookkeeping:
-      type = "[TileDB::Bookkeeping] Error";
+      type = "[TileDB::FragmentMetadata] Error";
       break;
     case StatusCode::Array:
       type = "[TileDB::Array] Error";

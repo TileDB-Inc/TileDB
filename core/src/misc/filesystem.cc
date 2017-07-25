@@ -48,9 +48,9 @@ namespace filesystem {
 Status rename_dir(const std::string& old_dir, const std::string& new_dir) {
   if (rename(old_dir.c_str(), new_dir.c_str()))
     return LOG_STATUS(Status::OSError(
-            std::string("Cannot rename fragment directory; ") + strerror(errno)));
+        std::string("Cannot rename fragment directory; ") + strerror(errno)));
   else
-      return Status::Ok();
+    return Status::Ok();
 }
 
 Status create_dir(const std::string& path) {

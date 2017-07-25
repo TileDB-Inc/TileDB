@@ -123,9 +123,9 @@ class ArraySchema {
   int64_t capacity() const;
 
   /**
-   * Returns the number of cells per tile. Meaningful only for the dense case.
+   * Returns the number of cells per tile.
    */
-  int64_t cell_num_per_tile() const;
+  uint64_t cell_num_per_tile() const;
 
   /** Returns the cell order. */
   Layout cell_order() const;

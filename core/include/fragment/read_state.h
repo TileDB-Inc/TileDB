@@ -36,7 +36,7 @@
 
 #include <vector>
 #include "array.h"
-#include "bookkeeping.h"
+#include "fragment_metadata.h"
 
 namespace tiledb {
 

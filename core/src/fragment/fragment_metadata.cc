@@ -1,5 +1,5 @@
 /**
- * @file   book_keeping.cc
+ * @file   fragment_metadata.cc
  *
  * @section LICENSE
  *
@@ -28,10 +28,10 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the BookKeeping class.
+ * This file implements the FragmentMetadata class.
  */
 
-#include "bookkeeping.h"
+#include "fragment_metadata.h"
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -48,13 +48,13 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Bookkeeping::Bookkeeping(
+FragmentMetadata::FragmentMetadata(
     const ArraySchema* array_schema, const std::string& fragment_name)
     : array_schema_(array_schema)
     , fragment_name_(fragment_name) {
 }
 
-Bookkeeping::~Bookkeeping() {
+FragmentMetadata::~FragmentMetadata() {
   /*
 
   if (domain_ != nullptr)
@@ -79,12 +79,9 @@ Bookkeeping::~Bookkeeping() {
 /*               API              */
 /* ****************************** */
 
-const std::string& Bookkeeping::fragment_name() const {
-      return fragment_name_;
-    }
-
-
-
+const std::string& FragmentMetadata::fragment_name() const {
+  return fragment_name_;
+}
 
 /*
 
@@ -344,7 +341,7 @@ return Status::Ok();
  * last_tile_cell_num(int64_t)
  */
 
-Status Bookkeeping::load() {
+Status FragmentMetadata::load() {
   // Prepare file name
   std::string filename =
       fragment_name_ + "/" + Configurator::bookkeeping_filename() +
@@ -617,7 +614,7 @@ return Status::Ok();
 // bounding_coords_num (int64_t)
 // bounding_coords_#1 (void*) bounding_coords_#2 (void*) ...
 //
-Status Bookkeeping::load_bounding_coords(gzFile fd) {
+Status FragmentMetadata::load_bounding_coords(gzFile fd) {
   // For easy reference
   size_t bounding_coords_size = 2 * array_schema_->coords_size();
 
@@ -647,7 +644,7 @@ Status Bookkeeping::load_bounding_coords(gzFile fd) {
 }
 
 // FORMAT: fragment_type (char)
-Status Bookkeeping::load_fragment_type(gzFile fd) {
+Status FragmentMetadata::load_fragment_type(gzFile fd) {
   char c;
   if (gzread(fd, &c, sizeof(char)) != sizeof(char)) {
     return LOG_STATUS(Status::BookkeepingError(
@@ -660,7 +657,7 @@ Status Bookkeeping::load_fragment_type(gzFile fd) {
 }
 
 // FORMAT: last_tile_cell_num (int64_t)
-Status Bookkeeping::load_last_tile_cell_num(gzFile fd) {
+Status FragmentMetadata::load_last_tile_cell_num(gzFile fd) {
   // Get last tile cell number
   if (gzread(fd, &last_tile_cell_num_, sizeof(int64_t)) != sizeof(int64_t)) {
     return LOG_STATUS(Status::BookkeepingError(
@@ -674,7 +671,7 @@ Status Bookkeeping::load_last_tile_cell_num(gzFile fd) {
 // mbr_num (int64_t)
 // mbr_#1 (void*) mbr_#2 (void*) ... mbr_#<mbr_num> (void*)
 //
-Status Bookkeeping::load_mbrs(gzFile fd) {
+Status FragmentMetadata::load_mbrs(gzFile fd) {
   // For easy reference
   size_t mbr_size = 2 * array_schema_->coords_size();
 
@@ -703,7 +700,7 @@ Status Bookkeeping::load_mbrs(gzFile fd) {
 
 // FORMAT:
 // non_empty_domain_size (size_t) non_empty_domain (void*)
-Status Bookkeeping::load_non_empty_domain(gzFile fd) {
+Status FragmentMetadata::load_non_empty_domain(gzFile fd) {
   // Get domain size
   size_t domain_size;
   if (gzread(fd, &domain_size, sizeof(size_t)) != sizeof(size_t)) {
@@ -742,7 +739,7 @@ Status Bookkeeping::load_non_empty_domain(gzFile fd) {
 // tile_offsets_attr#<attribute_num>_#1 (off_t)
 // tile_offsets_attr#<attribute_num>_#2 (off_t) ...
 //
-Status Bookkeeping::load_tile_offsets(gzFile fd) {
+Status FragmentMetadata::load_tile_offsets(gzFile fd) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   int64_t tile_offsets_num;
@@ -781,7 +778,7 @@ Status Bookkeeping::load_tile_offsets(gzFile fd) {
 // tile_var_offsets_attr#<attribute_num-1>_#1 (off_t)
 //     tile_ver_offsets_attr#<attribute_num-1>_#2 (off_t) ...
 //
-Status Bookkeeping::load_tile_var_offsets(gzFile fd) {
+Status FragmentMetadata::load_tile_var_offsets(gzFile fd) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   int64_t tile_var_offsets_num;
@@ -824,7 +821,7 @@ Status Bookkeeping::load_tile_var_offsets(gzFile fd) {
 // tile_var_sizes__attr#<attribute_num-1>_#1 (size_t)
 //     tile_var_sizes_attr#<attribute_num-1>_#2 (size_t) ...
 //
-Status Bookkeeping::load_tile_var_sizes(gzFile fd) {
+Status FragmentMetadata::load_tile_var_sizes(gzFile fd) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   int64_t tile_var_sizes_num;

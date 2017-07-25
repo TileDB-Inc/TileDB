@@ -1,5 +1,5 @@
 /**
- * @file   attribute_buffer.h
+ * @file   domain.h
  *
  * @section LICENSE
  *
@@ -27,65 +27,37 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class AttributeBuffer.
+ * This file defines class Domain.
  */
 
-#ifndef TILEDB_ATTRIBUTE_BUFFER_H
-#define TILEDB_ATTRIBUTE_BUFFER_H
-
-#include "attribute.h"
-#include "buffer.h"
-#include "status.h"
+#ifndef TILEDB_DOMAIN_H
+#define TILEDB_DOMAIN_H
 
 namespace tiledb {
 
-class AttributeBuffer {
+class Domain {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  AttributeBuffer();
+  Domain();
 
-  ~AttributeBuffer();
+  ~Domain();
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  const Attribute* attribute() const;
-
-  bool overflow() const;
-
-  Status set(void* buffer, uint64_t buffer_size);
-
-  Status set(const Attribute* attr, void* buffer, uint64_t buffer_size);
-
-  Status set(
-      void* buffer,
-      uint64_t buffer_size,
-      void* buffer_var,
-      uint64_t buffer_var_size);
-
-  Status set(
-      const Attribute* attr,
-      void* buffer,
-      uint64_t buffer_size,
-      void* buffer_var,
-      uint64_t buffer_var_size);
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  const Attribute* attr_;
-
-  Buffer* buf_;
-
-  Buffer* buf_var_;
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
 };
 
 }  // namespace tiledb
 
-#endif  // TILEDB_ATTRIBUTE_BUFFER_H
+#endif  // TILEDB_DOMAIN_H

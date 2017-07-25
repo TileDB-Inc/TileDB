@@ -35,8 +35,8 @@
 
 #include "array.h"
 #include "attribute_buffer.h"
-#include "bookkeeping.h"
 #include "dimension_buffer.h"
+#include "fragment_metadata.h"
 #include "metadata.h"
 #include "query_status.h"
 #include "query_type.h"
@@ -74,13 +74,15 @@ class Query {
 
   const std::vector<AttributeBuffer*>& attribute_buffers() const;
 
-  Bookkeeping* bookkeeping() const;
+  FragmentMetadata* fragment_metadata() const;
 
   Status check() const;
 
+  bool completed() const;
+
   const std::vector<DimensionBuffer*>& dimension_buffers() const;
 
-    Status overflow(const char* attr, bool* overflow);
+  Status overflow(const char* attr, bool* overflow);
 
   void set_async(void* (*callback)(void*), void* callback_data);
 
@@ -94,7 +96,10 @@ class Query {
       void* buffer_var,
       uint64_t buffer_var_size);
 
-  void set_bookkeeping(Bookkeeping* bookkeeping);
+  void set_fragment_metadata(FragmentMetadata* fragment_metadata);
+
+  // Note: this applies only to WRITE_UNSORTED
+  void set_completed(const Attribute* attr);
 
   Status set_dimension_buffer(
       const char* name, void* buffer, uint64_t buffer_size);
@@ -106,6 +111,8 @@ class Query {
   void set_query_type(QueryType query_type);
 
   QueryStatus status() const;
+
+  const void* subarray() const;
 
   QueryType query_type() const;
 
@@ -122,11 +129,15 @@ class Query {
 
   std::map<std::string, AttributeBuffer*> attribute_buffers_map_;
 
-  Bookkeeping* bookkeeping_;
+  FragmentMetadata* fragment_metadata_;
 
   void* (*callback_)(void*);
 
   void* callback_data_;
+
+  std::map<const Attribute*, bool> completed_map_;
+
+  bool completed_;
 
   std::vector<DimensionBuffer*> dimension_buffers_;
 

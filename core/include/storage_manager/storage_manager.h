@@ -77,9 +77,9 @@ class StorageManager {
     ~OpenArray() {
       if (array_schema_ != nullptr)
         delete array_schema_;
-      for (auto& bk : bookkeeping_)
-        if (bk != nullptr)
-          delete bk;
+      for (auto& fm : fragment_metadata_)
+        if (fm != nullptr)
+          delete fm;
     }
 
     /** Descriptor for the array filelock. */
@@ -87,7 +87,7 @@ class StorageManager {
     /** The array schema. */
     ArraySchema* array_schema_;
     /** The bookkeeping structures for all the fragments of the array. */
-    std::vector<Bookkeeping*> bookkeeping_;
+    std::vector<FragmentMetadata*> fragment_metadata_;
     /**
      * A counter for the number of times the array has been initialized after
      * it was opened.
@@ -123,7 +123,7 @@ class StorageManager {
 
   Status array_consolidate(const char* array);
 
-  Status array_open(const std::string& name, Array** array);
+  Status array_open(const std::string& name, Array* array);
 
   /** Sets a new configurator. */
   void config_set(Configurator* config);
@@ -535,7 +535,7 @@ class StorageManager {
   Status load_bookkeeping(
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
-      std::vector<Bookkeeping*>& bookkeeping) const;
+      std::vector<FragmentMetadata*>& bookkeeping) const;
 
   Status load_fragment_names(
       const std::string& array, std::vector<std::string>& fragment_names) const;
