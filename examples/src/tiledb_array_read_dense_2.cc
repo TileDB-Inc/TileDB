@@ -41,7 +41,7 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Subarray and attributes
-  int64_t subarray[] = { 3, 4, 2, 4 }; 
+  int64_t subarray[] = { 1, 3, 1, 4 };
   const char* attributes[] = { "a1" };
 
   // Initialize array 
@@ -49,8 +49,8 @@ int main() {
   tiledb_array_init(
       ctx,                                       // Context
       &tiledb_array,                                    // Array object
-      "my_group$/dense_arrays/my_array_A",              // Array name
-      TILEDB_ARRAY_READ,                                // Mode
+      "my_group/dense_arrays/my_array_A",               // Array name
+      TILEDB_ARRAY_READ_SORTED_COL,                                // Mode
       subarray,                                         // Constrain in subarray
       attributes,                                       // Subset on attributes
       1);                                               // Number of attributes

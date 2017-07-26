@@ -36,17 +36,18 @@
 #include <cstring>
 #include <iostream>
 
-#include "comparators.h"
-#include "filesystem.h"
-#include "logger.h"
-#include "utils.h"
-#include "write_state.h"
-
 #include "blosc_compressor.h"
 #include "bzip_compressor.h"
+#include "comparators.h"
+#include "const_buffer.h"
+#include "filesystem.h"
 #include "gzip_compressor.h"
+#include "logger.h"
 #include "lz4_compressor.h"
 #include "rle_compressor.h"
+#include "tile.h"
+#include "utils.h"
+#include "write_state.h"
 #include "zstd_compressor.h"
 
 namespace tiledb {
@@ -72,6 +73,18 @@ WriteState::WriteState(const Fragment* fragment, BookKeeping* book_keeping)
   tiles_.resize(attribute_num + 1);
   for (int i = 0; i < attribute_num + 1; ++i)
     tiles_[i] = nullptr;
+  Tiles_.resize(attribute_num + 1);
+  for (int i = 0; i < attribute_num + 1; ++i)
+    Tiles_[i] = new Tile(fragment_->tile_size(i));
+
+  tile_io_.resize(attribute_num + 1);
+  for (int i = 0; i < attribute_num; ++i)
+    tile_io_[i] = new TileIO(
+        fragment_->array()->config(),
+        fragment_->fragment_uri(),
+        array_schema->Attributes()[i]);
+
+  // TODO: handle coordinates here
 
   // Initialize current variable tiles
   tiles_var_.resize(attribute_num);
@@ -115,6 +128,12 @@ WriteState::~WriteState() {
   for (int64_t i = 0; i < tile_num; ++i)
     if (tiles_[i] != nullptr)
       free(tiles_[i]);
+
+  for (auto& tile : Tiles_)
+    delete tile;
+
+  for (auto& tile_io : tile_io_)
+    delete tile_io;
 
   // Free current tiles
   int64_t tile_var_num = tiles_var_.size();
@@ -1074,107 +1093,24 @@ Status WriteState::write_dense_attr(
     return Status::Ok();
 
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  Compressor compression = array_schema->compression(attribute_id);
+  auto buf = new ConstBuffer(buffer, buffer_size);
+  Tile* tile = Tiles_[attribute_id];
+  TileIO* tile_io = tile_io_[attribute_id];
 
-  // No compression
-  if (compression == Compressor::NO_COMPRESSION)
-    return write_dense_attr_cmp_none(attribute_id, buffer, buffer_size);
-  else  // All compressions
-    return write_dense_attr_cmp(attribute_id, buffer, buffer_size);
-}
+  // Fill tiles and dispatch them for writing
+  uint64_t bytes_written;
+  do {
+    RETURN_NOT_OK(tile->write(buf));
+    if (tile->full()) {
+      RETURN_NOT_OK(tile_io->write(tile, &bytes_written));
+      book_keeping_->append_tile_offset(attribute_id, bytes_written);
+      tile->reset();
+    }
+  } while (!buf->end());
 
-Status WriteState::write_dense_attr_cmp_none(
-    int attribute_id, const void* buffer, size_t buffer_size) {
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  // Clean up
+  delete buf;
 
-  // Write buffer to file
-  std::string filename = fragment_->fragment_uri()
-                             .join_path(
-                                 array_schema->attribute(attribute_id) +
-                                 Configurator::file_suffix())
-                             .to_posix_path();
-  Status st;
-  IOMethod write_method = fragment_->array()->config()->write_method();
-  if (write_method == IOMethod::WRITE) {
-    st = filesystem::write_to_file(filename.c_str(), buffer, buffer_size);
-  } else if (write_method == IOMethod::MPI) {
-#ifdef HAVE_MPI
-    st = filesystem::mpi_io_write_to_file(
-        fragment_->array()->config()->mpi_comm(),
-        filename.c_str(),
-        buffer,
-        buffer_size);
-#else
-    // Error: MPI not supported
-    return LOG_STATUS(
-        Status::Error("Cannot write dense attribute; MPI not supported"));
-#endif
-  }
-  if (!st.ok()) {
-    return st;
-  }
-  // Success
-  return Status::Ok();
-}
-
-Status WriteState::write_dense_attr_cmp(
-    int attribute_id, const void* buffer, size_t buffer_size) {
-  // For easy reference
-  size_t tile_size = fragment_->tile_size(attribute_id);
-
-  // Initialize local tile buffer if needed
-  if (tiles_[attribute_id] == nullptr)
-    tiles_[attribute_id] = malloc(tile_size);
-
-  // For easy reference
-  char* tile = static_cast<char*>(tiles_[attribute_id]);
-  size_t& tile_offset = tile_offsets_[attribute_id];
-  const char* buffer_c = static_cast<const char*>(buffer);
-  size_t buffer_offset = 0;
-
-  // Bytes to fill the potentially partially buffered tile
-  size_t bytes_to_fill = tile_size - tile_offset;
-
-  // The buffer has enough cells to fill at least one tile
-  if (bytes_to_fill <= buffer_size) {
-    // Fill up current tile
-    memcpy(tile + tile_offset, buffer_c + buffer_offset, bytes_to_fill);
-    buffer_offset += bytes_to_fill;
-    tile_offset += bytes_to_fill;
-
-    // Compress current tile and write it to disk
-    RETURN_NOT_OK(compress_and_write_tile(attribute_id));
-
-    // Update local tile buffer offset
-    tile_offset = 0;
-  }
-
-  // Continue to fill and compress entire tiles
-  while (buffer_offset + tile_size <= buffer_size) {
-    // Prepare tile
-    memcpy(tile, buffer_c + buffer_offset, tile_size);
-    buffer_offset += tile_size;
-    tile_offset += tile_size;
-
-    // Compress and write current tile
-    RETURN_NOT_OK(compress_and_write_tile(attribute_id));
-
-    // Update local tile buffer offset
-    tile_offset = 0;
-  }
-
-  // Partially fill the (new) current tile
-  bytes_to_fill = buffer_size - buffer_offset;
-  if (bytes_to_fill != 0) {
-    memcpy(tile + tile_offset, buffer_c + buffer_offset, bytes_to_fill);
-    buffer_offset += bytes_to_fill;
-    assert(buffer_offset == buffer_size);
-    tile_offset += bytes_to_fill;
-  }
-
-  // Success
   return Status::Ok();
 }
 
