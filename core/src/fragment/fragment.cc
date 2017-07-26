@@ -124,10 +124,8 @@ Status Fragment::finalize() {
     Status st_ws = write_state_->finalize();
     Status st_bk = book_keeping_->finalize();
     Status st_rn;
-    Status st_cf;
     if (utils::fragment_exists(fragment_uri())) {
-      st_rn = rename_fragment();
-      st_cf = filesystem::create_fragment_file(fragment_uri());
+      st_rn = filesystem::rename_fragment(fragment_uri());
     }
     // Errors
     if (!st_ws.ok()) {
@@ -135,9 +133,6 @@ Status Fragment::finalize() {
     }
     if (!st_bk.ok()) {
       return st_bk;
-    }
-    if (!st_cf.ok()) {
-      return st_cf;
     }
     if (!st_rn.ok()) {
       return st_rn;
@@ -225,23 +220,6 @@ Status Fragment::sync_attribute(const std::string& attribute) {
 Status Fragment::write(const void** buffers, const size_t* buffer_sizes) {
   // Forward the write command to the write state
   RETURN_NOT_OK(write_state_->write(buffers, buffer_sizes));
-  return Status::Ok();
-}
-
-/* ****************************** */
-/*         PRIVATE METHODS        */
-/* ****************************** */
-
-Status Fragment::rename_fragment() {
-  // Do nothing in READ mode
-  if (write_mode()) {
-    std::string fragment_path = fragment_uri_.to_posix_path();
-    std::string parent_dir = utils::parent_path(fragment_path);
-    std::string new_fragment_name =
-        parent_dir + "/" + fragment_path.substr(parent_dir.size() + 2);
-    RETURN_NOT_OK(filesystem::move(fragment_path, new_fragment_name))
-    fragment_uri_ = uri::URI(new_fragment_name);
-  }
   return Status::Ok();
 }
 

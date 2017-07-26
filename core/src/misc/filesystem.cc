@@ -343,6 +343,19 @@ Status create_fragment_file(const uri::URI& uri) {
   return Status::Ok();
 };
 
+// Changes the temporary fragment name into a stable one.
+Status rename_fragment(const uri::URI& uri) {
+  std::string fragment_path = uri.to_posix_path();
+  std::string parent_dir = utils::parent_path(fragment_path);
+  std::string new_fragment_name =
+      parent_dir + "/" + fragment_path.substr(parent_dir.size() + 2);
+  // move the fragment directory
+  RETURN_NOT_OK(filesystem::move(fragment_path, new_fragment_name));
+  // create a new fragment file in the new directory
+  RETURN_NOT_OK(filesystem::create_fragment_file(new_fragment_name));
+  return Status::Ok();
+}
+
 Status create_group_file(const std::string& path) {
   // Create group file
   std::string filename = path + "/" + Configurator::group_filename();
