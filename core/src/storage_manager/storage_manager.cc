@@ -31,6 +31,7 @@
  * This file implements the StorageManager class.
  */
 
+#include <algorithm>
 #include <cassert>
 
 #include "array.h"
@@ -39,18 +40,6 @@
 #include "logger.h"
 #include "storage_manager.h"
 #include "utils.h"
-
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#include <algorithm>
-#define SORT_LIB std
-
-#define SORT_2(first, last) SORT_LIB::sort((first), (last))
-#define SORT_3(first, last, comp) SORT_LIB::sort((first), (last), (comp))
-#define GET_MACRO(_1, _2, _3, NAME, ...) NAME
-#define SORT(...) GET_MACRO(__VA_ARGS__, SORT_3, SORT_2)(__VA_ARGS__)
 
 namespace tiledb {
 
@@ -1242,7 +1231,7 @@ void StorageManager::sort_fragment_names(
   }
 
   // Sort the names based on the timestamps
-  SORT(t_pos_vec.begin(), t_pos_vec.end());
+  std::sort(t_pos_vec.begin(), t_pos_vec.end());
   std::vector<std::string> fragment_names_sorted;
   fragment_names_sorted.resize(fragment_num);
   for (int i = 0; i < fragment_num; ++i)
