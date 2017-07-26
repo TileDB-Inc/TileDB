@@ -74,6 +74,13 @@ unsigned int Attribute::cell_val_num() const {
   return cell_val_num_;
 }
 
+uint64_t Attribute::cell_size() const {
+  if (var_size())
+    return Configurator::var_size();
+  else
+    return cell_val_num_ * utils::datatype_size(type_);
+}
+
 Compressor Attribute::compressor() const {
   return compressor_;
 }
@@ -102,6 +109,10 @@ const std::string& Attribute::name() const {
 
 Datatype Attribute::type() const {
   return type_;
+}
+
+bool Attribute::var_size() const {
+  return cell_val_num_ == Configurator::var_num();
 }
 
 /* ********************************* */

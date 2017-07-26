@@ -1376,8 +1376,6 @@ int tiledb_array_overflow(
     const tiledb_array_t* tiledb_array, int attribute_id) {
   // TODO: sanity checks here
 
-  tiledb_ctx_t* ctx = tiledb_array->ctx_;
-
   return (int)tiledb_array->array_->overflow(attribute_id);
 }
 
@@ -1513,8 +1511,6 @@ int tiledb_array_iterator_next(tiledb_array_iterator_t* tiledb_array_it) {
 
 int tiledb_array_iterator_end(tiledb_array_iterator_t* tiledb_array_it) {
   // TODO: sanity checks
-
-  tiledb_ctx_t* ctx = tiledb_array_it->ctx_;
 
   return (int)tiledb_array_it->array_it_->end();
 }

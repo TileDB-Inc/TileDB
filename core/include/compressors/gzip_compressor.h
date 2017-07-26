@@ -36,6 +36,8 @@
 #include "base_compressor.h"
 #include "status.h"
 
+#include <cmath>
+
 namespace tiledb {
 
 class GZip : public BaseCompressor {
@@ -78,6 +80,10 @@ class GZip : public BaseCompressor {
       void* output_buffer,
       size_t output_buffer_size,
       size_t* decompressed_size);
+
+  static uint64_t overhead(uint64_t buffer_size) {
+    return 6 + 5 * uint64_t((ceil(buffer_size / 16834.0)));
+  }
 
   static int default_level() {
     return -1;

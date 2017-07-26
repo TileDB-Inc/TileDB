@@ -145,6 +145,12 @@ std::string Status::code_to_string() const {
     case StatusCode::AIO:
       type = "[TileDB::AIO] Error";
       break;
+    case StatusCode::Tile:
+      type = "[TileDB::Tile] Error";
+      break;
+    case StatusCode::TileIO:
+      type = "[TileDB::TileIO] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }
