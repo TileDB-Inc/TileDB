@@ -214,17 +214,6 @@ class Fragment {
   ReadState* read_state_;
   /** The fragment write state. */
   WriteState* write_state_;
-
-  /* ********************************* */
-  /*          PRIVATE METHODS          */
-  /* ********************************* */
-
-  /**
-   * Changes the temporary fragment name into a stable one.
-   *
-   * @return TILEDB_FG_OK for success, and TILEDB_FG_ERR for error.
-   */
-  Status rename_fragment();
 };
 
 }  // namespace tiledb

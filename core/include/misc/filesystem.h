@@ -199,6 +199,13 @@ std::vector<std::string> get_fragment_dirs(const std::string& dir);
  */
 Status create_fragment_file(const uri::URI& uri);
 
+/**
+ * Rename the fragment directory and update the fragment file
+ * @param uri  the uri to create the fragment directory
+ * @return Status
+ */
+Status rename_fragment(const uri::URI& uri);
+
 // TODO: this should go away
 /**
  * Create a special file to indicate that the input directory is a TileDB group.
