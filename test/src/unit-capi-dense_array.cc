@@ -94,59 +94,6 @@ struct DenseArrayFx {
   }
 
   /**
-   * Checks two buffers, one before and one after the updates. The updates
-   * are given as function inputs and facilitate the check.
-   *
-   * @param buffer_before The buffer before the updates.
-   * @param buffer_after The buffer after the updates.
-   * @param buffer_updates_a1 The updated attribute values.
-   * @param buffer_updates_coords The coordinates where the updates occurred.
-   * @param domain_size_0 The domain size of the first dimension.
-   * @param domain_size_1 The domain size of the second dimension.
-   * @param update_num The number of updates.
-   * @return True on success and false on error.
-   */
-  static bool check_buffer_after_updates(
-      const int* buffer_before,
-      const int* buffer_after,
-      const int* buffer_updates_a1,
-      const int64_t* buffer_updates_coords,
-      const int64_t domain_size_0,
-      const int64_t domain_size_1,
-      const int64_t update_num) {
-    // Initializations
-    int l, r;
-    int64_t cell_num = domain_size_0 * domain_size_1;
-
-    // Check the contents of the buffers cell by cell
-    for (int64_t i = 0; i < cell_num; ++i) {
-      l = buffer_before[i];
-      r = buffer_after[i];
-
-      // If they are not the same, check if it is due to an update
-      if (l != r) {
-        bool found = false;
-        for (int64_t k = 0; k < update_num; ++k) {
-          // The difference is due to an update
-          if (r == buffer_updates_a1[k] &&
-              (l / domain_size_1) == buffer_updates_coords[2 * k] &&
-              (l % domain_size_1) == buffer_updates_coords[2 * k + 1]) {
-            found = true;
-            break;
-          }
-        }
-
-        // The difference is not due to an update
-        if (!found)
-          return false;
-      }
-    }
-
-    // Success
-    return true;
-  }
-
-  /**
    * Creates a 2D dense array.
    *
    * @param tile_extent_0 The tile extent along the first dimension.
@@ -156,17 +103,20 @@ struct DenseArrayFx {
    * @param domain_1_lo The smallest value of the second dimension domain.
    * @param domain_1_hi The largest value of the second dimension domain.
    * @param capacity The tile capacity.
+
+   * @param compressor the compressor to use
    * @param cell_order The cell order.
    * @param tile_order The tile order.
    */
-  void create_dense_array_2D(
+  int create_dense_array_2D(
       const int64_t tile_extent_0,
       const int64_t tile_extent_1,
       const int64_t domain_0_lo,
       const int64_t domain_0_hi,
       const int64_t domain_1_lo,
       const int64_t domain_1_hi,
-      const uint64_t capacity,
+      const int64_t capacity,
+      const tiledb_compressor_t compressor,
       const tiledb_layout_t cell_order,
       const tiledb_layout_t tile_order) {
     // Error code
@@ -174,6 +124,13 @@ struct DenseArrayFx {
 
     // Prepare and set the array schema object and data structures
     int64_t domain[] = {domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
+    int64_t tile_extents[] = {tile_extent_0, tile_extent_1};
+    const tiledb_datatype_t types[] = {TILEDB_INT32, TILEDB_INT64};
+    tiledb_compressor_t compression[2];
+    const int dense = 1;
+
+    compression[0] = compressor;
+    compression[1] = compressor;
 
     // Create attribute
     tiledb_attribute_t* a;
@@ -215,6 +172,7 @@ struct DenseArrayFx {
     tiledb_dimension_free(d1);
     tiledb_dimension_free(d2);
     tiledb_array_schema_free(array_schema_);
+    return TILEDB_OK;
   }
 
   /**
@@ -558,6 +516,119 @@ struct DenseArrayFx {
     // Return
     return rc;
   }
+
+  bool test_random_subarrays(
+      int64_t domain_size_0,
+      int64_t domain_size_1,
+      int64_t tile_extent_0,
+      int64_t tile_extent_1,
+      int ntests) {
+    // Write array cells with value = row id * COLUMNS + col id
+    // to disk tile by tile
+    int rc = write_dense_array_by_tiles(
+        domain_size_0, domain_size_1, tile_extent_0, tile_extent_1);
+    assert(rc == TILEDB_OK);
+
+    // Test random subarrays and check with corresponding value set by
+    // row_id*dim1+col_id. Top left corner is always 4,4.
+    int64_t d0_lo = 4;
+    int64_t d0_hi = 0;
+    int64_t d1_lo = 4;
+    int64_t d1_hi = 0;
+    int64_t height = 0, width = 0;
+
+    for (int iter = 0; iter < ntests; ++iter) {
+      height = rand() % (domain_size_0 - d0_lo);
+      width = rand() % (domain_size_1 - d1_lo);
+      d0_hi = d0_lo + height;
+      d1_hi = d1_lo + width;
+      int64_t index = 0;
+
+      // Read subarray
+      int* buffer = read_dense_array_2D(
+          d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_ARRAY_READ_SORTED_ROW);
+      REQUIRE(buffer != NULL);
+
+      bool allok = true;
+      // Check
+      for (int64_t i = d0_lo; i <= d0_hi; ++i) {
+        for (int64_t j = d1_lo; j <= d1_hi; ++j) {
+          bool match = buffer[index] == i * domain_size_1 + j;
+          if (!match) {
+            allok = false;
+            std::cout << "mismatch: " << i << "," << j << "=" << buffer[index]
+                      << "!=" << ((i * domain_size_1 + j)) << "\n";
+            break;
+          }
+          ++index;
+        }
+        if (!allok)
+          break;
+      }
+      delete[] buffer;
+      if (!allok)
+        return false;
+    }
+    return true;
+  }
+
+  bool test_random_subarray_writes(
+      int64_t domain_size_0,
+      int64_t domain_size_1,
+      int64_t tile_extent_0,
+      int64_t tile_extent_1,
+      int ntests) {
+    // Write random subarray, then read it back and check
+    int64_t d0[2], d1[2];
+    for (int i = 0; i < ntests; ++i) {
+      // Create subarray
+      d0[0] = rand() % domain_size_0;
+      d1[0] = rand() % domain_size_1;
+      d0[1] = d0[0] + rand() % (domain_size_0 - d0[0]);
+      d1[1] = d1[0] + rand() % (domain_size_1 - d1[0]);
+      int64_t subarray[] = {d0[0], d0[1], d1[0], d1[1]};
+
+      // Prepare buffers
+      int64_t subarray_length[2] = {d0[1] - d0[0] + 1, d1[1] - d1[0] + 1};
+      int64_t cell_num_in_subarray = subarray_length[0] * subarray_length[1];
+      int* buffer = new int[cell_num_in_subarray];
+      int64_t index = 0;
+      size_t buffer_size = cell_num_in_subarray * sizeof(int);
+      size_t buffer_sizes[] = {buffer_size};
+      for (int64_t r = 0; r < subarray_length[0]; ++r)
+        for (int64_t c = 0; c < subarray_length[1]; ++c)
+          buffer[index++] = -(rand() % 999999);
+
+      // Write 2D subarray
+      int rc = write_dense_subarray_2D(
+          subarray, TILEDB_ARRAY_WRITE_SORTED_ROW, buffer, buffer_sizes);
+      assert(rc == TILEDB_OK);
+
+      // Read back the same subarray
+      int* read_buffer = read_dense_array_2D(
+          subarray[0],
+          subarray[1],
+          subarray[2],
+          subarray[3],
+          TILEDB_ARRAY_READ_SORTED_ROW);
+      assert(read_buffer != NULL);
+
+      // Check the two buffers
+      bool allok = true;
+      for (index = 0; index < cell_num_in_subarray; ++index) {
+        if (buffer[index] != read_buffer[index]) {
+          allok = false;
+          break;
+        }
+      }
+      // Clean up
+      delete[] buffer;
+      delete[] read_buffer;
+      if (!allok)
+        return false;
+    }
+    return true;
+  }
 };
 
 /**
@@ -577,246 +648,142 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted reads") {
   int64_t domain_0_hi = domain_size_0 - 1;
   int64_t domain_1_lo = 0;
   int64_t domain_1_hi = domain_size_1 - 1;
-  uint64_t capacity = 1000;
-  tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
-  tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  int iter_num = 10;
+
+  int64_t capacity = 0;  // 0 means use default capacity
+  int ntests = 5;
 
   // Set array name
   set_array_name("dense_test_5000x10000_100x100");
 
-  // Create a dense integer array
-  create_dense_array_2D(
-      tile_extent_0,
-      tile_extent_1,
-      domain_0_lo,
-      domain_0_hi,
-      domain_1_lo,
-      domain_1_hi,
-      capacity,
-      cell_order,
-      tile_order);
-
-  // Write array cells with value = row id * COLUMNS + col id
-  // to disk tile by tile
-  rc = write_dense_array_by_tiles(
-      domain_size_0, domain_size_1, tile_extent_0, tile_extent_1);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Test random subarrays and check with corresponding value set by
-  // row_id*dim1+col_id. Top left corner is always 4,4.
-  int64_t d0_lo = 4;
-  int64_t d0_hi = 0;
-  int64_t d1_lo = 4;
-  int64_t d1_hi = 0;
-  int64_t height = 0, width = 0;
-
-  for (int iter = 0; iter < iter_num; ++iter) {
-    height = rand() % (domain_size_0 - d0_lo);
-    width = rand() % (domain_size_1 - d1_lo);
-    d0_hi = d0_lo + height;
-    d1_hi = d1_lo + width;
-    int64_t index = 0;
-
-    // Read subarray
-    int* buffer = read_dense_array_2D(
-        d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_ARRAY_READ_SORTED_ROW);
-    REQUIRE(buffer != NULL);
-
-    bool allok = true;
-    // Check
-    for (int64_t i = d0_lo; i <= d0_hi; ++i) {
-      for (int64_t j = d1_lo; j <= d1_hi; ++j) {
-        bool match = (buffer[index] == i * domain_size_1 + j);
-        if (!match) {
-          allok = false;
-          std::cout << "mismatch: " << i << "," << j << "=" << buffer[index]
-                    << "!=" << ((i * domain_size_1 + j)) << "\n";
-          break;
-        }
-        ++index;
-      }
-      if (!allok)
-        break;
-    }
-    REQUIRE(allok);
-
-    // Clean up
-    delete[] buffer;
-  }
-}
-
-/**
- * Tests random 2D subarray writes.
- */
-
-/* // TODO remove
-TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted writes") {
-  // Error code
-  int rc;
-
-  // Parameters used in this test
-  int64_t domain_size_0 = 100;
-  int64_t domain_size_1 = 100;
-  int64_t tile_extent_0 = 10;
-  int64_t tile_extent_1 = 10;
-  int64_t domain_0_lo = 0;
-  int64_t domain_0_hi = domain_size_0 - 1;
-  int64_t domain_1_lo = 0;
-  int64_t domain_1_hi = domain_size_1 - 1;
-  uint64_t capacity = 1000;
-  tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
-  tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  int iter_num = 10;
-
-  // Set array name
-  set_array_name("dense_test_100x100_10x10");
-
-  // Create a dense integer array
-  create_dense_array_2D(
-      tile_extent_0,
-      tile_extent_1,
-      domain_0_lo,
-      domain_0_hi,
-      domain_1_lo,
-      domain_1_hi,
-      capacity,
-      cell_order,
-      tile_order);
-
-  // Write random subarray, then read it back and check
-  int64_t d0[2], d1[2];
-  for (int i = 0; i < iter_num; ++i) {
-    // Create subarray
-    d0[0] = rand() % domain_size_0;
-    d1[0] = rand() % domain_size_1;
-    d0[1] = d0[0] + rand() % (domain_size_0 - d0[0]);
-    d1[1] = d1[0] + rand() % (domain_size_1 - d1[0]);
-    int64_t subarray[] = {d0[0], d0[1], d1[0], d1[1]};
-
-    // Prepare buffers
-    int64_t subarray_length[2] = {d0[1] - d0[0] + 1, d1[1] - d1[0] + 1};
-    int64_t cell_num_in_subarray = subarray_length[0] * subarray_length[1];
-    int* buffer = new int[cell_num_in_subarray];
-    int64_t index = 0;
-    size_t buffer_size = cell_num_in_subarray * sizeof(int);
-    size_t buffer_sizes[] = {buffer_size};
-    for (int64_t r = 0; r < subarray_length[0]; ++r)
-      for (int64_t c = 0; c < subarray_length[1]; ++c)
-        buffer[index++] = -(rand() % 999999);
-
-    // Write 2D subarray
-    rc = write_dense_subarray_2D(
-        subarray, TILEDB_ARRAY_WRITE_SORTED_ROW, buffer, buffer_sizes);
+  SECTION("no compression row major") {
+    // Create a dense integer array
+    rc = create_dense_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_NO_COMPRESSION,
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR);
     REQUIRE(rc == TILEDB_OK);
 
-    // Read back the same subarray
-    int* read_buffer = read_dense_array_2D(
-        subarray[0],
-        subarray[1],
-        subarray[2],
-        subarray[3],
-        TILEDB_ARRAY_READ_SORTED_ROW);
-    REQUIRE(read_buffer != NULL);
+    CHECK(test_random_subarrays(
+        domain_size_0, domain_size_1, tile_extent_0, tile_extent_1, ntests));
+  }
 
-    // Check the two buffers
-    bool allok = true;
-    for (index = 0; index < cell_num_in_subarray; ++index) {
-      if (buffer[index] != read_buffer[index]) {
-        allok = false;
-        break;
-      }
-    }
-    REQUIRE(allok);
+  SECTION("no compression col major") {
+    // Create a dense integer array
+    rc = create_dense_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_NO_COMPRESSION,
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
 
-    // Clean up
-    delete[] buffer;
-    delete[] read_buffer;
+    CHECK(test_random_subarrays(
+        domain_size_0, domain_size_1, tile_extent_0, tile_extent_1, ntests));
+  }
+
+  SECTION("no compression col major") {
+    // Create a dense integer array
+    rc = create_dense_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_NO_COMPRESSION,
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(
+        domain_size_0, domain_size_1, tile_extent_0, tile_extent_1, ntests));
+  }
+
+  SECTION("no compression col / row  major") {
+    // Create a dense integer array
+    rc = create_dense_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_NO_COMPRESSION,
+        TILEDB_COL_MAJOR,
+        TILEDB_ROW_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(
+        domain_size_0, domain_size_1, tile_extent_0, tile_extent_1, ntests));
+  }
+
+  SECTION("gzip compression row major") {
+    // Create a dense integer array
+    rc = create_dense_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_GZIP,
+        TILEDB_ROW_MAJOR,
+        TILEDB_ROW_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(
+        domain_size_0, domain_size_1, tile_extent_0, tile_extent_1, ntests));
+  }
+  SECTION("gzip compression col major") {
+    // Create a dense integer array
+    rc = create_dense_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_GZIP,
+        TILEDB_COL_MAJOR,
+        TILEDB_ROW_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(
+        domain_size_0, domain_size_1, tile_extent_0, tile_extent_1, ntests));
+  }
+
+  SECTION("gzip compression row / col major") {
+    // Create a dense integer array
+    rc = create_dense_array_2D(
+        tile_extent_0,
+        tile_extent_1,
+        domain_0_lo,
+        domain_0_hi,
+        domain_1_lo,
+        domain_1_hi,
+        capacity,
+        TILEDB_GZIP,
+        TILEDB_ROW_MAJOR,
+        TILEDB_COL_MAJOR);
+    REQUIRE(rc == TILEDB_OK);
+
+    CHECK(test_random_subarrays(
+        domain_size_0, domain_size_1, tile_extent_0, tile_extent_1, ntests));
   }
 }
- */
-
-/**
- * Test random updates in a 2D dense array.
- */
-/*
-TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates") {
-  // Error code
-  int rc;
-
-  // Parameters used in this test
-  int64_t domain_size_0 = 100;
-  int64_t domain_size_1 = 100;
-  int64_t tile_extent_0 = 10;
-  int64_t tile_extent_1 = 10;
-  int64_t domain_0_lo = 0;
-  int64_t domain_0_hi = domain_size_0 - 1;
-  int64_t domain_1_lo = 0;
-  int64_t domain_1_hi = domain_size_1 - 1;
-  uint64_t capacity = 1000;
-  tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
-  tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  int64_t update_num = 100;
-  int seed = 7;
-
-  // Set array name
-  set_array_name("dense_test_100x100_10x10");
-
-  // Create a dense integer array
-  create_dense_array_2D(
-      tile_extent_0,
-      tile_extent_1,
-      domain_0_lo,
-      domain_0_hi,
-      domain_1_lo,
-      domain_1_hi,
-      capacity,
-      cell_order,
-      tile_order);
-
-  // Write array cells with value = row id * COLUMNS + col id
-  // to disk tile by tile
-  rc = write_dense_array_by_tiles(
-      domain_size_0, domain_size_1, tile_extent_0, tile_extent_1);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Read the entire array back to memory
-  int* before_update = read_dense_array_2D(
-      domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi, TILEDB_ARRAY_READ);
-  REQUIRE(before_update != NULL);
-
-  // Prepare random updates
-  int* buffer_a1 = new int[update_num];
-  int64_t* buffer_coords = new int64_t[2 * update_num];
-  void* buffers[] = {buffer_a1, buffer_coords};
-  size_t buffer_sizes[2];
-  buffer_sizes[0] = update_num * sizeof(int);
-  buffer_sizes[1] = 2 * update_num * sizeof(int64_t);
-
-  rc = update_dense_array_2D(
-      domain_size_0, domain_size_1, update_num, seed, buffers, buffer_sizes);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Read the entire array back to memory after update
-  int* after_update = read_dense_array_2D(
-      domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi, TILEDB_ARRAY_READ);
-  REQUIRE(after_update != NULL);
-
-  // Compare array before and after
-  bool success = check_buffer_after_updates(
-      before_update,
-      after_update,
-      buffer_a1,
-      buffer_coords,
-      domain_size_0,
-      domain_size_1,
-      update_num);
-  REQUIRE(success);
-
-  // Clean up
-  delete[] before_update;
-  delete[] after_update;
-  delete[] buffer_a1;
-  delete[] buffer_coords;
-}
- */
