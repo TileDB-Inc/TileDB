@@ -30,6 +30,7 @@
  *
  * This file implements the WriteState class.
  */
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstring>
@@ -47,18 +48,6 @@
 #include "lz4_compressor.h"
 #include "rle_compressor.h"
 #include "zstd_compressor.h"
-
-/* ****************************** */
-/*             MACROS             */
-/* ****************************** */
-
-#if defined HAVE_OPENMP && defined USE_PARALLEL_SORT
-#include <parallel/algorithm>
-#define SORT(first, last, comp) __gnu_parallel::sort((first), (last), (comp))
-#else
-#include <algorithm>
-#define SORT(first, last, comp) std::sort((first), (last), (comp))
-#endif
 
 namespace tiledb {
 
@@ -919,14 +908,16 @@ void WriteState::sort_cell_pos(
 
   // Invoke the proper sort function, based on the cell order
   if (array_schema->tile_extents() == nullptr) {  // NO TILE GRID
-    if (cell_order == Layout::ROW_MAJOR) {
-      // Sort cell positions
-      SORT(cell_pos.begin(), cell_pos.end(), SmallerRow<T>(buffer_T, dim_num));
-    } else if (cell_order == Layout::COL_MAJOR) {
-      // Sort cell positions
-      SORT(cell_pos.begin(), cell_pos.end(), SmallerCol<T>(buffer_T, dim_num));
-    } else {
-      assert(0);  // The code should never reach here
+    // Sort cell positions
+    switch (cell_order) {
+      case Layout::ROW_MAJOR:
+        std::sort(
+            cell_pos.begin(), cell_pos.end(), SmallerRow<T>(buffer_T, dim_num));
+        break;
+      case Layout::COL_MAJOR:
+        std::sort(
+            cell_pos.begin(), cell_pos.end(), SmallerCol<T>(buffer_T, dim_num));
+        break;
     }
   } else {  // TILE GRID
     // Get tile ids
@@ -934,20 +925,20 @@ void WriteState::sort_cell_pos(
     ids.resize(buffer_cell_num);
     for (int i = 0; i < buffer_cell_num; ++i)
       ids[i] = array_schema->tile_id<T>(&buffer_T[i * dim_num]);
-
     // Sort cell positions
-    if (cell_order == Layout::ROW_MAJOR) {
-      SORT(
-          cell_pos.begin(),
-          cell_pos.end(),
-          SmallerIdRow<T>(buffer_T, dim_num, ids));
-    } else if (cell_order == Layout::COL_MAJOR) {
-      SORT(
-          cell_pos.begin(),
-          cell_pos.end(),
-          SmallerIdCol<T>(buffer_T, dim_num, ids));
-    } else {
-      assert(0);  // The code should never reach here
+    switch (cell_order) {
+      case Layout::ROW_MAJOR:
+        std::sort(
+            cell_pos.begin(),
+            cell_pos.end(),
+            SmallerIdRow<T>(buffer_T, dim_num, ids));
+        break;
+      case Layout::COL_MAJOR:
+        std::sort(
+            cell_pos.begin(),
+            cell_pos.end(),
+            SmallerIdCol<T>(buffer_T, dim_num, ids));
+        break;
     }
   }
 }

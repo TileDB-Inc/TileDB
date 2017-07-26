@@ -31,9 +31,11 @@
  * This file implements the ArraySortedReadState class.
  */
 
-#include "array_sorted_read_state.h"
+#include <algorithm>
 #include <cassert>
 #include <cmath>
+
+#include "array_sorted_read_state.h"
 #include "comparators.h"
 #include "logger.h"
 #include "storage_manager.h"
@@ -42,14 +44,6 @@
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
-
-#if defined HAVE_OPENMP && defined USE_PARALLEL_SORT
-#include <parallel/algorithm>
-#define SORT(first, last, comp) __gnu_parallel::sort((first), (last), (comp))
-#else
-#include <algorithm>
-#define SORT(first, last, comp) std::sort((first), (last), (comp))
-#endif
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -2451,10 +2445,12 @@ void ArraySortedReadState::sort_cell_pos() {
   // Invoke the proper sort function, based on the mode
   if (mode == ArrayMode::READ_SORTED_ROW) {
     // Sort cell positions
-    SORT(cell_pos_.begin(), cell_pos_.end(), SmallerRow<T>(buffer, dim_num));
+    std::sort(
+        cell_pos_.begin(), cell_pos_.end(), SmallerRow<T>(buffer, dim_num));
   } else {  // mode == TILEDB_ARRAY_READ_SORTED_COL
     // Sort cell positions
-    SORT(cell_pos_.begin(), cell_pos_.end(), SmallerCol<T>(buffer, dim_num));
+    std::sort(
+        cell_pos_.begin(), cell_pos_.end(), SmallerCol<T>(buffer, dim_num));
   }
 }
 
