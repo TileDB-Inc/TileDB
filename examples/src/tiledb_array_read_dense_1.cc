@@ -71,17 +71,11 @@ int main() {
   printf(" a1\t    a2\t   (a3.first, a3.second)\n");
   printf("-----------------------------------------\n");
   for(int i=0; i<result_num; ++i) {
-    /*
-    if(buffer_a1[i] != TILEDB_EMPTY_INT32) {    
-      printf("%3d", buffer_a1[i]);
-      size_t var_size = (i != result_num-1) ? buffer_a2[i+1] - buffer_a2[i] 
+    printf("%3d", buffer_a1[i]);
+    size_t var_size = (i != result_num-1) ? buffer_a2[i+1] - buffer_a2[i]
                                             : buffer_sizes[2] - buffer_a2[i];
-      printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);
-      printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
-    } else {
-     */
-      printf("\t\t Empty cell\n");
-  //  }
+    printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);
+    printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
   }
 
   // Finalize the array

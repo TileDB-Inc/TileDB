@@ -68,6 +68,9 @@ class Attribute {
   /*              GETTERS              */
   /* ********************************* */
 
+  /** Returns the size in bytes of one cell for this attribute. */
+  uint64_t cell_size() const;
+
   /** Returns the number of values per cell. */
   unsigned int cell_val_num() const;
 
@@ -85,6 +88,9 @@ class Attribute {
 
   /** Returns the attribute type. */
   Datatype type() const;
+
+  /** Returns true if this is a variable-size attribute, and false otherwise. */
+  bool var_size() const;
 
   /* ********************************* */
   /*              SETTERS              */
