@@ -56,8 +56,8 @@ class MetadataIterator {
   /*             ACCESSORS             */
   /* ********************************* */
 
-  /** Return the metadata name. */
-  const std::string& metadata_name() const;
+  /** Return the metadata uri. */
+  const uri::URI& metadata_uri() const;
 
   /**
    * Checks if the the iterator has reached its end.

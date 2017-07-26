@@ -272,7 +272,7 @@ bool Array::write_mode() const {
 /* ****************************** */
 
 Status Array::consolidate(
-    Fragment*& new_fragment, std::vector<std::string>& old_fragment_names) {
+    Fragment*& new_fragment, std::vector<uri::URI>* old_fragments) {
   // Trivial case
   if (fragments_.size() == 1)
     return Status::Ok();
@@ -293,7 +293,7 @@ Status Array::consolidate(
   for (int i = 0; i < array_schema_->attribute_num() + 1; ++i) {
     st = consolidate(new_fragment, i);
     if (!st.ok()) {
-      utils::delete_fragment(new_fragment->fragment_name());
+      utils::delete_fragment(new_fragment->fragment_uri());
       delete new_fragment;
       return st;
     }
@@ -302,7 +302,7 @@ Status Array::consolidate(
   // Get old fragment names
   int fragment_num = fragments_.size();
   for (int i = 0; i < fragment_num; ++i)
-    old_fragment_names.push_back(fragments_[i]->fragment_name());
+    old_fragments->push_back(fragments_[i]->fragment_uri());
 
   return Status::Ok();
 }
@@ -502,7 +502,7 @@ Status Array::init(
     // For the case of the clone sparse array, append coordinates if they do
     // not exist already
     if (sparse && array_clone == nullptr && !coords_found &&
-        !utils::is_metadata(array_schema->array_name()))
+        !utils::is_metadata(array_schema->array_uri()))
       attributes_vec.emplace_back(Configurator::coords());
   }
 
@@ -862,7 +862,7 @@ std::string Array::new_fragment_name() const {
   int n = sprintf(
       fragment_name,
       "%s/.__%s%llu_%llu",
-      array_schema_->array_name().c_str(),
+      array_schema_->array_uri().c_str(),
       mac.c_str(),
       tid,
       ms);

@@ -121,11 +121,11 @@ void StorageManager::set_config(Configurator* config) {
 /*             GROUP              */
 /* ****************************** */
 
-Status StorageManager::group_create(const std::string& group) const {
+Status StorageManager::group_create(const uri::URI& group) const {
   // Create group directory
-  RETURN_NOT_OK(filesystem::create_dir(group));
+  RETURN_NOT_OK(filesystem::create_dir(group.to_string()));
   // Create group file
-  RETURN_NOT_OK(filesystem::create_group_file(group));
+  RETURN_NOT_OK(filesystem::create_group_file(group.to_string()));
   return Status::Ok();
 }
 
@@ -151,38 +151,38 @@ Status StorageManager::aio_submit(AIORequest* aio_request, int i) {
   return Status::Ok();
 }
 
-Status StorageManager::array_consolidate(const char* array_dir) {
+Status StorageManager::array_consolidate(const uri::URI& array_uri) {
   // Create an array object
   Array* array;
   RETURN_NOT_OK(
-      array_init(array, array_dir, ArrayMode::READ, nullptr, nullptr, 0));
+      array_init(array, array_uri, ArrayMode::READ, nullptr, nullptr, 0));
 
   // Consolidate array (TODO: unhandled error handling here)
   Fragment* new_fragment;
-  std::vector<std::string> old_fragment_names;
+  std::vector<uri::URI> old_fragments;
   Status st_array_consolidate =
-      array->consolidate(new_fragment, old_fragment_names);
+      array->consolidate(new_fragment, &old_fragments);
 
   // Close the array
-  Status st_array_close = array_close(array->array_schema()->array_name());
+  Status st_array_close = array_close(array->array_schema()->array_uri());
 
   // Finalize consolidation
   Status st_consolidation_finalize =
-      consolidation_finalize(new_fragment, old_fragment_names);
+      consolidation_finalize(new_fragment, old_fragments);
 
   // Finalize array
   Status st_array_finalize = array->finalize();
   delete array;
   if (!st_array_finalize.ok()) {
     // TODO: Status:
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Could not finalize array: ").append(array_dir)));
+    return LOG_STATUS(
+        Status::StorageManagerError(std::string("Could not finalize array: ")
+                                        .append(array_uri.to_string())));
   }
   if (!(st_array_close.ok() && !st_consolidation_finalize.ok()))
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Could not consolidate array: ").append(array_dir)));
-
-  // Success
+    return LOG_STATUS(
+        Status::StorageManagerError(std::string("Could not consolidate array: ")
+                                        .append(array_uri.to_string())));
   return Status::Ok();
 }
 
@@ -194,14 +194,15 @@ Status StorageManager::array_create(ArraySchema* array_schema) const {
   }
 
   // Create array directory
-  std::string dir = array_schema->array_name();
-  RETURN_NOT_OK(filesystem::create_dir(dir));
+  uri::URI uri = array_schema->array_uri();
+
+  RETURN_NOT_OK(filesystem::create_dir(uri.to_posix_path()));
 
   // Store array schema
-  RETURN_NOT_OK(array_schema->store(dir));
+  RETURN_NOT_OK(array_schema->store(uri));
 
   // Create consolidation filelock
-  RETURN_NOT_OK(consolidation_lock_create(dir));
+  RETURN_NOT_OK(consolidation_lock_create(uri.to_posix_path()));
 
   // Success
   return Status::Ok();
@@ -209,9 +210,10 @@ Status StorageManager::array_create(ArraySchema* array_schema) const {
 
 // TODO (jcb): is it true that this cannot fail?
 void StorageManager::array_get_fragment_names(
-    const std::string& array, std::vector<std::string>& fragment_names) {
+    const uri::URI& array_uri, std::vector<std::string>& fragment_names) {
   // Get directory names in the array folder
-  fragment_names = filesystem::get_fragment_dirs(filesystem::real_dir(array));
+  fragment_names = filesystem::get_fragment_dirs(
+      filesystem::real_dir(array_uri.to_posix_path()));
   // Sort the fragment names
   sort_fragment_names(fragment_names);
 }
@@ -251,7 +253,7 @@ Status StorageManager::array_load_book_keeping(
 
 Status StorageManager::array_init(
     Array*& array,
-    const char* array_dir,
+    const uri::URI& array_uri,
     ArrayMode mode,
     const void* subarray,
     const char** attributes,
@@ -259,21 +261,17 @@ Status StorageManager::array_init(
   // For easy reference
   unsigned name_max_len = Configurator::name_max_len();
 
-  // TODO: (jcb) this should be handled by the array object
-  // Check array name length
-  if (array_dir == nullptr || strlen(array_dir) > name_max_len) {
-    return LOG_STATUS(Status::StorageManagerError("Invalid array name length"));
-  }
+  // TODO: length validation should be pushed to the URI object
 
   // Load array schema
   ArraySchema* array_schema = new ArraySchema();
-  RETURN_NOT_OK_ELSE(array_schema->load(array_dir), delete array_schema);
+  RETURN_NOT_OK_ELSE(array_schema->load(array_uri), delete array_schema);
 
   // Open the array
   OpenArray* open_array = nullptr;
   if (is_read_mode(mode)) {
     RETURN_NOT_OK(
-        array_open(filesystem::real_dir(array_dir), open_array, mode));
+        array_open(filesystem::abs_path(array_uri), open_array, mode));
   }
 
   Status st;
@@ -296,7 +294,7 @@ Status StorageManager::array_init(
     delete array_clone;
     array = nullptr;
     if (is_read_mode(mode))
-      array_close(array_dir);
+      array_close(array_uri);
     return st;
   }
 
@@ -320,10 +318,8 @@ Status StorageManager::array_init(
     delete array;
     array = nullptr;
     if (is_read_mode(mode))
-      array_close(array_dir);
+      array_close(array_uri);
   }
-
-  // Return
   return st;
 }
 
@@ -336,7 +332,7 @@ Status StorageManager::array_finalize(Array* array) {
   RETURN_NOT_OK_ELSE(array->finalize(), delete array);
   if (array->read_mode())
     RETURN_NOT_OK_ELSE(
-        array_close(array->array_schema()->array_name()), delete array)
+        array_close(array->array_schema()->array_uri()), delete array)
 
   // Clean up
   delete array;
@@ -367,7 +363,7 @@ Status StorageManager::array_sync_attribute(
 
 Status StorageManager::array_iterator_init(
     ArrayIterator*& array_it,
-    const char* array_dir,
+    const uri::URI& array_uri,
     ArrayMode mode,
     const void* subarray,
     const char** attributes,
@@ -378,7 +374,7 @@ Status StorageManager::array_iterator_init(
   // Create Array object. This also creates/updates an open array entry
   Array* array;
   RETURN_NOT_OK(
-      array_init(array, array_dir, mode, subarray, attributes, attribute_num));
+      array_init(array, array_uri, mode, subarray, attributes, attribute_num));
 
   // Create ArrayIterator object
   array_it = new ArrayIterator();
@@ -398,9 +394,9 @@ Status StorageManager::array_iterator_finalize(ArrayIterator* array_it) {
     return Status::Ok();
 
   // Finalize and close array
-  std::string array_name = array_it->array_name();
+  uri::URI uri = array_it->array_uri();
   Status st_finalize = array_it->finalize();
-  Status st_close = array_close(array_name);
+  Status st_close = array_close(uri);
 
   delete array_it;
 
@@ -416,11 +412,11 @@ Status StorageManager::array_iterator_finalize(ArrayIterator* array_it) {
 /*            METADATA            */
 /* ****************************** */
 
-Status StorageManager::metadata_consolidate(const char* metadata_dir) {
+Status StorageManager::metadata_consolidate(const uri::URI& metadata_uri) {
   // Load metadata schema
   ArraySchema* array_schema;
   RETURN_NOT_OK_ELSE(
-      metadata_load_schema(metadata_dir, array_schema), delete array_schema);
+      metadata_load_schema(metadata_uri, array_schema), delete array_schema);
 
   // Set attributes
   char** attributes;
@@ -437,7 +433,7 @@ Status StorageManager::metadata_consolidate(const char* metadata_dir) {
   Metadata* metadata;
   Status st = metadata_init(
       metadata,
-      metadata_dir,
+      metadata_uri,
       TILEDB_METADATA_READ,
       (const char**)attributes,
       attribute_num + 1);
@@ -453,19 +449,18 @@ Status StorageManager::metadata_consolidate(const char* metadata_dir) {
 
   // Consolidate metadata
   Fragment* new_fragment;
-  std::vector<std::string> old_fragment_names;
+  std::vector<uri::URI> old_fragments;
   // TODO: (jcb) does it make sense to execute these functions if one error's
   Status st_metadata_consolidate =
-      metadata->consolidate(new_fragment, old_fragment_names);
+      metadata->consolidate(new_fragment, &old_fragments);
 
   // Close the underlying array
-  std::string array_name =
-      metadata->metadata_schema()->array_schema()->array_name();
-  Status st_array_close = array_close(array_name);
+  uri::URI uri = metadata->metadata_schema()->array_schema()->array_uri();
+  Status st_array_close = array_close(uri);
 
   // Finalize consolidation
   Status st_consolidation_finalize =
-      consolidation_finalize(new_fragment, old_fragment_names);
+      consolidation_finalize(new_fragment, old_fragments);
 
   // Finalize metadata
   Status st_metadata_finalize = metadata->finalize();
@@ -495,36 +490,37 @@ Status StorageManager::metadata_create(MetadataSchema* metadata_schema) const {
   }
 
   // Create metadata directory
-  std::string dir = metadata_schema->metadata_name();
-  RETURN_NOT_OK(filesystem::create_dir(dir));
+  uri::URI uri = metadata_schema->metadata_uri();
+  RETURN_NOT_OK(filesystem::create_dir(uri.to_posix_path()));
 
   // Store array schema
-  RETURN_NOT_OK(metadata_schema->store(dir));
+  RETURN_NOT_OK(metadata_schema->store(uri.to_posix_path()));
 
   // Create consolidation filelock
-  RETURN_NOT_OK(consolidation_lock_create(dir));
+  RETURN_NOT_OK(consolidation_lock_create(uri.to_posix_path()));
 
   // Success
   return Status::Ok();
 }
 
 Status StorageManager::metadata_load_schema(
-    const char* metadata_dir, ArraySchema*& array_schema) const {
+    const uri::URI& metadata, ArraySchema*& array_schema) const {
   // Get real array path
-  std::string metadata_abspath = filesystem::real_dir(metadata_dir);
+  uri::URI metadata_uri = filesystem::abs_path(metadata);
 
   // Check if metadata exists
-  if (!utils::is_metadata(metadata_abspath)) {
+  if (!utils::is_metadata(metadata_uri)) {
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Cannot load metadata schema; Metadata '") +
-        metadata_abspath + "' does not exist"));
+        metadata_uri.to_string() + "' does not exist"));
   }
-  auto filename =
-      metadata_abspath + "/" + Configurator::metadata_schema_filename();
+  auto metadata_schema_path =
+      metadata_uri.join_path(Configurator::metadata_schema_filename());
 
   char* buffer = nullptr;
   size_t buffer_size = 0;
-  RETURN_NOT_OK(filesystem::read_from_file(filename, buffer, &buffer_size));
+  RETURN_NOT_OK(filesystem::read_from_file(
+      metadata_schema_path.to_posix_path(), buffer, &buffer_size));
 
   // Initialize array schema
   array_schema = new ArraySchema();
@@ -541,29 +537,24 @@ Status StorageManager::metadata_load_schema(
 
 Status StorageManager::metadata_init(
     Metadata*& metadata,
-    const char* metadata_dir,
+    const uri::URI& metadata_uri,
     tiledb_metadata_mode_t mode,
     const char** attributes,
     int attribute_num) {
   // For easy reference
   unsigned name_max_len = Configurator::name_max_len();
 
-  // Check metadata name length
-  if (metadata_dir == nullptr || strlen(metadata_dir) > name_max_len) {
-    return LOG_STATUS(
-        Status::StorageManagerError("Invalid metadata name length"));
-  }
-
+  // TODO: uri Check metadata name length
   // Load metadata schema
   ArraySchema* array_schema;
   RETURN_NOT_OK_ELSE(
-      metadata_load_schema(metadata_dir, array_schema), delete array_schema);
+      metadata_load_schema(metadata_uri, array_schema), delete array_schema);
 
   // Open the array that implements the metadata
   OpenArray* open_array = nullptr;
   if (mode == TILEDB_METADATA_READ)
     RETURN_NOT_OK(array_open(
-        filesystem::real_dir(metadata_dir), open_array, ArrayMode::READ))
+        filesystem::abs_path(metadata_uri), open_array, ArrayMode::READ))
 
   // Create metadata object
   metadata = new Metadata();
@@ -581,7 +572,7 @@ Status StorageManager::metadata_init(
   if (!st.ok()) {
     delete array_schema;
     delete metadata;
-    array_close(metadata_dir);
+    array_close(metadata_uri);
     return st;
   }
   return Status::Ok();
@@ -593,12 +584,11 @@ Status StorageManager::metadata_finalize(Metadata* metadata) {
     return Status::Ok();
 
   // Finalize the metadata and close the underlying array
-  std::string array_name =
-      metadata->metadata_schema()->array_schema()->array_name();
+  uri::URI uri = metadata->metadata_schema()->array_schema()->array_uri();
   ArrayMode mode = metadata->array()->mode();
   RETURN_NOT_OK_ELSE(metadata->finalize(), delete metadata);
   if (mode == ArrayMode::READ)
-    RETURN_NOT_OK_ELSE(array_close(array_name), delete metadata);
+    RETURN_NOT_OK_ELSE(array_close(uri), delete metadata);
 
   // Clean up
   delete metadata;
@@ -608,7 +598,7 @@ Status StorageManager::metadata_finalize(Metadata* metadata) {
 
 Status StorageManager::metadata_iterator_init(
     MetadataIterator*& metadata_it,
-    const char* metadata_dir,
+    const uri::URI& metadata_uri,
     const char** attributes,
     int attribute_num,
     void** buffers,
@@ -617,7 +607,7 @@ Status StorageManager::metadata_iterator_init(
   // Create metadata object
   Metadata* metadata;
   RETURN_NOT_OK(metadata_init(
-      metadata, metadata_dir, TILEDB_METADATA_READ, attributes, attribute_num))
+      metadata, metadata_uri, TILEDB_METADATA_READ, attributes, attribute_num))
 
   // Create MetadataIterator object
   metadata_it = new MetadataIterator();
@@ -638,9 +628,9 @@ Status StorageManager::metadata_iterator_finalize(
     return Status::Ok();
 
   // Close array and finalize metadata
-  std::string metadata_name = metadata_it->metadata_name();
+  uri::URI uri = metadata_it->metadata_uri();
   Status st_finalize = metadata_it->finalize();
-  Status st_close = array_close(metadata_name);
+  Status st_close = array_close(uri);
 
   // Clean up
   delete metadata_it;
@@ -657,7 +647,7 @@ Status StorageManager::metadata_iterator_finalize(
 /* ****************************** */
 
 Status StorageManager::ls(
-    const char* parent_path,
+    const uri::URI& parent_uri,
     char** object_paths,
     tiledb_object_t* object_types,
     int* object_num) const {
@@ -665,7 +655,7 @@ Status StorageManager::ls(
   int obj_idx = 0;
 
   std::vector<std::string> paths;
-  RETURN_NOT_OK(filesystem::ls(parent_path, &paths));
+  RETURN_NOT_OK(filesystem::ls(parent_uri.to_posix_path(), &paths));
 
   for (auto& path : paths) {
     if (utils::is_group(path)) {  // Group
@@ -700,12 +690,11 @@ Status StorageManager::ls(
   return Status::Ok();
 }
 
-Status StorageManager::ls_c(const char* parent_path, int* object_num) const {
+Status StorageManager::ls_c(const uri::URI& parent_uri, int* object_num) const {
+  *object_num = 0;
   // Initialize directory number
-  object_num = 0;
-
   std::vector<std::string> paths;
-  RETURN_NOT_OK(filesystem::ls(parent_path, &paths));
+  RETURN_NOT_OK(filesystem::ls(parent_uri.to_posix_path(), &paths));
 
   *object_num =
       std::count_if(paths.begin(), paths.end(), [](std::string& path) {
@@ -715,40 +704,39 @@ Status StorageManager::ls_c(const char* parent_path, int* object_num) const {
   return Status::Ok();
 }
 
-Status StorageManager::clear(const std::string& dir) const {
-  if (utils::is_group(dir)) {
-    return group_clear(dir);
-  } else if (utils::is_array(dir)) {
-    return array_clear(dir);
-  } else if (utils::is_metadata(dir)) {
-    return metadata_clear(dir);
+Status StorageManager::clear(const uri::URI& uri) const {
+  if (utils::is_group(uri)) {
+    return group_clear(uri);
+  } else if (utils::is_array(uri)) {
+    return array_clear(uri);
+  } else if (utils::is_metadata(uri)) {
+    return metadata_clear(uri);
   } else {
     return LOG_STATUS(
         Status::StorageManagerError("Clear failed; Invalid directory"));
   }
 }
 
-Status StorageManager::delete_entire(const std::string& dir) {
-  if (utils::is_group(dir)) {
-    return group_delete(dir);
-  } else if (utils::is_array(dir)) {
-    return array_delete(dir);
-  } else if (utils::is_metadata(dir)) {
-    return metadata_delete(dir);
+Status StorageManager::delete_entire(const uri::URI& uri) {
+  if (utils::is_group(uri)) {
+    return group_delete(uri);
+  } else if (utils::is_array(uri)) {
+    return array_delete(uri);
+  } else if (utils::is_metadata(uri)) {
+    return metadata_delete(uri);
   } else {
     return LOG_STATUS(
         Status::StorageManagerError("Delete failed; Invalid directory"));
   }
 }
 
-Status StorageManager::move(
-    const std::string& old_dir, const std::string& new_dir) {
-  if (utils::is_group(old_dir)) {
-    return group_move(old_dir, new_dir);
-  } else if (utils::is_array(old_dir)) {
-    return array_move(old_dir, new_dir);
-  } else if (utils::is_metadata(old_dir)) {
-    return metadata_move(old_dir, new_dir);
+Status StorageManager::move(const uri::URI& old_uri, const uri::URI& new_uri) {
+  if (utils::is_group(old_uri)) {
+    return group_move(old_uri, new_uri);
+  } else if (utils::is_array(old_uri)) {
+    return array_move(old_uri, new_uri);
+  } else if (utils::is_metadata(old_uri)) {
+    return metadata_move(old_uri, new_uri);
   } else {
     return LOG_STATUS(
         Status::StorageManagerError("Move failed; Invalid source directory"));
@@ -809,19 +797,19 @@ void StorageManager::aio_stop() {
   aio_thread_[1]->join();
 }
 
-Status StorageManager::array_clear(const std::string& array) const {
+Status StorageManager::array_clear(const uri::URI& array) const {
   // Get real array directory name
-  std::string array_abspath = filesystem::real_dir(array);
+  uri::URI array_uri = filesystem::abs_path(array);
 
   // Check if the array exists
-  if (!utils::is_array(array_abspath)) {
+  if (!utils::is_array(array_uri)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Array '") + array_abspath + "' does not exist"));
+        std::string("Array '") + array_uri.to_string() + "' does not exist"));
   }
 
   // Delete the entire array directory except for the array schema file
   std::vector<std::string> paths;
-  RETURN_NOT_OK(filesystem::ls(array_abspath, &paths));
+  RETURN_NOT_OK(filesystem::ls(array_uri.to_posix_path(), &paths));
   for (auto& path : paths) {
     if (utils::is_array_schema(path) || utils::is_consolidation_lock(path))
       continue;
@@ -837,12 +825,13 @@ Status StorageManager::array_clear(const std::string& array) const {
   return Status::Ok();
 }
 
-Status StorageManager::array_close(const std::string& array) {
+Status StorageManager::array_close(const uri::URI& array_uri) {
+  // Lock mutexes
   open_array_mtx_.lock();
 
   // Find the open array entry
   std::map<std::string, OpenArray*>::iterator it =
-      open_arrays_.find(filesystem::real_dir(array));
+      open_arrays_.find(filesystem::abs_path(array_uri).to_string());
 
   // Sanity check
   if (it == open_arrays_.end()) {
@@ -891,7 +880,7 @@ Status StorageManager::array_close(const std::string& array) {
   return Status::Ok();
 }
 
-Status StorageManager::array_delete(const std::string& array) const {
+Status StorageManager::array_delete(const uri::URI& array) const {
   RETURN_NOT_OK(array_clear(array));
   // Delete array directory
   RETURN_NOT_OK(filesystem::delete_dir(array));
@@ -899,19 +888,20 @@ Status StorageManager::array_delete(const std::string& array) const {
 }
 
 Status StorageManager::array_get_open_array_entry(
-    const std::string& array, OpenArray*& open_array) {
+    const uri::URI& array_uri, OpenArray*& open_array) {
   // Lock mutex
   open_array_mtx_.lock();
 
   // Find the open array entry
-  std::map<std::string, OpenArray*>::iterator it = open_arrays_.find(array);
+  std::map<std::string, OpenArray*>::iterator it =
+      open_arrays_.find(array_uri.to_string());
   // Create and init entry if it does not exist
   if (it == open_arrays_.end()) {
     open_array = new OpenArray();
     open_array->cnt_ = 0;
     open_array->consolidation_filelock_ = -1;
     open_array->book_keeping_ = std::vector<BookKeeping*>();
-    open_arrays_[array] = open_array;
+    open_arrays_[array_uri.to_posix_path()] = open_array;
   } else {
     open_array = it->second;
   }
@@ -926,33 +916,33 @@ Status StorageManager::array_get_open_array_entry(
 }
 
 Status StorageManager::array_move(
-    const std::string& old_array, const std::string& new_array) const {
-  // Get real array directory name
-  std::string old_array_real = filesystem::real_dir(old_array);
-  std::string new_array_real = filesystem::real_dir(new_array);
+    const uri::URI& old_array, const uri::URI& new_array) const {
+  uri::URI old_array_uri = filesystem::abs_path(old_array);
+  uri::URI new_array_uri = filesystem::abs_path(new_array);
 
   // Check if the old array exists
-  if (!utils::is_array(old_array_real)) {
+  if (!utils::is_array(old_array_uri)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Array '") + old_array_real + "' does not exist"));
+        std::string("Array '") + old_array_uri.to_string() +
+        "' does not exist"));
   }
 
   // Make sure that the new array is not an existing directory
-  if (filesystem::is_dir(new_array_real)) {
+  if (filesystem::is_dir(new_array_uri)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Array '") + new_array_real + "' already exists"));
+        std::string("Array '") + new_array_uri.to_string() +
+        "' already exists"));
   }
-
   // Rename array
-  RETURN_NOT_OK(filesystem::move(old_array_real, new_array_real));
+  RETURN_NOT_OK(filesystem::move(old_array_uri, new_array_uri));
 
   // Incorporate new name in the array schema
   ArraySchema* array_schema = new ArraySchema();
-  RETURN_NOT_OK_ELSE(array_schema->load(new_array_real), delete array_schema);
-  array_schema->set_array_name(new_array_real.c_str());
+  RETURN_NOT_OK_ELSE(array_schema->load(new_array_uri), delete array_schema);
+  array_schema->set_array_uri(new_array_uri);
 
   // Store the new schema
-  RETURN_NOT_OK_ELSE(array_schema->store(new_array_real), delete array_schema);
+  RETURN_NOT_OK_ELSE(array_schema->store(new_array_uri), delete array_schema);
 
   // Clean up
   delete array_schema;
@@ -962,9 +952,9 @@ Status StorageManager::array_move(
 }
 
 Status StorageManager::array_open(
-    const std::string& array_name, OpenArray*& open_array, ArrayMode mode) {
+    const uri::URI& array_uri, OpenArray*& open_array, ArrayMode mode) {
   // Get the open array entry
-  RETURN_NOT_OK(array_get_open_array_entry(array_name, open_array));
+  RETURN_NOT_OK(array_get_open_array_entry(array_uri, open_array));
 
   // Lock the mutex of the array
   open_array->mtx_lock();
@@ -974,21 +964,22 @@ Status StorageManager::array_open(
     // Acquire shared lock on consolidation filelock
     RETURN_NOT_OK_ELSE(
         consolidation_lock(
-            array_name, &(open_array->consolidation_filelock_), true),
+            array_uri.to_posix_path(),
+            &(open_array->consolidation_filelock_),
+            true),
         open_array->mtx_unlock());
 
     // Get the fragment names
-    array_get_fragment_names(array_name, open_array->fragment_names_);
+    array_get_fragment_names(array_uri, open_array->fragment_names_);
 
     // Get array schema
     open_array->array_schema_ = new ArraySchema();
     ArraySchema* array_schema = open_array->array_schema_;
-    if (utils::is_array(array_name)) {  // Array
-      RETURN_NOT_OK_ELSE(array_schema->load(array_name), delete array_schema);
+    if (utils::is_array(array_uri)) {  // Array
+      RETURN_NOT_OK_ELSE(array_schema->load(array_uri), delete array_schema);
     } else {  // Metadata
       RETURN_NOT_OK_ELSE(
-          metadata_load_schema(array_name.c_str(), array_schema),
-          delete array_schema);
+          metadata_load_schema(array_uri, array_schema), delete array_schema);
     }
     // Load the book-keeping for each fragment
     Status st = array_load_book_keeping(
@@ -1031,17 +1022,18 @@ Status StorageManager::consolidation_unlock(int fd) const {
 }
 
 Status StorageManager::consolidation_finalize(
-    Fragment* new_fragment,
-    const std::vector<std::string>& old_fragment_names) {
+    Fragment* new_fragment, const std::vector<uri::URI>& old_fragments) {
   // Trivial case - there was no consolidation
-  if (old_fragment_names.size() == 0)
+  if (old_fragments.size() == 0)
     return Status::Ok();
 
   // Acquire exclusive lock on consolidation filelock
   int fd;
   Status st;
   st = consolidation_lock(
-      new_fragment->array()->array_schema()->array_name(), &fd, false);
+      new_fragment->array()->array_schema()->array_uri().to_posix_path(),
+      &fd,
+      false);
   if (!st.ok()) {
     delete new_fragment;
     return st;
@@ -1054,18 +1046,16 @@ Status StorageManager::consolidation_finalize(
     return st;
   }
 
+  // TODO: abstract framgent IO
   // Make old fragments invisible to new reads
-  int fragment_num = old_fragment_names.size();
+  int fragment_num = old_fragments.size();
   for (int i = 0; i < fragment_num; ++i) {
     // Delete special fragment file inside the fragment directory
     std::string old_fragment_filename =
-        old_fragment_names[i] + "/" + Configurator::fragment_filename();
-    if (remove(old_fragment_filename.c_str())) {
-      return LOG_STATUS(Status::StorageManagerError(
-          std::string("Cannot remove fragment file during "
-                      "finalizing consolidation; ") +
-          strerror(errno)));
-    }
+        old_fragments[i]
+            .join_path(Configurator::fragment_filename())
+            .to_posix_path();
+    RETURN_NOT_OK(filesystem::delete_file(old_fragment_filename));
   }
 
   // Unlock consolidation filelock
@@ -1073,23 +1063,24 @@ Status StorageManager::consolidation_finalize(
 
   // Delete old fragments
   for (int i = 0; i < fragment_num; ++i) {
-    RETURN_NOT_OK(filesystem::delete_dir(old_fragment_names[i]));
+    RETURN_NOT_OK(filesystem::delete_dir(old_fragments[i]));
   }
   return Status::Ok();
 }
 
-Status StorageManager::group_clear(const std::string& group) const {
-  // Get real group path
-  std::string group_abspath = filesystem::real_dir(group);
+Status StorageManager::group_clear(const uri::URI& group) const {
+  uri::URI group_uri = filesystem::abs_path(group);
 
   // Check if group exists
-  if (!utils::is_group(group_abspath)) {
+  if (!utils::is_group(group_uri)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Group '") + group_abspath + "' does not exist"));
+        std::string("Group '") + group_uri.to_string() + "' does not exist"));
   }
+
   // Delete all groups, arrays and metadata inside the group directory
+  // TODO: this functionalty should be moved to a Filesystem IO backend
   std::vector<std::string> paths;
-  RETURN_NOT_OK(filesystem::ls(group_abspath, &paths));
+  RETURN_NOT_OK(filesystem::ls(group_uri.to_string(), &paths));
   for (auto& path : paths) {
     if (utils::is_group(path)) {  // Group
       RETURN_NOT_OK(group_delete(path))
@@ -1106,7 +1097,7 @@ Status StorageManager::group_clear(const std::string& group) const {
   return Status::Ok();
 }
 
-Status StorageManager::group_delete(const std::string& group) const {
+Status StorageManager::group_delete(const uri::URI& group) const {
   // Clear the group
   RETURN_NOT_OK(group_clear(group));
 
@@ -1117,39 +1108,42 @@ Status StorageManager::group_delete(const std::string& group) const {
 }
 
 Status StorageManager::group_move(
-    const std::string& old_group, const std::string& new_group) const {
+    const uri::URI& old_group, const uri::URI& new_group) const {
   // Get real group directory names
-  std::string old_group_real = filesystem::real_dir(old_group);
-  std::string new_group_real = filesystem::real_dir(new_group);
+  uri::URI old_group_uri = filesystem::abs_path(old_group);
+  uri::URI new_group_uri = filesystem::abs_path(new_group);
 
   // Check if the old group exists
-  if (!utils::is_group(old_group_real)) {
+  if (!utils::is_group(old_group_uri)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Group '") + old_group_real + "' does not exist"));
+        std::string("Group '") + old_group_uri.to_string() +
+        "' does not exist"));
   }
 
   // Make sure that the new group is not an existing directory
-  if (filesystem::is_dir(new_group_real)) {
+  if (filesystem::is_dir(new_group_uri)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Group '") + new_group_real + "' already exists"));
+        std::string("Group '") + new_group_uri.to_string() +
+        "' already exists"));
   }
 
-  return filesystem::move(old_group_real, new_group_real);
+  return filesystem::move(old_group_uri, new_group_uri);
 }
 
-Status StorageManager::metadata_clear(const std::string& metadata) const {
-  // Get real metadata directory name
-  std::string metadata_abspath = filesystem::real_dir(metadata);
+Status StorageManager::metadata_clear(const uri::URI& metadata) const {
+  // TODO: delete calls the normalization function twice
+  uri::URI meta_uri = filesystem::abs_path(metadata);
 
   // Check if the metadata exists
-  if (!utils::is_metadata(metadata_abspath)) {
+  if (!utils::is_metadata(meta_uri)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Metadata '") + metadata_abspath + "' do not exist"));
+        std::string("Metadata '") + meta_uri.to_string() + "' do not exist"));
   }
 
+  // TODO: this functionality should exist in a IOBackend class
   // Delete the entire metadata directory except for the array schema file
   std::vector<std::string> paths;
-  RETURN_NOT_OK(filesystem::ls(metadata_abspath, &paths));
+  RETURN_NOT_OK(filesystem::ls(meta_uri.to_string(), &paths));
   for (auto& path : paths) {
     if (utils::is_metadata_schema(path) || utils::is_consolidation_lock(path))
       continue;
@@ -1164,34 +1158,35 @@ Status StorageManager::metadata_clear(const std::string& metadata) const {
   return Status::Ok();
 }
 
-Status StorageManager::metadata_delete(const std::string& metadata) const {
-  // Get real metadata directory name
-  std::string metadata_real = filesystem::real_dir(metadata);
+Status StorageManager::metadata_delete(const uri::URI& metadata) const {
+  uri::URI meta_uri = filesystem::abs_path(metadata);
 
   // Clear the metadata
-  RETURN_NOT_OK(metadata_clear(metadata_real));
+  RETURN_NOT_OK(metadata_clear(meta_uri));
 
   // Delete metadata directory
-  RETURN_NOT_OK(filesystem::delete_dir(metadata_real));
+  RETURN_NOT_OK(filesystem::delete_dir(meta_uri));
   return Status::Ok();
 }
 
 Status StorageManager::metadata_move(
-    const std::string& old_metadata, const std::string& new_metadata) const {
-  // Get real metadata directory name
-  std::string old_metadata_real = filesystem::real_dir(old_metadata);
-  std::string new_metadata_real = filesystem::real_dir(new_metadata);
+    const uri::URI& old_metadata, const uri::URI& new_metadata) const {
+  // TODO: abs path should be moved to uri
+  uri::URI old_metadata_real = filesystem::abs_path(old_metadata);
+  uri::URI new_metadata_real = filesystem::abs_path(new_metadata);
 
   // Check if the old metadata exists
   if (!utils::is_metadata(old_metadata_real)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Metadata '") + old_metadata_real + "' do not exist"));
+        std::string("Metadata '") + old_metadata_real.to_string() +
+        "' do not exist"));
   }
 
   // Make sure that the new metadata is not an existing directory
   if (filesystem::is_dir(new_metadata_real)) {
     return LOG_STATUS(Status::StorageManagerError(
-        std::string("Metadata'") + new_metadata_real + "' already exists"));
+        std::string("Metadata'") + new_metadata_real.to_string() +
+        "' already exists"));
   }
 
   // Rename metadata
@@ -1201,7 +1196,8 @@ Status StorageManager::metadata_move(
   ArraySchema* array_schema = new ArraySchema();
   RETURN_NOT_OK_ELSE(
       array_schema->load(new_metadata_real), delete array_schema);
-  array_schema->set_array_name(new_metadata_real.c_str());
+
+  array_schema->set_array_uri(new_metadata_real);
 
   // Store the new schema
   RETURN_NOT_OK_ELSE(

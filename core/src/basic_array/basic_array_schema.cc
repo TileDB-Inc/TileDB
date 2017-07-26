@@ -40,7 +40,6 @@ namespace tiledb {
 
 BasicArraySchema::BasicArraySchema(const char* name) {
   array_schema_ = new ArraySchema();
-  array_schema_->set_array_name(name);
 }
 
 BasicArraySchema::~BasicArraySchema() {

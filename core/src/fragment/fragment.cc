@@ -81,8 +81,8 @@ bool Fragment::dense() const {
   return dense_;
 }
 
-const std::string& Fragment::fragment_name() const {
-  return fragment_name_;
+const uri::URI& Fragment::fragment_uri() const {
+  return fragment_uri_;
 }
 
 ArrayMode Fragment::mode() const {
@@ -125,9 +125,9 @@ Status Fragment::finalize() {
     Status st_bk = book_keeping_->finalize();
     Status st_rn;
     Status st_cf;
-    if (utils::fragment_exists(fragment_name_)) {
+    if (utils::fragment_exists(fragment_uri())) {
       st_rn = rename_fragment();
-      st_cf = filesystem::create_fragment_file(fragment_name_);
+      st_cf = filesystem::create_fragment_file(fragment_uri());
     }
     // Errors
     if (!st_ws.ok()) {
@@ -148,9 +148,9 @@ Status Fragment::finalize() {
 }
 
 Status Fragment::init(
-    const std::string& fragment_name, ArrayMode mode, const void* subarray) {
+    const uri::URI& uri, ArrayMode mode, const void* subarray) {
   // Set fragment name and mode
-  fragment_name_ = fragment_name;
+  fragment_uri_ = uri;
   mode_ = mode;
 
   // Sanity check
@@ -172,8 +172,7 @@ Status Fragment::init(
   }
 
   // Initialize book-keeping and read/write state
-  book_keeping_ =
-      new BookKeeping(array_->array_schema(), dense_, fragment_name, mode_);
+  book_keeping_ = new BookKeeping(array_->array_schema(), dense_, uri, mode_);
   read_state_ = nullptr;
   Status st = book_keeping_->init(subarray);
   if (!st.ok()) {
@@ -188,10 +187,9 @@ Status Fragment::init(
   return Status::Ok();
 }
 
-Status Fragment::init(
-    const std::string& fragment_name, BookKeeping* book_keeping) {
+Status Fragment::init(const uri::URI& uri, BookKeeping* book_keeping) {
   // Set member attributes
-  fragment_name_ = fragment_name;
+  fragment_uri_ = uri;
   mode_ = array_->mode();
   book_keeping_ = book_keeping;
   dense_ = book_keeping_->dense();
@@ -237,16 +235,12 @@ Status Fragment::write(const void** buffers, const size_t* buffer_sizes) {
 Status Fragment::rename_fragment() {
   // Do nothing in READ mode
   if (write_mode()) {
-    std::string parent_dir = utils::parent_path(fragment_name_);
+    std::string fragment_path = fragment_uri_.to_posix_path();
+    std::string parent_dir = utils::parent_path(fragment_path);
     std::string new_fragment_name =
-        parent_dir + "/" + fragment_name_.substr(parent_dir.size() + 2);
-
-    if (rename(fragment_name_.c_str(), new_fragment_name.c_str())) {
-      return LOG_STATUS(Status::OSError(
-          std::string("Cannot rename fragment directory; ") + strerror(errno)));
-    }
-
-    fragment_name_ = new_fragment_name;
+        parent_dir + "/" + fragment_path.substr(parent_dir.size() + 2);
+    RETURN_NOT_OK(filesystem::move(fragment_path, new_fragment_name))
+    fragment_uri_ = uri::URI(new_fragment_name);
   }
   return Status::Ok();
 }

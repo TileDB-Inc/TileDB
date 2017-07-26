@@ -94,9 +94,9 @@ Status Metadata::read(const char* key, void** buffers, size_t* buffer_sizes) {
 /* ****************************** */
 
 Status Metadata::consolidate(
-    Fragment*& new_fragment, std::vector<std::string>& old_fragment_names) {
+    Fragment*& new_fragment, std::vector<uri::URI>* old_fragments) {
   // Consolidate
-  RETURN_NOT_OK(array_->consolidate(new_fragment, old_fragment_names));
+  RETURN_NOT_OK(array_->consolidate(new_fragment, old_fragments));
   return Status::Ok();
 }
 

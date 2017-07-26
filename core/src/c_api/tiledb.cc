@@ -41,6 +41,7 @@
 #include "dimension.h"
 #include "metadata_schema.h"
 #include "storage_manager.h"
+#include "uri.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -456,8 +457,10 @@ int tiledb_group_create(tiledb_ctx_t* ctx, const char* group) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  auto group_uri = tiledb::uri::URI(group);
+
   // Create the group
-  if (save_error(ctx, ctx->storage_manager_->group_create(group)))
+  if (save_error(ctx, ctx->storage_manager_->group_create(group_uri)))
     return TILEDB_ERR;
 
   // Success
@@ -726,7 +729,8 @@ int tiledb_array_schema_create(
   }
 
   // Create a new ArraySchema object
-  (*array_schema)->array_schema_ = new tiledb::ArraySchema(array_name);
+  (*array_schema)->array_schema_ =
+      new tiledb::ArraySchema(tiledb::uri::URI(array_name));
   if ((*array_schema)->array_schema_ == nullptr) {
     free(*array_schema);
     *array_schema = nullptr;
@@ -873,7 +877,8 @@ int tiledb_array_schema_get_array_name(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  *array_name = array_schema->array_schema_->array_name().c_str();
+  tiledb::uri::URI uri = array_schema->array_schema_->array_uri();
+  *array_name = strdup(uri.c_str());
   return TILEDB_OK;
 }
 
@@ -1279,11 +1284,12 @@ int tiledb_array_init(
   (*tiledb_array)->ctx_ = ctx;
 
   // Init the array
+  auto array_uri = tiledb::uri::URI(array);
   if (save_error(
           ctx,
           ctx->storage_manager_->array_init(
               (*tiledb_array)->array_,
-              array,
+              array_uri,
               static_cast<tiledb::ArrayMode>(mode),
               subarray,
               attributes,
@@ -1378,7 +1384,8 @@ int tiledb_array_overflow(
 int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array) {
   // TODO: sanity checks here
 
-  if (save_error(ctx, ctx->storage_manager_->array_consolidate(array)))
+  auto array_uri = tiledb::uri::URI(array);
+  if (save_error(ctx, ctx->storage_manager_->array_consolidate(array_uri)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1455,11 +1462,12 @@ int tiledb_array_iterator_init(
 
   (*tiledb_array_it)->ctx_ = ctx;
 
+  auto array_uri = tiledb::uri::URI(array);
   if (save_error(
           ctx,
           ctx->storage_manager_->array_iterator_init(
               (*tiledb_array_it)->array_it_,
-              array,
+              array_uri,
               static_cast<tiledb::ArrayMode>(mode),
               subarray,
               attributes,
@@ -1553,7 +1561,7 @@ int tiledb_metadata_schema_create(
 
   // Create a new MetadataSchema object
   (*metadata_schema)->metadata_schema_ =
-      new tiledb::MetadataSchema(metadata_name);
+      new tiledb::MetadataSchema(tiledb::uri::URI(metadata_name));
 
   if ((*metadata_schema)->metadata_schema_ == nullptr) {
     free(*metadata_schema);
@@ -1689,7 +1697,8 @@ int tiledb_metadata_schema_get_metadata_name(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, metadata_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  *metadata_name = metadata_schema->metadata_schema_->metadata_name().c_str();
+  tiledb::uri::URI uri = metadata_schema->metadata_schema_->metadata_uri();
+  *metadata_name = strdup(uri.c_str());
   return TILEDB_OK;
 }
 
@@ -1776,18 +1785,18 @@ int tiledb_metadata_init(
   (*tiledb_metadata)->ctx_ = ctx;
 
   // Init the metadata
+  auto metadata_uri = tiledb::uri::URI(metadata);
   if (save_error(
           ctx,
           ctx->storage_manager_->metadata_init(
               (*tiledb_metadata)->metadata_,
-              metadata,
+              metadata_uri,
               mode,
               attributes,
               attribute_num))) {
     free(*tiledb_metadata);
     return TILEDB_ERR;
   }
-
   return TILEDB_OK;
 }
 
@@ -1870,7 +1879,9 @@ int tiledb_metadata_overflow(
 int tiledb_metadata_consolidate(tiledb_ctx_t* ctx, const char* metadata) {
   // TODO: sanity checks here
 
-  if (save_error(ctx, ctx->storage_manager_->metadata_consolidate(metadata)))
+  auto metadata_uri = tiledb::uri::URI(metadata);
+  if (save_error(
+          ctx, ctx->storage_manager_->metadata_consolidate(metadata_uri)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1916,11 +1927,12 @@ int tiledb_metadata_iterator_init(
   (*tiledb_metadata_it)->ctx_ = ctx;
 
   // Initialize the metadata iterator
+  auto metadata_uri = tiledb::uri::URI(metadata);
   if (save_error(
           ctx,
           ctx->storage_manager_->metadata_iterator_init(
               (*tiledb_metadata_it)->metadata_it_,
-              metadata,
+              metadata_uri,
               attributes,
               attribute_num,
               buffers,
@@ -2000,59 +2012,63 @@ int tiledb_dir_type(tiledb_ctx_t* ctx, const char* dir) {
   return ctx->storage_manager_->dir_type(dir);
 }
 
-int tiledb_clear(tiledb_ctx_t* ctx, const char* dir) {
+int tiledb_clear(tiledb_ctx_t* ctx, const char* path) {
   // TODO: sanity checks here
 
   // TODO: do this everywhere
-  if (dir == nullptr) {
+  if (path == nullptr) {
     save_error(
         ctx, tiledb::Status::Error("Invalid directory argument is NULL"));
     return TILEDB_ERR;
   }
-
-  if (save_error(ctx, ctx->storage_manager_->clear(dir)))
+  auto uri = tiledb::uri::URI(path);
+  if (save_error(ctx, ctx->storage_manager_->clear(uri)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
 }
 
-int tiledb_delete(tiledb_ctx_t* ctx, const char* dir) {
+int tiledb_delete(tiledb_ctx_t* ctx, const char* path) {
   // TODO: sanity checks here
 
-  if (save_error(ctx, ctx->storage_manager_->delete_entire(dir)))
+  auto uri = tiledb::uri::URI(path);
+  if (save_error(ctx, ctx->storage_manager_->delete_entire(uri)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
 }
 
-int tiledb_move(tiledb_ctx_t* ctx, const char* old_dir, const char* new_dir) {
+int tiledb_move(tiledb_ctx_t* ctx, const char* old_path, const char* new_path) {
   // TODO: sanity checks here
 
-  if (save_error(ctx, ctx->storage_manager_->move(old_dir, new_dir)))
+  auto old_uri = tiledb::uri::URI(old_path);
+  auto new_uri = tiledb::uri::URI(new_path);
+  if (save_error(ctx, ctx->storage_manager_->move(old_uri, new_uri)))
     return TILEDB_ERR;
-
   return TILEDB_OK;
 }
 
 int tiledb_ls(
     tiledb_ctx_t* ctx,
-    const char* parent_dir,
+    const char* parent_path,
     char** dirs,
     tiledb_object_t* dir_types,
     int* dir_num) {
   // TODO: sanity checks here
 
+  auto parent_uri = tiledb::uri::URI(parent_path);
   if (save_error(
-          ctx, ctx->storage_manager_->ls(parent_dir, dirs, dir_types, dir_num)))
+          ctx, ctx->storage_manager_->ls(parent_uri, dirs, dir_types, dir_num)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
 }
 
-int tiledb_ls_c(tiledb_ctx_t* ctx, const char* parent_dir, int* dir_num) {
+int tiledb_ls_c(tiledb_ctx_t* ctx, const char* parent_path, int* dir_num) {
   // TODO: sanity checks here
 
-  if (save_error(ctx, ctx->storage_manager_->ls_c(parent_dir, dir_num)))
+  auto parent_uri = tiledb::uri::URI(parent_path);
+  if (save_error(ctx, ctx->storage_manager_->ls_c(parent_uri, dir_num)))
     return TILEDB_ERR;
 
   return TILEDB_OK;

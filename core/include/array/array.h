@@ -190,11 +190,11 @@ class Array {
    * to be deleted outside this function).
    *
    * @param new_fragment The new fragment to be returned.
-   * @param old_fragment_names The names of the old fragments to be returned.
+   * @param old_fragments The names of the old fragments to be returned.
    * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
    */
   Status consolidate(
-      Fragment*& new_fragment, std::vector<std::string>& old_fragment_names);
+      Fragment*& new_fragment, std::vector<uri::URI>* old_fragments);
 
   /**
    * Consolidates all fragment into a new single one, focusing on a specific

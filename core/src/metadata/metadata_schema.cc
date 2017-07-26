@@ -57,8 +57,8 @@ MetadataSchema::MetadataSchema(const MetadataSchema* metadata_schema) {
   array_schema_ = new ArraySchema(metadata_schema->array_schema());
 }
 
-MetadataSchema::MetadataSchema(const char* metadata_name) {
-  array_schema_ = new ArraySchema(metadata_name);
+MetadataSchema::MetadataSchema(const uri::URI& uri) {
+  array_schema_ = new ArraySchema(uri);
   array_schema_->set_array_type(ArrayType::SPARSE);
   add_dimensions();
 }
@@ -72,8 +72,8 @@ MetadataSchema::~MetadataSchema() {
 /*              ACCESSORS            */
 /* ********************************* */
 
-const std::string& MetadataSchema::metadata_name() const {
-  return array_schema_->array_name();
+const uri::URI& MetadataSchema::metadata_uri() const {
+  return array_schema_->array_uri();
 }
 
 const ArraySchema* MetadataSchema::array_schema() const {

@@ -54,13 +54,13 @@ class BookKeeping {
    *
    * @param array_schema The array schema.
    * @param dense True if the fragment is dense, and false otherwise.
-   * @param fragment_name The name of the fragment this book-keeping belongs to.
+   * @param fragment_uri The id of the fragment this book-keeping belongs to.
    * @param mode The mode in which the fragment was initialized in.
    */
   BookKeeping(
       const ArraySchema* array_schema,
       bool dense,
-      const std::string& fragment_name,
+      const uri::URI& fragment_uri,
       ArrayMode mode);
 
   /** Destructor. */
@@ -212,8 +212,8 @@ class BookKeeping {
    * type of the domain must be the same as the type of the array coordinates.
    */
   void* domain_;
-  /** The name of the fragment the book-keeping belongs to. */
-  std::string fragment_name_;
+  /** The uri of the fragment the book-keeping belongs to. */
+  uri::URI fragment_uri_;
   /** Number of cells in the last tile (meaningful only in the sparse case). */
   int64_t last_tile_cell_num_;
   /** The MBRs (applicable only to the sparse case with irregular tiles). */

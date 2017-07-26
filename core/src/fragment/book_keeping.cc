@@ -51,11 +51,11 @@ namespace tiledb {
 BookKeeping::BookKeeping(
     const ArraySchema* array_schema,
     bool dense,
-    const std::string& fragment_name,
+    const uri::URI& fragment_uri,
     ArrayMode mode)
     : array_schema_(array_schema)
     , dense_(dense)
-    , fragment_name_(fragment_name)
+    , fragment_uri_(fragment_uri)
     , mode_(mode) {
   domain_ = nullptr;
   non_empty_domain_ = nullptr;
@@ -220,13 +220,13 @@ Status BookKeeping::finalize() {
     return Status::Ok();
 
   // Do nothing if the fragment directory does not exist (fragment empty)
-  if (!utils::fragment_exists(fragment_name_))
+  if (!utils::fragment_exists(fragment_uri_))
     return Status::Ok();
 
   // Prepare file name
-  std::string filename =
-      fragment_name_ + "/" + Configurator::bookkeeping_filename() +
-      Configurator::file_suffix() + Configurator::gzip_suffix();
+  std::string filename = fragment_uri_.to_posix_path();
+  filename = filename + "/" + Configurator::bookkeeping_filename() +
+             Configurator::file_suffix() + Configurator::gzip_suffix();
 
   // Open book-keeping file
   gzFile fd = gzopen(filename.c_str(), "wb");
@@ -335,9 +335,9 @@ Status BookKeeping::init(const void* non_empty_domain) {
  */
 Status BookKeeping::load() {
   // Prepare file name
-  std::string filename =
-      fragment_name_ + "/" + Configurator::bookkeeping_filename() +
-      Configurator::file_suffix() + Configurator::gzip_suffix();
+  std::string filename = fragment_uri_.to_posix_path();
+  filename = filename + "/" + Configurator::bookkeeping_filename() +
+             Configurator::file_suffix() + Configurator::gzip_suffix();
 
   // Open book-keeping file
   gzFile fd = gzopen(filename.c_str(), "rb");

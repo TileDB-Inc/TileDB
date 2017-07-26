@@ -65,7 +65,7 @@ ArraySchema::ArraySchema() {
   tile_extents_ = nullptr;
   tile_domain_ = nullptr;
   tile_coords_aux_ = nullptr;
-  array_name_ = "";
+  array_uri_ = uri::URI();
   array_type_ = ArrayType::DENSE;
   capacity_ = Configurator::capacity();
   cell_order_ = Layout::ROW_MAJOR;
@@ -73,7 +73,7 @@ ArraySchema::ArraySchema() {
 }
 
 ArraySchema::ArraySchema(const ArraySchema* array_schema) {
-  array_name_ = array_schema->array_name_;
+  array_uri_ = array_schema->array_uri_;
   array_type_ = array_schema->array_type_;
   Attributes_ = array_schema->Attributes_;
   attributes_ = array_schema->attributes_;
@@ -119,14 +119,14 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   }
 }
 
-ArraySchema::ArraySchema(const char* array_name) {
+ArraySchema::ArraySchema(const uri::URI& uri) {
   basic_array_ = false;
   cell_num_per_tile_ = -1;
   domain_ = nullptr;
   tile_extents_ = nullptr;
   tile_domain_ = nullptr;
   tile_coords_aux_ = nullptr;
-  array_name_ = filesystem::real_dir(array_name);
+  array_uri_ = filesystem::abs_path(uri);
   array_type_ = ArrayType::DENSE;
   capacity_ = Configurator::capacity();
   cell_order_ = Layout::ROW_MAJOR;
@@ -157,8 +157,8 @@ ArraySchema::~ArraySchema() {
 /*            ACCESSORS           */
 /* ****************************** */
 
-const std::string& ArraySchema::array_name() const {
-  return array_name_;
+const uri::URI& ArraySchema::array_uri() const {
+  return array_uri_;
 }
 
 ArrayType ArraySchema::array_type() const {
@@ -299,7 +299,7 @@ void ArraySchema::dump(FILE* out) const {
   const char* cell_order_s = utils::layout_str(cell_order_);
   const char* tile_order_s = utils::layout_str(tile_order_);
 
-  fprintf(out, "- Array name: %s\n", array_name_.c_str());
+  fprintf(out, "- Array name: %s\n", array_uri_.c_str());
   fprintf(out, "- Array type: %s\n", array_type_s);
   fprintf(out, "- Cell order: %s\n", cell_order_s);
   fprintf(out, "- Tile order: %s\n", tile_order_s);
@@ -426,12 +426,13 @@ Status ArraySchema::serialize(
   size_t offset = 0;
 
   // Copy array_name_
-  int array_name_size = array_name_.size();
+  std::string array_name = array_uri_.to_string();
+  int array_name_size = array_name.size();
   assert(offset + sizeof(int) < buffer_size);
   memcpy(buffer + offset, &array_name_size, sizeof(int));
   offset += sizeof(int);
   assert(offset + array_name_size < buffer_size);
-  memcpy(buffer + offset, &array_name_[0], array_name_size);
+  memcpy(buffer + offset, &array_name[0], array_name_size);
   offset += array_name_size;
   // Copy dense_
   assert(offset + sizeof(bool) < buffer_size);
@@ -528,6 +529,11 @@ Status ArraySchema::serialize(
   assert(offset == buffer_size);
 
   return Status::Ok();
+}
+
+// TODO: jcb
+Status ArraySchema::store(const uri::URI& parent, const char* schema) {
+  return ArraySchema::store(parent.to_string(), schema);
 }
 
 Status ArraySchema::store(const std::string& dir, const char* schema_filename) {
@@ -851,10 +857,12 @@ Status ArraySchema::deserialize(
   assert(offset + sizeof(int) < buffer_size);
   memcpy(&array_name_size, buffer + offset, sizeof(int));
   offset += sizeof(int);
-  array_name_.resize(array_name_size);
+  std::string array_name;
+  array_name.resize(array_name_size);
   assert(offset + array_name_size < buffer_size);
-  memcpy(&array_name_[0], buffer + offset, array_name_size);
+  memcpy(&array_name[0], buffer + offset, array_name_size);
   offset += array_name_size;
+  array_uri_ = uri::URI(array_name);
 
   // Load dense_
   assert(offset + sizeof(bool) < buffer_size);
@@ -1097,6 +1105,12 @@ Status ArraySchema::init() {
   return Status::Ok();
 }
 
+// TODO: uri
+Status ArraySchema::load(const uri::URI& parent, const char* schema) {
+  return ArraySchema::load(parent.to_string(), schema);
+}
+
+// TODO: uri
 Status ArraySchema::load(const std::string& dir, const char* schema_filename) {
   // Get real array path
   std::string real_dir = filesystem::real_dir(dir);
@@ -1143,12 +1157,8 @@ Status ArraySchema::load(const std::string& dir, const char* schema_filename) {
   return Status::Ok();
 }
 
-void ArraySchema::set_array_name(const char* array_name) {
-  // Get real array name
-  std::string array_name_real = filesystem::real_dir(array_name);
-
-  // Set array name
-  array_name_ = array_name_real;
+void ArraySchema::set_array_uri(const uri::URI& uri) {
+  array_uri_ = filesystem::abs_path(uri);
 }
 
 void ArraySchema::set_array_type(ArrayType array_type) {
@@ -1463,7 +1473,7 @@ int ArraySchema::tile_order_cmp(const T* coords_a, const T* coords_b) const {
 /* ****************************** */
 
 void ArraySchema::clear() {
-  array_name_ = "";
+  array_uri_ = uri::URI();
   attributes_.clear();
   capacity_ = -1;
   dimensions_.clear();
@@ -1511,7 +1521,7 @@ size_t ArraySchema::compute_bin_size() const {
   size_t bin_size = 0;
 
   // Size for array_name_
-  bin_size += sizeof(int) + array_name_.size();
+  bin_size += sizeof(int) + array_uri_.size();
   // Size for dense_
   bin_size += sizeof(bool);
   // Size for tile_order_ and cell_order_
