@@ -33,7 +33,7 @@
 #ifndef TILEDB_CONST_BUFFER_H
 #define TILEDB_CONST_BUFFER_H
 
-#include <inttypes.h>
+#include <cinttypes>
 
 namespace tiledb {
 
@@ -43,7 +43,7 @@ class ConstBuffer {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  ConstBuffer(const void* buffer, uint64_t buffer_size);
+  ConstBuffer(const void* data, uint64_t size);
 
   ~ConstBuffer();
 
@@ -51,20 +51,26 @@ class ConstBuffer {
   /*                API                */
   /* ********************************* */
 
-  bool end() const;
+  inline uint64_t bytes_left_to_read() const {
+    return size_ - offset_;
+  }
 
-  uint64_t read(void* buffer, uint64_t buffer_size);
+  void read(void* buffer, uint64_t bytes);
+
+  bool end() const {
+    return offset_ == size_;
+  }
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  const void* buffer_;
+  const void* data_;
 
-  uint64_t buffer_size_;
+  uint64_t offset_;
 
-  uint64_t buffer_offset_;
+  uint64_t size_;
 };
 
 }  // namespace tiledb

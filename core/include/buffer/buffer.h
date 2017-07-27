@@ -33,7 +33,9 @@
 #ifndef TILEDB_BUFFER_H
 #define TILEDB_BUFFER_H
 
-#include <inttypes.h>
+#include <cinttypes>
+
+#include "const_buffer.h"
 
 namespace tiledb {
 
@@ -43,7 +45,9 @@ class Buffer {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Buffer(void* buffer, uint64_t buffer_size);
+  Buffer();
+
+  Buffer(uint64_t size);
 
   ~Buffer();
 
@@ -51,18 +55,52 @@ class Buffer {
   /*                API                */
   /* ********************************* */
 
-  bool overflow() const;
+  inline void* data() const {
+    return data_;
+  }
+
+  inline uint64_t offset() const {
+    return offset_;
+  }
+
+  void realloc(uint64_t size);
+
+  inline void reset() {
+    offset_ = 0;
+    size_ = 0;
+  }
+
+  inline void reset_offset() {
+    offset_ = 0;
+  }
+
+  // TODO: this will be removed soon
+  inline void set_size(uint64_t size) {
+    size_ = size;
+  }
+
+  inline uint64_t size() const {
+    return size_;
+  }
+
+  inline uint64_t size_alloced() const {
+    return size_alloced_;
+  }
+
+  void write(ConstBuffer* buf);
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  void* buffer_;
+  void* data_;
 
-  uint64_t buffer_size_;
+  uint64_t offset_;
 
-  bool overflow_;
+  uint64_t size_;
+
+  uint64_t size_alloced_;
 };
 
 }  // namespace tiledb

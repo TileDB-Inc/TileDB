@@ -42,21 +42,26 @@ namespace tiledb {
 Tile::Tile() {
   buffer_ = nullptr;
   buffer_var_ = nullptr;
-  buffer_size_ = 0;
-  buffer_var_size_ = 0;
-  buffer_offset_ = 0;
-  buffer_var_offset_ = 0;
+  cell_size_ = 0;
+  compressor_ = Compressor::NO_COMPRESSION;
+  compression_level_ = -1;
   tile_size_ = 0;
+  type_ = Datatype::INT32;
 }
 
-Tile::Tile(uint64_t tile_size)
-    : tile_size_(tile_size) {
+Tile::Tile(
+    Datatype type,
+    Compressor compressor,
+    int compression_level,
+    uint64_t tile_size,
+    uint64_t cell_size)
+    : cell_size_(cell_size)
+    , compressor_(compressor)
+    , compression_level_(compression_level)
+    , tile_size_(tile_size)
+    , type_(type) {
   buffer_ = nullptr;
   buffer_var_ = nullptr;
-  buffer_size_ = 0;
-  buffer_var_size_ = 0;
-  buffer_offset_ = 0;
-  buffer_var_offset_ = 0;
 }
 
 Tile::~Tile() {
@@ -70,36 +75,22 @@ Tile::~Tile() {
 /*               API              */
 /* ****************************** */
 
-void* Tile::buffer() const {
-  return buffer_;
-}
-
-uint64_t Tile::buffer_size() const {
-  return buffer_size_;
-}
-
-bool Tile::full() const {
-  return buffer_offset_ == buffer_size_;
-}
-
 void Tile::reset() {
-  buffer_offset_ = 0;
-  buffer_var_offset_ = 0;
+  if (buffer_ != nullptr)
+    buffer_->reset_offset();
+  if (buffer_var_ != nullptr)
+    buffer_var_->reset_offset();
 }
 
-Status Tile::write(ConstBuffer* buf) {
-  if (buffer_ == nullptr) {
-    buffer_ = malloc(tile_size_);
-    buffer_size_ = tile_size_;
-  }
-
+Status Tile::write(ConstBuffer* const_buffer) {
   if (buffer_ == nullptr)
+    buffer_ = new Buffer(tile_size_);
+
+  if (buffer_->size() == 0)
     LOG_STATUS(
         Status::TileError("Cannot write into tile; Buffer allocation failed"));
 
-  uint64_t bytes_read =
-      buf->read((char*)buffer_ + buffer_offset_, buffer_size_ - buffer_offset_);
-  buffer_offset_ += bytes_read;
+  buffer_->write(const_buffer);
 
   return Status::Ok();
 }

@@ -32,7 +32,6 @@
 
 #include "const_buffer.h"
 
-#include <algorithm>
 #include <cstring>
 #include <iostream>
 
@@ -42,10 +41,10 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ConstBuffer::ConstBuffer(const void* buffer, uint64_t buffer_size)
-    : buffer_(buffer)
-    , buffer_size_(buffer_size) {
-  buffer_offset_ = 0;
+ConstBuffer::ConstBuffer(const void* data, uint64_t size)
+    : data_(data)
+    , size_(size) {
+  offset_ = 0;
 }
 
 ConstBuffer::~ConstBuffer() = default;
@@ -54,17 +53,9 @@ ConstBuffer::~ConstBuffer() = default;
 /*               API              */
 /* ****************************** */
 
-bool ConstBuffer::end() const {
-  return buffer_offset_ == buffer_size_;
-}
-
-uint64_t ConstBuffer::read(void* buffer, uint64_t buffer_size) {
-  uint64_t remaining_bytes = buffer_size_ - buffer_offset_;
-  uint64_t bytes_to_copy = std::min(remaining_bytes, buffer_size);
-  memcpy(buffer, (char*)buffer_ + buffer_offset_, bytes_to_copy);
-  buffer_offset_ += bytes_to_copy;
-
-  return bytes_to_copy;
+void ConstBuffer::read(void* buffer, uint64_t bytes) {
+  memcpy(buffer, (char*)data_ + offset_, bytes);
+  offset_ += bytes;
 }
 
 /* ****************************** */
