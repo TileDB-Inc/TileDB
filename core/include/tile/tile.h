@@ -33,6 +33,8 @@
 #ifndef TILEDB_TILE_H
 #define TILEDB_TILE_H
 
+#include "attribute.h"
+#include "buffer.h"
 #include "const_buffer.h"
 #include "status.h"
 
@@ -48,7 +50,12 @@ class Tile {
 
   Tile();
 
-  Tile(uint64_t tile_size);
+  Tile(
+      Datatype type,
+      Compressor compression,
+      int compression_level,
+      uint64_t tile_size,
+      uint64_t cell_size);
 
   ~Tile();
 
@@ -56,13 +63,39 @@ class Tile {
   /*                API                */
   /* ********************************* */
 
-  void* buffer() const;
+  inline void* buffer() const {
+    return buffer_->data();
+  }
 
-  uint64_t buffer_size() const;
+  inline uint64_t buffer_size() const {
+    return buffer_->size();
+  }
 
-  bool full() const;
+  inline uint64_t cell_size() const {
+    return cell_size_;
+  }
+
+  inline Compressor compressor() const {
+    return compressor_;
+  }
+
+  inline int compression_level() const {
+    return compression_level_;
+  }
+
+  inline bool full() const {
+    return buffer_->offset() == buffer_->size();
+  }
 
   void reset();
+
+  inline uint64_t tile_size() const {
+    return tile_size_;
+  }
+
+  inline Datatype type() const {
+    return type_;
+  }
 
   Status write(ConstBuffer* buf);
 
@@ -71,19 +104,19 @@ class Tile {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  void* buffer_;
+  Buffer* buffer_;
 
-  void* buffer_var_;
+  Buffer* buffer_var_;
 
-  uint64_t buffer_size_;
+  uint64_t cell_size_;
 
-  uint64_t buffer_var_size_;
+  Compressor compressor_;
 
-  uint64_t buffer_offset_;
-
-  uint64_t buffer_var_offset_;
+  int compression_level_;
 
   uint64_t tile_size_;
+
+  Datatype type_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

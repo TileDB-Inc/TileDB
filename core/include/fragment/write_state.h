@@ -145,10 +145,6 @@ class WriteState {
   /** The number of cells written in the current tile for each attribute. */
   std::vector<int64_t> tile_cell_num_;
 
-  std::vector<Tile*> Tiles_;
-
-  std::vector<TileIO*> tile_io_;
-
   /** Internal buffers used in the case of compression. */
   std::vector<void*> tiles_;
   /** Offsets to the internal variable tile buffers. */

@@ -46,10 +46,7 @@ class TileIO {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  TileIO(
-      const Configurator* config,
-      const uri::URI& fragment_name,
-      const Attribute* attr);
+  TileIO(const Configurator* config, const uri::URI& attr_filename);
 
   ~TileIO();
 
@@ -64,15 +61,9 @@ class TileIO {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  const Attribute* attr_;
-
   uri::URI attr_filename_;
 
-  void* buffer_;
-
-  uint64_t buffer_size_;
-
-  uint64_t buffer_size_alloced_;
+  Buffer* buffer_;
 
   const Configurator* config_;
 

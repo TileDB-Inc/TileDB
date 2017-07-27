@@ -32,26 +32,50 @@
 
 #include "buffer.h"
 
+#include <algorithm>
+#include <cstdlib>
+#include <cstring>
+
 namespace tiledb {
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Buffer::Buffer(void* buffer, uint64_t buffer_size) {
-  buffer_ = buffer;
-  buffer_size_ = buffer_size;
-  overflow_ = false;
+Buffer::Buffer() {
+  data_ = nullptr;
+  size_ = 0;
+  size_alloced_ = 0;
+  offset_ = 0;
 }
 
-Buffer::~Buffer() = default;
+Buffer::Buffer(uint64_t size) {
+  data_ = malloc(size);
+  size_ = (data_ != nullptr) ? size : 0;
+  size_alloced_ = size_;
+  offset_ = 0;
+}
+
+Buffer::~Buffer() {
+  if (data_ != nullptr)
+    free(data_);
+}
 
 /* ****************************** */
 /*               API              */
 /* ****************************** */
 
-bool Buffer::overflow() const {
-  return overflow_;
+void Buffer::realloc(uint64_t size) {
+  data_ = ::realloc(data_, size);
+}
+
+void Buffer::write(ConstBuffer* buf) {
+  uint64_t bytes_left_to_write = size_ - offset_;
+  uint64_t bytes_left_to_read = buf->bytes_left_to_read();
+  uint64_t bytes_to_copy = std::min(bytes_left_to_write, bytes_left_to_read);
+
+  buf->read(data_, bytes_to_copy);
+  offset_ += bytes_to_copy;
 }
 
 /* ****************************** */

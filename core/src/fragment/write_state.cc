@@ -73,18 +73,6 @@ WriteState::WriteState(const Fragment* fragment, BookKeeping* book_keeping)
   tiles_.resize(attribute_num + 1);
   for (int i = 0; i < attribute_num + 1; ++i)
     tiles_[i] = nullptr;
-  Tiles_.resize(attribute_num + 1);
-  for (int i = 0; i < attribute_num + 1; ++i)
-    Tiles_[i] = new Tile(fragment_->tile_size(i));
-
-  tile_io_.resize(attribute_num + 1);
-  for (int i = 0; i < attribute_num; ++i)
-    tile_io_[i] = new TileIO(
-        fragment_->array()->config(),
-        fragment_->fragment_uri(),
-        array_schema->Attributes()[i]);
-
-  // TODO: handle coordinates here
 
   // Initialize current variable tiles
   tiles_var_.resize(attribute_num);
@@ -128,12 +116,6 @@ WriteState::~WriteState() {
   for (int64_t i = 0; i < tile_num; ++i)
     if (tiles_[i] != nullptr)
       free(tiles_[i]);
-
-  for (auto& tile : Tiles_)
-    delete tile;
-
-  for (auto& tile_io : tile_io_)
-    delete tile_io;
 
   // Free current tiles
   int64_t tile_var_num = tiles_var_.size();
@@ -1092,10 +1074,19 @@ Status WriteState::write_dense_attr(
   if (buffer_size == 0)
     return Status::Ok();
 
-  // For easy reference
+  // Preparation
   auto buf = new ConstBuffer(buffer, buffer_size);
-  Tile* tile = Tiles_[attribute_id];
-  TileIO* tile_io = tile_io_[attribute_id];
+  const Attribute* attr =
+      fragment_->array()->array_schema()->Attributes()[attribute_id];
+  uri::URI attr_filename = fragment_->fragment_uri().join_path(
+      attr->name() + Configurator::file_suffix());
+  Tile* tile = new Tile(
+      attr->type(),
+      attr->compressor(),
+      attr->compression_level(),
+      fragment_->tile_size(attribute_id),
+      attr->cell_size());
+  TileIO* tile_io = new TileIO(fragment_->array()->config(), attr_filename);
 
   // Fill tiles and dispatch them for writing
   uint64_t bytes_written;
@@ -1110,6 +1101,8 @@ Status WriteState::write_dense_attr(
 
   // Clean up
   delete buf;
+  delete tile;
+  delete tile_io;
 
   return Status::Ok();
 }

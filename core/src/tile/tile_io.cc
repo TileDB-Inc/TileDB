@@ -49,22 +49,15 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-TileIO::TileIO(
-    const Configurator* config,
-    const uri::URI& fragment_name,
-    const Attribute* attr)
-    : attr_(attr)
+TileIO::TileIO(const Configurator* config, const uri::URI& attr_filename)
+    : attr_filename_(attr_filename)
     , config_(config) {
-  attr_filename_ = fragment_name.join_path(
-      "/" + attr_->name() + Configurator::file_suffix());
   buffer_ = nullptr;
-  buffer_size_ = 0;
-  buffer_size_alloced_ = 0;
 }
 
 TileIO::~TileIO() {
   if (buffer_ != nullptr)
-    free(buffer_);
+    delete buffer_;
 }
 
 /* ****************************** */
@@ -73,17 +66,19 @@ TileIO::~TileIO() {
 
 Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
   // Compress tile
-  // TODO: do not compress if not needed
-  // TODO: here we will put all other filters
-  // TODO: here we may have to chunk the tile before compression
+  // TODO: here we will put all other filters, and potentially employ chunking
+  // TODO: choose the proper buffer based on all filters, not just compression
 
   RETURN_NOT_OK(compress_tile(tile));
 
   // Prepare to write
   IOMethod write_method = config_->write_method();
-  void* buffer = (buffer_size_ == 0) ? tile->buffer() : buffer_;
-  uint64_t buffer_size =
-      (buffer_size_ == 0) ? tile->buffer_size() : buffer_size_;
+  Compressor compressor = tile->compressor();
+  void* buffer = (compressor == Compressor::NO_COMPRESSION) ? tile->buffer() :
+                                                              buffer_->data();
+  uint64_t buffer_size = (compressor == Compressor::NO_COMPRESSION) ?
+                             tile->buffer_size() :
+                             buffer_->size();
   *bytes_written = buffer_size;
 
   // Write based on the chosen method
@@ -115,11 +110,12 @@ Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
 
 Status TileIO::compress_tile(Tile* tile) {
   // For easy reference
-  Compressor compression = attr_->compressor();
-  int level = attr_->compression_level();
+  Compressor compression = tile->compressor();
+  int level = tile->compression_level();
 
-  // Reset size of written data in the buffer
-  buffer_size_ = 0;
+  // Reset buffer
+  if (buffer_ != nullptr)
+    buffer_->reset();
 
   // Handle different compression
   switch (compression) {
@@ -161,16 +157,10 @@ Status TileIO::compress_tile_gzip(Tile* tile, int level) {
   // Allocate space to store the compressed tile
   uint64_t tile_size = tile->buffer_size();
   uint64_t gzip_overhead = GZip::overhead(tile_size);
-  if (buffer_ == nullptr) {
-    buffer_size_alloced_ = tile_size + gzip_overhead;
-    buffer_ = malloc(buffer_size_alloced_);
-  }
-
-  // Expand compressed tile if necessary
-  if (tile_size + gzip_overhead > buffer_size_alloced_) {
-    buffer_size_alloced_ = tile_size + gzip_overhead;
-    buffer_ = realloc(buffer_, buffer_size_alloced_);
-  }
+  if (buffer_ == nullptr)
+    buffer_ = new Buffer(tile_size + gzip_overhead);
+  if (tile_size + gzip_overhead > buffer_->size_alloced())
+    buffer_->realloc(tile_size + gzip_overhead);
 
   /* // TODO: handle coordinates
 // Split dimensions
@@ -180,15 +170,16 @@ if (coords)
 
   // Compress tile
   size_t buffer_size;  // TODO: remove this, changing the compress signature
+  // TODO: These functions should take as input buffers instead
   RETURN_NOT_OK(GZip::compress(
-      utils::datatype_size(attr_->type()),
+      utils::datatype_size(tile->type()),
       level,
       tile->buffer(),
       tile_size,
-      buffer_,
-      buffer_size_alloced_,
+      buffer_->data(),
+      buffer_->size_alloced(),
       &buffer_size));
-  buffer_size_ = buffer_size;
+  buffer_->set_size(buffer_size);  // TODO: this will change
 
   return Status::Ok();
 }
@@ -199,17 +190,10 @@ Status TileIO::compress_tile_zstd(Tile* tile, int level) {
   // Allocate space to store the compressed tile
   uint64_t tile_size = tile->buffer_size();
   size_t compress_bound = ZStd::compress_bound(tile_size);
-
-  if (buffer_ == nullptr) {
-    buffer_size_alloced_ = compress_bound;
-    buffer_ = malloc(buffer_size_alloced_);
-  }
-
-  // Expand compressed tile if necessary
-  if (compress_bound > buffer_size_alloced_) {
-    buffer_size_alloced_ = compress_bound;
-    buffer_ = realloc(buffer_, buffer_size_alloced_);
-  }
+  if (buffer_ == nullptr)
+    buffer_ = new Buffer(compress_bound);
+  if (compress_bound > buffer_->size_alloced())
+    buffer_->realloc(compress_bound);
 
   /* TODO: handle coordinates.
 // Split dimensions
@@ -219,14 +203,14 @@ if (coords)
 
   size_t buffer_size;  // TODO: remove this, changing the compress signature
   RETURN_NOT_OK(ZStd::compress(
-      utils::datatype_size(attr_->type()),
+      utils::datatype_size(tile->type()),
       level,
       tile->buffer(),
       tile_size,
-      buffer_,
-      buffer_size_alloced_,
+      buffer_->data(),
+      buffer_->size_alloced(),
       &buffer_size));
-  buffer_size_ = buffer_size;
+  buffer_->set_size(buffer_size);
 
   return Status::Ok();
 }
@@ -237,17 +221,10 @@ Status TileIO::compress_tile_lz4(Tile* tile, int level) {
   // Allocate space to store the compressed tile
   uint64_t tile_size = tile->buffer_size();
   size_t compress_bound = LZ4::compress_bound(tile_size);
-
-  if (buffer_ == nullptr) {
-    buffer_size_alloced_ = compress_bound;
-    buffer_ = malloc(buffer_size_alloced_);
-  }
-
-  // Expand compressed tile if necessary
-  if (compress_bound > buffer_size_alloced_) {
-    buffer_size_alloced_ = compress_bound;
-    buffer_ = realloc(buffer_, buffer_size_alloced_);
-  }
+  if (buffer_ == nullptr)
+    buffer_ = new Buffer(compress_bound);
+  if (compress_bound > buffer_->size_alloced())
+    buffer_->realloc(compress_bound);
 
   /* TODO: handle coordinates.
 // Split dimensions
@@ -258,14 +235,14 @@ if (coords)
   // Compress tile
   size_t buffer_size;  // TODO: remove this, changing the compress signature
   RETURN_NOT_OK(LZ4::compress(
-      utils::datatype_size(attr_->type()),
+      utils::datatype_size(tile->type()),
       level,
       tile->buffer(),
       tile_size,
-      buffer_,
-      buffer_size_alloced_,
+      buffer_->data(),
+      buffer_->size_alloced(),
       &buffer_size));
-  buffer_size_ = buffer_size;
+  buffer_->set_size(buffer_size);
 
   // Success
   return Status::Ok();
@@ -278,17 +255,10 @@ Status TileIO::compress_tile_blosc(
   // Allocate space to store the compressed tile
   uint64_t tile_size = tile->buffer_size();
   size_t compress_bound = Blosc::compress_bound(tile_size);
-
-  if (buffer_ == nullptr) {
-    buffer_size_alloced_ = compress_bound;
-    buffer_ = malloc(buffer_size_alloced_);
-  }
-
-  // Expand compressed tile if necessary
-  if (compress_bound > buffer_size_alloced_) {
-    buffer_size_alloced_ = compress_bound;
-    buffer_ = realloc(buffer_, buffer_size_alloced_);
-  }
+  if (buffer_ == nullptr)
+    buffer_ = new Buffer(compress_bound);
+  if (compress_bound > buffer_->size_alloced())
+    buffer_->realloc(compress_bound);
 
   /* TODO: handle coordinates
 // Split dimensions
@@ -300,14 +270,14 @@ if (coords)
   size_t buffer_size;  // TODO: remove this, changing the compress signature
   RETURN_NOT_OK(Blosc::compress(
       compressor,
-      utils::datatype_size(attr_->type()),
+      utils::datatype_size(tile->type()),
       level,
       tile->buffer(),
       tile_size,
-      buffer_,
-      buffer_size_alloced_,
+      buffer_->data(),
+      buffer_->size_alloced(),
       &buffer_size));
-  buffer_size_ = buffer_size;
+  buffer_->set_size(buffer_size);
 
   return Status::Ok();
 }
@@ -335,19 +305,12 @@ Status TileIO::compress_tile_rle(Tile* tile, int level) {
         */
 
   uint64_t tile_size = tile->buffer_size();
-  uint64_t value_size = attr_->cell_size();
+  uint64_t value_size = tile->cell_size();
   size_t compress_bound = RLE::compress_bound(tile_size, value_size);
-
-  if (buffer_ == nullptr) {
-    buffer_size_alloced_ = compress_bound;
-    buffer_ = malloc(buffer_size_alloced_);
-  }
-
-  // Expand compressed tile if necessary
-  if (compress_bound > buffer_size_alloced_) {
-    buffer_size_alloced_ = compress_bound;
-    buffer_ = realloc(buffer_, buffer_size_alloced_);
-  }
+  if (buffer_ == nullptr)
+    buffer_ = new Buffer(compress_bound);
+  if (compress_bound > buffer_->size_alloced())
+    buffer_->realloc(compress_bound);
 
   // Compress tile
   size_t rle_size = 0;
@@ -357,10 +320,10 @@ Status TileIO::compress_tile_rle(Tile* tile, int level) {
       level,
       tile->buffer(),
       tile_size,
-      buffer_,
-      buffer_size_alloced_,
+      buffer_->data(),
+      buffer_->size_alloced(),
       &rle_size));
-  buffer_size_ = rle_size;
+  buffer_->set_size(rle_size);
 
   /* TODO: handle coordinates
 if(is_coords) {
@@ -410,17 +373,10 @@ Status TileIO::compress_tile_bzip2(Tile* tile, int level) {
   // Allocate space to store the compressed tile
   uint64_t tile_size = tile->buffer_size();
   size_t compress_bound = BZip::compress_bound(tile_size);
-
-  if (buffer_ == nullptr) {
-    buffer_size_alloced_ = compress_bound;
-    buffer_ = malloc(buffer_size_alloced_);
-  }
-
-  // Expand compressed tile if necessary
-  if (compress_bound > buffer_size_alloced_) {
-    buffer_size_alloced_ = compress_bound;
-    buffer_ = realloc(buffer_, buffer_size_alloced_);
-  }
+  if (buffer_ == nullptr)
+    buffer_ = new Buffer(compress_bound);
+  if (compress_bound > buffer_->size_alloced())
+    buffer_->realloc(compress_bound);
 
   /* TODO: handle coordinates.
 // Split dimensions
@@ -431,14 +387,14 @@ if (coords)
   // Compress tile
   size_t buffer_size;  // TODO: remove this, changing the compress signature
   RETURN_NOT_OK(BZip::compress(
-      utils::datatype_size(attr_->type()),
+      utils::datatype_size(tile->type()),
       level,
       tile->buffer(),
       tile_size,
-      buffer_,
-      buffer_size_alloced_,
+      buffer_->data(),
+      buffer_->size_alloced(),
       &buffer_size));
-  buffer_size_ = buffer_size;
+  buffer_->set_size(buffer_size);
 
   // Success
   return Status::Ok();
