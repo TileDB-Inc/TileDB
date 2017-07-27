@@ -147,6 +147,9 @@ class WriteState {
 
   /** Internal buffers used in the case of compression. */
   std::vector<void*> tiles_;
+
+  std::vector<Tile*> Tiles_;
+
   /** Offsets to the internal variable tile buffers. */
   std::vector<size_t> tiles_var_offsets_;
   /** Internal buffers used in the case of compression for variable tiles. */

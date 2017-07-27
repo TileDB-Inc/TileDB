@@ -74,6 +74,18 @@ WriteState::WriteState(const Fragment* fragment, BookKeeping* book_keeping)
   for (int i = 0; i < attribute_num + 1; ++i)
     tiles_[i] = nullptr;
 
+    // Initialize tiles
+    for (int i = 0; i < attribute_num; ++i) {
+      const Attribute* attr = array_schema->Attributes()[i];
+      Tiles_.emplace_back(new Tile(
+              attr->type(),
+              attr->compressor(),
+              attr->compression_level(),
+              fragment_->tile_size(i),
+              attr->cell_size()));
+    }
+      // TODO: handle coordinates here
+
   // Initialize current variable tiles
   tiles_var_.resize(attribute_num);
   for (int i = 0; i < attribute_num; ++i)
@@ -126,6 +138,9 @@ WriteState::~WriteState() {
   // Free current compressed tile buffer
   if (tile_compressed_ != nullptr)
     free(tile_compressed_);
+
+  for(auto& tile : Tiles_)
+    delete tile;
 
   // Free current MBR
   if (mbr_ != nullptr)
@@ -1076,16 +1091,14 @@ Status WriteState::write_dense_attr(
 
   // Preparation
   auto buf = new ConstBuffer(buffer, buffer_size);
+
+  Tile* tile = Tiles_[attribute_id];
   const Attribute* attr =
-      fragment_->array()->array_schema()->Attributes()[attribute_id];
+          fragment_->array()->array_schema()->Attributes()[attribute_id];
   uri::URI attr_filename = fragment_->fragment_uri().join_path(
-      attr->name() + Configurator::file_suffix());
-  Tile* tile = new Tile(
-      attr->type(),
-      attr->compressor(),
-      attr->compression_level(),
-      fragment_->tile_size(attribute_id),
-      attr->cell_size());
+          attr->name() + Configurator::file_suffix());
+
+
   TileIO* tile_io = new TileIO(fragment_->array()->config(), attr_filename);
 
   // Fill tiles and dispatch them for writing
@@ -1101,7 +1114,6 @@ Status WriteState::write_dense_attr(
 
   // Clean up
   delete buf;
-  delete tile;
   delete tile_io;
 
   return Status::Ok();
