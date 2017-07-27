@@ -38,6 +38,8 @@
 #include <vector>
 #include "book_keeping.h"
 #include "fragment.h"
+#include "tile.h"
+#include "tile_io.h"
 
 namespace tiledb {
 
@@ -142,6 +144,11 @@ class WriteState {
   void* mbr_;
   /** The number of cells written in the current tile for each attribute. */
   std::vector<int64_t> tile_cell_num_;
+
+  std::vector<Tile*> Tiles_;
+
+  std::vector<TileIO*> tile_io_;
+
   /** Internal buffers used in the case of compression. */
   std::vector<void*> tiles_;
   /** Offsets to the internal variable tile buffers. */
@@ -422,30 +429,6 @@ class WriteState {
    * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
    */
   Status write_dense_attr(
-      int attribute_id, const void* buffer, size_t buffer_size);
-
-  /**
-   * Performs the write operation for the case of a dense fragment, focusing
-   * on a single fixed-sized attribute and the case of no compression.
-   *
-   * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffer See write().
-   * @param buffer_size See write().
-   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
-   */
-  Status write_dense_attr_cmp_none(
-      int attribute_id, const void* buffer, size_t buffer_size);
-
-  /**
-   * Performs the write operation for the case of a dense fragment, focusing
-   * on a single fixed-sized attribute and the case of any compression.
-   *
-   * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffer See write().
-   * @param buffer_size See write().
-   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
-   */
-  Status write_dense_attr_cmp(
       int attribute_id, const void* buffer, size_t buffer_size);
 
   /**

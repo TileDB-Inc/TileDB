@@ -179,6 +179,8 @@ struct DenseArrayFx {
     tiledb_attribute_t* a;
     rc = tiledb_attribute_create(ctx_, &a, ATTR_NAME, ATTR_TYPE);
     REQUIRE(rc == TILEDB_OK);
+    //    rc = tiledb_attribute_set_compressor(ctx_, a, TILEDB_GZIP, -1);
+    //    REQUIRE(rc == TILEDB_OK);
 
     // Create dimensions
     tiledb_dimension_t* d1;
@@ -650,7 +652,6 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted reads") {
  * Tests random 2D subarray writes.
  */
 
-/* // TODO remove
 TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted writes") {
   // Error code
   int rc;
@@ -734,12 +735,10 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted writes") {
     delete[] read_buffer;
   }
 }
- */
 
 /**
  * Test random updates in a 2D dense array.
  */
-/*
 TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates") {
   // Error code
   int rc;
@@ -819,4 +818,3 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates") {
   delete[] buffer_a1;
   delete[] buffer_coords;
 }
- */

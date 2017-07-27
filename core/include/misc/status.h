@@ -94,7 +94,9 @@ enum class StatusCode : char {
   MMap,
   GZip,
   Compression,
-  AIO
+  AIO,
+  Tile,
+  TileIO
 };
 
 class Status {
@@ -218,6 +220,16 @@ class Status {
   /** Return a ArrayError error class Status with a given message **/
   static Status AIOError(const std::string& msg) {
     return Status(StatusCode::AIO, msg, -1);
+  }
+
+  /** Return a TileError error class Status with a given message **/
+  static Status TileError(const std::string& msg) {
+    return Status(StatusCode::Tile, msg, -1);
+  }
+
+  /** Return a TileIOError error class Status with a given message **/
+  static Status TileIOError(const std::string& msg) {
+    return Status(StatusCode::TileIO, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/
