@@ -309,6 +309,9 @@ class ArraySortedReadState {
   /** Used to handle overflow. */
   bool resume_copy_;
 
+  /** Used to handle overflow. */
+  bool resume_copy_2_;
+
   /** The query subarray. */
   void* subarray_;
 

@@ -70,6 +70,7 @@ ArraySortedReadState::ArraySortedReadState(Array* array)
   dim_num_ = array_schema->dim_num();
   read_tile_slabs_done_ = false;
   resume_copy_ = false;
+  resume_copy_2_ = false;
   tile_coords_ = nullptr;
   tile_domain_ = nullptr;
   for (int i = 0; i < 2; ++i) {
@@ -2082,12 +2083,11 @@ Status ArraySortedReadState::read_dense_sorted_col() {
     return array_->read_default(
         copy_state_.buffers_, copy_state_.buffer_sizes_);
 
-  // Handle resume copy
-  if (resume_copy_) {
-    reset_buffer_sizes_tmp(copy_id_);
-    resume_copy_ = false;
-    goto copy_label;  // This simplifies SIGNIFICANTLY the code
-  }
+  // These gotos SIGNIFICANTLY simplify the resume from overflow logic
+  if (resume_copy_)
+    goto copy_label_1;
+  if (resume_copy_2_)
+    goto copy_label_2;
 
   // First AIO
   if (next_tile_slab_dense_col<T>()) {
@@ -2110,12 +2110,13 @@ Status ArraySortedReadState::read_dense_sorted_col() {
     aio_wait(copy_id_);
 
     // Copy tile slab
-  copy_label:
     if (copy_tile_slab_done())
       reset_tile_slab_state<T>();
+
+  copy_label_1:  // Resume from the point the copy led to overflow
+    resume_copy_ = false;
     copy_tile_slab_dense();
 
-    // Handle overflow here
     if (overflow()) {
       resume_copy_ = true;
       break;
@@ -2125,10 +2126,16 @@ Status ArraySortedReadState::read_dense_sorted_col() {
   if (!resume_copy_) {
     copy_id_ = (copy_id_ + 1) % 2;
     aio_wait(copy_id_);
+
     if (copy_tile_slab_done())
       reset_tile_slab_state<T>();
 
+  copy_label_2:  // Resume from the point the copy led to overflow
+    resume_copy_2_ = false;
     copy_tile_slab_dense();
+
+    if (overflow())
+      resume_copy_2_ = true;
   }
 
   // Assign the true buffer sizes
@@ -2150,12 +2157,11 @@ Status ArraySortedReadState::read_dense_sorted_row() {
     return array_->read_default(
         copy_state_.buffers_, copy_state_.buffer_sizes_);
 
-  // Handle resume copy
-  if (resume_copy_) {
-    reset_buffer_sizes_tmp(copy_id_);
-    resume_copy_ = false;
-    goto copy_label;  // This simplifies SIGNIFICANTLY the code
-  }
+  // These gotos SIGNIFICANTLY simplify the resume from overflow logic
+  if (resume_copy_)
+    goto copy_label_1;
+  if (resume_copy_2_)
+    goto copy_label_2;
 
   // First AIO
   if (next_tile_slab_dense_row<T>()) {
@@ -2178,9 +2184,11 @@ Status ArraySortedReadState::read_dense_sorted_row() {
     aio_wait(copy_id_);
 
     // Copy tile slab
-  copy_label:
     if (copy_tile_slab_done())
       reset_tile_slab_state<T>();
+
+  copy_label_1:  // Resume from the point the copy led to overflow
+    resume_copy_ = false;
     copy_tile_slab_dense();
 
     // Handle overflow here
@@ -2196,7 +2204,12 @@ Status ArraySortedReadState::read_dense_sorted_row() {
     if (copy_tile_slab_done())
       reset_tile_slab_state<T>();
 
+  copy_label_2:  // Resume from the point the copy led to overflow
+    resume_copy_2_ = false;
     copy_tile_slab_dense();
+
+    if (overflow())
+      resume_copy_2_ = true;
   }
 
   // Assign the true buffer sizes
@@ -2218,12 +2231,11 @@ Status ArraySortedReadState::read_sparse_sorted_col() {
     return array_->read_default(
         copy_state_.buffers_, copy_state_.buffer_sizes_);
 
-  // Handle resume copy
-  if (resume_copy_) {
-    reset_buffer_sizes_tmp(copy_id_);
-    resume_copy_ = false;
-    goto copy_label;  // This simplifies SIGNIFICANTLY the code
-  }
+  // These gotos SIGNIFICANTLY simplify the resume from overflow logic
+  if (resume_copy_)
+    goto copy_label_1;
+  if (resume_copy_2_)
+    goto copy_label_2;
 
   // First AIO
   if (next_tile_slab_sparse_col<T>()) {
@@ -2246,11 +2258,13 @@ Status ArraySortedReadState::read_sparse_sorted_col() {
     aio_wait(copy_id_);
 
     // Copy tile slab
-  copy_label:
     if (copy_tile_slab_done()) {
       reset_tile_slab_state<T>();
       sort_cell_pos<T>();
     }
+
+  copy_label_1:  // Resume from the point the copy led to overflow
+    resume_copy_ = false;
     copy_tile_slab_sparse();
 
     // Handle overflow here
@@ -2268,7 +2282,12 @@ Status ArraySortedReadState::read_sparse_sorted_col() {
       sort_cell_pos<T>();
     }
 
+  copy_label_2:  // Resume from the point the copy led to overflow
+    resume_copy_2_ = false;
     copy_tile_slab_sparse();
+
+    if (overflow())
+      resume_copy_2_ = true;
   }
 
   // Assign the true buffer sizes
@@ -2290,12 +2309,11 @@ Status ArraySortedReadState::read_sparse_sorted_row() {
     return array_->read_default(
         copy_state_.buffers_, copy_state_.buffer_sizes_);
 
-  // Handle resume copy
-  if (resume_copy_) {
-    reset_buffer_sizes_tmp(copy_id_);
-    resume_copy_ = false;
-    goto copy_label;  // This simplifies SIGNIFICANTLY the code
-  }
+  // These gotos SIGNIFICANTLY simplify the resume from overflow logic
+  if (resume_copy_)
+    goto copy_label_1;
+  if (resume_copy_2_)
+    goto copy_label_2;
 
   // First AIO
   if (next_tile_slab_sparse_row<T>()) {
@@ -2318,11 +2336,14 @@ Status ArraySortedReadState::read_sparse_sorted_row() {
     aio_wait(copy_id_);
 
     // Copy tile slab
-  copy_label:
     if (copy_tile_slab_done()) {
       reset_tile_slab_state<T>();
       sort_cell_pos<T>();
     }
+
+  copy_label_1:  // Resume from the point the copy led to overflow
+    resume_copy_ = false;
+
     copy_tile_slab_sparse();
 
     // Handle overflow here
@@ -2340,7 +2361,12 @@ Status ArraySortedReadState::read_sparse_sorted_row() {
       sort_cell_pos<T>();
     }
 
+  copy_label_2:  // Resume from the point the copy led to overflow
+    resume_copy_2_ = false;
     copy_tile_slab_sparse();
+
+    if (overflow())
+      resume_copy_2_ = true;
   }
 
   // Assign the true buffer sizes

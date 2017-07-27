@@ -50,13 +50,13 @@ int main() {
       ctx,                                       // Context
       &tiledb_array,                                    // Array object
       "my_group/dense_arrays/my_array_A",               // Array name
-      TILEDB_ARRAY_READ_SORTED_COL,                                // Mode
+      TILEDB_ARRAY_READ_SORTED_ROW,                                // Mode
       subarray,                                         // Constrain in subarray
       attributes,                                       // Subset on attributes
       1);                                               // Number of attributes
 
   // Prepare cell buffers 
-  int buffer_a1[3];
+  int buffer_a1[4];
   void* buffers[] = { buffer_a1 };
   size_t buffer_sizes[] = { sizeof(buffer_a1) };
 
