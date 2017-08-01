@@ -58,10 +58,19 @@ Status LZ4::compress(
   // input. need something better than an assertion here
   assert(input_buffer_size <= std::numeric_limits<int>::max());
   assert(output_buffer_size <= std::numeric_limits<int>::max());
+#if LZ4_VERSION_NUMBER >= 10705
+  int ret = LZ4_compress_default(
+      static_cast<char*>(input_buffer),
+      static_cast<char*>(output_buffer),
+      input_buffer_size,
+      output_buffer_size);
+#else
+  // deprecated lz4 api
   int ret = LZ4_compress(
       static_cast<char*>(input_buffer),
       static_cast<char*>(output_buffer),
       input_buffer_size);
+#endif
   if (ret < 0) {
     return Status::CompressionError("LZ4 compression failed");
   }
