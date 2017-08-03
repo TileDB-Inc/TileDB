@@ -215,6 +215,10 @@ const std::vector<Attribute*>& ArraySchema::Attributes() const {
   return Attributes_;
 }
 
+const std::vector<Dimension*>& ArraySchema::Dimensions() const {
+  return Dimensions_;
+}
+
 int64_t ArraySchema::capacity() const {
   return capacity_;
 }

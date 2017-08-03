@@ -60,9 +60,6 @@ int main() {
   void* buffers[] = { buffer_a1 };
   size_t buffer_sizes[] = { sizeof(buffer_a1) };
 
-  /* TODO: handle deletions through an API
-
-
   // Loop until no overflow
   printf(" a1\n----\n");
   do {
@@ -73,13 +70,10 @@ int main() {
 
     // Print cell values
     int64_t result_num = buffer_sizes[0] / sizeof(int);
-    for(int i=0; i<result_num; ++i) { 
-      if(buffer_a1[i] != TILEDB_EMPTY_INT32) // Check for deletion
-        printf("%3d\n", buffer_a1[i]);
-    }
+    for(int i=0; i<result_num; ++i)
+      printf("%3d\n", buffer_a1[i]);
   } while(tiledb_array_overflow(tiledb_array, 0) == 1);
-   */
- 
+
   // Finalize the array
   tiledb_array_finalize(tiledb_array);
 

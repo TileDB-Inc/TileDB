@@ -33,6 +33,8 @@
 #include "tile.h"
 #include "logger.h"
 
+#include <iostream>
+
 namespace tiledb {
 
 /* ****************************** */
@@ -41,7 +43,6 @@ namespace tiledb {
 
 Tile::Tile() {
   buffer_ = nullptr;
-  buffer_var_ = nullptr;
   cell_size_ = 0;
   compressor_ = Compressor::NO_COMPRESSION;
   compression_level_ = -1;
@@ -61,26 +62,16 @@ Tile::Tile(
     , tile_size_(tile_size)
     , type_(type) {
   buffer_ = nullptr;
-  buffer_var_ = nullptr;
 }
 
 Tile::~Tile() {
   if (buffer_ != nullptr)
-    free(buffer_);
-  if (buffer_var_ != nullptr)
     free(buffer_);
 }
 
 /* ****************************** */
 /*               API              */
 /* ****************************** */
-
-void Tile::reset() {
-  if (buffer_ != nullptr)
-    buffer_->reset_offset();
-  if (buffer_var_ != nullptr)
-    buffer_var_->reset_offset();
-}
 
 Status Tile::write(ConstBuffer* const_buffer) {
   if (buffer_ == nullptr)
@@ -91,6 +82,19 @@ Status Tile::write(ConstBuffer* const_buffer) {
         Status::TileError("Cannot write into tile; Buffer allocation failed"));
 
   buffer_->write(const_buffer);
+
+  return Status::Ok();
+}
+
+Status Tile::write(ConstBuffer* const_buffer, uint64_t bytes) {
+  if (buffer_ == nullptr)
+    buffer_ = new Buffer(tile_size_);
+
+  if (buffer_->size() == 0)
+    LOG_STATUS(
+        Status::TileError("Cannot write into tile; Buffer allocation failed"));
+
+  buffer_->write(const_buffer, bytes);
 
   return Status::Ok();
 }

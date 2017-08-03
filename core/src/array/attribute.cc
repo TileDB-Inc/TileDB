@@ -76,7 +76,7 @@ unsigned int Attribute::cell_val_num() const {
 
 uint64_t Attribute::cell_size() const {
   if (var_size())
-    return Configurator::var_size();
+    return Configurator::cell_var_offset_size();
   else
     return cell_val_num_ * utils::datatype_size(type_);
 }

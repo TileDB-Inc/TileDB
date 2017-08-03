@@ -1255,6 +1255,7 @@ void ReadState::compute_tile_search_range_col_or_row() {
 
 Status ReadState::decompress_tile(
     int attribute_id,
+    uint64_t cell_size,
     unsigned char* tile_compressed,
     size_t tile_compressed_size,
     unsigned char* tile,
@@ -1291,7 +1292,12 @@ Status ReadState::decompress_tile(
           attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
     case Compressor::RLE:
       return decompress_tile_rle(
-          attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
+          attribute_id,
+          cell_size,
+          tile_compressed,
+          tile_compressed_size,
+          tile,
+          tile_size);
     case Compressor::BZIP2:
       return decompress_tile_bzip2(
           attribute_id, tile_compressed, tile_compressed_size, tile, tile_size);
@@ -1323,10 +1329,6 @@ Status ReadState::decompress_tile_gzip(
       tile_size,
       &out_size));
 
-  // Zip coordinates
-  if (coords)
-    utils::zip_coordinates(tile, tile_size, dim_num, coords_size);
-
   return Status::Ok();
 }
 
@@ -1352,10 +1354,6 @@ Status ReadState::decompress_tile_zstd(
       tile,
       tile_size,
       &out_size));
-
-  // Zip coordinates
-  if (coords)
-    utils::zip_coordinates(tile, tile_size, dim_num, coords_size);
 
   // Success
   return Status::Ok();
@@ -1383,10 +1381,6 @@ Status ReadState::decompress_tile_lz4(
       tile_size,
       &out_size));
 
-  // Zip coordinates
-  if (coords)
-    utils::zip_coordinates(tile, tile_size, dim_num, coords_size);
-
   // Success
   return Status::Ok();
 }
@@ -1413,63 +1407,28 @@ Status ReadState::decompress_tile_blosc(
       tile_size,
       &out_size));
 
-  // Zip coordinates
-  if (coords)
-    utils::zip_coordinates(tile, tile_size, dim_num, coords_size);
-
   // Success
   return Status::Ok();
 }
 
 Status ReadState::decompress_tile_rle(
     int attribute_id,
+    uint64_t value_size,
     unsigned char* tile_compressed,
     size_t tile_compressed_size,
     unsigned char* tile,
     size_t tile_size) {
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int dim_num = array_schema->dim_num();
-  Layout order = array_schema->cell_order();
-  bool is_coords = (attribute_id == attribute_num_);
-  size_t value_size = (array_schema->var_size(attribute_id) || is_coords) ?
-                          array_schema->type_size(attribute_id) :
-                          array_schema->cell_size(attribute_id);
-
   // Decompress tile
   Status st;
-  if (!is_coords) {
-    size_t out_size;
-    st = RLE::decompress(
-        value_size,
-        tile_compressed_,
-        tile_compressed_size,
-        tile,
-        tile_size,
-        &out_size);
-  } else {
-    if (order == Layout::ROW_MAJOR) {
-      st = utils::RLE_decompress_coords_row(
-          (unsigned char*)tile_compressed_,
-          tile_compressed_size,
-          tile,
-          tile_size,
-          value_size,
-          dim_num);
-    } else if (order == Layout::COL_MAJOR) {
-      st = utils::RLE_decompress_coords_col(
-          (unsigned char*)tile_compressed_,
-          tile_compressed_size,
-          tile,
-          tile_size,
-          value_size,
-          dim_num);
-    } else {  // Error
-      assert(0);
-      return LOG_STATUS(Status::Error(
-          "Failed decompressing with RLE; unsupported cell order"));
-    }
-  }
+  size_t out_size;
+  st = RLE::decompress(
+      value_size,
+      tile_compressed,
+      tile_compressed_size,
+      tile,
+      tile_size,
+      &out_size);
+
   return st;
 }
 
@@ -1495,10 +1454,6 @@ Status ReadState::decompress_tile_bzip2(
       tile,
       tile_size,
       &out_size));
-
-  // Zip coordinates
-  if (coords)
-    utils::zip_coordinates(tile, tile_size, dim_num, coords_size);
 
   return Status::Ok();
 }
@@ -2158,6 +2113,7 @@ Status ReadState::prepare_tile_for_reading_cmp(
   // Decompress tile
   RETURN_NOT_OK(decompress_tile(
       attribute_id,
+      array_schema_->cell_size(attribute_id),
       static_cast<unsigned char*>(tile_compressed_),
       tile_compressed_size,
       static_cast<unsigned char*>(tiles_[attribute_id]),
@@ -2281,6 +2237,7 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
   // Decompress tile
   RETURN_NOT_OK(decompress_tile(
       attribute_id,
+      cell_size,
       static_cast<unsigned char*>(tile_compressed_),
       tile_compressed_size,
       static_cast<unsigned char*>(tiles_[attribute_id]),
@@ -2349,9 +2306,11 @@ Status ReadState::prepare_tile_for_reading_var_cmp(
                         "not supported"));
 #endif
     }
+
     // Decompress tile
     RETURN_NOT_OK(decompress_tile(
         attribute_id,
+        array_schema_->type_size(attribute_id),
         static_cast<unsigned char*>(tile_compressed_),
         tile_compressed_size,
         static_cast<unsigned char*>(tiles_var_[attribute_id]),

@@ -528,6 +528,7 @@ class ReadState {
    */
   Status decompress_tile(
       int attribute_id,
+      uint64_t cell_size,
       unsigned char* tile_compressed,
       size_t tile_compressed_size,
       unsigned char* tile,
@@ -618,6 +619,7 @@ class ReadState {
    */
   Status decompress_tile_rle(
       int attribute_id,
+      uint64_t value_size,
       unsigned char* tile_compressed,
       size_t tile_compressed_size,
       unsigned char* tile,

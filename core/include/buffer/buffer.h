@@ -75,6 +75,11 @@ class Buffer {
   }
 
   // TODO: this will be removed soon
+  inline void set_offset(uint64_t offset) {
+    offset_ = offset;
+  }
+
+  // TODO: this will be removed soon
   inline void set_size(uint64_t size) {
     size_ = size;
   }
@@ -87,7 +92,19 @@ class Buffer {
     return size_alloced_;
   }
 
+  template <class T>
+  inline T value(uint64_t offset) {
+    return ((T*)(((char*)data_) + offset))[0];
+  }
+
+  template <class T>
+  inline T value() {
+    return ((T*)(((char*)data_) + offset_))[0];
+  }
+
   void write(ConstBuffer* buf);
+
+  void write(ConstBuffer* buf, uint64_t bytes);
 
  private:
   /* ********************************* */

@@ -67,6 +67,7 @@ Buffer::~Buffer() {
 
 void Buffer::realloc(uint64_t size) {
   data_ = ::realloc(data_, size);
+  size_alloced_ = size;
 }
 
 void Buffer::write(ConstBuffer* buf) {
@@ -76,6 +77,14 @@ void Buffer::write(ConstBuffer* buf) {
 
   buf->read(data_, bytes_to_copy);
   offset_ += bytes_to_copy;
+}
+
+void Buffer::write(ConstBuffer* buf, uint64_t bytes) {
+  while (offset_ + bytes > size_alloced_)
+    realloc(2 * size_alloced_);
+
+  buf->read(data_, bytes);
+  offset_ += bytes;
 }
 
 /* ****************************** */
