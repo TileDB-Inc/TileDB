@@ -63,12 +63,12 @@ class Tile {
   /*                API                */
   /* ********************************* */
 
-  inline void* buffer() const {
+  inline void* data() const {
     return buffer_->data();
   }
 
-  inline uint64_t buffer_size() const {
-    return buffer_->size();
+  inline uint64_t offset() const {
+    return (buffer_ == nullptr) ? 0 : buffer_->offset();
   }
 
   inline uint64_t cell_size() const {
@@ -83,21 +83,36 @@ class Tile {
     return compression_level_;
   }
 
+  inline bool empty() const {
+    return buffer_ == nullptr || buffer_->offset() == 0;
+  }
+
   inline bool full() const {
     return buffer_->offset() == buffer_->size();
   }
 
-  void reset();
-
-  inline uint64_t tile_size() const {
-    return tile_size_;
+  inline void reset() {
+    if (buffer_ != nullptr)
+      buffer_->reset_offset();
   }
 
   inline Datatype type() const {
     return type_;
   }
 
+  template <class T>
+  inline T value(uint64_t offset) {
+    return buffer_->value<T>(offset);
+  }
+
+  template <class T>
+  inline T value() {
+    return buffer_->value<T>();
+  }
+
   Status write(ConstBuffer* buf);
+
+  Status write(ConstBuffer* buf, uint64_t bytes);
 
  private:
   /* ********************************* */
@@ -105,8 +120,6 @@ class Tile {
   /* ********************************* */
 
   Buffer* buffer_;
-
-  Buffer* buffer_var_;
 
   uint64_t cell_size_;
 

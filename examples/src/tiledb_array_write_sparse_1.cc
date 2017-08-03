@@ -52,13 +52,13 @@ int main() {
   int buffer_a1[] = { 0, 1, 2, 3, 4, 5, 6, 7 };
   size_t buffer_a2[] = { 0, 1, 3, 6, 10, 11, 13, 16 };
   const char buffer_var_a2[] = "abbcccddddeffggghhhh";
-  float buffer_a3[] = 
+  float buffer_a3[] =
   {
       0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,
-      4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2 
+      4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2
   };
   int64_t buffer_coords[] = { 1, 1, 1, 2, 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4 };
-  const void* buffers[] = 
+  const void* buffers[] =
       { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
   size_t buffer_sizes[] = 
   { 

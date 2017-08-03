@@ -55,10 +55,28 @@ class ConstBuffer {
     return size_ - offset_;
   }
 
+  inline const void* data() const {
+    return data_;
+  }
+
+  inline uint64_t offset() const {
+    return offset_;
+  }
+
+  inline bool end() const {
+    return offset_ == size_;
+  }
+
   void read(void* buffer, uint64_t bytes);
 
-  bool end() const {
-    return offset_ == size_;
+  template <class T>
+  inline T value(uint64_t offset) {
+    return ((const T*)(((const char*)data_) + offset))[0];
+  }
+
+  template <class T>
+  inline T value() {
+    return ((const T*)(((const char*)data_) + offset_))[0];
   }
 
  private:

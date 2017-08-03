@@ -34,6 +34,8 @@
 
 #include "tiledb.h"
 
+#include <iostream>
+
 int main() {
   // Initialize context with the default configuration parameters
   tiledb_ctx_t* ctx;
@@ -64,7 +66,7 @@ int main() {
   };
 
   // Write to array - #1
-  tiledb_array_write(tiledb_array, buffers, buffer_sizes); 
+  tiledb_array_write(tiledb_array, buffers, buffer_sizes);
 
   // Prepare cell buffers - #2
   int buffer_a1_2[] = { 6,  7, 8,  9,  10, 11, 12, 13, 14, 15 };
@@ -87,7 +89,9 @@ int main() {
   };
 
   // Write to array - #2
-  tiledb_array_write(tiledb_array, buffers_2, buffer_sizes_2); 
+  tiledb_array_write(tiledb_array, buffers_2, buffer_sizes_2);
+
+  std::cout  << "3\n";
 
   // Finalize array
   tiledb_array_finalize(tiledb_array);

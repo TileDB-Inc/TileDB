@@ -114,6 +114,8 @@ class ArraySchema {
   /** Returns the attributes. */
   const std::vector<Attribute*>& Attributes() const;
 
+  const std::vector<Dimension*>& Dimensions() const;
+
   /** Returns the capacity. */
   int64_t capacity() const;
 
