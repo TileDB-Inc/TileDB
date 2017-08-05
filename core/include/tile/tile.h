@@ -55,7 +55,14 @@ class Tile {
       Compressor compression,
       int compression_level,
       uint64_t tile_size,
-      uint64_t cell_size);
+      uint64_t cell_size,
+      bool stores_offsets = false);
+
+  Tile(
+      Datatype type,
+      Compressor compression,
+      uint64_t cell_size,
+      bool stores_offsets = false);
 
   ~Tile();
 
@@ -63,12 +70,15 @@ class Tile {
   /*                API                */
   /* ********************************* */
 
-  inline void* data() const {
-    return buffer_->data();
-  }
+  void advance_offset(uint64_t bytes);
 
-  inline uint64_t offset() const {
-    return (buffer_ == nullptr) ? 0 : buffer_->offset();
+  void alloc(uint64_t);
+
+  inline void* data() const {
+    if (buffer_ == nullptr)
+      return nullptr;
+    else
+      return buffer_->data();
   }
 
   inline uint64_t cell_size() const {
@@ -87,13 +97,51 @@ class Tile {
     return buffer_ == nullptr || buffer_->offset() == 0;
   }
 
-  inline bool full() const {
-    return buffer_->offset() == buffer_->size();
+  inline uint64_t file_offset() const {
+    return file_offset_;
   }
+
+  inline bool full() const {
+    if (buffer_ == nullptr)
+      return false;
+    else
+      return buffer_->offset() == buffer_->size();
+  }
+
+  inline bool in_mem() const {
+    return buffer_ != nullptr;
+  }
+
+  inline uint64_t offset() const {
+    return offset_;
+  }
+
+  Status mmap(int fd, uint64_t tile_size, uint64_t offset);
+
+  Status read(void* buffer, uint64_t bytes);
 
   inline void reset() {
     if (buffer_ != nullptr)
       buffer_->reset_offset();
+    offset_ = 0;
+  }
+
+  inline void set_file_offset(uint64_t file_offset) {
+    file_offset_ = file_offset;
+  }
+
+  inline void set_offset(uint64_t offset) {
+    if (buffer_ != nullptr)
+      buffer_->set_offset(offset);
+    offset_ = offset;
+  }
+
+  inline uint64_t size() const {
+    return tile_size_;
+  }
+
+  inline bool stores_offsets() const {
+    return stores_offsets_;
   }
 
   inline Datatype type() const {
@@ -126,6 +174,13 @@ class Tile {
   Compressor compressor_;
 
   int compression_level_;
+
+  uint64_t file_offset_;
+
+  // TODO: perhaps find a better way to implement this
+  uint64_t offset_;
+
+  bool stores_offsets_;
 
   uint64_t tile_size_;
 

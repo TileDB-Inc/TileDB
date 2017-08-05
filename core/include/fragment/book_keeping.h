@@ -101,12 +101,15 @@ class BookKeeping {
   int64_t tile_num() const;
 
   /** Returns the tile offsets. */
+  // TODO: use either uint64_t or int64_t
   const std::vector<std::vector<off_t>>& tile_offsets() const;
 
   /** Returns the variable tile offsets. */
+  // TODO: use either uint64_t or int64_t
   const std::vector<std::vector<off_t>>& tile_var_offsets() const;
 
   /** Returns the variable tile sizes. */
+  // TODO: use either uint64_t or int64_t
   const std::vector<std::vector<size_t>>& tile_var_sizes() const;
 
   /** Returns true if the array is in write mode. */

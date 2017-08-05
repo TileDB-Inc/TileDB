@@ -96,7 +96,7 @@ class StorageManager {
   Status init(Configurator* config);
 
   /** Sets a new configurator. */
-  void set_config(Configurator* config);
+  void set_config(const Configurator* config);
 
   /* ********************************* */
   /*              GROUP                */

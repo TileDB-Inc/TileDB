@@ -32,6 +32,8 @@
 
 #include "configurator.h"
 
+#include <iostream>
+
 namespace tiledb {
 
 /* ****************************** */
@@ -112,14 +114,14 @@ Configurator::Configurator() {
   read_method_ = IOMethod::MMAP;
   write_method_ = IOMethod::WRITE;
 #ifdef HAVE_MPI
-  mpi_comm_ = NULL;
+  mpi_comm_ = nullptr;
 #endif
 }
 
-Configurator::Configurator(Configurator* config) {
+Configurator::Configurator(const Configurator* config) {
   if (config == nullptr) {  // Default
 #ifdef HAVE_MPI
-    mpi_comm_ = NULL;
+    mpi_comm_ = nullptr;
 #endif
     read_method_ = IOMethod::MMAP;
     write_method_ = IOMethod::WRITE;

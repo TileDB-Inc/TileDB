@@ -36,6 +36,7 @@
 #include <cinttypes>
 
 #include "const_buffer.h"
+#include "status.h"
 
 namespace tiledb {
 
@@ -55,13 +56,25 @@ class Buffer {
   /*                API                */
   /* ********************************* */
 
+  void advance_offset(uint64_t bytes) {
+    offset_ += bytes;
+  }
+
+  Status clear();
+
   inline void* data() const {
     return data_;
   }
 
+  Status mmap(int fd, uint64_t size, uint64_t offset, bool read_only = true);
+
+  Status munmap();
+
   inline uint64_t offset() const {
     return offset_;
   }
+
+  Status read(void* buffer, uint64_t bytes);
 
   void realloc(uint64_t size);
 
@@ -116,6 +129,10 @@ class Buffer {
   uint64_t offset_;
 
   uint64_t size_;
+
+  void* mmap_data_;
+
+  uint64_t mmap_size_;
 
   uint64_t size_alloced_;
 };
