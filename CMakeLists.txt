@@ -45,6 +45,7 @@ endif()
 
 # Default user definitions
 set(USE_MPI False CACHE BOOL "Enables MPI")
+set(USE_HDFS False CACHE BOOL "Enables HDFS")
 set(TILEDB_VERBOSE False CACHE BOOL "Prints TileDB errors with verbosity")
 set(MAC_ADDRESS_INTERFACE "" 
     CACHE STRING "The interface carrying the MAC address of the machine."
@@ -78,6 +79,13 @@ if(USE_MPI)
   find_package(MPI REQUIRED)
   include_directories(${MPI_CXX_INCLUDE_PATH})
   set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${MPI_CXX_LIBRARIES})
+endif()
+
+if(USE_HDFS)
+  find_package(HDFS REQUIRED)
+  include_directories(${HDFS_INCLUDE_DIR})
+  set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${HDFS_LIBRARIES})
+  set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${JVM_LIBRARIES})
 endif()
 
 # Set C++ 2011 flag
