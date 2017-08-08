@@ -45,7 +45,11 @@ target_include_directories(
 )
 
 # Gather the test source files
-file(GLOB_RECURSE TILEDB_TEST_SOURCES "src/unit-*.cc")
+if(USE_HDFS)
+	file(GLOB_RECURSE TILEDB_TEST_SOURCES "src/unit-*.cc" "src/opt-unit-libhdfs.cc")
+else()
+	file(GLOB_RECURSE TILEDB_TEST_SOURCES "src/unit-*.cc")
+endif()
 
 # unit test executable
 set(TILEDB_UNITTEST_TARGET_NAME "tiledb_unit")
