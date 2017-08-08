@@ -4,18 +4,20 @@ sudo: required
 dist: trusty
 env:
     matrix:
-        - USE_MPI="ON"
-        - USE_MPI="OFF"
+        - USE_HDFS="ON" USE_MPI="OFF"
+        - USE_HDFS="OFF" USE_MPI="ON"
+        - USE_HDFS="OFF" USE_MPI="OFF"
 
 install:
     # Install library dependencies
     - mkdir -p $TRAVIS_BUILD_DIR/build
     - sudo scripts/install-travis-deps.sh
+    - if [ "$USE_HDFS" == "ON" ]; then source scripts/install-hadoop.sh; fi
     # Install lcov to coveralls conversion + upload tool
     - gem install coveralls-lcov
     # Build TileDB
     - cd $TRAVIS_BUILD_DIR/build
-    - cmake -DCMAKE_BUILD_TYPE=Coverage  -DTILEDB_VERBOSE=1 -DUSE_MPI=$USE_MPI ..
+    - cmake -DCMAKE_BUILD_TYPE=Coverage  -DTILEDB_VERBOSE=1 -DUSE_MPI=$USE_MPI -DUSE_HDFS=$USE_HDFS -DJAVA_HOME=$JAVA_HOME  -DHADOOP_HOME=$HADOOP_HOME ..
     - make -j4
     - make examples -j4
     
