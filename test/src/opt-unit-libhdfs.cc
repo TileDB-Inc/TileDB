@@ -41,6 +41,7 @@ struct LibHDFSFx {
     tSize written;
 
     fs = hdfsConnect("default", 0);
+    CHECK(fs);
     if (!fs) {
       fprintf(stderr, "Oops! Failed to connect to hdfs!\n");
       exit(-1);
@@ -53,6 +54,7 @@ struct LibHDFSFx {
     }
 
     writeFile = hdfsOpenFile(fs, writeFileName, O_WRONLY, bufferSize, 0, 0);
+    CHECK(writeFile);
     if (!writeFile) {
       fprintf(stderr, "Failed to open %s for writing!\n", writeFileName);
       exit(-2);
@@ -100,14 +102,17 @@ struct LibHDFSFx {
     hdfsFile readFile;
     char *buffer;
     tSize curSize;
+    off_t readSize = 0;
 
     fs = hdfsConnect("default", 0);
+    CHECK(fs);
     if (!fs) {
       fprintf(stderr, "Oops! Failed to connect to hdfs!\n");
       exit(-1);
     }
 
     readFile = hdfsOpenFile(fs, rfile, O_RDONLY, bufferSize, 0, 0);
+    CHECK(readFile);
     if (!readFile) {
       fprintf(stderr, "Failed to open %s for writing!\n", rfile);
       exit(-2);
@@ -122,11 +127,14 @@ struct LibHDFSFx {
     printf("Test read with buffer size: %d\n", bufferSize);
     start();
     // read from the file
-    curSize = bufferSize;
-    for (; curSize == bufferSize;) {
-      curSize = hdfsRead(fs, readFile, (void *)buffer, curSize);
+    curSize = 1;
+    while (curSize > 0) {
+      curSize = hdfsRead(fs, readFile, (void *)buffer, bufferSize);
+      readSize += curSize;
     }
     stop();
+
+    CHECK(readSize == totalSize);
 
     free(buffer);
     hdfsCloseFile(fs, readFile);
@@ -142,6 +150,7 @@ struct LibHDFSFx {
     tSize curSize;
 
     fs = hdfsConnect("default", 0);
+    CHECK(fs);
     if (!fs) {
       fprintf(stderr, "Oops! Failed to connect to hdfs!\n");
       exit(-1);
@@ -149,8 +158,8 @@ struct LibHDFSFx {
 
     char ***hosts = hdfsGetHosts(fs, fileName, 0, 1);
     int i, j;
+    CHECK(hosts);
     if (hosts) {
-      fprintf(stdout, "hdfsGetHosts - SUCCESS! ... \n");
       i = 0;
       while (hosts[i]) {
         j = 0;
