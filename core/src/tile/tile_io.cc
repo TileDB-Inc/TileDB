@@ -80,9 +80,10 @@ Status TileIO::read(
   IOMethod read_method = config_->read_method();
   if (compression == Compressor::NO_COMPRESSION) {
     if (read_method == IOMethod::MMAP || tile->stores_offsets()) {
-      RETURN_NOT_OK(map_tile(tile, compressed_size, file_offset));
+      RETURN_NOT_OK(map_tile(tile, tile_size, file_offset));
     } else if (read_method == IOMethod::READ || read_method == IOMethod::MPI) {
       tile->set_file_offset(file_offset);
+      tile->set_size(tile_size);
     }
   } else {
     delete buffer_;

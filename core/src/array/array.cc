@@ -79,6 +79,30 @@ Array::~Array() {
 /*           ACCESSORS            */
 /* ****************************** */
 
+Status Array::coords_buffer_i(int* coords_buffer_i) const {
+  int buffer_i = 0;
+  auto attribute_id_num = (int)attribute_ids_.size();
+  int attribute_num = array_schema_->attribute_num();
+  for (int i = 0; i < attribute_id_num; ++i) {
+    if (attribute_ids_[i] == attribute_num) {
+      *coords_buffer_i = buffer_i;
+      break;
+    }
+    if (!array_schema_->var_size(attribute_ids_[i]))  // FIXED CELLS
+      ++buffer_i;
+    else  // VARIABLE-SIZED CELLS
+      buffer_i += 2;
+  }
+
+  // Coordinates are missing
+  if (*coords_buffer_i == -1)
+    return LOG_STATUS(
+        Status::ArrayError("Cannot find coordinates buffer index"));
+
+  // Success
+  return Status::Ok();
+}
+
 StorageManager* Array::storage_manager() const {
   return storage_manager_;
 }
@@ -97,7 +121,7 @@ Status Array::aio_handle_request(AIORequest* aio_request) {
     } else {
       // This may initiate a series of new AIO requests
       // Reset the subarray hard this time (updating also the subarray
-      // of the ArraySortedReadState object.
+      // of the ArraySortedReadState object).
       if (aio_last_handled_request_ != aio_request->id())
         reset_subarray(aio_request->subarray());
 

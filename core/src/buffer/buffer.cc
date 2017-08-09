@@ -171,6 +171,24 @@ void Buffer::write(ConstBuffer* buf, uint64_t bytes) {
   offset_ += bytes;
 }
 
+// TODO: this may fail - return Status
+void Buffer::write(const void* buf, uint64_t bytes) {
+  while (offset_ + bytes > size_alloced_)
+    realloc(2 * size_alloced_);
+
+  memcpy((char*)data_ + offset_, buf, bytes);
+  offset_ += bytes;
+}
+
+void Buffer::write_with_shift(ConstBuffer* buf, uint64_t offset) {
+  uint64_t bytes_left_to_write = size_ - offset_;
+  uint64_t bytes_left_to_read = buf->bytes_left_to_read();
+  uint64_t bytes_to_copy = std::min(bytes_left_to_write, bytes_left_to_read);
+
+  buf->read_with_shift(static_cast<uint64_t*>(data_), bytes_to_copy, offset);
+  offset_ += bytes_to_copy;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */

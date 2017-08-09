@@ -68,6 +68,22 @@ Fragment::~Fragment() {
 /*            ACCESSORS           */
 /* ****************************** */
 
+uri::URI Fragment::attr_uri(int attribute_id) const {
+  const Attribute* attr = array_->array_schema()->Attributes()[attribute_id];
+  return fragment_uri_.join_path(attr->name() + Configurator::file_suffix());
+}
+
+uri::URI Fragment::attr_var_uri(int attribute_id) const {
+  const Attribute* attr = array_->array_schema()->Attributes()[attribute_id];
+  return fragment_uri_.join_path(
+      attr->name() + "_var" + Configurator::file_suffix());
+}
+
+uri::URI Fragment::coords_uri() const {
+  return fragment_uri_.join_path(
+      std::string(Configurator::coords()) + Configurator::file_suffix());
+}
+
 const Array* Fragment::array() const {
   return array_;
 }

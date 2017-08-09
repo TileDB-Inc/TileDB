@@ -91,8 +91,6 @@ int main() {
   // Write to array - #2
   tiledb_array_write(tiledb_array, buffers_2, buffer_sizes_2);
 
-  std::cout  << "3\n";
-
   // Finalize array
   tiledb_array_finalize(tiledb_array);
 

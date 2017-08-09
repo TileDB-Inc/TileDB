@@ -69,6 +69,8 @@ class ConstBuffer {
 
   void read(void* buffer, uint64_t bytes);
 
+  void read_with_shift(uint64_t* buf, uint64_t bytes, uint64_t offset);
+
   template <class T>
   inline T value(uint64_t offset) {
     return ((const T*)(((const char*)data_) + offset))[0];

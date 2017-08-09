@@ -41,18 +41,6 @@ int main(int argc, char** argv) {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  tiledb_config_t* config;
-  tiledb_config_create(ctx, &config);
-  tiledb_config_set_read_method(ctx, config, TILEDB_IO_METHOD_MPI);
-
-  MPI_Init(&argc, &argv);
-  int rank;
-  MPI_Comm mpi_comm = MPI_COMM_WORLD;
-  tiledb_config_set_mpi_comm(ctx, config, &mpi_comm);
-
-  // Set new config to context
-  tiledb_ctx_set_config(ctx, config);
-
   // Subarray and attributes
   int64_t subarray[] = { 3, 4, 2, 4 }; 
   const char* attributes[] = { "a1" };
@@ -89,8 +77,6 @@ int main(int argc, char** argv) {
 
   // Finalize the array
   tiledb_array_finalize(tiledb_array);
-
-  tiledb_config_free(config);
 
   /* Finalize context. */
   tiledb_ctx_free(ctx);

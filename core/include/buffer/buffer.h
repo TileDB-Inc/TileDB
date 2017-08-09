@@ -66,6 +66,10 @@ class Buffer {
     return data_;
   }
 
+  inline bool full() const {
+    return offset_ == size_;
+  }
+
   Status mmap(int fd, uint64_t size, uint64_t offset, bool read_only = true);
 
   Status munmap();
@@ -118,6 +122,10 @@ class Buffer {
   void write(ConstBuffer* buf);
 
   void write(ConstBuffer* buf, uint64_t bytes);
+
+  void write(const void* buf, uint64_t bytes);
+
+  void write_with_shift(ConstBuffer* buf, uint64_t offset);
 
  private:
   /* ********************************* */

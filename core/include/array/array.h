@@ -70,6 +70,8 @@ class Array {
   /*             ACCESSORS             */
   /* ********************************* */
 
+  Status coords_buffer_i(int* coords_buffer_i) const;
+
   /** Handles an AIO request. */
   Status aio_handle_request(AIORequest* aio_request);
 

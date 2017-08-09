@@ -238,6 +238,11 @@ class Status {
     return Status(StatusCode::Buffer, msg, -1);
   }
 
+  /** Return a WriteStateError error class Status with a given message **/
+  static Status WriteStateError(const std::string& msg) {
+    return Status(StatusCode::WriteState, msg, -1);
+  }
+
   /** Returns true iff the status indicates success **/
   bool ok() const {
     return (state_ == nullptr);

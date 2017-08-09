@@ -136,6 +136,10 @@ class Tile {
     offset_ = offset;
   }
 
+  inline void set_size(uint64_t size) {
+    tile_size_ = size;
+  }
+
   inline uint64_t size() const {
     return tile_size_;
   }
@@ -159,6 +163,8 @@ class Tile {
   }
 
   Status write(ConstBuffer* buf);
+
+  Status write_with_shift(ConstBuffer* buf, uint64_t offset);
 
   Status write(ConstBuffer* buf, uint64_t bytes);
 
