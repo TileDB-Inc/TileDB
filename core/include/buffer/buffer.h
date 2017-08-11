@@ -37,6 +37,7 @@
 
 #include "const_buffer.h"
 #include "status.h"
+#include "uri.h"
 
 namespace tiledb {
 
@@ -70,7 +71,11 @@ class Buffer {
     return offset_ == size_;
   }
 
-  Status mmap(int fd, uint64_t size, uint64_t offset, bool read_only = true);
+  Status mmap(
+      const uri::URI& filename,
+      uint64_t size,
+      uint64_t offset,
+      bool read_only = true);
 
   Status munmap();
 

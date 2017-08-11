@@ -31,13 +31,9 @@
  */
 
 #include "buffer.h"
+#include "filesystem.h"
 #include "logger.h"
 
-#include <sys/mman.h>
-#include <unistd.h>
-#include <algorithm>
-#include <cstdlib>
-#include <cstring>
 #include <iostream>
 
 namespace tiledb {
@@ -91,7 +87,8 @@ Status Buffer::clear() {
   return Status::Ok();
 }
 
-Status Buffer::mmap(int fd, uint64_t size, uint64_t offset, bool read_only) {
+Status Buffer::mmap(
+    const uri::URI& filename, uint64_t size, uint64_t offset, bool read_only) {
   // Clean buffer
   RETURN_NOT_OK(clear());
 
@@ -102,18 +99,8 @@ Status Buffer::mmap(int fd, uint64_t size, uint64_t offset, bool read_only) {
   size_ = size;
   mmap_size_ = size + extra_offset;
 
-  // MMap flags
-  int prot = read_only ? PROT_READ : (PROT_READ | PROT_WRITE);
-  int flags = read_only ? MAP_SHARED : MAP_PRIVATE;
-
-  // Map
-  // TODO: perhaps move to filesystem (along with open and fd)?
-  mmap_data_ = ::mmap(mmap_data_, mmap_size_, prot, flags, fd, start_offset);
-  if (mmap_data_ == MAP_FAILED) {
-    size_ = 0;
-    mmap_size_ = 0;
-    return LOG_STATUS(Status::BufferError("Memory map failed"));
-  }
+  RETURN_NOT_OK(filesystem::mmap(
+      filename, mmap_size_, start_offset, &mmap_data_, read_only));
 
   data_ = static_cast<char*>(mmap_data_) + extra_offset;
 
@@ -121,12 +108,12 @@ Status Buffer::mmap(int fd, uint64_t size, uint64_t offset, bool read_only) {
 }
 
 Status Buffer::munmap() {
+  // TODO: move to filesystem
+
   if (mmap_data_ == nullptr)
     return Status::Ok();
 
-  // TODO: perhaps move to filesystem?
-  if (::munmap(mmap_data_, mmap_size_))
-    return LOG_STATUS(Status::BufferError("Memory unmap failed"));
+  RETURN_NOT_OK(filesystem::munmap(mmap_data_, mmap_size_));
 
   mmap_data_ = nullptr;
   mmap_size_ = 0;

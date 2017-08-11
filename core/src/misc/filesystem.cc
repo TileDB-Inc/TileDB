@@ -436,7 +436,7 @@ Status read_from_file_with_mmap(
 
   // Map
   void* addr =
-      mmap(nullptr, new_length, PROT_READ, MAP_SHARED, fd, start_offset);
+      ::mmap(nullptr, new_length, PROT_READ, MAP_SHARED, fd, start_offset);
   if (addr == MAP_FAILED) {
     return LOG_STATUS(
         Status::MMapError("Cannot read from file; Memory map error"));
@@ -458,7 +458,7 @@ Status read_from_file_with_mmap(
   }
 
   // Unmap
-  if (munmap(addr, new_length)) {
+  if (::munmap(addr, new_length)) {
     return LOG_STATUS(
         Status::MMapError("Cannot read from file; Memory unmap error"));
   }
@@ -506,6 +506,40 @@ uri::URI abs_path(const uri::URI& upath) {
   purge_dots_from_path(ret_dir);
 
   return uri::URI(ret_dir);
+}
+
+Status mmap(
+    const uri::URI& filename,
+    uint64_t size,
+    uint64_t offset,
+    void** buffer,
+    bool read_only) {
+  // MMap flags
+  int prot = read_only ? PROT_READ : (PROT_READ | PROT_WRITE);
+  int flags = read_only ? MAP_SHARED : MAP_PRIVATE;
+
+  // Open file
+  int fd = open(filename.to_string().c_str(), O_RDONLY);
+  if (fd == -1)
+    return LOG_STATUS(Status::Error("File opening error during memory map"));
+
+  // Map
+  *buffer = ::mmap(*buffer, size, prot, flags, fd, offset);
+  if (*buffer == MAP_FAILED)
+    return LOG_STATUS(Status::OSError("Memory map failed"));
+
+  // Close file
+  if (close(fd))
+    return LOG_STATUS(Status::Error("File closing error during memory map"));
+
+  return Status::Ok();
+}
+
+Status munmap(void* buffer, uint64_t size) {
+  if (::munmap(buffer, size))
+    return LOG_STATUS(Status::OSError("Memory unmap failed"));
+
+  return Status::Ok();
 }
 
 std::string real_dir(const std::string& path) {

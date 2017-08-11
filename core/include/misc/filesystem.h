@@ -163,6 +163,15 @@ bool is_file(const uri::URI& path);
  */
 void purge_dots_from_path(std::string& path);
 
+Status mmap(
+    const uri::URI& filename,
+    uint64_t size,
+    uint64_t offset,
+    void** buffer,
+    bool read_only);
+
+Status munmap(void* buffer, uint64_t size);
+
 /**
  * Reads data from a file into a buffer.
  *
@@ -172,6 +181,7 @@ void purge_dots_from_path(std::string& path);
  * @param length The size of the data to be read from the file.
  * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
  */
+// TODO: use Buffers instead
 Status read_from_file(
     const std::string& path, off_t offset, void* buffer, size_t length);
 

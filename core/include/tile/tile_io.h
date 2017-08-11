@@ -108,10 +108,6 @@ class TileIO {
   Status decompress_tile_rle(Tile* tile, uint64_t tile_size);
 
   Status decompress_tile_bzip2(Tile* tile, uint64_t tile_size);
-
-  Status map_tile(Tile* tile, uint64_t tile_size, uint64_t offset);
-
-  Status map_tile(uint64_t tile_size, uint64_t offset);
 };
 
 }  // namespace tiledb

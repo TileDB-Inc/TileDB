@@ -110,12 +110,14 @@ void Tile::alloc(uint64_t size) {
   tile_size_ = size;
 }
 
-Status Tile::mmap(int fd, uint64_t tile_size, uint64_t offset) {
+// TODO: change name to zero_copy
+Status Tile::mmap(
+    const uri::URI& filename, uint64_t tile_size, uint64_t offset) {
   // Create new buffer
   delete buffer_;
   buffer_ = new Buffer();
 
-  Status st = buffer_->mmap(fd, tile_size, offset, !stores_offsets_);
+  Status st = buffer_->mmap(filename, tile_size, offset, !stores_offsets_);
 
   if (st.ok())
     tile_size_ = tile_size;

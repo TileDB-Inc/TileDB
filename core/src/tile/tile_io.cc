@@ -80,24 +80,25 @@ Status TileIO::read(
   IOMethod read_method = config_->read_method();
   if (compression == Compressor::NO_COMPRESSION) {
     if (read_method == IOMethod::MMAP || tile->stores_offsets()) {
-      RETURN_NOT_OK(map_tile(tile, tile_size, file_offset));
+      RETURN_NOT_OK(tile->mmap(attr_filename_, tile_size, file_offset));
     } else if (read_method == IOMethod::READ || read_method == IOMethod::MPI) {
       tile->set_file_offset(file_offset);
       tile->set_size(tile_size);
     }
   } else {
+    // TODO: consider optimizing (do not delete and new every time)
     delete buffer_;
     buffer_ = new Buffer(compressed_size);
 
     if (read_method == IOMethod::READ) {
-      // TODO: consider optimizing (do not delete and new every time)
       RETURN_NOT_OK(filesystem::read_from_file(
           attr_filename_.to_string(),
           file_offset,
           buffer_->data(),
           compressed_size));
     } else if (read_method == IOMethod::MMAP) {
-      RETURN_NOT_OK(map_tile(compressed_size, file_offset));
+      RETURN_NOT_OK(
+          buffer_->mmap(attr_filename_, compressed_size, file_offset));
     } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
       RETURN_NOT_OK(filesystem::mpi_io_read_from_file(
@@ -508,44 +509,6 @@ Status TileIO::decompress_tile_bzip2(Tile* tile, uint64_t tile_size) {
       tile_size,
       &out_size));
 
-  return Status::Ok();
-}
-
-Status TileIO::map_tile(Tile* tile, uint64_t tile_size, uint64_t offset) {
-  // TODO: this probably will not work with anything non-POSIX
-  // Open file
-  int fd = open(attr_filename_.c_str(), O_RDONLY);
-  if (fd == -1)
-    return LOG_STATUS(
-        Status::TileIOError("Cannot map tile; File opening error"));
-
-  RETURN_NOT_OK_ELSE(tile->mmap(fd, tile_size, offset), close(fd));
-
-  // Close file
-  if (close(fd))
-    return LOG_STATUS(
-        Status::TileIOError("Cannot map tile; File closing error"));
-
-  // Success
-  return Status::Ok();
-}
-
-Status TileIO::map_tile(uint64_t tile_size, uint64_t offset) {
-  // TODO: this probably will not work with anything non-POSIX
-  // Open file
-  int fd = open(attr_filename_.c_str(), O_RDONLY);
-  if (fd == -1)
-    return LOG_STATUS(
-        Status::TileIOError("Cannot map tile; File opening error"));
-
-  RETURN_NOT_OK_ELSE(buffer_->mmap(fd, tile_size, offset), close(fd));
-
-  // Close file
-  if (close(fd))
-    return LOG_STATUS(
-        Status::TileIOError("Cannot map tile; File closing error"));
-
-  // Success
   return Status::Ok();
 }
 

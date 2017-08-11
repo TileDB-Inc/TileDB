@@ -77,8 +77,8 @@ class Tile {
   inline void* data() const {
     if (buffer_ == nullptr)
       return nullptr;
-    else
-      return buffer_->data();
+
+    return buffer_->data();
   }
 
   inline uint64_t cell_size() const {
@@ -104,8 +104,8 @@ class Tile {
   inline bool full() const {
     if (buffer_ == nullptr)
       return false;
-    else
-      return buffer_->offset() == buffer_->size();
+
+    return buffer_->offset() == buffer_->size();
   }
 
   inline bool in_mem() const {
@@ -116,7 +116,7 @@ class Tile {
     return offset_;
   }
 
-  Status mmap(int fd, uint64_t tile_size, uint64_t offset);
+  Status mmap(const uri::URI& filename, uint64_t tile_size, uint64_t offset);
 
   Status read(void* buffer, uint64_t bytes);
 
