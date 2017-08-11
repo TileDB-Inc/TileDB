@@ -36,51 +36,60 @@
 
 namespace tiledb {
 
-size_t ZStd::compress_bound(size_t nbytes) {
+uint64_t ZStd::compress_bound(uint64_t nbytes) {
   return ZSTD_compressBound(nbytes);
 }
 
 Status ZStd::compress(
-    size_t type_size,
-    int level,
-    void* input_buffer,
-    size_t input_buffer_size,
-    void* output_buffer,
-    size_t output_buffer_size,
-    size_t* compressed_size) {
-  *compressed_size = 0;
+    int level, const Buffer* input_buffer, Buffer* output_buffer) {
+  // Sanity check
+  if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
+    return LOG_STATUS(Status::CompressionError(
+        "Failed compressing with ZStd; invalid buffer format"));
+
+  // Compress
   size_t zstd_code = ZSTD_compress(
-      output_buffer,
-      output_buffer_size,
-      input_buffer,
-      input_buffer_size,
+      output_buffer->data(),
+      output_buffer->size_alloced(),
+      input_buffer->data(),
+      input_buffer->offset(),
       level < 0 ? ZStd::default_level() : level);
+
+  // Handle error
   if (ZSTD_isError(zstd_code)) {
     const char* msg = ZSTD_getErrorName(zstd_code);
     return LOG_STATUS(Status::CompressionError(
         std::string("ZStd compression failed: ") + msg));
   }
-  *compressed_size = zstd_code;
+
+  // Set size and offset of compressed data
+  output_buffer->set_size(zstd_code);
+  output_buffer->set_offset(zstd_code);
+
   return Status::Ok();
 }
 
-Status ZStd::decompress(
-    size_t type_size,
-    void* input_buffer,
-    size_t input_buffer_size,
-    void* output_buffer,
-    size_t output_buffer_size,
-    size_t* decompressed_size) {
-  *decompressed_size = 0;
+Status ZStd::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
+  // Sanity check
+  if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
+    return LOG_STATUS(Status::CompressionError(
+        "Failed decompressing with ZStd; invalid buffer format"));
+
+  // Decompress
   size_t zstd_code = ZSTD_decompress(
-      output_buffer, output_buffer_size, input_buffer, input_buffer_size);
+      output_buffer->data(),
+      output_buffer->size_alloced(),
+      input_buffer->data(),
+      input_buffer->size());
+
+  // Check error
   if (ZSTD_isError(zstd_code)) {
     const char* msg = ZSTD_getErrorName(zstd_code);
     return LOG_STATUS(Status::CompressionError(
         std::string("ZStd decompression failed: ") + msg));
   }
-  *decompressed_size = zstd_code;
+
   return Status::Ok();
-};
+}
 
 }  // namespace tiledb

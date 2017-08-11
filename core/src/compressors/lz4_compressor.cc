@@ -34,70 +34,81 @@
 #include <cassert>
 #include <limits>
 
+#include "logger.h"
 #include "lz4_compressor.h"
 
 namespace tiledb {
 
-// TOOD: LZ4_MAX_INPUT_SIZE...
-size_t LZ4::compress_bound(size_t nbytes) {
+uint64_t LZ4::compress_bound(uint64_t nbytes) {
   assert(nbytes <= std::numeric_limits<int>::max());
-  return static_cast<size_t>(LZ4_compressBound(static_cast<int>(nbytes)));
+  return static_cast<uint64_t>(LZ4_compressBound(static_cast<int>(nbytes)));
 }
 
 Status LZ4::compress(
-    size_t type_size,
-    int level,
-    void* input_buffer,
-    size_t input_buffer_size,
-    void* output_buffer,
-    size_t output_buffer_size,
-    size_t* compressed_size) {
-  *compressed_size = 0;
+    int level, const Buffer* input_buffer, Buffer* output_buffer) {
+  // Sanity check
+  if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
+    return LOG_STATUS(Status::CompressionError(
+        "Failed compressing with LZ4; invalid buffer format"));
+
   // TODO: level is ignored using the simple api interface
-  // TODO: these parameters are int and can overflow with size_t, need to check
-  // input. need something better than an assertion here
-  assert(input_buffer_size <= std::numeric_limits<int>::max());
-  assert(output_buffer_size <= std::numeric_limits<int>::max());
+
+  // Sanity check
+  // TODO: these parameters are int and can overflow with uint64_t, need to
+  // check
+  // TODO: need something better than an assertion here
+  // TODO: this can also be handled by chunk-wise compression
+  assert(input_buffer->offset() <= std::numeric_limits<int>::max());
+  assert(output_buffer->size_alloced() <= std::numeric_limits<int>::max());
+
+  // Compress
 #if LZ4_VERSION_NUMBER >= 10705
   int ret = LZ4_compress_default(
-      static_cast<char*>(input_buffer),
-      static_cast<char*>(output_buffer),
-      input_buffer_size,
-      output_buffer_size);
+      static_cast<char*>(input_buffer->data()),
+      static_cast<char*>(output_buffer->data()),
+      input_buffer->offset(),
+      output_buffer->size_alloced());
 #else
   // deprecated lz4 api
   int ret = LZ4_compress(
-      static_cast<char*>(input_buffer),
-      static_cast<char*>(output_buffer),
-      input_buffer_size);
+      static_cast<char*>(input_buffer->data()),
+      static_cast<char*>(output_buffer->data()),
+      input_buffer->offset());
 #endif
-  if (ret < 0) {
+
+  // Check error
+  if (ret < 0)
     return Status::CompressionError("LZ4 compression failed");
-  }
-  *compressed_size = static_cast<size_t>(ret);
+
+  // Set size of compressed data
+  output_buffer->set_size(static_cast<uint64_t>(ret));
+  output_buffer->set_offset(static_cast<uint64_t>(ret));
+
   return Status::Ok();
 }
 
-Status LZ4::decompress(
-    size_t type_size,
-    void* input_buffer,
-    size_t input_buffer_size,
-    void* output_buffer,
-    size_t output_buffer_size,
-    size_t* decompressed_size) {
-  *decompressed_size = 0;
-  assert(input_buffer_size <= std::numeric_limits<int>::max());
-  assert(output_buffer_size <= std::numeric_limits<int>::max());
+Status LZ4::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
+  // Sanity check
+  if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
+    return LOG_STATUS(Status::CompressionError(
+        "Failed decompressing with LZ4; invalid buffer format"));
+
+  // Sanity check
+  assert(input_buffer->size() <= std::numeric_limits<int>::max());
+  assert(output_buffer->size_alloced() <= std::numeric_limits<int>::max());
+
+  // Decompress
   int ret = LZ4_decompress_safe(
-      static_cast<char*>(input_buffer),
-      static_cast<char*>(output_buffer),
-      input_buffer_size,
-      output_buffer_size);
-  if (ret < 0) {
+      static_cast<char*>(input_buffer->data()),
+      static_cast<char*>(output_buffer->data()),
+      input_buffer->size(),
+      output_buffer->size_alloced());
+
+  // Check error
+  if (ret < 0)
     return Status::CompressionError("LZ4 decompression failed");
-  }
-  *decompressed_size = static_cast<size_t>(ret);
+
   return Status::Ok();
-};
+}
 
 }  // namespace tiledb

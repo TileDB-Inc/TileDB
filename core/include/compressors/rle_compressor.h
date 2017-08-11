@@ -33,12 +33,13 @@
 #ifndef TILEDB_RLE_COMPRESSOR_H
 #define TILEDB_RLE_COMPRESSOR_H
 
-#include "base_compressor.h"
+#include "buffer.h"
 #include "status.h"
 
 namespace tiledb {
 
-class RLE : public BaseCompressor {
+/** Handles compression/decompression Run-Length-Encoding. */
+class RLE {
  public:
   /**
    * Returns the maximum size of the output of RLE compression.
@@ -48,29 +49,31 @@ class RLE : public BaseCompressor {
    * @return The maximum size of the output after RLE-compressing the input with
    *     size input_size.
    */
-  static size_t compress_bound(size_t nbytes, size_t type_size);
+  static uint64_t compress_bound(uint64_t nbytes, uint64_t type_size);
 
+  /**
+   * Compression function.
+   *
+   * @param type_size The size of the data type.
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write to the compressed data.
+   * @return
+   */
   static Status compress(
-      size_t type_size,
-      int level,
-      void* input_buffer,
-      size_t input_buffer_size,
-      void* output_buffer,
-      size_t output_buffer_size,
-      size_t* compressed_size);
+      uint64_t type_size, const Buffer* input_buffer, Buffer* output_buffer);
 
+  /**
+   * Decompression function.
+   *
+   * @param type_size The size of the data type.
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write to the decompressed data.
+   * @return
+   */
   static Status decompress(
-      size_t type_size,
-      void* input_buffer,
-      size_t input_buffer_size,
-      void* output_buffer,
-      size_t output_buffer_size,
-      size_t* decompressed_size);
-
-  static int default_level() {
-    return -1;
-  }
+      uint64_t type_size, const Buffer* input_buffer, Buffer* output_buffer);
 };
 
 }  // namespace tiledb
+
 #endif  // TILEDB_RLE_COMPRESSOR_H

@@ -74,6 +74,10 @@ class Tile {
 
   void alloc(uint64_t);
 
+  inline Buffer* buffer() const {
+    return buffer_;
+  }
+
   inline void* data() const {
     if (buffer_ == nullptr)
       return nullptr;

@@ -133,6 +133,8 @@ Status Tile::read(void* buffer, uint64_t bytes) {
   Status st = buffer_->read(buffer, bytes);
   offset_ = buffer_->offset();
 
+  // TODO: change the size as well
+
   return st;
 }
 

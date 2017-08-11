@@ -91,23 +91,23 @@ class TileIO {
 
   Status compress_tile_blosc(Tile* tile, int level, const char* compressor);
 
-  Status compress_tile_rle(Tile* tile, int level);
+  Status compress_tile_rle(Tile* tile);
 
   Status compress_tile_bzip2(Tile* tile, int level);
 
   Status decompress_tile(Tile* tile, uint64_t tile_size);
 
-  Status decompress_tile_gzip(Tile* tile, uint64_t tile_size);
+  Status decompress_tile_gzip(Tile* tile);
 
-  Status decompress_tile_zstd(Tile* tile, uint64_t tile_size);
+  Status decompress_tile_zstd(Tile* tile);
 
-  Status decompress_tile_lz4(Tile* tile, uint64_t tile_size);
+  Status decompress_tile_lz4(Tile* tile);
 
-  Status decompress_tile_blosc(Tile* tile, uint64_t tile_size);
+  Status decompress_tile_blosc(Tile* tile);
 
-  Status decompress_tile_rle(Tile* tile, uint64_t tile_size);
+  Status decompress_tile_rle(Tile* tile);
 
-  Status decompress_tile_bzip2(Tile* tile, uint64_t tile_size);
+  Status decompress_tile_bzip2(Tile* tile);
 };
 
 }  // namespace tiledb

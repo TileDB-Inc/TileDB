@@ -234,7 +234,7 @@ Status TileIO::compress_tile(Tile* tile) {
     case Compressor::BLOSC_ZSTD:
       return compress_tile_blosc(tile, level, "zstd");
     case Compressor::RLE:
-      return compress_tile_rle(tile, level);
+      return compress_tile_rle(tile);
     case Compressor::BZIP2:
       return compress_tile_bzip2(tile, level);
   }
@@ -250,18 +250,7 @@ Status TileIO::compress_tile_gzip(Tile* tile, int level) {
     buffer_->realloc(tile_size + gzip_overhead);
 
   // Compress tile
-  size_t buffer_size;  // TODO: remove this, changing the compress signature
-  // TODO: These functions should take as input buffers instead
-  RETURN_NOT_OK(GZip::compress(
-      utils::datatype_size(tile->type()),
-      level,
-      tile->data(),
-      tile_size,
-      buffer_->data(),
-      buffer_->size_alloced(),
-      &buffer_size));
-  buffer_->set_size(buffer_size);    // TODO: this will change
-  buffer_->set_offset(buffer_size);  // TODO: this will change
+  RETURN_NOT_OK(GZip::compress(level, tile->buffer(), buffer_));
 
   return Status::Ok();
 }
@@ -269,23 +258,13 @@ Status TileIO::compress_tile_gzip(Tile* tile, int level) {
 Status TileIO::compress_tile_zstd(Tile* tile, int level) {
   // Allocate space to store the compressed tile
   uint64_t tile_size = tile->offset();
-  size_t compress_bound = ZStd::compress_bound(tile_size);
+  uint64_t compress_bound = ZStd::compress_bound(tile_size);
   if (buffer_ == nullptr)
     buffer_ = new Buffer(compress_bound);
   while (compress_bound > buffer_->size_alloced())
     buffer_->realloc(compress_bound);
 
-  size_t buffer_size;  // TODO: remove this, changing the compress signature
-  RETURN_NOT_OK(ZStd::compress(
-      utils::datatype_size(tile->type()),
-      level,
-      tile->data(),
-      tile_size,
-      buffer_->data(),
-      buffer_->size_alloced(),
-      &buffer_size));
-  buffer_->set_size(buffer_size);
-  buffer_->set_offset(buffer_size);  // TODO: this will change
+  RETURN_NOT_OK(ZStd::compress(level, tile->buffer(), buffer_));
 
   return Status::Ok();
 }
@@ -293,24 +272,14 @@ Status TileIO::compress_tile_zstd(Tile* tile, int level) {
 Status TileIO::compress_tile_lz4(Tile* tile, int level) {
   // Allocate space to store the compressed tile
   uint64_t tile_size = tile->offset();
-  size_t compress_bound = LZ4::compress_bound(tile_size);
+  uint64_t compress_bound = LZ4::compress_bound(tile_size);
   if (buffer_ == nullptr)
     buffer_ = new Buffer(compress_bound);
   while (compress_bound > buffer_->size_alloced())
     buffer_->realloc(compress_bound);
 
   // Compress tile
-  size_t buffer_size;  // TODO: remove this, changing the compress signature
-  RETURN_NOT_OK(LZ4::compress(
-      utils::datatype_size(tile->type()),
-      level,
-      tile->data(),
-      tile_size,
-      buffer_->data(),
-      buffer_->size_alloced(),
-      &buffer_size));
-  buffer_->set_size(buffer_size);
-  buffer_->set_offset(buffer_size);  // TODO: this will change
+  RETURN_NOT_OK(LZ4::compress(level, tile->buffer(), buffer_));
 
   // Success
   return Status::Ok();
@@ -320,50 +289,34 @@ Status TileIO::compress_tile_blosc(
     Tile* tile, int level, const char* compressor) {
   // Allocate space to store the compressed tile
   uint64_t tile_size = tile->offset();
-  size_t compress_bound = Blosc::compress_bound(tile_size);
+  uint64_t compress_bound = Blosc::compress_bound(tile_size);
   if (buffer_ == nullptr)
     buffer_ = new Buffer(compress_bound);
   while (compress_bound > buffer_->size_alloced())
     buffer_->realloc(compress_bound);
 
   // Compress tile
-  size_t buffer_size;  // TODO: remove this, changing the compress signature
   RETURN_NOT_OK(Blosc::compress(
       compressor,
       utils::datatype_size(tile->type()),
       level,
-      tile->data(),
-      tile_size,
-      buffer_->data(),
-      buffer_->size_alloced(),
-      &buffer_size));
-  buffer_->set_size(buffer_size);
-  buffer_->set_offset(buffer_size);  // TODO: this will change
+      tile->buffer(),
+      buffer_));
 
   return Status::Ok();
 }
 
-Status TileIO::compress_tile_rle(Tile* tile, int level) {
+Status TileIO::compress_tile_rle(Tile* tile) {
   uint64_t tile_size = tile->offset();
   uint64_t value_size = tile->cell_size();
-  size_t compress_bound = RLE::compress_bound(tile_size, value_size);
+  uint64_t compress_bound = RLE::compress_bound(tile_size, value_size);
   if (buffer_ == nullptr)
     buffer_ = new Buffer(compress_bound);
   while (compress_bound > buffer_->size_alloced())
     buffer_->realloc(compress_bound);
 
   // Compress tile
-  size_t rle_size = 0;
-  RETURN_NOT_OK(RLE::compress(
-      value_size,
-      level,
-      tile->data(),
-      tile_size,
-      buffer_->data(),
-      buffer_->size_alloced(),
-      &rle_size));
-  buffer_->set_size(rle_size);
-  buffer_->set_offset(rle_size);  // TODO: this will change
+  RETURN_NOT_OK(RLE::compress(value_size, tile->buffer(), buffer_));
 
   // Success
   return Status::Ok();
@@ -372,26 +325,14 @@ Status TileIO::compress_tile_rle(Tile* tile, int level) {
 Status TileIO::compress_tile_bzip2(Tile* tile, int level) {
   // Allocate space to store the compressed tile
   uint64_t tile_size = tile->offset();
-  size_t compress_bound = BZip::compress_bound(tile_size);
+  uint64_t compress_bound = BZip::compress_bound(tile_size);
   if (buffer_ == nullptr)
     buffer_ = new Buffer(compress_bound);
   while (compress_bound > buffer_->size_alloced())
     buffer_->realloc(compress_bound);
 
-  // Compress tile
-  size_t buffer_size;  // TODO: remove this, changing the compress signature
-  RETURN_NOT_OK(BZip::compress(
-      utils::datatype_size(tile->type()),
-      level,
-      tile->data(),
-      tile_size,
-      buffer_->data(),
-      buffer_->size_alloced(),
-      &buffer_size));
-  buffer_->set_size(buffer_size);
-  buffer_->set_offset(buffer_size);  // TODO: this will change
+  RETURN_NOT_OK(BZip::compress(level, tile->buffer(), buffer_));
 
-  // Success
   return Status::Ok();
 }
 
@@ -406,11 +347,11 @@ Status TileIO::decompress_tile(Tile* tile, uint64_t tile_size) {
     case Compressor::NO_COMPRESSION:
       return Status::Ok();
     case Compressor::GZIP:
-      return decompress_tile_gzip(tile, tile_size);
+      return decompress_tile_gzip(tile);
     case Compressor::ZSTD:
-      return decompress_tile_zstd(tile, tile_size);
+      return decompress_tile_zstd(tile);
     case Compressor::LZ4:
-      return decompress_tile_lz4(tile, tile_size);
+      return decompress_tile_lz4(tile);
     case Compressor::BLOSC:
 #undef BLOSC_LZ4
     case Compressor::BLOSC_LZ4:
@@ -422,92 +363,46 @@ Status TileIO::decompress_tile(Tile* tile, uint64_t tile_size) {
     case Compressor::BLOSC_ZLIB:
 #undef BLOSC_ZSTD
     case Compressor::BLOSC_ZSTD:
-      return decompress_tile_blosc(tile, tile_size);
+      return decompress_tile_blosc(tile);
     case Compressor::RLE:
-      return decompress_tile_rle(tile, tile_size);
+      return decompress_tile_rle(tile);
     case Compressor::BZIP2:
-      return decompress_tile_bzip2(tile, tile_size);
+      return decompress_tile_bzip2(tile);
   }
 }
 
-Status TileIO::decompress_tile_gzip(Tile* tile, uint64_t tile_size) {
-  size_t out_size = 0;  // TODO: this will change
-  RETURN_NOT_OK(GZip::decompress(
-      utils::datatype_size(tile->type()),
-      buffer_->data(),
-      buffer_->size(),
-      tile->data(),
-      tile_size,
-      &out_size));
+Status TileIO::decompress_tile_gzip(Tile* tile) {
+  RETURN_NOT_OK(GZip::decompress(buffer_, tile->buffer()));
 
   return Status::Ok();
 }
 
-Status TileIO::decompress_tile_zstd(Tile* tile, uint64_t tile_size) {
-  size_t out_size = 0;  // TODO: this will change
-  RETURN_NOT_OK(ZStd::decompress(
-      utils::datatype_size(tile->type()),
-      buffer_->data(),
-      buffer_->size(),
-      tile->data(),
-      tile_size,
-      &out_size));
+Status TileIO::decompress_tile_zstd(Tile* tile) {
+  RETURN_NOT_OK(ZStd::decompress(buffer_, tile->buffer()));
 
-  // Success
   return Status::Ok();
 }
 
-Status TileIO::decompress_tile_lz4(Tile* tile, uint64_t tile_size) {
-  size_t out_size = 0;  // TODO: this will change
-  RETURN_NOT_OK(LZ4::decompress(
-      utils::datatype_size(tile->type()),
-      buffer_->data(),
-      buffer_->size(),
-      tile->data(),
-      tile_size,
-      &out_size));
+Status TileIO::decompress_tile_lz4(Tile* tile) {
+  RETURN_NOT_OK(LZ4::decompress(buffer_, tile->buffer()));
 
-  // Success
   return Status::Ok();
 }
 
-Status TileIO::decompress_tile_blosc(Tile* tile, uint64_t tile_size) {
-  size_t out_size = 0;  // TODO: this will change
-  RETURN_NOT_OK(Blosc::decompress(
-      utils::datatype_size(tile->type()),
-      buffer_->data(),
-      buffer_->size(),
-      tile->data(),
-      tile_size,
-      &out_size));
+Status TileIO::decompress_tile_blosc(Tile* tile) {
+  RETURN_NOT_OK(Blosc::decompress(buffer_, tile->buffer()));
 
-  // Success
   return Status::Ok();
 }
 
-Status TileIO::decompress_tile_rle(Tile* tile, uint64_t tile_size) {
-  size_t out_size = 0;  // TODO: this will change
-  RETURN_NOT_OK(RLE::decompress(
-      tile->cell_size(),
-      buffer_->data(),
-      buffer_->size(),
-      tile->data(),
-      tile_size,
-      &out_size));
+Status TileIO::decompress_tile_rle(Tile* tile) {
+  RETURN_NOT_OK(RLE::decompress(tile->cell_size(), buffer_, tile->buffer()));
 
-  // Success
   return Status::Ok();
 }
 
-Status TileIO::decompress_tile_bzip2(Tile* tile, uint64_t tile_size) {
-  size_t out_size = 0;  // TODO: this will change
-  RETURN_NOT_OK(BZip::decompress(
-      utils::datatype_size(tile->type()),
-      buffer_->data(),
-      buffer_->size(),
-      tile->data(),
-      tile_size,
-      &out_size));
+Status TileIO::decompress_tile_bzip2(Tile* tile) {
+  RETURN_NOT_OK(BZip::decompress(buffer_, tile->buffer()));
 
   return Status::Ok();
 }

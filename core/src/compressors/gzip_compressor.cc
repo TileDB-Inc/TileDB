@@ -31,6 +31,7 @@
  */
 
 #include <zlib.h>
+#include <iostream>
 
 #include "gzip_compressor.h"
 #include "logger.h"
@@ -38,13 +39,12 @@
 namespace tiledb {
 
 Status GZip::compress(
-    size_t type_size,
-    int level,
-    void* input_buffer,
-    size_t input_buffer_size,
-    void* output_buffer,
-    size_t output_buffer_size,
-    size_t* compressed_size) {
+    int level, const Buffer* input_buffer, Buffer* output_buffer) {
+  // Sanity check
+  if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
+    return LOG_STATUS(Status::CompressionError(
+        "Failed compressing with GZip; invalid buffer format"));
+
   ssize_t ret;
   z_stream strm;
 
@@ -60,31 +60,33 @@ Status GZip::compress(
   }
 
   // Compress
-  strm.next_in = static_cast<unsigned char*>(input_buffer);
-  strm.next_out = static_cast<unsigned char*>(output_buffer);
-  strm.avail_in = input_buffer_size;
-  strm.avail_out = output_buffer_size;
+  strm.next_in = static_cast<unsigned char*>(input_buffer->data());
+  strm.next_out = static_cast<unsigned char*>(output_buffer->data());
+  strm.avail_in = input_buffer->offset();
+  strm.avail_out = output_buffer->size_alloced();
   ret = deflate(&strm, Z_FINISH);
 
   // Clean up
   (void)deflateEnd(&strm);
 
   // Return
-  if (ret == Z_STREAM_ERROR || strm.avail_in != 0) {
+  if (ret == Z_STREAM_ERROR || strm.avail_in != 0)
     return LOG_STATUS(Status::GZipError("Cannot compress with GZIP"));
-  };
-  // Return size of compressed data
-  *compressed_size = output_buffer_size - strm.avail_out;
+
+  // Set size of compressed data
+  uint64_t compressed_size = output_buffer->size_alloced() - strm.avail_out;
+  output_buffer->set_size(compressed_size);
+  output_buffer->set_offset(compressed_size);
+
   return Status::Ok();
 }
 
-Status GZip::decompress(
-    size_t type_size,
-    void* input_buffer,
-    size_t input_buffer_size,
-    void* output_buffer,
-    size_t output_buffer_size,
-    size_t* decompressed_size) {
+Status GZip::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
+  // Sanity check
+  if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
+    return LOG_STATUS(Status::CompressionError(
+        "Failed decompressing with GZip; invalid buffer format"));
+
   int ret;
   z_stream strm;
 
@@ -101,10 +103,10 @@ Status GZip::decompress(
   }
 
   // Decompress
-  strm.next_in = static_cast<unsigned char*>(input_buffer);
-  strm.next_out = static_cast<unsigned char*>(output_buffer);
-  strm.avail_in = input_buffer_size;
-  strm.avail_out = output_buffer_size;
+  strm.next_in = static_cast<unsigned char*>(input_buffer->data());
+  strm.next_out = static_cast<unsigned char*>(output_buffer->data());
+  strm.avail_in = input_buffer->size();
+  strm.avail_out = output_buffer->size_alloced();
   ret = inflate(&strm, Z_FINISH);
 
   if (ret == Z_STREAM_ERROR || ret != Z_STREAM_END) {
@@ -114,9 +116,6 @@ Status GZip::decompress(
 
   // Clean up
   (void)inflateEnd(&strm);
-
-  // Calculate size of compressed data
-  *decompressed_size = output_buffer_size - strm.avail_out;
 
   // Success
   return Status::Ok();
