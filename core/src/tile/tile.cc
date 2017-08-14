@@ -83,6 +83,7 @@ Tile::Tile(
   buffer_ = nullptr;
   file_offset_ = 0;
   offset_ = 0;
+  tile_size_ = 0;
 }
 
 Tile::~Tile() {
@@ -160,7 +161,7 @@ Status Tile::write(ConstBuffer* buf, uint64_t bytes) {
     LOG_STATUS(
         Status::TileError("Cannot write into tile; Buffer allocation failed"));
 
-  buffer_->write(buf, bytes);
+  RETURN_NOT_OK(buffer_->write(buf, bytes));
   offset_ = buffer_->offset();
 
   return Status::Ok();

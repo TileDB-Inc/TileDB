@@ -50,7 +50,7 @@ Status ZStd::compress(
   // Compress
   size_t zstd_code = ZSTD_compress(
       output_buffer->data(),
-      output_buffer->size_alloced(),
+      output_buffer->size(),
       input_buffer->data(),
       input_buffer->offset(),
       level < 0 ? ZStd::default_level() : level);
@@ -63,7 +63,6 @@ Status ZStd::compress(
   }
 
   // Set size and offset of compressed data
-  output_buffer->set_size(zstd_code);
   output_buffer->set_offset(zstd_code);
 
   return Status::Ok();
@@ -78,7 +77,7 @@ Status ZStd::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
   // Decompress
   size_t zstd_code = ZSTD_decompress(
       output_buffer->data(),
-      output_buffer->size_alloced(),
+      output_buffer->size(),
       input_buffer->data(),
       input_buffer->size());
 

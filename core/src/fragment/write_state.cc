@@ -732,7 +732,8 @@ Status WriteState::write_sparse_unsorted_attr(
     }
 
     // Keep on copying the cells in the sorted order in the sorted buffer
-    sorted_buf->write(buffer_c + cell_pos[i] * cell_size, cell_size);
+    RETURN_NOT_OK(
+        sorted_buf->write(buffer_c + cell_pos[i] * cell_size, cell_size));
   }
 
   // Write final batch
@@ -806,8 +807,9 @@ Status WriteState::write_sparse_unsorted_attr_var(
 
     // Keep on copying the cells in sorted order in the sorted buffers
     var_offset = sorted_buf_var->offset();
-    sorted_buf->write(&var_offset, cell_size);
-    sorted_buf_var->write(buffer_var_c + buffer_s[cell_pos[i]], cell_var_size);
+    RETURN_NOT_OK(sorted_buf->write(&var_offset, cell_size));
+    RETURN_NOT_OK(sorted_buf_var->write(
+        buffer_var_c + buffer_s[cell_pos[i]], cell_var_size));
   }
 
   // Write final batch

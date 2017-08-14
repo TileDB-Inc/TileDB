@@ -60,11 +60,9 @@ Status BZip::compress(
   // Sanity checks
   // TODO: put something better than assertions here
   assert(input_buffer->offset() <= std::numeric_limits<unsigned int>::max());
-  assert(
-      output_buffer->size_alloced() <=
-      std::numeric_limits<unsigned int>::max());
+  assert(output_buffer->size() <= std::numeric_limits<unsigned int>::max());
   unsigned int in_size = input_buffer->offset();
-  unsigned int out_size = output_buffer->size_alloced();
+  unsigned int out_size = output_buffer->size();
 
   // Compress
   int rc = BZ2_bzBuffToBuffCompress(
@@ -100,7 +98,6 @@ Status BZip::compress(
   }
 
   // Set size of compressed data
-  output_buffer->set_size(out_size);
   output_buffer->set_offset(out_size);
 
   return Status::Ok();
@@ -115,12 +112,10 @@ Status BZip::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
   // Sanity checks
   // TODO: put something better than assertions
   assert(input_buffer->size() <= std::numeric_limits<unsigned int>::max());
-  assert(
-      output_buffer->size_alloced() <=
-      std::numeric_limits<unsigned int>::max());
+  assert(output_buffer->size() <= std::numeric_limits<unsigned int>::max());
 
   // Decompress
-  unsigned int out_size = output_buffer->size_alloced();
+  unsigned int out_size = output_buffer->size();
   int rc = BZ2_bzBuffToBuffDecompress(
       static_cast<char*>(output_buffer->data()),
       &out_size,

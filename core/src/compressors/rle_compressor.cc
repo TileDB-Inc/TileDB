@@ -30,10 +30,12 @@
  * This file implements the rle compressor class.
  */
 
-#include "rle_compressor.h"
 #include <cassert>
+#include <iostream>
 #include <limits>
+
 #include "logger.h"
+#include "rle_compressor.h"
 
 namespace tiledb {
 
@@ -79,7 +81,7 @@ Status RLE::compress(
       ++cur_run_len;
     } else {  // Save the run
       // Sanity check on output size
-      if (_output_size + run_size > output_buffer->size_alloced()) {
+      if (_output_size + run_size > output_buffer->size()) {
         return LOG_STATUS(Status::CompressionError(
             "Failed compressing with RLE; output buffer overflow"));
       }
@@ -106,7 +108,7 @@ Status RLE::compress(
 
   // Save final run
   // --- Sanity check on size
-  if (_output_size + run_size > output_buffer->size_alloced()) {
+  if (_output_size + run_size > output_buffer->size()) {
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with RLE; output buffer overflow"));
   }
@@ -125,7 +127,6 @@ Status RLE::compress(
   assert(_output_size <= std::numeric_limits<uint64_t>::max());
 
   // Set size of compressed data
-  output_buffer->set_size(_output_size);
   output_buffer->set_offset(_output_size);
 
   return Status::Ok();
@@ -142,7 +143,6 @@ Status RLE::decompress(
       static_cast<unsigned char*>(input_buffer->data());
   unsigned char* output_cur =
       static_cast<unsigned char*>(output_buffer->data());
-  int64_t output_size = 0;
   int64_t run_len;
   uint64_t run_size = type_size + 2 * sizeof(char);
   int64_t run_num = input_buffer->size() / run_size;
@@ -167,7 +167,7 @@ Status RLE::decompress(
     run_len += (int64_t)byte;
 
     // Sanity check on size
-    if (output_size + type_size * run_len > output_buffer->size_alloced()) {
+    if (type_size * run_len > output_buffer->size()) {
       return LOG_STATUS(Status::CompressionError(
           "Failed decompressing with RLE; output buffer overflow"));
     }

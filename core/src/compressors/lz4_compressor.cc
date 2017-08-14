@@ -59,7 +59,7 @@ Status LZ4::compress(
   // TODO: need something better than an assertion here
   // TODO: this can also be handled by chunk-wise compression
   assert(input_buffer->offset() <= std::numeric_limits<int>::max());
-  assert(output_buffer->size_alloced() <= std::numeric_limits<int>::max());
+  assert(output_buffer->size() <= std::numeric_limits<int>::max());
 
   // Compress
 #if LZ4_VERSION_NUMBER >= 10705
@@ -67,7 +67,7 @@ Status LZ4::compress(
       static_cast<char*>(input_buffer->data()),
       static_cast<char*>(output_buffer->data()),
       input_buffer->offset(),
-      output_buffer->size_alloced());
+      output_buffer->size());
 #else
   // deprecated lz4 api
   int ret = LZ4_compress(
@@ -81,7 +81,6 @@ Status LZ4::compress(
     return Status::CompressionError("LZ4 compression failed");
 
   // Set size of compressed data
-  output_buffer->set_size(static_cast<uint64_t>(ret));
   output_buffer->set_offset(static_cast<uint64_t>(ret));
 
   return Status::Ok();
@@ -95,14 +94,14 @@ Status LZ4::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
 
   // Sanity check
   assert(input_buffer->size() <= std::numeric_limits<int>::max());
-  assert(output_buffer->size_alloced() <= std::numeric_limits<int>::max());
+  assert(output_buffer->size() <= std::numeric_limits<int>::max());
 
   // Decompress
   int ret = LZ4_decompress_safe(
       static_cast<char*>(input_buffer->data()),
       static_cast<char*>(output_buffer->data()),
       input_buffer->size(),
-      output_buffer->size_alloced());
+      output_buffer->size());
 
   // Check error
   if (ret < 0)

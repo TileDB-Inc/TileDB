@@ -45,7 +45,6 @@ namespace tiledb {
 Buffer::Buffer() {
   data_ = nullptr;
   size_ = 0;
-  size_alloced_ = 0;
   mmap_data_ = nullptr;
   mmap_size_ = 0;
   offset_ = 0;
@@ -56,7 +55,6 @@ Buffer::Buffer(uint64_t size) {
   mmap_data_ = nullptr;
   mmap_size_ = 0;
   size_ = (data_ != nullptr) ? size : 0;
-  size_alloced_ = size_;
   offset_ = 0;
 }
 
@@ -78,7 +76,6 @@ Status Buffer::clear() {
       free(data_);
       data_ = nullptr;
       size_ = 0;
-      size_alloced_ = 0;
     } else {
       return munmap();
     }
@@ -108,8 +105,6 @@ Status Buffer::mmap(
 }
 
 Status Buffer::munmap() {
-  // TODO: move to filesystem
-
   if (mmap_data_ == nullptr)
     return Status::Ok();
 
@@ -134,10 +129,17 @@ Status Buffer::read(void* buffer, uint64_t bytes) {
   return Status::Ok();
 }
 
-// TODO: this may fail - return Status
-void Buffer::realloc(uint64_t size) {
+Status Buffer::realloc(uint64_t size) {
   data_ = ::realloc(data_, size);
-  size_alloced_ = size;
+  if (data_ == nullptr) {
+    size_ = 0;
+    return LOG_STATUS(Status::BufferError(
+        "Cannot reallocate buffer; Memory reallocation failed"));
+  }
+
+  size_ = size;
+
+  return Status::Ok();
 }
 
 void Buffer::write(ConstBuffer* buf) {
@@ -149,22 +151,24 @@ void Buffer::write(ConstBuffer* buf) {
   offset_ += bytes_to_copy;
 }
 
-// TODO: this may fail - return Status
-void Buffer::write(ConstBuffer* buf, uint64_t bytes) {
-  while (offset_ + bytes > size_alloced_)
-    realloc(2 * size_alloced_);
+Status Buffer::write(ConstBuffer* buf, uint64_t nbytes) {
+  while (offset_ + nbytes > size_)
+    RETURN_NOT_OK(realloc(2 * size_));
 
-  buf->read(data_, bytes);
-  offset_ += bytes;
+  buf->read(data_, nbytes);
+  offset_ += nbytes;
+
+  return Status::Ok();
 }
 
-// TODO: this may fail - return Status
-void Buffer::write(const void* buf, uint64_t bytes) {
-  while (offset_ + bytes > size_alloced_)
-    realloc(2 * size_alloced_);
+Status Buffer::write(const void* buf, uint64_t nbytes) {
+  while (offset_ + nbytes > size_)
+    RETURN_NOT_OK(realloc(2 * size_));
 
-  memcpy((char*)data_ + offset_, buf, bytes);
-  offset_ += bytes;
+  memcpy((char*)data_ + offset_, buf, nbytes);
+  offset_ += nbytes;
+
+  return Status::Ok();
 }
 
 void Buffer::write_with_shift(ConstBuffer* buf, uint64_t offset) {
