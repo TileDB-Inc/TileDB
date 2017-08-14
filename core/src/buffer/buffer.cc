@@ -142,7 +142,7 @@ void Buffer::realloc(uint64_t size) {
 
 void Buffer::write(ConstBuffer* buf) {
   uint64_t bytes_left_to_write = size_ - offset_;
-  uint64_t bytes_left_to_read = buf->bytes_left_to_read();
+  uint64_t bytes_left_to_read = buf->nbytes_left_to_read();
   uint64_t bytes_to_copy = std::min(bytes_left_to_write, bytes_left_to_read);
 
   buf->read(data_, bytes_to_copy);
@@ -169,7 +169,7 @@ void Buffer::write(const void* buf, uint64_t bytes) {
 
 void Buffer::write_with_shift(ConstBuffer* buf, uint64_t offset) {
   uint64_t bytes_left_to_write = size_ - offset_;
-  uint64_t bytes_left_to_read = buf->bytes_left_to_read();
+  uint64_t bytes_left_to_read = buf->nbytes_left_to_read();
   uint64_t bytes_to_copy = std::min(bytes_left_to_write, bytes_left_to_read);
 
   buf->read_with_shift(static_cast<uint64_t*>(data_), bytes_to_copy, offset);

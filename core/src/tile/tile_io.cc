@@ -68,6 +68,7 @@ Status TileIO::file_size(off_t* size) const {
   return filesystem::file_size(attr_filename_.to_string(), size);
 }
 
+// TODO: check
 Status TileIO::read(
     Tile* tile,
     uint64_t file_offset,
@@ -121,7 +122,8 @@ Status TileIO::read(
   return decompress_tile(tile, tile_size);
 }
 
-Status TileIO::read_from_tile(Tile* tile, void* buffer, uint64_t bytes) {
+// TODO: check
+Status TileIO::read_from_tile(Tile* tile, void* buffer, uint64_t nbytes) {
   IOMethod read_method = config_->read_method();
   Status st;
   if (read_method == IOMethod::READ) {
@@ -129,7 +131,7 @@ Status TileIO::read_from_tile(Tile* tile, void* buffer, uint64_t bytes) {
         attr_filename_.to_string(),
         tile->file_offset() + tile->offset(),
         buffer,
-        bytes);
+        nbytes);
   } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
     st = filesystem::mpi_io_read_from_file(
@@ -137,7 +139,7 @@ Status TileIO::read_from_tile(Tile* tile, void* buffer, uint64_t bytes) {
         attr_filename_.to_string(),
         tile->file_offset() + tile->offset(),
         buffer,
-        bytes);
+        nbytes);
 #else
     // Error: MPI not supported
     return LOG_STATUS(
@@ -149,11 +151,12 @@ Status TileIO::read_from_tile(Tile* tile, void* buffer, uint64_t bytes) {
   }
 
   if (st.ok())
-    tile->advance_offset(bytes);
+    tile->advance_offset(nbytes);
 
   return st;
 }
 
+// TODO: check
 Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
   // Compress tile
   // TODO: here we will put all other filters, and potentially employ chunking
@@ -197,6 +200,7 @@ Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
+// TODO: check
 Status TileIO::compress_tile(Tile* tile) {
   // For easy reference
   Compressor compression = tile->compressor();
@@ -337,9 +341,9 @@ Status TileIO::compress_tile_bzip2(Tile* tile, int level) {
 }
 
 Status TileIO::decompress_tile(Tile* tile, uint64_t tile_size) {
-  // For easy reference
   Compressor compression = tile->compressor();
 
+  // TODO: check
   if (compression != Compressor::NO_COMPRESSION)
     tile->alloc(tile_size);
 
@@ -347,11 +351,11 @@ Status TileIO::decompress_tile(Tile* tile, uint64_t tile_size) {
     case Compressor::NO_COMPRESSION:
       return Status::Ok();
     case Compressor::GZIP:
-      return decompress_tile_gzip(tile);
+      return GZip::decompress(buffer_, tile->buffer());
     case Compressor::ZSTD:
-      return decompress_tile_zstd(tile);
+      return ZStd::decompress(buffer_, tile->buffer());
     case Compressor::LZ4:
-      return decompress_tile_lz4(tile);
+      return LZ4::decompress(buffer_, tile->buffer());
     case Compressor::BLOSC:
 #undef BLOSC_LZ4
     case Compressor::BLOSC_LZ4:
@@ -363,48 +367,12 @@ Status TileIO::decompress_tile(Tile* tile, uint64_t tile_size) {
     case Compressor::BLOSC_ZLIB:
 #undef BLOSC_ZSTD
     case Compressor::BLOSC_ZSTD:
-      return decompress_tile_blosc(tile);
+      return Blosc::decompress(buffer_, tile->buffer());
     case Compressor::RLE:
-      return decompress_tile_rle(tile);
+      return RLE::decompress(tile->cell_size(), buffer_, tile->buffer());
     case Compressor::BZIP2:
-      return decompress_tile_bzip2(tile);
+      return BZip::decompress(buffer_, tile->buffer());
   }
-}
-
-Status TileIO::decompress_tile_gzip(Tile* tile) {
-  RETURN_NOT_OK(GZip::decompress(buffer_, tile->buffer()));
-
-  return Status::Ok();
-}
-
-Status TileIO::decompress_tile_zstd(Tile* tile) {
-  RETURN_NOT_OK(ZStd::decompress(buffer_, tile->buffer()));
-
-  return Status::Ok();
-}
-
-Status TileIO::decompress_tile_lz4(Tile* tile) {
-  RETURN_NOT_OK(LZ4::decompress(buffer_, tile->buffer()));
-
-  return Status::Ok();
-}
-
-Status TileIO::decompress_tile_blosc(Tile* tile) {
-  RETURN_NOT_OK(Blosc::decompress(buffer_, tile->buffer()));
-
-  return Status::Ok();
-}
-
-Status TileIO::decompress_tile_rle(Tile* tile) {
-  RETURN_NOT_OK(RLE::decompress(tile->cell_size(), buffer_, tile->buffer()));
-
-  return Status::Ok();
-}
-
-Status TileIO::decompress_tile_bzip2(Tile* tile) {
-  RETURN_NOT_OK(BZip::decompress(buffer_, tile->buffer()));
-
-  return Status::Ok();
 }
 
 }  // namespace tiledb
