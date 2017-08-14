@@ -31,14 +31,29 @@
  */
 
 #include "tiledb.h"
-#include <cstdio>
 
-int main() {
+#include <cstdio>
+#include <iostream>
+
+int main(int argc, char** argv) {
   // Initialize context with the default configuration parameters
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Initialize array 
+/*
+  // Create a TileDB configuration
+  tiledb_config_t* config;
+  tiledb_config_create(ctx, &config);
+  tiledb_config_set_read_method(ctx, config, TILEDB_IO_METHOD_READ);
+
+  // Set new config to context
+  tiledb_ctx_set_config(ctx, config);
+
+  // Free config
+  tiledb_config_free(config);
+*/
+
+  // Initialize array
   tiledb_array_t* tiledb_array;
   tiledb_array_init(
       ctx,                                       // Context

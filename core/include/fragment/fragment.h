@@ -69,6 +69,12 @@ class Fragment {
   /*              ACCESSORS            */
   /* ********************************* */
 
+  uri::URI attr_uri(int attribute_id) const;
+
+  uri::URI attr_var_uri(int attribute_id) const;
+
+  uri::URI coords_uri() const;
+
   /** Returns the array the fragment belongs to. */
   const Array* array() const;
 

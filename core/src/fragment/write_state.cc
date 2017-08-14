@@ -30,6 +30,7 @@
  *
  * This file implements the WriteState class.
  */
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -50,37 +51,46 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-WriteState::WriteState(const Fragment* fragment, BookKeeping* book_keeping)
-    : book_keeping_(book_keeping)
+WriteState::WriteState(const Fragment* fragment, BookKeeping* bookkeeping)
+    : bookkeeping_(bookkeeping)
     , fragment_(fragment) {
   // For easy reference
   const ArraySchema* array_schema = fragment->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
   size_t coords_size = array_schema->coords_size();
+  const Configurator* config = fragment_->array()->config();
 
   // Initialize the number of cells written in the current tile
   tile_cell_num_.resize(attribute_num + 1);
   for (int i = 0; i < attribute_num + 1; ++i)
     tile_cell_num_[i] = 0;
 
-  // Initialize tiles
+  // Initialize tiles and tile_io
   for (int i = 0; i < attribute_num; ++i) {
     const Attribute* attr = array_schema->Attributes()[i];
-    uint64_t cell_size = (array_schema->var_size(i)) ?
-                             array_schema->type_size(i) :
-                             array_schema->cell_size(i);
+    bool var_size = array_schema->var_size(i);
+    uint64_t cell_size =
+        (var_size) ? array_schema->type_size(i) : array_schema->cell_size(i);
+    tile_io_.emplace_back(new TileIO(config, fragment_->attr_uri(i)));
     tiles_.emplace_back(new Tile(
         attr->type(),
         attr->compressor(),
         attr->compression_level(),
         fragment_->tile_size(i),
-        attr->cell_size()));
-    tiles_var_.emplace_back(new Tile(
-        attr->type(),
-        attr->compressor(),
-        attr->compression_level(),
-        fragment_->tile_size(i),
-        cell_size));
+        attr->cell_size(),
+        var_size));
+    if (var_size) {
+      tiles_var_.emplace_back(new Tile(
+          attr->type(),
+          attr->compressor(),
+          attr->compression_level(),
+          fragment_->tile_size(i),
+          cell_size));
+      tile_io_var_.emplace_back(new TileIO(config, fragment_->attr_var_uri(i)));
+    } else {
+      tiles_var_.emplace_back(nullptr);
+      tile_io_var_.emplace_back(nullptr);
+    }
   }
   const Dimension* dim = array_schema->Dimensions()[0];
   tiles_.emplace_back(new Tile(
@@ -89,6 +99,7 @@ WriteState::WriteState(const Fragment* fragment, BookKeeping* book_keeping)
       dim->compression_level(),
       fragment_->tile_size(array_schema->attribute_num()),
       array_schema->coords_size()));
+  tile_io_.emplace_back(new TileIO(config, fragment_->coords_uri()));
 
   // Initialize the current size of the variable attribute file
   buffer_var_offsets_.resize(attribute_num);
@@ -105,6 +116,15 @@ WriteState::WriteState(const Fragment* fragment, BookKeeping* book_keeping)
 WriteState::~WriteState() {
   for (auto& tile : tiles_)
     delete tile;
+
+  for (auto& tile_var : tiles_var_)
+    delete tile_var;
+
+  for (auto& tile_io : tile_io_)
+    delete tile_io;
+
+  for (auto& tile_io_var : tile_io_var_)
+    delete tile_io_var;
 
   // Free current MBR
   if (mbr_ != nullptr)
@@ -138,6 +158,7 @@ Status WriteState::finalize() {
 Status WriteState::sync() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
   const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
   IOMethod write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
@@ -148,11 +169,10 @@ Status WriteState::sync() {
   // Sync all attributes
   for (int attribute_id : attribute_ids) {
     // For all attributes
-    filename = fragment_->fragment_uri()
-                   .join_path(
-                       array_schema->attribute(attribute_id) +
-                       Configurator::file_suffix())
-                   .to_posix_path();
+    if (attribute_id == attribute_num)
+      filename = fragment_->coords_uri().to_posix_path();
+    else
+      filename = fragment_->attr_uri(attribute_id).to_posix_path();
     if (write_method == IOMethod::WRITE) {
       RETURN_NOT_OK(filesystem::sync(filename.c_str()));
     } else if (write_method == IOMethod::MPI) {
@@ -160,7 +180,8 @@ Status WriteState::sync() {
       RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
       // Error: MPI not supported
-      return LOG_STATUS(Status::Error("Cannot sync; MPI not supported"));
+      return LOG_STATUS(
+          Status::WriteStateError("Cannot sync; MPI not supported"));
 #endif
     } else {
       assert(0);
@@ -168,11 +189,7 @@ Status WriteState::sync() {
 
     // Only for variable-size attributes (they have an extra file)
     if (array_schema->var_size(attribute_id)) {
-      filename = fragment_->fragment_uri()
-                     .join_path(
-                         array_schema->attribute(attribute_id) + "_var" +
-                         Configurator::file_suffix())
-                     .to_posix_path();
+      filename = fragment_->attr_var_uri(attribute_id).to_posix_path();
       if (write_method == IOMethod::WRITE) {
         RETURN_NOT_OK(filesystem::sync(filename.c_str()));
       } else if (write_method == IOMethod::MPI) {
@@ -180,7 +197,8 @@ Status WriteState::sync() {
         RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
         // Error: MPI not supported
-        return LOG_STATUS(Status::Error("Cannot sync; MPI not supported"));
+        return LOG_STATUS(
+            Status::WriteStateError("Cannot sync; MPI not supported"));
 #endif
       } else {
         assert(0);
@@ -197,7 +215,8 @@ Status WriteState::sync() {
     RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
     // Error: MPI not supported
-    return LOG_STATUS(Status::Error("Cannot sync; MPI not supported"));
+    return LOG_STATUS(
+        Status::WriteStateError("Cannot sync; MPI not supported"));
 #endif
   } else {
     assert(0);
@@ -209,18 +228,19 @@ Status WriteState::sync() {
 Status WriteState::sync_attribute(const std::string& attribute) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
   IOMethod write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
 #endif
+
   int attribute_id;
   RETURN_NOT_OK(array_schema->attribute_id(attribute, &attribute_id));
   std::string filename;
-
-  // Sync attribute
-  filename = fragment_->fragment_uri()
-                 .join_path(attribute + Configurator::file_suffix())
-                 .to_posix_path();
+  if (attribute_id == attribute_num)
+    filename = fragment_->coords_uri().to_posix_path();
+  else
+    filename = fragment_->attr_uri(attribute_id).to_posix_path();
   if (write_method == IOMethod::WRITE) {
     RETURN_NOT_OK(filesystem::sync(filename.c_str()));
   } else if (write_method == IOMethod::MPI) {
@@ -229,16 +249,14 @@ Status WriteState::sync_attribute(const std::string& attribute) {
 #else
     // Error: MPI not supported
     return LOG_STATUS(
-        Status::Error("Cannot sync attribute; MPI not supported"));
+        Status::WriteStateError("Cannot sync attribute; MPI not supported"));
 #endif
   } else {
     assert(0);
   }
   // Only for variable-size attributes (they have an extra file)
   if (array_schema->var_size(attribute_id)) {
-    filename = fragment_->fragment_uri()
-                   .join_path(attribute + "_var" + Configurator::file_suffix())
-                   .to_posix_path();
+    filename = fragment_->attr_var_uri(attribute_id).to_posix_path();
     if (write_method == IOMethod::WRITE) {
       RETURN_NOT_OK(filesystem::sync(filename.c_str()));
     } else if (write_method == IOMethod::MPI) {
@@ -247,7 +265,7 @@ Status WriteState::sync_attribute(const std::string& attribute) {
 #else
       // Error: MPI not supported
       return LOG_STATUS(
-          Status::Error("Cannot sync attribute; MPI not supported"));
+          Status::WriteStateError("Cannot sync attribute; MPI not supported"));
 #endif
     } else {
       assert(0);
@@ -263,7 +281,7 @@ Status WriteState::sync_attribute(const std::string& attribute) {
 #else
     // Error: MPI not supported
     return LOG_STATUS(
-        Status::Error("Cannot sync attribute; MPI not supported"));
+        Status::WriteStateError("Cannot sync attribute; MPI not supported"));
 #endif
   } else {
     assert(0);
@@ -310,7 +328,8 @@ Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   } else if (fragment_->mode() == ArrayMode::WRITE_UNSORTED) {  // UNSORTED
     return write_sparse_unsorted(buffers, buffer_sizes);
   } else {
-    return LOG_STATUS(Status::Error("Cannot write to fragment; Invalid mode"));
+    return LOG_STATUS(
+        Status::WriteStateError("Cannot write to fragment; Invalid mode"));
   }
 }
 
@@ -335,26 +354,6 @@ void WriteState::expand_mbr(const T* coords) {
   } else {  // Expand MBR
     utils::expand_mbr(mbr, coords, dim_num);
   }
-}
-
-void WriteState::shift_var_offsets(
-    int attribute_id,
-    size_t buffer_var_size,
-    const void* buffer,
-    size_t buffer_size,
-    void* shifted_buffer) {
-  // For easy reference
-  int64_t buffer_cell_num = buffer_size / sizeof(size_t);
-  const size_t* buffer_s = static_cast<const size_t*>(buffer);
-  size_t* shifted_buffer_s = static_cast<size_t*>(shifted_buffer);
-  size_t& buffer_var_offset = buffer_var_offsets_[attribute_id];
-
-  // Shift offsets
-  for (int64_t i = 0; i < buffer_cell_num; ++i)
-    shifted_buffer_s[i] = buffer_var_offset + buffer_s[i];
-
-  // Update the last offset
-  buffer_var_offset += buffer_var_size;
 }
 
 void WriteState::sort_cell_pos(
@@ -399,7 +398,7 @@ void WriteState::sort_cell_pos(
   size_t coords_size = array_schema->coords_size();
   int64_t buffer_cell_num = buffer_size / coords_size;
   Layout cell_order = array_schema->cell_order();
-  const T* buffer_T = static_cast<const T*>(buffer);
+  auto buffer_T = static_cast<const T*>(buffer);
 
   // Populate cell_pos
   cell_pos.resize(buffer_cell_num);
@@ -443,36 +442,36 @@ void WriteState::sort_cell_pos(
   }
 }
 
-void WriteState::update_book_keeping(const void* buffer, size_t buffer_size) {
+void WriteState::update_bookkeeping(const void* buffer, size_t buffer_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   Datatype coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
   if (coords_type == Datatype::INT32)
-    update_book_keeping<int>(buffer, buffer_size);
+    update_bookkeeping<int>(buffer, buffer_size);
   else if (coords_type == Datatype::INT64)
-    update_book_keeping<int64_t>(buffer, buffer_size);
+    update_bookkeeping<int64_t>(buffer, buffer_size);
   else if (coords_type == Datatype::FLOAT32)
-    update_book_keeping<float>(buffer, buffer_size);
+    update_bookkeeping<float>(buffer, buffer_size);
   else if (coords_type == Datatype::FLOAT64)
-    update_book_keeping<double>(buffer, buffer_size);
+    update_bookkeeping<double>(buffer, buffer_size);
   else if (coords_type == Datatype::INT8)
-    update_book_keeping<int8_t>(buffer, buffer_size);
+    update_bookkeeping<int8_t>(buffer, buffer_size);
   else if (coords_type == Datatype::UINT8)
-    update_book_keeping<uint8_t>(buffer, buffer_size);
+    update_bookkeeping<uint8_t>(buffer, buffer_size);
   else if (coords_type == Datatype::INT16)
-    update_book_keeping<int16_t>(buffer, buffer_size);
+    update_bookkeeping<int16_t>(buffer, buffer_size);
   else if (coords_type == Datatype::UINT16)
-    update_book_keeping<uint16_t>(buffer, buffer_size);
+    update_bookkeeping<uint16_t>(buffer, buffer_size);
   else if (coords_type == Datatype::UINT32)
-    update_book_keeping<uint32_t>(buffer, buffer_size);
+    update_bookkeeping<uint32_t>(buffer, buffer_size);
   else if (coords_type == Datatype::UINT64)
-    update_book_keeping<uint64_t>(buffer, buffer_size);
+    update_bookkeeping<uint64_t>(buffer, buffer_size);
 }
 
 template <class T>
-void WriteState::update_book_keeping(const void* buffer, size_t buffer_size) {
+void WriteState::update_bookkeeping(const void* buffer, size_t buffer_size) {
   // Trivial case
   if (buffer_size == 0)
     return;
@@ -484,7 +483,7 @@ void WriteState::update_book_keeping(const void* buffer, size_t buffer_size) {
   int64_t capacity = array_schema->capacity();
   size_t coords_size = array_schema->coords_size();
   int64_t buffer_cell_num = buffer_size / coords_size;
-  const T* buffer_T = static_cast<const T*>(buffer);
+  auto buffer_T = static_cast<const T*>(buffer);
   int64_t& tile_cell_num = tile_cell_num_[attribute_num];
 
   // Update bounding coordinates and MBRs
@@ -493,47 +492,26 @@ void WriteState::update_book_keeping(const void* buffer, size_t buffer_size) {
     if (tile_cell_num == 0)
       memcpy(bounding_coords_, &buffer_T[i * dim_num], coords_size);
 
-    // Set second bounding coordinates
-    memcpy(
-        static_cast<char*>(bounding_coords_) + coords_size,
-        &buffer_T[i * dim_num],
-        coords_size);
-
     // Expand MBR
     expand_mbr(&buffer_T[i * dim_num]);
 
     // Advance a cell
     ++tile_cell_num;
 
+    // Set second bounding coordinates
+    if (i == buffer_cell_num - 1 || tile_cell_num == capacity)
+      memcpy(
+          static_cast<char*>(bounding_coords_) + coords_size,
+          &buffer_T[i * dim_num],
+          coords_size);
+
     // Send MBR and bounding coordinates to book-keeping
     if (tile_cell_num == capacity) {
-      book_keeping_->append_mbr(mbr_);
-      book_keeping_->append_bounding_coords(bounding_coords_);
+      bookkeeping_->append_mbr(mbr_);
+      bookkeeping_->append_bounding_coords(bounding_coords_);
       tile_cell_num = 0;
     }
   }
-}
-
-Status WriteState::write_last_tile() {
-  // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-
-  // Send last MBR, bounding coordinates and tile cell number to book-keeping
-  book_keeping_->append_mbr(mbr_);
-  book_keeping_->append_bounding_coords(bounding_coords_);
-  book_keeping_->set_last_tile_cell_num(tile_cell_num_[attribute_num]);
-
-  // Flush the last tile for each compressed attribute (it is still in main
-  // memory
-  for (int i = 0; i < attribute_num + 1; ++i) {
-    RETURN_NOT_OK(write_attr_last(i));
-    if (array_schema->var_size(i))
-      RETURN_NOT_OK(write_attr_var_last(i));
-  }
-
-  // Success
-  return Status::Ok();
 }
 
 Status WriteState::write_attr(
@@ -544,25 +522,13 @@ Status WriteState::write_attr(
 
   // Update book-keeping in the case of sparse fragment coordinates
   if (attribute_id == fragment_->array()->array_schema()->attribute_num())
-    update_book_keeping(buffer, buffer_size);
+    update_bookkeeping(buffer, buffer_size);
 
   // Preparation
   auto buf = new ConstBuffer(buffer, buffer_size);
 
   Tile* tile = tiles_[attribute_id];
-  uri::URI attr_filename;
-
-  if (attribute_id != fragment_->array()->array_schema()->attribute_num()) {
-    const Attribute* attr =
-        fragment_->array()->array_schema()->Attributes()[attribute_id];
-    attr_filename = fragment_->fragment_uri().join_path(
-        attr->name() + Configurator::file_suffix());
-  } else {
-    attr_filename = fragment_->fragment_uri().join_path(
-        std::string(Configurator::coords()) + Configurator::file_suffix());
-  }
-
-  TileIO* tile_io = new TileIO(fragment_->array()->config(), attr_filename);
+  TileIO* tile_io = tile_io_[attribute_id];
 
   // Fill tiles and dispatch them for writing
   uint64_t bytes_written;
@@ -570,14 +536,13 @@ Status WriteState::write_attr(
     RETURN_NOT_OK(tile->write(buf));
     if (tile->full()) {
       RETURN_NOT_OK(tile_io->write(tile, &bytes_written));
-      book_keeping_->append_tile_offset(attribute_id, bytes_written);
-      tile->reset();
+      bookkeeping_->append_tile_offset(attribute_id, bytes_written);
+      tile->reset_offset();
     }
   } while (!buf->end());
 
   // Clean up
   delete buf;
-  delete tile_io;
 
   return Status::Ok();
 }
@@ -585,28 +550,13 @@ Status WriteState::write_attr(
 Status WriteState::write_attr_last(int attribute_id) {
   Tile* tile = tiles_[attribute_id];
   assert(!tile->empty());
-
-  uri::URI attr_filename;
-  if (attribute_id != fragment_->array()->array_schema()->attribute_num()) {
-    const Attribute* attr =
-        fragment_->array()->array_schema()->Attributes()[attribute_id];
-    attr_filename = fragment_->fragment_uri().join_path(
-        attr->name() + Configurator::file_suffix());
-  } else {
-    attr_filename = fragment_->fragment_uri().join_path(
-        std::string(Configurator::coords()) + Configurator::file_suffix());
-  }
-
-  TileIO* tile_io = new TileIO(fragment_->array()->config(), attr_filename);
+  TileIO* tile_io = tile_io_[attribute_id];
 
   // Fill tiles and dispatch them for writing
   uint64_t bytes_written;
   RETURN_NOT_OK(tile_io->write(tile, &bytes_written));
-  book_keeping_->append_tile_offset(attribute_id, bytes_written);
-  tile->reset();
-
-  // Clean up
-  delete tile_io;
+  bookkeeping_->append_tile_offset(attribute_id, bytes_written);
+  tile->reset_offset();
 
   return Status::Ok();
 }
@@ -621,59 +571,45 @@ Status WriteState::write_attr_var(
   if (buffer_size == 0 || buffer_var_size == 0)
     return Status::Ok();
 
-  uint64_t buffer_var_offset = buffer_var_offsets_[attribute_id];
-
-  // Recalculate offsets
-  // TODO: try to optimize this
-  Buffer* buf_shifted = new Buffer(buffer_size);
-  shift_var_offsets(
-      attribute_id, buffer_var_size, buffer, buffer_size, buf_shifted->data());
-
-  // Preparation
-  auto buf = new ConstBuffer(buf_shifted->data(), buf_shifted->size());
+  auto buf = new ConstBuffer(buffer, buffer_size);
   auto buf_var = new ConstBuffer(buffer_var, buffer_var_size);
+
+  size_t& buffer_var_offset = buffer_var_offsets_[attribute_id];
 
   Tile* tile = tiles_[attribute_id];
   Tile* tile_var = tiles_var_[attribute_id];
-  const Attribute* attr =
-      fragment_->array()->array_schema()->Attributes()[attribute_id];
-  uri::URI attr_filename = fragment_->fragment_uri().join_path(
-      attr->name() + Configurator::file_suffix());
-  uri::URI attr_var_filename = fragment_->fragment_uri().join_path(
-      attr->name() + "_var" + Configurator::file_suffix());
-
-  TileIO* tile_io = new TileIO(fragment_->array()->config(), attr_filename);
-  TileIO* tile_io_var =
-      new TileIO(fragment_->array()->config(), attr_var_filename);
+  TileIO* tile_io = tile_io_[attribute_id];
+  TileIO* tile_io_var = tile_io_var_[attribute_id];
 
   // Fill tiles and dispatch them for writing
   uint64_t bytes_written, bytes_written_var, bytes_to_write_var;
   do {
-    RETURN_NOT_OK(tile->write(buf));
+    RETURN_NOT_OK(tile->write_with_shift(buf, buffer_var_offset));
 
     bytes_to_write_var =
         (buf->end()) ?
             buffer_var_offset + buffer_var_size - tile->value<uint64_t>(0) :
-            buf->value<uint64_t>() - tile->value<uint64_t>(0);
+            buffer_var_offset + buf->value<uint64_t>() -
+                tile->value<uint64_t>(0);
+
     RETURN_NOT_OK(tile_var->write(buf_var, bytes_to_write_var));
 
     if (tile->full()) {
       RETURN_NOT_OK(tile_io->write(tile, &bytes_written));
       RETURN_NOT_OK(tile_io_var->write(tile_var, &bytes_written_var));
-      book_keeping_->append_tile_offset(attribute_id, bytes_written);
-      book_keeping_->append_tile_var_offset(attribute_id, bytes_written_var);
-      book_keeping_->append_tile_var_size(attribute_id, tile_var->offset());
-      tile->reset();
-      tile_var->reset();
+      bookkeeping_->append_tile_offset(attribute_id, bytes_written);
+      bookkeeping_->append_tile_var_offset(attribute_id, bytes_written_var);
+      bookkeeping_->append_tile_var_size(attribute_id, tile_var->offset());
+      tile->reset_offset();
+      tile_var->reset_offset();
     }
   } while (!buf->end());
+
+  buffer_var_offset += buffer_var_size;
 
   // Clean up
   delete buf;
   delete buf_var;
-  delete buf_shifted;
-  delete tile_io;
-  delete tile_io_var;
 
   return Status::Ok();
 }
@@ -681,61 +617,55 @@ Status WriteState::write_attr_var(
 Status WriteState::write_attr_var_last(int attribute_id) {
   Tile* tile = tiles_[attribute_id];
   Tile* tile_var = tiles_var_[attribute_id];
-  const Attribute* attr =
-      fragment_->array()->array_schema()->Attributes()[attribute_id];
-  uri::URI attr_filename = fragment_->fragment_uri().join_path(
-      attr->name() + Configurator::file_suffix());
-  uri::URI attr_var_filename = fragment_->fragment_uri().join_path(
-      attr->name() + "_var" + Configurator::file_suffix());
-
-  TileIO* tile_io = new TileIO(fragment_->array()->config(), attr_filename);
-  TileIO* tile_io_var =
-      new TileIO(fragment_->array()->config(), attr_var_filename);
+  TileIO* tile_io = tile_io_[attribute_id];
+  TileIO* tile_io_var = tile_io_var_[attribute_id];
 
   // Fill tiles and dispatch them for writing
   uint64_t bytes_written, bytes_written_var;
   RETURN_NOT_OK(tile_io->write(tile, &bytes_written));
   RETURN_NOT_OK(tile_io_var->write(tile_var, &bytes_written_var));
-  book_keeping_->append_tile_offset(attribute_id, bytes_written);
-  book_keeping_->append_tile_var_offset(attribute_id, bytes_written_var);
-  book_keeping_->append_tile_var_size(attribute_id, tile_var->offset());
-  tile->reset();
-  tile_var->reset();
+  bookkeeping_->append_tile_offset(attribute_id, bytes_written);
+  bookkeeping_->append_tile_var_offset(attribute_id, bytes_written_var);
+  bookkeeping_->append_tile_var_size(attribute_id, tile_var->offset());
+  tile->reset_offset();
+  tile_var->reset_offset();
 
-  // Clean up
-  delete tile_io;
-  delete tile_io_var;
+  return Status::Ok();
+}
 
+Status WriteState::write_last_tile() {
+  // For easy reference
+  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  int attribute_num = array_schema->attribute_num();
+
+  // Send last MBR, bounding coordinates and tile cell number to book-keeping
+  bookkeeping_->append_mbr(mbr_);
+  bookkeeping_->append_bounding_coords(bounding_coords_);
+  bookkeeping_->set_last_tile_cell_num(tile_cell_num_[attribute_num]);
+
+  // Flush the last tile for each compressed attribute (it is still in main
+  // memory
+  for (int i = 0; i < attribute_num + 1; ++i) {
+    RETURN_NOT_OK(write_attr_last(i));
+    if (array_schema->var_size(i))
+      RETURN_NOT_OK(write_attr_var_last(i));
+  }
+
+  // Success
   return Status::Ok();
 }
 
 Status WriteState::write_sparse_unsorted(
     const void** buffers, const size_t* buffer_sizes) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
-  int attribute_num = array_schema->attribute_num();
-  const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
-  int attribute_id_num = attribute_ids.size();
+  const Array* array = fragment_->array();
+  const ArraySchema* array_schema = array->array_schema();
+  const std::vector<int>& attribute_ids = array->attribute_ids();
+  int attribute_id_num = (int)attribute_ids.size();
 
   // Find the coordinates buffer
   int coords_buffer_i = -1;
-  int buffer_i = 0;
-  for (int i = 0; i < attribute_id_num; ++i) {
-    if (attribute_ids[i] == attribute_num) {
-      coords_buffer_i = buffer_i;
-      break;
-    }
-    if (!array_schema->var_size(attribute_ids[i]))  // FIXED CELLS
-      ++buffer_i;
-    else  // VARIABLE-SIZED CELLS
-      buffer_i += 2;
-  }
-
-  // Coordinates are missing
-  if (coords_buffer_i == -1) {
-    return LOG_STATUS(
-        Status::Error("Cannot write sparse unsorted; Coordinates missing"));
-  }
+  RETURN_NOT_OK(array->coords_buffer_i(&coords_buffer_i));
 
   // Sort cell positions
   std::vector<int64_t> cell_pos;
@@ -743,7 +673,7 @@ Status WriteState::write_sparse_unsorted(
       buffers[coords_buffer_i], buffer_sizes[coords_buffer_i], cell_pos);
 
   // Write each attribute individually
-  buffer_i = 0;
+  int buffer_i = 0;
   for (int i = 0; i < attribute_id_num; ++i) {
     if (!array_schema->var_size(attribute_ids[i])) {  // FIXED CELLS
       RETURN_NOT_OK(write_sparse_unsorted_attr(
@@ -776,51 +706,47 @@ Status WriteState::write_sparse_unsorted_attr(
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   size_t cell_size = array_schema->cell_size(attribute_id);
-  const char* buffer_c = static_cast<const char*>(buffer);
 
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
   if (buffer_cell_num != int64_t(cell_pos.size())) {
-    return LOG_STATUS(Status::Error(
+    return LOG_STATUS(Status::WriteStateError(
         std::string("Cannot write sparse unsorted; Invalid number of "
                     "cells in attribute '") +
         array_schema->attribute(attribute_id) + "'"));
   }
 
   // Allocate a local buffer to hold the sorted cells
-  // TODO: Use Buffer object here
-  char* sorted_buffer = new char[Configurator::sorted_buffer_size()];
-  size_t sorted_buffer_size = 0;
+  auto sorted_buf = new Buffer(Configurator::sorted_buffer_size());
+  auto buffer_c = static_cast<const char*>(buffer);
 
   // Sort and write attribute values in batches
   Status st;
   for (int64_t i = 0; i < buffer_cell_num; ++i) {
     // Write batch
-    if (sorted_buffer_size + cell_size > Configurator::sorted_buffer_size()) {
-      st = write_attr(attribute_id, sorted_buffer, sorted_buffer_size);
-      if (!st.ok()) {
-        delete[] sorted_buffer;
-        return st;
-      } else {
-        sorted_buffer_size = 0;
-      }
+    if (sorted_buf->offset() + cell_size > Configurator::sorted_buffer_size()) {
+      RETURN_NOT_OK_ELSE(
+          write_attr(attribute_id, sorted_buf->data(), sorted_buf->offset()),
+          delete sorted_buf);
+      sorted_buf->reset_offset();
     }
 
     // Keep on copying the cells in the sorted order in the sorted buffer
-    memcpy(
-        sorted_buffer + sorted_buffer_size,
-        buffer_c + cell_pos[i] * cell_size,
-        cell_size);
-    sorted_buffer_size += cell_size;
+    RETURN_NOT_OK(
+        sorted_buf->write(buffer_c + cell_pos[i] * cell_size, cell_size));
   }
 
   // Write final batch
-  if (sorted_buffer_size != 0) {
-    st = write_attr(attribute_id, sorted_buffer, sorted_buffer_size);
+  if (sorted_buf->offset() != 0) {
+    RETURN_NOT_OK_ELSE(
+        write_attr(attribute_id, sorted_buf->data(), sorted_buf->offset()),
+        delete sorted_buf);
   }
+
   // Clean up
-  delete[] sorted_buffer;
-  return st;
+  delete sorted_buf;
+
+  return Status::Ok();
 }
 
 Status WriteState::write_sparse_unsorted_attr_var(
@@ -834,27 +760,24 @@ Status WriteState::write_sparse_unsorted_attr_var(
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   size_t cell_size = Configurator::cell_var_offset_size();
   size_t cell_var_size;
-  const size_t* buffer_s = static_cast<const size_t*>(buffer);
-  const char* buffer_var_c = static_cast<const char*>(buffer_var);
+  auto buffer_s = static_cast<const size_t*>(buffer);
+  auto buffer_var_c = static_cast<const char*>(buffer_var);
 
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
   if (buffer_cell_num != int64_t(cell_pos.size())) {
-    return LOG_STATUS(Status::Error(
+    return LOG_STATUS(Status::WriteStateError(
         std::string("Cannot write sparse unsorted variable; "
                     "Invalid number of cells in attribute '") +
         array_schema->attribute(attribute_id) + "'"));
   }
 
-  // Allocate a local buffer to hold the sorted cells
-  // TODO: Use Buffer objects here
-  char* sorted_buffer = new char[Configurator::sorted_buffer_size()];
-  size_t sorted_buffer_size = 0;
-  char* sorted_buffer_var = new char[Configurator::sorted_buffer_var_size()];
-  size_t sorted_buffer_var_size = 0;
+  auto sorted_buf = new Buffer(Configurator::sorted_buffer_size());
+  auto sorted_buf_var = new Buffer(Configurator::sorted_buffer_var_size());
 
   // Sort and write attribute values in batches
   Status st;
+  uint64_t var_offset;
   for (int64_t i = 0; i < buffer_cell_num; ++i) {
     // Calculate variable cell size
     cell_var_size = (cell_pos[i] == buffer_cell_num - 1) ?
@@ -862,51 +785,45 @@ Status WriteState::write_sparse_unsorted_attr_var(
                         buffer_s[cell_pos[i] + 1] - buffer_s[cell_pos[i]];
 
     // Write batch
-    if (sorted_buffer_size + cell_size > Configurator::sorted_buffer_size() ||
-        sorted_buffer_var_size + cell_var_size >
+    if (sorted_buf->offset() + cell_size > Configurator::sorted_buffer_size() ||
+        sorted_buf_var->offset() + cell_var_size >
             Configurator::sorted_buffer_var_size()) {
       st = write_attr_var(
           attribute_id,
-          sorted_buffer,
-          sorted_buffer_size,
-          sorted_buffer_var,
-          sorted_buffer_var_size);
+          sorted_buf->data(),
+          sorted_buf->offset(),
+          sorted_buf_var->data(),
+          sorted_buf_var->offset());
+
       if (!st.ok()) {
-        delete[] sorted_buffer;
-        delete[] sorted_buffer_var;
+        delete sorted_buf;
+        delete sorted_buf_var;
         return st;
       }
 
-      sorted_buffer_size = 0;
-      sorted_buffer_var_size = 0;
+      sorted_buf->reset_offset();
+      sorted_buf_var->reset_offset();
     }
 
-    // Keep on copying the cells in sorted order in the sorted buffer
-    memcpy(
-        sorted_buffer + sorted_buffer_size, &sorted_buffer_var_size, cell_size);
-    sorted_buffer_size += cell_size;
-
-    // Keep on copying the variable cells in sorted order in the sorted buffer
-    memcpy(
-        sorted_buffer_var + sorted_buffer_var_size,
-        buffer_var_c + buffer_s[cell_pos[i]],
-        cell_var_size);
-    sorted_buffer_var_size += cell_var_size;
+    // Keep on copying the cells in sorted order in the sorted buffers
+    var_offset = sorted_buf_var->offset();
+    RETURN_NOT_OK(sorted_buf->write(&var_offset, cell_size));
+    RETURN_NOT_OK(sorted_buf_var->write(
+        buffer_var_c + buffer_s[cell_pos[i]], cell_var_size));
   }
 
   // Write final batch
-  if (sorted_buffer_size != 0) {
+  if (sorted_buf->offset() != 0)
     st = write_attr_var(
         attribute_id,
-        sorted_buffer,
-        sorted_buffer_size,
-        sorted_buffer_var,
-        sorted_buffer_var_size);
-  }
+        sorted_buf->data(),
+        sorted_buf->offset(),
+        sorted_buf_var->data(),
+        sorted_buf_var->offset());
 
   // Clean up
-  delete[] sorted_buffer;
-  delete[] sorted_buffer_var;
+  delete sorted_buf;
+  delete sorted_buf_var;
 
   // Success
   return st;

@@ -56,7 +56,7 @@ int main() {
       1);                                               // Number of attributes
 
   // Prepare cell buffers 
-  int buffer_a1[4];
+  int buffer_a1[2];
   void* buffers[] = { buffer_a1 };
   size_t buffer_sizes[] = { sizeof(buffer_a1) };
 

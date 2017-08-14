@@ -30,38 +30,37 @@
  * This file implements the rle compressor class.
  */
 
-#include "rle_compressor.h"
 #include <cassert>
+#include <iostream>
 #include <limits>
+
 #include "logger.h"
+#include "rle_compressor.h"
 
 namespace tiledb {
 
-size_t RLE::compress_bound(size_t nbytes, size_t type_size) {
+uint64_t RLE::compress_bound(uint64_t nbytes, uint64_t type_size) {
   // In the worst case, RLE adds two bytes per every value in the buffer.
-  // TODO: this can overflow
-  int64_t value_num = nbytes / type_size;
+  uint64_t value_num = nbytes / type_size;
   return nbytes + value_num * 2;
 }
 
 Status RLE::compress(
-    size_t type_size,
-    int level,
-    void* input_buffer,
-    size_t input_buffer_size,
-    void* output_buffer,
-    size_t output_buffer_size,
-    size_t* compressed_size) {
-  *compressed_size = 0;
+    uint64_t type_size, const Buffer* input_buffer, Buffer* output_buffer) {
+  // Sanity check
+  if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
+    return LOG_STATUS(Status::CompressionError(
+        "Failed compressing with RLE; invalid buffer format"));
+
   int cur_run_len = 1;
   int max_run_len = 65535;
   const unsigned char* input_cur =
-      static_cast<unsigned char*>(input_buffer) + type_size;
-  const unsigned char* input_prev = static_cast<unsigned char*>(input_buffer);
-  unsigned char* output_cur = static_cast<unsigned char*>(output_buffer);
-  int64_t value_num = input_buffer_size / type_size;
+      static_cast<unsigned char*>(input_buffer->data()) + type_size;
+  auto input_prev = static_cast<const unsigned char*>(input_buffer->data());
+  auto output_cur = static_cast<unsigned char*>(output_buffer->data());
+  int64_t value_num = input_buffer->offset() / type_size;
   int64_t _output_size = 0;
-  size_t run_size = type_size + 2 * sizeof(char);
+  uint64_t run_size = type_size + 2 * sizeof(char);
   unsigned char byte;
 
   // Trivial case
@@ -70,7 +69,7 @@ Status RLE::compress(
   }
 
   // Sanity check on input buffer
-  if (input_buffer_size % type_size) {
+  if (input_buffer->offset() % type_size) {
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with RLE; invalid input buffer format"));
   }
@@ -82,7 +81,7 @@ Status RLE::compress(
       ++cur_run_len;
     } else {  // Save the run
       // Sanity check on output size
-      if (_output_size + run_size > output_buffer_size) {
+      if (_output_size + run_size > output_buffer->size()) {
         return LOG_STATUS(Status::CompressionError(
             "Failed compressing with RLE; output buffer overflow"));
       }
@@ -109,7 +108,7 @@ Status RLE::compress(
 
   // Save final run
   // --- Sanity check on size
-  if (_output_size + run_size > output_buffer_size) {
+  if (_output_size + run_size > output_buffer->size()) {
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with RLE; output buffer overflow"));
   }
@@ -125,33 +124,36 @@ Status RLE::compress(
   output_cur += sizeof(char);
   _output_size += run_size;
 
-  assert(_output_size <= std::numeric_limits<size_t>::max());
-  *compressed_size = _output_size;
+  assert(_output_size <= std::numeric_limits<uint64_t>::max());
+
+  // Set size of compressed data
+  output_buffer->set_offset(_output_size);
+
   return Status::Ok();
 }
 
 Status RLE::decompress(
-    size_t type_size,
-    void* input_buffer,
-    size_t input_buffer_size,
-    void* output_buffer,
-    size_t output_buffer_size,
-    size_t* decompressed_size) {
-  *decompressed_size = 0;
-  const unsigned char* input_cur = static_cast<unsigned char*>(input_buffer);
-  unsigned char* output_cur = static_cast<unsigned char*>(output_buffer);
-  int64_t output_size = 0;
+    uint64_t type_size, const Buffer* input_buffer, Buffer* output_buffer) {
+  // Sanity check
+  if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
+    return LOG_STATUS(Status::CompressionError(
+        "Failed decompressing with RLE; invalid buffer format"));
+
+  const unsigned char* input_cur =
+      static_cast<unsigned char*>(input_buffer->data());
+  unsigned char* output_cur =
+      static_cast<unsigned char*>(output_buffer->data());
   int64_t run_len;
-  size_t run_size = type_size + 2 * sizeof(char);
-  int64_t run_num = input_buffer_size / run_size;
+  uint64_t run_size = type_size + 2 * sizeof(char);
+  int64_t run_num = input_buffer->size() / run_size;
   unsigned char byte;
 
   // Trivial case
-  if (input_buffer_size == 0)
+  if (input_buffer->size() == 0)
     return Status::Ok();
 
   // Sanity check on input buffer format
-  if (input_buffer_size % run_size) {
+  if (input_buffer->size() % run_size) {
     return LOG_STATUS(Status::CompressionError(
         "Failed decompressing with RLE; invalid input buffer format"));
   }
@@ -165,7 +167,7 @@ Status RLE::decompress(
     run_len += (int64_t)byte;
 
     // Sanity check on size
-    if (output_size + type_size * run_len > output_buffer_size) {
+    if (type_size * run_len > output_buffer->size()) {
       return LOG_STATUS(Status::CompressionError(
           "Failed decompressing with RLE; output buffer overflow"));
     }
@@ -177,7 +179,6 @@ Status RLE::decompress(
     }
 
     // Update input/output tracking info
-    *decompressed_size += type_size * run_len;
     input_cur += run_size;
   }
 

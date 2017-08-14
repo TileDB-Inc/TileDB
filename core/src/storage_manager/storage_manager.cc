@@ -100,10 +100,10 @@ int StorageManager::dir_type(const char* dir) {
     return -1;
 }
 
-void StorageManager::set_config(Configurator* config) {
+void StorageManager::set_config(const Configurator* config) {
   // TODO: make thread-safe?
 
-  config_ = config;
+  config_ = new Configurator(config);
 }
 
 /* ****************************** */

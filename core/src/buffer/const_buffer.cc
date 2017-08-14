@@ -33,7 +33,6 @@
 #include "const_buffer.h"
 
 #include <cstring>
-#include <iostream>
 
 namespace tiledb {
 
@@ -47,15 +46,27 @@ ConstBuffer::ConstBuffer(const void* data, uint64_t size)
   offset_ = 0;
 }
 
-ConstBuffer::~ConstBuffer() = default;
-
 /* ****************************** */
 /*               API              */
 /* ****************************** */
 
-void ConstBuffer::read(void* buffer, uint64_t bytes) {
-  memcpy(buffer, (char*)data_ + offset_, bytes);
-  offset_ += bytes;
+void ConstBuffer::read(void* buffer, uint64_t nbytes) {
+  memcpy(buffer, (char*)data_ + offset_, nbytes);
+  offset_ += nbytes;
+}
+
+void ConstBuffer::read_with_shift(
+    uint64_t* buffer, uint64_t nbytes, uint64_t offset) {
+  // For easy reference
+  uint64_t buffer_cell_num = nbytes / sizeof(uint64_t);
+  const void* data_c = static_cast<const char*>(data_) + offset_;
+  auto data = static_cast<const uint64_t*>(data_c);
+
+  // Write shifted offsets
+  for (uint64_t i = 0; i < buffer_cell_num; ++i)
+    buffer[i] = offset + data[i];
+
+  offset_ += nbytes;
 }
 
 /* ****************************** */

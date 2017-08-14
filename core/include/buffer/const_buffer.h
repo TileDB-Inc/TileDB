@@ -37,43 +37,88 @@
 
 namespace tiledb {
 
+/** Enables reading from a constant buffer. */
 class ConstBuffer {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  /**
+   * Constructor (initializer).
+   *
+   * @param data The data of the buffer.
+   * @param size The size of the buffer.
+   */
   ConstBuffer(const void* data, uint64_t size);
 
-  ~ConstBuffer();
+  /** Destructor. */
+  ~ConstBuffer() = default;
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
-  inline uint64_t bytes_left_to_read() const {
+  /** Returns the number of bytes left for reading. */
+  inline uint64_t nbytes_left_to_read() const {
     return size_ - offset_;
   }
 
+  /** Returns the buffer data. */
   inline const void* data() const {
     return data_;
   }
 
+  /** Returns the buffer offset. */
   inline uint64_t offset() const {
     return offset_;
   }
 
+  /** Checks if reading has reached the end of the buffer. */
   inline bool end() const {
     return offset_ == size_;
   }
 
-  void read(void* buffer, uint64_t bytes);
+  /**
+   * Reads from the internal buffer into the input buffer.
+   *
+   * @param buffer The buffer to write to when reading from the local buffer.
+   * @param nbytes The number of bytes to read.
+   * @return void.
+   */
+  void read(void* buffer, uint64_t nbytes);
 
+  /**
+   * This is a special function used for reading from a buffer that stores
+   * uint64_t values. It reads a number of bytes from the local buffer and
+   * writes them to the input buffer, after adding *offset* to each read
+   * uint64_t value.
+   *
+   * @param buf The buffer to write to when reading from the local buffer.
+   * @param nbytes The number of bytes to read.
+   * @param offset The offset to add to each uint64_t value.
+   * @return void.
+   */
+  void read_with_shift(uint64_t* buf, uint64_t nbytes, uint64_t offset);
+
+  /**
+   * Returns a value from the buffer of type T.
+   *
+   * @tparam T The type of the value to be read.
+   * @param offset The offset in the local buffer to read from.
+   * @return The desired value of type T.
+   */
   template <class T>
   inline T value(uint64_t offset) {
     return ((const T*)(((const char*)data_) + offset))[0];
   }
 
+  /**
+   * Returns the value at the current offset of the buffer of type T.
+   *
+   * @tparam T The type of the value to be returned.
+   * @return The value to be returned of type T.
+   */
   template <class T>
   inline T value() {
     return ((const T*)(((const char*)data_) + offset_))[0];
@@ -84,10 +129,13 @@ class ConstBuffer {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The (read-only) buffer data. */
   const void* data_;
 
+  /** The current offset in the buffer to read from. */
   uint64_t offset_;
 
+  /** The size of the buffer. */
   uint64_t size_;
 };
 

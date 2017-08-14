@@ -34,12 +34,13 @@
 #ifndef TILEDB_WRITE_STATE_H
 #define TILEDB_WRITE_STATE_H
 
-#include <iostream>
-#include <vector>
 #include "book_keeping.h"
 #include "fragment.h"
 #include "tile.h"
 #include "tile_io.h"
+
+#include <iostream>
+#include <vector>
 
 namespace tiledb {
 
@@ -57,9 +58,9 @@ class WriteState {
    * Constructor.
    *
    * @param fragment The fragment the write state belongs to.
-   * @param book_keeping The book-keeping *fragment*.
+   * @param bookkeeping The bookkeeping of the fragment.
    */
-  WriteState(const Fragment* fragment, BookKeeping* book_keeping);
+  WriteState(const Fragment* fragment, BookKeeping* bookkeeping);
 
   /** Destructor. */
   ~WriteState();
@@ -71,14 +72,14 @@ class WriteState {
   /**
    * Finalizes the fragment.
    *
-   * @return TILEDB_WS_OK for success and TILEDB_WS_ERR for error.
+   * @return Status
    */
   Status finalize();
 
   /**
    * Syncs all attribute files in the fragment.
    *
-   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   * @return Status
    */
   Status sync();
 
@@ -86,40 +87,18 @@ class WriteState {
    * Syncs the input attribute in the fragment.
    *
    * @param attribute The attribute name.
-   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   * @return Status
    */
   Status sync_attribute(const std::string& attribute);
 
   /**
-   * Performs a write operation in the fragment. The cell values are provided
-   * in a set of buffers (one per attribute specified upon the array
-   * initialization). Note that there must be a one-to-one correspondance
-   * between the cell values across the attribute buffers.
+   * Performs a write operation in the fragment.
    *
-   * The array must have been initialized in one of the following write modes,
-   * each of which having a different behaviour:
-   *    - TILEDB_ARRAY_WRITE: \n
-   *      In this mode, the cell values are provided in the buffers respecting
-   *      the cell order on the disk. It is practically an **append** operation,
-   *      where the provided cell values are simply written at the end of
-   *      their corresponding attribute files.
-   *    - TILEDB_ARRAY_WRITE_UNSORTED: \n
-   *      This mode is applicable to sparse arrays, or when writing sparse
-   *      updates to a dense array. One of the buffers holds the coordinates.
-   *      The cells in this mode are given in an arbitrary, unsorted order
-   *      (i.e., without respecting how the cells must be stored on the disk
-   *      according to the array schema definition).
-   *
-   * @param buffers An array of buffers, one for each attribute. These must be
-   *     provided in the same order as the attributes specified in
-   *     Array::init() or Array::reset_attributes(). The case of variable-sized
-   *     attributes is special. Instead of providing a single buffer for such an
-   *     attribute, **two** must be provided: the second holds the
-   *     variable-sized cell values, whereas the first holds the start offsets
-   *     of each cell in the second buffer.
+   * @param buffers An array of buffers, one for each attribute (two for a
+   *     variable-sized attribute).
    * @param buffer_sizes The sizes (in bytes) of the input buffers (there is
    *     a one-to-one correspondence).
-   * @return TILEDB_WS_OK for success and TILEDB_WS_ERR for error.
+   * @return Status
    */
   Status write(const void** buffers, const size_t* buffer_sizes);
 
@@ -128,8 +107,8 @@ class WriteState {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The book-keeping structure of the fragment the write state belongs to. */
-  BookKeeping* book_keeping_;
+  /** The bookkeeping structure of the fragment the write state belongs to. */
+  BookKeeping* bookkeeping_;
 
   /** The first and last coordinates of the tile currently being populated. */
   void* bounding_coords_;
@@ -150,9 +129,22 @@ class WriteState {
   /** The number of cells written in the current tile for each attribute. */
   std::vector<int64_t> tile_cell_num_;
 
+  /** The current tiles, one per attribute. */
   std::vector<Tile*> tiles_;
 
+  /** The current variable-sized tiles, one per attribute. */
   std::vector<Tile*> tiles_var_;
+
+  /**
+   * The objects that perform tile I/O, one per attribute and one for
+   * the dimensions.
+   */
+  std::vector<TileIO*> tile_io_;
+
+  /**
+   * The objects that perform tile I/O, one per variable-sized attribute.
+   */
+  std::vector<TileIO*> tile_io_var_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -167,28 +159,6 @@ class WriteState {
    */
   template <class T>
   void expand_mbr(const T* coords);
-
-  /**
-   * Shifts the offsets of the variable-sized cells recorded in the input
-   * buffer, so that they correspond to the actual offsets in the corresponding
-   * attribute file.
-   *
-   * @param attribute_id The id of the attribute whose variable cell offsets are
-   *     shifted.
-   * @param buffer_var_size The total size of the variable-sized cells written
-   *     during this write operation.
-   * @param buffer Holds the offsets of the variable-sized cells for this write
-   *     operation.
-   * @param buffer_size The size (in bytes) of *buffer*.
-   * @param shifted_buffer Will hold the new shifted offsets.
-   * @return void
-   */
-  void shift_var_offsets(
-      int attribute_id,
-      size_t buffer_var_size,
-      const void* buffer,
-      size_t buffer_size,
-      void* shifted_buffer);
 
   /**
    * Sorts the input cell coordinates according to the order specified in the
@@ -223,17 +193,17 @@ class WriteState {
       std::vector<int64_t>& cell_pos) const;
 
   /**
-   * Updates the book-keeping structures as tiles are written. Specifically, it
+   * Updates the bookkeeping structures as tiles are written. Specifically, it
    * updates the MBR and bounding coordinates of each tile.
    *
    * @param buffer The buffer storing the cell coordinates.
    * @param buffer_size The size (in bytes) of *buffer*.
    * @return void
    */
-  void update_book_keeping(const void* buffer, size_t buffer_size);
+  void update_bookkeeping(const void* buffer, size_t buffer_size);
 
   /**
-   * Updates the book-keeping structures as tiles are written. Specifically, it
+   * Updates the bookkeeping structures as tiles are written. Specifically, it
    * updates the MBR and bounding coordinates of each tile.
    *
    * @tparam T The coordinates type.
@@ -242,16 +212,7 @@ class WriteState {
    * @return void
    */
   template <class T>
-  void update_book_keeping(const void* buffer, size_t buffer_size);
-
-  /**
-   * Takes the appropriate actions for writing the very last tile of this write
-   * operation, such as updating the book-keeping structures, and compressing
-   * and writing the last tile on the disk. This is done for every attribute.
-   *
-   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
-   */
-  Status write_last_tile();
+  void update_bookkeeping(const void* buffer, size_t buffer_size);
 
   /**
    * Performs the write operation for the case of a dense fragment, focusing
@@ -260,10 +221,16 @@ class WriteState {
    * @param attribute_id The id of the attribute this operation focuses on.
    * @param buffer See write().
    * @param buffer_size See write().
-   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   * @return Status
    */
   Status write_attr(int attribute_id, const void* buffer, size_t buffer_size);
 
+  /**
+   * Writes the last tile with the input id to the disk.
+   *
+   * @param attribute_id The id of the attribute this operation focuses on.
+   * @return Status
+   */
   Status write_attr_last(int attribute_id);
 
   /**
@@ -275,7 +242,7 @@ class WriteState {
    * @param buffer_size See write().
    * @param buffer_var See write() - actual variable-sized values.
    * @param buffer_var_size See write().
-   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   * @return Status
    */
   Status write_attr_var(
       int attribute_id,
@@ -284,7 +251,21 @@ class WriteState {
       const void* buffer_var,
       size_t buffer_var_size);
 
+  /**
+   * Writes the last variable-sized tile with the input id to the disk.
+   *
+   * @param attribute_id The id of the attribute this operation focuses on.
+   * @return Status
+   */
   Status write_attr_var_last(int attribute_id);
+
+  /**
+   * Takes the appropriate actions for writing the very last tile of this write
+   * operation. This is done for every attribute.
+   *
+   * @return Status
+   */
+  Status write_last_tile();
 
   /**
    * Performs the write operation for the case of a sparse fragment when the
@@ -292,7 +273,7 @@ class WriteState {
    *
    * @param buffers See write().
    * @param buffer_sizes See write().
-   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   * @return Status
    */
   Status write_sparse_unsorted(
       const void** buffers, const size_t* buffer_sizes);
@@ -305,7 +286,7 @@ class WriteState {
    * @param buffer See write().
    * @param buffer_size See write().
    * @param cell_pos The sorted positions of the cells.
-   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   * @return Status
    */
   Status write_sparse_unsorted_attr(
       int attribute_id,
@@ -323,7 +304,7 @@ class WriteState {
    * @param buffer_var See write() - actual variable-sized values.
    * @param buffer_var_size See write().
    * @param cell_pos The sorted positions of the cells.
-   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
+   * @return Status
    */
   Status write_sparse_unsorted_attr_var(
       int attribute_id,

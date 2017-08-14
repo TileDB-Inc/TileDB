@@ -33,35 +33,43 @@
 #ifndef TILEDB_ZSTD_H
 #define TILEDB_ZSTD_H
 
-#include "base_compressor.h"
+#include "buffer.h"
 #include "status.h"
 
 namespace tiledb {
 
-class ZStd : public BaseCompressor {
+/** Handles compression/decompression with the zstd library. */
+class ZStd {
  public:
-  static size_t compress_bound(size_t nbytes);
+  /** Returns the maximum compression size for the given input. */
+  static uint64_t compress_bound(uint64_t nbytes);
 
+  /**
+   * Compression function.
+   *
+   * @param level Compression level.
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write to the compressed data.
+   * @return Status
+   */
   static Status compress(
-      size_t type_size,
-      int level,
-      void* input_buffer,
-      size_t input_buffer_size,
-      void* output_buffer,
-      size_t output_buffer_size,
-      size_t* compressed_size);
+      int level, const Buffer* input_buffer, Buffer* output_buffer);
 
-  static Status decompress(
-      size_t type_size,
-      void* input_buffer,
-      size_t input_buffer_size,
-      void* output_buffer,
-      size_t output_buffer_size,
-      size_t* decompressed_size);
+  /**
+   * Decompression function.
+   *
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write to the decompressed data.
+   * @return Status
+   */
+  static Status decompress(const Buffer* input_buffer, Buffer* output_buffer);
 
+  /** Returns the default compression level. */
   static int default_level() {
     return 5;
   }
 };
+
 }  // namespace tiledb
+
 #endif  // TILEDB_ZSTD_H

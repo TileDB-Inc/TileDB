@@ -33,9 +33,10 @@
  */
 
 #include "tiledb.h"
+
 #include <cstdio>
 
-int main() {
+int main(int argc, char** argv) {
   // Initialize context with the default configuration parameters
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);

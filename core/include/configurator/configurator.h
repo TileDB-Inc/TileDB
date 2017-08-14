@@ -60,7 +60,7 @@ class Configurator {
    *
    * @param config The configurator to clone into the new object.
    */
-  Configurator(Configurator* config);
+  Configurator(const Configurator* config);
 
   /** Destructor. */
   ~Configurator();

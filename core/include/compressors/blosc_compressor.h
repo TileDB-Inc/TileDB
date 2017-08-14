@@ -33,13 +33,15 @@
 #ifndef TILEDB_BLOSC_COMPRESSOR_H
 #define TILEDB_BLOSC_COMPRESSOR_H
 
-#include "base_compressor.h"
+#include "buffer.h"
 #include "status.h"
 
 namespace tiledb {
 
-class Blosc : public BaseCompressor {
+/** Handles compression/decompression with the blosc library. */
+class Blosc {
  public:
+  /** Type of compressor used by Blosc. */
   enum class Compressor : char {
     LZ,
     LZ4,
@@ -48,25 +50,35 @@ class Blosc : public BaseCompressor {
     Zlib,
     ZStd,
   };
-  static size_t compress_bound(size_t nbytes);
 
+  /** Returns the maximum compression size for the given input. */
+  static uint64_t compress_bound(uint64_t nbytes);
+
+  /**
+   * Compression function.
+   *
+   * @param compressor Type of Blosc compressor.
+   * @param type_size The size of the data type.
+   * @param level The compression level.
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write to the compressed data.
+   * @return Status
+   */
   static Status compress(
       const char* compressor,
-      size_t type_size,
+      uint64_t type_size,
       int level,
-      void* input_buffer,
-      size_t input_buffer_size,
-      void* output_buffer,
-      size_t output_buffer_size,
-      size_t* compressed_size);
+      const Buffer* input_buffer,
+      Buffer* output_buffer);
 
-  static Status decompress(
-      size_t type_size,
-      void* input_buffer,
-      size_t input_buffer_size,
-      void* output_buffer,
-      size_t output_buffer_size,
-      size_t* decompressed_size);
+  /**
+   * Decompression function.
+   *
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write to the decompressed data.
+   * @return Status
+   */
+  static Status decompress(const Buffer* input_buffer, Buffer* output_buffer);
 
   static int default_level() {
     return 5;
@@ -74,4 +86,5 @@ class Blosc : public BaseCompressor {
 };
 
 }  // namespace tiledb
+
 #endif  // TILEDB_BLOSC_COMPRESSOR_H

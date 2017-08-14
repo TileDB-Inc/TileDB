@@ -33,63 +33,52 @@
 #ifndef TILEDB_GZIP_H
 #define TILEDB_GZIP_H
 
-#include "base_compressor.h"
+#include "buffer.h"
 #include "status.h"
 
 #include <cmath>
 
 namespace tiledb {
 
-class GZip : public BaseCompressor {
+/** Handles compression/decompression with the zlib (gzip) library. */
+class GZip {
  public:
-  static size_t compress_bound(size_t nbytes);
-
   /**
-   * GZIPs the input buffer and stores the result in the output buffer,
-   * returning the size of compressed data.
+   * Compression function.
    *
-   * @param in The input buffer.
-   * @param in_size The size of the input buffer.
-   * @param out The output buffer.
-   * @param out_size The available size in the output buffer.
+   * @param level Compression level.
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write to the compressed data.
    * @return Status
    */
   static Status compress(
-      size_t type_size,
-      int level,
-      void* input_buffer,
-      size_t input_buffer_size,
-      void* output_buffer,
-      size_t output_buffer_size,
-      size_t* compressed_size);
+      int level, const Buffer* input_buffer, Buffer* output_buffer);
+
   /**
-   * Decompresses the GZIPed input buffer and stores the result in the output
-   * buffer, of maximum size avail_out.
+   * Decompression function.
    *
-   * @param in The input buffer.
-   * @param in_size The size of the input buffer.
-   * @param out The output buffer.
-   * @param avail_out_size The available size in the output buffer.
-   * @param out_size The size of the decompressed data.
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write to the decompressed data.
    * @return Status
    */
-  static Status decompress(
-      size_t type_size,
-      void* input_buffer,
-      size_t input_buffer_size,
-      void* output_buffer,
-      size_t output_buffer_size,
-      size_t* decompressed_size);
+  static Status decompress(const Buffer* input_buffer, Buffer* output_buffer);
 
+  /**
+   * Extra overhead of GZip given a buffer size.
+   *
+   * @param buffer_size The size to calculate the overhead on.
+   * @return The computed overhead.
+   */
   static uint64_t overhead(uint64_t buffer_size) {
     return 6 + 5 * uint64_t((ceil(buffer_size / 16834.0)));
   }
 
+  /** Returns the default compression level. */
   static int default_level() {
     return -1;
   }
 };
 
-};  // namespace tiledb
+}  // namespace tiledb
 
 #endif  // TILEDB_GZIP_H
