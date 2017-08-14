@@ -83,12 +83,15 @@ Status TileIO::read(
       tile->set_file_offset(file_offset);
       tile->set_size(tile_size);
     }
+
+    return Status::Ok();
   } else {
     // TODO: consider optimizing (do not delete and new every time)
-    delete buffer_;
-    buffer_ = new Buffer(compressed_size);
+    if (buffer_ == nullptr)
+      buffer_ = new Buffer();
 
     if (read_method == IOMethod::READ) {
+      buffer_->realloc(compressed_size);
       RETURN_NOT_OK(filesystem::read_from_file(
           attr_filename_.to_string(),
           file_offset,
@@ -99,6 +102,7 @@ Status TileIO::read(
           buffer_->mmap(attr_filename_, compressed_size, file_offset));
     } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
+      buffer_->realloc(compressed_size);
       RETURN_NOT_OK(filesystem::mpi_io_read_from_file(
           config_->mpi_comm(),
           attr_filename_.to_string(),
@@ -111,15 +115,14 @@ Status TileIO::read(
           Status::TileIOError("Cannot read tile; MPI not supported"));
 #endif
     }
-  }
 
-  // Decompress tile
-  // TODO: here we will put all other filters, and potentially employ chunking
-  // TODO: choose the proper buffer based on all filters, not just compression
-  return decompress_tile(tile, tile_size);
+    // Decompress tile
+    // TODO: here we will put all other filters, and potentially employ chunking
+    // TODO: choose the proper buffer based on all filters, not just compression
+    return decompress_tile(tile, tile_size);
+  }
 }
 
-// TODO: check
 Status TileIO::read_from_tile(Tile* tile, void* buffer, uint64_t nbytes) {
   IOMethod read_method = config_->read_method();
   Status st;
@@ -153,7 +156,6 @@ Status TileIO::read_from_tile(Tile* tile, void* buffer, uint64_t nbytes) {
   return st;
 }
 
-// TODO: check
 Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
   // Compress tile
   // TODO: here we will put all other filters, and potentially employ chunking
@@ -197,7 +199,6 @@ Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-// TODO: check
 Status TileIO::compress_tile(Tile* tile) {
   // For easy reference
   Compressor compression = tile->compressor();

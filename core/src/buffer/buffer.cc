@@ -133,11 +133,15 @@ Status Buffer::realloc(uint64_t size) {
   if (size <= size_)
     return Status::Ok();
 
-  data_ = ::realloc(data_, size);
+  if (data_ == nullptr)
+    data_ = ::malloc(size);
+  else
+    data_ = ::realloc(data_, size);
+
   if (data_ == nullptr) {
     size_ = 0;
     return LOG_STATUS(Status::BufferError(
-        "Cannot reallocate buffer; Memory reallocation failed"));
+        "Cannot reallocate buffer; Memory allocation failed"));
   }
 
   size_ = size;
