@@ -195,61 +195,6 @@ Status Metadata::init(
   return st;
 }
 
-Status Metadata::reset_attributes(const char** attributes, int attribute_num) {
-  // For easy reference
-  const ArraySchema* array_schema = array_->array_schema();
-  unsigned name_max_len = Configurator::name_max_len();
-
-  // Set attributes
-  char** array_attributes;
-  int array_attribute_num;
-  if (attributes == nullptr) {
-    array_attribute_num = (mode_ == TILEDB_METADATA_WRITE) ?
-                              array_schema->attribute_num() + 1 :
-                              array_schema->attribute_num();
-    array_attributes = new char*[array_attribute_num];
-    for (int i = 0; i < array_attribute_num; ++i) {
-      const char* attribute = array_schema->attribute(i).c_str();
-      size_t attribute_len = strlen(attribute);
-      array_attributes[i] = new char[attribute_len + 1];
-      strcpy(array_attributes[i], attribute);
-    }
-  } else {
-    array_attribute_num =
-        (mode_ == TILEDB_METADATA_WRITE) ? attribute_num + 1 : attribute_num;
-    array_attributes = new char*[array_attribute_num];
-    for (int i = 0; i < attribute_num; ++i) {
-      size_t attribute_len = strlen(attributes[i]);
-      // Check attribute name length
-      if (attributes[i] == nullptr || attribute_len > name_max_len) {
-        for (int attr = 0; attr < i; ++i)
-          delete array_attributes[i];
-        delete[] array_attributes;
-        return LOG_STATUS(
-            Status::MetadataError("Invalid attribute name length"));
-      }
-      array_attributes[i] = new char[attribute_len + 1];
-      strcpy(array_attributes[i], attributes[i]);
-    }
-    if (mode_ == TILEDB_METADATA_WRITE) {
-      size_t attribute_len = strlen(Configurator::coords());
-      array_attributes[array_attribute_num] = new char[attribute_len + 1];
-      strcpy(array_attributes[array_attribute_num], Configurator::coords());
-    }
-  }
-
-  // Reset attributes
-  Status st = array_->reset_attributes(
-      (const char**)array_attributes, array_attribute_num);
-
-  // Clean up
-  for (int i = 0; i < array_attribute_num; ++i)
-    delete[] array_attributes[i];
-  delete[] array_attributes;
-
-  return st;
-}
-
 Status Metadata::write(
     const char* keys,
     size_t keys_size,

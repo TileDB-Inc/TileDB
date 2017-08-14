@@ -256,18 +256,6 @@ class Array {
       Array* array_clone = nullptr);
 
   /**
-   * Resets the attributes used upon initialization of the array.
-   *
-   * @param attributes The new attributes to focus on. If it is NULL, then
-   *     all the attributes are used (including the coordinates in the case of
-   *     sparse arrays).
-   * @param attribute_num The number of the attributes. If *attributes* is NULL,
-   *     then this should be 0.
-   * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
-   */
-  Status reset_attributes(const char** attributes, int attribute_num);
-
-  /**
    * Resets the subarray used upon initialization of the array. This is useful
    * when the array is used for reading, and the user wishes to change the
    * query subarray without having to finalize and re-initialize the array

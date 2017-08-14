@@ -1313,23 +1313,6 @@ int tiledb_array_reset_subarray(
   return TILEDB_OK;
 }
 
-int tiledb_array_reset_attributes(
-    const tiledb_array_t* tiledb_array,
-    const char** attributes,
-    int attribute_num) {
-  // TODO: sanity checks here
-
-  tiledb_ctx_t* ctx = tiledb_array->ctx_;
-
-  // Re-Init the array
-  if (save_error(
-          ctx,
-          tiledb_array->array_->reset_attributes(attributes, attribute_num)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
-}
-
 tiledb_array_schema_t* tiledb_array_get_schema(
     const tiledb_array_t* tiledb_array) {
   // Sanity check
@@ -1793,24 +1776,6 @@ int tiledb_metadata_init(
     free(*tiledb_metadata);
     return TILEDB_ERR;
   }
-  return TILEDB_OK;
-}
-
-int tiledb_metadata_reset_attributes(
-    const tiledb_metadata_t* tiledb_metadata,
-    const char** attributes,
-    int attribute_num) {
-  // TODO: sanity checks here
-
-  tiledb_ctx_t* ctx = tiledb_metadata->ctx_;
-
-  // Reset attributes
-  if (save_error(
-          ctx,
-          tiledb_metadata->metadata_->reset_attributes(
-              attributes, attribute_num)))
-    return TILEDB_ERR;
-
   return TILEDB_OK;
 }
 

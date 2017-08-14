@@ -153,18 +153,6 @@ class Metadata {
       const Configurator* config);
 
   /**
-   * Resets the attributes used upon initialization of the metadata.
-   *
-   * @param attributes The new attributes to focus on. If it is NULL, then
-   *     all the attributes are used (including the key as an extra attribute
-   *     in the end).
-   * @param attribute_num The number of the attributes. If *attributes* is NULL,
-   *     then this should be 0.
-   * @return TILEDB_MT_OK on success, and TILEDB_MT_ERR on error.
-   */
-  Status reset_attributes(const char** attributes, int attribute_num);
-
-  /**
    * Performs a write operation in metadata object. The values are provided
    * in a set of buffers (one per attribute specified upon initialization).
    * Note that there must be a one-to-one correspondance between the

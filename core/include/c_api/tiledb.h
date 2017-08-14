@@ -1024,22 +1024,6 @@ TILEDB_EXPORT int tiledb_array_reset_subarray(
     const tiledb_array_t* tiledb_array, const void* subarray);
 
 /**
- * Resets the attributes used upon initialization of the array.
- *
- * @param tiledb_array The TileDB array.
- * @param attributes The new attributes to focus on. If it is NULL, then
- *     all the attributes are used (including the coordinates in the case of
- *     sparse arrays, or sparse writes to dense arrays).
- * @param attribute_num The number of the attributes. If *attributes* is NULL,
- *     then this should be 0.
- * @return TILEDB_OK on success, and TILEDB_ERR on error.
- */
-TILEDB_EXPORT int tiledb_array_reset_attributes(
-    const tiledb_array_t* tiledb_array,
-    const char** attributes,
-    int attribute_num);
-
-/**
  * Performs a write operation to an array.
  * The array must be initialized in one of the following write modes,
  * each of which has a different behaviour:
@@ -1499,21 +1483,6 @@ TILEDB_EXPORT int tiledb_metadata_init(
     tiledb_metadata_t** tiledb_metadata,
     const char* metadata,
     tiledb_metadata_mode_t mode,
-    const char** attributes,
-    int attribute_num);
-
-/**
- * Resets the attributes used upon initialization of the metadata.
- *
- * @param tiledb_metadata The TileDB metadata.
- * @param attributes The new attributes to focus on. If it is NULL, then
- *     all the attributes are used.
- * @param attribute_num The number of the attributes. If *attributes* is NULL,
- *     then this should be 0.
- * @return TILEDB_OK on success, and TILEDB_ERR on error.
- */
-TILEDB_EXPORT int tiledb_metadata_reset_attributes(
-    const tiledb_metadata_t* tiledb_metadata,
     const char** attributes,
     int attribute_num);
 

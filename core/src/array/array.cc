@@ -599,42 +599,6 @@ Status Array::init(
   return Status::Ok();
 }
 
-Status Array::reset_attributes(const char** attributes, int attribute_num) {
-  // For easy reference
-  unsigned name_max_len = Configurator::name_max_len();
-
-  // Get attributes
-  std::vector<std::string> attributes_vec;
-  if (attributes == nullptr) {  // Default: all attributes
-    attributes_vec = array_schema_->attributes();
-    if (array_schema_->dense())  // Remove coordinates attribute for dense
-      attributes_vec.pop_back();
-  } else {  //  Custom attributes
-    // Copy attribute names
-    for (int i = 0; i < attribute_num; ++i) {
-      // Check attribute name length
-      if (attributes[i] == nullptr || strlen(attributes[i]) > name_max_len)
-        return LOG_STATUS(Status::ArrayError("Invalid attribute name length"));
-      attributes_vec.emplace_back(attributes[i]);
-    }
-
-    // Sanity check on duplicates
-    if (utils::has_duplicates(attributes_vec)) {
-      return LOG_STATUS(
-          Status::ArrayError("Cannot reset attributes; Duplicate attributes"));
-    }
-  }
-
-  // Set attribute ids
-  RETURN_NOT_OK(
-      array_schema_->get_attribute_ids(attributes_vec, attribute_ids_));
-
-  // Reset subarray so that the read/write states are flushed
-  RETURN_NOT_OK(reset_subarray(subarray_));
-
-  return Status::Ok();
-}
-
 Status Array::reset_subarray(const void* subarray) {
   // Sanity check
   assert(read_mode() || write_mode());
