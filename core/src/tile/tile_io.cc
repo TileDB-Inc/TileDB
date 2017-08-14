@@ -67,14 +67,12 @@ Status TileIO::file_size(off_t* size) const {
   return filesystem::file_size(attr_filename_.to_string(), size);
 }
 
-// TODO: check
 Status TileIO::read(
     Tile* tile,
     uint64_t file_offset,
     uint64_t compressed_size,
     uint64_t tile_size) {
-  // TODO: perhaps handle it better
-  tile->reset();
+  tile->reset_offset();
 
   Compressor compression = tile->compressor();
   IOMethod read_method = config_->read_method();
@@ -338,9 +336,8 @@ Status TileIO::compress_tile_bzip2(Tile* tile, int level) {
 Status TileIO::decompress_tile(Tile* tile, uint64_t tile_size) {
   Compressor compression = tile->compressor();
 
-  // TODO: check
   if (compression != Compressor::NO_COMPRESSION)
-    tile->alloc(tile_size);
+    RETURN_NOT_OK(tile->alloc(tile_size));
 
   switch (compression) {
     case Compressor::NO_COMPRESSION:

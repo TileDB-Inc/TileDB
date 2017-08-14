@@ -537,7 +537,7 @@ Status WriteState::write_attr(
     if (tile->full()) {
       RETURN_NOT_OK(tile_io->write(tile, &bytes_written));
       bookkeeping_->append_tile_offset(attribute_id, bytes_written);
-      tile->reset();
+      tile->reset_offset();
     }
   } while (!buf->end());
 
@@ -556,7 +556,7 @@ Status WriteState::write_attr_last(int attribute_id) {
   uint64_t bytes_written;
   RETURN_NOT_OK(tile_io->write(tile, &bytes_written));
   bookkeeping_->append_tile_offset(attribute_id, bytes_written);
-  tile->reset();
+  tile->reset_offset();
 
   return Status::Ok();
 }
@@ -600,8 +600,8 @@ Status WriteState::write_attr_var(
       bookkeeping_->append_tile_offset(attribute_id, bytes_written);
       bookkeeping_->append_tile_var_offset(attribute_id, bytes_written_var);
       bookkeeping_->append_tile_var_size(attribute_id, tile_var->offset());
-      tile->reset();
-      tile_var->reset();
+      tile->reset_offset();
+      tile_var->reset_offset();
     }
   } while (!buf->end());
 
@@ -627,8 +627,8 @@ Status WriteState::write_attr_var_last(int attribute_id) {
   bookkeeping_->append_tile_offset(attribute_id, bytes_written);
   bookkeeping_->append_tile_var_offset(attribute_id, bytes_written_var);
   bookkeeping_->append_tile_var_size(attribute_id, tile_var->offset());
-  tile->reset();
-  tile_var->reset();
+  tile->reset_offset();
+  tile_var->reset_offset();
 
   return Status::Ok();
 }

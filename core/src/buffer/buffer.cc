@@ -72,12 +72,12 @@ Status Buffer::clear() {
   offset_ = 0;
 
   if (data_ != nullptr) {
-    if (!mmap_data_) {
+    if (mmap_data_ != nullptr) {
+      return munmap();
+    } else {
       free(data_);
       data_ = nullptr;
       size_ = 0;
-    } else {
-      return munmap();
     }
   }
 
@@ -130,6 +130,9 @@ Status Buffer::read(void* buffer, uint64_t bytes) {
 }
 
 Status Buffer::realloc(uint64_t size) {
+  if (size <= size_)
+    return Status::Ok();
+
   data_ = ::realloc(data_, size);
   if (data_ == nullptr) {
     size_ = 0;

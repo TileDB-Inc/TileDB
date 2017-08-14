@@ -94,24 +94,27 @@ Tile::~Tile() {
 /*               API              */
 /* ****************************** */
 
-void Tile::advance_offset(uint64_t bytes) {
+void Tile::advance_offset(uint64_t nbytes) {
   if (buffer_ != nullptr) {
-    buffer_->advance_offset(bytes);
+    buffer_->advance_offset(nbytes);
     offset_ = buffer_->offset();
   } else {
-    offset_ += bytes;
+    offset_ += nbytes;
   }
 }
 
-// TODO: return status
-// TODO: avoid allocating all the time - realloc instead
-void Tile::alloc(uint64_t size) {
-  delete buffer_;
-  buffer_ = new Buffer(size);
+Status Tile::alloc(uint64_t size) {
+  if (buffer_ == nullptr)
+    buffer_ = new Buffer(size);
+  else {
+    buffer_->realloc(size);
+    buffer_->reset_offset();
+  }
   tile_size_ = size;
+
+  return Status::Ok();
 }
 
-// TODO: change name to zero_copy
 Status Tile::mmap(
     const uri::URI& filename, uint64_t tile_size, uint64_t offset) {
   // Create new buffer
@@ -126,15 +129,13 @@ Status Tile::mmap(
   return st;
 }
 
-Status Tile::read(void* buffer, uint64_t bytes) {
+Status Tile::read(void* buffer, uint64_t nbytes) {
   if (buffer_ == nullptr)
     return LOG_STATUS(
         Status::BufferError("Cannot read from tile; Invalid buffer"));
 
-  Status st = buffer_->read(buffer, bytes);
+  Status st = buffer_->read(buffer, nbytes);
   offset_ = buffer_->offset();
-
-  // TODO: change the size as well
 
   return st;
 }
