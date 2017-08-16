@@ -296,10 +296,11 @@ Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   if (!vfs::is_dir(fragment_name))
     RETURN_NOT_OK(vfs::create_dir(fragment_name));
 
+  QueryMode mode = fragment_->array()->query_->mode();
+
   // Dispatch the proper write command
-  if (fragment_->mode() == ArrayMode::WRITE ||
-      fragment_->mode() == ArrayMode::WRITE_SORTED_COL ||
-      fragment_->mode() == ArrayMode::WRITE_SORTED_ROW) {  // SORTED
+  if (mode == QueryMode::WRITE || mode == QueryMode::WRITE_SORTED_COL ||
+      mode == QueryMode::WRITE_SORTED_ROW) {  // SORTED
     // For easy reference
     const ArraySchema* array_schema = fragment_->array()->array_schema();
     const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
@@ -325,7 +326,7 @@ Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
 
     // Success
     return Status::Ok();
-  } else if (fragment_->mode() == ArrayMode::WRITE_UNSORTED) {  // UNSORTED
+  } else if (mode == QueryMode::WRITE_UNSORTED) {  // UNSORTED
     return write_sparse_unsorted(buffers, buffer_sizes);
   } else {
     return LOG_STATUS(

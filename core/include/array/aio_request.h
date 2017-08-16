@@ -37,7 +37,7 @@
 #include <cstdio>
 
 #include "aio_status.h"
-#include "array_mode.h"
+#include "query_mode.h"
 #include "status.h"
 #include "tiledb.h"
 
@@ -74,7 +74,7 @@ class AIORequest {
 
   bool has_callback() const;
 
-  ArrayMode mode() const;
+  QueryMode mode() const;
 
   bool* overflow() const;
 
@@ -96,7 +96,7 @@ class AIORequest {
 
   void set_id(size_t id);
 
-  void set_mode(ArrayMode mode);
+  void set_mode(QueryMode mode);
 
   void set_status(AIOStatus status);
 
@@ -153,7 +153,7 @@ class AIORequest {
    *    - WRITE
    *    - WRITE_UNSORTED
    */
-  ArrayMode mode_;
+  QueryMode mode_;
   /**
    * Applicable only to read requests.
    * Indicates whether a buffer has overflowed during a read request.

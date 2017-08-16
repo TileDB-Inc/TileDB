@@ -117,10 +117,10 @@ typedef enum {
 
 /** Array mode. */
 typedef enum {
-#define TILEDB_ARRAY_MODE_ENUM(id) TILEDB_ARRAY_##id
+#define TILEDB_QUERY_MODE_ENUM(id) TILEDB_ARRAY_##id
 #include "tiledb_enum.inc"
-#undef TILEDB_ARRAY_MODE_ENUM
-} tiledb_array_mode_t;
+#undef TILEDB_QUERY_MODE_ENUM
+} tiledb_query_mode_t;
 
 /** Metadata mode. */
 typedef enum {
@@ -991,7 +991,7 @@ TILEDB_EXPORT int tiledb_array_init(
     tiledb_ctx_t* ctx,
     tiledb_array_t** tiledb_array,
     const char* array,
-    tiledb_array_mode_t mode,
+    tiledb_query_mode_t mode,
     const void* subarray,
     const char** attributes,
     int attribute_num);
@@ -1216,7 +1216,7 @@ TILEDB_EXPORT int tiledb_array_iterator_init(
     tiledb_ctx_t* ctx,
     tiledb_array_iterator_t** tiledb_array_it,
     const char* array,
-    tiledb_array_mode_t mode,
+    tiledb_query_mode_t mode,
     const void* subarray,
     const char** attributes,
     int attribute_num,

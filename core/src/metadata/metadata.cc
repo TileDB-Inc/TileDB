@@ -132,9 +132,9 @@ Status Metadata::init(
 
   // Set mode
   mode_ = mode;
-  ArrayMode array_mode = (mode == TILEDB_METADATA_READ) ?
-                             ArrayMode::READ :
-                             ArrayMode::WRITE_UNSORTED;
+  QueryMode array_mode = (mode == TILEDB_METADATA_READ) ?
+                             QueryMode::READ :
+                             QueryMode::WRITE_UNSORTED;
 
   // Set attributes
   char** array_attributes;

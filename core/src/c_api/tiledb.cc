@@ -1269,7 +1269,7 @@ int tiledb_array_init(
     tiledb_ctx_t* ctx,
     tiledb_array_t** tiledb_array,
     const char* array,
-    tiledb_array_mode_t mode,
+    tiledb_query_mode_t mode,
     const void* subarray,
     const char** attributes,
     int attribute_num) {
@@ -1290,7 +1290,7 @@ int tiledb_array_init(
           ctx->storage_manager_->array_init(
               (*tiledb_array)->array_,
               array_uri,
-              static_cast<tiledb::ArrayMode>(mode),
+              static_cast<tiledb::QueryMode>(mode),
               subarray,
               attributes,
               attribute_num))) {
@@ -1428,7 +1428,7 @@ int tiledb_array_iterator_init(
     tiledb_ctx_t* ctx,
     tiledb_array_iterator_t** tiledb_array_it,
     const char* array,
-    tiledb_array_mode_t mode,
+    tiledb_query_mode_t mode,
     const void* subarray,
     const char** attributes,
     int attribute_num,
@@ -1449,7 +1449,7 @@ int tiledb_array_iterator_init(
           ctx->storage_manager_->array_iterator_init(
               (*tiledb_array_it)->array_it_,
               array_uri,
-              static_cast<tiledb::ArrayMode>(mode),
+              static_cast<tiledb::QueryMode>(mode),
               subarray,
               attributes,
               attribute_num,
@@ -2090,7 +2090,7 @@ int tiledb_aio_request_set_array(
     return TILEDB_ERR;
 
   aio_request->aio_request_->set_array(array->array_);
-  aio_request->aio_request_->set_mode(array->array_->mode());
+  aio_request->aio_request_->set_mode(array->array_->query_->mode());
 
   return TILEDB_OK;
 }

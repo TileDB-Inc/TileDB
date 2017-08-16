@@ -80,7 +80,7 @@ size_t AIORequest::id() const {
   return id_;
 }
 
-ArrayMode AIORequest::mode() const {
+QueryMode AIORequest::mode() const {
   return mode_;
 }
 
@@ -122,7 +122,7 @@ void AIORequest::set_id(size_t id) {
   id_ = id;
 }
 
-void AIORequest::set_mode(ArrayMode mode) {
+void AIORequest::set_mode(QueryMode mode) {
   mode_ = mode;
 }
 

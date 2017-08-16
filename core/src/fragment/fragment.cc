@@ -54,14 +54,12 @@ Fragment::Fragment(const Array* array)
 }
 
 Fragment::~Fragment() {
-  if (write_state_ != nullptr)
+  if (write_state_ != nullptr) {
     delete write_state_;
-
-  if (read_state_ != nullptr)
-    delete read_state_;
-
-  if (book_keeping_ != nullptr && !read_mode())
     delete book_keeping_;
+  }
+
+  delete read_state_;
 }
 
 /* ****************************** */
@@ -101,14 +99,6 @@ const uri::URI& Fragment::fragment_uri() const {
   return fragment_uri_;
 }
 
-ArrayMode Fragment::mode() const {
-  return mode_;
-}
-
-inline bool Fragment::read_mode() const {
-  return is_read_mode(mode_);
-}
-
 ReadState* Fragment::read_state() const {
   return read_state_;
 }
@@ -126,10 +116,6 @@ size_t Fragment::tile_size(int attribute_id) const {
                       cell_num_per_tile * array_schema->cell_size(attribute_id);
 }
 
-inline bool Fragment::write_mode() const {
-  return is_write_mode(mode_);
-}
-
 /* ****************************** */
 /*            MUTATORS            */
 /* ****************************** */
@@ -138,7 +124,7 @@ Status Fragment::finalize() {
   if (write_state_ != nullptr) {  // WRITE
     assert(book_keeping_ != NULL);
     Status st_ws = write_state_->finalize();
-    Status st_bk = book_keeping_->finalize();
+    Status st_bk = book_keeping_->flush();
     Status st_rn;
     if (utils::fragment_exists(fragment_uri())) {
       st_rn = vfs::rename_fragment(fragment_uri());
@@ -158,17 +144,9 @@ Status Fragment::finalize() {
   return Status::Ok();
 }
 
-Status Fragment::init(
-    const uri::URI& uri, ArrayMode mode, const void* subarray) {
+Status Fragment::init(const uri::URI& uri, const void* subarray) {
   // Set fragment name and mode
   fragment_uri_ = uri;
-  mode_ = mode;
-
-  // Sanity check
-  if (!write_mode()) {
-    return LOG_STATUS(
-        Status::FragmentError("Cannot initialize fragment;  Invalid mode"));
-  }
 
   // Check if the fragment is dense or not
   dense_ = true;
@@ -183,7 +161,7 @@ Status Fragment::init(
   }
 
   // Initialize book-keeping and read/write state
-  book_keeping_ = new BookKeeping(array_->array_schema(), dense_, uri, mode_);
+  book_keeping_ = new BookKeeping(array_->array_schema(), dense_, uri);
   read_state_ = nullptr;
   Status st = book_keeping_->init(subarray);
   if (!st.ok()) {
@@ -201,7 +179,6 @@ Status Fragment::init(
 Status Fragment::init(const uri::URI& uri, BookKeeping* book_keeping) {
   // Set member attributes
   fragment_uri_ = uri;
-  mode_ = array_->mode();
   book_keeping_ = book_keeping;
   dense_ = book_keeping_->dense();
   write_state_ = nullptr;

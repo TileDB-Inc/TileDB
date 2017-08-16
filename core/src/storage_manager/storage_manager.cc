@@ -144,7 +144,7 @@ Status StorageManager::array_consolidate(const uri::URI& array_uri) {
   // Create an array object
   Array* array;
   RETURN_NOT_OK(
-      array_init(array, array_uri, ArrayMode::READ, nullptr, nullptr, 0));
+      array_init(array, array_uri, QueryMode::READ, nullptr, nullptr, 0));
 
   // Consolidate array (TODO: unhandled error handling here)
   Fragment* new_fragment;
@@ -211,7 +211,7 @@ Status StorageManager::array_load_book_keeping(
     const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
     std::vector<BookKeeping*>& book_keeping,
-    ArrayMode mode) {
+    QueryMode mode) {
   // TODO (jcb): is this assumed to be always > 0?
   // For easy reference
   int fragment_num = fragment_names.size();
@@ -222,13 +222,13 @@ Status StorageManager::array_load_book_keeping(
   // Load the book-keeping for each fragment
   for (int i = 0; i < fragment_num; ++i) {
     // For easy reference
-    int dense = !vfs::is_file(
+    bool dense = !vfs::is_file(
         fragment_names[i] + "/" + Configurator::coords() +
         Configurator::file_suffix());
 
     // Create new book-keeping structure for the fragment
     BookKeeping* f_book_keeping =
-        new BookKeeping(array_schema, dense, fragment_names[i], mode);
+        new BookKeeping(array_schema, dense, fragment_names[i]);
 
     // Load book-keeping
     RETURN_NOT_OK(f_book_keeping->load());
@@ -243,7 +243,7 @@ Status StorageManager::array_load_book_keeping(
 Status StorageManager::array_init(
     Array*& array,
     const uri::URI& array_uri,
-    ArrayMode mode,
+    QueryMode mode,
     const void* subarray,
     const char** attributes,
     int attribute_num) {
@@ -318,7 +318,7 @@ Status StorageManager::array_finalize(Array* array) {
 
   // Finalize and close the array
   RETURN_NOT_OK_ELSE(array->finalize(), delete array);
-  if (array->read_mode())
+  if (is_read_mode(array->query_->mode()))
     RETURN_NOT_OK_ELSE(
         array_close(array->array_schema()->array_uri()), delete array)
 
@@ -352,7 +352,7 @@ Status StorageManager::array_sync_attribute(
 Status StorageManager::array_iterator_init(
     ArrayIterator*& array_it,
     const uri::URI& array_uri,
-    ArrayMode mode,
+    QueryMode mode,
     const void* subarray,
     const char** attributes,
     int attribute_num,
@@ -542,7 +542,7 @@ Status StorageManager::metadata_init(
   OpenArray* open_array = nullptr;
   if (mode == TILEDB_METADATA_READ)
     RETURN_NOT_OK(
-        array_open(vfs::abs_path(metadata_uri), open_array, ArrayMode::READ))
+        array_open(vfs::abs_path(metadata_uri), open_array, QueryMode::READ))
 
   // Create metadata object
   metadata = new Metadata();
@@ -573,9 +573,9 @@ Status StorageManager::metadata_finalize(Metadata* metadata) {
 
   // Finalize the metadata and close the underlying array
   uri::URI uri = metadata->metadata_schema()->array_schema()->array_uri();
-  ArrayMode mode = metadata->array()->mode();
+  QueryMode mode = metadata->array()->query_->mode();
   RETURN_NOT_OK_ELSE(metadata->finalize(), delete metadata);
-  if (mode == ArrayMode::READ)
+  if (mode == QueryMode::READ)
     RETURN_NOT_OK_ELSE(array_close(uri), delete metadata);
 
   // Clean up
@@ -940,7 +940,7 @@ Status StorageManager::array_move(
 }
 
 Status StorageManager::array_open(
-    const uri::URI& array_uri, OpenArray*& open_array, ArrayMode mode) {
+    const uri::URI& array_uri, OpenArray*& open_array, QueryMode mode) {
   // Get the open array entry
   RETURN_NOT_OK(array_get_open_array_entry(array_uri, open_array));
 

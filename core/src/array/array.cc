@@ -32,9 +32,10 @@
  */
 
 #include "array.h"
-#include <sys/time.h>
 #include "logger.h"
 #include "utils.h"
+
+#include <sys/time.h>
 
 namespace tiledb {
 
@@ -47,9 +48,9 @@ Array::Array() {
   array_sorted_read_state_ = nullptr;
   array_sorted_write_state_ = nullptr;
   array_schema_ = nullptr;
-  subarray_ = nullptr;
   array_clone_ = nullptr;
   storage_manager_ = nullptr;
+  query_ = nullptr;
 }
 
 Array::~Array() {
@@ -70,9 +71,9 @@ Array::~Array() {
     delete array_clone_;
     if (array_schema_ != nullptr)
       delete array_schema_;
-    if (subarray_ != nullptr)
-      free(subarray_);
   }
+
+  delete query_;
 }
 
 /* ****************************** */
@@ -109,9 +110,9 @@ StorageManager* Array::storage_manager() const {
 
 Status Array::aio_handle_request(AIORequest* aio_request) {
   Status st;
-  if (read_mode()) {  // READ MODE
+  if (is_read_mode(query_->mode())) {  // READ MODE
     // Invoke the read
-    if (aio_request->mode() == ArrayMode::READ) {
+    if (aio_request->mode() == QueryMode::READ) {
       // Reset the subarray only if this request does not continue from the last
       if (aio_last_handled_request_ != aio_request->id())
         reset_subarray_soft(aio_request->subarray());
@@ -130,8 +131,8 @@ Status Array::aio_handle_request(AIORequest* aio_request) {
     }
   } else {  // WRITE MODE
     // Invoke the write
-    if (aio_request->mode() == ArrayMode::WRITE ||
-        aio_request->mode() == ArrayMode::WRITE_UNSORTED) {
+    if (aio_request->mode() == QueryMode::WRITE ||
+        aio_request->mode() == QueryMode::WRITE_UNSORTED) {
       // Reset the subarray only if this request does not continue from the last
       if (aio_last_handled_request_ != aio_request->id())
         reset_subarray_soft(aio_request->subarray());
@@ -156,7 +157,7 @@ Status Array::aio_handle_request(AIORequest* aio_request) {
 
   if (st.ok()) {  // Success
     // Check for overflow (applicable only to reads)
-    if (aio_request->mode() == ArrayMode::READ &&
+    if (aio_request->mode() == QueryMode::READ &&
         array_read_state_->overflow()) {
       aio_request->set_status(AIOStatus::OFLOW);
       if (aio_request->overflow() != nullptr) {
@@ -165,8 +166,8 @@ Status Array::aio_handle_request(AIORequest* aio_request) {
               i, array_read_state_->overflow(attribute_ids_[i]));
       }
     } else if (
-        (aio_request->mode() == ArrayMode::READ_SORTED_COL ||
-         aio_request->mode() == ArrayMode::READ_SORTED_ROW) &&
+        (aio_request->mode() == QueryMode::READ_SORTED_COL ||
+         aio_request->mode() == QueryMode::READ_SORTED_ROW) &&
         array_sorted_read_state_->overflow()) {
       aio_request->set_status(AIOStatus::OFLOW);
       if (aio_request->overflow() != nullptr) {
@@ -214,13 +215,9 @@ std::vector<Fragment*> Array::fragments() const {
   return fragments_;
 }
 
-ArrayMode Array::mode() const {
-  return mode_;
-}
-
 bool Array::overflow() const {
   // Not applicable to writes
-  if (!read_mode())
+  if (!is_read_mode(query_->mode()))
     return false;
 
   // Check overflow
@@ -231,7 +228,7 @@ bool Array::overflow() const {
 }
 
 bool Array::overflow(int attribute_id) const {
-  assert(read_mode());
+  assert(is_read_mode(query_->mode()));
 
   // Trivial case
   if (fragments_.size() == 0)
@@ -246,7 +243,7 @@ bool Array::overflow(int attribute_id) const {
 
 Status Array::read(void** buffers, size_t* buffer_sizes) {
   // Sanity checks
-  if (!read_mode()) {
+  if (!is_read_mode(query_->mode())) {
     return LOG_STATUS(
         Status::ArrayError("Cannot read from array; Invalid mode"));
   }
@@ -267,8 +264,8 @@ Status Array::read(void** buffers, size_t* buffer_sizes) {
   }
 
   // Handle sorted modes
-  if (mode_ == ArrayMode::READ_SORTED_COL ||
-      mode_ == ArrayMode::READ_SORTED_ROW) {
+  if (query_->mode() == QueryMode::READ_SORTED_COL ||
+      query_->mode() == QueryMode::READ_SORTED_ROW) {
     return array_sorted_read_state_->read(buffers, buffer_sizes);
   } else {  // mode_ == TILEDB_ARRAY_READ
     return read_default(buffers, buffer_sizes);
@@ -277,18 +274,6 @@ Status Array::read(void** buffers, size_t* buffer_sizes) {
 
 Status Array::read_default(void** buffers, size_t* buffer_sizes) {
   return array_read_state_->read(buffers, buffer_sizes);
-}
-
-bool Array::read_mode() const {
-  return is_read_mode(mode_);
-}
-
-const void* Array::subarray() const {
-  return subarray_;
-}
-
-bool Array::write_mode() const {
-  return is_write_mode(mode_);
 }
 
 /* ****************************** */
@@ -309,8 +294,7 @@ Status Array::consolidate(
 
   // Create new fragment
   new_fragment = new Fragment(this);
-  RETURN_NOT_OK(
-      new_fragment->init(new_fragment_name, ArrayMode::WRITE, subarray_));
+  RETURN_NOT_OK(new_fragment->init(new_fragment_name));
 
   // Consolidate on a per-attribute basis
   Status st;
@@ -463,44 +447,24 @@ Status Array::init(
     const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
     const std::vector<BookKeeping*>& book_keeping,
-    ArrayMode mode,
+    QueryMode mode,
     const char** attributes,
     int attribute_num,
     const void* subarray,
     const Configurator* config,
     Array* array_clone) {
-  // For easy reference
-  unsigned name_max_len = Configurator::name_max_len();
-
-  // Set mode
-  mode_ = mode;
-
-  // Set array clone
+  config_ = config;
+  array_schema_ = array_schema;
   array_clone_ = array_clone;
   storage_manager_ = storage_manager;
 
-  // Sanity check on mode
-  if (!read_mode() && !write_mode()) {
-    return LOG_STATUS(
-        Status::ArrayError("Cannot initialize array; Invalid array mode"));
-  }
-
-  // Set config
-  config_ = config;
-
-  // Set subarray
-  size_t subarray_size = 2 * array_schema->coords_size();
-  subarray_ = malloc(subarray_size);
-  if (subarray == nullptr)
-    memcpy(subarray_, array_schema->domain(), subarray_size);
-  else
-    memcpy(subarray_, subarray, subarray_size);
+  query_ = new Query(this, mode, subarray);
 
   // Get attributes
   std::vector<std::string> attributes_vec;
   if (attributes == nullptr) {  // Default: all attributes
     attributes_vec = array_schema->attributes();
-    if (array_schema->dense() && mode != ArrayMode::WRITE_UNSORTED)
+    if (array_schema->dense() && mode != QueryMode::WRITE_UNSORTED)
       // Remove coordinates attribute for dense arrays,
       // unless in TILEDB_WRITE_UNSORTED mode
       attributes_vec.pop_back();
@@ -508,6 +472,7 @@ Status Array::init(
     // Get attributes
     bool coords_found = false;
     bool sparse = !array_schema->dense();
+    unsigned name_max_len = Configurator::name_max_len();
     for (int i = 0; i < attribute_num; ++i) {
       // Check attribute name length
       if (attributes[i] == nullptr || strlen(attributes[i]) > name_max_len)
@@ -535,10 +500,9 @@ Status Array::init(
       array_schema->get_attribute_ids(attributes_vec, attribute_ids_));
 
   // Set array schema
-  array_schema_ = array_schema;
 
   // Initialize new fragment if needed
-  if (write_mode()) {  // WRITE MODE
+  if (is_write_mode(mode)) {  // WRITE MODE
     // Get new fragment name
     std::string new_fragment_name = this->new_fragment_name();
     if (new_fragment_name == "") {
@@ -548,15 +512,15 @@ Status Array::init(
     // Create new fragment
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
-    Status st = fragment->init(new_fragment_name, mode_, subarray);
+    Status st = fragment->init(new_fragment_name, query_->subarray());
     if (!st.ok()) {
       array_schema_ = nullptr;
       return st;
     }
 
     // Create ArraySortedWriteState
-    if (mode_ == ArrayMode::WRITE_SORTED_COL ||
-        mode_ == ArrayMode::WRITE_SORTED_ROW) {
+    if (mode == QueryMode::WRITE_SORTED_COL ||
+        mode == QueryMode::WRITE_SORTED_ROW) {
       array_sorted_write_state_ = new ArraySortedWriteState(this);
       Status st = array_sorted_write_state_->init();
       if (!st.ok()) {
@@ -579,7 +543,7 @@ Status Array::init(
     array_read_state_ = new ArrayReadState(this);
 
     // Create ArraySortedReadState
-    if (mode_ != ArrayMode::READ) {
+    if (mode != QueryMode::READ) {
       array_sorted_read_state_ = new ArraySortedReadState(this);
       Status st = array_sorted_read_state_->init();
       if (!st.ok()) {
@@ -600,14 +564,11 @@ Status Array::init(
 }
 
 Status Array::reset_subarray(const void* subarray) {
-  // Sanity check
-  assert(read_mode() || write_mode());
-
   // For easy referencd
   int fragment_num = fragments_.size();
 
   // Finalize fragments if in write mode
-  if (write_mode()) {
+  if (is_write_mode(query_->mode())) {
     // Finalize and delete fragments
     for (int i = 0; i < fragment_num; ++i) {
       fragments_[i]->finalize();
@@ -617,16 +578,11 @@ Status Array::reset_subarray(const void* subarray) {
   }
 
   // Set subarray
-  size_t subarray_size = 2 * array_schema_->coords_size();
-  if (subarray_ == nullptr)
-    subarray_ = malloc(subarray_size);
-  if (subarray == nullptr)
-    memcpy(subarray_, array_schema_->domain(), subarray_size);
-  else
-    memcpy(subarray_, subarray, subarray_size);
+  RETURN_NOT_OK(query_->reset_subarray(subarray));
 
   // Re-set or re-initialize fragments
-  if (write_mode()) {  // WRITE MODE
+  QueryMode mode = query_->mode();
+  if (is_write_mode(mode)) {  // WRITE MODE
     // Finalize last fragment
     if (fragments_.size() != 0) {
       assert(fragments_.size() == 1);
@@ -638,8 +594,8 @@ Status Array::reset_subarray(const void* subarray) {
     // Re-initialize ArraySortedWriteState
     if (array_sorted_write_state_ != nullptr)
       delete array_sorted_write_state_;
-    if (mode_ == ArrayMode::WRITE_SORTED_COL ||
-        mode_ == ArrayMode::WRITE_SORTED_ROW) {
+    if (mode == QueryMode::WRITE_SORTED_COL ||
+        mode == QueryMode::WRITE_SORTED_ROW) {
       array_sorted_write_state_ = new ArraySortedWriteState(this);
       Status st = array_sorted_write_state_->init();
       if (!st.ok()) {
@@ -661,7 +617,7 @@ Status Array::reset_subarray(const void* subarray) {
     // Create new fragment
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
-    RETURN_NOT_OK(fragment->init(new_fragment_name, mode_, subarray));
+    RETURN_NOT_OK(fragment->init(new_fragment_name, query_->subarray()));
 
   } else {  // READ MODE
     // Re-initialize the read state of the fragments
@@ -678,7 +634,7 @@ Status Array::reset_subarray(const void* subarray) {
     // Re-initialize ArraySortedReadState
     if (array_sorted_read_state_ != nullptr)
       delete array_sorted_read_state_;
-    if (mode_ != ArrayMode::READ) {
+    if (mode != QueryMode::READ) {
       array_sorted_read_state_ = new ArraySortedReadState(this);
       Status st = array_sorted_read_state_->init();
       if (!st.ok()) {
@@ -696,14 +652,11 @@ Status Array::reset_subarray(const void* subarray) {
 }
 
 Status Array::reset_subarray_soft(const void* subarray) {
-  // Sanity check
-  assert(read_mode() || write_mode());
-
   // For easy referencd
   int fragment_num = fragments_.size();
 
   // Finalize fragments if in write mode
-  if (write_mode()) {
+  if (is_write_mode(query_->mode())) {
     // Finalize and delete fragments
     for (int i = 0; i < fragment_num; ++i) {
       fragments_[i]->finalize();
@@ -713,16 +666,10 @@ Status Array::reset_subarray_soft(const void* subarray) {
   }
 
   // Set subarray
-  size_t subarray_size = 2 * array_schema_->coords_size();
-  if (subarray_ == nullptr)
-    subarray_ = malloc(subarray_size);
-  if (subarray == nullptr)
-    memcpy(subarray_, array_schema_->domain(), subarray_size);
-  else
-    memcpy(subarray_, subarray, subarray_size);
+  RETURN_NOT_OK(query_->reset_subarray(subarray));
 
   // Re-set or re-initialize fragments
-  if (write_mode()) {  // WRITE MODE
+  if (is_write_mode(query_->mode())) {  // WRITE MODE
     // Do nothing
   } else {  // READ MODE
     // Re-initialize the read state of the fragments
@@ -742,7 +689,7 @@ Status Array::reset_subarray_soft(const void* subarray) {
 
 Status Array::sync() {
   // Sanity check
-  if (!write_mode()) {
+  if (!is_write_mode(query_->mode())) {
     return LOG_STATUS(Status::ArrayError("Cannot sync array; Invalid mode"));
   }
 
@@ -757,7 +704,7 @@ Status Array::sync() {
 
 Status Array::sync_attribute(const std::string& attribute) {
   // Sanity checks
-  if (!write_mode()) {
+  if (!is_write_mode(query_->mode())) {
     return LOG_STATUS(
         Status::ArrayError("Cannot sync attribute; Invalid mode"));
   }
@@ -772,23 +719,25 @@ Status Array::sync_attribute(const std::string& attribute) {
 }
 
 Status Array::write(const void** buffers, const size_t* buffer_sizes) {
+  QueryMode mode = query_->mode();
+
   // Sanity checks
-  if (!write_mode()) {
+  if (!is_write_mode(mode)) {
     return LOG_STATUS(
         Status::ArrayError("Cannot write to array; Invalid mode"));
   }
 
   // Write based on mode
-  if (mode_ == ArrayMode::WRITE_SORTED_COL ||
-      mode_ == ArrayMode::WRITE_SORTED_ROW) {
+  if (mode == QueryMode::WRITE_SORTED_COL ||
+      mode == QueryMode::WRITE_SORTED_ROW) {
     RETURN_NOT_OK(array_sorted_write_state_->write(buffers, buffer_sizes));
-  } else if (mode_ == ArrayMode::WRITE || mode_ == ArrayMode::WRITE_UNSORTED) {
+  } else if (mode == QueryMode::WRITE || mode == QueryMode::WRITE_UNSORTED) {
     RETURN_NOT_OK(write_default(buffers, buffer_sizes));
   } else {
     assert(0);
   }
   // In all modes except TILEDB_ARRAY_WRITE, the fragment must be finalized
-  if (mode_ != ArrayMode::WRITE) {
+  if (mode != QueryMode::WRITE) {
     RETURN_NOT_OK(fragments_[0]->finalize());
     delete fragments_[0];
     fragments_.clear();
@@ -798,8 +747,11 @@ Status Array::write(const void** buffers, const size_t* buffer_sizes) {
 }
 
 Status Array::write_default(const void** buffers, const size_t* buffer_sizes) {
+  QueryMode mode = query_->mode();
+  const void* subarray = query_->subarray();
+
   // Sanity checks
-  if (!write_mode()) {
+  if (!is_write_mode(mode)) {
     return LOG_STATUS(
         Status::ArrayError("Cannot write to array; Invalid mode"));
   }
@@ -815,7 +767,7 @@ Status Array::write_default(const void** buffers, const size_t* buffer_sizes) {
     // Create new fragment
     Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
-    RETURN_NOT_OK(fragment->init(new_fragment_name, mode_, subarray_));
+    RETURN_NOT_OK(fragment->init(new_fragment_name, subarray));
   }
 
   // Dispatch the write command to the new fragment

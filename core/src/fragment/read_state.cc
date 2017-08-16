@@ -579,7 +579,7 @@ Status ReadState::get_fragment_cell_ranges_sparse(
 
   // For easy reference
   int dim_num = array_schema_->dim_num();
-  auto subarray = static_cast<const T*>(array_->subarray());
+  auto subarray = static_cast<const T*>(array_->query_->subarray());
 
   // Handle full overlap
   if (search_tile_overlap_ == 1) {
@@ -678,7 +678,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
   int dim_num = array_schema_->dim_num();
   auto tile_extents = static_cast<const T*>(array_schema_->tile_extents());
   auto array_domain = static_cast<const T*>(array_schema_->domain());
-  auto subarray = static_cast<const T*>(array_->subarray());
+  auto subarray = static_cast<const T*>(array_->query_->subarray());
   auto domain = static_cast<const T*>(bookkeeping_->domain());
   auto non_empty_domain =
       static_cast<const T*>(bookkeeping_->non_empty_domain());
@@ -751,7 +751,7 @@ void ReadState::get_next_overlapping_tile_sparse() {
 
   // For easy reference
   const std::vector<void*>& mbrs = bookkeeping_->mbrs();
-  auto subarray = static_cast<const T*>(array_->subarray());
+  auto subarray = static_cast<const T*>(array_->query_->subarray());
 
   // Update the search tile position
   if (search_tile_pos_ == -1)
@@ -787,7 +787,7 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
   // For easy reference
   int dim_num = array_schema_->dim_num();
   const std::vector<void*>& mbrs = bookkeeping_->mbrs();
-  auto subarray = static_cast<const T*>(array_->subarray());
+  auto subarray = static_cast<const T*>(array_->query_->subarray());
 
   // Compute the tile subarray
   auto tile_subarray = new T[2 * dim_num];
@@ -1044,7 +1044,7 @@ template <class T>
 void ReadState::compute_tile_search_range_col_or_row() {
   // For easy reference
   int dim_num = array_schema_->dim_num();
-  const T* subarray = static_cast<const T*>(array_->subarray());
+  const T* subarray = static_cast<const T*>(array_->query_->subarray());
   int64_t tile_num = bookkeeping_->tile_num();
   const std::vector<void*>& bounding_coords = bookkeeping_->bounding_coords();
 

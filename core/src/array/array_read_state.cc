@@ -878,7 +878,7 @@ ArrayReadState::FragmentCellRanges ArrayReadState::empty_fragment_cell_ranges()
   int dim_num = array_schema_->dim_num();
   Layout cell_order = array_schema_->cell_order();
   size_t cell_range_size = 2 * coords_size_;
-  const T* subarray = static_cast<const T*>(array_->subarray());
+  const T* subarray = static_cast<const T*>(array_->query_->subarray());
   const T* tile_coords = (const T*)subarray_tile_coords_;
 
   // To return
@@ -1174,7 +1174,7 @@ void ArrayReadState::init_subarray_tile_coords() {
   // For easy reference
   int dim_num = array_schema_->dim_num();
   const T* tile_extents = static_cast<const T*>(array_schema_->tile_extents());
-  const T* subarray = static_cast<const T*>(array_->subarray());
+  const T* subarray = static_cast<const T*>(array_->query_->subarray());
 
   // Sanity checks
   assert(tile_extents != NULL);

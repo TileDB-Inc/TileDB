@@ -174,7 +174,7 @@ class StorageManager {
   Status array_init(
       Array*& array,
       const uri::URI& array_uri,
-      ArrayMode mode,
+      QueryMode mode,
       const void* subarray,
       const char** attributes,
       int attribute_num);
@@ -244,7 +244,7 @@ class StorageManager {
   Status array_iterator_init(
       ArrayIterator*& array_it,
       const uri::URI& array_uri,
-      ArrayMode mode,
+      QueryMode mode,
       const void* subarray,
       const char** attributes,
       int attribute_num,
@@ -594,7 +594,7 @@ class StorageManager {
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
       std::vector<BookKeeping*>& book_keeping,
-      ArrayMode mode);
+      QueryMode mode);
 
   /**
    * Moves a TileDB array.
@@ -618,7 +618,7 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   Status array_open(
-      const uri::URI& array_name, OpenArray*& open_array, ArrayMode mode);
+      const uri::URI& array_name, OpenArray*& open_array, QueryMode mode);
 
   /**
    * Creates a special file that serves as lock needed for implementing
