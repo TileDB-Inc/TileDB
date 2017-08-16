@@ -38,8 +38,8 @@
 #include <iostream>
 #include <sstream>
 
+#include "../../core/include/vfs/filesystem.h"
 #include "catch.hpp"
-#include "filesystem.h"
 #include "tiledb.h"
 
 struct ArraySchemaFx {
@@ -49,7 +49,7 @@ struct ArraySchemaFx {
   tiledb_array_type_t ARRAY_TYPE = TILEDB_DENSE;
   const char* ARRAY_TYPE_STR = "dense";
   const std::string ARRAY_PATH = GROUP + ARRAY_NAME;
-  const std::string ARRAY_PATH_REAL = tiledb::filesystem::real_dir(ARRAY_PATH);
+  const std::string ARRAY_PATH_REAL = tiledb::vfs::real_dir(ARRAY_PATH);
   const uint64_t CAPACITY = 500;
   const char* CAPACITY_STR = "500";
   const tiledb_layout_t CELL_ORDER = TILEDB_COL_MAJOR;
@@ -357,28 +357,28 @@ TEST_CASE_METHOD(
   CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
 
   // Check dump
-  std::string dump_str =
-      "- Array name: " + tiledb::filesystem::real_dir(ARRAY_PATH) + "\n" +
-      "- Array type: " + ARRAY_TYPE_STR + "\n" +
-      "- Cell order: " + CELL_ORDER_STR + "\n" +
-      "- Tile order: " + TILE_ORDER_STR + "\n" + "- Capacity: " + CAPACITY_STR +
-      "\n" + "\n" + "### Dimension ###\n" + "- Name: " + DIM1_NAME + "\n" +
-      "- Type: " + DIM1_TYPE_STR + "\n" +
-      "- Compressor: " + DIM1_COMPRESSOR_STR + "\n" +
-      "- Compression level: " + DIM1_COMPRESSION_LEVEL_STR + "\n" +
-      "- Domain: " + DIM1_DOMAIN_STR + "\n" +
-      "- Tile extent: " + DIM1_TILE_EXTENT_STR + "\n" + "\n" +
-      "### Dimension ###\n" + "- Name: " + DIM2_NAME + "\n" +
-      "- Type: " + DIM2_TYPE_STR + "\n" +
-      "- Compressor: " + DIM2_COMPRESSOR_STR + "\n" +
-      "- Compression level: " + DIM2_COMPRESSION_LEVEL_STR + "\n" +
-      "- Domain: " + DIM2_DOMAIN_STR + "\n" +
-      "- Tile extent: " + DIM2_TILE_EXTENT_STR + "\n" + "\n" +
-      "### Attribute ###\n" + "- Name: " + ATTR_NAME + "\n" +
-      "- Type: " + ATTR_TYPE_STR + "\n" +
-      "- Compressor: " + ATTR_COMPRESSOR_STR + "\n" +
-      "- Compression level: " + ATTR_COMPRESSION_LEVEL_STR + "\n" +
-      "- Cell val num: " + CELL_VAL_NUM_STR + "\n";
+  std::string dump_str = "- Array name: " + tiledb::vfs::real_dir(ARRAY_PATH) +
+                         "\n" + "- Array type: " + ARRAY_TYPE_STR + "\n" +
+                         "- Cell order: " + CELL_ORDER_STR + "\n" +
+                         "- Tile order: " + TILE_ORDER_STR + "\n" +
+                         "- Capacity: " + CAPACITY_STR + "\n" + "\n" +
+                         "### Dimension ###\n" + "- Name: " + DIM1_NAME + "\n" +
+                         "- Type: " + DIM1_TYPE_STR + "\n" +
+                         "- Compressor: " + DIM1_COMPRESSOR_STR + "\n" +
+                         "- Compression level: " + DIM1_COMPRESSION_LEVEL_STR +
+                         "\n" + "- Domain: " + DIM1_DOMAIN_STR + "\n" +
+                         "- Tile extent: " + DIM1_TILE_EXTENT_STR + "\n" +
+                         "\n" + "### Dimension ###\n" + "- Name: " + DIM2_NAME +
+                         "\n" + "- Type: " + DIM2_TYPE_STR + "\n" +
+                         "- Compressor: " + DIM2_COMPRESSOR_STR + "\n" +
+                         "- Compression level: " + DIM2_COMPRESSION_LEVEL_STR +
+                         "\n" + "- Domain: " + DIM2_DOMAIN_STR + "\n" +
+                         "- Tile extent: " + DIM2_TILE_EXTENT_STR + "\n" +
+                         "\n" + "### Attribute ###\n" + "- Name: " + ATTR_NAME +
+                         "\n" + "- Type: " + ATTR_TYPE_STR + "\n" +
+                         "- Compressor: " + ATTR_COMPRESSOR_STR + "\n" +
+                         "- Compression level: " + ATTR_COMPRESSION_LEVEL_STR +
+                         "\n" + "- Cell val num: " + CELL_VAL_NUM_STR + "\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();
   fwrite(dump, sizeof(char), strlen(dump), gold_fout);

@@ -31,7 +31,7 @@
  */
 
 #include "buffer.h"
-#include "filesystem.h"
+#include "../../include/vfs/filesystem.h"
 #include "logger.h"
 
 #include <iostream>
@@ -96,8 +96,8 @@ Status Buffer::mmap(
   size_ = size;
   mmap_size_ = size + extra_offset;
 
-  RETURN_NOT_OK(filesystem::mmap(
-      filename, mmap_size_, start_offset, &mmap_data_, read_only));
+  RETURN_NOT_OK(
+      vfs::mmap(filename, mmap_size_, start_offset, &mmap_data_, read_only));
 
   data_ = static_cast<char*>(mmap_data_) + extra_offset;
 
@@ -108,7 +108,7 @@ Status Buffer::munmap() {
   if (mmap_data_ == nullptr)
     return Status::Ok();
 
-  RETURN_NOT_OK(filesystem::munmap(mmap_data_, mmap_size_));
+  RETURN_NOT_OK(vfs::munmap(mmap_data_, mmap_size_));
 
   mmap_data_ = nullptr;
   mmap_size_ = 0;

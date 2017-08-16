@@ -37,9 +37,9 @@
 #include <cstring>
 #include <iostream>
 
+#include "../../include/vfs/filesystem.h"
 #include "comparators.h"
 #include "const_buffer.h"
-#include "filesystem.h"
 #include "logger.h"
 #include "tile.h"
 #include "utils.h"
@@ -174,10 +174,10 @@ Status WriteState::sync() {
     else
       filename = fragment_->attr_uri(attribute_id).to_posix_path();
     if (write_method == IOMethod::WRITE) {
-      RETURN_NOT_OK(filesystem::sync(filename.c_str()));
+      RETURN_NOT_OK(vfs::sync(filename.c_str()));
     } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-      RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
+      RETURN_NOT_OK(vfs::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
       // Error: MPI not supported
       return LOG_STATUS(
@@ -191,10 +191,10 @@ Status WriteState::sync() {
     if (array_schema->var_size(attribute_id)) {
       filename = fragment_->attr_var_uri(attribute_id).to_posix_path();
       if (write_method == IOMethod::WRITE) {
-        RETURN_NOT_OK(filesystem::sync(filename.c_str()));
+        RETURN_NOT_OK(vfs::sync(filename.c_str()));
       } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-        RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
+        RETURN_NOT_OK(vfs::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
         // Error: MPI not supported
         return LOG_STATUS(
@@ -209,10 +209,10 @@ Status WriteState::sync() {
   // Sync fragment directory
   filename = fragment_->fragment_uri().to_posix_path();
   if (write_method == IOMethod::WRITE) {
-    RETURN_NOT_OK(filesystem::sync(filename.c_str()));
+    RETURN_NOT_OK(vfs::sync(filename.c_str()));
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
+    RETURN_NOT_OK(vfs::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
     // Error: MPI not supported
     return LOG_STATUS(
@@ -242,10 +242,10 @@ Status WriteState::sync_attribute(const std::string& attribute) {
   else
     filename = fragment_->attr_uri(attribute_id).to_posix_path();
   if (write_method == IOMethod::WRITE) {
-    RETURN_NOT_OK(filesystem::sync(filename.c_str()));
+    RETURN_NOT_OK(vfs::sync(filename.c_str()));
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
+    RETURN_NOT_OK(vfs::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
     // Error: MPI not supported
     return LOG_STATUS(
@@ -258,10 +258,10 @@ Status WriteState::sync_attribute(const std::string& attribute) {
   if (array_schema->var_size(attribute_id)) {
     filename = fragment_->attr_var_uri(attribute_id).to_posix_path();
     if (write_method == IOMethod::WRITE) {
-      RETURN_NOT_OK(filesystem::sync(filename.c_str()));
+      RETURN_NOT_OK(vfs::sync(filename.c_str()));
     } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-      RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
+      RETURN_NOT_OK(vfs::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
       // Error: MPI not supported
       return LOG_STATUS(
@@ -274,10 +274,10 @@ Status WriteState::sync_attribute(const std::string& attribute) {
   // Sync fragment directory
   filename = fragment_->fragment_uri().to_posix_path();
   if (write_method == IOMethod::WRITE) {
-    RETURN_NOT_OK(filesystem::sync(filename.c_str()));
+    RETURN_NOT_OK(vfs::sync(filename.c_str()));
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    RETURN_NOT_OK(filesystem::mpi_io_sync(mpi_comm, filename.c_str()));
+    RETURN_NOT_OK(vfs::mpi_io_sync(mpi_comm, filename.c_str()));
 #else
     // Error: MPI not supported
     return LOG_STATUS(
@@ -293,8 +293,8 @@ Status WriteState::sync_attribute(const std::string& attribute) {
 Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   // Create fragment directory if it does not exist
   std::string fragment_name = fragment_->fragment_uri().to_posix_path();
-  if (!filesystem::is_dir(fragment_name))
-    RETURN_NOT_OK(filesystem::create_dir(fragment_name));
+  if (!vfs::is_dir(fragment_name))
+    RETURN_NOT_OK(vfs::create_dir(fragment_name));
 
   // Dispatch the proper write command
   if (fragment_->mode() == ArrayMode::WRITE ||

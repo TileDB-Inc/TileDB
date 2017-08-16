@@ -34,9 +34,9 @@
 #include <algorithm>
 #include <cassert>
 
+#include "../../include/vfs/filesystem.h"
 #include "array.h"
 #include "basic_array_schema.h"
-#include "filesystem.h"
 #include "logger.h"
 #include "storage_manager.h"
 #include "utils.h"
@@ -87,7 +87,7 @@ Status StorageManager::init(Configurator* config) {
 // TODO: Object types should be Enums
 int StorageManager::dir_type(const char* dir) {
   // Get real path
-  std::string dir_real = filesystem::real_dir(dir);
+  std::string dir_real = vfs::real_dir(dir);
 
   // Return type
   if (utils::is_group(dir_real))
@@ -112,9 +112,9 @@ void StorageManager::set_config(const Configurator* config) {
 
 Status StorageManager::group_create(const uri::URI& group) const {
   // Create group directory
-  RETURN_NOT_OK(filesystem::create_dir(group.to_string()));
+  RETURN_NOT_OK(vfs::create_dir(group.to_string()));
   // Create group file
-  RETURN_NOT_OK(filesystem::create_group_file(group.to_string()));
+  RETURN_NOT_OK(vfs::create_group_file(group.to_string()));
   return Status::Ok();
 }
 
@@ -185,7 +185,7 @@ Status StorageManager::array_create(ArraySchema* array_schema) const {
   // Create array directory
   uri::URI uri = array_schema->array_uri();
 
-  RETURN_NOT_OK(filesystem::create_dir(uri.to_posix_path()));
+  RETURN_NOT_OK(vfs::create_dir(uri.to_posix_path()));
 
   // Store array schema
   RETURN_NOT_OK(array_schema->store(uri));
@@ -201,8 +201,8 @@ Status StorageManager::array_create(ArraySchema* array_schema) const {
 void StorageManager::array_get_fragment_names(
     const uri::URI& array_uri, std::vector<std::string>& fragment_names) {
   // Get directory names in the array folder
-  fragment_names = filesystem::get_fragment_dirs(
-      filesystem::real_dir(array_uri.to_posix_path()));
+  fragment_names =
+      vfs::get_fragment_dirs(vfs::real_dir(array_uri.to_posix_path()));
   // Sort the fragment names
   sort_fragment_names(fragment_names);
 }
@@ -222,7 +222,7 @@ Status StorageManager::array_load_book_keeping(
   // Load the book-keeping for each fragment
   for (int i = 0; i < fragment_num; ++i) {
     // For easy reference
-    int dense = !filesystem::is_file(
+    int dense = !vfs::is_file(
         fragment_names[i] + "/" + Configurator::coords() +
         Configurator::file_suffix());
 
@@ -259,8 +259,7 @@ Status StorageManager::array_init(
   // Open the array
   OpenArray* open_array = nullptr;
   if (is_read_mode(mode)) {
-    RETURN_NOT_OK(
-        array_open(filesystem::abs_path(array_uri), open_array, mode));
+    RETURN_NOT_OK(array_open(vfs::abs_path(array_uri), open_array, mode));
   }
 
   Status st;
@@ -480,7 +479,7 @@ Status StorageManager::metadata_create(MetadataSchema* metadata_schema) const {
 
   // Create metadata directory
   uri::URI uri = metadata_schema->metadata_uri();
-  RETURN_NOT_OK(filesystem::create_dir(uri.to_posix_path()));
+  RETURN_NOT_OK(vfs::create_dir(uri.to_posix_path()));
 
   // Store array schema
   RETURN_NOT_OK(metadata_schema->store(uri.to_posix_path()));
@@ -495,7 +494,7 @@ Status StorageManager::metadata_create(MetadataSchema* metadata_schema) const {
 Status StorageManager::metadata_load_schema(
     const uri::URI& metadata, ArraySchema*& array_schema) const {
   // Get real array path
-  uri::URI metadata_uri = filesystem::abs_path(metadata);
+  uri::URI metadata_uri = vfs::abs_path(metadata);
 
   // Check if metadata exists
   if (!utils::is_metadata(metadata_uri)) {
@@ -508,7 +507,7 @@ Status StorageManager::metadata_load_schema(
 
   char* buffer = nullptr;
   size_t buffer_size = 0;
-  RETURN_NOT_OK(filesystem::read_from_file(
+  RETURN_NOT_OK(vfs::read_from_file(
       metadata_schema_path.to_posix_path(), buffer, &buffer_size));
 
   // Initialize array schema
@@ -542,8 +541,8 @@ Status StorageManager::metadata_init(
   // Open the array that implements the metadata
   OpenArray* open_array = nullptr;
   if (mode == TILEDB_METADATA_READ)
-    RETURN_NOT_OK(array_open(
-        filesystem::abs_path(metadata_uri), open_array, ArrayMode::READ))
+    RETURN_NOT_OK(
+        array_open(vfs::abs_path(metadata_uri), open_array, ArrayMode::READ))
 
   // Create metadata object
   metadata = new Metadata();
@@ -644,7 +643,7 @@ Status StorageManager::ls(
   int obj_idx = 0;
 
   std::vector<std::string> paths;
-  RETURN_NOT_OK(filesystem::ls(parent_uri.to_posix_path(), &paths));
+  RETURN_NOT_OK(vfs::ls(parent_uri.to_posix_path(), &paths));
 
   for (auto& path : paths) {
     if (utils::is_group(path)) {  // Group
@@ -683,7 +682,7 @@ Status StorageManager::ls_c(const uri::URI& parent_uri, int* object_num) const {
   *object_num = 0;
   // Initialize directory number
   std::vector<std::string> paths;
-  RETURN_NOT_OK(filesystem::ls(parent_uri.to_posix_path(), &paths));
+  RETURN_NOT_OK(vfs::ls(parent_uri.to_posix_path(), &paths));
 
   *object_num =
       std::count_if(paths.begin(), paths.end(), [](std::string& path) {
@@ -788,7 +787,7 @@ void StorageManager::aio_stop() {
 
 Status StorageManager::array_clear(const uri::URI& array) const {
   // Get real array directory name
-  uri::URI array_uri = filesystem::abs_path(array);
+  uri::URI array_uri = vfs::abs_path(array);
 
   // Check if the array exists
   if (!utils::is_array(array_uri)) {
@@ -798,14 +797,14 @@ Status StorageManager::array_clear(const uri::URI& array) const {
 
   // Delete the entire array directory except for the array schema file
   std::vector<std::string> paths;
-  RETURN_NOT_OK(filesystem::ls(array_uri.to_posix_path(), &paths));
+  RETURN_NOT_OK(vfs::ls(array_uri.to_posix_path(), &paths));
   for (auto& path : paths) {
     if (utils::is_array_schema(path) || utils::is_consolidation_lock(path))
       continue;
     if (utils::is_metadata(path)) {  // Metadata
       RETURN_NOT_OK(metadata_delete(path));
     } else if (utils::is_fragment(path)) {  // Fragment
-      RETURN_NOT_OK(filesystem::delete_dir(path));
+      RETURN_NOT_OK(vfs::delete_dir(path));
     } else {  // Non TileDB related
       return LOG_STATUS(Status::StorageManagerError(
           std::string("Cannot delete non TileDB related path '") + path + "'"));
@@ -820,7 +819,7 @@ Status StorageManager::array_close(const uri::URI& array_uri) {
 
   // Find the open array entry
   std::map<std::string, OpenArray*>::iterator it =
-      open_arrays_.find(filesystem::abs_path(array_uri).to_string());
+      open_arrays_.find(vfs::abs_path(array_uri).to_string());
 
   // Sanity check
   if (it == open_arrays_.end()) {
@@ -872,7 +871,7 @@ Status StorageManager::array_close(const uri::URI& array_uri) {
 Status StorageManager::array_delete(const uri::URI& array) const {
   RETURN_NOT_OK(array_clear(array));
   // Delete array directory
-  RETURN_NOT_OK(filesystem::delete_dir(array));
+  RETURN_NOT_OK(vfs::delete_dir(array));
   return Status::Ok();
 }
 
@@ -906,8 +905,8 @@ Status StorageManager::array_get_open_array_entry(
 
 Status StorageManager::array_move(
     const uri::URI& old_array, const uri::URI& new_array) const {
-  uri::URI old_array_uri = filesystem::abs_path(old_array);
-  uri::URI new_array_uri = filesystem::abs_path(new_array);
+  uri::URI old_array_uri = vfs::abs_path(old_array);
+  uri::URI new_array_uri = vfs::abs_path(new_array);
 
   // Check if the old array exists
   if (!utils::is_array(old_array_uri)) {
@@ -917,13 +916,13 @@ Status StorageManager::array_move(
   }
 
   // Make sure that the new array is not an existing directory
-  if (filesystem::is_dir(new_array_uri)) {
+  if (vfs::is_dir(new_array_uri)) {
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Array '") + new_array_uri.to_string() +
         "' already exists"));
   }
   // Rename array
-  RETURN_NOT_OK(filesystem::move(old_array_uri, new_array_uri));
+  RETURN_NOT_OK(vfs::move(old_array_uri, new_array_uri));
 
   // Incorporate new name in the array schema
   ArraySchema* array_schema = new ArraySchema();
@@ -994,20 +993,20 @@ Status StorageManager::consolidation_lock_create(const std::string& dir) const {
   // Create file
   std::string filename =
       dir + "/" + Configurator::consolidation_filelock_name();
-  return filesystem::filelock_create(filename);
+  return vfs::filelock_create(filename);
 }
 
 Status StorageManager::consolidation_lock(
     const std::string& array_name, int* fd, bool shared) const {
   // Prepare the filelock name
-  std::string array_name_real = filesystem::real_dir(array_name);
+  std::string array_name_real = vfs::real_dir(array_name);
   std::string filename =
       array_name_real + "/" + Configurator::consolidation_filelock_name();
-  return filesystem::filelock_lock(filename, fd, shared);
+  return vfs::filelock_lock(filename, fd, shared);
 }
 
 Status StorageManager::consolidation_unlock(int fd) const {
-  return filesystem::filelock_unlock(fd);
+  return vfs::filelock_unlock(fd);
 }
 
 Status StorageManager::consolidation_finalize(
@@ -1044,7 +1043,7 @@ Status StorageManager::consolidation_finalize(
         old_fragments[i]
             .join_path(Configurator::fragment_filename())
             .to_posix_path();
-    RETURN_NOT_OK(filesystem::delete_file(old_fragment_filename));
+    RETURN_NOT_OK(vfs::delete_file(old_fragment_filename));
   }
 
   // Unlock consolidation filelock
@@ -1052,13 +1051,13 @@ Status StorageManager::consolidation_finalize(
 
   // Delete old fragments
   for (int i = 0; i < fragment_num; ++i) {
-    RETURN_NOT_OK(filesystem::delete_dir(old_fragments[i]));
+    RETURN_NOT_OK(vfs::delete_dir(old_fragments[i]));
   }
   return Status::Ok();
 }
 
 Status StorageManager::group_clear(const uri::URI& group) const {
-  uri::URI group_uri = filesystem::abs_path(group);
+  uri::URI group_uri = vfs::abs_path(group);
 
   // Check if group exists
   if (!utils::is_group(group_uri)) {
@@ -1069,7 +1068,7 @@ Status StorageManager::group_clear(const uri::URI& group) const {
   // Delete all groups, arrays and metadata inside the group directory
   // TODO: this functionalty should be moved to a Filesystem IO backend
   std::vector<std::string> paths;
-  RETURN_NOT_OK(filesystem::ls(group_uri.to_string(), &paths));
+  RETURN_NOT_OK(vfs::ls(group_uri.to_string(), &paths));
   for (auto& path : paths) {
     if (utils::is_group(path)) {  // Group
       RETURN_NOT_OK(group_delete(path))
@@ -1091,7 +1090,7 @@ Status StorageManager::group_delete(const uri::URI& group) const {
   RETURN_NOT_OK(group_clear(group));
 
   // Delete group directory
-  RETURN_NOT_OK(filesystem::delete_dir(group));
+  RETURN_NOT_OK(vfs::delete_dir(group));
 
   return Status::Ok();
 }
@@ -1099,8 +1098,8 @@ Status StorageManager::group_delete(const uri::URI& group) const {
 Status StorageManager::group_move(
     const uri::URI& old_group, const uri::URI& new_group) const {
   // Get real group directory names
-  uri::URI old_group_uri = filesystem::abs_path(old_group);
-  uri::URI new_group_uri = filesystem::abs_path(new_group);
+  uri::URI old_group_uri = vfs::abs_path(old_group);
+  uri::URI new_group_uri = vfs::abs_path(new_group);
 
   // Check if the old group exists
   if (!utils::is_group(old_group_uri)) {
@@ -1110,18 +1109,18 @@ Status StorageManager::group_move(
   }
 
   // Make sure that the new group is not an existing directory
-  if (filesystem::is_dir(new_group_uri)) {
+  if (vfs::is_dir(new_group_uri)) {
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Group '") + new_group_uri.to_string() +
         "' already exists"));
   }
 
-  return filesystem::move(old_group_uri, new_group_uri);
+  return vfs::move(old_group_uri, new_group_uri);
 }
 
 Status StorageManager::metadata_clear(const uri::URI& metadata) const {
   // TODO: delete calls the normalization function twice
-  uri::URI meta_uri = filesystem::abs_path(metadata);
+  uri::URI meta_uri = vfs::abs_path(metadata);
 
   // Check if the metadata exists
   if (!utils::is_metadata(meta_uri)) {
@@ -1132,12 +1131,12 @@ Status StorageManager::metadata_clear(const uri::URI& metadata) const {
   // TODO: this functionality should exist in a IOBackend class
   // Delete the entire metadata directory except for the array schema file
   std::vector<std::string> paths;
-  RETURN_NOT_OK(filesystem::ls(meta_uri.to_string(), &paths));
+  RETURN_NOT_OK(vfs::ls(meta_uri.to_string(), &paths));
   for (auto& path : paths) {
     if (utils::is_metadata_schema(path) || utils::is_consolidation_lock(path))
       continue;
     if (utils::is_fragment(path)) {
-      RETURN_NOT_OK(filesystem::delete_dir(path));
+      RETURN_NOT_OK(vfs::delete_dir(path));
     } else {
       return LOG_STATUS(Status::StorageManagerError(
           std::string("Cannot delete non TileDB related element '") + path +
@@ -1148,21 +1147,21 @@ Status StorageManager::metadata_clear(const uri::URI& metadata) const {
 }
 
 Status StorageManager::metadata_delete(const uri::URI& metadata) const {
-  uri::URI meta_uri = filesystem::abs_path(metadata);
+  uri::URI meta_uri = vfs::abs_path(metadata);
 
   // Clear the metadata
   RETURN_NOT_OK(metadata_clear(meta_uri));
 
   // Delete metadata directory
-  RETURN_NOT_OK(filesystem::delete_dir(meta_uri));
+  RETURN_NOT_OK(vfs::delete_dir(meta_uri));
   return Status::Ok();
 }
 
 Status StorageManager::metadata_move(
     const uri::URI& old_metadata, const uri::URI& new_metadata) const {
   // TODO: abs path should be moved to uri
-  uri::URI old_metadata_real = filesystem::abs_path(old_metadata);
-  uri::URI new_metadata_real = filesystem::abs_path(new_metadata);
+  uri::URI old_metadata_real = vfs::abs_path(old_metadata);
+  uri::URI new_metadata_real = vfs::abs_path(new_metadata);
 
   // Check if the old metadata exists
   if (!utils::is_metadata(old_metadata_real)) {
@@ -1172,14 +1171,14 @@ Status StorageManager::metadata_move(
   }
 
   // Make sure that the new metadata is not an existing directory
-  if (filesystem::is_dir(new_metadata_real)) {
+  if (vfs::is_dir(new_metadata_real)) {
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Metadata'") + new_metadata_real.to_string() +
         "' already exists"));
   }
 
   // Rename metadata
-  RETURN_NOT_OK(filesystem::move(old_metadata_real, new_metadata_real));
+  RETURN_NOT_OK(vfs::move(old_metadata_real, new_metadata_real));
 
   // Incorporate new name in the array schema
   ArraySchema* array_schema = new ArraySchema();
