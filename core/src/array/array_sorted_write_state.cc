@@ -53,7 +53,7 @@ namespace tiledb {
 
 ArraySortedWriteState::ArraySortedWriteState(Array* array)
     : array_(array)
-    , attribute_ids_(array->attribute_ids()) {
+    , attribute_ids_(array->query_->attribute_ids()) {
   // For easy reference
   const ArraySchema* array_schema = array_->array_schema();
   int anum = (int)attribute_ids_.size();

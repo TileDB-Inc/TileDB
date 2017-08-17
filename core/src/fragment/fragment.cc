@@ -150,7 +150,7 @@ Status Fragment::init(const uri::URI& uri, const void* subarray) {
 
   // Check if the fragment is dense or not
   dense_ = true;
-  const std::vector<int>& attribute_ids = array_->attribute_ids();
+  const std::vector<int>& attribute_ids = array_->query_->attribute_ids();
   int id_num = attribute_ids.size();
   int attribute_num = array_->array_schema()->attribute_num();
   for (int i = 0; i < id_num; ++i) {

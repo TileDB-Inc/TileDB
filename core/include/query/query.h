@@ -37,6 +37,8 @@
 #include "query_mode.h"
 #include "status.h"
 
+#include <vector>
+
 namespace tiledb {
 
 class Query {
@@ -47,13 +49,22 @@ class Query {
 
   Query();
 
-  Query(Array* array, QueryMode mode, const void* subarray);
+  Query(
+      Array* array,
+      QueryMode mode,
+      const void* subarray,
+      const char** attribute,
+      int attribute_num);
 
   ~Query();
 
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+
+  const std::vector<int>& attribute_ids() const;
+
+  Status coords_buffer_i(int* coords_buffer_i) const;
 
   /** Returns the query mode. */
   QueryMode mode() const;
@@ -69,6 +80,8 @@ class Query {
   /* ********************************* */
 
   Array* array_;
+
+  std::vector<int> attribute_ids_;
 
   QueryMode mode_;
 

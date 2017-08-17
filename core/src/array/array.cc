@@ -80,30 +80,6 @@ Array::~Array() {
 /*           ACCESSORS            */
 /* ****************************** */
 
-Status Array::coords_buffer_i(int* coords_buffer_i) const {
-  int buffer_i = 0;
-  auto attribute_id_num = (int)attribute_ids_.size();
-  int attribute_num = array_schema_->attribute_num();
-  for (int i = 0; i < attribute_id_num; ++i) {
-    if (attribute_ids_[i] == attribute_num) {
-      *coords_buffer_i = buffer_i;
-      break;
-    }
-    if (!array_schema_->var_size(attribute_ids_[i]))  // FIXED CELLS
-      ++buffer_i;
-    else  // VARIABLE-SIZED CELLS
-      buffer_i += 2;
-  }
-
-  // Coordinates are missing
-  if (*coords_buffer_i == -1)
-    return LOG_STATUS(
-        Status::ArrayError("Cannot find coordinates buffer index"));
-
-  // Success
-  return Status::Ok();
-}
-
 StorageManager* Array::storage_manager() const {
   return storage_manager_;
 }
@@ -155,15 +131,17 @@ Status Array::aio_handle_request(AIORequest* aio_request) {
     }
   }
 
+  const std::vector<int>& attribute_ids = query_->attribute_ids();
+
   if (st.ok()) {  // Success
     // Check for overflow (applicable only to reads)
     if (aio_request->mode() == QueryMode::READ &&
         array_read_state_->overflow()) {
       aio_request->set_status(AIOStatus::OFLOW);
       if (aio_request->overflow() != nullptr) {
-        for (int i = 0; i < int(attribute_ids_.size()); ++i)
+        for (int i = 0; i < int(attribute_ids.size()); ++i)
           aio_request->set_overflow(
-              i, array_read_state_->overflow(attribute_ids_[i]));
+              i, array_read_state_->overflow(attribute_ids[i]));
       }
     } else if (
         (aio_request->mode() == QueryMode::READ_SORTED_COL ||
@@ -171,9 +149,9 @@ Status Array::aio_handle_request(AIORequest* aio_request) {
         array_sorted_read_state_->overflow()) {
       aio_request->set_status(AIOStatus::OFLOW);
       if (aio_request->overflow() != nullptr) {
-        for (int i = 0; i < int(attribute_ids_.size()); ++i)
+        for (int i = 0; i < int(attribute_ids.size()); ++i)
           aio_request->set_overflow(
-              i, array_sorted_read_state_->overflow(attribute_ids_[i]));
+              i, array_sorted_read_state_->overflow(attribute_ids[i]));
       }
     } else {  // Completion
       aio_request->set_status(AIOStatus::COMPLETED);
@@ -197,10 +175,6 @@ Array* Array::array_clone() const {
 
 const ArraySchema* Array::array_schema() const {
   return array_schema_;
-}
-
-const std::vector<int>& Array::attribute_ids() const {
-  return attribute_ids_;
 }
 
 const Configurator* Array::config() const {
@@ -250,12 +224,12 @@ Status Array::read(void** buffers, size_t* buffer_sizes) {
 
   // Check if there are no fragments
   int buffer_i = 0;
-  int attribute_id_num = attribute_ids_.size();
+  int attribute_id_num = query_->attribute_ids().size();
   if (fragments_.size() == 0) {
     for (int i = 0; i < attribute_id_num; ++i) {
       // Update all sizes to 0
       buffer_sizes[buffer_i] = 0;
-      if (!array_schema_->var_size(attribute_ids_[i]))
+      if (!array_schema_->var_size(query_->attribute_ids()[i]))
         ++buffer_i;
       else
         buffer_i += 2;
@@ -458,48 +432,8 @@ Status Array::init(
   array_clone_ = array_clone;
   storage_manager_ = storage_manager;
 
-  query_ = new Query(this, mode, subarray);
-
-  // Get attributes
-  std::vector<std::string> attributes_vec;
-  if (attributes == nullptr) {  // Default: all attributes
-    attributes_vec = array_schema->attributes();
-    if (array_schema->dense() && mode != QueryMode::WRITE_UNSORTED)
-      // Remove coordinates attribute for dense arrays,
-      // unless in TILEDB_WRITE_UNSORTED mode
-      attributes_vec.pop_back();
-  } else {  // Custom attributes
-    // Get attributes
-    bool coords_found = false;
-    bool sparse = !array_schema->dense();
-    unsigned name_max_len = Configurator::name_max_len();
-    for (int i = 0; i < attribute_num; ++i) {
-      // Check attribute name length
-      if (attributes[i] == nullptr || strlen(attributes[i]) > name_max_len)
-        return LOG_STATUS(Status::ArrayError("Invalid attribute name length"));
-      attributes_vec.emplace_back(attributes[i]);
-      if (!strcmp(attributes[i], Configurator::coords()))
-        coords_found = true;
-    }
-
-    // Sanity check on duplicates
-    if (utils::has_duplicates(attributes_vec)) {
-      return LOG_STATUS(
-          Status::ArrayError("Cannot initialize array; Duplicate attributes"));
-    }
-
-    // For the case of the clone sparse array, append coordinates if they do
-    // not exist already
-    if (sparse && array_clone == nullptr && !coords_found &&
-        !utils::is_metadata(array_schema->array_uri()))
-      attributes_vec.emplace_back(Configurator::coords());
-  }
-
-  // Set attribute ids
-  RETURN_NOT_OK(
-      array_schema->get_attribute_ids(attributes_vec, attribute_ids_));
-
-  // Set array schema
+  query_ = new Query(this, mode, subarray, attributes, attribute_num);
+  // TODO: check query
 
   // Initialize new fragment if needed
   if (is_write_mode(mode)) {  // WRITE MODE

@@ -602,7 +602,7 @@ void ArraySortedReadState::aio_wait(int id) {
 
 void ArraySortedReadState::calculate_attribute_ids() {
   // Initialization
-  attribute_ids_ = array_->attribute_ids();
+  attribute_ids_ = array_->query_->attribute_ids();
   coords_attr_i_ = -1;
 
   // For ease reference

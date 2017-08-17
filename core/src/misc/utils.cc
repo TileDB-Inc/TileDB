@@ -573,27 +573,6 @@ bool is_group(const std::string& dir) {
     return false;
 }
 
-bool is_metadata(const uri::URI& uri) {
-  // Check existence
-  if (vfs::is_dir(uri)) {
-    auto meta_schema_uri =
-        uri.join_path(Configurator::metadata_schema_filename());
-    if (vfs::is_file(meta_schema_uri)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool is_metadata(const std::string& dir) {
-  // Check existence
-  if (vfs::is_dir(dir) &&
-      vfs::is_file(dir + "/" + Configurator::metadata_schema_filename()))
-    return true;
-  else
-    return false;
-}
-
 inline bool ends_with(std::string const& value, std::string const& ending) {
   if (ending.size() > value.size())
     return false;
@@ -602,10 +581,6 @@ inline bool ends_with(std::string const& value, std::string const& ending) {
 
 bool is_array_schema(const std::string& path) {
   return ends_with(path, Configurator::array_schema_filename());
-}
-
-bool is_metadata_schema(const std::string& path) {
-  return ends_with(path, Configurator::metadata_schema_filename());
 }
 
 bool is_consolidation_lock(const std::string& path) {

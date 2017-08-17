@@ -44,7 +44,6 @@
 #include "array.h"
 #include "array_schema.h"
 #include "configurator.h"
-#include "metadata.h"
 #include "status.h"
 #include "uri.h"
 
@@ -56,7 +55,7 @@ namespace tiledb {
 
 /**
  * The storage manager, which is repsonsible for creating, deleting, etc. of
- * TileDB objects (i.e., groups, arrays and metadata).
+ * TileDB objects (i.e., groups, arrays).
  */
 class StorageManager {
  public:
@@ -204,68 +203,6 @@ class StorageManager {
   Status array_sync_attribute(Array* array, const std::string& attribute);
 
   /* ********************************* */
-  /*              METADATA             */
-  /* ********************************* */
-
-  /**
-   * Consolidates the fragments of a metadata object into a single fragment.
-   *
-   * @param metadata_dir The name of the metadata to be consolidated.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  Status metadata_consolidate(const uri::URI& metadata_uri);
-
-  /**
-   * Creates a new TileDB metadata object.
-   *
-   * @param metadata_schema The metadata schema.
-   * @return Status.
-   */
-  Status metadata_create(MetadataSchema* metadata_schema) const;
-
-  /**
-   * Loads the schema of a metadata object from the disk, allocating appropriate
-   * memory space for it.
-   *
-   * @param metadata_dir The directory of the metadata.
-   * @param array_schema The schema to be loaded.
-   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
-   */
-  Status metadata_load_schema(
-      const uri::URI& metadata_uri, ArraySchema*& array_schema) const;
-
-  /**
-   * Initializes a TileDB metadata object.
-   *
-   * @param metadata The metadata object to be initialized. The function
-   *     will allocate memory space for it.
-   * @param metadata_dir The directory of the metadata.
-   * @param mode The mode of the metadata. It must be one of the following:
-   *    - TILEDB_METADATA_WRITE
-   *    - TILEDB_METADATA_READ
-   * @param attributes A subset of the metadata attributes the read/write will
-   *     be constrained on. A NULL value indicates **all** attributes (including
-   *     the key as an extra attribute in the end).
-   * @param attribute_num The number of the input attributes. If *attributes* is
-   *     NULL, then this should be set to 0.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status metadata_init(
-      Metadata*& metadata,
-      const uri::URI& metadata_uri,
-      tiledb_metadata_mode_t mode,
-      const char** attributes,
-      int attribute_num);
-
-  /**
-   * Finalizes a TileDB metadata object, properly freeing the memory space.
-   *
-   * @param metadata The metadata to be finalized.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status metadata_finalize(Metadata* metadata);
-
-  /* ********************************* */
   /*               MISC                */
   /* ********************************* */
 
@@ -315,7 +252,7 @@ class StorageManager {
 
   /**
    * Clears a TileDB directory. The corresponding TileDB object
-   * (group, array, or metadata) will still exist after the execution of the
+   * (group, array) will still exist after the execution of the
    * function, but it will be empty (i.e., as if it was just created).
    *
    * @param dir The directory to be cleared.
@@ -324,7 +261,7 @@ class StorageManager {
   Status clear(const uri::URI& uri) const;
 
   /**
-   * Deletes a TileDB directory (group, array, or metadata) entirely.
+   * Deletes a TileDB directory (group, array) entirely.
    *
    * @param dir The directory to be deleted.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
@@ -332,7 +269,7 @@ class StorageManager {
   Status delete_entire(const uri::URI& uri);
 
   /**
-   * Moves a TileDB directory (group, array or metadata).
+   * Moves a TileDB directory (group, array).
    *
    * @param old_dir The old directory.
    * @param new_dir The new directory.
@@ -525,9 +462,9 @@ class StorageManager {
   /**
    * Creates a special file that serves as lock needed for implementing
    * thread- and process-safety during consolidation. The file is
-   * created inside an array or metadata directory.
+   * created inside an array directory.
    *
-   * @param dir The array or metadata directory the filelock is created for.
+   * @param dir The array directory the filelock is created for.
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
   Status consolidation_lock_create(const std::string& dir) const;
@@ -590,34 +527,6 @@ class StorageManager {
    * @return Status
    */
   Status group_move(const uri::URI& old_group, const uri::URI& new_group) const;
-
-  /**
-   * Clears a TileDB metadata object. The metadata will still exist after the
-   * execution of the function, but it will be empty (i.e., as if it was just
-   * created).
-   *
-   * @param metadata The metadata to be cleared.
-   * @return Status
-   */
-  Status metadata_clear(const uri::URI& metadata) const;
-
-  /**
-   * Deletes a TileDB metadata object entirely.
-   *
-   * @param metadata The metadata to be deleted.
-   * @return Status
-   */
-  Status metadata_delete(const uri::URI& metadata) const;
-
-  /**
-   * Moves a TileDB metadata object.
-   *
-   * @param old_metadata The old metadata directory.
-   * @param new_metadata The new metadata directory.
-   * @return Status
-   */
-  Status metadata_move(
-      const uri::URI& old_metadata, const uri::URI& new_metadata) const;
 
   /**
    * Appropriately sorts the fragment names based on their name timestamps.

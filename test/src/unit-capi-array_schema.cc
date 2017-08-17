@@ -221,7 +221,7 @@ TEST_CASE_METHOD(
   // Check attribute
   int attr_it_done;
   tiledb_attribute_iter_t* attr_it;
-  rc = tiledb_attribute_iter_create(ctx_, array_schema, &attr_it, TILEDB_ARRAY);
+  rc = tiledb_attribute_iter_create(ctx_, array_schema, &attr_it);
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb_attribute_iter_done(ctx_, attr_it, &attr_it_done);

@@ -107,7 +107,7 @@ ArrayReadState::~ArrayReadState() {
 /* ****************************** */
 
 bool ArrayReadState::overflow() const {
-  int attribute_num = (int)array_->attribute_ids().size();
+  int attribute_num = (int)array_->query_->attribute_ids().size();
   for (int i = 0; i < attribute_num; ++i)
     if (overflow_[i])
       return true;
@@ -143,7 +143,7 @@ Status ArrayReadState::read(void** buffers, size_t* buffer_sizes) {
 
 void ArrayReadState::clean_up_processed_fragment_cell_pos_ranges() {
   // Find the minimum overlapping tile position across all attributes
-  const std::vector<int>& attribute_ids = array_->attribute_ids();
+  const std::vector<int>& attribute_ids = array_->query_->attribute_ids();
   int attribute_id_num = attribute_ids.size();
   int64_t min_pos = fragment_cell_pos_ranges_vec_pos_[0];
   for (int i = 1; i < attribute_id_num; ++i)
@@ -1248,7 +1248,7 @@ void ArrayReadState::get_next_subarray_tile_coords() {
 
 Status ArrayReadState::read_dense(void** buffers, size_t* buffer_sizes) {
   // For easy reference
-  std::vector<int> attribute_ids = array_->attribute_ids();
+  std::vector<int> attribute_ids = array_->query_->attribute_ids();
   int attribute_id_num = attribute_ids.size();
 
   // Read each attribute individually
@@ -1458,7 +1458,7 @@ Status ArrayReadState::read_dense_attr_var(
 
 Status ArrayReadState::read_sparse(void** buffers, size_t* buffer_sizes) {
   // For easy reference
-  std::vector<int> attribute_ids = array_->attribute_ids();
+  std::vector<int> attribute_ids = array_->query_->attribute_ids();
   int attribute_id_num = attribute_ids.size();
 
   // Find the coordinates buffer

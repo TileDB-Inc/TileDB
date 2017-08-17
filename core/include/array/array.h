@@ -75,8 +75,6 @@ class Array {
   /*             ACCESSORS             */
   /* ********************************* */
 
-  Status coords_buffer_i(int* coords_buffer_i) const;
-
   /** Handles an AIO request. */
   Status aio_handle_request(AIORequest* aio_request);
 
@@ -88,9 +86,6 @@ class Array {
 
   /** Returns the array clone. */
   Array* array_clone() const;
-
-  /** Returns the ids of the attributes the array focuses on. */
-  const std::vector<int>& attribute_ids() const;
 
   /** Returns the configuration parameters. */
   const Configurator* config() const;
@@ -168,13 +163,6 @@ class Array {
 
   /** The sorted write state of the array. */
   ArraySortedWriteState* array_sorted_write_state_;
-
-  /**
-   * The ids of the attributes the array is initialized with. Note that the
-   * array may be initialized with a subset of attributes when writing or
-   * reading.
-   */
-  std::vector<int> attribute_ids_;
 
   /** Configuration parameters. */
   const Configurator* config_;

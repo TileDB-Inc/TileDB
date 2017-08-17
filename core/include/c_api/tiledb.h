@@ -95,7 +95,7 @@ extern "C" {
 /** Returns a special name indicating the coordinates attribute. */
 TILEDB_EXPORT const char* tiledb_coords();
 
-/** Returns a special name indicating the metadata key attribute. */
+/** Returns a special name indicating the key attribute. */
 TILEDB_EXPORT const char* tiledb_key();
 
 /** Returns a special value indicating a variable number of elements. */
@@ -121,13 +121,6 @@ typedef enum {
 #include "tiledb_enum.inc"
 #undef TILEDB_QUERY_MODE_ENUM
 } tiledb_query_mode_t;
-
-/** Metadata mode. */
-typedef enum {
-#define TILEDB_METADATA_ENUM(id) TILEDB_METADATA_##id
-#include "tiledb_enum.inc"
-#undef TILEDB_METADATA_ENUM
-} tiledb_metadata_mode_t;
 
 /** I/O method. */
 typedef enum {
@@ -219,12 +212,6 @@ typedef struct tiledb_array_schema_t tiledb_array_schema_t;
 /** A TileDB array object. */
 typedef struct tiledb_array_t tiledb_array_t;
 
-/** Specifies the metadata schema. */
-typedef struct tiledb_metadata_schema_t tiledb_metadata_schema_t;
-
-/** A TileDB metadata object. */
-typedef struct tiledb_metadata_t tiledb_metadata_t;
-
 /** An asynchronous I/O request. */
 typedef struct tiledb_aio_request_t tiledb_aio_request_t;
 
@@ -256,7 +243,7 @@ TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t* ctx);
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  *
  * @note It is strongly recommended that this function is used before starting
- *    to use any arrays/metadata/groups, as messing with the configuration
+ *    to use any arrays/groups, as messing with the configuration
  * during TileDB operations may lead to unexpected errors.
  */
 TILEDB_EXPORT int tiledb_ctx_set_config(
@@ -811,19 +798,17 @@ TILEDB_EXPORT int tiledb_array_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out);
 
 /**
- * Creates an attribute iterator for the input schema.
+ * Creates an attribute iterator for the input array schema.
  *
  * @param ctx The TileDB context.
- * @param schema The input array or metadata schema.
+ * @param schema The input array schema.
  * @param attr_it The attribute iterator to be created.
- * @param object_type This should be either TILEDB_METADATA or TILEDB_ARRAY.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_attribute_iter_create(
     tiledb_ctx_t* ctx,
-    const void* schema,
-    tiledb_attribute_iter_t** attr_it,
-    tiledb_object_t object_type);
+    const tiledb_array_schema_t* schema,
+    tiledb_attribute_iter_t** attr_it);
 
 /**
  * Frees an attribute iterator.
@@ -1149,338 +1134,6 @@ TILEDB_EXPORT int tiledb_array_consolidate(
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_finalize(tiledb_array_t* tiledb_array);
-
-/**
- * Syncs all currently written files in the input array.
- *
- * @param tiledb_array The array to be synced.
- * @return TILEDB_OK on success, and TILEDB_ERR on error.
- */
-TILEDB_EXPORT int tiledb_array_sync(tiledb_array_t* tiledb_array);
-
-/**
- * Syncs the currently written files associated with the input attribute
- * in the input array.
- *
- * @param tiledb_array The array to be synced.
- * @param attribute The name of the attribute to be synced.
- * @return TILEDB_OK on success, and TILEDB_ERR on error.
- */
-TILEDB_EXPORT int tiledb_array_sync_attribute(
-    tiledb_array_t* tiledb_array, const char* attribute);
-
-/* ********************************* */
-/*          METADATA SCHEMA          */
-/* ********************************* */
-
-/**
- * Creates a TileDB a metadata schema object.
- *
- * @param ctx The TileDB context.
- * @param metadata_schema The TileDB metadata schema to be created.
- * @param metadata_name The metadata name.
- * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_schema_create(
-    tiledb_ctx_t* ctx,
-    tiledb_metadata_schema_t** metadata_schema,
-    const char* metadata_name);
-
-/**
- * Destroys a metadata schema, freeing-up memory.
- *
- * @param metadata_schema The array schema to be destroyed.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT void tiledb_metadata_schema_free(
-    tiledb_metadata_schema_t* metadata_schema);
-
-/**
- * Adds an attribute to a metadata schema.
- *
- * @param ctx The TileDB context.
- * @param metadata_schema The metadata schema.
- * @param attr The attribute to be added.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_schema_add_attribute(
-    tiledb_ctx_t* ctx,
-    tiledb_metadata_schema_t* metadata_schema,
-    tiledb_attribute_t* attr);
-
-/**
- * Sets the tile capacity.
- *
- * @param ctx The TileDB context.
- * @param metadata_schema The metadata schema.
- * @param capacity The capacity to be set.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_schema_set_capacity(
-    tiledb_ctx_t* ctx,
-    tiledb_metadata_schema_t* metadata_schema,
-    uint64_t capacity);
-
-/**
- * Sets the cell order.
- *
- * @param ctx The TileDB context.
- * @param metadata_schema The metadata schema.
- * @param cell_order The cell order to be set.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_schema_set_cell_order(
-    tiledb_ctx_t* ctx,
-    tiledb_metadata_schema_t* metadata_schema,
-    tiledb_layout_t cell_order);
-
-/**
- * Sets the tile order.
- *
- * @param ctx The TileDB context.
- * @param metadata_schema The metadata schema.
- * @param tile_order The tile order to be set.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_schema_set_tile_order(
-    tiledb_ctx_t* ctx,
-    tiledb_metadata_schema_t* metadata_schema,
-    tiledb_layout_t tile_order);
-
-/**
- * Checks the correctness of the metadata schema.
- *
- * @param ctx The TileDB context.
- * @param metadata_schema The metadata schema.
- * @return TILEDB_OK if the metadata schema is correct and TILEDB_ERR upon any
- * error.
- */
-TILEDB_EXPORT int tiledb_metadata_schema_check(
-    tiledb_ctx_t* ctx, tiledb_metadata_schema_t* metadata_schema);
-
-/**
- * Retrieves the schema of a metadata object from disk.
- *
- * @param ctx The TileDB context.
- * @param metadata_schema The metadata schema to be retrieved, or NULL upon
- * error.
- * @param metadata_name The metadata whose schema will be retrieved.
- * @return TILEDB_OK if the metadata schema is correct and TILEDB_OOM or
- * TILEDB_ERR upon error.
- */
-TILEDB_EXPORT int tiledb_metadata_schema_load(
-    tiledb_ctx_t* ctx,
-    tiledb_metadata_schema_t** metadata_schema,
-    const char* metadata_name);
-
-/**
- * Retrieves the metadata name.
- *
- * @param ctx The TileDB context.
- * @param metadata_schema The metadata schema.
- * @param metadata_name The metadata name to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_schema_get_metadata_name(
-    tiledb_ctx_t* ctx,
-    const tiledb_metadata_schema_t* metadata_schema,
-    const char** metadata_name);
-
-/**
- * Retrieves the capacity.
- *
- * @param ctx The TileDB context.
- * @param metadata_schema The metadata schema.
- * @param capacity The capacity to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_schema_get_capacity(
-    tiledb_ctx_t* ctx,
-    const tiledb_metadata_schema_t* metadata_schema,
-    uint64_t* capacity);
-
-/**
- * Retrieves the cell order.
- *
- * @param ctx The TileDB context.
- * @param metadata_schema The metadata schema.
- * @param cell_order The cell order to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_schema_get_cell_order(
-    tiledb_ctx_t* ctx,
-    const tiledb_metadata_schema_t* metadata_schema,
-    tiledb_layout_t* cell_order);
-
-/**
- * Retrieves the tile order.
- *
- * @param ctx The TileDB context.
- * @param metadata_schema The metadata schema.
- * @param tile_order The tile order to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_schema_get_tile_order(
-    tiledb_ctx_t* ctx,
-    const tiledb_metadata_schema_t* metadata_schema,
-    tiledb_layout_t* tile_order);
-
-/**
- * Dumps the metadata schema in ASCII format in the selected output.
- *
- * @param ctx The TileDB context.
- * @param metadata_schema The metadata schema.
- * @param out The output.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_schema_dump(
-    tiledb_ctx_t* ctx,
-    const tiledb_metadata_schema_t* metadata_schema,
-    FILE* out);
-
-/* ********************************* */
-/*             METADATA              */
-/* ********************************* */
-
-/**
- * Creates a new TileDB metadata object.
- *
- * @param ctx The TileDB context.
- * @param metadata_schema The metadata schema.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_create(
-    tiledb_ctx_t* ctx, const tiledb_metadata_schema_t* metadata_schema);
-
-/**
- * Initializes a TileDB metadata object.
- *
- * @param ctx The TileDB context.
- * @param tiledb_metadata The metadata object to be initialized. The function
- *     will allocate memory space for it.
- * @param metadata The directory of the metadata to be initialized.
- * @param mode The mode of the metadata. It must be one of the following:
- *    - TILEDB_METADATA_WRITE
- *    - TILEDB_METADATA_READ
- * @param attributes A subset of the metadata attributes the read/write will be
- *     constrained on. Note that the keys have a special attribute name
- *     called TILEDB_KEYS. A NULL value indicates **all** attributes (including
- *     the keys as an extra attribute in the end).
- * @param attribute_num The number of the input attributes. If *attributes* is
- *     NULL, then this should be set to 0.
- * @return TILEDB_OK on success, and TILEDB_ERR on error.
- */
-TILEDB_EXPORT int tiledb_metadata_init(
-    tiledb_ctx_t* ctx,
-    tiledb_metadata_t** tiledb_metadata,
-    const char* metadata,
-    tiledb_metadata_mode_t mode,
-    const char** attributes,
-    int attribute_num);
-
-/**
- * Retrieves the schema of an already open metadata object.
- *
- * @param tiledb_metadata The TileDB metadata object (must already be
- * initialized).
- * @param tiledb_metadata_schema The metadata schema to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_get_schema(
-    const tiledb_metadata_t* tiledb_metadata,
-    tiledb_metadata_schema_t* tiledb_metadata_schema);
-
-/**
- * Performs a write operation to a metadata object. The metadata must be
- * initialized with mode TILEDB_METADATA_WRITE. This function behave very
- * similarly to tiledb_array_write() when the array is initialized with mode
- * TILEDB_ARRAY_WRITE_UNSORTED.
- *
- * @param tiledb_metadata The TileDB metadata (must be already initialized).
- * @param keys The buffer holding the metadata keys. These keys must be
- *     strings, serialized one after the other in the *keys* buffer.
- * @param keys_size The size (in bytes) of buffer *keys*.
- * @param buffers An array of buffers, one for each attribute. These must be
- *     provided in the same order as the attributes specified in
- *     tiledb_metadata_init() or tiledb_metadata_reset_attributes(). The case of
- *     variable-sized attributes is special. Instead of providing a single
- *     buffer for such an attribute, **two** must be provided: the second
- *     holds the variable-sized values, whereas the first holds the
- *     start offsets of each value in the second buffer.
- * @param buffer_sizes The sizes (in bytes) of the input buffers (there is
- *     a one-to-one correspondence).
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_write(
-    const tiledb_metadata_t* tiledb_metadata,
-    const char* keys,
-    size_t keys_size,
-    const void** buffers,
-    const size_t* buffer_sizes);
-
-/**
- * Performs a read operation on a metadata object, which must be initialized
- * with mode TILEDB_METADATA_READ. The read is performed on a single key.
- *
- * @param tiledb_metadata The TileDB metadata.
- * @param key The query key, which must be a string.
- * @param buffers An array of buffers, one for each attribute. These must be
- *     provided in the same order as the attributes specified in
- *     tiledb_metadata_init() or tiledb_metadata_reset_attributes(). The case of
- *     variable-sized attributes is special. Instead of providing a single
- *     buffer for such an attribute, **two** must be provided: the second
- *     will hold the variable-sized values, whereas the first holds the
- *     start offsets of each value in the second buffer.
- * @param buffer_sizes The sizes (in bytes) allocated by the user for the input
- *     buffers (there should be a one-to-one correspondence). The function will
- *     attempt to write the value corresponding to the key, and potentially
- *     alter the respective size in *buffer_sizes* to indicate the *useful*
- *     data written. If a buffer cannot
- *     hold the result, the function will still succeed, turning on an overflow
- *     flag which can be checked with function tiledb_metadata_overflow().
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_metadata_read(
-    const tiledb_metadata_t* tiledb_metadata,
-    const char* key,
-    void** buffers,
-    size_t* buffer_sizes);
-
-/**
- * Checks if a read operation for a particular attribute resulted in a
- * buffer overflow.
- *
- * @param tiledb_metadata The TileDB metadata.
- * @param attribute_id The id of the attribute for which the overflow is
- *     checked. This id corresponds to the position of the attribute name
- *     placed in the *attributes* input of tiledb_metadata_init(), or
- *     tiledb_metadata_reset_attributes(). The positions start from 0.
- *     If *attributes* was NULL in the
- *     above functions, then the attribute id corresponds to the order
- *     in which the attributes were defined in the metadata schema upon the
- *     metadata creation.
- * @return TILEDB_ERR for error, 1 for overflow, and 0 otherwise.
- */
-TILEDB_EXPORT int tiledb_metadata_overflow(
-    const tiledb_metadata_t* tiledb_metadata, int attribute_id);
-
-/**
- * Consolidates the fragments of a metadata object into a single fragment.
- *
- * @param ctx The TileDB context.
- * @param metadata The name of the TileDB metadata to be consolidated.
- * @return TILEDB_OK on success, and TILEDB_ERR on error.
- */
-TILEDB_EXPORT int tiledb_metadata_consolidate(
-    tiledb_ctx_t* ctx, const char* metadata);
-
-/**
- * Finalizes a TileDB metadata object, properly freeing the memory space.
- *
- * @param tiledb_metadata The metadata to be finalized.
- * @return TILEDB_OK on success, and TILEDB_ERR on error.
- */
-TILEDB_EXPORT int tiledb_metadata_finalize(tiledb_metadata_t* tiledb_metadata);
 
 /* ********************************* */
 /*       DIRECTORY MANAGEMENT        */
