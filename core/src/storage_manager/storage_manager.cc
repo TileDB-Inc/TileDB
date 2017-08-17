@@ -349,53 +349,6 @@ Status StorageManager::array_sync_attribute(
   return Status::Ok();
 }
 
-Status StorageManager::array_iterator_init(
-    ArrayIterator*& array_it,
-    const uri::URI& array_uri,
-    QueryMode mode,
-    const void* subarray,
-    const char** attributes,
-    int attribute_num,
-    void** buffers,
-    size_t* buffer_sizes) {
-  array_it = nullptr;
-  // Create Array object. This also creates/updates an open array entry
-  Array* array;
-  RETURN_NOT_OK(
-      array_init(array, array_uri, mode, subarray, attributes, attribute_num));
-
-  // Create ArrayIterator object
-  array_it = new ArrayIterator();
-  Status st = array_it->init(array, buffers, buffer_sizes);
-  if (!st.ok()) {
-    array_finalize(array);
-    delete array_it;
-    array_it = nullptr;
-    return st;
-  }
-  return Status::Ok();
-}
-
-Status StorageManager::array_iterator_finalize(ArrayIterator* array_it) {
-  // If the array iterator is NULL, do nothing
-  if (array_it == nullptr)
-    return Status::Ok();
-
-  // Finalize and close array
-  uri::URI uri = array_it->array_uri();
-  Status st_finalize = array_it->finalize();
-  Status st_close = array_close(uri);
-
-  delete array_it;
-
-  if (!st_finalize.ok())
-    return st_finalize;
-  if (!st_close.ok())
-    return st_close;
-
-  return Status::Ok();
-}
-
 /* ****************************** */
 /*            METADATA            */
 /* ****************************** */
@@ -581,52 +534,6 @@ Status StorageManager::metadata_finalize(Metadata* metadata) {
   // Clean up
   delete metadata;
 
-  return Status::Ok();
-}
-
-Status StorageManager::metadata_iterator_init(
-    MetadataIterator*& metadata_it,
-    const uri::URI& metadata_uri,
-    const char** attributes,
-    int attribute_num,
-    void** buffers,
-    size_t* buffer_sizes) {
-  metadata_it = nullptr;
-  // Create metadata object
-  Metadata* metadata;
-  RETURN_NOT_OK(metadata_init(
-      metadata, metadata_uri, TILEDB_METADATA_READ, attributes, attribute_num))
-
-  // Create MetadataIterator object
-  metadata_it = new MetadataIterator();
-  Status st = metadata_it->init(metadata, buffers, buffer_sizes);
-  if (!st.ok()) {
-    metadata_finalize(metadata);
-    delete metadata_it;
-    metadata_it = nullptr;
-    return st;
-  }
-  return Status::Ok();
-}
-
-Status StorageManager::metadata_iterator_finalize(
-    MetadataIterator* metadata_it) {
-  // If the metadata iterator is NULL, do nothing
-  if (metadata_it == nullptr)
-    return Status::Ok();
-
-  // Close array and finalize metadata
-  uri::URI uri = metadata_it->metadata_uri();
-  Status st_finalize = metadata_it->finalize();
-  Status st_close = array_close(uri);
-
-  // Clean up
-  delete metadata_it;
-
-  if (!st_finalize.ok())
-    return st_finalize;
-  if (!st_close.ok())
-    return st_close;
   return Status::Ok();
 }
 

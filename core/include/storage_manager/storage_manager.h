@@ -42,11 +42,9 @@
 #include <thread>
 
 #include "array.h"
-#include "array_iterator.h"
 #include "array_schema.h"
 #include "configurator.h"
 #include "metadata.h"
-#include "metadata_iterator.h"
 #include "status.h"
 #include "uri.h"
 
@@ -205,59 +203,6 @@ class StorageManager {
    */
   Status array_sync_attribute(Array* array, const std::string& attribute);
 
-  /**
-   * Initializes an array iterator for reading cells, potentially constraining
-   * it on a subset of attributes, as well as a subarray. The cells will be read
-   * in the order they are stored on the disk, maximing performance.
-   *
-   * @param array_it The TileDB array iterator to be created. The
-   *    function will allocate the appropriate memory space for the iterator.
-   * @param array The directory of the array the iterator is initialized for.
-   * @param mode The read mode, which can be one of the following:
-   *    - TILEDB_ARRAY_READ\n
-   *      Reads the cells in the native order they are stored on the disk.
-   *    - TILEDB_ARRAY_READ_SORTED_COL\n
-   *      Reads the cells in column-major order within the specified subarray.
-   *    - TILEDB_ARRAY_READ_SORTED_ROW\n
-   *      Reads the cells in column-major order within the specified subarray.
-   * @param subarray The subarray in which the array iterator will be
-   *     constrained on. If it is NULL, then the subarray is set to the entire
-   *     array domain.
-   * @param attributes A subset of the array attributes the iterator will be
-   *     constrained on. A NULL value indicates **all** attributes (including
-   *     the coordinates in the case of sparse arrays).
-   * @param attribute_num The number of the input attributes. If *attributes* is
-   *     NULL, then this should be set to 0.
-   * @param buffers This is an array of buffers similar to tiledb_array_read.
-   *     It is the user that allocates and provides buffers that the iterator
-   *     will use for internal buffering of the read cells. The iterator will
-   *     read from the disk the relevant cells in batches, by fitting as many
-   *     cell values as possible in the user buffers. This gives the user the
-   *     flexibility to control the prefetching for optimizing performance
-   *     depending on the application.
-   * @param buffer_sizes The corresponding sizes (in bytes) of the allocated
-   *     memory space for *buffers*. The function will prefetch from the
-   *     disk as many cells as can fit in the buffers, whenever it finishes
-   *     iterating over the previously prefetched data.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status array_iterator_init(
-      ArrayIterator*& array_it,
-      const uri::URI& array_uri,
-      QueryMode mode,
-      const void* subarray,
-      const char** attributes,
-      int attribute_num,
-      void** buffers,
-      size_t* buffer_sizes);
-
-  /**
-   * Finalizes an array iterator, properly freeing the allocating memory space.
-   *
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status array_iterator_finalize(ArrayIterator* array_it);
-
   /* ********************************* */
   /*              METADATA             */
   /* ********************************* */
@@ -319,49 +264,6 @@ class StorageManager {
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
   Status metadata_finalize(Metadata* metadata);
-
-  /**
-   * Initializes a metadata iterator, potentially constraining it
-   * on a subset of attributes. The values will be read in the order they are
-   * stored on the disk, maximing performance.
-   *
-   * @param metadata_it The TileDB metadata iterator to be created. The
-   *     function will allocate the appropriate memory space for the iterator.
-   * @param metadata_dir The directory of the metadata the iterator is
-   *     initialized for.
-   * @param attributes A subset of the metadata attributes the iterator will be
-   *     constrained on. A NULL value indicates **all** attributes (including
-   *     the key as an extra attribute in the end).
-   * @param attribute_num The number of the input attributes. If *attributes* is
-   *     NULL, then this should be set to 0.
-   * @param buffers This is an array of buffers similar to tiledb_metadata_read.
-   *     It is the user that allocates and provides buffers that the iterator
-   *     will use for internal buffering of the read values. The iterator will
-   *     read from the disk the values in batches, by fitting as many
-   *     values as possible in the user buffers. This gives the user the
-   *     flexibility to control the prefetching for optimizing performance
-   *     depending on the application.
-   * @param buffer_sizes The corresponding sizes (in bytes) of the allocated
-   *     memory space for *buffers*. The function will prefetch from the
-   *     disk as many cells as can fit in the buffers, whenever it finishes
-   *     iterating over the previously prefetched data.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status metadata_iterator_init(
-      MetadataIterator*& metadata_it,
-      const uri::URI& metadata_uri,
-      const char** attributes,
-      int attribute_num,
-      void** buffers,
-      size_t* buffer_sizes);
-
-  /**
-   * Finalizes the iterator, properly freeing the allocating memory space.
-   *
-   * @param metadata_it The TileDB metadata iterator.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status metadata_iterator_finalize(MetadataIterator* metadata_it);
 
   /* ********************************* */
   /*               MISC                */
