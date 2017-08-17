@@ -1,7 +1,6 @@
-# Adapted from 
-# http://gronlier.fr/blog/2015/01/adding-code-coverage-to-your-c-project/
 sudo: required
 dist: trusty
+language: cpp
 env:
     matrix:
         - USE_MPI="ON"
@@ -9,11 +8,13 @@ env:
 
 install:
     # Install library dependencies
-    - mkdir -p $TRAVIS_BUILD_DIR/build
-    - sudo scripts/install-travis-deps.sh
+    - sudo scripts/install-deps.sh
+    # Install clangformat (v5.0)
+    # - sudo scripts/install-clangformat.sh
     # Install lcov to coveralls conversion + upload tool
     - gem install coveralls-lcov
     # Build TileDB
+    - mkdir -p $TRAVIS_BUILD_DIR/build
     - cd $TRAVIS_BUILD_DIR/build
     - cmake -DCMAKE_BUILD_TYPE=Coverage  -DTILEDB_VERBOSE=1 -DUSE_MPI=$USE_MPI ..
     - make -j4
@@ -23,7 +24,7 @@ before_script:
     - lcov --directory $TRAVIS_BUILD_DIR/build --zerocounters
 
 script:
-    - make check-format
+    # - make check-format
     - make check
 
 after_success:
