@@ -34,8 +34,8 @@
 #include <unistd.h>
 #include <cassert>
 #include <cstring>
+#include "../../core/include/vfs/filesystem.h"
 #include "catch.hpp"
-#include "filesystem.h"
 #include "tiledb.h"
 
 struct MetadataSchemaFx {
@@ -43,8 +43,7 @@ struct MetadataSchemaFx {
   const std::string GROUP = "test_group/";
   const std::string METADATA_NAME = "metadata";
   const std::string METADATA_PATH = GROUP + METADATA_NAME;
-  const std::string METADATA_PATH_REAL =
-      tiledb::filesystem::real_dir(METADATA_PATH);
+  const std::string METADATA_PATH_REAL = tiledb::vfs::real_dir(METADATA_PATH);
   const char* ARRAY_TYPE_STR = "sparse";
   const uint64_t CAPACITY = 500;
   const char* CAPACITY_STR = "500";
@@ -157,7 +156,7 @@ TEST_CASE_METHOD(
   const char* name;
   rc = tiledb_metadata_schema_get_metadata_name(ctx_, metadata_schema, &name);
   REQUIRE(rc == TILEDB_OK);
-  std::string name_real = tiledb::filesystem::real_dir(name);
+  std::string name_real = tiledb::vfs::real_dir(name);
   CHECK_THAT(name_real, Catch::Equals(METADATA_PATH_REAL));
 
   // Check capacity
@@ -234,7 +233,7 @@ TEST_CASE_METHOD(
 
   // Check dump
   std::string dump_str =
-      "- Array name: " + tiledb::filesystem::real_dir(METADATA_PATH) + "\n" +
+      "- Array name: " + tiledb::vfs::real_dir(METADATA_PATH) + "\n" +
       "- Array type: " + ARRAY_TYPE_STR + "\n" +
       "- Cell order: " + CELL_ORDER_STR + "\n" +
       "- Tile order: " + TILE_ORDER_STR + "\n" + "- Capacity: " + CAPACITY_STR +

@@ -32,7 +32,7 @@
  */
 
 #include "fragment.h"
-#include "filesystem.h"
+#include "../../include/vfs/filesystem.h"
 #include "logger.h"
 #include "utils.h"
 
@@ -141,7 +141,7 @@ Status Fragment::finalize() {
     Status st_bk = book_keeping_->finalize();
     Status st_rn;
     if (utils::fragment_exists(fragment_uri())) {
-      st_rn = filesystem::rename_fragment(fragment_uri());
+      st_rn = vfs::rename_fragment(fragment_uri());
     }
     // Errors
     if (!st_ws.ok()) {

@@ -33,7 +33,7 @@
 
 #include <cmath>
 
-#include "filesystem.h"
+#include "../../include/vfs/filesystem.h"
 #include "logger.h"
 #include "read_state.h"
 #include "utils.h"
@@ -110,7 +110,7 @@ ReadState::ReadState(const Fragment* fragment, BookKeeping* bookkeeping)
   for (int i = 0; i < attribute_num_ + 1; ++i) {
     uri = fragment_->fragment_uri().join_path(
         array_schema_->attribute(i) + Configurator::file_suffix());
-    is_empty_attribute_[i] = !filesystem::is_file(uri);
+    is_empty_attribute_[i] = !vfs::is_file(uri);
   }
 }
 

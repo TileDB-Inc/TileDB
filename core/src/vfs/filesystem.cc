@@ -30,7 +30,7 @@
  * This file includes definitions of filesystem functions.
  */
 
-#include "filesystem.h"
+#include "../../include/vfs/filesystem.h"
 #include "configurator.h"
 #include "logger.h"
 #include "utils.h"
@@ -43,14 +43,14 @@
 
 namespace tiledb {
 
-namespace filesystem {
+namespace vfs {
 
 Status create_dir(const std::string& path) {
   // Get real directory path
-  std::string real_dir = filesystem::real_dir(path);
+  std::string real_dir = vfs::real_dir(path);
 
   // If the directory does not exist, create it
-  if (filesystem::is_dir(real_dir)) {
+  if (vfs::is_dir(real_dir)) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot create directory '") + real_dir +
         "'; Directory already exists"));
@@ -79,7 +79,7 @@ Status delete_dir(const uri::URI& uri) {
 
 Status delete_dir(const std::string& path) {
   // Get real path
-  std::string dirname_real = filesystem::real_dir(path);
+  std::string dirname_real = vfs::real_dir(path);
 
   // Delete the contents of the directory
   std::string filename;
@@ -149,7 +149,7 @@ std::vector<std::string> get_dirs(const std::string& path) {
 
   while ((next_file = readdir(c_dir))) {
     if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, "..") ||
-        !filesystem::is_dir(path + "/" + next_file->d_name))
+        !vfs::is_dir(path + "/" + next_file->d_name))
       continue;
     new_dir = path + "/" + next_file->d_name;
     dirs.push_back(new_dir);
@@ -287,7 +287,7 @@ Status move(const uri::URI& old_path, const uri::URI& new_path) {
 }
 
 Status ls(const std::string& path, std::vector<std::string>* paths) {
-  std::string parent = filesystem::real_dir(path);
+  std::string parent = vfs::real_dir(path);
 
   struct dirent* next_path;
   DIR* dir = opendir(parent.c_str());
@@ -331,7 +331,7 @@ std::vector<std::string> get_fragment_dirs(const std::string& path) {
 }
 
 Status create_fragment_file(const uri::URI& uri) {
-  uri::URI path = filesystem::abs_path(uri);
+  uri::URI path = vfs::abs_path(uri);
   // Create the special fragment file
   std::string filename =
       path.to_posix_path() + "/" + Configurator::fragment_filename();
@@ -350,9 +350,9 @@ Status rename_fragment(const uri::URI& uri) {
   std::string new_fragment_name =
       parent_dir + "/" + fragment_path.substr(parent_dir.size() + 2);
   // move the fragment directory
-  RETURN_NOT_OK(filesystem::move(fragment_path, new_fragment_name));
+  RETURN_NOT_OK(vfs::move(fragment_path, new_fragment_name));
   // create a new fragment file in the new directory
-  RETURN_NOT_OK(filesystem::create_fragment_file(new_fragment_name));
+  RETURN_NOT_OK(vfs::create_fragment_file(new_fragment_name));
   return Status::Ok();
 }
 
@@ -477,7 +477,7 @@ void adjacent_slashes_dedup(std::string& value) {
 
 uri::URI abs_path(const uri::URI& upath) {
   // Initialize current, home and root
-  std::string current = filesystem::current_dir();
+  std::string current = vfs::current_dir();
   auto env_home_ptr = getenv("HOME");
   std::string home = env_home_ptr ? env_home_ptr : current;
   std::string root = "/";
@@ -544,7 +544,7 @@ Status munmap(void* buffer, uint64_t size) {
 
 std::string real_dir(const std::string& path) {
   // Initialize current, home and root
-  std::string current = filesystem::current_dir();
+  std::string current = vfs::current_dir();
   auto env_home_ptr = getenv("HOME");
   std::string home = env_home_ptr ? env_home_ptr : current;
   std::string root = "/";
@@ -577,9 +577,9 @@ std::string real_dir(const std::string& path) {
 Status sync(const std::string& path) {
   // Open file
   int fd = -1;
-  if (filesystem::is_dir(path))  // DIRECTORY
+  if (vfs::is_dir(path))  // DIRECTORY
     fd = open(path.c_str(), O_RDONLY, S_IRWXU);
-  else if (filesystem::is_file(path))  // FILE
+  else if (vfs::is_file(path))  // FILE
     fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);
   else
     return Status::Ok();  // If file does not exist, exit
@@ -799,10 +799,10 @@ Status mpi_io_sync(const MPI_Comm* mpi_comm, const std::string& filename) {
   // Open file
   MPI_File fh;
   int rc;
-  if (filesystem::is_dir(filename))  // DIRECTORY
+  if (vfs::is_dir(filename))  // DIRECTORY
     rc = MPI_File_open(
         *mpi_comm, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);
-  else if (filesystem::is_file(filename))  // FILE
+  else if (vfs::is_file(filename))  // FILE
     rc = MPI_File_open(
         *mpi_comm,
         filename.c_str(),
@@ -839,6 +839,6 @@ Status mpi_io_sync(const MPI_Comm* mpi_comm, const std::string& filename) {
 }
 #endif
 
-}  // namespace filesystem
+}  // namespace vfs
 
 }  // namespace tiledb

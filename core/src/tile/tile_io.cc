@@ -31,9 +31,9 @@
  */
 
 #include "tile_io.h"
+#include "../../include/vfs/filesystem.h"
 #include "blosc_compressor.h"
 #include "bzip_compressor.h"
-#include "filesystem.h"
 #include "gzip_compressor.h"
 #include "logger.h"
 #include "lz4_compressor.h"
@@ -64,7 +64,7 @@ TileIO::~TileIO() {
 /* ****************************** */
 
 Status TileIO::file_size(off_t* size) const {
-  return filesystem::file_size(attr_filename_.to_string(), size);
+  return vfs::file_size(attr_filename_.to_string(), size);
 }
 
 Status TileIO::read(
@@ -92,7 +92,7 @@ Status TileIO::read(
 
     if (read_method == IOMethod::READ) {
       buffer_->realloc(compressed_size);
-      RETURN_NOT_OK(filesystem::read_from_file(
+      RETURN_NOT_OK(vfs::read_from_file(
           attr_filename_.to_string(),
           file_offset,
           buffer_->data(),
@@ -103,7 +103,7 @@ Status TileIO::read(
     } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
       buffer_->realloc(compressed_size);
-      RETURN_NOT_OK(filesystem::mpi_io_read_from_file(
+      RETURN_NOT_OK(vfs::mpi_io_read_from_file(
           config_->mpi_comm(),
           attr_filename_.to_string(),
           file_offset,
@@ -127,14 +127,14 @@ Status TileIO::read_from_tile(Tile* tile, void* buffer, uint64_t nbytes) {
   IOMethod read_method = config_->read_method();
   Status st;
   if (read_method == IOMethod::READ) {
-    st = filesystem::read_from_file(
+    st = vfs::read_from_file(
         attr_filename_.to_string(),
         tile->file_offset() + tile->offset(),
         buffer,
         nbytes);
   } else if (read_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    st = filesystem::mpi_io_read_from_file(
+    st = vfs::mpi_io_read_from_file(
         config_->mpi_comm(),
         attr_filename_.to_string(),
         tile->file_offset() + tile->offset(),
@@ -175,11 +175,11 @@ Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
   // Write based on the chosen method
   // TODO: implement mmap write here
   if (write_method == IOMethod::WRITE) {
-    return filesystem::write_to_file(
+    return vfs::write_to_file(
         attr_filename_.to_posix_path(), buffer, buffer_size);
   } else if (write_method == IOMethod::MPI) {
 #ifdef HAVE_MPI
-    return filesystem::mpi_io_write_to_file(
+    return vfs::mpi_io_write_to_file(
         config_->mpi_comm(),
         attr_filename_.to_posix_path().c_str(),
         buffer,

@@ -55,7 +55,7 @@
 #include <linux/if.h>
 #endif
 
-#include "filesystem.h"
+#include "../../include/vfs/filesystem.h"
 #include "tiledb.h"
 #include "utils.h"
 
@@ -395,16 +395,16 @@ void expand_mbr(T* mbr, const T* coords, int dim_num) {
 }
 
 Status delete_fragment(const uri::URI& frag) {
-  return filesystem::delete_dir(frag);
+  return vfs::delete_dir(frag);
 }
 
 bool fragment_exists(const uri::URI& frag) {
-  return filesystem::is_dir(frag);
+  return vfs::is_dir(frag);
 }
 
 std::string parent_path(const std::string& dir) {
   // Get real dir
-  std::string real_dir = filesystem::real_dir(dir);
+  std::string real_dir = vfs::real_dir(dir);
 
   // Start from the end of the string
   int pos = real_dir.size() - 1;
@@ -525,8 +525,8 @@ bool is_contained(const T* range_A, const T* range_B, int dim_num) {
 
 bool is_array(const std::string& dir) {
   // Check existence
-  if (filesystem::is_dir(dir) &&
-      filesystem::is_file(dir + "/" + Configurator::array_schema_filename()))
+  if (vfs::is_dir(dir) &&
+      vfs::is_file(dir + "/" + Configurator::array_schema_filename()))
     return true;
   else
     return false;
@@ -534,10 +534,10 @@ bool is_array(const std::string& dir) {
 
 bool is_array(const uri::URI& uri) {
   // Check existence
-  if (filesystem::is_dir(uri)) {
+  if (vfs::is_dir(uri)) {
     auto array_schema_uri =
         uri.join_path(Configurator::array_schema_filename());
-    if (filesystem::is_file(array_schema_uri)) {
+    if (vfs::is_file(array_schema_uri)) {
       return true;
     }
   }
@@ -546,8 +546,8 @@ bool is_array(const uri::URI& uri) {
 
 bool is_fragment(const std::string& dir) {
   // Check existence
-  if (filesystem::is_dir(dir) &&
-      filesystem::is_file(dir + "/" + Configurator::fragment_filename()))
+  if (vfs::is_dir(dir) &&
+      vfs::is_file(dir + "/" + Configurator::fragment_filename()))
     return true;
   else
     return false;
@@ -555,9 +555,9 @@ bool is_fragment(const std::string& dir) {
 
 bool is_group(const uri::URI& uri) {
   // Check existence
-  if (filesystem::is_dir(uri)) {
+  if (vfs::is_dir(uri)) {
     auto group_uri = uri.join_path(Configurator::group_filename());
-    if (filesystem::is_file(group_uri)) {
+    if (vfs::is_file(group_uri)) {
       return true;
     }
   }
@@ -566,8 +566,8 @@ bool is_group(const uri::URI& uri) {
 
 bool is_group(const std::string& dir) {
   // Check existence
-  if (filesystem::is_dir(dir) &&
-      filesystem::is_file(dir + "/" + Configurator::group_filename()))
+  if (vfs::is_dir(dir) &&
+      vfs::is_file(dir + "/" + Configurator::group_filename()))
     return true;
   else
     return false;
@@ -575,10 +575,10 @@ bool is_group(const std::string& dir) {
 
 bool is_metadata(const uri::URI& uri) {
   // Check existence
-  if (filesystem::is_dir(uri)) {
+  if (vfs::is_dir(uri)) {
     auto meta_schema_uri =
         uri.join_path(Configurator::metadata_schema_filename());
-    if (filesystem::is_file(meta_schema_uri)) {
+    if (vfs::is_file(meta_schema_uri)) {
       return true;
     }
   }
@@ -587,8 +587,8 @@ bool is_metadata(const uri::URI& uri) {
 
 bool is_metadata(const std::string& dir) {
   // Check existence
-  if (filesystem::is_dir(dir) &&
-      filesystem::is_file(dir + "/" + Configurator::metadata_schema_filename()))
+  if (vfs::is_dir(dir) &&
+      vfs::is_file(dir + "/" + Configurator::metadata_schema_filename()))
     return true;
   else
     return false;

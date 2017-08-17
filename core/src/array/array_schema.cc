@@ -38,8 +38,8 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include "../../include/vfs/filesystem.h"
 #include "compressor.h"
-#include "filesystem.h"
 #include "logger.h"
 #include "utils.h"
 
@@ -126,7 +126,7 @@ ArraySchema::ArraySchema(const uri::URI& uri) {
   tile_extents_ = nullptr;
   tile_domain_ = nullptr;
   tile_coords_aux_ = nullptr;
-  array_uri_ = filesystem::abs_path(uri);
+  array_uri_ = vfs::abs_path(uri);
   array_type_ = ArrayType::DENSE;
   capacity_ = Configurator::capacity();
   cell_order_ = Layout::ROW_MAJOR;
@@ -1117,7 +1117,7 @@ Status ArraySchema::load(const uri::URI& parent, const char* schema) {
 // TODO: uri
 Status ArraySchema::load(const std::string& dir, const char* schema_filename) {
   // Get real array path
-  std::string real_dir = filesystem::real_dir(dir);
+  std::string real_dir = vfs::real_dir(dir);
 
   // Open array schema file
   std::string filename = real_dir + "/" + schema_filename;
@@ -1162,7 +1162,7 @@ Status ArraySchema::load(const std::string& dir, const char* schema_filename) {
 }
 
 void ArraySchema::set_array_uri(const uri::URI& uri) {
-  array_uri_ = filesystem::abs_path(uri);
+  array_uri_ = vfs::abs_path(uri);
 }
 
 void ArraySchema::set_array_type(ArrayType array_type) {

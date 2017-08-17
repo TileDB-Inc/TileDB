@@ -45,7 +45,7 @@
 
 namespace tiledb {
 
-namespace filesystem {
+namespace vfs {
 
 /**
  * Create a process lockfile
@@ -345,7 +345,7 @@ Status mpi_io_write_to_file(
     size_t buffer_size);
 #endif
 
-}  // namespace filesystem
+}  // namespace vfs
 
 }  // namespace tiledb
 
