@@ -993,22 +993,6 @@ TILEDB_EXPORT int tiledb_array_get_schema(
     tiledb_array_schema_t* tiledb_array_schema);
 
 /**
- * Resets the subarray used upon initialization of the array. This is useful
- * when the array is used for reading, and the user wishes to change the
- * query subarray without having to finalize and re-initialize the array.
- *
- * @param tiledb_array The TileDB array.
- * @param subarray The new subarray. It should be a sequence of [low, high]
- *     pairs (one pair per dimension), whose type should be the same as that of
- *     the coordinates. If it is NULL, then the subarray is set to the entire
- *     array domain. For the case of writes, this is meaningful only for
- *     dense arrays, and specifically dense writes.
- * @return TILEDB_OK on success, and TILEDB_ERR on error.
- */
-TILEDB_EXPORT int tiledb_array_reset_subarray(
-    const tiledb_array_t* tiledb_array, const void* subarray);
-
-/**
  * Performs a write operation to an array.
  * The array must be initialized in one of the following write modes,
  * each of which has a different behaviour:

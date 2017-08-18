@@ -90,6 +90,10 @@ class Fragment {
   /** Returns the read state of the fragment. */
   ReadState* read_state() const;
 
+  const BookKeeping* bookkeeping() const {
+    return book_keeping_;
+  }
+
   /**
    * Returns the tile size for a given attribute (TILEDB_VAR_SIZE in case
    * of a variable-sized attribute.

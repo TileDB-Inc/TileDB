@@ -40,11 +40,11 @@
 #include <vector>
 
 #include "aio_request.h"
-#include "array.h"
+#include "query.h"
 
 namespace tiledb {
 
-class Array;
+class Query;
 
 /**
  * Stores the state necessary when reading cells from the array fragments,
@@ -130,7 +130,7 @@ class ArraySortedReadState {
    *
    * @param array The array this array sorted read state belongs to.
    */
-  ArraySortedReadState(Array* array);
+  ArraySortedReadState(Query* query);
 
   /** Destructor. */
   ~ArraySortedReadState();
@@ -154,30 +154,6 @@ class ArraySortedReadState {
    */
   bool overflow(int attribute_id) const;
 
-  /**
-   * Same as Array::read(), but it sorts the cells in the buffers based on the
-   * order the user specified in Array::init(). Note that this function will
-   * fail if there is not enough system memory to hold the cells of a
-   * 'tile slab' overlapping with the selected subarray.
-   *
-   * @param buffers An array of buffers, one for each attribute. These must be
-   *     provided in the same order as the attributes specified in
-   *     Array::init() or Array::reset_attributes(). The case of variable-sized
-   *     attributes is special. Instead of providing a single buffer for such
-   *     an attribute, **two** must be provided: the second will hold the
-   *     variable-sized cell values, whereas the first holds the start offsets
-   *     of each cell in the second buffer.
-   * @param buffer_sizes The sizes (in bytes) allocated by the user for the
-   *     input buffers (there is a one-to-one correspondence). The function will
-   *     attempt to write as many results as can fit in the buffers, and
-   *     potentially alter the buffer size to indicate the size of the *useful*
-   *     data written in the buffer. If a buffer cannot hold all results, the
-   *     function will still succeed, writing as much data as it can and turning
-   *     on an overflow flag which can be checked with function overflow(). The
-   *     next invocation will resume for the point the previous one stopped,
-   *     without inflicting a considerable performance penalty due to overflow.
-   * @return TILEDB_ASRS_OK for success and TILEDB_ASRS_ERR for error.
-   */
   Status read(void** buffers, size_t* buffer_sizes);
 
   /* ********************************* */
@@ -199,9 +175,6 @@ class ArraySortedReadState {
   /** Function for advancing a cell slab during a copy operation. */
   void* (*advance_cell_slab_)(void*);
 
-  /** AIO counter. */
-  int aio_cnt_;
-
   /** Condition variables used in AIO. */
   std::condition_variable aio_cv_[2];
 
@@ -214,14 +187,15 @@ class ArraySortedReadState {
   /** Indicates overflow per tile slab per attribute upon an AIO operation. */
   bool* aio_overflow_[2];
 
+  Query* aio_query_[2];
+
   /** AIO requests. */
   AIORequest aio_request_[2];
 
   /** The status of the AIO requests.*/
   AIOStatus aio_status_[2];
 
-  /** The array this sorted read state belongs to. */
-  Array* array_;
+  Query* query_;
 
   /** The ids of the attributes the array was initialized with. */
   std::vector<int> attribute_ids_;

@@ -38,12 +38,12 @@
 #include <cstring>
 #include <queue>
 #include <vector>
-#include "array.h"
 #include "array_schema.h"
+#include "query.h"
 
 namespace tiledb {
 
-class Array;
+class Query;
 class ReadState;
 
 /** Stores the state necessary when reading cells from the array fragments. */
@@ -99,7 +99,7 @@ class ArrayReadState {
    *
    * @param array The array this array read state belongs to.
    */
-  ArrayReadState(const Array* array);
+  ArrayReadState(Query* query);
 
   /** Destructor. */
   ~ArrayReadState();
@@ -147,42 +147,56 @@ class ArrayReadState {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array this array read state belongs to. */
-  const Array* array_;
+  Query* query_;
+
   /** The array schema. */
   const ArraySchema* array_schema_;
+
   /** The number of array attributes. */
   int attribute_num_;
+
   /** The size of the array coordinates. */
   size_t coords_size_;
+
   /** Indicates whether the read operation for this query is done. */
   bool done_;
+
   /** State per attribute indicating the number of empty cells written. */
   std::vector<int64_t> empty_cells_written_;
+
   /**
    * The bounding coordinates of the current tiles for all fragments. Applicable
    * only to the **sparse** array case.
    */
   std::vector<void*> fragment_bounding_coords_;
+
   /** Holds the fragment cell positions ranges of all active read rounds. */
   FragmentCellPosRangesVec fragment_cell_pos_ranges_vec_;
+
   /** Practically records which read round each attribute is on. */
   std::vector<int64_t> fragment_cell_pos_ranges_vec_pos_;
+
   /** Number of array fragments. */
   int fragment_num_;
+
   /** Stores the read state of each fragment. */
   std::vector<ReadState*> fragment_read_states_;
+
   /**
    * The minimum bounding coordinates end point. Applicable only to the
    * **sparse** array case.
    */
   void* min_bounding_coords_end_;
+
   /** Indicates overflow for each attribute. */
   std::vector<bool> overflow_;
+
   /** Indicates whether the current read round is done for each attribute. */
   std::vector<bool> read_round_done_;
+
   /** The current tile coordinates of the query subarray. */
   void* subarray_tile_coords_;
+
   /** The tile domain of the query subarray. */
   void* subarray_tile_domain_;
 

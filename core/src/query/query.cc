@@ -34,6 +34,8 @@
 #include "logger.h"
 #include "utils.h"
 
+#include <sys/time.h>
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -42,28 +44,131 @@ namespace tiledb {
 
 Query::Query() {
   subarray_ = nullptr;
+  array_read_state_ = nullptr;
+  array_sorted_read_state_ = nullptr;
+  array_sorted_write_state_ = nullptr;
 }
 
-Query::Query(
-    Array* array,
-    QueryMode mode,
-    const void* subarray,
-    const char** attributes,
-    int attribute_num) {
-  array_ = array;
-  mode_ = mode;
+Query::Query(const Query* query) {
+  mode_ = query->mode_;
+  attribute_ids_ = query->attribute_ids_;
+  array_ = query->array_;
 
-  uint64_t subarray_size = 2 * array_->array_schema()->coords_size();
-  subarray_ = malloc(subarray_size);
-  if (subarray_ == nullptr) {
-    LOG_STATUS(Status::QueryError("Memory allocation for subarray failed"));
+  if (!set_subarray(query->subarray_).ok())
     return;
+
+  if (!array_->array_schema()->dense())
+    add_coords();
+
+  init_states();
+
+  Status st;
+  if (is_write_mode(mode_))
+    new_fragment();
+  else
+    open_fragments(query->fragments_);
+}
+
+Query::Query(const Query* query, QueryMode mode, const void* subarray) {
+  mode_ = mode;
+  attribute_ids_ = query->attribute_ids_;
+  array_ = query->array_;
+
+  if (!set_subarray(subarray).ok())
+    return;
+
+  if (!array_->array_schema()->dense())
+    add_coords();
+
+  init_states();
+
+  Status st;
+  if (is_write_mode(mode_))
+    new_fragment();
+  else
+    open_fragments(query->fragments_);
+}
+
+Status Query::open_fragments(const std::vector<Fragment*>& fragments) {
+  for (auto& fragment : fragments) {
+    // Create a fragment object for each fragment directory
+    Fragment* new_fragment = new Fragment(array_);
+    RETURN_NOT_OK(
+        fragment->init(fragment->fragment_uri(), fragment->bookkeeping()));
+    fragments_.emplace_back(new_fragment);
   }
+  return Status::Ok();
+}
+
+Query::~Query() {
+  if (subarray_ != nullptr)
+    free(subarray_);
+
+  delete array_read_state_;
+  delete array_sorted_read_state_;
+  delete array_sorted_write_state_;
+
+  // TODO: handle status here
+  clear_fragments();
+}
+
+/* ****************************** */
+/*               API              */
+/* ****************************** */
+
+void Query::add_coords() {
+  int attribute_num = array_->array_schema()->attribute_num();
+  bool has_coords = false;
+
+  for (auto id : attribute_ids_) {
+    if (id == attribute_num) {
+      has_coords = true;
+      break;
+    }
+  }
+
+  if (!has_coords)
+    attribute_ids_.emplace_back(attribute_num);
+}
+
+void Query::clear_fragments() {
+  for (auto& fragment : fragments_) {
+    // TODO: return Status
+    fragment->finalize();
+    delete fragment;
+  }
+
+  fragments_.clear();
+}
+
+Status Query::set_subarray(const void* subarray) {
+  uint64_t subarray_size = 2 * array_->array_schema()->coords_size();
+
+  if (subarray_ == nullptr)
+    subarray_ = malloc(subarray_size);
+
+  if (subarray_ == nullptr)
+    return LOG_STATUS(
+        Status::QueryError("Memory allocation for subarray failed"));
 
   if (subarray == nullptr)
     memcpy(subarray_, array_->array_schema()->domain(), subarray_size);
   else
     memcpy(subarray_, subarray, subarray_size);
+
+  return Status::Ok();
+}
+
+Status Query::init(
+    Array* array,
+    QueryMode mode,
+    const void* subarray,
+    const char** attributes,
+    int attribute_num,
+    const std::vector<std::string>& fragment_names,
+    const std::vector<BookKeeping*>& bookkeeping) {
+  array_ = array;
+  mode_ = mode;
 
   // Get attributes
   std::vector<std::string> attributes_vec;
@@ -76,49 +181,90 @@ Query::Query(
       attributes_vec.pop_back();
   } else {  // Custom attributes
     // Get attributes
-    bool coords_found = false;
-    bool sparse = !array_schema->dense();
     unsigned name_max_len = Configurator::name_max_len();
     for (int i = 0; i < attribute_num; ++i) {
       // Check attribute name length
-      if (attributes[i] == nullptr || strlen(attributes[i]) > name_max_len) {
-        LOG_STATUS(Status::QueryError("Invalid attribute name length"));
-        // TODO: handle errors better
-        return;
-      }
+      if (attributes[i] == nullptr || strlen(attributes[i]) > name_max_len)
+        return LOG_STATUS(Status::QueryError("Invalid attribute name length"));
       attributes_vec.emplace_back(attributes[i]);
-      if (!strcmp(attributes[i], Configurator::coords()))
-        coords_found = true;
     }
 
     // Sanity check on duplicates
-    if (utils::has_duplicates(attributes_vec)) {
-      LOG_STATUS(
+    if (utils::has_duplicates(attributes_vec))
+      return LOG_STATUS(
           Status::QueryError("Cannot initialize array; Duplicate attributes"));
-      // TODO: handle errors better
-      return;
-    }
-
-    // For the case of sparse array, append coordinates if they do
-    // not exist already
-    if (sparse && !coords_found)
-      attributes_vec.emplace_back(Configurator::coords());
   }
 
   // Set attribute ids
-  Status st = array_schema->get_attribute_ids(attributes_vec, attribute_ids_);
-  if (!st.ok())
-    LOG_STATUS(st);
+  RETURN_NOT_OK(
+      array_schema->get_attribute_ids(attributes_vec, attribute_ids_));
+
+  RETURN_NOT_OK(set_subarray(subarray));
+
+  RETURN_NOT_OK(init_states());
+
+  RETURN_NOT_OK(init_fragments(fragment_names, bookkeeping));
+
+  return Status::Ok();
 }
 
-Query::~Query() {
-  if (subarray_ != nullptr)
-    free(subarray_);
+Status Query::init_states() {
+  // Initialize new fragment if needed
+  if (is_write_mode(mode_)) {  // WRITE MODE
+    // Create ArraySortedWriteState
+    if (mode_ == QueryMode::WRITE_SORTED_COL ||
+        mode_ == QueryMode::WRITE_SORTED_ROW) {
+      array_sorted_write_state_ = new ArraySortedWriteState(this);
+      Status st = array_sorted_write_state_->init();
+      if (!st.ok()) {
+        delete array_sorted_write_state_;
+        array_sorted_write_state_ = nullptr;
+        return st;
+      }
+    } else {
+      array_sorted_write_state_ = nullptr;
+    }
+  } else {  // READ MODE
+    // Create ArrayReadState
+    array_read_state_ = new ArrayReadState(this);
+
+    // Create ArraySortedReadState
+    if (mode_ != QueryMode::READ) {
+      array_sorted_read_state_ = new ArraySortedReadState(this);
+      RETURN_NOT_OK_ELSE(
+          array_sorted_read_state_->init(), delete array_sorted_read_state_);
+    }
+  }
+
+  return Status::Ok();
 }
 
-/* ****************************** */
-/*               API              */
-/* ****************************** */
+Status Query::init_fragments(
+    const std::vector<std::string>& fragment_names,
+    const std::vector<BookKeeping*>& bookkeeping) {
+  if (is_write_mode(mode_)) {
+    RETURN_NOT_OK(new_fragment());
+  } else {
+    RETURN_NOT_OK(open_fragments(fragment_names, bookkeeping));
+  }
+
+  return Status::Ok();
+}
+
+Status Query::new_fragment() {
+  // Get new fragment name
+  std::string new_fragment_name = this->new_fragment_name();
+  if (new_fragment_name == "")
+    return LOG_STATUS(Status::QueryError("Cannot produce new fragment name"));
+
+  // Create new fragment
+  Fragment* fragment = new Fragment(array_);
+  RETURN_NOT_OK_ELSE(
+      fragment->init(new_fragment_name, subarray_), delete fragment);
+  fragments_.push_back(fragment);
+
+  return Status::Ok();
+}
 
 const std::vector<int>& Query::attribute_ids() const {
   return attribute_ids_;
@@ -148,29 +294,128 @@ Status Query::coords_buffer_i(int* coords_buffer_i) const {
   return Status::Ok();
 }
 
+int Query::fragment_num() const {
+  return (int)fragments_.size();
+}
+
+std::vector<Fragment*> Query::fragments() const {
+  return fragments_;
+}
+
+bool Query::overflow() const {
+  // Not applicable to writes
+  if (!is_read_mode(mode_))
+    return false;
+
+  // Check overflow
+  if (array_sorted_read_state_ != nullptr)
+    return array_sorted_read_state_->overflow();
+  else
+    return array_read_state_->overflow();
+}
+
+bool Query::overflow(int attribute_id) const {
+  assert(is_read_mode(mode_));
+
+  // Trivial case
+  if (fragments_.size() == 0)
+    return false;
+
+  // Check overflow
+  if (array_sorted_read_state_ != nullptr)
+    return array_sorted_read_state_->overflow(attribute_id);
+  else
+    return array_read_state_->overflow(attribute_id);
+}
+
 QueryMode Query::mode() const {
   return mode_;
 }
 
-Status Query::reset_subarray(const void* subarray) {
-  uint64_t subarray_size = 2 * array_->array_schema()->coords_size();
-  if (subarray_ == nullptr)
-    subarray_ = malloc(subarray_size);
+const void* Query::subarray() const {
+  return subarray_;
+}
 
-  if (subarray_ == nullptr)
+Status Query::write_default(const void** buffers, const size_t* buffer_sizes) {
+  // Sanity checks
+  if (!is_write_mode(mode_)) {
     return LOG_STATUS(
-        Status::QueryError("Memory allocation when resetting subarray"));
+        Status::ArrayError("Cannot write to array; Invalid mode"));
+  }
 
-  if (subarray == nullptr)
-    memcpy(subarray_, array_->array_schema()->domain(), subarray_size);
-  else
-    memcpy(subarray_, subarray, subarray_size);
+  // Create and initialize a new fragment
+  if (fragment_num() == 0) {
+    // Get new fragment name
+    std::string new_fragment_name = this->new_fragment_name();
+    if (new_fragment_name == "") {
+      return LOG_STATUS(Status::ArrayError("Cannot produce new fragment name"));
+    }
 
+    // Create new fragment
+    Fragment* fragment = new Fragment(array_);
+    fragments_.push_back(fragment);
+    RETURN_NOT_OK(fragment->init(new_fragment_name, subarray_));
+  }
+
+  // Dispatch the write command to the new fragment
+  RETURN_NOT_OK(fragments_[0]->write(buffers, buffer_sizes));
+
+  // Success
   return Status::Ok();
 }
 
-const void* Query::subarray() const {
-  return subarray_;
+/* ****************************** */
+/*          PRIVATE METHODS       */
+/* ****************************** */
+
+std::string Query::new_fragment_name() const {
+  // For easy reference
+  unsigned name_max_len = Configurator::name_max_len();
+
+  struct timeval tp;
+  gettimeofday(&tp, nullptr);
+  uint64_t ms = (uint64_t)tp.tv_sec * 1000L + tp.tv_usec / 1000;
+  pthread_t self = pthread_self();
+  uint64_t tid = 0;
+  memcpy(&tid, &self, std::min(sizeof(self), sizeof(tid)));
+  char fragment_name[name_max_len];
+
+  // Get MAC address
+  std::string mac = utils::get_mac_addr();
+  if (mac == "")
+    return "";
+
+  // Generate fragment name
+  int n = sprintf(
+      fragment_name,
+      "%s/.__%s%llu_%llu",
+      array_->array_schema()->array_uri().c_str(),
+      mac.c_str(),
+      tid,
+      ms);
+
+  // Handle error
+  if (n < 0)
+    return "";
+
+  // Return
+  return fragment_name;
+}
+
+Status Query::open_fragments(
+    const std::vector<std::string>& fragment_names,
+    const std::vector<BookKeeping*>& book_keeping) {
+  // Sanity check
+  assert(fragment_names.size() == book_keeping.size());
+
+  // Create a fragment object for each fragment directory
+  int fragment_num = fragment_names.size();
+  for (int i = 0; i < fragment_num; ++i) {
+    Fragment* fragment = new Fragment(array_);
+    fragments_.push_back(fragment);
+    RETURN_NOT_OK(fragment->init(fragment_names[i], book_keeping[i]));
+  }
+  return Status::Ok();
 }
 
 }  // namespace tiledb

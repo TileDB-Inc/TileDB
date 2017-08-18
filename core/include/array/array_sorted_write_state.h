@@ -40,11 +40,11 @@
 #include <vector>
 
 #include "aio_request.h"
-#include "array.h"
+#include "query.h"
 
 namespace tiledb {
 
-class Array;
+class Query;
 
 /**
  * It is responsibled for re-arranging the cells sorted in column- or row-major
@@ -126,7 +126,7 @@ class ArraySortedWriteState {
    *
    * @param array The array this array sorted read state belongs to.
    */
-  ArraySortedWriteState(Array* array);
+  ArraySortedWriteState(Query* query);
 
   /** Destructor. */
   ~ArraySortedWriteState();
@@ -175,14 +175,13 @@ class ArraySortedWriteState {
   /** Condition variables used in AIO. */
   std::condition_variable aio_cv_[2];
 
-  /** Counter for the AIO requests. */
-  size_t aio_cnt_;
-
   /** Data for the AIO requests. */
   ASWS_Data aio_data_[2];
 
   /** Mutexes used in AIO. */
   std::mutex aio_mtx_[2];
+
+  Query* aio_query_[2];
 
   /** AIO requests. */
   AIORequest aio_request_[2];
@@ -191,7 +190,7 @@ class ArraySortedWriteState {
   AIOStatus aio_status_[2];
 
   /** The array this sorted read state belongs to. */
-  Array* array_;
+  Query* query_;
 
   /** The ids of the attributes the array was initialized with. */
   const std::vector<int> attribute_ids_;
@@ -265,6 +264,8 @@ class ArraySortedWriteState {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  bool separate_fragments() const;
 
   /**
    * Advances a cell slab focusing on column-major order, and updates

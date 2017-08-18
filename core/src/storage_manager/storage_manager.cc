@@ -38,6 +38,7 @@
 #include "array.h"
 #include "basic_array_schema.h"
 #include "logger.h"
+#include "query.h"
 #include "storage_manager.h"
 #include "utils.h"
 
@@ -260,10 +261,9 @@ Status StorageManager::array_init(
     RETURN_NOT_OK(array_open(vfs::abs_path(array_uri), open_array, mode));
   }
 
-  Status st;
-  // Create the clone Array object
-  Array* array_clone = new Array();
-  st = array_clone->init(
+  // Create actual array
+  array = new Array();
+  Status st = array->init(
       this,
       array_schema,
       open_array->fragment_names_,
@@ -277,35 +277,12 @@ Status StorageManager::array_init(
   // Handle error
   if (!st.ok()) {
     delete array_schema;
-    delete array_clone;
-    array = nullptr;
-    if (is_read_mode(mode))
-      array_close(array_uri);
-    return st;
-  }
-
-  // Create actual array
-  array = new Array();
-  st = array->init(
-      this,
-      array_schema,
-      open_array->fragment_names_,
-      open_array->book_keeping_,
-      mode,
-      attributes,
-      attribute_num,
-      subarray,
-      config_,
-      array_clone);
-
-  // Handle error
-  if (!st.ok()) {
-    delete array_schema;
     delete array;
     array = nullptr;
     if (is_read_mode(mode))
       array_close(array_uri);
   }
+
   return st;
 }
 
@@ -323,27 +300,6 @@ Status StorageManager::array_finalize(Array* array) {
   // Clean up
   delete array;
 
-  return Status::Ok();
-}
-
-Status StorageManager::array_sync(Array* array) {
-  // If the array is NULL, do nothing
-  if (array == nullptr)
-    return Status::Ok();
-
-  // Sync array
-  RETURN_NOT_OK(array->sync());
-  return Status::Ok();
-}
-
-Status StorageManager::array_sync_attribute(
-    Array* array, const std::string& attribute) {
-  // If the array is NULL, do nothing
-  if (array == nullptr)
-    return Status::Ok();
-
-  // Sync array
-  RETURN_NOT_OK(array->sync_attribute(attribute));
   return Status::Ok();
 }
 
@@ -439,10 +395,8 @@ Status StorageManager::move(const uri::URI& old_uri, const uri::URI& new_uri) {
 
 void StorageManager::aio_handle_request(AIORequest* aio_request) {
   // For easy reference
-  Array* array = aio_request->array();
-  Status st = array->aio_handle_request(aio_request);
-  if (!st.ok())
-    LOG_STATUS(st);
+  Query* query = aio_request->query();
+  Status st = query->array()->aio_handle_request(aio_request);
 }
 
 void StorageManager::aio_handle_requests(int i) {

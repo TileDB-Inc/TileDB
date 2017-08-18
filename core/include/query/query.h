@@ -34,12 +34,22 @@
 #define TILEDB_QUERY_H
 
 #include "array.h"
+#include "array_read_state.h"
+#include "array_sorted_read_state.h"
+#include "array_sorted_write_state.h"
+#include "fragment.h"
 #include "query_mode.h"
 #include "status.h"
 
 #include <vector>
 
 namespace tiledb {
+
+class Array;
+class ArrayReadState;
+class ArraySortedReadState;
+class ArraySortedWriteState;
+class Fragment;
 
 class Query {
  public:
@@ -49,12 +59,9 @@ class Query {
 
   Query();
 
-  Query(
-      Array* array,
-      QueryMode mode,
-      const void* subarray,
-      const char** attribute,
-      int attribute_num);
+  Query(const Query* query);
+
+  Query(const Query* query, QueryMode mode, const void* subarray);
 
   ~Query();
 
@@ -62,17 +69,60 @@ class Query {
   /*                 API               */
   /* ********************************* */
 
+  Status open_fragments(const std::vector<Fragment*>& fragments);
+
+  void clear_fragments();
+
+  Array* array() {
+    return array_;
+  }
+
+  ArrayReadState* array_read_state() {
+    return array_read_state_;
+  }
+
+  ArraySortedReadState* array_sorted_read_state() {
+    return array_sorted_read_state_;
+  }
+
+  ArraySortedWriteState* array_sorted_write_state() {
+    return array_sorted_write_state_;
+  }
+
   const std::vector<int>& attribute_ids() const;
 
   Status coords_buffer_i(int* coords_buffer_i) const;
 
+  int fragment_num() const;
+
+  std::vector<Fragment*> fragments() const;
+
+  bool overflow() const;
+
+  bool overflow(int attribute_id) const;
+
+  Status init(
+      Array* array,
+      QueryMode mode,
+      const void* subarray,
+      const char** attributes,
+      int attribute_num,
+      const std::vector<std::string>& fragment_names,
+      const std::vector<BookKeeping*>& book_keeping);
+
   /** Returns the query mode. */
   QueryMode mode() const;
 
-  Status reset_subarray(const void* subarray);
-
   /** Returns the subarray in which the query is constrained. */
   const void* subarray() const;
+
+  Status write_default(const void** buffers, const size_t* buffer_sizes);
+
+  void add_coords();
+
+  void set_mode(QueryMode mode) {
+    mode_ = mode;
+  }
 
  private:
   /* ********************************* */
@@ -86,6 +136,48 @@ class Query {
   QueryMode mode_;
 
   void* subarray_;
+
+  ArrayReadState* array_read_state_;
+  ArraySortedReadState* array_sorted_read_state_;
+  ArraySortedWriteState* array_sorted_write_state_;
+  std::vector<Fragment*> fragments_;
+
+  /* ********************************* */
+  /*           PRIVATE METHODS         */
+  /* ********************************* */
+
+  Status set_subarray(const void* subarray);
+
+  Status init_states();
+  Status init_fragments(
+      const std::vector<std::string>& fragment_names,
+      const std::vector<BookKeeping*>& bookkeeping);
+  Status new_fragment();
+
+  /**
+   * Returns a new fragment name, which is in the form: <br>
+   * .__MAC-address_thread-id_timestamp. For instance,
+   *  __00332a0b8c6426153_1458759561320
+   *
+   * Note that this is a temporary name, initiated by a new write process.
+   * After the new fragmemt is finalized, the array will change its name
+   * by removing the leading '.' character.
+   *
+   * @return A new special fragment name on success, or "" (empty string) on
+   *     error.
+   */
+  std::string new_fragment_name() const;
+
+  /**
+   * Opens the existing fragments.
+   *
+   * @param fragment_names The vector with the fragment names.
+   * @param book_keeping The book-keeping of the array fragments.
+   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   */
+  Status open_fragments(
+      const std::vector<std::string>& fragment_names,
+      const std::vector<BookKeeping*>& book_keeping);
 };
 
 }  // namespace tiledb

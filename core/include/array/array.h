@@ -36,10 +36,7 @@
 
 #include <queue>
 
-#include "array_read_state.h"
 #include "array_schema.h"
-#include "array_sorted_read_state.h"
-#include "array_sorted_write_state.h"
 #include "book_keeping.h"
 #include "configurator.h"
 #include "fragment.h"
@@ -48,10 +45,6 @@
 namespace tiledb {
 
 class AIORequest;
-class ArrayReadState;
-class ArraySortedReadState;
-class ArraySortedWriteState;
-class Fragment;
 class Query;
 class StorageManager;
 
@@ -72,7 +65,7 @@ class Array {
   ~Array();
 
   /* ********************************* */
-  /*             ACCESSORS             */
+  /*                API                */
   /* ********************************* */
 
   /** Handles an AIO request. */
@@ -84,29 +77,12 @@ class Array {
   /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
-  /** Returns the array clone. */
-  Array* array_clone() const;
-
   /** Returns the configuration parameters. */
   const Configurator* config() const;
 
-  /** Returns the number of fragments in this array. */
-  int fragment_num() const;
+  Status read(Query* query, void** buffers, size_t* buffer_sizes);
 
-  /** Returns the fragment objects of this array. */
-  std::vector<Fragment*> fragments() const;
-
-  bool overflow() const;
-
-  bool overflow(int attribute_id) const;
-
-  Status read(void** buffers, size_t* buffer_sizes);
-
-  Status read_default(void** buffers, size_t* buffer_sizes);
-
-  /* ********************************* */
-  /*              MUTATORS             */
-  /* ********************************* */
+  Status read_default(Query* query, void** buffers, size_t* buffer_sizes);
 
   Status consolidate(
       Fragment*& new_fragment, std::vector<uri::URI>* old_fragments);
@@ -124,20 +100,12 @@ class Array {
       const char** attributes,
       int attribute_num,
       const void* subarray,
-      const Configurator* config,
-      Array* array_clone = nullptr);
+      const Configurator* config);
 
-  Status reset_subarray(const void* subarray);
+  Status write(Query* query, const void** buffers, const size_t* buffer_sizes);
 
-  Status reset_subarray_soft(const void* subarray);
-
-  Status sync();
-
-  Status sync_attribute(const std::string& attribute);
-
-  Status write(const void** buffers, const size_t* buffer_sizes);
-
-  Status write_default(const void** buffers, const size_t* buffer_sizes);
+  Status write_default(
+      Query* query, const void** buffers, const size_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -145,59 +113,8 @@ class Array {
   /* ********************************* */
 
   StorageManager* storage_manager_;
-
-  /** Stores the id of the last handled AIO request. */
-  uint64_t aio_last_handled_request_;
-
-  /** An array clone, used in AIO requests. */
-  Array* array_clone_;
-
-  /** The array schema. */
-  const ArraySchema* array_schema_;
-
-  /** The read state of the array. */
-  ArrayReadState* array_read_state_;
-
-  /** The sorted read state of the array. */
-  ArraySortedReadState* array_sorted_read_state_;
-
-  /** The sorted write state of the array. */
-  ArraySortedWriteState* array_sorted_write_state_;
-
-  /** Configuration parameters. */
   const Configurator* config_;
-
-  /** The array fragments. */
-  std::vector<Fragment*> fragments_;
-
-  /* ********************************* */
-  /*           PRIVATE METHODS         */
-  /* ********************************* */
-
-  /**
-   * Returns a new fragment name, which is in the form: <br>
-   * .__MAC-address_thread-id_timestamp. For instance,
-   *  __00332a0b8c6426153_1458759561320
-   *
-   * Note that this is a temporary name, initiated by a new write process.
-   * After the new fragmemt is finalized, the array will change its name
-   * by removing the leading '.' character.
-   *
-   * @return A new special fragment name on success, or "" (empty string) on
-   *     error.
-   */
-  std::string new_fragment_name() const;
-
-  /**
-   * Opens the existing fragments.
-   *
-   * @param fragment_names The vector with the fragment names.
-   * @param book_keeping The book-keeping of the array fragments.
-   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
-   */
-  Status open_fragments(
-      const std::vector<std::string>& fragment_names,
-      const std::vector<BookKeeping*>& book_keeping);
+  const ArraySchema* array_schema_;
 };
 
 }  // namespace tiledb

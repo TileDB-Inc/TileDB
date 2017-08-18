@@ -43,7 +43,7 @@
 
 namespace tiledb {
 
-class Array;
+class Query;
 
 /** Describes an AIO (read or write) request. */
 class AIORequest {
@@ -62,7 +62,7 @@ class AIORequest {
   /*             ACCESSORS             */
   /* ********************************* */
 
-  Array* array() const;
+  Query* query() const;
 
   void** buffers() const;
 
@@ -86,15 +86,13 @@ class AIORequest {
   /*             MUTATORS              */
   /* ********************************* */
 
-  void set_array(Array* array);
+  void set_query(Query* query);
 
   void set_buffers(void** buffers);
 
   void set_buffer_sizes(size_t* buffer_sizes);
 
   void set_callback(void* (*completion_handle)(void*), void* completion_data);
-
-  void set_id(size_t id);
 
   void set_mode(QueryMode mode);
 
@@ -119,8 +117,8 @@ class AIORequest {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /** The array to be queried. */
-  Array* array_;
+  Query* query_;
+
   /**
    * An array of buffers, one for each attribute. These must be
    * provided in the same order as the attributes specified in

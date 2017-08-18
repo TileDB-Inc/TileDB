@@ -184,24 +184,6 @@ class StorageManager {
    */
   Status array_finalize(Array* array);
 
-  /**
-   * Syncs all currently written files in the input array.
-   *
-   * @param array The array to be synced.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status array_sync(Array* array);
-
-  /**
-   * Syncs the currently written files associated with the input attribute
-   * in the input array.
-   *
-   * @param array The array to be synced.
-   * @param attribute The name of the attribute to be synced.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status array_sync_attribute(Array* array, const std::string& attribute);
-
   /* ********************************* */
   /*               MISC                */
   /* ********************************* */

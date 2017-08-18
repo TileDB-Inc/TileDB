@@ -39,7 +39,7 @@ namespace tiledb {
 /* ****************************** */
 
 AIORequest::AIORequest() {
-  array_ = nullptr;
+  query_ = nullptr;
   buffers_ = nullptr;
   buffer_sizes_ = nullptr;
   completion_handle_ = nullptr;
@@ -56,8 +56,8 @@ AIORequest::~AIORequest() = default;
 /*           ACCESSORS             */
 /* ****************************** */
 
-Array* AIORequest::array() const {
-  return array_;
+Query* AIORequest::query() const {
+  return query_;
 }
 
 void** AIORequest::buffers() const {
@@ -100,8 +100,8 @@ const void* AIORequest::subarray() const {
 /*           MUTATORS             */
 /* ****************************** */
 
-void AIORequest::set_array(Array* array) {
-  array_ = array;
+void AIORequest::set_query(Query* query) {
+  query_ = query;
 }
 
 void AIORequest::set_buffers(void** buffers) {
@@ -116,10 +116,6 @@ void AIORequest::set_callback(
     void* (*completion_handle)(void*), void* completion_data) {
   completion_handle_ = completion_handle;
   completion_data_ = completion_data;
-}
-
-void AIORequest::set_id(size_t id) {
-  id_ = id;
 }
 
 void AIORequest::set_mode(QueryMode mode) {

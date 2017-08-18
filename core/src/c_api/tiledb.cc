@@ -1236,18 +1236,6 @@ int tiledb_array_init(
   return TILEDB_OK;
 }
 
-int tiledb_array_reset_subarray(
-    const tiledb_array_t* tiledb_array, const void* subarray) {
-  // TODO: sanity checks here
-
-  tiledb_ctx_t* ctx = tiledb_array->ctx_;
-
-  if (save_error(ctx, tiledb_array->array_->reset_subarray(subarray)))
-    return TILEDB_ERR;
-
-  return TILEDB_OK;
-}
-
 tiledb_array_schema_t* tiledb_array_get_schema(
     const tiledb_array_t* tiledb_array) {
   // Sanity check
@@ -1272,7 +1260,8 @@ int tiledb_array_write(
 
   tiledb_ctx_t* ctx = tiledb_array->ctx_;
 
-  if (save_error(ctx, tiledb_array->array_->write(buffers, buffer_sizes)))
+  tiledb::Array* array = tiledb_array->array_;
+  if (save_error(ctx, array->write(array->query_, buffers, buffer_sizes)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1284,7 +1273,8 @@ int tiledb_array_read(
 
   tiledb_ctx_t* ctx = tiledb_array->ctx_;
 
-  if (save_error(ctx, tiledb_array->array_->read(buffers, buffer_sizes)))
+  tiledb::Array* array = tiledb_array->array_;
+  if (save_error(ctx, array->read(array->query_, buffers, buffer_sizes)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
@@ -1294,7 +1284,7 @@ int tiledb_array_overflow(
     const tiledb_array_t* tiledb_array, int attribute_id) {
   // TODO: sanity checks here
 
-  return (int)tiledb_array->array_->overflow(attribute_id);
+  return (int)tiledb_array->array_->query_->overflow(attribute_id);
 }
 
 int tiledb_array_consolidate(tiledb_ctx_t* ctx, const char* array) {
@@ -1451,7 +1441,7 @@ int tiledb_aio_request_set_array(
       sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  aio_request->aio_request_->set_array(array->array_);
+  aio_request->aio_request_->set_query(array->array_->query_);
   aio_request->aio_request_->set_mode(array->array_->query_->mode());
 
   return TILEDB_OK;

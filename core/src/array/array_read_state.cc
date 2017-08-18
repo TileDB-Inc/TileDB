@@ -51,10 +51,10 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ArrayReadState::ArrayReadState(const Array* array)
-    : array_(array) {
+ArrayReadState::ArrayReadState(Query* query)
+    : query_(query) {
   // For easy reference
-  array_schema_ = array_->array_schema();
+  array_schema_ = query->array()->array_schema();
   attribute_num_ = array_schema_->attribute_num();
   coords_size_ = array_schema_->coords_size();
 
@@ -74,7 +74,7 @@ ArrayReadState::ArrayReadState(const Array* array)
   }
 
   // Get fragment read states
-  std::vector<Fragment*> fragments = array_->fragments();
+  std::vector<Fragment*> fragments = query_->fragments();
   fragment_num_ = fragments.size();
   fragment_read_states_.resize(fragment_num_);
   for (int i = 0; i < fragment_num_; ++i)
@@ -107,7 +107,7 @@ ArrayReadState::~ArrayReadState() {
 /* ****************************** */
 
 bool ArrayReadState::overflow() const {
-  int attribute_num = (int)array_->query_->attribute_ids().size();
+  int attribute_num = (int)query_->attribute_ids().size();
   for (int i = 0; i < attribute_num; ++i)
     if (overflow_[i])
       return true;
@@ -143,7 +143,7 @@ Status ArrayReadState::read(void** buffers, size_t* buffer_sizes) {
 
 void ArrayReadState::clean_up_processed_fragment_cell_pos_ranges() {
   // Find the minimum overlapping tile position across all attributes
-  const std::vector<int>& attribute_ids = array_->query_->attribute_ids();
+  const std::vector<int>& attribute_ids = query_->attribute_ids();
   int attribute_id_num = attribute_ids.size();
   int64_t min_pos = fragment_cell_pos_ranges_vec_pos_[0];
   for (int i = 1; i < attribute_id_num; ++i)
@@ -878,7 +878,7 @@ ArrayReadState::FragmentCellRanges ArrayReadState::empty_fragment_cell_ranges()
   int dim_num = array_schema_->dim_num();
   Layout cell_order = array_schema_->cell_order();
   size_t cell_range_size = 2 * coords_size_;
-  const T* subarray = static_cast<const T*>(array_->query_->subarray());
+  const T* subarray = static_cast<const T*>(query_->subarray());
   const T* tile_coords = (const T*)subarray_tile_coords_;
 
   // To return
@@ -1174,7 +1174,7 @@ void ArrayReadState::init_subarray_tile_coords() {
   // For easy reference
   int dim_num = array_schema_->dim_num();
   const T* tile_extents = static_cast<const T*>(array_schema_->tile_extents());
-  const T* subarray = static_cast<const T*>(array_->query_->subarray());
+  const T* subarray = static_cast<const T*>(query_->subarray());
 
   // Sanity checks
   assert(tile_extents != NULL);
@@ -1248,7 +1248,7 @@ void ArrayReadState::get_next_subarray_tile_coords() {
 
 Status ArrayReadState::read_dense(void** buffers, size_t* buffer_sizes) {
   // For easy reference
-  std::vector<int> attribute_ids = array_->query_->attribute_ids();
+  std::vector<int> attribute_ids = query_->attribute_ids();
   int attribute_id_num = attribute_ids.size();
 
   // Read each attribute individually
@@ -1458,7 +1458,7 @@ Status ArrayReadState::read_dense_attr_var(
 
 Status ArrayReadState::read_sparse(void** buffers, size_t* buffer_sizes) {
   // For easy reference
-  std::vector<int> attribute_ids = array_->query_->attribute_ids();
+  std::vector<int> attribute_ids = query_->attribute_ids();
   int attribute_id_num = attribute_ids.size();
 
   // Find the coordinates buffer
