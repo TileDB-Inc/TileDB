@@ -246,11 +246,6 @@ Status StorageManager::array_init(
     const void* subarray,
     const char** attributes,
     int attribute_num) {
-  // For easy reference
-  unsigned name_max_len = Configurator::name_max_len();
-
-  // TODO: length validation should be pushed to the URI object
-
   // Load array schema
   ArraySchema* array_schema = new ArraySchema();
   RETURN_NOT_OK_ELSE(array_schema->load(array_uri), delete array_schema);
@@ -397,6 +392,8 @@ void StorageManager::aio_handle_request(AIORequest* aio_request) {
   // For easy reference
   Query* query = aio_request->query();
   Status st = query->array()->aio_handle_request(aio_request);
+  if (!st.ok())
+    LOG_STATUS(st);
 }
 
 void StorageManager::aio_handle_requests(int i) {

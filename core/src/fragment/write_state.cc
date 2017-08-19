@@ -222,6 +222,7 @@ Status WriteState::sync() {
   } else {
     assert(0);
   }
+
   // Success
   return Status::Ok();
 }

@@ -1447,11 +1447,19 @@ inline int64_t ArraySchema::tile_id(const T* cell_coords) const {
     return 0;
 
   // Calculate tile coordinates
-  T* tile_coords = static_cast<T*>(tile_coords_aux_);
+  // TODO
+  //  T* tile_coords = static_cast<T*>(tile_coords_aux_);
+
+  // TODO: This is VERY inefficient. Fix!
+  T* tile_coords = new T[dim_num_];
+
   for (int i = 0; i < dim_num_; ++i)
     tile_coords[i] = (cell_coords[i] - domain[2 * i]) / tile_extents[i];
 
   int64_t tile_id = get_tile_pos(tile_coords);
+
+  // TODO: remove
+  delete[] tile_coords;
 
   // Return
   return tile_id;

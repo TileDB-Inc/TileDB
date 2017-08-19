@@ -33,7 +33,9 @@
  */
 
 #include "tiledb.h"
+
 #include <cstdio>
+#include <iostream>
 
 int main() {
   // Initialize context with the default configuration parameters
@@ -41,7 +43,7 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Subarray and attributes
-  int64_t subarray[] = { 1, 3, 1, 4 };
+  int64_t subarray[] = { 1, 4, 1, 4 };
   const char* attributes[] = { "a1" };
 
   // Initialize array 
@@ -59,7 +61,6 @@ int main() {
   int buffer_a1[2];
   void* buffers[] = { buffer_a1 };
   size_t buffer_sizes[] = { sizeof(buffer_a1) };
-
 
   // Loop until no overflow
   printf(" a1\n----\n");

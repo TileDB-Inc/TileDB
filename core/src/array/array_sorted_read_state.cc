@@ -1461,8 +1461,7 @@ int64_t ArraySortedReadState::get_tile_id(int aid) {
 void ArraySortedReadState::init_aio_requests() {
   for (int i = 0; i < 2; ++i) {
     aio_data_[i] = {i, 0, this};
-    aio_query_[i] = new Query(query_);
-    aio_request_[i].set_query(aio_query_[i]);
+    aio_request_[i].set_query(nullptr);
     aio_request_[i].set_buffer_sizes(buffer_sizes_tmp_[i]);
     aio_request_[i].set_buffers(buffers_[i]);
     aio_request_[i].set_mode(QueryMode::READ);
@@ -2370,6 +2369,7 @@ Status ArraySortedReadState::read_sparse_sorted_row() {
 
   copy_label_2:  // Resume from the point the copy led to overflow
     resume_copy_2_ = false;
+
     copy_tile_slab_sparse();
 
     if (overflow())
@@ -2451,9 +2451,11 @@ Status ArraySortedReadState::send_aio_request(int id) {
   // Sanity check
   assert(storage_manager != NULL);
 
-  delete aio_query_[id];
+  if (aio_query_[id] != nullptr)
+    delete aio_query_[id];
   aio_query_[id] =
       new Query(query_, aio_request_[id].mode(), aio_request_[id].subarray());
+
   aio_request_[id].set_query(aio_query_[id]);
 
   // Send the AIO request to the clone array

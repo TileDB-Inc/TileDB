@@ -361,6 +361,7 @@ struct SparseArrayFx {
         return false;
       }
     }
+
     return true;
   }
 };

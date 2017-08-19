@@ -48,8 +48,8 @@ Array::Array() {
 }
 
 Array::~Array() {
-  delete array_schema_;
   delete query_;
+  delete array_schema_;
 }
 
 /* ****************************** */
@@ -62,7 +62,6 @@ StorageManager* Array::storage_manager() const {
 
 Status Array::aio_handle_request(AIORequest* aio_request) {
   Status st;
-
   Query* query = aio_request->query();
 
   if (is_read_mode(aio_request->mode())) {  // READ MODE
@@ -340,7 +339,8 @@ Status Array::write(
   } else {
     assert(0);
   }
-  // In all modes except TILEDB_ARRAY_WRITE, the fragment must be finalized
+
+  // In all modes except WRITE, the fragment must be finalized
   if (mode != QueryMode::WRITE)
     query->clear_fragments();
 

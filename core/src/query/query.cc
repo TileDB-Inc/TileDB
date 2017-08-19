@@ -49,27 +49,11 @@ Query::Query() {
   array_sorted_write_state_ = nullptr;
 }
 
-Query::Query(const Query* query) {
-  mode_ = query->mode_;
-  attribute_ids_ = query->attribute_ids_;
-  array_ = query->array_;
-
-  if (!set_subarray(query->subarray_).ok())
-    return;
-
-  if (!array_->array_schema()->dense())
-    add_coords();
-
-  init_states();
-
-  Status st;
-  if (is_write_mode(mode_))
-    new_fragment();
-  else
-    open_fragments(query->fragments_);
-}
-
 Query::Query(const Query* query, QueryMode mode, const void* subarray) {
+  subarray_ = nullptr;
+  array_read_state_ = nullptr;
+  array_sorted_read_state_ = nullptr;
+  array_sorted_write_state_ = nullptr;
   mode_ = mode;
   attribute_ids_ = query->attribute_ids_;
   array_ = query->array_;
@@ -80,24 +64,13 @@ Query::Query(const Query* query, QueryMode mode, const void* subarray) {
   if (!array_->array_schema()->dense())
     add_coords();
 
-  init_states();
-
   Status st;
-  if (is_write_mode(mode_))
+  if (mode_ == QueryMode::WRITE)
     new_fragment();
   else
     open_fragments(query->fragments_);
-}
 
-Status Query::open_fragments(const std::vector<Fragment*>& fragments) {
-  for (auto& fragment : fragments) {
-    // Create a fragment object for each fragment directory
-    Fragment* new_fragment = new Fragment(array_);
-    RETURN_NOT_OK(
-        fragment->init(fragment->fragment_uri(), fragment->bookkeeping()));
-    fragments_.emplace_back(new_fragment);
-  }
-  return Status::Ok();
+  init_states();
 }
 
 Query::~Query() {
@@ -170,12 +143,21 @@ Status Query::init(
   array_ = array;
   mode_ = mode;
 
+  RETURN_NOT_OK(set_attributes(attributes, attribute_num));
+  RETURN_NOT_OK(set_subarray(subarray));
+  RETURN_NOT_OK(init_fragments(fragment_names, bookkeeping));
+  RETURN_NOT_OK(init_states());
+
+  return Status::Ok();
+}
+
+Status Query::set_attributes(const char** attributes, int attribute_num) {
   // Get attributes
   std::vector<std::string> attributes_vec;
   const ArraySchema* array_schema = array_->array_schema();
   if (attributes == nullptr) {  // Default: all attributes
     attributes_vec = array_schema->attributes();
-    if (array_schema->dense() && mode != QueryMode::WRITE_UNSORTED)
+    if (array_schema->dense() && mode_ != QueryMode::WRITE_UNSORTED)
       // Remove coordinates attribute for dense arrays,
       // unless in TILEDB_WRITE_UNSORTED mode
       attributes_vec.pop_back();
@@ -199,40 +181,32 @@ Status Query::init(
   RETURN_NOT_OK(
       array_schema->get_attribute_ids(attributes_vec, attribute_ids_));
 
-  RETURN_NOT_OK(set_subarray(subarray));
-
-  RETURN_NOT_OK(init_states());
-
-  RETURN_NOT_OK(init_fragments(fragment_names, bookkeeping));
-
   return Status::Ok();
 }
 
 Status Query::init_states() {
   // Initialize new fragment if needed
-  if (is_write_mode(mode_)) {  // WRITE MODE
-    // Create ArraySortedWriteState
-    if (mode_ == QueryMode::WRITE_SORTED_COL ||
-        mode_ == QueryMode::WRITE_SORTED_ROW) {
-      array_sorted_write_state_ = new ArraySortedWriteState(this);
-      Status st = array_sorted_write_state_->init();
-      if (!st.ok()) {
-        delete array_sorted_write_state_;
-        array_sorted_write_state_ = nullptr;
-        return st;
-      }
-    } else {
+  if (mode_ == QueryMode::WRITE_SORTED_COL ||
+      mode_ == QueryMode::WRITE_SORTED_ROW) {
+    array_sorted_write_state_ = new ArraySortedWriteState(this);
+    Status st = array_sorted_write_state_->init();
+    if (!st.ok()) {
+      delete array_sorted_write_state_;
       array_sorted_write_state_ = nullptr;
+      return st;
     }
-  } else {  // READ MODE
-    // Create ArrayReadState
+  } else if (mode_ == QueryMode::READ) {
     array_read_state_ = new ArrayReadState(this);
-
-    // Create ArraySortedReadState
-    if (mode_ != QueryMode::READ) {
-      array_sorted_read_state_ = new ArraySortedReadState(this);
-      RETURN_NOT_OK_ELSE(
-          array_sorted_read_state_->init(), delete array_sorted_read_state_);
+  } else if (
+      mode_ == QueryMode::READ_SORTED_COL ||
+      mode_ == QueryMode::READ_SORTED_ROW) {
+    array_read_state_ = new ArrayReadState(this);
+    array_sorted_read_state_ = new ArraySortedReadState(this);
+    Status st = array_sorted_read_state_->init();
+    if (!st.ok()) {
+      delete array_sorted_read_state_;
+      array_sorted_read_state_ = nullptr;
+      return st;
     }
   }
 
@@ -242,9 +216,9 @@ Status Query::init_states() {
 Status Query::init_fragments(
     const std::vector<std::string>& fragment_names,
     const std::vector<BookKeeping*>& bookkeeping) {
-  if (is_write_mode(mode_)) {
+  if (mode_ == QueryMode::WRITE) {
     RETURN_NOT_OK(new_fragment());
-  } else {
+  } else if (is_read_mode(mode_)) {
     RETURN_NOT_OK(open_fragments(fragment_names, bookkeeping));
   }
 
@@ -258,7 +232,7 @@ Status Query::new_fragment() {
     return LOG_STATUS(Status::QueryError("Cannot produce new fragment name"));
 
   // Create new fragment
-  Fragment* fragment = new Fragment(array_);
+  Fragment* fragment = new Fragment(this);
   RETURN_NOT_OK_ELSE(
       fragment->init(new_fragment_name, subarray_), delete fragment);
   fragments_.push_back(fragment);
@@ -352,7 +326,7 @@ Status Query::write_default(const void** buffers, const size_t* buffer_sizes) {
     }
 
     // Create new fragment
-    Fragment* fragment = new Fragment(array_);
+    Fragment* fragment = new Fragment(this);
     fragments_.push_back(fragment);
     RETURN_NOT_OK(fragment->init(new_fragment_name, subarray_));
   }
@@ -411,9 +385,20 @@ Status Query::open_fragments(
   // Create a fragment object for each fragment directory
   int fragment_num = fragment_names.size();
   for (int i = 0; i < fragment_num; ++i) {
-    Fragment* fragment = new Fragment(array_);
-    fragments_.push_back(fragment);
+    Fragment* fragment = new Fragment(this);
     RETURN_NOT_OK(fragment->init(fragment_names[i], book_keeping[i]));
+    fragments_.emplace_back(fragment);
+  }
+  return Status::Ok();
+}
+
+Status Query::open_fragments(const std::vector<Fragment*>& fragments) {
+  for (auto& fragment : fragments) {
+    // Create a fragment object for each fragment directory
+    Fragment* new_fragment = new Fragment(this);
+    RETURN_NOT_OK(
+        new_fragment->init(fragment->fragment_uri(), fragment->bookkeeping()));
+    fragments_.emplace_back(new_fragment);
   }
   return Status::Ok();
 }

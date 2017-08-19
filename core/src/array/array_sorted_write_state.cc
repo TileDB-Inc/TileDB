@@ -1411,8 +1411,24 @@ void ArraySortedWriteState::init_aio_requests() {
   // Initialize AIO requests
   for (int i = 0; i < 2; ++i) {
     aio_data_[i] = {i, 0, this};
-    aio_query_[i] = new Query(query_);
-    aio_request_[i].set_query(aio_query_[i]);
+
+    if (i == 0) {
+      aio_query_[i] = new Query(
+          query_,
+          QueryMode::WRITE,
+          (separate_fragments) ? tile_slab_[i] : subarray);
+    } else {
+      if (separate_fragments)
+        aio_query_[i] = new Query(
+            query_,
+            QueryMode::WRITE,
+            (separate_fragments) ? tile_slab_[i] : subarray);
+      else
+        aio_query_[i] = nullptr;
+    }
+
+    aio_request_[i].set_query(
+        (separate_fragments) ? aio_query_[i] : aio_query_[0]);
     aio_request_[i].set_buffer_sizes(copy_state_.buffer_offsets_[i]);
     aio_request_[i].set_buffers(copy_state_.buffers_[i]);
     aio_request_[i].set_mode(QueryMode::WRITE);
@@ -1759,7 +1775,6 @@ Status ArraySortedWriteState::send_aio_request(int id) {
   // Sanity check
   assert(storage_manager != NULL);
 
-  // TODO: if separate fragments, delete query and create a new one
   if (separate_fragments()) {
     delete aio_query_[id];
     aio_query_[id] =

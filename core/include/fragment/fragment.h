@@ -44,6 +44,7 @@
 namespace tiledb {
 
 class Array;
+class Query;
 class BookKeeping;
 class ReadState;
 class WriteState;
@@ -60,7 +61,7 @@ class Fragment {
    *
    * @param array The array the fragment belongs to.
    */
-  Fragment(const Array* array);
+  Fragment(Query* query);
 
   /** Destructor. */
   ~Fragment();
@@ -90,7 +91,7 @@ class Fragment {
   /** Returns the read state of the fragment. */
   ReadState* read_state() const;
 
-  const BookKeeping* bookkeeping() const {
+  BookKeeping* bookkeeping() const {
     return book_keeping_;
   }
 
@@ -179,8 +180,7 @@ class Fragment {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /** The array the fragment belongs to. */
-  const Array* array_;
+  Query* query_;
 
   /** The fragment book-keeping. */
   BookKeeping* book_keeping_;

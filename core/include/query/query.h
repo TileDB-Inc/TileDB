@@ -59,8 +59,6 @@ class Query {
 
   Query();
 
-  Query(const Query* query);
-
   Query(const Query* query, QueryMode mode, const void* subarray);
 
   ~Query();
@@ -147,6 +145,8 @@ class Query {
   /* ********************************* */
 
   Status set_subarray(const void* subarray);
+
+  Status set_attributes(const char** attributes, int attribute_num);
 
   Status init_states();
   Status init_fragments(

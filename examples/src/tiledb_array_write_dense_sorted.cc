@@ -41,7 +41,7 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Set the subarray where the write will focus on
-  int64_t subarray[] = { 3, 4, 2, 4 };
+  int64_t subarray[] = { 2, 3, 2, 4 };
 
   // Initialize array
   tiledb_array_t* tiledb_array;

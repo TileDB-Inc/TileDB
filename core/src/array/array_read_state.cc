@@ -32,11 +32,12 @@
  */
 
 #include "array_read_state.h"
-#include <cassert>
-#include <cmath>
 #include "configurator.h"
 #include "logger.h"
 #include "utils.h"
+
+#include <cassert>
+#include <cmath>
 
 /* ****************************** */
 /*             MACROS             */
@@ -96,9 +97,9 @@ ArrayReadState::~ArrayReadState() {
     if (fragment_bounding_coords_[i] != nullptr)
       free(fragment_bounding_coords_[i]);
 
-  int64_t fragment_cell_pos_ranges_vec_size =
+  uint64_t fragment_cell_pos_ranges_vec_size =
       fragment_cell_pos_ranges_vec_.size();
-  for (int64_t i = 0; i < fragment_cell_pos_ranges_vec_size; ++i)
+  for (uint64_t i = 0; i < fragment_cell_pos_ranges_vec_size; ++i)
     delete fragment_cell_pos_ranges_vec_[i];
 }
 
@@ -231,7 +232,7 @@ void ArrayReadState::compute_min_bounding_coords_end() {
   // For easy reference
   int dim_num = array_schema_->dim_num();
 
-  // Allocate memeory
+  // Allocate memory
   if (min_bounding_coords_end_ == nullptr)
     min_bounding_coords_end_ = malloc(coords_size_);
   T* min_bounding_coords_end = static_cast<T*>(min_bounding_coords_end_);
@@ -859,7 +860,7 @@ void ArrayReadState::copy_cells_with_empty_var_generic(
     memcpy(buffer_c + buffer_offset, &buffer_var_offset, cell_size);
     buffer_offset += cell_size;
     memcpy(buffer_var_c + buffer_var_offset, empty_type_value, empty_type_size);
-    buffer_var_offset += cell_size_var;
+    buffer_var_offset += empty_type_size;
   }
   empty_cells_written_[attribute_id] += cell_num_to_copy;
 
@@ -1128,6 +1129,7 @@ void ArrayReadState::get_next_overlapping_tiles_sparse() {
       fragment_read_states_[i]->get_next_overlapping_tile_sparse<T>();
       if (!fragment_read_states_[i]->done()) {
         fragment_bounding_coords_[i] = malloc(2 * coords_size_);
+        assert(fragment_bounding_coords_[i] != NULL);
         fragment_read_states_[i]->get_bounding_coords(
             fragment_bounding_coords_[i]);
         done_ = false;
@@ -1138,7 +1140,7 @@ void ArrayReadState::get_next_overlapping_tiles_sparse() {
   } else {
     // Get the next overlapping tile for the appropriate fragments
     for (int i = 0; i < fragment_num_; ++i) {
-      // Get next overlappint tile
+      // Get next overlapping tile
       T* fragment_bounding_coords =
           static_cast<T*>(fragment_bounding_coords_[i]);
       if (fragment_bounding_coords_[i] != nullptr &&
@@ -1344,6 +1346,7 @@ Status ArrayReadState::read_dense_attr(
       return Status::Ok();
     }
   }
+
   return Status::Ok();
 }
 
@@ -1732,9 +1735,9 @@ Status ArrayReadState::sort_fragment_cell_ranges(
 
   // For easy reference
   int dim_num = array_schema_->dim_num();
-  const T* domain = static_cast<const T*>(array_schema_->domain());
-  const T* tile_extents = static_cast<const T*>(array_schema_->tile_extents());
-  const T* tile_coords = static_cast<const T*>(subarray_tile_coords_);
+  auto domain = static_cast<const T*>(array_schema_->domain());
+  auto tile_extents = static_cast<const T*>(array_schema_->tile_extents());
+  auto tile_coords = static_cast<const T*>(subarray_tile_coords_);
 
   // Compute tile domain
   // This is non-NULL only in the dense array case

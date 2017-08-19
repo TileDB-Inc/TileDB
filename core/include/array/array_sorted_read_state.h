@@ -130,7 +130,7 @@ class ArraySortedReadState {
    *
    * @param array The array this array sorted read state belongs to.
    */
-  ArraySortedReadState(Query* query);
+  explicit ArraySortedReadState(Query* query);
 
   /** Destructor. */
   ~ArraySortedReadState();
