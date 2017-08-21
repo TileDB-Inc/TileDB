@@ -37,13 +37,13 @@
 #include <cstdio>
 
 #include "aio_status.h"
-#include "array_mode.h"
+#include "query_mode.h"
 #include "status.h"
 #include "tiledb.h"
 
 namespace tiledb {
 
-class Array;
+class Query;
 
 /** Describes an AIO (read or write) request. */
 class AIORequest {
@@ -62,7 +62,7 @@ class AIORequest {
   /*             ACCESSORS             */
   /* ********************************* */
 
-  Array* array() const;
+  Query* query() const;
 
   void** buffers() const;
 
@@ -74,7 +74,7 @@ class AIORequest {
 
   bool has_callback() const;
 
-  ArrayMode mode() const;
+  QueryMode mode() const;
 
   bool* overflow() const;
 
@@ -86,7 +86,7 @@ class AIORequest {
   /*             MUTATORS              */
   /* ********************************* */
 
-  void set_array(Array* array);
+  void set_query(Query* query);
 
   void set_buffers(void** buffers);
 
@@ -94,9 +94,7 @@ class AIORequest {
 
   void set_callback(void* (*completion_handle)(void*), void* completion_data);
 
-  void set_id(size_t id);
-
-  void set_mode(ArrayMode mode);
+  void set_mode(QueryMode mode);
 
   void set_status(AIOStatus status);
 
@@ -119,8 +117,8 @@ class AIORequest {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /** The array to be queried. */
-  Array* array_;
+  Query* query_;
+
   /**
    * An array of buffers, one for each attribute. These must be
    * provided in the same order as the attributes specified in
@@ -153,7 +151,7 @@ class AIORequest {
    *    - WRITE
    *    - WRITE_UNSORTED
    */
-  ArrayMode mode_;
+  QueryMode mode_;
   /**
    * Applicable only to read requests.
    * Indicates whether a buffer has overflowed during a read request.

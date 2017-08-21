@@ -38,9 +38,7 @@ void print_dir_type(int type) {
     std::cout << "Group\n";
   else if(type == TILEDB_ARRAY) 
     std::cout << "Array\n";
-  else if(type == TILEDB_METADATA) 
-    std::cout << "Metadata\n";
-  else if(type == -1) 
+  else if(type == -1)
     std::cout << "Not a TileDB object\n";
   else 
     std::cout << "Unknown directory type\n";

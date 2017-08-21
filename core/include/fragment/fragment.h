@@ -44,6 +44,7 @@
 namespace tiledb {
 
 class Array;
+class Query;
 class BookKeeping;
 class ReadState;
 class WriteState;
@@ -60,7 +61,7 @@ class Fragment {
    *
    * @param array The array the fragment belongs to.
    */
-  Fragment(const Array* array);
+  Fragment(Query* query);
 
   /** Destructor. */
   ~Fragment();
@@ -87,23 +88,18 @@ class Fragment {
   /** Returns the fragment uri. */
   const uri::URI& fragment_uri() const;
 
-  /** Returns the mode of the fragment. */
-  ArrayMode mode() const;
-
-  /** Returns true if the array is in read mode. */
-  bool read_mode() const;
-
   /** Returns the read state of the fragment. */
   ReadState* read_state() const;
+
+  BookKeeping* bookkeeping() const {
+    return book_keeping_;
+  }
 
   /**
    * Returns the tile size for a given attribute (TILEDB_VAR_SIZE in case
    * of a variable-sized attribute.
    */
   size_t tile_size(int attribute_id) const;
-
-  /** Returns true if the array is in write mode. */
-  bool write_mode() const;
 
   /* ********************************* */
   /*              MUTATORS             */
@@ -116,25 +112,8 @@ class Fragment {
    */
   Status finalize();
 
-  /**
-   * Initializes a fragment in write mode.
-   *
-   * @param fragment_uri fragment uri identifier.
-   * @param mode The fragment mode. It can be one of the following:
-   *    - ArrayMode::WRITE
-   *    - ArrayMode::WRITE_UNSORTED
-   * @param subarray The subarray the fragment is constrained on.
-   * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
-   */
-  Status init(const uri::URI& uri, ArrayMode mode, const void* subarray);
+  Status init(const uri::URI& uri, const void* subarray = nullptr);
 
-  /**
-   * Initializes a fragment in read mode.
-   *
-   * @param fragment_name The name that will be given to the fragment.
-   * @param book_keeping The book-keeping of the fragment.
-   * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
-   */
   Status init(const uri::URI& uri, BookKeeping* book_keeping);
 
   /** Resets the read state (typically to start a new read). */
@@ -201,23 +180,20 @@ class Fragment {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /** The array the fragment belongs to. */
-  const Array* array_;
+  Query* query_;
+
   /** The fragment book-keeping. */
   BookKeeping* book_keeping_;
+
   /** Indicates whether the fragment is dense or sparse. */
   bool dense_;
+
   /** The fragment name. */
   uri::URI fragment_uri_;
-  /**
-   * The fragment mode. It must be one of the following:
-   *    - TILEDB_WRITE
-   *    - TILEDB_WRITE_UNSORTED
-   *    - TILEDB_READ
-   */
-  ArrayMode mode_;
+
   /** The fragment read state. */
   ReadState* read_state_;
+
   /** The fragment write state. */
   WriteState* write_state_;
 };

@@ -49,14 +49,10 @@ namespace tiledb {
 /* ****************************** */
 
 BookKeeping::BookKeeping(
-    const ArraySchema* array_schema,
-    bool dense,
-    const uri::URI& fragment_uri,
-    ArrayMode mode)
+    const ArraySchema* array_schema, bool dense, const uri::URI& fragment_uri)
     : array_schema_(array_schema)
     , dense_(dense)
-    , fragment_uri_(fragment_uri)
-    , mode_(mode) {
+    , fragment_uri_(fragment_uri) {
   domain_ = nullptr;
   non_empty_domain_ = nullptr;
 }
@@ -119,10 +115,6 @@ const void* BookKeeping::non_empty_domain() const {
   return non_empty_domain_;
 }
 
-inline bool BookKeeping::read_mode() const {
-  return is_read_mode(mode_);
-}
-
 int64_t BookKeeping::tile_num() const {
   if (dense_) {
     return array_schema_->tile_num(domain_);
@@ -141,10 +133,6 @@ const std::vector<std::vector<off_t>>& BookKeeping::tile_var_offsets() const {
 
 const std::vector<std::vector<size_t>>& BookKeeping::tile_var_sizes() const {
   return tile_var_sizes_;
-}
-
-inline bool BookKeeping::write_mode() const {
-  return is_write_mode(mode_);
 }
 
 /* ****************************** */
@@ -214,11 +202,7 @@ void BookKeeping::append_tile_var_size(int attribute_id, size_t size) {
  *     tile_var_sizes_attr#<attribute_num-1>_#2 (size_t) ...
  * last_tile_cell_num(int64_t)
  */
-Status BookKeeping::finalize() {
-  // Nothing to do in READ mode
-  if (read_mode())
-    return Status::Ok();
-
+Status BookKeeping::flush() {
   // Do nothing if the fragment directory does not exist (fragment empty)
   if (!utils::fragment_exists(fragment_uri_))
     return Status::Ok();

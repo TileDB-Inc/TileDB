@@ -42,11 +42,8 @@
 #include <thread>
 
 #include "array.h"
-#include "array_iterator.h"
 #include "array_schema.h"
 #include "configurator.h"
-#include "metadata.h"
-#include "metadata_iterator.h"
 #include "status.h"
 #include "uri.h"
 
@@ -58,7 +55,7 @@ namespace tiledb {
 
 /**
  * The storage manager, which is repsonsible for creating, deleting, etc. of
- * TileDB objects (i.e., groups, arrays and metadata).
+ * TileDB objects (i.e., groups, arrays).
  */
 class StorageManager {
  public:
@@ -174,7 +171,7 @@ class StorageManager {
   Status array_init(
       Array*& array,
       const uri::URI& array_uri,
-      ArrayMode mode,
+      QueryMode mode,
       const void* subarray,
       const char** attributes,
       int attribute_num);
@@ -186,182 +183,6 @@ class StorageManager {
    * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
    */
   Status array_finalize(Array* array);
-
-  /**
-   * Syncs all currently written files in the input array.
-   *
-   * @param array The array to be synced.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status array_sync(Array* array);
-
-  /**
-   * Syncs the currently written files associated with the input attribute
-   * in the input array.
-   *
-   * @param array The array to be synced.
-   * @param attribute The name of the attribute to be synced.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status array_sync_attribute(Array* array, const std::string& attribute);
-
-  /**
-   * Initializes an array iterator for reading cells, potentially constraining
-   * it on a subset of attributes, as well as a subarray. The cells will be read
-   * in the order they are stored on the disk, maximing performance.
-   *
-   * @param array_it The TileDB array iterator to be created. The
-   *    function will allocate the appropriate memory space for the iterator.
-   * @param array The directory of the array the iterator is initialized for.
-   * @param mode The read mode, which can be one of the following:
-   *    - TILEDB_ARRAY_READ\n
-   *      Reads the cells in the native order they are stored on the disk.
-   *    - TILEDB_ARRAY_READ_SORTED_COL\n
-   *      Reads the cells in column-major order within the specified subarray.
-   *    - TILEDB_ARRAY_READ_SORTED_ROW\n
-   *      Reads the cells in column-major order within the specified subarray.
-   * @param subarray The subarray in which the array iterator will be
-   *     constrained on. If it is NULL, then the subarray is set to the entire
-   *     array domain.
-   * @param attributes A subset of the array attributes the iterator will be
-   *     constrained on. A NULL value indicates **all** attributes (including
-   *     the coordinates in the case of sparse arrays).
-   * @param attribute_num The number of the input attributes. If *attributes* is
-   *     NULL, then this should be set to 0.
-   * @param buffers This is an array of buffers similar to tiledb_array_read.
-   *     It is the user that allocates and provides buffers that the iterator
-   *     will use for internal buffering of the read cells. The iterator will
-   *     read from the disk the relevant cells in batches, by fitting as many
-   *     cell values as possible in the user buffers. This gives the user the
-   *     flexibility to control the prefetching for optimizing performance
-   *     depending on the application.
-   * @param buffer_sizes The corresponding sizes (in bytes) of the allocated
-   *     memory space for *buffers*. The function will prefetch from the
-   *     disk as many cells as can fit in the buffers, whenever it finishes
-   *     iterating over the previously prefetched data.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status array_iterator_init(
-      ArrayIterator*& array_it,
-      const uri::URI& array_uri,
-      ArrayMode mode,
-      const void* subarray,
-      const char** attributes,
-      int attribute_num,
-      void** buffers,
-      size_t* buffer_sizes);
-
-  /**
-   * Finalizes an array iterator, properly freeing the allocating memory space.
-   *
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status array_iterator_finalize(ArrayIterator* array_it);
-
-  /* ********************************* */
-  /*              METADATA             */
-  /* ********************************* */
-
-  /**
-   * Consolidates the fragments of a metadata object into a single fragment.
-   *
-   * @param metadata_dir The name of the metadata to be consolidated.
-   * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
-   */
-  Status metadata_consolidate(const uri::URI& metadata_uri);
-
-  /**
-   * Creates a new TileDB metadata object.
-   *
-   * @param metadata_schema The metadata schema.
-   * @return Status.
-   */
-  Status metadata_create(MetadataSchema* metadata_schema) const;
-
-  /**
-   * Loads the schema of a metadata object from the disk, allocating appropriate
-   * memory space for it.
-   *
-   * @param metadata_dir The directory of the metadata.
-   * @param array_schema The schema to be loaded.
-   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
-   */
-  Status metadata_load_schema(
-      const uri::URI& metadata_uri, ArraySchema*& array_schema) const;
-
-  /**
-   * Initializes a TileDB metadata object.
-   *
-   * @param metadata The metadata object to be initialized. The function
-   *     will allocate memory space for it.
-   * @param metadata_dir The directory of the metadata.
-   * @param mode The mode of the metadata. It must be one of the following:
-   *    - TILEDB_METADATA_WRITE
-   *    - TILEDB_METADATA_READ
-   * @param attributes A subset of the metadata attributes the read/write will
-   *     be constrained on. A NULL value indicates **all** attributes (including
-   *     the key as an extra attribute in the end).
-   * @param attribute_num The number of the input attributes. If *attributes* is
-   *     NULL, then this should be set to 0.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status metadata_init(
-      Metadata*& metadata,
-      const uri::URI& metadata_uri,
-      tiledb_metadata_mode_t mode,
-      const char** attributes,
-      int attribute_num);
-
-  /**
-   * Finalizes a TileDB metadata object, properly freeing the memory space.
-   *
-   * @param metadata The metadata to be finalized.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status metadata_finalize(Metadata* metadata);
-
-  /**
-   * Initializes a metadata iterator, potentially constraining it
-   * on a subset of attributes. The values will be read in the order they are
-   * stored on the disk, maximing performance.
-   *
-   * @param metadata_it The TileDB metadata iterator to be created. The
-   *     function will allocate the appropriate memory space for the iterator.
-   * @param metadata_dir The directory of the metadata the iterator is
-   *     initialized for.
-   * @param attributes A subset of the metadata attributes the iterator will be
-   *     constrained on. A NULL value indicates **all** attributes (including
-   *     the key as an extra attribute in the end).
-   * @param attribute_num The number of the input attributes. If *attributes* is
-   *     NULL, then this should be set to 0.
-   * @param buffers This is an array of buffers similar to tiledb_metadata_read.
-   *     It is the user that allocates and provides buffers that the iterator
-   *     will use for internal buffering of the read values. The iterator will
-   *     read from the disk the values in batches, by fitting as many
-   *     values as possible in the user buffers. This gives the user the
-   *     flexibility to control the prefetching for optimizing performance
-   *     depending on the application.
-   * @param buffer_sizes The corresponding sizes (in bytes) of the allocated
-   *     memory space for *buffers*. The function will prefetch from the
-   *     disk as many cells as can fit in the buffers, whenever it finishes
-   *     iterating over the previously prefetched data.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status metadata_iterator_init(
-      MetadataIterator*& metadata_it,
-      const uri::URI& metadata_uri,
-      const char** attributes,
-      int attribute_num,
-      void** buffers,
-      size_t* buffer_sizes);
-
-  /**
-   * Finalizes the iterator, properly freeing the allocating memory space.
-   *
-   * @param metadata_it The TileDB metadata iterator.
-   * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
-   */
-  Status metadata_iterator_finalize(MetadataIterator* metadata_it);
 
   /* ********************************* */
   /*               MISC                */
@@ -413,7 +234,7 @@ class StorageManager {
 
   /**
    * Clears a TileDB directory. The corresponding TileDB object
-   * (group, array, or metadata) will still exist after the execution of the
+   * (group, array) will still exist after the execution of the
    * function, but it will be empty (i.e., as if it was just created).
    *
    * @param dir The directory to be cleared.
@@ -422,7 +243,7 @@ class StorageManager {
   Status clear(const uri::URI& uri) const;
 
   /**
-   * Deletes a TileDB directory (group, array, or metadata) entirely.
+   * Deletes a TileDB directory (group, array) entirely.
    *
    * @param dir The directory to be deleted.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
@@ -430,7 +251,7 @@ class StorageManager {
   Status delete_entire(const uri::URI& uri);
 
   /**
-   * Moves a TileDB directory (group, array or metadata).
+   * Moves a TileDB directory (group, array).
    *
    * @param old_dir The old directory.
    * @param new_dir The new directory.
@@ -594,7 +415,7 @@ class StorageManager {
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
       std::vector<BookKeeping*>& book_keeping,
-      ArrayMode mode);
+      QueryMode mode);
 
   /**
    * Moves a TileDB array.
@@ -618,14 +439,14 @@ class StorageManager {
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
   Status array_open(
-      const uri::URI& array_name, OpenArray*& open_array, ArrayMode mode);
+      const uri::URI& array_name, OpenArray*& open_array, QueryMode mode);
 
   /**
    * Creates a special file that serves as lock needed for implementing
    * thread- and process-safety during consolidation. The file is
-   * created inside an array or metadata directory.
+   * created inside an array directory.
    *
-   * @param dir The array or metadata directory the filelock is created for.
+   * @param dir The array directory the filelock is created for.
    * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
    */
   Status consolidation_lock_create(const std::string& dir) const;
@@ -688,34 +509,6 @@ class StorageManager {
    * @return Status
    */
   Status group_move(const uri::URI& old_group, const uri::URI& new_group) const;
-
-  /**
-   * Clears a TileDB metadata object. The metadata will still exist after the
-   * execution of the function, but it will be empty (i.e., as if it was just
-   * created).
-   *
-   * @param metadata The metadata to be cleared.
-   * @return Status
-   */
-  Status metadata_clear(const uri::URI& metadata) const;
-
-  /**
-   * Deletes a TileDB metadata object entirely.
-   *
-   * @param metadata The metadata to be deleted.
-   * @return Status
-   */
-  Status metadata_delete(const uri::URI& metadata) const;
-
-  /**
-   * Moves a TileDB metadata object.
-   *
-   * @param old_metadata The old metadata directory.
-   * @param new_metadata The new metadata directory.
-   * @return Status
-   */
-  Status metadata_move(
-      const uri::URI& old_metadata, const uri::URI& new_metadata) const;
 
   /**
    * Appropriately sorts the fragment names based on their name timestamps.

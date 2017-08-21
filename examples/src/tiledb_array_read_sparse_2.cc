@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
   tiledb_ctx_create(&ctx);
 
   // Subarray and attributes
-  int64_t subarray[] = { 3, 4, 2, 4 }; 
+  int64_t subarray[] = { 1, 4, 1, 4 };
   const char* attributes[] = { "a1" };
 
   // Initialize array 
@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
       1);                                               // Number of attributes
 
   // Prepare cell buffers 
-  int buffer_a1[2];
+  int buffer_a1[10];
   void* buffers[] = { buffer_a1 };
   size_t buffer_sizes[] = { sizeof(buffer_a1) };
 
@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
     tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
 
     // Print cell values
-    int64_t result_num = buffer_sizes[0] / sizeof(int);
+    uint64_t result_num = buffer_sizes[0] / sizeof(int);
     for(int i=0; i<result_num; ++i)
       printf("%3d\n", buffer_a1[i]);
   } while(tiledb_array_overflow(tiledb_array, 0) == 1);

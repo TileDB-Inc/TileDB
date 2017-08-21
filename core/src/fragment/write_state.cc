@@ -159,7 +159,8 @@ Status WriteState::sync() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
-  const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
+  const std::vector<int>& attribute_ids =
+      fragment_->array()->query_->attribute_ids();
   IOMethod write_method = fragment_->array()->config()->write_method();
 #ifdef HAVE_MPI
   MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
@@ -221,6 +222,7 @@ Status WriteState::sync() {
   } else {
     assert(0);
   }
+
   // Success
   return Status::Ok();
 }
@@ -296,13 +298,15 @@ Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
   if (!vfs::is_dir(fragment_name))
     RETURN_NOT_OK(vfs::create_dir(fragment_name));
 
+  QueryMode mode = fragment_->array()->query_->mode();
+
   // Dispatch the proper write command
-  if (fragment_->mode() == ArrayMode::WRITE ||
-      fragment_->mode() == ArrayMode::WRITE_SORTED_COL ||
-      fragment_->mode() == ArrayMode::WRITE_SORTED_ROW) {  // SORTED
+  if (mode == QueryMode::WRITE || mode == QueryMode::WRITE_SORTED_COL ||
+      mode == QueryMode::WRITE_SORTED_ROW) {  // SORTED
     // For easy reference
     const ArraySchema* array_schema = fragment_->array()->array_schema();
-    const std::vector<int>& attribute_ids = fragment_->array()->attribute_ids();
+    const std::vector<int>& attribute_ids =
+        fragment_->array()->query_->attribute_ids();
     int attribute_id_num = attribute_ids.size();
 
     // Write each attribute individually
@@ -325,7 +329,7 @@ Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
 
     // Success
     return Status::Ok();
-  } else if (fragment_->mode() == ArrayMode::WRITE_UNSORTED) {  // UNSORTED
+  } else if (mode == QueryMode::WRITE_UNSORTED) {  // UNSORTED
     return write_sparse_unsorted(buffers, buffer_sizes);
   } else {
     return LOG_STATUS(
@@ -660,12 +664,12 @@ Status WriteState::write_sparse_unsorted(
   // For easy reference
   const Array* array = fragment_->array();
   const ArraySchema* array_schema = array->array_schema();
-  const std::vector<int>& attribute_ids = array->attribute_ids();
+  const std::vector<int>& attribute_ids = array->query_->attribute_ids();
   int attribute_id_num = (int)attribute_ids.size();
 
   // Find the coordinates buffer
   int coords_buffer_i = -1;
-  RETURN_NOT_OK(array->coords_buffer_i(&coords_buffer_i));
+  RETURN_NOT_OK(array->query_->coords_buffer_i(&coords_buffer_i));
 
   // Sort cell positions
   std::vector<int64_t> cell_pos;

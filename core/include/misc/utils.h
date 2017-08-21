@@ -322,30 +322,11 @@ bool is_group(const std::string& dir);
 bool is_group(const uri::URI& uri);
 
 /**
- * Checks if the input directory is a metadata object.
- *
- * @param dir The directory to be checked.
- * @return *true* if the directory is a metadata object, and *false* otherwise.
- */
-bool is_metadata(const std::string& dir);
-
-// TODO: uri
-bool is_metadata(const uri::URI& uri);
-
-/**
  * Determine if a given path is a array schema
  * @param path
  * @return bool
  */
 bool is_array_schema(const std::string& path);
-
-/**
- * Determine if a given path is a metadata schema
- *
- * @param path filesystem path
- * @return bool
- */
-bool is_metadata_schema(const std::string& path);
 
 /**
  * Determine if a given path is a consolidation lock file

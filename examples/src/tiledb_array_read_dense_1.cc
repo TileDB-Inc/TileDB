@@ -83,6 +83,9 @@ int main(int argc, char** argv) {
 
   // Print only non-empty cell values
   int64_t result_num = buffer_sizes[0] / sizeof(int);
+
+  std::cout << "result num: " << result_num << "\n";
+
   printf(" a1\t    a2\t   (a3.first, a3.second)\n");
   printf("-----------------------------------------\n");
   for(int i=0; i<result_num; ++i) {

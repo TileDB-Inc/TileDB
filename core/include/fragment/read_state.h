@@ -44,7 +44,7 @@
 
 namespace tiledb {
 
-class Array;
+class Query;
 class Fragment;
 
 /** Stores the state necessary when reading cells from a fragment. */
@@ -82,7 +82,7 @@ class ReadState {
    * @param fragment The fragment the read state belongs to.
    * @param bookkeeping The bookkeeping of the fragment.
    */
-  ReadState(const Fragment* fragment, BookKeeping* bookkeeping);
+  ReadState(const Fragment* fragment, Query* query, BookKeeping* bookkeeping);
 
   /** Destructor. */
   ~ReadState();
@@ -326,8 +326,7 @@ class ReadState {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array the fragment belongs to. */
-  const Array* array_;
+  Query* query_;
 
   /** The array schema. */
   const ArraySchema* array_schema_;

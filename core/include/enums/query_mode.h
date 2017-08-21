@@ -1,11 +1,11 @@
 /**
- * @file   tiledb_metadata_primitive.cc
+ * @file query_mode.h
  *
  * @section LICENSE
  *
  * The MIT License
- * 
- * @copyright Copyright (c) 2016 MIT and Intel Corporation
+ *
+ * @copyright Copyright (c) 2017 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,39 +24,35 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
- * It shows how to initialize/finalize a metadata object and explore its schema.
+ * This defines the tiledb ArrayMode enum that maps to tiledb_array_mode_t C-api
+ * enum.
  */
 
-#include "tiledb.h"
-#include <cstdio>
+#ifndef TILEDB_QUERY_MODE_H
+#define TILEDB_QUERY_MODE_H
 
-// Prints some schema info (you can enhance this to print the entire schema)
-void print_some_metadata_schema_info(
-    const tiledb_metadata_schema_t* metadata_schema);
+namespace tiledb {
 
-int main() {
-  // Initialize context with the default configuration parameters.
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx);
+enum class QueryMode : char {
+#define TILEDB_QUERY_MODE_ENUM(id) id
+#include "tiledb_enum.inc"
+#undef TILEDB_QUERY_MODE_ENUM
+};
 
-  // Load metadata schema
-  tiledb_metadata_schema_t* metadata_schema;
-  tiledb_metadata_schema_load(ctx, &metadata_schema, "my_group/sparse_arrays/my_array_B/meta");
-
-  // Print some metadata schema info
-  print_some_metadata_schema_info(metadata_schema);
-
-  // Clean up
-  tiledb_metadata_schema_free(metadata_schema);
-  tiledb_ctx_free(ctx);
-
-  return 0;
+inline bool is_read_mode(const QueryMode mode) {
+  return mode == QueryMode::READ || mode == QueryMode::READ_SORTED_COL ||
+         mode == QueryMode::READ_SORTED_ROW;
 }
 
-void print_some_metadata_schema_info(
-    const tiledb_metadata_schema_t* metadata_schema) {
-    // TODO: create a C API function for this
+inline bool is_write_mode(const QueryMode mode) {
+  return mode == QueryMode::WRITE || mode == QueryMode::WRITE_SORTED_COL ||
+         mode == QueryMode::WRITE_SORTED_ROW ||
+         mode == QueryMode::WRITE_UNSORTED;
 }
+
+}  // namespace tiledb
+
+#endif  // TILEDB_QUERY_MODE_H

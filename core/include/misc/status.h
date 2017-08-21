@@ -97,7 +97,8 @@ enum class StatusCode : char {
   AIO,
   Tile,
   TileIO,
-  Buffer
+  Buffer,
+  Query
 };
 
 class Status {
@@ -241,6 +242,11 @@ class Status {
   /** Return a WriteStateError error class Status with a given message **/
   static Status WriteStateError(const std::string& msg) {
     return Status(StatusCode::WriteState, msg, -1);
+  }
+
+  /** Return a QueryError error class Status with a given message **/
+  static Status QueryError(const std::string& msg) {
+    return Status(StatusCode::Query, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

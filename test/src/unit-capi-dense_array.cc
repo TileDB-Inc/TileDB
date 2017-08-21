@@ -291,7 +291,7 @@ struct DenseArrayFx {
       const int64_t domain_0_hi,
       const int64_t domain_1_lo,
       const int64_t domain_1_hi,
-      const tiledb_array_mode_t read_mode) {
+      const tiledb_query_mode_t read_mode) {
     // Error code
     int rc;
 
@@ -526,7 +526,7 @@ struct DenseArrayFx {
    */
   int write_dense_subarray_2D(
       int64_t* subarray,
-      tiledb_array_mode_t write_mode,
+      tiledb_query_mode_t write_mode,
       int* buffer,
       size_t* buffer_sizes) {
     // Error code

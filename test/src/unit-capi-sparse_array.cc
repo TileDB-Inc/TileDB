@@ -196,7 +196,7 @@ struct SparseArrayFx {
       const int64_t domain_0_hi,
       const int64_t domain_1_lo,
       const int64_t domain_1_hi,
-      const tiledb_array_mode_t read_mode) {
+      const tiledb_query_mode_t read_mode) {
     // Error code
     int rc;
 
@@ -361,6 +361,7 @@ struct SparseArrayFx {
         return false;
       }
     }
+
     return true;
   }
 };
