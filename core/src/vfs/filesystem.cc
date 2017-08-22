@@ -30,7 +30,7 @@
  * This file includes definitions of filesystem functions.
  */
 
-#include "../../include/vfs/filesystem.h"
+#include "filesystem.h"
 #include "configurator.h"
 #include "logger.h"
 #include "utils.h"
@@ -391,19 +391,17 @@ Status read_from_file(
 }
 
 Status read_from_file(
-    const std::string& path, char* buffer, size_t* buffer_size) {
-  *buffer_size = 0;
+    const std::string& path, Buffer** buff) {
   std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
   if (!file.is_open()) {
     return LOG_STATUS(Status::OSError(
         std::string("Cannot read file '") + path + "': file open error"));
   }
   std::streampos nbytes = file.tellg();
-  buffer = new char[nbytes];
+  *buff = new Buffer(nbytes);
   file.seekg(0, std::ios::beg);
-  file.read(buffer, nbytes);
+  file.read(static_cast<char*>((*buff)->data()), nbytes);
   file.close();
-  *buffer_size = nbytes;
   return Status::Ok();
 }
 
@@ -652,7 +650,7 @@ Status read_from_gzipfile(
     unsigned int size,
     int* decompressed_size) {
   // Open file
-  gzFile fd = gzopen(path.c_str(), "r");
+  gzFile fd = gzopen(path.c_str(), "rb");
   if (fd == nullptr) {
     return LOG_STATUS(Status::OSError(
         std::string("Could not read file '") + path + "'; file open error"));

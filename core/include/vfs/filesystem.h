@@ -40,6 +40,7 @@
 #include <string>
 #include <vector>
 
+#include "buffer.h"
 #include "status.h"
 #include "uri.h"
 
@@ -189,12 +190,12 @@ Status read_from_file(
  * Read contents of a file into a (growable) byte buffer.
  *
  * @param path  The name of a file.
- * @param buffer A pointer to the allocated buffer
+ * @param buff A pointer to the allocated buffe
  * @param buffer_size The number of bytes allocated to hold the buffer
  * @return Status
  */
 Status read_from_file(
-    const std::string& path, char* buffer, size_t* buffer_size);
+    const std::string& path, Buffer** buff);
 
 // TODO: this should go away
 /** Returns the names of the fragments inside the input directory. */
