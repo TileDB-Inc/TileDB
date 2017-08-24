@@ -708,11 +708,11 @@ void ArraySortedReadState::calculate_buffer_sizes_sparse() {
     buffer_sizes_tmp_bak_[j] = new size_t[buffer_num_];
     for (int i = 0, b = 0; i < attribute_id_num; ++i) {
       // Fix-sized buffer
-      buffer_sizes_[j][b] = Configurator::internal_buffer_size();
+      buffer_sizes_[j][b] = constants::internal_buffer_size;
       buffer_sizes_tmp_bak_[j][b] = 0;
       ++b;
       if (array_schema->var_size(attribute_ids_[i])) {  // Variable-sized buffer
-        buffer_sizes_[j][b] = 2 * Configurator::internal_buffer_size();
+        buffer_sizes_[j][b] = 2 * constants::internal_buffer_size;
         buffer_sizes_tmp_bak_[j][b] = 0;
         ++b;
       }

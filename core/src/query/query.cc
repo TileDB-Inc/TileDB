@@ -163,7 +163,7 @@ Status Query::set_attributes(const char** attributes, int attribute_num) {
       attributes_vec.pop_back();
   } else {  // Custom attributes
     // Get attributes
-    unsigned name_max_len = Configurator::name_max_len();
+    unsigned name_max_len = constants::name_max_len;
     for (int i = 0; i < attribute_num; ++i) {
       // Check attribute name length
       if (attributes[i] == nullptr || strlen(attributes[i]) > name_max_len)
@@ -344,7 +344,7 @@ Status Query::write_default(const void** buffers, const size_t* buffer_sizes) {
 
 std::string Query::new_fragment_name() const {
   // For easy reference
-  unsigned name_max_len = Configurator::name_max_len();
+  unsigned name_max_len = constants::name_max_len;
 
   struct timeval tp;
   gettimeofday(&tp, nullptr);

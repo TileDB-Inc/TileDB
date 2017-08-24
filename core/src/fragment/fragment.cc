@@ -69,19 +69,19 @@ Fragment::~Fragment() {
 uri::URI Fragment::attr_uri(int attribute_id) const {
   const Attribute* attr =
       query_->array()->array_schema()->Attributes()[attribute_id];
-  return fragment_uri_.join_path(attr->name() + Configurator::file_suffix());
+  return fragment_uri_.join_path(attr->name() + constants::file_suffix);
 }
 
 uri::URI Fragment::attr_var_uri(int attribute_id) const {
   const Attribute* attr =
       query_->array()->array_schema()->Attributes()[attribute_id];
   return fragment_uri_.join_path(
-      attr->name() + "_var" + Configurator::file_suffix());
+      attr->name() + "_var" + constants::file_suffix);
 }
 
 uri::URI Fragment::coords_uri() const {
   return fragment_uri_.join_path(
-      std::string(Configurator::coords()) + Configurator::file_suffix());
+      std::string(constants::coords) + constants::file_suffix);
 }
 
 const Array* Fragment::array() const {
@@ -109,7 +109,7 @@ size_t Fragment::tile_size(int attribute_id) const {
   // For easy reference
   const ArraySchema* array_schema = query_->array()->array_schema();
   bool var_size = array_schema->var_size(attribute_id);
-  uint64_t cell_var_offset_size = Configurator::cell_var_offset_size();
+  uint64_t cell_var_offset_size = constants::cell_var_offset_size;
 
   int64_t cell_num_per_tile =
       (dense_) ? array_schema->cell_num_per_tile() : array_schema->capacity();

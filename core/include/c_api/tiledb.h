@@ -239,7 +239,7 @@ TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t* ctx);
  * Sets a configuration to a TileDB context.
  *
  * @param ctx The TileDB context.
- * @param config The configurator to be set.
+ * @param config The config to be set.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  *
  * @note It is strongly recommended that this function is used before starting
@@ -275,7 +275,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t* config);
  * Sets the MPI communicator.
  *
  * @param ctx The TileDB context.
- * @param config The configurator.
+ * @param config The config object.
  * @param mpi_comm The MPI communicator to be set.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
@@ -288,7 +288,7 @@ TILEDB_EXPORT int tiledb_config_set_mpi_comm(
  * Sets the read method.
  *
  * @param ctx The TileDB context.
- * @param config The configurator.
+ * @param config The config object.
  * @param read_method The read method to be set.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
@@ -299,7 +299,7 @@ TILEDB_EXPORT int tiledb_config_set_read_method(
  * Sets the write method.
  *
  * @param ctx The TileDB context.
- * @param config The configurator.
+ * @param config The config object.
  * @param write_method The write method to be set.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */

@@ -42,7 +42,7 @@
 #include <vector>
 #include "array_type.h"
 #include "compressor.h"
-#include "configurator.h"
+#include "config.h"
 #include "datatype.h"
 #include "layout.h"
 #include "status.h"

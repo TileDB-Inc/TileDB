@@ -32,12 +32,9 @@
  */
 
 #include "array_read_state.h"
-#include "configurator.h"
+#include <cassert>
 #include "logger.h"
 #include "utils.h"
-
-#include <cassert>
-#include <cmath>
 
 /* ****************************** */
 /*             MACROS             */
@@ -377,7 +374,7 @@ Status ArrayReadState::copy_cells(
   Datatype type = array_schema_->type(attribute_id);
 
   if (type == Datatype::INT32) {
-    int32_t val = Configurator::empty_int32();
+    int32_t val = constants::empty_int32;
     return copy_cells_generic(
         attribute_id,
         buffer,
@@ -386,7 +383,7 @@ Status ArrayReadState::copy_cells(
         &val,
         sizeof(int32_t));
   } else if (type == Datatype::INT64) {
-    int64_t val = Configurator::empty_int64();
+    int64_t val = constants::empty_int64;
     return copy_cells_generic(
         attribute_id,
         buffer,
@@ -395,7 +392,7 @@ Status ArrayReadState::copy_cells(
         &val,
         sizeof(int64_t));
   } else if (type == Datatype::FLOAT32) {
-    float_t val = Configurator::empty_float32();
+    float_t val = constants::empty_float32;
     return copy_cells_generic(
         attribute_id,
         buffer,
@@ -404,7 +401,7 @@ Status ArrayReadState::copy_cells(
         &val,
         sizeof(float_t));
   } else if (type == Datatype::FLOAT64) {
-    double_t val = Configurator::empty_float64();
+    double_t val = constants::empty_float64;
     return copy_cells_generic(
         attribute_id,
         buffer,
@@ -413,15 +410,15 @@ Status ArrayReadState::copy_cells(
         &val,
         sizeof(double_t));
   } else if (type == Datatype::CHAR) {
-    char val = Configurator::empty_char();
+    char val = constants::empty_char;
     return copy_cells_generic(
         attribute_id, buffer, buffer_size, buffer_offset, &val, sizeof(char));
   } else if (type == Datatype::INT8) {
-    int8_t val = Configurator::empty_int8();
+    int8_t val = constants::empty_int8;
     return copy_cells_generic(
         attribute_id, buffer, buffer_size, buffer_offset, &val, sizeof(int8_t));
   } else if (type == Datatype::UINT8) {
-    uint8_t val = Configurator::empty_uint8();
+    uint8_t val = constants::empty_uint8;
     return copy_cells_generic(
         attribute_id,
         buffer,
@@ -430,7 +427,7 @@ Status ArrayReadState::copy_cells(
         &val,
         sizeof(uint8_t));
   } else if (type == Datatype::INT16) {
-    int16_t val = Configurator::empty_int16();
+    int16_t val = constants::empty_int16;
     return copy_cells_generic(
         attribute_id,
         buffer,
@@ -439,7 +436,7 @@ Status ArrayReadState::copy_cells(
         &val,
         sizeof(int16_t));
   } else if (type == Datatype::UINT16) {
-    uint16_t val = Configurator::empty_uint16();
+    uint16_t val = constants::empty_uint16;
     return copy_cells_generic(
         attribute_id,
         buffer,
@@ -448,7 +445,7 @@ Status ArrayReadState::copy_cells(
         &val,
         sizeof(uint16_t));
   } else if (type == Datatype::UINT32) {
-    uint32_t val = Configurator::empty_uint32();
+    uint32_t val = constants::empty_uint32;
     return copy_cells_generic(
         attribute_id,
         buffer,
@@ -457,7 +454,7 @@ Status ArrayReadState::copy_cells(
         &val,
         sizeof(uint32_t));
   } else if (type == Datatype::UINT64) {
-    uint64_t val = Configurator::empty_uint64();
+    uint64_t val = constants::empty_uint64;
     return copy_cells_generic(
         attribute_id,
         buffer,
@@ -549,7 +546,7 @@ Status ArrayReadState::copy_cells_var(
   Datatype type = array_schema_->type(attribute_id);
 
   if (type == Datatype::INT32) {
-    int32_t val = Configurator::empty_int32();
+    int32_t val = constants::empty_int32;
     return copy_cells_var_generic(
         attribute_id,
         buffer,
@@ -561,7 +558,7 @@ Status ArrayReadState::copy_cells_var(
         &val,
         sizeof(int32_t));
   } else if (type == Datatype::INT64) {
-    int64_t val = Configurator::empty_int64();
+    int64_t val = constants::empty_int64;
     return copy_cells_var_generic(
         attribute_id,
         buffer,
@@ -573,7 +570,7 @@ Status ArrayReadState::copy_cells_var(
         &val,
         sizeof(int64_t));
   } else if (type == Datatype::FLOAT32) {
-    float_t val = Configurator::empty_float32();
+    float_t val = constants::empty_float32;
     return copy_cells_var_generic(
         attribute_id,
         buffer,
@@ -585,7 +582,7 @@ Status ArrayReadState::copy_cells_var(
         &val,
         sizeof(float_t));
   } else if (type == Datatype::FLOAT64) {
-    double_t val = Configurator::empty_float64();
+    double_t val = constants::empty_float64;
     return copy_cells_var_generic(
         attribute_id,
         buffer,
@@ -597,7 +594,7 @@ Status ArrayReadState::copy_cells_var(
         &val,
         sizeof(double_t));
   } else if (type == Datatype::CHAR) {
-    char val = Configurator::empty_char();
+    char val = constants::empty_char;
     return copy_cells_var_generic(
         attribute_id,
         buffer,
@@ -609,7 +606,7 @@ Status ArrayReadState::copy_cells_var(
         &val,
         sizeof(char));
   } else if (type == Datatype::INT8) {
-    int8_t val = Configurator::empty_int8();
+    int8_t val = constants::empty_int8;
     return copy_cells_var_generic(
         attribute_id,
         buffer,
@@ -621,7 +618,7 @@ Status ArrayReadState::copy_cells_var(
         &val,
         sizeof(int8_t));
   } else if (type == Datatype::UINT8) {
-    uint8_t val = Configurator::empty_uint8();
+    uint8_t val = constants::empty_uint8;
     return copy_cells_var_generic(
         attribute_id,
         buffer,
@@ -633,7 +630,7 @@ Status ArrayReadState::copy_cells_var(
         &val,
         sizeof(uint8_t));
   } else if (type == Datatype::INT16) {
-    int16_t val = Configurator::empty_int16();
+    int16_t val = constants::empty_int16;
     return copy_cells_var_generic(
         attribute_id,
         buffer,
@@ -645,7 +642,7 @@ Status ArrayReadState::copy_cells_var(
         &val,
         sizeof(int16_t));
   } else if (type == Datatype::UINT16) {
-    uint16_t val = Configurator::empty_uint16();
+    uint16_t val = constants::empty_uint16;
     return copy_cells_var_generic(
         attribute_id,
         buffer,
@@ -657,7 +654,7 @@ Status ArrayReadState::copy_cells_var(
         &val,
         sizeof(uint16_t));
   } else if (type == Datatype::UINT32) {
-    uint32_t val = Configurator::empty_uint32();
+    uint32_t val = constants::empty_uint32;
     return copy_cells_var_generic(
         attribute_id,
         buffer,
@@ -669,7 +666,7 @@ Status ArrayReadState::copy_cells_var(
         &val,
         sizeof(uint32_t));
   } else if (type == Datatype::UINT64) {
-    uint64_t val = Configurator::empty_uint64();
+    uint64_t val = constants::empty_uint64;
     return copy_cells_var_generic(
         attribute_id,
         buffer,
@@ -822,7 +819,7 @@ void ArrayReadState::copy_cells_with_empty_var_generic(
     const void* empty_type_value,
     size_t empty_type_size) {
   // For easy reference
-  size_t cell_size = Configurator::cell_var_offset_size();
+  size_t cell_size = constants::cell_var_offset_size;
   size_t cell_size_var = sizeof(int);
   char* buffer_c = static_cast<char*>(buffer);
   char* buffer_var_c = static_cast<char*>(buffer_var);
