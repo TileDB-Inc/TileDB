@@ -50,13 +50,13 @@ Fragment::Fragment(Query* query)
     : query_(query) {
   read_state_ = nullptr;
   write_state_ = nullptr;
-  book_keeping_ = nullptr;
+  metadata_ = nullptr;
 }
 
 Fragment::~Fragment() {
   if (write_state_ != nullptr) {
     delete write_state_;
-    delete book_keeping_;
+    delete metadata_;
   }
 
   delete read_state_;
@@ -124,9 +124,9 @@ size_t Fragment::tile_size(int attribute_id) const {
 
 Status Fragment::finalize() {
   if (write_state_ != nullptr) {  // WRITE
-    assert(book_keeping_ != NULL);
+    assert(metadata_ != NULL);
     Status st_ws = write_state_->finalize();
-    Status st_bk = book_keeping_->flush();
+    Status st_bk = metadata_->flush();
     Status st_rn;
     if (utils::fragment_exists(fragment_uri())) {
       st_rn = vfs::rename_fragment(fragment_uri());
@@ -163,28 +163,29 @@ Status Fragment::init(const uri::URI& uri, const void* subarray) {
     }
   }
 
-  // Initialize book-keeping and read/write state
-  book_keeping_ = new BookKeeping(query_->array()->array_schema(), dense_, uri);
+  // Initialize metadata and read/write state
+  metadata_ =
+      new FragmentMetadata(query_->array()->array_schema(), dense_, uri);
   read_state_ = nullptr;
-  Status st = book_keeping_->init(subarray);
+  Status st = metadata_->init(subarray);
   if (!st.ok()) {
-    delete book_keeping_;
-    book_keeping_ = nullptr;
+    delete metadata_;
+    metadata_ = nullptr;
     write_state_ = nullptr;
     return st;
   }
-  write_state_ = new WriteState(this, book_keeping_);
+  write_state_ = new WriteState(this, metadata_);
 
   // Success
   return Status::Ok();
 }
 
-Status Fragment::init(const uri::URI& uri, BookKeeping* book_keeping) {
+Status Fragment::init(const uri::URI& uri, FragmentMetadata* metadata) {
   // Set member attributes
   fragment_uri_ = uri;
-  book_keeping_ = book_keeping;
-  dense_ = book_keeping_->dense();
-  read_state_ = new ReadState(this, query_, book_keeping_);
+  metadata_ = metadata;
+  dense_ = metadata_->dense();
+  read_state_ = new ReadState(this, query_, metadata_);
 
   // Success
   return Status::Ok();

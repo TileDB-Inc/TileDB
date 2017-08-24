@@ -1,5 +1,5 @@
 /**
- * @file   book_keeping.h
+ * @file  fragment_metadata.h
  *
  * @section LICENSE
  *
@@ -31,8 +31,8 @@
  * This file defines class BookKeeping.
  */
 
-#ifndef TILEDB_BOOKKEEPING_H
-#define TILEDB_BOOKKEEPING_H
+#ifndef TILEDB_FRAGMENTMETADATA_H
+#define TILEDB_FRAGMENTMETADATA_H
 
 #include <zlib.h>
 #include <vector>
@@ -43,20 +43,20 @@
 
 namespace tiledb {
 
-/** Stores the book-keeping structures of a fragment. */
-class BookKeeping {
+/** Stores the metadata structures of a fragment. */
+class FragmentMetadata {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  BookKeeping(
+  FragmentMetadata(
       const ArraySchema* array_schema,
       bool dense,
       const uri::URI& fragment_uri);
 
   /** Destructor. */
-  ~BookKeeping();
+  ~FragmentMetadata();
 
   /* ********************************* */
   /*             ACCESSORS             */
@@ -106,7 +106,7 @@ class BookKeeping {
   /* ********************************* */
 
   /**
-   * Appends the tile bounding coordinates to the book-keeping structure.
+   * Appends the tile bounding coordinates to the fragment metadata.
    *
    * @param bounding_coords The bounding coordinates to be appended.
    * @return void
@@ -114,7 +114,7 @@ class BookKeeping {
   void append_bounding_coords(const void* bounding_coords);
 
   /**
-   * Appends the input MBR to the book-keeping structure.
+   * Appends the input MBR to the fragment metadata.
    *
    * @param mbr The MBR to be appended.
    * @return void
@@ -153,14 +153,14 @@ class BookKeeping {
   void append_tile_var_size(int attribute_id, size_t size);
 
   /**
-   * Finalizes the book-keeping structures, properly flushing them to the disk.
+   * Finalizes fragment metadata, properly flushing them to the disk.
    *
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
   Status flush();
 
   /**
-   * Initializes the book-keeping structures.
+   * Initializes the fragment metadata structures.
    *
    * @param non_empty_domain The non-empty domain in which the array read/write
    *     will be constrained.
@@ -169,7 +169,7 @@ class BookKeeping {
   Status init(const void* non_empty_domain);
 
   /**
-   * Loads the book-keeping structures from the disk.
+   * Loads the fragment metadata structures from the disk.
    *
    * @return TILEDB_BK_OK for success, and TILEDB_OK_ERR for error.
    */
@@ -205,7 +205,7 @@ class BookKeeping {
    */
   void* domain_;
 
-  /** The uri of the fragment the book-keeping belongs to. */
+  /** The uri of the fragment the metadata belongs to. */
   uri::URI fragment_uri_;
 
   /** Number of cells in the last tile (meaningful only in the sparse case). */
@@ -249,118 +249,118 @@ class BookKeeping {
   /* ********************************* */
 
   /**
-   * Writes the bounding coordinates in the book-keeping file on disk.
+   * Writes the bounding coordinates to the fragment metadata buffer.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status write_bounding_coords(Buffer* buff);
 
   /**
-   * Writes the cell number of the last tile in the book-keeping file on disk.
+   * Writes the cell number of the last tile to the fragment metadata buffer.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status write_last_tile_cell_num(Buffer* buff);
 
   /**
-   * Writes the MBRs in the book-keeping file on disk.
+   * Writes the MBRs to the fragment metadata buffer.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status write_mbrs(Buffer* buff);
 
   /**
-   * Writes the non-empty domain in the book-keeping file on disk.
+   * Writes the non-empty domain to the fragment metadata buffer.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status write_non_empty_domain(Buffer* buff);
 
   /**
-   * Writes the tile offsets in the book-keeping file on disk.
+   * Writes the tile offsets to the fragment metadata buffer.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status write_tile_offsets(Buffer* buff);
 
   /**
-   * Writes the variable tile offsets in the book-keeping file on disk.
+   * Writes the variable tile offsets to the fragment metadata buffer.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status write_tile_var_offsets(Buffer* buff);
 
   /**
-   * Writes the variable tile sizes in the book-keeping file on disk.
+   * Writes the variable tile sizes to the fragment metadata buffer.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status write_tile_var_sizes(Buffer* buff);
 
   /**
-   * Loads the bounding coordinates from the book-keeping file on disk.
+   * Loads the bounding coordinates from the fragment metadata buffer.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status load_bounding_coords(Buffer* buff);
 
   /**
-   * Loads the cell number of the last tile from the book-keeping file on disk.
+   * Loads the cell number of the last tile from the fragment metadata buffer.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status load_last_tile_cell_num(Buffer* buff);
 
   /**
-   * Loads the MBRs from the book-keeping file on disk.
+   * Loads the MBRs from the fragment metadata buffer.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status load_mbrs(Buffer* buff);
 
   /**
-   * Loads the non-empty domain from the book-keeping file on disk.
+   * Loads the non-empty domain from the fragment metadata buffer.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status load_non_empty_domain(Buffer* buff);
 
   /**
-   * Loads the tile offsets from the book-keeping file on disk.
+   * Loads the tile offsets from the fragment metadata buffer.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status load_tile_offsets(Buffer* buff);
 
   /**
-   * Loads the variable tile offsets from the book-keeping file on disk.
+   * Loads the variable tile offsets from the fragment metadata buffer.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status load_tile_var_offsets(Buffer* buff);
 
   /**
-   * Loads the variable tile sizes from the book-keeping file on disk.
+   * Loads the variable tile sizes from the fragment metadata.
    *
    * @param buff Buffer pointer
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * @return Status
    */
   Status load_tile_var_sizes(Buffer* buff);
 };
 
 }  // namespace tiledb
 
-#endif  // TILEDB_BOOKKEEPING_H
+#endif  // TILEDB_FRAGMENTMETADATA_H

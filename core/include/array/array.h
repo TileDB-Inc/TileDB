@@ -37,9 +37,9 @@
 #include <queue>
 
 #include "array_schema.h"
-#include "book_keeping.h"
 #include "configurator.h"
 #include "fragment.h"
+#include "fragment_metadata.h"
 #include "query.h"
 
 namespace tiledb {
@@ -95,7 +95,7 @@ class Array {
       StorageManager* storage_manager,
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
-      const std::vector<BookKeeping*>& book_keeping,
+      const std::vector<FragmentMetadata*>& book_keeping,
       QueryMode mode,
       const char** attributes,
       int attribute_num,

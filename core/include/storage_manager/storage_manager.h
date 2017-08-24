@@ -364,7 +364,7 @@ class StorageManager {
   /**
    * Decrements the number of times the input array is initialized. If this
    * number reaches 0, the it deletes the open array entry (and hence clears
-   * the schema and fragment book-keeping of the array).
+   * the schema and fragment metadata of the array).
    *
    * @param array The array name.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
@@ -402,19 +402,19 @@ class StorageManager {
       const uri::URI& array_uri, OpenArray*& open_array);
 
   /**
-   * Loads the book-keeping structures of all the fragments of an array from the
+   * Loads the metadata structures of all the fragments of an array from the
    * disk, allocating appropriate memory space for them.
    *
    * @param array_schema The array schema.
    * @param fragment_names The names of the fragments of the array.
-   * @param book_keeping The book-keeping structures to be returned.
+   * @param metadata The metadata structures to be returned.
    * @param mode The array mode
-   * @return TILEDB_SM_OK for success, and TILEDB_SM_ERR for error.
+   * @return Status
    */
-  Status array_load_book_keeping(
+  Status array_load_metadata(
       const ArraySchema* array_schema,
       const std::vector<std::string>& fragment_names,
-      std::vector<BookKeeping*>& book_keeping,
+      std::vector<FragmentMetadata*>& metadata,
       QueryMode mode);
 
   /**
@@ -428,8 +428,8 @@ class StorageManager {
 
   /**
    * Opens an array. This creates or updates an OpenArray entry for this array,
-   * and loads the array schema and book-keeping if it is the first time this
-   * array is being initialized. The book-keeping structures are loaded only
+   * and loads the array schema and metadata if it is the first time this
+   * array is being initialized. The metadata structures are loaded only
    * if the input mode is a read mode.
    *
    * @param array_name The array name (must be absolute path).
@@ -528,7 +528,7 @@ class StorageManager {
  * but opened only once. This structure maintains the information that
  * can be used by multiple array objects that initialize the same array,
  * in order to avoid replication and speed-up performance (e.g., array
- * schema and book-keeping).
+ * schema and metadata).
  */
 class StorageManager::OpenArray {
  public:
@@ -536,8 +536,8 @@ class StorageManager::OpenArray {
 
   /** The array schema. */
   ArraySchema* array_schema_;
-  /** The book-keeping structures for all the fragments of the array. */
-  std::vector<BookKeeping*> book_keeping_;
+  /** The metadata structures for all the fragments of the array. */
+  std::vector<FragmentMetadata*> fragment_metadata_;
   /**
    * A counter for the number of times the array has been initialized after
    * it was opened.
@@ -549,7 +549,7 @@ class StorageManager::OpenArray {
   std::vector<std::string> fragment_names_;
   /**
    * A mutex used to lock the array when loading the array schema and
-   * the book-keeping structures from the disk.
+   * the fragment metadata structures from the disk.
    */
   std::mutex mtx_;
 

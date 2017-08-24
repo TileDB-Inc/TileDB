@@ -206,36 +206,31 @@ void StorageManager::array_get_fragment_names(
   sort_fragment_names(fragment_names);
 }
 
-Status StorageManager::array_load_book_keeping(
+Status StorageManager::array_load_metadata(
     const ArraySchema* array_schema,
     const std::vector<std::string>& fragment_names,
-    std::vector<BookKeeping*>& book_keeping,
+    std::vector<FragmentMetadata*>& metadata,
     QueryMode mode) {
   // TODO (jcb): is this assumed to be always > 0?
   // For easy reference
   int fragment_num = fragment_names.size();
 
   // Initialization
-  book_keeping.resize(fragment_num);
+  metadata.resize(fragment_num);
 
-  // Load the book-keeping for each fragment
+  // Load the metadata for each fragment
   for (int i = 0; i < fragment_num; ++i) {
-    // For easy reference
     bool dense = !vfs::is_file(
         fragment_names[i] + "/" + Configurator::coords() +
         Configurator::file_suffix());
-
-    // Create new book-keeping structure for the fragment
-    BookKeeping* f_book_keeping =
-        new BookKeeping(array_schema, dense, fragment_names[i]);
-
-    // Load book-keeping
-    RETURN_NOT_OK(f_book_keeping->load());
-
+    // Create new metadata structure for the fragment
+    FragmentMetadata* meta =
+        new FragmentMetadata(array_schema, dense, fragment_names[i]);
+    // Load metadata
+    RETURN_NOT_OK(meta->load());
     // Append to the open array entry
-    book_keeping[i] = f_book_keeping;
+    metadata[i] = meta;
   }
-
   return Status::Ok();
 }
 
@@ -262,7 +257,7 @@ Status StorageManager::array_init(
       this,
       array_schema,
       open_array->fragment_names_,
-      open_array->book_keeping_,
+      open_array->fragment_metadata_,
       mode,
       attributes,
       attribute_num,
@@ -488,9 +483,10 @@ Status StorageManager::array_close(const uri::URI& array_uri) {
   Status st_mtx_destroy = Status::Ok();
   Status st_filelock = Status::Ok();
   if (it->second->cnt_ == 0) {
-    // Clean up book-keeping
-    std::vector<BookKeeping*>::iterator bit = it->second->book_keeping_.begin();
-    for (; bit != it->second->book_keeping_.end(); ++bit)
+    // Clean up metadata
+    std::vector<FragmentMetadata*>::iterator bit =
+        it->second->fragment_metadata_.begin();
+    for (; bit != it->second->fragment_metadata_.end(); ++bit)
       delete *bit;
 
     // Unlock mutex of the array
@@ -539,7 +535,7 @@ Status StorageManager::array_get_open_array_entry(
     open_array = new OpenArray();
     open_array->cnt_ = 0;
     open_array->consolidation_filelock_ = -1;
-    open_array->book_keeping_ = std::vector<BookKeeping*>();
+    open_array->fragment_metadata_ = std::vector<FragmentMetadata*>();
     open_arrays_[array_uri.to_posix_path()] = open_array;
   } else {
     open_array = it->second;
@@ -617,11 +613,11 @@ Status StorageManager::array_open(
     if (utils::is_array(array_uri)) {  // Array
       RETURN_NOT_OK_ELSE(array_schema->load(array_uri), delete array_schema);
     }
-    // Load the book-keeping for each fragment
-    Status st = array_load_book_keeping(
+    // Load the metadata for each fragment
+    Status st = array_load_metadata(
         open_array->array_schema_,
         open_array->fragment_names_,
-        open_array->book_keeping_,
+        open_array->fragment_metadata_,
         mode);
     if (!st.ok()) {
       delete open_array->array_schema_;

@@ -80,10 +80,9 @@ enum class StatusCode : char {
   StorageManager,
   WriteState,
   Fragment,
-  Bookkeeping,
+  FragmentMetadata,
   Array,
   ArraySchema,
-  ArrayIt,
   ARS,   // Array Read State
   ASRS,  // Array Sorted Read State
   ASWS,  // Array Sorted Write State
@@ -147,9 +146,9 @@ class Status {
     return Status(StatusCode::Fragment, msg, -1);
   }
 
-  /** Return a Bookkeeping error class Status with a given message **/
-  static Status BookkeepingError(const std::string& msg) {
-    return Status(StatusCode::Bookkeeping, msg, -1);
+  /** Return a FragmentMetadata error class Status with a given message **/
+  static Status FragmentMetadataError(const std::string& msg) {
+    return Status(StatusCode::FragmentMetadata, msg, -1);
   }
 
   /** Return a Array error class Status with a given message **/
@@ -160,11 +159,6 @@ class Status {
   /** Return a ArraySchema error class Status with a given message **/
   static Status ArraySchemaError(const std::string& msg) {
     return Status(StatusCode::ArraySchema, msg, -1);
-  }
-
-  /** Return a ArrayError error class Status with a given message **/
-  static Status ArrayItError(const std::string& msg) {
-    return Status(StatusCode::ArrayIt, msg, -1);
   }
 
   /** Return a ArrayReadState (ARS) error class Status with a given message **/

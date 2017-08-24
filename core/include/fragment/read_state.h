@@ -37,8 +37,8 @@
 #include <vector>
 
 #include "array.h"
-#include "book_keeping.h"
 #include "fragment.h"
+#include "fragment_metadata.h"
 #include "tile.h"
 #include "tile_io.h"
 
@@ -82,7 +82,8 @@ class ReadState {
    * @param fragment The fragment the read state belongs to.
    * @param bookkeeping The bookkeeping of the fragment.
    */
-  ReadState(const Fragment* fragment, Query* query, BookKeeping* bookkeeping);
+  ReadState(
+      const Fragment* fragment, Query* query, FragmentMetadata* bookkeeping);
 
   /** Destructor. */
   ~ReadState();
@@ -335,7 +336,7 @@ class ReadState {
   int attribute_num_;
 
   /** The bookkeeping of the fragment the read state belongs to. */
-  BookKeeping* bookkeeping_;
+  FragmentMetadata* bookkeeping_;
 
   /** The size of the array coordinates. */
   size_t coords_size_;

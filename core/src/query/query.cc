@@ -139,7 +139,7 @@ Status Query::init(
     const char** attributes,
     int attribute_num,
     const std::vector<std::string>& fragment_names,
-    const std::vector<BookKeeping*>& bookkeeping) {
+    const std::vector<FragmentMetadata*>& bookkeeping) {
   array_ = array;
   mode_ = mode;
 
@@ -215,7 +215,7 @@ Status Query::init_states() {
 
 Status Query::init_fragments(
     const std::vector<std::string>& fragment_names,
-    const std::vector<BookKeeping*>& bookkeeping) {
+    const std::vector<FragmentMetadata*>& bookkeeping) {
   if (mode_ == QueryMode::WRITE) {
     RETURN_NOT_OK(new_fragment());
   } else if (is_read_mode(mode_)) {
@@ -378,7 +378,7 @@ std::string Query::new_fragment_name() const {
 
 Status Query::open_fragments(
     const std::vector<std::string>& fragment_names,
-    const std::vector<BookKeeping*>& book_keeping) {
+    const std::vector<FragmentMetadata*>& book_keeping) {
   // Sanity check
   assert(fragment_names.size() == book_keeping.size());
 

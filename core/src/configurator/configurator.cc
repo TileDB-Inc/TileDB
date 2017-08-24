@@ -189,7 +189,7 @@ uint64_t Configurator::capacity() {
   return CAPACITY;
 }
 
-const char* Configurator::bookkeeping_filename() {
+const char* Configurator::fragment_metadata_filename() {
   return BOOKKEEPING_FILENAME;
 }
 
