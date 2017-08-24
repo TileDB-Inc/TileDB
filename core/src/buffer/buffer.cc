@@ -51,7 +51,7 @@ Buffer::Buffer() {
 }
 
 Buffer::Buffer(uint64_t size) {
-  data_ = malloc(size);
+  data_ = std::malloc(size);
   mmap_data_ = nullptr;
   mmap_size_ = 0;
   size_ = (data_ != nullptr) ? size : 0;
@@ -119,33 +119,30 @@ Status Buffer::munmap() {
 }
 
 Status Buffer::read(void* buffer, uint64_t bytes) {
-  if (bytes + offset_ > size_)
+  if (bytes + offset_ > size_) {
     return LOG_STATUS(
         Status::BufferError("Read failed; Trying to read beyond buffer size"));
-
-  memcpy(buffer, (char*)data_ + offset_, bytes);
+  }
+  std::memcpy(buffer, (char*)data_ + offset_, bytes);
   offset_ += bytes;
-
   return Status::Ok();
 }
 
 Status Buffer::realloc(uint64_t size) {
-  if (size <= size_)
+  if (size <= size_) {
     return Status::Ok();
-
-  if (data_ == nullptr)
-    data_ = ::malloc(size);
-  else
-    data_ = ::realloc(data_, size);
-
+  }
+  if (data_ == nullptr) {
+    data_ = std::malloc(size);
+  } else {
+    data_ = std::realloc(data_, size);
+  }
   if (data_ == nullptr) {
     size_ = 0;
     return LOG_STATUS(Status::BufferError(
         "Cannot reallocate buffer; Memory allocation failed"));
   }
-
   size_ = size;
-
   return Status::Ok();
 }
 
@@ -159,22 +156,28 @@ void Buffer::write(ConstBuffer* buf) {
 }
 
 Status Buffer::write(ConstBuffer* buf, uint64_t nbytes) {
-  while (offset_ + nbytes > size_)
-    RETURN_NOT_OK(realloc(2 * size_));
-
+  if (size_ == 0) {
+    RETURN_NOT_OK(realloc(nbytes));
+  } else {
+    while (offset_ + nbytes > size_) {
+      RETURN_NOT_OK(realloc(2 * size_));
+    }
+  }
   buf->read(data_, nbytes);
   offset_ += nbytes;
-
   return Status::Ok();
 }
 
 Status Buffer::write(const void* buf, uint64_t nbytes) {
-  while (offset_ + nbytes > size_)
-    RETURN_NOT_OK(realloc(2 * size_));
-
-  memcpy((char*)data_ + offset_, buf, nbytes);
+  if (size_ == 0) {
+    RETURN_NOT_OK(realloc(nbytes));
+  } else {
+    while (offset_ + nbytes > size_) {
+      RETURN_NOT_OK(realloc(2 * size_));
+    }
+  }
+  std::memcpy((char*)data_ + offset_, buf, nbytes);
   offset_ += nbytes;
-
   return Status::Ok();
 }
 
