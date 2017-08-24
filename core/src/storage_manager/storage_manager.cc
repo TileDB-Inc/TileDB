@@ -68,13 +68,13 @@ StorageManager::~StorageManager() {
 /*             MUTATORS           */
 /* ****************************** */
 
-Status StorageManager::init(Configurator* config) {
-  // Clear previous configurator
+Status StorageManager::init(Config* config) {
+  // Clear previous config
   if (config_ != nullptr)
     delete config_;
 
-  // Create new configurator and clone the input
-  config_ = new Configurator(config);
+  // Create new config and clone the input
+  config_ = new Config(config);
 
   // Create a thread to handle the user asynchronous I/O
   aio_thread_[0] = new std::thread(aio_start, this, 0);
@@ -99,10 +99,10 @@ int StorageManager::dir_type(const char* dir) {
     return -1;
 }
 
-void StorageManager::set_config(const Configurator* config) {
+void StorageManager::set_config(const Config* config) {
   // TODO: make thread-safe?
 
-  config_ = new Configurator(config);
+  config_ = new Config(config);
 }
 
 /* ****************************** */
@@ -221,8 +221,7 @@ Status StorageManager::array_load_metadata(
   // Load the metadata for each fragment
   for (int i = 0; i < fragment_num; ++i) {
     bool dense = !vfs::is_file(
-        fragment_names[i] + "/" + Configurator::coords() +
-        Configurator::file_suffix());
+        fragment_names[i] + "/" + constants::coords + constants::file_suffix);
     // Create new metadata structure for the fragment
     FragmentMetadata* meta =
         new FragmentMetadata(array_schema, dense, fragment_names[i]);
@@ -635,8 +634,7 @@ Status StorageManager::array_open(
 
 Status StorageManager::consolidation_lock_create(const std::string& dir) const {
   // Create file
-  std::string filename =
-      dir + "/" + Configurator::consolidation_filelock_name();
+  std::string filename = dir + "/" + constants::consolidation_filelock_name;
   return vfs::filelock_create(filename);
 }
 
@@ -645,7 +643,7 @@ Status StorageManager::consolidation_lock(
   // Prepare the filelock name
   std::string array_name_real = vfs::real_dir(array_name);
   std::string filename =
-      array_name_real + "/" + Configurator::consolidation_filelock_name();
+      array_name_real + "/" + constants::consolidation_filelock_name;
   return vfs::filelock_lock(filename, fd, shared);
 }
 
@@ -685,7 +683,7 @@ Status StorageManager::consolidation_finalize(
     // Delete special fragment file inside the fragment directory
     std::string old_fragment_filename =
         old_fragments[i]
-            .join_path(Configurator::fragment_filename())
+            .join_path(constants::fragment_filename)
             .to_posix_path();
     RETURN_NOT_OK(vfs::delete_file(old_fragment_filename));
   }

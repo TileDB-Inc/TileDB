@@ -35,7 +35,7 @@
 
 #include <uri.h>
 #include "attribute.h"
-#include "configurator.h"
+#include "config.h"
 #include "tile.h"
 
 namespace tiledb {
@@ -53,10 +53,10 @@ class TileIO {
   /**
    * Constructor.
    *
-   * @param config The configurator.
+   * @param config The config object.
    * @param attr_filename The name of the file that stores attribute data.
    */
-  TileIO(const Configurator* config, const uri::URI& attr_filename);
+  TileIO(const Config* config, const uri::URI& attr_filename);
 
   /** Destructor. */
   ~TileIO();
@@ -121,8 +121,8 @@ class TileIO {
    */
   Buffer* buffer_;
 
-  /** The configurator. */
-  const Configurator* config_;
+  /** Config object. */
+  const Config* config_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

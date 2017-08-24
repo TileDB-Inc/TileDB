@@ -49,7 +49,7 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-TileIO::TileIO(const Configurator* config, const uri::URI& attr_filename)
+TileIO::TileIO(const Config* config, const uri::URI& attr_filename)
     : attr_filename_(attr_filename)
     , config_(config) {
   buffer_ = nullptr;

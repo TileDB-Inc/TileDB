@@ -32,6 +32,7 @@
 
 #include "attribute.h"
 #include <cassert>
+#include "constants.h"
 #include "utils.h"
 
 namespace tiledb {
@@ -76,7 +77,7 @@ unsigned int Attribute::cell_val_num() const {
 
 uint64_t Attribute::cell_size() const {
   if (var_size())
-    return Configurator::cell_var_offset_size();
+    return constants::cell_var_offset_size;
   else
     return cell_val_num_ * utils::datatype_size(type_);
 }
@@ -112,7 +113,7 @@ Datatype Attribute::type() const {
 }
 
 bool Attribute::var_size() const {
-  return cell_val_num_ == Configurator::var_num();
+  return cell_val_num_ == constants::var_num;
 }
 
 /* ********************************* */

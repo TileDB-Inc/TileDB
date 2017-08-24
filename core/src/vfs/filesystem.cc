@@ -31,7 +31,7 @@
  */
 
 #include "filesystem.h"
-#include "configurator.h"
+#include "constants.h"
 #include "logger.h"
 #include "utils.h"
 
@@ -334,7 +334,7 @@ Status create_fragment_file(const uri::URI& uri) {
   uri::URI path = vfs::abs_path(uri);
   // Create the special fragment file
   std::string filename =
-      path.to_posix_path() + "/" + Configurator::fragment_filename();
+      path.to_posix_path() + "/" + constants::fragment_filename;
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if (fd == -1 || ::close(fd)) {
     return LOG_STATUS(Status::OSError(
@@ -358,7 +358,7 @@ Status rename_fragment(const uri::URI& uri) {
 
 Status create_group_file(const std::string& path) {
   // Create group file
-  std::string filename = path + "/" + Configurator::group_filename();
+  std::string filename = path + "/" + constants::group_filename;
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if (fd == -1 || ::close(fd)) {
     return LOG_STATUS(Status::StorageManagerError(
@@ -613,17 +613,17 @@ Status write_to_file(
         "'; File opening error"));
   }
 
-  // Append data to the file in batches of Configurator::max_write_bytes()
+  // Append data to the file in batches of constants::max_write_bytes
   // bytes at a time
   ssize_t bytes_written;
-  while (buffer_size > Configurator::max_write_bytes()) {
-    bytes_written = ::write(fd, buffer, Configurator::max_write_bytes());
-    if (bytes_written != Configurator::max_write_bytes()) {
+  while (buffer_size > constants::max_write_bytes) {
+    bytes_written = ::write(fd, buffer, constants::max_write_bytes);
+    if (bytes_written != constants::max_write_bytes) {
       return LOG_STATUS(Status::IOError(
           std::string("Cannot write to file '") + path +
           "'; File writing error"));
     }
-    buffer_size -= Configurator::max_write_bytes();
+    buffer_size -= constants::max_write_bytes;
   }
   bytes_written = ::write(fd, buffer, buffer_size);
   if (bytes_written != ssize_t(buffer_size)) {
@@ -674,15 +674,15 @@ Status write_to_gzipfile(
         std::string("Could not write to file '") + path +
         "'; File opening error"));
   }
-  // Append data to the file in batches of Configurator::max_write_bytes()
+  // Append data to the file in batches of constants::max_write_bytes
   // bytes at a time
   ssize_t bytes_written;
-  while (buffer_size > Configurator::max_write_bytes()) {
-    bytes_written = gzwrite(fd, buffer, Configurator::max_write_bytes());
-    if (bytes_written != Configurator::max_write_bytes()) {
+  while (buffer_size > constants::max_write_bytes) {
+    bytes_written = gzwrite(fd, buffer, constants::max_write_bytes);
+    if (bytes_written != constants::max_write_bytes) {
       return LOG_STATUS(Status::GZipError(gzerror(fd, NULL)));
     }
-    buffer_size -= Configurator::max_write_bytes();
+    buffer_size -= constants::max_write_bytes;
   }
   bytes_written = gzwrite(fd, buffer, buffer_size);
   if (bytes_written != ssize_t(buffer_size)) {
@@ -760,20 +760,20 @@ Status mpi_io_write_to_file(
   }
 
   // Append attribute data to the file in batches of
-  // Configurator::max_write_bytes() bytes at a time
+  // constants::max_write_bytes bytes at a time
   MPI_Status mpi_status;
-  while (buffer_size > Configurator::max_write_bytes()) {
+  while (buffer_size > constants::max_write_bytes) {
     if (MPI_File_write(
             fh,
             (void*)buffer,
-            Configurator::max_write_bytes(),
+            constants::max_write_bytes,
             MPI_CHAR,
             &mpi_status)) {
       return LOG_STATUS(Status::IOError(
           std::string("Cannot write to file '") + filename +
           "'; File writing error"));
     }
-    buffer_size -= Configurator::max_write_bytes();
+    buffer_size -= constants::max_write_bytes;
   }
   if (MPI_File_write(fh, (void*)buffer, buffer_size, MPI_CHAR, &mpi_status)) {
     return LOG_STATUS(Status::IOError(

@@ -40,7 +40,7 @@
 #include "array_type.h"
 #include "attribute.h"
 #include "compressor.h"
-#include "configurator.h"
+#include "constants.h"
 #include "datatype.h"
 #include "dimension.h"
 #include "layout.h"
@@ -341,12 +341,12 @@ class ArraySchema {
    */
   Status load(
       const std::string& dir,
-      const char* schema_filename = Configurator::array_schema_filename());
+      const char* schema_filename = constants::array_schema_filename);
 
   // TODO: uri
   Status load(
       const uri::URI& uri,
-      const char* schema_filename = Configurator::array_schema_filename());
+      const char* schema_filename = constants::array_schema_filename);
 
   /** Sets the array uri. */
   void set_array_uri(const uri::URI& uri);
@@ -389,12 +389,12 @@ class ArraySchema {
    */
   Status store(
       const std::string& dir,
-      const char* schema_filename = Configurator::array_schema_filename());
+      const char* schema_filename = constants::array_schema_filename);
 
   // TODO: uri
   Status store(
       const uri::URI& parent,
-      const char* schema_filename = Configurator::array_schema_filename());
+      const char* schema_filename = constants::array_schema_filename);
 
   /* ********************************* */
   /*               MISC                */

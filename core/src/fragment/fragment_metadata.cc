@@ -38,7 +38,7 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
-#include "configurator.h"
+#include "config.h"
 #include "filesystem.h"
 #include "logger.h"
 #include "utils.h"
@@ -212,8 +212,8 @@ Status FragmentMetadata::flush() {
 
   // Prepare file name
   std::string filename = fragment_uri_.to_posix_path();
-  filename = filename + "/" + Configurator::fragment_metadata_filename() +
-             Configurator::file_suffix();
+  filename = filename + "/" + constants::fragment_metadata_filename +
+             constants::file_suffix;
 
   Buffer* buff = new Buffer();
 
@@ -319,8 +319,8 @@ Status FragmentMetadata::init(const void* non_empty_domain) {
 Status FragmentMetadata::load() {
   // Prepare file name
   std::string filename = fragment_uri_.to_posix_path();
-  filename = filename + "/" + Configurator::fragment_metadata_filename() +
-             Configurator::file_suffix();
+  filename = filename + "/" + constants::fragment_metadata_filename +
+             constants::file_suffix;
   Buffer* buff = nullptr;
   Status st = vfs::read_from_file(filename, &buff);
   if (!st.ok()) {

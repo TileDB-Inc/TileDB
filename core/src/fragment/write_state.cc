@@ -58,7 +58,7 @@ WriteState::WriteState(const Fragment* fragment, FragmentMetadata* bookkeeping)
   const ArraySchema* array_schema = fragment->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
   size_t coords_size = array_schema->coords_size();
-  const Configurator* config = fragment_->array()->config();
+  const Config* config = fragment_->array()->config();
 
   // Initialize the number of cells written in the current tile
   tile_cell_num_.resize(attribute_num + 1);
@@ -721,14 +721,14 @@ Status WriteState::write_sparse_unsorted_attr(
   }
 
   // Allocate a local buffer to hold the sorted cells
-  auto sorted_buf = new Buffer(Configurator::sorted_buffer_size());
+  auto sorted_buf = new Buffer(constants::sorted_buffer_size);
   auto buffer_c = static_cast<const char*>(buffer);
 
   // Sort and write attribute values in batches
   Status st;
   for (int64_t i = 0; i < buffer_cell_num; ++i) {
     // Write batch
-    if (sorted_buf->offset() + cell_size > Configurator::sorted_buffer_size()) {
+    if (sorted_buf->offset() + cell_size > constants::sorted_buffer_size) {
       RETURN_NOT_OK_ELSE(
           write_attr(attribute_id, sorted_buf->data(), sorted_buf->offset()),
           delete sorted_buf);
@@ -762,7 +762,7 @@ Status WriteState::write_sparse_unsorted_attr_var(
     const std::vector<int64_t>& cell_pos) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t cell_size = Configurator::cell_var_offset_size();
+  size_t cell_size = constants::cell_var_offset_size;
   size_t cell_var_size;
   auto buffer_s = static_cast<const size_t*>(buffer);
   auto buffer_var_c = static_cast<const char*>(buffer_var);
@@ -776,8 +776,8 @@ Status WriteState::write_sparse_unsorted_attr_var(
         array_schema->attribute(attribute_id) + "'"));
   }
 
-  auto sorted_buf = new Buffer(Configurator::sorted_buffer_size());
-  auto sorted_buf_var = new Buffer(Configurator::sorted_buffer_var_size());
+  auto sorted_buf = new Buffer(constants::sorted_buffer_size);
+  auto sorted_buf_var = new Buffer(constants::sorted_buffer_var_size);
 
   // Sort and write attribute values in batches
   Status st;
@@ -789,9 +789,9 @@ Status WriteState::write_sparse_unsorted_attr_var(
                         buffer_s[cell_pos[i] + 1] - buffer_s[cell_pos[i]];
 
     // Write batch
-    if (sorted_buf->offset() + cell_size > Configurator::sorted_buffer_size() ||
+    if (sorted_buf->offset() + cell_size > constants::sorted_buffer_size ||
         sorted_buf_var->offset() + cell_var_size >
-            Configurator::sorted_buffer_var_size()) {
+            constants::sorted_buffer_var_size) {
       st = write_attr_var(
           attribute_id,
           sorted_buf->data(),
