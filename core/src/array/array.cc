@@ -128,7 +128,7 @@ const ArraySchema* Array::array_schema() const {
   return array_schema_;
 }
 
-const Configurator* Array::config() const {
+const Config* Array::config() const {
   return config_;
 }
 
@@ -214,7 +214,7 @@ Status Array::consolidate(Fragment* new_fragment, int attribute_id) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
   uint64_t consolidation_buffer_size =
-      Configurator::consolidation_buffer_size();
+      constants::consolidation_buffer_size;
 
   // Do nothing if the array is dense for the coordinates attribute
   if (array_schema_->dense() && attribute_id == attribute_num)
@@ -303,7 +303,7 @@ Status Array::init(
     const char** attributes,
     int attribute_num,
     const void* subarray,
-    const Configurator* config) {
+    const Config* config) {
   config_ = config;
   array_schema_ = array_schema;
   storage_manager_ = storage_manager;

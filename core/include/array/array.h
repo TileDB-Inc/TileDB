@@ -37,7 +37,7 @@
 #include <queue>
 
 #include "array_schema.h"
-#include "configurator.h"
+#include "config.h"
 #include "fragment.h"
 #include "fragment_metadata.h"
 #include "query.h"
@@ -78,7 +78,7 @@ class Array {
   const ArraySchema* array_schema() const;
 
   /** Returns the configuration parameters. */
-  const Configurator* config() const;
+  const Config* config() const;
 
   Status read(Query* query, void** buffers, size_t* buffer_sizes);
 
@@ -100,7 +100,7 @@ class Array {
       const char** attributes,
       int attribute_num,
       const void* subarray,
-      const Configurator* config);
+      const Config* config);
 
   Status write(Query* query, const void** buffers, const size_t* buffer_sizes);
 
@@ -113,7 +113,7 @@ class Array {
   /* ********************************* */
 
   StorageManager* storage_manager_;
-  const Configurator* config_;
+  const Config* config_;
   const ArraySchema* array_schema_;
 };
 

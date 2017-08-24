@@ -59,7 +59,7 @@ ReadState::ReadState(
   array_schema_ = query_->array()->array_schema();
   attribute_num_ = array_schema_->attribute_num();
   coords_size_ = array_schema_->coords_size();
-  const Configurator* config = query_->array()->config();
+  const Config* config = query_->array()->config();
 
   done_ = false;
   last_tile_coords_ = nullptr;
@@ -110,7 +110,7 @@ ReadState::ReadState(
   is_empty_attribute_.resize(attribute_num_ + 1);
   for (int i = 0; i < attribute_num_ + 1; ++i) {
     uri = fragment_->fragment_uri().join_path(
-        array_schema_->attribute(i) + Configurator::file_suffix());
+        array_schema_->attribute(i) + constants::file_suffix);
     is_empty_attribute_[i] = !vfs::is_file(uri);
   }
 }
@@ -214,7 +214,7 @@ Status ReadState::copy_cells_var(
   assert(array_schema_->var_size(attribute_id));
 
   // For easy reference
-  size_t cell_size = Configurator::cell_var_offset_size();
+  size_t cell_size = constants::cell_var_offset_size;
 
   // Prepare attribute tile
   RETURN_NOT_OK(read_tile_var(attribute_id, tile_i));
@@ -986,8 +986,8 @@ Status ReadState::compute_bytes_to_copy(
   }
 
   // Update bytes to copy
-  bytes_to_copy = (end_cell_pos - start_cell_pos + 1) *
-                  Configurator::cell_var_offset_size();
+  bytes_to_copy =
+      (end_cell_pos - start_cell_pos + 1) * constants::cell_var_offset_size;
 
   // Sanity checks
   assert(bytes_to_copy <= buffer_free_space);
@@ -1302,14 +1302,14 @@ Status ReadState::get_offset(
   // The tile is in main memory
   if (tile->in_mem()) {
     offset =
-        (const uint64_t*)((char*)tile->data() + i * Configurator::cell_var_offset_size());
+        (const uint64_t*)((char*)tile->data() + i * constants::cell_var_offset_size);
     return Status::Ok();
   }
 
   // The tile is on the disk
-  tile->set_offset(i * Configurator::cell_var_offset_size());
+  tile->set_offset(i * constants::cell_var_offset_size);
   Status st = tile_io->read_from_tile(
-      tile, &tmp_offset_, Configurator::cell_var_offset_size());
+      tile, &tmp_offset_, constants::cell_var_offset_size);
 
   // Get offset
   if (st.ok())
@@ -1427,7 +1427,7 @@ Status ReadState::read_tile_var(int attribute_id, int64_t tile_i) {
       tile_i, attribute_id, tile_io, &tile_compressed_size));
   off_t file_offset = bookkeeping_->tile_offsets()[attribute_id][tile_i];
   size_t tile_size =
-      bookkeeping_->cell_num(tile_i) * Configurator::cell_var_offset_size();
+      bookkeeping_->cell_num(tile_i) * constants::cell_var_offset_size;
 
   RETURN_NOT_OK(
       tile_io->read(tile, file_offset, tile_compressed_size, tile_size));
@@ -1459,7 +1459,7 @@ Status ReadState::read_tile_var(int attribute_id, int64_t tile_i) {
 void ReadState::shift_var_offsets(int attribute_id) {
   // For easy reference
   int64_t cell_num =
-      tiles_[attribute_id]->size() / Configurator::cell_var_offset_size();
+      tiles_[attribute_id]->size() / constants::cell_var_offset_size;
   auto tile_s = static_cast<uint64_t*>(tiles_[attribute_id]->data());
   uint64_t first_offset = tile_s[0];
 

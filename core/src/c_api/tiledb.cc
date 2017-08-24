@@ -33,14 +33,8 @@
 
 #include "aio_request.h"
 #include "array_schema.h"
-#include "array_type.h"
-#include "attribute.h"
 #include "basic_array.h"
-#include "configurator.h"
-#include "datatype.h"
-#include "dimension.h"
 #include "storage_manager.h"
-#include "uri.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -48,19 +42,19 @@
 /* ****************************** */
 
 const char* tiledb_coords() {
-  return tiledb::Configurator::coords();
+  return tiledb::constants::coords;
 }
 
 const char* tiledb_key() {
-  return tiledb::Configurator::key();
+  return tiledb::constants::key;
 }
 
 int tiledb_var_num() {
-  return tiledb::Configurator::var_num();
+  return tiledb::constants::var_num;
 }
 
 uint64_t tiledb_var_size() {
-  return tiledb::Configurator::var_size();
+  return tiledb::constants::var_size;
 }
 
 /* ****************************** */
@@ -85,8 +79,8 @@ struct tiledb_ctx_t {
 };
 
 struct tiledb_config_t {
-  // The configurator instance
-  tiledb::Configurator* config_;
+  // The config instance
+  tiledb::Config* config_;
 };
 
 struct tiledb_error_t {
@@ -168,8 +162,7 @@ inline int sanity_check(tiledb_ctx_t* ctx) {
 
 inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_config_t* config) {
   if (config == nullptr || config->config_ == nullptr) {
-    save_error(
-        ctx, tiledb::Status::Error("Invalid TileDB configurator struct"));
+    save_error(ctx, tiledb::Status::Error("Invalid TileDB config struct"));
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -309,18 +302,16 @@ int tiledb_config_create(tiledb_ctx_t* ctx, tiledb_config_t** config) {
     return TILEDB_ERR;
   *config = (tiledb_config_t*)malloc(sizeof(tiledb_config_t));
   if (*config == nullptr) {
-    save_error(
-        ctx, tiledb::Status::Error("Failed to allocate configurator struct"));
+    save_error(ctx, tiledb::Status::Error("Failed to allocate config struct"));
     return TILEDB_OOM;
   }
-  (*config)->config_ = new tiledb::Configurator();
+  (*config)->config_ = new tiledb::Config();
   if ((*config)->config_ == nullptr) {  // Allocation error
     free(*config);
     *config = nullptr;
     save_error(
         ctx,
-        tiledb::Status::Error(
-            "Failed to allocate configurator object in struct"));
+        tiledb::Status::Error("Failed to allocate config object in struct"));
     return TILEDB_OOM;
   }
   return TILEDB_OK;

@@ -43,7 +43,7 @@
 
 #include "array.h"
 #include "array_schema.h"
-#include "configurator.h"
+#include "config.h"
 #include "status.h"
 #include "uri.h"
 
@@ -90,10 +90,10 @@ class StorageManager {
    *     then the default TileDB parameters are used.
    * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
    */
-  Status init(Configurator* config);
+  Status init(Config* config);
 
-  /** Sets a new configurator. */
-  void set_config(const Configurator* config);
+  /** Sets a new config. */
+  void set_config(const Config* config);
 
   /* ********************************* */
   /*              GROUP                */
@@ -292,7 +292,7 @@ class StorageManager {
   std::thread* aio_thread_[2];
 
   /** The TileDB configuration parameters. */
-  Configurator* config_;
+  Config* config_;
 
   /** Mutex for creating/deleting an OpenArray object. */
   std::mutex open_array_mtx_;

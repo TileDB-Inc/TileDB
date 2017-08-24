@@ -67,7 +67,7 @@ ArraySchema::ArraySchema() {
   tile_coords_aux_ = nullptr;
   array_uri_ = uri::URI();
   array_type_ = ArrayType::DENSE;
-  capacity_ = Configurator::capacity();
+  capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
   tile_order_ = Layout::ROW_MAJOR;
 }
@@ -128,7 +128,7 @@ ArraySchema::ArraySchema(const uri::URI& uri) {
   tile_coords_aux_ = nullptr;
   array_uri_ = vfs::abs_path(uri);
   array_type_ = ArrayType::DENSE;
-  capacity_ = Configurator::capacity();
+  capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
   tile_order_ = Layout::ROW_MAJOR;
 }
@@ -188,7 +188,7 @@ const std::string& ArraySchema::attribute(int attribute_id) const {
 
 Status ArraySchema::attribute_id(const std::string& attribute, int* id) const {
   // Special case - coordinates
-  if (attribute == Configurator::coords()) {
+  if (attribute == constants::coords) {
     *id = attribute_num_;
     return Status::Ok();
   }
@@ -810,7 +810,7 @@ int ArraySchema::var_attribute_num() const {
 }
 
 bool ArraySchema::var_size(int attribute_id) const {
-  return cell_sizes_[attribute_id] == Configurator::var_size();
+  return cell_sizes_[attribute_id] == constants::var_size;
 }
 
 /* ****************************** */
@@ -979,7 +979,7 @@ Status ArraySchema::deserialize(
   }
   assert(offset == buffer_size);
   // Add extra coordinate attribute
-  attributes_.emplace_back(Configurator::coords());
+  attributes_.emplace_back(constants::coords);
   // Set cell sizes
   cell_sizes_.resize(attribute_num_ + 1);
   for (int i = 0; i <= attribute_num_; ++i)
@@ -1604,8 +1604,8 @@ size_t ArraySchema::compute_cell_size(int i) const {
   assert(i >= 0 && i <= attribute_num_);
 
   // Variable-sized cell
-  if (i < attribute_num_ && cell_val_num_[i] == Configurator::var_num())
-    return Configurator::var_size();
+  if (i < attribute_num_ && cell_val_num_[i] == constants::var_num)
+    return constants::var_size;
 
   // Fixed-sized cell
   size_t size = 0;

@@ -81,11 +81,11 @@ ArraySortedWriteState::ArraySortedWriteState(Query* query)
   }
 
   subarray_ = malloc(2 * coords_size_);
-  memcpy(subarray_, query_->subarray(), 2 * coords_size_);
+  std::memcpy(subarray_, query_->subarray(), 2 * coords_size_);
 
   // Calculate expanded subarray
   expanded_subarray_ = malloc(2 * coords_size_);
-  memcpy(expanded_subarray_, subarray_, 2 * coords_size_);
+  std::memcpy(expanded_subarray_, subarray_, 2 * coords_size_);
   array_schema->expand_domain(expanded_subarray_);
 
   // Calculate number of buffers
@@ -840,7 +840,7 @@ void ArraySortedWriteState::copy_tile_slab(int aid, int bid) {
     size_t& local_buffer_offset_cur = tile_slab_state_.current_offsets_[aid];
 
     // Copy cell slab from user to local buffer
-    memcpy(
+    std::memcpy(
         local_buffer + local_buffer_offset_cur,
         buffer + buffer_offset,
         cell_slab_size);
@@ -901,7 +901,7 @@ void ArraySortedWriteState::copy_tile_slab_var(int aid, int bid) {
     // Keep track of where each variable-sized cell is.
     // Note that cell ids start with 1 here!
     for (int64_t i = cell_start + 1; i <= cell_end; ++i) {
-      memcpy(local_buffer + local_buffer_offset_cur, &i, sizeof(size_t));
+      std::memcpy(local_buffer + local_buffer_offset_cur, &i, sizeof(size_t));
       local_buffer_offset_cur += sizeof(size_t);
       buffer_offset += sizeof(size_t);
     }
@@ -944,7 +944,7 @@ void ArraySortedWriteState::copy_tile_slab_var(int aid, int bid) {
     }
 
     // Copy variable-sized cell
-    memcpy(
+    std::memcpy(
         local_buffer_var + local_buffer_offset_var,
         buffer_var + buffer_s[cell],
         cell_size_var);
@@ -1017,7 +1017,7 @@ void ArraySortedWriteState::fill_with_empty<int>(int bid) {
   // For easy reference
   int* local_buffer = (int*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  int empty = Configurator::empty_int32();
+  int empty = constants::empty_int32;
 
   // Fill with empty values
   size_t offset = 0;
@@ -1030,7 +1030,7 @@ void ArraySortedWriteState::fill_with_empty<int64_t>(int bid) {
   // For easy reference
   int64_t* local_buffer = (int64_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  int64_t empty = Configurator::empty_int64();
+  int64_t empty = constants::empty_int64;
 
   // Fill with empty values
   size_t offset = 0;
@@ -1044,7 +1044,7 @@ void ArraySortedWriteState::fill_with_empty<float>(int bid) {
   // For easy reference
   float* local_buffer = (float*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  float empty = Configurator::empty_float32();
+  float empty = constants::empty_float32;
 
   // Fill with empty values
   size_t offset = 0;
@@ -1057,7 +1057,7 @@ void ArraySortedWriteState::fill_with_empty<double>(int bid) {
   // For easy reference
   double* local_buffer = (double*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  double empty = Configurator::empty_float64();
+  double empty = constants::empty_float64;
 
   // Fill with empty values
   size_t offset = 0;
@@ -1070,7 +1070,7 @@ void ArraySortedWriteState::fill_with_empty<char>(int bid) {
   // For easy reference
   char* local_buffer = (char*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  char empty = Configurator::empty_char();
+  char empty = constants::empty_char;
 
   // Fill with empty values
   size_t offset = 0;
@@ -1083,7 +1083,7 @@ void ArraySortedWriteState::fill_with_empty<int8_t>(int bid) {
   // For easy reference
   int8_t* local_buffer = (int8_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  int8_t empty = Configurator::empty_int8();
+  int8_t empty = constants::empty_int8;
 
   // Fill with empty values
   size_t offset = 0;
@@ -1096,7 +1096,7 @@ void ArraySortedWriteState::fill_with_empty<uint8_t>(int bid) {
   // For easy reference
   uint8_t* local_buffer = (uint8_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  uint8_t empty = Configurator::empty_uint8();
+  uint8_t empty = constants::empty_uint8;
 
   // Fill with empty values
   size_t offset = 0;
@@ -1110,7 +1110,7 @@ void ArraySortedWriteState::fill_with_empty<int16_t>(int bid) {
   // For easy reference
   int16_t* local_buffer = (int16_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  int16_t empty = Configurator::empty_int16();
+  int16_t empty = constants::empty_int16;
 
   // Fill with empty values
   size_t offset = 0;
@@ -1124,7 +1124,7 @@ void ArraySortedWriteState::fill_with_empty<uint16_t>(int bid) {
   // For easy reference
   uint16_t* local_buffer = (uint16_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  uint16_t empty = Configurator::empty_uint16();
+  uint16_t empty = constants::empty_uint16;
 
   // Fill with empty values
   size_t offset = 0;
@@ -1138,7 +1138,7 @@ void ArraySortedWriteState::fill_with_empty<uint32_t>(int bid) {
   // For easy reference
   uint32_t* local_buffer = (uint32_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  uint32_t empty = Configurator::empty_uint32();
+  uint32_t empty = constants::empty_uint32;
 
   // Fill with empty values
   size_t offset = 0;
@@ -1152,7 +1152,7 @@ void ArraySortedWriteState::fill_with_empty<uint64_t>(int bid) {
   // For easy reference
   uint64_t* local_buffer = (uint64_t*)copy_state_.buffers_[copy_id_][bid];
   size_t local_buffer_size = copy_state_.buffer_sizes_[copy_id_][bid];
-  uint64_t empty = Configurator::empty_uint64();
+  uint64_t empty = constants::empty_uint64;
 
   // Fill with empty values
   size_t offset = 0;
@@ -1167,10 +1167,10 @@ void ArraySortedWriteState::fill_with_empty_var<int>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  int empty = Configurator::empty_int32();
+  int empty = constants::empty_int32;
 
   // Fill an empty value
-  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(int));
+  std::memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(int));
 }
 
 template <>
@@ -1179,10 +1179,11 @@ void ArraySortedWriteState::fill_with_empty_var<int64_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  int64_t empty = Configurator::empty_int64();
+  int64_t empty = constants::empty_int64;
 
   // Fill an empty value
-  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(int64_t));
+  std::memcpy(
+      local_buffer_var + local_buffer_offset_var, &empty, sizeof(int64_t));
 }
 
 template <>
@@ -1191,10 +1192,11 @@ void ArraySortedWriteState::fill_with_empty_var<float>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  float empty = Configurator::empty_float32();
+  float empty = constants::empty_float32;
 
   // Fill an empty value
-  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(float));
+  std::memcpy(
+      local_buffer_var + local_buffer_offset_var, &empty, sizeof(float));
 }
 
 template <>
@@ -1203,10 +1205,11 @@ void ArraySortedWriteState::fill_with_empty_var<double>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  double empty = Configurator::empty_float64();
+  double empty = constants::empty_float64;
 
   // Fill an empty value
-  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(double));
+  std::memcpy(
+      local_buffer_var + local_buffer_offset_var, &empty, sizeof(double));
 }
 
 template <>
@@ -1215,10 +1218,10 @@ void ArraySortedWriteState::fill_with_empty_var<char>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  char empty = Configurator::empty_char();
+  char empty = constants::empty_char;
 
   // Fill an empty value
-  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(char));
+  std::memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(char));
 }
 
 template <>
@@ -1227,10 +1230,11 @@ void ArraySortedWriteState::fill_with_empty_var<int8_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  int8_t empty = Configurator::empty_int8();
+  int8_t empty = constants::empty_int8;
 
   // Fill an empty value
-  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(int8_t));
+  std::memcpy(
+      local_buffer_var + local_buffer_offset_var, &empty, sizeof(int8_t));
 }
 
 template <>
@@ -1239,10 +1243,11 @@ void ArraySortedWriteState::fill_with_empty_var<uint8_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  uint8_t empty = Configurator::empty_uint8();
+  uint8_t empty = constants::empty_uint8;
 
   // Fill an empty value
-  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint8_t));
+  std::memcpy(
+      local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint8_t));
 }
 
 template <>
@@ -1251,10 +1256,11 @@ void ArraySortedWriteState::fill_with_empty_var<int16_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  int16_t empty = Configurator::empty_int16();
+  int16_t empty = constants::empty_int16;
 
   // Fill an empty value
-  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(int16_t));
+  std::memcpy(
+      local_buffer_var + local_buffer_offset_var, &empty, sizeof(int16_t));
 }
 
 template <>
@@ -1263,10 +1269,11 @@ void ArraySortedWriteState::fill_with_empty_var<uint16_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  uint16_t empty = Configurator::empty_uint16();
+  uint16_t empty = constants::empty_uint16;
 
   // Fill an empty value
-  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint16_t));
+  std::memcpy(
+      local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint16_t));
 }
 
 template <>
@@ -1275,10 +1282,11 @@ void ArraySortedWriteState::fill_with_empty_var<uint32_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  uint32_t empty = Configurator::empty_uint32();
+  uint32_t empty = constants::empty_uint32;
 
   // Fill an empty value
-  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint32_t));
+  std::memcpy(
+      local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint32_t));
 }
 
 template <>
@@ -1287,10 +1295,11 @@ void ArraySortedWriteState::fill_with_empty_var<uint64_t>(int bid) {
   char* local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
   size_t local_buffer_offset_var =
       copy_state_.buffer_offsets_[copy_id_][bid + 1];
-  uint64_t empty = Configurator::empty_uint64();
+  uint64_t empty = constants::empty_uint64;
 
   // Fill an empty value
-  memcpy(local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint64_t));
+  std::memcpy(
+      local_buffer_var + local_buffer_offset_var, &empty, sizeof(uint64_t));
 }
 
 void ArraySortedWriteState::free_copy_state() {
@@ -1572,7 +1581,7 @@ bool ArraySortedWriteState::next_tile_slab_col() {
     }
   } else {  // Calculate a new slab based on the previous
     // Copy previous tile slab
-    memcpy(tile_slab[copy_id_], tile_slab[prev_id], 2 * coords_size_);
+    std::memcpy(tile_slab[copy_id_], tile_slab[prev_id], 2 * coords_size_);
 
     // Advance tile slab
     tile_slab[copy_id_][2 * (dim_num_ - 1)] =
@@ -1638,7 +1647,7 @@ bool ArraySortedWriteState::next_tile_slab_row() {
     }
   } else {  // Calculate a new slab based on the previous
     // Copy previous tile slab
-    memcpy(tile_slab[copy_id_], tile_slab[prev_id], 2 * coords_size_);
+    std::memcpy(tile_slab[copy_id_], tile_slab[prev_id], 2 * coords_size_);
 
     // Advance tile slab
     tile_slab[copy_id_][0] = tile_slab[copy_id_][1] + 1;

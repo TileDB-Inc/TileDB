@@ -42,7 +42,8 @@
 #include <iostream>
 #include <set>
 #include <sstream>
-#include "configurator.h"
+#include "config.h"
+#include "constants.h"
 #include "logger.h"
 #if defined(__APPLE__) && defined(__MACH__)
 #include <arpa/inet.h>
@@ -72,9 +73,9 @@ namespace utils {
 
 const char* array_type_str(ArrayType array_type) {
   if (array_type == ArrayType::DENSE)
-    return Configurator::dense_str();
+    return constants::dense_str;
   else if (array_type == ArrayType::SPARSE)
-    return Configurator::sparse_str();
+    return constants::sparse_str;
   else
     return nullptr;
 }
@@ -192,29 +193,29 @@ int cmp_row_order(
 const char* compressor_str(Compressor type) {
   switch (type) {
     case Compressor::NO_COMPRESSION:
-      return Configurator::no_compression_str();
+      return constants::no_compression_str;
     case Compressor::GZIP:
-      return Configurator::gzip_str();
+      return constants::gzip_str;
     case Compressor::ZSTD:
-      return Configurator::zstd_str();
+      return constants::zstd_str;
     case Compressor::LZ4:
-      return Configurator::lz4_str();
+      return constants::lz4_str;
     case Compressor::BLOSC:
-      return Configurator::blosc_str();
+      return constants::blosc_str;
     case Compressor::BLOSC_LZ4:
-      return Configurator::blosc_lz4_str();
+      return constants::blosc_lz4_str;
     case Compressor::BLOSC_LZ4HC:
-      return Configurator::blosc_lz4hc_str();
+      return constants::blosc_lz4hc_str;
     case Compressor::BLOSC_SNAPPY:
-      return Configurator::blosc_snappy_str();
+      return constants::blosc_snappy_str;
     case Compressor::BLOSC_ZLIB:
-      return Configurator::blosc_zlib_str();
+      return constants::blosc_zlib_str;
     case Compressor::BLOSC_ZSTD:
-      return Configurator::blosc_zstd_str();
+      return constants::blosc_zstd_str;
     case Compressor::RLE:
-      return Configurator::rle_str();
+      return constants::rle_str;
     case Compressor::BZIP2:
-      return Configurator::bzip2_str();
+      return constants::bzip2_str;
     default:
       return nullptr;
   }
@@ -267,27 +268,27 @@ uint64_t datatype_size(Datatype type) {
 const char* datatype_str(Datatype type) {
   switch (type) {
     case Datatype::INT32:
-      return Configurator::int32_str();
+      return constants::int32_str;
     case Datatype::INT64:
-      return Configurator::int64_str();
+      return constants::int64_str;
     case Datatype::FLOAT32:
-      return Configurator::float32_str();
+      return constants::float32_str;
     case Datatype::FLOAT64:
-      return Configurator::float64_str();
+      return constants::float64_str;
     case Datatype::CHAR:
-      return Configurator::char_str();
+      return constants::char_str;
     case Datatype::INT8:
-      return Configurator::int8_str();
+      return constants::int8_str;
     case Datatype::UINT8:
-      return Configurator::uint8_str();
+      return constants::uint8_str;
     case Datatype::INT16:
-      return Configurator::int16_str();
+      return constants::int16_str;
     case Datatype::UINT16:
-      return Configurator::uint16_str();
+      return constants::uint16_str;
     case Datatype::UINT32:
-      return Configurator::uint32_str();
+      return constants::uint32_str;
     case Datatype::UINT64:
-      return Configurator::uint64_str();
+      return constants::uint64_str;
     default:
       return nullptr;
   }
@@ -348,33 +349,32 @@ std::string domain_str(const void* domain, Datatype type) {
 template <class T>
 bool empty_value(T value) {
   if (&typeid(T) == &typeid(int))
-    return value == Configurator::empty_int32();
+    return value == constants::empty_int32;
   else if (&typeid(T) == &typeid(int64_t))
-    return value == Configurator::empty_int64();
+    return value == constants::empty_int64;
   else if (&typeid(T) == &typeid(float))
-    return value == Configurator::empty_float32();
+    return value == constants::empty_float32;
   else if (&typeid(T) == &typeid(double))
-    return value == Configurator::empty_float64();
+    return value == constants::empty_float64;
   else if (&typeid(T) == &typeid(int8_t))
-    return value == Configurator::empty_int8();
+    return value == constants::empty_int8;
   else if (&typeid(T) == &typeid(uint8_t))
-    return value == Configurator::empty_uint8();
+    return value == constants::empty_uint8;
   else if (&typeid(T) == &typeid(int16_t))
-    return value == Configurator::empty_int16();
+    return value == constants::empty_int16;
   else if (&typeid(T) == &typeid(uint16_t))
-    return value == Configurator::empty_uint16();
+    return value == constants::empty_uint16;
   else if (&typeid(T) == &typeid(uint32_t))
-    return value == Configurator::empty_uint32();
+    return value == constants::empty_uint32;
   else if (&typeid(T) == &typeid(uint64_t))
-    return value == Configurator::empty_uint64();
+    return value == constants::empty_uint64;
   else
     return false;
 }
 
 Status expand_buffer(void*& buffer, size_t& buffer_allocated_size) {
   buffer_allocated_size *= 2;
-  buffer = realloc(buffer, buffer_allocated_size);
-
+  buffer = std::realloc(buffer, buffer_allocated_size);
   if (buffer == nullptr) {
     return LOG_STATUS(Status::MemError("Cannot reallocate buffer"));
   }
@@ -443,7 +443,7 @@ std::string get_mac_addr() {
     LOG_ERROR("Cannot get MAC address");
     return "";
   }
-  buf = (char*)malloc(len);
+  buf = (char*)std::malloc(len);
   if (sysctl(mib, 6, buf, &len, nullptr, 0) < 0) {
     assert(0);
     LOG_ERROR("Cannot get MAC address");
@@ -526,7 +526,7 @@ bool is_contained(const T* range_A, const T* range_B, int dim_num) {
 bool is_array(const std::string& dir) {
   // Check existence
   if (vfs::is_dir(dir) &&
-      vfs::is_file(dir + "/" + Configurator::array_schema_filename()))
+      vfs::is_file(dir + "/" + constants::array_schema_filename))
     return true;
   else
     return false;
@@ -535,8 +535,7 @@ bool is_array(const std::string& dir) {
 bool is_array(const uri::URI& uri) {
   // Check existence
   if (vfs::is_dir(uri)) {
-    auto array_schema_uri =
-        uri.join_path(Configurator::array_schema_filename());
+    auto array_schema_uri = uri.join_path(constants::array_schema_filename);
     if (vfs::is_file(array_schema_uri)) {
       return true;
     }
@@ -547,7 +546,7 @@ bool is_array(const uri::URI& uri) {
 bool is_fragment(const std::string& dir) {
   // Check existence
   if (vfs::is_dir(dir) &&
-      vfs::is_file(dir + "/" + Configurator::fragment_filename()))
+      vfs::is_file(dir + "/" + constants::fragment_filename))
     return true;
   else
     return false;
@@ -556,7 +555,7 @@ bool is_fragment(const std::string& dir) {
 bool is_group(const uri::URI& uri) {
   // Check existence
   if (vfs::is_dir(uri)) {
-    auto group_uri = uri.join_path(Configurator::group_filename());
+    auto group_uri = uri.join_path(constants::group_filename);
     if (vfs::is_file(group_uri)) {
       return true;
     }
@@ -566,8 +565,7 @@ bool is_group(const uri::URI& uri) {
 
 bool is_group(const std::string& dir) {
   // Check existence
-  if (vfs::is_dir(dir) &&
-      vfs::is_file(dir + "/" + Configurator::group_filename()))
+  if (vfs::is_dir(dir) && vfs::is_file(dir + "/" + constants::group_filename))
     return true;
   else
     return false;
@@ -580,11 +578,11 @@ inline bool ends_with(std::string const& value, std::string const& ending) {
 }
 
 bool is_array_schema(const std::string& path) {
-  return ends_with(path, Configurator::array_schema_filename());
+  return ends_with(path, constants::array_schema_filename);
 }
 
 bool is_consolidation_lock(const std::string& path) {
-  return ends_with(path, Configurator::consolidation_filelock_name());
+  return ends_with(path, constants::consolidation_filelock_name);
 }
 
 bool is_positive_integer(const char* s) {
@@ -619,9 +617,9 @@ bool is_unary_subarray(const T* subarray, int dim_num) {
 
 const char* layout_str(Layout layout) {
   if (layout == Layout::COL_MAJOR)
-    return Configurator::col_major_str();
+    return constants::col_major_str;
   else if (layout == Layout::ROW_MAJOR)
-    return Configurator::row_major_str();
+    return constants::row_major_str;
   else
     return nullptr;
 }
@@ -636,7 +634,7 @@ std::string tile_extent_str(const void* tile_extent, Datatype type) {
   std::stringstream ss;
 
   if (tile_extent == nullptr) {
-    return Configurator::null_str();
+    return constants::null_str;
   }
 
   if (type == Datatype::INT32) {
