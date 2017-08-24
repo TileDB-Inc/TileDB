@@ -41,6 +41,7 @@
 #include "configurator.h"
 #include "logger.h"
 #include "utils.h"
+#include "filesystem.h"
 
 namespace tiledb {
 
@@ -145,7 +146,7 @@ void BookKeeping::append_bounding_coords(const void* bounding_coords) {
 
   // Copy and append MBR
   void* new_bounding_coords = malloc(bounding_coords_size);
-  memcpy(new_bounding_coords, bounding_coords, bounding_coords_size);
+  std::memcpy(new_bounding_coords, bounding_coords, bounding_coords_size);
   bounding_coords_.push_back(new_bounding_coords);
 }
 
@@ -155,7 +156,7 @@ void BookKeeping::append_mbr(const void* mbr) {
 
   // Copy and append MBR
   void* new_mbr = malloc(mbr_size);
-  memcpy(new_mbr, mbr, mbr_size);
+  std::memcpy(new_mbr, mbr, mbr_size);
   mbrs_.push_back(new_mbr);
 }
 
@@ -210,42 +211,39 @@ Status BookKeeping::flush() {
   // Prepare file name
   std::string filename = fragment_uri_.to_posix_path();
   filename = filename + "/" + Configurator::bookkeeping_filename() +
-             Configurator::file_suffix() + Configurator::gzip_suffix();
+             Configurator::file_suffix();
 
-  // Open book-keeping file
-  gzFile fd = gzopen(filename.c_str(), "wb");
-  if (fd == nullptr) {
-    return LOG_STATUS(Status::BookkeepingError(
-        "Cannot finalize book-keeping; Cannot open file"));
-  }
+  // TODO: fix Buffer bug on dev branch
+  Buffer* buff = new Buffer(8);
 
   // Write non-empty domain
-  RETURN_NOT_OK(flush_non_empty_domain(fd));
+  RETURN_NOT_OK_ELSE(write_non_empty_domain(buff), delete buff);
 
   // Write MBRs
-  RETURN_NOT_OK(flush_mbrs(fd));
+  RETURN_NOT_OK_ELSE(write_mbrs(buff), delete buff);
 
   // Write bounding coordinates
-  RETURN_NOT_OK(flush_bounding_coords(fd));
+  RETURN_NOT_OK_ELSE(write_bounding_coords(buff), delete buff);
 
   // Write tile offsets
-  RETURN_NOT_OK(flush_tile_offsets(fd));
+  RETURN_NOT_OK_ELSE(write_tile_offsets(buff), delete buff);
 
   // Write variable tile offsets
-  RETURN_NOT_OK(flush_tile_var_offsets(fd));
+  RETURN_NOT_OK_ELSE(write_tile_var_offsets(buff), delete buff);
 
   // Write variable tile sizes
-  RETURN_NOT_OK(flush_tile_var_sizes(fd));
+  RETURN_NOT_OK_ELSE(write_tile_var_sizes(buff), delete buff);
 
   // Write cell number of the last tile
-  RETURN_NOT_OK(flush_last_tile_cell_num(fd));
+  RETURN_NOT_OK_ELSE(write_last_tile_cell_num(buff), delete buff);
 
-  // Close file
-  if (gzclose(fd) != Z_OK) {
+  // Save book-keeping buffer to gzip file
+  Status st = vfs::write_to_file(filename, buff->data(), buff->size());
+  delete buff;
+  if (!st.ok()) {
     return LOG_STATUS(Status::BookkeepingError(
-        "Cannot finalize book-keeping; Cannot close file"));
+        "Cannot write book-keeping file"));
   }
-
   return Status::Ok();
 }
 
@@ -261,13 +259,13 @@ Status BookKeeping::init(const void* non_empty_domain) {
   size_t domain_size = 2 * array_schema_->coords_size();
   non_empty_domain_ = malloc(domain_size);
   if (non_empty_domain == nullptr)
-    memcpy(non_empty_domain_, array_schema_->domain(), domain_size);
+    std::memcpy(non_empty_domain_, array_schema_->domain(), domain_size);
   else
-    memcpy(non_empty_domain_, non_empty_domain, domain_size);
+    std::memcpy(non_empty_domain_, non_empty_domain, domain_size);
 
   // Set expanded domain
   domain_ = malloc(domain_size);
-  memcpy(domain_, non_empty_domain_, domain_size);
+  std::memcpy(domain_, non_empty_domain_, domain_size);
   array_schema_->expand_domain(domain_);
 
   // Set last tile cell number
@@ -321,41 +319,36 @@ Status BookKeeping::load() {
   // Prepare file name
   std::string filename = fragment_uri_.to_posix_path();
   filename = filename + "/" + Configurator::bookkeeping_filename() +
-             Configurator::file_suffix() + Configurator::gzip_suffix();
-
-  // Open book-keeping file
-  gzFile fd = gzopen(filename.c_str(), "rb");
-  if (fd == nullptr) {
+             Configurator::file_suffix();
+  Buffer* buff = nullptr;
+  Status st = vfs::read_from_file(filename, &buff);
+  if (!st.ok()) {
     return LOG_STATUS(
         Status::BookkeepingError("Cannot load book-keeping; Cannot open file"));
   }
 
   // Load non-empty domain
-  RETURN_NOT_OK(load_non_empty_domain(fd));
+  RETURN_NOT_OK_ELSE(load_non_empty_domain(buff), delete buff);
 
   // Load MBRs
-  RETURN_NOT_OK(load_mbrs(fd));
+  RETURN_NOT_OK_ELSE(load_mbrs(buff), delete buff);
 
   // Load bounding coordinates
-  RETURN_NOT_OK(load_bounding_coords(fd));
+  RETURN_NOT_OK_ELSE(load_bounding_coords(buff), delete buff);
 
   // Load tile offsets
-  RETURN_NOT_OK(load_tile_offsets(fd));
+  RETURN_NOT_OK_ELSE(load_tile_offsets(buff), delete buff);
 
   // Load variable tile offsets
-  RETURN_NOT_OK(load_tile_var_offsets(fd));
+  RETURN_NOT_OK_ELSE(load_tile_var_offsets(buff), delete buff);
 
   // Load variable tile sizes
-  RETURN_NOT_OK(load_tile_var_sizes(fd));
+  RETURN_NOT_OK_ELSE(load_tile_var_sizes(buff), delete buff);
 
   // Load cell number of last tile
-  RETURN_NOT_OK(load_last_tile_cell_num(fd));
+  RETURN_NOT_OK_ELSE(load_last_tile_cell_num(buff), delete buff);
 
-  // Close file
-  if (gzclose(fd) != Z_OK) {
-    return LOG_STATUS(Status::BookkeepingError(
-        "Cannot load book-keeping; Cannot close file"));
-  }
+  delete buff;
 
   return Status::Ok();
 }
@@ -372,47 +365,42 @@ void BookKeeping::set_last_tile_cell_num(int64_t cell_num) {
  * bounding_coords_num(int64_t)
  * bounding_coords_#1(void*) bounding_coords_#2(void*) ...
  */
-Status BookKeeping::flush_bounding_coords(gzFile fd) const {
-  // For easy reference
+Status BookKeeping::write_bounding_coords(Buffer* buff) {
+  Status st;
   size_t bounding_coords_size = 2 * array_schema_->coords_size();
   int64_t bounding_coords_num = bounding_coords_.size();
-
   // Write number of bounding coordinates
-  if (gzwrite(fd, &bounding_coords_num, sizeof(int64_t)) != sizeof(int64_t)) {
+  st = buff->write(&bounding_coords_num, sizeof(int64_t));
+  if (!st.ok()) {
     return LOG_STATUS(Status::BookkeepingError(
         "Cannot finalize book-keeping; Writing number of bounding "
         "coordinates failed"));
   }
-
   // Write bounding coordinates
   for (int64_t i = 0; i < bounding_coords_num; ++i) {
-    if (gzwrite(fd, bounding_coords_[i], bounding_coords_size) !=
-        int(bounding_coords_size)) {
+    st = buff->write(bounding_coords_[i], bounding_coords_size);
+    if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot finalize book-keeping; Writing bounding coordinates failed"));
     }
   }
-
   return Status::Ok();
 }
 
 /* FORMAT:
  * last_tile_cell_num(int64_t)
  */
-Status BookKeeping::flush_last_tile_cell_num(gzFile fd) const {
-  // For easy reference
+Status BookKeeping::write_last_tile_cell_num(Buffer* buff) {
   int64_t cell_num_per_tile =
       dense_ ? array_schema_->cell_num_per_tile() : array_schema_->capacity();
-
   // Handle the case of zero
   int64_t last_tile_cell_num =
       (last_tile_cell_num_ == 0) ? cell_num_per_tile : last_tile_cell_num_;
-
-  if (gzwrite(fd, &last_tile_cell_num, sizeof(int64_t)) != sizeof(int64_t)) {
+  Status st =  buff->write(&last_tile_cell_num, sizeof(int64_t));
+  if (!st.ok()) {
     return LOG_STATUS(Status::BookkeepingError(
         "Cannot finalize book-keeping; Writing last tile cell number failed"));
   }
-
   return Status::Ok();
 }
 
@@ -420,50 +408,47 @@ Status BookKeeping::flush_last_tile_cell_num(gzFile fd) const {
  * mbr_num(int64_t)
  * mbr_#1(void*) mbr_#2(void*) ...
  */
-Status BookKeeping::flush_mbrs(gzFile fd) const {
-  // For easy reference
+Status BookKeeping::write_mbrs(Buffer* buff) {
+  Status st;
   size_t mbr_size = 2 * array_schema_->coords_size();
   int64_t mbr_num = mbrs_.size();
-
   // Write number of MBRs
-  if (gzwrite(fd, &mbr_num, sizeof(int64_t)) != sizeof(int64_t)) {
+  st = buff->write(&mbr_num, sizeof(int64_t));
+  if (!st.ok()) {
     return LOG_STATUS(Status::BookkeepingError(
         "Cannot finalize book-keeping; Writing number of MBRs failed"));
   }
-
   // Write MBRs
   for (int64_t i = 0; i < mbr_num; ++i) {
-    if (gzwrite(fd, mbrs_[i], mbr_size) != int(mbr_size)) {
+    st = buff->write(mbrs_[i], mbr_size);
+    if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot finalize book-keeping; Writing MBR failed"));
     }
   }
-
   return Status::Ok();
 }
 
 /* FORMAT:
  * non_empty_domain_size(size_t) non_empty_domain(void*)
  */
-Status BookKeeping::flush_non_empty_domain(gzFile fd) const {
+Status BookKeeping::write_non_empty_domain(Buffer* buff){
   size_t domain_size =
       (non_empty_domain_ == nullptr) ? 0 : array_schema_->coords_size() * 2;
-
   // Write non-empty domain size
-  if (gzwrite(fd, &domain_size, sizeof(size_t)) != sizeof(size_t)) {
+  Status st = buff->write(&domain_size, sizeof(size_t));
+  if (!st.ok()) {
     return LOG_STATUS(Status::BookkeepingError(
         "Cannot finalize book-keeping; Writing domain size failed"));
   }
-
   // Write non-empty domain
   if (non_empty_domain_ != nullptr) {
-    if (gzwrite(fd, non_empty_domain_, domain_size) != int(domain_size)) {
+    st = buff->write(non_empty_domain_, domain_size);
+    if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot finalize book-keeping; Writing domain failed"));
     }
   }
-
-  // Success
   return Status::Ok();
 }
 
@@ -475,27 +460,24 @@ Status BookKeeping::flush_non_empty_domain(gzFile fd) const {
  * tile_offsets_attr#<attribute_num>_#1 (off_t)
  * tile_offsets_attr#<attribute_num>_#2 (off_t) ...
  */
-Status BookKeeping::flush_tile_offsets(gzFile fd) const {
-  // For easy reference
+Status BookKeeping::write_tile_offsets(Buffer* buff){
+  Status st;
   int attribute_num = array_schema_->attribute_num();
-  int64_t tile_offsets_num;
-
   // Write tile offsets for each attribute
   for (int i = 0; i < attribute_num + 1; ++i) {
     // Write number of tile offsets
-    tile_offsets_num = tile_offsets_[i].size();
-    if (gzwrite(fd, &tile_offsets_num, sizeof(int64_t)) != sizeof(int64_t)) {
+    int64_t tile_offsets_num = tile_offsets_[i].size();
+    st = buff->write(&tile_offsets_num, sizeof(int64_t));
+    if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot finalize book-keeping; Writing number of tile offsets "
           "failed"));
     }
-
     if (tile_offsets_num == 0)
       continue;
-
     // Write tile offsets
-    if (gzwrite(fd, &tile_offsets_[i][0], tile_offsets_num * sizeof(off_t)) !=
-        int(tile_offsets_num * sizeof(off_t))) {
+    st = buff->write(&tile_offsets_[i][0], tile_offsets_num * sizeof(off_t));
+    if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot finalize book-keeping; Writing tile offsets failed"));
     }
@@ -511,31 +493,25 @@ Status BookKeeping::flush_tile_offsets(gzFile fd) const {
  * tile_var_offsets_attr#<attribute_num-1>_#1 (off_t)
  *     tile_var_offsets_attr#<attribute_num-1>_#2 (off_t) ...
  */
-Status BookKeeping::flush_tile_var_offsets(gzFile fd) const {
-  // For easy reference
+Status BookKeeping::write_tile_var_offsets(Buffer* buff) {
+  Status st;
   int attribute_num = array_schema_->attribute_num();
-  int64_t tile_var_offsets_num;
 
   // Write tile offsets for each attribute
   for (int i = 0; i < attribute_num; ++i) {
     // Write number of offsets
-    tile_var_offsets_num = tile_var_offsets_[i].size();
-    if (gzwrite(fd, &tile_var_offsets_num, sizeof(int64_t)) !=
-        sizeof(int64_t)) {
+    int64_t tile_var_offsets_num = tile_var_offsets_[i].size();
+    st = buff->write(&tile_var_offsets_num, sizeof(int64_t));
+    if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot finalize book-keeping; Writing number of "
           "variable tile offsets failed"));
     }
-
     if (tile_var_offsets_num == 0)
       continue;
-
     // Write tile offsets
-    if (gzwrite(
-            fd,
-            &tile_var_offsets_[i][0],
-            tile_var_offsets_num * sizeof(off_t)) !=
-        int(tile_var_offsets_num * sizeof(off_t))) {
+    st = buff->write(&tile_var_offsets_[i][0], tile_var_offsets_num * sizeof(off_t));
+    if (!st.ok()) {
       return LOG_STATUS(
           Status::BookkeepingError("Cannot finalize book-keeping; Writing "
                                    "variable tile offsets failed"));
@@ -552,28 +528,25 @@ Status BookKeeping::flush_tile_var_offsets(gzFile fd) const {
  * tile_var_sizes__attr#<attribute_num-1>_#1(size_t)
  *     tile_var_sizes_attr#<attribute_num-1>_#2 (size_t) ...
  */
-Status BookKeeping::flush_tile_var_sizes(gzFile fd) const {
-  // For easy reference
+Status BookKeeping::write_tile_var_sizes(Buffer* buff) {
+  Status st;
   int attribute_num = array_schema_->attribute_num();
-  int64_t tile_var_sizes_num;
 
   // Write tile sizes for each attribute
   for (int i = 0; i < attribute_num; ++i) {
     // Write number of sizes
-    tile_var_sizes_num = tile_var_sizes_[i].size();
-    if (gzwrite(fd, &tile_var_sizes_num, sizeof(int64_t)) != sizeof(int64_t)) {
+    int64_t tile_var_sizes_num = tile_var_sizes_[i].size();
+    st = buff->write(&tile_var_sizes_num, sizeof(int64_t));
+    if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot finalize book-keeping; Writing number of "
           "variable tile sizes failed"));
     }
-
     if (tile_var_sizes_num == 0)
       continue;
-
     // Write tile sizes
-    if (gzwrite(
-            fd, &tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(size_t)) !=
-        int(tile_var_sizes_num * sizeof(size_t))) {
+    st = buff->write(&tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(size_t));
+    if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot finalize book-keeping; Writing variable tile sizes failed"));
     }
@@ -585,45 +558,43 @@ Status BookKeeping::flush_tile_var_sizes(gzFile fd) const {
  * bounding_coords_num (int64_t)
  * bounding_coords_#1 (void*) bounding_coords_#2 (void*) ...
  */
-Status BookKeeping::load_bounding_coords(gzFile fd) {
-  // For easy reference
+Status BookKeeping::load_bounding_coords(Buffer* buff) {
   size_t bounding_coords_size = 2 * array_schema_->coords_size();
 
   // Get number of bounding coordinates
-  int64_t bounding_coords_num;
-  if (gzread(fd, &bounding_coords_num, sizeof(int64_t)) != sizeof(int64_t)) {
+  int64_t bounding_coords_num = 0;
+  Status st = buff->read(&bounding_coords_num, sizeof(int64_t));
+  if (!st.ok()) {
     return LOG_STATUS(
         Status::BookkeepingError("Cannot load book-keeping; Reading number of "
                                  "bounding coordinates failed"));
   }
-
   // Get bounding coordinates
   void* bounding_coords;
   bounding_coords_.resize(bounding_coords_num);
   for (int64_t i = 0; i < bounding_coords_num; ++i) {
-    bounding_coords = malloc(bounding_coords_size);
-    if (gzread(fd, bounding_coords, bounding_coords_size) !=
-        int(bounding_coords_size)) {
-      free(bounding_coords);
+    bounding_coords = std::malloc(bounding_coords_size);
+    st = buff->read(bounding_coords, bounding_coords_size);
+    if (!st.ok()) {
+      std::free(bounding_coords);
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot load book-keeping; Reading bounding coordinates failed"));
     }
     bounding_coords_[i] = bounding_coords;
   }
-
   return Status::Ok();
 }
 
 /* FORMAT:
  * last_tile_cell_num (int64_t)
  */
-Status BookKeeping::load_last_tile_cell_num(gzFile fd) {
+Status BookKeeping::load_last_tile_cell_num(Buffer* buff) {
   // Get last tile cell number
-  if (gzread(fd, &last_tile_cell_num_, sizeof(int64_t)) != sizeof(int64_t)) {
+  Status st = buff->read(&last_tile_cell_num_, sizeof(int64_t));
+  if (!st.ok()) {
     return LOG_STATUS(Status::BookkeepingError(
         "Cannot load book-keeping; Reading last tile cell number failed"));
   }
-
   return Status::Ok();
 }
 
@@ -631,64 +602,62 @@ Status BookKeeping::load_last_tile_cell_num(gzFile fd) {
  * mbr_num (int64_t)
  * mbr_#1 (void*) mbr_#2 (void*) ... mbr_#<mbr_num> (void*)
  */
-Status BookKeeping::load_mbrs(gzFile fd) {
-  // For easy reference
+Status BookKeeping::load_mbrs(Buffer* buff) {
   size_t mbr_size = 2 * array_schema_->coords_size();
-
   // Get number of MBRs
-  int64_t mbr_num;
-  if (gzread(fd, &mbr_num, sizeof(int64_t)) != sizeof(int64_t)) {
+  int64_t mbr_num = 0;
+  Status st = buff->read(&mbr_num, sizeof(int64_t));
+  if (!st.ok()) {
     return LOG_STATUS(Status::BookkeepingError(
         "Cannot load book-keeping; Reading number of MBRs failed"));
   }
-
   // Get MBRs
-  void* mbr;
+  void* mbr = nullptr;
   mbrs_.resize(mbr_num);
   for (int64_t i = 0; i < mbr_num; ++i) {
-    mbr = malloc(mbr_size);
-    if (gzread(fd, mbr, mbr_size) != int(mbr_size)) {
-      free(mbr);
+    mbr = std::malloc(mbr_size);
+    st = buff->read(mbr, mbr_size);
+    if (!st.ok()) {
+      std::free(mbr);
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot load book-keeping; Reading MBR failed"));
     }
     mbrs_[i] = mbr;
   }
-
   return Status::Ok();
 }
 
 /* FORMAT:
  * non_empty_domain_size (size_t) non_empty_domain (void*)
  */
-Status BookKeeping::load_non_empty_domain(gzFile fd) {
+Status BookKeeping::load_non_empty_domain(Buffer* buff) {
   // Get domain size
-  size_t domain_size;
-  if (gzread(fd, &domain_size, sizeof(size_t)) != sizeof(size_t)) {
+  size_t domain_size = 0;
+  Status st = buff->read(&domain_size, sizeof(size_t));
+  if (!st.ok()) {
     return LOG_STATUS(Status::BookkeepingError(
         "Cannot load book-keeping; Reading domain size failed"));
   }
-
   // Get non-empty domain
   if (domain_size == 0) {
     non_empty_domain_ = nullptr;
   } else {
-    non_empty_domain_ = malloc(domain_size);
-    if (gzread(fd, non_empty_domain_, domain_size) != int(domain_size)) {
+    non_empty_domain_ = std::malloc(domain_size);
+    st = buff->read(non_empty_domain_, domain_size);
+    if (!st.ok()) {
+      std::free(non_empty_domain_);
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot load book-keeping; Reading domain failed"));
     }
   }
-
   // Get expanded domain
   if (non_empty_domain_ == nullptr) {
     domain_ = nullptr;
   } else {
-    domain_ = malloc(domain_size);
-    memcpy(domain_, non_empty_domain_, domain_size);
+    domain_ = std::malloc(domain_size);
+    std::memcpy(domain_, non_empty_domain_, domain_size);
     array_schema_->expand_domain(domain_);
   }
-
   return Status::Ok();
 }
 
@@ -700,10 +669,10 @@ Status BookKeeping::load_non_empty_domain(gzFile fd) {
  * tile_offsets_attr#<attribute_num>_#1 (off_t)
  * tile_offsets_attr#<attribute_num>_#2 (off_t) ...
  */
-Status BookKeeping::load_tile_offsets(gzFile fd) {
-  // For easy reference
+Status BookKeeping::load_tile_offsets(Buffer* buff) {
+  Status st;
+  int64_t tile_offsets_num = 0;
   int attribute_num = array_schema_->attribute_num();
-  int64_t tile_offsets_num;
 
   // Allocate tile offsets
   tile_offsets_.resize(attribute_num + 1);
@@ -711,23 +680,21 @@ Status BookKeeping::load_tile_offsets(gzFile fd) {
   // For all attributes, get the tile offsets
   for (int i = 0; i < attribute_num + 1; ++i) {
     // Get number of tile offsets
-    if (gzread(fd, &tile_offsets_num, sizeof(int64_t)) != sizeof(int64_t)) {
+    st = buff->read(&tile_offsets_num, sizeof(int64_t));
+    if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot load book-keeping; Reading number of tile offsets failed"));
     }
-
     if (tile_offsets_num == 0)
       continue;
-
     // Get tile offsets
     tile_offsets_[i].resize(tile_offsets_num);
-    if (gzread(fd, &tile_offsets_[i][0], tile_offsets_num * sizeof(off_t)) !=
-        int(tile_offsets_num * sizeof(off_t))) {
+    st = buff->read(&tile_offsets_[i][0], tile_offsets_num * sizeof(off_t));
+    if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot load book-keeping; Reading tile offsets failed"));
     }
   }
-
   return Status::Ok();
 }
 
@@ -739,10 +706,10 @@ Status BookKeeping::load_tile_offsets(gzFile fd) {
  * tile_var_offsets_attr#<attribute_num-1>_#1 (off_t)
  *     tile_ver_offsets_attr#<attribute_num-1>_#2 (off_t) ...
  */
-Status BookKeeping::load_tile_var_offsets(gzFile fd) {
-  // For easy reference
+Status BookKeeping::load_tile_var_offsets(Buffer* buff) {
+  Status st;
   int attribute_num = array_schema_->attribute_num();
-  int64_t tile_var_offsets_num;
+  int64_t tile_var_offsets_num = 0;
 
   // Allocate tile offsets
   tile_var_offsets_.resize(attribute_num);
@@ -750,27 +717,22 @@ Status BookKeeping::load_tile_var_offsets(gzFile fd) {
   // For all attributes, get the variable tile offsets
   for (int i = 0; i < attribute_num; ++i) {
     // Get number of tile offsets
-    if (gzread(fd, &tile_var_offsets_num, sizeof(int64_t)) != sizeof(int64_t)) {
+    st = buff->read(&tile_var_offsets_num, sizeof(int64_t));
+    if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot load book-keeping; Reading number of variable tile "
           "offsets failed"));
     }
-
     if (tile_var_offsets_num == 0)
       continue;
-
     // Get variable tile offsets
     tile_var_offsets_[i].resize(tile_var_offsets_num);
-    if (gzread(
-            fd,
-            &tile_var_offsets_[i][0],
-            tile_var_offsets_num * sizeof(off_t)) !=
-        int(tile_var_offsets_num * sizeof(off_t))) {
-      return LOG_STATUS(Status::BookkeepingError(
+    st = buff->read(&tile_var_offsets_[i][0], tile_var_offsets_num * sizeof(off_t));
+    if (!st.ok()) {
+     return LOG_STATUS(Status::BookkeepingError(
           "Cannot load book-keeping; Reading variable tile offsets failed"));
     }
   }
-
   return Status::Ok();
 }
 
@@ -782,10 +744,10 @@ Status BookKeeping::load_tile_var_offsets(gzFile fd) {
  * tile_var_sizes__attr#<attribute_num-1>_#1 (size_t)
  *     tile_var_sizes_attr#<attribute_num-1>_#2 (size_t) ...
  */
-Status BookKeeping::load_tile_var_sizes(gzFile fd) {
-  // For easy reference
+Status BookKeeping::load_tile_var_sizes(Buffer* buff) {
+  Status st;
   int attribute_num = array_schema_->attribute_num();
-  int64_t tile_var_sizes_num;
+  int64_t tile_var_sizes_num = 0;
 
   // Allocate tile sizes
   tile_var_sizes_.resize(attribute_num);
@@ -793,25 +755,22 @@ Status BookKeeping::load_tile_var_sizes(gzFile fd) {
   // For all attributes, get the variable tile sizes
   for (int i = 0; i < attribute_num; ++i) {
     // Get number of tile sizes
-    if (gzread(fd, &tile_var_sizes_num, sizeof(int64_t)) != sizeof(int64_t)) {
+    st = buff->read(&tile_var_sizes_num, sizeof(int64_t));
+    if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot load book-keeping; Reading number of variable tile "
           "sizes failed"));
     }
-
     if (tile_var_sizes_num == 0)
       continue;
-
     // Get variable tile sizes
     tile_var_sizes_[i].resize(tile_var_sizes_num);
-    if (gzread(
-            fd, &tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(size_t)) !=
-        int(tile_var_sizes_num * sizeof(size_t))) {
+    st = buff->read(&tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(size_t));
+    if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot load book-keeping; Reading variable tile sizes failed"));
     }
   }
-
   return Status::Ok();
 }
 
