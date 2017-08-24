@@ -52,7 +52,7 @@ namespace tiledb {
 /* ****************************** */
 
 ReadState::ReadState(
-    const Fragment* fragment, Query* query, BookKeeping* bookkeeping)
+    const Fragment* fragment, Query* query, FragmentMetadata* bookkeeping)
     : query_(query)
     , bookkeeping_(bookkeeping)
     , fragment_(fragment) {

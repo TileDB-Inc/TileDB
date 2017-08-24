@@ -106,7 +106,7 @@ class Query {
       const char** attributes,
       int attribute_num,
       const std::vector<std::string>& fragment_names,
-      const std::vector<BookKeeping*>& book_keeping);
+      const std::vector<FragmentMetadata*>& book_keeping);
 
   /** Returns the query mode. */
   QueryMode mode() const;
@@ -151,7 +151,7 @@ class Query {
   Status init_states();
   Status init_fragments(
       const std::vector<std::string>& fragment_names,
-      const std::vector<BookKeeping*>& bookkeeping);
+      const std::vector<FragmentMetadata*>& bookkeeping);
   Status new_fragment();
 
   /**
@@ -172,12 +172,12 @@ class Query {
    * Opens the existing fragments.
    *
    * @param fragment_names The vector with the fragment names.
-   * @param book_keeping The book-keeping of the array fragments.
-   * @return TILEDB_AR_OK for success and TILEDB_AR_ERR for error.
+   * @param metadata The metadata of the array fragments.
+   * @return Status
    */
   Status open_fragments(
       const std::vector<std::string>& fragment_names,
-      const std::vector<BookKeeping*>& book_keeping);
+      const std::vector<FragmentMetadata*>& metadata);
 };
 
 }  // namespace tiledb

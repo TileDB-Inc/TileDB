@@ -103,17 +103,14 @@ std::string Status::code_to_string() const {
     case StatusCode::Fragment:
       type = "[TileDB::Fragment] Error";
       break;
-    case StatusCode::Bookkeeping:
-      type = "[TileDB::Bookkeeping] Error";
+    case StatusCode::FragmentMetadata:
+      type = "[TileDB::FragmentMetadata] Error";
       break;
     case StatusCode::Array:
       type = "[TileDB::Array] Error";
       break;
     case StatusCode::ArraySchema:
       type = "[TileDB::ArraySchema] Error";
-      break;
-    case StatusCode::ArrayIt:
-      type = "[TileDB::ArrayIterator] Error";
       break;
     case StatusCode::ASRS:
       type = "[TileDB::ArraySortedReadState] Error";

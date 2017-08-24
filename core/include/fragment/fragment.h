@@ -37,7 +37,7 @@
 #include <vector>
 #include "array.h"
 #include "array_schema.h"
-#include "book_keeping.h"
+#include "fragment_metadata.h"
 #include "read_state.h"
 #include "write_state.h"
 
@@ -45,7 +45,7 @@ namespace tiledb {
 
 class Array;
 class Query;
-class BookKeeping;
+class FragmentMetadata;
 class ReadState;
 class WriteState;
 
@@ -91,8 +91,8 @@ class Fragment {
   /** Returns the read state of the fragment. */
   ReadState* read_state() const;
 
-  BookKeeping* bookkeeping() const {
-    return book_keeping_;
+  FragmentMetadata* bookkeeping() const {
+    return metadata_;
   }
 
   /**
@@ -114,7 +114,7 @@ class Fragment {
 
   Status init(const uri::URI& uri, const void* subarray = nullptr);
 
-  Status init(const uri::URI& uri, BookKeeping* book_keeping);
+  Status init(const uri::URI& uri, FragmentMetadata* book_keeping);
 
   /** Resets the read state (typically to start a new read). */
   void reset_read_state();
@@ -182,8 +182,8 @@ class Fragment {
 
   Query* query_;
 
-  /** The fragment book-keeping. */
-  BookKeeping* book_keeping_;
+  /** The fragment metadata. */
+  FragmentMetadata* metadata_;
 
   /** Indicates whether the fragment is dense or sparse. */
   bool dense_;

@@ -51,8 +51,8 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-WriteState::WriteState(const Fragment* fragment, BookKeeping* bookkeeping)
-    : bookkeeping_(bookkeeping)
+WriteState::WriteState(const Fragment* fragment, FragmentMetadata* bookkeeping)
+    : metadata_(bookkeeping)
     , fragment_(fragment) {
   // For easy reference
   const ArraySchema* array_schema = fragment->array()->array_schema();
@@ -509,10 +509,10 @@ void WriteState::update_bookkeeping(const void* buffer, size_t buffer_size) {
           &buffer_T[i * dim_num],
           coords_size);
 
-    // Send MBR and bounding coordinates to book-keeping
+    // Send MBR and bounding coordinates to metadata
     if (tile_cell_num == capacity) {
-      bookkeeping_->append_mbr(mbr_);
-      bookkeeping_->append_bounding_coords(bounding_coords_);
+      metadata_->append_mbr(mbr_);
+      metadata_->append_bounding_coords(bounding_coords_);
       tile_cell_num = 0;
     }
   }
@@ -524,7 +524,7 @@ Status WriteState::write_attr(
   if (buffer_size == 0)
     return Status::Ok();
 
-  // Update book-keeping in the case of sparse fragment coordinates
+  // Update metadata in the case of sparse fragment coordinates
   if (attribute_id == fragment_->array()->array_schema()->attribute_num())
     update_bookkeeping(buffer, buffer_size);
 
@@ -540,7 +540,7 @@ Status WriteState::write_attr(
     RETURN_NOT_OK(tile->write(buf));
     if (tile->full()) {
       RETURN_NOT_OK(tile_io->write(tile, &bytes_written));
-      bookkeeping_->append_tile_offset(attribute_id, bytes_written);
+      metadata_->append_tile_offset(attribute_id, bytes_written);
       tile->reset_offset();
     }
   } while (!buf->end());
@@ -559,7 +559,7 @@ Status WriteState::write_attr_last(int attribute_id) {
   // Fill tiles and dispatch them for writing
   uint64_t bytes_written;
   RETURN_NOT_OK(tile_io->write(tile, &bytes_written));
-  bookkeeping_->append_tile_offset(attribute_id, bytes_written);
+  metadata_->append_tile_offset(attribute_id, bytes_written);
   tile->reset_offset();
 
   return Status::Ok();
@@ -601,9 +601,9 @@ Status WriteState::write_attr_var(
     if (tile->full()) {
       RETURN_NOT_OK(tile_io->write(tile, &bytes_written));
       RETURN_NOT_OK(tile_io_var->write(tile_var, &bytes_written_var));
-      bookkeeping_->append_tile_offset(attribute_id, bytes_written);
-      bookkeeping_->append_tile_var_offset(attribute_id, bytes_written_var);
-      bookkeeping_->append_tile_var_size(attribute_id, tile_var->offset());
+      metadata_->append_tile_offset(attribute_id, bytes_written);
+      metadata_->append_tile_var_offset(attribute_id, bytes_written_var);
+      metadata_->append_tile_var_size(attribute_id, tile_var->offset());
       tile->reset_offset();
       tile_var->reset_offset();
     }
@@ -628,9 +628,9 @@ Status WriteState::write_attr_var_last(int attribute_id) {
   uint64_t bytes_written, bytes_written_var;
   RETURN_NOT_OK(tile_io->write(tile, &bytes_written));
   RETURN_NOT_OK(tile_io_var->write(tile_var, &bytes_written_var));
-  bookkeeping_->append_tile_offset(attribute_id, bytes_written);
-  bookkeeping_->append_tile_var_offset(attribute_id, bytes_written_var);
-  bookkeeping_->append_tile_var_size(attribute_id, tile_var->offset());
+  metadata_->append_tile_offset(attribute_id, bytes_written);
+  metadata_->append_tile_var_offset(attribute_id, bytes_written_var);
+  metadata_->append_tile_var_size(attribute_id, tile_var->offset());
   tile->reset_offset();
   tile_var->reset_offset();
 
@@ -642,10 +642,10 @@ Status WriteState::write_last_tile() {
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
 
-  // Send last MBR, bounding coordinates and tile cell number to book-keeping
-  bookkeeping_->append_mbr(mbr_);
-  bookkeeping_->append_bounding_coords(bounding_coords_);
-  bookkeeping_->set_last_tile_cell_num(tile_cell_num_[attribute_num]);
+  // Send last MBR, bounding coordinates and tile cell number to metadata
+  metadata_->append_mbr(mbr_);
+  metadata_->append_bounding_coords(bounding_coords_);
+  metadata_->set_last_tile_cell_num(tile_cell_num_[attribute_num]);
 
   // Flush the last tile for each compressed attribute (it is still in main
   // memory

@@ -34,8 +34,8 @@
 #ifndef TILEDB_WRITE_STATE_H
 #define TILEDB_WRITE_STATE_H
 
-#include "book_keeping.h"
 #include "fragment.h"
+#include "fragment_metadata.h"
 #include "tile.h"
 #include "tile_io.h"
 
@@ -44,7 +44,7 @@
 
 namespace tiledb {
 
-class BookKeeping;
+class FragmentMetadata;
 class Fragment;
 
 /** Stores the state necessary when writing cells to a fragment. */
@@ -60,7 +60,7 @@ class WriteState {
    * @param fragment The fragment the write state belongs to.
    * @param bookkeeping The bookkeeping of the fragment.
    */
-  WriteState(const Fragment* fragment, BookKeeping* bookkeeping);
+  WriteState(const Fragment* fragment, FragmentMetadata* bookkeeping);
 
   /** Destructor. */
   ~WriteState();
@@ -108,7 +108,7 @@ class WriteState {
   /* ********************************* */
 
   /** The bookkeeping structure of the fragment the write state belongs to. */
-  BookKeeping* bookkeeping_;
+  FragmentMetadata* metadata_;
 
   /** The first and last coordinates of the tile currently being populated. */
   void* bounding_coords_;

@@ -31,7 +31,7 @@
  * This file implements the BookKeeping class.
  */
 
-#include "book_keeping.h"
+#include "fragment_metadata.h"
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -49,7 +49,7 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-BookKeeping::BookKeeping(
+FragmentMetadata::FragmentMetadata(
     const ArraySchema* array_schema, bool dense, const uri::URI& fragment_uri)
     : array_schema_(array_schema)
     , dense_(dense)
@@ -58,7 +58,7 @@ BookKeeping::BookKeeping(
   non_empty_domain_ = nullptr;
 }
 
-BookKeeping::~BookKeeping() {
+FragmentMetadata::~FragmentMetadata() {
   if (domain_ != nullptr)
     free(domain_);
 
@@ -80,11 +80,11 @@ BookKeeping::~BookKeeping() {
 /*             ACCESSORS          */
 /* ****************************** */
 
-const std::vector<void*>& BookKeeping::bounding_coords() const {
+const std::vector<void*>& FragmentMetadata::bounding_coords() const {
   return bounding_coords_;
 }
 
-int64_t BookKeeping::cell_num(int64_t tile_pos) const {
+int64_t FragmentMetadata::cell_num(int64_t tile_pos) const {
   if (dense_) {
     return array_schema_->cell_num_per_tile();
   } else {
@@ -96,27 +96,27 @@ int64_t BookKeeping::cell_num(int64_t tile_pos) const {
   }
 }
 
-bool BookKeeping::dense() const {
+bool FragmentMetadata::dense() const {
   return dense_;
 }
 
-const void* BookKeeping::domain() const {
+const void* FragmentMetadata::domain() const {
   return domain_;
 }
 
-int64_t BookKeeping::last_tile_cell_num() const {
+int64_t FragmentMetadata::last_tile_cell_num() const {
   return last_tile_cell_num_;
 }
 
-const std::vector<void*>& BookKeeping::mbrs() const {
+const std::vector<void*>& FragmentMetadata::mbrs() const {
   return mbrs_;
 }
 
-const void* BookKeeping::non_empty_domain() const {
+const void* FragmentMetadata::non_empty_domain() const {
   return non_empty_domain_;
 }
 
-int64_t BookKeeping::tile_num() const {
+int64_t FragmentMetadata::tile_num() const {
   if (dense_) {
     return array_schema_->tile_num(domain_);
   } else {
@@ -124,15 +124,17 @@ int64_t BookKeeping::tile_num() const {
   }
 }
 
-const std::vector<std::vector<off_t>>& BookKeeping::tile_offsets() const {
+const std::vector<std::vector<off_t>>& FragmentMetadata::tile_offsets() const {
   return tile_offsets_;
 }
 
-const std::vector<std::vector<off_t>>& BookKeeping::tile_var_offsets() const {
+const std::vector<std::vector<off_t>>& FragmentMetadata::tile_var_offsets()
+    const {
   return tile_var_offsets_;
 }
 
-const std::vector<std::vector<size_t>>& BookKeeping::tile_var_sizes() const {
+const std::vector<std::vector<size_t>>& FragmentMetadata::tile_var_sizes()
+    const {
   return tile_var_sizes_;
 }
 
@@ -140,7 +142,7 @@ const std::vector<std::vector<size_t>>& BookKeeping::tile_var_sizes() const {
 /*             MUTATORS           */
 /* ****************************** */
 
-void BookKeeping::append_bounding_coords(const void* bounding_coords) {
+void FragmentMetadata::append_bounding_coords(const void* bounding_coords) {
   // For easy reference
   size_t bounding_coords_size = 2 * array_schema_->coords_size();
 
@@ -150,7 +152,7 @@ void BookKeeping::append_bounding_coords(const void* bounding_coords) {
   bounding_coords_.push_back(new_bounding_coords);
 }
 
-void BookKeeping::append_mbr(const void* mbr) {
+void FragmentMetadata::append_mbr(const void* mbr) {
   // For easy reference
   size_t mbr_size = 2 * array_schema_->coords_size();
 
@@ -160,20 +162,20 @@ void BookKeeping::append_mbr(const void* mbr) {
   mbrs_.push_back(new_mbr);
 }
 
-void BookKeeping::append_tile_offset(int attribute_id, size_t step) {
+void FragmentMetadata::append_tile_offset(int attribute_id, size_t step) {
   tile_offsets_[attribute_id].push_back(next_tile_offsets_[attribute_id]);
   size_t new_offset = tile_offsets_[attribute_id].back() + step;
   next_tile_offsets_[attribute_id] = new_offset;
 }
 
-void BookKeeping::append_tile_var_offset(int attribute_id, size_t step) {
+void FragmentMetadata::append_tile_var_offset(int attribute_id, size_t step) {
   tile_var_offsets_[attribute_id].push_back(
       next_tile_var_offsets_[attribute_id]);
   size_t new_offset = tile_var_offsets_[attribute_id].back() + step;
   next_tile_var_offsets_[attribute_id] = new_offset;
 }
 
-void BookKeeping::append_tile_var_size(int attribute_id, size_t size) {
+void FragmentMetadata::append_tile_var_size(int attribute_id, size_t size) {
   tile_var_sizes_[attribute_id].push_back(size);
 }
 
@@ -203,14 +205,14 @@ void BookKeeping::append_tile_var_size(int attribute_id, size_t size) {
  *     tile_var_sizes_attr#<attribute_num-1>_#2 (size_t) ...
  * last_tile_cell_num(int64_t)
  */
-Status BookKeeping::flush() {
+Status FragmentMetadata::flush() {
   // Do nothing if the fragment directory does not exist (fragment empty)
   if (!utils::fragment_exists(fragment_uri_))
     return Status::Ok();
 
   // Prepare file name
   std::string filename = fragment_uri_.to_posix_path();
-  filename = filename + "/" + Configurator::bookkeeping_filename() +
+  filename = filename + "/" + Configurator::fragment_metadata_filename() +
              Configurator::file_suffix();
 
   Buffer* buff = new Buffer();
@@ -236,17 +238,17 @@ Status BookKeeping::flush() {
   // Write cell number of the last tile
   RETURN_NOT_OK_ELSE(write_last_tile_cell_num(buff), delete buff);
 
-  // Save book-keeping buffer to gzip file
+  // Save metadata to disk
   Status st = vfs::write_to_file(filename, buff->data(), buff->size());
   delete buff;
   if (!st.ok()) {
     return LOG_STATUS(
-        Status::BookkeepingError("Cannot write book-keeping file"));
+        Status::FragmentMetadataError("Cannot write fragment metadata file"));
   }
   return Status::Ok();
 }
 
-Status BookKeeping::init(const void* non_empty_domain) {
+Status FragmentMetadata::init(const void* non_empty_domain) {
   // For easy reference
   int attribute_num = array_schema_->attribute_num();
 
@@ -314,16 +316,16 @@ Status BookKeeping::init(const void* non_empty_domain) {
  *     tile_var_sizes_attr#<attribute_num-1>_#2 (size_t) ...
  * last_tile_cell_num(int64_t)
  */
-Status BookKeeping::load() {
+Status FragmentMetadata::load() {
   // Prepare file name
   std::string filename = fragment_uri_.to_posix_path();
-  filename = filename + "/" + Configurator::bookkeeping_filename() +
+  filename = filename + "/" + Configurator::fragment_metadata_filename() +
              Configurator::file_suffix();
   Buffer* buff = nullptr;
   Status st = vfs::read_from_file(filename, &buff);
   if (!st.ok()) {
-    return LOG_STATUS(
-        Status::BookkeepingError("Cannot load book-keeping; Cannot open file"));
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Cannot open file"));
   }
 
   // Load non-empty domain
@@ -352,7 +354,7 @@ Status BookKeeping::load() {
   return Status::Ok();
 }
 
-void BookKeeping::set_last_tile_cell_num(int64_t cell_num) {
+void FragmentMetadata::set_last_tile_cell_num(int64_t cell_num) {
   last_tile_cell_num_ = cell_num;
 }
 
@@ -364,23 +366,24 @@ void BookKeeping::set_last_tile_cell_num(int64_t cell_num) {
  * bounding_coords_num(int64_t)
  * bounding_coords_#1(void*) bounding_coords_#2(void*) ...
  */
-Status BookKeeping::write_bounding_coords(Buffer* buff) {
+Status FragmentMetadata::write_bounding_coords(Buffer* buff) {
   Status st;
   size_t bounding_coords_size = 2 * array_schema_->coords_size();
   int64_t bounding_coords_num = bounding_coords_.size();
   // Write number of bounding coordinates
   st = buff->write(&bounding_coords_num, sizeof(int64_t));
   if (!st.ok()) {
-    return LOG_STATUS(Status::BookkeepingError(
-        "Cannot finalize book-keeping; Writing number of bounding "
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot finalize fragment metadata; Writing number of bounding "
         "coordinates failed"));
   }
   // Write bounding coordinates
   for (int64_t i = 0; i < bounding_coords_num; ++i) {
     st = buff->write(bounding_coords_[i], bounding_coords_size);
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot finalize book-keeping; Writing bounding coordinates failed"));
+      return LOG_STATUS(
+          Status::FragmentMetadataError("Cannot finalize fragment metadata; "
+                                        "Writing bounding coordinates failed"));
     }
   }
   return Status::Ok();
@@ -389,7 +392,7 @@ Status BookKeeping::write_bounding_coords(Buffer* buff) {
 /* FORMAT:
  * last_tile_cell_num(int64_t)
  */
-Status BookKeeping::write_last_tile_cell_num(Buffer* buff) {
+Status FragmentMetadata::write_last_tile_cell_num(Buffer* buff) {
   int64_t cell_num_per_tile =
       dense_ ? array_schema_->cell_num_per_tile() : array_schema_->capacity();
   // Handle the case of zero
@@ -397,8 +400,9 @@ Status BookKeeping::write_last_tile_cell_num(Buffer* buff) {
       (last_tile_cell_num_ == 0) ? cell_num_per_tile : last_tile_cell_num_;
   Status st = buff->write(&last_tile_cell_num, sizeof(int64_t));
   if (!st.ok()) {
-    return LOG_STATUS(Status::BookkeepingError(
-        "Cannot finalize book-keeping; Writing last tile cell number failed"));
+    return LOG_STATUS(
+        Status::FragmentMetadataError("Cannot finalize fragment metadata; "
+                                      "Writing last tile cell number failed"));
   }
   return Status::Ok();
 }
@@ -407,22 +411,22 @@ Status BookKeeping::write_last_tile_cell_num(Buffer* buff) {
  * mbr_num(int64_t)
  * mbr_#1(void*) mbr_#2(void*) ...
  */
-Status BookKeeping::write_mbrs(Buffer* buff) {
+Status FragmentMetadata::write_mbrs(Buffer* buff) {
   Status st;
   size_t mbr_size = 2 * array_schema_->coords_size();
   int64_t mbr_num = mbrs_.size();
   // Write number of MBRs
   st = buff->write(&mbr_num, sizeof(int64_t));
   if (!st.ok()) {
-    return LOG_STATUS(Status::BookkeepingError(
-        "Cannot finalize book-keeping; Writing number of MBRs failed"));
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot finalize fragment metadata; Writing number of MBRs failed"));
   }
   // Write MBRs
   for (int64_t i = 0; i < mbr_num; ++i) {
     st = buff->write(mbrs_[i], mbr_size);
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot finalize book-keeping; Writing MBR failed"));
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot finalize fragment metadata; Writing MBR failed"));
     }
   }
   return Status::Ok();
@@ -431,21 +435,21 @@ Status BookKeeping::write_mbrs(Buffer* buff) {
 /* FORMAT:
  * non_empty_domain_size(size_t) non_empty_domain(void*)
  */
-Status BookKeeping::write_non_empty_domain(Buffer* buff) {
+Status FragmentMetadata::write_non_empty_domain(Buffer* buff) {
   size_t domain_size =
       (non_empty_domain_ == nullptr) ? 0 : array_schema_->coords_size() * 2;
   // Write non-empty domain size
   Status st = buff->write(&domain_size, sizeof(size_t));
   if (!st.ok()) {
-    return LOG_STATUS(Status::BookkeepingError(
-        "Cannot finalize book-keeping; Writing domain size failed"));
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot finalize fragment metadata; Writing domain size failed"));
   }
   // Write non-empty domain
   if (non_empty_domain_ != nullptr) {
     st = buff->write(non_empty_domain_, domain_size);
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot finalize book-keeping; Writing domain failed"));
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot finalize fragment metadata; Writing domain failed"));
     }
   }
   return Status::Ok();
@@ -459,7 +463,7 @@ Status BookKeeping::write_non_empty_domain(Buffer* buff) {
  * tile_offsets_attr#<attribute_num>_#1 (off_t)
  * tile_offsets_attr#<attribute_num>_#2 (off_t) ...
  */
-Status BookKeeping::write_tile_offsets(Buffer* buff) {
+Status FragmentMetadata::write_tile_offsets(Buffer* buff) {
   Status st;
   int attribute_num = array_schema_->attribute_num();
   // Write tile offsets for each attribute
@@ -468,8 +472,8 @@ Status BookKeeping::write_tile_offsets(Buffer* buff) {
     int64_t tile_offsets_num = tile_offsets_[i].size();
     st = buff->write(&tile_offsets_num, sizeof(int64_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot finalize book-keeping; Writing number of tile offsets "
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot finalize fragment metadata; Writing number of tile offsets "
           "failed"));
     }
     if (tile_offsets_num == 0)
@@ -477,8 +481,8 @@ Status BookKeeping::write_tile_offsets(Buffer* buff) {
     // Write tile offsets
     st = buff->write(&tile_offsets_[i][0], tile_offsets_num * sizeof(off_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot finalize book-keeping; Writing tile offsets failed"));
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot finalize fragment metadata; Writing tile offsets failed"));
     }
   }
   return Status::Ok();
@@ -492,7 +496,7 @@ Status BookKeeping::write_tile_offsets(Buffer* buff) {
  * tile_var_offsets_attr#<attribute_num-1>_#1 (off_t)
  *     tile_var_offsets_attr#<attribute_num-1>_#2 (off_t) ...
  */
-Status BookKeeping::write_tile_var_offsets(Buffer* buff) {
+Status FragmentMetadata::write_tile_var_offsets(Buffer* buff) {
   Status st;
   int attribute_num = array_schema_->attribute_num();
 
@@ -502,8 +506,8 @@ Status BookKeeping::write_tile_var_offsets(Buffer* buff) {
     int64_t tile_var_offsets_num = tile_var_offsets_[i].size();
     st = buff->write(&tile_var_offsets_num, sizeof(int64_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot finalize book-keeping; Writing number of "
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot finalize fragment metadata; Writing number of "
           "variable tile offsets failed"));
     }
     if (tile_var_offsets_num == 0)
@@ -512,9 +516,9 @@ Status BookKeeping::write_tile_var_offsets(Buffer* buff) {
     st = buff->write(
         &tile_var_offsets_[i][0], tile_var_offsets_num * sizeof(off_t));
     if (!st.ok()) {
-      return LOG_STATUS(
-          Status::BookkeepingError("Cannot finalize book-keeping; Writing "
-                                   "variable tile offsets failed"));
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot finalize fragment metadata; Writing "
+          "variable tile offsets failed"));
     }
   }
   return Status::Ok();
@@ -528,7 +532,7 @@ Status BookKeeping::write_tile_var_offsets(Buffer* buff) {
  * tile_var_sizes__attr#<attribute_num-1>_#1(size_t)
  *     tile_var_sizes_attr#<attribute_num-1>_#2 (size_t) ...
  */
-Status BookKeeping::write_tile_var_sizes(Buffer* buff) {
+Status FragmentMetadata::write_tile_var_sizes(Buffer* buff) {
   Status st;
   int attribute_num = array_schema_->attribute_num();
 
@@ -538,8 +542,8 @@ Status BookKeeping::write_tile_var_sizes(Buffer* buff) {
     int64_t tile_var_sizes_num = tile_var_sizes_[i].size();
     st = buff->write(&tile_var_sizes_num, sizeof(int64_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot finalize book-keeping; Writing number of "
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot finalize fragment metadata; Writing number of "
           "variable tile sizes failed"));
     }
     if (tile_var_sizes_num == 0)
@@ -548,8 +552,9 @@ Status BookKeeping::write_tile_var_sizes(Buffer* buff) {
     st = buff->write(
         &tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(size_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot finalize book-keeping; Writing variable tile sizes failed"));
+      return LOG_STATUS(
+          Status::FragmentMetadataError("Cannot finalize fragment metadata; "
+                                        "Writing variable tile sizes failed"));
     }
   }
   return Status::Ok();
@@ -559,16 +564,16 @@ Status BookKeeping::write_tile_var_sizes(Buffer* buff) {
  * bounding_coords_num (int64_t)
  * bounding_coords_#1 (void*) bounding_coords_#2 (void*) ...
  */
-Status BookKeeping::load_bounding_coords(Buffer* buff) {
+Status FragmentMetadata::load_bounding_coords(Buffer* buff) {
   size_t bounding_coords_size = 2 * array_schema_->coords_size();
 
   // Get number of bounding coordinates
   int64_t bounding_coords_num = 0;
   Status st = buff->read(&bounding_coords_num, sizeof(int64_t));
   if (!st.ok()) {
-    return LOG_STATUS(
-        Status::BookkeepingError("Cannot load book-keeping; Reading number of "
-                                 "bounding coordinates failed"));
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading number of "
+        "bounding coordinates failed"));
   }
   // Get bounding coordinates
   void* bounding_coords;
@@ -578,8 +583,9 @@ Status BookKeeping::load_bounding_coords(Buffer* buff) {
     st = buff->read(bounding_coords, bounding_coords_size);
     if (!st.ok()) {
       std::free(bounding_coords);
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot load book-keeping; Reading bounding coordinates failed"));
+      return LOG_STATUS(
+          Status::FragmentMetadataError("Cannot load fragment metadata; "
+                                        "Reading bounding coordinates failed"));
     }
     bounding_coords_[i] = bounding_coords;
   }
@@ -589,12 +595,12 @@ Status BookKeeping::load_bounding_coords(Buffer* buff) {
 /* FORMAT:
  * last_tile_cell_num (int64_t)
  */
-Status BookKeeping::load_last_tile_cell_num(Buffer* buff) {
+Status FragmentMetadata::load_last_tile_cell_num(Buffer* buff) {
   // Get last tile cell number
   Status st = buff->read(&last_tile_cell_num_, sizeof(int64_t));
   if (!st.ok()) {
-    return LOG_STATUS(Status::BookkeepingError(
-        "Cannot load book-keeping; Reading last tile cell number failed"));
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading last tile cell number failed"));
   }
   return Status::Ok();
 }
@@ -603,14 +609,14 @@ Status BookKeeping::load_last_tile_cell_num(Buffer* buff) {
  * mbr_num (int64_t)
  * mbr_#1 (void*) mbr_#2 (void*) ... mbr_#<mbr_num> (void*)
  */
-Status BookKeeping::load_mbrs(Buffer* buff) {
+Status FragmentMetadata::load_mbrs(Buffer* buff) {
   size_t mbr_size = 2 * array_schema_->coords_size();
   // Get number of MBRs
   int64_t mbr_num = 0;
   Status st = buff->read(&mbr_num, sizeof(int64_t));
   if (!st.ok()) {
-    return LOG_STATUS(Status::BookkeepingError(
-        "Cannot load book-keeping; Reading number of MBRs failed"));
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading number of MBRs failed"));
   }
   // Get MBRs
   void* mbr = nullptr;
@@ -620,8 +626,8 @@ Status BookKeeping::load_mbrs(Buffer* buff) {
     st = buff->read(mbr, mbr_size);
     if (!st.ok()) {
       std::free(mbr);
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot load book-keeping; Reading MBR failed"));
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load fragment metadata; Reading MBR failed"));
     }
     mbrs_[i] = mbr;
   }
@@ -631,13 +637,13 @@ Status BookKeeping::load_mbrs(Buffer* buff) {
 /* FORMAT:
  * non_empty_domain_size (size_t) non_empty_domain (void*)
  */
-Status BookKeeping::load_non_empty_domain(Buffer* buff) {
+Status FragmentMetadata::load_non_empty_domain(Buffer* buff) {
   // Get domain size
   size_t domain_size = 0;
   Status st = buff->read(&domain_size, sizeof(size_t));
   if (!st.ok()) {
-    return LOG_STATUS(Status::BookkeepingError(
-        "Cannot load book-keeping; Reading domain size failed"));
+    return LOG_STATUS(Status::FragmentMetadataError(
+        "Cannot load fragment metadata; Reading domain size failed"));
   }
   // Get non-empty domain
   if (domain_size == 0) {
@@ -647,8 +653,8 @@ Status BookKeeping::load_non_empty_domain(Buffer* buff) {
     st = buff->read(non_empty_domain_, domain_size);
     if (!st.ok()) {
       std::free(non_empty_domain_);
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot load book-keeping; Reading domain failed"));
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load fragment metadata; Reading domain failed"));
     }
   }
   // Get expanded domain
@@ -670,7 +676,7 @@ Status BookKeeping::load_non_empty_domain(Buffer* buff) {
  * tile_offsets_attr#<attribute_num>_#1 (off_t)
  * tile_offsets_attr#<attribute_num>_#2 (off_t) ...
  */
-Status BookKeeping::load_tile_offsets(Buffer* buff) {
+Status FragmentMetadata::load_tile_offsets(Buffer* buff) {
   Status st;
   int64_t tile_offsets_num = 0;
   int attribute_num = array_schema_->attribute_num();
@@ -683,8 +689,9 @@ Status BookKeeping::load_tile_offsets(Buffer* buff) {
     // Get number of tile offsets
     st = buff->read(&tile_offsets_num, sizeof(int64_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot load book-keeping; Reading number of tile offsets failed"));
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load fragment metadata; Reading number of tile offsets "
+          "failed"));
     }
     if (tile_offsets_num == 0)
       continue;
@@ -692,8 +699,8 @@ Status BookKeeping::load_tile_offsets(Buffer* buff) {
     tile_offsets_[i].resize(tile_offsets_num);
     st = buff->read(&tile_offsets_[i][0], tile_offsets_num * sizeof(off_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot load book-keeping; Reading tile offsets failed"));
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load fragment metadata; Reading tile offsets failed"));
     }
   }
   return Status::Ok();
@@ -707,7 +714,7 @@ Status BookKeeping::load_tile_offsets(Buffer* buff) {
  * tile_var_offsets_attr#<attribute_num-1>_#1 (off_t)
  *     tile_ver_offsets_attr#<attribute_num-1>_#2 (off_t) ...
  */
-Status BookKeeping::load_tile_var_offsets(Buffer* buff) {
+Status FragmentMetadata::load_tile_var_offsets(Buffer* buff) {
   Status st;
   int attribute_num = array_schema_->attribute_num();
   int64_t tile_var_offsets_num = 0;
@@ -720,8 +727,8 @@ Status BookKeeping::load_tile_var_offsets(Buffer* buff) {
     // Get number of tile offsets
     st = buff->read(&tile_var_offsets_num, sizeof(int64_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot load book-keeping; Reading number of variable tile "
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load fragment metadata; Reading number of variable tile "
           "offsets failed"));
     }
     if (tile_var_offsets_num == 0)
@@ -731,8 +738,9 @@ Status BookKeeping::load_tile_var_offsets(Buffer* buff) {
     st = buff->read(
         &tile_var_offsets_[i][0], tile_var_offsets_num * sizeof(off_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot load book-keeping; Reading variable tile offsets failed"));
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load fragment metadata; Reading variable tile offsets "
+          "failed"));
     }
   }
   return Status::Ok();
@@ -746,7 +754,7 @@ Status BookKeeping::load_tile_var_offsets(Buffer* buff) {
  * tile_var_sizes__attr#<attribute_num-1>_#1 (size_t)
  *     tile_var_sizes_attr#<attribute_num-1>_#2 (size_t) ...
  */
-Status BookKeeping::load_tile_var_sizes(Buffer* buff) {
+Status FragmentMetadata::load_tile_var_sizes(Buffer* buff) {
   Status st;
   int attribute_num = array_schema_->attribute_num();
   int64_t tile_var_sizes_num = 0;
@@ -759,8 +767,8 @@ Status BookKeeping::load_tile_var_sizes(Buffer* buff) {
     // Get number of tile sizes
     st = buff->read(&tile_var_sizes_num, sizeof(int64_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot load book-keeping; Reading number of variable tile "
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load fragment metadata; Reading number of variable tile "
           "sizes failed"));
     }
     if (tile_var_sizes_num == 0)
@@ -770,8 +778,8 @@ Status BookKeeping::load_tile_var_sizes(Buffer* buff) {
     st =
         buff->read(&tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(size_t));
     if (!st.ok()) {
-      return LOG_STATUS(Status::BookkeepingError(
-          "Cannot load book-keeping; Reading variable tile sizes failed"));
+      return LOG_STATUS(Status::FragmentMetadataError(
+          "Cannot load fragment metadata; Reading variable tile sizes failed"));
     }
   }
   return Status::Ok();

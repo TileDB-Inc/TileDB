@@ -1750,7 +1750,7 @@ Status ArrayReadState::sort_fragment_cell_ranges(
     }
   }
 
-  // Initialization of book-keeping for unsorted ranges
+  // Initialization of metadata for unsorted ranges
   int64_t* rlen = new int64_t[fragment_num];
   int64_t* rid = new int64_t[fragment_num];
   int fid = 0;
