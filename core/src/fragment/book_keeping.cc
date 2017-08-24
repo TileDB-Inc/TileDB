@@ -39,9 +39,9 @@
 #include <cstring>
 #include <iostream>
 #include "configurator.h"
+#include "filesystem.h"
 #include "logger.h"
 #include "utils.h"
-#include "filesystem.h"
 
 namespace tiledb {
 
@@ -213,8 +213,7 @@ Status BookKeeping::flush() {
   filename = filename + "/" + Configurator::bookkeeping_filename() +
              Configurator::file_suffix();
 
-  // TODO: fix Buffer bug on dev branch
-  Buffer* buff = new Buffer(8);
+  Buffer* buff = new Buffer();
 
   // Write non-empty domain
   RETURN_NOT_OK_ELSE(write_non_empty_domain(buff), delete buff);
@@ -241,8 +240,8 @@ Status BookKeeping::flush() {
   Status st = vfs::write_to_file(filename, buff->data(), buff->size());
   delete buff;
   if (!st.ok()) {
-    return LOG_STATUS(Status::BookkeepingError(
-        "Cannot write book-keeping file"));
+    return LOG_STATUS(
+        Status::BookkeepingError("Cannot write book-keeping file"));
   }
   return Status::Ok();
 }
@@ -396,7 +395,7 @@ Status BookKeeping::write_last_tile_cell_num(Buffer* buff) {
   // Handle the case of zero
   int64_t last_tile_cell_num =
       (last_tile_cell_num_ == 0) ? cell_num_per_tile : last_tile_cell_num_;
-  Status st =  buff->write(&last_tile_cell_num, sizeof(int64_t));
+  Status st = buff->write(&last_tile_cell_num, sizeof(int64_t));
   if (!st.ok()) {
     return LOG_STATUS(Status::BookkeepingError(
         "Cannot finalize book-keeping; Writing last tile cell number failed"));
@@ -432,7 +431,7 @@ Status BookKeeping::write_mbrs(Buffer* buff) {
 /* FORMAT:
  * non_empty_domain_size(size_t) non_empty_domain(void*)
  */
-Status BookKeeping::write_non_empty_domain(Buffer* buff){
+Status BookKeeping::write_non_empty_domain(Buffer* buff) {
   size_t domain_size =
       (non_empty_domain_ == nullptr) ? 0 : array_schema_->coords_size() * 2;
   // Write non-empty domain size
@@ -460,7 +459,7 @@ Status BookKeeping::write_non_empty_domain(Buffer* buff){
  * tile_offsets_attr#<attribute_num>_#1 (off_t)
  * tile_offsets_attr#<attribute_num>_#2 (off_t) ...
  */
-Status BookKeeping::write_tile_offsets(Buffer* buff){
+Status BookKeeping::write_tile_offsets(Buffer* buff) {
   Status st;
   int attribute_num = array_schema_->attribute_num();
   // Write tile offsets for each attribute
@@ -510,7 +509,8 @@ Status BookKeeping::write_tile_var_offsets(Buffer* buff) {
     if (tile_var_offsets_num == 0)
       continue;
     // Write tile offsets
-    st = buff->write(&tile_var_offsets_[i][0], tile_var_offsets_num * sizeof(off_t));
+    st = buff->write(
+        &tile_var_offsets_[i][0], tile_var_offsets_num * sizeof(off_t));
     if (!st.ok()) {
       return LOG_STATUS(
           Status::BookkeepingError("Cannot finalize book-keeping; Writing "
@@ -545,7 +545,8 @@ Status BookKeeping::write_tile_var_sizes(Buffer* buff) {
     if (tile_var_sizes_num == 0)
       continue;
     // Write tile sizes
-    st = buff->write(&tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(size_t));
+    st = buff->write(
+        &tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(size_t));
     if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot finalize book-keeping; Writing variable tile sizes failed"));
@@ -727,9 +728,10 @@ Status BookKeeping::load_tile_var_offsets(Buffer* buff) {
       continue;
     // Get variable tile offsets
     tile_var_offsets_[i].resize(tile_var_offsets_num);
-    st = buff->read(&tile_var_offsets_[i][0], tile_var_offsets_num * sizeof(off_t));
+    st = buff->read(
+        &tile_var_offsets_[i][0], tile_var_offsets_num * sizeof(off_t));
     if (!st.ok()) {
-     return LOG_STATUS(Status::BookkeepingError(
+      return LOG_STATUS(Status::BookkeepingError(
           "Cannot load book-keeping; Reading variable tile offsets failed"));
     }
   }
@@ -765,7 +767,8 @@ Status BookKeeping::load_tile_var_sizes(Buffer* buff) {
       continue;
     // Get variable tile sizes
     tile_var_sizes_[i].resize(tile_var_sizes_num);
-    st = buff->read(&tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(size_t));
+    st =
+        buff->read(&tile_var_sizes_[i][0], tile_var_sizes_num * sizeof(size_t));
     if (!st.ok()) {
       return LOG_STATUS(Status::BookkeepingError(
           "Cannot load book-keeping; Reading variable tile sizes failed"));

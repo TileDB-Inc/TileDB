@@ -37,9 +37,9 @@
 #include <zlib.h>
 #include <vector>
 #include "array_schema.h"
+#include "buffer.h"
 #include "query_mode.h"
 #include "status.h"
-#include "buffer.h"
 
 namespace tiledb {
 

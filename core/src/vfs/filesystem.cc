@@ -390,8 +390,7 @@ Status read_from_file(
   return Status::Ok();
 }
 
-Status read_from_file(
-    const std::string& path, Buffer** buff) {
+Status read_from_file(const std::string& path, Buffer** buff) {
   std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
   if (!file.is_open()) {
     return LOG_STATUS(Status::OSError(

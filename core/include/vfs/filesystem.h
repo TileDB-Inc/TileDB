@@ -194,8 +194,7 @@ Status read_from_file(
  * @param buffer_size The number of bytes allocated to hold the buffer
  * @return Status
  */
-Status read_from_file(
-    const std::string& path, Buffer** buff);
+Status read_from_file(const std::string& path, Buffer** buff);
 
 // TODO: this should go away
 /** Returns the names of the fragments inside the input directory. */
