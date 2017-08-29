@@ -41,7 +41,9 @@
 
 namespace tiledb {
 
-namespace vfs_hdfs {
+namespace vfs {
+
+namespace hdfs {
 
 Status connect(hdfsFS& fs) {
   fs = hdfsConnect("default", 0);
@@ -62,7 +64,7 @@ Status disconnect(hdfsFS& fs) {
 
 // create a directory with the given path
 Status create_dir(const std::string& path, hdfsFS fs) {
-  if (vfs_hdfs::is_dir(path, fs)) {
+  if (hdfs::is_dir(path, fs)) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot create directory '") + path +
         "'; Directory already exists"));
@@ -311,7 +313,9 @@ Status filesize(const std::string& path, size_t* nbytes, hdfsFS fs) {
   return Status::Ok();
 }
 
-}  // namespace vfs_hdfs
+}  // namespace hdfs
+
+}  // namespace vfs
 
 }  // namespace tiledb
 

@@ -52,25 +52,26 @@ struct LibHDFSFfilesystemx {};
 
 TEST_CASE_METHOD(LibHDFSFfilesystemx, "Test hdfs filesystem") {
   hdfsFS fs;
-  Status st = vfs_hdfs::connect(fs);
+
+  Status st = vfs::hdfs::connect(fs);
   CHECK(st.ok());
 
-  st = vfs_hdfs::create_dir("/test_dir", fs);
+  st = vfs::hdfs::create_dir("/test_dir", fs);
   CHECK(st.ok());
 
-  CHECK(vfs_hdfs::is_dir("/test_dir", fs));
+  CHECK(vfs::hdfs::is_dir("/test_dir", fs));
 
-  st = vfs_hdfs::create_dir("/test_dir", fs);
+  st = vfs::hdfs::create_dir("/test_dir", fs);
   CHECK(!st.ok());
 
-  st = vfs_hdfs::create_file("/test_file", fs);
+  st = vfs::hdfs::create_file("/test_file", fs);
   CHECK(st.ok());
-  CHECK(vfs_hdfs::is_file("/test_file", fs));
+  CHECK(vfs::hdfs::is_file("/test_file", fs));
 
-  st = vfs_hdfs::delete_file("/test_file", fs);
+  st = vfs::hdfs::delete_file("/test_file", fs);
   CHECK(st.ok());
 
-  st = vfs_hdfs::create_file("/test_file", fs);
+  st = vfs::hdfs::create_file("/test_file", fs);
   CHECK(st.ok());
 
   // data to be written to the file
@@ -84,7 +85,7 @@ TEST_CASE_METHOD(LibHDFSFfilesystemx, "Test hdfs filesystem") {
     buffer[i] = 'a' + (i % 26);
   }
 
-  st = vfs_hdfs::write_to_file("/test_file", buffer, bufferSize, fs);
+  st = vfs::hdfs::write_to_file("/test_file", buffer, bufferSize, fs);
   CHECK(st.ok());
 
   char *read_buffer = (char *)malloc(sizeof(char) * 26);
@@ -92,14 +93,15 @@ TEST_CASE_METHOD(LibHDFSFfilesystemx, "Test hdfs filesystem") {
     fprintf(stderr, "Could not allocate buffer of size %d\n", 26);
     exit(-1);
   }
-  st = vfs_hdfs::read_from_file("/test_file", 0, read_buffer, 26, fs);
+
+  st = vfs::hdfs::read_from_file("/test_file", 0, read_buffer, 26, fs);
   CHECK(st.ok());
 
   for (int i = 0; i < 26; ++i) {
     CHECK(read_buffer[i] == (char)('a' + i));
   }
 
-  st = vfs_hdfs::read_from_file("/test_file", 11, read_buffer, 26, fs);
+  st = vfs::hdfs::read_from_file("/test_file", 11, read_buffer, 26, fs);
   CHECK(st.ok());
 
   for (int i = 0; i < 26; ++i) {
@@ -107,7 +109,7 @@ TEST_CASE_METHOD(LibHDFSFfilesystemx, "Test hdfs filesystem") {
   }
 
   std::vector<std::string> paths;
-  st = vfs_hdfs::ls("/", paths, fs);
+  st = vfs::hdfs::ls("/", paths, fs);
   CHECK(st.ok());
 
   for (std::vector<std::string>::const_iterator i = paths.begin();
@@ -117,7 +119,7 @@ TEST_CASE_METHOD(LibHDFSFfilesystemx, "Test hdfs filesystem") {
   }
 
   std::vector<std::string> files;
-  st = vfs_hdfs::ls_files("/", files, fs);
+  st = vfs::hdfs::ls_files("/", files, fs);
   CHECK(st.ok());
 
   for (std::vector<std::string>::const_iterator i = files.begin();
@@ -127,7 +129,7 @@ TEST_CASE_METHOD(LibHDFSFfilesystemx, "Test hdfs filesystem") {
   }
 
   std::vector<std::string> dirs;
-  st = vfs_hdfs::ls_dirs("/", dirs, fs);
+  st = vfs::hdfs::ls_dirs("/", dirs, fs);
   CHECK(st.ok());
 
   for (std::vector<std::string>::const_iterator i = dirs.begin();
@@ -137,17 +139,17 @@ TEST_CASE_METHOD(LibHDFSFfilesystemx, "Test hdfs filesystem") {
   }
 
   size_t nbytes;
-  st = vfs_hdfs::filesize("/test_file", &nbytes, fs);
+  st = vfs::hdfs::filesize("/test_file", &nbytes, fs);
   CHECK(st.ok());
   CHECK(nbytes == (size_t)bufferSize);
   fprintf(stderr, "Size %ld\n", nbytes);
 
-  st = vfs_hdfs::delete_dir("/test_dir", fs);
+  st = vfs::hdfs::delete_dir("/test_dir", fs);
   CHECK(st.ok());
 
-  st = vfs_hdfs::delete_file("/test_file", fs);
+  st = vfs::hdfs::delete_file("/test_file", fs);
   CHECK(st.ok());
 
-  st = vfs_hdfs::disconnect(fs);
+  st = vfs::hdfs::disconnect(fs);
   CHECK(st.ok());
 }
