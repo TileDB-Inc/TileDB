@@ -138,30 +138,6 @@ Status file_size(const std::string& path, off_t* size) {
   return Status::Ok();
 }
 
-std::vector<std::string> get_dirs(const std::string& path) {
-  std::vector<std::string> dirs;
-  std::string new_dir;
-  struct dirent* next_file;
-  DIR* c_dir = opendir(path.c_str());
-
-  if (c_dir == nullptr)
-    return std::vector<std::string>();
-
-  while ((next_file = readdir(c_dir))) {
-    if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, "..") ||
-        !vfs::is_dir(path + "/" + next_file->d_name))
-      continue;
-    new_dir = path + "/" + next_file->d_name;
-    dirs.push_back(new_dir);
-  }
-
-  // Close array directory
-  closedir(c_dir);
-
-  // Return
-  return dirs;
-}
-
 bool is_dir(const uri::URI& path) {
   struct stat st;
   return stat(path.to_string().c_str(), &st) == 0 && S_ISDIR(st.st_mode);
@@ -404,65 +380,6 @@ Status read_from_file(const std::string& path, Buffer** buff) {
   return Status::Ok();
 }
 
-Status create_empty_file(const std::string& path) {
-  std::ofstream outfile;
-  outfile.open(path, std::ios::app);
-  if (outfile.fail()) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot create empty file '") + path +
-        "': file open error"));
-  }
-  outfile.close();
-  return Status::Ok();
-}
-
-Status read_from_file_with_mmap(
-    const std::string& path, off_t offset, void* buffer, size_t length) {
-  // Calculate offset considering the page size
-  size_t page_size = sysconf(_SC_PAGE_SIZE);
-  off_t start_offset = (offset / page_size) * page_size;
-  size_t extra_offset = offset - start_offset;
-  size_t new_length = length + extra_offset;
-
-  // Open file
-  int fd = open(path.c_str(), O_RDONLY);
-  if (fd == -1) {
-    return LOG_STATUS(
-        Status::OSError("Cannot read from file; File opening error"));
-  }
-
-  // Map
-  void* addr =
-      ::mmap(nullptr, new_length, PROT_READ, MAP_SHARED, fd, start_offset);
-  if (addr == MAP_FAILED) {
-    return LOG_STATUS(
-        Status::MMapError("Cannot read from file; Memory map error"));
-  }
-
-  // Give advice for sequential access
-  if (madvise(addr, new_length, MADV_SEQUENTIAL)) {
-    return LOG_STATUS(
-        Status::MMapError("Cannot read from file; Memory advice error"));
-  }
-
-  // Copy bytes
-  memcpy(buffer, static_cast<char*>(addr) + extra_offset, length);
-
-  // Close file
-  if (close(fd)) {
-    return LOG_STATUS(
-        Status::OSError("Cannot read from file; File closing error"));
-  }
-
-  // Unmap
-  if (::munmap(addr, new_length)) {
-    return LOG_STATUS(
-        Status::MMapError("Cannot read from file; Memory unmap error"));
-  }
-
-  return Status::Ok();
-}
-
 bool both_slashes(char a, char b) {
   return a == '/' && b == '/';
 }
@@ -640,60 +557,6 @@ Status write_to_file(
   }
 
   // Success
-  return Status::Ok();
-}
-
-Status read_from_gzipfile(
-    const std::string& path,
-    void* buffer,
-    unsigned int size,
-    int* decompressed_size) {
-  // Open file
-  gzFile fd = gzopen(path.c_str(), "rb");
-  if (fd == nullptr) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Could not read file '") + path + "'; file open error"));
-  }
-  int nbytes = gzread(fd, buffer, size);
-  if (nbytes < 0) {
-    return LOG_STATUS(Status::GZipError(gzerror(fd, NULL)));
-  }
-  *decompressed_size = nbytes;
-  if (gzclose(fd)) {
-    return Status::OSError(std::string("Could not close file '") + path + "'");
-  }
-  return Status::Ok();
-}
-
-Status write_to_gzipfile(
-    const std::string& path, const void* buffer, size_t buffer_size) {
-  // Open file
-  gzFile fd = gzopen(path.c_str(), "wb");
-  if (fd == nullptr) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Could not write to file '") + path +
-        "'; File opening error"));
-  }
-  // Append data to the file in batches of constants::max_write_bytes
-  // bytes at a time
-  ssize_t bytes_written;
-  while (buffer_size > constants::max_write_bytes) {
-    bytes_written = gzwrite(fd, buffer, constants::max_write_bytes);
-    if (bytes_written != constants::max_write_bytes) {
-      return LOG_STATUS(Status::GZipError(gzerror(fd, NULL)));
-    }
-    buffer_size -= constants::max_write_bytes;
-  }
-  bytes_written = gzwrite(fd, buffer, buffer_size);
-  if (bytes_written != ssize_t(buffer_size)) {
-    return LOG_STATUS(Status::GZipError(gzerror(fd, NULL)));
-  }
-  // Close file
-  if (gzclose(fd)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Could not write to file '") + path +
-        "'; File closing error"));
-  }
   return Status::Ok();
 }
 
