@@ -25,56 +25,51 @@
 # THE SOFTWARE.
 #
 # Finds the HDFS native library. This module defines:
-#   - HDFS_INCLUDE_DIR, directory containing headers
-#   - HDFS_LIBRARIES, the HDFS library path
-#   - JVM_LIBRARIES, the JVM library path
+#   - HDFS_INCLUDE_DIR, directory containing hdfs.h header
+#   - HDFS_SHARED_LIB, the HDFS shared library path
 #   - HDFS_FOUND, whether HDFS has been found
 
 
-if (NOT HDFS_FOUND)
-  MESSAGE("-- Searching for jvm")
-  IF ( "${JAVA_HOME}" STREQUAL "" )
-     MESSAGE("---JAVA_HOME not specified")
-  ELSE ()
-     LIST (APPEND POSSILE_PATHS_JVM
-          "${JAVA_HOME}"
-          "${JAVA_HOME}/lib/amd64/server/"
-        )
-  ENDIF()
+if(NOT HDFS_FOUND)
+    message("Searching for libhdfs")
+    if( "${HADOOP_HOME}" STREQUAL "" )
+        message("HADOOP_HOME not specified")
+    else()
+        list(APPEND POSSILE_PATHS
+             "${HADOOP_HOME}"
+             "${HADOOP_HOME}/lib"
+             "${HADOOP_HOME}/lib/native"
+	     "${HADOOP_HOME}/include")
+    endif()
 
-  MESSAGE("--  Exploring these paths to find libjvm: ${POSSILE_PATHS_JVM}.")
+    message("Exploring these paths to find libhdfs${CMAKE_SHARED_LIBRARY_SUFFIX} and hdfs.h: ${POSSILE_PATHS}.")
 
-  FIND_FILE (JVM_LIBRARIES NAMES libjvm.so PATHS ${POSSILE_PATHS_JVM} NO_DEFAULT_PATH)
+    find_path(HDFS_INCLUDE_DIR NAMES hdfs.h PATHS ${POSSILE_PATHS} NO_DEFAULT_PATH)
 
+    find_library(HDFS_SHARED_LIB NAMES
+        libhdfs${CMAKE_SHARED_LIBRARY_SUFFIX}
+        PATHS ${POSSILE_PATHS}
+        NO_DEFAULT_PATH)
 
-  MESSAGE("-- Searching for libhdfs")
-  IF ( "${HADOOP_HOME}" STREQUAL "" )
-     MESSAGE("---HADOOP_HOME not specified")
-  ELSE ()
-     LIST (APPEND POSSILE_PATHS
-          "${HADOOP_HOME}"
-          "${HADOOP_HOME}/lib"
-          "${HADOOP_HOME}/lib/native"
-          "${HADOOP_HOME}/include"
-        )
-  ENDIF()
+    if(HDFS_SHARED_LIB)
+        message(STATUS "Found HDFS shared lib: ${HDFS_SHARED_LIB}")
+    else()
+        message(STATUS "HDFS shared lib not found")
+    endif()
 
-  MESSAGE("--  Exploring these paths to find libhdfs and hdfs.h: ${POSSILE_PATHS}.")
+    if(HDFS_INCLUDE_DIR)
+        message(STATUS "Found HDFS include: ${HDFS_INCLUDE_PATH}")
+    else()
+        message(STATUS "HDFS header file not found")
+    endif()
 
-  FIND_PATH (HDFS_INCLUDE_DIR NAMES hdfs.h PATHS ${POSSILE_PATHS} NO_DEFAULT_PATH)
-  FIND_LIBRARY (HDFS_LIBRARIES NAMES hdfs PATHS ${POSSILE_PATHS} NO_DEFAULT_PATH)
-
-  if(JVM_LIBRARIES AND HDFS_LIBRARIES AND HDFS_INCLUDE_DIR)
-    message(STATUS "Found JVM libraries: ${JVM_LIBRARIES}")
-    message(STATUS "Found HDFS libraries: ${HDFS_LIBRARIES}")
-    message(STATUS "Found HDFS include: ${HDFS_INCLUDE_DIR}")
-    set(HDFS_FOUND TRUE)
-  else()
-    set(HDFS_FOUND FALSE)
-  endif()
-ENDIF()
-
+    if(HDFS_SHARED_LIB AND HDFS_INCLUDE_DIR)
+        set(HDFS_FOUND TRUE)
+    else()
+        set(HDFS_FOUND FALSE)
+    endif()
+endif()
 
 if(HDFS_FIND_REQUIRED AND NOT HDFS_FOUND)
-  message(FATAL_ERROR "Could not find the HDFS native library.")
+    message(FATAL_ERROR "Could not find the HDFS native library.")
 endif()
