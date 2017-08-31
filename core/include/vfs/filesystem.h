@@ -85,6 +85,7 @@ Status move(const uri::URI& old_path, const uri::URI& new_path);
 
 /**
  *
+ * List files one level deep under a given path
  *
  * @param path  The parent path to list sub-paths
  * @param paths Pointer to a vector of strings to store absolute paths
@@ -116,7 +117,7 @@ std::string current_dir();
  */
 Status delete_dir(const std::string& path);
 
-// TOOO: uri
+// TODO: (jcb) uri
 Status delete_dir(const uri::URI& path);
 
 /**
@@ -128,13 +129,6 @@ Status delete_dir(const uri::URI& path);
 Status file_size(const std::string& path, off_t* size);
 
 Status delete_file(const std::string& path);
-
-/** Returns the names of the directories inside the input directory.
- *
- * @param dir input directory path
- * @return a vector of string paths
- */
-std::vector<std::string> get_dirs(const std::string& path);
 
 /**
  * Checks if the input is an existing directory.
@@ -216,7 +210,6 @@ Status create_fragment_file(const uri::URI& uri);
  */
 Status rename_fragment(const uri::URI& uri);
 
-// TODO: this should go away
 /**
  * Create a special file to indicate that the input directory is a TileDB group.
  *
@@ -224,26 +217,6 @@ Status rename_fragment(const uri::URI& uri);
  * @return Status
  */
 Status create_group_file(const std::string& dir);
-
-// TODO: this should go away
-/**
- * Create an empty file for a given path
- *
- * @param path the full path to create the empty file
- * @return  Status
- */
-Status create_empty_file(const std::string& path);
-/**
- * Reads data from a file into a buffer, using memory map (mmap).
- *
- * @param path The name of the file
- * @param offset The offset in the file from which the read will start.
- * @param buffer The buffer into which the data will be written.
- * @param length The size of the data to be read from the file.
- * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
- */
-Status read_from_file_with_mmap(
-    const std::string& path, off_t offset, void* buffer, size_t length);
 
 /**
  * Returns the absolute canonicalized directory path of the input directory.
@@ -274,31 +247,6 @@ Status sync(const std::string& path);
  * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
  */
 Status write_to_file(
-    const std::string& path, const void* buffer, size_t buffer_size);
-
-/**
- * Read from a GZIP compressed file.
- * @param path The path of the gzip file.
- * @param buffer The input buffer
- * @param size The maximum amount of decompressed data to be written into the
- * buffer
- * @param decompressed_size The number of bytes decompressed into the buffer
- * @return Status
- */
-Status read_from_gzipfile(
-    const std::string& path,
-    void* buffer,
-    unsigned int size,
-    int* decompressed_size);
-
-/**
- * Write the input buffer to a file, compressed with GZIP
- * @param path The path of the file.
- * @param buffer The buffer to write
- * @param buffer_size The size of the buffer in bytes
- * @return  Status
- */
-Status write_to_gzipfile(
     const std::string& path, const void* buffer, size_t buffer_size);
 
 #ifdef HAVE_MPI
