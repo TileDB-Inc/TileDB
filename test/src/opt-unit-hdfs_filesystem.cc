@@ -27,127 +27,109 @@
  *
  * @section DESCRIPTION
  *
- * Test for HDFS API filesystem functions.
+ * Tests for HDFS API filesystem functions.
  */
 
-#include <limits.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/time.h>
-#include <sys/types.h>
+#include "catch.hpp"
 
-#include <status.h>
 #include <fstream>
 #include <iostream>
 
-#include "../../core/include/vfs/hdfs_filesystem.h"
-#include "catch.hpp"
-#include "hdfs.h"
-#include "tiledb.h"
+#include <status.h>
+#include <hdfs_filesystem.h>
 
 using namespace tiledb;
 
-struct LibHDFSFfilesystemx {};
-
-TEST_CASE_METHOD(LibHDFSFfilesystemx, "Test hdfs filesystem") {
+TEST_CASE("Test HDFS filesystem") {
   hdfsFS fs;
 
   Status st = vfs::hdfs::connect(fs);
+  REQUIRE(st.ok());
+
+  st = vfs::hdfs::create_dir("/tiledb_test_dir", fs);
   CHECK(st.ok());
 
-  st = vfs::hdfs::create_dir("/test_dir", fs);
-  CHECK(st.ok());
+  CHECK(vfs::hdfs::is_dir("/tiledb_test_dir", fs));
 
-  CHECK(vfs::hdfs::is_dir("/test_dir", fs));
-
-  st = vfs::hdfs::create_dir("/test_dir", fs);
+  st = vfs::hdfs::create_dir("/tiledb_test_dir", fs);
   CHECK(!st.ok());
 
-  st = vfs::hdfs::create_file("/test_file", fs);
+  st = vfs::hdfs::create_file("/tiledb_test_file", fs);
   CHECK(st.ok());
-  CHECK(vfs::hdfs::is_file("/test_file", fs));
+  CHECK(vfs::hdfs::is_file("/tiledb_test_file", fs));
 
-  st = vfs::hdfs::delete_file("/test_file", fs);
-  CHECK(st.ok());
-
-  st = vfs::hdfs::create_file("/test_file", fs);
+  st = vfs::hdfs::delete_file("/tiledb_test_file", fs);
   CHECK(st.ok());
 
-  // data to be written to the file
-  tSize bufferSize = 100000;
-  char *buffer = (char *)malloc(sizeof(char) * bufferSize);
-  if (buffer == NULL) {
-    fprintf(stderr, "Could not allocate buffer of size %d\n", bufferSize);
-    exit(-1);
+  st = vfs::hdfs::create_file("/tiledb_test_dir/tiledb_test_file", fs);
+  CHECK(st.ok());
+
+  tSize buffer_size = 100000;
+  auto write_buffer = new char[buffer_size];
+  for (int i=0; i < buffer_size; i++) {
+    write_buffer[i] = 'a' + (i % 26);
   }
-  for (int i = 0; i < bufferSize; ++i) {
-    buffer[i] = 'a' + (i % 26);
-  }
-
-  st = vfs::hdfs::write_to_file("/test_file", buffer, bufferSize, fs);
+  st = vfs::hdfs::write_to_file("/tiledb_test_dir/tiledb_test_file", write_buffer, buffer_size, fs);
   CHECK(st.ok());
 
-  char *read_buffer = (char *)malloc(sizeof(char) * 26);
-  if (read_buffer == NULL) {
-    fprintf(stderr, "Could not allocate buffer of size %d\n", 26);
-    exit(-1);
-  }
-
-  st = vfs::hdfs::read_from_file("/test_file", 0, read_buffer, 26, fs);
+  auto read_buffer = new char[26];
+  st = vfs::hdfs::read_from_file("/tiledb_test_dir/tiledb_test_file", 0, read_buffer, 26, fs);
   CHECK(st.ok());
 
+  bool allok = true;
+  for (int i=0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + i)) {
+      allok = false;
+      break;
+    }
+  }
+  CHECK(allok == true);
+
+  st = vfs::hdfs::read_from_file("/tiledb_test_dir/tiledb_test_file", 11, read_buffer, 26, fs);
+  CHECK(st.ok());
+
+  allok = true;
   for (int i = 0; i < 26; ++i) {
-    CHECK(read_buffer[i] == (char)('a' + i));
+    if (read_buffer[i]  != static_cast<char>('a' + (i + 11) % 26)) {
+      allok = false;
+      break;
+    }
   }
-
-  st = vfs::hdfs::read_from_file("/test_file", 11, read_buffer, 26, fs);
-  CHECK(st.ok());
-
-  for (int i = 0; i < 26; ++i) {
-    CHECK(read_buffer[i] == (char)('a' + (i + 11) % 26));
-  }
+  CHECK(allok == true);
 
   std::vector<std::string> paths;
   st = vfs::hdfs::ls("/", paths, fs);
   CHECK(st.ok());
-
-  for (std::vector<std::string>::const_iterator i = paths.begin();
-       i != paths.end();
-       ++i) {
-    fprintf(stderr, "%s\n", i->c_str());
-  }
+  CHECK(paths.size() > 0);
 
   std::vector<std::string> files;
-  st = vfs::hdfs::ls_files("/", files, fs);
+  st = vfs::hdfs::ls_files("/tiledb_test_dir", files, fs);
   CHECK(st.ok());
-
-  for (std::vector<std::string>::const_iterator i = files.begin();
-       i != files.end();
-       ++i) {
-    fprintf(stderr, "File %s\n", i->c_str());
-  }
+  CHECK(files.size() == 1);
 
   std::vector<std::string> dirs;
-  st = vfs::hdfs::ls_dirs("/", dirs, fs);
+  st = vfs::hdfs::ls_dirs("/tiledb_test_dir", dirs, fs);
   CHECK(st.ok());
+  CHECK(dirs.size() == 0);
 
-  for (std::vector<std::string>::const_iterator i = dirs.begin();
-       i != dirs.end();
-       ++i) {
-    fprintf(stderr, "Dir %s\n", i->c_str());
-  }
+  st = vfs::hdfs::create_dir("/tiledb_test_dir/tiledb_test_dir", fs);
+  CHECK(st.ok());
+  st = vfs::hdfs::ls_dirs("/tiledb_test_dir", dirs, fs);
+  CHECK(st.ok());
+  CHECK(dirs.size() == 1);
 
   size_t nbytes;
-  st = vfs::hdfs::filesize("/test_file", &nbytes, fs);
+  st = vfs::hdfs::filesize("/tiledb_test_dir/tiledb_test_file", &nbytes, fs);
   CHECK(st.ok());
-  CHECK(nbytes == (size_t)bufferSize);
-  fprintf(stderr, "Size %ld\n", nbytes);
+  CHECK(nbytes == buffer_size);
 
-  st = vfs::hdfs::delete_dir("/test_dir", fs);
+  st = vfs::hdfs::delete_dir("/tiledb_test_dir/tiledb_test_dir", fs);
   CHECK(st.ok());
 
-  st = vfs::hdfs::delete_file("/test_file", fs);
+  st = vfs::hdfs::delete_file("/tiledb_test_dir/tiledb_test_file", fs);
+  CHECK(st.ok());
+
+  st = vfs::hdfs::delete_dir("/tiledb_test_dir", fs);
   CHECK(st.ok());
 
   st = vfs::hdfs::disconnect(fs);
