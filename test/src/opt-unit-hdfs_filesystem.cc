@@ -35,8 +35,8 @@
 #include <fstream>
 #include <iostream>
 
-#include <status.h>
 #include <hdfs_filesystem.h>
+#include <status.h>
 
 using namespace tiledb;
 
@@ -66,18 +66,20 @@ TEST_CASE("Test HDFS filesystem") {
 
   tSize buffer_size = 100000;
   auto write_buffer = new char[buffer_size];
-  for (int i=0; i < buffer_size; i++) {
+  for (int i = 0; i < buffer_size; i++) {
     write_buffer[i] = 'a' + (i % 26);
   }
-  st = vfs::hdfs::write_to_file("/tiledb_test_dir/tiledb_test_file", write_buffer, buffer_size, fs);
+  st = vfs::hdfs::write_to_file(
+      "/tiledb_test_dir/tiledb_test_file", write_buffer, buffer_size, fs);
   CHECK(st.ok());
 
   auto read_buffer = new char[26];
-  st = vfs::hdfs::read_from_file("/tiledb_test_dir/tiledb_test_file", 0, read_buffer, 26, fs);
+  st = vfs::hdfs::read_from_file(
+      "/tiledb_test_dir/tiledb_test_file", 0, read_buffer, 26, fs);
   CHECK(st.ok());
 
   bool allok = true;
-  for (int i=0; i < 26; i++) {
+  for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + i)) {
       allok = false;
       break;
@@ -85,12 +87,13 @@ TEST_CASE("Test HDFS filesystem") {
   }
   CHECK(allok == true);
 
-  st = vfs::hdfs::read_from_file("/tiledb_test_dir/tiledb_test_file", 11, read_buffer, 26, fs);
+  st = vfs::hdfs::read_from_file(
+      "/tiledb_test_dir/tiledb_test_file", 11, read_buffer, 26, fs);
   CHECK(st.ok());
 
   allok = true;
   for (int i = 0; i < 26; ++i) {
-    if (read_buffer[i]  != static_cast<char>('a' + (i + 11) % 26)) {
+    if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
       allok = false;
       break;
     }

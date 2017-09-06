@@ -31,9 +31,7 @@
  * This file defines the C API of TileDB.
  */
 
-#include "aio_request.h"
 #include "array_schema.h"
-#include "basic_array.h"
 #include "storage_manager.h"
 #include "utils.h"
 
@@ -43,10 +41,6 @@
 
 const char* tiledb_coords() {
   return tiledb::constants::coords;
-}
-
-const char* tiledb_key() {
-  return tiledb::constants::key;
 }
 
 int tiledb_var_num() {
@@ -89,10 +83,6 @@ struct tiledb_error_t {
   std::string* errmsg_;
 };
 
-struct tiledb_basic_array_t {
-  tiledb::BasicArray* basic_array_;
-};
-
 struct tiledb_attribute_t {
   tiledb::Attribute* attr_;
 };
@@ -117,16 +107,6 @@ struct tiledb_dimension_iter_t {
   tiledb_dimension_t* dim_;
   int dim_num_;
   int current_dim_;
-};
-
-struct tiledb_array_t {
-  tiledb::Array* array_;
-  tiledb_ctx_t* ctx_;
-};
-
-struct tiledb_aio_request_t {
-  tiledb::AIORequest* aio_request_;
-  tiledb::AIOStatus aio_status_;
 };
 
 /* ********************************* */
@@ -1160,16 +1140,17 @@ int tiledb_dimension_iter_first(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, dim_it) == TILEDB_ERR)
     return TILEDB_ERR;
+
   dim_it->current_dim_ = 0;
   if (dim_it->dim_ != nullptr) {
-    if (dim_it->dim_->dim_ != nullptr)
-      delete dim_it->dim_->dim_;
+    delete dim_it->dim_->dim_;
     if (dim_it->dim_num_ > 0)
       dim_it->dim_->dim_ =
           new tiledb::Dimension(dim_it->array_schema_->array_schema_->dim(0));
     else
       dim_it->dim_->dim_ = nullptr;
   }
+
   return TILEDB_OK;
 }
 
@@ -1180,7 +1161,9 @@ int tiledb_dimension_iter_first(
 int tiledb_array_create(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema) {
   // Sanity checks
-  // TODO: sanity checks here
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
 
   // Create the array
   if (save_error(
@@ -1189,58 +1172,6 @@ int tiledb_array_create(
     return TILEDB_ERR;
 
   return TILEDB_OK;
-}
-
-int tiledb_array_init(
-    tiledb_ctx_t* ctx,
-    tiledb_array_t** tiledb_array,
-    const char* array,
-    tiledb_query_mode_t mode,
-    const void* subarray,
-    const char** attributes,
-    int attribute_num) {
-  // TODO: sanity checks here
-
-  // Allocate memory for the array struct
-  *tiledb_array = (tiledb_array_t*)malloc(sizeof(struct tiledb_array_t));
-  if (tiledb_array == nullptr)
-    return TILEDB_OOM;
-
-  // Set TileDB context
-  (*tiledb_array)->ctx_ = ctx;
-
-  // Init the array
-  auto array_uri = tiledb::uri::URI(array);
-  if (save_error(
-          ctx,
-          ctx->storage_manager_->array_init(
-              (*tiledb_array)->array_,
-              array_uri,
-              static_cast<tiledb::QueryMode>(mode),
-              subarray,
-              attributes,
-              attribute_num))) {
-    free(*tiledb_array);
-    return TILEDB_ERR;
-  };
-
-  return TILEDB_OK;
-}
-
-tiledb_array_schema_t* tiledb_array_get_schema(
-    const tiledb_array_t* tiledb_array) {
-  // Sanity check
-  // TODO: sanity checks here
-
-  // Create an array schema struct object
-  tiledb_array_schema_t* array_schema =
-      (tiledb_array_schema_t*)malloc(sizeof(tiledb_array_schema_t));
-  if (array_schema == nullptr)
-    return nullptr;
-  array_schema->array_schema_ =
-      new tiledb::ArraySchema(tiledb_array->array_->array_schema());
-
-  return array_schema;
 }
 
 int tiledb_array_write(

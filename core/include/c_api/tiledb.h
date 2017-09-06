@@ -34,9 +34,6 @@
 #ifndef TILEDB_H
 #define TILEDB_H
 
-#ifdef HAVE_MPI
-#include <mpi.h>
-#endif
 #include <unistd.h>
 #include <cfloat>
 #include <climits>
@@ -67,7 +64,6 @@ extern "C" {
 /* ****************************** */
 
 /** Version. */
-#define TILEDB_VERSION "0.6.1"
 #define TILEDB_VERSION_MAJOR 0
 #define TILEDB_VERSION_MINOR 6
 #define TILEDB_VERSION_REVISION 1
@@ -75,8 +71,8 @@ extern "C" {
 /**@{*/
 /** Return code. */
 #define TILEDB_OK 0
-#define TILEDB_ERR -1
-#define TILEDB_OOM -2
+#define TILEDB_ERR (-1)
+#define TILEDB_OOM (-2)
 /**@}*/
 
 /**@{*/
@@ -95,9 +91,6 @@ extern "C" {
 /** Returns a special name indicating the coordinates attribute. */
 TILEDB_EXPORT const char* tiledb_coords();
 
-/** Returns a special name indicating the key attribute. */
-TILEDB_EXPORT const char* tiledb_key();
-
 /** Returns a special value indicating a variable number of elements. */
 TILEDB_EXPORT int tiledb_var_num();
 
@@ -115,26 +108,19 @@ typedef enum {
 #undef TILEDB_OBJECT_ENUM
 } tiledb_object_t;
 
-/** Array mode. */
+/** Query mode. */
 typedef enum {
-#define TILEDB_QUERY_MODE_ENUM(id) TILEDB_ARRAY_##id
+#define TILEDB_QUERY_MODE_ENUM(id) TILEDB_##id
 #include "tiledb_enum.inc"
 #undef TILEDB_QUERY_MODE_ENUM
 } tiledb_query_mode_t;
 
-/** I/O method. */
+/** Query status. */
 typedef enum {
-#define TILEDB_IO_METHOD_ENUM(id) TILEDB_IO_METHOD_##id
+#define TILEDB_QUERY_STATUS_ENUM(id) TILEDB_##id
 #include "tiledb_enum.inc"
-#undef TILEDB_IO_METHOD_ENUM
-} tiledb_io_t;
-
-/** Asynchronous I/O (AIO) request status. */
-typedef enum {
-#define TILEDB_AIO_ENUM(id) TILEDB_AIO_##id
-#include "tiledb_enum.inc"
-#undef TILEDB_AIO_ENUM
-} tiledb_aio_status_t;
+#undef TILEDB_QUERY_STATUS_ENUM
+} tiledb_query_status_t;
 
 /** Data type. */
 typedef enum {
@@ -169,12 +155,11 @@ typedef enum {
 /* ****************************** */
 
 /**
- *  Return the version of the tiledb library
- *  being currently used.
+ *  Retrieves the version of the TileDB library being currently used.
  *
- *  @param major Store the major version number
- *  @param minor Store the minor version number
- *  @param rev Store the revision (patch) number
+ *  @param major Will store the major version number.
+ *  @param minor Will store the minor version number.
+ *  @param rev Will store the revision (patch) number.
  */
 TILEDB_EXPORT void tiledb_version(int* major, int* minor, int* rev);
 
@@ -182,17 +167,11 @@ TILEDB_EXPORT void tiledb_version(int* major, int* minor, int* rev);
 /*           TILEDB TYPES            */
 /* ********************************* */
 
-/** The TileDB context, which maintains state for the TileDB modules. */
+/** A TileDB context. */
 typedef struct tiledb_ctx_t tiledb_ctx_t;
 
-/** Used to pass configuration parameters to TileDB. */
-typedef struct tiledb_config_t tiledb_config_t;
-
-/** Opaque struct describing a TileDB error. **/
+/** A TileDB error. **/
 typedef struct tiledb_error_t tiledb_error_t;
-
-/** A TileDB basic array object. */
-typedef struct tiledb_basic_array_t tiledb_basic_array_t;
 
 /** A TileDB attribute. */
 typedef struct tiledb_attribute_t tiledb_attribute_t;
@@ -209,11 +188,8 @@ typedef struct tiledb_dimension_iter_t tiledb_dimension_iter_t;
 /** A TileDB array schema. */
 typedef struct tiledb_array_schema_t tiledb_array_schema_t;
 
-/** A TileDB array object. */
-typedef struct tiledb_array_t tiledb_array_t;
-
-/** An asynchronous I/O request. */
-typedef struct tiledb_aio_request_t tiledb_aio_request_t;
+/** A TileDB query. */
+typedef struct tiledb_query_t tiledb_query_t;
 
 /* ********************************* */
 /*              CONTEXT              */
@@ -234,77 +210,6 @@ TILEDB_EXPORT int tiledb_ctx_create(tiledb_ctx_t** ctx);
  * @return void
  */
 TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t* ctx);
-
-/**
- * Sets a configuration to a TileDB context.
- *
- * @param ctx The TileDB context.
- * @param config The config to be set.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- *
- * @note It is strongly recommended that this function is used before starting
- *    to use any arrays/groups, as messing with the configuration
- * during TileDB operations may lead to unexpected errors.
- */
-TILEDB_EXPORT int tiledb_ctx_set_config(
-    tiledb_ctx_t* ctx, tiledb_config_t* config);
-
-/* ********************************* */
-/*              CONFIG               */
-/* ********************************* */
-
-/**
- * Creates a TileDB configuration object.
- *
- * @param ctx The TileDB context.
- * @param config The configuration object to be created.
- * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_config_create(
-    tiledb_ctx_t* ctx, tiledb_config_t** config);
-
-/**
- * Destroys a TileDB configuration object.
- *
- * @param config The configuration object to be destroyed.
- * @return void
- */
-TILEDB_EXPORT void tiledb_config_free(tiledb_config_t* config);
-
-/**
- * Sets the MPI communicator.
- *
- * @param ctx The TileDB context.
- * @param config The config object.
- * @param mpi_comm The MPI communicator to be set.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-#ifdef HAVE_MPI
-TILEDB_EXPORT int tiledb_config_set_mpi_comm(
-    tiledb_ctx_t* ctx, tiledb_config_t* config, MPI_Comm* mpi_comm);
-#endif
-
-/**
- * Sets the read method.
- *
- * @param ctx The TileDB context.
- * @param config The config object.
- * @param read_method The read method to be set.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_config_set_read_method(
-    tiledb_ctx_t* ctx, tiledb_config_t* config, tiledb_io_t read_method);
-
-/**
- * Sets the write method.
- *
- * @param ctx The TileDB context.
- * @param config The config object.
- * @param write_method The write method to be set.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_config_set_write_method(
-    tiledb_ctx_t* ctx, tiledb_config_t* config, tiledb_io_t write_method);
 
 /* ********************************* */
 /*              ERROR                */
@@ -350,20 +255,6 @@ TILEDB_EXPORT void tiledb_error_free(tiledb_error_t* err);
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_group_create(tiledb_ctx_t* ctx, const char* group);
-
-/* ********************************* */
-/*            BASIC ARRAY            */
-/* ********************************* */
-
-/**
- * Creates a basic array.
- *
- * @param ctx The TileDB context.
- * @param name The name of the basic array to be created.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_basic_array_create(
-    tiledb_ctx_t* ctx, const char* name);
 
 /* ********************************* */
 /*            ATTRIBUTE              */
@@ -924,40 +815,28 @@ TILEDB_EXPORT int tiledb_dimension_iter_here(
  *
  * @param ctx The TileDB context.
  * @param dim_it The dimension iterator.
- * @return
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_dimension_iter_first(
     tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
 
 /* ********************************* */
-/*               ARRAY               */
+/*               QUERY               */
 /* ********************************* */
 
 /**
- * Creates a new TileDB array.
+ * Creates a TileDB query object.
  *
  * @param ctx The TileDB context.
- * @param tiledb_array_schema The array schema.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_array_create(
-    tiledb_ctx_t* ctx, const tiledb_array_schema_t* tiledb_array_schema);
-
-/**
- * Initializes a TileDB array.
- *
- * @param ctx The TileDB context.
- * @param tiledb_array The array object to be initialized. The function
- *     will allocate memory space for it.
- * @param array The directory of the array to be initialized.
- * @param mode The mode of the array. It must be one of the following:
- *    - TILEDB_ARRAY_WRITE
- *    - TILEDB_ARRAY_WRITE_SORTED_COL
- *    - TILEDB_ARRAY_WRITE_SORTED_ROW
- *    - TILEDB_ARRAY_WRITE_UNSORTED
- *    - TILEDB_ARRAY_READ
- *    - TILEDB_ARRAY_READ_SORTED_COL
- *    - TILEDB_ARRAY_READ_SORTED_ROW
+ * @param query The query object to be created.
+ * @param mode The mode of the query. It must be one of the following:
+ *    - TILEDB_WRITE
+ *    - TILEDB_WRITE_SORTED_COL
+ *    - TILEDB_WRITE_SORTED_ROW
+ *    - TILEDB_WRITE_UNSORTED
+ *    - TILEDB_READ
+ *    - TILEDB_READ_SORTED_COL
+ *    - TILEDB_READ_SORTED_ROW
  * @param subarray The subarray in which the array read/write will be
  *     constrained on. It should be a sequence of [low, high] pairs (one
  *     pair per dimension), whose type should be the same as that of the
@@ -966,158 +845,156 @@ TILEDB_EXPORT int tiledb_array_create(
  *     dense arrays, and specifically dense writes.
  * @param attributes A subset of the array attributes the read/write will be
  *     constrained on. Note that the coordinates have special attribute name
- *     TILEDB_COORDS. A NULL value indicates **all** attributes (including
+ *     tiledb_coords(). A NULL value indicates **all** attributes (including
  *     the coordinates as the last attribute in the case of sparse arrays).
  * @param attribute_num The number of the input attributes. If *attributes* is
  *     NULL, then this should be set to 0.
- * @return TILEDB_OK on success, and TILEDB_ERR on error.
+ * @param buffers The buffers that either have the input data to be written,
+ *     or will hold the data to be read. There must be an one-to-one
+ *     correspondence with *attributes*.
+ * @param buffer_sizes There must be an one-to-one correspondence with
+ *     *buffers*. In the case of writes, they contain the sizes of *buffers*.
+ *     In the case of reads, they initially contain the allocated sizes of
+ *     *buffers*, but after the termination of the function they will contain
+ *     the sizes of the useful (read) data in the buffers.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_array_init(
+TILEDB_EXPORT int tiledb_query_create(
     tiledb_ctx_t* ctx,
-    tiledb_array_t** tiledb_array,
-    const char* array,
+    tiledb_query_t** query,
+    const char* array_name,
     tiledb_query_mode_t mode,
     const void* subarray,
     const char** attributes,
-    int attribute_num);
+    int attribute_num,
+    void** buffers,
+    uint64_t* buffer_sizes);
 
 /**
- * Retrieves the schema of an already initialized array.
+ * Deletes a TileDB query object.
  *
- * @param tiledb_array The TileDB array object (must already be initialized).
- * @param tiledb_array_schema The array schema to be retrieved.
+ * @param query The query object to be deleted.
+ * @return void
+ */
+TILEDB_EXPORT void tiledb_query_free(tiledb_query_t* query);
+
+/**
+ * Submits a TileDB query.
+ *
+ * @param ctx The TileDB context.
+ * @param query The query to be submitted.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note This function essentially opens the array associated with the query.
+ *     Some bookkeeping structures are loaded in main-memory for this array.
+ *     In order to flush these data structures and free up memory, invoke
+ *     *tiledb_array_close*.
+ */
+TILEDB_EXPORT int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query);
+
+/**
+ * Resumes a TileDB query in the case of overflow.
+ *
+ * @param ctx The TileDB context.
+ * @param query The query to be resumed.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_array_get_schema(
-    const tiledb_array_t* tiledb_array,
-    tiledb_array_schema_t* tiledb_array_schema);
+TILEDB_EXPORT int tiledb_query_resume(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
 /**
- * Performs a write operation to an array.
- * The array must be initialized in one of the following write modes,
- * each of which has a different behaviour:
- *    - TILEDB_ARRAY_WRITE: \n
- *      In this mode, the cell values are provided in the buffers respecting
- *      the cell order on the disk (specified in the array schema). It is
- *      practically an **append** operation,
- *      where the provided cell values are simply written at the end of
- *      their corresponding attribute files. This mode leads to the best
- *      performance. The user may invoke this function an arbitrary number
- *      of times, and all the writes will occur in the same fragment.
- *      Moreover, the buffers need not be synchronized, i.e., some buffers
- *      may have more cells than others when the function is invoked.
- *    - TILEDB_ARRAY_WRITE_SORTED_COL: \n
- *      In this mode, the cell values are provided in the buffer in column-major
- *      order with respect to the subarray used upon array initialization.
- *      TileDB will properly re-organize the cells so that they follow the
- *      array cell order for storage on the disk.
- *    - TILEDB_ARRAY_WRITE_SORTED_ROW: \n
- *      In this mode, the cell values are provided in the buffer in row-major
- *      order with respect to the subarray used upon array initialization.
- *      TileDB will properly re-organize the cells so that they follow the
- *      array cell order for storage on the disk.
- *    - TILEDB_ARRAY_WRITE_UNSORTED: \n
- *      This mode is applicable to sparse arrays, or when writing sparse updates
- *      to a dense array. One of the buffers holds the coordinates. The cells
- *      in this mode are given in an arbitrary, unsorted order (i.e., without
- *      respecting how the cells must be stored on the disk according to the
- *      array schema definition). Each invocation of this function internally
- *      sorts the cells and writes them to the disk in the proper order. In
- *      addition, each invocation creates a **new** fragment. Finally, the
- *      buffers in each invocation must be synchronized, i.e., they must have
- *      the same number of cell values across all attributes.
+ * Submits a TileDB query in asynchronous mode.
  *
- * @param tiledb_array The TileDB array object (must be already initialized).
- * @param buffers An array of buffers, one for each attribute. These must be
- *     provided in the same order as the attribute order specified in
- *     tiledb_array_init() or tiledb_array_reset_attributes(). The case of
- *     variable-sized attributes is special. Instead of providing a single
- *     buffer for such an attribute, **two** must be provided: the second
- *     holds the variable-sized cell values, whereas the first holds the
- *     start offsets of each cell in the second buffer.
- * @param buffer_sizes The sizes (in bytes) of the input buffers (there should
- *     be a one-to-one correspondence).
+ * @param ctx The TileDB context.
+ * @param query The query to be submitted.
+ * @param callback The function to be called when the query completes.
+ * @param callback_data The data to be passed to the callback function.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ *
+ * @note This function essentially opens the array associated with the query.
+ *     Some bookkeeping structures are loaded in main-memory for this array.
+ *     In order to flush these data structures and free up memory, invoke
+ *     *tiledb_array_close*.
+ */
+TILEDB_EXPORT int tiledb_query_submit_async(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    void* (*callback)(void*),
+    void* callback_data);
+
+/**
+ * Resumes a TileDB query in asynchronous mode.
+ *
+ * @param ctx The TileDB context.
+ * @param query The query to be resumed.
+ * @param callback The function to be called when the query completes.
+ * @param callback_data The data to be passed to the callback function.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_array_write(
-    const tiledb_array_t* tiledb_array,
-    const void** buffers,
-    const size_t* buffer_sizes);
+TILEDB_EXPORT int tiledb_query_resume_async(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    void* (*callback)(void*),
+    void* callback_data);
 
 /**
- * Performs a read operation on an array.
- * The array must be initialized in one of the following read modes,
- * each of which has a different behaviour:
- *    - TILEDB_ARRAY_READ: \n
- *      In this mode, the cell values are stored in the buffers respecting
- *      the cell order on the disk (specified in the array schema). This mode
- *      leads to the best performance.
- *    - TILEDB_ARRAY_READ_SORTED_COL: \n
- *      In this mode, the cell values are stored in the buffers in column-major
- *      order with respect to the subarray used upon array initialization.
- *    - TILEDB_ARRAY_READ_SORTED_ROW: \n
- *      In this mode, the cell values are stored in the buffer in row-major
- *      order with respect to the subarray used upon array initialization.
+ * Retrieves the status of a query.
  *
- * @param tiledb_array The TileDB array.
- * @param buffers An array of buffers, one for each attribute. These must be
- *     provided in the same order as the attributes specified in
- *     tiledb_array_init() or tiledb_array_reset_attributes(). The case of
- *     variable-sized attributes is special. Instead of providing a single
- *     buffer for such an attribute, **two** must be provided: the second
- *     will hold the variable-sized cell values, whereas the first holds the
- *     start offsets of each cell in the second buffer.
- * @param buffer_sizes The sizes (in bytes) allocated by the user for the input
- *     buffers (there is a one-to-one correspondence). The function will attempt
- *     to write as many results as can fit in the buffers, and potentially
- *     alter the buffer size to indicate the size of the *useful* data written
- *     in the buffer. If a buffer cannot hold all results, the function will
- *     still succeed, writing as much data as it can and turning on an overflow
- *     flag which can be checked with function tiledb_array_overflow(). The
- *     next invocation will resume from the point the previous one stopped,
- *     without inflicting a considerable performance penalty due to overflow.
+ * @param ctx The TileDB context.
+ * @param query The query.
+ * @param status The query status to be retrieved.
+ * @return TILEDB_OK upon success, and TILEDB_ERR upon error.
+ */
+TILEDB_EXPORT int tiledb_query_get_status(
+    tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status);
+
+/**
+ * Checks if an attribute buffer has overflowed during a read query.
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param attribute_name The name of the attribute to be checked.
+ * @param overflow After termination, this variable is set to 1 in case
+ *      of overflow, and 0 otherwise.
+ * @return TILEDB_OK upon success, and TILEDB_ERR upon error.
+ */
+TILEDB_EXPORT int tiledb_query_get_overflow(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_t* query,
+    const char* attribute_name,
+    int* overflow);
+
+/* ********************************* */
+/*               ARRAY               */
+/* ********************************* */
+
+/**
+ * Creates a new TileDB array given an input schema.
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_array_read(
-    const tiledb_array_t* tiledb_array, void** buffers, size_t* buffer_sizes);
+TILEDB_EXPORT int tiledb_array_create(
+    tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema);
 
 /**
- * Checks if a read operation for a particular attribute resulted in a
- * buffer overflow.
+ * Flushes all memory structures kept for the input TileDB array.
  *
- * @param tiledb_array The TileDB array.
- * @param attribute_id The id of the attribute for which the overflow is
- *     checked. This id corresponds to the position of the attribute name
- *     placed in the *attributes* input of tiledb_array_init(), or
- *     tiledb_array_reset_attributes() (the positions start from 0).
- *     If *attributes* was NULL in the
- *     above functions, then the attribute id corresponds to the order
- *     in which the attributes were defined in the array schema upon the
- *     array creation. Note that, in that case, the extra coordinates
- *     attribute corresponds to the last extra attribute, i.e., its id
- *     is *attribute_num*.
- * @return TILEDB_ERR for error, 1 for overflow, and 0 otherwise.
+ * @param ctx The TileDB context.
+ * @param array_name The path of the array to be closed.
+ * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
-TILEDB_EXPORT int tiledb_array_overflow(
-    const tiledb_array_t* tiledb_array, int attribute_id);
+TILEDB_EXPORT int tiledb_array_close(tiledb_ctx_t* ctx, const char* array_name);
 
 /**
  * Consolidates the fragments of an array into a single fragment.
  *
  * @param ctx The TileDB context.
- * @param array The name of the TileDB array to be consolidated.
+ * @param array_name The name of the TileDB array to be consolidated.
  * @return TILEDB_OK on success, and TILEDB_ERR on error.
  */
 TILEDB_EXPORT int tiledb_array_consolidate(
-    tiledb_ctx_t* ctx, const char* array);
-
-/**
- * Finalizes a TileDB array, properly freeing its memory space.
- *
- * @param tiledb_array The array to be finalized.
- * @return TILEDB_OK on success, and TILEDB_ERR on error.
- */
-TILEDB_EXPORT int tiledb_array_finalize(tiledb_array_t* tiledb_array);
+    tiledb_ctx_t* ctx, const char* array_name);
 
 /* ********************************* */
 /*       DIRECTORY MANAGEMENT        */
@@ -1206,105 +1083,6 @@ TILEDB_EXPORT int tiledb_ls(
  */
 TILEDB_EXPORT int tiledb_ls_c(
     tiledb_ctx_t* ctx, const char* parent_dir, int* dir_num);
-
-/* ********************************* */
-/*      ASYNCHRONOUS I/O (AIO)       */
-/* ********************************* */
-
-/**
- * Creates an AIO request.
- *
- * @param ctx The TileDB context
- * @param aio_request  The AIO request to be created.
- * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_aio_request_create(
-    tiledb_ctx_t* ctx, tiledb_aio_request_t** aio_request);
-
-/**
- * Frees an AIO request.
- *
- * @param aio_request The AIO request to be freed.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT void tiledb_aio_request_free(tiledb_aio_request_t* aio_request);
-
-/**
- * Binds an array with the AIO request.
- *
- * @param ctx The TileDB context.
- * @param aio_request The AIO request to be set.
- * @param array The array to be set to the request.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_aio_request_set_array(
-    tiledb_ctx_t* ctx,
-    tiledb_aio_request_t* aio_request,
-    tiledb_array_t* array);
-
-/**
- * Sets buffers to the AIO request.
- *
- * @param ctx The TileDB context.
- * @param aio_request The AIO request to be set.
- * @param buffers The buffers to be set.
- * @param buffer_sizes The corresponding buffer sizes.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_aio_request_set_buffers(
-    tiledb_ctx_t* ctx,
-    tiledb_aio_request_t* aio_request,
-    void** buffers,
-    size_t* buffer_sizes);
-
-/**
- * Sets a subarray to the AIO request.
- *
- * @param ctx The TileDB context.
- * @param aio_request The AIO request to be set.
- * @param subarray The subarray to be set.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_aio_request_set_subarray(
-    tiledb_ctx_t* ctx, tiledb_aio_request_t* aio_request, const void* subarray);
-
-/**
- * Sets a callback handlde to the AIO request.
- *
- * @param ctx The TileDB context.
- * @param aio_request The AIO request to be set.
- * @param completion_handle The completion handle to be set.
- * @param completion_data The data to be passed to the completion handle.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_aio_request_set_callback(
-    tiledb_ctx_t* ctx,
-    tiledb_aio_request_t* aio_request,
-    void* (*completion_handle)(void*),
-    void* completion_data);
-
-/**
- * Submits an asynchronous I/O request.
- *
- * @param ctx The TileDB context.
- * @param aio_request An asynchronous I/O request.
- * @return TILEDB_OK upon success, and TILEDB_ERR upon error.
- */
-TILEDB_EXPORT int tiledb_array_aio_submit(
-    tiledb_ctx_t* ctx, tiledb_aio_request_t* aio_request);
-
-/**
- * Retrieves the status of the AIO request.
- *
- * @param ctx The TileDB context.
- * @param aio_request The AIO request.
- * @param aio_status The AIO status to be retrieved.
- * @return TILEDB_OK upon success, and TILEDB_ERR upon error.
- */
-TILEDB_EXPORT int tiledb_aio_request_get_status(
-    tiledb_ctx_t* ctx,
-    tiledb_aio_request_t* aio_request,
-    tiledb_aio_status_t* aio_status);
 
 #undef TILEDB_EXPORT
 #ifdef __cplusplus

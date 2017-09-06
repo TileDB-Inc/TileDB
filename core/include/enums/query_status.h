@@ -1,5 +1,5 @@
 /**
- * @file aio_status.h
+ * @file query_status.h
  *
  * @section LICENSE
  *
@@ -27,21 +27,21 @@
  *
  * @section DESCRIPTION
  *
- * This defines the tiledb AIOStatus enum that maps to tiledb_aio_status_t
+ * This defines the tiledb QueryStatus enum that maps to tiledb_query_status_t
  * C-api enum.
  */
 
-#ifndef TILEDB_AIO_STATUS_H
-#define TILEDB_AIO_STATUS_H
+#ifndef TILEDB_QUERY_STATUS_H
+#define TILEDB_QUERY_STATUS_H
 
 namespace tiledb {
 
-enum class AIOStatus : char {
-#define TILEDB_AIO_ENUM(id) id
+enum class QueryStatus : char {
+#define TILEDB_QUERY_STATUS_ENUM(id) id
 #include "tiledb_enum.inc"
-#undef TILEDB_AIO_ENUM
+#undef TILEDB_QUERY_STATUS_ENUM
 };
 
 }  // namespace tiledb
 
-#endif  // TILEDB_AIO_STATUS_H
+#endif  // TILEDB_QUERY_STATUS_H
