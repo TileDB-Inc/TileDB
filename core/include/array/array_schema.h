@@ -71,7 +71,7 @@ class ArraySchema {
    *
    * @param uri The array uri.
    */
-  ArraySchema(const uri::URI& uri);
+  ArraySchema(const URI& uri);
 
   /** Destructor. */
   ~ArraySchema();
@@ -81,7 +81,7 @@ class ArraySchema {
   /* ********************************* */
 
   /** Returns the array uri. */
-  const uri::URI& array_uri() const;
+  const URI& array_uri() const;
 
   /** Returns the array type. */
   ArrayType array_type() const;
@@ -345,11 +345,11 @@ class ArraySchema {
 
   // TODO: uri
   Status load(
-      const uri::URI& uri,
+      const URI& uri,
       const char* schema_filename = constants::array_schema_filename);
 
   /** Sets the array uri. */
-  void set_array_uri(const uri::URI& uri);
+  void set_array_uri(const URI& uri);
 
   /** Sets the array type (dense or sparse). */
   void set_array_type(ArrayType array_type);
@@ -393,7 +393,7 @@ class ArraySchema {
 
   // TODO: uri
   Status store(
-      const uri::URI& parent,
+      const URI& parent,
       const char* schema_filename = constants::array_schema_filename);
 
   /* ********************************* */
@@ -606,7 +606,7 @@ class ArraySchema {
   /* ********************************* */
 
   /** The array name. */
-  uri::URI array_uri_;
+  URI array_uri_;
   /** The array type. */
   ArrayType array_type_;        // TODO: replace dense_
   /** The array attributes. */  // TODO: replace attributes_

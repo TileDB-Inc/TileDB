@@ -37,10 +37,10 @@
 #include <cstring>
 #include <iostream>
 
-#include "../../include/vfs/filesystem.h"
 #include "comparators.h"
 #include "const_buffer.h"
 #include "logger.h"
+#include "posix_filesystem.h"
 #include "tile.h"
 #include "utils.h"
 #include "write_state.h"

@@ -22,8 +22,8 @@ extern const char* coords;
 /** The consolidation buffer size. */
 extern const uint64_t consolidation_buffer_size;
 
-/** The consolidation filelock name. */
-extern const char* consolidation_filelock_name;
+/** The array filelock name. */
+extern const char* array_filelock_name;
 
 /** The special value for an empty int32. */
 extern const int empty_int32;

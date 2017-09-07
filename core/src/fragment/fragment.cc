@@ -32,8 +32,8 @@
  */
 
 #include "fragment.h"
-#include "../../include/vfs/filesystem.h"
 #include "logger.h"
+#include "posix_filesystem.h"
 #include "utils.h"
 
 /* ****************************** */

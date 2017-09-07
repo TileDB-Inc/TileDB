@@ -59,9 +59,9 @@ class Query {
 
   Query();
 
-  Query(const Query* query, QueryMode mode, const void* subarray);
-
   ~Query();
+
+  Query(const Query* query, QueryMode mode, const void* subarray);
 
   /* ********************************* */
   /*                 API               */
@@ -127,13 +127,18 @@ class Query {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  uri::URI array_name_;
+  ArraySchema* array_schema_;
+  QueryMode mode_;
+  void* subarray_;
+  uint64_t subarray_size_;
+  std::vector<std::string> attributes_;
+  std::vector<void*> buffers_;
+  std::vector<uint64_t> buffer_sizes_;
+
   Array* array_;
 
   std::vector<int> attribute_ids_;
-
-  QueryMode mode_;
-
-  void* subarray_;
 
   ArrayReadState* array_read_state_;
   ArraySortedReadState* array_sorted_read_state_;

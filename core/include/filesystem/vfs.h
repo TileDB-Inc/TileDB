@@ -1,5 +1,5 @@
 /**
- * @file   uri.h
+ * @file   vfs.h
  *
  * @section LICENSE
  *
@@ -27,62 +27,65 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class URI.
+ * This file declares the VFS class.
  */
 
-#ifndef TILEDB_URI_H
-#define TILEDB_URI_H
+#ifndef TILEDB_VFS_H
+#define TILEDB_VFS_H
 
 #include <string>
 
-#include "posix_filesystem.h"
 #include "status.h"
+#include "uri.h"
 
 namespace tiledb {
 
-class URI {
+/** This class implements virtual filesystem functions. */
+class VFS {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  URI();
+  /** Constructor. */
+  VFS();
 
-  URI(const std::string& path);
-
-  ~URI();
+  /** Destructor. */
+  ~VFS();
 
   /* ********************************* */
-  /*                API                */
+  /*               API                 */
   /* ********************************* */
 
-  URI join_path(const std::string& path) const;
+  /**
+   * Returns the absolute path of the input string (mainly useful for
+   * posix URI's).
+   */
+  std::string abs_path(const std::string& path) const;
 
-  std::string last_path_part() const;
+  /** Creates a directory. */
+  Status create_dir(const URI& uri) const;
 
-  std::string to_string() const;
+  /** Creates an empty file. */
+  Status create_file(const URI& uri) const;
 
-  std::string to_path() const;
+  Status filelock_lock(const URI& uri, int* fd, bool shared) const;
 
-  static bool is_posix(const std::string& path);
+  /** Unlocks a filelock. */
+  Status filelock_unlock(const URI& uri, int fd) const;
 
-  static bool is_hdfs(const std::string& path);
+  /** Checks if a file exists. */
+  bool is_file(const URI& uri) const;
 
-  static bool is_s3(const std::string& path);
-
-  bool is_posix() const;
-
-  bool is_hdfs() const;
-
-  bool is_s3() const;
+  /** Retrieves all the URIs that have the first input as parent. */
+  Status ls(const URI& parent, std::vector<URI>* uris) const;
 
  private:
   /* ********************************* */
-  /*        PRIVATE ATTRIBUTES         */
+  /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-  std::string uri_;
 };
 
 }  // namespace tiledb
 
-#endif  // TILEDB_URI_H
+#endif  // TILEDB_VFS_H

@@ -38,8 +38,8 @@
 #include <iostream>
 #include <sstream>
 
-#include "../../core/include/vfs/filesystem.h"
 #include "catch.hpp"
+#include "posix_filesystem.h"
 #include "tiledb.h"
 
 struct ArraySchemaFx {

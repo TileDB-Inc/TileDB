@@ -43,7 +43,7 @@
 
 namespace tiledb {
 
-namespace vfs {
+namespace filesystem {
 
 namespace hdfs {
 
@@ -106,7 +106,7 @@ Status filesize(const std::string& path, size_t* nbytes, hdfsFS fs);
 
 }  // namespace hdfs
 
-}  // namespace vfs
+}  // namespace filesystem
 
 }  // namespace tiledb
 

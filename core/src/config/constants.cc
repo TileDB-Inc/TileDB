@@ -32,8 +32,8 @@ const char* coords = "__coords";
 /** The consolidation buffer size. */
 const uint64_t consolidation_buffer_size = 10000000;
 
-/** The consolidation filelock name. */
-const char* consolidation_filelock_name = "__consolidation_lock";
+/** The array filelock name. */
+const char* array_filelock_name = "__array_lock";
 
 /** The special value for an empty int32. */
 const int empty_int32 = INT_MAX;

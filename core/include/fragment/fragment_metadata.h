@@ -28,11 +28,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class BookKeeping.
+ * This file defines class FragmentMetadata.
  */
 
-#ifndef TILEDB_FRAGMENTMETADATA_H
-#define TILEDB_FRAGMENTMETADATA_H
+#ifndef TILEDB_FRAGMENT_METADATA_H
+#define TILEDB_FRAGMENT_METADATA_H
 
 #include <zlib.h>
 #include <vector>
@@ -51,9 +51,7 @@ class FragmentMetadata {
   /* ********************************* */
 
   FragmentMetadata(
-      const ArraySchema* array_schema,
-      bool dense,
-      const uri::URI& fragment_uri);
+      const ArraySchema* array_schema, bool dense, const URI& fragment_uri);
 
   /** Destructor. */
   ~FragmentMetadata();
@@ -76,6 +74,9 @@ class FragmentMetadata {
 
   /** Returns the (expanded) domain in which the fragment is constrained. */
   const void* domain() const;
+
+  /** Returns the fragment URI. */
+  const URI& fragment_uri() const;
 
   /** Returns the number of cells in the last tile. */
   int64_t last_tile_cell_num() const;
@@ -206,7 +207,7 @@ class FragmentMetadata {
   void* domain_;
 
   /** The uri of the fragment the metadata belongs to. */
-  uri::URI fragment_uri_;
+  URI fragment_uri_;
 
   /** Number of cells in the last tile (meaningful only in the sparse case). */
   int64_t last_tile_cell_num_;
@@ -363,4 +364,4 @@ class FragmentMetadata {
 
 }  // namespace tiledb
 
-#endif  // TILEDB_FRAGMENTMETADATA_H
+#endif  // TILEDB_FRAGMENT_METADATA_H

@@ -1,5 +1,5 @@
 /**
- * @file   filesystem.h
+ * @file   posix_filesystem.h
  *
  * @section LICENSE
  *
@@ -27,15 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This file includes declarations of filesystem functions.
+ * This file includes declarations of posix filesystem functions.
  */
 
-#ifndef TILEDB_FILESYSTEM_H
-#define TILEDB_FILESYSTEM_H
+#ifndef TILEDB_POSIX_FILESYSTEM_H
+#define TILEDB_POSIX_FILESYSTEM_H
 
-#ifdef HAVE_MPI
-#include <mpi.h>
-#endif
 #include <sys/types.h>
 #include <string>
 #include <vector>
@@ -46,22 +43,16 @@
 
 namespace tiledb {
 
-namespace vfs {
+namespace posix {
+
+Status create_file(const std::string& filename);
 
 /**
- * Create a process lockfile
- *
- * @param  path filepath to where to create lockfile
- * @return Status
- */
-Status filelock_create(const std::string& path);
-
-/**
- * Lock a given filename and return open file descriptor handle
+ * Share-lock a given filename and return open file descriptor handle.
  *
  * @param filename the lockfile to lock
  * @param fd a pointer to a file descriptor
- * @param shared true if a shared filelock, false if exclusive
+ * @param shared True if this is a shared lock, false if it is an exclusive lock
  * @return Status
  */
 Status filelock_lock(const std::string& filename, int* fd, bool shared);
@@ -81,7 +72,7 @@ Status filelock_unlock(int fd);
  * @param new_path the new path
  * @return Status
  */
-Status move(const uri::URI& old_path, const uri::URI& new_path);
+Status move(const URI& old_path, const URI& new_path);
 
 /**
  *
@@ -118,7 +109,7 @@ std::string current_dir();
 Status delete_dir(const std::string& path);
 
 // TODO: (jcb) uri
-Status delete_dir(const uri::URI& path);
+Status delete_dir(const URI& path);
 
 /**
  * Returns the size of the input file.
@@ -136,14 +127,15 @@ Status delete_file(const std::string& path);
  * @param dir The directory to be checked.
  * @return *true* if *dir* is an existing directory, and *false* otherwise.
  */
-bool is_dir(const uri::URI& path);
+bool is_dir(const std::string& path);
+
 /**
  * Checks if the input is an existing file.
  *
  * @param file The file to be checked.
  * @return tTrue* if *file* is an existing file, and *false* otherwise.
  */
-bool is_file(const uri::URI& path);
+bool is_file(const std::string& path);
 
 /**
  * It takes as input an **absolute** path, and returns it in its canonicalized
@@ -159,7 +151,7 @@ bool is_file(const uri::URI& path);
 void purge_dots_from_path(std::string& path);
 
 Status mmap(
-    const uri::URI& filename,
+    const URI& filename,
     uint64_t size,
     uint64_t offset,
     void** buffer,
@@ -195,20 +187,11 @@ Status read_from_file(const std::string& path, Buffer** buff);
 std::vector<std::string> get_fragment_dirs(const std::string& dir);
 
 /**
- * Creates a special file to indicate that the input directory is a
- * TileDB fragment.
- *
- * @param uri The identifier of the framgment to be created
- * @return Status
- */
-Status create_fragment_file(const uri::URI& uri);
-
-/**
  * Rename the fragment directory and update the fragment file
  * @param uri  the uri to create the fragment directory
  * @return Status
  */
-Status rename_fragment(const uri::URI& uri);
+Status rename_fragment(const URI& uri);
 
 /**
  * Create a special file to indicate that the input directory is a TileDB group.
@@ -226,8 +209,7 @@ Status create_group_file(const std::string& dir);
  */
 std::string real_dir(const std::string& path);
 
-// TODO: (jcb) uri
-uri::URI abs_path(const uri::URI& upath);
+std::string abs_path(const std::string& path);
 
 /**
  * Syncs a file or directory. If the file/directory does not exist,
@@ -293,8 +275,8 @@ Status mpi_io_write_to_file(
     size_t buffer_size);
 #endif
 
-}  // namespace vfs
+}  // namespace posix
 
 }  // namespace tiledb
 
-#endif  // TILEDB_FILESYSTEM_H
+#endif  // TILEDB_POSIX_FILESYSTEM_H

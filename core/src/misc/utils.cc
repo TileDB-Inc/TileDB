@@ -56,7 +56,7 @@
 #include <linux/if.h>
 #endif
 
-#include "../../include/vfs/filesystem.h"
+#include "posix_filesystem.h"
 #include "tiledb.h"
 #include "utils.h"
 

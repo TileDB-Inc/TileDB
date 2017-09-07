@@ -1,5 +1,5 @@
 /**
- * @file   filesystem.h
+ * @file   posix_filesystem.cc
  *
  * @section LICENSE
  *
@@ -27,10 +27,10 @@
  *
  * @section DESCRIPTION
  *
- * This file includes definitions of filesystem functions.
+ * This file includes definitions of POSIX filesystem functions.
  */
 
-#include "filesystem.h"
+#include "posix_filesystem.h"
 #include "constants.h"
 #include "logger.h"
 #include "utils.h"
@@ -43,14 +43,14 @@
 
 namespace tiledb {
 
-namespace vfs {
+namespace posix {
 
 Status create_dir(const std::string& path) {
   // Get real directory path
-  std::string real_dir = vfs::real_dir(path);
+  std::string real_dir = posix::real_dir(path);
 
   // If the directory does not exist, create it
-  if (vfs::is_dir(real_dir)) {
+  if (posix::is_dir(real_dir)) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot create directory '") + real_dir +
         "'; Directory already exists"));
@@ -73,13 +73,13 @@ std::string current_dir() {
   return dir;
 }
 
-Status delete_dir(const uri::URI& uri) {
+Status delete_dir(const URI& uri) {
   return delete_dir(uri.to_posix_path());
 }
 
 Status delete_dir(const std::string& path) {
   // Get real path
-  std::string dirname_real = vfs::real_dir(path);
+  std::string dirname_real = posix::real_dir(path);
 
   // Delete the contents of the directory
   std::string filename;
@@ -138,14 +138,14 @@ Status file_size(const std::string& path, off_t* size) {
   return Status::Ok();
 }
 
-bool is_dir(const uri::URI& path) {
+bool is_dir(const std::string& path) {
   struct stat st;
-  return stat(path.to_string().c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+  return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
 
-bool is_file(const uri::URI& path) {
+bool is_file(const std::string& path) {
   struct stat st;
-  return (stat(path.to_string().c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
+  return (stat(path.c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
 }
 
 // TODO: path is getting modified here, don't pass by reference
@@ -203,31 +203,13 @@ void purge_dots_from_path(std::string& path) {
     path += ((i != 0) ? "/" : "") + final_tokens[i];
 }
 
-Status filelock_create(const std::string& filename) {
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  // Handle error
-  if (fd == -1) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot create consolidation filelock '") + filename +
-        "' " + strerror(errno)));
-  }
-  // Close the file
-  if (::close(fd)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot close consolidation filelock '") + filename +
-        "'; " + strerror(errno)));
-  }
-  return Status::Ok();
-}
-
 Status filelock_lock(const std::string& filename, int* fd, bool shared) {
   // Prepare the flock struct
   struct flock fl;
-  if (shared) {
+  if (shared)
     fl.l_type = F_RDLCK;
-  } else {  // exclusive
+  else
     fl.l_type = F_WRLCK;
-  }
   fl.l_whence = SEEK_SET;
   fl.l_start = 0;
   fl.l_len = 0;
@@ -254,7 +236,7 @@ Status filelock_unlock(int fd) {
   return Status::Ok();
 }
 
-Status move(const uri::URI& old_path, const uri::URI& new_path) {
+Status move(const URI& old_path, const URI& new_path) {
   if (rename(old_path.to_string().c_str(), new_path.to_string().c_str())) {
     return LOG_STATUS(
         Status::OSError(std::string("Cannot move path: ") + strerror(errno)));
@@ -263,7 +245,7 @@ Status move(const uri::URI& old_path, const uri::URI& new_path) {
 }
 
 Status ls(const std::string& path, std::vector<std::string>* paths) {
-  std::string parent = vfs::real_dir(path);
+  std::string parent = posix::real_dir(path);
 
   struct dirent* next_path;
   DIR* dir = opendir(parent.c_str());
@@ -306,21 +288,19 @@ std::vector<std::string> get_fragment_dirs(const std::string& path) {
   return dirs;
 }
 
-Status create_fragment_file(const uri::URI& uri) {
-  uri::URI path = vfs::abs_path(uri);
-  // Create the special fragment file
-  std::string filename =
-      path.to_posix_path() + "/" + constants::fragment_filename;
+Status create_file(const std::string& filename) {
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if (fd == -1 || ::close(fd)) {
     return LOG_STATUS(Status::OSError(
-        std::string("Failed to create fragment file; ") + strerror(errno)));
+        std::string("Failed to create file '") + filename + "'; " +
+        strerror(errno)));
   }
+
   return Status::Ok();
-};
+}
 
 // Changes the temporary fragment name into a stable one.
-Status rename_fragment(const uri::URI& uri) {
+Status rename_fragment(const URI& uri) {
   std::string fragment_path = uri.to_posix_path();
   std::string parent_dir = utils::parent_path(fragment_path);
   std::string new_fragment_name =
@@ -389,41 +369,43 @@ void adjacent_slashes_dedup(std::string& value) {
       std::unique(value.begin(), value.end(), both_slashes), value.end());
 }
 
-uri::URI abs_path(const uri::URI& upath) {
+std::string abs_path(const std::string& path) {
   // Initialize current, home and root
-  std::string current = vfs::current_dir();
+  std::string current = current_dir();
   auto env_home_ptr = getenv("HOME");
   std::string home = env_home_ptr ? env_home_ptr : current;
   std::string root = "/";
+  std::string posix_prefix = "file://";
 
-  std::string path = upath.to_string();
   // Easy cases
   if (path == "" || path == "." || path == "./")
-    return uri::URI(current);
-  else if (path == "~")
-    return uri::URI(home);
-  else if (path == "/")
-    return uri::URI(root);
+    return posix_prefix + current;
+  if (path == "~")
+    return posix_prefix + home;
+  if (path == "/")
+    return posix_prefix + root;
 
   // Other cases
   std::string ret_dir;
-  if (utils::starts_with(path, "/"))
-    ret_dir = root + path;
+  if (utils::starts_with(path, posix_prefix))
+    ret_dir = path;
+  else if (utils::starts_with(path, "/"))
+    ret_dir = posix_prefix + path;
   else if (utils::starts_with(path, "~/"))
-    ret_dir = home + path.substr(1, path.size() - 1);
+    ret_dir = posix_prefix + home + path.substr(1, path.size() - 1);
   else if (utils::starts_with(path, "./"))
-    ret_dir = current + path.substr(1, path.size() - 1);
+    ret_dir = posix_prefix + current + path.substr(1, path.size() - 1);
   else
-    ret_dir = current + "/" + path;
+    ret_dir = posix_prefix + current + "/" + path;
 
   adjacent_slashes_dedup(ret_dir);
   purge_dots_from_path(ret_dir);
 
-  return uri::URI(ret_dir);
+  return ret_dir;
 }
 
 Status mmap(
-    const uri::URI& filename,
+    const URI& filename,
     uint64_t size,
     uint64_t offset,
     void** buffer,
@@ -699,6 +681,6 @@ Status mpi_io_sync(const MPI_Comm* mpi_comm, const std::string& filename) {
 }
 #endif
 
-}  // namespace vfs
+}  // namespace posix
 
 }  // namespace tiledb

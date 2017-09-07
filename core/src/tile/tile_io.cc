@@ -31,12 +31,12 @@
  */
 
 #include "tile_io.h"
-#include "../../include/vfs/filesystem.h"
 #include "blosc_compressor.h"
 #include "bzip_compressor.h"
 #include "gzip_compressor.h"
 #include "logger.h"
 #include "lz4_compressor.h"
+#include "posix_filesystem.h"
 #include "rle_compressor.h"
 #include "utils.h"
 #include "zstd_compressor.h"

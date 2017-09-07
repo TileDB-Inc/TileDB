@@ -31,7 +31,7 @@
  */
 
 #ifdef HAVE_HDFS
-#include "../../include/vfs/hdfs_filesystem.h"
+#include "hdfs_filesystem.h"
 #include "constants.h"
 #include "logger.h"
 #include "utils.h"
@@ -41,7 +41,7 @@
 
 namespace tiledb {
 
-namespace vfs {
+namespace filesystem {
 
 namespace hdfs {
 
@@ -315,7 +315,7 @@ Status filesize(const std::string& path, size_t* nbytes, hdfsFS fs) {
 
 }  // namespace hdfs
 
-}  // namespace vfs
+}  // namespace filesystem
 
 }  // namespace tiledb
 

@@ -38,9 +38,9 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
-#include "../../include/vfs/filesystem.h"
 #include "compressor.h"
 #include "logger.h"
+#include "posix_filesystem.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -65,7 +65,7 @@ ArraySchema::ArraySchema() {
   tile_extents_ = nullptr;
   tile_domain_ = nullptr;
   tile_coords_aux_ = nullptr;
-  array_uri_ = uri::URI();
+  array_uri_ = URI();
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
@@ -119,7 +119,7 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   }
 }
 
-ArraySchema::ArraySchema(const uri::URI& uri) {
+ArraySchema::ArraySchema(const URI& uri) {
   basic_array_ = false;
   cell_num_per_tile_ = -1;
   domain_ = nullptr;
@@ -157,7 +157,7 @@ ArraySchema::~ArraySchema() {
 /*            ACCESSORS           */
 /* ****************************** */
 
-const uri::URI& ArraySchema::array_uri() const {
+const URI& ArraySchema::array_uri() const {
   return array_uri_;
 }
 
@@ -536,7 +536,7 @@ Status ArraySchema::serialize(
 }
 
 // TODO: jcb
-Status ArraySchema::store(const uri::URI& parent, const char* schema) {
+Status ArraySchema::store(const URI& parent, const char* schema) {
   return ArraySchema::store(parent.to_string(), schema);
 }
 
@@ -866,7 +866,7 @@ Status ArraySchema::deserialize(
   assert(offset + array_name_size < buffer_size);
   memcpy(&array_name[0], buffer + offset, array_name_size);
   offset += array_name_size;
-  array_uri_ = uri::URI(array_name);
+  array_uri_ = URI(array_name);
 
   // Load dense_
   assert(offset + sizeof(bool) < buffer_size);
@@ -1110,7 +1110,7 @@ Status ArraySchema::init() {
 }
 
 // TODO: uri
-Status ArraySchema::load(const uri::URI& parent, const char* schema) {
+Status ArraySchema::load(const URI& parent, const char* schema) {
   return ArraySchema::load(parent.to_string(), schema);
 }
 
@@ -1161,7 +1161,7 @@ Status ArraySchema::load(const std::string& dir, const char* schema_filename) {
   return Status::Ok();
 }
 
-void ArraySchema::set_array_uri(const uri::URI& uri) {
+void ArraySchema::set_array_uri(const URI& uri) {
   array_uri_ = vfs::abs_path(uri);
 }
 
@@ -1485,7 +1485,7 @@ int ArraySchema::tile_order_cmp(const T* coords_a, const T* coords_b) const {
 /* ****************************** */
 
 void ArraySchema::clear() {
-  array_uri_ = uri::URI();
+  array_uri_ = URI();
   attributes_.clear();
   capacity_ = -1;
   dimensions_.clear();

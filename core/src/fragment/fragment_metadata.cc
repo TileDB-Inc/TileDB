@@ -38,9 +38,8 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
-#include "config.h"
-#include "filesystem.h"
 #include "logger.h"
+#include "posix_filesystem.h"
 #include "utils.h"
 
 namespace tiledb {
@@ -50,7 +49,7 @@ namespace tiledb {
 /* ****************************** */
 
 FragmentMetadata::FragmentMetadata(
-    const ArraySchema* array_schema, bool dense, const uri::URI& fragment_uri)
+    const ArraySchema* array_schema, bool dense, const URI& fragment_uri)
     : array_schema_(array_schema)
     , dense_(dense)
     , fragment_uri_(fragment_uri) {
@@ -102,6 +101,10 @@ bool FragmentMetadata::dense() const {
 
 const void* FragmentMetadata::domain() const {
   return domain_;
+}
+
+const URI& FragmentMetadata::fragment_uri() const {
+  return fragment_uri_;
 }
 
 int64_t FragmentMetadata::last_tile_cell_num() const {
