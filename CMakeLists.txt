@@ -31,13 +31,6 @@ cmake_minimum_required(VERSION 2.8)
 # Set the cmake Module path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-# Set shared library suffix
-if(APPLE)
-  set(SHARED_LIB_SUFFIX ".dylib")
-else()
-  set(SHARED_LIB_SUFFIX ".so")
-endif()
-
 # Only for Mac OS X warnings
 if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
@@ -46,13 +39,11 @@ endif()
 # Default user definitions
 set(USE_MPI False CACHE BOOL "Enables MPI")
 set(USE_HDFS False CACHE BOOL "Enables HDFS")
+set(USE_S3 FALSE CACHE BOOL "Enables S3 Object Storage Support")
 set(TILEDB_VERBOSE False CACHE BOOL "Prints TileDB errors with verbosity")
 set(MAC_ADDRESS_INTERFACE "" 
     CACHE STRING "The interface carrying the MAC address of the machine."
 )
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif()
 
 # Find required library dependencies
 find_package(ZLIB REQUIRED)
@@ -87,13 +78,22 @@ if(USE_HDFS)
   set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${HDFS_SHARED_LIB})
 endif()
 
+if(USE_S3)
+  # Find the dependencies required by LibS3
+  find_package(CURL REQUIRED)
+  find_package(LibXml2 REQUIRED)
+
+  add_subdirectory(external/libs3)
+  set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${LIBS3_LIBRARIES})
+endif()
+
 # Set C++ 2011 flag
 include(SetCXX2011Flag)
 
 # Set compiler flags
-set(CMAKE_CXX_FLAGS_DEBUG "-DDEBUG -g3 -gdwarf-3 -Wall -fvisibility=hidden")
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -fvisibility=hidden")
-set(CMAKE_CXX_FLAGS_COVERAGE "-DDEBUG -g3 -gdwarf-3 --coverage")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG -g3 -gdwarf-3 -Wall -fvisibility=hidden")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DNDEBUG -O3 -fvisibility=hidden")
+set(CMAKE_CXX_FLAGS_COVERAGE "${CMAKE_CXX_FLAGS_COVERAGE} -DDEBUG -g3 -gdwarf-3 --coverage")
 if(NOT APPLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix")
 endif()
