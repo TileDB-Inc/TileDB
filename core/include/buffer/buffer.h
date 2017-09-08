@@ -37,7 +37,6 @@
 
 #include "const_buffer.h"
 #include "status.h"
-#include "uri.h"
 
 namespace tiledb {
 
@@ -77,24 +76,6 @@ class Buffer {
   inline bool full() const {
     return offset_ == size_;
   }
-
-  /**
-   * Maps a region of a file to the buffer.
-   *
-   * @param filename The name of the file to map.
-   * @param size The size of the region to map.
-   * @param offset The offset in the file where the mapping will start.
-   * @param read_only Indicates if the buffer will be read-only.
-   * @return Status.
-   */
-  Status mmap(
-      const uri::URI& filename,
-      uint64_t size,
-      uint64_t offset,
-      bool read_only = true);
-
-  /** Unmaps the region from a file. */
-  Status munmap();
 
   /** Returns the current offset in the buffer. */
   inline uint64_t offset() const {
@@ -185,12 +166,6 @@ class Buffer {
 
   /** The current buffer offset. */
   uint64_t offset_;
-
-  /** Pointer where the file region is mapped. */
-  void* mmap_data_;
-
-  /** Size of the mapped region. */
-  uint64_t mmap_size_;
 
   /** Buffer allocated size. */
   uint64_t size_;

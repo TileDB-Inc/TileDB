@@ -33,13 +33,14 @@
 #ifndef TILEDB_QUERY_H
 #define TILEDB_QUERY_H
 
-#include "array.h"
 #include "array_read_state.h"
 #include "array_sorted_read_state.h"
 #include "array_sorted_write_state.h"
 #include "fragment.h"
 #include "query_mode.h"
+#include "query_status.h"
 #include "status.h"
+#include "storage_manager.h"
 
 #include <vector>
 
@@ -67,46 +68,70 @@ class Query {
   /*                 API               */
   /* ********************************* */
 
-  Status open_fragments(const std::vector<Fragment*>& fragments);
+  Status async_process();
 
   void clear_fragments();
 
-  Array* array() {
-    return array_;
-  }
-
-  ArrayReadState* array_read_state() {
+  // TODO: remove
+  ArrayReadState* array_read_state() const {
     return array_read_state_;
   }
 
-  ArraySortedReadState* array_sorted_read_state() {
-    return array_sorted_read_state_;
-  }
-
-  ArraySortedWriteState* array_sorted_write_state() {
-    return array_sorted_write_state_;
+  const ArraySchema* array_schema() const {
+    return array_schema_;
   }
 
   const std::vector<int>& attribute_ids() const;
+
+  const std::vector<Fragment*>& fragments() const {
+    return fragments_;
+  }
+
+  const std::vector<FragmentMetadata*>& fragment_metadata() const {
+    return fragment_metadata_;
+  }
+
+  StorageManager* storage_manager() const {
+    return storage_manager_;
+  }
 
   Status coords_buffer_i(int* coords_buffer_i) const;
 
   int fragment_num() const;
 
-  std::vector<Fragment*> fragments() const;
-
   bool overflow() const;
 
   bool overflow(int attribute_id) const;
 
+  Status read();
+
+  void set_buffers(void** buffers, uint64_t* buffer_sizes) {
+    buffers_ = buffers;
+    buffer_sizes_ = buffer_sizes;
+  }
+
+  Status write();
+
   Status init(
-      Array* array,
+      StorageManager* storage_manager,
+      const ArraySchema* array_schema,
+      const std::vector<FragmentMetadata*>& fragment_metadata,
       QueryMode mode,
       const void* subarray,
       const char** attributes,
       int attribute_num,
-      const std::vector<std::string>& fragment_names,
-      const std::vector<FragmentMetadata*>& book_keeping);
+      void** buffers,
+      uint64_t* buffer_sizes);
+
+  Status init(
+      StorageManager* storage_manager,
+      const ArraySchema* array_schema,
+      const std::vector<FragmentMetadata*>& fragment_metadata,
+      QueryMode mode,
+      const void* subarray,
+      const std::vector<int>& attribute_ids,
+      void** buffers,
+      uint64_t* buffer_sizes);
 
   /** Returns the query mode. */
   QueryMode mode() const;
@@ -114,7 +139,7 @@ class Query {
   /** Returns the subarray in which the query is constrained. */
   const void* subarray() const;
 
-  Status write_default(const void** buffers, const size_t* buffer_sizes);
+  Status write_default(const void** buffers, const uint64_t* buffer_sizes);
 
   void add_coords();
 
@@ -122,21 +147,30 @@ class Query {
     mode_ = mode;
   }
 
+  void set_status(QueryStatus status) {
+    status_ = status;
+  }
+
+  void set_callback(void* (*callback)(void*), void* callback_data) {
+    callback_ = callback;
+    callback_data_ = callback_data;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  uri::URI array_name_;
-  ArraySchema* array_schema_;
+  URI array_name_;
+  const ArraySchema* array_schema_;
   QueryMode mode_;
+  QueryStatus status_;
   void* subarray_;
   uint64_t subarray_size_;
   std::vector<std::string> attributes_;
-  std::vector<void*> buffers_;
-  std::vector<uint64_t> buffer_sizes_;
-
-  Array* array_;
+  void** buffers_;
+  uint64_t* buffer_sizes_;
+  StorageManager* storage_manager_;
 
   std::vector<int> attribute_ids_;
 
@@ -144,6 +178,9 @@ class Query {
   ArraySortedReadState* array_sorted_read_state_;
   ArraySortedWriteState* array_sorted_write_state_;
   std::vector<Fragment*> fragments_;
+  std::vector<FragmentMetadata*> fragment_metadata_;
+  void* (*callback_)(void*);
+  void* callback_data_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -155,8 +192,7 @@ class Query {
 
   Status init_states();
   Status init_fragments(
-      const std::vector<std::string>& fragment_names,
-      const std::vector<FragmentMetadata*>& bookkeeping);
+      const std::vector<FragmentMetadata*>& fragment_metadata);
   Status new_fragment();
 
   /**
@@ -176,13 +212,10 @@ class Query {
   /**
    * Opens the existing fragments.
    *
-   * @param fragment_names The vector with the fragment names.
    * @param metadata The metadata of the array fragments.
    * @return Status
    */
-  Status open_fragments(
-      const std::vector<std::string>& fragment_names,
-      const std::vector<FragmentMetadata*>& metadata);
+  Status open_fragments(const std::vector<FragmentMetadata*>& metadata);
 };
 
 }  // namespace tiledb

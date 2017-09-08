@@ -36,7 +36,6 @@
 
 #include <vector>
 
-#include "array.h"
 #include "fragment.h"
 #include "fragment_metadata.h"
 #include "tile.h"
@@ -108,8 +107,8 @@ class ReadState {
       int attribute_id,
       int tile_i,
       void* buffer,
-      size_t buffer_size,
-      size_t& buffer_offset,
+      uint64_t buffer_size,
+      uint64_t& buffer_offset,
       const CellPosRange& cell_pos_range);
 
   /**
@@ -133,11 +132,11 @@ class ReadState {
       int attribute_id,
       int tile_i,
       void* buffer,
-      size_t buffer_size,
-      size_t& buffer_offset,
+      uint64_t buffer_size,
+      uint64_t& buffer_offset,
       void* buffer_var,
-      size_t buffer_var_size,
-      size_t& buffer_var_offset,
+      uint64_t buffer_var_size,
+      uint64_t& buffer_var_offset,
       const CellPosRange& cell_pos_range);
 
   /** Returns *true* if the read state corresponds to a dense fragment. */
@@ -339,7 +338,7 @@ class ReadState {
   FragmentMetadata* bookkeeping_;
 
   /** The size of the array coordinates. */
-  size_t coords_size_;
+  uint64_t coords_size_;
 
   /** Indicates if the read operation on this fragment finished. */
   bool done_;

@@ -69,7 +69,23 @@ class StorageManager {
   /*                API                */
   /* ********************************* */
 
+
+  bool fragment_exists(const URI& fragment_uri);
+
+  Status fragment_rename(const URI& fragment_uri);
+
   Status array_create(ArraySchema* array_schema) const;
+
+  /**
+   * Pushes an async query to the queue.
+   *
+   * @param query The async query.
+   * @param i The index of the thread that executes the function. If it is
+   * equal to 0, it means a user query, whereas if it is 1 it means an
+   * internal query.
+   * @return Status
+   */
+  Status async_push_query(Query* query, int i);
 
   Status group_create(const URI& group) const;
 
@@ -84,6 +100,11 @@ class StorageManager {
       int attribute_num,
       void** buffers,
       uint64_t* buffer_sizes);
+
+  Status query_submit(Query* query);
+
+  Status query_submit_async(
+      Query* query, void* (*callback)(void*), void* callback_data);
 
  private:
   /* ********************************* */
@@ -103,7 +124,7 @@ class StorageManager {
    * Async query queue. The first is for user queries, the second for
    * internal queries.
    */
-  std::queue<AIORequest*> async_queue_[2];
+  std::queue<Query*> async_queue_[2];
 
   /**
    * Async mutex. The first is for user queries, the second for
@@ -176,7 +197,7 @@ class StorageManager {
   void sort_fragment_uris(std::vector<URI>* fragment_uris) const;
 
   /** Handles a single async query. */
-  void async_handle_request(AIORequest* aio_request);
+  void async_process_query(Query* query);
 
   /**
    * Starts handling async queries.
@@ -185,18 +206,7 @@ class StorageManager {
    * equal to 0, it means a user query, whereas if it is 1 it means an
    * internal query.
    */
-  void async_handle_requests(int i);
-
-  /**
-   * Pushes an async query to the queue.
-   *
-   * @param aio_request The AIO request.
-   * @param i The index of the thread that executes the function. If it is
-   * equal to 0, it means a user query, whereas if it is 1 it means an
-   * internal query.
-   * @return Status
-   */
-  Status async_push_request(AIORequest* aio_request, int i);
+  void async_process_queries(int i);
 };
 
 }  // namespace tiledb

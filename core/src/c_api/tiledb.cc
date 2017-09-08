@@ -31,6 +31,7 @@
  * This file defines the C API of TileDB.
  */
 
+#include "tiledb.h"
 #include "array_schema.h"
 #include "query.h"
 #include "storage_manager.h"
@@ -307,7 +308,7 @@ int tiledb_group_create(tiledb_ctx_t* ctx, const char* group) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto group_uri = tiledb::uri::URI(group);
+  auto group_uri = tiledb::URI(group);
 
   // Create the group
   if (save_error(ctx, ctx->storage_manager_->group_create(group_uri)))
@@ -563,7 +564,7 @@ int tiledb_array_schema_create(
 
   // Create a new ArraySchema object
   (*array_schema)->array_schema_ =
-      new tiledb::ArraySchema(tiledb::uri::URI(array_name));
+      new tiledb::ArraySchema(tiledb::URI(array_name));
   if ((*array_schema)->array_schema_ == nullptr) {
     free(*array_schema);
     *array_schema = nullptr;
@@ -710,8 +711,8 @@ int tiledb_array_schema_get_array_name(
   if (sanity_check(ctx) == TILEDB_ERR ||
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  tiledb::uri::URI uri = array_schema->array_schema_->array_uri();
-  *array_name = strdup(uri.c_str());
+  const tiledb::URI& uri = array_schema->array_schema_->array_uri();
+  *array_name = strdup(uri.to_string().c_str());
   return TILEDB_OK;
 }
 
@@ -1101,13 +1102,22 @@ int tiledb_query_create(
 
 void tiledb_query_free(tiledb_query_t* query) {
   if (query == nullptr)
-    return TILEDB_OK;
-  delete query->query_;
+    return;
+  delete query->query_;  // TODO: this should return Status
   free(query);
 }
 
 int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
-  // TODO
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Submit query
+  if (save_error(ctx, ctx->storage_manager_->query_submit(query->query_)))
+    return TILEDB_ERR;
+
+  // Success
+  return TILEDB_OK;
 }
 
 int tiledb_query_submit_async(
@@ -1115,12 +1125,26 @@ int tiledb_query_submit_async(
     tiledb_query_t* query,
     void* (*callback)(void*),
     void* callback_data) {
-  // TODO
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Submit query
+  if (save_error(
+          ctx,
+          ctx->storage_manager_->query_submit_async(
+              query->query_, callback, callback_data)))
+    return TILEDB_ERR;
+
+  // Success
+  return TILEDB_OK;
 }
 
 int tiledb_query_get_status(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status) {
   // TODO
+
+  return TILEDB_OK;
 }
 
 int tiledb_query_get_overflow(
@@ -1129,6 +1153,8 @@ int tiledb_query_get_overflow(
     const char* attribute_name,
     int* overflow) {
   // TODO
+
+  return TILEDB_OK;
 }
 
 /* ****************************** */

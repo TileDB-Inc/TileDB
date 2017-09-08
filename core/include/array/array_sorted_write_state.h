@@ -39,7 +39,6 @@
 #include <string>
 #include <vector>
 
-#include "aio_request.h"
 #include "query.h"
 
 namespace tiledb {
@@ -70,9 +69,9 @@ class ArraySortedWriteState {
   /** Stores local state about the current write/copy request. */
   struct CopyState {
     /** Local buffer offsets. */
-    size_t* buffer_offsets_[2];
+    uint64_t* buffer_offsets_[2];
     /** Local buffer sizes. */
-    size_t* buffer_sizes_[2];
+    uint64_t* buffer_sizes_[2];
     /** Local buffers. */
     void** buffers_[2];
   };
@@ -82,7 +81,7 @@ class ArraySortedWriteState {
     /** Used in calculations of cell ids, one vector per tile. */
     int64_t** cell_offset_per_dim_;
     /** Cell slab size per attribute per tile. */
-    size_t** cell_slab_size_;
+    uint64_t** cell_slab_size_;
     /** Number of cells in a cell slab per tile. */
     int64_t* cell_slab_num_;
     /**
@@ -93,7 +92,7 @@ class ArraySortedWriteState {
     /**
      * Start offsets of each tile in the user buffer, per attribute per tile.
      */
-    size_t** start_offsets_;
+    uint64_t** start_offsets_;
     /** Number of tiles in the tile slab. */
     int64_t tile_num_;
     /** Used in calculations of tile ids. */
@@ -112,7 +111,7 @@ class ArraySortedWriteState {
      * because the offsets of the variable-sized attributes can be derived from
      * the buffers that hold the fixed-sized offsets.
      */
-    size_t* current_offsets_;
+    uint64_t* current_offsets_;
     /** The current tile per attribute. */
     int64_t* current_tile_;
   };
@@ -126,23 +125,13 @@ class ArraySortedWriteState {
    *
    * @param array The array this array sorted read state belongs to.
    */
-  ArraySortedWriteState(Query* query);
+  explicit ArraySortedWriteState(Query* query);
 
   /** Destructor. */
   ~ArraySortedWriteState();
 
   /* ********************************* */
-  /*             ACCESSORS             */
-  /* ********************************* */
-
-  /** Returns true if the current slab is finished being copied. */
-  bool copy_tile_slab_done() const;
-
-  /** True if write is done for all attributes. */
-  bool done() const;
-
-  /* ********************************* */
-  /*             MUTATORS              */
+  /*               API                 */
   /* ********************************* */
 
   /**
@@ -162,7 +151,7 @@ class ArraySortedWriteState {
    * @param buffer_sizes The corresponding buffer sizes.
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  Status write(const void** buffers, const size_t* buffer_sizes);
+  Status write(const void** buffers, const uint64_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -183,12 +172,6 @@ class ArraySortedWriteState {
 
   Query* aio_query_[2];
 
-  /** AIO requests. */
-  AIORequest aio_request_[2];
-
-  /** The status of the AIO requests.*/
-  AIOStatus aio_status_[2];
-
   /** The array this sorted read state belongs to. */
   Query* query_;
 
@@ -196,19 +179,19 @@ class ArraySortedWriteState {
   const std::vector<int> attribute_ids_;
 
   /**
-   * The sizes of the attributes. For variable-length attributes, sizeof(size_t)
-   * is stored.
+   * The sizes of the attributes. For variable-length attributes,
+   * sizeof(uint64_t) is stored.
    */
-  std::vector<size_t> attribute_sizes_;
+  std::vector<uint64_t> attribute_sizes_;
 
   /** Number of allocated buffers. */
   int buffer_num_;
 
   /** The user buffer offsets. */
-  size_t* buffer_offsets_;
+  uint64_t* buffer_offsets_;
 
   /** The user buffer sizes. */
-  const size_t* buffer_sizes_;
+  const uint64_t* buffer_sizes_;
 
   /** The user buffers. */
   const void** buffers_;
@@ -220,7 +203,7 @@ class ArraySortedWriteState {
   void* (*calculate_tile_slab_info_)(void*);
 
   /** The coordinates size of the array. */
-  size_t coords_size_;
+  uint64_t coords_size_;
 
   /** The current id of the buffers the next copy will occur from. */
   int copy_id_;
@@ -572,7 +555,7 @@ class ArraySortedWriteState {
    * @param buffer_sizes The corresponding buffer sizes.
    * @return void
    */
-  void create_user_buffers(const void** buffers, const size_t* buffer_sizes);
+  void create_user_buffers(const void** buffers, const uint64_t* buffer_sizes);
 
   /**
    * Fills the **entire** buffer of the current copy tile slab with the input id
@@ -628,9 +611,6 @@ class ArraySortedWriteState {
    */
   template <class T>
   int64_t get_tile_id(int aid);
-
-  /** Initializes the AIO requests. */
-  void init_aio_requests();
 
   /** Initializes the copy state. */
   void init_copy_state();
@@ -766,24 +746,8 @@ class ArraySortedWriteState {
    */
   template <class T>
   void update_current_tile_and_offset(int aid);
-
-  /**
-   * Waits on a copy operation for the buffer with input id to finish.
-   *
-   * @param id The id of the buffer the copy operation must be completed.
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
-   */
-  Status wait_copy(int id);
-
-  /**
-   * Waits on a AIO operation for the buffer with input id to finish.
-   *
-   * @param id The id of the buffer the AIO operation must be completed.
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
-   */
-  Status wait_aio(int id);
 };
 
-};  // namespace tiledb
+}  // namespace tiledb
 
 #endif  // TILEDB_ARRAY_SORTED_WRITE_STATE_H

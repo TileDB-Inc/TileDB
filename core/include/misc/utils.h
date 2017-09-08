@@ -42,7 +42,6 @@
 #include <vector>
 #include "array_type.h"
 #include "compressor.h"
-#include "config.h"
 #include "datatype.h"
 #include "layout.h"
 #include "status.h"
@@ -163,20 +162,12 @@ int cmp_row_order(
 const char* compressor_str(Compressor compressor);
 
 /**
- * Checks if a fragment exists
- *
- * @param frag fragment uri
- * @return bool true if the fragment exists, false otherwise
- */
-bool fragment_exists(const uri::URI& frag);
-
-/**
  * Deletes a fragment represenation
  *
  * @param frag fragment path string
  * @return Status
  */
-Status delete_fragment(const uri::URI& frag);
+Status delete_fragment(const URI& frag);
 
 /**
  * Returns the parent path of the input path.
@@ -225,7 +216,7 @@ bool empty_value(T value);
  *     After the function call, this size doubles.
  * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
  */
-Status expand_buffer(void*& buffer, size_t& buffer_allocated_size);
+Status expand_buffer(void*& buffer, uint64_t& buffer_allocated_size);
 
 /**
  * Expands the input MBR so that it encompasses the input coordinates.
@@ -287,8 +278,7 @@ bool intersect(const std::vector<T>& v1, const std::vector<T>& v2);
  */
 bool is_array(const std::string& dir);
 
-// TODO: uri
-bool is_array(const uri::URI& uri);
+bool is_array(const URI& uri);
 
 /**
  * Checks if one range is fully contained in another.
@@ -318,8 +308,7 @@ bool is_fragment(const std::string& dir);
  */
 bool is_group(const std::string& dir);
 
-// TODO: uri
-bool is_group(const uri::URI& uri);
+bool is_group(const URI& uri);
 
 /**
  * Determine if a given path is a array schema

@@ -140,7 +140,7 @@ class ArrayReadState {
    *     without inflicting a considerable performance penalty due to overflow.
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
-  Status read(void** buffers, size_t* buffer_sizes);
+  Status read(void** buffers, uint64_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -156,7 +156,7 @@ class ArrayReadState {
   int attribute_num_;
 
   /** The size of the array coordinates. */
-  size_t coords_size_;
+  uint64_t coords_size_;
 
   /** Indicates whether the read operation for this query is done. */
   bool done_;
@@ -275,8 +275,8 @@ class ArrayReadState {
   Status copy_cells(
       int attribute_id,
       void* buffer,
-      size_t buffer_size,
-      size_t& buffer_offset);
+      uint64_t buffer_size,
+      uint64_t& buffer_offset);
 
   /**
    * Copies the cell ranges calculated in the current read round into the
@@ -294,10 +294,10 @@ class ArrayReadState {
   Status copy_cells_generic(
       int attribute_id,
       void* buffer,
-      size_t buffer_size,
-      size_t& buffer_offset,
+      uint64_t buffer_size,
+      uint64_t& buffer_offset,
       const void* empty_type_value,
-      size_t empty_type_size);
+      uint64_t empty_type_size);
 
   /**
    * Copies the cell ranges calculated in the current read round into the
@@ -318,11 +318,11 @@ class ArrayReadState {
   Status copy_cells_var(
       int attribute_id,
       void* buffer,
-      size_t buffer_size,
-      size_t& buffer_offset,
+      uint64_t buffer_size,
+      uint64_t& buffer_offset,
       void* buffer_var,
-      size_t buffer_var_size,
-      size_t& buffer_var_offset);
+      uint64_t buffer_var_size,
+      uint64_t& buffer_var_offset);
 
   /**
    * Copies the cell ranges calculated in the current read round into the
@@ -346,13 +346,13 @@ class ArrayReadState {
   Status copy_cells_var_generic(
       int attribute_id,
       void* buffer,
-      size_t buffer_size,
-      size_t& buffer_offset,
+      uint64_t buffer_size,
+      uint64_t& buffer_offset,
       void* buffer_var,
-      size_t buffer_var_size,
-      size_t& buffer_var_offset,
+      uint64_t buffer_var_size,
+      uint64_t& buffer_var_offset,
       const void* empty_type_value,
-      size_t empty_type_size);
+      uint64_t empty_type_size);
 
   /**
    * Copies the cell ranges calculated in the current read round into the
@@ -369,11 +369,11 @@ class ArrayReadState {
   void copy_cells_with_empty_generic(
       int attribute_id,
       void* buffer,
-      size_t buffer_size,
-      size_t& buffer_offset,
+      uint64_t buffer_size,
+      uint64_t& buffer_offset,
       const CellPosRange& cell_pos_range,
       const void* empty_type_val,
-      size_t emtpy_type_size);
+      uint64_t emtpy_type_size);
 
   /**
    * Copies the cell ranges calculated in the current read round into the
@@ -398,14 +398,14 @@ class ArrayReadState {
   void copy_cells_with_empty_var_generic(
       int attribute_id,
       void* buffer,
-      size_t buffer_size,
-      size_t& buffer_offset,
+      uint64_t buffer_size,
+      uint64_t& buffer_offset,
       void* buffer_var,
-      size_t buffer_var_size,
-      size_t& buffer_var_offset,
+      uint64_t buffer_var_size,
+      uint64_t& buffer_var_offset,
       const CellPosRange& cell_pos_range,
       const void* empty_type_val,
-      size_t empty_type_size);
+      uint64_t empty_type_size);
 
   /**
    * Returns a list of cell ranges accounting for the empty area in the overlap
@@ -482,7 +482,7 @@ class ArrayReadState {
    * @param buffer_sizes See read().
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
-  Status read_dense(void** buffers, size_t* buffer_sizes);
+  Status read_dense(void** buffers, uint64_t* buffer_sizes);
 
   /**
    * Performs a read operation in a **dense** array, focusing on a single
@@ -493,7 +493,7 @@ class ArrayReadState {
    * @param buffer_size See read().
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
-  Status read_dense_attr(int attribute_id, void* buffer, size_t& buffer_size);
+  Status read_dense_attr(int attribute_id, void* buffer, uint64_t& buffer_size);
 
   /**
    * Performs a read operation in a **dense** array, focusing on a single
@@ -506,7 +506,7 @@ class ArrayReadState {
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
   template <class T>
-  Status read_dense_attr(int attribute_id, void* buffer, size_t& buffer_size);
+  Status read_dense_attr(int attribute_id, void* buffer, uint64_t& buffer_size);
 
   /**
    * Performs a read operation in a **dense** array, focusing on a single
@@ -522,9 +522,9 @@ class ArrayReadState {
   Status read_dense_attr_var(
       int attribute_id,
       void* buffer,
-      size_t& buffer_size,
+      uint64_t& buffer_size,
       void* buffer_var,
-      size_t& buffer_var_size);
+      uint64_t& buffer_var_size);
 
   /**
    * Performs a read operation in a **dense** array, focusing on a single
@@ -542,9 +542,9 @@ class ArrayReadState {
   Status read_dense_attr_var(
       int attribute_id,
       void* buffer,
-      size_t& buffer_size,
+      uint64_t& buffer_size,
       void* buffer_var,
-      size_t& buffer_var_size);
+      uint64_t& buffer_var_size);
 
   /**
    * Performs a read operation in a **sparse** array.
@@ -553,7 +553,7 @@ class ArrayReadState {
    * @param buffer_sizes See read().
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
-  Status read_sparse(void** buffers, size_t* buffer_sizes);
+  Status read_sparse(void** buffers, uint64_t* buffer_sizes);
 
   /**
    * Performs a read operation in a **sparse** array, focusing on a single
@@ -564,7 +564,8 @@ class ArrayReadState {
    * @param buffer_size See read().
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
-  Status read_sparse_attr(int attribute_id, void* buffer, size_t& buffer_size);
+  Status read_sparse_attr(
+      int attribute_id, void* buffer, uint64_t& buffer_size);
 
   /**
    * Performs a read operation in a **sparse** array, focusing on a single
@@ -577,7 +578,8 @@ class ArrayReadState {
    * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
    */
   template <class T>
-  Status read_sparse_attr(int attribute_id, void* buffer, size_t& buffer_size);
+  Status read_sparse_attr(
+      int attribute_id, void* buffer, uint64_t& buffer_size);
 
   /**
    * Performs a read operation in a **sparse** array, focusing on a single
@@ -593,9 +595,9 @@ class ArrayReadState {
   Status read_sparse_attr_var(
       int attribute_id,
       void* buffer,
-      size_t& buffer_size,
+      uint64_t& buffer_size,
       void* buffer_var,
-      size_t& buffer_var_size);
+      uint64_t& buffer_var_size);
 
   /**
    * Performs a read operation in a **sparse** array, focusing on a single
@@ -613,9 +615,9 @@ class ArrayReadState {
   Status read_sparse_attr_var(
       int attribute_id,
       void* buffer,
-      size_t& buffer_size,
+      uint64_t& buffer_size,
       void* buffer_var,
-      size_t& buffer_var_size);
+      uint64_t& buffer_var_size);
 
   /**
    * Uses the heap algorithm to cut and sort the relevant cell ranges for
@@ -733,7 +735,7 @@ class ArrayReadState::PQFragmentCellRange {
   /** The array schema. */
   const ArraySchema* array_schema_;
   /** Size of coordinates. */
-  size_t coords_size_;
+  uint64_t coords_size_;
   /** Dimension number. */
   int dim_num_;
   /** Stores the read state of each fragment in the array. */

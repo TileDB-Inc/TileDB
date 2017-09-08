@@ -59,6 +59,27 @@ StorageManager::~StorageManager() {
 /*               API              */
 /* ****************************** */
 
+bool StorageManager::fragment_exists(const URI& fragment_uri) {
+  return vfs_->is_dir(fragment_uri);
+}
+
+Status StorageManager::fragment_rename(const URI& fragment_uri) {
+/* TODO
+  std::string fragment_path = uri.to_posix_path();
+  std::string parent_dir = utils::parent_path(fragment_path);
+  std::string new_fragment_name =
+      parent_dir + "/" + fragment_path.substr(parent_dir.size() + 2);
+  // move the fragment directory
+  RETURN_NOT_OK(vfs::move(fragment_path, new_fragment_name));
+  // create a new fragment file in the new directory
+  RETURN_NOT_OK(vfs::create_fragment_file(new_fragment_name));
+*/
+
+  return Status::Ok();
+}
+
+
+
 Status StorageManager::array_create(ArraySchema* array_schema) const {
   // Check array schema
   if (array_schema == nullptr) {
@@ -78,6 +99,22 @@ Status StorageManager::array_create(ArraySchema* array_schema) const {
   RETURN_NOT_OK(vfs_->create_file(filelock_uri));
 
   // Success
+  return Status::Ok();
+}
+
+Status StorageManager::async_push_query(Query* query, int i) {
+  // Set the request status
+  query->set_status(QueryStatus::INPROGRESS);
+
+  // Push request
+  {
+    std::lock_guard<std::mutex> lock(async_mtx_[i]);
+    async_queue_[i].emplace(query);
+  }
+
+  // Signal AIO thread
+  async_cv_[i].notify_one();
+
   return Status::Ok();
 }
 
@@ -133,6 +170,21 @@ Status StorageManager::query_init(
       buffer_sizes);
 }
 
+Status StorageManager::query_submit(Query* query) {
+  QueryMode mode = query->mode();
+  if (is_read_mode(mode))
+    return query->read();
+
+  return query->write();
+}
+
+Status StorageManager::query_submit_async(
+    Query* query, void* (*callback)(void*), void* callback_data) {
+  // Push the query into the async queue
+  query->set_callback(callback, callback_data);
+  return async_push_query(query, 0);
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -163,14 +215,16 @@ Status StorageManager::array_close(
   open_array->decr_cnt();
 
   // Remove fragment metadata
-  for(auto& metadata : fragment_metadata)
+  for (auto& metadata : fragment_metadata)
     open_array->fragment_metadata_rm(metadata->fragment_uri());
 
   // Potentially remove open array entry
   Status st = Status::Ok();
   if (open_array->cnt() == 0) {
     // TODO: we may want to leave this to a cache manager
-    st = vfs_->filelock_unlock(array_uri.join_path(constants::array_filelock_name), open_array->filelock_fd());
+    st = vfs_->filelock_unlock(
+        array_uri.join_path(constants::array_filelock_name),
+        open_array->filelock_fd());
     open_array->mtx_unlock();
     delete open_array;
     open_arrays_.erase(it);
@@ -205,7 +259,8 @@ Status StorageManager::array_open(
   if (!open_array->filelocked()) {
     int fd;
     RETURN_NOT_OK_ELSE(
-        vfs_->filelock_lock(array_uri.join_path(constants::array_filelock_name), &fd, true),
+        vfs_->filelock_lock(
+            array_uri.join_path(constants::array_filelock_name), &fd, true),
         array_open_error(open_array, *fragment_metadata));
     open_array->set_filelock_fd(fd);
   }
@@ -237,7 +292,7 @@ Status StorageManager::array_open_error(
 }
 
 void StorageManager::async_start(StorageManager* storage_manager, int i) {
-  storage_manager->async_handle_requests(i);
+  storage_manager->async_process_queries(i);
 }
 
 void StorageManager::async_stop() {
@@ -246,6 +301,28 @@ void StorageManager::async_stop() {
   async_cv_[1].notify_one();
   async_thread_[0]->join();
   async_thread_[1]->join();
+}
+
+void StorageManager::async_process_query(Query* query) {
+  // For easy reference
+  Status st = query->async_process();
+  if (!st.ok())
+    LOG_STATUS(st);
+}
+
+void StorageManager::async_process_queries(int i) {
+  while (!async_done_) {
+    std::unique_lock<std::mutex> lock(async_mtx_[i]);
+    async_cv_[i].wait(lock, [this, i] {
+      return (async_queue_[i].size() > 0) || async_done_;
+    });
+    if (async_done_)
+      break;
+    auto query = async_queue_[i].front();
+    async_queue_[i].pop();
+    lock.unlock();
+    async_process_query(query);
+  }
 }
 
 Status StorageManager::open_array_get_entry(
@@ -367,45 +444,6 @@ void StorageManager::sort_fragment_uris(std::vector<URI>* fragment_uris) const {
   for (uint64_t i = 0; i < fragment_num; ++i)
     fragment_uris_sorted[i] = (*fragment_uris)[t_pos_vec[i].second];
   *fragment_uris = fragment_uris_sorted;
-}
-
-void StorageManager::async_handle_request(AIORequest* aio_request) {
-  // For easy reference
-  Query* query = aio_request->query();
-  Status st = query->array()->async_handle_request(aio_request);
-  if (!st.ok())
-    LOG_STATUS(st);
-}
-
-void StorageManager::async_handle_requests(int i) {
-  while (!async_done_) {
-    std::unique_lock<std::mutex> lock(async_mtx_[i]);
-    async_cv_[i].wait(lock, [this, i] {
-      return (async_queue_[i].size() > 0) || async_done_;
-    });
-    if (async_done_)
-      break;
-    AIORequest* aio_request = async_queue_[i].front();
-    async_queue_[i].pop();
-    lock.unlock();
-    async_handle_request(aio_request);
-  }
-}
-
-Status StorageManager::async_push_request(AIORequest* aio_request, int i) {
-  // Set the request status
-  aio_request->set_status(AIOStatus::INPROGRESS);
-
-  // Push request
-  {
-    std::lock_guard<std::mutex> lock(async_mtx_[i]);
-    async_queue_[i].emplace(aio_request);
-  }
-
-  // Signal AIO thread
-  async_cv_[i].notify_one();
-
-  return Status::Ok();
 }
 
 }  // namespace tiledb
@@ -705,6 +743,7 @@ Status StorageManager::aio_submit(AIORequest* aio_request, int i) {
 }
 
 Status StorageManager::array_consolidate(const URI& array_uri) {
+ // TODO
   // Create an array object
   Array* array;
   RETURN_NOT_OK(
@@ -736,6 +775,123 @@ Status StorageManager::array_consolidate(const URI& array_uri) {
     return LOG_STATUS(
         Status::StorageManagerError(std::string("Could not consolidate array: ")
                                         .append(array_uri.to_string())));
+  return Status::Ok();
+}
+
+ Status Array::consolidate(
+    Fragment*& new_fragment, std::vector<uri::URI>* old_fragments) {
+  /* TODO
+
+    // Trivial case
+    if (fragments_.size() == 1)
+      return Status::Ok();
+
+    // Get new fragment name
+    std::string new_fragment_name = this->new_fragment_name();
+    if (new_fragment_name == "") {
+      return LOG_STATUS(Status::ArrayError("Cannot produce new fragment name"));
+    }
+
+    // Create new fragment
+    new_fragment = new Fragment(this);
+    RETURN_NOT_OK(new_fragment->init(new_fragment_name));
+
+    // Consolidate on a per-attribute basis
+    Status st;
+    for (int i = 0; i < array_schema_->attribute_num() + 1; ++i) {
+      st = consolidate(new_fragment, i);
+      if (!st.ok()) {
+        utils::delete_fragment(new_fragment->fragment_uri());
+        delete new_fragment;
+        return st;
+      }
+    }
+
+    // Get old fragment names
+    int fragment_num = fragments_.size();
+    for (int i = 0; i < fragment_num; ++i)
+      old_fragments->push_back(fragments_[i]->fragment_uri());
+
+  return Status::Ok();
+}
+
+Status Array::consolidate(Fragment* new_fragment, int attribute_id) {
+  TODO
+  // For easy reference
+  int attribute_num = array_schema_->attribute_num();
+  uint64_t consolidation_buffer_size =
+      constants::consolidation_buffer_size;
+
+  // Do nothing if the array is dense for the coordinates attribute
+  if (array_schema_->dense() && attribute_id == attribute_num)
+    return Status::Ok();
+
+  // Prepare buffers
+  void** buffers;
+  size_t* buffer_sizes;
+
+  // Count the number of variable attributes
+  int var_attribute_num = array_schema_->var_attribute_num();
+
+  // Populate the buffers
+  int buffer_num = attribute_num + 1 + var_attribute_num;
+  buffers = (void**)malloc(buffer_num * sizeof(void*));
+  buffer_sizes = (size_t*)malloc(buffer_num * sizeof(size_t));
+  int buffer_i = 0;
+  for (int i = 0; i < attribute_num + 1; ++i) {
+    if (i == attribute_id) {
+      buffers[buffer_i] = malloc(consolidation_buffer_size);
+      buffer_sizes[buffer_i] = consolidation_buffer_size;
+      ++buffer_i;
+      if (array_schema_->var_size(i)) {
+        buffers[buffer_i] = malloc(consolidation_buffer_size);
+        buffer_sizes[buffer_i] = consolidation_buffer_size;
+        ++buffer_i;
+      }
+    } else {
+      buffers[buffer_i] = nullptr;
+      buffer_sizes[buffer_i] = 0;
+      ++buffer_i;
+      if (array_schema_->var_size(i)) {
+        buffers[buffer_i] = nullptr;
+        buffer_sizes[buffer_i] = 0;
+        ++buffer_i;
+      }
+    }
+  }
+
+  // Read and write attribute until there is no overflow
+  Status st_write;
+  Status st_read;
+  do {
+    // Read
+    st_read = read(buffers, buffer_sizes);
+    if (!st_read.ok())
+      break;
+
+    // Write
+    st_write =
+        new_fragment->write((const void**)buffers, (const size_t*)buffer_sizes);
+    if (!st_write.ok())
+      break;
+  } while (overflow(attribute_id));
+
+  // Clean up
+  for (int i = 0; i < buffer_num; ++i) {
+    if (buffers[i] != nullptr)
+      free(buffers[i]);
+  }
+  free(buffers);
+  free(buffer_sizes);
+
+  // Error
+  if (!st_write.ok()) {
+    return st_write;
+  }
+  if (!st_read.ok()) {
+    return st_read;
+  }
+
   return Status::Ok();
 }
 

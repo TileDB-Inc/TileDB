@@ -46,18 +46,15 @@ namespace tiledb {
 namespace posix {
 
 Status create_dir(const std::string& path) {
-  // Get real directory path
-  std::string real_dir = posix::real_dir(path);
-
   // If the directory does not exist, create it
-  if (posix::is_dir(real_dir)) {
+  if (posix::is_dir(path)) {
     return LOG_STATUS(Status::IOError(
-        std::string("Cannot create directory '") + real_dir +
+        std::string("Cannot create directory '") + path +
         "'; Directory already exists"));
   }
-  if (mkdir(real_dir.c_str(), S_IRWXU)) {
+  if (mkdir(path.c_str(), S_IRWXU)) {
     return LOG_STATUS(Status::IOError(
-        std::string("Cannot create directory '") + real_dir + "'; " +
+        std::string("Cannot create directory '") + path + "'; " +
         strerror(errno)));
   };
   return Status::Ok();
@@ -73,70 +70,75 @@ std::string current_dir() {
   return dir;
 }
 
+/*
+  // TODO
 Status delete_dir(const URI& uri) {
-  return delete_dir(uri.to_posix_path());
+return delete_dir(uri.to_posix_path());
 }
 
 Status delete_dir(const std::string& path) {
-  // Get real path
-  std::string dirname_real = posix::real_dir(path);
+// Get real path
+std::string dirname_real = posix::real_dir(path);
 
-  // Delete the contents of the directory
-  std::string filename;
-  struct dirent* next_file;
-  DIR* dir = opendir(dirname_real.c_str());
+// Delete the contents of the directory
+std::string filename;
+struct dirent* next_file;
+DIR* dir = opendir(dirname_real.c_str());
 
-  if (dir == nullptr) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot open directory; ") + strerror(errno)));
-  }
+if (dir == nullptr) {
+return LOG_STATUS(Status::OSError(
+    std::string("Cannot open directory; ") + strerror(errno)));
+}
 
-  while ((next_file = readdir(dir))) {
-    if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, ".."))
-      continue;
-    filename = dirname_real + "/" + next_file->d_name;
-    if (remove(filename.c_str())) {
-      return LOG_STATUS(Status::OSError(
-          std::string("Cannot delete file; ") + strerror(errno)));
-    }
-  }
+while ((next_file = readdir(dir))) {
+if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, ".."))
+  continue;
+filename = dirname_real + "/" + next_file->d_name;
+if (remove(filename.c_str())) {
+  return LOG_STATUS(Status::OSError(
+      std::string("Cannot delete file; ") + strerror(errno)));
+}
+}
 
-  // Close directory
-  if (closedir(dir)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot close directory; ") + strerror(errno)));
-  }
+// Close directory
+if (closedir(dir)) {
+return LOG_STATUS(Status::OSError(
+    std::string("Cannot close directory; ") + strerror(errno)));
+}
 
-  // Remove directory
-  if (rmdir(dirname_real.c_str())) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot delete directory; ") + strerror(errno)));
-  }
-  return Status::Ok();
+// Remove directory
+if (rmdir(dirname_real.c_str())) {
+return LOG_STATUS(Status::OSError(
+    std::string("Cannot delete directory; ") + strerror(errno)));
+}
+return Status::Ok();
 }
 
 Status delete_file(const std::string& path) {
-  if (remove(path.c_str())) {
-    return LOG_STATUS(
-        Status::OSError(std::string("Cannot delete file; ") + strerror(errno)));
-  }
-  return Status::Ok();
+if (remove(path.c_str())) {
+return LOG_STATUS(
+    Status::OSError(std::string("Cannot delete file; ") + strerror(errno)));
 }
+return Status::Ok();
+}
+
 
 Status file_size(const std::string& path, off_t* size) {
-  int fd = open(path.c_str(), O_RDONLY);
-  if (fd == -1) {
-    return LOG_STATUS(
-        Status::OSError("Cannot get file size; File opening error"));
-  }
-
-  struct stat st;
-  fstat(fd, &st);
-  *size = st.st_size;
-
-  close(fd);
-  return Status::Ok();
+int fd = open(path.c_str(), O_RDONLY);
+if (fd == -1) {
+return LOG_STATUS(
+    Status::OSError("Cannot get file size; File opening error"));
 }
+
+struct stat st;
+fstat(fd, &st);
+*size = st.st_size;
+
+close(fd);
+return Status::Ok();
+}
+
+*/
 
 bool is_dir(const std::string& path) {
   struct stat st;
@@ -236,24 +238,24 @@ Status filelock_unlock(int fd) {
   return Status::Ok();
 }
 
+/* TODO
 Status move(const URI& old_path, const URI& new_path) {
-  if (rename(old_path.to_string().c_str(), new_path.to_string().c_str())) {
-    return LOG_STATUS(
-        Status::OSError(std::string("Cannot move path: ") + strerror(errno)));
-  }
-  return Status::Ok();
+if (rename(old_path.to_string().c_str(), new_path.to_string().c_str())) {
+return LOG_STATUS(
+    Status::OSError(std::string("Cannot move path: ") + strerror(errno)));
 }
+return Status::Ok();
+}
+ */
 
 Status ls(const std::string& path, std::vector<std::string>* paths) {
-  std::string parent = posix::real_dir(path);
-
   struct dirent* next_path;
-  DIR* dir = opendir(parent.c_str());
+  DIR* dir = opendir(path.c_str());
   if (dir == nullptr) {
     return Status::Ok();
   }
   while ((next_path = readdir(dir))) {
-    auto abspath = parent + "/" + next_path->d_name;
+    auto abspath = path + "/" + next_path->d_name;
     paths->push_back(abspath);
   }
   // close parent directory
@@ -264,30 +266,6 @@ Status ls(const std::string& path, std::vector<std::string>* paths) {
   return Status::Ok();
 }
 
-// TODO: this should be generic
-std::vector<std::string> get_fragment_dirs(const std::string& path) {
-  std::vector<std::string> dirs;
-  std::string new_dir;
-  struct dirent* next_file;
-  DIR* c_dir = opendir(path.c_str());
-
-  if (c_dir == nullptr)
-    return std::vector<std::string>();
-
-  while ((next_file = readdir(c_dir))) {
-    new_dir = path + "/" + next_file->d_name;
-
-    if (utils::is_fragment(new_dir))
-      dirs.push_back(new_dir);
-  }
-
-  // Close array directory
-  closedir(c_dir);
-
-  // Return
-  return dirs;
-}
-
 Status create_file(const std::string& filename) {
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if (fd == -1 || ::close(fd)) {
@@ -296,30 +274,6 @@ Status create_file(const std::string& filename) {
         strerror(errno)));
   }
 
-  return Status::Ok();
-}
-
-// Changes the temporary fragment name into a stable one.
-Status rename_fragment(const URI& uri) {
-  std::string fragment_path = uri.to_posix_path();
-  std::string parent_dir = utils::parent_path(fragment_path);
-  std::string new_fragment_name =
-      parent_dir + "/" + fragment_path.substr(parent_dir.size() + 2);
-  // move the fragment directory
-  RETURN_NOT_OK(vfs::move(fragment_path, new_fragment_name));
-  // create a new fragment file in the new directory
-  RETURN_NOT_OK(vfs::create_fragment_file(new_fragment_name));
-  return Status::Ok();
-}
-
-Status create_group_file(const std::string& path) {
-  // Create group file
-  std::string filename = path + "/" + constants::group_filename;
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  if (fd == -1 || ::close(fd)) {
-    return LOG_STATUS(Status::StorageManagerError(
-        std::string("Failed to create group file; ") + strerror(errno)));
-  }
   return Status::Ok();
 }
 
@@ -404,40 +358,7 @@ std::string abs_path(const std::string& path) {
   return ret_dir;
 }
 
-Status mmap(
-    const URI& filename,
-    uint64_t size,
-    uint64_t offset,
-    void** buffer,
-    bool read_only) {
-  // MMap flags
-  int prot = read_only ? PROT_READ : (PROT_READ | PROT_WRITE);
-  int flags = read_only ? MAP_SHARED : MAP_PRIVATE;
-
-  // Open file
-  int fd = open(filename.to_string().c_str(), O_RDONLY);
-  if (fd == -1)
-    return LOG_STATUS(Status::Error("File opening error during memory map"));
-
-  // Map
-  *buffer = ::mmap(*buffer, size, prot, flags, fd, offset);
-  if (*buffer == MAP_FAILED)
-    return LOG_STATUS(Status::OSError("Memory map failed"));
-
-  // Close file
-  if (close(fd))
-    return LOG_STATUS(Status::Error("File closing error during memory map"));
-
-  return Status::Ok();
-}
-
-Status munmap(void* buffer, uint64_t size) {
-  if (::munmap(buffer, size))
-    return LOG_STATUS(Status::OSError("Memory unmap failed"));
-
-  return Status::Ok();
-}
-
+/*
 std::string real_dir(const std::string& path) {
   // Initialize current, home and root
   std::string current = vfs::current_dir();
@@ -502,6 +423,8 @@ Status sync(const std::string& path) {
   return Status::Ok();
 }
 
+*/
+
 Status write_to_file(
     const std::string& path, const void* buffer, size_t buffer_size) {
   // Open file
@@ -541,145 +464,6 @@ Status write_to_file(
   // Success
   return Status::Ok();
 }
-
-#ifdef HAVE_MPI
-Status mpi_io_read_from_file(
-    const MPI_Comm* mpi_comm,
-    const std::string& filename,
-    off_t offset,
-    void* buffer,
-    size_t length) {
-  // Sanity check
-  if (mpi_comm == NULL) {
-    return LOG_STATUS(
-        Status::Error("Cannot read from file; Invalid MPI communicator"));
-  }
-
-  // Open file
-  MPI_File fh;
-  if (MPI_File_open(
-          *mpi_comm,
-          (char*)filename.c_str(),
-          MPI_MODE_RDONLY,
-          MPI_INFO_NULL,
-          &fh)) {
-    return LOG_STATUS(
-        Status::Error("Cannot read from file; File opening error"));
-  }
-
-  // Read
-  MPI_File_seek(fh, offset, MPI_SEEK_SET);
-  MPI_Status mpi_status;
-  if (MPI_File_read(fh, buffer, length, MPI_CHAR, &mpi_status)) {
-    return LOG_STATUS(
-        Status::IOError("Cannot read from file; File reading error"));
-  }
-
-  // Close file
-  if (MPI_File_close(&fh)) {
-    return LOG_STATUS(
-        Status::OSError("Cannot read from file; File closing error"));
-  }
-
-  // Success
-  return Status::Ok();
-}
-
-Status mpi_io_write_to_file(
-    const MPI_Comm* mpi_comm,
-    const std::string& filename,
-    const void* buffer,
-    size_t buffer_size) {
-  // Open file
-  MPI_File fh;
-  if (MPI_File_open(
-          *mpi_comm,
-          filename.c_str(),
-          MPI_MODE_WRONLY | MPI_MODE_APPEND | MPI_MODE_CREATE |
-              MPI_MODE_SEQUENTIAL,
-          MPI_INFO_NULL,
-          &fh)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot write to file '") + filename +
-        "'; File opening error"));
-  }
-
-  // Append attribute data to the file in batches of
-  // constants::max_write_bytes bytes at a time
-  MPI_Status mpi_status;
-  while (buffer_size > constants::max_write_bytes) {
-    if (MPI_File_write(
-            fh,
-            (void*)buffer,
-            constants::max_write_bytes,
-            MPI_CHAR,
-            &mpi_status)) {
-      return LOG_STATUS(Status::IOError(
-          std::string("Cannot write to file '") + filename +
-          "'; File writing error"));
-    }
-    buffer_size -= constants::max_write_bytes;
-  }
-  if (MPI_File_write(fh, (void*)buffer, buffer_size, MPI_CHAR, &mpi_status)) {
-    return LOG_STATUS(Status::IOError(
-        std::string("Cannot write to file '") + filename +
-        "'; File writing error"));
-  }
-
-  // Close file
-  if (MPI_File_close(&fh)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot write to file '") + filename +
-        "'; File closing error"));
-  }
-
-  // Success
-  return Status::Ok();
-}
-
-Status mpi_io_sync(const MPI_Comm* mpi_comm, const std::string& filename) {
-  // Open file
-  MPI_File fh;
-  int rc;
-  if (vfs::is_dir(filename))  // DIRECTORY
-    rc = MPI_File_open(
-        *mpi_comm, filename.c_str(), MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);
-  else if (vfs::is_file(filename))  // FILE
-    rc = MPI_File_open(
-        *mpi_comm,
-        filename.c_str(),
-        MPI_MODE_WRONLY | MPI_MODE_APPEND | MPI_MODE_CREATE |
-            MPI_MODE_SEQUENTIAL,
-        MPI_INFO_NULL,
-        &fh);
-  else
-    return Status::Ok();  // If file does not exist, exit
-
-  // Handle error
-  if (rc) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot open file '") + filename +
-        "'; File opening error"));
-  }
-
-  // Sync
-  if (MPI_File_sync(fh)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot sync file '") + filename +
-        "'; File syncing error"));
-  }
-
-  // Close file
-  if (MPI_File_close(&fh)) {
-    return LOG_STATUS(Status::OSError(
-        std::string("Cannot sync file '") + filename +
-        "'; File closing error"));
-  }
-
-  // Success
-  return Status::Ok();
-}
-#endif
 
 }  // namespace posix
 

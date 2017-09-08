@@ -82,7 +82,8 @@ class OpenArray {
   /** Adds a new entry to the fragment metadata map. */
   void fragment_metadata_add(FragmentMetadata* metadata);
 
-  /** Removes the metadata of the input fragment from the fragment metadata map. */
+  /** Removes the metadata of the input fragment from the fragment metadata map.
+   */
   void fragment_metadata_rm(const URI& fragment_uri);
 
   /**

@@ -74,6 +74,9 @@ class VFS {
   /** Unlocks a filelock. */
   Status filelock_unlock(const URI& uri, int fd) const;
 
+  /** Checks if a directory exists. */
+  bool is_dir(const URI& uri) const;
+
   /** Checks if a file exists. */
   bool is_file(const URI& uri) const;
 

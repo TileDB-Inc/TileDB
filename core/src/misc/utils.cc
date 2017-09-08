@@ -372,7 +372,7 @@ bool empty_value(T value) {
     return false;
 }
 
-Status expand_buffer(void*& buffer, size_t& buffer_allocated_size) {
+Status expand_buffer(void*& buffer, uint64_t& buffer_allocated_size) {
   buffer_allocated_size *= 2;
   buffer = std::realloc(buffer, buffer_allocated_size);
   if (buffer == nullptr) {
@@ -396,10 +396,6 @@ void expand_mbr(T* mbr, const T* coords, int dim_num) {
 
 Status delete_fragment(const uri::URI& frag) {
   return vfs::delete_dir(frag);
-}
-
-bool fragment_exists(const uri::URI& frag) {
-  return vfs::is_dir(frag);
 }
 
 std::string parent_path(const std::string& dir) {

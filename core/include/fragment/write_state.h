@@ -100,7 +100,7 @@ class WriteState {
    *     a one-to-one correspondence).
    * @return Status
    */
-  Status write(const void** buffers, const size_t* buffer_sizes);
+  Status write(const void** buffers, const uint64_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -118,7 +118,7 @@ class WriteState {
    * respective files, or alternatively, the current file size of each
    * variable-sized attribute.
    */
-  std::vector<size_t> buffer_var_offsets_;
+  std::vector<uint64_t> buffer_var_offsets_;
 
   /** The fragment the write state belongs to. */
   const Fragment* fragment_;
@@ -172,7 +172,7 @@ class WriteState {
    */
   void sort_cell_pos(
       const void* buffer,
-      size_t buffer_size,
+      uint64_t buffer_size,
       std::vector<int64_t>& cell_pos) const;
 
   /**
@@ -189,7 +189,7 @@ class WriteState {
   template <class T>
   void sort_cell_pos(
       const void* buffer,
-      size_t buffer_size,
+      uint64_t buffer_size,
       std::vector<int64_t>& cell_pos) const;
 
   /**
@@ -200,7 +200,7 @@ class WriteState {
    * @param buffer_size The size (in bytes) of *buffer*.
    * @return void
    */
-  void update_bookkeeping(const void* buffer, size_t buffer_size);
+  void update_bookkeeping(const void* buffer, uint64_t buffer_size);
 
   /**
    * Updates the bookkeeping structures as tiles are written. Specifically, it
@@ -212,7 +212,7 @@ class WriteState {
    * @return void
    */
   template <class T>
-  void update_bookkeeping(const void* buffer, size_t buffer_size);
+  void update_bookkeeping(const void* buffer, uint64_t buffer_size);
 
   /**
    * Performs the write operation for the case of a dense fragment, focusing
@@ -223,7 +223,7 @@ class WriteState {
    * @param buffer_size See write().
    * @return Status
    */
-  Status write_attr(int attribute_id, const void* buffer, size_t buffer_size);
+  Status write_attr(int attribute_id, const void* buffer, uint64_t buffer_size);
 
   /**
    * Writes the last tile with the input id to the disk.
@@ -247,9 +247,9 @@ class WriteState {
   Status write_attr_var(
       int attribute_id,
       const void* buffer,
-      size_t buffer_size,
+      uint64_t buffer_size,
       const void* buffer_var,
-      size_t buffer_var_size);
+      uint64_t buffer_var_size);
 
   /**
    * Writes the last variable-sized tile with the input id to the disk.
@@ -276,7 +276,7 @@ class WriteState {
    * @return Status
    */
   Status write_sparse_unsorted(
-      const void** buffers, const size_t* buffer_sizes);
+      const void** buffers, const uint64_t* buffer_sizes);
 
   /**
    * Performs the write operation for the case of a sparse fragment when the
@@ -291,7 +291,7 @@ class WriteState {
   Status write_sparse_unsorted_attr(
       int attribute_id,
       const void* buffer,
-      size_t buffer_size,
+      uint64_t buffer_size,
       const std::vector<int64_t>& cell_pos);
 
   /**
@@ -309,9 +309,9 @@ class WriteState {
   Status write_sparse_unsorted_attr_var(
       int attribute_id,
       const void* buffer,
-      size_t buffer_size,
+      uint64_t buffer_size,
       const void* buffer_var,
-      size_t buffer_var_size,
+      uint64_t buffer_var_size,
       const std::vector<int64_t>& cell_pos);
 };
 

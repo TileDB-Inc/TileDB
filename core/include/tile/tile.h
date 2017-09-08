@@ -169,7 +169,7 @@ class Tile {
    * @param offset The offset in the file where the mmap begins.
    * @return Status.
    */
-  Status mmap(const uri::URI& filename, uint64_t tile_size, uint64_t offset);
+  Status mmap(const URI& filename, uint64_t tile_size, uint64_t offset);
 
   /** Reads from the tile into the input buffer *nbytes*. */
   Status read(void* buffer, uint64_t nbytes);

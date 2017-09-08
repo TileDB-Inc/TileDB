@@ -63,7 +63,7 @@ const URI& OpenArray::array_uri() const {
 }
 
 uint64_t OpenArray::cnt() const {
-    return cnt_;
+  return cnt_;
 }
 
 void OpenArray::decr_cnt() {
@@ -94,7 +94,7 @@ void OpenArray::fragment_metadata_rm(const URI& fragment_uri) {
 
   // Potentially remove metadata from main memory
   // TODO: The following may be left to a cache manager
-  if(it->second.second == 0) {
+  if (it->second.second == 0) {
     delete it->second.first;
     fragment_metadata_.erase(it);
   }

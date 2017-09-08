@@ -126,7 +126,7 @@ ArraySchema::ArraySchema(const URI& uri) {
   tile_extents_ = nullptr;
   tile_domain_ = nullptr;
   tile_coords_aux_ = nullptr;
-  array_uri_ = vfs::abs_path(uri);
+  array_uri_ = uri;
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
@@ -146,11 +146,11 @@ ArraySchema::~ArraySchema() {
   if (tile_coords_aux_ != nullptr)
     free(tile_coords_aux_);
 
-  for (int i = 0; i < Attributes_.size(); ++i)
-    delete Attributes_[i];
+  for (auto& attr : Attributes_)
+    delete attr;
 
-  for (int i = 0; i < Dimensions_.size(); ++i)
-    delete Dimensions_[i];
+  for (auto& dim : Dimensions_)
+    delete dim;
 }
 
 /* ****************************** */
@@ -303,20 +303,20 @@ void ArraySchema::dump(FILE* out) const {
   const char* cell_order_s = utils::layout_str(cell_order_);
   const char* tile_order_s = utils::layout_str(tile_order_);
 
-  fprintf(out, "- Array name: %s\n", array_uri_.c_str());
+  fprintf(out, "- Array name: %s\n", array_uri_.to_string().c_str());
   fprintf(out, "- Array type: %s\n", array_type_s);
   fprintf(out, "- Cell order: %s\n", cell_order_s);
   fprintf(out, "- Tile order: %s\n", tile_order_s);
   fprintf(out, "- Capacity: %" PRIu64 "\n", capacity_);
 
-  for (int i = 0; i < Dimensions_.size(); ++i) {
+  for (auto& dim : Dimensions_) {
     fprintf(out, "\n");
-    Dimensions_[i]->dump(out);
+    dim->dump(out);
   }
 
-  for (int i = 0; i < Attributes_.size(); ++i) {
+  for (auto& attr : Attributes_) {
     fprintf(out, "\n");
-    Attributes_[i]->dump(out);
+    attr->dump(out);
   }
 }
 
@@ -1109,18 +1109,14 @@ Status ArraySchema::init() {
   return Status::Ok();
 }
 
-// TODO: uri
+// TODO: this does not work with other than POSIX
 Status ArraySchema::load(const URI& parent, const char* schema) {
-  return ArraySchema::load(parent.to_string(), schema);
+  return ArraySchema::load(parent.to_path(), schema);
 }
 
-// TODO: uri
 Status ArraySchema::load(const std::string& dir, const char* schema_filename) {
-  // Get real array path
-  std::string real_dir = vfs::real_dir(dir);
-
   // Open array schema file
-  std::string filename = real_dir + "/" + schema_filename;
+  std::string filename = dir + "/" + schema_filename;
   int fd = ::open(filename.c_str(), O_RDONLY);
   if (fd == -1)
     return LOG_STATUS(
@@ -1162,7 +1158,7 @@ Status ArraySchema::load(const std::string& dir, const char* schema_filename) {
 }
 
 void ArraySchema::set_array_uri(const URI& uri) {
-  array_uri_ = vfs::abs_path(uri);
+  array_uri_ = uri;
 }
 
 void ArraySchema::set_array_type(ArrayType array_type) {
@@ -1533,7 +1529,7 @@ size_t ArraySchema::compute_bin_size() const {
   size_t bin_size = 0;
 
   // Size for array_name_
-  bin_size += sizeof(int) + array_uri_.size();
+  bin_size += sizeof(int) + array_uri_.to_string().size();
   // Size for dense_
   bin_size += sizeof(bool);
   // Size for tile_order_ and cell_order_

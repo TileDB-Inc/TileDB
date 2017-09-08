@@ -61,6 +61,7 @@ Status VFS::create_dir(const URI& uri) const {
     return posix::create_dir(uri.to_path());
 
   // TODO: Handle all other file systems here !
+  return Status::Ok();
 }
 
 Status VFS::create_file(const URI& uri) const {
@@ -68,6 +69,7 @@ Status VFS::create_file(const URI& uri) const {
     return posix::create_file(uri.to_path());
 
   // TODO: Handle all other file systems here !
+  return Status::Ok();
 }
 
 Status VFS::filelock_lock(const URI& uri, int* fd, bool shared) const {
@@ -75,6 +77,7 @@ Status VFS::filelock_lock(const URI& uri, int* fd, bool shared) const {
     return posix::filelock_lock(uri.to_path(), fd, shared);
 
   // TODO: Handle all other file systems here !
+  return Status::Ok();
 }
 
 Status VFS::filelock_unlock(const URI& uri, int fd) const {
@@ -82,6 +85,15 @@ Status VFS::filelock_unlock(const URI& uri, int fd) const {
     return posix::filelock_unlock(fd);
 
   // TODO: Handle all other file systems here !
+  return Status::Ok();
+}
+
+bool VFS::is_dir(const URI& uri) const {
+  if (uri.is_posix())
+    return posix::is_dir(uri.to_path());
+
+  // TODO: Handle all other file systems here !
+  return true;
 }
 
 bool VFS::is_file(const URI& uri) const {
@@ -89,6 +101,7 @@ bool VFS::is_file(const URI& uri) const {
     return posix::is_file(uri.to_path());
 
   // TODO: Handle all other file systems here !
+  return true;
 }
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
@@ -100,6 +113,7 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   }
 
   // TODO: Handle all other file systems here !
+  return Status::Ok();
 }
 
 }  // namespace tiledb

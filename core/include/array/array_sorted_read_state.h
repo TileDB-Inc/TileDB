@@ -39,7 +39,6 @@
 #include <string>
 #include <vector>
 
-#include "aio_request.h"
 #include "query.h"
 
 namespace tiledb {
@@ -69,9 +68,9 @@ class ArraySortedReadState {
   /** Stores state about the current read/copy request. */
   struct CopyState {
     /** Current offsets in user buffers. */
-    size_t* buffer_offsets_;
+    uint64_t* buffer_offsets_;
     /** User buffer sizes. */
-    size_t* buffer_sizes_;
+    uint64_t* buffer_sizes_;
     /** User buffers. */
     void** buffers_;
   };
@@ -81,7 +80,7 @@ class ArraySortedReadState {
     /** Used in calculations of cell ids, one vector per tile. */
     int64_t** cell_offset_per_dim_;
     /** Cell slab size per attribute per tile. */
-    size_t** cell_slab_size_;
+    uint64_t** cell_slab_size_;
     /** Number of cells in a cell slab per tile. */
     int64_t* cell_slab_num_;
     /**
@@ -92,7 +91,7 @@ class ArraySortedReadState {
     /**
      * Start offsets of each tile in the local buffer, per attribute per tile.
      */
-    size_t** start_offsets_;
+    uint64_t** start_offsets_;
     /** Number of tiles in the tile slab. */
     int64_t tile_num_;
     /** Used in calculations of tile ids. */
@@ -116,7 +115,7 @@ class ArraySortedReadState {
      * because the offsets of the variable-sized attributes can be derived from
      * the buffers that hold the fixed-sized offsets.
      */
-    size_t* current_offsets_;
+    uint64_t* current_offsets_;
     /** The current tile per attribute. */
     int64_t* current_tile_;
   };
@@ -154,7 +153,7 @@ class ArraySortedReadState {
    */
   bool overflow(int attribute_id) const;
 
-  Status read(void** buffers, size_t* buffer_sizes);
+  Status read(void** buffers, uint64_t* buffer_sizes);
 
   /* ********************************* */
   /*             MUTATORS              */
@@ -184,16 +183,7 @@ class ArraySortedReadState {
   /** Mutexes used in AIO. */
   std::mutex aio_mtx_[2];
 
-  /** Indicates overflow per tile slab per attribute upon an AIO operation. */
-  bool* aio_overflow_[2];
-
   Query* aio_query_[2];
-
-  /** AIO requests. */
-  AIORequest aio_request_[2];
-
-  /** The status of the AIO requests.*/
-  AIOStatus aio_status_[2];
 
   Query* query_;
 
@@ -201,25 +191,25 @@ class ArraySortedReadState {
   std::vector<int> attribute_ids_;
 
   /**
-   * The sizes of the attributes. For variable-length attributes, sizeof(size_t)
-   * is stored.
+   * The sizes of the attributes. For variable-length attributes,
+   * sizeof(uint64_t) is stored.
    */
-  std::vector<size_t> attribute_sizes_;
+  std::vector<uint64_t> attribute_sizes_;
 
   /** Number of allocated buffers. */
   int buffer_num_;
 
   /** Allocated sizes for buffers_ (similar to those used in Array::read). */
-  size_t* buffer_sizes_[2];
+  uint64_t* buffer_sizes_[2];
 
   /** Temporary buffer sizes used in AIO requests. */
-  size_t* buffer_sizes_tmp_[2];
+  uint64_t* buffer_sizes_tmp_[2];
 
   /**
    * Backup of temporary buffer sizes used in AIO requests (used when there is
    * overflow).
    */
-  size_t* buffer_sizes_tmp_bak_[2];
+  uint64_t* buffer_sizes_tmp_bak_[2];
 
   /** Local buffers (similar to those used in Array::read). */
   void** buffers_[2];
@@ -249,7 +239,7 @@ class ArraySortedReadState {
   int coords_buf_i_;
 
   /** The coordinates size of the array. */
-  size_t coords_size_;
+  uint64_t coords_size_;
 
   /** The current id of the buffers the next copy will occur from. */
   int copy_id_;
@@ -693,9 +683,6 @@ class ArraySortedReadState {
   template <class T>
   int64_t get_tile_id(int aid);
 
-  /** Initializes the AIO requests. */
-  void init_aio_requests();
-
   /** Initializes the copy state. */
   void init_copy_state();
 
@@ -812,13 +799,11 @@ class ArraySortedReadState {
   template <class T>
   Status read_sparse_sorted_row();
 
-  void reset_aio_overflow(int id);
-
   /** Resets the temporary buffer sizes for the input tile slab id. */
   void reset_buffer_sizes_tmp(int id);
 
   /** Resets the copy state using the input buffer info. */
-  void reset_copy_state(void** buffers, size_t* buffer_sizes);
+  void reset_copy_state(void** buffers, uint64_t* buffer_sizes);
 
   /** Resets the oveflow flags to **false**. */
   void reset_overflow();

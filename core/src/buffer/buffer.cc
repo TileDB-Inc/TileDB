@@ -32,7 +32,6 @@
 
 #include "buffer.h"
 #include "logger.h"
-#include "posix_filesystem.h"
 
 #include <iostream>
 
@@ -45,15 +44,11 @@ namespace tiledb {
 Buffer::Buffer() {
   data_ = nullptr;
   size_ = 0;
-  mmap_data_ = nullptr;
-  mmap_size_ = 0;
   offset_ = 0;
 }
 
 Buffer::Buffer(uint64_t size) {
   data_ = std::malloc(size);
-  mmap_data_ = nullptr;
-  mmap_size_ = 0;
   size_ = (data_ != nullptr) ? size : 0;
   offset_ = 0;
 }
@@ -72,48 +67,10 @@ Status Buffer::clear() {
   offset_ = 0;
 
   if (data_ != nullptr) {
-    if (mmap_data_ != nullptr) {
-      return munmap();
-    } else {
-      free(data_);
-      data_ = nullptr;
-      size_ = 0;
-    }
+    free(data_);
+    data_ = nullptr;
+    size_ = 0;
   }
-
-  return Status::Ok();
-}
-
-Status Buffer::mmap(
-    const uri::URI& filename, uint64_t size, uint64_t offset, bool read_only) {
-  // Clean buffer
-  RETURN_NOT_OK(clear());
-
-  // Alignment and sizes
-  size_t page_size = sysconf(_SC_PAGE_SIZE);
-  off_t start_offset = (offset / page_size) * page_size;
-  size_t extra_offset = offset - start_offset;
-  size_ = size;
-  mmap_size_ = size + extra_offset;
-
-  RETURN_NOT_OK(
-      vfs::mmap(filename, mmap_size_, start_offset, &mmap_data_, read_only));
-
-  data_ = static_cast<char*>(mmap_data_) + extra_offset;
-
-  return Status::Ok();
-}
-
-Status Buffer::munmap() {
-  if (mmap_data_ == nullptr)
-    return Status::Ok();
-
-  RETURN_NOT_OK(vfs::munmap(mmap_data_, mmap_size_));
-
-  mmap_data_ = nullptr;
-  mmap_size_ = 0;
-  data_ = nullptr;
-  size_ = 0;
 
   return Status::Ok();
 }

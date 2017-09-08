@@ -57,8 +57,7 @@ WriteState::WriteState(const Fragment* fragment, FragmentMetadata* bookkeeping)
   // For easy reference
   const ArraySchema* array_schema = fragment->array()->array_schema();
   int attribute_num = array_schema->attribute_num();
-  size_t coords_size = array_schema->coords_size();
-  const Config* config = fragment_->array()->config();
+  uint64_t coords_size = array_schema->coords_size();
 
   // Initialize the number of cells written in the current tile
   tile_cell_num_.resize(attribute_num + 1);
@@ -292,7 +291,7 @@ Status WriteState::sync_attribute(const std::string& attribute) {
   return Status::Ok();
 }
 
-Status WriteState::write(const void** buffers, const size_t* buffer_sizes) {
+Status WriteState::write(const void** buffers, const uint64_t* buffer_sizes) {
   // Create fragment directory if it does not exist
   std::string fragment_name = fragment_->fragment_uri().to_posix_path();
   if (!vfs::is_dir(fragment_name))
@@ -362,7 +361,7 @@ void WriteState::expand_mbr(const T* coords) {
 
 void WriteState::sort_cell_pos(
     const void* buffer,
-    size_t buffer_size,
+    uint64_t buffer_size,
     std::vector<int64_t>& cell_pos) const {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
@@ -394,12 +393,12 @@ void WriteState::sort_cell_pos(
 template <class T>
 void WriteState::sort_cell_pos(
     const void* buffer,
-    size_t buffer_size,
+    uint64_t buffer_size,
     std::vector<int64_t>& cell_pos) const {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   int dim_num = array_schema->dim_num();
-  size_t coords_size = array_schema->coords_size();
+  uint64_t coords_size = array_schema->coords_size();
   int64_t buffer_cell_num = buffer_size / coords_size;
   Layout cell_order = array_schema->cell_order();
   auto buffer_T = static_cast<const T*>(buffer);
@@ -446,7 +445,7 @@ void WriteState::sort_cell_pos(
   }
 }
 
-void WriteState::update_bookkeeping(const void* buffer, size_t buffer_size) {
+void WriteState::update_bookkeeping(const void* buffer, uint64_t buffer_size) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
   Datatype coords_type = array_schema->coords_type();
@@ -475,7 +474,7 @@ void WriteState::update_bookkeeping(const void* buffer, size_t buffer_size) {
 }
 
 template <class T>
-void WriteState::update_bookkeeping(const void* buffer, size_t buffer_size) {
+void WriteState::update_bookkeeping(const void* buffer, uint64_t buffer_size) {
   // Trivial case
   if (buffer_size == 0)
     return;
@@ -485,7 +484,7 @@ void WriteState::update_bookkeeping(const void* buffer, size_t buffer_size) {
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
   int64_t capacity = array_schema->capacity();
-  size_t coords_size = array_schema->coords_size();
+  uint64_t coords_size = array_schema->coords_size();
   int64_t buffer_cell_num = buffer_size / coords_size;
   auto buffer_T = static_cast<const T*>(buffer);
   int64_t& tile_cell_num = tile_cell_num_[attribute_num];
@@ -519,7 +518,7 @@ void WriteState::update_bookkeeping(const void* buffer, size_t buffer_size) {
 }
 
 Status WriteState::write_attr(
-    int attribute_id, const void* buffer, size_t buffer_size) {
+    int attribute_id, const void* buffer, uint64_t buffer_size) {
   // Trivial case
   if (buffer_size == 0)
     return Status::Ok();
@@ -568,9 +567,9 @@ Status WriteState::write_attr_last(int attribute_id) {
 Status WriteState::write_attr_var(
     int attribute_id,
     const void* buffer,
-    size_t buffer_size,
+    uint64_t buffer_size,
     const void* buffer_var,
-    size_t buffer_var_size) {
+    uint64_t buffer_var_size) {
   // Trivial case
   if (buffer_size == 0 || buffer_var_size == 0)
     return Status::Ok();
@@ -578,7 +577,7 @@ Status WriteState::write_attr_var(
   auto buf = new ConstBuffer(buffer, buffer_size);
   auto buf_var = new ConstBuffer(buffer_var, buffer_var_size);
 
-  size_t& buffer_var_offset = buffer_var_offsets_[attribute_id];
+  uint64_t& buffer_var_offset = buffer_var_offsets_[attribute_id];
 
   Tile* tile = tiles_[attribute_id];
   Tile* tile_var = tiles_var_[attribute_id];
@@ -660,7 +659,7 @@ Status WriteState::write_last_tile() {
 }
 
 Status WriteState::write_sparse_unsorted(
-    const void** buffers, const size_t* buffer_sizes) {
+    const void** buffers, const uint64_t* buffer_sizes) {
   // For easy reference
   const Array* array = fragment_->array();
   const ArraySchema* array_schema = array->array_schema();
@@ -705,11 +704,11 @@ Status WriteState::write_sparse_unsorted(
 Status WriteState::write_sparse_unsorted_attr(
     int attribute_id,
     const void* buffer,
-    size_t buffer_size,
+    uint64_t buffer_size,
     const std::vector<int64_t>& cell_pos) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t cell_size = array_schema->cell_size(attribute_id);
+  uint64_t cell_size = array_schema->cell_size(attribute_id);
 
   // Check number of cells in buffer
   int64_t buffer_cell_num = buffer_size / cell_size;
@@ -756,15 +755,15 @@ Status WriteState::write_sparse_unsorted_attr(
 Status WriteState::write_sparse_unsorted_attr_var(
     int attribute_id,
     const void* buffer,
-    size_t buffer_size,
+    uint64_t buffer_size,
     const void* buffer_var,
-    size_t buffer_var_size,
+    uint64_t buffer_var_size,
     const std::vector<int64_t>& cell_pos) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->array()->array_schema();
-  size_t cell_size = constants::cell_var_offset_size;
-  size_t cell_var_size;
-  auto buffer_s = static_cast<const size_t*>(buffer);
+  uint64_t cell_size = constants::cell_var_offset_size;
+  uint64_t cell_var_size;
+  auto buffer_s = static_cast<const uint64_t*>(buffer);
   auto buffer_var_c = static_cast<const char*>(buffer_var);
 
   // Check number of cells in buffer

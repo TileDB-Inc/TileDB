@@ -33,7 +33,6 @@
 #ifndef TILEDB_BASIC_ARRAY_H
 #define TILEDB_BASIC_ARRAY_H
 
-#include "array.h"
 #include "status.h"
 
 namespace tiledb {
@@ -67,9 +66,6 @@ class BasicArray {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-  /** The array object that implements BasicArray. */
-  Array* array_;
 };
 
 }  // namespace tiledb
