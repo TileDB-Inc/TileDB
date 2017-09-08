@@ -28,6 +28,11 @@
 # Include TileDB core header directories
 file(GLOB TILEDB_CORE_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/core/include/*")
 
+# Include libS3 headers if enabled
+if(USE_S3)
+  set(TILEDB_CORE_INCLUDE_DIRS ${TILEDB_CORE_INCLUDE_DIRS} "${CMAKE_SOURCE_DIR}/external/libs3/inc")
+endif()
+
 # catch unit-test library
 add_library(
     catch_main EXCLUDE_FROM_ALL
@@ -45,10 +50,14 @@ target_include_directories(
 )
 
 # Gather the test source files
+file(GLOB TILEDB_TEST_SOURCES "src/unit-*.cc")
 if(USE_HDFS)
-	file(GLOB_RECURSE TILEDB_TEST_SOURCES "src/unit-*.cc" "src/opt-*")
-else()
-	file(GLOB_RECURSE TILEDB_TEST_SOURCES "src/unit-*.cc")
+  file(GLOB TILEDB_HDFS_TEST_SOURCES "src/hdfs-unit-*.cc")
+  set(TILEDB_TEST_SOURCES ${TILEDB_SET_SOURCES} ${TILEDB_TEST_HDFS_SOURCES})
+endif()
+if(USE_S3)
+  file(GLOB TILEDB_S3_TEST_SOURCES "src/s3-unit-*.cc")
+  set(TILEDB_TEST_SOURCES ${TILEDB_TEST_SOURCES} ${TILEDB_S3_TEST_SOURCES})
 endif()
 
 # unit test executable
@@ -66,8 +75,14 @@ set_target_properties(
 
 target_link_libraries(
     ${TILEDB_UNITTEST_TARGET_NAME}
-    tiledb_static ${TILEDB_LIB_DEPENDENCIES}
+    tiledb_static
+    ${TILEDB_LIB_DEPENDENCIES}
 )
+
+if(USE_S3)
+  target_link_libraries(
+    ${TILEDB_UNITTEST_TARGET_NAME} libs3)
+endif()
 
 target_include_directories(
     ${TILEDB_UNITTEST_TARGET_NAME} PRIVATE
