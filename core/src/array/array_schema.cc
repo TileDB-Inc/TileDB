@@ -234,7 +234,7 @@ Layout ArraySchema::cell_order() const {
   return cell_order_;
 }
 
-size_t ArraySchema::cell_size(int attribute_id) const {
+uint64_t ArraySchema::cell_size(int attribute_id) const {
   // Special case for the search tile
   if (attribute_id == attribute_num_ + 1)
     attribute_id = attribute_num_;
@@ -271,7 +271,7 @@ int ArraySchema::compression_level(int attr_id) const {
   return compression_level_.at(attr_id);
 }
 
-size_t ArraySchema::coords_size() const {
+uint64_t ArraySchema::coords_size() const {
   return coords_size_;
 }
 
@@ -417,7 +417,7 @@ bool ArraySchema::is_contained_in_tile_slab_row(const void* range) const {
 // cell_val_num#1(unsigned int) cell_val_num#2(unsigned int) ...
 // compression#1(char) compression#2(char) ...
 Status ArraySchema::serialize(
-    void*& array_schema_bin, size_t& array_schema_bin_size) const {
+    void*& array_schema_bin, uint64_t& array_schema_bin_size) const {
   // Compute the size of the binary representation of the ArraySchema object
   array_schema_bin_size = compute_bin_size();
 
@@ -425,13 +425,13 @@ Status ArraySchema::serialize(
   array_schema_bin = malloc(array_schema_bin_size);
 
   // For easy reference
-  char* buffer = (char*)array_schema_bin;
-  size_t buffer_size = array_schema_bin_size;
-  size_t offset = 0;
+  auto buffer = (char*)array_schema_bin;
+  uint64_t buffer_size = array_schema_bin_size;
+  uint64_t offset = 0;
 
   // Copy array_name_
   std::string array_name = array_uri_.to_string();
-  int array_name_size = array_name.size();
+  auto array_name_size = (int)array_name.size();
   assert(offset + sizeof(int) < buffer_size);
   memcpy(buffer + offset, &array_name_size, sizeof(int));
   offset += sizeof(int);
@@ -532,46 +532,6 @@ Status ArraySchema::serialize(
   }
   assert(offset == buffer_size);
 
-  return Status::Ok();
-}
-
-// TODO: jcb
-Status ArraySchema::store(const URI& parent, const char* schema) {
-  return ArraySchema::store(parent.to_string(), schema);
-}
-
-Status ArraySchema::store(const std::string& dir, const char* schema_filename) {
-  // Initialize array schema
-  RETURN_NOT_OK(init());
-
-  // Open array schema file
-  std::string filename = dir + "/" + schema_filename;
-  remove(filename.c_str());
-  int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
-  if (fd == -1)
-    return LOG_STATUS(Status::ArraySchemaError(
-        std::string("Cannot store schema; ") + strerror(errno)));
-
-  // Serialize array schema
-  void* array_schema_bin;
-  size_t array_schema_bin_size;
-  RETURN_NOT_OK(serialize(array_schema_bin, array_schema_bin_size));
-
-  // Store the array schema
-  ssize_t bytes_written = ::write(fd, array_schema_bin, array_schema_bin_size);
-  if (bytes_written != ssize_t(array_schema_bin_size)) {
-    free(array_schema_bin);
-    return LOG_STATUS(Status::ArraySchemaError(
-        std::string("Cannot store schema; ") + strerror(errno)));
-  }
-
-  // Clean up
-  free(array_schema_bin);
-  if (::close(fd))
-    return LOG_STATUS(Status::ArraySchemaError(
-        std::string("Cannot store schema; ") + strerror(errno)));
-
-  // Success
   return Status::Ok();
 }
 
@@ -794,7 +754,7 @@ Datatype ArraySchema::type(int i) const {
   return types_[i];
 }
 
-size_t ArraySchema::type_size(int i) const {
+uint64_t ArraySchema::type_size(int i) const {
   assert(i >= 0 && i <= attribute_num_);
 
   return type_sizes_[i];
@@ -850,11 +810,11 @@ void ArraySchema::add_dimension(const Dimension* dim) {
 // cell_val_num#1(unsigned int) cell_val_num#2(unsigned int) ...
 // compression#1(char) compression#2(char) ...
 Status ArraySchema::deserialize(
-    const void* array_schema_bin, size_t array_schema_bin_size) {
+    const void* array_schema_bin, uint64_t array_schema_bin_size) {
   // For easy reference
-  const char* buffer = static_cast<const char*>(array_schema_bin);
-  size_t buffer_size = array_schema_bin_size;
-  size_t offset = 0;
+  auto buffer = static_cast<const char*>(array_schema_bin);
+  uint64_t buffer_size = array_schema_bin_size;
+  uint64_t offset = 0;
 
   // Load array_name_
   int array_name_size;
@@ -1104,54 +1064,6 @@ Status ArraySchema::init() {
   if (tile_coords_aux_ != nullptr)
     free(tile_coords_aux_);
   tile_coords_aux_ = malloc(coords_size_ * dim_num_);
-
-  // Success
-  return Status::Ok();
-}
-
-// TODO: this does not work with other than POSIX
-Status ArraySchema::load(const URI& parent, const char* schema) {
-  return ArraySchema::load(parent.to_path(), schema);
-}
-
-Status ArraySchema::load(const std::string& dir, const char* schema_filename) {
-  // Open array schema file
-  std::string filename = dir + "/" + schema_filename;
-  int fd = ::open(filename.c_str(), O_RDONLY);
-  if (fd == -1)
-    return LOG_STATUS(
-        Status::ArraySchemaError("Cannot load schema; File opening error"));
-
-  // Initialize buffer
-  struct stat _stat;
-  fstat(fd, &_stat);
-  ssize_t buffer_size = _stat.st_size;
-
-  if (buffer_size == 0)
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Cannot load array schema; Empty array schema file"));
-  void* buffer = malloc(buffer_size);
-
-  // Load array schema
-  ssize_t bytes_read = ::read(fd, buffer, buffer_size);
-  if (bytes_read != buffer_size) {
-    free(buffer);
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Cannot load array schema; File reading error"));
-  }
-
-  // Initialize array schema
-  Status st = deserialize(buffer, buffer_size);
-  if (!st.ok()) {
-    free(buffer);
-    return st;
-  }
-
-  // Clean up
-  free(buffer);
-  if (::close(fd))
-    return LOG_STATUS(Status::ArraySchemaError(
-        "Cannot load array schema; File closing error"));
 
   // Success
   return Status::Ok();
@@ -1524,9 +1436,9 @@ void ArraySchema::clear() {
 // type#1(char) type#2(char) ...
 // cell_val_num#1(int) cell_val_num#2(int) ...
 // compression#1(char) compression#2(char) ...
-size_t ArraySchema::compute_bin_size() const {
+uint64_t ArraySchema::compute_bin_size() const {
   // Initialization
-  size_t bin_size = 0;
+  uint64_t bin_size = 0;
 
   // Size for array_name_
   bin_size += sizeof(int) + array_uri_.to_string().size();
@@ -1596,7 +1508,7 @@ void ArraySchema::compute_cell_num_per_tile() {
     cell_num_per_tile_ *= tile_extents[i];
 }
 
-size_t ArraySchema::compute_cell_size(int i) const {
+uint64_t ArraySchema::compute_cell_size(int i) const {
   assert(i >= 0 && i <= attribute_num_);
 
   // Variable-sized cell
@@ -1604,7 +1516,7 @@ size_t ArraySchema::compute_cell_size(int i) const {
     return constants::var_size;
 
   // Fixed-sized cell
-  size_t size = 0;
+  uint64_t size = 0;
 
   // Attributes
   if (i < attribute_num_) {
@@ -1767,7 +1679,7 @@ void ArraySchema::compute_tile_offsets() {
   std::reverse(tile_offsets_row_.begin(), tile_offsets_row_.end());
 }
 
-size_t ArraySchema::compute_type_size(int i) const {
+uint64_t ArraySchema::compute_type_size(int i) const {
   // Sanity check
   assert(i >= 0 && i <= attribute_num_);
 

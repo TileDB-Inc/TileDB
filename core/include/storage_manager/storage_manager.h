@@ -69,12 +69,29 @@ class StorageManager {
   /*                API                */
   /* ********************************* */
 
+  Status sync(const URI& uri);
 
-  bool fragment_exists(const URI& fragment_uri);
+  Status load(FragmentMetadata* metadata);
 
-  Status fragment_rename(const URI& fragment_uri);
+  Status store(FragmentMetadata* metadata);
 
-  Status array_create(ArraySchema* array_schema) const;
+  Status load(const URI& array_uri, ArraySchema* array_schema);
+
+  Status store(ArraySchema* array_schema);
+
+  bool is_dir(const URI& uri);
+
+  bool is_file(const URI& uri);
+
+  Status create_file(const URI& uri);
+
+  Status create_dir(const URI& uri);
+
+  Status delete_file(const URI& uri) const;
+
+  Status move_dir(const URI& old_uri, const URI& new_uri);
+
+  Status array_create(ArraySchema* array_schema);
 
   /**
    * Pushes an async query to the queue.
@@ -105,6 +122,14 @@ class StorageManager {
 
   Status query_submit_async(
       Query* query, void* (*callback)(void*), void* callback_data);
+
+  Status file_size(const URI& uri, uint64_t* size) const;
+
+  Status read_from_file(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t length) const;
+
+  Status write_to_file(
+      const URI& uri, const void* buffer, uint64_t buffer_size) const;
 
  private:
   /* ********************************* */

@@ -51,6 +51,7 @@ class ArrayReadState;
 class ArraySortedReadState;
 class ArraySortedWriteState;
 class Fragment;
+class StorageManager;
 
 class Query {
  public:
@@ -61,8 +62,6 @@ class Query {
   Query();
 
   ~Query();
-
-  Query(const Query* query, QueryMode mode, const void* subarray);
 
   /* ********************************* */
   /*                 API               */
@@ -139,7 +138,7 @@ class Query {
   /** Returns the subarray in which the query is constrained. */
   const void* subarray() const;
 
-  Status write_default(const void** buffers, const uint64_t* buffer_sizes);
+  Status write_default(void** buffers, uint64_t* buffer_sizes);
 
   void add_coords();
 
@@ -166,7 +165,6 @@ class Query {
   QueryMode mode_;
   QueryStatus status_;
   void* subarray_;
-  uint64_t subarray_size_;
   std::vector<std::string> attributes_;
   void** buffers_;
   uint64_t* buffer_sizes_;

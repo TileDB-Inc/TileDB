@@ -151,7 +151,7 @@ class ArraySortedWriteState {
    * @param buffer_sizes The corresponding buffer sizes.
    * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
    */
-  Status write(const void** buffers, const uint64_t* buffer_sizes);
+  Status write(void** buffers, uint64_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -191,10 +191,10 @@ class ArraySortedWriteState {
   uint64_t* buffer_offsets_;
 
   /** The user buffer sizes. */
-  const uint64_t* buffer_sizes_;
+  uint64_t* buffer_sizes_;
 
   /** The user buffers. */
-  const void** buffers_;
+  void** buffers_;
 
   /** Function for calculating cell slab info during a copy operation. */
   void* (*calculate_cell_slab_info_)(void*);
@@ -555,7 +555,7 @@ class ArraySortedWriteState {
    * @param buffer_sizes The corresponding buffer sizes.
    * @return void
    */
-  void create_user_buffers(const void** buffers, const uint64_t* buffer_sizes);
+  void create_user_buffers(void** buffers, uint64_t* buffer_sizes);
 
   /**
    * Fills the **entire** buffer of the current copy tile slab with the input id

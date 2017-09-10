@@ -99,6 +99,10 @@ class Fragment {
    */
   uint64_t tile_size(int attribute_id) const;
 
+  Query* query() const {
+    return query_;
+  }
+
   /* ********************************* */
   /*              MUTATORS             */
   /* ********************************* */
@@ -132,7 +136,7 @@ class Fragment {
    */
   Status sync_attribute(const std::string& attribute);
 
-  Status write(const void** buffers, const uint64_t* buffer_sizes);
+  Status write(void** buffers, uint64_t* buffer_sizes);
 
  private:
   /* ********************************* */

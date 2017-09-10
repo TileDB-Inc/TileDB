@@ -31,9 +31,11 @@
  * This file implements the ArraySortedWriteState class.
  */
 
-#include "array_sorted_write_state.h"
 #include <cmath>
+
+#include "array_sorted_write_state.h"
 #include "logger.h"
+#include "storage_manager.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -272,8 +274,7 @@ Status ArraySortedWriteState::init() {
   return Status::Ok();
 }
 
-Status ArraySortedWriteState::write(
-    const void** buffers, const uint64_t* buffer_sizes) {
+Status ArraySortedWriteState::write(void** buffers, uint64_t* buffer_sizes) {
   // Locally store user buffer information
   create_user_buffers(buffers, buffer_sizes);
 
@@ -996,7 +997,7 @@ Status ArraySortedWriteState::create_copy_state_buffers() {
 }
 
 void ArraySortedWriteState::create_user_buffers(
-    const void** buffers, const uint64_t* buffer_sizes) {
+    void** buffers, uint64_t* buffer_sizes) {
   buffers_ = buffers;
   buffer_sizes_ = buffer_sizes;
   buffer_offsets_ = new uint64_t[buffer_num_];

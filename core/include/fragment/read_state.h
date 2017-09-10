@@ -45,6 +45,7 @@ namespace tiledb {
 
 class Query;
 class Fragment;
+class TileIO;
 
 /** Stores the state necessary when reading cells from a fragment. */
 class ReadState {

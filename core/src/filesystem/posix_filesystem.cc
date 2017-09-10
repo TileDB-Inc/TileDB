@@ -114,31 +114,30 @@ return LOG_STATUS(Status::OSError(
 return Status::Ok();
 }
 
-Status delete_file(const std::string& path) {
-if (remove(path.c_str())) {
-return LOG_STATUS(
-    Status::OSError(std::string("Cannot delete file; ") + strerror(errno)));
-}
-return Status::Ok();
-}
-
-
-Status file_size(const std::string& path, off_t* size) {
-int fd = open(path.c_str(), O_RDONLY);
-if (fd == -1) {
-return LOG_STATUS(
-    Status::OSError("Cannot get file size; File opening error"));
-}
-
-struct stat st;
-fstat(fd, &st);
-*size = st.st_size;
-
-close(fd);
-return Status::Ok();
-}
-
 */
+
+Status delete_file(const std::string& path) {
+  if (remove(path.c_str())) {
+    return LOG_STATUS(
+        Status::OSError(std::string("Cannot delete file; ") + strerror(errno)));
+  }
+  return Status::Ok();
+}
+
+Status file_size(const std::string& path, uint64_t* size) {
+  int fd = open(path.c_str(), O_RDONLY);
+  if (fd == -1) {
+    return LOG_STATUS(
+        Status::OSError("Cannot get file size; File opening error"));
+  }
+
+  struct stat st;
+  fstat(fd, &st);
+  *size = st.st_size;
+
+  close(fd);
+  return Status::Ok();
+}
 
 bool is_dir(const std::string& path) {
   struct stat st;
@@ -153,7 +152,7 @@ bool is_file(const std::string& path) {
 // TODO: path is getting modified here, don't pass by reference
 void purge_dots_from_path(std::string& path) {
   // For easy reference
-  size_t path_size = path.size();
+  uint64_t path_size = path.size();
 
   // Trivial case
   if (path_size == 0 || path == "/")
@@ -167,7 +166,7 @@ void purge_dots_from_path(std::string& path) {
   std::vector<std::string> tokens, final_tokens;
   std::string token;
 
-  for (size_t i = 1; i < path_size; ++i) {
+  for (uint64_t i = 1; i < path_size; ++i) {
     if (path[i] == '/') {
       path[i] = '\0';
       token = token_c_str;
@@ -238,15 +237,13 @@ Status filelock_unlock(int fd) {
   return Status::Ok();
 }
 
-/* TODO
-Status move(const URI& old_path, const URI& new_path) {
-if (rename(old_path.to_string().c_str(), new_path.to_string().c_str())) {
-return LOG_STATUS(
-    Status::OSError(std::string("Cannot move path: ") + strerror(errno)));
+Status move_dir(const std::string& old_path, const std::string& new_path) {
+  if (rename(old_path.c_str(), new_path.c_str())) {
+    return LOG_STATUS(
+        Status::OSError(std::string("Cannot move path: ") + strerror(errno)));
+  }
+  return Status::Ok();
 }
-return Status::Ok();
-}
- */
 
 Status ls(const std::string& path, std::vector<std::string>* paths) {
   struct dirent* next_path;
@@ -278,7 +275,7 @@ Status create_file(const std::string& filename) {
 }
 
 Status read_from_file(
-    const std::string& path, off_t offset, void* buffer, size_t length) {
+    const std::string& path, uint64_t offset, void* buffer, uint64_t length) {
   // Open file
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
@@ -287,8 +284,8 @@ Status read_from_file(
   }
   // Read
   lseek(fd, offset, SEEK_SET);
-  ssize_t bytes_read = ::read(fd, buffer, length);
-  if (bytes_read != ssize_t(length)) {
+  int64_t bytes_read = ::read(fd, buffer, length);
+  if (bytes_read != int64_t(length)) {
     return LOG_STATUS(
         Status::IOError("Cannot read from file; File reading error"));
   }
@@ -358,45 +355,12 @@ std::string abs_path(const std::string& path) {
   return ret_dir;
 }
 
-/*
-std::string real_dir(const std::string& path) {
-  // Initialize current, home and root
-  std::string current = vfs::current_dir();
-  auto env_home_ptr = getenv("HOME");
-  std::string home = env_home_ptr ? env_home_ptr : current;
-  std::string root = "/";
-
-  // Easy cases
-  if (path == "" || path == "." || path == "./")
-    return current;
-  else if (path == "~")
-    return home;
-  else if (path == "/")
-    return root;
-
-  // Other cases
-  std::string ret_dir;
-  if (utils::starts_with(path, "/"))
-    ret_dir = root + path;
-  else if (utils::starts_with(path, "~/"))
-    ret_dir = home + path.substr(1, path.size() - 1);
-  else if (utils::starts_with(path, "./"))
-    ret_dir = current + path.substr(1, path.size() - 1);
-  else
-    ret_dir = current + "/" + path;
-
-  adjacent_slashes_dedup(ret_dir);
-  purge_dots_from_path(ret_dir);
-
-  return ret_dir;
-}
-
 Status sync(const std::string& path) {
   // Open file
   int fd = -1;
-  if (vfs::is_dir(path))  // DIRECTORY
+  if (posix::is_dir(path))  // DIRECTORY
     fd = open(path.c_str(), O_RDONLY, S_IRWXU);
-  else if (vfs::is_file(path))  // FILE
+  else if (posix::is_file(path))  // FILE
     fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);
   else
     return Status::Ok();  // If file does not exist, exit
@@ -423,10 +387,8 @@ Status sync(const std::string& path) {
   return Status::Ok();
 }
 
-*/
-
 Status write_to_file(
-    const std::string& path, const void* buffer, size_t buffer_size) {
+    const std::string& path, const void* buffer, uint64_t buffer_size) {
   // Open file
   int fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);
   if (fd == -1) {
@@ -437,7 +399,7 @@ Status write_to_file(
 
   // Append data to the file in batches of constants::max_write_bytes
   // bytes at a time
-  ssize_t bytes_written;
+  int64_t bytes_written;
   while (buffer_size > constants::max_write_bytes) {
     bytes_written = ::write(fd, buffer, constants::max_write_bytes);
     if (bytes_written != constants::max_write_bytes) {
@@ -448,7 +410,7 @@ Status write_to_file(
     buffer_size -= constants::max_write_bytes;
   }
   bytes_written = ::write(fd, buffer, buffer_size);
-  if (bytes_written != ssize_t(buffer_size)) {
+  if (bytes_written != int64_t(buffer_size)) {
     return LOG_STATUS(Status::IOError(
         std::string("Cannot write to file '") + path +
         "'; File writing error"));

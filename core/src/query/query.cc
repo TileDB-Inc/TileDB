@@ -32,6 +32,7 @@
 
 #include "query.h"
 #include "logger.h"
+#include "storage_manager.h"
 #include "utils.h"
 
 #include <sys/time.h>
@@ -98,8 +99,8 @@ Status Query::async_process() {
 Status Query::read() {
   // Check if there are no fragments
   int buffer_i = 0;
-  int attribute_id_num = (int)attribute_ids_.size();
-  if (fragments_.size() == 0) {
+  auto attribute_id_num = (int)attribute_ids_.size();
+  if (fragments_.empty()) {
     for (int i = 0; i < attribute_id_num; ++i) {
       // Update all sizes to 0
       buffer_sizes_[buffer_i] = 0;
@@ -113,11 +114,11 @@ Status Query::read() {
 
   // Handle sorted modes
   if (mode_ == QueryMode::READ_SORTED_COL ||
-      mode_ == QueryMode::READ_SORTED_ROW) {
+      mode_ == QueryMode::READ_SORTED_ROW)
     return array_sorted_read_state_->read(buffers_, buffer_sizes_);
-  } else {  // mode_ == TILEDB_ARRAY_READ
-    return array_read_state_->read(buffers_, buffer_sizes_);
-  }
+
+  // mode_ == TILEDB_ARRAY_READ
+  return array_read_state_->read(buffers_, buffer_sizes_);
 }
 
 Status Query::write() {
@@ -385,8 +386,7 @@ const void* Query::subarray() const {
   return subarray_;
 }
 
-Status Query::write_default(
-    const void** buffers, const uint64_t* buffer_sizes) {
+Status Query::write_default(void** buffers, uint64_t* buffer_sizes) {
   // Sanity checks
   if (!is_write_mode(mode_)) {
     return LOG_STATUS(

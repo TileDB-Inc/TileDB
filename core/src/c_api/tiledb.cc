@@ -694,7 +694,11 @@ int tiledb_array_schema_load(
   }
 
   // Load array schema
-  if (save_error(ctx, (*array_schema)->array_schema_->load(array_name))) {
+  auto storage_manager = ctx->storage_manager_;
+  auto array_uri = tiledb::URI(array_name);
+  if (save_error(
+          ctx,
+          storage_manager->load(array_uri, (*array_schema)->array_schema_))) {
     delete (*array_schema)->array_schema_;
     free(*array_schema);
     *array_schema = nullptr;

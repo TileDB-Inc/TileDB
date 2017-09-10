@@ -42,7 +42,6 @@
 #include <iostream>
 #include <set>
 #include <sstream>
-#include "config.h"
 #include "constants.h"
 #include "logger.h"
 #if defined(__APPLE__) && defined(__MACH__)
@@ -289,8 +288,6 @@ const char* datatype_str(Datatype type) {
       return constants::uint32_str;
     case Datatype::UINT64:
       return constants::uint64_str;
-    default:
-      return nullptr;
   }
 }
 
@@ -394,27 +391,29 @@ void expand_mbr(T* mbr, const T* coords, int dim_num) {
   }
 }
 
-Status delete_fragment(const uri::URI& frag) {
-  return vfs::delete_dir(frag);
-}
+  /*
+  Status delete_fragment(const URI& frag) {
+    return vfs::delete_dir(frag);
+  }
 
-std::string parent_path(const std::string& dir) {
-  // Get real dir
-  std::string real_dir = vfs::real_dir(dir);
+  std::string parent_path(const std::string& dir) {
+    // Get real dir
+    std::string real_dir = vfs::real_dir(dir);
 
-  // Start from the end of the string
-  int pos = real_dir.size() - 1;
+    // Start from the end of the string
+    int pos = real_dir.size() - 1;
 
-  // Skip the potential last '/'
-  if (real_dir[pos] == '/')
-    --pos;
+    // Skip the potential last '/'
+    if (real_dir[pos] == '/')
+      --pos;
 
-  // Scan backwords until you find the next '/'
-  while (pos > 0 && real_dir[pos] != '/')
-    --pos;
+    // Scan backwords until you find the next '/'
+    while (pos > 0 && real_dir[pos] != '/')
+      --pos;
 
-  return real_dir.substr(0, pos);
-}
+    return real_dir.substr(0, pos);
+  }
+  */
 
 #if defined(__APPLE__) && defined(__MACH__)
 // TODO: Errors are ignored, this is kind of a mess with the preprocessor order
@@ -519,6 +518,8 @@ bool is_contained(const T* range_A, const T* range_B, int dim_num) {
   return true;
 }
 
+/*
+
 bool is_array(const std::string& dir) {
   // Check existence
   if (vfs::is_dir(dir) &&
@@ -580,6 +581,7 @@ bool is_array_schema(const std::string& path) {
 bool is_consolidation_lock(const std::string& path) {
   return ends_with(path, constants::consolidation_filelock_name);
 }
+ */
 
 bool is_positive_integer(const char* s) {
   int i = 0;

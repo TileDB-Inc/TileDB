@@ -122,13 +122,18 @@ uint64_t Fragment::tile_size(int attribute_id) const {
 Status Fragment::finalize() {
   if (write_state_ != nullptr) {  // WRITE
     assert(metadata_ != NULL);
-    Status st_ws = write_state_->finalize();
-    Status st_bk = metadata_->flush();
-    Status st_rn;
     auto storage_manager = query_->storage_manager();
+    Status st_ws = write_state_->finalize();
+    Status st_bk = storage_manager->store(metadata_);
+    Status st_rn;
 
-    if (storage_manager->fragment_exists(fragment_uri_))
-      st_rn = storage_manager->fragment_rename(fragment_uri());
+    // Rename fragment URI
+    if (storage_manager->is_dir(fragment_uri_)) {
+      URI parent = fragment_uri_.parent();
+      std::string last = fragment_uri_.last_path_part();
+      URI new_fragment_uri = parent.join_path(last.substr(1));
+      st_rn = storage_manager->move_dir(fragment_uri_, new_fragment_uri);
+    }
 
     // Errors
     if (!st_ws.ok())
@@ -208,7 +213,7 @@ Status Fragment::sync_attribute(const std::string& attribute) {
   return Status::Ok();
 }
 
-Status Fragment::write(const void** buffers, const uint64_t* buffer_sizes) {
+Status Fragment::write(void** buffers, uint64_t* buffer_sizes) {
   // Forward the write command to the write state
   RETURN_NOT_OK(write_state_->write(buffers, buffer_sizes));
   return Status::Ok();

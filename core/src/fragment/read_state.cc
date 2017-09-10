@@ -35,6 +35,7 @@
 
 #include "logger.h"
 #include "posix_filesystem.h"
+#include "query.h"
 #include "read_state.h"
 #include "utils.h"
 
@@ -72,12 +73,14 @@ ReadState::ReadState(
         (var_size) ? array_schema_->type_size(i) : array_schema_->cell_size(i);
     tiles_.emplace_back(new Tile(
         attr->type(), attr->compressor(), attr->cell_size(), var_size));
-    tile_io_.emplace_back(new TileIO(fragment_->attr_uri(i)));
+    tile_io_.emplace_back(
+        new TileIO(query->storage_manager(), fragment_->attr_uri(i)));
 
     if (var_size) {
       tiles_var_.emplace_back(
           new Tile(attr->type(), attr->compressor(), cell_size));
-      tile_io_var_.emplace_back(new TileIO(fragment_->attr_var_uri(i)));
+      tile_io_var_.emplace_back(
+          new TileIO(query->storage_manager(), fragment_->attr_var_uri(i)));
     } else {
       tiles_var_.emplace_back(nullptr);
       tile_io_var_.emplace_back(nullptr);
@@ -89,8 +92,10 @@ ReadState::ReadState(
   tiles_.emplace_back(
       new Tile(dim->type(), dim->compressor(), array_schema_->coords_size()));
 
-  tile_io_.emplace_back(new TileIO(fragment_->coords_uri()));
-  tile_io_.emplace_back(new TileIO(fragment_->coords_uri()));
+  tile_io_.emplace_back(
+      new TileIO(query->storage_manager(), fragment_->coords_uri()));
+  tile_io_.emplace_back(
+      new TileIO(query->storage_manager(), fragment_->coords_uri()));
 
   tmp_coords_ = malloc(coords_size_);
 
@@ -110,7 +115,7 @@ ReadState::ReadState(
   for (int i = 0; i < attribute_num_ + 1; ++i) {
     uri = fragment_->fragment_uri().join_path(
         array_schema_->attribute(i) + constants::file_suffix);
-    is_empty_attribute_[i] = !vfs::is_file(uri);
+    is_empty_attribute_[i] = query->storage_manager()->is_file(uri);
   }
 }
 
@@ -1356,7 +1361,8 @@ Status ReadState::read_tile(int attribute_id, int64_t tile_i) {
   uint64_t tile_compressed_size;
   RETURN_NOT_OK(compute_tile_compressed_size(
       tile_i, attribute_id_real, tile_io, &tile_compressed_size));
-  off_t file_offset = bookkeeping_->tile_offsets()[attribute_id_real][tile_i];
+  uint64_t file_offset =
+      bookkeeping_->tile_offsets()[attribute_id_real][tile_i];
   uint64_t tile_size = bookkeeping_->cell_num(tile_i) *
                        array_schema_->cell_size(attribute_id_real);
 
@@ -1374,10 +1380,10 @@ Status ReadState::compute_tile_compressed_size(
     int attribute_id,
     TileIO* tile_io,
     uint64_t* tile_compressed_size) const {
-  const std::vector<std::vector<off_t>>& tile_offsets =
+  const std::vector<std::vector<uint64_t>>& tile_offsets =
       bookkeeping_->tile_offsets();
   int64_t tile_num = bookkeeping_->tile_num();
-  off_t file_size = 0;
+  uint64_t file_size = 0;
 
   RETURN_NOT_OK(tile_io->file_size(&file_size));
 
@@ -1395,9 +1401,9 @@ Status ReadState::compute_tile_compressed_var_size(
     int attribute_id,
     TileIO* tile_io,
     uint64_t* tile_compressed_size) const {
-  const std::vector<std::vector<off_t>>& tile_var_offsets =
+  const std::vector<std::vector<uint64_t>>& tile_var_offsets =
       bookkeeping_->tile_var_offsets();
-  off_t file_size = 0;
+  uint64_t file_size = 0;
   RETURN_NOT_OK(tile_io->file_size(&file_size));
   int64_t tile_num = bookkeeping_->tile_num();
   *tile_compressed_size =
@@ -1424,7 +1430,7 @@ Status ReadState::read_tile_var(int attribute_id, int64_t tile_i) {
   uint64_t tile_compressed_size;
   RETURN_NOT_OK(compute_tile_compressed_size(
       tile_i, attribute_id, tile_io, &tile_compressed_size));
-  off_t file_offset = bookkeeping_->tile_offsets()[attribute_id][tile_i];
+  uint64_t file_offset = bookkeeping_->tile_offsets()[attribute_id][tile_i];
   uint64_t tile_size =
       bookkeeping_->cell_num(tile_i) * constants::cell_var_offset_size;
 
@@ -1440,7 +1446,7 @@ Status ReadState::read_tile_var(int attribute_id, int64_t tile_i) {
       tile_i, attribute_id, tile_io_var, &tile_compressed_var_size));
   uint64_t tile_var_size = bookkeeping_->tile_var_sizes()[attribute_id][tile_i];
   uint64_t file_var_offset =
-      (uint64_t)bookkeeping_->tile_var_offsets()[attribute_id][tile_i];
+      bookkeeping_->tile_var_offsets()[attribute_id][tile_i];
 
   RETURN_NOT_OK(tile_io_var->read(
       tile_var, file_var_offset, tile_compressed_var_size, tile_var_size));

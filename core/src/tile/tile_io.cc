@@ -34,9 +34,7 @@
 #include "blosc_compressor.h"
 #include "bzip_compressor.h"
 #include "gzip_compressor.h"
-#include "logger.h"
 #include "lz4_compressor.h"
-#include "posix_filesystem.h"
 #include "rle_compressor.h"
 #include "utils.h"
 #include "zstd_compressor.h"
@@ -49,9 +47,9 @@ namespace tiledb {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-TileIO::TileIO(const Config* config, const uri::URI& attr_filename)
-    : attr_filename_(attr_filename)
-    , config_(config) {
+TileIO::TileIO(StorageManager* storage_manager, const URI& attr_uri)
+    : attr_uri_(attr_uri)
+    , storage_manager_(storage_manager) {
   buffer_ = nullptr;
 }
 
@@ -63,8 +61,8 @@ TileIO::~TileIO() {
 /*               API              */
 /* ****************************** */
 
-Status TileIO::file_size(off_t* size) const {
-  return vfs::file_size(attr_filename_.to_string(), size);
+Status TileIO::file_size(uint64_t* size) const {
+  return storage_manager_->file_size(attr_uri_, size);
 }
 
 Status TileIO::read(
@@ -74,86 +72,33 @@ Status TileIO::read(
     uint64_t tile_size) {
   tile->reset_offset();
 
-  Compressor compression = tile->compressor();
-  IOMethod read_method = config_->read_method();
-  if (compression == Compressor::NO_COMPRESSION) {
-    if (read_method == IOMethod::MMAP || tile->stores_offsets()) {
-      RETURN_NOT_OK(tile->mmap(attr_filename_, tile_size, file_offset));
-    } else if (read_method == IOMethod::READ || read_method == IOMethod::MPI) {
-      tile->set_file_offset(file_offset);
-      tile->set_size(tile_size);
-    }
-
+  if (tile->compressor() == Compressor::NO_COMPRESSION) {
+    tile->set_file_offset(file_offset);
+    tile->set_size(tile_size);
     return Status::Ok();
-  } else {
-    // TODO: consider optimizing (do not delete and new every time)
-    if (buffer_ == nullptr)
-      buffer_ = new Buffer();
-
-    if (read_method == IOMethod::READ) {
-      buffer_->realloc(compressed_size);
-      RETURN_NOT_OK(vfs::read_from_file(
-          attr_filename_.to_string(),
-          file_offset,
-          buffer_->data(),
-          compressed_size));
-    } else if (read_method == IOMethod::MMAP) {
-      RETURN_NOT_OK(
-          buffer_->mmap(attr_filename_, compressed_size, file_offset));
-    } else if (read_method == IOMethod::MPI) {
-#ifdef HAVE_MPI
-      buffer_->realloc(compressed_size);
-      RETURN_NOT_OK(vfs::mpi_io_read_from_file(
-          config_->mpi_comm(),
-          attr_filename_.to_string(),
-          file_offset,
-          buffer_->data(),
-          compressed_size));
-#else
-      // Error: MPI not supported
-      return LOG_STATUS(
-          Status::TileIOError("Cannot read tile; MPI not supported"));
-#endif
-    }
-
-    // Decompress tile
-    // TODO: here we will put all other filters, and potentially employ chunking
-    // TODO: choose the proper buffer based on all filters, not just compression
-    return decompress_tile(tile, tile_size);
   }
+
+  // TODO: consider optimizing (do not delete and new every time)
+  if (buffer_ == nullptr)
+    buffer_ = new Buffer();
+
+  buffer_->realloc(compressed_size);
+  RETURN_NOT_OK(storage_manager_->read_from_file(
+      attr_uri_, file_offset, buffer_->data(), compressed_size));
+
+  // Decompress tile
+  // TODO: here we will put all other filters, and potentially employ chunking
+  // TODO: choose the proper buffer based on all filters, not just compression
+  return decompress_tile(tile, tile_size);
 }
 
 Status TileIO::read_from_tile(Tile* tile, void* buffer, uint64_t nbytes) {
-  IOMethod read_method = config_->read_method();
-  Status st;
-  if (read_method == IOMethod::READ) {
-    st = vfs::read_from_file(
-        attr_filename_.to_string(),
-        tile->file_offset() + tile->offset(),
-        buffer,
-        nbytes);
-  } else if (read_method == IOMethod::MPI) {
-#ifdef HAVE_MPI
-    st = vfs::mpi_io_read_from_file(
-        config_->mpi_comm(),
-        attr_filename_.to_string(),
-        tile->file_offset() + tile->offset(),
-        buffer,
-        nbytes);
-#else
-    // Error: MPI not supported
-    return LOG_STATUS(
-        Status::TileIOError("Cannot read from tile; MPI not supported"));
-#endif
-  } else {
-    return LOG_STATUS(
-        Status::TileIOError("Cannot read from tile; unknown read method"));
-  }
+  RETURN_NOT_OK(storage_manager_->read_from_file(
+      attr_uri_, tile->file_offset() + tile->offset(), buffer, nbytes));
 
-  if (st.ok())
-    tile->advance_offset(nbytes);
+  tile->advance_offset(nbytes);
 
-  return st;
+  return Status::Ok();
 }
 
 Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
@@ -163,7 +108,6 @@ Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
   RETURN_NOT_OK(compress_tile(tile));
 
   // Prepare to write
-  IOMethod write_method = config_->write_method();
   Compressor compressor = tile->compressor();
   void* buffer = (compressor == Compressor::NO_COMPRESSION) ? tile->data() :
                                                               buffer_->data();
@@ -173,26 +117,7 @@ Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
   *bytes_written = buffer_size;
 
   // Write based on the chosen method
-  // TODO: implement mmap write here
-  if (write_method == IOMethod::WRITE) {
-    return vfs::write_to_file(
-        attr_filename_.to_posix_path(), buffer, buffer_size);
-  } else if (write_method == IOMethod::MPI) {
-#ifdef HAVE_MPI
-    return vfs::mpi_io_write_to_file(
-        config_->mpi_comm(),
-        attr_filename_.to_posix_path().c_str(),
-        buffer,
-        buffer_size);
-#else
-    // Error: MPI not supported
-    return LOG_STATUS(
-        Status::TileIOError("Cannot write tile; MPI not supported"));
-#endif
-  } else {
-    return LOG_STATUS(
-        Status::TileIOError("Cannot write tile; Unknown write method"));
-  }
+  return storage_manager_->write_to_file(attr_uri_, buffer, buffer_size);
 }
 
 /* ****************************** */

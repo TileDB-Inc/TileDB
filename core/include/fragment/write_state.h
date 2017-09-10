@@ -100,7 +100,7 @@ class WriteState {
    *     a one-to-one correspondence).
    * @return Status
    */
-  Status write(const void** buffers, const uint64_t* buffer_sizes);
+  Status write(void** buffers, uint64_t* buffer_sizes);
 
  private:
   /* ********************************* */
@@ -223,7 +223,7 @@ class WriteState {
    * @param buffer_size See write().
    * @return Status
    */
-  Status write_attr(int attribute_id, const void* buffer, uint64_t buffer_size);
+  Status write_attr(int attribute_id, void* buffer, uint64_t buffer_size);
 
   /**
    * Writes the last tile with the input id to the disk.
@@ -246,9 +246,9 @@ class WriteState {
    */
   Status write_attr_var(
       int attribute_id,
-      const void* buffer,
+      void* buffer,
       uint64_t buffer_size,
-      const void* buffer_var,
+      void* buffer_var,
       uint64_t buffer_var_size);
 
   /**
@@ -275,8 +275,7 @@ class WriteState {
    * @param buffer_sizes See write().
    * @return Status
    */
-  Status write_sparse_unsorted(
-      const void** buffers, const uint64_t* buffer_sizes);
+  Status write_sparse_unsorted(void** buffers, uint64_t* buffer_sizes);
 
   /**
    * Performs the write operation for the case of a sparse fragment when the
@@ -290,7 +289,7 @@ class WriteState {
    */
   Status write_sparse_unsorted_attr(
       int attribute_id,
-      const void* buffer,
+      void* buffer,
       uint64_t buffer_size,
       const std::vector<int64_t>& cell_pos);
 
@@ -308,9 +307,9 @@ class WriteState {
    */
   Status write_sparse_unsorted_attr_var(
       int attribute_id,
-      const void* buffer,
+      void* buffer,
       uint64_t buffer_size,
-      const void* buffer_var,
+      void* buffer_var,
       uint64_t buffer_var_size,
       const std::vector<int64_t>& cell_pos);
 };

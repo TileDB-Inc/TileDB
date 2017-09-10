@@ -39,6 +39,7 @@
 #include "array_sorted_read_state.h"
 #include "comparators.h"
 #include "logger.h"
+#include "storage_manager.h"
 #include "utils.h"
 
 /* ****************************** */

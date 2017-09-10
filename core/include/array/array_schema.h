@@ -128,7 +128,7 @@ class ArraySchema {
   Layout cell_order() const;
 
   /** Returns the size of cell on the input attribute. */
-  size_t cell_size(int attribute_id) const;
+  uint64_t cell_size(int attribute_id) const;
 
   /** Returns the number of values per cell of the input attribute. */
   unsigned int cell_val_num(int attribute_id) const;
@@ -147,7 +147,7 @@ class ArraySchema {
   int compression_level(int attribute_id) const;
 
   /** Returns the coordinates size. */
-  size_t coords_size() const;
+  uint64_t coords_size() const;
 
   /** Returns the type of the coordinates. */
   Datatype coords_type() const;
@@ -224,7 +224,7 @@ class ArraySchema {
    * @return Status
    */
   Status serialize(
-      void*& array_schema_bin, size_t& array_schema_bin_size) const;
+      void*& array_schema_bin, uint64_t& array_schema_bin_size) const;
 
   /**
    * Returns the type of overlap of the input subarrays.
@@ -296,7 +296,7 @@ class ArraySchema {
   Datatype type(int i) const;
 
   /** Returns the type size of the i-th attribute. */
-  size_t type_size(int i) const;
+  uint64_t type_size(int i) const;
 
   /** Returns the number of attributes with variable-sized values. */
   int var_attribute_num() const;
@@ -322,7 +322,7 @@ class ArraySchema {
    * @return Status
    */
   Status deserialize(
-      const void* array_schema_bin, size_t array_schema_bin_size);
+      const void* array_schema_bin, uint64_t array_schema_bin_size);
 
   /**
    * Initializes the ArraySchema object. It also performs a check to see if
@@ -331,22 +331,6 @@ class ArraySchema {
    * @return Status
    */
   Status init();
-
-  /**
-   * Loads the schema of an array from the disk.
-   *
-   * @param dir The directory of the array.
-   * @param schema_filename The schema file name.
-   * @return Status
-   */
-  Status load(
-      const std::string& dir,
-      const char* schema_filename = constants::array_schema_filename);
-
-  // TODO: uri
-  Status load(
-      const URI& uri,
-      const char* schema_filename = constants::array_schema_filename);
 
   /** Sets the array uri. */
   void set_array_uri(const URI& uri);
@@ -378,23 +362,6 @@ class ArraySchema {
 
   /** Sets the tile order. */
   void set_tile_order(Layout tile_order);
-
-  /**
-   * Stores the array schema in a file inside directory *dir*.
-   *
-   * @param dir The directory where the array schema file will be stored.
-   * @param schema_filename The name of the file where the array schema should
-   * be stored.
-   * @return Status
-   */
-  Status store(
-      const std::string& dir,
-      const char* schema_filename = constants::array_schema_filename);
-
-  // TODO: uri
-  Status store(
-      const URI& parent,
-      const char* schema_filename = constants::array_schema_filename);
 
   /* ********************************* */
   /*               MISC                */
@@ -630,7 +597,7 @@ class ArraySchema {
    */
   Layout cell_order_;
   /** Stores the size of every attribute (plus coordinates in the end). */
-  std::vector<size_t> cell_sizes_;
+  std::vector<uint64_t> cell_sizes_;
   /**
    * Specifies the number of values per attribute for a cell. If it is NULL,
    * then each attribute has a single value per cell. If for some attribute
@@ -658,7 +625,7 @@ class ArraySchema {
   /** The compression level for each compressor. */
   std::vector<int> compression_level_;
   /** The size (in bytes) of the coordinates. */
-  size_t coords_size_;
+  uint64_t coords_size_;
   /**
    * Specifies if the array is dense or sparse. If the array is dense,
    * then the user must specify tile extents (see below).
@@ -734,7 +701,7 @@ class ArraySchema {
    */
   std::vector<Datatype> types_;
   /** Stores the size of every attribute type (plus coordinates in the end). */
-  std::vector<size_t> type_sizes_;
+  std::vector<uint64_t> type_sizes_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -747,7 +714,7 @@ class ArraySchema {
    * Computes and returns the size of the binary representation of the
    * ArraySchema object.
    */
-  size_t compute_bin_size() const;
+  uint64_t compute_bin_size() const;
 
   /**
    * Compute the number of cells per tile. Meaningful only for the **dense**
@@ -768,7 +735,7 @@ class ArraySchema {
   void compute_cell_num_per_tile();
 
   /** Computes and returns the size of an attribute (or coordinates). */
-  size_t compute_cell_size(int attribute_id) const;
+  uint64_t compute_cell_size(int attribute_id) const;
 
   /**
    * Computes the tile domain. Applicable only to arrays with regular tiles.
@@ -803,7 +770,7 @@ class ArraySchema {
   void compute_tile_domain();
 
   /** Computes and returns the size of a type. */
-  size_t compute_type_size(int attribute_id) const;
+  uint64_t compute_type_size(int attribute_id) const;
 
   /**
    * Returns the position of the input coordinates inside its corresponding

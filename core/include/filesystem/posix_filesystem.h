@@ -41,7 +41,6 @@
 #include "status.h"
 #include "uri.h"
 
-class URI;  // TODO: remove
 class Buffer;
 
 namespace tiledb {
@@ -75,7 +74,7 @@ Status filelock_unlock(int fd);
  * @param new_path the new path
  * @return Status
  */
-// TODO Status move(const URI& old_path, const URI& new_path);
+Status move_dir(const std::string& old_path, const std::string& new_path);
 
 /**
  *
@@ -121,9 +120,9 @@ std::string current_dir();
  * @param path The name of the file whose size is to be retrieved.
  * @return The file size on success, and TILEDB_UT_ERR for error.
  */
-// TODO Status file_size(const std::string& path, off_t* size);
+Status file_size(const std::string& path, uint64_t* size);
 
-// TODO Status delete_file(const std::string& path);
+Status delete_file(const std::string& path);
 
 /**
  * Checks if the input is an existing directory.
@@ -163,9 +162,8 @@ void purge_dots_from_path(std::string& path);
  * @param length The size of the data to be read from the file.
  * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
  */
-// TODO: use Buffers instead
-// Status read_from_file(
-//    const std::string& path, off_t offset, void* buffer, size_t length);
+Status read_from_file(
+    const std::string& path, uint64_t offset, void* buffer, uint64_t length);
 
 /**
  * Read contents of a file into a (growable) byte buffer.
@@ -177,14 +175,6 @@ void purge_dots_from_path(std::string& path);
  */
 Status read_from_file(const std::string& path, Buffer** buff);
 
-/**
- * Returns the absolute canonicalized directory path of the input directory.
- *
- * @param dir The input directory to be canonicalized.
- * @return The absolute canonicalized directory path of the input directory.
- */
-// TODO std::string real_dir(const std::string& path);
-
 std::string abs_path(const std::string& path);
 
 /**
@@ -194,7 +184,7 @@ std::string abs_path(const std::string& path);
  * @param path The name of the file.
  * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
  */
-// TODO: Status sync(const std::string& path);
+Status sync(const std::string& path);
 
 /**
  * Writes the input buffer to a file.
@@ -205,7 +195,7 @@ std::string abs_path(const std::string& path);
  * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
  */
 Status write_to_file(
-    const std::string& path, const void* buffer, size_t buffer_size);
+    const std::string& path, const void* buffer, uint64_t buffer_size);
 
 }  // namespace posix
 

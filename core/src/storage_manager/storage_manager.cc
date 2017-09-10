@@ -59,28 +59,117 @@ StorageManager::~StorageManager() {
 /*               API              */
 /* ****************************** */
 
-bool StorageManager::fragment_exists(const URI& fragment_uri) {
-  return vfs_->is_dir(fragment_uri);
+Status StorageManager::read_from_file(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t length) const {
+  return vfs_->read_from_file(uri, offset, buffer, length);
 }
 
-Status StorageManager::fragment_rename(const URI& fragment_uri) {
-/* TODO
-  std::string fragment_path = uri.to_posix_path();
-  std::string parent_dir = utils::parent_path(fragment_path);
-  std::string new_fragment_name =
-      parent_dir + "/" + fragment_path.substr(parent_dir.size() + 2);
-  // move the fragment directory
-  RETURN_NOT_OK(vfs::move(fragment_path, new_fragment_name));
-  // create a new fragment file in the new directory
-  RETURN_NOT_OK(vfs::create_fragment_file(new_fragment_name));
-*/
+Status StorageManager::write_to_file(
+    const URI& uri, const void* buffer, uint64_t buffer_size) const {
+  return vfs_->write_to_file(uri, buffer, buffer_size);
+}
 
+Status StorageManager::file_size(const URI& uri, uint64_t* size) const {
+  return vfs_->file_size(uri, size);
+}
+
+Status StorageManager::sync(const URI& uri) {
+  return vfs_->sync(uri);
+}
+
+Status StorageManager::load(FragmentMetadata* metadata) {
+  const URI& fragment_uri = metadata->fragment_uri();
+
+  if (!vfs_->is_dir(fragment_uri))
+    return Status::StorageManagerError(
+        "Cannot load fragment metadata; Fragment directory does not exist");
+
+  URI metadata_filename = fragment_uri.join_path(
+      std::string(constants::fragment_metadata_filename) +
+      constants::file_suffix);
+
+  auto buff = (Buffer*)nullptr;
+  RETURN_NOT_OK(vfs_->read_from_file(metadata_filename, &buff));
+  delete buff;
+  return metadata->deserialize(buff);
+}
+
+Status StorageManager::store(FragmentMetadata* metadata) {
+  const URI& fragment_uri = metadata->fragment_uri();
+
+  if (!vfs_->is_dir(fragment_uri))
+    return Status::Ok();
+
+  auto buff = new Buffer();
+  RETURN_NOT_OK_ELSE(metadata->serialize(buff), delete buff);
+
+  URI metadata_filename = fragment_uri.join_path(
+      std::string(constants::fragment_metadata_filename) +
+      constants::file_suffix);
+  Status st =
+      vfs_->write_to_file(metadata_filename, buff->data(), buff->size());
+  delete buff;
+  return st;
+}
+
+Status StorageManager::load(const URI& array_uri, ArraySchema* array_schema) {
+  URI array_schema_uri = array_uri.join_path(constants::array_schema_filename);
+  uint64_t buffer_size;
+  RETURN_NOT_OK(file_size(array_schema_uri, &buffer_size));
+  void* buffer = malloc(buffer_size);
+
+  // TODO: some error handling here
+
+  RETURN_NOT_OK_ELSE(
+      read_from_file(array_schema_uri, 0, buffer, buffer_size), free(buffer));
+  RETURN_NOT_OK_ELSE(
+      array_schema->deserialize(buffer, buffer_size), free(buffer));
+
+  free(buffer);
   return Status::Ok();
 }
 
+Status StorageManager::store(ArraySchema* array_schema) {
+  void* buffer;
+  uint64_t buffer_size;
+  URI array_schema_uri =
+      array_schema->array_uri().join_path(constants::array_schema_filename);
 
+  RETURN_NOT_OK(array_schema->init());
+  RETURN_NOT_OK(array_schema->serialize(buffer, buffer_size));
+  RETURN_NOT_OK_ELSE(delete_file(array_schema_uri), free(buffer));
+  RETURN_NOT_OK_ELSE(
+      write_to_file(array_schema_uri, buffer, buffer_size), free(buffer));
 
-Status StorageManager::array_create(ArraySchema* array_schema) const {
+  free(buffer);
+  return Status::Ok();
+}
+
+bool StorageManager::is_dir(const URI& uri) {
+  return vfs_->is_dir(uri);
+}
+
+bool StorageManager::is_file(const URI& uri) {
+  return vfs_->is_file(uri);
+}
+
+Status StorageManager::create_file(const URI& uri) {
+  return vfs_->create_file(uri);
+}
+
+Status StorageManager::create_dir(const URI& uri) {
+  return vfs_->create_dir(uri);
+}
+
+Status StorageManager::delete_file(const URI& uri) const {
+  return vfs_->delete_file(uri);
+}
+
+Status StorageManager::move_dir(const URI& old_uri, const URI& new_uri) {
+  return vfs_->move_dir(old_uri, new_uri);
+}
+
+Status StorageManager::array_create(ArraySchema* array_schema) {
   // Check array schema
   if (array_schema == nullptr) {
     return LOG_STATUS(
@@ -92,7 +181,7 @@ Status StorageManager::array_create(ArraySchema* array_schema) const {
   RETURN_NOT_OK(vfs_->create_dir(array_uri));
 
   // Store array schema
-  RETURN_NOT_OK(array_schema->store(array_uri));
+  RETURN_NOT_OK(store(array_schema));
 
   // Create array filelock
   URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
@@ -153,7 +242,7 @@ Status StorageManager::query_init(
     uint64_t* buffer_sizes) {
   // Open the array
   std::vector<FragmentMetadata*> fragment_metadata;
-  ArraySchema* array_schema;
+  auto array_schema = (const ArraySchema*)nullptr;
   RETURN_NOT_OK(array_open(
       URI(array_name), mode, subarray, &array_schema, &fragment_metadata));
 
@@ -196,8 +285,7 @@ Status StorageManager::array_close(
   open_array_mtx_.lock();
 
   // Find the open array entry
-  std::map<std::string, OpenArray*>::iterator it =
-      open_arrays_.find(array_uri.to_string());
+  auto it = open_arrays_.find(array_uri.to_string());
 
   // Sanity check
   if (it == open_arrays_.end()) {
@@ -313,9 +401,8 @@ void StorageManager::async_process_query(Query* query) {
 void StorageManager::async_process_queries(int i) {
   while (!async_done_) {
     std::unique_lock<std::mutex> lock(async_mtx_[i]);
-    async_cv_[i].wait(lock, [this, i] {
-      return (async_queue_[i].size() > 0) || async_done_;
-    });
+    async_cv_[i].wait(
+        lock, [this, i] { return !async_queue_[i].empty() || async_done_; });
     if (async_done_)
       break;
     auto query = async_queue_[i].front();
@@ -331,8 +418,7 @@ Status StorageManager::open_array_get_entry(
   open_array_mtx_.lock();
 
   // Find the open array entry
-  std::map<std::string, OpenArray*>::iterator it =
-      open_arrays_.find(array_uri.to_string());
+  auto it = open_arrays_.find(array_uri.to_string());
   // Create and init entry if it does not exist
   if (it == open_arrays_.end()) {
     *open_array = new OpenArray();
@@ -353,8 +439,8 @@ Status StorageManager::open_array_load_schema(
   if (open_array->array_schema() != nullptr)
     return Status::Ok();
 
-  ArraySchema* array_schema = new ArraySchema();
-  RETURN_NOT_OK_ELSE(array_schema->load(array_uri), delete array_schema);
+  auto array_schema = new ArraySchema();
+  RETURN_NOT_OK_ELSE(load(array_uri, array_schema), delete array_schema);
   open_array->set_array_schema(array_schema);
 
   return Status::Ok();
@@ -370,21 +456,20 @@ Status StorageManager::open_array_load_fragment_metadata(
   RETURN_NOT_OK(get_fragment_uris(array_uri, subarray, &fragment_uris));
   sort_fragment_uris(&fragment_uris);
 
-  if (fragment_uris.size() == 0)
+  if (fragment_uris.empty())
     return Status::Ok();
 
   // Load the metadata for each fragment
-  FragmentMetadata* metadata;
   for (auto& uri : fragment_uris) {
     // Find metadata entry in open array
-    metadata = open_array->fragment_metadata_get(uri);
+    auto metadata = open_array->fragment_metadata_get(uri);
 
     // If not found, load metadata and store in open array
     if (metadata == nullptr) {
       bool dense = !vfs_->is_file(uri.join_path(
           std::string("/") + constants::coords + constants::file_suffix));
       metadata = new FragmentMetadata(open_array->array_schema(), dense, uri);
-      RETURN_NOT_OK_ELSE(metadata->load(), delete metadata);
+      RETURN_NOT_OK_ELSE(load(metadata), delete metadata);
       open_array->fragment_metadata_add(metadata);
     }
 
@@ -432,9 +517,9 @@ void StorageManager::sort_fragment_uris(std::vector<URI>* fragment_uris) const {
 
     // Get timestamp in the end of the name after '_'
     assert(fragment_name.find("_") != std::string::npos);
-    t_str = fragment_name.substr(fragment_name.find("_") + 1);
+    t_str = fragment_name.substr(fragment_name.find('_') + 1);
     sscanf(t_str.c_str(), "%lld", (long long int*)&t);
-    t_pos_vec.push_back(std::pair<uint64_t, uint64_t>(t, pos++));
+    t_pos_vec.emplace_back(std::pair<uint64_t, uint64_t>(t, pos++));
   }
 
   // Sort the names based on the timestamps
@@ -780,7 +865,7 @@ Status StorageManager::array_consolidate(const URI& array_uri) {
 
  Status Array::consolidate(
     Fragment*& new_fragment, std::vector<uri::URI>* old_fragments) {
-  /* TODO
+  TODO
 
     // Trivial case
     if (fragments_.size() == 1)

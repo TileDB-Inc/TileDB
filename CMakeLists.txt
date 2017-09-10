@@ -44,7 +44,6 @@ if(APPLE)
 endif()
 
 # Default user definitions
-set(USE_MPI False CACHE BOOL "Enables MPI")
 set(USE_HDFS False CACHE BOOL "Enables HDFS")
 set(TILEDB_VERBOSE False CACHE BOOL "Prints TileDB errors with verbosity")
 set(MAC_ADDRESS_INTERFACE "" 
@@ -75,12 +74,6 @@ include_directories(${BZIP2_INCLUDE_DIR})
 set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${BZIP2_LIBRARIES})
 
 # Find optional library dependencies
-if(USE_MPI)
-  find_package(MPI REQUIRED)
-  include_directories(${MPI_CXX_INCLUDE_PATH})
-  set(TILEDB_LIB_DEPENDENCIES ${TILEDB_LIB_DEPENDENCIES} ${MPI_CXX_LIBRARIES})
-endif()
-
 if(USE_HDFS)
   find_package(HDFS REQUIRED)
   include_directories(${HDFS_INCLUDE_DIR})
@@ -97,15 +90,9 @@ set(CMAKE_CXX_FLAGS_COVERAGE "-DDEBUG -g3 -gdwarf-3 --coverage")
 if(NOT APPLE)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-literal-suffix")
 endif()
-if(USE_MPI)
-  set(CMAKE_CXX_COMPILER ${MPI_CXX_COMPILER})
-endif()
 
 # Add definitions
 add_definitions(-D_FILE_OFFSET_BITS=64)
-if(USE_MPI)
-  add_definitions(-DHAVE_MPI)
-endif()
 if(USE_HDFS)
   add_definitions(-DHAVE_HDFS)
 endif()

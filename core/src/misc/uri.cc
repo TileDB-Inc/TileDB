@@ -59,6 +59,7 @@ URI URI::join_path(const std::string& path) const {
     return URI(uri_ + "/" + path);
 
   // TODO: handle the other file systems here
+  return URI();
 }
 
 std::string URI::last_path_part() const {
@@ -66,6 +67,19 @@ std::string URI::last_path_part() const {
     return uri_.substr(uri_.find_last_of('/') + 1);
 
   // TODO: handle the other file systems here
+  return "";
+}
+
+URI URI::parent() const {
+  if (is_posix()) {
+    uint64_t pos = uri_.find_last_of('/');
+    if (pos == std::string::npos)
+      return URI();
+    return uri_.substr(0, pos);
+  }
+
+  // TODO: handle the other file systems here
+  return URI();
 }
 
 std::string URI::to_string() const {

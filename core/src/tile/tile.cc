@@ -115,20 +115,6 @@ Status Tile::alloc(uint64_t size) {
   return Status::Ok();
 }
 
-Status Tile::mmap(
-    const uri::URI& filename, uint64_t tile_size, uint64_t offset) {
-  // Create new buffer
-  delete buffer_;
-  buffer_ = new Buffer();
-
-  Status st = buffer_->mmap(filename, tile_size, offset, !stores_offsets_);
-
-  if (st.ok())
-    tile_size_ = tile_size;
-
-  return st;
-}
-
 Status Tile::read(void* buffer, uint64_t nbytes) {
   if (buffer_ == nullptr)
     return LOG_STATUS(

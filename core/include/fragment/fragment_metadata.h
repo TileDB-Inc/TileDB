@@ -91,16 +91,13 @@ class FragmentMetadata {
   int64_t tile_num() const;
 
   /** Returns the tile offsets. */
-  // TODO: use either uint64_t or int64_t
-  const std::vector<std::vector<off_t>>& tile_offsets() const;
+  const std::vector<std::vector<uint64_t>>& tile_offsets() const;
 
   /** Returns the variable tile offsets. */
-  // TODO: use either uint64_t or int64_t
-  const std::vector<std::vector<off_t>>& tile_var_offsets() const;
+  const std::vector<std::vector<uint64_t>>& tile_var_offsets() const;
 
   /** Returns the variable tile sizes. */
-  // TODO: use either uint64_t or int64_t
-  const std::vector<std::vector<size_t>>& tile_var_sizes() const;
+  const std::vector<std::vector<uint64_t>>& tile_var_sizes() const;
 
   /* ********************************* */
   /*             MUTATORS              */
@@ -131,7 +128,7 @@ class FragmentMetadata {
    *     offset will be expanded. It is practically the last tile size.
    * @return void
    */
-  void append_tile_offset(int attribute_id, size_t step);
+  void append_tile_offset(int attribute_id, uint64_t step);
 
   /**
    * Appends a variable tile offset for the input attribute.
@@ -142,7 +139,7 @@ class FragmentMetadata {
    *     offset will be expanded. It is practically the last variable tile size.
    * @return void
    */
-  void append_tile_var_offset(int attribute_id, size_t step);
+  void append_tile_var_offset(int attribute_id, uint64_t step);
 
   /**
    * Appends a variable tile size for the input attribute.
@@ -151,14 +148,14 @@ class FragmentMetadata {
    * @param size The size to be appended.
    * @return void
    */
-  void append_tile_var_size(int attribute_id, size_t size);
+  void append_tile_var_size(int attribute_id, uint64_t size);
 
   /**
    * Finalizes fragment metadata, properly flushing them to the disk.
    *
    * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
    */
-  Status flush();
+  Status serialize(Buffer* buf);
 
   /**
    * Initializes the fragment metadata structures.
@@ -174,7 +171,7 @@ class FragmentMetadata {
    *
    * @return TILEDB_BK_OK for success, and TILEDB_OK_ERR for error.
    */
-  Status load();
+  Status deserialize(Buffer* buf);
 
   /**
    * Simply sets the number of cells for the last tile.
@@ -216,10 +213,10 @@ class FragmentMetadata {
   std::vector<void*> mbrs_;
 
   /** The offsets of the next tile for each attribute. */
-  std::vector<off_t> next_tile_offsets_;
+  std::vector<uint64_t> next_tile_offsets_;
 
   /** The offsets of the next variable tile for each attribute. */
-  std::vector<off_t> next_tile_var_offsets_;
+  std::vector<uint64_t> next_tile_var_offsets_;
 
   /**
    * The non-empty domain in which the fragment is constrained. Note that the
@@ -231,19 +228,19 @@ class FragmentMetadata {
    * The tile offsets in their corresponding attribute files. Meaningful only
    * when there is compression.
    */
-  std::vector<std::vector<off_t>> tile_offsets_;
+  std::vector<std::vector<uint64_t>> tile_offsets_;
 
   /**
    * The variable tile offsets in their corresponding attribute files.
    * Meaningful only for variable-sized tiles.
    */
-  std::vector<std::vector<off_t>> tile_var_offsets_;
+  std::vector<std::vector<uint64_t>> tile_var_offsets_;
 
   /**
    * The sizes of the uncompressed variable tiles.
    * Meaningful only when there is compression for variable tiles.
    */
-  std::vector<std::vector<size_t>> tile_var_sizes_;
+  std::vector<std::vector<uint64_t>> tile_var_sizes_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

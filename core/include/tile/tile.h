@@ -161,16 +161,6 @@ class Tile {
     return offset_;
   }
 
-  /**
-   * Memory-maps a region in a file.
-   *
-   * @param filename The file to be mmap-ed.
-   * @param tile_size The tile size.
-   * @param offset The offset in the file where the mmap begins.
-   * @return Status.
-   */
-  Status mmap(const URI& filename, uint64_t tile_size, uint64_t offset);
-
   /** Reads from the tile into the input buffer *nbytes*. */
   Status read(void* buffer, uint64_t nbytes);
 

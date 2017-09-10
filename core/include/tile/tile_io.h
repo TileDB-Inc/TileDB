@@ -33,11 +33,14 @@
 #ifndef TILEDB_TILE_IO_H
 #define TILEDB_TILE_IO_H
 
-#include <uri.h>
 #include "attribute.h"
+#include "storage_manager.h"
 #include "tile.h"
+#include "uri.h"
 
 namespace tiledb {
+
+class StorageManager;
 
 /** Handles IO (reading/writing) for tiles. */
 class TileIO {
@@ -55,7 +58,7 @@ class TileIO {
    * @param config The config object.
    * @param attr_filename The name of the file that stores attribute data.
    */
-  TileIO(const URI& attr_filename);
+  TileIO(StorageManager* storage_manager, const URI& attr_filename);
 
   /** Destructor. */
   ~TileIO();
@@ -65,7 +68,7 @@ class TileIO {
   /* ********************************* */
 
   /** Retrieves the size of the attribute file. */
-  Status file_size(off_t* size) const;
+  Status file_size(uint64_t* size) const;
 
   /**
    * Reads into a tile from the attribute file.
@@ -111,14 +114,16 @@ class TileIO {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The attribute file name. */
-  URI attr_filename_;
+  /** The attribute URI. */
+  URI attr_uri_;
 
   /**
    * An internal buffer used to facilitate compression/decompression (or
    * other future filters).
    */
   Buffer* buffer_;
+
+  StorageManager* storage_manager_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

@@ -57,17 +57,21 @@ class VFS {
   /*               API                 */
   /* ********************************* */
 
+  Status sync(const URI& uri) const;
+
   /**
    * Returns the absolute path of the input string (mainly useful for
    * posix URI's).
    */
-  std::string abs_path(const std::string& path) const;
+  static std::string abs_path(const std::string& path);
 
   /** Creates a directory. */
   Status create_dir(const URI& uri) const;
 
   /** Creates an empty file. */
   Status create_file(const URI& uri) const;
+
+  Status delete_file(const URI& uri) const;
 
   Status filelock_lock(const URI& uri, int* fd, bool shared) const;
 
@@ -82,6 +86,18 @@ class VFS {
 
   /** Retrieves all the URIs that have the first input as parent. */
   Status ls(const URI& parent, std::vector<URI>* uris) const;
+
+  Status move_dir(const URI& old_uri, const URI& new_uri);
+
+  Status read_from_file(const URI& uri, Buffer** buff);
+
+  Status read_from_file(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t length) const;
+
+  Status write_to_file(
+      const URI& uri, const void* buffer, uint64_t buffer_size) const;
+
+  Status file_size(const URI& uri, uint64_t* size) const;
 
  private:
   /* ********************************* */

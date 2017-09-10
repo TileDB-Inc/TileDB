@@ -167,7 +167,7 @@ const char* compressor_str(Compressor compressor);
  * @param frag fragment path string
  * @return Status
  */
-Status delete_fragment(const URI& frag);
+// TODO Status delete_fragment(const URI& frag);
 
 /**
  * Returns the parent path of the input path.
@@ -175,7 +175,7 @@ Status delete_fragment(const URI& frag);
  * @param pth The input path.
  * @return The parent path of the input path.
  */
-std::string parent_path(const std::string& dir);
+// TODO: remove std::string parent_path(const std::string& dir);
 
 /**
  * Returns the size in bytes of the input datatype
@@ -276,9 +276,9 @@ bool intersect(const std::vector<T>& v1, const std::vector<T>& v2);
  * @param dir The directory to be checked.
  * @return *true* if the directory is an array, and *false* otherwise.
  */
-bool is_array(const std::string& dir);
+// TODO bool is_array(const std::string& dir);
 
-bool is_array(const URI& uri);
+// TODO bool is_array(const URI& uri);
 
 /**
  * Checks if one range is fully contained in another.
@@ -298,7 +298,7 @@ bool is_contained(const T* range_A, const T* range_B, int dim_num);
  * @param dir The directory to be checked.
  * @return *true* if the directory is a fragment, and *false* otherwise.
  */
-bool is_fragment(const std::string& dir);
+// TODO bool is_fragment(const std::string& dir);
 
 /**
  * Checks if the input directory is a group.
@@ -306,16 +306,16 @@ bool is_fragment(const std::string& dir);
  * @param dir The directory to be checked.
  * @return *true* if the directory is a group, and *false* otherwise.
  */
-bool is_group(const std::string& dir);
+// TODO bool is_group(const std::string& dir);
 
-bool is_group(const URI& uri);
+// TODO bool is_group(const URI& uri);
 
 /**
  * Determine if a given path is a array schema
  * @param path
  * @return bool
  */
-bool is_array_schema(const std::string& path);
+// TODO bool is_array_schema(const std::string& path);
 
 /**
  * Determine if a given path is a consolidation lock file
@@ -323,7 +323,7 @@ bool is_array_schema(const std::string& path);
  * @param path  filesystem path
  * @return bool
  */
-bool is_consolidation_lock(const std::string& path);
+// TODO bool is_consolidation_lock(const std::string& path);
 
 /** Returns *true* if the input string is a positive (>0) integer number. */
 bool is_positive_integer(const char* s);

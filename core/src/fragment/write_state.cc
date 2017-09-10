@@ -41,6 +41,7 @@
 #include "const_buffer.h"
 #include "logger.h"
 #include "posix_filesystem.h"
+#include "query.h"
 #include "tile.h"
 #include "utils.h"
 #include "write_state.h"
@@ -55,9 +56,10 @@ WriteState::WriteState(const Fragment* fragment, FragmentMetadata* bookkeeping)
     : metadata_(bookkeeping)
     , fragment_(fragment) {
   // For easy reference
-  const ArraySchema* array_schema = fragment->array()->array_schema();
+  const ArraySchema* array_schema = fragment->query()->array_schema();
   int attribute_num = array_schema->attribute_num();
   uint64_t coords_size = array_schema->coords_size();
+  auto query = fragment->query();
 
   // Initialize the number of cells written in the current tile
   tile_cell_num_.resize(attribute_num + 1);
@@ -70,7 +72,8 @@ WriteState::WriteState(const Fragment* fragment, FragmentMetadata* bookkeeping)
     bool var_size = array_schema->var_size(i);
     uint64_t cell_size =
         (var_size) ? array_schema->type_size(i) : array_schema->cell_size(i);
-    tile_io_.emplace_back(new TileIO(config, fragment_->attr_uri(i)));
+    tile_io_.emplace_back(
+        new TileIO(query->storage_manager(), fragment_->attr_uri(i)));
     tiles_.emplace_back(new Tile(
         attr->type(),
         attr->compressor(),
@@ -85,7 +88,8 @@ WriteState::WriteState(const Fragment* fragment, FragmentMetadata* bookkeeping)
           attr->compression_level(),
           fragment_->tile_size(i),
           cell_size));
-      tile_io_var_.emplace_back(new TileIO(config, fragment_->attr_var_uri(i)));
+      tile_io_var_.emplace_back(
+          new TileIO(query->storage_manager(), fragment_->attr_var_uri(i)));
     } else {
       tiles_var_.emplace_back(nullptr);
       tile_io_var_.emplace_back(nullptr);
@@ -98,7 +102,8 @@ WriteState::WriteState(const Fragment* fragment, FragmentMetadata* bookkeeping)
       dim->compression_level(),
       fragment_->tile_size(array_schema->attribute_num()),
       array_schema->coords_size()));
-  tile_io_.emplace_back(new TileIO(config, fragment_->coords_uri()));
+  tile_io_.emplace_back(
+      new TileIO(query->storage_manager(), fragment_->coords_uri()));
 
   // Initialize the current size of the variable attribute file
   buffer_var_offsets_.resize(attribute_num);
@@ -140,7 +145,7 @@ WriteState::~WriteState() {
 
 Status WriteState::finalize() {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const ArraySchema* array_schema = fragment_->query()->array_schema();
   int attribute_num = array_schema->attribute_num();
 
   // Write last tile (applicable only to the sparse case)
@@ -156,71 +161,28 @@ Status WriteState::finalize() {
 
 Status WriteState::sync() {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const ArraySchema* array_schema = fragment_->query()->array_schema();
   int attribute_num = array_schema->attribute_num();
-  const std::vector<int>& attribute_ids =
-      fragment_->array()->query_->attribute_ids();
-  IOMethod write_method = fragment_->array()->config()->write_method();
-#ifdef HAVE_MPI
-  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
-#endif
-  std::string filename;
+  const std::vector<int>& attribute_ids = fragment_->query()->attribute_ids();
+  auto storage_manager = fragment_->query()->storage_manager();
 
   // Sync all attributes
   for (int attribute_id : attribute_ids) {
     // For all attributes
-    if (attribute_id == attribute_num)
-      filename = fragment_->coords_uri().to_posix_path();
-    else
-      filename = fragment_->attr_uri(attribute_id).to_posix_path();
-    if (write_method == IOMethod::WRITE) {
-      RETURN_NOT_OK(vfs::sync(filename.c_str()));
-    } else if (write_method == IOMethod::MPI) {
-#ifdef HAVE_MPI
-      RETURN_NOT_OK(vfs::mpi_io_sync(mpi_comm, filename.c_str()));
-#else
-      // Error: MPI not supported
-      return LOG_STATUS(
-          Status::WriteStateError("Cannot sync; MPI not supported"));
-#endif
+    if (attribute_id == attribute_num) {
+      RETURN_NOT_OK(storage_manager->sync(fragment_->coords_uri()));
     } else {
-      assert(0);
+      RETURN_NOT_OK(storage_manager->sync(fragment_->attr_uri(attribute_id)));
     }
 
     // Only for variable-size attributes (they have an extra file)
-    if (array_schema->var_size(attribute_id)) {
-      filename = fragment_->attr_var_uri(attribute_id).to_posix_path();
-      if (write_method == IOMethod::WRITE) {
-        RETURN_NOT_OK(vfs::sync(filename.c_str()));
-      } else if (write_method == IOMethod::MPI) {
-#ifdef HAVE_MPI
-        RETURN_NOT_OK(vfs::mpi_io_sync(mpi_comm, filename.c_str()));
-#else
-        // Error: MPI not supported
-        return LOG_STATUS(
-            Status::WriteStateError("Cannot sync; MPI not supported"));
-#endif
-      } else {
-        assert(0);
-      }
-    }
+    if (array_schema->var_size(attribute_id))
+      RETURN_NOT_OK(
+          storage_manager->sync(fragment_->attr_var_uri(attribute_id)));
   }
 
   // Sync fragment directory
-  filename = fragment_->fragment_uri().to_posix_path();
-  if (write_method == IOMethod::WRITE) {
-    RETURN_NOT_OK(vfs::sync(filename.c_str()));
-  } else if (write_method == IOMethod::MPI) {
-#ifdef HAVE_MPI
-    RETURN_NOT_OK(vfs::mpi_io_sync(mpi_comm, filename.c_str()));
-#else
-    // Error: MPI not supported
-    return LOG_STATUS(
-        Status::WriteStateError("Cannot sync; MPI not supported"));
-#endif
-  } else {
-    assert(0);
-  }
+  RETURN_NOT_OK(storage_manager->sync(fragment_->fragment_uri()));
 
   // Success
   return Status::Ok();
@@ -228,85 +190,49 @@ Status WriteState::sync() {
 
 Status WriteState::sync_attribute(const std::string& attribute) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const ArraySchema* array_schema = fragment_->query()->array_schema();
   int attribute_num = array_schema->attribute_num();
-  IOMethod write_method = fragment_->array()->config()->write_method();
-#ifdef HAVE_MPI
-  MPI_Comm* mpi_comm = fragment_->array()->config()->mpi_comm();
-#endif
+  auto storage_manager = fragment_->query()->storage_manager();
 
   int attribute_id;
   RETURN_NOT_OK(array_schema->attribute_id(attribute, &attribute_id));
   std::string filename;
-  if (attribute_id == attribute_num)
-    filename = fragment_->coords_uri().to_posix_path();
-  else
-    filename = fragment_->attr_uri(attribute_id).to_posix_path();
-  if (write_method == IOMethod::WRITE) {
-    RETURN_NOT_OK(vfs::sync(filename.c_str()));
-  } else if (write_method == IOMethod::MPI) {
-#ifdef HAVE_MPI
-    RETURN_NOT_OK(vfs::mpi_io_sync(mpi_comm, filename.c_str()));
-#else
-    // Error: MPI not supported
-    return LOG_STATUS(
-        Status::WriteStateError("Cannot sync attribute; MPI not supported"));
-#endif
+  if (attribute_id == attribute_num) {
+    RETURN_NOT_OK(storage_manager->sync(fragment_->coords_uri()));
   } else {
-    assert(0);
+    RETURN_NOT_OK(storage_manager->sync(fragment_->attr_uri(attribute_id)));
   }
+
   // Only for variable-size attributes (they have an extra file)
-  if (array_schema->var_size(attribute_id)) {
-    filename = fragment_->attr_var_uri(attribute_id).to_posix_path();
-    if (write_method == IOMethod::WRITE) {
-      RETURN_NOT_OK(vfs::sync(filename.c_str()));
-    } else if (write_method == IOMethod::MPI) {
-#ifdef HAVE_MPI
-      RETURN_NOT_OK(vfs::mpi_io_sync(mpi_comm, filename.c_str()));
-#else
-      // Error: MPI not supported
-      return LOG_STATUS(
-          Status::WriteStateError("Cannot sync attribute; MPI not supported"));
-#endif
-    } else {
-      assert(0);
-    }
-  }
+  if (array_schema->var_size(attribute_id))
+    RETURN_NOT_OK(storage_manager->sync(fragment_->attr_var_uri(attribute_id)));
+
   // Sync fragment directory
-  filename = fragment_->fragment_uri().to_posix_path();
-  if (write_method == IOMethod::WRITE) {
-    RETURN_NOT_OK(vfs::sync(filename.c_str()));
-  } else if (write_method == IOMethod::MPI) {
-#ifdef HAVE_MPI
-    RETURN_NOT_OK(vfs::mpi_io_sync(mpi_comm, filename.c_str()));
-#else
-    // Error: MPI not supported
-    return LOG_STATUS(
-        Status::WriteStateError("Cannot sync attribute; MPI not supported"));
-#endif
-  } else {
-    assert(0);
-  }
+  RETURN_NOT_OK(storage_manager->sync(fragment_->fragment_uri()));
+
   // Success
   return Status::Ok();
 }
 
-Status WriteState::write(const void** buffers, const uint64_t* buffer_sizes) {
+Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
   // Create fragment directory if it does not exist
-  std::string fragment_name = fragment_->fragment_uri().to_posix_path();
-  if (!vfs::is_dir(fragment_name))
-    RETURN_NOT_OK(vfs::create_dir(fragment_name));
+  const URI& fragment_uri = fragment_->fragment_uri();
+  auto storage_manager = fragment_->query()->storage_manager();
+  if (!storage_manager->is_dir(fragment_uri)) {
+    RETURN_NOT_OK(storage_manager->create_dir(fragment_uri));
+    RETURN_NOT_OK(storage_manager->create_file(fragment_uri.join_path(
+        std::string(constants::fragment_filename) + constants::file_suffix)));
+  }
 
-  QueryMode mode = fragment_->array()->query_->mode();
+  QueryMode mode = fragment_->query()->mode();
 
   // Dispatch the proper write command
   if (mode == QueryMode::WRITE || mode == QueryMode::WRITE_SORTED_COL ||
       mode == QueryMode::WRITE_SORTED_ROW) {  // SORTED
     // For easy reference
-    const ArraySchema* array_schema = fragment_->array()->array_schema();
-    const std::vector<int>& attribute_ids =
-        fragment_->array()->query_->attribute_ids();
-    int attribute_id_num = attribute_ids.size();
+    const ArraySchema* array_schema = fragment_->query()->array_schema();
+    const std::vector<int>& attribute_ids = fragment_->query()->attribute_ids();
+    auto attribute_id_num = (int)attribute_ids.size();
 
     // Write each attribute individually
     int buffer_i = 0;
@@ -328,12 +254,13 @@ Status WriteState::write(const void** buffers, const uint64_t* buffer_sizes) {
 
     // Success
     return Status::Ok();
-  } else if (mode == QueryMode::WRITE_UNSORTED) {  // UNSORTED
-    return write_sparse_unsorted(buffers, buffer_sizes);
-  } else {
-    return LOG_STATUS(
-        Status::WriteStateError("Cannot write to fragment; Invalid mode"));
   }
+
+  if (mode == QueryMode::WRITE_UNSORTED)  // UNSORTED
+    return write_sparse_unsorted(buffers, buffer_sizes);
+
+  return LOG_STATUS(
+      Status::WriteStateError("Cannot write to fragment; Invalid mode"));
 }
 
 /* ****************************** */
@@ -343,10 +270,10 @@ Status WriteState::write(const void** buffers, const uint64_t* buffer_sizes) {
 template <class T>
 void WriteState::expand_mbr(const T* coords) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const ArraySchema* array_schema = fragment_->query()->array_schema();
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
-  T* mbr = static_cast<T*>(mbr_);
+  auto mbr = static_cast<T*>(mbr_);
 
   // Initialize MBR
   if (tile_cell_num_[attribute_num] == 0) {
@@ -364,7 +291,7 @@ void WriteState::sort_cell_pos(
     uint64_t buffer_size,
     std::vector<int64_t>& cell_pos) const {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const ArraySchema* array_schema = fragment_->query()->array_schema();
   Datatype coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
@@ -396,10 +323,10 @@ void WriteState::sort_cell_pos(
     uint64_t buffer_size,
     std::vector<int64_t>& cell_pos) const {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const ArraySchema* array_schema = fragment_->query()->array_schema();
   int dim_num = array_schema->dim_num();
   uint64_t coords_size = array_schema->coords_size();
-  int64_t buffer_cell_num = buffer_size / coords_size;
+  uint64_t buffer_cell_num = buffer_size / coords_size;
   Layout cell_order = array_schema->cell_order();
   auto buffer_T = static_cast<const T*>(buffer);
 
@@ -447,7 +374,7 @@ void WriteState::sort_cell_pos(
 
 void WriteState::update_bookkeeping(const void* buffer, uint64_t buffer_size) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const ArraySchema* array_schema = fragment_->query()->array_schema();
   Datatype coords_type = array_schema->coords_type();
 
   // Invoke the proper templated function
@@ -480,12 +407,12 @@ void WriteState::update_bookkeeping(const void* buffer, uint64_t buffer_size) {
     return;
 
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const ArraySchema* array_schema = fragment_->query()->array_schema();
   int attribute_num = array_schema->attribute_num();
   int dim_num = array_schema->dim_num();
   int64_t capacity = array_schema->capacity();
   uint64_t coords_size = array_schema->coords_size();
-  int64_t buffer_cell_num = buffer_size / coords_size;
+  uint64_t buffer_cell_num = buffer_size / coords_size;
   auto buffer_T = static_cast<const T*>(buffer);
   int64_t& tile_cell_num = tile_cell_num_[attribute_num];
 
@@ -518,20 +445,20 @@ void WriteState::update_bookkeeping(const void* buffer, uint64_t buffer_size) {
 }
 
 Status WriteState::write_attr(
-    int attribute_id, const void* buffer, uint64_t buffer_size) {
+    int attribute_id, void* buffer, uint64_t buffer_size) {
   // Trivial case
   if (buffer_size == 0)
     return Status::Ok();
 
   // Update metadata in the case of sparse fragment coordinates
-  if (attribute_id == fragment_->array()->array_schema()->attribute_num())
+  if (attribute_id == fragment_->query()->array_schema()->attribute_num())
     update_bookkeeping(buffer, buffer_size);
 
   // Preparation
   auto buf = new ConstBuffer(buffer, buffer_size);
 
-  Tile* tile = tiles_[attribute_id];
-  TileIO* tile_io = tile_io_[attribute_id];
+  auto tile = tiles_[attribute_id];
+  auto tile_io = tile_io_[attribute_id];
 
   // Fill tiles and dispatch them for writing
   uint64_t bytes_written;
@@ -551,9 +478,9 @@ Status WriteState::write_attr(
 }
 
 Status WriteState::write_attr_last(int attribute_id) {
-  Tile* tile = tiles_[attribute_id];
+  auto tile = tiles_[attribute_id];
   assert(!tile->empty());
-  TileIO* tile_io = tile_io_[attribute_id];
+  auto tile_io = tile_io_[attribute_id];
 
   // Fill tiles and dispatch them for writing
   uint64_t bytes_written;
@@ -566,9 +493,9 @@ Status WriteState::write_attr_last(int attribute_id) {
 
 Status WriteState::write_attr_var(
     int attribute_id,
-    const void* buffer,
+    void* buffer,
     uint64_t buffer_size,
-    const void* buffer_var,
+    void* buffer_var,
     uint64_t buffer_var_size) {
   // Trivial case
   if (buffer_size == 0 || buffer_var_size == 0)
@@ -579,10 +506,10 @@ Status WriteState::write_attr_var(
 
   uint64_t& buffer_var_offset = buffer_var_offsets_[attribute_id];
 
-  Tile* tile = tiles_[attribute_id];
-  Tile* tile_var = tiles_var_[attribute_id];
-  TileIO* tile_io = tile_io_[attribute_id];
-  TileIO* tile_io_var = tile_io_var_[attribute_id];
+  auto tile = tiles_[attribute_id];
+  auto tile_var = tiles_var_[attribute_id];
+  auto tile_io = tile_io_[attribute_id];
+  auto tile_io_var = tile_io_var_[attribute_id];
 
   // Fill tiles and dispatch them for writing
   uint64_t bytes_written, bytes_written_var, bytes_to_write_var;
@@ -618,10 +545,10 @@ Status WriteState::write_attr_var(
 }
 
 Status WriteState::write_attr_var_last(int attribute_id) {
-  Tile* tile = tiles_[attribute_id];
-  Tile* tile_var = tiles_var_[attribute_id];
-  TileIO* tile_io = tile_io_[attribute_id];
-  TileIO* tile_io_var = tile_io_var_[attribute_id];
+  auto tile = tiles_[attribute_id];
+  auto tile_var = tiles_var_[attribute_id];
+  auto tile_io = tile_io_[attribute_id];
+  auto tile_io_var = tile_io_var_[attribute_id];
 
   // Fill tiles and dispatch them for writing
   uint64_t bytes_written, bytes_written_var;
@@ -638,7 +565,7 @@ Status WriteState::write_attr_var_last(int attribute_id) {
 
 Status WriteState::write_last_tile() {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const ArraySchema* array_schema = fragment_->query()->array_schema();
   int attribute_num = array_schema->attribute_num();
 
   // Send last MBR, bounding coordinates and tile cell number to metadata
@@ -659,16 +586,16 @@ Status WriteState::write_last_tile() {
 }
 
 Status WriteState::write_sparse_unsorted(
-    const void** buffers, const uint64_t* buffer_sizes) {
+    void** buffers, uint64_t* buffer_sizes) {
   // For easy reference
-  const Array* array = fragment_->array();
-  const ArraySchema* array_schema = array->array_schema();
-  const std::vector<int>& attribute_ids = array->query_->attribute_ids();
-  int attribute_id_num = (int)attribute_ids.size();
+  auto query = fragment_->query();
+  const ArraySchema* array_schema = query->array_schema();
+  const std::vector<int>& attribute_ids = query->attribute_ids();
+  auto attribute_id_num = (int)attribute_ids.size();
 
   // Find the coordinates buffer
   int coords_buffer_i = -1;
-  RETURN_NOT_OK(array->query_->coords_buffer_i(&coords_buffer_i));
+  RETURN_NOT_OK(query->coords_buffer_i(&coords_buffer_i));
 
   // Sort cell positions
   std::vector<int64_t> cell_pos;
@@ -703,11 +630,11 @@ Status WriteState::write_sparse_unsorted(
 
 Status WriteState::write_sparse_unsorted_attr(
     int attribute_id,
-    const void* buffer,
+    void* buffer,
     uint64_t buffer_size,
     const std::vector<int64_t>& cell_pos) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const ArraySchema* array_schema = fragment_->query()->array_schema();
   uint64_t cell_size = array_schema->cell_size(attribute_id);
 
   // Check number of cells in buffer
@@ -754,13 +681,13 @@ Status WriteState::write_sparse_unsorted_attr(
 
 Status WriteState::write_sparse_unsorted_attr_var(
     int attribute_id,
-    const void* buffer,
+    void* buffer,
     uint64_t buffer_size,
-    const void* buffer_var,
+    void* buffer_var,
     uint64_t buffer_var_size,
     const std::vector<int64_t>& cell_pos) {
   // For easy reference
-  const ArraySchema* array_schema = fragment_->array()->array_schema();
+  const ArraySchema* array_schema = fragment_->query()->array_schema();
   uint64_t cell_size = constants::cell_var_offset_size;
   uint64_t cell_var_size;
   auto buffer_s = static_cast<const uint64_t*>(buffer);

@@ -60,6 +60,8 @@ class URI {
 
   std::string last_path_part() const;
 
+  URI parent() const;
+
   std::string to_string() const;
 
   std::string to_path() const;

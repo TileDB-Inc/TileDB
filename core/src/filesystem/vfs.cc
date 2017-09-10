@@ -48,7 +48,15 @@ VFS::~VFS() = default;
 /*                API                */
 /* ********************************* */
 
-std::string VFS::abs_path(const std::string& path) const {
+Status VFS::sync(const URI& uri) const {
+  if (uri.is_posix())
+    return posix::sync(uri.to_path());
+
+  // TODO: Handle all other file systems here !
+  return Status::Ok();
+}
+
+std::string VFS::abs_path(const std::string& path) {
   if (URI::is_posix(path))
     return posix::abs_path(path);
 
@@ -67,6 +75,14 @@ Status VFS::create_dir(const URI& uri) const {
 Status VFS::create_file(const URI& uri) const {
   if (uri.is_posix())
     return posix::create_file(uri.to_path());
+
+  // TODO: Handle all other file systems here !
+  return Status::Ok();
+}
+
+Status VFS::delete_file(const URI& uri) const {
+  if (uri.is_posix())
+    return posix::delete_file(uri.to_path());
 
   // TODO: Handle all other file systems here !
   return Status::Ok();
@@ -111,6 +127,48 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
     for (auto& file : files)
       uris->push_back(URI(file));
   }
+
+  // TODO: Handle all other file systems here !
+  return Status::Ok();
+}
+
+Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
+  if (old_uri.is_posix() && new_uri.is_posix())
+    return posix::move_dir(old_uri.to_path(), new_uri.to_path());
+
+  // TODO: Handle all other file systems here !
+  return Status::Ok();
+}
+
+Status VFS::read_from_file(const URI& uri, Buffer** buff) {
+  if (uri.is_posix())
+    return posix::read_from_file(uri.to_path(), buff);
+
+  // TODO: Handle all other file systems here !
+  return Status::Ok();
+}
+
+Status VFS::read_from_file(
+    const URI& uri, uint64_t offset, void* buffer, uint64_t length) const {
+  if (uri.is_posix())
+    return posix::read_from_file(uri.to_path(), offset, buffer, length);
+
+  // TODO: Handle all other file systems here !
+  return Status::Ok();
+}
+
+Status VFS::write_to_file(
+    const URI& uri, const void* buffer, uint64_t buffer_size) const {
+  if (uri.is_posix())
+    return posix::write_to_file(uri.to_path(), buffer, buffer_size);
+
+  // TODO: Handle all other file systems here !
+  return Status::Ok();
+}
+
+Status VFS::file_size(const URI& uri, uint64_t* size) const {
+  if (uri.is_posix())
+    return posix::file_size(uri.to_path(), size);
 
   // TODO: Handle all other file systems here !
   return Status::Ok();
