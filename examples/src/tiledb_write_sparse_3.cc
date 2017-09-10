@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_write_sparse_3.cc
+ * @file   tiledb_write_sparse_3.cc
  *
  * @section LICENSE
  *
@@ -37,45 +37,45 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Initialize array
-  tiledb_array_t* tiledb_array;
-  tiledb_array_init(
-      ctx,                                // Context
-      &tiledb_array,                             // Array object
-      "my_group/sparse_arrays/my_array_B",       // Array name
-      TILEDB_ARRAY_WRITE_UNSORTED,               // Mode
-      nullptr,                                   // Entire domain
-      nullptr,                                   // All attributes
-      0);                                        // Number of attributes
-
-  // Prepare cell buffers
+   // Prepare cell buffers
   int buffer_a1[] = { 7, 5, 0, 6, 4, 3, 1, 2 };
-  size_t buffer_a2[] = { 0, 4, 6, 7, 10, 11, 15, 17 };
-  const char buffer_var_a2[] = "hhhhffagggeddddbbccc";
-  float buffer_a3[] = 
+  uint64_t buffer_a2[] = { 0, 4, 6, 7, 10, 11, 15, 17 };
+  char buffer_var_a2[] = "hhhhffagggeddddbbccc";
+  float buffer_a3[] =
   {
       7.1,  7.2,  5.1,  5.2,  0.1,  0.2,  6.1,  6.2,
-      4.1,  4.2,  3.1,  3.2,  1.1,  1.2,  2.1,  2.2 
+      4.1,  4.2,  3.1,  3.2,  1.1,  1.2,  2.1,  2.2
   };
   int64_t buffer_coords[] = { 3, 4, 4, 2, 1, 1, 3, 3, 3, 1, 2, 3, 1, 2, 1, 4 };
-  const void* buffers[] = 
+  void* buffers[] =
       { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
-  size_t buffer_sizes[] = 
-  { 
-      sizeof(buffer_a1),  
+  uint64_t buffer_sizes[] =
+  {
+      sizeof(buffer_a1),
       sizeof(buffer_a2),
       sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
       sizeof(buffer_a3),
       sizeof(buffer_coords)
   };
 
-  // Write to array
-  tiledb_array_write(tiledb_array, buffers, buffer_sizes); 
+  // Create query
+  tiledb_query_t* query;
+  tiledb_query_create(
+    ctx,
+    &query,
+    "my_group/sparse_arrays/my_array_B",
+    TILEDB_WRITE_UNSORTED,
+    nullptr,
+    nullptr,
+    0,
+    buffers,
+    buffer_sizes);
 
-  // Finalize array
-  tiledb_array_finalize(tiledb_array);
+  // Submit query
+  tiledb_query_submit(ctx, query);
 
-  // Finalize context
+  // Clean up
+  tiledb_query_free(query);
   tiledb_ctx_free(ctx);
 
   return 0;

@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_consolidate.cc
+ * @file   tiledb_primitive.cc
  *
  * @section LICENSE
  *
@@ -27,24 +27,38 @@
  * 
  * @section DESCRIPTION
  *
- * It shows how to consolidate arrays.
+ * It shows how to initialize/finalize an array, and explore its schema.
  */
 
 #include "tiledb.h"
+#include <cstdio>
+
+// Prints some schema info (you can enhance this to print the entire schema)
+void print_some_array_schema_info(const tiledb_array_schema_t* array_schema);
 
 int main() {
-  // Initialize context with the default configuration parameters
+  /* Initialize context with the default configuration parameters. */
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Consolidate the dense array
-  tiledb_array_consolidate(ctx, "my_group/dense_arrays/my_array_A");
+  // ----- Dense array ----- //
 
-  // Consolidate the sparse array
-  tiledb_array_consolidate(ctx, "my_group/sparse_arrays/my_array_B");
+  // Load array schema when the array is not initialized
+  tiledb_array_schema_t* array_schema;
+  tiledb_array_schema_load(ctx, &array_schema, "my_group/dense_arrays/my_array_A");
+
+  // Print some array schema info
+  print_some_array_schema_info(array_schema);
+
+  // Free array schema
+  tiledb_array_schema_free(array_schema);
 
   // Finalize context
   tiledb_ctx_free(ctx);
 
   return 0;
+}
+
+void print_some_array_schema_info(const tiledb_array_schema_t* array_schema) {
+  // TODO: Create a C API for dumping the array schema
 }

@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_aio_write_dense.cc
+ * @file   tiledb_async_write_dense.cc
  *
  * @section LICENSE
  *
@@ -46,26 +46,15 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Initialize array
-  tiledb_array_t* array;
-  tiledb_array_init(
-      ctx,                                // Context
-      &array,                             // Array object
-      "my_group/dense_arrays/my_array_A",        // Array name
-      TILEDB_ARRAY_WRITE,                        // Mode
-      nullptr,                                   // Entire domain
-      nullptr,                                   // All attributes
-      0);                                        // Number of attributes
-
   // Prepare cell buffers
-  int buffer_a1[] = 
+  int buffer_a1[] =
   {
-      0,  1,  2,  3,                                     // Upper left tile 
+      0,  1,  2,  3,                                     // Upper left tile
       4,  5,  6,  7,                                     // Upper right tile
       8,  9,  10, 11,                                    // Lower left tile
       12, 13, 14, 15                                     // Lower right tile
   };
-  size_t buffer_a2[] = 
+  uint64_t buffer_a2[] =
   {
       0,  1,  3,  6,                                     // Upper left tile
       10, 11, 13, 16,                                    // Upper right tile
@@ -77,7 +66,7 @@ int main() {
       "effggghhhh"                                       // Upper right tile
       "ijjkkkllll"                                       // Lower left tile
       "mnnooopppp";                                      // Lower right tile
-  float buffer_a3[] = 
+  float buffer_a3[] =
   {
       0.1,  0.2,  1.1,  1.2,  2.1,  2.2,  3.1,  3.2,     // Upper left tile
       4.1,  4.2,  5.1,  5.2,  6.1,  6.2,  7.1,  7.2,     // Upper right tile
@@ -85,36 +74,41 @@ int main() {
       12.1, 12.2, 13.1, 13.2, 14.1, 14.2, 15.1, 15.2,    // Lower right tile
   };
   void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
-  size_t buffer_sizes[] = 
-  { 
-      sizeof(buffer_a1),  
+  uint64_t buffer_sizes[] =
+  {
+      sizeof(buffer_a1),
       sizeof(buffer_a2),
       sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
       sizeof(buffer_a3)
   };
 
-  // Prepare AIO request
-  char s[100] = "AIO request completed";
-  tiledb_aio_request_t* aio_request;
-  tiledb_aio_request_create(ctx, &aio_request);
-  tiledb_aio_request_set_array(ctx, aio_request, array);
-  tiledb_aio_request_set_buffers(ctx, aio_request, buffers, buffer_sizes);
-  tiledb_aio_request_set_callback(ctx, aio_request, print_upon_completion, s);
+  // Create query
+  tiledb_query_t* query;
+  tiledb_query_create(
+    ctx,
+    &query,
+    "my_group/dense_arrays/my_array_A",
+    TILEDB_WRITE,
+    nullptr,
+    nullptr,
+    0,
+    buffers,
+    buffer_sizes);
 
-  // Submit request
-  tiledb_array_aio_submit(ctx, aio_request);
+  // Submit query asynchronously
+  char s[100] = "Query completed";
+  tiledb_query_submit_async(ctx, query, print_upon_completion, s);
 
-  // Wait for AIO to complete
-  printf("AIO in progress\n");
-  tiledb_aio_status_t aio_status;
+  // Wait for query to complete
+  printf("Query in progress\n");
+  tiledb_query_status_t status;
   do {
-    tiledb_aio_request_get_status(ctx, aio_request, &aio_status);
-  } while(aio_status != TILEDB_AIO_COMPLETED);
+    tiledb_query_get_status(ctx, query, &status);
+  } while(status != TILEDB_COMPLETED);
 
   // Clean up
-  tiledb_array_finalize(array);
+  tiledb_query_free(query);
   tiledb_ctx_free(ctx);
-  tiledb_aio_request_free(aio_request);
 
   return 0;
 }

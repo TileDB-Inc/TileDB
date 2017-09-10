@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_write_sparse_4.cc
+ * @file   tiledb_update_sparse_2.cc
  *
  * @section LICENSE
  *
@@ -27,12 +27,17 @@
  * 
  * @section DESCRIPTION
  *
- * It shows how to write unsorted cells to a sparse array with two batch writes.
+ * It shows how to update a sparse array, including how to handle
+ * deletions. Observe that this is simply a write operation.
  */
 
 #include "tiledb.h"
 
 int main() {
+  /*
+   *
+  TODO: Handle deletions better
+
   // Initialize context with the default configuration parameters
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
@@ -48,58 +53,41 @@ int main() {
       nullptr,                                   // All attributes
       0);                                        // Number of attributes
 
-  // Prepare cell buffers - #1
-  int buffer_a1[] = { 7, 5, 0 };
-  size_t buffer_a2[] = { 0, 4, 6 };
-  const char buffer_var_a2[] = "hhhhffa";
-  float buffer_a3[] = { 7.1,  7.2,  5.1,  5.2,  0.1,  0.2 };
-  int64_t buffer_coords[] = { 3, 4, 4, 2, 1, 1 };
+
+  // Prepare cell buffers
+  int buffer_a1[] = { 107, TILEDB_EMPTY_INT32, 106, 105 };
+  size_t buffer_a2[] = { 0, 3, 4, 5 };
+  const char buffer_var_a2[] = 
+  { 'y', 'y', 'y', TILEDB_EMPTY_CHAR, 'w', 'v', 'v', 'v', 'v' };
+  float buffer_a3[] = 
+  { 
+    107.1,  107.2,  TILEDB_EMPTY_FLOAT32,  TILEDB_EMPTY_FLOAT32,  
+    106.1,  106.2,  105.1,  105.2 
+  };
+  int64_t buffer_coords[] = { 3, 4, 3, 2, 3, 3, 4, 1 };
   const void* buffers[] = 
       { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
   size_t buffer_sizes[] = 
   { 
       sizeof(buffer_a1),  
       sizeof(buffer_a2),
-      sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
+      sizeof(buffer_var_a2),
       sizeof(buffer_a3),
       sizeof(buffer_coords)
   };
 
-  // Write to array - #1
-  tiledb_array_write(tiledb_array, buffers, buffer_sizes); 
 
-  // Prepare cell buffers - #2
-  int buffer_a1_2[] = { 6, 4, 3, 1, 2 };
-  size_t buffer_a2_2[] = { 0, 3, 4, 8, 10 };
-  const char buffer_var_a2_2[] = "gggeddddbbccc";
-  float buffer_a3_2[] = 
-      { 6.1,  6.2, 4.1,  4.2,  3.1,  3.2,  1.1,  1.2,  2.1,  2.2 };
-  int64_t buffer_coords_2[] = { 3, 3, 3, 1, 2, 3, 1, 2, 1, 4 };
-  const void* buffers_2[] = 
-  { 
-      buffer_a1_2,  
-      buffer_a2_2, 
-      buffer_var_a2_2,  
-      buffer_a3_2, 
-      buffer_coords_2 
-  };
-  size_t buffer_sizes_2[] = 
-  { 
-      sizeof(buffer_a1_2),  
-      sizeof(buffer_a2_2),
-      sizeof(buffer_var_a2_2)-1,  // No need to store the last '\0' character
-      sizeof(buffer_a3_2),
-      sizeof(buffer_coords_2)
-  };
+  // Write to array
+  tiledb_array_write(tiledb_array, buffers, buffer_sizes);
 
-  // Write to array - #2
-  tiledb_array_write(tiledb_array, buffers_2, buffer_sizes_2); 
 
   // Finalize array
   tiledb_array_finalize(tiledb_array);
 
   // Finalize context
   tiledb_ctx_free(ctx);
+
+   */
 
   return 0;
 }

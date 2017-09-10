@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_read_dense_1.cc
+ * @file   tiledb_read_dense_1.cc
  *
  * @section LICENSE
  *
@@ -40,37 +40,15 @@ int main(int argc, char** argv) {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-/*
-  // Create a TileDB configuration
-  tiledb_config_t* config;
-  tiledb_config_create(ctx, &config);
-  tiledb_config_set_read_method(ctx, config, TILEDB_IO_METHOD_READ);
 
-  // Set new config to context
-  tiledb_ctx_set_config(ctx, config);
-
-  // Free config
-  tiledb_config_free(config);
-*/
-
-  // Initialize array
-  tiledb_array_t* tiledb_array;
-  tiledb_array_init(
-      ctx,                                       // Context
-      &tiledb_array,                                    // Array object
-      "my_group/dense_arrays/my_array_A",               // Array name
-      TILEDB_ARRAY_READ,                                // Mode
-      nullptr,                                          // Whole domain
-      nullptr,                                          // All attributes
-      0);                                               // Number of attributes
 
   // Prepare cell buffers 
   int buffer_a1[16];
-  size_t buffer_a2[16];
+  uint64_t buffer_a2[16];
   char buffer_var_a2[40];
   float buffer_a3[32];
   void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
-  size_t buffer_sizes[] = 
+  uint64_t buffer_sizes[] =
   { 
       sizeof(buffer_a1),  
       sizeof(buffer_a2),
@@ -78,8 +56,21 @@ int main(int argc, char** argv) {
       sizeof(buffer_a3)
   };
 
-  // Read from array
-  tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
+  // Create query
+  tiledb_query_t* query;
+  tiledb_query_create(
+    ctx,
+    &query,
+    "my_group/dense_arrays/my_array_A",
+    TILEDB_READ,
+    nullptr,
+    nullptr,
+    0,
+    buffers,
+    buffer_sizes);
+
+  // Submit query
+  tiledb_query_submit(ctx, query);
 
   // Print only non-empty cell values
   int64_t result_num = buffer_sizes[0] / sizeof(int);
@@ -96,10 +87,8 @@ int main(int argc, char** argv) {
     printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
   }
 
-  // Finalize the array
-  tiledb_array_finalize(tiledb_array);
-
-  /* Finalize context. */
+  // Clean up
+  tiledb_query_free(query);
   tiledb_ctx_free(ctx);
 
   return 0;

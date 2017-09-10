@@ -1144,6 +1144,22 @@ int tiledb_query_submit_async(
   return TILEDB_OK;
 }
 
+int tiledb_query_reset_buffers(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    void** buffers,
+    uint64_t* buffer_sizes) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Reset buffers
+  query->query_->set_buffers(buffers, buffer_sizes);
+
+  // Success
+  return TILEDB_OK;
+}
+
 int tiledb_query_get_status(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status) {
   // TODO

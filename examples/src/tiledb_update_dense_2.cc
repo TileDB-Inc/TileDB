@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_primitive.cc
+ * @file   tiledb_update_dense_2.cc
  *
  * @section LICENSE
  *
@@ -27,38 +27,53 @@
  * 
  * @section DESCRIPTION
  *
- * It shows how to initialize/finalize an array, and explore its schema.
+ * It shows how to update a dense array, writing random sparse updates.
  */
 
 #include "tiledb.h"
-#include <cstdio>
-
-// Prints some schema info (you can enhance this to print the entire schema)
-void print_some_array_schema_info(const tiledb_array_schema_t* array_schema);
 
 int main() {
-  /* Initialize context with the default configuration parameters. */
+  // Initialize context with the default configuration parameters
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // ----- Dense array ----- //
+  // Prepare cell buffers
+  int buffer_a1[] = { 211,  213,  212,  208 };
+  uint64_t buffer_a2[] = { 0,  4,  6,  7 };
+  char buffer_var_a2[] = "wwwwyyxu";
+  float buffer_a3[] =
+      { 211.1, 211.2, 213.1, 213.2, 212.1, 212.2, 208.1, 208.2 };
+  int64_t buffer_coords[] = { 4, 2, 3, 4, 3, 3, 3, 1 };
+  void* buffers[] =
+      { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
+  uint64_t buffer_sizes[] =
+  {
+      sizeof(buffer_a1),
+      sizeof(buffer_a2),
+      sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
+      sizeof(buffer_a3),
+      sizeof(buffer_coords)
+  };
 
-  // Load array schema when the array is not initialized
-  tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_load(ctx, &array_schema, "my_group/dense_arrays/my_array_A");
+  // Create query
+  tiledb_query_t* query;
+  tiledb_query_create(
+    ctx,
+    &query,
+    "my_group/dense_arrays/my_array_A",
+    TILEDB_WRITE_UNSORTED,
+    nullptr,
+    nullptr,
+    0,
+    buffers,
+    buffer_sizes);
 
-  // Print some array schema info
-  print_some_array_schema_info(array_schema);
+  // Submit query
+  tiledb_query_submit(ctx, query);
 
-  // Free array schema
-  tiledb_array_schema_free(array_schema);
-
-  // Finalize context
+  // Clean up
+  tiledb_query_free(query);
   tiledb_ctx_free(ctx);
 
   return 0;
-}
-
-void print_some_array_schema_info(const tiledb_array_schema_t* array_schema) {
-  // TODO: Create a C API for dumping the array schema
 }

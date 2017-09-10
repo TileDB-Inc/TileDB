@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_list.cc
+ * @file   tiledb_ls.cc
  *
  * @section LICENSE
  *

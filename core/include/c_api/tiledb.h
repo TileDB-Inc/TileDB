@@ -909,6 +909,12 @@ TILEDB_EXPORT int tiledb_query_submit_async(
     void* (*callback)(void*),
     void* callback_data);
 
+TILEDB_EXPORT int tiledb_query_reset_buffers(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    void** buffers,
+    uint64_t* buffer_sizes);
+
 /**
  * Retrieves the status of a query.
  *

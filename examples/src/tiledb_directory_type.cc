@@ -45,6 +45,8 @@ void print_dir_type(int type) {
 }
 
 int main() {
+  /* TODO
+
   // Initialize context with the default configuration parameters
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
@@ -61,6 +63,8 @@ int main() {
 
   // Finalize context
   tiledb_ctx_free(ctx);
+
+  */
 
   return 0;
 }

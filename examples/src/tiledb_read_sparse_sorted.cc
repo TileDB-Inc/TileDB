@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_read_sparse_sorted.cc
+ * @file   tiledb_read_sparse_sorted.cc
  *
  * @section LICENSE
  *
@@ -44,30 +44,32 @@ int main() {
   int64_t subarray[] = { 3, 4, 2, 4 }; 
   const char* attributes[] = { "a1" };
 
-  // Initialize array 
-  tiledb_array_t* tiledb_array;
-  tiledb_array_init(
-      ctx,                                       // Context
-      &tiledb_array,                                    // Array object
-      "my_group/sparse_arrays/my_array_B",              // Array name
-      TILEDB_ARRAY_READ_SORTED_ROW,                     // Mode
-      subarray,                                         // Constrain in subarray
-      attributes,                                       // Subset on attributes
-      1);                                               // Number of attributes
-
-  // Prepare cell buffers 
+  // Prepare cell buffers
   int buffer_a1[2];
   void* buffers[] = { buffer_a1 };
-  size_t buffer_sizes[] = { sizeof(buffer_a1) };
+  uint64_t buffer_sizes[] = { sizeof(buffer_a1) };
 
+  // Create query
+  tiledb_query_t* query;
+  tiledb_query_create(
+    ctx,
+    &query,
+    "my_group/sparse_arrays/my_array_B",
+    TILEDB_READ_SORTED_ROW,
+    subarray,
+    attributes,
+    1,
+    buffers,
+    buffer_sizes);
 
   // Loop until no overflow
   printf(" a1\n----\n");
+  int overflow;
   do {
     printf("Reading cells...\n"); 
 
     // Read from array
-    tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
+    tiledb_query_submit(ctx, query);
 
     // Print cell values
     int64_t result_num = buffer_sizes[0] / sizeof(int);
@@ -75,12 +77,13 @@ int main() {
 // TODO      if(buffer_a1[i] != TILEDB_EMPTY_INT32) // Check for deletion
         printf("%3d\n", buffer_a1[i]);
     }
-  } while(tiledb_array_overflow(tiledb_array, 0) == 1);
- 
-  // Finalize the array
-  tiledb_array_finalize(tiledb_array);
 
-  /* Finalize context. */
+    // Get overflow
+    tiledb_query_get_overflow(ctx, query, "a1", &overflow);
+  } while(overflow);
+
+  // Clean up
+  tiledb_query_free(query);
   tiledb_ctx_free(ctx);
 
   return 0;

@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_update_sparse_2.cc
+ * @file   tiledb_update_dense_1.cc
  *
  * @section LICENSE
  *
@@ -27,8 +27,8 @@
  * 
  * @section DESCRIPTION
  *
- * It shows how to update a sparse array, including how to handle
- * deletions. Observe that this is simply a write operation.
+ * It shows how to update a dense array, writing into a subarray of the
+ * array domain. Observe that updates are carried out as simple writes.
  */
 
 #include "tiledb.h"
@@ -38,51 +38,42 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Initialize array
-  tiledb_array_t* tiledb_array;
-  tiledb_array_init(
-      ctx,                                // Context
-      &tiledb_array,                             // Array object
-      "my_group/sparse_arrays/my_array_B",       // Array name
-      TILEDB_ARRAY_WRITE_UNSORTED,               // Mode
-      nullptr,                                   // Entire domain
-      nullptr,                                   // All attributes
-      0);                                        // Number of attributes
-
-  /* TODO: Handle deletions better
+  // Prepare subarray
+  int64_t subarray[] = { 3, 4, 3, 4 };
 
   // Prepare cell buffers
-  int buffer_a1[] = { 107, TILEDB_EMPTY_INT32, 106, 105 };
-  size_t buffer_a2[] = { 0, 3, 4, 5 };
-  const char buffer_var_a2[] = 
-  { 'y', 'y', 'y', TILEDB_EMPTY_CHAR, 'w', 'v', 'v', 'v', 'v' };
+  int buffer_a1[] = { 112,  113,  114,  115 };
+  uint64_t buffer_a2[] = { 0,  1,  3,  6 };
+  char buffer_var_a2[] = "MNNOOOPPPP";
   float buffer_a3[] = 
-  { 
-    107.1,  107.2,  TILEDB_EMPTY_FLOAT32,  TILEDB_EMPTY_FLOAT32,  
-    106.1,  106.2,  105.1,  105.2 
-  };
-  int64_t buffer_coords[] = { 3, 4, 3, 2, 3, 3, 4, 1 };
-  const void* buffers[] = 
-      { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
-  size_t buffer_sizes[] = 
+      { 112.1, 112.2, 113.1, 113.2, 114.1, 114.2, 115.1, 115.2 };
+  void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
+  uint64_t buffer_sizes[] =
   { 
       sizeof(buffer_a1),  
       sizeof(buffer_a2),
-      sizeof(buffer_var_a2),
-      sizeof(buffer_a3),
-      sizeof(buffer_coords)
+      sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
+      sizeof(buffer_a3)
   };
 
+  // Create query
+  tiledb_query_t* query;
+  tiledb_query_create(
+    ctx,
+    &query,
+    "my_group/dense_arrays/my_array_A",
+    TILEDB_WRITE,
+    subarray,
+    nullptr,
+    0,
+    buffers,
+    buffer_sizes);
 
-  // Write to array
-  tiledb_array_write(tiledb_array, buffers, buffer_sizes);
+  // Submit query
+  tiledb_query_submit(ctx, query);
 
-   */
-
-  // Finalize array
-  tiledb_array_finalize(tiledb_array);
-
-  // Finalize context
+  // Clean up
+  tiledb_query_free(query);
   tiledb_ctx_free(ctx);
 
   return 0;

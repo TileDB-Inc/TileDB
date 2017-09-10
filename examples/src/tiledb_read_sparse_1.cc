@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_array_read_sparse_1.cc
+ * @file   tiledb_read_sparse_1.cc
  *
  * @section LICENSE
  *
@@ -39,26 +39,15 @@ int main(int argc, char** argv) {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Initialize array
-  tiledb_array_t* tiledb_array;
-  tiledb_array_init(
-      ctx,                                       // Context
-      &tiledb_array,                                    // Array object
-      "my_group/sparse_arrays/my_array_B",              // Array name
-      TILEDB_ARRAY_READ,                                // Mode
-      nullptr,                                          // Whole domain
-      nullptr,                                          // All attributes
-      0);                                               // Number of attributes
-
   // Prepare cell buffers 
   int buffer_a1[10];
-  size_t buffer_a2[10];
+  uint64_t buffer_a2[10];
   char buffer_var_a2[30];
   float buffer_a3[20];
   int64_t buffer_coords[20];
   void* buffers[] = 
       { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
-  size_t buffer_sizes[] = 
+  uint64_t buffer_sizes[] =
   { 
       sizeof(buffer_a1),  
       sizeof(buffer_a2),
@@ -67,8 +56,21 @@ int main(int argc, char** argv) {
       sizeof(buffer_coords)
   };
 
-  // Read from array
-  tiledb_array_read(tiledb_array, buffers, buffer_sizes); 
+  // Create query
+  tiledb_query_t* query;
+  tiledb_query_create(
+    ctx,
+    &query,
+    "my_group/sparse_arrays/my_array_B",
+    TILEDB_READ,
+    nullptr,
+    nullptr,
+    0,
+    buffers,
+    buffer_sizes);
+
+  // Submit query
+  tiledb_query_submit(ctx, query);
 
   // Print cell values
   int64_t result_num = buffer_sizes[0] / sizeof(int);
@@ -83,10 +85,8 @@ int main(int argc, char** argv) {
     printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
   }
 
-  // Finalize the array
-  tiledb_array_finalize(tiledb_array);
-
-  // Finalize context
+  // Clean up
+  tiledb_query_free(query);
   tiledb_ctx_free(ctx);
 
   return 0;
