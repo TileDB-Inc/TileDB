@@ -42,7 +42,7 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Initialize array
+  // Initialize array_schema
   tiledb_array_t* tiledb_array;
   tiledb_array_init(
       ctx,                                // Context
@@ -77,11 +77,11 @@ int main() {
   };
 
 
-  // Write to array
+  // Write to array_schema
   tiledb_array_write(tiledb_array, buffers, buffer_sizes);
 
 
-  // Finalize array
+  // Finalize array_schema
   tiledb_array_finalize(tiledb_array);
 
   // Finalize context

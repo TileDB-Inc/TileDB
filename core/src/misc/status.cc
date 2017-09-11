@@ -106,9 +106,6 @@ std::string Status::code_to_string() const {
     case StatusCode::FragmentMetadata:
       type = "[TileDB::FragmentMetadata] Error";
       break;
-    case StatusCode::Array:
-      type = "[TileDB::Array] Error";
-      break;
     case StatusCode::ArraySchema:
       type = "[TileDB::ArraySchema] Error";
       break;
@@ -124,23 +121,14 @@ std::string Status::code_to_string() const {
     case StatusCode::OS:
       type = "[TileDB::OS] Error";
       break;
-    case StatusCode::IO:
-      type = "[TileDB::IO] Error";
-      break;
     case StatusCode::Mem:
       type = "[TileDB::Mem] Error";
-      break;
-    case StatusCode::MMap:
-      type = "[TileDB::MMap] Error";
       break;
     case StatusCode::GZip:
       type = "[TileDB::GZip] Error";
       break;
     case StatusCode::Compression:
       type = "[TileDB::Compression] Error";
-      break;
-    case StatusCode::AIO:
-      type = "[TileDB::AIO] Error";
       break;
     case StatusCode::Tile:
       type = "[TileDB::Tile] Error";
@@ -154,6 +142,9 @@ std::string Status::code_to_string() const {
     case StatusCode::Query:
       type = "[TileDB::Query] Error";
       break;
+    case StatusCode::VFS:
+      type = "[TileDB::VFS] Error";
+          break;
     default:
       type = "[TileDB::?] Error:";
   }

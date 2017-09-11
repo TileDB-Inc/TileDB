@@ -219,11 +219,11 @@ const std::vector<Dimension*>& ArraySchema::Dimensions() const {
   return Dimensions_;
 }
 
-int64_t ArraySchema::capacity() const {
+uint64_t ArraySchema::capacity() const {
   return capacity_;
 }
 
-int64_t ArraySchema::cell_num_per_tile() const {
+uint64_t ArraySchema::cell_num_per_tile() const {
   // Sanity check
   assert(dense_);
 
@@ -247,7 +247,7 @@ unsigned int ArraySchema::cell_val_num(int attribute_id) const {
 }
 
 Status ArraySchema::check() const {
-  // TODO: check if the array schema has been properly set
+  // TODO: check if the array_schema schema has been properly set
 
   // Success
   return Status::Ok();
@@ -947,7 +947,7 @@ Status ArraySchema::deserialize(
   // Set coordinates size
   coords_size_ = cell_sizes_[attribute_num_];
 
-  // Set array type
+  // Set array_schema type
   array_type_ = (dense_) ? ArrayType::DENSE : ArrayType::SPARSE;
 
   // Set Attributes
@@ -1196,7 +1196,7 @@ Status ArraySchema::get_cell_pos(const T* coords, int64_t* pos) const {
   // Applicable only to dense arrays
   if (!dense_) {
     return LOG_STATUS(Status::ArraySchemaError(
-        "Cannot get cell position; Invalid array type"));
+        "Cannot get cell position; Invalid array_schema type"));
   }
 
   // Invoke the proper function based on the cell order

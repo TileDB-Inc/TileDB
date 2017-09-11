@@ -802,7 +802,7 @@ private:
         else
         {
             this->ptr_ = other.ptr_;
-            // Set pointer to the inline array so that delete is not called
+            // Set pointer to the inline array_schema so that delete is not called
             // when deallocating.
             other.ptr_ = other.data_;
         }
@@ -2587,9 +2587,9 @@ inline uint64_t make_type(FMT_GEN15(FMT_ARG_TYPE_DEFAULT))
 # define FMT_WRAP1(func, arg_type, n) \
   template <FMT_GEN(n, FMT_MAKE_TEMPLATE_ARG)> \
   inline void func(arg_type arg1, FMT_GEN(n, FMT_MAKE_ARG)) { \
-    const fmt::internal::ArgArray<n>::Type array = {FMT_GEN(n, FMT_MAKE_REF)}; \
+    const fmt::internal::ArgArray<n>::Type array_schema = {FMT_GEN(n, FMT_MAKE_REF)}; \
     func(arg1, fmt::ArgList( \
-      fmt::internal::make_type(FMT_GEN(n, FMT_MAKE_REF2)), array)); \
+      fmt::internal::make_type(FMT_GEN(n, FMT_MAKE_REF2)), array_schema)); \
   }
 
 // Emulates a variadic function returning void on a pre-C++11 compiler.
@@ -2604,9 +2604,9 @@ inline uint64_t make_type(FMT_GEN15(FMT_ARG_TYPE_DEFAULT))
 # define FMT_CTOR(ctor, func, arg0_type, arg1_type, n) \
   template <FMT_GEN(n, FMT_MAKE_TEMPLATE_ARG)> \
   ctor(arg0_type arg0, arg1_type arg1, FMT_GEN(n, FMT_MAKE_ARG)) { \
-    const fmt::internal::ArgArray<n>::Type array = {FMT_GEN(n, FMT_MAKE_REF)}; \
+    const fmt::internal::ArgArray<n>::Type array_schema = {FMT_GEN(n, FMT_MAKE_REF)}; \
     func(arg0, arg1, fmt::ArgList( \
-      fmt::internal::make_type(FMT_GEN(n, FMT_MAKE_REF2)), array)); \
+      fmt::internal::make_type(FMT_GEN(n, FMT_MAKE_REF2)), array_schema)); \
   }
 
 // Emulates a variadic constructor on a pre-C++11 compiler.

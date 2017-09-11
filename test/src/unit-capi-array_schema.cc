@@ -119,7 +119,7 @@ struct ArraySchemaFx {
   }
 
   ~ArraySchemaFx() {
-    // Free array schema
+    // Free array_schema schema
     if (array_schema_ != nullptr)
       tiledb_array_schema_free(array_schema_);
 
@@ -150,7 +150,7 @@ struct ArraySchemaFx {
         ctx_, &y, DIM2_NAME, DIM2_TYPE, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
     REQUIRE(rc == TILEDB_OK);
 
-    // Create array schema
+    // Create array_schema schema
     rc = tiledb_array_schema_create(ctx_, &array_schema_, ARRAY_PATH.c_str());
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_schema_set_array_type(ctx_, array_schema_, ARRAY_TYPE);
@@ -173,17 +173,17 @@ struct ArraySchemaFx {
     tiledb_dimension_free(x);
     tiledb_dimension_free(y);
 
-    // Create the array
+    // Create the array_schema
     rc = tiledb_array_create(ctx_, array_schema_);
     REQUIRE(rc == TILEDB_OK);
   }
 };
 
 TEST_CASE_METHOD(
-    ArraySchemaFx, "C API: Test array schema creation and retrieval") {
+    ArraySchemaFx, "C API: Test array_schema schema creation and retrieval") {
   create_dense_array();
 
-  // Load array schema from the disk
+  // Load array_schema schema from the disk
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_load(ctx_, &array_schema, ARRAY_PATH.c_str());
   REQUIRE(rc == TILEDB_OK);
@@ -212,7 +212,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK(tile_order == TILE_ORDER);
 
-  // Check array type
+  // Check array_schema type
   tiledb_array_type_t type;
   rc = tiledb_array_schema_get_array_type(ctx_, array_schema, &type);
   REQUIRE(rc == TILEDB_OK);

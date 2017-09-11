@@ -59,7 +59,7 @@ int main() {
   // Check types
   print_dir_type(tiledb_dir_type(ctx, "my_group"));
   print_dir_type(tiledb_dir_type(ctx, "my_group/dense_arrays"));
-  print_dir_type(tiledb_dir_type(ctx, "my_group/array"));
+  print_dir_type(tiledb_dir_type(ctx, "my_group/array_schema"));
 
   // Finalize context
   tiledb_ctx_free(ctx);

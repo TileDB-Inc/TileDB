@@ -63,7 +63,7 @@ namespace tiledb {
     if (!_s.ok()) {      \
       return _s;         \
     }                    \
-  } while (0);
+  } while (false);
 
 #define RETURN_NOT_OK_ELSE(s, else_) \
   do {                               \
@@ -72,7 +72,7 @@ namespace tiledb {
       else_;                         \
       return _s;                     \
     }                                \
-  } while (0);
+  } while (false);
 
 enum class StatusCode : char {
   Ok,
@@ -81,23 +81,20 @@ enum class StatusCode : char {
   WriteState,
   Fragment,
   FragmentMetadata,
-  Array,
   ArraySchema,
   ARS,   // Array Read State
   ASRS,  // Array Sorted Read State
   ASWS,  // Array Sorted Write State
   Metadata,
   OS,
-  IO,
   Mem,
-  MMap,
   GZip,
   Compression,
-  AIO,
   Tile,
   TileIO,
   Buffer,
-  Query
+  Query,
+  VFS
 };
 
 class Status {
@@ -151,11 +148,6 @@ class Status {
     return Status(StatusCode::FragmentMetadata, msg, -1);
   }
 
-  /** Return a Array error class Status with a given message **/
-  static Status ArrayError(const std::string& msg) {
-    return Status(StatusCode::Array, msg, -1);
-  }
-
   /** Return a ArraySchema error class Status with a given message **/
   static Status ArraySchemaError(const std::string& msg) {
     return Status(StatusCode::ArraySchema, msg, -1);
@@ -188,19 +180,9 @@ class Status {
     return Status(StatusCode::OS, msg, -1);
   }
 
-  /** Return a IO error class Status with a given message **/
-  static Status IOError(const std::string& msg) {
-    return Status(StatusCode::IO, msg, -1);
-  }
-
   /** Return a Memory error class Status with a given message **/
   static Status MemError(const std::string& msg) {
     return Status(StatusCode::Mem, msg, -1);
-  }
-
-  /** Return a MMAP error class Status with a given message **/
-  static Status MMapError(const std::string& msg) {
-    return Status(StatusCode::MMap, msg, -1);
   }
 
   /** Return a ArrayError error class Status with a given message **/
@@ -211,11 +193,6 @@ class Status {
   /** Return a ArrayError error class Status with a given message **/
   static Status CompressionError(const std::string& msg) {
     return Status(StatusCode::Compression, msg, -1);
-  }
-
-  /** Return a ArrayError error class Status with a given message **/
-  static Status AIOError(const std::string& msg) {
-    return Status(StatusCode::AIO, msg, -1);
   }
 
   /** Return a TileError error class Status with a given message **/
@@ -241,6 +218,11 @@ class Status {
   /** Return a QueryError error class Status with a given message **/
   static Status QueryError(const std::string& msg) {
     return Status(StatusCode::Query, msg, -1);
+  }
+
+  /** Return a VFSError error class Status with a given message **/
+  static Status VFSError(const std::string& msg) {
+    return Status(StatusCode::VFS, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/
@@ -275,7 +257,7 @@ class Status {
   }
 
  private:
-  // OK status has a NULL state_.  Otherwise, state_ is a new[] array
+  // OK status has a NULL state_.  Otherwise, state_ is a new[] array_schema
   // of the following form:
   //    state_[0..3] == length of message
   //    state_[4]    == code

@@ -118,7 +118,7 @@ struct SparseArrayFx {
     // Error code
     int rc;
 
-    // Prepare and set the array schema object and data structures
+    // Prepare and set the array_schema schema object and data structures
     int64_t domain[] = {domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
 
     // Create attribute
@@ -145,7 +145,7 @@ struct SparseArrayFx {
         ctx_, d2, compressor, COMPRESSION_LEVEL);
     REQUIRE(rc == TILEDB_OK);
 
-    // Create array schema
+    // Create array_schema schema
     rc = tiledb_array_schema_create(ctx_, &array_schema_, array_name_.c_str());
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_schema_set_capacity(ctx_, array_schema_, capacity);
@@ -163,7 +163,7 @@ struct SparseArrayFx {
     rc = tiledb_array_schema_add_dimension(ctx_, array_schema_, d2);
     REQUIRE(rc == TILEDB_OK);
 
-    // Create the array
+    // Create the array_schema
     rc = tiledb_array_create(ctx_, array_schema_);
     REQUIRE(rc == TILEDB_OK);
 
@@ -207,7 +207,7 @@ struct SparseArrayFx {
     // Subset over a specific attribute
     const char* attributes[] = {ATTR_NAME};
 
-    // Initialize the array in the input mode
+    // Initialize the array_schema in the input mode
     tiledb_array_t* tiledb_array;
     rc = tiledb_array_init(
         ctx_,
@@ -230,14 +230,14 @@ struct SparseArrayFx {
     size_t buffer_size_a1 = cell_num * sizeof(int);
     size_t buffer_sizes[] = {buffer_size_a1};
 
-    // Read from array
+    // Read from array_schema
     rc = tiledb_array_read(tiledb_array, buffers, buffer_sizes);
     if (rc != TILEDB_OK) {
       tiledb_array_finalize(tiledb_array);
       return nullptr;
     }
 
-    // Finalize the array
+    // Finalize the array_schema
     rc = tiledb_array_finalize(tiledb_array);
     if (rc != TILEDB_OK)
       return nullptr;
@@ -278,7 +278,7 @@ struct SparseArrayFx {
       }
     }
 
-    // Initialize the array
+    // Initialize the array_schema
     tiledb_array_t* tiledb_array;
     rc = tiledb_array_init(
         ctx_,
@@ -291,7 +291,7 @@ struct SparseArrayFx {
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
 
-    // Write to array
+    // Write to array_schema
     const void* buffers[] = {buffer_a1, buffer_coords};
     size_t buffer_sizes[2];
     buffer_sizes[0] = cell_num * sizeof(int);
@@ -300,7 +300,7 @@ struct SparseArrayFx {
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
 
-    // Finalize the array
+    // Finalize the array_schema
     rc = tiledb_array_finalize(tiledb_array);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
@@ -315,7 +315,7 @@ struct SparseArrayFx {
 
   bool test_random_subarrays(
       int64_t domain_size_0, int64_t domain_size_1, int ntests) {
-    // write array cells with value = row id * columns + col id to disk
+    // write array_schema cells with value = row id * columns + col id to disk
     int rc = write_sparse_array_unsorted_2D(domain_size_0, domain_size_1);
     REQUIRE(rc == TILEDB_OK);
 
@@ -389,7 +389,7 @@ TEST_CASE_METHOD(SparseArrayFx, "C API: Test random sparse sorted reads") {
   int64_t capacity = 1000;
   int ntests = 5;
 
-  // set array name
+  // set array_schema name
   set_array_name("sparse_test_5000x1000_100x100");
 
   SECTION("- no compression row-major") {

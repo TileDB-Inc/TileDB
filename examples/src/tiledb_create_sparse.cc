@@ -37,7 +37,7 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Prepare parameters for array schema
+  // Prepare parameters for array_schema schema
   const char* array_name = "my_group/sparse_arrays/my_array_B";
 
   // Attributes
@@ -66,7 +66,7 @@ int main() {
   tiledb_dimension_create(ctx, &d2, "d2", TILEDB_INT64, &domain[2], &tile_extents[1]);
   tiledb_dimension_set_compressor(ctx, d2, TILEDB_GZIP, -1);
 
-  // Create array schema
+  // Create array_schema schema
   tiledb_array_schema_t* array_schema;
   tiledb_array_schema_create(ctx, &array_schema, array_name);
   tiledb_array_schema_set_array_type(ctx, array_schema, TILEDB_SPARSE);
@@ -77,7 +77,7 @@ int main() {
   tiledb_array_schema_add_dimension(ctx, array_schema, d1);
   tiledb_array_schema_add_dimension(ctx, array_schema, d2);
 
-  // Create array
+  // Create array_schema
   tiledb_array_create(ctx, array_schema);
 
   // Clean up

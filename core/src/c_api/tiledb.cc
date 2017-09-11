@@ -34,7 +34,6 @@
 #include "tiledb.h"
 #include "array_schema.h"
 #include "query.h"
-#include "storage_manager.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -66,6 +65,7 @@ void tiledb_version(int* major, int* minor, int* rev) {
 struct tiledb_ctx_t {
   tiledb::StorageManager* storage_manager_;
   tiledb::Status* last_error_;
+  std::mutex* mtx_;
 };
 
 struct tiledb_error_t {
@@ -114,11 +114,12 @@ static bool save_error(tiledb_ctx_t* ctx, const tiledb::Status& st) {
   if (st.ok())
     return false;
 
-  // Delete previous error
-  delete ctx->last_error_;
-
-  // Store new error and return
-  ctx->last_error_ = new tiledb::Status(st);
+  // Store new error
+  {
+    std::lock_guard<std::mutex> lock(*(ctx->mtx_));
+    delete ctx->last_error_;
+    ctx->last_error_ = new tiledb::Status(st);
+  }
 
   // There is an error
   return true;
@@ -182,7 +183,7 @@ inline int sanity_check(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema) {
   if (array_schema == nullptr || array_schema->array_schema_ == nullptr) {
     save_error(
-        ctx, tiledb::Status::Error("Invalid TileDB array schema struct"));
+        ctx, tiledb::Status::Error("Invalid TileDB array_schema schema struct"));
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -205,6 +206,9 @@ int tiledb_ctx_create(tiledb_ctx_t** ctx) {
   *ctx = (tiledb_ctx_t*)malloc(sizeof(struct tiledb_ctx_t));
   if (*ctx == nullptr)
     return TILEDB_OOM;
+
+  // Create mutex
+  (*ctx)->mtx_ = new std::mutex();
 
   // Create storage manager
   (*ctx)->storage_manager_ = new tiledb::StorageManager();
@@ -230,12 +234,16 @@ int tiledb_ctx_create(tiledb_ctx_t** ctx) {
   return TILEDB_OK;
 }
 
-void tiledb_ctx_free(tiledb_ctx_t* ctx) {
-  if (ctx == nullptr)
-    return;
-  delete ctx->storage_manager_;
-  delete ctx->last_error_;
-  free(ctx);
+int tiledb_ctx_free(tiledb_ctx_t* ctx) {
+  if (ctx != nullptr) {
+    delete ctx->storage_manager_;
+    delete ctx->last_error_;
+    delete ctx->mtx_;
+    free(ctx);
+  }
+
+  // Always succeeds
+  return TILEDB_OK;
 }
 
 /* ********************************* */
@@ -246,33 +254,37 @@ int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // No last error
-  if (ctx->last_error_ == nullptr) {
-    *err = nullptr;
-    return TILEDB_OK;
-  }
+  {
+    std::lock_guard<std::mutex> lock(*(ctx->mtx_));
 
-  // Create error struct
-  *err = (tiledb_error_t*)malloc(sizeof(tiledb_error_t));
-  if (*err == nullptr) {
-    save_error(ctx, tiledb::Status::Error("Failed to allocate error struct"));
-    return TILEDB_OOM;
-  }
+    // No last error
+    if (ctx->last_error_ == nullptr) {
+      *err = nullptr;
+      return TILEDB_OK;
+    }
 
-  // Create status
-  (*err)->status_ = new tiledb::Status(*(ctx->last_error_));
-  if ((*err)->status_ == nullptr) {
-    free(*err);
-    *err = nullptr;
-    save_error(
-        ctx,
-        tiledb::Status::Error(
-            "Failed to allocate status object in TileDB error struct"));
-    return TILEDB_OOM;
-  }
+    // Create error struct
+    *err = (tiledb_error_t *) malloc(sizeof(tiledb_error_t));
+    if (*err == nullptr) {
+      save_error(ctx, tiledb::Status::Error("Failed to allocate error struct"));
+      return TILEDB_OOM;
+    }
 
-  // Set error message
-  (*err)->errmsg_ = new std::string((*err)->status_->to_string());
+    // Create status
+    (*err)->status_ = new tiledb::Status(*(ctx->last_error_));
+    if ((*err)->status_ == nullptr) {
+      free(*err);
+      *err = nullptr;
+      save_error(
+              ctx,
+              tiledb::Status::Error(
+                      "Failed to allocate status object in TileDB error struct"));
+      return TILEDB_OOM;
+    }
+
+    // Set error message
+    (*err)->errmsg_ = new std::string((*err)->status_->to_string());
+  }
 
   // Success
   return TILEDB_OK;
@@ -292,9 +304,7 @@ int tiledb_error_message(
 
 void tiledb_error_free(tiledb_error_t* err) {
   if (err != nullptr) {
-    if (err->status_ != nullptr) {
-      delete err->status_;
-    }
+    delete err->status_;
     delete err->errmsg_;
     free(err);
   }
@@ -553,12 +563,12 @@ int tiledb_array_schema_create(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Create array schema struct
+  // Create array_schema schema struct
   *array_schema = (tiledb_array_schema_t*)malloc(sizeof(tiledb_array_schema_t));
   if (*array_schema == nullptr) {
     save_error(
         ctx,
-        tiledb::Status::Error("Failed to allocate TileDB array schema struct"));
+        tiledb::Status::Error("Failed to allocate TileDB array_schema schema struct"));
     return TILEDB_OOM;
   }
 
@@ -571,7 +581,7 @@ int tiledb_array_schema_create(
     save_error(
         ctx,
         tiledb::Status::Error(
-            "Failed to allocate TileDB array schema object in struct"));
+            "Failed to allocate TileDB array_schema schema object in struct"));
     return TILEDB_OOM;
   }
 
@@ -672,12 +682,12 @@ int tiledb_array_schema_load(
     const char* array_name) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
-  // Create array schema
+  // Create array_schema schema
   *array_schema = (tiledb_array_schema_t*)malloc(sizeof(tiledb_array_schema_t));
   if (*array_schema == nullptr) {
     save_error(
         ctx,
-        tiledb::Status::Error("Failed to allocate TileDB array schema struct"));
+        tiledb::Status::Error("Failed to allocate TileDB array_schema schema struct"));
     return TILEDB_OOM;
   }
 
@@ -689,11 +699,11 @@ int tiledb_array_schema_load(
     save_error(
         ctx,
         tiledb::Status::Error(
-            "Failed to allocate TileDB array schema object in struct"));
+            "Failed to allocate TileDB array_schema schema object in struct"));
     return TILEDB_OOM;
   }
 
-  // Load array schema
+  // Load array_schema schema
   auto storage_manager = ctx->storage_manager_;
   auto array_uri = tiledb::URI(array_name);
   if (save_error(
@@ -797,7 +807,7 @@ int tiledb_attribute_iter_create(
     return TILEDB_OOM;
   }
 
-  // Initialize the iterator for the array schema
+  // Initialize the iterator for the array_schema schema
   (*attr_it)->array_schema_ = array_schema;
   (*attr_it)->attr_num_ = array_schema->array_schema_->attr_num();
 
@@ -1002,8 +1012,7 @@ int tiledb_dimension_iter_next(
     return TILEDB_ERR;
   ++(dim_it->current_dim_);
   if (dim_it->dim_ != nullptr) {
-    if (dim_it->dim_->dim_ != nullptr)
-      delete dim_it->dim_->dim_;
+    delete dim_it->dim_->dim_;
 
     if (dim_it->current_dim_ >= 0 && dim_it->current_dim_ < dim_it->dim_num_)
       dim_it->dim_->dim_ = new tiledb::Dimension(
@@ -1188,7 +1197,7 @@ int tiledb_array_create(
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Create the array
+  // Create the array_schema
   if (save_error(
           ctx,
           ctx->storage_manager_->array_create(array_schema->array_schema_)))

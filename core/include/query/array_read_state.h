@@ -38,6 +38,7 @@
 #include <cstring>
 #include <queue>
 #include <vector>
+
 #include "array_schema.h"
 #include "query.h"
 
@@ -99,7 +100,7 @@ class ArrayReadState {
    *
    * @param array The array this array read state belongs to.
    */
-  ArrayReadState(Query* query);
+  explicit ArrayReadState(Query* query);
 
   /** Destructor. */
   ~ArrayReadState();

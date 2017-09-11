@@ -608,7 +608,7 @@ void ArraySortedReadState::calculate_attribute_ids() {
   const ArraySchema* array_schema = query_->array_schema();
   int attribute_num = array_schema->attribute_num();
 
-  // No need to do anything else in case the array is dense
+  // No need to do anything else in case the array_schema is dense
   if (array_schema->dense())
     return;
 
@@ -2031,7 +2031,7 @@ Status ArraySortedReadState::read() {
   }
 
   assert(0);  // The code should never reach here
-  return LOG_STATUS(Status::ASRSError("Invalid array mode when reading"));
+  return LOG_STATUS(Status::ASRSError("Invalid array_schema mode when reading"));
 }
 
 template <class T>

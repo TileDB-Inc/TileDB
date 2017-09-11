@@ -1,11 +1,11 @@
 /**
- * @file   tiledb_catching_errors.cc
+ * @file   tiledb_primitive.cc
  *
  * @section LICENSE
  *
  * The MIT License
  * 
- * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
+ * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,44 +27,37 @@
  * 
  * @section DESCRIPTION
  *
- * This examples shows how to catch errors.
+ * It shows how to initialize/finalize an array, and explore its schema.
  */
 
 #include "tiledb.h"
-#include <cstdio>
+
+// Prints some schema info (you can enhance this to print the entire schema)
+void print_some_array_schema_info(const tiledb_array_schema_t* array_schema);
 
 int main() {
-  // Initialize context with the default configuration parameters
+  /* Initialize context with the default configuration parameters. */
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Create a group
-  int rc = tiledb_group_create(ctx, "my_group");
-  if(rc == TILEDB_OK)
-    printf("Group created successfully!\n");
-  else if(rc == TILEDB_ERR) {
-    tiledb_error_t* err;
-    tiledb_error_last(ctx, &err);
-    const char* msg;
-    tiledb_error_message(ctx, err, &msg);
-    printf("%s\n", msg); // prints empty string ""
-    tiledb_error_free(err);
-  }
+  // ----- Dense array_schema ----- //
 
-  // Create the same group again - ERROR
-  rc = tiledb_group_create(ctx, "my_group");
-  if(rc == TILEDB_OK)
-    printf("Group created successfully!\n");
-  else if(rc == TILEDB_ERR) {
-    tiledb_error_t* err;
-    tiledb_error_last(ctx, &err);
-    const char* msg;
-    tiledb_error_message(ctx, err, &msg);
-    printf("%s\n", msg); // prints empty string ""
-    tiledb_error_free(err);
-  }
+  // Load array_schema schema when the array_schema is not initialized
+  tiledb_array_schema_t* array_schema;
+  tiledb_array_schema_load(ctx, &array_schema, "my_group/dense_arrays/my_array_A");
+
+  // Print some array_schema schema info
+  print_some_array_schema_info(array_schema);
+
+  // Free array_schema schema
+  tiledb_array_schema_free(array_schema);
+
   // Finalize context
   tiledb_ctx_free(ctx);
 
   return 0;
+}
+
+void print_some_array_schema_info(const tiledb_array_schema_t* array_schema) {
+  // TODO: Create a C API for dumping the array_schema schema
 }

@@ -51,7 +51,7 @@
 namespace tiledb {
 
 /**
- * The storage manager that manages all TileDB objects (arrays, groups, etc.).
+ * The storage manager that manages pretty much everything in TileDB.
  */
 class StorageManager {
  public:
@@ -68,6 +68,27 @@ class StorageManager {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /**
+   * Creates a TileDB group.
+   *
+   * @param group The URI of the group to be created.
+   * @return Status
+   */
+  Status group_create(const URI& group) const;
+
+  /**
+   * Initializes the storage manager. It spawns two threads. The first is for
+   * handling user asynchronous queries (submitted via the *query_submit_async*
+   * function. The second handles internal asynchronous queries as part of some
+   * either sync or async query.
+   *
+   * @return Status
+   */
+  Status init();
+
+
+
 
   Status sync(const URI& uri);
 
@@ -104,9 +125,7 @@ class StorageManager {
    */
   Status async_push_query(Query* query, int i);
 
-  Status group_create(const URI& group) const;
 
-  Status init();
 
   Status query_init(
       Query* query,
@@ -147,18 +166,18 @@ class StorageManager {
 
   /**
    * Async query queue. The first is for user queries, the second for
-   * internal queries.
+   * internal queries. The queries are processed in a FIFO manner.
    */
   std::queue<Query*> async_queue_[2];
 
   /**
-   * Async mutex. The first is for user queries, the second for
-   * internal queries.
+   * Async mutex. The first is for the user queries thread, the second for
+   * the internal queries thread.
    */
   std::mutex async_mtx_[2];
 
   /**
-   * Thread tha handles all user async queries. The first is for user queries,
+   * Threads that handle all async queries. The first is for user queries,
    * the second for internal queries.
    */
   std::thread* async_thread_[2];
@@ -166,15 +185,40 @@ class StorageManager {
   /** Mutex for managing OpenArray objects. */
   std::mutex open_array_mtx_;
 
-  /** Stores the currently open arrays. */
+  /**
+   * Stores the currently open arrays. An array is *opened* when a new query is
+   * initialized via *query_init* for a particular array.
+   */
   std::map<std::string, OpenArray*> open_arrays_;
 
-  /** Virtual filesystem handler. */
+  /**
+   * Virtual filesystem handler. It directs queries to the appropriate filesystem
+   * backend. Note that this is stateful.
+   */
   VFS* vfs_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
+
+  /**
+   * Starts listening to async queries.
+   *
+   * @param storage_manager The storage manager object that handles the
+   *     async query threads.
+   * @param i The index of the thread to execute the function. If it is
+   *     equal to 0, it means a user query, whereas if it is 1 it means an
+   *     internal query.
+   */
+  static void async_start(StorageManager* storage_manager, int i = 0);
+
+  /** Stops the async query. */
+  void async_stop();
+
+
+
+
+
 
   Status array_close(
       const URI& array,
@@ -191,19 +235,7 @@ class StorageManager {
       OpenArray* open_array,
       const std::vector<FragmentMetadata*>& fragment_metadata);
 
-  /**
-   * Starts listening to async queries.
-   *
-   * @param storage_manager The storage manager object that handles the
-   *     async queries.
-   * @param i The index of the thread to execute the function. If it is
-   *     equal to 0, it means a user query, whereas if it is 1 it means an
-   *     internal query.
-   */
-  static void async_start(StorageManager* storage_manager, int i = 0);
 
-  /** Stops the async query. */
-  void async_stop();
 
   Status open_array_get_entry(const URI& array_uri, OpenArray** open_array);
 
@@ -244,16 +276,10 @@ Status consolidation_finalize(
 Status group_clear(const URI& group) const;
 Status group_delete(const URI& group) const;
 Status group_move(const URI& old_group, const URI& new_group) const;
-Status array_clear(const URI& array) const;
-Status array_delete(const URI& array) const;
+Status array_clear(const URI& array_schema) const;
+Status array_delete(const URI& array_schema) const;
 Status array_move(const URI& old_array, const URI& new_array) const;
 */
-
-/**
- * Submits an asynchronous I/O. The second argument is 0 for user AIO, and 1
- * for internal AIO.
- */
-//  Status aio_submit(AIORequest* aio_request, int i = 0);
 
 /**
  * Consolidates the fragments of an array into a single fragment.
@@ -261,48 +287,7 @@ Status array_move(const URI& old_array, const URI& new_array) const;
  * @param array_uri The identifier of the array to be consolidated.
  * @return Status
  */
-//  Status array_consolidate(const URI& array);
-
-/**
- * Initializes a TileDB array.
- *
- * @param array The array object to be initialized. The function
- *     will allocate memory space for it.
- * @param array_dir The directory of the array to be initialized.
- * @param mode The mode of the array. It must be one of the following:
- *    - TILEDB_ARRAY_WRITE
- *    - TILEDB_ARRAY_WRITE_UNSORTED
- *    - TILEDB_ARRAY_READ
- *    - TILEDB_ARRAY_READ_SORTED_COL
- *    - TILEDB_ARRAY_READ_SORTED_ROW
- * @param subarray The subarray in which the array read/write will be
- *     constrained on. If it is NULL, then the subarray is set to the entire
- *     array domain. For the case of writes, this is meaningful only for
- *     dense arrays, and specifically dense writes.
- * @param attributes A subset of the array attributes the read/write will be
- *     constrained on. A NULL value indicates **all** attributes (including
- *     the coordinates in the case of sparse arrays).
- * @param attribute_num The number of the input attributes. If *attributes* is
- *     NULL, then this should be set to 0.
- * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
- */
-/*
-  Status array_init(
-      Array*& array,
-      const URI& array_uri,
-      QueryMode mode,
-      const void* subarray,
-      const char** attributes,
-      int attribute_num);
-*/
-
-/**
- * Finalizes an array, properly freeing the memory space.
- *
- * @param array The array to be finalized.
- * @return TILEDB_SM_OK on success, and TILEDB_SM_ERR on error.
- */
-//  Status array_finalize(Array* array);
+//  TODO Status array_consolidate(const URI& array_schema);
 
 /* ********************************* */
 /*               MISC                */

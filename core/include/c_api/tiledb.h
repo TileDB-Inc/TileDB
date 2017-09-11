@@ -70,9 +70,9 @@ extern "C" {
 
 /**@{*/
 /** Return code. */
-#define TILEDB_OK 0
-#define TILEDB_ERR (-1)
-#define TILEDB_OOM (-2)
+#define TILEDB_OK 0      // Success
+#define TILEDB_ERR (-1)  // General error
+#define TILEDB_OOM (-2)  // Out of memory
 /**@}*/
 
 /**@{*/
@@ -193,7 +193,8 @@ typedef struct tiledb_query_t tiledb_query_t;
 /* ********************************* */
 
 /**
- * Creates a TileDB context.
+ * Creates a TileDB context, which contains the TileDB storage manager
+ * that manages everything in the TileDB library.
  *
  * @param ctx The TileDB context to be created.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
@@ -201,12 +202,12 @@ typedef struct tiledb_query_t tiledb_query_t;
 TILEDB_EXPORT int tiledb_ctx_create(tiledb_ctx_t** ctx);
 
 /**
- * Destroys the TileDB context, properly freeing-up memory.
+ * Destroys the TileDB context, properly freeing-up all memory.
  *
  * @param ctx The TileDB context to be freed.
- * @return void
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT void tiledb_ctx_free(tiledb_ctx_t* ctx);
+TILEDB_EXPORT int tiledb_ctx_free(tiledb_ctx_t* ctx);
 
 /* ********************************* */
 /*              ERROR                */

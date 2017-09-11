@@ -54,6 +54,31 @@ URI::~URI() = default;
 /*                API                */
 /* ********************************* */
 
+bool URI::is_posix(const std::string& path) {
+  return utils::starts_with(path, "file://") ||
+         path.find("://") == std::string::npos;
+}
+
+bool URI::is_posix() const {
+  return utils::starts_with(uri_, "file://");
+}
+
+bool URI::is_hdfs(const std::string& path) {
+  return utils::starts_with(path, "hdfs://");
+}
+
+bool URI::is_hdfs() const {
+  return utils::starts_with(uri_, "hdfs://");
+}
+
+bool URI::is_s3(const std::string& path) {
+  return utils::starts_with(path, "s3://");
+}
+
+bool URI::is_s3() const {
+  return utils::starts_with(uri_, "s3://");
+}
+
 URI URI::join_path(const std::string& path) const {
   if (is_posix())
     return URI(uri_ + "/" + path);
@@ -82,10 +107,6 @@ URI URI::parent() const {
   return URI();
 }
 
-std::string URI::to_string() const {
-  return uri_;
-}
-
 std::string URI::to_path() const {
   if (is_posix())
     return uri_.substr(std::string("file://").size());
@@ -100,29 +121,8 @@ std::string URI::to_path() const {
   return "";
 }
 
-bool URI::is_posix(const std::string& path) {
-  return utils::starts_with(path, "file://") ||
-         path.find("://") == std::string::npos;
-}
-
-bool URI::is_hdfs(const std::string& path) {
-  return utils::starts_with(path, "hdfs://");
-}
-
-bool URI::is_s3(const std::string& path) {
-  return utils::starts_with(path, "s3://");
-}
-
-bool URI::is_posix() const {
-  return utils::starts_with(uri_, "file://");
-}
-
-bool URI::is_hdfs() const {
-  return utils::starts_with(uri_, "hdfs://");
-}
-
-bool URI::is_s3() const {
-  return utils::starts_with(uri_, "s3://");
+std::string URI::to_string() const {
+  return uri_;
 }
 
 }  // namespace tiledb

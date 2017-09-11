@@ -68,7 +68,7 @@ int main() {
   do {
     printf("Reading cells...\n"); 
 
-    // Read from array
+    // Read from array_schema
     tiledb_query_submit(ctx, query);
 
     // Print cell values

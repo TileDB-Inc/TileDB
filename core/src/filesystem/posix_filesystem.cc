@@ -48,15 +48,15 @@ namespace posix {
 Status create_dir(const std::string& path) {
   // If the directory does not exist, create it
   if (posix::is_dir(path)) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status::OSError(
         std::string("Cannot create directory '") + path +
         "'; Directory already exists"));
   }
   if (mkdir(path.c_str(), S_IRWXU)) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status::OSError(
         std::string("Cannot create directory '") + path + "'; " +
         strerror(errno)));
-  };
+  }
   return Status::Ok();
 }
 
@@ -149,59 +149,58 @@ bool is_file(const std::string& path) {
   return (stat(path.c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
 }
 
-// TODO: path is getting modified here, don't pass by reference
-void purge_dots_from_path(std::string& path) {
-  // For easy reference
-  uint64_t path_size = path.size();
-
+void purge_dots_from_path(std::string* path) {
   // Trivial case
-  if (path_size == 0 || path == "/")
+  if (path == nullptr)
     return;
 
-  // It expects an absolute path
-  assert(path[0] == '/');
+  // Trivial case
+  uint64_t path_size = path->size();
+  if (path_size == 0 || *path == "file:///")
+    return;
+
+  assert(utils::starts_with(*path, "file:///"));
 
   // Tokenize
-  const char* token_c_str = path.c_str() + 1;
+  const char* token_c_str = path->c_str() + 8;
   std::vector<std::string> tokens, final_tokens;
   std::string token;
 
-  for (uint64_t i = 1; i < path_size; ++i) {
-    if (path[i] == '/') {
-      path[i] = '\0';
+  for (uint64_t i = 8; i < path_size; ++i) {
+    if ((*path)[i] == '/') {
+      (*path)[i] = '\0';
       token = token_c_str;
-      if (token != "")
+      if (!token.empty())
         tokens.push_back(token);
-      token_c_str = path.c_str() + i + 1;
+      token_c_str = path->c_str() + i + 1;
     }
   }
   token = token_c_str;
-  if (token != "")
+  if (!token.empty())
     tokens.push_back(token);
 
   // Purge dots
-  int token_num = tokens.size();
-  for (int i = 0; i < token_num; ++i) {
-    if (tokens[i] == ".") {  // Skip single dots
+  for (auto& t : tokens) {
+    if (t == ".")  // Skip single dots
       continue;
-    } else if (tokens[i] == "..") {
-      if (final_tokens.size() == 0) {
+
+    if (t == "..") {
+      if (final_tokens.empty()) {
         // Invalid path
-        path = "";
+        *path = "";
         return;
-      } else {
-        final_tokens.pop_back();
       }
+
+      final_tokens.pop_back();
     } else {
-      final_tokens.push_back(tokens[i]);
+      final_tokens.push_back(t);
     }
   }
 
   // Assemble final path
-  path = "/";
-  int final_token_num = final_tokens.size();
-  for (int i = 0; i < final_token_num; ++i)
-    path += ((i != 0) ? "/" : "") + final_tokens[i];
+  *path = "file://";
+  for (auto& t : final_tokens)
+    *path += std::string("/") + t;
 }
 
 Status filelock_lock(const std::string& filename, int* fd, bool shared) {
@@ -287,7 +286,7 @@ Status read_from_file(
   int64_t bytes_read = ::read(fd, buffer, length);
   if (bytes_read != int64_t(length)) {
     return LOG_STATUS(
-        Status::IOError("Cannot read from file; File reading error"));
+        Status::OSError("Cannot read from file; File reading error"));
   }
   // Close file
   if (close(fd)) {
@@ -315,9 +314,15 @@ bool both_slashes(char a, char b) {
   return a == '/' && b == '/';
 }
 
-void adjacent_slashes_dedup(std::string& value) {
-  value.erase(
-      std::unique(value.begin(), value.end(), both_slashes), value.end());
+void adjacent_slashes_dedup(std::string* value) {
+  assert(utils::starts_with(*value, "file://"));
+
+  value->erase(
+      std::unique(
+          value->begin() + std::string("file://").size(),
+          value->end(),
+          both_slashes),
+      value->end());
 }
 
 std::string abs_path(const std::string& path) {
@@ -349,8 +354,8 @@ std::string abs_path(const std::string& path) {
   else
     ret_dir = posix_prefix + current + "/" + path;
 
-  adjacent_slashes_dedup(ret_dir);
-  purge_dots_from_path(ret_dir);
+  adjacent_slashes_dedup(&ret_dir);
+  purge_dots_from_path(&ret_dir);
 
   return ret_dir;
 }
@@ -403,7 +408,7 @@ Status write_to_file(
   while (buffer_size > constants::max_write_bytes) {
     bytes_written = ::write(fd, buffer, constants::max_write_bytes);
     if (bytes_written != constants::max_write_bytes) {
-      return LOG_STATUS(Status::IOError(
+      return LOG_STATUS(Status::OSError(
           std::string("Cannot write to file '") + path +
           "'; File writing error"));
     }
@@ -411,7 +416,7 @@ Status write_to_file(
   }
   bytes_written = ::write(fd, buffer, buffer_size);
   if (bytes_written != int64_t(buffer_size)) {
-    return LOG_STATUS(Status::IOError(
+    return LOG_STATUS(Status::OSError(
         std::string("Cannot write to file '") + path +
         "'; File writing error"));
   }

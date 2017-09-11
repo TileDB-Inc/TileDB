@@ -255,7 +255,7 @@ Status Query::set_attributes(const char** attributes, int attribute_num) {
     // Sanity check on duplicates
     if (utils::has_duplicates(attributes_vec))
       return LOG_STATUS(
-          Status::QueryError("Cannot initialize array; Duplicate attributes"));
+          Status::QueryError("Cannot initialize array_schema; Duplicate attributes"));
   }
 
   // Set attribute ids
@@ -342,7 +342,7 @@ Status Query::coords_buffer_i(int* coords_buffer_i) const {
   // Coordinates are missing
   if (*coords_buffer_i == -1)
     return LOG_STATUS(
-        Status::ArrayError("Cannot find coordinates buffer index"));
+        Status::QueryError("Cannot find coordinates buffer index"));
 
   // Success
   return Status::Ok();
@@ -390,7 +390,7 @@ Status Query::write_default(void** buffers, uint64_t* buffer_sizes) {
   // Sanity checks
   if (!is_write_mode(mode_)) {
     return LOG_STATUS(
-        Status::ArrayError("Cannot write to array; Invalid mode"));
+        Status::QueryError("Cannot write to array_schema; Invalid mode"));
   }
 
   // Create and initialize a new fragment
@@ -398,7 +398,7 @@ Status Query::write_default(void** buffers, uint64_t* buffer_sizes) {
     // Get new fragment name
     std::string new_fragment_name = this->new_fragment_name();
     if (new_fragment_name == "") {
-      return LOG_STATUS(Status::ArrayError("Cannot produce new fragment name"));
+      return LOG_STATUS(Status::QueryError("Cannot produce new fragment name"));
     }
 
     // Create new fragment

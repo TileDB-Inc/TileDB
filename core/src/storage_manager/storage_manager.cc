@@ -45,6 +45,8 @@ namespace tiledb {
 
 StorageManager::StorageManager() {
   async_done_ = false;
+  async_thread_[0] = nullptr;
+  async_thread_[1] = nullptr;
   vfs_ = nullptr;
 }
 
@@ -58,6 +60,30 @@ StorageManager::~StorageManager() {
 /* ****************************** */
 /*               API              */
 /* ****************************** */
+
+Status StorageManager::group_create(const URI& group) const {
+  // Create group directory
+  RETURN_NOT_OK(vfs_->create_dir(group));
+
+  // Create group file
+  URI group_filename = group.join_path(constants::group_filename);
+  RETURN_NOT_OK(vfs_->create_file(group_filename));
+
+  return Status::Ok();
+}
+
+Status StorageManager::init() {
+  async_thread_[0] = new std::thread(async_start, this, 0);
+  async_thread_[1] = new std::thread(async_start, this, 1);
+  vfs_ = new VFS();
+
+  return Status::Ok();
+}
+
+
+
+
+
 
 Status StorageManager::read_from_file(
     const URI& uri, uint64_t offset, void* buffer, uint64_t length) const {
@@ -170,20 +196,20 @@ Status StorageManager::move_dir(const URI& old_uri, const URI& new_uri) {
 }
 
 Status StorageManager::array_create(ArraySchema* array_schema) {
-  // Check array schema
+  // Check array_schema schema
   if (array_schema == nullptr) {
     return LOG_STATUS(
-        Status::StorageManagerError("Cannot create array; Empty array schema"));
+        Status::StorageManagerError("Cannot create array_schema; Empty array_schema schema"));
   }
 
-  // Create array directory
+  // Create array_schema directory
   const URI& array_uri = array_schema->array_uri();
   RETURN_NOT_OK(vfs_->create_dir(array_uri));
 
-  // Store array schema
+  // Store array_schema schema
   RETURN_NOT_OK(store(array_schema));
 
-  // Create array filelock
+  // Create array_schema filelock
   URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
   RETURN_NOT_OK(vfs_->create_file(filelock_uri));
 
@@ -207,30 +233,6 @@ Status StorageManager::async_push_query(Query* query, int i) {
   return Status::Ok();
 }
 
-Status StorageManager::group_create(const URI& group) const {
-  // Create group directory
-  RETURN_NOT_OK(vfs_->create_dir(group));
-
-  // Create group file
-  URI group_filename = group.join_path(constants::group_filename);
-  RETURN_NOT_OK(vfs_->create_file(group_filename));
-
-  return Status::Ok();
-}
-
-Status StorageManager::init() {
-  // Create a thread to handle the user asynchronous I/O
-  async_thread_[0] = new std::thread(async_start, this, 0);
-
-  // Create a thread to handle the internal asynchronous I/O
-  async_thread_[1] = new std::thread(async_start, this, 1);
-
-  // Create virtual filesystem manager
-  vfs_ = new VFS();
-
-  return Status::Ok();
-}
-
 Status StorageManager::query_init(
     Query* query,
     const char* array_name,
@@ -240,7 +242,7 @@ Status StorageManager::query_init(
     int attribute_num,
     void** buffers,
     uint64_t* buffer_sizes) {
-  // Open the array
+  // Open the array_schema
   std::vector<FragmentMetadata*> fragment_metadata;
   auto array_schema = (const ArraySchema*)nullptr;
   RETURN_NOT_OK(array_open(
@@ -278,25 +280,43 @@ Status StorageManager::query_submit_async(
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
+void StorageManager::async_start(StorageManager* storage_manager, int i) {
+  storage_manager->async_process_queries(i);
+}
+
+void StorageManager::async_stop() {
+  async_done_ = true;
+  async_cv_[0].notify_one();
+  async_cv_[1].notify_one();
+  async_thread_[0]->join();
+  async_thread_[1]->join();
+}
+
+
+
+
+
+
+
 Status StorageManager::array_close(
     const URI& array_uri,
     const std::vector<FragmentMetadata*>& fragment_metadata) {
   // Lock mutex
   open_array_mtx_.lock();
 
-  // Find the open array entry
+  // Find the open array_schema entry
   auto it = open_arrays_.find(array_uri.to_string());
 
   // Sanity check
   if (it == open_arrays_.end()) {
     return LOG_STATUS(Status::StorageManagerError(
-        "Cannot close array; Open array entry not found"));
+        "Cannot close array_schema; Open array_schema entry not found"));
   }
 
   // For easy reference
   OpenArray* open_array = it->second;
 
-  // Lock the mutex of the array
+  // Lock the mutex of the array_schema
   open_array->mtx_lock();
 
   // Decrement counter
@@ -306,7 +326,7 @@ Status StorageManager::array_close(
   for (auto& metadata : fragment_metadata)
     open_array->fragment_metadata_rm(metadata->fragment_uri());
 
-  // Potentially remove open array entry
+  // Potentially remove open array_schema entry
   Status st = Status::Ok();
   if (open_array->cnt() == 0) {
     // TODO: we may want to leave this to a cache manager
@@ -317,7 +337,7 @@ Status StorageManager::array_close(
     delete open_array;
     open_arrays_.erase(it);
   } else {
-    // Unlock the mutex of the array
+    // Unlock the mutex of the array_schema
     open_array->mtx_unlock();
   }
 
@@ -333,17 +353,17 @@ Status StorageManager::array_open(
     const void* subarray,
     const ArraySchema** array_schema,
     std::vector<FragmentMetadata*>* fragment_metadata) {
-  // Get the open array entry
+  // Get the open array_schema entry
   OpenArray* open_array;
   RETURN_NOT_OK(open_array_get_entry(array_uri, &open_array));
 
-  // Lock the mutex of the array
+  // Lock the mutex of the array_schema
   open_array->mtx_lock();
 
   // Increment counter
   open_array->incr_cnt();
 
-  // Lock the filelock of the array
+  // Lock the filelock of the array_schema
   if (!open_array->filelocked()) {
     int fd;
     RETURN_NOT_OK_ELSE(
@@ -353,7 +373,7 @@ Status StorageManager::array_open(
     open_array->set_filelock_fd(fd);
   }
 
-  // Load array schema
+  // Load array_schema schema
   RETURN_NOT_OK_ELSE(
       open_array_load_schema(array_uri, open_array),
       array_open_error(open_array, *fragment_metadata));
@@ -366,7 +386,7 @@ Status StorageManager::array_open(
             open_array, subarray, fragment_metadata),
         array_open_error(open_array, *fragment_metadata));
 
-  // Unlock the array mutex
+  // Unlock the array_schema mutex
   open_array->mtx_unlock();
 
   return Status::Ok();
@@ -379,17 +399,7 @@ Status StorageManager::array_open_error(
   return array_close(open_array->array_uri(), fragment_metadata);
 }
 
-void StorageManager::async_start(StorageManager* storage_manager, int i) {
-  storage_manager->async_process_queries(i);
-}
 
-void StorageManager::async_stop() {
-  async_done_ = true;
-  async_cv_[0].notify_one();
-  async_cv_[1].notify_one();
-  async_thread_[0]->join();
-  async_thread_[1]->join();
-}
 
 void StorageManager::async_process_query(Query* query) {
   // For easy reference
@@ -417,7 +427,7 @@ Status StorageManager::open_array_get_entry(
   // Lock mutex
   open_array_mtx_.lock();
 
-  // Find the open array entry
+  // Find the open array_schema entry
   auto it = open_arrays_.find(array_uri.to_string());
   // Create and init entry if it does not exist
   if (it == open_arrays_.end()) {
@@ -435,7 +445,7 @@ Status StorageManager::open_array_get_entry(
 
 Status StorageManager::open_array_load_schema(
     const URI& array_uri, OpenArray* open_array) {
-  // Do nothing if the array schema is already loaded
+  // Do nothing if the array_schema schema is already loaded
   if (open_array->array_schema() != nullptr)
     return Status::Ok();
 
@@ -461,10 +471,10 @@ Status StorageManager::open_array_load_fragment_metadata(
 
   // Load the metadata for each fragment
   for (auto& uri : fragment_uris) {
-    // Find metadata entry in open array
+    // Find metadata entry in open array_schema
     auto metadata = open_array->fragment_metadata_get(uri);
 
-    // If not found, load metadata and store in open array
+    // If not found, load metadata and store in open array_schema
     if (metadata == nullptr) {
       bool dense = !vfs_->is_file(uri.join_path(
           std::string("/") + constants::coords + constants::file_suffix));
@@ -484,7 +494,7 @@ Status StorageManager::get_fragment_uris(
     const URI& array_uri,
     const void* subarray,
     std::vector<URI>* fragment_uris) const {
-  // Get all uris in the array directory
+  // Get all uris in the array_schema directory
   std::vector<URI> uris;
   RETURN_NOT_OK(vfs_->ls(array_uri, &uris));
 
@@ -557,7 +567,7 @@ Status StorageManager::consolidation_finalize(
   int fd;
   Status st;
   st = consolidation_lock(
-      new_fragment->array()->array_schema()->array_uri().to_posix_path(),
+      new_fragment->array_schema()->array_schema()->array_uri().to_posix_path(),
       &fd,
       false);
   if (!st.ok()) {
@@ -653,10 +663,10 @@ Status StorageManager::group_move(
   return vfs::move(old_group_uri, new_group_uri);
 }
 
-Status StorageManager::array_delete(const URI& array) const {
-  RETURN_NOT_OK(array_clear(array));
-  // Delete array directory
-  RETURN_NOT_OK(vfs::delete_dir(array));
+Status StorageManager::array_delete(const URI& array_schema) const {
+  RETURN_NOT_OK(array_clear(array_schema));
+  // Delete array_schema directory
+  RETURN_NOT_OK(vfs::delete_dir(array_schema));
   return Status::Ok();
 }
 
@@ -665,23 +675,23 @@ Status StorageManager::array_move(
   URI old_array_uri = vfs::abs_path(old_array);
   URI new_array_uri = vfs::abs_path(new_array);
 
-  // Check if the old array exists
+  // Check if the old array_schema exists
   if (!utils::is_array(old_array_uri)) {
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Array '") + old_array_uri.to_string() +
         "' does not exist"));
   }
 
-  // Make sure that the new array is not an existing directory
+  // Make sure that the new array_schema is not an existing directory
   if (vfs::is_dir(new_array_uri)) {
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Array '") + new_array_uri.to_string() +
         "' already exists"));
   }
-  // Rename array
+  // Rename array_schema
   RETURN_NOT_OK(vfs::move(old_array_uri, new_array_uri));
 
-  // Incorporate new name in the array schema
+  // Incorporate new name in the array_schema schema
   ArraySchema* array_schema = new ArraySchema();
   RETURN_NOT_OK_ELSE(array_schema->load(new_array_uri), delete array_schema);
   array_schema->set_array_uri(new_array_uri);
@@ -696,17 +706,17 @@ Status StorageManager::array_move(
   return Status::Ok();
 }
 
-Status StorageManager::array_clear(const URI& array) const {
-  // Get real array directory name
-  URI array_uri = vfs::abs_path(array);
+Status StorageManager::array_clear(const URI& array_schema) const {
+  // Get real array_schema directory name
+  URI array_uri = vfs::abs_path(array_schema);
 
-  // Check if the array exists
+  // Check if the array_schema exists
   if (!utils::is_array(array_uri)) {
     return LOG_STATUS(Status::StorageManagerError(
         std::string("Array '") + array_uri.to_string() + "' does not exist"));
   }
 
-  // Delete the entire array directory except for the array schema file
+  // Delete the entire array_schema directory except for the array_schema schema file
   std::vector<std::string> paths;
   RETURN_NOT_OK(vfs::ls(array_uri.to_posix_path(), &paths));
   for (auto& path : paths) {
@@ -722,19 +732,19 @@ Status StorageManager::array_clear(const URI& array) const {
   return Status::Ok();
 }
 
-Status StorageManager::array_finalize(Array* array) {
-  // If the array is NULL, do nothing
-  if (array == nullptr)
+Status StorageManager::array_finalize(Array* array_schema) {
+  // If the array_schema is NULL, do nothing
+  if (array_schema == nullptr)
     return Status::Ok();
 
-  // Finalize and close the array
-  RETURN_NOT_OK_ELSE(array->finalize(), delete array);
-  if (is_read_mode(array->query_->mode()))
+  // Finalize and close the array_schema
+  RETURN_NOT_OK_ELSE(array_schema->finalize(), delete array_schema);
+  if (is_read_mode(array_schema->query_->mode()))
     RETURN_NOT_OK_ELSE(
-        array_close(array->array_schema()->array_uri()), delete array)
+        array_close(array_schema->array_schema()->array_uri()), delete array_schema)
 
   // Clean up
-  delete array;
+  delete array_schema;
 
   return Status::Ok();
 }
@@ -821,44 +831,38 @@ Status StorageManager::move(const URI& old_uri, const URI& new_uri) {
   }
 }
 
-Status StorageManager::aio_submit(AIORequest* aio_request, int i) {
-  aio_push_request(aio_request, i);
-
-  return Status::Ok();
-}
-
 Status StorageManager::array_consolidate(const URI& array_uri) {
  // TODO
-  // Create an array object
-  Array* array;
+  // Create an array_schema object
+  Array* array_schema;
   RETURN_NOT_OK(
-      array_init(array, array_uri, QueryMode::READ, nullptr, nullptr, 0));
+      array_init(array_schema, array_uri, QueryMode::READ, nullptr, nullptr, 0));
 
-  // Consolidate array (TODO: unhandled error handling here)
+  // Consolidate array_schema (TODO: unhandled error handling here)
   Fragment* new_fragment;
   std::vector<URI> old_fragments;
   Status st_array_consolidate =
-      array->consolidate(new_fragment, &old_fragments);
+      array_schema->consolidate(new_fragment, &old_fragments);
 
-  // Close the array
-  Status st_array_close = array_close(array->array_schema()->array_uri());
+  // Close the array_schema
+  Status st_array_close = array_close(array_schema->array_schema()->array_uri());
 
   // Finalize consolidation
   Status st_consolidation_finalize =
       consolidation_finalize(new_fragment, old_fragments);
 
-  // Finalize array
-  Status st_array_finalize = array->finalize();
-  delete array;
+  // Finalize array_schema
+  Status st_array_finalize = array_schema->finalize();
+  delete array_schema;
   if (!st_array_finalize.ok()) {
     // TODO: Status:
     return LOG_STATUS(
-        Status::StorageManagerError(std::string("Could not finalize array: ")
+        Status::StorageManagerError(std::string("Could not finalize array_schema: ")
                                         .append(array_uri.to_string())));
   }
   if (!(st_array_close.ok() && !st_consolidation_finalize.ok()))
     return LOG_STATUS(
-        Status::StorageManagerError(std::string("Could not consolidate array: ")
+        Status::StorageManagerError(std::string("Could not consolidate array_schema: ")
                                         .append(array_uri.to_string())));
   return Status::Ok();
 }
@@ -907,7 +911,7 @@ Status Array::consolidate(Fragment* new_fragment, int attribute_id) {
   uint64_t consolidation_buffer_size =
       constants::consolidation_buffer_size;
 
-  // Do nothing if the array is dense for the coordinates attribute
+  // Do nothing if the array_schema is dense for the coordinates attribute
   if (array_schema_->dense() && attribute_id == attribute_num)
     return Status::Ok();
 

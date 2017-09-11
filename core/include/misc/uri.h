@@ -35,53 +35,109 @@
 
 #include <string>
 
-#include "posix_filesystem.h"
 #include "status.h"
 
 namespace tiledb {
 
+/** Implements functionality regarding URIs. */
 class URI {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  /** Constructor. */
   URI();
 
+  /**
+   * Constructor.
+   *
+   * @param path String that gets converted into an absolute path and stored
+   *     as a URI.
+   */
   URI(const std::string& path);
 
+  /** Destructor. */
   ~URI();
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
-  URI join_path(const std::string& path) const;
-
-  std::string last_path_part() const;
-
-  URI parent() const;
-
-  std::string to_string() const;
-
-  std::string to_path() const;
-
+  /**
+   * Checks if the input path is posix.
+   *
+   * @param path The path to be checked.
+   * @return The result of the check.
+   */
   static bool is_posix(const std::string& path);
 
-  static bool is_hdfs(const std::string& path);
-
-  static bool is_s3(const std::string& path);
-
+  /**
+   * Checks if the URI is posix.
+   *
+   * @return The result of the check.
+   */
   bool is_posix() const;
 
+  /**
+   * Checks if the input path is HDFS.
+   *
+   * @param path The path to be checked.
+   * @return The result of the check.
+   */
+  static bool is_hdfs(const std::string& path);
+
+  /**
+   * Checks if the URI is HDFS.
+   *
+   * @return The result of the check.
+   */
   bool is_hdfs() const;
 
+  /**
+   * Checks if the input path is S3.
+   *
+   * @param path The path to be checked.
+   * @return The result of the check.
+   */
+  static bool is_s3(const std::string& path);
+
+  /**
+   * Checks if the URI is S3.
+   *
+   * @return The result of the check.
+   */
   bool is_s3() const;
+
+  /**
+   * Joins the URI with the input path.
+   *
+   * @param path The path to append.
+   * @return The resulting URI.
+   */
+  URI join_path(const std::string& path) const;
+
+  /** Returns the last part of the URI (i.e., excluding the parent). */
+  std::string last_path_part() const;
+
+  /** Returns the parent of the URI. */
+  URI parent() const;
+
+  /** Returns the URI path, stripping the resource. For examples,
+   *  "file:///my/path/" is the URI, this function will return
+   *  "/my/path/".
+   */
+  std::string to_path() const;
+
+  /** Returns the URI string. */
+  std::string to_string() const;
 
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
+
+  /** The URI is stored as a string. */
   std::string uri_;
 };
 

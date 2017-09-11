@@ -33,6 +33,9 @@
 #include "vfs.h"
 #include "hdfs_filesystem.h"
 #include "posix_filesystem.h"
+#include "logger.h"
+
+#include <iostream>
 
 namespace tiledb {
 
@@ -48,14 +51,6 @@ VFS::~VFS() = default;
 /*                API                */
 /* ********************************* */
 
-Status VFS::sync(const URI& uri) const {
-  if (uri.is_posix())
-    return posix::sync(uri.to_path());
-
-  // TODO: Handle all other file systems here !
-  return Status::Ok();
-}
-
 std::string VFS::abs_path(const std::string& path) {
   if (URI::is_posix(path))
     return posix::abs_path(path);
@@ -65,6 +60,9 @@ std::string VFS::abs_path(const std::string& path) {
 }
 
 Status VFS::create_dir(const URI& uri) const {
+  if(uri.to_string().empty())
+    return LOG_STATUS(Status::VFSError("Cannot create directory; Invalid URI"));
+
   if (uri.is_posix())
     return posix::create_dir(uri.to_path());
 
@@ -73,6 +71,9 @@ Status VFS::create_dir(const URI& uri) const {
 }
 
 Status VFS::create_file(const URI& uri) const {
+  if(uri.to_string().empty())
+    return LOG_STATUS(Status::VFSError("Cannot create file; Invalid URI"));
+
   if (uri.is_posix())
     return posix::create_file(uri.to_path());
 
@@ -81,6 +82,9 @@ Status VFS::create_file(const URI& uri) const {
 }
 
 Status VFS::delete_file(const URI& uri) const {
+  if(uri.to_string().empty())
+    return LOG_STATUS(Status::VFSError("Cannot delete file; Invalid URI"));
+
   if (uri.is_posix())
     return posix::delete_file(uri.to_path());
 
@@ -89,6 +93,9 @@ Status VFS::delete_file(const URI& uri) const {
 }
 
 Status VFS::filelock_lock(const URI& uri, int* fd, bool shared) const {
+  if(uri.to_string().empty())
+    return LOG_STATUS(Status::VFSError("Cannot lock filelock; Invalid URI"));
+
   if (uri.is_posix())
     return posix::filelock_lock(uri.to_path(), fd, shared);
 
@@ -97,6 +104,9 @@ Status VFS::filelock_lock(const URI& uri, int* fd, bool shared) const {
 }
 
 Status VFS::filelock_unlock(const URI& uri, int fd) const {
+  if(uri.to_string().empty())
+    return LOG_STATUS(Status::VFSError("Cannot unlock filelock; Invalid URI"));
+
   if (uri.is_posix())
     return posix::filelock_unlock(fd);
 
@@ -104,7 +114,21 @@ Status VFS::filelock_unlock(const URI& uri, int fd) const {
   return Status::Ok();
 }
 
+Status VFS::file_size(const URI& uri, uint64_t* size) const {
+  if(uri.to_string().empty())
+    return LOG_STATUS(Status::VFSError("Cannot get file size; Invalid URI"));
+
+  if (uri.is_posix())
+    return posix::file_size(uri.to_path(), size);
+
+  // TODO: Handle all other file systems here !
+  return Status::Ok();
+}
+
 bool VFS::is_dir(const URI& uri) const {
+  if(uri.to_string().empty())
+    return false;
+
   if (uri.is_posix())
     return posix::is_dir(uri.to_path());
 
@@ -113,6 +137,9 @@ bool VFS::is_dir(const URI& uri) const {
 }
 
 bool VFS::is_file(const URI& uri) const {
+  if(uri.to_string().empty())
+    return false;
+
   if (uri.is_posix())
     return posix::is_file(uri.to_path());
 
@@ -121,6 +148,9 @@ bool VFS::is_file(const URI& uri) const {
 }
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
+  if(parent.to_string().empty())
+    return LOG_STATUS(Status::VFSError("Cannot list directory; Invalid URI"));
+
   if (parent.is_posix()) {
     std::vector<std::string> files;
     RETURN_NOT_OK(posix::ls(parent.to_path(), &files));
@@ -133,6 +163,9 @@ Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
 }
 
 Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
+  if(old_uri.to_string().empty() || new_uri.to_string().empty())
+    return LOG_STATUS(Status::VFSError("Cannot move directory; Invalid URI"));
+
   if (old_uri.is_posix() && new_uri.is_posix())
     return posix::move_dir(old_uri.to_path(), new_uri.to_path());
 
@@ -141,6 +174,9 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 }
 
 Status VFS::read_from_file(const URI& uri, Buffer** buff) {
+  if(uri.to_string().empty())
+    return LOG_STATUS(Status::VFSError("Cannot read from file; Invalid URI"));
+
   if (uri.is_posix())
     return posix::read_from_file(uri.to_path(), buff);
 
@@ -149,9 +185,23 @@ Status VFS::read_from_file(const URI& uri, Buffer** buff) {
 }
 
 Status VFS::read_from_file(
-    const URI& uri, uint64_t offset, void* buffer, uint64_t length) const {
+    const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const {
+  if(uri.to_string().empty())
+    return LOG_STATUS(Status::VFSError("Cannot read from file; Invalid URI"));
+
   if (uri.is_posix())
-    return posix::read_from_file(uri.to_path(), offset, buffer, length);
+    return posix::read_from_file(uri.to_path(), offset, buffer, nbytes);
+
+  // TODO: Handle all other file systems here !
+  return Status::Ok();
+}
+
+Status VFS::sync(const URI& uri) const {
+  if(uri.to_string().empty())
+    return LOG_STATUS(Status::VFSError("Cannot sync; Invalid URI"));
+
+  if (uri.is_posix())
+    return posix::sync(uri.to_path());
 
   // TODO: Handle all other file systems here !
   return Status::Ok();
@@ -159,16 +209,11 @@ Status VFS::read_from_file(
 
 Status VFS::write_to_file(
     const URI& uri, const void* buffer, uint64_t buffer_size) const {
+  if(uri.to_string().empty())
+    return LOG_STATUS(Status::VFSError("Cannot write to file; Invalid URI"));
+
   if (uri.is_posix())
     return posix::write_to_file(uri.to_path(), buffer, buffer_size);
-
-  // TODO: Handle all other file systems here !
-  return Status::Ok();
-}
-
-Status VFS::file_size(const URI& uri, uint64_t* size) const {
-  if (uri.is_posix())
-    return posix::file_size(uri.to_path(), size);
 
   // TODO: Handle all other file systems here !
   return Status::Ok();

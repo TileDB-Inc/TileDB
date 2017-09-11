@@ -51,12 +51,12 @@ BasicArraySchema::~BasicArraySchema() {
 /* ********************************* */
 
 ArraySchema* BasicArraySchema::array_schema() {
-  // Return array schema
+  // Return array_schema schema
   return array_schema_;
 }
 
 Status BasicArraySchema::init() {
-  // Initialize array schema
+  // Initialize array_schema schema
   return array_schema_->init();
 }
 

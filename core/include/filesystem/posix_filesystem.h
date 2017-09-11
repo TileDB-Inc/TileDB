@@ -151,7 +151,7 @@ bool is_file(const std::string& path);
  *     absolute), the function sets the empty string (i.e., "") to *path*.
  * @return void
  */
-void purge_dots_from_path(std::string& path);
+void purge_dots_from_path(std::string* path);
 
 /**
  * Reads data from a file into a buffer.

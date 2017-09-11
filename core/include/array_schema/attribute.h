@@ -34,6 +34,7 @@
 #define TILEDB_ATTRIBUTE_H
 
 #include <string>
+
 #include "compressor.h"
 #include "datatype.h"
 
@@ -59,7 +60,7 @@ class Attribute {
    *
    * @param attr The attribute to copy.
    */
-  Attribute(const Attribute* attr);
+  explicit Attribute(const Attribute* attr);
 
   /** Destructor. */
   ~Attribute();

@@ -309,7 +309,7 @@ Status ArrayReadState::compute_unsorted_fragment_cell_ranges_dense(
     }
   }
 
-  // Add a fragment that accounts for the empty areas of the array
+  // Add a fragment that accounts for the empty areas of the array_schema
   if (!subarray_area_covered)
     unsorted_fragment_cell_ranges.push_back(empty_fragment_cell_ranges<T>());
 
@@ -1235,7 +1235,7 @@ void ArrayReadState::init_subarray_tile_coords() {
       subarray, tile_domain, subarray_tile_domain);
 
   // Check if there is any overlap between the subarray tile domain and the
-  // array tile domain
+  // array_schema tile domain
   bool overlap = true;
   for (int i = 0; i < dim_num; ++i) {
     if (subarray_tile_domain[2 * i] > tile_domain[2 * i + 1] ||
@@ -1775,7 +1775,7 @@ Status ArrayReadState::sort_fragment_cell_ranges(
   auto tile_coords = static_cast<const T*>(subarray_tile_coords_);
 
   // Compute tile domain
-  // This is non-NULL only in the dense array case
+  // This is non-NULL only in the dense array_schema case
   T* tile_domain = nullptr;
   if (tile_coords != nullptr) {
     tile_domain = new T[2 * dim_num];

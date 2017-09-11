@@ -66,7 +66,7 @@ int main() {
   printf(" a1\n----\n");
   int overflow;
   do {
-    // Read from array
+    // Read from array_schema
     printf("Reading cells...\n");
     tiledb_query_submit(ctx, query);
 

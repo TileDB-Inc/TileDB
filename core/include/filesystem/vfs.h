@@ -35,12 +35,16 @@
 
 #include <string>
 
+#include "buffer.h"
 #include "status.h"
 #include "uri.h"
 
 namespace tiledb {
 
-/** This class implements virtual filesystem functions. */
+/**
+ * This class implements a virtual filesystem that directs filesystem-related
+ * function execution to the appropriate backend based on the input URI.
+ */
 class VFS {
  public:
   /* ********************************* */
@@ -57,47 +61,142 @@ class VFS {
   /*               API                 */
   /* ********************************* */
 
-  Status sync(const URI& uri) const;
-
   /**
    * Returns the absolute path of the input string (mainly useful for
    * posix URI's).
+   *
+   * @param path The input path.
+   * @return The string with the absolute path.
    */
   static std::string abs_path(const std::string& path);
 
-  /** Creates a directory. */
+  /**
+   * Creates a directory.
+   *
+   * @param uri The URI of the directory.
+   * @return Status
+   */
   Status create_dir(const URI& uri) const;
 
-  /** Creates an empty file. */
+  /**
+   * Creates an empty file.
+   *
+   * @param uri The URI of the file.
+   * @return Status
+   */
   Status create_file(const URI& uri) const;
 
+  /**
+   * Deletes a file.
+   *
+   * @param uri The URI of the file.
+   * @return Status
+   */
   Status delete_file(const URI& uri) const;
 
+  /**
+   * Locks a filelock.
+   *
+   * @param uri The URI of the filelock.
+   * @param fd A file descriptor for the filelock (used in unlocking the
+   *     filelock).
+   * @param shared *True* if it is a shared lock, *false* if it is an
+   *     exclusive lock.
+   * @return Status
+   */
   Status filelock_lock(const URI& uri, int* fd, bool shared) const;
 
-  /** Unlocks a filelock. */
+  /**
+   * Unlocks a filelock.
+   *
+   * @param uri The URI of the filelock.
+   * @param fd The descriptor of the filelock.
+   * @return Status
+   */
   Status filelock_unlock(const URI& uri, int fd) const;
 
-  /** Checks if a directory exists. */
+  /**
+   * Retrieves the size of a file.
+   *
+   * @param uri The URI of the file.
+   * @param size The file size to be retrieved.
+   * @return Status
+   */
+  Status file_size(const URI& uri, uint64_t* size) const;
+
+  /**
+   * Checks if a directory exists.
+   *
+   * @param uri The URI of the directory.
+   * @return *True* if the directory exists and *false* otherwise.
+   */
   bool is_dir(const URI& uri) const;
 
-  /** Checks if a file exists. */
+  /**
+   * Checks if a file exists.
+   *
+   * @param uri The URI of the file.
+   * @return *True* if the file exists and *false* otherwise.
+   */
   bool is_file(const URI& uri) const;
 
-  /** Retrieves all the URIs that have the first input as parent. */
+  /**
+   * Retrieves all the URIs that have the first input as parent.
+   *
+   * @param parent The target directory to list.
+   * @param uris The URIs that are contained in the parent.
+   * @return Status
+   */
   Status ls(const URI& parent, std::vector<URI>* uris) const;
 
+  /**
+   * Renames a directory.
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   * @return Status
+   */
   Status move_dir(const URI& old_uri, const URI& new_uri);
 
+  /**
+   * Reads the entire file into a buffer.
+   *
+   * @param uri The URI of the file.
+   * @param buff The buffer to read into.
+   * @return Status
+   */
   Status read_from_file(const URI& uri, Buffer** buff);
 
+  /**
+   * Reads from a file.
+   *
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
+   * @return Status
+   */
   Status read_from_file(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t length) const;
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
 
+  /**
+   * Syncs (flushes) a file.
+   *
+   * @param uri The URI of the file.
+   * @return Status
+   */
+  Status sync(const URI& uri) const;
+
+  /**
+   * Writes the contents of a buffer into a file.
+   *
+   * @param uri The URI of the file.
+   * @param buffer The buffer to write from.
+   * @param buffer_size The buffer size.
+   * @return Status
+   */
   Status write_to_file(
       const URI& uri, const void* buffer, uint64_t buffer_size) const;
-
-  Status file_size(const URI& uri, uint64_t* size) const;
 
  private:
   /* ********************************* */
