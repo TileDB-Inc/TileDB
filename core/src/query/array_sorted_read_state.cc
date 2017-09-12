@@ -2031,7 +2031,8 @@ Status ArraySortedReadState::read() {
   }
 
   assert(0);  // The code should never reach here
-  return LOG_STATUS(Status::ASRSError("Invalid array_schema mode when reading"));
+  return LOG_STATUS(
+      Status::ASRSError("Invalid array_schema mode when reading"));
 }
 
 template <class T>

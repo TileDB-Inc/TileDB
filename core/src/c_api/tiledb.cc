@@ -183,7 +183,8 @@ inline int sanity_check(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema) {
   if (array_schema == nullptr || array_schema->array_schema_ == nullptr) {
     save_error(
-        ctx, tiledb::Status::Error("Invalid TileDB array_schema schema struct"));
+        ctx,
+        tiledb::Status::Error("Invalid TileDB array_schema schema struct"));
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -264,7 +265,7 @@ int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
     }
 
     // Create error struct
-    *err = (tiledb_error_t *) malloc(sizeof(tiledb_error_t));
+    *err = (tiledb_error_t*)malloc(sizeof(tiledb_error_t));
     if (*err == nullptr) {
       save_error(ctx, tiledb::Status::Error("Failed to allocate error struct"));
       return TILEDB_OOM;
@@ -276,9 +277,9 @@ int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
       free(*err);
       *err = nullptr;
       save_error(
-              ctx,
-              tiledb::Status::Error(
-                      "Failed to allocate status object in TileDB error struct"));
+          ctx,
+          tiledb::Status::Error(
+              "Failed to allocate status object in TileDB error struct"));
       return TILEDB_OOM;
     }
 
@@ -318,10 +319,8 @@ int tiledb_group_create(tiledb_ctx_t* ctx, const char* group) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  auto group_uri = tiledb::URI(group);
-
   // Create the group
-  if (save_error(ctx, ctx->storage_manager_->group_create(group_uri)))
+  if (save_error(ctx, ctx->storage_manager_->group_create(group)))
     return TILEDB_ERR;
 
   // Success
@@ -568,7 +567,8 @@ int tiledb_array_schema_create(
   if (*array_schema == nullptr) {
     save_error(
         ctx,
-        tiledb::Status::Error("Failed to allocate TileDB array_schema schema struct"));
+        tiledb::Status::Error(
+            "Failed to allocate TileDB array_schema schema struct"));
     return TILEDB_OOM;
   }
 
@@ -687,7 +687,8 @@ int tiledb_array_schema_load(
   if (*array_schema == nullptr) {
     save_error(
         ctx,
-        tiledb::Status::Error("Failed to allocate TileDB array_schema schema struct"));
+        tiledb::Status::Error(
+            "Failed to allocate TileDB array_schema schema struct"));
     return TILEDB_OOM;
   }
 

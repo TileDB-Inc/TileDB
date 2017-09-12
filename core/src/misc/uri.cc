@@ -54,6 +54,10 @@ URI::~URI() = default;
 /*                API                */
 /* ********************************* */
 
+bool URI::is_invalid() const {
+  return uri_.empty();
+}
+
 bool URI::is_posix(const std::string& path) {
   return utils::starts_with(path, "file://") ||
          path.find("://") == std::string::npos;
@@ -100,7 +104,7 @@ URI URI::parent() const {
     uint64_t pos = uri_.find_last_of('/');
     if (pos == std::string::npos)
       return URI();
-    return uri_.substr(0, pos);
+    return URI(uri_.substr(0, pos));
   }
 
   // TODO: handle the other file systems here

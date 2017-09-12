@@ -75,7 +75,7 @@ class StorageManager {
    * @param group The URI of the group to be created.
    * @return Status
    */
-  Status group_create(const URI& group) const;
+  Status group_create(const std::string& group) const;
 
   /**
    * Initializes the storage manager. It spawns two threads. The first is for
@@ -86,9 +86,6 @@ class StorageManager {
    * @return Status
    */
   Status init();
-
-
-
 
   Status sync(const URI& uri);
 
@@ -124,8 +121,6 @@ class StorageManager {
    * @return Status
    */
   Status async_push_query(Query* query, int i);
-
-
 
   Status query_init(
       Query* query,
@@ -192,8 +187,8 @@ class StorageManager {
   std::map<std::string, OpenArray*> open_arrays_;
 
   /**
-   * Virtual filesystem handler. It directs queries to the appropriate filesystem
-   * backend. Note that this is stateful.
+   * Virtual filesystem handler. It directs queries to the appropriate
+   * filesystem backend. Note that this is stateful.
    */
   VFS* vfs_;
 
@@ -215,11 +210,6 @@ class StorageManager {
   /** Stops the async query. */
   void async_stop();
 
-
-
-
-
-
   Status array_close(
       const URI& array,
       const std::vector<FragmentMetadata*>& fragment_metadata);
@@ -234,8 +224,6 @@ class StorageManager {
   Status array_open_error(
       OpenArray* open_array,
       const std::vector<FragmentMetadata*>& fragment_metadata);
-
-
 
   Status open_array_get_entry(const URI& array_uri, OpenArray** open_array);
 

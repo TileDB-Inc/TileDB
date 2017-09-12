@@ -61,12 +61,18 @@ StorageManager::~StorageManager() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManager::group_create(const URI& group) const {
+Status StorageManager::group_create(const std::string& group) const {
+  // Create group URI
+  URI group_uri(group);
+  if (group_uri.is_invalid())
+    return LOG_STATUS(
+        Status::StorageManagerError("Cannot create group; Invalid group URI"));
+
   // Create group directory
-  RETURN_NOT_OK(vfs_->create_dir(group));
+  RETURN_NOT_OK(vfs_->create_dir(group_uri));
 
   // Create group file
-  URI group_filename = group.join_path(constants::group_filename);
+  URI group_filename = group_uri.join_path(constants::group_filename);
   RETURN_NOT_OK(vfs_->create_file(group_filename));
 
   return Status::Ok();
@@ -79,11 +85,6 @@ Status StorageManager::init() {
 
   return Status::Ok();
 }
-
-
-
-
-
 
 Status StorageManager::read_from_file(
     const URI& uri, uint64_t offset, void* buffer, uint64_t length) const {
@@ -198,8 +199,8 @@ Status StorageManager::move_dir(const URI& old_uri, const URI& new_uri) {
 Status StorageManager::array_create(ArraySchema* array_schema) {
   // Check array_schema schema
   if (array_schema == nullptr) {
-    return LOG_STATUS(
-        Status::StorageManagerError("Cannot create array_schema; Empty array_schema schema"));
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot create array_schema; Empty array_schema schema"));
   }
 
   // Create array_schema directory
@@ -291,12 +292,6 @@ void StorageManager::async_stop() {
   async_thread_[0]->join();
   async_thread_[1]->join();
 }
-
-
-
-
-
-
 
 Status StorageManager::array_close(
     const URI& array_uri,
@@ -398,8 +393,6 @@ Status StorageManager::array_open_error(
   open_array->mtx_unlock();
   return array_close(open_array->array_uri(), fragment_metadata);
 }
-
-
 
 void StorageManager::async_process_query(Query* query) {
   // For easy reference
@@ -716,8 +709,8 @@ Status StorageManager::array_clear(const URI& array_schema) const {
         std::string("Array '") + array_uri.to_string() + "' does not exist"));
   }
 
-  // Delete the entire array_schema directory except for the array_schema schema file
-  std::vector<std::string> paths;
+  // Delete the entire array_schema directory except for the array_schema schema
+file std::vector<std::string> paths;
   RETURN_NOT_OK(vfs::ls(array_uri.to_posix_path(), &paths));
   for (auto& path : paths) {
     if (utils::is_array_schema(path) || utils::is_consolidation_lock(path))
@@ -741,7 +734,8 @@ Status StorageManager::array_finalize(Array* array_schema) {
   RETURN_NOT_OK_ELSE(array_schema->finalize(), delete array_schema);
   if (is_read_mode(array_schema->query_->mode()))
     RETURN_NOT_OK_ELSE(
-        array_close(array_schema->array_schema()->array_uri()), delete array_schema)
+        array_close(array_schema->array_schema()->array_uri()), delete
+array_schema)
 
   // Clean up
   delete array_schema;
@@ -836,7 +830,8 @@ Status StorageManager::array_consolidate(const URI& array_uri) {
   // Create an array_schema object
   Array* array_schema;
   RETURN_NOT_OK(
-      array_init(array_schema, array_uri, QueryMode::READ, nullptr, nullptr, 0));
+      array_init(array_schema, array_uri, QueryMode::READ, nullptr, nullptr,
+0));
 
   // Consolidate array_schema (TODO: unhandled error handling here)
   Fragment* new_fragment;
@@ -845,7 +840,8 @@ Status StorageManager::array_consolidate(const URI& array_uri) {
       array_schema->consolidate(new_fragment, &old_fragments);
 
   // Close the array_schema
-  Status st_array_close = array_close(array_schema->array_schema()->array_uri());
+  Status st_array_close =
+array_close(array_schema->array_schema()->array_uri());
 
   // Finalize consolidation
   Status st_consolidation_finalize =
@@ -857,14 +853,13 @@ Status StorageManager::array_consolidate(const URI& array_uri) {
   if (!st_array_finalize.ok()) {
     // TODO: Status:
     return LOG_STATUS(
-        Status::StorageManagerError(std::string("Could not finalize array_schema: ")
-                                        .append(array_uri.to_string())));
+        Status::StorageManagerError(std::string("Could not finalize
+array_schema: ") .append(array_uri.to_string())));
   }
   if (!(st_array_close.ok() && !st_consolidation_finalize.ok()))
     return LOG_STATUS(
-        Status::StorageManagerError(std::string("Could not consolidate array_schema: ")
-                                        .append(array_uri.to_string())));
-  return Status::Ok();
+        Status::StorageManagerError(std::string("Could not consolidate
+array_schema: ") .append(array_uri.to_string()))); return Status::Ok();
 }
 
  Status Array::consolidate(

@@ -254,8 +254,8 @@ Status Query::set_attributes(const char** attributes, int attribute_num) {
 
     // Sanity check on duplicates
     if (utils::has_duplicates(attributes_vec))
-      return LOG_STATUS(
-          Status::QueryError("Cannot initialize array_schema; Duplicate attributes"));
+      return LOG_STATUS(Status::QueryError(
+          "Cannot initialize array_schema; Duplicate attributes"));
   }
 
   // Set attribute ids
@@ -314,7 +314,7 @@ Status Query::new_fragment() {
   // Create new fragment
   auto fragment = new Fragment(this);
   RETURN_NOT_OK_ELSE(
-      fragment->init(new_fragment_name, subarray_), delete fragment);
+      fragment->init(URI(new_fragment_name), subarray_), delete fragment);
   fragments_.push_back(fragment);
 
   return Status::Ok();
@@ -404,7 +404,7 @@ Status Query::write_default(void** buffers, uint64_t* buffer_sizes) {
     // Create new fragment
     auto fragment = new Fragment(this);
     fragments_.push_back(fragment);
-    RETURN_NOT_OK(fragment->init(new_fragment_name, subarray_));
+    RETURN_NOT_OK(fragment->init(URI(new_fragment_name), subarray_));
   }
 
   // Dispatch the write command to the new fragment

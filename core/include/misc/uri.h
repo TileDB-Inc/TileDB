@@ -55,7 +55,7 @@ class URI {
    * @param path String that gets converted into an absolute path and stored
    *     as a URI.
    */
-  URI(const std::string& path);
+  explicit URI(const std::string& path);
 
   /** Destructor. */
   ~URI();
@@ -63,6 +63,9 @@ class URI {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /** Checks if the URI is invalid (empty string). */
+  bool is_invalid() const;
 
   /**
    * Checks if the input path is posix.

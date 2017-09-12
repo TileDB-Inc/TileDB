@@ -144,7 +144,7 @@ std::string Status::code_to_string() const {
       break;
     case StatusCode::VFS:
       type = "[TileDB::VFS] Error";
-          break;
+      break;
     default:
       type = "[TileDB::?] Error:";
   }
