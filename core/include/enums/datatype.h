@@ -34,6 +34,8 @@
 #ifndef TILEDB_DATATYPE_H
 #define TILEDB_DATATYPE_H
 
+#include "constants.h"
+
 namespace tiledb {
 
 enum class Datatype : char {
@@ -41,6 +43,60 @@ enum class Datatype : char {
 #include "tiledb_enum.inc"
 #undef TILEDB_DATATYPE_ENUM
 };
+
+inline uint64_t datatype_size(Datatype type) {
+  switch (type) {
+    case Datatype::INT32:
+      return sizeof(int);
+    case Datatype::INT64:
+      return sizeof(int64_t);
+    case Datatype::FLOAT32:
+      return sizeof(float);
+    case Datatype::FLOAT64:
+      return sizeof(double);
+    case Datatype::CHAR:
+      return sizeof(char);
+    case Datatype::INT8:
+      return sizeof(int8_t);
+    case Datatype::UINT8:
+      return sizeof(uint8_t);
+    case Datatype::INT16:
+      return sizeof(int16_t);
+    case Datatype::UINT16:
+      return sizeof(uint16_t);
+    case Datatype::UINT32:
+      return sizeof(uint32_t);
+    case Datatype::UINT64:
+      return sizeof(uint64_t);
+  }
+}
+
+inline const char* datatype_str(Datatype type) {
+  switch (type) {
+    case Datatype::INT32:
+      return constants::int32_str;
+    case Datatype::INT64:
+      return constants::int64_str;
+    case Datatype::FLOAT32:
+      return constants::float32_str;
+    case Datatype::FLOAT64:
+      return constants::float64_str;
+    case Datatype::CHAR:
+      return constants::char_str;
+    case Datatype::INT8:
+      return constants::int8_str;
+    case Datatype::UINT8:
+      return constants::uint8_str;
+    case Datatype::INT16:
+      return constants::int16_str;
+    case Datatype::UINT16:
+      return constants::uint16_str;
+    case Datatype::UINT32:
+      return constants::uint32_str;
+    case Datatype::UINT64:
+      return constants::uint64_str;
+  }
+}
 
 }  // namespace tiledb
 

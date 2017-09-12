@@ -80,6 +80,8 @@ class ArraySchema {
   /*             ACCESSORS             */
   /* ********************************* */
 
+  unsigned int Dim_num() const;
+
   /** Returns the array uri. */
   const URI& array_uri() const;
 

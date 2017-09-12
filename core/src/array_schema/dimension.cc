@@ -31,10 +31,11 @@
  */
 
 #include "dimension.h"
+#include "utils.h"
+
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
-#include "utils.h"
 
 namespace tiledb {
 
@@ -55,7 +56,7 @@ Dimension::Dimension(
   type_ = type;
 
   // Get type size
-  uint64_t type_size = utils::datatype_size(type);
+  uint64_t type_size = datatype_size(type);
 
   // Set domain
   if (domain == nullptr) {
@@ -87,7 +88,7 @@ Dimension::Dimension(const Dimension* dim) {
   compressor_ = dim->compressor();
   compression_level_ = dim->compression_level();
 
-  uint64_t type_size = utils::datatype_size(type_);
+  uint64_t type_size = datatype_size(type_);
 
   domain_ = malloc(2 * type_size);
   memcpy(domain_, dim->domain(), 2 * type_size);
@@ -110,7 +111,7 @@ Dimension::~Dimension() {
 }
 
 /* ********************************* */
-/*              GETTERS              */
+/*                API                */
 /* ********************************* */
 
 Compressor Dimension::compressor() const {
@@ -127,8 +128,8 @@ void* Dimension::domain() const {
 
 void Dimension::dump(FILE* out) const {
   // Retrieve type and compressor strings
-  const char* type_s = utils::datatype_str(type_);
-  const char* compressor_s = utils::compressor_str(compressor_);
+  const char* type_s = datatype_str(type_);
+  const char* compressor_s = compressor_str(compressor_);
 
   // Retrieve domain and tile extent strings
   std::string domain_s = utils::domain_str(domain_, type_);
@@ -148,24 +149,20 @@ const std::string& Dimension::name() const {
   return name_;
 }
 
-void* Dimension::tile_extent() const {
-  return tile_extent_;
-}
-
-Datatype Dimension::type() const {
-  return type_;
-}
-
-/* ********************************* */
-/*              SETTERS              */
-/* ********************************* */
-
 void Dimension::set_compressor(Compressor compressor) {
   compressor_ = compressor;
 }
 
 void Dimension::set_compression_level(int compression_level) {
   compression_level_ = compression_level;
+}
+
+void* Dimension::tile_extent() const {
+  return tile_extent_;
+}
+
+Datatype Dimension::type() const {
+  return type_;
 }
 
 }  // namespace tiledb

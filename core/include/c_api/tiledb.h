@@ -92,7 +92,7 @@ extern "C" {
 TILEDB_EXPORT const char* tiledb_coords();
 
 /** Returns a special value indicating a variable number of elements. */
-TILEDB_EXPORT int tiledb_var_num();
+TILEDB_EXPORT unsigned int tiledb_var_num();
 
 /* ****************************** */
 /*          TILEDB ENUMS          */
@@ -236,10 +236,11 @@ TILEDB_EXPORT int tiledb_error_message(
 /**
  * Free's the resources associated with a TileDB error object.
  *
+ * @param ctx The TileDB context.
  * @param err The TileDB error object.
- * @return void
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT void tiledb_error_free(tiledb_error_t* err);
+TILEDB_EXPORT int tiledb_error_free(tiledb_ctx_t* ctx, tiledb_error_t* err);
 
 /* ********************************* */
 /*                GROUP              */
@@ -276,10 +277,12 @@ TILEDB_EXPORT int tiledb_attribute_create(
 /**
  * Destroys a TileDB attribute, freeing-up memory.
  *
+ * @param ctx The TileDB context.
  * @param attr The attribute to be destroyed.
- * @return void
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT void tiledb_attribute_free(tiledb_attribute_t* attr);
+TILEDB_EXPORT int tiledb_attribute_free(
+    tiledb_ctx_t* ctx, tiledb_attribute_t* attr);
 
 /**
  * Sets a compressor to an attribute.
@@ -287,7 +290,7 @@ TILEDB_EXPORT void tiledb_attribute_free(tiledb_attribute_t* attr);
  * @param ctx The TileDB context.
  * @param attr The target attribute.
  * @param compressor The compressor to be set.
- * @param compression level The compression level (use -1 for default).
+ * @param compression_level The compression level (use -1 for default).
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_attribute_set_compressor(
@@ -301,7 +304,7 @@ TILEDB_EXPORT int tiledb_attribute_set_compressor(
  *
  * @param ctx The TileDB context.
  * @param attr The target attribute.
- * @param int cell_val_num The number of values per cell.
+ * @param cell_val_num The number of values per cell.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_attribute_set_cell_val_num(
@@ -349,7 +352,7 @@ TILEDB_EXPORT int tiledb_attribute_get_compressor(
  *
  * @param ctx The TileDB context.
  * @param attr The attribute.
- * @param cell_val_num The number of values per cell.
+ * @param cell_val_num The number of values per cell to be retrieved.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_attribute_get_cell_val_num(
@@ -395,10 +398,12 @@ TILEDB_EXPORT int tiledb_dimension_create(
 /**
  * Destroys a TileDB dimension, freeing-up memory.
  *
+ * @param ctx The TileDB context.
  * @param dim The dimension to be destroyed.
- * @return void
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT void tiledb_dimension_free(tiledb_dimension_t* dim);
+TILEDB_EXPORT int tiledb_dimension_free(
+    tiledb_ctx_t* ctx, tiledb_dimension_t* dim);
 
 /**
  * Sets a compressor for a dimension.
@@ -504,11 +509,12 @@ TILEDB_EXPORT int tiledb_array_schema_create(
 /**
  * Destroys an array schema, freeing-up memory.
  *
+ * @param ctx The TileDB context.
  * @param array_schema The array schema to be destroyed.
- * @return void
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT void tiledb_array_schema_free(
-    tiledb_array_schema_t* array_schema);
+TILEDB_EXPORT int tiledb_array_schema_free(
+    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema);
 
 /**
  * Adds an attribute to an array schema.
@@ -592,7 +598,7 @@ TILEDB_EXPORT int tiledb_array_schema_set_array_type(
  * @param ctx The TileDB context.
  * @param array_schema The array schema.
  * @return TILEDB_OK if the array schema is correct and TILEDB_ERR upon any
- * error.
+ *     error.
  */
 TILEDB_EXPORT int tiledb_array_schema_check(
     tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema);
@@ -702,17 +708,19 @@ TILEDB_EXPORT int tiledb_attribute_iter_create(
 /**
  * Frees an attribute iterator.
  *
+ * @param ctx The TileDB context.
  * @param attr_it The attribute iterator to be freed.
- * @return void
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT void tiledb_attribute_iter_free(tiledb_attribute_iter_t* attr_it);
+TILEDB_EXPORT int tiledb_attribute_iter_free(
+    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
 
 /**
  * Checks if an attribute iterator has reached the end.
  *
  * @param ctx The TileDB context.
  * @param attr_it The attribute iterator.
- * @param done This is set to 1 if the iterator id done, and 0 otherwise.
+ * @param done This is set to 1 if the iterator is done, and 0 otherwise.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_attribute_iter_done(
@@ -747,7 +755,7 @@ TILEDB_EXPORT int tiledb_attribute_iter_here(
  *
  * @param ctx The TileDB context.
  * @param attr_it The attribute iterator.
- * @return
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_attribute_iter_first(
     tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
@@ -757,7 +765,7 @@ TILEDB_EXPORT int tiledb_attribute_iter_first(
  *
  * @param ctx The TileDB context.
  * @param array_schema The input array schema.
- * @param dim_it The attribute iterator to be created.
+ * @param dim_it The dimension iterator to be created.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
 TILEDB_EXPORT int tiledb_dimension_iter_create(
@@ -766,12 +774,14 @@ TILEDB_EXPORT int tiledb_dimension_iter_create(
     tiledb_dimension_iter_t** dim_it);
 
 /**
- * Frees a dimensions iterator.
+ * Frees a dimension iterator.
  *
- * @param attr_it The attribute iterator to be freed.
- * @return void
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT void tiledb_dimension_iter_free(tiledb_dimension_iter_t* dim_it);
+TILEDB_EXPORT int tiledb_dimension_iter_free(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
 
 /**
  * Checks if a dimension iterator has reached the end.

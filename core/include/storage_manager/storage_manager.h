@@ -70,6 +70,14 @@ class StorageManager {
   /* ********************************* */
 
   /**
+   * Creates a TileDB array storing its schema.
+   *
+   * @param array_schema The array schema.
+   * @return Status
+   */
+  Status array_create(ArraySchema* array_schema);
+
+  /**
    * Creates a TileDB group.
    *
    * @param group The URI of the group to be created.
@@ -87,15 +95,32 @@ class StorageManager {
    */
   Status init();
 
+  /**
+   * Loads the schema of an array from persistent storage into memory.
+   *
+   * @param array_name The name (path) of the array.
+   * @param array_schema The array schema to be retrieved.
+   * @return Status
+   */
+  Status load(const std::string& array_name, ArraySchema* array_schema);
+
+  /**
+   * Stores an array schema into persistent storage.
+   *
+   * @param array_schema The array schema to be stored.
+   * @return Status
+   */
+  Status store(ArraySchema* array_schema);
+
+
+
   Status sync(const URI& uri);
 
   Status load(FragmentMetadata* metadata);
 
   Status store(FragmentMetadata* metadata);
 
-  Status load(const URI& array_uri, ArraySchema* array_schema);
 
-  Status store(ArraySchema* array_schema);
 
   bool is_dir(const URI& uri);
 
@@ -109,7 +134,6 @@ class StorageManager {
 
   Status move_dir(const URI& old_uri, const URI& new_uri);
 
-  Status array_create(ArraySchema* array_schema);
 
   /**
    * Pushes an async query to the queue.

@@ -166,14 +166,18 @@ ArrayType ArraySchema::array_type() const {
 }
 
 const Attribute* ArraySchema::attr(int id) const {
-  if (id >= 0 && id < attribute_num_)
+  if (id >= 0 && id < Attributes_.size())
     return Attributes_[id];
-  else
-    return nullptr;
+
+  return nullptr;
 }
 
 unsigned int ArraySchema::attr_num() const {
   return (unsigned int)Attributes_.size();
+}
+
+unsigned int ArraySchema::Dim_num() const {
+  return (unsigned int)Dimensions_.size();
 }
 
 const std::string& ArraySchema::attribute(int attribute_id) const {
@@ -284,10 +288,10 @@ bool ArraySchema::dense() const {
 }
 
 const Dimension* ArraySchema::dim(int id) const {
-  if (id >= 0 && id < dim_num_)
+  if (id >= 0 && id < Dimensions_.size())
     return Dimensions_[id];
-  else
-    return nullptr;
+
+  return nullptr;
 }
 
 int ArraySchema::dim_num() const {
@@ -1023,7 +1027,7 @@ Status ArraySchema::init() {
   types_.push_back(Dimensions_[0]->type());
 
   // Set domain
-  uint64_t coord_size = utils::datatype_size(types_[attribute_num_]);
+  uint64_t coord_size = datatype_size(types_[attribute_num_]);
   coords_size_ = dim_num_ * coord_size;
   if (domain_ != nullptr)
     free(domain_);

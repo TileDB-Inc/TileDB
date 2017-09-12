@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_group_create.cc
+ * @file   tiledb_version.cc
  *
  * @section LICENSE
  *
@@ -27,33 +27,21 @@
  * 
  * @section DESCRIPTION
  *
- * It creates a hierarchical directory structure with three groups:
- *     my_group
- *        |_ dense_arrays
- *        |_ sparse_arrays
+ * Prints the current TileDB version. Program output:
+ *
+ *     $ ./tiledb_version
+ *     TileDB v<major>.<minor>.<rev>
  */
 
 #include "tiledb.h"
 
-#include <cstdlib>
-
 int main() {
-  // Create context
-  tiledb_ctx_t* ctx;
-  tiledb_ctx_create(&ctx);
+  // Get version
+  int major, minor, rev;
+  tiledb_version(&major, &minor, &rev);
 
-  // Delete group if it exists
-  system("rm -rf my_group");
-
-  // Create a group
-  tiledb_group_create(ctx, "my_group");
-
-  // Create two groups inside the first group
-  tiledb_group_create(ctx, "my_group/dense_arrays");
-  tiledb_group_create(ctx, "my_group/sparse_arrays");
-
-  // Clean up
-  tiledb_ctx_free(ctx);
+  // Print version
+  printf("TileDB v%d.%d.%d\n", major, minor, rev);
 
   return 0;
 }

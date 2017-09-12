@@ -40,7 +40,7 @@
 
 namespace tiledb {
 
-/** The Attribute class. */
+/** Manipulates a TileDB attribute. */
 class Attribute {
  public:
   /* ********************************* */
@@ -56,9 +56,9 @@ class Attribute {
   Attribute(const char* name, Datatype type);
 
   /**
-   * Constructor. It clones the input.
+   * Constructor. It clones the input attribute.
    *
-   * @param attr The attribute to copy.
+   * @param attr The attribute to be cloned.
    */
   explicit Attribute(const Attribute* attr);
 
@@ -66,10 +66,13 @@ class Attribute {
   ~Attribute();
 
   /* ********************************* */
-  /*              GETTERS              */
+  /*                 API               */
   /* ********************************* */
 
-  /** Returns the size in bytes of one cell for this attribute. */
+  /**
+   * Returns the size in bytes of one cell for this attribute. If the attribute
+   * is variable-sized, this function returns the size in bytes of an offset.
+   */
   uint64_t cell_size() const;
 
   /** Returns the number of values per cell. */
@@ -87,16 +90,6 @@ class Attribute {
   /** Returns the attribute name. */
   const std::string& name() const;
 
-  /** Returns the attribute type. */
-  Datatype type() const;
-
-  /** Returns true if this is a variable-size attribute, and false otherwise. */
-  bool var_size() const;
-
-  /* ********************************* */
-  /*              SETTERS              */
-  /* ********************************* */
-
   /** Sets the attribute number of values per cell. */
   void set_cell_val_num(unsigned int cell_val_num);
 
@@ -106,6 +99,15 @@ class Attribute {
   /** Sets the attribute compression level. */
   void set_compression_level(int compression_level);
 
+  /** Returns the attribute type. */
+  Datatype type() const;
+
+  /**
+   * Returns *true* if this is a variable-sized attribute, and *false*
+   * otherwise.
+   */
+  bool var_size() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -113,12 +115,16 @@ class Attribute {
 
   /** The attribute number of values per cell. */
   unsigned int cell_val_num_;
+
   /** The attribute compressor. */
   Compressor compressor_;
+
   /** The attribute compression level. */
   int compression_level_;
+
   /** The attribute name. */
   std::string name_;
+
   /** The attribute type. */
   Datatype type_;
 };

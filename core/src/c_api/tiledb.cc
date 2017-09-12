@@ -44,7 +44,7 @@ const char* tiledb_coords() {
   return tiledb::constants::coords;
 }
 
-int tiledb_var_num() {
+unsigned int tiledb_var_num() {
   return tiledb::constants::var_num;
 }
 
@@ -303,12 +303,15 @@ int tiledb_error_message(
   return TILEDB_OK;
 }
 
-void tiledb_error_free(tiledb_error_t* err) {
-  if (err != nullptr) {
-    delete err->status_;
-    delete err->errmsg_;
-    free(err);
-  }
+int tiledb_error_free(tiledb_ctx_t* ctx, tiledb_error_t* err) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, err) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  delete err->status_;
+  delete err->errmsg_;
+  free(err);
+
+  return TILEDB_OK;
 }
 
 /* ****************************** */
@@ -365,11 +368,14 @@ int tiledb_attribute_create(
   return TILEDB_OK;
 }
 
-void tiledb_attribute_free(tiledb_attribute_t* attr) {
-  if (attr == nullptr)
-    return;
+int tiledb_attribute_free(tiledb_ctx_t* ctx, tiledb_attribute_t* attr) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, attr) == TILEDB_ERR)
+    return TILEDB_ERR;
+
   delete attr->attr_;
   free(attr);
+
+  return TILEDB_OK;
 }
 
 int tiledb_attribute_set_compressor(
@@ -478,11 +484,14 @@ int tiledb_dimension_create(
   return TILEDB_OK;
 }
 
-void tiledb_dimension_free(tiledb_dimension_t* dim) {
-  if (dim == nullptr)
-    return;
+int tiledb_dimension_free(tiledb_ctx_t* ctx, tiledb_dimension_t* dim) {
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, dim) == TILEDB_ERR)
+    return TILEDB_ERR;
+
   delete dim->dim_;
   free(dim);
+
+  return TILEDB_OK;
 }
 
 int tiledb_dimension_set_compressor(
@@ -589,11 +598,16 @@ int tiledb_array_schema_create(
   return TILEDB_OK;
 }
 
-void tiledb_array_schema_free(tiledb_array_schema_t* array_schema) {
-  if (array_schema == nullptr)
-    return;
+int tiledb_array_schema_free(
+    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+
   delete array_schema->array_schema_;
   free(array_schema);
+
+  return TILEDB_OK;
 }
 
 int tiledb_array_schema_add_attribute(
@@ -706,10 +720,9 @@ int tiledb_array_schema_load(
 
   // Load array_schema schema
   auto storage_manager = ctx->storage_manager_;
-  auto array_uri = tiledb::URI(array_name);
   if (save_error(
           ctx,
-          storage_manager->load(array_uri, (*array_schema)->array_schema_))) {
+          storage_manager->load(array_name, (*array_schema)->array_schema_))) {
     delete (*array_schema)->array_schema_;
     free(*array_schema);
     *array_schema = nullptr;
@@ -727,7 +740,7 @@ int tiledb_array_schema_get_array_name(
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   const tiledb::URI& uri = array_schema->array_schema_->array_uri();
-  *array_name = strdup(uri.to_string().c_str());
+  *array_name = uri.to_string().c_str();
   return TILEDB_OK;
 }
 
@@ -850,18 +863,21 @@ int tiledb_attribute_iter_create(
   return TILEDB_OK;
 }
 
-void tiledb_attribute_iter_free(tiledb_attribute_iter_t* attr_it) {
-  if (attr_it == nullptr)
-    return;
+int tiledb_attribute_iter_free(
+    tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, attr_it) == TILEDB_ERR)
 
-  if (attr_it->attr_ != nullptr) {
-    if (attr_it->attr_->attr_ != nullptr)
-      delete (attr_it->attr_->attr_);
+    if (attr_it->attr_ != nullptr) {
+      if (attr_it->attr_->attr_ != nullptr)
+        delete (attr_it->attr_->attr_);
 
-    free(attr_it->attr_);
-  }
+      free(attr_it->attr_);
+    }
 
   free(attr_it);
+
+  return TILEDB_OK;
 }
 
 int tiledb_attribute_iter_done(
@@ -945,7 +961,7 @@ int tiledb_dimension_iter_create(
   // Initialize the iterator
   (*dim_it)->array_schema_ = array_schema;
   if (array_schema != nullptr)
-    (*dim_it)->dim_num_ = array_schema->array_schema_->dim_num();
+    (*dim_it)->dim_num_ = array_schema->array_schema_->Dim_num();
   (*dim_it)->current_dim_ = 0;
   if ((*dim_it)->dim_num_ <= 0) {
     (*dim_it)->dim_ = nullptr;
@@ -983,9 +999,11 @@ int tiledb_dimension_iter_create(
   return TILEDB_OK;
 }
 
-void tiledb_dimension_iter_free(tiledb_dimension_iter_t* dim_it) {
-  if (dim_it == nullptr)
-    return;
+int tiledb_dimension_iter_free(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, dim_it) == TILEDB_ERR)
+    return TILEDB_ERR;
 
   if (dim_it->dim_ != nullptr) {
     if (dim_it->dim_->dim_ != nullptr)
@@ -995,6 +1013,8 @@ void tiledb_dimension_iter_free(tiledb_dimension_iter_t* dim_it) {
   }
 
   free(dim_it);
+
+  return TILEDB_OK;
 }
 
 int tiledb_dimension_iter_done(

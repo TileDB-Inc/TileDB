@@ -31,9 +31,9 @@
  */
 
 #include "attribute.h"
-#include <cassert>
-#include "constants.h"
 #include "utils.h"
+
+#include <cassert>
 
 namespace tiledb {
 
@@ -68,18 +68,18 @@ Attribute::Attribute(const Attribute* attr) {
 Attribute::~Attribute() = default;
 
 /* ********************************* */
-/*              GETTERS              */
+/*                API                */
 /* ********************************* */
-
-unsigned int Attribute::cell_val_num() const {
-  return cell_val_num_;
-}
 
 uint64_t Attribute::cell_size() const {
   if (var_size())
     return constants::cell_var_offset_size;
-  else
-    return cell_val_num_ * utils::datatype_size(type_);
+
+  return cell_val_num_ * datatype_size(type_);
+}
+
+unsigned int Attribute::cell_val_num() const {
+  return cell_val_num_;
 }
 
 Compressor Attribute::compressor() const {
@@ -92,8 +92,8 @@ int Attribute::compression_level() const {
 
 void Attribute::dump(FILE* out) const {
   // Retrieve type and compressor strings
-  const char* type_s = utils::datatype_str(type_);
-  const char* compressor_s = utils::compressor_str(compressor_);
+  const char* type_s = datatype_str(type_);
+  const char* compressor_s = compressor_str(compressor_);
 
   // Dump
   fprintf(out, "### Attribute ###\n");
@@ -101,24 +101,16 @@ void Attribute::dump(FILE* out) const {
   fprintf(out, "- Type: %s\n", type_s);
   fprintf(out, "- Compressor: %s\n", compressor_s);
   fprintf(out, "- Compression level: %d\n", compression_level_);
-  fprintf(out, "- Cell val num: %u\n", cell_val_num_);
+
+  if (!var_size())
+    fprintf(out, "- Cell val num: %u\n", cell_val_num_);
+  else
+    fprintf(out, "- Cell val num: var\n");
 }
 
 const std::string& Attribute::name() const {
   return name_;
 }
-
-Datatype Attribute::type() const {
-  return type_;
-}
-
-bool Attribute::var_size() const {
-  return cell_val_num_ == constants::var_num;
-}
-
-/* ********************************* */
-/*              SETTERS              */
-/* ********************************* */
 
 void Attribute::set_cell_val_num(unsigned int cell_val_num) {
   cell_val_num_ = cell_val_num;
@@ -130,6 +122,14 @@ void Attribute::set_compressor(Compressor compressor) {
 
 void Attribute::set_compression_level(int compression_level) {
   compression_level_ = compression_level;
+}
+
+Datatype Attribute::type() const {
+  return type_;
+}
+
+bool Attribute::var_size() const {
+  return cell_val_num_ == constants::var_num;
 }
 
 }  // namespace tiledb

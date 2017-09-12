@@ -158,9 +158,6 @@ int cmp_row_order(
     const T* coords_b,
     int dim_num);
 
-/** Returns the string representation of the input compressor. */
-const char* compressor_str(Compressor compressor);
-
 /**
  * Deletes a fragment represenation
  *
@@ -176,17 +173,6 @@ const char* compressor_str(Compressor compressor);
  * @return The parent path of the input path.
  */
 // TODO: remove std::string parent_path(const std::string& dir);
-
-/**
- * Returns the size in bytes of the input datatype
- *
- * @param type The input datatype.
- * @return The size in bytes of the input datatype.
- */
-uint64_t datatype_size(Datatype type);
-
-/** Returns the string representation of the input data type. */
-const char* datatype_str(Datatype type);
 
 /**
  * Returns the input domain as a string of the form "[low, high]".

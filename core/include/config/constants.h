@@ -70,14 +70,8 @@ extern const char* group_filename;
 /** The initial internal buffer size for the case of sparse arrays. */
 extern const uint64_t internal_buffer_size;
 
-/** Special name reserved for the metadata key attribute. */
-extern const char* key;
-
 /** The maximum number of bytes written in a single I/O. */
 extern const uint64_t max_write_bytes;
-
-/** The metadata schema file name. */
-extern const char* metadata_schema_filename;
 
 /** The maximum name length. */
 extern const unsigned name_max_len;
@@ -89,7 +83,7 @@ extern const uint64_t sorted_buffer_size;
 extern const uint64_t sorted_buffer_var_size;
 
 /** Special value indicating a variable number of elements. */
-extern const int var_num;
+extern const unsigned int var_num;
 
 /** Special value indicating a variable size. */
 extern const uint64_t var_size;
@@ -177,6 +171,9 @@ extern const char* row_major_str;
 
 /** The string representation of null. */
 extern const char* null_str;
+
 }  // namespace constants
+
 }  // namespace tiledb
+
 #endif  // TILEDB_CONSTANTS_H

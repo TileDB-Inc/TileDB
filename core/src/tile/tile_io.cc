@@ -36,7 +36,6 @@
 #include "gzip_compressor.h"
 #include "lz4_compressor.h"
 #include "rle_compressor.h"
-#include "utils.h"
 #include "zstd_compressor.h"
 
 #include <iostream>
@@ -220,11 +219,7 @@ Status TileIO::compress_tile_blosc(
 
   // Compress tile
   RETURN_NOT_OK(Blosc::compress(
-      compressor,
-      utils::datatype_size(tile->type()),
-      level,
-      tile->buffer(),
-      buffer_));
+      compressor, datatype_size(tile->type()), level, tile->buffer(), buffer_));
 
   return Status::Ok();
 }

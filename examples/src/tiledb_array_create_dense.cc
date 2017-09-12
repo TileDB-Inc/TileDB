@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_create_dense.cc
+ * @file   tiledb_array_create_dense.cc
  *
  * @section LICENSE
  *
@@ -28,17 +28,67 @@
  * @section DESCRIPTION
  *
  * It shows how to create a dense array.
+ *
+ * Program output:
+ *        $ ./tiledb_array_create_dense
+ *        - Array name: <current_working_dir>/my_dense_array
+ *        - Array type: dense
+ *        - Cell order: row-major
+ *        - Tile order: row-major
+ *        - Capacity: 10000
+ *
+ *        ### Dimension ###
+ *        - Name: d1
+ *        - Type: INT64
+ *        - Compressor: NO_COMPRESSION
+ *        - Compression level: -1
+ *        - Domain: [1,4]
+ *        - Tile extent: 2
+ *
+ *        ### Dimension ###
+ *        - Name: d2
+ *        - Type: INT64
+ *        - Compressor: NO_COMPRESSION
+ *        - Compression level: -1
+ *        - Domain: [1,4]
+ *        - Tile extent: 2
+ *
+ *        ### Attribute ###
+ *        - Name: a1
+ *        - Type: INT32
+ *        - Compressor: RLE
+ *        - Compression level: -1
+ *        - Cell val num: 1
+ *
+ *        ### Attribute ###
+ *        - Name: a2
+ *        - Type: CHAR
+ *        - Compressor: GZIP
+ *        - Compression level: -1
+ *        - Cell val num: var
+ *
+ *        ### Attribute ###
+ *        - Name: a3
+ *        - Type: FLOAT32
+ *        - Compressor: ZSTD
+ *        - Compression level: -1
+ *        - Cell val num: 2
  */
 
 #include "tiledb.h"
+
+#include <cstdlib>
 
 int main() {
   // Initialize context with the default configuration parameters
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
+  // Delete existing array
+  system("rm -rf my_dense_array");
+
   // Array name
-  const char* array_name = "my_group/dense_arrays/my_array_A";
+  const char* array_name = "my_dense_array";
 
   // Attributes
   tiledb_attribute_t* a1;
@@ -68,23 +118,31 @@ int main() {
   tiledb_array_schema_t* array_schema;
   tiledb_array_schema_create(ctx, &array_schema, array_name);
   tiledb_array_schema_set_array_type(ctx, array_schema, TILEDB_DENSE);
-  tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_COL_MAJOR);
   tiledb_array_schema_add_dimension(ctx, array_schema, d1);
   tiledb_array_schema_add_dimension(ctx, array_schema, d2);
   tiledb_array_schema_add_attribute(ctx, array_schema, a1);
   tiledb_array_schema_add_attribute(ctx, array_schema, a2);
   tiledb_array_schema_add_attribute(ctx, array_schema, a3);
 
-  // Create array_schema
+  // Check array schema
+  if(tiledb_array_schema_check(ctx, array_schema) != TILEDB_OK)
+    printf("Invalid array schema\n");
+
+  // Create array
   tiledb_array_create(ctx, array_schema);
 
+  // Load and dump array schema to make sure the array was created correctly
+  tiledb_array_schema_t* loaded_array_schema;
+  tiledb_array_schema_load(ctx, &loaded_array_schema, array_name);
+  tiledb_array_schema_dump(ctx, loaded_array_schema, stdout);
+
   // Clean up
-  tiledb_attribute_free(a1);
-  tiledb_attribute_free(a2);
-  tiledb_attribute_free(a3);
-  tiledb_dimension_free(d1);
-  tiledb_dimension_free(d2);
-  tiledb_array_schema_free(array_schema);
+  tiledb_attribute_free(ctx, a1);
+  tiledb_attribute_free(ctx, a2);
+  tiledb_attribute_free(ctx, a3);
+  tiledb_dimension_free(ctx, d1);
+  tiledb_dimension_free(ctx, d2);
+  tiledb_array_schema_free(ctx, array_schema);
   tiledb_ctx_free(ctx);
 
   return 0;

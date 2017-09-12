@@ -37,19 +37,24 @@
 
 #include "tiledb.h"
 
+#include <cstdlib>
+
 void print_error(tiledb_ctx_t* ctx) {
   tiledb_error_t* err;
   tiledb_error_last(ctx, &err);
   const char* msg;
   tiledb_error_message(ctx, err, &msg);
   printf("%s\n", msg);
-  tiledb_error_free(err);
+  tiledb_error_free(ctx, err);
 }
 
 int main() {
   // Create context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
+
+  // Delete group if it exists
+  system("rm -rf my_group");
 
   // Create a group
   int rc = tiledb_group_create(ctx, "my_group");

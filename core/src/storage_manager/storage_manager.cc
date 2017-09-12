@@ -61,6 +61,28 @@ StorageManager::~StorageManager() {
 /*               API              */
 /* ****************************** */
 
+Status StorageManager::array_create(ArraySchema* array_schema) {
+  // Check array_schema schema
+  if (array_schema == nullptr) {
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot create array; Empty array schema"));
+  }
+
+  // Create array directory
+  const URI& array_uri = array_schema->array_uri();
+  RETURN_NOT_OK(vfs_->create_dir(array_uri));
+
+  // Store array schema
+  RETURN_NOT_OK(store(array_schema));
+
+  // Create array filelock
+  URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
+  RETURN_NOT_OK(vfs_->create_file(filelock_uri));
+
+  // Success
+  return Status::Ok();
+}
+
 Status StorageManager::group_create(const std::string& group) const {
   // Create group URI
   URI group_uri(group);
@@ -83,6 +105,48 @@ Status StorageManager::init() {
   async_thread_[1] = new std::thread(async_start, this, 1);
   vfs_ = new VFS();
 
+  return Status::Ok();
+}
+
+Status StorageManager::load(const std::string& array_name, ArraySchema* array_schema) {
+  URI array_uri = URI(array_name);
+  if(array_uri.is_invalid())
+    return LOG_STATUS(
+            Status::StorageManagerError("Cannot load array schema; Invalid array URI"));
+
+  URI array_schema_uri = array_uri.join_path(constants::array_schema_filename);
+  uint64_t buffer_size;
+  RETURN_NOT_OK(file_size(array_schema_uri, &buffer_size));
+  void* buffer = malloc(buffer_size);
+  if(buffer == nullptr)
+    return LOG_STATUS(
+            Status::StorageManagerError("Cannot load array schema; Buffer allocation error"));
+
+  RETURN_NOT_OK_ELSE(
+      read_from_file(array_schema_uri, 0, buffer, buffer_size), free(buffer));
+  RETURN_NOT_OK_ELSE(
+      array_schema->deserialize(buffer, buffer_size), free(buffer));
+
+  free(buffer);
+  return Status::Ok();
+}
+
+Status StorageManager::store(ArraySchema* array_schema) {
+  RETURN_NOT_OK(array_schema->check());
+
+  void* buffer;
+  uint64_t buffer_size;
+  URI array_schema_uri =
+      array_schema->array_uri().join_path(constants::array_schema_filename);
+
+  RETURN_NOT_OK(array_schema->init());
+  RETURN_NOT_OK(array_schema->serialize(buffer, buffer_size));
+  if(is_file(array_schema_uri))
+    RETURN_NOT_OK_ELSE(delete_file(array_schema_uri), free(buffer));
+  RETURN_NOT_OK_ELSE(
+      write_to_file(array_schema_uri, buffer, buffer_size), free(buffer));
+
+  free(buffer);
   return Status::Ok();
 }
 
@@ -139,38 +203,7 @@ Status StorageManager::store(FragmentMetadata* metadata) {
   return st;
 }
 
-Status StorageManager::load(const URI& array_uri, ArraySchema* array_schema) {
-  URI array_schema_uri = array_uri.join_path(constants::array_schema_filename);
-  uint64_t buffer_size;
-  RETURN_NOT_OK(file_size(array_schema_uri, &buffer_size));
-  void* buffer = malloc(buffer_size);
 
-  // TODO: some error handling here
-
-  RETURN_NOT_OK_ELSE(
-      read_from_file(array_schema_uri, 0, buffer, buffer_size), free(buffer));
-  RETURN_NOT_OK_ELSE(
-      array_schema->deserialize(buffer, buffer_size), free(buffer));
-
-  free(buffer);
-  return Status::Ok();
-}
-
-Status StorageManager::store(ArraySchema* array_schema) {
-  void* buffer;
-  uint64_t buffer_size;
-  URI array_schema_uri =
-      array_schema->array_uri().join_path(constants::array_schema_filename);
-
-  RETURN_NOT_OK(array_schema->init());
-  RETURN_NOT_OK(array_schema->serialize(buffer, buffer_size));
-  RETURN_NOT_OK_ELSE(delete_file(array_schema_uri), free(buffer));
-  RETURN_NOT_OK_ELSE(
-      write_to_file(array_schema_uri, buffer, buffer_size), free(buffer));
-
-  free(buffer);
-  return Status::Ok();
-}
 
 bool StorageManager::is_dir(const URI& uri) {
   return vfs_->is_dir(uri);
@@ -194,28 +227,6 @@ Status StorageManager::delete_file(const URI& uri) const {
 
 Status StorageManager::move_dir(const URI& old_uri, const URI& new_uri) {
   return vfs_->move_dir(old_uri, new_uri);
-}
-
-Status StorageManager::array_create(ArraySchema* array_schema) {
-  // Check array_schema schema
-  if (array_schema == nullptr) {
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot create array_schema; Empty array_schema schema"));
-  }
-
-  // Create array_schema directory
-  const URI& array_uri = array_schema->array_uri();
-  RETURN_NOT_OK(vfs_->create_dir(array_uri));
-
-  // Store array_schema schema
-  RETURN_NOT_OK(store(array_schema));
-
-  // Create array_schema filelock
-  URI filelock_uri = array_uri.join_path(constants::array_filelock_name);
-  RETURN_NOT_OK(vfs_->create_file(filelock_uri));
-
-  // Success
-  return Status::Ok();
 }
 
 Status StorageManager::async_push_query(Query* query, int i) {
@@ -443,7 +454,7 @@ Status StorageManager::open_array_load_schema(
     return Status::Ok();
 
   auto array_schema = new ArraySchema();
-  RETURN_NOT_OK_ELSE(load(array_uri, array_schema), delete array_schema);
+  RETURN_NOT_OK_ELSE(load(array_uri.to_string(), array_schema), delete array_schema);
   open_array->set_array_schema(array_schema);
 
   return Status::Ok();

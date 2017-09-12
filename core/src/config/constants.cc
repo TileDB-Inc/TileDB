@@ -21,10 +21,7 @@ const uint64_t capacity = 10000;
 /** The size of a variable cell offset. */
 const uint64_t cell_var_offset_size = sizeof(size_t);
 
-constexpr uint64_t var_size_expr() {
-  return sizeof(size_t) - 1;
-}
-const uint64_t var_size = var_size_expr();
+const uint64_t var_size = sizeof(uint64_t);
 
 /** Special name reserved for the coordinates attribute. */
 const char* coords = "__coords";
@@ -80,14 +77,8 @@ const char* group_filename = "__tiledb_group.tdb";
 /** The initial internal buffer size for the case of sparse arrays. */
 const uint64_t internal_buffer_size = 10000000;
 
-/** Special name reserved for the metadata key attribute. */
-const char* key = "__key";
-
 /** The maximum number of bytes written in a single I/O. */
 const uint64_t max_write_bytes = 1500000000;
-
-/** The metadata schema file name. */
-const char* metadata_schema_filename = "__metadata_schema.tdb";
 
 /** The maximum name length. */
 const unsigned name_max_len = 256;
@@ -99,7 +90,7 @@ const uint64_t sorted_buffer_size = 10000000;
 const uint64_t sorted_buffer_var_size = 10000000;
 
 /** Special value indicating a variable number of elements. */
-const int var_num = UINT_MAX;
+const unsigned int var_num = UINT_MAX;
 
 /** String describing no compression. */
 const char* no_compression_str = "NO_COMPRESSION";

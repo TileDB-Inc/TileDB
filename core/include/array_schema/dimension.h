@@ -34,12 +34,13 @@
 #define TILEDB_DIMENSION_H
 
 #include <string>
+
 #include "compressor.h"
 #include "datatype.h"
 
 namespace tiledb {
 
-/** The Dimension class. */
+/** Manipulates a TileDB dimension. */
 class Dimension {
  public:
   /* ********************************* */
@@ -63,15 +64,15 @@ class Dimension {
   /**
    * Constructor. It clones the input.
    *
-   * @param dim The attribute to copy.
+   * @param dim The dimension to clone.
    */
-  Dimension(const Dimension* dim);
+  explicit Dimension(const Dimension* dim);
 
   /** Destructor. */
   ~Dimension();
 
   /* ********************************* */
-  /*              GETTERS              */
+  /*                API                */
   /* ********************************* */
 
   /** Returns the compressor. */
@@ -86,18 +87,8 @@ class Dimension {
   /** Dumps the dimension contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
 
-  /** Returns the attribute name. */
+  /** Returns the dimension name. */
   const std::string& name() const;
-
-  /** Returns the tile extent. */
-  void* tile_extent() const;
-
-  /** Returns the attribute type. */
-  Datatype type() const;
-
-  /* ********************************* */
-  /*              SETTERS              */
-  /* ********************************* */
 
   /** Sets the dimension compressor. */
   void set_compressor(Compressor compressor);
@@ -105,22 +96,33 @@ class Dimension {
   /** Sets the dimension compression level. */
   void set_compression_level(int compression_level);
 
+  /** Returns the tile extent. */
+  void* tile_extent() const;
+
+  /** Returns the dimension type. */
+  Datatype type() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The attribute compressor. */
+  /** The dimension compressor. */
   Compressor compressor_;
-  /** The attribute compression level. */
+
+  /** The dimension compression level. */
   int compression_level_;
+
   /** The dimension domain. */
   void* domain_;
-  /** The attribute name. */
+
+  /** The dimension name. */
   std::string name_;
+
   /** The tile extent of the dimension. */
   void* tile_extent_;
-  /** The attribute type. */
+
+  /** The dimension type. */
   Datatype type_;
 };
 
