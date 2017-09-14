@@ -41,20 +41,64 @@
 #include "status.h"
 #include "uri.h"
 
-class Buffer;
-
 namespace tiledb {
 
 namespace posix {
 
+/**
+ * Returns the absolute posix (string) path of the input in the
+ * form "file://<absolute path>"
+ */
+std::string abs_path(const std::string& path);
+
+/** Removes redundant adjacent slashed from the input path. */
+void adjacent_slashes_dedup(std::string* path);
+
+/** Returns *true* if a == b == '/'. */
+bool both_slashes(char a, char b);
+
+/**
+ * Creates a new directory.
+ *
+ * @param dir The name of the directory to be created.
+ * @return Status
+ */
+Status create_dir(const std::string& path);
+
+/**
+ * Creates an empty file.
+ *
+ * @param filename The name of the file to be created.
+ * @return Status
+ */
 Status create_file(const std::string& filename);
 
 /**
- * Share-lock a given filename and return open file descriptor handle.
+ * Returns the directory where the program is executed.
  *
- * @param filename the lockfile to lock
- * @param fd a pointer to a file descriptor
- * @param shared True if this is a shared lock, false if it is an exclusive lock
+ * @return The directory where the program is executed. If the program cannot
+ *     retrieve the current working directory, the empty string is returned.
+ */
+std::string current_dir();
+
+/** Deletes the file in the input path. */
+Status delete_file(const std::string& path);
+
+/**
+ * Returns the size of the input file.
+ *
+ * @param path The name of the file whose size is to be retrieved.
+ * @return Status
+ */
+Status file_size(const std::string& path, uint64_t* size);
+
+/**
+ * Lock a given filename and retrieve an open file descriptor handle.
+ *
+ * @param filename The filelock to lock
+ * @param fd A pointer to a file descriptor
+ * @param shared *True* if this is a shared lock, *false* if it is an exclusive
+ *     lock.
  * @return Status
  */
 Status filelock_lock(const std::string& filename, int* fd, bool shared);
@@ -68,67 +112,10 @@ Status filelock_lock(const std::string& filename, int* fd, bool shared);
 Status filelock_unlock(int fd);
 
 /**
- * Move a given filesystem path
- *
- * @param old_path the current path
- * @param new_path the new path
- * @return Status
- */
-Status move_dir(const std::string& old_path, const std::string& new_path);
-
-/**
- *
- * List files one level deep under a given path
- *
- * @param path  The parent path to list sub-paths
- * @param paths Pointer to a vector of strings to store absolute paths
- * @return
- */
-Status ls(const std::string& path, std::vector<std::string>* paths);
-
-/**
- * Creates a new directory.
- *
- * @param dir The name of the directory to be created.
- * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
- */
-Status create_dir(const std::string& path);
-
-/**
- * Returns the directory where the program is executed.
- *
- * @return The directory where the program is executed. If the program cannot
- *     retrieve the current working directory, the empty string is returned.
- */
-std::string current_dir();
-
-/**
- * Deletes a directory. Note that the directory must not contain other
- * directories, but it should only contain files.
- *
- * @param dirname The name of the directory to be deleted.
- * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
- */
-// TODO Status delete_dir(const std::string& path);
-
-// TODO: (jcb) uri
-// TODO: Status delete_dir(const URI& path);
-
-/**
- * Returns the size of the input file.
- *
- * @param path The name of the file whose size is to be retrieved.
- * @return The file size on success, and TILEDB_UT_ERR for error.
- */
-Status file_size(const std::string& path, uint64_t* size);
-
-Status delete_file(const std::string& path);
-
-/**
  * Checks if the input is an existing directory.
  *
  * @param dir The directory to be checked.
- * @return *true* if *dir* is an existing directory, and *false* otherwise.
+ * @return *True* if *dir* is an existing directory, and *False* otherwise.
  */
 bool is_dir(const std::string& path);
 
@@ -139,6 +126,25 @@ bool is_dir(const std::string& path);
  * @return *True* if *file* is an existing file, and *false* otherwise.
  */
 bool is_file(const std::string& path);
+
+/**
+ *
+ * Lists files one level deep under a given path.
+ *
+ * @param path  The parent path to list sub-paths.
+ * @param paths Pointer to a vector of strings to store the retrieved paths.
+ * @return
+ */
+Status ls(const std::string& path, std::vector<std::string>* paths);
+
+/**
+ * Move a given filesystem path.
+ *
+ * @param old_path The old path.
+ * @param new_path The new path.
+ * @return Status
+ */
+Status move_dir(const std::string& old_path, const std::string& new_path);
 
 /**
  * It takes as input an **absolute** path, and returns it in its canonicalized
@@ -159,30 +165,27 @@ void purge_dots_from_path(std::string* path);
  * @param path The name of the file.
  * @param offset The offset in the file from which the read will start.
  * @param buffer The buffer into which the data will be written.
- * @param length The size of the data to be read from the file.
- * @return TILEDB_UT_OK on success and TILEDB_UT_ERR on error.
+ * @param nbytes The size of the data to be read from the file.
+ * @return Status.
  */
 Status read_from_file(
-    const std::string& path, uint64_t offset, void* buffer, uint64_t length);
+    const std::string& path, uint64_t offset, void* buffer, uint64_t nbytes);
 
 /**
- * Read contents of a file into a (growable) byte buffer.
+ * Read contents of a file into a (growable) byte buffer. The function
+ * creates the buffer *buff* so the caller must de-allocated it later.
  *
  * @param path  The name of a file.
- * @param buff A pointer to the allocated buffe
- * @param buffer_size The number of bytes allocated to hold the buffer
+ * @param buff A pointer to the buffer to be allocated.
  * @return Status
  */
 Status read_from_file(const std::string& path, Buffer** buff);
 
-std::string abs_path(const std::string& path);
-
 /**
- * Syncs a file or directory. If the file/directory does not exist,
- * the function gracefully exits (i.e., it ignores the syncing).
+ * Syncs a file or directory.
  *
  * @param path The name of the file.
- * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
+ * @return Status
  */
 Status sync(const std::string& path);
 
@@ -192,7 +195,7 @@ Status sync(const std::string& path);
  * @param path The name of the file.
  * @param buffer The input buffer.
  * @param buffer_size The size of the input buffer.
- * @return TILEDB_UT_OK on success, and TILEDB_UT_ERR on error.
+ * @return Status
  */
 Status write_to_file(
     const std::string& path, const void* buffer, uint64_t buffer_size);

@@ -188,7 +188,7 @@ class ArraySortedReadState {
   Query* query_;
 
   /** The ids of the attributes the array was initialized with. */
-  std::vector<int> attribute_ids_;
+  std::vector<unsigned int> attribute_ids_;
 
   /**
    * The sizes of the attributes. For variable-length attributes,

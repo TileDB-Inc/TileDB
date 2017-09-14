@@ -68,10 +68,10 @@ class ArrayReadState {
   class SmallerPQFragmentCellRange;
 
   /** A cell position pair [first, second]. */
-  typedef std::pair<int64_t, int64_t> CellPosRange;
+  typedef std::pair<uint64_t, uint64_t> CellPosRange;
 
   /** A pair [fragment_id, tile_pos]. */
-  typedef std::pair<int, int64_t> FragmentInfo;
+  typedef std::pair<unsigned int, uint64_t> FragmentInfo;
 
   /** A pair of fragment info and fragment cell position range. */
   typedef std::pair<FragmentInfo, CellPosRange> FragmentCellPosRange;
@@ -154,7 +154,7 @@ class ArrayReadState {
   const ArraySchema* array_schema_;
 
   /** The number of array attributes. */
-  int attribute_num_;
+  unsigned int attribute_num_;
 
   /** The size of the array coordinates. */
   uint64_t coords_size_;
@@ -163,7 +163,7 @@ class ArrayReadState {
   bool done_;
 
   /** State per attribute indicating the number of empty cells written. */
-  std::vector<int64_t> empty_cells_written_;
+  std::vector<uint64_t> empty_cells_written_;
 
   /**
    * The bounding coordinates of the current tiles for all fragments. Applicable
@@ -175,10 +175,10 @@ class ArrayReadState {
   FragmentCellPosRangesVec fragment_cell_pos_ranges_vec_;
 
   /** Practically records which read round each attribute is on. */
-  std::vector<int64_t> fragment_cell_pos_ranges_vec_pos_;
+  std::vector<uint64_t> fragment_cell_pos_ranges_vec_pos_;
 
   /** Number of array fragments. */
-  int fragment_num_;
+  unsigned int fragment_num_;
 
   /** Stores the read state of each fragment. */
   std::vector<ReadState*> fragment_read_states_;
@@ -724,13 +724,13 @@ class ArrayReadState::PQFragmentCellRange {
   /** The cell range as a pair of coordinates. */
   T* cell_range_;
   /** The fragment id. */
-  int fragment_id_;
+  unsigned int fragment_id_;
   /** The tile id of the left endpoint of the cell range. */
-  int64_t tile_id_l_;
+  uint64_t tile_id_l_;
   /** The tile id of the right endpoint of the cell range. */
-  int64_t tile_id_r_;
+  uint64_t tile_id_r_;
   /** The position on disk of the tile corresponding to the cell range. */
-  int64_t tile_pos_;
+  uint64_t tile_pos_;
 
  private:
   /** The array schema. */
@@ -738,7 +738,7 @@ class ArrayReadState::PQFragmentCellRange {
   /** Size of coordinates. */
   uint64_t coords_size_;
   /** Dimension number. */
-  int dim_num_;
+  unsigned int dim_num_;
   /** Stores the read state of each fragment in the array. */
   const std::vector<ReadState*>* fragment_read_states_;
 };

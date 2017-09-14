@@ -823,7 +823,7 @@ int tiledb_attribute_iter_create(
 
   // Initialize the iterator for the array_schema schema
   (*attr_it)->array_schema_ = array_schema;
-  (*attr_it)->attr_num_ = array_schema->array_schema_->attr_num();
+  (*attr_it)->attr_num_ = array_schema->array_schema_->attribute_num();
 
   // Initialize the rest members of the iterator
   (*attr_it)->current_attr_ = 0;
@@ -961,7 +961,7 @@ int tiledb_dimension_iter_create(
   // Initialize the iterator
   (*dim_it)->array_schema_ = array_schema;
   if (array_schema != nullptr)
-    (*dim_it)->dim_num_ = array_schema->array_schema_->Dim_num();
+    (*dim_it)->dim_num_ = array_schema->array_schema_->dim_num();
   (*dim_it)->current_dim_ = 0;
   if ((*dim_it)->dim_num_ <= 0) {
     (*dim_it)->dim_ = nullptr;
@@ -1085,7 +1085,7 @@ int tiledb_query_create(
     tiledb_query_mode_t mode,
     const void* subarray,
     const char** attributes,
-    int attribute_num,
+    unsigned int attribute_num,
     void** buffers,
     uint64_t* buffer_sizes) {
   // Sanity check

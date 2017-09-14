@@ -2,13 +2,14 @@
 #define TILEDB_CONSTANTS_H
 
 namespace tiledb {
+
 namespace constants {
+
+/** The array filelock name. */
+extern const char* array_filelock_name;
 
 /** The array schema file name. */
 extern const char* array_schema_filename;
-
-/** The fragment metadata file name. */
-extern const char* fragment_metadata_filename;
 
 /** The default tile capacity. */
 extern const uint64_t capacity;
@@ -18,12 +19,6 @@ extern const uint64_t cell_var_offset_size;
 
 /** Special name reserved for the coordinates attribute. */
 extern const char* coords;
-
-/** The consolidation buffer size. */
-extern const uint64_t consolidation_buffer_size;
-
-/** The array filelock name. */
-extern const char* array_filelock_name;
 
 /** The special value for an empty int32. */
 extern const int empty_int32;
@@ -63,6 +58,9 @@ extern const char* file_suffix;
 
 /** The fragment file name. */
 extern const char* fragment_filename;
+
+/** The fragment metadata file name. */
+extern const char* fragment_metadata_filename;
 
 /** The group file name. */
 extern const char* group_filename;

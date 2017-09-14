@@ -145,6 +145,12 @@ std::string Status::code_to_string() const {
     case StatusCode::VFS:
       type = "[TileDB::VFS] Error";
       break;
+    case StatusCode::ConstBuffer:
+      type = "[TileDB::ConstBuffer] Error";
+      break;
+    case StatusCode::Dimension:
+      type = "[TileDB::Dimension] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

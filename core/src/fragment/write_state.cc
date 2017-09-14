@@ -163,7 +163,7 @@ Status WriteState::sync() {
   // For easy reference
   const ArraySchema* array_schema = fragment_->query()->array_schema();
   int attribute_num = array_schema->attribute_num();
-  const std::vector<int>& attribute_ids = fragment_->query()->attribute_ids();
+  const std::vector<unsigned int>& attribute_ids = fragment_->query()->attribute_ids();
   auto storage_manager = fragment_->query()->storage_manager();
 
   // Sync all attributes
@@ -191,10 +191,10 @@ Status WriteState::sync() {
 Status WriteState::sync_attribute(const std::string& attribute) {
   // For easy reference
   const ArraySchema* array_schema = fragment_->query()->array_schema();
-  int attribute_num = array_schema->attribute_num();
+  unsigned int attribute_num = array_schema->attribute_num();
   auto storage_manager = fragment_->query()->storage_manager();
 
-  int attribute_id;
+  unsigned int attribute_id;
   RETURN_NOT_OK(array_schema->attribute_id(attribute, &attribute_id));
   std::string filename;
   if (attribute_id == attribute_num) {
@@ -231,7 +231,7 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
       mode == QueryMode::WRITE_SORTED_ROW) {  // SORTED
     // For easy reference
     const ArraySchema* array_schema = fragment_->query()->array_schema();
-    const std::vector<int>& attribute_ids = fragment_->query()->attribute_ids();
+    auto& attribute_ids = fragment_->query()->attribute_ids();
     auto attribute_id_num = (int)attribute_ids.size();
 
     // Write each attribute individually
@@ -590,7 +590,7 @@ Status WriteState::write_sparse_unsorted(
   // For easy reference
   auto query = fragment_->query();
   const ArraySchema* array_schema = query->array_schema();
-  const std::vector<int>& attribute_ids = query->attribute_ids();
+  auto& attribute_ids = query->attribute_ids();
   auto attribute_id_num = (int)attribute_ids.size();
 
   // Find the coordinates buffer

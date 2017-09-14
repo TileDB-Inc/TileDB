@@ -214,7 +214,7 @@ Status Query::init(
     const std::vector<FragmentMetadata*>& fragment_metadata,
     QueryMode mode,
     const void* subarray,
-    const std::vector<int>& attribute_ids,
+    const std::vector<unsigned int>& attribute_ids,
     void** buffers,
     uint64_t* buffer_sizes) {
   storage_manager_ = storage_manager;
@@ -237,7 +237,7 @@ Status Query::set_attributes(const char** attributes, int attribute_num) {
   // Get attributes
   std::vector<std::string> attributes_vec;
   if (attributes == nullptr) {  // Default: all attributes
-    attributes_vec = array_schema_->attributes();
+    attributes_vec = array_schema_->attribute_names();
     if (array_schema_->dense() && mode_ != QueryMode::WRITE_UNSORTED)
       // Remove coordinates attribute for dense arrays,
       // unless in TILEDB_WRITE_UNSORTED mode
@@ -320,7 +320,7 @@ Status Query::new_fragment() {
   return Status::Ok();
 }
 
-const std::vector<int>& Query::attribute_ids() const {
+const std::vector<unsigned int>& Query::attribute_ids() const {
   return attribute_ids_;
 }
 

@@ -35,8 +35,10 @@
 
 #include <string>
 
+#include "buffer.h"
 #include "compressor.h"
 #include "datatype.h"
+#include "status.h"
 
 namespace tiledb {
 
@@ -46,6 +48,9 @@ class Attribute {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
+
+  /** Constructor. */
+  Attribute();
 
   /**
    * Constructor.
@@ -84,11 +89,27 @@ class Attribute {
   /** Returns the compression level. */
   int compression_level() const;
 
+  /**
+   * Populates the object members from the data in the input binary buffer.
+   *
+   * @param buff The buffer to deserialize from.
+   * @return Status
+   */
+  Status deserialize(ConstBuffer* buff);
+
   /** Dumps the attribute contents in ASCII form in the selected output. */
   void dump(FILE* out) const;
 
   /** Returns the attribute name. */
   const std::string& name() const;
+
+  /**
+   * Serializes the object members into a binary buffer.
+   *
+   * @param buff The buffer to serialize the data into.
+   * @return Status
+   */
+  Status serialize(Buffer* buff);
 
   /** Sets the attribute number of values per cell. */
   void set_cell_val_num(unsigned int cell_val_num);

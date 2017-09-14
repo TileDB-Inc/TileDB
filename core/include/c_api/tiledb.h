@@ -874,7 +874,7 @@ TILEDB_EXPORT int tiledb_query_create(
     tiledb_query_mode_t mode,
     const void* subarray,
     const char** attributes,
-    int attribute_num,
+    unsigned int attribute_num,
     void** buffers,
     uint64_t* buffer_sizes);
 

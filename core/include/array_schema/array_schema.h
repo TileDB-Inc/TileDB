@@ -37,8 +37,10 @@
 #include <string>
 #include <typeinfo>
 #include <vector>
+
 #include "array_type.h"
 #include "attribute.h"
+#include "buffer.h"
 #include "compressor.h"
 #include "constants.h"
 #include "datatype.h"
@@ -64,23 +66,21 @@ class ArraySchema {
    *
    * @param array_schema The array schema to copy.
    */
-  ArraySchema(const ArraySchema* array_schema);
+  explicit ArraySchema(const ArraySchema* array_schema);
 
   /**
    * Constructor.
    *
    * @param uri The array uri.
    */
-  ArraySchema(const URI& uri);
+  explicit ArraySchema(const URI& uri);
 
   /** Destructor. */
   ~ArraySchema();
 
   /* ********************************* */
-  /*             ACCESSORS             */
+  /*               API                 */
   /* ********************************* */
-
-  unsigned int Dim_num() const;
 
   /** Returns the array uri. */
   const URI& array_uri() const;
@@ -89,13 +89,10 @@ class ArraySchema {
   ArrayType array_type() const;
 
   /** Returns a constant pointer to the selected attribute (NULL if error). */
-  const Attribute* attr(int id) const;
-
-  /** Returns the number of attributes. */
-  unsigned int attr_num() const;
+  const Attribute* attr(unsigned int id) const;
 
   /** Returns the name of the attribute with the input id. */
-  const std::string& attribute(int attribute_id) const;
+  const std::string& attribute(unsigned int attribute_id) const;
 
   /**
    * Returns the id of the input attribute.
@@ -105,13 +102,17 @@ class ArraySchema {
    * @return Status
    *
    */
-  Status attribute_id(const std::string& attribute, int* id) const;
+  Status attribute_id(const std::string& attribute, unsigned int* id) const;
+
+
+  /**
+   * Returns the attribute names, plus the coordinates spacial name
+   * in the back.
+   */
+  std::vector<std::string> attribute_names() const;
 
   /** Returns the number of attributes. */
-  int attribute_num() const;
-
-  /** Returns the attributes. */
-  const std::vector<std::string>& attributes() const;
+  unsigned int attribute_num() const;
 
   /** Returns the attributes. */
   const std::vector<Attribute*>& Attributes() const;
@@ -130,10 +131,10 @@ class ArraySchema {
   Layout cell_order() const;
 
   /** Returns the size of cell on the input attribute. */
-  uint64_t cell_size(int attribute_id) const;
+  uint64_t cell_size(unsigned int attribute_id) const;
 
   /** Returns the number of values per cell of the input attribute. */
-  unsigned int cell_val_num(int attribute_id) const;
+  unsigned int cell_val_num(unsigned int attribute_id) const;
 
   /**
    * Checks the correctness of the array schema.
@@ -143,10 +144,10 @@ class ArraySchema {
   Status check() const;
 
   /** Returns the compression type of the attribute with the input id. */
-  Compressor compression(int attribute_id) const;
+  Compressor compression(unsigned int attribute_id) const;
 
   /** Return the compression level of the attribute with the input id. */
-  int compression_level(int attribute_id) const;
+  int compression_level(unsigned int attribute_id) const;
 
   /** Returns the coordinates size. */
   uint64_t coords_size() const;
@@ -158,10 +159,10 @@ class ArraySchema {
   bool dense() const;
 
   /** Returns a constant pointer to the selected dimension. */
-  const Dimension* dim(int id) const;
+  const Dimension* dim(unsigned int id) const;
 
   /** Returns the number of dimensions. */
-  int dim_num() const;
+  unsigned int dim_num() const;
 
   /** Returns the domain. */
   const void* domain() const;
@@ -178,7 +179,7 @@ class ArraySchema {
    */
   Status get_attribute_ids(
       const std::vector<std::string>& attributes,
-      std::vector<int>& attribute_ids) const;
+      std::vector<unsigned int>& attribute_ids) const;
 
   /**
    * Returns true if the input range is contained fully in a single
@@ -217,16 +218,12 @@ class ArraySchema {
   bool is_contained_in_tile_slab_row(const T* range) const;
 
   /**
-   * Serializes the array schema object into a binary buffer.
+   * Serializes the array schema object into a buffer.
    *
-   * @param array_schema_bin The binary buffer to be created and populated
-   *     by the function with the object data. Note that the caller is
-   *     responsible for releasing this buffer afterwards.
-   * @param array_schema_bin_size The size of the created binary buffer.
+   * @param buff The buffer the array schema is serialized into.
    * @return Status
    */
-  Status serialize(
-      void*& array_schema_bin, uint64_t& array_schema_bin_size) const;
+  Status serialize(Buffer* buff) const;
 
   /**
    * Returns the type of overlap of the input subarrays.
@@ -243,11 +240,8 @@ class ArraySchema {
    *    - 3: Partial overlap (contig)
    */
   template <class T>
-  int subarray_overlap(
+  unsigned int subarray_overlap(
       const T* subarray_a, const T* subarray_b, T* overlap_subarray) const;
-
-  /** Returns the tile domain. */
-  const void* tile_domain() const;
 
   /** Returns the tile extents. */
   const void* tile_extents() const;
@@ -256,7 +250,7 @@ class ArraySchema {
    * Returns the number of tiles in the array domain (applicable only to dense
    * arrays).
    */
-  int64_t tile_num() const;
+  uint64_t tile_num() const;
 
   /**
    * Returns the number of tiles in the array domain (applicable only to dense
@@ -266,13 +260,13 @@ class ArraySchema {
    * @return The number of tiles.
    */
   template <class T>
-  int64_t tile_num() const;
+  uint64_t tile_num() const;
 
   /**
    * Returns the number of tiles overlapping with the input range
    * (applicable only to dense arrays).
    */
-  int64_t tile_num(const void* range) const;
+  uint64_t tile_num(const void* range) const;
 
   /**
    * Returns the number of tiles in the input domain (applicable only to dense
@@ -283,32 +277,25 @@ class ArraySchema {
    * @return The number of tiles.
    */
   template <class T>
-  int64_t tile_num(const T* domain) const;
+  uint64_t tile_num(const T* domain) const;
 
   /** Returns the tile order. */
   Layout tile_order() const;
 
   /** Return the number of cells in a column tile slab of an input subarray. */
-  int64_t tile_slab_col_cell_num(const void* subarray) const;
+  uint64_t tile_slab_col_cell_num(const void* subarray) const;
 
   /** Return the number of cells in a row tile slab of an input subarray. */
-  int64_t tile_slab_row_cell_num(const void* subarray) const;
+  uint64_t tile_slab_row_cell_num(const void* subarray) const;
 
   /** Returns the type of the i-th attribute, or NULL if 'i' is invalid. */
-  Datatype type(int i) const;
+  Datatype type(unsigned int i) const;
 
   /** Returns the type size of the i-th attribute. */
-  uint64_t type_size(int i) const;
-
-  /** Returns the number of attributes with variable-sized values. */
-  int var_attribute_num() const;
+  uint64_t type_size(unsigned int i) const;
 
   /** Returns *true* if the indicated attribute has variable-sized values. */
-  bool var_size(int attribute_id) const;
-
-  /* ********************************* */
-  /*              MUTATORS             */
-  /* ********************************* */
+  bool var_size(unsigned int attribute_id) const;
 
   /** Adds an attribute, cloning the input. */
   void add_attribute(const Attribute* attr);
@@ -319,12 +306,10 @@ class ArraySchema {
   /**
    * It assigns values to the members of the object from the input buffer.
    *
-   * @param array_schema_bin The input binary buffer with the object data.
-   * @param array_schema_bin_size The size of the input binary buffer.
+   * @param buff The binary representation of the object to read from.
    * @return Status
    */
-  Status deserialize(
-      const void* array_schema_bin, uint64_t array_schema_bin_size);
+  Status deserialize(ConstBuffer* buff);
 
   /**
    * Initializes the ArraySchema object. It also performs a check to see if
@@ -334,40 +319,17 @@ class ArraySchema {
    */
   Status init();
 
-  /** Sets the array uri. */
-  void set_array_uri(const URI& uri);
-
-  /** Sets the array type (dense or sparse). */
+  /** Sets the array type. */
   void set_array_type(ArrayType array_type);
 
   /** Sets the tile capacity. */
   void set_capacity(uint64_t capacity);
 
-  /** Sets the number of cell values per attribute. */
-  void set_cell_val_num(const unsigned int* cell_val_num);
-
   /** Sets the cell order. */
   void set_cell_order(Layout cell_order);
 
-  /**
-   * Sets the domain.
-   *
-   * @param domain The domain. It should contain one [lower, upper] pair per
-   *     dimension. Thie type  of the values stored in this buffer should match
-   *     the coordinates type.
-   * @return Status
-   *
-   * @note The dimensions and types must already have been set before calling
-   *     this function.
-   */
-  Status set_domain(const void* domain);
-
   /** Sets the tile order. */
   void set_tile_order(Layout tile_order);
-
-  /* ********************************* */
-  /*               MISC                */
-  /* ********************************* */
 
   /**
    * Checks the cell order of the input coordinates. Note that, in the presence
@@ -420,7 +382,7 @@ class ArraySchema {
    *
    */
   template <class T>
-  Status get_cell_pos(const T* coords, int64_t* pos) const;
+  Status get_cell_pos(const T* coords, uint64_t* pos) const;
 
   /**
    * Retrieves the next coordinates along the array cell order within a given
@@ -491,7 +453,7 @@ class ArraySchema {
    *     array inside the array domain, or TILEDB_AS_ERR on error.
    */
   template <class T>
-  int64_t get_tile_pos(const T* tile_coords) const;
+  uint64_t get_tile_pos(const T* tile_coords) const;
 
   /**
    * Returns the tile position along the array tile order within the input
@@ -506,7 +468,7 @@ class ArraySchema {
    *     array inside the input domain, or TILEDB_AS_ERR on error.
    */
   template <class T>
-  int64_t get_tile_pos(const T* domain, const T* tile_coords) const;
+  uint64_t get_tile_pos(const T* domain, const T* tile_coords) const;
 
   /**
    * Gets the tile subarray for the input tile coordinates.
@@ -543,7 +505,7 @@ class ArraySchema {
    * @return The computed tile id.
    */
   template <class T>
-  int64_t tile_id(const T* cell_coords) const;
+  uint64_t tile_id(const T* cell_coords) const;
 
   /**
    * Checks the tile order of the input coordinates.
@@ -576,81 +538,56 @@ class ArraySchema {
 
   /** The array name. */
   URI array_uri_;
+
   /** The array type. */
-  ArrayType array_type_;        // TODO: replace dense_
-  /** The array attributes. */  // TODO: replace attributes_
-  std::vector<Attribute*> Attributes_;
-  /** The attribute names. */
-  std::vector<std::string> attributes_;
+  ArrayType array_type_;
+
   /** The number of attributes. */
-  int attribute_num_;
-  /** True if the array is a basic array. */
-  bool basic_array_;
+  unsigned int attribute_num_;
+
+  /** The array attributes. */
+  std::vector<Attribute*> attributes_;
   /**
    * The tile capacity for the case of sparse fragments.
    */
   uint64_t capacity_;
+
   /** The number of cells per tile. Meaningful only for the **dense** case. */
-  int64_t cell_num_per_tile_;
+  uint64_t cell_num_per_tile_;
+
   /**
    * The cell order. It can be one of the following:
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR
    */
   Layout cell_order_;
+
   /** Stores the size of every attribute (plus coordinates in the end). */
   std::vector<uint64_t> cell_sizes_;
-  /**
-   * Specifies the number of values per attribute for a cell. If it is NULL,
-   * then each attribute has a single value per cell. If for some attribute
-   * the number of values is variable (e.g., in the case off strings), then
-   * TILEDB_VAR_NUM must be used.
-   */
-  std::vector<unsigned int> cell_val_num_;
-  /**
-   * The compression type for each attribute (plus one extra at the end for the
-   * coordinates. It can be one of the following:
-   *    - TILEDB_NO_COMPRESSION
-   *    - TILEDB_GZIP
-   *    - TILEDB_ZSTD
-   *    - TILEDB_LZ4
-   *    - TILEDB_BLOSC
-   *    - TILEDB_BLOSC_LZ4
-   *    - TILEDB_BLOSC_LZ4HC
-   *    - TILEDB_BLOSC_SNAPPY
-   *    - TILEDB_BLOSC_ZLIB
-   *    - TILEDB_BLOSC_ZSTD
-   *    - TILEDB_RLE
-   *    - TILEDB_BZIP2
-   */
-  std::vector<Compressor> compressor_;
-  /** The compression level for each compressor. */
-  std::vector<int> compression_level_;
+
   /** The size (in bytes) of the coordinates. */
   uint64_t coords_size_;
-  /**
-   * Specifies if the array is dense or sparse. If the array is dense,
-   * then the user must specify tile extents (see below).
-   */
-  bool dense_;
-  /** The array dimensions. */  // TODO: replace dimensions_
-  std::vector<Dimension*> Dimensions_;
-  /** The dimension names. */
-  std::vector<std::string> dimensions_;
+
   /** The number of dimensions. */
-  int dim_num_;
+  unsigned int dim_num_;
+
+  /** The array dimensions. */
+  std::vector<Dimension*> dimensions_;
+
   /**
    * The array domain. It should contain one [lower, upper] pair per dimension.
    * The type of the values stored in this buffer should match the coordinates
    * type.
    */
   void* domain_;
+
   /**
    * The array domain. It should contain one [lower, upper] pair per dimension.
    * The type of the values stored in this buffer should match the coordinates
    * type.
    */
   void* tile_domain_;
+
   /**
    * The tile extents (only applicable to regular tiles). There should be one
    * value for each dimension. The type of the values stored in this buffer
@@ -658,50 +595,26 @@ class ArraySchema {
    * array has irregular tiles (and, hence, it is sparse).
    */
   void* tile_extents_;
+
   /**
    * Offsets for calculating tile positions and ids for the column-major
    * tile order.
    */
-  std::vector<int64_t> tile_offsets_col_;
+  std::vector<uint64_t> tile_offsets_col_;
+
   /**
    * Offsets for calculating tile positions and ids for the row-major
    * tile order.
    */
-  std::vector<int64_t> tile_offsets_row_;
+  std::vector<uint64_t> tile_offsets_row_;
+
   /**
    * The tile order. It can be one of the following:
    *    - TILEDB_ROW_MAJOR
    *    - TILEDB_COL_MAJOR
    */
   Layout tile_order_;
-  /**
-   * The attribute types, plus an extra one in the end for the coordinates.
-   * The attribute type can be one of the following:
-   *    - TILEDB_INT32
-   *    - TILEDB_INT64
-   *    - TILEDB_FLOAT32
-   *    - TILEDB_FLOAT64
-   *    - TILEDB_CHAR
-   *    - TILEDB_INT8
-   *    - TILEDB_UINT8
-   *    - TILEDB_INT16
-   *    - TILEDB_UINT16
-   *    - TILEDB_UINT32
-   *    - TILEDB_UINT64
-   *
-   * The coordinate type can be one of the following:
-   *    - TILEDB_INT32
-   *    - TILEDB_INT64
-   *    - TILEDB_FLOAT32
-   *    - TILEDB_FLOAT64
-   *    - TILEDB_INT8
-   *    - TILEDB_UINT8
-   *    - TILEDB_INT16
-   *    - TILEDB_UINT16
-   *    - TILEDB_UINT32
-   *    - TILEDB_UINT64
-   */
-  std::vector<Datatype> types_;
+
   /** Stores the size of every attribute type (plus coordinates in the end). */
   std::vector<uint64_t> type_sizes_;
 
@@ -711,12 +624,6 @@ class ArraySchema {
 
   /** Clears all members. Use with caution! */
   void clear();
-
-  /**
-   * Computes and returns the size of the binary representation of the
-   * ArraySchema object.
-   */
-  uint64_t compute_bin_size() const;
 
   /**
    * Compute the number of cells per tile. Meaningful only for the **dense**
@@ -737,7 +644,7 @@ class ArraySchema {
   void compute_cell_num_per_tile();
 
   /** Computes and returns the size of an attribute (or coordinates). */
-  uint64_t compute_cell_size(int attribute_id) const;
+  uint64_t compute_cell_size(unsigned int attribute_id) const;
 
   /**
    * Computes the tile domain. Applicable only to arrays with regular tiles.
@@ -771,9 +678,6 @@ class ArraySchema {
   template <class T>
   void compute_tile_domain();
 
-  /** Computes and returns the size of a type. */
-  uint64_t compute_type_size(int attribute_id) const;
-
   /**
    * Returns the position of the input coordinates inside its corresponding
    * tile, based on the array cell order. Applicable only to **dense** arrays,
@@ -787,7 +691,7 @@ class ArraySchema {
    *     TILEDB_AS_ERR.
    */
   template <class T>
-  int64_t get_cell_pos_col(const T* coords) const;
+  uint64_t get_cell_pos_col(const T* coords) const;
 
   /**
    * Returns the position of the input coordinates inside its corresponding
@@ -802,7 +706,7 @@ class ArraySchema {
    *     TILEDB_AS_ERR.
    */
   template <class T>
-  int64_t get_cell_pos_row(const T* coords) const;
+  uint64_t get_cell_pos_row(const T* coords) const;
 
   /**
    * Retrieves the next coordinates along the array cell order within a given
@@ -909,7 +813,7 @@ class ArraySchema {
    *     array inside the array domain.
    */
   template <class T>
-  int64_t get_tile_pos_col(const T* tile_coords) const;
+  uint64_t get_tile_pos_col(const T* tile_coords) const;
 
   /**
    * Returns the tile position along the array tile order within the input
@@ -925,7 +829,7 @@ class ArraySchema {
    *     array inside the input domain.
    */
   template <class T>
-  int64_t get_tile_pos_col(const T* domain, const T* tile_coords) const;
+  uint64_t get_tile_pos_col(const T* domain, const T* tile_coords) const;
 
   /**
    * Returns the tile position along the array tile order within the input
@@ -938,7 +842,7 @@ class ArraySchema {
    *     array inside the array domain.
    */
   template <class T>
-  int64_t get_tile_pos_row(const T* tile_coords) const;
+  uint64_t get_tile_pos_row(const T* tile_coords) const;
 
   /**
    * Returns the tile position along the array tile order within the input
@@ -954,15 +858,15 @@ class ArraySchema {
    *     array inside the input domain.
    */
   template <class T>
-  int64_t get_tile_pos_row(const T* domain, const T* tile_coords) const;
+  uint64_t get_tile_pos_row(const T* domain, const T* tile_coords) const;
 
   /** Return the number of cells in a column tile slab of an input subarray. */
   template <class T>
-  int64_t tile_slab_col_cell_num(const T* subarray) const;
+  uint64_t tile_slab_col_cell_num(const T* subarray) const;
 
   /** Return the number of cells in a row tile slab of an input subarray. */
   template <class T>
-  int64_t tile_slab_row_cell_num(const T* subarray) const;
+  uint64_t tile_slab_row_cell_num(const T* subarray) const;
 };
 
 }  // namespace tiledb

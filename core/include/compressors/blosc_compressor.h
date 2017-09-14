@@ -75,11 +75,12 @@ class Blosc {
    * Decompression function.
    *
    * @param input_buffer Input buffer to read from.
-   * @param output_buffer Output buffer to write to the decompressed data.
+   * @param output_buffer Output buffer to write the decompressed data to.
    * @return Status
    */
   static Status decompress(const Buffer* input_buffer, Buffer* output_buffer);
 
+  /** Returns the default compression level. */
   static int default_level() {
     return 5;
   }

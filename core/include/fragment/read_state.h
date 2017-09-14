@@ -55,10 +55,10 @@ class ReadState {
   /* ********************************* */
 
   /** A cell position pair [first, second]. */
-  typedef std::pair<int64_t, int64_t> CellPosRange;
+  typedef std::pair<uint64_t, uint64_t> CellPosRange;
 
   /** A pair [fragment_id, tile_pos]. */
-  typedef std::pair<int, int64_t> FragmentInfo;
+  typedef std::pair<unsigned int, uint64_t> FragmentInfo;
 
   /** A pair of fragment info and fragment cell position range. */
   typedef std::pair<FragmentInfo, CellPosRange> FragmentCellPosRange;
@@ -105,8 +105,8 @@ class ReadState {
    * @return Status
    */
   Status copy_cells(
-      int attribute_id,
-      int tile_i,
+      unsigned int attribute_id,
+      uint64_t tile_i,
       void* buffer,
       uint64_t buffer_size,
       uint64_t& buffer_offset,
@@ -130,8 +130,8 @@ class ReadState {
    * @return Status
    */
   Status copy_cells_var(
-      int attribute_id,
-      int tile_i,
+      unsigned int attribute_id,
+      uint64_t tile_i,
       void* buffer,
       uint64_t buffer_size,
       uint64_t& buffer_offset,
@@ -184,7 +184,7 @@ class ReadState {
    */
   template <class T>
   Status get_enclosing_coords(
-      int tile_i,
+      uint64_t tile_i,
       const T* target_coords,
       const T* start_coords,
       const T* end_coords,
@@ -222,7 +222,7 @@ class ReadState {
    */
   template <class T>
   Status get_fragment_cell_ranges_dense(
-      int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+      unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 
   /**
    * Computes the fragment cell ranges corresponding to the current search
@@ -235,7 +235,7 @@ class ReadState {
    */
   template <class T>
   Status get_fragment_cell_ranges_sparse(
-      int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+      unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 
   /**
    * Computes the fragment cell ranges corresponding to the current search
@@ -251,7 +251,7 @@ class ReadState {
    */
   template <class T>
   Status get_fragment_cell_ranges_sparse(
-      int fragment_i,
+      unsigned int fragment_i,
       const T* start_coords,
       const T* end_coords,
       FragmentCellRanges& fragment_cell_ranges);
@@ -299,15 +299,7 @@ class ReadState {
   bool mbr_overlaps_tile() const;
 
   /** Returns *true* if the read buffers overflowed for the input attribute. */
-  bool overflow(int attribute_id) const;
-
-  /**
-   * Resets the read state. Note that it does not flush any buffered tiles, so
-   * that they can be reused later if a subsequent request happens to overlap
-   * with them.
-   *
-   */
-  void reset();
+  bool overflow(unsigned int attribute_id) const;
 
   /**
    * Resets the overflow flag of every attribute to *false*.
@@ -333,7 +325,7 @@ class ReadState {
   const ArraySchema* array_schema_;
 
   /** The number of array attributes. */
-  int attribute_num_;
+  unsigned int attribute_num_;
 
   /** The bookkeeping of the fragment the read state belongs to. */
   FragmentMetadata* bookkeeping_;
@@ -345,7 +337,7 @@ class ReadState {
   bool done_;
 
   /** Keeps track of which tile is in main memory for each attribute. */
-  std::vector<int64_t> fetched_tile_;
+  std::vector<uint64_t> fetched_tile_;
 
   /** The fragment the read state belongs to. */
   const Fragment* fragment_;
@@ -368,7 +360,7 @@ class ReadState {
    *    - 2: Partial overlap
    *    - 3: Partial overlap contig
    */
-  int mbr_tile_overlap_;
+  unsigned int mbr_tile_overlap_;
 
   /** Indicates buffer overflow for each attribute. */
   std::vector<bool> overflow_;
@@ -381,13 +373,13 @@ class ReadState {
    *    - 2: Partial overlap
    *    - 3: Partial overlap contig
    */
-  int search_tile_overlap_;
+  unsigned int search_tile_overlap_;
 
   /** The overlap between the current search tile and the query subarray. */
   void* search_tile_overlap_subarray_;
 
   /** The positions of the currently investigated tile. */
-  int64_t search_tile_pos_;
+  uint64_t search_tile_pos_;
 
   /**
    * True if the fragment non-empty domain fully covers the subarray area
@@ -414,7 +406,7 @@ class ReadState {
    * The tile position range the search for overlapping tiles with the
    * subarray query will focus on.
    */
-  int64_t tile_search_range_[2];
+  uint64_t tile_search_range_[2];
 
   /** Temporary coordinates. */
   void* tmp_coords_;
@@ -448,10 +440,10 @@ class ReadState {
    * @return Status
    */
   Status compute_bytes_to_copy(
-      int attribute_id,
+      unsigned int attribute_id,
       uint64_t tile_var_size,
-      int64_t start_cell_pos,
-      int64_t& end_cell_pos,
+      uint64_t start_cell_pos,
+      uint64_t& end_cell_pos,
       uint64_t buffer_free_space,
       uint64_t buffer_var_free_space,
       uint64_t& bytes_to_copy,
@@ -467,8 +459,8 @@ class ReadState {
    * @return Status
    */
   Status compute_tile_compressed_size(
-      int64_t tile_i,
-      int attribute_id,
+      uint64_t tile_i,
+      unsigned int attribute_id,
       TileIO* tile_io,
       uint64_t* tile_compressed_size) const;
 
@@ -483,8 +475,8 @@ class ReadState {
    * @return Status
    */
   Status compute_tile_compressed_var_size(
-      int64_t tile_i,
-      int attribute_id,
+      uint64_t tile_i,
+      unsigned int attribute_id,
       TileIO* tile_io,
       uint64_t* tile_compressed_size) const;
 
@@ -540,7 +532,7 @@ class ReadState {
    * @return Status
    */
   template <class T>
-  Status get_cell_pos_after(const T* coords, int64_t* start_pos);
+  Status get_cell_pos_after(const T* coords, uint64_t* start_pos);
 
   /**
    * Returns the cell position in the search tile that is at or after the
@@ -553,7 +545,7 @@ class ReadState {
    * @return Status
    */
   template <class T>
-  Status get_cell_pos_at_or_after(const T* coords, int64_t* end_pos);
+  Status get_cell_pos_at_or_after(const T* coords, uint64_t* end_pos);
 
   /**
    * Returns the cell position in the search tile that is at or before the
@@ -566,7 +558,7 @@ class ReadState {
    * @return Status
    */
   template <class T>
-  Status get_cell_pos_at_or_before(const T* coords, int64_t* end_pos);
+  Status get_cell_pos_at_or_before(const T* coords, uint64_t* end_pos);
 
   /**
    * Retrieves the pointer of the i-th coordinates in the search tile.
@@ -575,7 +567,7 @@ class ReadState {
    * @param coords The destination pointer.
    * @return Status
    */
-  Status get_coords_from_search_tile(int64_t i, const void*& coords);
+  Status get_coords_from_search_tile(uint64_t i, const void*& coords);
 
   /**
    * Retrieves the pointer of the i-th cell in the offset tile of a
@@ -586,10 +578,10 @@ class ReadState {
    * @param offset The destination pointer.
    * @return Status
    */
-  Status get_offset(int attribute_id, int64_t i, const uint64_t*& offset);
+  Status get_offset(unsigned int attribute_id, uint64_t i, const uint64_t*& offset);
 
   /** Returns *true* if the file of the input attribute is empty. */
-  bool is_empty_attribute(int attribute_id) const;
+  bool is_empty_attribute(unsigned int attribute_id) const;
 
   /**
    * Reads from a tile based on the input parameters.
@@ -601,7 +593,7 @@ class ReadState {
    * @return Status
    */
   Status read_from_tile(
-      int attribute_id, void* buffer, uint64_t tile_offset, uint64_t bytes);
+      unsigned int attribute_id, void* buffer, uint64_t tile_offset, uint64_t bytes);
 
   /**
    * Reads an entire tile.
@@ -610,7 +602,7 @@ class ReadState {
    * @param tile_i The tile index.
    * @return Status
    */
-  Status read_tile(int attribute_id, int64_t tile_i);
+  Status read_tile(unsigned int attribute_id, uint64_t tile_i);
 
   /**
    * Prepares a variable-sized tile from the disk for reading for an attribute.
@@ -619,7 +611,7 @@ class ReadState {
    * @param tile_i The tile position on the disk.
    * @return Status
    */
-  Status read_tile_var(int attribute_id, int64_t tile_i);
+  Status read_tile_var(unsigned int attribute_id, uint64_t tile_i);
 
   /**
    * Shifts the offsets stored in the tile buffer of the input attribute, such
@@ -628,7 +620,7 @@ class ReadState {
    * @param attribute_id The id of the attribute the tile corresponds to.
    * @return void
    */
-  void shift_var_offsets(int attribute_id);
+  void shift_var_offsets(unsigned int attribute_id);
 
   /**
    * Shifts the offsets stored in the input buffer such that they are relative
@@ -642,7 +634,7 @@ class ReadState {
    * @return void
    */
   void shift_var_offsets(
-      void* buffer, int64_t offset_num, uint64_t new_start_offset);
+      void* buffer, uint64_t offset_num, uint64_t new_start_offset);
 };
 
 }  // namespace tiledb

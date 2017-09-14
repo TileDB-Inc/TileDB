@@ -40,6 +40,7 @@
 
 namespace tiledb {
 
+/** Enables reading from and writing to a buffer. */
 class Buffer {
  public:
   /* ********************************* */
@@ -60,68 +61,58 @@ class Buffer {
   /* ********************************* */
 
   /** Advances the buffer offset. */
-  void advance_offset(uint64_t nbytes) {
-    offset_ += nbytes;
-  }
+  void advance_offset(uint64_t nbytes);
 
-  /** Clears the buffer. */
-  Status clear();
+  /** Clears the buffer, deallocating memory. */
+  void clear();
 
   /** Returns the buffer data. */
-  inline void* data() const {
-    return data_;
-  }
-
-  /** Checks if the buffer is full. */
-  inline bool full() const {
-    return offset_ == size_;
-  }
+  void* data() const;
 
   /** Returns the current offset in the buffer. */
-  inline uint64_t offset() const {
-    return offset_;
-  }
+  uint64_t offset() const;
 
-  /** Reads from the local data into the input buffer. */
+  /**
+   * Reads from the local data into the input buffer.
+   *
+   * @param buffer The buffer to read the data into.
+   * @param nbytes The number of bytes to read.
+   * @return Status
+   */
   Status read(void* buffer, uint64_t nbytes);
 
   /**
    * Reallocates memory for the buffer with the input size.
    *
-   * @param size Size to allocate.
+   * @param nbytes Number of bytes to allocate.
    * @return Status.
    */
-  Status realloc(uint64_t size);
+  Status realloc(uint64_t nbytes);
 
-  /** Resets the buffer offset. */
-  inline void reset_offset() {
-    offset_ = 0;
-  }
+  /** Resets the buffer offset to 0. */
+  void reset_offset();
 
-  /** Sets the buffer offset. */
-  inline void set_offset(uint64_t offset) {
-    offset_ = offset;
-  }
-
-  /** Sets the buffer size. */
-  inline void set_size(uint64_t size) {
-    size_ = size;
-  }
+  /** Sets the buffer offset to the input offset. */
+  void set_offset(uint64_t offset);
 
   /** Returns the buffer size. */
-  inline uint64_t size() const {
-    return size_;
-  }
+  uint64_t size() const;
 
-  /** Returns the value of type T at the input offset. */
+  /**
+   * Returns the value of type T at the input offset.
+   *
+   * @tparam T The type of the value to return.
+   * @param offset The offset from which to retrieve the value.
+   * @return The requested value.
+   */
   template <class T>
-  inline T value(uint64_t offset) {
+  T value(uint64_t offset) const {
     return ((T*)(((char*)data_) + offset))[0];
   }
 
   /** Returns the value of type T at the current offset. */
   template <class T>
-  inline T value() {
+  T value() const {
     return ((T*)(((char*)data_) + offset_))[0];
   }
 
@@ -129,32 +120,41 @@ class Buffer {
    * Writes into the local buffer by reading as much data as possible from
    * the input buffer. No new memory is allocated for the local buffer.
    *
-   * @param buf The buffer to read from.
-   * @return void.
+   * @param buff The buffer to read from.
+   * @return void
    */
-  void write(ConstBuffer* buf);
+  void write(ConstBuffer* buff);
 
   /**
    * Writes exactly *nbytes* into the local buffer by reading from the
    * input buffer *buf*.
    *
-   * @param buf The buffer to read from.
+   * @param buff The buffer to read from.
    * @param nbytes Number of bytes to write.
    * @return Status.
    */
-  Status write(ConstBuffer* buf, uint64_t nbytes);
+  Status write(ConstBuffer* buff, uint64_t nbytes);
 
   /**
    * Writes exactly *nbytes* into the local buffer by reading from the
    * input buffer *buf*.
    *
-   * @param buf The buffer to read from.
+   * @param buffer The buffer to read from.
    * @param nbytes Number of bytes to write.
    * @return Status.
    */
-  Status write(const void* buf, uint64_t nbytes);
+  Status write(const void* buffer, uint64_t nbytes);
 
-  void write_with_shift(ConstBuffer* buf, uint64_t offset);
+  /**
+   * Writes as much data as possible read from the input buffer *buff*, but
+   * then adds the *offset* value to the read data. The type of each data
+   * value read is uint64_t. This is an auxiliary function used when
+   * reading variable-sized attribute offsets from the disk.
+   *
+   * @param buff The buffer to read from.
+   * @param offset The offset value to be added to the read values.
+   */
+  void write_with_shift(ConstBuffer* buff, uint64_t offset);
 
  private:
   /* ********************************* */

@@ -35,8 +35,10 @@
 
 #include <string>
 
+#include "buffer.h"
 #include "compressor.h"
 #include "datatype.h"
+#include "status.h"
 
 namespace tiledb {
 
@@ -47,7 +49,10 @@ class Dimension {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /**
+  /** Constructor. */
+  Dimension();
+
+    /**
    * Constructor.
    *
    * @param name The name of the dimension.
@@ -81,6 +86,14 @@ class Dimension {
   /** Returns the compression level. */
   int compression_level() const;
 
+  /**
+   * Populates the object members from the data in the input binary buffer.
+   *
+   * @param buff The buffer to deserialize from.
+   * @return Status
+   */
+  Status deserialize(ConstBuffer* buff);
+
   /** Returns the domain. */
   void* domain() const;
 
@@ -89,6 +102,14 @@ class Dimension {
 
   /** Returns the dimension name. */
   const std::string& name() const;
+
+  /**
+   * Serializes the object members into a binary buffer.
+   *
+   * @param buff The buffer to serialize the data into.
+   * @return Status
+   */
+  Status serialize(Buffer* buff);
 
   /** Sets the dimension compressor. */
   void set_compressor(Compressor compressor);

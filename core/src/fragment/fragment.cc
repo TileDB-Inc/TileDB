@@ -33,7 +33,6 @@
 
 #include "fragment.h"
 #include "logger.h"
-#include "query.h"
 
 /* ****************************** */
 /*             MACROS             */
@@ -69,12 +68,12 @@ const ArraySchema* Fragment::array_schema() const {
   return query_->array_schema();
 }
 
-URI Fragment::attr_uri(int attribute_id) const {
+URI Fragment::attr_uri(unsigned int attribute_id) const {
   const Attribute* attr = query_->array_schema()->Attributes()[attribute_id];
   return fragment_uri_.join_path(attr->name() + constants::file_suffix);
 }
 
-URI Fragment::attr_var_uri(int attribute_id) const {
+URI Fragment::attr_var_uri(unsigned int attribute_id) const {
   const Attribute* attr = query_->array_schema()->Attributes()[attribute_id];
   return fragment_uri_.join_path(
       attr->name() + "_var" + constants::file_suffix);
@@ -85,39 +84,9 @@ URI Fragment::coords_uri() const {
       std::string(constants::coords) + constants::file_suffix);
 }
 
-int64_t Fragment::cell_num_per_tile() const {
-  return (dense_) ? query_->array_schema()->cell_num_per_tile() :
-                    query_->array_schema()->capacity();
-}
-
 bool Fragment::dense() const {
   return dense_;
 }
-
-const URI& Fragment::fragment_uri() const {
-  return fragment_uri_;
-}
-
-ReadState* Fragment::read_state() const {
-  return read_state_;
-}
-
-uint64_t Fragment::tile_size(int attribute_id) const {
-  // For easy reference
-  const ArraySchema* array_schema = query_->array_schema();
-  bool var_size = array_schema->var_size(attribute_id);
-  uint64_t cell_var_offset_size = constants::cell_var_offset_size;
-
-  int64_t cell_num_per_tile =
-      (dense_) ? array_schema->cell_num_per_tile() : array_schema->capacity();
-
-  return (var_size) ? cell_num_per_tile * cell_var_offset_size :
-                      cell_num_per_tile * array_schema->cell_size(attribute_id);
-}
-
-/* ****************************** */
-/*            MUTATORS            */
-/* ****************************** */
 
 Status Fragment::finalize() {
   if (write_state_ != nullptr) {  // WRITE
@@ -148,16 +117,20 @@ Status Fragment::finalize() {
   return Status::Ok();
 }
 
+const URI& Fragment::fragment_uri() const {
+  return fragment_uri_;
+}
+
 Status Fragment::init(const URI& uri, const void* subarray) {
   // Set fragment name and mode
   fragment_uri_ = uri;
 
   // Check if the fragment is dense or not
   dense_ = true;
-  const std::vector<int>& attribute_ids = query_->attribute_ids();
-  auto id_num = (int)attribute_ids.size();
-  int attribute_num = query_->array_schema()->attribute_num();
-  for (int i = 0; i < id_num; ++i) {
+  const std::vector<unsigned int>& attribute_ids = query_->attribute_ids();
+  auto id_num = (unsigned int)attribute_ids.size();
+  unsigned int attribute_num = query_->array_schema()->attribute_num();
+  for (unsigned int i = 0; i < id_num; ++i) {
     if (attribute_ids[i] == attribute_num) {
       dense_ = false;
       break;
@@ -191,26 +164,29 @@ Status Fragment::init(const URI& uri, FragmentMetadata* metadata) {
   return Status::Ok();
 }
 
-void Fragment::reset_read_state() {
-  read_state_->reset();
+FragmentMetadata* Fragment::metadata() const {
+  return metadata_;
 }
 
-Status Fragment::sync() {
-  // Sanity check
-  assert(write_state_ != NULL);
-
-  // Sync
-  RETURN_NOT_OK(write_state_->sync());
-  return Status::Ok();
+Query* Fragment::query() const {
+  return query_;
 }
 
-Status Fragment::sync_attribute(const std::string& attribute) {
-  // Sanity check
-  assert(write_state_ != NULL);
+ReadState* Fragment::read_state() const {
+  return read_state_;
+}
 
-  // Sync attribute
-  RETURN_NOT_OK(write_state_->sync_attribute(attribute));
-  return Status::Ok();
+uint64_t Fragment::tile_size(unsigned int attribute_id) const {
+  // For easy reference
+  const ArraySchema* array_schema = query_->array_schema();
+  bool var_size = array_schema->var_size(attribute_id);
+  uint64_t cell_var_offset_size = constants::cell_var_offset_size;
+
+  uint64_t cell_num_per_tile =
+      (dense_) ? array_schema->cell_num_per_tile() : array_schema->capacity();
+
+  return (var_size) ? cell_num_per_tile * cell_var_offset_size :
+                      cell_num_per_tile * array_schema->cell_size(attribute_id);
 }
 
 Status Fragment::write(void** buffers, uint64_t* buffer_sizes) {

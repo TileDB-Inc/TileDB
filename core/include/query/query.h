@@ -80,7 +80,7 @@ class Query {
     return array_schema_;
   }
 
-  const std::vector<int>& attribute_ids() const;
+  const std::vector<unsigned int>& attribute_ids() const;
 
   const std::vector<Fragment*>& fragments() const {
     return fragments_;
@@ -128,7 +128,7 @@ class Query {
       const std::vector<FragmentMetadata*>& fragment_metadata,
       QueryMode mode,
       const void* subarray,
-      const std::vector<int>& attribute_ids,
+      const std::vector<unsigned int>& attribute_ids,
       void** buffers,
       uint64_t* buffer_sizes);
 
@@ -170,7 +170,7 @@ class Query {
   uint64_t* buffer_sizes_;
   StorageManager* storage_manager_;
 
-  std::vector<int> attribute_ids_;
+  std::vector<unsigned int> attribute_ids_;
 
   ArrayReadState* array_read_state_;
   ArraySortedReadState* array_sorted_read_state_;

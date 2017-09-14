@@ -36,7 +36,6 @@
 #include "logger.h"
 #include "posix_filesystem.h"
 #include "query.h"
-#include "read_state.h"
 #include "utils.h"
 
 /* ****************************** */
@@ -64,9 +63,9 @@ ReadState::ReadState(
   done_ = false;
   last_tile_coords_ = nullptr;
   search_tile_overlap_subarray_ = malloc(2 * coords_size_);
-  search_tile_pos_ = -1;
+  search_tile_pos_ = UINT64_MAX;
 
-  for (int i = 0; i < attribute_num_; ++i) {
+  for (unsigned int i = 0; i < attribute_num_; ++i) {
     const Attribute* attr = array_schema_->Attributes()[i];
     bool var_size = attr->var_size();
     uint64_t cell_size =
@@ -100,19 +99,19 @@ ReadState::ReadState(
   tmp_coords_ = malloc(coords_size_);
 
   overflow_.resize(attribute_num_ + 1);
-  for (int i = 0; i < attribute_num_ + 1; ++i)
+  for (unsigned int i = 0; i < attribute_num_ + 1; ++i)
     overflow_[i] = false;
 
   fetched_tile_.resize(attribute_num_ + 2);
-  for (int i = 0; i < attribute_num_ + 2; ++i)
-    fetched_tile_[i] = -1;
+  for (unsigned int i = 0; i < attribute_num_ + 2; ++i)
+    fetched_tile_[i] = UINT64_MAX;
 
   compute_tile_search_range();
 
   // Check empty attributes
   URI uri;
   is_empty_attribute_.resize(attribute_num_ + 1);
-  for (int i = 0; i < attribute_num_ + 1; ++i) {
+  for (unsigned int i = 0; i < attribute_num_ + 1; ++i) {
     uri = fragment_->fragment_uri().join_path(
         array_schema_->attribute(i) + constants::file_suffix);
     is_empty_attribute_[i] = query->storage_manager()->is_file(uri);
@@ -146,8 +145,8 @@ ReadState::~ReadState() {
 /* ****************************** */
 
 Status ReadState::copy_cells(
-    int attribute_id,
-    int tile_i,
+    unsigned int attribute_id,
+    uint64_t tile_i,
     void* buffer,
     uint64_t buffer_size,
     uint64_t& buffer_offset,
@@ -205,8 +204,8 @@ Status ReadState::copy_cells(
 }
 
 Status ReadState::copy_cells_var(
-    int attribute_id,
-    int tile_i,
+    unsigned int attribute_id,
+    uint64_t tile_i,
     void* buffer,
     uint64_t buffer_size,
     uint64_t& buffer_offset,
@@ -247,8 +246,8 @@ Status ReadState::copy_cells_var(
   uint64_t bytes_var_to_copy;
 
   // Compute actual bytes to copy
-  int64_t start_cell_pos = tile->offset() / cell_size;
-  int64_t end_cell_pos = start_cell_pos + bytes_to_copy / cell_size - 1;
+  uint64_t start_cell_pos = tile->offset() / cell_size;
+  uint64_t end_cell_pos = start_cell_pos + bytes_to_copy / cell_size - 1;
 
   uint64_t tile_var_size = bookkeeping_->tile_var_sizes()[attribute_id][tile_i];
 
@@ -316,8 +315,8 @@ bool ReadState::done() const {
 
 void ReadState::get_bounding_coords(void* bounding_coords) const {
   // For easy reference
-  int64_t pos = search_tile_pos_;
-  assert(pos != -1);
+  uint64_t pos = search_tile_pos_;
+  assert(pos != -1); // TODO
   memcpy(
       bounding_coords, bookkeeping_->bounding_coords()[pos], 2 * coords_size_);
 }
@@ -326,17 +325,17 @@ template <class T>
 Status ReadState::get_coords_after(
     const T* coords, T* coords_after, bool& coords_retrieved) {
   // For easy reference
-  int64_t cell_num = bookkeeping_->cell_num(search_tile_pos_);
+  uint64_t cell_num = bookkeeping_->cell_num(search_tile_pos_);
 
   // Prepare attribute tile
   RETURN_NOT_OK(read_tile(attribute_num_ + 1, search_tile_pos_));
 
   // Compute the cell position at or after the coords
-  int64_t coords_after_pos = -1;
+  uint64_t coords_after_pos = UINT64_MAX;
   get_cell_pos_after(coords, &coords_after_pos);
 
   // Invalid position
-  if (coords_after_pos < 0 || coords_after_pos >= cell_num) {
+  if (coords_after_pos >= cell_num) {
     coords_retrieved = false;
     return Status::Ok();
   }
@@ -355,7 +354,7 @@ Status ReadState::get_coords_after(
 
 template <class T>
 Status ReadState::get_enclosing_coords(
-    int tile_i,
+    uint64_t tile_i,
     const T* target_coords,
     const T* start_coords,
     const T* end_coords,
@@ -368,9 +367,9 @@ Status ReadState::get_enclosing_coords(
   RETURN_NOT_OK(read_tile(attribute_num_ + 1, tile_i));
 
   // Compute the appropriate cell positions
-  int64_t start_pos = -1;
-  int64_t end_pos = -1;
-  int64_t target_pos = -1;
+  uint64_t start_pos = UINT64_MAX;
+  uint64_t end_pos = UINT64_MAX;
+  uint64_t target_pos = UINT64_MAX;
   get_cell_pos_at_or_after(start_coords, &start_pos);
   get_cell_pos_at_or_before(end_coords, &end_pos);
   get_cell_pos_at_or_before(target_coords, &target_pos);
@@ -384,8 +383,8 @@ Status ReadState::get_enclosing_coords(
   }
 
   // Calculate left and right pos
-  int64_t left_pos = (target_exists) ? target_pos - 1 : target_pos;
-  int64_t right_pos = target_pos + 1;
+  uint64_t left_pos = (target_exists) ? target_pos - 1 : target_pos;
+  uint64_t right_pos = target_pos + 1;
 
   // Copy left if it exists
   if (left_pos >= start_pos && left_pos <= end_pos) {
@@ -421,15 +420,15 @@ Status ReadState::get_fragment_cell_pos_range_sparse(
     const T* cell_range,
     FragmentCellPosRange& fragment_cell_pos_range) {
   // For easy reference
-  int dim_num = array_schema_->dim_num();
-  int64_t tile_i = fragment_info.second;
+  unsigned int dim_num = array_schema_->dim_num();
+  uint64_t tile_i = fragment_info.second;
 
   // Prepare attribute tile
   RETURN_NOT_OK(read_tile(attribute_num_ + 1, tile_i));
 
   // Compute the appropriate cell positions
-  int64_t start_pos = -1;
-  int64_t end_pos = -1;
+  uint64_t start_pos = UINT64_MAX;
+  uint64_t end_pos = UINT64_MAX;
   RETURN_NOT_OK(get_cell_pos_at_or_after(cell_range, &start_pos));
   RETURN_NOT_OK(get_cell_pos_at_or_before(&cell_range[dim_num], &end_pos));
 
@@ -437,8 +436,8 @@ Status ReadState::get_fragment_cell_pos_range_sparse(
   fragment_cell_pos_range.first = fragment_info;
   if (start_pos <= end_pos)  // There are results
     fragment_cell_pos_range.second = CellPosRange(start_pos, end_pos);
-  else  // There are NO rsults
-    fragment_cell_pos_range.second = CellPosRange(-1, -1);
+  else  // There are NO results
+    fragment_cell_pos_range.second = CellPosRange(UINT64_MAX, UINT64_MAX);
 
   // Success
   return Status::Ok();
@@ -446,13 +445,13 @@ Status ReadState::get_fragment_cell_pos_range_sparse(
 
 template <class T>
 Status ReadState::get_fragment_cell_ranges_dense(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges) {
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges) {
   // Trivial cases
   if (done_ || !search_tile_overlap_)
     return Status::Ok();
 
   // For easy reference
-  int dim_num = array_schema_->dim_num();
+  unsigned int dim_num = array_schema_->dim_num();
   Layout cell_order = array_schema_->cell_order();
   uint64_t cell_range_size = 2 * coords_size_;
   auto search_tile_overlap_subarray =
@@ -463,7 +462,7 @@ Status ReadState::get_fragment_cell_ranges_dense(
   if (search_tile_overlap_ == 1 || search_tile_overlap_ == 3) {
     void* cell_range = malloc(cell_range_size);
     auto cell_range_T = static_cast<T*>(cell_range);
-    for (int i = 0; i < dim_num; ++i) {
+    for (unsigned int i = 0; i < dim_num; ++i) {
       cell_range_T[i] = search_tile_overlap_subarray[2 * i];
       cell_range_T[dim_num + i] = search_tile_overlap_subarray[2 * i + 1];
     }
@@ -473,17 +472,20 @@ Status ReadState::get_fragment_cell_ranges_dense(
   } else {  // Non-contiguous cells, multiple ranges
     // Initialize the coordinates at the beginning of the global range
     auto coords = new T[dim_num];
-    for (int i = 0; i < dim_num; ++i)
+    for (unsigned int i = 0; i < dim_num; ++i)
       coords[i] = search_tile_overlap_subarray[2 * i];
 
     // Handle the different cell orders
-    int i;
+
+    // TODO: CHECK CHECK CHECK !!!!
+
+    unsigned int i;
     if (cell_order == Layout::ROW_MAJOR) {  // ROW
       while (coords[0] <= search_tile_overlap_subarray[1]) {
         // Make a cell range representing a slab
         void* cell_range = malloc(cell_range_size);
         auto cell_range_T = static_cast<T*>(cell_range);
-        for (int i = 0; i < dim_num - 1; ++i) {
+        for (unsigned int i = 0; i < dim_num - 1; ++i) {
           cell_range_T[i] = coords[i];
           cell_range_T[dim_num + i] = coords[i];
         }
@@ -496,7 +498,7 @@ Status ReadState::get_fragment_cell_ranges_dense(
         fragment_cell_ranges.emplace_back(fragment_info, cell_range);
 
         // Advance coordinates
-        i = dim_num - 2;
+        i = dim_num - 2; // TODO: check this !!!!
         ++coords[i];
         while (i > 0 && coords[i] > search_tile_overlap_subarray[2 * i + 1]) {
           coords[i] = search_tile_overlap_subarray[2 * i];
@@ -509,7 +511,7 @@ Status ReadState::get_fragment_cell_ranges_dense(
         // Make a cell range representing a slab
         void* cell_range = malloc(cell_range_size);
         auto cell_range_T = static_cast<T*>(cell_range);
-        for (int i = dim_num - 1; i > 0; --i) {
+        for (unsigned int i = dim_num - 1; i > 0; --i) {
           cell_range_T[i] = coords[i];
           cell_range_T[dim_num + i] = coords[i];
         }
@@ -542,20 +544,20 @@ Status ReadState::get_fragment_cell_ranges_dense(
 
 template <class T>
 Status ReadState::get_fragment_cell_ranges_sparse(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges) {
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges) {
   // Trivial cases
   if (done_ || !search_tile_overlap_ || !mbr_tile_overlap_)
     return Status::Ok();
 
   // For easy reference
-  int dim_num = array_schema_->dim_num();
+  unsigned int dim_num = array_schema_->dim_num();
   auto search_tile_overlap_subarray =
       static_cast<const T*>(search_tile_overlap_subarray_);
 
   // Create start and end coordinates for the overlap
   auto start_coords = new T[dim_num];
   auto end_coords = new T[dim_num];
-  for (int i = 0; i < dim_num; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     start_coords[i] = search_tile_overlap_subarray[2 * i];
     end_coords[i] = search_tile_overlap_subarray[2 * i + 1];
   }
@@ -572,7 +574,7 @@ Status ReadState::get_fragment_cell_ranges_sparse(
 
 template <class T>
 Status ReadState::get_fragment_cell_ranges_sparse(
-    int fragment_i,
+    unsigned int fragment_i,
     const T* start_coords,
     const T* end_coords,
     FragmentCellRanges& fragment_cell_ranges) {
@@ -583,7 +585,7 @@ Status ReadState::get_fragment_cell_ranges_sparse(
   assert(search_tile_overlap_);
 
   // For easy reference
-  int dim_num = array_schema_->dim_num();
+  unsigned int dim_num = array_schema_->dim_num();
   auto subarray = static_cast<const T*>(query_->subarray());
 
   // Handle full overlap
@@ -591,7 +593,7 @@ Status ReadState::get_fragment_cell_ranges_sparse(
     FragmentCellRange fragment_cell_range;
     fragment_cell_range.first = FragmentInfo(fragment_i, search_tile_pos_);
     fragment_cell_range.second = malloc(2 * coords_size_);
-    T* cell_range = static_cast<T*>(fragment_cell_range.second);
+    auto cell_range = static_cast<T*>(fragment_cell_range.second);
     memcpy(cell_range, start_coords, coords_size_);
     memcpy(&cell_range[dim_num], end_coords, coords_size_);
     fragment_cell_ranges.push_back(fragment_cell_range);
@@ -602,15 +604,18 @@ Status ReadState::get_fragment_cell_ranges_sparse(
   RETURN_NOT_OK(read_tile(attribute_num_ + 1, search_tile_pos_));
 
   // Get cell positions for the cell range
-  int64_t start_pos = -1;
-  int64_t end_pos = -1;
+  uint64_t start_pos = UINT64_MAX;
+  uint64_t end_pos = UINT64_MAX;
   get_cell_pos_at_or_after(start_coords, &start_pos);
   get_cell_pos_at_or_before(end_coords, &end_pos);
 
   // Get the cell ranges
   const void* cell;
-  int64_t current_start_pos, current_end_pos = -2;
-  for (int64_t i = start_pos; i <= end_pos; ++i) {
+
+  // TODO: BIG CHECK
+
+  uint64_t current_start_pos, current_end_pos = -2;
+  for (uint64_t i = start_pos; i <= end_pos; ++i) {
     RETURN_NOT_OK(get_coords_from_search_tile(i, cell));
 
     if (utils::cell_in_subarray<T>(
@@ -680,7 +685,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
     return;
 
   // For easy reference
-  int dim_num = array_schema_->dim_num();
+  unsigned int dim_num = array_schema_->dim_num();
   auto tile_extents = static_cast<const T*>(array_schema_->tile_extents());
   auto array_domain = static_cast<const T*>(array_schema_->domain());
   auto subarray = static_cast<const T*>(query_->subarray());
@@ -694,7 +699,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
 
   // Compute overlap of tile subarray with non-empty fragment domain
   auto tile_domain_overlap_subarray = new T[2 * dim_num];
-  bool tile_domain_overlap = array_schema_->subarray_overlap(
+  auto tile_domain_overlap = (bool)array_schema_->subarray_overlap(
       tile_subarray, non_empty_domain, tile_domain_overlap_subarray);
 
   if (!tile_domain_overlap) {  // No overlap with the input tile
@@ -703,7 +708,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
   } else {  // Overlap with the input tile
     // Find the search tile position
     auto tile_coords_norm = new T[dim_num];
-    for (int i = 0; i < dim_num; ++i)
+    for (unsigned int i = 0; i < dim_num; ++i)
       tile_coords_norm[i] =
           tile_coords[i] -
           (domain[2 * i] - array_domain[2 * i]) / tile_extents[i];
@@ -717,7 +722,7 @@ void ReadState::get_next_overlapping_tile_dense(const T* tile_coords) {
 
     // Compute the overlap of the previous results with the non-empty domain
     auto search_tile_overlap_subarray = (T*)search_tile_overlap_subarray_;
-    bool overlap = array_schema_->subarray_overlap(
+    auto overlap = (bool)array_schema_->subarray_overlap(
         query_tile_overlap_subarray,
         tile_domain_overlap_subarray,
         search_tile_overlap_subarray);
@@ -759,7 +764,7 @@ void ReadState::get_next_overlapping_tile_sparse() {
   auto subarray = static_cast<const T*>(query_->subarray());
 
   // Update the search tile position
-  if (search_tile_pos_ == -1)
+  if (search_tile_pos_ == UINT64_MAX)
     search_tile_pos_ = tile_search_range_[0];
   else
     ++search_tile_pos_;
@@ -790,7 +795,7 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
     return;
 
   // For easy reference
-  int dim_num = array_schema_->dim_num();
+  unsigned int dim_num = array_schema_->dim_num();
   const std::vector<void*>& mbrs = bookkeeping_->mbrs();
   auto subarray = static_cast<const T*>(query_->subarray());
 
@@ -799,11 +804,11 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
   auto mbr_tile_overlap_subarray = new T[2 * dim_num];
   auto tile_subarray_end = new T[dim_num];
   array_schema_->get_tile_subarray(tile_coords, tile_subarray);
-  for (int i = 0; i < dim_num; ++i)
+  for (unsigned int i = 0; i < dim_num; ++i)
     tile_subarray_end[i] = tile_subarray[2 * i + 1];
 
   // Update the search tile position
-  if (search_tile_pos_ == -1)
+  if (search_tile_pos_ == UINT64_MAX)
     search_tile_pos_ = tile_search_range_[0];
 
   // Reset overlaps
@@ -852,12 +857,10 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
       auto bounding_coords = static_cast<const T*>(
           bookkeeping_->bounding_coords()[search_tile_pos_]);
       if (array_schema_->tile_cell_order_cmp(
-              &bounding_coords[dim_num], tile_subarray_end) > 0) {
+              &bounding_coords[dim_num], tile_subarray_end) > 0)
         break;
-      } else {
-        ++search_tile_pos_;
-        continue;
-      }
+      ++search_tile_pos_;
+      continue;
     }
 
     // Get overlap of MBR with the query inside the tile subarray
@@ -889,24 +892,12 @@ bool ReadState::mbr_overlaps_tile() const {
   return (bool)mbr_tile_overlap_;
 }
 
-bool ReadState::overflow(int attribute_id) const {
+bool ReadState::overflow(unsigned int attribute_id) const {
   return overflow_[attribute_id];
 }
 
-void ReadState::reset() {
-  if (last_tile_coords_ != nullptr) {
-    free(last_tile_coords_);
-    last_tile_coords_ = nullptr;
-  }
-
-  reset_overflow();
-  done_ = false;
-  search_tile_pos_ = -1;
-  compute_tile_search_range();
-}
-
 void ReadState::reset_overflow() {
-  for (int i = 0; i < overflow_.size(); ++i)
+  for (unsigned int i = 0; i < overflow_.size(); ++i)
     overflow_[i] = false;
 }
 
@@ -919,10 +910,10 @@ bool ReadState::subarray_area_covered() const {
 /* ****************************** */
 
 Status ReadState::compute_bytes_to_copy(
-    int attribute_id,
+    unsigned int attribute_id,
     uint64_t tile_var_size,
-    int64_t start_cell_pos,
-    int64_t& end_cell_pos,
+    uint64_t start_cell_pos,
+    uint64_t& end_cell_pos,
     uint64_t buffer_free_space,
     uint64_t buffer_var_free_space,
     uint64_t& bytes_to_copy,
@@ -935,7 +926,7 @@ Status ReadState::compute_bytes_to_copy(
   }
 
   // Calculate number of cells in the current tile for this attribute
-  int64_t cell_num = bookkeeping_->cell_num(fetched_tile_[attribute_id]);
+  uint64_t cell_num = bookkeeping_->cell_num(fetched_tile_[attribute_id]);
 
   // Calculate bytes to copy from the variable tile
   const uint64_t* start_offset;
@@ -953,9 +944,9 @@ Status ReadState::compute_bytes_to_copy(
   // If bytes do not fit in variable buffer, we need to adjust
   if (bytes_var_to_copy > buffer_var_free_space) {
     // Perform binary search
-    int64_t min = start_cell_pos + 1;
-    int64_t max = end_cell_pos;
-    int64_t med = min + ((max - min) / 2);
+    uint64_t min = start_cell_pos + 1;
+    uint64_t max = end_cell_pos;
+    uint64_t med = min + ((max - min) / 2);
     // Invariants:
     // (tile[min-1] - tile[start_cell_pos]) < buffer_var_free_space AND
     // (tile[max+1] - tile[start_cell_pos]) > buffer_var_free_space
@@ -976,7 +967,7 @@ Status ReadState::compute_bytes_to_copy(
     }
 
     // Determine the end position of the range
-    int64_t tmp_end = -1;
+    uint64_t tmp_end;
     if (min > max)
       tmp_end = min - 2;
     else
@@ -1048,15 +1039,15 @@ void ReadState::compute_tile_search_range() {
 template <class T>
 void ReadState::compute_tile_search_range_col_or_row() {
   // For easy reference
-  int dim_num = array_schema_->dim_num();
+  unsigned int dim_num = array_schema_->dim_num();
   auto subarray = static_cast<const T*>(query_->subarray());
-  int64_t tile_num = bookkeeping_->tile_num();
+  uint64_t tile_num = bookkeeping_->tile_num();
   const std::vector<void*>& bounding_coords = bookkeeping_->bounding_coords();
 
   // Calculate subarray coordinates
   auto subarray_min_coords = new T[dim_num];
   auto subarray_max_coords = new T[dim_num];
-  for (int i = 0; i < dim_num; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     subarray_min_coords[i] = subarray[2 * i];
     subarray_max_coords[i] = subarray[2 * i + 1];
   }
@@ -1064,9 +1055,9 @@ void ReadState::compute_tile_search_range_col_or_row() {
   // --- Find the start tile in search range
 
   // Perform binary search
-  int64_t min = 0;
-  int64_t max = tile_num - 1;
-  int64_t med = min + ((max - min) / 2);
+  uint64_t min = 0;
+  uint64_t max = tile_num - 1;
+  uint64_t med = min + ((max - min) / 2);
   const T* tile_start_coords;
   const T* tile_end_coords;
   while (min <= max) {
@@ -1095,7 +1086,7 @@ void ReadState::compute_tile_search_range_col_or_row() {
 
   // Determine the start position of the range
   if (max < min)  // Subarray min precedes the tile at position min
-    tile_search_range_[0] = (is_unary) ? -1 : min;
+    tile_search_range_[0] = (is_unary) ? UINT64_MAX : min;
   else  // Subarray min included in a tile
     tile_search_range_[0] = med;
 
@@ -1139,8 +1130,8 @@ void ReadState::compute_tile_search_range_col_or_row() {
 
   // No overlap
   if (tile_search_range_[1] < tile_search_range_[0]) {
-    tile_search_range_[0] = -1;
-    tile_search_range_[1] = -1;
+    tile_search_range_[0] = UINT64_MAX;
+    tile_search_range_[1] = UINT64_MAX;
   }
 
   // Clean up
@@ -1156,7 +1147,7 @@ Status ReadState::cmp_coords_to_search_tile(
   isequal = false;
   // The tile is in main memory
   if (tile->in_mem()) {
-    isequal = !memcmp(buffer, (char*)tile->data() + tile_offset, coords_size_);
+    isequal = !std::memcmp(buffer, (char*)tile->data() + tile_offset, coords_size_);
     return Status::Ok();
   }
 
@@ -1164,20 +1155,20 @@ Status ReadState::cmp_coords_to_search_tile(
   Status st = tile_io->read_from_tile(tile, tmp_coords_, coords_size_);
 
   if (st.ok())
-    isequal = !memcmp(buffer, tmp_coords_, coords_size_);
+    isequal = !std::memcmp(buffer, tmp_coords_, coords_size_);
 
   return st;
 }
 
 template <class T>
-Status ReadState::get_cell_pos_after(const T* coords, int64_t* pos) {
+Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
   // For easy reference
-  int64_t cell_num = bookkeeping_->cell_num(fetched_tile_[attribute_num_ + 1]);
+  uint64_t cell_num = bookkeeping_->cell_num(fetched_tile_[attribute_num_ + 1]);
 
   // Perform binary search to find the position of coords in the tile
-  int64_t min = 0;
-  int64_t max = cell_num - 1;
-  int64_t med = min + ((max - min) / 2);
+  uint64_t min = 0;
+  uint64_t max = cell_num - 1;
+  uint64_t med = min + ((max - min) / 2);
   int cmp;
   const void* coords_t;
   while (min <= max) {
@@ -1206,14 +1197,14 @@ Status ReadState::get_cell_pos_after(const T* coords, int64_t* pos) {
 }
 
 template <class T>
-Status ReadState::get_cell_pos_at_or_after(const T* coords, int64_t* pos) {
+Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
   // For easy reference
-  int64_t cell_num = bookkeeping_->cell_num(fetched_tile_[attribute_num_ + 1]);
+  uint64_t cell_num = bookkeeping_->cell_num(fetched_tile_[attribute_num_ + 1]);
 
   // Perform binary search to find the position of coords in the tile
-  int64_t min = 0;
-  int64_t max = cell_num - 1;
-  int64_t med = min + ((max - min) / 2);
+  uint64_t min = 0;
+  uint64_t max = cell_num - 1;
+  uint64_t med = min + ((max - min) / 2);
   int cmp;
   const void* coords_t;
   while (min <= max) {
@@ -1243,14 +1234,14 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, int64_t* pos) {
 }
 
 template <class T>
-Status ReadState::get_cell_pos_at_or_before(const T* coords, int64_t* end_pos) {
+Status ReadState::get_cell_pos_at_or_before(const T* coords, uint64_t* end_pos) {
   // For easy reference
-  int64_t cell_num = bookkeeping_->cell_num(fetched_tile_[attribute_num_ + 1]);
+  uint64_t cell_num = bookkeeping_->cell_num(fetched_tile_[attribute_num_ + 1]);
 
   // Perform binary search to find the position of coords in the tile
-  int64_t min = 0;
-  int64_t max = cell_num - 1;
-  int64_t med = min + ((max - min) / 2);
+  uint64_t min = 0;
+  uint64_t max = cell_num - 1; // TODO: CHECK THIS
+  uint64_t med = min + ((max - min) / 2);
   int cmp;
   const void* coords_t;
   while (min <= max) {
@@ -1275,10 +1266,11 @@ Status ReadState::get_cell_pos_at_or_before(const T* coords, int64_t* end_pos) {
     *end_pos = max;  // Before
   else
     *end_pos = med;  // At
+
   return Status::Ok();
 }
 
-Status ReadState::get_coords_from_search_tile(int64_t i, const void*& coords) {
+Status ReadState::get_coords_from_search_tile(uint64_t i, const void*& coords) {
   // For easy reference
   auto tile = tiles_[attribute_num_ + 1];
   auto tile_io = tile_io_[attribute_num_ + 1];
@@ -1299,7 +1291,7 @@ Status ReadState::get_coords_from_search_tile(int64_t i, const void*& coords) {
 }
 
 Status ReadState::get_offset(
-    int attribute_id, int64_t i, const uint64_t*& offset) {
+    unsigned int attribute_id, uint64_t i, const uint64_t*& offset) {
   auto tile = tiles_[attribute_id];
   auto tile_io = tile_io_[attribute_id];
 
@@ -1322,7 +1314,7 @@ Status ReadState::get_offset(
   return st;
 }
 
-bool ReadState::is_empty_attribute(int attribute_id) const {
+bool ReadState::is_empty_attribute(unsigned int attribute_id) const {
   // Special case for search coordinate tiles
   if (attribute_id == attribute_num_ + 1)
     attribute_id = attribute_num_;
@@ -1330,7 +1322,7 @@ bool ReadState::is_empty_attribute(int attribute_id) const {
 }
 
 Status ReadState::read_from_tile(
-    int attribute_id, void* buffer, uint64_t tile_offset, uint64_t bytes) {
+    unsigned int attribute_id, void* buffer, uint64_t tile_offset, uint64_t bytes) {
   // For easy reference
   auto tile = tiles_[attribute_id];
   auto tile_io = tile_io_[attribute_id];
@@ -1345,7 +1337,7 @@ Status ReadState::read_from_tile(
   return tile_io->read_from_tile(tile, buffer, bytes);
 }
 
-Status ReadState::read_tile(int attribute_id, int64_t tile_i) {
+Status ReadState::read_tile(unsigned int attribute_id, uint64_t tile_i) {
   // Return if the tile has already been fetched
   if (tile_i == fetched_tile_[attribute_id])
     return Status::Ok();
@@ -1355,7 +1347,7 @@ Status ReadState::read_tile(int attribute_id, int64_t tile_i) {
 
   // To handle the special case of the search tile
   // The real attribute id corresponds to an actual attribute or coordinates
-  int attribute_id_real =
+  unsigned int attribute_id_real =
       (attribute_id == attribute_num_ + 1) ? attribute_num_ : attribute_id;
 
   uint64_t tile_compressed_size;
@@ -1376,13 +1368,13 @@ Status ReadState::read_tile(int attribute_id, int64_t tile_i) {
 }
 
 Status ReadState::compute_tile_compressed_size(
-    int64_t tile_i,
-    int attribute_id,
+    uint64_t tile_i,
+    unsigned int attribute_id,
     TileIO* tile_io,
     uint64_t* tile_compressed_size) const {
   const std::vector<std::vector<uint64_t>>& tile_offsets =
       bookkeeping_->tile_offsets();
-  int64_t tile_num = bookkeeping_->tile_num();
+  uint64_t tile_num = bookkeeping_->tile_num();
   uint64_t file_size = 0;
 
   RETURN_NOT_OK(tile_io->file_size(&file_size));
@@ -1397,15 +1389,15 @@ Status ReadState::compute_tile_compressed_size(
 }
 
 Status ReadState::compute_tile_compressed_var_size(
-    int64_t tile_i,
-    int attribute_id,
+    uint64_t tile_i,
+    unsigned int attribute_id,
     TileIO* tile_io,
     uint64_t* tile_compressed_size) const {
   const std::vector<std::vector<uint64_t>>& tile_var_offsets =
       bookkeeping_->tile_var_offsets();
   uint64_t file_size = 0;
   RETURN_NOT_OK(tile_io->file_size(&file_size));
-  int64_t tile_num = bookkeeping_->tile_num();
+  uint64_t tile_num = bookkeeping_->tile_num();
   *tile_compressed_size =
       (tile_i == tile_num - 1) ?
           (uint64_t)file_size - tile_var_offsets[attribute_id][tile_i] :
@@ -1415,7 +1407,7 @@ Status ReadState::compute_tile_compressed_var_size(
   return Status::Ok();
 }
 
-Status ReadState::read_tile_var(int attribute_id, int64_t tile_i) {
+Status ReadState::read_tile_var(unsigned int attribute_id, uint64_t tile_i) {
   // Return if the tile has already been fetched
   if (tile_i == fetched_tile_[attribute_id])
     return Status::Ok();
@@ -1461,26 +1453,26 @@ Status ReadState::read_tile_var(int attribute_id, int64_t tile_i) {
   return Status::Ok();
 }
 
-void ReadState::shift_var_offsets(int attribute_id) {
+void ReadState::shift_var_offsets(unsigned int attribute_id) {
   // For easy reference
-  int64_t cell_num =
+  uint64_t cell_num =
       tiles_[attribute_id]->size() / constants::cell_var_offset_size;
   auto tile_s = static_cast<uint64_t*>(tiles_[attribute_id]->data());
   uint64_t first_offset = tile_s[0];
 
   // Shift offsets
-  for (int64_t i = 0; i < cell_num; ++i)
+  for (uint64_t i = 0; i < cell_num; ++i)
     tile_s[i] -= first_offset;
 }
 
 void ReadState::shift_var_offsets(
-    void* buffer, int64_t offset_num, uint64_t new_start_offset) {
+    void* buffer, uint64_t offset_num, uint64_t new_start_offset) {
   // For easy reference
   auto buffer_s = static_cast<uint64_t*>(buffer);
   uint64_t start_offset = buffer_s[0];
 
   // Shift offsets
-  for (int64_t i = 0; i < offset_num; ++i)
+  for (uint64_t i = 0; i < offset_num; ++i)
     buffer_s[i] = buffer_s[i] - start_offset + new_start_offset;
 }
 
@@ -1507,7 +1499,7 @@ template Status ReadState::get_coords_after<uint64_t>(
     const uint64_t* coords, uint64_t* coords_after, bool& coords_retrieved);
 
 template Status ReadState::get_enclosing_coords<int>(
-    int tile_i,
+    uint64_t tile_i,
     const int* target_coords,
     const int* start_coords,
     const int* end_coords,
@@ -1517,7 +1509,7 @@ template Status ReadState::get_enclosing_coords<int>(
     bool& right_retrieved,
     bool& target_exists);
 template Status ReadState::get_enclosing_coords<int64_t>(
-    int tile_i,
+    uint64_t tile_i,
     const int64_t* target_coords,
     const int64_t* start_coords,
     const int64_t* end_coords,
@@ -1527,7 +1519,7 @@ template Status ReadState::get_enclosing_coords<int64_t>(
     bool& right_retrieved,
     bool& target_exists);
 template Status ReadState::get_enclosing_coords<float>(
-    int tile_i,
+    uint64_t tile_i,
     const float* target_coords,
     const float* start_coords,
     const float* end_coords,
@@ -1537,7 +1529,7 @@ template Status ReadState::get_enclosing_coords<float>(
     bool& right_retrieved,
     bool& target_exists);
 template Status ReadState::get_enclosing_coords<double>(
-    int tile_i,
+    uint64_t tile_i,
     const double* target_coords,
     const double* start_coords,
     const double* end_coords,
@@ -1547,7 +1539,7 @@ template Status ReadState::get_enclosing_coords<double>(
     bool& right_retrieved,
     bool& target_exists);
 template Status ReadState::get_enclosing_coords<int8_t>(
-    int tile_i,
+    uint64_t tile_i,
     const int8_t* target_coords,
     const int8_t* start_coords,
     const int8_t* end_coords,
@@ -1557,7 +1549,7 @@ template Status ReadState::get_enclosing_coords<int8_t>(
     bool& right_retrieved,
     bool& target_exists);
 template Status ReadState::get_enclosing_coords<uint8_t>(
-    int tile_i,
+    uint64_t tile_i,
     const uint8_t* target_coords,
     const uint8_t* start_coords,
     const uint8_t* end_coords,
@@ -1567,7 +1559,7 @@ template Status ReadState::get_enclosing_coords<uint8_t>(
     bool& right_retrieved,
     bool& target_exists);
 template Status ReadState::get_enclosing_coords<int16_t>(
-    int tile_i,
+    uint64_t tile_i,
     const int16_t* target_coords,
     const int16_t* start_coords,
     const int16_t* end_coords,
@@ -1577,7 +1569,7 @@ template Status ReadState::get_enclosing_coords<int16_t>(
     bool& right_retrieved,
     bool& target_exists);
 template Status ReadState::get_enclosing_coords<uint16_t>(
-    int tile_i,
+    uint64_t tile_i,
     const uint16_t* target_coords,
     const uint16_t* start_coords,
     const uint16_t* end_coords,
@@ -1587,7 +1579,7 @@ template Status ReadState::get_enclosing_coords<uint16_t>(
     bool& right_retrieved,
     bool& target_exists);
 template Status ReadState::get_enclosing_coords<uint32_t>(
-    int tile_i,
+    uint64_t tile_i,
     const uint32_t* target_coords,
     const uint32_t* start_coords,
     const uint32_t* end_coords,
@@ -1597,7 +1589,7 @@ template Status ReadState::get_enclosing_coords<uint32_t>(
     bool& right_retrieved,
     bool& target_exists);
 template Status ReadState::get_enclosing_coords<uint64_t>(
-    int tile_i,
+    uint64_t tile_i,
     const uint64_t* target_coords,
     const uint64_t* start_coords,
     const uint64_t* end_coords,
@@ -1649,89 +1641,89 @@ template Status ReadState::get_fragment_cell_pos_range_sparse<uint64_t>(
     FragmentCellPosRange& fragment_cell_pos_range);
 
 template Status ReadState::get_fragment_cell_ranges_sparse<int>(
-    int fragment_i,
+    unsigned int fragment_i,
     const int* start_coords,
     const int* end_coords,
     FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<int64_t>(
-    int fragment_i,
+    unsigned int fragment_i,
     const int64_t* start_coords,
     const int64_t* end_coords,
     FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<float>(
-    int fragment_i,
+    unsigned int fragment_i,
     const float* start_coords,
     const float* end_coords,
     FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<double>(
-    int fragment_i,
+    unsigned int fragment_i,
     const double* start_coords,
     const double* end_coords,
     FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<int8_t>(
-    int fragment_i,
+    unsigned int fragment_i,
     const int8_t* start_coords,
     const int8_t* end_coords,
     FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<uint8_t>(
-    int fragment_i,
+    unsigned int fragment_i,
     const uint8_t* start_coords,
     const uint8_t* end_coords,
     FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<int16_t>(
-    int fragment_i,
+    unsigned int fragment_i,
     const int16_t* start_coords,
     const int16_t* end_coords,
     FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<uint16_t>(
-    int fragment_i,
+    unsigned int fragment_i,
     const uint16_t* start_coords,
     const uint16_t* end_coords,
     FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<uint32_t>(
-    int fragment_i,
+    unsigned int fragment_i,
     const uint32_t* start_coords,
     const uint32_t* end_coords,
     FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<uint64_t>(
-    int fragment_i,
+    unsigned int fragment_i,
     const uint64_t* start_coords,
     const uint64_t* end_coords,
     FragmentCellRanges& fragment_cell_ranges);
 
 template Status ReadState::get_fragment_cell_ranges_sparse<int>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<int64_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<int8_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<uint8_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<int16_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<uint16_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<uint32_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_sparse<uint64_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 
 template Status ReadState::get_fragment_cell_ranges_dense<int>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_dense<int64_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_dense<int8_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_dense<uint8_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_dense<int16_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_dense<uint16_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_dense<uint32_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 template Status ReadState::get_fragment_cell_ranges_dense<uint64_t>(
-    int fragment_i, FragmentCellRanges& fragment_cell_ranges);
+    unsigned int fragment_i, FragmentCellRanges& fragment_cell_ranges);
 
 template void ReadState::get_next_overlapping_tile_dense<int>(
     const int* tile_coords);

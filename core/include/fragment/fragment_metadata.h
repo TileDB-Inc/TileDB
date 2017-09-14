@@ -34,12 +34,13 @@
 #ifndef TILEDB_FRAGMENT_METADATA_H
 #define TILEDB_FRAGMENT_METADATA_H
 
-#include <zlib.h>
-#include <vector>
 #include "array_schema.h"
 #include "buffer.h"
 #include "query_mode.h"
 #include "status.h"
+
+#include <zlib.h>
+#include <vector>
 
 namespace tiledb {
 
@@ -50,6 +51,13 @@ class FragmentMetadata {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  /**
+   * Constructor.
+   *
+   * @param array_schema The schema of the array the fragment belongs to.
+   * @param dense Indicates whether the fragment is dense or sparse.
+   * @param fragment_uri The fragment URI.
+   */
   FragmentMetadata(
       const ArraySchema* array_schema, bool dense, const URI& fragment_uri);
 
@@ -57,50 +65,7 @@ class FragmentMetadata {
   ~FragmentMetadata();
 
   /* ********************************* */
-  /*             ACCESSORS             */
-  /* ********************************* */
-
-  /** Returns the bounding coordinates. */
-  const std::vector<void*>& bounding_coords() const;
-
-  /** Returns the number of cells in the tile at the input position. */
-  int64_t cell_num(int64_t tile_pos) const;
-
-  /**
-   * Returns ture if the corresponding fragment is dense, and false if it
-   * is sparse.
-   */
-  bool dense() const;
-
-  /** Returns the (expanded) domain in which the fragment is constrained. */
-  const void* domain() const;
-
-  /** Returns the fragment URI. */
-  const URI& fragment_uri() const;
-
-  /** Returns the number of cells in the last tile. */
-  int64_t last_tile_cell_num() const;
-
-  /** Returns the MBRs. */
-  const std::vector<void*>& mbrs() const;
-
-  /** Returns the non-empty domain in which the fragment is constrained. */
-  const void* non_empty_domain() const;
-
-  /** Returns the number of tiles in the fragment. */
-  int64_t tile_num() const;
-
-  /** Returns the tile offsets. */
-  const std::vector<std::vector<uint64_t>>& tile_offsets() const;
-
-  /** Returns the variable tile offsets. */
-  const std::vector<std::vector<uint64_t>>& tile_var_offsets() const;
-
-  /** Returns the variable tile sizes. */
-  const std::vector<std::vector<uint64_t>>& tile_var_sizes() const;
-
-  /* ********************************* */
-  /*             MUTATORS              */
+  /*                API                */
   /* ********************************* */
 
   /**
@@ -128,7 +93,7 @@ class FragmentMetadata {
    *     offset will be expanded. It is practically the last tile size.
    * @return void
    */
-  void append_tile_offset(int attribute_id, uint64_t step);
+  void append_tile_offset(unsigned int attribute_id, uint64_t step);
 
   /**
    * Appends a variable tile offset for the input attribute.
@@ -139,7 +104,7 @@ class FragmentMetadata {
    *     offset will be expanded. It is practically the last variable tile size.
    * @return void
    */
-  void append_tile_var_offset(int attribute_id, uint64_t step);
+  void append_tile_var_offset(unsigned int attribute_id, uint64_t step);
 
   /**
    * Appends a variable tile size for the input attribute.
@@ -148,30 +113,59 @@ class FragmentMetadata {
    * @param size The size to be appended.
    * @return void
    */
-  void append_tile_var_size(int attribute_id, uint64_t size);
+  void append_tile_var_size(unsigned int attribute_id, uint64_t size);
+
+  /** Returns the bounding coordinates. */
+  const std::vector<void*>& bounding_coords() const;
+
+  /** Returns the number of cells in the tile at the input position. */
+  uint64_t cell_num(uint64_t tile_pos) const;
 
   /**
-   * Finalizes fragment metadata, properly flushing them to the disk.
-   *
-   * @return TILEDB_BK_OK on success and TILEDB_BK_ERR on error.
+   * Returns ture if the corresponding fragment is dense, and false if it
+   * is sparse.
    */
-  Status serialize(Buffer* buf);
+  bool dense() const;
+
+  /**
+   * Loads the fragment metadata structures from the input binary buffer.
+   *
+   * @param buff The binary buffer to deserialize from.
+   * @return Status
+   */
+  Status deserialize(ConstBuffer* buff);
+
+  /** Returns the (expanded) domain in which the fragment is constrained. */
+  const void* domain() const;
+
+  /** Returns the fragment URI. */
+  const URI& fragment_uri() const;
 
   /**
    * Initializes the fragment metadata structures.
    *
    * @param non_empty_domain The non-empty domain in which the array read/write
    *     will be constrained.
-   * @return TILEDB_BK_OK for success, and TILEDB_OK_ERR for error.
+   * @return Status
    */
   Status init(const void* non_empty_domain);
 
+  /** Returns the number of cells in the last tile. */
+  uint64_t last_tile_cell_num() const;
+
+  /** Returns the MBRs. */
+  const std::vector<void*>& mbrs() const;
+
+  /** Returns the non-empty domain in which the fragment is constrained. */
+  const void* non_empty_domain() const;
+
   /**
-   * Loads the fragment metadata structures from the disk.
+   * Serializes the metadata structures into a binary buffer.
    *
-   * @return TILEDB_BK_OK for success, and TILEDB_OK_ERR for error.
+   * @param buff The buffer to serialize into.
+   * @return Status
    */
-  Status deserialize(Buffer* buf);
+  Status serialize(Buffer* buff);
 
   /**
    * Simply sets the number of cells for the last tile.
@@ -179,7 +173,19 @@ class FragmentMetadata {
    * @param cell_num The number of cells for the last tile.
    * @return void
    */
-  void set_last_tile_cell_num(int64_t cell_num);
+  void set_last_tile_cell_num(uint64_t cell_num);
+
+  /** Returns the number of tiles in the fragment. */
+  uint64_t tile_num() const;
+
+  /** Returns the tile offsets. */
+  const std::vector<std::vector<uint64_t>>& tile_offsets() const;
+
+  /** Returns the variable tile offsets. */
+  const std::vector<std::vector<uint64_t>>& tile_var_offsets() const;
+
+  /** Returns the variable tile sizes. */
+  const std::vector<std::vector<uint64_t>>& tile_var_sizes() const;
 
  private:
   /* ********************************* */
@@ -189,7 +195,7 @@ class FragmentMetadata {
   /** The array schema */
   const ArraySchema* array_schema_;
 
-  /** The first and last coordinates of each tile. */
+  /** A vector storing the first and last coordinates of each tile. */
   std::vector<void*> bounding_coords_;
 
   /** True if the fragment is dense, and false if it is sparse. */
@@ -207,7 +213,7 @@ class FragmentMetadata {
   URI fragment_uri_;
 
   /** Number of cells in the last tile (meaningful only in the sparse case). */
-  int64_t last_tile_cell_num_;
+  uint64_t last_tile_cell_num_;
 
   /** The MBRs (applicable only to the sparse case with irregular tiles). */
   std::vector<void*> mbrs_;
@@ -247,9 +253,65 @@ class FragmentMetadata {
   /* ********************************* */
 
   /**
+   * Loads the bounding coordinates from the fragment metadata buffer.
+   *
+   * @param buff Metadata buffer.
+   * @return Status
+   */
+  Status load_bounding_coords(ConstBuffer* buff);
+
+  /**
+   * Loads the cell number of the last tile from the fragment metadata buffer.
+   *
+   * @param buff Metadata buffer.
+   * @return Status
+   */
+  Status load_last_tile_cell_num(ConstBuffer* buff);
+
+  /**
+   * Loads the MBRs from the fragment metadata buffer.
+   *
+   * @param buff Metadata buffer.
+   * @return Status
+   */
+  Status load_mbrs(ConstBuffer* buff);
+
+  /**
+   * Loads the non-empty domain from the fragment metadata buffer.
+   *
+   * @param buff Metadata buffer.
+   * @return Status
+   */
+  Status load_non_empty_domain(ConstBuffer* buff);
+
+  /**
+   * Loads the tile offsets from the fragment metadata buffer.
+   *
+   * @param buff Metadata buffer.
+   * @return Status
+   */
+  Status load_tile_offsets(ConstBuffer* buff);
+
+  /**
+   * Loads the variable tile offsets from the fragment metadata buffer.
+   *
+   * @param buff Metadata buffer.
+   * @return Status
+   */
+  Status load_tile_var_offsets(ConstBuffer* buff);
+
+  /**
+   * Loads the variable tile sizes from the fragment metadata.
+   *
+   * @param buff Metadata buffer.
+   * @return Status
+   */
+  Status load_tile_var_sizes(ConstBuffer* buff);
+
+  /**
    * Writes the bounding coordinates to the fragment metadata buffer.
    *
-   * @param buff Buffer pointer
+   * @param buff Metadata buffer.
    * @return Status
    */
   Status write_bounding_coords(Buffer* buff);
@@ -257,7 +319,7 @@ class FragmentMetadata {
   /**
    * Writes the cell number of the last tile to the fragment metadata buffer.
    *
-   * @param buff Buffer pointer
+   * @param buff Metadata buffer.
    * @return Status
    */
   Status write_last_tile_cell_num(Buffer* buff);
@@ -265,7 +327,7 @@ class FragmentMetadata {
   /**
    * Writes the MBRs to the fragment metadata buffer.
    *
-   * @param buff Buffer pointer
+   * @param buff Metadata buffer.
    * @return Status
    */
   Status write_mbrs(Buffer* buff);
@@ -273,7 +335,7 @@ class FragmentMetadata {
   /**
    * Writes the non-empty domain to the fragment metadata buffer.
    *
-   * @param buff Buffer pointer
+   * @param buff Metadata buffer.
    * @return Status
    */
   Status write_non_empty_domain(Buffer* buff);
@@ -281,7 +343,7 @@ class FragmentMetadata {
   /**
    * Writes the tile offsets to the fragment metadata buffer.
    *
-   * @param buff Buffer pointer
+   * @param buff Metadata buffer.
    * @return Status
    */
   Status write_tile_offsets(Buffer* buff);
@@ -289,7 +351,7 @@ class FragmentMetadata {
   /**
    * Writes the variable tile offsets to the fragment metadata buffer.
    *
-   * @param buff Buffer pointer
+   * @param buff Metadata buffer.
    * @return Status
    */
   Status write_tile_var_offsets(Buffer* buff);
@@ -297,66 +359,10 @@ class FragmentMetadata {
   /**
    * Writes the variable tile sizes to the fragment metadata buffer.
    *
-   * @param buff Buffer pointer
+   * @param buff Metadata buffer.
    * @return Status
    */
   Status write_tile_var_sizes(Buffer* buff);
-
-  /**
-   * Loads the bounding coordinates from the fragment metadata buffer.
-   *
-   * @param buff Buffer pointer
-   * @return Status
-   */
-  Status load_bounding_coords(Buffer* buff);
-
-  /**
-   * Loads the cell number of the last tile from the fragment metadata buffer.
-   *
-   * @param buff Buffer pointer
-   * @return Status
-   */
-  Status load_last_tile_cell_num(Buffer* buff);
-
-  /**
-   * Loads the MBRs from the fragment metadata buffer.
-   *
-   * @param buff Buffer pointer
-   * @return Status
-   */
-  Status load_mbrs(Buffer* buff);
-
-  /**
-   * Loads the non-empty domain from the fragment metadata buffer.
-   *
-   * @param buff Buffer pointer
-   * @return Status
-   */
-  Status load_non_empty_domain(Buffer* buff);
-
-  /**
-   * Loads the tile offsets from the fragment metadata buffer.
-   *
-   * @param buff Buffer pointer
-   * @return Status
-   */
-  Status load_tile_offsets(Buffer* buff);
-
-  /**
-   * Loads the variable tile offsets from the fragment metadata buffer.
-   *
-   * @param buff Buffer pointer
-   * @return Status
-   */
-  Status load_tile_var_offsets(Buffer* buff);
-
-  /**
-   * Loads the variable tile sizes from the fragment metadata.
-   *
-   * @param buff Buffer pointer
-   * @return Status
-   */
-  Status load_tile_var_sizes(Buffer* buff);
 };
 
 }  // namespace tiledb

@@ -40,7 +40,6 @@
 namespace tiledb {
 
 uint64_t Blosc::compress_bound(uint64_t nbytes) {
-  // TODO: this may overflow
   return nbytes + BLOSC_MAX_OVERHEAD;
 }
 
@@ -55,13 +54,7 @@ Status Blosc::compress(
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with Blosc; invalid buffer format"));
 
-  // TODO: put something better than assertion here
-  assert(input_buffer->offset() <= std::numeric_limits<int>::max());
-  assert(output_buffer->size() <= std::numeric_limits<int>::max());
-
-  // Initialize Blosc
-  // TODO: this should be performed once
-  blosc_init();
+  // Initialize Blosc compressor
   if (blosc_set_compressor(compressor) < 0) {
     return Status::CompressionError(
         std::string(
@@ -79,15 +72,12 @@ Status Blosc::compress(
       output_buffer->data(),
       output_buffer->size());
 
-  // Destroy Blosc
-  blosc_destroy();
-
   // Handle error
   if (rc < 0)
     return Status::CompressionError("Blosc compression error");
 
   // Set size of compressed data
-  output_buffer->set_offset(rc);
+  output_buffer->set_offset(uint64_t(rc));
 
   return Status::Ok();
 }
@@ -98,22 +88,11 @@ Status Blosc::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
     return LOG_STATUS(Status::CompressionError(
         "Failed decompressing with Blosc; invalid buffer format"));
 
-  // TODO: put something better than assertion here
-  assert(input_buffer->size() <= std::numeric_limits<int>::max());
-  assert(output_buffer->size() <= std::numeric_limits<int>::max());
-
-  // Initialize Blosc
-  // TODO: this should be performed once
-  blosc_init();
-
   // Decompress
   int rc = blosc_decompress(
       static_cast<char*>(input_buffer->data()),
       output_buffer->data(),
       output_buffer->size());
-
-  // Destroy Blosc
-  blosc_destroy();
 
   // Handle error
   if (rc <= 0)

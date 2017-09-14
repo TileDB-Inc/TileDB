@@ -26,9 +26,6 @@ const uint64_t var_size = sizeof(uint64_t);
 /** Special name reserved for the coordinates attribute. */
 const char* coords = "__coords";
 
-/** The consolidation buffer size. */
-const uint64_t consolidation_buffer_size = 10000000;
-
 /** The array filelock name. */
 const char* array_filelock_name = "__array_lock";
 
@@ -177,4 +174,5 @@ const char* row_major_str = "row-major";
 const char* null_str = "null";
 
 }  // namespace constants
+
 }  // namespace tiledb

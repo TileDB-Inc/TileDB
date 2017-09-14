@@ -34,108 +34,100 @@
 #ifndef TILEDB_FRAGMENT_H
 #define TILEDB_FRAGMENT_H
 
-#include <vector>
 #include "array_schema.h"
 #include "fragment_metadata.h"
 #include "read_state.h"
 #include "write_state.h"
 
+#include <vector>
+
 namespace tiledb {
 
-class Array;
 class Query;
 class FragmentMetadata;
-class ReadState;
-class WriteState;
 
-/** Manages a TileDB fragment object. */
+/** Manages a TileDB fragment object for a particular query. */
 class Fragment {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /**
-   * Constructor.
-   *
-   * @param array The array the fragment belongs to.
-   */
+  /** Constructor for a particular query. */
   explicit Fragment(Query* query);
 
   /** Destructor. */
   ~Fragment();
 
   /* ********************************* */
-  /*              ACCESSORS            */
+  /*                API                */
   /* ********************************* */
 
+  /** Returns the array schema. */
   const ArraySchema* array_schema() const;
 
-  URI attr_uri(int attribute_id) const;
+  /** Returns the URI of the array the query focuses on. */
+  URI attr_uri(unsigned int attribute_id) const;
 
-  URI attr_var_uri(int attribute_id) const;
+  /** Returns a variable-sized attribute with the input id. */
+  URI attr_var_uri(unsigned int attribute_id) const;
 
+  /** Returns the URI of the coordinates file in this fragment. */
   URI coords_uri() const;
-
-  /** Returns the number of cell per (full) tile. */
-  int64_t cell_num_per_tile() const;
 
   /** Returns true if the fragment is dense, and false if it is sparse. */
   bool dense() const;
 
+  /**
+   * Finalizes the fragment, properly freeing up memory space.
+   *
+   * @return Status
+   */
+  Status finalize();
+
   /** Returns the fragment uri. */
   const URI& fragment_uri() const;
+
+  /**
+   * Initializes the fragment.
+   *
+   * @param uri The URI of the fragment directory.
+   * @param subarray The subarray this fragment is constrained on. A *nullptr*
+   *     implies the entire domain.
+   * @return Status
+   */
+  Status init(const URI& uri, const void* subarray = nullptr);
+
+  /**
+   * Initializes the fragment.
+   *
+   * @param uri The URI of the fragment directory.
+   * @param metadata The fragment metadata.
+   * @return Status
+   */
+  Status init(const URI& uri, FragmentMetadata* metadata);
+
+  /** Returns the fragment metadata. */
+  FragmentMetadata* metadata() const;
+
+  /** Returns the query that this fragment belongs to. */
+  Query* query() const;
 
   /** Returns the read state of the fragment. */
   ReadState* read_state() const;
 
-  FragmentMetadata* metadata() const {
-    return metadata_;
-  }
+  /** Returns the tile size for a given attribute. */
+  uint64_t tile_size(unsigned int attribute_id) const;
 
   /**
-   * Returns the tile size for a given attribute (TILEDB_VAR_SIZE in case
-   * of a variable-sized attribute.
-   */
-  uint64_t tile_size(int attribute_id) const;
-
-  Query* query() const {
-    return query_;
-  }
-
-  /* ********************************* */
-  /*              MUTATORS             */
-  /* ********************************* */
-
-  /**
-   * Finalizes the fragment, properly freeing up memory space.
+   * Writes a set of buffers into the write state. The buffers have a
+   * one-to-one correspondence with the attributes specified in the
+   * query.
    *
-   * @return TILEDB_FG_OK on success and TILEDB_FG_ERR on error.
+   * @param buffers The buffers to be written.
+   * @param buffer_sizes The corresponding buffer sizes.
+   * @return Status
    */
-  Status finalize();
-
-  Status init(const URI& uri, const void* subarray = nullptr);
-
-  Status init(const URI& uri, FragmentMetadata* metadata);
-
-  /** Resets the read state (typically to start a new read). */
-  void reset_read_state();
-
-  /**
-   * Syncs all attribute files in the fragment.
-   *
-   * @return TILEDB_WS_OK on success and TILEDB_WS_ERR on error.
-   */
-  Status sync();
-
-  /**
-   * Syncs the currently written files associated with the input attribute
-   * in the input array.
-   *
-   * @return TILEDB_AR_OK on success, and TILEDB_AR_ERR on error.
-   */
-  Status sync_attribute(const std::string& attribute);
-
   Status write(void** buffers, uint64_t* buffer_sizes);
 
  private:
@@ -143,16 +135,17 @@ class Fragment {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  Query* query_;
+  /** Indicates whether the fragment is dense or sparse. */
+  bool dense_;
+
+  /** The fragment URI. */
+  URI fragment_uri_;
 
   /** The fragment metadata. */
   FragmentMetadata* metadata_;
 
-  /** Indicates whether the fragment is dense or sparse. */
-  bool dense_;
-
-  /** The fragment name. */
-  URI fragment_uri_;
+  /** The query this fragment belongs to. */
+  Query* query_;
 
   /** The fragment read state. */
   ReadState* read_state_;

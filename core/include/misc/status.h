@@ -94,7 +94,9 @@ enum class StatusCode : char {
   TileIO,
   Buffer,
   Query,
-  VFS
+  VFS,
+  ConstBuffer,
+  Dimension
 };
 
 class Status {
@@ -223,6 +225,16 @@ class Status {
   /** Return a VFSError error class Status with a given message **/
   static Status VFSError(const std::string& msg) {
     return Status(StatusCode::VFS, msg, -1);
+  }
+
+  /** Return a ConstBufferError error class Status with a given message **/
+  static Status ConstBufferError(const std::string& msg) {
+      return Status(StatusCode::ConstBuffer, msg, -1);
+  }
+
+  /** Return a Dimension Error error class Status with a given message **/
+  static Status DimensionError(const std::string& msg) {
+    return Status(StatusCode::Dimension, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

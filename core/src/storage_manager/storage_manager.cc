@@ -32,6 +32,7 @@
  */
 
 #include <algorithm>
+#include <blosc.h>
 
 #include "logger.h"
 #include "storage_manager.h"
@@ -48,6 +49,7 @@ StorageManager::StorageManager() {
   async_thread_[0] = nullptr;
   async_thread_[1] = nullptr;
   vfs_ = nullptr;
+  blosc_init();
 }
 
 StorageManager::~StorageManager() {
@@ -55,6 +57,7 @@ StorageManager::~StorageManager() {
   delete async_thread_[0];
   delete async_thread_[1];
   delete vfs_;
+  blosc_destroy();
 }
 
 /* ****************************** */
@@ -117,36 +120,42 @@ Status StorageManager::load(const std::string& array_name, ArraySchema* array_sc
   URI array_schema_uri = array_uri.join_path(constants::array_schema_filename);
   uint64_t buffer_size;
   RETURN_NOT_OK(file_size(array_schema_uri, &buffer_size));
-  void* buffer = malloc(buffer_size);
+
+  // Read from file
+  void* buffer = std::malloc(buffer_size);
   if(buffer == nullptr)
     return LOG_STATUS(
             Status::StorageManagerError("Cannot load array schema; Buffer allocation error"));
-
   RETURN_NOT_OK_ELSE(
-      read_from_file(array_schema_uri, 0, buffer, buffer_size), free(buffer));
-  RETURN_NOT_OK_ELSE(
-      array_schema->deserialize(buffer, buffer_size), free(buffer));
+      read_from_file(array_schema_uri, 0, buffer, buffer_size), std::free(buffer));
 
-  free(buffer);
-  return Status::Ok();
+  // Deserialize
+  auto buff = new ConstBuffer(buffer, buffer_size);
+  Status st = array_schema->deserialize(buff);
+
+  // Clean up
+  delete buff;
+  std::free(buffer);
+
+  return st;
 }
 
 Status StorageManager::store(ArraySchema* array_schema) {
   RETURN_NOT_OK(array_schema->check());
 
-  void* buffer;
-  uint64_t buffer_size;
   URI array_schema_uri =
       array_schema->array_uri().join_path(constants::array_schema_filename);
 
-  RETURN_NOT_OK(array_schema->init());
-  RETURN_NOT_OK(array_schema->serialize(buffer, buffer_size));
-  if(is_file(array_schema_uri))
-    RETURN_NOT_OK_ELSE(delete_file(array_schema_uri), free(buffer));
-  RETURN_NOT_OK_ELSE(
-      write_to_file(array_schema_uri, buffer, buffer_size), free(buffer));
+  // Serialize
+  auto buff = new Buffer();
+  RETURN_NOT_OK_ELSE(array_schema->serialize(buff), delete buff);
 
-  free(buffer);
+  // Write to file
+  if(is_file(array_schema_uri))
+    RETURN_NOT_OK_ELSE(delete_file(array_schema_uri), delete buff);
+  RETURN_NOT_OK_ELSE(
+      write_to_file(array_schema_uri, buff->data(), buff->size()), delete buff);
+
   return Status::Ok();
 }
 
@@ -175,14 +184,30 @@ Status StorageManager::load(FragmentMetadata* metadata) {
     return Status::StorageManagerError(
         "Cannot load fragment metadata; Fragment directory does not exist");
 
+  // Get metadata file name and size
   URI metadata_filename = fragment_uri.join_path(
-      std::string(constants::fragment_metadata_filename) +
-      constants::file_suffix);
+          std::string(constants::fragment_metadata_filename) +
+          constants::file_suffix);
+  uint64_t buffer_size;
+  RETURN_NOT_OK(file_size(metadata_filename, &buffer_size));
 
-  auto buff = (Buffer*)nullptr;
-  RETURN_NOT_OK(vfs_->read_from_file(metadata_filename, &buff));
+  // Read from file
+  void* buffer = std::malloc(buffer_size);
+  if(buffer == nullptr)
+    return LOG_STATUS(
+            Status::StorageManagerError("Cannot load fragment metadata; Buffer allocation error"));
+  RETURN_NOT_OK_ELSE(
+      read_from_file(metadata_filename, 0, buffer, buffer_size), std::free(buffer));
+
+  // Deserialize
+  auto buff = new ConstBuffer(buffer, buffer_size);
+  Status st = metadata->deserialize(buff);
+
+  // Clean up
   delete buff;
-  return metadata->deserialize(buff);
+  std::free(buffer);
+
+  return st;
 }
 
 Status StorageManager::store(FragmentMetadata* metadata) {
