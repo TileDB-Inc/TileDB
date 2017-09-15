@@ -36,6 +36,7 @@
 
 namespace tiledb {
 
+/** Defines the query states (used in asynchronous queries). */
 enum class QueryStatus : char {
 #define TILEDB_QUERY_STATUS_ENUM(id) id
 #include "tiledb_enum.inc"

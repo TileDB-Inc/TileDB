@@ -1,6 +1,8 @@
 #ifndef TILEDB_CONSTANTS_H
 #define TILEDB_CONSTANTS_H
 
+#include <cinttypes>
+
 namespace tiledb {
 
 namespace constants {

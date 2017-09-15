@@ -107,10 +107,10 @@ typedef enum {
 
 /** Query mode. */
 typedef enum {
-#define TILEDB_QUERY_MODE_ENUM(id) TILEDB_##id
+#define TILEDB_QUERY_TYPE_ENUM(id) TILEDB_##id
 #include "tiledb_enum.inc"
-#undef TILEDB_QUERY_MODE_ENUM
-} tiledb_query_mode_t;
+#undef TILEDB_QUERY_TYPE_ENUM
+} tiledb_query_type_t;
 
 /** Query status. */
 typedef enum {
@@ -837,7 +837,7 @@ TILEDB_EXPORT int tiledb_dimension_iter_first(
  *
  * @param ctx The TileDB context.
  * @param query The query object to be created.
- * @param mode The mode of the query. It must be one of the following:
+ * @param query_type The query type, which must be one of the following:
  *    - TILEDB_WRITE
  *    - TILEDB_WRITE_SORTED_COL
  *    - TILEDB_WRITE_SORTED_ROW
@@ -871,7 +871,7 @@ TILEDB_EXPORT int tiledb_query_create(
     tiledb_ctx_t* ctx,
     tiledb_query_t** query,
     const char* array_name,
-    tiledb_query_mode_t mode,
+    tiledb_query_type_t query_type,
     const void* subarray,
     const char** attributes,
     unsigned int attribute_num,

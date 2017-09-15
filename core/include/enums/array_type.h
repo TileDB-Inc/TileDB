@@ -34,13 +34,26 @@
 #ifndef TILEDB_ARRAY_TYPE_H
 #define TILEDB_ARRAY_TYPE_H
 
+#include "constants.h"
+
 namespace tiledb {
 
+/** Defines the array type. */
 enum class ArrayType : char {
 #define TILEDB_ARRAY_TYPE_ENUM(id) id
 #include "tiledb_enum.inc"
 #undef TILEDB_ARRAY_TYPE_ENUM
 };
+
+/** Returns the string representation of the input array type. */
+inline const char* array_type_str(ArrayType array_type) {
+  if (array_type == ArrayType::DENSE)
+    return constants::dense_str;
+  if (array_type == ArrayType::SPARSE)
+    return constants::sparse_str;
+
+  return nullptr;
+}
 
 }  // namespace tiledb
 

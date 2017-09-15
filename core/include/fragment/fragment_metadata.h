@@ -36,7 +36,7 @@
 
 #include "array_schema.h"
 #include "buffer.h"
-#include "query_mode.h"
+#include "query_type.h"
 #include "status.h"
 
 #include <zlib.h>

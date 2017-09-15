@@ -275,9 +275,9 @@ const void* ArraySchema::domain() const {
 }
 
 void ArraySchema::dump(FILE* out) const {
-  const char* array_type_s = utils::array_type_str(array_type_);
-  const char* cell_order_s = utils::layout_str(cell_order_);
-  const char* tile_order_s = utils::layout_str(tile_order_);
+  const char* array_type_s = array_type_str(array_type_);
+  const char* cell_order_s = layout_str(cell_order_);
+  const char* tile_order_s = layout_str(tile_order_);
 
   fprintf(out, "- Array name: %s\n", array_uri_.to_string().c_str());
   fprintf(out, "- Array type: %s\n", array_type_s);

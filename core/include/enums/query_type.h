@@ -36,21 +36,24 @@
 
 namespace tiledb {
 
-enum class QueryMode : char {
-#define TILEDB_QUERY_MODE_ENUM(id) id
+/** Defines the query type. */
+enum class QueryType : char {
+#define TILEDB_QUERY_TYPE_ENUM(id) id
 #include "tiledb_enum.inc"
-#undef TILEDB_QUERY_MODE_ENUM
+#undef TILEDB_QUERY_TYPE_ENUM
 };
 
-inline bool is_read_mode(const QueryMode mode) {
-  return mode == QueryMode::READ || mode == QueryMode::READ_SORTED_COL ||
-         mode == QueryMode::READ_SORTED_ROW;
+/** Checks if the query type is "read". */
+inline bool is_read_type(const QueryType query_type) {
+  return query_type == QueryType::READ || query_type == QueryType::READ_SORTED_COL ||
+         query_type == QueryType::READ_SORTED_ROW;
 }
 
-inline bool is_write_mode(const QueryMode mode) {
-  return mode == QueryMode::WRITE || mode == QueryMode::WRITE_SORTED_COL ||
-         mode == QueryMode::WRITE_SORTED_ROW ||
-         mode == QueryMode::WRITE_UNSORTED;
+/** Checks if the query type is "write". */
+inline bool is_write_type(const QueryType query_type) {
+  return query_type == QueryType::WRITE || query_type == QueryType::WRITE_SORTED_COL ||
+         query_type == QueryType::WRITE_SORTED_ROW ||
+         query_type == QueryType::WRITE_UNSORTED;
 }
 
 }  // namespace tiledb

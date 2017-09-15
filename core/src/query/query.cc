@@ -71,16 +71,16 @@ Query::~Query() {
 
 Status Query::async_process() {
   Status st;
-  if (is_read_mode(mode_))
+  if (is_read_type(type_))
     st = read();
   else  // WRITE MODE
     st = write();
 
   if (st.ok()) {  // Success
     // Check for overflow (applicable only to reads)
-    if ((mode_ == QueryMode::READ && array_read_state_->overflow()) ||
-        ((mode_ == QueryMode::READ_SORTED_COL ||
-          mode_ == QueryMode::READ_SORTED_ROW) &&
+    if ((type_ == QueryType::READ && array_read_state_->overflow()) ||
+        ((type_ == QueryType::READ_SORTED_COL ||
+          type_ == QueryType::READ_SORTED_ROW) &&
          array_sorted_read_state_->overflow()))
       set_status(QueryStatus::OVERFLOWED);
     else  // Completion
@@ -113,8 +113,8 @@ Status Query::read() {
   }
 
   // Handle sorted modes
-  if (mode_ == QueryMode::READ_SORTED_COL ||
-      mode_ == QueryMode::READ_SORTED_ROW)
+  if (type_ == QueryType::READ_SORTED_COL ||
+      type_ == QueryType::READ_SORTED_ROW)
     return array_sorted_read_state_->read(buffers_, buffer_sizes_);
 
   // mode_ == TILEDB_ARRAY_READ
@@ -123,17 +123,17 @@ Status Query::read() {
 
 Status Query::write() {
   // Write based on mode
-  if (mode_ == QueryMode::WRITE_SORTED_COL ||
-      mode_ == QueryMode::WRITE_SORTED_ROW) {
+  if (type_ == QueryType::WRITE_SORTED_COL ||
+      type_ == QueryType::WRITE_SORTED_ROW) {
     RETURN_NOT_OK(array_sorted_write_state_->write(buffers_, buffer_sizes_));
-  } else if (mode_ == QueryMode::WRITE || mode_ == QueryMode::WRITE_UNSORTED) {
+  } else if (type_ == QueryType::WRITE || type_ == QueryType::WRITE_UNSORTED) {
     RETURN_NOT_OK(write_default(buffers_, buffer_sizes_));
   } else {
     assert(0);
   }
 
   // In all modes except WRITE, the fragment must be finalized
-  if (mode_ != QueryMode::WRITE)
+  if (type_ != QueryType::WRITE)
     clear_fragments();
 
   return Status::Ok();
@@ -186,7 +186,7 @@ Status Query::init(
     StorageManager* storage_manager,
     const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& fragment_metadata,
-    QueryMode mode,
+    QueryType type,
     const void* subarray,
     const char** attributes,
     int attribute_num,
@@ -194,7 +194,7 @@ Status Query::init(
     uint64_t* buffer_sizes) {
   storage_manager_ = storage_manager;
   array_schema_ = array_schema;
-  mode_ = mode;
+  type_ = type;
   status_ = QueryStatus::INPROGRESS;
   buffers_ = buffers;
   buffer_sizes_ = buffer_sizes;
@@ -212,14 +212,14 @@ Status Query::init(
     StorageManager* storage_manager,
     const ArraySchema* array_schema,
     const std::vector<FragmentMetadata*>& fragment_metadata,
-    QueryMode mode,
+    QueryType type,
     const void* subarray,
     const std::vector<unsigned int>& attribute_ids,
     void** buffers,
     uint64_t* buffer_sizes) {
   storage_manager_ = storage_manager;
   array_schema_ = array_schema;
-  mode_ = mode;
+  type_ = type;
   attribute_ids_ = attribute_ids;
   status_ = QueryStatus::INPROGRESS;
   buffers_ = buffers;
@@ -238,7 +238,7 @@ Status Query::set_attributes(const char** attributes, int attribute_num) {
   std::vector<std::string> attributes_vec;
   if (attributes == nullptr) {  // Default: all attributes
     attributes_vec = array_schema_->attribute_names();
-    if (array_schema_->dense() && mode_ != QueryMode::WRITE_UNSORTED)
+    if (array_schema_->dense() && type_ != QueryType::WRITE_UNSORTED)
       // Remove coordinates attribute for dense arrays,
       // unless in TILEDB_WRITE_UNSORTED mode
       attributes_vec.pop_back();
@@ -267,8 +267,8 @@ Status Query::set_attributes(const char** attributes, int attribute_num) {
 
 Status Query::init_states() {
   // Initialize new fragment if needed
-  if (mode_ == QueryMode::WRITE_SORTED_COL ||
-      mode_ == QueryMode::WRITE_SORTED_ROW) {
+  if (type_ == QueryType::WRITE_SORTED_COL ||
+      type_ == QueryType::WRITE_SORTED_ROW) {
     array_sorted_write_state_ = new ArraySortedWriteState(this);
     Status st = array_sorted_write_state_->init();
     if (!st.ok()) {
@@ -276,11 +276,11 @@ Status Query::init_states() {
       array_sorted_write_state_ = nullptr;
       return st;
     }
-  } else if (mode_ == QueryMode::READ) {
+  } else if (type_ == QueryType::READ) {
     array_read_state_ = new ArrayReadState(this);
   } else if (
-      mode_ == QueryMode::READ_SORTED_COL ||
-      mode_ == QueryMode::READ_SORTED_ROW) {
+      type_ == QueryType::READ_SORTED_COL ||
+      type_ == QueryType::READ_SORTED_ROW) {
     array_read_state_ = new ArrayReadState(this);
     array_sorted_read_state_ = new ArraySortedReadState(this);
     Status st = array_sorted_read_state_->init();
@@ -296,9 +296,9 @@ Status Query::init_states() {
 
 Status Query::init_fragments(
     const std::vector<FragmentMetadata*>& fragment_metadata) {
-  if (mode_ == QueryMode::WRITE) {
+  if (type_ == QueryType::WRITE) {
     RETURN_NOT_OK(new_fragment());
-  } else if (is_read_mode(mode_)) {
+  } else if (is_read_type(type_)) {
     RETURN_NOT_OK(open_fragments(fragment_metadata));
   }
 
@@ -354,7 +354,7 @@ int Query::fragment_num() const {
 
 bool Query::overflow() const {
   // Not applicable to writes
-  if (!is_read_mode(mode_))
+  if (!is_read_type(type_))
     return false;
 
   // Check overflow
@@ -365,7 +365,7 @@ bool Query::overflow() const {
 }
 
 bool Query::overflow(int attribute_id) const {
-  assert(is_read_mode(mode_));
+  assert(is_read_type(type_));
 
   // Trivial case
   if (fragments_.empty())
@@ -378,8 +378,8 @@ bool Query::overflow(int attribute_id) const {
   return array_read_state_->overflow(attribute_id);
 }
 
-QueryMode Query::mode() const {
-  return mode_;
+QueryType Query::type() const {
+  return type_;
 }
 
 const void* Query::subarray() const {
@@ -388,7 +388,7 @@ const void* Query::subarray() const {
 
 Status Query::write_default(void** buffers, uint64_t* buffer_sizes) {
   // Sanity checks
-  if (!is_write_mode(mode_)) {
+  if (!is_write_type(type_)) {
     return LOG_STATUS(
         Status::QueryError("Cannot write to array_schema; Invalid mode"));
   }
@@ -397,7 +397,7 @@ Status Query::write_default(void** buffers, uint64_t* buffer_sizes) {
   if (fragment_num() == 0) {
     // Get new fragment name
     std::string new_fragment_name = this->new_fragment_name();
-    if (new_fragment_name == "") {
+    if (new_fragment_name.empty()) {
       return LOG_STATUS(Status::QueryError("Cannot produce new fragment name"));
     }
 
@@ -422,7 +422,7 @@ std::string Query::new_fragment_name() const {
   // For easy reference
   unsigned name_max_len = constants::name_max_len;
 
-  struct timeval tp;
+  struct timeval tp = {};
   gettimeofday(&tp, nullptr);
   uint64_t ms = (uint64_t)tp.tv_sec * 1000L + tp.tv_usec / 1000;
   pthread_t self = pthread_self();

@@ -38,12 +38,14 @@
 
 namespace tiledb {
 
+/** Defines the compressor type. */
 enum class Compressor : char {
 #define TILEDB_COMPRESSOR_ENUM(id) id
 #include "tiledb_enum.inc"
 #undef TILEDB_COMPRESSOR_ENUM
 };
 
+/** Returns the string representation of the input compressor. */
 inline const char* compressor_str(Compressor type) {
   switch (type) {
     case Compressor::NO_COMPRESSION:

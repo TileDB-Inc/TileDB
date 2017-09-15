@@ -149,7 +149,7 @@ class StorageManager {
   Status query_init(
       Query* query,
       const char* array_name,
-      QueryMode mode,
+      QueryType query_type,
       const void* subarray,
       const char** attributes,
       int attribute_num,
@@ -240,7 +240,7 @@ class StorageManager {
 
   Status array_open(
       const URI& array_uri,
-      QueryMode mode,
+      QueryType query_type,
       const void* subarray,
       const ArraySchema** array_schema,
       std::vector<FragmentMetadata*>* fragment_metadata);

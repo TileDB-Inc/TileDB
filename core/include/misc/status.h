@@ -101,24 +101,30 @@ enum class StatusCode : char {
 
 class Status {
  public:
-  // Create a success status
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /** Constructor with success status (empty state). */
   Status()
       : state_(nullptr) {
   }
-  ~Status() {
-    delete[] state_;
-  }
 
+  /** Consturctor with a code and error message. */
   Status(StatusCode code, const std::string& msg)
       : Status(code, msg, -1) {
   }
 
-  // Copy the specified status
-  Status(const Status& s);
-  void operator=(const Status& s);
+  /** Destructor. */
+  ~Status() {
+    delete[] state_;
+  }
 
-  // overload operator<< for stream formatting
-  friend std::ostream& operator<<(std::ostream& os, const Status& st);
+  /** Copy the specified status. */
+  Status(const Status& s);
+
+  /** Assign status. */
+  void operator=(const Status& s);
 
   /**  Return a success status **/
   static Status Ok() {
@@ -128,11 +134,6 @@ class Status {
   /**  Return a generic Error class Status **/
   static Status Error(const std::string& msg) {
     return Status(StatusCode::Error, msg, -1);
-  }
-
-  /** Return a generic StorageManager error class Status **/
-  static Status StorageManagerError() {
-    return Status(StatusCode::StorageManager, "", -1);
   }
 
   /** Return a StorageManager error class Status with a given message **/
@@ -242,8 +243,10 @@ class Status {
     return (state_ == nullptr);
   }
 
-  /** Return a std::string representation of this status object suitable for
-   * printing.  Return "Ok" for success. **/
+  /**
+   * Return a std::string representation of this status object suitable for
+   * printing.  Return "Ok" for success.
+   */
   std::string to_string() const;
 
   /** Return a string representation of the status code **/
@@ -269,15 +272,28 @@ class Status {
   }
 
  private:
-  // OK status has a NULL state_.  Otherwise, state_ is a new[] array_schema
-  // of the following form:
-  //    state_[0..3] == length of message
-  //    state_[4]    == code
-  //    state_[5..6] == posix_code
-  //    state_[7..]  == message
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /**
+   * OK status has a NULL state_.  Otherwise, state_ is a new[] array_schema
+   * of the following form:
+   *    state_[0..3] == length of message
+   *    state_[4]    == code
+   *    state_[5..6] == posix_code
+   *    state_[7..]  == message
+   */
   const char* state_;
 
+  /* ********************************* */
+  /*           PRIVATE METHODS         */
+  /* ********************************* */
+
+  /** Private constructor. */
   Status(StatusCode code, const std::string& msg, int16_t posix_code);
+
+  /** Clones and returns the input state (allocates memory). */
   static const char* copy_state(const char* s);
 };
 

@@ -37,7 +37,7 @@
 #include "array_sorted_read_state.h"
 #include "array_sorted_write_state.h"
 #include "fragment.h"
-#include "query_mode.h"
+#include "query_type.h"
 #include "query_status.h"
 #include "status.h"
 #include "storage_manager.h"
@@ -46,7 +46,6 @@
 
 namespace tiledb {
 
-class Array;
 class ArrayReadState;
 class ArraySortedReadState;
 class ArraySortedWriteState;
@@ -115,7 +114,7 @@ class Query {
       StorageManager* storage_manager,
       const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata,
-      QueryMode mode,
+      QueryType type,
       const void* subarray,
       const char** attributes,
       int attribute_num,
@@ -126,14 +125,14 @@ class Query {
       StorageManager* storage_manager,
       const ArraySchema* array_schema,
       const std::vector<FragmentMetadata*>& fragment_metadata,
-      QueryMode mode,
+      QueryType type,
       const void* subarray,
       const std::vector<unsigned int>& attribute_ids,
       void** buffers,
       uint64_t* buffer_sizes);
 
-  /** Returns the query mode. */
-  QueryMode mode() const;
+  /** Returns the query type. */
+  QueryType type() const;
 
   /** Returns the subarray in which the query is constrained. */
   const void* subarray() const;
@@ -142,8 +141,8 @@ class Query {
 
   void add_coords();
 
-  void set_mode(QueryMode mode) {
-    mode_ = mode;
+  void set_mode(QueryType type) {
+    type_ = type;
   }
 
   void set_status(QueryStatus status) {
@@ -162,7 +161,7 @@ class Query {
 
   URI array_name_;
   const ArraySchema* array_schema_;
-  QueryMode mode_;
+  QueryType type_;
   QueryStatus status_;
   void* subarray_;
   std::vector<std::string> attributes_;

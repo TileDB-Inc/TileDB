@@ -123,11 +123,11 @@ ArraySortedWriteState::~ArraySortedWriteState() {
 Status ArraySortedWriteState::init() {
   // Initialize functors
   const ArraySchema* array_schema = query_->array_schema();
-  QueryMode mode = query_->mode();
+  QueryType query_type = query_->type();
   Layout cell_order = array_schema->cell_order();
   Layout tile_order = array_schema->tile_order();
   Datatype coords_type = array_schema->coords_type();
-  if (mode == QueryMode::WRITE_SORTED_ROW) {
+  if (query_type == QueryType::WRITE_SORTED_ROW) {
     if (coords_type == Datatype::INT32) {
       advance_cell_slab_ = advance_cell_slab_row_s<int>;
       calculate_cell_slab_info_ = (cell_order == Layout::ROW_MAJOR) ?
@@ -932,7 +932,7 @@ void ArraySortedWriteState::copy_tile_slab_var(int aid, int bid) {
     while (local_buffer_offset_var + cell_size_var > local_buffer_var_size) {
       utils::expand_buffer(
           copy_state_.buffers_[copy_id_][bid + 1],
-          copy_state_.buffer_sizes_[copy_id_][bid + 1]);
+          &(copy_state_.buffer_sizes_[copy_id_][bid + 1]));
       local_buffer_var = (char*)copy_state_.buffers_[copy_id_][bid + 1];
     }
 
@@ -954,7 +954,7 @@ Status ArraySortedWriteState::create_copy_state_buffers() {
 
   // Get cell number in a (full) tile slab
   int64_t tile_slab_cell_num;
-  if (query_->mode() == QueryMode::WRITE_SORTED_ROW)
+  if (query_->type() == QueryType::WRITE_SORTED_ROW)
     tile_slab_cell_num =
         array_schema->tile_slab_row_cell_num(expanded_subarray_);
   else  // TILEDB_ARRAY_WRITE_SORTED_COL
@@ -1398,11 +1398,11 @@ int64_t ArraySortedWriteState::get_tile_id(int aid) {
 }
 
 bool ArraySortedWriteState::separate_fragments() const {
-  QueryMode mode = query_->mode();
+  QueryType query_type = query_->type();
   Layout tile_order = query_->array_schema()->tile_order();
-  return (mode == QueryMode::WRITE_SORTED_COL &&
+  return (query_type == QueryType::WRITE_SORTED_COL &&
           tile_order == Layout::ROW_MAJOR) ||
-         (mode == QueryMode::WRITE_SORTED_ROW &&
+         (query_type == QueryType::WRITE_SORTED_ROW &&
           tile_order == Layout::COL_MAJOR);
 }
 
@@ -1626,10 +1626,10 @@ bool ArraySortedWriteState::next_tile_slab_row() {
 template <class T>
 Status ArraySortedWriteState::write() {
   // For easy reference
-  switch (query_->mode()) {
-    case QueryMode::WRITE_SORTED_COL:
+  switch (query_->type()) {
+    case QueryType::WRITE_SORTED_COL:
       return write_sorted_col<T>();
-    case QueryMode::WRITE_SORTED_ROW:
+    case QueryType::WRITE_SORTED_ROW:
       return write_sorted_row<T>();
     default:
       assert(0);
@@ -1740,7 +1740,7 @@ Status ArraySortedWriteState::send_aio_request(int id) {
         query_->storage_manager(),
         query_->array_schema(),
         query_->fragment_metadata(),
-        QueryMode::WRITE,
+        QueryType::WRITE,
         tile_slab_[id],
         query_->attribute_ids(),
         copy_state_.buffers_[id],
@@ -1754,7 +1754,7 @@ Status ArraySortedWriteState::send_aio_request(int id) {
           query_->storage_manager(),
           query_->array_schema(),
           query_->fragment_metadata(),
-          QueryMode::WRITE,
+          QueryType::WRITE,
           query_->subarray(),
           query_->attribute_ids(),
           copy_state_.buffers_[id],

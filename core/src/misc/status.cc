@@ -54,8 +54,8 @@ Status::Status(StatusCode code, const std::string& msg, int16_t posix_code) {
   assert(code != StatusCode::Ok);
   size_t msg_size = msg.size();
   // assert(msg_size < std::numeric_limits<uint32_t>::max());
-  const uint32_t size = static_cast<uint32_t>(msg_size);
-  char* result = new char[size + 7];
+  auto size = static_cast<uint32_t>(msg_size);
+  auto result = new char[size + 7];
   memcpy(result, &size, sizeof(size));
   result[4] = static_cast<char>(code);
   memcpy(result + 5, &posix_code, sizeof(posix_code));
@@ -66,7 +66,7 @@ Status::Status(StatusCode code, const std::string& msg, int16_t posix_code) {
 const char* Status::copy_state(const char* state) {
   uint32_t size;
   memcpy(&size, state, sizeof(size));
-  char* result = new char[size + 7];
+  auto result = new char[size + 7];
   memcpy(result, state, size + 7);
   return result;
 }
@@ -79,13 +79,14 @@ std::string Status::to_string() const {
   result.append(": ");
   uint32_t size;
   memcpy(&size, state_, sizeof(size));
-  result.append(reinterpret_cast<const char*>(state_ + 7), size);
+  result.append(static_cast<const char*>(state_ + 7), size);
   return result;
 }
+
 std::string Status::code_to_string() const {
-  if (state_ == nullptr) {
+  if (state_ == nullptr)
     return "Ok";
-  }
+
   const char* type;
   switch (code()) {
     case StatusCode::Ok:
@@ -159,9 +160,9 @@ std::string Status::code_to_string() const {
 
 int16_t Status::posix_code() const {
   int16_t code = -1;
-  if (state_ == nullptr) {
+  if (state_ == nullptr)
     return code;
-  }
+
   memcpy(&code, state_ + 5, sizeof(code));
   return code;
 }

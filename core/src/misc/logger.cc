@@ -34,6 +34,10 @@
 
 namespace tiledb {
 
+/* ********************************* */
+/*     CONSTRUCTORS & DESTRUCTORS    */
+/* ********************************* */
+
 Logger::Logger() {
   logger_ = spdlog::get("tiledb");
   if (logger_ == nullptr) {
@@ -54,20 +58,19 @@ Logger::Logger() {
 #else
   logger_->set_level(spdlog::level::critical);
 #endif
-};
+}
 
 Logger::~Logger() {
   spdlog::drop("tiledb");
 }
 
+/* ********************************* */
+/*              GLOBAL               */
+/* ********************************* */
+
 Logger& global_logger() {
   static Logger l;
   return l;
-}
-
-// definition for logging status objects
-std::ostream& operator<<(std::ostream& os, const Status& st) {
-  return os << st.to_string();
 }
 
 }  // namespace tiledb

@@ -38,12 +38,14 @@
 
 namespace tiledb {
 
+/** Defines a datatype. */
 enum class Datatype : char {
 #define TILEDB_DATATYPE_ENUM(id) id
 #include "tiledb_enum.inc"
 #undef TILEDB_DATATYPE_ENUM
 };
 
+/** Returns the datatype size. */
 inline uint64_t datatype_size(Datatype type) {
   switch (type) {
     case Datatype::INT32:
@@ -71,6 +73,7 @@ inline uint64_t datatype_size(Datatype type) {
   }
 }
 
+/** Returns the string representation of the input datatype. */
 inline const char* datatype_str(Datatype type) {
   switch (type) {
     case Datatype::INT32:

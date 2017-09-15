@@ -163,13 +163,13 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
         std::string(constants::fragment_filename) + constants::file_suffix)));
   }
 
-  QueryMode mode = fragment_->query()->mode();
+  QueryType query_type = fragment_->query()->type();
 
   // Dispatch the proper write command
-  if (mode == QueryMode::WRITE || mode == QueryMode::WRITE_SORTED_COL ||
-      mode == QueryMode::WRITE_SORTED_ROW) {  // SORTED
+  if (query_type == QueryType::WRITE || query_type == QueryType::WRITE_SORTED_COL ||
+      query_type == QueryType::WRITE_SORTED_ROW) {  // SORTED
     // For easy reference
-    const ArraySchema* array_schema = fragment_->query()->array_schema();
+    auto array_schema = fragment_->query()->array_schema();
     auto& attribute_ids = fragment_->query()->attribute_ids();
     auto attribute_id_num = (unsigned int)attribute_ids.size();
 
@@ -195,7 +195,7 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
     return Status::Ok();
   }
 
-  if (mode == QueryMode::WRITE_UNSORTED)  // UNSORTED
+  if (query_type == QueryType::WRITE_UNSORTED)  // UNSORTED
     return write_sparse_unsorted(buffers, buffer_sizes);
 
   return LOG_STATUS(

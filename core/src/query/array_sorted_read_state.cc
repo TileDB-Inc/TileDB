@@ -238,11 +238,11 @@ Status ArraySortedReadState::init() {
 
   // Initialize functors
   const ArraySchema* array_schema = query_->array_schema();
-  QueryMode mode = query_->mode();
+  QueryType query_type = query_->type();
   Layout cell_order = array_schema->cell_order();
   Layout tile_order = array_schema->tile_order();
   Datatype coords_type = array_schema->coords_type();
-  if (mode == QueryMode::READ_SORTED_ROW) {
+  if (query_type == QueryType::READ_SORTED_ROW) {
     if (coords_type == Datatype::INT32) {
       advance_cell_slab_ = advance_cell_slab_row_s<int>;
       calculate_cell_slab_info_ = (cell_order == Layout::ROW_MAJOR) ?
@@ -528,7 +528,7 @@ void* ArraySortedReadState::aio_done(void* data) {
         if (query->overflow(i)) {
           // Expand buffer
           utils::expand_buffer(
-              asrs->buffers_[id][b], asrs->buffer_sizes_[id][b]);
+              asrs->buffers_[id][b], &(asrs->buffer_sizes_[id][b]));
           // Re-assign the buffer size for the fixed-sized offsets
           asrs->buffer_sizes_tmp_[id][b] = asrs->buffer_sizes_[id][b];
         } else {
@@ -544,13 +544,13 @@ void* ArraySortedReadState::aio_done(void* data) {
           // Expand offset buffer only in the case of sparse arrays
           if (sparse)
             utils::expand_buffer(
-                asrs->buffers_[id][b], asrs->buffer_sizes_[id][b]);
+                asrs->buffers_[id][b], &(asrs->buffer_sizes_[id][b]));
           // Re-assign the buffer size for the fixed-sized offsets
           asrs->buffer_sizes_tmp_[id][b] = asrs->buffer_sizes_[id][b];
           ++b;
           // Expand variable-length cell buffers for both dense and sparse
           utils::expand_buffer(
-              asrs->buffers_[id][b], asrs->buffer_sizes_[id][b]);
+              asrs->buffers_[id][b], &(asrs->buffer_sizes_[id][b]));
           // Assign the new buffer size for the variable-sized values
           asrs->buffer_sizes_tmp_[id][b] = asrs->buffer_sizes_[id][b];
           ++b;
@@ -664,7 +664,7 @@ void ArraySortedReadState::calculate_buffer_sizes_dense() {
 
   // Get cell number in a (full) tile slab
   int64_t tile_slab_cell_num;
-  if (query_->mode() == QueryMode::READ_SORTED_ROW)
+  if (query_->type() == QueryType::READ_SORTED_ROW)
     tile_slab_cell_num = array_schema->tile_slab_row_cell_num(subarray_);
   else  // TILEDB_ARRAY_READ_SORTED_COL
     tile_slab_cell_num = array_schema->tile_slab_col_cell_num(subarray_);
@@ -2014,16 +2014,16 @@ template <class T>
 Status ArraySortedReadState::read() {
   // For easy reference
   const ArraySchema* array_schema = query_->array_schema();
-  QueryMode mode = query_->mode();
+  QueryType query_type = query_->type();
 
-  if (mode == QueryMode::READ_SORTED_COL) {
+  if (query_type == QueryType::READ_SORTED_COL) {
     if (array_schema->dense())
       return read_dense_sorted_col<T>();
 
     return read_sparse_sorted_col<T>();
   }
 
-  if (mode == QueryMode::READ_SORTED_ROW) {
+  if (query_type == QueryType::READ_SORTED_ROW) {
     if (array_schema->dense())
       return read_dense_sorted_row<T>();
 
@@ -2398,7 +2398,7 @@ Status ArraySortedReadState::send_aio_request(int id) {
       query_->storage_manager(),
       query_->array_schema(),
       query_->fragment_metadata(),
-      QueryMode::READ,
+      QueryType::READ,
       tile_slab_[id],
       query_->attribute_ids(),
       buffers_[id],
@@ -2418,7 +2418,7 @@ void ArraySortedReadState::sort_cell_pos() {
   const ArraySchema* array_schema = query_->array_schema();
   int dim_num = array_schema->dim_num();
   uint64_t cell_num = buffer_sizes_tmp_[copy_id_][coords_buf_i_] / coords_size_;
-  QueryMode mode = query_->mode();
+  QueryType query_type = query_->type();
   auto buffer = static_cast<const T*>(buffers_[copy_id_][coords_buf_i_]);
 
   // Populate cell_pos
@@ -2427,7 +2427,7 @@ void ArraySortedReadState::sort_cell_pos() {
     cell_pos_[i] = i;
 
   // Invoke the proper sort function, based on the mode
-  if (mode == QueryMode::READ_SORTED_ROW) {
+  if (query_type == QueryType::READ_SORTED_ROW) {
     // Sort cell positions
     std::sort(
         cell_pos_.begin(), cell_pos_.end(), SmallerRow<T>(buffer, dim_num));

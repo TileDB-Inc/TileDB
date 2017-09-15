@@ -1082,7 +1082,7 @@ int tiledb_query_create(
     tiledb_ctx_t* ctx,
     tiledb_query_t** query,
     const char* array_name,
-    tiledb_query_mode_t mode,
+    tiledb_query_type_t query_type,
     const void* subarray,
     const char** attributes,
     unsigned int attribute_num,
@@ -1118,7 +1118,7 @@ int tiledb_query_create(
           ctx->storage_manager_->query_init(
               ((*query)->query_),
               array_name,
-              static_cast<tiledb::QueryMode>(mode),
+              static_cast<tiledb::QueryType>(query_type),
               subarray,
               attributes,
               attribute_num,

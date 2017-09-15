@@ -64,27 +64,31 @@ class Logger {
   /*                API                */
   /* ********************************* */
 
-  /** log an debug statement with no message formatting
+  /**
+   * Log a debug statement with no message formatting.
    *
-   * @param msg The string to log
+   * @param msg The string to log.
    */
   void debug(const char* msg) {
     logger_->debug(msg);
   }
 
-  /** A formatted debug statment.
+  /**
+   * A formatted debug statment.
    *
    * @param fmt A fmtlib format string, see http://fmtlib.net/latest/ for
-   * details.
+   *     details.
    * @param arg positional argument to format.
    * @param args optional additional positional arguments to format.
+   * @return void
    */
   template <typename Arg1, typename... Args>
   void debug(const char* fmt, const Arg1& arg1, const Args&... args) {
     logger_->debug(fmt, arg1, args...);
   }
 
-  /** log an error with no message formatting
+  /**
+   * Log an error with no message formatting.
    *
    * @param msg The string to log
    * */
@@ -104,10 +108,11 @@ class Logger {
     logger_->error(fmt, arg1, args...);
   }
 
-  /** Set the logger level.
+  /**
+   * Set the logger level.
    *
-   * @param lvl  Logger::Level VERBOSE logs debug statements, ERROR only logs
-   * Status Error's.
+   * @param lvl Logger::Level VERBOSE logs debug statements, ERROR only logs
+   *    Status Error's.
    */
   void set_level(Logger::Level lvl) {
     switch (lvl) {
@@ -120,12 +125,13 @@ class Logger {
     }
   }
 
-  /** Returns whether the logger should log a message given the currently set
+  /**
+   * Returns whether the logger should log a message given the currently set
    * log level.
    *
    * @param lvl The Logger::Level to test
    * @return bool true, if the logger will log the given Logger::Level, false
-   * otherwise.
+   *     otherwise.
    */
   bool should_log(Logger::Level lvl) {
     switch (lvl) {
@@ -141,24 +147,33 @@ class Logger {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The logger object. */
   std::shared_ptr<spdlog::logger> logger_;
 };
 
+/* ********************************* */
+/*              GLOBAL               */
+/* ********************************* */
+
+/** Global logger function. */
 Logger& global_logger();
 
-// TODO: these should go away eventually
 #ifdef TILEDB_VERBOSE
+/** Logs an error. */
 inline void LOG_ERROR(const std::string& msg) {
   global_logger().error(msg.c_str());
 }
 
+/** Logs a status. */
 inline Status LOG_STATUS(const Status& st) {
   global_logger().error(st.to_string().c_str());
   return st;
 }
 #else
-// no-ops
+/** Logs an error. */
 inline void LOG_ERROR(const std::string& msg){};
+
+/** Logs a status. */
 inline Status LOG_STATUS(const Status& st) {
   return st;
 }
