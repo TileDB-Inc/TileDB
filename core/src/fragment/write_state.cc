@@ -54,7 +54,6 @@ namespace tiledb {
 
 WriteState::WriteState(const Fragment* fragment)
     : fragment_(fragment) {
-
   metadata_ = fragment_->metadata();
 
   init_tiles();
@@ -166,7 +165,8 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
   QueryType query_type = fragment_->query()->type();
 
   // Dispatch the proper write command
-  if (query_type == QueryType::WRITE || query_type == QueryType::WRITE_SORTED_COL ||
+  if (query_type == QueryType::WRITE ||
+      query_type == QueryType::WRITE_SORTED_COL ||
       query_type == QueryType::WRITE_SORTED_ROW) {  // SORTED
     // For easy reference
     auto array_schema = fragment_->query()->array_schema();
@@ -238,8 +238,7 @@ void WriteState::init_tiles() {
         attr->compressor(),
         attr->compression_level(),
         fragment_->tile_size(i),
-        attr->cell_size(),
-        var_size));
+        attr->cell_size()));
     if (var_size) {
       tiles_var_.emplace_back(new Tile(
           attr->type(),
@@ -335,11 +334,15 @@ void WriteState::sort_cell_pos(
     switch (cell_order) {
       case Layout::ROW_MAJOR:
         std::sort(
-            cell_pos->begin(), cell_pos->end(), SmallerRow<T>(buffer_T, dim_num));
+            cell_pos->begin(),
+            cell_pos->end(),
+            SmallerRow<T>(buffer_T, dim_num));
         break;
       case Layout::COL_MAJOR:
         std::sort(
-            cell_pos->begin(), cell_pos->end(), SmallerCol<T>(buffer_T, dim_num));
+            cell_pos->begin(),
+            cell_pos->end(),
+            SmallerCol<T>(buffer_T, dim_num));
         break;
     }
   } else {  // TILE GRID

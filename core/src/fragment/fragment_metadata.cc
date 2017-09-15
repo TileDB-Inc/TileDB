@@ -94,20 +94,23 @@ void FragmentMetadata::append_mbr(const void* mbr) {
   mbrs_.push_back(new_mbr);
 }
 
-void FragmentMetadata::append_tile_offset(unsigned int attribute_id, uint64_t step) {
+void FragmentMetadata::append_tile_offset(
+    unsigned int attribute_id, uint64_t step) {
   tile_offsets_[attribute_id].push_back(next_tile_offsets_[attribute_id]);
   uint64_t new_offset = tile_offsets_[attribute_id].back() + step;
   next_tile_offsets_[attribute_id] = new_offset;
 }
 
-void FragmentMetadata::append_tile_var_offset(unsigned int attribute_id, uint64_t step) {
+void FragmentMetadata::append_tile_var_offset(
+    unsigned int attribute_id, uint64_t step) {
   tile_var_offsets_[attribute_id].push_back(
       next_tile_var_offsets_[attribute_id]);
   uint64_t new_offset = tile_var_offsets_[attribute_id].back() + step;
   next_tile_var_offsets_[attribute_id] = new_offset;
 }
 
-void FragmentMetadata::append_tile_var_size(unsigned int attribute_id, uint64_t size) {
+void FragmentMetadata::append_tile_var_size(
+    unsigned int attribute_id, uint64_t size) {
   tile_var_sizes_[attribute_id].push_back(size);
 }
 

@@ -31,8 +31,8 @@
  * This file implements the ArraySchema class.
  */
 
-#include <cinttypes>
 #include <cassert>
+#include <cinttypes>
 #include <cmath>
 #include <iostream>
 
@@ -154,7 +154,8 @@ const std::string& ArraySchema::attribute(unsigned int attribute_id) const {
   return attributes_[attribute_id]->name();
 }
 
-Status ArraySchema::attribute_id(const std::string& attribute_name, unsigned int* id) const {
+Status ArraySchema::attribute_id(
+    const std::string& attribute_name, unsigned int* id) const {
   // Special case - coordinates
   if (attribute_name == constants::coords) {
     *id = attribute_num_;
@@ -173,8 +174,8 @@ Status ArraySchema::attribute_id(const std::string& attribute_name, unsigned int
 
 std::vector<std::string> ArraySchema::attribute_names() const {
   std::vector<std::string> names;
-  for(auto& attr : attributes_)
-   names.emplace_back(attr->name());
+  for (auto& attr : attributes_)
+    names.emplace_back(attr->name());
   names.emplace_back(constants::coords);
   return names;
 }
@@ -219,11 +220,13 @@ unsigned int ArraySchema::cell_val_num(unsigned int attribute_id) const {
 }
 
 Status ArraySchema::check() const {
-  if(array_uri_.is_invalid())
-    return LOG_STATUS(Status::ArraySchemaError("Array schema check failed; Invalid array URI"));
+  if (array_uri_.is_invalid())
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Array schema check failed; Invalid array URI"));
 
-  if(dim_num_ == 0)
-    return LOG_STATUS(Status::ArraySchemaError("Array schema check failed; No dimensions provided"));
+  if (dim_num_ == 0)
+    return LOG_STATUS(Status::ArraySchemaError(
+        "Array schema check failed; No dimensions provided"));
 
   // Success
   return Status::Ok();
@@ -390,13 +393,13 @@ Status ArraySchema::serialize(Buffer* buff) const {
   RETURN_NOT_OK(buff->write(array_uri_.to_string().c_str(), array_uri_size));
 
   // Write array type
-  auto array_type = (char) array_type_;
+  auto array_type = (char)array_type_;
   RETURN_NOT_OK(buff->write(&array_type, sizeof(char)));
 
   // Write tile and cell order
-  auto tile_order = (char) tile_order_;
+  auto tile_order = (char)tile_order_;
   RETURN_NOT_OK(buff->write(&tile_order, sizeof(char)));
-  auto cell_order = (char) cell_order_;
+  auto cell_order = (char)cell_order_;
   RETURN_NOT_OK(buff->write(&cell_order, sizeof(char)));
 
   // Write capacity
@@ -404,12 +407,12 @@ Status ArraySchema::serialize(Buffer* buff) const {
 
   // Write dimensions
   RETURN_NOT_OK(buff->write(&dim_num_, sizeof(unsigned int)));
-  for(auto& dim : dimensions_)
+  for (auto& dim : dimensions_)
     RETURN_NOT_OK(dim->serialize(buff));
 
   // Write attributes
   RETURN_NOT_OK(buff->write(&attribute_num_, sizeof(unsigned int)));
-  for(auto& attr : attributes_)
+  for (auto& attr : attributes_)
     RETURN_NOT_OK(attr->serialize(buff));
 
   return Status::Ok();
@@ -447,7 +450,7 @@ unsigned int ArraySchema::subarray_overlap(
   }
 
   // Check contig overlap
-  if (overlap == 2  && dim_num_ > 1) {
+  if (overlap == 2 && dim_num_ > 1) {
     overlap = 3;
     if (cell_order_ == Layout::ROW_MAJOR) {  // Row major
       for (unsigned int i = 1; i < dim_num_; ++i) {
@@ -458,13 +461,13 @@ unsigned int ArraySchema::subarray_overlap(
         }
       }
     } else if (cell_order_ == Layout::COL_MAJOR) {  // Column major
-      for (unsigned int i = dim_num_ - 2; ; --i) {
+      for (unsigned int i = dim_num_ - 2;; --i) {
         if (overlap_subarray[2 * i] != subarray_b[2 * i] ||
             overlap_subarray[2 * i + 1] != subarray_b[2 * i + 1]) {
           overlap = 2;
           break;
         }
-        if(i == 0)
+        if (i == 0)
           break;
       }
     }
@@ -500,7 +503,7 @@ uint64_t ArraySchema::tile_num() const {
       return tile_num<uint64_t>();
     case Datatype::CHAR:
       assert(false);
-          return 0;
+      return 0;
     case Datatype::FLOAT32:
       assert(false);
       return 0;
@@ -632,7 +635,7 @@ uint64_t ArraySchema::tile_slab_row_cell_num(const void* subarray) const {
       return tile_slab_row_cell_num(static_cast<const uint64_t*>(subarray));
     case Datatype::CHAR:
       assert(false);
-          return 0;
+      return 0;
   }
 }
 
@@ -695,24 +698,24 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
   // Load array type
   char array_type;
   RETURN_NOT_OK(buff->read(&array_type, sizeof(char)));
-  array_type_ = (ArrayType) array_type;
+  array_type_ = (ArrayType)array_type;
 
   // Load tile order
   char tile_order;
   RETURN_NOT_OK(buff->read(&tile_order, sizeof(char)));
-  tile_order_ = (Layout) tile_order;
+  tile_order_ = (Layout)tile_order;
 
   // Load cell order
   char cell_order;
   RETURN_NOT_OK(buff->read(&cell_order, sizeof(char)));
-  cell_order_ = (Layout) cell_order;
+  cell_order_ = (Layout)cell_order;
 
   // Load capacity
   RETURN_NOT_OK(buff->read(&capacity_, sizeof(uint64_t)));
 
   // Load dimensions
   RETURN_NOT_OK(buff->read(&dim_num_, sizeof(unsigned int)));
-  for(unsigned int i=0; i<dim_num_; ++i) {
+  for (unsigned int i = 0; i < dim_num_; ++i) {
     auto dim = new Dimension();
     dim->deserialize(buff);
     dimensions_.emplace_back(dim);
@@ -720,7 +723,7 @@ Status ArraySchema::deserialize(ConstBuffer* buff) {
 
   // Load attributes
   RETURN_NOT_OK(buff->read(&attribute_num_, sizeof(unsigned int)));
-  for(unsigned int i=0; i<attribute_num_; ++i) {
+  for (unsigned int i = 0; i < attribute_num_; ++i) {
     auto attr = new Attribute();
     attr->deserialize(buff);
     attributes_.emplace_back(attr);
@@ -816,12 +819,12 @@ int ArraySchema::cell_order_cmp(const T* coords_a, const T* coords_b) const {
 
   // Check for precedence
   if (cell_order_ == Layout::COL_MAJOR) {  // COLUMN-MAJOR
-    for (unsigned int i = dim_num_ - 1; ; --i) {
+    for (unsigned int i = dim_num_ - 1;; --i) {
       if (coords_a[i] < coords_b[i])
         return -1;
       if (coords_a[i] > coords_b[i])
         return 1;
-      if(i == 0)
+      if (i == 0)
         break;
     }
   } else if (cell_order_ == Layout::ROW_MAJOR) {  // ROW-MAJOR
@@ -999,14 +1002,15 @@ uint64_t ArraySchema::get_tile_pos(const T* tile_coords) const {
 }
 
 template <class T>
-uint64_t ArraySchema::get_tile_pos(const T* domain, const T* tile_coords) const {
+uint64_t ArraySchema::get_tile_pos(
+    const T* domain, const T* tile_coords) const {
   // Sanity check
   assert(tile_extents_);
 
   // Invoke the proper function based on the tile order
   if (tile_order_ == Layout::ROW_MAJOR)
     return get_tile_pos_row(domain, tile_coords);
-   // COL_MAJOR
+  // COL_MAJOR
   return get_tile_pos_col(domain, tile_coords);
 }
 
@@ -1093,12 +1097,12 @@ void ArraySchema::clear() {
   cell_order_ = Layout::ROW_MAJOR;
   tile_order_ = Layout::ROW_MAJOR;
 
-  for(auto& attr : attributes_)
+  for (auto& attr : attributes_)
     delete attr;
   attributes_.clear();
   attribute_num_ = 0;
 
-  for(auto& dim : dimensions_)
+  for (auto& dim : dimensions_)
     delete dim;
   dimensions_.clear();
   dim_num_ = 0;
@@ -1128,7 +1132,7 @@ void ArraySchema::compute_cell_num_per_tile() {
 
   // Invoke the proper templated function
   Datatype type = coords_type();
-  switch(type) {
+  switch (type) {
     case Datatype::INT32:
       compute_cell_num_per_tile<int>();
       break;
@@ -1171,7 +1175,8 @@ uint64_t ArraySchema::compute_cell_size(unsigned int i) const {
   assert(i <= attribute_num_);
 
   // For easy reference
-  unsigned int cell_val_num = (i < attribute_num_) ? attributes_[i]->cell_val_num() : 0;
+  unsigned int cell_val_num =
+      (i < attribute_num_) ? attributes_[i]->cell_val_num() : 0;
   Datatype type = (i < attribute_num_) ? attributes_[i]->type() : coords_type();
 
   // Variable-sized cell
@@ -1328,7 +1333,7 @@ void ArraySchema::compute_tile_offsets() {
 
   // Calculate tile offsets for column-major tile order
   tile_offsets_col_.push_back(1);
-  if(dim_num_ > 1) {
+  if (dim_num_ > 1) {
     for (unsigned int i = 1; i < dim_num_; ++i) {
       tile_num = (domain[2 * (i - 1) + 1] - domain[2 * (i - 1)] + 1) /
                  tile_extents[i - 1];
@@ -1338,12 +1343,12 @@ void ArraySchema::compute_tile_offsets() {
 
   // Calculate tile offsets for row-major tile order
   tile_offsets_row_.push_back(1);
-  if(dim_num_ > 1) {
-    for (unsigned int i = dim_num_ - 2; ; --i) {
+  if (dim_num_ > 1) {
+    for (unsigned int i = dim_num_ - 2;; --i) {
       tile_num = (domain[2 * (i + 1) + 1] - domain[2 * (i + 1)] + 1) /
                  tile_extents[i + 1];
       tile_offsets_row_.push_back(tile_offsets_row_.back() * tile_num);
-      if(i == 0)
+      if (i == 0)
         break;
     }
   }
@@ -1388,11 +1393,11 @@ uint64_t ArraySchema::get_cell_pos_row(const T* coords) const {
   uint64_t cell_num;  // Per dimension
   std::vector<uint64_t> cell_offsets;
   cell_offsets.push_back(1);
-  if(dim_num_ > 1) {
-    for (unsigned int i = dim_num_ - 2; ; --i) {
+  if (dim_num_ > 1) {
+    for (unsigned int i = dim_num_ - 2;; --i) {
       cell_num = tile_extents[i + 1];
       cell_offsets.push_back(cell_offsets.back() * cell_num);
-      if(i == 0)
+      if (i == 0)
         break;
     }
   }
@@ -1544,12 +1549,12 @@ uint64_t ArraySchema::get_tile_pos_row(
   uint64_t tile_num;  // Per dimension
   std::vector<uint64_t> tile_offsets;
   tile_offsets.push_back(1);
-  if(dim_num_ > 1) {
-    for (unsigned int i = dim_num_ - 2; ; --i) {
+  if (dim_num_ > 1) {
+    for (unsigned int i = dim_num_ - 2;; --i) {
       tile_num = (domain[2 * (i + 1) + 1] - domain[2 * (i + 1)] + 1) /
                  tile_extents[i + 1];
       tile_offsets.push_back(tile_offsets.back() * tile_num);
-      if(i == 0)
+      if (i == 0)
         break;
     }
   }
@@ -1573,8 +1578,10 @@ bool ArraySchema::is_contained_in_tile_slab_col(const T* range) const {
 
   // Check if range is not contained in a column tile slab
   for (unsigned int i = 1; i < dim_num_; ++i) {
-    tile_l = (uint64_t)floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]);
-    tile_h = (uint64_t)floor(double(range[2 * i + 1] - domain[2 * i]) / tile_extents[i]);
+    tile_l =
+        (uint64_t)floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]);
+    tile_h = (uint64_t)floor(
+        double(range[2 * i + 1] - domain[2 * i]) / tile_extents[i]);
     if (tile_l != tile_h)
       return false;
   }
@@ -1592,8 +1599,10 @@ bool ArraySchema::is_contained_in_tile_slab_row(const T* range) const {
 
   // Check if range is not contained in a row tile slab
   for (unsigned int i = 0; i < dim_num_ - 1; ++i) {
-    tile_l = (uint64_t)floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]);
-    tile_h = (uint64_t)floor(double(range[2 * i + 1] - domain[2 * i]) / tile_extents[i]);
+    tile_l =
+        (uint64_t)floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]);
+    tile_h = (uint64_t)floor(
+        double(range[2 * i + 1] - domain[2 * i]) / tile_extents[i]);
     if (tile_l != tile_h)
       return false;
   }

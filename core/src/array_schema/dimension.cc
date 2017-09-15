@@ -31,8 +31,8 @@
  */
 
 #include "dimension.h"
-#include "utils.h"
 #include "logger.h"
+#include "utils.h"
 
 #include <cassert>
 #include <iostream>
@@ -145,29 +145,31 @@ Status Dimension::deserialize(ConstBuffer* buff) {
   // Load type
   char type;
   RETURN_NOT_OK(buff->read(&type, sizeof(char)));
-  type_ = (Datatype) type;
+  type_ = (Datatype)type;
 
   // Load domain
   uint64_t domain_size = 2 * datatype_size(type_);
-  if(domain_ != nullptr)
+  if (domain_ != nullptr)
     std::free(domain_);
   domain_ = std::malloc(domain_size);
-  if(domain_ == nullptr)
-    return LOG_STATUS(Status::DimensionError("Cannot deserialize; Memory allocation failed"));
+  if (domain_ == nullptr)
+    return LOG_STATUS(
+        Status::DimensionError("Cannot deserialize; Memory allocation failed"));
   RETURN_NOT_OK(buff->read(domain_, domain_size));
 
   // Load tile extent
-  if(tile_extent_ != nullptr)
+  if (tile_extent_ != nullptr)
     std::free(tile_extent_);
   tile_extent_ = std::malloc(datatype_size(type_));
-  if(tile_extent_ == nullptr)
-    return LOG_STATUS(Status::DimensionError("Cannot deserialize; Memory allocation failed"));
+  if (tile_extent_ == nullptr)
+    return LOG_STATUS(
+        Status::DimensionError("Cannot deserialize; Memory allocation failed"));
   RETURN_NOT_OK(buff->read(tile_extent_, datatype_size(type_)));
 
   // Load compressor
   char compressor;
   RETURN_NOT_OK(buff->read(&compressor, sizeof(char)));
-  compressor_ = (Compressor) compressor;
+  compressor_ = (Compressor)compressor;
   RETURN_NOT_OK(buff->read(&compression_level_, sizeof(int)));
 
   return Status::Ok();
@@ -210,12 +212,12 @@ const std::string& Dimension::name() const {
 // compression_level (int)
 Status Dimension::serialize(Buffer* buff) {
   // Write dimension name
-  auto dimension_name_size = (unsigned int) name_.size();
+  auto dimension_name_size = (unsigned int)name_.size();
   RETURN_NOT_OK(buff->write(&dimension_name_size, sizeof(unsigned int)));
   RETURN_NOT_OK(buff->write(name_.c_str(), dimension_name_size));
 
   // Write type
-  auto type = (char) type_;
+  auto type = (char)type_;
   RETURN_NOT_OK(buff->write(&type, sizeof(char)));
 
   // Write domain and tile extent
@@ -224,7 +226,7 @@ Status Dimension::serialize(Buffer* buff) {
   RETURN_NOT_OK(buff->write(tile_extent_, datatype_size(type_)));
 
   // Write compressor
-  auto compressor = (char) compressor_;
+  auto compressor = (char)compressor_;
   RETURN_NOT_OK(buff->write(&compressor, sizeof(char)));
   RETURN_NOT_OK(buff->write(&compression_level_, sizeof(int)));
 

@@ -1,5 +1,5 @@
 /**
- * @file query_mode.h
+ * @file query_type.h
  *
  * @section LICENSE
  *
@@ -27,12 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This defines the tiledb ArrayMode enum that maps to tiledb_array_mode_t C-api
+ * This defines the TileDB QueryType enum that maps to tiledb_query_type_t C-API
  * enum.
  */
 
-#ifndef TILEDB_QUERY_MODE_H
-#define TILEDB_QUERY_MODE_H
+#ifndef TILEDB_QUERY_TYPE_H
+#define TILEDB_QUERY_TYPE_H
 
 namespace tiledb {
 
@@ -45,17 +45,19 @@ enum class QueryType : char {
 
 /** Checks if the query type is "read". */
 inline bool is_read_type(const QueryType query_type) {
-  return query_type == QueryType::READ || query_type == QueryType::READ_SORTED_COL ||
+  return query_type == QueryType::READ ||
+         query_type == QueryType::READ_SORTED_COL ||
          query_type == QueryType::READ_SORTED_ROW;
 }
 
 /** Checks if the query type is "write". */
 inline bool is_write_type(const QueryType query_type) {
-  return query_type == QueryType::WRITE || query_type == QueryType::WRITE_SORTED_COL ||
+  return query_type == QueryType::WRITE ||
+         query_type == QueryType::WRITE_SORTED_COL ||
          query_type == QueryType::WRITE_SORTED_ROW ||
          query_type == QueryType::WRITE_UNSORTED;
 }
 
 }  // namespace tiledb
 
-#endif  // TILEDB_QUERY_MODE_H
+#endif  // TILEDB_QUERY_TYPE_H

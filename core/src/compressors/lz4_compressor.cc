@@ -50,9 +50,9 @@ Status LZ4::compress(
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with LZ4; invalid buffer format"));
 
-  // TODO: level is ignored using the simple api interface
+    // TODO: level is ignored using the simple api interface
 
-  // Compress
+    // Compress
 #if LZ4_VERSION_NUMBER >= 10705
   int ret = LZ4_compress_default(
       static_cast<char*>(input_buffer->data()),

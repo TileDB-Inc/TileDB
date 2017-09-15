@@ -33,8 +33,6 @@
 #include "tile.h"
 #include "logger.h"
 
-#include <iostream>
-
 namespace tiledb {
 
 /* ****************************** */
@@ -48,7 +46,6 @@ Tile::Tile() {
   compression_level_ = -1;
   file_offset_ = 0;
   offset_ = 0;
-  stores_offsets_ = false;
   tile_size_ = 0;
   type_ = Datatype::INT32;
 }
@@ -58,12 +55,10 @@ Tile::Tile(
     Compressor compressor,
     int compression_level,
     uint64_t tile_size,
-    uint64_t cell_size,
-    bool stores_offsets)
+    uint64_t cell_size)
     : cell_size_(cell_size)
     , compressor_(compressor)
     , compression_level_(compression_level)
-    , stores_offsets_(stores_offsets)
     , tile_size_(tile_size)
     , type_(type) {
   buffer_ = nullptr;
@@ -71,14 +66,9 @@ Tile::Tile(
   offset_ = 0;
 }
 
-Tile::Tile(
-    Datatype type,
-    Compressor compressor,
-    uint64_t cell_size,
-    bool stores_offsets)
+Tile::Tile(Datatype type, Compressor compressor, uint64_t cell_size)
     : cell_size_(cell_size)
     , compressor_(compressor)
-    , stores_offsets_(stores_offsets)
     , type_(type) {
   buffer_ = nullptr;
   file_offset_ = 0;
@@ -115,15 +105,89 @@ Status Tile::alloc(uint64_t size) {
   return Status::Ok();
 }
 
+Buffer* Tile::buffer() const {
+  return buffer_;
+}
+
+uint64_t Tile::cell_size() const {
+  return cell_size_;
+}
+
+void* Tile::data() const {
+  if (buffer_ == nullptr)
+    return nullptr;
+
+  return buffer_->data();
+}
+
+Compressor Tile::compressor() const {
+  return compressor_;
+}
+
+int Tile::compression_level() const {
+  return compression_level_;
+}
+
+bool Tile::empty() const {
+  return buffer_ == nullptr || buffer_->offset() == 0;
+}
+
+uint64_t Tile::file_offset() const {
+  return file_offset_;
+}
+
+bool Tile::full() const {
+  if (buffer_ == nullptr)
+    return false;
+
+  return buffer_->offset() == buffer_->size();
+}
+
+bool Tile::in_mem() const {
+  return buffer_ != nullptr;
+}
+
+uint64_t Tile::offset() const {
+  return offset_;
+}
+
 Status Tile::read(void* buffer, uint64_t nbytes) {
   if (buffer_ == nullptr)
     return LOG_STATUS(
         Status::BufferError("Cannot read from tile; Invalid buffer"));
 
-  Status st = buffer_->read(buffer, nbytes);
+  RETURN_NOT_OK(buffer_->read(buffer, nbytes));
   offset_ = buffer_->offset();
 
-  return st;
+  return Status::Ok();
+}
+
+void Tile::reset_offset() {
+  if (buffer_ != nullptr)
+    buffer_->reset_offset();
+  offset_ = 0;
+}
+
+void Tile::set_file_offset(uint64_t file_offset) {
+  file_offset_ = file_offset;
+}
+
+void Tile::set_offset(uint64_t offset) {
+  if (buffer_ != nullptr)
+    buffer_->set_offset(offset);
+  offset_ = offset;
+}
+
+void Tile::set_size(uint64_t size) {
+  tile_size_ = size;
+}
+
+uint64_t Tile::size() const {
+  return tile_size_;
+}
+
+Datatype Tile::type() const {
+  return type_;
 }
 
 Status Tile::write(ConstBuffer* buf) {
@@ -140,7 +204,7 @@ Status Tile::write(ConstBuffer* buf) {
   return Status::Ok();
 }
 
-Status Tile::write(ConstBuffer* buf, uint64_t bytes) {
+Status Tile::write(ConstBuffer* buf, uint64_t nbytes) {
   if (buffer_ == nullptr)
     buffer_ = new Buffer(tile_size_);
 
@@ -148,7 +212,7 @@ Status Tile::write(ConstBuffer* buf, uint64_t bytes) {
     LOG_STATUS(
         Status::TileError("Cannot write into tile; Buffer allocation failed"));
 
-  RETURN_NOT_OK(buffer_->write(buf, bytes));
+  RETURN_NOT_OK(buffer_->write(buf, nbytes));
   offset_ = buffer_->offset();
 
   return Status::Ok();

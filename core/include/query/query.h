@@ -37,8 +37,8 @@
 #include "array_sorted_read_state.h"
 #include "array_sorted_write_state.h"
 #include "fragment.h"
-#include "query_type.h"
 #include "query_status.h"
+#include "query_type.h"
 #include "status.h"
 #include "storage_manager.h"
 

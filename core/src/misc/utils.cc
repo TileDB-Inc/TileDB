@@ -31,9 +31,9 @@
  * This file implements useful (global) functions.
  */
 
+#include "utils.h"
 #include "constants.h"
 #include "logger.h"
-#include "utils.h"
 
 #include <dirent.h>
 #include <fcntl.h>
@@ -66,7 +66,8 @@ namespace utils {
 /* ****************************** */
 
 template <class T>
-inline bool cell_in_subarray(const T* cell, const T* subarray, unsigned int dim_num) {
+inline bool cell_in_subarray(
+    const T* cell, const T* subarray, unsigned int dim_num) {
   for (unsigned int i = 0; i < dim_num; ++i) {
     if (cell[i] >= subarray[2 * i] && cell[i] <= subarray[2 * i + 1])
       continue;  // Inside this dimension domain
@@ -89,7 +90,7 @@ uint64_t cell_num_in_subarray(const T* subarray, unsigned int dim_num) {
 
 template <class T>
 int cmp_col_order(const T* coords_a, const T* coords_b, unsigned int dim_num) {
-  for (unsigned int i = dim_num - 1; ; --i) {
+  for (unsigned int i = dim_num - 1;; --i) {
     // a precedes b
     if (coords_a[i] < coords_b[i])
       return -1;
@@ -97,7 +98,7 @@ int cmp_col_order(const T* coords_a, const T* coords_b, unsigned int dim_num) {
     if (coords_a[i] > coords_b[i])
       return 1;
 
-    if(i == 0)
+    if (i == 0)
       break;
   }
 
@@ -121,7 +122,7 @@ int cmp_col_order(
     return 1;
 
   // ids are equal, check the coordinates
-  for (unsigned int i = dim_num - 1; ; --i) {
+  for (unsigned int i = dim_num - 1;; --i) {
     // a precedes b
     if (coords_a[i] < coords_b[i])
       return -1;
@@ -129,7 +130,7 @@ int cmp_col_order(
     if (coords_a[i] > coords_b[i])
       return 1;
 
-    if(i == 0)
+    if (i == 0)
       break;
   }
 
@@ -517,7 +518,8 @@ std::string tile_extent_str(const void* tile_extent, Datatype type) {
 }
 
 // Explicit template instantiations
-template uint64_t cell_num_in_subarray<int>(const int* subarray, unsigned int dim_num);
+template uint64_t cell_num_in_subarray<int>(
+    const int* subarray, unsigned int dim_num);
 template uint64_t cell_num_in_subarray<int64_t>(
     const int64_t* subarray, unsigned int dim_num);
 template uint64_t cell_num_in_subarray<float>(
@@ -733,10 +735,12 @@ template bool empty_value<uint16_t>(uint16_t value);
 template bool empty_value<uint32_t>(uint32_t value);
 template bool empty_value<uint64_t>(uint64_t value);
 
-template void expand_mbr<int>(int* mbr, const int* coords, unsigned int dim_num);
+template void expand_mbr<int>(
+    int* mbr, const int* coords, unsigned int dim_num);
 template void expand_mbr<int64_t>(
     int64_t* mbr, const int64_t* coords, unsigned int dim_num);
-template void expand_mbr<float>(float* mbr, const float* coords, unsigned int dim_num);
+template void expand_mbr<float>(
+    float* mbr, const float* coords, unsigned int dim_num);
 template void expand_mbr<double>(
     double* mbr, const double* coords, unsigned int dim_num);
 template void expand_mbr<int8_t>(
@@ -800,12 +804,18 @@ template bool is_contained<uint64_t>(
     const uint64_t* range_A, const uint64_t* range_B, unsigned int dim_num);
 
 template bool is_unary_subarray<int>(const int* subarray, unsigned int dim_num);
-template bool is_unary_subarray<int64_t>(const int64_t* subarray, unsigned int dim_num);
-template bool is_unary_subarray<float>(const float* subarray, unsigned int dim_num);
-template bool is_unary_subarray<double>(const double* subarray, unsigned int dim_num);
-template bool is_unary_subarray<int8_t>(const int8_t* subarray, unsigned int dim_num);
-template bool is_unary_subarray<uint8_t>(const uint8_t* subarray, unsigned int dim_num);
-template bool is_unary_subarray<int16_t>(const int16_t* subarray, unsigned int dim_num);
+template bool is_unary_subarray<int64_t>(
+    const int64_t* subarray, unsigned int dim_num);
+template bool is_unary_subarray<float>(
+    const float* subarray, unsigned int dim_num);
+template bool is_unary_subarray<double>(
+    const double* subarray, unsigned int dim_num);
+template bool is_unary_subarray<int8_t>(
+    const int8_t* subarray, unsigned int dim_num);
+template bool is_unary_subarray<uint8_t>(
+    const uint8_t* subarray, unsigned int dim_num);
+template bool is_unary_subarray<int16_t>(
+    const int16_t* subarray, unsigned int dim_num);
 template bool is_unary_subarray<uint16_t>(
     const uint16_t* subarray, unsigned int dim_num);
 template bool is_unary_subarray<uint32_t>(

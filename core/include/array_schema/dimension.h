@@ -52,7 +52,7 @@ class Dimension {
   /** Constructor. */
   Dimension();
 
-    /**
+  /**
    * Constructor.
    *
    * @param name The name of the dimension.

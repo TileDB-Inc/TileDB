@@ -32,7 +32,6 @@
  */
 
 #include "open_array.h"
-#include "vfs.h"
 
 namespace tiledb {
 
@@ -83,6 +82,15 @@ void OpenArray::fragment_metadata_add(FragmentMetadata* metadata) {
       std::pair<FragmentMetadata*, uint64_t>(metadata, 1);
 }
 
+FragmentMetadata* OpenArray::fragment_metadata_get(const URI& fragment_uri) {
+  auto it = fragment_metadata_.find(fragment_uri.to_string());
+  if (it == fragment_metadata_.end())
+    return nullptr;
+
+  ++(it->second.second);
+  return it->second.first;
+}
+
 void OpenArray::fragment_metadata_rm(const URI& fragment_uri) {
   // Find metadata
   auto it = fragment_metadata_.find(fragment_uri.to_string());
@@ -98,15 +106,6 @@ void OpenArray::fragment_metadata_rm(const URI& fragment_uri) {
     delete it->second.first;
     fragment_metadata_.erase(it);
   }
-}
-
-FragmentMetadata* OpenArray::fragment_metadata_get(const URI& fragment_uri) {
-  auto it = fragment_metadata_.find(fragment_uri.to_string());
-  if (it == fragment_metadata_.end())
-    return nullptr;
-
-  ++(it->second.second);
-  return it->second.first;
 }
 
 void OpenArray::incr_cnt() {

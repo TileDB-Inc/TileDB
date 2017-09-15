@@ -67,7 +67,7 @@ uint64_t ConstBuffer::offset() const {
 }
 
 Status ConstBuffer::read(void* buffer, uint64_t nbytes) {
-  if(offset_ + nbytes > size_)
+  if (offset_ + nbytes > size_)
     return Status::ConstBufferError("Read buffer overflow");
 
   memcpy(buffer, (char*)data_ + offset_, nbytes);

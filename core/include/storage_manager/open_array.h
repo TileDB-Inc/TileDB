@@ -67,7 +67,7 @@ class OpenArray {
   /** Returns the array URI. */
   const URI& array_uri() const;
 
-  /** Increments the counter indicating the times this array has been opened. */
+  /** Decrements the counter indicating the times this array has been opened. */
   void decr_cnt();
 
   /** Returns the open array query counter. */
@@ -82,16 +82,18 @@ class OpenArray {
   /** Adds a new entry to the fragment metadata map. */
   void fragment_metadata_add(FragmentMetadata* metadata);
 
-  /** Removes the metadata of the input fragment from the fragment metadata map.
-   */
-  void fragment_metadata_rm(const URI& fragment_uri);
-
   /**
    * Returns the stored metadata for a particular fragment uri (nullptr if not
    * found). If found, it also increments the respective counter of the
    * metadata.
    */
   FragmentMetadata* fragment_metadata_get(const URI& fragment_uri);
+
+  /**
+   * Removes the metadata of the input fragment from the fragment metadata
+   * map.
+   */
+  void fragment_metadata_rm(const URI& fragment_uri);
 
   /** Increments the counter indicating the times this array has been opened. */
   void incr_cnt();

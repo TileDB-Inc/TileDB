@@ -104,7 +104,6 @@ class ArraySchema {
    */
   Status attribute_id(const std::string& attribute, unsigned int* id) const;
 
-
   /**
    * Returns the attribute names, plus the coordinates spacial name
    * in the back.

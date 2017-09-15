@@ -55,10 +55,10 @@ class TileIO {
   /**
    * Constructor.
    *
-   * @param config The config object.
-   * @param attr_filename The name of the file that stores attribute data.
+   * @param storage_manager The storage manager.
+   * @param attr_uri The name of the file that stores attribute data.
    */
-  TileIO(StorageManager* storage_manager, const URI& attr_filename);
+  TileIO(StorageManager* storage_manager, const URI& attr_uri);
 
   /** Destructor. */
   ~TileIO();
@@ -89,11 +89,11 @@ class TileIO {
    * Reads from a tile into a buffer. The reason this function is in TileIO is
    * because the input tile contains only information about how to locate the
    * data in the attribute file. The tile does not actually store the data in
-   * main memory. This is used for example when the IO method is a system read.
+   * main memory.
    *
-   * @param tile The tile to read from.
+   * @param tile The tile containing the appropriate info.
    * @param buffer The buffer to write to.
-   * @param nbytes The number of bytes to read.
+   * @param nbytes The number of bytes to write.
    * @return Status.
    */
   Status read_from_tile(Tile* tile, void* buffer, uint64_t nbytes);
@@ -123,6 +123,7 @@ class TileIO {
    */
   Buffer* buffer_;
 
+  /** The storage manager object. */
   StorageManager* storage_manager_;
 
   /* ********************************* */

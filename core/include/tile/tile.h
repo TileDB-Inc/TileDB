@@ -65,17 +65,13 @@ class Tile {
    * @param compression_level The compression level.
    * @param tile_size The tile size.
    * @param cell_size The cell size.
-   * @param stores_offsets Indicates whether the tile stores offsets
-   *     (of type uint64_t) of variable-length cells (stored in another
-   *     tile).
    */
   Tile(
       Datatype type,
       Compressor compression,
       int compression_level,
       uint64_t tile_size,
-      uint64_t cell_size,
-      bool stores_offsets = false);
+      uint64_t cell_size);
 
   /**
    * Constructor.
@@ -83,15 +79,8 @@ class Tile {
    * @param type The type of the data to be stored.
    * @param compression The compression type.
    * @param cell_size The cell size.
-   * @param stores_offsets Indicates whether the tile stores offsets
-   *     (of type uint64_t) of variable-length cells (stored in another
-   *     tile).
    */
-  Tile(
-      Datatype type,
-      Compressor compression,
-      uint64_t cell_size,
-      bool stores_offsets = false);
+  Tile(Datatype type, Compressor compression, uint64_t cell_size);
 
   /** Destructor. */
   ~Tile();
@@ -106,117 +95,77 @@ class Tile {
   /** Allocates memory of the input size. */
   Status alloc(uint64_t size);
 
-  inline Buffer* buffer() const {
-    return buffer_;
-  }
-
-  /** Returns the tile data. */
-  inline void* data() const {
-    if (buffer_ == nullptr)
-      return nullptr;
-
-    return buffer_->data();
-  }
+  /** Returns the internal buffer. */
+  Buffer* buffer() const;
 
   /** Returns the cell size. */
-  inline uint64_t cell_size() const {
-    return cell_size_;
-  }
+  uint64_t cell_size() const;
 
   /** Returns the tile compressor. */
-  inline Compressor compressor() const {
-    return compressor_;
-  }
+  Compressor compressor() const;
 
   /** Returns the tile compression level. */
-  inline int compression_level() const {
-    return compression_level_;
-  }
+  int compression_level() const;
+
+  /** Returns the tile data. */
+  void* data() const;
 
   /** Checks if the tile is empty. */
-  inline bool empty() const {
-    return buffer_ == nullptr || buffer_->offset() == 0;
-  }
+  bool empty() const;
 
-  /** Returns the file offset. */
-  inline uint64_t file_offset() const {
-    return file_offset_;
-  }
+  /** Returns the file offset where the tile begins. */
+  uint64_t file_offset() const;
 
   /** Checks if the tile is full. */
-  inline bool full() const {
-    if (buffer_ == nullptr)
-      return false;
-
-    return buffer_->offset() == buffer_->size();
-  }
+  bool full() const;
 
   /** Checks if the tile is in main memory. */
-  inline bool in_mem() const {
-    return buffer_ != nullptr;
-  }
+  bool in_mem() const;
 
   /** The current offset in the tile. */
-  inline uint64_t offset() const {
-    return offset_;
-  }
+  uint64_t offset() const;
 
   /** Reads from the tile into the input buffer *nbytes*. */
   Status read(void* buffer, uint64_t nbytes);
 
   /** Resets the tile offset. */
-  inline void reset_offset() {
-    if (buffer_ != nullptr)
-      buffer_->reset_offset();
-    offset_ = 0;
-  }
+  void reset_offset();
 
   /** Sets the file offset. */
-  inline void set_file_offset(uint64_t file_offset) {
-    file_offset_ = file_offset;
-  }
+  void set_file_offset(uint64_t file_offset);
 
   /** Sets the tile offset. */
-  inline void set_offset(uint64_t offset) {
-    if (buffer_ != nullptr)
-      buffer_->set_offset(offset);
-    offset_ = offset;
-  }
+  void set_offset(uint64_t offset);
 
   /** Sets the tile size. */
-  inline void set_size(uint64_t size) {
-    tile_size_ = size;
-  }
+  void set_size(uint64_t size);
 
   /** Returns the tile size. */
-  inline uint64_t size() const {
-    return tile_size_;
-  }
-
-  /** Checks if the tile stores offsets. */
-  inline bool stores_offsets() const {
-    return stores_offsets_;
-  }
+  uint64_t size() const;
 
   /** Returns the tile data type. */
-  inline Datatype type() const {
-    return type_;
-  }
+  Datatype type() const;
 
   /** Returns the value of type T in the tile at the input offset. */
   template <class T>
-  inline T value(uint64_t offset) {
+  inline T value(uint64_t offset) const {
     return buffer_->value<T>(offset);
   }
 
   /** Returns the value of type T in the tile at the current offset. */
   template <class T>
-  inline T value() {
+  inline T value() const {
     return buffer_->value<T>();
   }
 
   /** Writes as much data as possibly can be read from the input buffer. */
   Status write(ConstBuffer* buf);
+
+  /**
+   * Writes exactly *nbytes* from the input buffer to the local buffer.
+   * The local buffer can be potentially expanded to fit these bytes.
+   */
+  Status write(ConstBuffer* buf, uint64_t nbytes);
 
   /**
    * Writes as much data as possibly can be read from the input buffer.
@@ -225,12 +174,6 @@ class Tile {
    * the tile local buffer.
    */
   Status write_with_shift(ConstBuffer* buf, uint64_t offset);
-
-  /**
-   * Writes exactly *nbytes* from the input buffer to the local buffer.
-   * The local buffer can be potentially expanded to fit these bytes.
-   */
-  Status write(ConstBuffer* buf, uint64_t bytes);
 
  private:
   /* ********************************* */
@@ -254,9 +197,6 @@ class Tile {
 
   /** The current offset in the tile. */
   uint64_t offset_;
-
-  /** Indicates if the tile stores offsets. */
-  bool stores_offsets_;
 
   /** The tile size. */
   uint64_t tile_size_;

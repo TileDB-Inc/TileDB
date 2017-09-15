@@ -92,7 +92,7 @@ int Attribute::compression_level() const {
   return compression_level_;
 }
 
- // ===== FORMAT =====
+// ===== FORMAT =====
 // attribute_name_size (unsigned int)
 // attribute_name (string)
 // type (char)
@@ -109,12 +109,12 @@ Status Attribute::deserialize(ConstBuffer* buff) {
   // Load type
   char type;
   RETURN_NOT_OK(buff->read(&type, sizeof(char)));
-  type_ = (Datatype) type;
+  type_ = (Datatype)type;
 
   // Load compressor
   char compressor;
   RETURN_NOT_OK(buff->read(&compressor, sizeof(char)));
-  compressor_ = (Compressor) compressor;
+  compressor_ = (Compressor)compressor;
   RETURN_NOT_OK(buff->read(&compression_level_, sizeof(int)));
 
   // Load cell_val_num_
@@ -154,16 +154,16 @@ const std::string& Attribute::name() const {
 // cell_val_num (unsigned int)
 Status Attribute::serialize(Buffer* buff) {
   // Write attribute name
-  auto attribute_name_size = (unsigned int) name_.size();
+  auto attribute_name_size = (unsigned int)name_.size();
   RETURN_NOT_OK(buff->write(&attribute_name_size, sizeof(unsigned int)));
   RETURN_NOT_OK(buff->write(name_.c_str(), attribute_name_size));
 
   // Write type
-  auto type = (char) type_;
+  auto type = (char)type_;
   RETURN_NOT_OK(buff->write(&type, sizeof(char)));
 
   // Write compressor
-  auto compressor = (char) compressor_;
+  auto compressor = (char)compressor_;
   RETURN_NOT_OK(buff->write(&compressor, sizeof(char)));
   RETURN_NOT_OK(buff->write(&compression_level_, sizeof(int)));
 

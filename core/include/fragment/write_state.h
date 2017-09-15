@@ -217,7 +217,8 @@ class WriteState {
    * @param buffer_size The buffer size.
    * @return Status
    */
-  Status write_attr(unsigned int attribute_id, void* buffer, uint64_t buffer_size);
+  Status write_attr(
+      unsigned int attribute_id, void* buffer, uint64_t buffer_size);
 
   /**
    * Writes the last tile with the input id to the disk.

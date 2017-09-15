@@ -77,7 +77,6 @@ Status TileIO::read(
     return Status::Ok();
   }
 
-  // TODO: consider optimizing (do not delete and new every time)
   if (buffer_ == nullptr)
     buffer_ = new Buffer();
 

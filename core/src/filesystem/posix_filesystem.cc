@@ -305,7 +305,7 @@ Status read_from_file(const std::string& path, Buffer** buff) {
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
     return LOG_STATUS(Status::OSError(
-            std::string("Cannot read file '") + path + "'; File open error"));
+        std::string("Cannot read file '") + path + "'; File open error"));
   }
 
   // Get file size

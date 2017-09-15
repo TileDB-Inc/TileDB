@@ -503,7 +503,7 @@ Status ArrayReadState::copy_cells_generic(
   FragmentCellPosRanges& fragment_cell_pos_ranges =
       *fragment_cell_pos_ranges_vec_[pos];
   auto fragment_cell_pos_ranges_num = (uint64_t)fragment_cell_pos_ranges.size();
-  int fragment_id;   // Fragment id
+  int fragment_id;    // Fragment id
   uint64_t tile_pos;  // Tile position in the fragment
 
   // Sanity check
@@ -741,7 +741,7 @@ Status ArrayReadState::copy_cells_var_generic(
   FragmentCellPosRanges& fragment_cell_pos_ranges =
       *fragment_cell_pos_ranges_vec_[pos];
   auto fragment_cell_pos_ranges_num = (uint64_t)fragment_cell_pos_ranges.size();
-  int fragment_id;   // Fragment id
+  int fragment_id;    // Fragment id
   uint64_t tile_pos;  // Tile position in the fragment
 
   // Sanity check

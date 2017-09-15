@@ -112,15 +112,11 @@ class StorageManager {
    */
   Status store(ArraySchema* array_schema);
 
-
-
   Status sync(const URI& uri);
 
   Status load(FragmentMetadata* metadata);
 
   Status store(FragmentMetadata* metadata);
-
-
 
   bool is_dir(const URI& uri);
 
@@ -133,7 +129,6 @@ class StorageManager {
   Status delete_file(const URI& uri) const;
 
   Status move_dir(const URI& old_uri, const URI& new_uri);
-
 
   /**
    * Pushes an async query to the queue.

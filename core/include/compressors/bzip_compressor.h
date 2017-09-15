@@ -70,6 +70,6 @@ class BZip {
   }
 };
 
-};      // namespace tiledb
+};  // namespace tiledb
 
 #endif  // TILEDB_BZIP_COMPRESSOR_H

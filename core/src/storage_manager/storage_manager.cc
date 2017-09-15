@@ -31,8 +31,8 @@
  * This file implements the StorageManager class.
  */
 
-#include <algorithm>
 #include <blosc.h>
+#include <algorithm>
 
 #include "logger.h"
 #include "storage_manager.h"
@@ -67,8 +67,8 @@ StorageManager::~StorageManager() {
 Status StorageManager::array_create(ArraySchema* array_schema) {
   // Check array_schema schema
   if (array_schema == nullptr) {
-    return LOG_STATUS(Status::StorageManagerError(
-        "Cannot create array; Empty array schema"));
+    return LOG_STATUS(
+        Status::StorageManagerError("Cannot create array; Empty array schema"));
   }
 
   // Create array directory
@@ -111,11 +111,12 @@ Status StorageManager::init() {
   return Status::Ok();
 }
 
-Status StorageManager::load(const std::string& array_name, ArraySchema* array_schema) {
+Status StorageManager::load(
+    const std::string& array_name, ArraySchema* array_schema) {
   URI array_uri = URI(array_name);
-  if(array_uri.is_invalid())
-    return LOG_STATUS(
-            Status::StorageManagerError("Cannot load array schema; Invalid array URI"));
+  if (array_uri.is_invalid())
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot load array schema; Invalid array URI"));
 
   URI array_schema_uri = array_uri.join_path(constants::array_schema_filename);
   uint64_t buffer_size;
@@ -123,11 +124,12 @@ Status StorageManager::load(const std::string& array_name, ArraySchema* array_sc
 
   // Read from file
   void* buffer = std::malloc(buffer_size);
-  if(buffer == nullptr)
-    return LOG_STATUS(
-            Status::StorageManagerError("Cannot load array schema; Buffer allocation error"));
+  if (buffer == nullptr)
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot load array schema; Buffer allocation error"));
   RETURN_NOT_OK_ELSE(
-      read_from_file(array_schema_uri, 0, buffer, buffer_size), std::free(buffer));
+      read_from_file(array_schema_uri, 0, buffer, buffer_size),
+      std::free(buffer));
 
   // Deserialize
   auto buff = new ConstBuffer(buffer, buffer_size);
@@ -151,7 +153,7 @@ Status StorageManager::store(ArraySchema* array_schema) {
   RETURN_NOT_OK_ELSE(array_schema->serialize(buff), delete buff);
 
   // Write to file
-  if(is_file(array_schema_uri))
+  if (is_file(array_schema_uri))
     RETURN_NOT_OK_ELSE(delete_file(array_schema_uri), delete buff);
   RETURN_NOT_OK_ELSE(
       write_to_file(array_schema_uri, buff->data(), buff->size()), delete buff);
@@ -186,18 +188,19 @@ Status StorageManager::load(FragmentMetadata* metadata) {
 
   // Get metadata file name and size
   URI metadata_filename = fragment_uri.join_path(
-          std::string(constants::fragment_metadata_filename) +
-          constants::file_suffix);
+      std::string(constants::fragment_metadata_filename) +
+      constants::file_suffix);
   uint64_t buffer_size;
   RETURN_NOT_OK(file_size(metadata_filename, &buffer_size));
 
   // Read from file
   void* buffer = std::malloc(buffer_size);
-  if(buffer == nullptr)
-    return LOG_STATUS(
-            Status::StorageManagerError("Cannot load fragment metadata; Buffer allocation error"));
+  if (buffer == nullptr)
+    return LOG_STATUS(Status::StorageManagerError(
+        "Cannot load fragment metadata; Buffer allocation error"));
   RETURN_NOT_OK_ELSE(
-      read_from_file(metadata_filename, 0, buffer, buffer_size), std::free(buffer));
+      read_from_file(metadata_filename, 0, buffer, buffer_size),
+      std::free(buffer));
 
   // Deserialize
   auto buff = new ConstBuffer(buffer, buffer_size);
@@ -227,8 +230,6 @@ Status StorageManager::store(FragmentMetadata* metadata) {
   delete buff;
   return st;
 }
-
-
 
 bool StorageManager::is_dir(const URI& uri) {
   return vfs_->is_dir(uri);
@@ -283,7 +284,11 @@ Status StorageManager::query_init(
   std::vector<FragmentMetadata*> fragment_metadata;
   auto array_schema = (const ArraySchema*)nullptr;
   RETURN_NOT_OK(array_open(
-      URI(array_name), query_type, subarray, &array_schema, &fragment_metadata));
+      URI(array_name),
+      query_type,
+      subarray,
+      &array_schema,
+      &fragment_metadata));
 
   // Initialize query
   return query->init(
@@ -479,7 +484,8 @@ Status StorageManager::open_array_load_schema(
     return Status::Ok();
 
   auto array_schema = new ArraySchema();
-  RETURN_NOT_OK_ELSE(load(array_uri.to_string(), array_schema), delete array_schema);
+  RETURN_NOT_OK_ELSE(
+      load(array_uri.to_string(), array_schema), delete array_schema);
   open_array->set_array_schema(array_schema);
 
   return Status::Ok();

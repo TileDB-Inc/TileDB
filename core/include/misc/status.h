@@ -230,7 +230,7 @@ class Status {
 
   /** Return a ConstBufferError error class Status with a given message **/
   static Status ConstBufferError(const std::string& msg) {
-      return Status(StatusCode::ConstBuffer, msg, -1);
+    return Status(StatusCode::ConstBuffer, msg, -1);
   }
 
   /** Return a Dimension Error error class Status with a given message **/

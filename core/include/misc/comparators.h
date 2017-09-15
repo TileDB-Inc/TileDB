@@ -54,7 +54,8 @@ class SmallerIdCol {
    * @param dim_num The number of dimensions of the cells.
    * @param ids The ids of the cells in the buffer.
    */
-  SmallerIdCol(const T* buffer, unsigned int dim_num, const std::vector<uint64_t>& ids)
+  SmallerIdCol(
+      const T* buffer, unsigned int dim_num, const std::vector<uint64_t>& ids)
       : buffer_(buffer)
       , dim_num_(dim_num)
       , ids_(ids) {
@@ -77,14 +78,14 @@ class SmallerIdCol {
     const T* coords_a = &buffer_[a * dim_num_];
     const T* coords_b = &buffer_[b * dim_num_];
 
-    for (unsigned int i = dim_num_ - 1; ; --i) {
+    for (unsigned int i = dim_num_ - 1;; --i) {
       if (coords_a[i] < coords_b[i])
         return true;
       if (coords_a[i] > coords_b[i])
         return false;
       // else coords_a[i] == coords_b[i] --> continue
 
-      if(i == 0)
+      if (i == 0)
         break;
     }
 
@@ -114,7 +115,8 @@ class SmallerIdRow {
    * @param dim_num The number of dimensions of the cells.
    * @param ids The ids of the cells in the buffer.
    */
-  SmallerIdRow(const T* buffer, unsigned int dim_num, const std::vector<uint64_t>& ids)
+  SmallerIdRow(
+      const T* buffer, unsigned int dim_num, const std::vector<uint64_t>& ids)
       : buffer_(buffer)
       , dim_num_(dim_num)
       , ids_(ids) {
@@ -182,14 +184,14 @@ class SmallerCol {
     const T* coords_a = &buffer_[a * dim_num_];
     const T* coords_b = &buffer_[b * dim_num_];
 
-    for (unsigned int i = dim_num_ - 1; ; --i) {
+    for (unsigned int i = dim_num_ - 1;; --i) {
       if (coords_a[i] < coords_b[i])
         return true;
       if (coords_a[i] > coords_b[i])
         return false;
       // else coords_a[i] == coords_b[i] --> continue
 
-      if(i == 0)
+      if (i == 0)
         break;
     }
 

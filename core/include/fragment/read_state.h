@@ -581,7 +581,8 @@ class ReadState {
    * @param offset The destination pointer.
    * @return Status
    */
-  Status get_offset(unsigned int attribute_id, uint64_t i, const uint64_t** offset);
+  Status get_offset(
+      unsigned int attribute_id, uint64_t i, const uint64_t** offset);
 
   /** Initializes the internal empty attribute structurs. */
   void init_empty_attributes();
@@ -611,7 +612,10 @@ class ReadState {
    * @return Status
    */
   Status read_from_tile(
-      unsigned int attribute_id, void* buffer, uint64_t tile_offset, uint64_t nbytes);
+      unsigned int attribute_id,
+      void* buffer,
+      uint64_t tile_offset,
+      uint64_t nbytes);
 
   /**
    * Reads an entire tile.
