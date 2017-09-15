@@ -54,7 +54,7 @@ class SmallerIdCol {
    * @param dim_num The number of dimensions of the cells.
    * @param ids The ids of the cells in the buffer.
    */
-  SmallerIdCol(const T* buffer, int dim_num, const std::vector<int64_t>& ids)
+  SmallerIdCol(const T* buffer, int dim_num, const std::vector<uint64_t>& ids)
       : buffer_(buffer)
       , dim_num_(dim_num)
       , ids_(ids) {
@@ -66,7 +66,7 @@ class SmallerIdCol {
    * @param a The first cell position in the cell buffer.
    * @param b The second cell position in the cell buffer.
    */
-  bool operator()(int64_t a, int64_t b) {
+  bool operator()(uint64_t a, uint64_t b) {
     if (ids_[a] < ids_[b])
       return true;
 
@@ -93,7 +93,7 @@ class SmallerIdCol {
   /** Number of dimensions. */
   int dim_num_;
   /** The cell ids. */
-  const std::vector<int64_t>& ids_;
+  const std::vector<uint64_t>& ids_;
 };
 
 /**
@@ -110,7 +110,7 @@ class SmallerIdRow {
    * @param dim_num The number of dimensions of the cells.
    * @param ids The ids of the cells in the buffer.
    */
-  SmallerIdRow(const T* buffer, int dim_num, const std::vector<int64_t>& ids)
+  SmallerIdRow(const T* buffer, int dim_num, const std::vector<uint64_t>& ids)
       : buffer_(buffer)
       , dim_num_(dim_num)
       , ids_(ids) {
@@ -122,7 +122,7 @@ class SmallerIdRow {
    * @param a The first cell position in the cell buffer.
    * @param b The second cell position in the cell buffer.
    */
-  bool operator()(int64_t a, int64_t b) {
+  bool operator()(uint64_t a, uint64_t b) {
     if (ids_[a] < ids_[b])
       return true;
 
@@ -150,7 +150,7 @@ class SmallerIdRow {
   /** Number of dimensions. */
   int dim_num_;
   /** The cell ids. */
-  const std::vector<int64_t>& ids_;
+  const std::vector<uint64_t>& ids_;
 };
 
 /** Wrapper of comparison function for sorting cells on column-major order. */
@@ -174,7 +174,7 @@ class SmallerCol {
    * @param a The first cell position in the cell buffer.
    * @param b The second cell position in the cell buffer.
    */
-  bool operator()(int64_t a, int64_t b) {
+  bool operator()(uint64_t a, uint64_t b) {
     const T* coords_a = &buffer_[a * dim_num_];
     const T* coords_b = &buffer_[b * dim_num_];
 
@@ -216,7 +216,7 @@ class SmallerRow {
    * @param a The first cell position in the cell buffer.
    * @param b The second cell position in the cell buffer.
    */
-  bool operator()(int64_t a, int64_t b) {
+  bool operator()(uint64_t a, uint64_t b) {
     const T* coords_a = &buffer_[a * dim_num_];
     const T* coords_b = &buffer_[b * dim_num_];
 

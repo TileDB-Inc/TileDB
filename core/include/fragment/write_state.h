@@ -44,9 +44,6 @@
 
 namespace tiledb {
 
-class FragmentMetadata;
-class Fragment;
-
 /** Stores the state necessary when writing cells to a fragment. */
 class WriteState {
  public:
@@ -58,9 +55,8 @@ class WriteState {
    * Constructor.
    *
    * @param fragment The fragment the write state belongs to.
-   * @param bookkeeping The bookkeeping of the fragment.
    */
-  WriteState(const Fragment* fragment, FragmentMetadata* bookkeeping);
+  explicit WriteState(const Fragment* fragment);
 
   /** Destructor. */
   ~WriteState();
@@ -82,14 +78,6 @@ class WriteState {
    * @return Status
    */
   Status sync();
-
-  /**
-   * Syncs the input attribute in the fragment.
-   *
-   * @param attribute The attribute name.
-   * @return Status
-   */
-  Status sync_attribute(const std::string& attribute);
 
   /**
    * Performs a write operation in the fragment.
@@ -127,7 +115,7 @@ class WriteState {
   void* mbr_;
 
   /** The number of cells written in the current tile for each attribute. */
-  std::vector<int64_t> tile_cell_num_;
+  std::vector<uint64_t> tile_cell_num_;
 
   /** The current tiles, one per attribute. */
   std::vector<Tile*> tiles_;
@@ -160,6 +148,12 @@ class WriteState {
   template <class T>
   void expand_mbr(const T* coords);
 
+  /** Initializes the internal tile structures. */
+  void init_tiles();
+
+  /** Initializes the internal Tile I/O structures. */
+  void init_tile_io();
+
   /**
    * Sorts the input cell coordinates according to the order specified in the
    * array schema. This is not done in place; the sorted positions are stored
@@ -173,7 +167,7 @@ class WriteState {
   void sort_cell_pos(
       const void* buffer,
       uint64_t buffer_size,
-      std::vector<int64_t>& cell_pos) const;
+      std::vector<uint64_t>* cell_pos) const;
 
   /**
    * Sorts the input cell coordinates according to the order specified in the
@@ -190,7 +184,7 @@ class WriteState {
   void sort_cell_pos(
       const void* buffer,
       uint64_t buffer_size,
-      std::vector<int64_t>& cell_pos) const;
+      std::vector<uint64_t>* cell_pos) const;
 
   /**
    * Updates the bookkeeping structures as tiles are written. Specifically, it
@@ -219,11 +213,11 @@ class WriteState {
    * on a single fixed-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffer See write().
-   * @param buffer_size See write().
+   * @param buffer The buffer to write.
+   * @param buffer_size The buffer size.
    * @return Status
    */
-  Status write_attr(int attribute_id, void* buffer, uint64_t buffer_size);
+  Status write_attr(unsigned int attribute_id, void* buffer, uint64_t buffer_size);
 
   /**
    * Writes the last tile with the input id to the disk.
@@ -231,21 +225,21 @@ class WriteState {
    * @param attribute_id The id of the attribute this operation focuses on.
    * @return Status
    */
-  Status write_attr_last(int attribute_id);
+  Status write_attr_last(unsigned int attribute_id);
 
   /**
    * Performs the write operation for the case of a dense fragment, focusing
    * on a single variable-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffer See write() - start offsets in *buffer_var*.
-   * @param buffer_size See write().
-   * @param buffer_var See write() - actual variable-sized values.
-   * @param buffer_var_size See write().
+   * @param buffer The buffer storing the offsets of the variable-sized cells.
+   * @param buffer_size The buffer size.
+   * @param buffer_var The buffer storing the variable-sized cells.
+   * @param buffer_var_size The size of *buffer_var*.
    * @return Status
    */
   Status write_attr_var(
-      int attribute_id,
+      unsigned int attribute_id,
       void* buffer,
       uint64_t buffer_size,
       void* buffer_var,
@@ -257,7 +251,7 @@ class WriteState {
    * @param attribute_id The id of the attribute this operation focuses on.
    * @return Status
    */
-  Status write_attr_var_last(int attribute_id);
+  Status write_attr_var_last(unsigned int attribute_id);
 
   /**
    * Takes the appropriate actions for writing the very last tile of this write
@@ -282,36 +276,36 @@ class WriteState {
    * coordinates are unsorted, focusing on a single fixed-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffer See write().
-   * @param buffer_size See write().
+   * @param buffer The buffer to write.
+   * @param buffer_size The buffer size.
    * @param cell_pos The sorted positions of the cells.
    * @return Status
    */
   Status write_sparse_unsorted_attr(
-      int attribute_id,
+      unsigned int attribute_id,
       void* buffer,
       uint64_t buffer_size,
-      const std::vector<int64_t>& cell_pos);
+      const std::vector<uint64_t>& cell_pos);
 
   /**
    * Performs the write operation for the case of a sparse fragment when the
    * coordinates are unsorted, focusing on a single variable-sized attribute.
    *
    * @param attribute_id The id of the attribute this operation focuses on.
-   * @param buffer See write() - start offsets in *buffer_var*.
-   * @param buffer_size See write().
-   * @param buffer_var See write() - actual variable-sized values.
-   * @param buffer_var_size See write().
+   * @param buffer The buffer storing the offsets of the variable-sized cells.
+   * @param buffer_size The buffer size.
+   * @param buffer_var The buffer storing the variable-sized cells.
+   * @param buffer_var_size The size of *buffer_var*.
    * @param cell_pos The sorted positions of the cells.
    * @return Status
    */
   Status write_sparse_unsorted_attr_var(
-      int attribute_id,
+      unsigned int attribute_id,
       void* buffer,
       uint64_t buffer_size,
       void* buffer_var,
       uint64_t buffer_var_size,
-      const std::vector<int64_t>& cell_pos);
+      const std::vector<uint64_t>& cell_pos);
 };
 
 }  // namespace tiledb

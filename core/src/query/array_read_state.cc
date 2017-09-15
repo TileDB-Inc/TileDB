@@ -197,7 +197,7 @@ Status ArrayReadState::compute_fragment_cell_pos_ranges(
                       ->get_fragment_cell_pos_range_sparse<T>(
                           fragment_cell_ranges[i].first,
                           static_cast<T*>(fragment_cell_ranges[i].second),
-                          fragment_cell_pos_range);
+                          &fragment_cell_pos_range);
       if (!st.ok()) {
         // Error
         for (uint64_t j = i; j < fragment_cell_ranges_num; ++j)
@@ -268,7 +268,7 @@ Status ArrayReadState::compute_unsorted_fragment_cell_ranges_dense(
         FragmentCellRanges fragment_cell_ranges;
         RETURN_NOT_OK(
             fragment_read_states_[i]->get_fragment_cell_ranges_dense<T>(
-                i, fragment_cell_ranges));
+                i, &fragment_cell_ranges));
         // Insert fragment cell ranges to the result
         unsorted_fragment_cell_ranges.push_back(fragment_cell_ranges);
       } else {  // SPARSE
@@ -282,7 +282,7 @@ Status ArrayReadState::compute_unsorted_fragment_cell_ranges_dense(
           fragment_cell_ranges_tmp.clear();
           RETURN_NOT_OK(
               fragment_read_states_[i]->get_fragment_cell_ranges_sparse<T>(
-                  i, fragment_cell_ranges_tmp));
+                  i, &fragment_cell_ranges_tmp));
           // Insert fragment cell ranges to temporary ranges
           fragment_cell_ranges.insert(
               fragment_cell_ranges.end(),
@@ -339,13 +339,13 @@ Status ArrayReadState::compute_unsorted_fragment_cell_ranges_sparse(
               i,
               fragment_bounding_coords,
               min_bounding_coords_end,
-              fragment_cell_ranges));
+              &fragment_cell_ranges));
       unsorted_fragment_cell_ranges.push_back(fragment_cell_ranges);
 
       // If the end bounding coordinate is not the same as the smallest one,
       // update the start bounding coordinate to exceed the smallest
       // end bounding coordinates
-      if (memcmp(
+      if (std::memcmp(
               &fragment_bounding_coords[dim_num],
               min_bounding_coords_end,
               coords_size_)) {
@@ -354,7 +354,7 @@ Status ArrayReadState::compute_unsorted_fragment_cell_ranges_sparse(
         RETURN_NOT_OK(fragment_read_states_[i]->get_coords_after<T>(
             min_bounding_coords_end,
             fragment_bounding_coords,
-            coords_retrieved));
+            &coords_retrieved));
         // Sanity check for the sparse case
         assert(coords_retrieved);
       }
@@ -2140,9 +2140,9 @@ void ArrayReadState::PQFragmentCellRange<T>::split_to_3(
           &cell_range_[dim_num_],            // End coords
           &fcr_left->cell_range_[dim_num_],  // Left coords
           cell_range_,                       // Right coords
-          left_retrieved,                    // Left retrieved
-          right_retrieved,                   // Right retrieved
-          target_exists);                    // Target exists
+          &left_retrieved,                   // Left retrieved
+          &right_retrieved,                  // Right retrieved
+          &target_exists);                   // Target exists
   assert(st.ok());
 
   // Clean up if necessary
@@ -2201,7 +2201,7 @@ void ArrayReadState::PQFragmentCellRange<T>::trim(
         coords_retrieved);
   } else {  // fcr is SPARSE
     Status st = (*fragment_read_states_)[fcr->fragment_id_]->get_coords_after(
-        &(cell_range_[dim_num_]), fcr_trimmed->cell_range_, coords_retrieved);
+        &(cell_range_[dim_num_]), fcr_trimmed->cell_range_, &coords_retrieved);
     assert(st.ok());
   }
 

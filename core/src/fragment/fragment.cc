@@ -61,7 +61,7 @@ Fragment::~Fragment() {
 }
 
 /* ****************************** */
-/*            ACCESSORS           */
+/*               API              */
 /* ****************************** */
 
 const ArraySchema* Fragment::array_schema() const {
@@ -147,7 +147,7 @@ Status Fragment::init(const URI& uri, const void* subarray) {
     write_state_ = nullptr;
     return st;
   }
-  write_state_ = new WriteState(this, metadata_);
+  write_state_ = new WriteState(this);
 
   // Success
   return Status::Ok();

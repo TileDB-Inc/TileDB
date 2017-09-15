@@ -27,7 +27,7 @@ const uint64_t var_size = sizeof(uint64_t);
 const char* coords = "__coords";
 
 /** The array filelock name. */
-const char* array_filelock_name = "__array_lock";
+const char* array_filelock_name = "__array_lock.tdb";
 
 /** The special value for an empty int32. */
 const int empty_int32 = INT_MAX;
