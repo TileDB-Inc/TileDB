@@ -64,7 +64,7 @@ int main() {
 
   // Loop until no overflow
   printf(" a1\n----\n");
-  int overflow;
+  unsigned int overflow;
   do {
     // Read from array_schema
     printf("Reading cells...\n");
@@ -80,7 +80,7 @@ int main() {
   } while(overflow);
  
   // Clean up
-  tiledb_query_free(query);
+  tiledb_query_free(ctx, query);
   tiledb_ctx_free(ctx);
 
   return 0;

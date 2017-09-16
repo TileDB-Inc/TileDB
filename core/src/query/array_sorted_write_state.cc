@@ -105,6 +105,8 @@ ArraySortedWriteState::~ArraySortedWriteState() {
   free(tile_domain_);
 
   for (int i = 0; i < 2; ++i) {
+    // TODO: since this returns status, make a finalize function
+    aio_query_[i]->finalize();
     delete aio_query_[i];
     free(tile_slab_[i]);
     free(tile_slab_norm_[i]);
@@ -1647,7 +1649,7 @@ Status ArraySortedWriteState::write_sorted_col() {
   if (array_schema->cell_order() == Layout::COL_MAJOR &&
       !memcmp(subarray_, expanded_subarray_, 2 * coords_size_) &&
       array_schema->is_contained_in_tile_slab_row<T>(subarray))
-    return query_->write_default(buffers_, buffer_sizes_);
+    return query_->write(buffers_, buffer_sizes_);
 
   // Iterate over each tile slab
   while (next_tile_slab_col<T>()) {
@@ -1677,7 +1679,7 @@ Status ArraySortedWriteState::write_sorted_row() {
   if (array_schema->cell_order() == Layout::ROW_MAJOR &&
       !memcmp(subarray_, expanded_subarray_, 2 * coords_size_) &&
       array_schema->is_contained_in_tile_slab_col<T>(subarray))
-    return query_->write_default(buffers_, buffer_sizes_);
+    return query_->write(buffers_, buffer_sizes_);
 
   // Iterate over each tile slab
   while (next_tile_slab_row<T>()) {
@@ -1734,6 +1736,7 @@ Status ArraySortedWriteState::send_aio_request(int id) {
   assert(storage_manager != NULL);
 
   if (separate_fragments) {
+    RETURN_NOT_OK(aio_query_[id]->finalize());
     delete aio_query_[id];
     aio_query_[id] = new Query();
     RETURN_NOT_OK(aio_query_[id]->init(

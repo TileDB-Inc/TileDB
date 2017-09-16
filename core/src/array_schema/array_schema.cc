@@ -80,7 +80,7 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   coords_size_ = array_schema->coords_size_;
   dimensions_ = array_schema->dimensions_;
   dim_num_ = array_schema->dim_num();
-  tile_coords_aux_ = malloc(coords_size_ * dim_num_);
+  tile_coords_aux_ = std::malloc(coords_size_ * dim_num_);
   tile_offsets_col_ = array_schema->tile_offsets_col_;
   tile_offsets_row_ = array_schema->tile_offsets_row_;
   tile_order_ = array_schema->tile_order_;
@@ -89,21 +89,21 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   if (array_schema->domain_ == nullptr) {
     domain_ = nullptr;
   } else {
-    domain_ = malloc(2 * coords_size_);
+    domain_ = std::malloc(2 * coords_size_);
     memcpy(domain_, array_schema->domain_, 2 * coords_size_);
   }
 
   if (array_schema->tile_domain_ == nullptr) {
     tile_domain_ = nullptr;
   } else {
-    tile_domain_ = malloc(2 * coords_size_);
+    tile_domain_ = std::malloc(2 * coords_size_);
     memcpy(tile_domain_, array_schema->tile_domain_, 2 * coords_size_);
   }
 
   if (array_schema->tile_extents_ == nullptr) {
     tile_extents_ = nullptr;
   } else {
-    tile_extents_ = malloc(coords_size_);
+    tile_extents_ = std::malloc(coords_size_);
     memcpy(tile_extents_, array_schema->tile_extents_, coords_size_);
   }
 }
@@ -227,6 +227,12 @@ Status ArraySchema::check() const {
   if (dim_num_ == 0)
     return LOG_STATUS(Status::ArraySchemaError(
         "Array schema check failed; No dimensions provided"));
+
+  // TODO: attribute and dimension names must be unique and not
+  // TODO: equal to reserved names
+
+  // TODO: attribute and dimension names must be valid names
+  // TODO: (e.g., not URIs)
 
   // Success
   return Status::Ok();
@@ -749,8 +755,8 @@ Status ArraySchema::init() {
   uint64_t coord_size = datatype_size(coords_type());
   coords_size_ = dim_num_ * coord_size;
   if (domain_ != nullptr)
-    free(domain_);
-  domain_ = malloc(dim_num_ * 2 * coord_size);
+    std::free(domain_);
+  domain_ = std::malloc(dim_num_ * 2 * coord_size);
   auto domain = (char*)domain_;
   for (unsigned int i = 0; i < dim_num_; ++i) {
     memcpy(
@@ -759,11 +765,11 @@ Status ArraySchema::init() {
 
   // Set tile extents
   if (tile_extents_ != nullptr)
-    free(tile_extents_);
+    std::free(tile_extents_);
   if (dimensions_[0]->tile_extent() == nullptr) {
     tile_extents_ = nullptr;
   } else {
-    tile_extents_ = malloc(dim_num_ * coord_size);
+    tile_extents_ = std::malloc(dim_num_ * coord_size);
     auto tile_extents = (char*)tile_extents_;
     for (unsigned int i = 0; i < dim_num_; ++i) {
       memcpy(
@@ -784,8 +790,8 @@ Status ArraySchema::init() {
 
   // Initialize static auxiliary variables
   if (tile_coords_aux_ != nullptr)
-    free(tile_coords_aux_);
-  tile_coords_aux_ = malloc(coords_size_ * dim_num_);
+    std::free(tile_coords_aux_);
+  tile_coords_aux_ = std::malloc(coords_size_ * dim_num_);
 
   // Success
   return Status::Ok();
@@ -1108,19 +1114,19 @@ void ArraySchema::clear() {
   dim_num_ = 0;
 
   if (tile_extents_ != nullptr) {
-    free(tile_extents_);
+    std::free(tile_extents_);
     tile_extents_ = nullptr;
   }
   if (domain_ != nullptr) {
-    free(domain_);
+    std::free(domain_);
     domain_ = nullptr;
   }
   if (tile_domain_ != nullptr) {
-    free(tile_domain_);
+    std::free(tile_domain_);
     tile_domain_ = nullptr;
   }
   if (tile_coords_aux_ != nullptr) {
-    free(tile_coords_aux_);
+    std::free(tile_coords_aux_);
     tile_coords_aux_ = nullptr;
   }
 }
@@ -1276,7 +1282,7 @@ void ArraySchema::compute_tile_domain() {
 
   // Allocate space for the tile domain
   assert(tile_domain_ == NULL);
-  tile_domain_ = malloc(2 * dim_num_ * sizeof(T));
+  tile_domain_ = std::malloc(2 * dim_num_ * sizeof(T));
 
   // For easy reference
   auto tile_domain = static_cast<T*>(tile_domain_);

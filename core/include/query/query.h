@@ -52,64 +52,80 @@ class ArraySortedWriteState;
 class Fragment;
 class StorageManager;
 
+/** Processes a (read/write) query. */
 class Query {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  /** Constructor. */
   Query();
 
+  /** Destructor. */
   ~Query();
 
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
 
+  /** Adds the coordinates attribute if it does not exist. */
+  void add_coords();
+
+  /** Returns the array schema.*/
+  const ArraySchema* array_schema() const;
+
+  /** Processes asynchronously the query. */
   Status async_process();
 
-  void clear_fragments();
-
-  // TODO: remove
-  ArrayReadState* array_read_state() const {
-    return array_read_state_;
-  }
-
-  const ArraySchema* array_schema() const {
-    return array_schema_;
-  }
-
+  /** Returns the list of ids of attributes involved in the query. */
   const std::vector<unsigned int>& attribute_ids() const;
 
-  const std::vector<Fragment*>& fragments() const {
-    return fragments_;
-  }
+  /** Finalizes and deletes the created fragments. */
+  Status clear_fragments();
 
-  const std::vector<FragmentMetadata*>& fragment_metadata() const {
-    return fragment_metadata_;
-  }
-
-  StorageManager* storage_manager() const {
-    return storage_manager_;
-  }
-
+  /**
+   * Retrieves the index of the coordinates buffer in the specified query
+   * buffers.
+   *
+   * @param coords_buffer_i The index of the coordinates buffer to be retrieved.
+   * @return Status
+   */
   Status coords_buffer_i(int* coords_buffer_i) const;
 
-  int fragment_num() const;
+  /**
+   * Finalizes the query, properly finalizing and deleting the involved
+   * fragments.
+   */
+  Status finalize();
 
-  bool overflow() const;
+  /** Returns the fragments involved in the query. */
+  const std::vector<Fragment*>& fragments() const;
 
-  bool overflow(int attribute_id) const;
+  /** Returns the metadata of the fragments involved in the query. */
+  const std::vector<FragmentMetadata*>& fragment_metadata() const;
 
-  Status read();
+  /** Returns the number of fragments involved in the query. */
+  unsigned int fragment_num() const;
 
-  void set_buffers(void** buffers, uint64_t* buffer_sizes) {
-    buffers_ = buffers;
-    buffer_sizes_ = buffer_sizes;
-  }
-
-  Status write();
-
+  /**
+   * Initializes the query.
+   *
+   * @param storage_manager The storage manager.
+   * @param array_schema The array schema.
+   * @param fragment_metadata The metadata of the involved fragments.
+   * @param type The query type.
+   * @param subarray The subarray the query is constrained on. A nuullptr
+   *     indicates the full domain.
+   * @param attributes The names of the attributes involved in the query.
+   * @param attribute_num The number of attributes.
+   * @param buffers The query buffers with a one-to-one correspondences with
+   *     the specified attributes. In a read query, the buffers will be
+   *     populated with the query results. In a write query, the buffer
+   *     contents will be appropriately written in a new fragment.
+   * @param buffer_sizes The corresponding buffer sizes.
+   * @return Status
+   */
   Status init(
       StorageManager* storage_manager,
       const ArraySchema* array_schema,
@@ -117,10 +133,31 @@ class Query {
       QueryType type,
       const void* subarray,
       const char** attributes,
-      int attribute_num,
+      unsigned int attribute_num,
       void** buffers,
       uint64_t* buffer_sizes);
 
+  /**
+   * Initializes the query.
+   *
+   * @param storage_manager The storage manager.
+   * @param array_schema The array schema.
+   * @param fragment_metadata The metadata of the involved fragments.
+   * @param type The query type.
+   * @param subarray The subarray the query is constrained on. A nuullptr
+   *     indicates the full domain.
+   * @param attributes_ids The ids of the attributes involved in the query.
+   * @param buffers The query buffers with a one-to-one correspondences with
+   *     the specified attributes. In a read query, the buffers will be
+   *     populated with the query results. In a write query, the buffer
+   *     contents will be appropriately written in a new fragment.
+   * @param buffer_sizes The corresponding buffer sizes.
+   * @param add_coords If *true*, the coordinates attribute will be added
+   *     to the provided *attribute_ids*. This is important for internal async
+   *     read queries on sparse arrays, where the user had not specified
+   *     the retrieval of the coordinates.
+   * @return Status
+   */
   Status init(
       StorageManager* storage_manager,
       const ArraySchema* array_schema,
@@ -129,67 +166,154 @@ class Query {
       const void* subarray,
       const std::vector<unsigned int>& attribute_ids,
       void** buffers,
-      uint64_t* buffer_sizes);
+      uint64_t* buffer_sizes,
+      bool add_coords = false);
 
-  /** Returns the query type. */
-  QueryType type() const;
+  /**
+   * Returns true if the query cannot write to some buffer due to
+   * an overflow.
+   */
+  bool overflow() const;
+
+  /**
+   * Checks if a particular query buffer (corresponding to some attribute)
+   * led to an overflow based on an attribute id.
+   */
+  bool overflow(int attribute_id) const;
+
+  /**
+   * Checks if a particular query buffer (corresponding to some attribute)
+   * led to an overflow based on an attribute name.
+   *
+   * @param attribute_name The attribute whose overflow to retrieve.
+   * @param overflow The overflow status to be retieved.
+   * @return Status (error is attribute is not involved in the query).
+   */
+  Status overflow(const char* attribute_name, unsigned int* overflow) const;
+
+  /** Executes a read query. */
+  Status read();
+
+  /**
+   * Executes a read query, but the query retrieves cells in the global
+   * cell order, and also the results are written in the input buffers,
+   * not the internal buffers.
+   */
+  Status read(void** buffers, uint64_t* buffer_sizes);
+
+  /** Sets the query buffers. */
+  void set_buffers(void** buffers, uint64_t* buffer_sizes);
+
+  /**
+   * Sets the callback function and its data input that will be called
+   * upon the completion of an asynchronous query.
+   */
+  void set_callback(void* (*callback)(void*), void* callback_data);
+
+  /** Sets the query status. */
+  void set_status(QueryStatus status);
+
+  /** Returns the query status. */
+  QueryStatus status() const;
+
+  /** Returns the storage manager. */
+  StorageManager* storage_manager() const;
 
   /** Returns the subarray in which the query is constrained. */
   const void* subarray() const;
 
-  Status write_default(void** buffers, uint64_t* buffer_sizes);
+  /** Returns the query type. */
+  QueryType type() const;
 
-  void add_coords();
+  /** Executes a write query. */
+  Status write();
 
-  void set_mode(QueryType type) {
-    type_ = type;
-  }
-
-  void set_status(QueryStatus status) {
-    status_ = status;
-  }
-
-  void set_callback(void* (*callback)(void*), void* callback_data) {
-    callback_ = callback;
-    callback_data_ = callback_data;
-  }
+  /**
+   * Executes a write query, but the query writes the cells in the global
+   * cell order, and also the cells are read from the input buffers,
+   * not the internal buffers.
+   */
+  Status write(void** buffers, uint64_t* buffer_sizes);
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  URI array_name_;
+  /** The array schema. */
   const ArraySchema* array_schema_;
-  QueryType type_;
-  QueryStatus status_;
-  void* subarray_;
-  std::vector<std::string> attributes_;
-  void** buffers_;
-  uint64_t* buffer_sizes_;
-  StorageManager* storage_manager_;
 
+  /**
+   * The array read state. Handles reads in the presence of multiple
+   * fragments. It returns results ordered in the global cell order.
+   */
+  ArrayReadState* array_read_state_;
+
+  /**
+   * The array sorted read state. It handles read queries that must
+   * return the results ordered in a particular layout other than
+   * the global cell order.
+   */
+  ArraySortedReadState* array_sorted_read_state_;
+
+  /**
+   * The araay sorted write state. It handles write queries that
+   * must write cells provided in a layout that is different
+   * than the global cell order.
+   */
+  ArraySortedWriteState* array_sorted_write_state_;
+
+  /** The ids of the attributes involved in the query. */
   std::vector<unsigned int> attribute_ids_;
 
-  ArrayReadState* array_read_state_;
-  ArraySortedReadState* array_sorted_read_state_;
-  ArraySortedWriteState* array_sorted_write_state_;
-  std::vector<Fragment*> fragments_;
-  std::vector<FragmentMetadata*> fragment_metadata_;
+  /**
+   * The query buffers (one per involved attribute, two per variable-sized
+   * attribute.
+   */
+  void** buffers_;
+
+  /** The corresponding buffer sizes. */
+  uint64_t* buffer_sizes_;
+
+  /** A function that will be called upon the completion of an async query. */
   void* (*callback_)(void*);
+
+  /** The data input to the callback function. */
   void* callback_data_;
+
+  /** The query status. */
+  QueryStatus status_;
+
+  /** The fragments involved in the query. */
+  std::vector<Fragment*> fragments_;
+
+  /** The metadata of the fragments involved in the query. */
+  std::vector<FragmentMetadata*> fragment_metadata_;
+
+  /** The storage manager. */
+  StorageManager* storage_manager_;
+
+  /**
+   * The subarray the query is constrained on. A nullptr implies the
+   * entire domain.
+   */
+  void* subarray_;
+
+  /** The query type. */
+  QueryType type_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  Status set_subarray(const void* subarray);
-
-  Status set_attributes(const char** attributes, int attribute_num);
-
-  Status init_states();
+  /** Initializes the fragments (for a read query). */
   Status init_fragments(
       const std::vector<FragmentMetadata*>& fragment_metadata);
+
+  /** Initializes the query states. */
+  Status init_states();
+
+  /** Creates a new fragment (for a write query). */
   Status new_fragment();
 
   /**
@@ -213,6 +337,12 @@ class Query {
    * @return Status
    */
   Status open_fragments(const std::vector<FragmentMetadata*>& metadata);
+
+  /** Sets the query attributes. */
+  Status set_attributes(const char** attributes, unsigned int attribute_num);
+
+  /** Sets the query subarray. */
+  Status set_subarray(const void* subarray);
 };
 
 }  // namespace tiledb

@@ -50,9 +50,7 @@
 
 namespace tiledb {
 
-/**
- * The storage manager that manages pretty much everything in TileDB.
- */
+/** The storage manager that manages pretty much everything in TileDB. */
 class StorageManager {
  public:
   /* ********************************* */
@@ -78,6 +76,29 @@ class StorageManager {
   Status array_create(ArraySchema* array_schema);
 
   /**
+   * Pushes an async query to the queue.
+   *
+   * @param query The async query.
+   * @param i The index of the thread that executes the function. If it is
+   *    equal to 0, it means a user query, whereas if it is 1 it means an
+   *    internal query.
+   * @return Status
+   */
+  Status async_push_query(Query* query, int i);
+
+  /** Creates a directory with the input URI. */
+  Status create_dir(const URI& uri);
+
+  /** Creates a file with the input URI. */
+  Status create_file(const URI& uri);
+
+  /** Deletes a file with the input URI. */
+  Status delete_file(const URI& uri) const;
+
+  /** Retrieves the size of the input URI file. */
+  Status file_size(const URI& uri, uint64_t* size) const;
+
+  /**
    * Creates a TileDB group.
    *
    * @param group The URI of the group to be created.
@@ -95,14 +116,85 @@ class StorageManager {
    */
   Status init();
 
+  /** Checks if the input URI is a directory. */
+  bool is_dir(const URI& uri);
+
+  /** Checks if the input URI is a file. */
+  bool is_file(const URI& uri);
+
   /**
    * Loads the schema of an array from persistent storage into memory.
    *
-   * @param array_name The name (path) of the array.
+   * @param array_name The name (URI path) of the array.
    * @param array_schema The array schema to be retrieved.
    * @return Status
    */
   Status load(const std::string& array_name, ArraySchema* array_schema);
+
+  /**
+   * Loads the fragment metadata of an array from persistent storage into
+   * memory.
+   *
+   * @param metadata The fragment metadata to be loaded.
+   * @return Status
+   */
+  Status load(FragmentMetadata* metadata);
+
+  /** Renames a directory. */
+  Status move_dir(const URI& old_uri, const URI& new_uri);
+
+  /** Finalizes a query. */
+  Status query_finalize(Query* query);
+
+  /**
+   * Initializes a query.
+   *
+   * @param query The query to initialize.
+   * @param array_name The name of the array the query targets at.
+   * @param query_type The query type.
+   * @param subarray The subarray the query will be constrained on.
+   * @param attributes The attributes the query will be constrained on.
+   * @param attribute_num The number of attributes.
+   * @param buffers The buffers that will hold the cells to write, or will
+   *     hold the cells that will be read.
+   * @param buffer_sizes The corresponding buffer sizes.
+   * @return Status
+   */
+  Status query_init(
+      Query* query,
+      const char* array_name,
+      QueryType query_type,
+      const void* subarray,
+      const char** attributes,
+      unsigned int attribute_num,
+      void** buffers,
+      uint64_t* buffer_sizes);
+
+  /** Submits a query for (sync) execution. */
+  Status query_submit(Query* query);
+
+  /**
+   * Submits a query for async execution.
+   *
+   * @param query The query to submit.
+   * @param callback The fuction that will be called upon query completion.
+   * @param callback_data The data to be provided to the callback function.
+   * @return Status
+   */
+  Status query_submit_async(
+      Query* query, void* (*callback)(void*), void* callback_data);
+
+  /**
+   * Reads from a file into the input buffer.
+   *
+   * @param uri The URI file to read from.
+   * @param offset The offset in the file the read will start from.
+   * @param buffer The buffer to write into.
+   * @param nbytes The number of bytes to read.
+   * @return Status.
+   */
+  Status read_from_file(
+      const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
 
   /**
    * Stores an array schema into persistent storage.
@@ -112,55 +204,28 @@ class StorageManager {
    */
   Status store(ArraySchema* array_schema);
 
-  Status sync(const URI& uri);
-
-  Status load(FragmentMetadata* metadata);
-
-  Status store(FragmentMetadata* metadata);
-
-  bool is_dir(const URI& uri);
-
-  bool is_file(const URI& uri);
-
-  Status create_file(const URI& uri);
-
-  Status create_dir(const URI& uri);
-
-  Status delete_file(const URI& uri) const;
-
-  Status move_dir(const URI& old_uri, const URI& new_uri);
-
   /**
-   * Pushes an async query to the queue.
+   * Stores the fragment metadata into persistent storage.
    *
-   * @param query The async query.
-   * @param i The index of the thread that executes the function. If it is
-   * equal to 0, it means a user query, whereas if it is 1 it means an
-   * internal query.
+   * @param metadata The fragment metadata to be stored.
    * @return Status
    */
-  Status async_push_query(Query* query, int i);
+  Status store(FragmentMetadata* metadata);
 
-  Status query_init(
-      Query* query,
-      const char* array_name,
-      QueryType query_type,
-      const void* subarray,
-      const char** attributes,
-      int attribute_num,
-      void** buffers,
-      uint64_t* buffer_sizes);
+  /**
+   * Syncs a URI (file or directory), i.e., commits its contents
+   * to persistent storage.
+   */
+  Status sync(const URI& uri);
 
-  Status query_submit(Query* query);
-
-  Status query_submit_async(
-      Query* query, void* (*callback)(void*), void* callback_data);
-
-  Status file_size(const URI& uri, uint64_t* size) const;
-
-  Status read_from_file(
-      const URI& uri, uint64_t offset, void* buffer, uint64_t length) const;
-
+  /**
+   * Writes the contents of a buffer into a URI file.
+   *
+   * @param uri The file to write into.
+   * @param buffer The buffer to write.
+   * @param buffer_size The buffer size.
+   * @return Status.
+   */
   Status write_to_file(
       const URI& uri, const void* buffer, uint64_t buffer_size) const;
 
@@ -215,6 +280,35 @@ class StorageManager {
   /*         PRIVATE METHODS           */
   /* ********************************* */
 
+  /** Closes an array, properly managing the opened fragment metadata. */
+  Status array_close(
+      const URI& array,
+      const std::vector<FragmentMetadata*>& fragment_metadata);
+
+  /**
+   * Opens an array, retrieving its schema and fragment metadata.
+   *
+   * @param array_uri The array URI.
+   * @param query_type The query type.
+   * @param subarray The subarray the query is constrained on.
+   * @param array_schema The array schema to be retrieved.
+   * @param fragment_metadata The fragment metadat to be retrieved.
+   * @return
+   */
+  Status array_open(
+      const URI& array_uri,
+      QueryType query_type,
+      const void* subarray,
+      const ArraySchema** array_schema,
+      std::vector<FragmentMetadata*>* fragment_metadata);
+
+  /**
+   * Invokes in case an error occurs in array_open. It is a clean-up function.
+   */
+  Status array_open_error(
+      OpenArray* open_array,
+      const std::vector<FragmentMetadata*>& fragment_metadata);
+
   /**
    * Starts listening to async queries.
    *
@@ -226,39 +320,8 @@ class StorageManager {
    */
   static void async_start(StorageManager* storage_manager, int i = 0);
 
-  /** Stops the async query. */
+  /** Stops listening to async queries. */
   void async_stop();
-
-  Status array_close(
-      const URI& array,
-      const std::vector<FragmentMetadata*>& fragment_metadata);
-
-  Status array_open(
-      const URI& array_uri,
-      QueryType query_type,
-      const void* subarray,
-      const ArraySchema** array_schema,
-      std::vector<FragmentMetadata*>* fragment_metadata);
-
-  Status array_open_error(
-      OpenArray* open_array,
-      const std::vector<FragmentMetadata*>& fragment_metadata);
-
-  Status open_array_get_entry(const URI& array_uri, OpenArray** open_array);
-
-  Status open_array_load_schema(const URI& array_uri, OpenArray* open_array);
-
-  Status open_array_load_fragment_metadata(
-      OpenArray* open_array,
-      const void* subarray,
-      std::vector<FragmentMetadata*>* fragment_metadata);
-
-  Status get_fragment_uris(
-      const URI& array_uri,
-      const void* subarray,
-      std::vector<URI>* fragment_uris) const;
-
-  void sort_fragment_uris(std::vector<URI>* fragment_uris) const;
 
   /** Handles a single async query. */
   void async_process_query(Query* query);
@@ -271,104 +334,37 @@ class StorageManager {
    * internal query.
    */
   void async_process_queries(int i);
+
+  /**
+   * Retrieves the fragment URI's of an array that overlap with a give
+   * subarray.
+   */
+  // TODO: Currently, no overlap check is performed with the subarray
+  // TODO: and all fragments are retrieved. To be fixed soon.
+  Status get_fragment_uris(
+      const URI& array_uri,
+      const void* subarray,
+      std::vector<URI>* fragment_uris) const;
+
+  /** Retrieves an open array entry for the given array URI. */
+  Status open_array_get_entry(const URI& array_uri, OpenArray** open_array);
+
+  /** Loads the array schema into an open array. */
+  Status open_array_load_schema(const URI& array_uri, OpenArray* open_array);
+
+  /** Retrieves the fragment metadata of an open array for a given subarray. */
+  Status open_array_load_fragment_metadata(
+      OpenArray* open_array,
+      const void* subarray,
+      std::vector<FragmentMetadata*>* fragment_metadata);
+
+  /**
+   * Sorts the input fragment URIs in ascending timestamp order, breaking
+   * ties using the process id.
+   */
+  void sort_fragment_uris(std::vector<URI>* fragment_uris) const;
 };
 
 }  // namespace tiledb
 
 #endif  // TILEDB_STORAGE_MANAGER_H
-
-/* TODO
-Status consolidation_finalize(
-    Fragment* new_fragment, const std::vector<URI>& old_fragment_names);
-Status group_clear(const URI& group) const;
-Status group_delete(const URI& group) const;
-Status group_move(const URI& old_group, const URI& new_group) const;
-Status array_clear(const URI& array_schema) const;
-Status array_delete(const URI& array_schema) const;
-Status array_move(const URI& old_array, const URI& new_array) const;
-*/
-
-/**
- * Consolidates the fragments of an array into a single fragment.
- *
- * @param array_uri The identifier of the array to be consolidated.
- * @return Status
- */
-//  TODO Status array_consolidate(const URI& array_schema);
-
-/* ********************************* */
-/*               MISC                */
-/* ********************************* */
-
-/**
- * Returns the type of the input direc
- *
- * @param dir The input directory.
- * @return It can be one of the following:
- *    - TILEDB_GROUP
- *    - TILEDB_ARRAY
- *    - TILEDB_METADATA
- *    - -1 (not a TileDB directory)
- */
-// TODO int dir_type(const char* dir);
-
-/**
- * Lists all the TileDB objects in a path, copying them into the input
- * buffers.
- *
- * @param parent_path The parent path of the TileDB objects to be listed.
- * @param object_paths An array of strings that will store the listed TileDB
- * objects. Note that the user is responsible for allocating the appropriate
- * memory space for this array of strings. A good idea for each string
- * length is to set is to TILEDB_NAME_MAX_LEN.
- * @param object_types The types of the corresponding TileDB objects, which
- * can be the following (they are self-explanatory): - TILEDB_GROUP -
- * TILEDB_ARRAY - TILEDB_METADATA
- * @param object_num The number of elements allocated by the user for
- * *object_paths*. After the function terminates, this will hold the actual
- * number of TileDB objects that were stored in *object_paths*.
- * @return Status
- */
-/* TODO
-  Status ls(
-      const URI& parent_uri,
-      char** object_paths,
-      tiledb_object_t* object_types,
-      int* num_objects) const;
-      */
-
-/**
- * Counts the TileDB objects in path
- *
- * @param parent_path The parent path of the TileDB objects to be listed.
- * @param object_num The number of TileDB objects to be returned.
- * @return Status
- */
-// TODO Status ls_c(const URI& parent_uri, int* object_num) const;
-
-/**
- * Clears a TileDB directory. The corresponding TileDB object
- * (group, array) will still exist after the execution of the
- * function, but it will be empty (i.e., as if it was just created).
- *
- * @param dir The directory to be cleared.
- * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
- */
-// TODO Status clear(const URI& uri) const;
-
-/**
- * Deletes a TileDB directory (group, array) entirely.
- *
- * @param dir The directory to be deleted.
- * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
- */
-// TODO Status delete_entire(const URI& uri);
-
-/**
- * Moves a TileDB directory (group, array).
- *
- * @param old_dir The old directory.
- * @param new_dir The new directory.
- * @return TILEDB_SM_OK for success and TILEDB_SM_ERR for error.
- */
-// TODO Status move(const URI& old_uri, const URI& new_uri);

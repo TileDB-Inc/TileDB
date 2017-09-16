@@ -881,10 +881,11 @@ TILEDB_EXPORT int tiledb_query_create(
 /**
  * Deletes a TileDB query object.
  *
+ * @param ctx The TileDB context.
  * @param query The query object to be deleted.
- * @return void
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT void tiledb_query_free(tiledb_query_t* query);
+TILEDB_EXPORT int tiledb_query_free(tiledb_ctx_t* ctx, tiledb_query_t* query);
 
 /**
  * Submits a TileDB query.
@@ -951,7 +952,7 @@ TILEDB_EXPORT int tiledb_query_get_overflow(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* attribute_name,
-    int* overflow);
+    unsigned int* overflow);
 
 /* ********************************* */
 /*               ARRAY               */

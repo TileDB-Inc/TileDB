@@ -112,12 +112,14 @@ ArraySortedReadState::ArraySortedReadState(Query* query)
 
 ArraySortedReadState::~ArraySortedReadState() {
   // Clean up
-  free(subarray_);
-  free(tile_coords_);
-  free(tile_domain_);
+  std::free(subarray_);
+  std::free(tile_coords_);
+  std::free(tile_domain_);
   delete[] overflow_;
 
   for (int i = 0; i < 2; ++i) {
+    // TODO: since this returns status, make a finalize function
+    aio_query_[i]->finalize();
     delete aio_query_[i];
 
     if (buffer_sizes_[i] != nullptr)
@@ -128,12 +130,12 @@ ArraySortedReadState::~ArraySortedReadState() {
       delete[] buffer_sizes_tmp_bak_[i];
     if (buffers_[i] != nullptr) {
       for (int b = 0; b < buffer_num_; ++b)
-        free(buffers_[i][b]);
+        std::free(buffers_[i][b]);
       free(buffers_[i]);
     }
 
-    free(tile_slab_[i]);
-    free(tile_slab_norm_[i]);
+    std::free(tile_slab_[i]);
+    std::free(tile_slab_norm_[i]);
   }
 
   // Free tile slab info and state, and copy state
@@ -2044,8 +2046,7 @@ Status ArraySortedReadState::read_dense_sorted_col() {
   // Check if this can be satisfied with a default read
   if (array_schema->cell_order() == Layout::COL_MAJOR &&
       array_schema->is_contained_in_tile_slab_row<T>(subarray))
-    return query_->array_read_state()->read(
-        copy_state_.buffers_, copy_state_.buffer_sizes_);
+    return query_->read(copy_state_.buffers_, copy_state_.buffer_sizes_);
 
   // These gotos SIGNIFICANTLY simplify the resume from overflow logic
   if (resume_copy_)
@@ -2116,8 +2117,7 @@ Status ArraySortedReadState::read_dense_sorted_row() {
   // Check if this can be satisfied with a default read
   if (array_schema->cell_order() == Layout::ROW_MAJOR &&
       array_schema->is_contained_in_tile_slab_col<T>(subarray))
-    return query_->array_read_state()->read(
-        copy_state_.buffers_, copy_state_.buffer_sizes_);
+    return query_->read(copy_state_.buffers_, copy_state_.buffer_sizes_);
 
   // These gotos SIGNIFICANTLY simplify the resume from overflow logic
   if (resume_copy_)
@@ -2188,8 +2188,7 @@ Status ArraySortedReadState::read_sparse_sorted_col() {
   // Check if this can be satisfied with a default read
   if (array_schema->cell_order() == Layout::COL_MAJOR &&
       array_schema->is_contained_in_tile_slab_row<T>(subarray))
-    return query_->array_read_state()->read(
-        copy_state_.buffers_, copy_state_.buffer_sizes_);
+    return query_->read(copy_state_.buffers_, copy_state_.buffer_sizes_);
 
   // These gotos SIGNIFICANTLY simplify the resume from overflow logic
   if (resume_copy_)
@@ -2264,8 +2263,7 @@ Status ArraySortedReadState::read_sparse_sorted_row() {
   // Check if this can be satisfied with a default read
   if (array_schema->cell_order() == Layout::ROW_MAJOR &&
       array_schema->is_contained_in_tile_slab_col<T>(subarray))
-    return query_->array_read_state()->read(
-        copy_state_.buffers_, copy_state_.buffer_sizes_);
+    return query_->read(copy_state_.buffers_, copy_state_.buffer_sizes_);
 
   // These gotos SIGNIFICANTLY simplify the resume from overflow logic
   if (resume_copy_)
@@ -2392,6 +2390,8 @@ Status ArraySortedReadState::send_aio_request(int id) {
   // Sanity check
   assert(storage_manager != nullptr);
 
+  // Prepare a new query to be submitted asynchronously
+  RETURN_NOT_OK(aio_query_[id]->finalize());
   delete aio_query_[id];
   aio_query_[id] = new Query();
   RETURN_NOT_OK(aio_query_[id]->init(
@@ -2402,7 +2402,8 @@ Status ArraySortedReadState::send_aio_request(int id) {
       tile_slab_[id],
       query_->attribute_ids(),
       buffers_[id],
-      buffer_sizes_tmp_[id]));
+      buffer_sizes_tmp_[id],
+      true));
   aio_query_[id]->set_callback(aio_done, &(aio_data_[id]));
 
   // Send the async query

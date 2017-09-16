@@ -204,7 +204,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_query_t* query) {
 
 int tiledb_ctx_create(tiledb_ctx_t** ctx) {
   // Initialize context
-  *ctx = (tiledb_ctx_t*)malloc(sizeof(struct tiledb_ctx_t));
+  *ctx = (tiledb_ctx_t*)std::malloc(sizeof(struct tiledb_ctx_t));
   if (*ctx == nullptr)
     return TILEDB_OOM;
 
@@ -240,7 +240,7 @@ int tiledb_ctx_free(tiledb_ctx_t* ctx) {
     delete ctx->storage_manager_;
     delete ctx->last_error_;
     delete ctx->mtx_;
-    free(ctx);
+    std::free(ctx);
   }
 
   // Always succeeds
@@ -265,7 +265,7 @@ int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
     }
 
     // Create error struct
-    *err = (tiledb_error_t*)malloc(sizeof(tiledb_error_t));
+    *err = (tiledb_error_t*)std::malloc(sizeof(tiledb_error_t));
     if (*err == nullptr) {
       save_error(ctx, tiledb::Status::Error("Failed to allocate error struct"));
       return TILEDB_OOM;
@@ -274,7 +274,7 @@ int tiledb_error_last(tiledb_ctx_t* ctx, tiledb_error_t** err) {
     // Create status
     (*err)->status_ = new tiledb::Status(*(ctx->last_error_));
     if ((*err)->status_ == nullptr) {
-      free(*err);
+      std::free(*err);
       *err = nullptr;
       save_error(
           ctx,
@@ -309,7 +309,7 @@ int tiledb_error_free(tiledb_ctx_t* ctx, tiledb_error_t* err) {
 
   delete err->status_;
   delete err->errmsg_;
-  free(err);
+  std::free(err);
 
   return TILEDB_OK;
 }
@@ -343,7 +343,7 @@ int tiledb_attribute_create(
     return TILEDB_ERR;
 
   // Create an attribute struct
-  *attr = (tiledb_attribute_t*)malloc(sizeof(tiledb_attribute_t));
+  *attr = (tiledb_attribute_t*)std::malloc(sizeof(tiledb_attribute_t));
   if (*attr == nullptr) {
     save_error(
         ctx,
@@ -355,7 +355,7 @@ int tiledb_attribute_create(
   (*attr)->attr_ =
       new tiledb::Attribute(name, static_cast<tiledb::Datatype>(type));
   if ((*attr)->attr_ == nullptr) {
-    free(*attr);
+    std::free(*attr);
     *attr = nullptr;
     save_error(
         ctx,
@@ -373,7 +373,7 @@ int tiledb_attribute_free(tiledb_ctx_t* ctx, tiledb_attribute_t* attr) {
     return TILEDB_ERR;
 
   delete attr->attr_;
-  free(attr);
+  std::free(attr);
 
   return TILEDB_OK;
 }
@@ -461,7 +461,7 @@ int tiledb_dimension_create(
     return TILEDB_ERR;
 
   // Create an dimension struct
-  *dim = (tiledb_dimension_t*)malloc(sizeof(tiledb_dimension_t));
+  *dim = (tiledb_dimension_t*)std::malloc(sizeof(tiledb_dimension_t));
   if (*dim == nullptr) {
     save_error(
         ctx,
@@ -473,7 +473,7 @@ int tiledb_dimension_create(
   (*dim)->dim_ = new tiledb::Dimension(
       name, static_cast<tiledb::Datatype>(type), domain, tile_extent);
   if ((*dim)->dim_ == nullptr) {
-    free(*dim);
+    std::free(*dim);
     *dim = nullptr;
     save_error(
         ctx,
@@ -489,7 +489,7 @@ int tiledb_dimension_free(tiledb_ctx_t* ctx, tiledb_dimension_t* dim) {
     return TILEDB_ERR;
 
   delete dim->dim_;
-  free(dim);
+  std::free(dim);
 
   return TILEDB_OK;
 }
@@ -572,7 +572,8 @@ int tiledb_array_schema_create(
     return TILEDB_ERR;
 
   // Create array_schema schema struct
-  *array_schema = (tiledb_array_schema_t*)malloc(sizeof(tiledb_array_schema_t));
+  *array_schema =
+      (tiledb_array_schema_t*)std::malloc(sizeof(tiledb_array_schema_t));
   if (*array_schema == nullptr) {
     save_error(
         ctx,
@@ -585,7 +586,7 @@ int tiledb_array_schema_create(
   (*array_schema)->array_schema_ =
       new tiledb::ArraySchema(tiledb::URI(array_name));
   if ((*array_schema)->array_schema_ == nullptr) {
-    free(*array_schema);
+    std::free(*array_schema);
     *array_schema = nullptr;
     save_error(
         ctx,
@@ -605,7 +606,7 @@ int tiledb_array_schema_free(
     return TILEDB_ERR;
 
   delete array_schema->array_schema_;
-  free(array_schema);
+  std::free(array_schema);
 
   return TILEDB_OK;
 }
@@ -697,7 +698,8 @@ int tiledb_array_schema_load(
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
   // Create array_schema schema
-  *array_schema = (tiledb_array_schema_t*)malloc(sizeof(tiledb_array_schema_t));
+  *array_schema =
+      (tiledb_array_schema_t*)std::malloc(sizeof(tiledb_array_schema_t));
   if (*array_schema == nullptr) {
     save_error(
         ctx,
@@ -709,7 +711,7 @@ int tiledb_array_schema_load(
   // Create ArraySchema object
   (*array_schema)->array_schema_ = new tiledb::ArraySchema();
   if ((*array_schema)->array_schema_ == nullptr) {
-    free(*array_schema);
+    std::free(*array_schema);
     *array_schema = nullptr;
     save_error(
         ctx,
@@ -724,7 +726,7 @@ int tiledb_array_schema_load(
           ctx,
           storage_manager->load(array_name, (*array_schema)->array_schema_))) {
     delete (*array_schema)->array_schema_;
-    free(*array_schema);
+    std::free(*array_schema);
     *array_schema = nullptr;
     return TILEDB_ERR;
   }
@@ -812,7 +814,8 @@ int tiledb_attribute_iter_create(
     return TILEDB_ERR;
 
   // Create attribute iterator struct
-  *attr_it = (tiledb_attribute_iter_t*)malloc(sizeof(tiledb_attribute_iter_t));
+  *attr_it =
+      (tiledb_attribute_iter_t*)std::malloc(sizeof(tiledb_attribute_iter_t));
   if (*attr_it == nullptr) {
     save_error(
         ctx,
@@ -831,13 +834,14 @@ int tiledb_attribute_iter_create(
     (*attr_it)->attr_ = nullptr;
   } else {
     // Create an attribute struct inside the iterator struct
-    (*attr_it)->attr_ = (tiledb_attribute_t*)malloc(sizeof(tiledb_attribute_t));
+    (*attr_it)->attr_ =
+        (tiledb_attribute_t*)std::malloc(sizeof(tiledb_attribute_t));
     if ((*attr_it)->attr_ == nullptr) {
       save_error(
           ctx,
           tiledb::Status::Error("Failed to allocate TileDB attribute struct "
                                 "in iterator struct"));
-      free(*attr_it);
+      std::free(*attr_it);
       *attr_it = nullptr;
       return TILEDB_OOM;
     }
@@ -848,8 +852,8 @@ int tiledb_attribute_iter_create(
 
     // Check for allocation error
     if ((*attr_it)->attr_->attr_ == nullptr) {
-      free((*attr_it)->attr_);
-      free(*attr_it);
+      std::free((*attr_it)->attr_);
+      std::free(*attr_it);
       *attr_it = nullptr;
       save_error(
           ctx,
@@ -872,10 +876,10 @@ int tiledb_attribute_iter_free(
       if (attr_it->attr_->attr_ != nullptr)
         delete (attr_it->attr_->attr_);
 
-      free(attr_it->attr_);
+      std::free(attr_it->attr_);
     }
 
-  free(attr_it);
+  std::free(attr_it);
 
   return TILEDB_OK;
 }
@@ -949,7 +953,8 @@ int tiledb_dimension_iter_create(
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   // Create attribute iterator struct
-  *dim_it = (tiledb_dimension_iter_t*)malloc(sizeof(tiledb_dimension_iter_t));
+  *dim_it =
+      (tiledb_dimension_iter_t*)std::malloc(sizeof(tiledb_dimension_iter_t));
   if (*dim_it == nullptr) {
     save_error(
         ctx,
@@ -967,13 +972,14 @@ int tiledb_dimension_iter_create(
     (*dim_it)->dim_ = nullptr;
   } else {
     // Create a dimension struct inside the iterator struct
-    (*dim_it)->dim_ = (tiledb_dimension_t*)malloc(sizeof(tiledb_dimension_t));
+    (*dim_it)->dim_ =
+        (tiledb_dimension_t*)std::malloc(sizeof(tiledb_dimension_t));
     if ((*dim_it)->dim_ == nullptr) {
       save_error(
           ctx,
           tiledb::Status::Error("Failed to allocate TileDB dimension struct "
                                 "in iterator struct"));
-      free(*dim_it);
+      std::free(*dim_it);
       *dim_it = nullptr;
       return TILEDB_OOM;
     }
@@ -984,8 +990,8 @@ int tiledb_dimension_iter_create(
 
     // Check for allocation error
     if ((*dim_it)->dim_->dim_ == nullptr) {
-      free((*dim_it)->dim_);
-      free(*dim_it);
+      std::free((*dim_it)->dim_);
+      std::free(*dim_it);
       *dim_it = nullptr;
       save_error(
           ctx,
@@ -1009,10 +1015,10 @@ int tiledb_dimension_iter_free(
     if (dim_it->dim_->dim_ != nullptr)
       delete (dim_it->dim_->dim_);
 
-    free(dim_it->dim_);
+    std::free(dim_it->dim_);
   }
 
-  free(dim_it);
+  std::free(dim_it);
 
   return TILEDB_OK;
 }
@@ -1093,7 +1099,7 @@ int tiledb_query_create(
     return TILEDB_ERR;
 
   // Create query struct
-  *query = (tiledb_query_t*)malloc(sizeof(tiledb_query_t));
+  *query = (tiledb_query_t*)std::malloc(sizeof(tiledb_query_t));
   if (*query == nullptr) {
     save_error(
         ctx, tiledb::Status::Error("Failed to allocate TileDB query struct"));
@@ -1103,7 +1109,7 @@ int tiledb_query_create(
   // Create a new Query object
   (*query)->query_ = new tiledb::Query();
   if ((*query)->query_ == nullptr) {
-    free(*query);
+    std::free(*query);
     *query = nullptr;
     save_error(
         ctx,
@@ -1125,7 +1131,7 @@ int tiledb_query_create(
               buffers,
               buffer_sizes))) {
     delete (*query)->query_;
-    free(*query);
+    std::free(*query);
     *query = nullptr;
     return TILEDB_ERR;
   }
@@ -1134,11 +1140,25 @@ int tiledb_query_create(
   return TILEDB_OK;
 }
 
-void tiledb_query_free(tiledb_query_t* query) {
+int tiledb_query_free(tiledb_ctx_t* ctx, tiledb_query_t* query) {
+  // Trivial case
   if (query == nullptr)
-    return;
-  delete query->query_;  // TODO: this should return Status
-  free(query);
+    return TILEDB_OK;
+
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  // Finalize query and check error
+  int rc = TILEDB_OK;
+  if (save_error(ctx, ctx->storage_manager_->query_finalize(query->query_)))
+    rc = TILEDB_ERR;
+
+  // Clean up
+  delete query->query_;
+  std::free(query);
+
+  return rc;
 }
 
 int tiledb_query_submit(tiledb_ctx_t* ctx, tiledb_query_t* query) {
@@ -1192,7 +1212,11 @@ int tiledb_query_reset_buffers(
 
 int tiledb_query_get_status(
     tiledb_ctx_t* ctx, tiledb_query_t* query, tiledb_query_status_t* status) {
-  // TODO
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  *status = (tiledb_query_status_t)query->query_->status();
 
   return TILEDB_OK;
 }
@@ -1201,8 +1225,13 @@ int tiledb_query_get_overflow(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* attribute_name,
-    int* overflow) {
-  // TODO
+    unsigned int* overflow) {
+  // Sanity check
+  if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
+    return TILEDB_ERR;
+
+  if (save_error(ctx, query->query_->overflow(attribute_name, overflow)))
+    return TILEDB_ERR;
 
   return TILEDB_OK;
 }
