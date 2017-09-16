@@ -99,7 +99,7 @@ Status Query::async_process() {
         ((type_ == QueryType::READ_SORTED_COL ||
           type_ == QueryType::READ_SORTED_ROW) &&
          array_sorted_read_state_->overflow()))
-      set_status(QueryStatus::OVERFLOWED);
+      set_status(QueryStatus::INCOMPLETE);
     else  // Completion
       set_status(QueryStatus::COMPLETED);
 

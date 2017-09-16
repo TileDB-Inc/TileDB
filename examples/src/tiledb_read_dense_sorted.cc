@@ -64,7 +64,7 @@ int main() {
 
   // Loop until no overflow
   printf(" a1\n----\n");
-  unsigned int overflow;
+  tiledb_query_status_t status;
   do {
     // Read from array_schema
     printf("Reading cells...\n");
@@ -76,8 +76,8 @@ int main() {
       printf("%3d\n", buffer_a1[i]);
 
     // Get overflow
-    tiledb_query_get_overflow(ctx, query, "a1", &overflow);
-  } while(overflow);
+    tiledb_query_get_attribute_status(ctx, query, "a1", &status);
+  } while(status == TILEDB_INCOMPLETE);
  
   // Clean up
   tiledb_query_free(ctx, query);

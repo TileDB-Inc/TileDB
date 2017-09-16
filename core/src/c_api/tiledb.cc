@@ -1221,17 +1221,31 @@ int tiledb_query_get_status(
   return TILEDB_OK;
 }
 
-int tiledb_query_get_overflow(
+int tiledb_query_get_attribute_status(
     tiledb_ctx_t* ctx,
     const tiledb_query_t* query,
     const char* attribute_name,
-    unsigned int* overflow) {
+    tiledb_query_status_t* status) {
   // Sanity check
   if (sanity_check(ctx) == TILEDB_ERR || sanity_check(ctx, query) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (save_error(ctx, query->query_->overflow(attribute_name, overflow)))
+  // Check if the query is still in progress or failed
+  auto query_status = query->query_->status();
+  if (query_status == tiledb::QueryStatus::INPROGRESS ||
+      query_status == tiledb::QueryStatus::COMPLETED ||
+      query_status == tiledb::QueryStatus::FAILED) {
+    *status = (tiledb_query_status_t)query_status;
+    return TILEDB_OK;
+  }
+
+  unsigned int overflow;
+  if (save_error(ctx, query->query_->overflow(attribute_name, &overflow)))
     return TILEDB_ERR;
+
+  *status = (overflow == 1) ?
+                (tiledb_query_status_t)tiledb::QueryStatus::INCOMPLETE :
+                (tiledb_query_status_t)tiledb::QueryStatus::COMPLETED;
 
   return TILEDB_OK;
 }
