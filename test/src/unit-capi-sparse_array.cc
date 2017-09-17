@@ -31,6 +31,9 @@
  * Tests of C API for sparse array operations.
  */
 
+#include "catch.hpp"
+#include "tiledb.h"
+
 #include <sys/time.h>
 #include <cassert>
 #include <cstring>
@@ -38,8 +41,6 @@
 #include <iostream>
 #include <map>
 #include <sstream>
-#include "catch.hpp"
-#include "tiledb.h"
 
 struct SparseArrayFx {
   // Constant parameters
@@ -111,7 +112,7 @@ struct SparseArrayFx {
       const int64_t domain_0_hi,
       const int64_t domain_1_lo,
       const int64_t domain_1_hi,
-      const int64_t capacity,
+      const uint64_t capacity,
       const tiledb_compressor_t compressor,
       const tiledb_layout_t cell_order,
       const tiledb_layout_t tile_order) {
@@ -168,10 +169,10 @@ struct SparseArrayFx {
     REQUIRE(rc == TILEDB_OK);
 
     // Clean up
-    tiledb_attribute_free(a);
-    tiledb_dimension_free(d1);
-    tiledb_dimension_free(d2);
-    tiledb_array_schema_free(array_schema_);
+    tiledb_attribute_free(ctx_, a);
+    tiledb_dimension_free(ctx_, d1);
+    tiledb_dimension_free(ctx_, d2);
+    tiledb_array_schema_free(ctx_, array_schema_);
   }
 
   /**
@@ -196,7 +197,7 @@ struct SparseArrayFx {
       const int64_t domain_0_hi,
       const int64_t domain_1_lo,
       const int64_t domain_1_hi,
-      const tiledb_query_mode_t read_mode) {
+      const tiledb_query_type_t query_type) {
     // Error code
     int rc;
 
@@ -207,38 +208,31 @@ struct SparseArrayFx {
     // Subset over a specific attribute
     const char* attributes[] = {ATTR_NAME};
 
-    // Initialize the array_schema in the input mode
-    tiledb_array_t* tiledb_array;
-    rc = tiledb_array_init(
-        ctx_,
-        &tiledb_array,
-        array_name_.c_str(),
-        read_mode,
-        subarray,
-        attributes,
-        1);
-    if (rc != TILEDB_OK)
-      return nullptr;
-
     // Prepare the buffers that will store the result
     int64_t domain_size_0 = domain_0_hi - domain_0_lo + 1;
     int64_t domain_size_1 = domain_1_hi - domain_1_lo + 1;
     int64_t cell_num = domain_size_0 * domain_size_1;
-    int* buffer_a1 = new int[cell_num];
+    auto buffer_a1 = new int[cell_num];
     assert(buffer_a1);
     void* buffers[] = {buffer_a1};
-    size_t buffer_size_a1 = cell_num * sizeof(int);
-    size_t buffer_sizes[] = {buffer_size_a1};
+    uint64_t buffer_size_a1 = cell_num * sizeof(int);
+    uint64_t buffer_sizes[] = {buffer_size_a1};
 
-    // Read from array_schema
-    rc = tiledb_array_read(tiledb_array, buffers, buffer_sizes);
+    // Create query
+    tiledb_query_t* query;
+    rc = tiledb_query_create(ctx_, &query, array_name_.c_str(), query_type, subarray, attributes, 1, buffers, buffer_sizes);
+    if (rc != TILEDB_OK)
+      return nullptr;
+
+    // Submit query
+    rc = tiledb_query_submit(ctx_, query);
     if (rc != TILEDB_OK) {
-      tiledb_array_finalize(tiledb_array);
+      tiledb_query_free(ctx_, query);
       return nullptr;
     }
 
-    // Finalize the array_schema
-    rc = tiledb_array_finalize(tiledb_array);
+    // Free/finalize query
+    tiledb_query_free(ctx_, query);
     if (rc != TILEDB_OK)
       return nullptr;
 
@@ -266,8 +260,8 @@ struct SparseArrayFx {
 
     // Generate random attribute values and coordinates for sparse write
     int64_t cell_num = domain_size_0 * domain_size_1;
-    int* buffer_a1 = new int[cell_num];
-    int64_t* buffer_coords = new int64_t[2 * cell_num];
+    auto buffer_a1 = new int[cell_num];
+    auto buffer_coords = new int64_t[2 * cell_num];
     int64_t coords_index = 0L;
     for (int64_t i = 0; i < domain_size_0; ++i) {
       for (int64_t j = 0; j < domain_size_1; ++j) {
@@ -278,30 +272,25 @@ struct SparseArrayFx {
       }
     }
 
-    // Initialize the array_schema
-    tiledb_array_t* tiledb_array;
-    rc = tiledb_array_init(
-        ctx_,
-        &tiledb_array,
-        array_name_.c_str(),
-        TILEDB_ARRAY_WRITE_UNSORTED,
-        nullptr,
-        nullptr,
-        0);
-    if (rc != TILEDB_OK)
-      return TILEDB_ERR;
-
-    // Write to array_schema
-    const void* buffers[] = {buffer_a1, buffer_coords};
-    size_t buffer_sizes[2];
+    // Prepare buffers
+    void* buffers[] = {buffer_a1, buffer_coords};
+    uint64_t buffer_sizes[2];
     buffer_sizes[0] = cell_num * sizeof(int);
     buffer_sizes[1] = 2 * cell_num * sizeof(int64_t);
-    rc = tiledb_array_write(tiledb_array, buffers, buffer_sizes);
+
+    // Create query
+    tiledb_query_t* query;
+    rc = tiledb_query_create(ctx_, &query, array_name_.c_str(), TILEDB_WRITE_UNSORTED, nullptr, nullptr, 0, buffers, buffer_sizes);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
 
-    // Finalize the array_schema
-    rc = tiledb_array_finalize(tiledb_array);
+    // Submit query
+    rc = tiledb_query_submit(ctx_, query);
+    if (rc != TILEDB_OK)
+      return TILEDB_ERR;
+
+    // Free/finalize query
+    rc = tiledb_query_free(ctx_, query);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
 
@@ -336,7 +325,7 @@ struct SparseArrayFx {
 
       // read subarray
       int* buffer = read_sparse_array_2D(
-          d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_ARRAY_READ_SORTED_ROW);
+          d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ_SORTED_ROW);
       CHECK(buffer != NULL);
 
       // check

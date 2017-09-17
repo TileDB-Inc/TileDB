@@ -120,6 +120,10 @@ void Buffer::set_offset(uint64_t offset) {
   offset_ = offset;
 }
 
+void Buffer::set_size(uint64_t size) {
+  size_ = size;
+}
+
 uint64_t Buffer::size() const {
   return size_;
 }

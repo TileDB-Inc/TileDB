@@ -95,6 +95,9 @@ class Buffer {
   /** Sets the buffer offset to the input offset. */
   void set_offset(uint64_t offset);
 
+  /** Sets the size of the buffer. */
+  void set_size(uint64_t size);
+
   /** Returns the buffer size. */
   uint64_t size() const;
 

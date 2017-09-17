@@ -147,7 +147,7 @@ TEST_CASE_METHOD(
       ATTR_CELL_VAL_NUM_STR_1);
 
   // Clean up
-  tiledb_attribute_free(a_);
+  tiledb_attribute_free(ctx_, a_);
 }
 
 TEST_CASE_METHOD(
@@ -203,5 +203,5 @@ TEST_CASE_METHOD(
       ATTR_CELL_VAL_NUM_STR_2);
 
   // Clean up
-  tiledb_attribute_free(a_);
+  tiledb_attribute_free(ctx_, a_);
 }

@@ -39,8 +39,8 @@
 #include <sstream>
 
 #include "catch.hpp"
-#include "posix_filesystem.h"
 #include "tiledb.h"
+#include "uri.h"
 
 struct ArraySchemaFx {
   // Constant parameters
@@ -49,7 +49,7 @@ struct ArraySchemaFx {
   tiledb_array_type_t ARRAY_TYPE = TILEDB_DENSE;
   const char* ARRAY_TYPE_STR = "dense";
   const std::string ARRAY_PATH = GROUP + ARRAY_NAME;
-  const std::string ARRAY_PATH_REAL = tiledb::vfs::real_dir(ARRAY_PATH);
+  const std::string ARRAY_PATH_REAL = tiledb::URI(ARRAY_PATH).to_string();
   const uint64_t CAPACITY = 500;
   const char* CAPACITY_STR = "500";
   const tiledb_layout_t CELL_ORDER = TILEDB_COL_MAJOR;
@@ -121,7 +121,7 @@ struct ArraySchemaFx {
   ~ArraySchemaFx() {
     // Free array_schema schema
     if (array_schema_ != nullptr)
-      tiledb_array_schema_free(array_schema_);
+      tiledb_array_schema_free(ctx_, array_schema_);
 
     // Free TileDB context
     tiledb_ctx_free(ctx_);
@@ -169,9 +169,9 @@ struct ArraySchemaFx {
     REQUIRE(rc == TILEDB_OK);
 
     // Clean up
-    tiledb_attribute_free(attr);
-    tiledb_dimension_free(x);
-    tiledb_dimension_free(y);
+    tiledb_attribute_free(ctx_, attr);
+    tiledb_dimension_free(ctx_, x);
+    tiledb_dimension_free(ctx_, y);
 
     // Create the array_schema
     rc = tiledb_array_create(ctx_, array_schema_);
@@ -357,7 +357,7 @@ TEST_CASE_METHOD(
   CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
 
   // Check dump
-  std::string dump_str = "- Array name: " + tiledb::vfs::real_dir(ARRAY_PATH) +
+  std::string dump_str = "- Array name: " + tiledb::URI(ARRAY_PATH).to_string() +
                          "\n" + "- Array type: " + ARRAY_TYPE_STR + "\n" +
                          "- Cell order: " + CELL_ORDER_STR + "\n" +
                          "- Tile order: " + TILE_ORDER_STR + "\n" +
@@ -390,7 +390,7 @@ TEST_CASE_METHOD(
   system("rm gold_fout.txt fout.txt");
 
   // Clean up
-  tiledb_attribute_iter_free(attr_it);
-  tiledb_dimension_iter_free(dim_it);
-  tiledb_array_schema_free(array_schema);
+  tiledb_attribute_iter_free(ctx_, attr_it);
+  tiledb_dimension_iter_free(ctx_, dim_it);
+  tiledb_array_schema_free(ctx_, array_schema);
 }

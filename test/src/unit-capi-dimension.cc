@@ -159,7 +159,7 @@ TEST_CASE_METHOD(
       DIM_TILE_EXTENT_STR_1);
 
   // Clean up
-  tiledb_dimension_free(d_);
+  tiledb_dimension_free(ctx_, d_);
 }
 
 TEST_CASE_METHOD(
@@ -219,5 +219,5 @@ TEST_CASE_METHOD(
       DIM_TILE_EXTENT_STR_2);
 
   // Clean up
-  tiledb_dimension_free(d_);
+  tiledb_dimension_free(ctx_, d_);
 }
