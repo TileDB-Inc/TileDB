@@ -48,7 +48,7 @@ namespace tiledb {
 /*        STATIC CONSTANTS        */
 /* ****************************** */
 
-const uint64_t ArraySortedWriteState::INVALID = UINT64_MAX;
+const uint64_t ArraySortedWriteState::INVALID_UINT64 = UINT64_MAX;
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -666,7 +666,7 @@ void ArraySortedWriteState::calculate_tile_domain(unsigned int id) {
 template <class T>
 void ArraySortedWriteState::calculate_tile_slab_info(unsigned int id) {
   // Calculate number of tiles, if they are not already calculated
-  if (tile_slab_info_[id].tile_num_ == INVALID)
+  if (tile_slab_info_[id].tile_num_ == INVALID_UINT64)
     init_tile_slab_info<T>(id);
 
   // Calculate tile domain, if not calculated yet
@@ -1520,7 +1520,7 @@ void ArraySortedWriteState::init_tile_slab_info() {
       info.cell_slab_size_[attr] = nullptr;
       info.start_offsets_[attr] = nullptr;
     }
-    info.tile_num_ = INVALID;
+    info.tile_num_ = INVALID_UINT64;
   }
 }
 

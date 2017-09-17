@@ -54,7 +54,7 @@ namespace tiledb {
 /*        STATIC CONSTANTS        */
 /* ****************************** */
 
-const uint64_t ArraySortedReadState::INVALID = UINT64_MAX;
+const uint64_t ArraySortedReadState::INVALID_UINT64 = UINT64_MAX;
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -123,7 +123,7 @@ ArraySortedReadState::~ArraySortedReadState() {
   delete[] overflow_;
 
   for (unsigned int i = 0; i < 2; ++i) {
-    if(async_query_[i] != nullptr)
+    if (async_query_[i] != nullptr)
       async_query_[i]->finalize();
     delete async_query_[i];
 
@@ -155,7 +155,7 @@ ArraySortedReadState::~ArraySortedReadState() {
 
 bool ArraySortedReadState::copy_tile_slab_done() const {
   auto anum = (unsigned int)attribute_ids_.size();
-  for (unsigned int i = 0; i < anum ; ++i) {
+  for (unsigned int i = 0; i < anum; ++i) {
     // Special case for sparse arrays with extra coordinates attribute
     if (i == coords_attr_i_ && extra_coords_)
       continue;
@@ -176,7 +176,7 @@ bool ArraySortedReadState::done() const {
 }
 
 Status ArraySortedReadState::finalize() {
-  for(auto& aq : async_query_) {
+  for (auto& aq : async_query_) {
     if (aq != nullptr)
       RETURN_NOT_OK(aq->finalize());
     delete aq;
@@ -872,13 +872,13 @@ void ArraySortedReadState::calculate_cell_slab_info_row_row(
   // Calculate cell offset per dimension
   uint64_t cell_offset = 1;
   tile_slab_info_[id].cell_offset_per_dim_[tid][dim_num_ - 1] = cell_offset;
-  if(dim_num_ > 1) {
-    for (unsigned int i = dim_num_ - 2; ; --i) {
+  if (dim_num_ > 1) {
+    for (unsigned int i = dim_num_ - 2;; --i) {
       cell_offset *=
-              (range_overlap[2 * (i + 1) + 1] - range_overlap[2 * (i + 1)] + 1);
+          (range_overlap[2 * (i + 1) + 1] - range_overlap[2 * (i + 1)] + 1);
       tile_slab_info_[id].cell_offset_per_dim_[tid][i] = cell_offset;
 
-      if(i == 0)
+      if (i == 0)
         break;
     }
   }
@@ -902,10 +902,10 @@ void ArraySortedReadState::calculate_cell_slab_info_col_row(
   // Calculate cell offset per dimension
   uint64_t cell_offset = 1;
   tile_slab_info_[id].cell_offset_per_dim_[tid][dim_num_ - 1] = cell_offset;
-  if(dim_num_ > 1) {
-    for (unsigned int i = dim_num_ - 2; ; --i) {
+  if (dim_num_ > 1) {
+    for (unsigned int i = dim_num_ - 2;; --i) {
       cell_offset *=
-              (range_overlap[2 * (i + 1) + 1] - range_overlap[2 * (i + 1)] + 1);
+          (range_overlap[2 * (i + 1) + 1] - range_overlap[2 * (i + 1)] + 1);
       tile_slab_info_[id].cell_offset_per_dim_[tid][i] = cell_offset;
 
       if (i == 0)
@@ -962,7 +962,7 @@ void ArraySortedReadState::calculate_tile_domain(unsigned int id) {
 template <class T>
 void ArraySortedReadState::calculate_tile_slab_info(unsigned int id) {
   // Calculate number of tiles, if they are not already calculated
-  if (tile_slab_info_[id].tile_num_ == INVALID)
+  if (tile_slab_info_[id].tile_num_ == INVALID_UINT64)
     init_tile_slab_info<T>(id);
 
   // Calculate tile domain, if not calculated yet
@@ -1087,13 +1087,13 @@ void ArraySortedReadState::calculate_tile_slab_info_row(unsigned int id) {
     // Calculate tile offsets per dimension
     tile_offset = 1;
     tile_slab_info_[id].tile_offset_per_dim_[dim_num_ - 1] = tile_offset;
-    if(dim_num_ > 1) {
+    if (dim_num_ > 1) {
       for (int i = dim_num_ - 2; i >= 0; --i) {
         tile_offset *=
-                (tile_domain[2 * (i + 1) + 1] - tile_domain[2 * (i + 1)] + 1);
+            (tile_domain[2 * (i + 1) + 1] - tile_domain[2 * (i + 1)] + 1);
         tile_slab_info_[id].tile_offset_per_dim_[i] = tile_offset;
 
-        if(i == 0)
+        if (i == 0)
           break;
       }
     }
@@ -1138,7 +1138,8 @@ void ArraySortedReadState::copy_tile_slab_dense() {
   }
 }
 
-void ArraySortedReadState::copy_tile_slab_dense(unsigned int aid, unsigned int bid) {
+void ArraySortedReadState::copy_tile_slab_dense(
+    unsigned int aid, unsigned int bid) {
   // Exit if copy is done for this attribute
   if (tile_slab_state_.copy_tile_slab_done_[aid]) {
     copy_state_.buffer_sizes_[bid] = 0;  // Nothing written
@@ -1184,7 +1185,8 @@ void ArraySortedReadState::copy_tile_slab_dense(unsigned int aid, unsigned int b
   }
 }
 
-void ArraySortedReadState::copy_tile_slab_dense_var(unsigned int aid, unsigned int bid) {
+void ArraySortedReadState::copy_tile_slab_dense_var(
+    unsigned int aid, unsigned int bid) {
   // Exit if copy is done for this attribute
   if (tile_slab_state_.copy_tile_slab_done_[aid]) {
     copy_state_.buffer_sizes_[bid] = 0;      // Nothing written
@@ -1281,7 +1283,8 @@ void ArraySortedReadState::copy_tile_slab_sparse() {
   }
 }
 
-void ArraySortedReadState::copy_tile_slab_sparse(unsigned int aid, unsigned int bid) {
+void ArraySortedReadState::copy_tile_slab_sparse(
+    unsigned int aid, unsigned int bid) {
   // Exit if copy is done for this attribute
   if (tile_slab_state_.copy_tile_slab_done_[aid]) {
     copy_state_.buffer_sizes_[bid] = 0;  // Nothing written
@@ -1322,7 +1325,8 @@ void ArraySortedReadState::copy_tile_slab_sparse(unsigned int aid, unsigned int 
     tile_slab_state_.copy_tile_slab_done_[aid] = true;
 }
 
-void ArraySortedReadState::copy_tile_slab_sparse_var(unsigned int aid, unsigned int bid) {
+void ArraySortedReadState::copy_tile_slab_sparse_var(
+    unsigned int aid, unsigned int bid) {
   // Exit if copy is done for this attribute
   if (tile_slab_state_.copy_tile_slab_done_[aid]) {
     copy_state_.buffer_sizes_[bid] = 0;      // Nothing written
@@ -1486,7 +1490,8 @@ uint64_t ArraySortedReadState::get_tile_id(unsigned int aid) {
   // For easy reference
   auto current_coords = (const T*)tile_slab_state_.current_coords_[aid];
   auto tile_extents = (const T*)query_->array_schema()->tile_extents();
-  uint64_t* tile_offset_per_dim = tile_slab_info_[copy_id_].tile_offset_per_dim_;
+  uint64_t* tile_offset_per_dim =
+      tile_slab_info_[copy_id_].tile_offset_per_dim_;
 
   // Calculate tile id
   uint64_t tid = 0;
@@ -1527,7 +1532,7 @@ void ArraySortedReadState::init_tile_slab_info() {
       info.start_offsets_[attr] = nullptr;
     }
 
-    info.tile_num_ = INVALID;
+    info.tile_num_ = INVALID_UINT64;
   }
 }
 
@@ -1824,7 +1829,7 @@ bool ArraySortedReadState::next_tile_slab_sparse_col<float>() {
     tile_slab[copy_id_][2 * (dim_num_ - 1)] = subarray[2 * (dim_num_ - 1)];
     float upper = subarray[2 * (dim_num_ - 1)] + tile_extents[dim_num_ - 1];
     float cropped_upper =
-            (float)floor(
+        (float)floor(
             (upper - domain[2 * (dim_num_ - 1)]) / tile_extents[dim_num_ - 1]) *
             tile_extents[dim_num_ - 1] +
         domain[2 * (dim_num_ - 1)];
@@ -1998,7 +2003,7 @@ bool ArraySortedReadState::next_tile_slab_sparse_row<float>() {
     tile_slab[copy_id_][0] = subarray[0];
     float upper = subarray[0] + tile_extents[0];
     float cropped_upper =
-            (float)floor((upper - domain[0]) / tile_extents[0]) * tile_extents[0] +
+        (float)floor((upper - domain[0]) / tile_extents[0]) * tile_extents[0] +
         domain[0];
     tile_slab[copy_id_][1] = MIN(cropped_upper - FLT_MIN, subarray[1]);
 

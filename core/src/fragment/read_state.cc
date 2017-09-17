@@ -49,7 +49,7 @@ namespace tiledb {
 /*        STATIC CONSTANTS        */
 /* ****************************** */
 
-const uint64_t ReadState::INVALID = UINT64_MAX;
+const uint64_t ReadState::INVALID_UINT64 = UINT64_MAX;
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -66,7 +66,7 @@ ReadState::ReadState(
   done_ = false;
   last_tile_coords_ = nullptr;
   search_tile_overlap_subarray_ = std::malloc(2 * coords_size_);
-  search_tile_pos_ = INVALID;
+  search_tile_pos_ = INVALID_UINT64;
   tmp_coords_ = std::malloc(coords_size_);
 
   init_tiles();
@@ -108,7 +108,7 @@ Status ReadState::copy_cells(
     uint64_t tile_i,
     void* buffer,
     uint64_t buffer_size,
-    uint64_t& buffer_offset,
+    uint64_t* buffer_offset,
     const CellPosRange& cell_pos_range) {
   // Sanity check
   assert(!array_schema_->var_size(attribute_id));
@@ -137,20 +137,20 @@ Status ReadState::copy_cells(
     return Status::Ok();
 
   // Calculate the total size to copy
-  uint64_t buffer_free_space = buffer_size - buffer_offset;
+  uint64_t buffer_free_space = buffer_size - *buffer_offset;
   buffer_free_space = (buffer_free_space / cell_size) * cell_size;
   uint64_t bytes_left_to_copy = end_offset - tile->offset() + 1;
   uint64_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
 
   // Copy and update current buffer and tile offsets
-  char* buffer_c = static_cast<char*>(buffer) + buffer_offset;
+  char* buffer_c = static_cast<char*>(buffer) + *buffer_offset;
   if (bytes_to_copy != 0) {
     if (tile->in_mem()) {
       RETURN_NOT_OK(tile->read(buffer_c, bytes_to_copy));
     } else {
       RETURN_NOT_OK(tile_io->read_from_tile(tile, buffer_c, bytes_to_copy));
     }
-    buffer_offset += bytes_to_copy;
+    *buffer_offset += bytes_to_copy;
   }
 
   // Handle buffer overflow
@@ -166,10 +166,10 @@ Status ReadState::copy_cells_var(
     uint64_t tile_i,
     void* buffer,
     uint64_t buffer_size,
-    uint64_t& buffer_offset,
+    uint64_t* buffer_offset,
     void* buffer_var,
     uint64_t buffer_var_size,
-    uint64_t& buffer_var_offset,
+    uint64_t* buffer_var_offset,
     const CellPosRange& cell_pos_range) {
   // Sanity check
   assert(array_schema_->var_size(attribute_id));
@@ -196,9 +196,9 @@ Status ReadState::copy_cells_var(
     return Status::Ok();
 
   // Calculate the total size to copy
-  uint64_t buffer_free_space = buffer_size - buffer_offset;
+  uint64_t buffer_free_space = buffer_size - *buffer_offset;
   buffer_free_space = (buffer_free_space / cell_size) * cell_size;
-  uint64_t buffer_var_free_space = buffer_var_size - buffer_var_offset;
+  uint64_t buffer_var_free_space = buffer_var_size - *buffer_var_offset;
   uint64_t bytes_left_to_copy = end_offset - tile->offset() + 1;
   uint64_t bytes_to_copy = MIN(bytes_left_to_copy, buffer_free_space);
   uint64_t bytes_var_to_copy;
@@ -220,7 +220,7 @@ Status ReadState::copy_cells_var(
       &bytes_var_to_copy));
 
   // For easy reference
-  void* buffer_start = static_cast<char*>(buffer) + buffer_offset;
+  void* buffer_start = static_cast<char*>(buffer) + *buffer_offset;
 
   // Potentially update tile offset to the beginning of the overlap range
   const uint64_t* tile_var_start;
@@ -239,16 +239,16 @@ Status ReadState::copy_cells_var(
 
     // Shift variable offsets
     shift_var_offsets(
-        buffer_start, end_cell_pos - start_cell_pos + 1, buffer_var_offset);
+        buffer_start, end_cell_pos - start_cell_pos + 1, *buffer_var_offset);
 
-    char* buffer_var_c = static_cast<char*>(buffer_var) + buffer_var_offset;
+    char* buffer_var_c = static_cast<char*>(buffer_var) + *buffer_var_offset;
     if (tile_var->in_mem()) {
       RETURN_NOT_OK(tile_var->read(buffer_var_c, bytes_var_to_copy));
     } else {
       RETURN_NOT_OK(tile_io_var->read_from_tile(
           tile_var, buffer_var_c, bytes_var_to_copy));
     }
-    buffer_var_offset += bytes_var_to_copy;
+    *buffer_var_offset += bytes_var_to_copy;
   }
 
   // Check for overflow
@@ -257,7 +257,7 @@ Status ReadState::copy_cells_var(
 
   // Entering this if condition implies that the var data in this cell is so
   // large that the allocated buffer cannot hold it
-  if (buffer_offset == 0u && bytes_to_copy == 0u)
+  if (*buffer_offset == 0u && bytes_to_copy == 0u)
     overflow_[attribute_id] = true;
 
   return Status::Ok();
@@ -274,7 +274,7 @@ bool ReadState::done() const {
 void ReadState::get_bounding_coords(void* bounding_coords) const {
   // For easy reference
   uint64_t pos = search_tile_pos_;
-  assert(pos != INVALID);
+  assert(pos != INVALID_UINT64);
   std::memcpy(
       bounding_coords, metadata_->bounding_coords()[pos], 2 * coords_size_);
 }
@@ -289,7 +289,7 @@ Status ReadState::get_coords_after(
   RETURN_NOT_OK(read_tile(attribute_num_ + 1, search_tile_pos_));
 
   // Compute the cell position at or after the coords
-  uint64_t coords_after_pos = INVALID;
+  uint64_t coords_after_pos = INVALID_UINT64;
   RETURN_NOT_OK(get_cell_pos_after(coords, &coords_after_pos));
 
   // Invalid position
@@ -325,9 +325,9 @@ Status ReadState::get_enclosing_coords(
   RETURN_NOT_OK(read_tile(attribute_num_ + 1, tile_i));
 
   // Compute the appropriate cell positions
-  uint64_t start_pos = INVALID;
-  uint64_t end_pos = INVALID;
-  uint64_t target_pos = INVALID;
+  uint64_t start_pos = INVALID_UINT64;
+  uint64_t end_pos = INVALID_UINT64;
+  uint64_t target_pos = INVALID_UINT64;
   RETURN_NOT_OK(get_cell_pos_at_or_after(start_coords, &start_pos));
   RETURN_NOT_OK(get_cell_pos_at_or_before(end_coords, &end_pos));
   RETURN_NOT_OK(get_cell_pos_at_or_before(target_coords, &target_pos));
@@ -343,7 +343,7 @@ Status ReadState::get_enclosing_coords(
   // Calculate left and right pos
   uint64_t left_pos;
   if (target_exists)
-    left_pos = (target_pos == 0) ? INVALID : target_pos - 1;
+    left_pos = (target_pos == 0) ? INVALID_UINT64 : target_pos - 1;
   else
     left_pos = target_pos;
   uint64_t right_pos = target_pos + 1;
@@ -389,8 +389,8 @@ Status ReadState::get_fragment_cell_pos_range_sparse(
   RETURN_NOT_OK(read_tile(attribute_num_ + 1, tile_i));
 
   // Compute the appropriate cell positions
-  uint64_t start_pos = INVALID;
-  uint64_t end_pos = INVALID;
+  uint64_t start_pos = INVALID_UINT64;
+  uint64_t end_pos = INVALID_UINT64;
   RETURN_NOT_OK(get_cell_pos_at_or_after(cell_range, &start_pos));
   RETURN_NOT_OK(get_cell_pos_at_or_before(&cell_range[dim_num], &end_pos));
 
@@ -399,7 +399,8 @@ Status ReadState::get_fragment_cell_pos_range_sparse(
   if (start_pos <= end_pos)  // There are results
     fragment_cell_pos_range->second = CellPosRange(start_pos, end_pos);
   else  // There are NO results
-    fragment_cell_pos_range->second = CellPosRange(INVALID, INVALID);
+    fragment_cell_pos_range->second =
+        CellPosRange(INVALID_UINT64, INVALID_UINT64);
 
   // Success
   return Status::Ok();
@@ -565,8 +566,8 @@ Status ReadState::get_fragment_cell_ranges_sparse(
   RETURN_NOT_OK(read_tile(attribute_num_ + 1, search_tile_pos_));
 
   // Get cell positions for the cell range
-  uint64_t start_pos = INVALID;
-  uint64_t end_pos = INVALID;
+  uint64_t start_pos = INVALID_UINT64;
+  uint64_t end_pos = INVALID_UINT64;
   RETURN_NOT_OK(get_cell_pos_at_or_after(start_coords, &start_pos));
   RETURN_NOT_OK(get_cell_pos_at_or_before(end_coords, &end_pos));
 
@@ -576,7 +577,7 @@ Status ReadState::get_fragment_cell_ranges_sparse(
   // TODO: BIG CHECK
 
   uint64_t current_start_pos = start_pos;
-  uint64_t current_end_pos = INVALID;  // Indicates no active range
+  uint64_t current_end_pos = INVALID_UINT64;
   for (uint64_t i = start_pos; i <= end_pos; ++i) {
     RETURN_NOT_OK(get_coords_from_search_tile(i, &cell));
 
@@ -609,13 +610,13 @@ Status ReadState::get_fragment_cell_ranges_sparse(
             coords_size_));
 
         fragment_cell_ranges->emplace_back(fragment_cell_range);
-        current_end_pos = INVALID;  // No active range
+        current_end_pos = INVALID_UINT64;  // No active range
       }
     }
   }
 
   // Add last cell range
-  if (current_end_pos != INVALID) {
+  if (current_end_pos != INVALID_UINT64) {
     FragmentCellRange fragment_cell_range;
     fragment_cell_range.first = FragmentInfo(fragment_i, search_tile_pos_);
     fragment_cell_range.second = std::malloc(2 * coords_size_);
@@ -725,7 +726,7 @@ void ReadState::get_next_overlapping_tile_sparse() {
   auto subarray = static_cast<const T*>(query_->subarray());
 
   // Update the search tile position
-  if (search_tile_pos_ == INVALID)
+  if (search_tile_pos_ == INVALID_UINT64)
     search_tile_pos_ = tile_search_range_[0];
   else
     ++search_tile_pos_;
@@ -769,7 +770,7 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
     tile_subarray_end[i] = tile_subarray[2 * i + 1];
 
   // Update the search tile position
-  if (search_tile_pos_ == INVALID)
+  if (search_tile_pos_ == INVALID_UINT64)
     search_tile_pos_ = tile_search_range_[0];
 
   // Reset overlaps
@@ -913,7 +914,7 @@ Status ReadState::compute_bytes_to_copy(
     // Invariants:
     // (tile[min-1] - tile[start_cell_pos]) < buffer_var_free_space AND
     // (tile[max+1] - tile[start_cell_pos]) > buffer_var_free_space
-    while (max != INVALID && min <= max) {
+    while (max != INVALID_UINT64 && min <= max) {
       med = min + ((max - min) / 2);
 
       // Calculate variable bytes to copy
@@ -922,7 +923,7 @@ Status ReadState::compute_bytes_to_copy(
 
       // Check condition
       if (*bytes_var_to_copy > buffer_var_free_space)
-        max = (med > 0) ? (med - 1) : INVALID;
+        max = (med > 0) ? (med - 1) : INVALID_UINT64;
       else if (*bytes_var_to_copy < buffer_var_free_space)
         min = med + 1;
       else
@@ -930,13 +931,13 @@ Status ReadState::compute_bytes_to_copy(
     }
 
     // Determine the end position of the range
-    if (min > max || max == INVALID)
-      *end_cell_pos = (min > 1) ? min - 2 : INVALID;
+    if (min > max || max == INVALID_UINT64)
+      *end_cell_pos = (min > 1) ? min - 2 : INVALID_UINT64;
     else
       *end_cell_pos = med - 1;
 
     // Update variable bytes to copy
-    if (*end_cell_pos != INVALID) {
+    if (*end_cell_pos != INVALID_UINT64) {
       RETURN_NOT_OK(get_offset(attribute_id, *end_cell_pos + 1, &end_offset));
       *bytes_var_to_copy = *end_offset - *start_offset;
     } else {
@@ -945,7 +946,7 @@ Status ReadState::compute_bytes_to_copy(
   }
 
   // Update bytes to copy
-  uint64_t bytes_to_copy_tmp = (*end_cell_pos != INVALID) ?
+  uint64_t bytes_to_copy_tmp = (*end_cell_pos != INVALID_UINT64) ?
                                    (*end_cell_pos - start_cell_pos + 1) *
                                        constants::cell_var_offset_size :
                                    0;
@@ -1042,7 +1043,8 @@ void ReadState::compute_tile_search_range() {
   compute_tile_search_range_col_or_row<T>();
 
   // Handle no overlap
-  if (tile_search_range_[0] == INVALID || tile_search_range_[1] == INVALID)
+  if (tile_search_range_[0] == INVALID_UINT64 ||
+      tile_search_range_[1] == INVALID_UINT64)
     done_ = true;
 }
 
@@ -1072,7 +1074,7 @@ void ReadState::compute_tile_search_range_col_or_row() {
   uint64_t med = min + ((max - min) / 2);
   const T* tile_start_coords;
   const T* tile_end_coords;
-  while (max != INVALID && min <= max) {
+  while (max != INVALID_UINT64 && min <= max) {
     med = min + ((max - min) / 2);
 
     // Get info for bounding coordinates
@@ -1083,7 +1085,7 @@ void ReadState::compute_tile_search_range_col_or_row() {
     if (array_schema_->tile_cell_order_cmp(
             subarray_min_coords,
             tile_start_coords) < 0) {  // Subarray min precedes MBR
-      max = (med > 0) ? med - 1 : INVALID;
+      max = (med > 0) ? med - 1 : INVALID_UINT64;
     } else if (
         array_schema_->tile_cell_order_cmp(
             subarray_min_coords,
@@ -1097,9 +1099,9 @@ void ReadState::compute_tile_search_range_col_or_row() {
   bool is_unary = utils::is_unary_subarray(subarray, dim_num);
 
   // Determine the start position of the range
-  if (max == INVALID || max < min)
+  if (max == INVALID_UINT64 || max < min)
     // Subarray min precedes the tile at position min
-    tile_search_range_[0] = (is_unary) ? INVALID : min;
+    tile_search_range_[0] = (is_unary) ? INVALID_UINT64 : min;
   else
     // Subarray min included in a tile
     tile_search_range_[0] = med;
@@ -1124,7 +1126,7 @@ void ReadState::compute_tile_search_range_col_or_row() {
       if (array_schema_->tile_cell_order_cmp(
               subarray_max_coords,
               tile_start_coords) < 0) {  // Subarray max precedes MBR
-        max = (med > 0) ? med - 1 : INVALID;
+        max = (med > 0) ? med - 1 : INVALID_UINT64;
       } else if (
           array_schema_->tile_cell_order_cmp(
               subarray_max_coords,
@@ -1136,7 +1138,7 @@ void ReadState::compute_tile_search_range_col_or_row() {
     }
 
     // Determine the start position of the range
-    if (max == INVALID || max < min)
+    if (max == INVALID_UINT64 || max < min)
       // Subarray max succeeds the tile at position max
       tile_search_range_[1] = max;
     else  // Subarray max included in a tile
@@ -1144,10 +1146,11 @@ void ReadState::compute_tile_search_range_col_or_row() {
   }
 
   // No overlap
-  if (tile_search_range_[0] == INVALID || tile_search_range_[1] == INVALID ||
+  if (tile_search_range_[0] == INVALID_UINT64 ||
+      tile_search_range_[1] == INVALID_UINT64 ||
       tile_search_range_[1] < tile_search_range_[0]) {
-    tile_search_range_[0] = INVALID;
-    tile_search_range_[1] = INVALID;
+    tile_search_range_[0] = INVALID_UINT64;
+    tile_search_range_[1] = INVALID_UINT64;
   }
 
   // Clean up
@@ -1200,7 +1203,7 @@ Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
     cmp = array_schema_->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t));
     if (cmp < 0)
-      max = (med > 0) ? med - 1 : INVALID;
+      max = (med > 0) ? med - 1 : INVALID_UINT64;
     else if (cmp > 0)
       min = med + 1;
     else
@@ -1208,7 +1211,7 @@ Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
   }
 
   // Return
-  if (max == INVALID || max < min)
+  if (max == INVALID_UINT64 || max < min)
     *pos = min;  // After
   else
     *pos = med + 1;  // After (med is at)
@@ -1239,7 +1242,7 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
         coords, static_cast<const T*>(coords_t));
 
     if (cmp < 0)
-      max = (med > 0) ? med - 1 : INVALID;
+      max = (med > 0) ? med - 1 : INVALID_UINT64;
     else if (cmp > 0)
       min = med + 1;
     else
@@ -1247,7 +1250,7 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
   }
 
   // Return
-  if (max == INVALID || max < min)
+  if (max == INVALID_UINT64 || max < min)
     *pos = min;  // After
   else
     *pos = med;  // At
@@ -1277,7 +1280,7 @@ Status ReadState::get_cell_pos_at_or_before(
     cmp = array_schema_->tile_cell_order_cmp<T>(
         coords, static_cast<const T*>(coords_t));
     if (cmp < 0)
-      max = (med > 0) ? med - 1 : INVALID;
+      max = (med > 0) ? med - 1 : INVALID_UINT64;
     else if (cmp > 0)
       min = med + 1;
     else
@@ -1285,7 +1288,7 @@ Status ReadState::get_cell_pos_at_or_before(
   }
 
   // Return
-  if (max == INVALID || max < min)
+  if (max == INVALID_UINT64 || max < min)
     *end_pos = max;  // Before
   else
     *end_pos = med;  // At
@@ -1350,7 +1353,7 @@ void ReadState::init_empty_attributes() {
 void ReadState::init_fetched_tiles() {
   fetched_tile_.resize(attribute_num_ + 2);
   for (unsigned int i = 0; i < attribute_num_ + 2; ++i)
-    fetched_tile_[i] = INVALID;
+    fetched_tile_[i] = INVALID_UINT64;
 }
 
 void ReadState::init_overflow() {

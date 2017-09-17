@@ -320,8 +320,11 @@ class ArraySortedReadState {
   /*          STATIC CONSTANTS         */
   /* ********************************* */
 
-  /** Indicates an invalid value. */
-  static const uint64_t INVALID;
+  /** Indicates an invalid uint64 value. */
+  static const uint64_t INVALID_UINT64;
+
+  /** Indicates an invalid unsigned int value. */
+  static const unsigned int INVALID_UNIT;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

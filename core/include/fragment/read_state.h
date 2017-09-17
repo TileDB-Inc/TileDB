@@ -109,7 +109,7 @@ class ReadState {
       uint64_t tile_i,
       void* buffer,
       uint64_t buffer_size,
-      uint64_t& buffer_offset,
+      uint64_t* buffer_offset,
       const CellPosRange& cell_pos_range);
 
   /**
@@ -133,10 +133,10 @@ class ReadState {
       uint64_t tile_i,
       void* buffer,
       uint64_t buffer_size,
-      uint64_t& buffer_offset,
+      uint64_t* buffer_offset,
       void* buffer_var,
       uint64_t buffer_var_size,
-      uint64_t& buffer_var_offset,
+      uint64_t* buffer_var_offset,
       const CellPosRange& cell_pos_range);
 
   /** Returns *true* if the read state corresponds to a dense fragment. */
@@ -414,8 +414,8 @@ class ReadState {
   /*          STATIC CONSTANTS         */
   /* ********************************* */
 
-  /** Indicates an invalid value. */
-  static const uint64_t INVALID;
+  /** Indicates an invalid uint64_t value. */
+  static const uint64_t INVALID_UINT64;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

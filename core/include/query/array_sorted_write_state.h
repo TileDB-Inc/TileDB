@@ -256,7 +256,7 @@ class ArraySortedWriteState {
   /* ********************************* */
 
   /** Indicates an invalid value. */
-  static const uint64_t INVALID;
+  static const uint64_t INVALID_UINT64;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

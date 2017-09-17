@@ -54,19 +54,6 @@ class ArrayReadState {
   /*           TYPE DEFINITIONS        */
   /* ********************************* */
 
-  /**
-   * Class of fragment cell range objects used in the priority queue algorithm.
-   */
-  template <class T>
-  class PQFragmentCellRange;
-
-  /**
-   * Wrapper of comparison function in the priority queue of the fragment cell
-   * ranges.
-   */
-  template <class T>
-  class SmallerPQFragmentCellRange;
-
   /** A cell position pair [first, second]. */
   typedef std::pair<uint64_t, uint64_t> CellPosRange;
 
@@ -98,7 +85,7 @@ class ArrayReadState {
   /**
    * Constructor.
    *
-   * @param array The array this array read state belongs to.
+   * @param query The query this array read state belongs to.
    */
   explicit ArrayReadState(Query* query);
 
@@ -106,26 +93,21 @@ class ArrayReadState {
   ~ArrayReadState();
 
   /* ********************************* */
-  /*             ACCESSORS             */
+  /*                API                */
   /* ********************************* */
 
   /** Indicates whether the read on at least one attribute overflowed. */
   bool overflow() const;
 
   /** Indicates whether the read on a particular attribute overflowed. */
-  bool overflow(int attribute_id) const;
+  bool overflow(unsigned int attribute_id) const;
 
   /**
-   * Performs a read operation in an array, which must be initialized with mode
-   * TILEDB_ARRAY_READ. The function retrieves the result cells that lie inside
-   * the subarray specified in Array::init() or Array::reset_subarray(). The
-   * results are written in input buffers provided by the user, which are also
-   * allocated by the user. Note that the results are written in the buffers in
-   * the same order they appear on the disk, which leads to maximum performance.
+   * The read operations
    *
    * @param buffers An array of buffers, one for each attribute. These must be
-   *     provided in the same order as the attributes specified in
-   *     Array::init() or Array::reset_attributes(). The case of variable-sized
+   *     provided in the same order as the attributes specified upon query
+   *     initialization. The case of variable-sized
    *     attributes is special. Instead of providing a single buffer for such an
    *     attribute, **two** must be provided: the second will hold the
    *     variable-sized cell values, whereas the first holds the start offsets
@@ -139,7 +121,7 @@ class ArrayReadState {
    *     on an overflow flag which can be checked with function overflow(). The
    *     next invocation will resume for the point the previous one stopped,
    *     without inflicting a considerable performance penalty due to overflow.
-   * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
+   * @return Status
    */
   Status read(void** buffers, uint64_t* buffer_sizes);
 
@@ -147,8 +129,6 @@ class ArrayReadState {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-
-  Query* query_;
 
   /** The array schema. */
   const ArraySchema* array_schema_;
@@ -192,6 +172,9 @@ class ArrayReadState {
   /** Indicates overflow for each attribute. */
   std::vector<bool> overflow_;
 
+  /** The query this array read state belongs to. */
+  Query* query_;
+
   /** Indicates whether the current read round is done for each attribute. */
   std::vector<bool> read_round_done_;
 
@@ -200,6 +183,16 @@ class ArrayReadState {
 
   /** The tile domain of the query subarray. */
   void* subarray_tile_domain_;
+
+  /* ********************************* */
+  /*          STATIC CONSTANTS         */
+  /* ********************************* */
+
+  /** Indicates an invalid uint64_t value. */
+  static const uint64_t INVALID_UINT64;
+
+  /** Indicates an invalid unsigned int value. */
+  static const unsigned int INVALID_UINT;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -217,12 +210,12 @@ class ArrayReadState {
    * @tparam T The coordinates type.
    * @param fragment_cell_ranges The input fragment cell ranges.
    * @param fragment_cell_pos_ranges The output fragment cell position ranges.
-   * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
+   * @return Status
    */
   template <class T>
   Status compute_fragment_cell_pos_ranges(
-      FragmentCellRanges& fragment_cell_ranges,
-      FragmentCellPosRanges& fragment_cell_pos_ranges) const;
+      FragmentCellRanges* fragment_cell_ranges,
+      FragmentCellPosRanges* fragment_cell_pos_ranges) const;
 
   /**
    * Computes the smallest end bounding coordinates for the current read round.
@@ -241,11 +234,11 @@ class ArrayReadState {
    * @tparam T The coordinates type.
    * @param unsorted_fragment_cell_ranges It will hold the result of this
    *     function.
-   * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
+   * @return Status
    */
   template <class T>
   Status compute_unsorted_fragment_cell_ranges_dense(
-      std::vector<FragmentCellRanges>& unsorted_fragment_cell_ranges);
+      std::vector<FragmentCellRanges>* unsorted_fragment_cell_ranges);
 
   /**
    * Computes the relevant fragment cell ranges for the current read run,
@@ -257,11 +250,11 @@ class ArrayReadState {
    * @tparam T The coordinates type.
    * @param unsorted_fragment_cell_ranges It will hold the result of this
    *     function.
-   * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
+   * @return Status
    */
   template <class T>
   Status compute_unsorted_fragment_cell_ranges_sparse(
-      std::vector<FragmentCellRanges>& unsorted_fragment_cell_ranges);
+      std::vector<FragmentCellRanges>* unsorted_fragment_cell_ranges);
 
   /**
    * Copies the cell ranges calculated in the current read round into the
@@ -271,13 +264,13 @@ class ArrayReadState {
    * @param buffer The buffer where the read copy be performed into.
    * @param buffer_size The size (in bytes) of *buffer*.
    * @param buffer_offset The offset in *buffer* where the copy will start from.
-   * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
+   * @return Status
    */
   Status copy_cells(
-      int attribute_id,
+      unsigned int attribute_id,
       void* buffer,
       uint64_t buffer_size,
-      uint64_t& buffer_offset);
+      uint64_t* buffer_offset);
 
   /**
    * Copies the cell ranges calculated in the current read round into the
@@ -293,10 +286,10 @@ class ArrayReadState {
    * @return Status
    */
   Status copy_cells_generic(
-      int attribute_id,
+      unsigned int attribute_id,
       void* buffer,
       uint64_t buffer_size,
-      uint64_t& buffer_offset,
+      uint64_t* buffer_offset,
       const void* empty_type_value,
       uint64_t empty_type_size);
 
@@ -314,16 +307,16 @@ class ArrayReadState {
    * @param buffer_var_size The size (in bytes) of *buffer_var*.
    * @param buffer_var_offset The offset in *buffer_var* where the copy will
    *     start from.
-   * @return TILEDB_ARS on success and TILEDB_ARS_ERR on error.
+   * @return Status
    */
   Status copy_cells_var(
-      int attribute_id,
+      unsigned int attribute_id,
       void* buffer,
       uint64_t buffer_size,
-      uint64_t& buffer_offset,
+      uint64_t* buffer_offset,
       void* buffer_var,
       uint64_t buffer_var_size,
-      uint64_t& buffer_var_offset);
+      uint64_t* buffer_var_offset);
 
   /**
    * Copies the cell ranges calculated in the current read round into the
@@ -345,13 +338,13 @@ class ArrayReadState {
    * @return Status
    */
   Status copy_cells_var_generic(
-      int attribute_id,
+      unsigned int attribute_id,
       void* buffer,
       uint64_t buffer_size,
-      uint64_t& buffer_offset,
+      uint64_t* buffer_offset,
       void* buffer_var,
       uint64_t buffer_var_size,
-      uint64_t& buffer_var_offset,
+      uint64_t* buffer_var_offset,
       const void* empty_type_value,
       uint64_t empty_type_size);
 
@@ -366,12 +359,13 @@ class ArrayReadState {
    * @param cell_pos_range The cell range to be copied.
    * @param empty_type_value a reference to the empty type value
    * @param empty_type_size the size (in bytes) of the empty type value
+   * @return void
    */
   void copy_cells_with_empty_generic(
-      int attribute_id,
+      unsigned int attribute_id,
       void* buffer,
       uint64_t buffer_size,
-      uint64_t& buffer_offset,
+      uint64_t* buffer_offset,
       const CellPosRange& cell_pos_range,
       const void* empty_type_val,
       uint64_t emtpy_type_size);
@@ -395,15 +389,16 @@ class ArrayReadState {
    * @param cell_pos_range The cell range to be copied.
    * @param empty_type_val a reference to the empty type value
    * @param emtpy_type_size the size (in bytes) of the empty type value
+   * @return void
    */
   void copy_cells_with_empty_var_generic(
-      int attribute_id,
+      unsigned int attribute_id,
       void* buffer,
       uint64_t buffer_size,
-      uint64_t& buffer_offset,
+      uint64_t* buffer_offset,
       void* buffer_var,
       uint64_t buffer_var_size,
-      uint64_t& buffer_var_offset,
+      uint64_t* buffer_var_offset,
       const CellPosRange& cell_pos_range,
       const void* empty_type_val,
       uint64_t empty_type_size);
@@ -422,7 +417,7 @@ class ArrayReadState {
    * round, focusing on the dense case.
    *
    * @tparam T The coordinates type.
-   * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
+   * @return Status
    */
   template <class T>
   Status get_next_fragment_cell_ranges_dense();
@@ -432,7 +427,7 @@ class ArrayReadState {
    * round, focusing on the sparse case.
    *
    * @tparam T The coordinates type.
-   * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
+   * @return Status
    */
   template <class T>
   Status get_next_fragment_cell_ranges_sparse();
@@ -481,7 +476,7 @@ class ArrayReadState {
    *
    * @param buffers See read().
    * @param buffer_sizes See read().
-   * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
+   * @return Status
    */
   Status read_dense(void** buffers, uint64_t* buffer_sizes);
 
@@ -492,9 +487,10 @@ class ArrayReadState {
    * @param attribute_id The attribute this read focuses on.
    * @param buffer See read().
    * @param buffer_size See read().
-   * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
+   * @return Status
    */
-  Status read_dense_attr(int attribute_id, void* buffer, uint64_t& buffer_size);
+  Status read_dense_attr(
+      unsigned int attribute_id, void* buffer, uint64_t* buffer_size);
 
   /**
    * Performs a read operation in a **dense** array, focusing on a single
@@ -504,10 +500,11 @@ class ArrayReadState {
    * @param attribute_id The attribute this read focuses on.
    * @param buffer See read().
    * @param buffer_size See read().
-   * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
+   * @return Status
    */
   template <class T>
-  Status read_dense_attr(int attribute_id, void* buffer, uint64_t& buffer_size);
+  Status read_dense_attr(
+      unsigned int attribute_id, void* buffer, uint64_t* buffer_size);
 
   /**
    * Performs a read operation in a **dense** array, focusing on a single
@@ -518,14 +515,14 @@ class ArrayReadState {
    * @param buffer_size See read().
    * @param buffer_var See read() - actual variable-sized cell values.
    * @param buffer_var_size See read().
-   * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
+   * @return Status
    */
   Status read_dense_attr_var(
-      int attribute_id,
+      unsigned int attribute_id,
       void* buffer,
-      uint64_t& buffer_size,
+      uint64_t* buffer_size,
       void* buffer_var,
-      uint64_t& buffer_var_size);
+      uint64_t* buffer_var_size);
 
   /**
    * Performs a read operation in a **dense** array, focusing on a single
@@ -537,22 +534,22 @@ class ArrayReadState {
    * @param buffer_size See read().
    * @param buffer_var See read() - actual variable-sized cell values.
    * @param buffer_var_size See read().
-   * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
+   * @return Status
    */
   template <class T>
   Status read_dense_attr_var(
-      int attribute_id,
+      unsigned int attribute_id,
       void* buffer,
-      uint64_t& buffer_size,
+      uint64_t* buffer_size,
       void* buffer_var,
-      uint64_t& buffer_var_size);
+      uint64_t* buffer_var_size);
 
   /**
    * Performs a read operation in a **sparse** array.
    *
    * @param buffers See read().
    * @param buffer_sizes See read().
-   * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
+   * @return Status
    */
   Status read_sparse(void** buffers, uint64_t* buffer_sizes);
 
@@ -563,10 +560,10 @@ class ArrayReadState {
    * @param attribute_id The attribute this read focuses on.
    * @param buffer See read().
    * @param buffer_size See read().
-   * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
+   * @return Status
    */
   Status read_sparse_attr(
-      int attribute_id, void* buffer, uint64_t& buffer_size);
+      unsigned int attribute_id, void* buffer, uint64_t* buffer_size);
 
   /**
    * Performs a read operation in a **sparse** array, focusing on a single
@@ -576,11 +573,11 @@ class ArrayReadState {
    * @param attribute_id The attribute this read focuses on.
    * @param buffer See read().
    * @param buffer_size See read().
-   * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
+   * @return Status
    */
   template <class T>
   Status read_sparse_attr(
-      int attribute_id, void* buffer, uint64_t& buffer_size);
+      unsigned int attribute_id, void* buffer, uint64_t* buffer_size);
 
   /**
    * Performs a read operation in a **sparse** array, focusing on a single
@@ -591,14 +588,14 @@ class ArrayReadState {
    * @param buffer_size See read().
    * @param buffer_var See read() - actual variable-sized cell values.
    * @param buffer_var_size See read().
-   * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
+   * @return Status
    */
   Status read_sparse_attr_var(
-      int attribute_id,
+      unsigned int attribute_id,
       void* buffer,
-      uint64_t& buffer_size,
+      uint64_t* buffer_size,
       void* buffer_var,
-      uint64_t& buffer_var_size);
+      uint64_t* buffer_var_size);
 
   /**
    * Performs a read operation in a **sparse** array, focusing on a single
@@ -610,15 +607,15 @@ class ArrayReadState {
    * @param buffer_size See read().
    * @param buffer_var See read() - actual variable-sized cell values.
    * @param buffer_var_size See read().
-   * @return TILEDB_ARS_OK for success and TILEDB_ARS_ERR for error.
+   * @return Status
    */
   template <class T>
   Status read_sparse_attr_var(
-      int attribute_id,
+      unsigned int attribute_id,
       void* buffer,
-      uint64_t& buffer_size,
+      uint64_t* buffer_size,
       void* buffer_var,
-      uint64_t& buffer_var_size);
+      uint64_t* buffer_var_size);
 
   /**
    * Uses the heap algorithm to cut and sort the relevant cell ranges for
@@ -629,142 +626,12 @@ class ArrayReadState {
    * @param unsorted_fragment_cell_ranges The unsorted fragment cell ranges.
    * @param fragment_cell_ranges The sorted fragment cell ranges output by
    *     the function as a result.
-   * @return TILEDB_ARS_OK on success and TILEDB_ARS_ERR on error.
+   * @return Status
    */
   template <class T>
   Status sort_fragment_cell_ranges(
-      std::vector<FragmentCellRanges>& unsorted_fragment_cell_ranges,
-      FragmentCellRanges& fragment_cell_ranges) const;
-};
-
-/**
- * Class of fragment cell range objects used in the priority queue algorithm.
- */
-template <class T>
-class ArrayReadState::PQFragmentCellRange {
- public:
-  /**
-   * Constructor.
-   *
-   * @param array_schema The schema of the array.
-   * @param fragment_read_states The read states of all fragments in the array.
-   */
-  PQFragmentCellRange(
-      const ArraySchema* array_schema,
-      const std::vector<ReadState*>* fragment_read_states);
-
-  /** Returns true if the fragment the range belongs to is dense. */
-  bool dense() const;
-
-  /**
-   * Returns true if the calling object begins after the end of the input
-   * range.
-   */
-  bool begins_after(const PQFragmentCellRange* fcr) const;
-
-  /** Returns true if the calling object ends after the input range. */
-  bool ends_after(const PQFragmentCellRange* fcr) const;
-
-  /** Exports information to a fragment cell range. */
-  void export_to(FragmentCellRange& fragment_cell_range);
-
-  /** Imports information from a fragment cell range. */
-  void import_from(const FragmentCellRange& fragment_cell_range);
-
-  /**
-   * Returns true if the calling object range must be split by the input
-   * range.
-   */
-  bool must_be_split(const PQFragmentCellRange* fcr) const;
-
-  /**
-   * Returns true if the input range must be trimmed by the callling object.
-   */
-  bool must_trim(const PQFragmentCellRange* fcr) const;
-
-  /**
-   * Splits the calling object into two ranges based on the first input. The
-   * first range will replace the calling object. The second range will be
-   * stored in the second input. The third input is necessary for the
-   * splitting.
-   */
-  void split(
-      const PQFragmentCellRange* fcr,
-      PQFragmentCellRange* fcr_new,
-      const T* tile_domain);
-
-  /**
-   * Splits the calling object into three ranges based on the input fcr.
-   *    - First range: Non-overlapping part of calling object range, stored
-   *      at fcr_left.
-   *    - Second range: A unary range at the left end point of the
-   *      first input, stored at fcr_unary. Note that this may not exist.
-   *    - Third range: The updated calling object range, which is trimmed to
-   *      start after the unary range.
-   */
-  void split_to_3(
-      const PQFragmentCellRange* fcr,
-      PQFragmentCellRange* fcr_left,
-      PQFragmentCellRange* fcr_unary);
-
-  /**
-   * Trims the first input range to the non-overlapping range stored in
-   * the second input range. If the cell range of fcr_trimmed is NULL,
-   * then fcr_trimmed is empty. The third input is necessary for the
-   * trimming.
-   */
-  void trim(
-      const PQFragmentCellRange* fcr,
-      PQFragmentCellRange* fcr_trimmed,
-      const T* tile_domain) const;
-
-  /** Returns true if the range is unary. */
-  bool unary() const;
-
-  /** The cell range as a pair of coordinates. */
-  T* cell_range_;
-  /** The fragment id. */
-  unsigned int fragment_id_;
-  /** The tile id of the left endpoint of the cell range. */
-  uint64_t tile_id_l_;
-  /** The tile id of the right endpoint of the cell range. */
-  uint64_t tile_id_r_;
-  /** The position on disk of the tile corresponding to the cell range. */
-  uint64_t tile_pos_;
-
- private:
-  /** The array schema. */
-  const ArraySchema* array_schema_;
-  /** Size of coordinates. */
-  uint64_t coords_size_;
-  /** Dimension number. */
-  unsigned int dim_num_;
-  /** Stores the read state of each fragment in the array. */
-  const std::vector<ReadState*>* fragment_read_states_;
-};
-
-/**
- * Wrapper of comparison function in the priority queue of the fragment cell
- * ranges.
- */
-template <class T>
-class ArrayReadState::SmallerPQFragmentCellRange {
- public:
-  /** Constructor. */
-  SmallerPQFragmentCellRange();
-
-  /** Constructor. */
-  SmallerPQFragmentCellRange(const ArraySchema* array_schema);
-
-  /**
-   * Comparison operator. First the smallest tile id of the left range end point
-   * wins, then the smallest start range endpoint, then the largest fragment id.
-   */
-  bool operator()(PQFragmentCellRange<T>* a, PQFragmentCellRange<T>* b) const;
-
- private:
-  /** The array schema. */
-  const ArraySchema* array_schema_;
+      std::vector<FragmentCellRanges>* unsorted_fragment_cell_ranges,
+      FragmentCellRanges* fragment_cell_ranges) const;
 };
 
 }  // namespace tiledb
