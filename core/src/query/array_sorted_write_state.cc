@@ -76,7 +76,7 @@ ArraySortedWriteState::ArraySortedWriteState(Query* query)
     tile_slab_init_[i] = false;
     async_wait_[i] = false;
   }
-  for (int i = 0; i < anum; ++i) {
+  for (unsigned int i = 0; i < anum; ++i) {
     if (array_schema->var_size(attribute_ids_[i]))
       attribute_sizes_.push_back(sizeof(uint64_t));
     else
@@ -1729,7 +1729,7 @@ Status ArraySortedWriteState::write_sorted_col() {
 
   // Check if this can be satisfied with a default write
   if (array_schema->cell_order() == Layout::COL_MAJOR &&
-      !memcmp(subarray_, expanded_subarray_, 2 * coords_size_) &&
+      !std::memcmp(subarray_, expanded_subarray_, 2 * coords_size_) &&
       array_schema->is_contained_in_tile_slab_row<T>(subarray))
     return query_->write(buffers_, buffer_sizes_);
 
@@ -1759,7 +1759,7 @@ Status ArraySortedWriteState::write_sorted_row() {
 
   // Check if this can be satisfied with a default write
   if (array_schema->cell_order() == Layout::ROW_MAJOR &&
-      !memcmp(subarray_, expanded_subarray_, 2 * coords_size_) &&
+      !std::memcmp(subarray_, expanded_subarray_, 2 * coords_size_) &&
       array_schema->is_contained_in_tile_slab_col<T>(subarray))
     return query_->write(buffers_, buffer_sizes_);
 

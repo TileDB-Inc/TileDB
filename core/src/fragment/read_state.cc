@@ -460,11 +460,9 @@ Status ReadState::get_fragment_cell_ranges_dense(
         if (dim_num > 1) {
           i = dim_num - 2;
           ++coords[i];
-          while (coords[i] > search_tile_overlap_subarray[2 * i + 1]) {
+          while (i > 0 && coords[i] > search_tile_overlap_subarray[2 * i + 1]) {
             coords[i] = search_tile_overlap_subarray[2 * i];
             ++coords[--i];
-            if (i == 0)
-              break;
           }
         }
       }
