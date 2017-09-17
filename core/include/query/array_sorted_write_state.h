@@ -34,20 +34,20 @@
 #ifndef TILEDB_ARRAY_SORTED_WRITE_STATE_H
 #define TILEDB_ARRAY_SORTED_WRITE_STATE_H
 
+#include "query.h"
+
 #include <condition_variable>
 #include <mutex>
 #include <string>
 #include <vector>
-
-#include "query.h"
 
 namespace tiledb {
 
 class Query;
 
 /**
- * It is responsibled for re-arranging the cells sorted in column- or row-major
- * order within the user subarray, such that they are sorted along the array
+ * It is responsible for re-arranging the cells ordered in column- or row-major
+ * order within the user subarray, such that they are ordered along the array
  * global cell order, and writes them into a new fragment.
  */
 class ArraySortedWriteState {
@@ -56,12 +56,12 @@ class ArraySortedWriteState {
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
-  /** Used in functors. */
+  /** Used in callback functions in an internal async query. */
   struct ASWS_Data {
-    /** An id (typically an attribute id or a tile slab id. */
-    int id_;
+    /** An id (typically an attribute id or a tile slab id.) */
+    unsigned int id_;
     /** Another id (typically a tile id). */
-    int64_t id_2_;
+    uint64_t id_2_;
     /** The calling object. */
     ArraySortedWriteState* asws_;
   };
@@ -79,11 +79,11 @@ class ArraySortedWriteState {
   /** Info about a tile slab. */
   struct TileSlabInfo {
     /** Used in calculations of cell ids, one vector per tile. */
-    int64_t** cell_offset_per_dim_;
+    uint64_t** cell_offset_per_dim_;
     /** Cell slab size per attribute per tile. */
     uint64_t** cell_slab_size_;
     /** Number of cells in a cell slab per tile. */
-    int64_t* cell_slab_num_;
+    uint64_t* cell_slab_num_;
     /**
      * The range overlap of the **normalized** tile slab with each
      *  **normalized** tile range.
@@ -94,9 +94,9 @@ class ArraySortedWriteState {
      */
     uint64_t** start_offsets_;
     /** Number of tiles in the tile slab. */
-    int64_t tile_num_;
+    uint64_t tile_num_;
     /** Used in calculations of tile ids. */
-    int64_t* tile_offset_per_dim_;
+    uint64_t* tile_offset_per_dim_;
   };
 
   /** The state for a tile slab copy. */
@@ -113,7 +113,7 @@ class ArraySortedWriteState {
      */
     uint64_t* current_offsets_;
     /** The current tile per attribute. */
-    int64_t* current_tile_;
+    uint64_t* current_tile_;
   };
 
   /* ********************************* */
@@ -123,7 +123,7 @@ class ArraySortedWriteState {
   /**
    * Constructor.
    *
-   * @param array The array this array sorted read state belongs to.
+   * @param query The query this array sorted read state belongs to.
    */
   explicit ArraySortedWriteState(Query* query);
 
@@ -135,21 +135,27 @@ class ArraySortedWriteState {
   /* ********************************* */
 
   /**
+   * Finalizes the object, and particularly the internal async queries.
+   * The async queries will be finalized in the destructor anyway, but
+   * this function allows capturing errors upon query finalization.
+   */
+  Status finalize();
+
+  /**
    * Initializes the array sorted write state.
    *
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
+   * @return Status
    */
   Status init();
 
   /**
-   * Same as Array::write(), but it sorts the cells in the buffers based on the
-   * array global cell order, prior to writing them to the disk. Note that this
-   * function will fail if there is not enough system memory to hold the cells
-   * of a 'tile slab' overlapping with the selected subarray.
+   * The write function. The cells are ordered in row- or column-major order
+   * and the function will re-order them along the global cell order before
+   * writing them to a new fragment.
    *
    * @param buffers The buffers that hold the input cells to be written.
    * @param buffer_sizes The corresponding buffer sizes.
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
+   * @return Status
    */
   Status write(void** buffers, uint64_t* buffer_sizes);
 
@@ -161,19 +167,20 @@ class ArraySortedWriteState {
   /** Function for advancing a cell slab during a copy operation. */
   void* (*advance_cell_slab_)(void*);
 
-  /** Condition variables used in AIO. */
-  std::condition_variable aio_cv_[2];
+  /** Condition variables used for the internal async queries. */
+  std::condition_variable async_cv_[2];
 
-  /** Data for the AIO requests. */
-  ASWS_Data aio_data_[2];
+  /** Data for the internal async queries. */
+  ASWS_Data async_data_[2];
 
-  /** Mutexes used in AIO. */
-  std::mutex aio_mtx_[2];
+  /** Mutexes used in async queries. */
+  std::mutex async_mtx_[2];
 
-  Query* aio_query_[2];
+  /** The async queries. */
+  Query* async_query_[2];
 
-  /** The array this sorted read state belongs to. */
-  Query* query_;
+  /** Wait for async flags, one for each local buffer. */
+  bool async_wait_[2];
 
   /** The ids of the attributes the array was initialized with. */
   const std::vector<unsigned int> attribute_ids_;
@@ -185,7 +192,7 @@ class ArraySortedWriteState {
   std::vector<uint64_t> attribute_sizes_;
 
   /** Number of allocated buffers. */
-  int buffer_num_;
+  unsigned int buffer_num_;
 
   /** The user buffer offsets. */
   uint64_t* buffer_offsets_;
@@ -206,16 +213,19 @@ class ArraySortedWriteState {
   uint64_t coords_size_;
 
   /** The current id of the buffers the next copy will occur from. */
-  int copy_id_;
+  unsigned int copy_id_;
 
   /** The copy state, one per tile slab. */
   CopyState copy_state_;
 
   /** The number of dimensions in the array. */
-  int dim_num_;
+  unsigned int dim_num_;
 
   /** The expanded subarray, such that it coincides with tile boundaries. */
   void* expanded_subarray_;
+
+  /** The array this sorted read state belongs to. */
+  Query* query_;
 
   /** The query subarray. */
   void* subarray_;
@@ -241,14 +251,16 @@ class ArraySortedWriteState {
   /** The state for the current tile slab being copied. */
   TileSlabState tile_slab_state_;
 
-  /** Wait for AIO flags, one for each local buffer. */
-  bool wait_aio_[2];
+  /* ********************************* */
+  /*          STATIC CONSTANTS         */
+  /* ********************************* */
+
+  /** Indicates an invalid value. */
+  static const uint64_t INVALID;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
-
-  bool separate_fragments() const;
 
   /**
    * Advances a cell slab focusing on column-major order, and updates
@@ -282,7 +294,7 @@ class ArraySortedWriteState {
    * @return void
    */
   template <class T>
-  void advance_cell_slab_col(int aid);
+  void advance_cell_slab_col(unsigned int aid);
 
   /**
    * Advances a cell slab when the requested order is row-major.
@@ -292,27 +304,29 @@ class ArraySortedWriteState {
    * @return void
    */
   template <class T>
-  void advance_cell_slab_row(int aid);
+  void advance_cell_slab_row(unsigned int aid);
 
   /**
-   * Called when an AIO completes.
+   * Called when an async query completes.
    *
    * @param data A ASWS_Request object.
    * @return void
    */
-  static void* aio_done(void* data);
+  static void* async_done(void* data);
 
-  /** Notifies AIO on the input tile slab id. */
-  void aio_notify(int id);
+  /** Notifies an async condition on the input tile slab id. */
+  void async_notify(unsigned int id);
 
-  /** Waits on for AIO on the input tile slab id. */
-  void aio_wait(int id);
+  /**
+   * Sends an async query.
+   *
+   * @param async_id The id of the tile slab the AIO request focuses on.
+   * @return Status
+   */
+  Status async_submit_query(unsigned int async_id);
 
-  /** Sets the flag of wait_aio_[id] to true. */
-  void block_aio(int id);
-
-  /** Sets the flag of wait_copy_[id] to true. */
-  void block_copy(int id);
+  /** Waits on an async condition on the input tile slab id. */
+  void async_wait(unsigned int id);
 
   /**
    * Calculates the number of buffers to be allocated, based on the number
@@ -321,13 +335,6 @@ class ArraySortedWriteState {
    * @return void
    */
   void calculate_buffer_num();
-
-  /**
-   * Calculates the buffer sizes based on the array type.
-   *
-   * @return void
-   */
-  void calculate_buffer_sizes();
 
   /**
    * Calculates the info used in the copy_tile_slab() function, for the case
@@ -388,7 +395,7 @@ class ArraySortedWriteState {
    * @return void.
    */
   template <class T>
-  void calculate_cell_slab_info_col_col(int id, int64_t tid);
+  void calculate_cell_slab_info_col_col(unsigned int id, uint64_t tid);
 
   /**
    * Calculates the info used in the copy_tile_slab() function, for the case
@@ -401,7 +408,7 @@ class ArraySortedWriteState {
    * @return void.
    */
   template <class T>
-  void calculate_cell_slab_info_col_row(int id, int64_t tid);
+  void calculate_cell_slab_info_col_row(unsigned int id, uint64_t tid);
 
   /**
    * Calculates the info used in the copy_tile_slab() function, for the case
@@ -414,7 +421,7 @@ class ArraySortedWriteState {
    * @return void.
    */
   template <class T>
-  void calculate_cell_slab_info_row_row(int id, int64_t tid);
+  void calculate_cell_slab_info_row_row(unsigned int id, uint64_t tid);
 
   /**
    * Calculates the info used in the copy_tile_slab() function, for the case
@@ -427,19 +434,7 @@ class ArraySortedWriteState {
    * @return void.
    */
   template <class T>
-  void calculate_cell_slab_info_row_col(int id, int64_t tid);
-
-  /**
-   * Calculates the info used in the copy_tile_slab() function, for the case
-   * where the **array** cell order is row-major.
-   *
-   * @tparam T The domain type.
-   * @param id The tile slab id.
-   * @param tid The tile id.
-   * @return void.
-   */
-  template <class T>
-  void calculate_cell_slab_info_row(int id, int64_t tid);
+  void calculate_cell_slab_info_row_col(unsigned int id, uint64_t tid);
 
   /**
    * Calculates the **normalized** tile domain overlapped by the input tile
@@ -450,7 +445,7 @@ class ArraySortedWriteState {
    * @return void.
    */
   template <class T>
-  void calculate_tile_domain(int id);
+  void calculate_tile_domain(unsigned int id);
 
   /**
    * Calculates the info used in the copy_tile_slab() function.
@@ -460,7 +455,7 @@ class ArraySortedWriteState {
    * @return void.
    */
   template <class T>
-  void calculate_tile_slab_info(int id);
+  void calculate_tile_slab_info(unsigned int id);
 
   /**
    * Calculates tile slab info for the case where the **array** tile order is
@@ -482,7 +477,7 @@ class ArraySortedWriteState {
    * @return void.
    */
   template <class T>
-  void calculate_tile_slab_info_col(int id);
+  void calculate_tile_slab_info_col(unsigned int id);
 
   /**
    * Calculates tile slab info for the case where the **array** tile order is
@@ -504,7 +499,7 @@ class ArraySortedWriteState {
    * @return void.
    */
   template <class T>
-  void calculate_tile_slab_info_row(int id);
+  void calculate_tile_slab_info_row(unsigned int id);
 
   /**
    * Copies a tile slab from the user buffers into the local buffers,
@@ -526,7 +521,7 @@ class ArraySortedWriteState {
    * @return void.
    */
   template <class T>
-  void copy_tile_slab(int aid, int bid);
+  void copy_tile_slab(unsigned int aid, unsigned int bid);
 
   /**
    * Copies a tile slab from the local buffers into the user buffers,
@@ -539,12 +534,12 @@ class ArraySortedWriteState {
    * @return void.
    */
   template <class T>
-  void copy_tile_slab_var(int aid, int bid);
+  void copy_tile_slab_var(unsigned int aid, unsigned int bid);
 
   /**
    * Creates the copy state buffers.
    *
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
+   * @return Status
    */
   Status create_copy_state_buffers();
 
@@ -567,7 +562,7 @@ class ArraySortedWriteState {
    * @return void
    */
   template <class T>
-  void fill_with_empty(int bid);
+  void fill_with_empty(unsigned int bid);
 
   /**
    * Fills the **a single** cell in a variable-sized buffer of the current copy
@@ -579,7 +574,7 @@ class ArraySortedWriteState {
    * @return void
    */
   template <class T>
-  void fill_with_empty_var(int bid);
+  void fill_with_empty_var(unsigned int bid);
 
   /** Frees the copy state. */
   void free_copy_state();
@@ -599,7 +594,7 @@ class ArraySortedWriteState {
    * @return The cell id.
    */
   template <class T>
-  int64_t get_cell_id(int aid);
+  uint64_t get_cell_id(unsigned int aid);
 
   /**
    * Returns the tile id along the **array** order for the current coordinates
@@ -610,7 +605,7 @@ class ArraySortedWriteState {
    * @return The tile id.
    */
   template <class T>
-  int64_t get_tile_id(int aid);
+  uint64_t get_tile_id(unsigned int aid);
 
   /** Initializes the copy state. */
   void init_copy_state();
@@ -627,7 +622,7 @@ class ArraySortedWriteState {
    * @return void.
    */
   template <class T>
-  void init_tile_slab_info(int id);
+  void init_tile_slab_info(unsigned int id);
 
   /** Initializes the tile slab state. */
   void init_tile_slab_state();
@@ -651,13 +646,19 @@ class ArraySortedWriteState {
   bool next_tile_slab_row();
 
   /**
-   * Same as Array::write(), but it sorts the cells in the buffers based on the
-   * global cell order prior to writing them on disk. Note that this function
-   * will fail if there is not enough system memory to hold the cells of a
-   * 'tile slab' overlapping with the selected subarray.
+   * Returns true if every async write should create a separate fragment.
+   * This happens when the cells in two different writes do not appear
+   * contiguous along the global cell order.
+   */
+  bool separate_fragments() const;
+
+  /**
+   * The write function. The cells are ordered in row- or column-major order
+   * and the function will re-order them along the global cell order before
+   * writing them to a new fragment.
    *
    * @tparam T The domain type.
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
+   * @return Status
    */
   template <class T>
   Status write();
@@ -667,7 +668,7 @@ class ArraySortedWriteState {
    * column-major order with respect to the selected subarray.
    *
    * @tparam T The domain type.
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
+   * @return Status
    */
   template <class T>
   Status write_sorted_col();
@@ -677,26 +678,10 @@ class ArraySortedWriteState {
    * row-major order with respect to the selected subarray.
    *
    * @tparam T The domain type.
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
+   * @return Status
    */
   template <class T>
   Status write_sorted_row();
-
-  /**
-   * Signals an AIO condition.
-   *
-   * @param id The id of the AIO condition to be signaled.
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
-   */
-  Status release_aio(int id);
-
-  /**
-   * Signals a copy condition.
-   *
-   * @param id The id of the copy condition to be signaled.
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
-   */
-  Status release_copy(int id);
 
   /** Resets the copy state for the current copy id. */
   void reset_copy_state();
@@ -720,21 +705,13 @@ class ArraySortedWriteState {
   void reset_tile_slab_state();
 
   /**
-   * Sends an AIO request.
-   *
-   * @param aio_id The id of the tile slab the AIO request focuses on.
-   * @return TILEDB_ASWS_OK for success and TILEDB_ASWS_ERR for error.
-   */
-  Status send_aio_request(int aio_id);
-
-  /**
    * Calculates the new tile and local buffer offset for the new (already
    * computed) current cell coordinates in the tile slab.
    *
    * @param aid The attribute id to focus on.
    * @return void.
    */
-  void update_current_tile_and_offset(int aid);
+  void update_current_tile_and_offset(unsigned int aid);
 
   /**
    * Calculates the new tile and local buffer offset for the new (already
@@ -745,7 +722,7 @@ class ArraySortedWriteState {
    * @return void.
    */
   template <class T>
-  void update_current_tile_and_offset(int aid);
+  void update_current_tile_and_offset(unsigned int aid);
 };
 
 }  // namespace tiledb

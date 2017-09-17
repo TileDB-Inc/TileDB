@@ -154,6 +154,7 @@ Status Query::coords_buffer_i(int* coords_buffer_i) const {
 }
 
 Status Query::finalize() {
+  RETURN_NOT_OK(array_sorted_write_state_->finalize());
   return clear_fragments();
 }
 
