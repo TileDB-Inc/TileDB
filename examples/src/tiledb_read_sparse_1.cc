@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
   tiledb_query_create(
     ctx,
     &query,
-    "my_group/sparse_arrays/my_array_B",
+    "my_sparse_array",
     TILEDB_READ,
     nullptr,
     nullptr,

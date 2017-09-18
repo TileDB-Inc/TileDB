@@ -290,7 +290,7 @@ Status Query::read() {
       type_ == QueryType::READ_SORTED_ROW)
     return array_sorted_read_state_->read(buffers_, buffer_sizes_);
 
-  // mode_ == TILEDB_ARRAY_READ
+  // mode_ == QueryType::READ
   return array_read_state_->read(buffers_, buffer_sizes_);
 }
 

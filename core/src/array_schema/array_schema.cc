@@ -649,7 +649,11 @@ Datatype ArraySchema::type(unsigned int i) const {
     LOG_ERROR("Cannot retrieve type; Invalid attribute id");
     assert(0);
   }
-  return attributes_[i]->type();
+
+  if(i < attribute_num_)
+    return attributes_[i]->type();
+
+  return dimensions_[0]->type();
 }
 
 uint64_t ArraySchema::type_size(unsigned int i) const {
