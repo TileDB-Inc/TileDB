@@ -43,7 +43,7 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Subarray and attributes
-  int64_t subarray[] = { 1, 4, 1, 4 };
+  int64_t subarray[] = { 2, 4, 2, 3 };
   const char* attributes[] = { "a1" };
 
   // Prepare cell buffers
@@ -56,8 +56,8 @@ int main() {
   tiledb_query_create(
     ctx,
     &query,
-    "my_group/dense_arrays/my_array_A",
-    TILEDB_READ_SORTED_ROW,
+    "my_dense_array",
+    TILEDB_READ,
     subarray,
     attributes,
     1,

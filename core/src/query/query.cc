@@ -239,7 +239,7 @@ bool Query::overflow() const {
   return array_read_state_->overflow();
 }
 
-bool Query::overflow(int attribute_id) const {
+bool Query::overflow(unsigned int attribute_id) const {
   assert(is_read_type(type_));
 
   // Trivial case
@@ -270,31 +270,40 @@ Status Query::overflow(
 }
 
 Status Query::read() {
-  // Check if there are no fragments
-  unsigned int buffer_i = 0;
-  auto attribute_id_num = (unsigned int)attribute_ids_.size();
+  // Handle case of no fragments
   if (fragments_.empty()) {
-    for (unsigned int i = 0; i < attribute_id_num; ++i) {
-      // Update all sizes to 0
-      buffer_sizes_[buffer_i] = 0;
-      if (!array_schema_->var_size(attribute_ids_[i]))
-        ++buffer_i;
-      else
-        buffer_i += 2;
-    }
+    zero_out_buffer_sizes(buffer_sizes_);
     return Status::Ok();
   }
 
-  // Handle sorted modes
+  // Perform query
+  Status st;
   if (type_ == QueryType::READ_SORTED_COL ||
       type_ == QueryType::READ_SORTED_ROW)
-    return array_sorted_read_state_->read(buffers_, buffer_sizes_);
+    st = array_sorted_read_state_->read(buffers_, buffer_sizes_);
+  else // mode_ == QueryType::READ
+    st = array_read_state_->read(buffers_, buffer_sizes_);
 
-  // mode_ == QueryType::READ
-  return array_read_state_->read(buffers_, buffer_sizes_);
+  // Set query status
+  if(st.ok()) {
+    if(overflow())
+      status_ = QueryStatus::INCOMPLETE;
+    else
+      status_ = QueryStatus::COMPLETED;
+  } else {
+    status_ = QueryStatus::FAILED;
+  }
+
+  return st;
 }
 
 Status Query::read(void** buffers, uint64_t* buffer_sizes) {
+  // Handle case of no fragments
+  if (fragments_.empty()) {
+    zero_out_buffer_sizes(buffer_sizes_);
+    return Status::Ok();
+  }
+
   return array_read_state_->read(buffers, buffer_sizes);
 }
 
@@ -524,4 +533,16 @@ Status Query::set_subarray(const void* subarray) {
   return Status::Ok();
 }
 
+void Query::zero_out_buffer_sizes(uint64_t* buffer_sizes) const {
+  unsigned int buffer_i = 0;
+  auto attribute_id_num = (unsigned int)attribute_ids_.size();
+  for (unsigned int i = 0; i < attribute_id_num; ++i) {
+    // Update all sizes to 0
+    buffer_sizes[buffer_i] = 0;
+    if (!array_schema_->var_size(attribute_ids_[i]))
+      ++buffer_i;
+    else
+      buffer_i += 2;
+  }
+}
 }  // namespace tiledb

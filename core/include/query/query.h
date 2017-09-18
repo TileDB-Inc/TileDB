@@ -179,7 +179,7 @@ class Query {
    * Checks if a particular query buffer (corresponding to some attribute)
    * led to an overflow based on an attribute id.
    */
-  bool overflow(int attribute_id) const;
+  bool overflow(unsigned int attribute_id) const;
 
   /**
    * Checks if a particular query buffer (corresponding to some attribute)
@@ -343,6 +343,12 @@ class Query {
 
   /** Sets the query subarray. */
   Status set_subarray(const void* subarray);
+
+  /**
+   * Sets the input buffer sizes to zero. The function assumes that the buffer
+   * sizes correspond to the attribute buffers specified upon query creation.
+   */
+  void zero_out_buffer_sizes(uint64_t* buffer_sizes) const;
 };
 
 }  // namespace tiledb
