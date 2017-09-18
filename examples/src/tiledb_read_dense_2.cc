@@ -57,7 +57,7 @@ int main() {
     ctx,
     &query,
     "my_dense_array",
-    TILEDB_READ,
+    TILEDB_READ_SORTED_COL,
     subarray,
     attributes,
     1,

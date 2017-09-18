@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
     ctx,
     &query,
     "my_sparse_array",
-    TILEDB_READ,
+    TILEDB_READ_SORTED_ROW,
     subarray,
     attributes,
     1,

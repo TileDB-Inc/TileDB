@@ -621,7 +621,8 @@ Status ArraySortedReadState::async_submit_query(unsigned int id) {
   assert(storage_manager != nullptr);
 
   // Prepare a new query to be submitted asynchronously
-  RETURN_NOT_OK(async_query_[id]->finalize());
+  if(async_query_[id] != nullptr)
+    RETURN_NOT_OK(async_query_[id]->finalize());
   delete async_query_[id];
   async_query_[id] = new Query();
   RETURN_NOT_OK(async_query_[id]->init(
