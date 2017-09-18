@@ -614,9 +614,6 @@ class ArraySchema {
    */
   Layout tile_order_;
 
-  /** Stores the size of every attribute type (plus coordinates in the end). */
-  std::vector<uint64_t> type_sizes_;
-
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */

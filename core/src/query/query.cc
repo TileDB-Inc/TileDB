@@ -124,7 +124,6 @@ Status Query::clear_fragments() {
   }
 
   fragments_.clear();
-  fragment_metadata_.clear();
 
   return Status::Ok();
 }
@@ -154,8 +153,10 @@ Status Query::coords_buffer_i(int* coords_buffer_i) const {
 }
 
 Status Query::finalize() {
-  RETURN_NOT_OK(array_sorted_read_state_->finalize());
-  RETURN_NOT_OK(array_sorted_write_state_->finalize());
+  if(array_sorted_read_state_ != nullptr)
+    RETURN_NOT_OK(array_sorted_read_state_->finalize());
+  if(array_sorted_write_state_ != nullptr)
+    RETURN_NOT_OK(array_sorted_write_state_->finalize());
   return clear_fragments();
 }
 
@@ -360,6 +361,7 @@ Status Query::write(void** buffers, uint64_t* buffer_sizes) {
       return LOG_STATUS(Status::QueryError("Cannot produce new fragment name"));
     }
 
+
     // Create new fragment
     auto fragment = new Fragment(this);
     fragments_.push_back(fragment);
@@ -379,7 +381,7 @@ Status Query::write(void** buffers, uint64_t* buffer_sizes) {
 
 Status Query::init_fragments(
     const std::vector<FragmentMetadata*>& fragment_metadata) {
-  if (type_ == QueryType::WRITE) {
+  if (is_write_type(type_)) {
     RETURN_NOT_OK(new_fragment());
   } else if (is_read_type(type_)) {
     RETURN_NOT_OK(open_fragments(fragment_metadata));
@@ -420,6 +422,7 @@ Status Query::init_states() {
 Status Query::new_fragment() {
   // Get new fragment name
   std::string new_fragment_name = this->new_fragment_name();
+
   if (new_fragment_name.empty())
     return LOG_STATUS(Status::QueryError("Cannot produce new fragment name"));
 

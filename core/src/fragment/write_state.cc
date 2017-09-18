@@ -159,7 +159,7 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
   if (!storage_manager->is_dir(fragment_uri)) {
     RETURN_NOT_OK(storage_manager->create_dir(fragment_uri));
     RETURN_NOT_OK(storage_manager->create_file(fragment_uri.join_path(
-        std::string(constants::fragment_filename) + constants::file_suffix)));
+        std::string(constants::fragment_filename))));
   }
 
   QueryType query_type = fragment_->query()->type();
@@ -226,19 +226,22 @@ void WriteState::expand_mbr(const T* coords) {
 }
 
 void WriteState::init_tiles() {
-  const ArraySchema* array_schema = fragment_->query()->array_schema();
+  auto array_schema = fragment_->query()->array_schema();
   auto attribute_num = array_schema->attribute_num();
   for (unsigned int i = 0; i < attribute_num; ++i) {
-    const Attribute* attr = array_schema->Attributes()[i];
+    auto attr = array_schema->Attributes()[i];
     bool var_size = array_schema->var_size(i);
+
     uint64_t cell_size =
         (var_size) ? array_schema->type_size(i) : array_schema->cell_size(i);
+
     tiles_.emplace_back(new Tile(
         attr->type(),
         attr->compressor(),
         attr->compression_level(),
         fragment_->tile_size(i),
         attr->cell_size()));
+
     if (var_size) {
       tiles_var_.emplace_back(new Tile(
           attr->type(),

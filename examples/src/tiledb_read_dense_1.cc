@@ -40,9 +40,7 @@ int main(int argc, char** argv) {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-
-
-  // Prepare cell buffers 
+  // Prepare cell buffers
   int buffer_a1[16];
   uint64_t buffer_a2[16];
   char buffer_var_a2[40];
@@ -61,7 +59,7 @@ int main(int argc, char** argv) {
   tiledb_query_create(
     ctx,
     &query,
-    "my_group/dense_arrays/my_array_A",
+    "my_dense_array",
     TILEDB_READ,
     nullptr,
     nullptr,
@@ -81,7 +79,7 @@ int main(int argc, char** argv) {
   printf("-----------------------------------------\n");
   for(int i=0; i<result_num; ++i) {
     printf("%3d", buffer_a1[i]);
-    size_t var_size = (i != result_num-1) ? buffer_a2[i+1] - buffer_a2[i]
+    uint64_t var_size = (i != result_num-1) ? buffer_a2[i+1] - buffer_a2[i]
                                             : buffer_sizes[2] - buffer_a2[i];
     printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);
     printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);

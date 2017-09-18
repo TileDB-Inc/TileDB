@@ -235,7 +235,7 @@ Status ReadState::copy_cells_var(
     } else {
       RETURN_NOT_OK(tile_io->read_from_tile(tile, buffer_start, bytes_to_copy));
     }
-    buffer_offset += bytes_to_copy;
+    *buffer_offset += bytes_to_copy;
 
     // Shift variable offsets
     shift_var_offsets(
@@ -1343,11 +1343,15 @@ Status ReadState::get_offset(
 void ReadState::init_empty_attributes() {
   URI uri;
   is_empty_attribute_.resize(attribute_num_ + 1);
-  for (unsigned int i = 0; i < attribute_num_ + 1; ++i) {
+  for (unsigned int i = 0; i < attribute_num_; ++i) {
     uri = fragment_->fragment_uri().join_path(
         array_schema_->attribute(i) + constants::file_suffix);
-    is_empty_attribute_[i] = query_->storage_manager()->is_file(uri);
+    is_empty_attribute_[i] = !query_->storage_manager()->is_file(uri);
   }
+
+  uri = fragment_->fragment_uri().join_path(
+          std::string(constants::coords) + constants::file_suffix);
+  is_empty_attribute_[attribute_num_] = !query_->storage_manager()->is_file(uri);
 }
 
 void ReadState::init_fetched_tiles() {

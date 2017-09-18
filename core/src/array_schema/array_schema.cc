@@ -84,7 +84,6 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
   tile_offsets_col_ = array_schema->tile_offsets_col_;
   tile_offsets_row_ = array_schema->tile_offsets_row_;
   tile_order_ = array_schema->tile_order_;
-  type_sizes_ = array_schema->type_sizes_;
 
   if (array_schema->domain_ == nullptr) {
     domain_ = nullptr;
@@ -656,11 +655,19 @@ Datatype ArraySchema::type(unsigned int i) const {
 uint64_t ArraySchema::type_size(unsigned int i) const {
   assert(i <= attribute_num_);
 
-  return type_sizes_[i];
+  if(i < attribute_num_)
+    return datatype_size(attributes_[i]->type());
+
+  return datatype_size(dimensions_[0]->type());
 }
 
 bool ArraySchema::var_size(unsigned int attribute_id) const {
-  return cell_sizes_[attribute_id] == constants::var_size;
+  assert(attribute_id <= attribute_num_);
+
+  if(attribute_id < attribute_num_)
+    return attributes_[attribute_id]->cell_val_num() == constants::var_num;
+
+  return false;
 }
 
 /* ****************************** */

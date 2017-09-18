@@ -191,8 +191,7 @@ Status StorageManager::load(FragmentMetadata* metadata) {
 
   // Get metadata file name and size
   URI metadata_filename = fragment_uri.join_path(
-      std::string(constants::fragment_metadata_filename) +
-      constants::file_suffix);
+      std::string(constants::fragment_metadata_filename));
   uint64_t buffer_size;
   RETURN_NOT_OK(file_size(metadata_filename, &buffer_size));
 
@@ -221,9 +220,9 @@ Status StorageManager::move_dir(const URI& old_uri, const URI& new_uri) {
 }
 
 Status StorageManager::query_finalize(Query* query) {
+  RETURN_NOT_OK(query->finalize());
   RETURN_NOT_OK(array_close(
       query->array_schema()->array_uri(), query->fragment_metadata()));
-  RETURN_NOT_OK(query->finalize());
 
   return Status::Ok();
 }
@@ -309,8 +308,7 @@ Status StorageManager::store(FragmentMetadata* metadata) {
   RETURN_NOT_OK_ELSE(metadata->serialize(buff), delete buff);
 
   URI metadata_filename = fragment_uri.join_path(
-      std::string(constants::fragment_metadata_filename) +
-      constants::file_suffix);
+      std::string(constants::fragment_metadata_filename));
   Status st =
       vfs_->write_to_file(metadata_filename, buff->data(), buff->size());
 
