@@ -43,20 +43,6 @@
 #include <set>
 #include <sstream>
 
-#if defined(__APPLE__) && defined(__MACH__)
-#include <arpa/inet.h>
-#include <net/if.h>
-#include <net/if_dl.h>
-#include <netinet/in.h>
-#include <sys/sysctl.h>
-#include <sys/types.h>
-#else
-#include <linux/if.h>
-#endif
-
-#define STR(s) #s
-#define XSTR(s) STR(s)
-
 namespace tiledb {
 
 namespace utils {
@@ -301,68 +287,6 @@ void expand_mbr(T* mbr, const T* coords, unsigned int dim_num) {
       mbr[2 * i + 1] = coords[i];
   }
 }
-
-#if defined(__APPLE__) && defined(__MACH__)
-// TODO: Errors are ignored, this is kind of a mess with the preprocessor order
-// we need to include tiledb.h just to get the mac address!
-std::string get_mac_addr() {
-  int mib[6];
-  char mac[13];
-  size_t len;
-  char* buf;
-  unsigned char* ptr;
-  struct if_msghdr* ifm;
-  struct sockaddr_dl* sdl;
-  mib[0] = CTL_NET;
-  mib[1] = AF_ROUTE;
-  mib[2] = 0;
-  mib[3] = AF_LINK;
-  mib[4] = NET_RT_IFLIST;
-  const char* ifname = XSTR(TILEDB_MAC_ADDRESS_INTERFACE);
-  mib[5] = if_nametoindex(ifname);
-  if (mib[5] == 0 || sysctl(mib, 6, nullptr, &len, nullptr, 0) < 0) {
-    assert(0);
-    LOG_ERROR("Cannot get MAC address");
-    return "";
-  }
-  buf = (char*)std::malloc(len);
-  if (sysctl(mib, 6, buf, &len, nullptr, 0) < 0) {
-    assert(0);
-    LOG_ERROR("Cannot get MAC address");
-    return "";
-  }
-
-  ifm = (struct if_msghdr*)buf;
-  sdl = (struct sockaddr_dl*)(ifm + 1);
-  ptr = (unsigned char*)LLADDR(sdl);
-  for (int i = 0; i < 6; ++i)
-    sprintf(mac + 2 * i, "%02x", *(ptr + i));
-  mac[12] = '\0';
-
-  free(buf);
-  return mac;
-}
-#else
-std::string get_mac_addr() {
-  struct ifreq s;
-  int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-  char mac[13];
-
-  strcpy(s.ifr_name, XSTR(TILEDB_MAC_ADDRESS_INTERFACE));
-  if (0 == ioctl(fd, SIOCGIFHWADDR, &s)) {
-    for (int i = 0; i < 6; ++i)
-      sprintf(mac + 2 * i, "%02x", (unsigned char)s.ifr_addr.sa_data[i]);
-    mac[12] = '\0';
-    close(fd);
-
-    return mac;
-  } else {  // Error
-    close(fd);
-    LOG_ERROR("Cannot get MAC address");
-    return "";
-  }
-}
-#endif
 
 template <class T>
 bool has_duplicates(const std::vector<T>& v) {

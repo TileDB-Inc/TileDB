@@ -32,7 +32,6 @@
  */
 
 #include "tiledb.h"
-#include <cstring>
 
 // Simply prints the input string to stdout
 void *print_upon_completion(void* s) {

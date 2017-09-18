@@ -191,12 +191,6 @@ template <class T>
 void expand_mbr(T* mbr, const T* coords, unsigned int dim_num);
 
 /**
- * Returns the MAC address of the machine as a 12-char string, e.g.,
- * 00332a0b8c64. Returns an empty string upon error.
- */
-std::string get_mac_addr();
-
-/**
  * Checks if there are duplicates in the input vector.
  *
  * @tparam T The type of the values in the input vector.

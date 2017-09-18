@@ -444,17 +444,11 @@ std::string Query::new_fragment_name() const {
   memcpy(&tid, &self, std::min(sizeof(self), sizeof(tid)));
   char fragment_name[name_max_len];
 
-  // Get MAC address
-  std::string mac = utils::get_mac_addr();
-  if (mac.empty())
-    return std::string("");
-
   // Generate fragment name
   int n = sprintf(
       fragment_name,
-      "%s/.__%s%llu_%llu",
+      "%s/.__%llu_%llu",
       array_schema_->array_uri().to_string().c_str(),
-      mac.c_str(),
       tid,
       ms);
 

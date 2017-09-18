@@ -46,9 +46,6 @@ endif()
 # Default user definitions
 set(USE_HDFS False CACHE BOOL "Enables HDFS")
 set(TILEDB_VERBOSE False CACHE BOOL "Prints TileDB errors with verbosity")
-set(MAC_ADDRESS_INTERFACE "" 
-    CACHE STRING "The interface carrying the MAC address of the machine."
-)
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
@@ -96,10 +93,6 @@ endif()
 if(TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
   message(STATUS "The TileDB library is compiled with verbosity.")
-endif()
-if(MAC_ADDRESS_INTERFACE)
-  add_definitions(-DTILEDB_MAC_ADDRESS_INTERFACE=${MAC_ADDRESS_INTERFACE})
-  message(STATUS "Set MAC address interface to ${MAC_ADDRESS_INTERFACE}.")
 endif()
 
 # Enable testing

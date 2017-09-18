@@ -318,8 +318,8 @@ class Query {
 
   /**
    * Returns a new fragment name, which is in the form: <br>
-   * .__MAC-address_thread-id_timestamp. For instance,
-   *  __00332a0b8c6426153_1458759561320
+   * .__thread-id_timestamp. For instance,
+   *  __6426153_1458759561320
    *
    * Note that this is a temporary name, initiated by a new write process.
    * After the new fragmemt is finalized, the array will change its name
