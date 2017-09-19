@@ -71,7 +71,7 @@ int main() {
   tiledb_query_submit(ctx, query);
 
   // Prepare cell buffers - #2
-  int buffer_a1_2[] = { 6,  7, 8,  9,  10, 11, 12, 13, 14, 15 };
+  int buffer_a1_2[] = { 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
   uint64_t buffer_a2_2[] = { 0,  1,  3,  6, 10, 11, 13, 16 };
   char buffer_var_a2_2[] = "ijjkkkllllmnnooopppp";
   float buffer_a3_2[] = 

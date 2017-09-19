@@ -1771,7 +1771,7 @@ Status ArrayReadState::sort_fragment_cell_ranges(
   unsigned int non_empty = 0;
   int first_non_empty = INVALID_UINT;
   for (unsigned int i = 0; i < fragment_num; ++i) {
-    if (!unsorted_fragment_cell_ranges[i].empty()) {
+    if (!(*unsorted_fragment_cell_ranges)[i].empty()) {
       ++non_empty;
       if (first_non_empty == INVALID_UINT)
         first_non_empty = i;
@@ -1810,7 +1810,7 @@ Status ArrayReadState::sort_fragment_cell_ranges(
   auto rid = new uint64_t[fragment_num];
   unsigned int fid = 0;
   for (unsigned int i = 0; i < fragment_num; ++i) {
-    rlen[i] = (uint64_t)unsorted_fragment_cell_ranges[i].size();
+    rlen[i] = (uint64_t)(*unsorted_fragment_cell_ranges)[i].size();
     rid[i] = 0;
   }
 
@@ -1853,7 +1853,7 @@ Status ArrayReadState::sort_fragment_cell_ranges(
     if (pq.empty()) {
       popped->export_to(&result);
       fragment_cell_ranges->push_back(result);
-      fid = (popped->fragment_id_ != -1) ? popped->fragment_id_ :
+      fid = (popped->fragment_id_ != INVALID_UINT) ? popped->fragment_id_ :
                                            fragment_num - 1;
       delete popped;
 
