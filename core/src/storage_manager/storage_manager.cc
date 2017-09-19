@@ -293,7 +293,7 @@ Status StorageManager::store(ArraySchema* array_schema) {
   if (is_file(array_schema_uri))
     RETURN_NOT_OK_ELSE(delete_file(array_schema_uri), delete buff);
   RETURN_NOT_OK_ELSE(
-      write_to_file(array_schema_uri, buff->data(), buff->size()), delete buff);
+      write_to_file(array_schema_uri, buff->data(), buff->offset()), delete buff);
 
   return Status::Ok();
 }
@@ -310,7 +310,7 @@ Status StorageManager::store(FragmentMetadata* metadata) {
   URI metadata_filename = fragment_uri.join_path(
       std::string(constants::fragment_metadata_filename));
   Status st =
-      vfs_->write_to_file(metadata_filename, buff->data(), buff->size());
+      vfs_->write_to_file(metadata_filename, buff->data(), buff->offset());
 
   delete buff;
   return st;

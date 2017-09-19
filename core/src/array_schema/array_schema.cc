@@ -108,6 +108,8 @@ ArraySchema::ArraySchema(const ArraySchema* array_schema) {
 }
 
 ArraySchema::ArraySchema(const URI& uri) {
+  attribute_num_ = 0;
+  dim_num_ = 0;
   cell_num_per_tile_ = 0;
   domain_ = nullptr;
   tile_extents_ = nullptr;

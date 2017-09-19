@@ -498,8 +498,10 @@ struct DenseArrayFx {
         }
         buffer_size = k * l * sizeof(int);
         buffer_sizes[0] = {buffer_size};
-        tiledb_query_reset_buffers(ctx_, query, buffers, buffer_sizes);
+
+    //    tiledb_query_reset_buffers(ctx_, query, buffers, buffer_sizes);
         rc = tiledb_query_submit(ctx_, query);
+
         if (rc != TILEDB_OK) {
           tiledb_query_free(ctx_, query);
           for (int64_t i = 0; i < domain_size_0; ++i)

@@ -54,7 +54,7 @@ int main() {
   tiledb_query_create(
     ctx,
     &query,
-    "my_group/sparse_arrays/my_array_B",
+    "my_dense_array",
     TILEDB_READ_SORTED_ROW,
     subarray,
     attributes,

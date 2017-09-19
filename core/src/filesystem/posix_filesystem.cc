@@ -297,6 +297,7 @@ Status read_from_file(
     return LOG_STATUS(
         Status::OSError("Cannot read from file; File closing error"));
   }
+
   return Status::Ok();
 }
 
