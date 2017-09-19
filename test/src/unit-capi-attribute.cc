@@ -30,11 +30,13 @@
  * Tests for the C API tiledb_attribute_t spec.
  */
 
+#include "catch.hpp"
+#include "tiledb.h"
+
 #include <cassert>
 #include <cstdio>
 #include <cstring>
-#include "catch.hpp"
-#include "tiledb.h"
+#include <iostream>
 
 struct AttributeFx {
   // Test parameters

@@ -1350,8 +1350,9 @@ void ReadState::init_empty_attributes() {
   }
 
   uri = fragment_->fragment_uri().join_path(
-          std::string(constants::coords) + constants::file_suffix);
-  is_empty_attribute_[attribute_num_] = !query_->storage_manager()->is_file(uri);
+      std::string(constants::coords) + constants::file_suffix);
+  is_empty_attribute_[attribute_num_] =
+      !query_->storage_manager()->is_file(uri);
 }
 
 void ReadState::init_fetched_tiles() {

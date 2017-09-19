@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
   const char* attributes[] = { "a1" };
 
   // Prepare cell buffers 
-  int buffer_a1[10];
+  int buffer_a1[2];
   void* buffers[] = { buffer_a1 };
   uint64_t buffer_sizes[] = { sizeof(buffer_a1) };
 
@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
     ctx,
     &query,
     "my_sparse_array",
-    TILEDB_READ_SORTED_ROW,
+    TILEDB_READ_SORTED_COL,
     subarray,
     attributes,
     1,

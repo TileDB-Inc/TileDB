@@ -650,7 +650,7 @@ Datatype ArraySchema::type(unsigned int i) const {
     assert(0);
   }
 
-  if(i < attribute_num_)
+  if (i < attribute_num_)
     return attributes_[i]->type();
 
   return dimensions_[0]->type();
@@ -659,7 +659,7 @@ Datatype ArraySchema::type(unsigned int i) const {
 uint64_t ArraySchema::type_size(unsigned int i) const {
   assert(i <= attribute_num_);
 
-  if(i < attribute_num_)
+  if (i < attribute_num_)
     return datatype_size(attributes_[i]->type());
 
   return datatype_size(dimensions_[0]->type());
@@ -668,7 +668,7 @@ uint64_t ArraySchema::type_size(unsigned int i) const {
 bool ArraySchema::var_size(unsigned int attribute_id) const {
   assert(attribute_id <= attribute_num_);
 
-  if(attribute_id < attribute_num_)
+  if (attribute_id < attribute_num_)
     return attributes_[attribute_id]->cell_val_num() == constants::var_num;
 
   return false;

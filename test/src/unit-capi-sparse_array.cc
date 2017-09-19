@@ -220,7 +220,16 @@ struct SparseArrayFx {
 
     // Create query
     tiledb_query_t* query;
-    rc = tiledb_query_create(ctx_, &query, array_name_.c_str(), query_type, subarray, attributes, 1, buffers, buffer_sizes);
+    rc = tiledb_query_create(
+        ctx_,
+        &query,
+        array_name_.c_str(),
+        query_type,
+        subarray,
+        attributes,
+        1,
+        buffers,
+        buffer_sizes);
     if (rc != TILEDB_OK)
       return nullptr;
 
@@ -280,7 +289,16 @@ struct SparseArrayFx {
 
     // Create query
     tiledb_query_t* query;
-    rc = tiledb_query_create(ctx_, &query, array_name_.c_str(), TILEDB_WRITE_UNSORTED, nullptr, nullptr, 0, buffers, buffer_sizes);
+    rc = tiledb_query_create(
+        ctx_,
+        &query,
+        array_name_.c_str(),
+        TILEDB_WRITE_UNSORTED,
+        nullptr,
+        nullptr,
+        0,
+        buffers,
+        buffer_sizes);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
 

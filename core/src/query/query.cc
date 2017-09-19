@@ -54,7 +54,7 @@ Query::Query() {
 
 Query::~Query() {
   if (subarray_ != nullptr)
-    free(subarray_);
+    std::free(subarray_);
 
   delete array_read_state_;
   delete array_sorted_read_state_;
@@ -153,10 +153,14 @@ Status Query::coords_buffer_i(int* coords_buffer_i) const {
 }
 
 Status Query::finalize() {
-  if(array_sorted_read_state_ != nullptr)
+  if (array_sorted_read_state_ != nullptr)
     RETURN_NOT_OK(array_sorted_read_state_->finalize());
-  if(array_sorted_write_state_ != nullptr)
+  delete array_sorted_read_state_;
+  array_sorted_read_state_ = nullptr;
+  if (array_sorted_write_state_ != nullptr)
     RETURN_NOT_OK(array_sorted_write_state_->finalize());
+  delete array_sorted_write_state_;
+  array_sorted_write_state_ = nullptr;
   return clear_fragments();
 }
 
@@ -273,20 +277,23 @@ Status Query::read() {
   // Handle case of no fragments
   if (fragments_.empty()) {
     zero_out_buffer_sizes(buffer_sizes_);
+    status_ = QueryStatus::COMPLETED;
     return Status::Ok();
   }
+
+  status_ = QueryStatus::INPROGRESS;
 
   // Perform query
   Status st;
   if (type_ == QueryType::READ_SORTED_COL ||
       type_ == QueryType::READ_SORTED_ROW)
     st = array_sorted_read_state_->read(buffers_, buffer_sizes_);
-  else // mode_ == QueryType::READ
+  else  // mode_ == QueryType::READ
     st = array_read_state_->read(buffers_, buffer_sizes_);
 
   // Set query status
-  if(st.ok()) {
-    if(overflow())
+  if (st.ok()) {
+    if (overflow())
       status_ = QueryStatus::INCOMPLETE;
     else
       status_ = QueryStatus::COMPLETED;
@@ -338,6 +345,8 @@ QueryType Query::type() const {
 }
 
 Status Query::write() {
+  status_ = QueryStatus::INPROGRESS;
+
   // Write based on mode
   if (type_ == QueryType::WRITE_SORTED_COL ||
       type_ == QueryType::WRITE_SORTED_ROW) {
@@ -351,6 +360,8 @@ Status Query::write() {
   // In all modes except WRITE, the fragment must be finalized
   if (type_ != QueryType::WRITE)
     clear_fragments();
+
+  status_ = QueryStatus::COMPLETED;
 
   return Status::Ok();
 }
@@ -369,7 +380,6 @@ Status Query::write(void** buffers, uint64_t* buffer_sizes) {
     if (new_fragment_name.empty()) {
       return LOG_STATUS(Status::QueryError("Cannot produce new fragment name"));
     }
-
 
     // Create new fragment
     auto fragment = new Fragment(this);

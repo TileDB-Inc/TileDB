@@ -31,8 +31,8 @@
  * Tests of C API for dense array operations.
  */
 
-#include "tiledb.h"
 #include "catch.hpp"
+#include "tiledb.h"
 
 #include <sys/time.h>
 #include <cassert>
@@ -264,7 +264,7 @@ struct DenseArrayFx {
     for (int64_t i = 0; i < domain_size_0; ++i) {
       buffer[i] = new int[domain_size_1];
       for (int64_t j = 0; j < domain_size_1; ++j) {
-        buffer[i][j] = (int) (i * domain_size_1 + j);
+        buffer[i][j] = (int)(i * domain_size_1 + j);
       }
     }
 
@@ -316,7 +316,16 @@ struct DenseArrayFx {
 
     // Create query
     tiledb_query_t* query;
-    rc = tiledb_query_create(ctx_, &query, array_name_.c_str(), query_type, subarray, attributes, 1, buffers, buffer_sizes);
+    rc = tiledb_query_create(
+        ctx_,
+        &query,
+        array_name_.c_str(),
+        query_type,
+        subarray,
+        attributes,
+        1,
+        buffers,
+        buffer_sizes);
     if (rc != TILEDB_OK)
       return nullptr;
 
@@ -399,7 +408,16 @@ struct DenseArrayFx {
 
     // Create query
     tiledb_query_t* query;
-    rc = tiledb_query_create(ctx_, &query, array_name_.c_str(), TILEDB_WRITE_UNSORTED, nullptr, attributes, 2, buffers, buffer_sizes);
+    rc = tiledb_query_create(
+        ctx_,
+        &query,
+        array_name_.c_str(),
+        TILEDB_WRITE_UNSORTED,
+        nullptr,
+        attributes,
+        2,
+        buffers,
+        buffer_sizes);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
 
@@ -449,7 +467,16 @@ struct DenseArrayFx {
 
     // Initialize the array_schema
     tiledb_query_t* query;
-    rc = tiledb_query_create(ctx_, &query, array_name_.c_str(), TILEDB_WRITE, nullptr, nullptr, 0, buffers, buffer_sizes);
+    rc = tiledb_query_create(
+        ctx_,
+        &query,
+        array_name_.c_str(),
+        TILEDB_WRITE,
+        nullptr,
+        nullptr,
+        0,
+        buffers,
+        buffer_sizes);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
 
@@ -521,7 +548,16 @@ struct DenseArrayFx {
 
     // Create query
     tiledb_query_t* query;
-    rc = tiledb_query_create(ctx_, &query, array_name_.c_str(), query_type, subarray, attributes, 1, buffers, buffer_sizes);
+    rc = tiledb_query_create(
+        ctx_,
+        &query,
+        array_name_.c_str(),
+        query_type,
+        subarray,
+        attributes,
+        1,
+        buffers,
+        buffer_sizes);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
 
@@ -597,8 +633,8 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted reads") {
     int64_t index = 0;
 
     // Read subarray
-    int* buffer = read_dense_array_2D(
-        d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ_SORTED_ROW);
+    int* buffer =
+        read_dense_array_2D(d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ_SORTED_ROW);
     REQUIRE(buffer != NULL);
 
     bool allok = true;

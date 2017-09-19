@@ -323,8 +323,9 @@ int tiledb_group_create(tiledb_ctx_t* ctx, const char* group) {
     return TILEDB_ERR;
 
   // Check for error
-  if(group == nullptr) {
-    save_error(ctx, tiledb::Status::Error("Invalid group directory argument is NULL"));
+  if (group == nullptr) {
+    save_error(
+        ctx, tiledb::Status::Error("Invalid group directory argument is NULL"));
     return TILEDB_ERR;
   }
 
@@ -578,8 +579,9 @@ int tiledb_array_schema_create(
     return TILEDB_ERR;
 
   // Check for error
-  if(array_name == nullptr) {
-    save_error(ctx, tiledb::Status::Error("Invalid array directory argument is NULL"));
+  if (array_name == nullptr) {
+    save_error(
+        ctx, tiledb::Status::Error("Invalid array directory argument is NULL"));
     return TILEDB_ERR;
   }
 

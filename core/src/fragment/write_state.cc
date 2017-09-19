@@ -158,8 +158,8 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
   auto storage_manager = fragment_->query()->storage_manager();
   if (!storage_manager->is_dir(fragment_uri)) {
     RETURN_NOT_OK(storage_manager->create_dir(fragment_uri));
-    RETURN_NOT_OK(storage_manager->create_file(fragment_uri.join_path(
-        std::string(constants::fragment_filename))));
+    RETURN_NOT_OK(storage_manager->create_file(
+        fragment_uri.join_path(std::string(constants::fragment_filename))));
   }
 
   QueryType query_type = fragment_->query()->type();

@@ -117,9 +117,12 @@ ArraySortedReadState::ArraySortedReadState(Query* query)
 
 ArraySortedReadState::~ArraySortedReadState() {
   // Clean up
-  std::free(subarray_);
-  std::free(tile_coords_);
-  std::free(tile_domain_);
+  if (subarray_ != nullptr)
+    std::free(subarray_);
+  if (tile_coords_ != nullptr)
+    std::free(tile_coords_);
+  if (tile_domain_ != nullptr)
+    std::free(tile_domain_);
   delete[] overflow_;
 
   for (unsigned int i = 0; i < 2; ++i) {
@@ -621,7 +624,7 @@ Status ArraySortedReadState::async_submit_query(unsigned int id) {
   assert(storage_manager != nullptr);
 
   // Prepare a new query to be submitted asynchronously
-  if(async_query_[id] != nullptr)
+  if (async_query_[id] != nullptr)
     RETURN_NOT_OK(async_query_[id]->finalize());
   delete async_query_[id];
   async_query_[id] = new Query();
@@ -656,7 +659,7 @@ void ArraySortedReadState::calculate_attribute_ids() {
   bool coords_found = false;
 
   // For ease reference
-  const ArraySchema* array_schema = query_->array_schema();
+  auto array_schema = query_->array_schema();
   auto attribute_num = array_schema->attribute_num();
 
   // No need to do anything else in case the array_schema is dense
@@ -686,7 +689,7 @@ void ArraySortedReadState::calculate_attribute_ids() {
 
 void ArraySortedReadState::calculate_buffer_num() {
   // For easy reference
-  const ArraySchema* array_schema = query_->array_schema();
+  auto array_schema = query_->array_schema();
   auto attribute_num = array_schema->attribute_num();
 
   // Calculate number of buffers
@@ -1267,7 +1270,7 @@ void ArraySortedReadState::copy_tile_slab_dense_var(
 
 void ArraySortedReadState::copy_tile_slab_sparse() {
   // For easy reference
-  const ArraySchema* array_schema = query_->array_schema();
+  auto array_schema = query_->array_schema();
 
   // Copy tile slab for each attribute separately
   auto anum = (unsigned int)attribute_ids_.size();
@@ -1422,7 +1425,7 @@ void ArraySortedReadState::free_tile_slab_info() {
     uint64_t tile_num = info.tile_num_;
 
     if (info.cell_offset_per_dim_ != nullptr) {
-      for (int tile = 0; tile < tile_num; ++tile)
+      for (uint64_t tile = 0; tile < tile_num; ++tile)
         delete[] info.cell_offset_per_dim_[tile];
       delete[] info.cell_offset_per_dim_;
     }
@@ -1431,8 +1434,8 @@ void ArraySortedReadState::free_tile_slab_info() {
       if (info.cell_slab_size_[attr] != nullptr)
         delete[] info.cell_slab_size_[attr];
     }
-    delete[] info.cell_slab_size_;
 
+    delete[] info.cell_slab_size_;
     delete[] info.cell_slab_num_;
 
     if (info.range_overlap_ != nullptr) {
@@ -2320,7 +2323,7 @@ Status ArraySortedReadState::read_sparse_sorted_col() {
   }
 
   // Assign the true buffer sizes
-  for (unsigned int i = 0; i < buffer_num_; ++i)
+  for (unsigned int i = 0; i < buffer_num_ - extra_coords_; ++i)
     copy_state_.buffer_sizes_[i] = copy_state_.buffer_offsets_[i];
 
   return Status::Ok();
@@ -2343,7 +2346,7 @@ Status ArraySortedReadState::read_sparse_sorted_row() {
   if (resume_copy_2_)
     goto copy_label_2;
 
-  // First AIO
+  // First async query
   if (next_tile_slab_sparse_row<T>()) {
     reset_buffer_sizes_tmp(copy_id_);
     async_wait_[copy_id_] = true;
@@ -2353,7 +2356,7 @@ Status ArraySortedReadState::read_sparse_sorted_row() {
 
   // Iterate over tile slabs
   while (next_tile_slab_sparse_row<T>()) {
-    // Submit AIO
+    // Submit async query
     reset_buffer_sizes_tmp(copy_id_);
     async_wait_[copy_id_] = true;
     RETURN_NOT_OK(async_submit_query(copy_id_));
@@ -2397,7 +2400,7 @@ Status ArraySortedReadState::read_sparse_sorted_row() {
   }
 
   // Assign the true buffer sizes
-  for (unsigned int i = 0; i < buffer_num_; ++i)
+  for (unsigned int i = 0; i < buffer_num_ - extra_coords_; ++i)
     copy_state_.buffer_sizes_[i] = copy_state_.buffer_offsets_[i];
 
   return Status::Ok();
@@ -2459,7 +2462,7 @@ void ArraySortedReadState::reset_tile_slab_state() {
 template <class T>
 void ArraySortedReadState::sort_cell_pos() {
   // For easy reference
-  const ArraySchema* array_schema = query_->array_schema();
+  auto array_schema = query_->array_schema();
   auto dim_num = array_schema->dim_num();
   uint64_t cell_num = buffer_sizes_tmp_[copy_id_][coords_buf_i_] / coords_size_;
   QueryType query_type = query_->type();

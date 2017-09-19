@@ -180,7 +180,7 @@ struct ArraySchemaFx {
 };
 
 TEST_CASE_METHOD(
-    ArraySchemaFx, "C API: Test array_schema schema creation and retrieval") {
+    ArraySchemaFx, "C API: Test array schema creation and retrieval") {
   create_dense_array();
 
   // Load array_schema schema from the disk
@@ -357,28 +357,28 @@ TEST_CASE_METHOD(
   CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
 
   // Check dump
-  std::string dump_str = "- Array name: " + tiledb::URI(ARRAY_PATH).to_string() +
-                         "\n" + "- Array type: " + ARRAY_TYPE_STR + "\n" +
-                         "- Cell order: " + CELL_ORDER_STR + "\n" +
-                         "- Tile order: " + TILE_ORDER_STR + "\n" +
-                         "- Capacity: " + CAPACITY_STR + "\n" + "\n" +
-                         "### Dimension ###\n" + "- Name: " + DIM1_NAME + "\n" +
-                         "- Type: " + DIM1_TYPE_STR + "\n" +
-                         "- Compressor: " + DIM1_COMPRESSOR_STR + "\n" +
-                         "- Compression level: " + DIM1_COMPRESSION_LEVEL_STR +
-                         "\n" + "- Domain: " + DIM1_DOMAIN_STR + "\n" +
-                         "- Tile extent: " + DIM1_TILE_EXTENT_STR + "\n" +
-                         "\n" + "### Dimension ###\n" + "- Name: " + DIM2_NAME +
-                         "\n" + "- Type: " + DIM2_TYPE_STR + "\n" +
-                         "- Compressor: " + DIM2_COMPRESSOR_STR + "\n" +
-                         "- Compression level: " + DIM2_COMPRESSION_LEVEL_STR +
-                         "\n" + "- Domain: " + DIM2_DOMAIN_STR + "\n" +
-                         "- Tile extent: " + DIM2_TILE_EXTENT_STR + "\n" +
-                         "\n" + "### Attribute ###\n" + "- Name: " + ATTR_NAME +
-                         "\n" + "- Type: " + ATTR_TYPE_STR + "\n" +
-                         "- Compressor: " + ATTR_COMPRESSOR_STR + "\n" +
-                         "- Compression level: " + ATTR_COMPRESSION_LEVEL_STR +
-                         "\n" + "- Cell val num: " + CELL_VAL_NUM_STR + "\n";
+  std::string dump_str =
+      "- Array name: " + tiledb::URI(ARRAY_PATH).to_string() + "\n" +
+      "- Array type: " + ARRAY_TYPE_STR + "\n" +
+      "- Cell order: " + CELL_ORDER_STR + "\n" +
+      "- Tile order: " + TILE_ORDER_STR + "\n" + "- Capacity: " + CAPACITY_STR +
+      "\n" + "\n" + "### Dimension ###\n" + "- Name: " + DIM1_NAME + "\n" +
+      "- Type: " + DIM1_TYPE_STR + "\n" +
+      "- Compressor: " + DIM1_COMPRESSOR_STR + "\n" +
+      "- Compression level: " + DIM1_COMPRESSION_LEVEL_STR + "\n" +
+      "- Domain: " + DIM1_DOMAIN_STR + "\n" +
+      "- Tile extent: " + DIM1_TILE_EXTENT_STR + "\n" + "\n" +
+      "### Dimension ###\n" + "- Name: " + DIM2_NAME + "\n" +
+      "- Type: " + DIM2_TYPE_STR + "\n" +
+      "- Compressor: " + DIM2_COMPRESSOR_STR + "\n" +
+      "- Compression level: " + DIM2_COMPRESSION_LEVEL_STR + "\n" +
+      "- Domain: " + DIM2_DOMAIN_STR + "\n" +
+      "- Tile extent: " + DIM2_TILE_EXTENT_STR + "\n" + "\n" +
+      "### Attribute ###\n" + "- Name: " + ATTR_NAME + "\n" +
+      "- Type: " + ATTR_TYPE_STR + "\n" +
+      "- Compressor: " + ATTR_COMPRESSOR_STR + "\n" +
+      "- Compression level: " + ATTR_COMPRESSION_LEVEL_STR + "\n" +
+      "- Cell val num: " + CELL_VAL_NUM_STR + "\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();
   fwrite(dump, sizeof(char), strlen(dump), gold_fout);
