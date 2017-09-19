@@ -63,7 +63,7 @@ int main() {
   tiledb_query_create(
     ctx,
     &query,
-    "my_group/sparse_arrays/my_array_B",
+    "my_sparse_array",
     TILEDB_WRITE_UNSORTED,
     nullptr,
     nullptr,

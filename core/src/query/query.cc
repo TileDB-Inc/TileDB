@@ -461,9 +461,8 @@ std::string Query::new_fragment_name() const {
   struct timeval tp = {};
   gettimeofday(&tp, nullptr);
   uint64_t ms = (uint64_t)tp.tv_sec * 1000L + tp.tv_usec / 1000;
-  pthread_t self = pthread_self();
-  uint64_t tid = 0;
-  memcpy(&tid, &self, std::min(sizeof(self), sizeof(tid)));
+  uint64_t tid;
+  pthread_threadid_np(nullptr, &tid);
   char fragment_name[name_max_len];
 
   // Generate fragment name
