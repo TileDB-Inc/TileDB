@@ -342,7 +342,7 @@ Status ReadState::get_enclosing_coords(
 
   // Calculate left and right pos
   uint64_t left_pos;
-  if (target_exists)
+  if (*target_exists)
     left_pos = (target_pos == 0) ? INVALID_UINT64 : target_pos - 1;
   else
     left_pos = target_pos;
@@ -512,7 +512,7 @@ Status ReadState::get_fragment_cell_ranges_sparse(
     return Status::Ok();
 
   // For easy reference
-  unsigned int dim_num = array_schema_->dim_num();
+  auto dim_num = array_schema_->dim_num();
   auto search_tile_overlap_subarray =
       static_cast<const T*>(search_tile_overlap_subarray_);
 
@@ -573,9 +573,6 @@ Status ReadState::get_fragment_cell_ranges_sparse(
 
   // Get the cell ranges
   const void* cell;
-
-  // TODO: BIG CHECK
-
   uint64_t current_start_pos = start_pos;
   uint64_t current_end_pos = INVALID_UINT64;
   for (uint64_t i = start_pos; i <= end_pos; ++i) {

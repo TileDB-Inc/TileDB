@@ -1810,7 +1810,7 @@ Status ArrayReadState::sort_fragment_cell_ranges(
   auto rid = new uint64_t[fragment_num];
   unsigned int fid = 0;
   for (unsigned int i = 0; i < fragment_num; ++i) {
-    rlen[i] = (uint64_t)(*unsorted_fragment_cell_ranges)[i].size();
+    rlen[i] = (uint64_t)((*unsorted_fragment_cell_ranges)[i].size());
     rid[i] = 0;
   }
 
