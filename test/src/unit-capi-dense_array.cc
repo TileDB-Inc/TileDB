@@ -175,7 +175,7 @@ struct DenseArrayFx {
     // Error code
     int rc;
 
-    // Prepare and set the array_schema schema object and data structures
+    // Prepare and set the array schema object and data structures
     int64_t domain[] = {domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
 
     // Create attribute
@@ -195,7 +195,7 @@ struct DenseArrayFx {
         ctx_, &d2, DIM2_NAME, DIM2_TYPE, &domain[2], &tile_extent_1);
     REQUIRE(rc == TILEDB_OK);
 
-    // Create array_schema schema
+    // Create array schema
     rc = tiledb_array_schema_create(ctx_, &array_schema_, array_name_.c_str());
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_schema_set_capacity(ctx_, array_schema_, capacity);
@@ -211,7 +211,7 @@ struct DenseArrayFx {
     rc = tiledb_array_schema_add_dimension(ctx_, array_schema_, d2);
     REQUIRE(rc == TILEDB_OK);
 
-    // Create the array_schema
+    // Create the array
     rc = tiledb_array_create(ctx_, array_schema_);
     REQUIRE(rc == TILEDB_OK);
 
@@ -465,7 +465,7 @@ struct DenseArrayFx {
     int64_t index = 0L;
     uint64_t buffer_size = 0L;
 
-    // Initialize the array_schema
+    // Create query
     tiledb_query_t* query;
     rc = tiledb_query_create(
         ctx_,
@@ -499,7 +499,7 @@ struct DenseArrayFx {
         buffer_size = k * l * sizeof(int);
         buffer_sizes[0] = {buffer_size};
 
-    //    tiledb_query_reset_buffers(ctx_, query, buffers, buffer_sizes);
+        //    tiledb_query_reset_buffers(ctx_, query, buffers, buffer_sizes);
         rc = tiledb_query_submit(ctx_, query);
 
         if (rc != TILEDB_OK) {
@@ -513,7 +513,7 @@ struct DenseArrayFx {
       }
     }
 
-    // Finalize the array_schema
+    // Finalize the query
     rc = tiledb_query_free(ctx_, query);
 
     // Clean up
@@ -598,10 +598,10 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted reads") {
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
   int iter_num = 10;
 
-  // Set array_schema name
+  // Set array name
   set_array_name("dense_test_5000x10000_100x100");
 
-  // Create a dense integer array_schema
+  // Create a dense integer array
   create_dense_array_2D(
       tile_extent_0,
       tile_extent_1,
@@ -613,7 +613,7 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted reads") {
       cell_order,
       tile_order);
 
-  // Write array_schema cells with value = row id * COLUMNS + col id
+  // Write array cells with value = row id * COLUMNS + col id
   // to disk tile by tile
   rc = write_dense_array_by_tiles(
       domain_size_0, domain_size_1, tile_extent_0, tile_extent_1);
@@ -684,10 +684,10 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted writes") {
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
   int iter_num = 10;
 
-  // Set array_schema name
+  // Set array name
   set_array_name("dense_test_100x100_10x10");
 
-  // Create a dense integer array_schema
+  // Create a dense integer array
   create_dense_array_2D(
       tile_extent_0,
       tile_extent_1,
@@ -772,10 +772,10 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates") {
   int64_t update_num = 100;
   int seed = 7;
 
-  // Set array_schema name
+  // Set array name
   set_array_name("dense_test_100x100_10x10");
 
-  // Create a dense integer array_schema
+  // Create a dense integer array
   create_dense_array_2D(
       tile_extent_0,
       tile_extent_1,
@@ -787,13 +787,13 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates") {
       cell_order,
       tile_order);
 
-  // Write array_schema cells with value = row id * COLUMNS + col id
+  // Write array cells with value = row id * COLUMNS + col id
   // to disk tile by tile
   rc = write_dense_array_by_tiles(
       domain_size_0, domain_size_1, tile_extent_0, tile_extent_1);
   REQUIRE(rc == TILEDB_OK);
 
-  // Read the entire array_schema back to memory
+  // Read the entire array back to memory
   int* before_update = read_dense_array_2D(
       domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi, TILEDB_READ);
   REQUIRE(before_update != NULL);
@@ -810,12 +810,12 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates") {
       domain_size_0, domain_size_1, update_num, seed, buffers, buffer_sizes);
   REQUIRE(rc == TILEDB_OK);
 
-  // Read the entire array_schema back to memory after update
+  // Read the entire array back to memory after update
   int* after_update = read_dense_array_2D(
       domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi, TILEDB_READ);
   REQUIRE(after_update != NULL);
 
-  // Compare array_schema before and after
+  // Compare array before and after
   bool success = check_buffer_after_updates(
       before_update,
       after_update,

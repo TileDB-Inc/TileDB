@@ -34,8 +34,8 @@
 #include "logger.h"
 #include "utils.h"
 
-#include <sstream>
 #include <sys/time.h>
+#include <sstream>
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -44,13 +44,33 @@
 namespace tiledb {
 
 Query::Query() {
+  common_query_ = nullptr;
   subarray_ = nullptr;
   array_read_state_ = nullptr;
   array_sorted_read_state_ = nullptr;
   array_sorted_write_state_ = nullptr;
   callback_ = nullptr;
   callback_data_ = nullptr;
+  fragments_init_ = false;
   storage_manager_ = nullptr;
+  fragments_borrowed_ = false;
+}
+
+Query::Query(Query* common_query) {
+  common_query_ = common_query;
+  subarray_ = nullptr;
+  array_read_state_ = nullptr;
+  array_sorted_read_state_ = nullptr;
+  array_sorted_write_state_ = nullptr;
+  callback_ = nullptr;
+  callback_data_ = nullptr;
+  fragments_init_ = false;
+  storage_manager_ = common_query->storage_manager();
+  fragments_borrowed_ = false;
+  array_schema_ = common_query->array_schema();
+  type_ = common_query->type();
+  status_ = QueryStatus::INPROGRESS;
+
 }
 
 Query::~Query() {
@@ -68,26 +88,26 @@ Query::~Query() {
 /*               API              */
 /* ****************************** */
 
-void Query::add_coords() {
-  int attribute_num = array_schema_->attribute_num();
-  bool has_coords = false;
-
-  for (auto id : attribute_ids_) {
-    if (id == attribute_num) {
-      has_coords = true;
-      break;
-    }
-  }
-
-  if (!has_coords)
-    attribute_ids_.emplace_back(attribute_num);
-}
-
 const ArraySchema* Query::array_schema() const {
   return array_schema_;
 }
 
 Status Query::async_process() {
+  // In case this query follows another one (the common query)
+  if (common_query_ != nullptr) {
+    fragment_metadata_ = common_query_->fragment_metadata();
+    fragments_ = common_query_->fragments();
+    fragments_init_ = true;
+    fragments_borrowed_ = true;
+  }
+
+  // Initialize fragments
+  if (!fragments_init_) {
+    RETURN_NOT_OK(init_fragments(fragment_metadata_));
+    RETURN_NOT_OK(init_states());
+    fragments_init_ = true;
+  }
+
   Status st;
   if (is_read_type(type_))
     st = read();
@@ -119,9 +139,11 @@ const std::vector<unsigned int>& Query::attribute_ids() const {
 }
 
 Status Query::clear_fragments() {
-  for (auto& fragment : fragments_) {
-    RETURN_NOT_OK(fragment->finalize());
-    delete fragment;
+  if(!fragments_borrowed_) {
+    for (auto &fragment : fragments_) {
+      RETURN_NOT_OK(fragment->finalize());
+      delete fragment;
+    }
   }
 
   fragments_.clear();
@@ -202,8 +224,10 @@ Status Query::init(
 
   RETURN_NOT_OK(set_attributes(attributes, attribute_num));
   RETURN_NOT_OK(set_subarray(subarray));
-  RETURN_NOT_OK(init_fragments(fragment_metadata));
+  RETURN_NOT_OK(init_fragments(fragment_metadata_));
   RETURN_NOT_OK(init_states());
+
+  fragments_init_ = true;
 
   return Status::Ok();
 }
@@ -231,8 +255,6 @@ Status Query::init(
     this->add_coords();
 
   RETURN_NOT_OK(set_subarray(subarray));
-  RETURN_NOT_OK(init_fragments(fragment_metadata));
-  RETURN_NOT_OK(init_states());
 
   return Status::Ok();
 }
@@ -363,8 +385,8 @@ Status Query::write() {
     assert(0);
   }
 
-  // In all modes except WRITE, the fragment must be finalized
-  if (type_ != QueryType::WRITE)
+  // In all types except WRITE, the fragment must be finalized
+  if(type_ != QueryType::WRITE)
     clear_fragments();
 
   status_ = QueryStatus::COMPLETED;
@@ -403,6 +425,21 @@ Status Query::write(void** buffers, uint64_t* buffer_sizes) {
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
+
+void Query::add_coords() {
+  int attribute_num = array_schema_->attribute_num();
+  bool has_coords = false;
+
+  for (auto id : attribute_ids_) {
+    if (id == attribute_num) {
+      has_coords = true;
+      break;
+    }
+  }
+
+  if (!has_coords)
+    attribute_ids_.emplace_back(attribute_num);
+}
 
 Status Query::init_fragments(
     const std::vector<FragmentMetadata*>& fragment_metadata) {
@@ -471,7 +508,6 @@ std::string Query::new_fragment_name() const {
   std::stringstream ss;
   ss << std::this_thread::get_id();
   std::string tid = ss.str();
-
 
   // Generate fragment name
   int n = sprintf(

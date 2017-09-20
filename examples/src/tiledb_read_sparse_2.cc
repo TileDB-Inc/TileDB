@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
   tiledb_ctx_create(&ctx);
 
   // Subarray and attributes
-  int64_t subarray[] = { 2, 4, 1, 3 };
+  int64_t subarray[] = { 1, 4, 1, 4 };
   const char* attributes[] = { "a1" };
 
   // Prepare cell buffers 
@@ -56,7 +56,7 @@ int main(int argc, char** argv) {
     ctx,
     &query,
     "my_sparse_array",
-    TILEDB_READ_SORTED_COL,
+    TILEDB_READ_SORTED_ROW,
     subarray,
     attributes,
     1,

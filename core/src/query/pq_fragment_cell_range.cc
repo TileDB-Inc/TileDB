@@ -121,7 +121,7 @@ template <class T>
 bool PQFragmentCellRange<T>::must_be_split(
     const PQFragmentCellRange* fcr) const {
   return fcr->fragment_id_ != INVALID_UINT &&
-          (fragment_id_ == INVALID_UINT || fcr->fragment_id_ > fragment_id_) &&
+         (fragment_id_ == INVALID_UINT || fcr->fragment_id_ > fragment_id_) &&
          (fcr->tile_id_l_ < tile_id_r_ ||
           (fcr->tile_id_l_ == tile_id_r_ &&
            array_schema_->cell_order_cmp(
@@ -131,7 +131,8 @@ bool PQFragmentCellRange<T>::must_be_split(
 template <class T>
 bool PQFragmentCellRange<T>::must_trim(const PQFragmentCellRange* fcr) const {
   return fragment_id_ != INVALID_UINT &&
-          (fcr->fragment_id_ == INVALID_UINT || fcr->fragment_id_ < fragment_id_) &&
+         (fcr->fragment_id_ == INVALID_UINT ||
+          fcr->fragment_id_ < fragment_id_) &&
          (fcr->tile_id_l_ > tile_id_l_ ||
           (fcr->tile_id_l_ == tile_id_l_ &&
            array_schema_->cell_order_cmp(fcr->cell_range_, cell_range_) >=

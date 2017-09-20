@@ -430,12 +430,8 @@ Status ArraySortedWriteState::async_submit_query(unsigned int id) {
   // Sanity check
   assert(storage_manager != NULL);
 
-    separate_fragments = true; // TODO remove - there is still one more bug
-
-    sleep(2);
-
   if (separate_fragments) {
-    if(async_query_[id] != nullptr)
+    if (async_query_[id] != nullptr)
       RETURN_NOT_OK(async_query_[id]->finalize());
     delete async_query_[id];
     async_query_[id] = new Query();
@@ -450,33 +446,31 @@ Status ArraySortedWriteState::async_submit_query(unsigned int id) {
         copy_state_.buffer_offsets_[id]));
     async_query_[id]->set_callback(async_done, &(async_data_[id]));
   } else {
-    // Very first time to create a query when not separate fragments
-    if (id == 0 && async_query_[id] == nullptr) {
-      async_query_[id] = new Query();
-      RETURN_NOT_OK(async_query_[id]->init(
-          query_->storage_manager(),
-          query_->array_schema(),
-          query_->fragment_metadata(),
-          QueryType::WRITE,
-          query_->subarray(),
-          query_->attribute_ids(),
-          copy_state_.buffers_[id],
-          copy_state_.buffer_offsets_[id]));
-      async_query_[id]->set_callback(async_done, &(async_data_[id]));
-    } else {  // Every other time
-      assert(async_query_[0] != nullptr);
-
-       sleep(3);
-
-      async_query_[0]->set_buffers(
-          copy_state_.buffers_[id], copy_state_.buffer_offsets_[id]);
-      async_query_[0]->set_callback(async_done, &(async_data_[id]));
+    if (id == 0) {
+      if (async_query_[id] == nullptr) {
+        async_query_[id] = new Query();
+        RETURN_NOT_OK(async_query_[id]->init(
+            query_->storage_manager(),
+            query_->array_schema(),
+            query_->fragment_metadata(),
+            QueryType::WRITE,
+            query_->subarray(),
+            query_->attribute_ids(),
+            copy_state_.buffers_[id],
+            copy_state_.buffer_offsets_[id]));
+        async_query_[id]->set_callback(async_done, &(async_data_[id]));
+      }
+    } else {  // id == 1
+        if (async_query_[id] == nullptr) {
+          async_query_[id] = new Query(async_query_[0]);
+          async_query_[id]->set_buffers(copy_state_.buffers_[id], copy_state_.buffer_offsets_[id]);
+          async_query_[id]->set_callback(async_done, &(async_data_[id]));
+        }
     }
   }
 
   // Send the async query
-  RETURN_NOT_OK(storage_manager->async_push_query(
-      (separate_fragments) ? async_query_[id] : async_query_[0], 1));
+  RETURN_NOT_OK(storage_manager->async_push_query(async_query_[id], 1));
 
   // Success
   return Status::Ok();

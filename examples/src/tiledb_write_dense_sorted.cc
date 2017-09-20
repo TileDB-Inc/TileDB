@@ -67,7 +67,7 @@ int main() {
     ctx,
     &query,
     "my_dense_array",
-    TILEDB_WRITE_SORTED_ROW,
+    TILEDB_WRITE_SORTED_COL,
     subarray,
     nullptr,
     0,

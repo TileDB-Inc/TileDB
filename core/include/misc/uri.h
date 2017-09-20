@@ -64,6 +64,9 @@ class URI {
   /*                API                */
   /* ********************************* */
 
+  /** Returns a C-style pointer to the URI string. */
+  const char* c_str() const;
+
   /** Checks if the URI is invalid (empty string). */
   bool is_invalid() const;
 

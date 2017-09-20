@@ -54,6 +54,10 @@ URI::~URI() = default;
 /*                API                */
 /* ********************************* */
 
+const char* URI::c_str() const {
+     return uri_.c_str();
+}
+
 bool URI::is_invalid() const {
   return uri_.empty();
 }

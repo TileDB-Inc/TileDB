@@ -333,7 +333,10 @@ Status ReadState::get_enclosing_coords(
   RETURN_NOT_OK(get_cell_pos_at_or_before(target_coords, &target_pos));
 
   // Check if target exists
-  if (target_pos >= start_pos && target_pos <= end_pos) {
+  if (target_pos != INVALID_UINT64 &&
+      target_pos >= start_pos &&
+      end_pos != INVALID_UINT64 &&
+      target_pos <= end_pos) {
     RETURN_NOT_OK(cmp_coords_to_search_tile(
         target_coords, target_pos * coords_size_, target_exists));
   } else {
@@ -343,13 +346,16 @@ Status ReadState::get_enclosing_coords(
   // Calculate left and right pos
   uint64_t left_pos;
   if (*target_exists)
-    left_pos = (target_pos == 0) ? INVALID_UINT64 : target_pos - 1;
+    left_pos = (target_pos == 0 || target_pos == INVALID_UINT64) ? INVALID_UINT64 : target_pos - 1;
   else
     left_pos = target_pos;
-  uint64_t right_pos = target_pos + 1;
+  uint64_t right_pos = (target_pos == INVALID_UINT64) ? INVALID_UINT64 : target_pos + 1;
 
   // Copy left if it exists
-  if (left_pos >= start_pos && left_pos <= end_pos) {
+  if (left_pos != INVALID_UINT64 &&
+      left_pos >= start_pos &&
+      end_pos != INVALID_UINT64 &&
+      left_pos <= end_pos) {
     RETURN_NOT_OK(read_from_tile(
         attribute_num_ + 1,
         left_coords,
@@ -361,7 +367,10 @@ Status ReadState::get_enclosing_coords(
   }
 
   // Copy right if it exists
-  if (right_pos >= start_pos && right_pos <= end_pos) {
+  if (right_pos != INVALID_UINT64 &&
+      right_pos >= start_pos &&
+      end_pos != INVALID_UINT64 &&
+      right_pos <= end_pos) {
     RETURN_NOT_OK(read_from_tile(
         attribute_num_ + 1,
         right_coords,
@@ -396,7 +405,7 @@ Status ReadState::get_fragment_cell_pos_range_sparse(
 
   // Create the result
   fragment_cell_pos_range->first = fragment_info;
-  if (start_pos <= end_pos)  // There are results
+  if (end_pos != UINT64_MAX && start_pos <= end_pos)  // There are results
     fragment_cell_pos_range->second = CellPosRange(start_pos, end_pos);
   else  // There are NO results
     fragment_cell_pos_range->second =
@@ -575,39 +584,41 @@ Status ReadState::get_fragment_cell_ranges_sparse(
   const void* cell;
   uint64_t current_start_pos = start_pos;
   uint64_t current_end_pos = INVALID_UINT64;
-  for (uint64_t i = start_pos; i <= end_pos; ++i) {
-    RETURN_NOT_OK(get_coords_from_search_tile(i, &cell));
+  if(end_pos != INVALID_UINT64) {
+    for (uint64_t i = start_pos; i <= end_pos; ++i) {
+      RETURN_NOT_OK(get_coords_from_search_tile(i, &cell));
 
-    if (utils::cell_in_subarray<T>(
-            static_cast<const T*>(cell), subarray, dim_num)) {
-      if (i > 0 && i - 1 == current_end_pos) {  // The range is expanded
-        ++current_end_pos;
-      } else {  // A new range starts
-        current_start_pos = i;
-        current_end_pos = i;
-      }
-    } else {
-      if (i > 0 && i - 1 == current_end_pos) {
-        // The range needs to be added to the list
-        FragmentCellRange fragment_cell_range;
-        fragment_cell_range.first = FragmentInfo(fragment_i, search_tile_pos_);
-        fragment_cell_range.second = std::malloc(2 * coords_size_);
-        auto cell_range = static_cast<T*>(fragment_cell_range.second);
+      if (utils::cell_in_subarray<T>(
+              static_cast<const T *>(cell), subarray, dim_num)) {
+        if (i > 0 && i - 1 == current_end_pos) {  // The range is expanded
+          ++current_end_pos;
+        } else {  // A new range starts
+          current_start_pos = i;
+          current_end_pos = i;
+        }
+      } else {
+        if (i > 0 && i - 1 == current_end_pos) {
+          // The range needs to be added to the list
+          FragmentCellRange fragment_cell_range;
+          fragment_cell_range.first = FragmentInfo(fragment_i, search_tile_pos_);
+          fragment_cell_range.second = std::malloc(2 * coords_size_);
+          auto cell_range = static_cast<T *>(fragment_cell_range.second);
 
-        RETURN_NOT_OK(read_from_tile(
-            attribute_num_ + 1,
-            cell_range,
-            current_start_pos * coords_size_,
-            coords_size_));
+          RETURN_NOT_OK(read_from_tile(
+                  attribute_num_ + 1,
+                  cell_range,
+                  current_start_pos * coords_size_,
+                  coords_size_));
 
-        RETURN_NOT_OK(read_from_tile(
-            attribute_num_ + 1,
-            &cell_range[dim_num],
-            current_end_pos * coords_size_,
-            coords_size_));
+          RETURN_NOT_OK(read_from_tile(
+                  attribute_num_ + 1,
+                  &cell_range[dim_num],
+                  current_end_pos * coords_size_,
+                  coords_size_));
 
-        fragment_cell_ranges->emplace_back(fragment_cell_range);
-        current_end_pos = INVALID_UINT64;  // No active range
+          fragment_cell_ranges->emplace_back(fragment_cell_range);
+          current_end_pos = INVALID_UINT64;  // No active range
+        }
       }
     }
   }
@@ -961,7 +972,6 @@ Status ReadState::compute_tile_compressed_size(
     unsigned int attribute_id,
     TileIO* tile_io,
     uint64_t* tile_compressed_size) const {
-
   auto& tile_offsets = metadata_->tile_offsets();
   uint64_t tile_num = metadata_->tile_num();
   uint64_t file_size = 0;
@@ -1113,7 +1123,7 @@ void ReadState::compute_tile_search_range_col_or_row() {
     // Perform binary search
     min = 0;
     max = tile_num - 1;
-    while (min <= max) {
+    while (max != INVALID_UINT64 && min <= max) {
       med = min + ((max - min) / 2);
 
       // Get info for bounding coordinates
@@ -1191,7 +1201,7 @@ Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
   uint64_t med = min + ((max - min) / 2);
   int cmp;
   const void* coords_t;
-  while (min <= max) {
+  while (max != INVALID_UINT64 && min <= max) {
     med = min + ((max - min) / 2);
 
     // Update search range
@@ -1229,7 +1239,7 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
   uint64_t med = min + ((max - min) / 2);
   int cmp;
   const void* coords_t;
-  while (min <= max) {
+  while (max != INVALID_UINT64 && min <= max) {
     med = min + ((max - min) / 2);
 
     // Update search range
@@ -1268,7 +1278,7 @@ Status ReadState::get_cell_pos_at_or_before(
   uint64_t med = min + ((max - min) / 2);
   int cmp;
   const void* coords_t;
-  while (min <= max) {
+  while (max != INVALID_UINT64 && min <= max) {
     med = min + ((max - min) / 2);
 
     // Update search range

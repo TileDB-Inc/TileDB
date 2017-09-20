@@ -289,7 +289,7 @@ Status read_from_file(
   int64_t bytes_read = ::read(fd, buffer, nbytes);
   if (bytes_read != int64_t(nbytes)) {
     return LOG_STATUS(
-        Status::OSError("Cannot read from file; File reading error"));
+        Status::OSError(std::string("Cannot read from file '") + path.c_str() + "'; File reading error"));
   }
 
   // Close file

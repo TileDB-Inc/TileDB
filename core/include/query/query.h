@@ -62,15 +62,20 @@ class Query {
   /** Constructor. */
   Query();
 
+  /**
+   * Constructor called when the query to be created continues to write/append
+   * to the fragment that was created by the *common_query*.
+   *
+   * @param common_query The query into whose fragment to append.
+   */
+  Query(Query* common_query);
+
   /** Destructor. */
   ~Query();
 
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
-
-  /** Adds the coordinates attribute if it does not exist. */
-  void add_coords();
 
   /** Returns the array schema.*/
   const ArraySchema* array_schema() const;
@@ -138,7 +143,13 @@ class Query {
       uint64_t* buffer_sizes);
 
   /**
-   * Initializes the query.
+   * Initializes the query. This is invoked for an internal async query.
+   * The fragments and states are not immediately intialized. They
+   * are instead initialized when the query is processed. This is
+   * because the thread that initializes is different from that that
+   * processes the query. The thread that processes the query must
+   * initialize the fragments in the case of write queries, so that
+   * the new fragment is named using the appropriate thread id.
    *
    * @param storage_manager The storage manager.
    * @param array_schema The array schema.
@@ -281,11 +292,23 @@ class Query {
   /** The data input to the callback function. */
   void* callback_data_;
 
+  /**
+   * This is not *nullptr* in case of async write where the current query object
+   * continues to write/append to the *common_query_*'s new fragment.
+   */
+  Query* common_query_;
+
   /** The query status. */
   QueryStatus status_;
 
   /** The fragments involved in the query. */
   std::vector<Fragment*> fragments_;
+
+  /** Indicates whether the fragments have been initialized. */
+  bool fragments_init_;
+
+  /** Indicates if the stored fragments belong to the query object or not. */
+  bool fragments_borrowed_;
 
   /** The metadata of the fragments involved in the query. */
   std::vector<FragmentMetadata*> fragment_metadata_;
@@ -305,6 +328,9 @@ class Query {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Adds the coordinates attribute if it does not exist. */
+  void add_coords();
 
   /** Initializes the fragments (for a read query). */
   Status init_fragments(

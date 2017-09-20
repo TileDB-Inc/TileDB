@@ -205,6 +205,8 @@ struct SparseArrayFx {
     const int64_t subarray[] = {
         domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
 
+    std::cout << subarray[0] << " " << subarray[1] << " " << subarray[2] << " " << subarray[3] << "\n";
+
     // Subset over a specific attribute
     const char* attributes[] = {ATTR_NAME};
 
@@ -241,7 +243,7 @@ struct SparseArrayFx {
     }
 
     // Free/finalize query
-    tiledb_query_free(ctx_, query);
+    rc = tiledb_query_free(ctx_, query);
     if (rc != TILEDB_OK)
       return nullptr;
 

@@ -827,7 +827,6 @@ void ArrayReadState::copy_cells_with_empty_generic(
     const CellPosRange& cell_pos_range,
     const void* empty_type_value,
     const uint64_t empty_type_size) {
-
   // For easy reference
   uint64_t cell_size = array_schema_->cell_size(attribute_id);
   auto buffer_c = static_cast<char*>(buffer);
@@ -1855,7 +1854,7 @@ Status ArrayReadState::sort_fragment_cell_ranges(
       popped->export_to(&result);
       fragment_cell_ranges->push_back(result);
       fid = (popped->fragment_id_ != INVALID_UINT) ? popped->fragment_id_ :
-                                           fragment_num - 1;
+                                                     fragment_num - 1;
       delete popped;
 
       if (rid[fid] == rlen[fid])

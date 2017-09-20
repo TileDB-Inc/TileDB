@@ -33,11 +33,12 @@
 #ifndef TILEDB_VFS_H
 #define TILEDB_VFS_H
 
-#include <string>
-
 #include "buffer.h"
 #include "status.h"
 #include "uri.h"
+
+#include <string>
+#include <vector>
 
 namespace tiledb {
 

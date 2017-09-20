@@ -81,6 +81,7 @@ Status TileIO::read(
     buffer_ = new Buffer();
 
   buffer_->realloc(compressed_size);
+
   RETURN_NOT_OK(storage_manager_->read_from_file(
       attr_uri_, file_offset, buffer_->data(), compressed_size));
 

@@ -293,7 +293,8 @@ Status StorageManager::store(ArraySchema* array_schema) {
   if (is_file(array_schema_uri))
     RETURN_NOT_OK_ELSE(delete_file(array_schema_uri), delete buff);
   RETURN_NOT_OK_ELSE(
-      write_to_file(array_schema_uri, buff->data(), buff->offset()), delete buff);
+      write_to_file(array_schema_uri, buff->data(), buff->offset()),
+      delete buff);
 
   return Status::Ok();
 }
@@ -568,8 +569,8 @@ void StorageManager::sort_fragment_uris(std::vector<URI>* fragment_uris) const {
     assert(utils::starts_with(fragment_name, "__"));
 
     // Get timestamp in the end of the name after '_'
-    assert(fragment_name.find("_") != std::string::npos);
-    t_str = fragment_name.substr(fragment_name.find('_') + 1);
+    assert(fragment_name.find_last_of("_") != std::string::npos);
+    t_str = fragment_name.substr(fragment_name.find_last_of('_') + 1);
     sscanf(t_str.c_str(), "%lld", (long long int*)&t);
     t_pos_vec.emplace_back(std::pair<uint64_t, uint64_t>(t, pos++));
   }

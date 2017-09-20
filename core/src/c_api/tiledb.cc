@@ -756,7 +756,7 @@ int tiledb_array_schema_get_array_name(
       sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   const tiledb::URI& uri = array_schema->array_schema_->array_uri();
-  *array_name = uri.to_string().c_str();
+  *array_name = uri.c_str();
   return TILEDB_OK;
 }
 

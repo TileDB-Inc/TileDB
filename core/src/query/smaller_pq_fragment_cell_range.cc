@@ -77,9 +77,9 @@ bool SmallerPQFragmentCellRange<T>::operator()(
     return true;
 
   // Check empty fragments first
-  if(a->fragment_id_ == PQFragmentCellRange<T>::INVALID_UINT)
+  if (a->fragment_id_ == PQFragmentCellRange<T>::INVALID_UINT)
     return true;
-  if(b->fragment_id_ == PQFragmentCellRange<T>::INVALID_UINT)
+  if (b->fragment_id_ == PQFragmentCellRange<T>::INVALID_UINT)
     return false;
 
   // Check non-empty fragments
