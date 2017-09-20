@@ -430,8 +430,13 @@ Status ArraySortedWriteState::async_submit_query(unsigned int id) {
   // Sanity check
   assert(storage_manager != NULL);
 
+    separate_fragments = true; // TODO remove - there is still one more bug
+
+    sleep(2);
+
   if (separate_fragments) {
-    RETURN_NOT_OK(async_query_[id]->finalize());
+    if(async_query_[id] != nullptr)
+      RETURN_NOT_OK(async_query_[id]->finalize());
     delete async_query_[id];
     async_query_[id] = new Query();
     RETURN_NOT_OK(async_query_[id]->init(
@@ -460,6 +465,9 @@ Status ArraySortedWriteState::async_submit_query(unsigned int id) {
       async_query_[id]->set_callback(async_done, &(async_data_[id]));
     } else {  // Every other time
       assert(async_query_[0] != nullptr);
+
+       sleep(3);
+
       async_query_[0]->set_buffers(
           copy_state_.buffers_[id], copy_state_.buffer_offsets_[id]);
       async_query_[0]->set_callback(async_done, &(async_data_[id]));
@@ -1744,7 +1752,7 @@ Status ArraySortedWriteState::write_sorted_col() {
     copy_id_ = (copy_id_ + 1) % 2;
   }
 
-  // Wait for last AIO to finish
+  // Wait for last async query to finish
   async_wait((copy_id_ + 1) % 2);
 
   // Success
@@ -1754,7 +1762,7 @@ Status ArraySortedWriteState::write_sorted_col() {
 template <class T>
 Status ArraySortedWriteState::write_sorted_row() {
   // For easy reference
-  const ArraySchema* array_schema = query_->array_schema();
+  auto array_schema = query_->array_schema();
   auto subarray = static_cast<const T*>(subarray_);
 
   // Check if this can be satisfied with a default write
@@ -1774,7 +1782,7 @@ Status ArraySortedWriteState::write_sorted_row() {
     copy_id_ = (copy_id_ + 1) % 2;
   }
 
-  // Wait for last AIO to finish
+  // Wait for last async query to finish
   async_wait((copy_id_ + 1) % 2);
 
   // Success

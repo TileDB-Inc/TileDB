@@ -153,14 +153,19 @@ Status Query::coords_buffer_i(int* coords_buffer_i) const {
 }
 
 Status Query::finalize() {
+  // Clear sorted read state
   if (array_sorted_read_state_ != nullptr)
     RETURN_NOT_OK(array_sorted_read_state_->finalize());
   delete array_sorted_read_state_;
   array_sorted_read_state_ = nullptr;
+
+  // Clear sorted write state
   if (array_sorted_write_state_ != nullptr)
     RETURN_NOT_OK(array_sorted_write_state_->finalize());
   delete array_sorted_write_state_;
   array_sorted_write_state_ = nullptr;
+
+  // Clear fragments
   return clear_fragments();
 }
 
@@ -441,7 +446,6 @@ Status Query::init_states() {
 Status Query::new_fragment() {
   // Get new fragment name
   std::string new_fragment_name = this->new_fragment_name();
-
   if (new_fragment_name.empty())
     return LOG_STATUS(Status::QueryError("Cannot produce new fragment name"));
 

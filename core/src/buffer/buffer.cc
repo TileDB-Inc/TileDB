@@ -93,9 +93,6 @@ Status Buffer::read(void* buffer, uint64_t nbytes) {
 }
 
 Status Buffer::realloc(uint64_t nbytes) {
-  if (nbytes <= size_)
-    return Status::Ok();
-
   if (data_ == nullptr)
     data_ = std::malloc(nbytes);
   else

@@ -49,6 +49,16 @@ template <class T>
 class PQFragmentCellRange {
  public:
   /* ********************************* */
+  /*          STATIC CONSTANTS         */
+  /* ********************************* */
+
+  /** Indicates an invalid uint64_t value. */
+  static const uint64_t INVALID_UINT64;
+
+  /** Indicates an invalid unsigned int value. */
+  static const unsigned int INVALID_UINT;
+
+  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -169,16 +179,6 @@ class PQFragmentCellRange {
 
   /** Stores the read state of each fragment in the array. */
   const std::vector<ReadState*>* fragment_read_states_;
-
-  /* ********************************* */
-  /*          STATIC CONSTANTS         */
-  /* ********************************* */
-
-  /** Indicates an invalid uint64_t value. */
-  static const uint64_t INVALID_UINT64;
-
-  /** Indicates an invalid unsigned int value. */
-  static const unsigned int INVALID_UINT;
 };
 
 }  // namespace tiledb

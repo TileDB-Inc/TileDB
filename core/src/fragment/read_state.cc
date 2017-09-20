@@ -961,6 +961,7 @@ Status ReadState::compute_tile_compressed_size(
     unsigned int attribute_id,
     TileIO* tile_io,
     uint64_t* tile_compressed_size) const {
+
   auto& tile_offsets = metadata_->tile_offsets();
   uint64_t tile_num = metadata_->tile_num();
   uint64_t file_size = 0;
@@ -1447,6 +1448,7 @@ Status ReadState::read_tile(unsigned int attribute_id, uint64_t tile_i) {
   uint64_t tile_compressed_size;
   RETURN_NOT_OK(compute_tile_compressed_size(
       tile_i, attribute_id_real, tile_io, &tile_compressed_size));
+
   uint64_t file_offset = metadata_->tile_offsets()[attribute_id_real][tile_i];
   uint64_t tile_size =
       metadata_->cell_num(tile_i) * array_schema_->cell_size(attribute_id_real);

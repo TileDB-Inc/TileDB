@@ -33,6 +33,7 @@
 #include "zstd_compressor.h"
 #include "logger.h"
 
+#include <iostream>
 #include <zstd.h>
 
 namespace tiledb {

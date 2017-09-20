@@ -827,6 +827,7 @@ void ArrayReadState::copy_cells_with_empty_generic(
     const CellPosRange& cell_pos_range,
     const void* empty_type_value,
     const uint64_t empty_type_size) {
+
   // For easy reference
   uint64_t cell_size = array_schema_->cell_size(attribute_id);
   auto buffer_c = static_cast<char*>(buffer);
@@ -855,7 +856,7 @@ void ArrayReadState::copy_cells_with_empty_generic(
   for (uint64_t i = 0; i < cell_num_to_copy; ++i) {
     for (unsigned int j = 0; j < cell_val_num; ++j) {
       std::memcpy(buffer_c + *buffer_offset, empty_type_value, empty_type_size);
-      buffer_offset += empty_type_size;
+      *buffer_offset += empty_type_size;
     }
   }
   empty_cells_written_[attribute_id] += cell_num_to_copy;

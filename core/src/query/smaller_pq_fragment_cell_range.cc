@@ -71,16 +71,20 @@ bool SmallerPQFragmentCellRange<T>::operator()(
 
   // Get cell ordering information for the first range endpoints
   int cmp = array_schema_->cell_order_cmp<T>(a->cell_range_, b->cell_range_);
-
   if (cmp < 0)  // a's range start precedes b's
     return false;
-
   if (cmp > 0)  // b's range start preceded a's
     return true;
 
+  // Check empty fragments first
+  if(a->fragment_id_ == PQFragmentCellRange<T>::INVALID_UINT)
+    return true;
+  if(b->fragment_id_ == PQFragmentCellRange<T>::INVALID_UINT)
+    return false;
+
+  // Check non-empty fragments
   if (a->fragment_id_ < b->fragment_id_)
     return true;
-
   if (a->fragment_id_ > b->fragment_id_)
     return false;
 
