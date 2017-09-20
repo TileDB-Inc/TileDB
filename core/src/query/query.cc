@@ -34,6 +34,7 @@
 #include "logger.h"
 #include "utils.h"
 
+#include <sstream>
 #include <sys/time.h>
 
 /* ****************************** */
@@ -465,16 +466,19 @@ std::string Query::new_fragment_name() const {
   struct timeval tp = {};
   gettimeofday(&tp, nullptr);
   uint64_t ms = (uint64_t)tp.tv_sec * 1000L + tp.tv_usec / 1000;
-  uint64_t tid;
-  pthread_threadid_np(nullptr, &tid);
   char fragment_name[name_max_len];
+
+  std::stringstream ss;
+  ss << std::this_thread::get_id();
+  std::string tid = ss.str();
+
 
   // Generate fragment name
   int n = sprintf(
       fragment_name,
-      "%s/.__%llu_%llu",
+      "%s/.__%s_%llu",
       array_schema_->array_uri().to_string().c_str(),
-      tid,
+      tid.c_str(),
       ms);
 
   // Handle error
