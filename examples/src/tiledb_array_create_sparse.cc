@@ -93,15 +93,15 @@ int main() {
   // Attributes
   tiledb_attribute_t* a1;
   tiledb_attribute_create(ctx, &a1, "a1", TILEDB_INT32);
-  tiledb_attribute_set_compressor(ctx, a1, TILEDB_RLE, -1);
+//  tiledb_attribute_set_compressor(ctx, a1, TILEDB_RLE, -1);
   tiledb_attribute_set_cell_val_num(ctx, a1, 1);
   tiledb_attribute_t* a2;
   tiledb_attribute_create(ctx, &a2, "a2", TILEDB_CHAR);
-  tiledb_attribute_set_compressor(ctx, a2, TILEDB_BZIP2, -1);
+//  tiledb_attribute_set_compressor(ctx, a2, TILEDB_BZIP2, -1);
   tiledb_attribute_set_cell_val_num(ctx, a2, tiledb_var_num());
   tiledb_attribute_t* a3;
   tiledb_attribute_create(ctx, &a3, "a3", TILEDB_FLOAT32);
-  tiledb_attribute_set_compressor(ctx, a3, TILEDB_BLOSC_SNAPPY, -1);
+//  tiledb_attribute_set_compressor(ctx, a3, TILEDB_BLOSC_SNAPPY, -1);
   tiledb_attribute_set_cell_val_num(ctx, a3, 2);
 
   // Domain and tile extents
@@ -111,10 +111,10 @@ int main() {
   // Dimensions
   tiledb_dimension_t* d1;
   tiledb_dimension_create(ctx, &d1, "d1", TILEDB_INT64, &domain[0], &tile_extents[0]);
-  tiledb_dimension_set_compressor(ctx, d1, TILEDB_GZIP, -1);
+//  tiledb_dimension_set_compressor(ctx, d1, TILEDB_GZIP, -1);
   tiledb_dimension_t* d2;
   tiledb_dimension_create(ctx, &d2, "d2", TILEDB_INT64, &domain[2], &tile_extents[1]);
-  tiledb_dimension_set_compressor(ctx, d2, TILEDB_GZIP, -1);
+//  tiledb_dimension_set_compressor(ctx, d2, TILEDB_GZIP, -1);
 
   // Create array_schema schema
   tiledb_array_schema_t* array_schema;

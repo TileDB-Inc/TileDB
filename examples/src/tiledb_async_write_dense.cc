@@ -86,7 +86,7 @@ int main() {
   tiledb_query_create(
     ctx,
     &query,
-    "my_group/dense_arrays/my_array_A",
+    "my_dense_array",
     TILEDB_WRITE,
     nullptr,
     nullptr,

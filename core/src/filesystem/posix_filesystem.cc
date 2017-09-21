@@ -288,8 +288,9 @@ Status read_from_file(
   lseek(fd, offset, SEEK_SET);
   int64_t bytes_read = ::read(fd, buffer, nbytes);
   if (bytes_read != int64_t(nbytes)) {
-    return LOG_STATUS(
-        Status::OSError(std::string("Cannot read from file '") + path.c_str() + "'; File reading error"));
+    return LOG_STATUS(Status::OSError(
+        std::string("Cannot read from file '") + path.c_str() +
+        "'; File reading error"));
   }
 
   // Close file

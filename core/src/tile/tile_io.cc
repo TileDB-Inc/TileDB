@@ -71,12 +71,15 @@ Status TileIO::read(
     uint64_t tile_size) {
   tile->reset_offset();
 
+  // No compression
   if (tile->compressor() == Compressor::NO_COMPRESSION) {
-    tile->set_file_offset(file_offset);
-    tile->set_size(tile_size);
+    RETURN_NOT_OK(tile->alloc(tile_size));
+    RETURN_NOT_OK(storage_manager_->read_from_file(
+        attr_uri_, file_offset, tile->data(), tile_size));
     return Status::Ok();
   }
 
+  // Compression
   if (buffer_ == nullptr)
     buffer_ = new Buffer();
 
@@ -89,15 +92,6 @@ Status TileIO::read(
   // TODO: here we will put all other filters, and potentially employ chunking
   // TODO: choose the proper buffer based on all filters, not just compression
   return decompress_tile(tile, tile_size);
-}
-
-Status TileIO::read_from_tile(Tile* tile, void* buffer, uint64_t nbytes) {
-  RETURN_NOT_OK(storage_manager_->read_from_file(
-      attr_uri_, tile->file_offset() + tile->offset(), buffer, nbytes));
-
-  tile->advance_offset(nbytes);
-
-  return Status::Ok();
 }
 
 Status TileIO::write(Tile* tile, uint64_t* bytes_written) {

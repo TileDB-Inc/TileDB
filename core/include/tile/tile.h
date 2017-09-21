@@ -89,9 +89,6 @@ class Tile {
   /*                API                */
   /* ********************************* */
 
-  /** Adbances the tile offset by the input bytes. */
-  void advance_offset(uint64_t nbytes);
-
   /** Allocates memory of the input size. */
   Status alloc(uint64_t size);
 
@@ -113,14 +110,8 @@ class Tile {
   /** Checks if the tile is empty. */
   bool empty() const;
 
-  /** Returns the file offset where the tile begins. */
-  uint64_t file_offset() const;
-
   /** Checks if the tile is full. */
   bool full() const;
-
-  /** Checks if the tile is in main memory. */
-  bool in_mem() const;
 
   /** The current offset in the tile. */
   uint64_t offset() const;
@@ -131,14 +122,8 @@ class Tile {
   /** Resets the tile offset. */
   void reset_offset();
 
-  /** Sets the file offset. */
-  void set_file_offset(uint64_t file_offset);
-
   /** Sets the tile offset. */
   void set_offset(uint64_t offset);
-
-  /** Sets the tile size. */
-  void set_size(uint64_t size);
 
   /** Returns the tile size. */
   uint64_t size() const;
@@ -191,9 +176,6 @@ class Tile {
 
   /** The compression level. */
   int compression_level_;
-
-  /** The file offset where the tile begins. */
-  uint64_t file_offset_;
 
   /** The current offset in the tile. */
   uint64_t offset_;

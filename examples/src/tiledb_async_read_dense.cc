@@ -61,15 +61,15 @@ int main() {
   };
 
   // Prepare subarray
-  int64_t subarray[] = { 3, 4, 2, 4 }; // [3,4] on first dim, [2,4] on second
+  int64_t subarray[] = { 2, 4, 2, 4 }; // [3,4] on first dim, [2,4] on second
 
   // Create query
   tiledb_query_t* query;
   tiledb_query_create(
     ctx,
     &query,
-    "my_group/dense_arrays/my_array_A",
-    TILEDB_READ,
+    "my_dense_array",
+    TILEDB_READ_SORTED_ROW,
     subarray,
     nullptr,
     0,

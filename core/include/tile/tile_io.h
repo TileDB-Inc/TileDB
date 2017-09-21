@@ -86,19 +86,6 @@ class TileIO {
       uint64_t tile_size);
 
   /**
-   * Reads from a tile into a buffer. The reason this function is in TileIO is
-   * because the input tile contains only information about how to locate the
-   * data in the attribute file. The tile does not actually store the data in
-   * main memory.
-   *
-   * @param tile The tile containing the appropriate info.
-   * @param buffer The buffer to write to.
-   * @param nbytes The number of bytes to write.
-   * @return Status.
-   */
-  Status read_from_tile(Tile* tile, void* buffer, uint64_t nbytes);
-
-  /**
    * Writes (appends) a tile into the attribute file.
    *
    * @param tile The tile to be written.

@@ -55,7 +55,7 @@ URI::~URI() = default;
 /* ********************************* */
 
 const char* URI::c_str() const {
-     return uri_.c_str();
+  return uri_.c_str();
 }
 
 bool URI::is_invalid() const {

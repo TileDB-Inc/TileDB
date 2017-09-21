@@ -399,8 +399,6 @@ TEST_CASE_METHOD(SparseArrayFx, "C API: Test random sparse sorted reads") {
   // set array_schema name
   set_array_name("sparse_test_5000x1000_100x100");
 
-    /*
-
   SECTION("- no compression row-major") {
     create_sparse_array_2D(
         tile_extent_0,
@@ -445,7 +443,6 @@ TEST_CASE_METHOD(SparseArrayFx, "C API: Test random sparse sorted reads") {
         TILEDB_COL_MAJOR);
     CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
   }
-     */
 
   SECTION("- gzip compression row/col-major") {
     create_sparse_array_2D(

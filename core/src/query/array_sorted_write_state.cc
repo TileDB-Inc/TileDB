@@ -460,11 +460,12 @@ Status ArraySortedWriteState::async_submit_query(unsigned int id) {
         async_query_[id]->set_callback(async_done, &(async_data_[id]));
       }
     } else {  // id == 1
-        if (async_query_[id] == nullptr) {
-          async_query_[id] = new Query(async_query_[0]);
-          async_query_[id]->set_buffers(copy_state_.buffers_[id], copy_state_.buffer_offsets_[id]);
-          async_query_[id]->set_callback(async_done, &(async_data_[id]));
-        }
+      if (async_query_[id] == nullptr) {
+        async_query_[id] = new Query(async_query_[0]);
+        async_query_[id]->set_buffers(
+            copy_state_.buffers_[id], copy_state_.buffer_offsets_[id]);
+        async_query_[id]->set_callback(async_done, &(async_data_[id]));
+      }
     }
   }
 

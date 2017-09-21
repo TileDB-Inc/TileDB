@@ -145,11 +145,7 @@ Status ReadState::copy_cells(
   // Copy and update current buffer and tile offsets
   char* buffer_c = static_cast<char*>(buffer) + *buffer_offset;
   if (bytes_to_copy != 0) {
-    if (tile->in_mem()) {
-      RETURN_NOT_OK(tile->read(buffer_c, bytes_to_copy));
-    } else {
-      RETURN_NOT_OK(tile_io->read_from_tile(tile, buffer_c, bytes_to_copy));
-    }
+    RETURN_NOT_OK(tile->read(buffer_c, bytes_to_copy));
     *buffer_offset += bytes_to_copy;
   }
 
@@ -229,11 +225,7 @@ Status ReadState::copy_cells_var(
 
   // Copy and update current buffer and tile offsets
   if (bytes_to_copy != 0) {
-    if (tile->in_mem()) {
-      RETURN_NOT_OK(tile->read(buffer_start, bytes_to_copy));
-    } else {
-      RETURN_NOT_OK(tile_io->read_from_tile(tile, buffer_start, bytes_to_copy));
-    }
+    RETURN_NOT_OK(tile->read(buffer_start, bytes_to_copy));
     *buffer_offset += bytes_to_copy;
 
     // Shift variable offsets
@@ -241,12 +233,7 @@ Status ReadState::copy_cells_var(
         buffer_start, end_cell_pos - start_cell_pos + 1, *buffer_var_offset);
 
     char* buffer_var_c = static_cast<char*>(buffer_var) + *buffer_var_offset;
-    if (tile_var->in_mem()) {
-      RETURN_NOT_OK(tile_var->read(buffer_var_c, bytes_var_to_copy));
-    } else {
-      RETURN_NOT_OK(tile_io_var->read_from_tile(
-          tile_var, buffer_var_c, bytes_var_to_copy));
-    }
+    RETURN_NOT_OK(tile_var->read(buffer_var_c, bytes_var_to_copy));
     *buffer_var_offset += bytes_var_to_copy;
   }
 
@@ -332,10 +319,8 @@ Status ReadState::get_enclosing_coords(
   RETURN_NOT_OK(get_cell_pos_at_or_before(target_coords, &target_pos));
 
   // Check if target exists
-  if (target_pos != INVALID_UINT64 &&
-      target_pos >= start_pos &&
-      end_pos != INVALID_UINT64 &&
-      target_pos <= end_pos) {
+  if (target_pos != INVALID_UINT64 && target_pos >= start_pos &&
+      end_pos != INVALID_UINT64 && target_pos <= end_pos) {
     RETURN_NOT_OK(cmp_coords_to_search_tile(
         target_coords, target_pos * coords_size_, target_exists));
   } else {
@@ -345,16 +330,17 @@ Status ReadState::get_enclosing_coords(
   // Calculate left and right pos
   uint64_t left_pos;
   if (*target_exists)
-    left_pos = (target_pos == 0 || target_pos == INVALID_UINT64) ? INVALID_UINT64 : target_pos - 1;
+    left_pos = (target_pos == 0 || target_pos == INVALID_UINT64) ?
+                   INVALID_UINT64 :
+                   target_pos - 1;
   else
     left_pos = target_pos;
-  uint64_t right_pos = (target_pos == INVALID_UINT64) ? INVALID_UINT64 : target_pos + 1;
+  uint64_t right_pos =
+      (target_pos == INVALID_UINT64) ? INVALID_UINT64 : target_pos + 1;
 
   // Copy left if it exists
-  if (left_pos != INVALID_UINT64 &&
-      left_pos >= start_pos &&
-      end_pos != INVALID_UINT64 &&
-      left_pos <= end_pos) {
+  if (left_pos != INVALID_UINT64 && left_pos >= start_pos &&
+      end_pos != INVALID_UINT64 && left_pos <= end_pos) {
     RETURN_NOT_OK(read_from_tile(
         attribute_num_ + 1,
         left_coords,
@@ -366,10 +352,8 @@ Status ReadState::get_enclosing_coords(
   }
 
   // Copy right if it exists
-  if (right_pos != INVALID_UINT64 &&
-      right_pos >= start_pos &&
-      end_pos != INVALID_UINT64 &&
-      right_pos <= end_pos) {
+  if (right_pos != INVALID_UINT64 && right_pos >= start_pos &&
+      end_pos != INVALID_UINT64 && right_pos <= end_pos) {
     RETURN_NOT_OK(read_from_tile(
         attribute_num_ + 1,
         right_coords,
@@ -583,12 +567,12 @@ Status ReadState::get_fragment_cell_ranges_sparse(
   const void* cell;
   uint64_t current_start_pos = start_pos;
   uint64_t current_end_pos = INVALID_UINT64;
-  if(end_pos != INVALID_UINT64) {
+  if (end_pos != INVALID_UINT64) {
     for (uint64_t i = start_pos; i <= end_pos; ++i) {
       RETURN_NOT_OK(get_coords_from_search_tile(i, &cell));
 
       if (utils::cell_in_subarray<T>(
-              static_cast<const T *>(cell), subarray, dim_num)) {
+              static_cast<const T*>(cell), subarray, dim_num)) {
         if (i > 0 && i - 1 == current_end_pos) {  // The range is expanded
           ++current_end_pos;
         } else {  // A new range starts
@@ -599,21 +583,22 @@ Status ReadState::get_fragment_cell_ranges_sparse(
         if (i > 0 && i - 1 == current_end_pos) {
           // The range needs to be added to the list
           FragmentCellRange fragment_cell_range;
-          fragment_cell_range.first = FragmentInfo(fragment_i, search_tile_pos_);
+          fragment_cell_range.first =
+              FragmentInfo(fragment_i, search_tile_pos_);
           fragment_cell_range.second = std::malloc(2 * coords_size_);
-          auto cell_range = static_cast<T *>(fragment_cell_range.second);
+          auto cell_range = static_cast<T*>(fragment_cell_range.second);
 
           RETURN_NOT_OK(read_from_tile(
-                  attribute_num_ + 1,
-                  cell_range,
-                  current_start_pos * coords_size_,
-                  coords_size_));
+              attribute_num_ + 1,
+              cell_range,
+              current_start_pos * coords_size_,
+              coords_size_));
 
           RETURN_NOT_OK(read_from_tile(
-                  attribute_num_ + 1,
-                  &cell_range[dim_num],
-                  current_end_pos * coords_size_,
-                  coords_size_));
+              attribute_num_ + 1,
+              &cell_range[dim_num],
+              current_end_pos * coords_size_,
+              coords_size_));
 
           fragment_cell_ranges->emplace_back(fragment_cell_range);
           current_end_pos = INVALID_UINT64;  // No active range
@@ -1168,24 +1153,10 @@ void ReadState::compute_tile_search_range_col_or_row() {
 Status ReadState::cmp_coords_to_search_tile(
     const void* buffer, uint64_t tile_offset, bool* isequal) {
   auto tile = tiles_[attribute_num_ + 1];
-  auto tile_io = tile_io_[attribute_num_ + 1];
 
-  *isequal = false;
-  // The tile is in main memory
-  if (tile->in_mem()) {
-    *isequal =
-        std::memcmp(buffer, (char*)tile->data() + tile_offset, coords_size_) ==
-        0;
-    return Status::Ok();
-  }
-
-  tile->set_offset(tile_offset);
-  Status st = tile_io->read_from_tile(tile, tmp_coords_, coords_size_);
-
-  if (st.ok())
-    *isequal = std::memcmp(buffer, tmp_coords_, coords_size_) == 0;
-
-  return st;
+  *isequal =
+      std::memcmp(buffer, (char*)tile->data() + tile_offset, coords_size_) == 0;
+  return Status::Ok();
 }
 
 template <class T>
@@ -1306,45 +1277,18 @@ Status ReadState::get_cell_pos_at_or_before(
 Status ReadState::get_coords_from_search_tile(uint64_t i, const void** coords) {
   // For easy reference
   auto tile = tiles_[attribute_num_ + 1];
-  auto tile_io = tile_io_[attribute_num_ + 1];
 
-  // The tile is in main memory
-  if (tile->in_mem()) {
-    *coords = (char*)tile->data() + i * coords_size_;
-    return Status::Ok();
-  }
-
-  tile->set_offset(i * coords_size_);
-  Status st = tile_io->read_from_tile(tile, tmp_coords_, coords_size_);
-
-  // Get coordinates pointer
-  *coords = tmp_coords_;
-
-  return st;
+  *coords = (char*)tile->data() + i * coords_size_;
+  return Status::Ok();
 }
 
 Status ReadState::get_offset(
     unsigned int attribute_id, uint64_t i, const uint64_t** offset) {
   auto tile = tiles_[attribute_id];
-  auto tile_io = tile_io_[attribute_id];
 
-  // The tile is in main memory
-  if (tile->in_mem()) {
-    *offset =
-        (const uint64_t*)((char*)tile->data() + i * constants::cell_var_offset_size);
-    return Status::Ok();
-  }
-
-  // The tile is on the disk
-  tile->set_offset(i * constants::cell_var_offset_size);
-  Status st = tile_io->read_from_tile(
-      tile, &tmp_offset_, constants::cell_var_offset_size);
-
-  // Get offset
-  if (st.ok())
-    *offset = &tmp_offset_;
-
-  return st;
+  *offset =
+      (const uint64_t*)((char*)tile->data() + i * constants::cell_var_offset_size);
+  return Status::Ok();
 }
 
 void ReadState::init_empty_attributes() {
@@ -1429,16 +1373,9 @@ Status ReadState::read_from_tile(
     uint64_t nbytes) {
   // For easy reference
   auto tile = tiles_[attribute_id];
-  auto tile_io = tile_io_[attribute_id];
 
-  // The tile is in main memory
-  if (tile->in_mem()) {
-    std::memcpy(buffer, (char*)tile->data() + tile_offset, nbytes);
-    return Status::Ok();
-  }
-
-  tile->set_offset(tile_offset);
-  return tile_io->read_from_tile(tile, buffer, nbytes);
+  std::memcpy(buffer, (char*)tile->data() + tile_offset, nbytes);
+  return Status::Ok();
 }
 
 Status ReadState::read_tile(unsigned int attribute_id, uint64_t tile_i) {

@@ -70,7 +70,6 @@ Query::Query(Query* common_query) {
   array_schema_ = common_query->array_schema();
   type_ = common_query->type();
   status_ = QueryStatus::INPROGRESS;
-
 }
 
 Query::~Query() {
@@ -139,8 +138,8 @@ const std::vector<unsigned int>& Query::attribute_ids() const {
 }
 
 Status Query::clear_fragments() {
-  if(!fragments_borrowed_) {
-    for (auto &fragment : fragments_) {
+  if (!fragments_borrowed_) {
+    for (auto& fragment : fragments_) {
       RETURN_NOT_OK(fragment->finalize());
       delete fragment;
     }
@@ -386,7 +385,7 @@ Status Query::write() {
   }
 
   // In all types except WRITE, the fragment must be finalized
-  if(type_ != QueryType::WRITE)
+  if (type_ != QueryType::WRITE)
     clear_fragments();
 
   status_ = QueryStatus::COMPLETED;

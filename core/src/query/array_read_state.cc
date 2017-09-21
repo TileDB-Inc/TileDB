@@ -347,7 +347,6 @@ Status ArrayReadState::compute_unsorted_fragment_cell_ranges_sparse(
     if (fragment_bounding_coords != nullptr &&
         array_schema_->tile_cell_order_cmp(
             fragment_bounding_coords, min_bounding_coords_end) <= 0) {
-
       FragmentCellRanges fragment_cell_ranges;
       RETURN_NOT_OK(
           fragment_read_states_[i]->get_fragment_cell_ranges_sparse<T>(
