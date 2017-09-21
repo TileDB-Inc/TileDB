@@ -114,27 +114,27 @@ int main() {
   tiledb_dimension_t* d2;
   tiledb_dimension_create(ctx, &d2, "d2", TILEDB_INT64, &domain[2], &tile_extents[1]);
 
-  // Create array_schema schema
-  tiledb_array_schema_t* array_schema;
-  tiledb_array_schema_create(ctx, &array_schema, array_name);
-  tiledb_array_schema_set_array_type(ctx, array_schema, TILEDB_DENSE);
-  tiledb_array_schema_add_dimension(ctx, array_schema, d1);
-  tiledb_array_schema_add_dimension(ctx, array_schema, d2);
-  tiledb_array_schema_add_attribute(ctx, array_schema, a1);
-  tiledb_array_schema_add_attribute(ctx, array_schema, a2);
-  tiledb_array_schema_add_attribute(ctx, array_schema, a3);
+  // Create array_metadata metadata
+  tiledb_array_metadata_t* array_metadata;
+  tiledb_array_metadata_create(ctx, &array_metadata, array_name);
+  tiledb_array_metadata_set_array_type(ctx, array_metadata, TILEDB_DENSE);
+  tiledb_array_metadata_add_dimension(ctx, array_metadata, d1);
+  tiledb_array_metadata_add_dimension(ctx, array_metadata, d2);
+  tiledb_array_metadata_add_attribute(ctx, array_metadata, a1);
+  tiledb_array_metadata_add_attribute(ctx, array_metadata, a2);
+  tiledb_array_metadata_add_attribute(ctx, array_metadata, a3);
 
-  // Check array schema
-  if(tiledb_array_schema_check(ctx, array_schema) != TILEDB_OK)
-    printf("Invalid array schema\n");
+  // Check array metadata
+  if(tiledb_array_metadata_check(ctx, array_metadata) != TILEDB_OK)
+    printf("Invalid array metadata\n");
 
   // Create array
-  tiledb_array_create(ctx, array_schema);
+  tiledb_array_create(ctx, array_metadata);
 
-  // Load and dump array schema to make sure the array was created correctly
-  tiledb_array_schema_t* loaded_array_schema;
-  tiledb_array_schema_load(ctx, &loaded_array_schema, array_name);
-  tiledb_array_schema_dump(ctx, loaded_array_schema, stdout);
+  // Load and dump array metadata to make sure the array was created correctly
+  tiledb_array_metadata_t* loaded_array_metadata;
+  tiledb_array_metadata_load(ctx, &loaded_array_metadata, array_name);
+  tiledb_array_metadata_dump(ctx, loaded_array_metadata, stdout);
 
   // Clean up
   tiledb_attribute_free(ctx, a1);
@@ -142,7 +142,7 @@ int main() {
   tiledb_attribute_free(ctx, a3);
   tiledb_dimension_free(ctx, d1);
   tiledb_dimension_free(ctx, d2);
-  tiledb_array_schema_free(ctx, array_schema);
+  tiledb_array_metadata_free(ctx, array_metadata);
   tiledb_ctx_free(ctx);
 
   return 0;

@@ -64,17 +64,17 @@ Fragment::~Fragment() {
 /*               API              */
 /* ****************************** */
 
-const ArraySchema* Fragment::array_schema() const {
-  return query_->array_schema();
+const ArrayMetadata* Fragment::array_metadata() const {
+  return query_->array_metadata();
 }
 
 URI Fragment::attr_uri(unsigned int attribute_id) const {
-  const Attribute* attr = query_->array_schema()->Attributes()[attribute_id];
+  const Attribute* attr = query_->array_metadata()->Attributes()[attribute_id];
   return fragment_uri_.join_path(attr->name() + constants::file_suffix);
 }
 
 URI Fragment::attr_var_uri(unsigned int attribute_id) const {
-  const Attribute* attr = query_->array_schema()->Attributes()[attribute_id];
+  const Attribute* attr = query_->array_metadata()->Attributes()[attribute_id];
   return fragment_uri_.join_path(
       attr->name() + "_var" + constants::file_suffix);
 }
@@ -129,7 +129,7 @@ Status Fragment::init(const URI& uri, const void* subarray) {
   dense_ = true;
   const std::vector<unsigned int>& attribute_ids = query_->attribute_ids();
   auto id_num = (unsigned int)attribute_ids.size();
-  unsigned int attribute_num = query_->array_schema()->attribute_num();
+  unsigned int attribute_num = query_->array_metadata()->attribute_num();
   for (unsigned int i = 0; i < id_num; ++i) {
     if (attribute_ids[i] == attribute_num) {
       dense_ = false;
@@ -138,7 +138,7 @@ Status Fragment::init(const URI& uri, const void* subarray) {
   }
 
   // Initialize metadata and read/write state
-  metadata_ = new FragmentMetadata(query_->array_schema(), dense_, uri);
+  metadata_ = new FragmentMetadata(query_->array_metadata(), dense_, uri);
   read_state_ = nullptr;
   Status st = metadata_->init(subarray);
   if (!st.ok()) {
@@ -178,15 +178,16 @@ ReadState* Fragment::read_state() const {
 
 uint64_t Fragment::tile_size(unsigned int attribute_id) const {
   // For easy reference
-  const ArraySchema* array_schema = query_->array_schema();
-  bool var_size = array_schema->var_size(attribute_id);
+  const ArrayMetadata* array_metadata = query_->array_metadata();
+  bool var_size = array_metadata->var_size(attribute_id);
   uint64_t cell_var_offset_size = constants::cell_var_offset_size;
 
-  uint64_t cell_num_per_tile =
-      (dense_) ? array_schema->cell_num_per_tile() : array_schema->capacity();
+  uint64_t cell_num_per_tile = (dense_) ? array_metadata->cell_num_per_tile() :
+                                          array_metadata->capacity();
 
-  return (var_size) ? cell_num_per_tile * cell_var_offset_size :
-                      cell_num_per_tile * array_schema->cell_size(attribute_id);
+  return (var_size) ?
+             cell_num_per_tile * cell_var_offset_size :
+             cell_num_per_tile * array_metadata->cell_size(attribute_id);
 }
 
 Status Fragment::write(void** buffers, uint64_t* buffer_sizes) {

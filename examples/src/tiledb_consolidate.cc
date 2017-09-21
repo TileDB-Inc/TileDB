@@ -39,10 +39,10 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Consolidate the dense array_schema
+  // Consolidate the dense array_metadata
   tiledb_array_consolidate(ctx, "my_group/dense_arrays/my_array_A");
 
-  // Consolidate the sparse array_schema
+  // Consolidate the sparse array_metadata
   tiledb_array_consolidate(ctx, "my_group/sparse_arrays/my_array_B");
 
   // Finalize context

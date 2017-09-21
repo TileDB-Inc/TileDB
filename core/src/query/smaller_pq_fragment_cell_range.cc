@@ -43,7 +43,7 @@ namespace tiledb {
 
 template <class T>
 SmallerPQFragmentCellRange<T>::SmallerPQFragmentCellRange() {
-  array_schema_ = nullptr;
+  array_metadata_ = nullptr;
 }
 
 /* ****************************** */
@@ -52,15 +52,15 @@ SmallerPQFragmentCellRange<T>::SmallerPQFragmentCellRange() {
 
 template <class T>
 SmallerPQFragmentCellRange<T>::SmallerPQFragmentCellRange(
-    const ArraySchema* array_schema) {
-  array_schema_ = array_schema;
+    const ArrayMetadata* array_metadata) {
+  array_metadata_ = array_metadata;
 }
 
 template <class T>
 bool SmallerPQFragmentCellRange<T>::operator()(
     PQFragmentCellRange<T>* a, PQFragmentCellRange<T>* b) const {
   // Sanity check
-  assert(array_schema_ != NULL);
+  assert(array_metadata_ != NULL);
 
   // First check the tile ids
   if (a->tile_id_l_ < b->tile_id_l_)
@@ -70,7 +70,7 @@ bool SmallerPQFragmentCellRange<T>::operator()(
   // else, check the coordinates
 
   // Get cell ordering information for the first range endpoints
-  int cmp = array_schema_->cell_order_cmp<T>(a->cell_range_, b->cell_range_);
+  int cmp = array_metadata_->cell_order_cmp<T>(a->cell_range_, b->cell_range_);
   if (cmp < 0)  // a's range start precedes b's
     return false;
   if (cmp > 0)  // b's range start preceded a's

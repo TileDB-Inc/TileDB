@@ -77,8 +77,8 @@ class Query {
   /*                 API               */
   /* ********************************* */
 
-  /** Returns the array schema.*/
-  const ArraySchema* array_schema() const;
+  /** Returns the array metadata.*/
+  const ArrayMetadata* array_metadata() const;
 
   /** Processes asynchronously the query. */
   Status async_process();
@@ -117,7 +117,7 @@ class Query {
    * Initializes the query.
    *
    * @param storage_manager The storage manager.
-   * @param array_schema The array schema.
+   * @param array_metadata The array metadata.
    * @param fragment_metadata The metadata of the involved fragments.
    * @param type The query type.
    * @param subarray The subarray the query is constrained on. A nuullptr
@@ -133,7 +133,7 @@ class Query {
    */
   Status init(
       StorageManager* storage_manager,
-      const ArraySchema* array_schema,
+      const ArrayMetadata* array_metadata,
       const std::vector<FragmentMetadata*>& fragment_metadata,
       QueryType type,
       const void* subarray,
@@ -152,7 +152,7 @@ class Query {
    * the new fragment is named using the appropriate thread id.
    *
    * @param storage_manager The storage manager.
-   * @param array_schema The array schema.
+   * @param array_metadata The array metadata.
    * @param fragment_metadata The metadata of the involved fragments.
    * @param type The query type.
    * @param subarray The subarray the query is constrained on. A nuullptr
@@ -171,7 +171,7 @@ class Query {
    */
   Status init(
       StorageManager* storage_manager,
-      const ArraySchema* array_schema,
+      const ArrayMetadata* array_metadata,
       const std::vector<FragmentMetadata*>& fragment_metadata,
       QueryType type,
       const void* subarray,
@@ -251,8 +251,8 @@ class Query {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array schema. */
-  const ArraySchema* array_schema_;
+  /** The array metadata. */
+  const ArrayMetadata* array_metadata_;
 
   /**
    * The array read state. Handles reads in the presence of multiple

@@ -39,7 +39,7 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Clear an array_schema
+  // Clear an array_metadata
   tiledb_clear(ctx, "my_group/sparse_arrays/my_array_B");
 
   // Delete a group

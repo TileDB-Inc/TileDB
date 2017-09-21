@@ -39,7 +39,7 @@
 #include <queue>
 #include <vector>
 
-#include "array_schema.h"
+#include "array_metadata.h"
 #include "query.h"
 
 namespace tiledb {
@@ -130,8 +130,8 @@ class ArrayReadState {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array schema. */
-  const ArraySchema* array_schema_;
+  /** The array metadata. */
+  const ArrayMetadata* array_metadata_;
 
   /** The number of array attributes. */
   unsigned int attribute_num_;

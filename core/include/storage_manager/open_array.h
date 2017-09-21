@@ -38,7 +38,7 @@
 #include <mutex>
 #include <vector>
 
-#include "array_schema.h"
+#include "array_metadata.h"
 #include "fragment_metadata.h"
 #include "uri.h"
 
@@ -61,8 +61,8 @@ class OpenArray {
   /*               API                 */
   /* ********************************* */
 
-  /** Returns the array schema. */
-  const ArraySchema* array_schema() const;
+  /** Returns the array metadata. */
+  const ArrayMetadata* array_metadata() const;
 
   /** Returns the array URI. */
   const URI& array_uri() const;
@@ -104,8 +104,8 @@ class OpenArray {
   /** Unlocks the array mutex. */
   void mtx_unlock();
 
-  /** Sets an array schema. */
-  void set_array_schema(const ArraySchema* array_schema);
+  /** Sets an array metadata. */
+  void set_array_metadata(const ArrayMetadata* array_metadata);
 
   /** Sets the filelock descriptor. */
   void set_filelock_fd(int fd);
@@ -115,8 +115,8 @@ class OpenArray {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array schema. */
-  const ArraySchema* array_schema_;
+  /** The array metadata. */
+  const ArrayMetadata* array_metadata_;
 
   /** Counts the number of queries that opened the array. */
   uint64_t cnt_;
@@ -132,7 +132,7 @@ class OpenArray {
   int filelock_;
 
   /**
-   * A mutex used to lock the array when loading the array schema and
+   * A mutex used to lock the array when loading the array metadata and
    * any fragment metadata structures from the disk.
    */
   std::mutex mtx_;

@@ -67,7 +67,7 @@ Query::Query(Query* common_query) {
   fragments_init_ = false;
   storage_manager_ = common_query->storage_manager();
   fragments_borrowed_ = false;
-  array_schema_ = common_query->array_schema();
+  array_metadata_ = common_query->array_metadata();
   type_ = common_query->type();
   status_ = QueryStatus::INPROGRESS;
 }
@@ -87,8 +87,8 @@ Query::~Query() {
 /*               API              */
 /* ****************************** */
 
-const ArraySchema* Query::array_schema() const {
-  return array_schema_;
+const ArrayMetadata* Query::array_metadata() const {
+  return array_metadata_;
 }
 
 Status Query::async_process() {
@@ -153,13 +153,13 @@ Status Query::clear_fragments() {
 Status Query::coords_buffer_i(int* coords_buffer_i) const {
   int buffer_i = 0;
   auto attribute_id_num = (int)attribute_ids_.size();
-  int attribute_num = array_schema_->attribute_num();
+  int attribute_num = array_metadata_->attribute_num();
   for (int i = 0; i < attribute_id_num; ++i) {
     if (attribute_ids_[i] == attribute_num) {
       *coords_buffer_i = buffer_i;
       break;
     }
-    if (!array_schema_->var_size(attribute_ids_[i]))  // FIXED CELLS
+    if (!array_metadata_->var_size(attribute_ids_[i]))  // FIXED CELLS
       ++buffer_i;
     else  // VARIABLE-SIZED CELLS
       buffer_i += 2;
@@ -205,7 +205,7 @@ unsigned int Query::fragment_num() const {
 
 Status Query::init(
     StorageManager* storage_manager,
-    const ArraySchema* array_schema,
+    const ArrayMetadata* array_metadata,
     const std::vector<FragmentMetadata*>& fragment_metadata,
     QueryType type,
     const void* subarray,
@@ -214,7 +214,7 @@ Status Query::init(
     void** buffers,
     uint64_t* buffer_sizes) {
   storage_manager_ = storage_manager;
-  array_schema_ = array_schema;
+  array_metadata_ = array_metadata;
   type_ = type;
   status_ = QueryStatus::INPROGRESS;
   buffers_ = buffers;
@@ -233,7 +233,7 @@ Status Query::init(
 
 Status Query::init(
     StorageManager* storage_manager,
-    const ArraySchema* array_schema,
+    const ArrayMetadata* array_metadata,
     const std::vector<FragmentMetadata*>& fragment_metadata,
     QueryType type,
     const void* subarray,
@@ -242,7 +242,7 @@ Status Query::init(
     uint64_t* buffer_sizes,
     bool add_coords) {
   storage_manager_ = storage_manager;
-  array_schema_ = array_schema;
+  array_metadata_ = array_metadata;
   type_ = type;
   attribute_ids_ = attribute_ids;
   status_ = QueryStatus::INPROGRESS;
@@ -287,7 +287,7 @@ bool Query::overflow(unsigned int attribute_id) const {
 Status Query::overflow(
     const char* attribute_name, unsigned int* overflow) const {
   unsigned int attribute_id;
-  RETURN_NOT_OK(array_schema_->attribute_id(attribute_name, &attribute_id));
+  RETURN_NOT_OK(array_metadata_->attribute_id(attribute_name, &attribute_id));
 
   *overflow = 0;
   for (auto id : attribute_ids_) {
@@ -397,7 +397,7 @@ Status Query::write(void** buffers, uint64_t* buffer_sizes) {
   // Sanity checks
   if (!is_write_type(type_)) {
     return LOG_STATUS(
-        Status::QueryError("Cannot write to array_schema; Invalid mode"));
+        Status::QueryError("Cannot write to array_metadata; Invalid mode"));
   }
 
   // Create and initialize a new fragment
@@ -426,7 +426,7 @@ Status Query::write(void** buffers, uint64_t* buffer_sizes) {
 /* ****************************** */
 
 void Query::add_coords() {
-  int attribute_num = array_schema_->attribute_num();
+  int attribute_num = array_metadata_->attribute_num();
   bool has_coords = false;
 
   for (auto id : attribute_ids_) {
@@ -512,7 +512,7 @@ std::string Query::new_fragment_name() const {
   int n = sprintf(
       fragment_name,
       "%s/.__%s_%llu",
-      array_schema_->array_uri().to_string().c_str(),
+      array_metadata_->array_uri().to_string().c_str(),
       tid.c_str(),
       ms);
 
@@ -539,8 +539,8 @@ Status Query::set_attributes(
   // Get attributes
   std::vector<std::string> attributes_vec;
   if (attributes == nullptr) {  // Default: all attributes
-    attributes_vec = array_schema_->attribute_names();
-    if (array_schema_->dense() && type_ != QueryType::WRITE_UNSORTED)
+    attributes_vec = array_metadata_->attribute_names();
+    if (array_metadata_->dense() && type_ != QueryType::WRITE_UNSORTED)
       // Remove coordinates attribute for dense arrays,
       // unless in TILEDB_WRITE_UNSORTED mode
       attributes_vec.pop_back();
@@ -557,18 +557,18 @@ Status Query::set_attributes(
     // Sanity check on duplicates
     if (utils::has_duplicates(attributes_vec))
       return LOG_STATUS(Status::QueryError(
-          "Cannot initialize array_schema; Duplicate attributes"));
+          "Cannot initialize array metadata; Duplicate attributes"));
   }
 
   // Set attribute ids
   RETURN_NOT_OK(
-      array_schema_->get_attribute_ids(attributes_vec, attribute_ids_));
+      array_metadata_->get_attribute_ids(attributes_vec, attribute_ids_));
 
   return Status::Ok();
 }
 
 Status Query::set_subarray(const void* subarray) {
-  uint64_t subarray_size = 2 * array_schema_->coords_size();
+  uint64_t subarray_size = 2 * array_metadata_->coords_size();
 
   if (subarray_ == nullptr)
     subarray_ = malloc(subarray_size);
@@ -578,7 +578,7 @@ Status Query::set_subarray(const void* subarray) {
         Status::QueryError("Memory allocation for subarray failed"));
 
   if (subarray == nullptr)
-    std::memcpy(subarray_, array_schema_->domain(), subarray_size);
+    std::memcpy(subarray_, array_metadata_->domain(), subarray_size);
   else
     std::memcpy(subarray_, subarray, subarray_size);
 
@@ -591,7 +591,7 @@ void Query::zero_out_buffer_sizes(uint64_t* buffer_sizes) const {
   for (unsigned int i = 0; i < attribute_id_num; ++i) {
     // Update all sizes to 0
     buffer_sizes[buffer_i] = 0;
-    if (!array_schema_->var_size(attribute_ids_[i]))
+    if (!array_metadata_->var_size(attribute_ids_[i]))
       ++buffer_i;
     else
       buffer_i += 2;

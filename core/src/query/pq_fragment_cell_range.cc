@@ -53,9 +53,9 @@ const unsigned int PQFragmentCellRange<T>::INVALID_UINT = UINT_MAX;
 
 template <class T>
 PQFragmentCellRange<T>::PQFragmentCellRange(
-    const ArraySchema* array_schema,
+    const ArrayMetadata* array_metadata,
     const std::vector<ReadState*>* fragment_read_states) {
-  array_schema_ = array_schema;
+  array_metadata_ = array_metadata;
   fragment_read_states_ = fragment_read_states;
 
   cell_range_ = nullptr;
@@ -64,8 +64,8 @@ PQFragmentCellRange<T>::PQFragmentCellRange(
   tile_id_r_ = INVALID_UINT64;
   tile_pos_ = INVALID_UINT64;
 
-  coords_size_ = array_schema_->coords_size();
-  dim_num_ = array_schema_->dim_num();
+  coords_size_ = array_metadata_->coords_size();
+  dim_num_ = array_metadata_->dim_num();
 }
 
 /* ****************************** */
@@ -77,7 +77,7 @@ bool PQFragmentCellRange<T>::begins_after(
     const PQFragmentCellRange* fcr) const {
   return tile_id_l_ > fcr->tile_id_r_ ||
          (tile_id_l_ == fcr->tile_id_r_ &&
-          array_schema_->cell_order_cmp(
+          array_metadata_->cell_order_cmp(
               cell_range_, &(fcr->cell_range_[dim_num_])) > 0);
 }
 
@@ -91,7 +91,7 @@ template <class T>
 bool PQFragmentCellRange<T>::ends_after(const PQFragmentCellRange* fcr) const {
   return tile_id_r_ > fcr->tile_id_r_ ||
          (tile_id_r_ == fcr->tile_id_r_ &&
-          array_schema_->cell_order_cmp(
+          array_metadata_->cell_order_cmp(
               &cell_range_[dim_num_], &fcr->cell_range_[dim_num_]) > 0);
 }
 
@@ -113,8 +113,8 @@ void PQFragmentCellRange<T>::import_from(
   tile_pos_ = fragment_cell_range.first.second;
 
   // Compute tile ids
-  tile_id_l_ = array_schema_->tile_id<T>(cell_range_);
-  tile_id_r_ = array_schema_->tile_id<T>(&cell_range_[dim_num_]);
+  tile_id_l_ = array_metadata_->tile_id<T>(cell_range_);
+  tile_id_r_ = array_metadata_->tile_id<T>(&cell_range_[dim_num_]);
 }
 
 template <class T>
@@ -124,7 +124,7 @@ bool PQFragmentCellRange<T>::must_be_split(
          (fragment_id_ == INVALID_UINT || fcr->fragment_id_ > fragment_id_) &&
          (fcr->tile_id_l_ < tile_id_r_ ||
           (fcr->tile_id_l_ == tile_id_r_ &&
-           array_schema_->cell_order_cmp(
+           array_metadata_->cell_order_cmp(
                fcr->cell_range_, &cell_range_[dim_num_]) <= 0));
 }
 
@@ -135,11 +135,11 @@ bool PQFragmentCellRange<T>::must_trim(const PQFragmentCellRange* fcr) const {
           fcr->fragment_id_ < fragment_id_) &&
          (fcr->tile_id_l_ > tile_id_l_ ||
           (fcr->tile_id_l_ == tile_id_l_ &&
-           array_schema_->cell_order_cmp(fcr->cell_range_, cell_range_) >=
+           array_metadata_->cell_order_cmp(fcr->cell_range_, cell_range_) >=
                0)) &&
          (fcr->tile_id_l_ < tile_id_r_ ||
           (fcr->tile_id_l_ == tile_id_r_ &&
-           array_schema_->cell_order_cmp(
+           array_metadata_->cell_order_cmp(
                fcr->cell_range_, &cell_range_[dim_num_]) <= 0));
 }
 
@@ -160,9 +160,9 @@ void PQFragmentCellRange<T>::split(
 
   // Trim the calling object range
   std::memcpy(&cell_range_[dim_num_], fcr->cell_range_, coords_size_);
-  array_schema_->get_previous_cell_coords<T>(
+  array_metadata_->get_previous_cell_coords<T>(
       tile_domain, &cell_range_[dim_num_]);
-  tile_id_r_ = array_schema_->tile_id<T>(&cell_range_[dim_num_]);
+  tile_id_r_ = array_metadata_->tile_id<T>(&cell_range_[dim_num_]);
 }
 
 template <class T>
@@ -195,14 +195,14 @@ void PQFragmentCellRange<T>::split_to_3(
   // Clean up if necessary
   if (left_retrieved) {
     fcr_left->tile_id_r_ =
-        array_schema_->tile_id<T>(&fcr_left->cell_range_[dim_num_]);
+        array_metadata_->tile_id<T>(&fcr_left->cell_range_[dim_num_]);
   } else {
     std::free(fcr_left->cell_range_);
     fcr_left->cell_range_ = nullptr;
   }
 
   if (right_retrieved) {
-    tile_id_l_ = array_schema_->tile_id<T>(cell_range_);
+    tile_id_l_ = array_metadata_->tile_id<T>(cell_range_);
   } else {
     std::free(cell_range_);
     cell_range_ = nullptr;
@@ -243,7 +243,7 @@ void PQFragmentCellRange<T>::trim(
   // Advance the left endpoint of the trimmed range
   bool coords_retrieved;
   if (fcr_trimmed->dense()) {
-    array_schema_->get_next_cell_coords<T>(  // fcr is DENSE
+    array_metadata_->get_next_cell_coords<T>(  // fcr is DENSE
         tile_domain,
         fcr_trimmed->cell_range_,
         coords_retrieved);

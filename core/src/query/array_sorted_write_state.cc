@@ -58,13 +58,13 @@ ArraySortedWriteState::ArraySortedWriteState(Query* query)
     : attribute_ids_(query->attribute_ids())
     , query_(query) {
   // For easy reference.
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto anum = (unsigned int)attribute_ids_.size();
 
   // Initializations
-  coords_size_ = array_schema->coords_size();
+  coords_size_ = array_metadata->coords_size();
   copy_id_ = 0;
-  dim_num_ = array_schema->dim_num();
+  dim_num_ = array_metadata->dim_num();
   tile_coords_ = nullptr;
   tile_domain_ = nullptr;
   buffer_sizes_ = nullptr;
@@ -77,10 +77,10 @@ ArraySortedWriteState::ArraySortedWriteState(Query* query)
     async_wait_[i] = false;
   }
   for (unsigned int i = 0; i < anum; ++i) {
-    if (array_schema->var_size(attribute_ids_[i]))
+    if (array_metadata->var_size(attribute_ids_[i]))
       attribute_sizes_.push_back(sizeof(uint64_t));
     else
-      attribute_sizes_.push_back(array_schema->cell_size(attribute_ids_[i]));
+      attribute_sizes_.push_back(array_metadata->cell_size(attribute_ids_[i]));
   }
 
   subarray_ = std::malloc(2 * coords_size_);
@@ -89,7 +89,7 @@ ArraySortedWriteState::ArraySortedWriteState(Query* query)
   // Calculate expanded subarray
   expanded_subarray_ = std::malloc(2 * coords_size_);
   std::memcpy(expanded_subarray_, subarray_, 2 * coords_size_);
-  array_schema->expand_domain(expanded_subarray_);
+  array_metadata->expand_domain(expanded_subarray_);
 
   // Calculate number of buffers
   calculate_buffer_num();
@@ -138,11 +138,11 @@ Status ArraySortedWriteState::finalize() {
 
 Status ArraySortedWriteState::init() {
   // Initialize functors
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   QueryType query_type = query_->type();
-  Layout cell_order = array_schema->cell_order();
-  Layout tile_order = array_schema->tile_order();
-  Datatype coords_type = array_schema->coords_type();
+  Layout cell_order = array_metadata->cell_order();
+  Layout tile_order = array_metadata->tile_order();
+  Datatype coords_type = array_metadata->coords_type();
   if (query_type == QueryType::WRITE_SORTED_ROW) {
     if (coords_type == Datatype::INT32) {
       advance_cell_slab_ = advance_cell_slab_row_s<int>;
@@ -301,7 +301,7 @@ Status ArraySortedWriteState::write(void** buffers, uint64_t* buffer_sizes) {
     async_data_[i] = {i, 0, this};
 
   // Call the appropriate templated write
-  Datatype type = query_->array_schema()->coords_type();
+  Datatype type = query_->array_metadata()->coords_type();
   if (type == Datatype::INT32)
     return write<int>();
   if (type == Datatype::INT64)
@@ -436,7 +436,7 @@ Status ArraySortedWriteState::async_submit_query(unsigned int id) {
     async_query_[id] = new Query();
     RETURN_NOT_OK(async_query_[id]->init(
         query_->storage_manager(),
-        query_->array_schema(),
+        query_->array_metadata(),
         query_->fragment_metadata(),
         QueryType::WRITE,
         tile_slab_[id],
@@ -450,7 +450,7 @@ Status ArraySortedWriteState::async_submit_query(unsigned int id) {
         async_query_[id] = new Query();
         RETURN_NOT_OK(async_query_[id]->init(
             query_->storage_manager(),
-            query_->array_schema(),
+            query_->array_metadata(),
             query_->fragment_metadata(),
             QueryType::WRITE,
             query_->subarray(),
@@ -484,14 +484,14 @@ void ArraySortedWriteState::async_wait(unsigned int id) {
 
 void ArraySortedWriteState::calculate_buffer_num() {
   // For easy reference
-  const ArraySchema* array_schema = query_->array_schema();
+  const ArrayMetadata* array_metadata = query_->array_metadata();
 
   // Calculate number of buffers
   buffer_num_ = 0;
   auto attribute_id_num = (unsigned int)attribute_ids_.size();
   for (unsigned int i = 0; i < attribute_id_num; ++i) {
     // Fix-sized attribute
-    if (!array_schema->var_size(attribute_ids_[i]))
+    if (!array_metadata->var_size(attribute_ids_[i]))
       ++buffer_num_;
     else  // Variable-sized attribute
       buffer_num_ += 2;
@@ -540,7 +540,7 @@ void ArraySortedWriteState::calculate_cell_slab_info_col_col(
   // For easy reference
   auto anum = (unsigned int)attribute_ids_.size();
   auto range_overlap = (const T*)tile_slab_info_[id].range_overlap_[tid];
-  auto tile_extents = (const T*)query_->array_schema()->tile_extents();
+  auto tile_extents = (const T*)query_->array_metadata()->tile_extents();
   uint64_t cell_num;
 
   // Calculate number of cells in cell slab
@@ -567,7 +567,7 @@ void ArraySortedWriteState::calculate_cell_slab_info_row_row(
   // For easy reference
   auto anum = (unsigned int)attribute_ids_.size();
   auto range_overlap = (const T*)tile_slab_info_[id].range_overlap_[tid];
-  auto tile_extents = (const T*)query_->array_schema()->tile_extents();
+  auto tile_extents = (const T*)query_->array_metadata()->tile_extents();
   uint64_t cell_num;
 
   // Calculate number of cells in cell slab
@@ -598,7 +598,7 @@ void ArraySortedWriteState::calculate_cell_slab_info_col_row(
     unsigned int id, uint64_t tid) {
   // For easy reference
   auto anum = (unsigned int)attribute_ids_.size();
-  auto tile_extents = (const T*)query_->array_schema()->tile_extents();
+  auto tile_extents = (const T*)query_->array_metadata()->tile_extents();
 
   // Calculate number of cells in cell slab
   tile_slab_info_[id].cell_slab_num_[tid] = 1;
@@ -626,7 +626,7 @@ void ArraySortedWriteState::calculate_cell_slab_info_row_col(
     unsigned int id, uint64_t tid) {
   // For easy reference
   auto anum = (unsigned int)attribute_ids_.size();
-  auto tile_extents = (const T*)query_->array_schema()->tile_extents();
+  auto tile_extents = (const T*)query_->array_metadata()->tile_extents();
 
   // Calculate number of cells in cell slab
   tile_slab_info_[id].cell_slab_num_[tid] = 1;
@@ -653,7 +653,7 @@ void ArraySortedWriteState::calculate_tile_domain(unsigned int id) {
 
   // For easy reference
   auto tile_slab = (const T*)tile_slab_norm_[id];
-  auto tile_extents = (const T*)query_->array_schema()->tile_extents();
+  auto tile_extents = (const T*)query_->array_metadata()->tile_extents();
   auto tile_coords = (T*)tile_coords_;
   auto tile_domain = (T*)tile_domain_;
 
@@ -696,7 +696,7 @@ void ArraySortedWriteState::calculate_tile_slab_info_col(unsigned int id) {
   // For easy reference
   auto tile_domain = (const T*)tile_domain_;
   auto tile_coords = (T*)tile_coords_;
-  auto tile_extents = (const T*)query_->array_schema()->tile_extents();
+  auto tile_extents = (const T*)query_->array_metadata()->tile_extents();
   auto range_overlap = (T**)tile_slab_info_[id].range_overlap_;
   auto tile_slab = (const T*)tile_slab_norm_[id];
   uint64_t tile_offset, tile_cell_num;
@@ -766,7 +766,7 @@ void ArraySortedWriteState::calculate_tile_slab_info_row(unsigned int id) {
   // For easy reference
   auto tile_domain = (const T*)tile_domain_;
   auto tile_coords = (T*)tile_coords_;
-  auto tile_extents = (const T*)query_->array_schema()->tile_extents();
+  auto tile_extents = (const T*)query_->array_metadata()->tile_extents();
   auto range_overlap = (T**)tile_slab_info_[id].range_overlap_;
   auto tile_slab = (const T*)tile_slab_norm_[id];
   uint64_t tile_offset, tile_cell_num;
@@ -829,12 +829,12 @@ void ArraySortedWriteState::calculate_tile_slab_info_row(unsigned int id) {
 
 void ArraySortedWriteState::copy_tile_slab() {
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
 
   // Copy tile slab for each attribute separately
   for (unsigned int i = 0, b = 0; i < (int)attribute_ids_.size(); ++i) {
-    Datatype type = array_schema->type(attribute_ids_.at(i));
-    if (!array_schema->var_size(attribute_ids_[i])) {
+    Datatype type = array_metadata->type(attribute_ids_.at(i));
+    if (!array_metadata->var_size(attribute_ids_[i])) {
       if (type == Datatype::INT32)
         copy_tile_slab<int>(i, b);
       else if (type == Datatype::INT64)
@@ -1033,16 +1033,16 @@ void ArraySortedWriteState::copy_tile_slab_var(
 
 Status ArraySortedWriteState::create_copy_state_buffers() {
   // For easy reference
-  const ArraySchema* array_schema = query_->array_schema();
+  const ArrayMetadata* array_metadata = query_->array_metadata();
 
   // Get cell number in a (full) tile slab
   int64_t tile_slab_cell_num;
   if (query_->type() == QueryType::WRITE_SORTED_ROW)
     tile_slab_cell_num =
-        array_schema->tile_slab_row_cell_num(expanded_subarray_);
+        array_metadata->tile_slab_row_cell_num(expanded_subarray_);
   else  // TILEDB_ARRAY_WRITE_SORTED_COL
     tile_slab_cell_num =
-        array_schema->tile_slab_col_cell_num(expanded_subarray_);
+        array_metadata->tile_slab_col_cell_num(expanded_subarray_);
 
   // Calculate buffer sizes
   auto attribute_id_num = (unsigned int)attribute_ids_.size();
@@ -1050,9 +1050,9 @@ Status ArraySortedWriteState::create_copy_state_buffers() {
     buffer_size = new uint64_t[buffer_num_];
     for (unsigned int i = 0, b = 0; i < attribute_id_num; ++i) {
       // Fix-sized attribute
-      if (!array_schema->var_size(attribute_ids_[i])) {
+      if (!array_metadata->var_size(attribute_ids_[i])) {
         buffer_size[b++] =
-            tile_slab_cell_num * array_schema->cell_size(attribute_ids_[i]);
+            tile_slab_cell_num * array_metadata->cell_size(attribute_ids_[i]);
       } else {  // Variable-sized attribute
         buffer_size[b++] = tile_slab_cell_num * sizeof(uint64_t);
         buffer_size[b++] = 2 * tile_slab_cell_num * sizeof(uint64_t);
@@ -1450,7 +1450,7 @@ template <class T>
 uint64_t ArraySortedWriteState::get_cell_id(unsigned int aid) {
   // For easy reference
   auto current_coords = (const T*)tile_slab_state_.current_coords_[aid];
-  auto tile_extents = (const T*)query_->array_schema()->tile_extents();
+  auto tile_extents = (const T*)query_->array_metadata()->tile_extents();
   uint64_t tid = tile_slab_state_.current_tile_[aid];
   uint64_t* cell_offset_per_dim =
       tile_slab_info_[copy_id_].cell_offset_per_dim_[tid];
@@ -1470,7 +1470,7 @@ template <class T>
 uint64_t ArraySortedWriteState::get_tile_id(unsigned int aid) {
   // For easy reference
   auto current_coords = (const T*)tile_slab_state_.current_coords_[aid];
-  auto tile_extents = (const T*)query_->array_schema()->tile_extents();
+  auto tile_extents = (const T*)query_->array_metadata()->tile_extents();
   uint64_t* tile_offset_per_dim =
       tile_slab_info_[copy_id_].tile_offset_per_dim_;
 
@@ -1485,7 +1485,7 @@ uint64_t ArraySortedWriteState::get_tile_id(unsigned int aid) {
 
 bool ArraySortedWriteState::separate_fragments() const {
   QueryType query_type = query_->type();
-  Layout tile_order = query_->array_schema()->tile_order();
+  Layout tile_order = query_->array_metadata()->tile_order();
   return (query_type == QueryType::WRITE_SORTED_COL &&
           tile_order == Layout::ROW_MAJOR) ||
          (query_type == QueryType::WRITE_SORTED_ROW &&
@@ -1529,13 +1529,13 @@ void ArraySortedWriteState::init_tile_slab_info() {
 template <class T>
 void ArraySortedWriteState::init_tile_slab_info(unsigned int id) {
   // Sanity check
-  assert(query_->array_schema()->dense());
+  assert(query_->array_metadata()->dense());
 
   // For easy reference
   auto anum = (unsigned int)attribute_ids_.size();
 
   // Calculate tile number
-  uint64_t tile_num = query_->array_schema()->tile_num(tile_slab_[id]);
+  uint64_t tile_num = query_->array_metadata()->tile_num(tile_slab_[id]);
 
   // Initializations
   tile_slab_info_[id].cell_offset_per_dim_ = new uint64_t*[tile_num];
@@ -1579,10 +1579,10 @@ void ArraySortedWriteState::init_tile_slab_state() {
 template <class T>
 bool ArraySortedWriteState::next_tile_slab_col() {
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
-  auto domain = static_cast<const T*>(array_schema->domain());
-  auto tile_extents = static_cast<const T*>(array_schema->tile_extents());
+  auto domain = static_cast<const T*>(array_metadata->domain());
+  auto tile_extents = static_cast<const T*>(array_metadata->tile_extents());
   T* tile_slab[2];
   auto tile_slab_norm = static_cast<T*>(tile_slab_norm_[copy_id_]);
   for (unsigned int i = 0; i < 2; ++i)
@@ -1649,10 +1649,10 @@ bool ArraySortedWriteState::next_tile_slab_col() {
 template <class T>
 bool ArraySortedWriteState::next_tile_slab_row() {
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
-  auto domain = static_cast<const T*>(array_schema->domain());
-  auto tile_extents = static_cast<const T*>(array_schema->tile_extents());
+  auto domain = static_cast<const T*>(array_metadata->domain());
+  auto tile_extents = static_cast<const T*>(array_metadata->tile_extents());
   T* tile_slab[2];
   auto tile_slab_norm = static_cast<T*>(tile_slab_norm_[copy_id_]);
   for (unsigned int i = 0; i < 2; ++i)
@@ -1726,13 +1726,13 @@ Status ArraySortedWriteState::write() {
 template <class T>
 Status ArraySortedWriteState::write_sorted_col() {
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
 
   // Check if this can be satisfied with a default write
-  if (array_schema->cell_order() == Layout::COL_MAJOR &&
+  if (array_metadata->cell_order() == Layout::COL_MAJOR &&
       !std::memcmp(subarray_, expanded_subarray_, 2 * coords_size_) &&
-      array_schema->is_contained_in_tile_slab_row<T>(subarray))
+      array_metadata->is_contained_in_tile_slab_row<T>(subarray))
     return query_->write(buffers_, buffer_sizes_);
 
   // Iterate over each tile slab
@@ -1756,13 +1756,13 @@ Status ArraySortedWriteState::write_sorted_col() {
 template <class T>
 Status ArraySortedWriteState::write_sorted_row() {
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
 
   // Check if this can be satisfied with a default write
-  if (array_schema->cell_order() == Layout::ROW_MAJOR &&
+  if (array_metadata->cell_order() == Layout::ROW_MAJOR &&
       !std::memcmp(subarray_, expanded_subarray_, 2 * coords_size_) &&
-      array_schema->is_contained_in_tile_slab_col<T>(subarray))
+      array_metadata->is_contained_in_tile_slab_col<T>(subarray))
     return query_->write(buffers_, buffer_sizes_);
 
   // Iterate over each tile slab
@@ -1813,7 +1813,7 @@ void ArraySortedWriteState::reset_tile_slab_state() {
 
 void ArraySortedWriteState::update_current_tile_and_offset(unsigned int aid) {
   // For easy reference
-  Datatype coords_type = query_->array_schema()->coords_type();
+  Datatype coords_type = query_->array_metadata()->coords_type();
 
   // Invoke the proper templated function
   if (coords_type == Datatype::INT32)

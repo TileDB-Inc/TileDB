@@ -41,7 +41,7 @@
 #include <string>
 #include <thread>
 
-#include "array_schema.h"
+#include "array_metadata.h"
 #include "open_array.h"
 #include "query.h"
 #include "status.h"
@@ -68,12 +68,12 @@ class StorageManager {
   /* ********************************* */
 
   /**
-   * Creates a TileDB array storing its schema.
+   * Creates a TileDB array storing its metadata.
    *
-   * @param array_schema The array schema.
+   * @param array_metadata The array metadata.
    * @return Status
    */
-  Status array_create(ArraySchema* array_schema);
+  Status array_create(ArrayMetadata* array_metadata);
 
   /**
    * Pushes an async query to the queue.
@@ -123,13 +123,13 @@ class StorageManager {
   bool is_file(const URI& uri);
 
   /**
-   * Loads the schema of an array from persistent storage into memory.
+   * Loads the metadata of an array from persistent storage into memory.
    *
    * @param array_name The name (URI path) of the array.
-   * @param array_schema The array schema to be retrieved.
+   * @param array_metadata The array metadata to be retrieved.
    * @return Status
    */
-  Status load(const std::string& array_name, ArraySchema* array_schema);
+  Status load(const std::string& array_name, ArrayMetadata* array_metadata);
 
   /**
    * Loads the fragment metadata of an array from persistent storage into
@@ -197,12 +197,12 @@ class StorageManager {
       const URI& uri, uint64_t offset, void* buffer, uint64_t nbytes) const;
 
   /**
-   * Stores an array schema into persistent storage.
+   * Stores an array metadata into persistent storage.
    *
-   * @param array_schema The array schema to be stored.
+   * @param array_metadata The array metadata to be stored.
    * @return Status
    */
-  Status store(ArraySchema* array_schema);
+  Status store(ArrayMetadata* array_metadata);
 
   /**
    * Stores the fragment metadata into persistent storage.
@@ -286,12 +286,12 @@ class StorageManager {
       const std::vector<FragmentMetadata*>& fragment_metadata);
 
   /**
-   * Opens an array, retrieving its schema and fragment metadata.
+   * Opens an array, retrieving its metadata and fragment metadata.
    *
    * @param array_uri The array URI.
    * @param query_type The query type.
    * @param subarray The subarray the query is constrained on.
-   * @param array_schema The array schema to be retrieved.
+   * @param array_metadata The array metadata to be retrieved.
    * @param fragment_metadata The fragment metadat to be retrieved.
    * @return
    */
@@ -299,7 +299,7 @@ class StorageManager {
       const URI& array_uri,
       QueryType query_type,
       const void* subarray,
-      const ArraySchema** array_schema,
+      const ArrayMetadata** array_metadata,
       std::vector<FragmentMetadata*>* fragment_metadata);
 
   /**
@@ -349,8 +349,8 @@ class StorageManager {
   /** Retrieves an open array entry for the given array URI. */
   Status open_array_get_entry(const URI& array_uri, OpenArray** open_array);
 
-  /** Loads the array schema into an open array. */
-  Status open_array_load_schema(const URI& array_uri, OpenArray* open_array);
+  /** Loads the array metadata into an open array. */
+  Status open_array_load_metadata(const URI& array_uri, OpenArray* open_array);
 
   /** Retrieves the fragment metadata of an open array for a given subarray. */
   Status open_array_load_fragment_metadata(

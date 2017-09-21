@@ -66,13 +66,13 @@ ArraySortedReadState::ArraySortedReadState(Query* query)
   calculate_attribute_ids();
 
   // For easy reference
-  const ArraySchema* array_schema = query->array_schema();
+  const ArrayMetadata* array_metadata = query->array_metadata();
   auto anum = (unsigned int)attribute_ids_.size();
 
   // Initializations
-  coords_size_ = array_schema->coords_size();
+  coords_size_ = array_metadata->coords_size();
   copy_id_ = 0;
-  dim_num_ = array_schema->dim_num();
+  dim_num_ = array_metadata->dim_num();
   read_tile_slabs_done_ = false;
   resume_copy_ = false;
   resume_copy_2_ = false;
@@ -94,10 +94,10 @@ ArraySortedReadState::ArraySortedReadState(Query* query)
   for (unsigned int i = 0; i < anum; ++i) {
     overflow_[i] = false;
     overflow_still_[i] = true;
-    if (array_schema->var_size(attribute_ids_[i]))
+    if (array_metadata->var_size(attribute_ids_[i]))
       attribute_sizes_.push_back(sizeof(uint64_t));
     else
-      attribute_sizes_.push_back(array_schema->cell_size(attribute_ids_[i]));
+      attribute_sizes_.push_back(array_metadata->cell_size(attribute_ids_[i]));
   }
 
   subarray_ = std::malloc(2 * coords_size_);
@@ -221,7 +221,7 @@ Status ArraySortedReadState::read(void** buffers, uint64_t* buffer_sizes) {
   reset_overflow();
 
   // Call the appropriate templated read
-  Datatype type = query_->array_schema()->coords_type();
+  Datatype type = query_->array_metadata()->coords_type();
   if (type == Datatype::INT32)
     return read<int>();
   if (type == Datatype::INT64)
@@ -260,11 +260,11 @@ Status ArraySortedReadState::init() {
     async_data_[i] = {i, 0, this};
 
   // Initialize functors
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   QueryType query_type = query_->type();
-  Layout cell_order = array_schema->cell_order();
-  Layout tile_order = array_schema->tile_order();
-  Datatype coords_type = array_schema->coords_type();
+  Layout cell_order = array_metadata->cell_order();
+  Layout tile_order = array_metadata->tile_order();
+  Datatype coords_type = array_metadata->coords_type();
   if (query_type == QueryType::READ_SORTED_ROW) {
     if (coords_type == Datatype::INT32) {
       advance_cell_slab_ = advance_cell_slab_row_s<int>;
@@ -531,7 +531,7 @@ void* ArraySortedReadState::async_done(void* data) {
 
   // For easy reference
   auto anum = (unsigned int)asrs->attribute_ids_.size();
-  const ArraySchema* array_schema = query->array_schema();
+  const ArrayMetadata* array_metadata = query->array_metadata();
 
   // Check for overflow
   bool overflow = false;
@@ -543,11 +543,11 @@ void* ArraySortedReadState::async_done(void* data) {
   }
 
   // Handle overflow
-  bool sparse = array_schema->dense();
+  bool sparse = array_metadata->dense();
   if (overflow) {  // OVERFLOW
     // Update buffer sizes
     for (unsigned int i = 0, b = 0; i < anum; ++i) {
-      if (!array_schema->var_size(asrs->attribute_ids_[i])) {  // FIXED
+      if (!array_metadata->var_size(asrs->attribute_ids_[i])) {  // FIXED
         if (query->overflow(i)) {
           // Expand buffer
           utils::expand_buffer(
@@ -630,7 +630,7 @@ Status ArraySortedReadState::async_submit_query(unsigned int id) {
   async_query_[id] = new Query();
   RETURN_NOT_OK(async_query_[id]->init(
       query_->storage_manager(),
-      query_->array_schema(),
+      query_->array_metadata(),
       query_->fragment_metadata(),
       QueryType::READ,
       tile_slab_[id],
@@ -659,11 +659,11 @@ void ArraySortedReadState::calculate_attribute_ids() {
   bool coords_found = false;
 
   // For ease reference
-  auto array_schema = query_->array_schema();
-  auto attribute_num = array_schema->attribute_num();
+  auto array_metadata = query_->array_metadata();
+  auto attribute_num = array_metadata->attribute_num();
 
-  // No need to do anything else in case the array_schema is dense
-  if (array_schema->dense())
+  // No need to do anything else in case the array_metadata is dense
+  if (array_metadata->dense())
     return;
 
   // Find the coordinates index
@@ -689,15 +689,15 @@ void ArraySortedReadState::calculate_attribute_ids() {
 
 void ArraySortedReadState::calculate_buffer_num() {
   // For easy reference
-  auto array_schema = query_->array_schema();
-  auto attribute_num = array_schema->attribute_num();
+  auto array_metadata = query_->array_metadata();
+  auto attribute_num = array_metadata->attribute_num();
 
   // Calculate number of buffers
   buffer_num_ = 0;
   auto attribute_id_num = (unsigned int)attribute_ids_.size();
   for (unsigned int i = 0; i < attribute_id_num; ++i) {
     // Fix-sized attribute
-    if (!array_schema->var_size(attribute_ids_[i])) {
+    if (!array_metadata->var_size(attribute_ids_[i])) {
       if (attribute_ids_[i] == attribute_num)
         coords_buf_i_ = buffer_num_;  // Buffer that holds the coordinates
       ++buffer_num_;
@@ -708,7 +708,7 @@ void ArraySortedReadState::calculate_buffer_num() {
 }
 
 void ArraySortedReadState::calculate_buffer_sizes() {
-  if (query_->array_schema()->dense())
+  if (query_->array_metadata()->dense())
     calculate_buffer_sizes_dense();
   else
     calculate_buffer_sizes_sparse();
@@ -716,14 +716,14 @@ void ArraySortedReadState::calculate_buffer_sizes() {
 
 void ArraySortedReadState::calculate_buffer_sizes_dense() {
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
 
   // Get cell number in a (full) tile slab
   uint64_t tile_slab_cell_num;
   if (query_->type() == QueryType::READ_SORTED_ROW)
-    tile_slab_cell_num = array_schema->tile_slab_row_cell_num(subarray_);
+    tile_slab_cell_num = array_metadata->tile_slab_row_cell_num(subarray_);
   else  // TILEDB_ARRAY_READ_SORTED_COL
-    tile_slab_cell_num = array_schema->tile_slab_col_cell_num(subarray_);
+    tile_slab_cell_num = array_metadata->tile_slab_col_cell_num(subarray_);
 
   // Calculate buffer sizes
   auto attribute_id_num = (unsigned int)attribute_ids_.size();
@@ -733,9 +733,9 @@ void ArraySortedReadState::calculate_buffer_sizes_dense() {
     buffer_sizes_tmp_bak_[j] = new uint64_t[buffer_num_];
     for (unsigned int i = 0, b = 0; i < attribute_id_num; ++i) {
       // Fix-sized attribute
-      if (!array_schema->var_size(attribute_ids_[i])) {
+      if (!array_metadata->var_size(attribute_ids_[i])) {
         buffer_sizes_[j][b] =
-            tile_slab_cell_num * array_schema->cell_size(attribute_ids_[i]);
+            tile_slab_cell_num * array_metadata->cell_size(attribute_ids_[i]);
         buffer_sizes_tmp_bak_[j][b] = 0;
         ++b;
       } else {  // Variable-sized attribute
@@ -752,7 +752,7 @@ void ArraySortedReadState::calculate_buffer_sizes_dense() {
 
 void ArraySortedReadState::calculate_buffer_sizes_sparse() {
   // For easy reference
-  const ArraySchema* array_schema = query_->array_schema();
+  const ArrayMetadata* array_metadata = query_->array_metadata();
 
   // Calculate buffer sizes
   auto attribute_id_num = (unsigned int)attribute_ids_.size();
@@ -765,7 +765,8 @@ void ArraySortedReadState::calculate_buffer_sizes_sparse() {
       buffer_sizes_[j][b] = constants::internal_buffer_size;
       buffer_sizes_tmp_bak_[j][b] = 0;
       ++b;
-      if (array_schema->var_size(attribute_ids_[i])) {  // Variable-sized buffer
+      if (array_metadata->var_size(
+              attribute_ids_[i])) {  // Variable-sized buffer
         buffer_sizes_[j][b] = 2 * constants::internal_buffer_size;
         buffer_sizes_tmp_bak_[j][b] = 0;
         ++b;
@@ -951,7 +952,7 @@ void ArraySortedReadState::calculate_tile_domain(unsigned int id) {
 
   // For easy reference
   auto tile_slab = (const T*)tile_slab_norm_[id];
-  auto tile_extents = (const T*)query_->array_schema()->tile_extents();
+  auto tile_extents = (const T*)query_->array_metadata()->tile_extents();
   auto tile_coords = (T*)tile_coords_;
   auto tile_domain = (T*)tile_domain_;
 
@@ -994,7 +995,7 @@ void ArraySortedReadState::calculate_tile_slab_info_col(unsigned int id) {
   // For easy reference
   auto tile_domain = (const T*)tile_domain_;
   auto tile_coords = (T*)tile_coords_;
-  auto tile_extents = (const T*)query_->array_schema()->tile_extents();
+  auto tile_extents = (const T*)query_->array_metadata()->tile_extents();
   auto range_overlap = (T**)tile_slab_info_[id].range_overlap_;
   auto tile_slab = (const T*)tile_slab_norm_[id];
   uint64_t tile_offset, tile_cell_num, total_cell_num = 0;
@@ -1064,7 +1065,7 @@ void ArraySortedReadState::calculate_tile_slab_info_row(unsigned int id) {
   // For easy reference
   auto tile_domain = (const T*)tile_domain_;
   auto tile_coords = (T*)tile_coords_;
-  auto tile_extents = (const T*)query_->array_schema()->tile_extents();
+  auto tile_extents = (const T*)query_->array_metadata()->tile_extents();
   auto range_overlap = (T**)tile_slab_info_[id].range_overlap_;
   auto tile_slab = (const T*)tile_slab_norm_[id];
   uint64_t tile_offset, tile_cell_num, total_cell_num = 0;
@@ -1128,11 +1129,11 @@ void ArraySortedReadState::calculate_tile_slab_info_row(unsigned int id) {
 
 void ArraySortedReadState::copy_tile_slab_dense() {
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
 
   // Copy tile slab for each attribute separately
   for (unsigned int i = 0, b = 0; i < (int)attribute_ids_.size(); ++i) {
-    if (!array_schema->var_size(attribute_ids_[i])) {
+    if (!array_metadata->var_size(attribute_ids_[i])) {
       copy_tile_slab_dense(i, b);
       ++b;
     } else {
@@ -1270,12 +1271,12 @@ void ArraySortedReadState::copy_tile_slab_dense_var(
 
 void ArraySortedReadState::copy_tile_slab_sparse() {
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
 
   // Copy tile slab for each attribute separately
   auto anum = (unsigned int)attribute_ids_.size();
   for (unsigned int i = 0, b = 0; i < anum; ++i) {
-    if (!array_schema->var_size(attribute_ids_[i])) {  // FIXED
+    if (!array_metadata->var_size(attribute_ids_[i])) {  // FIXED
       // Make sure not to copy coordinates if the user has not requested them
       if (i != coords_attr_i_ || !extra_coords_)
         copy_tile_slab_sparse(i, b);
@@ -1296,7 +1297,7 @@ void ArraySortedReadState::copy_tile_slab_sparse(
   }
 
   // For easy reference
-  uint64_t cell_size = query_->array_schema()->cell_size(attribute_ids_[aid]);
+  uint64_t cell_size = query_->array_metadata()->cell_size(attribute_ids_[aid]);
   uint64_t& buffer_offset = copy_state_.buffer_offsets_[bid];
   uint64_t buffer_size = copy_state_.buffer_sizes_[bid];
   auto buffer = (char*)copy_state_.buffers_[bid];
@@ -1414,7 +1415,7 @@ void ArraySortedReadState::free_copy_state() {
 
 void ArraySortedReadState::free_tile_slab_info() {
   // Do nothing in the case of sparse arrays
-  if (!query_->array_schema()->dense())
+  if (!query_->array_metadata()->dense())
     return;
 
   // For easy reference
@@ -1493,7 +1494,7 @@ template <class T>
 uint64_t ArraySortedReadState::get_tile_id(unsigned int aid) {
   // For easy reference
   auto current_coords = (const T*)tile_slab_state_.current_coords_[aid];
-  auto tile_extents = (const T*)query_->array_schema()->tile_extents();
+  auto tile_extents = (const T*)query_->array_metadata()->tile_extents();
   uint64_t* tile_offset_per_dim =
       tile_slab_info_[copy_id_].tile_offset_per_dim_;
 
@@ -1516,7 +1517,7 @@ void ArraySortedReadState::init_copy_state() {
 
 void ArraySortedReadState::init_tile_slab_info() {
   // Do nothing in the case of sparse arrays
-  if (!query_->array_schema()->dense())
+  if (!query_->array_metadata()->dense())
     return;
 
   // For easy reference
@@ -1543,13 +1544,13 @@ void ArraySortedReadState::init_tile_slab_info() {
 template <class T>
 void ArraySortedReadState::init_tile_slab_info(unsigned int id) {
   // Sanity check
-  assert(query_->array_schema()->dense());
+  assert(query_->array_metadata()->dense());
 
   // For easy reference
   auto anum = (unsigned int)attribute_ids_.size();
 
   // Calculate tile number
-  uint64_t tile_num = query_->array_schema()->tile_num(tile_slab_[id]);
+  uint64_t tile_num = query_->array_metadata()->tile_num(tile_slab_[id]);
 
   // Initializations
   tile_slab_info_[id].cell_offset_per_dim_ = new uint64_t*[tile_num];
@@ -1571,7 +1572,7 @@ void ArraySortedReadState::init_tile_slab_info(unsigned int id) {
 void ArraySortedReadState::init_tile_slab_state() {
   // For easy reference
   auto anum = (unsigned int)attribute_ids_.size();
-  bool dense = query_->array_schema()->dense();
+  bool dense = query_->array_metadata()->dense();
 
   // Both for dense and sparse
   tile_slab_state_.copy_tile_slab_done_ = new bool[anum];
@@ -1608,10 +1609,10 @@ bool ArraySortedReadState::next_tile_slab_dense_col() {
     return false;
 
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
-  auto domain = static_cast<const T*>(array_schema->domain());
-  auto tile_extents = static_cast<const T*>(array_schema->tile_extents());
+  auto domain = static_cast<const T*>(array_metadata->domain());
+  auto tile_extents = static_cast<const T*>(array_metadata->tile_extents());
   T* tile_slab[2];
   auto tile_slab_norm = static_cast<T*>(tile_slab_norm_[copy_id_]);
   for (unsigned int i = 0; i < 2; ++i)
@@ -1683,10 +1684,10 @@ bool ArraySortedReadState::next_tile_slab_dense_row() {
     return false;
 
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
-  auto domain = static_cast<const T*>(array_schema->domain());
-  auto tile_extents = static_cast<const T*>(array_schema->tile_extents());
+  auto domain = static_cast<const T*>(array_metadata->domain());
+  auto tile_extents = static_cast<const T*>(array_metadata->tile_extents());
   T* tile_slab[2];
   auto tile_slab_norm = static_cast<T*>(tile_slab_norm_[copy_id_]);
   for (unsigned int i = 0; i < 2; ++i)
@@ -1751,10 +1752,10 @@ bool ArraySortedReadState::next_tile_slab_sparse_col() {
     return false;
 
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
-  auto domain = static_cast<const T*>(array_schema->domain());
-  auto tile_extents = static_cast<const T*>(array_schema->tile_extents());
+  auto domain = static_cast<const T*>(array_metadata->domain());
+  auto tile_extents = static_cast<const T*>(array_metadata->tile_extents());
   T* tile_slab[2];
   for (unsigned int i = 0; i < 2; ++i)
     tile_slab[i] = static_cast<T*>(tile_slab_[i]);
@@ -1811,10 +1812,10 @@ bool ArraySortedReadState::next_tile_slab_sparse_col<float>() {
     return false;
 
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = (const float*)subarray_;
-  auto domain = (const float*)array_schema->domain();
-  auto tile_extents = (const float*)array_schema->tile_extents();
+  auto domain = (const float*)array_metadata->domain();
+  auto tile_extents = (const float*)array_metadata->tile_extents();
   float* tile_slab[2];
   for (unsigned int i = 0; i < 2; ++i)
     tile_slab[i] = (float*)tile_slab_[i];
@@ -1872,10 +1873,10 @@ bool ArraySortedReadState::next_tile_slab_sparse_col<double>() {
     return false;
 
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = (const double*)subarray_;
-  auto domain = (const double*)array_schema->domain();
-  auto tile_extents = (const double*)array_schema->tile_extents();
+  auto domain = (const double*)array_metadata->domain();
+  auto tile_extents = (const double*)array_metadata->tile_extents();
   double* tile_slab[2];
   for (unsigned int i = 0; i < 2; ++i)
     tile_slab[i] = (double*)tile_slab_[i];
@@ -1933,10 +1934,10 @@ bool ArraySortedReadState::next_tile_slab_sparse_row() {
     return false;
 
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
-  auto domain = static_cast<const T*>(array_schema->domain());
-  auto tile_extents = static_cast<const T*>(array_schema->tile_extents());
+  auto domain = static_cast<const T*>(array_metadata->domain());
+  auto tile_extents = static_cast<const T*>(array_metadata->tile_extents());
   T* tile_slab[2];
   for (unsigned int i = 0; i < 2; ++i)
     tile_slab[i] = static_cast<T*>(tile_slab_[i]);
@@ -1986,10 +1987,10 @@ bool ArraySortedReadState::next_tile_slab_sparse_row<float>() {
     return false;
 
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = (const float*)subarray_;
-  auto domain = (const float*)array_schema->domain();
-  auto tile_extents = (const float*)array_schema->tile_extents();
+  auto domain = (const float*)array_metadata->domain();
+  auto tile_extents = (const float*)array_metadata->tile_extents();
   float* tile_slab[2];
   for (unsigned int i = 0; i < 2; ++i)
     tile_slab[i] = (float*)tile_slab_[i];
@@ -2040,10 +2041,10 @@ bool ArraySortedReadState::next_tile_slab_sparse_row<double>() {
     return false;
 
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = (const double*)subarray_;
-  auto domain = (const double*)array_schema->domain();
-  auto tile_extents = (const double*)array_schema->tile_extents();
+  auto domain = (const double*)array_metadata->domain();
+  auto tile_extents = (const double*)array_metadata->tile_extents();
   double* tile_slab[2];
   for (unsigned int i = 0; i < 2; ++i)
     tile_slab[i] = (double*)tile_slab_[i];
@@ -2090,37 +2091,36 @@ bool ArraySortedReadState::next_tile_slab_sparse_row<double>() {
 template <class T>
 Status ArraySortedReadState::read() {
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   QueryType query_type = query_->type();
 
   if (query_type == QueryType::READ_SORTED_COL) {
-    if (array_schema->dense())
+    if (array_metadata->dense())
       return read_dense_sorted_col<T>();
 
     return read_sparse_sorted_col<T>();
   }
 
   if (query_type == QueryType::READ_SORTED_ROW) {
-    if (array_schema->dense())
+    if (array_metadata->dense())
       return read_dense_sorted_row<T>();
 
     return read_sparse_sorted_row<T>();
   }
 
   assert(0);  // The code should never reach here
-  return LOG_STATUS(
-      Status::ASRSError("Invalid array_schema mode when reading"));
+  return LOG_STATUS(Status::ASRSError("Invalid query type when reading"));
 }
 
 template <class T>
 Status ArraySortedReadState::read_dense_sorted_col() {
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
 
   // Check if this can be satisfied with a default read
-  if (array_schema->cell_order() == Layout::COL_MAJOR &&
-      array_schema->is_contained_in_tile_slab_row<T>(subarray))
+  if (array_metadata->cell_order() == Layout::COL_MAJOR &&
+      array_metadata->is_contained_in_tile_slab_row<T>(subarray))
     return query_->read(copy_state_.buffers_, copy_state_.buffer_sizes_);
 
   // These gotos SIGNIFICANTLY simplify the resume from overflow logic
@@ -2186,12 +2186,12 @@ Status ArraySortedReadState::read_dense_sorted_col() {
 template <class T>
 Status ArraySortedReadState::read_dense_sorted_row() {
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
 
   // Check if this can be satisfied with a default read
-  if (array_schema->cell_order() == Layout::ROW_MAJOR &&
-      array_schema->is_contained_in_tile_slab_col<T>(subarray))
+  if (array_metadata->cell_order() == Layout::ROW_MAJOR &&
+      array_metadata->is_contained_in_tile_slab_col<T>(subarray))
     return query_->read(copy_state_.buffers_, copy_state_.buffer_sizes_);
 
   // These gotos SIGNIFICANTLY simplify the resume from overflow logic
@@ -2257,12 +2257,12 @@ Status ArraySortedReadState::read_dense_sorted_row() {
 template <class T>
 Status ArraySortedReadState::read_sparse_sorted_col() {
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
 
   // Check if this can be satisfied with a default read
-  if (array_schema->cell_order() == Layout::COL_MAJOR &&
-      array_schema->is_contained_in_tile_slab_row<T>(subarray))
+  if (array_metadata->cell_order() == Layout::COL_MAJOR &&
+      array_metadata->is_contained_in_tile_slab_row<T>(subarray))
     return query_->read(copy_state_.buffers_, copy_state_.buffer_sizes_);
 
   // These gotos SIGNIFICANTLY simplify the resume from overflow logic
@@ -2332,12 +2332,12 @@ Status ArraySortedReadState::read_sparse_sorted_col() {
 template <class T>
 Status ArraySortedReadState::read_sparse_sorted_row() {
   // For easy reference
-  auto array_schema = query_->array_schema();
+  auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
 
   // Check if this can be satisfied with a default read
-  if (array_schema->cell_order() == Layout::ROW_MAJOR &&
-      array_schema->is_contained_in_tile_slab_col<T>(subarray))
+  if (array_metadata->cell_order() == Layout::ROW_MAJOR &&
+      array_metadata->is_contained_in_tile_slab_col<T>(subarray))
     return query_->read(copy_state_.buffers_, copy_state_.buffer_sizes_);
 
   // These gotos SIGNIFICANTLY simplify the resume from overflow logic
@@ -2436,7 +2436,7 @@ template <class T>
 void ArraySortedReadState::reset_tile_slab_state() {
   // For easy reference
   auto anum = (unsigned int)attribute_ids_.size();
-  bool dense = query_->array_schema()->dense();
+  bool dense = query_->array_metadata()->dense();
 
   // Both dense and sparse
   for (unsigned int i = 0; i < anum; ++i)
@@ -2462,8 +2462,8 @@ void ArraySortedReadState::reset_tile_slab_state() {
 template <class T>
 void ArraySortedReadState::sort_cell_pos() {
   // For easy reference
-  auto array_schema = query_->array_schema();
-  auto dim_num = array_schema->dim_num();
+  auto array_metadata = query_->array_metadata();
+  auto dim_num = array_metadata->dim_num();
   uint64_t cell_num = buffer_sizes_tmp_[copy_id_][coords_buf_i_] / coords_size_;
   QueryType query_type = query_->type();
   auto buffer = static_cast<const T*>(buffers_[copy_id_][coords_buf_i_]);

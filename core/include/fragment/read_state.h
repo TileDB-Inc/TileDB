@@ -314,8 +314,8 @@ class ReadState {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array schema. */
-  const ArraySchema* array_schema_;
+  /** The array metadata. */
+  const ArrayMetadata* array_metadata_;
 
   /** The number of array attributes. */
   unsigned int attribute_num_;

@@ -57,15 +57,15 @@ struct DenseArrayFx {
   // Array name
   std::string array_name_;
 
-  // Array schema object under test
-  tiledb_array_schema_t* array_schema_;
+  // Array metadata object under test
+  tiledb_array_metadata_t* array_metadata_;
 
   // TileDB context
   tiledb_ctx_t* ctx_;
 
   DenseArrayFx() {
     ctx_ = nullptr;
-    array_schema_ = nullptr;
+    array_metadata_ = nullptr;
 
     // Reset the random number generator
     std::srand(0);
@@ -175,7 +175,7 @@ struct DenseArrayFx {
     // Error code
     int rc;
 
-    // Prepare and set the array schema object and data structures
+    // Prepare and set the array metadata object and data structures
     int64_t domain[] = {domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
 
     // Create attribute
@@ -195,31 +195,34 @@ struct DenseArrayFx {
         ctx_, &d2, DIM2_NAME, DIM2_TYPE, &domain[2], &tile_extent_1);
     REQUIRE(rc == TILEDB_OK);
 
-    // Create array schema
-    rc = tiledb_array_schema_create(ctx_, &array_schema_, array_name_.c_str());
+    // Create array metadata
+    rc = tiledb_array_metadata_create(
+        ctx_, &array_metadata_, array_name_.c_str());
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_set_capacity(ctx_, array_schema_, capacity);
+    rc = tiledb_array_metadata_set_capacity(ctx_, array_metadata_, capacity);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_set_cell_order(ctx_, array_schema_, cell_order);
+    rc =
+        tiledb_array_metadata_set_cell_order(ctx_, array_metadata_, cell_order);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_set_tile_order(ctx_, array_schema_, tile_order);
+    rc =
+        tiledb_array_metadata_set_tile_order(ctx_, array_metadata_, tile_order);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_add_attribute(ctx_, array_schema_, a);
+    rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, a);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_add_dimension(ctx_, array_schema_, d1);
+    rc = tiledb_array_metadata_add_dimension(ctx_, array_metadata_, d1);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_add_dimension(ctx_, array_schema_, d2);
+    rc = tiledb_array_metadata_add_dimension(ctx_, array_metadata_, d2);
     REQUIRE(rc == TILEDB_OK);
 
     // Create the array
-    rc = tiledb_array_create(ctx_, array_schema_);
+    rc = tiledb_array_create(ctx_, array_metadata_);
     REQUIRE(rc == TILEDB_OK);
 
     // Clean up
     tiledb_attribute_free(ctx_, a);
     tiledb_dimension_free(ctx_, d1);
     tiledb_dimension_free(ctx_, d2);
-    tiledb_array_schema_free(ctx_, array_schema_);
+    tiledb_array_metadata_free(ctx_, array_metadata_);
   }
 
   /**

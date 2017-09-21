@@ -34,7 +34,7 @@
 #ifndef TILEDB_PQ_FRAGMENT_CELL_RANGE_H
 #define TILEDB_PQ_FRAGMENT_CELL_RANGE_H
 
-#include "array_schema.h"
+#include "array_metadata.h"
 #include "read_state.h"
 
 #include <cinttypes>
@@ -65,11 +65,11 @@ class PQFragmentCellRange {
   /**
    * Constructor.
    *
-   * @param array_schema The schema of the array.
+   * @param array_metadata The metadata of the array.
    * @param fragment_read_states The read states of all fragments in the array.
    */
   PQFragmentCellRange(
-      const ArraySchema* array_schema,
+      const ArrayMetadata* array_metadata,
       const std::vector<ReadState*>* fragment_read_states);
 
   /* ********************************* */
@@ -168,8 +168,8 @@ class PQFragmentCellRange {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The array schema. */
-  const ArraySchema* array_schema_;
+  /** The array metadata. */
+  const ArrayMetadata* array_metadata_;
 
   /** Size of coordinates. */
   uint64_t coords_size_;

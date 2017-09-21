@@ -32,7 +32,7 @@
  */
 
 #include "tiledb.h"
-#include "array_schema.h"
+#include "array_metadata.h"
 #include "query.h"
 #include "utils.h"
 
@@ -82,19 +82,19 @@ struct tiledb_dimension_t {
   tiledb::Dimension* dim_;
 };
 
-struct tiledb_array_schema_t {
-  tiledb::ArraySchema* array_schema_;
+struct tiledb_array_metadata_t {
+  tiledb::ArrayMetadata* array_metadata_;
 };
 
 struct tiledb_attribute_iter_t {
-  const tiledb_array_schema_t* array_schema_;
+  const tiledb_array_metadata_t* array_metadata_;
   tiledb_attribute_t* attr_;
   int attr_num_;
   int current_attr_;
 };
 
 struct tiledb_dimension_iter_t {
-  const tiledb_array_schema_t* array_schema_;
+  const tiledb_array_metadata_t* array_metadata_;
   tiledb_dimension_t* dim_;
   int dim_num_;
   int current_dim_;
@@ -153,7 +153,7 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_attribute_t* attr) {
 
 inline int sanity_check(
     tiledb_ctx_t* ctx, const tiledb_attribute_iter_t* attr_it) {
-  if (attr_it == nullptr || attr_it->array_schema_ == nullptr) {
+  if (attr_it == nullptr || attr_it->array_metadata_ == nullptr) {
     save_error(
         ctx, tiledb::Status::Error("Invalid TileDB attribute iterator struct"));
     return TILEDB_ERR;
@@ -163,7 +163,7 @@ inline int sanity_check(
 
 inline int sanity_check(
     tiledb_ctx_t* ctx, const tiledb_dimension_iter_t* dim_it) {
-  if (dim_it == nullptr || dim_it->array_schema_ == nullptr) {
+  if (dim_it == nullptr || dim_it->array_metadata_ == nullptr) {
     save_error(
         ctx, tiledb::Status::Error("Invalid TileDB dimension iterator struct"));
     return TILEDB_ERR;
@@ -180,11 +180,11 @@ inline int sanity_check(tiledb_ctx_t* ctx, const tiledb_dimension_t* dim) {
 }
 
 inline int sanity_check(
-    tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema) {
-  if (array_schema == nullptr || array_schema->array_schema_ == nullptr) {
+    tiledb_ctx_t* ctx, const tiledb_array_metadata_t* array_metadata) {
+  if (array_metadata == nullptr || array_metadata->array_metadata_ == nullptr) {
     save_error(
         ctx,
-        tiledb::Status::Error("Invalid TileDB array_schema schema struct"));
+        tiledb::Status::Error("Invalid TileDB array_metadata metadata struct"));
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -571,9 +571,9 @@ int tiledb_dimension_dump(
 /*           ARRAY SCHEMA         */
 /* ****************************** */
 
-int tiledb_array_schema_create(
+int tiledb_array_metadata_create(
     tiledb_ctx_t* ctx,
-    tiledb_array_schema_t** array_schema,
+    tiledb_array_metadata_t** array_metadata,
     const char* array_name) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -585,27 +585,27 @@ int tiledb_array_schema_create(
     return TILEDB_ERR;
   }
 
-  // Create array_schema schema struct
-  *array_schema =
-      (tiledb_array_schema_t*)std::malloc(sizeof(tiledb_array_schema_t));
-  if (*array_schema == nullptr) {
+  // Create array_metadata metadata struct
+  *array_metadata =
+      (tiledb_array_metadata_t*)std::malloc(sizeof(tiledb_array_metadata_t));
+  if (*array_metadata == nullptr) {
     save_error(
         ctx,
         tiledb::Status::Error(
-            "Failed to allocate TileDB array_schema schema struct"));
+            "Failed to allocate TileDB array_metadata metadata struct"));
     return TILEDB_OOM;
   }
 
-  // Create a new ArraySchema object
-  (*array_schema)->array_schema_ =
-      new tiledb::ArraySchema(tiledb::URI(array_name));
-  if ((*array_schema)->array_schema_ == nullptr) {
-    std::free(*array_schema);
-    *array_schema = nullptr;
+  // Create a new ArrayMetadata object
+  (*array_metadata)->array_metadata_ =
+      new tiledb::ArrayMetadata(tiledb::URI(array_name));
+  if ((*array_metadata)->array_metadata_ == nullptr) {
+    std::free(*array_metadata);
+    *array_metadata = nullptr;
     save_error(
         ctx,
-        tiledb::Status::Error(
-            "Failed to allocate TileDB array_schema schema object in struct"));
+        tiledb::Status::Error("Failed to allocate TileDB array_metadata "
+                              "metadata object in struct"));
     return TILEDB_OOM;
   }
 
@@ -613,206 +613,211 @@ int tiledb_array_schema_create(
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_free(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) {
+int tiledb_array_metadata_free(
+    tiledb_ctx_t* ctx, tiledb_array_metadata_t* array_metadata) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  delete array_schema->array_schema_;
-  std::free(array_schema);
+  delete array_metadata->array_metadata_;
+  std::free(array_metadata);
 
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_add_attribute(
+int tiledb_array_metadata_add_attribute(
     tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
+    tiledb_array_metadata_t* array_metadata,
     tiledb_attribute_t* attr) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR ||
+      sanity_check(ctx, array_metadata) == TILEDB_ERR ||
       sanity_check(ctx, attr) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_schema->array_schema_->add_attribute(attr->attr_);
+  array_metadata->array_metadata_->add_attribute(attr->attr_);
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_add_dimension(
+int tiledb_array_metadata_add_dimension(
     tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
+    tiledb_array_metadata_t* array_metadata,
     tiledb_dimension_t* dim) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR ||
+      sanity_check(ctx, array_metadata) == TILEDB_ERR ||
       sanity_check(ctx, dim) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_schema->array_schema_->add_dimension(dim->dim_);
+  array_metadata->array_metadata_->add_dimension(dim->dim_);
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_set_capacity(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema, uint64_t capacity) {
-  if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
-    return TILEDB_ERR;
-  array_schema->array_schema_->set_capacity(capacity);
-  return TILEDB_OK;
-}
-
-int tiledb_array_schema_set_cell_order(
+int tiledb_array_metadata_set_capacity(
     tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
+    tiledb_array_metadata_t* array_metadata,
+    uint64_t capacity) {
+  if (sanity_check(ctx) == TILEDB_ERR ||
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
+    return TILEDB_ERR;
+  array_metadata->array_metadata_->set_capacity(capacity);
+  return TILEDB_OK;
+}
+
+int tiledb_array_metadata_set_cell_order(
+    tiledb_ctx_t* ctx,
+    tiledb_array_metadata_t* array_metadata,
     tiledb_layout_t cell_order) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_schema->array_schema_->set_cell_order(
+  array_metadata->array_metadata_->set_cell_order(
       static_cast<tiledb::Layout>(cell_order));
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_set_tile_order(
+int tiledb_array_metadata_set_tile_order(
     tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
+    tiledb_array_metadata_t* array_metadata,
     tiledb_layout_t tile_order) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_schema->array_schema_->set_tile_order(
+  array_metadata->array_metadata_->set_tile_order(
       static_cast<tiledb::Layout>(tile_order));
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_set_array_type(
+int tiledb_array_metadata_set_array_type(
     tiledb_ctx_t* ctx,
-    tiledb_array_schema_t* array_schema,
+    tiledb_array_metadata_t* array_metadata,
     tiledb_array_type_t array_type) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_schema->array_schema_->set_array_type(
+  array_metadata->array_metadata_->set_array_type(
       static_cast<tiledb::ArrayType>(array_type));
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_check(
-    tiledb_ctx_t* ctx, tiledb_array_schema_t* array_schema) {
+int tiledb_array_metadata_check(
+    tiledb_ctx_t* ctx, tiledb_array_metadata_t* array_metadata) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
-  if (save_error(ctx, array_schema->array_schema_->check()))
+  if (save_error(ctx, array_metadata->array_metadata_->check()))
     return TILEDB_ERR;
 
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_load(
+int tiledb_array_metadata_load(
     tiledb_ctx_t* ctx,
-    tiledb_array_schema_t** array_schema,
+    tiledb_array_metadata_t** array_metadata,
     const char* array_name) {
   if (sanity_check(ctx) == TILEDB_ERR)
     return TILEDB_ERR;
-  // Create array_schema schema
-  *array_schema =
-      (tiledb_array_schema_t*)std::malloc(sizeof(tiledb_array_schema_t));
-  if (*array_schema == nullptr) {
+  // Create array_metadata metadata
+  *array_metadata =
+      (tiledb_array_metadata_t*)std::malloc(sizeof(tiledb_array_metadata_t));
+  if (*array_metadata == nullptr) {
     save_error(
         ctx,
         tiledb::Status::Error(
-            "Failed to allocate TileDB array_schema schema struct"));
+            "Failed to allocate TileDB array_metadata struct"));
     return TILEDB_OOM;
   }
 
-  // Create ArraySchema object
-  (*array_schema)->array_schema_ = new tiledb::ArraySchema();
-  if ((*array_schema)->array_schema_ == nullptr) {
-    std::free(*array_schema);
-    *array_schema = nullptr;
+  // Create ArrayMetadata object
+  (*array_metadata)->array_metadata_ = new tiledb::ArrayMetadata();
+  if ((*array_metadata)->array_metadata_ == nullptr) {
+    std::free(*array_metadata);
+    *array_metadata = nullptr;
     save_error(
         ctx,
         tiledb::Status::Error(
-            "Failed to allocate TileDB array_schema schema object in struct"));
+            "Failed to allocate TileDB array_metadata object in struct"));
     return TILEDB_OOM;
   }
 
-  // Load array_schema schema
+  // Load array metadata
   auto storage_manager = ctx->storage_manager_;
   if (save_error(
           ctx,
-          storage_manager->load(array_name, (*array_schema)->array_schema_))) {
-    delete (*array_schema)->array_schema_;
-    std::free(*array_schema);
-    *array_schema = nullptr;
+          storage_manager->load(
+              array_name, (*array_metadata)->array_metadata_))) {
+    delete (*array_metadata)->array_metadata_;
+    std::free(*array_metadata);
+    *array_metadata = nullptr;
     return TILEDB_ERR;
   }
 
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_array_name(
+int tiledb_array_metadata_get_array_name(
     tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
+    const tiledb_array_metadata_t* array_metadata,
     const char** array_name) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
-  const tiledb::URI& uri = array_schema->array_schema_->array_uri();
+  const tiledb::URI& uri = array_metadata->array_metadata_->array_uri();
   *array_name = uri.c_str();
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_array_type(
+int tiledb_array_metadata_get_array_type(
     tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
+    const tiledb_array_metadata_t* array_metadata,
     tiledb_array_type_t* array_type) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
   *array_type = static_cast<tiledb_array_type_t>(
-      array_schema->array_schema_->array_type());
+      array_metadata->array_metadata_->array_type());
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_capacity(
+int tiledb_array_metadata_get_capacity(
     tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
+    const tiledb_array_metadata_t* array_metadata,
     uint64_t* capacity) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
-  *capacity = array_schema->array_schema_->capacity();
+  *capacity = array_metadata->array_metadata_->capacity();
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_cell_order(
+int tiledb_array_metadata_get_cell_order(
     tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
+    const tiledb_array_metadata_t* array_metadata,
     tiledb_layout_t* cell_order) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
-  *cell_order =
-      static_cast<tiledb_layout_t>(array_schema->array_schema_->cell_order());
+  *cell_order = static_cast<tiledb_layout_t>(
+      array_metadata->array_metadata_->cell_order());
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_get_tile_order(
+int tiledb_array_metadata_get_tile_order(
     tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
+    const tiledb_array_metadata_t* array_metadata,
     tiledb_layout_t* tile_order) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
-  *tile_order =
-      static_cast<tiledb_layout_t>(array_schema->array_schema_->tile_order());
+  *tile_order = static_cast<tiledb_layout_t>(
+      array_metadata->array_metadata_->tile_order());
   return TILEDB_OK;
 }
 
-int tiledb_array_schema_dump(
-    tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out) {
+int tiledb_array_metadata_dump(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    FILE* out) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_schema->array_schema_->dump(out);
+  array_metadata->array_metadata_->dump(out);
   return TILEDB_OK;
 }
 
@@ -822,9 +827,9 @@ int tiledb_array_schema_dump(
 
 int tiledb_attribute_iter_create(
     tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
+    const tiledb_array_metadata_t* array_metadata,
     tiledb_attribute_iter_t** attr_it) {
-  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
+  if (sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
 
   // Create attribute iterator struct
@@ -838,9 +843,9 @@ int tiledb_attribute_iter_create(
     return TILEDB_OOM;
   }
 
-  // Initialize the iterator for the array_schema schema
-  (*attr_it)->array_schema_ = array_schema;
-  (*attr_it)->attr_num_ = array_schema->array_schema_->attribute_num();
+  // Initialize the iterator for the array_metadata metadata
+  (*attr_it)->array_metadata_ = array_metadata;
+  (*attr_it)->attr_num_ = array_metadata->array_metadata_->attribute_num();
 
   // Initialize the rest members of the iterator
   (*attr_it)->current_attr_ = 0;
@@ -862,7 +867,7 @@ int tiledb_attribute_iter_create(
 
     // Create an attribute object
     (*attr_it)->attr_->attr_ =
-        new tiledb::Attribute(array_schema->array_schema_->attr(0));
+        new tiledb::Attribute(array_metadata->array_metadata_->attr(0));
 
     // Check for allocation error
     if ((*attr_it)->attr_->attr_ == nullptr) {
@@ -917,8 +922,9 @@ int tiledb_attribute_iter_next(
     delete attr_it->attr_->attr_;
     if (attr_it->current_attr_ >= 0 &&
         attr_it->current_attr_ < attr_it->attr_num_) {
-      attr_it->attr_->attr_ = new tiledb::Attribute(
-          attr_it->array_schema_->array_schema_->attr(attr_it->current_attr_));
+      attr_it->attr_->attr_ =
+          new tiledb::Attribute(attr_it->array_metadata_->array_metadata_->attr(
+              attr_it->current_attr_));
     } else {
       attr_it->attr_->attr_ = nullptr;
     }
@@ -946,8 +952,8 @@ int tiledb_attribute_iter_first(
   if (attr_it->attr_ != nullptr) {
     delete attr_it->attr_->attr_;
     if (attr_it->attr_num_ > 0) {
-      attr_it->attr_->attr_ =
-          new tiledb::Attribute(attr_it->array_schema_->array_schema_->attr(0));
+      attr_it->attr_->attr_ = new tiledb::Attribute(
+          attr_it->array_metadata_->array_metadata_->attr(0));
     } else {
       attr_it->attr_->attr_ = nullptr;
     }
@@ -961,10 +967,10 @@ int tiledb_attribute_iter_first(
 
 int tiledb_dimension_iter_create(
     tiledb_ctx_t* ctx,
-    const tiledb_array_schema_t* array_schema,
+    const tiledb_array_metadata_t* array_metadata,
     tiledb_dimension_iter_t** dim_it) {
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
   // Create attribute iterator struct
   *dim_it =
@@ -978,9 +984,9 @@ int tiledb_dimension_iter_create(
   }
 
   // Initialize the iterator
-  (*dim_it)->array_schema_ = array_schema;
-  if (array_schema != nullptr)
-    (*dim_it)->dim_num_ = array_schema->array_schema_->dim_num();
+  (*dim_it)->array_metadata_ = array_metadata;
+  if (array_metadata != nullptr)
+    (*dim_it)->dim_num_ = array_metadata->array_metadata_->dim_num();
   (*dim_it)->current_dim_ = 0;
   if ((*dim_it)->dim_num_ <= 0) {
     (*dim_it)->dim_ = nullptr;
@@ -1000,7 +1006,7 @@ int tiledb_dimension_iter_create(
 
     // Create a dimension object
     (*dim_it)->dim_->dim_ =
-        new tiledb::Dimension(array_schema->array_schema_->dim(0));
+        new tiledb::Dimension(array_metadata->array_metadata_->dim(0));
 
     // Check for allocation error
     if ((*dim_it)->dim_->dim_ == nullptr) {
@@ -1057,7 +1063,7 @@ int tiledb_dimension_iter_next(
 
     if (dim_it->current_dim_ >= 0 && dim_it->current_dim_ < dim_it->dim_num_)
       dim_it->dim_->dim_ = new tiledb::Dimension(
-          dim_it->array_schema_->array_schema_->dim(dim_it->current_dim_));
+          dim_it->array_metadata_->array_metadata_->dim(dim_it->current_dim_));
     else
       dim_it->dim_->dim_ = nullptr;
   }
@@ -1085,8 +1091,8 @@ int tiledb_dimension_iter_first(
   if (dim_it->dim_ != nullptr) {
     delete dim_it->dim_->dim_;
     if (dim_it->dim_num_ > 0)
-      dim_it->dim_->dim_ =
-          new tiledb::Dimension(dim_it->array_schema_->array_schema_->dim(0));
+      dim_it->dim_->dim_ = new tiledb::Dimension(
+          dim_it->array_metadata_->array_metadata_->dim(0));
     else
       dim_it->dim_->dim_ = nullptr;
   }
@@ -1269,16 +1275,16 @@ int tiledb_query_get_attribute_status(
 /* ****************************** */
 
 int tiledb_array_create(
-    tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema) {
+    tiledb_ctx_t* ctx, const tiledb_array_metadata_t* array_metadata) {
   // Sanity checks
   if (sanity_check(ctx) == TILEDB_ERR ||
-      sanity_check(ctx, array_schema) == TILEDB_ERR)
+      sanity_check(ctx, array_metadata) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  // Create the array_schema
+  // Create the array_metadata
   if (save_error(
           ctx,
-          ctx->storage_manager_->array_create(array_schema->array_schema_)))
+          ctx->storage_manager_->array_create(array_metadata->array_metadata_)))
     return TILEDB_ERR;
 
   return TILEDB_OK;
