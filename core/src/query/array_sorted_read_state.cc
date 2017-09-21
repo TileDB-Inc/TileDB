@@ -699,7 +699,7 @@ void ArraySortedReadState::calculate_buffer_num() {
     // Fix-sized attribute
     if (!array_schema->var_size(attribute_ids_[i])) {
       if (attribute_ids_[i] == attribute_num)
-        coords_buf_i_ = i;  // Buffer that holds the coordinates
+        coords_buf_i_ = buffer_num_;  // Buffer that holds the coordinates
       ++buffer_num_;
     } else {  // Variable-sized attribute
       buffer_num_ += 2;

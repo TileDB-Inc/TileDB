@@ -429,7 +429,6 @@ Status ArraySortedWriteState::async_submit_query(unsigned int id) {
 
   // Sanity check
   assert(storage_manager != NULL);
-
   if (separate_fragments) {
     if (async_query_[id] != nullptr)
       RETURN_NOT_OK(async_query_[id]->finalize());

@@ -206,7 +206,6 @@ Status ReadState::copy_cells_var(
   // Compute actual cells to copy
   uint64_t start_cell_pos = tile->offset() / cell_size;
   uint64_t end_cell_pos = start_cell_pos + bytes_to_copy / cell_size - 1;
-
   uint64_t tile_var_size = metadata_->tile_var_sizes()[attribute_id][tile_i];
 
   RETURN_NOT_OK(compute_bytes_to_copy(
@@ -1201,7 +1200,7 @@ Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
   uint64_t med = min + ((max - min) / 2);
   int cmp;
   const void* coords_t;
-  while (max != INVALID_UINT64 && min <= max) {
+  while (min <= max && max != INVALID_UINT64) {
     med = min + ((max - min) / 2);
 
     // Update search range
@@ -1239,7 +1238,7 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
   uint64_t med = min + ((max - min) / 2);
   int cmp;
   const void* coords_t;
-  while (max != INVALID_UINT64 && min <= max) {
+  while (min <= max && max != INVALID_UINT64) {
     med = min + ((max - min) / 2);
 
     // Update search range
@@ -1278,7 +1277,7 @@ Status ReadState::get_cell_pos_at_or_before(
   uint64_t med = min + ((max - min) / 2);
   int cmp;
   const void* coords_t;
-  while (max != INVALID_UINT64 && min <= max) {
+  while (min <= max && max != INVALID_UINT64) {
     med = min + ((max - min) / 2);
 
     // Update search range

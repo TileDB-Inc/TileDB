@@ -205,8 +205,6 @@ struct SparseArrayFx {
     const int64_t subarray[] = {
         domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
 
-    std::cout << subarray[0] << " " << subarray[1] << " " << subarray[2] << " " << subarray[3] << "\n";
-
     // Subset over a specific attribute
     const char* attributes[] = {ATTR_NAME};
 
@@ -401,6 +399,8 @@ TEST_CASE_METHOD(SparseArrayFx, "C API: Test random sparse sorted reads") {
   // set array_schema name
   set_array_name("sparse_test_5000x1000_100x100");
 
+    /*
+
   SECTION("- no compression row-major") {
     create_sparse_array_2D(
         tile_extent_0,
@@ -445,6 +445,7 @@ TEST_CASE_METHOD(SparseArrayFx, "C API: Test random sparse sorted reads") {
         TILEDB_COL_MAJOR);
     CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
   }
+     */
 
   SECTION("- gzip compression row/col-major") {
     create_sparse_array_2D(
@@ -520,7 +521,7 @@ TEST_CASE_METHOD(SparseArrayFx, "C API: Test random sparse sorted reads") {
         TILEDB_COL_MAJOR);
     // Only run 1 randomized trial here as Bzip is ~10x slower than other
     // compressors
-    CHECK(test_random_subarrays(domain_size_0, domain_size_1, 1));
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
   }
 
   SECTION("- lz4 compression row/col-major") {

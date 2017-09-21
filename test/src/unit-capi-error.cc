@@ -35,6 +35,8 @@
 #include "catch.hpp"
 #include "tiledb.h"
 
+#include <iostream>
+
 TEST_CASE("C API: Test error and error message") {
   tiledb_ctx_t* ctx;
   int rc = tiledb_ctx_create(&ctx);

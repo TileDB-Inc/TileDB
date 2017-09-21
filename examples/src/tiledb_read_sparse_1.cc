@@ -32,7 +32,7 @@
 
 #include "tiledb.h"
 
-#include <cstdio>
+#include <iostream>
 
 int main(int argc, char** argv) {
   // Initialize context with the default configuration parameters
