@@ -48,8 +48,7 @@ struct SparseArrayFx {
   const char* DIM1_NAME = "x";
   const char* DIM2_NAME = "y";
   const tiledb_datatype_t ATTR_TYPE = TILEDB_INT32;
-  const tiledb_datatype_t DIM1_TYPE = TILEDB_INT64;
-  const tiledb_datatype_t DIM2_TYPE = TILEDB_INT64;
+  const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
   const tiledb_array_type_t ARRAY_TYPE = TILEDB_SPARSE;
   int COMPRESSION_LEVEL = -1;
 
@@ -130,20 +129,15 @@ struct SparseArrayFx {
         tiledb_attribute_set_compressor(ctx_, a, compressor, COMPRESSION_LEVEL);
     REQUIRE(rc == TILEDB_OK);
 
-    // Create dimensions
-    tiledb_dimension_t* d1;
-    rc = tiledb_dimension_create(
-        ctx_, &d1, DIM1_NAME, DIM1_TYPE, &domain[0], &tile_extent_0);
+    // Create hyperspace
+    tiledb_hyperspace_t* hyperspace;
+    rc = tiledb_hyperspace_create(ctx_, &hyperspace, DIM_TYPE);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_dimension_set_compressor(
-        ctx_, d1, compressor, COMPRESSION_LEVEL);
+    rc = tiledb_hyperspace_add_dimension(
+        ctx_, hyperspace, DIM1_NAME, &domain[0], &tile_extent_0);
     REQUIRE(rc == TILEDB_OK);
-    tiledb_dimension_t* d2;
-    rc = tiledb_dimension_create(
-        ctx_, &d2, DIM2_NAME, DIM2_TYPE, &domain[2], &tile_extent_1);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_dimension_set_compressor(
-        ctx_, d2, compressor, COMPRESSION_LEVEL);
+    rc = tiledb_hyperspace_add_dimension(
+        ctx_, hyperspace, DIM2_NAME, &domain[2], &tile_extent_1);
     REQUIRE(rc == TILEDB_OK);
 
     // Create array_metadata metadata
@@ -163,9 +157,8 @@ struct SparseArrayFx {
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, a);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_metadata_add_dimension(ctx_, array_metadata_, d1);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_metadata_add_dimension(ctx_, array_metadata_, d2);
+    rc =
+        tiledb_array_metadata_set_hyperspace(ctx_, array_metadata_, hyperspace);
     REQUIRE(rc == TILEDB_OK);
 
     // Create the array_metadata
@@ -173,10 +166,12 @@ struct SparseArrayFx {
     REQUIRE(rc == TILEDB_OK);
 
     // Clean up
-    tiledb_attribute_free(ctx_, a);
-    tiledb_dimension_free(ctx_, d1);
-    tiledb_dimension_free(ctx_, d2);
-    tiledb_array_metadata_free(ctx_, array_metadata_);
+    rc = tiledb_attribute_free(ctx_, a);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_hyperspace_free(ctx_, hyperspace);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_metadata_free(ctx_, array_metadata_);
+    REQUIRE(rc == TILEDB_OK);
   }
 
   /**

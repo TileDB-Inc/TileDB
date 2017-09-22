@@ -1296,7 +1296,7 @@ void ReadState::init_empty_attributes() {
   is_empty_attribute_.resize(attribute_num_ + 1);
   for (unsigned int i = 0; i < attribute_num_; ++i) {
     uri = fragment_->fragment_uri().join_path(
-        array_metadata_->attribute(i) + constants::file_suffix);
+        array_metadata_->attribute_name(i) + constants::file_suffix);
     is_empty_attribute_[i] = !query_->storage_manager()->is_file(uri);
   }
 
@@ -1333,11 +1333,14 @@ void ReadState::init_tiles() {
     else
       tiles_var_.emplace_back(nullptr);
   }
-  const Dimension* dim = array_metadata_->Dimensions()[0];
-  tiles_.emplace_back(
-      new Tile(dim->type(), dim->compressor(), array_metadata_->coords_size()));
-  tiles_.emplace_back(
-      new Tile(dim->type(), dim->compressor(), array_metadata_->coords_size()));
+  tiles_.emplace_back(new Tile(
+      array_metadata_->coords_type(),
+      array_metadata_->coords_compression(),
+      array_metadata_->coords_size()));
+  tiles_.emplace_back(new Tile(
+      array_metadata_->coords_type(),
+      array_metadata_->coords_compression(),
+      array_metadata_->coords_size()));
 }
 
 void ReadState::init_tile_io() {

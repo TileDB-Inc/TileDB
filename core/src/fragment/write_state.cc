@@ -253,11 +253,10 @@ void WriteState::init_tiles() {
       tiles_var_.emplace_back(nullptr);
     }
   }
-  const Dimension* dim = array_metadata->Dimensions()[0];
   tiles_.emplace_back(new Tile(
-      dim->type(),
-      dim->compressor(),
-      dim->compression_level(),
+      array_metadata->coords_type(),
+      array_metadata->coords_compression(),
+      array_metadata->coords_compression_level(),
       fragment_->tile_size(array_metadata->attribute_num()),
       array_metadata->coords_size()));
 }
@@ -644,7 +643,7 @@ Status WriteState::write_sparse_unsorted_attr(
     return LOG_STATUS(Status::WriteStateError(
         std::string("Cannot write sparse unsorted; Invalid number of "
                     "cells in attribute '") +
-        array_metadata->attribute(attribute_id) + "'"));
+        array_metadata->attribute_name(attribute_id) + "'"));
   }
 
   // Allocate a local buffer to hold the sorted cells
@@ -700,7 +699,7 @@ Status WriteState::write_sparse_unsorted_attr_var(
     return LOG_STATUS(Status::WriteStateError(
         std::string("Cannot write sparse unsorted variable; "
                     "Invalid number of cells in attribute '") +
-        array_metadata->attribute(attribute_id) + "'"));
+        array_metadata->attribute_name(attribute_id) + "'"));
   }
 
   auto sorted_buf = new Buffer(constants::sorted_buffer_size);

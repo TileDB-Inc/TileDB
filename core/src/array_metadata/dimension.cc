@@ -48,62 +48,32 @@ Dimension::Dimension() {
   tile_extent_ = nullptr;
 }
 
-Dimension::Dimension(
-    const char* name,
-    Datatype type,
-    const void* domain,
-    const void* tile_extent) {
+Dimension::Dimension(const char* name, Datatype type) {
   // Set name
   if (name != nullptr)
     name_ = name;
 
-  // Set type
+  // Set type, domain and tile extent
   type_ = type;
-
-  // Get type size
-  uint64_t type_size = datatype_size(type);
-
-  // Set domain
-  if (domain == nullptr) {
-    domain_ = nullptr;
-  } else {
-    uint64_t domain_size = 2 * type_size;
-    domain_ = std::malloc(domain_size);
-    memcpy(domain_, domain, domain_size);
-  }
-
-  // Set tile extent
-  if (tile_extent == nullptr) {
-    tile_extent_ = nullptr;
-  } else {
-    tile_extent_ = std::malloc(type_size);
-    memcpy(tile_extent_, tile_extent, type_size);
-  }
-
-  // Set default compressor and compression level
-  compressor_ = Compressor::NO_COMPRESSION;
-  compression_level_ = -1;
+  domain_ = nullptr;
+  tile_extent_ = nullptr;
 }
 
 Dimension::Dimension(const Dimension* dim) {
   assert(dim != nullptr);
 
   name_ = dim->name();
-  type_ = dim->type();
-  compressor_ = dim->compressor();
-  compression_level_ = dim->compression_level();
-
+  type_ = dim->type_;
   uint64_t type_size = datatype_size(type_);
-
   domain_ = std::malloc(2 * type_size);
-  memcpy(domain_, dim->domain(), 2 * type_size);
+  std::memcpy(domain_, dim->domain(), 2 * type_size);
 
   const void* tile_extent = dim->tile_extent();
   if (tile_extent == nullptr) {
     tile_extent_ = nullptr;
   } else {
     tile_extent_ = std::malloc(type_size);
-    memcpy(tile_extent_, tile_extent, type_size);
+    std::memcpy(tile_extent_, tile_extent, type_size);
   }
 }
 
@@ -119,33 +89,20 @@ Dimension::~Dimension() {
 /*                API                */
 /* ********************************* */
 
-Compressor Dimension::compressor() const {
-  return compressor_;
-}
-
-int Dimension::compression_level() const {
-  return compression_level_;
-}
-
 // ===== FORMAT =====
 // dimension_name_size (unsigned int)
 // dimension_name (string)
-// type (char)
 // domain (void* - 2*type_size)
 // tile_extent (void* - type_size)
-// compressor (char)
-// compression_level (int)
-Status Dimension::deserialize(ConstBuffer* buff) {
+Status Dimension::deserialize(ConstBuffer* buff, Datatype type) {
+  // Set type
+  type_ = type;
+
   // Load dimension name
   unsigned int dimension_name_size;
   RETURN_NOT_OK(buff->read(&dimension_name_size, sizeof(unsigned int)));
   name_.resize(dimension_name_size);
   RETURN_NOT_OK(buff->read(&name_[0], dimension_name_size));
-
-  // Load type
-  char type;
-  RETURN_NOT_OK(buff->read(&type, sizeof(char)));
-  type_ = (Datatype)type;
 
   // Load domain
   uint64_t domain_size = 2 * datatype_size(type_);
@@ -166,12 +123,6 @@ Status Dimension::deserialize(ConstBuffer* buff) {
         Status::DimensionError("Cannot deserialize; Memory allocation failed"));
   RETURN_NOT_OK(buff->read(tile_extent_, datatype_size(type_)));
 
-  // Load compressor
-  char compressor;
-  RETURN_NOT_OK(buff->read(&compressor, sizeof(char)));
-  compressor_ = (Compressor)compressor;
-  RETURN_NOT_OK(buff->read(&compression_level_, sizeof(int)));
-
   return Status::Ok();
 }
 
@@ -180,10 +131,6 @@ void* Dimension::domain() const {
 }
 
 void Dimension::dump(FILE* out) const {
-  // Retrieve type and compressor strings
-  const char* type_s = datatype_str(type_);
-  const char* compressor_s = compressor_str(compressor_);
-
   // Retrieve domain and tile extent strings
   std::string domain_s = utils::domain_str(domain_, type_);
   std::string tile_extent_s = utils::tile_extent_str(tile_extent_, type_);
@@ -191,9 +138,6 @@ void Dimension::dump(FILE* out) const {
   // Dump
   fprintf(out, "### Dimension ###\n");
   fprintf(out, "- Name: %s\n", name_.c_str());
-  fprintf(out, "- Type: %s\n", type_s);
-  fprintf(out, "- Compressor: %s\n", compressor_s);
-  fprintf(out, "- Compression level: %d\n", compression_level_);
   fprintf(out, "- Domain: %s\n", domain_s.c_str());
   fprintf(out, "- Tile extent: %s\n", tile_extent_s.c_str());
 }
@@ -205,48 +149,65 @@ const std::string& Dimension::name() const {
 // ===== FORMAT =====
 // dimension_name_size (unsigned int)
 // dimension_name (string)
-// type (char)
 // domain (void* - 2*type_size)
 // tile_extent (void* - type_size)
-// compressor (char)
-// compression_level (int)
 Status Dimension::serialize(Buffer* buff) {
   // Write dimension name
   auto dimension_name_size = (unsigned int)name_.size();
   RETURN_NOT_OK(buff->write(&dimension_name_size, sizeof(unsigned int)));
   RETURN_NOT_OK(buff->write(name_.c_str(), dimension_name_size));
 
-  // Write type
-  auto type = (char)type_;
-  RETURN_NOT_OK(buff->write(&type, sizeof(char)));
-
   // Write domain and tile extent
   uint64_t domain_size = 2 * datatype_size(type_);
   RETURN_NOT_OK(buff->write(domain_, domain_size));
   RETURN_NOT_OK(buff->write(tile_extent_, datatype_size(type_)));
 
-  // Write compressor
-  auto compressor = (char)compressor_;
-  RETURN_NOT_OK(buff->write(&compressor, sizeof(char)));
-  RETURN_NOT_OK(buff->write(&compression_level_, sizeof(int)));
+  return Status::Ok();
+}
+
+Status Dimension::set_domain(const void* domain) {
+  if (domain_ != nullptr)
+    std::free(domain_);
+
+  if (domain == nullptr) {
+    domain_ = nullptr;
+    return Status::Ok();
+  }
+
+  uint64_t domain_size = 2 * datatype_size(type_);
+  domain_ = std::malloc(domain_size);
+  if (domain_ == nullptr) {
+    return LOG_STATUS(
+        Status::DimensionError("Cannot set domain; Memory allocation error"));
+  }
+
+  std::memcpy(domain_, domain, domain_size);
 
   return Status::Ok();
 }
 
-void Dimension::set_compressor(Compressor compressor) {
-  compressor_ = compressor;
-}
+Status Dimension::set_tile_extent(const void* tile_extent) {
+  if (tile_extent_ != nullptr)
+    std::free(tile_extent_);
 
-void Dimension::set_compression_level(int compression_level) {
-  compression_level_ = compression_level;
+  if (tile_extent == nullptr) {
+    tile_extent_ = nullptr;
+    return Status::Ok();
+  }
+
+  uint64_t type_size = datatype_size(type_);
+  tile_extent_ = std::malloc(type_size);
+  if (tile_extent_ == nullptr) {
+    return LOG_STATUS(Status::DimensionError(
+        "Cannot set tile extent; Memory allocation error"));
+  }
+  std::memcpy(tile_extent_, tile_extent, type_size);
+
+  return Status::Ok();
 }
 
 void* Dimension::tile_extent() const {
   return tile_extent_;
-}
-
-Datatype Dimension::type() const {
-  return type_;
 }
 
 }  // namespace tiledb

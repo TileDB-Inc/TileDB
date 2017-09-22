@@ -176,14 +176,17 @@ typedef struct tiledb_attribute_t tiledb_attribute_t;
 /** A TileDB attribute iterator. */
 typedef struct tiledb_attribute_iter_t tiledb_attribute_iter_t;
 
+/** A TileDB array metadata. */
+typedef struct tiledb_array_metadata_t tiledb_array_metadata_t;
+
 /** A TileDB dimension. */
 typedef struct tiledb_dimension_t tiledb_dimension_t;
 
 /** A TileDB dimension iterator. */
 typedef struct tiledb_dimension_iter_t tiledb_dimension_iter_t;
 
-/** A TileDB array metadata. */
-typedef struct tiledb_array_metadata_t tiledb_array_metadata_t;
+/** A TileDB hyperspace. */
+typedef struct tiledb_hyperspace_t tiledb_hyperspace_t;
 
 /** A TileDB query. */
 typedef struct tiledb_query_t tiledb_query_t;
@@ -373,27 +376,73 @@ TILEDB_EXPORT int tiledb_attribute_dump(
     tiledb_ctx_t* ctx, const tiledb_attribute_t* attr, FILE* out);
 
 /* ********************************* */
-/*            DIMENSION              */
+/*            HYPERSPACE             */
 /* ********************************* */
 
 /**
- * Creates a TileDB dimension.
+ * Creates a TileDB hyperspace.
  *
  * @param ctx The TileDB context.
- * @param dim The TileDB dimension to be created.
- * @param name The dimension name.
- * @param type The dimension type.
- * @param domain The dimension domain (low, high).
- * @param tile_extent The tile extent along this dimension.
+ * @param hyperspace The TileDB hyperspace to be created.
+ * @param type The type of all dimensions of the hyperspace.
  * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_dimension_create(
+TILEDB_EXPORT int tiledb_hyperspace_create(
     tiledb_ctx_t* ctx,
-    tiledb_dimension_t** dim,
+    tiledb_hyperspace_t** hyperspace,
+    tiledb_datatype_t type);
+
+/**
+ * Destroys a TileDB hyperspace, freeing-up memory.
+ *
+ * @param ctx The TileDB context.
+ * @param hyperspace The hyperspace to be destroyed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_hyperspace_free(
+    tiledb_ctx_t* ctx, tiledb_hyperspace_t* hyperspace);
+
+/**
+ * Retrieves the dimensions type
+ *
+ * @param ctx The TileDB context.
+ * @param hyperspace The hyperspace.
+ * @param type The type to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_hyperspace_get_type(
+    tiledb_ctx_t* ctx,
+    const tiledb_hyperspace_t* hyperspace,
+    tiledb_datatype_t* type);
+
+/**
+ * Adds a dimension to a TileDB hyperspace.
+ *
+ * @param ctx The TileDB context.
+ * @param hyperspace The hyperspace to add the dimension to.
+ * @param name The dimension name.
+ * @param domain The dimension domain.
+ * @param tile_extent The dimension tile extent.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_hyperspace_add_dimension(
+    tiledb_ctx_t* ctx,
+    tiledb_hyperspace_t* hyperspace,
     const char* name,
-    tiledb_datatype_t type,
     const void* domain,
     const void* tile_extent);
+
+/**
+ * Dumps the info of a hyperspace in ASCII form to some output (e.g.,
+ * file or stdout).
+ *
+ * @param ctx The TileDB context.
+ * @param hyperspace The hyperspace.
+ * @param out The output.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_hyperspace_dump(
+    tiledb_ctx_t* ctx, const tiledb_hyperspace_t* hyperspace, FILE* out);
 
 /**
  * Destroys a TileDB dimension, freeing-up memory.
@@ -404,21 +453,6 @@ TILEDB_EXPORT int tiledb_dimension_create(
  */
 TILEDB_EXPORT int tiledb_dimension_free(
     tiledb_ctx_t* ctx, tiledb_dimension_t* dim);
-
-/**
- * Sets a compressor for a dimension.
- *
- * @param ctx The TileDB context.
- * @param dim The target dimension.
- * @param compressor The compressor to be set.
- * @param compression_level The compression level (use -1 for default).
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_set_compressor(
-    tiledb_ctx_t* ctx,
-    tiledb_dimension_t* dim,
-    tiledb_compressor_t compressor,
-    int compression_level);
 
 /**
  * Retrieves the dimension name.
@@ -432,33 +466,8 @@ TILEDB_EXPORT int tiledb_dimension_get_name(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, const char** name);
 
 /**
- * Retrieves the dimension type.
- *
- * @param ctx The TileDB context.
- * @param dim The dimension.
- * @param type The type to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_get_type(
-    tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, tiledb_datatype_t* type);
-
-/**
- * Retrieves the dimension compressor and the compression level.
- *
- * @param ctx The TileDB context.
- * @param dim The dimension.
- * @param compressor The compressor to be retrieved.
- * @param compression_level The compression level to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_get_compressor(
-    tiledb_ctx_t* ctx,
-    const tiledb_dimension_t* dim,
-    tiledb_compressor_t* compressor,
-    int* compression_level);
-
-/**
  * Returns the domain of the dimension.
+ *
  * @param ctx The TileDB context.
  * @param dim The dimension.
  * @param domain The domain to be retrieved.
@@ -469,6 +478,7 @@ TILEDB_EXPORT int tiledb_dimension_get_domain(
 
 /**
  * Returns the tile extent of the dimension.
+ *
  * @param ctx The TileDB context.
  * @param dim The dimension.
  * @param tile_extent The tile extent to be retrieved.
@@ -489,8 +499,76 @@ TILEDB_EXPORT int tiledb_dimension_get_tile_extent(
 TILEDB_EXPORT int tiledb_dimension_dump(
     tiledb_ctx_t* ctx, const tiledb_dimension_t* dim, FILE* out);
 
+/**
+ * Creates a dimensions iterator for the input hyperspace.
+ *
+ * @param ctx The TileDB context.
+ * @param hyperspace The input array metadata.
+ * @param dim_it The dimension iterator to be created.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_iter_create(
+    tiledb_ctx_t* ctx,
+    const tiledb_hyperspace_t* hyperspace,
+    tiledb_dimension_iter_t** dim_it);
+
+/**
+ * Frees a dimension iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator to be freed.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_iter_free(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
+
+/**
+ * Checks if a dimension iterator has reached the end.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator.
+ * @param done This is set to 1 if the iterator id done, and 0 otherwise.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_iter_done(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it, int* done);
+
+/**
+ * Advances the dimension iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_iter_next(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
+
+/**
+ * Retrieves a constant pointer to the current dimension pointed by the
+ * iterator.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator.
+ * @param dim The dimension pointer to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_iter_here(
+    tiledb_ctx_t* ctx,
+    tiledb_dimension_iter_t* dim_it,
+    const tiledb_dimension_t** dim);
+
+/**
+ * Rewinds the iterator to point to the first dimension.
+ *
+ * @param ctx The TileDB context.
+ * @param dim_it The dimension iterator.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_dimension_iter_first(
+    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
+
 /* ********************************* */
-/*           ARRAY SCHEMA            */
+/*           ARRAY METADATA          */
 /* ********************************* */
 
 /**
@@ -530,17 +608,17 @@ TILEDB_EXPORT int tiledb_array_metadata_add_attribute(
     tiledb_attribute_t* attr);
 
 /**
- * Adds a dimension to an array metadata.
+ * Sets a hyperspace to array metadata.
  *
  * @param ctx The TileDB context.
  * @param array_metadata The array metadata.
- * @param dim The dimension to be added.
+ * @param hyperspace The hyperspace to be set.
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_array_metadata_add_dimension(
+TILEDB_EXPORT int tiledb_array_metadata_set_hyperspace(
     tiledb_ctx_t* ctx,
     tiledb_array_metadata_t* array_metadata,
-    tiledb_dimension_t* dim);
+    tiledb_hyperspace_t* hyperspace);
 
 /**
  * Sets the tile capacity.
@@ -672,6 +750,34 @@ TILEDB_EXPORT int tiledb_array_metadata_get_cell_order(
     tiledb_layout_t* cell_order);
 
 /**
+ * Retrieves the compressor info of the coordinates.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param coords_compressor The compressor to be retrieved.
+ * @param coords_compression_level The compression level to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_get_coords_compressor(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    tiledb_compressor_t* coords_compressor,
+    int* coords_compression_level);
+
+/**
+ * Retrieves the array hyperspace.
+ *
+ * @param ctx The TileDB context.
+ * @param array_metadata The array metadata.
+ * @param hyperspace The array hyperspace to be retrieved.
+ * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
+ */
+TILEDB_EXPORT int tiledb_array_metadata_get_hyperspace(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_metadata_t* array_metadata,
+    tiledb_hyperspace_t** hyperspace);
+
+/**
  * Retrieves the tile order.
  *
  * @param ctx The TileDB context.
@@ -696,6 +802,10 @@ TILEDB_EXPORT int tiledb_array_metadata_dump(
     tiledb_ctx_t* ctx,
     const tiledb_array_metadata_t* array_metadata,
     FILE* out);
+
+/* ********************************* */
+/*         ATTRIBUTE ITERATOR        */
+/* ********************************* */
 
 /**
  * Creates an attribute iterator for the input array metadata.
@@ -764,74 +874,6 @@ TILEDB_EXPORT int tiledb_attribute_iter_here(
  */
 TILEDB_EXPORT int tiledb_attribute_iter_first(
     tiledb_ctx_t* ctx, tiledb_attribute_iter_t* attr_it);
-
-/**
- * Creates a dimensions iterator for the input array metadata.
- *
- * @param ctx The TileDB context.
- * @param array_metadata The input array metadata.
- * @param dim_it The dimension iterator to be created.
- * @return TILEDB_OK for success and TILEDB_OOM or TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_create(
-    tiledb_ctx_t* ctx,
-    const tiledb_array_metadata_t* array_metadata,
-    tiledb_dimension_iter_t** dim_it);
-
-/**
- * Frees a dimension iterator.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator to be freed.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_free(
-    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
-
-/**
- * Checks if a dimension iterator has reached the end.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator.
- * @param done This is set to 1 if the iterator id done, and 0 otherwise.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_done(
-    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it, int* done);
-
-/**
- * Advances the dimension iterator.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_next(
-    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
-
-/**
- * Retrieves a constant pointer to the current dimension pointed by the
- * iterator.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator.
- * @param dim The dimension pointer to be retrieved.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_here(
-    tiledb_ctx_t* ctx,
-    tiledb_dimension_iter_t* dim_it,
-    const tiledb_dimension_t** dim);
-
-/**
- * Rewinds the iterator to point to the first dimension.
- *
- * @param ctx The TileDB context.
- * @param dim_it The dimension iterator.
- * @return TILEDB_OK for success and TILEDB_ERR for error.
- */
-TILEDB_EXPORT int tiledb_dimension_iter_first(
-    tiledb_ctx_t* ctx, tiledb_dimension_iter_t* dim_it);
 
 /* ********************************* */
 /*               QUERY               */

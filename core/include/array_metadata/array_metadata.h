@@ -45,6 +45,7 @@
 #include "constants.h"
 #include "datatype.h"
 #include "dimension.h"
+#include "hyperspace.h"
 #include "layout.h"
 #include "status.h"
 #include "uri.h"
@@ -89,10 +90,10 @@ class ArrayMetadata {
   ArrayType array_type() const;
 
   /** Returns a constant pointer to the selected attribute (NULL if error). */
-  const Attribute* attr(unsigned int id) const;
+  const Attribute* attribute(unsigned int id) const;
 
   /** Returns the name of the attribute with the input id. */
-  const std::string& attribute(unsigned int attribute_id) const;
+  const std::string& attribute_name(unsigned id) const;
 
   /**
    * Returns the id of the input attribute.
@@ -115,8 +116,6 @@ class ArrayMetadata {
 
   /** Returns the attributes. */
   const std::vector<Attribute*>& Attributes() const;
-
-  const std::vector<Dimension*>& Dimensions() const;
 
   /** Returns the capacity. */
   uint64_t capacity() const;
@@ -148,6 +147,12 @@ class ArrayMetadata {
   /** Return the compression level of the attribute with the input id. */
   int compression_level(unsigned int attribute_id) const;
 
+  /** Returns the compressor of the coordinates. */
+  Compressor coords_compression() const;
+
+  /** Returns the compression level of the coordinates. */
+  int coords_compression_level() const;
+
   /** Returns the coordinates size. */
   uint64_t coords_size() const;
 
@@ -157,8 +162,8 @@ class ArrayMetadata {
   /** True if the array is dense. */
   bool dense() const;
 
-  /** Returns a constant pointer to the selected dimension. */
-  const Dimension* dim(unsigned int id) const;
+  /** Returns the i-th dimension. */
+  const Dimension* dimension(unsigned int i) const;
 
   /** Returns the number of dimensions. */
   unsigned int dim_num() const;
@@ -299,9 +304,6 @@ class ArrayMetadata {
   /** Adds an attribute, cloning the input. */
   void add_attribute(const Attribute* attr);
 
-  /** Adds a dimension, cloning the input. */
-  void add_dimension(const Dimension* dim);
-
   /**
    * It assigns values to the members of the object from the input buffer.
    *
@@ -326,6 +328,9 @@ class ArrayMetadata {
 
   /** Sets the cell order. */
   void set_cell_order(Layout cell_order);
+
+  /** Sets the hyperspace. */
+  void set_hyperspace(Hyperspace* hyperspace);
 
   /** Sets the tile order. */
   void set_tile_order(Layout tile_order);
@@ -480,6 +485,9 @@ class ArrayMetadata {
   template <class T>
   void get_tile_subarray(const T* tile_coords, T* tile_subarray) const;
 
+  /** Returns the array hyperspace. */
+  const Hyperspace* hyperspace() const;
+
   /**
    * Checks the order of the input coordinates. First the tile order is checked
    * (which, in case of non-regular tiles, is always the same), breaking the
@@ -564,14 +572,14 @@ class ArrayMetadata {
   /** Stores the size of every attribute (plus coordinates in the end). */
   std::vector<uint64_t> cell_sizes_;
 
+  /** The coordinates compression type. */
+  Compressor coords_compression_;
+
+  /** The coordinates compression level. */
+  int coords_compression_level_;
+
   /** The size (in bytes) of the coordinates. */
   uint64_t coords_size_;
-
-  /** The number of dimensions. */
-  unsigned int dim_num_;
-
-  /** The array dimensions. */
-  std::vector<Dimension*> dimensions_;
 
   /**
    * The array domain. It should contain one [lower, upper] pair per dimension.
@@ -579,6 +587,9 @@ class ArrayMetadata {
    * type.
    */
   void* domain_;
+
+  /** The array hyperspace. */
+  Hyperspace* hyperspace_;
 
   /**
    * The array domain. It should contain one [lower, upper] pair per dimension.

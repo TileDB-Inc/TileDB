@@ -68,18 +68,8 @@ struct ArraySchemaFx {
   const int DIM_NUM = 2;
   const char* DIM1_NAME = "d1";
   const char* DIM2_NAME = "d2";
-  const tiledb_datatype_t DIM1_TYPE = TILEDB_INT64;
-  const char* DIM1_TYPE_STR = "INT64";
-  const tiledb_datatype_t DIM2_TYPE = TILEDB_INT64;
-  const char* DIM2_TYPE_STR = "INT64";
-  const tiledb_compressor_t DIM1_COMPRESSOR = TILEDB_NO_COMPRESSION;
-  const char* DIM1_COMPRESSOR_STR = "NO_COMPRESSION";
-  const int DIM1_COMPRESSION_LEVEL = -1;
-  const char* DIM1_COMPRESSION_LEVEL_STR = "-1";
-  const tiledb_compressor_t DIM2_COMPRESSOR = TILEDB_NO_COMPRESSION;
-  const char* DIM2_COMPRESSOR_STR = "NO_COMPRESSION";
-  const int DIM2_COMPRESSION_LEVEL = -1;
-  const char* DIM2_COMPRESSION_LEVEL_STR = "-1";
+  const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
+  const char* DIM_TYPE_STR = "INT64";
   const int64_t DIM_DOMAIN[4] = {0, 99, 20, 60};
   const char* DIM1_DOMAIN_STR = "[0,99]";
   const char* DIM2_DOMAIN_STR = "[20,60]";
@@ -140,14 +130,15 @@ struct ArraySchemaFx {
     rc = tiledb_attribute_create(ctx_, &attr, ATTR_NAME, ATTR_TYPE);
     REQUIRE(rc == TILEDB_OK);
 
-    // Dimensions
-    tiledb_dimension_t* x;
-    rc = tiledb_dimension_create(
-        ctx_, &x, DIM1_NAME, DIM1_TYPE, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+    // Hyperspace
+    tiledb_hyperspace_t* hyperspace;
+    rc = tiledb_hyperspace_create(ctx_, &hyperspace, DIM_TYPE);
     REQUIRE(rc == TILEDB_OK);
-    tiledb_dimension_t* y;
-    rc = tiledb_dimension_create(
-        ctx_, &y, DIM2_NAME, DIM2_TYPE, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
+    rc = tiledb_hyperspace_add_dimension(
+        ctx_, hyperspace, DIM1_NAME, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_hyperspace_add_dimension(
+        ctx_, hyperspace, DIM2_NAME, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
     REQUIRE(rc == TILEDB_OK);
 
     // Create array_metadata metadata
@@ -167,15 +158,13 @@ struct ArraySchemaFx {
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, attr);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_metadata_add_dimension(ctx_, array_metadata_, x);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_metadata_add_dimension(ctx_, array_metadata_, y);
+    rc =
+        tiledb_array_metadata_set_hyperspace(ctx_, array_metadata_, hyperspace);
     REQUIRE(rc == TILEDB_OK);
 
     // Clean up
     tiledb_attribute_free(ctx_, attr);
-    tiledb_dimension_free(ctx_, x);
-    tiledb_dimension_free(ctx_, y);
+    tiledb_hyperspace_free(ctx_, hyperspace);
 
     // Create the array_metadata
     rc = tiledb_array_create(ctx_, array_metadata_);
@@ -222,6 +211,15 @@ TEST_CASE_METHOD(
   rc = tiledb_array_metadata_get_array_type(ctx_, array_metadata, &type);
   REQUIRE(rc == TILEDB_OK);
   CHECK(type == TILEDB_DENSE);
+
+  // Check coordinates compression
+  tiledb_compressor_t coords_compression;
+  int coords_compression_level;
+  rc = tiledb_array_metadata_get_coords_compressor(
+      ctx_, array_metadata, &coords_compression, &coords_compression_level);
+  REQUIRE(rc == TILEDB_OK);
+  CHECK(coords_compression == TILEDB_BLOSC_ZSTD);
+  CHECK(coords_compression_level == -1);
 
   // Check attribute
   int attr_it_done;
@@ -274,10 +272,15 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
 
+  // Get hyperspace
+  tiledb_hyperspace_t* hyperspace;
+  rc = tiledb_array_metadata_get_hyperspace(ctx_, array_metadata, &hyperspace);
+  REQUIRE(rc == TILEDB_OK);
+
   // Check first dimension
   int dim_it_done;
   tiledb_dimension_iter_t* dim_it;
-  rc = tiledb_dimension_iter_create(ctx_, array_metadata, &dim_it);
+  rc = tiledb_dimension_iter_create(ctx_, hyperspace, &dim_it);
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb_dimension_iter_done(ctx_, dim_it, &dim_it_done);
@@ -292,19 +295,6 @@ TEST_CASE_METHOD(
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
-
-  tiledb_datatype_t dim_type;
-  rc = tiledb_dimension_get_type(ctx_, dim, &dim_type);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(dim_type == DIM1_TYPE);
-
-  tiledb_compressor_t dim_compressor;
-  int dim_compression_level;
-  rc = tiledb_dimension_get_compressor(
-      ctx_, dim, &dim_compressor, &dim_compression_level);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(dim_compressor == DIM1_COMPRESSOR);
-  CHECK(dim_compression_level == DIM1_COMPRESSION_LEVEL);
 
   const void* dim_domain;
   rc = tiledb_dimension_get_domain(ctx_, dim, &dim_domain);
@@ -328,16 +318,6 @@ TEST_CASE_METHOD(
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(dim_name, Catch::Equals(DIM2_NAME));
-
-  rc = tiledb_dimension_get_type(ctx_, dim, &dim_type);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(dim_type == DIM2_TYPE);
-
-  rc = tiledb_dimension_get_compressor(
-      ctx_, dim, &dim_compressor, &dim_compression_level);
-  REQUIRE(rc == TILEDB_OK);
-  CHECK(dim_compressor == DIM2_COMPRESSOR);
-  CHECK(dim_compression_level == DIM2_COMPRESSION_LEVEL);
 
   rc = tiledb_dimension_get_domain(ctx_, dim, &dim_domain);
   REQUIRE(rc == TILEDB_OK);
@@ -367,16 +347,15 @@ TEST_CASE_METHOD(
       "- Array type: " + ARRAY_TYPE_STR + "\n" +
       "- Cell order: " + CELL_ORDER_STR + "\n" +
       "- Tile order: " + TILE_ORDER_STR + "\n" + "- Capacity: " + CAPACITY_STR +
-      "\n" + "\n" + "### Dimension ###\n" + "- Name: " + DIM1_NAME + "\n" +
-      "- Type: " + DIM1_TYPE_STR + "\n" +
-      "- Compressor: " + DIM1_COMPRESSOR_STR + "\n" +
-      "- Compression level: " + DIM1_COMPRESSION_LEVEL_STR + "\n" +
-      "- Domain: " + DIM1_DOMAIN_STR + "\n" +
+      "\n"
+      "- Coordinates compressor: BLOSC_ZSTD\n" +
+      "- Coordinates compression level: -1\n\n" +
+      "=== Hyperspace ===\n"
+      "- Dimensions type: " +
+      DIM_TYPE_STR + "\n\n" + "### Dimension ###\n" + "- Name: " + DIM1_NAME +
+      "\n" + "- Domain: " + DIM1_DOMAIN_STR + "\n" +
       "- Tile extent: " + DIM1_TILE_EXTENT_STR + "\n" + "\n" +
       "### Dimension ###\n" + "- Name: " + DIM2_NAME + "\n" +
-      "- Type: " + DIM2_TYPE_STR + "\n" +
-      "- Compressor: " + DIM2_COMPRESSOR_STR + "\n" +
-      "- Compression level: " + DIM2_COMPRESSION_LEVEL_STR + "\n" +
       "- Domain: " + DIM2_DOMAIN_STR + "\n" +
       "- Tile extent: " + DIM2_TILE_EXTENT_STR + "\n" + "\n" +
       "### Attribute ###\n" + "- Name: " + ATTR_NAME + "\n" +
@@ -395,7 +374,12 @@ TEST_CASE_METHOD(
   system("rm gold_fout.txt fout.txt");
 
   // Clean up
-  tiledb_attribute_iter_free(ctx_, attr_it);
-  tiledb_dimension_iter_free(ctx_, dim_it);
-  tiledb_array_metadata_free(ctx_, array_metadata);
+  rc = tiledb_attribute_iter_free(ctx_, attr_it);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_dimension_iter_free(ctx_, dim_it);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_hyperspace_free(ctx_, hyperspace);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_metadata_free(ctx_, array_metadata);
+  REQUIRE(rc == TILEDB_OK);
 }

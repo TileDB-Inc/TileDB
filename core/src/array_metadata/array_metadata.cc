@@ -55,7 +55,6 @@ namespace tiledb {
 ArrayMetadata::ArrayMetadata() {
   attribute_num_ = 0;
   cell_num_per_tile_ = 0;
-  dim_num_ = 0;
   domain_ = nullptr;
   tile_extents_ = nullptr;
   tile_domain_ = nullptr;
@@ -64,6 +63,9 @@ ArrayMetadata::ArrayMetadata() {
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
+  coords_compression_ = Compressor::BLOSC_ZSTD;
+  coords_compression_level_ = -1;
+  hyperspace_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
 }
 
@@ -76,10 +78,11 @@ ArrayMetadata::ArrayMetadata(const ArrayMetadata* array_metadata) {
   cell_num_per_tile_ = array_metadata->cell_num_per_tile_;
   cell_order_ = array_metadata->cell_order_;
   cell_sizes_ = array_metadata->cell_sizes_;
+  coords_compression_ = array_metadata->coords_compression_;
+  coords_compression_level_ = array_metadata->coords_compression_level_;
   coords_size_ = array_metadata->coords_size_;
-  dimensions_ = array_metadata->dimensions_;
-  dim_num_ = array_metadata->dim_num();
-  tile_coords_aux_ = std::malloc(coords_size_ * dim_num_);
+  hyperspace_ = array_metadata->hyperspace_;
+  tile_coords_aux_ = std::malloc(coords_size_ * hyperspace_->dim_num());
   tile_offsets_col_ = array_metadata->tile_offsets_col_;
   tile_offsets_row_ = array_metadata->tile_offsets_row_;
   tile_order_ = array_metadata->tile_order_;
@@ -108,7 +111,6 @@ ArrayMetadata::ArrayMetadata(const ArrayMetadata* array_metadata) {
 
 ArrayMetadata::ArrayMetadata(const URI& uri) {
   attribute_num_ = 0;
-  dim_num_ = 0;
   cell_num_per_tile_ = 0;
   domain_ = nullptr;
   tile_extents_ = nullptr;
@@ -118,6 +120,9 @@ ArrayMetadata::ArrayMetadata(const URI& uri) {
   array_type_ = ArrayType::DENSE;
   capacity_ = constants::capacity;
   cell_order_ = Layout::ROW_MAJOR;
+  coords_compression_ = Compressor::BLOSC_ZSTD;
+  coords_compression_level_ = -1;
+  hyperspace_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
 }
 
@@ -137,14 +142,15 @@ ArrayType ArrayMetadata::array_type() const {
   return array_type_;
 }
 
-const Attribute* ArrayMetadata::attr(unsigned int id) const {
+const Attribute* ArrayMetadata::attribute(unsigned int id) const {
   if (id < attributes_.size())
     return attributes_[id];
 
   return nullptr;
 }
 
-const std::string& ArrayMetadata::attribute(unsigned int attribute_id) const {
+const std::string& ArrayMetadata::attribute_name(
+    unsigned int attribute_id) const {
   assert(attribute_id >= 0 && attribute_id <= attribute_num_ + 1);
 
   // Special case for the search attribute (same as coordinates)
@@ -188,10 +194,6 @@ const std::vector<Attribute*>& ArrayMetadata::Attributes() const {
   return attributes_;
 }
 
-const std::vector<Dimension*>& ArrayMetadata::Dimensions() const {
-  return dimensions_;
-}
-
 uint64_t ArrayMetadata::capacity() const {
   return capacity_;
 }
@@ -224,7 +226,7 @@ Status ArrayMetadata::check() const {
     return LOG_STATUS(Status::ArrayMetadataError(
         "Array metadata check failed; Invalid array URI"));
 
-  if (dim_num_ == 0)
+  if (dim_num() == 0)
     return LOG_STATUS(Status::ArrayMetadataError(
         "Array metadata check failed; No dimensions provided"));
 
@@ -242,7 +244,7 @@ Compressor ArrayMetadata::compression(unsigned int attr_id) const {
   assert(attr_id >= 0 && attr_id <= attribute_num_ + 1);
 
   if (attr_id == attribute_num_ + 1)
-    return dimensions_[0]->compressor();
+    return coords_compression_;
 
   return attributes_[attr_id]->compressor();
 }
@@ -251,9 +253,17 @@ int ArrayMetadata::compression_level(unsigned int attr_id) const {
   assert(attr_id >= 0 && attr_id <= attribute_num_ + 1);
 
   if (attr_id == attribute_num_ + 1)
-    return dimensions_[0]->compression_level();
+    return coords_compression_level_;
 
   return attributes_[attr_id]->compression_level();
+}
+
+Compressor ArrayMetadata::coords_compression() const {
+  return coords_compression_;
+}
+
+int ArrayMetadata::coords_compression_level() const {
+  return coords_compression_level_;
 }
 
 uint64_t ArrayMetadata::coords_size() const {
@@ -261,22 +271,19 @@ uint64_t ArrayMetadata::coords_size() const {
 }
 
 Datatype ArrayMetadata::coords_type() const {
-  return dimensions_[0]->type();
+  return hyperspace_->type();
 }
 
 bool ArrayMetadata::dense() const {
   return array_type_ == ArrayType ::DENSE;
 }
 
-const Dimension* ArrayMetadata::dim(unsigned int id) const {
-  if (id < dimensions_.size())
-    return dimensions_[id];
-
-  return nullptr;
+const Dimension* ArrayMetadata::dimension(unsigned int i) const {
+  return hyperspace_->dimension(i);
 }
 
 unsigned int ArrayMetadata::dim_num() const {
-  return dim_num_;
+  return hyperspace_->dim_num();
 }
 
 const void* ArrayMetadata::domain() const {
@@ -293,11 +300,17 @@ void ArrayMetadata::dump(FILE* out) const {
   fprintf(out, "- Cell order: %s\n", cell_order_s);
   fprintf(out, "- Tile order: %s\n", tile_order_s);
   fprintf(out, "- Capacity: %" PRIu64 "\n", capacity_);
+  fprintf(
+      out,
+      "- Coordinates compressor: %s\n",
+      compressor_str(coords_compression_));
+  fprintf(
+      out,
+      "- Coordinates compression level: %d\n\n",
+      coords_compression_level_);
 
-  for (auto& dim : dimensions_) {
-    fprintf(out, "\n");
-    dim->dump(out);
-  }
+  if (hyperspace_ != nullptr)
+    hyperspace_->dump(out);
 
   for (auto& attr : attributes_) {
     fprintf(out, "\n");
@@ -384,10 +397,7 @@ bool ArrayMetadata::is_contained_in_tile_slab_row(const void* range) const {
 // tile_order (char)
 // cell_order (char)
 // capacity (uint64_t)
-// dim_num (unsigned int)
-//   dimension #1
-//   dimension #2
-//   ...
+// hyperspace
 // attribute_num (unsigned int)
 //   attribute #1
 //   attribute #2
@@ -411,10 +421,13 @@ Status ArrayMetadata::serialize(Buffer* buff) const {
   // Write capacity
   RETURN_NOT_OK(buff->write(&capacity_, sizeof(uint64_t)));
 
-  // Write dimensions
-  RETURN_NOT_OK(buff->write(&dim_num_, sizeof(unsigned int)));
-  for (auto& dim : dimensions_)
-    RETURN_NOT_OK(dim->serialize(buff));
+  // Write coords compression
+  auto compressor = static_cast<char>(coords_compression_);
+  RETURN_NOT_OK(buff->write(&compressor, sizeof(char)));
+  RETURN_NOT_OK(buff->write(&coords_compression_level_, sizeof(int)));
+
+  // Write hyperspace
+  hyperspace_->serialize(buff);
 
   // Write attributes
   RETURN_NOT_OK(buff->write(&attribute_num_, sizeof(unsigned int)));
@@ -427,8 +440,11 @@ Status ArrayMetadata::serialize(Buffer* buff) const {
 template <class T>
 unsigned int ArrayMetadata::subarray_overlap(
     const T* subarray_a, const T* subarray_b, T* overlap_subarray) const {
+  // For easy reference
+  auto dim_num = hyperspace_->dim_num();
+
   // Get overlap range
-  for (unsigned int i = 0; i < dim_num_; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     overlap_subarray[2 * i] = MAX(subarray_a[2 * i], subarray_b[2 * i]);
     overlap_subarray[2 * i + 1] =
         MIN(subarray_a[2 * i + 1], subarray_b[2 * i + 1]);
@@ -436,7 +452,7 @@ unsigned int ArrayMetadata::subarray_overlap(
 
   // Check overlap
   unsigned int overlap = 1;
-  for (unsigned int i = 0; i < dim_num_; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     if (overlap_subarray[2 * i] > subarray_b[2 * i + 1] ||
         overlap_subarray[2 * i + 1] < subarray_b[2 * i]) {
       overlap = 0;
@@ -446,7 +462,7 @@ unsigned int ArrayMetadata::subarray_overlap(
 
   // Check partial overlap
   if (overlap == 1) {
-    for (unsigned int i = 0; i < dim_num_; ++i) {
+    for (unsigned int i = 0; i < dim_num; ++i) {
       if (overlap_subarray[2 * i] != subarray_b[2 * i] ||
           overlap_subarray[2 * i + 1] != subarray_b[2 * i + 1]) {
         overlap = 2;
@@ -456,10 +472,10 @@ unsigned int ArrayMetadata::subarray_overlap(
   }
 
   // Check contig overlap
-  if (overlap == 2 && dim_num_ > 1) {
+  if (overlap == 2 && dim_num > 1) {
     overlap = 3;
     if (cell_order_ == Layout::ROW_MAJOR) {  // Row major
-      for (unsigned int i = 1; i < dim_num_; ++i) {
+      for (unsigned int i = 1; i < dim_num; ++i) {
         if (overlap_subarray[2 * i] != subarray_b[2 * i] ||
             overlap_subarray[2 * i + 1] != subarray_b[2 * i + 1]) {
           overlap = 2;
@@ -467,14 +483,16 @@ unsigned int ArrayMetadata::subarray_overlap(
         }
       }
     } else if (cell_order_ == Layout::COL_MAJOR) {  // Column major
-      for (unsigned int i = dim_num_ - 2;; --i) {
-        if (overlap_subarray[2 * i] != subarray_b[2 * i] ||
-            overlap_subarray[2 * i + 1] != subarray_b[2 * i + 1]) {
-          overlap = 2;
-          break;
+      if (dim_num > 1) {
+        for (unsigned int i = dim_num - 2;; --i) {
+          if (overlap_subarray[2 * i] != subarray_b[2 * i] ||
+              overlap_subarray[2 * i + 1] != subarray_b[2 * i + 1]) {
+            overlap = 2;
+            break;
+          }
+          if (i == 0)
+            break;
         }
-        if (i == 0)
-          break;
       }
     }
   }
@@ -524,9 +542,10 @@ uint64_t ArrayMetadata::tile_num() const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
 
   uint64_t ret = 1;
-  for (unsigned int i = 0; i < dim_num_; ++i)
+  for (unsigned int i = 0; i < dim_num; ++i)
     ret *= (domain[2 * i + 1] - domain[2 * i] + 1) / tile_extents[i];
 
   return ret;
@@ -569,10 +588,11 @@ uint64_t ArrayMetadata::tile_num(const T* range) const {
   // For easy reference
   auto tile_extents = static_cast<const T*>(tile_extents_);
   auto domain = static_cast<const T*>(domain_);
+  auto dim_num = hyperspace_->dim_num();
 
   uint64_t ret = 1;
   uint64_t start, end;
-  for (unsigned int i = 0; i < dim_num_; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     start = (range[2 * i] - domain[2 * i]) / tile_extents[i];
     end = (range[2 * i + 1] - domain[2 * i]) / tile_extents[i];
     ret *= (end - start + 1);
@@ -654,7 +674,7 @@ Datatype ArrayMetadata::type(unsigned int i) const {
   if (i < attribute_num_)
     return attributes_[i]->type();
 
-  return dimensions_[0]->type();
+  return hyperspace_->type();
 }
 
 uint64_t ArrayMetadata::type_size(unsigned int i) const {
@@ -663,7 +683,7 @@ uint64_t ArrayMetadata::type_size(unsigned int i) const {
   if (i < attribute_num_)
     return datatype_size(attributes_[i]->type());
 
-  return datatype_size(dimensions_[0]->type());
+  return datatype_size(hyperspace_->type());
 }
 
 bool ArrayMetadata::var_size(unsigned int attribute_id) const {
@@ -675,18 +695,9 @@ bool ArrayMetadata::var_size(unsigned int attribute_id) const {
   return false;
 }
 
-/* ****************************** */
-/*             MUTATORS           */
-/* ****************************** */
-
 void ArrayMetadata::add_attribute(const Attribute* attr) {
   attributes_.emplace_back(new Attribute(attr));
   ++attribute_num_;
-}
-
-void ArrayMetadata::add_dimension(const Dimension* dim) {
-  dimensions_.emplace_back(new Dimension(dim));
-  ++dim_num_;
 }
 
 // ===== FORMAT =====
@@ -696,15 +707,14 @@ void ArrayMetadata::add_dimension(const Dimension* dim) {
 // tile_order (char)
 // cell_order (char)
 // capacity (uint64_t)
-// dim_num (unsigned int)
-//   dimension #1
-//   dimension #2
-//   ...
+// hyperspace
 // attribute_num (unsigned int)
 //   attribute #1
 //   attribute #2
 //   ...
 Status ArrayMetadata::deserialize(ConstBuffer* buff) {
+  // TODO: remove array name and add version
+
   // Load array uri
   unsigned int array_uri_size;
   RETURN_NOT_OK(buff->read(&array_uri_size, sizeof(unsigned int)));
@@ -731,13 +741,15 @@ Status ArrayMetadata::deserialize(ConstBuffer* buff) {
   // Load capacity
   RETURN_NOT_OK(buff->read(&capacity_, sizeof(uint64_t)));
 
-  // Load dimensions
-  RETURN_NOT_OK(buff->read(&dim_num_, sizeof(unsigned int)));
-  for (unsigned int i = 0; i < dim_num_; ++i) {
-    auto dim = new Dimension();
-    dim->deserialize(buff);
-    dimensions_.emplace_back(dim);
-  }
+  // Write coords compression
+  char compressor;
+  RETURN_NOT_OK(buff->read(&compressor, sizeof(char)));
+  coords_compression_ = static_cast<Compressor>(compressor);
+  RETURN_NOT_OK(buff->read(&coords_compression_level_, sizeof(int)));
+
+  // Load hyperspace
+  hyperspace_ = new Hyperspace();
+  RETURN_NOT_OK(hyperspace_->deserialize(buff));
 
   // Load attributes
   RETURN_NOT_OK(buff->read(&attribute_num_, sizeof(unsigned int)));
@@ -764,29 +776,30 @@ Status ArrayMetadata::init() {
     cell_sizes_[i] = compute_cell_size(i);
 
   // Set domain
+  auto dim_num = hyperspace_->dim_num();
   uint64_t coord_size = datatype_size(coords_type());
-  coords_size_ = dim_num_ * coord_size;
+  coords_size_ = dim_num * coord_size;
   if (domain_ != nullptr)
     std::free(domain_);
-  domain_ = std::malloc(dim_num_ * 2 * coord_size);
+  domain_ = std::malloc(dim_num * 2 * coord_size);
   auto domain = (char*)domain_;
-  for (unsigned int i = 0; i < dim_num_; ++i) {
-    memcpy(
-        domain + i * 2 * coord_size, dimensions_[i]->domain(), 2 * coord_size);
+  for (unsigned int i = 0; i < dim_num; ++i) {
+    memcpy(domain + i * 2 * coord_size, hyperspace_->domain(i), 2 * coord_size);
   }
 
   // Set tile extents
+  // TODO: this needs mild fixing
   if (tile_extents_ != nullptr)
     std::free(tile_extents_);
-  if (dimensions_[0]->tile_extent() == nullptr) {
+  if (hyperspace_->tile_extent(0) == nullptr) {
     tile_extents_ = nullptr;
   } else {
-    tile_extents_ = std::malloc(dim_num_ * coord_size);
+    tile_extents_ = std::malloc(dim_num * coord_size);
     auto tile_extents = (char*)tile_extents_;
-    for (unsigned int i = 0; i < dim_num_; ++i) {
+    for (unsigned int i = 0; i < dim_num; ++i) {
       memcpy(
           tile_extents + i * coord_size,
-          dimensions_[i]->tile_extent(),
+          hyperspace_->tile_extent(i),
           coord_size);
     }
   }
@@ -803,7 +816,7 @@ Status ArrayMetadata::init() {
   // Initialize static auxiliary variables
   if (tile_coords_aux_ != nullptr)
     std::free(tile_coords_aux_);
-  tile_coords_aux_ = std::malloc(coords_size_ * dim_num_);
+  tile_coords_aux_ = std::malloc(coords_size_ * dim_num);
 
   // Success
   return Status::Ok();
@@ -821,6 +834,11 @@ void ArrayMetadata::set_cell_order(Layout cell_order) {
   cell_order_ = cell_order;
 }
 
+void ArrayMetadata::set_hyperspace(Hyperspace* hyperspace) {
+  delete hyperspace_;
+  hyperspace_ = new Hyperspace(hyperspace);
+}
+
 void ArrayMetadata::set_tile_order(Layout tile_order) {
   tile_order_ = tile_order;
 }
@@ -835,9 +853,12 @@ int ArrayMetadata::cell_order_cmp(const T* coords_a, const T* coords_b) const {
   if (memcmp(coords_a, coords_b, coords_size_) == 0)
     return 0;
 
+  // For easy reference
+  auto dim_num = hyperspace_->dim_num();
+
   // Check for precedence
   if (cell_order_ == Layout::COL_MAJOR) {  // COLUMN-MAJOR
-    for (unsigned int i = dim_num_ - 1;; --i) {
+    for (unsigned int i = dim_num - 1;; --i) {
       if (coords_a[i] < coords_b[i])
         return -1;
       if (coords_a[i] > coords_b[i])
@@ -846,7 +867,7 @@ int ArrayMetadata::cell_order_cmp(const T* coords_a, const T* coords_b) const {
         break;
     }
   } else if (cell_order_ == Layout::ROW_MAJOR) {  // ROW-MAJOR
-    for (unsigned int i = 0; i < dim_num_; ++i) {
+    for (unsigned int i = 0; i < dim_num; ++i) {
       if (coords_a[i] < coords_b[i])
         return -1;
       if (coords_a[i] > coords_b[i])
@@ -901,8 +922,9 @@ void ArrayMetadata::expand_domain(T* domain) const {
 
   auto tile_extents = static_cast<const T*>(tile_extents_);
   auto array_domain = static_cast<const T*>(domain_);
+  auto dim_num = hyperspace_->dim_num();
 
-  for (unsigned int i = 0; i < dim_num_; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     domain[2 * i] = ((domain[2 * i] - array_domain[2 * i]) / tile_extents[i] *
                      tile_extents[i]) +
                     array_domain[2 * i];
@@ -986,10 +1008,11 @@ void ArrayMetadata::get_subarray_tile_domain(
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
 
   // Get tile domain
   T tile_num;  // Per dimension
-  for (unsigned int i = 0; i < dim_num_; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     tile_num =
         ceil(double(domain[2 * i + 1] - domain[2 * i] + 1) / tile_extents[i]);
     tile_domain[2 * i] = 0;
@@ -997,7 +1020,7 @@ void ArrayMetadata::get_subarray_tile_domain(
   }
 
   // Calculate subarray in tile domain
-  for (unsigned int i = 0; i < dim_num_; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     subarray_tile_domain[2 * i] =
         MAX((subarray[2 * i] - domain[2 * i]) / tile_extents[i],
             tile_domain[2 * i]);
@@ -1039,12 +1062,17 @@ void ArrayMetadata::get_tile_subarray(
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
 
-  for (unsigned int i = 0; i < dim_num_; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     tile_subarray[2 * i] = tile_coords[i] * tile_extents[i] + domain[2 * i];
     tile_subarray[2 * i + 1] =
         (tile_coords[i] + 1) * tile_extents[i] - 1 + domain[2 * i];
   }
+}
+
+const Hyperspace* ArrayMetadata::hyperspace() const {
+  return hyperspace_;
 }
 
 template <class T>
@@ -1064,6 +1092,7 @@ inline uint64_t ArrayMetadata::tile_id(const T* cell_coords) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
 
   // Trivial case
   if (tile_extents == nullptr)
@@ -1074,9 +1103,9 @@ inline uint64_t ArrayMetadata::tile_id(const T* cell_coords) const {
   //  T* tile_coords = static_cast<T*>(tile_coords_aux_);
 
   // TODO: This is VERY inefficient. Fix!
-  auto tile_coords = new T[dim_num_];
+  auto tile_coords = new T[dim_num];
 
-  for (unsigned int i = 0; i < dim_num_; ++i)
+  for (unsigned int i = 0; i < dim_num; ++i)
     tile_coords[i] = (cell_coords[i] - domain[2 * i]) / tile_extents[i];
 
   uint64_t tile_id = get_tile_pos(tile_coords);
@@ -1121,10 +1150,8 @@ void ArrayMetadata::clear() {
   attributes_.clear();
   attribute_num_ = 0;
 
-  for (auto& dim : dimensions_)
-    delete dim;
-  dimensions_.clear();
-  dim_num_ = 0;
+  delete hyperspace_;
+  hyperspace_ = nullptr;
 
   if (tile_extents_ != nullptr) {
     std::free(tile_extents_);
@@ -1184,9 +1211,10 @@ void ArrayMetadata::compute_cell_num_per_tile() {
 template <class T>
 void ArrayMetadata::compute_cell_num_per_tile() {
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
   cell_num_per_tile_ = 1;
 
-  for (unsigned int i = 0; i < dim_num_; ++i)
+  for (unsigned int i = 0; i < dim_num; ++i)
     cell_num_per_tile_ *= tile_extents[i];
 }
 
@@ -1197,6 +1225,7 @@ uint64_t ArrayMetadata::compute_cell_size(unsigned int i) const {
   unsigned int cell_val_num =
       (i < attribute_num_) ? attributes_[i]->cell_val_num() : 0;
   Datatype type = (i < attribute_num_) ? attributes_[i]->type() : coords_type();
+  auto dim_num = hyperspace_->dim_num();
 
   // Variable-sized cell
   if (i < attribute_num_ && cell_val_num == constants::var_num)
@@ -1231,25 +1260,25 @@ uint64_t ArrayMetadata::compute_cell_size(unsigned int i) const {
       size = cell_val_num * sizeof(uint64_t);
   } else {  // Coordinates
     if (type == Datatype::INT32)
-      size = dim_num_ * sizeof(int);
+      size = dim_num * sizeof(int);
     else if (type == Datatype::INT64)
-      size = dim_num_ * sizeof(int64_t);
+      size = dim_num * sizeof(int64_t);
     else if (type == Datatype::FLOAT32)
-      size = dim_num_ * sizeof(float);
+      size = dim_num * sizeof(float);
     else if (type == Datatype::FLOAT64)
-      size = dim_num_ * sizeof(double);
+      size = dim_num * sizeof(double);
     else if (type == Datatype::INT8)
-      size = dim_num_ * sizeof(int8_t);
+      size = dim_num * sizeof(int8_t);
     else if (type == Datatype::UINT8)
-      size = dim_num_ * sizeof(uint8_t);
+      size = dim_num * sizeof(uint8_t);
     else if (type == Datatype::INT16)
-      size = dim_num_ * sizeof(int16_t);
+      size = dim_num * sizeof(int16_t);
     else if (type == Datatype::UINT16)
-      size = dim_num_ * sizeof(uint16_t);
+      size = dim_num * sizeof(uint16_t);
     else if (type == Datatype::UINT32)
-      size = dim_num_ * sizeof(uint32_t);
+      size = dim_num * sizeof(uint32_t);
     else if (type == Datatype::UINT64)
-      size = dim_num_ * sizeof(uint64_t);
+      size = dim_num * sizeof(uint64_t);
   }
 
   return size;
@@ -1292,17 +1321,18 @@ void ArrayMetadata::compute_tile_domain() {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
 
   // Allocate space for the tile domain
   assert(tile_domain_ == NULL);
-  tile_domain_ = std::malloc(2 * dim_num_ * sizeof(T));
+  tile_domain_ = std::malloc(2 * dim_num * sizeof(T));
 
   // For easy reference
   auto tile_domain = static_cast<T*>(tile_domain_);
   T tile_num;  // Per dimension
 
   // Calculate tile domain
-  for (unsigned int i = 0; i < dim_num_; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     tile_num =
         ceil(double(domain[2 * i + 1] - domain[2 * i] + 1) / tile_extents[i]);
     tile_domain[2 * i] = 0;
@@ -1349,11 +1379,12 @@ void ArrayMetadata::compute_tile_offsets() {
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
   uint64_t tile_num;  // Per dimension
+  auto dim_num = hyperspace_->dim_num();
 
   // Calculate tile offsets for column-major tile order
   tile_offsets_col_.push_back(1);
-  if (dim_num_ > 1) {
-    for (unsigned int i = 1; i < dim_num_; ++i) {
+  if (dim_num > 1) {
+    for (unsigned int i = 1; i < dim_num; ++i) {
       tile_num = (domain[2 * (i - 1) + 1] - domain[2 * (i - 1)] + 1) /
                  tile_extents[i - 1];
       tile_offsets_col_.push_back(tile_offsets_col_.back() * tile_num);
@@ -1362,8 +1393,8 @@ void ArrayMetadata::compute_tile_offsets() {
 
   // Calculate tile offsets for row-major tile order
   tile_offsets_row_.push_back(1);
-  if (dim_num_ > 1) {
-    for (unsigned int i = dim_num_ - 2;; --i) {
+  if (dim_num > 1) {
+    for (unsigned int i = dim_num - 2;; --i) {
       tile_num = (domain[2 * (i + 1) + 1] - domain[2 * (i + 1)] + 1) /
                  tile_extents[i + 1];
       tile_offsets_row_.push_back(tile_offsets_row_.back() * tile_num);
@@ -1379,12 +1410,13 @@ uint64_t ArrayMetadata::get_cell_pos_col(const T* coords) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
 
   // Calculate cell offsets
   uint64_t cell_num;  // Per dimension
   std::vector<uint64_t> cell_offsets;
   cell_offsets.push_back(1);
-  for (unsigned int i = 1; i < dim_num_; ++i) {
+  for (unsigned int i = 1; i < dim_num; ++i) {
     cell_num = tile_extents[i - 1];
     cell_offsets.push_back(cell_offsets.back() * cell_num);
   }
@@ -1392,7 +1424,7 @@ uint64_t ArrayMetadata::get_cell_pos_col(const T* coords) const {
   // Calculate position
   T coords_norm;  // Normalized coordinates inside the tile
   uint64_t pos = 0;
-  for (unsigned int i = 0; i < dim_num_; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     coords_norm = (coords[i] - domain[2 * i]);
     coords_norm -= (coords_norm / tile_extents[i]) * tile_extents[i];
     pos += coords_norm * cell_offsets[i];
@@ -1407,13 +1439,14 @@ uint64_t ArrayMetadata::get_cell_pos_row(const T* coords) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
 
   // Calculate cell offsets
   uint64_t cell_num;  // Per dimension
   std::vector<uint64_t> cell_offsets;
   cell_offsets.push_back(1);
-  if (dim_num_ > 1) {
-    for (unsigned int i = dim_num_ - 2;; --i) {
+  if (dim_num > 1) {
+    for (unsigned int i = dim_num - 2;; --i) {
       cell_num = tile_extents[i + 1];
       cell_offsets.push_back(cell_offsets.back() * cell_num);
       if (i == 0)
@@ -1425,7 +1458,7 @@ uint64_t ArrayMetadata::get_cell_pos_row(const T* coords) const {
   // Calculate position
   T coords_norm;  // Normalized coordinates inside the tile
   uint64_t pos = 0;
-  for (unsigned int i = 0; i < dim_num_; ++i) {
+  for (unsigned int i = 0; i < dim_num; ++i) {
     coords_norm = (coords[i] - domain[2 * i]);
     coords_norm -= (coords_norm / tile_extents[i]) * tile_extents[i];
     pos += coords_norm * cell_offsets[i];
@@ -1438,21 +1471,23 @@ uint64_t ArrayMetadata::get_cell_pos_row(const T* coords) const {
 template <class T>
 void ArrayMetadata::get_next_cell_coords_col(
     const T* domain, T* cell_coords, bool& coords_retrieved) const {
+  auto dim_num = hyperspace_->dim_num();
+
   unsigned int i = 0;
   ++cell_coords[i];
 
-  while (i < dim_num_ - 1 && cell_coords[i] > domain[2 * i + 1]) {
+  while (i < dim_num - 1 && cell_coords[i] > domain[2 * i + 1]) {
     cell_coords[i] = domain[2 * i];
     ++cell_coords[++i];
   }
 
-  coords_retrieved = !(i == dim_num_ - 1 && cell_coords[i] > domain[2 * i + 1]);
+  coords_retrieved = !(i == dim_num - 1 && cell_coords[i] > domain[2 * i + 1]);
 }
 
 template <class T>
 void ArrayMetadata::get_next_cell_coords_row(
     const T* domain, T* cell_coords, bool& coords_retrieved) const {
-  unsigned int i = dim_num_ - 1;
+  unsigned int i = hyperspace_->dim_num() - 1;
   ++cell_coords[i];
 
   while (i > 0 && cell_coords[i] > domain[2 * i + 1]) {
@@ -1466,10 +1501,11 @@ void ArrayMetadata::get_next_cell_coords_row(
 template <class T>
 void ArrayMetadata::get_previous_cell_coords_col(
     const T* domain, T* cell_coords) const {
+  auto dim_num = hyperspace_->dim_num();
   unsigned int i = 0;
   --cell_coords[i];
 
-  while (i < dim_num_ - 1 && cell_coords[i] < domain[2 * i]) {
+  while (i < dim_num - 1 && cell_coords[i] < domain[2 * i]) {
     cell_coords[i] = domain[2 * i + 1];
     --cell_coords[++i];
   }
@@ -1478,7 +1514,7 @@ void ArrayMetadata::get_previous_cell_coords_col(
 template <class T>
 void ArrayMetadata::get_previous_cell_coords_row(
     const T* domain, T* cell_coords) const {
-  unsigned int i = dim_num_ - 1;
+  unsigned int i = hyperspace_->dim_num() - 1;
   --cell_coords[i];
 
   while (i > 0 && cell_coords[i] < domain[2 * i]) {
@@ -1490,10 +1526,11 @@ void ArrayMetadata::get_previous_cell_coords_row(
 template <class T>
 void ArrayMetadata::get_next_tile_coords_col(
     const T* domain, T* tile_coords) const {
+  auto dim_num = hyperspace_->dim_num();
   unsigned int i = 0;
   ++tile_coords[i];
 
-  while (i < dim_num_ - 1 && tile_coords[i] > domain[2 * i + 1]) {
+  while (i < dim_num - 1 && tile_coords[i] > domain[2 * i + 1]) {
     tile_coords[i] = domain[2 * i];
     ++tile_coords[++i];
   }
@@ -1502,7 +1539,7 @@ void ArrayMetadata::get_next_tile_coords_col(
 template <class T>
 void ArrayMetadata::get_next_tile_coords_row(
     const T* domain, T* tile_coords) const {
-  unsigned int i = dim_num_ - 1;
+  unsigned int i = hyperspace_->dim_num() - 1;
   ++tile_coords[i];
 
   while (i > 0 && tile_coords[i] > domain[2 * i + 1]) {
@@ -1514,8 +1551,9 @@ void ArrayMetadata::get_next_tile_coords_row(
 template <class T>
 uint64_t ArrayMetadata::get_tile_pos_col(const T* tile_coords) const {
   // Calculate position
+  auto dim_num = hyperspace_->dim_num();
   uint64_t pos = 0;
-  for (unsigned int i = 0; i < dim_num_; ++i)
+  for (unsigned int i = 0; i < dim_num; ++i)
     pos += tile_coords[i] * tile_offsets_col_[i];
 
   // Return
@@ -1527,12 +1565,13 @@ uint64_t ArrayMetadata::get_tile_pos_col(
     const T* domain, const T* tile_coords) const {
   // For easy reference
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
 
   // Calculate tile offsets
   uint64_t tile_num;  // Per dimension
   std::vector<uint64_t> tile_offsets;
   tile_offsets.push_back(1);
-  for (unsigned int i = 1; i < dim_num_; ++i) {
+  for (unsigned int i = 1; i < dim_num; ++i) {
     tile_num = (domain[2 * (i - 1) + 1] - domain[2 * (i - 1)] + 1) /
                tile_extents[i - 1];
     tile_offsets.push_back(tile_offsets.back() * tile_num);
@@ -1540,7 +1579,7 @@ uint64_t ArrayMetadata::get_tile_pos_col(
 
   // Calculate position
   uint64_t pos = 0;
-  for (unsigned int i = 0; i < dim_num_; ++i)
+  for (unsigned int i = 0; i < dim_num; ++i)
     pos += tile_coords[i] * tile_offsets[i];
 
   // Return
@@ -1550,8 +1589,9 @@ uint64_t ArrayMetadata::get_tile_pos_col(
 template <class T>
 uint64_t ArrayMetadata::get_tile_pos_row(const T* tile_coords) const {
   // Calculate position
+  auto dim_num = hyperspace_->dim_num();
   uint64_t pos = 0;
-  for (unsigned int i = 0; i < dim_num_; ++i)
+  for (unsigned int i = 0; i < dim_num; ++i)
     pos += tile_coords[i] * tile_offsets_row_[i];
 
   // Return
@@ -1563,13 +1603,14 @@ uint64_t ArrayMetadata::get_tile_pos_row(
     const T* domain, const T* tile_coords) const {
   // For easy reference
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
 
   // Calculate tile offsets
   uint64_t tile_num;  // Per dimension
   std::vector<uint64_t> tile_offsets;
   tile_offsets.push_back(1);
-  if (dim_num_ > 1) {
-    for (unsigned int i = dim_num_ - 2;; --i) {
+  if (dim_num > 1) {
+    for (unsigned int i = dim_num - 2;; --i) {
       tile_num = (domain[2 * (i + 1) + 1] - domain[2 * (i + 1)] + 1) /
                  tile_extents[i + 1];
       tile_offsets.push_back(tile_offsets.back() * tile_num);
@@ -1581,7 +1622,7 @@ uint64_t ArrayMetadata::get_tile_pos_row(
 
   // Calculate position
   uint64_t pos = 0;
-  for (unsigned int i = 0; i < dim_num_; ++i)
+  for (unsigned int i = 0; i < dim_num; ++i)
     pos += tile_coords[i] * tile_offsets[i];
 
   // Return
@@ -1593,10 +1634,11 @@ bool ArrayMetadata::is_contained_in_tile_slab_col(const T* range) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
   uint64_t tile_l, tile_h;
 
   // Check if range is not contained in a column tile slab
-  for (unsigned int i = 1; i < dim_num_; ++i) {
+  for (unsigned int i = 1; i < dim_num; ++i) {
     tile_l =
         (uint64_t)floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]);
     tile_h = (uint64_t)floor(
@@ -1614,10 +1656,11 @@ bool ArrayMetadata::is_contained_in_tile_slab_row(const T* range) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
   uint64_t tile_l, tile_h;
 
   // Check if range is not contained in a row tile slab
-  for (unsigned int i = 0; i < dim_num_ - 1; ++i) {
+  for (unsigned int i = 0; i < dim_num - 1; ++i) {
     tile_l =
         (uint64_t)floor(double(range[2 * i] - domain[2 * i]) / tile_extents[i]);
     tile_h = (uint64_t)floor(
@@ -1634,15 +1677,16 @@ template <class T>
 uint64_t ArrayMetadata::tile_slab_col_cell_num(const T* subarray) const {
   // For easy reference
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
 
   // Initialize the cell num to be returned to the maximum number of rows
   // in the slab
   uint64_t cell_num =
-      MIN(tile_extents[dim_num_ - 1],
-          subarray[2 * (dim_num_ - 1) + 1] - subarray[2 * (dim_num_ - 1)] + 1);
+      MIN(tile_extents[dim_num - 1],
+          subarray[2 * (dim_num - 1) + 1] - subarray[2 * (dim_num - 1)] + 1);
 
   // Calculate the number of cells in the slab
-  for (unsigned int i = 0; i < dim_num_ - 1; ++i)
+  for (unsigned int i = 0; i < dim_num - 1; ++i)
     cell_num *= (subarray[2 * i + 1] - subarray[2 * i] + 1);
 
   // Return
@@ -1653,13 +1697,14 @@ template <class T>
 uint64_t ArrayMetadata::tile_slab_row_cell_num(const T* subarray) const {
   // For easy reference
   auto tile_extents = static_cast<const T*>(tile_extents_);
+  auto dim_num = hyperspace_->dim_num();
 
   // Initialize the cell num to be returned to the maximum number of rows
   // in the slab
   uint64_t cell_num = MIN(tile_extents[0], subarray[1] - subarray[0] + 1);
 
   // Calculate the number of cells in the slab
-  for (unsigned int i = 1; i < dim_num_; ++i)
+  for (unsigned int i = 1; i < dim_num; ++i)
     cell_num *= (subarray[2 * i + 1] - subarray[2 * i] + 1);
 
   // Return

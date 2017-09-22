@@ -1,5 +1,5 @@
 /**
- * @file   dimension.h
+ * @file   hyperspace.h
  *
  * @section LICENSE
  *
@@ -27,70 +27,82 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class Dimension.
+ * This file defines class Hyperspace.
  */
 
-#ifndef TILEDB_DIMENSION_H
-#define TILEDB_DIMENSION_H
-
-#include <string>
+#ifndef TILEDB_HYPERSPACE_H
+#define TILEDB_HYPERSPACE_H
 
 #include "buffer.h"
-#include "compressor.h"
 #include "datatype.h"
+#include "dimension.h"
 #include "status.h"
+
+#include <vector>
 
 namespace tiledb {
 
-/** Manipulates a TileDB dimension. */
-class Dimension {
+/** Defines an array hyperspace, which consists of dimensions. */
+class Hyperspace {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  Dimension();
+  /** Empty constructor. */
+  Hyperspace();
 
   /**
    * Constructor.
    *
-   * @param name The name of the dimension.
-   * @param type The type of the dimension.
+   * @param type The type of dimensions.
    */
-  Dimension(const char* name, Datatype type);
+  explicit Hyperspace(Datatype type);
 
   /**
-   * Constructor. It clones the input.
+   * Constructor that clones the input hyperspace.
    *
-   * @param dim The dimension to clone.
+   * @param hyperspace The object to clone.
    */
-  explicit Dimension(const Dimension* dim);
+  explicit Hyperspace(const Hyperspace* hyperspace);
 
   /** Destructor. */
-  ~Dimension();
+  ~Hyperspace();
 
   /* ********************************* */
-  /*                API                */
+  /*                 API               */
   /* ********************************* */
+
+  /**
+   * Adds a dimension to the hyperspace.
+   *
+   * @param name The dimension name.
+   * @param domain The dimension domain.
+   * @param tile_extent The dimension tile extent.
+   * @return Status
+   */
+  Status add_dimension(
+      const char* name, const void* domain, const void* tile_extent);
 
   /**
    * Populates the object members from the data in the input binary buffer.
    *
    * @param buff The buffer to deserialize from.
-   * @param type The type of the dimension.
    * @return Status
    */
-  Status deserialize(ConstBuffer* buff, Datatype type);
+  Status deserialize(ConstBuffer* buff);
 
-  /** Returns the domain. */
-  void* domain() const;
+  /** Returns the number of dimensions. */
+  unsigned int dim_num() const;
 
-  /** Dumps the dimension contents in ASCII form in the selected output. */
+  /** returns the domain along the i-th dimension (nullptr upon error). */
+  const void* domain(unsigned int i) const;
+
+  /** Returns the i-th dimensions (nullptr upon error). */
+  const Dimension* dimension(unsigned int i) const;
+
+  /** Dumps the hyperspace in ASCII format in the selected output. */
   void dump(FILE* out) const;
-
-  /** Returns the dimension name. */
-  const std::string& name() const;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -100,33 +112,27 @@ class Dimension {
    */
   Status serialize(Buffer* buff);
 
-  /** Sets the domain. */
-  Status set_domain(const void* domain);
+  /** returns the tile extent along the i-th dimension (nullptr upon error). */
+  const void* tile_extent(unsigned int i) const;
 
-  /** Sets the tile extent. */
-  Status set_tile_extent(const void* tile_extent);
-
-  /** Returns the tile extent. */
-  void* tile_extent() const;
+  /** Returns the dimensions type. */
+  Datatype type() const;
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The dimension domain. */
-  void* domain_;
+  /** The hyperspace dimensions. */
+  std::vector<Dimension*> dimensions_;
 
-  /** The dimension name. */
-  std::string name_;
+  /** The number of dimensions. */
+  unsigned int dim_num_;
 
-  /** The tile extent of the dimension. */
-  void* tile_extent_;
-
-  /** The dimension type. */
+  /** The type of dimensions. */
   Datatype type_;
 };
 
 }  // namespace tiledb
 
-#endif  // TILEDB_DIMENSION_H
+#endif  // TILEDB_HYPERSPACE_H
