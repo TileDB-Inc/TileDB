@@ -141,7 +141,7 @@ struct ArraySchemaFx {
         ctx_, hyperspace, DIM2_NAME, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
     REQUIRE(rc == TILEDB_OK);
 
-    // Create array_metadata metadata
+    // Create array metadata
     rc = tiledb_array_metadata_create(
         ctx_, &array_metadata_, ARRAY_PATH.c_str());
     REQUIRE(rc == TILEDB_OK);

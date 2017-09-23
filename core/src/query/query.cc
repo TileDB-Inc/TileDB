@@ -578,7 +578,8 @@ Status Query::set_subarray(const void* subarray) {
         Status::QueryError("Memory allocation for subarray failed"));
 
   if (subarray == nullptr)
-    std::memcpy(subarray_, array_metadata_->domain(), subarray_size);
+    std::memcpy(
+        subarray_, array_metadata_->hyperspace()->domain(), subarray_size);
   else
     std::memcpy(subarray_, subarray, subarray_size);
 

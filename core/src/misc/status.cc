@@ -152,6 +152,9 @@ std::string Status::code_to_string() const {
     case StatusCode::Dimension:
       type = "[TileDB::Dimension] Error";
       break;
+    case StatusCode::Hyperspace:
+      type = "[TileDB::Hyperspace] Error";
+      break;
     default:
       type = "[TileDB::?] Error:";
   }

@@ -96,7 +96,8 @@ enum class StatusCode : char {
   Query,
   VFS,
   ConstBuffer,
-  Dimension
+  Dimension,
+  Hyperspace
 };
 
 class Status {
@@ -236,6 +237,11 @@ class Status {
   /** Return a Dimension Error error class Status with a given message **/
   static Status DimensionError(const std::string& msg) {
     return Status(StatusCode::Dimension, msg, -1);
+  }
+
+  /** Return a Hyperspace Error error class Status with a given message **/
+  static Status HyperspaceError(const std::string& msg) {
+    return Status(StatusCode::Hyperspace, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

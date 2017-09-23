@@ -70,7 +70,8 @@ bool SmallerPQFragmentCellRange<T>::operator()(
   // else, check the coordinates
 
   // Get cell ordering information for the first range endpoints
-  int cmp = array_metadata_->cell_order_cmp<T>(a->cell_range_, b->cell_range_);
+  int cmp = array_metadata_->hyperspace()->cell_order_cmp<T>(
+      a->cell_range_, b->cell_range_);
   if (cmp < 0)  // a's range start precedes b's
     return false;
   if (cmp > 0)  // b's range start preceded a's

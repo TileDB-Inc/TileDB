@@ -69,12 +69,12 @@ const ArrayMetadata* Fragment::array_metadata() const {
 }
 
 URI Fragment::attr_uri(unsigned int attribute_id) const {
-  const Attribute* attr = query_->array_metadata()->Attributes()[attribute_id];
+  const Attribute* attr = query_->array_metadata()->attribute(attribute_id);
   return fragment_uri_.join_path(attr->name() + constants::file_suffix);
 }
 
 URI Fragment::attr_var_uri(unsigned int attribute_id) const {
-  const Attribute* attr = query_->array_metadata()->Attributes()[attribute_id];
+  const Attribute* attr = query_->array_metadata()->attribute(attribute_id);
   return fragment_uri_.join_path(
       attr->name() + "_var" + constants::file_suffix);
 }
@@ -182,8 +182,9 @@ uint64_t Fragment::tile_size(unsigned int attribute_id) const {
   bool var_size = array_metadata->var_size(attribute_id);
   uint64_t cell_var_offset_size = constants::cell_var_offset_size;
 
-  uint64_t cell_num_per_tile = (dense_) ? array_metadata->cell_num_per_tile() :
-                                          array_metadata->capacity();
+  uint64_t cell_num_per_tile =
+      (dense_) ? array_metadata->hyperspace()->cell_num_per_tile() :
+                 array_metadata->capacity();
 
   return (var_size) ?
              cell_num_per_tile * cell_var_offset_size :

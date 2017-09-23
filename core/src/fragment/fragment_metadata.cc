@@ -120,7 +120,7 @@ const std::vector<void*>& FragmentMetadata::bounding_coords() const {
 
 uint64_t FragmentMetadata::cell_num(uint64_t tile_pos) const {
   if (dense_)
-    return array_metadata_->cell_num_per_tile();
+    return array_metadata_->hyperspace()->cell_num_per_tile();
 
   uint64_t tile_num = this->tile_num();
   if (tile_pos != tile_num - 1)
@@ -156,6 +156,7 @@ const URI& FragmentMetadata::fragment_uri() const {
 Status FragmentMetadata::init(const void* non_empty_domain) {
   // For easy reference
   unsigned int attribute_num = array_metadata_->attribute_num();
+  auto hyperspace = array_metadata_->hyperspace();
 
   // Sanity check
   assert(non_empty_domain_ == NULL);
@@ -165,14 +166,14 @@ Status FragmentMetadata::init(const void* non_empty_domain) {
   uint64_t domain_size = 2 * array_metadata_->coords_size();
   non_empty_domain_ = std::malloc(domain_size);
   if (non_empty_domain == nullptr)
-    std::memcpy(non_empty_domain_, array_metadata_->domain(), domain_size);
+    std::memcpy(non_empty_domain_, hyperspace->domain(), domain_size);
   else
     std::memcpy(non_empty_domain_, non_empty_domain, domain_size);
 
   // Set expanded domain
   domain_ = std::malloc(domain_size);
   std::memcpy(domain_, non_empty_domain_, domain_size);
-  array_metadata_->expand_domain(domain_);
+  hyperspace->expand_domain(domain_);
 
   // Set last tile cell number
   last_tile_cell_num_ = 0;
@@ -225,7 +226,7 @@ void FragmentMetadata::set_last_tile_cell_num(uint64_t cell_num) {
 
 uint64_t FragmentMetadata::tile_num() const {
   if (dense_)
-    return array_metadata_->tile_num(domain_);
+    return array_metadata_->hyperspace()->tile_num(domain_);
 
   return (uint64_t)mbrs_.size();
 }
@@ -354,7 +355,7 @@ Status FragmentMetadata::load_non_empty_domain(ConstBuffer* buff) {
   } else {
     domain_ = std::malloc(domain_size);
     std::memcpy(domain_, non_empty_domain_, domain_size);
-    array_metadata_->expand_domain(domain_);
+    array_metadata_->hyperspace()->expand_domain(domain_);
   }
 
   return Status::Ok();
@@ -511,8 +512,9 @@ Status FragmentMetadata::write_bounding_coords(Buffer* buff) {
 // ===== FORMAT =====
 // last_tile_cell_num(uint64_t)
 Status FragmentMetadata::write_last_tile_cell_num(Buffer* buff) {
-  uint64_t cell_num_per_tile = dense_ ? array_metadata_->cell_num_per_tile() :
-                                        array_metadata_->capacity();
+  uint64_t cell_num_per_tile =
+      dense_ ? array_metadata_->hyperspace()->cell_num_per_tile() :
+               array_metadata_->capacity();
   // Handle the case of zero
   uint64_t last_tile_cell_num =
       (last_tile_cell_num_ == 0) ? cell_num_per_tile : last_tile_cell_num_;
