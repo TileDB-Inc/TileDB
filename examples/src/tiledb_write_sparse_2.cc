@@ -65,6 +65,7 @@ int main() {
     &query,
     "my_group/sparse_arrays/my_array_B",
     TILEDB_WRITE,
+    TILEDB_GLOBAL_ORDER,
     nullptr,
     nullptr,
     0,

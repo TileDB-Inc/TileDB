@@ -51,6 +51,10 @@ inline const char* layout_str(Layout layout) {
     return constants::col_major_str;
   if (layout == Layout::ROW_MAJOR)
     return constants::row_major_str;
+  if (layout == Layout::GLOBAL_ORDER)
+    return constants::global_order_str;
+  if (layout == Layout::UNORDERED)
+    return constants::unordered_str;
 
   return nullptr;
 }

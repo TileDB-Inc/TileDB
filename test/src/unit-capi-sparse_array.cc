@@ -196,7 +196,8 @@ struct SparseArrayFx {
       const int64_t domain_0_hi,
       const int64_t domain_1_lo,
       const int64_t domain_1_hi,
-      const tiledb_query_type_t query_type) {
+      const tiledb_query_type_t query_type,
+      const tiledb_layout_t query_layout) {
     // Error code
     int rc;
 
@@ -224,6 +225,7 @@ struct SparseArrayFx {
         &query,
         array_name_.c_str(),
         query_type,
+        query_layout,
         subarray,
         attributes,
         1,
@@ -292,7 +294,8 @@ struct SparseArrayFx {
         ctx_,
         &query,
         array_name_.c_str(),
-        TILEDB_WRITE_UNSORTED,
+        TILEDB_WRITE,
+        TILEDB_UNORDERED,
         nullptr,
         nullptr,
         0,
@@ -342,7 +345,7 @@ struct SparseArrayFx {
 
       // read subarray
       int* buffer = read_sparse_array_2D(
-          d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ_SORTED_ROW);
+          d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ, TILEDB_ROW_MAJOR);
       CHECK(buffer != NULL);
 
       // check

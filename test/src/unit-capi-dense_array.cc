@@ -298,7 +298,8 @@ struct DenseArrayFx {
       const int64_t domain_0_hi,
       const int64_t domain_1_lo,
       const int64_t domain_1_hi,
-      const tiledb_query_type_t query_type) {
+      const tiledb_query_type_t query_type,
+      const tiledb_layout_t query_layout) {
     // Error code
     int rc;
 
@@ -325,6 +326,7 @@ struct DenseArrayFx {
         &query,
         array_name_.c_str(),
         query_type,
+        query_layout,
         subarray,
         attributes,
         1,
@@ -416,7 +418,8 @@ struct DenseArrayFx {
         ctx_,
         &query,
         array_name_.c_str(),
-        TILEDB_WRITE_UNSORTED,
+        TILEDB_WRITE,
+        TILEDB_UNORDERED,
         nullptr,
         attributes,
         2,
@@ -476,6 +479,7 @@ struct DenseArrayFx {
         &query,
         array_name_.c_str(),
         TILEDB_WRITE,
+        TILEDB_GLOBAL_ORDER,
         nullptr,
         nullptr,
         0,
@@ -543,6 +547,7 @@ struct DenseArrayFx {
   int write_dense_subarray_2D(
       int64_t* subarray,
       tiledb_query_type_t query_type,
+      tiledb_layout_t query_layout,
       int* buffer,
       uint64_t* buffer_sizes) {
     // Error code
@@ -559,6 +564,7 @@ struct DenseArrayFx {
         &query,
         array_name_.c_str(),
         query_type,
+        query_layout,
         subarray,
         attributes,
         1,
@@ -639,8 +645,8 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted reads") {
     int64_t index = 0;
 
     // Read subarray
-    int* buffer =
-        read_dense_array_2D(d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ_SORTED_ROW);
+    int* buffer = read_dense_array_2D(
+        d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ, TILEDB_ROW_MAJOR);
     REQUIRE(buffer != NULL);
 
     bool allok = true;
@@ -726,7 +732,7 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted writes") {
 
     // Write 2D subarray
     rc = write_dense_subarray_2D(
-        subarray, TILEDB_WRITE_SORTED_ROW, buffer, buffer_sizes);
+        subarray, TILEDB_WRITE, TILEDB_ROW_MAJOR, buffer, buffer_sizes);
     REQUIRE(rc == TILEDB_OK);
 
     // Read back the same subarray
@@ -735,7 +741,8 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted writes") {
         subarray[1],
         subarray[2],
         subarray[3],
-        TILEDB_READ_SORTED_ROW);
+        TILEDB_READ,
+        TILEDB_ROW_MAJOR);
     REQUIRE(read_buffer != NULL);
 
     // Check the two buffers
@@ -799,7 +806,12 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates") {
 
   // Read the entire array back to memory
   int* before_update = read_dense_array_2D(
-      domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi, TILEDB_READ);
+      domain_0_lo,
+      domain_0_hi,
+      domain_1_lo,
+      domain_1_hi,
+      TILEDB_READ,
+      TILEDB_GLOBAL_ORDER);
   REQUIRE(before_update != NULL);
 
   // Prepare random updates
@@ -816,7 +828,12 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates") {
 
   // Read the entire array back to memory after update
   int* after_update = read_dense_array_2D(
-      domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi, TILEDB_READ);
+      domain_0_lo,
+      domain_0_hi,
+      domain_1_lo,
+      domain_1_hi,
+      TILEDB_READ,
+      TILEDB_GLOBAL_ORDER);
   REQUIRE(after_update != NULL);
 
   // Compare array before and after

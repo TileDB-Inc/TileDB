@@ -231,7 +231,8 @@ Status StorageManager::query_finalize(Query* query) {
 Status StorageManager::query_init(
     Query* query,
     const char* array_name,
-    QueryType query_type,
+    QueryType type,
+    Layout layout,
     const void* subarray,
     const char** attributes,
     unsigned int attribute_num,
@@ -241,18 +242,15 @@ Status StorageManager::query_init(
   std::vector<FragmentMetadata*> fragment_metadata;
   auto array_metadata = (const ArrayMetadata*)nullptr;
   RETURN_NOT_OK(array_open(
-      URI(array_name),
-      query_type,
-      subarray,
-      &array_metadata,
-      &fragment_metadata));
+      URI(array_name), type, subarray, &array_metadata, &fragment_metadata));
 
   // Initialize query
   return query->init(
       this,
       array_metadata,
       fragment_metadata,
-      query_type,
+      type,
+      layout,
       subarray,
       attributes,
       attribute_num,
@@ -262,7 +260,7 @@ Status StorageManager::query_init(
 
 Status StorageManager::query_submit(Query* query) {
   QueryType query_type = query->type();
-  if (is_read_type(query_type))
+  if (query_type == QueryType::READ)
     return query->read();
 
   return query->write();
@@ -382,7 +380,7 @@ Status StorageManager::array_close(
 
 Status StorageManager::array_open(
     const URI& array_uri,
-    QueryType query_type,
+    QueryType type,
     const void* subarray,
     const ArrayMetadata** array_metadata,
     std::vector<FragmentMetadata*>* fragment_metadata) {
@@ -413,7 +411,7 @@ Status StorageManager::array_open(
   *array_metadata = open_array->array_metadata();
 
   // Get fragment metadata only in read mode
-  if (is_read_type(query_type))
+  if (type == QueryType::READ)
     RETURN_NOT_OK_ELSE(
         open_array_load_fragment_metadata(
             open_array, subarray, fragment_metadata),

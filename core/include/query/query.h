@@ -120,6 +120,7 @@ class Query {
    * @param array_metadata The array metadata.
    * @param fragment_metadata The metadata of the involved fragments.
    * @param type The query type.
+   * @param layout The cell layout.
    * @param subarray The subarray the query is constrained on. A nuullptr
    *     indicates the full domain.
    * @param attributes The names of the attributes involved in the query.
@@ -136,6 +137,7 @@ class Query {
       const ArrayMetadata* array_metadata,
       const std::vector<FragmentMetadata*>& fragment_metadata,
       QueryType type,
+      Layout layout,
       const void* subarray,
       const char** attributes,
       unsigned int attribute_num,
@@ -155,6 +157,7 @@ class Query {
    * @param array_metadata The array metadata.
    * @param fragment_metadata The metadata of the involved fragments.
    * @param type The query type.
+   * @param layout The cell layout.
    * @param subarray The subarray the query is constrained on. A nuullptr
    *     indicates the full domain.
    * @param attributes_ids The ids of the attributes involved in the query.
@@ -174,11 +177,15 @@ class Query {
       const ArrayMetadata* array_metadata,
       const std::vector<FragmentMetadata*>& fragment_metadata,
       QueryType type,
+      Layout layoyt,
       const void* subarray,
       const std::vector<unsigned int>& attribute_ids,
       void** buffers,
       uint64_t* buffer_sizes,
       bool add_coords = false);
+
+  /** Returns the cell layout. */
+  Layout layout() const;
 
   /**
    * Returns true if the query cannot write to some buffer due to
@@ -312,6 +319,9 @@ class Query {
 
   /** The metadata of the fragments involved in the query. */
   std::vector<FragmentMetadata*> fragment_metadata_;
+
+  /** The cell layout. */
+  Layout layout_;
 
   /** The storage manager. */
   StorageManager* storage_manager_;

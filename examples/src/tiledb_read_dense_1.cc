@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
     &query,
     "my_dense_array",
     TILEDB_READ,
+    TILEDB_GLOBAL_ORDER,
     nullptr,
     nullptr,
     0,

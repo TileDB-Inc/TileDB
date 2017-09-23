@@ -884,14 +884,25 @@ TILEDB_EXPORT int tiledb_attribute_iter_first(
  *
  * @param ctx The TileDB context.
  * @param query The query object to be created.
- * @param query_type The query type, which must be one of the following:
+ * @param array_name The name of the array the query will focus on.
+ * @param type The query type, which must be one of the following:
  *    - TILEDB_WRITE
- *    - TILEDB_WRITE_SORTED_COL
- *    - TILEDB_WRITE_SORTED_ROW
- *    - TILEDB_WRITE_UNSORTED
  *    - TILEDB_READ
- *    - TILEDB_READ_SORTED_COL
- *    - TILEDB_READ_SORTED_ROW
+ * @param layout For a write query, this indicates the order of the cells
+ *     provided by the user in the buffers. For a read query, this indicates
+ *     the order of the cells that will be retrieved as results and stored
+ *     in the user buffers. The layout can be one of the following:
+ *    - TILEDB_COL_MAJOR <br>
+ *      This means column-major order with respect to the subarray.
+ *    - TILEDB_ROW_MAJOR <br>
+ *      This means row-major order with respect to the subarray.
+ *    - TILEDB_GLOBAL_ORDER <br>
+ *      This means that cells are stored or retrieved in the array global
+ *      cell order.
+ *    - TILEDB_UNORDERED <br>
+ *      This is applicable only to writes for sparse arrays, which indicates
+ *      that the cells are unordered and, hence, TileDB must sort the cells
+ *      in the global cell order.
  * @param subarray The subarray in which the array read/write will be
  *     constrained on. It should be a sequence of [low, high] pairs (one
  *     pair per dimension), whose type should be the same as that of the
@@ -918,7 +929,8 @@ TILEDB_EXPORT int tiledb_query_create(
     tiledb_ctx_t* ctx,
     tiledb_query_t** query,
     const char* array_name,
-    tiledb_query_type_t query_type,
+    tiledb_query_type_t type,
+    tiledb_layout_t layout,
     const void* subarray,
     const char** attributes,
     unsigned int attribute_num,

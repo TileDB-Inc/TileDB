@@ -261,11 +261,11 @@ Status ArraySortedReadState::init() {
 
   // Initialize functors
   auto array_metadata = query_->array_metadata();
-  QueryType query_type = query_->type();
+  Layout query_layout = query_->layout();
   Layout cell_order = array_metadata->cell_order();
   Layout tile_order = array_metadata->tile_order();
   Datatype coords_type = array_metadata->coords_type();
-  if (query_type == QueryType::READ_SORTED_ROW) {
+  if (query_layout == Layout::ROW_MAJOR) {
     if (coords_type == Datatype::INT32) {
       advance_cell_slab_ = advance_cell_slab_row_s<int>;
       calculate_cell_slab_info_ = (cell_order == Layout::ROW_MAJOR) ?
@@ -328,7 +328,7 @@ Status ArraySortedReadState::init() {
     } else {
       assert(0);
     }
-  } else {  // mode == TILEDB_ARRAY_READ_SORTED_COL
+  } else if (query_layout == Layout::COL_MAJOR) {
     if (coords_type == Datatype::INT32) {
       advance_cell_slab_ = advance_cell_slab_col_s<int>;
       calculate_cell_slab_info_ = (cell_order == Layout::ROW_MAJOR) ?
@@ -391,7 +391,10 @@ Status ArraySortedReadState::init() {
     } else {
       assert(0);
     }
+  } else {
+    assert(0);
   }
+
   if (tile_order == Layout::ROW_MAJOR) {
     if (coords_type == Datatype::INT32)
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<int>;
@@ -415,7 +418,7 @@ Status ArraySortedReadState::init() {
       calculate_tile_slab_info_ = calculate_tile_slab_info_row<uint64_t>;
     else
       assert(0);
-  } else {  // tile_order == Layout::COL_MAJOR
+  } else if (tile_order == Layout::COL_MAJOR) {
     if (coords_type == Datatype::INT32)
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<int>;
     else if (coords_type == Datatype::INT64)
@@ -438,6 +441,8 @@ Status ArraySortedReadState::init() {
       calculate_tile_slab_info_ = calculate_tile_slab_info_col<uint64_t>;
     else
       assert(0);
+  } else {
+    assert(0);
   }
 
   return Status::Ok();
@@ -633,6 +638,7 @@ Status ArraySortedReadState::async_submit_query(unsigned int id) {
       query_->array_metadata(),
       query_->fragment_metadata(),
       QueryType::READ,
+      Layout::GLOBAL_ORDER,
       tile_slab_[id],
       query_->attribute_ids(),
       buffers_[id],
@@ -720,11 +726,14 @@ void ArraySortedReadState::calculate_buffer_sizes_dense() {
   auto hyperspace = array_metadata->hyperspace();
 
   // Get cell number in a (full) tile slab
-  uint64_t tile_slab_cell_num;
-  if (query_->type() == QueryType::READ_SORTED_ROW)
+  uint64_t tile_slab_cell_num = 0;
+  Layout query_layout = query_->layout();
+  if (query_layout == Layout::ROW_MAJOR)
     tile_slab_cell_num = hyperspace->tile_slab_row_cell_num(subarray_);
-  else  // TILEDB_ARRAY_READ_SORTED_COL
+  else if (query_layout == Layout::COL_MAJOR)
     tile_slab_cell_num = hyperspace->tile_slab_col_cell_num(subarray_);
+  else
+    assert(0);
 
   // Calculate buffer sizes
   auto attribute_id_num = (unsigned int)attribute_ids_.size();
@@ -2106,16 +2115,16 @@ template <class T>
 Status ArraySortedReadState::read() {
   // For easy reference
   auto array_metadata = query_->array_metadata();
-  QueryType query_type = query_->type();
+  Layout layout = query_->layout();
 
-  if (query_type == QueryType::READ_SORTED_COL) {
+  if (layout == Layout::COL_MAJOR) {
     if (array_metadata->dense())
       return read_dense_sorted_col<T>();
 
     return read_sparse_sorted_col<T>();
   }
 
-  if (query_type == QueryType::READ_SORTED_ROW) {
+  if (layout == Layout::ROW_MAJOR) {
     if (array_metadata->dense())
       return read_dense_sorted_row<T>();
 
@@ -2123,7 +2132,7 @@ Status ArraySortedReadState::read() {
   }
 
   assert(0);  // The code should never reach here
-  return LOG_STATUS(Status::ASRSError("Invalid query type when reading"));
+  return LOG_STATUS(Status::ASRSError("Invalid query layout when reading"));
 }
 
 template <class T>
@@ -2479,7 +2488,7 @@ void ArraySortedReadState::sort_cell_pos() {
   auto array_metadata = query_->array_metadata();
   auto dim_num = array_metadata->dim_num();
   uint64_t cell_num = buffer_sizes_tmp_[copy_id_][coords_buf_i_] / coords_size_;
-  QueryType query_type = query_->type();
+  Layout layout = query_->layout();
   auto buffer = static_cast<const T*>(buffers_[copy_id_][coords_buf_i_]);
 
   // Populate cell_pos
@@ -2488,14 +2497,16 @@ void ArraySortedReadState::sort_cell_pos() {
     cell_pos_[i] = i;
 
   // Invoke the proper sort function, based on the mode
-  if (query_type == QueryType::READ_SORTED_ROW) {
+  if (layout == Layout::ROW_MAJOR) {
     // Sort cell positions
     std::sort(
         cell_pos_.begin(), cell_pos_.end(), SmallerRow<T>(buffer, dim_num));
-  } else {  // mode == TILEDB_ARRAY_READ_SORTED_COL
+  } else if (layout == Layout::COL_MAJOR) {
     // Sort cell positions
     std::sort(
         cell_pos_.begin(), cell_pos_.end(), SmallerCol<T>(buffer, dim_num));
+  } else {
+    assert(0);
   }
 }
 

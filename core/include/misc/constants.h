@@ -201,6 +201,12 @@ extern const char* col_major_str;
 /** The string representation for the row-major layout. */
 extern const char* row_major_str;
 
+/** The string representation for the global order layout. */
+extern const char* global_order_str;
+
+/** The string representation for the unordered layout. */
+extern const char* unordered_str;
+
 /** The string representation of null. */
 extern const char* null_str;
 

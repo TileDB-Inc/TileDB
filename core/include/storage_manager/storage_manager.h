@@ -151,7 +151,8 @@ class StorageManager {
    *
    * @param query The query to initialize.
    * @param array_name The name of the array the query targets at.
-   * @param query_type The query type.
+   * @param type The query type.
+   * @param layout The cell layout.
    * @param subarray The subarray the query will be constrained on.
    * @param attributes The attributes the query will be constrained on.
    * @param attribute_num The number of attributes.
@@ -163,7 +164,8 @@ class StorageManager {
   Status query_init(
       Query* query,
       const char* array_name,
-      QueryType query_type,
+      QueryType type,
+      Layout layout,
       const void* subarray,
       const char** attributes,
       unsigned int attribute_num,

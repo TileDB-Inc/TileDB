@@ -43,21 +43,6 @@ enum class QueryType : char {
 #undef TILEDB_QUERY_TYPE_ENUM
 };
 
-/** Checks if the query type is "read". */
-inline bool is_read_type(const QueryType query_type) {
-  return query_type == QueryType::READ ||
-         query_type == QueryType::READ_SORTED_COL ||
-         query_type == QueryType::READ_SORTED_ROW;
-}
-
-/** Checks if the query type is "write". */
-inline bool is_write_type(const QueryType query_type) {
-  return query_type == QueryType::WRITE ||
-         query_type == QueryType::WRITE_SORTED_COL ||
-         query_type == QueryType::WRITE_SORTED_ROW ||
-         query_type == QueryType::WRITE_UNSORTED;
-}
-
 }  // namespace tiledb
 
 #endif  // TILEDB_QUERY_TYPE_H

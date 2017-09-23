@@ -202,6 +202,12 @@ const char* col_major_str = "col-major";
 /** The string representation for the row-major layout. */
 const char* row_major_str = "row-major";
 
+/** The string representation for the global order layout. */
+const char* global_order_str = "global-order";
+
+/** The string representation for the unordered layout. */
+const char* unordered_str = "unordered";
+
 /** The string representation of null. */
 const char* null_str = "null";
 

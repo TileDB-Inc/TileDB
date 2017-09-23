@@ -61,6 +61,7 @@ int main() {
     &query,
     "my_dense_array",
     TILEDB_WRITE,
+    TILEDB_GLOBAL_ORDER,
     nullptr,
     nullptr,
     0,

@@ -69,6 +69,7 @@ Query::Query(Query* common_query) {
   fragments_borrowed_ = false;
   array_metadata_ = common_query->array_metadata();
   type_ = common_query->type();
+  layout_ = common_query->layout();
   status_ = QueryStatus::INPROGRESS;
 }
 
@@ -108,17 +109,17 @@ Status Query::async_process() {
   }
 
   Status st;
-  if (is_read_type(type_))
+  if (type_ == QueryType::READ)
     st = read();
   else  // WRITE MODE
     st = write();
 
   if (st.ok()) {  // Success
     // Check for overflow (applicable only to reads)
-    if ((type_ == QueryType::READ && array_read_state_->overflow()) ||
-        ((type_ == QueryType::READ_SORTED_COL ||
-          type_ == QueryType::READ_SORTED_ROW) &&
-         array_sorted_read_state_->overflow()))
+    if (type_ == QueryType::READ &&
+        ((layout_ == Layout::GLOBAL_ORDER && array_read_state_->overflow()) ||
+         ((layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) &&
+          array_sorted_read_state_->overflow())))
       set_status(QueryStatus::INCOMPLETE);
     else  // Completion
       set_status(QueryStatus::COMPLETED);
@@ -208,6 +209,7 @@ Status Query::init(
     const ArrayMetadata* array_metadata,
     const std::vector<FragmentMetadata*>& fragment_metadata,
     QueryType type,
+    Layout layout,
     const void* subarray,
     const char** attributes,
     unsigned int attribute_num,
@@ -216,6 +218,7 @@ Status Query::init(
   storage_manager_ = storage_manager;
   array_metadata_ = array_metadata;
   type_ = type;
+  layout_ = layout;
   status_ = QueryStatus::INPROGRESS;
   buffers_ = buffers;
   buffer_sizes_ = buffer_sizes;
@@ -236,6 +239,7 @@ Status Query::init(
     const ArrayMetadata* array_metadata,
     const std::vector<FragmentMetadata*>& fragment_metadata,
     QueryType type,
+    Layout layout,
     const void* subarray,
     const std::vector<unsigned int>& attribute_ids,
     void** buffers,
@@ -244,6 +248,7 @@ Status Query::init(
   storage_manager_ = storage_manager;
   array_metadata_ = array_metadata;
   type_ = type;
+  layout_ = layout;
   attribute_ids_ = attribute_ids;
   status_ = QueryStatus::INPROGRESS;
   buffers_ = buffers;
@@ -258,9 +263,13 @@ Status Query::init(
   return Status::Ok();
 }
 
+Layout Query::layout() const {
+  return layout_;
+}
+
 bool Query::overflow() const {
   // Not applicable to writes
-  if (!is_read_type(type_))
+  if (type_ != QueryType::READ)
     return false;
 
   // Check overflow
@@ -271,7 +280,7 @@ bool Query::overflow() const {
 }
 
 bool Query::overflow(unsigned int attribute_id) const {
-  assert(is_read_type(type_));
+  assert(type_ == QueryType::READ);
 
   // Trivial case
   if (fragments_.empty())
@@ -312,10 +321,9 @@ Status Query::read() {
 
   // Perform query
   Status st;
-  if (type_ == QueryType::READ_SORTED_COL ||
-      type_ == QueryType::READ_SORTED_ROW)
+  if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR)
     st = array_sorted_read_state_->read(buffers_, buffer_sizes_);
-  else  // mode_ == QueryType::READ
+  else  // layout = Layout::GLOBAL_ORDER
     st = array_read_state_->read(buffers_, buffer_sizes_);
 
   // Set query status
@@ -375,17 +383,16 @@ Status Query::write() {
   status_ = QueryStatus::INPROGRESS;
 
   // Write based on mode
-  if (type_ == QueryType::WRITE_SORTED_COL ||
-      type_ == QueryType::WRITE_SORTED_ROW) {
+  if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
     RETURN_NOT_OK(array_sorted_write_state_->write(buffers_, buffer_sizes_));
-  } else if (type_ == QueryType::WRITE || type_ == QueryType::WRITE_UNSORTED) {
+  } else if (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED) {
     RETURN_NOT_OK(write(buffers_, buffer_sizes_));
   } else {
     assert(0);
   }
 
-  // In all types except WRITE, the fragment must be finalized
-  if (type_ != QueryType::WRITE)
+  // In all types except WRITE with GLOBAL ORDER, the fragment must be finalized
+  if (!(type_ == QueryType::WRITE && layout_ == Layout::GLOBAL_ORDER))
     clear_fragments();
 
   status_ = QueryStatus::COMPLETED;
@@ -395,7 +402,7 @@ Status Query::write() {
 
 Status Query::write(void** buffers, uint64_t* buffer_sizes) {
   // Sanity checks
-  if (!is_write_type(type_)) {
+  if (type_ != QueryType::WRITE) {
     return LOG_STATUS(
         Status::QueryError("Cannot write to array_metadata; Invalid mode"));
   }
@@ -442,9 +449,9 @@ void Query::add_coords() {
 
 Status Query::init_fragments(
     const std::vector<FragmentMetadata*>& fragment_metadata) {
-  if (is_write_type(type_)) {
+  if (type_ == QueryType::WRITE) {
     RETURN_NOT_OK(new_fragment());
-  } else if (is_read_type(type_)) {
+  } else if (type_ == QueryType::READ) {
     RETURN_NOT_OK(open_fragments(fragment_metadata));
   }
 
@@ -453,8 +460,8 @@ Status Query::init_fragments(
 
 Status Query::init_states() {
   // Initialize new fragment if needed
-  if (type_ == QueryType::WRITE_SORTED_COL ||
-      type_ == QueryType::WRITE_SORTED_ROW) {
+  if (type_ == QueryType::WRITE &&
+      (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR)) {
     array_sorted_write_state_ = new ArraySortedWriteState(this);
     Status st = array_sorted_write_state_->init();
     if (!st.ok()) {
@@ -462,11 +469,11 @@ Status Query::init_states() {
       array_sorted_write_state_ = nullptr;
       return st;
     }
-  } else if (type_ == QueryType::READ) {
+  } else if (type_ == QueryType::READ && layout_ == Layout::GLOBAL_ORDER) {
     array_read_state_ = new ArrayReadState(this);
   } else if (
-      type_ == QueryType::READ_SORTED_COL ||
-      type_ == QueryType::READ_SORTED_ROW) {
+      type_ == QueryType::READ &&
+      (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR)) {
     array_read_state_ = new ArrayReadState(this);
     array_sorted_read_state_ = new ArraySortedReadState(this);
     Status st = array_sorted_read_state_->init();
@@ -541,7 +548,8 @@ Status Query::set_attributes(
   std::vector<std::string> attributes_vec;
   if (attributes == nullptr) {  // Default: all attributes
     attributes_vec = array_metadata_->attribute_names();
-    if (array_metadata_->dense() && type_ != QueryType::WRITE_UNSORTED)
+    if (array_metadata_->dense() &&
+        !(type_ == QueryType::WRITE && layout_ == Layout::UNORDERED))
       // Remove coordinates attribute for dense arrays,
       // unless in TILEDB_WRITE_UNSORTED mode
       attributes_vec.pop_back();

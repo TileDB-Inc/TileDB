@@ -161,12 +161,11 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
         fragment_uri.join_path(std::string(constants::fragment_filename))));
   }
 
-  QueryType query_type = fragment_->query()->type();
+  Layout layout = fragment_->query()->layout();
 
   // Dispatch the proper write command
-  if (query_type == QueryType::WRITE ||
-      query_type == QueryType::WRITE_SORTED_COL ||
-      query_type == QueryType::WRITE_SORTED_ROW) {  // SORTED
+  if (layout == Layout::GLOBAL_ORDER || layout == Layout::COL_MAJOR ||
+      layout == Layout::ROW_MAJOR) {  // Ordered
     // For easy reference
     auto array_metadata = fragment_->query()->array_metadata();
     auto& attribute_ids = fragment_->query()->attribute_ids();
@@ -194,7 +193,7 @@ Status WriteState::write(void** buffers, uint64_t* buffer_sizes) {
     return Status::Ok();
   }
 
-  if (query_type == QueryType::WRITE_UNSORTED)  // UNSORTED
+  if (layout == Layout::UNORDERED)  // UNORDERED
     return write_sparse_unsorted(buffers, buffer_sizes);
 
   return LOG_STATUS(
@@ -346,6 +345,8 @@ void WriteState::sort_cell_pos(
             cell_pos->end(),
             SmallerCol<T>(buffer_T, dim_num));
         break;
+      default:  // Error
+        assert(0);
     }
   } else {  // TILE GRID
     // Get tile ids
@@ -368,6 +369,8 @@ void WriteState::sort_cell_pos(
             cell_pos->end(),
             SmallerIdCol<T>(buffer_T, dim_num, ids));
         break;
+      default:  // Error
+        assert(0);
     }
   }
 }
