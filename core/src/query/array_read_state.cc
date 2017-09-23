@@ -87,6 +87,8 @@ ArrayReadState::ArrayReadState(Query* query)
   fragment_read_states_.resize(fragment_num_);
   for (unsigned int i = 0; i < fragment_num_; ++i)
     fragment_read_states_[i] = fragments[i]->read_state();
+
+  tile_coords_aux_ = std::malloc(coords_size_);
 }
 
 ArrayReadState::~ArrayReadState() {
@@ -109,6 +111,9 @@ ArrayReadState::~ArrayReadState() {
       fragment_cell_pos_ranges_vec_.size();
   for (uint64_t i = 0; i < fragment_cell_pos_ranges_vec_size; ++i)
     delete fragment_cell_pos_ranges_vec_[i];
+
+  if (tile_coords_aux_ != nullptr)
+    std::free(tile_coords_aux_);
 }
 
 /* ****************************** */
@@ -261,8 +266,9 @@ void ArrayReadState::compute_min_bounding_coords_end() {
         first = false;
       } else if (
           array_metadata_->hyperspace()->tile_cell_order_cmp(
-              &fragment_bounding_coords[dim_num], min_bounding_coords_end) <
-          0) {
+              &fragment_bounding_coords[dim_num],
+              min_bounding_coords_end,
+              (T*)tile_coords_aux_) < 0) {
         std::memcpy(
             min_bounding_coords_end,
             &fragment_bounding_coords[dim_num],
@@ -347,7 +353,9 @@ Status ArrayReadState::compute_unsorted_fragment_cell_ranges_sparse(
     // Compute new fragment cell ranges
     if (fragment_bounding_coords != nullptr &&
         array_metadata_->hyperspace()->tile_cell_order_cmp(
-            fragment_bounding_coords, min_bounding_coords_end) <= 0) {
+            fragment_bounding_coords,
+            min_bounding_coords_end,
+            (T*)tile_coords_aux_) <= 0) {
       FragmentCellRanges fragment_cell_ranges;
       RETURN_NOT_OK(
           fragment_read_states_[i]->get_fragment_cell_ranges_sparse<T>(
@@ -1837,8 +1845,8 @@ Status ArrayReadState::sort_fragment_cell_ranges(
 
   for (unsigned int i = 0; i < fragment_num; ++i) {
     if (rlen[i] != 0) {
-      pq_fragment_cell_range =
-          new PQFragmentCellRange<T>(array_metadata_, &fragment_read_states_);
+      pq_fragment_cell_range = new PQFragmentCellRange<T>(
+          array_metadata_, &fragment_read_states_, (T*)tile_coords_aux_);
       pq_fragment_cell_range->import_from(
           (*unsorted_fragment_cell_ranges)[i][0]);
       pq.push(pq_fragment_cell_range);
@@ -1864,8 +1872,8 @@ Status ArrayReadState::sort_fragment_cell_ranges(
       if (rid[fid] == rlen[fid])
         break;
 
-      pq_fragment_cell_range =
-          new PQFragmentCellRange<T>(array_metadata_, &fragment_read_states_);
+      pq_fragment_cell_range = new PQFragmentCellRange<T>(
+          array_metadata_, &fragment_read_states_, (T*)tile_coords_aux_);
       pq_fragment_cell_range->import_from(
           (*unsorted_fragment_cell_ranges)[fid][rid[fid]]);
       pq.push(pq_fragment_cell_range);
@@ -1884,7 +1892,7 @@ Status ArrayReadState::sort_fragment_cell_ranges(
         if (top->ends_after(popped)) {
           // Create the new trimmed top range
           trimmed_top = new PQFragmentCellRange<T>(
-              array_metadata_, &fragment_read_states_);
+              array_metadata_, &fragment_read_states_, (T*)tile_coords_aux_);
           popped->trim(top, trimmed_top, tile_domain);
 
           // Discard top
@@ -1902,7 +1910,9 @@ Status ArrayReadState::sort_fragment_cell_ranges(
                       fragment_num - 1;
             if (rid[fid] != rlen[fid]) {
               pq_fragment_cell_range = new PQFragmentCellRange<T>(
-                  array_metadata_, &fragment_read_states_);
+                  array_metadata_,
+                  &fragment_read_states_,
+                  (T*)tile_coords_aux_);
               pq_fragment_cell_range->import_from(
                   (*unsorted_fragment_cell_ranges)[fid][rid[fid]]);
               pq.push(pq_fragment_cell_range);
@@ -1917,7 +1927,7 @@ Status ArrayReadState::sort_fragment_cell_ranges(
                                                       fragment_num - 1;
           if (rid[fid] != rlen[fid]) {
             pq_fragment_cell_range = new PQFragmentCellRange<T>(
-                array_metadata_, &fragment_read_states_);
+                array_metadata_, &fragment_read_states_, (T*)tile_coords_aux_);
             pq_fragment_cell_range->import_from(
                 (*unsorted_fragment_cell_ranges)[fid][rid[fid]]);
           }
@@ -1941,8 +1951,8 @@ Status ArrayReadState::sort_fragment_cell_ranges(
       // Potentially split the popped range
       if (!pq.empty() && popped->must_be_split(top)) {
         // Split the popped range
-        extra_popped =
-            new PQFragmentCellRange<T>(array_metadata_, &fragment_read_states_);
+        extra_popped = new PQFragmentCellRange<T>(
+            array_metadata_, &fragment_read_states_, (T*)tile_coords_aux_);
         popped->split(top, extra_popped, tile_domain);
         // Re-instert the extra popped range into the queue
         pq.push(extra_popped);
@@ -1952,7 +1962,7 @@ Status ArrayReadState::sort_fragment_cell_ranges(
                                                        fragment_num - 1;
         if (rid[fid] != rlen[fid]) {
           pq_fragment_cell_range = new PQFragmentCellRange<T>(
-              array_metadata_, &fragment_read_states_);
+              array_metadata_, &fragment_read_states_, (T*)tile_coords_aux_);
           pq_fragment_cell_range->import_from(
               (*unsorted_fragment_cell_ranges)[fid][rid[fid]]);
           pq.push(pq_fragment_cell_range);
@@ -1973,7 +1983,7 @@ Status ArrayReadState::sort_fragment_cell_ranges(
         fid = popped->fragment_id_;
         if (rid[fid] != rlen[fid]) {
           pq_fragment_cell_range = new PQFragmentCellRange<T>(
-              array_metadata_, &fragment_read_states_);
+              array_metadata_, &fragment_read_states_, (T*)tile_coords_aux_);
           pq_fragment_cell_range->import_from(
               (*unsorted_fragment_cell_ranges)[fid][rid[fid]]);
           pq.push(pq_fragment_cell_range);
@@ -1982,10 +1992,10 @@ Status ArrayReadState::sort_fragment_cell_ranges(
         delete popped;
       } else {
         // Create up to 3 more ranges (left, unary, new popped/right)
-        left =
-            new PQFragmentCellRange<T>(array_metadata_, &fragment_read_states_);
-        unary =
-            new PQFragmentCellRange<T>(array_metadata_, &fragment_read_states_);
+        left = new PQFragmentCellRange<T>(
+            array_metadata_, &fragment_read_states_, (T*)tile_coords_aux_);
+        unary = new PQFragmentCellRange<T>(
+            array_metadata_, &fragment_read_states_, (T*)tile_coords_aux_);
         popped->split_to_3(top, left, unary);
 
         // Get the next range from the popped fragment
@@ -1993,7 +2003,7 @@ Status ArrayReadState::sort_fragment_cell_ranges(
           fid = popped->fragment_id_;
           if (rid[fid] != rlen[fid]) {
             pq_fragment_cell_range = new PQFragmentCellRange<T>(
-                array_metadata_, &fragment_read_states_);
+                array_metadata_, &fragment_read_states_, (T*)tile_coords_aux_);
             pq_fragment_cell_range->import_from(
                 (*unsorted_fragment_cell_ranges)[fid][rid[fid]]);
             pq.push(pq_fragment_cell_range);

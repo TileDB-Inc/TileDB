@@ -54,9 +54,11 @@ const unsigned int PQFragmentCellRange<T>::INVALID_UINT = UINT_MAX;
 template <class T>
 PQFragmentCellRange<T>::PQFragmentCellRange(
     const ArrayMetadata* array_metadata,
-    const std::vector<ReadState*>* fragment_read_states) {
+    const std::vector<ReadState*>* fragment_read_states,
+    T* tile_coords_aux) {
   array_metadata_ = array_metadata;
   fragment_read_states_ = fragment_read_states;
+  tile_coords_aux_ = tile_coords_aux;
 
   cell_range_ = nullptr;
   fragment_id_ = INVALID_UINT;
@@ -113,9 +115,10 @@ void PQFragmentCellRange<T>::import_from(
   tile_pos_ = fragment_cell_range.first.second;
 
   // Compute tile ids
-  tile_id_l_ = array_metadata_->hyperspace()->tile_id<T>(cell_range_);
-  tile_id_r_ =
-      array_metadata_->hyperspace()->tile_id<T>(&cell_range_[dim_num_]);
+  tile_id_l_ =
+      array_metadata_->hyperspace()->tile_id<T>(cell_range_, tile_coords_aux_);
+  tile_id_r_ = array_metadata_->hyperspace()->tile_id<T>(
+      &cell_range_[dim_num_], tile_coords_aux_);
 }
 
 template <class T>
@@ -163,8 +166,8 @@ void PQFragmentCellRange<T>::split(
   std::memcpy(&cell_range_[dim_num_], fcr->cell_range_, coords_size_);
   array_metadata_->hyperspace()->get_previous_cell_coords<T>(
       tile_domain, &cell_range_[dim_num_]);
-  tile_id_r_ =
-      array_metadata_->hyperspace()->tile_id<T>(&cell_range_[dim_num_]);
+  tile_id_r_ = array_metadata_->hyperspace()->tile_id<T>(
+      &cell_range_[dim_num_], tile_coords_aux_);
 }
 
 template <class T>
@@ -197,14 +200,15 @@ void PQFragmentCellRange<T>::split_to_3(
   // Clean up if necessary
   if (left_retrieved) {
     fcr_left->tile_id_r_ = array_metadata_->hyperspace()->tile_id<T>(
-        &fcr_left->cell_range_[dim_num_]);
+        &fcr_left->cell_range_[dim_num_], tile_coords_aux_);
   } else {
     std::free(fcr_left->cell_range_);
     fcr_left->cell_range_ = nullptr;
   }
 
   if (right_retrieved) {
-    tile_id_l_ = array_metadata_->hyperspace()->tile_id<T>(cell_range_);
+    tile_id_l_ = array_metadata_->hyperspace()->tile_id<T>(
+        cell_range_, tile_coords_aux_);
   } else {
     std::free(cell_range_);
     cell_range_ = nullptr;

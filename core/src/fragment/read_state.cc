@@ -67,7 +67,8 @@ ReadState::ReadState(
   last_tile_coords_ = nullptr;
   search_tile_overlap_subarray_ = std::malloc(2 * coords_size_);
   search_tile_pos_ = INVALID_UINT64;
-  tmp_coords_ = std::malloc(coords_size_);
+
+  tile_coords_aux_ = std::malloc(coords_size_);
 
   init_tiles();
   init_tile_io();
@@ -80,6 +81,9 @@ ReadState::ReadState(
 ReadState::~ReadState() {
   if (last_tile_coords_ != nullptr)
     std::free(last_tile_coords_);
+
+  if (tile_coords_aux_ != nullptr)
+    std::free(tile_coords_aux_);
 
   for (auto& tile : tiles_)
     delete tile;
@@ -95,8 +99,6 @@ ReadState::~ReadState() {
 
   if (search_tile_overlap_subarray_ != nullptr)
     std::free(search_tile_overlap_subarray_);
-
-  std::free(tmp_coords_);
 }
 
 /* ****************************** */
@@ -778,7 +780,9 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
       auto bounding_coords =
           static_cast<const T*>(metadata_->bounding_coords()[search_tile_pos_]);
       if (hyperspace->tile_cell_order_cmp(
-              &bounding_coords[dim_num], tile_subarray_end) <= 0) {
+              &bounding_coords[dim_num],
+              tile_subarray_end,
+              (T*)tile_coords_aux_) <= 0) {
         ++search_tile_pos_;
       } else {
         delete[] tile_subarray;
@@ -810,7 +814,9 @@ void ReadState::get_next_overlapping_tile_sparse(const T* tile_coords) {
       auto bounding_coords =
           static_cast<const T*>(metadata_->bounding_coords()[search_tile_pos_]);
       if (hyperspace->tile_cell_order_cmp(
-              &bounding_coords[dim_num], tile_subarray_end) > 0)
+              &bounding_coords[dim_num],
+              tile_subarray_end,
+              (T*)tile_coords_aux_) > 0)
         break;
       ++search_tile_pos_;
       continue;
@@ -1075,13 +1081,13 @@ void ReadState::compute_tile_search_range_col_or_row() {
 
     // Calculate precedence
     if (hyperspace->tile_cell_order_cmp(
-            subarray_min_coords,
-            tile_start_coords) < 0) {  // Subarray min precedes MBR
+            subarray_min_coords, tile_start_coords, (T*)tile_coords_aux_) <
+        0) {  // Subarray min precedes MBR
       max = (med > 0) ? med - 1 : INVALID_UINT64;
     } else if (
         hyperspace->tile_cell_order_cmp(
-            subarray_min_coords,
-            tile_end_coords) > 0) {  // Subarray min succeeds MBR
+            subarray_min_coords, tile_end_coords, (T*)tile_coords_aux_) >
+        0) {  // Subarray min succeeds MBR
       min = med + 1;
     } else {  // Subarray min in MBR
       break;
@@ -1116,13 +1122,13 @@ void ReadState::compute_tile_search_range_col_or_row() {
 
       // Calculate precedence
       if (hyperspace->tile_cell_order_cmp(
-              subarray_max_coords,
-              tile_start_coords) < 0) {  // Subarray max precedes MBR
+              subarray_max_coords, tile_start_coords, (T*)tile_coords_aux_) <
+          0) {  // Subarray max precedes MBR
         max = (med > 0) ? med - 1 : INVALID_UINT64;
       } else if (
           hyperspace->tile_cell_order_cmp(
-              subarray_max_coords,
-              tile_end_coords) > 0) {  // Subarray max succeeds MBR
+              subarray_max_coords, tile_end_coords, (T*)tile_coords_aux_) >
+          0) {  // Subarray max succeeds MBR
         min = med + 1;
       } else {  // Subarray max in MBR
         break;
@@ -1179,7 +1185,7 @@ Status ReadState::get_cell_pos_after(const T* coords, uint64_t* pos) {
 
     // Compute order
     cmp = array_metadata_->hyperspace()->tile_cell_order_cmp<T>(
-        coords, static_cast<const T*>(coords_t));
+        coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
     if (cmp < 0)
       max = (med > 0) ? med - 1 : INVALID_UINT64;
     else if (cmp > 0)
@@ -1217,7 +1223,7 @@ Status ReadState::get_cell_pos_at_or_after(const T* coords, uint64_t* pos) {
 
     // Compute order
     cmp = array_metadata_->hyperspace()->tile_cell_order_cmp<T>(
-        coords, static_cast<const T*>(coords_t));
+        coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
 
     if (cmp < 0)
       max = (med > 0) ? med - 1 : INVALID_UINT64;
@@ -1256,7 +1262,7 @@ Status ReadState::get_cell_pos_at_or_before(
 
     // Compute order
     cmp = array_metadata_->hyperspace()->tile_cell_order_cmp<T>(
-        coords, static_cast<const T*>(coords_t));
+        coords, static_cast<const T*>(coords_t), (T*)tile_coords_aux_);
     if (cmp < 0)
       max = (med > 0) ? med - 1 : INVALID_UINT64;
     else if (cmp > 0)

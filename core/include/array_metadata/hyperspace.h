@@ -340,13 +340,18 @@ class Hyperspace {
    * @tparam T The coordinates type.
    * @param coords_a The first input coordinates.
    * @param coords_b The second input coordinates.
+   * @param tile_coords This is an auxiliary input that helps in calculating the
+   *     tile id. It is strongly advised that the caller initializes this
+   *     parameter once and calls the function many times with the same
+   *     auxiliary input to improve performance.
    * @return One of the following:
    *    - -1 if the first coordinates precede the second
    *    -  0 if the two coordinates are identical
    *    - +1 if the first coordinates succeed the second
    */
   template <class T>
-  int tile_cell_order_cmp(const T* coords_a, const T* coords_b) const;
+  int tile_cell_order_cmp(
+      const T* coords_a, const T* coords_b, T* tile_coords) const;
 
   /** Returns the tile extents. */
   const void* tile_extents() const;
@@ -359,10 +364,14 @@ class Hyperspace {
    *
    * @tparam T The coordinates type.
    * @param cell_coords The input coordinates.
+   * @param tile_coords This is an auxiliary input that helps in calculating the
+   *     tile id. It is strongly advised that the caller initializes this
+   *     parameter once and calls the function many times with the same
+   *     auxiliary input to improve performance.
    * @return The computed tile id.
    */
   template <class T>
-  uint64_t tile_id(const T* cell_coords) const;
+  uint64_t tile_id(const T* cell_coords, T* tile_coords) const;
 
   /**
    * Returns the number of tiles in the array domain (applicable only to dense
@@ -403,13 +412,18 @@ class Hyperspace {
    * @tparam T The coordinates type.
    * @param coords_a The first input coordinates.
    * @param coords_b The second input coordinates.
+   * @param tile_coords This is an auxiliary input that helps in calculating the
+   *     tile id. It is strongly advised that the caller initializes this
+   *     parameter once and calls the function many times with the same
+   *     auxiliary input to improve performance.
    * @return One of the following:
    *    - -1 if the first coordinates precede the second on the tile order
    *    -  0 if the two coordinates have the same tile order
    *    - +1 if the first coordinates succeed the second on the tile order
    */
   template <class T>
-  int tile_order_cmp(const T* coords_a, const T* coords_b) const;
+  int tile_order_cmp(
+      const T* coords_a, const T* coords_b, T* tile_coords) const;
 
   /** Return the number of cells in a column tile slab of an input subarray. */
   uint64_t tile_slab_col_cell_num(const void* subarray) const;
@@ -443,12 +457,6 @@ class Hyperspace {
    * type.
    */
   void* domain_;
-
-  /**
-   * Auxiliary attribute used in the computation of tile ids, in order to avoid
-   * repeated allocations and deallocations that impact performance.
-   */
-  void* tile_coords_aux_;
 
   /**
    * The array domain. It should contain one [lower, upper] pair per dimension.

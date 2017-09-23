@@ -158,6 +158,7 @@ Status Fragment::init(const URI& uri, FragmentMetadata* metadata) {
   fragment_uri_ = uri;
   metadata_ = metadata;
   dense_ = metadata_->dense();
+
   read_state_ = new ReadState(this, query_, metadata_);
 
   // Success

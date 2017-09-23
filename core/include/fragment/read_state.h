@@ -383,6 +383,9 @@ class ReadState {
    */
   bool subarray_area_covered_;
 
+  /** Auxiliary variable used whenever a tile id needs to be computed. */
+  void* tile_coords_aux_;
+
   /**
    * Local tile buffers, one per attribute, plus two for coordinates
    * (the second one is for searching).
@@ -403,12 +406,6 @@ class ReadState {
    * subarray query will focus on.
    */
   uint64_t tile_search_range_[2];
-
-  /** Temporary coordinates. */
-  void* tmp_coords_;
-
-  /** Temporary offset. */
-  uint64_t tmp_offset_;
 
   /* ********************************* */
   /*          STATIC CONSTANTS         */

@@ -184,6 +184,9 @@ class ArrayReadState {
   /** The tile domain of the query subarray. */
   void* subarray_tile_domain_;
 
+  /** Auxiliary variable used whenever a tile id needs to be computed. */
+  void* tile_coords_aux_;
+
   /* ********************************* */
   /*          STATIC CONSTANTS         */
   /* ********************************* */

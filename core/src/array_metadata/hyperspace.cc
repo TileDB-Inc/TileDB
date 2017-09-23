@@ -50,23 +50,25 @@ namespace tiledb {
 /* ********************************* */
 
 Hyperspace::Hyperspace() {
+  cell_order_ = Layout::ROW_MAJOR;
+  tile_order_ = Layout::ROW_MAJOR;
   dim_num_ = 0;
   type_ = Datatype::INT32;
   cell_num_per_tile_ = 0;
   domain_ = nullptr;
   tile_extents_ = nullptr;
   tile_domain_ = nullptr;
-  tile_coords_aux_ = nullptr;
 }
 
 Hyperspace::Hyperspace(Datatype type)
     : type_(type) {
+  cell_order_ = Layout::ROW_MAJOR;
+  tile_order_ = Layout::ROW_MAJOR;
   dim_num_ = 0;
   cell_num_per_tile_ = 0;
   domain_ = nullptr;
   tile_extents_ = nullptr;
   tile_domain_ = nullptr;
-  tile_coords_aux_ = nullptr;
 }
 
 Hyperspace::Hyperspace(const Hyperspace* hyperspace) {
@@ -80,7 +82,6 @@ Hyperspace::Hyperspace(const Hyperspace* hyperspace) {
   uint64_t coords_size = dim_num_ * datatype_size(type_);
 
   tile_order_ = hyperspace->tile_order_;
-  tile_coords_aux_ = std::malloc(coords_size);
   tile_offsets_col_ = hyperspace->tile_offsets_col_;
   tile_offsets_row_ = hyperspace->tile_offsets_row_;
 
@@ -121,10 +122,6 @@ Hyperspace::~Hyperspace() {
   if (tile_domain_ != nullptr) {
     std::free(tile_domain_);
     tile_domain_ = nullptr;
-  }
-  if (tile_coords_aux_ != nullptr) {
-    std::free(tile_coords_aux_);
-    tile_coords_aux_ = nullptr;
   }
 }
 
@@ -422,13 +419,12 @@ Status Hyperspace::init(Layout cell_order, Layout tile_order) {
   }
 
   // Set tile extents
-  // TODO: this needs mild fixing
   if (tile_extents_ != nullptr)
     std::free(tile_extents_);
   if (tile_extent(0) == nullptr) {
     tile_extents_ = nullptr;
   } else {
-    tile_extents_ = std::malloc(dim_num_ * coord_size);
+    tile_extents_ = std::malloc(coords_size);
     auto tile_extents = (char*)tile_extents_;
     for (unsigned int i = 0; i < dim_num_; ++i) {
       std::memcpy(tile_extents + i * coord_size, tile_extent(i), coord_size);
@@ -443,11 +439,6 @@ Status Hyperspace::init(Layout cell_order, Layout tile_order) {
 
   // Compute tile offsets
   compute_tile_offsets();
-
-  // Initialize static auxiliary variables
-  if (tile_coords_aux_ != nullptr)
-    std::free(tile_coords_aux_);
-  tile_coords_aux_ = std::malloc(coords_size);
 
   return Status::Ok();
 }
@@ -630,9 +621,9 @@ unsigned int Hyperspace::subarray_overlap(
 
 template <class T>
 int Hyperspace::tile_cell_order_cmp(
-    const T* coords_a, const T* coords_b) const {
+    const T* coords_a, const T* coords_b, T* tile_coords) const {
   // Check tile order
-  int tile_cmp = tile_order_cmp(coords_a, coords_b);
+  int tile_cmp = tile_order_cmp(coords_a, coords_b, tile_coords);
   if (tile_cmp)
     return tile_cmp;
 
@@ -652,7 +643,8 @@ const void* Hyperspace::tile_extents() const {
 }
 
 template <typename T>
-inline uint64_t Hyperspace::tile_id(const T* cell_coords) const {
+inline uint64_t Hyperspace::tile_id(
+    const T* cell_coords, T* tile_coords) const {
   // For easy reference
   auto domain = static_cast<const T*>(domain_);
   auto tile_extents = static_cast<const T*>(tile_extents_);
@@ -661,20 +653,10 @@ inline uint64_t Hyperspace::tile_id(const T* cell_coords) const {
   if (tile_extents == nullptr)
     return 0;
 
-  // Calculate tile coordinates
-  // TODO
-  //  T* tile_coords = static_cast<T*>(tile_coords_aux_);
-
-  // TODO: This is VERY inefficient. Fix!
-  auto tile_coords = new T[dim_num_];
-
   for (unsigned int i = 0; i < dim_num_; ++i)
     tile_coords[i] = (cell_coords[i] - domain[2 * i]) / tile_extents[i];
 
   uint64_t tile_id = get_tile_pos(tile_coords);
-
-  // TODO: remove
-  delete[] tile_coords;
 
   // Return
   return tile_id;
@@ -772,10 +754,11 @@ uint64_t Hyperspace::tile_num(const T* range) const {
 }
 
 template <class T>
-int Hyperspace::tile_order_cmp(const T* coords_a, const T* coords_b) const {
+int Hyperspace::tile_order_cmp(
+    const T* coords_a, const T* coords_b, T* tile_coords) const {
   // Calculate tile ids
-  auto id_a = tile_id(coords_a);
-  auto id_b = tile_id(coords_b);
+  auto id_a = tile_id(coords_a, tile_coords);
+  auto id_b = tile_id(coords_b, tile_coords);
 
   // Compare ids
   if (id_a < id_b)
@@ -1546,41 +1529,57 @@ template unsigned int Hyperspace::subarray_overlap<uint64_t>(
     uint64_t* overlap_subarray) const;
 
 template int Hyperspace::tile_cell_order_cmp<int>(
-    const int* coords_a, const int* coords_b) const;
+    const int* coords_a, const int* coords_b, int* tile_coords) const;
 template int Hyperspace::tile_cell_order_cmp<int64_t>(
-    const int64_t* coords_a, const int64_t* coords_b) const;
+    const int64_t* coords_a,
+    const int64_t* coords_b,
+    int64_t* tile_coords) const;
 template int Hyperspace::tile_cell_order_cmp<float>(
-    const float* coords_a, const float* coords_b) const;
+    const float* coords_a, const float* coords_b, float* tile_coords) const;
 template int Hyperspace::tile_cell_order_cmp<double>(
-    const double* coords_a, const double* coords_b) const;
+    const double* coords_a, const double* coords_b, double* tile_coords) const;
 template int Hyperspace::tile_cell_order_cmp<int8_t>(
-    const int8_t* coords_a, const int8_t* coords_b) const;
+    const int8_t* coords_a, const int8_t* coords_b, int8_t* tile_coords) const;
 template int Hyperspace::tile_cell_order_cmp<uint8_t>(
-    const uint8_t* coords_a, const uint8_t* coords_b) const;
+    const uint8_t* coords_a,
+    const uint8_t* coords_b,
+    uint8_t* tile_coords) const;
 template int Hyperspace::tile_cell_order_cmp<int16_t>(
-    const int16_t* coords_a, const int16_t* coords_b) const;
+    const int16_t* coords_a,
+    const int16_t* coords_b,
+    int16_t* tile_coords) const;
 template int Hyperspace::tile_cell_order_cmp<uint16_t>(
-    const uint16_t* coords_a, const uint16_t* coords_b) const;
+    const uint16_t* coords_a,
+    const uint16_t* coords_b,
+    uint16_t* tile_coords) const;
 template int Hyperspace::tile_cell_order_cmp<uint32_t>(
-    const uint32_t* coords_a, const uint32_t* coords_b) const;
+    const uint32_t* coords_a,
+    const uint32_t* coords_b,
+    uint32_t* tile_coords) const;
 template int Hyperspace::tile_cell_order_cmp<uint64_t>(
-    const uint64_t* coords_a, const uint64_t* coords_b) const;
+    const uint64_t* coords_a,
+    const uint64_t* coords_b,
+    uint64_t* tile_coords) const;
 
-template uint64_t Hyperspace::tile_id<int>(const int* cell_coords) const;
+template uint64_t Hyperspace::tile_id<int>(
+    const int* cell_coords, int* tile_coords) const;
 template uint64_t Hyperspace::tile_id<int64_t>(
-    const int64_t* cell_coords) const;
-template uint64_t Hyperspace::tile_id<float>(const float* cell_coords) const;
-template uint64_t Hyperspace::tile_id<double>(const double* cell_coords) const;
-template uint64_t Hyperspace::tile_id<int8_t>(const int8_t* cell_coords) const;
+    const int64_t* cell_coords, int64_t* tile_coords) const;
+template uint64_t Hyperspace::tile_id<float>(
+    const float* cell_coords, float* tile_coords) const;
+template uint64_t Hyperspace::tile_id<double>(
+    const double* cell_coords, double* tile_coords) const;
+template uint64_t Hyperspace::tile_id<int8_t>(
+    const int8_t* cell_coords, int8_t* tile_coords) const;
 template uint64_t Hyperspace::tile_id<uint8_t>(
-    const uint8_t* cell_coords) const;
+    const uint8_t* cell_coords, uint8_t* tile_coords) const;
 template uint64_t Hyperspace::tile_id<int16_t>(
-    const int16_t* cell_coords) const;
+    const int16_t* cell_coords, int16_t* tile_coords) const;
 template uint64_t Hyperspace::tile_id<uint16_t>(
-    const uint16_t* cell_coords) const;
+    const uint16_t* cell_coords, uint16_t* tile_coords) const;
 template uint64_t Hyperspace::tile_id<uint32_t>(
-    const uint32_t* cell_coords) const;
+    const uint32_t* cell_coords, uint32_t* tile_coords) const;
 template uint64_t Hyperspace::tile_id<uint64_t>(
-    const uint64_t* cell_coords) const;
+    const uint64_t* cell_coords, uint64_t* tile_coords) const;
 
 }  // namespace tiledb

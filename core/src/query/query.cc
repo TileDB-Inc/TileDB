@@ -531,6 +531,7 @@ Status Query::open_fragments(const std::vector<FragmentMetadata*>& metadata) {
     RETURN_NOT_OK(fragment->init(meta->fragment_uri(), meta));
     fragments_.emplace_back(fragment);
   }
+
   return Status::Ok();
 }
 
@@ -598,4 +599,5 @@ void Query::zero_out_buffer_sizes(uint64_t* buffer_sizes) const {
       buffer_i += 2;
   }
 }
+
 }  // namespace tiledb

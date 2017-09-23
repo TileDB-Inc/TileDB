@@ -74,11 +74,9 @@ WriteState::WriteState(const Fragment* fragment)
   for (unsigned int i = 0; i < attribute_num; ++i)
     buffer_var_offsets_[i] = 0;
 
-  // Initialize current MBR
   mbr_ = std::malloc(2 * coords_size);
-
-  // Initialize current bounding coordinates
   bounding_coords_ = std::malloc(2 * coords_size);
+  tile_coords_aux_ = std::malloc(coords_size);
 }
 
 WriteState::~WriteState() {
@@ -94,13 +92,14 @@ WriteState::~WriteState() {
   for (auto& tile_io_var : tile_io_var_)
     delete tile_io_var;
 
-  // Free current MBR
   if (mbr_ != nullptr)
     std::free(mbr_);
 
-  // Free current bounding coordinates
   if (bounding_coords_ != nullptr)
     std::free(bounding_coords_);
+
+  if (tile_coords_aux_ != nullptr)
+    std::free(tile_coords_aux_);
 }
 
 /* ****************************** */
@@ -353,7 +352,8 @@ void WriteState::sort_cell_pos(
     std::vector<uint64_t> ids;
     ids.resize(buffer_cell_num);
     for (uint64_t i = 0; i < buffer_cell_num; ++i)
-      ids[i] = hyperspace->tile_id<T>(&buffer_T[i * dim_num]);
+      ids[i] =
+          hyperspace->tile_id<T>(&buffer_T[i * dim_num], (T*)tile_coords_aux_);
     // Sort cell positions
     switch (cell_order) {
       case Layout::ROW_MAJOR:

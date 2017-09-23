@@ -114,6 +114,9 @@ class WriteState {
   /** The MBR of the tile currently being populated. */
   void* mbr_;
 
+  /** Auxiliary variable used whenever a tile id needs to be computed. */
+  void* tile_coords_aux_;
+
   /** The number of cells written in the current tile for each attribute. */
   std::vector<uint64_t> tile_cell_num_;
 

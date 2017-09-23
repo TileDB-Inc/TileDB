@@ -185,6 +185,10 @@ Status ArrayMetadata::check() const {
     return LOG_STATUS(Status::ArrayMetadataError(
         "Array metadata check failed; No attributes provided"));
 
+  // TODO: all tile extents null, or all should have values
+  // TODO: alternatively, null extents should be handled in Dimension
+  // TODO: and set equal to the domain range
+
   // TODO: attribute and dimension names must be unique and not
   // TODO: equal to reserved names
 

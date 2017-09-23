@@ -67,10 +67,13 @@ class PQFragmentCellRange {
    *
    * @param array_metadata The metadata of the array.
    * @param fragment_read_states The read states of all fragments in the array.
+   * @param tile_coords_aux Auxiliary variable used in computing tile ids to
+   *     boost performance.
    */
   PQFragmentCellRange(
       const ArrayMetadata* array_metadata,
-      const std::vector<ReadState*>* fragment_read_states);
+      const std::vector<ReadState*>* fragment_read_states,
+      T* tile_coords_aux);
 
   /* ********************************* */
   /*                API                */
@@ -179,6 +182,9 @@ class PQFragmentCellRange {
 
   /** Stores the read state of each fragment in the array. */
   const std::vector<ReadState*>* fragment_read_states_;
+
+  /** Auxiliary variable used whenever a tile id needs to be computed. */
+  T* tile_coords_aux_;
 };
 
 }  // namespace tiledb
