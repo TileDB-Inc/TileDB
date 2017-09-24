@@ -1325,28 +1325,32 @@ void ReadState::init_overflow() {
 }
 
 void ReadState::init_tiles() {
+  auto dim_num = array_metadata_->hyperspace()->dim_num();
+
   for (unsigned int i = 0; i < attribute_num_; ++i) {
     const Attribute* attr = array_metadata_->attribute(i);
     bool var_size = attr->var_size();
     uint64_t cell_size = (var_size) ? array_metadata_->type_size(i) :
                                       array_metadata_->cell_size(i);
     tiles_.emplace_back(
-        new Tile(attr->type(), attr->compressor(), attr->cell_size()));
+        new Tile(attr->type(), attr->compressor(), attr->cell_size(), 0));
 
     if (var_size)
       tiles_var_.emplace_back(
-          new Tile(attr->type(), attr->compressor(), cell_size));
+          new Tile(attr->type(), attr->compressor(), cell_size, 0));
     else
       tiles_var_.emplace_back(nullptr);
   }
   tiles_.emplace_back(new Tile(
       array_metadata_->coords_type(),
       array_metadata_->coords_compression(),
-      array_metadata_->coords_size()));
+      array_metadata_->coords_size(),
+      dim_num));
   tiles_.emplace_back(new Tile(
       array_metadata_->coords_type(),
       array_metadata_->coords_compression(),
-      array_metadata_->coords_size()));
+      array_metadata_->coords_size(),
+      dim_num));
 }
 
 void ReadState::init_tile_io() {

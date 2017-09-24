@@ -89,15 +89,27 @@ Status TileIO::read(
       attr_uri_, file_offset, buffer_->data(), compressed_size));
 
   // Decompress tile
+  RETURN_NOT_OK(decompress_tile(tile, tile_size));
+
+  // Zip coordinates if this is a coordinates tile
+  if (tile->stores_coords())
+    tile->zip_coordinates();
+
   // TODO: here we will put all other filters, and potentially employ chunking
   // TODO: choose the proper buffer based on all filters, not just compression
-  return decompress_tile(tile, tile_size);
+
+  return Status::Ok();
 }
 
 Status TileIO::write(Tile* tile, uint64_t* bytes_written) {
-  // Compress tile
   // TODO: here we will put all other filters, and potentially employ chunking
   // TODO: choose the proper buffer based on all filters, not just compression
+
+  // Split coordinates if this is a coordinates tile
+  if (tile->stores_coords())
+    tile->split_coordinates();
+
+  // Compress tile
   RETURN_NOT_OK(compress_tile(tile));
 
   // Prepare to write

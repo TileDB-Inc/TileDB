@@ -238,7 +238,8 @@ void WriteState::init_tiles() {
         attr->compressor(),
         attr->compression_level(),
         fragment_->tile_size(i),
-        attr->cell_size()));
+        attr->cell_size(),
+        0));
 
     if (var_size) {
       tiles_var_.emplace_back(new Tile(
@@ -246,7 +247,8 @@ void WriteState::init_tiles() {
           attr->compressor(),
           attr->compression_level(),
           fragment_->tile_size(i),
-          cell_size));
+          cell_size,
+          0));
     } else {
       tiles_var_.emplace_back(nullptr);
     }
@@ -256,7 +258,8 @@ void WriteState::init_tiles() {
       array_metadata->coords_compression(),
       array_metadata->coords_compression_level(),
       fragment_->tile_size(array_metadata->attribute_num()),
-      array_metadata->coords_size()));
+      array_metadata->coords_size(),
+      array_metadata->hyperspace()->dim_num()));
 }
 
 void WriteState::init_tile_io() {

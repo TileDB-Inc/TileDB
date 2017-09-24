@@ -54,8 +54,13 @@ class Tile {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  Tile();
+  /**
+   * Constructor.
+   *
+   * @param dim_num The number of dimensions in case the tile stores
+   *      coordinates.
+   */
+  explicit Tile(unsigned int dim_num);
 
   /**
    * Constructor.
@@ -65,13 +70,16 @@ class Tile {
    * @param compression_level The compression level.
    * @param tile_size The tile size.
    * @param cell_size The cell size.
+   * @param dim_num The number of dimensions in case the tile stores
+   *      coordinates.
    */
   Tile(
       Datatype type,
       Compressor compression,
       int compression_level,
       uint64_t tile_size,
-      uint64_t cell_size);
+      uint64_t cell_size,
+      unsigned int dim_num);
 
   /**
    * Constructor.
@@ -79,8 +87,14 @@ class Tile {
    * @param type The type of the data to be stored.
    * @param compression The compression type.
    * @param cell_size The cell size.
+   * @param dim_num The number of dimensions in case the tile stores
+   *      coordinates.
    */
-  Tile(Datatype type, Compressor compression, uint64_t cell_size);
+  Tile(
+      Datatype type,
+      Compressor compression,
+      uint64_t cell_size,
+      unsigned int dim_num);
 
   /** Destructor. */
   ~Tile();
@@ -107,6 +121,9 @@ class Tile {
   /** Returns the tile data. */
   void* data() const;
 
+  /** Returns the number of dimensions (0 if this is an attribute tile). */
+  unsigned int dim_num() const;
+
   /** Checks if the tile is empty. */
   bool empty() const;
 
@@ -127,6 +144,15 @@ class Tile {
 
   /** Returns the tile size. */
   uint64_t size() const;
+
+  /**
+   * Splits the coordinates such that all the values of each dimension
+   * appear contiguously in the buffer.
+   */
+  void split_coordinates();
+
+  /** Returns *true* if the tile stores coordinates. */
+  bool stores_coords() const;
 
   /** Returns the tile data type. */
   Datatype type() const;
@@ -160,6 +186,12 @@ class Tile {
    */
   Status write_with_shift(ConstBuffer* buf, uint64_t offset);
 
+  /**
+   * Zips the coordinate values such that a cell's coordinates across
+   * all dimensions appear contiguously in the buffer.
+   */
+  void zip_coordinates();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -176,6 +208,12 @@ class Tile {
 
   /** The compression level. */
   int compression_level_;
+
+  /**
+   * The number of dimensions, in case the tile stores coordinates. It is 0
+   * in case the tile stores attributes.
+   */
+  unsigned int dim_num_;
 
   /** The current offset in the tile. */
   uint64_t offset_;
