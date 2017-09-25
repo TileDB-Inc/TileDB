@@ -96,12 +96,12 @@ bool both_slashes(char a, char b) {
 Status create_dir(const std::string& path) {
   // If the directory does not exist, create it
   if (posix::is_dir(path)) {
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         std::string("Cannot create directory '") + path +
         "'; Directory already exists"));
   }
   if (mkdir(path.c_str(), S_IRWXU) != 0) {
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         std::string("Cannot create directory '") + path + "'; " +
         strerror(errno)));
   }
@@ -111,7 +111,7 @@ Status create_dir(const std::string& path) {
 Status create_file(const std::string& filename) {
   int fd = ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, S_IRWXU);
   if (fd == -1 || ::close(fd) != 0) {
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         std::string("Failed to create file '") + filename + "'; " +
         strerror(errno)));
   }
@@ -132,7 +132,7 @@ std::string current_dir() {
 Status delete_file(const std::string& path) {
   if (remove(path.c_str()) != 0) {
     return LOG_STATUS(
-        Status::OSError(std::string("Cannot delete file; ") + strerror(errno)));
+        Status::IOError(std::string("Cannot delete file; ") + strerror(errno)));
   }
   return Status::Ok();
 }
@@ -141,7 +141,7 @@ Status file_size(const std::string& path, uint64_t* size) {
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
     return LOG_STATUS(
-        Status::OSError("Cannot get file size; File opening error"));
+        Status::IOError("Cannot get file size; File opening error"));
   }
 
   struct stat st = {};
@@ -172,7 +172,7 @@ Status filelock_lock(const std::string& filename, int* fd, bool shared) {
   }
   // Acquire the lock
   if (fcntl(*fd, F_SETLKW, &fl) == -1) {
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         std::string("Cannot lock consolidation filelock '") + filename));
   }
   return Status::Ok();
@@ -180,7 +180,7 @@ Status filelock_lock(const std::string& filename, int* fd, bool shared) {
 
 Status filelock_unlock(int fd) {
   if (::close(fd) == -1)
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         "Cannot unlock consolidation filelock: Cannot close filelock"));
   return Status::Ok();
 }
@@ -207,7 +207,7 @@ Status ls(const std::string& path, std::vector<std::string>* paths) {
   }
   // close parent directory
   if (closedir(dir) != 0) {
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         std::string("Cannot close parent directory; ") + strerror(errno)));
   }
   return Status::Ok();
@@ -216,7 +216,7 @@ Status ls(const std::string& path, std::vector<std::string>* paths) {
 Status move_dir(const std::string& old_path, const std::string& new_path) {
   if (rename(old_path.c_str(), new_path.c_str()) != 0) {
     return LOG_STATUS(
-        Status::OSError(std::string("Cannot move path: ") + strerror(errno)));
+        Status::IOError(std::string("Cannot move path: ") + strerror(errno)));
   }
   return Status::Ok();
 }
@@ -281,14 +281,14 @@ Status read_from_file(
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
     return LOG_STATUS(
-        Status::OSError("Cannot read from file; File opening error"));
+        Status::IOError("Cannot read from file; File opening error"));
   }
 
   // Read
   lseek(fd, offset, SEEK_SET);
   int64_t bytes_read = ::read(fd, buffer, nbytes);
   if (bytes_read != int64_t(nbytes)) {
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         std::string("Cannot read from file '") + path.c_str() +
         "'; File reading error"));
   }
@@ -296,7 +296,7 @@ Status read_from_file(
   // Close file
   if (close(fd)) {
     return LOG_STATUS(
-        Status::OSError("Cannot read from file; File closing error"));
+        Status::IOError("Cannot read from file; File closing error"));
   }
 
   return Status::Ok();
@@ -306,7 +306,7 @@ Status read_from_file(const std::string& path, Buffer** buff) {
   // Open file
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         std::string("Cannot read file '") + path + "'; File open error"));
   }
 
@@ -322,7 +322,7 @@ Status read_from_file(const std::string& path, Buffer** buff) {
   if (bytes_read != int64_t(nbytes)) {
     delete *buff;
     return LOG_STATUS(
-        Status::OSError("Cannot read from file; File reading error"));
+        Status::IOError("Cannot read from file; File reading error"));
   }
 
   return Status::Ok();
@@ -340,19 +340,19 @@ Status sync(const std::string& path) {
 
   // Handle error
   if (fd == -1) {
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         std::string("Cannot sync file '") + path + "'; File opening error"));
   }
 
   // Sync
   if (fsync(fd) != 0) {
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         std::string("Cannot sync file '") + path + "'; File syncing error"));
   }
 
   // Close file
   if (close(fd) != 0) {
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         std::string("Cannot sync file '") + path + "'; File closing error"));
   }
 
@@ -365,7 +365,7 @@ Status write_to_file(
   // Open file
   int fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, S_IRWXU);
   if (fd == -1) {
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         std::string("Cannot write to file '") + path +
         "'; File opening error"));
   }
@@ -376,7 +376,7 @@ Status write_to_file(
   while (buffer_size > constants::max_write_bytes) {
     bytes_written = ::write(fd, buffer, constants::max_write_bytes);
     if (bytes_written != constants::max_write_bytes) {
-      return LOG_STATUS(Status::OSError(
+      return LOG_STATUS(Status::IOError(
           std::string("Cannot write to file '") + path +
           "'; File writing error"));
     }
@@ -384,14 +384,14 @@ Status write_to_file(
   }
   bytes_written = ::write(fd, buffer, buffer_size);
   if (bytes_written != int64_t(buffer_size)) {
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         std::string("Cannot write to file '") + path +
         "'; File writing error"));
   }
 
   // Close file
   if (close(fd) != 0) {
-    return LOG_STATUS(Status::OSError(
+    return LOG_STATUS(Status::IOError(
         std::string("Cannot write to file '") + path +
         "'; File closing error"));
   }
@@ -420,7 +420,7 @@ struct dirent* next_file;
 DIR* dir = opendir(dirname_real.c_str());
 
 if (dir == nullptr) {
-return LOG_STATUS(Status::OSError(
+return LOG_STATUS(Status::IOError(
     std::string("Cannot open directory; ") + strerror(errno)));
 }
 
@@ -429,20 +429,20 @@ if (!strcmp(next_file->d_name, ".") || !strcmp(next_file->d_name, ".."))
   continue;
 filename = dirname_real + "/" + next_file->d_name;
 if (remove(filename.c_str())) {
-  return LOG_STATUS(Status::OSError(
+  return LOG_STATUS(Status::IOError(
       std::string("Cannot delete file; ") + strerror(errno)));
 }
 }
 
 // Close directory
 if (closedir(dir)) {
-return LOG_STATUS(Status::OSError(
+return LOG_STATUS(Status::IOError(
     std::string("Cannot close directory; ") + strerror(errno)));
 }
 
 // Remove directory
 if (rmdir(dirname_real.c_str())) {
-return LOG_STATUS(Status::OSError(
+return LOG_STATUS(Status::IOError(
     std::string("Cannot delete directory; ") + strerror(errno)));
 }
 return Status::Ok();

@@ -119,8 +119,8 @@ std::string Status::code_to_string() const {
     case StatusCode::Metadata:
       type = "[TileDB::Metadata] Error";
       break;
-    case StatusCode::OS:
-      type = "[TileDB::OS] Error";
+    case StatusCode::IO:
+      type = "[TileDB::IO] Error";
       break;
     case StatusCode::Mem:
       type = "[TileDB::Mem] Error";

@@ -86,7 +86,7 @@ enum class StatusCode : char {
   ASRS,  // Array Sorted Read State
   ASWS,  // Array Sorted Write State
   Metadata,
-  OS,
+  IO,
   Mem,
   GZip,
   Compression,
@@ -179,9 +179,9 @@ class Status {
     return Status(StatusCode::Metadata, msg, -1);
   }
 
-  /** Return a OS error class Status with a given message **/
-  static Status OSError(const std::string& msg) {
-    return Status(StatusCode::OS, msg, -1);
+  /** Return a IO error class Status with a given message **/
+  static Status IOError(const std::string& msg) {
+    return Status(StatusCode::IO, msg, -1);
   }
 
   /** Return a Memory error class Status with a given message **/
