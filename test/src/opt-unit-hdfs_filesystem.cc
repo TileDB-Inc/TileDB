@@ -40,7 +40,7 @@
 
 using namespace tiledb;
 
-TEST_CASE("Test HDFS filesystem") {
+TEST_CASE("Test HDFS filesystem", "[hdfs]") {
   hdfsFS fs;
 
   Status st = hdfs::connect(fs);
