@@ -43,8 +43,6 @@
 
 namespace tiledb {
 
-namespace filesystem {
-
 namespace hdfs {
 
 // create a connection to hdfs
@@ -105,8 +103,6 @@ Status ls_dirs(
 Status filesize(const std::string& path, size_t* nbytes, hdfsFS fs);
 
 }  // namespace hdfs
-
-}  // namespace filesystem
 
 }  // namespace tiledb
 
