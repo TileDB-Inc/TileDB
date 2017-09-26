@@ -466,7 +466,7 @@ Status WriteState::write_attr(
   auto tile_io = tile_io_[attribute_id];
 
   // Fill tiles and dispatch them for writing
-  uint64_t bytes_written;
+  uint64_t bytes_written = 0;
   do {
     RETURN_NOT_OK(tile->write(buf));
     if (tile->full()) {

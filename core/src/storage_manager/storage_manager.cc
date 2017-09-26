@@ -241,8 +241,8 @@ Status StorageManager::load(
       array_uri.join_path(constants::array_metadata_filename);
 
   // Read from file
-  auto tile = (Tile*)nullptr;
   auto tile_io = new TileIO(this, array_metadata_uri);
+  auto tile = (Tile*)nullptr;
   RETURN_NOT_OK_ELSE(tile_io->read_generic(&tile, 0), delete tile_io);
 
   // Deserialize
@@ -637,11 +637,11 @@ Status StorageManager::open_array_load_fragment_metadata(
   for (auto& uri : fragment_uris) {
     // Find metadata entry in open array
     auto metadata = open_array->fragment_metadata_get(uri);
-
     // If not found, load metadata and store in open array
     if (metadata == nullptr) {
-      bool dense = !vfs_->is_file(uri.join_path(
-          std::string("/") + constants::coords + constants::file_suffix));
+      URI coords_uri = uri.join_path(
+          std::string("/") + constants::coords + constants::file_suffix);
+      bool dense = !vfs_->is_file(coords_uri);
       metadata = new FragmentMetadata(open_array->array_metadata(), dense, uri);
       RETURN_NOT_OK_ELSE(load(metadata), delete metadata);
       open_array->fragment_metadata_add(metadata);

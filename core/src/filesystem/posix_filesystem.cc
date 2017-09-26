@@ -294,7 +294,6 @@ Status read_from_file(
     return LOG_STATUS(
         Status::IOError("Cannot read from file; File opening error"));
   }
-
   // Read
   lseek(fd, offset, SEEK_SET);
   int64_t bytes_read = ::read(fd, buffer, nbytes);
@@ -303,13 +302,11 @@ Status read_from_file(
         std::string("Cannot read from file '") + path.c_str() +
         "'; File reading error"));
   }
-
   // Close file
   if (close(fd)) {
     return LOG_STATUS(
         Status::IOError("Cannot read from file; File closing error"));
   }
-
   return Status::Ok();
 }
 
