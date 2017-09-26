@@ -676,7 +676,8 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted reads") {
  * Tests random 2D subarray writes.
  */
 
-TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted writes") {
+TEST_CASE_METHOD(
+    DenseArrayFx, "C API: Test random dense sorted writes", "[capi]") {
   // Error code
   int rc;
 
@@ -764,7 +765,7 @@ TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted writes") {
 /**
  * Test random updates in a 2D dense array.
  */
-TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates") {
+TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense updates", "[capi]") {
   // Error code
   int rc;
 
