@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * It shows how to write asynchronoulsy to a dense array. The case of sparse
@@ -34,8 +34,8 @@
 #include "tiledb.h"
 
 // Simply prints the input string to stdout
-void *print_upon_completion(void* s) {
-  printf("%s\n", (char*) s);
+void* print_upon_completion(void* s) {
+  printf("%s\n", (char*)s);
 
   return nullptr;
 }
@@ -46,6 +46,7 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Prepare cell buffers
+  // clang-format off
   int buffer_a1[] =
   {
       0,  1,  2,  3,                                     // Upper left tile
@@ -80,20 +81,21 @@ int main() {
       sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
       sizeof(buffer_a3)
   };
+  // clang-format on
 
   // Create query
   tiledb_query_t* query;
   tiledb_query_create(
-    ctx,
-    &query,
-    "my_dense_array",
-    TILEDB_WRITE,
-    TILEDB_GLOBAL_ORDER,
-    nullptr,
-    nullptr,
-    0,
-    buffers,
-    buffer_sizes);
+      ctx,
+      &query,
+      "my_dense_array",
+      TILEDB_WRITE,
+      TILEDB_GLOBAL_ORDER,
+      nullptr,
+      nullptr,
+      0,
+      buffers,
+      buffer_sizes);
 
   // Submit query asynchronously
   char s[100] = "Query completed";
@@ -104,7 +106,7 @@ int main() {
   tiledb_query_status_t status;
   do {
     tiledb_query_get_status(ctx, query, &status);
-  } while(status != TILEDB_COMPLETED);
+  } while (status != TILEDB_COMPLETED);
 
   // Clean up
   tiledb_query_free(ctx, query);

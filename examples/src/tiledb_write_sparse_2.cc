@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * It shows how to write to a sparse array with two sorted batch writes.
@@ -38,6 +38,7 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Prepare cell buffers - #1
+  // clang-format off
   int buffer_a1[] = { 0, 1, 2 };
   uint64_t buffer_a2[] = { 0, 1, 3, 6, 10, 11, 13, 16 };
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
@@ -57,45 +58,35 @@ int main() {
       sizeof(buffer_a3),
       sizeof(buffer_coords)
   };
+  // clang-format on
 
   // Create query
   tiledb_query_t* query;
   tiledb_query_create(
-    ctx,
-    &query,
-    "my_group/sparse_arrays/my_array_B",
-    TILEDB_WRITE,
-    TILEDB_GLOBAL_ORDER,
-    nullptr,
-    nullptr,
-    0,
-    buffers,
-    buffer_sizes);
+      ctx,
+      &query,
+      "my_group/sparse_arrays/my_array_B",
+      TILEDB_WRITE,
+      TILEDB_GLOBAL_ORDER,
+      nullptr,
+      nullptr,
+      0,
+      buffers,
+      buffer_sizes);
 
   // Submit query - #1
   tiledb_query_submit(ctx, query);
 
   // Prepare cell buffers - #2
-  int buffer_a1_2[] = { 3, 4, 5, 6, 7 };
+  int buffer_a1_2[] = {3, 4, 5, 6, 7};
   uint64_t* buffer_a2_2 = nullptr;
   char* buffer_var_a2_2 = nullptr;
-  float* buffer_a3_2 = nullptr; 
-  int64_t buffer_coords_2[] = { 1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4 };
-  void* buffers_2[] =
-  { 
-       buffer_a1_2, 
-       buffer_a2_2, 
-       buffer_var_a2_2, 
-       buffer_a3_2, 
-       buffer_coords_2 };
-  uint64_t buffer_sizes_2[] =
-  { 
-      sizeof(buffer_a1_2),  
-      0,
-      0,
-      0,
-      sizeof(buffer_coords_2)
-  };
+  float* buffer_a3_2 = nullptr;
+  int64_t buffer_coords_2[] = {1, 4, 2, 3, 3, 1, 4, 2, 3, 3, 3, 4};
+  void* buffers_2[] = {
+      buffer_a1_2, buffer_a2_2, buffer_var_a2_2, buffer_a3_2, buffer_coords_2};
+  uint64_t buffer_sizes_2[] = {
+      sizeof(buffer_a1_2), 0, 0, 0, sizeof(buffer_coords_2)};
 
   // Submit query - #2
   tiledb_query_reset_buffers(ctx, query, buffers_2, buffer_sizes_2);

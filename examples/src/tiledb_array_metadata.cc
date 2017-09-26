@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * Explores the C API for the array metadata.
@@ -173,16 +173,24 @@ int main() {
   tiledb_array_metadata_get_capacity(ctx, array_metadata, &capacity);
   tiledb_array_metadata_get_tile_order(ctx, array_metadata, &tile_order);
   tiledb_array_metadata_get_cell_order(ctx, array_metadata, &cell_order);
-  tiledb_array_metadata_get_coords_compressor(ctx, array_metadata, &coords_compressor, &coords_compression_level);
+  tiledb_array_metadata_get_coords_compressor(
+      ctx, array_metadata, &coords_compressor, &coords_compression_level);
 
   // Print from getters
   printf("\nFrom getters:\n");
   printf("- Array name: %s\n", array_name);
-  printf("- Array type: %s\n", (array_type == TILEDB_DENSE) ? "dense" : "sparse");
-  printf("- Cell order: %s\n", (cell_order == TILEDB_ROW_MAJOR) ? "row-major" : "col-major");
-  printf("- Tile order: %s\n", (tile_order == TILEDB_ROW_MAJOR) ? "row-major" : "col-major");
+  printf(
+      "- Array type: %s\n", (array_type == TILEDB_DENSE) ? "dense" : "sparse");
+  printf(
+      "- Cell order: %s\n",
+      (cell_order == TILEDB_ROW_MAJOR) ? "row-major" : "col-major");
+  printf(
+      "- Tile order: %s\n",
+      (tile_order == TILEDB_ROW_MAJOR) ? "row-major" : "col-major");
   printf("- Capacity: %llu\n", capacity);
-  printf("- Coordinates compressor: %s\n", (coords_compressor == TILEDB_BLOSC_ZSTD) ? "BLOSC_ZSTD" : "error");
+  printf(
+      "- Coordinates compressor: %s\n",
+      (coords_compressor == TILEDB_BLOSC_ZSTD) ? "BLOSC_ZSTD" : "error");
   printf("- Coordinates compression level: %d\n", coords_compression_level);
 
   // Print the attribute names using iterators
@@ -193,7 +201,7 @@ int main() {
   tiledb_attribute_iter_create(ctx, array_metadata, &attr_iter);
   int done;
   tiledb_attribute_iter_done(ctx, attr_iter, &done);
-  while(done != 1) {
+  while (done != 1) {
     tiledb_attribute_iter_here(ctx, attr_iter, &attr);
     tiledb_attribute_get_name(ctx, attr, &attr_name);
     printf("* %s\n", attr_name);
@@ -218,4 +226,3 @@ int main() {
 
   return 0;
 }
-

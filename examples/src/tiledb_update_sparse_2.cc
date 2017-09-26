@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * It shows how to update a sparse array, including how to handle
@@ -57,19 +57,19 @@ int main() {
   // Prepare cell buffers
   int buffer_a1[] = { 107, TILEDB_EMPTY_INT32, 106, 105 };
   size_t buffer_a2[] = { 0, 3, 4, 5 };
-  const char buffer_var_a2[] = 
+  const char buffer_var_a2[] =
   { 'y', 'y', 'y', TILEDB_EMPTY_CHAR, 'w', 'v', 'v', 'v', 'v' };
-  float buffer_a3[] = 
-  { 
-    107.1,  107.2,  TILEDB_EMPTY_FLOAT32,  TILEDB_EMPTY_FLOAT32,  
-    106.1,  106.2,  105.1,  105.2 
+  float buffer_a3[] =
+  {
+    107.1,  107.2,  TILEDB_EMPTY_FLOAT32,  TILEDB_EMPTY_FLOAT32,
+    106.1,  106.2,  105.1,  105.2
   };
   int64_t buffer_coords[] = { 3, 4, 3, 2, 3, 3, 4, 1 };
-  const void* buffers[] = 
+  const void* buffers[] =
       { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
-  size_t buffer_sizes[] = 
-  { 
-      sizeof(buffer_a1),  
+  size_t buffer_sizes[] =
+  {
+      sizeof(buffer_a1),
       sizeof(buffer_a2),
       sizeof(buffer_var_a2),
       sizeof(buffer_a3),

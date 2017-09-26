@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * It shows how to create a dense array.
@@ -105,14 +105,16 @@ int main() {
   tiledb_attribute_set_cell_val_num(ctx, a3, 2);
 
   // Domain and tile extents
-  int64_t domain[] = { 1, 4, 1, 4 };
-  int64_t tile_extents[] = { 2, 2 };
+  int64_t domain[] = {1, 4, 1, 4};
+  int64_t tile_extents[] = {2, 2};
 
   // Hyperspace
   tiledb_hyperspace_t* hyperspace;
   tiledb_hyperspace_create(ctx, &hyperspace, TILEDB_INT64);
-  tiledb_hyperspace_add_dimension(ctx, hyperspace, "d1", &domain[0], &tile_extents[0]);
-  tiledb_hyperspace_add_dimension(ctx, hyperspace, "d2", &domain[2], &tile_extents[1]);
+  tiledb_hyperspace_add_dimension(
+      ctx, hyperspace, "d1", &domain[0], &tile_extents[0]);
+  tiledb_hyperspace_add_dimension(
+      ctx, hyperspace, "d2", &domain[2], &tile_extents[1]);
 
   // Create array_metadata metadata
   tiledb_array_metadata_t* array_metadata;
@@ -124,7 +126,7 @@ int main() {
   tiledb_array_metadata_add_attribute(ctx, array_metadata, a3);
 
   // Check array metadata
-  if(tiledb_array_metadata_check(ctx, array_metadata) != TILEDB_OK) {
+  if (tiledb_array_metadata_check(ctx, array_metadata) != TILEDB_OK) {
     printf("Invalid array metadata\n");
     return -1;
   }

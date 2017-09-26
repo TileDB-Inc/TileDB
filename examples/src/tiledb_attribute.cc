@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  *
@@ -97,7 +97,9 @@ int main() {
   printf("- Type: %s\n", (attr_type == TILEDB_INT64) ? "INT64" : "Error");
   printf("- Compressor: %s\n", (attr_cmp == TILEDB_BLOSC) ? "BLOSC" : "Error");
   printf("- Compression level: %u\n", attr_cmp_l);
-  printf("- Cell val num: %s\n", (attr_cnum == tiledb_var_num()) ? "var" : "Error");
+  printf(
+      "- Cell val num: %s\n",
+      (attr_cnum == tiledb_var_num()) ? "var" : "Error");
 
   // Clean up
   tiledb_attribute_free(ctx, attr);

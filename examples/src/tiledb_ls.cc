@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,15 +24,15 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * It shows how to explore the contents of a TileDB directory.
  */
 
-#include "tiledb.h"
 #include <cstdio>
 #include <cstdlib>
+#include "tiledb.h"
 
 int main(int argc, char** argv) {
   /* TODO: this will be refactored
@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
     else if(dir_types[i] == TILEDB_GROUP)
       printf("GROUP\n");
   }
- 
+
   // Clean up
   for(int i=0; i<dir_num; ++i)
     free(dirs[i]);
