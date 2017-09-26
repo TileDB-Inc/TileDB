@@ -1,5 +1,5 @@
 /**
- * @file   tiledb_hyperspace.cc
+ * @file   tiledb_domain.cc
  *
  * @section LICENSE
  *
@@ -28,11 +28,11 @@
  * @section DESCRIPTION
  *
  *
- * Explores the C API for handling a TileDB array hyperspace.
+ * Explores the C API for handling a TileDB array domain.
  *
  * Program output:
  *
- *     $ ./tiledb_hyperspace
+ *     $ ./tiledb_domain
  *       First dump:
  *       === Hyperspace ===
  *       - Dimensions type: UINT64
@@ -70,25 +70,23 @@ int main() {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Create hyperspace
+  // Create domain
   uint64_t domain_d1[] = {0, 1000};
   uint64_t domain_d2[] = {100, 1000};
   uint64_t tile_extent_d1 = 10;
   uint64_t tile_extent_d2 = 5;
-  tiledb_hyperspace_t* hyperspace;
-  tiledb_hyperspace_create(ctx, &hyperspace, TILEDB_UINT64);
-  tiledb_hyperspace_add_dimension(
-      ctx, hyperspace, "d1", domain_d1, &tile_extent_d1);
-  tiledb_hyperspace_add_dimension(
-      ctx, hyperspace, "d2", domain_d2, &tile_extent_d2);
+  tiledb_domain_t* domain;
+  tiledb_domain_create(ctx, &domain, TILEDB_UINT64);
+  tiledb_domain_add_dimension(ctx, domain, "d1", domain_d1, &tile_extent_d1);
+  tiledb_domain_add_dimension(ctx, domain, "d2", domain_d2, &tile_extent_d2);
 
   // Print dimension contents
   printf("First dump:\n");
-  tiledb_hyperspace_dump(ctx, hyperspace, stdout);
+  tiledb_domain_dump(ctx, domain, stdout);
 
   // Get the type
   tiledb_datatype_t type;
-  tiledb_hyperspace_get_type(ctx, hyperspace, &type);
+  tiledb_domain_get_type(ctx, domain, &type);
 
   // Print retrieved info
   printf("\n From getter:\n");
@@ -98,7 +96,7 @@ int main() {
   // Dump dimensions using an iterator
   const tiledb_dimension_t* dim;
   tiledb_dimension_iter_t* dim_it;
-  tiledb_dimension_iter_create(ctx, hyperspace, &dim_it);
+  tiledb_dimension_iter_create(ctx, domain, &dim_it);
   int done;
   tiledb_dimension_iter_done(ctx, dim_it, &done);
   printf("\n From dimension iterator:\n");
@@ -115,7 +113,7 @@ int main() {
 
   // Clean up
   tiledb_dimension_iter_free(ctx, dim_it);
-  tiledb_hyperspace_free(ctx, hyperspace);
+  tiledb_domain_free(ctx, domain);
   tiledb_ctx_free(ctx);
 
   return 0;

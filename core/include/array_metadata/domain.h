@@ -1,5 +1,5 @@
 /**
- * @file   hyperspace.h
+ * @file   domain.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class Hyperspace.
+ * This file defines class Domain.
  */
 
-#ifndef TILEDB_HYPERSPACE_H
-#define TILEDB_HYPERSPACE_H
+#ifndef TILEDB_DOMAIN_H
+#define TILEDB_DOMAIN_H
 
 #include "buffer.h"
 #include "datatype.h"
@@ -43,39 +43,39 @@
 
 namespace tiledb {
 
-/** Defines an array hyperspace, which consists of dimensions. */
-class Hyperspace {
+/** Defines an array domain, which consists of dimensions. */
+class Domain {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** Empty constructor. */
-  Hyperspace();
+  Domain();
 
   /**
    * Constructor.
    *
    * @param type The type of dimensions.
    */
-  explicit Hyperspace(Datatype type);
+  explicit Domain(Datatype type);
 
   /**
-   * Constructor that clones the input hyperspace.
+   * Constructor that clones the input domain.
    *
-   * @param hyperspace The object to clone.
+   * @param domain The object to clone.
    */
-  explicit Hyperspace(const Hyperspace* hyperspace);
+  explicit Domain(const Domain* domain);
 
   /** Destructor. */
-  ~Hyperspace();
+  ~Domain();
 
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
 
   /**
-   * Adds a dimension to the hyperspace.
+   * Adds a dimension to the domain.
    *
    * @param name The dimension name.
    * @param domain The dimension domain.
@@ -115,7 +115,7 @@ class Hyperspace {
   /** Returns the number of dimensions. */
   unsigned int dim_num() const;
 
-  /** Returns the domain. */
+  /** Returns the domain (serialized dimension domains). */
   const void* domain() const;
 
   /** returns the domain along the i-th dimension (nullptr upon error). */
@@ -124,7 +124,7 @@ class Hyperspace {
   /** Returns the i-th dimensions (nullptr upon error). */
   const Dimension* dimension(unsigned int i) const;
 
-  /** Dumps the hyperspace in ASCII format in the selected output. */
+  /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;
 
   /**
@@ -262,10 +262,10 @@ class Hyperspace {
   void get_tile_subarray(const T* tile_coords, T* tile_subarray) const;
 
   /**
-   * Initializes the hyperspace.
+   * Initializes the domain.
    *
-   * @param cell_order The cell order of the array the hyperspace belongs to.
-   * @param tile_order The cell order of the array the hyperspace belongs to.
+   * @param cell_order The cell order of the array the domain belongs to.
+   * @param tile_order The cell order of the array the domain belongs to.
    * @return Status
    */
   Status init(Layout cell_order, Layout tile_order);
@@ -442,17 +442,18 @@ class Hyperspace {
   /** The number of cells per tile. Meaningful only for the **dense** case. */
   uint64_t cell_num_per_tile_;
 
-  /** The cell order of the array the hyperspace belongs to. */
+  /** The cell order of the array the domain belongs to. */
   Layout cell_order_;
 
-  /** The hyperspace dimensions. */
+  /** The domain dimensions. */
   std::vector<Dimension*> dimensions_;
 
   /** The number of dimensions. */
   unsigned int dim_num_;
 
   /**
-   * The array domain. It should contain one [lower, upper] pair per dimension.
+   * The array domain, represented by serializes the dimensions domains.
+   * It should contain one [lower, upper] pair per dimension.
    * The type of the values stored in this buffer should match the dimensions
    * type.
    */
@@ -484,7 +485,7 @@ class Hyperspace {
    */
   std::vector<uint64_t> tile_offsets_row_;
 
-  /** The tile order of the array the hyperspace belongs to. */
+  /** The tile order of the array the domain belongs to. */
   Layout tile_order_;
 
   /** The type of dimensions. */
@@ -725,4 +726,4 @@ class Hyperspace {
 
 }  // namespace tiledb
 
-#endif  // TILEDB_HYPERSPACE_H
+#endif  // TILEDB_DOMAIN_H

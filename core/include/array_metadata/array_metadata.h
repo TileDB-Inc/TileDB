@@ -45,7 +45,7 @@
 #include "constants.h"
 #include "datatype.h"
 #include "dimension.h"
-#include "hyperspace.h"
+#include "domain.h"
 #include "layout.h"
 #include "status.h"
 #include "uri.h"
@@ -214,8 +214,8 @@ class ArrayMetadata {
    */
   Status deserialize(ConstBuffer* buff);
 
-  /** Returns the array hyperspace. */
-  const Hyperspace* hyperspace() const;
+  /** Returns the array domain. */
+  const Domain* domain() const;
 
   /**
    * Initializes the ArrayMetadata object. It also performs a check to see if
@@ -234,8 +234,8 @@ class ArrayMetadata {
   /** Sets the cell order. */
   void set_cell_order(Layout cell_order);
 
-  /** Sets the hyperspace. */
-  void set_hyperspace(Hyperspace* hyperspace);
+  /** Sets the domain. */
+  void set_domain(Domain* domain);
 
   /** Sets the tile order. */
   void set_tile_order(Layout tile_order);
@@ -286,8 +286,8 @@ class ArrayMetadata {
   /** The size (in bytes) of the coordinates. */
   uint64_t coords_size_;
 
-  /** The array hyperspace. */
-  Hyperspace* hyperspace_;
+  /** The array domain. */
+  Domain* domain_;
 
   /**
    * The tile order. It can be one of the following:

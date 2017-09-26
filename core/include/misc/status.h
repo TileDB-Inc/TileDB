@@ -97,7 +97,7 @@ enum class StatusCode : char {
   VFS,
   ConstBuffer,
   Dimension,
-  Hyperspace
+  Domain
 };
 
 class Status {
@@ -239,9 +239,9 @@ class Status {
     return Status(StatusCode::Dimension, msg, -1);
   }
 
-  /** Return a Hyperspace Error error class Status with a given message **/
-  static Status HyperspaceError(const std::string& msg) {
-    return Status(StatusCode::Hyperspace, msg, -1);
+  /** Return a Domain Error error class Status with a given message **/
+  static Status DomainError(const std::string& msg) {
+    return Status(StatusCode::Domain, msg, -1);
   }
 
   /** Returns true iff the status indicates success **/

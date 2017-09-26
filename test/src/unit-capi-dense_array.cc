@@ -175,7 +175,7 @@ struct DenseArrayFx {
     int rc;
 
     // Prepare and set the array metadata object and data structures
-    int64_t domain[] = {domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
+    int64_t dim_domain[] = {domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
 
     // Create attribute
     tiledb_attribute_t* a;
@@ -184,15 +184,15 @@ struct DenseArrayFx {
     //    rc = tiledb_attribute_set_compressor(ctx_, a, TILEDB_GZIP, -1);
     //    REQUIRE(rc == TILEDB_OK);
 
-    // Create hyperspace
-    tiledb_hyperspace_t* hyperspace;
-    rc = tiledb_hyperspace_create(ctx_, &hyperspace, DIM_TYPE);
+    // Create domain
+    tiledb_domain_t* domain;
+    rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_hyperspace_add_dimension(
-        ctx_, hyperspace, DIM1_NAME, &domain[0], &tile_extent_0);
+    rc = tiledb_domain_add_dimension(
+        ctx_, domain, DIM1_NAME, &dim_domain[0], &tile_extent_0);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_hyperspace_add_dimension(
-        ctx_, hyperspace, DIM2_NAME, &domain[2], &tile_extent_1);
+    rc = tiledb_domain_add_dimension(
+        ctx_, domain, DIM2_NAME, &dim_domain[2], &tile_extent_1);
     REQUIRE(rc == TILEDB_OK);
 
     // Create array metadata
@@ -209,8 +209,7 @@ struct DenseArrayFx {
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, a);
     REQUIRE(rc == TILEDB_OK);
-    rc =
-        tiledb_array_metadata_set_hyperspace(ctx_, array_metadata_, hyperspace);
+    rc = tiledb_array_metadata_set_domain(ctx_, array_metadata_, domain);
     REQUIRE(rc == TILEDB_OK);
 
     // Create the array
@@ -220,7 +219,7 @@ struct DenseArrayFx {
     // Clean up
     rc = tiledb_attribute_free(ctx_, a);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_hyperspace_free(ctx_, hyperspace);
+    rc = tiledb_domain_free(ctx_, domain);
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_metadata_free(ctx_, array_metadata_);
     REQUIRE(rc == TILEDB_OK);

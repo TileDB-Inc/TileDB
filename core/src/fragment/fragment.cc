@@ -184,7 +184,7 @@ uint64_t Fragment::tile_size(unsigned int attribute_id) const {
   uint64_t cell_var_offset_size = constants::cell_var_offset_size;
 
   uint64_t cell_num_per_tile =
-      (dense_) ? array_metadata->hyperspace()->cell_num_per_tile() :
+      (dense_) ? array_metadata->domain()->cell_num_per_tile() :
                  array_metadata->capacity();
 
   return (var_size) ?

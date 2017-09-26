@@ -89,7 +89,7 @@ ArraySortedWriteState::ArraySortedWriteState(Query* query)
   // Calculate expanded subarray
   expanded_subarray_ = std::malloc(2 * coords_size_);
   std::memcpy(expanded_subarray_, subarray_, 2 * coords_size_);
-  array_metadata->hyperspace()->expand_domain(expanded_subarray_);
+  array_metadata->domain()->expand_domain(expanded_subarray_);
 
   // Calculate number of buffers
   calculate_buffer_num();
@@ -548,7 +548,7 @@ void ArraySortedWriteState::calculate_cell_slab_info_col_col(
   auto anum = (unsigned int)attribute_ids_.size();
   auto range_overlap = (const T*)tile_slab_info_[id].range_overlap_[tid];
   auto tile_extents =
-      (const T*)query_->array_metadata()->hyperspace()->tile_extents();
+      (const T*)query_->array_metadata()->domain()->tile_extents();
   uint64_t cell_num;
 
   // Calculate number of cells in cell slab
@@ -576,7 +576,7 @@ void ArraySortedWriteState::calculate_cell_slab_info_row_row(
   auto anum = (unsigned int)attribute_ids_.size();
   auto range_overlap = (const T*)tile_slab_info_[id].range_overlap_[tid];
   auto tile_extents =
-      (const T*)query_->array_metadata()->hyperspace()->tile_extents();
+      (const T*)query_->array_metadata()->domain()->tile_extents();
   uint64_t cell_num;
 
   // Calculate number of cells in cell slab
@@ -608,7 +608,7 @@ void ArraySortedWriteState::calculate_cell_slab_info_col_row(
   // For easy reference
   auto anum = (unsigned int)attribute_ids_.size();
   auto tile_extents =
-      (const T*)query_->array_metadata()->hyperspace()->tile_extents();
+      (const T*)query_->array_metadata()->domain()->tile_extents();
 
   // Calculate number of cells in cell slab
   tile_slab_info_[id].cell_slab_num_[tid] = 1;
@@ -637,7 +637,7 @@ void ArraySortedWriteState::calculate_cell_slab_info_row_col(
   // For easy reference
   auto anum = (unsigned int)attribute_ids_.size();
   auto tile_extents =
-      (const T*)query_->array_metadata()->hyperspace()->tile_extents();
+      (const T*)query_->array_metadata()->domain()->tile_extents();
 
   // Calculate number of cells in cell slab
   tile_slab_info_[id].cell_slab_num_[tid] = 1;
@@ -665,7 +665,7 @@ void ArraySortedWriteState::calculate_tile_domain(unsigned int id) {
   // For easy reference
   auto tile_slab = (const T*)tile_slab_norm_[id];
   auto tile_extents =
-      (const T*)query_->array_metadata()->hyperspace()->tile_extents();
+      (const T*)query_->array_metadata()->domain()->tile_extents();
   auto tile_coords = (T*)tile_coords_;
   auto tile_domain = (T*)tile_domain_;
 
@@ -709,7 +709,7 @@ void ArraySortedWriteState::calculate_tile_slab_info_col(unsigned int id) {
   auto tile_domain = (const T*)tile_domain_;
   auto tile_coords = (T*)tile_coords_;
   auto tile_extents =
-      (const T*)query_->array_metadata()->hyperspace()->tile_extents();
+      (const T*)query_->array_metadata()->domain()->tile_extents();
   auto range_overlap = (T**)tile_slab_info_[id].range_overlap_;
   auto tile_slab = (const T*)tile_slab_norm_[id];
   uint64_t tile_offset, tile_cell_num;
@@ -780,7 +780,7 @@ void ArraySortedWriteState::calculate_tile_slab_info_row(unsigned int id) {
   auto tile_domain = (const T*)tile_domain_;
   auto tile_coords = (T*)tile_coords_;
   auto tile_extents =
-      (const T*)query_->array_metadata()->hyperspace()->tile_extents();
+      (const T*)query_->array_metadata()->domain()->tile_extents();
   auto range_overlap = (T**)tile_slab_info_[id].range_overlap_;
   auto tile_slab = (const T*)tile_slab_norm_[id];
   uint64_t tile_offset, tile_cell_num;
@@ -1053,11 +1053,11 @@ Status ArraySortedWriteState::create_copy_state_buffers() {
   uint64_t tile_slab_cell_num = 0;
   Layout layout = query_->layout();
   if (layout == Layout::ROW_MAJOR)
-    tile_slab_cell_num = array_metadata->hyperspace()->tile_slab_row_cell_num(
-        expanded_subarray_);
+    tile_slab_cell_num =
+        array_metadata->domain()->tile_slab_row_cell_num(expanded_subarray_);
   else if (layout == Layout::COL_MAJOR)
-    tile_slab_cell_num = array_metadata->hyperspace()->tile_slab_col_cell_num(
-        expanded_subarray_);
+    tile_slab_cell_num =
+        array_metadata->domain()->tile_slab_col_cell_num(expanded_subarray_);
   else
     assert(0);
 
@@ -1468,7 +1468,7 @@ uint64_t ArraySortedWriteState::get_cell_id(unsigned int aid) {
   // For easy reference
   auto current_coords = (const T*)tile_slab_state_.current_coords_[aid];
   auto tile_extents =
-      (const T*)query_->array_metadata()->hyperspace()->tile_extents();
+      (const T*)query_->array_metadata()->domain()->tile_extents();
   uint64_t tid = tile_slab_state_.current_tile_[aid];
   uint64_t* cell_offset_per_dim =
       tile_slab_info_[copy_id_].cell_offset_per_dim_[tid];
@@ -1489,7 +1489,7 @@ uint64_t ArraySortedWriteState::get_tile_id(unsigned int aid) {
   // For easy reference
   auto current_coords = (const T*)tile_slab_state_.current_coords_[aid];
   auto tile_extents =
-      (const T*)query_->array_metadata()->hyperspace()->tile_extents();
+      (const T*)query_->array_metadata()->domain()->tile_extents();
   uint64_t* tile_offset_per_dim =
       tile_slab_info_[copy_id_].tile_offset_per_dim_;
 
@@ -1554,7 +1554,7 @@ void ArraySortedWriteState::init_tile_slab_info(unsigned int id) {
 
   // Calculate tile number
   uint64_t tile_num =
-      query_->array_metadata()->hyperspace()->tile_num(tile_slab_[id]);
+      query_->array_metadata()->domain()->tile_num(tile_slab_[id]);
 
   // Initializations
   tile_slab_info_[id].cell_offset_per_dim_ = new uint64_t*[tile_num];
@@ -1600,9 +1600,9 @@ bool ArraySortedWriteState::next_tile_slab_col() {
   // For easy reference
   auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
-  auto domain = static_cast<const T*>(array_metadata->hyperspace()->domain());
+  auto domain = static_cast<const T*>(array_metadata->domain()->domain());
   auto tile_extents =
-      static_cast<const T*>(array_metadata->hyperspace()->tile_extents());
+      static_cast<const T*>(array_metadata->domain()->tile_extents());
   T* tile_slab[2];
   auto tile_slab_norm = static_cast<T*>(tile_slab_norm_[copy_id_]);
   for (unsigned int i = 0; i < 2; ++i)
@@ -1671,9 +1671,9 @@ bool ArraySortedWriteState::next_tile_slab_row() {
   // For easy reference
   auto array_metadata = query_->array_metadata();
   auto subarray = static_cast<const T*>(subarray_);
-  auto domain = static_cast<const T*>(array_metadata->hyperspace()->domain());
+  auto domain = static_cast<const T*>(array_metadata->domain()->domain());
   auto tile_extents =
-      static_cast<const T*>(array_metadata->hyperspace()->tile_extents());
+      static_cast<const T*>(array_metadata->domain()->tile_extents());
   T* tile_slab[2];
   auto tile_slab_norm = static_cast<T*>(tile_slab_norm_[copy_id_]);
   for (unsigned int i = 0; i < 2; ++i)
@@ -1753,7 +1753,7 @@ Status ArraySortedWriteState::write_sorted_col() {
   // Check if this can be satisfied with a default write
   if (array_metadata->cell_order() == Layout::COL_MAJOR &&
       !std::memcmp(subarray_, expanded_subarray_, 2 * coords_size_) &&
-      array_metadata->hyperspace()->is_contained_in_tile_slab_row<T>(subarray))
+      array_metadata->domain()->is_contained_in_tile_slab_row<T>(subarray))
     return query_->write(buffers_, buffer_sizes_);
 
   // Iterate over each tile slab
@@ -1783,7 +1783,7 @@ Status ArraySortedWriteState::write_sorted_row() {
   // Check if this can be satisfied with a default write
   if (array_metadata->cell_order() == Layout::ROW_MAJOR &&
       !std::memcmp(subarray_, expanded_subarray_, 2 * coords_size_) &&
-      array_metadata->hyperspace()->is_contained_in_tile_slab_col<T>(subarray))
+      array_metadata->domain()->is_contained_in_tile_slab_col<T>(subarray))
     return query_->write(buffers_, buffer_sizes_);
 
   // Iterate over each tile slab

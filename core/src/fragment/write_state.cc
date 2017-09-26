@@ -256,7 +256,7 @@ void WriteState::init_tiles() {
       array_metadata->coords_compression_level(),
       fragment_->tile_size(array_metadata->attribute_num()),
       array_metadata->coords_size(),
-      array_metadata->hyperspace()->dim_num()));
+      array_metadata->domain()->dim_num()));
 }
 
 void WriteState::init_tile_io() {
@@ -322,7 +322,7 @@ void WriteState::sort_cell_pos(
   uint64_t buffer_cell_num = buffer_size / coords_size;
   Layout cell_order = array_metadata->cell_order();
   auto buffer_T = static_cast<const T*>(buffer);
-  auto hyperspace = array_metadata->hyperspace();
+  auto domain = array_metadata->domain();
 
   // Populate cell_pos
   cell_pos->resize(buffer_cell_num);
@@ -330,7 +330,7 @@ void WriteState::sort_cell_pos(
     (*cell_pos)[i] = i;
 
   // Invoke the proper sort function, based on the cell order
-  if (hyperspace->tile_extents() == nullptr) {  // NO TILE GRID
+  if (domain->tile_extents() == nullptr) {  // NO TILE GRID
     // Sort cell positions
     switch (cell_order) {
       case Layout::ROW_MAJOR:
@@ -353,8 +353,7 @@ void WriteState::sort_cell_pos(
     std::vector<uint64_t> ids;
     ids.resize(buffer_cell_num);
     for (uint64_t i = 0; i < buffer_cell_num; ++i)
-      ids[i] =
-          hyperspace->tile_id<T>(&buffer_T[i * dim_num], (T*)tile_coords_aux_);
+      ids[i] = domain->tile_id<T>(&buffer_T[i * dim_num], (T*)tile_coords_aux_);
     // Sort cell positions
     switch (cell_order) {
       case Layout::ROW_MAJOR:

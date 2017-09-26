@@ -131,14 +131,14 @@ struct ArraySchemaFx {
     REQUIRE(rc == TILEDB_OK);
 
     // Hyperspace
-    tiledb_hyperspace_t* hyperspace;
-    rc = tiledb_hyperspace_create(ctx_, &hyperspace, DIM_TYPE);
+    tiledb_domain_t* domain;
+    rc = tiledb_domain_create(ctx_, &domain, DIM_TYPE);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_hyperspace_add_dimension(
-        ctx_, hyperspace, DIM1_NAME, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
+    rc = tiledb_domain_add_dimension(
+        ctx_, domain, DIM1_NAME, &DIM_DOMAIN[0], &TILE_EXTENTS[0]);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_hyperspace_add_dimension(
-        ctx_, hyperspace, DIM2_NAME, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
+    rc = tiledb_domain_add_dimension(
+        ctx_, domain, DIM2_NAME, &DIM_DOMAIN[2], &TILE_EXTENTS[1]);
     REQUIRE(rc == TILEDB_OK);
 
     // Create array metadata
@@ -158,13 +158,12 @@ struct ArraySchemaFx {
     REQUIRE(rc == TILEDB_OK);
     rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, attr);
     REQUIRE(rc == TILEDB_OK);
-    rc =
-        tiledb_array_metadata_set_hyperspace(ctx_, array_metadata_, hyperspace);
+    rc = tiledb_array_metadata_set_domain(ctx_, array_metadata_, domain);
     REQUIRE(rc == TILEDB_OK);
 
     // Clean up
     tiledb_attribute_free(ctx_, attr);
-    tiledb_hyperspace_free(ctx_, hyperspace);
+    tiledb_domain_free(ctx_, domain);
 
     // Create the array_metadata
     rc = tiledb_array_create(ctx_, array_metadata_);
@@ -274,15 +273,15 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
 
-  // Get hyperspace
-  tiledb_hyperspace_t* hyperspace;
-  rc = tiledb_array_metadata_get_hyperspace(ctx_, array_metadata, &hyperspace);
+  // Get domain
+  tiledb_domain_t* domain;
+  rc = tiledb_array_metadata_get_domain(ctx_, array_metadata, &domain);
   REQUIRE(rc == TILEDB_OK);
 
   // Check first dimension
   int dim_it_done;
   tiledb_dimension_iter_t* dim_it;
-  rc = tiledb_dimension_iter_create(ctx_, hyperspace, &dim_it);
+  rc = tiledb_dimension_iter_create(ctx_, domain, &dim_it);
   REQUIRE(rc == TILEDB_OK);
 
   rc = tiledb_dimension_iter_done(ctx_, dim_it, &dim_it_done);
@@ -352,7 +351,7 @@ TEST_CASE_METHOD(
       "\n"
       "- Coordinates compressor: DOUBLE_DELTA\n" +
       "- Coordinates compression level: -1\n\n" +
-      "=== Hyperspace ===\n"
+      "=== Domain ===\n"
       "- Dimensions type: " +
       DIM_TYPE_STR + "\n\n" + "### Dimension ###\n" + "- Name: " + DIM1_NAME +
       "\n" + "- Domain: " + DIM1_DOMAIN_STR + "\n" +
@@ -380,7 +379,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_dimension_iter_free(ctx_, dim_it);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_hyperspace_free(ctx_, hyperspace);
+  rc = tiledb_domain_free(ctx_, domain);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_metadata_free(ctx_, array_metadata);
   REQUIRE(rc == TILEDB_OK);

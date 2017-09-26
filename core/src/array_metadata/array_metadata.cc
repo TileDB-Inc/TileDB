@@ -56,7 +56,7 @@ ArrayMetadata::ArrayMetadata() {
       constants::cell_var_offsets_compression_level;
   coords_compression_ = constants::coords_compression;
   coords_compression_level_ = constants::coords_compression_level;
-  hyperspace_ = nullptr;
+  domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
 }
 
@@ -71,7 +71,7 @@ ArrayMetadata::ArrayMetadata(const ArrayMetadata* array_metadata) {
   coords_compression_ = array_metadata->coords_compression_;
   coords_compression_level_ = array_metadata->coords_compression_level_;
   coords_size_ = array_metadata->coords_size_;
-  hyperspace_ = array_metadata->hyperspace_;
+  domain_ = array_metadata->domain_;
   tile_order_ = array_metadata->tile_order_;
 }
 
@@ -86,7 +86,7 @@ ArrayMetadata::ArrayMetadata(const URI& uri) {
       constants::cell_var_offsets_compression_level;
   coords_compression_ = constants::coords_compression;
   coords_compression_level_ = constants::coords_compression_level;
-  hyperspace_ = nullptr;
+  domain_ = nullptr;
   tile_order_ = Layout::ROW_MAJOR;
 }
 
@@ -246,7 +246,7 @@ uint64_t ArrayMetadata::coords_size() const {
 }
 
 Datatype ArrayMetadata::coords_type() const {
-  return hyperspace_->type();
+  return domain_->type();
 }
 
 bool ArrayMetadata::dense() const {
@@ -254,11 +254,11 @@ bool ArrayMetadata::dense() const {
 }
 
 const Dimension* ArrayMetadata::dimension(unsigned int i) const {
-  return hyperspace_->dimension(i);
+  return domain_->dimension(i);
 }
 
 unsigned int ArrayMetadata::dim_num() const {
-  return hyperspace_->dim_num();
+  return domain_->dim_num();
 }
 
 void ArrayMetadata::dump(FILE* out) const {
@@ -280,8 +280,8 @@ void ArrayMetadata::dump(FILE* out) const {
       "- Coordinates compression level: %d\n\n",
       coords_compression_level_);
 
-  if (hyperspace_ != nullptr)
-    hyperspace_->dump(out);
+  if (domain_ != nullptr)
+    domain_->dump(out);
 
   for (auto& attr : attributes_) {
     fprintf(out, "\n");
@@ -316,7 +316,7 @@ Status ArrayMetadata::get_attribute_ids(
 // coords_compression_level (int)
 // cell_var_offsets_compression (char)
 // cell_var_offsets_compression_level (int)
-// hyperspace
+// domain
 // attribute_num (unsigned int)
 //   attribute #1
 //   attribute #2
@@ -350,8 +350,8 @@ Status ArrayMetadata::serialize(Buffer* buff) const {
   RETURN_NOT_OK(buff->write(&offset_compressor, sizeof(char)));
   RETURN_NOT_OK(buff->write(&cell_var_offsets_compression_level_, sizeof(int)));
 
-  // Write hyperspace
-  hyperspace_->serialize(buff);
+  // Write domain
+  domain_->serialize(buff);
 
   // Write attributes
   RETURN_NOT_OK(buff->write(&attribute_num_, sizeof(unsigned int)));
@@ -374,7 +374,7 @@ Datatype ArrayMetadata::type(unsigned int i) const {
   if (i < attribute_num_)
     return attributes_[i]->type();
 
-  return hyperspace_->type();
+  return domain_->type();
 }
 
 uint64_t ArrayMetadata::type_size(unsigned int i) const {
@@ -383,7 +383,7 @@ uint64_t ArrayMetadata::type_size(unsigned int i) const {
   if (i < attribute_num_)
     return datatype_size(attributes_[i]->type());
 
-  return datatype_size(hyperspace_->type());
+  return datatype_size(domain_->type());
 }
 
 bool ArrayMetadata::var_size(unsigned int attribute_id) const {
@@ -411,7 +411,7 @@ void ArrayMetadata::add_attribute(const Attribute* attr) {
 // coords_compression_level (int)
 // cell_var_offsets_compression (char)
 // cell_var_offsets_compression_level (int)
-// hyperspace
+// domain
 // attribute_num (unsigned int)
 //   attribute #1
 //   attribute #2
@@ -457,9 +457,9 @@ Status ArrayMetadata::deserialize(ConstBuffer* buff) {
   cell_var_offsets_compression_ = static_cast<Compressor>(offsets_compressor);
   RETURN_NOT_OK(buff->read(&cell_var_offsets_compression_level_, sizeof(int)));
 
-  // Load hyperspace
-  hyperspace_ = new Hyperspace();
-  RETURN_NOT_OK(hyperspace_->deserialize(buff));
+  // Load domain
+  domain_ = new Domain();
+  RETURN_NOT_OK(domain_->deserialize(buff));
 
   // Load attributes
   RETURN_NOT_OK(buff->read(&attribute_num_, sizeof(unsigned int)));
@@ -476,8 +476,8 @@ Status ArrayMetadata::deserialize(ConstBuffer* buff) {
   return Status::Ok();
 }
 
-const Hyperspace* ArrayMetadata::hyperspace() const {
-  return hyperspace_;
+const Domain* ArrayMetadata::domain() const {
+  return domain_;
 }
 
 Status ArrayMetadata::init() {
@@ -489,10 +489,10 @@ Status ArrayMetadata::init() {
   for (unsigned int i = 0; i <= attribute_num_; ++i)
     cell_sizes_[i] = compute_cell_size(i);
 
-  auto dim_num = hyperspace_->dim_num();
+  auto dim_num = domain_->dim_num();
   coords_size_ = dim_num * datatype_size(coords_type());
 
-  RETURN_NOT_OK(hyperspace_->init(cell_order_, tile_order_));
+  RETURN_NOT_OK(domain_->init(cell_order_, tile_order_));
 
   // Success
   return Status::Ok();
@@ -510,9 +510,9 @@ void ArrayMetadata::set_cell_order(Layout cell_order) {
   cell_order_ = cell_order;
 }
 
-void ArrayMetadata::set_hyperspace(Hyperspace* hyperspace) {
-  delete hyperspace_;
-  hyperspace_ = new Hyperspace(hyperspace);
+void ArrayMetadata::set_domain(Domain* domain) {
+  delete domain_;
+  domain_ = new Domain(domain);
 }
 
 void ArrayMetadata::set_tile_order(Layout tile_order) {
@@ -535,8 +535,8 @@ void ArrayMetadata::clear() {
   attributes_.clear();
   attribute_num_ = 0;
 
-  delete hyperspace_;
-  hyperspace_ = nullptr;
+  delete domain_;
+  domain_ = nullptr;
 }
 
 uint64_t ArrayMetadata::compute_cell_size(unsigned int i) const {
@@ -546,7 +546,7 @@ uint64_t ArrayMetadata::compute_cell_size(unsigned int i) const {
   unsigned int cell_val_num =
       (i < attribute_num_) ? attributes_[i]->cell_val_num() : 0;
   Datatype type = (i < attribute_num_) ? attributes_[i]->type() : coords_type();
-  auto dim_num = hyperspace_->dim_num();
+  auto dim_num = domain_->dim_num();
 
   // Variable-sized cell
   if (i < attribute_num_ && cell_val_num == constants::var_num)
