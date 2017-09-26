@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * It shows how to read a complete dense array.
@@ -45,28 +45,25 @@ int main(int argc, char** argv) {
   uint64_t buffer_a2[16];
   char buffer_var_a2[40];
   float buffer_a3[32];
-  void* buffers[] = { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3 };
-  uint64_t buffer_sizes[] =
-  { 
-      sizeof(buffer_a1),  
-      sizeof(buffer_a2),
-      sizeof(buffer_var_a2),
-      sizeof(buffer_a3)
-  };
+  void* buffers[] = {buffer_a1, buffer_a2, buffer_var_a2, buffer_a3};
+  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
+                             sizeof(buffer_a2),
+                             sizeof(buffer_var_a2),
+                             sizeof(buffer_a3)};
 
   // Create query
   tiledb_query_t* query;
   tiledb_query_create(
-    ctx,
-    &query,
-    "my_dense_array",
-    TILEDB_READ,
-    TILEDB_GLOBAL_ORDER,
-    nullptr,
-    nullptr,
-    0,
-    buffers,
-    buffer_sizes);
+      ctx,
+      &query,
+      "my_dense_array",
+      TILEDB_READ,
+      TILEDB_GLOBAL_ORDER,
+      nullptr,
+      nullptr,
+      0,
+      buffers,
+      buffer_sizes);
 
   // Submit query
   tiledb_query_submit(ctx, query);
@@ -76,12 +73,13 @@ int main(int argc, char** argv) {
   std::cout << "result num: " << result_num << "\n";
   printf(" a1\t    a2\t   (a3.first, a3.second)\n");
   printf("-----------------------------------------\n");
-  for(int i=0; i<result_num; ++i) {
+  for (int i = 0; i < result_num; ++i) {
     printf("%3d", buffer_a1[i]);
-    uint64_t var_size = (i != result_num-1) ? buffer_a2[i+1] - buffer_a2[i]
-                                            : buffer_sizes[2] - buffer_a2[i];
+    uint64_t var_size = (i != result_num - 1) ?
+                            buffer_a2[i + 1] - buffer_a2[i] :
+                            buffer_sizes[2] - buffer_a2[i];
     printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);
-    printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
+    printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2 * i], buffer_a3[2 * i + 1]);
   }
 
   // Clean up

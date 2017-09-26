@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,23 +24,23 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * Checks the type of a given directory.
  */
 
-#include "tiledb.h"
 #include <iostream>
+#include "tiledb.h"
 
 void print_dir_type(int type) {
- if(type == TILEDB_GROUP)
+  if (type == TILEDB_GROUP)
     std::cout << "Group\n";
-  else if(type == TILEDB_ARRAY) 
+  else if (type == TILEDB_ARRAY)
     std::cout << "Array\n";
-  else if(type == -1)
+  else if (type == -1)
     std::cout << "Not a TileDB object\n";
-  else 
+  else
     std::cout << "Unknown directory type\n";
 }
 

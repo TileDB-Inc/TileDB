@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * It shows how to read a complete sparse array.
@@ -39,36 +39,33 @@ int main(int argc, char** argv) {
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Prepare cell buffers 
+  // Prepare cell buffers
   int buffer_a1[10];
   uint64_t buffer_a2[10];
   char buffer_var_a2[30];
   float buffer_a3[20];
   int64_t buffer_coords[20];
-  void* buffers[] = 
-      { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
-  uint64_t buffer_sizes[] =
-  { 
-      sizeof(buffer_a1),  
-      sizeof(buffer_a2),
-      sizeof(buffer_var_a2),
-      sizeof(buffer_a3),
-      sizeof(buffer_coords)
-  };
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+  uint64_t buffer_sizes[] = {sizeof(buffer_a1),
+                             sizeof(buffer_a2),
+                             sizeof(buffer_var_a2),
+                             sizeof(buffer_a3),
+                             sizeof(buffer_coords)};
 
   // Create query
   tiledb_query_t* query;
   tiledb_query_create(
-    ctx,
-    &query,
-    "my_sparse_array",
-    TILEDB_READ,
-    TILEDB_ROW_MAJOR,
-    nullptr,
-    nullptr,
-    0,
-    buffers,
-    buffer_sizes);
+      ctx,
+      &query,
+      "my_sparse_array",
+      TILEDB_READ,
+      TILEDB_ROW_MAJOR,
+      nullptr,
+      nullptr,
+      0,
+      buffers,
+      buffer_sizes);
 
   // Submit query
   tiledb_query_submit(ctx, query);
@@ -77,13 +74,13 @@ int main(int argc, char** argv) {
   int64_t result_num = buffer_sizes[0] / sizeof(int);
   printf("coords\t a1\t   a2\t     (a3.first, a3.second)\n");
   printf("--------------------------------------------------\n");
-  for(int i=0; i<result_num; ++i) { 
-    printf("(%lld, %lld)", buffer_coords[2*i], buffer_coords[2*i+1]);
+  for (int i = 0; i < result_num; ++i) {
+    printf("(%lld, %lld)", buffer_coords[2 * i], buffer_coords[2 * i + 1]);
     printf("\t %3d", buffer_a1[i]);
-    size_t var_size = (i != result_num-1) ? buffer_a2[i+1] - buffer_a2[i] 
-                                          : buffer_sizes[2] - buffer_a2[i];
+    size_t var_size = (i != result_num - 1) ? buffer_a2[i + 1] - buffer_a2[i] :
+                                              buffer_sizes[2] - buffer_a2[i];
     printf("\t %4.*s", int(var_size), &buffer_var_a2[buffer_a2[i]]);
-    printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2*i], buffer_a3[2*i+1]);
+    printf("\t\t (%5.1f, %5.1f)\n", buffer_a3[2 * i], buffer_a3[2 * i + 1]);
   }
 
   // Clean up

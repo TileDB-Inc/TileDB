@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2017 MIT, Intel Corporation and TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  *
@@ -71,14 +71,16 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Create hyperspace
-  uint64_t domain_d1 [] = { 0, 1000 };
-  uint64_t domain_d2 [] = { 100, 1000 };
+  uint64_t domain_d1[] = {0, 1000};
+  uint64_t domain_d2[] = {100, 1000};
   uint64_t tile_extent_d1 = 10;
   uint64_t tile_extent_d2 = 5;
   tiledb_hyperspace_t* hyperspace;
   tiledb_hyperspace_create(ctx, &hyperspace, TILEDB_UINT64);
-  tiledb_hyperspace_add_dimension(ctx, hyperspace, "d1", domain_d1, &tile_extent_d1);
-  tiledb_hyperspace_add_dimension(ctx, hyperspace, "d2", domain_d2, &tile_extent_d2);
+  tiledb_hyperspace_add_dimension(
+      ctx, hyperspace, "d1", domain_d1, &tile_extent_d1);
+  tiledb_hyperspace_add_dimension(
+      ctx, hyperspace, "d2", domain_d2, &tile_extent_d2);
 
   // Print dimension contents
   printf("First dump:\n");
@@ -90,7 +92,8 @@ int main() {
 
   // Print retrieved info
   printf("\n From getter:\n");
-  printf("- Dimensions type: %s\n", (type == TILEDB_UINT64) ? "UINT64" : "Error");
+  printf(
+      "- Dimensions type: %s\n", (type == TILEDB_UINT64) ? "UINT64" : "Error");
 
   // Dump dimensions using an iterator
   const tiledb_dimension_t* dim;
@@ -99,7 +102,7 @@ int main() {
   int done;
   tiledb_dimension_iter_done(ctx, dim_it, &done);
   printf("\n From dimension iterator:\n");
-  while(done != 1) {
+  while (done != 1) {
     tiledb_dimension_iter_here(ctx, dim_it, &dim);
     tiledb_dimension_dump(ctx, dim, stdout);
     tiledb_dimension_iter_next(ctx, dim_it);
@@ -114,7 +117,6 @@ int main() {
   tiledb_dimension_iter_free(ctx, dim_it);
   tiledb_hyperspace_free(ctx, hyperspace);
   tiledb_ctx_free(ctx);
-
 
   return 0;
 }

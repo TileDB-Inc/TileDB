@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * It shows how to write unsorted cells to a sparse array.
@@ -63,16 +63,16 @@ int main() {
   // Create query
   tiledb_query_t* query;
   tiledb_query_create(
-    ctx,
-    &query,
-    "my_sparse_array",
-    TILEDB_WRITE,
-    TILEDB_UNORDERED,
-    nullptr,
-    nullptr,
-    0,
-    buffers,
-    buffer_sizes);
+      ctx,
+      &query,
+      "my_sparse_array",
+      TILEDB_WRITE,
+      TILEDB_UNORDERED,
+      nullptr,
+      nullptr,
+      0,
+      buffers,
+      buffer_sizes);
 
   // Submit query
   tiledb_query_submit(ctx, query);

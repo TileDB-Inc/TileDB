@@ -4,7 +4,7 @@
  * @section LICENSE
  *
  * The MIT License
- * 
+ *
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -24,7 +24,7 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- * 
+ *
  * @section DESCRIPTION
  *
  * It shows how to write unsorted cells to a sparse array with two batch writes.
@@ -38,63 +38,51 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Prepare cell buffers - #1
-  int buffer_a1[] = { 7, 5, 0 };
-  uint64_t buffer_a2[] = { 0, 4, 6 };
+  int buffer_a1[] = {7, 5, 0};
+  uint64_t buffer_a2[] = {0, 4, 6};
   char buffer_var_a2[] = "hhhhffa";
-  float buffer_a3[] = { 7.1,  7.2,  5.1,  5.2,  0.1,  0.2 };
-  int64_t buffer_coords[] = { 3, 4, 4, 2, 1, 1 };
-  void* buffers[] =
-      { buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords };
-  uint64_t buffer_sizes[] =
-  { 
-      sizeof(buffer_a1),  
+  float buffer_a3[] = {7.1, 7.2, 5.1, 5.2, 0.1, 0.2};
+  int64_t buffer_coords[] = {3, 4, 4, 2, 1, 1};
+  void* buffers[] = {
+      buffer_a1, buffer_a2, buffer_var_a2, buffer_a3, buffer_coords};
+  uint64_t buffer_sizes[] = {
+      sizeof(buffer_a1),
       sizeof(buffer_a2),
-      sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
+      sizeof(buffer_var_a2) - 1,  // No need to store the last '\0' character
       sizeof(buffer_a3),
-      sizeof(buffer_coords)
-  };
+      sizeof(buffer_coords)};
 
   // Create query
   tiledb_query_t* query;
   tiledb_query_create(
-    ctx,
-    &query,
-    "my_group/sparse_arrays/my_array_B",
-    TILEDB_WRITE,
-    TILEDB_UNORDERED,
-    nullptr,
-    nullptr,
-    0,
-    buffers,
-    buffer_sizes);
-
+      ctx,
+      &query,
+      "my_group/sparse_arrays/my_array_B",
+      TILEDB_WRITE,
+      TILEDB_UNORDERED,
+      nullptr,
+      nullptr,
+      0,
+      buffers,
+      buffer_sizes);
 
   // Submit query - #1
   tiledb_query_submit(ctx, query);
 
   // Prepare cell buffers - #2
-  int buffer_a1_2[] = { 6, 4, 3, 1, 2 };
-  uint64_t buffer_a2_2[] = { 0, 3, 4, 8, 10 };
+  int buffer_a1_2[] = {6, 4, 3, 1, 2};
+  uint64_t buffer_a2_2[] = {0, 3, 4, 8, 10};
   char buffer_var_a2_2[] = "gggeddddbbccc";
-  float buffer_a3_2[] = 
-      { 6.1,  6.2, 4.1,  4.2,  3.1,  3.2,  1.1,  1.2,  2.1,  2.2 };
-  int64_t buffer_coords_2[] = { 3, 3, 3, 1, 2, 3, 1, 2, 1, 4 };
-  void* buffers_2[] =
-  { 
-      buffer_a1_2,  
-      buffer_a2_2, 
-      buffer_var_a2_2,  
-      buffer_a3_2, 
-      buffer_coords_2 
-  };
-  uint64_t buffer_sizes_2[] =
-  { 
-      sizeof(buffer_a1_2),  
+  float buffer_a3_2[] = {6.1, 6.2, 4.1, 4.2, 3.1, 3.2, 1.1, 1.2, 2.1, 2.2};
+  int64_t buffer_coords_2[] = {3, 3, 3, 1, 2, 3, 1, 2, 1, 4};
+  void* buffers_2[] = {
+      buffer_a1_2, buffer_a2_2, buffer_var_a2_2, buffer_a3_2, buffer_coords_2};
+  uint64_t buffer_sizes_2[] = {
+      sizeof(buffer_a1_2),
       sizeof(buffer_a2_2),
-      sizeof(buffer_var_a2_2)-1,  // No need to store the last '\0' character
+      sizeof(buffer_var_a2_2) - 1,  // No need to store the last '\0' character
       sizeof(buffer_a3_2),
-      sizeof(buffer_coords_2)
-  };
+      sizeof(buffer_coords_2)};
 
   // Submit query - #2
   tiledb_query_reset_buffers(ctx, query, buffers_2, buffer_sizes_2);
