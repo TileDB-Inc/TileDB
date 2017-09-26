@@ -51,7 +51,13 @@ struct DenseArrayFx {
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
 
   // Group folder name
+#ifdef HAVE_HDFS
+  const std::string URI_PREFIX = "hdfs://";
+  const std::string TEMP_DIR = "/tiledb_test/";
+#else
   const std::string URI_PREFIX = "file://";
+  const std::string TEMP_DIR = "";
+#endif
   const std::string GROUP = "my_group/";
 
   // Array name
@@ -75,16 +81,10 @@ struct DenseArrayFx {
     assert(rc == TILEDB_OK);
 
     // Create group, delete it if it already exists
-    // TODO: The following should change for HDFS - GROUP does not have a URI
-    // prefix
-    std::string cmd = "test -d " + GROUP;
-    rc = system(cmd.c_str());
-    if (rc == 0) {
-      cmd = "rm -rf " + GROUP;
-      rc = system(cmd.c_str());
-      assert(rc == 0);
+    if (dir_exists(TEMP_DIR + GROUP)) {
+      assert(remove_dir(TEMP_DIR + GROUP));
     }
-    rc = tiledb_group_create(ctx_, (URI_PREFIX + GROUP).c_str());
+    rc = tiledb_group_create(ctx_, (URI_PREFIX + TEMP_DIR + GROUP).c_str());
     assert(rc == TILEDB_OK);
   }
 
@@ -93,11 +93,25 @@ struct DenseArrayFx {
     tiledb_ctx_free(ctx_);
 
     // Remove the temporary group
-    // TODO: The following should change for HDFS - GROUP does not have a URI
-    // prefix
-    std::string cmd = "rm -rf " + GROUP;
-    int rc = system(cmd.c_str());
-    assert(rc == 0);
+    assert(remove_dir(TEMP_DIR + GROUP));
+  }
+
+  bool dir_exists(std::string path) {
+#ifdef HAVE_HDFS
+    std::string cmd = std::string("hadoop fs -test -d ") + path;
+#else
+    std::string cmd = std::string("test -d ") + path;
+#endif
+    return (system(cmd.c_str()) == 0);
+  }
+
+  bool remove_dir(std::string path) {
+#ifdef HAVE_HDFS
+    std::string cmd = std::string("hadoop fs -rm -r -f ") + path;
+#else
+    std::string cmd = std::string("rm -r -f ") + path;
+#endif
+    return (system(cmd.c_str()) == 0);
   }
 
   /**
@@ -361,7 +375,7 @@ struct DenseArrayFx {
 
   /** Sets the array name for the current test. */
   void set_array_name(const char* name) {
-    array_name_ = URI_PREFIX + GROUP + name;
+    array_name_ = URI_PREFIX + TEMP_DIR + GROUP + name;
   }
 
   /**
@@ -594,20 +608,21 @@ struct DenseArrayFx {
  * Tests 10 random 2D subarrays and checks if the value of each cell is equal
  * to row_id*dim1+col_id. Top left corner is always 4,4.
  */
-TEST_CASE_METHOD(DenseArrayFx, "C API: Test random dense sorted reads") {
+TEST_CASE_METHOD(
+    DenseArrayFx, "C API: Test random dense sorted reads", "[dense]") {
   // Error code
   int rc;
 
   // Parameters used in this test
   int64_t domain_size_0 = 5000;
   int64_t domain_size_1 = 10000;
-  int64_t tile_extent_0 = 100;
-  int64_t tile_extent_1 = 100;
+  int64_t tile_extent_0 = 1000;
+  int64_t tile_extent_1 = 1000;
   int64_t domain_0_lo = 0;
   int64_t domain_0_hi = domain_size_0 - 1;
   int64_t domain_1_lo = 0;
   int64_t domain_1_hi = domain_size_1 - 1;
-  uint64_t capacity = 1000;
+  uint64_t capacity = 1000000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
   int iter_num = 10;
