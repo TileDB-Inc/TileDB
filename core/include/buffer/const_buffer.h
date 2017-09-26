@@ -35,6 +35,8 @@
 
 #include <cinttypes>
 
+#include "status.h"
+
 namespace tiledb {
 
 /** Enables reading from a constant buffer. */
@@ -59,34 +61,26 @@ class ConstBuffer {
   /*                API                */
   /* ********************************* */
 
-  /** Returns the number of bytes left for reading. */
-  inline uint64_t nbytes_left_to_read() const {
-    return size_ - offset_;
-  }
-
   /** Returns the buffer data. */
-  inline const void* data() const {
-    return data_;
-  }
-
-  /** Returns the buffer offset. */
-  inline uint64_t offset() const {
-    return offset_;
-  }
+  const void* data() const;
 
   /** Checks if reading has reached the end of the buffer. */
-  inline bool end() const {
-    return offset_ == size_;
-  }
+  bool end() const;
+
+  /** Returns the number of bytes left for reading. */
+  uint64_t nbytes_left_to_read() const;
+
+  /** Returns the buffer offset. */
+  uint64_t offset() const;
 
   /**
    * Reads from the internal buffer into the input buffer.
    *
    * @param buffer The buffer to write to when reading from the local buffer.
    * @param nbytes The number of bytes to read.
-   * @return void.
+   * @return Status.
    */
-  void read(void* buffer, uint64_t nbytes);
+  Status read(void* buffer, uint64_t nbytes);
 
   /**
    * This is a special function used for reading from a buffer that stores
@@ -100,6 +94,9 @@ class ConstBuffer {
    * @return void.
    */
   void read_with_shift(uint64_t* buf, uint64_t nbytes, uint64_t offset);
+
+  /** Returns the size of the buffer. */
+  uint64_t size() const;
 
   /**
    * Returns a value from the buffer of type T.

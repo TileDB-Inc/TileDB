@@ -35,49 +35,51 @@
 #include <fstream>
 #include <iostream>
 
-#include <status.h>
 #include <hdfs_filesystem.h>
+#include <status.h>
 
 using namespace tiledb;
 
-TEST_CASE("Test HDFS filesystem") {
+TEST_CASE("Test HDFS filesystem", "[hdfs]") {
   hdfsFS fs;
 
-  Status st = vfs::hdfs::connect(fs);
+  Status st = hdfs::connect(fs);
   REQUIRE(st.ok());
 
-  st = vfs::hdfs::create_dir("/tiledb_test_dir", fs);
+  st = hdfs::create_dir("/tiledb_test_dir", fs);
   CHECK(st.ok());
 
-  CHECK(vfs::hdfs::is_dir("/tiledb_test_dir", fs));
+  CHECK(hdfs::is_dir("/tiledb_test_dir", fs));
 
-  st = vfs::hdfs::create_dir("/tiledb_test_dir", fs);
+  st = hdfs::create_dir("/tiledb_test_dir", fs);
   CHECK(!st.ok());
 
-  st = vfs::hdfs::create_file("/tiledb_test_file", fs);
+  st = hdfs::create_file("/tiledb_test_file", fs);
   CHECK(st.ok());
-  CHECK(vfs::hdfs::is_file("/tiledb_test_file", fs));
+  CHECK(hdfs::is_file("/tiledb_test_file", fs));
 
-  st = vfs::hdfs::delete_file("/tiledb_test_file", fs);
+  st = hdfs::delete_file("/tiledb_test_file", fs);
   CHECK(st.ok());
 
-  st = vfs::hdfs::create_file("/tiledb_test_dir/tiledb_test_file", fs);
+  st = hdfs::create_file("/tiledb_test_dir/tiledb_test_file", fs);
   CHECK(st.ok());
 
   tSize buffer_size = 100000;
   auto write_buffer = new char[buffer_size];
-  for (int i=0; i < buffer_size; i++) {
+  for (int i = 0; i < buffer_size; i++) {
     write_buffer[i] = 'a' + (i % 26);
   }
-  st = vfs::hdfs::write_to_file("/tiledb_test_dir/tiledb_test_file", write_buffer, buffer_size, fs);
+  st = hdfs::write_to_file(
+      "/tiledb_test_dir/tiledb_test_file", write_buffer, buffer_size, fs);
   CHECK(st.ok());
 
   auto read_buffer = new char[26];
-  st = vfs::hdfs::read_from_file("/tiledb_test_dir/tiledb_test_file", 0, read_buffer, 26, fs);
+  st = hdfs::read_from_file(
+      "/tiledb_test_dir/tiledb_test_file", 0, read_buffer, 26, fs);
   CHECK(st.ok());
 
   bool allok = true;
-  for (int i=0; i < 26; i++) {
+  for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + i)) {
       allok = false;
       break;
@@ -85,12 +87,13 @@ TEST_CASE("Test HDFS filesystem") {
   }
   CHECK(allok == true);
 
-  st = vfs::hdfs::read_from_file("/tiledb_test_dir/tiledb_test_file", 11, read_buffer, 26, fs);
+  st = hdfs::read_from_file(
+      "/tiledb_test_dir/tiledb_test_file", 11, read_buffer, 26, fs);
   CHECK(st.ok());
 
   allok = true;
   for (int i = 0; i < 26; ++i) {
-    if (read_buffer[i]  != static_cast<char>('a' + (i + 11) % 26)) {
+    if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
       allok = false;
       break;
     }
@@ -98,40 +101,40 @@ TEST_CASE("Test HDFS filesystem") {
   CHECK(allok == true);
 
   std::vector<std::string> paths;
-  st = vfs::hdfs::ls("/", paths, fs);
+  st = hdfs::ls("/", paths, fs);
   CHECK(st.ok());
   CHECK(paths.size() > 0);
 
   std::vector<std::string> files;
-  st = vfs::hdfs::ls_files("/tiledb_test_dir", files, fs);
+  st = hdfs::ls_files("/tiledb_test_dir", files, fs);
   CHECK(st.ok());
   CHECK(files.size() == 1);
 
   std::vector<std::string> dirs;
-  st = vfs::hdfs::ls_dirs("/tiledb_test_dir", dirs, fs);
+  st = hdfs::ls_dirs("/tiledb_test_dir", dirs, fs);
   CHECK(st.ok());
   CHECK(dirs.size() == 0);
 
-  st = vfs::hdfs::create_dir("/tiledb_test_dir/tiledb_test_dir", fs);
+  st = hdfs::create_dir("/tiledb_test_dir/tiledb_test_dir", fs);
   CHECK(st.ok());
-  st = vfs::hdfs::ls_dirs("/tiledb_test_dir", dirs, fs);
+  st = hdfs::ls_dirs("/tiledb_test_dir", dirs, fs);
   CHECK(st.ok());
   CHECK(dirs.size() == 1);
 
   size_t nbytes;
-  st = vfs::hdfs::filesize("/tiledb_test_dir/tiledb_test_file", &nbytes, fs);
+  st = hdfs::filesize("/tiledb_test_dir/tiledb_test_file", &nbytes, fs);
   CHECK(st.ok());
   CHECK(nbytes == buffer_size);
 
-  st = vfs::hdfs::delete_dir("/tiledb_test_dir/tiledb_test_dir", fs);
+  st = hdfs::delete_dir("/tiledb_test_dir/tiledb_test_dir", fs);
   CHECK(st.ok());
 
-  st = vfs::hdfs::delete_file("/tiledb_test_dir/tiledb_test_file", fs);
+  st = hdfs::delete_file("/tiledb_test_dir/tiledb_test_file", fs);
   CHECK(st.ok());
 
-  st = vfs::hdfs::delete_dir("/tiledb_test_dir", fs);
+  st = hdfs::delete_dir("/tiledb_test_dir", fs);
   CHECK(st.ok());
 
-  st = vfs::hdfs::disconnect(fs);
+  st = hdfs::disconnect(fs);
   CHECK(st.ok());
 }

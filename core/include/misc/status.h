@@ -63,7 +63,7 @@ namespace tiledb {
     if (!_s.ok()) {      \
       return _s;         \
     }                    \
-  } while (0);
+  } while (false);
 
 #define RETURN_NOT_OK_ELSE(s, else_) \
   do {                               \
@@ -72,7 +72,7 @@ namespace tiledb {
       else_;                         \
       return _s;                     \
     }                                \
-  } while (0);
+  } while (false);
 
 enum class StatusCode : char {
   Ok,
@@ -81,45 +81,51 @@ enum class StatusCode : char {
   WriteState,
   Fragment,
   FragmentMetadata,
-  Array,
-  ArraySchema,
+  ArrayMetadata,
   ARS,   // Array Read State
   ASRS,  // Array Sorted Read State
   ASWS,  // Array Sorted Write State
   Metadata,
-  OS,
   IO,
   Mem,
-  MMap,
   GZip,
   Compression,
-  AIO,
   Tile,
   TileIO,
   Buffer,
-  Query
+  Query,
+  VFS,
+  ConstBuffer,
+  Dimension,
+  Hyperspace
 };
 
 class Status {
  public:
-  // Create a success status
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  /** Constructor with success status (empty state). */
   Status()
       : state_(nullptr) {
   }
-  ~Status() {
-    delete[] state_;
-  }
 
+  /** Consturctor with a code and error message. */
   Status(StatusCode code, const std::string& msg)
       : Status(code, msg, -1) {
   }
 
-  // Copy the specified status
-  Status(const Status& s);
-  void operator=(const Status& s);
+  /** Destructor. */
+  ~Status() {
+    delete[] state_;
+  }
 
-  // overload operator<< for stream formatting
-  friend std::ostream& operator<<(std::ostream& os, const Status& st);
+  /** Copy the specified status. */
+  Status(const Status& s);
+
+  /** Assign status. */
+  void operator=(const Status& s);
 
   /**  Return a success status **/
   static Status Ok() {
@@ -129,11 +135,6 @@ class Status {
   /**  Return a generic Error class Status **/
   static Status Error(const std::string& msg) {
     return Status(StatusCode::Error, msg, -1);
-  }
-
-  /** Return a generic StorageManager error class Status **/
-  static Status StorageManagerError() {
-    return Status(StatusCode::StorageManager, "", -1);
   }
 
   /** Return a StorageManager error class Status with a given message **/
@@ -151,14 +152,9 @@ class Status {
     return Status(StatusCode::FragmentMetadata, msg, -1);
   }
 
-  /** Return a Array error class Status with a given message **/
-  static Status ArrayError(const std::string& msg) {
-    return Status(StatusCode::Array, msg, -1);
-  }
-
-  /** Return a ArraySchema error class Status with a given message **/
-  static Status ArraySchemaError(const std::string& msg) {
-    return Status(StatusCode::ArraySchema, msg, -1);
+  /** Return a ArrayMetadata error class Status with a given message **/
+  static Status ArrayMetadataError(const std::string& msg) {
+    return Status(StatusCode::ArrayMetadata, msg, -1);
   }
 
   /** Return a ArrayReadState (ARS) error class Status with a given message **/
@@ -183,11 +179,6 @@ class Status {
     return Status(StatusCode::Metadata, msg, -1);
   }
 
-  /** Return a OS error class Status with a given message **/
-  static Status OSError(const std::string& msg) {
-    return Status(StatusCode::OS, msg, -1);
-  }
-
   /** Return a IO error class Status with a given message **/
   static Status IOError(const std::string& msg) {
     return Status(StatusCode::IO, msg, -1);
@@ -198,11 +189,6 @@ class Status {
     return Status(StatusCode::Mem, msg, -1);
   }
 
-  /** Return a MMAP error class Status with a given message **/
-  static Status MMapError(const std::string& msg) {
-    return Status(StatusCode::MMap, msg, -1);
-  }
-
   /** Return a ArrayError error class Status with a given message **/
   static Status GZipError(const std::string& msg) {
     return Status(StatusCode::GZip, msg, -1);
@@ -211,11 +197,6 @@ class Status {
   /** Return a ArrayError error class Status with a given message **/
   static Status CompressionError(const std::string& msg) {
     return Status(StatusCode::Compression, msg, -1);
-  }
-
-  /** Return a ArrayError error class Status with a given message **/
-  static Status AIOError(const std::string& msg) {
-    return Status(StatusCode::AIO, msg, -1);
   }
 
   /** Return a TileError error class Status with a given message **/
@@ -243,13 +224,35 @@ class Status {
     return Status(StatusCode::Query, msg, -1);
   }
 
+  /** Return a VFSError error class Status with a given message **/
+  static Status VFSError(const std::string& msg) {
+    return Status(StatusCode::VFS, msg, -1);
+  }
+
+  /** Return a ConstBufferError error class Status with a given message **/
+  static Status ConstBufferError(const std::string& msg) {
+    return Status(StatusCode::ConstBuffer, msg, -1);
+  }
+
+  /** Return a Dimension Error error class Status with a given message **/
+  static Status DimensionError(const std::string& msg) {
+    return Status(StatusCode::Dimension, msg, -1);
+  }
+
+  /** Return a Hyperspace Error error class Status with a given message **/
+  static Status HyperspaceError(const std::string& msg) {
+    return Status(StatusCode::Hyperspace, msg, -1);
+  }
+
   /** Returns true iff the status indicates success **/
   bool ok() const {
     return (state_ == nullptr);
   }
 
-  /** Return a std::string representation of this status object suitable for
-   * printing.  Return "Ok" for success. **/
+  /**
+   * Return a std::string representation of this status object suitable for
+   * printing.  Return "Ok" for success.
+   */
   std::string to_string() const;
 
   /** Return a string representation of the status code **/
@@ -275,15 +278,28 @@ class Status {
   }
 
  private:
-  // OK status has a NULL state_.  Otherwise, state_ is a new[] array
-  // of the following form:
-  //    state_[0..3] == length of message
-  //    state_[4]    == code
-  //    state_[5..6] == posix_code
-  //    state_[7..]  == message
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /**
+   * OK status has a NULL state_.  Otherwise, state_ is a new[] array
+   * of the following form:
+   *    state_[0..3] == length of message
+   *    state_[4]    == code
+   *    state_[5..6] == posix_code
+   *    state_[7..]  == message
+   */
   const char* state_;
 
+  /* ********************************* */
+  /*           PRIVATE METHODS         */
+  /* ********************************* */
+
+  /** Private constructor. */
   Status(StatusCode code, const std::string& msg, int16_t posix_code);
+
+  /** Clones and returns the input state (allocates memory). */
   static const char* copy_state(const char* s);
 };
 

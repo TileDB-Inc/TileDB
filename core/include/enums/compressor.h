@@ -34,13 +34,46 @@
 #ifndef TILEDB_COMPRESSOR_H
 #define TILEDB_COMPRESSOR_H
 
+#include "constants.h"
+
 namespace tiledb {
 
+/** Defines the compressor type. */
 enum class Compressor : char {
 #define TILEDB_COMPRESSOR_ENUM(id) id
 #include "tiledb_enum.inc"
 #undef TILEDB_COMPRESSOR_ENUM
 };
+
+/** Returns the string representation of the input compressor. */
+inline const char* compressor_str(Compressor type) {
+  switch (type) {
+    case Compressor::NO_COMPRESSION:
+      return constants::no_compression_str;
+    case Compressor::GZIP:
+      return constants::gzip_str;
+    case Compressor::ZSTD:
+      return constants::zstd_str;
+    case Compressor::LZ4:
+      return constants::lz4_str;
+    case Compressor::BLOSC:
+      return constants::blosc_str;
+    case Compressor::BLOSC_LZ4:
+      return constants::blosc_lz4_str;
+    case Compressor::BLOSC_LZ4HC:
+      return constants::blosc_lz4hc_str;
+    case Compressor::BLOSC_SNAPPY:
+      return constants::blosc_snappy_str;
+    case Compressor::BLOSC_ZLIB:
+      return constants::blosc_zlib_str;
+    case Compressor::BLOSC_ZSTD:
+      return constants::blosc_zstd_str;
+    case Compressor::RLE:
+      return constants::rle_str;
+    case Compressor::BZIP2:
+      return constants::bzip2_str;
+  }
+}
 
 }  // namespace tiledb
 

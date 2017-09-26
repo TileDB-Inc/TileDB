@@ -33,11 +33,13 @@
 #include "tiledb.h"
 
 int main() {
+  /* TODO
+
   // Initialize context with the default configuration parameters
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
 
-  // Clear an array
+  // Clear an array_metadata
   tiledb_clear(ctx, "my_group/sparse_arrays/my_array_B");
 
   // Delete a group
@@ -48,6 +50,8 @@ int main() {
 
   // Finalize context
   tiledb_ctx_free(ctx);
+
+  */
 
   return 0;
 }

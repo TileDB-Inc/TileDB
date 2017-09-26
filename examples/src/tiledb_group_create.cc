@@ -27,26 +27,32 @@
  * 
  * @section DESCRIPTION
  *
- * It creates three groups.
+ * It creates a hierarchical directory structure with three groups:
+ *     my_group
+ *        |_ dense_arrays
+ *        |_ sparse_arrays
  */
 
 #include "tiledb.h"
 
+#include <cstdlib>
+
 int main() {
-  // Initialize context with the default configuration parameters
+  // Create context
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
+
+  // Delete group if it exists
+  system("rm -rf my_group");
 
   // Create a group
   tiledb_group_create(ctx, "my_group");
 
-  // Create a group in the worskpace
+  // Create two groups inside the first group
   tiledb_group_create(ctx, "my_group/dense_arrays");
-
-  // Create two groups in the worskpace
   tiledb_group_create(ctx, "my_group/sparse_arrays");
 
-  // Finalize context
+  // Clean up
   tiledb_ctx_free(ctx);
 
   return 0;

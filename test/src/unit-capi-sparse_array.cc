@@ -31,6 +31,9 @@
  * Tests of C API for sparse array operations.
  */
 
+#include "catch.hpp"
+#include "tiledb.h"
+
 #include <sys/time.h>
 #include <cassert>
 #include <cstring>
@@ -38,8 +41,6 @@
 #include <iostream>
 #include <map>
 #include <sstream>
-#include "catch.hpp"
-#include "tiledb.h"
 
 struct SparseArrayFx {
   // Constant parameters
@@ -47,8 +48,7 @@ struct SparseArrayFx {
   const char* DIM1_NAME = "x";
   const char* DIM2_NAME = "y";
   const tiledb_datatype_t ATTR_TYPE = TILEDB_INT32;
-  const tiledb_datatype_t DIM1_TYPE = TILEDB_INT64;
-  const tiledb_datatype_t DIM2_TYPE = TILEDB_INT64;
+  const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
   const tiledb_array_type_t ARRAY_TYPE = TILEDB_SPARSE;
   int COMPRESSION_LEVEL = -1;
 
@@ -58,8 +58,8 @@ struct SparseArrayFx {
   // Array name
   std::string array_name_;
 
-  // Array schema object under test
-  tiledb_array_schema_t* array_schema_;
+  // Array metadata object under test
+  tiledb_array_metadata_t* array_metadata_;
 
   // TileDB context
   tiledb_ctx_t* ctx_;
@@ -111,14 +111,14 @@ struct SparseArrayFx {
       const int64_t domain_0_hi,
       const int64_t domain_1_lo,
       const int64_t domain_1_hi,
-      const int64_t capacity,
+      const uint64_t capacity,
       const tiledb_compressor_t compressor,
       const tiledb_layout_t cell_order,
       const tiledb_layout_t tile_order) {
     // Error code
     int rc;
 
-    // Prepare and set the array schema object and data structures
+    // Prepare and set the array_metadata metadata object and data structures
     int64_t domain[] = {domain_0_lo, domain_0_hi, domain_1_lo, domain_1_hi};
 
     // Create attribute
@@ -129,49 +129,49 @@ struct SparseArrayFx {
         tiledb_attribute_set_compressor(ctx_, a, compressor, COMPRESSION_LEVEL);
     REQUIRE(rc == TILEDB_OK);
 
-    // Create dimensions
-    tiledb_dimension_t* d1;
-    rc = tiledb_dimension_create(
-        ctx_, &d1, DIM1_NAME, DIM1_TYPE, &domain[0], &tile_extent_0);
+    // Create hyperspace
+    tiledb_hyperspace_t* hyperspace;
+    rc = tiledb_hyperspace_create(ctx_, &hyperspace, DIM_TYPE);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_dimension_set_compressor(
-        ctx_, d1, compressor, COMPRESSION_LEVEL);
+    rc = tiledb_hyperspace_add_dimension(
+        ctx_, hyperspace, DIM1_NAME, &domain[0], &tile_extent_0);
     REQUIRE(rc == TILEDB_OK);
-    tiledb_dimension_t* d2;
-    rc = tiledb_dimension_create(
-        ctx_, &d2, DIM2_NAME, DIM2_TYPE, &domain[2], &tile_extent_1);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_dimension_set_compressor(
-        ctx_, d2, compressor, COMPRESSION_LEVEL);
+    rc = tiledb_hyperspace_add_dimension(
+        ctx_, hyperspace, DIM2_NAME, &domain[2], &tile_extent_1);
     REQUIRE(rc == TILEDB_OK);
 
-    // Create array schema
-    rc = tiledb_array_schema_create(ctx_, &array_schema_, array_name_.c_str());
+    // Create array_metadata metadata
+    rc = tiledb_array_metadata_create(
+        ctx_, &array_metadata_, array_name_.c_str());
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_set_capacity(ctx_, array_schema_, capacity);
+    rc = tiledb_array_metadata_set_capacity(ctx_, array_metadata_, capacity);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_set_cell_order(ctx_, array_schema_, cell_order);
+    rc =
+        tiledb_array_metadata_set_cell_order(ctx_, array_metadata_, cell_order);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_set_tile_order(ctx_, array_schema_, tile_order);
+    rc =
+        tiledb_array_metadata_set_tile_order(ctx_, array_metadata_, tile_order);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_set_array_type(ctx_, array_schema_, ARRAY_TYPE);
+    rc =
+        tiledb_array_metadata_set_array_type(ctx_, array_metadata_, ARRAY_TYPE);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_add_attribute(ctx_, array_schema_, a);
+    rc = tiledb_array_metadata_add_attribute(ctx_, array_metadata_, a);
     REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_add_dimension(ctx_, array_schema_, d1);
-    REQUIRE(rc == TILEDB_OK);
-    rc = tiledb_array_schema_add_dimension(ctx_, array_schema_, d2);
+    rc =
+        tiledb_array_metadata_set_hyperspace(ctx_, array_metadata_, hyperspace);
     REQUIRE(rc == TILEDB_OK);
 
-    // Create the array
-    rc = tiledb_array_create(ctx_, array_schema_);
+    // Create the array_metadata
+    rc = tiledb_array_create(ctx_, array_metadata_);
     REQUIRE(rc == TILEDB_OK);
 
     // Clean up
-    tiledb_attribute_free(a);
-    tiledb_dimension_free(d1);
-    tiledb_dimension_free(d2);
-    tiledb_array_schema_free(array_schema_);
+    rc = tiledb_attribute_free(ctx_, a);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_hyperspace_free(ctx_, hyperspace);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_metadata_free(ctx_, array_metadata_);
+    REQUIRE(rc == TILEDB_OK);
   }
 
   /**
@@ -196,7 +196,8 @@ struct SparseArrayFx {
       const int64_t domain_0_hi,
       const int64_t domain_1_lo,
       const int64_t domain_1_hi,
-      const tiledb_query_mode_t read_mode) {
+      const tiledb_query_type_t query_type,
+      const tiledb_layout_t query_layout) {
     // Error code
     int rc;
 
@@ -207,38 +208,41 @@ struct SparseArrayFx {
     // Subset over a specific attribute
     const char* attributes[] = {ATTR_NAME};
 
-    // Initialize the array in the input mode
-    tiledb_array_t* tiledb_array;
-    rc = tiledb_array_init(
-        ctx_,
-        &tiledb_array,
-        array_name_.c_str(),
-        read_mode,
-        subarray,
-        attributes,
-        1);
-    if (rc != TILEDB_OK)
-      return nullptr;
-
     // Prepare the buffers that will store the result
     int64_t domain_size_0 = domain_0_hi - domain_0_lo + 1;
     int64_t domain_size_1 = domain_1_hi - domain_1_lo + 1;
     int64_t cell_num = domain_size_0 * domain_size_1;
-    int* buffer_a1 = new int[cell_num];
+    auto buffer_a1 = new int[cell_num];
     assert(buffer_a1);
     void* buffers[] = {buffer_a1};
-    size_t buffer_size_a1 = cell_num * sizeof(int);
-    size_t buffer_sizes[] = {buffer_size_a1};
+    uint64_t buffer_size_a1 = cell_num * sizeof(int);
+    uint64_t buffer_sizes[] = {buffer_size_a1};
 
-    // Read from array
-    rc = tiledb_array_read(tiledb_array, buffers, buffer_sizes);
+    // Create query
+    tiledb_query_t* query;
+    rc = tiledb_query_create(
+        ctx_,
+        &query,
+        array_name_.c_str(),
+        query_type,
+        query_layout,
+        subarray,
+        attributes,
+        1,
+        buffers,
+        buffer_sizes);
+    if (rc != TILEDB_OK)
+      return nullptr;
+
+    // Submit query
+    rc = tiledb_query_submit(ctx_, query);
     if (rc != TILEDB_OK) {
-      tiledb_array_finalize(tiledb_array);
+      tiledb_query_free(ctx_, query);
       return nullptr;
     }
 
-    // Finalize the array
-    rc = tiledb_array_finalize(tiledb_array);
+    // Free/finalize query
+    rc = tiledb_query_free(ctx_, query);
     if (rc != TILEDB_OK)
       return nullptr;
 
@@ -266,8 +270,8 @@ struct SparseArrayFx {
 
     // Generate random attribute values and coordinates for sparse write
     int64_t cell_num = domain_size_0 * domain_size_1;
-    int* buffer_a1 = new int[cell_num];
-    int64_t* buffer_coords = new int64_t[2 * cell_num];
+    auto buffer_a1 = new int[cell_num];
+    auto buffer_coords = new int64_t[2 * cell_num];
     int64_t coords_index = 0L;
     for (int64_t i = 0; i < domain_size_0; ++i) {
       for (int64_t j = 0; j < domain_size_1; ++j) {
@@ -278,30 +282,35 @@ struct SparseArrayFx {
       }
     }
 
-    // Initialize the array
-    tiledb_array_t* tiledb_array;
-    rc = tiledb_array_init(
-        ctx_,
-        &tiledb_array,
-        array_name_.c_str(),
-        TILEDB_ARRAY_WRITE_UNSORTED,
-        nullptr,
-        nullptr,
-        0);
-    if (rc != TILEDB_OK)
-      return TILEDB_ERR;
-
-    // Write to array
-    const void* buffers[] = {buffer_a1, buffer_coords};
-    size_t buffer_sizes[2];
+    // Prepare buffers
+    void* buffers[] = {buffer_a1, buffer_coords};
+    uint64_t buffer_sizes[2];
     buffer_sizes[0] = cell_num * sizeof(int);
     buffer_sizes[1] = 2 * cell_num * sizeof(int64_t);
-    rc = tiledb_array_write(tiledb_array, buffers, buffer_sizes);
+
+    // Create query
+    tiledb_query_t* query;
+    rc = tiledb_query_create(
+        ctx_,
+        &query,
+        array_name_.c_str(),
+        TILEDB_WRITE,
+        TILEDB_UNORDERED,
+        nullptr,
+        nullptr,
+        0,
+        buffers,
+        buffer_sizes);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
 
-    // Finalize the array
-    rc = tiledb_array_finalize(tiledb_array);
+    // Submit query
+    rc = tiledb_query_submit(ctx_, query);
+    if (rc != TILEDB_OK)
+      return TILEDB_ERR;
+
+    // Free/finalize query
+    rc = tiledb_query_free(ctx_, query);
     if (rc != TILEDB_OK)
       return TILEDB_ERR;
 
@@ -315,7 +324,7 @@ struct SparseArrayFx {
 
   bool test_random_subarrays(
       int64_t domain_size_0, int64_t domain_size_1, int ntests) {
-    // write array cells with value = row id * columns + col id to disk
+    // write array_metadata cells with value = row id * columns + col id to disk
     int rc = write_sparse_array_unsorted_2D(domain_size_0, domain_size_1);
     REQUIRE(rc == TILEDB_OK);
 
@@ -336,7 +345,7 @@ struct SparseArrayFx {
 
       // read subarray
       int* buffer = read_sparse_array_2D(
-          d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_ARRAY_READ_SORTED_ROW);
+          d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ, TILEDB_ROW_MAJOR);
       CHECK(buffer != NULL);
 
       // check
@@ -389,7 +398,7 @@ TEST_CASE_METHOD(SparseArrayFx, "C API: Test random sparse sorted reads") {
   int64_t capacity = 1000;
   int ntests = 5;
 
-  // set array name
+  // set array_metadata name
   set_array_name("sparse_test_5000x1000_100x100");
 
   SECTION("- no compression row-major") {
@@ -511,7 +520,7 @@ TEST_CASE_METHOD(SparseArrayFx, "C API: Test random sparse sorted reads") {
         TILEDB_COL_MAJOR);
     // Only run 1 randomized trial here as Bzip is ~10x slower than other
     // compressors
-    CHECK(test_random_subarrays(domain_size_0, domain_size_1, 1));
+    CHECK(test_random_subarrays(domain_size_0, domain_size_1, ntests));
   }
 
   SECTION("- lz4 compression row/col-major") {

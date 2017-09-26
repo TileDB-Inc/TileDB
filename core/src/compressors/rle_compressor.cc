@@ -32,7 +32,6 @@
 
 #include <cassert>
 #include <iostream>
-#include <limits>
 
 #include "logger.h"
 #include "rle_compressor.h"
@@ -52,14 +51,14 @@ Status RLE::compress(
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with RLE; invalid buffer format"));
 
-  int cur_run_len = 1;
-  int max_run_len = 65535;
+  unsigned int cur_run_len = 1;
+  unsigned int max_run_len = 65535;
   const unsigned char* input_cur =
       static_cast<unsigned char*>(input_buffer->data()) + type_size;
   auto input_prev = static_cast<const unsigned char*>(input_buffer->data());
   auto output_cur = static_cast<unsigned char*>(output_buffer->data());
-  int64_t value_num = input_buffer->offset() / type_size;
-  int64_t _output_size = 0;
+  uint64_t value_num = input_buffer->offset() / type_size;
+  uint64_t _output_size = 0;
   uint64_t run_size = type_size + 2 * sizeof(char);
   unsigned char byte;
 
@@ -69,14 +68,14 @@ Status RLE::compress(
   }
 
   // Sanity check on input buffer
-  if (input_buffer->offset() % type_size) {
+  if (input_buffer->offset() % type_size != 0) {
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with RLE; invalid input buffer format"));
   }
 
   // Make runs
-  for (int64_t i = 1; i < value_num; ++i) {
-    if (!memcmp(input_cur, input_prev, type_size) &&
+  for (uint64_t i = 1; i < value_num; ++i) {
+    if (std::memcmp(input_cur, input_prev, type_size) == 0 &&
         cur_run_len < max_run_len) {  // Expand the run
       ++cur_run_len;
     } else {  // Save the run
@@ -87,13 +86,13 @@ Status RLE::compress(
       }
 
       // Copy to output buffer
-      memcpy(output_cur, input_prev, type_size);
+      std::memcpy(output_cur, input_prev, type_size);
       output_cur += type_size;
       byte = (unsigned char)(cur_run_len >> 8);
-      memcpy(output_cur, &byte, sizeof(char));
+      std::memcpy(output_cur, &byte, sizeof(char));
       output_cur += sizeof(char);
       byte = (unsigned char)(cur_run_len % 256);
-      memcpy(output_cur, &byte, sizeof(char));
+      std::memcpy(output_cur, &byte, sizeof(char));
       output_cur += sizeof(char);
       _output_size += run_size;
 
@@ -114,17 +113,14 @@ Status RLE::compress(
   }
 
   // --- Copy to output buffer
-  memcpy(output_cur, input_prev, type_size);
+  std::memcpy(output_cur, input_prev, type_size);
   output_cur += type_size;
   byte = (unsigned char)(cur_run_len >> 8);
-  memcpy(output_cur, &byte, sizeof(char));
+  std::memcpy(output_cur, &byte, sizeof(char));
   output_cur += sizeof(char);
   byte = (unsigned char)(cur_run_len % 256);
-  memcpy(output_cur, &byte, sizeof(char));
-  output_cur += sizeof(char);
+  std::memcpy(output_cur, &byte, sizeof(char));
   _output_size += run_size;
-
-  assert(_output_size <= std::numeric_limits<uint64_t>::max());
 
   // Set size of compressed data
   output_buffer->set_offset(_output_size);
@@ -139,13 +135,11 @@ Status RLE::decompress(
     return LOG_STATUS(Status::CompressionError(
         "Failed decompressing with RLE; invalid buffer format"));
 
-  const unsigned char* input_cur =
-      static_cast<unsigned char*>(input_buffer->data());
-  unsigned char* output_cur =
-      static_cast<unsigned char*>(output_buffer->data());
-  int64_t run_len;
+  auto input_cur = static_cast<const unsigned char*>(input_buffer->data());
+  auto output_cur = static_cast<unsigned char*>(output_buffer->data());
+  uint64_t run_len;
   uint64_t run_size = type_size + 2 * sizeof(char);
-  int64_t run_num = input_buffer->size() / run_size;
+  uint64_t run_num = input_buffer->size() / run_size;
   unsigned char byte;
 
   // Trivial case
@@ -153,18 +147,18 @@ Status RLE::decompress(
     return Status::Ok();
 
   // Sanity check on input buffer format
-  if (input_buffer->size() % run_size) {
+  if (input_buffer->size() % run_size != 0) {
     return LOG_STATUS(Status::CompressionError(
         "Failed decompressing with RLE; invalid input buffer format"));
   }
 
   // Decompress runs
-  for (int64_t i = 0; i < run_num; ++i) {
+  for (uint64_t i = 0; i < run_num; ++i) {
     // Retrieve the current run length
-    memcpy(&byte, input_cur + type_size, sizeof(char));
-    run_len = (((int64_t)byte) << 8);
-    memcpy(&byte, input_cur + type_size + sizeof(char), sizeof(char));
-    run_len += (int64_t)byte;
+    std::memcpy(&byte, input_cur + type_size, sizeof(char));
+    run_len = (((uint64_t)byte) << 8);
+    std::memcpy(&byte, input_cur + type_size + sizeof(char), sizeof(char));
+    run_len += (uint64_t)byte;
 
     // Sanity check on size
     if (type_size * run_len > output_buffer->size()) {
@@ -173,8 +167,8 @@ Status RLE::decompress(
     }
 
     // Copy to output buffer
-    for (int64_t j = 0; j < run_len; ++j) {
-      memcpy(output_cur, input_cur, type_size);
+    for (uint64_t j = 0; j < run_len; ++j) {
+      std::memcpy(output_cur, input_cur, type_size);
       output_cur += type_size;
     }
 

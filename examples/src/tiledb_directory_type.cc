@@ -45,6 +45,8 @@ void print_dir_type(int type) {
 }
 
 int main() {
+  /* TODO
+
   // Initialize context with the default configuration parameters
   tiledb_ctx_t* ctx;
   tiledb_ctx_create(&ctx);
@@ -57,10 +59,12 @@ int main() {
   // Check types
   print_dir_type(tiledb_dir_type(ctx, "my_group"));
   print_dir_type(tiledb_dir_type(ctx, "my_group/dense_arrays"));
-  print_dir_type(tiledb_dir_type(ctx, "my_group/array"));
+  print_dir_type(tiledb_dir_type(ctx, "my_group/array_metadata"));
 
   // Finalize context
   tiledb_ctx_free(ctx);
+
+  */
 
   return 0;
 }

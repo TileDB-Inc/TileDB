@@ -31,7 +31,6 @@
  */
 
 #include <lz4.h>
-#include <cassert>
 #include <limits>
 
 #include "logger.h"
@@ -51,29 +50,21 @@ Status LZ4::compress(
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with LZ4; invalid buffer format"));
 
-  // TODO: level is ignored using the simple api interface
+    // TODO: level is ignored using the simple api interface
 
-  // Sanity check
-  // TODO: these parameters are int and can overflow with uint64_t, need to
-  // check
-  // TODO: need something better than an assertion here
-  // TODO: this can also be handled by chunk-wise compression
-  assert(input_buffer->offset() <= std::numeric_limits<int>::max());
-  assert(output_buffer->size() <= std::numeric_limits<int>::max());
-
-  // Compress
+    // Compress
 #if LZ4_VERSION_NUMBER >= 10705
   int ret = LZ4_compress_default(
       static_cast<char*>(input_buffer->data()),
       static_cast<char*>(output_buffer->data()),
-      input_buffer->offset(),
-      output_buffer->size());
+      (int)input_buffer->offset(),
+      (int)output_buffer->size());
 #else
   // deprecated lz4 api
   int ret = LZ4_compress(
       static_cast<char*>(input_buffer->data()),
       static_cast<char*>(output_buffer->data()),
-      input_buffer->offset());
+      (int)input_buffer->offset());
 #endif
 
   // Check error
@@ -92,16 +83,12 @@ Status LZ4::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
     return LOG_STATUS(Status::CompressionError(
         "Failed decompressing with LZ4; invalid buffer format"));
 
-  // Sanity check
-  assert(input_buffer->size() <= std::numeric_limits<int>::max());
-  assert(output_buffer->size() <= std::numeric_limits<int>::max());
-
   // Decompress
   int ret = LZ4_decompress_safe(
       static_cast<char*>(input_buffer->data()),
       static_cast<char*>(output_buffer->data()),
-      input_buffer->size(),
-      output_buffer->size());
+      (int)input_buffer->size(),
+      (int)output_buffer->size());
 
   // Check error
   if (ret < 0)

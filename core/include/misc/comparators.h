@@ -54,7 +54,8 @@ class SmallerIdCol {
    * @param dim_num The number of dimensions of the cells.
    * @param ids The ids of the cells in the buffer.
    */
-  SmallerIdCol(const T* buffer, int dim_num, const std::vector<int64_t>& ids)
+  SmallerIdCol(
+      const T* buffer, unsigned int dim_num, const std::vector<uint64_t>& ids)
       : buffer_(buffer)
       , dim_num_(dim_num)
       , ids_(ids) {
@@ -66,7 +67,7 @@ class SmallerIdCol {
    * @param a The first cell position in the cell buffer.
    * @param b The second cell position in the cell buffer.
    */
-  bool operator()(int64_t a, int64_t b) {
+  bool operator()(uint64_t a, uint64_t b) {
     if (ids_[a] < ids_[b])
       return true;
 
@@ -77,12 +78,16 @@ class SmallerIdCol {
     const T* coords_a = &buffer_[a * dim_num_];
     const T* coords_b = &buffer_[b * dim_num_];
 
-    for (int i = dim_num_ - 1; i >= 0; --i)
+    for (unsigned int i = dim_num_ - 1;; --i) {
       if (coords_a[i] < coords_b[i])
         return true;
-      else if (coords_a[i] > coords_b[i])
+      if (coords_a[i] > coords_b[i])
         return false;
-    // else coords_a[i] == coords_b[i] --> continue
+      // else coords_a[i] == coords_b[i] --> continue
+
+      if (i == 0)
+        break;
+    }
 
     return false;
   }
@@ -91,9 +96,9 @@ class SmallerIdCol {
   /** Cell buffer. */
   const T* buffer_;
   /** Number of dimensions. */
-  int dim_num_;
+  unsigned int dim_num_;
   /** The cell ids. */
-  const std::vector<int64_t>& ids_;
+  const std::vector<uint64_t>& ids_;
 };
 
 /**
@@ -110,7 +115,8 @@ class SmallerIdRow {
    * @param dim_num The number of dimensions of the cells.
    * @param ids The ids of the cells in the buffer.
    */
-  SmallerIdRow(const T* buffer, int dim_num, const std::vector<int64_t>& ids)
+  SmallerIdRow(
+      const T* buffer, unsigned int dim_num, const std::vector<uint64_t>& ids)
       : buffer_(buffer)
       , dim_num_(dim_num)
       , ids_(ids) {
@@ -122,7 +128,7 @@ class SmallerIdRow {
    * @param a The first cell position in the cell buffer.
    * @param b The second cell position in the cell buffer.
    */
-  bool operator()(int64_t a, int64_t b) {
+  bool operator()(uint64_t a, uint64_t b) {
     if (ids_[a] < ids_[b])
       return true;
 
@@ -133,10 +139,10 @@ class SmallerIdRow {
     const T* coords_a = &buffer_[a * dim_num_];
     const T* coords_b = &buffer_[b * dim_num_];
 
-    for (int i = 0; i < dim_num_; ++i) {
+    for (unsigned int i = 0; i < dim_num_; ++i) {
       if (coords_a[i] < coords_b[i])
         return true;
-      else if (coords_a[i] > coords_b[i])
+      if (coords_a[i] > coords_b[i])
         return false;
       // else coords_a[i] == coords_b[i] --> continue
     }
@@ -148,9 +154,9 @@ class SmallerIdRow {
   /** Cell buffer. */
   const T* buffer_;
   /** Number of dimensions. */
-  int dim_num_;
+  unsigned int dim_num_;
   /** The cell ids. */
-  const std::vector<int64_t>& ids_;
+  const std::vector<uint64_t>& ids_;
 };
 
 /** Wrapper of comparison function for sorting cells on column-major order. */
@@ -163,7 +169,7 @@ class SmallerCol {
    * @param buffer The buffer containing the cells to be sorted.
    * @param dim_num The number of dimensions of the cells.
    */
-  SmallerCol(const T* buffer, int dim_num)
+  SmallerCol(const T* buffer, unsigned int dim_num)
       : buffer_(buffer)
       , dim_num_(dim_num) {
   }
@@ -174,16 +180,20 @@ class SmallerCol {
    * @param a The first cell position in the cell buffer.
    * @param b The second cell position in the cell buffer.
    */
-  bool operator()(int64_t a, int64_t b) {
+  bool operator()(uint64_t a, uint64_t b) {
     const T* coords_a = &buffer_[a * dim_num_];
     const T* coords_b = &buffer_[b * dim_num_];
 
-    for (int i = dim_num_ - 1; i >= 0; --i)
+    for (unsigned int i = dim_num_ - 1;; --i) {
       if (coords_a[i] < coords_b[i])
         return true;
-      else if (coords_a[i] > coords_b[i])
+      if (coords_a[i] > coords_b[i])
         return false;
-    // else coords_a[i] == coords_b[i] --> continue
+      // else coords_a[i] == coords_b[i] --> continue
+
+      if (i == 0)
+        break;
+    }
 
     return false;
   }
@@ -192,7 +202,7 @@ class SmallerCol {
   /** Cell buffer. */
   const T* buffer_;
   /** Number of dimensions. */
-  int dim_num_;
+  unsigned int dim_num_;
 };
 
 /** Wrapper of comparison function for sorting cells on row-major order. */
@@ -205,7 +215,7 @@ class SmallerRow {
    * @param buffer The buffer containing the cells to be sorted.
    * @param dim_num The number of dimensions of the cells.
    */
-  SmallerRow(const T* buffer, int dim_num)
+  SmallerRow(const T* buffer, unsigned int dim_num)
       : buffer_(buffer)
       , dim_num_(dim_num) {
   }
@@ -216,16 +226,17 @@ class SmallerRow {
    * @param a The first cell position in the cell buffer.
    * @param b The second cell position in the cell buffer.
    */
-  bool operator()(int64_t a, int64_t b) {
+  bool operator()(uint64_t a, uint64_t b) {
     const T* coords_a = &buffer_[a * dim_num_];
     const T* coords_b = &buffer_[b * dim_num_];
 
-    for (int i = 0; i < dim_num_; ++i)
+    for (unsigned int i = 0; i < dim_num_; ++i) {
       if (coords_a[i] < coords_b[i])
         return true;
-      else if (coords_a[i] > coords_b[i])
+      if (coords_a[i] > coords_b[i])
         return false;
-    // else coords_a[i] == coords_b[i] --> continue
+      // else coords_a[i] == coords_b[i] --> continue
+    }
 
     return false;
   }
@@ -234,7 +245,7 @@ class SmallerRow {
   /** Cell buffer. */
   const T* buffer_;
   /** Number of dimensions. */
-  int dim_num_;
+  unsigned int dim_num_;
 };
 
 }  // namespace tiledb

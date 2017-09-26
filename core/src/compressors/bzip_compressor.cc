@@ -34,9 +34,6 @@
 #include "logger.h"
 
 #include <bzlib.h>
-#include <cassert>
-#include <cmath>
-#include <limits>
 
 namespace tiledb {
 
@@ -45,9 +42,7 @@ uint64_t BZip::compress_bound(uint64_t nbytes) {
   // To guarantee that the compressed data will fit in its buffer, allocate an
   // output buffer of size 1% larger than the uncompressed data, plus six
   // hundred extra bytes.
-  float fbytes = ceil(nbytes * 1.01) + 600;
-  assert(fbytes <= std::numeric_limits<size_t>::max());
-  return static_cast<uint64_t>(fbytes);
+  return static_cast<uint64_t>(ceil(nbytes * 1.01) + 600);
 }
 
 Status BZip::compress(
@@ -57,14 +52,9 @@ Status BZip::compress(
     return LOG_STATUS(Status::CompressionError(
         "Failed compressing with BZip; invalid buffer format"));
 
-  // Sanity checks
-  // TODO: put something better than assertions here
-  assert(input_buffer->offset() <= std::numeric_limits<unsigned int>::max());
-  assert(output_buffer->size() <= std::numeric_limits<unsigned int>::max());
-  unsigned int in_size = input_buffer->offset();
-  unsigned int out_size = output_buffer->size();
-
   // Compress
+  auto in_size = (unsigned int)input_buffer->offset();
+  auto out_size = (unsigned int)output_buffer->size();
   int rc = BZ2_bzBuffToBuffCompress(
       static_cast<char*>(output_buffer->data()),
       &out_size,
@@ -109,18 +99,13 @@ Status BZip::decompress(const Buffer* input_buffer, Buffer* output_buffer) {
     return LOG_STATUS(Status::CompressionError(
         "Failed decompressing with BZip; invalid buffer format"));
 
-  // Sanity checks
-  // TODO: put something better than assertions
-  assert(input_buffer->size() <= std::numeric_limits<unsigned int>::max());
-  assert(output_buffer->size() <= std::numeric_limits<unsigned int>::max());
-
   // Decompress
-  unsigned int out_size = output_buffer->size();
+  auto out_size = (unsigned int)output_buffer->size();
   int rc = BZ2_bzBuffToBuffDecompress(
       static_cast<char*>(output_buffer->data()),
       &out_size,
       static_cast<char*>(input_buffer->data()),
-      input_buffer->size(),
+      (unsigned int)input_buffer->size(),
       0,   // small bzip data format stream
       0);  // verbositiy
 

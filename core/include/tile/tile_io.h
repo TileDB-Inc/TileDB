@@ -33,12 +33,14 @@
 #ifndef TILEDB_TILE_IO_H
 #define TILEDB_TILE_IO_H
 
-#include <uri.h>
 #include "attribute.h"
-#include "config.h"
+#include "storage_manager.h"
 #include "tile.h"
+#include "uri.h"
 
 namespace tiledb {
+
+class StorageManager;
 
 /** Handles IO (reading/writing) for tiles. */
 class TileIO {
@@ -53,10 +55,10 @@ class TileIO {
   /**
    * Constructor.
    *
-   * @param config The config object.
-   * @param attr_filename The name of the file that stores attribute data.
+   * @param storage_manager The storage manager.
+   * @param attr_uri The name of the file that stores attribute data.
    */
-  TileIO(const Config* config, const uri::URI& attr_filename);
+  TileIO(StorageManager* storage_manager, const URI& attr_uri);
 
   /** Destructor. */
   ~TileIO();
@@ -66,7 +68,7 @@ class TileIO {
   /* ********************************* */
 
   /** Retrieves the size of the attribute file. */
-  Status file_size(off_t* size) const;
+  Status file_size(uint64_t* size) const;
 
   /**
    * Reads into a tile from the attribute file.
@@ -84,19 +86,6 @@ class TileIO {
       uint64_t tile_size);
 
   /**
-   * Reads from a tile into a buffer. The reason this function is in TileIO is
-   * because the input tile contains only information about how to locate the
-   * data in the attribute file. The tile does not actually store the data in
-   * main memory. This is used for example when the IO method is a system read.
-   *
-   * @param tile The tile to read from.
-   * @param buffer The buffer to write to.
-   * @param nbytes The number of bytes to read.
-   * @return Status.
-   */
-  Status read_from_tile(Tile* tile, void* buffer, uint64_t nbytes);
-
-  /**
    * Writes (appends) a tile into the attribute file.
    *
    * @param tile The tile to be written.
@@ -112,8 +101,8 @@ class TileIO {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The attribute file name. */
-  uri::URI attr_filename_;
+  /** The attribute URI. */
+  URI attr_uri_;
 
   /**
    * An internal buffer used to facilitate compression/decompression (or
@@ -121,8 +110,8 @@ class TileIO {
    */
   Buffer* buffer_;
 
-  /** Config object. */
-  const Config* config_;
+  /** The storage manager object. */
+  StorageManager* storage_manager_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

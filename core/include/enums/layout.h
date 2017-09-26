@@ -34,13 +34,30 @@
 #ifndef TILEDB_LAYOUT_H
 #define TILEDB_LAYOUT_H
 
+#include "constants.h"
+
 namespace tiledb {
 
+/** Defines a layout for the cell or tile order. */
 enum class Layout : char {
 #define TILEDB_LAYOUT_ENUM(id) id
 #include "tiledb_enum.inc"
 #undef TILEDB_LAYOUT_ENUM
 };
+
+/** Returns the string representation of the input layout. */
+inline const char* layout_str(Layout layout) {
+  if (layout == Layout::COL_MAJOR)
+    return constants::col_major_str;
+  if (layout == Layout::ROW_MAJOR)
+    return constants::row_major_str;
+  if (layout == Layout::GLOBAL_ORDER)
+    return constants::global_order_str;
+  if (layout == Layout::UNORDERED)
+    return constants::unordered_str;
+
+  return nullptr;
+}
 
 }  // namespace tiledb
 

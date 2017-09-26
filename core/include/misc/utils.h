@@ -34,23 +34,15 @@
 #ifndef TILEDB_UTILS_H
 #define TILEDB_UTILS_H
 
-#ifdef HAVE_MPI
-#include <mpi.h>
-#endif
-
-#include <string>
-#include <vector>
 #include "array_type.h"
 #include "compressor.h"
-#include "config.h"
 #include "datatype.h"
 #include "layout.h"
 #include "status.h"
 #include "uri.h"
 
-#ifdef HAVE_OPENMP
-#include <omp.h>
-#endif
+#include <string>
+#include <vector>
 
 namespace tiledb {
 
@@ -59,9 +51,6 @@ namespace utils {
 /* ********************************* */
 /*             FUNCTIONS             */
 /* ********************************* */
-
-/** Returns the string representation of the input array type. */
-const char* array_type_str(ArrayType array_type);
 
 /**
  * Checks if the input cell is inside the input subarray.
@@ -75,7 +64,7 @@ const char* array_type_str(ArrayType array_type);
  *     *false* otherwise.
  */
 template <class T>
-bool cell_in_subarray(const T* cell, const T* subarray, int dim_num);
+bool cell_in_subarray(const T* cell, const T* subarray, unsigned int dim_num);
 
 /**
  * Returns the number of cells in the input subarray (considering that the
@@ -87,7 +76,7 @@ bool cell_in_subarray(const T* cell, const T* subarray, int dim_num);
  * @return The number of cells in the input subarray.
  */
 template <class T>
-int64_t cell_num_in_subarray(const T* subarray, int dim_num);
+uint64_t cell_num_in_subarray(const T* subarray, unsigned int dim_num);
 
 /**
  * Compares the precedence of two coordinates based on the column-major order.
@@ -100,7 +89,7 @@ int64_t cell_num_in_subarray(const T* subarray, int dim_num);
  *     *coords_b* are equal, and +1 if *coords_a* succeeds *coords_b*.
  */
 template <class T>
-int cmp_col_order(const T* coords_a, const T* coords_b, int dim_num);
+int cmp_col_order(const T* coords_a, const T* coords_b, unsigned int dim_num);
 
 /**
  * Compares the precedence of two coordinates associated with ids,
@@ -118,11 +107,11 @@ int cmp_col_order(const T* coords_a, const T* coords_b, int dim_num);
  */
 template <class T>
 int cmp_col_order(
-    int64_t id_a,
+    uint64_t id_a,
     const T* coords_a,
-    int64_t id_b,
+    uint64_t id_b,
     const T* coords_b,
-    int dim_num);
+    unsigned int dim_num);
 
 /**
  * Compares the precedence of two coordinates based on the row-major order.
@@ -135,7 +124,7 @@ int cmp_col_order(
  *     *coords_b* are equal, and +1 if *coords_a* succeeds *coords_b*.
  */
 template <class T>
-int cmp_row_order(const T* coords_a, const T* coords_b, int dim_num);
+int cmp_row_order(const T* coords_a, const T* coords_b, unsigned int dim_num);
 
 /**
  * Compares the precedence of two coordinates associated with ids,
@@ -153,49 +142,11 @@ int cmp_row_order(const T* coords_a, const T* coords_b, int dim_num);
  */
 template <class T>
 int cmp_row_order(
-    int64_t id_a,
+    uint64_t id_a,
     const T* coords_a,
-    int64_t id_b,
+    uint64_t id_b,
     const T* coords_b,
-    int dim_num);
-
-/** Returns the string representation of the input compressor. */
-const char* compressor_str(Compressor compressor);
-
-/**
- * Checks if a fragment exists
- *
- * @param frag fragment uri
- * @return bool true if the fragment exists, false otherwise
- */
-bool fragment_exists(const uri::URI& frag);
-
-/**
- * Deletes a fragment represenation
- *
- * @param frag fragment path string
- * @return Status
- */
-Status delete_fragment(const uri::URI& frag);
-
-/**
- * Returns the parent path of the input path.
- *
- * @param pth The input path.
- * @return The parent path of the input path.
- */
-std::string parent_path(const std::string& dir);
-
-/**
- * Returns the size in bytes of the input datatype
- *
- * @param type The input datatype.
- * @return The size in bytes of the input datatype.
- */
-uint64_t datatype_size(Datatype type);
-
-/** Returns the string representation of the input data type. */
-const char* datatype_str(Datatype type);
+    unsigned int dim_num);
 
 /**
  * Returns the input domain as a string of the form "[low, high]".
@@ -223,9 +174,9 @@ bool empty_value(T value);
  * @param buffer The buffer to be expanded.
  * @param buffer_allocated_size The original allocated size of the buffer.
  *     After the function call, this size doubles.
- * @return TILEDB_UT_OK for success, and TILEDB_UT_ERR for error.
+ * @return Status.
  */
-Status expand_buffer(void*& buffer, size_t& buffer_allocated_size);
+Status expand_buffer(void*& buffer, uint64_t* buffer_allocated_size);
 
 /**
  * Expands the input MBR so that it encompasses the input coordinates.
@@ -237,13 +188,7 @@ Status expand_buffer(void*& buffer, size_t& buffer_allocated_size);
  * @return void
  */
 template <class T>
-void expand_mbr(T* mbr, const T* coords, int dim_num);
-
-/**
- * Returns the MAC address of the machine as a 12-char string, e.g.,
- * 00332a0b8c64. Returns an empty string upon error.
- */
-std::string get_mac_addr();
+void expand_mbr(T* mbr, const T* coords, unsigned int dim_num);
 
 /**
  * Checks if there are duplicates in the input vector.
@@ -265,7 +210,7 @@ bool has_duplicates(const std::vector<T>& v);
  * @return *true* if the coordinates lie in the subarray, and *false* otherwise.
  */
 template <class T>
-bool inside_subarray(const T* coords, const T* subarray, int dim_num);
+bool inside_subarray(const T* coords, const T* subarray, unsigned int dim_num);
 
 /**
  * Checks if the input vectors have common elements.
@@ -280,17 +225,6 @@ template <class T>
 bool intersect(const std::vector<T>& v1, const std::vector<T>& v2);
 
 /**
- * Checks if the input directory is an array.
- *
- * @param dir The directory to be checked.
- * @return *true* if the directory is an array, and *false* otherwise.
- */
-bool is_array(const std::string& dir);
-
-// TODO: uri
-bool is_array(const uri::URI& uri);
-
-/**
  * Checks if one range is fully contained in another.
  *
  * @tparam The domain type
@@ -300,51 +234,14 @@ bool is_array(const uri::URI& uri);
  * @return True if range_A is fully contained in range_B.
  */
 template <class T>
-bool is_contained(const T* range_A, const T* range_B, int dim_num);
-
-/**
- * Checks if the input directory is a fragment.
- *
- * @param dir The directory to be checked.
- * @return *true* if the directory is a fragment, and *false* otherwise.
- */
-bool is_fragment(const std::string& dir);
-
-/**
- * Checks if the input directory is a group.
- *
- * @param dir The directory to be checked.
- * @return *true* if the directory is a group, and *false* otherwise.
- */
-bool is_group(const std::string& dir);
-
-// TODO: uri
-bool is_group(const uri::URI& uri);
-
-/**
- * Determine if a given path is a array schema
- * @param path
- * @return bool
- */
-bool is_array_schema(const std::string& path);
-
-/**
- * Determine if a given path is a consolidation lock file
- *
- * @param path  filesystem path
- * @return bool
- */
-bool is_consolidation_lock(const std::string& path);
+bool is_contained(const T* range_A, const T* range_B, unsigned int dim_num);
 
 /** Returns *true* if the input string is a positive (>0) integer number. */
 bool is_positive_integer(const char* s);
 
 /** Returns *true* if the subarray contains a single element. */
 template <class T>
-bool is_unary_subarray(const T* subarray, int dim_num);
-
-/** Returns the string representation of the input layout. */
-const char* layout_str(Layout layout);
+bool is_unary_subarray(const T* subarray, unsigned int dim_num);
 
 /**
  * Checks if a string starts with a certain prefix.

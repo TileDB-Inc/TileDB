@@ -56,8 +56,8 @@ class RLE {
    *
    * @param type_size The size of the data type.
    * @param input_buffer Input buffer to read from.
-   * @param output_buffer Output buffer to write to the compressed data.
-   * @return
+   * @param output_buffer Output buffer to write the compressed data to.
+   * @return Status
    */
   static Status compress(
       uint64_t type_size, const Buffer* input_buffer, Buffer* output_buffer);
@@ -68,7 +68,7 @@ class RLE {
    * @param type_size The size of the data type.
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write to the decompressed data.
-   * @return
+   * @return Status
    */
   static Status decompress(
       uint64_t type_size, const Buffer* input_buffer, Buffer* output_buffer);

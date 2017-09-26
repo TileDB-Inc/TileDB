@@ -1,5 +1,5 @@
 #!/bin/sh
-sudo apt-get -y install cmake lcov mpich zlib1g-dev libbz2-dev liblz4-dev libssl-dev
+sudo apt-get -y install cmake lcov zlib1g-dev libbz2-dev liblz4-dev
 
 TMPBUILD=`mktemp -d -t TILEDB_BUILD_XXXX`
 
