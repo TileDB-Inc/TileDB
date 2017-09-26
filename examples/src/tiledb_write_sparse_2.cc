@@ -38,6 +38,7 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Prepare cell buffers - #1
+  // clang-format off
   int buffer_a1[] = { 0, 1, 2 };
   uint64_t buffer_a2[] = { 0, 1, 3, 6, 10, 11, 13, 16 };
   char buffer_var_a2[] = "abbcccddddeffggghhhh";
@@ -57,6 +58,7 @@ int main() {
       sizeof(buffer_a3),
       sizeof(buffer_coords)
   };
+  // clang-format on
 
   // Create query
   tiledb_query_t* query;

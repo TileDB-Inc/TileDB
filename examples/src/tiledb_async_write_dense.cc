@@ -46,6 +46,7 @@ int main() {
   tiledb_ctx_create(&ctx);
 
   // Prepare cell buffers
+  // clang-format off
   int buffer_a1[] =
   {
       0,  1,  2,  3,                                     // Upper left tile
@@ -80,6 +81,7 @@ int main() {
       sizeof(buffer_var_a2)-1,  // No need to store the last '\0' character
       sizeof(buffer_a3)
   };
+  // clang-format on
 
   // Create query
   tiledb_query_t* query;
