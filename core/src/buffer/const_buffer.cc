@@ -90,6 +90,10 @@ void ConstBuffer::read_with_shift(
   offset_ += nbytes;
 }
 
+uint64_t ConstBuffer::size() const {
+  return size_;
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */

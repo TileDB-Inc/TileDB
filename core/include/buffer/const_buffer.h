@@ -95,6 +95,9 @@ class ConstBuffer {
    */
   void read_with_shift(uint64_t* buf, uint64_t nbytes, uint64_t offset);
 
+  /** Returns the size of the buffer. */
+  uint64_t size() const;
+
   /**
    * Returns a value from the buffer of type T.
    *

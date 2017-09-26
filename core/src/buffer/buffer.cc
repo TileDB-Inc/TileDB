@@ -130,7 +130,7 @@ void Buffer::write(ConstBuffer* buff) {
   uint64_t bytes_left_to_read = buff->nbytes_left_to_read();
   uint64_t bytes_to_copy = std::min(bytes_left_to_write, bytes_left_to_read);
 
-  buff->read(data_, bytes_to_copy);
+  buff->read((char*)data_ + offset_, bytes_to_copy);
   offset_ += bytes_to_copy;
 }
 
@@ -143,7 +143,7 @@ Status Buffer::write(ConstBuffer* buff, uint64_t nbytes) {
     }
   }
 
-  buff->read(data_, nbytes);
+  buff->read((char*)data_ + offset_, nbytes);
   offset_ += nbytes;
 
   return Status::Ok();
